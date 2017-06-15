@@ -10,9 +10,19 @@ using namespace Pds;
 int main() {
   void* buf = malloc(BUFSIZE);
   bzero(buf,BUFSIZE);
+
+  // this is the datagram, which gives you an "xtc" for free
   Dgram& dgram = *(Dgram*)buf;
-  TypeId tid(TypeId::Id_Xtc,1);
-  Xtc& xtc = *new(&dgram.xtc) Xtc(tid);
-  printf("%d\n",xtc.sizeofPayload());
+  TypeId tid1(TypeId::Id_Xtc,1);
+  dgram.xtc.contains = TypeId(TypeId::Id_Xtc,1);
+
+  // append an xtc
+  TypeId tid2(TypeId::Id_Xtc,2);
+  Xtc& xtc2 = *new(&dgram.xtc) Xtc(tid2);
+
+  // append an xtc
+  TypeId tid3(TypeId::Id_Xtc,3);
+  Xtc& xtc3 = *new(&dgram.xtc) Xtc(tid3);
+
   return 0;
 }
