@@ -12,6 +12,7 @@ add_library(xtc SHARED
     xtc/src/ProcInfo.cc
     xtc/src/TimeStamp.cc
     xtc/src/XtcFileIterator.cc
+    xtc/src/Descriptor.cc
 )
 
 target_include_directories(xtc PUBLIC
@@ -29,5 +30,12 @@ add_executable(xtcwriter
     app/xtcwriter.cc
 )
 target_link_libraries(xtcwriter
+    xtc
+)
+
+add_executable(descriptor-test
+    app/descriptor-test.cc
+)
+target_link_libraries(descriptor-test
     xtc
 )
