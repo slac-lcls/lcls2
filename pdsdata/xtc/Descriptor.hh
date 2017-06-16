@@ -13,7 +13,6 @@ enum Type
 {
     INT,
     FLOAT,
-    UINT16_ARRAY,
     FLOAT_ARRAY,
 };
 
@@ -53,28 +52,67 @@ struct is_vec<Array<T>> : std::true_type {};
 
 struct Field
 {
-    char name[256];
+  static const int maxNameSize=256;
+  Field(const char* tmpname, Type tmptype, int tmpoffset) {
+    strncpy(name, tmpname, maxNameSize);
+    type = tmptype;
+    offset = tmpoffset;
+    rank = 1;
+    shape[0] = 1;
+    shape[1] = 0;
+    shape[2] = 0;
+    shape[3] = 0;
+    shape[4] = 0;
+  }
+    char name[maxNameSize];
     Type type;
     int offset;
     int rank;
-    std::array<int, 5> shape;
+    int shape[5];
 };
 
 class Descriptor
 {
 public:
-    Descriptor(uint8_t* buffer);
+  Descriptor();
 
-    inline Field* get_field_by_index(int index)
-    {
-        return reinterpret_cast<Field*>(_buffer + sizeof(int) + index*sizeof(Field));
-    }
+    // inline Field* get_field_by_index(int index)
+    // {
+    //     return reinterpret_cast<Field*>(_buffer + sizeof(int) + index*sizeof(Field));
+    // }
 
-    Field* get_field_by_name(const char* name);
+    // Field* get_field_by_name(const char* name);
 
+  Field& get(int index) {
+    return ((Field*)(this+1))[index];
+  }
+
+  int num_fields;
+};
+
+class DescriptorManager {
+public:
+  DescriptorManager(void *ptrToDesc) {
+    _desc = new(ptrToDesc) Descriptor;
+    _offset = 0;
+  }
+
+  void add(const char* name, Type type) {
+    new(_desc+sizeof(Descriptor)+_desc->num_fields*sizeof(Field)) Field(name, type, _offset);
+    int sizeofElement = 4;  // need to replace this with size of each Type
+    _offset += sizeofElement;
+    _desc->num_fields++;
+  }
+
+  void add(const char* name, Type type, int rank, int shape[5]) {
+  }
+
+  int size() {
+    return sizeof(Descriptor)+_desc->num_fields*sizeof(Field);
+  }
+  Descriptor *_desc;
 private:
-    uint8_t* _buffer;
-    int _num_fields;
+  int _offset;
 };
 
 // all fundamental types

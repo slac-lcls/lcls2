@@ -1,22 +1,34 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "pdsdata/xtc/Dgram.hh"
 #include "pdsdata/xtc/TypeId.hh"
+#include "pdsdata/xtc/Descriptor.hh"
 #include "pdsdata/xtc/XtcIterator.hh"
 
 using namespace Pds;
 #define BUFSIZE 0x4000000
 
+// part of the DRP code
+class DataSize {
+public:
+  DataSize(uint32_t size) : _sizeofData(size) {}
+private:
+  uint32_t _sizeofData;
+};
+
+// inletWire code
 class myData {
 public:
   void* operator new(size_t size, char* p) { return (void*)p; }
-  myData(float f, int i1, int i2) {
-    _fdata = f; _iarray[0]=i1; _iarray[1]=i2;
+  myData(float f, int i1, int i2) : _size(sizeof(*this)) {
+    _fdata = f; _idata=i1;
   }
 private:
+  DataSize _size;
   float _fdata;
-  int   _iarray[2];
+  int   _idata;
 };
 
 class myLevelIter : public XtcIterator {
@@ -26,12 +38,21 @@ public:
 
   int process(Xtc* xtc) {
     unsigned i =_depth;
-    printf ("here in process\n");
+    printf ("here in process %d\n",xtc->contains.id());
     switch (xtc->contains.id()) {
     case (TypeId::Parent) : {
       printf("depth %d\n",_depth);
       myLevelIter iter(xtc,_depth+1);
       iter.iterate();
+      break;
+    }
+    case (TypeId::Data) : {
+      unsigned descOffset = *(unsigned*)xtc->payload();
+      Descriptor& d = *new(xtc->payload()+descOffset) Descriptor();
+      printf("*** data %d\n",d.num_fields);
+      for (int i=0; i<d.num_fields; i++) {
+        printf("%s\n",d.get(i).name);
+      }
       break;
     }
     default :
@@ -66,10 +87,18 @@ int main() {
   new(xtc2.payload()) myData(1,2,3);
   dgram.xtc.alloc(sizeof(myData)); // shouldn't need to do this twice?
 
+  DescriptorManager descMgr(xtc2.payload());
+  descMgr.add("myfloat",FLOAT);
+  descMgr.add("myint",INT);
+  xtc2.alloc(descMgr.size());
+  dgram.xtc.alloc(descMgr.size()); // shouldn't need to do this twice?
+
+  printf("nfields %d\n",descMgr._desc->num_fields);
+
   // make a child xtc.  this one will become our descriptor
-  TypeId tid_child2(TypeId::Desc,1);
-  Xtc& xtc3 = *new(&dgram.xtc) Xtc(tid_child2);
-  printf("3: %d\n",dgram.xtc.extent);
+  //TypeId tid_child2(TypeId::Desc,1);
+  //Xtc& xtc3 = *new(&dgram.xtc) Xtc(tid_child2);
+  //printf("3: %d\n",dgram.xtc.extent);
 
   myLevelIter iter(&dgram.xtc,0);
   iter.iterate();

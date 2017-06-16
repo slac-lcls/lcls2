@@ -14,7 +14,6 @@ namespace Pds {
     enum Type {
       Parent,
       Data,
-      Desc,
       NumberOf};
     enum { VCompressed = 0x8000 };
 

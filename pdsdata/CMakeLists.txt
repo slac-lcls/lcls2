@@ -33,9 +33,9 @@ target_link_libraries(xtcwriter
     xtc
 )
 
-add_executable(descriptor-test
-    app/descriptor-test.cc
-)
-target_link_libraries(descriptor-test
-    xtc
-)
+#add_executable(descriptor-test
+#    app/descriptor-test.cc
+#)
+#target_link_libraries(descriptor-test
+#    xtc
+#)
