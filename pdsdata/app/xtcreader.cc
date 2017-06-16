@@ -32,7 +32,7 @@ public:
     _lliOffset += sizeof(Xtc) + xtc->sizeofPayload();
      
     switch (xtc->contains.id()) {
-    case (TypeId::Id_Xtc) : {
+    case (TypeId::Parent) : {
       myLevelIter iter(xtc,_depth+1, lliOffsetPayload);
       iter.iterate();
       break;
