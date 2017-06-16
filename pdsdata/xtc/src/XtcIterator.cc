@@ -20,6 +20,7 @@
 
 #include "pdsdata/xtc/XtcIterator.hh"
 #include "pdsdata/xtc/Xtc.hh"
+#include <stdio.h>
 
 using namespace Pds;
 
@@ -42,12 +43,14 @@ void XtcIterator::iterate(Xtc* root)
 
   Xtc* xtc     = (Xtc*)root->payload();
   int remaining = root->sizeofPayload();
+  printf("remaining %d\n",remaining);
 
   while(remaining > 0)
   {
     if(xtc->extent==0) break; // try to skip corrupt event
     if(!process(xtc)) break;
     remaining -= xtc->sizeofPayload() + sizeof(Xtc);
+    printf("remaining 2 %d\n",remaining);
     xtc      = xtc->next();
   }
 
