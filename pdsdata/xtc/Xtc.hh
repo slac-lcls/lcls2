@@ -23,15 +23,15 @@ namespace Pds {
       damage(_damage), src(_src), contains(_tag), extent(sizeof(Xtc)) {}
     Xtc(const TypeId& _tag, const Src& _src, const Damage& _damage) : damage(_damage), src(_src), contains(_tag), extent(sizeof(Xtc)) {}
     
-    void* operator new(size_t size, char* p)     { return (void*)p; }
-    void* operator new(size_t size, Xtc* p)      { return p->alloc(size); }
+    void* operator new(size_t size, char* p) { return (void*)p; }
+    void* operator new(size_t size, Xtc* p)  { return p->alloc(size); }
     
-    char*        payload()       const { return (char*)(this+1); }
-    int          sizeofPayload() const { return extent - sizeof(Xtc); }
+    char*      payload()       const { return (char*)(this+1); }
+    int        sizeofPayload() const { return extent - sizeof(Xtc); }
     Xtc*       next()                { return (Xtc*)((char*)this+extent); }
     const Xtc* next()          const { return (const Xtc*)((char*)this+extent); }
     
-    void*        alloc(uint32_t size)  { void* buffer = next(); extent += size; return buffer; }
+    void*      alloc(uint32_t size)  { void* buffer = next(); extent += size; return buffer; }
 
     Damage   damage;
     Src      src;

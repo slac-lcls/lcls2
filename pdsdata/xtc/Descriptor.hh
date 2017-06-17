@@ -84,7 +84,8 @@ public:
     // Field* get_field_by_name(const char* name);
 
   Field& get(int index) {
-    return ((Field*)(this+1))[index];
+    Field& tmpptr = ((Field*)(this+1))[index];
+    return tmpptr;
   }
 
   int num_fields;
@@ -92,25 +93,24 @@ public:
 
 class DescriptorManager {
 public:
-  DescriptorManager(void *ptrToDesc) {
-    _desc = new(ptrToDesc) Descriptor;
+  DescriptorManager(void *ptrToDesc) : _desc(*new(ptrToDesc) Descriptor) {
     _offset = 0;
   }
 
   void add(const char* name, Type type) {
-    new(_desc+sizeof(Descriptor)+_desc->num_fields*sizeof(Field)) Field(name, type, _offset);
+    new(&_desc.get(_desc.num_fields)) Field(name, type, _offset);
     int sizeofElement = 4;  // need to replace this with size of each Type
     _offset += sizeofElement;
-    _desc->num_fields++;
+    _desc.num_fields++;
   }
 
   void add(const char* name, Type type, int rank, int shape[5]) {
   }
 
   int size() {
-    return sizeof(Descriptor)+_desc->num_fields*sizeof(Field);
+    return sizeof(Descriptor)+_desc.num_fields*sizeof(Field);
   }
-  Descriptor *_desc;
+  Descriptor &_desc;
 private:
   int _offset;
 };

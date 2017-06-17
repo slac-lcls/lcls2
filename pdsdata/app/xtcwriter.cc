@@ -10,27 +10,20 @@
 using namespace Pds;
 #define BUFSIZE 0x4000000
 
-// part of the DRP code
-class DataSize {
+// generic data class that holds the size of the variable-length data and
+// the location of the descriptor
+class Data {
 public:
-  DataSize(uint32_t size) : _sizeofData(size) {}
+  Data(uint32_t size) : _sizeofData(size) {}
+  //protected:
+  Descriptor& desc() {
+    return *(Descriptor*)(((char*)(this))+_sizeofData);
+  }
 private:
   uint32_t _sizeofData;
 };
 
-// inletWire code
-class myData {
-public:
-  void* operator new(size_t size, char* p) { return (void*)p; }
-  myData(float f, int i1, int i2) : _size(sizeof(*this)) {
-    _fdata = f; _idata=i1;
-  }
-private:
-  DataSize _size;
-  float _fdata;
-  int   _idata;
-};
-
+// this represent the "analysis" code 
 class myLevelIter : public XtcIterator {
 public:
   enum {Stop, Continue};
@@ -38,20 +31,18 @@ public:
 
   int process(Xtc* xtc) {
     unsigned i =_depth;
-    printf ("here in process %d\n",xtc->contains.id());
     switch (xtc->contains.id()) {
     case (TypeId::Parent) : {
-      printf("depth %d\n",_depth);
       myLevelIter iter(xtc,_depth+1);
       iter.iterate();
       break;
     }
     case (TypeId::Data) : {
-      unsigned descOffset = *(unsigned*)xtc->payload();
-      Descriptor& d = *new(xtc->payload()+descOffset) Descriptor();
-      printf("*** data %d\n",d.num_fields);
-      for (int i=0; i<d.num_fields; i++) {
-        printf("%s\n",d.get(i).name);
+      Data& d = *(Data*)xtc->payload();
+      Descriptor& desc = d.desc();
+      printf("Found fields named:\n");
+      for (int i=0; i<desc.num_fields; i++) {
+        printf("%s\n",desc.get(i).name);
       }
       break;
     }
@@ -67,38 +58,41 @@ private:
 
 };
 
-int main() {
-  void* buf = malloc(BUFSIZE);
-  bzero(buf,BUFSIZE);
+// everything below here is inletWire code
 
+class MyData : public Data {
+public:
+  void* operator new(size_t size, void* p) { return p; }
+  MyData(float f, int i1, int i2) : Data(sizeof(*this)) {
+    _fdata = f; _idata=i1;
+  }
+private:
+  float _fdata;
+  int   _idata;
+};
+
+int main() {
   // this is the datagram, which gives you an "xtc" for free
-  Dgram& dgram = *(Dgram*)buf;
+  Dgram& dgram = *(Dgram*)malloc(BUFSIZE);
   TypeId tid(TypeId::Parent,0);
   dgram.xtc.contains = tid;
   dgram.xtc.extent = sizeof(Xtc);
-  printf("1: %d\n",dgram.xtc.extent);
 
-  // make a child xtc.  this one will become our camera data
-  TypeId tid_child1(TypeId::Data,1);
-  Xtc& xtc2 = *new(&dgram.xtc) Xtc(tid_child1);
-  printf("2: %d\n",dgram.xtc.extent);
+  // make a child xtc with detector data and descriptor
+  TypeId tid_child(TypeId::Data,0);
+  Xtc& xtcChild = *new(&dgram.xtc) Xtc(tid_child);
 
-  xtc2.alloc(sizeof(myData));
-  new(xtc2.payload()) myData(1,2,3);
-  dgram.xtc.alloc(sizeof(myData)); // shouldn't need to do this twice?
+  // creation of fixed-length data in xtc
+  MyData& d = *new(xtcChild.alloc(sizeof(MyData))) MyData(1,2,3);
 
-  DescriptorManager descMgr(xtc2.payload());
+  // creation of variable-length data in xtc
+  DescriptorManager descMgr(xtcChild.next());
   descMgr.add("myfloat",FLOAT);
   descMgr.add("myint",INT);
-  xtc2.alloc(descMgr.size());
-  dgram.xtc.alloc(descMgr.size()); // shouldn't need to do this twice?
+  xtcChild.alloc(descMgr.size());
 
-  printf("nfields %d\n",descMgr._desc->num_fields);
-
-  // make a child xtc.  this one will become our descriptor
-  //TypeId tid_child2(TypeId::Desc,1);
-  //Xtc& xtc3 = *new(&dgram.xtc) Xtc(tid_child2);
-  //printf("3: %d\n",dgram.xtc.extent);
+  // update parent xtc with our new size.
+  dgram.xtc.alloc(xtcChild.sizeofPayload());
 
   myLevelIter iter(&dgram.xtc,0);
   iter.iterate();
