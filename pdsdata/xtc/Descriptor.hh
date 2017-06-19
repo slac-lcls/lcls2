@@ -16,6 +16,17 @@ enum Type
     FLOAT_ARRAY,
 };
 
+int get_element_size(Type& type)
+{
+    const static int element_sizes[] = 
+    {
+        4, // INT
+        4, // FLOAT
+        4  // FLOAT_ARRAY
+    };
+    return element_sizes[type];
+};
+
 template<typename T>
 struct Array
 {
@@ -99,8 +110,8 @@ public:
 
   void add(const char* name, Type type) {
     new(&_desc.get(_desc.num_fields)) Field(name, type, _offset);
-    int sizeofElement = 4;  // need to replace this with size of each Type
-    _offset += sizeofElement;
+    int element_size = get_element_size(type);
+    _offset += element_size;
     _desc.num_fields++;
   }
 
