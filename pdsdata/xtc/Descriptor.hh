@@ -110,12 +110,18 @@ public:
 
   void add(const char* name, Type type) {
     new(&_desc.get(_desc.num_fields)) Field(name, type, _offset);
-    int element_size = get_element_size(type);
-    _offset += element_size;
+    _offset += get_element_size(type);
     _desc.num_fields++;
   }
 
   void add(const char* name, Type type, int rank, int shape[5]) {
+      
+      int num_elements = 1;
+      for (int i=0; i<5; i++) {
+          num_elements *= shape[i];
+    }
+     _offset += num_elements * get_element_size(type);
+    _desc.num_fields++;
   }
 
   int size() {
