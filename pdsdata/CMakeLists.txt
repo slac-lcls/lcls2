@@ -13,11 +13,19 @@ add_library(xtc SHARED
     xtc/src/TimeStamp.cc
     xtc/src/XtcFileIterator.cc
     xtc/src/Descriptor.cc
+    xtc/src/Hdf5Writer.cc
 )
 
 target_include_directories(xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>)
+    #$<INSTALL_INTERFACE:include>
+    ${HDF5_INCLUDE_DIRS}
+)
+
+target_link_libraries(xtc
+    ${HDF5_LIBRARIES}
+    ${HDF5_HL_LIBRARIES}
+)
 
 add_executable(xtcreader
     app/xtcreader.cc

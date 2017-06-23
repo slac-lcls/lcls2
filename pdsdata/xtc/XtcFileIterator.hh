@@ -5,19 +5,21 @@
 
 #include <stdio.h>
 
-namespace Pds {
+namespace Pds
+{
 
-class XtcFileIterator {
-public:
-  XtcFileIterator(int fd, size_t maxDgramSize);
-  ~XtcFileIterator();
-  Dgram* next();
-private:
-  int      _fd;
-  size_t   _maxDgramSize;
-  char*    _buf;
+class XtcFileIterator
+{
+    public:
+    XtcFileIterator(int fd, size_t maxDgramSize);
+    ~XtcFileIterator();
+    Dgram* next();
+
+    private:
+    int _fd;
+    size_t _maxDgramSize;
+    char* _buf;
 };
-
 }
 
 #endif

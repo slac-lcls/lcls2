@@ -2,79 +2,74 @@
 #define DESCRIPTOR__H
 
 #include <cstring>
-#include <iostream>
 #include <array>
 #include <cassert>
 #include <chrono>
-#include <vector>
+#include <cstring>
+#include <iostream>
 #include <type_traits>
+#include <vector>
 
-enum Type
-{
-    INT,
+enum Type {
+    UINT8,
+    UINT16,
+    INT32,
     FLOAT,
-    FLOAT_ARRAY,
+    DOUBLE
 };
 
-int get_element_size(Type& type)
-{
-    const static int element_sizes[] = 
-    {
-        4, // INT
-        4, // FLOAT
-        4  // FLOAT_ARRAY
-    };
-    return element_sizes[type];
-};
+int get_element_size(Type& type);
 
-template<typename T>
-struct Array
-{
+template <typename T> struct Array {
     Array(uint8_t* buffer)
     {
         data = reinterpret_cast<T*>(buffer);
     }
-    T& operator() (int i, int j)
+    T& operator()(int i, int j)
     {
-        return data[i*shape[1] + j];
+        return data[i * _shape[1] + j];
     }
-    const T& operator() (int i, int j) const
+    const T& operator()(int i, int j) const
     {
-        return data[i*shape[1] + j];
+        return data[i * _shape[1] + j];
     }
-    T& operator() (int i, int j, int k)
+    T& operator()(int i, int j, int k)
     {
-        return data[(i*shape[1] + j)*shape[2] + k];
+        return data[(i * _shape[1] + j) * _shape[2] + k];
     }
-    const T& operator() (int i, int j, int k) const
+    const T& operator()(int i, int j, int k) const
     {
-        return data[(i*shape[1] + j)*shape[2] + k];
+        return data[(i * _shape[1] + j) * _shape[2] + k];
     }
 
     T* data;
-    std::vector<int> shape;
+    std::vector<int> _shape;
 };
 
-template<typename>
-struct is_vec : std::false_type {};
+template <typename> struct is_vec : std::false_type {
+};
 
-template<typename T>
-struct is_vec<Array<T>> : std::true_type {};
+template <typename T> struct is_vec<Array<T>> : std::true_type {
+};
 
-struct Field
-{
-  static const int maxNameSize=256;
-  Field(const char* tmpname, Type tmptype, int tmpoffset) {
-    strncpy(name, tmpname, maxNameSize);
-    type = tmptype;
-    offset = tmpoffset;
-    rank = 1;
-    shape[0] = 1;
-    shape[1] = 0;
-    shape[2] = 0;
-    shape[3] = 0;
-    shape[4] = 0;
-  }
+struct Field {
+    static const int maxNameSize = 256;
+    Field(const char* tmpname, Type tmptype, int tmpoffset)
+    {
+        strncpy(name, tmpname, maxNameSize);
+        type = tmptype;
+        offset = tmpoffset;
+        rank = 0;
+    }
+
+    Field(const char* tmpname, Type tmptype, int tmpoffset, int tmprank, int tmpshape[5])
+    {
+        strncpy(name, tmpname, maxNameSize);
+        type = tmptype;
+        offset = tmpoffset;
+        rank = tmprank;
+        memcpy(shape, tmpshape, sizeof(int)*rank);
+    }
     char name[maxNameSize];
     Type type;
     int offset;
@@ -84,59 +79,98 @@ struct Field
 
 class Descriptor
 {
-public:
-  Descriptor();
+    public:
+    Descriptor();
+    Field* get_field_by_name(const char* name);
 
-    // inline Field* get_field_by_index(int index)
-    // {
-    //     return reinterpret_cast<Field*>(_buffer + sizeof(int) + index*sizeof(Field));
-    // }
-
-    // Field* get_field_by_name(const char* name);
-
-  Field& get(int index) {
-    Field& tmpptr = ((Field*)(this+1))[index];
-    return tmpptr;
-  }
-
-  int num_fields;
-};
-
-class DescriptorManager {
-public:
-  DescriptorManager(void *ptrToDesc) : _desc(*new(ptrToDesc) Descriptor) {
-    _offset = 0;
-  }
-
-  void add(const char* name, Type type) {
-    new(&_desc.get(_desc.num_fields)) Field(name, type, _offset);
-    _offset += get_element_size(type);
-    _desc.num_fields++;
-  }
-
-  void add(const char* name, Type type, int rank, int shape[5]) {
-      
-      int num_elements = 1;
-      for (int i=0; i<5; i++) {
-          num_elements *= shape[i];
+    Field& get(int index)
+    {
+        Field& tmpptr = ((Field*)(this + 1))[index];
+        return tmpptr;
     }
-     _offset += num_elements * get_element_size(type);
-    _desc.num_fields++;
-  }
 
-  int size() {
-    return sizeof(Descriptor)+_desc.num_fields*sizeof(Field);
-  }
-  Descriptor &_desc;
-private:
-  int _offset;
+    int num_fields;
 };
 
-// all fundamental types
-template<typename T>
-typename std::enable_if<std::is_fundamental<T>::value, T>::type
-get_value(const Field& field, uint8_t* buffer) {
-    return *reinterpret_cast<T*>(buffer + field.offset);
-}
+class DescriptorManager
+{
+    public:
+    DescriptorManager(void* ptrToDesc) : _desc(*new(ptrToDesc) Descriptor)
+    {
+        _offset = 0;
+    }
+
+    // Add new scalar to Descriptor
+    void add(const char* name, Type type)
+    {
+        new(&_desc.get(_desc.num_fields)) Field(name, type, _offset);
+        _offset += get_element_size(type);
+        _desc.num_fields++;
+    }
+
+    // Add new array to Descriptor
+    void add(const char* name, Type type, int rank, int shape[5])
+    {
+        new(&_desc.get(_desc.num_fields)) Field(name, type, _offset, rank, shape);
+        int num_elements = 1;
+        for(int i = 0; i < rank; i++) {
+            num_elements *= shape[i];
+        }
+        _offset += num_elements * get_element_size(type);
+        _desc.num_fields++;
+    }
+
+    int size()
+    {
+        return sizeof(Descriptor) + _desc.num_fields * sizeof(Field);
+    }
+    Descriptor& _desc;
+
+    private:
+    int _offset;
+};
+
+// generic data class that holds the size of the variable-length data and
+// the location of the descriptor
+class Data
+{
+    public:
+    Data(uint32_t size) : _sizeofData(size)
+    {
+    }
+    Descriptor& desc()
+    {
+        return *(Descriptor*)(((char*)(this)) + _sizeofData);
+    }
+
+    uint8_t* get_buffer()
+    {
+        return reinterpret_cast<uint8_t*>((this + 1));
+    }
+
+    // all fundamental types
+    template <typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, T>::type get_value(const char* name)
+    {
+        Field* field = desc().get_field_by_name(name);
+        return *reinterpret_cast<T*>((uint8_t*)(this + 1) + field->offset);
+    }
+
+    // for all array types
+    template <typename T>
+    typename std::enable_if<is_vec<T>::value, T>::type get_value(const char* name)
+    {
+        Field* field = desc().get_field_by_name(name);
+        T array((uint8_t*)(this + 1) + field->offset);
+        array._shape.resize(field->rank);
+        for(int i = 0; i < field->rank; i++) {
+            array._shape[i] = field->shape[i];
+        }
+        return array;
+    }
+
+    private:
+    uint32_t _sizeofData;
+};
 
 #endif // DESCRIPTOR__H
