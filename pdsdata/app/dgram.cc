@@ -10,21 +10,97 @@
 #include <unistd.h>
 #include <Python.h>
 #include <numpy/arrayobject.h>
+#include <structmember.h>
 
 using namespace Pds;
 #define BUFSIZE 0x4000000
 
 typedef struct {
-    PyDictObject dict;
+    PyObject_HEAD
+    PyObject* dict;
 } dgram_DgramObject;
 //dataDict_DgramObject;
+
+void dictAssign(dgram_DgramObject* dgram, Descriptor& desc, Data& d)
+{  
+  for (int i = 0; i < desc.num_fields; i++) 
+  {
+    Field& f = desc.get(i);
+    printf("%s  offset: %d\n", f.name, f.offset);
+
+    const char *tempName = f.name;
+    PyObject *key = PyUnicode_FromString(tempName);
+    PyObject *value;
+    if (f.rank == 0)  
+    {
+      switch(f.type){
+        case UINT8:{
+          const int tempVal = d.get_value<uint8_t>(tempName);
+          value = Py_BuildValue("i",tempVal);
+          break;
+          }
+        case UINT16:{
+          const int tempVal = d.get_value<uint16_t>(tempName);
+          value = Py_BuildValue("i",tempVal);
+          break;
+          }
+        case INT32:{
+          const int tempVal = d.get_value<int32_t>(tempName);
+          value = Py_BuildValue("i",tempVal);
+          break;
+          }
+        case FLOAT:{
+          const float tempVal = d.get_value<float>(tempName);
+          value = Py_BuildValue("f",tempVal);
+          break;
+          }
+        case DOUBLE:{
+          const int tempVal = d.get_value<double>(tempName);
+          value = Py_BuildValue("d",tempVal);
+          break;
+          }
+      }
+    }
+    else
+    {
+      npy_intp dims[f.rank+1];
+      for (int i = 0; i<f.rank+1; i++){
+        dims[i] = f.shape[i];
+      }
+      switch(f.type){
+        case UINT8:{
+          value = PyArray_SimpleNewFromData(f.rank,dims,NPY_UINT8,d.get_buffer()+f.offset);
+          break;
+        }
+        case UINT16:{
+          value = PyArray_SimpleNewFromData(f.rank,dims,NPY_UINT16,d.get_buffer()+f.offset);
+          break;
+        }
+        case INT32:{
+          value = PyArray_SimpleNewFromData(f.rank,dims,NPY_INT32,d.get_buffer()+f.offset);
+          break;
+        }
+        case FLOAT:{
+          value = PyArray_SimpleNewFromData(f.rank,dims,NPY_FLOAT,d.get_buffer()+f.offset);
+          break;
+        }
+        case DOUBLE:{
+          value = PyArray_SimpleNewFromData(f.rank,dims,NPY_DOUBLE,d.get_buffer()+f.offset);
+          break;
+        }
+      }
+    } 
+    PyDict_SetItem(dgram->dict,key,value);
+  }
+}
+
 
 // this represent the "analysis" code
 class myLevelIter : public XtcIterator
 {
     public:
     enum { Stop, Continue };
-    myLevelIter(Xtc* xtc, unsigned depth, PyObject* dictionary) : XtcIterator(xtc), _depth(depth), _dictionary(dictionary)
+    myLevelIter(Xtc* xtc, unsigned depth, dgram_DgramObject* dgram) : XtcIterator(xtc), _depth(depth), _dgram(dgram)
     {
 
     }
@@ -34,7 +110,7 @@ class myLevelIter : public XtcIterator
         unsigned i = _depth;
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            myLevelIter iter(xtc, _depth + 1, _dictionary);
+            myLevelIter iter(xtc, _depth + 1, _dgram);
             iter.iterate();
             break;
         }
@@ -42,17 +118,8 @@ class myLevelIter : public XtcIterator
             Data& d = *(Data*)xtc->payload();
             Descriptor& desc = d.desc();
             printf("Found fields named:\n");
-            for (int i = 0; i < desc.num_fields; i++) {
-                Field& f = desc.get(i);
-                printf("%s  offset: %d\n", f.name, f.offset);
-                if (f.type == FLOAT){
-                    const char *tempName = f.name;
-                    const float tempVal = d.get_value<float>(tempName);
-                    PyObject *key = PyUnicode_FromString(tempName);
-                    PyObject *value = Py_BuildValue("f",tempVal);
-                    PyDict_SetItem(_dictionary,key,value);
-                }
-            }
+            //where I have made changes
+            dictAssign(_dgram,desc,d);
 
             std::cout << d.get_value<float>("myfloat") << std::endl;
 
@@ -75,7 +142,7 @@ class myLevelIter : public XtcIterator
 
     private:
     unsigned _depth;
-    PyObject* _dictionary;
+    dgram_DgramObject* _dgram;
 };
 
 // everything below here is inletWire code
@@ -107,17 +174,33 @@ class MyData : public Data
 static void
 dgram_dealloc(dgram_DgramObject *self)
 {
-  printf("here in dealloc\n");
+  printf("Here in dealloc\n");
+  Py_XDECREF(self->dict);
+  Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyObject *
+dgram_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+  dgram_DgramObject *self;
+
+  self = (dgram_DgramObject *)type->tp_alloc(type,0);
+  
+  if (self != NULL) {
+    self->dict = PyDict_New();
+  }  
+
+  return (PyObject *) self;
 }
 
 static int
 dgram_init(dgram_DgramObject *self, PyObject *args, PyObject *kwds)
 {
-    printf("here in dgram_init\n");
-    if (PyDict_Type.tp_init((PyObject *)self, args, kwds) < 0) {
-      printf("whoops\n");
-      return -1;
-    }
+    printf("here in dgram_init %p %d\n", self, Py_REFCNT(self));
+    // if (PyDict_Type.tp_init((PyObject *)&(self->dict), args, kwds) < 0) {
+    //   printf("whoops\n");
+    //   return -1;
+    // }
 
     // this is the datagram, which gives you an "xtc" for free
     Dgram& dgram = *(Dgram*)malloc(BUFSIZE);
@@ -151,10 +234,10 @@ dgram_init(dgram_DgramObject *self, PyObject *args, PyObject *kwds)
     file.addDatasets(descMgr._desc);
     file.appendData(d);
 
-    myLevelIter iter(&dgram.xtc, 0, (PyObject *) self);
+    myLevelIter iter(&dgram.xtc, 0, self);
     iter.iterate();
 
-    free((void*)&dgram);
+    //free((void*)&dgram);
 
     return 0;
 }
@@ -165,6 +248,28 @@ dgram_init(dgram_DgramObject *self, PyObject *args, PyObject *kwds)
 //    {NULL}
 //};
 
+static PyMemberDef dgram_members[] = {
+    {"__dict__", T_OBJECT_EX, offsetof(dgram_DgramObject,dict), 0,
+     "attribute dictionary"},
+    {NULL}
+};
+
+//PyObject * tp_getattr(PyObject* o, char* key)
+//{
+//  printf("\n\nIt just called the getattr function \n\n");
+//  return Py_None;
+//}
+
+ 
+//PyObject * tp_getattro(PyObject* o, char* key)
+//{
+//  printf("\n\nIt just called the getattro function \n\n");
+//  return Py_None;
+//}
+
+
+
+
 static PyTypeObject dgram_DgramType = {
   PyVarObject_HEAD_INIT(NULL, 0)
   "dgram.Dgram",             /* tp_name */
@@ -172,7 +277,7 @@ static PyTypeObject dgram_DgramType = {
   0,                         /* tp_itemsize */
   (destructor)dgram_dealloc, /* tp_dealloc */
   0,                         /* tp_print */
-  0,                         /* tp_getattr */
+  0,//tp_getattr,                         /* tp_getattr */
   0,                         /* tp_setattr */
   0,                         /* tp_compare */
   0,                         /* tp_repr */
@@ -185,8 +290,7 @@ static PyTypeObject dgram_DgramType = {
   0,                         /* tp_getattro */
   0,                         /* tp_setattro */
   0,                         /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT |
-  Py_TPFLAGS_BASETYPE, /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
   0,                       /* tp_doc */
   0,                       /* tp_traverse */
   0,                       /* tp_clear */
@@ -195,20 +299,20 @@ static PyTypeObject dgram_DgramType = {
   0,                       /* tp_iter */
   0,                       /* tp_iternext */
   0,          /* tp_methods */
-  0,                       /* tp_members */
+  dgram_members,                       /* tp_members */
   0,                       /* tp_getset */
   0,                       /* tp_base */
   0,                       /* tp_dict */
   0,                       /* tp_descr_get */
   0,                       /* tp_descr_set */
-  0,                       /* tp_dictoffset */
+  offsetof(dgram_DgramObject,dict),                       /* tp_dictoffset */
   (initproc)dgram_init,   /* tp_init */
   0,                       /* tp_alloc */
-  0,                       /* tp_new */
+  dgram_new,                       /* tp_new */
 };
 
 
-static struct PyModuleDef dictmodule = {
+static PyModuleDef dictmodule = {
     PyModuleDef_HEAD_INIT,
     "dgram",
     NULL,
@@ -233,20 +337,25 @@ PyInit_dgram(void)
 {
   PyObject* m;
 
-  dgram_DgramType.tp_base = &PyDict_Type;
+  import_array();
 
-  if (PyType_Ready(&dgram_DgramType) < 0)
+  //dgram_DgramType.tp_new = PyType_GenericNew;
+  
+  if (PyType_Ready(&dgram_DgramType) < 0){
+    printf("LINE 269\n");
     return NULL;
+  }
 
   m = PyModule_Create(&dictmodule);
-  if (m == NULL)
+  if (m == NULL){
+    printf("LINE 274\n");
     return NULL;
+  }
 
 //  m = Py_InitModule3("dgram", NULL, "Example dgram module");
 
   Py_INCREF(&dgram_DgramType);
   PyModule_AddObject(m, "Dgram", (PyObject *)&dgram_DgramType);
-  import_array();
   return m;
 }
 
