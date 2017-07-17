@@ -156,6 +156,14 @@ class Data
         return *reinterpret_cast<T*>((uint8_t*)(this + 1) + field->offset);
     }
 
+    template <typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, T>::type set_value(const char* name, T val)
+    {
+        Field* field = desc().get_field_by_name(name);
+        T* ptr = reinterpret_cast<T*>((uint8_t*)(this + 1) + field->offset);
+        *ptr = val;
+    }    
+
     // for all array types
     template <typename T>
     typename std::enable_if<is_vec<T>::value, T>::type get_value(const char* name)

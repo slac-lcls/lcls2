@@ -118,6 +118,20 @@ int main()
     // update parent xtc with our new size.
     dgram.xtc.alloc(xtcChild.sizeofPayload());
 
+    FILE* xtcFile = fopen("data.xtc","w");
+
+    if(!xtcFile){
+      printf("Error opening output xtc file.\n");
+      return -1;
+    }
+
+    if(fwrite(&dgram, sizeof(dgram)+dgram.xtc.sizeofPayload(), 1, xtcFile)!=1){
+        printf("Error writing to output xtc file.\n");
+        return -1;
+    }
+
+    fclose(xtcFile);
+
     HDF5File file("test.h5");
     file.addDatasets(descMgr._desc);
     file.appendData(d);

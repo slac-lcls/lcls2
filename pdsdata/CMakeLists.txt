@@ -24,7 +24,7 @@ target_include_directories(xtc PUBLIC
 )
 
 add_library(dgram SHARED
-    app/dgram.cc
+    app/pydgconvert.cc
 )
 
 target_link_libraries(dgram
