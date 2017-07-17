@@ -45,31 +45,32 @@ void DictAssign(dgram_DgramObject* dgram, Descriptor& desc, Data& d)
     PyObject *value;
     if (f.rank == 0)  
     {
-      switch(f.type){
-        case UINT8:{
-          const int tempVal = d.get_value<uint8_t>(tempName);
-          value = Py_BuildValue("i",tempVal);
-          break;
-          } case UINT16:{
-          const int tempVal = d.get_value<uint16_t>(tempName);
-          value = Py_BuildValue("i",tempVal);
-          break;
-          }
+    switch(f.type){
+      case UINT8:{
+        const int tempVal = d.get_value<uint8_t>(tempName);
+        value = Py_BuildValue("i",tempVal);
+        break;
+        } 
+        case UINT16:{
+        const int tempVal = d.get_value<uint16_t>(tempName);
+        value = Py_BuildValue("i",tempVal);
+        break;
+        }
         case INT32:{
           const int tempVal = d.get_value<int32_t>(tempName);
           value = Py_BuildValue("i",tempVal);
           break;
-          }
+        }
         case FLOAT:{
           const float tempVal = d.get_value<float>(tempName);
           value = Py_BuildValue("f",tempVal);
           break;
-          }
+        }
         case DOUBLE:{
           const int tempVal = d.get_value<double>(tempName);
           value = Py_BuildValue("d",tempVal);
           break;
-          }
+        }
       }
     }
     else
@@ -264,7 +265,6 @@ static PyMemberDef dgram_members[] = {
 //  printf("\n\nIt just called the getattro function \n\n");
 //  return Py_None;
 //}
-
 
 
 
