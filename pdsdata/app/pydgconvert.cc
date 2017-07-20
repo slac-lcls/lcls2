@@ -118,7 +118,8 @@ void DictAssign(dgram_DgramObject* dgram, Descriptor& desc, Data& d)
         printf("base type is %s\n",temp->ob_type->tp_name);
       }
     } 
-    PyDict_SetItem(dgram->dict,key,value);
+    int TEST = PyDict_SetItem(dgram->dict,key,value);
+    printf("PyDict_SetItem returns: %i\n",TEST);
     Py_DECREF(value);
   }
 }
@@ -260,11 +261,24 @@ static PyMemberDef dgram_members[] = {
 //}
 
  
-//PyObject * tp_getattro(PyObject* o, PyObject* key)
-//{
-//  printf("\n\nIt just called the getattro function \n\n");
-//  return Py_None;
-//}
+PyObject * tp_getattro(PyObject* o, PyObject* key)
+{
+  printf("\n\nIt just called the getattro function \n\n");
+  PyObject* res = PyDict_GetItem(((dgram_DgramObject*) o) -> dict,key);
+  if(res != NULL){
+    Py_INCREF(res);
+    if(*res->ob_type->tp_name == *"numpy.ndarray"){
+      printf("we're in the if\n\n");
+      Py_INCREF(o);  
+    }
+  }
+  else{
+    printf("We're in the else\n\n");
+    res = PyObject_GenericGetAttr(o,key);
+  }
+
+  return res;
+}
 
 
 
@@ -285,10 +299,10 @@ static PyTypeObject dgram_DgramType = {
   0,                         /* tp_hash */
   0,                         /* tp_call */
   0,                         /* tp_str */
-  PyObject_GenericGetAttr,//tp_getattro,                         /* tp_getattro */
+  tp_getattro,//PyObject_GenericGetAttr,                         /* tp_getattro */
   0,                         /* tp_setattro */
   0,                         /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
+    Py_TPFLAGS_DEFAULT,// | Py_TPFLAGS_BASETYPE, /* tp_flags */
   0,                       /* tp_doc */
   0,                       /* tp_traverse */
   0,                       /* tp_clear */
