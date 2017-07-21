@@ -41,6 +41,22 @@ target_include_directories(dgram PUBLIC
 
 set_target_properties(dgram PROPERTIES PREFIX "")
 
+add_library(testType SHARED
+    app/testProg.cc
+)
+
+target_link_libraries(testType
+    ${PYTHON_LIBRARIES}
+)
+
+target_include_directories(testType PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> 
+    ${PYTHON_INCLUDE_DIRS}
+    ${NUMPY_INCLUDE_DIRS}
+)
+
+set_target_properties(testType PROPERTIES PREFIX "")
+
 target_link_libraries(xtc
     ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES}
