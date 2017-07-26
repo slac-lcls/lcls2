@@ -85,7 +85,7 @@ static PyMethodDef Noddy_methods[] = {
 
 static PyTypeObject NoddyType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "noddy.Noddy",             /* tp_name */
+    "testType.Noddy",             /* tp_name */
     sizeof(Noddy),             /* tp_basicsize */
     0,                         /* tp_itemsize */
     (destructor)Noddy_dealloc, /* tp_dealloc */
@@ -125,16 +125,16 @@ static PyTypeObject NoddyType = {
     Noddy_new,                 /* tp_new */
 };
 
-static PyModuleDef noddy2module = {
+static PyModuleDef testTypemodule = {
     PyModuleDef_HEAD_INIT,
-    "noddy2",
+    "testType",
     "Example module that creates an extension type.",
     -1,
     NULL, NULL, NULL, NULL, NULL
 };
 
 PyMODINIT_FUNC
-PyInit_noddy2(void)
+PyInit_testType(void)
 {
     PyObject* m;
 
@@ -143,7 +143,7 @@ PyInit_noddy2(void)
     if (PyType_Ready(&NoddyType) < 0)
         return NULL;
 
-    m = PyModule_Create(&noddy2module);
+    m = PyModule_Create(&testTypemodule);
     if (m == NULL)
         return NULL;
 
