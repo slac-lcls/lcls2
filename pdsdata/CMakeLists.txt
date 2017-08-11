@@ -24,7 +24,7 @@ target_include_directories(xtc PUBLIC
 )
 
 add_library(dgram SHARED
-    app/pydgconvert.cc
+    app/clemens.cc
 )
 
 target_link_libraries(dgram
@@ -41,21 +41,22 @@ target_include_directories(dgram PUBLIC
 
 set_target_properties(dgram PROPERTIES PREFIX "")
 
-add_library(testType SHARED
-    app/testProg.cc
+add_library(getItem SHARED
+    app/getItemTest.cc
 )
 
-target_link_libraries(testType
+target_link_libraries(getItem
+    xtc
     ${PYTHON_LIBRARIES}
 )
 
-target_include_directories(testType PUBLIC
+target_include_directories(getItem PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> 
     ${PYTHON_INCLUDE_DIRS}
     ${NUMPY_INCLUDE_DIRS}
 )
 
-set_target_properties(testType PROPERTIES PREFIX "")
+set_target_properties(getItem PROPERTIES PREFIX "")
 
 target_link_libraries(xtc
     ${HDF5_LIBRARIES}
