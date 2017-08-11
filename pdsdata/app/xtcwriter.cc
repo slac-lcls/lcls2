@@ -39,15 +39,15 @@ class myLevelIter : public XtcIterator
                 printf("%s  offset: %d\n", desc.get(i).name, desc.get(i).offset);
             }
 
-            std::cout << d.get_value<float>("myfloat") << std::endl;
+            //std::cout << d.get_value<float>("myfloat") << std::endl;
 
-            auto array = d.get_value<Array<float>>("array");
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    std::cout << array(i, j) << "  ";
-                }
-                std::cout << std::endl;
-            }
+            //auto array = d.get_value<Array<float>>("array");
+            //for (int i = 0; i < 3; i++) {
+            //    for (int j = 0; j < 3; j++) {
+            //        std::cout << array(i, j) << "  ";
+            //    }
+            //    std::cout << std::endl;
+            //}
 
             break;
         }
@@ -88,35 +88,58 @@ class MyData : public Data
     int _idata;
 };
 
-int main()
+void createXtcChild(Xtc* parent, char* intName, char* floatName, char* arrayName, int vals[3])
 {
-    // this is the datagram, which gives you an "xtc" for free
-    Dgram& dgram = *(Dgram*)malloc(BUFSIZE);
-    TypeId tid(TypeId::Parent, 0);
-    dgram.xtc.contains = tid;
-    dgram.xtc.damage = 0;
-    dgram.xtc.extent = sizeof(Xtc);
-
-    // make a child xtc with detector data and descriptor
+   // make a child xtc with detector data and descriptor
     TypeId tid_child(TypeId::Data, 0);
-    Xtc& xtcChild = *new (&dgram.xtc) Xtc(tid_child);
+    Xtc& xtcChild = *new (parent->next()) Xtc(tid_child);
 
     // creation of fixed-length data in xtc
-    MyData& d = *new (xtcChild.alloc(sizeof(MyData))) MyData(1, 2, 3);
+    MyData& d = *new (xtcChild.alloc(sizeof(MyData))) MyData(vals[0],vals[1],vals[2]);
 
     // creation of variable-length data in xtc
     DescriptorManager descMgr(xtcChild.next());
-    descMgr.add("myfloat", FLOAT);
+    descMgr.add(floatName, FLOAT);
 
     int shape[] = {3, 3};
-    descMgr.add("array", FLOAT, 2, shape);
+    descMgr.add(arrayName, FLOAT, 2, shape);
 
-    descMgr.add("myint", INT32);
+    descMgr.add(intName, INT32);
 
     xtcChild.alloc(descMgr.size());
 
     // update parent xtc with our new size.
-    dgram.xtc.alloc(xtcChild.sizeofPayload());
+    parent->alloc(xtcChild.extent);
+
+}
+ 
+
+int main()
+{
+    // this is the datagram, which gives you an "xtc" for free
+    Dgram& dgram1 = *(Dgram*)malloc(BUFSIZE);
+    TypeId tid(TypeId::Parent, 0);
+    dgram1.xtc.contains = tid;
+    dgram1.xtc.damage = 0;
+    dgram1.xtc.extent = sizeof(Xtc);
+
+    int vals1[] = {4,5,6};
+    int vals2[] = {7,8,9};
+    int vals3[] = {10,11,12};
+    int vals4[] = {13,14,15};
+
+    createXtcChild(&dgram1.xtc, "int1", "float1", "array1", vals1);
+    createXtcChild(&dgram1.xtc, "int2", "float2", "array2", vals2); 
+
+    Dgram& dgram2 = *(Dgram*)malloc(BUFSIZE);
+    dgram2.xtc.contains = tid;
+    dgram2.xtc.damage = 0;
+    dgram2.xtc.extent = sizeof(Xtc);
+
+    createXtcChild(&dgram2.xtc, "int3", "float3", "array3", vals3);
+    createXtcChild(&dgram2.xtc, "int4", "float4", "array4", vals4); 
+
+
 
     FILE* xtcFile = fopen("data.xtc","w");
 
@@ -125,21 +148,34 @@ int main()
       return -1;
     }
 
-    if(fwrite(&dgram, sizeof(dgram)+dgram.xtc.sizeofPayload(), 1, xtcFile)!=1){
+    if(fwrite(&dgram1, sizeof(dgram1)+dgram1.xtc.sizeofPayload(), 1, xtcFile)!=1){
         printf("Error writing to output xtc file.\n");
         return -1;
     }
-
+    if(fwrite(&dgram2, sizeof(dgram2)+dgram2.xtc.sizeofPayload(), 1, xtcFile)!=1){
+        printf("Error writing to output xtc file.\n");
+        return -1;
+    }
     fclose(xtcFile);
 
-    HDF5File file("test.h5");
-    file.addDatasets(descMgr._desc);
-    file.appendData(d);
+    //HDF5File file("test.h5");
+    //file.addDatasets(descMgr._desc);
+    //file.appendData(d);
     
-    myLevelIter iter(&dgram.xtc, 0);
-    iter.iterate();
+    myLevelIter iter1(&dgram1.xtc, 0);
+    iter1.iterate();
 
-    free((void*)&dgram);
+    printf("dgram1 pointer: %p\n\ndgram1.xtc: %p\n\n",&dgram1,&dgram1.xtc);
+
+    printf("Did first iteration. Here is second: \n\n");
+
+    myLevelIter iter2(&dgram2.xtc, 0);
+    iter2.iterate();
+
+    printf("dgram2 pointer: %p\n\ndgram2.xtc: %p\n\n",&dgram2,&dgram2.xtc);
+
+    free((void*)&dgram1);
+    free((void*)&dgram2);
 
     return 0;
 }

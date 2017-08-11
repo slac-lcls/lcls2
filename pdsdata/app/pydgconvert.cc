@@ -18,7 +18,7 @@
 
 #include <fcntl.h>
 
-
+#include <errno.h>
 
 
 
@@ -30,10 +30,10 @@ typedef struct {
     PyObject_HEAD
     PyObject* dict;
     Dgram* dgram;
-} dgram_DgramObject;
+} DgramObject;
 //dataDict_DgramObject;
 
-void DictAssign(dgram_DgramObject* dgram, Descriptor& desc, Data& d)
+void DictAssign(DgramObject* dgram, Descriptor& desc, Data& d)
 {  
   for (int i = 0; i < desc.num_fields; i++) 
   {
@@ -130,7 +130,7 @@ class myLevelIter : public XtcIterator
 {
     public:
     enum { Stop, Continue };
-    myLevelIter(Xtc* xtc, unsigned depth, dgram_DgramObject* dgram) : XtcIterator(xtc), _depth(depth), _dgram(dgram)
+    myLevelIter(Xtc* xtc, unsigned depth, DgramObject* dgram) : XtcIterator(xtc), _depth(depth), _dgram(dgram)
     {
 
     }
@@ -150,15 +150,15 @@ class myLevelIter : public XtcIterator
             printf("Found fields named:\n");
             DictAssign(_dgram,desc,d);
 
-            std::cout << d.get_value<float>("myfloat") << std::endl;
+            //std::cout << d.get_value<float>("myfloat") << std::endl;
 
-            auto array = d.get_value<Array<float>>("array");
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    std::cout << array(i, j) << "  ";
-                }
-                std::cout << std::endl;
-            }
+            //auto array = d.get_value<Array<float>>("array");
+            //for (int i = 0; i < 3; i++) {
+            //    for (int j = 0; j < 3; j++) {
+            //        std::cout << array(i, j) << "  ";
+            //    }
+            //    std::cout << std::endl;
+            //}
 
             break;
         }
@@ -171,7 +171,7 @@ class myLevelIter : public XtcIterator
 
     private:
     unsigned _depth;
-    dgram_DgramObject* _dgram;
+    DgramObject* _dgram;
 };
 
 // everything below here is inletWire code
@@ -201,20 +201,22 @@ class MyData : public Data
 };
 
 static void
-dgram_dealloc(dgram_DgramObject *self)
+dgram_dealloc(DgramObject *self)
 {
   printf("Here in dealloc\n");
   Py_XDECREF(self->dict);
-  Py_TYPE(self)->tp_free((PyObject*)self);
   free(self->dgram);
+  Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject *
 dgram_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-  dgram_DgramObject *self;
+  DgramObject *self;
 
-  self = (dgram_DgramObject *)type->tp_alloc(type,0);
+  self = (DgramObject *)type->tp_alloc(type,0);
+
+  printf("Here in new function\n\n");
   
   
   if (self != NULL) {
@@ -225,7 +227,7 @@ dgram_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static int
-dgram_init(dgram_DgramObject *self, PyObject *args, PyObject *kwds)
+dgram_init(DgramObject *self, PyObject *args, PyObject *kwds)
 {
     printf("here in dgram_init %p %d\n", self, Py_REFCNT(self));
 
@@ -233,11 +235,12 @@ dgram_init(dgram_DgramObject *self, PyObject *args, PyObject *kwds)
 
     int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
 
-    if(::read(fd,self->dgram,sizeof(*self->dgram))==0){ 
+    if(::read(fd,self->dgram,sizeof(*self->dgram))<=0){ 
       printf("read was unsuccessful.\n");
-      return 0;
     }
-    
+
+    printf("Errno is:\n\n%s\n",strerror(errno));
+
     size_t payloadSize = self->dgram->xtc.sizeofPayload();
     size_t sz = ::read(fd,self->dgram->xtc.payload(),payloadSize);
 
@@ -249,7 +252,7 @@ dgram_init(dgram_DgramObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyMemberDef dgram_members[] = {
-    {"__dict__", T_OBJECT_EX, offsetof(dgram_DgramObject,dict), 0,
+    {"__dict__", T_OBJECT_EX, offsetof(DgramObject,dict), 0,
      "attribute dictionary"},
     {NULL}
 };
@@ -264,7 +267,7 @@ static PyMemberDef dgram_members[] = {
 PyObject * tp_getattro(PyObject* o, PyObject* key)
 {
   printf("\n\nIt just called the getattro function \n\n");
-  PyObject* res = PyDict_GetItem(((dgram_DgramObject*) o) -> dict,key);
+  PyObject* res = PyDict_GetItem(((DgramObject*) o) -> dict,key);
   if(res != NULL){
     Py_INCREF(res);
     if(*res->ob_type->tp_name == *"numpy.ndarray"){
@@ -285,7 +288,7 @@ PyObject * tp_getattro(PyObject* o, PyObject* key)
 static PyTypeObject dgram_DgramType = {
   PyVarObject_HEAD_INIT(NULL, 0)
   "dgram.Dgram",             /* tp_name */
-  sizeof(dgram_DgramObject), /* tp_basicsize */
+  sizeof(DgramObject), /* tp_basicsize */
   0,                         /* tp_itemsize */
   (destructor)dgram_dealloc, /* tp_dealloc */
   0,                         /* tp_print */
@@ -317,7 +320,7 @@ static PyTypeObject dgram_DgramType = {
   0,                       /* tp_dict */
   0,                       /* tp_descr_get */
   0,                       /* tp_descr_set */
-  offsetof(dgram_DgramObject,dict),                       /* tp_dictoffset */
+  offsetof(DgramObject,dict),                       /* tp_dictoffset */
   (initproc)dgram_init,   /* tp_init */
   0,                       /* tp_alloc */
   dgram_new,                       /* tp_new */
@@ -362,11 +365,13 @@ PyInit_dgram(void)
   //dgram_DgramType.tp_new = PyType_GenericNew;
   
   if (PyType_Ready(&dgram_DgramType) < 0){
+    printf("PyType_Ready failed.");
     return NULL;
   }
 
   m = PyModule_Create(&dictmodule);
   if (m == NULL){
+    printf("Module creation failed.");
     return NULL;
   }
 
