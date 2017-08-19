@@ -168,8 +168,8 @@ dgram_init(PyDgramObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyMemberDef dgram_members[] = {
-  {"__dict__", T_OBJECT_EX, offsetof(PyDgramObject,dict), 0,
-   "attribute dictionary"},
+  {(char*)"__dict__", T_OBJECT_EX, offsetof(PyDgramObject,dict), 0,
+   (char*)"attribute dictionary"},
   {NULL}
 };
 

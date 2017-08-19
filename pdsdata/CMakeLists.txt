@@ -24,7 +24,7 @@ target_include_directories(xtc PUBLIC
 )
 
 add_library(dgram SHARED
-    app/clemens.cc
+    app/dgram.cc
 )
 
 target_link_libraries(dgram
