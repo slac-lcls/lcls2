@@ -174,7 +174,7 @@ class MyData : public Data
     {
         return p;
     }
-    MyData(float f, int i1, int i2) : Data(sizeof(*this))
+  MyData(float f, int i1, int i2) : Data(sizeof(*this), Data::DataFirst)
     {
         _fdata = f;
         _idata = i1;
