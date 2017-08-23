@@ -19,7 +19,7 @@ public:
   {
     return p;
   }
-  MyData(float f, int i1, int i2) : Data(sizeof(*this), Data::DataFirst)
+  MyData(float f, int i1, int i2) : Data(sizeof(*this))
   {
     _fdata = f;
     _idata = i1;
@@ -36,7 +36,7 @@ private:
   int _idata;
 };
 
-void createXtcChild(Xtc* parent, char* intName, char* floatName, char* arrayName, int vals[3])
+void pgpXtcExample(Xtc* parent, char* intName, char* floatName, char* arrayName, int vals[3])
 {
   // make a child xtc with detector data and descriptor
   TypeId tid_child(TypeId::Data, 0);
@@ -56,6 +56,29 @@ void createXtcChild(Xtc* parent, char* intName, char* floatName, char* arrayName
 
   xtcChild.alloc(descMgr.size());
 
+  // update parent xtc with our new size.
+  parent->alloc(xtcChild.extent);
+
+}
+
+void fexXtcExample(Xtc* parent, char* intName, char* floatName, char* arrayName, int vals[3])
+{
+  TypeId tid_child(TypeId::Data, 0);
+  Xtc& xtcChild = *new (parent->next()) Xtc(tid_child);
+
+  Data& d = *new (xtcChild.alloc(sizeof(Data))) Data();
+  Descriptor& desc = d.desc();
+
+  // it is necessary to fill the descriptor completely before adding data
+  DescriptorManager descMgr(&desc);
+  descMgr.add("fexfloat1", FLOAT);
+  descMgr.add("fexint1", INT32);
+
+  d.set_value("fexfloat1",5.0);
+  d.set_value("fexint1",2);
+
+  // fix these next lines
+  xtcChild.alloc(descMgr.size());
   // update parent xtc with our new size.
   parent->alloc(xtcChild.extent);
 
@@ -87,11 +110,11 @@ int main() {
     sprintf(intname,"%s%d","int",i);
     sprintf(floatname,"%s%d","float",i);
     sprintf(arrayname,"%s%d","array",i);
-    createXtcChild(&dgram.xtc, intname, floatname, arrayname, vals1);
+    pgpXtcExample(&dgram.xtc, intname, floatname, arrayname, vals1);
     sprintf(intname,"%s%d","int",i+1);
     sprintf(floatname,"%s%d","float",i+1);
     sprintf(arrayname,"%s%d","array",i+1);
-    createXtcChild(&dgram.xtc, intname, floatname, arrayname, vals2);
+    pgpXtcExample(&dgram.xtc, intname, floatname, arrayname, vals2);
 
     if(fwrite(&dgram, sizeof(dgram)+dgram.xtc.sizeofPayload(), 1, xtcFile)!=1){
       printf("Error writing to output xtc file.\n");

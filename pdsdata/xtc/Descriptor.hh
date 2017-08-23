@@ -158,7 +158,10 @@ private:
   }
 
 public:
-  Data(uint32_t size, Type type) : _info(size,type) {}
+  // use when data comes from PGP
+  Data(uint32_t size) : _info(size,DataFirst) {}
+  // use for feature extraction
+  Data()              : _info(0,DescFirst) {}
 
   uint8_t* get_buffer()
   {
