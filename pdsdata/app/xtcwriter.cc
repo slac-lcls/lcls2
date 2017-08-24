@@ -10,17 +10,13 @@
 
 using namespace Pds;
 #define BUFSIZE 0x4000000
-#define NDGRAM 2
+#define NDGRAM 1
 
-class MyData : public Data
+class MyData
 {
 public:
-  void* operator new(size_t size, void* p)
-  {
-    return p;
-  }
-  MyData(float f, int i1, int i2) : Data(sizeof(*this))
-  {
+  void* operator new(size_t size, void* p) {return p;}
+  MyData(float f, int i1, int i2) {
     _fdata = f;
     _idata = i1;
     for (int i = 0; i < 3; i++) {
@@ -30,7 +26,6 @@ public:
     }
   }
 
-private:
   float _fdata;
   float array[3][3];
   int _idata;
@@ -42,48 +37,31 @@ void pgpXtcExample(Xtc* parent, char* intName, char* floatName, char* arrayName,
   TypeId tid_child(TypeId::Data, 0);
   Xtc& xtcChild = *new (parent->next()) Xtc(tid_child);
 
-  // creation of fixed-length data in xtc
-  MyData& d = *new (xtcChild.alloc(sizeof(MyData))) MyData(vals[0],vals[1],vals[2]);
+  Buffer& buff = *new (xtcChild.payload()) Buffer();
 
-  // creation of variable-length data in xtc
-  DescriptorManager descMgr(xtcChild.next());
-  descMgr.add(floatName, FLOAT);
+  // this simulates PGP data arriving, and shows the address that should be given to PGP driver
+  MyData& mydata = *new(buff.buffer()) MyData(vals[0],vals[1],vals[2]);
+
+  // now that data has arrived can update with the number of bytes received
+  buff.extend(sizeof(MyData));
+
+  // now fill in the descriptor
+  Descriptor& desc = *new (buff.next()) Descriptor();
+
+  uint32_t offset;
+  desc.add(floatName, FLOAT, offset);
 
   int shape[] = {3, 3};
-  descMgr.add(arrayName, FLOAT, 2, shape);
+  desc.add(arrayName, FLOAT, 2, shape, offset);
+  desc.add(intName, INT32, offset);
 
-  descMgr.add(intName, INT32);
-
-  xtcChild.alloc(descMgr.size());
+  // update our xtc with the size of the data we have added
+  xtcChild.alloc(desc.size()+buff.size());
 
   // update parent xtc with our new size.
   parent->alloc(xtcChild.extent);
 
 }
-
-void fexXtcExample(Xtc* parent, char* intName, char* floatName, char* arrayName, int vals[3])
-{
-  TypeId tid_child(TypeId::Data, 0);
-  Xtc& xtcChild = *new (parent->next()) Xtc(tid_child);
-
-  Data& d = *new (xtcChild.alloc(sizeof(Data))) Data();
-  Descriptor& desc = d.desc();
-
-  // it is necessary to fill the descriptor completely before adding data
-  DescriptorManager descMgr(&desc);
-  descMgr.add("fexfloat1", FLOAT);
-  descMgr.add("fexint1", INT32);
-
-  d.set_value("fexfloat1",5.0);
-  d.set_value("fexint1",2);
-
-  // fix these next lines
-  xtcChild.alloc(descMgr.size());
-  // update parent xtc with our new size.
-  parent->alloc(xtcChild.extent);
-
-}
-
 
 int main() {
   void* buf = malloc(BUFSIZE);
