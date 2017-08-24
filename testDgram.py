@@ -34,5 +34,5 @@ assert d.float0==0.0
 assert d.float1==1000.0
 assert d.int0==1
 assert d.int1==1001
+assert d.fexint1==42
 print('dgram test complete')
-

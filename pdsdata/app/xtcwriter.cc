@@ -12,11 +12,11 @@ using namespace Pds;
 #define BUFSIZE 0x4000000
 #define NDGRAM 1
 
-class MyData
+class PgpData
 {
 public:
   void* operator new(size_t size, void* p) {return p;}
-  MyData(float f, int i1, int i2) {
+  PgpData(float f, int i1, int i2) {
     _fdata = f;
     _idata = i1;
     for (int i = 0; i < 3; i++) {
@@ -31,7 +31,7 @@ public:
   int _idata;
 };
 
-void pgpXtcExample(Xtc* parent, char* intName, char* floatName, char* arrayName, int vals[3])
+void pgpExample(Xtc* parent, char* intName, char* floatName, char* arrayName, int vals[3])
 {
   // make a child xtc with detector data and descriptor
   TypeId tid_child(TypeId::DescData, 0);
@@ -39,11 +39,11 @@ void pgpXtcExample(Xtc* parent, char* intName, char* floatName, char* arrayName,
 
   Data& data = *new(xtcChild.payload()) Data();
 
-  // this simulates PGP data arriving, and shows the address that should be given to PGP driver
-  MyData& mydata = *new(data.payload()) MyData(vals[0],vals[1],vals[2]);
+  // simulates PGP data arriving, and shows the address that should be given to PGP driver
+  new(data.payload()) PgpData(vals[0],vals[1],vals[2]);
 
   // now that data has arrived can update with the number of bytes received
-  data.extend(sizeof(MyData));
+  data.extend(sizeof(PgpData));
 
   // now fill in the descriptor
   Descriptor& desc = *new(data.next()) Descriptor();
@@ -55,6 +55,32 @@ void pgpXtcExample(Xtc* parent, char* intName, char* floatName, char* arrayName,
   desc.add(arrayName, FLOAT, 2, shape, offset);
   desc.add(intName, INT32, offset);
 
+  // update our xtc with the size of the data we have added
+  xtcChild.alloc(desc.size()+data.size());
+
+  // update parent xtc with our new size.
+  parent->alloc(xtcChild.extent);
+
+}
+
+void fexExample(Xtc* parent)
+{
+  // make a child xtc with detector data and descriptor
+  TypeId tid_child(TypeId::DescData, 0);
+  Xtc& xtcChild = *new(parent->next()) Xtc(tid_child);
+
+  DescData& descdata = *new(xtcChild.payload()) DescData();
+  Descriptor& desc = descdata.desc();
+
+  uint32_t offset;
+  desc.add("fexfloat1", FLOAT, offset);
+  desc.add("fexint1", INT32, offset);
+
+  Data& data = *new(desc.next()) Data();
+  descdata.set_value("fexfloat1",41.0);
+  descdata.set_value("fexint1",42);
+
+  printf("*** %d %d\n",desc.size(),data.size());
   // update our xtc with the size of the data we have added
   xtcChild.alloc(desc.size()+data.size());
 
@@ -88,11 +114,12 @@ int main() {
     sprintf(intname,"%s%d","int",i);
     sprintf(floatname,"%s%d","float",i);
     sprintf(arrayname,"%s%d","array",i);
-    pgpXtcExample(&dgram.xtc, intname, floatname, arrayname, vals1);
+    pgpExample(&dgram.xtc, intname, floatname, arrayname, vals1);
     sprintf(intname,"%s%d","int",i+1);
     sprintf(floatname,"%s%d","float",i+1);
     sprintf(arrayname,"%s%d","array",i+1);
-    pgpXtcExample(&dgram.xtc, intname, floatname, arrayname, vals2);
+    pgpExample(&dgram.xtc, intname, floatname, arrayname, vals2);
+    fexExample(&dgram.xtc);
 
     if(fwrite(&dgram, sizeof(dgram)+dgram.xtc.sizeofPayload(), 1, xtcFile)!=1){
       printf("Error writing to output xtc file.\n");

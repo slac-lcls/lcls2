@@ -156,7 +156,8 @@ public:
 class DescData
 {
 public:
-  DescData() {}
+  // constructor for use by FEX software
+  DescData() {new(this) Descriptor();}
 
   uint8_t* data()
   {
@@ -184,6 +185,7 @@ public:
     Field* field = desc().get_field_by_name(name);
     T* ptr = reinterpret_cast<T*>(data() + field->offset);
     *ptr = val;
+    _data().extend(sizeof(T));
   }    
 
   // for all array types
