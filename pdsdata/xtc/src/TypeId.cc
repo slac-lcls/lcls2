@@ -51,7 +51,7 @@ bool TypeId::compressed() const
 
 const char* TypeId::name(Type type)
 {
-    static const char* _names[NumberOf] = { "Parent", "Data" };
+    static const char* _names[NumberOf] = { "Parent", "DescData" };
     const char* p = (type < NumberOf ? _names[type] : "-Invalid-");
     if(!p) p = "-Unnamed-";
     return p;

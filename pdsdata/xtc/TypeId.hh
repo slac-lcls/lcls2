@@ -13,7 +13,7 @@ class TypeId
      * Notice: New enum values should be appended to the end of the enum list, since
      *   the old values have already been recorded in the existing xtc files.
      */
-    enum Type { Parent, Data, NumberOf };
+    enum Type { Parent, DescData, NumberOf };
     enum { VCompressed = 0x8000 };
 
     TypeId()
