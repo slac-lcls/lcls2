@@ -19,7 +19,7 @@ typedef struct {
   Dgram* dgram;
 } PyDgramObject;
 
-void DictAssign(PyDgramObject* dgram, Descriptor& desc, Data& d)
+void DictAssign(PyDgramObject* dgram, Descriptor& desc, DescData& d)
 {  
   for (int i = 0; i < desc.num_fields(); i++) 
     {
@@ -65,23 +65,23 @@ void DictAssign(PyDgramObject* dgram, Descriptor& desc, Data& d)
           }
           switch(f.type){
           case UINT8:{
-            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_UINT8,d.buffer()+f.offset);
+            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_UINT8,d.data()+f.offset);
             break;
           }
           case UINT16:{
-            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_UINT16,d.buffer()+f.offset);
+            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_UINT16,d.data()+f.offset);
             break;
           }
           case INT32:{
-            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_INT32,d.buffer()+f.offset);
+            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_INT32,d.data()+f.offset);
             break;
           }
           case FLOAT:{
-            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_FLOAT,d.buffer()+f.offset);
+            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_FLOAT,d.data()+f.offset);
             break;
           }
           case DOUBLE:{
-            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_DOUBLE,d.buffer()+f.offset);
+            newobj = PyArray_SimpleNewFromData(f.rank,dims,NPY_DOUBLE,d.data()+f.offset);
             break;
           }
           }
@@ -114,8 +114,8 @@ public:
       iterate(xtc); // look inside anything that is a Parent
       break;
     }
-    case (TypeId::Data): {
-      Data& d = *(Data*)xtc->payload();
+    case (TypeId::DescData): {
+      DescData& d = *(DescData*)xtc->payload();
       Descriptor& desc = d.desc();
       DictAssign(_dgram,desc,d);
       break;

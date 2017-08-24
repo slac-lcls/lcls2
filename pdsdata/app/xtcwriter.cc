@@ -34,19 +34,19 @@ public:
 void pgpXtcExample(Xtc* parent, char* intName, char* floatName, char* arrayName, int vals[3])
 {
   // make a child xtc with detector data and descriptor
-  TypeId tid_child(TypeId::Data, 0);
-  Xtc& xtcChild = *new (parent->next()) Xtc(tid_child);
+  TypeId tid_child(TypeId::DescData, 0);
+  Xtc& xtcChild = *new(parent->next()) Xtc(tid_child);
 
-  Buffer& buff = *new (xtcChild.payload()) Buffer();
+  Data& data = *new(xtcChild.payload()) Data();
 
   // this simulates PGP data arriving, and shows the address that should be given to PGP driver
-  MyData& mydata = *new(buff.buffer()) MyData(vals[0],vals[1],vals[2]);
+  MyData& mydata = *new(data.payload()) MyData(vals[0],vals[1],vals[2]);
 
   // now that data has arrived can update with the number of bytes received
-  buff.extend(sizeof(MyData));
+  data.extend(sizeof(MyData));
 
   // now fill in the descriptor
-  Descriptor& desc = *new (buff.next()) Descriptor();
+  Descriptor& desc = *new(data.next()) Descriptor();
 
   uint32_t offset;
   desc.add(floatName, FLOAT, offset);
@@ -56,7 +56,7 @@ void pgpXtcExample(Xtc* parent, char* intName, char* floatName, char* arrayName,
   desc.add(intName, INT32, offset);
 
   // update our xtc with the size of the data we have added
-  xtcChild.alloc(desc.size()+buff.size());
+  xtcChild.alloc(desc.size()+data.size());
 
   // update parent xtc with our new size.
   parent->alloc(xtcChild.extent);

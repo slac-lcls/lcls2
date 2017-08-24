@@ -87,17 +87,20 @@ public:
   uint32_t shape[5];
 };
 
+class DescData;
+
 class Info {
 public:
   enum Type {DataFirst=0, DescFirst=0x80000000};
   Info(Type type) : _sizeofPayloadAndType(type) {}
-  uint32_t sizeofPayload()   {return _sizeofPayloadAndType&(~DescFirst);}
-  uint32_t size()   {return sizeofPayload()+sizeof(Info);}
-  bool     isDesc() {return _sizeofPayloadAndType&DescFirst;}
-  void     extend(unsigned bytes) {_sizeofPayloadAndType+=bytes;}
-  uint8_t* buffer() {return (uint8_t*)(this+1);}
   uint8_t* next()   {return (uint8_t*)(this)+size();}
-private:
+  void     extend(unsigned bytes) {_sizeofPayloadAndType+=bytes;}
+  uint8_t* payload(){return (uint8_t*)(this+1);}
+  uint32_t size()   {return sizeofPayload()+sizeof(Info);}
+protected:
+  friend class DescData;
+  uint32_t sizeofPayload()   {return _sizeofPayloadAndType&(~DescFirst);}
+  bool     isDesc() {return _sizeofPayloadAndType&DescFirst;}
   uint32_t _sizeofPayloadAndType;
 };
 
@@ -142,22 +145,22 @@ private:
   void _add_field() {extend(sizeof(Field));}
 };
 
-class Buffer : public Info
+class Data : public Info
 {
 public:
-  Buffer() : Info(DataFirst) {}
+  Data() : Info(DataFirst) {}
 };
 
 // generic data class that holds the size of the variable-length data and
 // the location of the descriptor
-class Data
+class DescData
 {
 public:
-  Data() {}
+  DescData() {}
 
-  uint8_t* buffer()
+  uint8_t* data()
   {
-    return _buffer().buffer();
+    return _data().payload();
   }
 
   Descriptor& desc() {
@@ -172,14 +175,14 @@ public:
   typename std::enable_if<std::is_fundamental<T>::value, T>::type get_value(const char* name)
   {
     Field* field = desc().get_field_by_name(name);
-    return *reinterpret_cast<T*>(buffer() + field->offset);
+    return *reinterpret_cast<T*>(data() + field->offset);
   }
 
   template <typename T>
   typename std::enable_if<std::is_fundamental<T>::value, T>::type set_value(const char* name, T val)
   {
     Field* field = desc().get_field_by_name(name);
-    T* ptr = reinterpret_cast<T*>(buffer() + field->offset);
+    T* ptr = reinterpret_cast<T*>(data() + field->offset);
     *ptr = val;
   }    
 
@@ -188,7 +191,7 @@ public:
   typename std::enable_if<is_vec<T>::value, T>::type get_value(const char* name)
   {
     Field* field = desc().get_field_by_name(name);
-    T array(buffer() + field->offset);
+    T array(data() + field->offset);
     array._shape.resize(field->rank);
     for(int i = 0; i < field->rank; i++) {
       array._shape[i] = field->shape[i];
@@ -196,12 +199,12 @@ public:
     return array;
   }
 
-// private:
-  Buffer& _buffer() {
+private:
+  Data& _data() {
     if (_first().isDesc())
-      return reinterpret_cast<Buffer&>(_second());
+      return reinterpret_cast<Data&>(_second());
     else
-      return reinterpret_cast<Buffer&>(_first());
+      return reinterpret_cast<Data&>(_first());
   }
 
   Info& _first()
