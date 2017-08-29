@@ -111,7 +111,11 @@ void HDF5File::addDatasets(Descriptor& desc)
 {
   for (int i=0; i<desc.num_fields(); i++) {
         Field& field = desc.get(i);
-        m_datasets.emplace(field.name, Dataset(fileId, field));
+        auto it = m_datasets.find(field.name);
+        if (it == m_datasets.end()) {
+          // only create dataset if it doesn't exist
+          m_datasets.emplace(field.name, Dataset(fileId, field));
+        }
     }
 }
 

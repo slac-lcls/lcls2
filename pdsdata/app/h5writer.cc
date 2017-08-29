@@ -58,6 +58,8 @@ int main()
 
   HDF5File file("data.h5");
   myLevelIter iter(&dgram->xtc, file);
+  // iterate through the datagram twice to simulate two events
+  iter.iterate();
   iter.iterate();
 
   return 0;
