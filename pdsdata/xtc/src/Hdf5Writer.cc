@@ -5,7 +5,6 @@
 
 Dataset::Dataset(hid_t file_id, const Field& field)
 {
-    std::cout<<"Create dataset:  "<<field.name<<std::endl;
     int ndims = field.rank + 1;
     std::vector<hsize_t> dims(ndims);
     std::vector<hsize_t> maxDims(ndims);
@@ -33,7 +32,7 @@ Dataset::Dataset(hid_t file_id, const Field& field)
 
     m_plistId = H5Pcreate(H5P_DATASET_CREATE);
     if (H5Pset_chunk(m_plistId, ndims, cdims.data()) < 0) {
-        std::cout<<"Error in setting cunck size"<<std::endl;
+        std::cout<<"Error in setting chunk size"<<std::endl;
     }
 
     switch(field.type) {
@@ -74,7 +73,6 @@ void Dataset::append(const void* data)
 
 Dataset::~Dataset()
 {
-    std::cout<<"dest dataset"<<std::endl;
     if (m_dsetId >= 0) {
         H5Dclose(m_dsetId);
     }
@@ -88,7 +86,6 @@ Dataset::~Dataset()
 
 Dataset::Dataset(Dataset && d)
 {
-    std::cout<<"move const"<<std::endl;
     m_dsetId = d.m_dsetId;
     m_dataspaceId = d.m_dataspaceId;
     m_plistId = d.m_plistId;
@@ -103,7 +100,7 @@ Dataset::Dataset(Dataset && d)
 HDF5File::HDF5File(const char* name)
 {
     faplId = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_libver_bounds(faplId, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
+    H5Pset_libver_bounds(faplId, H5F_LIBVER_EARLIEST, H5F_LIBVER_LATEST);
     fileId = H5Fcreate(name, H5F_ACC_TRUNC, H5P_DEFAULT, faplId);
     if (fileId < 0) {
         std::cout<<"Could not create HDF5 file:  "<<std::endl;
@@ -112,27 +109,26 @@ HDF5File::HDF5File(const char* name)
 
 void HDF5File::addDatasets(Descriptor& desc)
 {
-    for (int i=0; i<desc.num_fields; i++) {
+  for (int i=0; i<desc.num_fields(); i++) {
         Field& field = desc.get(i);
         m_datasets.emplace(field.name, Dataset(fileId, field));
     }
-    std::cout<<"end of addDatasets"<<std::endl;
 }
 
-void HDF5File::appendData(Data& data)
+void HDF5File::appendData(DescData& datadesc)
 {
-    Descriptor& desc = data.desc();
-    uint8_t* buffer = data.get_buffer();
-    for (int i=0; i<desc.num_fields; i++) {
+    Descriptor& desc = datadesc.desc();
+    uint8_t* data = datadesc.data();
+    for (int i=0; i<desc.num_fields(); i++) {
         Field& field = desc.get(i);
         auto it = m_datasets.find(field.name);
         assert(it != m_datasets.end());
-        it->second.append(buffer + field.offset);
+        it->second.append(data + field.offset);
     }
 }
 
 HDF5File::~HDF5File()
 {
-    H5Fclose(fileId);
-    H5Pclose(faplId);
+  H5Fclose(fileId);
+  H5Pclose(faplId);
 }

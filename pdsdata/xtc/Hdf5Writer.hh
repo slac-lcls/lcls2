@@ -5,7 +5,6 @@
 #include <hdf5.h>
 #include "pdsdata/xtc/Descriptor.hh"
 
-
 class Dataset
 {
 public:
@@ -24,7 +23,7 @@ class HDF5File
 public:
     HDF5File(const char* name);
     void addDatasets(Descriptor& desc);
-    void appendData(Data& data);
+    void appendData(DescData& data);
     ~HDF5File();
 private:
     hid_t fileId, faplId;

@@ -187,6 +187,8 @@ PyObject * tp_getattro(PyObject* o, PyObject* key)
         printf("Failed to set BaseObject for numpy array.\n");
         return 0;
       }
+      // this reference count will get decremented when the returned
+      // array is deleted (since the array has us as the "base" object).
       Py_INCREF(o);
       return arr_copy;
     }

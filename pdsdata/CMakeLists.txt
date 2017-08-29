@@ -19,7 +19,7 @@ add_library(xtc SHARED
 
 target_include_directories(xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    #$<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:include>
     ${HDF5_INCLUDE_DIRS}
 )
 
@@ -41,26 +41,28 @@ target_include_directories(dgram PUBLIC
 
 set_target_properties(dgram PROPERTIES PREFIX "")
 
-add_library(getItem SHARED
-    app/getItemTest.cc
-)
+#add_library(getItem SHARED
+#    app/getItemTest.cc
+#)
 
-target_link_libraries(getItem
-    xtc
-    ${PYTHON_LIBRARIES}
-)
+#target_link_libraries(getItem
+#    xtc
+#    ${PYTHON_LIBRARIES}
+#)
 
-target_include_directories(getItem PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> 
-    ${PYTHON_INCLUDE_DIRS}
-    ${NUMPY_INCLUDE_DIRS}
-)
+#target_include_directories(getItem PUBLIC
+#    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> 
+#    ${PYTHON_INCLUDE_DIRS}
+#    ${NUMPY_INCLUDE_DIRS}
+#)
 
-set_target_properties(getItem PROPERTIES PREFIX "")
+#set_target_properties(getItem PROPERTIES PREFIX "")
 
 target_link_libraries(xtc
     ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES}
+    mpi_cxx
+    mpi
 )
 
 add_executable(xtcreader
@@ -74,6 +76,13 @@ add_executable(xtcwriter
     app/xtcwriter.cc
 )
 target_link_libraries(xtcwriter
+    xtc
+)
+
+add_executable(h5writer
+    app/h5writer.cc
+)
+target_link_libraries(h5writer
     xtc
 )
 

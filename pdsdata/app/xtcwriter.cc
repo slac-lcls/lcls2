@@ -77,10 +77,10 @@ void fexExample(Xtc* parent)
   desc.add("fexint1", INT32, offset);
 
   Data& data = *new(desc.next()) Data();
-  descdata.set_value("fexfloat1",41.0);
+  // have to be careful to set the correct type here
+  descdata.set_value("fexfloat1",(float)41.0);
   descdata.set_value("fexint1",42);
 
-  printf("*** %d %d\n",desc.size(),data.size());
   // update our xtc with the size of the data we have added
   xtcChild.alloc(desc.size()+data.size());
 

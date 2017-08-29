@@ -34,5 +34,8 @@ assert d.float0==0.0
 assert d.float1==1000.0
 assert d.int0==1
 assert d.int1==1001
+#this seems to crash the test.  need to fix.
+#print(dir(d))
 assert d.fexint1==42
+assert d.fexfloat1==41.0
 print('dgram test complete')
