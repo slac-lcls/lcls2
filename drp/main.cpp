@@ -16,6 +16,8 @@
 #include "spscqueue.h"
 #include "mpscqueue.h"
 
+#include "fex.h"
+
 const int NWORKERS = 9;
 const int N = 800000;
 
@@ -68,7 +70,7 @@ void pgp_reader(SPSCQueue& buffer_queue, std::vector<SPSCQueue*>& worker_queues)
     MovingAverage avg_queue_size(number_of_workers);
     for (int i=0; i<N; i++) {
         uint32_t* element = buffer_queue.pop();
-        /*
+
         // read from the pgp card
         pgp_card.data = element;
         int ret = read(fd, &pgp_card, sizeof(pgp_card));
@@ -78,8 +80,9 @@ void pgp_reader(SPSCQueue& buffer_queue, std::vector<SPSCQueue*>& worker_queues)
         else if (ret == pgp_card.maxSize) {
             std::cout<<"Warning! Package size bigger than the maximum size!"<<std::endl;
         }
-        */
 
+        /*
+        // fill arrays by hand and do not use pgp
         float* array = reinterpret_cast<float*>(element);
         int nx = 1;
         int ny = 700;
@@ -88,6 +91,7 @@ void pgp_reader(SPSCQueue& buffer_queue, std::vector<SPSCQueue*>& worker_queues)
                 array[j*ny + k] = i;
             }
         }
+        */
 
         // load balancing
         SPSCQueue* queue;
@@ -112,6 +116,7 @@ void worker(SPSCQueue* worker_queue, MPSCQueue& collector, int rank)
     int64_t counter = 0;
     while (true) {
         uint32_t* element = worker_queue->pop();
+        printf("Received something\n");
         if (element == nullptr) {
             break;
         }
@@ -131,6 +136,8 @@ void worker(SPSCQueue* worker_queue, MPSCQueue& collector, int rank)
             }
         }
         *reinterpret_cast<double*>(element) = sum / (nx*ny);
+
+        // fex(element);
 
         collector.push(element);
         counter++;

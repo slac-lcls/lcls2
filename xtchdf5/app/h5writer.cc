@@ -2,7 +2,7 @@
 #include "pdsdata/xtc/Dgram.hh"
 #include "pdsdata/xtc/TypeId.hh"
 #include "pdsdata/xtc/XtcIterator.hh"
-#include "pdsdata/xtc/Hdf5Writer.hh"
+#include "xtchdf5/hdf5/Hdf5Writer.hh"
 
 #include <stdio.h>
 #include <fcntl.h>

@@ -55,8 +55,8 @@ int main()
             perror("Error writing");
             std::cout<<"Error writing"<<std::endl;
         }
-        //std::cout<<"Wrote something"<<std::endl;
-        //sleep(1);
+        std::cout<<"Wrote something"<<std::endl;
+        sleep(1);
     }
 
     auto end = std::chrono::steady_clock::now();

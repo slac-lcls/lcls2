@@ -14,13 +14,11 @@ add_library(xtc SHARED
     xtc/src/TimeStamp.cc
     xtc/src/XtcFileIterator.cc
     xtc/src/Descriptor.cc
-    xtc/src/Hdf5Writer.cc
 )
 
 target_include_directories(xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    ${HDF5_INCLUDE_DIRS}
 )
 
 add_library(dgram SHARED
@@ -36,7 +34,6 @@ target_include_directories(dgram PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> 
     ${PYTHON_INCLUDE_DIRS}
     ${NUMPY_INCLUDE_DIRS}
-    ${HDF5_INCLUDE_DIRS}
 )
 
 set_target_properties(dgram PROPERTIES PREFIX "")
@@ -59,10 +56,6 @@ set_target_properties(dgram PROPERTIES PREFIX "")
 #set_target_properties(getItem PROPERTIES PREFIX "")
 
 target_link_libraries(xtc
-    ${HDF5_LIBRARIES}
-    ${HDF5_HL_LIBRARIES}
-    mpi_cxx
-    mpi
 )
 
 add_executable(xtcreader
@@ -76,13 +69,6 @@ add_executable(xtcwriter
     app/xtcwriter.cc
 )
 target_link_libraries(xtcwriter
-    xtc
-)
-
-add_executable(h5writer
-    app/h5writer.cc
-)
-target_link_libraries(h5writer
     xtc
 )
 

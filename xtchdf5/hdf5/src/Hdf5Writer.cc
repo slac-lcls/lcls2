@@ -1,7 +1,7 @@
 #include <vector>
 #include <cassert>
 #include <hdf5_hl.h>
-#include "pdsdata/xtc/Hdf5Writer.hh"
+#include "xtchdf5/hdf5/Hdf5Writer.hh"
 
 Dataset::Dataset(hid_t file_id, const Field& field)
 {

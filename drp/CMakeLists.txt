@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -Wall)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(utils SHARED
@@ -14,9 +14,16 @@ add_library(utils SHARED
 add_executable(drp
     main.cpp
 )
+
+target_include_directories(drp PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
 target_link_libraries(drp
     utils
     pthread
+    xtc
 )
 
 add_executable(pgp-sender
