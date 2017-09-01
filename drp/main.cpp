@@ -16,8 +16,6 @@
 #include "spscqueue.h"
 #include "mpscqueue.h"
 
-#include "fex.h"
-
 const int NWORKERS = 9;
 const int N = 800000;
 
