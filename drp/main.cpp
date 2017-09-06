@@ -11,13 +11,20 @@
 
 #include "spscqueue.h"
 #include "mpscqueue.h"
-#include "PgpCardMod.h"
 
 #include "spscqueue.h"
 #include "mpscqueue.h"
+#include "PgpCardMod.h"
 
-const int NWORKERS = 9;
-const int N = 800000;
+#include "xtchdf5/hdf5/Hdf5Writer.hh"
+#include "pdsdata/xtc/Dgram.hh"
+
+void fex(void* element);
+
+// const int NWORKERS = 9;
+// const int N = 800000;
+const int N = 1;
+const int NWORKERS = 1;
 
 class MovingAverage
 {
@@ -61,7 +68,7 @@ void pgp_reader(SPSCQueue& buffer_queue, std::vector<SPSCQueue*>& worker_queues)
 
     PgpCardRx pgp_card;
     pgp_card.model = sizeof(&pgp_card);
-    pgp_card.maxSize = 1000000UL;
+    pgp_card.maxSize = 1000000UL; // 4-byte units, we think.  should agree with buffer_element_size below
     pgp_card.pgpLane = port - 1;
 
     int64_t worker = 0;
@@ -114,7 +121,6 @@ void worker(SPSCQueue* worker_queue, MPSCQueue& collector, int rank)
     int64_t counter = 0;
     while (true) {
         uint32_t* element = worker_queue->pop();
-        printf("Received something\n");
         if (element == nullptr) {
             break;
         }
@@ -124,18 +130,18 @@ void worker(SPSCQueue* worker_queue, MPSCQueue& collector, int rank)
         }
         */
         // processing goes here
-        float* array = reinterpret_cast<float*>(element);
-        int nx = 1;
-        int ny = 700;
-        double sum = 0.0;
-        for (int j=0; j<nx; j++) {
-            for (int k=0; k<ny; k++) {
-                sum += array[j*ny + k];
-            }
-        }
-        *reinterpret_cast<double*>(element) = sum / (nx*ny);
+        // float* array = reinterpret_cast<float*>(element);
+        // int nx = 1;
+        // int ny = 700;
+        // double sum = 0.0;
+        // for (int j=0; j<nx; j++) {
+        //     for (int k=0; k<ny; k++) {
+        //         sum += array[j*ny + k];
+        //     }
+        // }
+        // *reinterpret_cast<double*>(element) = sum / (nx*ny);
 
-        // fex(element);
+        fex(element);
 
         collector.push(element);
         counter++;
@@ -170,7 +176,7 @@ int main()
     MPSCQueue collector(queue_size);
 
     // fill initial queue with buffers
-    int64_t buffer_element_size = 5000;
+    int64_t buffer_element_size = 10000000;
     int64_t buffer_size = queue_size * buffer_element_size;
     std::cout<<"buffer size:  "<<buffer_size * 4 / 1.e9<<" Gb"<<std::endl;
     uint32_t* buffer = new uint32_t[buffer_size];
@@ -189,11 +195,15 @@ int main()
 
     std::ofstream out("test.dat");
     auto start = std::chrono::steady_clock::now();
+
+    HDF5File file("/drpffb/cpo/data.h5");
     for (int i=0; i<N; i++) {
         uint32_t* element = collector.pop();
+        HDF5LevelIter iter(&(((Dgram*)element)->xtc), file);
+        iter.iterate();
 
-        double value = *reinterpret_cast<double*>(element);
-        out<<value<<'\n';
+        // double value = *reinterpret_cast<double*>(element);
+        // out<<value<<'\n';
         //std::cout<<"res  "<<value<<std::endl;
 
         // return buffer to buffer pool

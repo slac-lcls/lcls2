@@ -35,7 +35,7 @@ void pgpExample(Xtc* parent, char* intName, char* floatName, char* arrayName, in
 {
   // make a child xtc with detector data and descriptor
   TypeId tid_child(TypeId::DescData, 0);
-  Xtc& xtcChild = *new(parent->next()) Xtc(tid_child);
+  Xtc& xtcChild = *new(parent) Xtc(tid_child);
 
   Data& data = *new(xtcChild.payload()) Data();
 
@@ -59,7 +59,7 @@ void pgpExample(Xtc* parent, char* intName, char* floatName, char* arrayName, in
   xtcChild.alloc(desc.size()+data.size());
 
   // update parent xtc with our new size.
-  parent->alloc(xtcChild.extent);
+  parent->alloc(xtcChild.sizeofPayload());
 
 }
 
@@ -67,7 +67,8 @@ void fexExample(Xtc* parent)
 {
   // make a child xtc with detector data and descriptor
   TypeId tid_child(TypeId::DescData, 0);
-  Xtc& xtcChild = *new(parent->next()) Xtc(tid_child);
+  printf("*** %p %p %p\n",parent,parent->next(),parent->payload());
+  Xtc& xtcChild = *new(parent) Xtc(tid_child);
 
   DescData& descdata = *new(xtcChild.payload()) DescData();
   Descriptor& desc = descdata.desc();
@@ -85,7 +86,7 @@ void fexExample(Xtc* parent)
   xtcChild.alloc(desc.size()+data.size());
 
   // update parent xtc with our new size.
-  parent->alloc(xtcChild.extent);
+  parent->alloc(xtcChild.sizeofPayload());
 
 }
 

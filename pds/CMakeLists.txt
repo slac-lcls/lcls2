@@ -12,8 +12,6 @@ target_include_directories(xtchdf5 PUBLIC
 target_link_libraries(xtchdf5
     ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES}
-    mpi_cxx
-    mpi
 )
 
 add_executable(h5writer
