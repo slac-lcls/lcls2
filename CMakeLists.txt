@@ -6,6 +6,24 @@ find_package(PythonLibs 3.5 REQUIRED)
 
 set(CMAKE_BUILD_TYPE Debug)
 
+file(GLOB_RECURSE
+     ALL_CXX_SOURCE_FILES
+     *.cc *.hh
+)
+
+# Adding clang-format target if executable is found
+find_program(CLANG_FORMAT "clang-format")
+if(CLANG_FORMAT)
+  add_custom_target(
+    clang-format
+    COMMAND ${CLANG_FORMAT} 
+    -i
+    -style=file
+    ${ALL_CXX_SOURCE_FILES}
+)
+endif()
+
+
 execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
     "import numpy; print(numpy.get_include(), end='')"
     OUTPUT_VARIABLE NUMPY_INCLUDE_DIRS)
