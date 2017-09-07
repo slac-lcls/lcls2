@@ -1,14 +1,14 @@
-#ifndef Pds_Xtc_hh
-#define Pds_Xtc_hh
+#ifndef XtcData_Xtc_hh
+#define XtcData_Xtc_hh
 
 #include "Damage.hh"
 #include "Src.hh"
-#include "pdsdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/TypeId.hh"
 
 #include <stddef.h>
 #include <stdint.h>
 
-namespace Pds
+namespace XtcData
 {
 
 class Xtc

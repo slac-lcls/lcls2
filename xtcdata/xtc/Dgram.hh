@@ -1,11 +1,11 @@
-#ifndef Pds_Dgram_hh
-#define Pds_Dgram_hh
+#ifndef XtcData_Dgram_hh
+#define XtcData_Dgram_hh
 
 #include "Env.hh"
 #include "Sequence.hh"
 #include "Xtc.hh"
 
-namespace Pds
+namespace XtcData
 {
 
 #define PDS_DGRAM_STRUCT \

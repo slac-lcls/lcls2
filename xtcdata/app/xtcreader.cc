@@ -5,13 +5,13 @@
 #include <string>
 #include <unistd.h>
 
-#include "pdsdata/xtc/DetInfo.hh"
-#include "pdsdata/xtc/ProcInfo.hh"
-#include "pdsdata/xtc/XtcFileIterator.hh"
-#include "pdsdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/DetInfo.hh"
+#include "xtcdata/xtc/ProcInfo.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
 static unsigned eventCount = 0;
 
-using namespace Pds;
+using namespace XtcData;
 using std::map;
 using std::string;
 

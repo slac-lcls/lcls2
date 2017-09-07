@@ -9,15 +9,15 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "spscqueue.h"
-#include "mpscqueue.h"
+#include "spscqueue.hh"
+#include "mpscqueue.hh"
 
-#include "spscqueue.h"
-#include "mpscqueue.h"
+#include "spscqueue.hh"
+#include "mpscqueue.hh"
 #include "PgpCardMod.h"
 
-#include "xtchdf5/hdf5/Hdf5Writer.hh"
-#include "pdsdata/xtc/Dgram.hh"
+#include "pds/hdf5/Hdf5Writer.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 void fex(void* element);
 

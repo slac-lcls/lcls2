@@ -1,7 +1,7 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
-#include "mpscqueue.h"
+#include "mpscqueue.hh"
 
 MPSCQueue::MPSCQueue(int capacity) : cursor(0L), write_index(0L)
 {

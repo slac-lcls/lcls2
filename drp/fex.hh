@@ -1,16 +1,9 @@
 #include "xtcdata/xtc/Descriptor.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TypeId.hh"
-#include "xtcdata/xtc/XtcIterator.hh"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <strings.h>
-#include <unistd.h>
+#include "xtcdata/xtc/Xtc.hh"
 
 using namespace XtcData;
-#define BUFSIZE 0x4000000
-#define NDGRAM 1
 
 class PgpData
 {
@@ -35,21 +28,26 @@ void pgpExample(Xtc* parent, char* intName, char* floatName, char* arrayName, in
 {
   // make a child xtc with detector data and descriptor
   TypeId tid_child(TypeId::DescData, 0);
-  Xtc& xtcChild = *new(parent) Xtc(tid_child);
+  printf("here1 %p %p\n",parent,parent->next());
+  Xtc& xtcChild = *new(parent->next()) Xtc(tid_child);
 
+  printf("here1.5 %p\n",xtcChild.payload());
   Data& data = *new(xtcChild.payload()) Data();
+  printf("here2\n");
 
   // simulates PGP data arriving, and shows the address that should be given to PGP driver
   new(data.payload()) PgpData(vals[0],vals[1],vals[2]);
 
   // now that data has arrived can update with the number of bytes received
   data.extend(sizeof(PgpData));
+  printf("here3\n");
 
   // now fill in the descriptor
   Descriptor& desc = *new(data.next()) Descriptor();
 
   uint32_t offset;
   desc.add(floatName, FLOAT, offset);
+  printf("here4\n");
 
   int shape[] = {3, 3};
   desc.add(arrayName, FLOAT, 2, shape, offset);
@@ -57,9 +55,10 @@ void pgpExample(Xtc* parent, char* intName, char* floatName, char* arrayName, in
 
   // update our xtc with the size of the data we have added
   xtcChild.alloc(desc.size()+data.size());
+  printf("here5\n");
 
   // update parent xtc with our new size.
-  parent->alloc(xtcChild.sizeofPayload());
+  parent->alloc(xtcChild.extent);
 
 }
 
@@ -67,7 +66,7 @@ void fexExample(Xtc* parent)
 {
   // make a child xtc with detector data and descriptor
   TypeId tid_child(TypeId::DescData, 0);
-  Xtc& xtcChild = *new(parent) Xtc(tid_child);
+  Xtc& xtcChild = *new(parent->next()) Xtc(tid_child);
 
   DescData& descdata = *new(xtcChild.payload()) DescData();
   Descriptor& desc = descdata.desc();
@@ -85,48 +84,34 @@ void fexExample(Xtc* parent)
   xtcChild.alloc(desc.size()+data.size());
 
   // update parent xtc with our new size.
-  parent->alloc(xtcChild.sizeofPayload());
+  parent->alloc(xtcChild.extent);
 
 }
 
-int main() {
-  void* buf = malloc(BUFSIZE);
+
+void fex(void* element) {
   int vals1[3];
   int vals2[3];
-  FILE* xtcFile = fopen("data.xtc","w");
-  if(!xtcFile){
-    printf("Error opening output xtc file.\n");
-    return -1;
+  Dgram& dgram = *(Dgram*)element;
+  printf("dgram %p elem %p\n",&dgram,element);
+  TypeId tid(TypeId::Parent, 0);
+  dgram.xtc.contains = tid;
+  dgram.xtc.damage = 0;
+  dgram.xtc.extent = sizeof(Xtc);
+
+  for (int j=0; j<3; j++) {
+    vals1[j] = j;
+    vals2[j] = 1000+j;
   }
-
-  for (int i=0; i<NDGRAM; i++) {
-    Dgram& dgram = *(Dgram*)buf;
-    TypeId tid(TypeId::Parent, 0);
-    dgram.xtc.contains = tid;
-    dgram.xtc.damage = 0;
-    dgram.xtc.extent = sizeof(Xtc);
-
-    for (int j=0; j<3; j++) {
-      vals1[j] = i+j;
-      vals2[j] = 1000+i+j;
-    }
-    char intname[10], floatname[10], arrayname[10];
-    sprintf(intname,"%s%d","int",i);
-    sprintf(floatname,"%s%d","float",i);
-    sprintf(arrayname,"%s%d","array",i);
-    pgpExample(&dgram.xtc, intname, floatname, arrayname, vals1);
-    sprintf(intname,"%s%d","int",i+1);
-    sprintf(floatname,"%s%d","float",i+1);
-    sprintf(arrayname,"%s%d","array",i+1);
-    pgpExample(&dgram.xtc, intname, floatname, arrayname, vals2);
-    fexExample(&dgram.xtc);
-
-    if(fwrite(&dgram, sizeof(dgram)+dgram.xtc.sizeofPayload(), 1, xtcFile)!=1){
-      printf("Error writing to output xtc file.\n");
-      return -1;
-    }
-  }
-  fclose(xtcFile);
-
-  return 0;
+  char intname[10], floatname[10], arrayname[10];
+  int i=0;
+  sprintf(intname,"%s%d","int",i);
+  sprintf(floatname,"%s%d","float",i);
+  sprintf(arrayname,"%s%d","array",i);
+  pgpExample(&dgram.xtc, intname, floatname, arrayname, vals1);
+  sprintf(intname,"%s%d","int",i+1);
+  sprintf(floatname,"%s%d","float",i+1);
+  sprintf(arrayname,"%s%d","array",i+1);
+  pgpExample(&dgram.xtc, intname, floatname, arrayname, vals2);
+  fexExample(&dgram.xtc);
 }

@@ -1,10 +1,10 @@
-#ifndef Pds_ClockTime_hh
-#define Pds_ClockTime_hh
+#ifndef XtcData_ClockTime_hh
+#define XtcData_ClockTime_hh
 
 #include <stdint.h>
 #include <time.h>
 
-namespace Pds
+namespace XtcData
 {
 class ClockTime
 {

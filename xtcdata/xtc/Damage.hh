@@ -1,9 +1,9 @@
-#ifndef Pds_Damage_hh
-#define Pds_Damage_hh
+#ifndef XtcData_Damage_hh
+#define XtcData_Damage_hh
 
 #include <stdint.h>
 
-namespace Pds
+namespace XtcData
 {
 
 class Damage

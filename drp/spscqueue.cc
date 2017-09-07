@@ -1,5 +1,5 @@
 #include <cassert>
-#include "spscqueue.h"
+#include "spscqueue.hh"
 
 SPSCQueue::SPSCQueue(int capacity) : write_index(0), read_index(0), terminate(false)
 {

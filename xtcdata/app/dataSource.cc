@@ -1,13 +1,13 @@
-#include "pdsdata/xtc/Descriptor.hh"
-#include "pdsdata/xtc/Dgram.hh"
-#include "pdsdata/xtc/TypeId.hh"
-#include "pdsdata/xtc/XtcIterator.hh"
-#include "pdsdata/xtc/DetInfo.hh"
-#include "pdsdata/xtc/ProcInfo.hh"
-#include "pdsdata/xtc/XtcFileIterator.hh"
+#include "xtcdata/xtc/Descriptor.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/DetInfo.hh"
+#include "xtcdata/xtc/ProcInfo.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
 
 
-#include "pdsdata/xtc/Hdf5Writer.hh"
+#include "xtcdata/xtc/Hdf5Writer.hh"
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -23,7 +23,7 @@
 
 
 
-using namespace Pds;
+using namespace XtcData;
 #define BUFSIZE 0x4000000
 
 typedef struct {

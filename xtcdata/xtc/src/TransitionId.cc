@@ -1,6 +1,6 @@
-#include "pdsdata/xtc/TransitionId.hh"
+#include "xtcdata/xtc/TransitionId.hh"
 
-using namespace Pds;
+using namespace XtcData;
 
 const char* TransitionId::name(TransitionId::Value id)
 {

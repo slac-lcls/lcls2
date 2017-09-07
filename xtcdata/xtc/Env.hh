@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-namespace Pds
+namespace XtcData
 {
 class Env
 {
@@ -24,17 +24,17 @@ class Env
 };
 }
 
-inline const Pds::Env& Pds::Env::operator=(const Pds::Env& that)
+inline const XtcData::Env& XtcData::Env::operator=(const XtcData::Env& that)
 {
     _env = that._env;
     return *this;
 }
 
-inline Pds::Env::Env(uint32_t env) : _env(env)
+inline XtcData::Env::Env(uint32_t env) : _env(env)
 {
 }
 
-inline uint32_t Pds::Env::value() const
+inline uint32_t XtcData::Env::value() const
 {
     return _env;
 }

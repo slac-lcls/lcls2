@@ -3,10 +3,10 @@
 
 #include <unordered_map>
 #include <hdf5.h>
-#include "pdsdata/xtc/Descriptor.hh"
-#include "pdsdata/xtc/XtcIterator.hh"
-#include "pdsdata/xtc/TypeId.hh"
-#include "pdsdata/xtc/Xtc.hh"
+#include "xtcdata/xtc/Descriptor.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/Xtc.hh"
 
 class Dataset
 {
@@ -36,9 +36,9 @@ private:
 class HDF5LevelIter : public XtcIterator {
 public:
   enum { Stop, Continue };
-  HDF5LevelIter(Pds::Xtc* xtc, HDF5File &file) : XtcIterator(xtc), _file(file) {}
+  HDF5LevelIter(XtcData::Xtc* xtc, HDF5File &file) : XtcIterator(xtc), _file(file) {}
 
-  int process(Pds::Xtc* xtc) {
+  int process(XtcData::Xtc* xtc) {
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
       iterate(xtc);
@@ -48,7 +48,6 @@ public:
       DescData& descdata = *(DescData*)xtc->payload();
       Descriptor& desc = descdata.desc();
 
-      printf("add datasets\n");
       _file.addDatasets(desc);
       _file.appendData(descdata);
 

@@ -1,7 +1,7 @@
-#include "pdsdata/xtc/Descriptor.hh"
-#include "pdsdata/xtc/Dgram.hh"
-#include "pdsdata/xtc/TypeId.hh"
-#include "pdsdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/Descriptor.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
 
 #include <stdio.h>
 #include <Python.h>
@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
-using namespace Pds;
+using namespace XtcData;
 #define BUFSIZE 0x4000000
 
 typedef struct {

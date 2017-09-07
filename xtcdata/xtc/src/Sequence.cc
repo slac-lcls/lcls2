@@ -1,4 +1,4 @@
-#include "pdsdata/xtc/Sequence.hh"
+#include "xtcdata/xtc/Sequence.hh"
 
 /* bit field access enums
 *	v is the index of the rightmost bit
@@ -7,7 +7,7 @@
 *	s is the mask shifted into place
 */
 
-namespace Pds
+namespace XtcData
 {
 enum { v_cntrl = 0, k_cntrl = 8 };
 enum { v_service = 0, k_service = 4 };
@@ -20,41 +20,41 @@ enum { m_seqtype = ((1 << k_seqtype) - 1), s_seqtype = (m_seqtype << v_seqtype) 
 enum { m_extend = ((1 << k_extend) - 1), s_extend = (m_extend << v_extend) };
 }
 
-Pds::Sequence::Sequence(const Pds::Sequence& input) : _clock(input._clock), _stamp(input._stamp)
+XtcData::Sequence::Sequence(const XtcData::Sequence& input) : _clock(input._clock), _stamp(input._stamp)
 {
 }
 
-Pds::Sequence::Sequence(const ClockTime& clock, const TimeStamp& stamp)
+XtcData::Sequence::Sequence(const ClockTime& clock, const TimeStamp& stamp)
 : _clock(clock), _stamp(stamp)
 {
 }
 
-Pds::Sequence::Sequence(Type type, TransitionId::Value service, const ClockTime& clock, const TimeStamp& stamp)
+XtcData::Sequence::Sequence(Type type, TransitionId::Value service, const ClockTime& clock, const TimeStamp& stamp)
 : _clock(clock), _stamp(stamp, ((type & m_seqtype) << v_seqtype) | ((service & m_service) << v_service))
 {
 }
 
-Pds::Sequence::Type Pds::Sequence::type() const
+XtcData::Sequence::Type XtcData::Sequence::type() const
 {
     return Type((_stamp.control() >> v_seqtype) & m_seqtype);
 }
 
-Pds::TransitionId::Value Pds::Sequence::service() const
+XtcData::TransitionId::Value XtcData::Sequence::service() const
 {
     return TransitionId::Value((_stamp.control() >> v_service) & m_service);
 }
 
-bool Pds::Sequence::isExtended() const
+bool XtcData::Sequence::isExtended() const
 {
     return _stamp.control() & s_extend;
 }
 
-bool Pds::Sequence::isEvent() const
+bool XtcData::Sequence::isEvent() const
 {
     return ((_stamp.control() & s_service) >> v_service) == TransitionId::L1Accept;
 }
 
-Pds::Sequence& Pds::Sequence::operator=(const Pds::Sequence& input)
+XtcData::Sequence& XtcData::Sequence::operator=(const XtcData::Sequence& input)
 {
     _clock = input._clock;
     _stamp = input._stamp;

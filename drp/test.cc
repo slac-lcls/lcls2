@@ -2,8 +2,8 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include "spscqueue.h"
-#include "mpscqueue.h"
+#include "spscqueue.hh"
+#include "mpscqueue.hh"
 
 const int NWORKERS = 8;
 const int N = 1048576;

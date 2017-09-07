@@ -1,11 +1,11 @@
-#ifndef Pds_XtcFileIterator_hh
-#define Pds_XtcFileIterator_hh
+#ifndef XtcData_XtcFileIterator_hh
+#define XtcData_XtcFileIterator_hh
 
-#include "pdsdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 #include <stdio.h>
 
-namespace Pds
+namespace XtcData
 {
 
 class XtcFileIterator

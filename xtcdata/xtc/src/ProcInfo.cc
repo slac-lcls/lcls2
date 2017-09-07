@@ -1,7 +1,7 @@
 
-#include "pdsdata/xtc/ProcInfo.hh"
+#include "xtcdata/xtc/ProcInfo.hh"
 
-using namespace Pds;
+using namespace XtcData;
 
 ProcInfo::ProcInfo(Level::Type level, uint32_t processId, uint32_t ipAddr) : Src(level)
 {

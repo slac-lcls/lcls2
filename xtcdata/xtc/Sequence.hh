@@ -1,11 +1,11 @@
 #ifndef PDS_SEQUENCE_HH
 #define PDS_SEQUENCE_HH
 
-#include "pdsdata/xtc/ClockTime.hh"
-#include "pdsdata/xtc/TimeStamp.hh"
-#include "pdsdata/xtc/TransitionId.hh"
+#include "xtcdata/xtc/ClockTime.hh"
+#include "xtcdata/xtc/TimeStamp.hh"
+#include "xtcdata/xtc/TransitionId.hh"
 
-namespace Pds
+namespace XtcData
 {
 class Sequence
 {

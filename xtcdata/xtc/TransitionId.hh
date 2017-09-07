@@ -1,7 +1,7 @@
-#ifndef Pds_TransitionId_hh
-#define Pds_TransitionId_hh
+#ifndef XtcData_TransitionId_hh
+#define XtcData_TransitionId_hh
 
-namespace Pds
+namespace XtcData
 {
 
 class TransitionId

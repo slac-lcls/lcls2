@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-namespace Pds
+namespace XtcData
 {
 class TimeStamp
 {

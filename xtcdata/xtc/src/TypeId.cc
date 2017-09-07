@@ -1,9 +1,9 @@
-#include "pdsdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/TypeId.hh"
 
 #include <stdlib.h>
 #include <string.h>
 
-using namespace Pds;
+using namespace XtcData;
 
 TypeId::TypeId(Type type, uint32_t version, bool cmp)
 : _value((version << 16) | type | (cmp ? 0x80000000 : 0))

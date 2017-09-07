@@ -1,11 +1,11 @@
-#include "pdsdata/xtc/DetInfo.hh"
-#include "pdsdata/xtc/Level.hh"
+#include "xtcdata/xtc/DetInfo.hh"
+#include "xtcdata/xtc/Level.hh"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-using namespace Pds;
+using namespace XtcData;
 
 DetInfo::DetInfo(uint32_t processId, Detector det, uint32_t detId, Device dev, uint32_t devId)
 : Src(Level::Source)

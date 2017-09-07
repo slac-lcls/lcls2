@@ -1,6 +1,6 @@
-#include "pdsdata/xtc/Level.hh"
+#include "xtcdata/xtc/Level.hh"
 
-using namespace Pds;
+using namespace XtcData;
 
 const char* Level::name(Type type)
 {

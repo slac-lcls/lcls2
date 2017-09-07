@@ -34,7 +34,7 @@
 ** --
 */
 
-namespace Pds
+namespace XtcData
 {
 
 class Xtc;
@@ -63,7 +63,7 @@ class XtcIterator
 };
 }
 
-using namespace Pds;
+using namespace XtcData;
 
 /*
 ** ++

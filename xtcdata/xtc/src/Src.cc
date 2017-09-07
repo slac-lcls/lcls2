@@ -1,9 +1,9 @@
 
-#include "pdsdata/xtc/Src.hh"
+#include "xtcdata/xtc/Src.hh"
 #include <limits>
 #include <stdint.h>
 
-using namespace Pds;
+using namespace XtcData;
 
 Src::Src() : _log(std::numeric_limits<uint32_t>::max()), _phy(std::numeric_limits<uint32_t>::max())
 {

@@ -1,10 +1,10 @@
-#ifndef Pds_BldInfo_hh
-#define Pds_BldInfo_hh
+#ifndef XtcData_BldInfo_hh
+#define XtcData_BldInfo_hh
 
-#include "pdsdata/xtc/Src.hh"
+#include "xtcdata/xtc/Src.hh"
 #include <stdint.h>
 
-namespace Pds
+namespace XtcData
 {
 
 class Node;

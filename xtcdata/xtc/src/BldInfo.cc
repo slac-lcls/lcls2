@@ -1,10 +1,10 @@
-#include "pdsdata/xtc/BldInfo.hh"
-#include "pdsdata/xtc/Level.hh"
+#include "xtcdata/xtc/BldInfo.hh"
+#include "xtcdata/xtc/Level.hh"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
-using namespace Pds;
+using namespace XtcData;
 
 BldInfo::BldInfo(uint32_t processId, Type type) : Src(Level::Reporter)
 {

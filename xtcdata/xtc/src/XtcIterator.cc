@@ -18,10 +18,10 @@
  ** --
  */
 
-#include "pdsdata/xtc/XtcIterator.hh"
-#include "pdsdata/xtc/Xtc.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/Xtc.hh"
 
-using namespace Pds;
+using namespace XtcData;
 
 /*
  ** ++

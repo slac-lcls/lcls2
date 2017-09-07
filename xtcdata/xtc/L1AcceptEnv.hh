@@ -1,9 +1,9 @@
-#ifndef Pds_L1AcceptEnv_hh
-#define Pds_L1AcceptEnv_hh
+#ifndef XtcData_L1AcceptEnv_hh
+#define XtcData_L1AcceptEnv_hh
 
-#include "pdsdata/xtc/Env.hh"
+#include "xtcdata/xtc/Env.hh"
 
-namespace Pds
+namespace XtcData
 {
 class L1AcceptEnv : public Env
 {

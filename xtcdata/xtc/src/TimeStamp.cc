@@ -1,4 +1,4 @@
-#include "pdsdata/xtc/TimeStamp.hh"
+#include "xtcdata/xtc/TimeStamp.hh"
 
 /* bit field access enums
 *       v is the index of the rightmost bit
@@ -7,7 +7,7 @@
 *       s is the mask shifted into place
 */
 
-namespace Pds
+namespace XtcData
 {
 enum { v_ticks = 0, k_ticks = 24 };
 enum { v_cntrl = 24, k_cntrl = 8 };
@@ -19,73 +19,73 @@ enum { m_fiduc = ((1 << k_fiduc) - 1), s_fiduc = (m_fiduc << v_fiduc) };
 enum { m_vecto = ((1 << k_vecto) - 1), s_vecto = (m_vecto << v_vecto) };
 }
 
-Pds::TimeStamp::TimeStamp() : _low(0), _high(0)
+XtcData::TimeStamp::TimeStamp() : _low(0), _high(0)
 {
 }
 
-Pds::TimeStamp::TimeStamp(const Pds::TimeStamp& input) : _low(input._low), _high(input._high)
+XtcData::TimeStamp::TimeStamp(const XtcData::TimeStamp& input) : _low(input._low), _high(input._high)
 {
 }
 
-Pds::TimeStamp::TimeStamp(const Pds::TimeStamp& input, unsigned control)
+XtcData::TimeStamp::TimeStamp(const XtcData::TimeStamp& input, unsigned control)
 : _low((input._low & s_ticks) | ((control & m_cntrl) << v_cntrl)), _high(input._high)
 {
 }
 
-Pds::TimeStamp::TimeStamp(unsigned low, unsigned high, unsigned vector, unsigned control)
+XtcData::TimeStamp::TimeStamp(unsigned low, unsigned high, unsigned vector, unsigned control)
 : _low((low & s_ticks) | ((control & m_cntrl) << v_cntrl)),
   _high((high & s_fiduc) | ((vector & m_vecto) << v_vecto))
 {
 }
 
-unsigned Pds::TimeStamp::ticks() const
+unsigned XtcData::TimeStamp::ticks() const
 {
     return (_low & s_ticks) >> v_ticks;
 }
 
-unsigned Pds::TimeStamp::fiducials() const
+unsigned XtcData::TimeStamp::fiducials() const
 {
     return (_high & s_fiduc) >> v_fiduc;
 }
 
-unsigned Pds::TimeStamp::control() const
+unsigned XtcData::TimeStamp::control() const
 {
     return (_low & s_cntrl) >> v_cntrl;
 }
 
-unsigned Pds::TimeStamp::vector() const
+unsigned XtcData::TimeStamp::vector() const
 {
     return (_high & s_vecto) >> v_vecto;
 }
 
-Pds::TimeStamp& Pds::TimeStamp::operator=(const Pds::TimeStamp& input)
+XtcData::TimeStamp& XtcData::TimeStamp::operator=(const XtcData::TimeStamp& input)
 {
     _low = input._low;
     _high = input._high;
     return *this;
 }
 
-bool Pds::TimeStamp::operator==(const Pds::TimeStamp& ref) const
+bool XtcData::TimeStamp::operator==(const XtcData::TimeStamp& ref) const
 {
     return fiducials() == ref.fiducials();
 }
 
-bool Pds::TimeStamp::operator>=(const Pds::TimeStamp& ref) const
+bool XtcData::TimeStamp::operator>=(const XtcData::TimeStamp& ref) const
 {
     return fiducials() >= ref.fiducials();
 }
 
-bool Pds::TimeStamp::operator<=(const Pds::TimeStamp& ref) const
+bool XtcData::TimeStamp::operator<=(const XtcData::TimeStamp& ref) const
 {
     return fiducials() <= ref.fiducials();
 }
 
-bool Pds::TimeStamp::operator>(const Pds::TimeStamp& ref) const
+bool XtcData::TimeStamp::operator>(const XtcData::TimeStamp& ref) const
 {
     return fiducials() > ref.fiducials();
 }
 
-bool Pds::TimeStamp::operator<(const Pds::TimeStamp& ref) const
+bool XtcData::TimeStamp::operator<(const XtcData::TimeStamp& ref) const
 {
     return fiducials() < ref.fiducials();
 }

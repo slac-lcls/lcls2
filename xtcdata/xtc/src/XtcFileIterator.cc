@@ -1,10 +1,10 @@
 
-#include "pdsdata/xtc/XtcFileIterator.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
 #include <new>
 #include <stdio.h>
 #include <unistd.h>
 
-using namespace Pds;
+using namespace XtcData;
 
 XtcFileIterator::XtcFileIterator(int fd, size_t maxDgramSize)
 : _fd(fd), _maxDgramSize(maxDgramSize), _buf(new char[maxDgramSize])

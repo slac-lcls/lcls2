@@ -1,9 +1,9 @@
-#ifndef Pds_TypeId_hh
-#define Pds_TypeId_hh
+#ifndef XtcData_TypeId_hh
+#define XtcData_TypeId_hh
 
 #include <stdint.h>
 
-namespace Pds
+namespace XtcData
 {
 
 class TypeId

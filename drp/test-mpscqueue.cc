@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
-#include "mpscqueue.h"
+#include "mpscqueue.hh"
 
 const int N = 1048576;
 

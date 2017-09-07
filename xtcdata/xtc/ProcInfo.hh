@@ -1,11 +1,11 @@
-#ifndef Pds_ProcInfo_hh
-#define Pds_ProcInfo_hh
+#ifndef XtcData_ProcInfo_hh
+#define XtcData_ProcInfo_hh
 
-#include "pdsdata/xtc/Level.hh"
-#include "pdsdata/xtc/Src.hh"
+#include "xtcdata/xtc/Level.hh"
+#include "xtcdata/xtc/Src.hh"
 #include <stdint.h>
 
-namespace Pds
+namespace XtcData
 {
 
 // For all levels except Source

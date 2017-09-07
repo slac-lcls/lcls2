@@ -1,16 +1,9 @@
 #include "xtcdata/xtc/Descriptor.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TypeId.hh"
-#include "xtcdata/xtc/XtcIterator.hh"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <strings.h>
-#include <unistd.h>
+#include "xtcdata/xtc/Xtc.hh"
 
 using namespace XtcData;
-#define BUFSIZE 0x4000000
-#define NDGRAM 1
 
 class PgpData
 {
@@ -89,44 +82,28 @@ void fexExample(Xtc* parent)
 
 }
 
-int main() {
-  void* buf = malloc(BUFSIZE);
+void fex(void* element) {
   int vals1[3];
   int vals2[3];
-  FILE* xtcFile = fopen("data.xtc","w");
-  if(!xtcFile){
-    printf("Error opening output xtc file.\n");
-    return -1;
+  Dgram& dgram = *(Dgram*)element;
+  TypeId tid(TypeId::Parent, 0);
+  dgram.xtc.contains = tid;
+  dgram.xtc.damage = 0;
+  dgram.xtc.extent = sizeof(Xtc);
+
+  for (int j=0; j<3; j++) {
+    vals1[j] = j;
+    vals2[j] = 1000+j;
   }
-
-  for (int i=0; i<NDGRAM; i++) {
-    Dgram& dgram = *(Dgram*)buf;
-    TypeId tid(TypeId::Parent, 0);
-    dgram.xtc.contains = tid;
-    dgram.xtc.damage = 0;
-    dgram.xtc.extent = sizeof(Xtc);
-
-    for (int j=0; j<3; j++) {
-      vals1[j] = i+j;
-      vals2[j] = 1000+i+j;
-    }
-    char intname[10], floatname[10], arrayname[10];
-    sprintf(intname,"%s%d","int",i);
-    sprintf(floatname,"%s%d","float",i);
-    sprintf(arrayname,"%s%d","array",i);
-    pgpExample(&dgram.xtc, intname, floatname, arrayname, vals1);
-    sprintf(intname,"%s%d","int",i+1);
-    sprintf(floatname,"%s%d","float",i+1);
-    sprintf(arrayname,"%s%d","array",i+1);
-    pgpExample(&dgram.xtc, intname, floatname, arrayname, vals2);
-    fexExample(&dgram.xtc);
-
-    if(fwrite(&dgram, sizeof(dgram)+dgram.xtc.sizeofPayload(), 1, xtcFile)!=1){
-      printf("Error writing to output xtc file.\n");
-      return -1;
-    }
-  }
-  fclose(xtcFile);
-
-  return 0;
+  char intname[10], floatname[10], arrayname[10];
+  int i=0;
+  sprintf(intname,"%s%d","int",i);
+  sprintf(floatname,"%s%d","float",i);
+  sprintf(arrayname,"%s%d","array",i);
+  pgpExample(&dgram.xtc, intname, floatname, arrayname, vals1);
+  sprintf(intname,"%s%d","int",i+1);
+  sprintf(floatname,"%s%d","float",i+1);
+  sprintf(arrayname,"%s%d","array",i+1);
+  pgpExample(&dgram.xtc, intname, floatname, arrayname, vals2);
+  fexExample(&dgram.xtc);
 }

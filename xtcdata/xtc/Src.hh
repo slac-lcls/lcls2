@@ -1,10 +1,10 @@
-#ifndef Pds_Src_hh
-#define Pds_Src_hh
+#ifndef XtcData_Src_hh
+#define XtcData_Src_hh
 
-#include "pdsdata/xtc/Level.hh"
+#include "xtcdata/xtc/Level.hh"
 #include <stdint.h>
 
-namespace Pds
+namespace XtcData
 {
 
 class Node;

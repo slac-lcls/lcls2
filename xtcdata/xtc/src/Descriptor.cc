@@ -1,4 +1,4 @@
-#include "pdsdata/xtc/Descriptor.hh"
+#include "xtcdata/xtc/Descriptor.hh"
 
 Field* Descriptor::get_field_by_name(const char* name)
 {

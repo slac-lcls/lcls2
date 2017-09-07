@@ -1,19 +1,18 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-#set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -Wall)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(utils SHARED
-    spscqueue.cpp
-    mpscqueue.cpp
-    fex.cpp
+    spscqueue.cc
+    mpscqueue.cc
+    fex.cc
 )
 
 add_executable(drp
-    main.cpp
+    main.cc
 )
 
 target_include_directories(utils PUBLIC
@@ -26,15 +25,15 @@ target_link_libraries(drp
     utils
     pthread
     xtc
-    xtchdf5
+    pds
 )
 
 add_executable(pgp-sender
-    pgp-sender.cpp
+    pgp-sender.cc
 )
 
 add_executable(test-queues
-    test.cpp
+    test.cc
 )
 target_link_libraries(test-queues
     utils

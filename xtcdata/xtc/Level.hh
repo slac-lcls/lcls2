@@ -1,7 +1,7 @@
 #ifndef PDSLEVEL_HH
 #define PDSLEVEL_HH
 
-namespace Pds
+namespace XtcData
 {
 class Level
 {

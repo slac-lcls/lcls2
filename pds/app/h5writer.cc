@@ -1,13 +1,13 @@
-#include "pdsdata/xtc/Descriptor.hh"
-#include "pdsdata/xtc/Dgram.hh"
-#include "xtchdf5/hdf5/Hdf5Writer.hh"
+#include "xtcdata/xtc/Descriptor.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "pds/hdf5/Hdf5Writer.hh"
 
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
 
-using namespace Pds;
+using namespace XtcData;
 #define BUFSIZE 0x4000000
 
 int main()
