@@ -1,6 +1,6 @@
 import sys
 from sys import getrefcount as getref
-sys.path.append('build/pdsdata')
+sys.path.append('build/xtcdata')
 from dgram import Dgram
 def myroutine2():
   d = Dgram()
