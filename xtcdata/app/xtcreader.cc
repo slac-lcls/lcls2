@@ -19,7 +19,7 @@ static map<Src, string> aliasMap;
 
 class myLevelIter : public XtcIterator
 {
-    public:
+public:
     enum { Stop, Continue };
     myLevelIter(Xtc* xtc, unsigned depth, long long int lliOffset)
     : XtcIterator(xtc), _depth(depth), _lliOffset(lliOffset)
@@ -29,7 +29,7 @@ class myLevelIter : public XtcIterator
     int process(Xtc* xtc)
     {
         unsigned i = _depth;
-        while(i--)
+        while (i--)
             printf("  ");
         Level::Type level = xtc->src.level();
         printf("%s level  offset %Ld (0x%Lx), payload size %d contains %s damage "
@@ -39,8 +39,8 @@ class myLevelIter : public XtcIterator
         long long lliOffsetPayload = _lliOffset + sizeof(Xtc);
         _lliOffset += sizeof(Xtc) + xtc->sizeofPayload();
 
-        switch(xtc->contains.id()) {
-        case(TypeId::Parent): {
+        switch (xtc->contains.id()) {
+        case (TypeId::Parent): {
             myLevelIter iter(xtc, _depth + 1, lliOffsetPayload);
             iter.iterate();
             break;
@@ -53,7 +53,7 @@ class myLevelIter : public XtcIterator
         return Continue;
     }
 
-    private:
+private:
     unsigned _depth;
     long long int _lliOffset;
 };
@@ -69,8 +69,8 @@ int main(int argc, char* argv[])
     char* xtcname = 0;
     int parseErr = 0;
 
-    while((c = getopt(argc, argv, "hf:")) != -1) {
-        switch(c) {
+    while ((c = getopt(argc, argv, "hf:")) != -1) {
+        switch (c) {
         case 'h':
             usage(argv[0]);
             exit(0);
@@ -82,13 +82,13 @@ int main(int argc, char* argv[])
         }
     }
 
-    if(!xtcname) {
+    if (!xtcname) {
         usage(argv[0]);
         exit(2);
     }
 
     int fd = open(xtcname, O_RDONLY | O_LARGEFILE);
-    if(fd < 0) {
+    if (fd < 0) {
         fprintf(stderr, "Unable to open file '%s'\n", xtcname);
         exit(2);
     }
@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
     XtcFileIterator iter(fd, 0x4000000);
     Dgram* dg;
     long long int lliOffset = lseek64(fd, 0, SEEK_CUR);
-    while((dg = iter.next())) {
+    while ((dg = iter.next())) {
         printf("%s transition: time %d.%09d, fid/ticks 0x%0x/0x%x, env 0x%x, "
                "offset %Ld (0x%Lx), payloadSize %d\n",
                TransitionId::name(dg->seq.service()), dg->seq.clock().seconds(),

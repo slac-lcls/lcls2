@@ -22,24 +22,24 @@ DetInfo::DetInfo(const char* sname) : Src(Level::Source)
     unsigned devId = 0;
     _phy = ((det & 0xff) << 24) | ((detId & 0xff) << 16) | ((dev & 0xff) << 8) | (devId & 0xff);
 
-    for(unsigned i = 0; i < NumDetector; i++) {
+    for (unsigned i = 0; i < NumDetector; i++) {
         const char* dname = name(Detector(i));
         unsigned len = strlen(dname);
-        if(strncmp(sname, dname, len) == 0 && sname[len] == '-') {
+        if (strncmp(sname, dname, len) == 0 && sname[len] == '-') {
             det = Detector(i);
             const char* ssname = sname + len + 1;
             char* endPtr;
             detId = strtoul(ssname, &endPtr, 0);
-            if(endPtr == ssname || *endPtr != '|') continue;
+            if (endPtr == ssname || *endPtr != '|') continue;
             ssname = endPtr + 1;
-            for(unsigned j = 0; j < NumDevice; j++) {
+            for (unsigned j = 0; j < NumDevice; j++) {
                 dname = name(Device(j));
                 len = strlen(dname);
-                if(strncmp(ssname, dname, len) == 0 && ssname[len] == '-') {
+                if (strncmp(ssname, dname, len) == 0 && ssname[len] == '-') {
                     dev = Device(j);
                     const char* sdname = ssname + len + 1;
                     devId = strtoul(sdname, &endPtr, 0);
-                    if(endPtr == sdname) continue;
+                    if (endPtr == sdname) continue;
 
                     _phy = ((det & 0xff) << 24) | ((detId & 0xff) << 16) | ((dev & 0xff) << 8) | (devId & 0xff);
                     break;

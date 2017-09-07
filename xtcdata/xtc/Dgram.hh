@@ -15,7 +15,7 @@ namespace XtcData
 
 class Dgram
 {
-    public:
+public:
     PDS_DGRAM_STRUCT;
 };
 }

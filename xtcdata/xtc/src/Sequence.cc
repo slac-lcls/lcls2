@@ -20,7 +20,8 @@ enum { m_seqtype = ((1 << k_seqtype) - 1), s_seqtype = (m_seqtype << v_seqtype) 
 enum { m_extend = ((1 << k_extend) - 1), s_extend = (m_extend << v_extend) };
 }
 
-XtcData::Sequence::Sequence(const XtcData::Sequence& input) : _clock(input._clock), _stamp(input._stamp)
+XtcData::Sequence::Sequence(const XtcData::Sequence& input)
+: _clock(input._clock), _stamp(input._stamp)
 {
 }
 

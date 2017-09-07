@@ -19,14 +19,14 @@ XtcFileIterator::~XtcFileIterator()
 Dgram* XtcFileIterator::next()
 {
     Dgram& dg = *(Dgram*)_buf;
-    if(::read(_fd, &dg, sizeof(dg)) == 0) return 0;
+    if (::read(_fd, &dg, sizeof(dg)) == 0) return 0;
     size_t payloadSize = dg.xtc.sizeofPayload();
-    if((payloadSize + sizeof(dg)) > _maxDgramSize) {
+    if ((payloadSize + sizeof(dg)) > _maxDgramSize) {
         printf("Datagram size %zu larger than maximum: %zu\n", payloadSize + sizeof(dg), _maxDgramSize);
         return 0;
     }
     ssize_t sz = ::read(_fd, dg.xtc.payload(), payloadSize);
-    if(sz != (ssize_t)payloadSize) {
+    if (sz != (ssize_t)payloadSize) {
         printf("XtcFileIterator::next read incomplete payload %d/%d\n", (int)sz, (int)payloadSize);
     }
 

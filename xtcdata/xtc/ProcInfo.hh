@@ -12,7 +12,7 @@ namespace XtcData
 
 class ProcInfo : public Src
 {
-    public:
+public:
     //     ProcInfo();
     ProcInfo(Level::Type level, uint32_t processId, uint32_t ipAddr);
 

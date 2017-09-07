@@ -13,7 +13,7 @@ namespace XtcData
 
 class Xtc
 {
-    public:
+public:
     Xtc() : damage(0), extent(0){};
     Xtc(const Xtc& xtc)
     : damage(xtc.damage), src(xtc.src), contains(xtc.contains), extent(sizeof(Xtc))

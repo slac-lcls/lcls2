@@ -1,13 +1,13 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
 #include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-#include <stdint.h>
+#include <chrono>
 #include <cstdio>
 #include <iostream>
-#include <chrono>
+#include <stdint.h>
 
 #include "PgpCardMod.h"
 
@@ -23,7 +23,7 @@ int main()
 
     int fd = open(dev_name, O_RDWR);
     if (fd < 0) {
-        std::cout<<"Failed to open pgpcard"<<std::endl;
+        std::cout << "Failed to open pgpcard" << std::endl;
         return -1;
     }
 
@@ -38,32 +38,32 @@ int main()
     int number_of_events = 800000;
 
     auto start = std::chrono::steady_clock::now();
-    for (int n=0; n<number_of_events; n++) {
+    for (int n = 0; n < number_of_events; n++) {
 
         float* array = reinterpret_cast<float*>(pgp_card.data);
         int nx = 1;
         int ny = 700;
         double sum = 0.0;
-        for (int i=0; i<nx; i++) {
-            for (int j=0; j<ny; j++) {
-                array[i*ny + j] = n;
-                sum += array[i*ny + j];
+        for (int i = 0; i < nx; i++) {
+            for (int j = 0; j < ny; j++) {
+                array[i * ny + j] = n;
+                sum += array[i * ny + j];
             }
         }
-        //std::cout<<sum / (nx*ny)<<std::endl;
+        // std::cout<<sum / (nx*ny)<<std::endl;
         if (write(fd, &pgp_card, sizeof(PgpCardTx)) < 0) {
             perror("Error writing");
-            std::cout<<"Error writing"<<std::endl;
+            std::cout << "Error writing" << std::endl;
         }
-        std::cout<<"Wrote something"<<std::endl;
+        std::cout << "Wrote something" << std::endl;
         sleep(1);
     }
 
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    //std::cout<< duration / double(number_of_events)<<"  ms per message"<<std::endl;
-    std::cout<<"PGP sender rate:  "<< double(number_of_events) / duration <<"  kHz"<<std::endl;
+    // std::cout<< duration / double(number_of_events)<<"  ms per message"<<std::endl;
+    std::cout << "PGP sender rate:  " << double(number_of_events) / duration << "  kHz" << std::endl;
 
     close(fd);
-    delete [] pgp_card.data;
+    delete[] pgp_card.data;
 }

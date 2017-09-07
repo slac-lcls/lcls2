@@ -1,7 +1,7 @@
-#include <vector>
+#include "pds/hdf5/Hdf5Writer.hh"
 #include <cassert>
 #include <hdf5_hl.h>
-#include "pds/hdf5/Hdf5Writer.hh"
+#include <vector>
 
 Dataset::Dataset(hid_t file_id, const Field& field)
 {
@@ -10,9 +10,9 @@ Dataset::Dataset(hid_t file_id, const Field& field)
     std::vector<hsize_t> maxDims(ndims);
     dims[0] = 0;
     maxDims[0] = H5S_UNLIMITED;
-    for (int i=1; i<ndims; i++) {
-        dims[i] = field.shape[i-1];
-        maxDims[i] = field.shape[i-1];
+    for (int i = 1; i < ndims; i++) {
+        dims[i] = field.shape[i - 1];
+        maxDims[i] = field.shape[i - 1];
     }
     m_dataspaceId = H5Screate_simple(ndims, dims.data(), maxDims.data());
 
@@ -25,43 +25,41 @@ Dataset::Dataset(hid_t file_id, const Field& field)
     // chunk size for arrays
     else {
         cdims[0] = 1;
-        for (int i=1; i<ndims; i++) {
-            cdims[i] = field.shape[i-1];
+        for (int i = 1; i < ndims; i++) {
+            cdims[i] = field.shape[i - 1];
         }
     }
 
     m_plistId = H5Pcreate(H5P_DATASET_CREATE);
     if (H5Pset_chunk(m_plistId, ndims, cdims.data()) < 0) {
-        std::cout<<"Error in setting chunk size"<<std::endl;
+        std::cout << "Error in setting chunk size" << std::endl;
     }
 
-    switch(field.type) {
-        case UINT8: {
-            m_typeId = H5T_NATIVE_UINT8;
-            break;
-        }
-        case UINT16: {
-            m_typeId = H5T_NATIVE_UINT16;
-            break;
-        }
-        case INT32: {
-            m_typeId = H5T_NATIVE_INT32;
-            break;
-        }
-        case FLOAT: {
-            m_typeId = H5T_NATIVE_FLOAT;
-            break;
-        }
-        case DOUBLE: {
-            m_typeId = H5T_NATIVE_DOUBLE;
-            break;
-        }
+    switch (field.type) {
+    case UINT8: {
+        m_typeId = H5T_NATIVE_UINT8;
+        break;
     }
-    m_dsetId = H5Dcreate2(file_id, field.name, m_typeId,
-                          m_dataspaceId, H5P_DEFAULT,
-                          m_plistId, H5P_DEFAULT);
+    case UINT16: {
+        m_typeId = H5T_NATIVE_UINT16;
+        break;
+    }
+    case INT32: {
+        m_typeId = H5T_NATIVE_INT32;
+        break;
+    }
+    case FLOAT: {
+        m_typeId = H5T_NATIVE_FLOAT;
+        break;
+    }
+    case DOUBLE: {
+        m_typeId = H5T_NATIVE_DOUBLE;
+        break;
+    }
+    }
+    m_dsetId = H5Dcreate2(file_id, field.name, m_typeId, m_dataspaceId, H5P_DEFAULT, m_plistId, H5P_DEFAULT);
     if (m_dsetId < 0) {
-        std::cout<<"Error in creating HDF5 dataset "<<field.name<<std::endl;
+        std::cout << "Error in creating HDF5 dataset " << field.name << std::endl;
     }
 }
 
@@ -84,7 +82,7 @@ Dataset::~Dataset()
     }
 }
 
-Dataset::Dataset(Dataset && d)
+Dataset::Dataset(Dataset&& d)
 {
     m_dsetId = d.m_dsetId;
     m_dataspaceId = d.m_dataspaceId;
@@ -103,18 +101,18 @@ HDF5File::HDF5File(const char* name)
     H5Pset_libver_bounds(faplId, H5F_LIBVER_EARLIEST, H5F_LIBVER_LATEST);
     fileId = H5Fcreate(name, H5F_ACC_TRUNC, H5P_DEFAULT, faplId);
     if (fileId < 0) {
-        std::cout<<"Could not create HDF5 file:  "<<std::endl;
+        std::cout << "Could not create HDF5 file:  " << std::endl;
     }
 }
 
 void HDF5File::addDatasets(Descriptor& desc)
 {
-  for (int i=0; i<desc.num_fields(); i++) {
+    for (int i = 0; i < desc.num_fields(); i++) {
         Field& field = desc.get(i);
         auto it = m_datasets.find(field.name);
         if (it == m_datasets.end()) {
-          // only create dataset if it doesn't exist
-          m_datasets.emplace(field.name, Dataset(fileId, field));
+            // only create dataset if it doesn't exist
+            m_datasets.emplace(field.name, Dataset(fileId, field));
         }
     }
 }
@@ -123,7 +121,7 @@ void HDF5File::appendData(DescData& datadesc)
 {
     Descriptor& desc = datadesc.desc();
     uint8_t* data = datadesc.data();
-    for (int i=0; i<desc.num_fields(); i++) {
+    for (int i = 0; i < desc.num_fields(); i++) {
         Field& field = desc.get(i);
         auto it = m_datasets.find(field.name);
         assert(it != m_datasets.end());
@@ -133,6 +131,6 @@ void HDF5File::appendData(DescData& datadesc)
 
 HDF5File::~HDF5File()
 {
-  H5Fclose(fileId);
-  H5Pclose(faplId);
+    H5Fclose(fileId);
+    H5Pclose(faplId);
 }

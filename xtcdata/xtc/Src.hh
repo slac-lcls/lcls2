@@ -11,7 +11,7 @@ class Node;
 
 class Src
 {
-    public:
+public:
     Src();
     Src(Level::Type level);
 
@@ -28,7 +28,7 @@ class Src
         return sizeof(Src);
     }
 
-    protected:
+protected:
     uint32_t _log; // logical  identifier
     uint32_t _phy; // physical identifier
 };

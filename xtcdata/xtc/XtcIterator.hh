@@ -41,7 +41,7 @@ class Xtc;
 
 class XtcIterator
 {
-    public:
+public:
     XtcIterator(Xtc* root);
     XtcIterator()
     {
@@ -50,15 +50,15 @@ class XtcIterator
     {
     }
 
-    public:
+public:
     virtual int process(Xtc* xtc) = 0;
 
-    public:
+public:
     void iterate();
     void iterate(Xtc*);
     const Xtc* root() const;
 
-    private:
+private:
     Xtc* _root; // Collection to process in the absence of an argument...
 };
 }

@@ -1,20 +1,20 @@
+#include <chrono>
+#include <fstream>
+#include <iostream>
 #include <thread>
 #include <vector>
-#include <iostream>
-#include <fstream>
-#include <chrono>
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-#include "spscqueue.hh"
 #include "mpscqueue.hh"
+#include "spscqueue.hh"
 
-#include "spscqueue.hh"
-#include "mpscqueue.hh"
 #include "PgpCardMod.h"
+#include "mpscqueue.hh"
+#include "spscqueue.hh"
 
 #include "pds/hdf5/Hdf5Writer.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -29,7 +29,9 @@ const int NWORKERS = 1;
 class MovingAverage
 {
 public:
-    MovingAverage(int n) : index(0), sum(0), N(n), values(N) {}
+    MovingAverage(int n) : index(0), sum(0), N(n), values(N)
+    {
+    }
     int add_value(int value)
     {
         int ret;
@@ -37,8 +39,7 @@ public:
             sum += value;
             values[index] = value;
             ret = 0;
-        }
-        else {
+        } else {
             int& oldest = values[index % N];
             sum += value - oldest;
             oldest = value;
@@ -47,6 +48,7 @@ public:
         index++;
         return ret;
     }
+
 private:
     int64_t index;
     int sum;
@@ -63,27 +65,27 @@ void pgp_reader(SPSCQueue& buffer_queue, std::vector<SPSCQueue*>& worker_queues)
     snprintf(dev_name, 128, "/dev/pgpcardG3_0_%u", port);
     int fd = open(dev_name, O_RDWR);
     if (fd < 0) {
-        std::cout<<"Failed to open pgpcard"<<std::endl;
+        std::cout << "Failed to open pgpcard" << std::endl;
     }
 
     PgpCardRx pgp_card;
     pgp_card.model = sizeof(&pgp_card);
-    pgp_card.maxSize = 1000000UL; // 4-byte units, we think.  should agree with buffer_element_size below
+    pgp_card.maxSize =
+    1000000UL; // 4-byte units, we think.  should agree with buffer_element_size below
     pgp_card.pgpLane = port - 1;
 
     int64_t worker = 0;
     MovingAverage avg_queue_size(number_of_workers);
-    for (int i=0; i<N; i++) {
+    for (int i = 0; i < N; i++) {
         uint32_t* element = buffer_queue.pop();
 
         // read from the pgp card
         pgp_card.data = element;
         int ret = read(fd, &pgp_card, sizeof(pgp_card));
         if (ret <= 0) {
-            std::cout<<"Error in reading from pgp card!"<<std::endl;
-        }
-        else if (ret == pgp_card.maxSize) {
-            std::cout<<"Warning! Package size bigger than the maximum size!"<<std::endl;
+            std::cout << "Error in reading from pgp card!" << std::endl;
+        } else if (ret == pgp_card.maxSize) {
+            std::cout << "Warning! Package size bigger than the maximum size!" << std::endl;
         }
 
         /*
@@ -146,7 +148,7 @@ void worker(SPSCQueue* worker_queue, MPSCQueue& collector, int rank)
         collector.push(element);
         counter++;
     }
-    std::cout<<"Thread "<<rank<<" processed "<<counter<<" events"<<std::endl;
+    std::cout << "Thread " << rank << " processed " << counter << " events" << std::endl;
 }
 
 void pin_thread(const pthread_t& th, int cpu)
@@ -154,8 +156,7 @@ void pin_thread(const pthread_t& th, int cpu)
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(cpu, &cpuset);
-    int rc = pthread_setaffinity_np(th,
-                                    sizeof(cpu_set_t), &cpuset);
+    int rc = pthread_setaffinity_np(th, sizeof(cpu_set_t), &cpuset);
     if (rc != 0) {
         std::cout << "Error calling pthread_setaffinity_np: " << rc << "\n";
     }
@@ -170,7 +171,7 @@ int main()
 
     SPSCQueue buffer_queue(queue_size);
     std::vector<SPSCQueue*> worker_queues;
-    for (int i=0; i<NWORKERS; i++) {
+    for (int i = 0; i < NWORKERS; i++) {
         worker_queues.push_back(new SPSCQueue(queue_size));
     }
     MPSCQueue collector(queue_size);
@@ -178,33 +179,33 @@ int main()
     // fill initial queue with buffers
     int64_t buffer_element_size = 10000000;
     int64_t buffer_size = queue_size * buffer_element_size;
-    std::cout<<"buffer size:  "<<buffer_size * 4 / 1.e9<<" Gb"<<std::endl;
+    std::cout << "buffer size:  " << buffer_size * 4 / 1.e9 << " Gb" << std::endl;
     uint32_t* buffer = new uint32_t[buffer_size];
-    for (int i=0; i<queue_size; i++) {
-        buffer_queue.push(&buffer[i*buffer_element_size]);
+    for (int i = 0; i < queue_size; i++) {
+        buffer_queue.push(&buffer[i * buffer_element_size]);
     }
 
     std::thread pgp_thread(pgp_reader, std::ref(buffer_queue), std::ref(worker_queues));
     pin_thread(pgp_thread.native_handle(), 2);
 
     std::vector<std::thread> worker_threads;
-    for (int i=0; i<NWORKERS; i++) {
+    for (int i = 0; i < NWORKERS; i++) {
         worker_threads.emplace_back(worker, worker_queues[i], std::ref(collector), i);
-        pin_thread(worker_threads[i].native_handle(), 3+i);
+        pin_thread(worker_threads[i].native_handle(), 3 + i);
     }
 
     std::ofstream out("test.dat");
     auto start = std::chrono::steady_clock::now();
 
     HDF5File file("/drpffb/cpo/data.h5");
-    for (int i=0; i<N; i++) {
+    for (int i = 0; i < N; i++) {
         uint32_t* element = collector.pop();
         HDF5LevelIter iter(&(((Dgram*)element)->xtc), file);
         iter.iterate();
 
         // double value = *reinterpret_cast<double*>(element);
         // out<<value<<'\n';
-        //std::cout<<"res  "<<value<<std::endl;
+        // std::cout<<"res  "<<value<<std::endl;
 
         // return buffer to buffer pool
         buffer_queue.push(element);
@@ -212,16 +213,16 @@ int main()
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     // std::cout<< duration / double(N) <<"  ms per message"<<std::endl;
-    std::cout<<"Processing rate:  "<<double(N) / duration <<"  kHz"<<std::endl;
+    std::cout << "Processing rate:  " << double(N) / duration << "  kHz" << std::endl;
 
     out.close();
 
     // shutdown worker queues and wait for threads to finish
-    for (int i=0; i<NWORKERS; i++) {
+    for (int i = 0; i < NWORKERS; i++) {
         worker_queues[i]->shutdown();
         worker_threads[i].join();
     }
     pgp_thread.join();
-    delete [] buffer;
+    delete[] buffer;
     return 0;
 }

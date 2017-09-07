@@ -6,7 +6,8 @@
 
 // Multiple producer single consumer queue
 // push is threadsafe and can be called by multiple threads
-// while pop can only be called by a single thread and blocks until there is at least one element in the queue
+// while pop can only be called by a single thread and blocks until there is at least one element in
+// the queue
 class MPSCQueue
 {
 public:
@@ -15,6 +16,7 @@ public:
     uint32_t* pop();
     bool is_empty();
     ~MPSCQueue();
+
 private:
     alignas(64) std::atomic<int64_t> cursor;
     alignas(64) std::atomic<int64_t> write_index;

@@ -8,7 +8,7 @@ namespace XtcData
 
 class TypeId
 {
-    public:
+public:
     /*
      * Notice: New enum values should be appended to the end of the enum list, since
      *   the old values have already been recorded in the existing xtc files.
@@ -35,7 +35,7 @@ class TypeId
         return sizeof(TypeId);
     }
 
-    private:
+private:
     uint32_t _value;
 };
 }

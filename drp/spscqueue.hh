@@ -2,11 +2,12 @@
 #define SPSCQUEUE_H
 
 #include <atomic>
-#include <vector>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <vector>
 
-class SPSCQueue {
+class SPSCQueue
+{
 public:
     SPSCQueue(int capacity);
     void push(uint32_t* value);
@@ -14,6 +15,7 @@ public:
     bool is_empty();
     int guess_size();
     void shutdown();
+
 private:
     alignas(64) std::atomic<int64_t> write_index;
     alignas(64) std::atomic<int64_t> read_index;

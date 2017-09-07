@@ -6,7 +6,7 @@ namespace XtcData
 
 class TransitionId
 {
-    public:
+public:
     enum Value {
         Unknown,
         Reset,

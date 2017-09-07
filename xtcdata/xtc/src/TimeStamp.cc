@@ -23,7 +23,8 @@ XtcData::TimeStamp::TimeStamp() : _low(0), _high(0)
 {
 }
 
-XtcData::TimeStamp::TimeStamp(const XtcData::TimeStamp& input) : _low(input._low), _high(input._high)
+XtcData::TimeStamp::TimeStamp(const XtcData::TimeStamp& input)
+: _low(input._low), _high(input._high)
 {
 }
 

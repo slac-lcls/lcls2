@@ -10,7 +10,7 @@ class Node;
 
 class DetInfo : public Src
 {
-    public:
+public:
     /*
      * Notice: New enum values should be appended to the end of the enum list, since
      *   the old values have already been recorded in the existing xtc files.

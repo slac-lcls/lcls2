@@ -8,14 +8,14 @@ namespace XtcData
 {
 class ClockTime
 {
-    public:
+public:
     ClockTime();
     ClockTime(const ClockTime& t);
     ClockTime(const ::timespec& ts);
     ClockTime(const double sec);
     ClockTime(unsigned sec, unsigned nsec);
 
-    public:
+public:
     unsigned seconds() const
     {
         return _high;
@@ -27,12 +27,12 @@ class ClockTime
     double asDouble() const;
     bool isZero() const;
 
-    public:
+public:
     ClockTime& operator=(const ClockTime&);
     bool operator>(const ClockTime&) const;
     bool operator==(const ClockTime&) const;
 
-    private:
+private:
     uint32_t _low;
     uint32_t _high;
 };

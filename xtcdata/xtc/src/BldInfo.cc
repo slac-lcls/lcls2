@@ -14,11 +14,11 @@ BldInfo::BldInfo(uint32_t processId, Type type) : Src(Level::Reporter)
 
 BldInfo::BldInfo(const char* sname) : Src(Level::Reporter)
 {
-    for(unsigned i = 0; i < NumberOf; i++) {
+    for (unsigned i = 0; i < NumberOf; i++) {
         _phy = i;
         const char* bname = name(*this);
         unsigned len = strlen(bname);
-        if(strncmp(sname, bname, len) == 0) {
+        if (strncmp(sname, bname, len) == 0) {
             return;
         }
     }

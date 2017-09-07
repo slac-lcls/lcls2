@@ -1,5 +1,5 @@
-#include <cassert>
 #include "spscqueue.hh"
+#include <cassert>
 
 SPSCQueue::SPSCQueue(int capacity) : write_index(0), read_index(0), terminate(false)
 {
@@ -11,7 +11,7 @@ void SPSCQueue::push(uint32_t* value)
 {
     int64_t index = write_index.load();
     buffer[index & buffer_mask] = value;
-    int64_t next = index+ 1;
+    int64_t next = index + 1;
     write_index.store(next); // std::memory_order_release
     // signal consumer
     if (index == read_index.load(std::memory_order_acquire)) {
@@ -25,9 +25,9 @@ uint32_t* SPSCQueue::pop()
     int64_t index = read_index.load();
 
     // Queue is empty
-    if (index == write_index.load()) { //std::memory_order_acquire
+    if (index == write_index.load()) { // std::memory_order_acquire
         std::unique_lock<std::mutex> lock(_mutex);
-        _condition.wait(lock, [this]{return !is_empty() || terminate.load();});
+        _condition.wait(lock, [this] { return !is_empty() || terminate.load(); });
         if (terminate && is_empty()) {
             return nullptr;
         }

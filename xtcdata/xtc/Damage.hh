@@ -8,7 +8,7 @@ namespace XtcData
 
 class Damage
 {
-    public:
+public:
     enum Value {
         DroppedContribution = 1,
         Uninitialized = 11,
@@ -53,7 +53,7 @@ class Damage
         _damage |= (v << UserBitsShift);
     }
 
-    private:
+private:
     uint32_t _damage;
 };
 }

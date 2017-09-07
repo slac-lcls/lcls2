@@ -37,14 +37,14 @@ using namespace XtcData;
 
 void XtcIterator::iterate(Xtc* root)
 {
-    if(root->damage.value() & (1 << Damage::IncompleteContribution)) return;
+    if (root->damage.value() & (1 << Damage::IncompleteContribution)) return;
 
     Xtc* xtc = (Xtc*)root->payload();
     int remaining = root->sizeofPayload();
 
-    while(remaining > 0) {
-        if(xtc->extent == 0) break; // try to skip corrupt event
-        if(!process(xtc)) break;
+    while (remaining > 0) {
+        if (xtc->extent == 0) break; // try to skip corrupt event
+        if (!process(xtc)) break;
         remaining -= xtc->sizeofPayload() + sizeof(Xtc);
         xtc = xtc->next();
     }

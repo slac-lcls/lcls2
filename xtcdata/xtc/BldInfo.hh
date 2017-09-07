@@ -11,7 +11,7 @@ class Node;
 
 class BldInfo : public Src
 {
-    public:
+public:
     enum Type {
         EBeam = 0, // Global
         PhaseCavity = 1,

@@ -5,7 +5,7 @@ namespace XtcData
 {
 class Level
 {
-    public:
+public:
     enum Type { Control, Source, Segment, Event, Recorder, Observer, Reporter, NumberOfLevels };
     static const char* name(Type type);
 };

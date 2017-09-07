@@ -10,12 +10,12 @@ namespace XtcData
 
 class XtcFileIterator
 {
-    public:
+public:
     XtcFileIterator(int fd, size_t maxDgramSize);
     ~XtcFileIterator();
     Dgram* next();
 
-    private:
+private:
     int _fd;
     size_t _maxDgramSize;
     char* _buf;

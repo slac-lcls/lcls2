@@ -7,7 +7,7 @@ namespace XtcData
 {
 class Env
 {
-    public:
+public:
     Env()
     {
     }
@@ -19,7 +19,7 @@ class Env
 
     const Env& operator=(const Env& that);
 
-    private:
+private:
     uint32_t _env;
 };
 }
