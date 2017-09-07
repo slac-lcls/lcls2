@@ -18,7 +18,8 @@ static int get_element_size(DataType type)
     return element_sizes[type];
 }
 
-template <typename T> struct Array {
+template <typename T>
+struct Array {
     Array(uint8_t* buffer)
     {
         data = reinterpret_cast<T*>(buffer);
@@ -44,10 +45,12 @@ template <typename T> struct Array {
     std::vector<int> _shape;
 };
 
-template <typename> struct is_vec : std::false_type {
+template <typename>
+struct is_vec : std::false_type {
 };
 
-template <typename T> struct is_vec<Array<T>> : std::true_type {
+template <typename T>
+struct is_vec<Array<T>> : std::true_type {
 };
 
 class Field

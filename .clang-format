@@ -7,7 +7,7 @@ AllowShortFunctionsOnASingleLine: false
 AllowShortIfStatementsOnASingleLine: true
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakBeforeMultilineStrings: false
-AlwaysBreakTemplateDeclarations: false
+AlwaysBreakTemplateDeclarations: true 
 BinPackParameters: false
 BreakBeforeBinaryOperators: false
 BreakBeforeBraces: Linux
