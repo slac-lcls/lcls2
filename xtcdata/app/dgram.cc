@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <Python.h>
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 #include <structmember.h>
 #include <fcntl.h>
@@ -179,10 +180,10 @@ PyObject * tp_getattro(PyObject* o, PyObject* key)
   if(res != NULL){
     if(strcmp("numpy.ndarray",res->ob_type->tp_name)==0){
       PyArrayObject* arr = (PyArrayObject*)res;
-      PyObject* arr_copy = PyArray_SimpleNewFromData(arr->nd,
-                                                     arr->dimensions,
-                                                     arr->descr->type_num,
-                                                     arr->data);
+      PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr),
+                                                     PyArray_DIMS(arr),
+                                                     PyArray_DESCR(arr)->type_num,
+                                                     PyArray_DATA(arr));
       if(PyArray_SetBaseObject((PyArrayObject*)arr_copy,(PyObject*)o)<0){
         printf("Failed to set BaseObject for numpy array.\n");
         return 0;
