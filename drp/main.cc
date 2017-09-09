@@ -19,12 +19,14 @@
 #include "pds/hdf5/Hdf5Writer.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
+using BufferQueue = SPSCQueue<uint32_t*>;
+
 void fex(void* element);
 
 // const int NWORKERS = 9;
 // const int N = 800000;
-const int N = 1;
-const int NWORKERS = 1;
+const int N = 500;
+const int NWORKERS = 8;
 
 class MovingAverage
 {
@@ -56,9 +58,10 @@ private:
     std::vector<int> values;
 };
 
-void pgp_reader(SPSCQueue& buffer_queue, std::vector<SPSCQueue*>& worker_queues)
+void pgp_reader(BufferQueue& buffer_queue, SPSCQueue<int>& collector_queue,
+                std::vector<BufferQueue*>& worker_input_queues)
 {
-    int number_of_workers = worker_queues.size();
+    int number_of_workers = worker_input_queues.size();
 
     int port = 2;
     char dev_name[128];
@@ -70,25 +73,27 @@ void pgp_reader(SPSCQueue& buffer_queue, std::vector<SPSCQueue*>& worker_queues)
 
     PgpCardRx pgp_card;
     pgp_card.model = sizeof(&pgp_card);
-    pgp_card.maxSize =
-    1000000UL; // 4-byte units, we think.  should agree with buffer_element_size below
+    // 4-byte units, we think.  should agree with buffer_element_size below
+    pgp_card.maxSize = 1000000UL;
     pgp_card.pgpLane = port - 1;
 
     int64_t worker = 0;
     MovingAverage avg_queue_size(number_of_workers);
     for (int i = 0; i < N; i++) {
-        uint32_t* element = buffer_queue.pop();
-
+        uint32_t* element;
+        buffer_queue.pop(element);
+        /*
         // read from the pgp card
         pgp_card.data = element;
-        int ret = read(fd, &pgp_card, sizeof(pgp_card));
+        unsigned int ret = read(fd, &pgp_card, sizeof(pgp_card));
+        std::cout<<"PGP read  "<<ret<<std::endl;
         if (ret <= 0) {
             std::cout << "Error in reading from pgp card!" << std::endl;
         } else if (ret == pgp_card.maxSize) {
             std::cout << "Warning! Package size bigger than the maximum size!" << std::endl;
         }
+        */
 
-        /*
         // fill arrays by hand and do not use pgp
         float* array = reinterpret_cast<float*>(element);
         int nx = 1;
@@ -98,12 +103,11 @@ void pgp_reader(SPSCQueue& buffer_queue, std::vector<SPSCQueue*>& worker_queues)
                 array[j*ny + k] = i;
             }
         }
-        */
 
         // load balancing
-        SPSCQueue* queue;
+        BufferQueue* queue;
         while (true) {
-            queue = worker_queues[worker % number_of_workers];
+            queue = worker_input_queues[worker % number_of_workers];
             int queue_size = queue->guess_size();
             // calculate running mean over the last worker queues
             int mean = avg_queue_size.add_value(queue_size);
@@ -114,38 +118,23 @@ void pgp_reader(SPSCQueue& buffer_queue, std::vector<SPSCQueue*>& worker_queues)
         }
 
         queue->push(element);
+        collector_queue.push(worker% number_of_workers);
         worker++;
     }
 }
 
-void worker(SPSCQueue* worker_queue, MPSCQueue& collector, int rank)
+void worker(BufferQueue* worker_input_queue, BufferQueue* worker_output_queue, int rank)
 {
     int64_t counter = 0;
     while (true) {
-        uint32_t* element = worker_queue->pop();
-        if (element == nullptr) {
+        uint32_t* element;
+        if(!worker_input_queue->pop(element)) {
             break;
         }
-        /*
-        if (rank == 4 || rank == 7) {
-            usleep(200);
-        }
-        */
-        // processing goes here
-        // float* array = reinterpret_cast<float*>(element);
-        // int nx = 1;
-        // int ny = 700;
-        // double sum = 0.0;
-        // for (int j=0; j<nx; j++) {
-        //     for (int k=0; k<ny; k++) {
-        //         sum += array[j*ny + k];
-        //     }
-        // }
-        // *reinterpret_cast<double*>(element) = sum / (nx*ny);
 
         fex(element);
 
-        collector.push(element);
+        worker_output_queue->push(element);
         counter++;
     }
     std::cout << "Thread " << rank << " processed " << counter << " events" << std::endl;
@@ -169,15 +158,17 @@ int main()
     // pin main thread
     pin_thread(pthread_self(), 1);
 
-    SPSCQueue buffer_queue(queue_size);
-    std::vector<SPSCQueue*> worker_queues;
+    BufferQueue buffer_queue(queue_size);
+    std::vector<BufferQueue*> worker_input_queues;
+    std::vector<BufferQueue*> worker_output_queues;
     for (int i = 0; i < NWORKERS; i++) {
-        worker_queues.push_back(new SPSCQueue(queue_size));
+        worker_input_queues.push_back(new BufferQueue(queue_size));
+        worker_output_queues.push_back(new BufferQueue(queue_size));
     }
-    MPSCQueue collector(queue_size);
+    SPSCQueue<int> collector_queue(queue_size);
 
     // fill initial queue with buffers
-    int64_t buffer_element_size = 10000000;
+    int64_t buffer_element_size = 1000000;
     int64_t buffer_size = queue_size * buffer_element_size;
     std::cout << "buffer size:  " << buffer_size * 4 / 1.e9 << " Gb" << std::endl;
     uint32_t* buffer = new uint32_t[buffer_size];
@@ -185,24 +176,30 @@ int main()
         buffer_queue.push(&buffer[i * buffer_element_size]);
     }
 
-    std::thread pgp_thread(pgp_reader, std::ref(buffer_queue), std::ref(worker_queues));
+    std::thread pgp_thread(pgp_reader, std::ref(buffer_queue),
+                           std::ref(collector_queue), std::ref(worker_input_queues));
     pin_thread(pgp_thread.native_handle(), 2);
 
     std::vector<std::thread> worker_threads;
     for (int i = 0; i < NWORKERS; i++) {
-        worker_threads.emplace_back(worker, worker_queues[i], std::ref(collector), i);
+        worker_threads.emplace_back(worker, worker_input_queues[i], worker_output_queues[i], i);
         pin_thread(worker_threads[i].native_handle(), 3 + i);
     }
 
     std::ofstream out("test.dat");
     auto start = std::chrono::steady_clock::now();
 
-    HDF5File file("/drpffb/cpo/data.h5");
+    // HDF5File file("/drpffb/weninc/test.h5");
     for (int i = 0; i < N; i++) {
-        uint32_t* element = collector.pop();
-        HDF5LevelIter iter(&(((Dgram*)element)->xtc), file);
-        iter.iterate();
+        int worker;
+        collector_queue.pop(worker);
 
+        uint32_t* element;
+        worker_output_queues[worker]->pop(element);
+        //HDF5LevelIter iter(&(((Dgram*)element)->xtc), file);
+        //iter.iterate();
+
+        std::cout<<*reinterpret_cast<float*>(element)<<std::endl;
         // double value = *reinterpret_cast<double*>(element);
         // out<<value<<'\n';
         // std::cout<<"res  "<<value<<std::endl;
@@ -219,9 +216,13 @@ int main()
 
     // shutdown worker queues and wait for threads to finish
     for (int i = 0; i < NWORKERS; i++) {
-        worker_queues[i]->shutdown();
+        worker_input_queues[i]->shutdown();
         worker_threads[i].join();
     }
+    for (int i = 0; i < NWORKERS; i++) {
+        worker_output_queues[i]->shutdown();
+    }
+
     pgp_thread.join();
     delete[] buffer;
     return 0;
