@@ -64,9 +64,15 @@ public:
     }
 
 private:
-    alignas(64) std::atomic<int64_t> write_index;
-    alignas(64) std::atomic<int64_t> read_index;
     std::mutex _mutex;
+    char _pad1[64 - sizeof(std::mutex)];
+
+    std::atomic<int64_t> write_index;
+    char _pad2[64 - sizeof(std::atomic<int64_t>)];
+
+    std::atomic<int64_t> read_index;
+    char _pad3[64 - sizeof(std::atomic<int64_t>)];
+
     std::condition_variable _condition;
     std::atomic<bool> terminate;
     int64_t buffer_mask;
