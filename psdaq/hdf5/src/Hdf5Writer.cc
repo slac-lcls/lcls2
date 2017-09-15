@@ -1,4 +1,4 @@
-#include "pds/hdf5/Hdf5Writer.hh"
+#include "psdaq/hdf5/Hdf5Writer.hh"
 #include <cassert>
 #include <hdf5_hl.h>
 #include <vector>
@@ -65,8 +65,9 @@ Dataset::Dataset(hid_t file_id, const Field& field)
 
 void Dataset::append(const void* data)
 {
-    H5DOappend(m_dsetId, H5P_DEFAULT, 0, 1, m_typeId, data);
-    H5Dflush(m_dsetId);
+    printf("append not supported with hdf5 1.8\n");
+    // H5DOappend(m_dsetId, H5P_DEFAULT, 0, 1, m_typeId, data);
+    // H5Dflush(m_dsetId);
 }
 
 Dataset::~Dataset()
@@ -107,7 +108,7 @@ HDF5File::HDF5File(const char* name)
 
 void HDF5File::addDatasets(Descriptor& desc)
 {
-    for (int i = 0; i < desc.num_fields(); i++) {
+    for (unsigned i = 0; i < desc.num_fields(); i++) {
         Field& field = desc.get(i);
         auto it = m_datasets.find(field.name);
         if (it == m_datasets.end()) {
@@ -121,7 +122,7 @@ void HDF5File::appendData(DescData& datadesc)
 {
     Descriptor& desc = datadesc.desc();
     uint8_t* data = datadesc.data();
-    for (int i = 0; i < desc.num_fields(); i++) {
+    for (unsigned i = 0; i < desc.num_fields(); i++) {
         Field& field = desc.get(i);
         auto it = m_datasets.find(field.name);
         assert(it != m_datasets.end());

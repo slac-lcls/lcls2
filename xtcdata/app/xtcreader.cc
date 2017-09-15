@@ -9,7 +9,6 @@
 #include "xtcdata/xtc/ProcInfo.hh"
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
-static unsigned eventCount = 0;
 
 using namespace XtcData;
 using std::map;

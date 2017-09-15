@@ -21,7 +21,7 @@ typedef struct {
 
 void DictAssign(PyDgramObject* dgram, Descriptor& desc, DescData& d)
 {
-    for (int i = 0; i < desc.num_fields(); i++) {
+    for (unsigned i = 0; i < desc.num_fields(); i++) {
         Field& f = desc.get(i);
         const char* tempName = f.name;
         PyObject* key = PyUnicode_FromString(tempName);
@@ -56,7 +56,7 @@ void DictAssign(PyDgramObject* dgram, Descriptor& desc, DescData& d)
             }
         } else {
             npy_intp dims[f.rank + 1];
-            for (int i = 0; i < f.rank + 1; i++) {
+            for (unsigned i = 0; i < f.rank + 1; i++) {
                 dims[i] = f.shape[i];
             }
             switch (f.type) {
@@ -85,7 +85,7 @@ void DictAssign(PyDgramObject* dgram, Descriptor& desc, DescData& d)
         if (PyDict_Contains(dgram->dict, key)) {
             printf("Dgram: Ignoring duplicate key %s\n", tempName);
         } else {
-            int err = PyDict_SetItem(dgram->dict, key, newobj);
+            PyDict_SetItem(dgram->dict, key, newobj);
             // when the new objects are created they get a reference
             // count of 1.  PyDict_SetItem increases this to 2.  we
             // decrease it back to 1 here, which effectively gives
@@ -153,7 +153,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
 
     size_t payloadSize = self->dgram->xtc.sizeofPayload();
-    size_t sz = ::read(fd, self->dgram->xtc.payload(), payloadSize);
+    ::read(fd, self->dgram->xtc.payload(), payloadSize);
 
     myLevelIter iter(&self->dgram->xtc, self);
     iter.iterate();

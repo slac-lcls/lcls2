@@ -1,4 +1,4 @@
-#include "pds/hdf5/Hdf5Writer.hh"
+#include "psdaq/hdf5/Hdf5Writer.hh"
 #include "xtcdata/xtc/Descriptor.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
@@ -21,7 +21,7 @@ int main()
     }
 
     size_t payloadSize = dgram->xtc.sizeofPayload();
-    size_t sz = ::read(fd, dgram->xtc.payload(), payloadSize);
+    ::read(fd, dgram->xtc.payload(), payloadSize);
 
     HDF5File file("data.h5");
     HDF5LevelIter iter(&dgram->xtc, file);

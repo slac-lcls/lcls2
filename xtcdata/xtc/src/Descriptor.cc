@@ -2,7 +2,7 @@
 
 Field* Descriptor::get_field_by_name(const char* name)
 {
-    for (int i = 0; i < num_fields(); i++) {
+    for (unsigned i = 0; i < num_fields(); i++) {
         Field* field = &get(i);
         if (!strcmp(field->name, name)) {
             return field;

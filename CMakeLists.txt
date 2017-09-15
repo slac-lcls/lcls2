@@ -37,5 +37,5 @@ set(HDF5_ROOT /reg/neh/home4/weninc/.conda/envs/lcls2)
 find_package(HDF5 REQUIRED HL)
 
 add_subdirectory(xtcdata)
-add_subdirectory(pds)
+add_subdirectory(psdaq)
 add_subdirectory(drp)
