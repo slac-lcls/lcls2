@@ -14,7 +14,7 @@ cores	[64]
 num_repeats 1
 
 # Number of HDF files to create
-num_hdf	 8
+num_hdf	 16
 
 
 

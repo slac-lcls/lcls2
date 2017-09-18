@@ -47,6 +47,7 @@ for filename in file_list:
   f = h5py.File(filename)
   files.append(f)
 
+
 #this is the master core that distributes the contents of the pickle
 def master():
   #variable definitions and opening of h5 files
@@ -116,13 +117,15 @@ if rank == 0:
   tend = time.time()
   telapsed = tend - tstart
 
-  # Averaged speed in Gb/s
-  average_speed = total_file_size/(telapsed*10**9)
+  # Averaged speed in GB/s
+  total_file_size /= 10**9
+  average_speed = total_file_size/(telapsed)
+  
   print("Batch size: %i" % batch_size)
-  print("Time elapsed: %i" % telapsed)
-  print("File size: %i" % total_file_size)
+  print("Time elapsed: %.2f s" % telapsed)
+  print("Total file size: %.2f GB" % total_file_size)
 
-  print("Average speed: %.2f" % average_speed)  
+  print("Average speed: %.2f GB/s" % average_speed)  
 
   with open("log.txt", "w") as text_file:
     text_file.write("Batch size: %i \n" % batch_size)

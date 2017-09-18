@@ -117,7 +117,7 @@ def write_file_output(file_num,exs,image_data):
 smallDatColors = ['red', 'blue', 'green']
 
 #distribute the tiles across the available hdf files
-exs = np.asarray([dist_tiles(8,8) for x in range(nevents)])
+exs = np.asarray([dist_tiles(8,n_hdf) for x in range(nevents)])
 
 #make some mock cspad arrays and fill with random data
 cspad_quad = np.random.randint(0,2**16,size=(194,185,4), dtype='uint16')
@@ -129,10 +129,10 @@ image_dat_arr = [np.r_[((cspad_quad_rav),)*nt] for nt in range(1,n_hdf+1)]
 write_smalldata(nevents)
 #
 if tqdm_exists:
-        for i in tqdm(range(8)):
+        for i in tqdm(range(n_hdf)):
                 write_file_output(i,exs,image_dat_arr)
 else:
-        for i in range(8):
+        for i in range(n_hdf):
                 write_file_output(i,exs,image_dat_arr)
 
 print('Creating pickle')
