@@ -10,10 +10,15 @@ big data array will be filled with integers instead of zeros
 
 
 #logistical support
-import h5py_cache
+#import h5py_cache
 import h5py, random, sys, os
 import numpy as np
-from tqdm import tqdm
+from picklecreate import create_pickle
+try:
+        from tqdm import tqdm
+        tqdm_exists = True
+except ImportError:
+        tqdm_exists = False
 
 n_hdf = 8
 #nruns = 1000
@@ -68,8 +73,8 @@ def write_file_output(file_num,exs,image_data):
 	if file_num ==0:
 		mode = 'a'
 		
-	#with h5py.File('file%i.h5' % file_num, mode, libver='latest') as f:
-	with h5py_cache.File('%sfile%i.h5' % (path,file_num), mode,chunk_cache_mem_size=1024*1024**2) as f:	
+	with h5py.File('%sfile%i.h5' % (path,file_num), mode,libver='latest') as f:
+#	with h5py_cache.File('%sfile%i.h5' % (path,file_num), mode,chunk_cache_mem_size=1024*1024**2) as f:	
 	
 		first_list = exs[:,file_num]
 		nonzero_evt_timestamps = np.nonzero(first_list)[0]
@@ -78,7 +83,7 @@ def write_file_output(file_num,exs,image_data):
 		
 		#write out the timestamps of the events where data is stored in this hdf
 		small_data_group = f.require_group("small_data")		
-		time_stamps = small_data_group.create_dataset('time_stamp', (num_evts,), dtype='i')
+		time_stamps = small_data_group.create_dataset('time_stamp', (num_evts,), dtype='i', chunks=True)
 		time_stamps[:] = np.ndarray.tolist(nonzero_evt_timestamps)
 		
 		#create a variable length datatype for the HDF file
@@ -87,7 +92,7 @@ def write_file_output(file_num,exs,image_data):
 		#create a group for the mock cspad data
 		cspad_data_group = f.create_group("cspad_data")
 		#write some metadata on the array sizes
-		arraySizes = cspad_data_group.create_dataset('array_sizes', (num_evts,), dtype = dt)
+		arraySizes = cspad_data_group.create_dataset('array_sizes', (num_evts,), dtype = dt, chunks=True)
 		arraySizes[:] = np.c_[nonzero_evt_tiles]
 
 		image_data = cspad_data_group.create_dataset('image_data', shape = (num_evts,), maxshape=(None,),chunks = (143560,), dtype = dt)
@@ -96,7 +101,7 @@ def write_file_output(file_num,exs,image_data):
 		#create a group for the mock reduced cspad data. These have random shapes
 		cspad_red_data_group = f.create_group("cspad_reduced_data")
 		#write some metadata on the array sizes
-		arraySizes = cspad_red_data_group.create_dataset('array_sizes', (num_evts,), dtype = dt)
+		arraySizes = cspad_red_data_group.create_dataset('array_sizes', (num_evts,), dtype = dt, chunks=True)
 		image_data = cspad_red_data_group.create_dataset('image_data', shape = (num_evts,), maxshape=(None,),chunks = (143560,), dtype = dt)
 
 		var_img_out = np.array(map(lambda x: var_image(x), nonzero_evt_tiles))
@@ -119,5 +124,13 @@ image_dat_arr = [np.r_[((cspad_quad_rav),)*nt] for nt in range(1,n_hdf+1)]
 
 write_smalldata(nevents)
 #
-for i in tqdm(range(8)):
-	write_file_output(i,exs,image_dat_arr)
+if tqdm_exists:
+        for i in tqdm(range(8)):
+                write_file_output(i,exs,image_dat_arr)
+else:
+        for i in range(8):
+                write_file_output(i,exs,image_dat_arr)
+
+print('Creating pickle')
+create_pickle(path)
+print('Done')

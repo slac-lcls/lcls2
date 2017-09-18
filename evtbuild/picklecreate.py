@@ -15,13 +15,13 @@ file_folder = str(sys.argv[1])
 
 #runs = np.arange(8)
 
-path = '/reg/d/psdm/cxi/cxitut13/scratch/eliseo/' +file_folder + '/'
+#path = '/reg/d/psdm/cxi/cxitut13/scratch/eliseo/' +file_folder + '/'
 
 #opens all the h5 files.
 
 
 #@profile
-def load_files():
+def load_files(path):
     file_list = glob.glob(path+'*.h5')
     file_list = np.sort(file_list)
     files=[]
@@ -80,14 +80,18 @@ def find_timestamps3(alt, bins, truncTS):
     return chunk_loc
 
 
-		
-files = 	load_files()
-truncTS, bins, alt = prepare_timestamps(files)
-chunk_loc = find_timestamps3(alt, bins, truncTS)
-
-
-file_Name = path+"eventpickle"
-with open(file_Name, 'wb') as f:
+def create_pickle(path):
+    files = load_files(path)
+    truncTS, bins, alt = prepare_timestamps(files)
+    chunk_loc = find_timestamps3(alt, bins, truncTS)
+    
+    file_Name = path+"eventpickle"
+    with open(file_Name, 'wb') as f:
 	pickle.dump(chunk_loc, f)
+    [x.close for x in files]
 
-[x.close for x in files]
+    return chunk_loc
+
+
+
+

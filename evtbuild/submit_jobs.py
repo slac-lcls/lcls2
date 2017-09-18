@@ -27,7 +27,7 @@ try:
             time.sleep(1)
             logname = '%s/%%J_core_%i_batch_%i.log' % (logdir, cores, batch)
             logs.append(logname)
-            call_string = 'bsub -q psnehq -n %i -o %s mpirun python analysisScript2.py %i %s' % (cores, logname, batch, folder)
+            call_string = 'bsub -q psnehq -n %i -o %s mpirun python analysisScript.py %i %s' % (cores, logname, batch, folder)
             print('Calling %s' % call_string)
             subprocess.call(call_string, shell=True)
 
