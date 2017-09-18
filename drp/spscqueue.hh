@@ -40,7 +40,7 @@ public:
         m_write_index.store(next, std::memory_order_release);
         // avoid reordering of the write_index store and the read_index load
         asm volatile("mfence" ::: "memory");
-        // signal consumer
+        // signal consumer that queue is no longer empty
         if (index == m_read_index.load(std::memory_order_acquire)) {
             std::unique_lock<std::mutex> lock(m_mutex);
             m_condition.notify_one();
@@ -51,13 +51,13 @@ public:
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
 
-        // Queue is empty
+        // check if queue is empty
         if (index == m_write_index.load(std::memory_order_acquire)) {
             std::unique_lock<std::mutex> lock(m_mutex);
             m_condition.wait(lock, [this] {
                 return !is_empty() || m_terminate.load(std::memory_order_acquire);
             });
-            if (m_terminate && is_empty()) {
+            if (m_terminate.load(std::memory_order_acquire) && is_empty()) {
                 return false;
             }
         }
