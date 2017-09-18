@@ -7,18 +7,19 @@ the indices.
 #from psana import *
 
 from mpi4py import MPI
-import h5py, time, sys, pickle, os
+import h5py, time, sys, pickle, os, glob
 import numpy as np
 from numba import jit
+from picklecreate import load_config
 
 #logistical MPI setup
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 assert size>1, 'At least 2 MPI ranks required'
-numClients = size-1
 
-#assert size>1
+
+
 global batch_size
 batch_size = int(sys.argv[1])
 scr_dir = str(sys.argv[2])
@@ -26,19 +27,21 @@ comm.Barrier()
 
 #load the pickle
 global data_dict
-path = '/reg/d/psdm/cxi/cxitut13/scratch/eliseo/'+scr_dir
+config_dict = load_config()
+
+path = config_dict['path'] + scr_dir
+
 file_Name = path+"/eventpickle"
 data_dict = pickle.load(open(file_Name, 'r'))
-
-#INSERT NUMBER OF FILES HERE (Currently only supports 10)
-number_of_h5_files = 8
 
 
 #open every h5 file
 files=[]
 total_file_size = 0
-for r in range(number_of_h5_files):
-  filename = path+'/file'+str(r)+'.h5'
+
+file_list = glob.glob(path+'/*.h5')
+file_list = np.sort(file_list)
+for filename in file_list:
   file_size = float(os.stat(filename)[6])
   total_file_size += file_size
   f = h5py.File(filename)

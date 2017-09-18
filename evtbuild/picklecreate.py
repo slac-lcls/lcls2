@@ -10,12 +10,6 @@ import numpy as np
 from numba import jit, autojit
 #import line_profiler
 
-#this is how many h5 files the script has to run through
-file_folder = str(sys.argv[1])
-
-#runs = np.arange(8)
-
-#path = '/reg/d/psdm/cxi/cxitut13/scratch/eliseo/' +file_folder + '/'
 
 #opens all the h5 files.
 
@@ -93,5 +87,17 @@ def create_pickle(path):
     return chunk_loc
 
 
+def load_config():
+    config_dict = {}
+    with open("config", 'r') as f:
+         for line in f:
+             if line[0] in ('#', '\n'):
+                continue
+             (key, val) = line.split()
+             try:
+                     val = eval(val)
+             except SyntaxError:
+                     pass
 
-
+             config_dict[key] = val
+    return config_dict

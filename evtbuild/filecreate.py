@@ -13,20 +13,24 @@ big data array will be filled with integers instead of zeros
 #import h5py_cache
 import h5py, random, sys, os
 import numpy as np
-from picklecreate import create_pickle
+from picklecreate import create_pickle, load_config
+
 try:
         from tqdm import tqdm
         tqdm_exists = True
 except ImportError:
         tqdm_exists = False
 
-n_hdf = 8
+
 #nruns = 1000
 global nevents
 nevents = int(sys.argv[1])
 scr_dir = str(nevents/1000)+'k/'
  
-scratch_path = '/reg/d/psdm/cxi/cxitut13/scratch/eliseo/'
+config_dict = load_config()
+n_hdf = config_dict['num_hdf']
+
+scratch_path = config_dict['path']
 path = scratch_path + scr_dir
 try:
         os.mkdir(path)

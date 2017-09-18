@@ -1,13 +1,8 @@
 import subprocess,time
 import re, sys, os
 import glob
+from picklecreate import load_config
 
-batch_sizes = [10,50,100,500]
-batch_sizes = [5]
-core_nums=[2,4,8,16,32,64]*4
-
-#batch_sizes = [100]
-#core_nums = [64]
 folder = str(sys.argv[1])
 logdir = 'log_'+folder
 
@@ -16,6 +11,11 @@ try:
 except OSError:
         print('Directory %s already exists' % logdir)
 
+# load the config dictionary
+
+config_dict = load_config()
+batch_sizes = config_dict['batches']*config_dict['num_repeats']
+core_nums = config_dict['cores']
 
 try:
        
