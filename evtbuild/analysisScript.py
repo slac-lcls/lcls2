@@ -22,14 +22,19 @@ assert size>1, 'At least 2 MPI ranks required'
 
 global batch_size
 batch_size = int(sys.argv[1])
-scr_dir = str(sys.argv[2])
+try:
+  scr_dir = str(sys.argv[2])
+except IndexError:
+#  print('No options')
+  sys.exit()
+
 comm.Barrier()
 
 #load the pickle
 global data_dict
 config_dict = load_config()
 
-path = config_dict['path'] + scr_dir
+path = config_dict['path'] + '/' + scr_dir
 
 file_Name = path+"/eventpickle"
 data_dict = pickle.load(open(file_Name, 'r'))
@@ -127,8 +132,8 @@ if rank == 0:
 
   print("Average speed: %.2f GB/s" % average_speed)  
 
-  with open("log.txt", "w") as text_file:
-    text_file.write("Batch size: %i \n" % batch_size)
-    text_file.write("Time elapsed: %i \n" % telapsed)
-    text_file.write("Average speed: %.2f \n" % average_speed) 
+#  with open("log.txt", "w") as text_file:
+#    text_file.write("Batch size: %i \n" % batch_size)
+#    text_file.write("Time elapsed: %i \n" % telapsed)
+#    text_file.write("Average speed: %.2f \n" % average_speed) 
 

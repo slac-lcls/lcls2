@@ -29,57 +29,66 @@ try:
             logs.append(logname)
             call_string = 'bsub -q psnehq -n %i -o %s mpirun python analysisScript.py %i %s' % (cores, logname, batch, folder)
             print('Calling %s' % call_string)
-            subprocess.call(call_string, shell=True)
+            job = subprocess.check_output(call_string, shell=True, stderr=subprocess.STDOUT)
+
+            job_id = re.search('\<(\d+)\>', job)
+            job_id = job_id.group(1)
+            print('Job ID: %s' % job_id)
+            #wait for the job to finish
+            while True:
+                out = subprocess.check_output('bjobs -d',shell=True, stderr=subprocess.STDOUT)
+                if re.search(job_id, out):
+                        print('Job %s finished' % job_id)
+                        break
+                else:
+                        time.sleep(0.5)
 
             
-            while True:
-#                break
-                out = subprocess.check_output('bjobs', stderr=subprocess.STDOUT)
-                if out == 'No unfinished job found\n':
-                    time.sleep(1)
-                else:
-                    print(out)
-                    print('Job started')
-                    break
-            time.sleep(1)
-            while True:
-#                break
-                out = subprocess.check_output('bjobs', stderr=subprocess.STDOUT)
-                if out == 'No unfinished job found\n':
-                    print(out)
-                    print('Job done')
-                    break
-                else:
-                    time.sleep(1)
+#             while True:
+# #                break
+#                 out = subprocess.check_output('bjobs', stderr=subprocess.STDOUT)
+#                 if out == 'No unfinished job found\n':
+#                     time.sleep(0.1)
+#                 else:
+#                     print(out)
+#                     print('Job started')
+#                     break
 
+#             while True:
+# #                break
+#                 out = subprocess.check_output('bjobs', stderr=subprocess.STDOUT)
+#                 if out == 'No unfinished job found\n':
+#                     print(out)
+#                     print('Job done')
+#                     break
+#                 else:
+#                     print(out)
+#                     time.sleep(1)
 
-    while True:
-        break
-        out = subprocess.check_output('bjobs', stderr=subprocess.STDOUT)
-        if out == 'No unfinished job found\n':
-            break
-        else:
-            time.sleep(1)
 
 finally:
+
+
     run_data = []
+#    print(glob.glob('%s/*' % logdir))
     for filename in glob.glob('%s/*' % logdir):
       #  print(filename)
         f = open(filename, 'r')
         logtxt = f.read()
         f.close()
         try:
-            cores = re.search('(core_)(\d+)',filename).group(2)
+            cores = re.search('(core_)(\d+)',filename).group(2)            
             batches = re.search('(batch_)(\d+)',filename).group(2)
             num_evts = re.search('(Number of events )(\d+)', logtxt).group(2)
-            time_elapsed = re.search('(Time elapsed: )(\d+)', logtxt).group(2)
-            file_size = re.search('(File size: )([\d+.]*)', logtxt).group(2)
-            average_speed = re.search('(Average speed: )([\d+.]*)', logtxt).group(2)
-            extr_data = [int(cores), int(batches), int(num_evts), int(time_elapsed), int(file_size), float(average_speed)]
-            print(extr_data)
+            time_elapsed = re.search('(Time elapsed: )([\d.]+)', logtxt).group(2)
+            file_size = re.search('(file size: )([\d.]+)', logtxt).group(2)
+            average_speed = re.search('(Average speed: )([\d.]+)', logtxt).group(2)
+            extr_data = [int(cores), int(batches), int(num_evts), time_elapsed, file_size, float(average_speed)]
+           # print(extr_data)
             run_data.append(extr_data)
-        except AttributeError:
+        except Exception as e:
             pass
+
 
     with open('core_output_%s.txt' % folder, 'w') as f:
         for line in run_data:
