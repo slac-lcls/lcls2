@@ -10,8 +10,8 @@ big data array will be filled with integers instead of zeros
 
 
 #logistical support
-#import h5py_cache
-import h5py, random, sys, os
+import h5py_cache
+import h5py, random, sys, os,glob
 import numpy as np
 from picklecreate import create_pickle, load_config
 
@@ -31,12 +31,13 @@ config_dict = load_config()
 n_hdf = config_dict['num_hdf']
 
 scratch_path = config_dict['path']
-path = scratch_path + scr_dir
+path = scratch_path + '/'+scr_dir
 try:
         os.mkdir(path)
 except OSError:
         print('Directory %s already exists' % path) 
-
+        files = glob.glob(path+'*')
+        [os.remove(x) for x in files]
 
 
 
@@ -77,8 +78,8 @@ def write_file_output(file_num,exs,image_data):
 	if file_num ==0:
 		mode = 'a'
 		
-	with h5py.File('%sfile%i.h5' % (path,file_num), mode,libver='latest') as f:
-#	with h5py_cache.File('%sfile%i.h5' % (path,file_num), mode,chunk_cache_mem_size=1024*1024**2) as f:	
+#	with h5py.File('%sfile%i.h5' % (path,file_num), mode,libver='latest') as f:
+	with h5py_cache.File('%sfile%i.h5' % (path,file_num), mode,chunk_cache_mem_size=4*1024*2) as f:	
 	
 		first_list = exs[:,file_num]
 		nonzero_evt_timestamps = np.nonzero(first_list)[0]

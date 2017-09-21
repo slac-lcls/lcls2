@@ -2,19 +2,20 @@
 
 
 #path to the storage location of the hdf files
-path  /reg/d/psdm/cxi/cxitut13/scratch/eliseo/
+#path  /reg/d/psdm/cxi/cxitut13/scratch/eliseo/
+path  /reg/d/ffb/xpp/test/offline_eb/data
 
 # Batches to iterate over
-batches	  [10]
+batches	  [500]
 
 # Cores to iterate over
-cores	[64]
+cores	[32]
 
 # Number of repetitions of each core/batch combo to build statistics
 num_repeats 1
 
 # Number of HDF files to create
-num_hdf	 16
+num_hdf	 8
 
 
 
