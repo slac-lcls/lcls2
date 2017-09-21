@@ -1,9 +1,6 @@
 #ifndef DESCRIPTOR__H
 #define DESCRIPTOR__H
 
-#include <array>
-#include <cassert>
-#include <chrono>
 #include <cstring>
 #include <iostream>
 #include <type_traits>
