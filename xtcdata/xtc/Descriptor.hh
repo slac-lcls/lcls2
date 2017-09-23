@@ -83,7 +83,7 @@ public:
 
 // this class updates the "parent" DescData Xtc extent at the same time
 // the child Desc or Data extent is increased.  the hope is that this
-// will make management of the DataDesc less error prone, at the price
+// will make management of the DescData less error prone, at the price
 // of some performance (more calls to DescData::alloc())
 class DescDataManager : public XtcData::Xtc
 {
