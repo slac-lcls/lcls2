@@ -1,6 +1,6 @@
 #include "xtcdata/xtc/Descriptor.hh"
 
-Field* Descriptor::get_field_by_name(const char* name)
+Field* Desc::get_field_by_name(const char* name)
 {
     for (unsigned i = 0; i < num_fields(); i++) {
         Field* field = &get(i);

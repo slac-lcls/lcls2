@@ -106,7 +106,7 @@ HDF5File::HDF5File(const char* name)
     }
 }
 
-void HDF5File::addDatasets(Descriptor& desc)
+void HDF5File::addDatasets(Desc& desc)
 {
     for (unsigned i = 0; i < desc.num_fields(); i++) {
         Field& field = desc.get(i);
@@ -120,8 +120,8 @@ void HDF5File::addDatasets(Descriptor& desc)
 
 void HDF5File::appendData(DescData& datadesc)
 {
-    Descriptor& desc = datadesc.desc();
-    uint8_t* data = datadesc.data();
+    Desc& desc = datadesc.desc();
+    char* data = datadesc.data().payload();
     for (unsigned i = 0; i < desc.num_fields(); i++) {
         Field& field = desc.get(i);
         auto it = m_datasets.find(field.name);

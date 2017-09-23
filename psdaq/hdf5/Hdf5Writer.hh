@@ -26,7 +26,7 @@ class HDF5File
 {
 public:
     HDF5File(const char* name);
-    void addDatasets(Descriptor& desc);
+    void addDatasets(Desc& desc);
     void appendData(DescData& data);
     ~HDF5File();
 
@@ -52,7 +52,7 @@ public:
         }
         case (TypeId::DescData): {
             DescData& descdata = *(DescData*)xtc->payload();
-            Descriptor& desc = descdata.desc();
+            Desc& desc = descdata.desc();
 
             _file.addDatasets(desc);
             _file.appendData(descdata);
