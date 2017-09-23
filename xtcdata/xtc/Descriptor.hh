@@ -81,28 +81,32 @@ public:
     uint32_t shape[5]; // in an ideal world this would have length "rank"
 };
 
-class ParentManager : public XtcData::Xtc
+// this class updates the "parent" DescData Xtc extent at the same time
+// the child Desc or Data extent is increased.  the hope is that this
+// will make management of the DataDesc less error prone, at the price
+// of some performance (more calls to DescData::alloc())
+class DescDataManager : public XtcData::Xtc
 {
 public:
-    ParentManager(XtcData::TypeId typeId) : XtcData::Xtc(typeId)
+    DescDataManager(XtcData::TypeId typeId) : XtcData::Xtc(typeId)
     {
     }
-    void* alloc(uint32_t size, XtcData::Xtc& parent) {
-        parent.alloc(size);
+    void* alloc(uint32_t size, XtcData::Xtc& descdata) {
+        descdata.alloc(size);
         return XtcData::Xtc::alloc(size);
     }
 };
 
-class Data : public ParentManager
+class Data : public DescDataManager
 {
 public:
-    Data() : ParentManager(XtcData::TypeId(XtcData::TypeId::Data,0)) {}
+    Data() : DescDataManager(XtcData::TypeId(XtcData::TypeId::Data,0)) {}
 };
 
-class Desc : public ParentManager
+class Desc : public DescDataManager
 {
 public:
-    Desc() : ParentManager(XtcData::TypeId(XtcData::TypeId::Desc,0))
+    Desc() : DescDataManager(XtcData::TypeId(XtcData::TypeId::Desc,0))
     {
     }
     Field* get_field_by_name(const char* name);
@@ -114,16 +118,16 @@ public:
     }
 
     // Add new scalar to Desc
-    void add(const char* name, DataType type, uint32_t& offset, Xtc& parent)
+    void add(const char* name, DataType type, uint32_t& offset, Xtc& descdata)
     {
         if (num_fields() == 0) offset = 0;
         new (&get(num_fields())) Field(name, type, offset);
         offset += get_element_size(type);
-        alloc(sizeof(Field), parent);
+        alloc(sizeof(Field), descdata);
     }
 
     // Add new array to Desc
-    void add(const char* name, DataType type, int rank, int shape[5], uint32_t& offset, XtcData::Xtc& parent)
+    void add(const char* name, DataType type, int rank, int shape[5], uint32_t& offset, XtcData::Xtc& descdata)
     {
         if (num_fields() == 0) offset = 0;
         new (&get(num_fields())) Field(name, type, offset, rank, shape);
@@ -132,7 +136,7 @@ public:
             num_elements *= shape[i];
         }
         offset += num_elements * get_element_size(type);
-        alloc(sizeof(Field), parent);
+        alloc(sizeof(Field), descdata);
     }
 
     uint32_t num_fields()
@@ -208,7 +212,7 @@ public:
         return array;
     }
 
-// private:
+private:
     XtcData::Xtc& _first() {
         return *(XtcData::Xtc*)payload();
     }
