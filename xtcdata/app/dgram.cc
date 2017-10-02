@@ -19,7 +19,7 @@ typedef struct {
     Dgram* dgram;
 } PyDgramObject;
 
-void DictAssign(PyDgramObject* dgram, Descriptor& desc, DescData& d)
+void DictAssign(PyDgramObject* dgram, Desc& desc, DescData& d)
 {
     for (unsigned i = 0; i < desc.num_fields(); i++) {
         Field& f = desc.get(i);
@@ -61,23 +61,23 @@ void DictAssign(PyDgramObject* dgram, Descriptor& desc, DescData& d)
             }
             switch (f.type) {
             case UINT8: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT8, d.data() + f.offset);
+                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT8, d.data().payload() + f.offset);
                 break;
             }
             case UINT16: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT16, d.data() + f.offset);
+                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT16, d.data().payload() + f.offset);
                 break;
             }
             case INT32: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_INT32, d.data() + f.offset);
+                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_INT32, d.data().payload() + f.offset);
                 break;
             }
             case FLOAT: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_FLOAT, d.data() + f.offset);
+                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_FLOAT, d.data().payload() + f.offset);
                 break;
             }
             case DOUBLE: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_DOUBLE, d.data() + f.offset);
+                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_DOUBLE, d.data().payload() + f.offset);
                 break;
             }
             }
@@ -112,8 +112,8 @@ public:
             break;
         }
         case (TypeId::DescData): {
-            DescData& d = *(DescData*)xtc->payload();
-            Descriptor& desc = d.desc();
+            DescData& d = *(DescData*)xtc;
+            Desc& desc = d.desc();
             DictAssign(_dgram, desc, d);
             break;
         }

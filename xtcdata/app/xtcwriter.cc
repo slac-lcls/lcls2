@@ -37,58 +37,45 @@ public:
 
 void pgpExample(Xtc* parent, char* intName, char* floatName, char* arrayName, int vals[3])
 {
-    // make a child xtc with detector data and descriptor
-    TypeId tid_child(TypeId::DescData, 0);
-    Xtc& xtcChild = *new (parent) Xtc(tid_child);
-
-    Data& data = *new (xtcChild.payload()) Data();
+    DescData& descdata = *new (parent)    DescData();
+    Data& data         = *new (&descdata) Data();
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     new (data.payload()) PgpData(vals[0], vals[1], vals[2]);
 
-    // now that data has arrived can update with the number of bytes received
-    data.extend(sizeof(PgpData));
+    // now that data has arrived manually update with the number of bytes received
+    data.alloc(sizeof(PgpData), descdata);
 
-    // now fill in the descriptor
-    Descriptor& desc = *new (data.next()) Descriptor();
+    // now add the descriptor
+    Desc& desc = *new (&descdata) Desc();
 
     uint32_t offset;
-    desc.add(floatName, FLOAT, offset);
+    desc.add(floatName, FLOAT, offset, descdata);
 
     int shape[] = { 3, 3 };
-    desc.add(arrayName, FLOAT, 2, shape, offset);
-    desc.add(intName, INT32, offset);
-
-    // update our xtc with the size of the data we have added
-    xtcChild.alloc(desc.size() + data.size());
+    desc.add(arrayName, FLOAT, 2, shape, offset, descdata);
+    desc.add(intName, INT32, offset, descdata);
 
     // update parent xtc with our new size.
-    parent->alloc(xtcChild.sizeofPayload());
+    parent->alloc(descdata.sizeofPayload());
 }
 
 void fexExample(Xtc* parent)
 {
-    // make a child xtc with detector data and descriptor
-    TypeId tid_child(TypeId::DescData, 0);
-    Xtc& xtcChild = *new (parent) Xtc(tid_child);
-
-    DescData& descdata = *new (xtcChild.payload()) DescData();
-    Descriptor& desc = descdata.desc();
+    DescData& descdata = *new (parent) DescData();
+    Desc& desc = *new (&descdata) Desc();
 
     uint32_t offset;
-    desc.add("fexfloat1", FLOAT, offset);
-    desc.add("fexint1", INT32, offset);
+    desc.add("fexfloat1", FLOAT, offset, descdata);
+    desc.add("fexint1", INT32, offset, descdata);
 
-    Data& data = *new (desc.next()) Data();
-    // have to be careful to set the correct type here
+    Data& data = *new (&descdata) Data();
+    // have to be careful to set the correct type here, unfortunately
     descdata.set_value("fexfloat1", (float)41.0);
     descdata.set_value("fexint1", 42);
 
-    // update our xtc with the size of the data we have added
-    xtcChild.alloc(desc.size() + data.size());
-
     // update parent xtc with our new size.
-    parent->alloc(xtcChild.sizeofPayload());
+    parent->alloc(descdata.sizeofPayload());
 }
 
 int main()
@@ -104,6 +91,7 @@ int main()
 
     for (int i = 0; i < NDGRAM; i++) {
         Dgram& dgram = *(Dgram*)buf;
+        // this Parent xtc allows for attaching multiple DescData xtc's.
         TypeId tid(TypeId::Parent, 0);
         dgram.xtc.contains = tid;
         dgram.xtc.damage = 0;

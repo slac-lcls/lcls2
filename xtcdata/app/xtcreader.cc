@@ -11,17 +11,14 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 
 using namespace XtcData;
-using std::map;
 using std::string;
-
-static map<Src, string> aliasMap;
 
 class myLevelIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    myLevelIter(Xtc* xtc, unsigned depth, long long int lliOffset)
-    : XtcIterator(xtc), _depth(depth), _lliOffset(lliOffset)
+    myLevelIter(Xtc* xtc, unsigned depth)
+    : XtcIterator(xtc), _depth(depth)
     {
     }
 
@@ -31,22 +28,18 @@ public:
         while (i--)
             printf("  ");
         Level::Type level = xtc->src.level();
-        printf("%s level  offset %Ld (0x%Lx), payload size %d contains %s damage "
-               "0x%x: ",
-               Level::name(level), _lliOffset, _lliOffset, xtc->sizeofPayload(),
+        printf("%s level payload size %d contains %s damage "
+               "0x%x\n",
+               Level::name(level), xtc->sizeofPayload(),
                TypeId::name(xtc->contains.id()), xtc->damage.value());
-        long long lliOffsetPayload = _lliOffset + sizeof(Xtc);
-        _lliOffset += sizeof(Xtc) + xtc->sizeofPayload();
 
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            myLevelIter iter(xtc, _depth + 1, lliOffsetPayload);
+            myLevelIter iter(xtc, _depth + 1);
             iter.iterate();
             break;
         }
         default:
-            printf("Unsupported TypeId %s (value = %d)\n", TypeId::name(xtc->contains.id()),
-                   (int)xtc->contains.id());
             break;
         }
         return Continue;
@@ -54,7 +47,6 @@ public:
 
 private:
     unsigned _depth;
-    long long int _lliOffset;
 };
 
 void usage(char* progname)
@@ -94,16 +86,14 @@ int main(int argc, char* argv[])
 
     XtcFileIterator iter(fd, 0x4000000);
     Dgram* dg;
-    long long int lliOffset = lseek64(fd, 0, SEEK_CUR);
     while ((dg = iter.next())) {
         printf("%s transition: time %d.%09d, fid/ticks 0x%0x/0x%x, env 0x%x, "
-               "offset %Ld (0x%Lx), payloadSize %d\n",
+               "payloadSize %d\n",
                TransitionId::name(dg->seq.service()), dg->seq.clock().seconds(),
                dg->seq.clock().nanoseconds(), dg->seq.stamp().fiducials(), dg->seq.stamp().ticks(),
-               dg->env.value(), lliOffset, lliOffset, dg->xtc.sizeofPayload());
-        myLevelIter iter(&(dg->xtc), 0, lliOffset + sizeof(Xtc) + sizeof(*dg) - sizeof(dg->xtc));
+               dg->env.value(), dg->xtc.sizeofPayload());
+        myLevelIter iter(&(dg->xtc), 0);
         iter.iterate();
-        lliOffset = lseek64(fd, 0, SEEK_CUR); // get the file offset for the next iteration
     }
 
     ::close(fd);
