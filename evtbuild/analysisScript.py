@@ -22,7 +22,7 @@ size = comm.Get_size()
 assert size>1, 'At least 2 MPI ranks required'
 
 #print(rank, size)
-##   
+##      
 global batch_size
 global files, total_file_size
 batch_size = int(sys.argv[1])
