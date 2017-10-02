@@ -6,7 +6,7 @@
 path  /reg/d/ffb/xpp/test/offline_eb/data
 
 # Batches to iterate over
-batches	  [10,50,100,500,1000,2000]
+batches	  [10,50,100,500,1000]
 
 # Cores to iterate over
 cores	[8,16,32,64,128]
