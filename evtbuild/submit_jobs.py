@@ -42,33 +42,8 @@ try:
                         break
                 else:
                         time.sleep(0.5)
-
-            
-#             while True:
-# #                break
-#                 out = subprocess.check_output('bjobs', stderr=subprocess.STDOUT)
-#                 if out == 'No unfinished job found\n':
-#                     time.sleep(0.1)
-#                 else:
-#                     print(out)
-#                     print('Job started')
-#                     break
-
-#             while True:
-# #                break
-#                 out = subprocess.check_output('bjobs', stderr=subprocess.STDOUT)
-#                 if out == 'No unfinished job found\n':
-#                     print(out)
-#                     print('Job done')
-#                     break
-#                 else:
-#                     print(out)
-#                     time.sleep(1)
-
-
+#parse the logs and write out a summary
 finally:
-
-
     run_data = []
 #    print(glob.glob('%s/*' % logdir))
     for filename in glob.glob('%s/*' % logdir):
@@ -88,7 +63,6 @@ finally:
             run_data.append(extr_data)
         except Exception as e:
             pass
-
 
     with open('core_output_%s.txt' % folder, 'w') as f:
         for line in run_data:

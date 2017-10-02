@@ -5,7 +5,9 @@ timestamps and stores them into an array which is dumped into a pickle
 file for future analysis.
 '''
 
-import pickle, h5py, glob, sys
+import cPickle as pickle
+#import pickle
+import h5py, glob, sys,json
 import numpy as np
 from numba import jit, autojit
 #import line_profiler
@@ -16,7 +18,8 @@ from numba import jit, autojit
 
 #@profile
 def load_files(path):
-    file_list = glob.glob(path+'*.h5')
+
+    file_list = glob.glob(path+'/*.h5')
     file_list = np.sort(file_list)
     files=[]
     for  filename in file_list:
@@ -27,15 +30,19 @@ def load_files(path):
 
 
 #@profile
-def prepare_timestamps(files):
+def prepare_timestamps(files, all_files = False):
 		
 	all_ts_list = []
 	#look for interesting events => truncated small data
 
 	#truncSD = [i for i, x in enumerate(files[0]['smalldata']) if 'red' in x]
 	#np.where is faster than list comprehension
-	truncSD = np.where(np.array(files[0]['small_data/diode_values']) == 'red')
-	truncSD = np.ndarray.tolist(truncSD[0])
+        if not all_files:
+            truncSD = np.where(np.array(files[0]['small_data/diode_values']) == 'red')
+        else:
+            truncSD = np.where(np.array(files[0]['small_data/diode_values']) != '0')
+	
+        truncSD = np.ndarray.tolist(truncSD[0])
 	
 	#pull timestamps of interesting events => truncated timestamps
 #	truncTS = [files[0]['timestamp1'][i] for i in truncSD]
@@ -59,7 +66,7 @@ def prepare_timestamps(files):
 # return a dictionary containing the file numbers and indices for a given
 # event of interest
 
-def find_timestamps3(alt, bins, truncTS):
+def find_timestamps3(alt, bins, truncTS, json=False):
     left_bins = np.concatenate(([0],bins))[:-1]
     
     def find_pos(x,y):
@@ -69,23 +76,42 @@ def find_timestamps3(alt, bins, truncTS):
     flat_indexes = map(lambda x: np.where(alt == x), truncTS)
     array_inds = map(lambda x: np.digitize(x,bins)[0], flat_indexes)
     array_pos = map(find_pos, flat_indexes,array_inds)
-  
-    chunk_loc = dict(zip(truncTS, np.c_[array_inds,array_pos]))
+    if not json:
+        chunk_loc = dict(zip(truncTS, np.c_[array_inds,array_pos]))
+    else:
+        trunc = [str(x) for x in truncTS]
+        out = [[np.ndarray.tolist(x),np.ndarray.tolist(y)] for x,y in zip(array_inds,array_pos)]
+       # print(len(out))
+        chunk_loc = dict(zip(trunc, out))
     return chunk_loc
 
 
-def create_pickle(path):
+def create_pickle(path, all_files = False):
     files = load_files(path)
-    truncTS, bins, alt = prepare_timestamps(files)
+    truncTS, bins, alt = prepare_timestamps(files, all_files)
     chunk_loc = find_timestamps3(alt, bins, truncTS)
     
     file_Name = path+"eventpickle"
+    if all_files:
+        file_Name +='_all'
     with open(file_Name, 'wb') as f:
 	pickle.dump(chunk_loc, f)
     [x.close for x in files]
 
-    return chunk_loc
+   # return chunk_loc
 
+
+def create_json(path, all_files = False):
+    files = load_files(path)
+    truncTS, bins, alt = prepare_timestamps(files, all_files)
+    chunk_loc = find_timestamps3(alt, bins, truncTS, True)
+    
+    file_Name = path+"eventpickle"
+    if all_files:
+        file_Name +='_all'
+    with open(file_Name, 'wb') as f:
+	json.dump(chunk_loc, f)
+    [x.close for x in files]
 
 def load_config():
     config_dict = {}
@@ -101,3 +127,12 @@ def load_config():
 
              config_dict[key] = val
     return config_dict
+
+
+#create_json('/reg/d/ffb/xpp/test/offline_eb/data/100k/', True)
+
+
+
+
+#dep = {int(k):v for k,v in json.load(open('/reg/d/ffb/xpp/test/offline_eb/data/100k/eventpickle_all', 'r')).iteritems()}
+

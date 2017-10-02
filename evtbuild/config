@@ -6,16 +6,17 @@
 path  /reg/d/ffb/xpp/test/offline_eb/data
 
 # Batches to iterate over
-batches	  [500]
+batches	  [10,50,100,500,1000,2000]
 
 # Cores to iterate over
-cores	[32]
+cores	[8,16,32,64,128]
 
 # Number of repetitions of each core/batch combo to build statistics
 num_repeats 1
 
 # Number of HDF files to create
-num_hdf	 8
+num_hdf	 18
+
 
 
 
