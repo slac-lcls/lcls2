@@ -22,7 +22,7 @@ except ImportError:
         tqdm_exists = False
 
 
-#nruns = 1000
+
 chunk_size = 1
 
 #set number of stripes and the size
