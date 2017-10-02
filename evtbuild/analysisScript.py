@@ -45,12 +45,13 @@ comm.Barrier()
 global data_dict
 config_dict = load_config()
 
-path = config_dict['path'] + '/' + scr_dir +'/' +'nstripes_1'
+path = config_dict['path'] + '/' + scr_dir +'/' +'nstripes_18'
 
 file_Name = path+"/eventpickle"
 if load_all:
   file_Name += '_all'
 
+#Loading a json file is 30 time faster than a pickle 
 #data_dict = pickle.load(open(file_Name, 'r'))
 data_dict = {int(k):v for k,v in json.load(open(file_Name, 'r')).iteritems()}
 
