@@ -9,7 +9,7 @@ big data array will be filled with integers instead of zeros
 # and passes big data
 
 
-#logistical support
+# logistical support
 #import h5py_cache
 import h5py, random, sys, os,glob, subprocess, shutil
 import numpy as np

@@ -45,7 +45,7 @@ comm.Barrier()
 global data_dict
 config_dict = load_config()
 
-path = config_dict['path'] + '/' + scr_dir
+path = config_dict['path'] + '/' + scr_dir +'/' +'nstripes_1'
 
 file_Name = path+"/eventpickle"
 if load_all:
