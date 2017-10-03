@@ -86,8 +86,11 @@ def find_timestamps3(alt, bins, truncTS, json=False):
     return chunk_loc
 
 
-def create_pickle(path, all_files = False):
+def create_pickle(path, all_files = False, subset=False):
     files = load_files(path)
+    if subset:
+        files = [files[x] for x in subset]
+
     truncTS, bins, alt = prepare_timestamps(files, all_files)
     chunk_loc = find_timestamps3(alt, bins, truncTS)
     
@@ -101,14 +104,22 @@ def create_pickle(path, all_files = False):
    # return chunk_loc
 
 
-def create_json(path, all_files = False):
+def create_json(path, all_files = False, subset = False):
     files = load_files(path)
+    
+    if subset:
+        files = [files[x] for x in subset]
+        subset_suff = '_subset'
+    else:
+        subset_suff = ''
+
     truncTS, bins, alt = prepare_timestamps(files, all_files)
     chunk_loc = find_timestamps3(alt, bins, truncTS, True)
     
-    file_Name = path+"eventpickle"
+    file_Name = path+"/eventpickle"+subset_suff
     if all_files:
         file_Name +='_all'
+   # print(file_Name)
     with open(file_Name, 'wb') as f:
 	json.dump(chunk_loc, f)
     [x.close for x in files]

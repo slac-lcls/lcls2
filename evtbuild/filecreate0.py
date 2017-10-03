@@ -4,11 +4,6 @@ New Filecreate file.
 big data array will be filled with integers instead of zeros
 '''
 
-# variable length data
-# core that looks ahead, decides based on small data whether to accumulate
-# and passes big data
-
-
 # logistical support
 #import h5py_cache
 import h5py, random, sys, os,glob, subprocess, shutil
@@ -26,9 +21,9 @@ except ImportError:
 chunk_size = 1
 
 #set number of stripes and the size
-nstripes = 18
+nstripes = 1
 str_size = 1
-start_index = -1
+start_index = 1
 
 global nevents
 nevents = int(sys.argv[1])
@@ -39,7 +34,7 @@ n_hdf = config_dict['num_hdf']
 
 scratch_path = config_dict['path']
 
-path = scratch_path + '/'+scr_dir+'nstripes_'+str(nstripes)+'/'
+path = scratch_path + '/'+scr_dir+'nstripes_'+str(6)+'/'
 
 
 #for i in range(n_hdf):
@@ -81,8 +76,9 @@ def dist_tiles(num_tiles, num_hdf,x):
 #create the small data in the first file
 #@profile
 def write_smalldata(nevents):
-        print('lfs setstripe %sfile0.h5 -c %i -S %iM -i %i' % (path,nstripes, str_size,start_index))
-        subprocess.call('lfs setstripe %sfile0.h5 -c %i -S %iM -i %i' % (path,nstripes, str_size,start_index), shell=True)
+        str_comm = 'lfs setstripe %sfile0.h5 -c %i -S %iM -i %i' % (path,nstripes, str_size,start_index)
+        print(str_comm)
+        subprocess.call(str_comm, shell=True)
 
         with h5py.File('%sfile0.h5' % path, 'w', libver='latest') as f:
 #         with h5py_cache.File('%sfile0.h5' % path, 'w',chunk_cache_mem_size=cache_size*1024**2) as f:
@@ -101,8 +97,9 @@ def write_file_output(file_num,exs,image_data):
 	if file_num ==0:
 		mode = 'a'
 	else:
-                print('lfs setstripe -c %i -S %iM -i %i %sfile%i.h5' % (nstripes, str_size,start_index+0*file_num*nstripes,path,file_num))
-                subprocess.call('lfs setstripe -c %i -S %iM -i %i %sfile%i.h5' % (nstripes, str_size,start_index+0*file_num*nstripes,path,file_num), shell=True)
+                str_comm = 'lfs setstripe -c %i -S %iM -i %i %sfile%i.h5' % (nstripes, str_size,start_index+file_num*3,path,file_num)
+                print(str_comm)
+                subprocess.call(str_comm, shell=True)
 
 	with h5py.File('%sfile%i.h5' % (path,file_num), mode, libver='latest') as f:
 #	with h5py_cache.File('%sfile%i.h5' % (path,file_num), mode,chunk_cache_mem_size=cache_size*1024**2) as f:	

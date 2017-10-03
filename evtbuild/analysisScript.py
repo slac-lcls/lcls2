@@ -13,7 +13,17 @@ import json
 import h5py, time, sys, os, glob
 import numpy as np
 from numba import jit
-from picklecreate import load_config
+from picklecreate import load_config, create_json
+import argparse
+
+# command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('-a','--all events', action='store_true', help = "Read all available events", dest="load_all", default = False)
+parser.add_argument('-s','--subset', action='store_true', help = "Read a subset of files", dest="subset", default = False)
+parser.add_argument('-d','--directory', action='store', help = "", dest = "dir_name")
+parser.add_argument('-b','--batch', action='store', help = "Batch size", dest = "batch_size", type = int, default = 100)
+args = parser.parse_args()
+
 
 #logistical MPI setup
 comm = MPI.COMM_WORLD
@@ -21,34 +31,47 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 assert size>1, 'At least 2 MPI ranks required'
 
-#print(rank, size)
-##
-global batch_size
-global files, total_file_size
-batch_size = int(sys.argv[1])
-try:
-  scr_dir = str(sys.argv[2])
-except IndexError:
+
+#global batch_size
+#global files, total_file_size
+#batch_size = int(sys.argv[1])
+
+
+#try:
+#  scr_dir = str(sys.argv[2])
+#except IndexError:
 #  print('No options')
-  sys.exit()
+#  sys.exit()
 
-load_all = 0
-try:
-  load_all = sys.argv[3]
-except IndexError:
-  pass
+#load_all = 0
+#try:
+#  load_all = sys.argv[3]
+#except IndexError:
+#  pass
 
 
-comm.Barrier()
+#comm.Barrier()
 
 #load the pickle
 global data_dict
 config_dict = load_config()
 
-path = config_dict['path'] + '/' + scr_dir +'/' +'nstripes_18'
+path = config_dict['path'] + '/' + str(args.dir_name) +'/' +'nstripes_1'
+
+
+comm.Barrier()
+
+#if rank ==0 and 'subset' in config_dict.keys():
+#  print('create json')
+#  create_json(path, False, config_dict['subset'])
+
+#if 'subset' in config_dict.keys():
+#  subset_suff = '_subset'
+#comm.Barrier()
 
 file_Name = path+"/eventpickle"
-if load_all:
+#print(file_Name)
+if args.load_all:
   file_Name += '_all'
 
 #Loading a json file is 30 time faster than a pickle 
@@ -63,11 +86,13 @@ def load_files():
  # print('loading files')
   file_list = glob.glob(path+'/*.h5')
   file_list = np.sort(file_list)
+  print(file_list)
   for filename in file_list:
     file_size = float(os.stat(filename)[6])
     total_file_size += file_size
     f = h5py.File(filename, mode = 'r')#, driver = 'mpio', comm=comm)
     files.append(f)
+
   return files, total_file_size
 
 
@@ -83,7 +108,7 @@ def master():
   num_evts = len(evts)
  # files, _ = load_files()
 
-  n_batches = int(np.ceil(float(num_evts)/batch_size))
+  n_batches = int(np.ceil(float(num_evts)/args.batch_size))
   print('Number of events %i' % num_evts)
   print('Number of batches %i' % n_batches)
  
@@ -129,6 +154,8 @@ def client():
         data_locs = data_dict[key]
                 
         for file_num, evt_loc in zip(data_locs[0], data_locs[1]):
+          if args.subset and (file_num not in config_dict['subset']):
+            continue
           cspad_tile = files[file_num]['cspad_data/image_data'][evt_loc]#[:]
           tile_ct += cspad_tile.nbytes
 
@@ -160,7 +187,10 @@ if rank == 0:
   #close_files(files)
   ts /= 10**9
   average_speed = ts/(telapsed)
-  print("Batch size: %i" % batch_size)
+  if args.subset:
+    print("Subset [%s]" % ''.join(map(str, config_dict['subset'])))
+
+  print("Batch size: %i" % args.batch_size)
   print("Time elapsed: %.2f s" % telapsed)
   print("Total file size: %.2f GB" % ts)
 

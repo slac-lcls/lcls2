@@ -15,8 +15,9 @@ cores	[8,16,32,64,128]
 num_repeats 1
 
 # Number of HDF files to create
-num_hdf	 18
+num_hdf	 6
 
-
+# Subset for pickle creation
+subset [0,10,17]
 
 
