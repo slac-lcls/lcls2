@@ -9,7 +9,7 @@ import cPickle as pickle
 #import pickle
 import h5py, glob, sys,json
 import numpy as np
-from numba import jit, autojit
+#from numba import jit, autojit
 #import line_profiler
 
 
@@ -140,7 +140,8 @@ def load_config():
     return config_dict
 
 
-#create_json('/reg/d/ffb/xpp/test/offline_eb/data/100k/', True)
+#create_json('/global/homes/e/eliseo/lcls2/evtbuild/data/100k/nstripes_1')
+#create_json('/global/homes/e/eliseo/lcls2/evtbuild/data/100k/nstripes_1',True)
 
 
 
