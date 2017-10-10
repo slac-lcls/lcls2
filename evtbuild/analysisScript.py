@@ -8,7 +8,7 @@ the indices.
 #from psana import *
 
 from mpi4py import MPI
-import cPickle as pickle
+#import cPickle as pickle
 import json
 import h5py, time, sys, os, glob
 import numpy as np
@@ -38,7 +38,7 @@ assert size>1, 'At least 2 MPI ranks required'
 global data_dict
 config_dict = load_config()
 
-path = config_dict['path'] + '/' + str(args.dir_name) +'/' +'nstripes_1'
+path = config_dict['path'] + '/' + str(args.dir_name) +'/' +'nstripes_11'
 if args.bb_dir_name:
   path = args.bb_dir_name
   path = path[:-1]

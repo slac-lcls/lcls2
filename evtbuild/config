@@ -3,8 +3,9 @@
 
 #path to the storage location of the hdf files
 #path  /reg/d/psdm/cxi/cxitut13/scratch/eliseo/
-path /reg/d/ffb/xpp/test/offline_eb/data
+#path /reg/d/ffb/xpp/test/offline_eb/data
 #path   /global/cscratch1/sd/eliseo/data
+path /drpffb/eliseo/data
 
 # Batches to iterate over
 batches	  [10,50,100,500,1000]
@@ -16,7 +17,7 @@ cores	[8,16,32,64,128]
 num_repeats 1
 
 # Number of HDF files to create
-num_hdf	 4
+num_hdf	 1
 
 # Subset for pickle creation
 subset [0]

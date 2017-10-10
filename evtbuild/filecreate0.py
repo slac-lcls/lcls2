@@ -32,7 +32,7 @@ n_hdf = config_dict['num_hdf']
 
 scratch_path = config_dict['path']
 
-path = scratch_path + '/'+scr_dir+'nstripes_'+str(nstripes)+'/'
+path = scratch_path + '/'+scr_dir+'1Mblock_nstripes_'+str(nstripes)+'/'
 
 
 #for i in range(n_hdf):
@@ -120,8 +120,9 @@ def write_file_output(file_num,exs,image_data):
 		#write some metadata on the array sizes
 		arraySizes = cspad_data_group.create_dataset('array_sizes', (num_evts,), dtype = 'uint16')
 		arraySizes[:] = nonzero_evt_tiles
-                rav_size = 143560
-                ncopies = 8
+                rav_size = len(cspad_quad_rav)
+                #rav_size = 143560
+                ncopies = 2
                 im_size = rav_size*ncopies
              #   image_data = cspad_data_group.create_dataset('image_data', shape = (num_evts,im_size), maxshape=(None,im_size),chunks = True, dtype = 'uint16')
 		image_data = cspad_data_group.create_dataset('image_data', shape = (num_evts,im_size), maxshape=(None,im_size),chunks = (chunk_size,im_size), dtype = 'uint16')
@@ -138,7 +139,7 @@ smallDatColors = ['red', 'blue', 'green']
 exs = np.asarray([dist_tiles0(8,n_hdf,x) for x in range(nevents)])
 
 #make some mock cspad arrays and fill with random data
-cspad_quad = np.random.randint(0,2**16,size=(194,185,4), dtype='uint16')
+cspad_quad = np.random.randint(0,2**16,size=(250,250,4), dtype='uint16')
 cspad_quad_rav = cspad_quad.ravel()
 #create lookup table for different number of tiles
 image_dat_arr = [np.r_[((cspad_quad_rav),)*nt] for nt in range(1,n_hdf+1)]
