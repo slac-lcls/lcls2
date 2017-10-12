@@ -15,7 +15,8 @@ using namespace XtcData;
 #define BUFSIZE 0x4000000
 
 typedef struct {
-    PyObject_HEAD PyObject* dict;
+    PyObject_HEAD
+    PyObject* dict;
     Dgram* dgram;
 } PyDgramObject;
 
@@ -56,8 +57,8 @@ void DictAssign(PyDgramObject* dgram, Desc& desc, DescData& d)
             }
         } else {
             npy_intp dims[f.rank + 1];
-            for (unsigned i = 0; i < f.rank + 1; i++) {
-                dims[i] = f.shape[i];
+            for (unsigned j = 0; j < f.rank + 1; j++) {
+                dims[j] = f.shape[j];
             }
             switch (f.type) {
             case UINT8: {
@@ -145,6 +146,10 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
     self->dgram = (Dgram*)malloc(BUFSIZE);
+    if (self->dgram == NULL) {
+        PyErr_NoMemory();
+        return -1;
+    }
 
     int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
 
