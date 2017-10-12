@@ -133,16 +133,18 @@ private:
 static void dgram_dealloc(PyDgramObject* self)
 {
     if (self->verbose > 0) {
-        printf("VERBOSE: dgram_dealloc() begin\n");
-        printf("VERBOSE:   verbose: %d\n", self->verbose);
-        printf("VERBOSE:   debug: %d\n", self->debug);
-        printf("VERBOSE:   Py_REFCNT(self->dict): %d\n", (int)Py_REFCNT(self->dict));
-        printf("VERBOSE:   Py_REFCNT(self->dgram): %d\n", (int)Py_REFCNT(self->dgram));
-        printf("VERBOSE:   Py_REFCNT(self): %d\n", (int)Py_REFCNT(self));
+        printf("VERBOSE:%d dgram_dealloc() begin\n",
+               self->verbose);
+        printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dict));
+        printf("VERBOSE:%d   Py_REFCNT(self->dgram): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dgram));
+        printf("VERBOSE:%d   Py_REFCNT(self): %d\n",
+               self->verbose, (int)Py_REFCNT(self));
     }
     Py_XDECREF(self->dict);
     if (self->debug == 2) {
-      printf("DEBUG:   Py_XDECREF(self->dgram)\n");
+      printf("DEBUG:%d   Py_XDECREF(self->dgram)\n", self->debug);
       Py_XDECREF(self->dgram);
     }
     free(self->dgram);
@@ -201,7 +203,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
 
     if (self->debug == 2) {
-        printf("DEBUG:   Py_INCREF(self->dgram)\n");
+        printf("DEBUG:%d   Py_INCREF(self->dgram)\n", self->debug);
         Py_INCREF(self->dgram);
     }
 
@@ -209,12 +211,14 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     iter.iterate();
 
     if (self->verbose > 0) {
-        printf("VERBOSE: dgram_init() done\n");
-        printf("VERBOSE:   verbose: %d\n", self->verbose);
-        printf("VERBOSE:   debug: %d\n", self->debug);
-        printf("VERBOSE:   Py_REFCNT(self): %d\n", (int)Py_REFCNT(self));
-        printf("VERBOSE:   Py_REFCNT(self->dict): %d\n", (int)Py_REFCNT(self->dict));
-        printf("VERBOSE:   Py_REFCNT(self->dgram): %d\n", (int)Py_REFCNT(self->dgram));
+        printf("VERBOSE:%d dgram_init() done\n",
+               self->verbose);
+        printf("VERBOSE:%d   Py_REFCNT(self): %d\n",
+               self->verbose, (int)Py_REFCNT(self));
+        printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dict));
+        printf("VERBOSE:%d   Py_REFCNT(self->dgram): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dgram));
     }
     return 0;
 }
