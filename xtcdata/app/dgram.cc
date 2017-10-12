@@ -19,6 +19,7 @@ typedef struct {
     PyObject* dict;
     Dgram* dgram;
     int verbose;
+    int debug;
 } PyDgramObject;
 
 void DictAssign(PyDgramObject* dgram, Desc& desc, DescData& d)
@@ -131,7 +132,19 @@ private:
 
 static void dgram_dealloc(PyDgramObject* self)
 {
+    if (self->verbose > 0) {
+        printf("VERBOSE: dgram_dealloc() begin\n");
+        printf("VERBOSE:   verbose: %d\n", self->verbose);
+        printf("VERBOSE:   debug: %d\n", self->debug);
+        printf("VERBOSE:   Py_REFCNT(self->dict): %d\n", (int)Py_REFCNT(self->dict));
+        printf("VERBOSE:   Py_REFCNT(self->dgram): %d\n", (int)Py_REFCNT(self->dgram));
+        printf("VERBOSE:   Py_REFCNT(self): %d\n", (int)Py_REFCNT(self));
+    }
     Py_XDECREF(self->dict);
+    if (self->debug == 2) {
+      printf("DEBUG:   Py_XDECREF(self->dgram)\n");
+      Py_XDECREF(self->dgram);
+    }
     free(self->dgram);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -146,12 +159,17 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
-    const char* dataFilename = "data.xtc";
+    static const char* dataFilename = "data.xtc";
+    static char* kwlist[] = {(char*)"verbose", (char*)"debug", NULL};
 
     self->verbose=0;
-    PyArg_ParseTuple(args, "|i", &(self->verbose));
-    if (self->verbose > 0)
-        printf("self->verbose: %d\n", self->verbose);
+    self->debug=0;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds,
+                                     "|i$i", kwlist,
+                                     &(self->verbose),
+                                     &(self->debug))) {
+        return -1;
+    }
 
     self->dgram = (Dgram*)malloc(BUFSIZE);
     if (self->dgram == NULL) {
@@ -182,9 +200,22 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
+    if (self->debug == 2) {
+        printf("DEBUG:   Py_INCREF(self->dgram)\n");
+        Py_INCREF(self->dgram);
+    }
+
     myLevelIter iter(&self->dgram->xtc, self);
     iter.iterate();
 
+    if (self->verbose > 0) {
+        printf("VERBOSE: dgram_init() done\n");
+        printf("VERBOSE:   verbose: %d\n", self->verbose);
+        printf("VERBOSE:   debug: %d\n", self->debug);
+        printf("VERBOSE:   Py_REFCNT(self): %d\n", (int)Py_REFCNT(self));
+        printf("VERBOSE:   Py_REFCNT(self->dict): %d\n", (int)Py_REFCNT(self->dict));
+        printf("VERBOSE:   Py_REFCNT(self->dgram): %d\n", (int)Py_REFCNT(self->dgram));
+    }
     return 0;
 }
 
@@ -197,6 +228,10 @@ static PyMemberDef dgram_members[] = {
       T_INT, offsetof(PyDgramObject, verbose),
       0,
       (char*)"attribute verbose" },
+    { (char*)"debug",
+      T_INT, offsetof(PyDgramObject, debug),
+      0,
+      (char*)"attribute debug" },
     { NULL }
 };
 

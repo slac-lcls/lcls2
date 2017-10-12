@@ -1,9 +1,12 @@
 import sys
 from sys import getrefcount as getref
-sys.path.append('build/xtcdata')
+sys.path.append('../build/xtcdata')
 from dgram import Dgram
+
+VERBOSE=1
+
 def myroutine2():
-  d = Dgram()
+  d = Dgram(VERBOSE)
   assert getref(d)==2
   arr1 = d.array0 #increase refcount of d
   assert getref(d)==3
