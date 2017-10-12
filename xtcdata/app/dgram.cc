@@ -152,13 +152,21 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
 
     int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
+    if (fd < 0) {
+        PyErr_SetString(PyExc_IOError, strerror(errno));
+        return -1;
+    }
 
     if (::read(fd, self->dgram, sizeof(*self->dgram)) <= 0) {
-        printf("read was unsuccessful: %s\n", strerror(errno));
+        printf("loading self->dgram was unsuccessful: %s\n", strerror(errno));
+        return -1;
     }
 
     size_t payloadSize = self->dgram->xtc.sizeofPayload();
-    ::read(fd, self->dgram->xtc.payload(), payloadSize);
+    if (::read(fd, self->dgram->xtc.payload(), payloadSize) <= 0) {
+        printf("loading self->dgram->xtc.payload() was unsuccessful: %s\n", strerror(errno));
+        return -1;
+    }
 
     myLevelIter iter(&self->dgram->xtc, self);
     iter.iterate();
@@ -195,7 +203,8 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
 }
 
 static PyTypeObject dgram_DgramType = {
-    PyVarObject_HEAD_INIT(NULL, 0) "dgram.Dgram", /* tp_name */
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "dgram.Dgram", /* tp_name */
     sizeof(PyDgramObject), /* tp_basicsize */
     0, /* tp_itemsize */
     (destructor)dgram_dealloc, /* tp_dealloc */
