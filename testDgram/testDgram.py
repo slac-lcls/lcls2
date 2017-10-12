@@ -3,7 +3,7 @@ from sys import getrefcount as getref
 sys.path.append('../build/xtcdata')
 from dgram import Dgram
 
-VERBOSE=1
+VERBOSE=0
 
 def myroutine2():
   d = Dgram(VERBOSE)
