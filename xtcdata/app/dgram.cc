@@ -133,8 +133,9 @@ private:
 static void dgram_dealloc(PyDgramObject* self)
 {
     if (self->verbose > 0) {
-        printf("VERBOSE:%d dgram_dealloc() begin\n",
+        printf("VERBOSE:%d dgram_dealloc() top\n",
                self->verbose);
+        fflush(stdout);
         printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
                self->verbose, (int)Py_REFCNT(self->dict));
         printf("VERBOSE:%d   Py_REFCNT(self->dgram): %d\n",
@@ -211,8 +212,9 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     iter.iterate();
 
     if (self->verbose > 0) {
-        printf("VERBOSE:%d dgram_init() done\n",
+        printf("VERBOSE:%d dgram_init() bottom\n",
                self->verbose);
+        fflush(stdout);
         printf("VERBOSE:%d   Py_REFCNT(self): %d\n",
                self->verbose, (int)Py_REFCNT(self));
         printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
