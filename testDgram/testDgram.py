@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#
+
 import sys
 from sys import getrefcount as getref
 sys.path.append('../build/xtcdata')

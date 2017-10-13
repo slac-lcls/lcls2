@@ -1,16 +1,42 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 #
- 
-import sys, os
+
+import sys
+import time
 import getopt
+
+import inspect;
+#from gc import get_referrers
 
 sys.path.append('../build/xtcdata')
 from dgram import Dgram
 #
 
 def do_it(args_proper, verbose, debug):
+    classMembers=[]
+    for item in inspect.getmembers(Dgram):
+        classMembers.append(item[0])
+    classMembers.sort()
+    print("classMembers:", classMembers)
+
     d=Dgram(verbose, debug=debug)
-    dir(d)
+    print("sys.getrefcount(d): %d\n" % sys.getrefcount(d))
+    sys.stdout.flush()
+
+    objAttributes=[]
+    for item in inspect.getmembers(d):
+        if item[0] not in classMembers:
+            objAttributes.append(item[0])
+    objAttributes.sort()
+
+    for at in objAttributes:
+        a1=getattr(d, at)
+        sys.stdout.write("sys.getrefcount(%s) (refcount=%d):\n %s\n\n" %
+                         (at, sys.getrefcount(a1), a1))
+        a2=getattr(d, at)
+        sys.stdout.write("sys.getrefcount(%s) (refcount=%d):\n %s\n\n" %
+                         (at, sys.getrefcount(a2), a2))
+
     return True
 
 def parse_command_line():
@@ -23,7 +49,8 @@ def parse_command_line():
         if option=='-d': debug = int(parameter)
     if verbose>0:
         sys.stdout.write("verbose: %d\n" % verbose)
-    if debug>0:
+        sys.stdout.write("debug: %d\n" % debug)
+    elif debug>0:
         sys.stdout.write("debug: %d\n" % debug)
     return (args_proper, verbose, debug)
 
