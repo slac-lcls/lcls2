@@ -257,6 +257,8 @@ static PyMemberDef dgram_members[] = {
 
 PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
+    int verbose=((PyDgramObject*)o)->verbose;
+
     PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
     if (res != NULL) {
         if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
@@ -271,9 +273,25 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
             // array is deleted (since the array has us as the "base" object).
             Py_INCREF(o);
             return arr_copy;
+        } else {
+            // this reference count will get decremented when the returned
+            // variable is deleted.
+            Py_INCREF(res);
         }
     } else {
         res = PyObject_GenericGetAttr(o, key);
+    }
+
+    if (verbose > 0) {
+        Py_ssize_t size;
+        char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
+        printf("VERBOSE=%d; attro='%s'; Py_REFCNT(res): ", verbose, key_string);
+        fflush(stdout);
+        if (strcmp(key_string, "__bases__")==0) {
+            printf("Error\n");
+        } else {
+            printf("%ld\n", (long int)Py_REFCNT(res));
+        }
     }
 
     return res;
