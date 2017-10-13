@@ -54,7 +54,7 @@ void DictAssign(PyDgramObject* dgram, DescData& descdata)
                 break;
             }
             case Name::DOUBLE: {
-                const int tempVal = descdata.get_value<double>(tempName);
+                const double tempVal = descdata.get_value<double>(tempName);
                 newobj = Py_BuildValue("d", tempVal);
                 break;
             }
