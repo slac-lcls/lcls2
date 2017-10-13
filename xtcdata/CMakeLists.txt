@@ -13,7 +13,7 @@ add_library(xtc SHARED
     xtc/src/ProcInfo.cc
     xtc/src/TimeStamp.cc
     xtc/src/XtcFileIterator.cc
-    xtc/src/Descriptor.cc
+    xtc/src/ShapesData.cc
 )
 
 target_include_directories(xtc PUBLIC

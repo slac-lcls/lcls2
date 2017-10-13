@@ -46,7 +46,7 @@ TypeId::Type TypeId::id() const
 
 const char* TypeId::name(Type type)
 {
-    static const char* _names[NumberOf] = { "Parent", "DescData", "Desc", "Data" };
+    static const char* _names[NumberOf] = { "Parent", "ShapesData", "Shapes", "Data", "Names" };
     const char* p = (type < NumberOf ? _names[type] : "-Invalid-");
     if (!p) p = "-Unnamed-";
     return p;
