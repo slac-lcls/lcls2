@@ -1,4 +1,5 @@
-#include "xtcdata/xtc/Descriptor.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
@@ -22,65 +23,72 @@ typedef struct {
     int debug;
 } PyDgramObject;
 
-void DictAssign(PyDgramObject* dgram, Desc& desc, DescData& d)
+void DictAssign(PyDgramObject* dgram, DescData& descdata)
 {
-    for (unsigned i = 0; i < desc.num_fields(); i++) {
-        Field& f = desc.get(i);
-        const char* tempName = f.name;
+    Names& names = descdata.nameindex().names();
+    for (unsigned i = 0; i < names.num(); i++) {
+        Name& name = names.get(i);
+        const char* tempName = name.name();
         PyObject* key = PyUnicode_FromString(tempName);
         PyObject* newobj;
-        if (f.rank == 0) {
-            switch (f.type) {
-            case UINT8: {
-                const int tempVal = d.get_value<uint8_t>(tempName);
+        if (name.rank() == 0) {
+            switch (name.type()) {
+            case Name::UINT8: {
+                const int tempVal = descdata.get_value<uint8_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
-            case UINT16: {
-                const int tempVal = d.get_value<uint16_t>(tempName);
+            case Name::UINT16: {
+                const int tempVal = descdata.get_value<uint16_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
-            case INT32: {
-                const int tempVal = d.get_value<int32_t>(tempName);
+            case Name::INT32: {
+                const int tempVal = descdata.get_value<int32_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
-            case FLOAT: {
-                const float tempVal = d.get_value<float>(tempName);
+            case Name::FLOAT: {
+                const float tempVal = descdata.get_value<float>(tempName);
                 newobj = Py_BuildValue("f", tempVal);
                 break;
             }
-            case DOUBLE: {
-                const int tempVal = d.get_value<double>(tempName);
+            case Name::DOUBLE: {
+                const int tempVal = descdata.get_value<double>(tempName);
                 newobj = Py_BuildValue("d", tempVal);
                 break;
             }
             }
         } else {
-            npy_intp dims[f.rank + 1];
-            for (unsigned j = 0; j < f.rank + 1; j++) {
-                dims[j] = f.shape[j];
+            npy_intp dims[name.rank() + 1];
+            uint32_t* shape = descdata.shape(name);
+            for (unsigned j = 0; j < name.rank() + 1; j++) {
+                dims[j] = shape[j];
             }
-            switch (f.type) {
-            case UINT8: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT8, d.data().payload() + f.offset);
+            switch (name.type()) {
+            case Name::UINT8: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_UINT8, descdata.address(i));
                 break;
             }
-            case UINT16: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT16, d.data().payload() + f.offset);
+            case Name::UINT16: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_UINT16, descdata.address(i));
                 break;
             }
-            case INT32: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_INT32, d.data().payload() + f.offset);
+            case Name::INT32: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_INT32, descdata.address(i));
                 break;
             }
-            case FLOAT: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_FLOAT, d.data().payload() + f.offset);
+            case Name::FLOAT: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_FLOAT, descdata.address(i));
                 break;
             }
-            case DOUBLE: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_DOUBLE, d.data().payload() + f.offset);
+            case Name::DOUBLE: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_DOUBLE, descdata.address(i));
                 break;
             }
             }
@@ -114,10 +122,15 @@ public:
             iterate(xtc); // look inside anything that is a Parent
             break;
         }
-        case (TypeId::DescData): {
-            DescData& d = *(DescData*)xtc;
-            Desc& desc = d.desc();
-            DictAssign(_dgram, desc, d);
+        case (TypeId::Names): {
+            _names = (Names*)xtc;
+            break;
+        }
+        case (TypeId::ShapesData): {
+            ShapesData& shapesdata = *(ShapesData*)xtc;
+            NameIndex nameindex(*_names);
+            DescData descdata(shapesdata, nameindex);
+            DictAssign(_dgram, descdata);
             break;
         }
         default:
@@ -128,6 +141,7 @@ public:
 
 private:
     PyDgramObject* _dgram;
+    Names* _names;
 };
 
 static void dgram_dealloc(PyDgramObject* self)
