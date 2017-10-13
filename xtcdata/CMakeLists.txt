@@ -38,23 +38,6 @@ target_include_directories(dgram PUBLIC
 
 set_target_properties(dgram PROPERTIES PREFIX "")
 
-#add_library(getItem SHARED
-#    app/getItemTest.cc
-#)
-
-#target_link_libraries(getItem
-#    xtc
-#    ${PYTHON_LIBRARIES}
-#)
-
-#target_include_directories(getItem PUBLIC
-#    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> 
-#    ${PYTHON_INCLUDE_DIRS}
-#    ${NUMPY_INCLUDE_DIRS}
-#)
-
-#set_target_properties(getItem PROPERTIES PREFIX "")
-
 target_link_libraries(xtc
 )
 
@@ -71,10 +54,3 @@ add_executable(xtcwriter
 target_link_libraries(xtcwriter
     xtc
 )
-
-#add_executable(descriptor-test
-#    app/descriptor-test.cc
-#)
-#target_link_libraries(descriptor-test
-#    xtc
-#)

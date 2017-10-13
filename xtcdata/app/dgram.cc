@@ -16,8 +16,11 @@ using namespace XtcData;
 #define BUFSIZE 0x4000000
 
 typedef struct {
-    PyObject_HEAD PyObject* dict;
+    PyObject_HEAD
+    PyObject* dict;
     Dgram* dgram;
+    int verbose;
+    int debug;
 } PyDgramObject;
 
 void DictAssign(PyDgramObject* dgram, DescData& descdata)
@@ -143,7 +146,21 @@ private:
 
 static void dgram_dealloc(PyDgramObject* self)
 {
+    if (self->verbose > 0) {
+        printf("VERBOSE:%d dgram_dealloc() begin\n",
+               self->verbose);
+        printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dict));
+        printf("VERBOSE:%d   Py_REFCNT(self->dgram): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dgram));
+        printf("VERBOSE:%d   Py_REFCNT(self): %d\n",
+               self->verbose, (int)Py_REFCNT(self));
+    }
     Py_XDECREF(self->dict);
+    if (self->debug == 2) {
+      printf("DEBUG:%d   Py_XDECREF(self->dgram)\n", self->debug);
+      Py_XDECREF(self->dgram);
+    }
     free(self->dgram);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -158,26 +175,83 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
-    self->dgram = (Dgram*)malloc(BUFSIZE);
+    static const char* dataFilename = "data.xtc";
+    static char* kwlist[] = {(char*)"verbose", (char*)"debug", NULL};
 
-    int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
+    self->verbose=0;
+    self->debug=0;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds,
+                                     "|i$i", kwlist,
+                                     &(self->verbose),
+                                     &(self->debug))) {
+        return -1;
+    }
+
+    self->dgram = (Dgram*)malloc(BUFSIZE);
+    if (self->dgram == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
+        return -1;
+    }
+
+    int fd = open(dataFilename, O_RDONLY | O_LARGEFILE);
+    if (fd < 0) {
+        char s[120];
+        sprintf(s, "%s -- %s", strerror(errno), dataFilename);
+        PyErr_SetString(PyExc_OSError, s);
+        return -1;
+    }
 
     if (::read(fd, self->dgram, sizeof(*self->dgram)) <= 0) {
-        printf("read was unsuccessful: %s\n", strerror(errno));
+        char s[120];
+        sprintf(s, "loading self->dgram was unsuccessful -- %s", strerror(errno));
+        PyErr_SetString(PyExc_OSError, s);
+        return -1;
     }
 
     size_t payloadSize = self->dgram->xtc.sizeofPayload();
-    ::read(fd, self->dgram->xtc.payload(), payloadSize);
+    if (::read(fd, self->dgram->xtc.payload(), payloadSize) <= 0) {
+        char s[120];
+        sprintf(s, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
+        PyErr_SetString(PyExc_OSError, s);
+        return -1;
+    }
+
+    if (self->debug == 2) {
+        printf("DEBUG:%d   Py_INCREF(self->dgram)\n", self->debug);
+        Py_INCREF(self->dgram);
+    }
 
     myLevelIter iter(&self->dgram->xtc, self);
     iter.iterate();
 
+    if (self->verbose > 0) {
+        printf("VERBOSE:%d dgram_init() done\n",
+               self->verbose);
+        printf("VERBOSE:%d   Py_REFCNT(self): %d\n",
+               self->verbose, (int)Py_REFCNT(self));
+        printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dict));
+        printf("VERBOSE:%d   Py_REFCNT(self->dgram): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dgram));
+    }
     return 0;
 }
 
-static PyMemberDef dgram_members[] = { { (char*)"__dict__", T_OBJECT_EX, offsetof(PyDgramObject, dict),
-                                         0, (char*)"attribute dictionary" },
-                                       { NULL } };
+static PyMemberDef dgram_members[] = {
+    { (char*)"__dict__",
+      T_OBJECT_EX, offsetof(PyDgramObject, dict),
+      0,
+      (char*)"attribute dictionary" },
+    { (char*)"verbose",
+      T_INT, offsetof(PyDgramObject, verbose),
+      0,
+      (char*)"attribute verbose" },
+    { (char*)"debug",
+      T_INT, offsetof(PyDgramObject, debug),
+      0,
+      (char*)"attribute debug" },
+    { NULL }
+};
 
 PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
@@ -204,7 +278,8 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
 }
 
 static PyTypeObject dgram_DgramType = {
-    PyVarObject_HEAD_INIT(NULL, 0) "dgram.Dgram", /* tp_name */
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "dgram.Dgram", /* tp_name */
     sizeof(PyDgramObject), /* tp_basicsize */
     0, /* tp_itemsize */
     (destructor)dgram_dealloc, /* tp_dealloc */
