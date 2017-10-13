@@ -146,7 +146,7 @@ private:
 
 static void dgram_dealloc(PyDgramObject* self)
 {
-    if (self->verbose > 0) {
+    if (self->verbose > 1) {
         printf("VERBOSE:%d dgram_dealloc() top\n",
                self->verbose);
         fflush(stdout);
@@ -225,7 +225,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     myLevelIter iter(&self->dgram->xtc, self);
     iter.iterate();
 
-    if (self->verbose > 0) {
+    if (self->verbose > 1) {
         printf("VERBOSE:%d dgram_init() bottom\n",
                self->verbose);
         fflush(stdout);
@@ -258,6 +258,7 @@ static PyMemberDef dgram_members[] = {
 PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
     int verbose=((PyDgramObject*)o)->verbose;
+    int debug=((PyDgramObject*)o)->debug;
 
     PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
     if (res != NULL) {
@@ -276,7 +277,9 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
         } else {
             // this reference count will get decremented when the returned
             // variable is deleted.
-            Py_INCREF(res);
+            if (debug != 1) {
+                Py_INCREF(res);
+            }
         }
     } else {
         res = PyObject_GenericGetAttr(o, key);
