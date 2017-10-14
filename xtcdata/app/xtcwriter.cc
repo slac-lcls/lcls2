@@ -104,7 +104,6 @@ public:
     float array[3][3];
     int _idata;
     float array2[3][3];
-    float array2[3][3];
 };
 
 void pgpExample(Xtc& parent, char* intName, char* floatName, char* arrayName, char* arrayNameB, int vals[3],
@@ -156,7 +155,6 @@ NameIndex addNameIndex(Xtc& parent, const char* intName, const char* floatName,
     names.add(arrayName, Name::FLOAT, parent, 2);
     names.add(intName, Name::INT32, parent);
     names.add(arrayNameB, Name::FLOAT, parent, 2);
-    printf("adding %s %s\n",arrayName,arrayNameB);
 
     return NameIndex(names);
 }
