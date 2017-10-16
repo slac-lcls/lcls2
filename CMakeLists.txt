@@ -33,10 +33,8 @@ execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(HDF5_ROOT /reg/neh/home4/weninc/.conda/envs/lcls2)
-
 find_package(HDF5 REQUIRED HL)
 
 add_subdirectory(xtcdata)
 add_subdirectory(psdaq)
-add_subdirectory(drp)
+#add_subdirectory(drp)

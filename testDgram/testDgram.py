@@ -1,9 +1,15 @@
+#!/usr/bin/env python
+#
+
 import sys
 from sys import getrefcount as getref
-sys.path.append('build/xtcdata')
+sys.path.append('../build/xtcdata')
 from dgram import Dgram
+import numpy as np
+VERBOSE=0
+
 def myroutine2():
-  d = Dgram()
+  d = Dgram(VERBOSE)
   assert getref(d)==2
   arr1 = d.array0 #increase refcount of d
   assert getref(d)==3
@@ -34,8 +40,12 @@ assert d.float0==0.0
 assert d.float1==1000.0
 assert d.int0==1
 assert d.int1==1001
-#this seems to crash the test.  need to fix.
-#print(dir(d))
+testarr = np.array([[0,0,0],[0,1,2],[0,2,4]],dtype=np.float32)
+testarrB = testarr+2
+assert np.array_equal(d.array0,testarr)
+assert np.array_equal(d.array1,testarr)
+assert np.array_equal(d.array0B,testarrB)
+assert np.array_equal(d.array1B,testarrB)
 assert d.fexint1==42
 assert d.fexfloat1==41.0
 print('dgram test complete')

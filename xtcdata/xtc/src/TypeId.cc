@@ -5,8 +5,8 @@
 
 using namespace XtcData;
 
-TypeId::TypeId(Type type, uint32_t version, bool cmp)
-: _value((version << 16) | type | (cmp ? 0x80000000 : 0))
+TypeId::TypeId(Type type, uint32_t version)
+: _value((version << 16) | type)
 {
 }
 
@@ -44,14 +44,9 @@ TypeId::Type TypeId::id() const
     return (TypeId::Type)(_value & 0xffff);
 }
 
-bool TypeId::compressed() const
-{
-    return _value & 0x80000000;
-}
-
 const char* TypeId::name(Type type)
 {
-    static const char* _names[NumberOf] = { "Parent", "DescData" };
+    static const char* _names[NumberOf] = { "Parent", "ShapesData", "Shapes", "Data", "Names" };
     const char* p = (type < NumberOf ? _names[type] : "-Invalid-");
     if (!p) p = "-Unnamed-";
     return p;

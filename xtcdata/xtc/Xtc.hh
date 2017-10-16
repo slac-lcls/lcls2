@@ -43,6 +43,10 @@ public:
     {
         return p->alloc(size);
     }
+    void* operator new(size_t size, Xtc& p)
+    {
+        return p.alloc(size);
+    }
 
     char* payload() const
     {

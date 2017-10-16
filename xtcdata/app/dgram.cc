@@ -1,4 +1,5 @@
-#include "xtcdata/xtc/Descriptor.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
@@ -15,69 +16,79 @@ using namespace XtcData;
 #define BUFSIZE 0x4000000
 
 typedef struct {
-    PyObject_HEAD PyObject* dict;
+    PyObject_HEAD
+    PyObject* dict;
     Dgram* dgram;
+    int verbose;
+    int debug;
 } PyDgramObject;
 
-void DictAssign(PyDgramObject* dgram, Descriptor& desc, DescData& d)
+void DictAssign(PyDgramObject* dgram, DescData& descdata)
 {
-    for (unsigned i = 0; i < desc.num_fields(); i++) {
-        Field& f = desc.get(i);
-        const char* tempName = f.name;
+    Names& names = descdata.nameindex().names();
+    for (unsigned i = 0; i < names.num(); i++) {
+        Name& name = names.get(i);
+        const char* tempName = name.name();
         PyObject* key = PyUnicode_FromString(tempName);
         PyObject* newobj;
-        if (f.rank == 0) {
-            switch (f.type) {
-            case UINT8: {
-                const int tempVal = d.get_value<uint8_t>(tempName);
+        if (name.rank() == 0) {
+            switch (name.type()) {
+            case Name::UINT8: {
+                const int tempVal = descdata.get_value<uint8_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
-            case UINT16: {
-                const int tempVal = d.get_value<uint16_t>(tempName);
+            case Name::UINT16: {
+                const int tempVal = descdata.get_value<uint16_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
-            case INT32: {
-                const int tempVal = d.get_value<int32_t>(tempName);
+            case Name::INT32: {
+                const int tempVal = descdata.get_value<int32_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
-            case FLOAT: {
-                const float tempVal = d.get_value<float>(tempName);
+            case Name::FLOAT: {
+                const float tempVal = descdata.get_value<float>(tempName);
                 newobj = Py_BuildValue("f", tempVal);
                 break;
             }
-            case DOUBLE: {
-                const int tempVal = d.get_value<double>(tempName);
+            case Name::DOUBLE: {
+                const double tempVal = descdata.get_value<double>(tempName);
                 newobj = Py_BuildValue("d", tempVal);
                 break;
             }
             }
         } else {
-            npy_intp dims[f.rank + 1];
-            for (unsigned i = 0; i < f.rank + 1; i++) {
-                dims[i] = f.shape[i];
+            npy_intp dims[name.rank() + 1];
+            uint32_t* shape = descdata.shape(name);
+            for (unsigned j = 0; j < name.rank() + 1; j++) {
+                dims[j] = shape[j];
             }
-            switch (f.type) {
-            case UINT8: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT8, d.data() + f.offset);
+            switch (name.type()) {
+            case Name::UINT8: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_UINT8, descdata.address(i));
                 break;
             }
-            case UINT16: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT16, d.data() + f.offset);
+            case Name::UINT16: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_UINT16, descdata.address(i));
                 break;
             }
-            case INT32: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_INT32, d.data() + f.offset);
+            case Name::INT32: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_INT32, descdata.address(i));
                 break;
             }
-            case FLOAT: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_FLOAT, d.data() + f.offset);
+            case Name::FLOAT: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_FLOAT, descdata.address(i));
                 break;
             }
-            case DOUBLE: {
-                newobj = PyArray_SimpleNewFromData(f.rank, dims, NPY_DOUBLE, d.data() + f.offset);
+            case Name::DOUBLE: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_DOUBLE, descdata.address(i));
                 break;
             }
             }
@@ -111,10 +122,15 @@ public:
             iterate(xtc); // look inside anything that is a Parent
             break;
         }
-        case (TypeId::DescData): {
-            DescData& d = *(DescData*)xtc->payload();
-            Descriptor& desc = d.desc();
-            DictAssign(_dgram, desc, d);
+        case (TypeId::Names): {
+            _names = (Names*)xtc;
+            break;
+        }
+        case (TypeId::ShapesData): {
+            ShapesData& shapesdata = *(ShapesData*)xtc;
+            NameIndex nameindex(*_names);
+            DescData descdata(shapesdata, nameindex);
+            DictAssign(_dgram, descdata);
             break;
         }
         default:
@@ -125,11 +141,27 @@ public:
 
 private:
     PyDgramObject* _dgram;
+    Names* _names;
 };
 
 static void dgram_dealloc(PyDgramObject* self)
 {
+    if (self->verbose > 1) {
+        printf("VERBOSE:%d dgram_dealloc() top\n",
+               self->verbose);
+        fflush(stdout);
+        printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dict));
+        printf("VERBOSE:%d   Py_REFCNT(self->dgram): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dgram));
+        printf("VERBOSE:%d   Py_REFCNT(self): %d\n",
+               self->verbose, (int)Py_REFCNT(self));
+    }
     Py_XDECREF(self->dict);
+    if (self->debug == 2) {
+      printf("DEBUG:%d   Py_XDECREF(self->dgram)\n", self->debug);
+      Py_XDECREF(self->dgram);
+    }
     free(self->dgram);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -144,29 +176,90 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
-    self->dgram = (Dgram*)malloc(BUFSIZE);
+    static const char* dataFilename = "data.xtc";
+    static char* kwlist[] = {(char*)"verbose", (char*)"debug", NULL};
 
-    int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
+    self->verbose=0;
+    self->debug=0;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds,
+                                     "|i$i", kwlist,
+                                     &(self->verbose),
+                                     &(self->debug))) {
+        return -1;
+    }
+
+    self->dgram = (Dgram*)malloc(BUFSIZE);
+    if (self->dgram == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
+        return -1;
+    }
+
+    int fd = open(dataFilename, O_RDONLY | O_LARGEFILE);
+    if (fd < 0) {
+        char s[120];
+        sprintf(s, "%s -- %s", strerror(errno), dataFilename);
+        PyErr_SetString(PyExc_OSError, s);
+        return -1;
+    }
 
     if (::read(fd, self->dgram, sizeof(*self->dgram)) <= 0) {
-        printf("read was unsuccessful: %s\n", strerror(errno));
+        char s[120];
+        sprintf(s, "loading self->dgram was unsuccessful -- %s", strerror(errno));
+        PyErr_SetString(PyExc_OSError, s);
+        return -1;
     }
 
     size_t payloadSize = self->dgram->xtc.sizeofPayload();
-    ::read(fd, self->dgram->xtc.payload(), payloadSize);
+    if (::read(fd, self->dgram->xtc.payload(), payloadSize) <= 0) {
+        char s[120];
+        sprintf(s, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
+        PyErr_SetString(PyExc_OSError, s);
+        return -1;
+    }
+
+    if (self->debug == 2) {
+        printf("DEBUG:%d   Py_INCREF(self->dgram)\n", self->debug);
+        Py_INCREF(self->dgram);
+    }
 
     myLevelIter iter(&self->dgram->xtc, self);
     iter.iterate();
 
+    if (self->verbose > 1) {
+        printf("VERBOSE:%d dgram_init() bottom\n",
+               self->verbose);
+        fflush(stdout);
+        printf("VERBOSE:%d   Py_REFCNT(self): %d\n",
+               self->verbose, (int)Py_REFCNT(self));
+        printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dict));
+        printf("VERBOSE:%d   Py_REFCNT(self->dgram): %d\n",
+               self->verbose, (int)Py_REFCNT(self->dgram));
+    }
     return 0;
 }
 
-static PyMemberDef dgram_members[] = { { (char*)"__dict__", T_OBJECT_EX, offsetof(PyDgramObject, dict),
-                                         0, (char*)"attribute dictionary" },
-                                       { NULL } };
+static PyMemberDef dgram_members[] = {
+    { (char*)"__dict__",
+      T_OBJECT_EX, offsetof(PyDgramObject, dict),
+      0,
+      (char*)"attribute dictionary" },
+    { (char*)"verbose",
+      T_INT, offsetof(PyDgramObject, verbose),
+      0,
+      (char*)"attribute verbose" },
+    { (char*)"debug",
+      T_INT, offsetof(PyDgramObject, debug),
+      0,
+      (char*)"attribute debug" },
+    { NULL }
+};
 
 PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
+    int verbose=((PyDgramObject*)o)->verbose;
+    int debug=((PyDgramObject*)o)->debug;
+
     PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
     if (res != NULL) {
         if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
@@ -181,16 +274,35 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
             // array is deleted (since the array has us as the "base" object).
             Py_INCREF(o);
             return arr_copy;
+        } else {
+            // this reference count will get decremented when the returned
+            // variable is deleted.
+            if (debug != 1) {
+                Py_INCREF(res);
+            }
         }
     } else {
         res = PyObject_GenericGetAttr(o, key);
+    }
+
+    if (verbose > 0) {
+        Py_ssize_t size;
+        char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
+        printf("VERBOSE=%d; attro='%s'; Py_REFCNT(res): ", verbose, key_string);
+        fflush(stdout);
+        if (strcmp(key_string, "__bases__")==0) {
+            printf("Error\n");
+        } else {
+            printf("%ld\n", (long int)Py_REFCNT(res));
+        }
     }
 
     return res;
 }
 
 static PyTypeObject dgram_DgramType = {
-    PyVarObject_HEAD_INIT(NULL, 0) "dgram.Dgram", /* tp_name */
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "dgram.Dgram", /* tp_name */
     sizeof(PyDgramObject), /* tp_basicsize */
     0, /* tp_itemsize */
     (destructor)dgram_dealloc, /* tp_dealloc */

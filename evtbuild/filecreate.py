@@ -1,108 +1,141 @@
 '''
-New Filecreate file.
+New Filecreate file.   s
 timestamp length will now match big data length
 big data array will be filled with integers instead of zeros
 '''
+
+# variable length data
+# core that looks ahead, decides based on small data whether to accumulate
+# and passes big data
+
+
 #logistical support
-import h5py, random
+import h5py_cache
+import h5py, random, sys, os,glob
 import numpy as np
+from picklecreate import create_pickle, load_config
 
-#Options imported here
-#This is the filesize of the first h5 file. For small kB-size files set to 0
-filesize = 8
-number_of_files = 10
+try:
+        from tqdm import tqdm
+        tqdm_exists = True
+except ImportError:
+        tqdm_exists = False
 
-#initial variables
-initialindex = 0
-startonfilenumber = 2
-tsFactor = 1
-#evetn arrays are written in chunks of this number. DO NOT INSERT ODD NUMBERS HERE!
-chunkSize = 4
 
-#a filesize of 0 will create a small set of h5 files
-if filesize == 0:
-    datSize = 100
-else:
-    datSize = filesize*10000
-    
-#each event will be a megabyte in size
-evtSize = 250000
+#nruns = 1000
+global nevents
+nevents = int(sys.argv[1])
+scr_dir = str(nevents/1000)+'k/'
+ 
+config_dict = load_config()
+n_hdf = config_dict['num_hdf']
+
+scratch_path = config_dict['path']
+path = scratch_path + '/'+scr_dir
+try:
+        os.mkdir(path)
+except OSError:
+        print('Directory %s already exists' % path) 
+        files = glob.glob(path+'*')
+        [os.remove(x) for x in files]
+
+
+
+#32 tile variable size image
+def var_image(ntiles):
+	img_out = []
+	img_dims = []
+	for tiles in range(ntiles):
+		var_img_shape = np.random.randint(1,194),np.random.randint(1,185)
+		rand_img = np.random.randint(0,255,size=var_img_shape,dtype='uint16')
+		img_out = np.r_[(img_out,rand_img.ravel())]
+		img_dims.append(var_img_shape)
+	return img_out, np.array(img_dims).ravel()
+
+def dist_tiles(num_tiles, num_hdf):
+#	evt_dist = np.random.choice(np.arange(num_hdf), size=8)
+        evt_dist = np.random.multinomial(num_tiles, [1/float(num_hdf)]*num_hdf, size=1)
+        return evt_dist[0]
+#	return np.ndarray.tolist(evt_dist)
+
+#create the small data in the first file
+#@profile
+def write_smalldata(nevents):
+	with h5py.File('%sfile0.h5' % path, 'w') as f: 
+		small_data_group = f.create_group("small_data")
+		diode_vals = small_data_group.create_dataset('diode_values', (nevents,), dtype='S5')
+		all_timestamps = small_data_group.create_dataset('all_timestamps', (nevents,), dtype='i')
+		 	
+		all_timestamps[:] = range(nevents)
+		
+		diode_vals[:] = np.random.choice(smallDatColors,nevents)
+
+#write out the data for the rest of the files
+#@profile
+def write_file_output(file_num,exs,image_data):
+	
+	mode = 'w'
+	if file_num ==0:
+		mode = 'a'
+		
+#	with h5py.File('%sfile%i.h5' % (path,file_num), mode,libver='latest') as f:
+	with h5py_cache.File('%sfile%i.h5' % (path,file_num), mode,chunk_cache_mem_size=4*1024*2) as f:	
+	
+		first_list = exs[:,file_num]
+		nonzero_evt_timestamps = np.nonzero(first_list)[0]
+		nonzero_evt_tiles = np.take(first_list, nonzero_evt_timestamps)
+		num_evts = len(nonzero_evt_timestamps)
+		
+		#write out the timestamps of the events where data is stored in this hdf
+		small_data_group = f.require_group("small_data")		
+		time_stamps = small_data_group.create_dataset('time_stamp', (num_evts,), dtype='i', chunks=True)
+		time_stamps[:] = np.ndarray.tolist(nonzero_evt_timestamps)
+		
+		#create a variable length datatype for the HDF file
+		dt = h5py.special_dtype(vlen=np.dtype('uint16'))
+
+		#create a group for the mock cspad data
+		cspad_data_group = f.create_group("cspad_data")
+		#write some metadata on the array sizes
+		arraySizes = cspad_data_group.create_dataset('array_sizes', (num_evts,), dtype = dt, chunks=True)
+		arraySizes[:] = np.c_[nonzero_evt_tiles]
+
+		image_data = cspad_data_group.create_dataset('image_data', shape = (num_evts,), maxshape=(None,),chunks = (143560,), dtype = dt)
+		image_data[:] = map(lambda x: image_dat_arr[x-1], nonzero_evt_tiles)
+		
+		#create a group for the mock reduced cspad data. These have random shapes
+		cspad_red_data_group = f.create_group("cspad_reduced_data")
+		#write some metadata on the array sizes
+		arraySizes = cspad_red_data_group.create_dataset('array_sizes', (num_evts,), dtype = dt, chunks=True)
+		image_data = cspad_red_data_group.create_dataset('image_data', shape = (num_evts,), maxshape=(None,),chunks = (143560,), dtype = dt)
+
+		var_img_out = np.array(map(lambda x: var_image(x), nonzero_evt_tiles))
+		arraySizes[:] = var_img_out[:,1]
+		image_data[:] = var_img_out[:,0]
+		
 
 #small data will be an array of random colors. "red" will be deemed as an interesting event.
 smallDatColors = ['red', 'blue', 'green']
 
-#introduces a sequential block to prevent large arrays of sequential timestamps
-if datSize == 100:
-    max_block_size = int(round(datSize*.05))
-    bunch = int(round(datSize/5))
+#distribute the tiles across the available hdf files
+exs = np.asarray([dist_tiles(8,n_hdf) for x in range(nevents)])
+
+#make some mock cspad arrays and fill with random data
+cspad_quad = np.random.randint(0,2**16,size=(194,185,4), dtype='uint16')
+cspad_quad_rav = cspad_quad.ravel()
+#create lookup table for different number of tiles
+image_dat_arr = [np.r_[((cspad_quad_rav),)*nt] for nt in range(1,n_hdf+1)]
+
+
+write_smalldata(nevents)
+#
+if tqdm_exists:
+        for i in tqdm(range(n_hdf)):
+                write_file_output(i,exs,image_dat_arr)
 else:
-    max_block_size = int(round(datSize*.005))
-    bunch = int(round(datSize/100))
+        for i in range(n_hdf):
+                write_file_output(i,exs,image_dat_arr)
 
-#imageing device prevents memory issues when writing large arrays
-image = np.array([range(evtSize) for i in range(chunkSize)])
-
-#creating the first h5 file
-with h5py.File('file1.h5', 'w') as f:
-    #creating small data
-    smallDat = f.create_dataset('smalldata', (datSize,), dtype='S5')
-    for event in range(datSize):
-        smallDat[event] = (random.choice(smallDatColors))
-    
-    #creating first timestamp array
-    firstStamp = f.create_dataset('timestamp1', (datSize,), dtype='i')
-    for stamp in range(datSize):
-        firstStamp[stamp] = initialindex+(stamp*tsFactor)
-    
-    #creating first event array
-    maxshape = (None,) + image.shape[1:]
-    print datSize, image.shape
-    bigDat1 = f.create_dataset('bigdata1', shape=image.shape,
-      maxshape=maxshape, chunks=image.shape, dtype=image.dtype)
-    bigDat1[:] = image
-    row_count = chunkSize
-    for i in range(int(datSize/image.shape[0])-1):
-        bigDat1.resize(row_count + image.shape[0], axis =0)
-        bigDat1[row_count:] = image
-        row_count += image.shape[0]
-    
-#creating the secondary h5 files
-while startonfilenumber <= number_of_files:
-    list = np.arange(datSize)[...]
-    amendment = []
-    while initialindex < len(list):
-        sel_n = int(round(random.choice(range(initialindex, initialindex+bunch))))
-        block_size = random.choice(range(max_block_size))
-        if sel_n+block_size > len(list):
-            block_size = len(list)-sel_n
-        for i in range(sel_n, sel_n+block_size):
-            amendment.append(list[i])
-        initialindex = sel_n+block_size
-        
-    with h5py.File('file%s.h5' %startonfilenumber, 'w') as g:
-        #creating timestamp arrays
-        secondStamp = g.create_dataset('timestamp%s' %startonfilenumber, (len(amendment),), dtype='i')
-        length = len(amendment)
-        secondStamp[:length]=amendment[:]
-        import math
-        nChunks = int(math.floor(len(secondStamp)/chunkSize))
-        nOffsets = len(secondStamp)%chunkSize
-        
-        #creating event data arrays
-        maxshape = (None,) + image.shape[1:]
-        bigDat = g.create_dataset('bigdata%s' %startonfilenumber, shape=image.shape,
-          maxshape=maxshape, chunks=image.shape, dtype=image.dtype)
-        bigDat[:] = image
-        #create chunks
-        row_count = chunkSize
-        for i in range(nChunks-1):
-          bigDat.resize(row_count + image.shape[0], axis =0)
-          bigDat[row_count:] = image
-          row_count += image.shape[0]
-        #create offsets of the last chunk
-        for i in range(nOffsets):
-          bigDat.resize(row_count + 1, axis=0)
-          bigDat[row_count] = np.arange(0, evtSize)
-          row_count += 1
-    startonfilenumber += 1
-    initialindex = 0
+print('Creating pickle')
+create_pickle(path)
+print('Done')
