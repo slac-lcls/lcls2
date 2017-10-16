@@ -21,16 +21,15 @@ target_link_libraries(drp
     utils
     pthread
     xtc
-    pds
 )
 
 add_executable(pgp-sender
     pgp-sender.cc
 )
 
-#add_executable(test-queues
-#    test.cc
-#)
+add_executable(test-pgp-read
+    test-pgp-read.cc
+)
 #target_link_libraries(test-queues
 #    utils
 #    pthread
