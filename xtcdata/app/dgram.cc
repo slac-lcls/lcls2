@@ -60,9 +60,9 @@ void DictAssign(PyDgramObject* dgram, DescData& descdata)
             }
             }
         } else {
-            npy_intp dims[name.rank() + 1];
+            npy_intp dims[name.rank()];
             uint32_t* shape = descdata.shape(name);
-            for (unsigned j = 0; j < name.rank() + 1; j++) {
+            for (unsigned j = 0; j < name.rank(); j++) {
                 dims[j] = shape[j];
             }
             switch (name.type()) {
