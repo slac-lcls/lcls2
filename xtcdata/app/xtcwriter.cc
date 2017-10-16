@@ -1,3 +1,18 @@
+// to do:
+// - add set_array()
+// - figure out how to associate nameindex with correct xtc's
+// - put names in real configure transition
+// - create new autoalloc that also allocs xtc header size
+// - faster version of routines that takes index vs. string
+// - increase NDGRAM to 2
+// - protection:
+//   o error when name not in map
+//   o make sure things go in name order (not a problem if we do string lookup)
+//     (are offsets messed up if user leaves a "gap" with set_array/set_array_shape?)
+//   o check maxrank limit
+//   o check maxnames limit
+//   o check total offsets equal to xtc sizeofPayload (not necessary with autoalloc?)
+
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -80,6 +95,7 @@ public:
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 array[i][j] = i * j;
+                array2[i][j] = i * j + 2;
             }
         }
     }
@@ -87,9 +103,10 @@ public:
     float _fdata;
     float array[3][3];
     int _idata;
+    float array2[3][3];
 };
 
-void pgpExample(Xtc& parent, char* intName, char* floatName, char* arrayName, int vals[3],
+void pgpExample(Xtc& parent, char* intName, char* floatName, char* arrayName, char* arrayNameB, int vals[3],
                 NameIndex& nameindex)
 {
     FrontEndData frontEnd(parent, nameindex);
@@ -105,6 +122,7 @@ void pgpExample(Xtc& parent, char* intName, char* floatName, char* arrayName, in
 
     unsigned shape[] = { 3, 3 };
     frontEnd.set_array_shape(arrayName, shape);
+    frontEnd.set_array_shape(arrayNameB, shape);
 }
 
 void fexExample(Xtc& parent)
@@ -128,7 +146,7 @@ void fexExample(Xtc& parent)
 }
 
 NameIndex addNameIndex(Xtc& parent, const char* intName, const char* floatName,
-                   const char* arrayName)
+                       const char* arrayName, const char* arrayNameB)
 {
     // would normally get Names from configure transition
     Names& names = *new(parent) Names();
@@ -136,6 +154,7 @@ NameIndex addNameIndex(Xtc& parent, const char* intName, const char* floatName,
     names.add(floatName, Name::FLOAT, parent);
     names.add(arrayName, Name::FLOAT, parent, 2);
     names.add(intName, Name::INT32, parent);
+    names.add(arrayNameB, Name::FLOAT, parent, 2);
 
     return NameIndex(names);
 }
@@ -162,17 +181,21 @@ int main()
             vals1[j] = i + j;
             vals2[j] = 1000 + i + j;
         }
-        char intname[10], floatname[10], arrayname[10];
+        char intname[10], floatname[10], arrayname[10], arraynameB[10];
         sprintf(intname, "%s%d", "int", i);
         sprintf(floatname, "%s%d", "float", i);
         sprintf(arrayname, "%s%d", "array", i);
-        NameIndex nameindex1 = addNameIndex(dgram.xtc, intname, floatname, arrayname);
-        pgpExample(dgram.xtc, intname, floatname, arrayname, vals1, nameindex1);
+        sprintf(arraynameB, "%s%dB", "array", i);
+        NameIndex nameindex1 = addNameIndex(dgram.xtc, intname, floatname,
+                                            arrayname, arraynameB);
+        pgpExample(dgram.xtc, intname, floatname, arrayname, arraynameB, vals1, nameindex1);
         sprintf(intname, "%s%d", "int", i + 1);
         sprintf(floatname, "%s%d", "float", i + 1);
         sprintf(arrayname, "%s%d", "array", i + 1);
-        NameIndex nameindex2 = addNameIndex(dgram.xtc, intname, floatname, arrayname);
-        pgpExample(dgram.xtc, intname, floatname, arrayname, vals2, nameindex2);
+        sprintf(arraynameB, "%s%dB", "array", i + 1);
+        NameIndex nameindex2 = addNameIndex(dgram.xtc, intname, floatname,
+                                            arrayname, arraynameB);
+        pgpExample(dgram.xtc, intname, floatname, arrayname, arraynameB, vals2, nameindex2);
         fexExample(dgram.xtc);
 
         DebugIter iter(&dgram.xtc);
