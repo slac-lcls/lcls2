@@ -276,10 +276,8 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
             return arr_copy;
         } else {
             // this reference count will get decremented when the returned
-            // variable is deleted.
-            if (debug != 1) {
-                Py_INCREF(res);
-            }
+            // variable is deleted, so must increment here.
+            Py_INCREF(res);
         }
     } else {
         res = PyObject_GenericGetAttr(o, key);
