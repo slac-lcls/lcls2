@@ -1,12 +1,12 @@
 
 add_library(service SHARED
     SysClk.cc
-    SemaphoreUx.cc
+    Semaphore.cc
     Lock.cc
     Pool.cc
     Task.cc
-    TaskUx.cc
-    TaskObjectUx.cc
+    TaskObject.cc
+    Timer.cc
     GenericPool.cc
     GenericPoolW.cc
 )

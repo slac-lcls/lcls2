@@ -1,26 +1,15 @@
 /*
- * UNIX specific Task class implementation.
+ * Task class implementation.
  *
  *
  */
 
 #include "TaskObject.hh"
 
-#ifndef __linux__
-#include <thread.h>
-#endif
-
 using namespace Pds;
 
 /*
  * Constructor: set up the default values of the task parameters
- *
- * Note on priority:
- *     The value of the priority is entered as though it were for a
- *     vxWorks task ( 0 highest to 127 lowest ). This also limits the
- *     vxWorks range to 0 to 127 instead of 0 to 255. The sense of this
- *     priority is opposite that for threads so the value is renormalized
- *     to the unix version inside the if() block.
  *
  * //  _flags = THR_BOUND;  We might eventually want to use threads which
  * are each bound to a LWP (Light Weight Process). This allows greater
@@ -45,14 +34,7 @@ TaskObject::TaskObject(const char* name, int priority,
   _name = new char[strlen(name)+1];
   strcpy(_name, name);
 
-/*
- *  In SunOS58, some executables are unresponsive to signals such as <Ctrl c>
- *  if threads are not bound. 
- */
   pthread_attr_init( &_flags );
-#ifndef __linux__
-  pthread_attr_setscope( &_flags, THR_BOUND );
-#endif
   pthread_attr_setdetachstate( &_flags, PTHREAD_CREATE_DETACHED );
 
   _priority = _priority>127 ? 127 : _priority;

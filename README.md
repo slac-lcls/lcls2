@@ -1,5 +1,5 @@
 # LCLS II development repository
-## Build instructions
+## Build instructions (on psdev)
 ```bash
 # setup conda
 source /reg/g/psdm/etc/psconda.sh  (conda requires bash)

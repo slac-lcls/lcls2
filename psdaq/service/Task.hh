@@ -1,5 +1,5 @@
-#ifndef ODF_TASK_H
-#define ODF_TASK_H
+#ifndef PDS_TASK_H
+#define PDS_TASK_H
 
 #include "QueueSlowSafe.hh"
 #include "Semaphore.hh"

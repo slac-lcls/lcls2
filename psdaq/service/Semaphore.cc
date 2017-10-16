@@ -24,16 +24,3 @@ Semaphore::~Semaphore()
 {
   sem_destroy(&_sem);
 }
-
-
-
-void Semaphore::take()
-{
-  sem_wait(&_sem);
-}
-
-void Semaphore::give() 
-{
-  sem_post(&_sem);
-}
-

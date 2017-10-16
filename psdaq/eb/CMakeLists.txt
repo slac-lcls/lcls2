@@ -33,6 +33,7 @@ target_link_libraries(ft_pingpong
 
 target_link_libraries(ft_publish 
     eb
+    pthread
 )
 
 target_link_libraries(ft_push 

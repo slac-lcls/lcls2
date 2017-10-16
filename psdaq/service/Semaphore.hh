@@ -1,13 +1,7 @@
 #ifndef PDS_SEMAPHORE_HH
 #define PDS_SEMAPHORE_HH
 
-
-#ifdef VXWORKS
-#  include "semLib.h"
-#else
-#  include <pthread.h>
-#  include <semaphore.h>
-#endif
+#include <semaphore.h>
 
 namespace Pds {
 class Semaphore {
@@ -20,14 +14,14 @@ class Semaphore {
 
  private:
 
-#ifdef VXWORKS
-  SEM_ID _sem;
-#else
   sem_t _sem;
-#endif
-
 };
 }
+
+inline void Pds::Semaphore::take() { sem_wait(&_sem); }
+
+inline void Pds::Semaphore::give() { sem_post(&_sem); }
+
 #endif
 
 

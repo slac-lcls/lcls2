@@ -1,3 +1,6 @@
 #add_subdirectory(hdf5)
 add_subdirectory(service)
+add_subdirectory(cphw)
 add_subdirectory(eb)
+add_subdirectory(epicstools)
+add_subdirectory(xpm)
