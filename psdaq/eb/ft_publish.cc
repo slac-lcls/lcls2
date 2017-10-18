@@ -1,7 +1,7 @@
-#include "psdaq/eb/Endpoint.hh"
+#include "pds/eb/Endpoint.hh"
 
-#include "psdaq/service/Routine.hh"
-#include "psdaq/service/Task.hh"
+#include "pds/service/Routine.hh"
+#include "pds/service/Task.hh"
 
 #include <unistd.h>
 #include <stdio.h>
@@ -14,8 +14,9 @@ using namespace Pds;
 
 class Listener : public Routine {
   public:
-    Listener(PassiveEndpoint* pendp, Semaphore& sem, Task* task, std::vector<Endpoint*>& subs) :
+    Listener(PassiveEndpoint* pendp, CompletionPoller* cpoller, Semaphore& sem, Task* task, std::vector<Endpoint*>& subs) :
       _pendp(pendp),
+      _cpoller(cpoller),
       _sem(sem),
       _task(task),
       _subs(subs),
@@ -44,6 +45,7 @@ class Listener : public Routine {
         printf("client connected!\n");
         _sem.take();
         _subs.push_back(endp);
+        _cpoller->add(endp);
         _sem.give();
       }
       _task->call(this);
@@ -52,6 +54,7 @@ class Listener : public Routine {
 
   private:
     PassiveEndpoint*        _pendp;
+    CompletionPoller*       _cpoller;
     Semaphore&              _sem;
     Task*                   _task;
     std::vector<Endpoint*>& _subs;
@@ -91,12 +94,14 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Failed to register memory region: %s\n", fab->error());
     return fab->error_num();
   }
+  // Create a cq poller
+  CompletionPoller* cqpoll = new CompletionPoller(fab);
 
   Semaphore sem(Semaphore::FULL);
   std::vector<Endpoint*> subs;
   Task* task = new Task(TaskObject("Sublisten",35));
 
-  Listener* listener = new Listener(pendp, sem, task, subs);
+  Listener* listener = new Listener(pendp, cqpoll, sem, task, subs);
   listener->start();
 
   bool cm_entry;
@@ -104,8 +109,10 @@ int main(int argc, char *argv[])
   uint32_t event;
 
   for (uint64_t count=0; count < max_count; count++) {
+    int npend = 0;
     int num_comp;
     struct fi_cq_data_entry comp;
+    bool dead = false;
     data_buff[0] = count;
     for (unsigned i=3; i< buff_num; i++)
       data_buff[i]++;
@@ -118,6 +125,7 @@ int main(int argc, char *argv[])
       if(subs[i]->event(&event, &entry, &cm_entry)) {
         if (cm_entry && event == FI_SHUTDOWN) {
           pendp->close(subs[i]);
+          cqpoll->del(subs[i]);
           subs[i]=0;
           printf("client disconnected!\n");
           continue;
@@ -127,21 +135,40 @@ int main(int argc, char *argv[])
       // post a send for this sub
       if (!subs[i]->send(buff, buff_size, &count, mr)) {
         pendp->close(subs[i]);
+        cqpoll->del(subs[i]);
         subs[i]=0;
         printf("error posting send to client %u - dropping!\n", i);
       }
-    }
-    for (unsigned i=0; i<subs.size(); i++) {
-      if (!subs[i]) continue;
 
-      // check if send has completed
-      if (!subs[i]->comp_wait(&comp, &num_comp, 1, 1000)) {
-        pendp->close(subs[i]);
-        subs[i]=0;
-        printf("error completing send to client %u - dropping!\n", i);
+      npend++;
+    }
+
+    while (npend > 0) {
+      if (cqpoll->poll()) {
+        for (unsigned i=0; i<subs.size(); i++) {
+          if (!subs[i]) continue;
+
+          // check if send has completed
+          if (!subs[i]->comp(&comp, &num_comp, 1)) {
+            if (subs[i]->error_num() != -FI_EAGAIN) {
+              pendp->close(subs[i]);
+              cqpoll->del(subs[i]);
+              subs[i]=0;
+              printf("error completing send to client %u - dropping!\n", i);
+            }
+          } else {
+            npend -= num_comp;
+          }
+        }
+      } else {
+        printf("error polling completion queues: %s - aborting!", cqpoll->error());
+        dead = true;
+        break;
       }
     }
+
     sem.give();
+    if (dead) break;
     sleep(2);
   }
 
