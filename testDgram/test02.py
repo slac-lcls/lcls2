@@ -12,23 +12,55 @@ sys.path.append('../build/xtcdata')
 from dgram import Dgram
 #
 
-def do_it(args_proper, verbose, debug):
-    d=Dgram(verbose, debug=debug)
-
-    a1=d.fexfloat1
-    a2=d.fexfloat1
-    a3=d.fexfloat1
-    a4=d.fexfloat1
-
-    print("del a1, a2, a3, a4")
-    del a1, a2, a3, a4
-
-    a1=d.fexfloat1
-    a2=d.fexfloat1
-    a3=d.fexfloat1
-    a4=d.fexfloat1
-
+def setAttr(d, attr, value, verbose=None):
+    if verbose is not None:
+        verbose0=d.verbose
+        d.verbose=verbose
+    print("Set value of %s:" % (attr))
+    setattr(d, attr, value)
+    print(value)
+    if verbose is not None:
+        d.verbose=verbose0
     return True
+
+def getAttr(d, attr, verbose=None):
+    if verbose is not None:
+        verbose0=d.verbose
+        d.verbose=verbose
+    print("Get value of %s (id=%s):" % (attr, id(attr)))
+    value=getattr(d, attr)
+    print(value)
+    if verbose is not None:
+        d.verbose=verbose0
+    return value
+
+def do_it(args_proper, verbose, debug):
+    d=Dgram(verbose, debug)
+    print("d:", d)
+    print("id(d):", id(d))
+ 
+    a1=getAttr(d, 'array0')
+    print("a1.base:", a1.base)
+    print("id(a1):", id(a1))
+    print("dir(a1):")
+    dir(a1)
+#
+#    d.verbose=1
+#    a2=getAttr(d, 'array0')
+#    print("id(a2):", id(a2))
+#    print("del a2")
+#    del a2
+#
+#    a2=getAttr(d, 'array0')
+#    print("id(a2):", id(a2))
+#    print("del a2")
+#    del a2
+#
+#    print("del d")
+#    del d
+#
+#    print(a1)
+#    del a1
 
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:')

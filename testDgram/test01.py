@@ -24,6 +24,7 @@ def do_it(args_proper, verbose, debug):
     sys.stdout.flush()
 
     objAttributes=[]
+    print(inspect.getmembers(d))
     for item in inspect.getmembers(d):
         if item[0] not in classMembers:
             objAttributes.append(item[0])
