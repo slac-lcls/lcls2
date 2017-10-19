@@ -27,6 +27,7 @@ public:
     DataType    type() {return _type;}
     uint32_t    rank() {return _rank;}
 
+private:
     char _name[maxNameSize];
     DataType _type;
     uint32_t _rank;
@@ -35,18 +36,20 @@ public:
 class Shape
 {
 public:
-    Shape(unsigned tmpshape[Name::MaxRank])
+    Shape(unsigned shape[Name::MaxRank])
     {
-        memcpy(shape, tmpshape, sizeof(int) * Name::MaxRank);
+        memcpy(_shape, shape, sizeof(int) * Name::MaxRank);
     }
     unsigned size(Name& name) {
         unsigned size = 1;
         for (unsigned i = 0; i < name.rank(); i++) {
-            size *= shape[i];
+            size *= _shape[i];
         }
         return size*Name::get_element_size(name.type());
     }
-    uint32_t shape[Name::MaxRank]; // in an ideal world this would have length "rank"
+    uint32_t* shape() {return _shape;}
+private:
+    uint32_t _shape[Name::MaxRank]; // in an ideal world this would have variable length "rank"
 };
 
 // this class updates the "parent" Xtc extent at the same time
@@ -106,8 +109,9 @@ public:
 class Shapes : public AutoParentAlloc
 {
 public:
-    Shapes(XtcData::Xtc& superparent) :
-        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Shapes,0))
+    Shapes(XtcData::Xtc& superparent, uint32_t namesId) :
+        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Shapes,0)),
+        _namesId(namesId)
     {
         // go two levels up to "auto-alloc" Shapes Xtc header size
         superparent.alloc(sizeof(*this));
@@ -118,6 +122,10 @@ public:
         Shape& shape = ((Shape*)(this + 1))[index];
         return shape;
     }
+    uint32_t namesId() {return _namesId;}
+private:
+    // associated numerical index of the Names object in the configure transition
+    uint32_t _namesId;
 };
 
 class ShapesData : public XtcData::Xtc

@@ -7,6 +7,8 @@
 #include <map>
 #include <type_traits>
 
+#define _unused(x) ((void)(x))
+
 template <typename T>
 struct Array {
     Array(uint8_t* buffer)
@@ -84,6 +86,7 @@ public:
     {
         Names& names = _nameindex.names();
         assert(names.num()<MaxNames);
+        _unused(names);
         _offset[0]=0;
         _numentries = names.num();
         for (unsigned i=0; i<_numentries-1; i++) {
@@ -114,7 +117,7 @@ public:
     uint32_t* shape(Name& name) {
         Shapes& shapes = _shapesdata.shapes();
         unsigned shapeIndex = _nameindex.shapeMap()[name.name()];
-        return shapes.get(shapeIndex).shape;
+        return shapes.get(shapeIndex).shape();
     }
 
     // for all array types
@@ -129,7 +132,7 @@ public:
         T array(data.payload() + _offset[index]);
         array._shape.resize(name.rank());
         for (unsigned i = 0; i < name.rank(); i++) {
-            array._shape[i] = shape.shape[i];
+            array._shape[i] = shape.shape()[i];
         }
         return array;
     }
@@ -139,12 +142,14 @@ public:
 
 protected:
     // creating a new ShapesData to be filled in
-    DescData(NameIndex& nameindex, XtcData::Xtc& parent) : _shapesdata(*new (parent) ShapesData()),
-                                                                _nameindex(nameindex),
-                                                                _numarrays(0)
+    DescData(NameIndex& nameindex, XtcData::Xtc& parent) :
+        _shapesdata(*new (parent) ShapesData()),
+        _nameindex(nameindex),
+        _numarrays(0)
     {
         Names& names = _nameindex.names();
         assert(names.num()<MaxNames);
+        _unused(names);
         _offset[0]=0;
         _numentries=0;
     }
@@ -159,8 +164,8 @@ protected:
 
 class FrontEndData : public DescData {
 public:
-    FrontEndData(XtcData::Xtc& parent, NameIndex& nameindex) :
-        DescData(nameindex, parent), _parent(parent)
+    FrontEndData(XtcData::Xtc& parent, NameIndex& nameindex, unsigned namesId) :
+        DescData(nameindex, parent), _parent(parent), _namesId(namesId)
     {
         new (&_shapesdata) Data(_parent);
     }
@@ -175,7 +180,7 @@ public:
     void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
         if (_numarrays==0) {
             // add the xtc that will hold the shapes of arrays
-            Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
+            Shapes& shapes = *new (&_shapesdata) Shapes(_parent, _namesId);
             shapes.alloc(_nameindex.shapeMap().size()*sizeof(Shape),
                          _shapesdata, _parent);
         }
@@ -183,22 +188,24 @@ public:
         unsigned rank = _nameindex.names().get(index).rank();
         unsigned shapeIndex = _nameindex.shapeMap()[name];
         assert (shapeIndex==_numarrays);
+        _unused(shapeIndex);
         Shape& sh = _shapesdata.shapes().get(_numarrays);
         for (unsigned i=0; i<rank; i++) {
-            sh.shape[i] = shape[i];
+            sh.shape()[i] = shape[i];
         }
         _numarrays++;
     }
 private:
     XtcData::Xtc& _parent;
+    unsigned      _namesId;
 };
 
 class FexData : public DescData {
 public:
-    FexData(XtcData::Xtc& parent, NameIndex& nameindex) :
+    FexData(XtcData::Xtc& parent, NameIndex& nameindex, unsigned namesId) :
         DescData(nameindex, parent), _parent(parent)
     {
-        Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
+        Shapes& shapes = *new (&_shapesdata) Shapes(_parent, namesId);
         Names& names = _nameindex.names();
         shapes.alloc(names.num()*sizeof(Shape), _shapesdata, _parent);
         new (&_shapesdata) Data(_parent);

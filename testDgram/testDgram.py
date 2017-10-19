@@ -6,10 +6,12 @@ from sys import getrefcount as getref
 sys.path.append('../build/xtcdata')
 from dgram import Dgram
 import numpy as np
+from DataSource import DataSource
 VERBOSE=0
 
 def myroutine2():
-  d = Dgram(VERBOSE)
+  ds = DataSource('data.xtc',VERBOSE)
+  d = ds.__next__()
   assert getref(d)==2
   arr1 = d.array0 #increase refcount of d
   assert getref(d)==3
@@ -36,10 +38,10 @@ def myroutine1():
 
 d = myroutine1()
 assert getref(d)==2
-assert d.float0==0.0
-assert d.float1==1000.0
-assert d.int0==1
-assert d.int1==1001
+assert d.float0==1.0
+assert d.float1==1001.0
+assert d.int0==2
+assert d.int1==1002
 testarr = np.array([[0,0,0],[0,1,2],[0,2,4]],dtype=np.float32)
 testarrB = testarr+2
 assert np.array_equal(d.array0,testarr)

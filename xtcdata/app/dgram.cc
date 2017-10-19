@@ -15,6 +15,9 @@
 using namespace XtcData;
 #define BUFSIZE 0x4000000
 
+// to avoid compiler warnings for debug variables
+#define _unused(x) ((void)(x))
+
 typedef struct {
     PyObject_HEAD
     PyObject* dict;
@@ -107,11 +110,11 @@ void DictAssign(PyDgramObject* dgram, DescData& descdata)
     }
 }
 
-class myLevelIter : public XtcIterator
+class myXtcIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    myLevelIter(Xtc* xtc, PyDgramObject* dgram) : XtcIterator(xtc), _dgram(dgram)
+    myXtcIter(Xtc* xtc, PyDgramObject* dgram) : XtcIterator(xtc), _dgram(dgram)
     {
     }
 
@@ -123,12 +126,14 @@ public:
             break;
         }
         case (TypeId::Names): {
-            _names = (Names*)xtc;
+            _names.push_back((Names*)xtc);
             break;
         }
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
-            NameIndex nameindex(*_names);
+            // lookup the index of the names we are supposed to use
+            unsigned namesId = shapesdata.shapes().namesId();
+            NameIndex nameindex(*_names[namesId]);
             DescData descdata(shapesdata, nameindex);
             DictAssign(_dgram, descdata);
             break;
@@ -141,7 +146,7 @@ public:
 
 private:
     PyDgramObject* _dgram;
-    Names* _names;
+    std::vector<Names*> _names; // need one of these for each source
 };
 
 static void dgram_dealloc(PyDgramObject* self)
@@ -176,13 +181,14 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
-    static const char* dataFilename = "data.xtc";
-    static char* kwlist[] = {(char*)"verbose", (char*)"debug", NULL};
+    static char* kwlist[] = {(char*)"file descriptor",(char*)"verbose", (char*)"debug", NULL};
 
     self->verbose=0;
     self->debug=0;
+    int fd;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|i$i", kwlist,
+                                     "i|i$i", kwlist,
+                                     &fd,
                                      &(self->verbose),
                                      &(self->debug))) {
         return -1;
@@ -194,18 +200,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-    int fd = open(dataFilename, O_RDONLY | O_LARGEFILE);
-    if (fd < 0) {
-        char s[120];
-        sprintf(s, "%s -- %s", strerror(errno), dataFilename);
-        PyErr_SetString(PyExc_OSError, s);
-        return -1;
-    }
-
     if (::read(fd, self->dgram, sizeof(*self->dgram)) <= 0) {
         char s[120];
         sprintf(s, "loading self->dgram was unsuccessful -- %s", strerror(errno));
-        PyErr_SetString(PyExc_OSError, s);
+        PyErr_SetString(PyExc_StopIteration, s);
         return -1;
     }
 
@@ -213,7 +211,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     if (::read(fd, self->dgram->xtc.payload(), payloadSize) <= 0) {
         char s[120];
         sprintf(s, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
-        PyErr_SetString(PyExc_OSError, s);
+        PyErr_SetString(PyExc_StopIteration, s);
         return -1;
     }
 
@@ -222,7 +220,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         Py_INCREF(self->dgram);
     }
 
-    myLevelIter iter(&self->dgram->xtc, self);
+    myXtcIter iter(&self->dgram->xtc, self);
     iter.iterate();
 
     if (self->verbose > 1) {
@@ -259,6 +257,7 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
     int verbose=((PyDgramObject*)o)->verbose;
     int debug=((PyDgramObject*)o)->debug;
+    _unused(debug); // avoid compiler warnings in production builds
 
     PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
     if (res != NULL) {

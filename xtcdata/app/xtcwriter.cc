@@ -4,7 +4,6 @@
 // - put names in real configure transition
 // - create new autoalloc that also allocs xtc header size
 // - faster version of routines that takes index vs. string
-// - increase NDGRAM to 2
 // - protection:
 //   o error when name not in map
 //   o make sure things go in name order (not a problem if we do string lookup)
@@ -28,7 +27,7 @@
 
 using namespace XtcData;
 #define BUFSIZE 0x4000000
-#define NDGRAM 1
+#define NDGRAM 3
 
 class DebugIter : public XtcIterator
 {
@@ -107,9 +106,9 @@ public:
 };
 
 void pgpExample(Xtc& parent, char* intName, char* floatName, char* arrayName, char* arrayNameB, int vals[3],
-                NameIndex& nameindex)
+                NameIndex& nameindex, unsigned nameId)
 {
-    FrontEndData frontEnd(parent, nameindex);
+    FrontEndData frontEnd(parent, nameindex, nameId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -125,7 +124,7 @@ void pgpExample(Xtc& parent, char* intName, char* floatName, char* arrayName, ch
     frontEnd.set_array_shape(arrayNameB, shape);
 }
 
-void fexExample(Xtc& parent)
+void fexExample(Xtc& parent, unsigned nameId)
 {
     // would normally get Names from configure transition
     Names& names = *new(parent) Names();
@@ -133,7 +132,7 @@ void fexExample(Xtc& parent)
     names.add("fexint1", Name::INT32, parent);
     NameIndex nameindex(names);
 
-    FexData fex(parent, nameindex);
+    FexData fex(parent, nameindex, nameId);
 
     // have to be careful to set the correct type here, unfortunately.
     // because of variable length issues, user is currently required to
@@ -182,21 +181,24 @@ int main()
             vals2[j] = 1000 + i + j;
         }
         char intname[10], floatname[10], arrayname[10], arraynameB[10];
-        sprintf(intname, "%s%d", "int", i);
-        sprintf(floatname, "%s%d", "float", i);
-        sprintf(arrayname, "%s%d", "array", i);
-        sprintf(arraynameB, "%s%dB", "array", i);
+        sprintf(intname, "%s%d", "int", 0);
+        sprintf(floatname, "%s%d", "float", 0);
+        sprintf(arrayname, "%s%d", "array", 0);
+        sprintf(arraynameB, "%s%dB", "array", 0);
+        unsigned nameId = 0;
         NameIndex nameindex1 = addNameIndex(dgram.xtc, intname, floatname,
                                             arrayname, arraynameB);
-        pgpExample(dgram.xtc, intname, floatname, arrayname, arraynameB, vals1, nameindex1);
-        sprintf(intname, "%s%d", "int", i + 1);
-        sprintf(floatname, "%s%d", "float", i + 1);
-        sprintf(arrayname, "%s%d", "array", i + 1);
-        sprintf(arraynameB, "%s%dB", "array", i + 1);
+        pgpExample(dgram.xtc, intname, floatname, arrayname, arraynameB, vals1,
+                   nameindex1, nameId);
+        sprintf(intname, "%s%d", "int", 1);
+        sprintf(floatname, "%s%d", "float", 1);
+        sprintf(arrayname, "%s%d", "array", 1);
+        sprintf(arraynameB, "%s%dB", "array", 1);
         NameIndex nameindex2 = addNameIndex(dgram.xtc, intname, floatname,
                                             arrayname, arraynameB);
-        pgpExample(dgram.xtc, intname, floatname, arrayname, arraynameB, vals2, nameindex2);
-        fexExample(dgram.xtc);
+        pgpExample(dgram.xtc, intname, floatname, arrayname, arraynameB, vals2,
+                   nameindex2, ++nameId);
+        fexExample(dgram.xtc, ++nameId);
 
         DebugIter iter(&dgram.xtc);
         iter.iterate();
