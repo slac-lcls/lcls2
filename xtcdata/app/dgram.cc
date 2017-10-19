@@ -26,7 +26,7 @@ typedef struct {
     int debug;
 } PyDgramObject;
 
-static void write_object_info(PyDgramObject* self, PyObject* arr, const char* comment)
+static void write_object_info(PyDgramObject* self, PyObject* obj, const char* comment)
 {
     if (self->verbose > 0) {
         printf("VERBOSE=%d; %s\n", self->verbose, comment);
@@ -34,14 +34,14 @@ static void write_object_info(PyDgramObject* self, PyObject* arr, const char* co
         printf("VERBOSE=%d;  self=%p\n", self->verbose, self);
         printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
         fflush(stdout);
-        if (arr != NULL) {
-            printf("VERBOSE=%d;  Py_REFCNT(arr)=%d\n", self->verbose, (int)Py_REFCNT(arr));
-            if (strcmp("numpy.ndarray", arr->ob_type->tp_name) == 0) {
-                PyArrayObject_fields* p=(PyArrayObject_fields*)arr;
-                printf("VERBOSE=%d;  arr->base=%p\n", self->verbose, p->base);
+        if (obj != NULL) {
+            printf("VERBOSE=%d;  Py_REFCNT(obj)=%d\n", self->verbose, (int)Py_REFCNT(obj));
+            if (strcmp("numpy.ndobj", obj->ob_type->tp_name) == 0) {
+                PyArrayObject_fields* p=(PyArrayObject_fields*)obj;
+                printf("VERBOSE=%d;  obj->base=%p\n", self->verbose, p->base);
                 fflush(stdout);
                 if (p->base != NULL) {
-                    printf("VERBOSE=%d;  Py_REFCNT(arr->base)=%d\n", self->verbose, (int)Py_REFCNT(p->base));
+                    printf("VERBOSE=%d;  Py_REFCNT(obj->base)=%d\n", self->verbose, (int)Py_REFCNT(p->base));
                     fflush(stdout);
                 }
             }
@@ -133,7 +133,7 @@ void DictAssign(PyDgramObject* dgram, DescData& descdata)
             Py_DECREF(newobj);
         }
         char s[120];
-        sprintf(s, "From DictAssign, newobj: %s", tempName);
+        sprintf(s, "From DictAssign, obj is %s", tempName);
         write_object_info(dgram, newobj, s);
     }
 }
@@ -179,7 +179,7 @@ private:
 
 static void dgram_dealloc(PyDgramObject* self)
 {
-    write_object_info(self, NULL, "top of dgram_dealloc()");
+    write_object_info(self, NULL, "Top of dgram_dealloc()");
     Py_XDECREF(self->dict);
     free(self->dgram);
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -232,7 +232,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     myXtcIter iter(&self->dgram->xtc, self);
     iter.iterate();
 
-    write_object_info(self, NULL, "bottom of dgram_init()");
+    write_object_info(self, NULL, "Bottom of dgram_init()");
     return 0;
 }
 
@@ -280,7 +280,7 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
     char s[120];
     Py_ssize_t size;
     char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
-    sprintf(s, "Bottom of tp_getattro(), res is %s", key_string);
+    sprintf(s, "Bottom of tp_getattro(), obj is %s", key_string);
     write_object_info((PyDgramObject*)o, res, s);
     return res;
 }
