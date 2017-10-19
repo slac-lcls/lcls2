@@ -26,6 +26,31 @@ typedef struct {
     int debug;
 } PyDgramObject;
 
+static void write_object_info(PyDgramObject* self, PyObject* arr, const char* comment)
+{
+    if (self->verbose > 0) {
+        printf("VERBOSE=%d; %s\n", self->verbose, comment);
+        fflush(stdout);
+        printf("VERBOSE=%d;  self=%p\n", self->verbose, self);
+        printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
+        fflush(stdout);
+        if (arr != NULL) {
+            printf("VERBOSE=%d;  Py_REFCNT(arr)=%d\n", self->verbose, (int)Py_REFCNT(arr));
+            if (strcmp("numpy.ndarray", arr->ob_type->tp_name) == 0) {
+                PyArrayObject_fields* p=(PyArrayObject_fields*)arr;
+                printf("VERBOSE=%d;  arr->base=%p\n", self->verbose, p->base);
+                fflush(stdout);
+                if (p->base != NULL) {
+                    printf("VERBOSE=%d;  Py_REFCNT(arr->base)=%d\n", self->verbose, (int)Py_REFCNT(p->base));
+                    fflush(stdout);
+                }
+            }
+        }
+        printf("VERBOSE=%d; %s\n\n", self->verbose, "done");
+        fflush(stdout);
+    }
+}
+
 void DictAssign(PyDgramObject* dgram, DescData& descdata)
 {
     Names& names = descdata.nameindex().names();
@@ -107,6 +132,9 @@ void DictAssign(PyDgramObject* dgram, DescData& descdata)
             // the dictionary is deleted, the objects will be deleted.
             Py_DECREF(newobj);
         }
+        char s[120];
+        sprintf(s, "From DictAssign, newobj: %s", tempName);
+        write_object_info(dgram, newobj, s);
     }
 }
 
@@ -151,22 +179,8 @@ private:
 
 static void dgram_dealloc(PyDgramObject* self)
 {
-    if (self->verbose > 1) {
-        printf("VERBOSE:%d dgram_dealloc() top\n",
-               self->verbose);
-        fflush(stdout);
-        printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
-               self->verbose, (int)Py_REFCNT(self->dict));
-        printf("VERBOSE:%d   Py_REFCNT(self->dgram): %d\n",
-               self->verbose, (int)Py_REFCNT(self->dgram));
-        printf("VERBOSE:%d   Py_REFCNT(self): %d\n",
-               self->verbose, (int)Py_REFCNT(self));
-    }
+    write_object_info(self, NULL, "top of dgram_dealloc()");
     Py_XDECREF(self->dict);
-    if (self->debug == 2) {
-      printf("DEBUG:%d   Py_XDECREF(self->dgram)\n", self->debug);
-      Py_XDECREF(self->dgram);
-    }
     free(self->dgram);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -187,7 +201,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->debug=0;
     int fd;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "i|i$i", kwlist,
+                                     "i|ii", kwlist,
                                      &fd,
                                      &(self->verbose),
                                      &(self->debug))) {
@@ -215,25 +229,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-    if (self->debug == 2) {
-        printf("DEBUG:%d   Py_INCREF(self->dgram)\n", self->debug);
-        Py_INCREF(self->dgram);
-    }
-
     myXtcIter iter(&self->dgram->xtc, self);
     iter.iterate();
 
-    if (self->verbose > 1) {
-        printf("VERBOSE:%d dgram_init() bottom\n",
-               self->verbose);
-        fflush(stdout);
-        printf("VERBOSE:%d   Py_REFCNT(self): %d\n",
-               self->verbose, (int)Py_REFCNT(self));
-        printf("VERBOSE:%d   Py_REFCNT(self->dict): %d\n",
-               self->verbose, (int)Py_REFCNT(self->dict));
-        printf("VERBOSE:%d   Py_REFCNT(self->dgram): %d\n",
-               self->verbose, (int)Py_REFCNT(self->dgram));
-    }
+    write_object_info(self, NULL, "bottom of dgram_init()");
     return 0;
 }
 
@@ -255,10 +254,6 @@ static PyMemberDef dgram_members[] = {
 
 PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
-    int verbose=((PyDgramObject*)o)->verbose;
-    int debug=((PyDgramObject*)o)->debug;
-    _unused(debug); // avoid compiler warnings in production builds
-
     PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
     if (res != NULL) {
         if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
@@ -282,18 +277,11 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
         res = PyObject_GenericGetAttr(o, key);
     }
 
-    if (verbose > 0) {
-        Py_ssize_t size;
-        char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
-        printf("VERBOSE=%d; attro='%s'; Py_REFCNT(res): ", verbose, key_string);
-        fflush(stdout);
-        if (strcmp(key_string, "__bases__")==0) {
-            printf("Error\n");
-        } else {
-            printf("%ld\n", (long int)Py_REFCNT(res));
-        }
-    }
-
+    char s[120];
+    Py_ssize_t size;
+    char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
+    sprintf(s, "Bottom of tp_getattro(), res is %s", key_string);
+    write_object_info((PyDgramObject*)o, res, s);
     return res;
 }
 

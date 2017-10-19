@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 
-import sys
+import sys, os
 import time
 import getopt
 
@@ -34,8 +34,9 @@ def getAttr(d, attr, verbose=None):
         d.verbose=verbose0
     return value
 
-def do_it(args_proper, verbose, debug):
-    d=Dgram(verbose, debug)
+def do_it(args_proper, xtcdata_filename, verbose, debug):
+    fd = os.open(xtcdata_filename, os.O_RDONLY|os.O_LARGEFILE)
+    d=Dgram(fd, verbose, debug)
     print("d:", d)
     print("id(d):", id(d))
  
@@ -66,21 +67,24 @@ def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:')
     verbose=0
     debug=0
+    xtcdata_filename=None
     for option, parameter in opts:
         if option=='-h': usage_error()
         if option=='-v': verbose+=1
         if option=='-d': debug = int(parameter)
+    if xtcdata_filename is None: xtcdata_filename="data.xtc"
     if verbose>0:
+        sys.stdout.write("xtcdata filename: %s\n" % xtcdata_filename)
         sys.stdout.write("verbose: %d\n" % verbose)
         sys.stdout.write("debug: %d\n" % debug)
     elif debug>0:
         sys.stdout.write("debug: %d\n" % debug)
-    return (args_proper, verbose, debug)
+    return (args_proper, xtcdata_filename, verbose, debug)
 
 def main():
-    args_proper, verbose, debug = parse_command_line()
+    args_proper, xtcdata_filename, verbose, debug = parse_command_line()
 
-    do_it(args_proper, verbose, debug)
+    do_it(args_proper, xtcdata_filename, verbose, debug)
 
     return
 
