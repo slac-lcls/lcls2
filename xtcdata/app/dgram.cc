@@ -33,10 +33,14 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
         fflush(stdout);
         printf("VERBOSE=%d;  self=%p\n", self->verbose, self);
         printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
+        printf("VERBOSE=%d;  self->dict=%p\n", self->verbose, self->dict);
+        if (self->dict != NULL) {
+            printf("VERBOSE=%d;  Py_REFCNT(self->dict)=%d\n", self->verbose, (int)Py_REFCNT(self->dict));
+        }
         fflush(stdout);
         if (obj != NULL) {
             printf("VERBOSE=%d;  Py_REFCNT(obj)=%d\n", self->verbose, (int)Py_REFCNT(obj));
-            if (strcmp("numpy.ndobj", obj->ob_type->tp_name) == 0) {
+            if (strcmp("numpy.ndarray", obj->ob_type->tp_name) == 0) {
                 PyArrayObject_fields* p=(PyArrayObject_fields*)obj;
                 printf("VERBOSE=%d;  obj->base=%p\n", self->verbose, p->base);
                 fflush(stdout);
@@ -120,6 +124,15 @@ void DictAssign(PyDgramObject* dgram, DescData& descdata)
                 break;
             }
             }
+            if ( (dgram->debug & 0x01) == 1 ) {
+                if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)dgram) < 0) {
+                    char s[120];
+                    sprintf(s, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
+                    PyErr_SetString(PyExc_StopIteration, s);
+                    return;
+                }
+                Py_INCREF(dgram);
+            }
         }
         if (PyDict_Contains(dgram->dict, key)) {
             printf("Dgram: Ignoring duplicate key %s\n", tempName);
@@ -133,7 +146,7 @@ void DictAssign(PyDgramObject* dgram, DescData& descdata)
             Py_DECREF(newobj);
         }
         char s[120];
-        sprintf(s, "From DictAssign, obj is %s", tempName);
+        sprintf(s, "Bottom of DictAssign, obj is %s", tempName);
         write_object_info(dgram, newobj, s);
     }
 }
@@ -195,8 +208,7 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
-    static char* kwlist[] = {(char*)"file descriptor",(char*)"verbose", (char*)"debug", NULL};
-
+    static char* kwlist[] = {(char*)"file_descriptor",(char*)"verbose", (char*)"debug", NULL};
     self->verbose=0;
     self->debug=0;
     int fd;
@@ -255,31 +267,46 @@ static PyMemberDef dgram_members[] = {
 PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
     PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
+    char s[120];
+    Py_ssize_t size;
+    char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
+    sprintf(s, "Top of tp_getattro(), obj is %s", key_string);
+    write_object_info((PyDgramObject*)o, res, s);
+
     if (res != NULL) {
-        if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
-            PyArrayObject* arr = (PyArrayObject*)res;
-            PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
-                                                           PyArray_DESCR(arr)->type_num, PyArray_DATA(arr));
-            if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, (PyObject*)o) < 0) {
-                printf("Failed to set BaseObject for numpy array.\n");
-                return 0;
-            }
-            // this reference count will get decremented when the returned
-            // array is deleted (since the array has us as the "base" object).
-            Py_INCREF(o);
-            return arr_copy;
-        } else {
-            // this reference count will get decremented when the returned
-            // variable is deleted, so must increment here.
+        if ( (((PyDgramObject*)o)->debug & 0x01) == 1 ) {
             Py_INCREF(res);
+            PyDict_DelItem(((PyDgramObject*)o)->dict, key);
+            if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
+                Py_CLEAR(((PyDgramObject*)o)->dict);
+            }
+        } else {
+            if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
+                PyArrayObject* arr = (PyArrayObject*)res;
+                PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
+                                                               PyArray_DESCR(arr)->type_num, PyArray_DATA(arr));
+                if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, (PyObject*)o) < 0) {
+                    printf("Failed to set BaseObject for numpy array.\n");
+                    return 0;
+                }
+                // this reference count will get decremented when the returned
+                // array is deleted (since the array has us as the "base" object).
+                Py_INCREF(o);
+                //return arr_copy;
+                res=arr_copy;
+            } else {
+                // this reference count will get decremented when the returned
+                // variable is deleted, so must increment here.
+                Py_INCREF(res);
+            }
         }
     } else {
         res = PyObject_GenericGetAttr(o, key);
     }
 
-    char s[120];
-    Py_ssize_t size;
-    char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
+    //char s[120];
+    //Py_ssize_t size;
+    //char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
     sprintf(s, "Bottom of tp_getattro(), obj is %s", key_string);
     write_object_info((PyDgramObject*)o, res, s);
     return res;

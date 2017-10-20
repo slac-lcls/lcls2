@@ -4,12 +4,14 @@
 import sys, os
 import time
 import getopt
+import pprint
 
 import inspect;
-#from gc import get_referrers
+import gc
 
-sys.path.append('../build/xtcdata')
-from dgram import Dgram
+import pydgram
+#sys.path.append('../build/xtcdata')
+#from dgram import Dgram
 #
 
 def setAttr(d, attr, value, verbose=None):
@@ -35,33 +37,64 @@ def getAttr(d, attr, verbose=None):
     return value
 
 def do_it(args_proper, xtcdata_filename, verbose, debug):
-    fd = os.open(xtcdata_filename, os.O_RDONLY|os.O_LARGEFILE)
-    d=Dgram(fd, verbose, debug)
-    print("d:", d)
-    print("id(d):", id(d))
- 
-    a1=getAttr(d, 'array0')
-    print("a1.base:", a1.base)
+    print("gc.isenabled(): %s" % gc.isenabled())
+    print("gc.get_debug(): %s" % gc.get_debug())
+    print("gc.get_stats():")
+    pprint.pprint(gc.get_stats())
+    print()
+
+    print("get d1")
+    #fd = os.open(xtcdata_filename, os.O_RDONLY|os.O_LARGEFILE)
+    #d1=Dgram(fd, verbose, debug)
+    d1=pydgram.PyDgram(xtcdata_filename, verbose, debug)
+    print("dir(d1):"); dir(d1)
+    print("d1:", d1)
+    print("gc.is_tracked(d1): %s" % gc.is_tracked(d1))
+    print("gc.get_referrers(d1)")
+    pprint.pprint(gc.get_referrers(d1))
+    print("gc.get_referents(d1)")
+    pprint.pprint(gc.get_referents(d1))
+    print("gc.garbage: %s" % gc.garbage)
+    print()
+
+    print("get a1")
+    a1=getAttr(d1, 'array0')
     print("id(a1):", id(a1))
-    print("dir(a1):")
-    dir(a1)
-#
-#    d.verbose=1
-#    a2=getAttr(d, 'array0')
-#    print("id(a2):", id(a2))
-#    print("del a2")
-#    del a2
-#
-#    a2=getAttr(d, 'array0')
-#    print("id(a2):", id(a2))
-#    print("del a2")
-#    del a2
-#
-#    print("del d")
-#    del d
-#
-#    print(a1)
-#    del a1
+    print("a1.base:", a1.base)
+    print("gc.is_tracked(a1): %s" % gc.is_tracked(a1))
+    print("gc.get_referrers(a1)")
+    pprint.pprint(gc.get_referrers(a1))
+    print("gc.get_referents(a1)")
+    pprint.pprint(gc.get_referents(a1))
+    print("get a2")
+    a2=getAttr(d1, 'array0')
+    print("id(a2):", id(a2))
+    print("a2.base:", a2.base)
+    print("gc.is_tracked(a2): %s" % gc.is_tracked(a2))
+    print("gc.get_referrers(a2)")
+    pprint.pprint(gc.get_referrers(a2))
+    print("gc.get_referents(a2)")
+    pprint.pprint(gc.get_referents(a2))
+    print("gc.garbage: %s" % gc.garbage)
+    print()
+
+    print("del d1")
+    del d1
+    print()
+
+    print("show a1")
+    print("id(a1):", id(a1))
+    print("a1.base:", a1.base)
+    print()
+    print("del a1"); del a1
+    print()
+
+    print("show a2")
+    print("id(a2):", id(a2))
+    print("a2.base:", a2.base)
+    print()
+    print("del a2"); del a2
+    print()
 
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:')
