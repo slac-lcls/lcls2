@@ -5,6 +5,8 @@
 // - create new autoalloc that also allocs xtc header size
 // - faster version of routines that takes index vs. string
 // - protection:
+//   o pass in full list of names (ensures we get early error if the
+//     nameindex number is incorrect, but breaks object-oriented encapsulation)
 //   o error when name not in map
 //   o make sure things go in name order (not a problem if we do string lookup)
 //     (are offsets messed up if user leaves a "gap" with set_array/set_array_shape?)
