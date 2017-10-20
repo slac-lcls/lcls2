@@ -134,7 +134,7 @@ public:
     b->enable(true);
     usleep(1000);
     b->enable(false);
-    b->dump();
+    b->dump(18);
     printf("\n");
   }
   void start(unsigned umask, unsigned* fmask, bool hdrOnly=false)
@@ -147,7 +147,7 @@ public:
 
     for(unsigned i=0; umask; i++) {
       if (umask & (1<<i)) {
-        printf("Enable usLink[%u] fwd[%x]\n", i,fmask[i]);
+        printf("Enable usLink[%u] fwdmask[%x]\n", i,fmask[i]);
         _usLink[i].enable(fmask[i], hdrOnly);
         umask &= ~(1<<i);
       }
