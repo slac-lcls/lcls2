@@ -61,7 +61,17 @@ void AmcTiming::dumpStats() const
   PR(RxRstDone);
   PR(RxDecErrs);
   PR(RxDspErrs);
-  PR(CSR);
+  { unsigned v = CSR;
+    printf("%10.10s: 0x%x", "CSR", v);
+    printf(" %s", v&(1<<1) ? "LinkUp":"LinkDn");
+    if (v&(1<<2)) printf(" RXPOL");
+    if (v&(1<<3)) printf(" RXRST");
+    printf(" %s", v&(1<<4) ? "LCLSII":"LCLS");
+    if (v&(1<<6)) printf(" BBRST");
+    if (v&(1<<7)) printf(" PLLRST");
+    if (v&(1<<8)) printf(" VSNERR");
+    printf("\n");
+  }
   PR(MsgDelay);
   PR(TxRefClks);
   PR(BuffByCnts);

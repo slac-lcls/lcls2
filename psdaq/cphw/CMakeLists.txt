@@ -31,6 +31,20 @@ target_include_directories(cphwr PUBLIC
     /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/include
 )
 
+#
+#  amctiming
+#
+add_executable(amctiming amctiming.cc)
+
+target_link_libraries(amctiming
+    dl
+    pthread
+    cphw
+    /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
+#    /reg/common/package/boost/1.57.0/x86_64-rhel7-gcc48-opt/lib
+    /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
+)
+
 #add_executable(h5writer
 #    ../app/h5writer.cc
 #)

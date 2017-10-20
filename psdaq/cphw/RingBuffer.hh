@@ -11,7 +11,7 @@ namespace Pds {
     public:
       void     enable (bool);
       void     clear  ();
-      void     dump   ();
+      void     dump   (unsigned dataWidth=32);
     private:
       Reg   _csr;
       Reg   _dump[0x3ff];

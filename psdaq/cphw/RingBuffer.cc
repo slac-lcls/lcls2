@@ -21,12 +21,14 @@ void RingBuffer::clear()
   _csr = r &~(1<<30);
 }
 
-void RingBuffer::dump()
+void RingBuffer::dump(unsigned dataWidth)
 {
+  unsigned mask = (1<<dataWidth)-1;
+  unsigned cmask = (dataWidth+3)/4;
   unsigned len = _csr & 0xfffff;
   uint32_t* buff = new uint32_t[len];
   for(unsigned i=0; i<len; i++)
-    buff[i] = _dump[i];
+    buff[i] = _dump[i]&mask;
   for(unsigned i=0; i<len; i++)
-    printf("%08x%c", buff[i], (i&0x7)==0x7 ? '\n':' ');
+    printf("%0*x%c", cmask, buff[i], (i&0x7)==0x7 ? '\n':' ');
 }
