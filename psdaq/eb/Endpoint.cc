@@ -1,7 +1,6 @@
 #include "Endpoint.hh"
 
 #include <rdma/fi_cm.h>
-#include <rdma/fi_rma.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,25 +27,255 @@
     mr = _fabric->lookup_memory(buf, len);                                                                                          \
     if (!mr) {                                                                                                                      \
       set_custom_error("%s: requested buffer starting at %p with len %lu is not within a registered memory region", cmd, buf, len); \
-      _errno = FI_EINVAL;                                                                                                           \
+      _errno = -FI_EINVAL;                                                                                                          \
       return false;                                                                                                                 \
     }                                                                                                                               \
+  }
+
+#define CHECK_MR_IOVEC(iov, cmd)                                                                        \
+  if (!iov->check_mr()) {                                                                               \
+    if (!_fabric->lookup_memory_iovec(iov)) {                                                           \
+      set_custom_error("%s: requested buffer in iovec is not within a registered memory region", cmd);  \
+      _errno = -FI_EINVAL;                                                                              \
+      return false;                                                                                     \
+    }                                                                                                   \
   }
 
 
 using namespace Pds::Fabrics;
 
+LocalAddress::LocalAddress() :
+  _buf(0),
+  _len(0),
+  _mr(0)
+{}
+
+LocalAddress::LocalAddress(void* buf, size_t len, MemoryRegion* mr) :
+  _buf(buf),
+  _len(len),
+  _mr(mr)
+{}
+
+void* LocalAddress::buf() const { return _buf; }
+
+size_t LocalAddress::len() const { return _len; }
+
+MemoryRegion* LocalAddress::mr() const { return _mr; }
+
+const struct iovec* LocalAddress::iovec() const
+{
+  return reinterpret_cast<const struct iovec*>(this);
+}
+
+LocalIOVec::LocalIOVec(size_t count, LocalAddress** local_addrs) :
+  _mr_set(true),
+  _count(count),
+  _iovs(new struct iovec[count]),
+  _mr_desc(new void*[count])
+{
+  if (local_addrs) {
+    for (unsigned i=0; i<_count; i++) {
+      _iovs[i] = *local_addrs[i]->iovec();
+      if (local_addrs[i]->mr())
+        _mr_desc[i] = local_addrs[i]->mr()->desc();
+      else
+        _mr_set = false;
+    }
+  } else {
+    _mr_set = false;
+  }
+}
+
+LocalIOVec::LocalIOVec(const std::vector<LocalAddress*>& local_addrs) :
+  _mr_set(true),
+  _count(local_addrs.size()),
+  _iovs(new struct iovec[local_addrs.size()]),
+  _mr_desc(new void*[local_addrs.size()])
+{
+  for (unsigned i=0; i<_count; i++) {
+    _iovs[i] = *local_addrs[i]->iovec();
+    if (local_addrs[i]->mr())
+      _mr_desc[i] = local_addrs[i]->mr()->desc();
+    else
+      _mr_set = false;
+  }
+}
+
+LocalIOVec::~LocalIOVec()
+{
+  if (_iovs) {
+    delete[] _iovs;
+  }
+  if (_mr_desc) {
+    delete[] _mr_desc;
+  }
+}
+
+bool LocalIOVec::check_mr()
+{
+  return _mr_set;
+}
+
+void LocalIOVec::verify()
+{
+  _mr_set = true;
+  for (unsigned i=0; i<_count; i++) {
+    if (!_mr_desc[i]) {
+      _mr_set=false;
+      break;
+    }
+  }
+}
+
+size_t LocalIOVec::count() const { return _count; }
+
+const struct iovec* LocalIOVec::iovecs() const { return _iovs; }
+
+void** LocalIOVec::desc() const { return _mr_desc; }
+
+bool LocalIOVec::set_iovec(unsigned index, LocalAddress* local_addr)
+{
+  if (index >= _count) {
+    return false;
+  }
+
+  _iovs[index] = *local_addr->iovec();
+  if (local_addr->mr()) {
+    _mr_desc[index] = local_addr->mr()->desc();
+    verify();
+  } else {
+    _mr_set = false;
+  }
+
+  return true;
+}
+
+bool LocalIOVec::set_iovec(unsigned index, void* buf, size_t len, MemoryRegion* mr)
+{
+  if (index >= _count) {
+    return false;
+  }
+
+  _iovs[index].iov_base = buf;
+  _iovs[index].iov_len = len;
+  if (mr) {
+    _mr_desc[index] = mr->desc();
+    verify();
+  } else {
+    _mr_set = false;
+  }
+
+  return true;
+}
+
+bool LocalIOVec::set_iovec_mr(unsigned index, MemoryRegion* mr)
+{
+  if (index >= _count || !mr) {
+    return false;
+  }
+
+  _mr_desc[index] = mr->desc();
+  verify();
+
+  return true;
+}
+
 RemoteAddress::RemoteAddress() :
-  rkey(0),
   addr(0),
-  extent(0)
+  extent(0),
+  rkey(0)
 {}
 
 RemoteAddress::RemoteAddress(uint64_t rkey, uint64_t addr, size_t extent) :
-  rkey(rkey),
   addr(addr),
-  extent(extent)
+  extent(extent),
+  rkey(rkey)
 {}
+
+RemoteIOVec::RemoteIOVec(size_t count, RemoteAddress** remote_addrs) :
+  _count(count),
+  _rma_iovs(new struct fi_rma_iov[count])
+{
+  if (remote_addrs) {
+    for (unsigned i=0; i<_count; i++) {
+      _rma_iovs[i] = *remote_addrs[i]->rma_iov();
+    }
+  }
+}
+
+RemoteIOVec::RemoteIOVec(const std::vector<RemoteAddress*>& remote_addrs) :
+  _count(remote_addrs.size()),
+  _rma_iovs(new struct fi_rma_iov[remote_addrs.size()])
+{
+  for (unsigned i=0; i<_count; i++) {
+    _rma_iovs[i] = *remote_addrs[i]->rma_iov();
+  }
+}
+
+RemoteIOVec::~RemoteIOVec()
+{
+  if (_rma_iovs) {
+    delete[] _rma_iovs;
+  }
+}
+
+size_t RemoteIOVec::count() const { return _count; }
+
+const struct fi_rma_iov* RemoteIOVec::iovecs() const { return _rma_iovs; }
+
+bool RemoteIOVec::set_iovec(unsigned index, RemoteAddress* remote_addr)
+{
+  if (index >= _count) {
+    return false;
+  }
+
+  _rma_iovs[index] = *remote_addr->rma_iov();
+
+  return true;
+}
+
+bool RemoteIOVec::set_iovec(unsigned index, uint64_t rkey, uint64_t addr, size_t extent)
+{
+  if (index >= _count) {
+    return false;
+  }
+
+  _rma_iovs[index].addr  = addr;
+  _rma_iovs[index].len   = extent;
+  _rma_iovs[index].key   = rkey;
+
+  return true;
+}
+
+const struct fi_rma_iov* RemoteAddress::rma_iov() const
+{
+  return reinterpret_cast<const struct fi_rma_iov*>(this);
+}
+
+RmaMessage::RmaMessage() :
+  _msg(new struct fi_msg_rma)
+{}
+
+RmaMessage::RmaMessage(LocalIOVec* loc_iov, RemoteIOVec* rem_iov, void* context, uint64_t data) :
+  _msg(new struct fi_msg_rma)
+{
+  _msg->msg_iov = loc_iov->iovecs();
+  _msg->desc = loc_iov->desc();
+  _msg->iov_count = loc_iov->count();
+  _msg->rma_iov = rem_iov->iovecs();
+  _msg->rma_iov_count = rem_iov->count();
+  _msg->context = context;
+  _msg->data = data;
+}
+
+RmaMessage::~RmaMessage()
+{
+  if (_msg) {
+    delete _msg;
+  }
+}
+
+const struct fi_msg_rma* RmaMessage::msg() const { return _msg; }
 
 MemoryRegion::MemoryRegion(struct fid_mr* mr, void* start, size_t len) :
   _mr(mr),
@@ -152,6 +381,31 @@ MemoryRegion* Fabric::lookup_memory(void* start, size_t len) const
   }
 
   return NULL;
+}
+
+MemoryRegion* Fabric::lookup_memory(LocalAddress* laddr) const
+{
+  if (!laddr)
+    return NULL;
+
+  return lookup_memory(laddr->buf(), laddr->len());
+}
+
+bool Fabric::lookup_memory_iovec(LocalIOVec* iov) const
+{
+  void** descs = iov->desc();
+  const struct iovec* iovecs = iov->iovecs();
+
+  for (unsigned i=0; i<iov->count(); i++) {
+    if(!descs[i]) {
+      for (unsigned j=0; j<_mem_regions.size(); j++) {
+        if (_mem_regions[j] && _mem_regions[j]->contains(iovecs[i].iov_base, iovecs[i].iov_len))
+          iov->set_iovec_mr(i, _mem_regions[j]);
+      }
+    }
+  }
+
+  return iov->check_mr();
 }
 
 bool Fabric::up() const { return _up; }
@@ -544,6 +798,16 @@ bool Endpoint::send_sync(void* buf, size_t len, const MemoryRegion* mr)
   return false;
 }
 
+bool Endpoint::send(LocalAddress* laddr, void* context)
+{
+  return send(laddr->buf(), laddr->len(), context, laddr->mr());
+}
+
+bool Endpoint::send_sync(LocalAddress* laddr)
+{
+  return send_sync(laddr->buf(), laddr->len(), laddr->mr());
+}
+
 bool Endpoint::recv(void* buf, size_t len, void* context, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_recv");
@@ -567,6 +831,16 @@ bool Endpoint::recv_sync(void* buf, size_t len, const MemoryRegion* mr)
   }
   
   return false;
+}
+
+bool Endpoint::recv(LocalAddress* laddr, void* context)
+{
+  return recv(laddr->buf(), laddr->len(), context, laddr->mr());
+}
+
+bool Endpoint::recv_sync(LocalAddress* laddr)
+{
+  return recv_sync(laddr->buf(), laddr->len(), laddr->mr());
 }
 
 bool Endpoint::read(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr)
@@ -594,6 +868,16 @@ bool Endpoint::read_sync(void* buf, size_t len, const RemoteAddress* raddr, cons
   return false;
 }
 
+bool Endpoint::read(LocalAddress* laddr, const RemoteAddress* raddr, void* context)
+{
+  return read(laddr->buf(), laddr->len(), raddr, context, laddr->mr());
+}
+
+bool Endpoint::read_sync(LocalAddress* laddr, const RemoteAddress* raddr)
+{
+  return read_sync(laddr->buf(), laddr->len(), raddr, laddr->mr());
+}
+
 bool Endpoint::write(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_write");
@@ -619,6 +903,16 @@ bool Endpoint::write_sync(void* buf, size_t len, const RemoteAddress* raddr, con
   return false;
 }
 
+bool Endpoint::write(LocalAddress* laddr, const RemoteAddress* raddr, void* context)
+{
+  return write(laddr->buf(), laddr->len(), raddr, context, laddr->mr());
+}
+
+bool Endpoint::write_sync(LocalAddress* laddr, const RemoteAddress* raddr)
+{
+  return write_sync(laddr->buf(), laddr->len(), raddr, laddr->mr());
+}
+
 bool Endpoint::write_data(void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_writedata");
@@ -639,6 +933,112 @@ bool Endpoint::write_data_sync(void* buf, size_t len, const RemoteAddress* raddr
 
   if (write_data(buf, len, raddr, &context, data, mr)) {
     return check_completion(context, FI_WRITE | FI_RMA);
+  }
+
+  return false;
+}
+
+bool Endpoint::write_data(LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data)
+{
+  return write_data(laddr->buf(), laddr->len(), raddr, context, data, laddr->mr());
+}
+
+bool Endpoint::write_data_sync(LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data)
+{
+  return write_data_sync(laddr->buf(), laddr->len(), raddr, data, laddr->mr());
+}
+
+bool Endpoint::recvv(LocalIOVec* iov, void* context)
+{
+  CHECK_MR_IOVEC(iov, "fi_recvv");
+
+  ssize_t rret = fi_recvv(_ep, iov->iovecs(), iov->desc(), iov->count(), 0, context);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_recvv");
+    return false;
+  }
+
+  return true;
+}
+
+bool Endpoint::recvv_sync(LocalIOVec* iov)
+{
+  int context = _counter++;
+  if (recvv(iov, &context)) {
+    return check_completion(context, FI_RECV | FI_RMA);
+  }
+
+  return false;
+}
+
+bool Endpoint::sendv(LocalIOVec* iov, void* context)
+{
+  CHECK_MR_IOVEC(iov, "fi_sendv");
+
+  ssize_t rret = fi_sendv(_ep, iov->iovecs(), iov->desc(), iov->count(), 0, context);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_sendv");
+    return false;
+  }
+
+  return true;
+}
+
+bool Endpoint::sendv_sync(LocalIOVec* iov)
+{
+  int context = _counter++;
+  if (recvv(iov, &context)) {
+    return check_completion(context, FI_SEND | FI_RMA);
+  }
+
+  return false;
+}
+
+bool Endpoint::readv(LocalIOVec* iov, const RemoteAddress* raddr, void* context)
+{
+  CHECK_MR_IOVEC(iov, "fi_readv");
+
+  ssize_t rret = fi_readv(_ep, iov->iovecs(), iov->desc(), iov->count(), 0, raddr->addr, raddr->rkey, context);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_readv");
+    return false;
+  }
+
+  return true;
+}
+
+bool Endpoint::readv_sync(LocalIOVec* iov, const RemoteAddress* raddr)
+{
+  int context = _counter++;
+  if (readv(iov, raddr, &context)) {
+    return check_completion(context, FI_READ | FI_RMA);
+  }
+
+  return false;
+}
+
+bool Endpoint::writev(LocalIOVec* iov, const RemoteAddress* raddr, void* context)
+{
+  CHECK_MR_IOVEC(iov, "fi_writev");
+
+  ssize_t rret = fi_writev(_ep, iov->iovecs(), iov->desc(), iov->count(), 0, raddr->addr, raddr->rkey, context);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_writev");
+    return false;
+  }
+
+  return true;
+}
+
+bool Endpoint::writev_sync(LocalIOVec* iov, const RemoteAddress* raddr)
+{
+  int context = _counter++;
+  if (readv(iov, raddr, &context)) {
+    return check_completion(context, FI_READ | FI_RMA);
   }
 
   return false;
@@ -949,3 +1349,4 @@ void CompletionPoller::shutdown()
 #undef CHECK_ERR
 #undef CHECK
 #undef CHECK_MR
+#undef CHECK_MR_IOVEC
