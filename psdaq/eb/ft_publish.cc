@@ -3,11 +3,6 @@
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
 
-//#include "pds/eb/Endpoint.hh"
-//
-//#include "pds/service/Routine.hh"
-//#include "pds/service/Task.hh"
-
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
