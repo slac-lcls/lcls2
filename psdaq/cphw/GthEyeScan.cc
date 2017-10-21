@@ -118,7 +118,7 @@ void GthEyeScan::scan(const char* ofile,
       fprintf(f, "%d %d %u %llu\n",
               j, i, 
               error_count,
-              sample_count);
+              (unsigned long long)sample_count);
                 
       setf(_es_control, 0, 1, 10); // -> wait
 
@@ -142,7 +142,7 @@ void GthEyeScan::scan(const char* ofile,
       fprintf(f, "%d %d %u %llu\n",
               j, i, 
               error_count,
-              sample_count);
+              (unsigned long long)sample_count);
                 
       setf(_es_control, 0, 1, 10); // -> wait
 
