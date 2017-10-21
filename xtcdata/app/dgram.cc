@@ -55,7 +55,7 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
     }
 }
 
-void DictAssign(PyDgramObject* dgram, DescData& descdata)
+void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
 {
     Names& names = descdata.nameindex().names();
     for (unsigned i = 0; i < names.num(); i++) {
@@ -124,20 +124,20 @@ void DictAssign(PyDgramObject* dgram, DescData& descdata)
                 break;
             }
             }
-            if ( (dgram->debug & 0x01) == 1 ) {
-                if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)dgram) < 0) {
+            if ( (pyDgram->debug & 0x01) == 1 ) {
+                if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
                     char s[120];
                     sprintf(s, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
                     PyErr_SetString(PyExc_StopIteration, s);
                     return;
                 }
-                Py_INCREF(dgram);
+                Py_INCREF(pyDgram);
             }
         }
-        if (PyDict_Contains(dgram->dict, key)) {
+        if (PyDict_Contains(pyDgram->dict, key)) {
             printf("Dgram: Ignoring duplicate key %s\n", tempName);
         } else {
-            PyDict_SetItem(dgram->dict, key, newobj);
+            PyDict_SetItem(pyDgram->dict, key, newobj);
             // when the new objects are created they get a reference
             // count of 1.  PyDict_SetItem increases this to 2.  we
             // decrease it back to 1 here, which effectively gives
@@ -147,15 +147,16 @@ void DictAssign(PyDgramObject* dgram, DescData& descdata)
         }
         char s[120];
         sprintf(s, "Bottom of DictAssign, obj is %s", tempName);
-        write_object_info(dgram, newobj, s);
+        write_object_info(pyDgram, newobj, s);
     }
 }
 
-class myXtcIter : public XtcIterator
+class PyConvertIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    myXtcIter(Xtc* xtc, PyDgramObject* dgram) : XtcIterator(xtc), _dgram(dgram)
+    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec) :
+        XtcIterator(xtc), _pyDgram(pyDgram), _namesVec(namesVec)
     {
     }
 
@@ -166,17 +167,12 @@ public:
             iterate(xtc); // look inside anything that is a Parent
             break;
         }
-        case (TypeId::Names): {
-            _names.push_back((Names*)xtc);
-            break;
-        }
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             unsigned namesId = shapesdata.shapes().namesId();
-            NameIndex nameindex(*_names[namesId]);
-            DescData descdata(shapesdata, nameindex);
-            DictAssign(_dgram, descdata);
+            DescData descdata(shapesdata, _namesVec[namesId]);
+            DictAssign(_pyDgram, descdata);
             break;
         }
         default:
@@ -186,8 +182,8 @@ public:
     }
 
 private:
-    PyDgramObject* _dgram;
-    std::vector<Names*> _names; // need one of these for each source
+    PyDgramObject*          _pyDgram;
+    std::vector<NameIndex>& _namesVec; // need one of these for each source
 };
 
 static void dgram_dealloc(PyDgramObject* self)
@@ -206,15 +202,45 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
+class myNamesIter : public XtcIterator
+{
+public:
+    enum { Stop, Continue };
+    myNamesIter(Xtc* xtc) : XtcIterator(xtc) {}
+
+    int process(Xtc* xtc)
+    {
+        // printf("found typeid %s\n",XtcData::TypeId::name(xtc->contains.id()));
+        switch (xtc->contains.id()) {
+        case (TypeId::Parent): {
+            iterate(xtc); // look inside anything that is a Parent
+            break;
+        }
+        case (TypeId::Names): {
+            _namesVec.push_back(NameIndex(*(Names*)xtc));
+            break;
+        }
+        default:
+            break;
+        }
+        return Continue;
+    }
+    std::vector<NameIndex>& namesVec() {return _namesVec;}
+private:
+    std::vector<NameIndex> _namesVec;
+};
+
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
     static char* kwlist[] = {(char*)"file_descriptor",(char*)"verbose", (char*)"debug", NULL};
     self->verbose=0;
     self->debug=0;
     int fd;
+    PyObject* configDgram=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "i|ii", kwlist,
+                                     "i|Oii", kwlist,
                                      &fd,
+                                     &configDgram,
                                      &(self->verbose),
                                      &(self->debug))) {
         return -1;
@@ -241,7 +267,11 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-    myXtcIter iter(&self->dgram->xtc, self);
+    if (configDgram==0) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
+    myNamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
+    namesIter.iterate();
+    
+    PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
     iter.iterate();
 
     write_object_info(self, NULL, "Bottom of dgram_init()");

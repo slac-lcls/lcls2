@@ -7,13 +7,12 @@ sys.path.append('../build/xtcdata')
 from dgram import Dgram
 import numpy as np
 from DataSource import DataSource
-VERBOSE=0
 
 def myroutine2():
-  ds = DataSource('data.xtc',VERBOSE)
+  ds = DataSource('data.xtc')
   d = ds.__next__()
   assert getref(d)==2
-  arr1 = d.array0 #increase refcount of d
+  arr1 = d.array0_pgp #increase refcount of d
   assert getref(d)==3
   assert getref(arr1)==2
   s1 = arr1[2:4] #increase refcount of arr1
@@ -21,7 +20,7 @@ def myroutine2():
   assert getref(arr1)==3
   assert getref(s1)==2
 
-  arr2 = d.array0 #increase refcount of d
+  arr2 = d.array0_pgp #increase refcount of d
   assert getref(d)==4
   s2 = arr2[3:5] # increase refcount of arr2
   assert getref(d)==4
@@ -38,16 +37,12 @@ def myroutine1():
 
 d = myroutine1()
 assert getref(d)==2
-assert d.float0==1.0
-assert d.float1==1001.0
-assert d.int0==2
-assert d.int1==1002
+assert d.float_pgp==1.0
+assert d.int_pgp==2
 testarr = np.array([[0,0,0],[0,1,2],[0,2,4]],dtype=np.float32)
 testarrB = testarr+2
-assert np.array_equal(d.array0,testarr)
-assert np.array_equal(d.array1,testarr)
-assert np.array_equal(d.array0B,testarrB)
-assert np.array_equal(d.array1B,testarrB)
-assert d.fexint1==42
-assert d.fexfloat1==41.0
+assert np.array_equal(d.array0_pgp,testarr)
+assert np.array_equal(d.array1_pgp,testarrB)
+assert d.int_fex==42
+assert d.float_fex==41.0
 print('dgram test complete')

@@ -4,6 +4,7 @@
 // - put names in real configure transition
 // - create new autoalloc that also allocs xtc header size
 // - faster version of routines that takes index vs. string
+// - better namespacing
 // - protection:
 //   o pass in full list of names (ensures we get early error if the
 //     nameindex number is incorrect, but breaks object-oriented encapsulation)
@@ -29,45 +30,47 @@
 
 using namespace XtcData;
 #define BUFSIZE 0x4000000
-#define NDGRAM 3
+#define NEVENT 2
 
 class DebugIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    DebugIter(Xtc* xtc) : XtcIterator(xtc)
+    DebugIter(Xtc* xtc, std::vector<NameIndex>& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
     {
     }
 
     int process(Xtc* xtc)
     {
+        // printf("found typeid %s\n",XtcData::TypeId::name(xtc->contains.id()));
         switch (xtc->contains.id()) {
-        case (TypeId::Parent):
+        case (TypeId::Parent): {
+            iterate(xtc);
+            break;
+        }
         case (TypeId::ShapesData): {
-            ShapesData& sd = *(ShapesData*)xtc;
-            NameIndex nameindex(*_names);
-            DescData descdata(sd, nameindex);
+            ShapesData& shapesdata = *(ShapesData*)xtc;
+            // lookup the index of the names we are supposed to use
+            unsigned namesId = shapesdata.shapes().namesId();
+            DescData descdata(shapesdata, _namesVec[namesId]);
             Names& names = descdata.nameindex().names();
+            printf("Found %d names\n",names.num());
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
                 if (strncmp(name.name(),"int",3)==0) {
-                    descdata.get_value<int32_t>(name.name());
+                    printf("integ value %s: %d\n",name.name(),descdata.get_value<int32_t>(name.name()));
                 }
                 if (strncmp(name.name(),"float",5)==0) {
-                    descdata.get_value<float>(name.name());
+                    printf("float value %s: %f\n",name.name(),descdata.get_value<float>(name.name()));
                 }
                 if (strncmp(name.name(),"array",5)==0) {
-                    (float *)descdata.address(i);
+                    float* arr = (float *)descdata.address(i);
+                    printf("array value %s: %f %f\n",name.name(),arr[0],arr[1]);
                 }
                 //unsigned index = descdata.nameindex()[name.name()];
                 //void* addr = descdata.address(index);
                 //printOffset(name.name(),xtc,addr);
             }
-            iterate(xtc);
-            break;
-        }
-        case (TypeId::Names): {
-            _names = (Names*)xtc;
             break;
         }
         default:
@@ -75,12 +78,11 @@ public:
         }
         return Continue;
     }
-    Names* _names;
+    std::vector<NameIndex>& _namesVec;
     void printOffset(const char* str, void* base, void* ptr) {
         printf("***%s at offset %li addr %p\n",str,(char*)ptr-(char*)base,ptr);
     }
 };
-
 
 class PgpData
 {
@@ -89,7 +91,7 @@ public:
     {
         return p;
     }
-    PgpData(float f, int i1, int i2)
+    PgpData(float f, int i1)
     {
         _fdata = f;
         _idata = i1;
@@ -107,33 +109,26 @@ public:
     float array2[3][3];
 };
 
-void pgpExample(Xtc& parent, char* intName, char* floatName, char* arrayName, char* arrayNameB, int vals[3],
-                NameIndex& nameindex, unsigned nameId)
+void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 {
     FrontEndData frontEnd(parent, nameindex, nameId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
     // we avoid the pgp driver copy into user-space.
-    new (frontEnd.data()) PgpData(vals[0], vals[1], vals[2]);
+    new (frontEnd.data()) PgpData(1, 2);
 
     // now that data has arrived update with the number of bytes received
     // it is required to call this before set_array_shape
     frontEnd.set_data_length(sizeof(PgpData));
 
     unsigned shape[] = { 3, 3 };
-    frontEnd.set_array_shape(arrayName, shape);
-    frontEnd.set_array_shape(arrayNameB, shape);
+    frontEnd.set_array_shape("array0_pgp", shape);
+    frontEnd.set_array_shape("array1_pgp", shape);
 }
 
-void fexExample(Xtc& parent, unsigned nameId)
+void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 {
-    // would normally get Names from configure transition
-    Names& names = *new(parent) Names();
-    names.add("fexfloat1", Name::FLOAT, parent);
-    names.add("fexint1", Name::INT32, parent);
-    NameIndex nameindex(names);
-
     FexData fex(parent, nameindex, nameId);
 
     // have to be careful to set the correct type here, unfortunately.
@@ -142,67 +137,61 @@ void fexExample(Xtc& parent, unsigned nameId)
     // if that is not done an error will be asserted.  I think
     // we could remove that requirement if we indicate which
     // array is being written in the data as they are written.
-    fex.set_value("fexfloat1", (float)41.0);
-    fex.set_value("fexint1", 42);
+    fex.set_value("float_fex", (float)41.0);
+    fex.set_value("int_fex", 42);
 }
 
-NameIndex addNameIndex(Xtc& parent, const char* intName, const char* floatName,
-                       const char* arrayName, const char* arrayNameB)
-{
-    // would normally get Names from configure transition
-    Names& names = *new(parent) Names();
-    // needs to match the order of the data 
-    names.add(floatName, Name::FLOAT, parent);
-    names.add(arrayName, Name::FLOAT, parent, 2);
-    names.add(intName, Name::INT32, parent);
-    names.add(arrayNameB, Name::FLOAT, parent, 2);
+void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
+    Names& frontEndNames = *new(parent) Names();
+    frontEndNames.add("float_pgp",  Name::FLOAT, parent);
+    frontEndNames.add("array0_pgp", Name::FLOAT, parent, 2);
+    frontEndNames.add("int_pgp",    Name::INT32, parent);
+    frontEndNames.add("array1_pgp", Name::FLOAT, parent, 2);
+    namesVec.push_back(NameIndex(frontEndNames));
 
-    return NameIndex(names);
+    Names& fexNames = *new(parent) Names();
+    fexNames.add("float_fex", Name::FLOAT, parent);
+    fexNames.add("int_fex",   Name::INT32, parent);
+    namesVec.push_back(NameIndex(fexNames));
 }
 
 int main()
 {
-    void* buf = malloc(BUFSIZE);
-    int vals1[3];
-    int vals2[3];
     FILE* xtcFile = fopen("data.xtc", "w");
     if (!xtcFile) {
         printf("Error opening output xtc file.\n");
         return -1;
     }
 
-    for (int i = 0; i < NDGRAM; i++) {
+    void* configbuf = malloc(BUFSIZE);
+    Dgram& config = *(Dgram*)configbuf;
+    TypeId tid(TypeId::Parent, 0);
+    config.xtc.contains = tid;
+    config.xtc.damage = 0;
+    config.xtc.extent = sizeof(Xtc);
+    std::vector<NameIndex> namesVec;
+    add_names(config.xtc, namesVec);
+    if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
+        printf("Error writing configure to output xtc file.\n");
+        return -1;
+    }
+
+    void* buf = malloc(BUFSIZE);
+
+    for (int i = 0; i < NEVENT; i++) {
         Dgram& dgram = *(Dgram*)buf;
         TypeId tid(TypeId::Parent, 0);
         dgram.xtc.contains = tid;
         dgram.xtc.damage = 0;
         dgram.xtc.extent = sizeof(Xtc);
 
-        for (int j = 0; j < 3; j++) {
-            vals1[j] = i + j;
-            vals2[j] = 1000 + i + j;
-        }
-        char intname[10], floatname[10], arrayname[10], arraynameB[10];
-        sprintf(intname, "%s%d", "int", 0);
-        sprintf(floatname, "%s%d", "float", 0);
-        sprintf(arrayname, "%s%d", "array", 0);
-        sprintf(arraynameB, "%s%dB", "array", 0);
         unsigned nameId = 0;
-        NameIndex nameindex1 = addNameIndex(dgram.xtc, intname, floatname,
-                                            arrayname, arraynameB);
-        pgpExample(dgram.xtc, intname, floatname, arrayname, arraynameB, vals1,
-                   nameindex1, nameId);
-        sprintf(intname, "%s%d", "int", 1);
-        sprintf(floatname, "%s%d", "float", 1);
-        sprintf(arrayname, "%s%d", "array", 1);
-        sprintf(arraynameB, "%s%dB", "array", 1);
-        NameIndex nameindex2 = addNameIndex(dgram.xtc, intname, floatname,
-                                            arrayname, arraynameB);
-        pgpExample(dgram.xtc, intname, floatname, arrayname, arraynameB, vals2,
-                   nameindex2, ++nameId);
-        fexExample(dgram.xtc, ++nameId);
+        pgpExample(dgram.xtc, namesVec[nameId], nameId);
+        nameId++;
+        fexExample(dgram.xtc, namesVec[nameId], nameId);
 
-        DebugIter iter(&dgram.xtc);
+        printf("*** event %d ***\n",i);
+        DebugIter iter(&dgram.xtc, namesVec);
         iter.iterate();
 
         if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, xtcFile) != 1) {
