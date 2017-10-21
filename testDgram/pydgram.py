@@ -14,16 +14,10 @@ import dgram
 #
 
 class PyDgram:
-    def __init__(self, xtcdata_filename, verbose=0, debug=0):
-        self.verbose=verbose
-        self.debug=debug
-
-        f = os.open(xtcdata_filename, os.O_RDONLY|os.O_LARGEFILE)
-        d=dgram.Dgram(f, verbose=verbose, debug=debug)
-
+    def __init__(self, fd, config=None, verbose=0, debug=0):
+        d=dgram.Dgram(fd, config, verbose=verbose, debug=debug)
         for key in sorted(d.__dict__.keys()):
              self.__dict__[key]=getattr(d, key)
-
 
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:')
@@ -47,7 +41,8 @@ def parse_command_line():
 def main():
     args_proper, xtcdata_filename, verbose, debug = parse_command_line()
 
-    pd=PyDgram(xtcdata_filename, verbose, debug)
+    fd = os.open(xtcdata_filename, os.O_RDONLY|os.O_LARGEFILE)
+    pd=PyDgram(fd, verbose=verbose, debug=debug)
 
 #    keys=sorted(d.__dict__.keys())
 #    for key in keys:
