@@ -41,3 +41,17 @@ target_link_libraries(dtiPVs
    /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
    /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
+
+#
+#  dti_eyescan
+#
+add_executable(dti_eyescan dti_eyescan.cc)
+
+target_link_libraries(dti_eyescan
+   dl
+   pthread
+   service
+   cphw
+   /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
+   /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
+)

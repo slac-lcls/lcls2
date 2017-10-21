@@ -36,7 +36,8 @@ void usage(const char* p) {
   printf("Options: -a <IP addr (dotted notation)> : Use network <IP>\n");
   printf("         -t <partition>                 : Link partition (default=0)\n");
   printf("         -k                             : Keep running on exit\n");
-  printf("         -e                             : Enable DTI link\n");
+  printf("         -r <rate index>                : Rate [0 = 1MHz, 1 = 71kHz, 2=10kHz, 3=1kHz, 4=100Hz, 5=10Hz, 6=1Hz\n");
+  printf("         -d <mask>                      : Enable DTI deadtime links in bitmask\n");
   printf("         -m <message>                   : Insert 47-bit message (ULL)\n");
 }
 
