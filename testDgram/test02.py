@@ -46,7 +46,7 @@ def do_it(args_proper, xtcdata_filename, verbose, debug):
     print("get d1")
     #fd = os.open(xtcdata_filename, os.O_RDONLY|os.O_LARGEFILE)
     #d1=Dgram(fd, verbose, debug)
-    d1=pydgram.PyDgram(xtcdata_filename, verbose, debug)
+    d1=pydgram.PyDgram(xtcdata_filename, verbose=verbose, debug=debug)
     print("dir(d1):"); dir(d1)
     print("d1:", d1)
     print("gc.is_tracked(d1): %s" % gc.is_tracked(d1))

@@ -19,7 +19,7 @@ def do_it(args_proper, verbose, debug):
     classMembers.sort()
     print("classMembers:", classMembers)
 
-    d=Dgram(verbose, debug=debug)
+    d=Dgram(verbose=verbose, debug=debug)
     print("sys.getrefcount(d): %d\n" % sys.getrefcount(d))
     sys.stdout.flush()
 

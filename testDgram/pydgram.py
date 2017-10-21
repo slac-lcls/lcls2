@@ -19,7 +19,7 @@ class PyDgram:
         self.debug=debug
 
         f = os.open(xtcdata_filename, os.O_RDONLY|os.O_LARGEFILE)
-        d=dgram.Dgram(f, verbose, debug)
+        d=dgram.Dgram(f, verbose=verbose, debug=debug)
 
         for key in sorted(d.__dict__.keys()):
              self.__dict__[key]=getattr(d, key)
