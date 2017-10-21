@@ -232,13 +232,17 @@ private:
 
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
-    static char* kwlist[] = {(char*)"file_descriptor",(char*)"verbose", (char*)"debug", NULL};
-    self->verbose=0;
-    self->debug=0;
+    static char* kwlist[] = {(char*)"file_descriptor",
+                             (char*)"config",
+                             (char*)"verbose",
+                             (char*)"debug",
+                             NULL};
     int fd;
     PyObject* configDgram=0;
+    self->verbose=0;
+    self->debug=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "i|Oii", kwlist,
+                                     "i|O$ii", kwlist,
                                      &fd,
                                      &configDgram,
                                      &(self->verbose),
