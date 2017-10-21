@@ -1,0 +1,20 @@
+[Unit]
+Description=PgpcardG3 Process Manager
+Requires=multi-user.target
+After=multi-user.target
+#Requires=cgred.service
+#After=cgred.service
+
+[Service]
+Type=simple
+#ExecStart=/usr/bin/cgexec -g cpuset:/DAQ --sticky /etc/systemd/system/procmgr.d/procmgrd restart
+ExecStart=/etc/systemd/system/pgpcardG3.d/pgpcardG3 restart
+ExecStartPost=
+ExecStop=
+KillMode=process
+IgnoreSIGPIPE=no
+StandardOutput=syslog
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

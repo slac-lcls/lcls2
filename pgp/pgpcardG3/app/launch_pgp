@@ -1,0 +1,7 @@
+./xRead -P /dev/pgpcardG3_0_1 -r &
+./xRead -P /dev/pgpcardG3_0_2 -r &
+./xRead -P /dev/pgpcardG3_0_4 -r &
+./xRead -P /dev/pgpcardG3_0_5 -r &
+./xRead -P /dev/pgpcardG3_0_6 -r &
+./xRead -P /dev/pgpcardG3_0_7 -r &
+./xRead -P /dev/pgpcardG3_0_8 -r &

@@ -37,4 +37,5 @@ find_package(HDF5 REQUIRED HL)
 
 add_subdirectory(xtcdata)
 add_subdirectory(psdaq)
+add_subdirectory(pgp)
 add_subdirectory(drp)
