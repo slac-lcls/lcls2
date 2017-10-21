@@ -58,36 +58,49 @@ namespace Pds {
 
     class LocalIOVec {
     public:
-      LocalIOVec(size_t count, LocalAddress** local_addrs=NULL);
+      LocalIOVec(size_t count=1);
+      LocalIOVec(LocalAddress* local_addrs, size_t count);
       LocalIOVec(const std::vector<LocalAddress*>& local_addrs);
       ~LocalIOVec();
       bool check_mr();
       size_t count() const;
       const struct iovec* iovecs() const;
       void** desc() const;
+      bool add_iovec(LocalAddress* local_addr, size_t count=1);
+      bool add_iovec(std::vector<LocalAddress*>& local_addr);
+      bool add_iovec(void* buf, size_t len, MemoryRegion* mr=NULL);
       bool set_iovec(unsigned index, LocalAddress* local_addr);
       bool set_iovec(unsigned index, void* buf, size_t len, MemoryRegion* mr=NULL);
       bool set_iovec_mr(unsigned index, MemoryRegion* mr);
     private:
+      void check_size(size_t count);
       void verify();
     private:
       bool          _mr_set;
       size_t        _count;
+      size_t        _max;
       struct iovec* _iovs;
       void**        _mr_desc;
     };
 
     class RemoteIOVec {
     public:
-      RemoteIOVec(size_t count, RemoteAddress** remote_addrs=NULL);
+      RemoteIOVec(size_t count=1);
+      RemoteIOVec(RemoteAddress* remote_addrs, size_t count);
       RemoteIOVec(const std::vector<RemoteAddress*>& remote_addrs);
       ~RemoteIOVec();
       size_t count() const;
       const struct fi_rma_iov* iovecs() const;
+      bool add_iovec(RemoteAddress* remote_addr, size_t count=1);
+      bool add_iovec(std::vector<RemoteAddress*>& remote_addr);
+      bool add_iovec(unsigned index, uint64_t rkey, uint64_t addr, size_t extent);
       bool set_iovec(unsigned index, RemoteAddress* remote_addr);
       bool set_iovec(unsigned index, uint64_t rkey, uint64_t addr, size_t extent);
     private:
+      void check_size(size_t count);
+    private:
       size_t              _count;
+      size_t              _max;
       struct fi_rma_iov*  _rma_iovs;
     };
 
@@ -96,9 +109,24 @@ namespace Pds {
       RmaMessage();
       RmaMessage(LocalIOVec* loc_iov, RemoteIOVec* rem_iov, void* context, uint64_t data=0);
       ~RmaMessage();
+      LocalIOVec* loc_iov() const;
+      RemoteIOVec* rem_iov() const;
+      void loc_iov(LocalIOVec* loc_iov);
+      void rem_iov(RemoteIOVec* rem_iov);
+      const struct iovec* msg_iov() const;
+      size_t iov_count() const;
+      void** desc() const;
+      const struct fi_rma_iov* rma_iov() const;
+      size_t rma_iov_count() const;
+      void* context() const;
+      void context(void* context);
+      uint64_t data() const;
+      void data(uint64_t data);
       const struct fi_msg_rma* msg() const;
     private:
-      struct fi_msg_rma* _msg;
+      LocalIOVec*         _loc_iov;
+      RemoteIOVec*        _rem_iov;
+      struct fi_msg_rma*  _msg;
     };
 
     class ErrorHandler {
@@ -121,6 +149,7 @@ namespace Pds {
       Fabric(const char* node, const char* service, int flags=0);
       ~Fabric();
       MemoryRegion* register_memory(void* start, size_t len);
+      MemoryRegion* register_memory(LocalAddress* laddr);
       MemoryRegion* lookup_memory(void* start, size_t len) const;
       MemoryRegion* lookup_memory(LocalAddress* laddr) const;
       bool lookup_memory_iovec(LocalIOVec* iov) const;
@@ -195,8 +224,10 @@ namespace Pds {
       bool recvv(LocalIOVec* iov, void* context);
       bool readv(LocalIOVec* iov, const RemoteAddress* raddr, void* context);
       bool writev(LocalIOVec* iov, const RemoteAddress* raddr, void* context);
+      bool readmsg(RmaMessage* msg, uint64_t flags);
+      bool writemsg(RmaMessage* msg, uint64_t flags);
       /* Synchronous calls (raw buffer) */
-      bool recv_comp_data_sync(uint64_t* data);
+      bool recv_comp_data_sync(uint64_t* data=NULL);
       bool send_sync(void* buf, size_t len, const MemoryRegion* mr=NULL);
       bool recv_sync(void* buf, size_t len, const MemoryRegion* mr=NULL);
       bool read_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
@@ -213,6 +244,8 @@ namespace Pds {
       bool recvv_sync(LocalIOVec* iov);
       bool readv_sync(LocalIOVec* iov, const RemoteAddress* raddr);
       bool writev_sync(LocalIOVec* iov, const RemoteAddress* raddr);
+      bool readmsg_sync(RmaMessage* msg, uint64_t flags);
+      bool writemsg_sync(RmaMessage* msg, uint64_t flags);
     private:
       bool handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, int* comp_num, const char* cmd);
       bool check_completion(int context, unsigned flags);
