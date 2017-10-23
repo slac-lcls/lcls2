@@ -31,26 +31,27 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
     if (self->verbose > 0) {
         printf("VERBOSE=%d; %s\n", self->verbose, comment);
         fflush(stdout);
+        printf("VERBOSE=%d;  self->debug=%d\n", self->verbose, self->debug);
         printf("VERBOSE=%d;  self=%p\n", self->verbose, self);
-        printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
-        printf("VERBOSE=%d;  self->dict=%p\n", self->verbose, self->dict);
-        if (self->dict != NULL) {
-            printf("VERBOSE=%d;  Py_REFCNT(self->dict)=%d\n", self->verbose, (int)Py_REFCNT(self->dict));
-        }
-        fflush(stdout);
-        if (obj != NULL) {
-            printf("VERBOSE=%d;  Py_REFCNT(obj)=%d\n", self->verbose, (int)Py_REFCNT(obj));
-            if (strcmp("numpy.ndarray", obj->ob_type->tp_name) == 0) {
-                PyArrayObject_fields* p=(PyArrayObject_fields*)obj;
-                printf("VERBOSE=%d;  obj->base=%p\n", self->verbose, p->base);
-                fflush(stdout);
-                if (p->base != NULL) {
-                    printf("VERBOSE=%d;  Py_REFCNT(obj->base)=%d\n", self->verbose, (int)Py_REFCNT(p->base));
-                    fflush(stdout);
-                }
-            }
-        }
-        printf("VERBOSE=%d; %s\n\n", self->verbose, "done");
+//        printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
+//        printf("VERBOSE=%d;  self->dict=%p\n", self->verbose, self->dict);
+//        if (self->dict != NULL) {
+//            printf("VERBOSE=%d;  Py_REFCNT(self->dict)=%d\n", self->verbose, (int)Py_REFCNT(self->dict));
+//        }
+//        fflush(stdout);
+//        if (obj != NULL) {
+//            printf("VERBOSE=%d;  Py_REFCNT(obj)=%d\n", self->verbose, (int)Py_REFCNT(obj));
+//            if (strcmp("numpy.ndarray", obj->ob_type->tp_name) == 0) {
+//                PyArrayObject_fields* p=(PyArrayObject_fields*)obj;
+//                printf("VERBOSE=%d;  obj->base=%p\n", self->verbose, p->base);
+//                fflush(stdout);
+//                if (p->base != NULL) {
+//                    printf("VERBOSE=%d;  Py_REFCNT(obj->base)=%d\n", self->verbose, (int)Py_REFCNT(p->base));
+//                    fflush(stdout);
+//                }
+//            }
+//        }
+//        printf("VERBOSE=%d; %s\n\n", self->verbose, "done");
         fflush(stdout);
     }
 }
@@ -147,7 +148,9 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
         }
         char s[120];
         sprintf(s, "Bottom of DictAssign, obj is %s", tempName);
-        write_object_info(pyDgram, newobj, s);
+        if (strncmp(tempName, "array", 5) == 0) {
+            write_object_info(pyDgram, newobj, s);
+        }
     }
 }
 
@@ -304,8 +307,10 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
     char s[120];
     Py_ssize_t size;
     char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
-    sprintf(s, "Top of tp_getattro(), obj is %s", key_string);
-    write_object_info((PyDgramObject*)o, res, s);
+    if (strncmp(key_string, "array", 5) == 0) {
+        sprintf(s, "Top of tp_getattro(), obj is %s", key_string);
+        write_object_info((PyDgramObject*)o, res, s);
+    }
 
     if (res != NULL) {
         if ( (((PyDgramObject*)o)->debug & 0x01) == 1 ) {
@@ -345,8 +350,10 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
     //char s[120];
     //Py_ssize_t size;
     //char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
-    sprintf(s, "Bottom of tp_getattro(), obj is %s", key_string);
-    write_object_info((PyDgramObject*)o, res, s);
+    if (strncmp(key_string, "array", 5) == 0) {
+        sprintf(s, "Bottom of tp_getattro(), obj is %s", key_string);
+        write_object_info((PyDgramObject*)o, res, s);
+    }
     return res;
 }
 
