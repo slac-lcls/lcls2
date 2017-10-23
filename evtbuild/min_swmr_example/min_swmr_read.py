@@ -1,16 +1,12 @@
+# Example of an HDF file writer using SWMR
+# Here I write random data to a single HDF file
+# The file is written to the NEH FFB (flash-based)
+
 import h5py, glob
 import numpy,time
 
-# Each client reads a single file.
-# It checks the size and, if it is greater than the number
-# of batches already read, reads the next chunk. 
-# Otherwise it waits for new data to be written  
-
 # Number of events to read at once
 batch_size = 10
-
-
-
 
 
 file_name = '../neh_dir/swmr/swmr_file.py'

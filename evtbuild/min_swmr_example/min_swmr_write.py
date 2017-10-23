@@ -1,3 +1,8 @@
+# Example of an HDF file reader using SWMR
+# Here I read random data from a single HDF file
+# The file is read from the NEH FFB (flash-based)
+
+
 import h5py
 import numpy as np
 import time
