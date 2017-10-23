@@ -124,7 +124,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 break;
             }
             }
-            if ( (pyDgram->debug & 0x01) == 1 ) {
+            if ( (pyDgram->debug & 0x03) != 0 ) {
                 if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
                     char s[120];
                     sprintf(s, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
@@ -314,6 +314,8 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
             if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
                 Py_CLEAR(((PyDgramObject*)o)->dict);
             }
+        } else if ( (((PyDgramObject*)o)->debug & 0x02) == 1 ) {
+            Py_INCREF(res);
         } else {
             if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
                 PyArrayObject* arr = (PyArrayObject*)res;
@@ -334,9 +336,11 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
                 Py_INCREF(res);
             }
         }
+
     } else {
         res = PyObject_GenericGetAttr(o, key);
     }
+
 
     //char s[120];
     //Py_ssize_t size;
