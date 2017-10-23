@@ -2,6 +2,7 @@
 add_library(service SHARED
     SysClk.cc
     Semaphore.cc
+    SemLock.cc
     Lock.cc
     Pool.cc
     Task.cc
