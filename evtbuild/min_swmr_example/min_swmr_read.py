@@ -12,8 +12,8 @@ batch_size = 10
 
 
 
-file_name = 'swmr_file.py'
 
+file_name = '../neh_dir/swmr/swmr_file.py'
 
 with h5py.File(file_name, 'r', swmr=True) as f:
     dset = f["data"]

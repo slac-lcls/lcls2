@@ -4,7 +4,7 @@ import time
 
 # Prepare all the files for writing and reading
 
-file_name = 'swmr_file.py'
+file_name = '../neh_dir/swmr/swmr_file.py'
 batch_size = 10
 
 # Function for creating random image arrays
