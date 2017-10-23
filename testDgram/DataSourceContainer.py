@@ -13,7 +13,7 @@ sys.path.append('../build/xtcdata')
 import dgram
 #
 
-class PyDataSource:
+class DataSource:
     def __init__(self, xtcdata_filename, verbose=0, debug=0):
         self.verbose=verbose
         self.debug=debug
@@ -37,7 +37,13 @@ class PyDataSource:
         return self
 
     def __next__(self):
-        return self.events()
+        d=dgram.Dgram(self.fd, self.config,
+                      verbose=self.verbose,
+                      debug=self.debug)
+        for key in sorted(d.__dict__.keys()):
+            setattr(self, key, getattr(d, key))
+        return self
+
 
 
 def parse_command_line():
@@ -63,13 +69,16 @@ def parse_command_line():
 def main():
     args_proper, xtcdata_filename, verbose, debug = parse_command_line()
 
-    pd=PyDataSource(xtcdata_filename, verbose=verbose, debug=debug)
+    ds=DataSource(xtcdata_filename, verbose=verbose, debug=debug)
+    print("ds.__dict__:", ds.__dict__)
 
     count=0
-    for evt in pd:
+    for evt in ds:
         print("\ncount: %d" % count)
-        pprint.pprint(evt)
+        print("evt.__dict__:")
+        pprint.pprint(evt.__dict__)
         count=+1
+        sys.stdout.flush()
 
     return
 
