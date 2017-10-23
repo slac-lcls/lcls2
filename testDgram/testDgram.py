@@ -7,6 +7,7 @@ sys.path.append('../build/xtcdata')
 from dgram import Dgram
 import numpy as np
 from DataSource import DataSource
+#from DataSourceContainer import DataSource
 
 def myroutine2():
   ds = DataSource('data.xtc')
