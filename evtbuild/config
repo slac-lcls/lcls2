@@ -5,7 +5,9 @@
 #path  /reg/d/psdm/cxi/cxitut13/scratch/eliseo/
 #path /reg/d/ffb/xpp/test/offline_eb/data
 #path   /global/cscratch1/sd/eliseo/data
-path /drpffb/eliseo/data
+#path /drpffb/eliseo/data
+path  /reg/neh/home/eliseo/lcls2/evtbuild/swmr_temp
+
 
 # Batches to iterate over
 batches	  [10,50,100,500,1000]
