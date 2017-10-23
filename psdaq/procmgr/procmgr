@@ -1,0 +1,303 @@
+#!/usr/bin/python
+# procmgr - configure (start, stop, status) the DAQ processes
+# $Id$
+
+from ProcMgr import ProcMgr, deduce_platform2, getConfigFileNames, add_macro_config, getUser, ConfigFileError
+from optparse import OptionParser
+from string import atoi
+import os.path
+from os import remove, symlink
+import sys
+import shutil
+import filecmp
+import stat
+from time import sleep
+
+#
+# _stop
+#
+def _stop(argv0, args, runconfig, lastconfig, configfile, options):
+    _stop_rv = 1    # return value
+    try:
+        if os.path.isfile(runconfig):
+            # stop dynamic processes
+            print "%s: using config file '%s' to stop" % (argv0, runconfig)
+            handle = ProcMgr(runconfig, options.platform)
+            _stop_rv = handle.stop(args, verbose=options.verbose, sigdelay=options.sigint_delay, only_static=0)
+            staticCount, dynamicCount = handle.getProcessCounts()
+            if dynamicCount == 0:
+                try:
+                    os.remove(runconfig)
+                except IOError:
+                    print "%s: i/o error while removing '%s'" % (argv0, runconfig)
+                    _stop_rv = 1
+                else:
+                    print "%s: removed '%s'" % (argv0, runconfig)
+        elif os.path.isfile(lastconfig):
+            # stop dynamic processes
+            print "%s: using config file '%s' to stop" % (argv0, lastconfig)
+            handle = ProcMgr(lastconfig, options.platform)
+            _stop_rv = handle.stop(args, verbose=options.verbose, sigdelay=options.sigint_delay, only_static=0)
+        elif os.path.isfile(configfile):
+            # stop dynamic processes
+            print "%s: using config file '%s' to stop" % (argv0, configfile)
+            handle = ProcMgr(configfile, options.platform)
+            _stop_rv = handle.stop(args, verbose=options.verbose, sigdelay=options.sigint_delay, only_static=0)
+        elif len(args) == 0:
+            # nothing to stop
+            print "%s: no dynamic processes running ('%s' not found)" % (argv0, runconfig)
+            _stop_rv = 0
+        else:
+            # stop static processes listed on command line
+            print "%s: using config file '%s' to stop" % (argv0, configfile)
+            _stop_rv = ProcMgr(configfile, options.platform).stop(args, options.verbose,
+                    options.sigint_delay, only_static=1)
+    except IOError:
+        print "%s: i/o error" % argv0
+        _stop_rv = 1
+    except ConfigFileError, e:
+        print "%s: configuration file error: %s" % (argv0, e.value)
+        _start_rv = 1
+
+    return _stop_rv
+
+#
+# _start
+#
+def _start(argv0, args, runconfig, lastconfig, configfile, options, procmgr_macro):
+    _start_rv = 1   # return value
+    if (os.path.exists(runconfig)) and (len(args) == 0):
+        print "It is necessary to stop the running config before starting '%s'." % configfile
+        print "If this is incorrect, remove '%s'." % runconfig
+    else:
+        if (os.path.exists(runconfig)):
+            configfile = runconfig
+        try:
+            print "%s: using config file '%s' to start" % (argv0, configfile)
+            handle = ProcMgr(configfile, options.platform, options.Xterm_list, options.xterm_list, procmgr_macro)
+            _start_rv = handle.start(args, options.verbose, options.logpath, options.coresize)
+            staticCount, dynamicCount = handle.getProcessCounts()
+        except IOError:
+            print "%s: i/o error" % argv0
+            _start_rv = 1
+        except ConfigFileError, e:
+            print "%s: configuration file error: %s" % (argv0, e.value)
+            _start_rv = 1
+        else:
+            if (_start_rv == 0) and (dynamicCount > 0) and (not os.path.exists(runconfig)):
+                # copy macros + cnf to cnf.last, then link to cnf.running to cnf.last
+                try:
+                    add_macro_config(procmgr_macro, configfile, lastconfig)
+                    # chmod a+rw
+                    os.chmod(lastconfig, stat.S_IRUSR | stat.S_IWUSR |
+                                         stat.S_IRGRP | stat.S_IWGRP |
+                                         stat.S_IROTH | stat.S_IWOTH)
+
+                    if os.path.exists(lastconfig):
+                        if not os.path.exists(runconfig):
+                            os.symlink(os.path.basename(lastconfig), runconfig)
+                    else:
+                        print "%s: '%s' not found" % (sys.argv[0], lastconfig)
+                        _start_rv = 1
+                    
+                except IOError:
+                    print "%s: i/o error updating %s and %s" % (sys.argv[0], runconfig, lastconfig)
+                    _start_rv = 1
+                except OSError, e:
+                    print "%s: OS error updating %s and %s: %s" % (sys.argv[0], runconfig, lastconfig, e.strerror)
+                    _start_rv = 1
+
+    return _start_rv
+
+#
+# _status
+#
+def _status(argv0, args, lastconfig, configfile, options):
+    _status_rv = 1    # return value
+    try:
+        if os.path.exists(lastconfig):
+            print "%s: using config file '%s'" % (sys.argv[0], lastconfig)
+            handle = ProcMgr(lastconfig, options.platform, options.Xterm_list, options.xterm_list)
+            staticCount, dynamicCount = handle.getProcessCounts()
+            userx, hostx = handle.getStartUser()
+            usery, hosty = getUser()
+            if dynamicCount > 0:
+                print "Running, started on host %s by user %s." % (hostx, userx)
+            else:
+                print "Not running, last started on host %s by user %s." % (hostx, userx)
+            if hostx != hosty:
+                print "Warning! If current host %s is not on the same subnets as start host %s, status could be incorrect." % (hosty, hostx)
+            _status_rv = handle.status(args, verbose=options.verbose, only_static=0)
+        else:
+            print "%s: using config file '%s'" % (sys.argv[0], configfile)
+            handle = ProcMgr(configfile, options.platform, options.Xterm_list, options.xterm_list)
+            print "Not running."
+            _status_rv = handle.status(args, verbose=options.verbose, only_static=1)
+    except IOError:
+        print "%s: i/o error" % sys.argv[0]
+        _status_rv = 1
+    except ConfigFileError, e:
+        print "%s: configuration file error: %s" % (argv0, e.value)
+        _start_rv = 1
+
+    return _status_rv
+
+#
+# _parse_macro
+#
+def _parse_macro(macro_list):
+    rv = {}
+    for macro in macro_list:
+        xx, yy = macro.split("=")
+        rv[xx] = yy
+    return rv
+
+rv = 1      # return value
+logpath_max = 50
+
+command_list = [ 'start', 'stop', 'restart', 'status' ]
+
+usage = "usage: %prog { start | stop | restart | status } configfile [-h] [-v] [-p <platform>] [-c <coresize>] [-t <secs>] [-o <logpath>] [-x <substring>] [-X <substring>] [-D <macro=value>] [UniqueID]..."
+
+parser = OptionParser(usage=usage)
+
+parser.add_option("--help-flags",
+                  action="store_true", dest="helpFlags", default=False,
+                  help="show flags help message and exit")
+
+parser.add_option("-v", "--verbose",
+                  action="store_true", dest="verbose", default=False,
+                  help="be verbose")
+
+parser.add_option("-p", type="int", dest="platform", metavar="<platform>",
+                  default=-1, help="platform number")
+
+parser.add_option("-c", type="int", dest="coresize", metavar="<coresize>",
+                  default=2000000000, help="max core dump size (default=2000000000)")
+
+parser.add_option("-t", type="int", dest="sigint_delay", metavar="<secs>",
+                  default=1, help="stop/restart: SIGINT to SIGTERM delay (default=1)")
+
+homedir = os.path.expanduser('~')
+parser.add_option("-o", type="string", dest="logpath", metavar="<logpath>",
+                  default=homedir,
+                  help="output dir (default=%s) (max %d chars)" % (homedir, logpath_max))
+
+parser.add_option('-X', action="append", dest='Xterm_list', default=[], metavar="<substring>",
+                  help="start/restart/status: large xterm for UniqueID w/substring")
+
+parser.add_option('-x', action="append", dest='xterm_list', default=[], metavar="<substring>",
+                  help="start/restart/status: small xterm for UniqueID w/substring")
+
+parser.add_option('-D', type="string", action="append", dest='macro_list', default=[], metavar="<macro=value>",
+                  help="start/restart: define a macro")
+
+(options, args) = parser.parse_args()
+
+# create macro dictionary
+procmgr_macro = {}
+if options.macro_list:
+    try:
+        procmgr_macro = _parse_macro(options.macro_list)
+    except:
+        parser.error("Malformed macro")
+
+if options.logpath and len(options.logpath) > logpath_max:
+    parser.error("logpath exceeds limit of %d chars" % logpath_max)
+
+# define LOGPATH and CORESIZE macros
+if options.logpath and options.logpath != '/dev/null':
+    procmgr_macro['LOGPATH'] = options.logpath
+if options.coresize:
+    procmgr_macro['CORESIZE'] = options.coresize
+
+if options.helpFlags:
+    print "supported flags in the procmgr configuration file:\n  X or x  open a large or small xterm to monitor process output\n  k       do not stop process with '%s stop,' only with '%s stop UniqueID'\n          (statically assigning the port# in the procmgr configuration file adds the k flag)\n  s       when stopping the process, send SIGINT before SIGTERM\n  p       add '-p <platform>[,<mod>,<chan>]' to command line arguments\n  u       add '-u <uniqueid>' to command line arguments" % (sys.argv[0], sys.argv[0])
+    sys.exit(0)
+
+if len(args) < 2:
+    parser.error("at least two arguments required")
+
+configfile = args.pop(1)
+
+if os.path.isfile(configfile) != 1:
+    parser.error ("file not found: %s" % configfile)
+
+try:
+    tmpplatform, config_macros = deduce_platform2(configfile)
+    macro_count = len(config_macros)
+except IOError:
+    print 'I/O error while reading file', configfile
+    tmpplatform = -1
+    macro_count = 0
+
+if (options.platform < 0):
+    if (tmpplatform < 0):
+        parser.error("must specify platform")
+    else:
+        options.platform = tmpplatform
+
+runconfig, lastconfig = getConfigFileNames(configfile, options.platform)
+
+command = args.pop(0)
+
+if not command in command_list:
+    parser.error ("unknown command: %s" % command)
+
+if os.path.isfile(runconfig) and ((command == 'start') or (command == 'restart')):
+    try:
+        envuser, envhost = getUser()
+    except:
+        print '%s: Error determining HOST and USER' % sys.argv[0]
+        sys.exit(1)
+    try:
+        ignore, run_macros = deduce_platform2(runconfig)
+        macrohost = run_macros.get('HOST', None)
+        macrouser = run_macros.get('USER', None)
+    except:
+        print '%s: Error reading HOST and USER macros' % sys.argv[0]
+        sys.exit(1)
+
+if command == 'start':
+    # start
+    if macro_count > 0:
+        print '%s: Error: \'%s\' modifies procmgr_macro' % (sys.argv[0], configfile)
+    elif os.path.isfile(runconfig) and ((macrohost != envhost) or (macrouser != envuser)):
+        print '%s: Error: user \'%s\' started platform %d on host \'%s\'' % \
+              (sys.argv[0], macrouser, options.platform, macrohost)
+        rv = 1
+    else:
+        rv = _start(sys.argv[0], args, runconfig, lastconfig, configfile, options, procmgr_macro)
+
+elif command == 'status':
+    # status
+    rv = _status(sys.argv[0], args, lastconfig, configfile, options)
+
+elif command == 'stop':
+    # stop
+    rv = _stop(sys.argv[0], args, runconfig, lastconfig, configfile, options)
+
+elif command == 'restart':
+    if macro_count > 0:
+        print '%s: Error: \'%s\' modifies procmgr_macro' % (sys.argv[0], configfile)
+    elif os.path.isfile(runconfig) and ((macrohost != envhost) or (macrouser != envuser)):
+        print '%s: Error: user \'%s\' started platform %d on host \'%s\'' % \
+              (sys.argv[0], macrouser, options.platform, macrohost)
+        rv = 1
+    else:
+        # stop
+        rv = _stop(sys.argv[0], args, runconfig, lastconfig, configfile, options)
+        if rv != 0:
+          print "%s: error occurred during stop" % sys.argv[0]
+        # sleep
+        sleep (0.5)
+        # start
+        rv = _start(sys.argv[0], args, runconfig, lastconfig, configfile, options, procmgr_macro)
+
+else:
+
+    # should not get here
+    parser.error ("invalid command")
+    rv = 1
+
+sys.exit(rv)

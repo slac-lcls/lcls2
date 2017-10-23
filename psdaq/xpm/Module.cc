@@ -635,7 +635,7 @@ unsigned Module::getTagStream() const     { return getf(_index,  1,24); }
 void Module::setL0Delay(unsigned partition, unsigned v)
 {
   setPartition(partition);
-  setf(_pipelineDepth, v, 32, 0);
+  setf(_pipelineDepth, v*200, 32, 0);
   setf(_messagePayload, v, 32, 0);
   setf(_message, ((1<<15) | MSG_DELAY_PWORD), 16, 0);
 }

@@ -1,0 +1,175 @@
+#!/usr/bin/python
+
+#
+# procmgr_lint
+#
+#   This is a utility for checking the format of procmgr configuration files.
+#   Any errors are printed on stderr.  If the -v flag is set, the parsed
+#   configuration is printed on stdout.
+# 
+# usage: procmgr_lint configfile [OPTION]...
+# 
+# options:
+#   -h, --help     show this help message and exit
+#   -p <platform>  platform number
+#   -v, --verbose  more output
+#
+# author:
+#   Chris Ford <caf@slac.stanford.edu>
+#
+
+import sys
+import os
+import optparse
+import traceback
+from re import match, search
+
+usage = "usage: %prog configfile [OPTION]..."
+
+required_keys = ['id', 'cmd']
+optional_keys = ['host', 'flags', 'port', 'rtprio', 'env', 'evr']
+known_keys = required_keys + optional_keys
+
+valid_flags = ['X', 'x', 's', 'k', 'u', 'p']
+
+errorCount = 0
+
+#
+# report_error -
+#
+def report_error(msg):
+  global errorCount
+  errorCount += 1
+  print >> sys.stderr, 'Error:', msg
+  return
+
+#
+# entry_lint -
+#
+def entry_lint(dict):
+  rv = None
+  if type(dict) != type({}):
+    report_error('variable \'procmgr_config\' is not of form [{key:value, ...}, ...]')
+  elif not dict:
+    report_error('element of procmgr_config is empty')
+  else:
+    # check the elements within the procmgr_config entry
+    for key, value in dict.items():
+      if not key in known_keys:
+        report_error('procmgr_config entry includes invalid key \'%s\' (not in %s)' %
+                     (str(key), repr(known_keys)))
+      elif key == 'id':
+        rv = value
+        if ':' in value:
+          report_error('procmgr_config entry includes invalid id \'%s\' (includes \':\')' % str(value))
+        if '|' in value:
+          report_error('procmgr_config entry includes invalid id \'%s\' (includes \'|\')' % str(value))
+        if '\\' in value:
+          report_error('procmgr_config entry includes invalid id \'%s\' (includes \'\\\')' % str(value))
+        if '/' in value:
+          report_error('procmgr_config entry includes invalid id \'%s\' (includes \'/\')' % str(value))
+        if len(value) == 0:
+          report_error('procmgr_config entry includes invalid id (0 chars)')
+        if len(value) > 30:
+          report_error('procmgr_config entry includes invalid id \'%s\' (over 30 chars)' % str(value))
+      if type(value) != type(''):
+        report_error('procmgr_config entry includes invalid value \'%s\' (not a string)' % str(value))
+      elif key == 'flags':
+        for buf in value:
+          if not buf in valid_flags:
+            report_error('procmgr_config entry includes invalid flag \'%s\' (not in %s)' %
+                         (buf, repr(valid_flags)))
+      elif key == 'evr':
+        if not match('^(\d)\,(\d)(\d)?$', value):
+          report_error("procmgr_config entry includes invalid evr \'%s\' (does not match '<digit>,<digit>[<digit>]')" % str(value))
+      elif key == 'cmd':
+        if search('/usr/bin/chrt', value):
+          report_error("procmgr_config entry includes invalid cmd \'%s\' (use rtprio keyword instead of /usr/bin/chrt)" % str(value))
+        if search('/bin/env', value):
+          report_error("procmgr_config entry includes invalid cmd \'%s\' (use env keyword instead of /bin/env)" % str(value))
+  return rv
+
+valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET']
+
+parser = optparse.OptionParser(usage=usage)
+
+parser.add_option("-p", dest="platform", metavar="<platform>",
+                  default=None, help="platform number")
+
+parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
+                  default=False, help="more output")
+
+(options, args) = parser.parse_args()
+
+if len(args) != 1:
+  parser.error("one argument required")
+
+configfile = args.pop(0)
+
+if os.path.isfile(configfile) != 1:
+  parser.error("file not found: " + configfile)
+
+#
+# The following global variables are passed in when executing the config file:
+#  - platform = value passed on command line as a string, or None
+#  - procmgr_config = None
+#  - procmgr_macro = empty dictionary
+#  - instrument = None
+#  - id, cmd, flags, port, host, rtprio, env, evr = keyword strings
+#
+config = {'platform': options.platform, 'procmgr_config': None, 'instrument': None,
+          'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
+          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'procmgr_macro': dict()}
+
+try:
+  execfile(configfile, {}, config)
+except:
+  if options.verbose:
+    report_error(traceback.format_exc())
+  else:
+    report_error(sys.exc_info()[1])
+else:
+  if config['platform'] == None:
+    report_error('variable \'platform\' not defined')
+  elif type(config['platform']) != type(''):
+    report_error('variable \'platform\' not a string')
+  elif not config['platform'].isdigit():
+    report_error('variable \'platform\' not digit(s)')
+  elif options.platform != None and options.platform != config['platform']:
+    report_error('variable \'platform\' changed from command line value')
+
+  if config['procmgr_config'] == None:
+    report_error('variable \'procmgr_config\' not defined')
+  elif type(config['procmgr_config']) != type([]):
+    report_error('variable \'procmgr_config\' is not of form [{key:value, ...}, ...]')
+  elif not config['procmgr_config']:
+    report_error('\'procmgr_config\' is empty')
+  else:
+    # check the elements within procmgr_config
+    entry_id_list = []    # start with empty list, look for duplicate IDs
+    for dd in config['procmgr_config']:
+      entry_id = entry_lint(dd)
+      if type(dd) == type({}):
+        for req in required_keys:
+          if not dd.has_key(req):
+            report_error('required key \''+req+'\' missing from procmgr_config entry')
+      if entry_id in entry_id_list:
+        report_error('id \'%s\' reused' % str(entry_id))
+      else:
+        entry_id_list.append(entry_id)
+
+  if config['instrument']:
+      config['instrument'] = config['instrument'].upper()
+      if (config['instrument'] not in valid_instruments):
+          report_error('instrument \'%s\' not recognized' % config['instrument'])
+
+if options.verbose and config['procmgr_config']:
+  print '-- platform -----------------------------------------'
+  print config['platform']
+  print '-- instrument ---------------------------------------'
+  print config['instrument']
+  print '-- procmgr_config -----------------------------------'
+  print config['procmgr_config']
+  print '-----------------------------------------------------'
+
+sys.exit(errorCount > 0)

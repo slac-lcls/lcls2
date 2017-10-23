@@ -1,0 +1,21 @@
+[Unit]
+Description=Procmgr Process Manager
+#EnvironmentFile=/etc/systemd/system/procmgrd.service/procmgrd.conf
+Requires=multi-user.target
+After=multi-user.target
+#Requires=cgred.service
+#After=cgred.service
+
+[Service]
+Type=simple
+#ExecStart=/usr/bin/cgexec -g cpuset:/DAQ --sticky /etc/systemd/system/procmgr.d/procmgrd restart
+ExecStart=/etc/systemd/system/procmgr.d/procmgrd restart
+ExecStartPost=
+ExecStop=
+KillMode=process
+IgnoreSIGPIPE=no
+StandardOutput=syslog
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+# Init file for procmgr server daemon
+#
+# chkconfig: 2345 56 26
+# description: procmgr server daemon
+#
+# processname: procmgrd
+# config: /etc/procmgrd.conf
+
+# source function library
+. /etc/rc.d/init.d/functions
+
+PROCMGRDUSERDEFAULT=nobody
+CONFIGFILE=/etc/procmgrd.conf
+
+# read config
+[ -f $CONFIGFILE ] && . $CONFIGFILE
+
+# check config
+if [ "${PORTBASE}X" == "X" ]; then
+    echo "$0 Error: PORTBASE not set in $CONFIGFILE"
+    exit 1
+fi
+
+if [ "${PROCMGRDBIN}Y" == "Y" ]; then
+    echo "$0 Error: PROCMGRDBIN not set in $CONFIGFILE"
+    exit 1
+fi
+
+if [ "${PROCMGRDUSER}Z" == "Z" ]; then
+    PROCMGRDUSER=${PROCMGRDUSERDEFAULT}
+    echo "$0 Warning: PROCMGRDUSER not set in $CONFIGFILE.  Using default value: $PROCMGRDUSER"
+fi
+
+launch1()
+{
+    ctrlport=$(( PORTBASE + ( 100 * $1 ) ))
+    logport=$(( ctrlport + 1 ))
+    daemon --user=${PROCMGRDUSER} ${PROCMGRDBIN}$1 --allow --ignore '^D' -l $logport --coresize 0 -c /tmp $ctrlport /bin/tcsh -f
+}
+
+start()
+{
+    # start 5 procmgrd processes to serve platforms 0 through 4
+    for ((i=0; i<=4; i+=1)); do
+        launch1 $i
+    done
+    RETVAL=$?
+    echo
+}
+
+stop()
+{
+    pkill -u ${PROCMGRDUSER} procmgrd
+    RETVAL=$?
+    echo
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart}"
+        RETVAL=1
+esac
+exit $RETVAL

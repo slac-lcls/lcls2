@@ -1,0 +1,49 @@
+#bin_path    = '/reg/neh/home/weaver/l2rel/build/pdsapp/bin/x86_64-rhel7-opt'
+bin_path    = '/reg/neh/home/weaver/lcls2/build/psdaq/xpm'
+pgp_path    = '/reg/neh/home/weaver/l2si/software/app/pgpcardG3'
+scripts_path = '/reg/neh/home/weaver/l2rel/tools/scripts'
+
+platform = '4'
+username = 'weaver'
+expname  = 'expname'
+expnum   = 'expnum'
+
+daq_tst_dev01 = "172.21.42.97"
+daq_tst_dev02 = "172.21.42.150"
+daq_tst_dev03 = "172.21.42.110"
+daq_tst_dev04 = "172.21.42.148"
+daq_tst_dev05 = "172.21.42.155"
+
+epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067'
+pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.3.3'
+#shelf = '1'
+#ip_addr = '10.0.1.106'
+shelf = '2'
+ip_addr = '10.0.2.102'
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ { host: daq_tst_dev01,  id:'partcas',port:'29450', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/partcas.py -P DAQ:LAB2'},
+ { host: daq_tst_dev01,  id:'modcas' ,port:'29451', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/modcas.py -P DAQ:LAB2:XPM:'+shelf},
+ {                       id:'partca-0' ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/partca.py DAQ:LAB2:PART:0'},
+ {                       id:'partca-2' ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/partca.py DAQ:LAB2:PART:2'},
+ {                       id:'modca'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
+ {                       id:'deadca-0'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/deadca.py DAQ:LAB2 0 '+shelf},
+ {                       id:'deadca-2'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/deadca.py DAQ:LAB2 2 '+shelf},
+ { host: daq_tst_dev01,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:bin_path+'/xpmPVs -a '+ip_addr+' -P DAQ:LAB2'},
+## procstat
+ {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
+  ]
