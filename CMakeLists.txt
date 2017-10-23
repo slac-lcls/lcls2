@@ -6,8 +6,6 @@ add_compile_options(-Wno-uninitialized)
 find_package(PythonInterp 3.5 REQUIRED)
 find_package(PythonLibs 3.5 REQUIRED)
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
-
 file(GLOB_RECURSE
      ALL_CXX_SOURCE_FILES
      *.cc *.hh
