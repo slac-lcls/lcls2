@@ -23,10 +23,18 @@
 #include "EventBuilder.hh"
 
 #include "psdaq/service/SysClk.hh"
+#include "xtcdata/xtc/ClockTime.hh"
 
+using namespace XtcData;
+using namespace Pds;
 using namespace Pds::Eb;
 
 static const int MaxTimeouts=0x100;     // Revisit: Was 0xffff
+
+static uint64_t clkU64(const ClockTime& clk)
+{
+  return uint64_t(clk.seconds()) << 32 | uint64_t(clk.nanoseconds());
+}
 
 // Revisit: Fix stale comments:
 /*
@@ -49,22 +57,20 @@ EbEvent::EbEvent(uint64_t        contract,
                  EventBuilder*   eb,
                  EbEvent*        after,
                  EbContribution* contrib,
-                 uint64_t        mask,
-                 void*           data) :
-  _data(data)
+                 uint64_t        mask)
 {
   // Make sure we didn't run out of heap before initializing
   if (!this)  return;
 
-  ClockTime key = contrib->seq.clock();
-  _sequence     = key;
-  _key          = key.u64() & mask;
-  _eb           = eb;
-  _living       = MaxTimeouts;
-  _tail         = _pending;
-  _head         = _pending;
+  const ClockTime& key = contrib->seq.clock();
+  _sequence = key;
+  _key      = clkU64(key) & mask;
+  _eb       = eb;
+  _living   = MaxTimeouts;
+  _tail     = _pending;
+  _head     = _pending;
 
-  *_head++      = contrib;
+  *_head++  = contrib;
 
   unsigned size = contrib->payloadSize();
 
@@ -129,14 +135,14 @@ EbEvent* EbEvent::_add(EbContribution* contrib)
 
 void EbEvent::dump(int number)
 {
-  printf("   Event #%d @ address %08X has sequence %08X%08X\n",
-         number, (int)this,
+  printf("   Event #%d @ address %p has sequence %08X%08X\n",
+         number, this,
          _sequence.seconds(), _sequence.nanoseconds());
-  printf("    Forward link -> %08X, Backward link -> %08X\n",
-         (unsigned)forward(), (unsigned)reverse());
-  printf("    Contributors remaining/requested = %08X/%08X\n",
+  printf("    Forward link -> %p, Backward link -> %p\n",
+         forward(), reverse());
+  printf("    Contributors remaining/requested = %08lX/%08lX\n",
          _remaining, _contract);
-  printf("    Total size (in bytes) = %d\n", _size);
+  printf("    Total size (in bytes) = %zd\n", _size);
 
   EbContribution** next  = _tail;
   EbContribution** empty = _head;
@@ -145,7 +151,7 @@ void EbEvent::dump(int number)
   printf("    Creator(%p) was @ source %d with an environment of %08X\n",
          contrib,
          contrib->number(),
-         contrib->_contribution->env.value());
+         contrib->env.value());
 
   printf("    Contribs for this event:\n");
   while(next != empty)
@@ -155,7 +161,7 @@ void EbEvent::dump(int number)
            contrib->seq.clock().seconds(),
            contrib->seq.clock().nanoseconds(),
            contrib->payloadSize(),
-           contrib->_contribution->env.value());
+           contrib->env.value());
     contrib = *next++;
   }
 }

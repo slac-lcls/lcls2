@@ -1,21 +1,21 @@
 #ifndef Pds_Eb_EbContribution_hh
 #define Pds_Eb_EbContribution_hh
 
+#include "psdaq/xtc/Datagram.hh"
+
 namespace Pds {
   namespace Eb {
 
-    class EbContribution : public Datagram
+    class EbContribution : public Pds::Datagram
     {
     public:
-      EbContribution() {};
-      ~EbContribution() {};
+      unsigned  payloadSize()   const;
+      unsigned  number()        const;
+      uint64_t  numberAsMask()  const;
+      uint64_t  retire()        const;
     public:
-      unsigned  payloadSize()  const;
-      unsigned  number()       const;
-      uint64_t  numberAsMask() const;
-      uint64_t  retire()       const;
-    public:
-      Datagram* datagram()     const;
+      const Pds::Datagram* datagram() const;
+      Pds::Datagram*       datagram();
     };
   };
 };
@@ -82,7 +82,12 @@ inline uint64_t Pds::Eb::EbContribution::retire() const
 ** --
 */
 
-inline Datagram* Pds::Eb::EbContribution::datagram() const
+inline const Pds::Datagram* Pds::Eb::EbContribution::datagram() const
+{
+  return this;
+}
+
+inline Pds::Datagram* Pds::Eb::EbContribution::datagram()
 {
   return this;
 }

@@ -33,13 +33,13 @@ using namespace Pds::Eb;
 
 void EbEpoch::dump(int number)
 {
-  printf("  Epoch #%d @ address %08X is tagged as %08X\n",
-         number, (int)this, key);
-  printf("   Forward link -> %08X, Backward link -> %08X\n",
-         (unsigned)forward(), (unsigned)reverse());
+  printf("  Epoch #%d @ address %p is tagged as %016lX\n",
+         number, this, key);
+  printf("   Forward link -> %p, Backward link -> %p\n",
+         forward(), reverse());
 
-  odfVebEvent* end   = pending.empty();
-  odfVebEvent* event = pending.forward();
+  EbEvent* end   = pending.empty();
+  EbEvent* event = pending.forward();
 
   if(event != end)
   {

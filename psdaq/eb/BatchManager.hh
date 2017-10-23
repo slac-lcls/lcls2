@@ -1,72 +1,62 @@
 #ifndef Pds_Eb_BatchManager_hh
 #define Pds_Eb_BatchManager_hh
 
+#include "Batch.hh"
+
+#include "psdaq/service/GenericPoolW.hh"
+#include "psdaq/service/SemLock.hh"
+#include "xtcdata/xtc/ClockTime.hh"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <cstddef>
 #include <string>
 
-#include "Endpoint.hh"
-#include "Batch.hh"
-
-#include "psdaq/service/GenericPoolW.hh"
-
-#include "pdsData/xtc/ClockTime.hh"
-
 
 namespace Pds {
 
+  class FtOutlet;
   class Datagram;
 
   namespace Eb {
 
-// Notational conveniences...     (Revisit: Why aren't these typedefs?)
-#define StringList std::vector<std::string>
-#define EpList     std::vector<Fabrics::Endpoint*>
-#define MrList     std::vector<Fabrics::MemoryRegion*>
-#define RaList     std::vector<Fabrics::RemoteAddress>
-
     class BatchManager
     {
     public:
-      BatchManager(StringList&  remote,
-                   std::string& port,
-                   unsigned     src,       // Revisit: Should be a Src?
-                   ClockTime    duration,
-                   unsigned     batchDepth,
-                   unsigned     iovPoolDepth,
-                   size_t       contribSize);
-      ~BatchManager();
+      BatchManager(FtOutlet& outlet,
+                   unsigned  src,       // Revisit: Should be a Src?
+                   uint64_t  duration,
+                   unsigned  batchDepth,
+                   unsigned  maxEntries,
+                   size_t    contribSize);
+      virtual ~BatchManager();
     public:
-      void         process(const Datagram&);
-      void         postTo(const Batch*, unsigned dst, unsigned slot);
+      virtual void post(Batch*, void* arg) = 0;
+    public:
+      void         process(const Datagram*, void* arg = (void*)0);
+      void         postTo(Batch*, unsigned dst, unsigned slot);
+      void         release(const XtcData::ClockTime&);
+      void         shutdown();
+      uint64_t     batchId(const XtcData::ClockTime&) const;
     private:
       void         _post(const Batch&);
-      void         _batchInit(unsigned poolDepth);
-      int          _connect(std::string&            remote,
-                            std::string&            port,
-                            char*                   pool,
-                            size_t                  size,
-                            Fabrics::Endpoint*&     ep,
-                            Fabrics::MemoryRegion*& mr,
-                            Fabrics::RemoteAddress& ra);
+      void         _batchInit(unsigned batchDepth, unsigned poolDepth);
     private:
-      uint64_t     _batchId(ClockTime&);
-      uint64_t     _startTime(ClockTime&);
+      const XtcData::ClockTime _startTime(const XtcData::ClockTime&) const;
     private:
-      EpList       _ep;                 // List of endpoints
-      MrList       _mr;                 // List of memory regions
-      RaList       _ra;                 // List of remote address descriptors
       unsigned     _src;                // ID of this node
-      ClockTime    _duration;           // The lifetime of a batch (power of 2)
+      uint64_t     _duration;           // The lifetime of a batch (power of 2)
       uint64_t     _durationShift;      // Shift away insignificant bits
       uint64_t     _durationMask;       // Mask  off  insignificant bits
-      unsigned     _numBatches;         // Maximum possible number of batches
       size_t       _maxBatchSize;       // Maximum size of a batch
-      GenericPoolW _batchPool;          // Pool of Batch objects
-      BatchList    _batchList;          // Listhead of batches in flight
+      GenericPoolW _pool;               // Pool of Batch objects
+      BatchList    _inFlightList;       // Listhead of batches in flight
+      SemLock      _inFlightLock;       // Lock for _inFlightList
+      FtOutlet&    _outlet;             // LibFabric transport
     private:
       Batch*       _batch;              // Batch currently being assembled
     };
   };
 };
+
+#endif

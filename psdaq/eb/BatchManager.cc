@@ -1,218 +1,129 @@
 #include "BatchManager.hh"
+#include "FtOutlet.hh"
 
 #include "psdaq/xtc/Datagram.hh"
 
+using namespace XtcData;
+using namespace Pds;
 using namespace Pds::Eb;
 using namespace Pds::Fabrics;
 
-BatchManager::BatchManager(StringList&  remote,
-                           std::string& port,
-                           unsigned     id,       // Revisit: Should be a Src?
-                           ClockTime    duration, // = ~((1 << N) - 1) = 128 uS?
-                           unsigned     batchDepth,
-                           unsigned     iovPoolDepth,
-                           size_t       contribSize) :
-  _ep           (remote.size()),
-  _mr           (remote.size()),
-  _ra           (remote.size()),
-  _src          (src),
-  _duration     (duration),
-  _durationShift(__builtin_ctzll(duration.u64())),
-  _durationMask (~((1 << __builtin_ctzll(duration.u64())) - 1)),
-  _numBatches   (batchDepth),
-  _maxBatchSize (iovPoolDepth * contribSize),
-  _pool         (sizeof(Batch), batchDepth)
+static uint64_t clkU64(const ClockTime& clk)
 {
-  if (__builtin_popcountll(duration.u64()) != 1)
+  return uint64_t(clk.seconds()) << 32 | uint64_t(clk.nanoseconds());
+}
+
+BatchManager::BatchManager(FtOutlet& outlet,
+                           unsigned  id,       // Revisit: Should be a Src?
+                           uint64_t  duration, // = ~((1 << N) - 1) = 128 uS?
+                           unsigned  batchDepth,
+                           unsigned  maxEntries,
+                           size_t    contribSize) :
+  _src          (id),
+  _duration     (duration),
+  _durationShift(__builtin_ctzll(duration)),
+  _durationMask (~((1 << __builtin_ctzll(duration)) - 1)),
+  _maxBatchSize (maxEntries * contribSize),
+  _pool         (Batch::size(), batchDepth),
+  _inFlightList (),
+  _inFlightLock (),
+  _outlet       (outlet)
+{
+  if (__builtin_popcountll(duration) != 1)
   {
-    fprintf(stderr, "Batch duration (%016lx) must be a power of 2\n", duration);
+    fprintf(stderr, "Batch duration (%016lx) must be a power of 2\n",
+            duration);
     abort();
   }
 
-  _batchInit(iovPoolDepth);
+  printf("Dumping pool 1:\n");
+  _pool.dump();
 
-  _batch = new(_pool) Batch();
+  Batch::init(_pool, batchDepth, maxEntries);
 
-  char*  pool = _pool;
-  size_t size = batchDepth * _maxBatchSize;
-  for (unsigned i = 0; i < remote.size(); ++i)
-  {
-    int ret = _connect(remote[i], port, pool, size, _ep[i], _mr[i], _ra[i]);
-    if (!_ep[i] || !_mr[i] || ret)
-    {
-      fprintf(stderr, "_connect() failed at index %u", i);
-      abort();
-    }
-  }
+  printf("Dumping pool 2:\n");
+  _pool.dump();
+
+  Dgram     dg; //(TypeId(), Src());
+  ClockTime clk(0, 0);
+  dg.seq = Sequence(clk, TimeStamp());
+
+  _batch = new(&_pool) Batch(dg, clk);
 }
 
 BatchManager::~BatchManager()
 {
-  unsigned nDsts = _ep.size();
-
-  for (unsigned i = 0; i < nDsts; ++i)
-  {
-    if (_mr[i])  delete _mr[i];
-    if (_ep[i])  delete _ep[i];
-  }
-
-  for (unsigned i = 0; i < _pool.numberofObjects(); ++i)
-  {
-    Batch* batch = new(_pool) Batch(new IovecPool(poolDepth));
-    delete batch->pool();
-    delete batch;
-  }
 }
 
-void BatchManager::_batchInit(unsigned poolDepth)
+void BatchManager::process(const Datagram* contrib, void* arg)
 {
-  // Revisit: Is this really the way you preinitialize pool objects?
-  for (unsigned i = 0; i < _pool.numberofObjects(); ++i)
+  ClockTime start = _startTime(contrib->seq.clock());
+
+  if (_batch->expired(start))
   {
-    Batch* batch = new(_pool) Batch((Batch&)_pool, new IovecPool(poolDepth));
-    delete batch;                       // Return it to the pool
+    post(_batch, arg);
+
+    _batch = new(&_pool) Batch(*contrib, start);
   }
+
+  _batch->append(*contrib);
 }
 
-int BatchManager::_connect(std::string&   remote,
-                           std::string&   port,
-                           char*          pool,
-                           size_t         size,
-                           Endpoint*&     ep,
-                           MemoryRegion*& mr,
-                           RemoteAddress& ra)
+void BatchManager::postTo(Batch*   batch,
+                          unsigned dst,
+                          unsigned slot)
 {
-  ep = new Endpoint(remote.c_str(), port.c_str());
-  if (!ep || (ep->state() != EP_UP))
-  {
-    fprintf(stderr, "Failed to initialize fabrics endpoint %s:%s: %s\n",
-            remote.c_str(), port.c_str(), ep->error());
-    perror("new Endpoint");
-    return ep ? ep->error_num() : -1;
-  }
+  uint64_t dstOffset = slot * _maxBatchSize;
 
-  Fabric* fab = ep->fabric();
-
-  mr = fab->register_memory(pool, size);
-  if (!mr)
-  {
-    fprintf(stderr, "Failed to register memory region @ %p, sz %zu: %s\n",
-            pool, size, fab->error());
-    perror("fab->register_memory");
-    return fab->error_num();
-  }
-
-  unsigned tmo = 120;
-  while (!ep->connect() && tmo--)  sleep (1);
-  if (!tmo)
-  {
-    fprintf(stderr, "Failed to connect endpoint %s:%s: %s\n",
-            remote.c_str(), port.c_str(), ep->error());
-    perror("ep->connect()");
-    return -1;
-  }
-
-  if (!ep->recv_sync(pool, sizeof(ra), mr))
-  {
-    fprintf(stderr, "Failed receiving remote memory specs from server: %s\n",
-            ep->error());
-    perror("recv RemoteAddress");
-    return ep->error_num();
-  }
-
-  memcpy(&ra, pool, sizeof(ra));
-  if (size > ra.extent)
-  {
-    fprintf(stderr, "Remote Batch pool size (%lu) is less than local pool size (%lu)\n",
-            ra.extent, size);
-    return -1;
-  }
-
-  return 0;
-}
-
-void BatchManager::process(const Datagram& contrib, void* arg = NULL)
-{
-  Batch*    batch = _batch;
-  ClockTime start = _startTime(contrib);
-
-  if (batch->expired(start))
-  {
-    if (batch->clock().isZero()) // Revisit: Happens only on the very first batch
-    {
-      delete batch;
-      return;
-    }
-
-    post(batch, arg);
-
-    _batch = new(_pool) Batch(contrib, start);
-  }
-
-  batch->append(contrib);
-}
-
-void BatchManager::postTo(const Batch* batch,
-                          unsigned     dst,
-                          unsigned     slot)
-{
-  uint64_t dstAddr = _ra[dst].addr + slot * _maxBatchSize;
-
-  struct fi_msg_rma* msg = batch->finalize(dstAddr,
-                                           _ra[dst].rkey, // Revisit: _mr's?
-                                           _mr[dst]->desc(),
-                                           dstAddr);
-
-  ret = fi_writemsg(_ep[dst], msg, FI_REMOTE_CQ_DATA); // Revisit: Flags?
-  if (ret)
-  {
-    fprintf(stderr, "%s() failed, ret = %d (%s)\n",
-            "fi_writemsg", ret, fi_strerror((int)-ret));
-    return;
-  }
-
-  //_ep[dst]->writeMsg(batch->iov(), batch->iovCount(), dstAddr, immData,
-  //                   _ra[dst], _mr[dst]);
+  _outlet.post(batch->finalize(), dst, dstOffset, NULL);
 
   // Revisit: No obvious need to wait for completion here as nothing can be done
   // with this batch or its remote instance until a result is sent
   // - This is true on the contributor side
   // - Revisit for the EB result side
 
-  _batchList.insert(batch);
+  _inFlightList.insert(batch);          // Revisit: Replace with atomic list
 }
 
-void BatchManager::_release(ClockTime time)
+void BatchManager::release(const ClockTime& time)
 {
-  Batch* batch = _batchList.forward();
-  Batch* end   = _batchList.empty();
+  Batch* batch = _inFlightList.atHead();
+  Batch* end   = _inFlightList.empty();
   while (batch != end)
   {
-    if (batch.clock() == time)
+    Entry* next = batch->next();
+
+    if (time > batch->clock())
     {
-      delete batch->disconnect();
-      break;
+      _inFlightList.remove(batch);      // Revisit: Replace with atomic list
+      delete batch;
     }
-    batch = batch->forward();
+    batch = (Batch*)next;
   }
 }
 
-//uint64_t BatchManager::_batchId(ClockTime & clk)
+void BatchManager::shutdown()
+{
+  _outlet.shutdown();
+}
+
+//uint64_t BatchManager::batchId(const ClockTime & clk) const
 //{
 //  return clk.u64() / _duration;         // Batch number since EPOCH
 //}
 
-uint64_t BatchManager::_batchId(ClockTime& clk)
+uint64_t BatchManager::batchId(const ClockTime& clk) const
 {
-  return clk.u64() >> _durationShift;   // Batch number since EPOCH
+  return clkU64(clk) >> _durationShift;   // Batch number since EPOCH
 }
 
-//uint64_t BatchManager::_startTime(ClockTime& clk)
+//uint64_t BatchManager::_startTime(const ClockTime& clk) const
 //{
 //  return _batchId(clk) * _duration;     // Current batch start time
 //}
 
-uint64_t BatchManager::_startTime(ClockTime& clk)
+const ClockTime BatchManager::_startTime(const ClockTime& clk) const
 {
-  return clk.u64() & _durationMask;
+  uint64_t u64(clkU64(clk) & _durationMask);
+  return ClockTime((u64 >> 32) & 0xffffffffull, u64 & 0xffffffffull);
 }

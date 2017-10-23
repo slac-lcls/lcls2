@@ -1,20 +1,25 @@
 #ifndef Pds_IovPool_hh
 #define Pds_IovPool_hh
 
+#include <sys/socket.h>                 // For struct iovec...
+
 namespace Pds {
 
-  class IovEntry : private struct iovec
+  class IovPool;
+
+  class IovEntry : public iovec
   {
   public:
-    IovEntry(void* payload, size_t size)
+    IovEntry() {};
+    IovEntry(const void* payload, size_t size)
     {
-      iov_base = payload;
-      iov_size = size;
+      iov_base = const_cast<void*>(payload);
+      iov_len  = size;
     }
-    ~IovEntry();
+    ~IovEntry() {};
   public:
-    void* operator new(size_t, IovPool* pool) { return pool->alloc(); }
-    void  operator delete(void*)              { IovPool::free();      }
+    void* operator new   (size_t, Pds::IovPool& pool); /*{ return pool.alloc();  }*/
+    void  operator delete(void*);                      /*{ Pds::IovPool::free(); }*/
   public:
     void*  payload() const { return iov_base; }
     size_t size()    const { return iov_len;  }
@@ -41,7 +46,7 @@ namespace Pds {
   public:
     void* alloc()                       // Allocate one at a time
     {
-      return _index < count ? &_iovs[++_index] : NULL;
+      return _index < _count ? &_iovs[++_index] : (void*)0;
     }
     static void free() {}               // No deallocation
     void clear() { _index = 0; }
@@ -55,4 +60,17 @@ namespace Pds {
     unsigned  _index;
     IovEntry* _iovs;
   };
+};
+
+
+inline void* Pds::IovEntry::operator new(size_t, Pds::IovPool& pool)
+{
+  return pool.alloc();
 }
+
+inline void Pds::IovEntry::operator delete(void*)
+{
+  Pds::IovPool::free();
+}
+
+#endif

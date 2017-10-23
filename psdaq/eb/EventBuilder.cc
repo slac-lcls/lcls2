@@ -6,8 +6,16 @@
 #include "psdaq/service/Task.hh"
 #include "psdaq/xtc/Datagram.hh"
 
+#include <stdlib.h>
+
+using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
+
+static uint64_t clkU64(const ClockTime& clk)
+{
+  return uint64_t(clk.seconds()) << 32 | uint64_t(clk.nanoseconds());
+}
 
 EventBuilder::EventBuilder(unsigned epochs,
                            unsigned entries,
@@ -50,7 +58,7 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
   EbEpoch* epoch = new(&_epochFreelist) EbEpoch(key, after);
   if (!epoch)
   {
-    printf("%s: Unable to allocate epoch: key %016llx", __PRETTY_FUNCTION__,
+    printf("%s: Unable to allocate epoch: key %016lx", __PRETTY_FUNCTION__,
            key);
     printf(" epochFreelist:\n");
     _epochFreelist.dump();
@@ -68,7 +76,7 @@ EbEpoch* EventBuilder::_match(uint64_t inKey)
 
   while (epoch != empty)
   {
-    ClockTime epochKey = epoch->key;
+    uint64_t epochKey = epoch->key;
 
     if (epochKey == key) return epoch;
     if (epochKey <  key) break;
@@ -80,15 +88,13 @@ EbEpoch* EventBuilder::_match(uint64_t inKey)
 }
 
 EbEvent* EventBuilder::_event(EbContribution* contrib,
-                              EbEvent*        after,
-                              void*           context)
+                              EbEvent*        after)
 {
   EbEvent* event = new(&_eventFreelist) EbEvent(contract(contrib->datagram()),
                                                 this,
                                                 after,
                                                 contrib,
-                                                _mask,
-                                                context);
+                                                _mask);
 
   if (!event)
   {
@@ -102,26 +108,25 @@ EbEvent* EventBuilder::_event(EbContribution* contrib,
 }
 
 EbEvent* EventBuilder::_insert(EbEpoch*        epoch,
-                               EbContribution* contrib,
-                               void*           context)
+                               EbContribution* contrib)
 {
-  EbEvent*  empty = epoch->pending.empty();
-  EbEvent*  event = epoch->pending.reverse();
-  ClockTime key   = contrib->seq.clock();
+  EbEvent* empty = epoch->pending.empty();
+  EbEvent* event = epoch->pending.reverse();
+  uint64_t key   = clkU64(contrib->seq.clock());
 
   while (event != empty)
   {
-    ClockTime eventKey = event->seq.clock();
+    uint64_t eventKey = clkU64(event->sequence());
 
     if (eventKey == key) return event->_add(contrib);
     if (eventKey <  key) break;
     event = event->reverse();
   }
 
-  return _event(contrib, event, context);
+  return _event(contrib, event);
 }
 
-void Eb::_fixup(EbEvent* event)         // Always called with remaining != 0
+void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
 {
   uint64_t remaining = event->_remaining;
 
@@ -129,14 +134,15 @@ void Eb::_fixup(EbEvent* event)         // Always called with remaining != 0
   {
     unsigned srcId = __builtin_ffsll(remaining) - 1;
     fixup(event, srcId);
+    remaining &= ~(1 << srcId);
   }
-  while ( (remaining &= ~(1 << srcId)) );
+  while (remaining);
 }
 
-EbEvent* EventBuilder::_insert(EbContribution* contrib, void* context)
+EbEvent* EventBuilder::_insert(EbContribution* contrib)
 {
-  EbEpoch* epoch = _match(contrib->seq.clock().u64());
-  EbEvent* event = _insert(epoch, contrib, context);
+  EbEpoch* epoch = _match(clkU64(contrib->seq.clock()));
+  EbEvent* event = _insert(epoch, contrib);
   if (!event->_remaining)  return event;
 
   return NULL;
@@ -194,9 +200,9 @@ void EventBuilder::expired()            // Periodically called from a timer
     {
       if (!event->_alive())
       {
-        printf("%s: Flushing event %08x %08x, size %u, remaining %08x\n",
-               event->seq.clock().seconds(),
-               event->seq.clock().nanoseconds(),
+        printf("Flushing event %08x %08x, size %zu, remaining %08lx\n",
+               event->sequence().seconds(),
+               event->sequence().nanoseconds(),
                event->size(),
                event->_remaining);
 
@@ -215,7 +221,7 @@ void EventBuilder::expired()            // Periodically called from a timer
   }
 }
 
-Task* EventBuilder::task();
+Task* EventBuilder::task()
 {
   return _task;
 }
@@ -254,7 +260,7 @@ unsigned EventBuilder::repetitive() const
 ** --
 */
 
-void EventBuilder::process(Datagram* dg, void* context)
+void EventBuilder::process(Datagram* dg)
 {
   // Sort contributions into a time ordered list
   // Call the user's process with complete events to build the result datagram
@@ -264,7 +270,7 @@ void EventBuilder::process(Datagram* dg, void* context)
   // Event build them according to their trigger group
 
   EbContribution* contrib = (EbContribution*)dg;
-  EbEvent*        event   = _insert(contrib, context);
+  EbEvent*        event   = _insert(contrib);
 
   if (!event->_remaining)  _flush(event);
 }

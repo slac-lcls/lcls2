@@ -1,66 +1,69 @@
 #ifndef Pds_Eb_Batch_hh
 #define Pds_Eb_Batch_hh
 
-#include <stdint.h>
-#include <cstddef>
+#include "IovPool.hh"
+
+#include "psdaq/xtc/Datagram.hh"
+#include "psdaq/service/Queue.hh"
+#include "psdaq/service/Pool.hh"
 
 #include <rdma/fi_rma.h>
 
-#include "psdaq/xtc/Datagram.hh"
-#include "psdaq/service/LinkedList.hh"
+#include <stdint.h>
+#include <cstddef>
 
 
 namespace Pds {
 
-  class IovecPool;
+  class GenericPoolW;
 
   namespace Eb {
 
-#define BatchList LinkedList<Batch>    // Notational convenience...
+#define BatchList Queue<Batch>     // Notational convenience...
 
-    class Batch : public BatchList
+    class Batch : public Pds::Entry
     {
     public:
-      Batch();
-      Batch(const Batch&, IovecPool*);
-      Batch(Sequence&);
+      Batch(const Datagram&, XtcData::ClockTime&);
       ~Batch();
+    public:
+      static size_t size();
+      static void   init(GenericPoolW&, unsigned batchDepth, unsigned iovPoolDepth);
     public:
       PoolDeclare;
     public:
-      Batch&             append(const Datagram&);
-      ClockTime&         clock() const;
-      bool               expired(const ClockTime) const;
-      struct fi_msg_rma* finalize(uint64_t dstAddr,
-                                  uint64_t key,
-                                  void**   desc,
-                                  uint64_t immData);
+      void               append(const Datagram&);
+      const XtcData::ClockTime&   clock() const;
+      void               clock(const XtcData::ClockTime& start);
+      bool               expired(const XtcData::ClockTime&);
+      struct fi_msg_rma* finalize();
       unsigned           index() const;
     private:
-      const unsigned    _index;         // Identifies the location of this batch
-      ClockTime         _hwm;           // Instances older than this may be freed
       Datagram          _datagram;      // Batch descriptor
-      IovecPool*        _pool;          // Pool of iovecs
       struct fi_rma_iov _rmaIov;        // Destination descriptor
-      struct fi_msg_rma _msg;
+      struct fi_msg_rma _rmaMsg;
     };
   };
 };
 
-
-inline ClockTime& Pds::Eb::Batch::clock() const
+inline const XtcData::ClockTime& Pds::Eb::Batch::clock() const
 {
   return _datagram.seq.clock();
 }
 
-inline bool Pds::Eb::Batch::expired(const ClockTime time) const
+inline void Pds::Eb::Batch::clock(const XtcData::ClockTime& start)
 {
-  return clock() != time;
+  _datagram.seq = XtcData::Sequence(start, _datagram.seq.stamp());
 }
 
-inline unsigned Pds::Eb::Batch::index() const
+inline bool Pds::Eb::Batch::expired(const XtcData::ClockTime& time)
 {
-  return _index;
+  if (clock() == time)    return false;
+
+  if (!clock().isZero())  return true;
+
+  clock(time);                 // Revisit: Happens only on the very first batch
+  return false;
 }
 
 #endif

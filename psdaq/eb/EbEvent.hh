@@ -4,8 +4,9 @@
 #include <stdint.h>
 
 #include "psdaq/service/LinkedList.hh"
+#include "psdaq/service/Pool.hh"
 
-#include "pdsData/xtc/ClockTime.hh"
+#include "xtcdata/xtc/ClockTime.hh"
 
 
 namespace Pds {
@@ -20,32 +21,34 @@ namespace Pds {
     class EbEvent : public LinkedList<EbEvent>
     {
     public:
-      void* operator new(size_t, HeapW*); // Revisit: HeapW
-      void  operator delete(void* buffer);
+      PoolDeclare;
     public:
       EbEvent(uint64_t        contract,
               EventBuilder*   builder,
               EbEvent*        after,
               EbContribution* contrib,
-              uint64_t        mask,
-              void*           data);
+              uint64_t        mask);
       ~EbEvent();
     public:
-      const ClockTime&  sequence()  const;
+      const XtcData::ClockTime&  sequence()  const;
       size_t            size()      const;
       uint64_t          remaining() const;
       uint64_t          contract()  const;
       void*             data();
     public:
       EbContribution*   creator();
+      EbContribution**  start();
+      EbContribution**  end();
+    public:
+      void dump(int number);
     private:
       friend class EventBuilder;
     private:
-      EbEvent*         _add(Datagram*);
-      void             _insert(Datagram*);
+      EbEvent*         _add(EbContribution*);
+      void             _insert(EbContribution*);
       int              _alive();
     private:
-      ClockTime        _sequence;     // Event's sequence identifier
+      XtcData::ClockTime        _sequence;     // Event's sequence identifier
       size_t           _size;         // Total contribution size (in bytes)
       uint64_t         _remaining;    // List of clients which have contributed
       uint64_t         _contract;     // -> potential list of contributors
@@ -53,7 +56,6 @@ namespace Pds {
       EbContribution** _tail;         // Base of pending contributions
       EventBuilder*    _eb;           // -> Back-end processing object
       int              _living;       // Aging counter
-      void*            _data;         // Context for the client
       uint64_t         _key;          // Masked epoch
     private:
 #define NSRC  64
@@ -61,38 +63,6 @@ namespace Pds {
     };
   };
 };
-
-/*
-** ++
-**
-**    To speed up the allocation/deallocation of events, they have their
-**    own specific "new" and "delete" operators, which work out of a heap
-**    of a fixed number of fixed size buffers (the size is set to the size
-**    of this object). The heap is established by "EventBuilder".
-**
-** --
-*/
-
-inline void* Pds::Eb::EbEvent::operator new(size_t size, HeapW* heap)
-{
-  return heap->alloc();
-}
-
-/*
-** ++
-**
-**    To speed up the allocation/deallocation of events, they have their
-**    own specific "new" and "delete" operators, which work out of a pool
-**    of a fixed number of fixed size buffers (the size is set to the size
-**    of this object). The heap is established by "EventBuilder".
-**
-** --
-*/
-
-inline void Pds::Eb::EbEvent::operator delete(void* buffer)
-{
-  odfHeapW::free(buffer);
-}
 
 /*
 ** ++
@@ -117,7 +87,7 @@ inline Pds::Eb::EbEvent::~EbEvent()
 ** --
 */
 
-inline const ClockTime& Pds::Eb::EbEvent::sequence() const
+inline const XtcData::ClockTime& Pds::Eb::EbEvent::sequence() const
 {
   return _sequence;
 }
@@ -176,26 +146,19 @@ inline uint64_t Pds::Eb::EbEvent::remaining() const
 ** --
 */
 
-inline EbContribution* Pds::Eb::EbEvent::creator()
+inline Pds::Eb::EbContribution* Pds::Eb::EbEvent::creator()
 {
   return *_tail;
 }
 
-/*
-** ++
-**
-**    When an event comes into existence, the virtual function
-**    "odfVeb::allocate" is called back to signal to the user
-**    the events arrival. This function returns an opaque value
-**    which is carried but not interpreted by the event. This
-**    function will return that value.
-**
-** --
-*/
-
-inline void* odfVebEvent::data()
+inline Pds::Eb::EbContribution** Pds::Eb::EbEvent::start()
 {
-  return _data;
+  return _tail;
+}
+
+inline Pds::Eb::EbContribution** Pds::Eb::EbEvent::end()
+{
+  return _head;
 }
 
 /*
