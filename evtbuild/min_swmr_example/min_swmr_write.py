@@ -36,7 +36,7 @@ try:
 
         f['data'].resize((shape[0]+batch_size, shape[1]))
 
-        out_img = np.array([create_image() for x in range(batch_size)])
+        out_img = np.array([create_image(mb_per_img) for x in range(batch_size)])
 
 
         f['data'][-batch_size:] = out_img
