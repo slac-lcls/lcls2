@@ -26,6 +26,16 @@ typedef struct {
     int debug;
 } PyDgramObject;
 
+static PyObject *
+write_refcnt(PyObject *self, PyObject *args)
+{
+    PyObject* o;
+    char* varName;
+    if (!PyArg_ParseTuple(args, "O|s", &o, &varName)) return NULL;
+    printf("write_refcnt: Py_REFCNT(%s)=%d\n", varName, (int)Py_REFCNT(o));
+    return PyLong_FromLong(0);
+}
+
 static void write_object_info(PyDgramObject* self, PyObject* obj, const char* comment)
 {
     if (self->verbose > 0) {
@@ -277,7 +287,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     if (configDgram==0) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
     myNamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
     namesIter.iterate();
-    
+
     PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
     iter.iterate();
 
@@ -406,8 +416,22 @@ static PyTypeObject dgram_DgramType = {
     (destructor)dgram_dealloc, /* tp_del*/
 };
 
+static PyMethodDef DgramMethods[] = {
+    {"write_refcnt", 
+     write_refcnt,
+     METH_VARARGS,
+     "Write Reference Counters."},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+//static PyModuleDef dgrammodule =
+//{ PyModuleDef_HEAD_INIT, "dgram", NULL, -1, NULL, NULL, NULL, NULL, NULL };
 static PyModuleDef dgrammodule =
-{ PyModuleDef_HEAD_INIT, "dgram", NULL, -1, NULL, NULL, NULL, NULL, NULL };
+{ PyModuleDef_HEAD_INIT,
+  "dgram",
+  NULL,
+  -1,
+  DgramMethods};
 
 #ifndef PyMODINIT_FUNC /* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
