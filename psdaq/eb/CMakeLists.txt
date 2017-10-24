@@ -22,6 +22,8 @@ add_executable(ft_push ft_push.cc)
 add_executable(ft_request ft_request.cc)
 add_executable(ft_server ft_server.cc)
 add_executable(ft_sub ft_sub.cc)
+add_executable(ft_writemsg_client ft_writemsg_client.cc)
+add_executable(ft_writemsg_server ft_writemsg_server.cc)
 
 target_link_libraries(ft_client 
     eb
@@ -49,5 +51,13 @@ target_link_libraries(ft_server
 )
 
 target_link_libraries(ft_sub 
+    eb
+)
+
+target_link_libraries(ft_writemsg_client
+    eb
+)
+
+target_link_libraries(ft_writemsg_server
     eb
 )

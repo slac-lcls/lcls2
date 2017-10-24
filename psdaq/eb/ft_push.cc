@@ -1,4 +1,4 @@
-#include "Endpoint.hh"
+#include "psdaq/eb/Endpoint.hh"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +28,7 @@ int listen(PassiveEndpoint* pendp, MemoryRegion* mr, char* key_buff, size_t key_
 
     printf("client connected!\n");
 
+    // Wait for remote buffer information for the client that connected
     if (!endp->recv_sync(key_buff, key_size, mr)) {
       fprintf(stderr, "Reciveing of remote memory keys failed: %s\n", endp->error());
       ret = endp->error_num();
@@ -44,6 +45,7 @@ int listen(PassiveEndpoint* pendp, MemoryRegion* mr, char* key_buff, size_t key_
       break;
     }
 
+    // write the local buffer to address on the remote client - send the number of times remote writes have been requested as the immediate data
     if(!endp->write_data_sync(data_buff, keys->extent, keys, value++, mr)) {
       fprintf(stderr, "Writeing of data to remote client failed: %s\n", endp->error());
       ret = endp->error_num();
@@ -56,6 +58,7 @@ int listen(PassiveEndpoint* pendp, MemoryRegion* mr, char* key_buff, size_t key_
     bool cm_entry;
     struct fi_eq_cm_entry entry;
     uint32_t event;
+    // wait for shutdown signal form the remote client
     if(endp->event_wait(&event, &entry, &cm_entry)) {
       if (!cm_entry || event != FI_SHUTDOWN) {
         fprintf(stderr, "unexpected event %u - expected FI_SHUTDOWN (%u)", event, FI_SHUTDOWN);
