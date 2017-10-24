@@ -413,8 +413,8 @@ def LblPushButton(parent, pvbase, name, count=1, start=0, istart=0):
 def LblCheckBox(parent, pvbase, name, count=1, start=0, istart=0, enable=True):
     return PvInput(PvCheckBox, parent, pvbase, name, count, start, istart, enable)
 
-def LblEditInt(parent, pvbase, name, count=1):
-    return PvInput(PvEditInt, parent, pvbase, name, count)
+def LblEditInt(parent, pvbase, name, count=1, start=0, istart=0, enable=True):
+    return PvInput(PvEditInt, parent, pvbase, name, count, start, istart, enable)
 
 def LblEditHML(parent, pvbase, name, count=1):
     return PvInput(PvEditHML, parent, pvbase, name, count)
@@ -484,7 +484,8 @@ class Ui_MainWindow(object):
 #        LblCheckBox  (bplo, pvbase, "LinkTxReady",    5, 17, 3, enable=False)
 #        LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)
 #        LblCheckBox  (bplo, pvbase, "LinkLoopback",   5, 17, 3)
-        LblCheckBox  (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
+        LblEditInt   (bplo, pvbase, "LinkRxRcv",      5, 17, 3, enable=False)
+#        LblEditInt   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
         bpbox.setLayout(bplo)
         lol.addWidget(bpbox)
 
@@ -546,6 +547,10 @@ class Ui_MainWindow(object):
         PvLabel(lor, pvbase, "FIDs"       )
         PvLabel(lor, pvbase, "SOFs"       )
         PvLabel(lor, pvbase, "EOFs"       )
+
+        lor.addStretch()
+
+        PvLabel(lor, pvbase, "BpClk"      )
         
         #lor.addStretch()
 

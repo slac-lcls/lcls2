@@ -210,9 +210,10 @@ void StatsTimer::expired()
   CoreCounts c = _dev.counts();
   LinkStatus links[32];
   _dev.linkStatus(links);
+  unsigned bpClk = _dev._monClk[0]&0x1fffffff;
   double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
   _sem.take();
-  _pvs.update(c,_c,links,_links,dt);
+  _pvs.update(c,_c,links,_links,bpClk,dt);
   _sem.give();
   _c=c;
   std::copy(links,links+Pds::Xpm::Module::NDSLinks,_links);

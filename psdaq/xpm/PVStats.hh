@@ -20,7 +20,8 @@ namespace Pds {
     public:
       void allocate(const std::string& title);
       void update(const CoreCounts& nc, const CoreCounts& oc, 
-                  const LinkStatus* nl, const LinkStatus* ol, 
+                  const LinkStatus* nl, const LinkStatus* ol,
+                  unsigned bpClk,
                   double dt);
     private:
       std::vector<Pds_Epics::PVWriter*> _pv;

@@ -48,6 +48,7 @@ namespace Pds {
       bool     txReady;
       bool     rxReady;
       bool     isXpm;
+      uint16_t rxRcvs;
       uint16_t rxErrs;
     };
 

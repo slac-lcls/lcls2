@@ -50,10 +50,12 @@ namespace Pds {
       for(unsigned i=0; i<32; i++) {
         PVPUSH(LinkTxReady);
         PVPUSH(LinkRxReady);
+        PVPUSH(LinkRxRcv);
         PVPUSH(LinkRxErr);
         PVPUSH(LinkIsXpm);
       }
 #undef PVPUSH
+      _pv.push_back( new PVWriter((pvbase+"BpClk").c_str()) );
       printf("PVs allocated\n");
     }
 
@@ -62,6 +64,7 @@ namespace Pds {
 
     void PVStats::update(const CoreCounts& nc, const CoreCounts& oc, 
                          const LinkStatus* nl, const LinkStatus* ol,
+                         unsigned bpClk,
                          double dt)
     {
       std::vector<PVWriter*>::iterator it = _pv.begin();
@@ -80,9 +83,11 @@ namespace Pds {
       for(unsigned i=0; i<32; i++) {
         PVPUTI( nl[i].txReady );
         PVPUTI( nl[i].rxReady );
+        PVPUTI( (nl[i].rxRcvs - ol[i].rxRcvs) );
         PVPUTI( (nl[i].rxErrs - ol[i].rxErrs) );
         PVPUTI( nl[i].isXpm );
       }
+      PVPUT(double(bpClk)*1.e-6);
       //      ca_flush_io();  // Let timer do it
     }
   };

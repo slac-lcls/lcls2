@@ -71,6 +71,7 @@ if __name__ == '__main__':
         pvdb[':LinkEnable'   +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkTxReady'  +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkRxReady'  +'%d'%i] = {'type' : 'int'}
+        pvdb[':LinkRxRcv'    +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkRxErr'    +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkIsXpm'    +'%d'%i] = {'type' : 'int'}
 
@@ -105,6 +106,8 @@ if __name__ == '__main__':
     pvdb[':FIDs'       ] = {'type' : 'float', 'value': 0}
     pvdb[':SOFs'       ] = {'type' : 'float', 'value': 0}
     pvdb[':EOFs'       ] = {'type' : 'float', 'value': 0}
+
+    pvdb[':BpClk'      ] = {'type' : 'float', 'value': 0}
 
     # printDb(pvdb, prefix)
     printDb()

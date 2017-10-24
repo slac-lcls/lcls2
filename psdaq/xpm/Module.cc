@@ -56,6 +56,7 @@ LinkStatus::LinkStatus() {
   txReady = 0;
   rxReady = 0;
   isXpm   = 0;
+  rxRcvs  = 0;
   rxErrs  = 0;
 }
 
@@ -332,7 +333,26 @@ LinkStatus Module::linkStatus(unsigned link) const
   s.txReady = getf(dsLinkStatus,1,17);
   s.rxReady = getf(dsLinkStatus,1,19);
   s.isXpm   = getf(dsLinkStatus,1,20);
-  s.rxErrs  = getf(dsLinkStatus,16,0);
+  if (link<16) {
+    s.rxRcvs  = -1;
+    s.rxErrs  = getf(dsLinkStatus,16,0);
+  }
+  else if (link == 16) {
+    s.rxRcvs  = -1;
+    s.rxErrs  = -1;
+  }
+  else if (link<24) {
+    s.txReady = s.rxReady;
+    s.rxRcvs  = getf(dsLinkStatus,16,0);
+    setLink(link+8);
+    s.rxErrs  = getf(_dsLinkStatus,16,0);
+  }
+  else {
+    s.txReady = 0;
+    s.rxReady = 0;
+    s.rxRcvs  = -1;
+    s.rxErrs  = -1;
+  }
   return s;
 }
 
