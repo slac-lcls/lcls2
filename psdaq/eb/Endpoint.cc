@@ -535,7 +535,7 @@ void ErrorHandler::set_custom_error(const char* fmt, ...)
 }
 
 
-Fabric::Fabric(const char* node, const char* service, int flags) :
+Fabric::Fabric(const char* node, const char* service, uint64_t flags) :
   _up(false),
   _hints(0),
   _info(0),
@@ -632,7 +632,7 @@ struct fid_fabric* Fabric::fabric() const { return _fabric; }
 
 struct fid_domain* Fabric::domain() const { return _domain; }
 
-bool Fabric::initialize(const char* node, const char* service, int flags)
+bool Fabric::initialize(const char* node, const char* service, uint64_t flags)
 {
   if (!_up) {
     _hints = fi_allocinfo();
@@ -687,7 +687,7 @@ void Fabric::shutdown()
 }
 
 
-EndpointBase::EndpointBase(const char* addr, const char* port, int flags) :
+EndpointBase::EndpointBase(const char* addr, const char* port, uint64_t flags) :
   _state(EP_INIT),
   _fab_owner(true),
   _fabric(new Fabric(addr, port, flags)),
@@ -838,7 +838,7 @@ bool EndpointBase::initialize()
 }
 
 
-Endpoint::Endpoint(const char* addr, const char* port, int flags) :
+Endpoint::Endpoint(const char* addr, const char* port, uint64_t flags) :
   EndpointBase(addr, port, flags),
   _ep(0)
 {}
@@ -904,6 +904,7 @@ bool Endpoint::accept(struct fi_info* remote_info)
   CHECK_ERR(fi_endpoint(_fabric->domain(), remote_info, &_ep, NULL), "fi_endpoint");
   CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
   CHECK_ERR(fi_ep_bind(_ep, &_cq->fid, FI_TRANSMIT | FI_RECV), "fi_ep_bind(cq)");
+  CHECK_ERR(fi_enable(_ep), "fi_enable");
   CHECK_ERR(fi_accept(_ep, NULL, 0), "fi_accept");
 
   CHECK(event_wait(&event, &entry, &cm_entry));
@@ -1350,8 +1351,8 @@ bool Endpoint::check_connection_state()
   return true;
 }
 
-PassiveEndpoint::PassiveEndpoint(const char* addr, const char* port, int flags) :
-  EndpointBase(addr, port, flags),
+PassiveEndpoint::PassiveEndpoint(const char* addr, const char* port, uint64_t flags) :
+  EndpointBase(addr, port, flags | FI_SOURCE),
   _flags(flags),
   _pep(0)
 {}

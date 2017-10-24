@@ -146,7 +146,7 @@ namespace Pds {
 
     class Fabric : public ErrorHandler {
     public:
-      Fabric(const char* node, const char* service, int flags=0);
+      Fabric(const char* node, const char* service, uint64_t flags=0);
       ~Fabric();
       MemoryRegion* register_memory(void* start, size_t len);
       MemoryRegion* register_memory(LocalAddress* laddr);
@@ -158,7 +158,7 @@ namespace Pds {
       struct fid_fabric* fabric() const;
       struct fid_domain* domain() const;
     private:
-      bool initialize(const char* node, const char* service, int flags);
+      bool initialize(const char* node, const char* service, uint64_t flags);
       void shutdown();
     private:
       bool                        _up;
@@ -171,7 +171,7 @@ namespace Pds {
 
     class EndpointBase : public ErrorHandler {
     protected:
-      EndpointBase(const char* addr, const char* port, int flags=0);
+      EndpointBase(const char* addr, const char* port, uint64_t flags=0);
       EndpointBase(Fabric* fabric);
       virtual ~EndpointBase();
     public:
@@ -196,7 +196,7 @@ namespace Pds {
 
     class Endpoint : public EndpointBase {
     public:
-      Endpoint(const char* addr, const char* port, int flags=0);
+      Endpoint(const char* addr, const char* port, uint64_t flags=0);
       Endpoint(Fabric* fabric);
       ~Endpoint();
     public:
@@ -257,7 +257,7 @@ namespace Pds {
 
     class PassiveEndpoint : public EndpointBase {
     public:
-      PassiveEndpoint(const char* addr, const char* port, int flags=0);
+      PassiveEndpoint(const char* addr, const char* port, uint64_t flags=0);
       ~PassiveEndpoint();
     public:
       void shutdown();
