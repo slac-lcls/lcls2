@@ -96,6 +96,7 @@ public:
                 unsigned shapeIndex = _nameindex.shapeMap()[name.name()];
                 unsigned size = _shapesdata.shapes().get(shapeIndex).size(name);
                 _offset[i+1]=_offset[i]+size;
+                _numarrays++;
             }
         }
     }
@@ -154,6 +155,19 @@ protected:
         _numentries=0;
     }
 
+    void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
+        unsigned index = _nameindex[name];
+        unsigned rank = _nameindex.names().get(index).rank();
+        unsigned shapeIndex = _nameindex.shapeMap()[name];
+        assert (shapeIndex==_numarrays); // check that shapes are filled in order
+        _unused(shapeIndex);
+        Shape& sh = _shapesdata.shapes().get(_numarrays);
+        for (unsigned i=0; i<rank; i++) {
+            sh.shape()[i] = shape[i];
+        }
+        _numarrays++;
+    }
+
     enum {MaxNames=1000};
     unsigned    _offset[MaxNames+1]; // +1 since we set up the offsets 1 in advance, for convenience
     ShapesData& _shapesdata;
@@ -184,16 +198,7 @@ public:
             shapes.alloc(_nameindex.shapeMap().size()*sizeof(Shape),
                          _shapesdata, _parent);
         }
-        unsigned index = _nameindex[name];
-        unsigned rank = _nameindex.names().get(index).rank();
-        unsigned shapeIndex = _nameindex.shapeMap()[name];
-        assert (shapeIndex==_numarrays);
-        _unused(shapeIndex);
-        Shape& sh = _shapesdata.shapes().get(_numarrays);
-        for (unsigned i=0; i<rank; i++) {
-            sh.shape()[i] = shape[i];
-        }
-        _numarrays++;
+        DescData::set_array_shape(name, shape);
     }
 private:
     XtcData::Xtc& _parent;
@@ -224,6 +229,26 @@ public:
         _numentries++;
         _offset[_numentries]=_offset[_numentries-1]+Name::get_element_size(name.type());
     }
+
+    void* get_ptr()
+    {
+        return reinterpret_cast<void*>(_shapesdata.data().next());
+    }
+
+    void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
+        unsigned index = _nameindex[name];
+        assert (index==_numentries); // require the user to fill the fields in order
+        unsigned shapeIndex = _nameindex.shapeMap()[name];
+        assert (shapeIndex==_numarrays);
+        _numentries++;
+        DescData::set_array_shape(name, shape);
+        Names& names = _nameindex.names();
+        Name& namecl = names.get(index);
+        unsigned size = _shapesdata.shapes().get(shapeIndex).size(namecl);
+        _offset[_numentries]=_offset[_numentries-1]+size;
+        _shapesdata.data().alloc(size,_shapesdata);
+    }
+
 private:
     XtcData::Xtc& _parent;
 };
