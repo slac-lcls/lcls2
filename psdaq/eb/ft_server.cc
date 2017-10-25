@@ -12,7 +12,13 @@ static const size_t BUFFER_DEF = 800;
 
 static void showUsage(const char* p)
 {
-  printf("Simple libfabrics server example (its pair is the ft_client example).\n\n"
+  printf("\nSimple libfabrics server example (its pair is the ft_client example).\n"
+         "\n"
+         "In this simple example the server waits for a connection, and when a client connects the server\n"
+         "sends a message containing info on a readable memory region. The client then initiates a specified\n"
+         "number of remote reads on that memory and then disconnects. After disconnect the server can accept\n"
+         "new incoming connections.\n" 
+         "\n"
          "Usage: %s [-h|--help]\n"
          "    -a|--addr     the local address to which the server binds (default: libfabrics 'best' choice)\n"
          "    -b|--buffer   the size of the local memory buffer to allocate (default: %lu bytes)\n"

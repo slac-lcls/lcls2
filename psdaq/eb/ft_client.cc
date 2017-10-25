@@ -13,12 +13,18 @@ static const unsigned COUNT_DEF = 1;
 
 static void showUsage(const char* p)
 {
-  printf("Simple libfabrics client example (its pair is the ft_server example).\n\n"
+  printf("\nSimple libfabrics client example (its pair is the ft_server example).\n"
+         "\n"
+         "In this simple example the server waits for a connection, and when a client connects the server\n"
+         "sends a message containing info on a readable memory region. The client then initiates a specified\n"
+         "number of remote reads on that memory and then disconnects. After disconnect the server can accept\n"
+         "new incoming connections.\n"
+         "\n"
          "Usage: %s [-h|--help]\n"
          "    -a|--addr     the address of the server\n"
          "    -p|--port     the port or libfaric 'service' the server uses (default: %s)\n"
          "    -s|--size     the number of 64bit ints to read from the server (default: %u)\n"
-         "    -c|--count    the number of times to the read the data from the server (default: %u)\n"
+         "    -c|--count    the number of times to read the data from the server (default: %u)\n"
          "    -h|--help     print this message and exit\n", p, PORT_DEF, SIZE_DEF, COUNT_DEF);
 }
 

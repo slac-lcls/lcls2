@@ -7,10 +7,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 #include <vector>
 
 using namespace Pds::Fabrics;
 using namespace Pds;
+
+static const char* PORT_DEF = "12345";
+static const uint64_t COUNT_DEF = 100;
+
+static void showUsage(const char* p)
+{
+  printf("\nSimple libfabrics publisher example (its pair is the ft_sub example).\n"
+         "\n"
+         "This example is simulating something similar to zeromq's publish/suscribe model - a.k.a\n"
+         "a simulated multicast using an underlying connected interface. The server periodically sends a\n"
+         "data buffer to all of its subscribers. A client connects to server to 'suscribe' and disconnects\n"
+         "to unsubscribe.\n"
+         "\n"
+         "Usage: %s [-h|--help]\n"
+         "    -a|--addr     the local address to which the server binds (default: libfabrics 'best' choice)\n"
+         "    -p|--port     the port or libfaric 'service' the server will use (default: %s)\n"
+         "    -c|--count    the max number of times to publish the data to subscribers before exiting (default: %lu)\n"
+         "    -h|--help     print this message and exit\n", p, PORT_DEF, COUNT_DEF);
+}
 
 class Listener : public Routine {
   public:
@@ -63,24 +83,64 @@ class Listener : public Routine {
 
 int main(int argc, char *argv[])
 {
-  if (argc != 2) {
-    fprintf(stderr, "usage: %s count\n", argv[0]);
-    return -1;
-  }
-
   unsigned buff_num = 10;
+  bool show_usage = false;
+  const char *addr = NULL;
+  const char *port = PORT_DEF;
   size_t buff_size = sizeof(uint64_t)*buff_num;
   char* buff = new char[buff_size];
   uint64_t* data_buff = (uint64_t*) buff;
-  uint64_t max_count = strtoul(argv[1], NULL, 0);
+  uint64_t max_count = COUNT_DEF;
   
-  
+  const char* str_opts = ":ha:p:c:";
+  const struct option lo_opts[] =
+  {
+      {"help",  0, 0, 'h'},
+      {"addr",  1, 0, 'a'},
+      {"port",  1, 0, 'p'},
+      {"count", 1, 0, 'c'},
+      {0,       0, 0,  0 }
+  };
+
+  int option_idx = 0;
+  while (int opt = getopt_long(argc, argv, str_opts, lo_opts, &option_idx )) {
+    if ( opt == -1 ) break;
+
+    switch(opt) {
+      case 'h':
+        showUsage(argv[0]);
+        return 0;
+      case 'a':
+        addr = optarg;
+        break;
+      case 'p':
+        port = optarg;
+        break;
+      case 'c':
+        max_count = strtoul(optarg, NULL, 0);
+        break;
+      default:
+        show_usage = true;
+        break;
+    }
+  }
+
+  if (optind < argc) {
+    printf("%s: invalid argument -- %s\n", argv[0], argv[optind]);
+    show_usage = true;
+  }
+
+  if (show_usage) {
+    showUsage(argv[0]);
+    return 1;
+  }
+
   data_buff[1] = 0xadd;
   data_buff[2] = 0xdeadbeef;
   for (unsigned i=3; i< buff_num; i++)
     data_buff[i] = i;
 
-  PassiveEndpoint* pendp = new PassiveEndpoint(NULL, "1234");
+  PassiveEndpoint* pendp = new PassiveEndpoint(addr, port);
   if (pendp->state() != EP_UP) {
     fprintf(stderr, "Failed to initialize fabrics endpoint: %s\n", pendp->error());
     return pendp->error_num();
@@ -88,6 +148,7 @@ int main(int argc, char *argv[])
 
   // get a pointer to the fabric
   Fabric* fab = pendp->fabric();
+  printf("using %s provider\n", fab->provider());
   // register the memory buffer
   MemoryRegion* mr = fab->register_memory(buff, buff_size);
   if (!mr) {
