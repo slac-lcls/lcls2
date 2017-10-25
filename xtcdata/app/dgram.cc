@@ -26,16 +26,6 @@ typedef struct {
     int debug;
 } PyDgramObject;
 
-static PyObject *
-write_refcnt(PyObject *self, PyObject *args)
-{
-    PyObject* o;
-    char* varName;
-    if (!PyArg_ParseTuple(args, "O|s", &o, &varName)) return NULL;
-    printf("write_refcnt: Py_REFCNT(%s)=%d\n", varName, (int)Py_REFCNT(o));
-    return PyLong_FromLong(0);
-}
-
 static void write_object_info(PyDgramObject* self, PyObject* obj, const char* comment)
 {
     if (self->verbose > 0) {
@@ -44,24 +34,6 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
         printf("VERBOSE=%d;  self->debug=%d\n", self->verbose, self->debug);
         printf("VERBOSE=%d;  self=%p\n", self->verbose, self);
         printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
-//        printf("VERBOSE=%d;  self->dict=%p\n", self->verbose, self->dict);
-//        if (self->dict != NULL) {
-//            printf("VERBOSE=%d;  Py_REFCNT(self->dict)=%d\n", self->verbose, (int)Py_REFCNT(self->dict));
-//        }
-//        fflush(stdout);
-//        if (obj != NULL) {
-//            printf("VERBOSE=%d;  Py_REFCNT(obj)=%d\n", self->verbose, (int)Py_REFCNT(obj));
-//            if (strcmp("numpy.ndarray", obj->ob_type->tp_name) == 0) {
-//                PyArrayObject_fields* p=(PyArrayObject_fields*)obj;
-//                printf("VERBOSE=%d;  obj->base=%p\n", self->verbose, p->base);
-//                fflush(stdout);
-//                if (p->base != NULL) {
-//                    printf("VERBOSE=%d;  Py_REFCNT(obj->base)=%d\n", self->verbose, (int)Py_REFCNT(p->base));
-//                    fflush(stdout);
-//                }
-//            }
-//        }
-//        printf("VERBOSE=%d; %s\n\n", self->verbose, "done");
         fflush(stdout);
     }
 }
@@ -135,7 +107,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 break;
             }
             }
-            if ( (pyDgram->debug & 0x03) != 0 ) {
+            if ( (pyDgram->debug & 0x01) != 0 ) {
                 if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
                     char s[120];
                     sprintf(s, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
@@ -155,11 +127,6 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             // ownership of the new objects to the dictionary.  when
             // the dictionary is deleted, the objects will be deleted.
             Py_DECREF(newobj);
-        }
-        char s[120];
-        sprintf(s, "Bottom of DictAssign, obj is %s", tempName);
-        if (strncmp(tempName, "array", 5) == 0) {
-            write_object_info(pyDgram, newobj, s);
         }
     }
 }
@@ -291,7 +258,6 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
     iter.iterate();
 
-    write_object_info(self, NULL, "Bottom of dgram_init()");
     return 0;
 }
 
@@ -314,14 +280,6 @@ static PyMemberDef dgram_members[] = {
 PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
     PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
-    char s[120];
-    Py_ssize_t size;
-    char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
-    if (strncmp(key_string, "array", 5) == 0) {
-        sprintf(s, "Top of tp_getattro(), obj is %s", key_string);
-        write_object_info((PyDgramObject*)o, res, s);
-    }
-
     if (res != NULL) {
         if ( (((PyDgramObject*)o)->debug & 0x01) != 0 ) {
             Py_INCREF(res);
@@ -329,8 +287,6 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
             if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
                 Py_CLEAR(((PyDgramObject*)o)->dict);
             }
-        } else if ( (((PyDgramObject*)o)->debug & 0x02) != 0 ) {
-            Py_INCREF(res);
         } else {
             if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
                 PyArrayObject* arr = (PyArrayObject*)res;
@@ -356,14 +312,6 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
         res = PyObject_GenericGetAttr(o, key);
     }
 
-
-    //char s[120];
-    //Py_ssize_t size;
-    //char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
-    if (strncmp(key_string, "array", 5) == 0) {
-        sprintf(s, "Bottom of tp_getattro(), obj is %s", key_string);
-        write_object_info((PyDgramObject*)o, res, s);
-    }
     return res;
 }
 
@@ -416,22 +364,8 @@ static PyTypeObject dgram_DgramType = {
     (destructor)dgram_dealloc, /* tp_del*/
 };
 
-static PyMethodDef DgramMethods[] = {
-    {"write_refcnt", 
-     write_refcnt,
-     METH_VARARGS,
-     "Write Reference Counters."},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
-};
-
-//static PyModuleDef dgrammodule =
-//{ PyModuleDef_HEAD_INIT, "dgram", NULL, -1, NULL, NULL, NULL, NULL, NULL };
 static PyModuleDef dgrammodule =
-{ PyModuleDef_HEAD_INIT,
-  "dgram",
-  NULL,
-  -1,
-  DgramMethods};
+{ PyModuleDef_HEAD_INIT, "dgram", NULL, -1, NULL, NULL, NULL, NULL, NULL };
 
 #ifndef PyMODINIT_FUNC /* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
