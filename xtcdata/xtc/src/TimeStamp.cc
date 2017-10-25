@@ -31,6 +31,11 @@ XtcData::TimeStamp::TimeStamp(const XtcData::TimeStamp& input, unsigned control)
 {
 }
 
+XtcData::TimeStamp::TimeStamp(uint64_t pulseId, unsigned control)
+: _value((pulseId & s_pulseId) | ((control & m_cntrl) << v_cntrl))
+{
+}
+
 unsigned XtcData::TimeStamp::pulseId() const
 {
     return (_value & s_pulseId) >> v_pulseId;

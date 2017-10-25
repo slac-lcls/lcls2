@@ -9,12 +9,12 @@ class TimeStamp
 {
 public:
     enum { NumPulseIdBits = 56 };
-   
+
 public:
     TimeStamp();
     TimeStamp(const TimeStamp&);
     TimeStamp(const TimeStamp&, unsigned control);
-    TimeStamp(unsigned pulseId, unsigned control = 0);
+    TimeStamp(uint64_t pulseId, unsigned control = 0);
 
 public:
     unsigned pulseId() const; // 929kHz pulse ID
