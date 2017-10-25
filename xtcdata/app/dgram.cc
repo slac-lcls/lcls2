@@ -43,7 +43,7 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
         fflush(stdout);
         printf("VERBOSE=%d;  self->debug=%d\n", self->verbose, self->debug);
         printf("VERBOSE=%d;  self=%p\n", self->verbose, self);
-//        printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
+        printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
 //        printf("VERBOSE=%d;  self->dict=%p\n", self->verbose, self->dict);
 //        if (self->dict != NULL) {
 //            printf("VERBOSE=%d;  Py_REFCNT(self->dict)=%d\n", self->verbose, (int)Py_REFCNT(self->dict));
@@ -323,13 +323,13 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
     }
 
     if (res != NULL) {
-        if ( (((PyDgramObject*)o)->debug & 0x01) == 1 ) {
+        if ( (((PyDgramObject*)o)->debug & 0x01) != 0 ) {
             Py_INCREF(res);
             PyDict_DelItem(((PyDgramObject*)o)->dict, key);
             if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
                 Py_CLEAR(((PyDgramObject*)o)->dict);
             }
-        } else if ( (((PyDgramObject*)o)->debug & 0x02) == 1 ) {
+        } else if ( (((PyDgramObject*)o)->debug & 0x02) != 0 ) {
             Py_INCREF(res);
         } else {
             if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
