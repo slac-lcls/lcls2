@@ -22,6 +22,7 @@ typedef struct {
     PyObject_HEAD
     PyObject* dict;
     Dgram* dgram;
+    int file_descriptor;
     int verbose;
     int debug;
 } PyDgramObject;
@@ -33,25 +34,7 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
         fflush(stdout);
         printf("VERBOSE=%d;  self->debug=%d\n", self->verbose, self->debug);
         printf("VERBOSE=%d;  self=%p\n", self->verbose, self);
-//        printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
-//        printf("VERBOSE=%d;  self->dict=%p\n", self->verbose, self->dict);
-//        if (self->dict != NULL) {
-//            printf("VERBOSE=%d;  Py_REFCNT(self->dict)=%d\n", self->verbose, (int)Py_REFCNT(self->dict));
-//        }
-//        fflush(stdout);
-//        if (obj != NULL) {
-//            printf("VERBOSE=%d;  Py_REFCNT(obj)=%d\n", self->verbose, (int)Py_REFCNT(obj));
-//            if (strcmp("numpy.ndarray", obj->ob_type->tp_name) == 0) {
-//                PyArrayObject_fields* p=(PyArrayObject_fields*)obj;
-//                printf("VERBOSE=%d;  obj->base=%p\n", self->verbose, p->base);
-//                fflush(stdout);
-//                if (p->base != NULL) {
-//                    printf("VERBOSE=%d;  Py_REFCNT(obj->base)=%d\n", self->verbose, (int)Py_REFCNT(p->base));
-//                    fflush(stdout);
-//                }
-//            }
-//        }
-//        printf("VERBOSE=%d; %s\n\n", self->verbose, "done");
+        printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
         fflush(stdout);
     }
 }
@@ -125,7 +108,11 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 break;
             }
             }
-            if ( (pyDgram->debug & 0x03) != 0 ) {
+            if ( (pyDgram->debug & 0x01) != 0 ) {
+                // place holder for old-style pointer management -- this should be remove at some point
+                printf("Warning: using old-style pointer management in DictAssign() (i.e. debug=1\n");
+            } else {
+                // New default behaviour
                 if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
                     char s[120];
                     sprintf(s, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
@@ -145,11 +132,6 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             // ownership of the new objects to the dictionary.  when
             // the dictionary is deleted, the objects will be deleted.
             Py_DECREF(newobj);
-        }
-        char s[120];
-        sprintf(s, "Bottom of DictAssign, obj is %s", tempName);
-        if (strncmp(tempName, "array", 5) == 0) {
-            write_object_info(pyDgram, newobj, s);
         }
     }
 }
@@ -240,17 +222,28 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"verbose",
                              (char*)"debug",
                              NULL};
-    int fd;
+    int fd=0;
     PyObject* configDgram=0;
     self->verbose=0;
     self->debug=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "i|O$ii", kwlist,
+                                     "|iO$ii", kwlist,
                                      &fd,
                                      &configDgram,
                                      &(self->verbose),
                                      &(self->debug))) {
         return -1;
+    }
+
+    if (fd==0 && configDgram==0) {
+        PyErr_SetString(PyExc_StopIteration, "Must specify either file_descriptor or config");
+        return -1;
+    }
+
+    if (fd==0) {
+        fd=((PyDgramObject*)configDgram)->file_descriptor;
+    } else {
+        self->file_descriptor=fd;
     }
 
     self->dgram = (Dgram*)malloc(BUFSIZE);
@@ -277,11 +270,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     if (configDgram==0) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
     myNamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
     namesIter.iterate();
-    
+
     PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
     iter.iterate();
 
-    write_object_info(self, NULL, "Bottom of dgram_init()");
     return 0;
 }
 
@@ -290,6 +282,10 @@ static PyMemberDef dgram_members[] = {
       T_OBJECT_EX, offsetof(PyDgramObject, dict),
       0,
       (char*)"attribute dictionary" },
+    { (char*)"file_descriptor",
+      T_INT, offsetof(PyDgramObject, file_descriptor),
+      0,
+      (char*)"attribute file_descriptor" },
     { (char*)"verbose",
       T_INT, offsetof(PyDgramObject, verbose),
       0,
@@ -301,27 +297,14 @@ static PyMemberDef dgram_members[] = {
     { NULL }
 };
 
+
 PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
     PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
-    char s[120];
-    Py_ssize_t size;
-    char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
-    if (strncmp(key_string, "array", 5) == 0) {
-        sprintf(s, "Top of tp_getattro(), obj is %s", key_string);
-        write_object_info((PyDgramObject*)o, res, s);
-    }
-
     if (res != NULL) {
-        if ( (((PyDgramObject*)o)->debug & 0x01) == 1 ) {
-            Py_INCREF(res);
-            PyDict_DelItem(((PyDgramObject*)o)->dict, key);
-            if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
-                Py_CLEAR(((PyDgramObject*)o)->dict);
-            }
-        } else if ( (((PyDgramObject*)o)->debug & 0x02) == 1 ) {
-            Py_INCREF(res);
-        } else {
+        if ( (((PyDgramObject*)o)->debug & 0x01) != 0 ) {
+            // old-style pointer management -- this should be remove at some point
+            printf("Warning: using old-style pointer management in tp_getattro() (i.e. debug=1\n");
             if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
                 PyArrayObject* arr = (PyArrayObject*)res;
                 PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
@@ -340,20 +323,18 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
                 // variable is deleted, so must increment here.
                 Py_INCREF(res);
             }
+        } else {
+            // New default behaviour
+            Py_INCREF(res);
+            PyDict_DelItem(((PyDgramObject*)o)->dict, key);
+            if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
+                Py_CLEAR(((PyDgramObject*)o)->dict);
+            }
         }
-
     } else {
         res = PyObject_GenericGetAttr(o, key);
     }
 
-
-    //char s[120];
-    //Py_ssize_t size;
-    //char *key_string = PyUnicode_AsUTF8AndSize(key, &size);
-    if (strncmp(key_string, "array", 5) == 0) {
-        sprintf(s, "Bottom of tp_getattro(), obj is %s", key_string);
-        write_object_info((PyDgramObject*)o, res, s);
-    }
     return res;
 }
 

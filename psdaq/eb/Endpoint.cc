@@ -1,4 +1,4 @@
-#include "Endpoint.hh"
+#include "psdaq/eb/Endpoint.hh"
 
 #include <rdma/fi_cm.h>
 
@@ -67,17 +67,26 @@ const struct iovec* LocalAddress::iovec() const
   return reinterpret_cast<const struct iovec*>(this);
 }
 
-LocalIOVec::LocalIOVec(size_t count, LocalAddress** local_addrs) :
+LocalIOVec::LocalIOVec(size_t count) :
+  _mr_set(true),
+  _count(0),
+  _max(count),
+  _iovs(new struct iovec[count]),
+  _mr_desc(new void*[count])
+{}
+
+LocalIOVec::LocalIOVec(LocalAddress* local_addrs, size_t count) :
   _mr_set(true),
   _count(count),
+  _max(count),
   _iovs(new struct iovec[count]),
   _mr_desc(new void*[count])
 {
   if (local_addrs) {
     for (unsigned i=0; i<_count; i++) {
-      _iovs[i] = *local_addrs[i]->iovec();
-      if (local_addrs[i]->mr())
-        _mr_desc[i] = local_addrs[i]->mr()->desc();
+      _iovs[i] = *local_addrs[i].iovec();
+      if (local_addrs[i].mr())
+        _mr_desc[i] = local_addrs[i].mr()->desc();
       else
         _mr_set = false;
     }
@@ -89,6 +98,7 @@ LocalIOVec::LocalIOVec(size_t count, LocalAddress** local_addrs) :
 LocalIOVec::LocalIOVec(const std::vector<LocalAddress*>& local_addrs) :
   _mr_set(true),
   _count(local_addrs.size()),
+  _max(local_addrs.size()),
   _iovs(new struct iovec[local_addrs.size()]),
   _mr_desc(new void*[local_addrs.size()])
 {
@@ -108,6 +118,25 @@ LocalIOVec::~LocalIOVec()
   }
   if (_mr_desc) {
     delete[] _mr_desc;
+  }
+}
+
+void LocalIOVec::check_size(size_t count)
+{
+  if ((_count + count) > _max) {
+    _max = (_count + count);
+
+    struct iovec* new_iovs = new struct iovec[_max];
+    void** new_mr_desc = new void*[_max];
+    for (unsigned i=0; i<_count; i++) {
+      new_iovs[i] = _iovs[i];
+      new_mr_desc[i] = _mr_desc[i];
+    }
+
+    delete[] _iovs;
+    delete[] _mr_desc;
+    _iovs = new_iovs;
+    _mr_desc = new_mr_desc;
   }
 }
 
@@ -132,6 +161,60 @@ size_t LocalIOVec::count() const { return _count; }
 const struct iovec* LocalIOVec::iovecs() const { return _iovs; }
 
 void** LocalIOVec::desc() const { return _mr_desc; }
+
+bool LocalIOVec::add_iovec(LocalAddress* local_addr, size_t count)
+{
+  check_size(count);
+
+  if (local_addr) {
+    for (unsigned i=0; i<count; i++) {
+      _iovs[_count] = *local_addr[i].iovec();
+      if (local_addr[i].mr()) {
+        _mr_desc[_count] = local_addr[i].mr()->desc();
+      }
+      _count++;
+    }
+
+    verify();
+
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool LocalIOVec::add_iovec(std::vector<LocalAddress*>& local_addr)
+{
+  check_size(local_addr.size());
+
+  for (unsigned i=0; i<local_addr.size(); i++) {
+    _iovs[_count] = *local_addr[i]->iovec();
+    if (local_addr[i]->mr()) {
+      _mr_desc[_count] = local_addr[i]->mr()->desc();
+    } 
+    _count++;
+  }
+
+  verify();
+
+  return true;
+}
+
+bool LocalIOVec::add_iovec(void* buf, size_t len, MemoryRegion* mr)
+{
+  check_size(1);
+
+  _iovs[_count].iov_base = buf;
+  _iovs[_count].iov_len = len;
+  if (mr) {
+    _mr_desc[_count] = mr->desc();
+  }
+  _count++;
+
+  verify();
+
+  return true;
+}
 
 bool LocalIOVec::set_iovec(unsigned index, LocalAddress* local_addr)
 {
@@ -192,19 +275,27 @@ RemoteAddress::RemoteAddress(uint64_t rkey, uint64_t addr, size_t extent) :
   rkey(rkey)
 {}
 
-RemoteIOVec::RemoteIOVec(size_t count, RemoteAddress** remote_addrs) :
+RemoteIOVec::RemoteIOVec(size_t count) :
+  _count(0),
+  _max(count),
+  _rma_iovs(new struct fi_rma_iov[count])
+{}
+
+RemoteIOVec::RemoteIOVec(RemoteAddress* remote_addrs, size_t count) :
   _count(count),
+  _max(count),
   _rma_iovs(new struct fi_rma_iov[count])
 {
   if (remote_addrs) {
     for (unsigned i=0; i<_count; i++) {
-      _rma_iovs[i] = *remote_addrs[i]->rma_iov();
+      _rma_iovs[i] = *remote_addrs[i].rma_iov();
     }
   }
 }
 
 RemoteIOVec::RemoteIOVec(const std::vector<RemoteAddress*>& remote_addrs) :
   _count(remote_addrs.size()),
+  _max(remote_addrs.size()),
   _rma_iovs(new struct fi_rma_iov[remote_addrs.size()])
 {
   for (unsigned i=0; i<_count; i++) {
@@ -219,9 +310,62 @@ RemoteIOVec::~RemoteIOVec()
   }
 }
 
+void RemoteIOVec::check_size(size_t count)
+{
+  if ((_count + count) > _max) {
+    _max = (_count + count);
+
+    struct fi_rma_iov* new_rma_iovs = new struct fi_rma_iov[_max];
+    for (unsigned i=0; i<_count; i++) {
+      new_rma_iovs[i] = _rma_iovs[i];
+    }
+
+    delete[] _rma_iovs;
+    _rma_iovs = new_rma_iovs;
+  }
+}
+
 size_t RemoteIOVec::count() const { return _count; }
 
 const struct fi_rma_iov* RemoteIOVec::iovecs() const { return _rma_iovs; }
+
+bool RemoteIOVec::add_iovec(RemoteAddress* remote_addr, size_t count)
+{
+  check_size(count);
+
+  if (remote_addr) {
+    for (unsigned i=0; i<count; i++) {
+      _rma_iovs[_count++] = *remote_addr[i].rma_iov();
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool RemoteIOVec::add_iovec(std::vector<RemoteAddress*>& remote_addr)
+{
+  check_size(remote_addr.size());
+
+  for (unsigned i=0; i<remote_addr.size(); i++) {
+    _rma_iovs[_count++] = *remote_addr[i]->rma_iov();
+  }
+
+  return true;
+}
+
+bool RemoteIOVec::add_iovec(unsigned index, uint64_t rkey, uint64_t addr, size_t extent)
+{
+  check_size(1);
+
+  _rma_iovs[_count].addr  = addr;
+  _rma_iovs[_count].len   = extent;
+  _rma_iovs[_count].key   = rkey;
+
+  _count++;
+
+  return true;
+}
 
 bool RemoteIOVec::set_iovec(unsigned index, RemoteAddress* remote_addr)
 {
@@ -229,9 +373,12 @@ bool RemoteIOVec::set_iovec(unsigned index, RemoteAddress* remote_addr)
     return false;
   }
 
-  _rma_iovs[index] = *remote_addr->rma_iov();
-
-  return true;
+  if (remote_addr) {
+    _rma_iovs[index] = *remote_addr->rma_iov();
+    return true;
+  } else {
+    return false;
+  }
 }
 
 bool RemoteIOVec::set_iovec(unsigned index, uint64_t rkey, uint64_t addr, size_t extent)
@@ -253,17 +400,25 @@ const struct fi_rma_iov* RemoteAddress::rma_iov() const
 }
 
 RmaMessage::RmaMessage() :
+  _loc_iov(0),
+  _rem_iov(0),
   _msg(new struct fi_msg_rma)
 {}
 
 RmaMessage::RmaMessage(LocalIOVec* loc_iov, RemoteIOVec* rem_iov, void* context, uint64_t data) :
+  _loc_iov(loc_iov),
+  _rem_iov(rem_iov),
   _msg(new struct fi_msg_rma)
 {
-  _msg->msg_iov = loc_iov->iovecs();
-  _msg->desc = loc_iov->desc();
-  _msg->iov_count = loc_iov->count();
-  _msg->rma_iov = rem_iov->iovecs();
-  _msg->rma_iov_count = rem_iov->count();
+  if (_loc_iov) {
+    _msg->msg_iov = loc_iov->iovecs();
+    _msg->desc = loc_iov->desc();
+    _msg->iov_count = loc_iov->count();
+  }
+  if (_rem_iov) {
+    _msg->rma_iov = rem_iov->iovecs();
+    _msg->rma_iov_count = rem_iov->count();
+  }
   _msg->context = context;
   _msg->data = data;
 }
@@ -274,6 +429,47 @@ RmaMessage::~RmaMessage()
     delete _msg;
   }
 }
+
+LocalIOVec* RmaMessage::loc_iov() const { return _loc_iov; }
+
+RemoteIOVec* RmaMessage::rem_iov() const { return _rem_iov; }
+
+void RmaMessage::loc_iov(LocalIOVec* loc_iov)
+{
+  if (loc_iov) {
+    _loc_iov = loc_iov;
+    _msg->msg_iov = loc_iov->iovecs();
+    _msg->desc = loc_iov->desc();
+    _msg->iov_count = loc_iov->count();
+  }
+}
+
+void RmaMessage::rem_iov(RemoteIOVec* rem_iov)
+{
+  if (rem_iov) {
+    _rem_iov = rem_iov;
+    _msg->rma_iov = rem_iov->iovecs();
+    _msg->rma_iov_count = rem_iov->count();
+  }
+}
+
+const struct iovec* RmaMessage::msg_iov() const { return _msg->msg_iov; }
+
+void** RmaMessage::desc() const { return _msg->desc; }
+
+size_t RmaMessage::iov_count() const { return _msg->iov_count; }
+
+const struct fi_rma_iov* RmaMessage::rma_iov() const { return _msg->rma_iov; }
+
+size_t RmaMessage::rma_iov_count() const { return _msg->rma_iov_count; }
+
+void* RmaMessage::context() const { return _msg->context; }
+
+void RmaMessage::context(void* context) { _msg->context = context; }
+
+uint64_t RmaMessage::data() const { return _msg->data; }
+
+void RmaMessage::data(uint64_t data) { _msg->data = data; }
 
 const struct fi_msg_rma* RmaMessage::msg() const { return _msg; }
 
@@ -339,7 +535,7 @@ void ErrorHandler::set_custom_error(const char* fmt, ...)
 }
 
 
-Fabric::Fabric(const char* node, const char* service, int flags) :
+Fabric::Fabric(const char* node, const char* service, uint64_t flags) :
   _up(false),
   _hints(0),
   _info(0),
@@ -363,6 +559,26 @@ MemoryRegion* Fabric::register_memory(void* start, size_t len)
                        0, 0, 0, &mr, NULL);
     if (_errno == FI_SUCCESS) {
       MemoryRegion* mem = new MemoryRegion(mr, start, len);
+      _mem_regions.push_back(mem);
+      return mem;
+    } else {
+      set_error("fi_mr_reg");
+    }
+  }
+
+  return NULL;
+}
+
+MemoryRegion* Fabric::register_memory(LocalAddress* laddr)
+{
+  struct fid_mr* mr;
+  if (_up) {
+    _errno = fi_mr_reg(_domain, laddr->buf(), laddr->len(),
+                       FI_REMOTE_READ | FI_REMOTE_WRITE | FI_SEND | FI_RECV,
+                       0, 0, 0, &mr, NULL);
+    if (_errno == FI_SUCCESS) {
+      MemoryRegion* mem = new MemoryRegion(mr, laddr->buf(), laddr->len());
+      laddr->_mr = mem;
       _mem_regions.push_back(mem);
       return mem;
     } else {
@@ -410,13 +626,40 @@ bool Fabric::lookup_memory_iovec(LocalIOVec* iov) const
 
 bool Fabric::up() const { return _up; }
 
+const char* Fabric::name() const
+{
+  if (_info) {
+    return _info->fabric_attr->name;
+  } else {
+    return NULL;
+  }
+}
+
+const char* Fabric::provider() const
+{
+  if (_info) {
+    return _info->fabric_attr->prov_name;
+  } else {
+    return NULL;
+  }
+}
+
+uint32_t Fabric::version() const
+{
+  if (_info) {
+    return _info->fabric_attr->prov_version;
+  } else {
+    return 0;
+  }
+}
+
 struct fi_info* Fabric::info() const { return _info; }
 
 struct fid_fabric* Fabric::fabric() const { return _fabric; }
 
 struct fid_domain* Fabric::domain() const { return _domain; }
 
-bool Fabric::initialize(const char* node, const char* service, int flags)
+bool Fabric::initialize(const char* node, const char* service, uint64_t flags)
 {
   if (!_up) {
     _hints = fi_allocinfo();
@@ -471,7 +714,7 @@ void Fabric::shutdown()
 }
 
 
-EndpointBase::EndpointBase(const char* addr, const char* port, int flags) :
+EndpointBase::EndpointBase(const char* addr, const char* port, uint64_t flags) :
   _state(EP_INIT),
   _fab_owner(true),
   _fabric(new Fabric(addr, port, flags)),
@@ -622,7 +865,7 @@ bool EndpointBase::initialize()
 }
 
 
-Endpoint::Endpoint(const char* addr, const char* port, int flags) :
+Endpoint::Endpoint(const char* addr, const char* port, uint64_t flags) :
   EndpointBase(addr, port, flags),
   _ep(0)
 {}
@@ -688,6 +931,7 @@ bool Endpoint::accept(struct fi_info* remote_info)
   CHECK_ERR(fi_endpoint(_fabric->domain(), remote_info, &_ep, NULL), "fi_endpoint");
   CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
   CHECK_ERR(fi_ep_bind(_ep, &_cq->fid, FI_TRANSMIT | FI_RECV), "fi_ep_bind(cq)");
+  CHECK_ERR(fi_enable(_ep), "fi_enable");
   CHECK_ERR(fi_accept(_ep, NULL, 0), "fi_accept");
 
   CHECK(event_wait(&event, &entry, &cm_entry));
@@ -1044,6 +1288,56 @@ bool Endpoint::writev_sync(LocalIOVec* iov, const RemoteAddress* raddr)
   return false;
 }
 
+bool Endpoint::readmsg(RmaMessage* msg, uint64_t flags)
+{
+  CHECK_MR_IOVEC(msg->loc_iov(), "fi_readmsg");
+
+  ssize_t rret = fi_readmsg(_ep, msg->msg(), flags);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_readmsg");
+    return false;
+  }
+
+  return true;
+}
+
+bool Endpoint::readmsg_sync(RmaMessage* msg, uint64_t flags)
+{
+  int context = _counter++;
+  msg->context(&context);
+  if (readmsg(msg, flags)) {
+    return check_completion(context, FI_READ | FI_RMA);
+  }
+
+  return false;
+}
+
+bool Endpoint::writemsg(RmaMessage* msg, uint64_t flags)
+{
+  CHECK_MR_IOVEC(msg->loc_iov(), "fi_writemsg");
+
+  ssize_t rret = fi_writemsg(_ep, msg->msg(), flags);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_writemsg");
+    return false;
+  }
+
+  return true;
+}
+
+bool Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
+{
+  int context = _counter++;
+  msg->context(&context);
+  if (writemsg(msg, flags)) {
+    return check_completion(context, FI_WRITE | FI_RMA);
+  }
+
+  return false;
+}
+
 bool Endpoint::check_completion(int context, unsigned flags)
 {
   int num_comp;
@@ -1084,8 +1378,8 @@ bool Endpoint::check_connection_state()
   return true;
 }
 
-PassiveEndpoint::PassiveEndpoint(const char* addr, const char* port, int flags) :
-  EndpointBase(addr, port, flags),
+PassiveEndpoint::PassiveEndpoint(const char* addr, const char* port, uint64_t flags) :
+  EndpointBase(addr, port, flags | FI_SOURCE),
   _flags(flags),
   _pep(0)
 {}
