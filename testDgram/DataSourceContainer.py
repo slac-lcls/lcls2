@@ -14,17 +14,17 @@ import gc
 
 class DataSource:
     def __init__(self, xtcdata_filename, verbose=0, debug=0):
-        self.fd = os.open(xtcdata_filename,
-                          os.O_RDONLY|os.O_LARGEFILE)
-        self.config = dgram.Dgram(self.fd,
-                                  verbose=verbose,
-                                  debug=debug)
+        fd = os.open(xtcdata_filename,
+                     os.O_RDONLY|os.O_LARGEFILE)
+        self._config = dgram.Dgram(file_descriptor=fd,
+                                   verbose=verbose,
+                                   debug=debug)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        d=dgram.Dgram(self.fd, self.config,
+        d=dgram.Dgram(config=self._config,
                       verbose=self.verbose,
                       debug=self.debug)
         for key in sorted(d.__dict__.keys()):
@@ -32,15 +32,15 @@ class DataSource:
         return self
 
     def get_verbose(self):
-        return getattr(self.config, "verbose")
+        return getattr(self._config, "verbose")
     def set_verbose(self, value):
-        setattr(self.config, "verbose", value)
+        setattr(self._config, "verbose", value)
     verbose = property(get_verbose, set_verbose)
 
     def get_debug(self):
-        return getattr(self.config, "debug")
+        return getattr(self._config, "debug")
     def set_debug(self, value):
-        setattr(self.config, "debug", value)
+        setattr(self._config, "debug", value)
     debug = property(get_debug, set_debug)
 
 
@@ -74,19 +74,10 @@ def getMemSize():
 
 def main():
     args_proper, xtcdata_filename, verbose, debug = parse_command_line()
-    size0=getMemSize()
     ds=DataSource(xtcdata_filename, verbose=verbose, debug=debug)
     for evt in ds:
-        a0=evt.array0_pgp
-        del(evt)
-        del(a0)
-        gc.collect()
-        time.sleep(1)
-    del(ds)
-    gc.collect()
-    time.sleep(2)
-    size1=getMemSize()
-    print("size=%d; Delta size=%d" % (size1, size1-size0))
+        for var in sorted(vars(evt)):
+            print("var:", var)
     return
 
 def usage_error():

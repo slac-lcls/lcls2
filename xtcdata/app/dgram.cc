@@ -22,6 +22,7 @@ typedef struct {
     PyObject_HEAD
     PyObject* dict;
     Dgram* dgram;
+    int file_descriptor;
     int verbose;
     int debug;
 } PyDgramObject;
@@ -217,17 +218,28 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"verbose",
                              (char*)"debug",
                              NULL};
-    int fd;
+    int fd=0;
     PyObject* configDgram=0;
     self->verbose=0;
     self->debug=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "i|O$ii", kwlist,
+                                     "|iO$ii", kwlist,
                                      &fd,
                                      &configDgram,
                                      &(self->verbose),
                                      &(self->debug))) {
         return -1;
+    }
+
+    if (fd==0 && configDgram==0) {
+        PyErr_SetString(PyExc_StopIteration, "Must specify either file_descriptor or config");
+        return -1;
+    }
+
+    if (fd==0) {
+        fd=((PyDgramObject*)configDgram)->file_descriptor;
+    } else {
+        self->file_descriptor=fd;
     }
 
     self->dgram = (Dgram*)malloc(BUFSIZE);
@@ -266,6 +278,10 @@ static PyMemberDef dgram_members[] = {
       T_OBJECT_EX, offsetof(PyDgramObject, dict),
       0,
       (char*)"attribute dictionary" },
+    { (char*)"file_descriptor",
+      T_INT, offsetof(PyDgramObject, file_descriptor),
+      0,
+      (char*)"attribute file_descriptor" },
     { (char*)"verbose",
       T_INT, offsetof(PyDgramObject, verbose),
       0,
