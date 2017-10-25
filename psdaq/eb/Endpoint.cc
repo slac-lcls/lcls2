@@ -626,6 +626,33 @@ bool Fabric::lookup_memory_iovec(LocalIOVec* iov) const
 
 bool Fabric::up() const { return _up; }
 
+const char* Fabric::name() const
+{
+  if (_info) {
+    return _info->fabric_attr->name;
+  } else {
+    return NULL;
+  }
+}
+
+const char* Fabric::provider() const
+{
+  if (_info) {
+    return _info->fabric_attr->prov_name;
+  } else {
+    return NULL;
+  }
+}
+
+uint32_t Fabric::version() const
+{
+  if (_info) {
+    return _info->fabric_attr->prov_version;
+  } else {
+    return 0;
+  }
+}
+
 struct fi_info* Fabric::info() const { return _info; }
 
 struct fid_fabric* Fabric::fabric() const { return _fabric; }

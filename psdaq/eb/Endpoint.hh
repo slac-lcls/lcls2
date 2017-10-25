@@ -154,6 +154,9 @@ namespace Pds {
       MemoryRegion* lookup_memory(LocalAddress* laddr) const;
       bool lookup_memory_iovec(LocalIOVec* iov) const;
       bool up() const;
+      const char* name() const;
+      const char* provider() const;
+      uint32_t version() const;
       struct fi_info* info() const;
       struct fid_fabric* fabric() const;
       struct fid_domain* domain() const;
