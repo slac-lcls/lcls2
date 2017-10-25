@@ -109,6 +109,10 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             }
             }
             if ( (pyDgram->debug & 0x01) != 0 ) {
+                // place holder for old-style pointer management -- this should be remove at some point
+                printf("Warning: using old-style pointer management in DictAssign() (i.e. debug=1\n");
+            } else {
+                // New default behaviour
                 if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
                     char s[120];
                     sprintf(s, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
@@ -293,17 +297,14 @@ static PyMemberDef dgram_members[] = {
     { NULL }
 };
 
+
 PyObject* tp_getattro(PyObject* o, PyObject* key)
 {
     PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
     if (res != NULL) {
         if ( (((PyDgramObject*)o)->debug & 0x01) != 0 ) {
-            Py_INCREF(res);
-            PyDict_DelItem(((PyDgramObject*)o)->dict, key);
-            if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
-                Py_CLEAR(((PyDgramObject*)o)->dict);
-            }
-        } else {
+            // old-style pointer management -- this should be remove at some point
+            printf("Warning: using old-style pointer management in tp_getattro() (i.e. debug=1\n");
             if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
                 PyArrayObject* arr = (PyArrayObject*)res;
                 PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
@@ -322,8 +323,14 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
                 // variable is deleted, so must increment here.
                 Py_INCREF(res);
             }
+        } else {
+            // New default behaviour
+            Py_INCREF(res);
+            PyDict_DelItem(((PyDgramObject*)o)->dict, key);
+            if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
+                Py_CLEAR(((PyDgramObject*)o)->dict);
+            }
         }
-
     } else {
         res = PyObject_GenericGetAttr(o, key);
     }
