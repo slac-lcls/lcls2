@@ -63,9 +63,6 @@ namespace Pds {
       connectedBody                                                     \
     }
 
-    CPV(LinkDebug,      { GPVG(setLinkDebug (TOU(data())));            },
-                        { GPVP(getLinkDebug ());                       })
-
     CPV(LinkTxDelay,    { GPVG(linkTxDelay  (_idx, TOU(data())));      },
                         { GPVP(linkTxDelay  (_idx));                   })
     CPV(LinkPartition,  { GPVG(linkPartition(_idx, TOU(data())));      },
@@ -79,6 +76,9 @@ namespace Pds {
                         {                                              })
     CPV(RxLinkReset,    { if (TOU(data())!=0)
                             GPVG(rxLinkReset  (_idx));                 },
+                        {                                              })
+    CPV(RxLinkDump ,    { if (TOU(data())!=0)
+                            GPVG(rxLinkDump   (_idx));                 },
                         {                                              })
     CPV(LinkEnable,     { GPVG(linkEnable(_idx, TOU(data()) != 0));    },
                         { GPVP(linkEnable(_idx));                      })
@@ -149,14 +149,14 @@ namespace Pds {
       NPVN( DumpPll,            Module::NAmcs       );
       NPVN( DumpTiming,         2                   );
 
-      NPV ( LinkDebug                               );
-      NPVN( LinkTxDelay,        32);
-      NPVN( LinkPartition,      32);
-      NPVN( LinkTrgSrc,         32);
-      NPVN( LinkLoopback,       32);
-      NPVN( TxLinkReset,        32);
-      NPVN( RxLinkReset,        32);
-      NPVN( LinkEnable,         32);
+      NPVN( LinkTxDelay,        24    );
+      NPVN( LinkPartition,      24    );
+      NPVN( LinkTrgSrc,         24    );
+      NPVN( LinkLoopback,       24    );
+      NPVN( TxLinkReset,        24    );
+      NPVN( RxLinkReset,        24    );
+      NPVN( RxLinkDump,         Module::NDSLinks    );
+      NPVN( LinkEnable,         24    );
 #if 0
       NPVN( LinkRxReady,        32);
       NPVN( LinkTxReady,        32);

@@ -257,6 +257,19 @@ void Module::rxLinkReset(unsigned link)
   setf(_dsLinkConfig,0,1,30);
 }
 
+void Module::rxLinkDump(unsigned link) const
+{
+  Module& cthis = *const_cast<Module*>(this);
+  cthis.setRingBChan(link);
+
+  Pds::Cphw::RingBuffer& ring = cthis._rxRing;
+  ring.clear();
+  ring.enable(true);
+  usleep(100);
+  ring.enable(false);
+  ring.dump(20);
+}
+
 void Module::linkEnable(unsigned link, bool v)
 {
   setLink(link);
@@ -333,23 +346,9 @@ LinkStatus Module::linkStatus(unsigned link) const
   s.txReady = getf(dsLinkStatus,1,17);
   s.rxReady = getf(dsLinkStatus,1,19);
   s.isXpm   = getf(dsLinkStatus,1,20);
-  if (link<16) {
-    s.rxRcvs  = -1;
-    s.rxErrs  = getf(dsLinkStatus,16,0);
-  }
-  else if (link == 16) {
-    s.rxRcvs  = -1;
-    s.rxErrs  = -1;
-  }
-  else if (link<24) {
-    s.txReady = s.rxReady;
-    s.rxRcvs  = getf(dsLinkStatus,16,0);
-    setLink(link+8);
-    s.rxErrs  = getf(_dsLinkStatus,16,0);
-  }
-  else {
-    s.txReady = 0;
-    s.rxReady = 0;
+  s.rxErrs  = getf(_dsLinkStatus,16,0);
+  s.rxRcvs  = _dsLinkRcvs;
+  if (link == 16) {
     s.rxRcvs  = -1;
     s.rxErrs  = -1;
   }
@@ -612,12 +611,11 @@ void Module::dumpTiming(unsigned b) const
   Module& cthis = *const_cast<Module*>(this);
   Pds::Cphw::RingBuffer& ring = b==0 ? cthis._timing.ring0 : cthis._timing.ring1;
 
-  ring.enable(false);
   ring.clear();
   ring.enable(true);
-  usleep(10);
+  usleep(100);
   ring.enable(false);
-  ring.dump();
+  ring.dump(18);
 }
 
 void     Module::setPartition(unsigned v) const
@@ -631,12 +629,6 @@ void Module::setLink(unsigned v) const
   setf(const_cast<Pds::Cphw::Reg&>(_index),v,6,4);
 }
 unsigned Module::getLink() const { return getf(_index,6,4); }
-
-void     Module::setLinkDebug(unsigned v) const
-{
-  setf(const_cast<Pds::Cphw::Reg&>(_index),v,4,10);
-}
-unsigned Module::getLinkDebug() const     { return getf(_index,  4,10); }
 
 void     Module::setAmc(unsigned v) const
 {
@@ -656,6 +648,7 @@ void Module::setL0Delay(unsigned partition, unsigned v)
 {
   setPartition(partition);
   setf(_pipelineDepth, v*200, 32, 0);
+  resetL0();
   setf(_messagePayload, v, 32, 0);
   setf(_message, ((1<<15) | MSG_DELAY_PWORD), 16, 0);
 }

@@ -216,7 +216,7 @@ void StatsTimer::expired()
   _pvs.update(c,_c,links,_links,bpClk,dt);
   _sem.give();
   _c=c;
-  std::copy(links,links+Pds::Xpm::Module::NDSLinks,_links);
+  std::copy(links,links+32,_links);
   _t=t;
 
   for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
