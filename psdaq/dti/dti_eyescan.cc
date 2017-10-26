@@ -28,6 +28,7 @@ static bool lsparse = false;
 void* scan_routine(void* arg)
 {
   unsigned lane = *(unsigned*)arg;
+  printf("Start lane %u\n",lane);
 
   char ofile[64];
   sprintf(ofile,"%s.%u",outfile,lane);
@@ -51,13 +52,15 @@ int main(int argc, char** argv) {
   int c;
 
   const char* ip  = "10.0.1.103";
+  unsigned lanes = 1;
 
-  while ( (c=getopt( argc, argv, "a:f:p:sh")) != EOF ) {
+  while ( (c=getopt( argc, argv, "a:f:l:p:sh")) != EOF ) {
     switch(c) {
     case 'a': ip = optarg; break;
     case 'f': outfile = optarg; break;
     case 'p': prescale = strtoul(optarg,NULL,0); break;
     case 's': lsparse = true; break;
+    case 'l': lanes = strtoul(optarg,NULL,0); break;
     case 'h': default:  usage(argv[0]); return 0;
     }
   }
@@ -71,16 +74,19 @@ int main(int argc, char** argv) {
   unsigned lane[7];
 
   for(unsigned i=0; i<7 ;i++) {
-    pthread_attr_t tattr;
-    pthread_attr_init(&tattr);
-    lane[i] = i;
-    if (pthread_create(&tid[i], &tattr, &scan_routine, &lane[i]))
-      perror("Error creating scan thread");
-  }
+    if (lanes & (1<<i)) {
+      pthread_attr_t tattr;
+      pthread_attr_init(&tattr);
+      lane[i] = i;
+      if (pthread_create(&tid[i], &tattr, &scan_routine, &lane[i]))
+        perror("Error creating scan thread");
+    }
+  } 
 
   void* retval;
   for(unsigned i=0; i<7; i++)
-    pthread_join(tid[i], &retval);
+    if (lanes & (1<<i))
+      pthread_join(tid[i], &retval);
 
   return 0;
 }
