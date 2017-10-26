@@ -1,17 +1,12 @@
 #include "psdaq/eb/BatchManager.hh"
-
-#include "psdaq/eb/FtInlet.hh"
-#include "psdaq/eb/FtOutlet.hh"
+#include "psdaq/eb/EbFtClient.hh"
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
 #include "psdaq/service/Semaphore.hh"
 #include "psdaq/service/GenericPoolW.hh"
-#include "psdaq/xtc/Datagram.hh"
-#include "psdaq/xtc/XtcType.hh"
+#include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
-#include "xtcdata/xtc/DetInfo.hh"
-//#include "xtcdata/psddl/smldata.ddl.h"
 
 #include <new>
 #include <poll.h>
@@ -21,23 +16,22 @@
 #include <stdio.h>
 #include <unistd.h>
 
+using namespace XtcData;
 using namespace Pds;
 
-//typedef Pds::SmlData::ProxyV1 SmlD;
+static const uint64_t batch_duration   = 0x20000; // 128 uS; should be power of 2
+static const unsigned max_batches      = 16; //8192;     // 1 second's worth
+static const unsigned max_entries      = 128;     // 128 uS worth
+static const size_t   header_size      = sizeof(Dgram);
+static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  data words
+static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
+static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
+static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 
-static const uint64_t  batch_duration   = 0x20000; // 128 uS; should be power of 2
-static const unsigned  max_batches      = 16; //8192;     // 1 second's worth
-static const unsigned  max_entries      = 4;  //128;      // 128 uS worth
-static const size_t    header_size      = /*sizeof(SmlD) + 2 **/ sizeof(Xtc) + sizeof(Datagram);
-static const size_t    input_extent     = 5; // Revisit: Number of "L3" input data words
-static const size_t    result_extent    = 2;
-static const size_t    max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
-static const size_t    max_result_size  = header_size + result_extent * sizeof(uint32_t);
-
-static       bool      lverbose         = false;
+static       bool     lverbose         = false;
 
 
-//static void dump(const Pds::Datagram* dg)
+//static void dump(const Dgram* dg)
 //{
 //  char buff[128];
 //  time_t t = dg->seq.clock().seconds();
@@ -51,8 +45,6 @@ static       bool      lverbose         = false;
 //         dg->xtc.extent, dg->xtc.damage.value());
 //}
 
-//static const TypeId  smlType((TypeId::Type)SmlD::TypeId, SmlD::Version);
-
 namespace Pds {
   namespace Eb {
 
@@ -60,9 +52,10 @@ namespace Pds {
     {
     public:
       DrpSim(unsigned poolSize, unsigned id) :
-        _maxEvtSz(/*sizeof(SmlD) + 2 **/ sizeof(Xtc) + sizeof(Datagram)),
+        _maxEvtSz(max_contrib_size),
         _pool    (new GenericPoolW(_maxEvtSz, poolSize)),
-        _info    (0, DetInfo::XppGon, 0, DetInfo::Wave8, id),
+        _typeId  (TypeId::Data, 0),
+        _src     (Level::Segment),
         _pid     (0),
         _task    (new Task(TaskObject("drp"))),
         _sem     (Semaphore::FULL)
@@ -85,16 +78,17 @@ namespace Pds {
           // Fake datagram header
           struct timespec ts;
           clock_gettime(CLOCK_REALTIME, &ts); // Revisit: Clock won't be synchronous across machines
-          Dgram dg;
-          dg.seq = Sequence(Sequence::Event, TransitionId::L1Accept, ClockTime(ts), TimeStamp(0, _pid++, 0));
+          Sequence seq(Sequence::Event, TransitionId::L1Accept, ClockTime(ts), TimeStamp(_pid++));
+          Env      env(0);
+          Xtc      xtc(_typeId, _src);
 
           // Make proxy to data (small data)
-          Datagram* pdg = new (buffer) Datagram(dg, _l3SummaryType /*smlType*/, _info);
+          Dgram* pdg = (Dgram*)buffer;
+          pdg->seq = seq;
+          pdg->env = env;
+          pdg->xtc = xtc;
+
           size_t inputSize = input_extent*sizeof(uint32_t);
-          //SmlD* smlD = new (pdg->xtc.next()) SmlD((char*)pdg->xtc.next()-(char*)0+sizeof(Datagram),
-          //                                        _l3SummaryType, // Revisit: Replace this
-          //                                        inputSize);     // Revisit: Replace this
-          //pdg->xtc.alloc(smlD->_sizeof());
 
           // Revisit: Here is where L3 trigger input information would be inserted into the datagram,
           //          whatever that will look like.  SmlD is nominally the right container for this.
@@ -114,7 +108,8 @@ namespace Pds {
     private:
       unsigned      _maxEvtSz;
       GenericPoolW* _pool;
-      DetInfo       _info;
+      TypeId        _typeId;
+      Src           _src;
       uint64_t      _pid;
       int           _fd[2];
       Task*         _task;
@@ -125,7 +120,7 @@ namespace Pds {
                              public Routine
     {
     public:
-      TstContribOutlet(FtOutlet& outlet,
+      TstContribOutlet(EbFtBase& outlet,
                        unsigned  id,
                        unsigned  numEbs,
                        uint64_t  duration,
@@ -153,7 +148,7 @@ namespace Pds {
       {
         while (_running)
         {
-          const Datagram* contrib = _pend();
+          const Dgram* contrib = _pend();
           if (!contrib)  continue;
 
           process(contrib);
@@ -166,7 +161,7 @@ namespace Pds {
         postTo(batch, dst, batch->index());
       }
     private:
-      Datagram* _pend()
+      Dgram* _pend()
       {
         char* p;
         if (::read(_sim.fd(), &p, sizeof(p)) < 0)
@@ -177,7 +172,7 @@ namespace Pds {
 
         _sim.go();        // Revisit: Kludge to allow preparation of next event
 
-        Datagram* pdg = reinterpret_cast<Datagram*>(p);
+        Dgram* pdg = reinterpret_cast<Dgram*>(p);
 
         if (lverbose)
           printf("ContribOutlet read dg %p from fd %d\n", pdg, _sim.fd());
@@ -194,7 +189,7 @@ namespace Pds {
     class TstContribInlet : public XtcIterator
     {
     public:
-      TstContribInlet(FtInlet& inlet) :
+      TstContribInlet(EbFtBase& inlet) :
         XtcIterator(),
         _inlet(inlet),
         _running(true)
@@ -208,15 +203,15 @@ namespace Pds {
       {
         while (_running)
         {
-          // Pend for a result Datagram (batch) and handle it.
-          Datagram* batch = (Datagram*)_inlet.pend();
+          // Pend for a result datagram (batch) and handle it.
+          Dgram* batch = (Dgram*)_inlet.pend();
 
           iterate(&batch->xtc);               // Calls process(xtc) below
         }
       }
       int process(Xtc* xtc)
       {
-        //Datagram* result = (Datagram*)xtc->payload();
+        //Dgram* result = (Dgram*)xtc->payload();
 
         // This method is used to handle the result datagram and to dispose of
         // the original source datagram, in other words:
@@ -231,7 +226,7 @@ namespace Pds {
         return 0;
       }
     private:
-      FtInlet&      _inlet;
+      EbFtBase&     _inlet;
       volatile bool _running;
     };
   };
@@ -260,9 +255,7 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s\n", "-S <src_port>",
-          "Source control port number (server: 32769)");
-  fprintf(stderr, " %-20s %s\n", "-D <dst_port>",
+  fprintf(stderr, " %-20s %s\n", "-P <dst_port>",
           "Destination control port number (client: 32768)");
 
   fprintf(stderr, " %-20s %s\n", "-i <ID>",
@@ -276,16 +269,14 @@ int main(int argc, char **argv)
 {
   int op, ret = 0;
   unsigned id = 0;
-  std::string src_port("32769");        // Port served to client
   std::string dst_port("32768");        // Connects with server port
   std::vector<std::string> dst_addr;
 
-  while ((op = getopt(argc, argv, "hvS:D:i:")) != -1)
+  while ((op = getopt(argc, argv, "hvP:i:")) != -1)
   {
     switch (op)
     {
-      case 'S':  src_port = std::string(optarg);       break;
-      case 'D':  dst_port = std::string(optarg);       break;
+      case 'P':  dst_port = std::string(optarg);       break;
       case 'i':  id       = strtoul(optarg, NULL, 0);  break;
       case 'v':  lverbose = true;                      break;
       case '?':
@@ -312,37 +303,26 @@ int main(int argc, char **argv)
   ::signal( SIGINT, sigHandler );
 
   unsigned numEbs      = dst_addr.size();
-  size_t   contribSize = max_batches * max_entries * max_contrib_size;
-  FtOutlet fto(dst_addr, dst_port);
-  unsigned tmo(120);                    // Seconds
-  ret = fto.connect(contribSize, tmo);
+  size_t   contribSize = max_batches * (sizeof(Dgram) + max_entries * max_contrib_size);
+  size_t   resultSize  = max_batches * (sizeof(Dgram) + max_entries * max_result_size);
+
+  EbFtClient ftc(dst_addr, dst_port, resultSize, contribSize);
+  unsigned   tmo(120);                  // Seconds
+  ret = ftc.connect(tmo);
   if (ret)
   {
-    fprintf(stderr, "FtOutlet connect() failed\n");
-    return ret;
-  }
-  size_t   resultSize = max_batches * max_entries * max_result_size;
-  char*    resultPool = new char[resultSize];
-  FtInlet  fti(src_port);
-  bool     shared(true); // Revisit: Whether peer's buffers are shared with all contributors
-  ret = fti.connect(resultPool, numEbs, resultSize, shared);
-  if (ret)
-  {
-    fprintf(stderr, "FtInlet connect() failed\n");
-    delete resultPool;
+    fprintf(stderr, "FtClient connect() failed\n");
     return ret;
   }
 
-  TstContribOutlet outlet(fto, id, numEbs, batch_duration, max_batches, max_entries, max_contrib_size);
-  TstContribInlet  inlet (fti);
+  TstContribOutlet outlet(ftc, id, numEbs, batch_duration, max_batches, max_entries, max_contrib_size);
+  TstContribInlet  inlet (ftc);
   contribInlet = &inlet;
 
   inlet.process();
 
   outlet.shutdown();
+  ftc.shutdown();
 
-  fto.shutdown();
-  fti.shutdown();
-  delete resultPool;
   return ret;
 }

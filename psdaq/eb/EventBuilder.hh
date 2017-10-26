@@ -7,10 +7,13 @@
 #include "psdaq/service/Timer.hh"
 #include "psdaq/service/GenericPool.hh"
 
+namespace XtcData {
+  class Dgram;
+};
+
 namespace Pds {
 
   class Task;
-  class Datagram;
 
   namespace Eb {
 
@@ -28,14 +31,14 @@ namespace Pds {
     public:
       virtual void       fixup(EbEvent*, unsigned srcId) = 0;
       virtual void       process(EbEvent*)               = 0;
-      virtual uint64_t   contract(Datagram*) const       = 0;
+      virtual uint64_t   contract(XtcData::Dgram*) const = 0;
     protected:                          // Timer interface
       virtual void       expired();
       virtual Task*      task();
       virtual unsigned   duration()   const;
       virtual unsigned   repetitive() const;
     public:
-      void               process(Datagram*);
+      void               process(XtcData::Dgram*);
     private:
       EbEpoch*          _match(uint64_t key);
       EbEpoch*          _epoch(uint64_t key, EbEpoch* after);

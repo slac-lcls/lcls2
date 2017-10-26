@@ -1,7 +1,7 @@
 #include "BatchManager.hh"
-#include "FtOutlet.hh"
+#include "EbFtBase.hh"
 
-#include "psdaq/xtc/Datagram.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 using namespace XtcData;
 using namespace Pds;
@@ -13,7 +13,7 @@ static uint64_t clkU64(const ClockTime& clk)
   return uint64_t(clk.seconds()) << 32 | uint64_t(clk.nanoseconds());
 }
 
-BatchManager::BatchManager(FtOutlet& outlet,
+BatchManager::BatchManager(EbFtBase& outlet,
                            unsigned  id,       // Revisit: Should be a Src?
                            uint64_t  duration, // = ~((1 << N) - 1) = 128 uS?
                            unsigned  batchDepth,
@@ -55,7 +55,7 @@ BatchManager::~BatchManager()
 {
 }
 
-void BatchManager::process(const Datagram* contrib, void* arg)
+void BatchManager::process(const Dgram* contrib, void* arg)
 {
   ClockTime start = _startTime(contrib->seq.clock());
 

@@ -3,16 +3,13 @@
 #include "psdaq/eb/EbEvent.hh"
 #include "psdaq/eb/EbContribution.hh"
 
-#include "psdaq/eb/FtInlet.hh"
-#include "psdaq/eb/FtOutlet.hh"
+#include "psdaq/eb/EbFtServer.hh"
 
-#include "psdaq/xtc/Datagram.hh"
-#include "psdaq/xtc/XtcType.hh"
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
 #include "psdaq/service/GenericPoolW.hh"
+#include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
-//#include "pdsdata/psddl/smldata.ddl.h"
 
 #include <unistd.h>
 #include <stdio.h>
@@ -21,22 +18,22 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
+using namespace XtcData;
 using namespace Pds;
 
-//typedef Pds::SmlData::ProxyV1 SmlD;
 
-static const uint64_t  batch_duration   = 0x20000; // 128 uS; must be power of 2
-static const unsigned  max_batches      = 16; //8192;     // 1 second's worth
-static const unsigned  max_entries      = 4;  //128;      // 128 uS worth
-static const size_t    header_size      = /*sizeof(SmlD) + 2 **/ sizeof(Xtc) + sizeof(Datagram);
-static const size_t    input_extent     = 5; // Revisit: Number of "L3" input data words
-static const size_t    result_extent    = 2;
-static const size_t    max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
-static const size_t    max_result_size  = header_size + result_extent * sizeof(uint32_t);
+static const uint64_t batch_duration   = 0x20000; // 128 uS; must be power of 2
+static const unsigned max_batches      = 16; //8192;     // 1 second's worth
+static const unsigned max_entries      = 128;     // 128 uS worth
+static const size_t   header_size      = sizeof(Dgram);
+static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  data words
+static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
+static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
+static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 
-static       bool      lverbose         = false;
+static       bool     lverbose         = false;
 
-//static void dump(const Pds::Datagram* dg)
+//static void dump(const Pds::Dgram* dg)
 //{
 //  char buff[128];
 //  time_t t = dg->seq.clock().seconds();
@@ -51,8 +48,6 @@ static       bool      lverbose         = false;
 //         dg->xtc.damage.value());
 //}
 
-//static const TypeId  smlType((TypeId::Type)SmlD::TypeId, SmlD::Version);
-
 namespace Pds {
   namespace Eb {
     class TheSrc : public Src
@@ -65,11 +60,11 @@ namespace Pds {
       }
     };
 
-    class Result : public Datagram
+    class Result : public Dgram
     {
     public:
-      Result(const Datagram& dg, const TypeId& ctn, unsigned src) :
-        Datagram(dg, ctn, TheSrc(src)), // Revisit: Yuck!
+      Result(const Dgram& dg) : //, const TypeId& ctn, unsigned src) :
+        Dgram(dg), // Revisit: , ctn, TheSrc(src)), // Revisit: Yuck!
         _dst(_dest),
         _idx(_index)
       {
@@ -85,10 +80,7 @@ namespace Pds {
       unsigned dst(unsigned i) const { return _dest[i];     }
       unsigned idx(unsigned i) const { return _index[i];    }
     private:
-      // Revisit: Need to reserve space for the payload here, I think
-      Xtc       _reserved_0;
-      //SmlD      _reserved_1;
-      uint32_t  _reserved_2[result_extent]; // Revisit: buffer
+      uint32_t  _reserved_0[result_extent]; // Revisit: buffer
     private:
       unsigned* _dst;
       unsigned* _idx;
@@ -102,7 +94,7 @@ namespace Pds {
                         public Routine
     {
     public:
-      TstEbOutlet(FtOutlet& outlet,
+      TstEbOutlet(EbFtBase& outlet,
                   unsigned  id,
                   uint64_t  duration,
                   unsigned  maxBatches,
@@ -145,7 +137,7 @@ namespace Pds {
                        public XtcIterator
     {
     public:
-      TstEbInlet(FtInlet&     inlet,
+      TstEbInlet(EbFtBase&    inlet,
                  unsigned     id,
                  uint64_t     duration,
                  unsigned     maxBatches,
@@ -161,12 +153,12 @@ namespace Pds {
     public:
       void     init(TstEbOutlet* outlet);
       void     process(EbEvent* event);
-      uint64_t contract(Datagram* contrib) const;
+      uint64_t contract(Dgram* contrib) const;
       void     fixup(EbEvent* event, unsigned srcId);
     private:
       Result* _allocate(EbEvent* event);
     private:
-      FtInlet&      _inlet;
+      EbFtBase&     _inlet;
       unsigned      _id;
       const TypeId  _tag;
       uint64_t      _contract;
@@ -182,7 +174,7 @@ namespace Pds {
 
 using namespace Pds::Eb;
 
-TstEbInlet::TstEbInlet(FtInlet&     inlet,
+TstEbInlet::TstEbInlet(EbFtBase&    inlet,
                        unsigned     id,
                        uint64_t     duration,
                        unsigned     maxBatches,
@@ -193,7 +185,7 @@ TstEbInlet::TstEbInlet(FtInlet&     inlet,
   XtcIterator(),
   _inlet(inlet),
   _id(id),
-  _tag(_l3SummaryType),
+  _tag(TypeId::Data, 0), //_l3SummaryType),
   _contract(contributors),
   _results(sizeof(Result), maxEntries),
   //_dummy(Level::Fragment),
@@ -207,8 +199,8 @@ void TstEbInlet::process()
 {
   while (_running)
   {
-    // Pend for an input Datagram (batch) and pass it to the event builder.
-    Datagram* batch = (Datagram*)_inlet.pend();
+    // Pend for an input datagram (batch) and pass it to the event builder.
+    Dgram* batch = (Dgram*)_inlet.pend();
 
     iterate(&batch->xtc);               // Calls process(xtc) below
 
@@ -218,7 +210,7 @@ void TstEbInlet::process()
 
 int TstEbInlet::process(Xtc* xtc)
 {
-  Datagram* contribution = (Datagram*)xtc->payload();
+  Dgram* contribution = (Dgram*)xtc->payload();
 
   EventBuilder::process(contribution);
 
@@ -227,16 +219,11 @@ int TstEbInlet::process(Xtc* xtc)
 
 void TstEbInlet::process(EbEvent* event)
 {
-  const unsigned recThresh = 10; // Revisit: Some crud for now
-  const unsigned monThresh = 5;  // Revisit: Some crud for now
-  const unsigned rExtent   = 2;  // Revisit: Number of "L3" result data words
+  const unsigned recThresh = 10;       // Revisit: Some crud for now
+  const unsigned monThresh = 5;        // Revisit: Some crud for now
 
-  Result* rdg  = _allocate(event);
-  //SmlD*   smlD = new(rdg->xtc.next()) SmlD((char*)rdg->xtc.next()-(char*)0+sizeof(Datagram),
-  //                                         _l3SummaryType,            // Revisit: Replace this
-  //                                         rExtent*sizeof(uint32_t)); // Revisit: Define this
-  //rdg->xtc.alloc(smlD->_sizeof());
-  uint32_t* buffer = (uint32_t*)rdg->xtc.alloc(rExtent * sizeof(uint32_t));
+  Result*   rdg    = _allocate(event);
+  uint32_t* buffer = (uint32_t*)rdg->xtc.alloc(result_extent * sizeof(uint32_t));
 
   // Iterate over the event and build a result datagram
   EbContribution*  creator = event->creator();
@@ -250,12 +237,10 @@ void TstEbInlet::process(EbEvent* event)
     // The source of the contribution is one of the dsts
     rdg->destination(idg->number(), idg - creator);
 
-    //SmlD*     input   = (SmlD*)idg->xtc.payload(); // Contains the input data
     uint32_t* payload = (uint32_t*)idg->xtc.next();
-    //unsigned  iExtent = input->extent();
     for (unsigned i = 0; i < result_extent; ++i)
     {
-      sum += payload[i];          // Revisit: Some crud for now
+      sum += payload[i];               // Revisit: Some crud for now
     }
   }
   while (++contrib != end);
@@ -266,7 +251,7 @@ void TstEbInlet::process(EbEvent* event)
   _outlet.post(rdg);
 }
 
-uint64_t TstEbInlet::contract(Datagram* contrib) const
+uint64_t TstEbInlet::contract(Dgram* contrib) const
 {
   // Determine the read-out group to which contrib belongs
   // Look up the expected list of contributors -> contract
@@ -284,6 +269,8 @@ void TstEbInlet::fixup(EbEvent* event, unsigned srcId)
     fprintf(stderr, "%s: Called for source %d\n", __PRETTY_FUNCTION__, srcId);
   }
 
+  // Revisit: What can be done here?
+  //          And do we want to send a result to a contributor we haven't heard from?
   //Datagram* datagram = (Datagram*)event->data();
   //Damage    dropped(1 << Damage::DroppedContribution);
   //Src       source(srcId, 0);
@@ -296,14 +283,14 @@ void TstEbInlet::fixup(EbEvent* event, unsigned srcId)
 Result* TstEbInlet::_allocate(EbEvent* event)
 {
   EbContribution* contrib = event->creator();
-  Datagram*       src     = contrib->datagram();
+  Dgram*          src     = contrib->datagram();
 
   // Due to the resource-wait memory allocator used here, zero is never returned
-  Result* result = new(&_results) Result(*src, _tag, _id);
+  Result* result = new(&_results) Result(*src); // Revisit: , _tag, _id);
   return result;
 }
 
-TstEbOutlet::TstEbOutlet(FtOutlet& outlet,
+TstEbOutlet::TstEbOutlet(EbFtBase& outlet,
                          unsigned  id,
                          uint64_t  duration,
                          unsigned  maxBatches,
@@ -324,7 +311,7 @@ void TstEbOutlet::routine()
   while (_running)
   {
     // Pend for an output datagram (result) from the event builder.  When
-    // it arrives, process it into a Datagram (batch).  When the datagram
+    // it arrives, process it into a datagram (batch).  When the datagram
     // is complete, post it to all contributors.
     // This could be done in the same thread as the that of the EB.
     Result* result = _pend();
@@ -363,10 +350,8 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s\n", "-S <src_port>",
+  fprintf(stderr, " %-20s %s\n", "-P <src_port>",
           "Source control port number (server: 32768)");
-  fprintf(stderr, " %-20s %s\n", "-D <dst_port>",
-          "Destination control port number (client: 32769)");
 
   fprintf(stderr, " %-20s %s\n", "-i <ID>",
           "Unique ID this instance should assume (0 - 63) (default: 0)");
@@ -380,15 +365,13 @@ int main(int argc, char **argv)
   int op, ret = 0;
   unsigned id = 0;
   std::string src_port("32768");        // Port served to client
-  std::string dst_port("32769");        // Connects with server port
   std::vector<std::string> dst_addr;
 
-  while ((op = getopt(argc, argv, "hvS:D:i:")) != -1)
+  while ((op = getopt(argc, argv, "hvP:i:")) != -1)
   {
     switch (op)
     {
-      case 'S':  src_port = std::string(optarg);  break;
-      case 'D':  dst_port = std::string(optarg);  break;
+      case 'P':  src_port = std::string(optarg);  break;
       case 'i':  id       = atoi(optarg);         break;
       case 'v':  lverbose = true;                 break;
       case '?':
@@ -419,38 +402,25 @@ int main(int argc, char **argv)
   ::signal( SIGINT, sigHandler );
 
   unsigned numContribs = dst_addr.size();
-  size_t   contribSize = max_batches * max_entries * max_contrib_size;
-  char*    contribPool = new char[numContribs * contribSize];
-  FtInlet  fti(src_port);
-  bool     shared(false); // Revisit: Whether peer's buffers are shared with all contributors
-  ret = fti.connect(contribPool, numContribs, contribSize, shared);
+  size_t   contribSize = max_batches * (sizeof(Dgram) + max_entries * max_contrib_size);
+  size_t   resultSize  = max_batches * (sizeof(Dgram) + max_entries * max_result_size);
+
+  EbFtServer fts(src_port, numContribs, contribSize, resultSize);
+  ret = fts.connect();
   if (ret)
   {
-    fprintf(stderr, "FtInlet connect() failed\n");
-    delete contribPool;
-    return ret;
-  }
-  size_t   resultSize = max_batches * max_entries * max_result_size;
-  FtOutlet fto(dst_addr, dst_port);
-  unsigned tmo(120);                    // Seconds
-  ret = fto.connect(resultSize, tmo);
-  if (ret)
-  {
-    fprintf(stderr, "FtOutlet connect() failed\n");
-    delete contribPool;
+    fprintf(stderr, "FtServer connect() failed\n");
     return ret;
   }
 
-  TstEbOutlet outlet(fto, id, batch_duration, max_batches, max_entries, max_result_size);
-  TstEbInlet  inlet (fti, id, batch_duration, max_batches, max_entries, clients, outlet);
+  TstEbOutlet outlet(fts, id, batch_duration, max_batches, max_entries, max_result_size);
+  TstEbInlet  inlet (fts, id, batch_duration, max_batches, max_entries, clients, outlet);
   ebInlet = &inlet;
 
   inlet.process();
 
   outlet.shutdown();
+  fts.shutdown();
 
-  fto.shutdown();
-  fti.shutdown();
-  delete contribPool;
   return ret;
 }

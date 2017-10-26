@@ -13,17 +13,19 @@
 #include <string>
 
 
+namespace XtcData {
+  class Dgram;
+};
+
 namespace Pds {
-
-  class FtOutlet;
-  class Datagram;
-
   namespace Eb {
+
+    class EbFtBase;
 
     class BatchManager
     {
     public:
-      BatchManager(FtOutlet& outlet,
+      BatchManager(EbFtBase& outlet,
                    unsigned  src,       // Revisit: Should be a Src?
                    uint64_t  duration,
                    unsigned  batchDepth,
@@ -33,7 +35,7 @@ namespace Pds {
     public:
       virtual void post(Batch*, void* arg) = 0;
     public:
-      void         process(const Datagram*, void* arg = (void*)0);
+      void         process(const XtcData::Dgram*, void* arg = (void*)0);
       void         postTo(Batch*, unsigned dst, unsigned slot);
       void         release(const XtcData::ClockTime&);
       void         shutdown();
@@ -52,7 +54,7 @@ namespace Pds {
       GenericPoolW _pool;               // Pool of Batch objects
       BatchList    _inFlightList;       // Listhead of batches in flight
       SemLock      _inFlightLock;       // Lock for _inFlightList
-      FtOutlet&    _outlet;             // LibFabric transport
+      EbFtBase&    _outlet;             // LibFabric transport
     private:
       Batch*       _batch;              // Batch currently being assembled
     };

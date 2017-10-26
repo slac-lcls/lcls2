@@ -31,8 +31,8 @@ namespace Pds {
     class BatchEntry : public IovEntry
     {
     public:
-      BatchEntry(const Datagram& contrib) :
-        IovEntry(&contrib, sizeof(Datagram) + contrib.xtc.sizeofPayload())
+      BatchEntry(const XtcData::Dgram& contrib) :
+        IovEntry(&contrib, sizeof(contrib) + contrib.xtc.sizeofPayload())
       {
       }
       ~BatchEntry();
@@ -43,7 +43,7 @@ namespace Pds {
 using namespace XtcData;
 using namespace Pds::Eb;
 
-Batch::Batch(const Datagram& contrib, ClockTime& start) :
+Batch::Batch(const Dgram& contrib, ClockTime& start) :
   _datagram(contrib)
 {
   _datagram.seq        = Sequence(start, contrib.seq.stamp());
@@ -91,7 +91,7 @@ unsigned Batch::index() const
   return ((Batch1*)&this[1])->_index;
 }
 
-void Batch::append(const Datagram& contrib)
+void Batch::append(const Dgram& contrib)
 {
   BatchEntry* entry = new(((Batch1*)&this[1])->_pool) BatchEntry(contrib);
   assert(entry != (void*)0);

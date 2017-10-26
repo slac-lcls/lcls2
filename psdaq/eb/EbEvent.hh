@@ -9,10 +9,11 @@
 #include "xtcdata/xtc/ClockTime.hh"
 
 
+namespace XtcData {
+  class Dgram;
+};
+
 namespace Pds {
-
-  class Datagram;
-
   namespace Eb {
 
     class EventBuilder;

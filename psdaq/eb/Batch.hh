@@ -3,7 +3,8 @@
 
 #include "IovPool.hh"
 
-#include "psdaq/xtc/Datagram.hh"
+//#include "psdaq/xtc/Datagram.hh"
+#include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/service/Queue.hh"
 #include "psdaq/service/Pool.hh"
 
@@ -24,7 +25,7 @@ namespace Pds {
     class Batch : public Pds::Entry
     {
     public:
-      Batch(const Datagram&, XtcData::ClockTime&);
+      Batch(const XtcData::Dgram&, XtcData::ClockTime&);
       ~Batch();
     public:
       static size_t size();
@@ -32,14 +33,14 @@ namespace Pds {
     public:
       PoolDeclare;
     public:
-      void               append(const Datagram&);
+      void               append(const XtcData::Dgram&);
       const XtcData::ClockTime&   clock() const;
       void               clock(const XtcData::ClockTime& start);
       bool               expired(const XtcData::ClockTime&);
       struct fi_msg_rma* finalize();
       unsigned           index() const;
     private:
-      Datagram          _datagram;      // Batch descriptor
+      XtcData::Dgram    _datagram;      // Batch descriptor
       struct fi_rma_iov _rmaIov;        // Destination descriptor
       struct fi_msg_rma _rmaMsg;
     };
