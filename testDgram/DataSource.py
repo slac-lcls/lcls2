@@ -41,6 +41,17 @@ class DataSource:
         setattr(self._config, "debug", value)
     debug = property(_get_debug, _set_debug)
 
+    def print_event_variables(self):
+        for var_name in sorted(vars(self)):
+            if var_name == "_config": continue
+            v=getattr(self, var_name)
+            t=type(v).__name__
+            if t=="ndarray":
+                print("%s: %s array" % (var_name, v.dtype))
+            else:
+                print("%s: %s variable" % (var_name, t))
+        
+   
 
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
@@ -74,12 +85,11 @@ def main():
     args_proper, xtcdata_filename, verbose, debug = parse_command_line()
     ds=DataSource(xtcdata_filename, verbose=verbose, debug=debug)
     count=0
+    ds.print_event_variables()
     for evt in ds:
         print("evt:", count)
-        print("vars:")
-        for var in sorted(vars(evt)):
-            print(var)
-        count+=1
+        evt.print_event_variables()
+        print()
     return
 
 def usage_error():
