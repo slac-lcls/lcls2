@@ -90,6 +90,7 @@ def main():
         print("evt:", count)
         evt.print_event_variables()
         print()
+        count+=1
     return
 
 def usage_error():
