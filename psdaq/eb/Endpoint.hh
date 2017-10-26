@@ -154,6 +154,7 @@ namespace Pds {
       MemoryRegion* lookup_memory(LocalAddress* laddr) const;
       bool lookup_memory_iovec(LocalIOVec* iov) const;
       bool up() const;
+      bool has_rma_event_support() const;
       const char* name() const;
       const char* provider() const;
       uint32_t version() const;
@@ -210,7 +211,7 @@ namespace Pds {
       bool comp_wait(struct fi_cq_data_entry* comp, int* comp_num, ssize_t max_count, int timeout=-1);
       bool comp_error(struct fi_cq_err_entry* comp_err);
       /* Asynchronous calls (raw buffer) */
-      bool recv_comp_data(void* context);
+      bool recv_comp_data();
       bool send(void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
       bool recv(void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
       bool read(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
@@ -248,11 +249,13 @@ namespace Pds {
       bool recvv_sync(LocalIOVec* iov);
       bool readv_sync(LocalIOVec* iov, const RemoteAddress* raddr);
       bool writev_sync(LocalIOVec* iov, const RemoteAddress* raddr);
-      bool readmsg_sync(RmaMessage* msg, uint64_t flags);
-      bool writemsg_sync(RmaMessage* msg, uint64_t flags);
+      bool readmsg_sync(RmaMessage* msg, uint64_t flags=0);
+      bool writemsg_sync(RmaMessage* msg, uint64_t flags=0);
     private:
+      bool post_comp_data_recv(void* context=NULL);
       bool handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, int* comp_num, const char* cmd);
-      bool check_completion(int context, unsigned flags);
+      bool check_completion(int context, unsigned flags, uint64_t* data=0);
+      bool check_completion_noctx(unsigned flags, uint64_t* data=0);
       bool check_connection_state();
     private:
       uint64_t        _counter;

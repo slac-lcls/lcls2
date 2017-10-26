@@ -626,6 +626,15 @@ bool Fabric::lookup_memory_iovec(LocalIOVec* iov) const
 
 bool Fabric::up() const { return _up; }
 
+bool Fabric::has_rma_event_support() const
+{
+  if (_info && (_info->caps & FI_RMA_EVENT)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 const char* Fabric::name() const
 {
   if (_info) {
@@ -673,7 +682,7 @@ bool Fabric::initialize(const char* node, const char* service, uint64_t flags)
     _hints->ep_attr->type = FI_EP_MSG;
     _hints->domain_attr->mr_mode = FI_MR_BASIC;
     _hints->caps = FI_MSG | FI_RMA;
-    _hints->mode = FI_CONTEXT | FI_LOCAL_MR | FI_RX_CQ_DATA;
+    _hints->mode = FI_LOCAL_MR | FI_RX_CQ_DATA;
 
     if (!node)
       flags |= FI_SOURCE;
@@ -994,7 +1003,7 @@ bool Endpoint::comp_error(struct fi_cq_err_entry* comp_err)
   return true;
 }
 
-bool Endpoint::recv_comp_data(void* context)
+bool Endpoint::post_comp_data_recv(void* context)
 {
   ssize_t rret = fi_recv(_ep, NULL, 0, NULL, 0, context);
   if (rret != FI_SUCCESS) {
@@ -1006,15 +1015,29 @@ bool Endpoint::recv_comp_data(void* context)
   return true;
 }
 
+bool Endpoint::recv_comp_data()
+{
+  if (_fabric->has_rma_event_support()) {
+    return true;
+  } else {
+    // post a recieve buffer for remote completion
+    return post_comp_data_recv();
+  }
+}
+
 bool Endpoint::recv_comp_data_sync(uint64_t* data)
 {
-  int context = _counter++;
+  if (_fabric->has_rma_event_support()) {
+    return check_completion_noctx(FI_REMOTE_CQ_DATA, data);
+  } else {
+    int context = _counter++;
 
-  if(recv_comp_data(&context)) {
-    return check_completion(context, FI_REMOTE_CQ_DATA);
+    if(post_comp_data_recv(&context)) {
+      return check_completion(context, FI_REMOTE_CQ_DATA, data);
+    }
+
+    return false;
   }
-
-  return false;
 }
 
 bool Endpoint::send(void* buf, size_t len, void* context, const MemoryRegion* mr)
@@ -1350,14 +1373,34 @@ bool Endpoint::write_msg(const fi_msg_rma* msg, unsigned flags) // RiC hack
   return true;
 }
 
-bool Endpoint::check_completion(int context, unsigned flags)
+bool Endpoint::check_completion(int context, unsigned flags, uint64_t* data)
 {
   int num_comp;
   struct fi_cq_data_entry comp;
 
   if (comp_wait(&comp, &num_comp, 1) && num_comp == 1) {
     if ((comp.flags & flags) == flags) {
-      return (*((int*) comp.op_context) == context);
+      if (*((int*) comp.op_context) == context) {
+        if (data)
+          *data = comp.data;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool Endpoint::check_completion_noctx(unsigned flags, uint64_t* data)
+{
+  int num_comp;
+  struct fi_cq_data_entry comp;
+
+  if (comp_wait(&comp, &num_comp, 1) && num_comp == 1) {
+    if ((comp.flags & flags) == flags) {
+      if (data)
+        *data = comp.data;
+      return true;
     }
   }
 
