@@ -23,18 +23,12 @@
 #include "EventBuilder.hh"
 
 #include "psdaq/service/SysClk.hh"
-#include "xtcdata/xtc/ClockTime.hh"
 
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
 static const int MaxTimeouts=0x100;     // Revisit: Was 0xffff
-
-static uint64_t clkU64(const ClockTime& clk)
-{
-  return uint64_t(clk.seconds()) << 32 | uint64_t(clk.nanoseconds());
-}
 
 // Revisit: Fix stale comments:
 /*
@@ -62,9 +56,9 @@ EbEvent::EbEvent(uint64_t        contract,
   // Make sure we didn't run out of heap before initializing
   if (!this)  return;
 
-  const ClockTime& key = contrib->seq.clock();
+  uint64_t key = contrib->seq.stamp().pulseId();
   _sequence = key;
-  _key      = clkU64(key) & mask;
+  _key      = key & mask;
   _eb       = eb;
   _living   = MaxTimeouts;
   _tail     = _pending;
@@ -135,9 +129,8 @@ EbEvent* EbEvent::_add(EbContribution* contrib)
 
 void EbEvent::dump(int number)
 {
-  printf("   Event #%d @ address %p has sequence %08X%08X\n",
-         number, this,
-         _sequence.seconds(), _sequence.nanoseconds());
+  printf("   Event #%d @ address %p has sequence %016lX\n",
+         number, this, _sequence);
   printf("    Forward link -> %p, Backward link -> %p\n",
          forward(), reverse());
   printf("    Contributors remaining/requested = %08lX/%08lX\n",
@@ -156,10 +149,9 @@ void EbEvent::dump(int number)
   printf("    Contribs for this event:\n");
   while(next != empty)
   {
-    printf("src %02x seq %08x/%08x size %08x env %08x\n",
+    printf("src %02x seq %016lx size %08x env %08x\n",
            contrib->number(),
-           contrib->seq.clock().seconds(),
-           contrib->seq.clock().nanoseconds(),
+           contrib->seq.stamp().pulseId(),
            contrib->payloadSize(),
            contrib->env.value());
     contrib = *next++;

@@ -43,10 +43,11 @@ namespace Pds {
 using namespace XtcData;
 using namespace Pds::Eb;
 
-Batch::Batch(const Dgram& contrib, ClockTime& start) :
+Batch::Batch(const Dgram& contrib, uint64_t pid) :
   _datagram(contrib)
 {
-  _datagram.seq        = Sequence(start, contrib.seq.stamp());
+  TimeStamp ts(pid, contrib.seq.stamp().control());
+  _datagram.seq        = Sequence(contrib.seq.clock(), ts);
   _datagram.xtc.extent = sizeof(Xtc);
 
   new(((Batch1*)&this[1])->_pool) BatchEntry(_datagram);

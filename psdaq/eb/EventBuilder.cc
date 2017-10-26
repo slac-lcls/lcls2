@@ -13,11 +13,6 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-static uint64_t clkU64(const ClockTime& clk)
-{
-  return uint64_t(clk.seconds()) << 32 | uint64_t(clk.nanoseconds());
-}
-
 EventBuilder::EventBuilder(unsigned epochs,
                            unsigned entries,
                            uint64_t mask) :
@@ -113,11 +108,11 @@ EbEvent* EventBuilder::_insert(EbEpoch*        epoch,
 {
   EbEvent* empty = epoch->pending.empty();
   EbEvent* event = epoch->pending.reverse();
-  uint64_t key   = clkU64(contrib->seq.clock());
+  uint64_t key   = contrib->seq.stamp().pulseId();
 
   while (event != empty)
   {
-    uint64_t eventKey = clkU64(event->sequence());
+    uint64_t eventKey = event->sequence();
 
     if (eventKey == key) return event->_add(contrib);
     if (eventKey <  key) break;
@@ -142,7 +137,7 @@ void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
 
 EbEvent* EventBuilder::_insert(EbContribution* contrib)
 {
-  EbEpoch* epoch = _match(clkU64(contrib->seq.clock()));
+  EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
   EbEvent* event = _insert(epoch, contrib);
   if (!event->_remaining)  return event;
 
@@ -201,9 +196,8 @@ void EventBuilder::expired()            // Periodically called from a timer
     {
       if (!event->_alive())
       {
-        printf("Flushing event %08x %08x, size %zu, remaining %08lx\n",
-               event->sequence().seconds(),
-               event->sequence().nanoseconds(),
+        printf("Flushing event %016lx, size %zu, remaining %08lx\n",
+               event->sequence(),
                event->size(),
                event->_remaining);
 

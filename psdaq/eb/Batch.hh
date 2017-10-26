@@ -25,7 +25,7 @@ namespace Pds {
     class Batch : public Pds::Entry
     {
     public:
-      Batch(const XtcData::Dgram&, XtcData::ClockTime&);
+      Batch(const XtcData::Dgram&, uint64_t pid);
       ~Batch();
     public:
       static size_t size();
@@ -34,9 +34,9 @@ namespace Pds {
       PoolDeclare;
     public:
       void               append(const XtcData::Dgram&);
-      const XtcData::ClockTime&   clock() const;
-      void               clock(const XtcData::ClockTime& start);
-      bool               expired(const XtcData::ClockTime&);
+      uint64_t           id() const;
+      void               id(uint64_t pid);
+      bool               expired(uint64_t pid);
       struct fi_msg_rma* finalize();
       unsigned           index() const;
     private:
@@ -47,23 +47,24 @@ namespace Pds {
   };
 };
 
-inline const XtcData::ClockTime& Pds::Eb::Batch::clock() const
+inline uint64_t Pds::Eb::Batch::id() const
 {
-  return _datagram.seq.clock();
+  return _datagram.seq.stamp().pulseId();
 }
 
-inline void Pds::Eb::Batch::clock(const XtcData::ClockTime& start)
+inline void Pds::Eb::Batch::id(uint64_t pid)
 {
-  _datagram.seq = XtcData::Sequence(start, _datagram.seq.stamp());
+  XtcData::TimeStamp ts(pid, _datagram.seq.stamp().control());
+  _datagram.seq = XtcData::Sequence(_datagram.seq.clock(), ts);
 }
 
-inline bool Pds::Eb::Batch::expired(const XtcData::ClockTime& time)
+inline bool Pds::Eb::Batch::expired(uint64_t pid)
 {
-  if (clock() == time)    return false;
+  if (id() == pid)  return false;
 
-  if (!clock().isZero())  return true;
+  if (pid == 0UL)   return true;
 
-  clock(time);                 // Revisit: Happens only on the very first batch
+  id(pid);                     // Revisit: Happens only on the very first batch
   return false;
 }
 

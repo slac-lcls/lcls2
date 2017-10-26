@@ -6,8 +6,6 @@
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
 
-#include "xtcdata/xtc/ClockTime.hh"
-
 
 namespace XtcData {
   class Dgram;
@@ -31,7 +29,7 @@ namespace Pds {
               uint64_t        mask);
       ~EbEvent();
     public:
-      const XtcData::ClockTime&  sequence()  const;
+      uint64_t          sequence()  const;
       size_t            size()      const;
       uint64_t          remaining() const;
       uint64_t          contract()  const;
@@ -49,7 +47,7 @@ namespace Pds {
       void             _insert(EbContribution*);
       int              _alive();
     private:
-      XtcData::ClockTime        _sequence;     // Event's sequence identifier
+      uint64_t         _sequence;     // Event's sequence identifier
       size_t           _size;         // Total contribution size (in bytes)
       uint64_t         _remaining;    // List of clients which have contributed
       uint64_t         _contract;     // -> potential list of contributors
@@ -88,7 +86,7 @@ inline Pds::Eb::EbEvent::~EbEvent()
 ** --
 */
 
-inline const XtcData::ClockTime& Pds::Eb::EbEvent::sequence() const
+inline uint64_t Pds::Eb::EbEvent::sequence() const
 {
   return _sequence;
 }
