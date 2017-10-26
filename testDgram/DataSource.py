@@ -93,8 +93,7 @@ def main():
     ds.print_event_variables()
     for evt in ds:
         print("evt:", count)
-        print(evt.print_event_variables())
-        print()
+        evt.print_event_variables()
         a=evt.array0_pgp
         try:
             a[0][0]=999
@@ -102,6 +101,7 @@ def main():
             print("The evt.array0_pgp array is read-only, as it should be.")
         else:
             print("Warning: the evt.array0_pgp array is writable")
+        print()
         count+=1
     return
 
