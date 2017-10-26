@@ -122,11 +122,8 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 }
                 Py_INCREF(pyDgram);
             }
-            if ( (pyDgram->debug & 0x02) != 0 ) {
-                //set NPY_ARRAY_WRITEABLE
-                printf("Warning: clearing NPY_ARRAY_WARN_ON_WRITE flag on %s\n", tempName);
-                PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
-            }
+            //clear NPY_ARRAY_WRITEABLE flag
+            PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
         if (PyDict_Contains(pyDgram->dict, key)) {
             printf("Dgram: Ignoring duplicate key %s\n", tempName);
