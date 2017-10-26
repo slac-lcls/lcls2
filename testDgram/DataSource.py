@@ -47,7 +47,7 @@ class DataSource:
             v=getattr(self, var_name)
             t=type(v).__name__
             if t=="ndarray":
-                print("%s: %s array" % (var_name, v.dtype))
+                print("%s: %s array with shape %s" % (var_name, v.dtype, v.shape))
             else:
                 print("%s: %s variable" % (var_name, t))
         
