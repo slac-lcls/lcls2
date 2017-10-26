@@ -41,17 +41,22 @@ class DataSource:
         setattr(self._config, "debug", value)
     debug = property(_get_debug, _set_debug)
 
-    def print_event_variables(self):
+    def event_variables(self):
+        var_names=[]
         for var_name in sorted(vars(self)):
             if var_name == "_config": continue
+            var_names.append(var_name)
+        return var_names
+
+    def print_event_variables(self):
+        for var_name in self.event_variables():
             v=getattr(self, var_name)
             t=type(v).__name__
             if t=="ndarray":
                 print("%s: %s array with shape %s" % (var_name, v.dtype, v.shape))
             else:
-                print("%s: %s variable" % (var_name, t))
-        
-   
+                print("%s: %s variable with value" % (var_name, t), v)
+
 
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
@@ -88,8 +93,15 @@ def main():
     ds.print_event_variables()
     for evt in ds:
         print("evt:", count)
-        evt.print_event_variables()
+        print(evt.print_event_variables())
         print()
+        a=evt.array0_pgp
+        try:
+            a[0][0]=999
+        except ValueError:
+            print("The evt.array0_pgp array is read-only, as it should be.")
+        else:
+            print("Warning: the evt.array0_pgp array is writable")
         count+=1
     return
 
