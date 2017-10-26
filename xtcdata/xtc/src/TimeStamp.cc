@@ -12,7 +12,7 @@ namespace XtcData
     enum { v_pulseId = 0, k_pulseId = 56 };
     enum { v_cntrl = 56, k_cntrl = 8 };
     static const uint64_t m_pulseId = ((1ULL << k_pulseId) - 1);
-    static const uint64_t  s_pulseId = (m_pulseId << v_pulseId) ;
+    static const uint64_t s_pulseId = (m_pulseId << v_pulseId);
     static const uint64_t m_cntrl = ((1ULL << k_cntrl) - 1);
     static const uint64_t s_cntrl = (m_cntrl << v_cntrl);
 }
@@ -36,7 +36,7 @@ XtcData::TimeStamp::TimeStamp(uint64_t pulseId, unsigned control)
 {
 }
 
-unsigned XtcData::TimeStamp::pulseId() const
+uint64_t XtcData::TimeStamp::pulseId() const
 {
     return (_value & s_pulseId) >> v_pulseId;
 }

@@ -17,7 +17,7 @@ public:
     TimeStamp(uint64_t pulseId, unsigned control = 0);
 
 public:
-    unsigned pulseId() const; // 929kHz pulse ID
+    uint64_t pulseId() const; // 929kHz pulse ID
     unsigned control() const; // internal bits for alternate interpretation
     //   of XTC header fields
 public:
