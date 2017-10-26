@@ -191,7 +191,7 @@ bool LocalIOVec::add_iovec(std::vector<LocalAddress*>& local_addr)
     _iovs[_count] = *local_addr[i]->iovec();
     if (local_addr[i]->mr()) {
       _mr_desc[_count] = local_addr[i]->mr()->desc();
-    } 
+    }
     _count++;
   }
 
@@ -855,7 +855,7 @@ bool EndpointBase::initialize()
     .wait_cond = FI_CQ_COND_NONE,
     .wait_set = NULL,
   };
-  
+
   CHECK_ERR(fi_eq_open(_fabric->fabric(), &eq_attr, &_eq, NULL), "fi_eq_open");
   CHECK_ERR(fi_cq_open(_fabric->domain(), &cq_attr, &_cq, NULL), "fi_cq_open");
 
@@ -913,7 +913,7 @@ bool Endpoint::connect()
     _errno = -FI_ECONNREFUSED;
     return false;
   }
-  
+
   _state = EP_CONNECTED;
 
   return true;
@@ -1073,7 +1073,7 @@ bool Endpoint::recv_sync(void* buf, size_t len, const MemoryRegion* mr)
   if (recv(buf, len, &context, mr)) {
     return check_completion(context, FI_RECV | FI_MSG);
   }
-  
+
   return false;
 }
 
@@ -1336,6 +1336,18 @@ bool Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
   }
 
   return false;
+}
+
+bool Endpoint::write_msg(const fi_msg_rma* msg, unsigned flags) // RiC hack
+{
+  ssize_t rret = fi_writemsg(_ep, msg, flags);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_writemsg");
+    return false;
+  }
+
+  return true;
 }
 
 bool Endpoint::check_completion(int context, unsigned flags)

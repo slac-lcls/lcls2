@@ -229,6 +229,7 @@ namespace Pds {
       bool writev(LocalIOVec* iov, const RemoteAddress* raddr, void* context);
       bool readmsg(RmaMessage* msg, uint64_t flags);
       bool writemsg(RmaMessage* msg, uint64_t flags);
+      bool write_msg(const fi_msg_rma* msg, unsigned flags); // Temporary RiC hack
       /* Synchronous calls (raw buffer) */
       bool recv_comp_data_sync(uint64_t* data=NULL);
       bool send_sync(void* buf, size_t len, const MemoryRegion* mr=NULL);
