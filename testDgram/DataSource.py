@@ -4,44 +4,42 @@
 import sys, os
 import time
 import getopt
-#import pprint
+import pprint
 
 sys.path.append('../build/xtcdata')
 import dgram
-
-import gc
 #
 
 class DataSource:
+    """Stores variables and arrays loaded from an XTC source.\n"""
     def __init__(self, xtcdata_filename, verbose=0, debug=0):
         fd = os.open(xtcdata_filename,
                      os.O_RDONLY|os.O_LARGEFILE)
         self._config = dgram.Dgram(file_descriptor=fd,
                                    verbose=verbose,
                                    debug=debug)
-
     def __iter__(self):
         return self
 
     def __next__(self):
         d=dgram.Dgram(config=self._config,
-                      verbose=self.verbose,
-                      debug=self.debug)
+                      verbose=self._get_verbose(),
+                      debug=self._get_debug())
         for key in sorted(d.__dict__.keys()):
             setattr(self, key, getattr(d, key))
         return self
 
-    def get_verbose(self):
+    def _get_verbose(self):
         return getattr(self._config, "verbose")
-    def set_verbose(self, value):
+    def _set_verbose(self, value):
         setattr(self._config, "verbose", value)
-    verbose = property(get_verbose, set_verbose)
+    verbose = property(_get_verbose, _set_verbose)
 
-    def get_debug(self):
+    def _get_debug(self):
         return getattr(self._config, "debug")
-    def set_debug(self, value):
+    def _set_debug(self, value):
         setattr(self._config, "debug", value)
-    debug = property(get_debug, set_debug)
+    debug = property(_get_debug, _set_debug)
 
 
 def parse_command_line():
@@ -64,7 +62,7 @@ def parse_command_line():
         sys.stdout.write("debug: %d\n" % debug)
     return (args_proper, xtcdata_filename, verbose, debug)
 
-def getMemSize():
+def getMemUsage():
     pid=os.getpid()
     ppid=os.getppid()
     cmd="/usr/bin/ps -q %d --no-headers -eo size" % pid
@@ -77,20 +75,11 @@ def main():
     ds=DataSource(xtcdata_filename, verbose=verbose, debug=debug)
     count=0
     for evt in ds:
-        print("Event %d:" % count)
+        print("evt:", count)
+        print("vars:")
         for var in sorted(vars(evt)):
-            print("vars(evt):", var)
-
-        print("evt._config:", evt._config)
-        print("evt.array0_pgp:\n", evt.array0_pgp)
-        print("evt.array1_pgp:\n", evt.array1_pgp)
-        print("evt.float_fex:", evt.float_fex)
-        print("evt.float_pgp:", evt.float_pgp)
-        print("evt.int_fex:", evt.int_fex)
-        print("evt.int_pgp:", evt.int_pgp)
-        print()
+            print(var)
         count+=1
-
     return
 
 def usage_error():

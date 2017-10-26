@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <numpy/arrayobject.h>
+#include <numpy/ndarraytypes.h>
 #include <structmember.h>
 
 using namespace XtcData;
@@ -120,6 +121,11 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                     return;
                 }
                 Py_INCREF(pyDgram);
+            }
+            if ( (pyDgram->debug & 0x02) != 0 ) {
+                //set NPY_ARRAY_WRITEABLE
+                printf("Warning: clearing NPY_ARRAY_WARN_ON_WRITE flag on %s\n", tempName);
+                PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
             }
         }
         if (PyDict_Contains(pyDgram->dict, key)) {
