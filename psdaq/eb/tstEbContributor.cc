@@ -19,7 +19,7 @@
 using namespace XtcData;
 using namespace Pds;
 
-static const uint64_t batch_duration   = 0x20000; // 128 uS; should be power of 2
+static const uint64_t batch_duration   = 0x00000000000080UL; // ~128 uS; must be power of 2
 static const unsigned max_batches      = 16; //8192;     // 1 second's worth
 static const unsigned max_entries      = 128;     // 128 uS worth
 static const size_t   header_size      = sizeof(Dgram);
@@ -78,9 +78,11 @@ namespace Pds {
           // Fake datagram header
           struct timespec ts;
           clock_gettime(CLOCK_REALTIME, &ts); // Revisit: Clock won't be synchronous across machines
-          Sequence seq(Sequence::Event, TransitionId::L1Accept, ClockTime(ts), TimeStamp(_pid++));
+          Sequence seq(Sequence::Event, TransitionId::L1Accept, ClockTime(ts), TimeStamp(_pid)); //++));
           Env      env(0);
           Xtc      xtc(_typeId, _src);
+
+          _pid += 16;                   // Avoid too many events per batch for now
 
           // Make proxy to data (small data)
           Dgram* pdg = (Dgram*)buffer;
@@ -156,7 +158,7 @@ namespace Pds {
       }
       void post(Batch* batch, void* arg)
       {
-        unsigned dst = batchId(batch->clock()) % _numEbs;
+        unsigned dst = batchId(batch->id()) % _numEbs;
 
         postTo(batch, dst, batch->index());
       }

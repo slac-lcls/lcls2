@@ -5,6 +5,7 @@
 #include "psdaq/cphw/Reg64.hh"
 #include "psdaq/cphw/AmcTiming.hh"
 #include "psdaq/cphw/HsRepeater.hh"
+#include "psdaq/cphw/RingBuffer.hh"
 
 namespace Pds {
   namespace Xpm {
@@ -48,7 +49,7 @@ namespace Pds {
       bool     txReady;
       bool     rxReady;
       bool     isXpm;
-      uint16_t rxRcvs;
+      uint32_t rxRcvs;
       uint16_t rxErrs;
     };
 
@@ -122,13 +123,11 @@ namespace Pds {
       // Indexing
       void setPartition(unsigned) const;
       void setLink     (unsigned) const;
-      void setLinkDebug(unsigned) const;
       void setAmc      (unsigned) const;
       void setInhibit  (unsigned);
       void setTagStream(unsigned);
       unsigned getPartition() const;
       unsigned getLink     () const;
-      unsigned getLinkDebug() const;
       unsigned getAmc      () const;
       unsigned getInhibit  () const;
       unsigned getTagStream() const;
@@ -143,6 +142,7 @@ namespace Pds {
       bool     linkLoopback(unsigned) const;
       void     txLinkReset (unsigned);
       void     rxLinkReset (unsigned);
+      void     rxLinkDump  (unsigned) const;
       void     linkEnable  (unsigned, bool);
       bool     linkEnable  (unsigned) const;
       bool     linkRxReady (unsigned) const;
@@ -202,6 +202,8 @@ namespace Pds {
       //  [19]    rxReady       Receive  ready
       //  [20]    rxIsXpm       Remote side is XPM
       Cphw::Reg  _dsLinkStatus;
+      //  [31:0]  rxRcvCnts
+      Cphw::Reg  _dsLinkRcvs;
       //  0x0010 - RW: PLL configuration for AMC[index]
       //  [3:0]   bwSel         Loop filter bandwidth selection
       //  [5:4]   frqTbl        Frequency table - character {L,H,M} = 00,01,1x
@@ -273,7 +275,7 @@ namespace Pds {
       //  0x0070 - RW: Message payload for partition[index]
       Cphw::Reg   _messagePayload;
     private:
-      uint32_t    _reserved_116[3];
+      uint32_t    _reserved_116[2];
     public:
       //  0x0080 - RW: Inhibit configurations for partition[index]
       //  [11:0]  interval      interval (929kHz ticks)
@@ -289,6 +291,10 @@ namespace Pds {
       //  [30]     Fast
       //  [31]     Lock
       Cphw::Reg _monClk[4];
+    private:
+      uint32_t    _reserved_168[(0x10000-288)>>2];
+      //
+      Cphw::RingBuffer _rxRing;
     };
   };
 };

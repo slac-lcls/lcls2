@@ -48,6 +48,17 @@ target_link_libraries(amctiming
 )
 
 #
+#  amctiming_udp
+#
+add_executable(amctiming_udp amctiming.cc)
+
+target_link_libraries(amctiming_udp
+    dl
+    pthread
+    cphwr
+)
+
+#
 #  amc_eyescan
 #
 add_executable(amc_eyescan amc_eyescan.cc)
@@ -55,10 +66,10 @@ add_executable(amc_eyescan amc_eyescan.cc)
 target_link_libraries(amc_eyescan
     dl
     pthread
-    cphw
-    /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
+    cphwr
+#    /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
 #    /reg/common/package/boost/1.57.0/x86_64-rhel7-gcc48-opt/lib
-    /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
+#    /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
 
 #add_executable(h5writer

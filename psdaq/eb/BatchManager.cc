@@ -8,11 +8,6 @@ using namespace Pds;
 using namespace Pds::Eb;
 using namespace Pds::Fabrics;
 
-static uint64_t clkU64(const ClockTime& clk)
-{
-  return uint64_t(clk.seconds()) << 32 | uint64_t(clk.nanoseconds());
-}
-
 BatchManager::BatchManager(EbFtBase& outlet,
                            unsigned  id,       // Revisit: Should be a Src?
                            uint64_t  duration, // = ~((1 << N) - 1) = 128 uS?
@@ -45,10 +40,9 @@ BatchManager::BatchManager(EbFtBase& outlet,
   _pool.dump();
 
   Dgram     dg; //(TypeId(), Src());
-  ClockTime clk(0, 0);
-  dg.seq = Sequence(clk, TimeStamp());
+  dg.seq = Sequence(ClockTime(0, 0), TimeStamp());
 
-  _batch = new(&_pool) Batch(dg, clk);
+  _batch = new(&_pool) Batch(dg, dg.seq.stamp().pulseId());
 }
 
 BatchManager::~BatchManager()
@@ -57,13 +51,13 @@ BatchManager::~BatchManager()
 
 void BatchManager::process(const Dgram* contrib, void* arg)
 {
-  ClockTime start = _startTime(contrib->seq.clock());
+  uint64_t id = _startId(contrib->seq.stamp().pulseId());
 
-  if (_batch->expired(start))
+  if (_batch->expired(id))
   {
     post(_batch, arg);
 
-    _batch = new(&_pool) Batch(*contrib, start);
+    _batch = new(&_pool) Batch(*contrib, id);
   }
 
   _batch->append(*contrib);
@@ -85,7 +79,7 @@ void BatchManager::postTo(Batch*   batch,
   _inFlightList.insert(batch);          // Revisit: Replace with atomic list
 }
 
-void BatchManager::release(const ClockTime& time)
+void BatchManager::release(uint64_t id)
 {
   Batch* batch = _inFlightList.atHead();
   Batch* end   = _inFlightList.empty();
@@ -93,7 +87,7 @@ void BatchManager::release(const ClockTime& time)
   {
     Entry* next = batch->next();
 
-    if (time > batch->clock())
+    if (id > batch->id())
     {
       _inFlightList.remove(batch);      // Revisit: Replace with atomic list
       delete batch;
@@ -107,23 +101,22 @@ void BatchManager::shutdown()
   _outlet.shutdown();
 }
 
-//uint64_t BatchManager::batchId(const ClockTime & clk) const
+//uint64_t BatchManager::batchId(uint64_t id) const
 //{
-//  return clk.u64() / _duration;         // Batch number since EPOCH
+//  return id / _duration;         // Batch number since EPOCH
 //}
 
-uint64_t BatchManager::batchId(const ClockTime& clk) const
+uint64_t BatchManager::batchId(uint64_t id) const
 {
-  return clkU64(clk) >> _durationShift;   // Batch number since EPOCH
+  return id >> _durationShift;          // Batch number since EPOCH
 }
 
-//uint64_t BatchManager::_startTime(const ClockTime& clk) const
+//uint64_t BatchManager::_startId(uint64_t id) const
 //{
-//  return _batchId(clk) * _duration;     // Current batch start time
+//  return _batchId(id) * _duration;     // Current batch ID
 //}
 
-const ClockTime BatchManager::_startTime(const ClockTime& clk) const
+uint64_t BatchManager::_startId(uint64_t id) const
 {
-  uint64_t u64(clkU64(clk) & _durationMask);
-  return ClockTime((u64 >> 32) & 0xffffffffull, u64 & 0xffffffffull);
+  return id & _durationMask;
 }

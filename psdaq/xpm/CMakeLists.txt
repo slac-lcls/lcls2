@@ -44,3 +44,18 @@ target_link_libraries(xpmPVs
    /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
    /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
+
+#
+#  xpmPeek
+#
+add_executable(xpmPeek xpmPeek.cc)
+
+target_link_libraries(xpmPeek
+   dl
+   pthread
+   service
+   cphwr
+   epicstools
+   xpm
+   /reg/common/package/epicsca/3.14.12/lib/x86_64-rhel7-opt/libca.so
+)

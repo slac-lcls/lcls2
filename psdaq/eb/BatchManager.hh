@@ -5,7 +5,6 @@
 
 #include "psdaq/service/GenericPoolW.hh"
 #include "psdaq/service/SemLock.hh"
-#include "xtcdata/xtc/ClockTime.hh"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -37,14 +36,14 @@ namespace Pds {
     public:
       void         process(const XtcData::Dgram*, void* arg = (void*)0);
       void         postTo(Batch*, unsigned dst, unsigned slot);
-      void         release(const XtcData::ClockTime&);
+      void         release(uint64_t id);
       void         shutdown();
-      uint64_t     batchId(const XtcData::ClockTime&) const;
+      uint64_t     batchId(uint64_t id) const;
     private:
       void         _post(const Batch&);
       void         _batchInit(unsigned batchDepth, unsigned poolDepth);
     private:
-      const XtcData::ClockTime _startTime(const XtcData::ClockTime&) const;
+      uint64_t     _startId(uint64_t id) const;
     private:
       unsigned     _src;                // ID of this node
       uint64_t     _duration;           // The lifetime of a batch (power of 2)

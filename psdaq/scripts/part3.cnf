@@ -1,7 +1,7 @@
 bin_path     = '/reg/neh/home/weaver/lcls2/build/'
 scripts_path = '/reg/neh/home/weaver/lcls2/psdaq/scripts/'
 
-platform = '2'
+platform = '3'
 username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
@@ -39,12 +39,9 @@ procmgr_config = [
  {                       id:'modca'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
  {                       id:'deadca-'+platform  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
  { host: daq_tst_dev05,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
- {                       id:'dtisimple' , flags:'sx', cmd:'psdaq/dti/dti_simple -a '+ip_addr+'.105 -u 0xf -f 1,2,4,8 -t '+platform},
-# { host: daq_tst_dev05,  id:'dticas' , flags:'sx', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/dticas.py -P LAB2'},
-# {                       id:'dtiioc' , flags:'sx', env:epics_env, cmd:'psdaq/dti/dtiPVs -a '+ip_addr+'.105 -P LAB2'},
-# {                       id:'dtigui' , flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/dtica.py '},
- { host: daq_tst_dev04,  id:'xLoop', flags:'s', cmd:'pgp/pgpcardG3/app/xLoopTest -P /dev/pgpcardG3_0_5 -T 0x80 -L 0xf0 -s 10240 -n 16 -F 8 -S' },
- { host: daq_tst_dev04,  id:'xRead', flags:'sx', cmd:'pgp/pgpcardG3/app/xRead -P /dev/pgpcardG3_0_1 -L 4 -r'},
+# { host: daq_tst_dev03,  id:'hsd'    ,flags:'sx', cmd:bin_path+'psdaq/hsd_pgp -c 0xf -s 0x3 -l 128 -p 3 -t 0'},
+# { host: daq_tst_dev03,  id:'hsd'    ,flags:'sx', cmd:'/usr/bin/tcsh'},
+ { host: daq_tst_dev03,  id:'hsdr   ',flags:'sx', cmd:bin_path+'psdaq/hsd/hsdRead -P /dev/pgpcardG3_0_1 -L 4 -r'},
  {                       id:'epics', flags:'sx', env:epics_env, cmd:'/usr/bin/bash'},
 
 ## procstat

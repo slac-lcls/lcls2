@@ -22,7 +22,7 @@ using namespace XtcData;
 using namespace Pds;
 
 
-static const uint64_t batch_duration   = 0x20000; // 128 uS; must be power of 2
+static const uint64_t batch_duration   = 0x00000000000080UL; // ~128 uS; must be power of 2
 static const unsigned max_batches      = 16; //8192;     // 1 second's worth
 static const unsigned max_entries      = 128;     // 128 uS worth
 static const size_t   header_size      = sizeof(Dgram);
@@ -204,7 +204,7 @@ void TstEbInlet::process()
 
     iterate(&batch->xtc);               // Calls process(xtc) below
 
-    _outlet.release(batch->seq.clock());
+    _outlet.release(batch->seq.stamp().pulseId());
   }
 }
 

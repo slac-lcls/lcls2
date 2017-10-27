@@ -46,7 +46,7 @@ if __name__ == '__main__':
     prefix = args.P
     
     # PVs
-    pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 7}
+    pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 255}
     #pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 1}
     pvdb[':PAddr'              ] = {'type' : 'int'}
     pvdb[':FwBuild'            ] = {'type' : 'char', 'count':256}
@@ -57,9 +57,12 @@ if __name__ == '__main__':
     for i in range(2):
         pvdb[':DumpTiming%d'%i ] = {'type' : 'int'}
 
-    pvdb[':LinkDebug'          ] = {'type' : 'int'}
     pvdb[':Inhibit'            ] = {'type' : 'int'}
     pvdb[':TagStream'          ] = {'type' : 'int'}
+
+    LinkEnable = [0]*32
+    LinkEnable[17:19] = [1]*3
+    print LinkEnable
 
     for i in range(32):
         pvdb[':LinkTxDelay'  +'%d'%i] = {'type' : 'int'}
@@ -68,7 +71,8 @@ if __name__ == '__main__':
         pvdb[':LinkLoopback' +'%d'%i] = {'type' : 'int'}
         pvdb[':TxLinkReset'  +'%d'%i] = {'type' : 'int'}
         pvdb[':RxLinkReset'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkEnable'   +'%d'%i] = {'type' : 'int'}
+        pvdb[':RxLinkDump'   +'%d'%i] = {'type' : 'int'}
+        pvdb[':LinkEnable'   +'%d'%i] = {'type' : 'int', 'value' : LinkEnable[i] }
         pvdb[':LinkTxReady'  +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkRxReady'  +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkRxRcv'    +'%d'%i] = {'type' : 'int'}

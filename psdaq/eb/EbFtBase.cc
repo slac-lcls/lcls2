@@ -108,10 +108,10 @@ int EbFtBase::post(fi_msg_rma* msg,
                    void*       ctx)
 {
   fi_rma_iov* iov = const_cast<fi_rma_iov*>(msg->rma_iov);
-  iov->addr   += _ra[dst].addr;         // Revisit: Kinda kludgey
-  iov->key     = _ra[dst].rkey;         // Revisit: _mr's?
+  iov->addr = _ra[dst].addr + dstOffset;
+  iov->key  = _ra[dst].rkey;             // Revisit: _mr's?
 
-  void* desc = _mr[dst]->desc();        // Revisit: Fix kluginess
+  void* desc = _mr[dst]->desc();         // Revisit: Fix kluginess
   for (unsigned i = 0; i < msg->iov_count; ++i)
   {
     msg->desc[i] = desc;
