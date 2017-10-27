@@ -111,7 +111,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             }
             if ( (pyDgram->debug & 0x01) != 0 ) {
                 // place holder for old-style pointer management -- this should be remove at some point
-                printf("Warning: using old-style pointer management in DictAssign() (i.e. debug=1\n");
+                printf("Warning: using old-style pointer management in DictAssign() (i.e. debug=1)\n");
             } else {
                 // New default behaviour
                 if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
@@ -307,7 +307,7 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
     if (res != NULL) {
         if ( (((PyDgramObject*)o)->debug & 0x01) != 0 ) {
             // old-style pointer management -- this should be remove at some point
-            printf("Warning: using old-style pointer management in tp_getattro() (i.e. debug=1\n");
+            printf("Warning: using old-style pointer management in tp_getattro() (i.e. debug=1)\n");
             if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
                 PyArrayObject* arr = (PyArrayObject*)res;
                 PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
