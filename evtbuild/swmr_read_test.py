@@ -55,29 +55,9 @@ def client(file_list):
         eof_sw = False
         exit_ctr = 0
         while True:
-            # while True:
-            #     start = time.time()
-            #     if batch_num == written_batches:
-            #         dset.id.refresh()
-            #         file_cap = dset.shape[0]
-            #         written_batches = file_cap/batch_size 
-            #     if batch_num == written_batches:
-            #         time.sleep(0.05)
-            #     elif batch_num < written_batches:
-            #         break
-            # while True:
-            #     start = time.time()
-            #     dset.id.refresh()
-            #     file_cap = dset.shape[0]
-            #     written_batches = file_cap/batch_size 
-            #     if written_batches > batch_num:
-            #         break
-
-#            file_info = os.stat(file_name)
             size_file = os.stat(file_name).st_size/10**6
             prev_size = size_file
             
-         #   print(eof_sw)
             if ((read_mb + 2000) > size_file and not eof_sw):
                 print('Near end of file. Waiting for more data')
                 while True:
@@ -110,12 +90,9 @@ def client(file_list):
               
                 
             start =time.time()    
-         #   print(read_mb, size_file,batch_num, written_batches)
+      
             crcio = dset[batch_num*batch_size:(batch_num+1)*batch_size][:]
 
-           # print(crcio.size, batch_num)
-          #  print(len(crcio[0]))
-           
             cr_mbytes = crcio.nbytes/10**6
             end = time.time()
             sleep_time = 0.0*(end-start)

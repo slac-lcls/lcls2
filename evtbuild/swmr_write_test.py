@@ -72,7 +72,7 @@ def master():
 
         str_comm = 'lfs setstripe -c %i -S %iM %s' % (nstripes, stripe_size,loop_fn)
        # print(str_comm)
-        subprocess.call(str_comm, shell=True)
+ #       subprocess.call(str_comm, shell=True)
 
 
         f = h5py.File(loop_fn, 'w', libver='latest')
@@ -99,7 +99,7 @@ def client():
             shape = loop_file["data"].shape
             batch_num = (shape[0]/batch_size) +1
 
-  #          print('Writing data batch %i' % batch_num)
+
             loop_file['data'].resize((shape[0]+batch_size, shape[1]))
 
             
@@ -118,7 +118,7 @@ def client():
             
             if eof:
                 break
-
+     #       print('Wrote data batch %i at %i MB/s' % (batch_num, cr_speed))
  #           print('Speed %i MB/s' % cr_speed)
 
 
