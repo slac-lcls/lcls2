@@ -137,7 +137,6 @@ public:
     {
         if (_firstIsShapes()) {
             Data& d = reinterpret_cast<Data&>(_second());
-            assert(d.contains.id()==XtcData::TypeId::Data);
             return d;
         }
         else {
@@ -151,7 +150,6 @@ public:
     {
         if (_firstIsShapes()) {
             Shapes& d = reinterpret_cast<Shapes&>(_first());
-            assert(d.contains.id()==XtcData::TypeId::Shapes);
             return d;
         }
         else {
