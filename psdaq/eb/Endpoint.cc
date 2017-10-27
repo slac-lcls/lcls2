@@ -121,6 +121,12 @@ LocalIOVec::~LocalIOVec()
   }
 }
 
+void LocalIOVec::reset()
+{
+  _mr_set = true;
+  _count  = 0;
+}
+
 void LocalIOVec::check_size(size_t count)
 {
   if ((_count + count) > _max) {
@@ -161,6 +167,13 @@ size_t LocalIOVec::count() const { return _count; }
 const struct iovec* LocalIOVec::iovecs() const { return _iovs; }
 
 void** LocalIOVec::desc() const { return _mr_desc; }
+
+void* LocalIOVec::allocate()
+{
+  check_size(1);
+
+  return &_iovs[_count++];
+}
 
 bool LocalIOVec::add_iovec(LocalAddress* local_addr, size_t count)
 {
@@ -1359,18 +1372,6 @@ bool Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
   }
 
   return false;
-}
-
-bool Endpoint::write_msg(const fi_msg_rma* msg, unsigned flags) // RiC hack
-{
-  ssize_t rret = fi_writemsg(_ep, msg, flags);
-  if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_writemsg");
-    return false;
-  }
-
-  return true;
 }
 
 bool Endpoint::check_completion(int context, unsigned flags, uint64_t* data)

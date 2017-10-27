@@ -14,7 +14,9 @@ using namespace Pds::Eb;
 EbFtBase::EbFtBase(unsigned nClients) :
   _ep(nClients),
   _mr(nClients),
-  _ra(nClients)
+  _ra(nClients),
+  _cqPoller(NULL),
+  _iSrc(0)
 {
 }
 
@@ -22,6 +24,10 @@ EbFtBase::~EbFtBase()
 {
   unsigned nMr = _mr.size();
   unsigned nEp = _ep.size();
+
+  for (unsigned i = 0; i < nEp; ++i)
+    if (_cqPoller && _ep[i])  _cqPoller->del(_ep[i]);
+  if (_cqPoller)  delete _cqPoller;
 
   for (unsigned i = 0; i < nMr; ++i)
     if (_mr[i])   delete _mr[i];
@@ -76,60 +82,82 @@ int EbFtBase::_syncRmtMr(char*          region,
   return 0;
 }
 
-uint64_t EbFtBase::pend()
+uint64_t EbFtBase::_tryCq()
 {
-  while (1)
+  // Cycle through all sources to find which one has data
+  for (unsigned i = 0; i < _ep.size(); ++i)
   {
-    // Cycle through all sources and don't starve any one
-    for (unsigned i = 0; i < _ep.size(); ++i) // Revisit: Awaiting select() or poll() soln
-    {
-      int              cqNum;
-      fi_cq_data_entry cqEntry;
+    if (!_ep[_iSrc])  continue;
 
-      if (_ep[i]->comp(&cqEntry, &cqNum, 1)) // Revisit: Wait on all EPs with tmo
+    int              cqNum;
+    fi_cq_data_entry cqEntry;
+
+    if (_ep[_iSrc]->comp(&cqEntry, &cqNum, 1))
+    {
+      if ((cqNum == 1) && (cqEntry.flags & FI_REMOTE_WRITE))
       {
-        if ((cqNum == 1) && (cqEntry.flags & FI_REMOTE_WRITE))
-        {
-          // Revisit: Immediate data identifies which batch was written
-          //          Better to use its address or parameters?
-          //unsigned slot = (cqEntry.data >> 16) & 0xffff;
-          //unsigned idx  =  cqEntry.data        & 0xffff;
-          //batch = (Dgram*)&_pool[(slot * _maxBatches + idx) * _maxBatchSize];
-          return cqEntry.data;
-        }
+        // Revisit: Immediate data identifies which batch was written
+        //          Better to use its address or parameters?
+        //unsigned slot = (cqEntry.data >> 16) & 0xffff;
+        //unsigned idx  =  cqEntry.data        & 0xffff;
+        //batch = (Dgram*)&_pool[(slot * _maxBatches + idx) * _maxBatchSize];
+        return cqEntry.data;
       }
     }
+    else
+    {
+      if (_ep[_iSrc]->error_num() != -FI_EAGAIN)
+      {
+        fprintf(stderr, "Error completing operation with peer %u: %s\n",
+                _iSrc, _ep[_iSrc]->error());
+      }
+    }
+    if (++_iSrc == _ep.size())  _iSrc = 0;
   }
+
+  return 0;
 }
 
-int EbFtBase::post(fi_msg_rma* msg,
+uint64_t EbFtBase::pend()
+{
+  uint64_t data = _tryCq();
+
+  if (data)  return data;
+
+  if (_cqPoller->poll())
+  {
+    data = _tryCq();
+  }
+  else
+  {
+    fprintf(stderr, "Error polling completion queues: %s",
+            _cqPoller->error());
+    return 0;
+  }
+
+  return data;
+}
+
+int EbFtBase::post(LocalIOVec& lclIov,
+                   size_t      len,
                    unsigned    dst,
                    uint64_t    dstOffset,
                    void*       ctx)
 {
-  fi_rma_iov* iov = const_cast<fi_rma_iov*>(msg->rma_iov);
-  iov->addr = _ra[dst].addr + dstOffset;
-  iov->key  = _ra[dst].rkey;             // Revisit: _mr's?
-
-  void* desc = _mr[dst]->desc();         // Revisit: Fix kluginess
-  for (unsigned i = 0; i < msg->iov_count; ++i)
+  for (unsigned i = 0; i < lclIov.count(); ++i)
   {
-    msg->desc[i] = desc;
+    lclIov.set_iovec_mr(i, _mr[dst]);
   }
 
-  msg->data    = iov->addr;
-  msg->context = ctx;
+  RemoteAddress rmtAdx(_ra[dst].rkey, _ra[dst].addr + dstOffset, len);
+  RemoteIOVec   rmtIov(&rmtAdx, 1);
+  RmaMessage    rmaMsg(&lclIov, &rmtIov, ctx, rmtAdx.addr);
 
-  if (!_ep[dst]->write_msg(msg, FI_REMOTE_CQ_DATA)) // Revisit: Flags?
+  if (!_ep[dst]->writemsg_sync(&rmaMsg, FI_REMOTE_CQ_DATA))
   {
-    int errNum = _ep[dst]->error_num();
-    fprintf(stderr, "%s() failed, ret = %d (%s)\n",
-            "write_msg", errNum, _ep[dst]->error());
-    return errNum;
+    fprintf(stderr, "writemsg failed: %s\n", _ep[dst]->error());
+    return _ep[dst]->error_num();
   }
-
-  //_ep[dst]->writeMsg(batch->iov(), batch->iovCount(), dstAddr, immData,
-  //                   _ra[dst], _mr[dst]);
 
   return 0;
 }

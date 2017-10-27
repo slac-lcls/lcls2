@@ -1,5 +1,5 @@
 #include "Batch.hh"
-#include "IovPool.hh"
+#include "IovElement.hh"
 
 #include "psdaq/service/GenericPoolW.hh"
 
@@ -15,24 +15,22 @@ namespace Pds {
     public:
       Batch1(unsigned index, unsigned iovPoolDepth) :
         _index(index),
-        _pool(iovPoolDepth),
-        _desc(new void*[iovPoolDepth])
+        _pool(iovPoolDepth)
       {
       }
       ~Batch1() {};
     private:
       friend class Batch;
     private:
-      const unsigned _index;
-      IovPool        _pool;
-      void**         _desc;
+      const unsigned      _index;
+      Fabrics::LocalIOVec _pool;
     };
 
-    class BatchEntry : public IovEntry
+    class BatchEntry : public IovElement
     {
     public:
       BatchEntry(const XtcData::Dgram& contrib) :
-        IovEntry(&contrib, sizeof(contrib) + contrib.xtc.sizeofPayload())
+        IovElement(&contrib, sizeof(contrib) + contrib.xtc.sizeofPayload())
       {
       }
       ~BatchEntry();
@@ -42,6 +40,7 @@ namespace Pds {
 
 using namespace XtcData;
 using namespace Pds::Eb;
+using namespace Pds::Fabrics;
 
 Batch::Batch(const Dgram& contrib, uint64_t pid) :
   _datagram(contrib)
@@ -50,18 +49,24 @@ Batch::Batch(const Dgram& contrib, uint64_t pid) :
   _datagram.seq        = Sequence(contrib.seq.clock(), ts);
   _datagram.xtc.extent = sizeof(Xtc);
 
-  new(((Batch1*)&this[1])->_pool) BatchEntry(_datagram);
+  new (_batch1()._pool) BatchEntry(_datagram);
 
   _datagram.xtc.extent += sizeof(_datagram);
 }
 
 Batch::~Batch()
 {
+  _batch1()._pool.reset();
 }
 
 size_t Batch::size()
 {
   return sizeof(Batch) + sizeof(Batch1);
+}
+
+Batch1& Batch::_batch1() const
+{
+  return *(Batch1*)&this[1];
 }
 
 #include <unistd.h>
@@ -73,7 +78,7 @@ void Batch::init(GenericPoolW& pool, unsigned batchDepth, unsigned iovPoolDepth)
   for (unsigned i = 0; i < batchDepth; ++i)
   {
     Batch* batch = (Batch*)pool.alloc(pool.sizeofObject());
-    printf("Batch init %d, batch = %p, batch1 = %p\n", i, batch, &batch[1]);
+    printf("Batch init %2d, batch = %p, batch1 = %p\n", i, batch, &batch->_batch1());
     usleep(100000);
     new((void*)&batch[1]) Batch1(i, iovPoolDepth);
     list.insert(batch);
@@ -81,7 +86,6 @@ void Batch::init(GenericPoolW& pool, unsigned batchDepth, unsigned iovPoolDepth)
   for (unsigned i = 0; i < batchDepth; ++i)
   {
     Batch* batch = list.remove();
-    printf("Returning batch %i @ %p to pool\n", i, batch);
     usleep(100000);
     pool.free(batch);
   }
@@ -89,26 +93,23 @@ void Batch::init(GenericPoolW& pool, unsigned batchDepth, unsigned iovPoolDepth)
 
 unsigned Batch::index() const
 {
-  return ((Batch1*)&this[1])->_index;
+  return _batch1()._index;
 }
 
 void Batch::append(const Dgram& contrib)
 {
-  BatchEntry* entry = new(((Batch1*)&this[1])->_pool) BatchEntry(contrib);
+  BatchEntry* entry = new (_batch1()._pool) BatchEntry(contrib);
   assert(entry != (void*)0);
 
   _datagram.xtc.alloc(entry->size());
 }
 
-struct fi_msg_rma* Batch::finalize()
+size_t Batch::extent() const
 {
-  _rmaIov.len = (char*)_datagram.xtc.next() - (char*)&_datagram;
+  return (char*)_datagram.xtc.next() - (char*)&_datagram;
+}
 
-  _rmaMsg.desc          = ((Batch1*)&this[1])->_desc;
-  _rmaMsg.msg_iov       = ((Batch1*)&this[1])->_pool.iovs();
-  _rmaMsg.iov_count     = ((Batch1*)&this[1])->_pool.iovSize();
-  _rmaMsg.rma_iov       = &_rmaIov;
-  _rmaMsg.rma_iov_count = 1;
-
-  return &_rmaMsg;
+LocalIOVec& Batch::pool() const
+{
+  return _batch1()._pool;
 }

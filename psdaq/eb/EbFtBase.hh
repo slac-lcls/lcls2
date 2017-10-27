@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <vector>
 
-struct fi_msg_rma;
 
 namespace Pds {
 
@@ -15,7 +14,8 @@ namespace Pds {
     class Endpoint;
     class MemoryRegion;
     class RemoteAddress;
-
+    class LocalIOVec;
+    class CompletionPoller;
   };
 
 #define EpList std::vector<Fabrics::Endpoint*>
@@ -31,23 +31,28 @@ namespace Pds {
       virtual ~EbFtBase();
     public:
       uint64_t pend();
-      int      post(fi_msg_rma*, unsigned dst, uint64_t dstOffset, void* ctx);
+      int      post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t dstOffset, void* ctx);
     public:
       virtual int shutdown() = 0;
     protected:
-      int _syncLclMr(char*                   region,
-                     size_t                  size,
-                     Fabrics::Endpoint*      ep,
-                     Fabrics::MemoryRegion*& mr);
-      int _syncRmtMr(char*                   region,
-                     size_t                  size,
-                     Fabrics::Endpoint*      ep,
-                     Fabrics::MemoryRegion*  mr,
-                     Fabrics::RemoteAddress& ra);
+      int      _syncLclMr(char*                   region,
+                          size_t                  size,
+                          Fabrics::Endpoint*      ep,
+                          Fabrics::MemoryRegion*& mr);
+      int      _syncRmtMr(char*                   region,
+                          size_t                  size,
+                          Fabrics::Endpoint*      ep,
+                          Fabrics::MemoryRegion*  mr,
+                          Fabrics::RemoteAddress& ra);
+    private:
+      uint64_t _tryCq();
     protected:
-      EpList _ep;                       // List of Endpoints
-      MrList _mr;                       // List of Memory Regions per EP
-      RaList _ra;                       // List of remote address descriptors
+      EpList   _ep;                     // List of Endpoints
+      MrList   _mr;                     // List of Memory Regions per EP
+      RaList   _ra;                     // List of remote address descriptors
+      Fabrics::CompletionPoller* _cqPoller;
+    private:
+      unsigned _iSrc;
     };
   };
 };

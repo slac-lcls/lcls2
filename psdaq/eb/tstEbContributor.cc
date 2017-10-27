@@ -60,6 +60,10 @@ namespace Pds {
         _task    (new Task(TaskObject("drp"))),
         _sem     (Semaphore::FULL)
       {
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        _pid = ((uint64_t)ts.tv_sec) * 1000000 + ts.tv_nsec / 1000;
+
         if (pipe(_fd)) perror("pipe");
         _task->call(this);
       }
@@ -77,12 +81,13 @@ namespace Pds {
 
           // Fake datagram header
           struct timespec ts;
-          clock_gettime(CLOCK_REALTIME, &ts); // Revisit: Clock won't be synchronous across machines
-          Sequence seq(Sequence::Event, TransitionId::L1Accept, ClockTime(ts), TimeStamp(_pid)); //++));
+          clock_gettime(CLOCK_REALTIME, &ts);
+          Sequence seq(Sequence::Event, TransitionId::L1Accept, ClockTime(ts), TimeStamp(_pid));
           Env      env(0);
           Xtc      xtc(_typeId, _src);
 
           _pid += 16;                   // Avoid too many events per batch for now
+          //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
 
           // Make proxy to data (small data)
           Dgram* pdg = (Dgram*)buffer;
@@ -101,8 +106,8 @@ namespace Pds {
           }
 
           ::write(_fd[1], &pdg, sizeof(pdg)); // Write just the _pointer_
-          if (lverbose)
-            printf("DrpSim wrote event %p to fd %d\n", pdg, _fd[1]);
+          //if (lverbose)
+          //  printf("DrpSim wrote event %p to fd %d\n", pdg, _fd[1]);
 
           _sem.take();                  // Revisit: Kludge to avoid flooding
         }
@@ -160,6 +165,9 @@ namespace Pds {
       {
         unsigned dst = batchId(batch->id()) % _numEbs;
 
+        printf("ContribOutlet posts batch    %p, ts %014lx, sz %d\n",
+               batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->datagram()->xtc.extent);
+
         postTo(batch, dst, batch->index());
       }
     private:
@@ -176,8 +184,8 @@ namespace Pds {
 
         Dgram* pdg = reinterpret_cast<Dgram*>(p);
 
-        if (lverbose)
-          printf("ContribOutlet read dg %p from fd %d\n", pdg, _sim.fd());
+        //if (lverbose)
+        //  printf("ContribOutlet read dg %p from fd %d\n", pdg, _sim.fd());
 
         return pdg;
       }
@@ -208,12 +216,19 @@ namespace Pds {
           // Pend for a result datagram (batch) and handle it.
           Dgram* batch = (Dgram*)_inlet.pend();
 
+          if (!batch)  continue;
+          printf("ContribInlet  rcvd  batch    %p, ts %014lx, sz %d\n",
+                 batch, batch->seq.stamp().pulseId(), batch->xtc.extent);
+
           iterate(&batch->xtc);               // Calls process(xtc) below
         }
       }
       int process(Xtc* xtc)
       {
-        //Dgram* result = (Dgram*)xtc->payload();
+        Dgram* result = (Dgram*)xtc->payload();
+
+        printf("ContribInlet  found result   %p, ts %014lx, sz %d\n",
+               result, result->seq.stamp().pulseId(), result->xtc.extent);
 
         // This method is used to handle the result datagram and to dispose of
         // the original source datagram, in other words:

@@ -1,7 +1,6 @@
 #ifndef Pds_Eb_EbContribution_hh
 #define Pds_Eb_EbContribution_hh
 
-//#include "psdaq/xtc/Datagram.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 namespace Pds {

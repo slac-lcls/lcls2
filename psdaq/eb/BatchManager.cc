@@ -69,7 +69,8 @@ void BatchManager::postTo(Batch*   batch,
 {
   uint64_t dstOffset = slot * _maxBatchSize;
 
-  _outlet.post(batch->finalize(), dst, dstOffset, NULL);
+  //_outlet.post(batch->finalize(), dst, dstOffset, NULL);
+  _outlet.post(batch->pool(), batch->extent(), dst, dstOffset, NULL);
 
   // Revisit: No obvious need to wait for completion here as nothing can be done
   // with this batch or its remote instance until a result is sent

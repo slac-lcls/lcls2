@@ -4,7 +4,6 @@
 #include "EbContribution.hh"
 
 #include "psdaq/service/Task.hh"
-//#include "psdaq/xtc/Datagram.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <stdlib.h>

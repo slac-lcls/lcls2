@@ -47,11 +47,21 @@ int EbFtClient::connect(unsigned tmo)
     int ret = _connect(_remote[i], _port, tmo, _ep[i], _mr[i]);
     if (ret)
     {
-      fprintf(stderr, "_connect() failed at index %u\n", i);
+      fprintf(stderr, "_connect() failed at index %u (%s:%s)\n",
+              i, _remote[i].c_str(), _port.c_str());
       return ret;
     }
 
-    printf("Client %d connected\n", i);
+    printf("Server %d (%s:%s) connected\n", i, _remote[i].c_str(), _port.c_str());
+
+    if (i == 0)                         // Revisit: Really?!
+    {
+      printf("Fabric provider is '%s'\n", _ep[i]->fabric()->provider());
+
+      _cqPoller = new CompletionPoller(_ep[i]->fabric(), _ep.size());
+    }
+
+    _cqPoller->add(_ep[i]);
 
     // Borrow the local region for a moment to obtain the remote region specs
     ret = _syncRmtMr(_base, _rmtSize, _ep[i], _mr[i], _ra[i]);
@@ -90,6 +100,8 @@ int EbFtClient::_connect(std::string&   remote,
     return fab->error_num();
   }
 
+  printf("Waiting for server(s)\n");
+
   bool tmoEnabled = tmo != 0;
   while (!ep->connect() && (!tmoEnabled || --tmo))
   {
@@ -97,7 +109,7 @@ int EbFtClient::_connect(std::string&   remote,
   }
   if (tmoEnabled && (tmo == 0))
   {
-    fprintf(stderr, "Failed to connect endpoint %s:%s: %s\n",
+    fprintf(stderr, "Timed out connecting to %s:%s: %s\n",
             remote.c_str(), port.c_str(), ep->error());
     perror("ep->connect()");
     return -1;

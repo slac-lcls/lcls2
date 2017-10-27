@@ -53,12 +53,16 @@ int EbFtServer::connect()
     return _pep->error_num();
   }
 
+  printf("Fabric provider is '%s'\n", _pep->fabric()->provider());
+
+  _cqPoller = new CompletionPoller(_pep->fabric(), _ep.size());
+
   if(!_pep->listen())
   {
     fprintf(stderr, "Failed to set passive fabrics endpoint to listening state: %s\n", _pep->error());
     return _pep->error_num();
   }
-  printf("Listening\n");
+  printf("Listening for client(s)\n");
 
   unsigned i        = 0;           // Not necessarily the same as the source ID
   char*    pool     = _base;
@@ -84,6 +88,8 @@ int EbFtServer::connect()
               pool, _lclSize, fab->error());
       return fab->error_num();
     }
+
+    _cqPoller->add(_ep[i]);
 
     ret = _syncLclMr(pool, _lclSize, _ep[i], _mr[i]);
     if (ret)  break;

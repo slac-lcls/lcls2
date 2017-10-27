@@ -201,6 +201,10 @@ void TstEbInlet::process()
   {
     // Pend for an input datagram (batch) and pass it to the event builder.
     Dgram* batch = (Dgram*)_inlet.pend();
+    if (!batch)  continue;
+
+    printf("EbInlet read  batch   %p, ts %014lx, sz %d\n",
+           batch, batch->seq.stamp().pulseId(), batch->xtc.extent);
 
     iterate(&batch->xtc);               // Calls process(xtc) below
 
@@ -211,6 +215,9 @@ void TstEbInlet::process()
 int TstEbInlet::process(Xtc* xtc)
 {
   Dgram* contribution = (Dgram*)xtc->payload();
+
+  printf("EbInlet found contrib %p, ts %014lx, sz %d\n",
+         contribution, contribution->seq.stamp().pulseId(), contribution->xtc.extent);
 
   EventBuilder::process(contribution);
 
@@ -323,6 +330,9 @@ void TstEbOutlet::post(Batch* batch, void* arg)
 {
   Result*  result = (Result*)arg;
   unsigned nDsts  = result->nDsts();
+
+  printf("EbOutlet posts result   %p, ts %014lx, sz %d\n",
+         batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->datagram()->xtc.extent);
 
   for (unsigned dst = 0; dst < nDsts; ++dst)
   {
