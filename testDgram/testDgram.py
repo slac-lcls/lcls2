@@ -12,26 +12,26 @@ from DataSource import DataSource
 def myroutine2():
   ds = DataSource('data.xtc')
   d = ds.__next__()
-  assert getref(d)==2
+  assert getref(d)==3
   arr1 = d.array0_pgp #increase refcount of d
   assert getref(d)==3
-  assert getref(arr1)==2
+  assert getref(arr1)==3
   s1 = arr1[2:4] #increase refcount of arr1
   assert s1.base is arr1
-  assert getref(arr1)==3
+  assert getref(arr1)==4
   assert getref(s1)==2
 
   arr2 = d.array0_pgp #increase refcount of d
-  assert getref(d)==4
+  assert getref(d)==3
   s2 = arr2[3:5] # increase refcount of arr2
-  assert getref(d)==4
-  assert getref(arr2)==3
+  assert getref(d)==3
+  assert getref(arr2)==6
 
   return s1,d # destroys arr2 and s2, should decrement d refcnt by 1
 
 def myroutine1():
   s1,d =  myroutine2()
-  assert getref(d)==3
+  assert getref(d)==2
   assert getref(s1)==2
 
   return d # should decrement d refcnt by 1 since s1 is now gone
