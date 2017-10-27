@@ -1,0 +1,43 @@
+import numpy as np
+import os,time
+
+
+
+mb_per_img = 1
+arr_size = mb_per_img*500000
+
+
+def read_client():
+
+    file_name = '../neh_dir/xtc_lite/xtc_lite.xtc'
+    
+    with open(file_name, 'rb') as f:
+        f.seek(0)
+        
+        ct = 0
+#        read_bytes = 0
+        while True:
+            file_info = os.stat(file_name)
+            size_file_mb = os.stat(file_name).st_size/10**6
+
+            if ct + 1000 > size_file_mb:
+                print('Near end of file. Waiting for more data')
+                while True:
+                    time.sleep(0.1)
+                    size_file_mb = os.stat(file_name).st_size/10**6
+                
+                    if ct + 2000 < size_file_mb:
+                        break
+
+            img = f.read(mb_per_img*10**6)
+            ct+=1
+          #  if img == "":
+           #     print('Waiting for more data to be written')
+            #    time.sleep(0.1)
+           # else:
+            #    ct+=1
+                
+            if ct%100 == 0:
+                print('Read image %i' % ct)
+
+read_client()

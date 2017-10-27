@@ -1,0 +1,411 @@
+--------------------------------------------------------------------------
+WARNING: There are more than one active ports on host 'drp-tst-oss10', but the
+default subnet GID prefix was detected on more than one of these
+ports.  If these ports are connected to different physical IB
+networks, this configuration will fail in Open MPI.  This version of
+Open MPI requires that every physically separate IB subnet that is
+used between connected MPI processes must have different subnet ID
+values.
+
+Please see this FAQ entry for more details:
+
+  http://www.open-mpi.org/faq/?category=openfabrics#ofa-default-subnet-gid
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_default_gid_prefix to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+An MPI process has executed an operation involving a call to the
+"fork()" system call to create a child process.  Open MPI is currently
+operating in a condition that could result in memory corruption or
+other system errors; your MPI job may hang, crash, or produce silent
+data corruption.  The use of fork() (or system() or other calls that
+create child processes) is strongly discouraged.  
+
+The process that invoked fork was:
+
+  Local host:          drp-tst-oss10 (PID 16737)
+  MPI_COMM_WORLD rank: 0
+
+If you are *absolutely sure* that your application will successfully
+and correctly survive a call to fork(), you may disable this warning
+by setting the mpi_warn_on_fork MCA parameter to 0.
+--------------------------------------------------------------------------
+Read image 100
+Read image 200
+Read image 300
+Number of clients 1
+File size 100
+Read 100.00 GB at an average of 0.61 GB/s
+--------------------------------------------------------------------------
+WARNING: There are more than one active ports on host 'drp-tst-oss10', but the
+default subnet GID prefix was detected on more than one of these
+ports.  If these ports are connected to different physical IB
+networks, this configuration will fail in Open MPI.  This version of
+Open MPI requires that every physically separate IB subnet that is
+used between connected MPI processes must have different subnet ID
+values.
+
+Please see this FAQ entry for more details:
+
+  http://www.open-mpi.org/faq/?category=openfabrics#ofa-default-subnet-gid
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_default_gid_prefix to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+An MPI process has executed an operation involving a call to the
+"fork()" system call to create a child process.  Open MPI is currently
+operating in a condition that could result in memory corruption or
+other system errors; your MPI job may hang, crash, or produce silent
+data corruption.  The use of fork() (or system() or other calls that
+create child processes) is strongly discouraged.  
+
+The process that invoked fork was:
+
+  Local host:          drp-tst-oss10 (PID 26162)
+  MPI_COMM_WORLD rank: 1
+
+If you are *absolutely sure* that your application will successfully
+and correctly survive a call to fork(), you may disable this warning
+by setting the mpi_warn_on_fork MCA parameter to 0.
+--------------------------------------------------------------------------
+Read image 100
+Read image 100
+Read image 200
+Read image 200
+Read image 300
+Read image 300
+Number of clients 2
+File size 200
+Read 200.00 GB at an average of 1.09 GB/s
+--------------------------------------------------------------------------
+WARNING: There are more than one active ports on host 'drp-tst-oss10', but the
+default subnet GID prefix was detected on more than one of these
+ports.  If these ports are connected to different physical IB
+networks, this configuration will fail in Open MPI.  This version of
+Open MPI requires that every physically separate IB subnet that is
+used between connected MPI processes must have different subnet ID
+values.
+
+Please see this FAQ entry for more details:
+
+  http://www.open-mpi.org/faq/?category=openfabrics#ofa-default-subnet-gid
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_default_gid_prefix to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+An MPI process has executed an operation involving a call to the
+"fork()" system call to create a child process.  Open MPI is currently
+operating in a condition that could result in memory corruption or
+other system errors; your MPI job may hang, crash, or produce silent
+data corruption.  The use of fork() (or system() or other calls that
+create child processes) is strongly discouraged.  
+
+The process that invoked fork was:
+
+  Local host:          drp-tst-oss10 (PID 21794)
+  MPI_COMM_WORLD rank: 1
+
+If you are *absolutely sure* that your application will successfully
+and correctly survive a call to fork(), you may disable this warning
+by setting the mpi_warn_on_fork MCA parameter to 0.
+--------------------------------------------------------------------------
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Number of clients 4
+File size 400
+Read 400.00 GB at an average of 2.15 GB/s
+--------------------------------------------------------------------------
+WARNING: There are more than one active ports on host 'drp-tst-oss10', but the
+default subnet GID prefix was detected on more than one of these
+ports.  If these ports are connected to different physical IB
+networks, this configuration will fail in Open MPI.  This version of
+Open MPI requires that every physically separate IB subnet that is
+used between connected MPI processes must have different subnet ID
+values.
+
+Please see this FAQ entry for more details:
+
+  http://www.open-mpi.org/faq/?category=openfabrics#ofa-default-subnet-gid
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_default_gid_prefix to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+An MPI process has executed an operation involving a call to the
+"fork()" system call to create a child process.  Open MPI is currently
+operating in a condition that could result in memory corruption or
+other system errors; your MPI job may hang, crash, or produce silent
+data corruption.  The use of fork() (or system() or other calls that
+create child processes) is strongly discouraged.  
+
+The process that invoked fork was:
+
+  Local host:          drp-tst-oss10 (PID 5689)
+  MPI_COMM_WORLD rank: 4
+
+If you are *absolutely sure* that your application will successfully
+and correctly survive a call to fork(), you may disable this warning
+by setting the mpi_warn_on_fork MCA parameter to 0.
+--------------------------------------------------------------------------
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Number of clients 8
+File size 800
+Read 800.00 GB at an average of 3.81 GB/s
+--------------------------------------------------------------------------
+WARNING: There are more than one active ports on host 'drp-tst-oss10', but the
+default subnet GID prefix was detected on more than one of these
+ports.  If these ports are connected to different physical IB
+networks, this configuration will fail in Open MPI.  This version of
+Open MPI requires that every physically separate IB subnet that is
+used between connected MPI processes must have different subnet ID
+values.
+
+Please see this FAQ entry for more details:
+
+  http://www.open-mpi.org/faq/?category=openfabrics#ofa-default-subnet-gid
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_default_gid_prefix to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+An MPI process has executed an operation involving a call to the
+"fork()" system call to create a child process.  Open MPI is currently
+operating in a condition that could result in memory corruption or
+other system errors; your MPI job may hang, crash, or produce silent
+data corruption.  The use of fork() (or system() or other calls that
+create child processes) is strongly discouraged.  
+
+The process that invoked fork was:
+
+  Local host:          drp-tst-oss10 (PID 13583)
+  MPI_COMM_WORLD rank: 1
+
+If you are *absolutely sure* that your application will successfully
+and correctly survive a call to fork(), you may disable this warning
+by setting the mpi_warn_on_fork MCA parameter to 0.
+--------------------------------------------------------------------------
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Number of clients 10
+File size 1000
+Read 1000.00 GB at an average of 4.51 GB/s
+--------------------------------------------------------------------------
+WARNING: There are more than one active ports on host 'drp-tst-oss10', but the
+default subnet GID prefix was detected on more than one of these
+ports.  If these ports are connected to different physical IB
+networks, this configuration will fail in Open MPI.  This version of
+Open MPI requires that every physically separate IB subnet that is
+used between connected MPI processes must have different subnet ID
+values.
+
+Please see this FAQ entry for more details:
+
+  http://www.open-mpi.org/faq/?category=openfabrics#ofa-default-subnet-gid
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_default_gid_prefix to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+An MPI process has executed an operation involving a call to the
+"fork()" system call to create a child process.  Open MPI is currently
+operating in a condition that could result in memory corruption or
+other system errors; your MPI job may hang, crash, or produce silent
+data corruption.  The use of fork() (or system() or other calls that
+create child processes) is strongly discouraged.  
+
+The process that invoked fork was:
+
+  Local host:          drp-tst-oss10 (PID 17886)
+  MPI_COMM_WORLD rank: 1
+
+If you are *absolutely sure* that your application will successfully
+and correctly survive a call to fork(), you may disable this warning
+by setting the mpi_warn_on_fork MCA parameter to 0.
+--------------------------------------------------------------------------
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Number of clients 12
+File size 1201
+Read 1201.00 GB at an average of 5.22 GB/s
+--------------------------------------------------------------------------
+WARNING: There are more than one active ports on host 'drp-tst-oss10', but the
+default subnet GID prefix was detected on more than one of these
+ports.  If these ports are connected to different physical IB
+networks, this configuration will fail in Open MPI.  This version of
+Open MPI requires that every physically separate IB subnet that is
+used between connected MPI processes must have different subnet ID
+values.
+
+Please see this FAQ entry for more details:
+
+  http://www.open-mpi.org/faq/?category=openfabrics#ofa-default-subnet-gid
+
+NOTE: You can turn off this warning by setting the MCA parameter
+      btl_openib_warn_default_gid_prefix to 0.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+An MPI process has executed an operation involving a call to the
+"fork()" system call to create a child process.  Open MPI is currently
+operating in a condition that could result in memory corruption or
+other system errors; your MPI job may hang, crash, or produce silent
+data corruption.  The use of fork() (or system() or other calls that
+create child processes) is strongly discouraged.  
+
+The process that invoked fork was:
+
+  Local host:          drp-tst-oss10 (PID 12202)
+  MPI_COMM_WORLD rank: 2
+
+If you are *absolutely sure* that your application will successfully
+and correctly survive a call to fork(), you may disable this warning
+by setting the mpi_warn_on_fork MCA parameter to 0.
+--------------------------------------------------------------------------
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 100
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 200
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Read image 300
+Number of clients 16
+File size 1601
+Read 1601.00 GB at an average of 6.14 GB/s
