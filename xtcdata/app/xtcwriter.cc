@@ -34,7 +34,7 @@
 
 using namespace XtcData;
 #define BUFSIZE 0x4000000
-#define NEVENT 1
+#define NEVENT 2
 
 class DebugIter : public XtcIterator
 {
