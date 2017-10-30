@@ -1,6 +1,7 @@
 
 add_library(mmhw SHARED
     AxiVersion.cc
+    RingBuffer.cc
     GthEyeScan.cc
 )
 

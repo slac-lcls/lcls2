@@ -28,7 +28,7 @@ class PvDisplay(QtGui.QLabel):
 
     def __init__(self):
         QtGui.QLabel.__init__(self, "-")
-        self.setMinimumWidth(60)
+        self.setMinimumWidth(100)
 
     def connect_signal(self):
         self.valueSet.connect(self.setValue)
@@ -224,6 +224,7 @@ class PvEditInt(PvEditTxt):
 
     def __init__(self, pv, label):
         super(PvEditInt, self).__init__(pv, label)
+        self.setMaximumWidth(60)
 
     def setPv(self):
         value = self.text().toInt()
@@ -428,6 +429,29 @@ def LblEditTS(parent, pvbase, name, count=1):
 def LblEditEvt(parent, pvbase, name, count=1):
     return PvInput(PvEditEvt, parent, pvbase, name, count)
 
+def FrontPanelAMC(pvbase,iamc):
+        dshbox = QtGui.QHBoxLayout()
+        dsbox = QtGui.QGroupBox("Front Panel Links (AMC%d)"%iamc)
+        dslo = QtGui.QVBoxLayout()
+#        LblEditInt   (lol, pvbase, "LinkTxDelay",    NAmcs * NDsLinks)
+#        LblEditInt   (lol, pvbase, "LinkPartition",  NAmcs * NDsLinks)
+#        LblEditInt   (lol, pvbase, "LinkTrgSrc",     NAmcs * NDsLinks)
+        LblPushButton(dslo, pvbase, "TxLinkReset",    NDsLinks, start=iamc*NDsLinks)
+        LblPushButton(dslo, pvbase, "RxLinkReset",    NDsLinks, start=iamc*NDsLinks)
+        LblPushButton(dslo, pvbase, "RxLinkDump" ,    NDsLinks, start=iamc*NDsLinks)
+        LblCheckBox  (dslo, pvbase, "LinkEnable",     NDsLinks, start=iamc*NDsLinks)
+        LblCheckBox  (dslo, pvbase, "LinkRxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
+        LblCheckBox  (dslo, pvbase, "LinkTxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
+        LblCheckBox  (dslo, pvbase, "LinkIsXpm",      NDsLinks, start=iamc*NDsLinks, enable=False)
+        LblCheckBox  (dslo, pvbase, "LinkLoopback",   NDsLinks)
+#        LblCheckBox  (dslo, pvbase, "LinkRxErr",      NAmcs * NDsLinks, enable=False)
+        LblEditInt   (dslo, pvbase, "LinkRxErr",      NDsLinks, start=iamc*NDsLinks, enable=False)
+        LblEditInt   (dslo, pvbase, "LinkRxRcv",      NDsLinks, start=iamc*NDsLinks, enable=False)
+        dsbox.setLayout(dslo)
+        dshbox.addWidget(dsbox)
+        dshbox.addStretch()
+        return dshbox
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, title):
         MainWindow.setObjectName(QtCore.QString.fromUtf8("MainWindow"))
@@ -451,27 +475,8 @@ class Ui_MainWindow(object):
         LblPushButton(lol, pvbase, "Inhibit"         )
         LblPushButton(lol, pvbase, "TagStream"       )
 
-        dshbox = QtGui.QHBoxLayout()
-        dsbox = QtGui.QGroupBox("Front Panel Links")
-        dslo = QtGui.QVBoxLayout()
-#        LblEditInt   (lol, pvbase, "LinkTxDelay",    NAmcs * NDsLinks)
-#        LblEditInt   (lol, pvbase, "LinkPartition",  NAmcs * NDsLinks)
-#        LblEditInt   (lol, pvbase, "LinkTrgSrc",     NAmcs * NDsLinks)
-        LblPushButton(dslo, pvbase, "TxLinkReset",    NAmcs * NDsLinks)
-        LblPushButton(dslo, pvbase, "RxLinkReset",    NAmcs * NDsLinks)
-        LblPushButton(dslo, pvbase, "RxLinkDump" ,    NAmcs * NDsLinks)
-        LblCheckBox  (dslo, pvbase, "LinkEnable",     NAmcs * NDsLinks)
-        LblCheckBox  (dslo, pvbase, "LinkRxReady",    NAmcs * NDsLinks, enable=False)
-        LblCheckBox  (dslo, pvbase, "LinkTxReady",    NAmcs * NDsLinks, enable=False)
-        LblCheckBox  (dslo, pvbase, "LinkIsXpm",      NAmcs * NDsLinks, enable=False)
-        LblCheckBox  (dslo, pvbase, "LinkLoopback",   NAmcs * NDsLinks)
-#        LblCheckBox  (dslo, pvbase, "LinkRxErr",      NAmcs * NDsLinks, enable=False)
-        LblEditInt   (dslo, pvbase, "LinkRxErr",      NAmcs * NDsLinks, enable=False)
-        LblEditInt   (dslo, pvbase, "LinkRxRcv",      NAmcs * NDsLinks, enable=False)
-        dsbox.setLayout(dslo)
-        dshbox.addWidget(dsbox)
-        dshbox.addStretch()
-        lol.addLayout(dshbox)
+        lol.addLayout(FrontPanelAMC(pvbase,0))
+        lol.addLayout(FrontPanelAMC(pvbase,1))
 
         bthbox = QtGui.QHBoxLayout()
         btbox = QtGui.QGroupBox("Backplane Tx Links")
@@ -502,17 +507,25 @@ class Ui_MainWindow(object):
         bphbox.addStretch()
         lol.addLayout(bphbox)
 
-        LblCheckBox  (lol, pvbase, "PLL_LOS",        NAmcs, enable=False)
-        LblCheckBox  (lol, pvbase, "PLL_LOL",        NAmcs, enable=False)
-        LblEditHML   (lol, pvbase, "PLL_BW_Select",  NAmcs)
-        LblEditHML   (lol, pvbase, "PLL_FreqTable",  NAmcs)
-        LblEditHML   (lol, pvbase, "PLL_FreqSelect", NAmcs)
-        LblEditHML   (lol, pvbase, "PLL_Rate",       NAmcs)
-        LblPushButton(lol, pvbase, "PLL_PhaseInc",   NAmcs)
-        LblPushButton(lol, pvbase, "PLL_PhaseDec",   NAmcs)
-        LblPushButton(lol, pvbase, "PLL_Bypass",     NAmcs)
-        LblPushButton(lol, pvbase, "PLL_Reset",      NAmcs)
-        LblPushButton(lol, pvbase, "PLL_Skew",       NAmcs)
+
+        pllhbox = QtGui.QHBoxLayout()
+        pllbox  = QtGui.QGroupBox("PLLs")
+        pllvbox = QtGui.QVBoxLayout() 
+        LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
+        LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
+        LblEditHML   (pllvbox, pvbase, "PLL_BW_Select",  NAmcs)
+        LblEditHML   (pllvbox, pvbase, "PLL_FreqTable",  NAmcs)
+        LblEditHML   (pllvbox, pvbase, "PLL_FreqSelect", NAmcs)
+        LblEditHML   (pllvbox, pvbase, "PLL_Rate",       NAmcs)
+        LblPushButton(pllvbox, pvbase, "PLL_PhaseInc",   NAmcs)
+        LblPushButton(pllvbox, pvbase, "PLL_PhaseDec",   NAmcs)
+        LblPushButton(pllvbox, pvbase, "PLL_Bypass",     NAmcs)
+        LblPushButton(pllvbox, pvbase, "PLL_Reset",      NAmcs)
+        LblPushButton(pllvbox, pvbase, "PLL_Skew",       NAmcs)
+        pllbox.setLayout(pllvbox)
+        pllhbox.addWidget(pllbox)
+        pllhbox.addStretch()
+        lol.addLayout(pllhbox)
 
         if (False):
             LblEditEvt   (lol, pvbase, "L0Select"        )
@@ -585,9 +598,9 @@ class Ui_MainWindow(object):
         layout.addWidget(splitter)
 
         self.centralWidget.setLayout(layout)
-        self.centralWidget.resize(1040,840)
+        self.centralWidget.resize(940,840)
 
-        MainWindow.resize(1040,840)
+        MainWindow.resize(940,840)
         MainWindow.setWindowTitle(title)
         MainWindow.setCentralWidget(self.centralWidget)
 
@@ -606,3 +619,4 @@ if __name__ == '__main__':
 
     MainWindow.show()
     sys.exit(app.exec_())
+

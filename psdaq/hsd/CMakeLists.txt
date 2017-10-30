@@ -1,15 +1,29 @@
 
-#add_library(dti SHARED
-#    PVStats.cc
-#    PVCtrls.cc
-#    Module.cc
-#)
+add_library(hsd SHARED
+  AdcCore.cc
+  AdcSync.cc
+  Adt7411.cc
+  ClkSynth.cc
+  DmaCore.cc
+  FlashController.cc
+  FmcCore.cc
+  FmcSpi.cc
+  Histogram.cc
+  I2cSwitch.cc
+  LocalCpld.cc
+  Mmcm.cc
+  Module.cc
+  Pgp2bAxi.cc
+  PhyCore.cc
+  QABase.cc
+  TprCore.cc
+  Tps2481.cc
+)
 
-#target_include_directories(dti PUBLIC
-#    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-#    /reg/common/package/epicsca/3.14.12/include
-#    /reg/common/package/epicsca/3.14.12/include/os/Linux
-#)
+target_include_directories(hsd PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    mmhw
+)
 
 #
 #  hsd_eyescan
@@ -34,4 +48,50 @@ target_include_directories(hsdRead PUBLIC
 
 target_link_libraries(hsdRead
    pthread
+)
+
+#
+#  hsd_init
+#
+add_executable(hsd_init hsd_init.cc)
+
+target_include_directories(hsd_init PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(hsd_init
+    pthread
+    hsd
+    mmhw
+)
+
+#
+#  hsd_pgp
+#
+add_executable(hsd_pgp hsd_pgp.cc)
+
+target_include_directories(hsd_pgp PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(hsd_pgp
+    pthread
+    hsd
+    mmhw
+)
+
+#
+#  hsd_sim
+#
+add_executable(hsd_sim hsd_sim.cc)
+
+#
+#  hsd_test
+#
+add_executable(hsd_test hsd_test.cc)
+
+target_link_libraries(hsd_test
+    pthread
+    hsd
+    mmhw 
 )
