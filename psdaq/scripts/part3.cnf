@@ -39,10 +39,9 @@ procmgr_config = [
  {                       id:'modca'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
  {                       id:'deadca-'+platform  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
  { host: daq_tst_dev05,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
-# { host: daq_tst_dev03,  id:'hsd'    ,flags:'sx', cmd:bin_path+'psdaq/hsd_pgp -c 0xf -s 0x3 -l 128 -p 3 -t 0'},
-# { host: daq_tst_dev03,  id:'hsd'    ,flags:'sx', cmd:'/usr/bin/tcsh'},
- { host: daq_tst_dev03,  id:'hsdr   ',flags:'sx', cmd:bin_path+'psdaq/hsd/hsdRead -P /dev/pgpcardG3_0_1 -L 4 -r'},
- {                       id:'epics', flags:'sx', env:epics_env, cmd:'/usr/bin/bash'},
+ { host: daq_tst_dev03,  id:'hsd'    ,flags:'sx', cmd:bin_path+'psdaq/hsd/hsd_pgp -c 0xf -s 0x3 -l 128 -p 3 -t 0'},
+ { host: daq_tst_dev03,  id:'rdr'    ,flags:'sx', cmd:bin_path+'psdaq/hsd/hsdRead -P /dev/pgpcardG3_0_1 -L 4 -r'},
+# {                       id:'epics', flags:'sx', env:epics_env, cmd:'/usr/bin/bash'},
 
 ## procstat
  {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
