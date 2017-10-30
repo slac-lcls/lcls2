@@ -25,6 +25,8 @@ class DataSource:
         d=dgram.Dgram(config=self._config,
                       verbose=self._get_verbose(),
                       debug=self._get_debug())
+        for var_name in self.event_variables():
+            delattr(self, var_name)
         for key in sorted(d.__dict__.keys()):
             setattr(self, key, getattr(d, key))
         return self
@@ -33,19 +35,19 @@ class DataSource:
         return getattr(self._config, "verbose")
     def _set_verbose(self, value):
         setattr(self._config, "verbose", value)
-    verbose = property(_get_verbose, _set_verbose)
+    _verbose = property(_get_verbose, _set_verbose)
 
     def _get_debug(self):
         return getattr(self._config, "debug")
     def _set_debug(self, value):
         setattr(self._config, "debug", value)
-    debug = property(_get_debug, _set_debug)
+    _debug = property(_get_debug, _set_debug)
 
     def event_variables(self):
         var_names=[]
         for var_name in sorted(vars(self)):
-            if var_name == "_config": continue
-            var_names.append(var_name)
+            if var_name != "_config":
+                var_names.append(var_name)
         return var_names
 
     def print_event_variables(self):
