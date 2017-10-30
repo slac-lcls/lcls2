@@ -7,6 +7,8 @@
 // - better namespacing
 // - minimize number of name lookups
 // - provide both "safe" name-lookup xface and "performant" index xface
+// - use Array for both getting/setting data
+// - Array should support slicing
 // - protection:
 //   o pass in full list of names (ensures we get early error if the
 //     nameindex number is incorrect, but breaks object-oriented encapsulation)
