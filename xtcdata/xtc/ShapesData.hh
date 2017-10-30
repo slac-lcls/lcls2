@@ -95,6 +95,7 @@ public:
     }
 };
 
+#include <stdio.h>
 class Data : public AutoParentAlloc
 {
 public:
@@ -113,6 +114,7 @@ public:
         AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Shapes,0)),
         _namesId(namesId)
     {
+        XtcData::Xtc::alloc(sizeof(_namesId));
         // go two levels up to "auto-alloc" Shapes Xtc header size
         superparent.alloc(sizeof(*this));
     }
@@ -137,6 +139,7 @@ public:
     {
         if (_firstIsShapes()) {
             Data& d = reinterpret_cast<Data&>(_second());
+            assert(d.contains.id()==XtcData::TypeId::Data);
             return d;
         }
         else {

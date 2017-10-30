@@ -44,6 +44,8 @@ testarr = np.array([[0,0,0],[0,1,2],[0,2,4]],dtype=np.float32)
 testarrB = testarr+2
 assert np.array_equal(d.array0_pgp,testarr)
 assert np.array_equal(d.array1_pgp,testarrB)
+testfexarr = np.arange(142,148,dtype=np.float32).reshape([2,3])
+assert np.array_equal(d.array_fex,testfexarr)
 assert d.int_fex==42
 assert d.float_fex==41.0
 print('dgram test complete')

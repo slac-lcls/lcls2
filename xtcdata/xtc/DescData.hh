@@ -176,9 +176,9 @@ protected:
     unsigned    _numarrays;
 };
 
-class FrontEndData : public DescData {
+class DescribedData : public DescData {
 public:
-    FrontEndData(XtcData::Xtc& parent, NameIndex& nameindex, unsigned namesId) :
+    DescribedData(XtcData::Xtc& parent, NameIndex& nameindex, unsigned namesId) :
         DescData(nameindex, parent), _parent(parent), _namesId(namesId)
     {
         new (&_shapesdata) Data(_parent);
@@ -205,13 +205,15 @@ private:
     unsigned      _namesId;
 };
 
-class FexData : public DescData {
+#include <stdio.h>
+class CreateData : public DescData {
 public:
-    FexData(XtcData::Xtc& parent, NameIndex& nameindex, unsigned namesId) :
+    CreateData(XtcData::Xtc& parent, NameIndex& nameindex, unsigned namesId) :
         DescData(nameindex, parent), _parent(parent)
     {
         Shapes& shapes = *new (&_shapesdata) Shapes(_parent, namesId);
         Names& names = _nameindex.names();
+        // should be arrays.num
         shapes.alloc(names.num()*sizeof(Shape), _shapesdata, _parent);
         new (&_shapesdata) Data(_parent);
     }
@@ -246,7 +248,7 @@ public:
         Name& namecl = names.get(index);
         unsigned size = _shapesdata.shapes().get(shapeIndex).size(namecl);
         _offset[_numentries]=_offset[_numentries-1]+size;
-        _shapesdata.data().alloc(size,_shapesdata);
+        _shapesdata.data().alloc(size,_shapesdata,_parent);
     }
 
 private:

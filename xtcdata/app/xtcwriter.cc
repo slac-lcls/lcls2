@@ -32,7 +32,7 @@
 
 using namespace XtcData;
 #define BUFSIZE 0x4000000
-#define NEVENT 2
+#define NEVENT 1
 
 class DebugIter : public XtcIterator
 {
@@ -113,7 +113,7 @@ public:
 
 void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 {
-    FrontEndData frontEnd(parent, nameindex, nameId);
+    DescribedData frontEnd(parent, nameindex, nameId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -131,7 +131,7 @@ void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 
 void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 {
-    FexData fex(parent, nameindex, nameId);
+    CreateData fex(parent, nameindex, nameId);
 
     // have to be careful to set the correct type here, unfortunately.
     // because of variable length issues, user is currently required to
@@ -140,6 +140,12 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     // we could remove that requirement if we indicate which
     // array is being written in the data as they are written.
     fex.set_value("float_fex", (float)41.0);
+    float* ptr = (float*)fex.get_ptr();
+    unsigned shape[Name::MaxRank];
+    shape[0]=2;
+    shape[1]=3;
+    for (unsigned i=0; i<shape[0]*shape[1]; i++) ptr[i] = 142.0+i;
+    fex.set_array_shape("array_fex",shape);
     fex.set_value("int_fex", 42);
 }
 
@@ -153,6 +159,7 @@ void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
 
     Names& fexNames = *new(parent) Names();
     fexNames.add("float_fex", Name::FLOAT, parent);
+    fexNames.add("array_fex", Name::FLOAT, parent, 2);
     fexNames.add("int_fex",   Name::INT32, parent);
     namesVec.push_back(NameIndex(fexNames));
 }
