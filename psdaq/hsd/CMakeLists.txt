@@ -95,3 +95,8 @@ target_link_libraries(hsd_test
     hsd
     mmhw 
 )
+
+#
+# hsd_valid
+#
+add_executable(hsd_valid hsd_valid.cc)
