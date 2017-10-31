@@ -14,3 +14,4 @@ target_include_directories(dgram PUBLIC
     ${NUMPY_INCLUDE_DIRS}
 )
 
+set_target_properties(dgram PROPERTIES PREFIX "")
