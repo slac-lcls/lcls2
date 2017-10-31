@@ -33,7 +33,8 @@ void* scan_routine(void* arg)
   char ofile[64];
   sprintf(ofile,"%s.%u",outfile,lane);
 
-  gth[lane].scan(ofile, prescale, 1, lsparse);
+  gth[lane].enable(true);
+  gth[lane].scan(ofile, prescale, 0, lsparse);
 
   return 0;
 }
