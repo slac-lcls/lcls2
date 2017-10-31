@@ -90,17 +90,22 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
 {
     int number_of_workers = worker_input_queues.size();
 
-    int ports[] = {1, 2, 3, 4};
-    int fds[4];
-    int nchannels = 4;
-    for (int c=0; c<nchannels; c++) {
-        char dev_name[128];
-        snprintf(dev_name, 128, "/dev/pgpcardG3_0_%u", ports[c]);
-        fds[c] = open(dev_name, O_RDWR);
-        if (fds[c] < 0) {
-            std::cout << "Failed to open pgpcard" << dev_name << std::endl;
-        }
+    // open pgp card fd
+    char dev_name[128];
+    snprintf(dev_name, 128, "/dev/pgpcardG3_0_%u", 1);
+    int fd = open(dev_name, O_RDWR);
+    if (fd < 0) {
+        std::cout << "Failed to open pgpcard" << dev_name << std::endl;
     }
+
+    int nlanes = 4 - 1;
+    // setup receiving from multiple channels
+    PgpCardTx pgpCardTx;
+    pgpCardTx.model = sizeof(&pgpCardTx);
+    pgpCardTx.size = sizeof(PgpCardTx);
+    pgpCardTx.cmd = IOCTL_Add_More_Ports;
+    pgpCardTx.data = reinterpret_cast<uint32_t*>(nlanes);
+    write(fd, &pgpCardTx, sizeof(PgpCardTx));
 
     int64_t worker = 0;
     MovingAverage avg_queue_size(number_of_workers);
@@ -109,27 +114,26 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
     std::atomic<int64_t> event_count(0L);
     std::thread monitor_thread(monitor_pgp, std::ref(total_bytes_received), std::ref(event_count));
 
+    PgpCardRx pgp_card;
+    pgp_card.model = sizeof(&pgp_card);
+    pgp_card.maxSize = 100000;
+
     for (int i = 0; i < N; i++) {
         PGPData* pgp_data;
         pgp_queue.pop(pgp_data);
-        pgp_data->nchannels = 0;
-
-        PgpCardRx pgp_card;
-        pgp_card.model = sizeof(&pgp_card);
-        // 4-byte units, should agree with buffer_element_size below
-        pgp_card.maxSize = 100000UL;
+        pgp_data->nlanes = 0;
 
         uint64_t bytes_received = 0UL;
         uint64_t pulse_id;
-        for (int c=0; c<nchannels; c++) {
+        for (int c=0; c<4; c++) { // FIXME
             uint32_t index;
-            // std::cout<<"before index:  "<<index_queue.guess_size()<<"  "<<i<<'\n';
             if (!index_queue.pop(index)) {
                 std::cout<<"Error in getting new index\n";
                 return;
             }
             pgp_card.data = dma_buffers[index];
-            unsigned int ret = read(fds[c], &pgp_card, sizeof(pgp_card));
+            unsigned int ret = read(fd, &pgp_card, sizeof(pgp_card));
+
             bytes_received += ret*4;
             if (ret <= 0) {
                 std::cout << "Error in reading from pgp card!" << std::endl;
@@ -139,19 +143,21 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
 
             // confirm that the message from all channels have the same pulse id
             EventHeader* event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
+            // std::cout<<pgp_card.pgpLane<<"  "<<event_header->pulseId<<'\n';
             if (c == 0) {
                 pulse_id = event_header->pulseId;
             }
             else {
                 if (event_header->pulseId != pulse_id) {
-                    // std::cout<<"non matching pulse ids\n";
-                    // std::cout<<pulse_id<<"  "<<event_header->pulseId<<'\n';
+                    std::cout<<i<<"  "<<"non matching pulse ids\n";
+                    //break;
                 }
             }
-            PGPBuffer* buffer = &pgp_data->buffers[c];
+            int lane = pgp_card.pgpLane;
+            PGPBuffer* buffer = &pgp_data->buffers[lane];
             buffer->dma_index = index;
             buffer->length = ret;
-            pgp_data->nchannels++;
+            pgp_data->nlanes++;
         }
         // update pgp metrics
         uint64_t temp = event_count.load(std::memory_order_relaxed) + 1;
@@ -181,6 +187,8 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
     // shutdown monitor thread
     total_bytes_received.store(-1, std::memory_order_relaxed);
     monitor_thread.join();
+
+    close(fd);
 }
 
 void worker(PgpQueue& worker_input_queue, PgpQueue& worker_output_queue, int rank)
@@ -213,7 +221,7 @@ void pin_thread(const pthread_t& th, int cpu)
 
 int main()
 {
-    int queue_size = 8192;
+    int queue_size = 32768;
 
     // pin main thread
     pin_thread(pthread_self(), 1);
@@ -258,7 +266,6 @@ int main()
     }
 
     // start loop for the collector to collect results from the workers in the same order the events arrived over pgp
-    auto start = std::chrono::steady_clock::now();
     for (int i = 0; i < N; i++) {
         int worker;
         collector_queue.pop(worker);
@@ -267,15 +274,11 @@ int main()
         worker_output_queues[worker].pop(pgp_data);
 
         // return dma indices to dma buffer pool
-        for (unsigned int b=0; b<pgp_data->nchannels; b++) {
+        for (unsigned int b=0; b<pgp_data->nlanes; b++) {
             index_queue.push(pgp_data->buffers[b].dma_index);
         }
         pgp_queue.push(pgp_data);
     }
-    auto end = std::chrono::steady_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    std::cout << "Processing rate:  " << double(N) / duration << "  kHz" << std::endl;
-    std::cout << "Processing time:  " << duration / 1000.0 << "  s" << std::endl;
 
     // shutdown worker queues and wait for threads to finish
     for (int i = 0; i < NWORKERS; i++) {

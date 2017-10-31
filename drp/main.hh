@@ -1,4 +1,5 @@
 #include <vector>
+#include <cstdint>
 
 class MovingAverage
 {
@@ -20,8 +21,8 @@ struct PGPBuffer
   
 struct PGPData
 {
-    uint32_t nchannels;
-    // max of 8 channels on pgp card
+    uint32_t nlanes;
+    // max of 8 lanes on pgp card
     PGPBuffer buffers[8];
 };
 
