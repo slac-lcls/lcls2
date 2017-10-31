@@ -6,7 +6,7 @@ import time
 import getopt
 import pprint
 
-sys.path.append('../build/xtcdata')
+sys.path.append('../build/psana')
 import dgram
 #
 
