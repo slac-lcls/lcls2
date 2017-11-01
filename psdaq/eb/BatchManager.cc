@@ -1,5 +1,5 @@
 #include "BatchManager.hh"
-#include "EbFtBase.hh"
+#include "Endpoint.hh"
 
 #include "xtcdata/xtc/Dgram.hh"
 
@@ -8,21 +8,17 @@ using namespace Pds;
 using namespace Pds::Eb;
 using namespace Pds::Fabrics;
 
-BatchManager::BatchManager(EbFtBase& outlet,
-                           unsigned  id,       // Revisit: Should be a Src?
-                           uint64_t  duration, // = ~((1 << N) - 1) = 128 uS?
+BatchManager::BatchManager(uint64_t  duration, // = ~((1 << N) - 1) = 128 uS?
                            unsigned  batchDepth,
                            unsigned  maxEntries,
                            size_t    contribSize) :
-  _src          (id),
   _duration     (duration),
   _durationShift(__builtin_ctzll(duration)),
-  _durationMask (~((1 << __builtin_ctzll(duration)) - 1)),
+  _durationMask (~((1 << __builtin_ctzll(duration)) - 1) & ((1UL << 56) - 1)),
   _maxBatchSize (maxEntries * contribSize),
   _pool         (Batch::size(), batchDepth),
   _inFlightList (),
-  _inFlightLock (),
-  _outlet       (outlet)
+  _inFlightLock ()
 {
   if (__builtin_popcountll(duration) != 1)
   {
@@ -30,23 +26,36 @@ BatchManager::BatchManager(EbFtBase& outlet,
             duration);
     abort();
   }
-
-  printf("Dumping pool 1:\n");
-  _pool.dump();
-
-  Batch::init(_pool, batchDepth, maxEntries);
-
-  printf("Dumping pool 2:\n");
-  _pool.dump();
-
-  Dgram     dg; //(TypeId(), Src());
-  dg.seq = Sequence(ClockTime(0, 0), TimeStamp());
-
-  _batch = new(&_pool) Batch(dg, dg.seq.stamp().pulseId());
 }
 
 BatchManager::~BatchManager()
 {
+}
+
+void* BatchManager::batchPool() const
+{
+  return _pool.buffer();
+}
+
+size_t BatchManager::batchPoolSize() const
+{
+  return _pool.size();
+}
+
+void BatchManager::start(unsigned      batchDepth,
+                         unsigned      maxEntries,
+                         MemoryRegion* mr[2])
+{
+  printf("Dumping pool 1:\n");  _pool.dump();
+
+  Batch::init(_pool, batchDepth, maxEntries, mr);
+
+  printf("Dumping pool 2:\n");  _pool.dump();
+
+  Dgram dg;
+  dg.seq = Sequence(ClockTime(0, 0), TimeStamp());
+
+  _batch = new(&_pool) Batch(dg, dg.seq.stamp().pulseId());
 }
 
 void BatchManager::process(const Dgram* contrib, void* arg)
@@ -57,27 +66,12 @@ void BatchManager::process(const Dgram* contrib, void* arg)
   {
     post(_batch, arg);
 
-    _batch = new(&_pool) Batch(*contrib, id);
+    _inFlightList.insert(_batch);       // Revisit: Replace with atomic list
+
+    _batch = new(&_pool) Batch(*contrib, id); // Resource wait if pool is empty
   }
 
   _batch->append(*contrib);
-}
-
-void BatchManager::postTo(Batch*   batch,
-                          unsigned dst,
-                          unsigned slot)
-{
-  uint64_t dstOffset = slot * _maxBatchSize;
-
-  //_outlet.post(batch->finalize(), dst, dstOffset, NULL);
-  _outlet.post(batch->pool(), batch->extent(), dst, dstOffset, NULL);
-
-  // Revisit: No obvious need to wait for completion here as nothing can be done
-  // with this batch or its remote instance until a result is sent
-  // - This is true on the contributor side
-  // - Revisit for the EB result side
-
-  _inFlightList.insert(batch);          // Revisit: Replace with atomic list
 }
 
 void BatchManager::release(uint64_t id)
@@ -97,9 +91,9 @@ void BatchManager::release(uint64_t id)
   }
 }
 
-void BatchManager::shutdown()
+size_t BatchManager::dstOffset(unsigned idx) const
 {
-  _outlet.shutdown();
+  return idx * _maxBatchSize;
 }
 
 //uint64_t BatchManager::batchId(uint64_t id) const

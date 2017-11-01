@@ -1,12 +1,12 @@
 #include "psdaq/eb/BatchManager.hh"
 #include "psdaq/eb/EbFtClient.hh"
+#include "psdaq/eb/Endpoint.hh"
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
 #include "psdaq/service/Semaphore.hh"
 #include "psdaq/service/GenericPoolW.hh"
 #include "xtcdata/xtc/Dgram.hh"
-#include "xtcdata/xtc/XtcIterator.hh"
 
 #include <new>
 #include <poll.h>
@@ -18,6 +18,7 @@
 
 using namespace XtcData;
 using namespace Pds;
+using namespace Pds::Fabrics;
 
 static const uint64_t batch_duration   = 0x00000000000080UL; // ~128 uS; must be power of 2
 static const unsigned max_batches      = 16; //8192;     // 1 second's worth
@@ -48,6 +49,16 @@ static       bool     lverbose         = false;
 namespace Pds {
   namespace Eb {
 
+    class TheSrc : public Src
+    {
+    public:
+      TheSrc(Level::Type level, unsigned id) :
+        Src(level)
+      {
+        _log |= id;
+      }
+    };
+
     class DrpSim : public Routine
     {
     public:
@@ -55,10 +66,11 @@ namespace Pds {
         _maxEvtSz(max_contrib_size),
         _pool    (new GenericPoolW(_maxEvtSz, poolSize)),
         _typeId  (TypeId::Data, 0),
-        _src     (Level::Segment),
+        _src     (Level::Segment, id),
+        _id      (id),
         _pid     (0),
         _task    (new Task(TaskObject("drp"))),
-        _sem     (Semaphore::FULL)
+        _sem     (Semaphore::EMPTY)
       {
         struct timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
@@ -70,8 +82,11 @@ namespace Pds {
       ~DrpSim() { delete _pool; }
     public:
       // poll interface
-      int   fd() const { return _fd[0]; }
-      void  go()       { _sem.give();   }
+      int    fd() const { return _fd[0]; }
+      void   go()       { _sem.give();   }
+    public:
+      void*  pool()     { return _pool->buffer(); }
+      size_t poolSize() { return _pool->size();   }
     public:
       void routine()
       {
@@ -106,8 +121,9 @@ namespace Pds {
           }
 
           ::write(_fd[1], &pdg, sizeof(pdg)); // Write just the _pointer_
-          //if (lverbose)
-          //  printf("DrpSim wrote event %p to fd %d\n", pdg, _fd[1]);
+          if (lverbose)
+            printf("DrpSim wrote input dg %p (ts %014lx, ext %zd) to   fd %d\n",
+                   pdg, pdg->seq.stamp().pulseId(), sizeof(*pdg) + pdg->xtc.sizeofPayload(), _fd[1]);
 
           _sem.take();                  // Revisit: Kludge to avoid flooding
         }
@@ -116,7 +132,8 @@ namespace Pds {
       unsigned      _maxEvtSz;
       GenericPoolW* _pool;
       TypeId        _typeId;
-      Src           _src;
+      TheSrc        _src;
+      unsigned      _id;
       uint64_t      _pid;
       int           _fd[2];
       Task*         _task;
@@ -134,12 +151,20 @@ namespace Pds {
                        unsigned  maxBatches,
                        unsigned  maxEntries,
                        size_t    maxSize) :
-        BatchManager(outlet, id, duration, maxBatches, maxEntries, maxSize),
+        BatchManager(duration, maxBatches, maxEntries, maxSize),
+        _outlet(outlet),
         _numEbs(numEbs),
         _sim(maxBatches * maxEntries, id), // Simulate DRP in a separate thread
         _running(true),
         _task (new Task(TaskObject("tInlet")))
       {
+        MemoryRegion* mr[2];
+
+        mr[0] = outlet.registerMemory(batchPool(), batchPoolSize());
+        mr[1] = outlet.registerMemory(_sim.pool(), _sim.poolSize());
+
+        start(maxBatches, maxEntries, mr);
+
         _task->call(this);
       }
       ~TstContribOutlet() { }
@@ -147,6 +172,8 @@ namespace Pds {
       void shutdown()
       {
         _running = false;
+
+        _outlet.shutdown();
 
         _task->destroy();
       }
@@ -165,14 +192,16 @@ namespace Pds {
       {
         unsigned dst = batchId(batch->id()) % _numEbs;
 
-        printf("ContribOutlet posts batch    %p, ts %014lx, sz %d\n",
-               batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->datagram()->xtc.extent);
+        printf("ContribOutlet posts batch    %p, ts %014lx, sz %zd\n",
+               batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->extent());
 
-        postTo(batch, dst, batch->index());
+        _outlet.post(batch->pool(), batch->extent(), dst, dstOffset(batch->index()), NULL);
       }
     private:
       Dgram* _pend()
       {
+        _sim.go();        // Revisit: Kludge to allow preparation of next event
+
         char* p;
         if (::read(_sim.fd(), &p, sizeof(p)) < 0)
         {
@@ -180,27 +209,26 @@ namespace Pds {
           return NULL;
         }
 
-        _sim.go();        // Revisit: Kludge to allow preparation of next event
-
         Dgram* pdg = reinterpret_cast<Dgram*>(p);
 
-        //if (lverbose)
-        //  printf("ContribOutlet read dg %p from fd %d\n", pdg, _sim.fd());
+        if (lverbose)
+          printf("ContribOutlet read dg %p (ts %014lx, ext %zd) from fd %d\n",
+                 pdg, pdg->seq.stamp().pulseId(), sizeof(*pdg) + pdg->xtc.sizeofPayload(), _sim.fd());
 
         return pdg;
       }
     private:
+      EbFtBase&     _outlet;
       unsigned      _numEbs;
       DrpSim        _sim;
       volatile bool _running;
       Task*         _task;
     };
 
-    class TstContribInlet : public XtcIterator
+    class TstContribInlet
     {
     public:
       TstContribInlet(EbFtBase& inlet) :
-        XtcIterator(),
         _inlet(inlet),
         _running(true)
       {
@@ -217,18 +245,23 @@ namespace Pds {
           Dgram* batch = (Dgram*)_inlet.pend();
 
           if (!batch)  continue;
-          printf("ContribInlet  rcvd  batch    %p, ts %014lx, sz %d\n",
-                 batch, batch->seq.stamp().pulseId(), batch->xtc.extent);
+          printf("ContribInlet  rcvd  batch    %p, ts %014lx, sz %zd\n",
+                 batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
 
-          iterate(&batch->xtc);               // Calls process(xtc) below
+          Dgram* entry = (Dgram*)batch->xtc.payload();
+          Dgram* end   = (Dgram*)batch->xtc.next();
+          while(entry != end)
+          {
+            _process(entry);
+
+            entry = (Dgram*)entry->xtc.next();
+          }
         }
       }
-      int process(Xtc* xtc)
+      int _process(Dgram* result)
       {
-        Dgram* result = (Dgram*)xtc->payload();
-
         printf("ContribInlet  found result   %p, ts %014lx, sz %d\n",
-               result, result->seq.stamp().pulseId(), result->xtc.extent);
+               result, result->seq.stamp().pulseId(), result->xtc.sizeofPayload());
 
         // This method is used to handle the result datagram and to dispose of
         // the original source datagram, in other words:
@@ -336,7 +369,8 @@ int main(int argc, char **argv)
   TstContribInlet  inlet (ftc);
   contribInlet = &inlet;
 
-  inlet.process();
+  //inlet.process();
+  while (1)  sleep(1);
 
   outlet.shutdown();
   ftc.shutdown();

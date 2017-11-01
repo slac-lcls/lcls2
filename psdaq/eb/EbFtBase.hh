@@ -30,6 +30,7 @@ namespace Pds {
       EbFtBase(unsigned nClients);
       virtual ~EbFtBase();
     public:
+      Fabrics::MemoryRegion* registerMemory(void* buffer, size_t size);
       uint64_t pend();
       int      post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t dstOffset, void* ctx);
     public:
