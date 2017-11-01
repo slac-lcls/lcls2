@@ -28,7 +28,10 @@ namespace Pds {
       ~Batch();
     public:
       static size_t size();
-      static void   init(GenericPoolW&, unsigned batchDepth, unsigned iovPoolDepth);
+      static void   init(GenericPoolW&,
+                         unsigned               batchDepth,
+                         unsigned               iovPoolDepth,
+                         Fabrics::MemoryRegion* mr[2]);
     public:
       PoolDeclare;
     public:

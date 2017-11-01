@@ -2,6 +2,7 @@
 #include "psdaq/eb/EventBuilder.hh"
 #include "psdaq/eb/EbEvent.hh"
 #include "psdaq/eb/EbContribution.hh"
+#include "psdaq/eb/Endpoint.hh"
 
 #include "psdaq/eb/EbFtServer.hh"
 
@@ -9,7 +10,6 @@
 #include "psdaq/service/Task.hh"
 #include "psdaq/service/GenericPoolW.hh"
 #include "xtcdata/xtc/Dgram.hh"
-#include "xtcdata/xtc/XtcIterator.hh"
 
 #include <unistd.h>
 #include <stdio.h>
@@ -20,6 +20,7 @@
 
 using namespace XtcData;
 using namespace Pds;
+using namespace Pds::Fabrics;
 
 
 static const uint64_t batch_duration   = 0x00000000000080UL; // ~128 uS; must be power of 2
@@ -50,24 +51,27 @@ static       bool     lverbose         = false;
 
 namespace Pds {
   namespace Eb {
+    class TstEbInlet;
+
     class TheSrc : public Src
     {
     public:
-      TheSrc(unsigned id) :
-        Src()
+      TheSrc(Level::Type level, unsigned id) :
+        Src(level)
       {
-        _log = id;
+        _log |= id;
       }
     };
 
     class Result : public Dgram
     {
     public:
-      Result(const Dgram& dg) : //, const TypeId& ctn, unsigned src) :
-        Dgram(dg), // Revisit: , ctn, TheSrc(src)), // Revisit: Yuck!
+      Result(const Dgram& dg, Src& src) :
+        Dgram(dg),
         _dst(_dest),
         _idx(_index)
       {
+        xtc.src = src;
       }
     public:
       void destination(unsigned dst, unsigned idx)
@@ -102,9 +106,12 @@ namespace Pds {
                   size_t    maxSize);
       ~TstEbOutlet() { }
     public:
+      void start(TstEbInlet& inlet);
       void shutdown()
       {
         _running = false;
+
+        _outlet.shutdown();
 
         _task->destroy();
       }
@@ -128,13 +135,15 @@ namespace Pds {
         return result;
       }
     private:
+      EbFtBase&     _outlet;
+      unsigned      _maxBatches;
+      unsigned      _maxEntries;
       volatile bool _running;
       int           _fd[2];
       Task*         _task;
     };
 
-    class TstEbInlet : public EventBuilder,
-                       public XtcIterator
+    class TstEbInlet : public EventBuilder
     {
     public:
       TstEbInlet(EbFtBase&    inlet,
@@ -149,17 +158,18 @@ namespace Pds {
       void     shutdown()  { _running = false; }
     public:
       void     process();
-      int      process(Xtc* xtc);
     public:
-      void     init(TstEbOutlet* outlet);
+      void*    resultsPool() const;
+      size_t   resultsPoolSize() const;
       void     process(EbEvent* event);
       uint64_t contract(Dgram* contrib) const;
       void     fixup(EbEvent* event, unsigned srcId);
     private:
+      int     _process(Dgram* contribution);
       Result* _allocate(EbEvent* event);
     private:
       EbFtBase&     _inlet;
-      unsigned      _id;
+      TheSrc        _src;
       const TypeId  _tag;
       uint64_t      _contract;
       GenericPoolW  _results;
@@ -182,9 +192,8 @@ TstEbInlet::TstEbInlet(EbFtBase&    inlet,
                        uint64_t     contributors,
                        TstEbOutlet& outlet) :
   EventBuilder(maxBatches, maxEntries, duration),
-  XtcIterator(),
   _inlet(inlet),
-  _id(id),
+  _src(Level::Event, id),
   _tag(TypeId::Data, 0), //_l3SummaryType),
   _contract(contributors),
   _results(sizeof(Result), maxEntries),
@@ -195,29 +204,44 @@ TstEbInlet::TstEbInlet(EbFtBase&    inlet,
   start();                              // Start the event timeout timer
 }
 
+void* TstEbInlet::resultsPool() const
+{
+  return _results.buffer();
+}
+
+size_t TstEbInlet::resultsPoolSize() const
+{
+  return _results.size();
+}
+
 void TstEbInlet::process()
 {
   while (_running)
   {
-    // Pend for an input datagram (batch) and pass it to the event builder.
+    // Pend for an input datagram (batch) and pass its datagrams to the event builder.
     Dgram* batch = (Dgram*)_inlet.pend();
     if (!batch)  continue;
 
-    printf("EbInlet read  batch   %p, ts %014lx, sz %d\n",
-           batch, batch->seq.stamp().pulseId(), batch->xtc.extent);
+    printf("EbInlet read  a batch   %p, ts %014lx, sz %zd\n",
+           batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
 
-    iterate(&batch->xtc);               // Calls process(xtc) below
+    Dgram* entry = (Dgram*)batch->xtc.payload();
+    Dgram* end   = (Dgram*)batch->xtc.next();
+    while(entry != end)
+    {
+      _process(entry);
+
+      entry = (Dgram*)entry->xtc.next();
+    }
 
     _outlet.release(batch->seq.stamp().pulseId());
   }
 }
 
-int TstEbInlet::process(Xtc* xtc)
+int TstEbInlet::_process(Dgram* contribution)
 {
-  Dgram* contribution = (Dgram*)xtc->payload();
-
-  printf("EbInlet found contrib %p, ts %014lx, sz %d\n",
-         contribution, contribution->seq.stamp().pulseId(), contribution->xtc.extent);
+  printf("EbInlet found a contrib %p, ts %014lx, sz %zd\n",
+         contribution, contribution->seq.stamp().pulseId(), sizeof(*contribution) + contribution->xtc.sizeofPayload());
 
   EventBuilder::process(contribution);
 
@@ -226,6 +250,11 @@ int TstEbInlet::process(Xtc* xtc)
 
 void TstEbInlet::process(EbEvent* event)
 {
+  //printf("Event ts %014lx, contract %016lx, size = %zd\n",
+  //       event->sequence(), event->contract(), event->size());
+  event->dump(-1);
+  return;
+
   const unsigned recThresh = 10;       // Revisit: Some crud for now
   const unsigned monThresh = 5;        // Revisit: Some crud for now
 
@@ -290,10 +319,10 @@ void TstEbInlet::fixup(EbEvent* event, unsigned srcId)
 Result* TstEbInlet::_allocate(EbEvent* event)
 {
   EbContribution* contrib = event->creator();
-  Dgram*          src     = contrib->datagram();
+  Dgram*          cdg     = contrib->datagram();
 
   // Due to the resource-wait memory allocator used here, zero is never returned
-  Result* result = new(&_results) Result(*src); // Revisit: , _tag, _id);
+  Result* result = new(&_results) Result(*cdg, _src);
   return result;
 }
 
@@ -303,12 +332,25 @@ TstEbOutlet::TstEbOutlet(EbFtBase& outlet,
                          unsigned  maxBatches,
                          unsigned  maxEntries,
                          size_t    maxSize) :
-  BatchManager(outlet, id, duration, maxBatches, maxEntries, maxSize),
+  BatchManager(duration, maxBatches, maxEntries, maxSize),
+  _outlet(outlet),
+  _maxBatches(maxBatches),
+  _maxEntries(maxEntries),
   _running(true),
   _task (new Task(TaskObject("tOutlet")))
 {
   if (pipe(_fd))
     perror("pipe");
+}
+
+void TstEbOutlet::start(TstEbInlet& inlet)
+{
+  MemoryRegion* mr[2];
+
+  mr[0] = _outlet.registerMemory(batchPool(),         batchPoolSize());
+  mr[1] = _outlet.registerMemory(inlet.resultsPool(), inlet.resultsPoolSize());
+
+  BatchManager::start(_maxBatches, _maxEntries, mr);
 
   _task->call(this);
 }
@@ -331,12 +373,13 @@ void TstEbOutlet::post(Batch* batch, void* arg)
   Result*  result = (Result*)arg;
   unsigned nDsts  = result->nDsts();
 
-  printf("EbOutlet posts result   %p, ts %014lx, sz %d\n",
-         batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->datagram()->xtc.extent);
+  printf("EbOutlet posts result   %p, ts %014lx, sz %zd\n",
+         batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->extent());
 
   for (unsigned dst = 0; dst < nDsts; ++dst)
   {
-    postTo(batch, result->dst(dst), result->idx(dst));
+    //_outlet.post(batch->pool(), batch->extent(), result->dst(dst), dstOffset(result->idx(dst)), NULL);
+    sleep(1);
   }
 }
 
@@ -426,6 +469,8 @@ int main(int argc, char **argv)
   TstEbOutlet outlet(fts, id, batch_duration, max_batches, max_entries, max_result_size);
   TstEbInlet  inlet (fts, id, batch_duration, max_batches, max_entries, clients, outlet);
   ebInlet = &inlet;
+
+  outlet.start(inlet);
 
   inlet.process();
 

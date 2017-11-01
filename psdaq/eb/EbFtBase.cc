@@ -35,6 +35,15 @@ EbFtBase::~EbFtBase()
     if (_ep[i])   delete _ep[i];
 }
 
+MemoryRegion* EbFtBase::registerMemory(void* buffer, size_t size)
+{
+  if (!_ep[0])  return NULL;
+
+  Fabric* fab = _ep[0]->fabric();
+
+  return fab->register_memory(buffer, size);
+}
+
 int EbFtBase::_syncLclMr(char*          region,
                          size_t         size,
                          Endpoint*      ep,
@@ -94,7 +103,7 @@ uint64_t EbFtBase::_tryCq()
 
     if (_ep[_iSrc]->comp(&cqEntry, &cqNum, 1))
     {
-      if ((cqNum == 1) && (cqEntry.flags & FI_REMOTE_WRITE))
+      if (cqNum && (cqEntry.flags & (FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA)))
       {
         // Revisit: Immediate data identifies which batch was written
         //          Better to use its address or parameters?
@@ -144,19 +153,38 @@ int EbFtBase::post(LocalIOVec& lclIov,
                    uint64_t    dstOffset,
                    void*       ctx)
 {
+  const struct iovec* iov = lclIov.iovecs();
+  void**              dsc = lclIov.desc();
+
   for (unsigned i = 0; i < lclIov.count(); ++i)
   {
-    lclIov.set_iovec_mr(i, _mr[dst]);
+    printf("lclIov[%d]: base   = %p, size = %zd, desc = %p\n", i, iov[i].iov_base, iov[i].iov_len, dsc[i]);
   }
 
   RemoteAddress rmtAdx(_ra[dst].rkey, _ra[dst].addr + dstOffset, len);
   RemoteIOVec   rmtIov(&rmtAdx, 1);
   RmaMessage    rmaMsg(&lclIov, &rmtIov, ctx, rmtAdx.addr);
 
-  if (!_ep[dst]->writemsg_sync(&rmaMsg, FI_REMOTE_CQ_DATA))
+  printf("rmtIov[0]: rmtAdx = %p, size = %zd\n", (void*)rmtAdx.addr, len);
+
+  while (1)
   {
-    fprintf(stderr, "writemsg failed: %s\n", _ep[dst]->error());
-    return _ep[dst]->error_num();
+    if (_ep[dst]->writemsg(&rmaMsg, FI_REMOTE_CQ_DATA))  break;
+
+    if (_ep[dst]->error_num() == -FI_EAGAIN)
+    {
+      int              cqNum;
+      fi_cq_data_entry cqEntry;
+
+      printf("Waiting...\n");
+      _ep[dst]->comp_wait(&cqEntry, &cqNum, 1);
+      printf("Completion flags = 0x%016lx\n", cqEntry.flags);
+    }
+    else
+    {
+      fprintf(stderr, "writemsg failed: %s\n", _ep[dst]->error());
+      return _ep[dst]->error_num();
+    }
   }
 
   return 0;

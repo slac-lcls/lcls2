@@ -14,14 +14,20 @@ using namespace Pds::Eb;
 
 EventBuilder::EventBuilder(unsigned epochs,
                            unsigned entries,
-                           uint64_t mask) :
+                           uint64_t duration) :
   Timer(),
-  _mask(mask),                          // Nominally gives the batch duration
+  _mask(~(duration - 1) & ((1UL << 56) - 1)), // Revisit: ickiness
   _epochFreelist(sizeof(EbEpoch), epochs),
   _eventFreelist(sizeof(EbEvent), epochs * entries),
   _task(new Task(TaskObject("tEB", 100))),
   _duration(100)                        // Timeout rate in ms
 {
+  if (__builtin_popcountll(duration) != 1)
+  {
+    fprintf(stderr, "Batch duration (%016lx) must be a power of 2\n",
+            duration);
+    abort();
+  }
 }
 
 EventBuilder::~EventBuilder()
@@ -140,7 +146,7 @@ EbEvent* EventBuilder::_insert(EbContribution* contrib)
   EbEvent* event = _insert(epoch, contrib);
   if (!event->_remaining)  return event;
 
-  return NULL;
+  return NULL;                          // Revisit: Causes SegFault
 }
 
 void EventBuilder::_retire(EbEvent* event)
@@ -266,5 +272,5 @@ void EventBuilder::process(Dgram* dg)
   EbContribution* contrib = (EbContribution*)dg;
   EbEvent*        event   = _insert(contrib);
 
-  if (!event->_remaining)  _flush(event);
+  if (event && !event->_remaining)  _flush(event);
 }

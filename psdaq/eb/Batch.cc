@@ -50,8 +50,6 @@ Batch::Batch(const Dgram& contrib, uint64_t pid) :
   _datagram.xtc.extent = sizeof(Xtc);
 
   new (_batch1()._pool) BatchEntry(_datagram);
-
-  _datagram.xtc.extent += sizeof(_datagram);
 }
 
 Batch::~Batch()
@@ -71,22 +69,28 @@ Batch1& Batch::_batch1() const
 
 #include <unistd.h>
 
-void Batch::init(GenericPoolW& pool, unsigned batchDepth, unsigned iovPoolDepth)
+void Batch::init(GenericPoolW& pool,
+                 unsigned      batchDepth,
+                 unsigned      iovPoolDepth,
+                 MemoryRegion* mr[2])
 {
   Queue<Batch> list;                    // Revisit: Unneeded locking here
 
   for (unsigned i = 0; i < batchDepth; ++i)
   {
-    Batch* batch = (Batch*)pool.alloc(pool.sizeofObject());
-    printf("Batch init %2d, batch = %p, batch1 = %p\n", i, batch, &batch->_batch1());
-    usleep(100000);
-    new((void*)&batch[1]) Batch1(i, iovPoolDepth);
+    Batch*  batch = (Batch*)pool.alloc(pool.sizeofObject());
+    Batch1* b1    = new((void*)&batch[1]) Batch1(i, iovPoolDepth);
+    for (unsigned j = 0; j < iovPoolDepth; ++j)
+    {
+      b1->_pool.set_iovec_mr(j, mr[j == 0 ? 0 : 1]);
+    }
+    printf("Batch init %2d, batch = %p, batch1 = %p, mr->desc = %p, %p\n",
+           i, batch, b1, mr[0]->desc(), mr[1]->desc());
     list.insert(batch);
   }
   for (unsigned i = 0; i < batchDepth; ++i)
   {
     Batch* batch = list.remove();
-    usleep(100000);
     pool.free(batch);
   }
 }
@@ -106,7 +110,7 @@ void Batch::append(const Dgram& contrib)
 
 size_t Batch::extent() const
 {
-  return (char*)_datagram.xtc.next() - (char*)&_datagram;
+  return sizeof(_datagram) + _datagram.xtc.sizeofPayload();
 }
 
 LocalIOVec& Batch::pool() const

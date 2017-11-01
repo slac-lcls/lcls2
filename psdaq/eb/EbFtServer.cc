@@ -53,9 +53,11 @@ int EbFtServer::connect()
     return _pep->error_num();
   }
 
-  printf("Fabric provider is '%s'\n", _pep->fabric()->provider());
+  Fabric* fab = _pep->fabric();
 
-  _cqPoller = new CompletionPoller(_pep->fabric(), _ep.size());
+  printf("Fabric provider is '%s'\n", fab->provider());
+
+  _cqPoller = new CompletionPoller(fab, _ep.size());
 
   if(!_pep->listen())
   {
@@ -79,8 +81,6 @@ int EbFtServer::connect()
 
     printf("Client %d connected\n", i);
 
-    Fabric* fab = _ep[i]->fabric();
-
     _mr[i] = fab->register_memory(pool, _lclSize);
     if (!_mr[i])
     {
@@ -97,6 +97,8 @@ int EbFtServer::connect()
     // Borrow the local region for a moment to obtain the remote region specs
     ret = _syncRmtMr(pool, _rmtSize, _ep[i], _mr[i], _ra[i]);
     if (ret)  break;
+
+    _ep[i]->recv_comp_data();
 
     pool += _lclSize;
   }
