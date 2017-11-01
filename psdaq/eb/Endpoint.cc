@@ -266,7 +266,8 @@ bool LocalIOVec::set_iovec(unsigned index, void* buf, size_t len, MemoryRegion* 
 
 bool LocalIOVec::set_iovec_mr(unsigned index, MemoryRegion* mr)
 {
-  if (index >= _count || !mr) {
+  //if (index >= _count || !mr) {
+  if (index >= _max || !mr) {
     return false;
   }
 
