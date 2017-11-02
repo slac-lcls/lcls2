@@ -7,7 +7,7 @@
 // - better namespacing
 // - minimize number of name lookups
 // - provide both "safe" name-lookup xface and "performant" index xface
-// - automated testing in cmake
+// - automated testing in cmake (and jenkins/continuous integration?)
 // - use Array for both getting/setting data
 // - Array should support slicing
 // - maybe put non-vlen array shapes in configure (use this to distinguish
