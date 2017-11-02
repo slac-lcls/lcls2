@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
     XtcFileIterator iter(fd, 0x4000000);
     Dgram* dg;
     while ((dg = iter.next())) {
-        printf("%s transition: time %d.%09d, pulseId 0x%0x, env 0x%x, "
+        printf("%s transition: time %d.%09d, pulseId 0x%lux, env 0x%x, "
                "payloadSize %d\n",
                TransitionId::name(dg->seq.service()), dg->seq.clock().seconds(),
                dg->seq.clock().nanoseconds(), dg->seq.stamp().pulseId(),
