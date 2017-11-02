@@ -9,6 +9,8 @@
 // - provide both "safe" name-lookup xface and "performant" index xface
 // - use Array for both getting/setting data
 // - Array should support slicing
+// - maybe put non-vlen array shapes in configure (use this to distinguish
+//   vlen/non-vlen?).  but this may make things too complex. could use name instead.
 // - protection:
 //   o pass in full list of names (ensures we get early error if the
 //     nameindex number is incorrect, but breaks object-oriented encapsulation)

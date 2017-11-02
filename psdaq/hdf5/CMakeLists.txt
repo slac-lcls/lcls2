@@ -13,11 +13,3 @@ target_link_libraries(pshdf5
     ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES}
 )
-
-add_executable(h5writer
-    ../app/h5writer.cc
-)
-target_link_libraries(h5writer
-    pshdf5
-    xtc
-)

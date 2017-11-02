@@ -2,19 +2,25 @@
 #include <cassert>
 #include <hdf5_hl.h>
 #include <vector>
+#include <iostream>
 
-Dataset::Dataset(hid_t file_id, const Field& field)
+#define _unused(x) ((void)(x))
+
+Dataset::Dataset(hid_t file_id, Name& name, const uint32_t* shape)
 {
-    int ndims = field.rank + 1;
-    std::vector<hsize_t> dims(ndims);
+    int ndims = name.rank() + 1;
     std::vector<hsize_t> maxDims(ndims);
-    dims[0] = 0;
+    m_dims.push_back(0);
+    m_offset.push_back(0);
+    m_dims_extend.push_back(1);
     maxDims[0] = H5S_UNLIMITED;
     for (int i = 1; i < ndims; i++) {
-        dims[i] = field.shape[i - 1];
-        maxDims[i] = field.shape[i - 1];
+        m_dims.push_back(shape[i - 1]);
+        m_offset.push_back(0);
+        m_dims_extend.push_back(shape[i - 1]);
+        maxDims[i] = shape[i - 1];
     }
-    m_dataspaceId = H5Screate_simple(ndims, dims.data(), maxDims.data());
+    m_dataspaceId = H5Screate_simple(ndims, m_dims.data(), maxDims.data());
 
     std::vector<hsize_t> cdims(ndims);
 
@@ -26,7 +32,7 @@ Dataset::Dataset(hid_t file_id, const Field& field)
     else {
         cdims[0] = 1;
         for (int i = 1; i < ndims; i++) {
-            cdims[i] = field.shape[i - 1];
+            cdims[i] = shape[i - 1];
         }
     }
 
@@ -35,37 +41,51 @@ Dataset::Dataset(hid_t file_id, const Field& field)
         std::cout << "Error in setting chunk size" << std::endl;
     }
 
-    switch (field.type) {
-    case UINT8: {
+    switch (name.type()) {
+    case Name::UINT8: {
         m_typeId = H5T_NATIVE_UINT8;
         break;
     }
-    case UINT16: {
+    case Name::UINT16: {
         m_typeId = H5T_NATIVE_UINT16;
         break;
     }
-    case INT32: {
+    case Name::INT32: {
         m_typeId = H5T_NATIVE_INT32;
         break;
     }
-    case FLOAT: {
+    case Name::FLOAT: {
         m_typeId = H5T_NATIVE_FLOAT;
         break;
     }
-    case DOUBLE: {
+    case Name::DOUBLE: {
         m_typeId = H5T_NATIVE_DOUBLE;
         break;
     }
     }
-    m_dsetId = H5Dcreate2(file_id, field.name, m_typeId, m_dataspaceId, H5P_DEFAULT, m_plistId, H5P_DEFAULT);
+    m_dsetId = H5Dcreate2(file_id, name.name(), m_typeId, m_dataspaceId, H5P_DEFAULT, m_plistId, H5P_DEFAULT);
     if (m_dsetId < 0) {
-        std::cout << "Error in creating HDF5 dataset " << field.name << std::endl;
+        std::cout << "Error in creating HDF5 dataset " << std::string(name.name()) << std::endl;
     }
 }
 
 void Dataset::append(const void* data)
 {
-    printf("append not supported with hdf5 1.8\n");
+    m_dims[0]+=1;
+    herr_t status = H5Dset_extent (m_dsetId, m_dims.data());
+    _unused(status);
+    hid_t filespace = H5Dget_space (m_dsetId);
+    status = H5Sselect_hyperslab (filespace, H5S_SELECT_SET, m_offset.data(), NULL,
+                                  m_dims_extend.data(), NULL);  
+
+    /* Define memory space */
+    hid_t memspace = H5Screate_simple (m_dims.size(), m_dims_extend.data(), NULL); 
+
+    /* Write the data to the extended portion of dataset  */
+    status = H5Dwrite (m_dsetId, m_typeId, memspace, filespace,
+                       H5P_DEFAULT, data);
+    m_offset[0]+=1;
+
     // H5DOappend(m_dsetId, H5P_DEFAULT, 0, 1, m_typeId, data);
     // H5Dflush(m_dsetId);
 }
@@ -94,6 +114,10 @@ Dataset::Dataset(Dataset&& d)
     d.m_dataspaceId = -1;
     d.m_plistId = -1;
     d.m_typeId = -1;
+
+    m_dims = d.m_dims;
+    m_offset = d.m_offset;
+    m_dims_extend = d.m_dims_extend;
 }
 
 HDF5File::HDF5File(const char* name)
@@ -106,27 +130,34 @@ HDF5File::HDF5File(const char* name)
     }
 }
 
-void HDF5File::addDatasets(Desc& desc)
+void HDF5File::addDatasets(DescData& descdata)
 {
-    for (unsigned i = 0; i < desc.num_fields(); i++) {
-        Field& field = desc.get(i);
-        auto it = m_datasets.find(field.name);
+    Names& names = descdata.nameindex().names();
+    for (unsigned i = 0; i < names.num(); i++) {
+        Name& name = names.get(i);
+        const char* namechar = name.name();
+        std::string namestr(namechar);
+        auto it = m_datasets.find(namestr);
         if (it == m_datasets.end()) {
             // only create dataset if it doesn't exist
-            m_datasets.emplace(field.name, Dataset(fileId, field));
+            uint32_t* shape = 0;
+            if (name.rank()>0) shape = descdata.shape(name);
+            m_datasets.emplace(namestr, Dataset(fileId, name, shape));
         }
     }
 }
 
-void HDF5File::appendData(DescData& datadesc)
+void HDF5File::appendData(DescData& descdata)
 {
-    Desc& desc = datadesc.desc();
-    char* data = datadesc.data().payload();
-    for (unsigned i = 0; i < desc.num_fields(); i++) {
-        Field& field = desc.get(i);
-        auto it = m_datasets.find(field.name);
+    Names& names = descdata.nameindex().names();
+    for (unsigned i = 0; i < names.num(); i++) {
+        Name& name = names.get(i);
+        const char* namechar = name.name();
+        std::string namestr(namechar);
+        auto it = m_datasets.find(namestr);
         assert(it != m_datasets.end());
-        it->second.append(data + field.offset);
+        unsigned index = descdata.nameindex()[namechar];
+        it->second.append(descdata.address(index));
     }
 }
 

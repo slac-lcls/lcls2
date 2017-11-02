@@ -3,6 +3,7 @@
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/NamesIter.hh"
 
 #include <Python.h>
 #include <stdio.h>
@@ -190,34 +191,6 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-class myNamesIter : public XtcIterator
-{
-public:
-    enum { Stop, Continue };
-    myNamesIter(Xtc* xtc) : XtcIterator(xtc) {}
-
-    int process(Xtc* xtc)
-    {
-        // printf("found typeid %s\n",XtcData::TypeId::name(xtc->contains.id()));
-        switch (xtc->contains.id()) {
-        case (TypeId::Parent): {
-            iterate(xtc); // look inside anything that is a Parent
-            break;
-        }
-        case (TypeId::Names): {
-            _namesVec.push_back(NameIndex(*(Names*)xtc));
-            break;
-        }
-        default:
-            break;
-        }
-        return Continue;
-    }
-    std::vector<NameIndex>& namesVec() {return _namesVec;}
-private:
-    std::vector<NameIndex> _namesVec;
-};
-
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
     static char* kwlist[] = {(char*)"file_descriptor",
@@ -271,7 +244,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
 
     if (configDgram==0) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
-    myNamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
+    NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
     namesIter.iterate();
 
     PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());

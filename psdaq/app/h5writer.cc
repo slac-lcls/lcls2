@@ -1,33 +1,32 @@
 #include "psdaq/hdf5/Hdf5Writer.hh"
-#include "xtcdata/xtc/Descriptor.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/NamesIter.hh"
 
-#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <unistd.h>
+#include <string.h>
 
 using namespace XtcData;
 #define BUFSIZE 0x4000000
 
 int main()
 {
-    Dgram* dgram = (Dgram*)malloc(BUFSIZE);
+    Dgram* config = (Dgram*)malloc(BUFSIZE);
 
     int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
-
-    if (::read(fd, dgram, sizeof(*dgram)) <= 0) {
-        printf("read was unsuccessful: %s\n", strerror(errno));
-    }
-
-    size_t payloadSize = dgram->xtc.sizeofPayload();
-    ::read(fd, dgram->xtc.payload(), payloadSize);
+    XtcFileIterator iter(fd,BUFSIZE);
+    Dgram* dgram = iter.next();
+    memcpy(config,dgram,sizeof(Dgram)+dgram->xtc.sizeofPayload());
+    NamesIter namesiter(&config->xtc);
+    namesiter.iterate();
 
     HDF5File file("data.h5");
-    HDF5LevelIter iter(&dgram->xtc, file);
-    // iterate through the datagram twice to simulate two events
-    iter.iterate();
-    iter.iterate();
+    while ((dgram = iter.next())) {
+        HDF5Iter iter(&dgram->xtc, file, namesiter.namesVec());
+        iter.iterate();
+    }
 
     return 0;
 }

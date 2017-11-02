@@ -14,6 +14,7 @@ add_library(xtc SHARED
     xtc/src/TimeStamp.cc
     xtc/src/XtcFileIterator.cc
     xtc/src/ShapesData.cc
+    xtc/src/NamesIter.cc
 )
 
 target_include_directories(xtc PUBLIC

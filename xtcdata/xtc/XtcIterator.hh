@@ -63,8 +63,6 @@ private:
 };
 }
 
-using namespace XtcData;
-
 /*
 ** ++
 **
@@ -75,7 +73,7 @@ using namespace XtcData;
 ** --
 */
 
-inline XtcIterator::XtcIterator(Xtc* root) : _root(root)
+inline XtcData::XtcIterator::XtcIterator(Xtc* root) : _root(root)
 {
 }
 
@@ -87,7 +85,7 @@ inline XtcIterator::XtcIterator(Xtc* root) : _root(root)
 ** --
 */
 
-inline const Xtc* XtcIterator::root() const
+inline const XtcData::Xtc* XtcData::XtcIterator::root() const
 {
     return _root;
 }
@@ -101,7 +99,7 @@ inline const Xtc* XtcIterator::root() const
 ** --
 */
 
-inline void XtcIterator::iterate()
+inline void XtcData::XtcIterator::iterate()
 {
     iterate(_root);
 }
