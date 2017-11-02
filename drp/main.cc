@@ -14,24 +14,6 @@
 #include "spscqueue.hh"
 #include "PgpCardMod.h"
 
-/* Instruction on how to run DTI
-
-~weaver/l2rel/build/pdsapp/bin/x86_64-rhel7-opt/dti_simple -a 10.0.2.104 -u 3 -f 1,2
-
-to control trigger rate:
-
-~weaver/l2rel/build/pdsapp/bin/x86_64-rhel7-opt/xpm_simple -a 10.0.2.102 -r 2 -e
-
--e enables backpressure
-
--r sets rate, 6 is 1Hz, 5 is 10Hz, 4 is 100Hz, 3 1000Hz, 2 10kHz, 1 71kHz, 0 1MHz
-
-
-~weaver/l2si/software/app/pgpcardG3/xLoopTest -d /dev/pgpcardG3_0_1 -T 0x80 -e 0 -s 1500 -S
-~weaver/l2si/software/app/pgpcardG3/xLoopTest -d /dev/pgpcardG3_0_4 -T 0x80 -e 3 -s 1500 -S
-
-*/
-
 using PgpQueue = SPSCQueue<PGPData*>;
 
 struct EventHeader {
@@ -58,10 +40,11 @@ int MovingAverage::add_value(int value)
 }
 
 void monitor_pgp(std::atomic<int64_t>& total_bytes_received,
-                      std::atomic<int64_t>& event_count)
+                      std::atomic<int64_t>& event_count, std::atomic<int64_t>& complete_count)
 {
     int64_t old_bytes = total_bytes_received.load(std::memory_order_relaxed);;
     int64_t old_count = event_count.load(std::memory_order_relaxed);
+    int64_t old_complete = complete_count.load(std::memory_order_release);
     auto t = std::chrono::steady_clock::now();
     while (1) {
         sleep(1);
@@ -73,23 +56,55 @@ void monitor_pgp(std::atomic<int64_t>& total_bytes_received,
             break;
         }
         int64_t new_count = event_count.load(std::memory_order_relaxed);
+        int64_t new_complete = complete_count.load(std::memory_order_release);
 
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t - oldt).count();
         double data_rate = double(new_bytes - old_bytes) / duration;
         double event_rate = double(new_count - old_count) / duration * 1.0e3;
-        printf("Event rate %.2f kHz    Data rate  %.2f MB/s\n", event_rate, data_rate);
-
+        int denominator = (new_count - old_count);
+        double complete_ratio = 0.0;
+        if (denominator > 0) {
+          complete_ratio  = double(new_complete - old_complete) / double(new_count - old_count);
+        }
+        printf("Event rate %.2f kHz    Data rate  %.2f MB/s    Complete event ratio %.2f%% \n", event_rate, data_rate, complete_ratio);
         old_bytes = new_bytes;
         old_count = new_count;
+        old_complete = new_complete;
 
     }
 }
 
+// send pgp data to worker thread and does load balancing to even work load across worker threads
+class WorkerSender
+{
+public:
+    WorkerSender(int nworkers) :_nworkers(nworkers), _avg_queue_size(nworkers), _worker(0) {}
+    void send_to_worker(std::vector<PgpQueue>& worker_input_queues, SPSCQueue<int>& collector_queue, PGPData* pgp_data)
+    {
+    PgpQueue* queue;
+    while (true) {
+        queue = &worker_input_queues[_worker % _nworkers];
+        int queue_size = queue->guess_size();
+        // calculate running mean over the worker queues
+        int mean = _avg_queue_size.add_value(queue_size);
+        if (queue_size * _nworkers - 5 < mean) {
+            break;
+        }
+        _worker++;
+    }
+    queue->push(pgp_data);
+    collector_queue.push(_worker % _nworkers);
+    _worker++;
+}
+private:
+    int _nworkers;
+    MovingAverage _avg_queue_size;
+    uint64_t _worker;
+};
+
 
 void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t** dma_buffers, SPSCQueue<int>& collector_queue, std::vector<PgpQueue>& worker_input_queues)
 {
-    int number_of_workers = worker_input_queues.size();
-
     // open pgp card fd
     char dev_name[128];
     snprintf(dev_name, 128, "/dev/pgpcardG3_0_%u", 1);
@@ -107,17 +122,22 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
     pgpCardTx.data = reinterpret_cast<uint32_t*>(nlanes);
     write(fd, &pgpCardTx, sizeof(PgpCardTx));
 
-    int64_t worker = 0;
-    MovingAverage avg_queue_size(number_of_workers);
+    WorkerSender worker_sender(worker_input_queues.size());
 
     std::atomic<int64_t> total_bytes_received(0L);
     std::atomic<int64_t> event_count(0L);
-    std::thread monitor_thread(monitor_pgp, std::ref(total_bytes_received), std::ref(event_count));
+    std::atomic<int64_t> complete_count(0UL);
+    std::thread monitor_thread(monitor_pgp, std::ref(total_bytes_received), std::ref(event_count), std::ref(complete_count));
 
     PgpCardRx pgp_card;
     pgp_card.model = sizeof(&pgp_card);
     pgp_card.maxSize = 100000;
+   
 
+    // non event builder version
+    int64_t worker = 0;
+    int number_of_workers = worker_input_queues.size();
+    MovingAverage avg_queue_size(number_of_workers);
     for (int i = 0; i < N; i++) {
         PGPData* pgp_data;
         pgp_queue.pop(pgp_data);
@@ -125,7 +145,7 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
 
         uint64_t bytes_received = 0UL;
         uint64_t pulse_id;
-        for (int c=0; c<4; c++) { // FIXME
+        for (int c=0; c<4; c++) {
             uint32_t index;
             if (!index_queue.pop(index)) {
                 std::cout<<"Error in getting new index\n";
@@ -149,7 +169,7 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
             }
             else {
                 if (event_header->pulseId != pulse_id) {
-                    std::cout<<i<<"  "<<"non matching pulse ids\n";
+                    //std::cout<<i<<"  "<<"non matching pulse ids\n";
                     //break;
                 }
             }
@@ -183,6 +203,88 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
         collector_queue.push(worker % number_of_workers);
         worker++;
     }
+    
+    /* event builder version
+
+    // event builder data structures
+    uint64_t last_event[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    PGPData* local_buffer[1024];
+    bool broken_events[1024];
+    uint64_t current_event = 0;
+
+    int i = 0;
+    uint64_t bytes_received = 0UL;
+    while (i < N) {
+        uint32_t index;
+        if (!index_queue.pop(index)) {
+            std::cout<<"Error in getting new index\n";
+            return;
+        }
+
+        // read from pgp card
+        pgp_card.data = dma_buffers[index];
+        unsigned int ret = read(fd, &pgp_card, sizeof(pgp_card));
+        if (ret <= 0) {
+             std::cout << "Error in reading from pgp card!" << std::endl;
+        } else if (ret == pgp_card.maxSize) {
+            std::cout << "Warning! Package size bigger than the maximum size!" << std::endl;
+        }
+        bytes_received += ret*4;
+
+
+        // event build pgp lanes
+        int lane = pgp_card.pgpLane;
+        EventHeader* event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
+        std::cout<<"pulse id:  "<<event_header->pulseId<<"  "<<lane<<"  "<<event_header->l1Count<<std::endl;
+
+        // create new event
+        if (event_header->l1Count > current_event) {
+            std::cout<<"Create new pgp data\n";
+            current_event = event_header->l1Count;
+            PGPData** pgp = &local_buffer[current_event & 1023];
+            pgp_queue.pop(*pgp);
+            // FIXME return old dma indices
+            (*pgp)->nlanes = 0;
+            (*pgp)->pulse_id = event_header->pulseId;
+            broken_events[current_event & 1023] = false;
+        }
+
+        // non consectutive event_count, mark event broken
+        if (event_header->l1Count != (last_event[lane] + 1)) {
+            std::cout<<"Non consecutive:  "<<event_header->l1Count<<"  "<<last_event[lane]<<std::endl;
+        }
+
+
+        last_event[lane] = event_header->l1Count;
+        PGPData* pgp_data = local_buffer[last_event[lane] & 1023];
+        
+        // update pgp data
+        PGPBuffer* buffer = &pgp_data->buffers[lane];
+        buffer->dma_index = index;
+        buffer->length = ret;
+        pgp_data->nlanes++;
+
+        // received all buffers and event is complete
+        if (pgp_data->nlanes == 4) {
+            // std::cout<<"Complete event\n";
+            worker_sender.send_to_worker(worker_input_queues, collector_queue, pgp_data);
+            i++;
+
+             // update pgp metrics
+            uint64_t temp = event_count.load(std::memory_order_relaxed) + 1;
+            event_count.store(temp, std::memory_order_relaxed);
+            temp = total_bytes_received.load(std::memory_order_relaxed) + bytes_received;
+            total_bytes_received.store(temp, std::memory_order_relaxed);
+            temp = complete_count.load(std::memory_order_release) + 1;
+            complete_count.store(temp, std::memory_order_release);
+            bytes_received = 0UL;
+         }
+
+
+    }
+
+
+    */
 
     // shutdown monitor thread
     total_bytes_received.store(-1, std::memory_order_relaxed);
