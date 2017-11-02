@@ -22,6 +22,7 @@ struct PGPBuffer
 struct PGPData
 {
     uint32_t nlanes;
+    uint64_t pulse_id;
     // max of 8 lanes on pgp card
     PGPBuffer buffers[8];
 };
