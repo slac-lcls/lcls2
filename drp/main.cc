@@ -4,17 +4,27 @@
 #include <thread>
 #include <vector>
 #include <memory>
+#include <cstring>
 
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/NamesIter.hh"
+#include "psdaq/hdf5/Hdf5Writer.hh"
+
 #include "main.hh"
 #include "spscqueue.hh"
 #include "PgpCardMod.h"
 
-using PgpQueue = SPSCQueue<PGPData*>;
+using PebbleQueue = SPSCQueue<Pebble*>;
+using namespace XtcData;
+
 
 struct EventHeader {
     uint64_t pulseId;
@@ -27,7 +37,7 @@ struct EventHeader {
 };
 
 const int N = 100000;
-const int NWORKERS = 4;
+const int NWORKERS = 1;
 
 MovingAverage::MovingAverage(int n) : index(0), sum(0), N(n), values(N, 0) {}
 int MovingAverage::add_value(int value)
@@ -79,9 +89,9 @@ class WorkerSender
 {
 public:
     WorkerSender(int nworkers) :_nworkers(nworkers), _avg_queue_size(nworkers), _worker(0) {}
-    void send_to_worker(std::vector<PgpQueue>& worker_input_queues, SPSCQueue<int>& collector_queue, PGPData* pgp_data)
+    void send_to_worker(std::vector<PebbleQueue>& worker_input_queues, SPSCQueue<int>& collector_queue, Pebble* pebble_data)
     {
-    PgpQueue* queue;
+    PebbleQueue* queue;
     while (true) {
         queue = &worker_input_queues[_worker % _nworkers];
         int queue_size = queue->guess_size();
@@ -92,7 +102,7 @@ public:
         }
         _worker++;
     }
-    queue->push(pgp_data);
+    queue->push(pebble_data);
     collector_queue.push(_worker % _nworkers);
     _worker++;
 }
@@ -103,7 +113,7 @@ private:
 };
 
 
-void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t** dma_buffers, SPSCQueue<int>& collector_queue, std::vector<PgpQueue>& worker_input_queues)
+void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32_t** dma_buffers, SPSCQueue<int>& collector_queue, std::vector<PebbleQueue>& worker_input_queues)
 {
     // open pgp card fd
     char dev_name[128];
@@ -139,8 +149,9 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
     int number_of_workers = worker_input_queues.size();
     MovingAverage avg_queue_size(number_of_workers);
     for (int i = 0; i < N; i++) {
-        PGPData* pgp_data;
-        pgp_queue.pop(pgp_data);
+        Pebble* pebble_data;
+        pgp_queue.pop(pebble_data);
+        PGPData* pgp_data = pebble_data->pgp_data();
         pgp_data->nlanes = 0;
 
         uint64_t bytes_received = 0UL;
@@ -187,7 +198,7 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
         total_bytes_received.store(temp, std::memory_order_relaxed);
 
         // load balancing
-        PgpQueue* queue;
+        PebbleQueue* queue;
         while (true) {
             queue = &worker_input_queues[worker % number_of_workers];
             int queue_size = queue->guess_size();
@@ -199,7 +210,7 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
             worker++;
         }
 
-        queue->push(pgp_data);
+        queue->push(pebble_data);
         collector_queue.push(worker % number_of_workers);
         worker++;
     }
@@ -293,18 +304,64 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PgpQueue& pgp_queue, uint32_t*
     close(fd);
 }
 
-void worker(PgpQueue& worker_input_queue, PgpQueue& worker_output_queue, int rank)
+
+void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
 {
+    CreateData fex(parent, nameindex, nameId);
+
+    uint16_t* ptr = (uint16_t*)fex.get_ptr();
+    unsigned shape[Name::MaxRank];
+    shape[0] = 30;
+    shape[1] = 30;
+    uint32_t dma_index = pebble_data->pgp_data()->buffers[0].dma_index;
+    uint16_t* img = reinterpret_cast<uint16_t*>(dma_buffers[dma_index]);
+    for (unsigned i=0; i<shape[0]*shape[1]; i++) {
+        ptr[i] = img[i];
+    }
+    fex.set_array_shape("array_fex",shape);
+}
+
+void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
+    Names& fexNames = *new(parent) Names();
+
+    fexNames.add("array_fex", Name::UINT16, parent, 2);
+    namesVec.push_back(NameIndex(fexNames));
+}
+
+
+void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, uint32_t** dma_buffers, int rank)
+{
+    uint8_t dummy[1024*1024];
+    Dgram* config = reinterpret_cast<Dgram*>(&dummy[0]);
+    std::vector<NameIndex> namesVec;
+
     int64_t counter = 0;
     while (true) {
-        PGPData* pgp_data;
-        if (!worker_input_queue.pop(pgp_data)) {
+        Pebble* pebble_data;
+        if (!worker_input_queue.pop(pebble_data)) {
             break;
         }
 
-        // Do actual work here
+        Dgram& dgram = *(Dgram*)pebble_data->fex_data();
+        TypeId tid(TypeId::Parent, 0);
+        dgram.xtc.contains = tid;
+        dgram.xtc.damage = 0;
+        dgram.xtc.extent = sizeof(Xtc);
 
-        worker_output_queue.push(pgp_data);
+
+
+        // Do actual work here
+        // configure transition
+        if (counter == 0) {
+            add_names(dgram.xtc, namesVec);
+            std::memcpy(config, &dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload());
+        }
+        // making real fex data for event
+        else {
+            fexExample(dgram.xtc, namesVec[0], 0, pebble_data, dma_buffers);
+        }
+
+        worker_output_queue.push(pebble_data);
         counter++;
     }
     std::cout << "Thread " << rank << " processed " << counter << " events" << std::endl;
@@ -321,6 +378,30 @@ void pin_thread(const pthread_t& th, int cpu)
     }
 }
 
+
+class Save
+{
+public:
+    Save() 
+    {
+        file = fopen("data.xtc", "w");
+    }
+    ~Save()
+    {
+        fclose(file);
+    }
+    int save(Pebble* pebble_data)
+    {
+        Dgram& dgram = *reinterpret_cast<Dgram*>(pebble_data->fex_data());
+        if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, file) != 1) {
+            printf("Error writing to output xtc file.\n");
+            return -1;
+        }
+    }
+private:
+    FILE* file;
+};
+
 int main()
 {
     int queue_size = 32768;
@@ -330,15 +411,15 @@ int main()
     
     // index_queue goes away with the new pgp driver in the dma streaming mode 
     SPSCQueue<uint32_t> index_queue(queue_size);
-    PgpQueue pgp_queue(queue_size);
+    SPSCQueue<Pebble*> pebble_queue(queue_size);
     uint32_t** dma_buffers;
-    std::vector<PGPData> pgp(queue_size);
+    std::vector<Pebble> pebble(queue_size);
 
-    std::vector<PgpQueue> worker_input_queues;
-    std::vector<PgpQueue> worker_output_queues;
+    std::vector<PebbleQueue> worker_input_queues;
+    std::vector<PebbleQueue> worker_output_queues;
     for (int i = 0; i < NWORKERS; i++) {
-        worker_input_queues.emplace_back(PgpQueue(queue_size));
-        worker_output_queues.emplace_back(PgpQueue(queue_size));
+        worker_input_queues.emplace_back(PebbleQueue(queue_size));
+        worker_output_queues.emplace_back(PebbleQueue(queue_size));
     }
     
     SPSCQueue<int> collector_queue(queue_size);
@@ -350,12 +431,12 @@ int main()
     dma_buffers  = new uint32_t*[queue_size];
     for (int i = 0; i < queue_size; i++) {
         index_queue.push(i);
-        pgp_queue.push(&pgp[i]);
+        pebble_queue.push(&pebble[i]);
         dma_buffers[i] = new uint32_t[buffer_element_size];
     }
 
     // start pgp reader thread
-    std::thread pgp_thread(pgp_reader, std::ref(index_queue), std::ref(pgp_queue), dma_buffers, std::ref(collector_queue),
+    std::thread pgp_thread(pgp_reader, std::ref(index_queue), std::ref(pebble_queue), dma_buffers, std::ref(collector_queue),
                            std::ref(worker_input_queues));
     pin_thread(pgp_thread.native_handle(), 2);
 
@@ -363,23 +444,42 @@ int main()
     std::vector<std::thread> worker_threads;
     for (int i = 0; i < NWORKERS; i++) {
         worker_threads.emplace_back(worker, std::ref(worker_input_queues[i]),
-                                    std::ref(worker_output_queues[i]), i);
+                                    std::ref(worker_output_queues[i]), dma_buffers, i);
         pin_thread(worker_threads[i].native_handle(), 3 + i);
     }
+
+
+    // Save saver;
+    HDF5File file("/drpffb/weninc/data.h5");
+    uint8_t dummy[1024*1024];
+    Dgram* config = reinterpret_cast<Dgram*>(dummy);
+    NamesIter namesiter(&config->xtc);
 
     // start loop for the collector to collect results from the workers in the same order the events arrived over pgp
     for (int i = 0; i < N; i++) {
         int worker;
         collector_queue.pop(worker);
 
-        PGPData* pgp_data;
-        worker_output_queues[worker].pop(pgp_data);
+        Pebble* pebble_data;
+        worker_output_queues[worker].pop(pebble_data);
+
+
+        // saver.save(pebble_data);
+        Dgram& dgram = *reinterpret_cast<Dgram*>(pebble_data->fex_data());
+        if (i == 0) {
+            std::memcpy(config, &dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload());
+            namesiter.iterate();
+        }
+        else {
+            HDF5Iter iter(&dgram.xtc, file, namesiter.namesVec());
+            iter.iterate();
+        }
 
         // return dma indices to dma buffer pool
-        for (unsigned int b=0; b<pgp_data->nlanes; b++) {
-            index_queue.push(pgp_data->buffers[b].dma_index);
+        for (unsigned int b=0; b<pebble_data->pgp_data()->nlanes; b++) {
+            index_queue.push(pebble_data->pgp_data()->buffers[b].dma_index);
         }
-        pgp_queue.push(pgp_data);
+        pebble_queue.push(pebble_data);
     }
 
     // shutdown worker queues and wait for threads to finish

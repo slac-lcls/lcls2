@@ -27,4 +27,12 @@ struct PGPData
     PGPBuffer buffers[8];
 };
 
+class Pebble
+{
+public:
+    PGPData* pgp_data() {return reinterpret_cast<PGPData*>(_pebble_buffer);}
+    void* fex_data() {return reinterpret_cast<void*>(_pebble_buffer + sizeof(PGPData));} 
+private:
+    uint8_t _pebble_buffer[1024*1024];
+};
 
