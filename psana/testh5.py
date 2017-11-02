@@ -1,6 +1,8 @@
 import h5py
 import numpy as np
+import sys
 from testvals import testvals
+
 f = h5py.File('data.h5')
 nevent = 2
 for ievt in range(nevent):
@@ -10,3 +12,4 @@ for ievt in range(nevent):
             assert np.array_equal(val,f[key][ievt])
         else:
             assert val==f[key][ievt]
+print('h5 tested',len(testvals),'values')
