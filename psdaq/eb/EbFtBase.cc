@@ -22,17 +22,6 @@ EbFtBase::EbFtBase(unsigned nClients) :
 
 EbFtBase::~EbFtBase()
 {
-  unsigned nMr = _mr.size();
-  unsigned nEp = _ep.size();
-
-  for (unsigned i = 0; i < nEp; ++i)
-    if (_cqPoller && _ep[i])  _cqPoller->del(_ep[i]);
-  if (_cqPoller)  delete _cqPoller;
-
-  for (unsigned i = 0; i < nMr; ++i)
-    if (_mr[i])   delete _mr[i];
-  for (unsigned i = 0; i < nEp; ++i)
-    if (_ep[i])   delete _ep[i];
 }
 
 MemoryRegion* EbFtBase::registerMemory(void* buffer, size_t size)
@@ -139,7 +128,7 @@ uint64_t EbFtBase::pend()
   }
   else
   {
-    fprintf(stderr, "Error polling completion queues: %s",
+    fprintf(stderr, "Error polling completion queues: %s\n",
             _cqPoller->error());
     return 0;
   }
@@ -167,7 +156,7 @@ int EbFtBase::post(LocalIOVec& lclIov,
 
   printf("rmtIov[0]: rmtAdx = %p, size = %zd\n", (void*)rmtAdx.addr, len);
 
-  while (1)
+  do
   {
     if (_ep[dst]->writemsg(&rmaMsg, FI_REMOTE_CQ_DATA))  break;
 
@@ -186,6 +175,7 @@ int EbFtBase::post(LocalIOVec& lclIov,
       return _ep[dst]->error_num();
     }
   }
+  while (_ep[dst]->state() == EP_UP);
 
   return 0;
 }

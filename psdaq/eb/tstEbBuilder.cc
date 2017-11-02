@@ -111,8 +111,6 @@ namespace Pds {
       {
         _running = false;
 
-        _outlet.shutdown();
-
         _task->destroy();
       }
     public:
@@ -220,7 +218,7 @@ void TstEbInlet::process()
   {
     // Pend for an input datagram (batch) and pass its datagrams to the event builder.
     Dgram* batch = (Dgram*)_inlet.pend();
-    if (!batch)  continue;
+    if (!batch)  break;
 
     printf("EbInlet read  a batch   %p, ts %014lx, sz %zd\n",
            batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
@@ -388,9 +386,13 @@ static TstEbInlet* ebInlet  = NULL;
 
 void sigHandler( int signal )
 {
+  static unsigned callCount = 0;
+
+  printf("sigHandler() called\n");
+
   if (ebInlet)  ebInlet->shutdown();
 
-  ::exit(signal);
+  if (callCount++)  ::abort(); // ::exit(signal);
 }
 
 void usage(char *name, char *desc)

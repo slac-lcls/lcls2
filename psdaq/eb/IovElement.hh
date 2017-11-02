@@ -16,7 +16,7 @@ namespace Pds {
       iov_base = const_cast<void*>(payload);
       iov_len  = size;
     }
-    ~IovElement() {};
+    ~IovElement() { };
   public:
     void* operator new   (size_t, Pds::Fabrics::LocalIOVec& pool);
     void  operator delete(void*);
