@@ -18,7 +18,7 @@ namespace Pds {
         _pool(iovPoolDepth)
       {
       }
-      ~Batch1() {};
+      ~Batch1() { };
     private:
       friend class Batch;
     private:

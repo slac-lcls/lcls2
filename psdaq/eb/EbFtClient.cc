@@ -31,6 +31,15 @@ EbFtClient::EbFtClient(StringList&  remote,
 
 EbFtClient::~EbFtClient()
 {
+  unsigned nEp = _ep.size();
+
+  for (unsigned i = 0; i < nEp; ++i)
+    if (_cqPoller && _ep[i])  _cqPoller->del(_ep[i]);
+  if (_cqPoller)  delete _cqPoller;
+
+  for (unsigned i = 0; i < nEp; ++i)
+    if (_ep[i])   delete _ep[i];
+
   delete[] _base;
 }
 
@@ -124,10 +133,12 @@ int EbFtClient::shutdown()
 {
   int ret = FI_SUCCESS;
 
-  //for (unsigned i = 0; i < _ep.size(); ++i)
-  //{
-  //  // Revisit: What's needed here?
-  //}
+  for (unsigned i = 0; i < _ep.size(); ++i)
+  {
+    if (!_ep[i])  continue;
+
+    _ep[i]->shutdown();
+  }
 
   return ret;
 }

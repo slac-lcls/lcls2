@@ -26,6 +26,13 @@ EbFtServer::EbFtServer(std::string& port,
 
 EbFtServer::~EbFtServer()
 {
+  unsigned nEp = _ep.size();
+  for (unsigned i = 0; i < nEp; ++i)
+    if (_cqPoller && _ep[i])  _cqPoller->del(_ep[i]);
+  if (_cqPoller)  delete _cqPoller;
+
+  if (_pep)  delete _pep;
+
   delete [] _base;
 }
 
@@ -113,16 +120,24 @@ int EbFtServer::shutdown()
 
   for (unsigned i = 0; i < _ep.size(); ++i)
   {
+    if (!_ep[i])  continue;
+
     bool cm_entry;
     struct fi_eq_cm_entry entry;
     uint32_t event;
     if (_ep[i]->event_wait(&event, &entry, &cm_entry))
     {
-      if (!cm_entry || event != FI_SHUTDOWN) {
-        fprintf(stderr, "unexpected event %u - expected FI_SHUTDOWN (%u)\n", event, FI_SHUTDOWN);
+      if (cm_entry && (event == FI_SHUTDOWN))
+      {
+        _pep->close(_ep[i]);
+        printf("Client %d disconnected!\n", i);
+      }
+      else
+      {
+        fprintf(stderr, "Unexpected event %u - expected FI_SHUTDOWN (%u)\n", event, FI_SHUTDOWN);
         ret = _ep[i]->error_num();
         _pep->close(_ep[i]);
-        continue;
+        break;
       }
     }
     else
@@ -130,10 +145,8 @@ int EbFtServer::shutdown()
       fprintf(stderr, "Wating for event failed: %s\n", _ep[i]->error());
       ret = _ep[i]->error_num();
       _pep->close(_ep[i]);
-      continue;
+      break;
     }
-
-    _pep->close(_ep[i]);
   }
 
   return ret;

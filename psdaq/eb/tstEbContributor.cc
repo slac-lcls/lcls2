@@ -173,8 +173,6 @@ namespace Pds {
       {
         _running = false;
 
-        _outlet.shutdown();
-
         _task->destroy();
       }
     public:
@@ -241,10 +239,11 @@ namespace Pds {
       {
         while (_running)
         {
+#if 0
           // Pend for a result datagram (batch) and handle it.
           Dgram* batch = (Dgram*)_inlet.pend();
+          if (!batch)  break;
 
-          if (!batch)  continue;
           printf("ContribInlet  rcvd  batch    %p, ts %014lx, sz %zd\n",
                  batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
 
@@ -256,6 +255,9 @@ namespace Pds {
 
             entry = (Dgram*)entry->xtc.next();
           }
+#else
+          sleep(1);
+#endif
         }
       }
       int _process(Dgram* result)
@@ -289,9 +291,13 @@ static TstContribInlet* contribInlet = NULL;
 
 void sigHandler(int signal)
 {
+  static unsigned callCount = 0;
+
+  printf("sigHandler() called\n");
+
   if (contribInlet)  contribInlet->shutdown();
 
-  ::exit(signal);
+  if (callCount++)  ::abort(); // ::exit(signal);
 }
 
 
@@ -369,8 +375,7 @@ int main(int argc, char **argv)
   TstContribInlet  inlet (ftc);
   contribInlet = &inlet;
 
-  //inlet.process();
-  while (1)  sleep(1);
+  inlet.process();
 
   outlet.shutdown();
   ftc.shutdown();
