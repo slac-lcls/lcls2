@@ -115,9 +115,9 @@ Dataset::Dataset(Dataset&& d)
     d.m_plistId = -1;
     d.m_typeId = -1;
 
-    m_dims = d.m_dims;
-    m_offset = d.m_offset;
-    m_dims_extend = d.m_dims_extend;
+    m_dims = std::move(d.m_dims);
+    m_offset = std::move(d.m_offset);
+    m_dims_extend = std::move(d.m_dims_extend);
 }
 
 HDF5File::HDF5File(const char* name)
