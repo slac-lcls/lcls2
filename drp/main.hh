@@ -27,6 +27,7 @@ struct PGPData
     PGPBuffer buffers[8];
 };
 
+// Per-Event-Buffer-with-Boundaries-Listed-Explicitly
 class Pebble
 {
 public:
@@ -35,4 +36,3 @@ public:
 private:
     uint8_t _pebble_buffer[1024*1024];
 };
-

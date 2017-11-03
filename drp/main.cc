@@ -332,7 +332,11 @@ void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
 void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, uint32_t** dma_buffers, int rank)
 {
     uint8_t dummy[1024*1024];
-    Dgram* config = reinterpret_cast<Dgram*>(&dummy[0]);
+    Dgram& config = *reinterpret_cast<Dgram*>(dummy);
+    TypeId tid(TypeId::Parent, 0);
+    config.xtc.contains = tid;
+    config.xtc.damage = 0;
+    config.xtc.extent = sizeof(Xtc);
     std::vector<NameIndex> namesVec;
 
     int64_t counter = 0;
@@ -353,8 +357,8 @@ void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, u
         // Do actual work here
         // configure transition
         if (counter == 0) {
-            add_names(dgram.xtc, namesVec);
-            std::memcpy(config, &dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload());
+            add_names(config.xtc, namesVec);
+            std::memcpy(&dgram, &config, sizeof(Dgram) + config.xtc.sizeofPayload());
         }
         // making real fex data for event
         else {
@@ -379,23 +383,26 @@ void pin_thread(const pthread_t& th, int cpu)
 }
 
 
-class Save
+class XtcFile
 {
 public:
-    Save() 
+    XtcFile(const char* fname) 
     {
-        file = fopen("data.xtc", "w");
+        file = fopen(fname, "w");
+        if (!file) {
+            printf("Error opening file %s\n",fname);
+            _exit(1);
+        }
     }
-    ~Save()
+    ~XtcFile()
     {
         fclose(file);
     }
-    int save(Pebble* pebble_data)
+    int save(Dgram& dgram)
     {
-        Dgram& dgram = *reinterpret_cast<Dgram*>(pebble_data->fex_data());
         if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, file) != 1) {
             printf("Error writing to output xtc file.\n");
-            return -1;
+            _exit(1);
         }
     }
 private:
@@ -449,11 +456,11 @@ int main()
     }
 
 
-    // Save saver;
+    // XtcFile xtcfile("/drpffb/cpo/data.xtc");
     HDF5File file("/drpffb/weninc/data.h5");
     uint8_t dummy[1024*1024];
-    Dgram* config = reinterpret_cast<Dgram*>(dummy);
-    NamesIter namesiter(&config->xtc);
+    Dgram& config = *reinterpret_cast<Dgram*>(dummy);
+    NamesIter namesiter(&config.xtc);
 
     // start loop for the collector to collect results from the workers in the same order the events arrived over pgp
     for (int i = 0; i < N; i++) {
@@ -464,10 +471,10 @@ int main()
         worker_output_queues[worker].pop(pebble_data);
 
 
-        // saver.save(pebble_data);
         Dgram& dgram = *reinterpret_cast<Dgram*>(pebble_data->fex_data());
+        // xtcfile.save(dgram);
         if (i == 0) {
-            std::memcpy(config, &dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload());
+            std::memcpy(&config, &dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload());
             namesiter.iterate();
         }
         else {

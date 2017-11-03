@@ -213,7 +213,7 @@ public:
     {
         Shapes& shapes = *new (&_shapesdata) Shapes(_parent, namesId);
         Names& names = _nameindex.names();
-        // should be arrays.num
+        // this wastes space: should be arrays.num
         shapes.alloc(names.num()*sizeof(Shape), _shapesdata, _parent);
         new (&_shapesdata) Data(_parent);
     }
