@@ -56,10 +56,11 @@ typedef std::map<const char *, unsigned, cmp_str> IndexMap;
 
 class NameIndex : public IndexMap {
 public:
-    NameIndex(Names& names) : _names(names) {
+    NameIndex(Names& names) {
+        _init_names(names);
         unsigned iarray = 0;
         for (unsigned i=0; i<names.num(); i++) {
-            Name& name = _names.get(i);
+            Name& name = _names->get(i);
             (*this)[name.name()]=i;
             if (name.rank()>0) {
                 _shapeMap[name.name()]=iarray;
@@ -67,10 +68,20 @@ public:
             }
         }
     }
+    NameIndex(const NameIndex& old) {
+        _init_names(*old._names);
+        _shapeMap = old._shapeMap;
+    }
+    NameIndex& operator=(const NameIndex& old) = delete;
+    ~NameIndex() {delete _names;}
     IndexMap& shapeMap() {return _shapeMap;}
-    Names& names() {return _names;}
+    Names& names() {return *_names;}
 private:
-    Names&   _names;
+    void _init_names(Names& names) {
+        _names = (Names*)malloc(names.extent);
+        std::memcpy(_names, &names, names.extent);
+    }
+    Names*   _names;
     IndexMap _shapeMap;
 };
 
