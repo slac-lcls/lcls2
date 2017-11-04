@@ -120,7 +120,8 @@ Dataset::Dataset(Dataset&& d)
     m_dims_extend = std::move(d.m_dims_extend);
 }
 
-HDF5File::HDF5File(const char* name)
+HDF5File::HDF5File(const char* name, std::vector<NameIndex>& namesVec) :
+    XtcIterator(), _namesVec(namesVec)
 {
     faplId = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_libver_bounds(faplId, H5F_LIBVER_EARLIEST, H5F_LIBVER_LATEST);
@@ -128,6 +129,10 @@ HDF5File::HDF5File(const char* name)
     if (fileId < 0) {
         std::cout << "Could not create HDF5 file:  " << std::endl;
     }
+}
+
+void HDF5File::save(XtcData::Dgram& dgram) {
+    iterate(&dgram.xtc);
 }
 
 void HDF5File::addDatasets(DescData& descdata)
@@ -156,7 +161,7 @@ void HDF5File::appendData(DescData& descdata)
         std::string namestr(namechar);
         auto it = m_datasets.find(namestr);
         assert(it != m_datasets.end());
-        unsigned index = descdata.nameindex()[namechar];
+        unsigned index = descdata.nameindex().nameMap()[namechar];
         it->second.append(descdata.address(index));
     }
 }

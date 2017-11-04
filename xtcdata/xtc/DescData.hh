@@ -44,26 +44,18 @@ template <typename T>
 struct is_vec<Array<T>> : std::true_type {
 };
 
-struct cmp_str
-{
-   bool operator()(const char *a, const char *b)
-   {
-      return std::strcmp(a, b) < 0;
-   }
-};
+typedef std::map<std::string, unsigned> IndexMap;
 
-typedef std::map<const char *, unsigned, cmp_str> IndexMap;
-
-class NameIndex : public IndexMap {
+class NameIndex {
 public:
     NameIndex(Names& names) {
         _init_names(names);
         unsigned iarray = 0;
-        for (unsigned i=0; i<names.num(); i++) {
+        for (unsigned i=0; i<_names->num(); i++) {
             Name& name = _names->get(i);
-            (*this)[name.name()]=i;
+            _nameMap[std::string(name.name())]=i;
             if (name.rank()>0) {
-                _shapeMap[name.name()]=iarray;
+                _shapeMap[std::string(name.name())]=iarray;
                 iarray++;
             }
         }
@@ -71,10 +63,12 @@ public:
     NameIndex(const NameIndex& old) {
         _init_names(*old._names);
         _shapeMap = old._shapeMap;
+        _nameMap = old._nameMap;
     }
-    NameIndex& operator=(const NameIndex& old) = delete;
+    NameIndex& operator=(const NameIndex& rhs) = delete;
     ~NameIndex() {delete _names;}
     IndexMap& shapeMap() {return _shapeMap;}
+    IndexMap& nameMap()  {return _nameMap;}
     Names& names() {return *_names;}
 private:
     void _init_names(Names& names) {
@@ -83,6 +77,7 @@ private:
     }
     Names*   _names;
     IndexMap _shapeMap;
+    IndexMap _nameMap;
 };
 
 // this "described data" class glues together the ShapesData
@@ -117,7 +112,7 @@ public:
     typename std::enable_if<std::is_fundamental<T>::value, T>::type get_value(const char* name)
     {
         Data& data = _shapesdata.data();
-        unsigned index = _nameindex[name];
+        unsigned index = _nameindex.nameMap()[name];
         return *reinterpret_cast<T*>(data.payload() + _offset[index]);
     }
 
@@ -137,7 +132,7 @@ public:
     typename std::enable_if<is_vec<T>::value, T>::type get_value(const char* namestring)
     {
         Data& data = _shapesdata.data();
-        unsigned index = _nameindex[namestring];
+        unsigned index = _nameindex.nameMap()[namestring];
         Name& name = _nameindex.names().get(index);
         unsigned shapeIndex = _nameindex.shapeMap()[name.name()];
         Shape& shape = _shapesdata.shapes().get(shapeIndex);
@@ -167,7 +162,7 @@ protected:
     }
 
     void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
-        unsigned index = _nameindex[name];
+        unsigned index = _nameindex.nameMap()[name];
         unsigned rank = _nameindex.names().get(index).rank();
         unsigned shapeIndex = _nameindex.shapeMap()[name];
         assert (shapeIndex==_numarrays); // check that shapes are filled in order
@@ -233,7 +228,7 @@ public:
     void set_value(const char* namestring, T val)
     {
         Data& data = _shapesdata.data();
-        unsigned index = _nameindex[namestring];
+        unsigned index = _nameindex.nameMap()[namestring];
         assert (index==_numentries); // require the user to fill the fields in order
         Name& name = _nameindex.names().get(index);
         T* ptr = reinterpret_cast<T*>(data.payload() + _offset[index]);
@@ -249,7 +244,7 @@ public:
     }
 
     void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
-        unsigned index = _nameindex[name];
+        unsigned index = _nameindex.nameMap()[name];
         assert (index==_numentries); // require the user to fill the fields in order
         unsigned shapeIndex = _nameindex.shapeMap()[name];
         assert (shapeIndex==_numarrays);

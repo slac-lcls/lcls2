@@ -331,12 +331,6 @@ void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
 
 void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, uint32_t** dma_buffers, int rank)
 {
-    uint8_t dummy[1024*1024];
-    Dgram& config = *reinterpret_cast<Dgram*>(dummy);
-    TypeId tid(TypeId::Parent, 0);
-    config.xtc.contains = tid;
-    config.xtc.damage = 0;
-    config.xtc.extent = sizeof(Xtc);
     std::vector<NameIndex> namesVec;
 
     int64_t counter = 0;
@@ -357,8 +351,7 @@ void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, u
         // Do actual work here
         // configure transition
         if (counter == 0) {
-            add_names(config.xtc, namesVec);
-            std::memcpy(&dgram, &config, sizeof(Dgram) + config.xtc.sizeofPayload());
+            add_names(dgram.xtc, namesVec);
         }
         // making real fex data for event
         else {
@@ -457,10 +450,8 @@ int main()
 
 
     // XtcFile xtcfile("/drpffb/cpo/data.xtc");
-    HDF5File file("/drpffb/weninc/data.h5");
-    uint8_t dummy[1024*1024];
-    Dgram& config = *reinterpret_cast<Dgram*>(dummy);
-    NamesIter namesiter(&config.xtc);
+    NamesIter namesiter;
+    HDF5File h5file("/drpffb/weninc/data.h5", namesiter.namesVec());
 
     // start loop for the collector to collect results from the workers in the same order the events arrived over pgp
     for (int i = 0; i < N; i++) {
@@ -474,12 +465,10 @@ int main()
         Dgram& dgram = *reinterpret_cast<Dgram*>(pebble_data->fex_data());
         // xtcfile.save(dgram);
         if (i == 0) {
-            std::memcpy(&config, &dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload());
-            namesiter.iterate();
+            namesiter.iterate(&dgram.xtc);
         }
         else {
-            HDF5Iter iter(&dgram.xtc, file, namesiter.namesVec());
-            iter.iterate();
+            h5file.save(dgram);
         }
 
         // return dma indices to dma buffer pool

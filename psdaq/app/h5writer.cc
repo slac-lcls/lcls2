@@ -13,19 +13,20 @@ using namespace XtcData;
 
 int main()
 {
-    Dgram* config = (Dgram*)malloc(BUFSIZE);
-
     int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
-    XtcFileIterator iter(fd,BUFSIZE);
-    Dgram* dgram = iter.next();
-    memcpy(config,dgram,sizeof(Dgram)+dgram->xtc.sizeofPayload());
-    NamesIter namesiter(&config->xtc);
-    namesiter.iterate();
+    XtcFileIterator xtciter(fd,BUFSIZE);
 
-    HDF5File file("data.h5");
-    while ((dgram = iter.next())) {
-        HDF5Iter iter(&dgram->xtc, file, namesiter.namesVec());
-        iter.iterate();
+    NamesIter namesiter;
+    HDF5File h5file("data.h5", namesiter.namesVec());
+    bool firstTime=true;
+    Dgram* dgram;
+    while ((dgram = xtciter.next())) {
+        if (firstTime) {
+            namesiter.iterate(&dgram->xtc);
+            firstTime=false;
+        } else {
+            h5file.save(*dgram);
+        }
     }
 
     return 0;
