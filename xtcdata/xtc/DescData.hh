@@ -211,7 +211,6 @@ private:
     unsigned      _namesId;
 };
 
-#include <stdio.h>
 class CreateData : public DescData {
 public:
     CreateData(XtcData::Xtc& parent, NameIndex& nameindex, unsigned namesId) :
