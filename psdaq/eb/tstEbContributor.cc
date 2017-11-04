@@ -1,6 +1,8 @@
 #include "psdaq/eb/BatchManager.hh"
-#include "psdaq/eb/EbFtClient.hh"
 #include "psdaq/eb/Endpoint.hh"
+
+#include "psdaq/eb/EbFtClient.hh"
+#include "psdaq/eb/EbFtServer.hh"
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
@@ -9,7 +11,6 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <new>
-#include <poll.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -76,7 +77,7 @@ namespace Pds {
         clock_gettime(CLOCK_REALTIME, &ts);
         _pid = ((uint64_t)ts.tv_sec) * 1000000 + ts.tv_nsec / 1000;
 
-        if (pipe(_fd)) perror("pipe");
+        if (pipe(_fd))  perror("DrpSim::ctor: pipe");
         _task->call(this);
       }
       ~DrpSim() { delete _pool; }
@@ -101,7 +102,7 @@ namespace Pds {
           Env      env(0);
           Xtc      xtc(_typeId, _src);
 
-          _pid += 16;                   // Avoid too many events per batch for now
+          _pid += 26; // Revisit: fi_tx_attr.iov_limit = 6 = 1 + max # events per batch
           //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
 
           // Make proxy to data (small data)
@@ -120,7 +121,8 @@ namespace Pds {
             payload[i] = i;             // Revisit: Some crud for now
           }
 
-          ::write(_fd[1], &pdg, sizeof(pdg)); // Write just the _pointer_
+          if (::write(_fd[1], &pdg, sizeof(pdg)) < 0) // Write just the _pointer_
+            perror("DrpSim::routine: write");
           if (lverbose)
             printf("DrpSim wrote input dg %p (ts %014lx, ext %zd) to   fd %d\n",
                    pdg, pdg->seq.stamp().pulseId(), sizeof(*pdg) + pdg->xtc.sizeofPayload(), _fd[1]);
@@ -188,9 +190,11 @@ namespace Pds {
       }
       void post(Batch* batch, void* arg)
       {
+        static unsigned cnt = 0;
+
         unsigned dst = batchId(batch->id()) % _numEbs;
 
-        printf("ContribOutlet posts batch    %p, ts %014lx, sz %zd\n",
+        printf("ContribOutlet posts batch %d (%p), ts %014lx, sz %zd\n", ++cnt,
                batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->extent());
 
         _outlet.post(batch->pool(), batch->extent(), dst, dstOffset(batch->index()), NULL);
@@ -203,7 +207,7 @@ namespace Pds {
         char* p;
         if (::read(_sim.fd(), &p, sizeof(p)) < 0)
         {
-          perror("read");
+          perror("TstContribOutlet::_pend: read");
           return NULL;
         }
 
@@ -226,8 +230,10 @@ namespace Pds {
     class TstContribInlet
     {
     public:
-      TstContribInlet(EbFtBase& inlet) :
+      TstContribInlet(EbFtBase&         inlet,
+                      TstContribOutlet& outlet) :
         _inlet(inlet),
+        _outlet(outlet),
         _running(true)
       {
       }
@@ -237,14 +243,15 @@ namespace Pds {
     public:
       void process()
       {
+        static unsigned cnt = 0;
+
         while (_running)
         {
-#if 0
           // Pend for a result datagram (batch) and handle it.
           Dgram* batch = (Dgram*)_inlet.pend();
           if (!batch)  break;
 
-          printf("ContribInlet  rcvd  batch    %p, ts %014lx, sz %zd\n",
+          printf("ContribInlet  rcvd  batch %d (%p), ts %014lx, sz %zd\n", cnt++,
                  batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
 
           Dgram* entry = (Dgram*)batch->xtc.payload();
@@ -255,9 +262,8 @@ namespace Pds {
 
             entry = (Dgram*)entry->xtc.next();
           }
-#else
-          sleep(1);
-#endif
+
+          _outlet.release(batch->seq.stamp().pulseId());
         }
       }
       int _process(Dgram* result)
@@ -278,8 +284,9 @@ namespace Pds {
         return 0;
       }
     private:
-      EbFtBase&     _inlet;
-      volatile bool _running;
+      EbFtBase&         _inlet;
+      TstContribOutlet& _outlet;
+      volatile bool     _running;
     };
   };
 };
@@ -297,22 +304,24 @@ void sigHandler(int signal)
 
   if (contribInlet)  contribInlet->shutdown();
 
-  if (callCount++)  ::abort(); // ::exit(signal);
+  if (callCount++)  ::abort();
 }
 
 
 void usage(char *name, char *desc)
 {
   fprintf(stderr, "Usage:\n");
-  fprintf(stderr, "  %s [OPTIONS] <srv_addr> [<srv_addr> [...]]\n", name);
+  fprintf(stderr, "  %s [OPTIONS] <builder_addr> [<builder_addr> [...]]\n", name);
 
   if (desc)
     fprintf(stderr, "\n%s\n", desc);
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s\n", "-P <dst_port>",
-          "Destination control port number (client: 32768)");
+  fprintf(stderr, " %-20s %s\n", "-B <srv_port>",
+          "Contributor's port number (server: 32769)");
+  fprintf(stderr, " %-20s %s\n", "-P <clt_port>",
+          "Builder port number (client: 32768)");
 
   fprintf(stderr, " %-20s %s\n", "-i <ID>",
           "Unique ID this instance should assume (0 - 63) (default: 0)");
@@ -325,14 +334,16 @@ int main(int argc, char **argv)
 {
   int op, ret = 0;
   unsigned id = 0;
-  std::string dst_port("32768");        // Connects with server port
-  std::vector<std::string> dst_addr;
+  std::string srv_port("32769");        // Port served to builders
+  std::string clt_port("32768");        // Port served by builders
+  std::vector<std::string> clt_addr;
 
-  while ((op = getopt(argc, argv, "hvP:i:")) != -1)
+  while ((op = getopt(argc, argv, "hvB:P:i:")) != -1)
   {
     switch (op)
     {
-      case 'P':  dst_port = std::string(optarg);       break;
+      case 'B':  srv_port = std::string(optarg);       break;
+      case 'P':  clt_port = std::string(optarg);       break;
       case 'i':  id       = strtoul(optarg, NULL, 0);  break;
       case 'v':  lverbose = true;                      break;
       case '?':
@@ -348,21 +359,28 @@ int main(int argc, char **argv)
 
   if (optind < argc)
   {
-    do { dst_addr.push_back(std::string(argv[optind])); } while (++optind < argc);
+    do { clt_addr.push_back(std::string(argv[optind])); } while (++optind < argc);
   }
   else
   {
-    fprintf(stderr, "Destination address(s) is required\n");
+    fprintf(stderr, "Builder address(s) is required\n");
     return 1;
   }
 
   ::signal( SIGINT, sigHandler );
 
-  unsigned numEbs      = dst_addr.size();
+  printf("Parameters:\n");
+  printf("  Batch duration:             %014lx = %ld uS\n", batch_duration, batch_duration);
+  printf("  Batch pool depth:           %d\n", max_batches);
+  printf("  Max # of entries per batch: %d\n", max_entries);
+  printf("  Max contribution size:      %zd\n", max_contrib_size);
+  printf("  Max result       size:      %zd\n", max_result_size);
+
+  unsigned numEbs      = clt_addr.size();
   size_t   contribSize = max_batches * (sizeof(Dgram) + max_entries * max_contrib_size);
   size_t   resultSize  = max_batches * (sizeof(Dgram) + max_entries * max_result_size);
 
-  EbFtClient ftc(dst_addr, dst_port, resultSize, contribSize);
+  EbFtClient ftc(clt_addr, clt_port, contribSize);
   unsigned   tmo(120);                  // Seconds
   ret = ftc.connect(tmo);
   if (ret)
@@ -371,13 +389,22 @@ int main(int argc, char **argv)
     return ret;
   }
 
+  EbFtServer fts(srv_port, numEbs, resultSize);
+  ret = fts.connect();
+  if (ret)
+  {
+    fprintf(stderr, "FtServer connect() failed\n");
+    return ret;
+  }
+
   TstContribOutlet outlet(ftc, id, numEbs, batch_duration, max_batches, max_entries, max_contrib_size);
-  TstContribInlet  inlet (ftc);
+  TstContribInlet  inlet (fts, outlet);
   contribInlet = &inlet;
 
   inlet.process();
 
   outlet.shutdown();
+  fts.shutdown();
   ftc.shutdown();
 
   return ret;

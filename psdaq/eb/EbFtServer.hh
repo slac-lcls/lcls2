@@ -27,8 +27,7 @@ namespace Pds {
     public:
       EbFtServer(std::string& port,
                  unsigned     nClients,
-                 size_t       lclSize,
-                 size_t       rmtSize);
+                 size_t       lclSize);
       virtual ~EbFtServer();
     public:
       int connect();
@@ -38,7 +37,6 @@ namespace Pds {
       std::string&              _port;   // The port to listen on
       Fabrics::PassiveEndpoint* _pep;    // Endpoint for establishing connections
       size_t                    _lclSize;// Local  memory region size
-      size_t                    _rmtSize;// Remote memory region size
       char*                     _base;   // The local memory region
     };
   };

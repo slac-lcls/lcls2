@@ -903,6 +903,10 @@ Endpoint::~Endpoint()
   shutdown();
 }
 
+ssize_t Endpoint::rx_size_left() const { return _ep ? fi_rx_size_left(_ep) : -1; }
+
+ssize_t Endpoint::tx_size_left() const { return _ep ? fi_tx_size_left(_ep) : -1; }
+
 void Endpoint::shutdown()
 {
   if (_ep) {

@@ -14,12 +14,10 @@ using namespace Pds::Eb;
 
 EbFtServer::EbFtServer(std::string& port,
                        unsigned     nClients,
-                       size_t       lclSize,
-                       size_t       rmtSize) :
+                       size_t       lclSize) :
   EbFtBase(nClients),
   _port(port),
   _lclSize(lclSize),
-  _rmtSize(rmtSize),
   _base(new char[nClients * lclSize])
 {
 }
@@ -71,7 +69,7 @@ int EbFtServer::connect()
     fprintf(stderr, "Failed to set passive fabrics endpoint to listening state: %s\n", _pep->error());
     return _pep->error_num();
   }
-  printf("Listening for client(s)\n");
+  printf("Listening for client(s) on port %s\n", _port.c_str());
 
   unsigned i        = 0;           // Not necessarily the same as the source ID
   char*    pool     = _base;
@@ -99,10 +97,6 @@ int EbFtServer::connect()
     _cqPoller->add(_ep[i]);
 
     ret = _syncLclMr(pool, _lclSize, _ep[i], _mr[i]);
-    if (ret)  break;
-
-    // Borrow the local region for a moment to obtain the remote region specs
-    ret = _syncRmtMr(pool, _rmtSize, _ep[i], _mr[i], _ra[i]);
     if (ret)  break;
 
     _ep[i]->recv_comp_data();

@@ -18,14 +18,13 @@ static const size_t scratch_size = sizeof(Fabrics::RemoteAddress);
 
 EbFtClient::EbFtClient(StringList&  remote,
                        std::string& port,
-                       size_t       lclSize,
                        size_t       rmtSize) :
   EbFtBase(remote.size()),
   _remote(remote),
   _port(port),
-  _lclSize(lclSize),
+  _lclSize(scratch_size),
   _rmtSize(rmtSize),
-  _base(new char[lclSize])
+  _base(new char[scratch_size])
 {
 }
 
@@ -63,14 +62,8 @@ int EbFtClient::connect(unsigned tmo)
 
     printf("Server %d (%s:%s) connected\n", i, _remote[i].c_str(), _port.c_str());
 
-    // Borrow the local region for a moment to obtain the remote region specs
     ret = _syncRmtMr(_base, _rmtSize, _ep[i], _mr[i], _ra[i]);
     if (ret)  return ret;
-
-    ret = _syncLclMr(_base, _lclSize, _ep[i], _mr[i]);
-    if (ret)  return ret;
-
-    _ep[i]->recv_comp_data();
   }
 
   return 0;
@@ -93,13 +86,6 @@ int EbFtClient::_connect(std::string&   remote,
 
   Fabric* fab = ep->fabric();
 
-  if (_cqPoller == NULL)                // Revisit: Really?!
-  {
-    printf("Fabric provider is '%s'\n", fab->provider());
-
-    _cqPoller = new CompletionPoller(fab, _ep.size());
-  }
-
   mr = fab->register_memory(_base, _lclSize);
   if (!mr)
   {
@@ -109,7 +95,7 @@ int EbFtClient::_connect(std::string&   remote,
     return fab->error_num();
   }
 
-  printf("Waiting for server(s)\n");
+  printf("Waiting for server %s on port %s\n", remote.c_str(), port.c_str());
 
   bool tmoEnabled = tmo != 0;
   while (!ep->connect() && (!tmoEnabled || --tmo))
@@ -123,8 +109,6 @@ int EbFtClient::_connect(std::string&   remote,
     perror("ep->connect()");
     return -1;
   }
-
-  _cqPoller->add(ep);
 
   return 0;
 }

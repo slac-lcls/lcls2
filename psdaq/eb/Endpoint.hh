@@ -206,6 +206,8 @@ namespace Pds {
       Endpoint(Fabric* fabric);
       ~Endpoint();
     public:
+      ssize_t rx_size_left() const;
+      ssize_t tx_size_left() const;
       void shutdown();
       bool connect();
       bool accept(struct fi_info* remote_info);

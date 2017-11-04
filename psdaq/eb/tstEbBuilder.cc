@@ -5,6 +5,7 @@
 #include "psdaq/eb/Endpoint.hh"
 
 #include "psdaq/eb/EbFtServer.hh"
+#include "psdaq/eb/EbFtClient.hh"
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
@@ -74,6 +75,8 @@ namespace Pds {
         xtc.src = src;
       }
     public:
+      PoolDeclare;
+    public:
       void destination(unsigned dst, unsigned idx)
       {
         *_dst++ = dst;
@@ -116,8 +119,12 @@ namespace Pds {
     public:
       void post(Result* result)
       {
-        if (::write(_fd[1], &result, sizeof(result)))
-          perror("write");
+        if (lverbose)
+          printf("TstEbOutlet wrote result dg %p (ts %014lx, ext %zd) to   fd %d\n",
+                 result, result->seq.stamp().pulseId(), sizeof(*result) + result->xtc.sizeofPayload(), _fd[1]);
+
+        if (::write(_fd[1], &result, sizeof(result)) < 0)
+          perror("TstEbOutlet::post: write");
       }
     public:                             // Routine interface
       void routine();
@@ -127,8 +134,12 @@ namespace Pds {
       {
         Result* result;
 
-        if (::read(_fd[0], &result, sizeof(result)))
-          perror("read");
+        if (::read(_fd[0], &result, sizeof(result)) < 0)
+          perror("TstEbOutlet::_pend: read");
+
+        if (lverbose)
+          printf("TstEbOutlet read dg %p (ts %014lx, ext %zd) from fd %d\n",
+                 result, result->seq.stamp().pulseId(), sizeof(*result) + result->xtc.sizeofPayload(), _fd[0]);
 
         return result;
       }
@@ -199,6 +210,8 @@ TstEbInlet::TstEbInlet(EbFtBase&    inlet,
   _outlet(outlet),
   _running(true)
 {
+  _results.dump();
+
   start();                              // Start the event timeout timer
 }
 
@@ -220,7 +233,7 @@ void TstEbInlet::process()
     Dgram* batch = (Dgram*)_inlet.pend();
     if (!batch)  break;
 
-    printf("EbInlet read  a batch   %p, ts %014lx, sz %zd\n",
+    printf("EbInlet got   a batch   %p, ts %014lx, sz %zd\n",
            batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
 
     Dgram* entry = (Dgram*)batch->xtc.payload();
@@ -250,8 +263,8 @@ void TstEbInlet::process(EbEvent* event)
 {
   //printf("Event ts %014lx, contract %016lx, size = %zd\n",
   //       event->sequence(), event->contract(), event->size());
-  event->dump(-1);
-  return;
+  //event->dump(-1);
+  //return;
 
   const unsigned recThresh = 10;       // Revisit: Some crud for now
   const unsigned monThresh = 5;        // Revisit: Some crud for now
@@ -271,8 +284,9 @@ void TstEbInlet::process(EbEvent* event)
     // The source of the contribution is one of the dsts
     rdg->destination(idg->number(), idg - creator);
 
-    uint32_t* payload = (uint32_t*)idg->xtc.next();
-    for (unsigned i = 0; i < result_extent; ++i)
+    uint32_t* payload = (uint32_t*)idg->xtc.payload();
+    size_t    length  = idg->xtc.sizeofPayload() / sizeof(*payload);
+    for (unsigned i = 0; i < length; ++i)
     {
       sum += payload[i];               // Revisit: Some crud for now
     }
@@ -282,7 +296,8 @@ void TstEbInlet::process(EbEvent* event)
   buffer[0] = sum > recThresh ? 0 : 1; // Revisit: Some crud for now
   buffer[1] = sum > monThresh ? 0 : 1; // Revisit: Some crud for now
 
-  _outlet.post(rdg);
+  //_outlet.post(rdg);
+  _outlet.process(rdg, rdg);            // Revisit: 2nd arg
 }
 
 uint64_t TstEbInlet::contract(Dgram* contrib) const
@@ -321,6 +336,9 @@ Result* TstEbInlet::_allocate(EbEvent* event)
 
   // Due to the resource-wait memory allocator used here, zero is never returned
   Result* result = new(&_results) Result(*cdg, _src);
+
+  _results.dump();
+
   return result;
 }
 
@@ -338,7 +356,7 @@ TstEbOutlet::TstEbOutlet(EbFtBase& outlet,
   _task (new Task(TaskObject("tOutlet")))
 {
   if (pipe(_fd))
-    perror("pipe");
+    perror("TstEbOutlet::ctor: pipe");
 }
 
 void TstEbOutlet::start(TstEbInlet& inlet)
@@ -361,23 +379,24 @@ void TstEbOutlet::routine()
     // it arrives, process it into a datagram (batch).  When the datagram
     // is complete, post it to all contributors.
     // This could be done in the same thread as the that of the EB.
-    Result* result = _pend();
-    process(result, result);            // Revisit: 2nd arg
+    //Result* result = _pend();
+    //process(result, result);            // Revisit: 2nd arg
+    sleep(1);
   }
 }
 
 void TstEbOutlet::post(Batch* batch, void* arg)
 {
+  static unsigned cnt = 0;
   Result*  result = (Result*)arg;
   unsigned nDsts  = result->nDsts();
 
-  printf("EbOutlet posts result   %p, ts %014lx, sz %zd\n",
+  printf("EbOutlet posts result %d (%p), ts %014lx, sz %zd\n", ++cnt,
          batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->extent());
 
   for (unsigned dst = 0; dst < nDsts; ++dst)
   {
-    //_outlet.post(batch->pool(), batch->extent(), result->dst(dst), dstOffset(result->idx(dst)), NULL);
-    sleep(1);
+    _outlet.post(batch->pool(), batch->extent(), result->dst(dst), dstOffset(result->idx(dst)), NULL);
   }
 }
 
@@ -392,21 +411,23 @@ void sigHandler( int signal )
 
   if (ebInlet)  ebInlet->shutdown();
 
-  if (callCount++)  ::abort(); // ::exit(signal);
+  if (callCount++)  ::abort();
 }
 
 void usage(char *name, char *desc)
 {
   fprintf(stderr, "Usage:\n");
-  fprintf(stderr, "  %s [OPTIONS] <clt_addr> [<clt_addr> [...]]\n", name);
+  fprintf(stderr, "  %s [OPTIONS] <contributor_addr> [<contributor_addr> [...]]\n", name);
 
   if (desc)
     fprintf(stderr, "\n%s\n", desc);
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s\n", "-P <src_port>",
-          "Source control port number (server: 32768)");
+  fprintf(stderr, " %-20s %s\n", "-B <srv_port>",
+          "Builder's port number (server: 32768)");
+  fprintf(stderr, " %-20s %s\n", "-P <clt_port>",
+          "Contributor port number (client: 32769)");
 
   fprintf(stderr, " %-20s %s\n", "-i <ID>",
           "Unique ID this instance should assume (0 - 63) (default: 0)");
@@ -419,14 +440,16 @@ int main(int argc, char **argv)
 {
   int op, ret = 0;
   unsigned id = 0;
-  std::string src_port("32768");        // Port served to client
-  std::vector<std::string> dst_addr;
+  std::string srv_port("32768");        // Port served to contributors
+  std::string clt_port("32769");        // Port served by contributors
+  std::vector<std::string> clt_addr;
 
-  while ((op = getopt(argc, argv, "hvP:i:")) != -1)
+  while ((op = getopt(argc, argv, "hvB:P:i:")) != -1)
   {
     switch (op)
     {
-      case 'P':  src_port = std::string(optarg);  break;
+      case 'B':  srv_port = std::string(optarg);  break;
+      case 'P':  clt_port = std::string(optarg);  break;
       case 'i':  id       = atoi(optarg);         break;
       case 'v':  lverbose = true;                 break;
       case '?':
@@ -443,24 +466,31 @@ int main(int argc, char **argv)
   {
     do
     {
-      dst_addr.push_back(std::string(argv[optind]));
+      clt_addr.push_back(std::string(argv[optind]));
       clients |= 1 << srcId++;          // Revisit srcId value
     }
     while (++optind < argc);
   }
   else
   {
-    fprintf(stderr, "Destination address(s) is required\n");
+    fprintf(stderr, "Contributor address(s) is required\n");
     return 1;
   }
 
   ::signal( SIGINT, sigHandler );
 
-  unsigned numContribs = dst_addr.size();
+  printf("Parameters:\n");
+  printf("  Batch duration:             %014lx = %ld uS\n", batch_duration, batch_duration);
+  printf("  Batch pool depth:           %d\n", max_batches);
+  printf("  Max # of entries per batch: %d\n", max_entries);
+  printf("  Max contribution size:      %zd\n", max_contrib_size);
+  printf("  Max result       size:      %zd\n", max_result_size);
+
+  unsigned numContribs = clt_addr.size();
   size_t   contribSize = max_batches * (sizeof(Dgram) + max_entries * max_contrib_size);
   size_t   resultSize  = max_batches * (sizeof(Dgram) + max_entries * max_result_size);
 
-  EbFtServer fts(src_port, numContribs, contribSize, resultSize);
+  EbFtServer fts(srv_port, numContribs, contribSize);
   ret = fts.connect();
   if (ret)
   {
@@ -468,7 +498,16 @@ int main(int argc, char **argv)
     return ret;
   }
 
-  TstEbOutlet outlet(fts, id, batch_duration, max_batches, max_entries, max_result_size);
+  EbFtClient ftc(clt_addr, clt_port, resultSize);
+  unsigned   tmo(120);                  // Seconds
+  ret = ftc.connect(tmo);
+  if (ret)
+  {
+    fprintf(stderr, "FtClient connect() failed\n");
+    return ret;
+  }
+
+  TstEbOutlet outlet(ftc, id, batch_duration, max_batches, max_entries, max_result_size);
   TstEbInlet  inlet (fts, id, batch_duration, max_batches, max_entries, clients, outlet);
   ebInlet = &inlet;
 
@@ -477,6 +516,7 @@ int main(int argc, char **argv)
   inlet.process();
 
   outlet.shutdown();
+  ftc.shutdown();
   fts.shutdown();
 
   return ret;
