@@ -48,7 +48,8 @@ int EbFtBase::_syncLclMr(char*          region,
     return ep->error_num();
   }
 
-  printf("Local  memory region: %p, size %zd\n", (void*)ra.addr, ra.extent);
+  printf("Local  memory region: %p : %p, size %zd\n",
+         (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent);
 
   return 0;
 }
@@ -75,7 +76,8 @@ int EbFtBase::_syncRmtMr(char*          region,
     return -1;
   }
 
-  printf("Remote memory region: %p, size %zd\n", (void*)ra.addr, ra.extent);
+  printf("Remote memory region: %p : %p, size %zd\n",
+         (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent);
 
   return 0;
 }
@@ -85,13 +87,18 @@ uint64_t EbFtBase::_tryCq()
   // Cycle through all sources to find which one has data
   for (unsigned i = 0; i < _ep.size(); ++i)
   {
-    if (!_ep[_iSrc])  continue;
+    unsigned iSrc = _iSrc++;
+    if (_iSrc == _ep.size())  _iSrc = 0;
+
+    if (!_ep[iSrc])  continue;
 
     int              cqNum;
     fi_cq_data_entry cqEntry;
 
-    if (_ep[_iSrc]->comp(&cqEntry, &cqNum, 1))
+    if (_ep[iSrc]->comp(&cqEntry, &cqNum, 1))
     {
+      _ep[iSrc]->recv_comp_data();
+
       if (cqNum && (cqEntry.flags & (FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA)))
       {
         // Revisit: Immediate data identifies which batch was written
@@ -104,13 +111,12 @@ uint64_t EbFtBase::_tryCq()
     }
     else
     {
-      if (_ep[_iSrc]->error_num() != -FI_EAGAIN)
+      if (_ep[iSrc]->error_num() != -FI_EAGAIN)
       {
         fprintf(stderr, "Error completing operation with peer %u: %s\n",
-                _iSrc, _ep[_iSrc]->error());
+                iSrc, _ep[iSrc]->error());
       }
     }
-    if (++_iSrc == _ep.size())  _iSrc = 0;
   }
 
   return 0;
@@ -120,11 +126,18 @@ uint64_t EbFtBase::pend()
 {
   uint64_t data = _tryCq();
 
-  if (data)  return data;
+  if (data)
+  {
+    printf("EbFtBase::pend got data 0x%016lx\n", data);
+    return data;
+  }
+
+  printf("EbFtBase::Pending...\n");
 
   if (_cqPoller->poll())
   {
     data = _tryCq();
+    printf("EbFtBase::pend: poll woke with data 0x%016lx\n", data);
   }
   else
   {

@@ -29,7 +29,6 @@ namespace Pds {
     public:
       EbFtClient(StringList&  remote,
                  std::string& port,
-                 size_t       lclSize,
                  size_t       rmtSize);
       virtual ~EbFtClient();
     public:

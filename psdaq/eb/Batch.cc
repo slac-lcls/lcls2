@@ -102,6 +102,8 @@ unsigned Batch::index() const
 
 void Batch::append(const Dgram& contrib)
 {
+  //if (pool().count() > 5)  return;   // Revisit: fi_tx_attr.iov_limit = 6
+
   BatchEntry* entry = new (_batch1()._pool) BatchEntry(contrib);
   assert(entry != (void*)0);
 
