@@ -72,10 +72,3 @@ target_link_libraries(amc_eyescan
 #    /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
 
-#add_executable(h5writer
-#    ../app/h5writer.cc
-#)
-#target_link_libraries(h5writer
-#    pshdf5
-#    xtc
-#)

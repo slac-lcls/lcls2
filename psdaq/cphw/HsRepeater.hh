@@ -3,13 +3,16 @@
 
 #include "psdaq/cphw/Reg.hh"
 #include "psdaq/cphw/Reg64.hh"
+#include <stdio.h>
 
 namespace Pds {
   namespace Cphw {
 
     class HsChannel {
     public:
-      void dump() const;
+      void    dump() const;
+      void    save(FILE*) const;
+      void    load(FILE*);
     public:
       bool    sigDetPreset() const;
       void    sigDetPreset(bool);
@@ -82,7 +85,10 @@ namespace Pds {
       HsRepeater();
     public:
       void     dump(unsigned links = (1 << NChannels)-1) const;
-      unsigned scanLink(unsigned chan, MeasFn measFn, void* arg);
+      void     save(FILE*) const;
+      void     load(FILE*);
+    public:
+      unsigned scanLink(unsigned chan, bool chA, bool chB, MeasFn measFn, void* arg);
     public:
       bool    eepromReadDone() const;
       uint8_t addressBits()    const;
