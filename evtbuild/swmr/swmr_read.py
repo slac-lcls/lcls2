@@ -1,5 +1,5 @@
 from mpi4py import MPI
-import h5py, glob, os
+import h5py, glob, os, sys
 import numpy as np, time
 import argparse
 from load_config import load_config
@@ -210,7 +210,7 @@ def client():
                 print('Client %i passing exit flag' % client_rank)
                 client_msg.client_exit_flag = True
                 client_msg.read_mb = total_read_in
-                client_msg.total_file_size = size_file
+                client_msg.total_file_size = os.stat(file_name).st_size/10**6
                 client_msg.total_events = client_total_events
 
                 continue
@@ -221,7 +221,9 @@ def client():
                 client_msg.last_timestamp = int(evt_inds[-1])
             except IndexError:
                 pass
-    # red = np.array(read_events)
+    # When the client has finished, quit the process
+    sys.exit()
+            # red = np.array(read_events)
     # red = red.ravel()
     # np.savetxt('client_%i_events.txt' % client_rank, red)
 
@@ -234,8 +236,8 @@ try:
         rm = master()
         rm.master()
     else:
-         client()
-    comm.Barrier()
+        client()
+  #  comm.Barrier()
 finally:
     if rank == 0:
         global_end = time.time()
