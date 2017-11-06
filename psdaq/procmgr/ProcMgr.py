@@ -699,7 +699,7 @@ class ProcMgr:
             args = [self.PATH_XTERM, "-bg", "midnightblue", "-fg", "white", "-fa", "18", "-T", name, \
                     "-e", self.PATH_TELNET, host, port]
         else:
-            args = [self.PATH_XTERM, "-T", name, "-e", self.PATH_TELNET, host, port]
+            args = [self.PATH_XTERM, "-T", name, "-fn", "fixed", "-e", self.PATH_TELNET, host, port]
         subprocess.Popen(args)
         return
 
