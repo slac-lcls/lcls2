@@ -125,6 +125,30 @@ void HsChannel::dump() const
 #undef PRT
 }
 
+void HsChannel::save(FILE* f) const
+{
+#define PUTR(reg) fprintf(f,"%02x\t%s\n",unsigned(reg),#reg)
+  PUTR(_sigDetFrc);
+  PUTR(_rxDet);
+  PUTR(_eqCtl);
+  PUTR(_vod);
+  PUTR(_dem);
+  PUTR(_idleThrsh);
+#undef PUTR
+}
+
+void HsChannel::load(FILE* f)
+{
+#define GETR(reg) { unsigned v; fscanf(f,"%02x\t" #reg "\n",&v); reg=v; }
+  GETR(_sigDetFrc);
+  GETR(_rxDet);
+  GETR(_eqCtl);
+  GETR(_vod);
+  GETR(_dem);
+  GETR(_idleThrsh);
+#undef GETR
+}
+
 void HsRepeater::dump(unsigned channels) const
 {
   printf("%-10s:       %p\n", "Base", this);
@@ -166,8 +190,38 @@ void HsRepeater::dump(unsigned channels) const
 #undef PRT
 }
 
+void HsRepeater::save(FILE* f) const
+{
+#define PUTR(reg) fprintf(f,"%02x\t%s\n",unsigned(reg),#reg)
+  PUTR(_pwdnChans);
+  PUTR(_ovrPwdn  );
+  PUTR(_slvRegCtl);
+  PUTR(_digRstCtl);
+  PUTR(_sigDetCtl);
+#undef PUTR
+  for(unsigned i=0; i<NChannels; i++)
+    _chA[i].save(f);
+  for(unsigned i=0; i<NChannels; i++)
+    _chB[i].save(f);
+}
 
-unsigned HsRepeater::scanLink(unsigned chan, MeasFn measFn, void* arg)
+void HsRepeater::load(FILE* f)
+{
+  smbusEnable(true);
+#define GETR(reg) { unsigned v; fscanf(f,"%02x\t" #reg "\n",&v); reg=v; }
+  GETR(_pwdnChans);
+  GETR(_ovrPwdn  );
+  GETR(_slvRegCtl);
+  GETR(_digRstCtl);
+  GETR(_sigDetCtl);
+#undef GETR
+  for(unsigned i=0; i<NChannels; i++)
+    _chA[i].load(f);
+  for(unsigned i=0; i<NChannels; i++)
+    _chB[i].load(f);
+}
+
+unsigned HsRepeater::scanLink(unsigned chan, bool chA, bool chB, MeasFn measFn, void* arg)
 {
   unsigned errs[16];
   memset(errs, 0, sizeof(errs));
@@ -176,8 +230,10 @@ unsigned HsRepeater::scanLink(unsigned chan, MeasFn measFn, void* arg)
   for (unsigned i = 0; i < sizeof(errs)/sizeof(*errs); ++i)
   {
     unsigned eqVal = eq[(10 + i) & 0xf]; // Start from the default position
-    _chB[chan]._eqCtl = eqVal;
-    _chA[chan]._eqCtl = eqVal;
+    if (chB)
+      _chB[chan]._eqCtl = eqVal;
+    if (chA)
+      _chA[chan]._eqCtl = eqVal;
     errs[(10 + i) & 0xf] = measFn(arg);
   }
   smbusEnable(false);
@@ -202,8 +258,10 @@ unsigned HsRepeater::scanLink(unsigned chan, MeasFn measFn, void* arg)
   }
 
   smbusEnable(true);
-  _chB[chan]._eqCtl = eq[idx];
-  _chA[chan]._eqCtl = eq[idx];
+  if (chB) 
+    _chB[chan]._eqCtl = eq[idx];
+  if (chA)
+    _chA[chan]._eqCtl = eq[idx];
   smbusEnable(false);
 
   return eMin != 0 ? -1 : idx;
