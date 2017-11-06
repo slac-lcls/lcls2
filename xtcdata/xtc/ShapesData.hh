@@ -8,6 +8,31 @@
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/TypeId.hh"
 
+static const int maxNameSize = 256;
+
+class AlgVersion {
+public:
+    AlgVersion(uint8_t major, uint8_t minor, uint8_t micro) {
+        _version = major<<16 | minor<<8 | micro;
+    }
+    unsigned major() {return (_version>>16)&0xff;}
+    unsigned minor() {return (_version>>8)&0xff;}
+    unsigned micro() {return (_version)&0xff;}
+private:
+    uint32_t _version;
+};
+
+class Alg {
+public:
+    Alg(const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
+        _version(major,minor,micro) {
+        strncpy(_alg, alg, maxNameSize);
+    }
+private:
+    char _alg[maxNameSize];
+    AlgVersion _version;
+};
+
 class Name
 {
 public:
@@ -16,21 +41,29 @@ public:
     static int get_element_size(DataType type);
 
     enum {MaxRank=5};
-    static const int maxNameSize = 256;
-    Name(const char* name, DataType type, int rank)
+    Name(const char* name, DataType type, int rank) : _alg("",0,0,0)
     {
-        strncpy(_name, name, maxNameSize);
-        _type = type;
-        _rank = rank;
+        _init(name,type,rank);
+    }
+    Name(const char* name, DataType type, int rank, Alg alg) : _alg(alg)
+    {
+        _init(name,type,rank);
     }
     const char* name() {return _name;}
     DataType    type() {return _type;}
     uint32_t    rank() {return _rank;}
+    Alg&        alg()  {return _alg;}
 
 private:
-    char _name[maxNameSize];
+    void _init(const char* name, DataType type, int rank) {
+        strncpy(_name, name, maxNameSize);
+        _type = type;
+        _rank = rank;
+    }
+    char     _name[maxNameSize];
     DataType _type;
     uint32_t _rank;
+    Alg      _alg;
 };
 
 class Shape
