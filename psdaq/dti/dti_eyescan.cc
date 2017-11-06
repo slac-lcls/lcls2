@@ -45,6 +45,7 @@ void usage(const char* p) {
   printf("         -f <filename>                  : Data output file\n");
   printf("         -s                             : Sparse scan\n");
   printf("         -p <prescale>                  : Sample count prescale (2**(17+<prescale>))\n");
+  printf("         -l <lane mask>                 : Bit maks of lanes to scan (default=1)\n");
 }
 
 int main(int argc, char** argv) {

@@ -22,6 +22,7 @@
 #include "psdaq/cphw/AmcTiming.hh"
 #include "psdaq/cphw/RingBuffer.hh"
 #include "psdaq/cphw/XBar.hh"
+#include "psdaq/cphw/HsRepeater.hh"
 
 //#define NO_DSPGP
 
@@ -30,6 +31,7 @@ using Pds::Cphw::Reg64;
 using Pds::Cphw::AmcTiming;
 using Pds::Cphw::RingBuffer;
 using Pds::Cphw::XBar;
+using Pds::Cphw::HsRepeater;
 
 extern int optind;
 bool _keepRunning = false;    // keep running on exit
@@ -42,12 +44,18 @@ void usage(const char* p) {
   printf("         -u <upstream mask>             : Bit mask of upstream links (default=1)\n");
   printf("         -f <forward mask>              : Comma separated list (no spaces) of bit masks of downstream links, one entry per enabled upstream link (default=1)\n");
   printf("         -k                             : Keep running on exit\n");
+  printf("         -L <fname>                     : Load configuration from file\n");
 }
 
 class Dti {
 private:  // only what's necessary here
   AmcTiming _timing;
-  uint32_t  _reserved[(0x80000000-sizeof(AmcTiming))>>2];
+  uint32_t _reserved_AT[(0x09000000-sizeof(AmcTiming))>>2];
+public:
+  HsRepeater hsRepeater[6];
+private:
+  uint32_t _reserved_HR[(0x77000000-sizeof(hsRepeater))>>2];
+
   class UsLinkControl {
   private:
     Reg _control;
@@ -247,8 +255,9 @@ int main(int argc, char** argv) {
   bool lHdrOnly = false;
   unsigned upstream = 1;
   unsigned fwdmask[8]={1,0,0,0,0,0,0,0};
+  const char* ifile=0;
   char* endptr;
-  while ( (c=getopt( argc, argv, "a:t:ru:f:kHh")) != EOF ) {
+  while ( (c=getopt( argc, argv, "a:t:ru:f:L:kHh")) != EOF ) {
     switch(c) {
     case 'a': ip = optarg; break;
     case 't': _partn = strtoul(optarg, NULL, 0); break;
@@ -256,6 +265,7 @@ int main(int argc, char** argv) {
     case 'k': _keepRunning = true; break;
     case 'H': lHdrOnly = true; break;
     case 'u': upstream = strtoul(optarg, NULL, 0); break;
+    case 'L': ifile = optarg; break;
     case 'f': 
       endptr = optarg;
       for(unsigned i=0; i<7; i++) {
@@ -271,11 +281,20 @@ int main(int argc, char** argv) {
     }
   }
 
-  ::signal( SIGINT, sigHandler );
+  ::signal( SIGINT , sigHandler );
+  ::signal( SIGKILL, sigHandler );
 
   //  Setup DTI
   Pds::Cphw::Reg::set(ip, 8192, 0);
   Dti* dti = new (0)Dti(lRTM);
+
+  if (ifile) {
+    FILE* f = fopen(ifile,"r");
+    for(unsigned i=0; i<6; i++)
+      dti->hsRepeater[i].load(f);
+    fclose(f);
+  }
+
   dti->dumpb();
   dti->start(upstream, fwdmask,lHdrOnly);
 

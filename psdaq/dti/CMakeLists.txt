@@ -55,3 +55,20 @@ target_link_libraries(dti_eyescan
    /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
    /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
+
+#
+#  dtiHsrCfg
+#
+add_executable(dtiHsrCfg dtiHsrCfg.cc)
+
+target_link_libraries(dtiHsrCfg
+   dl
+   pthread
+   service
+   cphw
+   epicstools
+   dti
+   /reg/common/package/epicsca/3.14.12/lib/x86_64-rhel7-opt/libca.so
+   /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
+   /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
+)
