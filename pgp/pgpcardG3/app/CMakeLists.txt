@@ -12,3 +12,16 @@ target_link_libraries(xRead
    pthread
 )
 
+add_executable(xMargin xMargin.cpp)
+
+target_link_libraries(xMargin
+   pthread
+)
+
+add_executable(xError xError.cpp)
+
+target_link_libraries(xError
+   pthread
+)
+
+
