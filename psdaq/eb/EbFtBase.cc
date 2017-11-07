@@ -128,16 +128,16 @@ uint64_t EbFtBase::pend()
 
   if (data)
   {
-    printf("EbFtBase::pend got data 0x%016lx\n", data);
+    //printf("EbFtBase::pend got data 0x%016lx\n", data);
     return data;
   }
 
-  printf("EbFtBase::Pending...\n");
+  //printf("EbFtBase::Pending...\n");
 
   if (_cqPoller->poll())
   {
     data = _tryCq();
-    printf("EbFtBase::pend: poll woke with data 0x%016lx\n", data);
+    //printf("EbFtBase::pend: poll woke with data 0x%016lx\n", data);
   }
   else
   {
@@ -155,19 +155,19 @@ int EbFtBase::post(LocalIOVec& lclIov,
                    uint64_t    dstOffset,
                    void*       ctx)
 {
-  const struct iovec* iov = lclIov.iovecs();
-  void**              dsc = lclIov.desc();
-
-  for (unsigned i = 0; i < lclIov.count(); ++i)
-  {
-    printf("lclIov[%d]: base   = %p, size = %zd, desc = %p\n", i, iov[i].iov_base, iov[i].iov_len, dsc[i]);
-  }
+  //const struct iovec* iov = lclIov.iovecs();
+  //void**              dsc = lclIov.desc();
+  //
+  //for (unsigned i = 0; i < lclIov.count(); ++i)
+  //{
+  //  printf("lclIov[%d]: base   = %p, size = %zd, desc = %p\n", i, iov[i].iov_base, iov[i].iov_len, dsc[i]);
+  //}
 
   RemoteAddress rmtAdx(_ra[dst].rkey, _ra[dst].addr + dstOffset, len);
   RemoteIOVec   rmtIov(&rmtAdx, 1);
   RmaMessage    rmaMsg(&lclIov, &rmtIov, ctx, rmtAdx.addr);
 
-  printf("rmtIov[0]: rmtAdx = %p, size = %zd\n", (void*)rmtAdx.addr, len);
+  //printf("rmtIov: rmtAdx = %p, size = %zd\n", (void*)rmtAdx.addr, len);
 
   do
   {
@@ -178,9 +178,8 @@ int EbFtBase::post(LocalIOVec& lclIov,
       int              cqNum;
       fi_cq_data_entry cqEntry;
 
-      printf("Waiting...\n");
+      //printf("EbFtBase::post: Waiting for comp...\n");
       _ep[dst]->comp_wait(&cqEntry, &cqNum, 1);
-      printf("Completion flags = 0x%016lx\n", cqEntry.flags);
     }
     else
     {

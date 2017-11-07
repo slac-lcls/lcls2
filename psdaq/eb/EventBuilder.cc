@@ -14,11 +14,13 @@ using namespace Pds::Eb;
 
 EventBuilder::EventBuilder(unsigned epochs,
                            unsigned entries,
+                           unsigned sources,
                            uint64_t duration) :
   Timer(),
   _mask(~(duration - 1) & ((1UL << 56) - 1)), // Revisit: ickiness
   _epochFreelist(sizeof(EbEpoch), epochs),
   _eventFreelist(sizeof(EbEvent), epochs * entries),
+  _cntrbFreelist(sizeof(EbContribution), epochs * entries * sources),
   _task(new Task(TaskObject("tEB", 100))),
   _duration(100)                        // Timeout rate in ms
 {
@@ -113,7 +115,7 @@ EbEvent* EventBuilder::_insert(EbEpoch*        epoch,
 {
   EbEvent* empty = epoch->pending.empty();
   EbEvent* event = epoch->pending.reverse();
-  uint64_t key   = contrib->seq.stamp().pulseId();
+  uint64_t key   = contrib->datagram()->seq.stamp().pulseId();
 
   while (event != empty)
   {
@@ -142,7 +144,7 @@ void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
 
 EbEvent* EventBuilder::_insert(EbContribution* contrib)
 {
-  EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
+  EbEpoch* epoch = _match(contrib->datagram()->seq.stamp().pulseId());
   EbEvent* event = _insert(epoch, contrib);
   if (!event->_remaining)  return event;
 
@@ -260,7 +262,8 @@ unsigned EventBuilder::repetitive() const
 ** --
 */
 
-void EventBuilder::process(Dgram* dg)
+void EventBuilder::process(const Dgram* datagram,
+                           uint64_t     appParam)
 {
   // Sort contributions into a time ordered list
   // Call the user's process with complete events to build the result datagram
@@ -269,7 +272,7 @@ void EventBuilder::process(Dgram* dg)
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
 
-  EbContribution* contrib = (EbContribution*)dg;
+  EbContribution* contrib = new(&_cntrbFreelist) EbContribution(datagram, appParam);
   EbEvent*        event   = _insert(contrib);
 
   if (event && !event->_remaining)  _flush(event);

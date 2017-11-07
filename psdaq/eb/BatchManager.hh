@@ -4,13 +4,13 @@
 #include "Batch.hh"
 
 #include "psdaq/service/GenericPoolW.hh"
-#include "psdaq/service/SemLock.hh"
 
 #include <stdlib.h>
 #include <stdint.h>
 #include <cstddef>
 #include <string>
 
+#include "xtcdata/xtc/Src.hh"
 
 namespace XtcData {
   class Dgram;
@@ -27,10 +27,11 @@ namespace Pds {
     class BatchManager
     {
     public:
-      BatchManager(uint64_t  duration,
-                   unsigned  batchDepth,
-                   unsigned  maxEntries,
-                   size_t    contribSize);
+      BatchManager(XtcData::Src src,
+                   uint64_t     duration,
+                   unsigned     batchDepth,
+                   unsigned     maxEntries,
+                   size_t       contribSize);
       virtual ~BatchManager();
     public:
       virtual void post(Batch*, void* arg) = 0;
@@ -51,13 +52,13 @@ namespace Pds {
     private:
       uint64_t     _startId(uint64_t id) const;
     private:
+      XtcData::Src _src;                // The Source identifier for batches
       uint64_t     _duration;           // The lifetime of a batch (power of 2)
       uint64_t     _durationShift;      // Shift away insignificant bits
       uint64_t     _durationMask;       // Mask  off  insignificant bits
       size_t       _maxBatchSize;       // Maximum size of a batch
       GenericPoolW _pool;               // Pool of Batch objects
       BatchList    _inFlightList;       // Listhead of batches in flight
-      SemLock      _inFlightLock;       // Lock for _inFlightList
     private:
       Batch*       _batch;              // Batch currently being assembled
     };

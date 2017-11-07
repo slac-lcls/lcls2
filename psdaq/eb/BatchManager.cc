@@ -8,17 +8,18 @@ using namespace Pds;
 using namespace Pds::Eb;
 using namespace Pds::Fabrics;
 
-BatchManager::BatchManager(uint64_t  duration, // = ~((1 << N) - 1) = 128 uS?
-                           unsigned  batchDepth,
-                           unsigned  maxEntries,
-                           size_t    contribSize) :
+BatchManager::BatchManager(Src      src,
+                           uint64_t duration, // = ~((1 << N) - 1) = 128 uS?
+                           unsigned batchDepth,
+                           unsigned maxEntries,
+                           size_t   contribSize) :
+  _src          (src),
   _duration     (duration),
   _durationShift(__builtin_ctzll(duration)),
   _durationMask (~((1 << __builtin_ctzll(duration)) - 1) & ((1UL << 56) - 1)),
   _maxBatchSize (maxEntries * contribSize),
   _pool         (Batch::size(), batchDepth),
-  _inFlightList (),
-  _inFlightLock ()
+  _inFlightList ()
 {
   if (__builtin_popcountll(duration) != 1)
   {
@@ -55,20 +56,20 @@ void BatchManager::start(unsigned      batchDepth,
   Dgram dg;
   dg.seq = Sequence(ClockTime(0, 0), TimeStamp());
 
-  _batch = new(&_pool) Batch(dg, dg.seq.stamp().pulseId());
+  _batch = new(&_pool) Batch(_src, dg, dg.seq.stamp().pulseId());
 }
 
 void BatchManager::process(const Dgram* contrib, void* arg)
 {
-  uint64_t id = _startId(contrib->seq.stamp().pulseId());
+  uint64_t pid = _startId(contrib->seq.stamp().pulseId());
 
-  if (_batch->expired(id))
+  if (_batch->expired(pid))
   {
-    post(_batch, arg);
-
     _inFlightList.insert(_batch);       // Revisit: Replace with atomic list
 
-    _batch = new(&_pool) Batch(*contrib, id); // Resource wait if pool is empty
+    post(_batch, arg);
+
+    _batch = new(&_pool) Batch(_src, *contrib, pid); // Resource wait if pool is empty
   }
 
   _batch->append(*contrib);
@@ -80,13 +81,14 @@ void BatchManager::release(uint64_t id)
   Batch* end   = _inFlightList.empty();
   while (batch != end)
   {
+    //printf("%s: id = %014lx, bid = %014lx\n", __PRETTY_FUNCTION__, id, batch->id());
+
+    if (id < batch->id())  break;
+
     Entry* next = batch->next();
 
-    if (id > batch->id())
-    {
-      _inFlightList.remove(batch);      // Revisit: Replace with atomic list
-      delete batch;
-    }
+    delete (Batch*)_inFlightList.remove(batch); // Revisit: Replace with atomic list
+
     batch = (Batch*)next;
   }
 }

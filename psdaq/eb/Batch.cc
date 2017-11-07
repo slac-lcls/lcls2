@@ -6,9 +6,23 @@
 #include <assert.h>
 #include <new>
 
+using namespace XtcData;
+using namespace Pds::Eb;
+using namespace Pds::Fabrics;
+
 
 namespace Pds {
   namespace Eb {
+
+    class TheSrc : public Src
+    {
+    public:
+      TheSrc(const Src& src, unsigned index) :
+        Src(src)
+      {
+        _log |= index << 8;
+      }
+    };
 
     class Batch1
     {
@@ -38,15 +52,13 @@ namespace Pds {
   };
 };
 
-using namespace XtcData;
-using namespace Pds::Eb;
-using namespace Pds::Fabrics;
 
-Batch::Batch(const Dgram& contrib, uint64_t pid) :
+Batch::Batch(const Src& src, const Dgram& contrib, uint64_t pid) :
   _datagram(contrib)
 {
   TimeStamp ts(pid, contrib.seq.stamp().control());
   _datagram.seq        = Sequence(contrib.seq.clock(), ts);
+  _datagram.xtc.src    = TheSrc(src, _batch1()._index);
   _datagram.xtc.extent = sizeof(Xtc);
 
   new (_batch1()._pool) BatchEntry(_datagram);

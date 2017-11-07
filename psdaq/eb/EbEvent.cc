@@ -51,29 +51,50 @@ EbEvent::EbEvent(uint64_t        contract,
                  EventBuilder*   eb,
                  EbEvent*        after,
                  EbContribution* contrib,
-                 uint64_t        mask)
+                 uint64_t        mask) :
+  _pending()
 {
   // Make sure we didn't run out of heap before initializing
   if (!this)  return;
 
-  uint64_t key = contrib->seq.stamp().pulseId();
+  uint64_t key = contrib->datagram()->seq.stamp().pulseId();
   _sequence = key;
   _key      = key & mask;
   _eb       = eb;
   _living   = MaxTimeouts;
-  _tail     = _pending;
-  _head     = _pending;
 
-  *_head++  = contrib;
+  _pending.insert(contrib);
 
-  unsigned size = contrib->payloadSize();
-
-  _size = size;
+  _size = contrib->payloadSize();
 
   _contract  = contract;
   _remaining = contract & contrib->retire();
 
   connect(after);
+}
+
+/*
+** ++
+**
+**    As soon as an event becomes "complete" its datagram is the only
+**    information of value within the event. Therefore, when the event
+**    becomes complete it is deleted which cause the destructor to
+**    remove the event from the pending queue.
+**
+** --
+*/
+
+Pds::Eb::EbEvent::~EbEvent()
+{
+  EbContribution* empty   = _pending.empty();
+  EbContribution* contrib = _pending.reverse();
+
+  while (contrib != empty)
+  {
+    EbContribution* next = contrib->reverse();
+    delete contrib;
+    contrib = next;
+  }
 }
 
 /*
@@ -87,7 +108,7 @@ EbEvent::EbEvent(uint64_t        contract,
 
 void EbEvent::_insert(EbContribution* dummy)
 {
-  *_head++ = dummy;
+  _pending.insert(dummy);
 }
 
 /*
@@ -106,7 +127,7 @@ void EbEvent::_insert(EbContribution* dummy)
 
 EbEvent* EbEvent::_add(EbContribution* contrib)
 {
-  *_head++ = contrib;
+  _pending.insert(contrib);
 
   unsigned size = contrib->payloadSize();
 
@@ -137,23 +158,21 @@ void EbEvent::dump(int number)
          _remaining, _contract);
   printf("    Total size (in bytes) = %zd\n", _size);
 
-  EbContribution** next  = _tail;
-  EbContribution** empty = _head;
-  EbContribution*  contrib = *next++;
+  EbContribution* last    = _pending.empty();
+  EbContribution* contrib = _pending.forward();
 
-  printf("    Creator(%p) was @ source %d with an environment of %08X\n",
+  printf("    Creator (%p) was @ source %d with an environment of %08X\n",
          contrib,
          contrib->number(),
-         contrib->env.value());
+         contrib->datagram()->env.value());
 
-  printf("    Contribs for this event:\n");
-  while(next != empty)
+  printf("    Contributors to this event:\n");
+  while((contrib = contrib->forward()) != last)
   {
     printf("src %02x seq %016lx size %08x env %08x\n",
            contrib->number(),
-           contrib->seq.stamp().pulseId(),
+           contrib->datagram()->seq.stamp().pulseId(),
            contrib->payloadSize(),
-           contrib->env.value());
-    contrib = *next++;
+           contrib->datagram()->env.value());
   }
 }
