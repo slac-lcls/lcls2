@@ -14,7 +14,7 @@ using namespace XtcData;
 int main()
 {
     int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
-    XtcFileIterator xtciter(fd,BUFSIZE);
+    XtcFileIterator xtciter(fd,BUFSIZE)
 
     NamesIter namesiter;
     HDF5File h5file("data.h5", namesiter.namesVec());
