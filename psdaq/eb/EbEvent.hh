@@ -6,6 +6,8 @@
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
 
+#include "EbContribution.hh"
+
 
 namespace XtcData {
   class Dgram;
@@ -15,7 +17,6 @@ namespace Pds {
   namespace Eb {
 
     class EventBuilder;
-    class EbContribution;
 
     class EbEvent : public LinkedList<EbEvent>
     {
@@ -33,11 +34,9 @@ namespace Pds {
       size_t            size()      const;
       uint64_t          remaining() const;
       uint64_t          contract()  const;
-      void*             data();
     public:
       EbContribution*   creator();
-      EbContribution**  start();
-      EbContribution**  end();
+      EbContribution*   empty();
     public:
       void dump(int number);
     private:
@@ -51,32 +50,13 @@ namespace Pds {
       size_t           _size;         // Total contribution size (in bytes)
       uint64_t         _remaining;    // List of clients which have contributed
       uint64_t         _contract;     // -> potential list of contributors
-      EbContribution** _head;         // Next    pending contribution
-      EbContribution** _tail;         // Base of pending contributions
+      EbCntrbList      _pending;      // Pending contribution list head
       EventBuilder*    _eb;           // -> Back-end processing object
       int              _living;       // Aging counter
       uint64_t         _key;          // Masked epoch
-    private:
-#define NSRC  64
-      EbContribution*  _pending[NSRC];  // Pending contribution list
     };
   };
 };
-
-/*
-** ++
-**
-**    As soon as an event becomes "complete" its datagram is the only
-**    information of value within the event. Therefore, when the event
-**    becomes complete it is deleted which cause the destructor to
-**    remove the event from the pending queue.
-**
-** --
-*/
-
-inline Pds::Eb::EbEvent::~EbEvent()
-{
-}
 
 /*
 ** ++
@@ -147,17 +127,12 @@ inline uint64_t Pds::Eb::EbEvent::remaining() const
 
 inline Pds::Eb::EbContribution* Pds::Eb::EbEvent::creator()
 {
-  return *_tail;
+  return _pending.forward();
 }
 
-inline Pds::Eb::EbContribution** Pds::Eb::EbEvent::start()
+inline Pds::Eb::EbContribution* Pds::Eb::EbEvent::empty()
 {
-  return _tail;
-}
-
-inline Pds::Eb::EbContribution** Pds::Eb::EbEvent::end()
-{
-  return _head;
+  return _pending.empty();
 }
 
 /*

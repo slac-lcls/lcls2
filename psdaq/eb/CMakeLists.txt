@@ -81,4 +81,5 @@ target_link_libraries(tstEbContributor
 
 target_link_libraries(tstEbBuilder
     eb
+    pthread
 )

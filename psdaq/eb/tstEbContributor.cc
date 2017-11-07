@@ -60,40 +60,79 @@ namespace Pds {
       }
     };
 
+    class Input : public Entry
+    {
+    public:
+      Input(Sequence& seq, Env& env, Xtc& xtc) :
+        Entry(),
+        _datagram()
+      {
+        _datagram.seq = seq;
+        _datagram.env = env;
+        _datagram.xtc = xtc;
+      }
+    public:
+      PoolDeclare;
+    public:
+      Dgram* datagram() { return &_datagram; }
+    public:
+      uint64_t id() const { return _datagram.seq.stamp().pulseId(); }
+    private:
+      Dgram _datagram;
+    };
+
     class DrpSim : public Routine
     {
     public:
       DrpSim(unsigned poolSize, unsigned id) :
         _maxEvtSz(max_contrib_size),
-        _pool    (new GenericPoolW(_maxEvtSz, poolSize)),
+        _pool    (sizeof(Entry) + _maxEvtSz, poolSize),
         _typeId  (TypeId::Data, 0),
-        _src     (Level::Segment, id),
+        _src     (TheSrc(Level::Segment, id)),
         _id      (id),
-        _pid     (0),
+        _pid     (0x01000000000000UL),  // Something non-zero
         _task    (new Task(TaskObject("drp"))),
         _sem     (Semaphore::EMPTY)
       {
-        struct timespec ts;
-        clock_gettime(CLOCK_REALTIME, &ts);
-        _pid = ((uint64_t)ts.tv_sec) * 1000000 + ts.tv_nsec / 1000;
-
-        if (pipe(_fd))  perror("DrpSim::ctor: pipe");
         _task->call(this);
       }
-      ~DrpSim() { delete _pool; }
+      ~DrpSim() { }
     public:
-      // poll interface
-      int    fd() const { return _fd[0]; }
-      void   go()       { _sem.give();   }
+      Dgram* get()
+      {
+        _sem.take();
+
+        Input* input = _inputList.remove();
+        _inFlightList.insert(input);
+        return input->datagram();
+      }
+      void release(uint64_t id)
+      {
+        Input* input = _inFlightList.atHead();
+        Input* end   = _inFlightList.empty();
+        while (input != end)
+        {
+          Entry* next = input->next();
+
+          if (id > input->id())
+          {
+            _inFlightList.remove(input);      // Revisit: Replace with atomic list
+            delete input;
+          }
+          input = (Input*)next;
+        }
+      }
     public:
-      void*  pool()     { return _pool->buffer(); }
-      size_t poolSize() { return _pool->size();   }
+      void*  pool()     { return _pool.buffer(); }
+      size_t poolSize() { return _pool.size();   }
     public:
       void routine()
       {
+        static unsigned cnt = 0;
+
         while(1)
         {
-          char* buffer = (char*)_pool->alloc(_maxEvtSz);
+          //char* buffer = (char*)_pool->alloc(_maxEvtSz);
 
           // Fake datagram header
           struct timespec ts;
@@ -106,40 +145,46 @@ namespace Pds {
           //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
 
           // Make proxy to data (small data)
-          Dgram* pdg = (Dgram*)buffer;
-          pdg->seq = seq;
-          pdg->env = env;
-          pdg->xtc = xtc;
+          //Dgram* pdg = (Dgram*)buffer;
+          //pdg->seq = seq;
+          //pdg->env = env;
+          //pdg->xtc = xtc;
+
+          Input* input = new(&_pool) Input(seq, env, xtc);
+          Dgram* pdg   = input->datagram();
 
           size_t inputSize = input_extent*sizeof(uint32_t);
 
           // Revisit: Here is where L3 trigger input information would be inserted into the datagram,
           //          whatever that will look like.  SmlD is nominally the right container for this.
           uint32_t* payload = (uint32_t*)pdg->xtc.alloc(inputSize);
-          for (unsigned i = 0; i < input_extent; ++i)
-          {
-            payload[i] = i;             // Revisit: Some crud for now
-          }
+          payload[0] = 0xdeadbeef;          // Revisit: Some crud for now
+          payload[1] = 0xabadcafe;          // Revisit: Some crud for now
+          payload[2] = cnt++;               // Revisit: Some crud for now
+          payload[3] = _id;                 // Revisit: Some crud for now
+          payload[4] = _pid & 0xffffffffUL; // Revisit: Some crud for now
 
-          if (::write(_fd[1], &pdg, sizeof(pdg)) < 0) // Write just the _pointer_
-            perror("DrpSim::routine: write");
+          _inputList.insert(input);
+          _sem.give();
+
           if (lverbose)
-            printf("DrpSim wrote input dg %p (ts %014lx, ext %zd) to   fd %d\n",
-                   pdg, pdg->seq.stamp().pulseId(), sizeof(*pdg) + pdg->xtc.sizeofPayload(), _fd[1]);
+            printf("DrpSim wrote input dg %p (ts %014lx, ext %zd)\n",
+                   pdg, pdg->seq.stamp().pulseId(), sizeof(*pdg) + pdg->xtc.sizeofPayload());
 
-          _sem.take();                  // Revisit: Kludge to avoid flooding
+          usleep(100);
         }
       }
     private:
-      unsigned      _maxEvtSz;
-      GenericPoolW* _pool;
-      TypeId        _typeId;
-      TheSrc        _src;
-      unsigned      _id;
-      uint64_t      _pid;
-      int           _fd[2];
-      Task*         _task;
-      Semaphore     _sem;
+      unsigned     _maxEvtSz;
+      GenericPoolW _pool;
+      TypeId       _typeId;
+      Src          _src;
+      unsigned     _id;
+      uint64_t     _pid;
+      Task*        _task;
+      Semaphore    _sem;
+      Queue<Input> _inputList;
+      Queue<Input> _inFlightList;
     };
 
     class TstContribOutlet : public BatchManager,
@@ -153,7 +198,7 @@ namespace Pds {
                        unsigned  maxBatches,
                        unsigned  maxEntries,
                        size_t    maxSize) :
-        BatchManager(duration, maxBatches, maxEntries, maxSize),
+        BatchManager(TheSrc(Level::Event, id), duration, maxBatches, maxEntries, maxSize),
         _outlet(outlet),
         _numEbs(numEbs),
         _sim(maxBatches * maxEntries, id), // Simulate DRP in a separate thread
@@ -194,28 +239,23 @@ namespace Pds {
 
         unsigned dst = batchId(batch->id()) % _numEbs;
 
-        printf("ContribOutlet posts batch %d (%p), ts %014lx, sz %zd\n", ++cnt,
-               batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->extent());
+        printf("ContribOutlet posts %6d       batch[%2d] @ %p, ts %014lx, sz %zd to EB %d\n", cnt++, batch->index(),
+               batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->extent(), dst);
 
         _outlet.post(batch->pool(), batch->extent(), dst, dstOffset(batch->index()), NULL);
+      }
+      void freeInput(Dgram* result)
+      {
+        _sim.release(result->seq.stamp().pulseId());
       }
     private:
       Dgram* _pend()
       {
-        _sim.go();        // Revisit: Kludge to allow preparation of next event
-
-        char* p;
-        if (::read(_sim.fd(), &p, sizeof(p)) < 0)
-        {
-          perror("TstContribOutlet::_pend: read");
-          return NULL;
-        }
-
-        Dgram* pdg = reinterpret_cast<Dgram*>(p);
+        Dgram* pdg = _sim.get();
 
         if (lverbose)
-          printf("ContribOutlet read dg %p (ts %014lx, ext %zd) from fd %d\n",
-                 pdg, pdg->seq.stamp().pulseId(), sizeof(*pdg) + pdg->xtc.sizeofPayload(), _sim.fd());
+          printf("ContribOutlet read dg %p (ts %014lx, ext %zd)\n",
+                 pdg, pdg->seq.stamp().pulseId(), sizeof(*pdg) + pdg->xtc.sizeofPayload());
 
         return pdg;
       }
@@ -251,7 +291,7 @@ namespace Pds {
           Dgram* batch = (Dgram*)_inlet.pend();
           if (!batch)  break;
 
-          printf("ContribInlet  rcvd  batch %d (%p), ts %014lx, sz %zd\n", cnt++,
+          printf("ContribInlet  rcvd        %6d result    @ %p, ts %014lx, sz %zd\n", cnt++,
                  batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
 
           Dgram* entry = (Dgram*)batch->xtc.payload();
@@ -268,8 +308,8 @@ namespace Pds {
       }
       int _process(Dgram* result)
       {
-        printf("ContribInlet  found result   %p, ts %014lx, sz %d\n",
-               result, result->seq.stamp().pulseId(), result->xtc.sizeofPayload());
+        //printf("ContribInlet  found result   %p, ts %014lx, sz %d\n",
+        //       result, result->seq.stamp().pulseId(), result->xtc.sizeofPayload());
 
         // This method is used to handle the result datagram and to dispose of
         // the original source datagram, in other words:
@@ -281,6 +321,7 @@ namespace Pds {
         //   handle(result, pebble);
         //   delete pebble;
 
+        _outlet.freeInput(result);
         return 0;
       }
     private:

@@ -24,7 +24,7 @@ namespace Pds {
     class Batch : public Pds::Entry
     {
     public:
-      Batch(const XtcData::Dgram&, uint64_t pid);
+      Batch(const XtcData::Src&, const XtcData::Dgram&, uint64_t pid);
       ~Batch();
     public:
       static size_t size();
