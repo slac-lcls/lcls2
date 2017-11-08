@@ -71,6 +71,7 @@ namespace Pds {
       bool add_iovec(LocalAddress* local_addr, size_t count=1);
       bool add_iovec(std::vector<LocalAddress*>& local_addr);
       bool add_iovec(void* buf, size_t len, MemoryRegion* mr=NULL);
+      bool set_count(size_t count);
       bool set_iovec(unsigned index, LocalAddress* local_addr);
       bool set_iovec(unsigned index, void* buf, size_t len, MemoryRegion* mr=NULL);
       bool set_iovec_mr(unsigned index, MemoryRegion* mr);
@@ -206,8 +207,6 @@ namespace Pds {
       Endpoint(Fabric* fabric);
       ~Endpoint();
     public:
-      ssize_t rx_size_left() const;
-      ssize_t tx_size_left() const;
       void shutdown();
       bool connect();
       bool accept(struct fi_info* remote_info);

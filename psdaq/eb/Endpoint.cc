@@ -130,11 +130,9 @@ void LocalIOVec::reset()
 void LocalIOVec::check_size(size_t count)
 {
   if ((_count + count) > _max) {
-    _max = (_count + count);
-
-    struct iovec* new_iovs = new struct iovec[_max];
-    void** new_mr_desc = new void*[_max];
-    for (unsigned i=0; i<_count; i++) {
+    struct iovec* new_iovs = new struct iovec[_count + count];
+    void** new_mr_desc = new void*[_count + count];
+    for (unsigned i=0; i<_max; i++) {
       new_iovs[i] = _iovs[i];
       new_mr_desc[i] = _mr_desc[i];
     }
@@ -143,6 +141,7 @@ void LocalIOVec::check_size(size_t count)
     delete[] _mr_desc;
     _iovs = new_iovs;
     _mr_desc = new_mr_desc;
+    _max = (_count + count);
   }
 }
 
@@ -229,9 +228,21 @@ bool LocalIOVec::add_iovec(void* buf, size_t len, MemoryRegion* mr)
   return true;
 }
 
+bool LocalIOVec::set_count(size_t count)
+{
+  if (count >= _max) {
+    return false;
+  }
+
+  _count = count;
+  verify();
+
+  return true;
+}
+
 bool LocalIOVec::set_iovec(unsigned index, LocalAddress* local_addr)
 {
-  if (index >= _count) {
+  if (index >= _max) {
     return false;
   }
 
@@ -248,7 +259,7 @@ bool LocalIOVec::set_iovec(unsigned index, LocalAddress* local_addr)
 
 bool LocalIOVec::set_iovec(unsigned index, void* buf, size_t len, MemoryRegion* mr)
 {
-  if (index >= _count) {
+  if (index >= _max) {
     return false;
   }
 
@@ -266,7 +277,6 @@ bool LocalIOVec::set_iovec(unsigned index, void* buf, size_t len, MemoryRegion* 
 
 bool LocalIOVec::set_iovec_mr(unsigned index, MemoryRegion* mr)
 {
-  //if (index >= _count || !mr) {
   if (index >= _max || !mr) {
     return false;
   }
@@ -902,10 +912,6 @@ Endpoint::~Endpoint()
 {
   shutdown();
 }
-
-ssize_t Endpoint::rx_size_left() const { return _ep ? fi_rx_size_left(_ep) : -1; }
-
-ssize_t Endpoint::tx_size_left() const { return _ep ? fi_tx_size_left(_ep) : -1; }
 
 void Endpoint::shutdown()
 {
