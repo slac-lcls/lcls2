@@ -240,8 +240,10 @@ int main (int argc, char **argv) {
 
       ++count;
 
-      if (writeFile)
+      if (writeFile) {
+        data[6] |= (pgpCardRx.pgpLane<<20);  // write the lane into the event header
         fwrite(pgpCardRx.data,sizeof(unsigned),ret,writeFile);
+      }
 
       if (delay) {
         timespec tv = { .tv_sec=0, .tv_nsec=delay };
