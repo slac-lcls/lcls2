@@ -61,7 +61,9 @@ if __name__ == '__main__':
     pvdb[':TagStream'          ] = {'type' : 'int'}
 
     LinkEnable = [0]*32
-    LinkEnable[17:19] = [1]*3
+    LinkEnable[17:19] = [1]*3  # DTIs in slots 3-5
+    LinkEnable[4] = 1   # HSD on dev03
+    LinkEnable[7] = 1   # HSD on dev02
     print LinkEnable
 
     for i in range(32):

@@ -224,7 +224,7 @@ class PvEditInt(PvEditTxt):
 
     def __init__(self, pv, label):
         super(PvEditInt, self).__init__(pv, label)
-        self.setMaximumWidth(60)
+        self.setMaximumWidth(70)
 
     def setPv(self):
         value = self.text().toInt()
@@ -501,7 +501,7 @@ class Ui_MainWindow(object):
 #        LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)
 #        LblCheckBox  (bplo, pvbase, "LinkLoopback",   5, 17, 3)
         LblEditInt   (bplo, pvbase, "LinkRxRcv",      5, 17, 3, enable=False)
-#        LblEditInt   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
+        LblEditInt   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
         bpbox.setLayout(bplo)
         bphbox.addWidget(bpbox)
         bphbox.addStretch()

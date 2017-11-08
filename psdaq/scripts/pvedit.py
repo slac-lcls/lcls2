@@ -10,6 +10,8 @@ acRates     = ['60Hz','30Hz','10Hz','5Hz','1Hz']
 acTS        = ['TS%u'%(i+1) for i in range(6)]
 seqIdxs     = ['s%u'%i for i in range(18)]
 seqBits     = ['b%u'%i for i in range(16)]
+# Sequence 16 is programmed for rates stepping at 10kHz
+seqRates    = ['%u0kHz'%(i+1) for i in range(16)]
 
 
 class PvDisplay(QtGui.QLabel):
@@ -280,6 +282,37 @@ class PvDbl(PvEditDbl):
         super(PvDbl, self).__init__(pv)
         self.setEnabled(False)
 
+class PvDblArrayW(QtGui.QLabel):
+
+    valueSet = QtCore.pyqtSignal(QtCore.QString,name='valueSet')
+
+    def __init__(self):
+        super(PvDblArrayW, self).__init__('-')
+        self.connect_signal()
+
+    def connect_signal(self):
+        self.valueSet.connect(self.setValue)
+
+    def setValue(self,value):
+        self.setText(value)
+
+class PvDblArray:
+    
+    def __init__(self, pv, widgets):
+        self.widgets = widgets
+        self.pv = Pv.Pv(pv)
+        self.pv.monitor_start()
+        print 'Monitor started '+pv
+        self.pv.add_monitor_callback(self.update)
+
+    def update(self, err):
+        q = self.pv.value
+        if err is None:
+            for i in range(len(q)):
+                self.widgets[i].valueSet.emit(QtCore.QString.number(q[i],'f',4))
+        else:
+            print err
+
 
 class PvEditCmb(PvComboDisplay):
 
@@ -360,8 +393,9 @@ class PvEvtTab(QtGui.QStackedWidget):
 
         sqw = QtGui.QWidget()
         sql = QtGui.QVBoxLayout()
-        sql.addWidget(PvEditCmb(pvname+'_Sequence',seqIdxs))
-        sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqBits))
+#        sql.addWidget(PvEditCmb(pvname+'_Sequence',seqIdxs))
+#        sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqBits))
+        sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqRates))
         sqw.setLayout(sql)
         self.addWidget(sqw)
 
