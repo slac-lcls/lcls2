@@ -51,7 +51,7 @@ if __name__ == '__main__':
         pvdb[stationstr+':%d:L0Select_FixedRate' %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:L0Select_ACRate'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:L0Select_ACTimeslot'%i] = {'type' : 'int'}
-        pvdb[stationstr+':%d:L0Select_Sequence'  %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:L0Select_Sequence'  %i] = {'type' : 'int', 'value': 16}
         pvdb[stationstr+':%d:L0Select_SeqBit'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:DstSelect'          %i] = {'type' : 'int', 'value': 1}
         pvdb[stationstr+':%d:DstSelect_Mask'     %i] = {'type' : 'int'}

@@ -54,8 +54,8 @@ procmgr_config = [
 #
 #  DTI controllers
 #
- {                       id:'dti-103' , flags:'sx', cmd:'psdaq/dti/dti_simple -a '+ip_addr+'.103 -u 0x5b -f 1,2,8,16,64   -t '+platform}, # us2,ds5     link down
- {                       id:'dti-104' , flags:'sx', cmd:'psdaq/dti/dti_simple -a '+ip_addr+'.104 -u 0x1b -f 1,2,8,16      -t '+platform}, # ds2,ds5,ds6 link down
+ {                       id:'dti-103' , flags:'sx', cmd:'psdaq/dti/dti_simple -a '+ip_addr+'.103 -u 0x7f -f 1,2,4,8,16,32,64   -t '+platform},
+ {                       id:'dti-104' , flags:'sx', cmd:'psdaq/dti/dti_simple -a '+ip_addr+'.104 -u 0x1b -f 1,2,8,16      -t '+platform},
  {                       id:'dti-105' , flags:'sx', cmd:'psdaq/dti/dti_simple -a '+ip_addr+'.105 -u 0x3d -f 1,4,8,16,32   -t '+platform}, # us1         link down
 # { host: daq_tst_dev05,  id:'dticas' , flags:'sx', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/dticas.py -P LAB2'},
 # {                       id:'dtiioc' , flags:'sx', env:epics_env, cmd:'psdaq/dti/dtiPVs -a '+ip_addr+'.105 -P LAB2'},
