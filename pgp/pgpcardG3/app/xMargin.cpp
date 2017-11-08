@@ -360,8 +360,11 @@ void* scan_routine(void* arg)
 void showUsage(const char* p) {
   printf("Usage: %s [options]\n", p);
   printf("Options:\n"
-         "\t-P <dev>   Use pgpcard <dev> (integer)\n"
-         "\t-L <lanes> Bit mask of lanes\n");
+         "\t-P <dev>      Use pgpcard <dev> (integer)\n"
+         "\t-L <lanes>    Bit mask of lanes\n"
+         "\t-f <filename> Output file\n"
+         "\t-p <prescale> Prescale exponent\n"
+         "\t-s            Sparse mode\n");
 }
 
 using std::cout;
