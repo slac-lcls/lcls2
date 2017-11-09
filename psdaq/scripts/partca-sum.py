@@ -61,7 +61,10 @@ class Ui_MainWindow(object):
 
             lol.addLayout(grid)
 
-            lcols.addLayout(lol)
+            pw = QtGui.QGroupBox(pvbase)
+            pw.setLayout(lol)
+
+            lcols.addWidget(pw)
 
         ltable = QtGui.QWidget()
         ltable.setLayout(lcols)
