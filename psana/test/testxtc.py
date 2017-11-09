@@ -4,9 +4,9 @@
 import sys
 from sys import getrefcount as getref
 sys.path.append('../../build/psana')
-sys.path.append('../')
 from dgram import Dgram
 import numpy as np
+sys.path.append('../')
 from DataSource import DataSource
 #from DataSourceContainer import DataSource
 
