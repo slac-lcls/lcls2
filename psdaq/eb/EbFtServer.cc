@@ -108,6 +108,11 @@ int EbFtServer::connect()
   return ret;
 }
 
+const char* EbFtServer::base() const
+{
+  return _base;
+}
+
 int EbFtServer::shutdown()
 {
   int ret = FI_SUCCESS;

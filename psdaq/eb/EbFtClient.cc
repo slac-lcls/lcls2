@@ -64,6 +64,8 @@ int EbFtClient::connect(unsigned tmo)
 
     ret = _syncRmtMr(_base, _rmtSize, _ep[i], _mr[i], _ra[i]);
     if (ret)  return ret;
+
+    _ep[i]->recv_comp_data();
   }
 
   return 0;

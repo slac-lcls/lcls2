@@ -26,10 +26,12 @@ static const unsigned max_batches      = 16; //8192;     // 1 second's worth
 static const unsigned max_entries      = 128;     // 128 uS worth
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  data words
-static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
+//static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
+static const size_t   result_extent    = input_extent;
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 
+static       bool     lcheck           = false;
 static       bool     lverbose         = false;
 
 
@@ -90,7 +92,7 @@ namespace Pds {
         _typeId  (TypeId::Data, 0),
         _src     (TheSrc(Level::Segment, id)),
         _id      (id),
-        _pid     (0x01000000000000UL),  // Something non-zero
+        _pid     (0x01000000000003UL),  // Something non-zero and not on a batch boundary
         _task    (new Task(TaskObject("drp"))),
         _sem     (Semaphore::EMPTY)
       {
@@ -141,7 +143,7 @@ namespace Pds {
           Env      env(0);
           Xtc      xtc(_typeId, _src);
 
-          _pid += 26; // Revisit: fi_tx_attr.iov_limit = 6 = 1 + max # events per batch
+          _pid += 27; // Revisit: fi_tx_attr.iov_limit = 6 = 1 + max # events per batch
           //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
 
           // Make proxy to data (small data)
@@ -158,11 +160,11 @@ namespace Pds {
           // Revisit: Here is where L3 trigger input information would be inserted into the datagram,
           //          whatever that will look like.  SmlD is nominally the right container for this.
           uint32_t* payload = (uint32_t*)pdg->xtc.alloc(inputSize);
-          payload[0] = 0xdeadbeef;          // Revisit: Some crud for now
-          payload[1] = 0xabadcafe;          // Revisit: Some crud for now
-          payload[2] = cnt++;               // Revisit: Some crud for now
-          payload[3] = _id;                 // Revisit: Some crud for now
-          payload[4] = _pid & 0xffffffffUL; // Revisit: Some crud for now
+          payload[0] = ts.tv_sec;           // Revisit: Some crud for now
+          payload[1] = ts.tv_nsec;          // Revisit: Some crud for now
+          payload[2] = ++cnt;               // Revisit: Some crud for now
+          payload[3] = 1 << _id;            // Revisit: Some crud for now
+          payload[4] = pdg->seq.stamp().pulseId() & 0xffffffffUL; // Revisit: Some crud for now
 
           _inputList.insert(input);
           _sem.give();
@@ -202,6 +204,7 @@ namespace Pds {
         _outlet(outlet),
         _numEbs(numEbs),
         _sim(maxBatches * maxEntries, id), // Simulate DRP in a separate thread
+        _inFlightList(),
         _running(true),
         _task (new Task(TaskObject("tInlet")))
       {
@@ -227,22 +230,42 @@ namespace Pds {
       {
         while (_running)
         {
-          const Dgram* contrib = _pend();
-          if (!contrib)  continue;
+          const Dgram* input = _pend();
+          if (!input)  continue;
 
-          process(contrib);
+          process(input);
         }
       }
-      void post(Batch* batch, void* arg)
+      void post(Batch* batch)
       {
-        static unsigned cnt = 0;
+        _inFlightList.insert(batch);    // Revisit: Replace with atomic list
 
         unsigned dst = batchId(batch->id()) % _numEbs;
 
-        printf("ContribOutlet posts %6d       batch[%2d] @ %p, ts %014lx, sz %zd to EB %d\n", cnt++, batch->index(),
-               batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->extent(), dst);
+        if (lverbose)
+        {
+          static unsigned cnt = 0;
+          void* rmtAdx = (void*)_outlet.rmtAdx(dst, batch->index() * maxBatchSize());
+          printf("ContribOutlet posts %6d        batch[%2d] @ %p, ts %014lx, sz %zd to EB %d %p\n", ++cnt, batch->index(),
+                 batch->datagram(), batch->datagram()->seq.stamp().pulseId(), batch->extent(), dst, rmtAdx);
+        }
 
-        _outlet.post(batch->pool(), batch->extent(), dst, dstOffset(batch->index()), NULL);
+        _outlet.post(batch->pool(), batch->extent(), dst, batch->index() * maxBatchSize(), NULL);
+      }
+      void release(uint64_t id)
+      {
+        Batch* batch = _inFlightList.atHead();
+        Batch* end   = _inFlightList.empty();
+        while (batch != end)
+        {
+          if (id < batch->id())  break;
+
+          Entry* next = batch->next();
+
+          delete (Batch*)_inFlightList.remove(batch); // Revisit: Replace with atomic list
+
+          batch = (Batch*)next;
+        }
       }
       void freeInput(Dgram* result)
       {
@@ -263,6 +286,7 @@ namespace Pds {
       EbFtBase&     _outlet;
       unsigned      _numEbs;
       DrpSim        _sim;
+      BatchList     _inFlightList;      // Listhead of batches in flight
       volatile bool _running;
       Task*         _task;
     };
@@ -271,8 +295,10 @@ namespace Pds {
     {
     public:
       TstContribInlet(EbFtBase&         inlet,
+                      const char*       base,
                       TstContribOutlet& outlet) :
         _inlet(inlet),
+        _base(base),
         _outlet(outlet),
         _running(true)
       {
@@ -283,16 +309,19 @@ namespace Pds {
     public:
       void process()
       {
-        static unsigned cnt = 0;
-
         while (_running)
         {
           // Pend for a result datagram (batch) and handle it.
           Dgram* batch = (Dgram*)_inlet.pend();
           if (!batch)  break;
 
-          printf("ContribInlet  rcvd        %6d result    @ %p, ts %014lx, sz %zd\n", cnt++,
-                 batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
+          if (lverbose)
+          {
+            static unsigned cnt = 0;
+            unsigned idx = ((char*)batch - _base) / max_result_size / max_entries;
+            printf("ContribInlet  rcvd        %6d result[%2d] @ %p, ts %014lx, sz %zd\n", ++cnt, idx,
+                   batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
+          }
 
           Dgram* entry = (Dgram*)batch->xtc.payload();
           Dgram* end   = (Dgram*)batch->xtc.next();
@@ -308,8 +337,40 @@ namespace Pds {
       }
       int _process(Dgram* result)
       {
-        //printf("ContribInlet  found result   %p, ts %014lx, sz %d\n",
-        //       result, result->seq.stamp().pulseId(), result->xtc.sizeofPayload());
+        if (lcheck)
+        {
+          bool ok = true;
+          uint32_t* buffer = (uint32_t*)result->xtc.payload();
+          static uint64_t _ts = 0;
+          uint64_t         ts = buffer[0];
+          ts = (ts << 32) | buffer[1];
+          if (ts <= _ts)
+          {
+            ok = false;
+            printf("Timestamp didn't increase: previous = %016lx, current = %016lx\n", _ts, ts);
+          }
+          _ts = ts;
+          static unsigned _counter = 0;
+          if (buffer[2] != _counter + 1)
+          {
+            ok = false;
+            printf("Result counter didn't increase by 1: expected %08x, got %08x\n",
+                   _counter + 1, buffer[2]);
+          }
+          _counter = buffer[2];
+          if ((result->seq.stamp().pulseId() & 0xffffffffUL) != buffer[4])
+          {
+            ok = false;
+            printf("Pulse ID mismatch: expected %08lx, got %08x\n",
+                   result->seq.stamp().pulseId() & 0xffffffffUL, buffer[4]);
+          }
+          if (!ok)
+          {
+            printf("ContribInlet  found result   %p, ts %014lx, sz %d, pyld %08x %08x %08x %08x %08x\n",
+                   result, result->seq.stamp().pulseId(), result->xtc.sizeofPayload(),
+                   buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+          }
+        }
 
         // This method is used to handle the result datagram and to dispose of
         // the original source datagram, in other words:
@@ -326,6 +387,7 @@ namespace Pds {
       }
     private:
       EbFtBase&         _inlet;
+      const char*       _base;
       TstContribOutlet& _outlet;
       volatile bool     _running;
     };
@@ -367,8 +429,9 @@ void usage(char *name, char *desc)
   fprintf(stderr, " %-20s %s\n", "-i <ID>",
           "Unique ID this instance should assume (0 - 63) (default: 0)");
 
-  fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
+  fprintf(stderr, " %-20s %s\n", "-c", "enable result checking");
   fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output");
+  fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
 }
 
 int main(int argc, char **argv)
@@ -379,13 +442,14 @@ int main(int argc, char **argv)
   std::string clt_port("32768");        // Port served by builders
   std::vector<std::string> clt_addr;
 
-  while ((op = getopt(argc, argv, "hvB:P:i:")) != -1)
+  while ((op = getopt(argc, argv, "hvcB:P:i:")) != -1)
   {
     switch (op)
     {
       case 'B':  srv_port = std::string(optarg);       break;
       case 'P':  clt_port = std::string(optarg);       break;
       case 'i':  id       = strtoul(optarg, NULL, 0);  break;
+      case 'c':  lcheck   = true;                      break;
       case 'v':  lverbose = true;                      break;
       case '?':
       case 'h':
@@ -439,7 +503,7 @@ int main(int argc, char **argv)
   }
 
   TstContribOutlet outlet(ftc, id, numEbs, batch_duration, max_batches, max_entries, max_contrib_size);
-  TstContribInlet  inlet (fts, outlet);
+  TstContribInlet  inlet (fts, fts.base(), outlet);
   contribInlet = &inlet;
 
   inlet.process();

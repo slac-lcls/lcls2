@@ -12,14 +12,13 @@ BatchManager::BatchManager(Src      src,
                            uint64_t duration, // = ~((1 << N) - 1) = 128 uS?
                            unsigned batchDepth,
                            unsigned maxEntries,
-                           size_t   contribSize) :
+                           size_t   maxSize) :
   _src          (src),
   _duration     (duration),
   _durationShift(__builtin_ctzll(duration)),
   _durationMask (~((1 << __builtin_ctzll(duration)) - 1) & ((1UL << 56) - 1)),
-  _maxBatchSize (maxEntries * contribSize),
-  _pool         (Batch::size(), batchDepth),
-  _inFlightList ()
+  _maxBatchSize (maxEntries * maxSize),
+  _pool         (Batch::size(), batchDepth)
 {
   if (__builtin_popcountll(duration) != 1)
   {
@@ -47,11 +46,7 @@ void BatchManager::start(unsigned      batchDepth,
                          unsigned      maxEntries,
                          MemoryRegion* mr[2])
 {
-  printf("Dumping pool 1:\n");  _pool.dump();
-
   Batch::init(_pool, batchDepth, maxEntries, mr);
-
-  printf("Dumping pool 2:\n");  _pool.dump();
 
   Dgram dg;
   dg.seq = Sequence(ClockTime(0, 0), TimeStamp());
@@ -59,43 +54,23 @@ void BatchManager::start(unsigned      batchDepth,
   _batch = new(&_pool) Batch(_src, dg, dg.seq.stamp().pulseId());
 }
 
-void BatchManager::process(const Dgram* contrib, void* arg)
+void BatchManager::process(const Dgram* dg)
 {
-  uint64_t pid = _startId(contrib->seq.stamp().pulseId());
+  uint64_t pid = _startId(dg->seq.stamp().pulseId());
 
   if (_batch->expired(pid))
   {
-    _inFlightList.insert(_batch);       // Revisit: Replace with atomic list
+    post(_batch);
 
-    post(_batch, arg);
-
-    _batch = new(&_pool) Batch(_src, *contrib, pid); // Resource wait if pool is empty
+    _batch = new(&_pool) Batch(_src, *dg, pid); // Resource wait if pool is empty
   }
 
-  _batch->append(*contrib);
+  _batch->append(*dg);
 }
 
-void BatchManager::release(uint64_t id)
+size_t BatchManager::maxBatchSize() const
 {
-  Batch* batch = _inFlightList.atHead();
-  Batch* end   = _inFlightList.empty();
-  while (batch != end)
-  {
-    //printf("%s: id = %014lx, bid = %014lx\n", __PRETTY_FUNCTION__, id, batch->id());
-
-    if (id < batch->id())  break;
-
-    Entry* next = batch->next();
-
-    delete (Batch*)_inFlightList.remove(batch); // Revisit: Replace with atomic list
-
-    batch = (Batch*)next;
-  }
-}
-
-size_t BatchManager::dstOffset(unsigned idx) const
-{
-  return idx * _maxBatchSize;
+  return _maxBatchSize;
 }
 
 //uint64_t BatchManager::batchId(uint64_t id) const

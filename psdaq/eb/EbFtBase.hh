@@ -32,7 +32,8 @@ namespace Pds {
     public:
       Fabrics::MemoryRegion* registerMemory(void* buffer, size_t size);
       uint64_t pend();
-      int      post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t dstOffset, void* ctx);
+      int      post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t offset, void* ctx);
+      uint64_t rmtAdx(unsigned dst, uint64_t offset); // Revisit: For debugging, remove
     public:
       virtual int shutdown() = 0;
     protected:
