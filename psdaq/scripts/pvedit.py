@@ -3,6 +3,7 @@ from PyQt4 import QtCore, QtGui
 
 NBeamSeq = 16
 
+interval   = 14./13.
 dstsel     = ['Include','DontCare']
 evtsel      = ['Fixed Rate','AC Rate','Sequence']
 fixedRates  = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
@@ -11,8 +12,9 @@ acTS        = ['TS%u'%(i+1) for i in range(6)]
 seqIdxs     = ['s%u'%i for i in range(18)]
 seqBits     = ['b%u'%i for i in range(16)]
 # Sequence 16 is programmed for rates stepping at 10kHz
+seqIdxs     = ['s%u'%i for i in range(18)]
+seqBursts   = ['%u x %.2fus'%(2*(i%4+1),float(i/4+1)*interval) for i in range(16)]
 seqRates    = ['%u0kHz'%(i+1) for i in range(16)]
-
 
 class PvDisplay(QtGui.QLabel):
 
@@ -377,6 +379,42 @@ class PvMaskTab(QtGui.QWidget):
 #        self.QWidget.showEvent()
         self.update()
 
+class PvDefSeq(QtGui.QWidget):
+
+    def __init__(self, pvname):
+        super(PvDefSeq,self).__init__()
+
+        lo = QtGui.QVBoxLayout()
+        self.seqsel = QtGui.QComboBox()
+        self.seqsel.addItems(['Bursts','10k Rates'])
+        self.seqsel.currentIndexChanged.connect(self.setValue)
+        lo.addWidget(self.seqsel)
+
+        seqstack = QtGui.QStackedWidget()
+        seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqBursts))
+        seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqRates))
+        self.seqsel.currentIndexChanged.connect(seqstack.setCurrentIndex)
+        lo.addWidget(seqstack)
+
+        self.setLayout(lo)
+
+        self.pv = Pv.Pv(pvname+'_Sequence')
+        self.pv.monitor_start()
+        self.pv.add_monitor_callback(self.update)
+
+    def setValue(self):
+        value = self.seqsel.currentIndex()
+        self.pv.put(value+15)  # Defined sequences start at 15
+
+    def update(self,err):
+        q = self.pv.value
+        if err is None:
+            if q >= 15:
+                self.seqsel.setCurrentIndex(q-15)
+                self.valueSet.emit(q-15)
+        else:
+            print err
+
 class PvEvtTab(QtGui.QStackedWidget):
 
     def __init__(self, pvname, evtcmb):
@@ -391,14 +429,16 @@ class PvEvtTab(QtGui.QStackedWidget):
         acw.setLayout(acl)
         self.addWidget(acw)
 
-        sqw = QtGui.QWidget()
-        sql = QtGui.QVBoxLayout()
-#        sql.addWidget(PvEditCmb(pvname+'_Sequence',seqIdxs))
-#        sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqBits))
-        sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqRates))
-        sqw.setLayout(sql)
+#        sqw = QtGui.QWidget()
+#        sql = QtGui.QVBoxLayout()
+##        sql.addWidget(PvEditCmb(pvname+'_Sequence',seqIdxs))
+##        sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqBits))
+#        sql.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqRates))
+#        sqw.setLayout(sql)
+        sqw = PvDefSeq(pvname)
         self.addWidget(sqw)
 
+        self.setCurrentIndex(evtcmb.currentIndex())
         evtcmb.currentIndexChanged.connect(self.setCurrentIndex)
 
 class PvEditEvt(QtGui.QWidget):
