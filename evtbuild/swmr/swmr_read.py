@@ -25,6 +25,8 @@ class master(object):
         self.total_file_size = 0
         self.cum_event_num = 0
         self.file0_eof = False
+        self.file0_length = 0
+        
         if args.nersc:
             self.hit_probability = 1
         else:
@@ -48,7 +50,7 @@ class master(object):
         
 #        dd=0
         number_of_events = diode_dst.shape[0]            
-        print('Client %i dd is %i/%i ' % (client_rank, dd, number_of_events))
+      # print('Client %i dd is %i/%i ' % (client_rank, dd, number_of_events))
       #  print('Diode values', diode_dst[dd:])
         # Location of high diode values (>(1-hit_probability))
         notable_inds = np.where(np.array(diode_dst[dd:]) > 1-self.hit_probability)[0]
@@ -58,24 +60,27 @@ class master(object):
  #       print('Length of timestamps', len(ts_dst))
         # Find timestamps of interesting events
         timestamps = np.take(np.array(ts_dst,dtype='uint32'), notable_inds, mode='clip').ravel()
-  #      print('Timestamps', timestamps)
-        ts_start = np.searchsorted(timestamps, start_index)+(np.sign(start_index)+1)/2
-
+        
         # Check if the small data has finished writing
         # If it has, pass the final length to the clients
         # so they may finish reading
         if self.file0_eof:
-            final_length = len(np.where(np.array(diode_dst) > 1-self.hit_probability)[0])
+            final_length = self.file0_length
+            print('Length the other way is %i' % len(np.where(np.array(diode_dst) > 1-self.hit_probability)[0]))
             print('Final length is %i' % final_length)
         else:
             final_length = -1
 
         if request_rank == -1:
             self.diode_lp[:] = number_of_events
+            self.file0_length = len(timestamps)
         else:
             self.diode_lp[client_rank] = number_of_events
-            
-        print('Sending to client', number_of_events, timestamps, final_length)    
+
+        if request_rank == 1:
+               self.file0_length += len(timestamps)
+
+               
         return number_of_events, timestamps, final_length
 
 
@@ -146,7 +151,7 @@ def client():
     retained_evts = []
     eof = False
 
-    print('Client %i reading file %s' % (client_rank, file_name))
+#\    print('Client %i reading file %s' % (client_rank, file_name))
      
     with h5py.File(file_name, 'r', swmr=True) as client_file:
         dset = client_file["data"]
@@ -179,18 +184,20 @@ def client():
             client_start = time.time()
             # Read in the filtered events 
           #  re_evt=[]
-            print('Client events %i' % client_rank, evt_inds)
+           # print('Client events %i' % client_rank, evt_inds)
             for evt_ct,evt in enumerate(evt_inds):
            #     print(evt)
                 try:
                     read_in = dset[evt][:]
+                    rin_mb = read_in.nbytes/10**6
                     client_total_events += 1
                     read_events.append(evt)
                 except ValueError:
                     retained_evts.append(evt)
+                    rin_mb = 0
 #                    print('Event %i out of range, held over for rank %i' % (evt, client_rank))
-                rin_mb = read_in.nbytes/10**6
                 total_read_in += rin_mb
+                
             client_end = time.time()
             read_events.append(-1)
 #            read_events.append(re_evt)
@@ -259,11 +266,11 @@ def client():
             except IndexError:
                 pass
     # When the client has finished, quit the process
+    
+    red = np.array(read_events)
+    red = red.ravel()
+    np.savetxt('client_%i_events.txt' % client_rank, red)
     sys.exit()
-            # red = np.array(read_events)
-    # red = red.ravel()
-    # np.savetxt('client_%i_events.txt' % client_rank, red)
-
 
 comm.Barrier()
 
