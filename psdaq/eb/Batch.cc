@@ -96,8 +96,8 @@ void Batch::init(GenericPoolW& pool,
     {
       b1->_pool.set_iovec_mr(j, mr[j == 0 ? 0 : 1]);
     }
-    printf("Batch init %2d, batch = %p, batch1 = %p, mr->desc = %p, %p\n",
-           i, batch, b1, mr[0]->desc(), mr[1]->desc());
+    //printf("Batch init %2d, batch = %p, batch1 = %p, mr->desc = %p, %p\n",
+    //       i, batch, b1, mr[0]->desc(), mr[1]->desc());
     list.insert(batch);
   }
   for (unsigned i = 0; i < batchDepth; ++i)
@@ -114,8 +114,6 @@ unsigned Batch::index() const
 
 void Batch::append(const Dgram& contrib)
 {
-  //if (pool().count() > 5)  return;   // Revisit: fi_tx_attr.iov_limit = 6
-
   BatchEntry* entry = new (_batch1()._pool) BatchEntry(contrib);
   assert(entry != (void*)0);
 

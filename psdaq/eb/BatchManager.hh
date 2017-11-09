@@ -31,21 +31,20 @@ namespace Pds {
                    uint64_t     duration,
                    unsigned     batchDepth,
                    unsigned     maxEntries,
-                   size_t       contribSize);
+                   size_t       maxSize);
       virtual ~BatchManager();
     public:
-      virtual void post(Batch*, void* arg) = 0;
+      virtual void post(Batch*) = 0;
     public:
       void         start(unsigned               batchDepth,
                          unsigned               maxEntries,
                          Fabrics::MemoryRegion* mr[2]);
       void*        batchPool() const;
       size_t       batchPoolSize() const;
-      void         process(const XtcData::Dgram*, void* arg = (void*)0);
-      void         release(uint64_t id);
+      void         process(const XtcData::Dgram*);
       void         shutdown();
       uint64_t     batchId(uint64_t id) const;
-      size_t       dstOffset(unsigned idx) const;
+      size_t       maxBatchSize() const;
     private:
       void         _post(const Batch&);
       void         _batchInit(unsigned batchDepth, unsigned poolDepth);
@@ -58,7 +57,6 @@ namespace Pds {
       uint64_t     _durationMask;       // Mask  off  insignificant bits
       size_t       _maxBatchSize;       // Maximum size of a batch
       GenericPoolW _pool;               // Pool of Batch objects
-      BatchList    _inFlightList;       // Listhead of batches in flight
     private:
       Batch*       _batch;              // Batch currently being assembled
     };

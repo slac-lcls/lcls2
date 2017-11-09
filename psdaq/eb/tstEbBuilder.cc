@@ -29,7 +29,8 @@ static const unsigned max_batches      = 16; //8192;     // 1 second's worth
 static const unsigned max_entries      = 128;     // 128 uS worth
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  data words
-static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
+//static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
+static const size_t   result_extent    = input_extent;
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 
@@ -64,21 +65,18 @@ namespace Pds {
       }
     };
 
-    class Result : public Entry
+    class Result : public Dgram
     {
     public:
       Result(const Dgram& dg, Src& src) :
-        Entry(),
-        _datagram(dg),
+        Dgram(dg),
         _dst(_dest),
         _idx(_index)
       {
-        _datagram.xtc.src = src;
+        xtc.src = src;
       }
     public:
       PoolDeclare;
-    public:
-      Dgram* datagram() { return &_datagram; }
     public:
       void destination(unsigned dst, unsigned idx)
       {
@@ -90,13 +88,11 @@ namespace Pds {
       unsigned dst(unsigned i) const { return _dest[i];     }
       unsigned idx(unsigned i) const { return _index[i];    }
     private:
-      Dgram     _datagram;
       uint32_t  _payload[result_extent]; // Revisit: buffer
     private:
       unsigned* _dst;
       unsigned* _idx;
     private:
-      Entry     _links;
 #define NDST  64                        // Revisit: NDST
       unsigned  _dest[NDST];
       unsigned  _index[NDST];
@@ -122,45 +118,21 @@ namespace Pds {
         _task->destroy();
       }
     public:
-      void post(Result* result)
-      {
-        if (lverbose)
-        {
-          const Dgram* rdg = result->datagram();
-          printf("TstEbOutlet posts result dg %p (ts %014lx, ext %zd)\n",
-                 rdg, rdg->seq.stamp().pulseId(), sizeof(*rdg) + rdg->xtc.sizeofPayload());
-        }
-
-        _resultList.insert(result);
-        _resultSem.give();
-      }
+      void post(Result*);
     public:                             // Routine interface
       void routine();
-      void post(Batch* batch, void* arg);
+      void post(Batch* batch);
     private:
-      Result* _pend()
-      {
-        _resultSem.take();
-        Result* result = _resultList.remove();
-
-        if (lverbose)
-        {
-          const Dgram* rdg = result->datagram();
-          printf("TstEbOutlet read  result dg %p (ts %014lx, ext %zd)\n",
-                 rdg, rdg->seq.stamp().pulseId(), sizeof(*rdg) + rdg->xtc.sizeofPayload());
-        }
-
-        return result;
-      }
+      Batch* _pend();
+      void _release(Batch*);
     private:
       EbFtBase&     _outlet;
       unsigned      _maxBatches;
       unsigned      _maxEntries;
       volatile bool _running;
       Task*         _task;
-      Queue<Result> _resultList;
       Semaphore     _resultSem;
-      Queue<Result> _pending;
+      Queue<Batch>  _pending;
     };
 
     class TstEbInlet : public EventBuilder
@@ -235,8 +207,6 @@ size_t TstEbInlet::resultsPoolSize() const
 
 void TstEbInlet::process()
 {
-  static unsigned cnt = 0;
-
   while (_running)
   {
     // Pend for an input datagram (batch) and pass its datagrams to the event builder.
@@ -245,15 +215,19 @@ void TstEbInlet::process()
 
     unsigned index = (batch->xtc.src.log() >> 8) & 0xffff;
 
-    printf("EbInlet  got   %6d        batch[%2d] @ %p, ts %014lx, sz %zd\n", cnt++, index,
-           batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
+    if (lverbose)
+    {
+      static unsigned cnt = 0;
+      printf("EbInlet  rcvd  %6d        batch[%2d] @ %p, ts %014lx, sz %zd\n", ++cnt, index,
+             batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
+    }
 
     const Dgram* entry = (const Dgram*)batch->xtc.payload();
     const Dgram* end   = (const Dgram*)batch->xtc.next();
     while(entry != end)
     {
       //printf("EbInlet found a contrib %p, ts %014lx, sz %zd\n",
-      //       contribution, contribution->seq.stamp().pulseId(), sizeof(*contribution) + contribution->xtc.sizeofPayload());
+      //       entry, entry->seq.stamp().pulseId(), sizeof(*entry) + entry->xtc.sizeofPayload());
 
       EventBuilder::process(entry, index);
 
@@ -268,16 +242,17 @@ void TstEbInlet::process(EbEvent* event)
   //       event->sequence(), event->contract(), event->size());
   //event->dump(-1);
 
-  const unsigned recThresh = 10;       // Revisit: Some crud for now
-  const unsigned monThresh = 5;        // Revisit: Some crud for now
+  //const unsigned recThresh = 10;       // Revisit: Some crud for now
+  //const unsigned monThresh = 5;        // Revisit: Some crud for now
 
   Result* result = _allocate(event);
-  Dgram*  rdg    = result->datagram();
 
   // Iterate over the event and build a result datagram
   EbContribution* contrib = event->creator();
   EbContribution* end     = event->empty();
-  unsigned        sum     = 0;
+  //unsigned        sum     = 0;
+  uint32_t*       buffer  = (uint32_t*)result->xtc.alloc(result_extent * sizeof(uint32_t));
+  memset(buffer, 0, result_extent * sizeof(uint32_t));
   do
   {
     // The source of the contribution is one of the dsts
@@ -286,16 +261,20 @@ void TstEbInlet::process(EbEvent* event)
     const Dgram* idg     = contrib->datagram();
     uint32_t*    payload = (uint32_t*)idg->xtc.payload();
     size_t       length  = idg->xtc.sizeofPayload() / sizeof(*payload);
+
+    //printf("TstEbInlet        result %p, contrib %p, ts %014lx, dst %2d, idx %2ld, pyld %08x %08x %08x %08x %08x\n",
+    //       result, contrib, contrib->datagram()->seq.stamp().pulseId(), contrib->number(), contrib->data(),
+    //       payload[0], payload[1], payload[2], payload[3], payload[4]);
+
     for (unsigned i = 0; i < length; ++i)
     {
-      sum += payload[i];               // Revisit: Some crud for now
+      buffer[i] |= payload[i];          // Revisit: Some crud for now
     }
   }
   while ((contrib = contrib->forward()) != end);
 
-  uint32_t* buffer = (uint32_t*)rdg->xtc.alloc(result_extent * sizeof(uint32_t));
-  buffer[0] = sum > recThresh ? 0 : 1; // Revisit: Some crud for now
-  buffer[1] = sum > monThresh ? 0 : 1; // Revisit: Some crud for now
+  //buffer[0] = sum > recThresh ? 0 : 1; // Revisit: Some crud for now
+  //buffer[1] = sum > monThresh ? 0 : 1; // Revisit: Some crud for now
 
   _outlet.post(result);
 }
@@ -352,7 +331,6 @@ TstEbOutlet::TstEbOutlet(EbFtBase& outlet,
   _maxEntries(maxEntries),
   _running(true),
   _task (new Task(TaskObject("tOutlet"))),
-  _resultList(),
   _resultSem(Semaphore::EMPTY),
   _pending()
 {
@@ -370,56 +348,104 @@ void TstEbOutlet::start(TstEbInlet& inlet)
   _task->call(this);
 }
 
-void TstEbOutlet::routine()
+Batch* TstEbOutlet::_pend()
 {
-  while (_running)
+  _resultSem.take();
+  Batch* batch = _pending.remove();
+
+  if (lverbose)
   {
-    // Pend for an output datagram (result) from the event builder.  When
-    // it arrives, process it into a datagram (batch).  When the datagram
-    // is complete, post it to all contributors.
-    // This could be done in the same thread as the that of the EB.
-    Result* result = _pend();
-
-    _pending.insert(result);
-
-    process(result->datagram(), result); // Revisit: 2nd arg
+    const Dgram* bdg = batch->datagram();
+    printf("TstEbOutlet read  batch[%d] %p, dg %p (ts %014lx, ext %zd)\n",
+           batch->index(), batch, bdg, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
   }
+
+  return batch;
 }
 
-void TstEbOutlet::post(Batch* batch, void* arg)
+void TstEbOutlet::routine()
 {
   static unsigned cnt = 0;
 
-  Result*      result = (Result*)arg;
-  unsigned     nDsts  = result->nDsts();
-  const Dgram* bdg    = batch->datagram();
-  size_t       extent = batch->extent();
-
-  for (unsigned dst = 0; dst < nDsts; ++dst)
+  while (_running)
   {
-    unsigned dest = result->dst(dst);
+    // Pend for a result batch (datagram).  When it arrives, post it to all
+    // contributors to the batch.
+    // This could be done in the same thread as the that of the EB but isn't
+    // so that the event builder can make progress building events from input
+    // contributions while the back end is stalled behind the transport waiting
+    // for resources to transmit the batch.
 
-    printf("EbOutlet posts       %6d result[%2d] @ %p, ts %014lx, sz %zd to Contrib %d\n", cnt,
-           result->idx(dst), bdg, bdg->seq.stamp().pulseId(), extent, dest);
+    Batch* batch = _pend();
 
-    _outlet.post(batch->pool(), extent, dest, dstOffset(result->idx(dst)), NULL);
+    ++cnt;
+
+    LocalIOVec&         pool = batch->pool();
+    const struct iovec* iov  = pool.iovecs();
+
+    // Revisit: Here we assume the first Result represents all results in the batch
+    //          and send the batch to the destinations and indices given therein.
+    //          Really need to get the set of destinations and indicies from ALL the
+    //          Results in the Batch, in case there are multiple readout groups.
+
+    Result*      result = (Result*)iov[1].iov_base; // First IOV is the Batch datagram
+    unsigned     nDsts  = result->nDsts();
+    const Dgram* bdg    = batch->datagram(); // Better equal &iov[0]->iov_base!
+    size_t       extent = batch->extent();
+
+    for (unsigned dst = 0; dst < nDsts; ++dst)
+    {
+      unsigned dest   = result->dst(dst);
+      unsigned idx    = result->idx(dst);
+
+      if (lverbose)
+      {
+        void*    rmtAdx = (void*)_outlet.rmtAdx(dest, idx * maxBatchSize());
+        printf("EbOutlet posts       %6d result[%2d] @ %p, ts %014lx, sz %zd to Contrib %d %p\n", cnt,
+               idx, bdg, bdg->seq.stamp().pulseId(), extent, dest, rmtAdx);
+      }
+
+      _outlet.post(pool, extent, dest, idx * maxBatchSize(), NULL);
+    }
+
+    _release(batch);
+  }
+}
+
+void TstEbOutlet::post(Result* result)
+{
+  // Accumulate output datagrams (result) from the event builder into a batch
+  // datagram.  When the batch completes, post it to the back end.
+
+  if (lverbose)
+  {
+    printf("TstEbOutlet posts result[%d] %p (ts %014lx, ext %zd)\n",
+           result->idx(0), result, result->seq.stamp().pulseId(), sizeof(*result) + result->xtc.sizeofPayload());
   }
 
-  Result* rslt = _pending.atHead();
-  Result* end  = _pending.empty();
-  do
+  process(result);
+}
+
+void TstEbOutlet::post(Batch* batch)
+{
+  _pending.insert(batch);
+  _resultSem.give();
+}
+
+void TstEbOutlet::_release(Batch* batch)
+{
+  LocalIOVec&         pool = batch->pool();
+  const struct iovec* iov  = pool.iovecs();
+  const struct iovec* end  = &iov[pool.count()];
+
+  ++iov;                                // First one is the Batch datagram
+
+  for (; iov < end; ++iov)
   {
-    Entry* next = rslt->next();
-
-    delete (Result*)_pending.remove(rslt);
-
-    rslt = (Result*)next;
+    delete (Result*)iov->iov_base;
   }
-  while ((rslt != result) && (rslt != end));
 
-  release(bdg->seq.stamp().pulseId());
-
-  cnt++;
+  delete batch;
 }
 
 

@@ -97,8 +97,6 @@ uint64_t EbFtBase::_tryCq()
 
     if (_ep[iSrc]->comp(&cqEntry, &cqNum, 1))
     {
-      _ep[iSrc]->recv_comp_data();
-
       if (cqNum && (cqEntry.flags & (FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA)))
       {
         // Revisit: Immediate data identifies which batch was written
@@ -117,6 +115,7 @@ uint64_t EbFtBase::_tryCq()
                 iSrc, _ep[iSrc]->error());
       }
     }
+    _ep[iSrc]->recv_comp_data();
   }
 
   return 0;
@@ -149,12 +148,21 @@ uint64_t EbFtBase::pend()
   return data;
 }
 
+uint64_t EbFtBase::rmtAdx(unsigned dst, uint64_t offset)
+{
+  return _ra[dst].addr + offset;
+}
+
 int EbFtBase::post(LocalIOVec& lclIov,
                    size_t      len,
                    unsigned    dst,
-                   uint64_t    dstOffset,
+                   uint64_t    offset,
                    void*       ctx)
 {
+  //static unsigned wrtCnt  = 0;
+  //static unsigned wrtCnt2 = 0;
+  //static unsigned waitCnt = 0;
+
   //const struct iovec* iov = lclIov.iovecs();
   //void**              dsc = lclIov.desc();
   //
@@ -163,14 +171,16 @@ int EbFtBase::post(LocalIOVec& lclIov,
   //  printf("lclIov[%d]: base   = %p, size = %zd, desc = %p\n", i, iov[i].iov_base, iov[i].iov_len, dsc[i]);
   //}
 
-  RemoteAddress rmtAdx(_ra[dst].rkey, _ra[dst].addr + dstOffset, len);
+  RemoteAddress rmtAdx(_ra[dst].rkey, _ra[dst].addr + offset, len);
   RemoteIOVec   rmtIov(&rmtAdx, 1);
   RmaMessage    rmaMsg(&lclIov, &rmtIov, ctx, rmtAdx.addr);
 
   //printf("rmtIov: rmtAdx = %p, size = %zd\n", (void*)rmtAdx.addr, len);
 
+  //++wrtCnt;
   do
   {
+    //++wrtCnt2;
     if (_ep[dst]->writemsg(&rmaMsg, FI_REMOTE_CQ_DATA))  break;
 
     if (_ep[dst]->error_num() == -FI_EAGAIN)
@@ -178,8 +188,16 @@ int EbFtBase::post(LocalIOVec& lclIov,
       int              cqNum;
       fi_cq_data_entry cqEntry;
 
-      //printf("EbFtBase::post: Waiting for comp...\n");
-      _ep[dst]->comp_wait(&cqEntry, &cqNum, 1);
+      //printf("EbFtBase::post: Waiting for comp... %d of %d, %d\n", ++waitCnt, wrtCnt, wrtCnt2);
+      if (!_ep[dst]->comp_wait(&cqEntry, &cqNum, 1))
+      {
+        if (_ep[dst]->error_num() != -FI_EAGAIN)
+        {
+          fprintf(stderr, "Error completing operation with peer %u: %s\n",
+                  dst, _ep[dst]->error());
+        }
+      }
+      _ep[dst]->recv_comp_data();
     }
     else
     {
@@ -187,7 +205,7 @@ int EbFtBase::post(LocalIOVec& lclIov,
       return _ep[dst]->error_num();
     }
   }
-  while (_ep[dst]->state() == EP_UP);
+  while (_ep[dst]->state() == EP_CONNECTED);
 
   return 0;
 }

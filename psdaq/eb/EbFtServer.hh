@@ -31,6 +31,7 @@ namespace Pds {
       virtual ~EbFtServer();
     public:
       int connect();
+      const char* base() const;         // Revisit: For debugging; remove it?
     public:
       virtual int shutdown();
     private:
