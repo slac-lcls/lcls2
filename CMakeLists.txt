@@ -33,6 +33,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(HDF5 REQUIRED HL)
 
+enable_testing()
+
 add_subdirectory(xtcdata)
 add_subdirectory(psana)
 add_subdirectory(psdaq)
