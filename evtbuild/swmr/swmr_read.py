@@ -57,7 +57,7 @@ class master(object):
 #        print('Notable inds', notable_inds)
  #       print('Length of timestamps', len(ts_dst))
         # Find timestamps of interesting events
-        timestamps = np.take(np.array(ts_dst), notable_inds, mode='clip').ravel()
+        timestamps = np.take(np.array(ts_dst,dtype='uint32'), notable_inds, mode='clip').ravel()
   #      print('Timestamps', timestamps)
         ts_start = np.searchsorted(timestamps, start_index)+(np.sign(start_index)+1)/2
 
@@ -65,7 +65,7 @@ class master(object):
         # If it has, pass the final length to the clients
         # so they may finish reading
         if self.file0_eof:
-            final_length = len(ts_dst)
+            final_length = len(np.where(np.array(diode_dst) > 1-self.hit_probability)[0])
             print('Final length is %i' % final_length)
         else:
             final_length = -1
