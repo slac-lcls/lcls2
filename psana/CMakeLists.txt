@@ -15,3 +15,12 @@ target_include_directories(dgram PUBLIC
 )
 
 set_target_properties(dgram PROPERTIES PREFIX "")
+
+add_test(NAME xtcwriter COMMAND ${CMAKE_BINARY_DIR}/xtcdata/xtcwriter
+	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
+add_test(NAME testxtc COMMAND python testxtc.py
+	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
+add_test(NAME h5writer COMMAND ${CMAKE_BINARY_DIR}/psdaq/app/h5writer
+	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
+add_test(NAME testh5 COMMAND python testh5.py
+	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)

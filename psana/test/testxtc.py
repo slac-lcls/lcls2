@@ -3,7 +3,8 @@
 
 import sys
 from sys import getrefcount as getref
-sys.path.append('../build/psana')
+sys.path.append('../../build/psana')
+sys.path.append('../')
 from dgram import Dgram
 import numpy as np
 from DataSource import DataSource
