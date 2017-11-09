@@ -16,6 +16,7 @@ args = parser.parse_args()
 
 cfg = load_config('sconfig')
 
+
 class master(object):
     def __init__(self):
         self.master_msg = msg()
@@ -29,30 +30,53 @@ class master(object):
         else:
             self.hit_probability = float(cfg['hit_probability'])
 
-    def find_evts(self,mfile, start_index):
+        self.diode_lp = np.zeros(size-1)
+
+    def find_evts(self,mfile, start_index, request_rank):
+        client_rank = request_rank -1
         diode_dst = mfile['small_data']['diode_values']
         ts_dst = mfile['small_data']['timestamps']
-
         diode_dst.id.refresh()
         ts_dst.id.refresh()
 
-        number_of_events = diode_dst.shape[0]            
+        if request_rank == -1:
+            dd = 0
+        else:
+            dd = self.diode_lp[client_rank]
 
+        dd = int(dd)
+        
+#        dd=0
+        number_of_events = diode_dst.shape[0]            
+        print('Client %i dd is %i/%i ' % (client_rank, dd, number_of_events))
+      #  print('Diode values', diode_dst[dd:])
         # Location of high diode values (>(1-hit_probability))
-        notable_inds = np.where(np.array(diode_dst) > 1-self.hit_probability)
+        notable_inds = np.where(np.array(diode_dst[dd:]) > 1-self.hit_probability)[0]
+        notable_inds += dd
+        
+#        print('Notable inds', notable_inds)
+ #       print('Length of timestamps', len(ts_dst))
         # Find timestamps of interesting events
         timestamps = np.take(np.array(ts_dst), notable_inds, mode='clip').ravel()
-
+  #      print('Timestamps', timestamps)
         ts_start = np.searchsorted(timestamps, start_index)+(np.sign(start_index)+1)/2
 
         # Check if the small data has finished writing
         # If it has, pass the final length to the clients
         # so they may finish reading
         if self.file0_eof:
-            final_length = len(timestamps)
+            final_length = len(ts_dst)
+            print('Final length is %i' % final_length)
         else:
             final_length = -1
-        return number_of_events, timestamps[ts_start:], final_length
+
+        if request_rank == -1:
+            self.diode_lp[:] = number_of_events
+        else:
+            self.diode_lp[client_rank] = number_of_events
+            
+        print('Sending to client', number_of_events, timestamps, final_length)    
+        return number_of_events, timestamps, final_length
 
 
     def master(self):
@@ -65,7 +89,8 @@ class master(object):
         with h5py.File(master_file_name, 'r', swmr=True) as master_file:
             # Find the interesting (Diode high) events in the small data
             self.master_msg.file_evt_num, self.master_msg.timestamps, \
-                self.master_msg.cum_event_num = self.find_evts(master_file,-1)            
+                self.master_msg.cum_event_num = self.find_evts(master_file,-1,-1)
+            
             for rank in client_list:
                 client_obj = comm.recv(source=MPI.ANY_SOURCE)
                 comm.send(self.master_msg, dest=client_obj.rank)
@@ -79,16 +104,19 @@ class master(object):
                     self.file0_eof = True
 
                 if client_obj.client_exit_flag:
-                    print('Client %i exiting from master' % client_obj.rank)
+                    cu_time = time.strftime("%H:%M:%S")
+                    client_rank = client_obj.rank -1
+                    print('Client %i exited from master at %s' % (client_rank,cu_time))
                     client_list = np.delete(client_list, np.searchsorted(client_list, client_obj.rank))
                     num_clients = len(client_list)
                     self.total_read[client_obj.rank-1] = client_obj.read_mb
                     self.total_events[client_obj.rank-1] = client_obj.total_events
                     self.total_file_size += client_obj.total_file_size
+                    continue
 
                 if client_obj.client_refresh:
                     self.master_msg.file_evt_num, self.master_msg.timestamps, \
-                        self.master_msg.cum_event_num = self.find_evts(master_file, client_obj.last_timestamp)
+                        self.master_msg.cum_event_num = self.find_evts(master_file, client_obj.last_timestamp, client_obj.rank)
                     comm.send(self.master_msg, dest=client_obj.rank)
 
                     
@@ -117,15 +145,18 @@ def client():
 
     retained_evts = []
     eof = False
-    with h5py.File(file_name, 'r', swmr=True) as client_file:    
+
+    print('Client %i reading file %s' % (client_rank, file_name))
+     
+    with h5py.File(file_name, 'r', swmr=True) as client_file:
         dset = client_file["data"]
         clt_tsmps = client_file["small_data"]["timestamps"]
         total_read_in = 0    
         while True:                        
             comm.send(client_msg, dest=0)
-            if client_msg.client_exit_flag:
+          #  if client_msg.client_exit_flag:
                # print('Client %i exiting' % client_rank)
-                break
+           #     break
 
             evt_obj = comm.recv(source=0)
        
@@ -134,9 +165,9 @@ def client():
                 clt_tsmps.id.refresh()
             
             clt_tsmps_arr = np.array(clt_tsmps)
-            
-            evt_inds = clt_tsmps_arr[np.in1d(clt_tsmps_arr, evt_obj.timestamps)]
-        #    if len(evt_inds) != len(evt_obj.timestamps):
+            evt_inds = evt_obj.timestamps
+     #       evt_inds = clt_tsmps_arr[np.in1d(clt_tsmps_arr, evt_obj.timestamps)]
+      #      if len(evt_inds) != len(evt_obj.timestamps):
               #  print('Client %i found %i our of %i total' % (client_rank, len(evt_inds), len(evt_obj.timestamps)))
        
               # Append any events that failed to read from the last loop
@@ -148,7 +179,9 @@ def client():
             client_start = time.time()
             # Read in the filtered events 
           #  re_evt=[]
+            print('Client events %i' % client_rank, evt_inds)
             for evt_ct,evt in enumerate(evt_inds):
+           #     print(evt)
                 try:
                     read_in = dset[evt][:]
                     client_total_events += 1
@@ -186,7 +219,7 @@ def client():
             prev_size = os.stat(file_name).st_size/10**6
 
             while client_msg.rank_active and not eof:
-                if exit_count > 30:
+                if exit_count > 1:
                     #print('File %i stopped writing' % client_rank)
                     client_msg.rank_active = False
                     break
@@ -207,13 +240,17 @@ def client():
             # If we've reached the end of the file and read out all the events
             # designated by the master, pass the close event flags to master
             if eof and client_total_events == evt_obj.cum_event_num:
-                print('Client %i passing exit flag' % client_rank)
-                client_msg.client_exit_flag = True
-                client_msg.read_mb = total_read_in
-                client_msg.total_file_size = os.stat(file_name).st_size/10**6
-                client_msg.total_events = client_total_events
-
-                continue
+                cu_time = time.strftime("%H:%M:%S")
+                exit_obj = msg()
+                exit_obj.file0_eof = client_msg.file0_eof
+                print('Client %i passing exit flag at %s' % (client_rank, cu_time))
+                exit_obj.client_exit_flag = True
+                exit_obj.read_mb = total_read_in
+                exit_obj.total_file_size = os.stat(file_name).st_size/10**6
+                exit_obj.total_events = client_total_events
+                comm.send(exit_obj, dest = 0)
+                break
+                
             
             # Else ask for more events from the master
             client_msg.client_refresh = True
@@ -232,6 +269,7 @@ comm.Barrier()
 
 try:
     if rank == 0:
+      
         global_start = time.time()
         rm = master()
         rm.master()

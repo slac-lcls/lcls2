@@ -38,7 +38,8 @@ def master():
     av_files=[]
 
     # Create the small data file
-    small_file = h5py.File(cfg['path']+'/swmr_small_data.h5', 'w', libver='latest')
+    small_file_name = cfg['path']+'/swmr_small_data.h5'
+    small_file = h5py.File(small_file_name, 'w', libver='latest')
    
     small_data_group = small_file.create_group('small_data')
     diode_vals = small_data_group.create_dataset('diode_values', shape= (1,), chunks=(1,), maxshape=(None,),dtype='f')
@@ -55,7 +56,7 @@ def master():
         print('Creating %s' % loop_fn)
         str_comm = 'lfs setstripe -c %i -S 1M %s' % (nstripes, loop_fn)
        # print(str_comm)
- #       subprocess.call(str_comm, shell=True)
+        subprocess.call(str_comm, shell=True)
 
         f = h5py.File(loop_fn, 'w', libver='latest')
         dset = f.create_dataset("data", shape = (0,arr_size), chunks = (batch_size, arr_size), maxshape=(None,arr_size), dtype = 'uint16')
