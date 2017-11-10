@@ -66,8 +66,8 @@ class master(object):
         # so they may finish reading
         if self.file0_eof:
             final_length = self.file0_length
-            print('Length the other way is %i' % len(np.where(np.array(diode_dst) > 1-self.hit_probability)[0]))
-            print('Final length is %i' % final_length)
+           # print('Length the other way is %i' % len(np.where(np.array(diode_dst) > 1-self.hit_probability)[0]))
+            #print('Final length is %i' % final_length)
         else:
             final_length = -1
 
