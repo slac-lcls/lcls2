@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 #include "xtcdata/xtc/ShapesData.hh"
@@ -113,14 +114,13 @@ private:
 };
 
 
-void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32_t** dma_buffers, SPSCQueue<int>& collector_queue, std::vector<PebbleQueue>& worker_input_queues)
+void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32_t** dma_buffers, SPSCQueue<int>& collector_queue, std::vector<PebbleQueue>& worker_input_queues, unsigned first_lane)
 {
     int nlanes = 4;
-    int first_lane = 5;
 
     // open pgp card fd
     char dev_name[128];
-    snprintf(dev_name, 128, "/dev/pgpcardG3_0_%u", first_lane);
+    snprintf(dev_name, 128, "/dev/pgpcardG3_0_%u", first_lane+1);
     int fd = open(dev_name, O_RDWR);
     if (fd < 0) {
         std::cout << "Failed to open pgpcard" << dev_name << std::endl;
@@ -242,8 +242,20 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32
     close(fd);
 }
 
+void hsdExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers, std::vector<unsigned>& lanes)
+{
+    char chan_name[8];
+    CreateData hsd(parent, nameindex, nameId);
+    PGPBuffer* buffers = pebble_data->pgp_data()->buffers;
+    uint32_t shape[1];
+    for (unsigned i=0; i<lanes.size(); i++) {
+        sprintf(chan_name,"chan%d",i);
+        shape[0] = buffers[lanes[i]].length;
+        hsd.set_array_shape(chan_name, shape);
+    }
+}
 
-void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
+void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
 {
     CreateData fex(parent, nameindex, nameId);
 
@@ -259,15 +271,24 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
     fex.set_array_shape("array_fex",shape);
 }
 
-void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
+void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
+    Names& fexNames = *new(parent) Names();
+
+    fexNames.add("chan0", Name::UINT8, parent, 1);
+    fexNames.add("chan1", Name::UINT8, parent, 1);
+    fexNames.add("chan2", Name::UINT8, parent, 1);
+    fexNames.add("chan3", Name::UINT8, parent, 1);
+    namesVec.push_back(NameIndex(fexNames));
+}
+
+void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Names& fexNames = *new(parent) Names();
 
     fexNames.add("array_fex", Name::UINT16, parent, 2);
     namesVec.push_back(NameIndex(fexNames));
 }
 
-
-void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, uint32_t** dma_buffers, int rank)
+void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, uint32_t** dma_buffers, int rank, std::vector<unsigned> lanes)
 {
     std::vector<NameIndex> namesVec;
 
@@ -286,7 +307,6 @@ void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, u
 
         // check pulseId
         uint64_t pulse_id;
-        int lanes[] = {4, 5, 7};
         PGPData* pgp_data = pebble_data->pgp_data();
         if (pgp_data->nlanes == 3) {
             uint32_t index = pgp_data->buffers[4].dma_index;
@@ -304,11 +324,13 @@ void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, u
         // Do actual work here
         // configure transition
         if (counter == 0) {
-            add_names(dgram.xtc, namesVec);
+            // add_roi_names(dgram.xtc, namesVec);
+            add_hsd_names(dgram.xtc, namesVec);
         }
         // making real fex data for event
         else {
-            fexExample(dgram.xtc, namesVec[0], 0, pebble_data, dma_buffers);
+            // roiExample(dgram.xtc, namesVec[0], 0, pebble_data, dma_buffers);
+            hsdExample(dgram.xtc, namesVec[0], 0, pebble_data, dma_buffers, lanes);
         }
 
         worker_output_queue.push(pebble_data);
@@ -346,10 +368,31 @@ public:
     }
     int save(Dgram& dgram)
     {
-        if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, file) != 1) {
+        if (fwrite(&dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload(), 1, file) != 1) {
             printf("Error writing to output xtc file.\n");
             _exit(1);
         }
+        fflush(file);
+        return 0;
+    }
+    int saveIov(Dgram& dgram, const struct iovec* iov, int iovcnt)
+    {
+        unsigned iovlen=0;
+        for (int i=0; i<iovcnt; i++) {
+            iovlen+=iov[i].iov_len;
+        }
+        if (fwrite(&dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload()-iovlen, 1, file) != 1) {
+            printf("Error writing to output xtc file.\n");
+            _exit(1);
+        }
+        for (int i=0; i<iovcnt; i++) {
+            if (fwrite(iov[i].iov_base, iov[i].iov_len, 1, file) != 1) {
+                printf("Error writing IOV to output xtc file.\n");
+                _exit(1);
+            }
+        }
+        fflush(file);
+        return 0;
     }
 private:
     FILE* file;
@@ -358,6 +401,7 @@ private:
 int main()
 {
     int queue_size = 16384;
+    std::vector<unsigned> lanes = {0,1,2,3}; // must be contiguous
 
     // pin main thread
     pin_thread(pthread_self(), 1);
@@ -390,23 +434,23 @@ int main()
 
     // start pgp reader thread
     std::thread pgp_thread(pgp_reader, std::ref(index_queue), std::ref(pebble_queue), dma_buffers, std::ref(collector_queue),
-                           std::ref(worker_input_queues));
+                           std::ref(worker_input_queues), lanes[0]);
     pin_thread(pgp_thread.native_handle(), 2);
 
     // start worker threads
     std::vector<std::thread> worker_threads;
     for (int i = 0; i < NWORKERS; i++) {
         worker_threads.emplace_back(worker, std::ref(worker_input_queues[i]),
-                                    std::ref(worker_output_queues[i]), dma_buffers, i);
+                                    std::ref(worker_output_queues[i]), dma_buffers, i, lanes);
         pin_thread(worker_threads[i].native_handle(), 3 + i);
     }
 
-
-    // XtcFile xtcfile("/drpffb/cpo/data.xtc");
+    XtcFile xtcfile("/drpffb/cpo/data.xtc");
     NamesIter namesiter;
-    HDF5File h5file("/drpffb/weninc/data.h5", namesiter.namesVec());
+    // HDF5File h5file("/u1/cpo/data.h5", namesiter.namesVec());
 
     // start loop for the collector to collect results from the workers in the same order the events arrived over pgp
+    iovec iov[8];
     for (int i = 0; i < N; i++) {
         int worker;
         collector_queue.pop(worker);
@@ -414,17 +458,24 @@ int main()
         Pebble* pebble_data;
         worker_output_queues[worker].pop(pebble_data);
 
-        /*
         Dgram& dgram = *reinterpret_cast<Dgram*>(pebble_data->fex_data());
-        // xtcfile.save(dgram);
-        if (i == 0) {
-            namesiter.iterate(&dgram.xtc);
+        if (i==0) {
+            xtcfile.save(dgram);
+        } else {
+            PGPBuffer* buffers = pebble_data->pgp_data()->buffers;
+            for (unsigned ilane=0; ilane<lanes.size(); ilane++) {
+                iov[ilane].iov_len=buffers[lanes[ilane]].length;
+                uint32_t dma_index = buffers[lanes[ilane]].dma_index;
+                iov[ilane].iov_base = reinterpret_cast<void*>(dma_buffers[dma_index]);
+            }
+            xtcfile.saveIov(dgram, iov, lanes.size());
         }
-        else {
-            h5file.save(dgram);
-        }
-        */
-
+        // if (i == 0) {
+        //     namesiter.iterate(&dgram.xtc);
+        // }
+        // else {
+        //     h5file.save(dgram);
+        // }
 
         // return dma indices to dma buffer pool
         for (unsigned int b=0; b<pebble_data->pgp_data()->nlanes; b++) {
