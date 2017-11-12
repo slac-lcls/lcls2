@@ -11,34 +11,60 @@ using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
 
-EbFtBase::EbFtBase(unsigned nClients) :
-  _ep(nClients),
-  _mr(nClients),
-  _ra(nClients),
+EbFtBase::EbFtBase(unsigned nPeers) :
+  _ep(nPeers),
+  _mr(nPeers),
+  _ra(nPeers),
   _cqPoller(NULL),
-  _iSrc(0)
+  _id(nPeers),
+  _mappedId(NULL)
 {
 }
 
 EbFtBase::~EbFtBase()
 {
+  if (_mappedId)  delete [] _mappedId;
 }
 
 MemoryRegion* EbFtBase::registerMemory(void* buffer, size_t size)
 {
-  if (!_ep[0])  return NULL;
+  MemoryRegion* mr = NULL;
 
-  Fabric* fab = _ep[0]->fabric();
+  for (unsigned i = 0; i < _ep.size(); ++i)
+  {
+    Endpoint* ep = _ep[i];
 
-  return fab->register_memory(buffer, size);
+    if (!ep)  continue;
+
+    Fabric* fab = ep->fabric();
+
+    mr = fab->register_memory(buffer, size);
+
+    printf("idx: %d, fabric: %p, desc = %p\n", i, fab, mr->desc());
+  }
+
+  return mr;
+}
+
+void EbFtBase::_mapIds(unsigned nPeers)
+{
+  unsigned idMax = 0;
+  for (unsigned i = 0; i < nPeers; ++i)
+    if (_id[i] > idMax) idMax = _id[i];
+
+  _mappedId = new unsigned[idMax + 1];
+
+  for (unsigned i = 0; i < nPeers; ++i)
+    _mappedId[_id[i]] = i;
 }
 
 int EbFtBase::_syncLclMr(char*          region,
                          size_t         size,
                          Endpoint*      ep,
-                         MemoryRegion*& mr)
+                         MemoryRegion*  mr,
+                         RemoteAddress& ra)
 {
-  RemoteAddress ra(mr->rkey(), (uint64_t)region, size);
+  ra = RemoteAddress(mr->rkey(), (uint64_t)region, size);
   memcpy(region, &ra, sizeof(ra));
 
   if (!ep->send_sync(region, sizeof(ra), mr))
@@ -84,6 +110,8 @@ int EbFtBase::_syncRmtMr(char*          region,
 
 uint64_t EbFtBase::_tryCq()
 {
+  static unsigned _iSrc = 0;
+
   // Cycle through all sources to find which one has data
   for (unsigned i = 0; i < _ep.size(); ++i)
   {
@@ -104,7 +132,7 @@ uint64_t EbFtBase::_tryCq()
         //unsigned slot = (cqEntry.data >> 16) & 0xffff;
         //unsigned idx  =  cqEntry.data        & 0xffff;
         //batch = (Dgram*)&_pool[(slot * _maxBatches + idx) * _maxBatchSize];
-        return cqEntry.data;
+        return _ra[iSrc].addr + cqEntry.data; // imm_data is only 32 bits for verbs!
       }
     }
     else
@@ -112,7 +140,7 @@ uint64_t EbFtBase::_tryCq()
       if (_ep[iSrc]->error_num() != -FI_EAGAIN)
       {
         fprintf(stderr, "Error completing operation with peer %u: %s\n",
-                iSrc, _ep[iSrc]->error());
+                _id[iSrc], _ep[iSrc]->error());
       }
     }
     _ep[iSrc]->recv_comp_data();
@@ -150,7 +178,7 @@ uint64_t EbFtBase::pend()
 
 uint64_t EbFtBase::rmtAdx(unsigned dst, uint64_t offset)
 {
-  return _ra[dst].addr + offset;
+  return _ra[_mappedId[dst]].addr + offset;
 }
 
 int EbFtBase::post(LocalIOVec& lclIov,
@@ -171,41 +199,44 @@ int EbFtBase::post(LocalIOVec& lclIov,
   //  printf("lclIov[%d]: base   = %p, size = %zd, desc = %p\n", i, iov[i].iov_base, iov[i].iov_len, dsc[i]);
   //}
 
-  RemoteAddress rmtAdx(_ra[dst].rkey, _ra[dst].addr + offset, len);
+  unsigned idx = _mappedId[dst];
+
+  RemoteAddress rmtAdx(_ra[idx].rkey, _ra[idx].addr + offset, len);
   RemoteIOVec   rmtIov(&rmtAdx, 1);
-  RmaMessage    rmaMsg(&lclIov, &rmtIov, ctx, rmtAdx.addr);
+  RmaMessage    rmaMsg(&lclIov, &rmtIov, ctx, offset); // imm_data is only 32 bits for verbs!
 
   //printf("rmtIov: rmtAdx = %p, size = %zd\n", (void*)rmtAdx.addr, len);
 
   //++wrtCnt;
+  Endpoint* ep = _ep[idx];
   do
   {
     //++wrtCnt2;
-    if (_ep[dst]->writemsg(&rmaMsg, FI_REMOTE_CQ_DATA))  break;
+    if (ep->writemsg(&rmaMsg, FI_REMOTE_CQ_DATA))  break;
 
-    if (_ep[dst]->error_num() == -FI_EAGAIN)
+    if (ep->error_num() == -FI_EAGAIN)
     {
       int              cqNum;
       fi_cq_data_entry cqEntry;
 
       //printf("EbFtBase::post: Waiting for comp... %d of %d, %d\n", ++waitCnt, wrtCnt, wrtCnt2);
-      if (!_ep[dst]->comp_wait(&cqEntry, &cqNum, 1))
+      if (!ep->comp_wait(&cqEntry, &cqNum, 1))
       {
-        if (_ep[dst]->error_num() != -FI_EAGAIN)
+        if (ep->error_num() != -FI_EAGAIN)
         {
           fprintf(stderr, "Error completing operation with peer %u: %s\n",
-                  dst, _ep[dst]->error());
+                  idx, ep->error());
         }
       }
-      _ep[dst]->recv_comp_data();
+      ep->recv_comp_data();
     }
     else
     {
-      fprintf(stderr, "writemsg failed: %s\n", _ep[dst]->error());
-      return _ep[dst]->error_num();
+      fprintf(stderr, "writemsg failed: %s\n", ep->error());
+      return ep->error_num();
     }
   }
-  while (_ep[dst]->state() == EP_CONNECTED);
+  while (ep->state() == EP_CONNECTED);
 
   return 0;
 }

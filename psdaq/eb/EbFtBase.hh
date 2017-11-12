@@ -10,7 +10,6 @@ namespace Pds {
 
   namespace Fabrics {
 
-    class PassiveEndpoint;
     class Endpoint;
     class MemoryRegion;
     class RemoteAddress;
@@ -27,7 +26,7 @@ namespace Pds {
     class EbFtBase
     {
     public:
-      EbFtBase(unsigned nClients);
+      EbFtBase(unsigned nPeers);
       virtual ~EbFtBase();
     public:
       Fabrics::MemoryRegion* registerMemory(void* buffer, size_t size);
@@ -37,10 +36,12 @@ namespace Pds {
     public:
       virtual int shutdown() = 0;
     protected:
+      void     _mapIds(unsigned nPeers);
       int      _syncLclMr(char*                   region,
                           size_t                  size,
                           Fabrics::Endpoint*      ep,
-                          Fabrics::MemoryRegion*& mr);
+                          Fabrics::MemoryRegion*  mr,
+                          Fabrics::RemoteAddress& ra);
       int      _syncRmtMr(char*                   region,
                           size_t                  size,
                           Fabrics::Endpoint*      ep,
@@ -49,12 +50,12 @@ namespace Pds {
     private:
       uint64_t _tryCq();
     protected:
-      EpList   _ep;                     // List of Endpoints
-      MrList   _mr;                     // List of Memory Regions per EP
-      RaList   _ra;                     // List of remote address descriptors
+      EpList                     _ep;   // List of Endpoints
+      MrList                     _mr;   // List of Memory Regions per EP
+      RaList                     _ra;   // List of remote address descriptors
       Fabrics::CompletionPoller* _cqPoller;
-    private:
-      unsigned _iSrc;
+      std::vector<unsigned>      _id;
+      unsigned*                  _mappedId;
     };
   };
 };

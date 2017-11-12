@@ -14,11 +14,13 @@ using namespace Pds::Eb;
 
 EbFtServer::EbFtServer(std::string& port,
                        unsigned     nClients,
-                       size_t       lclSize) :
+                       size_t       lclSize,
+                       PeerSharing  shared) :
   EbFtBase(nClients),
   _port(port),
   _lclSize(lclSize),
-  _base(new char[nClients * lclSize])
+  _shared(shared == PEERS_SHARE_BUFFERS),
+  _base(new char[(shared ? 1 : nClients) * lclSize])
 {
 }
 
@@ -34,7 +36,7 @@ EbFtServer::~EbFtServer()
   delete [] _base;
 }
 
-int EbFtServer::connect()
+int EbFtServer::connect(unsigned myId)
 {
   int ret = 0;
 
@@ -60,8 +62,6 @@ int EbFtServer::connect()
 
   Fabric* fab = _pep->fabric();
 
-  printf("Fabric provider is '%s'\n", fab->provider());
-
   _cqPoller = new CompletionPoller(fab, _ep.size());
 
   if(!_pep->listen())
@@ -84,8 +84,6 @@ int EbFtServer::connect()
       break;
     }
 
-    printf("Client %d connected\n", i);
-
     _mr[i] = fab->register_memory(pool, _lclSize);
     if (!_mr[i])
     {
@@ -96,14 +94,31 @@ int EbFtServer::connect()
 
     _cqPoller->add(_ep[i]);
 
-    ret = _syncLclMr(pool, _lclSize, _ep[i], _mr[i]);
+    if (!_ep[i]->recv_sync(pool, sizeof(_id[i]), _mr[i]))
+    {
+      fprintf(stderr, "Failed receiving peer's ID: %s\n", _ep[i]->error());
+      return -1;
+    }
+    _id[i] = *(unsigned*)pool;
+    *(unsigned*)pool = myId;
+    if (!_ep[i]->send_sync(pool, sizeof(myId)))
+    {
+      fprintf(stderr, "Failed sending peer our ID: %s\n", _ep[i]->error());
+      return -1;
+    }
+
+    ret = _syncLclMr(pool, _lclSize, _ep[i], _mr[i], _ra[i]);
     if (ret)  break;
 
     _ep[i]->recv_comp_data();
 
-    pool += _lclSize;
+    printf("Client %d connected\n", _id[i]);
+
+    if (!_shared)  pool += _lclSize;
   }
   while (++i < nClients);
+
+  _mapIds(nClients);
 
   return ret;
 }
