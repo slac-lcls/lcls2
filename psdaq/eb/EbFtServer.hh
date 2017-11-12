@@ -25,12 +25,15 @@ namespace Pds {
     class EbFtServer : public EbFtBase
     {
     public:
+      enum PeerSharing { PER_PEER_BUFFERS, PEERS_SHARE_BUFFERS };
+    public:
       EbFtServer(std::string& port,
                  unsigned     nClients,
-                 size_t       lclSize);
+                 size_t       lclSize,
+                 PeerSharing  shared);
       virtual ~EbFtServer();
     public:
-      int connect();
+      int connect(unsigned myId);
       const char* base() const;         // Revisit: For debugging; remove it?
     public:
       virtual int shutdown();
@@ -38,6 +41,7 @@ namespace Pds {
       std::string&              _port;   // The port to listen on
       Fabrics::PassiveEndpoint* _pep;    // Endpoint for establishing connections
       size_t                    _lclSize;// Local  memory region size
+      const bool                _shared; // True when buffers are shared by peers
       char*                     _base;   // The local memory region
     };
   };

@@ -24,6 +24,9 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 
 
+static const unsigned default_id       = 0;          // Builder's ID
+static const unsigned srv_port_base    = 32768;      // Base port Builder for receiving results
+static const unsigned clt_port_base    = 32768 + 64; // Base port Builder sends to EB on
 static const uint64_t batch_duration   = 0x00000000000080UL; // ~128 uS; must be power of 2
 static const unsigned max_batches      = 16; //8192;     // 1 second's worth
 static const unsigned max_entries      = 128;     // 128 uS worth
@@ -34,7 +37,7 @@ static const size_t   result_extent    = input_extent;
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 
-static       bool     lverbose         = false;
+static       unsigned lverbose         = 0;
 
 //static void dump(const Pds::Dgram* dg)
 //{
@@ -218,16 +221,18 @@ void TstEbInlet::process()
     if (lverbose)
     {
       static unsigned cnt = 0;
-      printf("EbInlet  rcvd  %6d        batch[%2d] @ %p, ts %014lx, sz %zd\n", ++cnt, index,
-             batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
+      unsigned from = batch->xtc.src.log() & 0xff;
+      printf("EbInlet  rcvd  %6d        batch[%2d] @ %p, ts %014lx, sz %zd from Contrib %d\n", ++cnt, index,
+             batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
     }
 
     const Dgram* entry = (const Dgram*)batch->xtc.payload();
     const Dgram* end   = (const Dgram*)batch->xtc.next();
     while(entry != end)
     {
-      //printf("EbInlet found a contrib %p, ts %014lx, sz %zd\n",
-      //       entry, entry->seq.stamp().pulseId(), sizeof(*entry) + entry->xtc.sizeofPayload());
+      if (lverbose > 1)
+        printf("EbInlet found a contrib %p, ts %014lx, sz %zd\n",
+               entry, entry->seq.stamp().pulseId(), sizeof(*entry) + entry->xtc.sizeofPayload());
 
       EventBuilder::process(entry, index);
 
@@ -353,10 +358,10 @@ Batch* TstEbOutlet::_pend()
   _resultSem.take();
   Batch* batch = _pending.remove();
 
-  if (lverbose)
+  if (lverbose > 2)
   {
     const Dgram* bdg = batch->datagram();
-    printf("TstEbOutlet read  batch[%d] %p, dg %p (ts %014lx, ext %zd)\n",
+    printf("TstEbOutlet read   batch[%d] %p, dg %p (ts %014lx, ext %zd)\n",
            batch->index(), batch, bdg, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
   }
 
@@ -393,19 +398,20 @@ void TstEbOutlet::routine()
     const Dgram* bdg    = batch->datagram(); // Better equal &iov[0]->iov_base!
     size_t       extent = batch->extent();
 
-    for (unsigned dst = 0; dst < nDsts; ++dst)
+    for (unsigned iDst = 0; iDst < nDsts; ++iDst)
     {
-      unsigned dest   = result->dst(dst);
-      unsigned idx    = result->idx(dst);
+      unsigned dst    = result->dst(iDst);
+      unsigned idx    = result->idx(iDst);
+      unsigned offset = idx * maxBatchSize();
 
       if (lverbose)
       {
-        void*    rmtAdx = (void*)_outlet.rmtAdx(dest, idx * maxBatchSize());
-        printf("EbOutlet posts       %6d result[%2d] @ %p, ts %014lx, sz %zd to Contrib %d %p\n", cnt,
-               idx, bdg, bdg->seq.stamp().pulseId(), extent, dest, rmtAdx);
+        void* rmtAdx = (void*)_outlet.rmtAdx(dst, offset);
+        printf("EbOutlet posts       %6d result     @ %p, ts %014lx, sz %zd to Contrib %d [%2d] = %p\n",
+               cnt, bdg, bdg->seq.stamp().pulseId(), extent, dst, idx, rmtAdx);
       }
 
-      _outlet.post(pool, extent, dest, idx * maxBatchSize(), NULL);
+      _outlet.post(pool, extent, dst, offset, NULL);
     }
 
     _release(batch);
@@ -417,7 +423,7 @@ void TstEbOutlet::post(Result* result)
   // Accumulate output datagrams (result) from the event builder into a batch
   // datagram.  When the batch completes, post it to the back end.
 
-  if (lverbose)
+  if (lverbose > 2)
   {
     printf("TstEbOutlet posts result[%d] %p (ts %014lx, ext %zd)\n",
            result->idx(0), result, result->seq.stamp().pulseId(), sizeof(*result) + result->xtc.sizeofPayload());
@@ -465,41 +471,45 @@ void sigHandler( int signal )
 void usage(char *name, char *desc)
 {
   fprintf(stderr, "Usage:\n");
-  fprintf(stderr, "  %s [OPTIONS] <contributor_addr> [<contributor_addr> [...]]\n", name);
+  fprintf(stderr, "  %s [OPTIONS] <contributor_spec> [<contributor_spec> [...]]\n", name);
 
   if (desc)
     fprintf(stderr, "\n%s\n", desc);
 
+  fprintf(stderr, "\n<contributor_spec> has the form '[<contributor_id>:]<contributor_addr>'\n");
+  fprintf(stderr, "  <contributor_id> must be in the range 0 - 63.\n");
+  fprintf(stderr, "  If the ':' is omitted, <contributor_id> will be given the\n");
+  fprintf(stderr, "  spec's positional value from 0 - 63, from left to right.\n");
+
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s\n", "-B <srv_port>",
-          "Builder's port number (server: 32768)");
-  fprintf(stderr, " %-20s %s\n", "-P <clt_port>",
-          "Contributor port number (client: 32769)");
+  fprintf(stderr, " %-20s %s (server: %d)\n", "-B <srv_port>",
+          "Base port number for Builders", srv_port_base);
+  fprintf(stderr, " %-20s %s (client: %d)\n", "-P <clt_port>",
+          "Base port number for Contributors", clt_port_base);
 
-  fprintf(stderr, " %-20s %s\n", "-i <ID>",
-          "Unique ID this instance should assume (0 - 63) (default: 0)");
+  fprintf(stderr, " %-20s %s (default: %d)\n", "-i <ID>",
+          "Unique ID this builder will assume (0 - 63)", default_id);
 
+  fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output (repeat for increased detail)");
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
-  fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output");
 }
 
 int main(int argc, char **argv)
 {
   int op, ret = 0;
-  unsigned id = 0;
-  std::string srv_port("32768");        // Port served to contributors
-  std::string clt_port("32769");        // Port served by contributors
-  std::vector<std::string> clt_addr;
+  unsigned id = default_id;
+  unsigned srvBase = srv_port_base;     // Port served to contributors
+  unsigned cltBase = clt_port_base;     // Port served by contributors
 
   while ((op = getopt(argc, argv, "hvB:P:i:")) != -1)
   {
     switch (op)
     {
-      case 'B':  srv_port = std::string(optarg);  break;
-      case 'P':  clt_port = std::string(optarg);  break;
-      case 'i':  id       = atoi(optarg);         break;
-      case 'v':  lverbose = true;                 break;
+      case 'B':  srvBase = strtoul(optarg, NULL, 0);  break;
+      case 'P':  cltBase = strtoul(optarg, NULL, 0);  break;
+      case 'i':  id       = atoi(optarg);             break;
+      case 'v':  ++lverbose;                          break;
       case '?':
       case 'h':
       default:
@@ -508,14 +518,45 @@ int main(int argc, char **argv)
     }
   }
 
-  uint64_t clients = 0;
-  unsigned srcId   = 0;
+  if (id > 63)
+  {
+    fprintf(stderr, "Builder ID is out of range 0 - 63: %d\n", id);
+    return 1;
+  }
+  if (srvBase + id > 0x0000ffff)
+  {
+    fprintf(stderr, "Server port is out of range 0 - 65535: %d\n", srvBase + id);
+    return 1;
+  }
+  char port[8];
+  snprintf(port, sizeof(port), "%d", srvBase + id);
+  std::string srvPort(port);
+
+  std::vector<std::string> cltAddr;
+  std::vector<std::string> cltPort;
+  uint64_t contributors = 0;
   if (optind < argc)
   {
+    unsigned srcId = 0;
     do
     {
-      clt_addr.push_back(std::string(argv[optind]));
-      clients |= 1 << srcId++;          // Revisit srcId value
+      char* contributor = argv[optind];
+      char* colon       = strchr(contributor, ':');
+      unsigned cid      = colon ? atoi(contributor) : srcId++;
+      if (cid > 63)
+      {
+        fprintf(stderr, "Contributor ID is out of the range 0 - 63: %d\n", cid);
+        return 1;
+      }
+      if (cltBase + cid > 0x0000ffff)
+      {
+        fprintf(stderr, "Client port is out of range 0 - 65535: %d\n", cltBase + cid);
+        return 1;
+      }
+      contributors |= 1 << cid;
+      snprintf(port, sizeof(port), "%d", cltBase + cid);
+      cltAddr.push_back(std::string(colon ? &colon[1] : contributor));
+      cltPort.push_back(std::string(port));
     }
     while (++optind < argc);
   }
@@ -534,21 +575,21 @@ int main(int argc, char **argv)
   printf("  Max contribution size:      %zd\n", max_contrib_size);
   printf("  Max result       size:      %zd\n", max_result_size);
 
-  unsigned numContribs = clt_addr.size();
+  unsigned numContribs = __builtin_popcountl(contributors);
   size_t   contribSize = max_batches * (sizeof(Dgram) + max_entries * max_contrib_size);
   size_t   resultSize  = max_batches * (sizeof(Dgram) + max_entries * max_result_size);
 
-  EbFtServer fts(srv_port, numContribs, contribSize);
-  ret = fts.connect();
+  EbFtServer fts(srvPort, numContribs, contribSize, EbFtServer::PER_PEER_BUFFERS);
+  ret = fts.connect(id);
   if (ret)
   {
     fprintf(stderr, "FtServer connect() failed\n");
     return ret;
   }
 
-  EbFtClient ftc(clt_addr, clt_port, resultSize);
+  EbFtClient ftc(cltAddr, cltPort, resultSize);
   unsigned   tmo(120);                  // Seconds
-  ret = ftc.connect(tmo);
+  ret = ftc.connect(id, tmo);
   if (ret)
   {
     fprintf(stderr, "FtClient connect() failed\n");
@@ -556,7 +597,7 @@ int main(int argc, char **argv)
   }
 
   TstEbOutlet outlet(ftc, id, batch_duration, max_batches, max_entries, max_result_size);
-  TstEbInlet  inlet (fts, id, batch_duration, max_batches, max_entries, clients, outlet);
+  TstEbInlet  inlet (fts, id, batch_duration, max_batches, max_entries, contributors, outlet);
   ebInlet = &inlet;
 
   outlet.start(inlet);

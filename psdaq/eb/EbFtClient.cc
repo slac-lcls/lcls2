@@ -16,15 +16,15 @@ using namespace Pds::Eb;
 static const size_t scratch_size = sizeof(Fabrics::RemoteAddress);
 
 
-EbFtClient::EbFtClient(StringList&  remote,
-                       std::string& port,
-                       size_t       rmtSize) :
-  EbFtBase(remote.size()),
-  _remote(remote),
+EbFtClient::EbFtClient(StringList& peers,
+                       StringList& port,
+                       size_t      rmtSize) :
+  EbFtBase(peers.size()),
+  _peers(peers),
   _port(port),
   _lclSize(scratch_size),
   _rmtSize(rmtSize),
-  _base(new char[scratch_size])
+  _base(new char[peers.size() * scratch_size])
 {
 }
 
@@ -33,16 +33,12 @@ EbFtClient::~EbFtClient()
   unsigned nEp = _ep.size();
 
   for (unsigned i = 0; i < nEp; ++i)
-    if (_cqPoller && _ep[i])  _cqPoller->del(_ep[i]);
-  if (_cqPoller)  delete _cqPoller;
-
-  for (unsigned i = 0; i < nEp; ++i)
     if (_ep[i])   delete _ep[i];
 
   delete[] _base;
 }
 
-int EbFtClient::connect(unsigned tmo)
+int EbFtClient::connect(unsigned id, unsigned tmo)
 {
   if (_base == NULL)
   {
@@ -50,54 +46,60 @@ int EbFtClient::connect(unsigned tmo)
     return -1;
   }
 
-  for (unsigned i = 0; i < _remote.size(); ++i)
+  char* pool = _base;
+  for (unsigned i = 0; i < _peers.size(); ++i)
   {
-    int ret = _connect(_remote[i], _port, tmo, _ep[i], _mr[i]);
+    int ret = _connect(id, _peers[i], _port[i], tmo, pool, _ep[i], _mr[i], _id[i]);
     if (ret)
     {
       fprintf(stderr, "_connect() failed at index %u (%s:%s)\n",
-              i, _remote[i].c_str(), _port.c_str());
+              i, _peers[i].c_str(), _port[i].c_str());
       return ret;
     }
 
-    printf("Server %d (%s:%s) connected\n", i, _remote[i].c_str(), _port.c_str());
-
-    ret = _syncRmtMr(_base, _rmtSize, _ep[i], _mr[i], _ra[i]);
+    ret = _syncRmtMr(pool, _rmtSize, _ep[i], _mr[i], _ra[i]);
     if (ret)  return ret;
 
     _ep[i]->recv_comp_data();
+
+    pool += scratch_size;
   }
+
+  _mapIds(_peers.size());
 
   return 0;
 }
 
-int EbFtClient::_connect(std::string&   remote,
+int EbFtClient::_connect(unsigned       myId,
+                         std::string&   peer,
                          std::string&   port,
                          unsigned       tmo,
+                         char*          pool,
                          Endpoint*&     ep,
-                         MemoryRegion*& mr)
+                         MemoryRegion*& mr,
+                         unsigned&      id)
 {
-  ep = new Endpoint(remote.c_str(), port.c_str());
+  ep = new Endpoint(peer.c_str(), port.c_str());
   if (!ep || (ep->state() != EP_UP))
   {
     fprintf(stderr, "Failed to initialize fabrics endpoint %s:%s: %s\n",
-            remote.c_str(), port.c_str(), ep->error());
+            peer.c_str(), port.c_str(), ep->error());
     perror("new Endpoint");
     return ep ? ep->error_num() : -1;
   }
 
   Fabric* fab = ep->fabric();
 
-  mr = fab->register_memory(_base, _lclSize);
+  mr = fab->register_memory(pool, _lclSize);
   if (!mr)
   {
     fprintf(stderr, "Failed to register memory region @ %p, sz %zu: %s\n",
-            _base, _lclSize, fab->error());
+            pool, _lclSize, fab->error());
     perror("fab->register_memory");
     return fab->error_num();
   }
 
-  printf("Waiting for server %s on port %s\n", remote.c_str(), port.c_str());
+  printf("Waiting for server %s on port %s\n", peer.c_str(), port.c_str());
 
   bool tmoEnabled = tmo != 0;
   while (!ep->connect() && (!tmoEnabled || --tmo))
@@ -107,10 +109,25 @@ int EbFtClient::_connect(std::string&   remote,
   if (tmoEnabled && (tmo == 0))
   {
     fprintf(stderr, "Timed out connecting to %s:%s: %s\n",
-            remote.c_str(), port.c_str(), ep->error());
+            peer.c_str(), port.c_str(), ep->error());
     perror("ep->connect()");
     return -1;
   }
+
+  *(unsigned*)pool = myId;
+  if (!ep->send_sync(pool, sizeof(myId)))
+  {
+    fprintf(stderr, "Failed sending peer our ID: %s\n", ep->error());
+    return -1;
+  }
+  if (!ep->recv_sync(pool, sizeof(id), mr))
+  {
+    fprintf(stderr, "Failed receiving peer's ID: %s\n", ep->error());
+    return -1;
+  }
+  id = *(unsigned*)pool;
+
+  printf("Server %d (%s:%s) connected\n", id, peer.c_str(), port.c_str());
 
   return 0;
 }
