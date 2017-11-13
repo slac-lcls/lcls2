@@ -130,8 +130,6 @@ namespace Pds {
       void _release(Batch*);
     private:
       EbFtBase&     _outlet;
-      unsigned      _maxBatches;
-      unsigned      _maxEntries;
       volatile bool _running;
       Task*         _task;
       Semaphore     _resultSem;
@@ -332,8 +330,6 @@ TstEbOutlet::TstEbOutlet(EbFtBase& outlet,
                          size_t    maxSize) :
   BatchManager(TheSrc(Level::Event, id), duration, maxBatches, maxEntries, maxSize),
   _outlet(outlet),
-  _maxBatches(maxBatches),
-  _maxEntries(maxEntries),
   _running(true),
   _task (new Task(TaskObject("tOutlet"))),
   _resultSem(Semaphore::EMPTY),
@@ -348,7 +344,7 @@ void TstEbOutlet::start(TstEbInlet& inlet)
   mr[0] = _outlet.registerMemory(batchPool(),         batchPoolSize());
   mr[1] = _outlet.registerMemory(inlet.resultsPool(), inlet.resultsPoolSize());
 
-  BatchManager::start(_maxBatches, _maxEntries, mr);
+  BatchManager::start(mr);
 
   _task->call(this);
 }
