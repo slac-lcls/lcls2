@@ -144,7 +144,7 @@ int EbFtServer::shutdown()
       if (cm_entry && (event == FI_SHUTDOWN))
       {
         _pep->close(_ep[i]);
-        printf("Client %d disconnected!\n", i);
+        printf("Client %d disconnected\n", i);
       }
       else
       {

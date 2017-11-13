@@ -17,6 +17,8 @@ BatchManager::BatchManager(Src      src,
   _duration     (duration),
   _durationShift(__builtin_ctzll(duration)),
   _durationMask (~((1 << __builtin_ctzll(duration)) - 1) & ((1UL << 56) - 1)),
+  _batchDepth   (batchDepth),
+  _maxEntries   (maxEntries),
   _maxBatchSize (maxEntries * maxSize),
   _pool         (Batch::size(), batchDepth)
 {
@@ -42,11 +44,9 @@ size_t BatchManager::batchPoolSize() const
   return _pool.size();
 }
 
-void BatchManager::start(unsigned      batchDepth,
-                         unsigned      maxEntries,
-                         MemoryRegion* mr[2])
+void BatchManager::start(MemoryRegion* mr[2])
 {
-  Batch::init(_pool, batchDepth, maxEntries, mr);
+  Batch::init(_pool, _batchDepth, _maxEntries, mr);
 
   Dgram dg;
   dg.seq = Sequence(ClockTime(0, 0), TimeStamp());

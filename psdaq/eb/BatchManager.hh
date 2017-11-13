@@ -36,9 +36,7 @@ namespace Pds {
     public:
       virtual void post(Batch*) = 0;
     public:
-      void         start(unsigned               batchDepth,
-                         unsigned               maxEntries,
-                         Fabrics::MemoryRegion* mr[2]);
+      void         start(Fabrics::MemoryRegion* mr[2]);
       void*        batchPool() const;
       size_t       batchPoolSize() const;
       void         process(const XtcData::Dgram*);
@@ -55,6 +53,8 @@ namespace Pds {
       uint64_t     _duration;           // The lifetime of a batch (power of 2)
       uint64_t     _durationShift;      // Shift away insignificant bits
       uint64_t     _durationMask;       // Mask  off  insignificant bits
+      unsigned     _batchDepth;         // Depth of the batch pool
+      unsigned     _maxEntries;         // Max number of entries per batch
       size_t       _maxBatchSize;       // Maximum size of a batch
       GenericPoolW _pool;               // Pool of Batch objects
     private:
