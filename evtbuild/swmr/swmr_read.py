@@ -26,7 +26,13 @@ class master(object):
         self.cum_event_num = 0
         self.file0_eof = False
         self.file0_length = 0
-        
+        self.last_index = 0
+        self.final_length = -1
+        self.sd_eof = False
+        self.master_dump = open('master_dump.txt', 'w')
+        self.eof_lock = False
+        self.last_dd = 0
+        self.last_timestamps = []
         if args.nersc:
             self.hit_probability = 1
         else:
@@ -34,12 +40,27 @@ class master(object):
 
         self.diode_lp = np.zeros(size-1)
 
-    def find_evts(self,mfile, start_index, request_rank):
+    def find_evts(self,mfile, start_index, request_rank, num_read_events):
+        
         client_rank = request_rank -1
-        diode_dst = mfile['small_data']['diode_values']
-        ts_dst = mfile['small_data']['timestamps']
-        diode_dst.id.refresh()
-        ts_dst.id.refresh()
+
+        
+        if not self.sd_eof:
+            self.diode_dst.id.refresh()
+            self.ts_dst.id.refresh()
+
+        # check if EOF
+        if self.diode_dst[-1] == -1 and not self.sd_eof:
+            print('Client %i found the end of the small data file' % client_rank)
+            self.sd_eof = True
+
+        print('Client %i read %i events' % (client_rank, num_read_events))
+        try:
+            if self.sd_eof and num_read_events == self.final_length:
+                self.master_dump.write('Client %i at end of file. Skipping small data\n' % client_rank)
+                return [],[],self.file0_length
+        except IndexError:
+            pass
 
         if request_rank == -1:
             dd = 0
@@ -49,28 +70,26 @@ class master(object):
         dd = int(dd)
         
 #        dd=0
-        number_of_events = diode_dst.shape[0]            
+        number_of_events = self.diode_dst.shape[0]            
       # print('Client %i dd is %i/%i ' % (client_rank, dd, number_of_events))
       #  print('Diode values', diode_dst[dd:])
         # Location of high diode values (>(1-hit_probability))
-        notable_inds = np.where(np.array(diode_dst[dd:]) > 1-self.hit_probability)[0]
+        notable_inds = np.where(np.array(self.diode_dst[dd:]) > 1-self.hit_probability)[0]
         notable_inds += dd
         
 #        print('Notable inds', notable_inds)
  #       print('Length of timestamps', len(ts_dst))
         # Find timestamps of interesting events
-        timestamps = np.take(np.array(ts_dst,dtype='uint32'), notable_inds, mode='clip').ravel()
+        timestamps = np.take(np.array(self.ts_dst,dtype='uint32'), notable_inds, mode='clip').ravel()
         
         # Check if the small data has finished writing
         # If it has, pass the final length to the clients
         # so they may finish reading
-        if self.file0_eof:
-            final_length = self.file0_length
-           # print('Length the other way is %i' % len(np.where(np.array(diode_dst) > 1-self.hit_probability)[0]))
-            #print('Final length is %i' % final_length)
-        else:
-            final_length = -1
 
+
+     #   if self.sd_eof:
+      #      self.final_length = 
+            
         if request_rank == -1:
             self.diode_lp[:] = number_of_events
             self.file0_length = len(timestamps)
@@ -80,8 +99,16 @@ class master(object):
         if request_rank == 1:
                self.file0_length += len(timestamps)
 
-               
-        return number_of_events, timestamps, final_length
+
+        if self.sd_eof and not self.eof_lock:
+            self.final_length = len(np.where(np.array(self.diode_dst) > 1-self.hit_probability)[0])
+           # print('Length the other way is %i' % len(np.where(np.array(diode_dst) > 1-self.hit_probability)[0]))
+            print('Final length is %i' % self.final_length)
+            self.eof_lock = True
+   
+       # self.last_index = notable_inds[-1]
+        
+        return number_of_events, timestamps, self.final_length
 
 
     def master(self):
@@ -91,10 +118,16 @@ class master(object):
         master_file_name = '%s/swmr_small_data.h5' % (cfg['path'])
 
         total_read = 0
+               
         with h5py.File(master_file_name, 'r', swmr=True) as master_file:
+
+            self.diode_dst = master_file['small_data']['diode_values']
+            self.ts_dst = master_file['small_data']['timestamps']
+
+        
             # Find the interesting (Diode high) events in the small data
             self.master_msg.file_evt_num, self.master_msg.timestamps, \
-                self.master_msg.cum_event_num = self.find_evts(master_file,-1,-1)
+                self.master_msg.cum_event_num = self.find_evts(master_file,-1,-1,0)
             
             for rank in client_list:
                 client_obj = comm.recv(source=MPI.ANY_SOURCE)
@@ -104,13 +137,16 @@ class master(object):
                     break
 
                 client_obj = comm.recv(source=MPI.ANY_SOURCE)
-
+                client_rank = client_obj.rank -1
+                
+                self.master_dump.write('Received from rank %i at time %s\n' % (client_rank,time.strftime("%H:%M:%S")))
+                self.master_dump.write('\t Rank %i has read %i events' % (client_rank,client_obj.num_read_events))
                 if client_obj.file0_eof:
                     self.file0_eof = True
 
                 if client_obj.client_exit_flag:
                     cu_time = time.strftime("%H:%M:%S")
-                    client_rank = client_obj.rank -1
+                    self.master_dump.write('\tClient %i is exiting at %s\n' % (client_rank, cu_time))
                     print('Client %i exited from master at %s' % (client_rank,cu_time))
                     client_list = np.delete(client_list, np.searchsorted(client_list, client_obj.rank))
                     num_clients = len(client_list)
@@ -121,10 +157,12 @@ class master(object):
 
                 if client_obj.client_refresh:
                     self.master_msg.file_evt_num, self.master_msg.timestamps, \
-                        self.master_msg.cum_event_num = self.find_evts(master_file, client_obj.last_timestamp, client_obj.rank)
+                        self.master_msg.cum_event_num = self.find_evts(master_file, client_obj.last_timestamp, client_obj.rank, client_obj.num_read_events)
                     comm.send(self.master_msg, dest=client_obj.rank)
-
                     
+                self.master_dump.write('\tSent %i events to rank %i at time %s\n' % (len(self.master_msg.timestamps), client_rank,time.strftime("%H:%M:%S")))
+        self.master_dump.close()
+        
 # Declare messaging object
 class msg(object):
     def __init__(self):
@@ -140,6 +178,7 @@ class msg(object):
         self.eof = False
         self.total_events = 0
         self.file0_eof = False
+        self.num_read_events = 0
 
 def client():
     client_rank = rank-1
@@ -152,8 +191,9 @@ def client():
     eof = False
 
 #\    print('Client %i reading file %s' % (client_rank, file_name))
-     
+    txt_dump  = open('%i_rank_dump.txt' % client_rank, 'w') 
     with h5py.File(file_name, 'r', swmr=True) as client_file:
+        
         dset = client_file["data"]
         clt_tsmps = client_file["small_data"]["timestamps"]
         total_read_in = 0    
@@ -185,11 +225,12 @@ def client():
             # Read in the filtered events 
           #  re_evt=[]
            # print('Client events %i' % client_rank, evt_inds)
+
             for evt_ct,evt in enumerate(evt_inds):
            #     print(evt)
                 try:
                     read_in = dset[evt][:]
-                    rin_mb = read_in.nbytes/10**6
+                    rin_mb = read_in.nbytes/10.0**6
                     client_total_events += 1
                     read_events.append(evt)
                 except ValueError:
@@ -197,8 +238,11 @@ def client():
                     rin_mb = 0
 #                    print('Event %i out of range, held over for rank %i' % (evt, client_rank))
                 total_read_in += rin_mb
+                #print('Client %i read in event %i' % (rank-1, evt_ct))
                 
             client_end = time.time()
+            client_msg.num_read_events = client_total_events
+            
             read_events.append(-1)
 #            read_events.append(re_evt)
 
@@ -206,7 +250,9 @@ def client():
             if len(evt_inds) > 0:
                 pass
                # print('Client %i read in %i events at %.2f MB/s' % (rank-1, len(evt_inds),average_speed))
-
+            cu_time = time.strftime("%H:%M:%S")
+            txt_dump.write('%s: read in %i events\n' % (cu_time, client_total_events))
+            
             # Test if we've reached the end of the file
             if np.sum(dset[-1][:1000]) == 0:
                 eof = True
@@ -226,8 +272,8 @@ def client():
             prev_size = os.stat(file_name).st_size/10**6
 
             while client_msg.rank_active and not eof:
-                if exit_count > 1:
-                    #print('File %i stopped writing' % client_rank)
+                if exit_count > 15:
+                    print('File %i stopped writing' % client_rank)
                     client_msg.rank_active = False
                     break
 
@@ -247,8 +293,12 @@ def client():
             # If we've reached the end of the file and read out all the events
             # designated by the master, pass the close event flags to master
             if eof and client_total_events == evt_obj.cum_event_num:
+                
                 cu_time = time.strftime("%H:%M:%S")
+                txt_dump.write('Passing exit flag at %s\n' % cu_time)
+                
                 exit_obj = msg()
+                exit_obj.num_read_events = client_msg.num_read_events
                 exit_obj.file0_eof = client_msg.file0_eof
                 print('Client %i passing exit flag at %s' % (client_rank, cu_time))
                 exit_obj.client_exit_flag = True
@@ -267,9 +317,11 @@ def client():
                 pass
     # When the client has finished, quit the process
     
-    red = np.array(read_events)
-    red = red.ravel()
-    np.savetxt('client_%i_events.txt' % client_rank, red)
+    # red = np.array(read_events)
+    # red = red.ravel()
+    # np.savetxt('client_%i_events.txt' % client_rank, red)
+    txt_dump.write('Done at' + time.strftime("%H:%M:%S")+'\n')
+    txt_dump.close()
     sys.exit()
 
 comm.Barrier()
