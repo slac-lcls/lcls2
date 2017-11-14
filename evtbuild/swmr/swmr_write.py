@@ -12,12 +12,12 @@ size = comm.Get_size()
 
 cfg = load_config('sconfig')
 file_size = int(cfg['file_size'])
-mb_per_img = int(cfg['image_size'])
+mb_per_img = cfg['image_size']
 batch_size = int(cfg['batch_size'])
 nstripes = int(cfg['nstripes'])
 
 def create_image():
-    image = np.random.randint(0,2**16,size=(250,250,8*mb_per_img), dtype='uint16')
+    image = np.random.randint(0,2**16,size=(int(250*250*8*mb_per_img)), dtype='uint16')
    # arr = np.tile(image,2*mb_per_img)
     arr = image.ravel()
     return arr
@@ -95,25 +95,30 @@ def client():
 
             ts_dset.resize((shape[0]+batch_size,))
 
-         # If we are rank 0, write out the diode values
-            if rank == 0:
-                diode_dset.resize((shape[0]+batch_size,)) 
-                diode_dset[-batch_size:] = np.random.rand(batch_size)
-
-                small_ts_dset.resize((shape[0]+batch_size,)) 
-                small_ts_dset[-batch_size:] = np.arange(batch_size) + batch_size*(batch_num-1)
-                small_data_file.flush()
 
             data_dset.resize((shape[0]+batch_size, shape[1]))
        
             written_mb += out_img.nbytes/10**6
 
+            # If we are rank 0, write out the diode values
+            if rank == 0:
+                diode_dset.resize((shape[0]+batch_size,)) 
+                diode_dset[-batch_size:] = np.random.rand(batch_size)
+                if written_mb > file_size*1000:
+                    diode_dset[-1] = -1
+                
+                small_ts_dset.resize((shape[0]+batch_size,)) 
+                small_ts_dset[-batch_size:] = np.arange(batch_size) + batch_size*(batch_num-1)
+                small_data_file.flush()
+
+                
             # Write the last image as all zeros as a flag to 
             # the readers that they've reached the end of the file
             if written_mb > file_size*1000:
                 out_img[:] = 0
                 print('Client %i has completed writing' % rank)
                 eof = True
+
                 
             # Else, write out a batch of random data and the timestamps
             loop_file['data'][-batch_size:,:] = out_img
