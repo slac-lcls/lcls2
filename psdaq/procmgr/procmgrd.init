@@ -42,8 +42,8 @@ launch1()
 
 start()
 {
-    # start 5 procmgrd processes to serve platforms 0 through 4
-    for ((i=0; i<=4; i+=1)); do
+    # start 8 procmgrd processes to serve platforms 0 through 7
+    for ((i=0; i<=7; i+=1)); do
         launch1 $i
     done
     RETVAL=$?
