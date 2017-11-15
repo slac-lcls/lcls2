@@ -40,7 +40,7 @@ procmgr_config = [
  {                       id:'modca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
  {                       id:'deadca-'+platform  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
  { host: daq_tst_dev05,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
- {                       id:'dtisimple' , flags:'sx', cmd:'psdaq/dti/dti_simple -a '+ip_addr+'.104 -u 0xb -f 1,2,8'},
+ {                       id:'dtisimple' , flags:'sx', cmd:'psdaq/dti/dti_simple -a '+ip_addr+'.104 -u 0xf -f 1,2,4,8'},
  { host: daq_tst_dev03,  id:'xLoop', flags:'s', cmd:bin_path+'pgp/pgpcardG3/app/xLoopTest -P /dev/pgpcardG3_0_5 -T 0x80 -L 0xf0 -s 10240 -n 16 -F 8 -S' },
  { host: daq_tst_dev01,  id:'xRead', flags:'sx', cmd:bin_path+'pgp/pgpcardG3/app/xRead -P /dev/pgpcardG3_0_5 -L 4 -r' },
 
