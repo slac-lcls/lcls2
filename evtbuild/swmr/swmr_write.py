@@ -74,7 +74,7 @@ def client():
     written_mb = 0
     
     loop_fn = file_name % rank
-   # print('Client %i, %s' %(rank, loop_fn))
+    print('Client %i, %s' %(rank, loop_fn))
     loop_file = h5py.File(loop_fn, 'a', libver='latest')
     loop_file.swmr_mode = True
 
@@ -140,7 +140,11 @@ def client():
 
     finally:
         final_size = data_dset.shape
+        loop_file.flush()
         loop_file.close()
+        if rank == 0:
+            small_data_file.flush()
+            small_data_file.close()
 
     return final_size[0]
 
@@ -160,6 +164,7 @@ if rank == 0:
     wrt_gb = size*file_size
     av_spd = wrt_gb/elapsed_time
 
+    print('Write completed at %s' % time.strftime("%H:%M:%S"))
     print('Elapsed time %f s' % elapsed_time)
     print('Number of clients %i' % (size))
     print('Number of events %i' % rm)
