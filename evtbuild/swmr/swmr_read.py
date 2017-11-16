@@ -16,7 +16,6 @@ args = parser.parse_args()
 
 cfg = load_config('sconfig')
 
-
 class master(object):
     def __init__(self):
         self.master_msg = msg()
@@ -29,7 +28,7 @@ class master(object):
         self.last_index = 0
         self.final_length = -1
         self.sd_eof = False
-        self.master_dump = open('master_dump.txt', 'w')
+        self.master_dump = open('dump/master_dump.txt', 'w')
         self.eof_lock = False
         self.last_dd = 0
         self.last_timestamps = []
@@ -86,10 +85,6 @@ class master(object):
         # If it has, pass the final length to the clients
         # so they may finish reading
 
-
-     #   if self.sd_eof:
-      #      self.final_length = 
-            
         if request_rank == -1:
             self.diode_lp[:] = number_of_events
             self.file0_length = len(timestamps)
@@ -102,12 +97,10 @@ class master(object):
 
         if self.sd_eof and not self.eof_lock:
             self.final_length = len(np.where(np.array(self.diode_dst) > 1-self.hit_probability)[0])
-           # print('Length the other way is %i' % len(np.where(np.array(diode_dst) > 1-self.hit_probability)[0]))
+
             print('Final length is %i' % self.final_length)
             self.eof_lock = True
    
-       # self.last_index = notable_inds[-1]
-        
         return number_of_events, timestamps, self.final_length
 
 
@@ -191,7 +184,7 @@ def client():
     eof = False
 
 #\    print('Client %i reading file %s' % (client_rank, file_name))
-    txt_dump  = open('%i_rank_dump.txt' % client_rank, 'w') 
+    txt_dump  = open('dump/%i_rank_dump.txt' % client_rank, 'w') 
     with h5py.File(file_name, 'r', swmr=True) as client_file:
         
         dset = client_file["data"]
@@ -254,11 +247,13 @@ def client():
             txt_dump.write('%s: read in %i events\n' % (cu_time, client_total_events))
             
             # Test if we've reached the end of the file
-            if np.sum(dset[-1][:1000]) == 0:
-                eof = True
-                if client_rank==0:
-                    client_msg.file0_eof = True
-                
+            try:
+                if np.sum(dset[-1][:1000]) == 0:
+                    eof = True
+                    if client_rank==0:
+                        client_msg.file0_eof = True
+            except ValueError:
+                pass
             # Done with reading the batch that the master provided
             # Wait for the reader to move ahead x GB
             # This is to avoid contention at the EOF
@@ -271,8 +266,12 @@ def client():
             exit_count = 0
             prev_size = os.stat(file_name).st_size/10**6
 
+            # Loop to keep the readers away from the end of the file
+            # There is a special case when the file is done writing
+            # The file size isn't increasing anymore, so we need to
+            # exit from the loop
             while client_msg.rank_active and not eof:
-                if exit_count > 15:
+                if exit_count > 10:
                     print('File %i stopped writing' % client_rank)
                     client_msg.rank_active = False
                     break
@@ -325,7 +324,25 @@ def client():
     sys.exit()
 
 comm.Barrier()
-
+if rank == 0:
+    #Wait until the hdf files appear, and thus have the lock released
+    while True:
+        files = glob.glob(cfg['path']+'/swmr_*')
+        if len(files) == size:
+            print('-'*40+'\n')
+            print('Done waiting for files to appear')
+            print('-'*40+'\n')
+            # Some kind of race condition here
+            # Waiting for the files to be created isn't enough
+            # Read process accesses the file before the writer has done
+            # initializing it. No safe exception within h5py
+            time.sleep(8)
+            break
+        else:
+            print('There are %i files' % len(files))
+            time.sleep(0.2)
+    
+comm.Barrier()
 try:
     if rank == 0:
       
@@ -347,10 +364,15 @@ finally:
         total_spd = total_read/elapsed_time
 
         print('\n'+'-'*40)
+        print('Read completed at %s' % time.strftime("%H:%M:%S"))
         print('Elapsed time %f s' % elapsed_time)
         print('Number of clients %i' % (size-1))
-        print('Read %.2f GB at an average of %.2f GB/s' % (read_gb, av_spd))
-        print('Filtered %.2f GB at an average of %.2f GB/s' % (total_read, total_spd))
+        mode_String = 'Filtered'
+        if args.nersc:
+            mode_String = 'Copied'
+        
+        print('%s %.2f GB at an average of %.2f GB/s' % (mode_String, read_gb, av_spd))
+#        print('Filtered %.2f GB at an average of %.2f GB/s' % (total_read, total_spd))
         print('-'*40+'\n')
         for ct, (client_event,client_total) in enumerate(zip(rm.total_events, rm.total_read)):
             client_gb = client_total/1000

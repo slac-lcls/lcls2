@@ -1,4 +1,5 @@
 path	/drpffb/eliseo/data/swmr
+
 #path  /reg/neh/home/eliseo/lcls2/evtbuild/swmr_temp
 #path /reg/d/ffb/xpp/test/offline_eb/data/swmr 
 #path  /ztest/eliseo/data
@@ -7,7 +8,7 @@ path	/drpffb/eliseo/data/swmr
 
 hit_probability	   0.2	# Probability that a diode value is interesting
 
-file_size	   50 # Total file size in GB
+file_size	   1 # Total file size in GB
 image_size	   16  # Image size in MB
 
 batch_size  10	   # Number of images written in a batch
