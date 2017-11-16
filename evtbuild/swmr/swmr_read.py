@@ -328,7 +328,9 @@ if rank == 0:
     #Wait until the hdf files appear, and thus have the lock released
     while True:
         files = glob.glob(cfg['path']+'/swmr_*')
-        if len(files) == size:
+        file_size = [os.path.getsize(file) for file in files]
+
+        if len(files) == size and np.prod(file_size)>0:
             print('-'*40+'\n')
             print('Done waiting for files to appear')
             print('-'*40+'\n')
@@ -336,7 +338,7 @@ if rank == 0:
             # Waiting for the files to be created isn't enough
             # Read process accesses the file before the writer has done
             # initializing it. No safe exception within h5py
-            time.sleep(8)
+#            time.sleep(8)
             break
         else:
             print('There are %i files' % len(files))
