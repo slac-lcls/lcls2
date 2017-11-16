@@ -329,8 +329,10 @@ if rank == 0:
     while True:
         files = glob.glob(cfg['path']+'/swmr_*')
         file_size = [os.path.getsize(file) for file in files]
-
-        if len(files) == size and np.prod(file_size)>0:
+        # Make sure that each file is at least 2000 bytes long
+        file_thresh = all(x > 2000 for x in file_size) 
+        if len(files) == size and file_thresh:
+            print('file sizes are',file_size)
             print('-'*40+'\n')
             print('Done waiting for files to appear')
             print('-'*40+'\n')
@@ -338,11 +340,11 @@ if rank == 0:
             # Waiting for the files to be created isn't enough
             # Read process accesses the file before the writer has done
             # initializing it. No safe exception within h5py
-#            time.sleep(8)
+           # time.sleep(8)
             break
         else:
             print('There are %i files' % len(files))
-            time.sleep(0.2)
+            time.sleep(0.05)
     
 comm.Barrier()
 try:
