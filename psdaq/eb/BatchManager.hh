@@ -17,11 +17,6 @@ namespace XtcData {
 };
 
 namespace Pds {
-  namespace Fabrics {
-
-    class MemoryRegion;
-  };
-
   namespace Eb {
 
     class BatchManager
@@ -36,13 +31,15 @@ namespace Pds {
     public:
       virtual void post(Batch*) = 0;
     public:
-      void         start(Fabrics::MemoryRegion* mr[2]);
-      void*        batchPool() const;
-      size_t       batchPoolSize() const;
+      void*        batchRegion() const;
+      size_t       batchRegionSize() const;
+      Batch*       allocate(const XtcData::Dgram* dg);
       void         process(const XtcData::Dgram*);
       void         shutdown();
       uint64_t     batchId(uint64_t id) const;
       size_t       maxBatchSize() const;
+    public:
+      void         dump() const;
     private:
       void         _post(const Batch&);
       void         _batchInit(unsigned batchDepth, unsigned poolDepth);
@@ -56,6 +53,7 @@ namespace Pds {
       unsigned     _batchDepth;         // Depth of the batch pool
       unsigned     _maxEntries;         // Max number of entries per batch
       size_t       _maxBatchSize;       // Maximum size of a batch
+      char*        _batchBuffer;        // Buffers for batches
       GenericPoolW _pool;               // Pool of Batch objects
     private:
       Batch*       _batch;              // Batch currently being assembled

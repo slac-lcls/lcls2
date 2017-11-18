@@ -42,17 +42,21 @@ namespace Pds {
       virtual unsigned   repetitive() const;
     public:
       void               process(const XtcData::Dgram*, uint64_t appParam);
+    public:
+      void               dump();
     private:
       EbEpoch*          _match(uint64_t key);
       EbEpoch*          _epoch(uint64_t key, EbEpoch* after);
       void              _flushBefore(EbEpoch*);
       EbEpoch*          _discard(EbEpoch*);
       void              _fixup(EbEvent*);
-      EbEvent*          _event(EbContribution*, EbEvent* after);
+      EbEvent*          _event(const XtcData::Dgram*, uint64_t param, EbEvent* after);
       void              _flush(EbEvent*);
       void              _retire(EbEvent*);
-      EbEvent*          _insert(EbEpoch*, EbContribution*);
-      EbEvent*          _insert(EbContribution*);
+      EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*, uint64_t param);
+      EbEvent*          _insert(const XtcData::Dgram*, uint64_t param);
+    private:
+      friend class EbEvent;
     private:
       EpochList         _pending;       // Listhead, Epochs with events pending
       uint64_t          _mask;          // Sequence mask

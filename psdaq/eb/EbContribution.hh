@@ -18,7 +18,9 @@ namespace Pds {
     public:
       PoolDeclare;
     public:
-      EbContribution(const XtcData::Dgram* datagram, uint64_t appParm);
+      EbContribution(const XtcData::Dgram* datagram,
+                     uint64_t              appParm,
+                     EbContribution*       after);
       ~EbContribution();
     public:
       unsigned  payloadSize()   const;
@@ -57,10 +59,12 @@ inline unsigned Pds::Eb::EbContribution::payloadSize() const
 */
 
 inline Pds::Eb::EbContribution::EbContribution(const XtcData::Dgram* datagram,
-                                               uint64_t              appParam) :
+                                               uint64_t              appParam,
+                                               EbContribution*       after) :
   _datagram(datagram),
   _appParam(appParam)
 {
+  connect(after);
 }
 
 /*
@@ -99,7 +103,7 @@ inline unsigned Pds::Eb::EbContribution::number() const
 
 inline uint64_t Pds::Eb::EbContribution::numberAsMask() const
 {
-  return 1ull << number();
+  return 1ul << number();
 }
 
 /*

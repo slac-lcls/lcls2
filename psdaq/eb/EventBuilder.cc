@@ -24,7 +24,7 @@ EventBuilder::EventBuilder(unsigned epochs,
   _task(new Task(TaskObject("tEB", 100))),
   _duration(100)                        // Timeout rate in ms
 {
-  if (__builtin_popcountll(duration) != 1)
+  if (__builtin_popcountl(duration) != 1)
   {
     fprintf(stderr, "Batch duration (%016lx) must be a power of 2\n",
             duration);
@@ -56,18 +56,23 @@ void EventBuilder::_flushBefore(EbEpoch* entry)
   }
 }
 
+#include <new>
+
 EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 {
-  EbEpoch* epoch = new(&_epochFreelist) EbEpoch(key, after);
-  if (!epoch)
+  void* buffer = _epochFreelist.alloc(sizeof(EbEpoch));
+  //EbEpoch* epoch = new(&_epochFreelist) EbEpoch(key, after);
+  //if (!epoch)
+  if (!buffer)
   {
     printf("%s: Unable to allocate epoch: key %016lx", __PRETTY_FUNCTION__,
            key);
     printf(" epochFreelist:\n");
     _epochFreelist.dump();
+    dump();
     abort();
   }
-
+  EbEpoch* epoch = ::new(buffer) EbEpoch(key, after);
   return epoch;
 }
 
@@ -90,13 +95,15 @@ EbEpoch* EventBuilder::_match(uint64_t inKey)
   return _epoch(key, epoch);
 }
 
-EbEvent* EventBuilder::_event(EbContribution* contrib,
-                              EbEvent*        after)
+EbEvent* EventBuilder::_event(const Dgram* contrib,
+                              uint64_t     param,
+                              EbEvent*     after)
 {
-  EbEvent* event = new(&_eventFreelist) EbEvent(contract(contrib->datagram()),
+  EbEvent* event = new(&_eventFreelist) EbEvent(contract(contrib),
                                                 this,
                                                 after,
                                                 contrib,
+                                                param,
                                                 _mask);
 
   if (!event)
@@ -110,45 +117,47 @@ EbEvent* EventBuilder::_event(EbContribution* contrib,
   return event;
 }
 
-EbEvent* EventBuilder::_insert(EbEpoch*        epoch,
-                               EbContribution* contrib)
+EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
+                               const Dgram* contrib,
+                               uint64_t     param)
 {
   EbEvent* empty = epoch->pending.empty();
   EbEvent* event = epoch->pending.reverse();
-  uint64_t key   = contrib->datagram()->seq.stamp().pulseId();
+  uint64_t key   = contrib->seq.stamp().pulseId();
 
   while (event != empty)
   {
     uint64_t eventKey = event->sequence();
 
-    if (eventKey == key) return event->_add(contrib);
+    if (eventKey == key) return event->_add(contrib, param);
     if (eventKey <  key) break;
     event = event->reverse();
   }
 
-  return _event(contrib, event);
+  return _event(contrib, param, event);
 }
 
 void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
 {
-  uint64_t remaining = event->_remaining;
+  uint64_t& remaining = event->_remaining;
 
   do
   {
-    unsigned srcId = __builtin_ffsll(remaining) - 1;
+    unsigned srcId = __builtin_ffsl(remaining) - 1;
     fixup(event, srcId);
-    remaining &= ~(1 << srcId);
+    remaining &= ~(1ul << srcId);
   }
   while (remaining);
 }
 
-EbEvent* EventBuilder::_insert(EbContribution* contrib)
+EbEvent* EventBuilder::_insert(const Dgram* contrib,
+                               uint64_t     param)
 {
-  EbEpoch* epoch = _match(contrib->datagram()->seq.stamp().pulseId());
-  EbEvent* event = _insert(epoch, contrib);
+  EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
+  EbEvent* event = _insert(epoch, contrib, param);
   if (!event->_remaining)  return event;
 
-  return NULL;                          // Revisit: Causes SegFault
+  return NULL;
 }
 
 void EventBuilder::_retire(EbEvent* event)
@@ -203,7 +212,7 @@ void EventBuilder::expired()            // Periodically called from a timer
     {
       if (!event->_alive())
       {
-        printf("Flushing event %016lx, size %zu, remaining %08lx\n",
+        printf("Flushing event %014lx, size %zu, remaining %016lx\n",
                event->sequence(),
                event->size(),
                event->_remaining);
@@ -262,18 +271,31 @@ unsigned EventBuilder::repetitive() const
 ** --
 */
 
-void EventBuilder::process(const Dgram* datagram,
+void EventBuilder::process(const Dgram* contrib,
                            uint64_t     appParam)
 {
-  // Sort contributions into a time ordered list
-  // Call the user's process with complete events to build the result datagram
-  // Post complete events to the outlet
-
-  // Iterate over contributions in the batch
-  // Event build them according to their trigger group
-
-  EbContribution* contrib = new(&_cntrbFreelist) EbContribution(datagram, appParam);
-  EbEvent*        event   = _insert(contrib);
+  EbEvent* event = _insert(contrib, appParam);
 
   if (event && !event->_remaining)  _flush(event);
+}
+
+/*
+** ++
+**
+**
+** --
+*/
+
+void EventBuilder::dump()
+{
+  EbEpoch* last  = _pending.empty();
+  EbEpoch* epoch = _pending.forward();
+
+  if (epoch != last)
+  {
+    int number = 1;
+    do epoch->dump(number++); while (epoch = epoch->forward(), epoch != last);
+  }
+  else
+    printf(" Event Builder has no pending events...\n");
 }

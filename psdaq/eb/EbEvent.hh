@@ -23,11 +23,12 @@ namespace Pds {
     public:
       PoolDeclare;
     public:
-      EbEvent(uint64_t        contract,
-              EventBuilder*   builder,
-              EbEvent*        after,
-              EbContribution* contrib,
-              uint64_t        mask);
+      EbEvent(uint64_t              contract,
+              EventBuilder*         builder,
+              EbEvent*              after,
+              const XtcData::Dgram* contrib,
+              uint64_t              param,
+              uint64_t              mask);
       ~EbEvent();
     public:
       uint64_t          sequence()  const;
@@ -42,9 +43,10 @@ namespace Pds {
     private:
       friend class EventBuilder;
     private:
-      EbEvent*         _add(EbContribution*);
+      EbEvent*         _add(const XtcData::Dgram*, uint64_t prm);
       void             _insert(EbContribution*);
-      int              _alive();
+      bool             _alive();
+      EbContribution*  _contribution(const XtcData::Dgram* cdg, uint64_t prm);
     private:
       uint64_t         _sequence;     // Event's sequence identifier
       size_t           _size;         // Total contribution size (in bytes)
@@ -138,21 +140,21 @@ inline Pds::Eb::EbContribution* Pds::Eb::EbEvent::empty()
 /*
 ** ++
 **
-**   In principle an event could set on the pending queue forever,
+**   In principle an event could sit on the pending queue forever,
 **   waiting for its contract to complete. To handle this scenario,
-**   "odfVeb" times-out the oldest event on the pending queue.
+**   the EB times-out the oldest event on the pending queue.
 **   This is accomplished by periodically calling this function,
 **   which counts down a counter whose initial value is specified
 **   at construction time. When the counter drops to less than
 **   or equal to zero the event is expired. Note: the arrival of
-**   any contributor will RESET the counter.
+**   any contributor to this event will RESET the counter.
 **
 ** --
 */
 
-inline int Pds::Eb::EbEvent::_alive()
+inline bool Pds::Eb::EbEvent::_alive()
 {
-  return --_living;
+  return --_living > 0;
 }
 
 #endif
