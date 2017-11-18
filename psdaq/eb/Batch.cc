@@ -1,5 +1,4 @@
 #include "Batch.hh"
-#include "IovElement.hh"
 
 #include "psdaq/service/GenericPoolW.hh"
 
@@ -8,7 +7,6 @@
 
 using namespace XtcData;
 using namespace Pds::Eb;
-using namespace Pds::Fabrics;
 
 
 namespace Pds {
@@ -27,46 +25,46 @@ namespace Pds {
     class Batch1
     {
     public:
-      Batch1(unsigned index, unsigned iovPoolDepth) :
+      Batch1(unsigned index, void* pool, size_t size) :
         _index(index),
-        _pool(iovPoolDepth)
+        _pool(pool),
+        _current(pool)
       {
       }
       ~Batch1() { };
+    public:
+      void* allocate(size_t size)
+      {
+        char* buffer = (char*)_current;
+        _current = buffer + size;
+        return buffer;
+      }
+      void reset() { _current = _pool; }
     private:
       friend class Batch;
     private:
-      const unsigned      _index;
-      Fabrics::LocalIOVec _pool;
-    };
-
-    class BatchEntry : public IovElement
-    {
-    public:
-      BatchEntry(const XtcData::Dgram& contrib) :
-        IovElement(&contrib, sizeof(contrib) + contrib.xtc.sizeofPayload())
-      {
-      }
-      ~BatchEntry();
+      const unsigned _index;
+      void*          _pool;
+      void*          _current;
     };
   };
 };
 
 
 Batch::Batch(const Src& src, const Dgram& contrib, uint64_t pid) :
-  _datagram(contrib)
+  _parameter(NULL)
 {
-  TimeStamp ts(pid, contrib.seq.stamp().control());
-  _datagram.seq        = Sequence(contrib.seq.clock(), ts);
-  _datagram.xtc.src    = TheSrc(src, _batch1()._index);
-  _datagram.xtc.extent = sizeof(Xtc);
+  Dgram* dg = new(_batch1().allocate(sizeof(contrib))) Dgram(contrib);
 
-  new (_batch1()._pool) BatchEntry(_datagram);
+  TimeStamp ts(pid, contrib.seq.stamp().control());
+  dg->seq        = Sequence(contrib.seq.clock(), ts);
+  dg->xtc.src    = TheSrc(src, _batch1()._index);
+  dg->xtc.extent = sizeof(Xtc);
 }
 
 Batch::~Batch()
 {
-  _batch1()._pool.reset();
+  _batch1().reset();
 }
 
 size_t Batch::size()
@@ -79,53 +77,51 @@ Batch1& Batch::_batch1() const
   return *(Batch1*)&this[1];
 }
 
+unsigned Batch::index() const
+{
+  return _batch1()._index;
+}
+
+void* Batch::pool() const
+{
+  return _batch1()._pool;
+}
+
 #include <unistd.h>
 
 void Batch::init(GenericPoolW& pool,
-                 unsigned      batchDepth,
-                 unsigned      iovPoolDepth,
-                 MemoryRegion* mr[2])
+                 char*         buffer,
+                 unsigned      depth,
+                 size_t        maxSize)
 {
   Queue<Batch> list;                    // Revisit: Unneeded locking here
 
-  for (unsigned i = 0; i < batchDepth; ++i)
+  for (unsigned i = 0; i < depth; ++i)
   {
     Batch*  batch = (Batch*)pool.alloc(pool.sizeofObject());
-    Batch1* b1    = new((void*)&batch[1]) Batch1(i, iovPoolDepth);
-    for (unsigned j = 0; j < iovPoolDepth; ++j)
-    {
-      b1->_pool.set_iovec_mr(j, mr[j == 0 ? 0 : 1]);
-    }
-    //printf("Batch init %2d, batch = %p, batch1 = %p, mr->desc = %p, %p\n",
-    //       i, batch, b1, mr[0]->desc(), mr[1]->desc());
+    new((void*)&batch[1]) Batch1(i, buffer, maxSize);
     list.insert(batch);
+    buffer += maxSize;
   }
-  for (unsigned i = 0; i < batchDepth; ++i)
+  for (unsigned i = 0; i < depth; ++i)
   {
     Batch* batch = list.remove();
     pool.free(batch);
   }
 }
 
-unsigned Batch::index() const
+void* Batch::allocate(size_t size)
 {
-  return _batch1()._index;
-}
-
-void Batch::append(const Dgram& contrib)
-{
-  BatchEntry* entry = new (_batch1()._pool) BatchEntry(contrib);
+  void* entry = _batch1().allocate(size);
   assert(entry != (void*)0);
 
-  _datagram.xtc.alloc(entry->size());
+  datagram()->xtc.alloc(size);
+
+  return entry;
 }
 
 size_t Batch::extent() const
 {
-  return sizeof(_datagram) + _datagram.xtc.sizeofPayload();
-}
-
-LocalIOVec& Batch::pool() const
-{
-  return _batch1()._pool;
+  const Dgram* dg = datagram();
+  return sizeof(*dg) + dg->xtc.sizeofPayload();
 }

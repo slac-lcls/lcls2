@@ -29,9 +29,10 @@ namespace Pds {
       EbFtBase(unsigned nPeers);
       virtual ~EbFtBase();
     public:
-      Fabrics::MemoryRegion* registerMemory(void* buffer, size_t size);
+      void registerMemory(void* buffer, size_t size);
       uint64_t pend();
       int      post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t offset, void* ctx);
+      int      post(const void* buf, size_t len, unsigned dst, uint64_t offset);
       uint64_t rmtAdx(unsigned dst, uint64_t offset); // Revisit: For debugging, remove
     public:
       virtual int shutdown() = 0;
@@ -51,7 +52,8 @@ namespace Pds {
       uint64_t _tryCq();
     protected:
       EpList                     _ep;   // List of Endpoints
-      MrList                     _mr;   // List of Memory Regions per EP
+      MrList                     _lMr;  // List of local  Memory Regions per EP
+      MrList                     _rMr;  // List of remote Memory Regions per EP
       RaList                     _ra;   // List of remote address descriptors
       Fabrics::CompletionPoller* _cqPoller;
       std::vector<unsigned>      _id;

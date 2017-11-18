@@ -68,35 +68,43 @@ namespace Pds {
       }
     };
 
-    class Result : public Dgram
+#define NDST  64                        // Revisit: NDST
+
+    class ResultDest
     {
     public:
-      Result(const Dgram& dg, Src& src) :
-        Dgram(dg),
-        _dst(_dest),
-        _idx(_index)
+      ResultDest() :
+        _msk(0),
+        _dst(_dest)
       {
-        xtc.src = src;
       }
     public:
       PoolDeclare;
     public:
       void destination(unsigned dst, unsigned idx)
       {
-        *_dst++ = dst;
-        *_idx++ = idx;
+        uint64_t msk = 1ul << dst;
+
+        if ((_msk & msk) == 0)
+        {
+          _msk       |= msk;
+          _index[dst] = idx;
+          *_dst++     = dst;
+        }
       }
     public:
-      size_t   nDsts()         const { return _dst - _dest; }
-      unsigned dst(unsigned i) const { return _dest[i];     }
-      unsigned idx(unsigned i) const { return _index[i];    }
+      size_t   nDsts()         const { return _dst - _dest;   }
+      unsigned dst(unsigned i) const { return _dest[i];       }
+      unsigned idx(unsigned i) const { return _index[dst(i)]; }
+      void     destination(unsigned i, unsigned* dst_, unsigned* idx_) const
+      {
+        *dst_ = dst(i);
+        *idx_ = idx(i);
+      }
     private:
-      uint32_t  _payload[result_extent]; // Revisit: buffer
-    private:
+      uint64_t  _msk;
       unsigned* _dst;
-      unsigned* _idx;
     private:
-#define NDST  64                        // Revisit: NDST
       unsigned  _dest[NDST];
       unsigned  _index[NDST];
     };
@@ -105,31 +113,23 @@ namespace Pds {
                         public Routine
     {
     public:
-      TstEbOutlet(EbFtBase& outlet,
-                  unsigned  id,
-                  uint64_t  duration,
-                  unsigned  maxBatches,
-                  unsigned  maxEntries,
-                  size_t    maxSize);
+      TstEbOutlet(std::vector<std::string>& cltAddr,
+                  std::vector<std::string>& cltPort,
+                  unsigned                  id,
+                  uint64_t                  duration,
+                  unsigned                  maxBatches,
+                  unsigned                  maxEntries,
+                  size_t                    maxSize);
       ~TstEbOutlet() { }
     public:
-      void start(TstEbInlet& inlet);
-      void shutdown()
-      {
-        _running = false;
-
-        _task->destroy();
-      }
-    public:
-      void post(Result*);
+      void shutdown();
     public:                             // Routine interface
       void routine();
       void post(Batch* batch);
     private:
       Batch* _pend();
-      void _release(Batch*);
     private:
-      EbFtBase&     _outlet;
+      EbFtClient    _outlet;
       volatile bool _running;
       Task*         _task;
       Semaphore     _resultSem;
@@ -139,153 +139,175 @@ namespace Pds {
     class TstEbInlet : public EventBuilder
     {
     public:
-      TstEbInlet(EbFtBase&    inlet,
+      TstEbInlet(std::string& srvPort,
                  unsigned     id,
                  uint64_t     duration,
                  unsigned     maxBatches,
                  unsigned     maxEntries,
-                 uint64_t     contributors,
-                 TstEbOutlet& outlet);
+                 size_t       maxSize,
+                 uint64_t     contributors);
     virtual   ~TstEbInlet() { }
     public:
-      void     shutdown()  { _running = false; }
+      void     shutdown()
+      {
+        _running = false;
+
+        printf("%s: 1\n", __PRETTY_FUNCTION__);
+      }
     public:
-      void     process();
+      void     process(TstEbOutlet& outlet);
     public:
-      void*    resultsPool() const;
-      size_t   resultsPoolSize() const;
       void     process(EbEvent* event);
       uint64_t contract(const Dgram* contrib) const;
       void     fixup(EbEvent* event, unsigned srcId);
     private:
-      Result* _allocate(EbEvent* event);
-    private:
-      EbFtBase&     _inlet;
+      EbFtServer    _inlet;
       Src           _src;
       const TypeId  _tag;
       uint64_t      _contract;
-      GenericPoolW  _results;
+      GenericPool   _results;           // No RW as it shadows the batch pool, which has RW
       //EbDummyTC     _dummy;           // Template for TC of dummy contributions  // Revisit: ???
-      TstEbOutlet&  _outlet;
+      TstEbOutlet*  _outlet;
       volatile bool _running;
     };
-
   };
 };
 
 
 using namespace Pds::Eb;
 
-TstEbInlet::TstEbInlet(EbFtBase&    inlet,
+TstEbInlet::TstEbInlet(std::string& srvPort,
                        unsigned     id,
                        uint64_t     duration,
                        unsigned     maxBatches,
                        unsigned     maxEntries,
-                       uint64_t     contributors,
-                       TstEbOutlet& outlet) :
-  EventBuilder(maxBatches, maxEntries, __builtin_popcountll(contributors), duration),
-  _inlet(inlet),
+                       size_t       maxSize,
+                       uint64_t     contributors) :
+  EventBuilder(maxBatches, maxEntries, __builtin_popcountl(contributors), duration),
+  _inlet(srvPort, __builtin_popcountl(contributors), maxBatches * (sizeof(Dgram) + maxEntries * maxSize), EbFtServer::PER_PEER_BUFFERS),
   _src(TheSrc(Level::Event, id)),
   _tag(TypeId::Data, 0), //_l3SummaryType),
   _contract(contributors),
-  _results(sizeof(Result), maxEntries),
+  _results(sizeof(ResultDest), maxEntries),
   //_dummy(Level::Fragment),
-  _outlet(outlet),
+  _outlet(NULL),
   _running(true)
 {
+  int ret = _inlet.connect(id);
+  if (ret)
+  {
+    fprintf(stderr, "FtServer connect() failed\n");
+    abort();
+  }
+}
+
+void TstEbInlet::process(TstEbOutlet& outlet)
+{
+  // Event builder sorts contributions into a time ordered list
+  // Then calls the user's process with complete events to build the result datagram
+  // Post complete events to the outlet
+
+  // Iterate over contributions in the batch
+  // Event build them according to their trigger group
+
+  _outlet = &outlet;
+
   start();                              // Start the event timeout timer
-}
 
-void* TstEbInlet::resultsPool() const
-{
-  return _results.buffer();
-}
-
-size_t TstEbInlet::resultsPoolSize() const
-{
-  return _results.size();
-}
-
-void TstEbInlet::process()
-{
   while (_running)
   {
     // Pend for an input datagram (batch) and pass its datagrams to the event builder.
     const Dgram* batch = (const Dgram*)_inlet.pend();
     if (!batch)  break;
 
-    unsigned index = (batch->xtc.src.log() >> 8) & 0xffff;
+    unsigned idx = (batch->xtc.src.log() >> 8) & 0xffff;
 
     if (lverbose)
     {
       static unsigned cnt = 0;
       unsigned from = batch->xtc.src.log() & 0xff;
-      printf("EbInlet  rcvd  %6d        batch[%2d] @ %p, ts %014lx, sz %zd from Contrib %d\n", ++cnt, index,
+      printf("EbInlet  rcvd  %6d        batch[%2d]    @ %16p, ts %014lx, sz %3zd from Contrib %d\n", ++cnt, idx,
              batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
     }
 
     const Dgram* entry = (const Dgram*)batch->xtc.payload();
-    const Dgram* end   = (const Dgram*)batch->xtc.next();
-    while(entry != end)
+    const Dgram* last  = (const Dgram*)batch->xtc.next();
+    while(entry != last)
     {
       if (lverbose > 1)
-        printf("EbInlet found a contrib %p, ts %014lx, sz %zd\n",
-               entry, entry->seq.stamp().pulseId(), sizeof(*entry) + entry->xtc.sizeofPayload());
+      {
+        unsigned from = entry->xtc.src.log() & 0xff;
+        printf("EbInlet  found              a  contrib @ %16p, ts %014lx, sz %3zd from Contrib %d\n",
+               entry, entry->seq.stamp().pulseId(), sizeof(*entry) + entry->xtc.sizeofPayload(), from);
+      }
 
-      EventBuilder::process(entry, index);
+      EventBuilder::process(entry, idx);
 
       entry = (const Dgram*)entry->xtc.next();
     }
   }
+
+  printf("Exiting:\n");
+  EventBuilder::dump();
+
+  _inlet.shutdown();
 }
 
 void TstEbInlet::process(EbEvent* event)
 {
-  //printf("Event ts %014lx, contract %016lx, size = %zd\n",
-  //       event->sequence(), event->contract(), event->size());
-  //event->dump(-1);
-
-  //const unsigned recThresh = 10;       // Revisit: Some crud for now
-  //const unsigned monThresh = 5;        // Revisit: Some crud for now
-
-  Result* result = _allocate(event);
+  if (lverbose > 3)
+  {
+    static unsigned cnt = 0;
+    //printf("Event ts %014lx, contract %016lx, size = %3zd\n",
+    //       event->sequence(), event->contract(), event->size());
+    printf("TstEbInlet::process event dump:\n");
+    event->dump(++cnt);
+  }
 
   // Iterate over the event and build a result datagram
+  EbContribution* last    = event->empty();
   EbContribution* contrib = event->creator();
-  EbContribution* end     = event->empty();
-  //unsigned        sum     = 0;
-  uint32_t*       buffer  = (uint32_t*)result->xtc.alloc(result_extent * sizeof(uint32_t));
-  memset(buffer, 0, result_extent * sizeof(uint32_t));
+  const Dgram*    cdg     = contrib->datagram();
+  Batch*          batch   = _outlet->allocate(cdg); // This may post to the outlet
+  ResultDest*     rDest   = (ResultDest*)batch->parameter();
+  if (!rDest)
+  {
+    rDest = new(&_results) ResultDest();
+    batch->parameter(rDest);
+  }
+  size_t          pSize   = result_extent * sizeof(uint32_t);
+  Dgram*          rdg     = new(batch->allocate(sizeof(*rdg) + pSize)) Dgram(*cdg);
+  uint32_t*       buffer  = (uint32_t*)rdg->xtc.alloc(pSize);
+  memset(buffer, 0, pSize);             // Revisit: Some crud for now
   do
   {
-    // The source of the contribution is one of the dsts
-    result->destination(contrib->number(), contrib->data());
+    rDest->destination(contrib->number(), contrib->data());
 
     const Dgram* idg     = contrib->datagram();
     uint32_t*    payload = (uint32_t*)idg->xtc.payload();
-    size_t       length  = idg->xtc.sizeofPayload() / sizeof(*payload);
-
-    //printf("TstEbInlet        result %p, contrib %p, ts %014lx, dst %2d, idx %2ld, pyld %08x %08x %08x %08x %08x\n",
-    //       result, contrib, contrib->datagram()->seq.stamp().pulseId(), contrib->number(), contrib->data(),
-    //       payload[0], payload[1], payload[2], payload[3], payload[4]);
-
-    for (unsigned i = 0; i < length; ++i)
+    for (unsigned i = 0; i < result_extent; ++i)
     {
       buffer[i] |= payload[i];          // Revisit: Some crud for now
     }
   }
-  while ((contrib = contrib->forward()) != end);
+  while ((contrib = contrib->forward()) != last);
 
-  //buffer[0] = sum > recThresh ? 0 : 1; // Revisit: Some crud for now
-  //buffer[1] = sum > monThresh ? 0 : 1; // Revisit: Some crud for now
-
-  _outlet.post(result);
+  if (lverbose > 2)
+  {
+    printf("EbInlet  processed          result[%2d] @ %16p, ts %014lx, sz %3zd\n",
+           rDest->idx(0), rdg, rdg->seq.stamp().pulseId(), sizeof(*rdg) + rdg->xtc.sizeofPayload());
+  }
 }
 
 uint64_t TstEbInlet::contract(const Dgram* contrib) const
 {
-  // Determine the read-out group to which contrib belongs
-  // Look up the expected list of contributors -> contract
+  // This method called when the event is created, which happens when the event
+  // builder recognizes the first contribution.  This contribution contains
+  // information from the L1 trigger that identifies which readout groups are
+  // involved.  This routine can thus look up the expecte list of contributors
+  // (the contract) to the event for each of the readout groups and logically OR
+  // them together to provide the overall contract.  The list of contributors
+  // participating in each readout group is provided at configuration time.
 
   return _contract;
 }
@@ -295,10 +317,8 @@ void TstEbInlet::fixup(EbEvent* event, unsigned srcId)
   // Revisit: Nothing can usefully be done here since there is no way to
   //          know the buffer index to be used for the result, I think
 
-  if (lverbose)
-  {
-    fprintf(stderr, "%s: Called for source %d\n", __PRETTY_FUNCTION__, srcId);
-  }
+  fprintf(stderr, "Fixup event %014lx, size %zu, for source %d\n",
+          event->sequence(), event->size(), srcId);
 
   // Revisit: What can be done here?
   //          And do we want to send a result to a contributor we haven't heard from?
@@ -311,42 +331,40 @@ void TstEbInlet::fixup(EbEvent* event, unsigned srcId)
   //new(&datagram->xtc.tag) Xtc(_dummy, source, dropped); // Revisit: No tag, no TC
 }
 
-Result* TstEbInlet::_allocate(EbEvent* event)
-{
-  EbContribution* contrib = event->creator();
-  const Dgram*    idg     = contrib->datagram();
-
-  // Due to the resource-wait memory allocator used here, zero is never returned
-  Result* result = new(&_results) Result(*idg, _src);
-
-  return result;
-}
-
-TstEbOutlet::TstEbOutlet(EbFtBase& outlet,
-                         unsigned  id,
-                         uint64_t  duration,
-                         unsigned  maxBatches,
-                         unsigned  maxEntries,
-                         size_t    maxSize) :
+TstEbOutlet::TstEbOutlet(std::vector<std::string>& cltAddr,
+                         std::vector<std::string>& cltPort,
+                         unsigned                  id,
+                         uint64_t                  duration,
+                         unsigned                  maxBatches,
+                         unsigned                  maxEntries,
+                         size_t                    maxSize) :
   BatchManager(TheSrc(Level::Event, id), duration, maxBatches, maxEntries, maxSize),
-  _outlet(outlet),
+  _outlet(cltAddr, cltPort, maxBatches * (sizeof(Dgram) + maxEntries * maxSize)),
   _running(true),
   _task (new Task(TaskObject("tOutlet"))),
   _resultSem(Semaphore::EMPTY),
   _pending()
 {
-}
+  const unsigned tmo(120);
+  int ret = _outlet.connect(id, tmo);
+  if (ret)
+  {
+    fprintf(stderr, "FtClient connect() failed\n");
+    abort();
+  }
 
-void TstEbOutlet::start(TstEbInlet& inlet)
-{
-  MemoryRegion* mr[2];
-
-  mr[0] = _outlet.registerMemory(batchPool(),         batchPoolSize());
-  mr[1] = _outlet.registerMemory(inlet.resultsPool(), inlet.resultsPoolSize());
-
-  BatchManager::start(mr);
+  _outlet.registerMemory(batchRegion(), batchRegionSize());
 
   _task->call(this);
+}
+
+void TstEbOutlet::shutdown()
+{
+  _running = false;
+
+  BatchManager::dump();
+
+ _task->destroy();
 }
 
 Batch* TstEbOutlet::_pend()
@@ -356,9 +374,9 @@ Batch* TstEbOutlet::_pend()
 
   if (lverbose > 2)
   {
-    const Dgram* bdg = batch->datagram();
-    printf("TstEbOutlet read   batch[%d] %p, dg %p (ts %014lx, ext %zd)\n",
-           batch->index(), batch, bdg, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
+    const Dgram* bdg  = batch->datagram();
+    printf("EbOutlet read                batch[%2d] @ %16p, ts %014lx, sz %3zd\n",
+           batch->index(), bdg, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
   }
 
   return batch;
@@ -367,91 +385,74 @@ Batch* TstEbOutlet::_pend()
 void TstEbOutlet::routine()
 {
   static unsigned cnt = 0;
+  struct timespec startTime;
+  clock_gettime(CLOCK_REALTIME, &startTime);
 
   while (_running)
   {
-    // Pend for a result batch (datagram).  When it arrives, post it to all
-    // contributors to the batch.
+    // Pend for a result batch.  When it arrives, post its payload of datagrams
+    // to all contributors to the batch, as given by the ResultDest structure.
+    //
     // This could be done in the same thread as the that of the EB but isn't
     // so that the event builder can make progress building events from input
-    // contributions while the back end is stalled behind the transport waiting
-    // for resources to transmit the batch.
+    // contributions while the back end is possibly stalled behind the transport
+    // waiting for resources to transmit the batch.
 
-    Batch* batch = _pend();
+    Batch* result = _pend();
 
-    ++cnt;
-
-    LocalIOVec&         pool = batch->pool();
-    const struct iovec* iov  = pool.iovecs();
-
-    // Revisit: Here we assume the first Result represents all results in the batch
-    //          and send the batch to the destinations and indices given therein.
-    //          Really need to get the set of destinations and indicies from ALL the
-    //          Results in the Batch, in case there are multiple readout groups.
-
-    Result*      result = (Result*)iov[1].iov_base; // First IOV is the Batch datagram
-    unsigned     nDsts  = result->nDsts();
-    const Dgram* bdg    = batch->datagram(); // Better equal &iov[0]->iov_base!
-    size_t       extent = batch->extent();
+    ResultDest*    rDest  = (ResultDest*)result->parameter();
+    const unsigned nDsts  = rDest->nDsts();
+    const Dgram*   rdg    = result->datagram();
+    size_t         extent = result->extent();
 
     for (unsigned iDst = 0; iDst < nDsts; ++iDst)
     {
-      unsigned dst    = result->dst(iDst);
-      unsigned idx    = result->idx(iDst);
-      unsigned offset = idx * maxBatchSize();
+      unsigned dst, idx;
+      rDest->destination(iDst, &dst, &idx);
 
       if (lverbose)
       {
-        void* rmtAdx = (void*)_outlet.rmtAdx(dst, offset);
-        printf("EbOutlet posts       %6d result     @ %p, ts %014lx, sz %zd to Contrib %d [%2d] = %p\n",
-               cnt, bdg, bdg->seq.stamp().pulseId(), extent, dst, idx, rmtAdx);
+        void* rmtAdx = (void*)_outlet.rmtAdx(dst, idx * maxBatchSize());
+        printf("EbOutlet posts       %6d result   [%2d] @ %16p, ts %014lx, sz %3zd to   Contrib %d = %16p\n",
+               ++cnt, idx, rdg, rdg->seq.stamp().pulseId(), extent, dst, rmtAdx);
       }
 
-      _outlet.post(pool, extent, dst, offset, NULL);
+      _outlet.post(rdg, extent, dst, idx * maxBatchSize());
     }
 
-    _release(batch);
+    delete rDest;
+    delete result;
   }
+
+  //BatchManager::dump();
+
+  struct timespec endTime;
+  clock_gettime(CLOCK_REALTIME, &endTime);
+  printf("TstEbOutlet handled %d results\n", cnt);
+  printf("  Start time was %ld seconds, %ld nSecs\n", startTime.tv_sec, startTime.tv_nsec);
+  printf("  End   time was %ld seconds, %ld nSecs\n", endTime.tv_sec, endTime.tv_nsec);
+  uint64_t ts = startTime.tv_sec;
+  ts = (ts << 32) + startTime.tv_nsec;
+  uint64_t te = endTime.tv_sec;
+  te = (te << 32) + endTime.tv_nsec;
+  uint64_t d = te - ts;
+  printf("  Difference:   %ld\n", d);
+  printf("  Average rate: %f\n", 1.e9 * double(cnt) / double(d));
+
+  _outlet.shutdown();
 }
 
-void TstEbOutlet::post(Result* result)
+void TstEbOutlet::post(Batch* result)
 {
   // Accumulate output datagrams (result) from the event builder into a batch
   // datagram.  When the batch completes, post it to the back end.
 
-  if (lverbose > 2)
-  {
-    printf("TstEbOutlet posts result[%d] %p (ts %014lx, ext %zd)\n",
-           result->idx(0), result, result->seq.stamp().pulseId(), sizeof(*result) + result->xtc.sizeofPayload());
-  }
-
-  process(result);
-}
-
-void TstEbOutlet::post(Batch* batch)
-{
-  _pending.insert(batch);
+  _pending.insert(result);
   _resultSem.give();
 }
 
-void TstEbOutlet::_release(Batch* batch)
-{
-  LocalIOVec&         pool = batch->pool();
-  const struct iovec* iov  = pool.iovecs();
-  const struct iovec* end  = &iov[pool.count()];
 
-  ++iov;                                // First one is the Batch datagram
-
-  for (; iov < end; ++iov)
-  {
-    delete (Result*)iov->iov_base;
-  }
-
-  delete batch;
-}
-
-
-static TstEbInlet* ebInlet  = NULL;
+static TstEbOutlet* ebOutlet  = NULL;
 
 void sigHandler( int signal )
 {
@@ -459,7 +460,7 @@ void sigHandler( int signal )
 
   printf("sigHandler() called\n");
 
-  if (ebInlet)  ebInlet->shutdown();
+  if (ebOutlet)  ebOutlet->shutdown();
 
   if (callCount++)  ::abort();
 }
@@ -549,7 +550,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Client port is out of range 0 - 65535: %d\n", cltBase + cid);
         return 1;
       }
-      contributors |= 1 << cid;
+      contributors |= 1ul << cid;
       snprintf(port, sizeof(port), "%d", cltBase + cid);
       cltAddr.push_back(std::string(colon ? &colon[1] : contributor));
       cltPort.push_back(std::string(port));
@@ -571,38 +572,11 @@ int main(int argc, char **argv)
   printf("  Max contribution size:      %zd\n", max_contrib_size);
   printf("  Max result       size:      %zd\n", max_result_size);
 
-  unsigned numContribs = __builtin_popcountl(contributors);
-  size_t   contribSize = max_batches * (sizeof(Dgram) + max_entries * max_contrib_size);
-  size_t   resultSize  = max_batches * (sizeof(Dgram) + max_entries * max_result_size);
+  TstEbInlet  inlet (         srvPort, id, batch_duration, max_batches, max_entries, max_contrib_size, contributors);
+  TstEbOutlet outlet(cltAddr, cltPort, id, batch_duration, max_batches, max_entries, max_result_size);
+  ebOutlet = &outlet;
 
-  EbFtServer fts(srvPort, numContribs, contribSize, EbFtServer::PER_PEER_BUFFERS);
-  ret = fts.connect(id);
-  if (ret)
-  {
-    fprintf(stderr, "FtServer connect() failed\n");
-    return ret;
-  }
-
-  EbFtClient ftc(cltAddr, cltPort, resultSize);
-  unsigned   tmo(120);                  // Seconds
-  ret = ftc.connect(id, tmo);
-  if (ret)
-  {
-    fprintf(stderr, "FtClient connect() failed\n");
-    return ret;
-  }
-
-  TstEbOutlet outlet(ftc, id, batch_duration, max_batches, max_entries, max_result_size);
-  TstEbInlet  inlet (fts, id, batch_duration, max_batches, max_entries, contributors, outlet);
-  ebInlet = &inlet;
-
-  outlet.start(inlet);
-
-  inlet.process();
-
-  outlet.shutdown();
-  ftc.shutdown();
-  fts.shutdown();
+  inlet.process(outlet);
 
   return ret;
 }

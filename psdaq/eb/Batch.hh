@@ -1,8 +1,6 @@
 #ifndef Pds_Eb_Batch_hh
 #define Pds_Eb_Batch_hh
 
-#include "Endpoint.hh"
-
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/service/Queue.hh"
 #include "psdaq/service/Pool.hh"
@@ -28,53 +26,62 @@ namespace Pds {
       ~Batch();
     public:
       static size_t size();
-      static void   init(GenericPoolW&,
-                         unsigned               batchDepth,
-                         unsigned               iovPoolDepth,
-                         Fabrics::MemoryRegion* mr[2]);
+      static void   init(GenericPoolW& pool,
+                         char*         buffer,
+                         unsigned      depth,
+                         size_t        maxSize);
     public:
       PoolDeclare;
     public:
-      void                  append(const XtcData::Dgram&);
-      uint64_t              id() const;
-      void                  id(uint64_t pid);
-      bool                  expired(uint64_t pid);
-      unsigned              index() const;
-      size_t                extent() const;
-      Fabrics::LocalIOVec&  pool() const;
-      const XtcData::Dgram* datagram() const;
+      void*            allocate(size_t);
+      uint64_t         id() const;
+      void             id(uint64_t pid);
+      bool             expired(uint64_t pid);
+      unsigned         index() const;
+      size_t           extent() const;
+      void*            pool() const;
+      XtcData::Dgram*  datagram() const;
+      void             parameter(void*);
+      void*            parameter() const;
     private:
-      Batch1&              _batch1() const;
+      Batch1&         _batch1() const;
     private:
-      XtcData::Dgram       _datagram;   // Batch descriptor
+      void*           _parameter;
     };
   };
 };
 
+
+inline XtcData::Dgram* Pds::Eb::Batch::datagram() const
+{
+  return (XtcData::Dgram*)pool();
+}
+
+inline void Pds::Eb::Batch::parameter(void* parameter)
+{
+  _parameter = parameter;
+}
+
+inline void* Pds::Eb::Batch::parameter() const
+{
+  return _parameter;
+}
+
 inline uint64_t Pds::Eb::Batch::id() const
 {
-  return _datagram.seq.stamp().pulseId();
+  return datagram()->seq.stamp().pulseId();
 }
 
 inline void Pds::Eb::Batch::id(uint64_t pid)
 {
-  XtcData::TimeStamp ts(pid, _datagram.seq.stamp().control());
-  _datagram.seq = XtcData::Sequence(_datagram.seq.clock(), ts);
+  XtcData::Dgram*    dg = datagram();
+  XtcData::TimeStamp ts(pid, dg->seq.stamp().control());
+  dg->seq = XtcData::Sequence(dg->seq.clock(), ts);
 }
 
 inline bool Pds::Eb::Batch::expired(uint64_t pid)
 {
-  if (id() == pid)  return false;
-
-  if (id() != 0UL)  return true;
-
-  id(pid);                     // Revisit: Happens only on the very first batch
-  return false;
-}
-
-inline const XtcData::Dgram* Pds::Eb::Batch::datagram() const
-{
-  return &_datagram;
+  return id() != pid;
 }
 
 #endif

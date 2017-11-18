@@ -84,8 +84,9 @@ int EbFtServer::connect(unsigned myId)
       break;
     }
 
-    _mr[i] = fab->register_memory(pool, _lclSize);
-    if (!_mr[i])
+    _lMr[i] = NULL;
+    _rMr[i] = fab->register_memory(pool, _lclSize);
+    if (!_rMr[i])
     {
       fprintf(stderr, "Failed to register memory region @ %p, size %zu: %s\n",
               pool, _lclSize, fab->error());
@@ -94,7 +95,7 @@ int EbFtServer::connect(unsigned myId)
 
     _cqPoller->add(_ep[i]);
 
-    if (!_ep[i]->recv_sync(pool, sizeof(_id[i]), _mr[i]))
+    if (!_ep[i]->recv_sync(pool, sizeof(_id[i]), _rMr[i]))
     {
       fprintf(stderr, "Failed receiving peer's ID: %s\n", _ep[i]->error());
       return -1;
@@ -107,7 +108,7 @@ int EbFtServer::connect(unsigned myId)
       return -1;
     }
 
-    ret = _syncLclMr(pool, _lclSize, _ep[i], _mr[i], _ra[i]);
+    ret = _syncLclMr(pool, _lclSize, _ep[i], _rMr[i], _ra[i]);
     if (ret)  break;
 
     _ep[i]->recv_comp_data();

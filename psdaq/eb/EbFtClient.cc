@@ -49,7 +49,8 @@ int EbFtClient::connect(unsigned id, unsigned tmo)
   char* pool = _base;
   for (unsigned i = 0; i < _peers.size(); ++i)
   {
-    int ret = _connect(id, _peers[i], _port[i], tmo, pool, _ep[i], _mr[i], _id[i]);
+    _lMr[i] = NULL;
+    int ret = _connect(id, _peers[i], _port[i], tmo, pool, _ep[i], _rMr[i], _id[i]);
     if (ret)
     {
       fprintf(stderr, "_connect() failed at index %u (%s:%s)\n",
@@ -57,7 +58,7 @@ int EbFtClient::connect(unsigned id, unsigned tmo)
       return ret;
     }
 
-    ret = _syncRmtMr(pool, _rmtSize, _ep[i], _mr[i], _ra[i]);
+    ret = _syncRmtMr(pool, _rmtSize, _ep[i], _rMr[i], _ra[i]);
     if (ret)  return ret;
 
     _ep[i]->recv_comp_data();

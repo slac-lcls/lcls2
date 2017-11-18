@@ -1,12 +1,12 @@
 #include "BatchManager.hh"
-#include "Endpoint.hh"
 
 #include "xtcdata/xtc/Dgram.hh"
+
+#include <string.h>
 
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
-using namespace Pds::Fabrics;
 
 BatchManager::BatchManager(Src      src,
                            uint64_t duration, // = ~((1 << N) - 1) = 128 uS?
@@ -15,57 +15,68 @@ BatchManager::BatchManager(Src      src,
                            size_t   maxSize) :
   _src          (src),
   _duration     (duration),
-  _durationShift(__builtin_ctzll(duration)),
-  _durationMask (~((1 << __builtin_ctzll(duration)) - 1) & ((1UL << 56) - 1)),
+  _durationShift(__builtin_ctzl(duration)),
+  _durationMask (~((1 << __builtin_ctzl(duration)) - 1) & ((1UL << 56) - 1)),
   _batchDepth   (batchDepth),
   _maxEntries   (maxEntries),
-  _maxBatchSize (maxEntries * maxSize),
+  _maxBatchSize (sizeof(Dgram) + maxEntries * maxSize),
+  _batchBuffer  (new char[batchDepth * _maxBatchSize]),
   _pool         (Batch::size(), batchDepth)
 {
-  if (__builtin_popcountll(duration) != 1)
+  if (__builtin_popcountl(duration) != 1)
   {
     fprintf(stderr, "Batch duration (%016lx) must be a power of 2\n",
             duration);
     abort();
   }
+
+  Batch::init(_pool, _batchBuffer, _batchDepth, _maxBatchSize);
+
+  // Revisit: Maybe make the following a dummy Batch that expires right away
+  //  Then check if it's real before trying to post it
+  //Dgram dg;
+  //dg.seq = Sequence(ClockTime(0, 0), TimeStamp());
+
+  _batch = NULL; // new(&_pool) Batch(_src, dg, dg.seq.stamp().pulseId());
 }
 
 BatchManager::~BatchManager()
 {
+  delete [] _batchBuffer;
 }
 
-void* BatchManager::batchPool() const
+void* BatchManager::batchRegion() const
 {
-  return _pool.buffer();
+  return _batchBuffer;
 }
 
-size_t BatchManager::batchPoolSize() const
+size_t BatchManager::batchRegionSize() const
 {
-  return _pool.size();
+  return _batchDepth * _maxBatchSize;
 }
 
-void BatchManager::start(MemoryRegion* mr[2])
+Batch* BatchManager::allocate(const Dgram* datagram)
 {
-  Batch::init(_pool, _batchDepth, _maxEntries, mr);
+  uint64_t pid = _startId(datagram->seq.stamp().pulseId());
 
-  Dgram dg;
-  dg.seq = Sequence(ClockTime(0, 0), TimeStamp());
-
-  _batch = new(&_pool) Batch(_src, dg, dg.seq.stamp().pulseId());
-}
-
-void BatchManager::process(const Dgram* dg)
-{
-  uint64_t pid = _startId(dg->seq.stamp().pulseId());
-
-  if (_batch->expired(pid))
+  if (!_batch || _batch->expired(pid))
   {
-    post(_batch);
+    if (_batch)  post(_batch);
 
-    _batch = new(&_pool) Batch(_src, *dg, pid); // Resource wait if pool is empty
+     // Resource wait if pool is empty
+    _batch = new(&_pool) Batch(_src, *datagram, pid);
   }
 
-  _batch->append(*dg);
+  return _batch;
+}
+
+void BatchManager::process(const Dgram* datagram)
+{
+  Batch* batch  = allocate(datagram);
+  size_t size   = sizeof(*datagram) + datagram->xtc.sizeofPayload();
+  void*  buffer = batch->allocate(size);
+
+  memcpy(buffer, datagram, size);
 }
 
 size_t BatchManager::maxBatchSize() const
@@ -91,4 +102,10 @@ uint64_t BatchManager::batchId(uint64_t id) const
 uint64_t BatchManager::_startId(uint64_t id) const
 {
   return id & _durationMask;
+}
+
+void BatchManager::dump() const
+{
+  printf("BatchManager pool:\n");
+  _pool.dump();
 }

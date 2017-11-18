@@ -13,7 +13,8 @@ using namespace Pds::Eb;
 
 EbFtBase::EbFtBase(unsigned nPeers) :
   _ep(nPeers),
-  _mr(nPeers),
+  _lMr(nPeers),
+  _rMr(nPeers),
   _ra(nPeers),
   _cqPoller(NULL),
   _id(nPeers),
@@ -26,10 +27,8 @@ EbFtBase::~EbFtBase()
   if (_mappedId)  delete [] _mappedId;
 }
 
-MemoryRegion* EbFtBase::registerMemory(void* buffer, size_t size)
+void EbFtBase::registerMemory(void* buffer, size_t size)
 {
-  MemoryRegion* mr = NULL;
-
   for (unsigned i = 0; i < _ep.size(); ++i)
   {
     Endpoint* ep = _ep[i];
@@ -38,12 +37,11 @@ MemoryRegion* EbFtBase::registerMemory(void* buffer, size_t size)
 
     Fabric* fab = ep->fabric();
 
-    mr = fab->register_memory(buffer, size);
+    _lMr[i] = fab->register_memory(buffer, size);
 
-    printf("idx: %d, fabric: %p, desc = %p\n", i, fab, mr->desc());
+    printf("Batch  memory region[%2d]: %p : %p, size %zd, desc %p\n",
+           i, buffer, (char*)buffer + size, size, _lMr[i]->desc());
   }
-
-  return mr;
 }
 
 void EbFtBase::_mapIds(unsigned nPeers)
@@ -74,7 +72,7 @@ int EbFtBase::_syncLclMr(char*          region,
     return ep->error_num();
   }
 
-  printf("Local  memory region: %p : %p, size %zd\n",
+  printf("Local  memory region:     %p : %p, size %zd\n",
          (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent);
 
   return 0;
@@ -102,7 +100,7 @@ int EbFtBase::_syncRmtMr(char*          region,
     return -1;
   }
 
-  printf("Remote memory region: %p : %p, size %zd\n",
+  printf("Remote memory region:     %p : %p, size %zd\n",
          (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent);
 
   return 0;
@@ -134,6 +132,9 @@ uint64_t EbFtBase::_tryCq()
         //batch = (Dgram*)&_pool[(slot * _maxBatches + idx) * _maxBatchSize];
         return _ra[iSrc].addr + cqEntry.data; // imm_data is only 32 bits for verbs!
       }
+
+      fprintf(stderr, "Unexpected completion result with peer %u: count %d, flags %016lx\n",
+              _id[iSrc], cqNum, cqEntry.flags);
     }
     else
     {
@@ -151,26 +152,16 @@ uint64_t EbFtBase::_tryCq()
 
 uint64_t EbFtBase::pend()
 {
-  uint64_t data = _tryCq();
+  uint64_t data;
 
-  if (data)
+  while ((data = _tryCq()) == 0)
   {
-    //printf("EbFtBase::pend got data 0x%016lx\n", data);
-    return data;
-  }
-
-  //printf("EbFtBase::Pending...\n");
-
-  if (_cqPoller->poll())
-  {
-    data = _tryCq();
-    //printf("EbFtBase::pend: poll woke with data 0x%016lx\n", data);
-  }
-  else
-  {
-    fprintf(stderr, "Error polling completion queues: %s\n",
-            _cqPoller->error());
-    return 0;
+    if (!_cqPoller->poll())
+    {
+      fprintf(stderr, "Error polling completion queues: %s\n",
+              _cqPoller->error());
+      return 0;
+    }
   }
 
   return data;
@@ -213,6 +204,51 @@ int EbFtBase::post(LocalIOVec& lclIov,
   {
     //++wrtCnt2;
     if (ep->writemsg(&rmaMsg, FI_REMOTE_CQ_DATA))  break;
+
+    if (ep->error_num() == -FI_EAGAIN)
+    {
+      int              cqNum;
+      fi_cq_data_entry cqEntry;
+
+      //printf("EbFtBase::post: Waiting for comp... %d of %d, %d\n", ++waitCnt, wrtCnt, wrtCnt2);
+      if (!ep->comp_wait(&cqEntry, &cqNum, 1))
+      {
+        if (ep->error_num() != -FI_EAGAIN)
+        {
+          fprintf(stderr, "Error completing operation with peer %u: %s\n",
+                  idx, ep->error());
+        }
+      }
+      ep->recv_comp_data();
+    }
+    else
+    {
+      fprintf(stderr, "writemsg failed: %s\n", ep->error());
+      return ep->error_num();
+    }
+  }
+  while (ep->state() == EP_CONNECTED);
+
+  return 0;
+}
+
+int EbFtBase::post(const void* buf,
+                   size_t      len,
+                   unsigned    dst,
+                   uint64_t    offset)
+{
+  void*    ctx = NULL;
+
+  unsigned idx = _mappedId[dst];
+
+  RemoteAddress rmtAdx(_ra[idx].rkey, _ra[idx].addr + offset, len);
+
+  Endpoint*     ep = _ep[idx];
+  MemoryRegion* mr = _lMr[idx];
+  do
+  {
+    //++wrtCnt2;
+    if (ep->write_data(const_cast<void*>(buf), len, &rmtAdx, ctx, offset, mr))  break;
 
     if (ep->error_num() == -FI_EAGAIN)
     {

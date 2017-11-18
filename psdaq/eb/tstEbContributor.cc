@@ -43,7 +43,7 @@ static       unsigned lverbose         = 0;
 //  char buff[128];
 //  time_t t = dg->seq.clock().seconds();
 //  strftime(buff,128,"%H:%M:%S",localtime(&t));
-//  printf("[%p] %s.%09u %016lx %s extent 0x%x damage %x\n",
+//  printf("[%16p] %s.%09u %016lx %s extent 0x%x damage %x\n",
 //         dg,
 //         buff,
 //         dg->seq.clock().nanoseconds(),
@@ -95,7 +95,7 @@ namespace Pds {
       DrpSim(unsigned poolSize, unsigned id);
       ~DrpSim() { }
     public:
-      void init(TstContribOutlet* outlet);
+      void start(TstContribOutlet* outlet);
       void shutdown() { _running = false; }
     public:
       void routine();
@@ -128,7 +128,6 @@ namespace Pds {
                        size_t                    maxSize);
       ~TstContribOutlet() { delete [] _destinations; }
     public:
-      void start(void* pool, size_t poolSize);
       void shutdown();
     public:
       void routine();
@@ -167,7 +166,6 @@ namespace Pds {
       int _process(Dgram* result);
     private:
       EbFtServer        _inlet;
-      const char*       _base;
       TstContribOutlet& _outlet;
       DrpSim&           _sim;
       volatile bool     _running;
@@ -191,11 +189,9 @@ DrpSim::DrpSim(unsigned poolSize, unsigned id) :
 {
 }
 
-void DrpSim::init(TstContribOutlet* outlet)
+void DrpSim::start(TstContribOutlet* outlet)
 {
   _outlet = outlet;
-
-  _outlet->start(_pool.buffer(), _pool.size()); // Revisit: This will go away
 
   _task->call(this);
 }
@@ -206,8 +202,6 @@ void DrpSim::routine()
 
   while(_running)
   {
-    //char* buffer = (char*)_pool->alloc(_maxEvtSz);
-
     // Fake datagram header
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -219,11 +213,6 @@ void DrpSim::routine()
     //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
 
     // Make proxy to data (small data)
-    //Dgram* pdg = (Dgram*)buffer;
-    //pdg->seq = seq;
-    //pdg->env = env;
-    //pdg->xtc = xtc;
-
     Input* input = new(&_pool) Input(seq, env, xtc);
     Dgram* pdg   = input->datagram();
 
@@ -249,8 +238,8 @@ void DrpSim::release(Dgram* result)
 {
   uint64_t id    = result->seq.stamp().pulseId();
   Input*   input = _inFlightList.atHead();
-  Input*   end   = _inFlightList.empty();
-  while (input != end)
+  Input*   last  = _inFlightList.empty();
+  while (input != last)
   {
     Entry* next = input->next();
 
@@ -289,22 +278,14 @@ TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
     abort();
   }
 
+  _outlet.registerMemory(batchRegion(), batchRegionSize());
+
   for (unsigned i = 0; i < _numEbs; ++i)
   {
     unsigned bit = __builtin_ffsl(builders) - 1;
-    builders &= ~(1 << bit);
+    builders &= ~(1ul << bit);
     _destinations[i] = bit;
   }
-}
-
-void TstContribOutlet::start(void* pool, size_t poolSize) // Revisit: This will go away
-{
-  MemoryRegion* mr[2];
-
-  mr[0] = _outlet.registerMemory(batchPool(), batchPoolSize());
-  mr[1] = _outlet.registerMemory(pool, poolSize);
-
-  BatchManager::start(mr);
 
   _task->call(this);
 }
@@ -313,7 +294,7 @@ void TstContribOutlet::shutdown()
 {
   _running = false;
 
-  _outlet.shutdown();
+  BatchManager::dump();
 
   _task->destroy();
 }
@@ -329,35 +310,45 @@ void TstContribOutlet::routine()
 
     if (lverbose)
     {
-      static unsigned cnt = 0;
-      const Dgram*    bdg = batch->datagram();
-      void*  rmtAdx = (void*)_outlet.rmtAdx(dst, batch->index() * maxBatchSize());
-      printf("ContribOutlet posts %6d        batch[%2d] @ %p, ts %014lx, sz %zd to EB %d %p\n", ++cnt, batch->index(),
-             bdg, bdg->seq.stamp().pulseId(), batch->extent(), dst, rmtAdx);
+      static unsigned cnt    = 0;
+      const Dgram*    bdg    = batch->datagram();
+      void*           rmtAdx = (void*)_outlet.rmtAdx(dst, batch->index() * maxBatchSize());
+      printf("ContribOutlet posts %6d        batch[%2d]    @ %16p, ts %014lx, sz %3zd to   EB %d %16p\n",
+             ++cnt, batch->index(), bdg, bdg->seq.stamp().pulseId(), batch->extent(), dst, rmtAdx);
     }
 
     _inFlightList.insert(const_cast<Batch*>(batch));    // Revisit: Replace with atomic list
 
-    _outlet.post(batch->pool(), batch->extent(), dst, batch->index() * maxBatchSize(), NULL);
+    _outlet.post(batch->pool(), batch->extent(), dst, batch->index() * maxBatchSize());
   }
+
+  _outlet.shutdown();
 }
 
 void TstContribOutlet::post(Dgram* input)
 {
+  if (lverbose > 1)
+  {
+    printf("DRP   Posts        input          dg           @ %16p, ts %014lx, sz %3zd, src %2d\n",
+           input, input->seq.stamp().pulseId(), sizeof(*input) + input->xtc.sizeofPayload(), input->xtc.src.log() & 0xff);
+  }
+
   process(input);
 }
 
 void TstContribOutlet::release(uint64_t id)
 {
   Batch* batch = _inFlightList.atHead();
-  Batch* end   = _inFlightList.empty();
-  while (batch != end)
+  Batch* last  = _inFlightList.empty();
+  while (batch != last)
   {
-    if (id < batch->id())  break;
-
     Entry* next = batch->next();
 
-    delete (Batch*)_inFlightList.remove(batch); // Revisit: Replace with atomic list
+    if (id == batch->id())
+    {
+      delete (Batch*)_inFlightList.remove(batch); // Revisit: Replace with atomic list
+      break;
+    }
 
     batch = (Batch*)next;
   }
@@ -368,8 +359,8 @@ void TstContribOutlet::post(Batch* batch)
   if (lverbose > 1)
   {
     const Dgram* bdg = batch->datagram();
-    printf("Posting  input batch %p (ts %014lx, ext %d)\n",
-           batch, bdg->seq.stamp().pulseId(), bdg->xtc.sizeofPayload());
+    printf("DRP   Posting      input          batch        @ %16p, ts %014lx, sz %3zd\n",
+           batch, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
   }
 
   _inputBatchList.insert(batch);
@@ -384,8 +375,8 @@ Batch* TstContribOutlet::_pend()
   if (lverbose > 1)
   {
     const Dgram* bdg = batch->datagram();
-    printf("Received input batch %p (ts %014lx, ext %d)\n",
-           batch, bdg->seq.stamp().pulseId(), bdg->xtc.sizeofPayload());
+    printf("ContribOutlet rcvd input          batch        @ %16p, ts %014lx, sz %3zd\n",
+           batch, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
   }
 
   return batch;
@@ -400,7 +391,6 @@ TstContribInlet::TstContribInlet(std::string&      srvPort,
                                  TstContribOutlet& outlet,
                                  DrpSim&           sim) :
   _inlet(srvPort, __builtin_popcountl(builders), maxBatches * (sizeof(Dgram) + maxEntries * maxSize), EbFtServer::PEERS_SHARE_BUFFERS),
-  _base(_inlet.base()),
   _outlet(outlet),
   _sim(sim),
   _running(true)
@@ -417,29 +407,32 @@ void TstContribInlet::process()
 {
   while (_running)
   {
-    // Pend for a result datagram (batch) and handle it.
+    // Pend for a result datagram (batch) and process it.
     Dgram* batch = (Dgram*)_inlet.pend();
     if (!batch)  break;
 
     if (lverbose)
     {
       static unsigned cnt = 0;
-      unsigned idx = ((char*)batch - _base) / (max_entries * max_result_size);
-      printf("ContribInlet  rcvd        %6d result[%2d] @ %p, ts %014lx, sz %zd\n", ++cnt, idx,
-             batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload());
+      unsigned idx  = ((char*)batch - _inlet.base()) / (sizeof(Dgram) + max_entries * max_result_size);
+      unsigned from = batch->xtc.src.log() & 0xff;
+      printf("ContribInlet  rcvd        %6d result   [%2d] @ %16p, ts %014lx, sz %3zd from EB %d\n",
+             ++cnt, idx, batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
     }
 
-    Dgram* entry = (Dgram*)batch->xtc.payload();
-    Dgram* end   = (Dgram*)batch->xtc.next();
-    while(entry != end)
+    Dgram* result = (Dgram*)batch->xtc.payload();
+    Dgram* last   = (Dgram*)batch->xtc.next();
+    while(result != last)
     {
-      _process(entry);
+      _process(result);
 
-      entry = (Dgram*)entry->xtc.next();
+      result = (Dgram*)result->xtc.next();
     }
 
     _outlet.release(batch->seq.stamp().pulseId());
   }
+
+  _inlet.shutdown();
 }
 
 int TstContribInlet::_process(Dgram* result)
@@ -448,15 +441,16 @@ int TstContribInlet::_process(Dgram* result)
   {
     bool ok = true;
     uint32_t* buffer = (uint32_t*)result->xtc.payload();
-    static uint64_t _ts = 0;
-    uint64_t         ts = buffer[0];
-    ts = (ts << 32) | buffer[1];
-    if (ts <= _ts)
-    {
-      ok = false;
-      printf("Timestamp didn't increase: previous = %016lx, current = %016lx\n", _ts, ts);
-    }
-    _ts = ts;
+    // Timestamp isn't coherent when multiple contributor processes generate it
+    //static uint64_t _ts = 0;
+    //uint64_t         ts = buffer[0];
+    //ts = (ts << 32) + buffer[1];
+    //if (_ts > ts)
+    //{
+    //  ok = false;
+    //  printf("Timestamp didn't increase: previous = %016lx, current = %016lx\n", _ts, ts);
+    //}
+    //_ts = ts;
     static unsigned _counter = 0;
     if (buffer[2] != _counter + 1)
     {
@@ -465,17 +459,26 @@ int TstContribInlet::_process(Dgram* result)
              _counter + 1, buffer[2]);
     }
     _counter = buffer[2];
-    if ((result->seq.stamp().pulseId() & 0xffffffffUL) != buffer[4])
+    static uint64_t _pid = 0;
+    uint64_t         pid = result->seq.stamp().pulseId();
+    if (_pid > pid)
+    {
+      ok = false;
+      printf("Pulse ID didn't increase: previous = %014lx, current = %014lx\n", _pid, pid);
+    }
+    _pid = pid;
+    if ((pid & 0xffffffffUL) != buffer[4])
     {
       ok = false;
       printf("Pulse ID mismatch: expected %08lx, got %08x\n",
-             result->seq.stamp().pulseId() & 0xffffffffUL, buffer[4]);
+             pid & 0xffffffffUL, buffer[4]);
     }
     if (!ok)
     {
-      printf("ContribInlet  found result   %p, ts %014lx, sz %d, pyld %08x %08x %08x %08x %08x\n",
-             result, result->seq.stamp().pulseId(), result->xtc.sizeofPayload(),
+      printf("ContribInlet  found result   %16p, ts %014lx, sz %d, pyld %08x %08x %08x %08x %08x\n",
+             result, pid, result->xtc.sizeofPayload(),
              buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+      abort();                          // Revisit
     }
   }
 
@@ -494,7 +497,7 @@ int TstContribInlet::_process(Dgram* result)
   return 0;
 }
 
-static TstContribInlet* contribInlet = NULL;
+static TstContribOutlet* contribOutlet = NULL;
 
 void sigHandler(int signal)
 {
@@ -502,7 +505,7 @@ void sigHandler(int signal)
 
   printf("sigHandler() called\n");
 
-  if (contribInlet)  contribInlet->shutdown();
+  if (contribOutlet)  contribOutlet->shutdown();
 
   if (callCount++)  ::abort();
 }
@@ -597,7 +600,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Client port is out of range 0 - 65535: %d\n", cltBase + bid);
         return 1;
       }
-      builders |= 1 << bid;
+      builders |= 1ul << bid;
       snprintf(port, sizeof(port), "%d", cltBase + bid);
       cltAddr.push_back(std::string(colon ? &colon[1] : builder));
       cltPort.push_back(std::string(port));
@@ -622,14 +625,12 @@ int main(int argc, char **argv)
   DrpSim sim(max_batches * max_entries, id);
 
   TstContribOutlet outlet(cltAddr, cltPort, id, builders, batch_duration, max_batches, max_entries, max_contrib_size);
-  TstContribInlet  inlet (srvPort,          id, builders,                 max_batches, max_entries, max_result_size, outlet, sim);
-  contribInlet = &inlet;
+  TstContribInlet  inlet (         srvPort, id, builders,                 max_batches, max_entries, max_result_size, outlet, sim);
+  contribOutlet = &outlet;
 
-  sim.init(&outlet);
+  sim.start(&outlet);
 
   inlet.process();
-
-  outlet.shutdown();
 
   sim.shutdown();
 

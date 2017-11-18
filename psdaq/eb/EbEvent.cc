@@ -24,11 +24,13 @@
 
 #include "psdaq/service/SysClk.hh"
 
+#include <stdlib.h>
+
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-static const int MaxTimeouts=0x100;     // Revisit: Was 0xffff
+static const int MaxTimeouts = 100;      // Revisit: Was 0xffff
 
 // Revisit: Fix stale comments:
 /*
@@ -47,25 +49,23 @@ static const int MaxTimeouts=0x100;     // Revisit: Was 0xffff
 ** --
 */
 
-EbEvent::EbEvent(uint64_t        contract,
-                 EventBuilder*   eb,
-                 EbEvent*        after,
-                 EbContribution* contrib,
-                 uint64_t        mask) :
+EbEvent::EbEvent(uint64_t      contract,
+                 EventBuilder* eb,
+                 EbEvent*      after,
+                 const Dgram*  cdg,
+                 uint64_t      prm,
+                 uint64_t      mask) :
   _pending()
 {
-  // Make sure we didn't run out of heap before initializing
-  if (!this)  return;
-
-  uint64_t key = contrib->datagram()->seq.stamp().pulseId();
+  uint64_t key = cdg->seq.stamp().pulseId();
   _sequence = key;
   _key      = key & mask;
   _eb       = eb;
   _living   = MaxTimeouts;
 
-  _pending.insert(contrib);
+  EbContribution* contrib = _contribution(cdg, prm);
 
-  _size = contrib->payloadSize();
+  _size      = contrib->payloadSize();
 
   _contract  = contract;
   _remaining = contract & contrib->retire();
@@ -125,9 +125,10 @@ void EbEvent::_insert(EbContribution* dummy)
 ** --
 */
 
-EbEvent* EbEvent::_add(EbContribution* contrib)
+EbEvent* EbEvent::_add(const Dgram* cdg,
+                       uint64_t     prm)
 {
-  _pending.insert(contrib);
+  EbContribution* contrib = _contribution(cdg, prm);
 
   unsigned size = contrib->payloadSize();
 
@@ -135,7 +136,26 @@ EbEvent* EbEvent::_add(EbContribution* contrib)
 
   _remaining &= contrib->retire();
 
+  _living = MaxTimeouts;
+
   return this;
+}
+
+EbContribution* EbEvent::_contribution(const Dgram* cdg,
+                                       uint64_t     prm)
+{
+  EbContribution* contrib = _pending.reverse();
+
+  contrib = new(&_eb->_cntrbFreelist) EbContribution(cdg, prm, contrib);
+  if (!contrib)
+  {
+    printf("%s: Unable to allocate contribution\n", __PRETTY_FUNCTION__);
+    printf("  cntrbFreelist:\n");
+    _eb->_cntrbFreelist.dump();
+    abort();
+  }
+
+  return contrib;
 }
 
 /*
@@ -169,7 +189,7 @@ void EbEvent::dump(int number)
   printf("    Contributors to this event:\n");
   while((contrib = contrib->forward()) != last)
   {
-    printf("src %02x seq %016lx size %08x env %08x\n",
+    printf("     src %02x seq %016lx size %08x env %08x\n",
            contrib->number(),
            contrib->datagram()->seq.stamp().pulseId(),
            contrib->payloadSize(),
