@@ -96,6 +96,9 @@ Module::Module()
   clearCounters();
   updateCounters();                     // Revisit: Necessary?
 
+  //  Program the crossbar to pull timing off the backplane
+  _timing.xbar.setOut( Pds::Cphw::XBar::FPGA, Pds::Cphw::XBar::BP );
+  
   /*init();*/
 }
 
