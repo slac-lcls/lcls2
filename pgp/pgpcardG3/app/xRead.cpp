@@ -278,7 +278,8 @@ void* countThread(void* args)
     double dt     = double( tv.tv_sec - otv.tv_sec) + 1.e-9*(double(tv.tv_nsec)-double(otv.tv_nsec));
     double rate   = double(ncount-ocount)/dt;
     double dbytes = double(nbytes-obytes)/dt;
-    unsigned dbsc = 0, rsc=0;
+    double tbytes = dbytes/rate;
+    unsigned dbsc = 0, rsc=0, tbsc=0;
     
     if (count < 0) break;
 
@@ -301,9 +302,20 @@ void* countThread(void* args)
       dbytes *= 1.e-3;
     }
     
-    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B]  lanes %02x\n", 
+    if (tbytes > 1.e6) {
+      tbsc    = 2;
+      tbytes *= 1.e-6;
+    }
+    else if (tbytes > 1.e3) {
+      tbsc    = 1;
+      tbytes *= 1.e-3;
+    }
+    
+    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B] (%7.2f %cB/evt) lanes %02x\n", 
            rate  , scchar[rsc ], ncount, 
-           dbytes, scchar[dbsc], (long long)nbytes, lanes);
+           dbytes, scchar[dbsc], (long long)nbytes, 
+           tbytes, scchar[tbsc], 
+           lanes);
     lanes = 0;
 
     ocount = ncount;
