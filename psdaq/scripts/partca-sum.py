@@ -3,7 +3,7 @@ import argparse
 from pvedit import *
 import time
 
-NParts = 4
+NParts = 8
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, base, shelf):

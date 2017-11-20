@@ -1,5 +1,5 @@
-bin_path     = '/reg/neh/home/weaver/lcls2/build/'
-scripts_path = '/reg/neh/home/weaver/lcls2/psdaq/scripts/'
+bin_path     = './'
+scripts_path = '../psdaq/scripts/'
 
 platform = '3'
 username = 'lcls2'
