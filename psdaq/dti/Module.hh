@@ -3,6 +3,7 @@
 
 #include "psdaq/cphw/Reg.hh"
 #include "psdaq/cphw/Reg64.hh"
+#include "psdaq/cphw/AmcPLL.hh"
 #include "psdaq/cphw/AmcTiming.hh"
 #include "psdaq/cphw/HsRepeater.hh"
 
@@ -182,8 +183,23 @@ namespace Pds {
     private:
       uint32_t    _reserved_196[3];
 #endif
+    public:
+      //  0x00D0 - RW: Config and status of AMC PLLs
+      //  [3:0]   bwSel         Loop filter bandwidth selection
+      //  [5:4]   frqTbl        Frequency table - character {L,H,M} = 00,01,1x
+      //  [15:8]  frqSel        Frequency selection - 4 characters
+      //  [19:16] rate          Rate - 2 characters
+      //  [20]    inc           Increment phase
+      //  [21]    dec           Decrement phase
+      //  [22]    bypass        Bypass PLL
+      //  [23]    rstn          Reset PLL (inverted)
+      //  [26:24] pllCount[0]   PLL count[0] for AMC[index] (RO)
+      //  [27]    pllStat[0]    PLL stat[0]  for AMC[index] (RO)
+      //  [30:28] pllCount[1]   PLL count[1] for AMC[index] (RO)
+      //  [31]    pllStat[1]    PLL stat[1]  for AMC[index] (RO)
+      Cphw::AmcPLL _amcPll[2];
     private:
-      uint32_t    _reserved_208[(0x10000000-208)>>2];
+      uint32_t    _reserved_216[(0x10000000-216)>>2];
     public:
       class Pgp2bAxi
       {

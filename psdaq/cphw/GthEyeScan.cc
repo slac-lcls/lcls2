@@ -48,7 +48,8 @@ void GthEyeScan::enable(bool v)
 void GthEyeScan::scan(const char* ofile, 
                       unsigned    prescale, 
                       unsigned    xscale,
-                      bool        lsparse)
+                      bool        lsparse,
+                      bool        lhscan)
 {
   FILE* f = fopen(ofile,"w");
 
@@ -93,6 +94,18 @@ void GthEyeScan::scan(const char* ofile,
   setf(_rx_eyescan_vs, 0, 1, 10); // neg_dir
   setf(_es_horz_offset, 0, 12, 4); // zero horz offset
 
+  if (lhscan)
+    _hscan(f,xscale,lsparse);
+  else
+    _vscan(f,xscale,lsparse);
+
+  fclose(f);
+}
+
+void GthEyeScan::_vscan(FILE*    f, 
+                        unsigned xscale,
+                        bool     lsparse)
+{
   char stime[200];
 
   for(int j=-31; j<32; j++) {
@@ -159,7 +172,86 @@ void GthEyeScan::scan(const char* ofile,
     if (lsparse)
       j += 3;
   }
-  fclose(f);
+}
+
+void GthEyeScan::_hscan(FILE*    f, 
+                        unsigned xscale,
+                        bool     lsparse)
+{
+  char stime[200];
+
+  for(int i=127; i>=-127; i--) {
+    column_ = i;
+
+    time_t t = time(NULL);
+    struct tm* tmp = localtime(&t);
+    if (tmp)
+      strftime(stime, sizeof(stime), "%T", tmp);
+
+    printf("es_vert_offset: %i [%s]\n",i, stime);
+
+    setf(_rx_eyescan_vs, i, 9, 2); // vert offset
+
+    uint64_t sample_count;
+    unsigned error_count=-1, error_count_p=-1;
+
+    int j;
+    for(j=-31; j<32; j++) {
+      row_ = j;
+
+      setf(_es_horz_offset, j<<xscale, 12, 4);
+
+      run(error_count,sample_count);
+
+      fprintf(f, "%d %d %u %llu\n",
+              j, i, 
+              error_count,
+              (unsigned long long)sample_count);
+                
+      setf(_es_control, 0, 1, 10); // -> wait
+
+      if (error_count==0 && error_count_p==0 && !lsparse) {
+        //          printf("\t%i\n",i);
+        break;
+      }
+
+      error_count_p=error_count;
+
+      if (lsparse)
+        j += 3;
+    }
+
+    if (j<32) {
+      int je=j;
+      for(j=31; j>je; j--) {
+        row_ = j;
+
+        setf(_es_horz_offset, j<<xscale, 12, 4);
+
+        run(error_count,sample_count);
+
+        fprintf(f, "%d %d %u %llu\n",
+                j, i, 
+                error_count,
+                (unsigned long long)sample_count);
+                
+        setf(_es_control, 0, 1, 10); // -> wait
+
+        if (error_count==0 && error_count_p==0 && !lsparse) {
+          //          printf("\t%i\n",i);
+          break;
+        }
+
+        error_count_p=error_count;
+
+        if (lsparse)
+          j += 3;
+      }
+    }
+
+    if (lsparse)
+      i -= 19;
+  }
 }
 
 void GthEyeScan::run(unsigned& error_count,
