@@ -14,13 +14,12 @@ add_library(eb SHARED
 target_include_directories(eb PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    /reg/common/package/libfabric/1.4.2/include
 )
 
 target_link_libraries(eb
     xtc
     service
-    /reg/common/package/libfabric/1.4.2/lib/libfabric.so
+    fabric
 )
 
 add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
