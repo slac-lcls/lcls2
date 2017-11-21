@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
+#include <math.h>
 
 using namespace Pds::Cphw;
 
@@ -190,7 +191,7 @@ void GthEyeScan::_hscan(FILE*    f,
 
     printf("es_vert_offset: %i [%s]\n",i, stime);
 
-    setf(_rx_eyescan_vs, i, 9, 2); // vert offset
+    setf(_rx_eyescan_vs, i, 8, 2); // vert offset
 
     uint64_t sample_count;
     unsigned error_count=-1, error_count_p=-1;
@@ -201,15 +202,27 @@ void GthEyeScan::_hscan(FILE*    f,
 
       setf(_es_horz_offset, j<<xscale, 12, 4);
 
-      run(error_count,sample_count);
+      unsigned ec0=0; uint64_t sc0=0;
+      setf(_rx_eyescan_vs, 0, 1, 10); // ut sign
+      run(ec0,sc0);
+      setf(_es_control, 0, 1, 10); // -> wait
+
+      unsigned ec1=0; uint64_t sc1=0;
+      setf(_rx_eyescan_vs, 1, 1, 10); // ut sign
+      run(ec1,sc1);
+      setf(_es_control, 0, 1, 10); // -> wait
+
+      double sc = sqrt(double(sc0)*double(sc1));
+      double ec = (double(ec0)*double(sc1)+double(ec1)*double(sc0))/sc;
+
+      error_count  = ec;
+      sample_count = sc;
 
       fprintf(f, "%d %d %u %llu\n",
               j, i, 
               error_count,
               (unsigned long long)sample_count);
                 
-      setf(_es_control, 0, 1, 10); // -> wait
-
       if (error_count==0 && error_count_p==0 && !lsparse) {
         //          printf("\t%i\n",i);
         break;
@@ -228,7 +241,21 @@ void GthEyeScan::_hscan(FILE*    f,
 
         setf(_es_horz_offset, j<<xscale, 12, 4);
 
-        run(error_count,sample_count);
+        unsigned ec0=0; uint64_t sc0=0;
+        setf(_rx_eyescan_vs, 0, 1, 10); // ut sign
+        run(ec0,sc0);
+        setf(_es_control, 0, 1, 10); // -> wait
+
+        unsigned ec1=0; uint64_t sc1=0;
+        setf(_rx_eyescan_vs, 1, 1, 10); // ut sign
+        run(ec1,sc1);
+        setf(_es_control, 0, 1, 10); // -> wait
+
+        double sc = sqrt(double(sc0)*double(sc1));
+        double ec = (double(ec0)*double(sc1)+double(ec1)*double(sc0))/sc;
+
+        error_count  = ec;
+        sample_count = sc;
 
         fprintf(f, "%d %d %u %llu\n",
                 j, i, 
