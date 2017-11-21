@@ -33,7 +33,7 @@ namespace Pds {
       uint32_t _reserved_rf[0x4f-0x4e];
       Reg      _es_horz_offset; // [15:4]
       uint32_t _reserved_97[0x97-0x50];
-      Reg      _rx_eyescan_vs; // [10] neg_dir, [9] ut_sign, [8:2] code (vert_offset), [1:0] range
+      Reg      _rx_eyescan_vs; // [10] ut_sign, [9] neg_dir, [8:2] code (vert_offset), [1:0] range
       uint32_t _reserved_151[0x151-0x98];
       Reg      _es_error_count;         
       Reg      _es_sample_count;         
