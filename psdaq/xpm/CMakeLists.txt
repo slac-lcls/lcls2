@@ -14,18 +14,24 @@ target_include_directories(xpm PUBLIC
     /reg/common/package/epicsca/3.14.12/include/os/Linux
 )
 
+find_library(YAML_CPP_LIBRARY yaml-cpp HINTS $ENV{CONDA_PREFIX}/lib)
+find_library(CPSW_LIBRARY cpsw HINTS $ENV{CONDA_PREFIX}/lib)
+
 #
 #  xpm_simple
 #
 add_executable(xpm_simple xpm_simple.cc)
 
 target_link_libraries(xpm_simple
-   dl
-   pthread
    service
    cphw
-   /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
-   /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
+   ${CPSW_LIBRARY}
+   ${YAML_CPP_LIBRARY}
+   dl
+   pthread
+   rt
+   #/reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
+   #/reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
 
 #
@@ -34,15 +40,18 @@ target_link_libraries(xpm_simple
 add_executable(xpmPVs xpmPVs.cc)
 
 target_link_libraries(xpmPVs
-   dl
-   pthread
    service
    cphw
    epicstools
    xpm
    /reg/common/package/epicsca/3.14.12/lib/x86_64-rhel7-opt/libca.so
-   /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
-   /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
+   ${CPSW_LIBRARY}
+   ${YAML_CPP_LIBRARY}
+   dl
+   pthread
+   rt
+   #/reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
+   #/reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
 
 #
@@ -51,13 +60,13 @@ target_link_libraries(xpmPVs
 add_executable(xpmPeek xpmPeek.cc)
 
 target_link_libraries(xpmPeek
-   dl
-   pthread
    service
    cphwr
-   epicstools
    xpm
    /reg/common/package/epicsca/3.14.12/lib/x86_64-rhel7-opt/libca.so
+   epicstools
+   dl
+   pthread
 )
 
 #
@@ -66,13 +75,16 @@ target_link_libraries(xpmPeek
 add_executable(xpmHsrCfg xpmHsrCfg.cc)
 
 target_link_libraries(xpmHsrCfg
-   dl
-   pthread
    service
    cphw
-   epicstools
    xpm
    /reg/common/package/epicsca/3.14.12/lib/x86_64-rhel7-opt/libca.so
-   /reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
-   /reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
+   epicstools
+   ${CPSW_LIBRARY}
+   ${YAML_CPP_LIBRARY}
+   dl
+   pthread
+   rt
+   #/reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
+   #/reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )

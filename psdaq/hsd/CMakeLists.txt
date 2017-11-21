@@ -48,6 +48,7 @@ target_include_directories(hsdRead PUBLIC
 
 target_link_libraries(hsdRead
    pthread
+   rt
 )
 
 #
@@ -63,6 +64,7 @@ target_link_libraries(hsd_init
     pthread
     hsd
     mmhw
+    rt
 )
 
 #
@@ -78,6 +80,7 @@ target_link_libraries(hsd_pgp
     pthread
     hsd
     mmhw
+    rt
 )
 
 #
@@ -94,6 +97,7 @@ target_link_libraries(hsd_test
     pthread
     hsd
     mmhw 
+    rt
 )
 
 #
