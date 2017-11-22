@@ -24,7 +24,8 @@
 #include "psdaq/cphw/XBar.hh"
 #include "psdaq/cphw/HsRepeater.hh"
 
-//#define NO_DSPGP
+#define NO_USPGP
+#define NO_DSPGP
 
 using Pds::Cphw::Reg;
 using Pds::Cphw::Reg64;
@@ -46,6 +47,58 @@ void usage(const char* p) {
   printf("         -k                             : Keep running on exit\n");
   printf("         -L <fname>                     : Load configuration from file\n");
 }
+
+class LinkStats {
+public:
+  LinkStats() :
+ usRxErrs(0),
+ usRxFull(0),
+ usRxInh(0),
+ usWrFifoD(0),
+ usRdFifoD(0),
+ usIbEvt(0),
+ dsRxErrs(0),
+ dsRxFull(0),
+ dsObSent(0),
+ usRxFrames(0),
+ dsRxFrames(0),
+ usRxFrErrs(0),
+ dsRxFrErrs(0),
+ usTxFrames(0),
+ dsTxFrames(0),
+ usTxFrErrs(0),
+ dsTxFrErrs(0),
+ usRxOpCodes(0),
+ dsRxOpCodes(0),
+ usTxOpCodes(0),
+ dsTxOpCodes(0),
+ bpLinkSent(0) {}
+public:
+  unsigned usRxErrs;
+  unsigned usRxFull;
+  unsigned usRxInh;
+  unsigned usWrFifoD;
+  unsigned usRdFifoD;
+  unsigned usIbEvt;
+  unsigned dsRxErrs;
+  unsigned dsRxFull;
+  unsigned dsObSent;
+  unsigned usRxFrames;
+  unsigned dsRxFrames;
+  unsigned usRxFrErrs;
+  unsigned dsRxFrErrs;
+  unsigned usTxFrames;
+  unsigned dsTxFrames;
+  unsigned usTxFrErrs;
+  unsigned dsTxFrErrs;
+  unsigned usRxOpCodes;
+  unsigned dsRxOpCodes;
+  unsigned usTxOpCodes;
+  unsigned dsTxOpCodes;
+  unsigned bpLinkSent;
+public:
+  unsigned stat(unsigned j) const { return (&usRxErrs)[j]; }
+};
 
 class Dti {
 private:  // only what's necessary here
@@ -148,7 +201,9 @@ public:
   void start(unsigned umask, unsigned* fmask, bool hdrOnly=false)
   {
     _linkIdx = 1<<30;
+#ifndef NO_USPGP
     _pgp[0]._countReset = 1;
+#endif
 #ifndef NO_DSPGP
     _pgp[1]._countReset = 1;
 #endif
@@ -163,7 +218,9 @@ public:
         _usLink[i].enable(0);
     }
 
+#ifndef NO_USPGP
     _pgp[0]._countReset = 0;
+#endif
 #ifndef NO_DSPGP
     _pgp[1]._countReset = 0;
 #endif
@@ -176,66 +233,72 @@ public:
         _usLink[i].enable(0);
     }
   }
-  void stats(uint32_t* v,
-             uint32_t* dv,
+  void stats(LinkStats& v,
+             LinkStats& dv,
              unsigned  us,
              unsigned  ds) {
     _linkIdx = (1<<31) + (us<<0) + (ds<<16);
-#define UFILL(s) {     \
-      uint32_t q = _usLinkStatus.s; \
-      *dv++ = q - *v; \
-      *v++  = q; }
-    UFILL(_rxErrs);
-    UFILL(_rxFull);
+#define UFILL(s,t,op) {                         \
+      uint32_t q = _usLinkStatus.s op;          \
+      dv.t = q - v.t;                           \
+      v. t = q; }
+    UFILL(_rxErrs, usRxErrs, &0xffff);
+    UFILL(_rxFull, usRxFull, );
     { uint32_t q = _usLinkStatus._rxInh;
-      *dv++ = (q - *v)&0xffffff;
-      *v++  = q&0xffffff;
-      *dv++ = ((q>>24)-*v)&0xf;
-      *v++  = (q>>24)&0xf;
-      *dv++ = ((q>>28)-*v)&0xf;
-      *v++  = (q>>28)&0xf; }
+      dv.usRxInh = (q - v.usRxInh)&0xffffff;
+      v .usRxInh =  q&0xffffff;
+      dv.usWrFifoD = ((q>>24)-v.usWrFifoD)&0xf;
+      v .usWrFifoD = (q>>24)&0xf;
+      dv.usRdFifoD = ((q>>28)-v.usRdFifoD)&0xf;
+      v .usRdFifoD = (q>>28)&0xf; }
     //    UFILL(_rxInh&0xffffff);
     //    UFILL(_rxInh&0xf000000>>24);
     //    UFILL(_rxInh&0xf0000000>>28);
-    UFILL(_ibEvt);
-#define DFILL(s) {     \
-      uint32_t q = _dsLinkStatus.s; \
-      *dv++ = q - *v; \
-      *v++  = q; }
-    DFILL(_rxErrs);
-    DFILL(_rxFull);
-    DFILL(_obSent);
-    if (us) return;
+    UFILL(_ibEvt, usIbEvt, );
+#define DFILL(s, t, op) {                       \
+      uint32_t q = _dsLinkStatus.s op;          \
+      dv.t = q - v.t;                           \
+      v .t = q; }
+    DFILL(_rxErrs, dsRxErrs, &0xffff);
+    DFILL(_rxFull, dsRxFull, );
+    DFILL(_obSent, dsObSent, );
+    if (us==0) {
 #ifndef NO_DSPGP
-#define PFILL(s) {          \
+#define PFILL(s, t, u) {      \
       uint32_t q = _pgp[0].s; \
-      *dv++ = q - *v;         \
-      *v++  = q;              \
+      dv.t = q - v.t;         \
+      v .t = q;              \
       q = _pgp[1].s;          \
-      *dv++ = q - *v;         \
-      *v++  = q; }
+      dv.u = q - v.u;         \
+      v .u = q; }
 #else
-#define PFILL(s) {          \
+#ifndef NO_USPGP
+#define PFILL(s, t, u) {        \
       uint32_t q = _pgp[0].s; \
-      *dv++ = q - *v;         \
-      *v++  = q;              \
-      *dv++ = 0; v++; }
+      dv.t = q - v.t;         \
+      v. t = q;              \
+      dv.u = 0; }
+#else
+#define PFILL(s, t, u) {        \
+      dv.t = 0; \
+      dv.u = 0; }
 #endif
-    PFILL(_rxFrames);
-    PFILL(_rxFrameErrs);
-    PFILL(_txFrames);
-    PFILL(_txFrameErrs);
-    PFILL(_rxOpcodes);
-    PFILL(_txOpcodes);
-#define FILL(s) {               \
+#endif
+      PFILL(_rxFrames   , usRxFrames, dsRxFrames);
+      PFILL(_rxFrameErrs, usRxFrErrs, dsRxFrErrs);
+      PFILL(_txFrames   , usTxFrames, dsTxFrames);
+      PFILL(_txFrameErrs, usTxFrErrs, dsTxFrErrs);
+      PFILL(_rxOpcodes  , usRxOpCodes, dsRxOpCodes);
+      PFILL(_txOpcodes  , usTxOpCodes, dsTxOpCodes);
+    }
+#define FILL(s, t) {            \
       uint32_t q = s;           \
-      *dv++ = q - *v;           \
-      *v++  = q; }
-    FILL(_bpLinkSent);
-
-    printf("link partition: %u\n", _partn);
-    printf("linkUp   : %08x\n",unsigned(_linkUp));
+      dv.t = q - v.t;           \
+      v .t = q; }
+    FILL(_bpLinkSent, bpLinkSent);
   }
+
+  unsigned linkUp() const { return unsigned(_linkUp); }
 };
 
 void sigHandler( int signal ) {
@@ -282,10 +345,16 @@ int main(int argc, char** argv) {
   }
 
   ::signal( SIGINT , sigHandler );
+  ::signal( SIGABRT, sigHandler );
   ::signal( SIGKILL, sigHandler );
 
   //  Setup DTI
   Pds::Cphw::Reg::set(ip, 8192, 0);
+
+  //  Program the crossbar to pull timing off the backplane
+  Pds::Cphw::AmcTiming* tim = new (0)Pds::Cphw::AmcTiming;
+  tim->xbar.setOut( Pds::Cphw::XBar::FPGA, Pds::Cphw::XBar::BP );
+
   Dti* dti = new (0)Dti(lRTM);
 
   if (ifile) {
@@ -298,8 +367,8 @@ int main(int argc, char** argv) {
   dti->dumpb();
   dti->start(upstream, fwdmask,lHdrOnly);
 
-  uint32_t stats[7][22], dstats[7][22];
-  memset(stats, 0, sizeof(stats));
+  LinkStats stats[7], dstats[7];
+
   static const char* title[] = 
     { "usRxErrs   ",
       "usRxFull   ",
@@ -324,8 +393,6 @@ int main(int argc, char** argv) {
       "dsTxOpcodes",
       "bpLinkSent " };
 
-  memset(dstats,0,sizeof(dstats));
-
   unsigned fwdlink[7];
   for(unsigned i=0; i<7; i++)
     if (upstream & (1<<i)) 
@@ -346,6 +413,8 @@ int main(int argc, char** argv) {
 
   while(1) {
     sleep(1);
+    printf("link partition: %u\n", _partn);
+    printf("linkUp   : %08x\n",dti->linkUp());
     for(unsigned i=0; i<7; i++) {
       if (upstream & (1<<i)) {
         dti->stats(stats[i],dstats[i],i,fwdlink[i]);
@@ -355,11 +424,11 @@ int main(int argc, char** argv) {
       printf("%s: ", title[j]);
       for(unsigned i=0; i<7; i++) {
         if (upstream & (1<<i))
-          printf(" %010u", stats[i][j]);
+          printf(" %010u", stats[i].stat(j));
       }
       for(unsigned i=0; i<7; i++) {
         if (upstream & (1<<i))
-          printf(" [%010u]", dstats[i][j]);
+          printf(" [%010u]", dstats[i].stat(j));
       }
       printf("\n");
     }

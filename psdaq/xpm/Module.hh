@@ -3,6 +3,7 @@
 
 #include "psdaq/cphw/Reg.hh"
 #include "psdaq/cphw/Reg64.hh"
+#include "psdaq/cphw/AmcPLL.hh"
 #include "psdaq/cphw/AmcTiming.hh"
 #include "psdaq/cphw/HsRepeater.hh"
 #include "psdaq/cphw/RingBuffer.hh"
@@ -101,23 +102,23 @@ namespace Pds {
     public:
       void dumpPll     (unsigned) const;
       void dumpTiming  (unsigned) const;
-      void pllBwSel    (unsigned, unsigned);
-      void pllFrqTbl   (unsigned, unsigned);
-      void pllFrqSel   (unsigned, unsigned);
-      void pllRateSel  (unsigned, unsigned);
+      void pllBwSel    (unsigned, int);
+      void pllFrqTbl   (unsigned, int);
+      void pllFrqSel   (unsigned, int);
+      void pllRateSel  (unsigned, int);
       void pllPhsInc   (unsigned);
       void pllPhsDec   (unsigned);
       void pllBypass   (unsigned, bool);
       void pllReset    (unsigned);
-      unsigned pllBwSel  (unsigned) const;
-      unsigned pllFrqTbl (unsigned) const;
-      unsigned pllFrqSel (unsigned) const;
-      unsigned pllRateSel(unsigned) const;
-      bool     pllBypass (unsigned) const;
-      unsigned pllStatus0(unsigned) const;
-      unsigned pllCount0 (unsigned) const;
-      unsigned pllStatus1(unsigned) const;
-      unsigned pllCount1 (unsigned) const;
+      int  pllBwSel  (unsigned) const;
+      int  pllFrqTbl (unsigned) const;
+      int  pllFrqSel (unsigned) const;
+      int  pllRateSel(unsigned) const;
+      bool pllBypass (unsigned) const;
+      int  pllStatus0(unsigned) const;
+      int  pllCount0 (unsigned) const;
+      int  pllStatus1(unsigned) const;
+      int  pllCount1 (unsigned) const;
       void pllSkew       (unsigned, int);
     public:
       // Indexing
@@ -204,20 +205,8 @@ namespace Pds {
       Cphw::Reg  _dsLinkStatus;
       //  [31:0]  rxRcvCnts
       Cphw::Reg  _dsLinkRcvs;
-      //  0x0010 - RW: PLL configuration for AMC[index]
-      //  [3:0]   bwSel         Loop filter bandwidth selection
-      //  [5:4]   frqTbl        Frequency table - character {L,H,M} = 00,01,1x
-      //  [15:8]  frqSel        Frequency selection - 4 characters
-      //  [19:16] rate          Rate - 2 characters
-      //  [20]    inc           Increment phase
-      //  [21]    dec           Decrement phase
-      //  [22]    bypass        Bypass PLL
-      //  [23]    rstn          Reset PLL (inverted)
-      //  [26:24] pllCount[0]   PLL count[0] for AMC[index] (RO)
-      //  [27]    pllStat[0]    PLL stat[0]  for AMC[index] (RO)
-      //  [30:28] pllCount[1]   PLL count[1] for AMC[index] (RO)
-      //  [31]    pllStat[1]    PLL stat[1]  for AMC[index] (RO)
-      Cphw::Reg   _pllConfig;
+
+      Cphw::AmcPLL _amcPll;
       //  0x0014 - RW: L0 selection control for partition[index]
       //  [0]     reset
       //  [16]    enable

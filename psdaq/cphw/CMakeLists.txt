@@ -1,6 +1,7 @@
 
 add_library(cphw SHARED
     Reg_rssi.cc
+    AmcPLL.cc
     AmcTiming.cc
     AxiVersion.cc
     GthEyeScan.cc
@@ -11,6 +12,7 @@ add_library(cphw SHARED
 
 add_library(cphwr SHARED
     Reg.cc
+    AmcPLL.cc
     AmcTiming.cc
     AxiVersion.cc
     GthEyeScan.cc

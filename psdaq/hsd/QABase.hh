@@ -38,6 +38,7 @@ namespace Pds {
       // [ 3:3]  adc sync reset
       // [ 4:4]  dma reset
       // [ 5:5]  fb phy reset
+      // [ 6:6]  fb pll reset
       // [ 8:15] trigger bit mask shift
       // [31:31] acqEnable
       uint32_t acqSelect;
