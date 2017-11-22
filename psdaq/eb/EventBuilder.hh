@@ -32,8 +32,8 @@ namespace Pds {
                    uint64_t mask);
       virtual ~EventBuilder();
     public:
-      virtual void       fixup(EbEvent*, unsigned srcId) = 0;
-      virtual void       process(EbEvent*)               = 0;
+      virtual void       fixup(EbEvent*, unsigned srcId)       = 0;
+      virtual void       process(EbEvent*)                     = 0;
       virtual uint64_t   contract(const XtcData::Dgram*) const = 0;
     protected:                          // Timer interface
       virtual void       expired();
@@ -43,7 +43,7 @@ namespace Pds {
     public:
       void               process(const XtcData::Dgram*, uint64_t appParam);
     public:
-      void               dump();
+      void               dump(unsigned detail);
     private:
       EbEpoch*          _match(uint64_t key);
       EbEpoch*          _epoch(uint64_t key, EbEpoch* after);

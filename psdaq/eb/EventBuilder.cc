@@ -69,7 +69,7 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
            key);
     printf(" epochFreelist:\n");
     _epochFreelist.dump();
-    dump();
+    dump(1);
     abort();
   }
   EbEpoch* epoch = ::new(buffer) EbEpoch(key, after);
@@ -286,16 +286,28 @@ void EventBuilder::process(const Dgram* contrib,
 ** --
 */
 
-void EventBuilder::dump()
+void EventBuilder::dump(unsigned detail)
 {
-  EbEpoch* last  = _pending.empty();
-  EbEpoch* epoch = _pending.forward();
-
-  if (epoch != last)
+  if (detail)
   {
-    int number = 1;
-    do epoch->dump(number++); while (epoch = epoch->forward(), epoch != last);
+    EbEpoch* last  = _pending.empty();
+    EbEpoch* epoch = _pending.forward();
+
+    if (epoch != last)
+    {
+      int number = 1;
+      do epoch->dump(number++); while (epoch = epoch->forward(), epoch != last);
+    }
+    else
+      printf(" Event Builder has no pending events...\n");
   }
-  else
-    printf(" Event Builder has no pending events...\n");
+
+  printf("\nEvent Builder epoch pool:\n");
+  _epochFreelist.dump();
+
+  printf("\nEvent Builder event pool:\n");
+  _eventFreelist.dump();
+
+  printf("\nEvent Builder contribution pool:\n");
+  _cntrbFreelist.dump();
 }

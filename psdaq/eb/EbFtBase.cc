@@ -109,6 +109,7 @@ int EbFtBase::_syncRmtMr(char*          region,
 uint64_t EbFtBase::_tryCq()
 {
   static unsigned _iSrc = 0;
+  uint64_t data = 0;
 
   // Cycle through all sources to find which one has data
   for (unsigned i = 0; i < _ep.size(); ++i)
@@ -116,21 +117,20 @@ uint64_t EbFtBase::_tryCq()
     unsigned iSrc = _iSrc++;
     if (_iSrc == _ep.size())  _iSrc = 0;
 
-    if (!_ep[iSrc])  continue;
+    Endpoint* ep = _ep[iSrc];
+    if (!ep)  continue;
 
     int              cqNum;
     fi_cq_data_entry cqEntry;
 
-    if (_ep[iSrc]->comp(&cqEntry, &cqNum, 1))
+    if (ep->comp(&cqEntry, &cqNum, 1))
     {
       if (cqNum && (cqEntry.flags & (FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA)))
       {
-        // Revisit: Immediate data identifies which batch was written
-        //          Better to use its address or parameters?
-        //unsigned slot = (cqEntry.data >> 16) & 0xffff;
-        //unsigned idx  =  cqEntry.data        & 0xffff;
-        //batch = (Dgram*)&_pool[(slot * _maxBatches + idx) * _maxBatchSize];
-        return _ra[iSrc].addr + cqEntry.data; // imm_data is only 32 bits for verbs!
+        ep->recv_comp_data();
+
+        data = _ra[iSrc].addr + cqEntry.data; // imm_data is only 32 bits for verbs!
+        break;
       }
 
       fprintf(stderr, "Unexpected completion result with peer %u: count %d, flags %016lx\n",
@@ -138,16 +138,16 @@ uint64_t EbFtBase::_tryCq()
     }
     else
     {
-      if (_ep[iSrc]->error_num() != -FI_EAGAIN)
+      if (ep->error_num() != -FI_EAGAIN)
       {
         fprintf(stderr, "Error completing operation with peer %u: %s\n",
                 _id[iSrc], _ep[iSrc]->error());
       }
     }
-    _ep[iSrc]->recv_comp_data();
+    ep->recv_comp_data();
   }
 
-  return 0;
+  return data;
 }
 
 uint64_t EbFtBase::pend()
