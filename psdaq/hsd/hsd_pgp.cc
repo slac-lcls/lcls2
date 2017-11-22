@@ -191,6 +191,7 @@ void usage(const char* p) {
   printf("Options: -d <dev id>\n");
   printf("         -c <channelmask>\n");
   printf("         -s <streammask>\n");
+  printf("         -F <min,max,pre,post> (FEX configuration parameters) [default 0x100,0x300,2,3]\n");
   printf("         -r <rate>\n");
   printf("         -l <length>\n");
   printf("         -p <partition>\n");
@@ -215,8 +216,12 @@ int main(int argc, char** argv) {
   int  length  = 32;
   unsigned channelMask = 0xf;
   unsigned streamMask  = 0x3;
+  unsigned fexMin  = 0x100;
+  unsigned fexMax  = 0x300;
+  unsigned fexPre  = 2;
+  unsigned fexPost = 3;
 
-  while ( (c=getopt( argc, argv, "c:s:d:r:l:p:t:LRh")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:s:d:r:l:p:t:F:LRh")) != EOF ) {
     switch(c) {
     case 'c':
       channelMask = strtoul(optarg,&endptr,0);
@@ -238,6 +243,17 @@ int main(int argc, char** argv) {
       break;
     case 't':
       pattern = strtoul(optarg,&endptr,0);
+      break;
+    case 'F':
+      fexMin = strtoul(optarg,&endptr,0);
+      if (*endptr) {
+        fexMax = strtoul(endptr+1,&endptr,0);
+        if (*endptr) {
+          fexPre = strtoul(endptr+1,&endptr,0);
+          if (*endptr)
+            fexPost = strtoul(endptr+1,&endptr,0);
+        }
+      }
       break;
     case 'L':
       lLoopback = true;
@@ -313,10 +329,10 @@ int main(int argc, char** argv) {
       fex[i]._base[1].setGate(4,length);
       fex[i]._base[1].setFull(0xc00,4);
       fex[i]._base[1]._prescale=0;
-      fex[i]._stream[1].parms[0].v = 0x100;
-      fex[i]._stream[1].parms[1].v = 0x300;
-      fex[i]._stream[1].parms[2].v = 2;
-      fex[i]._stream[1].parms[3].v = 3;
+      fex[i]._stream[1].parms[0].v = fexMin;
+      fex[i]._stream[1].parms[1].v = fexMax;
+      fex[i]._stream[1].parms[2].v = fexPre;
+      fex[i]._stream[1].parms[3].v = fexPost;
       fex[i]._streams = streamMask;
     }
     else

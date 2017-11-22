@@ -1,4 +1,5 @@
 #include "Module.hh"
+#include "psdaq/cphw/Utils.hh"
 
 #include <string.h>
 #include <unistd.h>
@@ -10,37 +11,6 @@ using Pds::Cphw::Reg;
 
 enum { MSG_CLEAR_FIFO =0, 
        MSG_DELAY_PWORD=1 };
-
-static inline unsigned getf(unsigned i, unsigned n, unsigned sh)
-{
-  unsigned v = i;
-  return (v>>sh)&((1<<n)-1);
-}
-
-static inline unsigned getf(const Pds::Cphw::Reg& i, unsigned n, unsigned sh)
-{
-  unsigned v = i;
-  return (v>>sh)&((1<<n)-1);
-}
-
-static inline unsigned setf(Pds::Cphw::Reg& o, unsigned v, unsigned n, unsigned sh)
-{
-  unsigned r = unsigned(o);
-  unsigned q = r;
-  q &= ~(((1<<n)-1)<<sh);
-  q |= (v&((1<<n)-1))<<sh;
-  o = q;
-
-  /*
-  if (q != unsigned(o)) {
-    printf("setf[%p] failed: %08x != %08x\n", &o, unsigned(o), q);
-  }
-  else if (q != r) {
-    printf("setf[%p] passed: %08x [%08x]\n", &o, q, r);
-  }
-  */
-  return q;
-}
 
 L0Stats::L0Stats() {
   l0Enabled=0; 
@@ -451,159 +421,63 @@ void Module::setRingBChan(unsigned chan)
   setf(_index,chan,4,10);
 }
 
-void Module::pllBwSel(unsigned idx, unsigned sel)
-{
-  setAmc(idx);
-  setf(_pllConfig,sel,4,0);
-}
-unsigned Module::pllBwSel(unsigned idx) const
-{
-  setAmc(idx);
-  return getf(_pllConfig,4,0);
-}
+#define PLL_MOD(func)                                  \
+  void Module::pll##func(unsigned idx, int val) {      \
+    setAmc(idx);                                       \
+    _amcPll.func(val); }
 
-void Module::pllFrqTbl(unsigned idx, unsigned sel)
-{
-  setAmc(idx);
-  setf(_pllConfig,sel,2,4);
-}
-unsigned Module::pllFrqTbl(unsigned idx) const
-{
-  setAmc(idx);
-  return getf(_pllConfig,2,4);
-}
+#define PLL_ACC(func)                                   \
+  int  Module::pll##func(unsigned idx) const {          \
+    setAmc(idx);                                        \
+    return _amcPll.func(); }
 
-void Module::pllFrqSel(unsigned idx, unsigned sel)
-{
-  setAmc(idx);
-  setf(_pllConfig,sel,8,8);
-}
-unsigned Module::pllFrqSel(unsigned idx) const
-{
-  setAmc(idx);
-  return getf(_pllConfig,8,8);
-}
+PLL_MOD(BwSel)
+PLL_ACC(BwSel)
+PLL_MOD(FrqTbl)
+PLL_ACC(FrqTbl)
+PLL_MOD(FrqSel)
+PLL_ACC(FrqSel)
+PLL_MOD(RateSel)
+PLL_ACC(RateSel)
+PLL_MOD(Skew)
 
-void Module::pllRateSel(unsigned idx, unsigned sel)
-{
-  setAmc(idx);
-  setf(_pllConfig,sel,4,16);
-}
-unsigned Module::pllRateSel(unsigned idx) const
-{
-  setAmc(idx);
-  return getf(_pllConfig,4,16);
-}
+#undef PLL_MOD
+#define PLL_MOD(func)                           \
+  void Module::pll##func(unsigned idx) {        \
+    setAmc(idx);                                \
+    _amcPll.func(); }
 
-void Module::pllPhsInc(unsigned idx)
-{
-  unsigned v = _pllConfig;
-  setAmc(idx);
-  _pllConfig = v|(1<<20);
-  usleep(10);
-  _pllConfig = v;
-  usleep(10);
-}
+PLL_MOD(PhsInc)
+PLL_MOD(PhsDec)
+PLL_MOD(Reset)
 
-void Module::pllPhsDec(unsigned idx)
-{
-  unsigned v = _pllConfig;
-  setAmc(idx);
-  _pllConfig = v|(1<<21);
-  usleep(10);
-  _pllConfig = v;
-  usleep(10);
-}
+#undef PLL_ACC
+#define PLL_ACC(func)                                   \
+  int  Module::pll##func(unsigned idx) const {          \
+    setAmc(idx);                                        \
+    return _amcPll.func(); }
+
+PLL_ACC(Status0)
+PLL_ACC(Count0)
+PLL_ACC(Status1)
+PLL_ACC(Count1)
 
 void Module::pllBypass(unsigned idx, bool v)
 {
   setAmc(idx);
-  setf(_pllConfig,v?1:0,1,22);
+  _amcPll.Bypass(v);
 }
 bool Module::pllBypass(unsigned idx) const
 {
   setAmc(idx);
-  return getf(_pllConfig,1,22);
-}
-
-void Module::pllReset(unsigned idx)
-{
-  setAmc(idx);
-  setf(_pllConfig,0,1,23);
-  usleep(10);
-  setf(_pllConfig,1,1,23);
-}
-
-unsigned Module::pllStatus0(unsigned idx) const
-{
-  setAmc(idx);
-  return getf(_pllConfig,1,27);
-}
-
-unsigned Module::pllCount0(unsigned idx) const
-{
-  setAmc(idx);
-  return getf(_pllConfig,3,24);
-}
-
-unsigned Module::pllStatus1(unsigned idx) const
-{
-  setAmc(idx);
-  return getf(_pllConfig,1,31);
-}
-
-unsigned Module::pllCount1(unsigned idx) const
-{
-  setAmc(idx);
-  return getf(_pllConfig,3,28);
-}
-
-void Module::pllSkew(unsigned idx, int skewSteps)
-{
-  unsigned v = _pllConfig;
-  setAmc(idx);
-  while(skewSteps > 0) {
-    _pllConfig = v|(1<<20);
-    usleep(10);
-    _pllConfig = v;
-    usleep(10);
-    skewSteps--;
-  }
-  while(skewSteps < 0) {
-    _pllConfig = v|(1<<21);
-    usleep(10);
-    _pllConfig = v;
-    usleep(10);
-    skewSteps++;
-  }
+  return _amcPll.Bypass();
 }
 
 void Module::dumpPll(unsigned idx) const
 {
   setAmc(idx);
-  printf("AMC[%d] pllConfig 0x%08x\n", idx, unsigned(_pllConfig));
-
-  unsigned bwSel = getf(_pllConfig,4,0);
-  unsigned frTbl = getf(_pllConfig,2,4);
-  unsigned frSel = getf(_pllConfig,8,8);
-  unsigned rate  = getf(_pllConfig,4,16);
-  unsigned cnt0  = getf(_pllConfig,3,24);
-  unsigned stat0 = getf(_pllConfig,1,27);
-  unsigned cnt1  = getf(_pllConfig,3,28);
-  unsigned stat1 = getf(_pllConfig,1,31);
-
-  static const char lmh[] = {'L', 'H', 'M', 'm'};
-  printf("  ");
-  printf("FrqTbl %c  ", lmh[frTbl]);
-  printf("FrqSel %c%c%c%c  ", lmh[getf(frSel,2,6)], lmh[getf(frSel,2,4)],
-                             lmh[getf(frSel,2,2)], lmh[getf(frSel,2,0)]);
-  printf("BwSel %c%c  ", lmh[getf(bwSel,2,2)], lmh[getf(bwSel,2,0)]);
-  printf("Rate %c%c  ", lmh[getf(rate,2,2)], lmh[getf(rate,2,0)]);
-  printf("Cnt0 %u  ", cnt0);
-  printf("LOS %c  ", stat0 ? 'Y' : 'N');
-  printf("Cnt1 %u  ", cnt1);
-  printf("LOL %c  ", stat1 ? 'Y' : 'N');
-  printf("\n");
+  printf("AMC[%d] pllConfig 0x%08x\n", idx, unsigned(_amcPll._config));
+  _amcPll.dump();
 }
 
 void Module::dumpTiming(unsigned b) const

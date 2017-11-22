@@ -3,6 +3,8 @@
 
 #include "psdaq/cphw/Reg.hh"
 
+#include <stdio.h>
+
 namespace Pds {
   namespace Cphw {
     class GthEyeScan {
@@ -12,11 +14,15 @@ namespace Pds {
       void scan(const char* ofile,
                 unsigned    prescale=0,
                 unsigned    xscale=0,
-                bool        lsparse=false);
+                bool        lsparse=false,
+                bool        lhscan=false);
       void run(unsigned& error_count,
                uint64_t& sample_count);
       static void progress(unsigned& row,
                            unsigned& col);
+    private:
+      void _vscan(FILE*, unsigned, bool);
+      void _hscan(FILE*, unsigned, bool);
     public:
       uint32_t _reserved_3c[0x3c];
       Reg      _es_control;  // [15:10] control, [9] errdet_en, [8], eye_scan_en, [4:0] prescale
