@@ -106,6 +106,6 @@ uint64_t BatchManager::_startId(uint64_t id) const
 
 void BatchManager::dump() const
 {
-  printf("BatchManager pool:\n");
+  printf("\nBatchManager pool:\n");
   _pool.dump();
 }

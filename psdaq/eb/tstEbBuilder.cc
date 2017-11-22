@@ -27,9 +27,9 @@ using namespace Pds::Fabrics;
 static const unsigned default_id       = 0;          // Builder's ID
 static const unsigned srv_port_base    = 32768;      // Base port Builder for receiving results
 static const unsigned clt_port_base    = 32768 + 64; // Base port Builder sends to EB on
-static const uint64_t batch_duration   = 0x00000000000080UL; // ~128 uS; must be power of 2
-static const unsigned max_batches      = 16; //8192;     // 1 second's worth
-static const unsigned max_entries      = 128;     // 128 uS worth
+static const uint64_t batch_duration   = 1ul << 9;   //0x00000000000080UL; // ~128 uS; must be power of 2
+static const unsigned max_batches      = 2048; //16; //8192;     // 1 second's worth
+static const unsigned max_entries      = 512;  //128;     // 128 uS worth
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  data words
 //static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
@@ -53,6 +53,22 @@ static       unsigned lverbose         = 0;
 //         Pds::TypeId::name(dg->xtc.contains.id()),
 //         dg->xtc.damage.value());
 //}
+
+static void dumpStats(const char* header, timespec startTime, timespec endTime, uint64_t count)
+{
+  uint64_t ts = startTime.tv_sec;
+  ts = (ts * 1000000000ul) + startTime.tv_nsec;
+  uint64_t te = endTime.tv_sec;
+  te = (te * 1000000000ul) + endTime.tv_nsec;
+  int64_t  dt = te - ts;
+  double   ds = double(dt) * 1.e-9;
+  printf("\n%s:\n", header);
+  printf("Start time: %ld s, %ld ns\n", startTime.tv_sec, startTime.tv_nsec);
+  printf("End   time: %ld s, %ld ns\n", endTime.tv_sec,   endTime.tv_nsec);
+  printf("Time diff:  %ld = %.0f s\n", dt, ds);
+  printf("Count:      %ld\n", count);
+  printf("Avg rate:   %.0f Hz\n", double(count) / ds);
+}
 
 namespace Pds {
   namespace Eb {
@@ -148,12 +164,7 @@ namespace Pds {
                  uint64_t     contributors);
     virtual   ~TstEbInlet() { }
     public:
-      void     shutdown()
-      {
-        _running = false;
-
-        printf("%s: 1\n", __PRETTY_FUNCTION__);
-      }
+      void     shutdown() { _running = false; }
     public:
       void     process(TstEbOutlet& outlet);
     public:
@@ -188,7 +199,7 @@ TstEbInlet::TstEbInlet(std::string& srvPort,
   _src(TheSrc(Level::Event, id)),
   _tag(TypeId::Data, 0), //_l3SummaryType),
   _contract(contributors),
-  _results(sizeof(ResultDest), maxEntries),
+  _results(sizeof(ResultDest), maxBatches * maxEntries),
   //_dummy(Level::Fragment),
   _outlet(NULL),
   _running(true)
@@ -214,11 +225,15 @@ void TstEbInlet::process(TstEbOutlet& outlet)
 
   start();                              // Start the event timeout timer
 
+  uint64_t contribCount = 0;
+  timespec startTime;
+  clock_gettime(CLOCK_REALTIME, &startTime);
+
   while (_running)
   {
     // Pend for an input datagram (batch) and pass its datagrams to the event builder.
     const Dgram* batch = (const Dgram*)_inlet.pend();
-    if (!batch)  break;
+    if (!batch)  break;  //continue;              // Revisit: This causes a race when quitting
 
     unsigned idx = (batch->xtc.src.log() >> 8) & 0xffff;
 
@@ -243,12 +258,22 @@ void TstEbInlet::process(TstEbOutlet& outlet)
 
       EventBuilder::process(entry, idx);
 
+      ++contribCount;
+
       entry = (const Dgram*)entry->xtc.next();
     }
   }
 
+  timespec endTime;
+  clock_gettime(CLOCK_REALTIME, &endTime);
+
+  dumpStats("Inlet contribution rate", startTime, endTime, contribCount);
+
   printf("Exiting:\n");
-  EventBuilder::dump();
+  EventBuilder::dump(0);
+
+  printf("\nInlet results pool:\n");
+  _results.dump();
 
   _inlet.shutdown();
 }
@@ -384,8 +409,8 @@ Batch* TstEbOutlet::_pend()
 
 void TstEbOutlet::routine()
 {
-  static unsigned cnt = 0;
-  struct timespec startTime;
+  uint64_t batchCount = 0;
+  timespec startTime;
   clock_gettime(CLOCK_REALTIME, &startTime);
 
   while (_running)
@@ -400,6 +425,8 @@ void TstEbOutlet::routine()
 
     Batch* result = _pend();
 
+    ++batchCount;
+
     ResultDest*    rDest  = (ResultDest*)result->parameter();
     const unsigned nDsts  = rDest->nDsts();
     const Dgram*   rdg    = result->datagram();
@@ -412,6 +439,7 @@ void TstEbOutlet::routine()
 
       if (lverbose)
       {
+        static unsigned cnt = 0;
         void* rmtAdx = (void*)_outlet.rmtAdx(dst, idx * maxBatchSize());
         printf("EbOutlet posts       %6d result   [%2d] @ %16p, ts %014lx, sz %3zd to   Contrib %d = %16p\n",
                ++cnt, idx, rdg, rdg->seq.stamp().pulseId(), extent, dst, rmtAdx);
@@ -424,20 +452,10 @@ void TstEbOutlet::routine()
     delete result;
   }
 
-  //BatchManager::dump();
-
-  struct timespec endTime;
+  timespec endTime;
   clock_gettime(CLOCK_REALTIME, &endTime);
-  printf("TstEbOutlet handled %d results\n", cnt);
-  printf("  Start time was %ld seconds, %ld nSecs\n", startTime.tv_sec, startTime.tv_nsec);
-  printf("  End   time was %ld seconds, %ld nSecs\n", endTime.tv_sec, endTime.tv_nsec);
-  uint64_t ts = startTime.tv_sec;
-  ts = (ts << 32) + startTime.tv_nsec;
-  uint64_t te = endTime.tv_sec;
-  te = (te << 32) + endTime.tv_nsec;
-  uint64_t d = te - ts;
-  printf("  Difference:   %ld\n", d);
-  printf("  Average rate: %f\n", 1.e9 * double(cnt) / double(d));
+
+  dumpStats("Outlet", startTime, endTime, batchCount);
 
   _outlet.shutdown();
 }
@@ -452,6 +470,7 @@ void TstEbOutlet::post(Batch* result)
 }
 
 
+static TstEbInlet*  ebInlet   = NULL;
 static TstEbOutlet* ebOutlet  = NULL;
 
 void sigHandler( int signal )
@@ -460,7 +479,8 @@ void sigHandler( int signal )
 
   printf("sigHandler() called\n");
 
-  if (ebOutlet)  ebOutlet->shutdown();
+  if (ebInlet  && (callCount == 0))  ebInlet->shutdown();
+  if (ebOutlet && (callCount == 0))  ebOutlet->shutdown();
 
   if (callCount++)  ::abort();
 }
@@ -574,6 +594,7 @@ int main(int argc, char **argv)
 
   TstEbInlet  inlet (         srvPort, id, batch_duration, max_batches, max_entries, max_contrib_size, contributors);
   TstEbOutlet outlet(cltAddr, cltPort, id, batch_duration, max_batches, max_entries, max_result_size);
+  ebInlet  = &inlet;
   ebOutlet = &outlet;
 
   inlet.process(outlet);

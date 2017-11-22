@@ -22,15 +22,13 @@
 #include "EbContribution.hh"
 #include "EventBuilder.hh"
 
-#include "psdaq/service/SysClk.hh"
-
 #include <stdlib.h>
 
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-static const int MaxTimeouts = 100;      // Revisit: Was 0xffff
+static const int MaxTimeouts = 0x100;      // Revisit: Was 0xffff
 
 // Revisit: Fix stale comments:
 /*
