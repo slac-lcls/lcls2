@@ -1,7 +1,7 @@
 add_subdirectory(service)
 add_subdirectory(mmhw)
 add_subdirectory(cphw)
-#add_subdirectory(eb)
+add_subdirectory(eb)
 add_subdirectory(epicstools)
 add_subdirectory(dti)
 add_subdirectory(xpm)

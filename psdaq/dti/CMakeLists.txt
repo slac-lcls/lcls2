@@ -7,12 +7,13 @@ add_library(dti SHARED
 
 target_include_directories(dti PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    /reg/common/package/epicsca/3.14.12/include
-    /reg/common/package/epicsca/3.14.12/include/os/Linux
+    $ENV{CONDA_PREFIX}/epics/include
+    $ENV{CONDA_PREFIX}/epics/include/os/Linux
 )
 
-find_library(YAML_CPP_LIBRARY yaml-cpp HINTS $ENV{CONDA_PREFIX}/lib)
-find_library(CPSW_LIBRARY cpsw HINTS $ENV{CONDA_PREFIX}/lib)
+find_library(YAML_CPP_LIB yaml-cpp $ENV{CONDA_PREFIX}/lib)
+find_library(EPICS_CA_LIB ca $ENV{CONDA_PREFIX}/lib)
+find_library(CPSW_LIB cpsw $ENV{CONDA_PREFIX}/lib)
 
 #
 #  dti_simple
@@ -22,15 +23,10 @@ add_executable(dti_simple dti_simple.cc)
 target_link_libraries(dti_simple
    service
    cphw
-   #cpsw
-   ${CPSW_LIBRARY}
-   ${YAML_CPP_LIBRARY}
+   ${CPSW_LIB}
+   ${YAML_CPP_LIB}
    dl
    pthread
-   rt
-   #yaml-cpp
-   #/reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
-   #/reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
 
 #
@@ -42,17 +38,12 @@ target_link_libraries(dtiPVs
    service
    cphw
    dti
-   /reg/common/package/epicsca/3.14.12/lib/x86_64-rhel7-opt/libca.so
    epicstools
-   ${CPSW_LIBRARY}
-   ${YAML_CPP_LIBRARY}
-   #cpsw
-   #yaml-cpp
+   ${EPICS_CA_LIB}
+   ${CPSW_LIB}
+   ${YAML_CPP_LIB}
    dl
    pthread
-   rt
-   #/reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
-   #/reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
 
 #
@@ -63,15 +54,10 @@ add_executable(dti_eyescan dti_eyescan.cc)
 target_link_libraries(dti_eyescan
    service
    cphw
-   ${CPSW_LIBRARY}
-   ${YAML_CPP_LIBRARY}
-   #cpsw
-   #yaml-cpp
+   ${CPSW_LIB}
+   ${YAML_CPP_LIB}
    dl
    pthread
-   rt
-   #/reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
-   #/reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
 
 #
@@ -83,15 +69,10 @@ target_link_libraries(dtiHsrCfg
    service
    cphw
    dti
-   /reg/common/package/epicsca/3.14.12/lib/x86_64-rhel7-opt/libca.so
+   ${EPICS_CA_LIB}
    epicstools
-   ${CPSW_LIBRARY}
-   ${YAML_CPP_LIBRARY}
+   ${CPSW_LIB}
+   ${YAML_CPP_LIB}
    dl
    pthread
-   rt
-   #cpsw
-   #yaml-cpp
-   #/reg/common/package/cpsw/framework-R3-4/x86_64-rhel7-opt/lib/libcpsw.so
-   #/reg/common/package/yaml-cpp/yaml-cpp-0.5.3/x86_64-rhel7-gcc48-opt/lib/libyaml-cpp.so
 )
