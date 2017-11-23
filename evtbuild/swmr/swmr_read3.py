@@ -12,11 +12,11 @@ from load_config import load_config
 
 class master(object):
     
-    def __init__(self,comm,rank,size, filt):
+    def __init__(self,comm, filt):
         self.cfg = load_config('sconfig')
         self.comm = comm
-        self.rank = rank
-        self.size = size
+        self.rank = comm.Get_rank()
+        self.size = comm.Get_size()
         self.filt = filt
         self.master_msg = msg(self.rank)
         self.total_read = np.zeros(self.size-1)
@@ -90,7 +90,7 @@ class master(object):
         if self.sd_eof and not self.eof_lock:
             self.final_length = len(np.where(np.array(self.diode_dst) > 1-self.hit_probability)[0])
 
-            print('Final length is %i' % self.final_length)
+            #print('Final length is %i' % self.final_length)
             self.eof_lock = True
    
         return number_of_events, timestamps, self.final_length
@@ -167,7 +167,8 @@ class msg(object):
         self.total_events = 0
         self.num_read_events = 0
 
-def client(comm,rank,size):
+def client(comm):
+    rank = comm.Get_rank()
     cfg = load_config('sconfig')
 
     client_rank = rank-1
@@ -303,10 +304,12 @@ def client(comm,rank,size):
 
 
             
-def read_files(comm,rank,size,filt):
+def read_files(comm,filt):
 
     cfg = load_config('sconfig')
-
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    
     if rank == 0:
         #Wait until the hdf files appear, and thus have the lock released
         while True:
@@ -316,7 +319,7 @@ def read_files(comm,rank,size,filt):
             # Make sure that each file is at least 2000 bytes long
             file_thresh = all(x > 2000 for x in file_size) 
             if len(files) >= size and file_thresh:
-                print('file sizes are',file_size)
+                #print('file sizes are',file_size)
                 print('-'*40+'\n')
         
                 print('Done waiting for files to appear')
@@ -335,10 +338,10 @@ def read_files(comm,rank,size,filt):
 
     if rank == 0:
         global_start = time.time()
-        rm = master(comm,rank,size, filt)
+        rm = master(comm,filt)
         rm.master()
     else:
-        client(comm,rank,size)
+        client(comm)
     # Wait for all the clients to finish
     comm.Barrier()
 

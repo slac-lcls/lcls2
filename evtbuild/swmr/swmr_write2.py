@@ -1,3 +1,6 @@
+
+
+
 from mpi4py import MPI
 import h5py, subprocess, glob, os
 import numpy as np
@@ -23,7 +26,7 @@ def create_image(mb_per_img):
 
 
 #create the files striped as above and prepared for swmr
-def master(comm,rank,size):
+def master(comm):  
     cfg = load_config('sconfig')
     
     file_size = int(cfg['file_size'])
@@ -37,68 +40,100 @@ def master(comm,rank,size):
  
     av_files=[]
 
-    # Create the small data file
-    small_file_name = cfg['path']+'/swmr_small_data.h5'
-    small_file = h5py.File(small_file_name, 'w', libver='latest')
-   
-    small_data_group = small_file.create_group('small_data')
-    diode_vals = small_data_group.create_dataset('diode_values', shape= (1,), chunks=(1,), maxshape=(None,),dtype='f')
-    timestamps = small_data_group.create_dataset('timestamps', shape = (1,), chunks=(1,), maxshape=(None,), dtype='i')
-    small_file.swmr_mode = True
-    small_file.close()
+    # # Create the small data file
+    # small_file_name = cfg['path']+'/swmr_small_data.h5'
+
+    # while True:
+    #     try:
+    #         small_file = h5py.File(small_file_name, 'w', libver='latest')
+    #         break
+    #     except IOError:
+    #         print('Small data file locked')
+    #         time.sleep(0.05)
+    # small_data_group = small_file.create_group('small_data')
+    # diode_vals = small_data_group.create_dataset('diode_values', shape= (1,), chunks=(1,), maxshape=(None,),dtype='f')
+    # timestamps = small_data_group.create_dataset('timestamps', shape = (1,), chunks=(1,), maxshape=(None,), dtype='i')
+    # small_file.swmr_mode = True
+    # small_file.close()
 
     # Create the data files
 
     # Prepare all the files for writing and reading
-    file_name = cfg['path']+'/swmr_file%i.h5'
+   # file_name = cfg['path']+'/swmr_file%i.h5'
 
     
-    arr_size = mb_per_img*500000
-    for fc in range(size):
+ 
+    # for fc in range(size):
 
-        loop_fn = file_name % fc
-        print('Creating %s' % loop_fn)
-    #    str_comm = 'lfs setstripe -c %i -S 1M %s' % (nstripes, loop_fn)
-       # print(str_comm)
-     #   subprocess.call(str_comm, shell=True)
+    #     loop_fn = file_name % fc
+    #     #print('Creating %s' % loop_fn)
+    # #    str_comm = 'lfs setstripe -c %i -S 1M %s' % (nstripes, loop_fn)
+    #    # print(str_comm)
+    #  #   subprocess.call(str_comm, shell=True)
 
-        f = h5py.File(loop_fn, 'w', libver='latest')
-        dset = f.create_dataset("data", shape = (0,arr_size), chunks = (batch_size, arr_size), maxshape=(None,arr_size), dtype = 'uint16')
+    #     f = h5py.File(loop_fn, 'w', libver='latest')
+    #     dset = f.create_dataset("data", shape = (0,arr_size), chunks = (batch_size, arr_size), maxshape=(None,arr_size), dtype = 'uint16')
 
-        small_data_group = f.create_group("small_data")        
-        timestamps = small_data_group.create_dataset('timestamps', shape = (1,), chunks=(1,), maxshape=(None,), dtype='i')
+    #     small_data_group = f.create_group("small_data")        
+    #     timestamps = small_data_group.create_dataset('timestamps', shape = (1,), chunks=(1,), maxshape=(None,), dtype='i')
         
-        f.swmr_mode = True
-        f.close()
+    #     f.swmr_mode = True
+    #     f.close()
     
-def client(comm,rank,size):
-
+def client(comm):
+    rank = comm.Get_rank()
+    
     cfg = load_config('sconfig')
 
     file_size = int(cfg['file_size'])
     mb_per_img = cfg['image_size']
     batch_size = int(cfg['batch_size'])
-
+    arr_size = mb_per_img*500000
+    
     out_img = np.array([create_image(mb_per_img) for x in range(batch_size)])
     
     #Flag for determining if we've hit the file capacity limit
     eof = False
     written_mb = 0
-    
+
+
+    if rank == 0:
+                # Create the small data file
+        small_file_name = cfg['path']+'/swmr_small_data.h5'
+
+        small_file = h5py.File(small_file_name, 'w', libver='latest')
+        small_data_group = small_file.create_group('small_data')
+        diode_vals = small_data_group.create_dataset('diode_values', shape= (1,), chunks=(1,), maxshape=(None,),dtype='f')
+        timestamps = small_data_group.create_dataset('timestamps', shape = (1,), chunks=(1,), maxshape=(None,), dtype='i')
+        small_file.swmr_mode = True
+        small_file.flush()
+
     file_name = cfg['path']+'/swmr_file%i.h5'
     loop_fn = file_name % rank
-   # print('Client %i, %s' %(rank, loop_fn))
-    loop_file = h5py.File(loop_fn, 'a', libver='latest')
+    
+    loop_file  = h5py.File(loop_fn, 'w', libver = 'latest')
+    dset = loop_file.create_dataset("data", shape = (0,arr_size), chunks = (batch_size, arr_size), maxshape=(None,arr_size), dtype = 'uint16')
+
+    small_data_group = loop_file.create_group("small_data")        
+    timestamps = small_data_group.create_dataset('timestamps', shape = (1,), chunks=(1,), maxshape=(None,), dtype='i')
+        
     loop_file.swmr_mode = True
+    loop_file.flush()
+
+        
+    
+    #print('Client %i, %s' %(rank, loop_fn))
+#    loop_file = h5py.File(loop_fn, 'a', libver='latest')
+ #   loop_file.swmr_mode = True
 
     data_dset = loop_file['data']
     ts_dset = loop_file['small_data']['timestamps']
 
     if rank == 0:
-        small_data_file = h5py.File(cfg['path']+'/swmr_small_data.h5', 'a', libver='latest')
-        diode_dset = small_data_file['small_data']['diode_values']
-        small_ts_dset = small_data_file['small_data']['timestamps']
-        small_data_file.swmr_mode = True
+        #small_data_file = h5py.File(cfg['path']+'/swmr_small_data.h5', 'a', libver='latest')
+        diode_dset = small_file['small_data']['diode_values']
+        small_ts_dset = small_file['small_data']['timestamps']
+
         
     try:
         while True:
@@ -122,7 +157,7 @@ def client(comm,rank,size):
                 
                 small_ts_dset.resize((shape[0]+batch_size,)) 
                 small_ts_dset[-batch_size:] = np.arange(batch_size) + batch_size*(batch_num-1)
-                small_data_file.flush()
+                small_file.flush()
 
                 
             # Write the last image as all zeros as a flag to 
@@ -156,32 +191,33 @@ def client(comm,rank,size):
         loop_file.flush()
         loop_file.close()
         if rank == 0:
-            small_data_file.flush()
-            small_data_file.close()
+            small_file.flush()
+            small_file.close()
 
     return final_size[0]
 
-def write_files(comm,rank,size):
-
+def write_files(comm):
+    rank = comm.Get_rank()
 
     if rank ==0:
-        master(comm,rank,size)
+        master(comm)
 
     comm.Barrier()
     if rank == 0:
         global_start = time.time()
 
-    rm = client(comm,rank,size)
+    rm = client(comm)
 
     comm.Barrier()
     if rank == 0:
         global_end = time.time()
         elapsed_time = global_end - global_start
-        wrt_gb = size*file_size
+        
+        wrt_gb = comm.Get_size()*file_size
         av_spd = wrt_gb/elapsed_time
 
         print('Write completed at %s' % time.strftime("%H:%M:%S"))
         print('Elapsed time %f s' % elapsed_time)
-        print('Number of clients %i' % (size))
+        print('Number of clients %i' % (comm.Get_size()))
         print('Number of events %i' % rm)
         print('Wrote %.2f GB at an average of %.2f GB/s' % (wrt_gb, av_spd))

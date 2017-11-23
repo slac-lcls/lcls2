@@ -4,6 +4,7 @@ from swmr_read3 import read_files
 import glob,os
 from load_config import load_config
 import numpy as np
+import time
 
 cfg = load_config('sconfig')
 
@@ -50,13 +51,17 @@ world_comm.Barrier()
 
 if world_rank == 0:
     clear_files(cfg['path']+'/*.h5')
+
 world_comm.Barrier()
     
 if color == 0:
-    write_files(comm,rank,size) # write
+ #   pass
+    write_files(comm) # write
 elif color == 1:
-  #    #comm_test(color,comm,rank,size)
-    read_files(comm, rank, size, 1) # filter
+    #pass
+    #    #comm_test(color,comm,rank,size)
+    read_files(comm, 1) # filter
 elif color == 2:
-    read_files(comm, rank, size,0) # copy
+  #  pass
+    read_files(comm, 0) # copy
 
