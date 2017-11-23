@@ -14,13 +14,4 @@ add_library(service SHARED
 
 target_include_directories(service PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-#    $<INSTALL_INTERFACE:include>
 )
-
-#add_executable(h5writer
-#    ../app/h5writer.cc
-#)
-#target_link_libraries(h5writer
-#    pshdf5
-#    xtc
-#)
