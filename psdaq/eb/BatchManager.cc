@@ -3,6 +3,7 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <string.h>
+#include <assert.h>
 
 using namespace XtcData;
 using namespace Pds;
@@ -21,7 +22,9 @@ BatchManager::BatchManager(Src      src,
   _maxEntries   (maxEntries),
   _maxBatchSize (sizeof(Dgram) + maxEntries * maxSize),
   _batchBuffer  (new char[batchDepth * _maxBatchSize]),
-  _pool         (Batch::size(), batchDepth)
+  _datagrams    (new const Dgram*[batchDepth * maxEntries]),
+  _pool         (Batch::size(), batchDepth),
+  _batches      (new Batch*[batchDepth])
 {
   if (__builtin_popcountl(duration) != 1)
   {
@@ -30,7 +33,7 @@ BatchManager::BatchManager(Src      src,
     abort();
   }
 
-  Batch::init(_pool, _batchBuffer, _batchDepth, _maxBatchSize);
+  Batch::init(_pool, _batchBuffer, _batchDepth, _maxBatchSize, _datagrams, maxEntries, _batches);
 
   // Revisit: Maybe make the following a dummy Batch that expires right away
   //  Then check if it's real before trying to post it
@@ -42,6 +45,8 @@ BatchManager::BatchManager(Src      src,
 
 BatchManager::~BatchManager()
 {
+  delete [] _batches;
+  delete [] _datagrams;
   delete [] _batchBuffer;
 }
 
@@ -75,8 +80,17 @@ void BatchManager::process(const Dgram* datagram)
   Batch* batch  = allocate(datagram);
   size_t size   = sizeof(*datagram) + datagram->xtc.sizeofPayload();
   void*  buffer = batch->allocate(size);
+  batch->store(datagram);
 
   memcpy(buffer, datagram, size);
+}
+
+const Batch* BatchManager::batch(unsigned index, uint64_t id) const
+{
+  assert(index < _batchDepth);
+  Batch* batch_ = _batches[index];
+  assert(batch_->id() == id);
+  return batch_;
 }
 
 size_t BatchManager::maxBatchSize() const
