@@ -26,25 +26,30 @@ namespace Pds {
       ~Batch();
     public:
       static size_t size();
-      static void   init(GenericPoolW& pool,
-                         char*         buffer,
-                         unsigned      depth,
-                         size_t        maxSize);
+      static void   init(GenericPoolW&          pool,
+                         char*                  buffer,
+                         unsigned               depth,
+                         size_t                 maxSize,
+                         const XtcData::Dgram** datagrams,
+                         unsigned               maxEntries,
+                         Batch**                batches);
     public:
       PoolDeclare;
     public:
       void*            allocate(size_t);
+      void             store(const XtcData::Dgram*);
       uint64_t         id() const;
       void             id(uint64_t pid);
       bool             expired(uint64_t pid);
       unsigned         index() const;
       size_t           extent() const;
-      void*            pool() const;
+      void*            buffer() const;
       XtcData::Dgram*  datagram() const;
       void             parameter(void*);
       void*            parameter() const;
+      const XtcData::Dgram* datagram(unsigned i) const;
     private:
-      Batch1&         _batch1() const;
+      Batch1*         _batch1() const;
     private:
       void*           _parameter;
     };
@@ -54,7 +59,7 @@ namespace Pds {
 
 inline XtcData::Dgram* Pds::Eb::Batch::datagram() const
 {
-  return (XtcData::Dgram*)pool();
+  return (XtcData::Dgram*)buffer();
 }
 
 inline void Pds::Eb::Batch::parameter(void* parameter)

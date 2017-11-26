@@ -33,8 +33,9 @@ namespace Pds {
     public:
       void*        batchRegion() const;
       size_t       batchRegionSize() const;
-      Batch*       allocate(const XtcData::Dgram* dg);
+      Batch*       allocate(const XtcData::Dgram*);
       void         process(const XtcData::Dgram*);
+      const Batch* batch(unsigned index, uint64_t id) const;
       void         shutdown();
       uint64_t     batchId(uint64_t id) const;
       size_t       maxBatchSize() const;
@@ -54,7 +55,9 @@ namespace Pds {
       unsigned     _maxEntries;         // Max number of entries per batch
       size_t       _maxBatchSize;       // Maximum size of a batch
       char*        _batchBuffer;        // Buffers for batches
+      const XtcData::Dgram** _datagrams;// Array for holding on to datagrams
       GenericPoolW _pool;               // Pool of Batch objects
+      Batch**      _batches;            // Lookup array of batches
     private:
       Batch*       _batch;              // Batch currently being assembled
     };

@@ -84,25 +84,20 @@ namespace Pds {
       }
     };
 
-    class Input : public Entry
+    class Input : public Dgram
     {
     public:
-      Input(Sequence& seq, Env& env, Xtc& xtc) :
-        Entry(),
-        _datagram()
+      Input(Sequence& seq_, Env& env_, Xtc& xtc_) :
+        Dgram()
       {
-        _datagram.seq = seq;
-        _datagram.env = env;
-        _datagram.xtc = xtc;
+        seq = seq_;
+        env = env_;
+        xtc = xtc_;
       }
     public:
       PoolDeclare;
     public:
-      Dgram* datagram() { return &_datagram; }
-    public:
-      uint64_t id() const { return _datagram.seq.stamp().pulseId(); }
-    private:
-      Dgram _datagram;
+      uint64_t id() const { return seq.stamp().pulseId(); }
     };
 
     class DrpSim : public Routine
@@ -113,12 +108,10 @@ namespace Pds {
       {
       }
     public:
-      void start(TstContribOutlet* outlet);
+      void start(TstContribOutlet*);
       void shutdown() { _running = false; }
     public:
       void routine();
-    public:
-      void release(Dgram* result);
     private:
       unsigned          _maxEvtSz;
       GenericPoolW      _pool;
@@ -126,7 +119,6 @@ namespace Pds {
       Src               _src;
       unsigned          _id;
       uint64_t          _pid;
-      Queue<Input>      _inFlightList;
       TstContribOutlet* _outlet;
       volatile bool     _running;
       Task*             _task;
@@ -158,7 +150,6 @@ namespace Pds {
       EbFtClient    _outlet;
       unsigned      _numEbs;
       unsigned*     _destinations;
-      BatchList     _inFlightList;      // Listhead of batches in flight
       Queue<Batch>  _inputBatchList;
       Semaphore     _inputBatchSem;
       uint64_t      _eventCount;
@@ -175,18 +166,17 @@ namespace Pds {
                       unsigned          maxBatches,
                       unsigned          maxEntries,
                       size_t            maxSize,
-                      TstContribOutlet& outlet,
-                      DrpSim&           sim);
+                      TstContribOutlet& outlet);
       ~TstContribInlet() { }
     public:
       void shutdown() { _running = false; }
     public:
       void process();
-      int _process(Dgram* result);
+      int _process(const Dgram* result, const Dgram* input);
     private:
+      size_t            _maxBatchSize;
       EbFtServer        _inlet;
       TstContribOutlet& _outlet;
-      DrpSim&           _sim;
       volatile bool     _running;
     };
   };
@@ -201,7 +191,6 @@ DrpSim::DrpSim(unsigned poolSize, unsigned id) :
   _src         (TheSrc(Level::Segment, id)),
   _id          (id),
   _pid         (0x01000000000003UL),  // Something non-zero and not on a batch boundary
-  _inFlightList(),
   _outlet      (NULL),
   _running     (true),
   _task        (new Task(TaskObject("drp")))
@@ -232,47 +221,26 @@ void DrpSim::routine()
     //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
 
     // Make proxy to data (small data)
-    Input* input = new(&_pool) Input(seq, env, xtc);
-    Dgram* pdg   = input->datagram();
+    Input* idg = new(&_pool) Input(seq, env, xtc);
 
-    size_t inputSize = input_extent*sizeof(uint32_t);
+    size_t inputSize = input_extent * sizeof(uint32_t);
 
     // Revisit: Here is where L3 trigger input information would be inserted into the datagram,
     //          whatever that will look like.  SmlD is nominally the right container for this.
-    uint32_t* payload = (uint32_t*)pdg->xtc.alloc(inputSize);
+    uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
     payload[0] = ts.tv_sec;           // Revisit: Some crud for now
     payload[1] = ts.tv_nsec;          // Revisit: Some crud for now
     payload[2] = ++cnt;               // Revisit: Some crud for now
     payload[3] = 1 << _id;            // Revisit: Some crud for now
-    payload[4] = pdg->seq.stamp().pulseId() & 0xffffffffUL; // Revisit: Some crud for now
+    payload[4] = idg->seq.stamp().pulseId() & 0xffffffffUL; // Revisit: Some crud for now
 
-    _inFlightList.insert(input);
-    _outlet->post(pdg);
+    _outlet->post(idg);
 
     //usleep(1);
   }
 
   printf("\nDrpSim Input data pool:\n");
   _pool.dump();
-}
-
-void DrpSim::release(Dgram* result)
-{
-  uint64_t id    = result->seq.stamp().pulseId();
-  Input*   input = _inFlightList.atHead();
-  Input*   last  = _inFlightList.empty();
-  while (input != last)
-  {
-    Entry* next = input->next();
-
-    if (id == input->id())
-    {
-      delete (Input*)_inFlightList.remove(input); // Revisit: Replace with atomic list
-      break;
-    }
-
-    input = (Input*)next;
-  }
 }
 
 TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
@@ -287,7 +255,6 @@ TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
   _outlet        (cltAddr, cltPort, maxBatches * (sizeof(Dgram) + maxEntries * maxSize)),
   _numEbs        (__builtin_popcountl(builders)),
   _destinations  (new unsigned[_numEbs]),
-  _inFlightList  (),
   _inputBatchList(),
   _inputBatchSem (Semaphore::EMPTY),
   _eventCount    (0),
@@ -347,9 +314,7 @@ void TstContribOutlet::routine()
              ++cnt, batch->index(), bdg, bdg->seq.stamp().pulseId(), batch->extent(), dst, rmtAdx);
     }
 
-    _inFlightList.insert(const_cast<Batch*>(batch));    // Revisit: Replace with atomic list
-
-    _outlet.post(batch->pool(), batch->extent(), dst, batch->index() * maxBatchSize());
+    _outlet.post(batch->buffer(), batch->extent(), dst, batch->index() * maxBatchSize());
   }
 
   BatchManager::dump();
@@ -373,24 +338,6 @@ void TstContribOutlet::post(Dgram* input)
   ++_eventCount;
 
   process(input);
-}
-
-void TstContribOutlet::release(uint64_t id)
-{
-  Batch* batch = _inFlightList.atHead();
-  Batch* last  = _inFlightList.empty();
-  while (batch != last)
-  {
-    Entry* next = batch->next();
-
-    if (id == batch->id())
-    {
-      delete (Batch*)_inFlightList.remove(batch); // Revisit: Replace with atomic list
-      break;
-    }
-
-    batch = (Batch*)next;
-  }
 }
 
 void TstContribOutlet::post(Batch* batch)
@@ -427,12 +374,11 @@ TstContribInlet::TstContribInlet(std::string&      srvPort,
                                  unsigned          maxBatches,
                                  unsigned          maxEntries,
                                  size_t            maxSize,
-                                 TstContribOutlet& outlet,
-                                 DrpSim&           sim) :
-  _inlet  (srvPort, __builtin_popcountl(builders), maxBatches * (sizeof(Dgram) + maxEntries * maxSize), EbFtServer::PEERS_SHARE_BUFFERS),
-  _outlet (outlet),
-  _sim    (sim),
-  _running(true)
+                                 TstContribOutlet& outlet) :
+  _maxBatchSize(sizeof(Dgram) + maxEntries * maxSize),
+  _inlet       (srvPort, __builtin_popcountl(builders), maxBatches * _maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS),
+  _outlet      (outlet),
+  _running     (true)
 {
   int ret = _inlet.connect(id);
   if (ret)
@@ -454,27 +400,30 @@ void TstContribInlet::process()
     Dgram* batch = (Dgram*)_inlet.pend();
     if (!batch)  break;  //continue;              // Revisit: This may cause a race when quitting
 
+    unsigned idx = ((char*)batch - _inlet.base()) / _maxBatchSize;
+
     if (lverbose)
     {
       static unsigned cnt = 0;
-      unsigned idx  = ((char*)batch - _inlet.base()) / (sizeof(Dgram) + max_entries * max_result_size);
       unsigned from = batch->xtc.src.log() & 0xff;
       printf("ContribInlet  rcvd        %6d result   [%2d] @ %16p, ts %014lx, sz %3zd from EB %d\n",
              ++cnt, idx, batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
     }
 
-    Dgram* result = (Dgram*)batch->xtc.payload();
-    Dgram* last   = (Dgram*)batch->xtc.next();
+    const Batch*  input  = _outlet.batch(idx, batch->seq.stamp().pulseId());
+    unsigned      i      = 0;
+    const Dgram*  result = (Dgram*)batch->xtc.payload();
+    const Dgram*  last   = (Dgram*)batch->xtc.next();
     while(result != last)
     {
-      _process(result);
+      _process(result, input->datagram(i++));
 
       ++eventCount;
 
       result = (Dgram*)result->xtc.next();
     }
 
-    _outlet.release(batch->seq.stamp().pulseId());
+    delete input;
   }
 
   timespec endTime;
@@ -485,11 +434,12 @@ void TstContribInlet::process()
   _inlet.shutdown();
 }
 
-int TstContribInlet::_process(Dgram* result)
+int TstContribInlet::_process(const Dgram* result, const Dgram* input)
 {
+  bool ok = true;
+
   if (lcheck)
   {
-    bool ok = true;
     uint32_t* buffer = (uint32_t*)result->xtc.payload();
     // Timestamp isn't coherent when multiple contributor processes generate it
     //static uint64_t _ts = 0;
@@ -531,6 +481,17 @@ int TstContribInlet::_process(Dgram* result)
       abort();                          // Revisit
     }
   }
+  if (input == NULL)
+  {
+    fprintf(stderr, "Input datagram not found\n");
+    abort();
+  }
+  else if (result->seq.stamp().pulseId() != input->seq.stamp().pulseId())
+  {
+    printf("Result pulse ID doesn't match Input datagram's: %014lx, %014lx\n",
+           result->seq.stamp().pulseId(), input->seq.stamp().pulseId());
+    abort();
+  }
 
   // This method is used to handle the result datagram and to dispose of
   // the original source datagram, in other words:
@@ -542,7 +503,7 @@ int TstContribInlet::_process(Dgram* result)
   //   handle(result, pebble);
   //   delete pebble;
 
-  _sim.release(result);                 // Revisit: Replace this dependency with something more generic
+  delete (const Input*)input;           // Revisit: Downcast okay here?
 
   return 0;
 }
@@ -677,7 +638,7 @@ int main(int argc, char **argv)
   DrpSim sim(max_batches * max_entries, id);
 
   TstContribOutlet outlet(cltAddr, cltPort, id, builders, batch_duration, max_batches, max_entries, max_contrib_size);
-  TstContribInlet  inlet (         srvPort, id, builders,                 max_batches, max_entries, max_result_size, outlet, sim);
+  TstContribInlet  inlet (         srvPort, id, builders,                 max_batches, max_entries, max_result_size, outlet);
   contribInlet  = &inlet;
   contribOutlet = &outlet;
 

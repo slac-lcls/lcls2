@@ -172,6 +172,8 @@ namespace Pds {
       uint64_t contract(const Dgram* contrib) const;
       void     fixup(EbEvent* event, unsigned srcId);
     private:
+      unsigned      _maxBatches;
+      size_t        _maxBatchSize;
       EbFtServer    _inlet;
       Src           _src;
       const TypeId  _tag;
@@ -195,7 +197,9 @@ TstEbInlet::TstEbInlet(std::string& srvPort,
                        size_t       maxSize,
                        uint64_t     contributors) :
   EventBuilder(maxBatches, maxEntries, __builtin_popcountl(contributors), duration),
-  _inlet(srvPort, __builtin_popcountl(contributors), maxBatches * (sizeof(Dgram) + maxEntries * maxSize), EbFtServer::PER_PEER_BUFFERS),
+  _maxBatches(maxBatches),
+  _maxBatchSize(sizeof(Dgram) + maxEntries * maxSize),
+  _inlet(srvPort, __builtin_popcountl(contributors), maxBatches * _maxBatchSize, EbFtServer::PER_PEER_BUFFERS),
   _src(TheSrc(Level::Event, id)),
   _tag(TypeId::Data, 0), //_l3SummaryType),
   _contract(contributors),
@@ -235,7 +239,7 @@ void TstEbInlet::process(TstEbOutlet& outlet)
     const Dgram* batch = (const Dgram*)_inlet.pend();
     if (!batch)  break;  //continue;              // Revisit: This causes a race when quitting
 
-    unsigned idx = (batch->xtc.src.log() >> 8) & 0xffff;
+    unsigned idx = (((char*)batch - _inlet.base()) / _maxBatchSize) % _maxBatches;
 
     if (lverbose)
     {
