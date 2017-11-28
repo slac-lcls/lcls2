@@ -2,14 +2,15 @@
 ## Build instructions (on psdev)
 ```bash
 # setup conda
-source /reg/g/psdm/etc/psconda.sh  (conda requires bash)
+source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh  (conda requires bash)
 
-# activate python 3 environment with cmake and hdf5
-source activate ana-1.3.28-py3
+mkdir build
+cd build
+cmake ..
+make (optionally with "-j N" to compile in parallel on N cores)
 
- mkdir build
- cd build
- cmake ..
- make
+you can change between optimize/debug builds by running cmake with the following:
+
+cmake -DCMAKE_BUILD_TYPE={Debug, RelWithDebInfo, Release} ..
 ```
 
