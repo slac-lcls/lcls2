@@ -1,5 +1,5 @@
 # LCLS II development repository
-## Build instructions (on psdev)
+## Build instructions (note: must be done on psbuild-rhel7 where redhat gcc7 compilers are installed)
 ```bash
 # setup conda
 source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh  (conda requires bash)
