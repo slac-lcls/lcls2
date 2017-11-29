@@ -137,12 +137,8 @@ int EbFtClient::shutdown()
 {
   int ret = FI_SUCCESS;
 
-  for (unsigned i = 0; i < _ep.size(); ++i)
-  {
-    if (!_ep[i])  continue;
-
-    _ep[i]->shutdown();
-  }
+  printf("\nEbFtClient dump:\n");
+  _stats.dump();
 
   return ret;
 }

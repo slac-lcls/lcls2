@@ -146,6 +146,7 @@ namespace Pds {
       Batch* _pend();
     private:
       EbFtClient    _outlet;
+      unsigned      _maxEntries;
       volatile bool _running;
       Task*         _task;
       Semaphore     _resultSem;
@@ -164,7 +165,7 @@ namespace Pds {
                  uint64_t     contributors);
     virtual   ~TstEbInlet() { }
     public:
-      void     shutdown() { _running = false; }
+      void     shutdown();
     public:
       void     process(TstEbOutlet& outlet);
     public:
@@ -216,6 +217,13 @@ TstEbInlet::TstEbInlet(std::string& srvPort,
   }
 }
 
+void TstEbInlet::shutdown()
+{
+  cancel();                             // Stop the event timeout timer
+
+  _running = false;
+}
+
 void TstEbInlet::process(TstEbOutlet& outlet)
 {
   // Event builder sorts contributions into a time ordered list
@@ -262,6 +270,8 @@ void TstEbInlet::process(TstEbOutlet& outlet)
 
       EventBuilder::process(entry, idx);
 
+      //if (entry->seq.stamp().control() == CNTRL_QUIT)  _running = false;
+
       ++contribCount;
 
       entry = (const Dgram*)entry->xtc.next();
@@ -271,9 +281,11 @@ void TstEbInlet::process(TstEbOutlet& outlet)
   timespec endTime;
   clock_gettime(CLOCK_REALTIME, &endTime);
 
+  //dumpStats("Inlet per contributor rate",
+  //          startTime, endTime, contribCount / __builtin_popcount(_contract));
   dumpStats("Inlet contribution rate", startTime, endTime, contribCount);
 
-  printf("Exiting:\n");
+  printf("\nEvent builder dump:\n");
   EventBuilder::dump(0);
 
   printf("\nInlet results pool:\n");
@@ -346,8 +358,11 @@ void TstEbInlet::fixup(EbEvent* event, unsigned srcId)
   // Revisit: Nothing can usefully be done here since there is no way to
   //          know the buffer index to be used for the result, I think
 
-  fprintf(stderr, "Fixup event %014lx, size %zu, for source %d\n",
-          event->sequence(), event->size(), srcId);
+  if (lverbose)
+  {
+    fprintf(stderr, "Fixup event %014lx, size %zu, for source %d\n",
+            event->sequence(), event->size(), srcId);
+  }
 
   // Revisit: What can be done here?
   //          And do we want to send a result to a contributor we haven't heard from?
@@ -369,6 +384,7 @@ TstEbOutlet::TstEbOutlet(std::vector<std::string>& cltAddr,
                          size_t                    maxSize) :
   BatchManager(TheSrc(Level::Event, id), duration, maxBatches, maxEntries, maxSize),
   _outlet(cltAddr, cltPort, maxBatches * (sizeof(Dgram) + maxEntries * maxSize)),
+  _maxEntries(maxEntries),
   _running(true),
   _task (new Task(TaskObject("tOutlet"))),
   _resultSem(Semaphore::EMPTY),
@@ -459,7 +475,7 @@ void TstEbOutlet::routine()
   timespec endTime;
   clock_gettime(CLOCK_REALTIME, &endTime);
 
-  dumpStats("Outlet", startTime, endTime, batchCount);
+  dumpStats("Outlet", startTime, endTime, batchCount * _maxEntries);
 
   _outlet.shutdown();
 }
@@ -504,13 +520,19 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s (server: %d)\n", "-B <srv_port>",
-          "Base port number for Builders", srv_port_base);
-  fprintf(stderr, " %-20s %s (client: %d)\n", "-P <clt_port>",
+  fprintf(stderr, " %-20s %s (server: %d)\n",  "-S <srv_port>",
+          "Base port number for Builders",     srv_port_base);
+  fprintf(stderr, " %-20s %s (client: %d)\n",  "-C <clt_port>",
           "Base port number for Contributors", clt_port_base);
 
-  fprintf(stderr, " %-20s %s (default: %d)\n", "-i <ID>",
-          "Unique ID this builder will assume (0 - 63)", default_id);
+  fprintf(stderr, " %-20s %s (default: %d)\n",     "-i <ID>",
+          "Unique ID of this builder (0 - 63)",    default_id);
+  fprintf(stderr, " %-20s %s (default: %014lx)\n", "-D <batch duration>",
+          "Batch duration (must be power of 2)",   batch_duration);
+  fprintf(stderr, " %-20s %s (default: %d\n",      "-B <max batches>",
+          "Maximum number of extant batches",      max_batches);
+  fprintf(stderr, " %-20s %s (default: %d\n",      "-E <max entries>",
+          "Maximum number of entries per batch",   max_entries);
 
   fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output (repeat for increased detail)");
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
@@ -519,18 +541,24 @@ void usage(char *name, char *desc)
 int main(int argc, char **argv)
 {
   int op, ret = 0;
-  unsigned id = default_id;
-  unsigned srvBase = srv_port_base;     // Port served to contributors
-  unsigned cltBase = clt_port_base;     // Port served by contributors
+  unsigned id         = default_id;
+  unsigned srvBase    = srv_port_base;  // Port served to contributors
+  unsigned cltBase    = clt_port_base;  // Port served by contributors
+  uint64_t duration   = batch_duration;
+  unsigned maxBatches = max_batches;
+  unsigned maxEntries = max_entries;
 
-  while ((op = getopt(argc, argv, "hvB:P:i:")) != -1)
+  while ((op = getopt(argc, argv, "h?vS:C:i:D:B:E:")) != -1)
   {
     switch (op)
     {
-      case 'B':  srvBase = strtoul(optarg, NULL, 0);  break;
-      case 'P':  cltBase = strtoul(optarg, NULL, 0);  break;
-      case 'i':  id       = atoi(optarg);             break;
-      case 'v':  ++lverbose;                          break;
+      case 'S':  srvBase    = strtoul(optarg, NULL, 0);  break;
+      case 'C':  cltBase    = strtoul(optarg, NULL, 0);  break;
+      case 'i':  id         = atoi(optarg);              break;
+      case 'D':  duration   = atoll(optarg);             break;
+      case 'B':  maxBatches = atoi(optarg);              break;
+      case 'E':  maxEntries = atoi(optarg);              break;
+      case 'v':  ++lverbose;                             break;
       case '?':
       case 'h':
       default:
@@ -590,14 +618,16 @@ int main(int argc, char **argv)
   ::signal( SIGINT, sigHandler );
 
   printf("Parameters:\n");
-  printf("  Batch duration:             %014lx = %ld uS\n", batch_duration, batch_duration);
-  printf("  Batch pool depth:           %d\n", max_batches);
-  printf("  Max # of entries per batch: %d\n", max_entries);
-  printf("  Max contribution size:      %zd\n", max_contrib_size);
-  printf("  Max result       size:      %zd\n", max_result_size);
+  printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);
+  printf("  Batch pool depth:           %d\n",  maxBatches);
+  printf("  Max # of entries per batch: %d\n",  maxEntries);
+  printf("  Max contribution size:      %zd, batch size: %zd\n",
+         max_contrib_size, sizeof(Dgram) + maxEntries * max_contrib_size);
+  printf("  Max result       size:      %zd, batch size: %zd\n",
+         max_result_size,  sizeof(Dgram) + maxEntries * max_result_size);
 
-  TstEbInlet  inlet (         srvPort, id, batch_duration, max_batches, max_entries, max_contrib_size, contributors);
-  TstEbOutlet outlet(cltAddr, cltPort, id, batch_duration, max_batches, max_entries, max_result_size);
+  TstEbInlet  inlet (         srvPort, id, duration, maxBatches, maxEntries, max_contrib_size, contributors);
+  TstEbOutlet outlet(cltAddr, cltPort, id, duration, maxBatches, maxEntries, max_result_size);
   ebInlet  = &inlet;
   ebOutlet = &outlet;
 

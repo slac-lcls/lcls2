@@ -157,12 +157,15 @@ int EbFtServer::shutdown()
     }
     else
     {
-      fprintf(stderr, "Wating for event failed: %s\n", _ep[i]->error());
+      fprintf(stderr, "Waiting for event failed: %s\n", _ep[i]->error());
       ret = _ep[i]->error_num();
       _pep->close(_ep[i]);
       break;
     }
   }
+
+  printf("\nEbFtServer dump:\n");
+  _stats.dump();
 
   return ret;
 }
