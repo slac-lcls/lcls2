@@ -21,6 +21,8 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 
+#define CNTRL_QUIT 0xff                 // Revisit: Where this should be defined
+
 static const unsigned default_id       = 0;          // Contributor's ID
 static const unsigned srv_port_base    = 32768 + 64; // Base port Contributor for receiving results
 static const unsigned clt_port_base    = 32768;      // Base port Contributor sends to EB on
@@ -103,7 +105,7 @@ namespace Pds {
     class DrpSim : public Routine
     {
     public:
-      DrpSim(unsigned poolSize, unsigned id);
+      DrpSim(unsigned poolSize, size_t maxEvtSize, unsigned id);
       ~DrpSim()
       {
       }
@@ -118,6 +120,7 @@ namespace Pds {
       TypeId            _typeId;
       Src               _src;
       unsigned          _id;
+      unsigned          _cntrl;
       uint64_t          _pid;
       TstContribOutlet* _outlet;
       volatile bool     _running;
@@ -174,6 +177,7 @@ namespace Pds {
       void process();
       int _process(const Dgram* result, const Dgram* input);
     private:
+      unsigned          _numEbs;
       size_t            _maxBatchSize;
       EbFtServer        _inlet;
       TstContribOutlet& _outlet;
@@ -184,12 +188,13 @@ namespace Pds {
 
 using namespace Pds::Eb;
 
-DrpSim::DrpSim(unsigned poolSize, unsigned id) :
-  _maxEvtSz    (max_contrib_size),
-  _pool        (sizeof(Entry) + _maxEvtSz, poolSize),
+DrpSim::DrpSim(unsigned poolSize, size_t maxEvtSize, unsigned id) :
+  _maxEvtSz    (maxEvtSize),
+  _pool        (sizeof(Entry) + maxEvtSize, poolSize),
   _typeId      (TypeId::Data, 0),
   _src         (TheSrc(Level::Segment, id)),
   _id          (id),
+  _cntrl       (0),
   _pid         (0x01000000000003UL),  // Something non-zero and not on a batch boundary
   _outlet      (NULL),
   _running     (true),
@@ -208,12 +213,17 @@ void DrpSim::routine()
 {
   static unsigned cnt = 0;
 
-  while(_running)
+  while(_cntrl == 0)
   {
+    if (!_running)  _cntrl = CNTRL_QUIT;
+
     // Fake datagram header
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    Sequence seq(Sequence::Event, TransitionId::L1Accept, ClockTime(ts), TimeStamp(_pid));
+    Sequence seq(Sequence::Event,
+                 TransitionId::L1Accept,
+                 ClockTime(ts),
+                 TimeStamp(_pid, _cntrl));
     Env      env(0);
     Xtc      xtc(_typeId, _src);
 
@@ -235,8 +245,6 @@ void DrpSim::routine()
     payload[4] = idg->seq.stamp().pulseId() & 0xffffffffUL; // Revisit: Some crud for now
 
     _outlet->post(idg);
-
-    //usleep(1);
   }
 
   printf("\nDrpSim Input data pool:\n");
@@ -375,8 +383,9 @@ TstContribInlet::TstContribInlet(std::string&      srvPort,
                                  unsigned          maxEntries,
                                  size_t            maxSize,
                                  TstContribOutlet& outlet) :
+  _numEbs      (__builtin_popcountl(builders)),
   _maxBatchSize(sizeof(Dgram) + maxEntries * maxSize),
-  _inlet       (srvPort, __builtin_popcountl(builders), maxBatches * _maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS),
+  _inlet       (srvPort, _numEbs, maxBatches * _maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS),
   _outlet      (outlet),
   _running     (true)
 {
@@ -436,37 +445,40 @@ void TstContribInlet::process()
 
 int TstContribInlet::_process(const Dgram* result, const Dgram* input)
 {
-  bool ok = true;
+  bool     ok  = true;
+  uint64_t pid = result->seq.stamp().pulseId();
 
   if (lcheck)
   {
     uint32_t* buffer = (uint32_t*)result->xtc.payload();
-    // Timestamp isn't coherent when multiple contributor processes generate it
-    //static uint64_t _ts = 0;
-    //uint64_t         ts = buffer[0];
-    //ts = (ts << 32) + buffer[1];
-    //if (_ts > ts)
-    //{
-    //  ok = false;
-    //  printf("Timestamp didn't increase: previous = %016lx, current = %016lx\n", _ts, ts);
-    //}
-    //_ts = ts;
-    static unsigned _counter = 0;
-    if (buffer[2] != _counter + 1)
+    if (_numEbs == 1)
     {
-      ok = false;
-      printf("Result counter didn't increase by 1: expected %08x, got %08x\n",
-             _counter + 1, buffer[2]);
+      // Timestamps aren't coherent across multiple contributor instances
+      //static uint64_t _ts = 0;
+      //uint64_t         ts = buffer[0];
+      //ts = (ts << 32) + buffer[1];
+      //if (_ts > ts)
+      //{
+      //  ok = false;
+      //  printf("Timestamp didn't increase: previous = %016lx, current = %016lx\n", _ts, ts);
+      //}
+      //_ts = ts;
+      static unsigned _counter = 0;
+      if (buffer[2] != _counter + 1)
+      {
+        ok = false;
+        printf("Result counter didn't increase by 1: expected %08x, got %08x\n",
+               _counter + 1, buffer[2]);
+      }
+      _counter = buffer[2];
+      static uint64_t _pid = 0;
+      if (_pid > pid)
+      {
+        ok = false;
+        printf("Pulse ID didn't increase: previous = %014lx, current = %014lx\n", _pid, pid);
+      }
+      _pid = pid;
     }
-    _counter = buffer[2];
-    static uint64_t _pid = 0;
-    uint64_t         pid = result->seq.stamp().pulseId();
-    if (_pid > pid)
-    {
-      ok = false;
-      printf("Pulse ID didn't increase: previous = %014lx, current = %014lx\n", _pid, pid);
-    }
-    _pid = pid;
     if ((pid & 0xffffffffUL) != buffer[4])
     {
       ok = false;
@@ -475,9 +487,12 @@ int TstContribInlet::_process(const Dgram* result, const Dgram* input)
     }
     if (!ok)
     {
-      printf("ContribInlet  found result   %16p, ts %014lx, sz %d, pyld %08x %08x %08x %08x %08x\n",
-             result, pid, result->xtc.sizeofPayload(),
-             buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+      printf("ContribInlet  found result   %16p, ts %014lx, sz %d, pyld:\n",
+             result, pid, result->xtc.sizeofPayload());
+      for (unsigned i = 0; i < result_extent; ++i)
+        printf(" %08x", buffer[i]);
+      printf("\n");
+
       abort();                          // Revisit
     }
   }
@@ -486,10 +501,10 @@ int TstContribInlet::_process(const Dgram* result, const Dgram* input)
     fprintf(stderr, "Input datagram not found\n");
     abort();
   }
-  else if (result->seq.stamp().pulseId() != input->seq.stamp().pulseId())
+  else if (pid != input->seq.stamp().pulseId())
   {
     printf("Result pulse ID doesn't match Input datagram's: %014lx, %014lx\n",
-           result->seq.stamp().pulseId(), input->seq.stamp().pulseId());
+           pid, input->seq.stamp().pulseId());
     abort();
   }
 
@@ -538,13 +553,19 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s (server: %d)\n", "-B <srv_port>",
+  fprintf(stderr, " %-20s %s (server: %d)\n",  "-S <srv_port>",
           "Base port number for Contributors", srv_port_base);
-  fprintf(stderr, " %-20s %s (client: %d)\n", "-P <clt_port>",
-          "Base port number for Builders", clt_port_base);
+  fprintf(stderr, " %-20s %s (client: %d)\n",  "-C <clt_port>",
+          "Base port number for Builders",     clt_port_base);
 
-  fprintf(stderr, " %-20s %s (default: %d)\n", "-i <ID>",
-          "Unique ID this Contributor will assume (0 - 63)", default_id);
+  fprintf(stderr, " %-20s %s (default: %d)\n",      "-i <ID>",
+          "Unique ID of this Contributor (0 - 63)", default_id);
+  fprintf(stderr, " %-20s %s (default: %014lx)\n",  "-D <batch duration>",
+          "Batch duration (must be power of 2)",    batch_duration);
+  fprintf(stderr, " %-20s %s (default: %d\n",       "-B <max batches>",
+          "Maximum number of extant batches",       max_batches);
+  fprintf(stderr, " %-20s %s (default: %d\n",       "-E <max entries>",
+          "Maximum number of entries per batch",    max_entries);
 
   fprintf(stderr, " %-20s %s\n", "-c", "enable result checking");
   fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output (repeat for increased detail)");
@@ -558,19 +579,25 @@ int main(int argc, char **argv)
   // - Maybe pingpong this list around to see whether anyone disagrees with it?
 
   int op, ret = 0;
-  unsigned id = default_id;
-  unsigned srvBase = srv_port_base;     // Port served to builders
-  unsigned cltBase = clt_port_base;     // Port served by builders
+  unsigned id         = default_id;
+  unsigned srvBase    = srv_port_base;  // Port served to builders
+  unsigned cltBase    = clt_port_base;  // Port served by builders
+  uint64_t duration   = batch_duration;
+  unsigned maxBatches = max_batches;
+  unsigned maxEntries = max_entries;
 
-  while ((op = getopt(argc, argv, "hvcB:P:i:")) != -1)
+  while ((op = getopt(argc, argv, "h?vcS:C:i:D:B:E:")) != -1)
   {
     switch (op)
     {
-      case 'B':  srvBase = strtoul(optarg, NULL, 0);  break;
-      case 'P':  cltBase = strtoul(optarg, NULL, 0);  break;
-      case 'i':  id      = strtoul(optarg, NULL, 0);  break;
-      case 'c':  lcheck  = true;                      break;
-      case 'v':  ++lverbose;                          break;
+      case 'S':  srvBase    = strtoul(optarg, NULL, 0);  break;
+      case 'C':  cltBase    = strtoul(optarg, NULL, 0);  break;
+      case 'i':  id         = strtoul(optarg, NULL, 0);  break;
+      case 'D':  duration   = atoll(optarg);             break;
+      case 'B':  maxBatches = atoi(optarg);              break;
+      case 'E':  maxEntries = atoi(optarg);              break;
+      case 'c':  lcheck  = true;                         break;
+      case 'v':  ++lverbose;                             break;
       case '?':
       case 'h':
         usage(argv[0], (char*)"Test event contributor");
@@ -629,16 +656,18 @@ int main(int argc, char **argv)
   ::signal( SIGINT, sigHandler );
 
   printf("Parameters:\n");
-  printf("  Batch duration:             %014lx = %ld uS\n", batch_duration, batch_duration);
-  printf("  Batch pool depth:           %d\n", max_batches);
-  printf("  Max # of entries per batch: %d\n", max_entries);
-  printf("  Max contribution size:      %zd\n", max_contrib_size);
-  printf("  Max result       size:      %zd\n", max_result_size);
+  printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);
+  printf("  Batch pool depth:           %d\n",  maxBatches);
+  printf("  Max # of entries per batch: %d\n",  maxEntries);
+  printf("  Max contribution size:      %zd, batch size: %zd\n",
+         max_contrib_size, sizeof(Dgram) + maxEntries * max_contrib_size);
+  printf("  Max result       size:      %zd, batch size: %zd\n",
+         max_result_size,  sizeof(Dgram) + maxEntries * max_result_size);
 
-  DrpSim sim(max_batches * max_entries, id);
+  DrpSim sim(maxBatches * maxEntries, max_contrib_size, id);
 
-  TstContribOutlet outlet(cltAddr, cltPort, id, builders, batch_duration, max_batches, max_entries, max_contrib_size);
-  TstContribInlet  inlet (         srvPort, id, builders,                 max_batches, max_entries, max_result_size, outlet);
+  TstContribOutlet outlet(cltAddr, cltPort, id, builders, duration, maxBatches, maxEntries, max_contrib_size);
+  TstContribInlet  inlet (         srvPort, id, builders,           maxBatches, maxEntries, max_result_size, outlet);
   contribInlet  = &inlet;
   contribOutlet = &outlet;
 
