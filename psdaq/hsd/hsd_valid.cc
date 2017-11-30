@@ -189,9 +189,13 @@ int main(int argc, char** argv) {
   unsigned FMIN=0x41, FMAX=0x3bf;
   bool lNoFex = false;
   bool lText = false;
+  bool lSkipContainers = false;
 
-  while ( (c=getopt( argc, argv, "f:m:M:s:nht")) != EOF ) {
+  while ( (c=getopt( argc, argv, "f:m:M:s:cnht")) != EOF ) {
     switch(c) {
+    case 'c':
+      lSkipContainers = true;
+      break;
     case 'f':
       fname = optarg;
       break;
@@ -236,6 +240,7 @@ int main(int argc, char** argv) {
   ssize_t sz;
   unsigned ievent=0;
   RawStream* vraw=0;
+  unsigned skipSize = 0x924;
 
   while(1) {  // event loop
     if (lText) {
@@ -250,8 +255,12 @@ int main(int argc, char** argv) {
     const EventHeader& eh = *reinterpret_cast<const EventHeader*>(event);
     //    printf("Read event header into %p\n", &eh);
     if (!lText) {
+      if (lSkipContainers)
+        if (fread((void*)&eh, skipSize, 1, f) == 0)
+          return 0;
       if (fread((void*)&eh, sizeof(EventHeader), 1, f) == 0)
-        break;
+        return 0;
+      skipSize = 0xc8;
     }
     eh.dump();
 
