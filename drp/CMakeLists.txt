@@ -21,6 +21,7 @@ target_link_libraries(drp
     pthread
     xtc
     pshdf5
+    eb
 )
 
 add_executable(pgp-sender
