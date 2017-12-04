@@ -1,3 +1,4 @@
+
 from mpi4py import MPI
 import h5py, glob, os, sys
 import numpy as np, time
@@ -254,7 +255,8 @@ def client(comm):
             # There is a special case when the file is done writing
             # The file size isn't increasing anymore, so we need to
             # exit from the loop
-            
+
+            eof_buffer_size = 0
             while client_msg.rank_active and not eof:
                 if exit_count > 10:
                     #print('File %i stopped writing' % client_rank)
@@ -263,7 +265,7 @@ def client(comm):
 
                 size_file = os.stat(file_name).st_size/10**6
              
-                if size_file - 1000 > prev_size:
+                if size_file - eof_buffer_size > prev_size:
                     break
                 
                 time.sleep(0.1)
@@ -330,7 +332,7 @@ def read_files(comm,filt):
                 # initializing it. No safe exception within h5py
                 break
             else:
-               # print('There are %i/%i files' % (len(files), size))
+              #  print('There are %i/%i files' % (len(files), size))
                 time.sleep(0.05)
 
     comm.Barrier()
