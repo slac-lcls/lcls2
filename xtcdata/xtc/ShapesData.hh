@@ -28,6 +28,11 @@ public:
         _version(major,minor,micro) {
         strncpy(_alg, alg, maxNameSize);
     }
+
+    Alg(Alg& other) : _version(other._version) {
+        strncpy(_alg, other._alg, maxNameSize);
+    }
+
 private:
     char _alg[maxNameSize];
     AlgVersion _version;
@@ -41,18 +46,14 @@ public:
     static int get_element_size(DataType type);
 
     enum {MaxRank=5};
-    Name(const char* name, DataType type, int rank) : _alg("",0,0,0)
+    Name(const char* name, DataType type, int rank)
     {
         _init(name,type,rank);
     }
-    Name(const char* name, DataType type, int rank, Alg alg) : _alg(alg)
-    {
-        _init(name,type,rank);
-    }
+
     const char* name() {return _name;}
     DataType    type() {return _type;}
     uint32_t    rank() {return _rank;}
-    Alg&        alg()  {return _alg;}
 
 private:
     void _init(const char* name, DataType type, int rank) {
@@ -60,10 +61,10 @@ private:
         _type = type;
         _rank = rank;
     }
+
     char     _name[maxNameSize];
     DataType _type;
     uint32_t _rank;
-    Alg      _alg;
 };
 
 class Shape
@@ -109,7 +110,15 @@ public:
 class Names : public AutoParentAlloc
 {
 public:
-    Names() : AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)) {}
+
+    Names(Alg& alg) :
+        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
+        _alg(alg)
+    {
+        XtcData::Xtc::alloc(sizeof(_alg));
+    }
+    Alg& alg() {return _alg;}
+
     Name& get(unsigned index)
     {
         Name& name = ((Name*)(this + 1))[index];
@@ -120,12 +129,15 @@ public:
     {
         return sizeofPayload() / sizeof(Name);
     }
+
     // Add new item to Names
     void add(const char* name, Name::DataType type, XtcData::Xtc& parent, int rank=0)
     {
         void* ptr = alloc(sizeof(Name), parent);
         new (ptr) Name(name, type, rank);
     }
+private:
+    Alg _alg;
 };
 
 #include <stdio.h>
