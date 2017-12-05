@@ -337,7 +337,7 @@ void hsdExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
     uint32_t shape[1];
     for (unsigned i=0; i<lanes.size(); i++) {
         sprintf(chan_name,"chan%d",i);
-        shape[0] = buffers[lanes[i]].length;
+        shape[0] = buffers[lanes[i]].length*sizeof(uint32_t);
         hsd.set_array_shape(chan_name, shape);
     }
 }
@@ -588,7 +588,7 @@ int main()
         } else {
             PGPBuffer* buffers = pebble_data->pgp_data()->buffers;
             for (unsigned ilane=0; ilane<lanes.size(); ilane++) {
-                iov[ilane].iov_len=buffers[lanes[ilane]].length;
+                iov[ilane].iov_len=buffers[lanes[ilane]].length*sizeof(uint32_t);
                 uint32_t dma_index = buffers[lanes[ilane]].dma_index;
                 iov[ilane].iov_base = reinterpret_cast<void*>(dma_buffers[dma_index]);
             }
