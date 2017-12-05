@@ -39,13 +39,13 @@ namespace Pds {
     public:
       PvAllocate(PVStats& pvs,
                  PVCtrls& pvc,
-                 char* partition,
+                 const char* prefix,
                  Module& m) :
-        _pvs(pvs), _pvc(pvc), _partition(partition), _m(m) {}
+        _pvs(pvs), _pvc(pvc), _prefix(prefix), _m(m) {}
     public:
       void routine() {
         std::ostringstream o;
-        o << "DAQ:" << _partition;
+        o << _prefix;
         std::string pvbase = o.str();
         _pvs.allocate(pvbase);
         _pvc.allocate(pvbase);
@@ -54,7 +54,7 @@ namespace Pds {
     private:
       PVStats&    _pvs;
       PVCtrls&    _pvc;
-      std::string _partition;
+      std::string _prefix;
       Module&     _m;
     };
 
@@ -63,7 +63,7 @@ namespace Pds {
       StatsTimer(Module& dev);
       ~StatsTimer() { _task->destroy(); }
     public:
-      void allocate(char* partition);
+      void allocate(const char* prefix);
       void start   ();
       void cancel  ();
       void expired ();
@@ -92,9 +92,9 @@ StatsTimer::StatsTimer(Module& dev) :
 {
 }
 
-void StatsTimer::allocate(char* partition)
+void StatsTimer::allocate(const char* prefix)
 {
-  _task->call(new PvAllocate(_pvs, _pvc, partition, _dev));
+  _task->call(new PvAllocate(_pvs, _pvc, prefix, _dev));
 }
 
 void StatsTimer::start()
@@ -123,9 +123,11 @@ void StatsTimer::expired()
   _t=t;
 }
 
-
 void usage(const char* p) {
-  printf("Usage: %s [-a <IP addr (dotted notation)>] [-p <port>] addr <value>\n",p);
+  printf("Usage: %s [options]\n",p);
+  printf("Options: -a <IP addr> (default: 10.0.2.103)\n"
+         "         -p <port>    (default: 8193)\n"
+         "         -P <prefix>  (default: DAQ:LAB2:DTI)\n");
 }
 
 int main(int argc, char** argv)
@@ -136,8 +138,8 @@ int main(int argc, char** argv)
   bool lUsage = false;
 
   const char* ip = "10.0.2.103";
-  unsigned short port = 8192;
-  char* partition = NULL;
+  const char* prefix = "DAQ:LAB2:DTI";
+  unsigned short port = 8193;
 
   while ( (c=getopt( argc, argv, "a:p:P:h")) != EOF ) {
     switch(c) {
@@ -148,18 +150,13 @@ int main(int argc, char** argv)
       port = strtoul(optarg,NULL,0);
       break;
     case 'P':
-      partition = optarg;
+      prefix = optarg;
       break;
     case '?':
     default:
       lUsage = true;
       break;
     }
-  }
-
-  if (partition==NULL) {
-    printf("%s: partition required\n",argv[0]);
-    lUsage = true;
   }
 
   if (optind < argc) {
@@ -182,7 +179,7 @@ int main(int argc, char** argv)
 
   ::signal( SIGINT, sigHandler );
 
-  timer->allocate(partition);
+  timer->allocate(prefix);
   timer->start();
 
   task->mainLoop();
