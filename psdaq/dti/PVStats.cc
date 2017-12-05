@@ -30,7 +30,7 @@ namespace Pds {
       _pv.resize(0);
 
       std::ostringstream o;
-      o << title << ":DTI:";
+      o << title << ":";
       std::string pvbase = o.str();
 
       _pv.push_back( new PVWriter((pvbase+"UsLinkUp").c_str()) );
