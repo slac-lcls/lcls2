@@ -430,13 +430,13 @@ if __name__ == '__main__':
     print QtCore.PYQT_VERSION_STR
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
-    parser.add_argument("pv", help="pv to monitor")
+    parser.add_argument("base", help="pv base to monitor", default="DAQ:LAB2:DTI")
     args = parser.parse_args()
 
     app = QtGui.QApplication([])
     MainWindow = QtGui.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.pv)
+    ui.setupUi(MainWindow,args.base)
     MainWindow.updateGeometry()
 
     MainWindow.show()
