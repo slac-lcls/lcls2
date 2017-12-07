@@ -8,6 +8,11 @@ target_link_libraries(dgram
     ${PYTHON_LIBRARIES}
 )
 
+if(PSANA_USE_LEGION)
+  target_compile_definitions(dgram PRIVATE PSANA_USE_LEGION)
+  target_link_libraries(dgram Legion::Legion)
+endif()
+
 target_include_directories(dgram PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> 
     ${PYTHON_INCLUDE_DIRS}

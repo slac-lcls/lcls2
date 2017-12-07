@@ -6,6 +6,11 @@ add_compile_options(-Wno-uninitialized)
 find_package(PythonInterp 3.5 REQUIRED)
 find_package(PythonLibs 3.5 REQUIRED)
 
+option(PSANA_USE_LEGION "Enable support for Legion" OFF)
+if(PSANA_USE_LEGION)
+  find_package(Legion REQUIRED)
+endif()
+
 file(GLOB_RECURSE
      ALL_CXX_SOURCE_FILES
      *.cc *.hh
