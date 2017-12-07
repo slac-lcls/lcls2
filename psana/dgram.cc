@@ -222,7 +222,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     unsigned long long runtimePtr=0;
     unsigned long long contextPtr=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iO$ii", kwlist,
+                                     "|iO$iiKK", kwlist,
                                      &fd,
                                      &configDgram,
                                      &(self->verbose),
@@ -247,6 +247,14 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->dgram = (Dgram*)malloc(BUFSIZE);
 #else
     {
+      if (runtimePtr == 0) {
+          PyErr_SetString(PyExc_MemoryError, "Must specify Legion runtime");
+          return -1;
+      }
+      if (contextPtr == 0) {
+          PyErr_SetString(PyExc_MemoryError, "Must specify Legion context");
+          return -1;
+      }
       Runtime *runtime = reinterpret_cast<Runtime *>(runtimePtr);
       Context context = reinterpret_cast<Context>(contextPtr);
 
