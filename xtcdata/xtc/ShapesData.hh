@@ -25,15 +25,15 @@ private:
 
 class Alg {
 public:
-    Alg(const char* targetName, const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
+    Alg(const char* dataName, const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
         _version(major,minor,micro) {
         strncpy(_alg, alg, maxNameSize);
-        strncpy(_targetName, targetName, maxNameSize);
+        strncpy(_dataName, dataName, maxNameSize);
     }
 
     Alg(Alg& other) : _version(other._version) {
         strncpy(_alg, other._alg, maxNameSize);
-        strncpy(_targetName, other._targetName, maxNameSize);
+        strncpy(_dataName, other._dataName, maxNameSize);
     }
 
     uint32_t getVersion() {
@@ -42,10 +42,10 @@ public:
 
     const char* getAlgName() {return _alg;}
 
-    const char* getTargetName() {return _targetName;}
+    const char* getDataName() {return _dataName;}
 
 private:
-    char _targetName[maxNameSize];
+    char _dataName[maxNameSize];
     char _alg[maxNameSize];
     AlgVersion _version;
 };
