@@ -115,7 +115,8 @@ public:
         AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
         _alg(alg)
     {
-        XtcData::Xtc::alloc(sizeof(_alg));
+        // allocate space for our private data
+        XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
     Alg& alg() {return _alg;}
 
@@ -127,7 +128,9 @@ public:
 
     unsigned num()
     {
-        return sizeofPayload() / sizeof(Name);
+        unsigned sizeOfNames = (char*)next()-(char*)(this+1);
+        assert (sizeOfNames%sizeof(Name)==0);
+        return sizeOfNames / sizeof(Name);
     }
 
     // Add new item to Names
@@ -159,8 +162,9 @@ public:
         AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Shapes,0)),
         _namesId(namesId)
     {
-        XtcData::Xtc::alloc(sizeof(_namesId));
-        // go two levels up to "auto-alloc" Shapes Xtc header size
+        // allocate space for our private data
+        XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
+        // go two levels up to "auto-alloc" Shapes size
         superparent.alloc(sizeof(*this));
     }
 
