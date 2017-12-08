@@ -15,7 +15,9 @@
 #include <structmember.h>
 
 #ifdef PSANA_USE_LEGION
+#define LEGION_ENABLE_C_BINDINGS
 #include <legion.h>
+#include <legion/legion_c_util.h>
 using namespace Legion;
 #endif
 
@@ -194,7 +196,18 @@ static void dgram_dealloc(PyDgramObject* self)
 {
     write_object_info(self, NULL, "Top of dgram_dealloc()");
     Py_XDECREF(self->dict);
+#ifndef PSANA_USE_LEGION
     free(self->dgram);
+#else
+    {
+      Runtime *runtime = Runtime::get_runtime();
+      Context ctx = Runtime::get_context();
+
+      // FIXME: Causes runtime type error
+      // self->physical = PhysicalRegion();
+      runtime->destroy_logical_region(ctx, self->region);
+    }
+#endif
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -212,23 +225,17 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"config",
                              (char*)"verbose",
                              (char*)"debug",
-                             (char*)"runtime",
-                             (char*)"context",
                              NULL};
     int fd=0;
     PyObject* configDgram=0;
     self->verbose=0;
     self->debug=0;
-    unsigned long long runtimePtr=0;
-    unsigned long long contextPtr=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iO$iiKK", kwlist,
+                                     "|iO$ii", kwlist,
                                      &fd,
                                      &configDgram,
                                      &(self->verbose),
-                                     &(self->debug),
-                                     &runtimePtr,
-                                     &contextPtr)) {
+                                     &(self->debug))) {
         return -1;
     }
 
@@ -247,26 +254,18 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->dgram = (Dgram*)malloc(BUFSIZE);
 #else
     {
-      if (runtimePtr == 0) {
-          PyErr_SetString(PyExc_MemoryError, "Must specify Legion runtime");
-          return -1;
-      }
-      if (contextPtr == 0) {
-          PyErr_SetString(PyExc_MemoryError, "Must specify Legion context");
-          return -1;
-      }
-      Runtime *runtime = reinterpret_cast<Runtime *>(runtimePtr);
-      Context context = reinterpret_cast<Context>(contextPtr);
+      Runtime *runtime = Runtime::get_runtime();
+      Context ctx = Runtime::get_context();
 
-      IndexSpaceT<1> ispace = runtime->create_index_space(context, Rect<1>(0, BUFSIZE-1));
-      FieldSpace fspace = runtime->create_field_space(context);
-      FieldAllocator falloc = runtime->create_field_allocator(context, fspace);
+      IndexSpaceT<1> ispace = runtime->create_index_space(ctx, Rect<1>(0, BUFSIZE-1));
+      FieldSpace fspace = runtime->create_field_space(ctx);
+      FieldAllocator falloc = runtime->create_field_allocator(ctx, fspace);
       falloc.allocate_field(1, FID_X);
-      self->region = runtime->create_logical_region(context, ispace, fspace);
+      self->region = runtime->create_logical_region(ctx, ispace, fspace);
 
       InlineLauncher launcher(RegionRequirement(self->region, READ_WRITE, EXCLUSIVE, self->region));
       launcher.add_field(FID_X);
-      self->physical = runtime->map_region(context, launcher);
+      self->physical = runtime->map_region(ctx, launcher);
       self->physical.wait_until_valid();
       UnsafeFieldAccessor<char,1,coord_t,Realm::AffineAccessor<char,1,coord_t> > acc(self->physical, FID_X);
       self->dgram = (Dgram*)acc.ptr(0);
