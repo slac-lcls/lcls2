@@ -18,22 +18,34 @@ public:
     unsigned major() {return (_version>>16)&0xff;}
     unsigned minor() {return (_version>>8)&0xff;}
     unsigned micro() {return (_version)&0xff;}
+    unsigned version() {return _version;}
 private:
     uint32_t _version;
 };
 
 class Alg {
 public:
-    Alg(const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
+    Alg(const char* targetName, const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
         _version(major,minor,micro) {
         strncpy(_alg, alg, maxNameSize);
+        strncpy(_targetName, targetName, maxNameSize);
     }
 
     Alg(Alg& other) : _version(other._version) {
         strncpy(_alg, other._alg, maxNameSize);
+        strncpy(_targetName, other._targetName, maxNameSize);
     }
 
+    uint32_t getVersion() {
+        return _version.version();
+    }
+
+    const char* getAlgName() {return _alg;}
+
+    const char* getTargetName() {return _targetName;}
+
 private:
+    char _targetName[maxNameSize];
     char _alg[maxNameSize];
     AlgVersion _version;
 };
@@ -141,6 +153,7 @@ public:
     }
 private:
     Alg _alg;
+
 };
 
 #include <stdio.h>

@@ -58,14 +58,56 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
     }
 }
 
+void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
+{
+    // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
+    // There can be only one software in pyDgram
+    printf("--- DictAssignAlg %d \n", namesVec.size() );
+
+    for (unsigned j = 0; j < namesVec.size(); j++) {
+        Names& names = namesVec[j].names();
+
+        Alg& alg = names.alg();
+        const char* targetName = alg.getTargetName();
+        const char* algName = alg.getAlgName();
+        const uint32_t _v = alg.getVersion();
+
+        PyObject* keyN = PyUnicode_FromString("targetName");
+        PyObject* keyS = PyUnicode_FromString("software");
+        PyObject* keyV = PyUnicode_FromString("version");
+
+        std::cout << targetName << "," << algName << "," << _v << std::endl;
+        PyObject* newobjN = Py_BuildValue("s", targetName);
+        PyObject* newobjS = Py_BuildValue("s", algName);
+        PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
+
+        if (PyDict_Contains(pyDgram->dict, keyS)) {
+            printf("Dgram: Ignoring duplicate key %s\n", "software");
+        } else {
+            PyDict_SetItem(pyDgram->dict, keyN, newobjN);
+            Py_DECREF(newobjN);
+            PyDict_SetItem(pyDgram->dict, keyS, newobjS);
+            Py_DECREF(newobjS);
+            PyDict_SetItem(pyDgram->dict, keyV, newobjV);
+            Py_DECREF(newobjV);
+        }
+    }
+}
+
 void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
 {
-    Names& names = descdata.nameindex().names();
+    printf("--- DictAssign\n");
+    Names& names = descdata.nameindex().names(); // event names, chan0, chan1
+
+    printf("Dicts found: %d\n",names.num());
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         const char* tempName = name.name();
         PyObject* key = PyUnicode_FromString(tempName);
         PyObject* newobj;
+
+        printf("####  DictAssign: %s %d\n", tempName, name.rank()); // chan0, chan1, chan2, chan3
+
         if (name.rank() == 0) {
             switch (name.type()) {
             case Name::UINT8: {
@@ -99,7 +141,9 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             uint32_t* shape = descdata.shape(name);
             for (unsigned j = 0; j < name.rank(); j++) {
                 dims[j] = shape[j];
+                printf("j dim: %d %d\n",j,dims[j]);
             }
+            printf("name type: %d\n",name.type());
             switch (name.type()) {
             case Name::UINT8: {
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
@@ -168,8 +212,11 @@ public:
 
     int process(Xtc* xtc)
     {
-        switch (xtc->contains.id()) {
+        printf("Got to process: %d\n",xtc->contains.id());
+        switch (xtc->contains.id()) { //enum Type { Parent, ShapesData, Shapes, Data, Names, NumberOf };
         case (TypeId::Parent): {
+            printf("PyConvertIter Parent\n");
+
             iterate(xtc); // look inside anything that is a Parent
             break;
         }
@@ -178,7 +225,14 @@ public:
             // lookup the index of the names we are supposed to use
             unsigned namesId = shapesdata.shapes().namesId();
             DescData descdata(shapesdata, _namesVec[namesId]);
+
+            printf("PyConvertIter ShapesData %u\n", namesId);
+
             DictAssign(_pyDgram, descdata);
+            break;
+        }
+        case (TypeId::Names): { // xtc doesn't get used
+            DictAssignAlg(_pyDgram, _namesVec);
             break;
         }
         default:
@@ -221,6 +275,7 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
+    printf("### Enter dgram_init\n");
     static char* kwlist[] = {(char*)"file_descriptor",
                              (char*)"config",
                              (char*)"verbose",
@@ -291,11 +346,18 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
+    printf("configDgram: %u\n", configDgram);
     if (configDgram==0) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
+    printf("configDgram1: %u\n", configDgram);
+
+    printf("NamesIter\n");
+    // add names
     NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
     namesIter.iterate();
 
-    PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
+    printf("PyConvertIter\n");
+    // convert to python object
+    PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec()); // Xtc* xtc, PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec
     iter.iterate();
 
     return 0;
@@ -322,24 +384,24 @@ static PyMemberDef dgram_members[] = {
 };
 
 
-PyObject* tp_getattro(PyObject* o, PyObject* key)
+PyObject* tp_getattro(PyObject* obj, PyObject* key)
 {
-    PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
+    PyObject* res = PyDict_GetItem(((PyDgramObject*)obj)->dict, key);
     if (res != NULL) {
-        if ( (((PyDgramObject*)o)->debug & 0x01) != 0 ) {
+        if ( (((PyDgramObject*)obj)->debug & 0x01) != 0 ) {
             // old-style pointer management -- this should be remove at some point
             printf("Warning: using old-style pointer management in tp_getattro() (i.e. debug=1)\n");
             if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
                 PyArrayObject* arr = (PyArrayObject*)res;
                 PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
                                                                PyArray_DESCR(arr)->type_num, PyArray_DATA(arr));
-                if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, (PyObject*)o) < 0) {
+                if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, (PyObject*)obj) < 0) {
                     printf("Failed to set BaseObject for numpy array.\n");
                     return 0;
                 }
                 // this reference count will get decremented when the returned
                 // array is deleted (since the array has us as the "base" object).
-                Py_INCREF(o);
+                Py_INCREF(obj);
                 //return arr_copy;
                 res=arr_copy;
             } else {
@@ -350,13 +412,13 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
         } else {
             // New default behaviour
             Py_INCREF(res);
-            PyDict_DelItem(((PyDgramObject*)o)->dict, key);
-            if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
-                Py_CLEAR(((PyDgramObject*)o)->dict);
+            PyDict_DelItem(((PyDgramObject*)obj)->dict, key);
+            if (PyDict_Size(((PyDgramObject*)obj)->dict) == 0) {
+                Py_CLEAR(((PyDgramObject*)obj)->dict);
             }
         }
     } else {
-        res = PyObject_GenericGetAttr(o, key);
+        res = PyObject_GenericGetAttr(obj, key);
     }
 
     return res;
