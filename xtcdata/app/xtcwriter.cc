@@ -156,7 +156,7 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 }
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg0("hsd",1,2,3);
+    Alg alg0("raw","hsd",1,2,3);
     Names& frontEndNames = *new(parent) Names(alg0);
     frontEndNames.add("float_pgp",  Name::FLOAT, parent);
     frontEndNames.add("array0_pgp", Name::FLOAT, parent, 2);
@@ -164,7 +164,7 @@ void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     frontEndNames.add("array1_pgp", Name::FLOAT, parent, 2);
     namesVec.push_back(NameIndex(frontEndNames));
 
-    Alg alg1("abc",1,2,3);
+    Alg alg1("fex","abc",4,5,6);
     Names& fexNames = *new(parent) Names(alg1);
     fexNames.add("float_fex", Name::FLOAT, parent);
     fexNames.add("array_fex", Name::FLOAT, parent, 2);
