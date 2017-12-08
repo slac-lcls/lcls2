@@ -199,7 +199,14 @@ static void dgram_dealloc(PyDgramObject* self)
 #ifndef PSANA_USE_LEGION
     free(self->dgram);
 #else
-    printf("FIXME: Need to implement dealloc for Legion\n");
+    {
+      Runtime *runtime = Runtime::get_runtime();
+      Context ctx = Runtime::get_context();
+
+      // FIXME: Causes runtime type error
+      // self->physical = PhysicalRegion();
+      runtime->destroy_logical_region(ctx, self->region);
+    }
 #endif
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -218,23 +225,17 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"config",
                              (char*)"verbose",
                              (char*)"debug",
-                             (char*)"runtime",
-                             (char*)"context",
                              NULL};
     int fd=0;
     PyObject* configDgram=0;
     self->verbose=0;
     self->debug=0;
-    unsigned long long runtimePtr=0;
-    unsigned long long contextPtr=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iO$iiKK", kwlist,
+                                     "|iO$ii", kwlist,
                                      &fd,
                                      &configDgram,
                                      &(self->verbose),
-                                     &(self->debug),
-                                     &runtimePtr,
-                                     &contextPtr)) {
+                                     &(self->debug))) {
         return -1;
     }
 
@@ -253,18 +254,8 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->dgram = (Dgram*)malloc(BUFSIZE);
 #else
     {
-      if (runtimePtr == 0) {
-          PyErr_SetString(PyExc_TypeError, "Must specify Legion runtime");
-          return -1;
-      }
-      if (contextPtr == 0) {
-          PyErr_SetString(PyExc_TypeError, "Must specify Legion context");
-          return -1;
-      }
-      legion_runtime_t c_runtime = *reinterpret_cast<legion_runtime_t *>(runtimePtr);
-      legion_context_t c_context = *reinterpret_cast<legion_context_t *>(contextPtr);
-      Runtime *runtime = CObjectWrapper::unwrap(c_runtime);
-      Context ctx = CObjectWrapper::unwrap(c_context)->context();
+      Runtime *runtime = Runtime::get_runtime();
+      Context ctx = Runtime::get_context();
 
       IndexSpaceT<1> ispace = runtime->create_index_space(ctx, Rect<1>(0, BUFSIZE-1));
       FieldSpace fspace = runtime->create_field_space(ctx);

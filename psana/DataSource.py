@@ -6,13 +6,6 @@ import time
 import getopt
 import pprint
 
-try:
-    import legion
-    if not legion.inside_legion_executable():
-        legion = None
-except ImportError:
-    legion = None
-
 sys.path.append('../build/psana')
 import dgram
 #
@@ -24,16 +17,14 @@ class DataSource:
                      os.O_RDONLY|os.O_LARGEFILE)
         self._config = dgram.Dgram(file_descriptor=fd,
                                    verbose=verbose,
-                                   debug=debug,
-                                   **self._get_legion_runtime_context())
+                                   debug=debug)
     def __iter__(self):
         return self
 
     def __next__(self):
         d=dgram.Dgram(config=self._config,
                       verbose=self._get_verbose(),
-                      debug=self._get_debug(),
-                      **self._get_legion_runtime_context())
+                      debug=self._get_debug())
         for var_name in self.event_variables():
             delattr(self, var_name)
         for key in sorted(d.__dict__.keys()):
@@ -51,13 +42,6 @@ class DataSource:
     def _set_debug(self, value):
         setattr(self._config, "debug", value)
     _debug = property(_get_debug, _set_debug)
-
-    def _get_legion_runtime_context(self):
-        kw = {}
-        if legion:
-            kw['runtime'] = int(legion.ffi.cast("unsigned long long", legion._my.ctx.runtime_root))
-            kw['context'] = int(legion.ffi.cast("unsigned long long", legion._my.ctx.context_root))
-        return kw
 
     def event_variables(self):
         var_names=[]
