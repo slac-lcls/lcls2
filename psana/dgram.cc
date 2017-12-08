@@ -15,7 +15,9 @@
 #include <structmember.h>
 
 #ifdef PSANA_USE_LEGION
+#define LEGION_ENABLE_C_BINDINGS
 #include <legion.h>
+#include <legion/legion_c_util.h>
 using namespace Legion;
 #endif
 
@@ -194,7 +196,11 @@ static void dgram_dealloc(PyDgramObject* self)
 {
     write_object_info(self, NULL, "Top of dgram_dealloc()");
     Py_XDECREF(self->dict);
+#ifndef PSANA_USE_LEGION
     free(self->dgram);
+#else
+    printf("FIXME: Need to implement dealloc for Legion\n");
+#endif
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -248,25 +254,27 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 #else
     {
       if (runtimePtr == 0) {
-          PyErr_SetString(PyExc_MemoryError, "Must specify Legion runtime");
+          PyErr_SetString(PyExc_TypeError, "Must specify Legion runtime");
           return -1;
       }
       if (contextPtr == 0) {
-          PyErr_SetString(PyExc_MemoryError, "Must specify Legion context");
+          PyErr_SetString(PyExc_TypeError, "Must specify Legion context");
           return -1;
       }
-      Runtime *runtime = reinterpret_cast<Runtime *>(runtimePtr);
-      Context context = reinterpret_cast<Context>(contextPtr);
+      legion_runtime_t c_runtime = *reinterpret_cast<legion_runtime_t *>(runtimePtr);
+      legion_context_t c_context = *reinterpret_cast<legion_context_t *>(contextPtr);
+      Runtime *runtime = CObjectWrapper::unwrap(c_runtime);
+      Context ctx = CObjectWrapper::unwrap(c_context)->context();
 
-      IndexSpaceT<1> ispace = runtime->create_index_space(context, Rect<1>(0, BUFSIZE-1));
-      FieldSpace fspace = runtime->create_field_space(context);
-      FieldAllocator falloc = runtime->create_field_allocator(context, fspace);
+      IndexSpaceT<1> ispace = runtime->create_index_space(ctx, Rect<1>(0, BUFSIZE-1));
+      FieldSpace fspace = runtime->create_field_space(ctx);
+      FieldAllocator falloc = runtime->create_field_allocator(ctx, fspace);
       falloc.allocate_field(1, FID_X);
-      self->region = runtime->create_logical_region(context, ispace, fspace);
+      self->region = runtime->create_logical_region(ctx, ispace, fspace);
 
       InlineLauncher launcher(RegionRequirement(self->region, READ_WRITE, EXCLUSIVE, self->region));
       launcher.add_field(FID_X);
-      self->physical = runtime->map_region(context, launcher);
+      self->physical = runtime->map_region(ctx, launcher);
       self->physical.wait_until_valid();
       UnsafeFieldAccessor<char,1,coord_t,Realm::AffineAccessor<char,1,coord_t> > acc(self->physical, FID_X);
       self->dgram = (Dgram*)acc.ptr(0);
