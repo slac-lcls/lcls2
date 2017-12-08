@@ -62,22 +62,20 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
 {
     // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
     // There can be only one software in pyDgram
-    printf("--- DictAssignAlg %d \n", namesVec.size() );
 
     for (unsigned j = 0; j < namesVec.size(); j++) {
         Names& names = namesVec[j].names();
 
         Alg& alg = names.alg();
-        const char* targetName = alg.getTargetName();
+        const char* dataName = alg.getDataName();
         const char* algName = alg.getAlgName();
         const uint32_t _v = alg.getVersion();
 
-        PyObject* keyN = PyUnicode_FromString("targetName");
+        PyObject* keyN = PyUnicode_FromString("dataName");
         PyObject* keyS = PyUnicode_FromString("software");
         PyObject* keyV = PyUnicode_FromString("version");
 
-        std::cout << targetName << "," << algName << "," << _v << std::endl;
-        PyObject* newobjN = Py_BuildValue("s", targetName);
+        PyObject* newobjN = Py_BuildValue("s", dataName);
         PyObject* newobjS = Py_BuildValue("s", algName);
         PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
