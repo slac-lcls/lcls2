@@ -22,7 +22,7 @@ namespace Pds {
     class Batch : public Pds::Entry
     {
     public:
-      Batch(const XtcData::Src&, const XtcData::Dgram&, uint64_t pid);
+      Batch(const XtcData::Dgram&, uint64_t pid);
       ~Batch();
     public:
       static size_t size();
@@ -40,7 +40,7 @@ namespace Pds {
       void             store(const XtcData::Dgram*);
       uint64_t         id() const;
       void             id(uint64_t pid);
-      bool             expired(uint64_t pid);
+      bool             expired(uint64_t pid) const;
       unsigned         index() const;
       size_t           extent() const;
       void*            buffer() const;
@@ -84,7 +84,7 @@ inline void Pds::Eb::Batch::id(uint64_t pid)
   dg->seq = XtcData::Sequence(dg->seq.clock(), ts);
 }
 
-inline bool Pds::Eb::Batch::expired(uint64_t pid)
+inline bool Pds::Eb::Batch::expired(uint64_t pid) const
 {
   return id() != pid;
 }

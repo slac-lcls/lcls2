@@ -22,6 +22,9 @@
 #include "EbContribution.hh"
 #include "EventBuilder.hh"
 
+#include "psdaq/service/GenericPool.hh"
+
+#include <new>
 #include <stdlib.h>
 
 using namespace XtcData;
@@ -48,24 +51,22 @@ static const int MaxTimeouts = 0x100;      // Revisit: Was 0xffff
 */
 
 EbEvent::EbEvent(uint64_t      contract,
-                 EventBuilder* eb,
+                 GenericPool&  cntrbFreelist,
                  EbEvent*      after,
                  const Dgram*  cdg,
                  uint64_t      prm,
                  uint64_t      mask) :
-  _pending()
+  _sequence     (cdg->seq.stamp().pulseId()),
+  _contract     (contract),
+  _pending      (),
+  _cntrbFreelist(cntrbFreelist),
+  _living       (MaxTimeouts),
+  _key          (_sequence & mask)
 {
-  uint64_t key = cdg->seq.stamp().pulseId();
-  _sequence = key;
-  _key      = key & mask;
-  _eb       = eb;
-  _living   = MaxTimeouts;
-
   EbContribution* contrib = _contribution(cdg, prm);
 
   _size      = contrib->payloadSize();
 
-  _contract  = contract;
   _remaining = contract & contrib->retire();
 
   connect(after);
@@ -144,16 +145,16 @@ EbContribution* EbEvent::_contribution(const Dgram* cdg,
 {
   EbContribution* contrib = _pending.reverse();
 
-  contrib = new(&_eb->_cntrbFreelist) EbContribution(cdg, prm, contrib);
-  if (!contrib)
+  void* buffer = _cntrbFreelist.alloc(sizeof(EbContribution));
+  if (!buffer)
   {
     printf("%s: Unable to allocate contribution\n", __PRETTY_FUNCTION__);
     printf("  cntrbFreelist:\n");
-    _eb->_cntrbFreelist.dump();
+    _cntrbFreelist.dump();
     abort();
   }
 
-  return contrib;
+  return ::new(buffer) EbContribution(cdg, prm, contrib);
 }
 
 /*
