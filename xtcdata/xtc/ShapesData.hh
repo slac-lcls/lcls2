@@ -25,15 +25,13 @@ private:
 
 class Alg {
 public:
-    Alg(const char* dataName, const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
+    Alg(const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
         _version(major,minor,micro) {
         strncpy(_alg, alg, maxNameSize);
-        strncpy(_dataName, dataName, maxNameSize);
     }
 
     Alg(Alg& other) : _version(other._version) {
         strncpy(_alg, other._alg, maxNameSize);
-        strncpy(_dataName, other._dataName, maxNameSize);
     }
 
     uint32_t getVersion() {
@@ -42,10 +40,7 @@ public:
 
     const char* getAlgName() {return _alg;}
 
-    const char* getDataName() {return _dataName;}
-
 private:
-    char _dataName[maxNameSize];
     char _alg[maxNameSize];
     AlgVersion _version;
 };
@@ -123,14 +118,16 @@ class Names : public AutoParentAlloc
 {
 public:
 
-    Names(Alg& alg) :
+    Names(Alg& alg, const char* dataName) :
         AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
         _alg(alg)
     {
+        strncpy(_dataName, dataName, maxNameSize);
         // allocate space for our private data
         XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
     Alg& alg() {return _alg;}
+    const char* getDataName() {return _dataName;}
 
     Name& get(unsigned index)
     {
@@ -153,7 +150,7 @@ public:
     }
 private:
     Alg _alg;
-
+    char _dataName[maxNameSize];
 };
 
 #include <stdio.h>

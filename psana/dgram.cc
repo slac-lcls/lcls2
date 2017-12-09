@@ -61,13 +61,11 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
 void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
 {
     // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
-    // There can be only one software in pyDgram
-
     for (unsigned j = 0; j < namesVec.size(); j++) {
         Names& names = namesVec[j].names();
 
         Alg& alg = names.alg();
-        const char* dataName = alg.getDataName();
+        const char* dataName = names.getDataName();
         const char* algName = alg.getAlgName();
         const uint32_t _v = alg.getVersion();
 
@@ -79,7 +77,7 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
         PyObject* newobjS = Py_BuildValue("s", algName);
         PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
-        if (PyDict_Contains(pyDgram->dict, keyS)) {
+        if (PyDict_Contains(pyDgram->dict, keyS)) { // TODO: This code can only attach one software in configDgram
             printf("Dgram: Ignoring duplicate key %s\n", "software");
         } else {
             PyDict_SetItem(pyDgram->dict, keyN, newobjN);
@@ -94,17 +92,13 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
 
 void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
 {
-    printf("--- DictAssign\n");
     Names& names = descdata.nameindex().names(); // event names, chan0, chan1
 
-    printf("Dicts found: %d\n",names.num());
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         const char* tempName = name.name();
         PyObject* key = PyUnicode_FromString(tempName);
         PyObject* newobj;
-
-        printf("####  DictAssign: %s %d\n", tempName, name.rank()); // chan0, chan1, chan2, chan3
 
         if (name.rank() == 0) {
             switch (name.type()) {
@@ -139,9 +133,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             uint32_t* shape = descdata.shape(name);
             for (unsigned j = 0; j < name.rank(); j++) {
                 dims[j] = shape[j];
-                printf("j dim: %d %d\n",j,dims[j]);
             }
-            printf("name type: %d\n",name.type());
             switch (name.type()) {
             case Name::UINT8: {
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
@@ -210,11 +202,8 @@ public:
 
     int process(Xtc* xtc)
     {
-        printf("Got to process: %d\n",xtc->contains.id());
         switch (xtc->contains.id()) { //enum Type { Parent, ShapesData, Shapes, Data, Names, NumberOf };
         case (TypeId::Parent): {
-            printf("PyConvertIter Parent\n");
-
             iterate(xtc); // look inside anything that is a Parent
             break;
         }
@@ -223,14 +212,7 @@ public:
             // lookup the index of the names we are supposed to use
             unsigned namesId = shapesdata.shapes().namesId();
             DescData descdata(shapesdata, _namesVec[namesId]);
-
-            printf("PyConvertIter ShapesData %u\n", namesId);
-
             DictAssign(_pyDgram, descdata);
-            break;
-        }
-        case (TypeId::Names): { // xtc doesn't get used
-            DictAssignAlg(_pyDgram, _namesVec);
             break;
         }
         default:
@@ -273,7 +255,6 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
-    printf("### Enter dgram_init\n");
     static char* kwlist[] = {(char*)"file_descriptor",
                              (char*)"config",
                              (char*)"verbose",
@@ -344,19 +325,22 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-    printf("configDgram: %u\n", configDgram);
-    if (configDgram==0) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
-    printf("configDgram1: %u\n", configDgram);
+    if (configDgram==0) {
+        configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
+        NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
+        namesIter.iterate();
 
-    printf("NamesIter\n");
-    // add names
-    NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
-    namesIter.iterate();
+        DictAssignAlg((PyDgramObject*)configDgram, namesIter.namesVec());
 
-    printf("PyConvertIter\n");
-    // convert to python object
-    PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec()); // Xtc* xtc, PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec
-    iter.iterate();
+        PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
+        iter.iterate();
+    } else {
+        NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
+        namesIter.iterate();
+
+        PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
+        iter.iterate();
+    }
 
     return 0;
 }
