@@ -34,7 +34,7 @@ namespace Pds {
       virtual ~EbFtServer();
     public:
       int connect(unsigned myId);
-      const char* base() const;         // Revisit: For debugging; remove it?
+      const char* base() const;
     public:
       virtual int shutdown();
     private:
@@ -42,7 +42,8 @@ namespace Pds {
       Fabrics::PassiveEndpoint* _pep;    // Endpoint for establishing connections
       size_t                    _lclSize;// Local  memory region size
       const bool                _shared; // True when buffers are shared by peers
-      char*                     _base;   // The local memory region
+      char*                     _lclMem; // The local memory region
+      char*                     _base;   // Aligned local memory region
     };
   };
 };
