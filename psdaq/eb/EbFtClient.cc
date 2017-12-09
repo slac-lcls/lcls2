@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>                     // For sleep()...
+#include <assert.h>
 
 using namespace Pds;
 using namespace Pds::Fabrics;
@@ -24,8 +25,9 @@ EbFtClient::EbFtClient(StringList& peers,
   _port(port),
   _lclSize(scratch_size),
   _rmtSize(rmtSize),
-  _base(new char[peers.size() * scratch_size])
+  _base(new char[peers.size() * scratch_size]) // No big deal if unaligned
 {
+  assert(_base != nullptr);
 }
 
 EbFtClient::~EbFtClient()
@@ -40,7 +42,7 @@ EbFtClient::~EbFtClient()
 
 int EbFtClient::connect(unsigned id, unsigned tmo)
 {
-  if (_base == NULL)
+  if (_base == nullptr)
   {
     fprintf(stderr, "No memory available for a region of size %zd\n", _lclSize);
     return -1;
@@ -49,7 +51,7 @@ int EbFtClient::connect(unsigned id, unsigned tmo)
   char* pool = _base;
   for (unsigned i = 0; i < _peers.size(); ++i)
   {
-    _lMr[i] = NULL;
+    _lMr[i] = nullptr;
     int ret = _connect(id, _peers[i], _port[i], tmo, pool, _ep[i], _rMr[i], _id[i]);
     if (ret)
     {

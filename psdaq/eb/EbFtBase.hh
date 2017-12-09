@@ -56,8 +56,8 @@ namespace Pds {
       EbFtBase(unsigned nPeers);
       virtual ~EbFtBase();
     public:
-      void registerMemory(void* buffer, size_t size);
-      uint64_t pend();
+      void     registerMemory(void* buffer, size_t size);
+      int      pend(uint64_t* data);
       //int      post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t offset, void* ctx);
       int      post(const void* buf, size_t len, unsigned dst, uint64_t offset);
       uint64_t rmtAdx(unsigned dst, uint64_t offset); // Revisit: For debugging, remove
@@ -78,7 +78,7 @@ namespace Pds {
                           Fabrics::MemoryRegion*  mr,
                           Fabrics::RemoteAddress& ra);
     private:
-      uint64_t _tryCq();
+      int      _tryCq(uint64_t* data);
     protected:
       EpList                     _ep;   // List of Endpoints
       MrList                     _lMr;  // List of local  Memory Regions per EP
