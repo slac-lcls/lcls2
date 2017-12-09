@@ -41,7 +41,8 @@ namespace Pds {
       virtual unsigned   duration()   const;
       virtual unsigned   repetitive() const;
     public:
-      void               process(const XtcData::Dgram*, uint64_t appParam);
+      void               process    (const XtcData::Dgram*, uint64_t appParam);
+      unsigned           processBulk(const XtcData::Dgram*, uint64_t appParam);
     public:
       void               dump(unsigned detail);
     private:
@@ -54,7 +55,6 @@ namespace Pds {
       void              _flush(EbEvent*);
       void              _retire(EbEvent*);
       EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*, uint64_t param);
-      EbEvent*          _insert(const XtcData::Dgram*, uint64_t param);
     private:
       friend class EbEvent;
     private:
