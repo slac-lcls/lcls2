@@ -35,6 +35,7 @@ add_executable(ft_writemsg_server ft_writemsg_server.cc)
 
 add_executable(tstEbContributor tstEbContributor)
 add_executable(tstEbBuilder tstEbBuilder)
+add_executable(drpEbBuilder drpEbBuilder)
 
 target_link_libraries(ft_pingpong
     eb
@@ -79,6 +80,11 @@ target_link_libraries(tstEbContributor
 )
 
 target_link_libraries(tstEbBuilder
+    eb
+    pthread
+)
+
+target_link_libraries(drpEbBuilder
     eb
     pthread
 )
