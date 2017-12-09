@@ -14,6 +14,9 @@ namespace XtcData {
 };
 
 namespace Pds {
+
+  class GenericPool;
+
   namespace Eb {
 
     class EventBuilder;
@@ -24,7 +27,7 @@ namespace Pds {
       PoolDeclare;
     public:
       EbEvent(uint64_t              contract,
-              EventBuilder*         builder,
+              GenericPool&          cntrbFreelist,
               EbEvent*              after,
               const XtcData::Dgram* contrib,
               uint64_t              param,
@@ -48,14 +51,14 @@ namespace Pds {
       bool             _alive();
       EbContribution*  _contribution(const XtcData::Dgram* cdg, uint64_t prm);
     private:
-      uint64_t         _sequence;     // Event's sequence identifier
-      size_t           _size;         // Total contribution size (in bytes)
-      uint64_t         _remaining;    // List of clients which have contributed
-      uint64_t         _contract;     // -> potential list of contributors
-      EbCntrbList      _pending;      // Pending contribution list head
-      EventBuilder*    _eb;           // -> Back-end processing object
-      int              _living;       // Aging counter
-      uint64_t         _key;          // Masked epoch
+      uint64_t         _sequence;      // Event's sequence identifier
+      size_t           _size;          // Total contribution size (in bytes)
+      uint64_t         _remaining;     // List of clients which have contributed
+      uint64_t         _contract;      // -> potential list of contributors
+      EbCntrbList      _pending;       // Pending contribution list head
+      GenericPool&     _cntrbFreelist; // Freelist for new contributions
+      int              _living;        // Aging counter
+      uint64_t         _key;           // Masked epoch
     };
   };
 };
