@@ -261,6 +261,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"debug",
                              NULL};
     int fd=0;
+    bool isConfig;
     PyObject* configDgram=0;
     self->verbose=0;
     self->debug=0;
@@ -272,6 +273,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                                      &(self->debug))) {
         return -1;
     }
+    isConfig = (configDgram==0) ? true : false;
 
     if (fd==0 && configDgram==0) {
         PyErr_SetString(PyExc_StopIteration, "Must specify either file_descriptor or config");
@@ -325,22 +327,15 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-    if (configDgram==0) {
-        configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
-        NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
-        namesIter.iterate();
+    if (isConfig) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
 
-        DictAssignAlg((PyDgramObject*)configDgram, namesIter.namesVec());
+    NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
+    namesIter.iterate();
 
-        PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
-        iter.iterate();
-    } else {
-        NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
-        namesIter.iterate();
+    if (isConfig) DictAssignAlg((PyDgramObject*)configDgram, namesIter.namesVec());
 
-        PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
-        iter.iterate();
-    }
+    PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
+    iter.iterate();
 
     return 0;
 }
