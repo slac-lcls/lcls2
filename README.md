@@ -10,8 +10,9 @@ cd build
 cmake ..
 make (optionally with "-j N" to compile in parallel on N cores)
 
+make test (runs some quick tests writing/reading xtc and hdf5 files)
+
 you can change between optimize/debug builds by running cmake with the following:
 
 cmake -DCMAKE_BUILD_TYPE={Debug, RelWithDebInfo, Release} ..
 ```
-

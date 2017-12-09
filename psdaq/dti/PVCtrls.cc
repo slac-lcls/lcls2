@@ -82,7 +82,7 @@ namespace Pds {
       _pv.resize(0);
 
       std::ostringstream o;
-      o << title << ":DTI:";
+      o << title << ":";
       std::string pvbase = o.str();
 
 #define NPV(name)  _pv.push_back( new PV(name)(*this, (pvbase+#name).c_str()) )

@@ -34,19 +34,20 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for DTI(s)')
 
-    parser.add_argument('-P', required=True, metavar='PREFIX', help='common prefix, e.g. DAQ:')
+    parser.add_argument('-P', required=True, metavar='PREFIX', help='common prefix, e.g. DAQ')
     parser.add_argument('-R', metavar='P1[,P2[...]]', help='unique partition(s)')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
     myDriver.verbose = args.verbose
 
-    prefix = args.P
+    prefix = args.P+':'
 
     if args.R is None:
       p2set = set([''])
     else:
-      p2set = set(args.R.split(","))
+      # add colon to each item
+      p2set = set([s+':' for s in args.R.split(",")])
 
     # PVs
 

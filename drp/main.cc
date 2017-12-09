@@ -19,13 +19,63 @@
 #include "xtcdata/xtc/NamesIter.hh"
 #include "psdaq/hdf5/Hdf5Writer.hh"
 
+#include "psdaq/eb/BatchManager.hh"
+#include "psdaq/eb/EbFtClient.hh"
+#include "psdaq/eb/EbFtServer.hh"
+
 #include "main.hh"
 #include "spscqueue.hh"
 #include "PgpCardMod.h"
 
 using PebbleQueue = SPSCQueue<Pebble*>;
 using namespace XtcData;
+using namespace Pds::Eb;
 
+// these parameters must agree with the server side
+unsigned maxBatches = 1000; // size of the pool of batches
+unsigned maxEntries = 10; // maximum number of events in a batch
+unsigned BatchSizeInPulseIds = 8; // age of the batch. should never exceed maxEntries above, must be a power of 2
+
+unsigned EbId = 0; // from 0-63, maximum number of event builders
+unsigned ContribId = 0; // who we are
+
+class TheSrc : public Src
+{
+public:
+    TheSrc(Level::Type level, unsigned id) :
+        Src(level)
+    {
+        _log |= id;
+    }
+};
+
+class MyDgram : public Dgram {
+public:
+    MyDgram(unsigned pulseId, uint64_t val) {
+        seq = Sequence(Sequence::Event, TransitionId::L1Accept, ClockTime(), TimeStamp(pulseId));
+        env = Env(0);
+        xtc = Xtc(TypeId(TypeId::Data, 0), TheSrc(Level::Segment, ContribId));
+        _data = val;
+        xtc.alloc(sizeof(_data));
+    }
+private:
+    uint64_t _data;
+};
+
+size_t maxSize = sizeof(MyDgram);
+
+class MyBatchManager: public BatchManager {
+public:
+    MyBatchManager(EbFtClient& ebFtClient) :
+        BatchManager(TheSrc(Level::Event, ContribId), BatchSizeInPulseIds, maxBatches, maxEntries, maxSize),
+        _ebFtClient(ebFtClient)
+    {}
+    void post(Batch* batch) {
+        _ebFtClient.post(batch->buffer(), batch->extent(), EbId, batch->index() * maxBatchSize());
+    }
+private:
+    EbFtClient& _ebFtClient;
+};
 
 struct EventHeader {
     uint64_t pulseId;
@@ -114,13 +164,50 @@ private:
 };
 
 
-void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32_t** dma_buffers, SPSCQueue<int>& collector_queue, std::vector<PebbleQueue>& worker_input_queues, unsigned first_lane)
+void eb_rcvr(MyBatchManager& myBatchMan)
 {
-    int nlanes = 4;
+    std::string srvPort = "32832"; // add 64 to the client base
+    unsigned numEb = 1;
+    size_t maxBatchSize = sizeof(Dgram) + maxEntries * maxSize;
+    EbFtServer myEbFtServer(srvPort, numEb, maxBatches * maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS);
+    printf("*** rcvr %d %zd\n",maxBatches,maxBatchSize);
+    myEbFtServer.connect(ContribId);
+    unsigned nreceive = 0;
+    unsigned none = 0;
+    unsigned nzero = 0;
+    while(1) {
+        Dgram* batch = (Dgram*)myEbFtServer.pend();
+        unsigned idx = ((char*)batch - myEbFtServer.base()) / maxBatchSize;
+        // printf("received batch %p %d\n",batch,idx);
+        const Batch*  input  = myBatchMan.batch(idx, batch->seq.stamp().pulseId());
+
+        const Dgram*  result = (Dgram*)batch->xtc.payload();
+        const Dgram*  last   = (Dgram*)batch->xtc.next();
+        while(result != last) {
+            nreceive++;
+            // printf("--- result %lx\n",*(uint64_t*)(result->xtc.payload()));
+            uint64_t val = *(uint64_t*)(result->xtc.payload());
+            result = (Dgram*)result->xtc.next();
+            if (val==0) {
+                nzero++;
+            } else if (val==1) {
+                none++;
+            } else {
+                printf("error %ld\n",val);
+            }
+            if (nreceive%10000==0) printf("%d %d %d\n",nreceive,none,nzero);
+        }
+        delete input;
+    }
+}
+
+void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32_t** dma_buffers, SPSCQueue<int>& collector_queue, std::vector<PebbleQueue>& worker_input_queues, std::vector<unsigned> lanes)
+{
+    int nlanes = lanes.size();
 
     // open pgp card fd
     char dev_name[128];
-    snprintf(dev_name, 128, "/dev/pgpcardG3_0_%u", first_lane+1);
+    snprintf(dev_name, 128, "/dev/pgpcardG3_0_%u", lanes[0]+1);
     int fd = open(dev_name, O_RDWR);
     if (fd < 0) {
         std::cout << "Failed to open pgpcard" << dev_name << std::endl;
@@ -250,7 +337,7 @@ void hsdExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
     uint32_t shape[1];
     for (unsigned i=0; i<lanes.size(); i++) {
         sprintf(chan_name,"chan%d",i);
-        shape[0] = buffers[lanes[i]].length;
+        shape[0] = buffers[lanes[i]].length*sizeof(uint32_t);
         hsd.set_array_shape(chan_name, shape);
     }
 }
@@ -272,7 +359,8 @@ void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
 }
 
 void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Names& fexNames = *new(parent) Names();
+    Alg alg("hsd1",1,2,3);
+    Names& fexNames = *new(parent) Names(alg,"raw");
 
     fexNames.add("chan0", Name::UINT8, parent, 1);
     fexNames.add("chan1", Name::UINT8, parent, 1);
@@ -282,7 +370,8 @@ void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
 }
 
 void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Names& fexNames = *new(parent) Names();
+    Alg alg("abc",1,0,0);
+    Names& fexNames = *new(parent) Names(alg,"fex");
 
     fexNames.add("array_fex", Name::UINT16, parent, 2);
     namesVec.push_back(NameIndex(fexNames));
@@ -369,7 +458,8 @@ public:
     int save(Dgram& dgram)
     {
         if (fwrite(&dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload(), 1, file) != 1) {
-            printf("Error writing to output xtc file.\n");
+            printf("Error writing to output xtc file. %p %lu\n",&dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload());
+            perror("save");
             _exit(1);
         }
         fflush(file);
@@ -382,12 +472,18 @@ public:
             iovlen+=iov[i].iov_len;
         }
         if (fwrite(&dgram, sizeof(Dgram) + dgram.xtc.sizeofPayload()-iovlen, 1, file) != 1) {
-            printf("Error writing to output xtc file.\n");
+            printf("Error writing to output xtc file. %p %lu\n",&dgram,sizeof(Dgram) + dgram.xtc.sizeofPayload()-iovlen);
+            perror("saveIov hdr");
             _exit(1);
         }
         for (int i=0; i<iovcnt; i++) {
+            if (iov[i].iov_len==0) {
+                printf("zero len iov\n");
+                continue;
+            }
             if (fwrite(iov[i].iov_base, iov[i].iov_len, 1, file) != 1) {
-                printf("Error writing IOV to output xtc file.\n");
+                printf("Error writing IOV to output xtc file %p %lu.\n",iov[i].iov_base, iov[i].iov_len);
+                perror("saveIov");
                 _exit(1);
             }
         }
@@ -402,6 +498,24 @@ int main()
 {
     int queue_size = 16384;
     std::vector<unsigned> lanes = {0,1,2,3}; // must be contiguous
+
+    // StringList peers;
+    // peers.push_back("172.21.52.136"); //acc05
+    // StringList port;
+    // port.push_back("32768");
+    // size_t rmtSize = maxBatches * (sizeof(Dgram) + maxEntries * maxSize);
+    // printf("*** rmtsize %zd\n",rmtSize);
+    // EbFtClient myEbFtClient(peers,port,rmtSize);
+
+    // MyBatchManager myBatchMan(myEbFtClient);
+
+    // unsigned timeout = 120;
+    // myEbFtClient.connect(ContribId, timeout);
+
+    // myEbFtClient.registerMemory(myBatchMan.batchRegion(), myBatchMan.batchRegionSize());
+    // printf("*** myEb %p %zd\n",myBatchMan.batchRegion(), myBatchMan.batchRegionSize());
+    // // start eb receiver thread
+    // std::thread eb_rcvr_thread(eb_rcvr, std::ref(myBatchMan));
 
     // pin main thread
     pin_thread(pthread_self(), 1);
@@ -434,7 +548,7 @@ int main()
 
     // start pgp reader thread
     std::thread pgp_thread(pgp_reader, std::ref(index_queue), std::ref(pebble_queue), dma_buffers, std::ref(collector_queue),
-                           std::ref(worker_input_queues), lanes[0]);
+                           std::ref(worker_input_queues), lanes);
     pin_thread(pgp_thread.native_handle(), 2);
 
     // start worker threads
@@ -459,12 +573,22 @@ int main()
         worker_output_queues[worker].pop(pebble_data);
 
         Dgram& dgram = *reinterpret_cast<Dgram*>(pebble_data->fex_data());
+
+        // uint64_t val;
+        // if (i%3==0) {
+        //     val = 0xdeadbeef;
+        // } else {
+        //     val = 0xabadcafe;
+        // }
+        // MyDgram dg(i,val);
+        // myBatchMan.process(&dg);
+
         if (i==0) {
             xtcfile.save(dgram);
         } else {
             PGPBuffer* buffers = pebble_data->pgp_data()->buffers;
             for (unsigned ilane=0; ilane<lanes.size(); ilane++) {
-                iov[ilane].iov_len=buffers[lanes[ilane]].length;
+                iov[ilane].iov_len=buffers[lanes[ilane]].length*sizeof(uint32_t);
                 uint32_t dma_index = buffers[lanes[ilane]].dma_index;
                 iov[ilane].iov_base = reinterpret_cast<void*>(dma_buffers[dma_index]);
             }
