@@ -359,8 +359,8 @@ void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
 }
 
 void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg("raw","hsd1",1,2,3);
-    Names& fexNames = *new(parent) Names(alg);
+    Alg alg("hsd1",1,2,3);
+    Names& fexNames = *new(parent) Names(alg,"raw");
 
     fexNames.add("chan0", Name::UINT8, parent, 1);
     fexNames.add("chan1", Name::UINT8, parent, 1);
@@ -370,8 +370,8 @@ void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
 }
 
 void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg("fex","abc",1,0,0);
-    Names& fexNames = *new(parent) Names(alg);
+    Alg alg("abc",1,0,0);
+    Names& fexNames = *new(parent) Names(alg,"fex");
 
     fexNames.add("array_fex", Name::UINT16, parent, 2);
     namesVec.push_back(NameIndex(fexNames));
