@@ -13,9 +13,9 @@ from DataSource import DataSource
 def myroutine2():
   ds = DataSource('data.xtc')
   assert getref(ds)==2
-  d = ds.__next__()
-  assert getref(d)==3
-  arr1 = d.array0_pgp
+  e = ds.__next__()
+  assert getref(e)==2
+  arr1 = e.array0_pgp
   dgramObj=arr1.base
   assert getref(arr1)==3
   assert getref(dgramObj)==5
@@ -24,26 +24,26 @@ def myroutine2():
   assert getref(arr1)==4
   assert getref(s1)==2
 
-  arr2 = d.array0_pgp
+  arr2 = e.array0_pgp
   assert getref(dgramObj)==5
   s2 = arr2[3:5]
   assert getref(dgramObj)==5
   assert getref(arr2)==6
 
-  return s1,d
+  return s1,e
 
 def myroutine1():
-  s1,d =  myroutine2()
+  s1,e =  myroutine2()
   assert getref(s1)==2
 
-  return d
+  return e
 
-d = myroutine1()
+e = myroutine1()
 from testvals import testvals
 for key in testvals:
   val = testvals[key]
   if type(val) is np.ndarray:
-    assert np.array_equal(val,getattr(d,key))
+    assert np.array_equal(val,getattr(e,key))
   else:
-    assert val==getattr(d,key)
+    assert val==getattr(e,key)
 print('xtc tested',len(testvals),'values')
