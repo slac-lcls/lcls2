@@ -211,6 +211,9 @@ public:
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             unsigned namesId = shapesdata.shapes().namesId();
+            unsigned parentDetNameIndex = _namesVec[namesId].names().parentDetNameIndex();
+            const char* parentDetName = _namesVec[parentDetNameIndex].names().getDataName();
+            printf("Found parent name %s\n",parentDetName);
             DescData descdata(shapesdata, _namesVec[namesId]);
             DictAssign(_pyDgram, descdata);
             break;
