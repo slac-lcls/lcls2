@@ -2,6 +2,7 @@
 
 #include "Endpoint.hh"
 
+#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,8 +21,14 @@ EbFtServer::EbFtServer(std::string& port,
   _port(port),
   _lclSize(lclSize),
   _shared(shared == PEERS_SHARE_BUFFERS),
-  _base(new char[(shared ? 1 : nClients) * lclSize])
+  _lclMem(new char[sizeof(uint64_t) + (_shared ? 1 : nClients) * lclSize])
 {
+  assert(_lclMem != nullptr);
+
+  void*  lclMem = _lclMem;
+  size_t size   = (_shared ? 1 : nClients) * lclSize;
+  size_t space  = size + sizeof(uint64_t);
+  _base = (char*)std::align(alignof(uint64_t), size, lclMem, space);
 }
 
 EbFtServer::~EbFtServer()
@@ -42,13 +49,13 @@ int EbFtServer::connect(unsigned myId)
 
   assert(_lclSize > 2 * sizeof(RemoteAddress)); // Else recode to work in a scratch buffer
 
-  if (_base == NULL)
+  if (_base == nullptr)
   {
     fprintf(stderr, "No memory found for a region of size %zd\n", _lclSize);
     return -1;
   }
 
-  _pep = new PassiveEndpoint(NULL, _port.c_str());
+  _pep = new PassiveEndpoint(nullptr, _port.c_str());
   if (!_pep)
   {
     fprintf(stderr, "Passive Endpoint creation failed\n");
@@ -63,6 +70,11 @@ int EbFtServer::connect(unsigned myId)
   Fabric* fab = _pep->fabric();
 
   _cqPoller = new CompletionPoller(fab, _ep.size());
+  if (!_cqPoller)
+  {
+    fprintf(stderr, "Completion Poller creation failed\n");
+    return -1;
+  }
 
   if(!_pep->listen())
   {
@@ -84,7 +96,7 @@ int EbFtServer::connect(unsigned myId)
       break;
     }
 
-    _lMr[i] = NULL;
+    _lMr[i] = nullptr;
     _rMr[i] = fab->register_memory(pool, _lclSize);
     if (!_rMr[i])
     {
@@ -140,7 +152,8 @@ int EbFtServer::shutdown()
     bool cm_entry;
     struct fi_eq_cm_entry entry;
     uint32_t event;
-    if (_ep[i]->event_wait(&event, &entry, &cm_entry))
+    const int tmo = 1000;
+    if (_ep[i]->event_wait(&event, &entry, &cm_entry, tmo))
     {
       if (cm_entry && (event == FI_SHUTDOWN))
       {
@@ -157,10 +170,13 @@ int EbFtServer::shutdown()
     }
     else
     {
-      fprintf(stderr, "Waiting for event failed: %s\n", _ep[i]->error());
-      ret = _ep[i]->error_num();
-      _pep->close(_ep[i]);
-      break;
+      if (_ep[i]->error_num() != -FI_EAGAIN)
+      {
+        fprintf(stderr, "Waiting for event failed: %s\n", _ep[i]->error());
+        ret = _ep[i]->error_num();
+        _pep->close(_ep[i]);
+        break;
+      }
     }
   }
 
