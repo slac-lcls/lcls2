@@ -61,19 +61,16 @@ void EventBuilder::_flushBefore(EbEpoch* entry)
 EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 {
   void* buffer = _epochFreelist.alloc(sizeof(EbEpoch));
-  //EbEpoch* epoch = new(&_epochFreelist) EbEpoch(key, after);
-  //if (!epoch)
   if (!buffer)
   {
     printf("%s: Unable to allocate epoch: key %016lx", __PRETTY_FUNCTION__,
            key);
     printf(" epochFreelist:\n");
     _epochFreelist.dump();
-    dump(1);
     abort();
   }
-  EbEpoch* epoch = ::new(buffer) EbEpoch(key, after);
-  return epoch;
+
+  return ::new(buffer) EbEpoch(key, after);
 }
 
 EbEpoch* EventBuilder::_match(uint64_t inKey)
@@ -99,14 +96,8 @@ EbEvent* EventBuilder::_event(const Dgram* contrib,
                               uint64_t     param,
                               EbEvent*     after)
 {
-  EbEvent* event = new(&_eventFreelist) EbEvent(contract(contrib),
-                                                this,
-                                                after,
-                                                contrib,
-                                                param,
-                                                _mask);
-
-  if (!event)
+  void* buffer = _eventFreelist.alloc(sizeof(EbEvent));
+  if (!buffer)
   {
     printf("%s: Unable to allocate event\n", __PRETTY_FUNCTION__);
     printf("  eventFreelist:\n");
@@ -114,7 +105,12 @@ EbEvent* EventBuilder::_event(const Dgram* contrib,
     abort();
   }
 
-  return event;
+  return ::new(buffer) EbEvent(contract(contrib),
+                               _cntrbFreelist,
+                               after,
+                               contrib,
+                               param,
+                               _mask);
 }
 
 EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
@@ -148,16 +144,6 @@ void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
     remaining &= ~(1ul << srcId);
   }
   while (remaining);
-}
-
-EbEvent* EventBuilder::_insert(const Dgram* contrib,
-                               uint64_t     param)
-{
-  EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
-  EbEvent* event = _insert(epoch, contrib, param);
-  if (!event->_remaining)  return event;
-
-  return NULL;
 }
 
 void EventBuilder::_retire(EbEvent* event)
@@ -258,7 +244,7 @@ unsigned EventBuilder::repetitive() const
 **    builder is running to notify this process that a new contribution has
 **    arrived slightly out of time order.  Thus, a contribution that would
 **    complete an older event might already be on the machine with the
-**    notification stuck in the transfer completion queue until the current
+**    notification stuck in the transport completion queue until the current
 **    contribution (and possibly a few others) has been processed.  Since we
 **    don't want to unnecessarily penalize incomplete events, the _flush()
 **    below will return as soon as it finds an incomplete event, despite the
@@ -274,9 +260,39 @@ unsigned EventBuilder::repetitive() const
 void EventBuilder::process(const Dgram* contrib,
                            uint64_t     appParam)
 {
-  EbEvent* event = _insert(contrib, appParam);
+  EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
+  EbEvent* event = _insert(epoch, contrib, appParam);
+  if (!event->_remaining)  _flush(event);
+}
 
-  if (event && !event->_remaining)  _flush(event);
+unsigned EventBuilder::processBulk(const Dgram* contrib,
+                                   uint64_t     appParam)
+{
+  unsigned cnt   = 0;
+  EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
+  EbEvent* event;
+
+  const Dgram*  next = (Dgram*)contrib->xtc.payload();
+  const Dgram*  last = (Dgram*)contrib->xtc.next();
+  while(next != last)
+  {
+    //if (lverbose > 1)                 // Revisit: lverbose is not defined
+    //{
+    //  unsigned from = next->xtc.src.log() & 0xff;
+    //  printf("EventBuilder found          a  contrib @ %16p, ts %014lx, sz %3zd from Contrib %d\n",
+    //         next, next->seq.stamp().pulseId(), sizeof(*next) + next->xtc.sizeofPayload(), from);
+    //}
+
+    event = _insert(epoch, next, appParam);
+
+    ++cnt;
+
+    next = (Dgram*)next->xtc.next();
+  }
+
+  _flush(event);
+
+  return cnt;
 }
 
 /*
