@@ -156,8 +156,13 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 }
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
+    Alg detnamealg("detname",1,2,3);
+    Names& detname = *new(parent) Names(detnamealg, "hsd_1");
+    namesVec.push_back(NameIndex(detname));
+    unsigned parentDetNameIndex = namesVec.size();
+
     Alg alg0("hsd",1,2,3);
-    Names& frontEndNames = *new(parent) Names(alg0, "raw");
+    Names& frontEndNames = *new(parent) Names(alg0, "raw", parentDetNameIndex);
     frontEndNames.add("float_pgp",  Name::FLOAT, parent);
     frontEndNames.add("array0_pgp", Name::FLOAT, parent, 2);
     frontEndNames.add("int_pgp",    Name::INT32, parent);
@@ -165,7 +170,7 @@ void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     namesVec.push_back(NameIndex(frontEndNames));
 
     Alg alg1("abc",4,5,6);
-    Names& fexNames = *new(parent) Names(alg1, "fex");
+    Names& fexNames = *new(parent) Names(alg1, "fex", parentDetNameIndex);
     fexNames.add("float_fex", Name::FLOAT, parent);
     fexNames.add("array_fex", Name::FLOAT, parent, 2);
     fexNames.add("int_fex",   Name::INT32, parent);
@@ -202,7 +207,8 @@ int main()
         dgram.xtc.damage = 0;
         dgram.xtc.extent = sizeof(Xtc);
 
-        unsigned nameId = 0;
+        // need to protect against putting in the wrong nameId here
+        unsigned nameId = 1;
         pgpExample(dgram.xtc, namesVec[nameId], nameId);
         nameId++;
         fexExample(dgram.xtc, namesVec[nameId], nameId);
