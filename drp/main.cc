@@ -67,7 +67,7 @@ size_t maxSize = sizeof(MyDgram);
 class MyBatchManager: public BatchManager {
 public:
     MyBatchManager(EbFtClient& ebFtClient) :
-        BatchManager(TheSrc(Level::Event, ContribId), BatchSizeInPulseIds, maxBatches, maxEntries, maxSize),
+        BatchManager(BatchSizeInPulseIds, maxBatches, maxEntries, maxSize),
         _ebFtClient(ebFtClient)
     {}
     void post(Batch* batch) {
@@ -176,13 +176,15 @@ void eb_rcvr(MyBatchManager& myBatchMan)
     unsigned none = 0;
     unsigned nzero = 0;
     while(1) {
-        Dgram* batch = (Dgram*)myEbFtServer.pend();
-        unsigned idx = ((char*)batch - myEbFtServer.base()) / maxBatchSize;
+        uint64_t data;
+        if (myEbFtServer.pend(&data))  continue;
+        const Dgram* batch = (const Dgram*)data;
+        unsigned idx = ((const char*)batch - myEbFtServer.base()) / maxBatchSize;
         // printf("received batch %p %d\n",batch,idx);
-        const Batch*  input  = myBatchMan.batch(idx, batch->seq.stamp().pulseId());
+        const Batch*  input  = myBatchMan.batch(idx);
 
-        const Dgram*  result = (Dgram*)batch->xtc.payload();
-        const Dgram*  last   = (Dgram*)batch->xtc.next();
+        const Dgram*  result = (const Dgram*)batch->xtc.payload();
+        const Dgram*  last   = (const Dgram*)batch->xtc.next();
         while(result != last) {
             nreceive++;
             // printf("--- result %lx\n",*(uint64_t*)(result->xtc.payload()));
