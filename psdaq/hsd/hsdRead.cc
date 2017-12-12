@@ -41,7 +41,7 @@ void printUsage(char* name) {
       "                bit 00          print out progress\n"
       "    -N        Exit after N events\n"
       "    -r        Report rate\n"
-      "    -v        Validate each event\n",
+      "    -v <mask> Validate each event\n",
       name
   );
 }
@@ -69,7 +69,7 @@ int main (int argc, char **argv) {
   unsigned            debug               = 0;
   unsigned            nevents             = unsigned(-1);
   unsigned            delay               = 0;
-  bool                lvalidate           = false;
+  unsigned            lvalidate           = 0;
   unsigned            payloadBuffers      = 0;
   bool                reportRate          = false;
   unsigned            nlanes              = 0;
@@ -78,7 +78,7 @@ int main (int argc, char **argv) {
   //  char*               endptr;
   extern char*        optarg;
   int c;
-  while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:N:o:rvV:" ) ) != EOF ) {
+  while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:N:o:rv:V:" ) ) != EOF ) {
     switch(c) {
     case 'P':
       strcpy(pgpcard, optarg);
@@ -118,7 +118,7 @@ int main (int argc, char **argv) {
       reportRate = true;
       break;
     case 'v':
-      lvalidate = true;
+      lvalidate = strtoul(optarg, NULL, 0);
       break;
     case 'V':
       payloadBuffers = strtoul(optarg, NULL, 0);
@@ -176,8 +176,9 @@ int main (int argc, char **argv) {
       perror("Error creating RDMA status thread");
   }
 
-  unsigned nextCount=0, nextPword=0;
+  unsigned nextCount[8], nextPword=0;
   uint64_t ppulseId =0, dpulseId =0;
+  memset(nextCount,0,sizeof(nextCount));
 
   // DMA Read
   do {
@@ -210,26 +211,35 @@ int main (int argc, char **argv) {
         bytes += ret*sizeof(uint);
 
       if (lvalidate) {
-        //  Check that pulseId increments by a constant
-        uint64_t pulseId = (uint64_t(data[1])<<32) | data[0];
-        if (ppulseId) {
-          if (dpulseId > 100 && pulseId != (ppulseId+dpulseId))
-            printf("\tPulseId = %016llx [%016llx, %016llx]\n", 
-                   (unsigned long long)pulseId, 
-                   (unsigned long long)(pulseId+dpulseId), 
-                   (unsigned long long)(pulseId-ppulseId));
-          dpulseId = pulseId - ppulseId;
+        if (lvalidate&1) {
+          //  Check that pulseId increments by a constant
+          uint64_t pulseId = (uint64_t(data[1])<<32) | data[0];
+          if (ppulseId) {
+            if (dpulseId > 100 && pulseId != (ppulseId+dpulseId))
+              printf("\tPulseId = %016llx [%016llx, %016llx]\n", 
+                     (unsigned long long)pulseId, 
+                     (unsigned long long)(pulseId+dpulseId), 
+                     (unsigned long long)(pulseId-ppulseId));
+            dpulseId = pulseId - ppulseId;
+          }
+          ppulseId = pulseId;
         }
-        ppulseId = pulseId;
-        //  Check that analysis count increments by one
-        if (nextCount && data[5] != nextCount)
-          printf("\tanalysisCount = %08x [%08x]\n", data[5], nextCount);
-        nextCount = data[5]+1;
-        //  Check that the first payload word increments by one
-        if (payloadBuffers) {
-          if (nextPword && data[8] != nextPword)
-            printf("\tpayloadWord = %08x [%08x]\n", data[8], nextPword);
-          nextPword = (data[8]+1)%payloadBuffers;
+        if (lvalidate&2) {
+          //  Check that analysis count increments by one
+          //        unsigned count = data[5];
+          unsigned count = data[4];
+          if (nextCount[pgpCardRx.pgpLane] && count != nextCount[pgpCardRx.pgpLane])
+            printf("\tanalysisCount = %08x [%08x] lane %u\n", 
+                   count, nextCount[pgpCardRx.pgpLane], pgpCardRx.pgpLane);
+          nextCount[pgpCardRx.pgpLane] = count+1;
+        }
+        if (lvalidate&4) {
+          //  Check that the first payload word increments by one
+          if (payloadBuffers) {
+            if (nextPword && data[8] != nextPword)
+              printf("\tpayloadWord = %08x [%08x]\n", data[8], nextPword);
+            nextPword = (data[8]+1)%payloadBuffers;
+          }
         }
       }
 
