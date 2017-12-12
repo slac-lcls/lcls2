@@ -22,8 +22,9 @@ drp_tst_acc04 = "172.21.42.222"
 drp_tst_acc05 = "172.21.42.223"
 drp_tst_acc06 = "172.21.42.224"
 
+epics_host = daq_tst_dev02
 epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_AUTO_ADDR_LIST=NO EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067'
-pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.3.5'
+pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.3.2'
 shelf = '1'
 ip_addr = '10.0.'+shelf
 
@@ -42,8 +43,8 @@ ip_addr = '10.0.'+shelf
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                       id:'partcas',port:'29750', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/partcas.py -P '+pv_prefix},
- {                       id:'modcas' ,port:'29751', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/modcas.py -P '+pv_prefix+':XPM:'+shelf},
+ { host: epics_host      id:'partcas',port:'29750', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/partcas.py -P '+pv_prefix},
+ { host: epics_host      id:'modcas' ,port:'29751', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/modcas.py -P '+pv_prefix+':XPM:'+shelf},
 
  {                       id:'partca-'+platform ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/partca.py '+pv_prefix+':PART:'+platform},
  {                       id:'modca'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/xpmca.py '+pv_prefix+':XPM:'+shelf},
@@ -51,7 +52,7 @@ procmgr_config = [
 #
 #  XPM controller
 #
- { host: drp_tst_acc02,  id:'xpmioc' ,port:'29752', flags:'sx', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P '+pv_prefix},
+ { host: epics_host,     id:'xpmioc' ,port:'29752', flags:'sx', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P '+pv_prefix},
 #
 #  DTI controllers
 #
