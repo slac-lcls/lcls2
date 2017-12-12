@@ -43,8 +43,8 @@ ip_addr = '10.0.'+shelf
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: epics_host      id:'partcas',port:'29750', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/partcas.py -P '+pv_prefix},
- { host: epics_host      id:'modcas' ,port:'29751', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/modcas.py -P '+pv_prefix+':XPM:'+shelf},
+ { host: epics_host,     id:'partcas',port:'29750', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/partcas.py -P '+pv_prefix},
+ { host: epics_host,     id:'modcas' ,port:'29751', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/modcas.py -P '+pv_prefix+':XPM:'+shelf},
 
  {                       id:'partca-'+platform ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/partca.py '+pv_prefix+':PART:'+platform},
  {                       id:'modca'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/xpmca.py '+pv_prefix+':XPM:'+shelf},
