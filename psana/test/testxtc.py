@@ -8,14 +8,13 @@ from dgram import Dgram
 import numpy as np
 sys.path.append('../')
 from DataSource import DataSource
-#from DataSourceContainer import DataSource
 
 def myroutine2():
   ds = DataSource('data.xtc')
   assert getref(ds)==2
   e = ds.__next__()
   assert getref(e)==2
-  arr1 = e.array0_pgp
+  arr1 = e.hsd1.raw.array0Pgp
   dgramObj=arr1.base
   assert getref(arr1)==3
   assert getref(dgramObj)==5
@@ -24,7 +23,7 @@ def myroutine2():
   assert getref(arr1)==4
   assert getref(s1)==2
 
-  arr2 = e.array0_pgp
+  arr2 = e.hsd1.raw.array0Pgp
   assert getref(dgramObj)==5
   s2 = arr2[3:5]
   assert getref(dgramObj)==5
@@ -38,12 +37,17 @@ def myroutine1():
 
   return e
 
-e = myroutine1()
+def myiter(evt,testvals):
+  for attrname,attr in evt.__dict__.items():
+    if hasattr(attr,'__dict__'):
+      myiter(attr,testvals)
+    else:
+      if type(attr) is np.ndarray:
+        assert np.array_equal(attr,testvals[attrname])
+      else:
+        assert attr==testvals[attrname]
+
+evt = myroutine1()
 from testvals import testvals
-for key in testvals:
-  val = testvals[key]
-  if type(val) is np.ndarray:
-    assert np.array_equal(val,getattr(e,key))
-  else:
-    assert val==getattr(e,key)
+myiter(evt,testvals)
 print('xtc tested',len(testvals),'values')

@@ -131,8 +131,8 @@ void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     frontEnd.set_data_length(sizeof(PgpData));
 
     unsigned shape[] = { 3, 3 };
-    frontEnd.set_array_shape("array0_pgp", shape);
-    frontEnd.set_array_shape("array1_pgp", shape);
+    frontEnd.set_array_shape("array0Pgp", shape);
+    frontEnd.set_array_shape("array1Pgp", shape);
 }
 
 void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
@@ -145,35 +145,35 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     // if that is not done an error will be asserted.  I think
     // we could remove that requirement if we indicate which
     // array is being written in the data as they are written.
-    fex.set_value("float_fex", (float)41.0);
+    fex.set_value("floatFex", (float)41.0);
     float* ptr = (float*)fex.get_ptr();
     unsigned shape[Name::MaxRank];
     shape[0]=2;
     shape[1]=3;
     for (unsigned i=0; i<shape[0]*shape[1]; i++) ptr[i] = 142.0+i;
-    fex.set_array_shape("array_fex",shape);
-    fex.set_value("int_fex", 42);
+    fex.set_array_shape("arrayFex",shape);
+    fex.set_value("intFex", 42);
 }
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg detnamealg("detname",1,2,3);
-    Names& detname = *new(parent) Names(detnamealg, "hsd_1");
+    Names& detname = *new(parent) Names(detnamealg, "hsd1");
     namesVec.push_back(NameIndex(detname));
-    unsigned parentDetNameIndex = namesVec.size();
+    unsigned parentDetNameIndex = namesVec.size()-1;
 
     Alg alg0("hsd",1,2,3);
     Names& frontEndNames = *new(parent) Names(alg0, "raw", parentDetNameIndex);
-    frontEndNames.add("float_pgp",  Name::FLOAT, parent);
-    frontEndNames.add("array0_pgp", Name::FLOAT, parent, 2);
-    frontEndNames.add("int_pgp",    Name::INT32, parent);
-    frontEndNames.add("array1_pgp", Name::FLOAT, parent, 2);
+    frontEndNames.add("floatPgp",  Name::FLOAT, parent);
+    frontEndNames.add("array0Pgp", Name::FLOAT, parent, 2);
+    frontEndNames.add("intPgp",    Name::INT32, parent);
+    frontEndNames.add("array1Pgp", Name::FLOAT, parent, 2);
     namesVec.push_back(NameIndex(frontEndNames));
 
     Alg alg1("abc",4,5,6);
     Names& fexNames = *new(parent) Names(alg1, "fex", parentDetNameIndex);
-    fexNames.add("float_fex", Name::FLOAT, parent);
-    fexNames.add("array_fex", Name::FLOAT, parent, 2);
-    fexNames.add("int_fex",   Name::INT32, parent);
+    fexNames.add("floatFex", Name::FLOAT, parent);
+    fexNames.add("arrayFex", Name::FLOAT, parent, 2);
+    fexNames.add("intFex",   Name::INT32, parent);
     namesVec.push_back(NameIndex(fexNames));
 }
 

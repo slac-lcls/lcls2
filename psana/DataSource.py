@@ -86,7 +86,7 @@ def main():
         for var_name in sorted(vars(evt)):
             e=getattr(evt, var_name)
             print("  %s: %s" % (var_name, e))
-        a=evt.array0_pgp
+        a=evt.array0Pgp
         try:
             a[0][0]=999
         except ValueError:
