@@ -3,8 +3,6 @@ import sys
 from pcaspy import SimpleServer, Driver
 import time
 from datetime import datetime
-import thread
-import subprocess
 import argparse
 #import socket
 #import json
@@ -23,10 +21,10 @@ def printDb():
     global pvdb
     global prefix
 
-    print '=========== Serving %d PVs ==============' % len(pvdb)
+    print('=========== Serving %d PVs ==============' % len(pvdb))
     for key in sorted(pvdb):
-        print prefix+key
-    print '========================================='
+        print(prefix+key)
+    print('=========================================')
     return
 
 if __name__ == '__main__':
@@ -64,7 +62,7 @@ if __name__ == '__main__':
     LinkEnable[17:19] = [1]*3  # DTIs in slots 3-5
     LinkEnable[4] = 1   # HSD on dev03
     LinkEnable[7] = 1   # HSD on dev02
-    print LinkEnable
+    print(LinkEnable)
 
     for i in range(32):
         pvdb[':LinkTxDelay'  +'%d'%i] = {'type' : 'int'}
@@ -128,4 +126,4 @@ if __name__ == '__main__':
         while True:
             server.process(0.1)
     except KeyboardInterrupt:
-        print '\nInterrupted'
+        print('\nInterrupted')

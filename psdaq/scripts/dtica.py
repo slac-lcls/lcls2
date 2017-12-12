@@ -1,7 +1,13 @@
 import sys
 import argparse
 from psp import Pv
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+try:
+    QString = unicode
+except NameError:
+    # Python 3
+    QString = str
 
 NDsLinks    = 7
 NAmcs       = 2
@@ -15,12 +21,12 @@ seqIdxs     = ['s%u'%i for i in range(18)]
 seqBits     = ['b%u'%i for i in range(32)]
 
 
-class PvDisplay(QtGui.QLabel):
+class PvDisplay(QtWidgets.QLabel):
 
-    valueSet = QtCore.pyqtSignal(QtCore.QString,name='valueSet')
+    valueSet = QtCore.pyqtSignal('QString',name='valueSet')
 
     def __init__(self):
-        QtGui.QLabel.__init__(self, "-")
+        QtWidgets.QLabel.__init__(self, "-")
         self.setMinimumWidth(100)
 
     def connect_signal(self):
@@ -31,8 +37,8 @@ class PvDisplay(QtGui.QLabel):
 
 class PvLabel:
     def __init__(self, parent, pvbase, name, dName=None, isInt=False):
-        layout = QtGui.QHBoxLayout()
-        label  = QtGui.QLabel(name)
+        layout = QtWidgets.QHBoxLayout()
+        label  = QtWidgets.QLabel(name)
         label.setMinimumWidth(100)
 #       label.setMinimumWidth(300)
         layout.addWidget(label)
@@ -44,7 +50,7 @@ class PvLabel:
         parent.addLayout(layout)
 
         pvname = pvbase+name
-        print pvname
+        print(pvname)
         self.pv = Pv.Pv(pvname)
         self.pv.monitor_start()
         self.pv.add_monitor_callback(self.update)
@@ -64,36 +70,36 @@ class PvLabel:
         else:
             dq = None
         if err is None:
-            s = QtCore.QString('fail')
+            s = QString('fail')
             try:
                 if self.isInt:
-                    s = QtCore.QString("%1 (0x%2)").arg(QtCore.QString.number(long(q),10)).arg(QtCore.QString.number(long(q),16))
+                    s = QString("%1 (0x%2)").arg(QString.number(long(q),10)).arg(QString.number(long(q),16))
                     if dq is not None:
-                        s = s + QtCore.QString(" [%1 (0x%2)]").arg(QtCore.QString.number(long(dq),10)).arg(QtCore.QString.number(long(dq),16))
+                        s = s + QString(" [%1 (0x%2)]").arg(QString.number(long(dq),10)).arg(QString.number(long(dq),16))
                 else:
-                    s = QtCore.QString.number(q)
+                    s = QString.number(q)
                     if dq is not None:
-                        s = s + QtCore.QString(" [%1]").arg(QtCore.QString.number(dq))
+                        s = s + QString(" [%1]").arg(QString.number(dq))
             except:
                 v = ''
                 for i in range(len(q)):
                     #v = v + ' %f'%q[i]
-                    v = v + ' ' + QtCore.QString.number(q[i])
+                    v = v + ' ' + QString.number(q[i])
                     if dq is not None:
-                        v = v + QtCore.QString(" [%1]").arg(QtCore.QString.number(dq[i]))
+                        v = v + QString(" [%1]").arg(QString.number(dq[i]))
                         #v = v + ' [' + '%f'%dq[i] + ']'
                     if ((i%8)==7):
                         v = v + '\n'
-                s = QtCore.QString(v)
+                s = QString(v)
 
             self.__display.valueSet.emit(s)
             self.adjustSize()
         else:
-            print err
+            print(err)
 
-class PvPushButton(QtGui.QPushButton):
+class PvPushButton(QtWidgets.QPushButton):
 
-    valueSet = QtCore.pyqtSignal(QtCore.QString,name='valueSet')
+    valueSet = QtCore.pyqtSignal('QString',name='valueSet')
 
     def __init__(self, pvname, label):
         super(PvPushButton, self).__init__(label)
@@ -106,7 +112,7 @@ class PvPushButton(QtGui.QPushButton):
     def buttonClicked(self):
         self.pv.put(1)          # Value is immaterial
 
-class CheckBox(QtGui.QCheckBox):
+class CheckBox(QtWidgets.QCheckBox):
 
     valueSet = QtCore.pyqtSignal(int, name='valueSet')
 
@@ -142,11 +148,11 @@ class PvCheckBox(CheckBox):
         if err is None:
             if q != self.isChecked():  self.valueSet.emit(q)
         else:
-            print err
+            print(err)
 
-class PvTextDisplay(QtGui.QLineEdit):
+class PvTextDisplay(QtWidgets.QLineEdit):
 
-    valueSet = QtCore.pyqtSignal(QtCore.QString,name='valueSet')
+    valueSet = QtCore.pyqtSignal('QString',name='valueSet')
 
     def __init__(self, label):
         super(PvTextDisplay, self).__init__("-")
@@ -158,9 +164,9 @@ class PvTextDisplay(QtGui.QLineEdit):
     def setValue(self,value):
         self.setText(value)
 
-class PvComboDisplay(QtGui.QComboBox):
+class PvComboDisplay(QtWidgets.QComboBox):
 
-    valueSet = QtCore.pyqtSignal(QtCore.QString,name='valueSet')
+    valueSet = QtCore.pyqtSignal('QString',name='valueSet')
 
     def __init__(self, choices):
         super(PvComboDisplay, self).__init__()
@@ -195,18 +201,18 @@ class PvEditInt(PvEditTxt):
     def update(self, err):
         q = self.pv.value
         if err is None:
-            s = QtCore.QString('fail')
+            s = QString('fail')
             try:
-                s = QtCore.QString("%1").arg(QtCore.QString.number(long(q),10))
+                s = QString("%1").arg(QString.number(long(q),10))
             except:
                 v = ''
                 for i in range(len(q)):
                     v = v + ' %f'%q[i]
-                s = QtCore.QString(v)
+                s = QString(v)
 
             self.valueSet.emit(s)
         else:
-            print err
+            print(err)
 
 
 class PvInt(PvEditInt):
@@ -227,18 +233,18 @@ class PvEditDbl(PvEditTxt):
     def update(self, err):
         q = self.pv.value
         if err is None:
-            s = QtCore.QString('fail')
+            s = QString('fail')
             try:
-                s = QtCore.QString.number(q)
+                s = QString.number(q)
             except:
                 v = ''
                 for i in range(len(q)):
                     v = v + ' %f'%q[i]
-                s = QtCore.QString(v)
+                s = QString(v)
 
             self.valueSet.emit(s)
         else:
-            print err
+            print(err)
 
 class PvDbl(PvEditDbl):
 
@@ -268,7 +274,7 @@ class PvEditCmb(PvComboDisplay):
             self.setCurrentIndex(q)
             self.valueSet.emit(q)
         else:
-            print err
+            print(err)
 
 
 class PvCmb(PvEditCmb):
@@ -278,22 +284,22 @@ class PvCmb(PvEditCmb):
         self.setEnabled(False)
 
 
-class PvEvtTab(QtGui.QStackedWidget):
+class PvEvtTab(QtWidgets.QStackedWidget):
 
     def __init__(self, pvname, evtcmb):
         super(PvEvtTab,self).__init__()
 
         self.addWidget(PvEditCmb(pvname+'_FixedRate',fixedRates))
 
-        acw = QtGui.QWidget()
-        acl = QtGui.QVBoxLayout()
+        acw = QtWidgets.QWidget()
+        acl = QtWidgets.QVBoxLayout()
         acl.addWidget(PvEditCmb(pvname+'_ACRate',acRates))
         acl.addWidget(PvEditCmb(pvname+'_ACTimeslot',acTS))
         acw.setLayout(acl)
         self.addWidget(acw)
 
-        sqw = QtGui.QWidget()
-        sql = QtGui.QVBoxLayout()
+        sqw = QtWidgets.QWidget()
+        sql = QtWidgets.QVBoxLayout()
         sql.addWidget(PvEditCmb(pvname+'_Sequence',seqIdxs))
         sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqBits))
         sqw.setLayout(sql)
@@ -301,11 +307,11 @@ class PvEvtTab(QtGui.QStackedWidget):
 
         evtcmb.currentIndexChanged.connect(self.setCurrentIndex)
 
-class PvEditEvt(QtGui.QWidget):
+class PvEditEvt(QtWidgets.QWidget):
 
     def __init__(self, pvname, idx):
         super(PvEditEvt, self).__init__()
-        vbox = QtGui.QVBoxLayout()
+        vbox = QtWidgets.QVBoxLayout()
         evtcmb = PvEditCmb(pvname,evtsel)
         vbox.addWidget(evtcmb)
         vbox.addWidget(PvEvtTab(pvname,evtcmb))
@@ -319,10 +325,10 @@ class PvEditTS(PvEditCmb):
 class PvInput:
     def __init__(self, widget, parent, pvbase, name, count=1):
         pvname = pvbase+name
-        print pvname
+        print(pvname)
 
-        layout = QtGui.QHBoxLayout()
-        label  = QtGui.QLabel(name)
+        layout = QtWidgets.QHBoxLayout()
+        label  = QtWidgets.QLabel(name)
         label.setMinimumWidth(100)
         layout.addWidget(label)
         if count == 1:
@@ -331,7 +337,7 @@ class PvInput:
             layout.addStretch(1)
         else:
             for i in range(count):
-                layout.addWidget(widget(pvname+'%d'%i, QtCore.QString.number(i)))
+                layout.addWidget(widget(pvname+'%d'%i, QString.number(i)))
         parent.addLayout(layout)
 
 def LblPushButton(parent, pvbase, name, count=1):
@@ -351,11 +357,11 @@ def LblEditEvt(parent, pvbase, name, count=1):
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, prefix):
-        MainWindow.setObjectName(QtCore.QString.fromUtf8("MainWindow"))
-        self.centralWidget = QtGui.QWidget(MainWindow)
+        MainWindow.setObjectName("MainWindow")
+        self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
 
-        lol = QtGui.QVBoxLayout()
+        lol = QtWidgets.QVBoxLayout()
 
         pvbase = prefix+':'
 
@@ -368,7 +374,7 @@ class Ui_MainWindow(object):
         LblEditInt   (lol, pvbase, "UsLinkFwdMask",   7)
         LblEditInt   (lol, pvbase, "UsLinkTrigDelay", 7)
 
-        lor = QtGui.QVBoxLayout()
+        lor = QtWidgets.QVBoxLayout()
 
         PvLabel(lor, pvbase, "UsLinkUp"  )
         PvLabel(lor, pvbase, "BpLinkUp"  )
@@ -398,17 +404,17 @@ class Ui_MainWindow(object):
         PvLabel(lor, pvbase, "TxFrames", "dTxFrames"         )
         PvLabel(lor, pvbase, "TxOpCodes", "dTxOpCodes"       )
 
-        ltable = QtGui.QWidget()
+        ltable = QtWidgets.QWidget()
         ltable.setLayout(lol)
-        rtable = QtGui.QWidget()
+        rtable = QtWidgets.QWidget()
         rtable.setLayout(lor)
 
-        lscroll = QtGui.QScrollArea()
+        lscroll = QtWidgets.QScrollArea()
         lscroll.setWidget(ltable)
-        rscroll = QtGui.QScrollArea()
+        rscroll = QtWidgets.QScrollArea()
         rscroll.setWidget(rtable)
 
-        splitter = QtGui.QSplitter()
+        splitter = QtWidgets.QSplitter()
         splitter.addWidget(lscroll)
         splitter.addWidget(rscroll)
 
@@ -416,7 +422,7 @@ class Ui_MainWindow(object):
         splitter.setStretchFactor(0,2)
         splitter.setStretchFactor(1,1)
 
-        layout = QtGui.QHBoxLayout()
+        layout = QtWidgets.QHBoxLayout()
         layout.addWidget(splitter)
 
         self.centralWidget.setLayout(layout)
@@ -427,14 +433,14 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralWidget)
 
 if __name__ == '__main__':
-    print QtCore.PYQT_VERSION_STR
+    print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
     parser.add_argument("base", help="pv base to monitor", default="DAQ:LAB2:DTI")
     args = parser.parse_args()
 
-    app = QtGui.QApplication([])
-    MainWindow = QtGui.QMainWindow()
+    app = QtWidgets.QApplication([])
+    MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow,args.base)
     MainWindow.updateGeometry()
