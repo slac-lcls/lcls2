@@ -61,43 +61,44 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
 void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
 {
     // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
+    char keyName[256];
     for (unsigned j = 0; j < namesVec.size(); j++) {
         Names& names = namesVec[j].names();
 
         Alg& alg = names.alg();
-        const char* dataName = names.getDataName();
         const char* algName = alg.getAlgName();
         const uint32_t _v = alg.getVersion();
 
-        PyObject* keyN = PyUnicode_FromString("dataName");
-        PyObject* keyS = PyUnicode_FromString("software");
-        PyObject* keyV = PyUnicode_FromString("version");
-
-        PyObject* newobjN = Py_BuildValue("s", dataName);
         PyObject* newobjS = Py_BuildValue("s", algName);
         PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
-        if (PyDict_Contains(pyDgram->dict, keyS)) { // TODO: This code can only attach one software in configDgram
+        unsigned parentDetNameIndex = names.parentDetNameIndex();
+        const char* parentDetName = namesVec[parentDetNameIndex].names().getDataName();
+
+        sprintf(keyName,"%s_%s_software",parentDetName,names.getDataName());
+        PyObject* key = PyUnicode_FromString(keyName);
+        if (PyDict_Contains(pyDgram->dict, key)) { // TODO: This code can only attach one software in configDgram
             printf("Dgram: Ignoring duplicate key %s\n", "software");
         } else {
-            PyDict_SetItem(pyDgram->dict, keyN, newobjN);
-            Py_DECREF(newobjN);
-            PyDict_SetItem(pyDgram->dict, keyS, newobjS);
+            PyDict_SetItem(pyDgram->dict, key, newobjS);
             Py_DECREF(newobjS);
-            PyDict_SetItem(pyDgram->dict, keyV, newobjV);
+            sprintf(keyName,"%s_%s_version",parentDetName,names.getDataName());
+            PyObject* key = PyUnicode_FromString(keyName);
+            PyDict_SetItem(pyDgram->dict, key, newobjV);
             Py_DECREF(newobjV);
         }
     }
 }
 
-void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
+void DictAssign(PyDgramObject* pyDgram, DescData& descdata,
+                const char* parentDetName)
 {
     Names& names = descdata.nameindex().names(); // event names, chan0, chan1
 
+    char keyName[256];
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         const char* tempName = name.name();
-        PyObject* key = PyUnicode_FromString(tempName);
         PyObject* newobj;
 
         if (name.rank() == 0) {
@@ -177,6 +178,9 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             //clear NPY_ARRAY_WRITEABLE flag
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
+        sprintf(keyName,"%s_%s_%s",parentDetName,names.getDataName(),
+                name.name());
+        PyObject* key = PyUnicode_FromString(keyName);
         if (PyDict_Contains(pyDgram->dict, key)) {
             printf("Dgram: Ignoring duplicate key %s\n", tempName);
         } else {
@@ -213,9 +217,8 @@ public:
             unsigned namesId = shapesdata.shapes().namesId();
             unsigned parentDetNameIndex = _namesVec[namesId].names().parentDetNameIndex();
             const char* parentDetName = _namesVec[parentDetNameIndex].names().getDataName();
-            printf("Found parent name %s\n",parentDetName);
             DescData descdata(shapesdata, _namesVec[namesId]);
-            DictAssign(_pyDgram, descdata);
+            DictAssign(_pyDgram, descdata, parentDetName);
             break;
         }
         default:
