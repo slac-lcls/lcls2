@@ -1,19 +1,20 @@
 import sys
 import argparse
+from PyQt5 import QtCore, QtGui, QtWidgets
 from pvedit import *
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, base):
-        MainWindow.setObjectName(QtCore.QString.fromUtf8("MainWindow"))
-        self.centralWidget = QtGui.QWidget(MainWindow)
+        MainWindow.setObjectName("MainWindow")
+        self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
 
         pvbase = base+':'
 
-        lol = QtGui.QVBoxLayout()
+        lol = QtWidgets.QVBoxLayout()
 
-        trgbox = QtGui.QGroupBox('Trigger')
-        trglo = QtGui.QVBoxLayout()
+        trgbox = QtWidgets.QGroupBox('Trigger')
+        trglo = QtWidgets.QVBoxLayout()
         LblEditEvt   (trglo, pvbase, "L0Select"        )
         LblEditInt   (trglo, pvbase, "L0Delay"         )
 #        LblEditDst   (trglo, pvbase, "DstSelect"       )
@@ -34,8 +35,8 @@ class Ui_MainWindow(object):
 
 #        LblEditInt   (lol, pvbase, "PipelineDepth")
 
-        msgbox = QtGui.QGroupBox('Message')
-        msglo  = QtGui.QHBoxLayout()
+        msgbox = QtWidgets.QGroupBox('Message')
+        msglo  = QtWidgets.QHBoxLayout()
         msglo.addWidget(PvPushButton(pvbase+"MsgInsert","Insert"))
         msglo.addWidget(PvEditInt(pvbase+"MsgHeader","Hdr"))
         msglo.addWidget(PvEditInt(pvbase+"MsgPayload","Payload"))
@@ -43,8 +44,8 @@ class Ui_MainWindow(object):
         msgbox.setLayout(msglo)
         lol.addWidget(msgbox)
 
-        inhbox = QtGui.QGroupBox('Inhibits')
-        inhlo = QtGui.QVBoxLayout()
+        inhbox = QtWidgets.QGroupBox('Inhibits')
+        inhlo = QtWidgets.QVBoxLayout()
         LblEditInt   (inhlo, pvbase, "InhInterval", 4  )
         LblEditInt   (inhlo, pvbase, "InhLimit"   , 4  )
         LblCheckBox  (inhlo, pvbase, "InhEnable"  , 4  )
@@ -53,7 +54,7 @@ class Ui_MainWindow(object):
 
         #lol.addStretch()
 
-        lor = QtGui.QVBoxLayout()
+        lor = QtWidgets.QVBoxLayout()
         
         b=PvPushButton(pvbase+'ResetL0', "Clear")
         b.setMaximumWidth(45)
@@ -68,21 +69,21 @@ class Ui_MainWindow(object):
         PvLabel(lor, pvbase, "DeadFrac"   )
         PvLabel(lor, pvbase, "DeadTime"   )
 
-        ltable = QtGui.QWidget()
+        ltable = QtWidgets.QWidget()
         ltable.setLayout(lol)
-        rtable = QtGui.QWidget()
+        rtable = QtWidgets.QWidget()
         rtable.setLayout(lor)
 
-        lscroll = QtGui.QScrollArea()
+        lscroll = QtWidgets.QScrollArea()
         lscroll.setWidget(ltable)
-        rscroll = QtGui.QScrollArea()
+        rscroll = QtWidgets.QScrollArea()
         rscroll.setWidget(rtable)
 
-        splitter = QtGui.QSplitter()
+        splitter = QtWidgets.QSplitter()
         splitter.addWidget(lscroll)
         splitter.addWidget(rscroll)
 
-        layout = QtGui.QHBoxLayout()
+        layout = QtWidgets.QHBoxLayout()
         layout.addWidget(splitter)
 
         self.centralWidget.setLayout(layout)
@@ -93,14 +94,14 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralWidget)
 
 if __name__ == '__main__':
-    print QtCore.PYQT_VERSION_STR
+    print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
     parser.add_argument("pv", help="pv to monitor")
     args = parser.parse_args()
 
-    app = QtGui.QApplication([])
-    MainWindow = QtGui.QMainWindow()
+    app = QtWidgets.QApplication([])
+    MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow,args.pv)
     MainWindow.updateGeometry()

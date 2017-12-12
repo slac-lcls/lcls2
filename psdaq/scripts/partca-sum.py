@@ -83,7 +83,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralWidget)
 
 if __name__ == '__main__':
-    print QtCore.PYQT_VERSION_STR
+    print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
     parser.add_argument("pv", help="pv to monitor")
