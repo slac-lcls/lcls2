@@ -19,8 +19,9 @@ drp_tst_acc04 = "172.21.42.222"
 drp_tst_acc05 = "172.21.42.223"
 drp_tst_acc06 = "172.21.42.224"
 
+epics_host = daq_tst_dev02
 epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067'
-pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.3.3'
+pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.3.2'
 shelf = '2'
 ip_addr = '10.0.'+shelf
 
@@ -39,13 +40,13 @@ ip_addr = '10.0.'+shelf
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: daq_tst_dev01,  id:'partcas',port:'29450', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/partcas.py -P DAQ:LAB2'},
- { host: daq_tst_dev01,  id:'modcas' ,port:'29451', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/modcas.py -P DAQ:LAB2:XPM:'+shelf},
+ { host: epics_host,  id:'partcas',port:'29450', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/partcas.py -P DAQ:LAB2'},
+ { host: epics_host,  id:'modcas' ,port:'29451', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/modcas.py -P DAQ:LAB2:XPM:'+shelf},
 
  {                       id:'partca-'+platform ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/partca.py DAQ:LAB2:PART:'+platform},
  {                       id:'modca'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
  {                       id:'deadca-'+platform  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
- { host: daq_tst_dev01,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
+ { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
  { host: daq_tst_dev03,  id:'hsd'    ,flags:'sx', cmd:bin_path+'psdaq/hsd/hsd_pgp -c 0xf -s 0x3 -l 128 -p 3 -t 0'},
  { host: daq_tst_dev03,  id:'rdr'    ,flags:'sx', cmd:bin_path+'psdaq/hsd/hsdRead -P /dev/pgpcardG3_0_1 -L 4 -r'},
 # {                       id:'epics', flags:'sx', env:epics_env, cmd:'/usr/bin/bash'},
