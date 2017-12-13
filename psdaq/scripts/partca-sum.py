@@ -7,11 +7,11 @@ NParts = 8
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, base, shelf):
-        MainWindow.setObjectName(QtCore.QString.fromUtf8("MainWindow"))
-        self.centralWidget = QtGui.QWidget(MainWindow)
+        MainWindow.setObjectName("MainWindow")
+        self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
 
-        lcols = QtGui.QHBoxLayout()
+        lcols = QtWidgets.QHBoxLayout()
 
         # Need to wait for pv.get()
         time.sleep(2)
@@ -26,7 +26,7 @@ class Ui_MainWindow(object):
 
             pvbase = base+':PART:%d:'%i
 
-            lol = QtGui.QVBoxLayout()
+            lol = QtWidgets.QVBoxLayout()
 
             PvLabel(lol, pvbase, "L0Delay"         )
             PvLabel(lol, pvbase, "Run"             )
@@ -42,37 +42,37 @@ class Ui_MainWindow(object):
             PvLabel(lol, pvbase, "DeadTime"   )
 
             xbase = base+':XPM:'+shelf+':'
-            grid = QtGui.QGridLayout()
+            grid = QtWidgets.QGridLayout()
             for j in range(14):
                 pv = Pv.Pv(xbase+'LinkLabel%d'%j)
-                grid.addWidget( QtGui.QLabel(pv.get()), j, 0 )
+                grid.addWidget( QtWidgets.QLabel(pv.get()), j, 0 )
                 grid.addWidget( textWidgets[i*32+j], j, 1 )
 
             for j in range(16,21):
                 pv = Pv.Pv(xbase+'LinkLabel%d'%j)
-                grid.addWidget( QtGui.QLabel(pv.get()), j, 0 )
+                grid.addWidget( QtWidgets.QLabel(pv.get()), j, 0 )
                 grid.addWidget( textWidgets[i*32+j], j, 1 )
 
             for j in range(28,32):
-                grid.addWidget( QtGui.QLabel('INH-%d'%(j-28)), j, 0 )
+                grid.addWidget( QtWidgets.QLabel('INH-%d'%(j-28)), j, 0 )
                 grid.addWidget( textWidgets[i*32+j], j, 1 )
 
-            self.deadflnk.append( PvDblArray( pvbase+'DeadFLnk', textWidgets[i*32:i*32+31] ) )
+            self.deadflnk.append( PvDblArray( pvbase+'DeadFLnk', textWidgets[i*32:i*32+32] ) )
 
             lol.addLayout(grid)
 
-            pw = QtGui.QGroupBox(pvbase)
+            pw = QtWidgets.QGroupBox(pvbase)
             pw.setLayout(lol)
 
             lcols.addWidget(pw)
 
-        ltable = QtGui.QWidget()
+        ltable = QtWidgets.QWidget()
         ltable.setLayout(lcols)
 
-        lscroll = QtGui.QScrollArea()
+        lscroll = QtWidgets.QScrollArea()
         lscroll.setWidget(ltable)
 
-        layout = QtGui.QHBoxLayout()
+        layout = QtWidgets.QHBoxLayout()
         layout.addWidget(lscroll)
 
         self.centralWidget.setLayout(layout)
@@ -90,8 +90,8 @@ if __name__ == '__main__':
 #    parser.add_argument("shelf", help="shelf")
     args = parser.parse_args()
 
-    app = QtGui.QApplication([])
-    MainWindow = QtGui.QMainWindow()
+    app = QtWidgets.QApplication([])
+    MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
 #    ui.setupUi(MainWindow,args.pv)
     ui.setupUi(MainWindow,'DAQ:LAB2','2')
