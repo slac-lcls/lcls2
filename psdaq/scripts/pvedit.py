@@ -317,7 +317,7 @@ class PvDblArray:
         q = self.pv.value
         if err is None:
             for i in range(len(q)):
-                self.widgets[i].valueSet.emit(QString(format(q[i], '4f')))
+                self.widgets[i].valueSet.emit(QString(format(q[i], '.4f')))
         else:
             print(err)
 
