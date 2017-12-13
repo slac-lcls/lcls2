@@ -47,7 +47,7 @@ procmgr_config = [
 #
 #  XPM controller
 #
- { host: daq_tst_dev05,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
+ { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
 #
 #  Diagnostics
 #
