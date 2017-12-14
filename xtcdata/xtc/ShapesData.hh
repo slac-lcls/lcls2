@@ -118,25 +118,24 @@ class Names : public AutoParentAlloc
 {
 public:
 
-    Names(Alg& alg, const char* dataName, unsigned parentDetNameIndex=0) :
+    Names(Alg& alg, const char* dataName, const char* detName) :
         AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
-        _alg(alg),
-        _parentDetNameIndex(parentDetNameIndex)
+        _alg(alg)
     {
         strncpy(_dataName, dataName, maxNameSize);
+        strncpy(_detName, detName, maxNameSize);
         // allocate space for our private data
         XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
     Alg& alg() {return _alg;}
-    const char* getDataName() {return _dataName;}
+    const char* dataName() {return _dataName;}
+    const char* detName()  {return _detName;}
 
     Name& get(unsigned index)
     {
         Name& name = ((Name*)(this + 1))[index];
         return name;
     }
-
-    unsigned parentDetNameIndex() {return _parentDetNameIndex;}
 
     unsigned num()
     {
@@ -154,7 +153,7 @@ public:
 private:
     Alg      _alg;
     char     _dataName[maxNameSize];
-    uint32_t _parentDetNameIndex;
+    char     _detName[maxNameSize];
 };
 
 #include <stdio.h>

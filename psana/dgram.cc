@@ -72,17 +72,14 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
         PyObject* newobjS = Py_BuildValue("s", algName);
         PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
-        unsigned parentDetNameIndex = names.parentDetNameIndex();
-        const char* parentDetName = namesVec[parentDetNameIndex].names().getDataName();
-
-        sprintf(keyName,"%s_%s_software",parentDetName,names.getDataName());
+        sprintf(keyName,"%s_%s_software",names.detName(),names.dataName());
         PyObject* key = PyUnicode_FromString(keyName);
         if (PyDict_Contains(pyDgram->dict, key)) { // TODO: This code can only attach one software in configDgram
             printf("Dgram: Ignoring duplicate key %s\n", "software");
         } else {
             PyDict_SetItem(pyDgram->dict, key, newobjS);
             Py_DECREF(newobjS);
-            sprintf(keyName,"%s_%s_version",parentDetName,names.getDataName());
+            sprintf(keyName,"%s_%s_version",names.detName(),names.dataName());
             PyObject* key = PyUnicode_FromString(keyName);
             PyDict_SetItem(pyDgram->dict, key, newobjV);
             Py_DECREF(newobjV);
@@ -90,8 +87,7 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
     }
 }
 
-void DictAssign(PyDgramObject* pyDgram, DescData& descdata,
-                const char* parentDetName)
+void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
 {
     Names& names = descdata.nameindex().names(); // event names, chan0, chan1
 
@@ -178,7 +174,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata,
             //clear NPY_ARRAY_WRITEABLE flag
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
-        sprintf(keyName,"%s_%s_%s",parentDetName,names.getDataName(),
+        sprintf(keyName,"%s_%s_%s",names.detName(),names.dataName(),
                 name.name());
         PyObject* key = PyUnicode_FromString(keyName);
         if (PyDict_Contains(pyDgram->dict, key)) {
@@ -215,10 +211,8 @@ public:
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             unsigned namesId = shapesdata.shapes().namesId();
-            unsigned parentDetNameIndex = _namesVec[namesId].names().parentDetNameIndex();
-            const char* parentDetName = _namesVec[parentDetNameIndex].names().getDataName();
             DescData descdata(shapesdata, _namesVec[namesId]);
-            DictAssign(_pyDgram, descdata, parentDetName);
+            DictAssign(_pyDgram, descdata);
             break;
         }
         default:

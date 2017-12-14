@@ -361,8 +361,8 @@ void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
 }
 
 void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg("hsd1",1,2,3);
-    Names& fexNames = *new(parent) Names(alg,"raw");
+    Alg alg("hsd",1,2,3);
+    Names& fexNames = *new(parent) Names(alg,"raw","hsd1");
 
     fexNames.add("chan0", Name::UINT8, parent, 1);
     fexNames.add("chan1", Name::UINT8, parent, 1);
@@ -372,8 +372,8 @@ void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
 }
 
 void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg("abc",1,0,0);
-    Names& fexNames = *new(parent) Names(alg,"fex");
+    Alg alg("roi",1,0,0);
+    Names& fexNames = *new(parent) Names(alg,"fex","cspad");
 
     fexNames.add("array_fex", Name::UINT16, parent, 2);
     namesVec.push_back(NameIndex(fexNames));
@@ -420,8 +420,11 @@ void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, u
         }
         // making real fex data for event
         else {
-            // roiExample(dgram.xtc, namesVec[0], 0, pebble_data, dma_buffers);
-            hsdExample(dgram.xtc, namesVec[0], 0, pebble_data, dma_buffers, lanes);
+            // need to make more robust: have to match this index
+            // to pick up the correct array element in add_NNN_names
+            unsigned nameId = 0;
+            // roiExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers);
+            hsdExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers, lanes);
         }
 
         worker_output_queue.push(pebble_data);
