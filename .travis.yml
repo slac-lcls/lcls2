@@ -34,6 +34,7 @@ install:
   - bash Miniconda3-latest-Linux-x86_64.sh -b -p $CONDA_PREFIX
   - conda update -y conda
   - conda create -y -p $REL_DIR python=3.5 cmake h5py ipython numpy
+  - source $REL_DIR/bin/activate
   - conda install -y --channel lcls-rhel7 cpsw yaml-cpp
   - conda install -y --channel lightsource2-tag epics-base
 
