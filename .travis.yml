@@ -4,6 +4,11 @@ dist: trusty
 compiler:
   - gcc
 
+env:
+  matrix:
+    - USE_LEGION=0
+    - USE_LEGION=1
+
 # Install system dependencies.
 before_install:
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
@@ -31,6 +36,15 @@ install:
   - conda create -y -p $REL_DIR python=3.5 cmake h5py ipython numpy
   - conda install -y --channel lcls-rhel7 cpsw yaml-cpp
   - conda install -y --channel lightsource2-tag epics-base
+
+# Build and install external Conda packages.
+before_script:
+  - |
+    if [[ $USE_LEGION -eq 1 ]]; then
+      git clone https://github.com/slac-lcls/relmanage.git
+      conda build relmanage/recipes/legion/ --output-folder channels/external/
+      conda install legion -c file://`pwd`/channels/external --override-channels
+    fi
 
 # Build and test.
 script:
