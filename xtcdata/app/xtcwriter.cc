@@ -117,6 +117,27 @@ public:
     float array2[3][3];
 };
 
+class PadData
+{
+public:
+    void* operator new(size_t size, void* p)
+    {
+        return p;
+    }
+    PadData()
+    {
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 3; j++) {
+                for (int k = 0; k < 3; k++) {
+                    array[i][j][k] = i * j + k;
+                }
+            }
+        }
+    }
+
+    float array[2][3][3];
+};
+
 void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 {
     DescribedData frontEnd(parent, nameindex, nameId);
@@ -155,6 +176,23 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     fex.set_value("intFex", 42);
 }
 
+void padExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
+{
+    DescribedData pad(parent, nameindex, nameId);
+
+    // simulates PGP data arriving, and shows the address that should be given to PGP driver
+    // we should perhaps worry about DMA alignment issues if in the future
+    // we avoid the pgp driver copy into user-space.
+    new (pad.data()) PadData();
+
+    // now that data has arrived update with the number of bytes received
+    // it is required to call this before set_array_shape
+    pad.set_data_length(sizeof(PadData));
+
+    unsigned shape[] = { 2, 3, 3 };
+    pad.set_array_shape("arrayRaw", shape);
+}
+
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg alg0("hsd",1,2,3);
     Names& frontEndNames = *new(parent) Names(alg0, "raw", "hsd1");
@@ -170,6 +208,11 @@ void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     fexNames.add("arrayFex", Name::FLOAT, parent, 2);
     fexNames.add("intFex",   Name::INT32, parent);
     namesVec.push_back(NameIndex(fexNames));
+
+    Alg alg2("cspad",2,3,42);
+    Names& padNames = *new(parent) Names(alg2, "raw", "cspad0"); // flip
+    padNames.add("arrayRaw", Name::FLOAT, parent, 3);
+    namesVec.push_back(NameIndex(padNames));
 }
 
 int main()
@@ -207,6 +250,8 @@ int main()
         pgpExample(dgram.xtc, namesVec[nameId], nameId);
         nameId++;
         fexExample(dgram.xtc, namesVec[nameId], nameId);
+        nameId++;
+        padExample(dgram.xtc, namesVec[nameId], nameId);
 
         printf("*** event %d ***\n",i);
         DebugIter iter(&dgram.xtc, namesVec);
