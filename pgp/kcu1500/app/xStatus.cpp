@@ -63,7 +63,10 @@ int main (int argc, char **argv) {
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \
     for(unsigned i=0; i<8; i++) {                               \
-      dmaReadRegister(fd, addr+0x00808000+i*0x10000, &reg);     \
+      if (dmaReadRegister(fd, addr+0x00808000+i*0x10000, &reg)<0) {     \
+        perror(#name);                                                  \
+        return -1;                                                      \
+      }                                                                 \
       printf(" %8x", (reg>>offset)&mask);                       \
     }                                                           \
     printf("\n"); }
@@ -88,12 +91,24 @@ int main (int argc, char **argv) {
   PRINTERR(linkErrCnt , 0x1c);
   PRINTFIELD(remRxOflow , 0x20,  0, 0xffff);
   PRINTFIELD(remRxPause , 0x20, 16, 0xffff);
-  PRINTREG(frameCnt   , 0x24);
-  PRINTERR(frameErrCnt, 0x28);
+  PRINTREG(rxFrameCnt , 0x24);
+  PRINTERR(rxFrameErrCnt, 0x28);
   PRINTFRQ(rxClkFreq  , 0x2c);
   PRINTERR(rxOpCodeCnt, 0x30);
   PRINTREG(rxOpCodeLst, 0x34);
   PRINTERR(phyRxIniCnt, 0x130);
+
+  PRINTBIT(flowCntlDis, 0x80, 0);
+  PRINTBIT(txDisable  , 0x80, 1);
+  PRINTBIT(phyTxActive, 0x84, 0);
+  PRINTBIT(linkRdy    , 0x84, 1);
+  PRINTFIELD(locOflow   , 0x8c, 0,  0xffff);
+  PRINTFIELD(locPause   , 0x8c, 16, 0xffff);
+  PRINTREG(txFrameCnt , 0x90);
+  PRINTERR(txFrameErrCnt, 0x94);
+  PRINTFRQ(txClkFreq  , 0x9c);
+  PRINTERR(txOpCodeCnt, 0xa0);
+  PRINTREG(txOpCodeLst, 0xa4);
 
   close(fd);
 }
