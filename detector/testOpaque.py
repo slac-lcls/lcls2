@@ -6,8 +6,8 @@ from Detector import Detector
 
 ds = DataSource('/reg/neh/home/cpo/git/lcls2/hsd_121317.xtc', verbose=1, debug=0)
 #ds = DataSource('/reg/neh/home/yoon82/temp/lcls2/psana/test/data.xtc')
-det0 = Detector('CxiOSC.0:Hsd.0', ds.config)
-det1 = Detector('DscCsPad.0:Cspad.0', ds.config)
+det0 = Detector('hsd1', ds.config)
+det1 = Detector('cspad', ds.config)
 
 for evt in ds:
     channels = det0.raw(evt)
