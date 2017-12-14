@@ -27,6 +27,7 @@ def myroutine2():
   arr2 = e.hsd1.raw.array0Pgp
   assert getref(dgramObj)==6
   s2 = arr2[3:5]
+  assert s2.base is arr2
   assert getref(dgramObj)==6
   assert getref(arr2)==6
 
