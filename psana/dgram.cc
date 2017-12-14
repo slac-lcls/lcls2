@@ -390,9 +390,6 @@ PyObject* tp_getattro(PyObject* obj, PyObject* key)
             // New default behaviour
             Py_INCREF(res);
             PyDict_DelItem(((PyDgramObject*)obj)->dict, key);
-            if (PyDict_Size(((PyDgramObject*)obj)->dict) == 0) {
-                Py_CLEAR(((PyDgramObject*)obj)->dict);
-            }
         }
     } else {
         res = PyObject_GenericGetAttr(obj, key);
