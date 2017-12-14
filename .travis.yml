@@ -42,7 +42,7 @@ before_script:
   - |
     if [[ $USE_LEGION -eq 1 ]]; then
       git clone https://github.com/slac-lcls/relmanage.git
-      conda install conda-build
+      conda install -y conda-build
       conda build relmanage/recipes/legion/ --output-folder channels/external/
       conda install legion -c file://`pwd`/channels/external --override-channels
     fi
