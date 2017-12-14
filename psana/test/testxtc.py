@@ -14,20 +14,29 @@ def myroutine2():
   assert getref(ds)==2
   e = ds.__next__()
   assert getref(e)==2
+
   arr1 = e.hsd1.raw.array0Pgp
   dgramObj=arr1.base
   assert getref(arr1)==3
-  assert getref(dgramObj)==5
+  assert getref(dgramObj)==6
   s1 = arr1[2:4]
   assert s1.base is arr1
   assert getref(arr1)==4
   assert getref(s1)==2
 
   arr2 = e.hsd1.raw.array0Pgp
-  assert getref(dgramObj)==5
+  assert getref(dgramObj)==6
   s2 = arr2[3:5]
-  assert getref(dgramObj)==5
+  assert getref(dgramObj)==6
   assert getref(arr2)==6
+
+  arr3 = e.cspad0.raw.arrayRaw
+  assert getref(dgramObj)==6
+  s3 = arr3[3:5,0,5:9]
+  print(arr3)
+  assert getref(dgramObj)==6
+  print(getref(arr3))
+  assert getref(arr3)==4
 
   return s1,e
 
