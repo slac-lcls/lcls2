@@ -45,30 +45,26 @@ private:
     AlgVersion _version;
 };
 
-class Name
-{
+class Name {
 public:
     enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE };
 
     static int get_element_size(DataType type);
 
     enum {MaxRank=5};
-    Name(const char* name, DataType type, int rank)
-    {
-        _init(name,type,rank);
-    }
-
-    const char* name() {return _name;}
-    DataType    type() {return _type;}
-    uint32_t    rank() {return _rank;}
-
-private:
-    void _init(const char* name, DataType type, int rank) {
+    Name(Alg& alg, const char* name, DataType type, int rank) : _alg(alg) {
         strncpy(_name, name, maxNameSize);
         _type = type;
         _rank = rank;
     }
 
+    const char* name() {return _name;}
+    DataType    type() {return _type;}
+    uint32_t    rank() {return _rank;}
+    Alg&        alg()  {return _alg;}
+
+private:
+    Alg      _alg;
     char     _name[maxNameSize];
     DataType _type;
     uint32_t _rank;
@@ -118,16 +114,15 @@ class Names : public AutoParentAlloc
 {
 public:
 
-    Names(Alg& alg, const char* dataName, const char* detName) :
-        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
-        _alg(alg)
+    Names(const char* detName, const char* dataName ) :
+        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0))
     {
         strncpy(_dataName, dataName, maxNameSize);
         strncpy(_detName, detName, maxNameSize);
         // allocate space for our private data
         XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
-    Alg& alg() {return _alg;}
+
     const char* dataName() {return _dataName;}
     const char* detName()  {return _detName;}
 
@@ -145,13 +140,12 @@ public:
     }
 
     // Add new item to Names
-    void add(const char* name, Name::DataType type, XtcData::Xtc& parent, int rank=0)
+    void add(Alg& alg, const char* name, Name::DataType type, XtcData::Xtc& parent, int rank=0)
     {
         void* ptr = alloc(sizeof(Name), parent);
-        new (ptr) Name(name, type, rank);
+        new (ptr) Name(alg, name, type, rank);
     }
 private:
-    Alg      _alg;
     char     _dataName[maxNameSize];
     char     _detName[maxNameSize];
 };
