@@ -194,24 +194,25 @@ void padExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 }
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
+    Alg alg("null",0,0,0);
     Alg alg0("hsd",1,2,3);
-    Names& frontEndNames = *new(parent) Names("hsd1", "raw", alg0);
-    frontEndNames.add("floatPgp",  Name::FLOAT, parent);
-    frontEndNames.add("array0Pgp", Name::FLOAT, parent, 2);
-    frontEndNames.add("intPgp",    Name::INT32, parent);
-    frontEndNames.add("array1Pgp", Name::FLOAT, parent, 2);
+    Names& frontEndNames = *new(parent) Names("hsd1", "raw");
+    frontEndNames.add(alg, "floatPgp",  Name::FLOAT, parent);
+    frontEndNames.add(alg0, "array0Pgp", Name::FLOAT, parent, 2);
+    frontEndNames.add(alg, "intPgp",    Name::INT32, parent);
+    frontEndNames.add(alg0, "array1Pgp", Name::FLOAT, parent, 2);
     namesVec.push_back(NameIndex(frontEndNames));
 
     Alg alg1("abc",4,5,6);
-    Names& fexNames = *new(parent) Names("hsd1", "fex", alg1);
-    fexNames.add("floatFex", Name::FLOAT, parent);
-    fexNames.add("arrayFex", Name::FLOAT, parent, 2);
-    fexNames.add("intFex",   Name::INT32, parent);
+    Names& fexNames = *new(parent) Names("hsd1", "fex");
+    fexNames.add(alg, "floatFex", Name::FLOAT, parent);
+    fexNames.add(alg1, "arrayFex", Name::FLOAT, parent, 2);
+    fexNames.add(alg, "intFex",   Name::INT32, parent);
     namesVec.push_back(NameIndex(fexNames));
 
     Alg alg2("cspad",2,3,42);
-    Names& padNames = *new(parent) Names("cspad0", "raw", alg2); // flip
-    padNames.add("arrayRaw", Name::FLOAT, parent, 3);
+    Names& padNames = *new(parent) Names("cspad0", "raw");
+    padNames.add(alg2, "arrayRaw", Name::FLOAT, parent, 3);
     namesVec.push_back(NameIndex(padNames));
 }
 

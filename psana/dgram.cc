@@ -62,27 +62,31 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
 {
     // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
     char keyName[256];
-    for (unsigned j = 0; j < namesVec.size(); j++) {
-        Names& names = namesVec[j].names();
+    for (unsigned i = 0; i < namesVec.size(); i++) {
+        Names& names = namesVec[i].names();
 
-        Alg& alg = names.alg();
-        const char* algName = alg.getAlgName();
-        const uint32_t _v = alg.getVersion();
+        for (unsigned j = 0; j < names.num(); j++) {
+            Name& name = names.get(j);
 
-        PyObject* newobjS = Py_BuildValue("s", algName);
-        PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
+            Alg& alg = name.alg();
+            const char* algName = alg.getAlgName();
+            const uint32_t _v = alg.getVersion();
 
-        sprintf(keyName,"%s_%s_software",names.detName(),names.dataName());
-        PyObject* key = PyUnicode_FromString(keyName);
-        if (PyDict_Contains(pyDgram->dict, key)) { // TODO: This code can only attach one software in configDgram
-            printf("Dgram: Ignoring duplicate key %s\n", "software");
-        } else {
-            PyDict_SetItem(pyDgram->dict, key, newobjS);
-            Py_DECREF(newobjS);
-            sprintf(keyName,"%s_%s_version",names.detName(),names.dataName());
+            PyObject* newobjS = Py_BuildValue("s", algName);
+            PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
+
+            sprintf(keyName,"%s_%s_software",names.detName(),names.dataName());
             PyObject* key = PyUnicode_FromString(keyName);
-            PyDict_SetItem(pyDgram->dict, key, newobjV);
-            Py_DECREF(newobjV);
+            if (PyDict_Contains(pyDgram->dict, key)) { // TODO: This code can only attach one software in configDgram
+                printf("Dgram: Ignoring duplicate key %s\n", "software");
+            } else {
+                PyDict_SetItem(pyDgram->dict, key, newobjS);
+                Py_DECREF(newobjS);
+                sprintf(keyName,"%s_%s_version",names.detName(),names.dataName());
+                PyObject* key = PyUnicode_FromString(keyName);
+                PyDict_SetItem(pyDgram->dict, key, newobjV);
+                Py_DECREF(newobjV);
+            }
         }
     }
 }
