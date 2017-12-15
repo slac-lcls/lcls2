@@ -83,6 +83,7 @@ int main (int argc, char **argv) {
     printf("\n"); }
 
   printf("-- PgpAxiL Registers --\n");
+  PRINTFIELD(loopback , 0x08, 0, 0x7);
   PRINTBIT(phyRxActive, 0x10, 0);
   PRINTBIT(locLinkRdy , 0x10, 1);
   PRINTBIT(remLinkRdy , 0x10, 2);
