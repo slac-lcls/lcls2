@@ -13,30 +13,17 @@ class DetectorBase(object):
     def __init__(self, name, config):
         self.detectorName = name
         self.config = config
-    def name(self): return self.detectorName
 
-class Cspad(DetectorBase):
-    """
-    Cspad reader
-    """
-    def __init__(self, name, config):
-        super(Cspad, self).__init__(name, config)
-        self.__searchAttr__()
-
-    class _Factory:
-        def create(self, name, config): return Cspad(name, config)
-
-    def __searchAttr__(self):
+    def __searchAttr__(self, softwareName):
         self.dataAttr = []
         def children(grandparent, parent):
             tree.append(parent)
             _parent = getattr(grandparent, parent)
             try:
                 if "software" in vars(_parent) and "version" in vars(_parent):
-                    if "cspad" in getattr(_parent, "software"):
+                    if softwareName in getattr(_parent, "software"):
                         self.dataAttr.append('.'.join(tree))
-                    else:
-                        tree.pop()
+                    tree.pop()
                 else:
                     for i, child in enumerate(vars(_parent)):
                         children(_parent, child)
@@ -53,6 +40,20 @@ class Cspad(DetectorBase):
         convert = lambda text: int(text) if text.isdigit() else text
         alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
         return sorted(l, key=alphanum_key)
+
+    def name(self): return self.detectorName
+
+class Cspad(DetectorBase):
+    """
+    Cspad reader
+    """
+    def __init__(self, name, config):
+        super(Cspad, self).__init__(name, config)
+        self.softwareName = "cspad"
+        self.__searchAttr__(self.softwareName)
+
+    class _Factory:
+        def create(self, name, config): return Cspad(name, config)
 
     def raw(self, evt, verbose=0):
         evtStr = 'evt.' + self.dataAttr[0]
@@ -69,37 +70,11 @@ class Hsd(DetectorBase):
     """
     def __init__(self, name, config):
         super(Hsd, self).__init__(name, config)
-        self.__searchAttr__()
+        self.softwareName = "hsd"
+        self.__searchAttr__(self.softwareName)
 
     class _Factory:
         def create(self, name, config): return Hsd(name, config)
-
-    def __searchAttr__(self):
-        self.dataAttr = []
-        def children(grandparent, parent):
-            tree.append(parent)
-            _parent = getattr(grandparent, parent)
-            try:
-                if "software" in vars(_parent) and "version" in vars(_parent):
-                    if "hsd" in getattr(_parent, "software"):
-                        self.dataAttr.append('.'.join(tree))
-                    tree.pop()
-                else:
-                    for i, child in enumerate(vars(_parent)):
-                        children(_parent, child)
-                    tree.pop()
-            except:
-                pass
-
-        tree = []
-        for detname in vars(self.config):
-            children(self.config, detname)
-
-    def __sorted_nicely__(self, l):
-        """ Sort the given iterable in the way that humans expect."""
-        convert = lambda text: int(text) if text.isdigit() else text
-        alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
-        return sorted(l, key=alphanum_key)
 
     def __adcVal__(self, pulseId,_adc,_pid):
         dclks = (pulseId - _pid)*1348
