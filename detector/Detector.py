@@ -1,6 +1,5 @@
 # Polymorphic factory methods.
 from __future__ import generators
-import random
 import re
 import numpy as np
 
