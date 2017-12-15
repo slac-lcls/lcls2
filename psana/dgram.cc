@@ -75,8 +75,6 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
             PyObject* newobjS = Py_BuildValue("s", algName);
             PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
-            printf("%s_%s_%s_software\n",names.detName(),names.dataName(),name.name());
-
             sprintf(keyName,"%s_%s_%s_software",names.detName(),names.dataName(),name.name());
             PyObject* key = PyUnicode_FromString(keyName);
             if (PyDict_Contains(pyDgram->dict, key)) { // TODO: This code can only attach one software in configDgram
