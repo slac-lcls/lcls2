@@ -4,18 +4,18 @@ sys.path.append('/reg/neh/home/yoon82/temp/lcls2/psana')
 from DataSource import DataSource
 from Detector import Detector
 
-ds = DataSource('/reg/neh/home/yoon82/temp/lcls2/hsd_121517.xtc', verbose=1, debug=0)
-det0 = Detector('hsd1', ds.config)
+ds = DataSource('/reg/neh/home/yoon82/temp/lcls2/psana/test/data.xtc')
+det = Detector('cspad0', ds.config)
 
 for evt in ds:
-    channels = det0.raw(evt)
+    raw = det.raw(evt)
     break
 
-print("HSD channels:")
-print(channels)
+print("Raw:")
+print(raw, raw.shape)
 
-from IPython import embed
-embed()
+#from IPython import embed
+#embed()
 exit()
 
 #print("hsd1: ", ds.config.hsd1.hsd1.software, ds.config.hsd1.hsd1.version)
