@@ -126,16 +126,17 @@ public:
     }
     PadData()
     {
+        uint8_t counter = 0;
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 3; j++) {
                 for (int k = 0; k < 3; k++) {
-                    array[i][j][k] = i * j + k;
+                    array[counter] = counter;
+                    counter++;
                 }
             }
         }
     }
-
-    float array[2][3][3];
+    uint8_t array[18];
 };
 
 void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
@@ -189,30 +190,29 @@ void padExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     // it is required to call this before set_array_shape
     pad.set_data_length(sizeof(PadData));
 
-    unsigned shape[] = { 2, 3, 3 };
+    unsigned shape[] = { 18 };
     pad.set_array_shape("arrayRaw", shape);
 }
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg("null",0,0,0);
     Alg alg0("hsd",1,2,3);
     Names& frontEndNames = *new(parent) Names("hsd1", "raw");
-    frontEndNames.add(alg, "floatPgp",  Name::FLOAT, parent);
-    frontEndNames.add(alg0, "array0Pgp", Name::FLOAT, parent, 2);
-    frontEndNames.add(alg, "intPgp",    Name::INT32, parent);
-    frontEndNames.add(alg0, "array1Pgp", Name::FLOAT, parent, 2);
+    frontEndNames.add(parent, "floatPgp",  Name::FLOAT);
+    frontEndNames.add(parent, "array0Pgp", Name::FLOAT, 2);
+    frontEndNames.add(parent, "intPgp",    Name::INT32);
+    frontEndNames.add(parent, "array1Pgp", Name::FLOAT, 2);
     namesVec.push_back(NameIndex(frontEndNames));
 
     Alg alg1("abc",4,5,6);
     Names& fexNames = *new(parent) Names("hsd1", "fex");
-    fexNames.add(alg, "floatFex", Name::FLOAT, parent);
-    fexNames.add(alg1, "arrayFex", Name::FLOAT, parent, 2);
-    fexNames.add(alg, "intFex",   Name::INT32, parent);
+    fexNames.add(parent, "floatFex", Name::FLOAT);
+    fexNames.add(parent, "arrayFex", Name::FLOAT, 2);
+    fexNames.add(parent, "intFex",   Name::INT32);
     namesVec.push_back(NameIndex(fexNames));
 
     Alg alg2("cspad",2,3,42);
     Names& padNames = *new(parent) Names("cspad0", "raw");
-    padNames.add(alg2, "arrayRaw", Name::FLOAT, parent, 3);
+    padNames.add(parent, "arrayRaw", alg2); //, Name::FLOAT, parent, 3);
     namesVec.push_back(NameIndex(padNames));
 }
 

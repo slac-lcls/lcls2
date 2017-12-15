@@ -52,7 +52,14 @@ public:
     static int get_element_size(DataType type);
 
     enum {MaxRank=5};
-    Name(Alg& alg, const char* name, DataType type, int rank) : _alg(alg) {
+
+    Name(const char* name, DataType type, int rank) : _alg("",0,0,0) {
+        strncpy(_name, name, maxNameSize);
+        _type = type;
+        _rank = rank;
+    }
+
+    Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
         strncpy(_name, name, maxNameSize);
         _type = type;
         _rank = rank;
@@ -140,10 +147,17 @@ public:
     }
 
     // Add new item to Names
-    void add(Alg& alg, const char* name, Name::DataType type, XtcData::Xtc& parent, int rank=0)
+    void add(XtcData::Xtc& parent, const char* name, Name::DataType type, int rank=0)
     {
         void* ptr = alloc(sizeof(Name), parent);
-        new (ptr) Name(alg, name, type, rank);
+        new (ptr) Name(name, type, rank);
+    }
+
+    // Add new item to Names
+    void add(XtcData::Xtc& parent, const char* name, Alg& alg)
+    {
+        void* ptr = alloc(sizeof(Name), parent);
+        new (ptr) Name(name, Name::UINT8, 1, alg); // Assume array of bytes
     }
 private:
     char     _dataName[maxNameSize];

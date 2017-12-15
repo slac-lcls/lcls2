@@ -58,6 +58,7 @@ class Cspad(DetectorBase):
     def raw(self, evt, verbose=0):
         evtStr = 'evt.' + self.dataAttr[0]
         evtAttr = eval(evtStr)  # evt.cspad0.raw.arrayRaw
+        evtAttr = evtAttr.reshape((2,3,3)) # This mini cspad has 2x3x3 pixels
         return evtAttr
 
     def calib(self, data, verbose=0): print("Cspad.calib")
