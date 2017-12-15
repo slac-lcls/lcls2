@@ -29,3 +29,5 @@ add_test(NAME h5writer COMMAND ${CMAKE_BINARY_DIR}/psdaq/app/h5writer
 	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
 add_test(NAME testh5 COMMAND python testh5.py
 	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
+add_test(NAME testdet COMMAND python testdet.py
+	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
