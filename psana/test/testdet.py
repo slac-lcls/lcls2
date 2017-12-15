@@ -12,8 +12,9 @@ det = Detector('cspad0', ds.config)
 for evt in ds:
     raw = det.raw(evt)
     break
+
 print('Raw values and shape:' )
 print(raw, raw.shape)
-assert(np.sum(raw)==27)
+assert(np.sum(raw)==9*17)
 assert(raw.shape==(2,3,3))
 

@@ -33,9 +33,10 @@ def myroutine2():
 
   arr3 = e.cspad0.raw.arrayRaw
   assert getref(dgramObj)==6
-  s3 = arr3[3:5,0,5:9]
+  print(arr3, arr3.dtype)
+  assert(arr3[7]==7)
   assert getref(dgramObj)==6
-  assert getref(arr3)==4
+  assert getref(arr3)==3
 
   return s1,e
 
