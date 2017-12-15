@@ -15,12 +15,21 @@ evtsel      = ['Fixed Rate','AC Rate','Sequence']
 fixedRates  = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
 acRates     = ['60Hz','30Hz','10Hz','5Hz','1Hz']
 acTS        = ['TS%u'%(i+1) for i in range(6)]
-seqIdxs     = ['s%u'%i for i in range(18)]
 seqBits     = ['b%u'%i for i in range(16)]
 # Sequence 16 is programmed for rates stepping at 10kHz
 seqIdxs     = ['s%u'%i for i in range(18)]
 seqBursts   = ['%u x %.2fus'%(2*(i%4+1),float(i/4+1)*interval) for i in range(16)]
 seqRates    = ['%u0kHz'%(i+1) for i in range(16)]
+
+frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
+toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
+
+def initPvMon(mon,pvname):
+    mon.pv = Pv.Pv(pvname)
+    mon.pv.monitor_start()
+    mon.pv.add_monitor_callback(mon.update)
+    mon.pv.get()
+    mon.update(None)
 
 class PvDisplay(QtWidgets.QLabel):
 
@@ -50,9 +59,6 @@ class PvLabel:
 
         pvname = pvbase+name
         print(pvname)
-        self.pv = Pv.Pv(pvname)
-        self.pv.monitor_start()
-        self.pv.add_monitor_callback(self.update)
         if dName is not None:
             dPvName = pvbase+dName
             self.dPv = Pv.Pv(dPvName)
@@ -61,6 +67,7 @@ class PvLabel:
         else:
             self.dPv = None
         self.isInt = isInt
+        initPvMon(self,pvname)
 
     def update(self, err):
         q = self.pv.value
@@ -72,9 +79,9 @@ class PvLabel:
             s = QString('fail')
             try:
                 if self.isInt:
-                    s = QString("%s (0x%s)") % ((QString(int(q))),QString(format(int(q), 'x')))
+                    s = QString("%s (0x%s)") % ((QString(int(q))),QString(format(int(q)&0xffffffff, 'x')))
                     if dq is not None:
-                        s = s + QString(" [%s (0x%s)]") % ((QString(int(dq))),(format(int(dq), 'x')))
+                        s = s + QString(" [%s (0x%s)]") % ((QString(int(dq))),(format(int(dq)&0xffffffff, 'x')))
                 else:
                     s = QString(q)
                     if dq is not None:
@@ -133,10 +140,7 @@ class PvCheckBox(CheckBox):
         super(PvCheckBox, self).__init__(label)
         self.connect_signal()
         self.clicked.connect(self.pvClicked)
-
-        self.pv = Pv.Pv(pvname)
-        self.pv.monitor_start()
-        self.pv.add_monitor_callback(self.update)
+        initPvMon(self,pvname)
 
     def pvClicked(self):
         q = self.isChecked()
@@ -144,7 +148,7 @@ class PvCheckBox(CheckBox):
         #print "PvCheckBox.clicked: pv %s q %x" % (self.pv.name, q)
 
     def update(self, err):
-        #print "PvCheckBox.update:  pv %s, i %s, v %x, err %s" % (self.pv.name, self.text(), self.pv.value, err)
+        #print ("PvCheckBox.update:  pv %s, i %s, v %x, err %s" % (self.pv.name, self.text(), self.pv.value, err))
         q = self.pv.value != 0
         if err is None:
             if q != self.isChecked():  self.valueSet.emit(q)
@@ -185,11 +189,7 @@ class PvEditTxt(PvTextDisplay):
         super(PvEditTxt, self).__init__(label)
         self.connect_signal()
         self.editingFinished.connect(self.setPv)
-
-        self.pv = Pv.Pv(pv)
-        self.pv.monitor_start()
-        print('Monitor started '+pv)
-        self.pv.add_monitor_callback(self.update)
+        initPvMon(self,pv)
 
 class PvEditInt(PvEditTxt):
 
@@ -206,7 +206,7 @@ class PvEditInt(PvEditTxt):
         if err is None:
             s = QString('fail')
             try:
-                s = QString("%s") % (QString(long(q)))
+                s = QString("%s") % (QString(int(q)))
             except:
                 v = ''
                 for i in range(len(q)):
@@ -308,10 +308,7 @@ class PvDblArray:
     
     def __init__(self, pv, widgets):
         self.widgets = widgets
-        self.pv = Pv.Pv(pv)
-        self.pv.monitor_start()
-        print('Monitor started '+pv)
-        self.pv.add_monitor_callback(self.update)
+        initPvMon(self,pv)
 
     def update(self, err):
         q = self.pv.value
@@ -328,10 +325,7 @@ class PvEditCmb(PvComboDisplay):
         super(PvEditCmb, self).__init__(choices)
         self.connect_signal()
         self.currentIndexChanged.connect(self.setValue)
-
-        self.pv = Pv.Pv(pvname)
-        self.pv.monitor_start()
-        self.pv.add_monitor_callback(self.update)
+        initPvMon(self,pvname)
 
     def setValue(self):
         value = self.currentIndex()
@@ -403,10 +397,8 @@ class PvDefSeq(QtWidgets.QWidget):
         lo.addWidget(seqstack)
 
         self.setLayout(lo)
-
-        self.pv = Pv.Pv(pvname+'_Sequence')
-        self.pv.monitor_start()
-        self.pv.add_monitor_callback(self.update)
+        
+        initPvMon(self,pvname+'_Sequence')
 
     def setValue(self):
         value = self.seqsel.currentIndex()
@@ -498,28 +490,32 @@ class PvEditTS(PvEditCmb):
         super(PvEditTS, self).__init__(pvname, ['%u'%i for i in range(16)])
 
 class PvInput:
-    def __init__(self, widget, parent, pvbase, name, count=1):
+    def __init__(self, widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True):
         pvname = pvbase+name
+        print(pvname)
 
         layout = QtWidgets.QHBoxLayout()
         label  = QtWidgets.QLabel(name)
         label.setMinimumWidth(100)
         layout.addWidget(label)
+        #layout.addStretch
         if count == 1:
-            print(pvname)
-            layout.addWidget(widget(pvname, ''))
+            w = widget(pvname, '')
+            w.setEnabled(enable)
+            layout.addWidget(w)
         else:
             for i in range(count):
-                print(pvname+'%d'%i)
-                layout.addWidget(widget(pvname+'%d'%i, str(i)))
-        layout.addStretch()
+                w = widget(pvname+'%d'%(i+start), QString(i+istart))
+                w.setEnabled(enable)
+                layout.addWidget(w)
+        #layout.addStretch
         parent.addLayout(layout)
 
 def LblPushButton(parent, pvbase, name, count=1):
     return PvInput(PvPushButton, parent, pvbase, name, count)
 
-def LblCheckBox(parent, pvbase, name, count=1):
-    return PvInput(PvCheckBox, parent, pvbase, name, count)
+def LblCheckBox(parent, pvbase, name, count=1, start=0, istart=0, enable=True):
+    return PvInput(PvCheckBox, parent, pvbase, name, count, start, istart, enable)
 
 def LblEditInt(parent, pvbase, name, count=1):
     return PvInput(PvEditInt, parent, pvbase, name, count)
