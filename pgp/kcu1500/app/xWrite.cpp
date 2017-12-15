@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string.h>
 #include <stdlib.h>
+#include <poll.h>
 
 #include "DataDriver.h"
 
@@ -54,11 +55,12 @@ int main (int argc, char **argv) {
     return(1);
   }
 
-  unsigned dest = (vc<<5) | (lane&0x7);
+  uint32_t dest = dmaDest(lane,vc);
 
   uint8_t mask[DMA_MASK_SIZE];
-  memset(mask,0,sizeof(mask));
-  mask[dest>>3] = 1<<(dest&0x7);
+  dmaInitMaskBytes(mask);
+  dmaAddMaskBytes (mask, dest);
+
   if (ioctl(fd, DMA_Set_MaskBytes, mask)<0) {
     perror("DMA_Set_MaskBytes");
     return -1;
@@ -68,13 +70,6 @@ int main (int argc, char **argv) {
   srandom(t);
 
   data = (uint *)malloc(sizeof(uint)*size);
-  DmaWriteData wd;
-  wd.data = (uintptr_t)data;
-  wd.dest = (vc<<5) | (lane&0x7);
-  wd.flags = 0;
-  wd.index = 0;
-  wd.size  = size;
-  wd.is32  = 0;
   
   do {
     // DMA Write
@@ -87,8 +82,22 @@ int main (int argc, char **argv) {
       if ( ((x+1)%10) == 0 ) cout << endl << "   ";
     }
     cout << endl;
-    ret = write(fd,&wd,sizeof(wd));
+
+    pollfd pfd;
+    pfd.fd      = fd;
+    pfd.events  = POLLOUT;
+    pfd.revents = 0;
+
+    int result = poll(&pfd, 1, -1);
+    printf("poll result = %d\n",result);
+    if (result < 0) {
+      perror("poll");
+      return -1;
+    }
+
+    ret = dmaWrite(fd, data, size, axisSetFlags(1, 1, 0), dest);
     cout << "Returned " << dec << ret << endl;
+
   } while ( count++ < number );
   free(data);
 

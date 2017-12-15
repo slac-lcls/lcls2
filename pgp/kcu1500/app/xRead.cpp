@@ -143,25 +143,19 @@ int main (int argc, char **argv) {
   ioctl(fd, DMA_Set_Debug, 1);
 
   uint8_t mask[DMA_MASK_SIZE];
-  memset(mask,0,sizeof(mask));
-  for(unsigned i=0; i<32; i++)
-    mask[i] = lanes;
+  dmaInitMaskBytes(mask);
+  for(unsigned i=0; i<8; i++)
+    if (lanes & (1<<i))
+      dmaAddMaskBytes(mask, dmaDest(i,0));
+
   if (ioctl(fd, DMA_Set_MaskBytes, mask)<0) {
     perror("DMA_Set_MaskBytes");
     return -1;
   }
 
   // Allocate a buffer
-  maxSize = 1024*1024*2;
+  maxSize = 1024*256;
   data = (uint *)malloc(sizeof(uint)*maxSize);
-
-  DmaReadData rd;
-  rd.data    = (uintptr_t)data;
-  rd.dest    = 0;
-  rd.flags   = 0;
-  rd.index   = 0;
-  rd.size    = maxSize;
-  rd.is32    = 0;
 
   pthread_attr_t tattr;
   pthread_attr_init(&tattr);
@@ -188,7 +182,8 @@ int main (int argc, char **argv) {
       return -1;
     }
 
-    ret = read(fd,&rd,sizeof(rd));
+    uint32_t flags=0, err=0, dest=0;
+    ret = dmaRead(fd,data,maxSize,&flags,&err,&dest);
 
     if (nevents-- == 0)
       break;
@@ -197,9 +192,9 @@ int main (int argc, char **argv) {
       if (print) {
 
         cout << "Ret=" << dec << ret;
-        cout << ", dest=" << hex << rd.dest;
-        cout << ", EOFE=" << hex << rd.error;
-        cout << ", size=" << dec << rd.size;
+        cout << ", dest=" << hex << dest;
+        cout << ", EOFE=" << hex << err;
+        cout << ", size=" << dec << ret;
         cout << endl << "   ";
 
         for (int x=0; x<ret && x<maxPrint; x++) {
@@ -238,7 +233,7 @@ int main (int argc, char **argv) {
         }
       }
 
-      lanes |= 1<<(rd.dest>>5);
+      lanes |= 1<<(dest>>5);
       ++count;
 
       if (writeFile)
