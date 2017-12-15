@@ -4,7 +4,8 @@ import re
 import numpy as np
 
 def Detector(name, config):
-    name = name.split(':')[-1].split('.')[0] # TODO: extract detector type from Full Name or DAQ Alias
+    name = ''.join([i for i in name if not i.isdigit()]) # remove digits
+    name = name.title() # TODO: extract detector type from Full Name or DAQ Alias
     df = eval(name + '._Factory()')
     return df.create(name, config)
 
@@ -15,11 +16,52 @@ class DetectorBase(object):
     def name(self): return self.detectorName
 
 class Cspad(DetectorBase):
-    def raw(self, data, verbose=0): print("Cspad.raw")
-    def calib(self, data, verbose=0): print("Cspad.calib")
-    def image(self, data, verbose=0): print("Cspad.image")
+    """
+    Cspad reader
+    """
+    def __init__(self, name, config):
+        super(Cspad, self).__init__(name, config)
+        self.__searchAttr__()
+
     class _Factory:
         def create(self, name, config): return Cspad(name, config)
+
+    def __searchAttr__(self):
+        self.dataAttr = []
+        def children(grandparent, parent):
+            tree.append(parent)
+            _parent = getattr(grandparent, parent)
+            try:
+                if "software" in vars(_parent) and "version" in vars(_parent):
+                    if "cspad" in getattr(_parent, "software"):
+                        self.dataAttr.append('.'.join(tree))
+                    else:
+                        tree.pop()
+                else:
+                    for i, child in enumerate(vars(_parent)):
+                        children(_parent, child)
+                    tree.pop()
+            except:
+                pass
+
+        tree = []
+        for detname in vars(self.config):
+            children(self.config, detname)
+
+    def __sorted_nicely__(self, l):
+        """ Sort the given iterable in the way that humans expect."""
+        convert = lambda text: int(text) if text.isdigit() else text
+        alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+        return sorted(l, key=alphanum_key)
+
+    def raw(self, evt, verbose=0):
+        evtStr = 'evt.' + self.dataAttr[0]
+        evtAttr = eval(evtStr)  # evt.cspad0.raw.arrayRaw
+        return evtAttr
+
+    def calib(self, data, verbose=0): print("Cspad.calib")
+    def image(self, data, verbose=0): print("Cspad.image")
+
 
 class Hsd(DetectorBase):
     """
@@ -41,9 +83,11 @@ class Hsd(DetectorBase):
                 if "software" in vars(_parent) and "version" in vars(_parent):
                     if "hsd" in getattr(_parent, "software"):
                         self.dataAttr.append('.'.join(tree))
+                    tree.pop()
                 else:
                     for i, child in enumerate(vars(_parent)):
                         children(_parent, child)
+                    tree.pop()
             except:
                 pass
 
@@ -67,11 +111,8 @@ class Hsd(DetectorBase):
         return (adc+1) & 2047
 
     def raw(self, evt):
-        evtStr = 'evt.'+self.dataAttr[0]
-        evtAttr = eval(evtStr) # evt.hsd1.raw
-        # Find all channels
         mychan = []
-        [mychan.append(evtStr+"."+i) for i in vars(evtAttr) if 'chan' in i]
+        [mychan.append('evt.'+i) for i in self.dataAttr]
         mychan = self.__sorted_nicely__(set(mychan))
         # Return all channels
         arr = None
