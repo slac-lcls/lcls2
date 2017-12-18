@@ -18,13 +18,13 @@ struct PGPBuffer
     uint32_t length;
     uint32_t dma_index;
 };
-  
+
 struct PGPData
 {
-    uint32_t nlanes;
     uint64_t pulse_id;
-    uint8_t lane_count;
     uint8_t lane_mask;
+    unsigned damaged : 1;
+    unsigned counter : 7;
     // max of 8 lanes on pgp card
     PGPBuffer buffers[8];
 };
