@@ -402,6 +402,7 @@ void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
 void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg alg("hsd",1,2,3);
     Names& fexNames = *new(parent) Names("hsd1", "raw");
+    
     fexNames.add(parent, "chan0", alg);
     fexNames.add(parent, "chan1", alg);
     fexNames.add(parent, "chan2", alg);
@@ -410,29 +411,31 @@ void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
 }
 
 void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg("roi",1,0,0);
+    Alg alg("roi", 1, 0, 0);
     Names& fexNames = *new(parent) Names("cspad", "fex");
     fexNames.add(parent, "array_fex", alg); //Name::UINT16, parent, 2);
     namesVec.push_back(NameIndex(fexNames));
 }
 
-bool check_pulseIds(PGPData* pgp_data)
+bool check_pulseIds(PGPData* pgp_data, uint32_t** dma_buffers)
 {
-    /*
-    uint64_t pulse_id;
-    if (pgp_data->nlanes == 3) {
-        uint32_t index = pgp_data->buffers[4].dma_index;
-        EventHeader* event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
-        pulse_id = event_header->pulseId;
-        for (int i = 1; i<3; i++) {
-            index = pgp_data->buffers[lanes[i]].dma_index;
-            event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
-            if (pulse_id != event_header->pulseId) {
-                std::cout<<"Wrong pulse id\n";
+    uint64_t pulse_id = 0;
+    for (int l=0; l<8; l++) {
+        if (pgp_data->lane_mask  & (1 << l)) {
+            uint32_t index = pgp_data->buffers[l].dma_index;
+            EventHeader* event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
+            if (pulse_id == 0) {
+                pulse_id = event_header->pulseId;
+            }
+            else {
+                if (pulse_id != event_header->pulseId) {
+                    printf("Wrong pulse id! expected %lu but got %lu instead\n", pulse_id, event_header->pulseId);
+                    return false;
+                }
             }
         }
     }
-    */
+    return true;
 }
 
 void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, uint32_t** dma_buffers, int rank, std::vector<unsigned> lanes)
@@ -445,35 +448,39 @@ void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, u
         if (!worker_input_queue.pop(pebble_data)) {
             break;
         }
-
-         // check pulseId
-         // check_pulseIds();
-
-        Dgram& dgram = *(Dgram*)pebble_data->fex_data();
-        TypeId tid(TypeId::Parent, 0);
-        dgram.xtc.contains = tid;
-        dgram.xtc.damage = 0;
-        dgram.xtc.extent = sizeof(Xtc);
-
-        // Do actual work here
-        // configure transition
-        if (counter == 0) {
-            // add_roi_names(dgram.xtc, namesVec);
-            add_hsd_names(dgram.xtc, namesVec);
+        
+        if (pebble_data->pgp_data()->damaged) {
+            continue;
         }
-        // making real fex data for event
         else {
-            // need to make more robust: have to match this index
-            // to pick up the correct array element in add_NNN_names
-            unsigned nameId = 0;
-            // roiExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers);
-            hsdExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers, lanes);
+            check_pulseIds(pebble_data->pgp_data(), dma_buffers);
+
+            Dgram& dgram = *(Dgram*)pebble_data->fex_data();
+            TypeId tid(TypeId::Parent, 0);
+            dgram.xtc.contains = tid;
+            dgram.xtc.damage = 0;
+            dgram.xtc.extent = sizeof(Xtc);
+
+            // Do actual work here
+            // configure transition
+            if (counter == 0) {
+                // add_roi_names(dgram.xtc, namesVec);
+                add_hsd_names(dgram.xtc, namesVec);
+            }
+            // making real fex data for event
+            else {
+                // need to make more robust: have to match this index
+                // to pick up the correct array element in add_NNN_names
+                unsigned nameId = 0;
+                // roiExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers);
+                hsdExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers, lanes);
+            }
         }
 
         worker_output_queue.push(pebble_data);
         counter++;
     }
-    std::cout << "Thread " << rank << " processed " << counter << " events" << std::endl;
+    printf("Thread %d processed %lu events\n", rank, counter);
 }
 
 void pin_thread(const pthread_t& th, int cpu)
