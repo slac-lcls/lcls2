@@ -22,7 +22,7 @@
 #include "EbContribution.hh"
 #include "EventBuilder.hh"
 
-#include "psdaq/service/GenericPool.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 #include <new>
 #include <stdlib.h>
@@ -51,23 +51,24 @@ static const int MaxTimeouts = 0x100;      // Revisit: Was 0xffff
 */
 
 EbEvent::EbEvent(uint64_t      contract,
-                 GenericPool&  cntrbFreelist,
+                 EventBuilder* eb,
                  EbEvent*      after,
                  const Dgram*  cdg,
-                 uint64_t      prm,
                  uint64_t      mask) :
-  _sequence     (cdg->seq.stamp().pulseId()),
-  _contract     (contract),
-  _pending      (),
-  _cntrbFreelist(cntrbFreelist),
-  _living       (MaxTimeouts),
-  _key          (_sequence & mask)
+  _sequence(cdg->seq.stamp().pulseId()),
+  _contract(contract),
+  _eb      (eb),
+  _living  (MaxTimeouts),
+  _key     (_sequence & mask),
+  _last    (_contributions)
 {
-  EbContribution* contrib = _contribution(cdg, prm);
+  const EbContribution* contribution = (EbContribution*)cdg;
 
-  _size      = contrib->payloadSize();
+  *_last++   = contribution;
 
-  _remaining = contract & contrib->retire();
+  _size      = contribution->payloadSize();
+
+  _remaining = contract & contribution->retire();
 
   connect(after);
 }
@@ -85,29 +86,38 @@ EbEvent::EbEvent(uint64_t      contract,
 
 Pds::Eb::EbEvent::~EbEvent()
 {
-  EbContribution* empty   = _pending.empty();
-  EbContribution* contrib = _pending.reverse();
-
-  while (contrib != empty)
-  {
-    EbContribution* next = contrib->reverse();
-    delete contrib;
-    contrib = next;
-  }
 }
 
 /*
 ** ++
 **
-**    This function is used to insert a "dummy" contribution to the event.
+**    This is the function called by the EB to signify that the event
+**    is complete and can be processed.  This function runs in the context
+**    of the Back-End task.  The function will simply call the builder's
+**    process virtual method for the event and than delete the event.
+**
+** --
+*/
+
+void Pds::Eb::EbEvent::routine()
+{
+  _eb->process(this);
+
+  delete this;
+}
+
+/*
+** ++
+**
+**    This function is used to insert a "dummy" contribution into the event.
 **    The dummy contribution is identified by the input argument.
 **
 ** --
 */
 
-void EbEvent::_insert(EbContribution* dummy)
+void EbEvent::_insert(const Dgram* dummy)
 {
-  _pending.insert(dummy);
+  *_last++ = (EbContribution*)dummy;
 }
 
 /*
@@ -124,37 +134,19 @@ void EbEvent::_insert(EbContribution* dummy)
 ** --
 */
 
-EbEvent* EbEvent::_add(const Dgram* cdg,
-                       uint64_t     prm)
+EbEvent* EbEvent::_add(const Dgram* cdg)
 {
-  EbContribution* contrib = _contribution(cdg, prm);
+  const EbContribution* contribution = (EbContribution*)cdg;
 
-  unsigned size = contrib->payloadSize();
+  *_last++    = contribution;
 
-  _size += size;
+  _size      += contribution->payloadSize();
 
-  _remaining &= contrib->retire();
+  _remaining &= contribution->retire();
 
-  _living = MaxTimeouts;
+  _living     = MaxTimeouts;
 
   return this;
-}
-
-EbContribution* EbEvent::_contribution(const Dgram* cdg,
-                                       uint64_t     prm)
-{
-  EbContribution* contrib = _pending.reverse();
-
-  void* buffer = _cntrbFreelist.alloc(sizeof(EbContribution));
-  if (!buffer)
-  {
-    printf("%s: Unable to allocate contribution\n", __PRETTY_FUNCTION__);
-    printf("  cntrbFreelist:\n");
-    _cntrbFreelist.dump();
-    abort();
-  }
-
-  return ::new(buffer) EbContribution(cdg, prm, contrib);
 }
 
 /*
@@ -177,21 +169,23 @@ void EbEvent::dump(int number)
          _remaining, _contract);
   printf("    Total size (in bytes) = %zd\n", _size);
 
-  EbContribution* last    = _pending.empty();
-  EbContribution* contrib = _pending.forward();
+  const EbContribution** const  last    = end();
+  const EbContribution*  const* current = begin();
+  const EbContribution*         contrib = *current;
 
   printf("    Creator (%p) was @ source %d with an environment of %08X\n",
          contrib,
          contrib->number(),
-         contrib->datagram()->env.value());
+         contrib->env.value());
 
   printf("    Contributors to this event:\n");
-  while((contrib = contrib->forward()) != last)
+  while(++current != last)
   {
+    contrib = *current;
     printf("     src %02x seq %016lx size %08x env %08x\n",
            contrib->number(),
-           contrib->datagram()->seq.stamp().pulseId(),
+           contrib->seq.stamp().pulseId(),
            contrib->payloadSize(),
-           contrib->datagram()->env.value());
+           contrib->env.value());
   }
 }

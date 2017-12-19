@@ -6,27 +6,33 @@
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
-#include "psdaq/service/Semaphore.hh"
 #include "psdaq/service/GenericPoolW.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
-#include <new>
-#include <chrono>
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
+#include <sched.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <new>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 
-static const int      thread_drpSim    = 8;
-static const int      thread_inlet     = 8;
-static const int      thread_outlet    = 9;
-static const int      thread_monitor   = 9;
+static const int      thread_base      = 0;
+static const int      thread_drpSim    = thread_base + 8;
+static const int      thread_inlet     = thread_base + 9;
+static const int      thread_outlet    = thread_base + 10;
+static const int      thread_monitor   = thread_base + 11;
 static const unsigned default_id       = 0;          // Contributor's ID
 static const unsigned srv_port_base    = 32768 + 64; // Base port Contributor for receiving results
 static const unsigned clt_port_base    = 32768;      // Base port Contributor sends to EB on
@@ -93,7 +99,7 @@ namespace Pds {
     class Input : public Dgram
     {
     public:
-      Input(Sequence& seq_, Env& env_, Xtc& xtc_) :
+      Input(const Sequence& seq_, const Env& env_, const Xtc& xtc_) :
         Dgram()
       {
         seq = seq_;
@@ -113,7 +119,7 @@ namespace Pds {
       ~DrpSim() { }
     public:
       void start(TstContribOutlet*);
-      void shutdown() { _running = false; }
+      void shutdown();
     public:
       void process();
     private:
@@ -125,6 +131,7 @@ namespace Pds {
       uint64_t          _pid;
       TstContribOutlet& _outlet;
       volatile bool     _running;
+      Input*            _heldAside;
     };
 
     class TstContribOutlet : public BatchManager,
@@ -158,7 +165,8 @@ namespace Pds {
       unsigned      _numEbs;
       unsigned*     _destinations;
       Queue<Batch>  _inputBatchList;
-      Semaphore     _inputBatchSem;
+      std::mutex    _mutex;
+      std::condition_variable _inputBatchCv;
       uint64_t      _eventCount;
       volatile bool _running;
       Task*         _task;
@@ -199,7 +207,8 @@ namespace Pds {
     {
     public:
       StatsMonitor(const TstContribOutlet* outlet,
-                   const TstContribInlet*  inlet);
+                   const TstContribInlet*  inlet,
+                   unsigned                monPd);
       virtual ~StatsMonitor() { }
     public:
       void     shutdown();
@@ -208,6 +217,7 @@ namespace Pds {
     private:
       const TstContribOutlet* _outlet;
       const TstContribInlet*  _inlet;
+      unsigned                _monPd;
       volatile bool           _running;
       Task*                   _task;
     };
@@ -232,15 +242,26 @@ DrpSim::DrpSim(unsigned          poolSize,
                size_t            maxEvtSize,
                unsigned          id,
                TstContribOutlet& outlet) :
-  _maxEvtSz    (maxEvtSize),
-  _pool        (sizeof(Entry) + maxEvtSize, poolSize),
-  _typeId      (TypeId::Data, 0),
-  _src         (TheSrc(Level::Segment, id)),
-  _id          (id),
-  _pid         (0x01000000000003UL),  // Something non-zero and not on a batch boundary
-  _outlet      (outlet),
-  _running     (true)
+  _maxEvtSz (maxEvtSize),
+  _pool     (sizeof(Entry) + maxEvtSize, poolSize),
+  _typeId   (TypeId::Data, 0),
+  _src      (TheSrc(Level::Segment, id)),
+  _id       (id),
+  _pid      (0x01000000000003UL),  // Something non-zero and not on a batch boundary
+  _outlet   (outlet),
+  _running  (true),
+  _heldAside(new(&_pool) Input(Sequence(Sequence::Marker, TransitionId::L1Accept,
+                                        ClockTime(), TimeStamp(-1, 0)),
+                               Env(0), Xtc(_typeId, _src)))
 {
+}
+
+void DrpSim::shutdown()
+{
+  delete _heldAside;  // Make sure there's at least one event in the pool for
+                      // process() to get out of resource wait and test _running
+
+  _running = false;
 }
 
 void DrpSim::process()
@@ -249,16 +270,16 @@ void DrpSim::process()
 
   pin_thread(pthread_self(), thread_drpSim);
 
-  Env env(0);
-  Xtc xtc(_typeId, _src);
+  const Env env(0);
+  const Xtc xtc(_typeId, _src);
 
   while(_running)
   {
     // Fake datagram header
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    Sequence seq(Sequence::Event, TransitionId::L1Accept,
-                 ClockTime(ts), TimeStamp(_pid, 0));
+    const Sequence seq(Sequence::Event, TransitionId::L1Accept,
+                       ClockTime(ts), TimeStamp(_pid, 0));
 
     _pid += 1; //27; // Revisit: fi_tx_attr.iov_limit = 6 = 1 + max # events per batch
     //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
@@ -277,6 +298,8 @@ void DrpSim::process()
     payload[4] = idg->seq.stamp().pulseId() & 0xffffffffUL; // Revisit: Some crud for now
 
     _outlet.post(idg);
+
+    //pthread_yield(); // Maybe useful with DrpSim and Inlet running on the same core
   }
 
   printf("\nDrpSim Input data pool:\n");
@@ -297,7 +320,8 @@ TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
   _numEbs        (__builtin_popcountl(builders)),
   _destinations  (new unsigned[_numEbs]),
   _inputBatchList(),
-  _inputBatchSem (Semaphore::EMPTY),
+  _mutex         (),
+  _inputBatchCv  (),
   _eventCount    (0),
   _running       (true),
   _task          (new Task(TaskObject("tOutlet", 0, 0, 0, 0, 0)))
@@ -320,7 +344,8 @@ void TstContribOutlet::shutdown()
   pthread_t tid = _task->parameters().taskID();
 
   _running = false;
-  _inputBatchSem.give();
+  //std::unique_lock<std::mutex> lk(_mutex);
+  _inputBatchCv.notify_one();
 
   int   ret    = 0;
   void* retval = nullptr;
@@ -360,9 +385,14 @@ void TstContribOutlet::post(const Dgram* input)
 
 Batch* TstContribOutlet::_pend()
 {
-  _inputBatchSem.take();
-  Batch* batch = _inputBatchList.remove();
-  if (batch == _inputBatchList.empty())  return nullptr;
+  Batch* batch;
+  while ((batch = _inputBatchList.remove()) == _inputBatchList.empty())
+  {
+    std::unique_lock<std::mutex> lk(_mutex);
+    _inputBatchCv.wait(lk);
+
+    if (!_running)  return nullptr;
+  }
 
   if (lverbose > 1)
   {
@@ -384,7 +414,8 @@ void TstContribOutlet::post(Batch* batch)
   }
 
   _inputBatchList.insert(batch);
-  _inputBatchSem.give();
+  std::unique_lock<std::mutex> lk(_mutex);
+  _inputBatchCv.notify_one();
 }
 
 void TstContribOutlet::routine()
@@ -605,9 +636,11 @@ int TstContribInlet::_process(const Dgram* result, const Dgram* input)
 }
 
 StatsMonitor::StatsMonitor(const TstContribOutlet* outlet,
-                           const TstContribInlet*  inlet) :
+                           const TstContribInlet*  inlet,
+                           unsigned                 monPd) :
   _outlet (outlet),
   _inlet  (inlet),
+  _monPd  (monPd),
   _running(true),
   _task   (new Task(TaskObject("tMonitor", 0, 0, 0, 0, 0)))
 {
@@ -629,14 +662,14 @@ void StatsMonitor::shutdown()
 void StatsMonitor::routine()
 {
   uint64_t outCnt    = 0;
-  uint64_t outCntPrv = 0;
+  uint64_t outCntPrv = _outlet ? _outlet->count() : 0;
   uint64_t inCnt     = 0;
-  uint64_t inCntPrv  = 0;
+  uint64_t inCntPrv  = _inlet  ? _inlet->count()  : 0;
   auto     now       = std::chrono::steady_clock::now();
 
   while(_running)
   {
-    sleep(1);
+    sleep(_monPd);
 
     auto then = now;
     now       = std::chrono::steady_clock::now();
@@ -710,6 +743,8 @@ void usage(char *name, char *desc)
           "Maximum number of extant batches",       max_batches);
   fprintf(stderr, " %-20s %s (default: %d\n",       "-E <max entries>",
           "Maximum number of entries per batch",    max_entries);
+  fprintf(stderr, " %-20s %s\n",                    "-M <seconds>",
+          "Monitoring printout period");
 
   fprintf(stderr, " %-20s %s\n", "-c", "enable result checking");
   fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output (repeat for increased detail)");
@@ -729,8 +764,9 @@ int main(int argc, char **argv)
   uint64_t duration   = batch_duration;
   unsigned maxBatches = max_batches;
   unsigned maxEntries = max_entries;
+  unsigned monPeriod  = 1;
 
-  while ((op = getopt(argc, argv, "h?vcS:C:i:D:B:E:")) != -1)
+  while ((op = getopt(argc, argv, "h?vcS:C:i:D:B:E:M:")) != -1)
   {
     switch (op)
     {
@@ -740,7 +776,8 @@ int main(int argc, char **argv)
       case 'D':  duration   = atoll(optarg);                break;
       case 'B':  maxBatches = atoi(optarg);                 break;
       case 'E':  maxEntries = atoi(optarg);                 break;
-      case 'c':  lcheck  = true;                            break;
+      case 'c':  lcheck     = true;                         break;
+      case 'M':  monPeriod  = atoi(optarg);                 break;
       case 'v':  ++lverbose;                                break;
       case '?':
       case 'h':
@@ -821,7 +858,7 @@ int main(int argc, char **argv)
   if ( (ret = inlet.connect())  )  return ret; // Connect to EB's outlet
 
   pin_thread(pthread_self(), thread_monitor);
-  StatsMonitor statsMon(&outlet, &inlet);
+  StatsMonitor statsMon(&outlet, &inlet, monPeriod);
   statsMonitor = &statsMon;
 
   pin_thread(pthread_self(), thread_drpSim);

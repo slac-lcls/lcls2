@@ -131,20 +131,20 @@ void* Batch::allocate(size_t size)
   return entry;
 }
 
-void Batch::store(const Dgram* dg)
-{
-  _batch1()->store(dg);
-}
-
 size_t Batch::extent() const
 {
   const Dgram* dg = datagram();
   return sizeof(*dg) + dg->xtc.sizeofPayload();
 }
 
+void Batch::store(const Dgram* dg)
+{
+  _batch1()->store(dg);
+}
+
 const Dgram* Batch::datagram(unsigned i) const
 {
-  Batch1*       batch1    = _batch1();
+  Batch1*       batch1   = _batch1();
   const Dgram** datagrams = batch1->_datagrams;
 
   return (&datagrams[i] < batch1->_currentDg) ? datagrams[i] : nullptr;

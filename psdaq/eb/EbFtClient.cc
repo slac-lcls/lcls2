@@ -63,8 +63,6 @@ int EbFtClient::connect(unsigned id, unsigned tmo)
     ret = _syncRmtMr(pool, _rmtSize, _ep[i], _rMr[i], _ra[i]);
     if (ret)  return ret;
 
-    _ep[i]->recv_comp_data();
-
     pool += scratch_size;
   }
 

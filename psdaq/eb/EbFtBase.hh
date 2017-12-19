@@ -40,8 +40,10 @@ namespace Pds {
       uint64_t              _repostCnt;
       uint64_t              _repostMax;
       uint64_t              _postWtAgnCnt;
-      uint64_t              _postWtAgnMax;
       uint64_t              _pendCnt;
+      uint64_t              _pendTmoCnt;
+      uint64_t              _pendAgnCnt;
+      uint64_t              _pendAgnMax;
       uint64_t              _rependCnt;
       uint64_t              _rependMax;
       std::vector<uint64_t> _rmtWrCnt;

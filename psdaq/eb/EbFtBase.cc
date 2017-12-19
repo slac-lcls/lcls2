@@ -17,8 +17,10 @@ EbFtStats::EbFtStats(unsigned nPeers) :
   _repostCnt(0),
   _repostMax(0),
   _postWtAgnCnt(0),
-  _postWtAgnMax(0),
   _pendCnt(0),
+  _pendTmoCnt(0),
+  _pendAgnCnt(0),
+  _pendAgnMax(0),
   _rependCnt(0),
   _rependMax(0),
   _rmtWrCnt(nPeers),
@@ -44,7 +46,6 @@ void EbFtStats::clear()
   _repostCnt    = 0;
   _repostMax    = 0;
   _postWtAgnCnt = 0;
-  _postWtAgnMax = 0;
   _pendCnt      = 0;
   _rependCnt    = 0;
   _rependMax    = 0;
@@ -75,13 +76,13 @@ void EbFtStats::dump() const
 {
   if (_postCnt)
   {
-    printf("post: count %8ld, retries %8ld (max %8ld), waits %8ld (max %8ld)\n",
-           _postCnt, _repostCnt, _repostMax, _postWtAgnCnt, _postWtAgnMax);
+    printf("post: count %8ld, reposts %8ld (max %8ld), waits %8ld\n",
+           _postCnt, _repostCnt, _repostMax, _postWtAgnCnt);
   }
   if (_pendCnt)
   {
-    printf("pend: count %8ld, retries %8ld (max %8ld), None %8ld\n",
-           _pendCnt, _rependCnt, _rependMax, _compNoneCnt);
+    printf("pend: count %8ld, timeouts %8ld, again %8ld (max %8ld) retries %8ld (max %8ld), None %8ld\n",
+           _pendCnt, _pendTmoCnt, _pendAgnCnt, _pendAgnMax, _rependCnt, _rependMax, _compNoneCnt);
 
     prtVec("rmtWrCnt",    _rmtWrCnt);
     prtVec("compAgnCnt",  _compAgnCnt);
@@ -245,22 +246,37 @@ int EbFtBase::_tryCq(uint64_t* data)
 int EbFtBase::pend(uint64_t* data)
 {
   int      ret;
-  uint64_t rependCnt = 0;
+  uint64_t pendAgnCnt = 0;
+  uint64_t rependCnt  = 0;
   ++_stats._pendCnt;
 
   while ((ret = _tryCq(data)) == -FI_EAGAIN)
   {
-    const int tmo = 1000;               // milliseconds
+    const int tmo = 5000;               // milliseconds
     if (!_cqPoller->poll(tmo))
     {
       if (_cqPoller->error_num() != -FI_EAGAIN)
-        fprintf(stderr, "Error polling completion queues: %s\n",
-                _cqPoller->error());
-      return _cqPoller->error_num();
+      {
+        if (_cqPoller->error_num() == -FI_ETIMEDOUT)
+        {
+          ++_stats._pendTmoCnt;
+        }
+        else
+        {
+          fprintf(stderr, "Error polling completion queues: %s\n",
+                  _cqPoller->error());
+        }
+        return _cqPoller->error_num();
+      }
+      ++pendAgnCnt;
+      continue;
     }
     ++rependCnt;
   }
 
+  if (pendAgnCnt > _stats._pendAgnMax)
+    _stats._pendAgnMax = pendAgnCnt;
+  _stats._pendAgnCnt += pendAgnCnt;
   if (rependCnt > _stats._rependMax)
     _stats._rependMax = rependCnt;
   _stats._rependCnt += rependCnt;
@@ -338,10 +354,10 @@ int EbFtBase::post(LocalIOVec& lclIov,
 }
 #endif
 
-int EbFtBase::post(const void* buf,
-                   size_t      len,
-                   unsigned    dst,
-                   uint64_t    offset)
+int EbFtBase::post(const void*    buf,
+                   size_t         len,
+                   unsigned       dst,
+                   uint64_t       offset)
 {
   void*    ctx = nullptr;
   unsigned idx = _mappedId[dst];
@@ -355,13 +371,10 @@ int EbFtBase::post(const void* buf,
   MemoryRegion* mr = _lMr[idx];
   while (!ep->write_data(const_cast<void*>(buf), len, &rmtAdx, ctx, offset, mr))
   {
-    if (ep->state() != EP_CONNECTED)  return -1;
-
     if (ep->error_num() == -FI_EAGAIN)
     {
       int              compCnt;
       fi_cq_data_entry cqEntry;
-      uint64_t         postWtAgnCnt = 0;
       const ssize_t    maxCnt       = 1;
       const int        tmo          = 5000; // milliseconds
 
@@ -369,20 +382,17 @@ int EbFtBase::post(const void* buf,
 
       if (!ep->comp_wait(&cqEntry, &compCnt, maxCnt, tmo))
       {
-        if (ep->state()     != EP_CONNECTED)  return -1;
-        if (ep->error_num() != -FI_EAGAIN)
+        if (ep->error_num() == -FI_EAGAIN) // Revisit: Proabaly always a timeout?
+        {                                  // This can only occur when exiting
+          ++_stats._postWtAgnCnt;
+        }
+        else
         {
           fprintf(stderr, "Error completing post to peer %u: %s\n",
                   idx, ep->error());
-          return ep->error_num();
         }
-        ++postWtAgnCnt;
         return ep->error_num();
       }
-
-      if (postWtAgnCnt > _stats._postWtAgnMax)
-        _stats._postWtAgnMax = postWtAgnCnt;
-      _stats._postWtAgnCnt += postWtAgnCnt;
     }
     else
     {

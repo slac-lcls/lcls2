@@ -1,8 +1,6 @@
 #include "psdaq/eb/BatchManager.hh"
 #include "psdaq/eb/EventBuilder.hh"
 #include "psdaq/eb/EbEvent.hh"
-#include "psdaq/eb/EbContribution.hh"
-#include "psdaq/eb/Endpoint.hh"
 
 #include "psdaq/eb/EbFtServer.hh"
 #include "psdaq/eb/EbFtClient.hh"
@@ -12,21 +10,28 @@
 #include "psdaq/service/GenericPoolW.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
-#include <chrono>
-#include <unistd.h>
-#include <stdio.h>
-#include <time.h>
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
+#include <sched.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <time.h>
 #include <inttypes.h>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 
-static const int      thread_monitor   = 8;
-static const int      thread_inlet     = 9;
-static const int      thread_outlet    = 10;
+static const int      thread_base      = 0;
+static const int      thread_inlet     = thread_base + 8;
+static const int      thread_outlet    = thread_base + 20; //9;
+static const int      thread_monitor   = thread_base + 10;
 static const unsigned default_id       = 0;          // Builder's ID
 static const unsigned srv_port_base    = 32768;      // Base port Builder for receiving results
 static const unsigned clt_port_base    = 32768 + 64; // Base port Builder sends to EB on
@@ -87,45 +92,30 @@ namespace Pds {
       }
     };
 
-#define NDST  64                        // Revisit: NDST
-
     class ResultDest
     {
     public:
-      ResultDest() :
-        _msk(0),
-        _dst(_dest)
-      {
-      }
+      ResultDest() : _msk(0), _dst(_base) { }
     public:
       PoolDeclare;
     public:
-      void destination(unsigned dst, unsigned idx)
+      void       destination(const Src& dst)
       {
-        uint64_t msk = 1ul << dst;
-
+        uint64_t msk(1ul << (dst.log() & 0x00ffffff));
         if ((_msk & msk) == 0)
         {
-          _msk       |= msk;
-          _index[dst] = idx;
-          *_dst++     = dst;
+          _msk   |= msk;
+          *_dst++ = dst;
         }
       }
     public:
-      size_t   nDsts()         const { return _dst - _dest;   }
-      unsigned dst(unsigned i) const { return _dest[i];       }
-      unsigned idx(unsigned i) const { return _index[dst(i)]; }
-      void     destination(unsigned i, unsigned* dst_, unsigned* idx_) const
-      {
-        *dst_ = dst(i);
-        *idx_ = idx(i);
-      }
+      size_t     nDsts()                 const { return _dst - _base; }
+      const Src& destination(unsigned i) const { return _base[i];     }
     private:
       uint64_t  _msk;
-      unsigned* _dst;
+      Src*      _dst;
     private:
-      unsigned  _dest[NDST];
-      unsigned  _index[NDST];
+      Src       _base[];
     };
 
     class TstEbOutlet : public BatchManager,
@@ -151,14 +141,15 @@ namespace Pds {
     private:
       Batch*  _pend();
     private:
-      EbFtClient    _outlet;
-      unsigned      _id;
-      unsigned      _maxEntries;
-      Semaphore     _resultSem;
-      Queue<Batch>  _pending;
-      uint64_t      _batchCount;
-      volatile bool _running;
-      Task*         _task;
+      EbFtClient              _outlet;
+      unsigned                _id;
+      unsigned                _maxEntries;
+      std::mutex              _mutex;
+      std::condition_variable _resultCv;
+      Queue<Batch>            _pending;
+      uint64_t                _batchCount;
+      volatile bool           _running;
+      Task*                   _task;
     };
 
     // NB: TstEbInlet can't be a Routine since EventBuilder already is one
@@ -173,7 +164,7 @@ namespace Pds {
                  size_t        maxSize,
                  uint64_t      contributors,
                  BatchManager& outlet);
-      virtual ~TstEbInlet() { }
+      virtual ~TstEbInlet();
     public:
       int      connect();
       void     shutdown()    { _running = false;   }
@@ -204,7 +195,8 @@ namespace Pds {
     {
     public:
       StatsMonitor(const TstEbOutlet* outlet,
-                   const TstEbInlet*  inlet);
+                   const TstEbInlet*  inlet,
+                   unsigned           monPd);
       virtual ~StatsMonitor() { }
     public:
       void     shutdown();
@@ -213,6 +205,7 @@ namespace Pds {
     private:
       const TstEbOutlet* _outlet;
       const TstEbInlet*  _inlet;
+      unsigned           _monPd;
       volatile bool      _running;
       Task*              _task;
     };
@@ -242,7 +235,8 @@ TstEbInlet::TstEbInlet(std::string&  srvPort,
                        size_t        maxSize,
                        uint64_t      contributors,
                        BatchManager& outlet) :
-  EventBuilder (maxBatches, maxEntries, __builtin_popcountl(contributors), duration),
+  EventBuilder (new Task(TaskObject("tEB_BackEnd")),
+                maxBatches, maxEntries, __builtin_popcountl(contributors), duration),
   _maxBatches  (maxBatches),
   _maxBatchSize(sizeof(Dgram) + maxEntries * maxSize),
   _inlet       (srvPort, __builtin_popcountl(contributors), maxBatches * _maxBatchSize, EbFtServer::PER_PEER_BUFFERS),
@@ -250,12 +244,17 @@ TstEbInlet::TstEbInlet(std::string&  srvPort,
   _src         (TheSrc(Level::Event, id)),
   _tag         (TypeId::Data, 0), //_l3SummaryType),
   _contract    (contributors),
-  _results     (sizeof(ResultDest), maxBatches * maxEntries),
+  _results     (sizeof(ResultDest) + __builtin_popcountl(contributors) * sizeof(Src) , maxBatches * maxEntries),
   //_dummy       (Level::Fragment),
   _outlet      (outlet),
   _eventCount  (0),
   _running     (true)
 {
+}
+
+TstEbInlet::~TstEbInlet()
+{
+  backEndTask()->destroy();
 }
 
 int TstEbInlet::connect()
@@ -292,17 +291,16 @@ void TstEbInlet::process()
     if (_inlet.pend(&data))  continue;
     const Dgram* batch = (const Dgram*)data;
 
-    unsigned idx = (((char*)batch - _inlet.base()) / _maxBatchSize) % _maxBatches;
-
     if (lverbose)
     {
       static unsigned cnt = 0;
+      unsigned idx  = (((char*)batch - _inlet.base()) / _maxBatchSize) % _maxBatches;
       unsigned from = batch->xtc.src.log() & 0xff;
       printf("EbInlet  rcvd  %6d        batch[%2d]    @ %16p, ts %014lx, sz %3zd from Contrib %d\n", ++cnt, idx,
              batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
     }
 
-    contribCount += processBulk(batch, idx);
+    contribCount += processBulk(batch);
   }
 
   cancel();                             // Stop the event timeout timer
@@ -335,37 +333,38 @@ void TstEbInlet::process(EbEvent* event)
   ++_eventCount;
 
   // Iterate over the event and build a result datagram
-  EbContribution* last    = event->empty();
-  EbContribution* contrib = event->creator();
-  const Dgram*    cdg     = contrib->datagram();
-  Batch*          batch   = _outlet.allocate(cdg); // This may post to the outlet
-  ResultDest*     rDest   = (ResultDest*)batch->parameter();
+  const EbContribution** const  last    = event->end();
+  const EbContribution*  const* contrib = event->begin();
+  const Dgram*                  cdg     = *contrib;
+  Batch*                        batch   = _outlet.allocate(cdg); // This may post to the outlet
+  ResultDest*                   rDest   = (ResultDest*)batch->parameter();
   if (!rDest)
   {
     rDest = new(&_results) ResultDest();
     batch->parameter(rDest);
   }
-  size_t          pSize   = result_extent * sizeof(uint32_t);
-  Dgram*          rdg     = new(batch->allocate(sizeof(*rdg) + pSize)) Dgram(*cdg);
-  uint32_t*       buffer  = (uint32_t*)rdg->xtc.alloc(pSize);
+  size_t    pSize   = result_extent * sizeof(uint32_t);
+  Dgram*    rdg     = new(batch->allocate(sizeof(*rdg) + pSize)) Dgram(*cdg);
+  uint32_t* buffer  = (uint32_t*)rdg->xtc.alloc(pSize);
   memset(buffer, 0, pSize);             // Revisit: Some crud for now
   do
   {
-    rDest->destination(contrib->number(), contrib->data());
+    const Dgram* idg = *contrib;
 
-    const Dgram* idg     = contrib->datagram();
+    rDest->destination(idg->xtc.src);
+
     uint32_t*    payload = (uint32_t*)idg->xtc.payload();
     for (unsigned i = 0; i < result_extent; ++i)
     {
       buffer[i] |= payload[i];          // Revisit: Some crud for now
     }
   }
-  while ((contrib = contrib->forward()) != last);
+  while (++contrib != last);
 
   if (lverbose > 2)
   {
     printf("EbInlet  processed          result[%2d] @ %16p, ts %014lx, sz %3zd\n",
-           rDest->idx(0), rdg, rdg->seq.stamp().pulseId(), sizeof(*rdg) + rdg->xtc.sizeofPayload());
+           rDest->destination(0).phy(), rdg, rdg->seq.stamp().pulseId(), sizeof(*rdg) + rdg->xtc.sizeofPayload());
   }
 }
 
@@ -415,7 +414,8 @@ TstEbOutlet::TstEbOutlet(std::vector<std::string>& cltAddr,
   _outlet     (cltAddr, cltPort, maxBatches * (sizeof(Dgram) + maxEntries * maxSize)),
   _id         (id),
   _maxEntries (maxEntries),
-  _resultSem  (Semaphore::EMPTY),
+  _mutex      (),
+  _resultCv   (),
   _pending    (),
   _batchCount (0),
   _running    (true),
@@ -428,7 +428,8 @@ void TstEbOutlet::shutdown()
   pthread_t tid = _task->parameters().taskID();
 
   _running = false;
-  _resultSem.give();
+  //std::unique_lock<std::mutex> lk(_mutex);
+  _resultCv.notify_one();
 
   int   ret    = 0;
   void* retval = nullptr;
@@ -455,9 +456,14 @@ int TstEbOutlet::connect()
 
 Batch* TstEbOutlet::_pend()
 {
-  _resultSem.take();
-  Batch* batch  = _pending.remove();
-  if    (batch == _pending.empty())  return nullptr;
+  Batch* batch;
+  while ((batch = _pending.remove()) == _pending.empty())
+  {
+    std::unique_lock<std::mutex> lk(_mutex);
+    _resultCv.wait(lk);
+
+    if (!_running)  return nullptr;
+  }
 
   if (lverbose > 2)
   {
@@ -475,7 +481,8 @@ void TstEbOutlet::post(Batch* result)
   // datagram.  When the batch completes, post it to the back end.
 
   _pending.insert(result);
-  _resultSem.give();
+  std::unique_lock<std::mutex> lk(_mutex);
+  _resultCv.notify_one();
 }
 
 void TstEbOutlet::routine()
@@ -504,15 +511,16 @@ void TstEbOutlet::routine()
 
     ++_batchCount;
 
-    ResultDest*    rDest  = (ResultDest*)result->parameter();
-    const unsigned nDsts  = rDest->nDsts();
-    const Dgram*   rdg    = result->datagram();
-    size_t         extent = result->extent();
+    ResultDest*  rDest  = (ResultDest*)result->parameter();
+    const size_t nDsts  = rDest->nDsts();
+    const Dgram* rdg    = result->datagram();
+    size_t       extent = result->extent();
 
     for (unsigned iDst = 0; iDst < nDsts; ++iDst)
     {
-      unsigned dst, idx;
-      rDest->destination(iDst, &dst, &idx);
+      const Src& src = rDest->destination(iDst);
+      uint32_t   dst = src.log() & 0x00ffffff;
+      uint32_t   idx = src.phy();
 
       if (lverbose)
       {
@@ -522,7 +530,7 @@ void TstEbOutlet::routine()
                ++cnt, idx, rdg, rdg->seq.stamp().pulseId(), extent, dst, rmtAdx);
       }
 
-      _outlet.post(rdg, extent, dst, idx * maxBatchSize());
+      if (_outlet.post(rdg, extent, dst, idx * maxBatchSize()))  break;
     }
 
     delete rDest;
@@ -542,9 +550,11 @@ void TstEbOutlet::routine()
 }
 
 StatsMonitor::StatsMonitor(const TstEbOutlet* outlet,
-                           const TstEbInlet*  inlet) :
+                           const TstEbInlet*  inlet,
+                           unsigned           monPd) :
   _outlet (outlet),
   _inlet  (inlet),
+  _monPd  (monPd),
   _running(true),
   _task   (new Task(TaskObject("tMonitor", 0, 0, 0, 0, 0)))
 {
@@ -566,14 +576,14 @@ void StatsMonitor::shutdown()
 void StatsMonitor::routine()
 {
   uint64_t inCnt     = 0;
-  uint64_t inCntPrv  = 0;
+  uint64_t inCntPrv  = _inlet  ? _inlet->count()  : 0;
   uint64_t outCnt    = 0;
-  uint64_t outCntPrv = 0;
+  uint64_t outCntPrv = _outlet ? _outlet->count() : 0;
   auto     now       = std::chrono::steady_clock::now();
 
   while(_running)
   {
-    sleep(1);
+    sleep(_monPd);
 
     auto then = now;
     now       = std::chrono::steady_clock::now();
@@ -646,6 +656,8 @@ void usage(char *name, char *desc)
           "Maximum number of extant batches",      max_batches);
   fprintf(stderr, " %-20s %s (default: %d\n",      "-E <max entries>",
           "Maximum number of entries per batch",   max_entries);
+  fprintf(stderr, " %-20s %s\n",                    "-M <seconds>",
+          "Monitoring printout period");
 
   fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output (repeat for increased detail)");
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
@@ -660,8 +672,9 @@ int main(int argc, char **argv)
   uint64_t duration   = batch_duration;
   unsigned maxBatches = max_batches;
   unsigned maxEntries = max_entries;
+  unsigned monPeriod  = 1;
 
-  while ((op = getopt(argc, argv, "h?vS:C:i:D:B:E:")) != -1)
+  while ((op = getopt(argc, argv, "h?vS:C:i:D:B:E:M:")) != -1)
   {
     switch (op)
     {
@@ -671,6 +684,7 @@ int main(int argc, char **argv)
       case 'D':  duration   = atoll(optarg);                break;
       case 'B':  maxBatches = atoi(optarg);                 break;
       case 'E':  maxEntries = atoi(optarg);                 break;
+      case 'M':  monPeriod  = atoi(optarg);                 break;
       case 'v':  ++lverbose;                                break;
       case '?':
       case 'h':
@@ -754,7 +768,7 @@ int main(int argc, char **argv)
   if ( (ret = outlet.connect()) )  return ret; // Connect to Contributors' inlet
 
   pin_thread(pthread_self(), thread_monitor);
-  StatsMonitor statsMon(&outlet, &inlet);
+  StatsMonitor statsMon(&outlet, &inlet, monPeriod);
   statsMonitor = &statsMon;
 
   pin_thread(pthread_self(), thread_inlet);
