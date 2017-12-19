@@ -28,7 +28,9 @@ public:
         return sizeof(Src);
     }
 
-protected:
+    void phy(uint32_t value) { _phy = value; }
+
+  protected:
     uint32_t _log; // logical  identifier
     uint32_t _phy; // physical identifier
 };
