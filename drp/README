@@ -1,9 +1,0 @@
-mkdir build
-cd build
-cmake ..
-make
-
-./drp
-./pgp-sender
-
-running on daq-tst-dev04

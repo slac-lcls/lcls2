@@ -1,6 +1,16 @@
 #include <vector>
 #include <cstdint>
 
+struct EventHeader {
+    uint64_t pulseId;
+    uint64_t timeStamp;
+    uint32_t l1Count;
+    uint32_t version;
+    unsigned rawSamples:24;
+    unsigned channelMask:8;
+    uint32_t reserved;
+};
+
 class MovingAverage
 {
 public:
