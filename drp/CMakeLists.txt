@@ -1,10 +1,7 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
-
-
-
 add_library(drp SHARED
     Digitizer.cc
     AreaDetector.cc
+    EventBuilder.cc
 )
 
 target_link_libraries(drp
@@ -26,7 +23,4 @@ target_include_directories(main PUBLIC
 target_link_libraries(main
     drp
     pthread
-    xtc
-    pshdf5
-    eb
 )

@@ -19,65 +19,15 @@
 #include "xtcdata/xtc/NamesIter.hh"
 #include "psdaq/hdf5/Hdf5Writer.hh"
 
-#include "psdaq/eb/BatchManager.hh"
-#include "psdaq/eb/EbFtClient.hh"
-#include "psdaq/eb/EbFtServer.hh"
-
 #include "drp.hh"
 #include "spscqueue.hh"
 #include "PgpCardMod.h"
 #include "Detectors.hh"
+#include "EventBuilder.hh"
 
 using PebbleQueue = SPSCQueue<Pebble*>;
 using namespace XtcData;
 using namespace Pds::Eb;
-
-// these parameters must agree with the server side
-unsigned maxBatches = 1000; // size of the pool of batches
-unsigned maxEntries = 10; // maximum number of events in a batch
-unsigned BatchSizeInPulseIds = 8; // age of the batch. should never exceed maxEntries above, must be a power of 2
-
-unsigned EbId = 0; // from 0-63, maximum number of event builders
-unsigned ContribId = 0; // who we are
-
-class TheSrc : public Src
-{
-public:
-    TheSrc(Level::Type level, unsigned id) :
-        Src(level)
-    {
-        _log |= id;
-    }
-};
-
-class MyDgram : public Dgram {
-public:
-    MyDgram(unsigned pulseId, uint64_t val) {
-        seq = Sequence(Sequence::Event, TransitionId::L1Accept, ClockTime(), TimeStamp(pulseId));
-        env = Env(0);
-        xtc = Xtc(TypeId(TypeId::Data, 0), TheSrc(Level::Segment, ContribId));
-        _data = val;
-        xtc.alloc(sizeof(_data));
-    }
-private:
-    uint64_t _data;
-};
-
-size_t maxSize = sizeof(MyDgram);
-
-class MyBatchManager: public BatchManager {
-public:
-    MyBatchManager(EbFtClient& ebFtClient) :
-        BatchManager(BatchSizeInPulseIds, maxBatches, maxEntries, maxSize),
-        _ebFtClient(ebFtClient)
-    {}
-    void post(Batch* batch) {
-        _ebFtClient.post(batch->buffer(), batch->extent(), EbId, batch->index() * maxBatchSize());
-    }
-private:
-    EbFtClient& _ebFtClient;
-};
-
 
 const int N = 2000000;
 const int NWORKERS = 1;
@@ -164,47 +114,6 @@ private:
     std::vector<PebbleQueue>* _worker_input_queues;
     SPSCQueue<int>* _collector_queue;
 };
-
-
-void eb_rcvr(MyBatchManager& myBatchMan)
-{
-    std::string srvPort = "32832"; // add 64 to the client base
-    unsigned numEb = 1;
-    size_t maxBatchSize = sizeof(Dgram) + maxEntries * maxSize;
-    EbFtServer myEbFtServer(srvPort, numEb, maxBatches * maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS);
-    printf("*** rcvr %d %zd\n",maxBatches,maxBatchSize);
-    myEbFtServer.connect(ContribId);
-    unsigned nreceive = 0;
-    unsigned none = 0;
-    unsigned nzero = 0;
-    while(1) {
-        uint64_t data;
-        if (myEbFtServer.pend(&data))  continue;
-        const Dgram* batch = (const Dgram*)data;
-        unsigned idx = ((const char*)batch - myEbFtServer.base()) / maxBatchSize;
-        // printf("received batch %p %d\n",batch,idx);
-        const Batch*  input  = myBatchMan.batch(idx);
-
-        const Dgram*  result = (const Dgram*)batch->xtc.payload();
-        const Dgram*  last   = (const Dgram*)batch->xtc.next();
-        while(result != last) {
-            nreceive++;
-            // printf("--- result %lx\n",*(uint64_t*)(result->xtc.payload()));
-            uint64_t val = *(uint64_t*)(result->xtc.payload());
-            result = (Dgram*)result->xtc.next();
-            if (val==0) {
-                nzero++;
-            } else if (val==1) {
-                none++;
-            } else {
-                printf("error %ld\n",val);
-            }
-            if (nreceive%10000==0) printf("%d %d %d\n",nreceive,none,nzero);
-        }
-        delete input;
-    }
-}
-
 
 class PGPEventBuilder
 {
