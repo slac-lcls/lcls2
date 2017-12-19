@@ -171,7 +171,8 @@ class PvTextDisplay(QtWidgets.QLineEdit):
 
 class PvComboDisplay(QtWidgets.QComboBox):
 
-    valueSet = QtCore.pyqtSignal('QString',name='valueSet')
+    #valueSet = QtCore.pyqtSignal('QString',name='valueSet')
+    valueSet = QtCore.pyqtSignal(int ,name='valueSet')
 
     def __init__(self, choices):
         super(PvComboDisplay, self).__init__()
@@ -380,6 +381,7 @@ class PvMaskTab(QtWidgets.QWidget):
         self.update()
 
 class PvDefSeq(QtWidgets.QWidget):
+    valueSet = QtCore.pyqtSignal(int,name='valueSet')
 
     def __init__(self, pvname):
         super(PvDefSeq,self).__init__()
