@@ -222,13 +222,13 @@ private:
       uint32_t txOpCodeNum;
       uint32_t rsvd_AC;
       uint32_t rsvd_B0[0x14];
-      uint32_t reserved[0x700>>2];
+      uint32_t reserved[0xF00>>2];
     public:
     } _pgp;
     class Drp {
     public:
-      uint32_t reserved[0x800>>2];
-    };
+      uint32_t reserved[0x3000>>2];
+    } _drp;
   } _pgpUs[7];
 
 public:
