@@ -111,5 +111,6 @@ void TaskObject::operator= (const TaskObject& tobject)
  */
 TaskObject::~TaskObject()
 {
+  pthread_attr_destroy( &_flags );
   delete [] _name;
 }
