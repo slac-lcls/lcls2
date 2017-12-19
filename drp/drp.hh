@@ -1,3 +1,6 @@
+#ifndef DRP_H
+#define DRP_H
+
 #include <vector>
 #include <cstdint>
 
@@ -48,3 +51,5 @@ public:
 private:
     uint8_t _pebble_buffer[1024*1024];
 };
+
+#endif // DRP_H

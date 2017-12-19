@@ -317,7 +317,7 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32
     PgpCardRx pgp_card;
     pgp_card.model = sizeof(&pgp_card);
     pgp_card.maxSize = 100000;
-   
+    
     int i = 0;
     uint64_t bytes_received = 0UL;
     while (i < N) {

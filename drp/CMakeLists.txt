@@ -17,10 +17,11 @@ add_executable(main
     main.cc
 )
 
-#target_include_directories(utils PUBLIC
-#    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-#    $<INSTALL_INTERFACE:include>
-#)
+target_include_directories(main PUBLIC
+    ../pgp/pgpcardG3/include/
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
 
 target_link_libraries(main
     drp
