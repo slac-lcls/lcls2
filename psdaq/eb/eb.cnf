@@ -1,0 +1,134 @@
+# -*-Mode: python;-*-
+
+repo_path = '/reg/neh/home/claus/lclsii/daq/lcls2'
+bin_path  = repo_path + '/build-opt/psdaq/eb'
+mgr_path  = repo_path + '/psdaq/procmgr'
+
+platform = '5'
+username = 'claus'
+expname  = 'expname'
+expnum   = 'expnum'
+
+daq_tst_dev01 = "daq-tst-dev01" # "172.21.42.97"
+daq_tst_dev02 = "daq-tst-dev02" # "172.21.42.150"
+daq_tst_dev03 = "daq-tst-dev03" # "172.21.42.110"
+daq_tst_dev04 = "daq-tst-dev04" # "172.21.42.148"
+daq_tst_dev05 = "daq-tst-dev05" # "172.21.42.155"
+
+daq_tst_dev01_ib = [ "172.21.52.121" ]
+daq_tst_dev02_ib = [ "172.21.52.122" ]
+daq_tst_dev03_ib = [ "172.21.52.123" ]
+daq_tst_dev04_ib = [ "172.21.52.119" ]
+daq_tst_dev05_ib = [ "172.21.52.120" ]
+
+drp_tst_acc01 = "drp-tst-acc01" # "172.21.42.201"
+drp_tst_acc02 = "drp-tst-acc02" # "172.21.42.202"
+drp_tst_acc03 = "drp-tst-acc03" # "172.21.42.221"
+drp_tst_acc04 = "drp-tst-acc04" # "172.21.42.222"
+drp_tst_acc05 = "drp-tst-acc05" # "172.21.42.223"
+drp_tst_acc06 = "drp-tst-acc06" # "172.21.42.224"
+
+drp_tst_acc01_ib = [ "172.21.52.126", "172.21.52.132" ]
+drp_tst_acc02_ib = [ "172.21.52.127", "172.21.52.133" ]
+drp_tst_acc03_ib = [ "172.21.52.128", "172.21.52.134" ]
+drp_tst_acc04_ib = [ "172.21.52.129", "172.21.52.135" ]
+drp_tst_acc05_ib = [ "172.21.52.130", "172.21.52.136" ]
+drp_tst_acc06_ib = [ "172.21.52.131", "172.21.52.137" ]
+
+drp_tst_ffb01 = "drp-tst-ffb01" # "172.21.42.205"
+drp_tst_ffb02 = "drp-tst-ffb02" # "172.21.42.207"
+drp_tst_ffb03 = "drp-tst-ffb03" # "172.21.42.209"
+
+drp_tst_ffb01_ib = [ "172.21.52.83", "172.21.52.115" ]
+drp_tst_ffb02_ib = [ "172.21.52.84", "172.21.52.116" ]
+drp_tst_ffb03_ib = [ "172.21.52.85", "172.21.52.117" ]
+
+ib_map = {
+  daq_tst_dev01: daq_tst_dev01_ib[0],
+  daq_tst_dev02: daq_tst_dev02_ib[0],
+  daq_tst_dev03: daq_tst_dev03_ib[0],
+  daq_tst_dev04: daq_tst_dev04_ib[0],
+  daq_tst_dev05: daq_tst_dev05_ib[0],
+
+  drp_tst_acc01: drp_tst_acc01_ib[1],
+  drp_tst_acc02: drp_tst_acc02_ib[1],
+  drp_tst_acc03: drp_tst_acc03_ib[1],
+  drp_tst_acc04: drp_tst_acc04_ib[1],
+  drp_tst_acc05: drp_tst_acc05_ib[1],
+  drp_tst_acc06: drp_tst_acc06_ib[1],
+
+  drp_tst_ffb01: drp_tst_ffb01_ib[1],
+  drp_tst_ffb02: drp_tst_ffb02_ib[1],
+  drp_tst_ffb03: drp_tst_ffb03_ib[1],
+}
+
+headless = False
+if headless:
+  node_flags = 's'
+else:
+  node_flags = 'sx'
+
+num_seg = 2
+num_evt = 2
+
+seg_nodes = [ drp_tst_acc01, drp_tst_acc02, drp_tst_acc03, drp_tst_acc04, drp_tst_acc05, drp_tst_acc06 ]
+evt_nodes = [ daq_tst_dev02, daq_tst_dev05, daq_tst_dev04, daq_tst_dev03, daq_tst_dev01 ]
+
+seg_nodes = seg_nodes[:num_seg]
+evt_nodes = evt_nodes[:num_evt]
+
+seg_ib_nodes = ''
+for i in range(num_seg):
+  seg_ib_nodes += " %d:%s" % (i, ib_map[seg_nodes[i]])
+#print "seg_ib_nodes =", seg_ib_nodes
+
+evt_ib_nodes = ''
+for i in range(num_evt):
+  evt_ib_nodes += " %d:%s" % (i, ib_map[evt_nodes[i]])
+#print "evt_ib_nodes =", evt_ib_nodes
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = []
+
+for i in range(len(seg_nodes)):
+  procmgr_config.append({host:seg_nodes[i],
+                         id:'seg%d'%i,
+                         flags:node_flags,
+                         cmd:bin_path+'/tstEbContributor -i %d'%i+evt_ib_nodes})
+  #procmgr_config.append({host:seg_nodes[i],
+  #                       id:'topSeg%d'%i,
+  #                       flags:node_flags,
+  #                       cmd:'/usr/bin/top -b -c -H -w 105 -u'+username})
+
+for i in range(len(evt_nodes)):
+  procmgr_config.append({host:evt_nodes[i],
+                         id:'evt%d'%i,
+                         flags:node_flags,
+                         cmd:bin_path+'/tstEbBuilder -i %d'%i+seg_ib_nodes})
+  #procmgr_config.append({host:evt_nodes[i],
+  #                       id:'topEvt%d'%i,
+  #                       flags:node_flags,
+  #                       cmd:'/usr/bin/top -b -c -H -w 105 -u'+username})
+
+#print procmgr_config
+
+
+## procstat
+if not headless:
+  procmgr_config.append({id:'procstat',
+                         flags:'s',
+                         env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=',
+                         cmd:mgr_path+'/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'})
