@@ -163,7 +163,6 @@ public:
 private:
   uint32_t reserved2[(0x10000000-196)>>2];
 
-#if 0
   class Pgp2bAxi {
   public:
     Reg      _countReset;
@@ -180,8 +179,6 @@ private:
   } _pgp[2];
 
   uint32_t reserved3[(0x10000000-0x200)>>2];
-#endif
-  uint32_t reserved3[0x10000000>>2];
 
   RingBuffer _ringb;  // 0xA0000000
 
@@ -307,6 +304,12 @@ public:
   }
   void start(unsigned umask, unsigned* fmask, bool hdrOnly=false)
   {
+    printf("qpllLock : %u\n", unsigned(_qpll_bpUpdate)&1);
+    printf("monClk   :");
+    for(unsigned i=0; i<4; i++)
+      printf(" %f(%u)", float(_monClk[i]&0x1fffffff)*1.e-6, unsigned(_monClk[i])>>29);
+    printf("\n");
+
     _linkIdx = 1<<30;
 #ifndef NO_USPGP
     _pgp[0]._countReset = 1;
