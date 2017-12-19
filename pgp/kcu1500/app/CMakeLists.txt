@@ -1,4 +1,15 @@
 
+add_library(kcu SHARED
+    Reg.cc
+    GthEyeScan.cc
+)
+
+target_include_directories(kcu PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $ENV{CONDA_PREFIX}/include
+)
+
+
 #
 #  xStatus
 #
@@ -16,12 +27,12 @@ add_executable(kcuWrite xWrite.cpp)
 
 add_executable(kcuDmaStatus xDmaStatus.cpp)
 
-#
-#add_executable(xMargin xMargin.cpp)
-#
-#target_link_libraries(xMargin
-#   pthread
-#)
+add_executable(kcuMargin xMargin.cpp)
+
+target_link_libraries(kcuMargin
+   kcu
+   pthread
+)
 #
 #add_executable(xError xError.cpp)
 #

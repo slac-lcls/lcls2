@@ -184,6 +184,8 @@ int main (int argc, char **argv) {
 
     uint32_t flags=0, err=0, dest=0;
     ret = dmaRead(fd,data,maxSize,&flags,&err,&dest);
+    //  Return value is in bytes (convert to words)
+    ret = (ret+3)>>2;
 
     if (nevents-- == 0)
       break;
