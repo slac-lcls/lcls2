@@ -12,16 +12,17 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-EventBuilder::EventBuilder(unsigned epochs,
+EventBuilder::EventBuilder(Task*    backEndTask,
+                           unsigned epochs,
                            unsigned entries,
                            unsigned sources,
                            uint64_t duration) :
   Timer(),
+  _backEndTask(backEndTask),
   _mask(~(duration - 1) & ((1UL << 56) - 1)), // Revisit: ickiness
   _epochFreelist(sizeof(EbEpoch), epochs),
-  _eventFreelist(sizeof(EbEvent), epochs * entries),
-  _cntrbFreelist(sizeof(EbContribution), epochs * entries * sources),
-  _task(new Task(TaskObject("tEB", 100))),
+  _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries),
+  _timerTask(new Task(TaskObject("tEB_Timer", 100))),
   _duration(100)                        // Timeout rate in ms
 {
   if (__builtin_popcountl(duration) != 1)
@@ -34,6 +35,7 @@ EventBuilder::EventBuilder(unsigned epochs,
 
 EventBuilder::~EventBuilder()
 {
+  _timerTask->destroy();
 }
 
 EbEpoch* EventBuilder::_discard(EbEpoch* epoch)
@@ -93,7 +95,6 @@ EbEpoch* EventBuilder::_match(uint64_t inKey)
 }
 
 EbEvent* EventBuilder::_event(const Dgram* contrib,
-                              uint64_t     param,
                               EbEvent*     after)
 {
   void* buffer = _eventFreelist.alloc(sizeof(EbEvent));
@@ -106,16 +107,14 @@ EbEvent* EventBuilder::_event(const Dgram* contrib,
   }
 
   return ::new(buffer) EbEvent(contract(contrib),
-                               _cntrbFreelist,
+                               this,
                                after,
                                contrib,
-                               param,
                                _mask);
 }
 
 EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
-                               const Dgram* contrib,
-                               uint64_t     param)
+                               const Dgram* contrib)
 {
   EbEvent* empty = epoch->pending.empty();
   EbEvent* event = epoch->pending.reverse();
@@ -125,12 +124,12 @@ EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
   {
     uint64_t eventKey = event->sequence();
 
-    if (eventKey == key) return event->_add(contrib, param);
+    if (eventKey == key) return event->_add(contrib);
     if (eventKey <  key) break;
     event = event->reverse();
   }
 
-  return _event(contrib, param, event);
+  return _event(contrib, event);
 }
 
 void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
@@ -150,9 +149,7 @@ void EventBuilder::_retire(EbEvent* event)
 {
   event->disconnect();
 
-  process(event);
-
-  delete event;
+  _backEndTask->call(event);
 }
 
 void EventBuilder::_flush(EbEvent* due)
@@ -220,7 +217,7 @@ void EventBuilder::expired()            // Periodically called from a timer
 
 Task* EventBuilder::task()
 {
-  return _task;
+  return _timerTask;
 }
 
 unsigned EventBuilder::duration() const
@@ -257,16 +254,14 @@ unsigned EventBuilder::repetitive() const
 ** --
 */
 
-void EventBuilder::process(const Dgram* contrib,
-                           uint64_t     appParam)
+void EventBuilder::process(const Dgram* contrib)
 {
   EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
-  EbEvent* event = _insert(epoch, contrib, appParam);
+  EbEvent* event = _insert(epoch, contrib);
   if (!event->_remaining)  _flush(event);
 }
 
-unsigned EventBuilder::processBulk(const Dgram* contrib,
-                                   uint64_t     appParam)
+unsigned EventBuilder::processBulk(const Dgram* contrib)
 {
   unsigned cnt   = 0;
   EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
@@ -283,7 +278,7 @@ unsigned EventBuilder::processBulk(const Dgram* contrib,
     //         next, next->seq.stamp().pulseId(), sizeof(*next) + next->xtc.sizeofPayload(), from);
     //}
 
-    event = _insert(epoch, next, appParam);
+    event = _insert(epoch, next);
 
     ++cnt;
 
@@ -323,7 +318,4 @@ void EventBuilder::dump(unsigned detail)
 
   printf("\nEvent Builder event pool:\n");
   _eventFreelist.dump();
-
-  printf("\nEvent Builder contribution pool:\n");
-  _cntrbFreelist.dump();
 }

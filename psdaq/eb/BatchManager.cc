@@ -81,6 +81,8 @@ void BatchManager::process(const Dgram* datagram)
   batch->store(datagram);
 
   memcpy(buffer, datagram, size);
+
+  ((Dgram*)buffer)->xtc.src.phy(batch->index());
 }
 
 const Batch* BatchManager::batch(unsigned index) const

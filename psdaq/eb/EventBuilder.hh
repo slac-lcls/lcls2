@@ -5,7 +5,7 @@
 
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Timer.hh"
-#include "psdaq/service/GenericPool.hh"
+#include "psdaq/service/GenericPoolW.hh"
 
 namespace XtcData {
   class Dgram;
@@ -21,12 +21,12 @@ namespace Pds {
 
     class EbEpoch;
     class EbEvent;
-    class EbContribution;
 
     class EventBuilder : public Pds::Timer
     {
     public:
-      EventBuilder(unsigned epochs,
+      EventBuilder(Task*    backEndTask,
+                   unsigned epochs,
                    unsigned entries,
                    unsigned sources,
                    uint64_t mask);
@@ -41,8 +41,9 @@ namespace Pds {
       virtual unsigned   duration()   const;
       virtual unsigned   repetitive() const;
     public:
-      void               process    (const XtcData::Dgram*, uint64_t appParam);
-      unsigned           processBulk(const XtcData::Dgram*, uint64_t appParam);
+      void               process    (const XtcData::Dgram*);
+      unsigned           processBulk(const XtcData::Dgram*);
+      Task*              backEndTask() const;
     public:
       void               dump(unsigned detail);
     private:
@@ -51,22 +52,35 @@ namespace Pds {
       void              _flushBefore(EbEpoch*);
       EbEpoch*          _discard(EbEpoch*);
       void              _fixup(EbEvent*);
-      EbEvent*          _event(const XtcData::Dgram*, uint64_t param, EbEvent* after);
+      EbEvent*          _event(const XtcData::Dgram*, EbEvent* after);
       void              _flush(EbEvent*);
       void              _retire(EbEvent*);
-      EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*, uint64_t param);
+      EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*);
     private:
       friend class EbEvent;
     private:
       EpochList         _pending;       // Listhead, Epochs with events pending
+      Task*             _backEndTask;   // Task for Back-end processing
       uint64_t          _mask;          // Sequence mask
       GenericPool       _epochFreelist; // Freelist for new epochs
-      GenericPool       _eventFreelist; // Freelist for new events
-      GenericPool       _cntrbFreelist; // Freelist for new contributions
-      Task*             _task;          // For Timer
+      GenericPoolW      _eventFreelist; // Freelist for new events
+      Task*             _timerTask;     // For Timer
       unsigned          _duration;      // Timer expiration rate
     };
   };
 };
+
+
+/*
+** ++
+**
+**
+** --
+*/
+
+inline Pds::Task* Pds::Eb::EventBuilder::backEndTask() const
+{
+  return _backEndTask;
+}
 
 #endif

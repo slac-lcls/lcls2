@@ -123,8 +123,6 @@ int EbFtServer::connect(unsigned myId)
     ret = _syncLclMr(pool, _lclSize, _ep[i], _rMr[i], _ra[i]);
     if (ret)  break;
 
-    _ep[i]->recv_comp_data();
-
     printf("Client %d connected\n", _id[i]);
 
     if (!_shared)  pool += _lclSize;
