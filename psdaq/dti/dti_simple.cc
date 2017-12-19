@@ -129,7 +129,7 @@ private:
       }
       _control = control;
     }
-  } _usLink[7];
+  } _usLink[7];  // 0x80000000
   Reg _linkUp; // [6:0]=us, [15]=bp, [28:16]=ds
 
   Reg _linkIdx; // [3:0]=us, [19:16]=ds, [30]=countReset, [31=countUpdate
@@ -156,9 +156,14 @@ private:
   uint32_t reserved2a[4];
 
   Reg _qpll_bpUpdate;
+  Reg _monClk[4];
+public:
+  unsigned qpllLock() const { return unsigned(_qpll_bpUpdate)&3; }
+  unsigned monClk(unsigned i) const { return unsigned(_monClk[i]); }
+private:
+  uint32_t reserved2[(0x10000000-196)>>2];
 
-  uint32_t reserved2[(0x10000000-180)>>2];
-
+#if 0
   class Pgp2bAxi {
   public:
     Reg      _countReset;
@@ -175,7 +180,109 @@ private:
   } _pgp[2];
 
   uint32_t reserved3[(0x10000000-0x200)>>2];
-  RingBuffer _ringb;
+#endif
+  uint32_t reserved3[0x10000000>>2];
+
+  RingBuffer _ringb;  // 0xA0000000
+
+  uint32_t reserved4[(0x10000000-sizeof(_ringb))>>2];
+
+  class Pgp3Us {
+  public:
+    class Pgp3Axil {
+    public:
+      uint32_t countReset;
+      uint32_t autoStatus;
+      uint32_t loopback;
+      uint32_t skpInterval;
+      uint32_t rxStatus; // phyRxActive, locLinkReady, remLinkReady
+      uint32_t cellErrCnt;
+      uint32_t linkDownCnt;
+      uint32_t linkErrCnt;
+      uint32_t remRxOflow; // +pause
+      uint32_t rxFrameCnt;
+      uint32_t rxFrameErrCnt;
+      uint32_t rxClkFreq;
+      uint32_t rxOpCodeCnt;
+      uint32_t rxOpCodeLast;
+      uint32_t rxOpCodeNum;
+      uint32_t rsvd_3C;
+      uint32_t rsvd_40[0x10];
+      // tx
+      uint32_t cntrl; // flowCntDis, txDisable
+      uint32_t txStatus; // phyTxActive, linkReady
+      uint32_t rsvd_88;
+      uint32_t locStatus; // locOflow, locPause
+      uint32_t txFrameCnt;
+      uint32_t txFrameErrCnt;
+      uint32_t rsvd_98;
+      uint32_t txClkFreq;
+      uint32_t txOpCodeCnt;
+      uint32_t txOpCodeLast;
+      uint32_t txOpCodeNum;
+      uint32_t rsvd_AC;
+      uint32_t rsvd_B0[0x14];
+      uint32_t reserved[0x700>>2];
+    public:
+    } _pgp;
+    class Drp {
+    public:
+      uint32_t reserved[0x800>>2];
+    };
+  } _pgpUs[7];
+
+public:
+  void dumpPgp() const {
+#define PRINTFIELD(name, addr, offset, mask) {                          \
+      uint32_t reg;                                                     \
+      printf("%20.20s :", #name);                                       \
+      for(unsigned i=0; i<7; i++) {                                     \
+        const Reg* r = reinterpret_cast<const Reg*>((char*)(&_pgpUs[i]._pgp)+addr); \
+        reg = *r;                                                       \
+        printf(" %8x [%p]", (reg>>offset)&mask,r);                       \
+      }                                                                 \
+      printf("\n"); }
+#define PRINTBIT(name, addr, bit)  PRINTFIELD(name, addr, bit, 1)
+#define PRINTREG(name, addr)       PRINTFIELD(name, addr,   0, 0xffffffff)
+#define PRINTERR(name, addr)       PRINTFIELD(name, addr,   0, 0xf)
+#define PRINTFRQ(name, addr) {                                  \
+      uint32_t reg;                                             \
+      printf("%20.20s :", #name);                               \
+      for(unsigned i=0; i<7; i++) {                                     \
+        reg = *reinterpret_cast<const Reg*>((char*)(&_pgpUs[i]._pgp)+addr); \
+        printf(" %8.3f", float(reg)*1.e-6);                     \
+      }                                                         \
+      printf("\n"); }
+
+    printf("-- PgpAxiL Registers --\n");
+    PRINTFIELD(loopback , 0x08, 0, 0x7);
+    PRINTBIT(phyRxActive, 0x10, 0);
+    PRINTBIT(locLinkRdy , 0x10, 1);
+    PRINTBIT(remLinkRdy , 0x10, 2);
+    PRINTERR(cellErrCnt , 0x14);
+    PRINTERR(linkDownCnt, 0x18);
+    PRINTERR(linkErrCnt , 0x1c);
+    PRINTFIELD(remRxOflow , 0x20,  0, 0xffff);
+    PRINTFIELD(remRxPause , 0x20, 16, 0xffff);
+    PRINTREG(rxFrameCnt , 0x24);
+    PRINTERR(rxFrameErrCnt, 0x28);
+    PRINTFRQ(rxClkFreq  , 0x2c);
+    PRINTERR(rxOpCodeCnt, 0x30);
+    PRINTREG(rxOpCodeLst, 0x34);
+    PRINTERR(phyRxIniCnt, 0x130);
+
+    PRINTBIT(flowCntlDis, 0x80, 0);
+    PRINTBIT(txDisable  , 0x80, 1);
+    PRINTBIT(phyTxActive, 0x84, 0);
+    PRINTBIT(linkRdy    , 0x84, 1);
+    PRINTFIELD(locOflow   , 0x8c, 0,  0xffff);
+    PRINTFIELD(locPause   , 0x8c, 16, 0xffff);
+    PRINTREG(txFrameCnt , 0x90);
+    PRINTERR(txFrameErrCnt, 0x94);
+    PRINTFRQ(txClkFreq  , 0x9c);
+    PRINTERR(txOpCodeCnt, 0xa0);
+    PRINTREG(txOpCodeLst, 0xa4);
+  }
 
 public:
   Dti(bool lRTM) {
@@ -365,6 +472,7 @@ int main(int argc, char** argv) {
   }
 
   dti->dumpb();
+  dti->dumpPgp();
   dti->start(upstream, fwdmask,lHdrOnly);
 
   LinkStats stats[7], dstats[7];
@@ -394,6 +502,7 @@ int main(int argc, char** argv) {
       "bpLinkSent " };
 
   unsigned fwdlink[7];
+  memset(fwdlink,0,sizeof(fwdlink));
   for(unsigned i=0; i<7; i++)
     if (upstream & (1<<i)) 
       for(unsigned j=0; j<7; j++)
@@ -410,6 +519,12 @@ int main(int argc, char** argv) {
     printf(" %x",fwdlink[i]);
   printf("\n");
   
+  printf("qpllLock : %x\n", dti->qpllLock());
+  printf("monClk   : %f(%x) %f(%x) %f(%x) %f(%x)\n",
+         float(dti->monClk(0)&0x1fffffff)*1.e-6, dti->monClk(0)>>29,
+         float(dti->monClk(1)&0x1fffffff)*1.e-6, dti->monClk(1)>>29,
+         float(dti->monClk(2)&0x1fffffff)*1.e-6, dti->monClk(2)>>29,
+         float(dti->monClk(3)&0x1fffffff)*1.e-6, dti->monClk(3)>>29);
 
   while(1) {
     sleep(1);
