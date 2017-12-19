@@ -95,10 +95,11 @@ int main (int argc, char **argv) {
       return -1;
     }
 
-    ret = dmaWrite(fd, data, size, axisSetFlags(1, 1, 0), dest);
+    //  Convert Size argument to bytes
+    ret = dmaWrite(fd, data, size*4, axisSetFlags(2, 0, 0), dest);
     cout << "Returned " << dec << ret << endl;
 
-  } while ( count++ < number );
+  } while ( ++count < number );
   free(data);
 
   close(fd);

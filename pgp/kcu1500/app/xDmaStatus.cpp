@@ -53,7 +53,7 @@ int main (int argc, char **argv) {
   PRINTBIT(intEnable, 0x04, 0);
   PRINTBIT(contEn   , 0x08, 0);
   PRINTBIT(dropEn   , 0x0c, 0);
-  PRINTREG(wrBaseAddL , 0x10);
+  PRINTREG(wrBaseAddL , 0x10);   // descriptor addresses
   PRINTREG(wrBaseAddH , 0x14);
   PRINTREG(rdBaseAddL , 0x18);
   PRINTREG(rdBaseAddH , 0x1c);
@@ -68,9 +68,27 @@ int main (int argc, char **argv) {
   PRINTREG(fifoDin      , 0x40);  
   PRINTFIELD(intAckCnt  , 0x4c, 0, 0xffff);
   PRINTREG(intReqCnt  , 0x50);
-  PRINTREG(wrIndex    , 0x54);
-  PRINTREG(rdIndex    , 0x58);
+  PRINTREG(wrIndex    , 0x54);   // count of reads (last descriptor)
+  PRINTREG(rdIndex    , 0x58);   // count of writes
   PRINTREG(wrReqMiss  , 0x5c);
 
+  uint32_t descAWidth;
+  dmaReadRegister(fd, 0x38, &descAWidth);
+  descAWidth &= 0xff;
+
+  { uint32_t index;
+    if (dmaReadRegister(fd, 0x58, &index)<0) {
+      perror("ReadFifoLow");
+      return -1;
+    }
+    index &= (1<<descAWidth)-1;
+
+    uint32_t addr;
+    if (dmaReadRegister(fd, 0x4000+4*index, &addr)<0) {
+      perror("AddrRam");
+    }
+    printf("DmaAddr[%03x] : %8x\n", index, addr);
+  }
+    
   close(fd);
 }
