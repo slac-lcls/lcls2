@@ -10,7 +10,7 @@ void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
     unsigned shape[Name::MaxRank];
     shape[0] = 30;
     shape[1] = 30;
-    uint32_t dma_index = pebble_data->pgp_data()->buffers[0].dma_index;
+    uint32_t dma_index = pebble_data->pgp_data->buffers[0].dma_index;
     uint16_t* img = reinterpret_cast<uint16_t*>(dma_buffers[dma_index]);
     for (unsigned i=0; i<shape[0]*shape[1]; i++) {
         ptr[i] = img[i];
