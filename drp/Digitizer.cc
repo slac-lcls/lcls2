@@ -6,7 +6,7 @@ void hsdExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
 {
     char chan_name[8];
     CreateData hsd(parent, nameindex, nameId);
-    PGPBuffer* buffers = pebble_data->pgp_data()->buffers;
+    PGPBuffer* buffers = pebble_data->pgp_data->buffers;
     uint32_t shape[1];
     for (unsigned i=0; i<lanes.size(); i++) {
         sprintf(chan_name,"chan%d",i);
