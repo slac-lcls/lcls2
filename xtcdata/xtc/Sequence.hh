@@ -41,8 +41,9 @@ public:
     Sequence& operator=(const Sequence&);
 
 private:
-    ClockTime _clock;
-    TimeStamp _stamp;
+    // should add 8-bit control fields here and not have it be in the pulseid
+    TimeStamp _stamp; // should be named pulse id
+    ClockTime _clock; // should be named timestamp
 };
 }
 
