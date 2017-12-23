@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/bin/env python
 
 #
 # procmgr_lint
@@ -40,7 +40,7 @@ errorCount = 0
 def report_error(msg):
   global errorCount
   errorCount += 1
-  print >> sys.stderr, 'Error:', msg
+  print('Error:', msg, file=sys.stderr)
   return
 
 #
@@ -54,7 +54,7 @@ def entry_lint(dict):
     report_error('element of procmgr_config is empty')
   else:
     # check the elements within the procmgr_config entry
-    for key, value in dict.items():
+    for key, value in list(dict.items()):
       if not key in known_keys:
         report_error('procmgr_config entry includes invalid key \'%s\' (not in %s)' %
                      (str(key), repr(known_keys)))
@@ -122,7 +122,7 @@ config = {'platform': options.platform, 'procmgr_config': None, 'instrument': No
           'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'procmgr_macro': dict()}
 
 try:
-  execfile(configfile, {}, config)
+  exec(compile(open(configfile).read(), configfile, 'exec'), {}, config)
 except:
   if options.verbose:
     report_error(traceback.format_exc())
@@ -151,7 +151,7 @@ else:
       entry_id = entry_lint(dd)
       if type(dd) == type({}):
         for req in required_keys:
-          if not dd.has_key(req):
+          if req not in dd:
             report_error('required key \''+req+'\' missing from procmgr_config entry')
       if entry_id in entry_id_list:
         report_error('id \'%s\' reused' % str(entry_id))
@@ -164,12 +164,12 @@ else:
           report_error('instrument \'%s\' not recognized' % config['instrument'])
 
 if options.verbose and config['procmgr_config']:
-  print '-- platform -----------------------------------------'
-  print config['platform']
-  print '-- instrument ---------------------------------------'
-  print config['instrument']
-  print '-- procmgr_config -----------------------------------'
-  print config['procmgr_config']
-  print '-----------------------------------------------------'
+  print('-- platform -----------------------------------------')
+  print(config['platform'])
+  print('-- instrument ---------------------------------------')
+  print(config['instrument'])
+  print('-- procmgr_config -----------------------------------')
+  print(config['procmgr_config'])
+  print('-----------------------------------------------------')
 
 sys.exit(errorCount > 0)
