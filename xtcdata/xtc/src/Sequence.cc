@@ -21,17 +21,17 @@ enum { m_extend = ((1 << k_extend) - 1), s_extend = (m_extend << v_extend) };
 }
 
 XtcData::Sequence::Sequence(const XtcData::Sequence& input)
-: _clock(input._clock), _stamp(input._stamp)
+    : _stamp(input._stamp), _clock(input._clock)
 {
 }
 
 XtcData::Sequence::Sequence(const ClockTime& clock, const TimeStamp& stamp)
-: _clock(clock), _stamp(stamp)
+    : _stamp(stamp), _clock(clock)
 {
 }
 
 XtcData::Sequence::Sequence(Type type, TransitionId::Value service, const ClockTime& clock, const TimeStamp& stamp)
-: _clock(clock), _stamp(stamp, ((type & m_seqtype) << v_seqtype) | ((service & m_service) << v_service))
+    : _stamp(stamp, ((type & m_seqtype) << v_seqtype) | ((service & m_service) << v_service)), _clock(clock)
 {
 }
 
