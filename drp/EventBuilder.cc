@@ -6,7 +6,7 @@ using namespace Pds::Eb;
 MyDgram::MyDgram(unsigned pulseId, uint64_t val)
 {
     seq = XtcData::Sequence(Sequence::Event, TransitionId::L1Accept, ClockTime(), TimeStamp(pulseId));
-    env = XtcData::Env(0);
+    env = 0;
     xtc = Xtc(TypeId(TypeId::Data, 0), TheSrc(Level::Segment, ContribId));
     _data = val;
     xtc.alloc(sizeof(_data));

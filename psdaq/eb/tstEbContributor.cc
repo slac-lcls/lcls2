@@ -99,7 +99,7 @@ namespace Pds {
     class Input : public Dgram
     {
     public:
-      Input(const Sequence& seq_, const Env& env_, const Xtc& xtc_) :
+      Input(const Sequence& seq_, uint32_t env_, const Xtc& xtc_) :
         Dgram()
       {
         seq = seq_;
@@ -252,7 +252,7 @@ DrpSim::DrpSim(unsigned          poolSize,
   _running  (true),
   _heldAside(new(&_pool) Input(Sequence(Sequence::Marker, TransitionId::L1Accept,
                                         ClockTime(), TimeStamp(-1, 0)),
-                               Env(0), Xtc(_typeId, _src)))
+                               0, Xtc(_typeId, _src)))
 {
 }
 
@@ -270,7 +270,7 @@ void DrpSim::process()
 
   pin_thread(pthread_self(), thread_drpSim);
 
-  const Env env(0);
+  const uint32_t env = 0;
   const Xtc xtc(_typeId, _src);
 
   while(_running)

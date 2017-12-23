@@ -87,11 +87,11 @@ int main(int argc, char* argv[])
     XtcFileIterator iter(fd, 0x4000000);
     Dgram* dg;
     while ((dg = iter.next())) {
-        printf("%s transition: time %d.%09d, pulseId 0x%lux, env 0x%x, "
+        printf("%s transition: time %d.%09d, pulseId 0x%lux, env 0x%lux, "
                "payloadSize %d\n",
                TransitionId::name(dg->seq.service()), dg->seq.clock().seconds(),
                dg->seq.clock().nanoseconds(), dg->seq.stamp().pulseId(),
-               dg->env.value(), dg->xtc.sizeofPayload());
+               dg->env, dg->xtc.sizeofPayload());
         myLevelIter iter(&(dg->xtc), 0);
         iter.iterate();
     }

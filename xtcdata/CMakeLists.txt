@@ -1,7 +1,6 @@
 
 add_library(xtc SHARED
     xtc/src/BldInfo.cc
-    xtc/src/L1AcceptEnv.cc
     xtc/src/Sequence.cc
     xtc/src/TransitionId.cc
     xtc/src/XtcIterator.cc
