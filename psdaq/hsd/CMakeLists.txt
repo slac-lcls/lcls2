@@ -100,3 +100,10 @@ target_link_libraries(hsd_test
 # hsd_valid
 #
 add_executable(hsd_valid hsd_valid.cc)
+target_include_directories(hsd_valid PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(hsd_valid
+    xtc
+)
