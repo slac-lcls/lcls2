@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <new>
+#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/hsd/hsd.hh"
+
+using namespace Pds;
+using namespace HSD;
 
 class StreamHeader {
 public:
@@ -31,29 +36,6 @@ public:
   }
 private:
   unsigned _word[4];
-};
-
-class EventHeader {
-public:
-  EventHeader() {}
-public:
-  uint64_t pulseId   () const { return *reinterpret_cast<const uint64_t*>(&_word[0]); }
-  uint64_t timeStamp () const { return *reinterpret_cast<const uint64_t*>(&_word[2]); }
-  uint16_t trigWord  () const { return reinterpret_cast<const uint16_t*>(&_word[4])[1]; }
-  uint32_t eventCount() const { return _word[5]; }
-  unsigned samples   () const { return _word[6]&0x3ffff; }
-  unsigned channels  () const { return _word[6]>>24; }
-  unsigned sync      () const { return _word[7]&0x7; }
-
-  void dump() const 
-  {
-    for(unsigned i=0; i<8; i++)
-      printf("%08x%c", _word[i], i<7 ? '.' : '\n');
-    printf("pID [%016llx]  time [%u.%09u]  trig [%04x]  event [%u]  sync [%u]\n",
-           (unsigned long long)pulseId(), _word[3], _word[2], trigWord(), eventCount(), sync());
-  }
-private:
-  unsigned _word[8];
 };
 
 //
@@ -238,7 +220,6 @@ int main(int argc, char** argv) {
   size_t linesz = 0x10000;
   char* line = new char[linesz];
   ssize_t sz;
-  unsigned ievent=0;
   RawStream* vraw=0;
   unsigned skipSize = 0x924;
 
@@ -246,13 +227,13 @@ int main(int argc, char** argv) {
     if (lText) {
       if ((sz=getline(&line, &linesz, f))<=0)
         break;
-      printf("Readline %d [%32.32s]\n",sz, line);
+      printf("Readline %zd [%32.32s]\n",sz, line);
       char* p = line;
       for(unsigned i=0; i<(sz+3)/4; i++, p++)
         event[i] = strtoul(p, &p, 16);
     }
 
-    const EventHeader& eh = *reinterpret_cast<const EventHeader*>(event);
+    EventHeader& eh = *reinterpret_cast<EventHeader*>(event);
     //    printf("Read event header into %p\n", &eh);
     if (!lText) {
       if (lSkipContainers)

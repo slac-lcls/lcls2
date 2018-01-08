@@ -115,10 +115,10 @@ public:
         _buffer_mask = queue_size - 1;
         _last_complete = -1;
     }
-    PGPData* process_lane(EventHeader* event_header, int lane, int index, int size)
+    PGPData* process_lane(Transition* event_header, int lane, int index, int size)
     {
         // event builder
-        int j = event_header->l1Count & _buffer_mask;
+        int j = event_header->evtcounter & _buffer_mask;
         PGPData* p = &_pgp_data[j];
         PGPBuffer* buffer = &p->buffers[lane];
         buffer->dma_index = index;
@@ -129,12 +129,12 @@ public:
         p->counter++;
 
         if (p->counter == _nlanes) {
-            if (event_header->l1Count != (_last_complete + 1)) {
-                printf("Jump in complete l1Count %d -> %u\n",
-                        _last_complete, event_header->l1Count);
+            if (event_header->evtcounter != (_last_complete + 1)) {
+                printf("Jump in complete evtcounter %d -> %u\n",
+                        _last_complete, event_header->evtcounter);
                 // FIXME clean up broken events and return dma indices
             }
-            _last_complete = event_header->l1Count;
+            _last_complete = event_header->evtcounter;
             return p;
         }
         else {
@@ -145,7 +145,7 @@ public:
     std::vector<PGPData> _pgp_data;
     int _nlanes;
     int _buffer_mask;
-    int _last_complete;
+    unsigned _last_complete;
 };
 
 void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32_t** dma_buffers, SPSCQueue<int>& collector_queue, std::vector<PebbleQueue>& worker_input_queues, std::vector<unsigned> lanes)
@@ -199,9 +199,9 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32
         bytes_received += size*4;
 
         int lane = pgp_card.pgpLane;
-        EventHeader* event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
+        Transition* event_header = reinterpret_cast<Transition*>(dma_buffers[index]);
 
-        //printf("pulse id: %lu  lane: %d  l1Count: %d\n", event_header->pulseId, lane, event_header->l1Count);
+        //printf("pulse id: %lu  lane: %d  evtcounter: %d\n", event_header->seq.stamp().pulseId(), lane, event_header->evtcounter);
 
         PGPData* pgp_data = pgp_builder.process_lane(event_header, lane, index, size);
         if (pgp_data) {
@@ -233,13 +233,13 @@ bool check_pulseIds(PGPData* pgp_data, uint32_t** dma_buffers)
     for (int l=0; l<8; l++) {
         if (pgp_data->lane_mask  & (1 << l)) {
             uint32_t index = pgp_data->buffers[l].dma_index;
-            EventHeader* event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
+            Transition* event_header = reinterpret_cast<Transition*>(dma_buffers[index]);
             if (pulse_id == 0) {
-                pulse_id = event_header->pulseId;
+                pulse_id = event_header->seq.stamp().pulseId();
             }
             else {
-                if (pulse_id != event_header->pulseId) {
-                    printf("Wrong pulse id! expected %lu but got %lu instead\n", pulse_id, event_header->pulseId);
+                if (pulse_id != event_header->seq.stamp().pulseId()) {
+                    printf("Wrong pulse id! expected %lu but got %lu instead\n", pulse_id, event_header->seq.stamp().pulseId());
                     return false;
                 }
             }
@@ -421,8 +421,8 @@ int main()
         pin_thread(worker_threads[i].native_handle(), 3 + i);
     }
 
-    // XtcFile xtcfile("/drpffb/cpo/data.xtc");
-    NamesIter namesiter;
+    // XtcFile xtcfile("/reg/neh/home/cpo/data.xtc");
+    // NamesIter namesiter;
     // HDF5File h5file("/u1/cpo/data.h5", namesiter.namesVec());
 
     // start loop for the collector to collect results from the workers in the same order the events arrived over pgp
@@ -444,19 +444,19 @@ int main()
         // }
         // MyDgram dg(i,val);
         // myBatchMan.process(&dg);
-        /*
-        if (i==0) {
-            xtcfile.save(dgram);
-        } else {
-            PGPBuffer* buffers = pebble_data->pgp_data()->buffers;
-            for (unsigned ilane=0; ilane<lanes.size(); ilane++) {
-                iov[ilane].iov_len=buffers[lanes[ilane]].length*sizeof(uint32_t);
-                uint32_t dma_index = buffers[lanes[ilane]].dma_index;
-                iov[ilane].iov_base = reinterpret_cast<void*>(dma_buffers[dma_index]);
-            }
-            xtcfile.saveIov(dgram, iov, lanes.size());
-        }
-        */
+
+        // if (i==0) {
+        //     xtcfile.save(dgram);
+        // } else {
+        //     PGPBuffer* buffers = pebble_data->pgp_data->buffers;
+        //     for (unsigned ilane=0; ilane<lanes.size(); ilane++) {
+        //         iov[ilane].iov_len=buffers[lanes[ilane]].length*sizeof(uint32_t);
+        //         uint32_t dma_index = buffers[lanes[ilane]].dma_index;
+        //         iov[ilane].iov_base = reinterpret_cast<void*>(dma_buffers[dma_index]);
+        //     }
+        //     xtcfile.saveIov(dgram, iov, lanes.size());
+        // }
+
         // if (i == 0) {
         //     namesiter.iterate(&dgram.xtc);
         // }
