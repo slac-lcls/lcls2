@@ -20,8 +20,8 @@ public:
 
 class L1Transition : public Transition {
 public:
-    uint16_t trigLines()     { return (env>>16)&0xffff; }
-    uint16_t readoutGroups() { return (env)&0xffff; }
+    uint16_t trigLines()     const { return (env>>16)&0xffff; }
+    uint16_t readoutGroups() const { return (env)&0xffff; }
 };
 
 class Dgram : public Transition {
