@@ -53,14 +53,14 @@ static       unsigned lverbose         = 0;
 //static void dump(const Dgram* dg)
 //{
 //  char buff[128];
-//  time_t t = dg->seq.clock().seconds();
+//  time_t t = dg->seq.stamp().seconds();
 //  strftime(buff,128,"%H:%M:%S",localtime(&t));
 //  printf("[%16p] %s.%09u %016lx %s extent 0x%x damage %x\n",
 //         dg,
 //         buff,
-//         dg->seq.clock().nanoseconds(),
-//         dg->seq.stamp().pulseID(),
-//         Pds::TransitionId::name(Pds::TransitionId::Value((dg->seq.stamp().fiducials()>>24)&0xff)),
+//         dg->seq.stamp().nanoseconds(),
+//         dg->seq.pulseId().value(),
+//         Pds::TransitionId::name(Pds::TransitionId::Value((dg->seq.pulseId().fiducials()>>24)&0xff)),
 //         dg->xtc.extent, dg->xtc.damage.value());
 //}
 
@@ -109,7 +109,7 @@ namespace Pds {
     public:
       PoolDeclare;
     public:
-      uint64_t id() const { return seq.stamp().pulseId(); }
+      uint64_t id() const { return seq.pulseId().value(); }
     };
 
     class DrpSim
@@ -251,7 +251,7 @@ DrpSim::DrpSim(unsigned          poolSize,
   _outlet   (outlet),
   _running  (true),
   _heldAside(new(&_pool) Input(Sequence(Sequence::Marker, TransitionId::L1Accept,
-                                        ClockTime(), TimeStamp(-1, 0)),
+                                        TimeStamp(), PulseId(-1, 0)),
                                0, Xtc(_typeId, _src)))
 {
 }
@@ -279,7 +279,7 @@ void DrpSim::process()
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     const Sequence seq(Sequence::Event, TransitionId::L1Accept,
-                       ClockTime(ts), TimeStamp(_pid, 0));
+                       TimeStamp(ts), PulseId(_pid, 0));
 
     _pid += 1; //27; // Revisit: fi_tx_attr.iov_limit = 6 = 1 + max # events per batch
     //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
@@ -295,7 +295,7 @@ void DrpSim::process()
     payload[1] = ts.tv_nsec;          // Revisit: Some crud for now
     payload[2] = ++cnt;               // Revisit: Some crud for now
     payload[3] = 1 << _id;            // Revisit: Some crud for now
-    payload[4] = idg->seq.stamp().pulseId() & 0xffffffffUL; // Revisit: Some crud for now
+    payload[4] = idg->seq.pulseId().value() & 0xffffffffUL; // Revisit: Some crud for now
 
     _outlet.post(idg);
 
@@ -375,7 +375,7 @@ void TstContribOutlet::post(const Dgram* input)
   if (lverbose > 1)
   {
     printf("DRP   Posts        input          dg           @ %16p, ts %014lx, sz %3zd, src %2d\n",
-           input, input->seq.stamp().pulseId(), sizeof(*input) + input->xtc.sizeofPayload(), input->xtc.src.log() & 0xff);
+           input, input->seq.pulseId().value(), sizeof(*input) + input->xtc.sizeofPayload(), input->xtc.src.log() & 0xff);
   }
 
   ++_eventCount;
@@ -398,7 +398,7 @@ Batch* TstContribOutlet::_pend()
   {
     const Dgram* bdg = batch->datagram();
     printf("ContribOutlet rcvd input          batch        @ %16p, ts %014lx, sz %3zd\n",
-           batch, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
+           batch, bdg->seq.pulseId().value(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
   }
 
   return batch;
@@ -410,7 +410,7 @@ void TstContribOutlet::post(Batch* batch)
   {
     const Dgram* bdg = batch->datagram();
     printf("DRP   Posting      input          batch        @ %16p, ts %014lx, sz %3zd\n",
-           batch, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
+           batch, bdg->seq.pulseId().value(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
   }
 
   _inputBatchList.insert(batch);
@@ -443,7 +443,7 @@ void TstContribOutlet::routine()
       const Dgram*    bdg    = batch->datagram();
       void*           rmtAdx = (void*)_outlet.rmtAdx(dst, batch->index() * maxBatchSize());
       printf("ContribOutlet posts %6d        batch[%2d]    @ %16p, ts %014lx, sz %3zd to   EB %d %16p\n",
-             ++cnt, batch->index(), bdg, bdg->seq.stamp().pulseId(), batch->extent(), dst, rmtAdx);
+             ++cnt, batch->index(), bdg, bdg->seq.pulseId().value(), batch->extent(), dst, rmtAdx);
     }
 
     _outlet.post(batch->buffer(), batch->extent(), dst, batch->index() * maxBatchSize());
@@ -526,7 +526,7 @@ void TstContribInlet::routine()
       static unsigned cnt = 0;
       unsigned from = batch->xtc.src.log() & 0xff;
       printf("ContribInlet  rcvd        %6d result   [%2d] @ %16p, ts %014lx, sz %3zd from EB %d\n",
-             ++cnt, idx, batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
+             ++cnt, idx, batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
     }
 
     const Batch*  input  = _outlet.batch(idx);
@@ -558,7 +558,7 @@ void TstContribInlet::routine()
 int TstContribInlet::_process(const Dgram* result, const Dgram* input)
 {
   bool     ok  = true;
-  uint64_t pid = result->seq.stamp().pulseId();
+  uint64_t pid = result->seq.pulseId().value();
 
   if (lcheck)
   {
@@ -613,10 +613,10 @@ int TstContribInlet::_process(const Dgram* result, const Dgram* input)
     fprintf(stderr, "Input datagram not found\n");
     abort();
   }
-  else if (pid != input->seq.stamp().pulseId())
+  else if (pid != input->seq.pulseId().value())
   {
     printf("Result pulse ID doesn't match Input datagram's: %014lx, %014lx\n",
-           pid, input->seq.stamp().pulseId());
+           pid, input->seq.pulseId().value());
     abort();
   }
 

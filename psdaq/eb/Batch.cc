@@ -66,7 +66,7 @@ Batch::Batch(const Dgram& contrib, uint64_t pid) :
 {
   Dgram* dg = new(_batch1()->allocate(sizeof(contrib))) Dgram(contrib);
 
-  dg->seq        = Sequence(contrib.seq.clock(), TimeStamp(pid, 0));
+  dg->seq        = Sequence(contrib.seq.stamp(), PulseId(pid, 0));
   dg->xtc.extent = sizeof(Xtc);
 }
 

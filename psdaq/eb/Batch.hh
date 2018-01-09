@@ -74,14 +74,14 @@ inline void* Pds::Eb::Batch::parameter() const
 
 inline uint64_t Pds::Eb::Batch::id() const
 {
-  return datagram()->seq.stamp().pulseId();
+  return datagram()->seq.pulseId().value();
 }
 
 inline void Pds::Eb::Batch::id(uint64_t pid)
 {
   XtcData::Dgram*    dg = datagram();
-  XtcData::TimeStamp ts(pid, dg->seq.stamp().control());
-  dg->seq = XtcData::Sequence(dg->seq.clock(), ts);
+  XtcData::PulseId ts(pid, dg->seq.pulseId().control());
+  dg->seq = XtcData::Sequence(dg->seq.stamp(), ts);
 }
 
 inline bool Pds::Eb::Batch::expired(uint64_t pid) const

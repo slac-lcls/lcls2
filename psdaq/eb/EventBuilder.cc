@@ -118,7 +118,7 @@ EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
 {
   EbEvent* empty = epoch->pending.empty();
   EbEvent* event = epoch->pending.reverse();
-  uint64_t key   = contrib->seq.stamp().pulseId();
+  uint64_t key   = contrib->seq.pulseId().value();
 
   while (event != empty)
   {
@@ -256,7 +256,7 @@ unsigned EventBuilder::repetitive() const
 
 void EventBuilder::process(const Dgram* contrib)
 {
-  EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
+  EbEpoch* epoch = _match(contrib->seq.pulseId().value());
   EbEvent* event = _insert(epoch, contrib);
   if (!event->_remaining)  _flush(event);
 }
@@ -264,7 +264,7 @@ void EventBuilder::process(const Dgram* contrib)
 unsigned EventBuilder::processBulk(const Dgram* contrib)
 {
   unsigned cnt   = 0;
-  EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
+  EbEpoch* epoch = _match(contrib->seq.pulseId().value());
   EbEvent* event;
 
   const Dgram*  next = (Dgram*)contrib->xtc.payload();
@@ -275,7 +275,7 @@ unsigned EventBuilder::processBulk(const Dgram* contrib)
     //{
     //  unsigned from = next->xtc.src.log() & 0xff;
     //  printf("EventBuilder found          a  contrib @ %16p, ts %014lx, sz %3zd from Contrib %d\n",
-    //         next, next->seq.stamp().pulseId(), sizeof(*next) + next->xtc.sizeofPayload(), from);
+    //         next, next->seq.pulseId().value(), sizeof(*next) + next->xtc.sizeofPayload(), from);
     //}
 
     event = _insert(epoch, next);

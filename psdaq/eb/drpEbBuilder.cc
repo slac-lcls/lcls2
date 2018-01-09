@@ -47,7 +47,7 @@ static       unsigned lverbose         = 0;
 //  printf("%s.%09u %016lx %s extent 0x%x ctns %s damage %x\n",
 //         buff,
 //         dg->seq.clock().nanoseconds(),
-//         dg->seq.stamp().pulseID(),
+//         dg->seq.pulseId().value(),
 //         Pds::TransitionId::name(dg->seq.service()),
 //         dg->xtc.extent,
 //         Pds::TypeId::name(dg->xtc.contains.id()),
@@ -286,7 +286,7 @@ void TstEbInlet::process()
       unsigned idx  = (((char*)batch - _inlet.base()) / _maxBatchSize) % _maxBatches;
       unsigned from = batch->xtc.src.log() & 0xff;
       printf("EbInlet  rcvd  %6d        batch[%2d]    @ %16p, ts %014lx, sz %3zd from Contrib %d\n", ++cnt, idx,
-             batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
+             batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
     }
 
     contribCount += processBulk(batch);
@@ -350,7 +350,7 @@ void TstEbInlet::process(EbEvent* event)
   if (lverbose > 2)
   {
     printf("EbInlet  processed          result[%2d] @ %16p, ts %014lx, sz %3zd\n",
-           rDest->destination(0).phy(), rdg, rdg->seq.stamp().pulseId(), sizeof(*rdg) + rdg->xtc.sizeofPayload());
+           rDest->destination(0).phy(), rdg, rdg->seq.pulseId().value(), sizeof(*rdg) + rdg->xtc.sizeofPayload());
   }
 }
 
@@ -448,7 +448,7 @@ Batch* TstEbOutlet::_pend()
   {
     const Dgram* bdg  = batch->datagram();
     printf("EbOutlet read                batch[%2d] @ %16p, ts %014lx, sz %3zd\n",
-           batch->index(), bdg, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
+           batch->index(), bdg, bdg->seq.pulseId().value(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
   }
 
   return batch;
@@ -505,7 +505,7 @@ void TstEbOutlet::routine()
         static unsigned cnt = 0;
         void* rmtAdx = (void*)_outlet.rmtAdx(dst, idx * maxBatchSize());
         printf("EbOutlet posts       %6d result   [%2d] @ %16p, ts %014lx, sz %3zd to   Contrib %d = %16p\n",
-               ++cnt, idx, rdg, rdg->seq.stamp().pulseId(), extent, dst, rmtAdx);
+               ++cnt, idx, rdg, rdg->seq.pulseId().value(), extent, dst, rmtAdx);
       }
 
       if (_outlet.post(rdg, extent, dst, idx * maxBatchSize()))  break;

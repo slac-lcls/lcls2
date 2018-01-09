@@ -21,43 +21,43 @@ enum { m_extend = ((1 << k_extend) - 1), s_extend = (m_extend << v_extend) };
 }
 
 XtcData::Sequence::Sequence(const XtcData::Sequence& input)
-    : _stamp(input._stamp), _clock(input._clock)
+    : _pulseId(input._pulseId), _stamp(input._stamp)
 {
 }
 
-XtcData::Sequence::Sequence(const ClockTime& clock, const TimeStamp& stamp)
-    : _stamp(stamp), _clock(clock)
+XtcData::Sequence::Sequence(const TimeStamp& stamp, const PulseId& pulseId)
+    : _pulseId(pulseId), _stamp(stamp)
 {
 }
 
-XtcData::Sequence::Sequence(Type type, TransitionId::Value service, const ClockTime& clock, const TimeStamp& stamp)
-    : _stamp(stamp, ((type & m_seqtype) << v_seqtype) | ((service & m_service) << v_service)), _clock(clock)
+XtcData::Sequence::Sequence(Type type, TransitionId::Value service, const TimeStamp& stamp, const PulseId& pulseId)
+    : _pulseId(pulseId, ((type & m_seqtype) << v_seqtype) | ((service & m_service) << v_service)), _stamp(stamp)
 {
 }
 
 XtcData::Sequence::Type XtcData::Sequence::type() const
 {
-    return Type((_stamp.control() >> v_seqtype) & m_seqtype);
+    return Type((_pulseId.control() >> v_seqtype) & m_seqtype);
 }
 
 XtcData::TransitionId::Value XtcData::Sequence::service() const
 {
-    return TransitionId::Value((_stamp.control() >> v_service) & m_service);
+    return TransitionId::Value((_pulseId.control() >> v_service) & m_service);
 }
 
 bool XtcData::Sequence::isExtended() const
 {
-    return _stamp.control() & s_extend;
+    return _pulseId.control() & s_extend;
 }
 
 bool XtcData::Sequence::isEvent() const
 {
-    return ((_stamp.control() & s_service) >> v_service) == TransitionId::L1Accept;
+    return ((_pulseId.control() & s_service) >> v_service) == TransitionId::L1Accept;
 }
 
 XtcData::Sequence& XtcData::Sequence::operator=(const XtcData::Sequence& input)
 {
-    _clock = input._clock;
     _stamp = input._stamp;
+    _pulseId = input._pulseId;
     return *this;
 }
