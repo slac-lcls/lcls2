@@ -10,8 +10,8 @@ namespace Pds {
     public:
       EventHeader() {}
     public:
-      uint64_t pulseId   () const { return seq.stamp().pulseId(); }
-      uint64_t timeStamp () const { return seq.clock().nanoseconds() | (uint64_t)(seq.clock().seconds())<<32; }
+      uint64_t pulseId   () const { return seq.pulseId().value(); }
+      uint64_t timeStamp () const { return seq.stamp().nanoseconds() | (uint64_t)(seq.stamp().seconds())<<32; }
       uint32_t eventCount() const { return evtCounter; }
       unsigned samples   () const { return (env>>32)&0xfffff; }
       unsigned streams   () const { return (env>>52)&0xf; }
@@ -24,7 +24,7 @@ namespace Pds {
         for(unsigned i=0; i<8; i++)
           printf("%08x%c", word[i], i<7 ? '.' : '\n');
         printf("pID [%016lux]  time [%u.%09u]  trig [%04x]  event [%u]  sync [%u]\n",
-               pulseId(), seq.clock().seconds(), seq.clock().nanoseconds(),
+               pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
                readoutGroups(), eventCount(), sync());
       }
     private:

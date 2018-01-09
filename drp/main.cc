@@ -201,7 +201,7 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32
         int lane = pgp_card.pgpLane;
         Transition* event_header = reinterpret_cast<Transition*>(dma_buffers[index]);
 
-        //printf("pulse id: %lu  lane: %d  evtCounter: %d\n", event_header->seq.stamp().pulseId(), lane, event_header->evtCounter);
+        //printf("pulse id: %lu  lane: %d  evtCounter: %d\n", event_header->seq.pulseId().value(), lane, event_header->evtCounter);
 
         PGPData* pgp_data = pgp_builder.process_lane(event_header, lane, index, size);
         if (pgp_data) {
@@ -235,11 +235,11 @@ bool check_pulseIds(PGPData* pgp_data, uint32_t** dma_buffers)
             uint32_t index = pgp_data->buffers[l].dma_index;
             Transition* event_header = reinterpret_cast<Transition*>(dma_buffers[index]);
             if (pulse_id == 0) {
-                pulse_id = event_header->seq.stamp().pulseId();
+                pulse_id = event_header->seq.pulseId().value();
             }
             else {
-                if (pulse_id != event_header->seq.stamp().pulseId()) {
-                    printf("Wrong pulse id! expected %lu but got %lu instead\n", pulse_id, event_header->seq.stamp().pulseId());
+                if (pulse_id != event_header->seq.pulseId().value()) {
+                    printf("Wrong pulse id! expected %lu but got %lu instead\n", pulse_id, event_header->seq.pulseId().value());
                     return false;
                 }
             }

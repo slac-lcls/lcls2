@@ -55,7 +55,7 @@ EbEvent::EbEvent(uint64_t      contract,
                  EbEvent*      after,
                  const Dgram*  cdg,
                  uint64_t      mask) :
-  _sequence(cdg->seq.stamp().pulseId()),
+  _sequence(cdg->seq.pulseId().value()),
   _contract(contract),
   _eb      (eb),
   _living  (MaxTimeouts),
@@ -184,7 +184,7 @@ void EbEvent::dump(int number)
     contrib = *current;
     printf("     src %02x seq %016lx size %08x env 0x%lux\n",
            contrib->number(),
-           contrib->seq.stamp().pulseId(),
+           contrib->seq.pulseId().value(),
            contrib->payloadSize(),
            contrib->env);
   }
