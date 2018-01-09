@@ -32,7 +32,7 @@ void printUsage(char* name) {
   printf( "Usage: %s [-h]  -P <deviceName> [options]\n"
       "    -h        Show usage\n"
       "    -P        Set pgpcard device name  (REQUIRED)\n"
-      "    -L <num>  Number of lanes\n"
+      "    -L <mask> Mask of lanes\n"
       "    -c        number of times to read\n"
       "    -o        Print out up to maxPrint words when reading data\n"
       "    -f <file> Record to file\n"

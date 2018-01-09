@@ -15,8 +15,8 @@ target_include_directories(kcu PUBLIC
 #
 add_executable(kcuStatus xStatus.cpp)
 
-#add_executable(xLoopTest xLoopTest.cpp)
-#
+add_executable(kcuLoopTest xLoopTest.cpp)
+
 add_executable(kcuRead xRead.cpp)
 
 target_link_libraries(kcuRead
@@ -24,6 +24,10 @@ target_link_libraries(kcuRead
 )
 
 add_executable(kcuWrite xWrite.cpp)
+
+target_link_libraries(kcuWrite
+   pthread
+)
 
 add_executable(kcuDmaStatus xDmaStatus.cpp)
 
