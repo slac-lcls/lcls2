@@ -12,7 +12,7 @@ namespace Pds {
     public:
       uint64_t pulseId   () const { return seq.stamp().pulseId(); }
       uint64_t timeStamp () const { return seq.clock().nanoseconds() | (uint64_t)(seq.clock().seconds())<<32; }
-      uint32_t eventCount() const { return evtcounter; }
+      uint32_t eventCount() const { return evtCounter; }
       unsigned samples   () const { return (env>>32)&0xfffff; }
       unsigned streams   () const { return (env>>52)&0xf; }
       unsigned channels  () const { return (env>>56)&0xff; }
