@@ -118,7 +118,7 @@ public:
     PGPData* process_lane(Transition* event_header, int lane, int index, int size)
     {
         // event builder
-        int j = event_header->evtcounter & _buffer_mask;
+        int j = event_header->evtCounter & _buffer_mask;
         PGPData* p = &_pgp_data[j];
         PGPBuffer* buffer = &p->buffers[lane];
         buffer->dma_index = index;
@@ -129,12 +129,12 @@ public:
         p->counter++;
 
         if (p->counter == _nlanes) {
-            if (event_header->evtcounter != (_last_complete + 1)) {
-                printf("Jump in complete evtcounter %d -> %u\n",
-                        _last_complete, event_header->evtcounter);
+            if (event_header->evtCounter != (_last_complete + 1)) {
+                printf("Jump in complete evtCounter %d -> %u\n",
+                        _last_complete, event_header->evtCounter);
                 // FIXME clean up broken events and return dma indices
             }
-            _last_complete = event_header->evtcounter;
+            _last_complete = event_header->evtCounter;
             return p;
         }
         else {
@@ -201,7 +201,7 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32
         int lane = pgp_card.pgpLane;
         Transition* event_header = reinterpret_cast<Transition*>(dma_buffers[index]);
 
-        //printf("pulse id: %lu  lane: %d  evtcounter: %d\n", event_header->seq.stamp().pulseId(), lane, event_header->evtcounter);
+        //printf("pulse id: %lu  lane: %d  evtCounter: %d\n", event_header->seq.stamp().pulseId(), lane, event_header->evtCounter);
 
         PGPData* pgp_data = pgp_builder.process_lane(event_header, lane, index, size);
         if (pgp_data) {

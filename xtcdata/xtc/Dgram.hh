@@ -13,7 +13,7 @@ namespace XtcData
 class Transition {
 public:
     Sequence seq;
-    unsigned evtcounter:24;
+    unsigned evtCounter:24;
     unsigned version:8;
     uint64_t env;
 };
