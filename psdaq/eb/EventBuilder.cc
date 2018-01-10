@@ -12,16 +12,17 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-EventBuilder::EventBuilder(unsigned epochs,
+EventBuilder::EventBuilder(Task*    backEndTask,
+                           unsigned epochs,
                            unsigned entries,
                            unsigned sources,
                            uint64_t duration) :
   Timer(),
+  _backEndTask(backEndTask),
   _mask(~(duration - 1) & ((1UL << 56) - 1)), // Revisit: ickiness
   _epochFreelist(sizeof(EbEpoch), epochs),
-  _eventFreelist(sizeof(EbEvent), epochs * entries),
-  _cntrbFreelist(sizeof(EbContribution), epochs * entries * sources),
-  _task(new Task(TaskObject("tEB", 100))),
+  _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries),
+  _timerTask(new Task(TaskObject("tEB_Timeout", 100))),
   _duration(100)                        // Timeout rate in ms
 {
   if (__builtin_popcountl(duration) != 1)
@@ -34,6 +35,7 @@ EventBuilder::EventBuilder(unsigned epochs,
 
 EventBuilder::~EventBuilder()
 {
+  _timerTask->destroy();
 }
 
 EbEpoch* EventBuilder::_discard(EbEpoch* epoch)
@@ -61,19 +63,16 @@ void EventBuilder::_flushBefore(EbEpoch* entry)
 EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 {
   void* buffer = _epochFreelist.alloc(sizeof(EbEpoch));
-  //EbEpoch* epoch = new(&_epochFreelist) EbEpoch(key, after);
-  //if (!epoch)
   if (!buffer)
   {
     printf("%s: Unable to allocate epoch: key %016lx", __PRETTY_FUNCTION__,
            key);
     printf(" epochFreelist:\n");
     _epochFreelist.dump();
-    dump(1);
     abort();
   }
-  EbEpoch* epoch = ::new(buffer) EbEpoch(key, after);
-  return epoch;
+
+  return ::new(buffer) EbEpoch(key, after);
 }
 
 EbEpoch* EventBuilder::_match(uint64_t inKey)
@@ -96,17 +95,10 @@ EbEpoch* EventBuilder::_match(uint64_t inKey)
 }
 
 EbEvent* EventBuilder::_event(const Dgram* contrib,
-                              uint64_t     param,
                               EbEvent*     after)
 {
-  EbEvent* event = new(&_eventFreelist) EbEvent(contract(contrib),
-                                                this,
-                                                after,
-                                                contrib,
-                                                param,
-                                                _mask);
-
-  if (!event)
+  void* buffer = _eventFreelist.alloc(sizeof(EbEvent));
+  if (!buffer)
   {
     printf("%s: Unable to allocate event\n", __PRETTY_FUNCTION__);
     printf("  eventFreelist:\n");
@@ -114,27 +106,30 @@ EbEvent* EventBuilder::_event(const Dgram* contrib,
     abort();
   }
 
-  return event;
+  return ::new(buffer) EbEvent(contract(contrib),
+                               this,
+                               after,
+                               contrib,
+                               _mask);
 }
 
 EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
-                               const Dgram* contrib,
-                               uint64_t     param)
+                               const Dgram* contrib)
 {
   EbEvent* empty = epoch->pending.empty();
   EbEvent* event = epoch->pending.reverse();
-  uint64_t key   = contrib->seq.stamp().pulseId();
+  uint64_t key   = contrib->seq.pulseId().value();
 
   while (event != empty)
   {
     uint64_t eventKey = event->sequence();
 
-    if (eventKey == key) return event->_add(contrib, param);
+    if (eventKey == key) return event->_add(contrib);
     if (eventKey <  key) break;
     event = event->reverse();
   }
 
-  return _event(contrib, param, event);
+  return _event(contrib, event);
 }
 
 void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
@@ -150,23 +145,11 @@ void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
   while (remaining);
 }
 
-EbEvent* EventBuilder::_insert(const Dgram* contrib,
-                               uint64_t     param)
-{
-  EbEpoch* epoch = _match(contrib->seq.stamp().pulseId());
-  EbEvent* event = _insert(epoch, contrib, param);
-  if (!event->_remaining)  return event;
-
-  return NULL;
-}
-
 void EventBuilder::_retire(EbEvent* event)
 {
   event->disconnect();
 
-  process(event);
-
-  delete event;
+  _backEndTask->call(event);
 }
 
 void EventBuilder::_flush(EbEvent* due)
@@ -234,7 +217,7 @@ void EventBuilder::expired()            // Periodically called from a timer
 
 Task* EventBuilder::task()
 {
-  return _task;
+  return _timerTask;
 }
 
 unsigned EventBuilder::duration() const
@@ -258,7 +241,7 @@ unsigned EventBuilder::repetitive() const
 **    builder is running to notify this process that a new contribution has
 **    arrived slightly out of time order.  Thus, a contribution that would
 **    complete an older event might already be on the machine with the
-**    notification stuck in the transfer completion queue until the current
+**    notification stuck in the transport completion queue until the current
 **    contribution (and possibly a few others) has been processed.  Since we
 **    don't want to unnecessarily penalize incomplete events, the _flush()
 **    below will return as soon as it finds an incomplete event, despite the
@@ -271,12 +254,40 @@ unsigned EventBuilder::repetitive() const
 ** --
 */
 
-void EventBuilder::process(const Dgram* contrib,
-                           uint64_t     appParam)
+void EventBuilder::process(const Dgram* contrib)
 {
-  EbEvent* event = _insert(contrib, appParam);
+  EbEpoch* epoch = _match(contrib->seq.pulseId().value());
+  EbEvent* event = _insert(epoch, contrib);
+  if (!event->_remaining)  _flush(event);
+}
 
-  if (event && !event->_remaining)  _flush(event);
+unsigned EventBuilder::processBulk(const Dgram* contrib)
+{
+  unsigned cnt   = 0;
+  EbEpoch* epoch = _match(contrib->seq.pulseId().value());
+  EbEvent* event;
+
+  const Dgram*  next = (Dgram*)contrib->xtc.payload();
+  const Dgram*  last = (Dgram*)contrib->xtc.next();
+  while(next != last)
+  {
+    //if (lverbose > 1)                 // Revisit: lverbose is not defined
+    //{
+    //  unsigned from = next->xtc.src.log() & 0xff;
+    //  printf("EventBuilder found          a  contrib @ %16p, ts %014lx, sz %3zd from Contrib %d\n",
+    //         next, next->seq.pulseId().value(), sizeof(*next) + next->xtc.sizeofPayload(), from);
+    //}
+
+    event = _insert(epoch, next);
+
+    ++cnt;
+
+    next = (Dgram*)next->xtc.next();
+  }
+
+  _flush(event);
+
+  return cnt;
 }
 
 /*
@@ -307,7 +318,4 @@ void EventBuilder::dump(unsigned detail)
 
   printf("\nEvent Builder event pool:\n");
   _eventFreelist.dump();
-
-  printf("\nEvent Builder contribution pool:\n");
-  _cntrbFreelist.dump();
 }

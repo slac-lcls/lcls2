@@ -3,8 +3,6 @@ import sys
 from pcaspy import SimpleServer, Driver
 import time
 from datetime import datetime
-import thread
-import subprocess
 import argparse
 import pdb
 
@@ -21,10 +19,10 @@ def printDb():
     global pvdb
     global prefix
 
-    print '=========== Serving %d PVs ==============' % len(pvdb)
+    print('=========== Serving %d PVs ==============' % len(pvdb))
     for key in sorted(pvdb):
-        print prefix+key
-    print '========================================='
+        print(prefix+key)
+    print('=========================================')
     return
 
 if __name__ == '__main__':
@@ -34,19 +32,20 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for DTI(s)')
 
-    parser.add_argument('-P', required=True, metavar='PREFIX', help='common prefix, e.g. DAQ:')
+    parser.add_argument('-P', required=True, metavar='PREFIX', help='common prefix, e.g. DAQ')
     parser.add_argument('-R', metavar='P1[,P2[...]]', help='unique partition(s)')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
     myDriver.verbose = args.verbose
 
-    prefix = args.P
+    prefix = args.P+':'
 
     if args.R is None:
       p2set = set([''])
     else:
-      p2set = set(args.R.split(","))
+      # add colon to each item
+      p2set = set([s+':' for s in args.R.split(",")])
 
     # PVs
 
@@ -165,4 +164,4 @@ if __name__ == '__main__':
         while True:
             server.process(0.1)
     except KeyboardInterrupt:
-        print '\nInterrupted'
+        print('\nInterrupted')

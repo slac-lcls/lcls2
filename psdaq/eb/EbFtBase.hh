@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <vector>
 
-
 namespace Pds {
 
   namespace Fabrics {
@@ -32,7 +31,7 @@ namespace Pds {
       ~EbFtStats();
     public:
       void clear();
-      void dump() const;
+      void dump();
     private:
       friend class EbFtBase;
     private:
@@ -40,8 +39,10 @@ namespace Pds {
       uint64_t              _repostCnt;
       uint64_t              _repostMax;
       uint64_t              _postWtAgnCnt;
-      uint64_t              _postWtAgnMax;
       uint64_t              _pendCnt;
+      uint64_t              _pendTmoCnt;
+      uint64_t              _pendAgnCnt;
+      uint64_t              _pendAgnMax;
       uint64_t              _rependCnt;
       uint64_t              _rependMax;
       std::vector<uint64_t> _rmtWrCnt;
@@ -56,8 +57,8 @@ namespace Pds {
       EbFtBase(unsigned nPeers);
       virtual ~EbFtBase();
     public:
-      void registerMemory(void* buffer, size_t size);
-      uint64_t pend();
+      void     registerMemory(void* buffer, size_t size);
+      int      pend(uint64_t* data);
       //int      post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t offset, void* ctx);
       int      post(const void* buf, size_t len, unsigned dst, uint64_t offset);
       uint64_t rmtAdx(unsigned dst, uint64_t offset); // Revisit: For debugging, remove
@@ -78,7 +79,7 @@ namespace Pds {
                           Fabrics::MemoryRegion*  mr,
                           Fabrics::RemoteAddress& ra);
     private:
-      uint64_t _tryCq();
+      int      _tryCq(uint64_t* data);
     protected:
       EpList                     _ep;   // List of Endpoints
       MrList                     _lMr;  // List of local  Memory Regions per EP

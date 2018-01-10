@@ -1,0 +1,396 @@
+#!/usr/bin/env python
+#------------------------------
+
+import os
+import sys
+from time import time
+from PSCalib.DCMethods import add_constants, get_constants, delete_version, delete_range, delete_ctype, print_content,\
+     add_constants_to_file, get_constants_from_file, delete_version_from_file, delete_range_from_file,\
+     delete_ctype_from_file, print_content_from_file
+import PSCalib.DCUtils as dcu
+
+#------------------------------
+
+class DCS_CLI :
+    def __init__(self, parser) :
+        """Detector Calibration Store Command Line Interface"""
+
+        self.parser = parser
+        (opts, args) = parser.parse_args()
+        self.args = args
+        self.opts = vars(opts)
+        self.defs = vars(parser.get_default_values())
+
+        self.verbos = opts.verbos
+        #if self.verbos : self.print_raw()
+        if self.verbos : self.print_pars()
+
+        self.command_dispatcher()
+
+#------------------------------
+
+    def print_raw(self) :
+        print 'Command:', ' '.join(sys.argv)
+        print '  opts: ', self.opts
+        print '  defs: ', self.defs
+        print '  args: ', self.args
+
+#------------------------------
+
+    def print_pars(self) :
+        """Prints input parameters"""
+        print 'Command:', ' '.join(sys.argv)+\
+              '\nlaunches %s' % self.__init__.__doc__+\
+              '\nwith argument %s and optional parameters:\n' % str(self.args)+\
+              '<key>      <value>          <default>'
+        for k,v in self.opts.items() :
+            print '%s %s %s' % (k.ljust(10), str(v).ljust(16), str(self.defs[k]).ljust(16))
+
+#------------------------------
+
+    def dsname(self) :
+        """Returns dsname retrieved from input parameters"""
+        #dsname = 'exp=mfxn8316:run=11'
+        #dsname = '/reg/g/psdm/detector/data_test/types/0021-MfxEndstation.0-Epix100a.0.xtc'
+        exp = self.opts['exp']
+        run = self.opts['run']
+        if None in (exp,run): return None
+        return 'exp=%s:run=%s' % (exp, run)
+
+#------------------------------
+
+    def fname_nda(self, env, src, cdir) :
+        """Returns nda file name, i.e.: epix100a-3925999616-...-pixel_status.npy
+           retreived from input parameters
+        """        
+        cfname = self.opts['cfname'] # self.defs['cfname']
+        if cfname is not None : return cfname
+
+        str_ctype = self.opts['ctype']
+        from PSCalib.DCFileName import DCFileName
+        ofn = DCFileName(env, src, cdir)
+        detname = ofn.detname()
+        return '%s-%s.npy' % (detname, str_ctype)
+
+#------------------------------
+
+    def fname_nda_from_fnameh5(self, fname) :
+        """Returns nda file name, i.e.: epix100a-3925999616-...-pixel_status.npy
+           for fname=epix100a-3925999616-....h5
+        """
+        cfname = self.opts['cfname']
+        if cfname is not None : return cfname
+
+        detname = os.path.basename(fname).split('.')[0] # ??
+        str_ctype = self.opts['ctype']
+        return '%s-%s.npy' % (detname, str_ctype)
+
+#------------------------------
+
+    def calib_type(self) :
+        """Returns enumerated calibration type"""
+        str_ctype = self.opts['ctype']
+        ctype = dcu.gu.dic_calib_name_to_type[str_ctype]
+        return ctype
+
+#------------------------------
+
+    def load_data_file(self, ctype, verb) :
+        """Returns data loaded from file specified in option -f or None if file does not exist.
+
+           Returned data type for
+           - ctype geometry : text
+           - other ctypes   : np.arrays
+        """
+        cfname = self.opts['cfname']
+        if not os.path.exists(cfname) :
+            print 'WARNING: file %s does not exist' % cfname
+            return None
+
+        root, ext = os.path.splitext(cfname)
+        data = None
+        if ext=='.npy' :
+            data = dcu.np.load(cfname)
+
+        elif ctype==dcu.gu.GEOMETRY :
+            data = dcu.gu.load_textfile(cfname)
+
+        else :
+            from PSCalib.NDArrIO import load_txt
+            data = load_txt(cfname)
+        if verb : print 'data loaded from file: %s\n' % (cfname), data
+
+        return data
+
+#------------------------------
+
+    def save_data_file(self, cfname, data, ctype, vers, verb) :
+        """Saves data in file specified in option -f
+
+            - ctype geometry is saved as text
+            - other cpype as numpy array
+        """
+        root, ext = os.path.splitext(cfname)
+        if ctype==dcu.gu.GEOMETRY :
+            dcu.gu.save_textfile(data, cfname)
+        elif ext=='.npy' :
+            dcu.np.save(cfname, data)
+        else : # save as text file
+            from PSCalib.NDArrIO import save_txt
+            #rms = data.std()
+            fmt = '%.1f' # if rms>10 else '%.3f' if rms>0.1 else '%.6f'  
+            save_txt(cfname, data, cmts=(), fmt=fmt)
+        if verb : print 'Array of constants for vers=%s is saved in file: %s' % (vers, cfname)
+
+#------------------------------
+
+    def delete_version(self, evt, env, src, ctype, cdir, vers, msg, verb) :
+        delete_version(evt, env, src, ctype, cdir, vers, 'CLI %s'%msg, verb)
+
+#------------------------------
+
+    def delete_range(self, evt, env, src, ctype, cdir, range, msg, verb) :
+        delete_range(evt, env, src, ctype, cdir, range, 'CLI %s'%msg, verb)
+
+#------------------------------
+
+    def delete_ctype(self, evt, env, src, ctype, cdir, msg, verb) :
+        delete_ctype(evt, env, src, ctype, cdir, 'CLI %s'%msg, verb)
+
+#------------------------------
+
+    def add_constants(self, par, env, src, ctype, cdir, vers, pred, succ, msg, verb) :
+        """Add constants from file specified in option -f to the hdf5 file
+        """
+        if verb : print 'In %s' % sys._getframe().f_code.co_name
+        data = self.load_data_file(ctype, verb)
+        if data is None : return
+        add_constants(data, par, env, src, ctype, cdir, vers, pred, succ, 'CLI %s'%msg, verb)
+
+#------------------------------
+
+    def get_constants(self, par, env, src, ctype, cdir, vers, verb) :
+        """Get specified constants from the DCS and save them in npy/txt file.
+           par  : psana.Event | float - tsec event time
+        """
+        if verb : print 'In %s' % sys._getframe().f_code.co_name
+        data = get_constants(par, env, src, ctype, cdir, vers, verb)
+        cfname = self.fname_nda(env, src, cdir)
+        self.save_data_file(cfname, data, ctype, vers, verb)
+
+#------------------------------
+
+    def add_constants_to_file(self, fname, par, ctype, vers, pred, succ, msg, verb) :
+        """Add constants from file specified in option -f to the hdf5 file fname
+           par  : psana.Event | float - tsec event time
+        """
+        if verb : print 'In %s' % sys._getframe().f_code.co_name
+        data = self.load_data_file(ctype, verb)
+        if data is None : return
+        env = None # is used to comment experiment name
+        add_constants_to_file(data, fname, par, env, ctype, vers, pred, succ, msg, verb)
+
+#------------------------------
+
+    def get_constants_from_file(self, fname, par, ctype, vers, verb) :
+        """Get specified constants from the DCS and save them in npy/txt file.
+           par  : psana.Event | float - tsec event time
+        """
+        if verb : print 'In %s' % sys._getframe().f_code.co_name
+        data = get_constants_from_file(fname, par, ctype, vers, verb)
+        cfname = self.fname_nda_from_fnameh5(fname)
+        self.save_data_file(cfname, data, ctype, vers, verb)
+
+#------------------------------
+
+    def delete_version_from_file(self, fname, par, ctype, vers, msg, verb) :
+        if verb : print 'In %s' % sys._getframe().f_code.co_name
+        delete_version_from_file(fname, par, ctype, vers, msg, verb)
+
+#------------------------------
+
+    def delete_range_from_file(self, fname, ctype, rng, msg, verb) :
+        if verb : print 'In %s' % sys._getframe().f_code.co_name
+        delete_range_from_file(fname, ctype, rng, msg, verb)
+
+#------------------------------
+
+    def delete_ctype_from_file(self, fname, ctype, msg, verb) :
+        if verb : print 'In %s' % sys._getframe().f_code.co_name
+        delete_ctype_from_file(fname, ctype, msg, verb)
+
+#------------------------------
+
+    def command_dispatcher(self) : 
+        """Command line dispatcher by the 1-st argument"""
+
+        nargs =len(self.args) 
+        if not nargs :
+            self.parser.print_usage()
+            print 'WARNING: command argument is missing. See command usage above.'
+            return
+
+        import psana
+
+        #if self.verbos :
+
+        t0_sec = time()
+
+        env = None
+        evt = None        
+        dsname = self.dsname()
+        if dsname is not None :
+            ds = psana.DataSource(dsname)
+            env=ds.env()
+            evt=ds.events().next()
+        #if self.verbos :
+        #print 'time (sec) to get ds, env, evt = %.6f' % (time()-t0_sec)
+
+        src    = self.opts['src']
+        cdir   = self.opts['cdir']
+        msg    = self.opts['msg']
+        rng    = self.opts['rng']
+        pred   = self.opts['pred']
+        succ   = self.opts['succ']
+        vers   = self.opts['vers']
+        verb   = self.opts['verbos']
+        tsec   = self.opts['tsec']
+        ctype  = self.calib_type()
+
+        # parameters to get time in sec 
+        par = tsec if tsec is not None else evt if evt is not None else 0. 
+
+        fname  = self.args[1] if nargs > 1 else None
+        mode   = self.args[0]
+        action = mode[0] # should be 'p', 'a', or 'g' for print, add, or get, respectively
+
+        if fname is not None : # work with specified hdf5 file
+            if   action=='p'    : print_content_from_file(fname)
+            elif action=='a'    : self.add_constants_to_file   (fname, par, ctype, vers, pred, succ, msg, verb)
+            elif action=='g'    : self.get_constants_from_file (fname, par, ctype, vers, verb)
+            elif 'delv' in mode : self.delete_version_from_file(fname, par, ctype, vers, msg, verb)
+            elif 'delr' in mode : self.delete_range_from_file  (fname, ctype, rng, msg, verb)
+            elif 'delc' in mode : self.delete_ctype_from_file  (fname, ctype, msg, verb)
+            else :
+                self.parser.print_usage()
+                print 'WARNING: unrecognized command argument "%s". See command usage above.' % self.args[0]
+                return
+
+        else :
+            if   action=='p'    : print_content(env, src, cdir)
+            elif action=='a'    : self.add_constants (evt, env, src, ctype, cdir, vers, pred, succ, msg, verb)
+            elif action=='g'    : self.get_constants (evt, env, src, ctype, cdir, vers, verb)
+            elif 'delv' in mode : self.delete_version(evt, env, src, ctype, cdir, vers, msg, verb)
+            elif 'delr' in mode : self.delete_range  (evt, env, src, ctype, cdir, rng, msg, verb)
+            elif 'delc' in mode : self.delete_ctype  (evt, env, src, ctype, cdir, msg, verb)
+            else :
+                self.parser.print_usage()
+                print 'WARNING: unrecognized command argument "%s". See command usage above.' % self.args[0]
+                return
+
+#------------------------------
+
+def usage() :
+    return '\n\nCommand to print, get, add, or delete info from/in calibration file:\n'+\
+           '\n  %prog <arg>'+\
+           ' -e <experiment> -r <run-number> -d <datector-source> -t <ctype> [-c <calib_dir>]'+\
+           '\n      [-f <file-name>] [-v <version>] [-f <i/o-file-name>] [-m <message>]'+\
+           '\n      [-p <predecessor>] [-s <successor>] [-v <vebousity>]'+\
+           '\n\n  where <arg> is one of the keywords p[rint], g[et], a[dd], or d[elete]'+\
+           '\n\n  Examples:'+\
+           '\n  %prog add        -e mfxn8316 -r 11 -d Epix100a -t pixel_status -f my-nda.txt'+\
+           '\n  %prog add        -e mfxn8316 -r 11 -d Epix100a -t geometry     -f geo.txt -m "my geo" -c ./calib\n'+\
+           '\n  %prog add        -e mfxn8316 -r 11 -d Epix100a -t pixel_status -f my-nda.txt -m "my comment" -c ./calib -v 4'+\
+           '\n  %prog print      -e mfxn8316 -r 11 -d Epix100a -c ./calib'+\
+           '\n  %prog print      -e mfxn8316 -r 11 -d Epix100a\n'+\
+           '\n  %prog get        -e mfxn8316 -r 11 -d Epix100a -t pixel_status -f my-nda.txt -c ./calib -v 3'+\
+           '\n  %prog get        -e mfxn8316 -r 11 -d Epix100a -t pixel_status'+\
+           '\n  %prog get        -e mfxn8316 -r 11 -d Epix100a -t geometry     -f geo-extracted.txt -c ./calib\n'+\
+           '\n  %prog delversion -e mfxn8316 -r 11 -d Epix100a -t pixel_status -v 4 -m "my comment" -c ./calib'+\
+           '\n  %prog delversion -e mfxn8316 -r 11 -d Epix100a -t pixel_status -v 4\n'+\
+           '\n  %prog delrange   -e mfxn8316 -r 11 -d Epix100a -t pixel_status -g 1474587520-end -m "my comment" -c ./calib'+\
+           '\n  %prog delrange   -e mfxn8316 -r 11 -d Epix100a -t pixel_status -g 1474587520-end\n'+\
+           '\n  %prog delctype   -e mfxn8316 -r 11 -d Epix100a -t pixel_status -m "my comment" -c ./calib'+\
+           '\n  %prog delctype   -e mfxn8316 -r 11 -d Epix100a -t pixel_status'+\
+           '\n\n  Commands using implicit hdf5 file name'+\
+           '\n  %prog print      path-to-file.h5'+\
+           '\n  %prog add        path-to-file.h5 -t geometry     -f geo.txt    -m "my geo"'+\
+           '\n  %prog add        path-to-file.h5 -t pixel_status -f my-nda.txt   -T 0     -m "my pixel_status" -v 3'+\
+           '\n  %prog get        path-to-file.h5 -t pixel_status -f get-test.txt -T 11345 -v 3'+\
+           '\n  %prog get        path-to-file.h5 -t pixel_status -T 1400000000'+\
+           '\n  %prog get        path-to-file.h5 -t geometry     -f get-test.txt -g 1474587520-end -v 1'+\
+           '\n  %prog delversion path-to-file.h5 -t pixel_status -m "my delversion" -g 1474587520-end -v 4'+\
+           '\n  %prog delrange   path-to-file.h5 -t pixel_status -m "my delrange"   -g 1-end'+\
+           '\n  %prog delctype   path-to-file.h5 -t pixel_status -m "my delctype"'+\
+           '\n'
+ 
+#------------------------------
+
+def input_option_parser() :
+
+    from optparse import OptionParser
+
+    mode_def   = 'print' # print/get/add/delete
+    exp_def    = None # 'mfxn8316' 
+    run_def    = None # 1
+    src_def    = 'Epix100a.'
+    ctype_def  = 'pixel_status'
+    cdir_def   = None
+    vers_def   = None
+    msg_def    = ''
+    rng_def    = ''
+    pred_def   = None
+    succ_def   = None
+    cfname_def = None # 'ndarray.txt'
+    verbos_def = True
+    tsec_def   = None
+
+    h_mode   = 'command mode: print/get/add/delete, default = %s' % mode_def
+    h_exp    = 'experiment, e.g., cxi43210, default = %s' % exp_def
+    h_run    = 'run number, default = %s' % str(run_def)
+    h_src    = 'detector source name, e.g., Cspad., default = %s' % str(src_def)
+    h_ctype  = '(str) calibration type, default = %s' % str(ctype_def)
+    h_cdir   = 'non-default calibration directory, default = %s' % str(cdir_def)
+    h_vers   = 'version of constants, default = %s' % str(vers_def)
+    h_msg    = 'comment to add/delete constant version, default = "%s"' % str(msg_def)
+    h_rng    = 'string time range to delete range, default = "%s"' % str(rng_def)
+    h_pred   = 'predecessor, default = %s' % str(pred_def)
+    h_succ   = 'succecessor, default = %s' % str(succ_def)
+    h_cfname = 'i/o file name for constants, default = %s' % str(cfname_def)
+    h_verbos = 'verbosity, default = %s' % str(verbos_def)
+    h_tsec   = 'time[sec] for constants timestamp to save or retreive, default = %s' % str(tsec_def)
+
+    parser = OptionParser(description='Command line parameters', usage ='usage: %prog <arg> <opts>' + usage())
+    parser.add_option('-e', '--exp',    default=exp_def,    action='store', type='string', help=h_exp   )
+    parser.add_option('-r', '--run',    default=run_def,    action='store', type='int',    help=h_run   )
+    parser.add_option('-d', '--src',    default=src_def,    action='store', type='string', help=h_src   )
+    parser.add_option('-t', '--ctype',  default=ctype_def,  action='store', type='string', help=h_ctype )
+    parser.add_option('-c', '--cdir',   default=cdir_def,   action='store', type='string', help=h_cdir  )
+    parser.add_option('-v', '--vers',   default=vers_def,   action='store', type='int',    help=h_vers  )
+    parser.add_option('-m', '--msg',    default=msg_def,    action='store', type='string', help=h_msg   )
+    parser.add_option('-g', '--rng',    default=rng_def,    action='store', type='string', help=h_rng   )
+    parser.add_option('-p', '--pred',   default=pred_def,   action='store', type='string', help=h_pred  )
+    parser.add_option('-s', '--succ',   default=succ_def,   action='store', type='string', help=h_succ  )
+    parser.add_option('-f', '--cfname', default=cfname_def, action='store', type='string', help=h_cfname)
+    parser.add_option('-i', '--verbos', default=verbos_def, action='store_false',          help=h_verbos)
+    parser.add_option('-T', '--tsec',   default=tsec_def,   action='store', type='float',  help=h_tsec  )
+ 
+    return parser #, parser.parse_args()
+
+#------------------------------
+
+if __name__ == "__main__" :
+
+    parser = input_option_parser()
+
+    if len(sys.argv)==1 :
+        parser.print_help()
+        proc_name = os.path.basename(sys.argv[0])
+        msg = '\nWARNING: run this command with parameters, e.g.: %s -h' % proc_name
+        sys.exit('%s\nEnd of %s' % (msg, proc_name))
+
+    DCS_CLI(parser)
+
+    sys.exit(0)
+
+#------------------------------

@@ -1,0 +1,81 @@
+#
+#  Put it all together
+#
+path_base     = '~nobody/daq/'
+bin_path      = path_base+'lcls2/build/'
+scripts_path  = path_base+'lcls2/psdaq/scripts/'
+procstat_path = path_base+'lcls2/psdaq/procmgr/'
+
+if not platform: platform = '7'
+username = 'lcls2'
+pv_prefix = 'DAQ:LAB2'
+expname  = 'expname'
+expnum   = 'expnum'
+
+daq_tst_dev04 = "daq-tst-dev04"
+
+epics_host = daq_tst_dev04
+epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_AUTO_ADDR_LIST=NO EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067'
+pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.2.7'
+shelf = '2'
+ip_addr = '10.0.'+shelf
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ { host: epics_host,     id:'partcas',port:'29750', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/partcas.py -P '+pv_prefix},
+ { host: epics_host,     id:'modcas' ,port:'29751', flags:'s', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/modcas.py -P '+pv_prefix+':XPM:'+shelf},
+
+ {                       id:'partca-'+platform ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/partca.py '+pv_prefix+':PART:'+platform},
+ {                       id:'modca'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/xpmca.py '+pv_prefix+':XPM:'+shelf},
+ {                       id:'deadca-'+platform  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/deadca.py '+pv_prefix+' '+platform+' '+shelf},
+#
+#  XPM controller
+#
+ { host: epics_host,     id:'xpmioc' ,port:'29752', flags:'sx', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P '+pv_prefix},
+#
+#  DTI controllers
+#
+#{                       id:'dti-103' , flags:'sx', cmd:bin_path+'psdaq/dti/dti_simple -a '+ip_addr+'.103 -u 0x7f -f 1,2,4,8,16,32,64   -t '+platform},
+#{                       id:'dti-104' , flags:'sx', cmd:bin_path+'psdaq/dti/dti_simple -a '+ip_addr+'.104 -u 0x1b -f 1,2,8,16      -t '+platform},
+#{                       id:'dti-105' , flags:'sx', cmd:bin_path+'psdaq/dti/dti_simple -a '+ip_addr+'.105 -u 0x3d -f 1,4,8,16,32   -t '+platform}, # us1         link down
+  {                       id:'dticas'     , port:'29753', flags:'sx', env:pcas_env, cmd:scripts_path+'/launch_pcaspy '+scripts_path+'/dticas.py -P '+pv_prefix+' -R DTI:'+shelf+'3,DTI:'+shelf+'4'},
+
+  { host: epics_host,     id:'dtiioc-103' , port:'29754', flags:'sx', env:epics_env, cmd:bin_path+'psdaq/dti/dtiPVs -a '+ip_addr+'.103 -P '+pv_prefix+':DTI:'+shelf+'3'},
+  {                       id:'dtigui-103' , flags:'sx', cmd:scripts_path+'/launch_py '+scripts_path+'/dtica.py '+pv_prefix+':DTI:'+shelf+'3'},
+
+  { host: epics_host,     id:'dtiioc-104' , port:'29755', flags:'sx', env:epics_env, cmd:bin_path+'psdaq/dti/dtiPVs -a '+ip_addr+'.104 -P '+pv_prefix+':DTI:'+shelf+'4'},
+  {                       id:'dtigui-104' , flags:'sx', cmd:scripts_path+'/launch_py '+scripts_path+'/dtica.py '+pv_prefix+':DTI:'+shelf+'4'},
+#
+#  PGP camera simulators
+#
+#{ host: daq_tst_dev02,  id:'xLoop-dev02', flags:'s', cmd:'pgp/pgpcardG3/app/xLoopTest -P /dev/pgpcardG3_0_5 -T 0x80 -L 0xf0 -s 10240 -n 16 -F 8 -S' },
+#{ host: daq_tst_dev03,  id:'xLoop-dev03', flags:'s', cmd:'pgp/pgpcardG3/app/xLoopTest -P /dev/pgpcardG3_0_5 -T 0x80 -L 0xf0 -s 10240 -n 16 -F 8 -S' },
+#{ host: daq_tst_dev04,  id:'xLoop-dev04', flags:'s', cmd:'pgp/pgpcardG3/app/xLoopTest -P /dev/pgpcardG3_0_5 -T 0x80 -L 0xf0 -s 10240 -n 16 -F 8 -S' },
+#{ host: drp_tst_acc05,  id:'xLoop-acc05', flags:'s', cmd:'pgp/pgpcardG3/app/xLoopTest -P /dev/pgpcardG3_0_1 -T 0x80 -L 0xff -s 10240 -n 16 -F 8 -S' },
+#
+#  DRP receivers
+#
+#{ host: daq_tst_dev01,  id:'xRead-dev01', flags:'sx', cmd:'pgp/pgpcardG3/app/xRead -P /dev/pgpcardG3_0_1 -L 8 -r'},
+#{ host: daq_tst_dev04,  id:'xRead-dev04', flags:'sx', cmd:'pgp/pgpcardG3/app/xRead -P /dev/pgpcardG3_0_1 -L 4 -r'},
+#{ host: drp_tst_acc04,  id:'xRead-acc04', flags:'sx', cmd:'pgp/pgpcardG3/app/xRead -P /dev/pgpcardG3_0_1 -L 8 -r'},
+#
+#  Diagnostics
+#
+ {                       id:'epics', flags:'sx', cmd:'/bin/bash'},
+
+## procstat
+ {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/psdm/sw/conda2/inst/envs/ps-0.0.4/lib PYTHONPATH=', cmd:procstat_path+'/procstat.py -t '+username+' -e0 -p '+platform+' p'+platform+'.cnf.last'},
+  ]

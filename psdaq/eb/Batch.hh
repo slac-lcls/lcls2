@@ -22,7 +22,10 @@ namespace Pds {
     class Batch : public Pds::Entry
     {
     public:
-      Batch(const XtcData::Src&, const XtcData::Dgram&, uint64_t pid);
+      enum IsLastFlag { IsLast };
+    public:
+      Batch(IsLastFlag);
+      Batch(const XtcData::Dgram&, uint64_t pid);
       ~Batch();
     public:
       static size_t size();
@@ -40,13 +43,14 @@ namespace Pds {
       void             store(const XtcData::Dgram*);
       uint64_t         id() const;
       void             id(uint64_t pid);
-      bool             expired(uint64_t pid);
+      bool             expired(uint64_t pid) const;
       unsigned         index() const;
       size_t           extent() const;
       void*            buffer() const;
       XtcData::Dgram*  datagram() const;
       void             parameter(void*);
       void*            parameter() const;
+      bool             isLast() const;
       const XtcData::Dgram* datagram(unsigned i) const;
     private:
       Batch1*         _batch1() const;
@@ -72,19 +76,24 @@ inline void* Pds::Eb::Batch::parameter() const
   return _parameter;
 }
 
+inline bool Pds::Eb::Batch::isLast() const
+{
+  return _parameter == this;
+}
+
 inline uint64_t Pds::Eb::Batch::id() const
 {
-  return datagram()->seq.stamp().pulseId();
+  return datagram()->seq.pulseId().value();
 }
 
 inline void Pds::Eb::Batch::id(uint64_t pid)
 {
-  XtcData::Dgram*    dg = datagram();
-  XtcData::TimeStamp ts(pid, dg->seq.stamp().control());
-  dg->seq = XtcData::Sequence(dg->seq.clock(), ts);
+  XtcData::Dgram*  dg = datagram();
+  XtcData::PulseId pulseId(pid, dg->seq.pulseId().control());
+  dg->seq = XtcData::Sequence(dg->seq.stamp(), pulseId);
 }
 
-inline bool Pds::Eb::Batch::expired(uint64_t pid)
+inline bool Pds::Eb::Batch::expired(uint64_t pid) const
 {
   return id() != pid;
 }

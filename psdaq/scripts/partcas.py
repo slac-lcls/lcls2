@@ -3,8 +3,6 @@ import sys
 from pcaspy import SimpleServer, Driver
 import time
 from datetime import datetime
-import thread
-import subprocess
 import argparse
 #import socket
 #import json
@@ -21,10 +19,10 @@ def printDb():
     global pvdb
     global prefix
 
-    print '=========== Serving %d PVs ==============' % len(pvdb)
+    print('=========== Serving %d PVs ==============' % len(pvdb))
     for key in sorted(pvdb):
-        print prefix+key
-    print '========================================='
+        print(prefix+key)
+    print('=========================================')
     return
 
 if __name__ == '__main__':
@@ -78,7 +76,7 @@ if __name__ == '__main__':
             pvdb[stationstr+':%d:InhEnable%d'    %(i,j)] = {'type' : 'int', 'value': 0}
 
         pvdb[stationstr+':%d:RunTime'  %i] = {'type' : 'float', 'value': 0}
-        pvdb[stationstr+':%d:L0InpRate'%i] = {'type' : 'float', 'value': 0}
+        pvdb[stationstr+':%d:L0InpRate'%i] = {'type' : 'float', 'value': 0, 'mdel' : 0}
         pvdb[stationstr+':%d:L0AccRate'%i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:L1Rate'   %i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:NumL0Inp' %i] = {'type' : 'float', 'value': 0}
@@ -101,4 +99,4 @@ if __name__ == '__main__':
         while True:
             server.process(0.1)
     except KeyboardInterrupt:
-        print '\nInterrupted'
+        print('\nInterrupted')

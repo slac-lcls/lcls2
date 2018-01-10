@@ -159,6 +159,10 @@ void Module::init()
   printf("PGP:        %4.4s %9.9s %9.9s %9.9s %9.9s %9.9s %9.9s\n",
          "Link", "RxFrmErrs", "RxFrmCnt", "RxOpcodes", "TxFrmErrs", "TxFrmCnt", "TxOpcodes");
   for (unsigned i = 0; i < 2; ++i) {    // Revisit: 2 -> NUsLinks + NDsLinks
+#if 1
+    // FIXME
+    printf("            %4u\n", i);
+#else
     printf("            %4u %9u %9u %9u %9u %9u %9u\n",
            i,
            unsigned(_pgp[i]._rxFrameErrs),
@@ -167,6 +171,7 @@ void Module::init()
            unsigned(_pgp[i]._txFrameErrs),
            unsigned(_pgp[i]._txFrames),
            unsigned(_pgp[i]._txOpcodes));
+#endif /* 1 */
   }
 }
 
@@ -342,7 +347,8 @@ Stats Module::stats() const
   //s.usLinkObL0  = _usLinkObL0;
   //s.usLinkObL1A = _usLinkObL1A;
   //s.usLinkObL1R = _usLinkObL1R;
-
+#if 0
+  // FIXME
   for (unsigned i = 0; i < 2; ++i)      // Revisit: 2 -> NUsLinks + NDsLinks
   {
     s.pgp[i].rxFrameErrs = _pgp[i]._rxFrameErrs;
@@ -352,6 +358,6 @@ Stats Module::stats() const
     s.pgp[i].txOpcodes   = _pgp[i]._txOpcodes;
     s.pgp[i].rxOpcodes   = _pgp[i]._rxOpcodes;
   }
-
+#endif /* 0 */
   return s;
 }

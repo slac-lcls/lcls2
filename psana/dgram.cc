@@ -14,8 +14,21 @@
 #include <numpy/ndarraytypes.h>
 #include <structmember.h>
 
+#ifdef PSANA_USE_LEGION
+#define LEGION_ENABLE_C_BINDINGS
+#include <legion.h>
+#include <legion/legion_c_util.h>
+using namespace Legion;
+#endif
+
 using namespace XtcData;
 #define BUFSIZE 0x4000000
+
+#ifdef PSANA_USE_LEGION
+enum FieldIDs {
+  FID_X = 101,
+};
+#endif
 
 // to avoid compiler warnings for debug variables
 #define _unused(x) ((void)(x))
@@ -24,6 +37,10 @@ typedef struct {
     PyObject_HEAD
     PyObject* dict;
     Dgram* dgram;
+#ifdef PSANA_USE_LEGION
+    LogicalRegionT<1> region;
+    PhysicalRegion physical;
+#endif
     int file_descriptor;
     int verbose;
     int debug;
@@ -41,14 +58,49 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
     }
 }
 
+void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
+{
+    // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
+    char keyName[256];
+    for (unsigned i = 0; i < namesVec.size(); i++) {
+        Names& names = namesVec[i].names();
+
+        for (unsigned j = 0; j < names.num(); j++) {
+            Name& name = names.get(j);
+
+            Alg& alg = name.alg();
+            const char* algName = alg.getAlgName();
+            const uint32_t _v = alg.getVersion();
+
+            PyObject* newobjS = Py_BuildValue("s", algName);
+            PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
+
+            sprintf(keyName,"%s_%s_%s_software",names.detName(),names.dataName(),name.name());
+            PyObject* key = PyUnicode_FromString(keyName);
+            if (PyDict_Contains(pyDgram->dict, key)) { // TODO: This code can only attach one software in configDgram
+                printf("Dgram: Ignoring duplicate key %s\n", "software");
+            } else {
+                PyDict_SetItem(pyDgram->dict, key, newobjS);
+                Py_DECREF(newobjS);
+                sprintf(keyName,"%s_%s_%s_version",names.detName(),names.dataName(),name.name());
+                PyObject* key = PyUnicode_FromString(keyName);
+                PyDict_SetItem(pyDgram->dict, key, newobjV);
+                Py_DECREF(newobjV);
+            }
+        }
+    }
+}
+
 void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
 {
-    Names& names = descdata.nameindex().names();
+    Names& names = descdata.nameindex().names(); // event names, chan0, chan1
+
+    char keyName[256];
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         const char* tempName = name.name();
-        PyObject* key = PyUnicode_FromString(tempName);
         PyObject* newobj;
+
         if (name.rank() == 0) {
             switch (name.type()) {
             case Name::UINT8: {
@@ -126,6 +178,9 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             //clear NPY_ARRAY_WRITEABLE flag
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
+        sprintf(keyName,"%s_%s_%s",names.detName(),names.dataName(),
+                name.name());
+        PyObject* key = PyUnicode_FromString(keyName);
         if (PyDict_Contains(pyDgram->dict, key)) {
             printf("Dgram: Ignoring duplicate key %s\n", tempName);
         } else {
@@ -151,7 +206,7 @@ public:
 
     int process(Xtc* xtc)
     {
-        switch (xtc->contains.id()) {
+        switch (xtc->contains.id()) { //enum Type { Parent, ShapesData, Shapes, Data, Names, NumberOf };
         case (TypeId::Parent): {
             iterate(xtc); // look inside anything that is a Parent
             break;
@@ -179,7 +234,18 @@ static void dgram_dealloc(PyDgramObject* self)
 {
     write_object_info(self, NULL, "Top of dgram_dealloc()");
     Py_XDECREF(self->dict);
+#ifndef PSANA_USE_LEGION
     free(self->dgram);
+#else
+    {
+      Runtime *runtime = Runtime::get_runtime();
+      Context ctx = Runtime::get_context();
+
+      // FIXME: Causes runtime type error
+      // self->physical = PhysicalRegion();
+      runtime->destroy_logical_region(ctx, self->region);
+    }
+#endif
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -199,6 +265,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"debug",
                              NULL};
     int fd=0;
+    bool isConfig;
     PyObject* configDgram=0;
     self->verbose=0;
     self->debug=0;
@@ -210,6 +277,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                                      &(self->debug))) {
         return -1;
     }
+    isConfig = (configDgram==0) ? true : false;
 
     if (fd==0 && configDgram==0) {
         PyErr_SetString(PyExc_StopIteration, "Must specify either file_descriptor or config");
@@ -222,7 +290,27 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         self->file_descriptor=fd;
     }
 
+#ifndef PSANA_USE_LEGION
     self->dgram = (Dgram*)malloc(BUFSIZE);
+#else
+    {
+      Runtime *runtime = Runtime::get_runtime();
+      Context ctx = Runtime::get_context();
+
+      IndexSpaceT<1> ispace = runtime->create_index_space(ctx, Rect<1>(0, BUFSIZE-1));
+      FieldSpace fspace = runtime->create_field_space(ctx);
+      FieldAllocator falloc = runtime->create_field_allocator(ctx, fspace);
+      falloc.allocate_field(1, FID_X);
+      self->region = runtime->create_logical_region(ctx, ispace, fspace);
+
+      InlineLauncher launcher(RegionRequirement(self->region, READ_WRITE, EXCLUSIVE, self->region));
+      launcher.add_field(FID_X);
+      self->physical = runtime->map_region(ctx, launcher);
+      self->physical.wait_until_valid();
+      UnsafeFieldAccessor<char,1,coord_t,Realm::AffineAccessor<char,1,coord_t> > acc(self->physical, FID_X);
+      self->dgram = (Dgram*)acc.ptr(0);
+    }
+#endif
     if (self->dgram == NULL) {
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
         return -1;
@@ -243,9 +331,12 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-    if (configDgram==0) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
+    if (isConfig) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
+
     NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
     namesIter.iterate();
+
+    if (isConfig) DictAssignAlg((PyDgramObject*)configDgram, namesIter.namesVec());
 
     PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
     iter.iterate();
@@ -274,24 +365,24 @@ static PyMemberDef dgram_members[] = {
 };
 
 
-PyObject* tp_getattro(PyObject* o, PyObject* key)
+PyObject* tp_getattro(PyObject* obj, PyObject* key)
 {
-    PyObject* res = PyDict_GetItem(((PyDgramObject*)o)->dict, key);
+    PyObject* res = PyDict_GetItem(((PyDgramObject*)obj)->dict, key);
     if (res != NULL) {
-        if ( (((PyDgramObject*)o)->debug & 0x01) != 0 ) {
+        if ( (((PyDgramObject*)obj)->debug & 0x01) != 0 ) {
             // old-style pointer management -- this should be remove at some point
             printf("Warning: using old-style pointer management in tp_getattro() (i.e. debug=1)\n");
             if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
                 PyArrayObject* arr = (PyArrayObject*)res;
                 PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
                                                                PyArray_DESCR(arr)->type_num, PyArray_DATA(arr));
-                if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, (PyObject*)o) < 0) {
+                if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, (PyObject*)obj) < 0) {
                     printf("Failed to set BaseObject for numpy array.\n");
                     return 0;
                 }
                 // this reference count will get decremented when the returned
                 // array is deleted (since the array has us as the "base" object).
-                Py_INCREF(o);
+                Py_INCREF(obj);
                 //return arr_copy;
                 res=arr_copy;
             } else {
@@ -302,13 +393,10 @@ PyObject* tp_getattro(PyObject* o, PyObject* key)
         } else {
             // New default behaviour
             Py_INCREF(res);
-            PyDict_DelItem(((PyDgramObject*)o)->dict, key);
-            if (PyDict_Size(((PyDgramObject*)o)->dict) == 0) {
-                Py_CLEAR(((PyDgramObject*)o)->dict);
-            }
+            PyDict_DelItem(((PyDgramObject*)obj)->dict, key);
         }
     } else {
-        res = PyObject_GenericGetAttr(o, key);
+        res = PyObject_GenericGetAttr(obj, key);
     }
 
     return res;

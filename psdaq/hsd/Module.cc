@@ -526,9 +526,10 @@ void Module::PrivateData::setAdcMux(bool     interleave,
     base.setMode( QABase::Q_ABCD );
     i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
     fmc_spi.setAdcMux(interleave, channels&0x0f);
-    if (fmcb_core.present())
+    if (fmcb_core.present()) {
       i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
       fmc_spi.setAdcMux(interleave, (channels>>4)&0x0f);
+    }
   }
   else {
     if (fmcb_core.present()) {

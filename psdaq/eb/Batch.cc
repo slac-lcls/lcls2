@@ -13,24 +13,14 @@ using namespace Pds::Eb;
 namespace Pds {
   namespace Eb {
 
-    class TheSrc : public Src
-    {
-    public:
-      TheSrc(const Src& src, unsigned index) :
-        Src(src)
-      {
-        _log |= index << 8;
-      }
-    };
-
     class Batch1
     {
     public:
       Batch1(unsigned index, void* buffer, size_t size, const Dgram** datagrams) :
-        _index(index),
-        _buffer(buffer),
-        _end((char*)buffer + size),
-        _current(buffer),
+        _index    (index),
+        _buffer   (buffer),
+        _end      ((char*)buffer + size),
+        _current  (buffer),
         _datagrams(datagrams),
         _currentDg(datagrams)
       {
@@ -46,7 +36,7 @@ namespace Pds {
           _current = current;
           return buffer;
         }
-        return NULL;
+        return nullptr;
       }
       void store(const Dgram* datagram)
       {
@@ -71,20 +61,23 @@ namespace Pds {
 };
 
 
-Batch::Batch(const Src& src, const Dgram& contrib, uint64_t pid) :
-  _parameter(NULL)
+Batch::Batch(IsLastFlag) :
+  _parameter(this)
+{
+}
+
+Batch::Batch(const Dgram& contrib, uint64_t pid) :
+  _parameter(nullptr)
 {
   Dgram* dg = new(_batch1()->allocate(sizeof(contrib))) Dgram(contrib);
 
-  TimeStamp ts(pid, contrib.seq.stamp().control());
-  dg->seq        = Sequence(contrib.seq.clock(), ts);
-  dg->xtc.src    = TheSrc(src, index());
+  dg->seq        = Sequence(contrib.seq.stamp(), PulseId(pid, 0));
   dg->xtc.extent = sizeof(Xtc);
 }
 
 Batch::~Batch()
 {
-  _batch1()->reset();
+  if (!isLast())  _batch1()->reset();
 }
 
 size_t Batch::size()
@@ -107,8 +100,6 @@ void* Batch::buffer() const
   return _batch1()->_buffer;
 }
 
-#include <unistd.h>
-
 void Batch::init(GenericPoolW& pool,
                  char*         buffer,
                  unsigned      depth,
@@ -117,7 +108,7 @@ void Batch::init(GenericPoolW& pool,
                  unsigned      maxEntries,
                  Batch**       batches)
 {
-  Batch** blist = batches;
+  Batch** blist  = batches;
 
   for (unsigned i = 0; i < depth; ++i)
   {
@@ -138,16 +129,11 @@ void Batch::init(GenericPoolW& pool,
 void* Batch::allocate(size_t size)
 {
   void* entry = _batch1()->allocate(size);
-  assert(entry != (void*)0);
+  assert(entry != nullptr);
 
   datagram()->xtc.alloc(size);
 
   return entry;
-}
-
-void Batch::store(const Dgram* dg)
-{
-  _batch1()->store(dg);
 }
 
 size_t Batch::extent() const
@@ -156,13 +142,15 @@ size_t Batch::extent() const
   return sizeof(*dg) + dg->xtc.sizeofPayload();
 }
 
+void Batch::store(const Dgram* dg)
+{
+  _batch1()->store(dg);
+}
+
 const Dgram* Batch::datagram(unsigned i) const
 {
-  Batch1*       batch1    = _batch1();
+  Batch1*       batch1   = _batch1();
   const Dgram** datagrams = batch1->_datagrams;
 
-  if (&datagrams[i] < batch1->_currentDg)
-    return datagrams[i];
-  else
-    return NULL;
+  return (&datagrams[i] < batch1->_currentDg) ? datagrams[i] : nullptr;
 }

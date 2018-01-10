@@ -25,8 +25,8 @@ using namespace Pds;
  */
 TaskObject::TaskObject(const char* name, int priority,
                        int stackSize, char* stackBase,
-                       int queueSize) :
-  _stacksize((size_t)stackSize), 
+                       int queueSize, unsigned flags) :
+  _stacksize((size_t)stackSize),
   _stackbase(stackBase),
   _priority(priority),
   _queueSize(queueSize)
@@ -35,7 +35,10 @@ TaskObject::TaskObject(const char* name, int priority,
   strcpy(_name, name);
 
   pthread_attr_init( &_flags );
-  pthread_attr_setdetachstate( &_flags, PTHREAD_CREATE_DETACHED );
+  if (flags & THR_DETACHED)
+  {
+    pthread_attr_setdetachstate( &_flags, PTHREAD_CREATE_DETACHED );
+  }
 
   _priority = _priority>127 ? 127 : _priority;
   _priority = _priority<0 ? 0 : _priority;
@@ -54,9 +57,9 @@ TaskObject::TaskObject(const char* name, int priority,
 /*
  *
  */
-TaskObject::TaskObject() : 
-  _name(0), 
-  _stacksize(0), 
+TaskObject::TaskObject() :
+  _name(0),
+  _stacksize(0),
   _stackbase(0),
   _queueSize(0)
 {
@@ -64,7 +67,7 @@ TaskObject::TaskObject() :
   _threadID = pthread_self();
   struct sched_param param;
   pthread_attr_getschedparam(&_flags, &param);
-  _priority = param.sched_priority;  
+  _priority = param.sched_priority;
   _priority = _priority>127 ? 127 : _priority;
   _priority = _priority<0 ? 0 : _priority;
   _priority = 127 - _priority;
@@ -108,5 +111,6 @@ void TaskObject::operator= (const TaskObject& tobject)
  */
 TaskObject::~TaskObject()
 {
+  pthread_attr_destroy( &_flags );
   delete [] _name;
 }

@@ -117,6 +117,28 @@ public:
     float array2[3][3];
 };
 
+class PadData
+{
+public:
+    void* operator new(size_t size, void* p)
+    {
+        return p;
+    }
+    PadData()
+    {
+        uint8_t counter = 0;
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 3; j++) {
+                for (int k = 0; k < 3; k++) {
+                    array[counter] = counter;
+                    counter++;
+                }
+            }
+        }
+    }
+    uint8_t array[18];
+};
+
 void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 {
     DescribedData frontEnd(parent, nameindex, nameId);
@@ -131,8 +153,8 @@ void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     frontEnd.set_data_length(sizeof(PgpData));
 
     unsigned shape[] = { 3, 3 };
-    frontEnd.set_array_shape("array0_pgp", shape);
-    frontEnd.set_array_shape("array1_pgp", shape);
+    frontEnd.set_array_shape("array0Pgp", shape);
+    frontEnd.set_array_shape("array1Pgp", shape);
 }
 
 void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
@@ -145,31 +167,53 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     // if that is not done an error will be asserted.  I think
     // we could remove that requirement if we indicate which
     // array is being written in the data as they are written.
-    fex.set_value("float_fex", (float)41.0);
+    fex.set_value("floatFex", (float)41.0);
     float* ptr = (float*)fex.get_ptr();
     unsigned shape[Name::MaxRank];
     shape[0]=2;
     shape[1]=3;
     for (unsigned i=0; i<shape[0]*shape[1]; i++) ptr[i] = 142.0+i;
-    fex.set_array_shape("array_fex",shape);
-    fex.set_value("int_fex", 42);
+    fex.set_array_shape("arrayFex",shape);
+    fex.set_value("intFex", 42);
+}
+
+void padExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
+{
+    DescribedData pad(parent, nameindex, nameId);
+
+    // simulates PGP data arriving, and shows the address that should be given to PGP driver
+    // we should perhaps worry about DMA alignment issues if in the future
+    // we avoid the pgp driver copy into user-space.
+    new (pad.data()) PadData();
+
+    // now that data has arrived update with the number of bytes received
+    // it is required to call this before set_array_shape
+    pad.set_data_length(sizeof(PadData));
+
+    unsigned shape[] = { 18 };
+    pad.set_array_shape("arrayRaw", shape);
 }
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg alg0("hsd",1,2,3);
-    Names& frontEndNames = *new(parent) Names(alg0);
-    frontEndNames.add("float_pgp",  Name::FLOAT, parent);
-    frontEndNames.add("array0_pgp", Name::FLOAT, parent, 2);
-    frontEndNames.add("int_pgp",    Name::INT32, parent);
-    frontEndNames.add("array1_pgp", Name::FLOAT, parent, 2);
+    Names& frontEndNames = *new(parent) Names("hsd1", "raw");
+    frontEndNames.add(parent, "floatPgp",  Name::FLOAT);
+    frontEndNames.add(parent, "array0Pgp", Name::FLOAT, 2);
+    frontEndNames.add(parent, "intPgp",    Name::INT32);
+    frontEndNames.add(parent, "array1Pgp", Name::FLOAT, 2);
     namesVec.push_back(NameIndex(frontEndNames));
 
-    Alg alg1("abc",1,2,3);
-    Names& fexNames = *new(parent) Names(alg1);
-    fexNames.add("float_fex", Name::FLOAT, parent);
-    fexNames.add("array_fex", Name::FLOAT, parent, 2);
-    fexNames.add("int_fex",   Name::INT32, parent);
+    Alg alg1("abc",4,5,6);
+    Names& fexNames = *new(parent) Names("hsd1", "fex");
+    fexNames.add(parent, "floatFex", Name::FLOAT);
+    fexNames.add(parent, "arrayFex", Name::FLOAT, 2);
+    fexNames.add(parent, "intFex",   Name::INT32);
     namesVec.push_back(NameIndex(fexNames));
+
+    Alg alg2("cspad",2,3,42);
+    Names& padNames = *new(parent) Names("cspad0", "raw");
+    padNames.add(parent, "arrayRaw", alg2); //, Name::FLOAT, parent, 3);
+    namesVec.push_back(NameIndex(padNames));
 }
 
 int main()
@@ -202,10 +246,13 @@ int main()
         dgram.xtc.damage = 0;
         dgram.xtc.extent = sizeof(Xtc);
 
+        // need to protect against putting in the wrong nameId here
         unsigned nameId = 0;
         pgpExample(dgram.xtc, namesVec[nameId], nameId);
         nameId++;
         fexExample(dgram.xtc, namesVec[nameId], nameId);
+        nameId++;
+        padExample(dgram.xtc, namesVec[nameId], nameId);
 
         printf("*** event %d ***\n",i);
         DebugIter iter(&dgram.xtc, namesVec);

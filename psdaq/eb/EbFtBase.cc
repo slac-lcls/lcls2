@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 using namespace Pds;
 using namespace Pds::Fabrics;
@@ -16,8 +17,10 @@ EbFtStats::EbFtStats(unsigned nPeers) :
   _repostCnt(0),
   _repostMax(0),
   _postWtAgnCnt(0),
-  _postWtAgnMax(0),
   _pendCnt(0),
+  _pendTmoCnt(0),
+  _pendAgnCnt(0),
+  _pendAgnMax(0),
   _rependCnt(0),
   _rependMax(0),
   _rmtWrCnt(nPeers),
@@ -43,7 +46,6 @@ void EbFtStats::clear()
   _repostCnt    = 0;
   _repostMax    = 0;
   _postWtAgnCnt = 0;
-  _postWtAgnMax = 0;
   _pendCnt      = 0;
   _rependCnt    = 0;
   _rependMax    = 0;
@@ -70,17 +72,17 @@ static void prtVec(const char* item, const std::vector<uint64_t>& stat)
   if ((--i % 8) != 7)  printf("\n");
 }
 
-void EbFtStats::dump() const
+void EbFtStats::dump()
 {
   if (_postCnt)
   {
-    printf("post: count %8ld, retries %8ld (max %8ld), waits %8ld (max %8ld)\n",
-           _postCnt, _repostCnt, _repostMax, _postWtAgnCnt, _postWtAgnMax);
+    printf("post: count %8ld, reposts %8ld (max %8ld), waits %8ld\n",
+           _postCnt, _repostCnt, _repostMax, _postWtAgnCnt);
   }
   if (_pendCnt)
   {
-    printf("pend: count %8ld, retries %8ld (max %8ld), None %8ld\n",
-           _pendCnt, _rependCnt, _rependMax, _compNoneCnt);
+    printf("pend: count %8ld, timeouts %8ld, again %8ld (max %8ld) retries %8ld (max %8ld), None %8ld\n",
+           _pendCnt, _pendTmoCnt, _pendAgnCnt, _pendAgnMax, _rependCnt, _rependMax, _compNoneCnt);
 
     prtVec("rmtWrCnt",    _rmtWrCnt);
     prtVec("compAgnCnt",  _compAgnCnt);
@@ -94,9 +96,9 @@ EbFtBase::EbFtBase(unsigned nPeers) :
   _lMr(nPeers),
   _rMr(nPeers),
   _ra(nPeers),
-  _cqPoller(NULL),
+  _cqPoller(nullptr),
   _id(nPeers),
-  _mappedId(NULL),
+  _mappedId(nullptr),
   _stats(nPeers),
   _iSrc(0)
 {
@@ -131,6 +133,7 @@ void EbFtBase::_mapIds(unsigned nPeers)
     if (_id[i] > idMax) idMax = _id[i];
 
   _mappedId = new unsigned[idMax + 1];
+  assert(_mappedId);
 
   for (unsigned i = 0; i < nPeers; ++i)
     _mappedId[_id[i]] = i;
@@ -191,7 +194,7 @@ const EbFtStats& EbFtBase::stats() const
   return _stats;
 }
 
-uint64_t EbFtBase::_tryCq()
+int EbFtBase::_tryCq(uint64_t* data)
 {
   // Cycle through all sources to find which one has data
   for (unsigned i = 0; i < _ep.size(); ++i)
@@ -204,31 +207,32 @@ uint64_t EbFtBase::_tryCq()
 
     int              compCnt;
     fi_cq_data_entry cqEntry;
+    const int        maxCnt = 1;
 
-    if (ep->comp(&cqEntry, &compCnt, 1) && (compCnt == 1))
+    ep->recv_comp_data();
+
+    if (ep->comp(&cqEntry, &compCnt, maxCnt) && (compCnt == maxCnt))
     {
       const unsigned flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
-
-      ep->recv_comp_data();
 
       if ((cqEntry.flags & flags) == flags)
       {
         ++_stats._rmtWrCnt[iSrc];
 
-        return _ra[iSrc].addr + cqEntry.data; // imm_data is only 32 bits for verbs!
+        *data = _ra[iSrc].addr + cqEntry.data; // imm_data is only 32 bits for verbs!
+        return 0;
       }
 
-      fprintf(stderr, "Unexpected completion result with peer %u: count %d, flags %016lx\n",
+      fprintf(stderr, "Unexpected completion queue entry of peer %u: count %d, flags %016lx\n",
               _id[iSrc], compCnt, cqEntry.flags);
-      return 0;
+      return -1;
     }
-    ep->recv_comp_data();
 
     if (ep->error_num() != -FI_EAGAIN)
     {
-      fprintf(stderr, "Error completing operation with peer %u: %s\n",
+      fprintf(stderr, "Error reading completion queue of peer %u: %s\n",
               _id[iSrc], ep->error());
-      return 0;
+      return ep->error_num();
     }
 
     ++_stats._compAgnCnt[iSrc];
@@ -236,31 +240,48 @@ uint64_t EbFtBase::_tryCq()
 
   ++_stats._compNoneCnt;
 
-  return 0;
+  return -FI_EAGAIN;
 }
 
-uint64_t EbFtBase::pend()
+int EbFtBase::pend(uint64_t* data)
 {
-  uint64_t data;
-  uint64_t rependCnt = 0;
+  int      ret;
+  uint64_t pendAgnCnt = 0;
+  uint64_t rependCnt  = 0;
   ++_stats._pendCnt;
 
-  while ((data = _tryCq()) == 0)
+  while ((ret = _tryCq(data)) == -FI_EAGAIN)
   {
-    if (!_cqPoller->poll())
+    const int tmo = 5000;               // milliseconds
+    if (!_cqPoller->poll(tmo))
     {
-      fprintf(stderr, "Error polling completion queues: %s\n",
-              _cqPoller->error());
-      return 0;
+      if (_cqPoller->error_num() != -FI_EAGAIN)
+      {
+        if (_cqPoller->error_num() == -FI_ETIMEDOUT)
+        {
+          ++_stats._pendTmoCnt;
+        }
+        else
+        {
+          fprintf(stderr, "Error polling completion queues: %s\n",
+                  _cqPoller->error());
+        }
+        return _cqPoller->error_num();
+      }
+      ++pendAgnCnt;
+      continue;
     }
     ++rependCnt;
   }
 
+  if (pendAgnCnt > _stats._pendAgnMax)
+    _stats._pendAgnMax = pendAgnCnt;
+  _stats._pendAgnCnt += pendAgnCnt;
   if (rependCnt > _stats._rependMax)
     _stats._rependMax = rependCnt;
   _stats._rependCnt += rependCnt;
 
-  return data;
+  return ret;
 }
 
 uint64_t EbFtBase::rmtAdx(unsigned dst, uint64_t offset)
@@ -306,17 +327,20 @@ int EbFtBase::post(LocalIOVec& lclIov,
     {
       int              compCnt;
       fi_cq_data_entry cqEntry;
+      const int        maxCnt = 1;
+
+      ep->recv_comp_data();
 
       //printf("EbFtBase::post: Waiting for comp... %d of %d, %d\n", ++waitCnt, wrtCnt, wrtCnt2);
-      if (!ep->comp_wait(&cqEntry, &compCnt, 1))
+      if (!ep->comp_wait(&cqEntry, &compCnt, maxCnt))
       {
         if (ep->error_num() != -FI_EAGAIN)
         {
           fprintf(stderr, "Error completing operation with peer %u: %s\n",
                   idx, ep->error());
+          return ep->error_num();
         }
       }
-      ep->recv_comp_data();
     }
     else
     {
@@ -330,13 +354,12 @@ int EbFtBase::post(LocalIOVec& lclIov,
 }
 #endif
 
-int EbFtBase::post(const void* buf,
-                   size_t      len,
-                   unsigned    dst,
-                   uint64_t    offset)
+int EbFtBase::post(const void*    buf,
+                   size_t         len,
+                   unsigned       dst,
+                   uint64_t       offset)
 {
-  void*    ctx = NULL;
-
+  void*    ctx = nullptr;
   unsigned idx = _mappedId[dst];
 
   RemoteAddress rmtAdx(_ra[idx].rkey, _ra[idx].addr + offset, len);
@@ -348,36 +371,32 @@ int EbFtBase::post(const void* buf,
   MemoryRegion* mr = _lMr[idx];
   while (!ep->write_data(const_cast<void*>(buf), len, &rmtAdx, ctx, offset, mr))
   {
-    if (ep->state() != EP_CONNECTED)  return -1;
-
     if (ep->error_num() == -FI_EAGAIN)
     {
       int              compCnt;
       fi_cq_data_entry cqEntry;
-      uint64_t         postWtAgnCnt = 0;
+      const ssize_t    maxCnt = 1;
+      const int        tmo    = 5000;   // milliseconds
 
-      while (!ep->comp_wait(&cqEntry, &compCnt, 1))
-      {
-        ep->recv_comp_data();
-
-        if (ep->state()     != EP_CONNECTED)  return -1;
-        if (ep->error_num() != -FI_EAGAIN)
-        {
-          fprintf(stderr, "Error completing operation with peer %u: %s\n",
-                  idx, ep->error());
-          return ep->error_num();
-        }
-        ++postWtAgnCnt;
-      }
       ep->recv_comp_data();
 
-      if (postWtAgnCnt > _stats._postWtAgnMax)
-        _stats._postWtAgnMax = postWtAgnCnt;
-      _stats._postWtAgnCnt += postWtAgnCnt;
+      if (!ep->comp_wait(&cqEntry, &compCnt, maxCnt, tmo))
+      {
+        if (ep->error_num() == -FI_EAGAIN) // Revisit: Proabaly always a timeout?
+        {                                  // This can only occur when exiting
+          ++_stats._postWtAgnCnt;
+        }
+        else
+        {
+          fprintf(stderr, "Error completing post to peer %u: %s\n",
+                  idx, ep->error());
+        }
+        return ep->error_num();
+      }
     }
     else
     {
-      fprintf(stderr, "writemsg failed: %s\n", ep->error());
+      fprintf(stderr, "write_data failed: %s\n", ep->error());
       return ep->error_num();
     }
 

@@ -3,10 +3,11 @@
 
 #include <stdint.h>
 
-#include "psdaq/service/LinkedList.hh"
-#include "psdaq/service/Pool.hh"
-
 #include "EbContribution.hh"
+
+#include "psdaq/service/LinkedList.hh"
+#include "psdaq/service/Routine.hh"
+#include "psdaq/service/Pool.hh"
 
 
 namespace XtcData {
@@ -14,48 +15,53 @@ namespace XtcData {
 };
 
 namespace Pds {
+
+  class GenericPool;
+
   namespace Eb {
 
     class EventBuilder;
 
-    class EbEvent : public LinkedList<EbEvent>
+    class EbEvent : public LinkedList<EbEvent>, public Routine
     {
     public:
       PoolDeclare;
     public:
       EbEvent(uint64_t              contract,
-              EventBuilder*         builder,
+              EventBuilder*         eb,
               EbEvent*              after,
               const XtcData::Dgram* contrib,
-              uint64_t              param,
               uint64_t              mask);
-      ~EbEvent();
+      virtual ~EbEvent();
     public:
-      uint64_t          sequence()  const;
-      size_t            size()      const;
-      uint64_t          remaining() const;
-      uint64_t          contract()  const;
+      virtual void routine();
     public:
-      EbContribution*   creator();
-      EbContribution*   empty();
+      uint64_t sequence()  const;
+      size_t   size()      const;
+      uint64_t remaining() const;
+      uint64_t contract()  const;
     public:
-      void dump(int number);
+      const EbContribution*  const  creator() const;
+      const EbContribution*  const* begin()   const;
+      const EbContribution** const  end()     const;
+    public:
+      void     dump(int number);
     private:
       friend class EventBuilder;
     private:
-      EbEvent*         _add(const XtcData::Dgram*, uint64_t prm);
-      void             _insert(EbContribution*);
-      bool             _alive();
-      EbContribution*  _contribution(const XtcData::Dgram* cdg, uint64_t prm);
+      EbEvent* _add(const XtcData::Dgram*);
+      void     _insert(const XtcData::Dgram*);
+      bool     _alive();
     private:
-      uint64_t         _sequence;     // Event's sequence identifier
-      size_t           _size;         // Total contribution size (in bytes)
-      uint64_t         _remaining;    // List of clients which have contributed
-      uint64_t         _contract;     // -> potential list of contributors
-      EbCntrbList      _pending;      // Pending contribution list head
-      EventBuilder*    _eb;           // -> Back-end processing object
-      int              _living;       // Aging counter
-      uint64_t         _key;          // Masked epoch
+      uint64_t               _sequence;        // Event's sequence identifier
+      size_t                 _size;            // Total contribution size (in bytes)
+      uint64_t               _remaining;       // List of clients which have contributed
+      uint64_t               _contract;        // -> potential list of contributors
+      EventBuilder*          _eb;              // -> Back-end processing object
+      int                    _living;          // Aging counter
+      uint64_t               _key;             // Masked epoch
+      const EbContribution** _last;            // Pointer into the contributions array
+      const EbContribution*  _contributions[]; // Array of contributions
     };
   };
 };
@@ -127,14 +133,19 @@ inline uint64_t Pds::Eb::EbEvent::remaining() const
 ** --
 */
 
-inline Pds::Eb::EbContribution* Pds::Eb::EbEvent::creator()
+inline const Pds::Eb::EbContribution* const Pds::Eb::EbEvent::creator() const
 {
-  return _pending.forward();
+  return _contributions[0];
 }
 
-inline Pds::Eb::EbContribution* Pds::Eb::EbEvent::empty()
+inline const Pds::Eb::EbContribution* const* Pds::Eb::EbEvent::begin() const
 {
-  return _pending.empty();
+  return _contributions;
+}
+
+inline const Pds::Eb::EbContribution** const Pds::Eb::EbEvent::end() const
+{
+  return _last;
 }
 
 /*

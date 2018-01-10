@@ -6,6 +6,7 @@ import time
 import getopt
 import pprint
 
+import event
 sys.path.append('../build/psana')
 import dgram
 #
@@ -18,18 +19,15 @@ class DataSource:
         self._config = dgram.Dgram(file_descriptor=fd,
                                    verbose=verbose,
                                    debug=debug)
+        self.config=event.Event(self._config)
+
     def __iter__(self):
         return self
 
     def __next__(self):
-        d=dgram.Dgram(config=self._config,
-                      verbose=self._get_verbose(),
-                      debug=self._get_debug())
-        for var_name in self.event_variables():
-            delattr(self, var_name)
-        for key in sorted(d.__dict__.keys()):
-            setattr(self, key, getattr(d, key))
-        return self
+        d=dgram.Dgram(config=self._config)
+        return event.Event(d)
+#        return event.Event(self._config)
 
     def _get_verbose(self):
         return getattr(self._config, "verbose")
@@ -42,22 +40,6 @@ class DataSource:
     def _set_debug(self, value):
         setattr(self._config, "debug", value)
     _debug = property(_get_debug, _set_debug)
-
-    def event_variables(self):
-        var_names=[]
-        for var_name in sorted(vars(self)):
-            if var_name != "_config":
-                var_names.append(var_name)
-        return var_names
-
-    def print_event_variables(self):
-        for var_name in self.event_variables():
-            v=getattr(self, var_name)
-            t=type(v).__name__
-            if t=="ndarray":
-                print("%s: %s array with shape %s" % (var_name, v.dtype, v.shape))
-            else:
-                print("%s: %s variable with value" % (var_name, t), v)
 
 
 def parse_command_line():
@@ -91,12 +73,20 @@ def getMemUsage():
 def main():
     args_proper, xtcdata_filename, verbose, debug = parse_command_line()
     ds=DataSource(xtcdata_filename, verbose=verbose, debug=debug)
+    print("vars(ds):")
+    for var_name in sorted(vars(ds)):
+        print("  %s:" % var_name)
+        e=getattr(ds, var_name)
+        for key in sorted(e.__dict__.keys()):
+            print("%s: %s" % (key, e.__dict__[key]))
+    print()
     count=0
-    ds.print_event_variables()
     for evt in ds:
         print("evt:", count)
-        evt.print_event_variables()
-        a=evt.array0_pgp
+        for var_name in sorted(vars(evt)):
+            e=getattr(evt, var_name)
+            print("  %s: %s" % (var_name, e))
+        a=evt.array0Pgp
         try:
             a[0][0]=999
         except ValueError:
