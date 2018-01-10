@@ -19,76 +19,18 @@
 #include "xtcdata/xtc/NamesIter.hh"
 #include "psdaq/hdf5/Hdf5Writer.hh"
 
-#include "psdaq/eb/BatchManager.hh"
-#include "psdaq/eb/EbFtClient.hh"
-#include "psdaq/eb/EbFtServer.hh"
-
-#include "main.hh"
+#include "drp.hh"
 #include "spscqueue.hh"
 #include "PgpCardMod.h"
+#include "Detectors.hh"
+#include "EventBuilder.hh"
 
 using PebbleQueue = SPSCQueue<Pebble*>;
 using namespace XtcData;
 using namespace Pds::Eb;
 
-// these parameters must agree with the server side
-unsigned maxBatches = 1000; // size of the pool of batches
-unsigned maxEntries = 10; // maximum number of events in a batch
-unsigned BatchSizeInPulseIds = 8; // age of the batch. should never exceed maxEntries above, must be a power of 2
-
-unsigned EbId = 0; // from 0-63, maximum number of event builders
-unsigned ContribId = 0; // who we are
-
-class TheSrc : public Src
-{
-public:
-    TheSrc(Level::Type level, unsigned id) :
-        Src(level)
-    {
-        _log |= id;
-    }
-};
-
-class MyDgram : public Dgram {
-public:
-    MyDgram(unsigned pulseId, uint64_t val) {
-        seq = Sequence(Sequence::Event, TransitionId::L1Accept, ClockTime(), TimeStamp(pulseId));
-        env = Env(0);
-        xtc = Xtc(TypeId(TypeId::Data, 0), TheSrc(Level::Segment, ContribId));
-        _data = val;
-        xtc.alloc(sizeof(_data));
-    }
-private:
-    uint64_t _data;
-};
-
-size_t maxSize = sizeof(MyDgram);
-
-class MyBatchManager: public BatchManager {
-public:
-    MyBatchManager(EbFtClient& ebFtClient) :
-        BatchManager(TheSrc(Level::Event, ContribId), BatchSizeInPulseIds, maxBatches, maxEntries, maxSize),
-        _ebFtClient(ebFtClient)
-    {}
-    void post(Batch* batch) {
-        _ebFtClient.post(batch->buffer(), batch->extent(), EbId, batch->index() * maxBatchSize());
-    }
-private:
-    EbFtClient& _ebFtClient;
-};
-
-struct EventHeader {
-    uint64_t pulseId;
-    uint64_t timeStamp;
-    uint32_t trigTag;
-    uint32_t l1Count;
-    unsigned rawSamples:24;
-    unsigned channelMask:8;
-    uint32_t reserved;
-};
-
 const int N = 2000000;
-const int NWORKERS = 1;
+const int NWORKERS = 8;
 
 MovingAverage::MovingAverage(int n) : index(0), sum(0), N(n), values(N, 0) {}
 int MovingAverage::add_value(int value)
@@ -101,11 +43,10 @@ int MovingAverage::add_value(int value)
 }
 
 void monitor_pgp(std::atomic<int64_t>& total_bytes_received,
-                      std::atomic<int64_t>& event_count, std::atomic<int64_t>& complete_count)
+                 std::atomic<int64_t>& event_count)
 {
     int64_t old_bytes = total_bytes_received.load(std::memory_order_relaxed);;
     int64_t old_count = event_count.load(std::memory_order_relaxed);
-    int64_t old_complete = complete_count.load(std::memory_order_release);
     auto t = std::chrono::steady_clock::now();
     while (1) {
         sleep(1);
@@ -117,21 +58,13 @@ void monitor_pgp(std::atomic<int64_t>& total_bytes_received,
             break;
         }
         int64_t new_count = event_count.load(std::memory_order_relaxed);
-        int64_t new_complete = complete_count.load(std::memory_order_release);
 
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t - oldt).count();
         double data_rate = double(new_bytes - old_bytes) / duration;
         double event_rate = double(new_count - old_count) / duration * 1.0e3;
-        int denominator = (new_count - old_count);
-        double complete_ratio = 0.0;
-        if (denominator > 0) {
-          complete_ratio  = double(new_complete - old_complete) / double(new_count - old_count);
-        }
-        printf("Event rate %.2f kHz    Data rate  %.2f MB/s    Complete event ratio %.2f%% \n", event_rate, data_rate, complete_ratio);
+        printf("Event rate %.2f kHz    Data rate  %.2f MB/s\n", event_rate, data_rate);
         old_bytes = new_bytes;
         old_count = new_count;
-        old_complete = new_complete;
-
     }
 }
 
@@ -139,67 +72,81 @@ void monitor_pgp(std::atomic<int64_t>& total_bytes_received,
 class WorkerSender
 {
 public:
-    WorkerSender(int nworkers) :_nworkers(nworkers), _avg_queue_size(nworkers), _worker(0) {}
-    void send_to_worker(std::vector<PebbleQueue>& worker_input_queues, SPSCQueue<int>& collector_queue, Pebble* pebble_data)
+    WorkerSender(int nworkers, std::vector<PebbleQueue>* worker_input_queues, SPSCQueue<int>* collector_queue) :
+       _avg_queue_size(nworkers)
     {
-    PebbleQueue* queue;
-    while (true) {
-        queue = &worker_input_queues[_worker % _nworkers];
-        int queue_size = queue->guess_size();
-        // calculate running mean over the worker queues
-        int mean = _avg_queue_size.add_value(queue_size);
-        if (queue_size * _nworkers - 5 < mean) {
-            break;
+        _nworkers = nworkers;
+        _worker = 0;
+        _worker_input_queues = worker_input_queues;
+        _collector_queue = collector_queue;
+    }
+
+    void send_to_worker(Pebble* pebble_data)
+    {
+        PebbleQueue* queue;
+        while (true) {
+            queue = &(*_worker_input_queues)[_worker % _nworkers];
+            int queue_size = queue->guess_size();
+            // calculate running mean over the worker queues
+            int mean = _avg_queue_size.add_value(queue_size);
+            if (queue_size * _nworkers - 5 < mean) {
+                break;
+            }
+            _worker++;
         }
+        queue->push(pebble_data);
+        _collector_queue->push(_worker % _nworkers);
         _worker++;
     }
-    queue->push(pebble_data);
-    collector_queue.push(_worker % _nworkers);
-    _worker++;
-}
 private:
     int _nworkers;
     MovingAverage _avg_queue_size;
     uint64_t _worker;
+    std::vector<PebbleQueue>* _worker_input_queues;
+    SPSCQueue<int>* _collector_queue;
 };
 
-
-void eb_rcvr(MyBatchManager& myBatchMan)
+class PGPEventBuilder
 {
-    std::string srvPort = "32832"; // add 64 to the client base
-    unsigned numEb = 1;
-    size_t maxBatchSize = sizeof(Dgram) + maxEntries * maxSize;
-    EbFtServer myEbFtServer(srvPort, numEb, maxBatches * maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS);
-    printf("*** rcvr %d %zd\n",maxBatches,maxBatchSize);
-    myEbFtServer.connect(ContribId);
-    unsigned nreceive = 0;
-    unsigned none = 0;
-    unsigned nzero = 0;
-    while(1) {
-        Dgram* batch = (Dgram*)myEbFtServer.pend();
-        unsigned idx = ((char*)batch - myEbFtServer.base()) / maxBatchSize;
-        // printf("received batch %p %d\n",batch,idx);
-        const Batch*  input  = myBatchMan.batch(idx, batch->seq.stamp().pulseId());
-
-        const Dgram*  result = (Dgram*)batch->xtc.payload();
-        const Dgram*  last   = (Dgram*)batch->xtc.next();
-        while(result != last) {
-            nreceive++;
-            // printf("--- result %lx\n",*(uint64_t*)(result->xtc.payload()));
-            uint64_t val = *(uint64_t*)(result->xtc.payload());
-            result = (Dgram*)result->xtc.next();
-            if (val==0) {
-                nzero++;
-            } else if (val==1) {
-                none++;
-            } else {
-                printf("error %ld\n",val);
-            }
-            if (nreceive%10000==0) printf("%d %d %d\n",nreceive,none,nzero);
-        }
-        delete input;
+public:
+    PGPEventBuilder(int queue_size, int nlanes) : _pgp_data(queue_size), _nlanes(nlanes)
+    {
+        assert((queue_size & (queue_size - 1)) == 0);
+        _buffer_mask = queue_size - 1;
+        _last_complete = -1;
     }
-}
+    PGPData* process_lane(Transition* event_header, int lane, int index, int size)
+    {
+        // event builder
+        int j = event_header->evtCounter & _buffer_mask;
+        PGPData* p = &_pgp_data[j];
+        PGPBuffer* buffer = &p->buffers[lane];
+        buffer->dma_index = index;
+        buffer->length = size;
+
+        // set bit in lane mask for lane
+        p->lane_mask |= (1 << lane);
+        p->counter++;
+
+        if (p->counter == _nlanes) {
+            if (event_header->evtCounter != (_last_complete + 1)) {
+                printf("Jump in complete evtCounter %d -> %u\n",
+                        _last_complete, event_header->evtCounter);
+                // FIXME clean up broken events and return dma indices
+            }
+            _last_complete = event_header->evtCounter;
+            return p;
+        }
+        else {
+            return nullptr;
+        }
+    }
+ private:
+    std::vector<PGPData> _pgp_data;
+    int _nlanes;
+    int _buffer_mask;
+    unsigned _last_complete;
+};
 
 void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32_t** dma_buffers, SPSCQueue<int>& collector_queue, std::vector<PebbleQueue>& worker_input_queues, std::vector<unsigned> lanes)
 {
@@ -221,21 +168,16 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32
     pgpCardTx.data = reinterpret_cast<uint32_t*>(nlanes-1);
     write(fd, &pgpCardTx, sizeof(PgpCardTx));
 
-    WorkerSender worker_sender(worker_input_queues.size());
+    WorkerSender worker_sender(worker_input_queues.size(), &worker_input_queues, &collector_queue);
+    PGPEventBuilder pgp_builder(8192, nlanes);
 
     std::atomic<int64_t> total_bytes_received(0L);
     std::atomic<int64_t> event_count(0L);
-    std::atomic<int64_t> complete_count(0UL);
-    std::thread monitor_thread(monitor_pgp, std::ref(total_bytes_received), std::ref(event_count), std::ref(complete_count));
+    std::thread monitor_thread(monitor_pgp, std::ref(total_bytes_received), std::ref(event_count));
 
     PgpCardRx pgp_card;
     pgp_card.model = sizeof(&pgp_card);
     pgp_card.maxSize = 100000;
-   
-     // event builder data structures
-    int64_t last_event[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    Pebble* local_buffer[1024];
-    int64_t current_event = -1;
 
     int i = 0;
     uint64_t bytes_received = 0UL;
@@ -248,133 +190,62 @@ void pgp_reader(SPSCQueue<uint32_t>& index_queue, PebbleQueue& pgp_queue, uint32
 
         // read from pgp card
         pgp_card.data = dma_buffers[index];
-        unsigned int ret = read(fd, &pgp_card, sizeof(pgp_card));
-        if (ret <= 0) {
+        unsigned int size = read(fd, &pgp_card, sizeof(pgp_card));
+        if (size <= 0) {
              std::cout << "Error in reading from pgp card!" << std::endl;
-        } else if (ret == pgp_card.maxSize) {
+        } else if (size == pgp_card.maxSize) {
             std::cout << "Warning! Package size bigger than the maximum size!" << std::endl;
         }
-        bytes_received += ret*4;
-        
-        
-        // event build pgp lanes
+        bytes_received += size*4;
+
         int lane = pgp_card.pgpLane;
-        EventHeader* event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
-        // std::cout<<"pulse id:  "<<event_header->pulseId<<"  "<<lane<<"  "<<event_header->l1Count<<std::endl;
+        Transition* event_header = reinterpret_cast<Transition*>(dma_buffers[index]);
 
-        // create new event
-        if (event_header->l1Count > current_event) {
-            // std::cout<<"Create new pgp data\n";
-            current_event = event_header->l1Count;
-            Pebble** pebble_data = &local_buffer[current_event & 1023];
-            pgp_queue.pop(*pebble_data);
-            PGPData* pgp = (*pebble_data)->pgp_data();
-            // FIXME return old dma indices
-            pgp->nlanes = 0;
-            pgp->lane_count = 0;
-            pgp->pulse_id = event_header->pulseId;
-        }
+        //printf("pulse id: %lu  lane: %d  evtCounter: %d\n", event_header->seq.pulseId().value(), lane, event_header->evtCounter);
 
-        // non consectutive event_count, missing event contribution
-        if ((event_header->l1Count != (last_event[lane] + 1) && (last_event[lane] > 0))) {
-            // this event is missing contribution
-            // FIXME handle jumping over more than one event
-            int64_t index = last_event[lane] + 1;
-            Pebble* p = local_buffer[index & 1023];
-            PGPData* incomplete_event = p->pgp_data();
-            incomplete_event->lane_count++;
-            if (incomplete_event->lane_count == nlanes) {
-                worker_sender.send_to_worker(worker_input_queues, collector_queue, p);
-                i++;
-                uint64_t temp = event_count.load(std::memory_order_relaxed) + 1;
-                event_count.store(temp, std::memory_order_relaxed);
-            }
-            std::cout<<"Non consecutive:  "<<event_header->l1Count<<"  "<<last_event[lane]<<std::endl;
-        }
-
-
-        last_event[lane] = event_header->l1Count;
-        Pebble* p = local_buffer[last_event[lane] & 1023];
-        PGPData* pgp_data = p->pgp_data();
-        
-        // update pgp data
-        PGPBuffer* buffer = &pgp_data->buffers[lane];
-        buffer->dma_index = index;
-        buffer->length = ret;
-        pgp_data->nlanes++;
-        pgp_data->lane_count++;
-
-        // received all buffers and event is complete
-        if (pgp_data->lane_count == nlanes) {
-            // std::cout<<"Complete event\n";
-            worker_sender.send_to_worker(worker_input_queues, collector_queue, p);
+        PGPData* pgp_data = pgp_builder.process_lane(event_header, lane, index, size);
+        if (pgp_data) {
             i++;
+            Pebble* pebble;
+            pgp_queue.pop(pebble);
+            pebble->pgp_data = pgp_data;
+            worker_sender.send_to_worker(pebble);
 
-             // update pgp metrics
+            // update pgp metrics
             uint64_t temp = event_count.load(std::memory_order_relaxed) + 1;
             event_count.store(temp, std::memory_order_relaxed);
             temp = total_bytes_received.load(std::memory_order_relaxed) + bytes_received;
             total_bytes_received.store(temp, std::memory_order_relaxed);
-            temp = complete_count.load(std::memory_order_release) + 1;
-            complete_count.store(temp, std::memory_order_release);
             bytes_received = 0UL;
-         }
+        }
     }
 
 
     // shutdown monitor thread
     total_bytes_received.store(-1, std::memory_order_relaxed);
     monitor_thread.join();
-
     close(fd);
 }
 
-void hsdExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers, std::vector<unsigned>& lanes)
+bool check_pulseIds(PGPData* pgp_data, uint32_t** dma_buffers)
 {
-    char chan_name[8];
-    CreateData hsd(parent, nameindex, nameId);
-    PGPBuffer* buffers = pebble_data->pgp_data()->buffers;
-    uint32_t shape[1];
-    for (unsigned i=0; i<lanes.size(); i++) {
-        sprintf(chan_name,"chan%d",i);
-        shape[0] = buffers[lanes[i]].length;
-        hsd.set_array_shape(chan_name, shape);
+    uint64_t pulse_id = 0;
+    for (int l=0; l<8; l++) {
+        if (pgp_data->lane_mask  & (1 << l)) {
+            uint32_t index = pgp_data->buffers[l].dma_index;
+            Transition* event_header = reinterpret_cast<Transition*>(dma_buffers[index]);
+            if (pulse_id == 0) {
+                pulse_id = event_header->seq.pulseId().value();
+            }
+            else {
+                if (pulse_id != event_header->seq.pulseId().value()) {
+                    printf("Wrong pulse id! expected %lu but got %lu instead\n", pulse_id, event_header->seq.pulseId().value());
+                    return false;
+                }
+            }
+        }
     }
-}
-
-void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
-{
-    CreateData fex(parent, nameindex, nameId);
-
-    uint16_t* ptr = (uint16_t*)fex.get_ptr();
-    unsigned shape[Name::MaxRank];
-    shape[0] = 30;
-    shape[1] = 30;
-    uint32_t dma_index = pebble_data->pgp_data()->buffers[0].dma_index;
-    uint16_t* img = reinterpret_cast<uint16_t*>(dma_buffers[dma_index]);
-    for (unsigned i=0; i<shape[0]*shape[1]; i++) {
-        ptr[i] = img[i];
-    }
-    fex.set_array_shape("array_fex",shape);
-}
-
-void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg("hsd",1,2,3);
-    Names& fexNames = *new(parent) Names(alg);
-
-    fexNames.add("chan0", Name::UINT8, parent, 1);
-    fexNames.add("chan1", Name::UINT8, parent, 1);
-    fexNames.add("chan2", Name::UINT8, parent, 1);
-    fexNames.add("chan3", Name::UINT8, parent, 1);
-    namesVec.push_back(NameIndex(fexNames));
-}
-
-void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg("hsd",1,2,3);
-    Names& fexNames = *new(parent) Names(alg);
-
-    fexNames.add("array_fex", Name::UINT16, parent, 2);
-    namesVec.push_back(NameIndex(fexNames));
+    return true;
 }
 
 void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, uint32_t** dma_buffers, int rank, std::vector<unsigned> lanes)
@@ -388,44 +259,35 @@ void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, u
             break;
         }
 
-        Dgram& dgram = *(Dgram*)pebble_data->fex_data();
-        TypeId tid(TypeId::Parent, 0);
-        dgram.xtc.contains = tid;
-        dgram.xtc.damage = 0;
-        dgram.xtc.extent = sizeof(Xtc);
+        if (!pebble_data->pgp_data->damaged) {
+            check_pulseIds(pebble_data->pgp_data, dma_buffers);
 
-        // check pulseId
-        uint64_t pulse_id;
-        PGPData* pgp_data = pebble_data->pgp_data();
-        if (pgp_data->nlanes == 3) {
-            uint32_t index = pgp_data->buffers[4].dma_index;
-            EventHeader* event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
-            pulse_id = event_header->pulseId;
-            for (int i = 1; i<3; i++) {
-                index = pgp_data->buffers[lanes[i]].dma_index;
-                event_header = reinterpret_cast<EventHeader*>(dma_buffers[index]);
-                if (pulse_id != event_header->pulseId) {
-                    std::cout<<"Wrong pulse id\n";
-                }
+            Dgram& dgram = *(Dgram*)pebble_data->fex_data();
+            TypeId tid(TypeId::Parent, 0);
+            dgram.xtc.contains = tid;
+            dgram.xtc.damage = 0;
+            dgram.xtc.extent = sizeof(Xtc);
+
+            // Do actual work here
+            // configure transition
+            if (counter == 0) {
+                add_roi_names(dgram.xtc, namesVec);
+                // add_hsd_names(dgram.xtc, namesVec);
             }
-        }
-
-        // Do actual work here
-        // configure transition
-        if (counter == 0) {
-            // add_roi_names(dgram.xtc, namesVec);
-            add_hsd_names(dgram.xtc, namesVec);
-        }
-        // making real fex data for event
-        else {
-            // roiExample(dgram.xtc, namesVec[0], 0, pebble_data, dma_buffers);
-            hsdExample(dgram.xtc, namesVec[0], 0, pebble_data, dma_buffers, lanes);
+            // making real fex data for event
+            else {
+                // need to make more robust: have to match this index
+                // to pick up the correct array element in add_NNN_names
+                unsigned nameId = 0;
+                roiExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers);
+                // hsdExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers, lanes);
+            }
         }
 
         worker_output_queue.push(pebble_data);
         counter++;
     }
-    std::cout << "Thread " << rank << " processed " << counter << " events" << std::endl;
+    printf("Thread %d processed %lu events\n", rank, counter);
 }
 
 void pin_thread(const pthread_t& th, int cpu)
@@ -443,7 +305,7 @@ void pin_thread(const pthread_t& th, int cpu)
 class XtcFile
 {
 public:
-    XtcFile(const char* fname) 
+    XtcFile(const char* fname)
     {
         file = fopen(fname, "w");
         if (!file) {
@@ -496,8 +358,8 @@ private:
 
 int main()
 {
-    int queue_size = 16384;
-    std::vector<unsigned> lanes = {0,1,2,3}; // must be contiguous
+    int queue_size = 8192;
+    std::vector<unsigned> lanes = {4, 5, 6, 7}; // must be contiguous
 
     // StringList peers;
     // peers.push_back("172.21.52.136"); //acc05
@@ -519,8 +381,8 @@ int main()
 
     // pin main thread
     pin_thread(pthread_self(), 1);
-    
-    // index_queue goes away with the new pgp driver in the dma streaming mode 
+
+    // index_queue goes away with the new pgp driver in the dma streaming mode
     SPSCQueue<uint32_t> index_queue(queue_size);
     SPSCQueue<Pebble*> pebble_queue(queue_size);
     uint32_t** dma_buffers;
@@ -532,7 +394,7 @@ int main()
         worker_input_queues.emplace_back(PebbleQueue(queue_size));
         worker_output_queues.emplace_back(PebbleQueue(queue_size));
     }
-    
+
     SPSCQueue<int> collector_queue(queue_size);
 
     // buffer size in elements of 4 byte units
@@ -559,8 +421,8 @@ int main()
         pin_thread(worker_threads[i].native_handle(), 3 + i);
     }
 
-    XtcFile xtcfile("/drpffb/cpo/data.xtc");
-    NamesIter namesiter;
+    // XtcFile xtcfile("/reg/neh/home/cpo/data.xtc");
+    // NamesIter namesiter;
     // HDF5File h5file("/u1/cpo/data.h5", namesiter.namesVec());
 
     // start loop for the collector to collect results from the workers in the same order the events arrived over pgp
@@ -583,17 +445,18 @@ int main()
         // MyDgram dg(i,val);
         // myBatchMan.process(&dg);
 
-        if (i==0) {
-            xtcfile.save(dgram);
-        } else {
-            PGPBuffer* buffers = pebble_data->pgp_data()->buffers;
-            for (unsigned ilane=0; ilane<lanes.size(); ilane++) {
-                iov[ilane].iov_len=buffers[lanes[ilane]].length;
-                uint32_t dma_index = buffers[lanes[ilane]].dma_index;
-                iov[ilane].iov_base = reinterpret_cast<void*>(dma_buffers[dma_index]);
-            }
-            xtcfile.saveIov(dgram, iov, lanes.size());
-        }
+        // if (i==0) {
+        //     xtcfile.save(dgram);
+        // } else {
+        //     PGPBuffer* buffers = pebble_data->pgp_data->buffers;
+        //     for (unsigned ilane=0; ilane<lanes.size(); ilane++) {
+        //         iov[ilane].iov_len=buffers[lanes[ilane]].length*sizeof(uint32_t);
+        //         uint32_t dma_index = buffers[lanes[ilane]].dma_index;
+        //         iov[ilane].iov_base = reinterpret_cast<void*>(dma_buffers[dma_index]);
+        //     }
+        //     xtcfile.saveIov(dgram, iov, lanes.size());
+        // }
+
         // if (i == 0) {
         //     namesiter.iterate(&dgram.xtc);
         // }
@@ -602,9 +465,13 @@ int main()
         // }
 
         // return dma indices to dma buffer pool
-        for (unsigned int b=0; b<pebble_data->pgp_data()->nlanes; b++) {
-            index_queue.push(pebble_data->pgp_data()->buffers[b].dma_index);
+        for (int l=0; l<8; l++) {
+            if (pebble_data->pgp_data->lane_mask  & (1 << l)) {
+                index_queue.push(pebble_data->pgp_data->buffers[l].dma_index);
+            }
         }
+        pebble_data->pgp_data->counter = 0;
+        pebble_data->pgp_data->lane_mask = 0;
         pebble_queue.push(pebble_data);
     }
 

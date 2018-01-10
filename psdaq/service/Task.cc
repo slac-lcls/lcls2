@@ -67,8 +67,8 @@ Task::Task(MakeThisATaskFlag dummy)
 Task::~Task()
 {
   // deletes only the memory for the object itself
-  // memory for the contained by pointer objects is deleted 
-  // by the TaskDelete object's routine()  
+  // memory for the contained by pointer objects is deleted
+  // by the TaskDelete object's routine()
 }
 
 
@@ -123,11 +123,11 @@ void Task::call(Routine* routine)
  * Main Loop of a task.
  *
  * It is a global function with c linkage so it can be correctly
- * called by the underlying system service layer. It is friend 
- * to the Task class so that it can act like a private member 
+ * called by the underlying system service layer. It is friend
+ * to the Task class so that it can act like a private member
  * function. This function should never be called directly.
  *
- * Process jobs while there are entries on the queue then take 
+ * Process jobs while there are entries on the queue then take
  * the jobs pending semaphore and wait for new entries.
  *
  */
@@ -156,9 +156,9 @@ void Task::mainLoop()
 }
 
 
-void TaskDelete::routine(void) 
-{ 
-  _taskToKill->deleteTask(); 
+void TaskDelete::routine(void)
+{
+  _taskToKill->deleteTask();
 }
 
 /*
@@ -171,28 +171,28 @@ int Task::createTask(TaskObject& tobj, TaskFunction aRoutine)
 {
   struct sched_param param;
   param.sched_priority=tobj.priority();
-  pthread_attr_setstacksize(&tobj._flags,tobj.stackSize()); 
+  pthread_attr_setstacksize(&tobj._flags,tobj.stackSize());
   pthread_attr_setschedparam(&tobj._flags,&param);
- 
+
   int status = pthread_create(&tobj._threadID,&tobj._flags,aRoutine,this);
 
-  //  printf("Task::createTask id %d name %s\n", tobj._threadID, tobj._name);
+  //  printf("Task::createTask id %ld name %s\n", tobj._threadID, tobj._name);
 
   return status;
 }
 
 
 /*
- * actually make the call to exit the thread. This routine can only 
+ * actually make the call to exit the thread. This routine can only
  * be called from within the context of the thread itself. Therefore,
  * only the destroy() method of Task will really use it.
  */
 void Task::deleteTask()
 {
-  //  printf("Task::deleteTask id %d\n", _taskObj->_threadID);
+  //  printf("Task::deleteTask id %ld\n", _taskObj->_threadID);
 
   if(*_refCount != 0) {
-    // error as this should be the last message 
+    // error as this should be the last message
     // from the last task object for this task
   }
   delete _pending;
@@ -214,5 +214,5 @@ void Task::signal(int signal){
 
 bool Task::is_self() const
 {
-  return pthread_self() == (pthread_t)_taskObj->taskID();
+  return pthread_self() == _taskObj->taskID();
 }

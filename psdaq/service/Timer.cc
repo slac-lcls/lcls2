@@ -60,8 +60,8 @@ void Timer::routine() {
   }
 }
 
-TimerServiceRoutine::TimerServiceRoutine(Timer* timer) 
-  : _timer(timer)  
+TimerServiceRoutine::TimerServiceRoutine(Timer* timer)
+  : _timer(timer)
   , _service_task(0)
   , _status(Off)
 {
@@ -84,7 +84,7 @@ unsigned TimerServiceRoutine::armTimer() {
     if (_timer->task()->parameters().name()) {
       sprintf(taskname, "%sTimer", _timer->task()->parameters().name());
     } else {
-      sprintf(taskname, "%d_Timer", _timer->task()->parameters().taskID());
+      sprintf(taskname, "%ld_Timer", _timer->task()->parameters().taskID());
     }
     int taskpriority = _timer->task()->parameters().priority();
     _service_task = new Task(TaskObject(taskname, taskpriority));
@@ -115,8 +115,8 @@ unsigned TimerServiceRoutine::disarmTimer() {
     _status = Off;
     pthread_mutex_unlock(&_status_mutex);
     TaskWait block(_service_task);
-    // Wake up service thread waiting on _status_cond 
-    pthread_cond_signal(&_status_cond);  
+    // Wake up service thread waiting on _status_cond
+    pthread_cond_signal(&_status_cond);
     block.wait();
     return 0;
   }
@@ -146,7 +146,7 @@ void TimerServiceRoutine::routine() {
       return;
     }
   }
-  pthread_mutex_unlock(&_status_mutex);  
+  pthread_mutex_unlock(&_status_mutex);
 }
 
 // Calculation of absolute time for timer expiration
@@ -156,7 +156,7 @@ timespec TimerServiceRoutine::wakeup() {
   clock_gettime(CLOCK_REALTIME, &now);
 
   wakeuptime.tv_sec  = now.tv_sec  + _delay.tv_sec;
-  wakeuptime.tv_nsec = now.tv_nsec + _delay.tv_nsec; 
+  wakeuptime.tv_nsec = now.tv_nsec + _delay.tv_nsec;
 
   static const long int NanoSeconds  = 1000000000;
 

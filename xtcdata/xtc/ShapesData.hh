@@ -18,6 +18,7 @@ public:
     unsigned major() {return (_version>>16)&0xff;}
     unsigned minor() {return (_version>>8)&0xff;}
     unsigned micro() {return (_version)&0xff;}
+    unsigned version() {return _version;}
 private:
     uint32_t _version;
 };
@@ -33,35 +34,44 @@ public:
         strncpy(_alg, other._alg, maxNameSize);
     }
 
+    uint32_t getVersion() {
+        return _version.version();
+    }
+
+    const char* getAlgName() {return _alg;}
+
 private:
     char _alg[maxNameSize];
     AlgVersion _version;
 };
 
-class Name
-{
+class Name {
 public:
     enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE };
 
     static int get_element_size(DataType type);
 
     enum {MaxRank=5};
-    Name(const char* name, DataType type, int rank)
-    {
-        _init(name,type,rank);
-    }
 
-    const char* name() {return _name;}
-    DataType    type() {return _type;}
-    uint32_t    rank() {return _rank;}
-
-private:
-    void _init(const char* name, DataType type, int rank) {
+    Name(const char* name, DataType type, int rank) : _alg("",0,0,0) {
         strncpy(_name, name, maxNameSize);
         _type = type;
         _rank = rank;
     }
 
+    Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
+        strncpy(_name, name, maxNameSize);
+        _type = type;
+        _rank = rank;
+    }
+
+    const char* name() {return _name;}
+    DataType    type() {return _type;}
+    uint32_t    rank() {return _rank;}
+    Alg&        alg()  {return _alg;}
+
+private:
+    Alg      _alg;
     char     _name[maxNameSize];
     DataType _type;
     uint32_t _rank;
@@ -111,13 +121,17 @@ class Names : public AutoParentAlloc
 {
 public:
 
-    Names(Alg& alg) :
-        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
-        _alg(alg)
+    Names(const char* detName, const char* dataName ) :
+        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0))
     {
-        XtcData::Xtc::alloc(sizeof(_alg));
+        strncpy(_dataName, dataName, maxNameSize);
+        strncpy(_detName, detName, maxNameSize);
+        // allocate space for our private data
+        XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
-    Alg& alg() {return _alg;}
+
+    const char* dataName() {return _dataName;}
+    const char* detName()  {return _detName;}
 
     Name& get(unsigned index)
     {
@@ -127,17 +141,27 @@ public:
 
     unsigned num()
     {
-        return sizeofPayload() / sizeof(Name);
+        unsigned sizeOfNames = (char*)next()-(char*)(this+1);
+        assert (sizeOfNames%sizeof(Name)==0);
+        return sizeOfNames / sizeof(Name);
     }
 
     // Add new item to Names
-    void add(const char* name, Name::DataType type, XtcData::Xtc& parent, int rank=0)
+    void add(XtcData::Xtc& parent, const char* name, Name::DataType type, int rank=0)
     {
         void* ptr = alloc(sizeof(Name), parent);
         new (ptr) Name(name, type, rank);
     }
+
+    // Add new item to Names
+    void add(XtcData::Xtc& parent, const char* name, Alg& alg)
+    {
+        void* ptr = alloc(sizeof(Name), parent);
+        new (ptr) Name(name, Name::UINT8, 1, alg); // Assume array of bytes
+    }
 private:
-    Alg _alg;
+    char     _dataName[maxNameSize];
+    char     _detName[maxNameSize];
 };
 
 #include <stdio.h>
@@ -159,8 +183,9 @@ public:
         AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Shapes,0)),
         _namesId(namesId)
     {
-        XtcData::Xtc::alloc(sizeof(_namesId));
-        // go two levels up to "auto-alloc" Shapes Xtc header size
+        // allocate space for our private data
+        XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
+        // go two levels up to "auto-alloc" Shapes size
         superparent.alloc(sizeof(*this));
     }
 

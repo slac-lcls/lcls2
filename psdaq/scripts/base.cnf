@@ -21,8 +21,9 @@ drp_tst_acc04 = "172.21.42.222"
 drp_tst_acc05 = "172.21.42.223"
 drp_tst_acc06 = "172.21.42.224"
 
+epics_host = daq_tst_dev02
 epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067'
-pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.3.5'
+pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.3.2'
 shelf = '2'
 ip_addr = '10.0.'+shelf
 
@@ -46,7 +47,7 @@ procmgr_config = [
 #
 #  XPM controller
 #
- { host: daq_tst_dev05,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
+ { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
 #
 #  Diagnostics
 #

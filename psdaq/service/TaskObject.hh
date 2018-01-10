@@ -21,10 +21,18 @@ class Task;
 
 class TaskObject {
  public:
+  enum { //THR_SUSPENDED = 1 << 0,
+         THR_DETACHED  = 1 << 1,        // Else joinable
+         //THR_BOUND     = 1 << 2,
+         //THR_NEW_LWP   = 1 << 3,
+         //THR_DAEMON    = 1 << 4,
+       };
+ public:
   TaskObject( const char* name,
               int priority=127,
               int stackSize=20*1024, char* stackBase=NULL,
-              int queueSize=0);
+              int queueSize=0,
+              unsigned flags=THR_DETACHED);
   TaskObject(const TaskObject& tparam );
   TaskObject();
   void operator= (const TaskObject&);
@@ -35,7 +43,7 @@ class TaskObject {
   //  int flags() const {return _flags;}
   char* stackBase() const {return (char*)_stackbase;}
   int stackSize() const {return _stacksize;}
-  int taskID() const {return (int)_threadID;}
+  pthread_t taskID() const {return _threadID;}
   int queueSize() const { return _queueSize; }
 
   friend class Task;

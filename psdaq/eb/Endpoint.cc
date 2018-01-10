@@ -1633,7 +1633,7 @@ bool CompletionPoller::poll(int timeout)
       _errno = npoll;
       set_error("poll");
     } else if (npoll == 0) {
-      _errno = -FI_EAGAIN;
+      _errno = -FI_ETIMEDOUT;
       set_error("poll");
     } else {
       clear_error();
