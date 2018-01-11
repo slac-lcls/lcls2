@@ -42,8 +42,8 @@ int main (int argc, char **argv) {
   unsigned      lanes=1;
   unsigned      opCode=0x80;
   unsigned      size  =512;
-  int           fifolo=-1;
-  int           txReqDelay=-1;
+  int           fifolo=4;
+  int           txReqDelay=0;
   const char*   dev = "/dev/datadev_0";
   int c;
 
