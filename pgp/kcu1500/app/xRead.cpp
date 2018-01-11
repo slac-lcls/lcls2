@@ -68,7 +68,7 @@ int main (int argc, char **argv) {
   bool                lvalidate           = false;
   unsigned            payloadBuffers      = 0;
   bool                reportRate          = false;
-  unsigned            lanes               = 0;
+  unsigned            lanem               = 0;
   ::signal( SIGINT, sigHandler );
 
   //  char*               endptr;
@@ -81,8 +81,8 @@ int main (int argc, char **argv) {
       cardGiven = true;
       break;
     case 'L':
-      lanes = strtoul(optarg,NULL,0);
-      printf("Asking for lane mask %x\n", lanes);
+      lanem = strtoul(optarg,NULL,0);
+      printf("Asking for lane mask %x\n", lanem);
       break;
     case 'N':
       nevents = strtoul(optarg,NULL, 0);
@@ -140,12 +140,12 @@ int main (int argc, char **argv) {
     return 1;
   }
 
-  ioctl(fd, DMA_Set_Debug, 1);
+  ioctl(fd, DMA_Set_Debug, debug);
 
   uint8_t mask[DMA_MASK_SIZE];
   dmaInitMaskBytes(mask);
   for(unsigned i=0; i<8; i++)
-    if (lanes & (1<<i))
+    if (lanem & (1<<i))
       dmaAddMaskBytes(mask, dmaDest(i,0));
 
   if (ioctl(fd, DMA_Set_MaskBytes, mask)<0) {
@@ -176,7 +176,6 @@ int main (int argc, char **argv) {
     pfd.revents = 0;
 
     int result = poll(&pfd, 1, -1);
-    printf("poll result = %d\n",result);
     if (result < 0) {
       perror("poll");
       return -1;
