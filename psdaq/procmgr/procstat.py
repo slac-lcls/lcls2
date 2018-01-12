@@ -32,6 +32,8 @@ class CustomIOError(Exception):
 def getOutputFileName(iExperiment, sExpType,eventNodes):
   if iExperiment < 0:
     return []
+  if eventNodes is None:
+    return []
 
   sExpSubDir = "e%d" % (iExperiment)
   formFileStatusDatabase = []
@@ -481,10 +483,6 @@ def main():
 
   if not exptTypeDefined:
     print('Expt Type Not Defined -- using default value \''+sExpType+'\'')
-  if not eventNodesDefined:
-    print('Event Nodes Not Defined -- See Help:')
-    showUsage()
-    return 1
   if not exptIdDefined:
     print('Expt ID Not Defined -- using default value \'%d\'' % iExperiment)
 
