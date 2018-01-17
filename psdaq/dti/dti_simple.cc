@@ -475,7 +475,7 @@ int main(int argc, char** argv) {
   }
 
   dti->dumpb();
-  dti->dumpPgp();
+  // FIXME dti->dumpPgp();
   dti->start(upstream, fwdmask,lHdrOnly);
 
   LinkStats stats[7], dstats[7];
