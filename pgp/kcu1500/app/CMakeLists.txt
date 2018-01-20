@@ -21,12 +21,14 @@ add_executable(kcuRead xRead.cpp)
 
 target_link_libraries(kcuRead
    pthread
+   rt
 )
 
 add_executable(kcuWrite xWrite.cpp)
 
 target_link_libraries(kcuWrite
    pthread
+   rt
 )
 
 add_executable(kcuDmaStatus xDmaStatus.cpp)

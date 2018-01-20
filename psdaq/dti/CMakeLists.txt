@@ -27,6 +27,7 @@ target_link_libraries(dti_simple
    ${YAML_CPP_LIB}
    dl
    pthread
+   rt
 )
 
 #
@@ -44,6 +45,7 @@ target_link_libraries(dtiPVs
    ${YAML_CPP_LIB}
    dl
    pthread
+   rt
 )
 
 #
@@ -58,6 +60,7 @@ target_link_libraries(dti_eyescan
    ${YAML_CPP_LIB}
    dl
    pthread
+   rt
 )
 
 #
@@ -75,4 +78,5 @@ target_link_libraries(dtiHsrCfg
    ${YAML_CPP_LIB}
    dl
    pthread
+   rt
 )
