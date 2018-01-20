@@ -34,3 +34,10 @@ add_executable(xtcwriter
 target_link_libraries(xtcwriter
     xtc
 )
+
+add_executable(smdwriter
+    app/smdwriter.cc
+)
+target_link_libraries(smdwriter
+    xtc
+)
