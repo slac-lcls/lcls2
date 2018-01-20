@@ -10,6 +10,7 @@ add_executable(xRead xRead.cpp)
 
 target_link_libraries(xRead
    pthread
+   rt
 )
 
 add_executable(xMargin xMargin.cpp)
