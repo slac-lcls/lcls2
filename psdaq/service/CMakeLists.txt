@@ -10,6 +10,7 @@ add_library(service SHARED
     Timer.cc
     GenericPool.cc
     GenericPoolW.cc
+    Histogram.cc
 )
 
 target_include_directories(service PUBLIC
