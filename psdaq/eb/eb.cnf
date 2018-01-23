@@ -3,6 +3,7 @@
 repo_path = '/reg/neh/home/claus/lclsii/daq/lcls2'
 bin_path  = repo_path + '/build-opt/psdaq/eb'
 mgr_path  = repo_path + '/psdaq/procmgr'
+stat_path = '/reg/g/pcds/dist/pds/tools/procmgr'
 
 platform = '5'
 username = 'claus'
@@ -71,8 +72,10 @@ else:
 num_seg = 2
 num_evt = 2
 
-seg_nodes = [ drp_tst_acc01, drp_tst_acc02, drp_tst_acc03, drp_tst_acc04, drp_tst_acc05, drp_tst_acc06 ]
-evt_nodes = [ daq_tst_dev02, daq_tst_dev05, daq_tst_dev04, daq_tst_dev03, daq_tst_dev01 ]
+#seg_nodes = [ drp_tst_acc01, drp_tst_acc02, drp_tst_acc03, drp_tst_acc04, drp_tst_acc05, drp_tst_acc06 ]
+#evt_nodes = [ daq_tst_dev02, daq_tst_dev05, daq_tst_dev04, daq_tst_dev03, daq_tst_dev01 ]
+seg_nodes = [ drp_tst_acc05, drp_tst_acc06 ]
+evt_nodes = [ daq_tst_dev04, daq_tst_dev05 ]
 
 seg_nodes = seg_nodes[:num_seg]
 evt_nodes = evt_nodes[:num_evt]
@@ -103,32 +106,36 @@ for i in range(num_evt):
 
 procmgr_config = []
 
-for i in range(len(seg_nodes)):
-  procmgr_config.append({host:seg_nodes[i],
-                         id:'seg%d'%i,
-                         flags:node_flags,
-                         cmd:bin_path+'/tstEbContributor -i %d'%i+evt_ib_nodes})
-  #procmgr_config.append({host:seg_nodes[i],
-  #                       id:'topSeg%d'%i,
-  #                       flags:node_flags,
-  #                       cmd:'/usr/bin/top -b -c -H -w 105 -u'+username})
-
-for i in range(len(evt_nodes)):
-  procmgr_config.append({host:evt_nodes[i],
-                         id:'evt%d'%i,
-                         flags:node_flags,
-                         cmd:bin_path+'/tstEbBuilder -i %d'%i+seg_ib_nodes})
-  #procmgr_config.append({host:evt_nodes[i],
-  #                       id:'topEvt%d'%i,
-  #                       flags:node_flags,
-  #                       cmd:'/usr/bin/top -b -c -H -w 105 -u'+username})
-
-#print procmgr_config
-
 
 ## procstat
 if not headless:
   procmgr_config.append({id:'procstat',
                          flags:'s',
                          env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=',
-                         cmd:mgr_path+'/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'})
+                         cmd:stat_path+'/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'})
+
+for i in range(len(evt_nodes)):
+  procmgr_config.append({id:'topEvt%d'%i,
+                         flags:'s',
+                         cmd:'/usr/bin/xterm -e ssh -t '+evt_nodes[i]+
+                             ' /usr/bin/top -b -H -c -w 105 -u nobody'})
+
+for i in range(len(seg_nodes)):
+  procmgr_config.append({id:'topSeg%d'%i,
+                         flags:'s',
+                         cmd:'/usr/bin/xterm -e ssh -t '+seg_nodes[i]+
+                             ' /usr/bin/top -b -H -c -w 105 -u nobody'})
+
+for i in range(len(seg_nodes)):
+  procmgr_config.append({host:seg_nodes[i],
+                         id:'seg%d'%i,
+                         flags:node_flags,
+                         cmd:bin_path+'/tstEbContributor -i %d'%i+evt_ib_nodes})
+
+for i in range(len(evt_nodes)):
+  procmgr_config.append({host:evt_nodes[i],
+                         id:'evt%d'%i,
+                         flags:node_flags,
+                         cmd:bin_path+'/tstEbBuilder -i %d'%i+seg_ib_nodes})
+
+#print procmgr_config

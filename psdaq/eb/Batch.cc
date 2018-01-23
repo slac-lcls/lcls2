@@ -61,18 +61,23 @@ namespace Pds {
 };
 
 
+Batch::Batch(IsLastFlag) :
+  _parameter(this)
+{
+}
+
 Batch::Batch(const Dgram& contrib, uint64_t pid) :
   _parameter(nullptr)
 {
   Dgram* dg = new(_batch1()->allocate(sizeof(contrib))) Dgram(contrib);
 
-  dg->seq        = Sequence(contrib.seq.clock(), TimeStamp(pid, 0));
+  dg->seq        = Sequence(contrib.seq.stamp(), PulseId(pid, 0));
   dg->xtc.extent = sizeof(Xtc);
 }
 
 Batch::~Batch()
 {
-  _batch1()->reset();
+  if (!isLast())  _batch1()->reset();
 }
 
 size_t Batch::size()

@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <vector>
 
-
 namespace Pds {
 
   namespace Fabrics {
@@ -32,7 +31,7 @@ namespace Pds {
       ~EbFtStats();
     public:
       void clear();
-      void dump() const;
+      void dump();
     private:
       friend class EbFtBase;
     private:

@@ -60,7 +60,7 @@ size_t BatchManager::batchRegionSize() const
 
 Batch* BatchManager::allocate(const Dgram* datagram)
 {
-  uint64_t pid = _startId(datagram->seq.stamp().pulseId());
+  uint64_t pid = _startId(datagram->seq.pulseId().value());
 
   if (!_batch || _batch->expired(pid))
   {

@@ -39,21 +39,6 @@ static const size_t   max_result_size  = header_size + result_extent * sizeof(ui
 
 static       unsigned lverbose         = 0;
 
-//static void dump(const Pds::Dgram* dg)
-//{
-//  char buff[128];
-//  time_t t = dg->seq.clock().seconds();
-//  strftime(buff,128,"%H:%M:%S",localtime(&t));
-//  printf("%s.%09u %016lx %s extent 0x%x ctns %s damage %x\n",
-//         buff,
-//         dg->seq.clock().nanoseconds(),
-//         dg->seq.stamp().pulseID(),
-//         Pds::TransitionId::name(dg->seq.service()),
-//         dg->xtc.extent,
-//         Pds::TypeId::name(dg->xtc.contains.id()),
-//         dg->xtc.damage.value());
-//}
-
 static void dumpStats(const char* header, timespec startTime, timespec endTime, uint64_t count)
 {
   uint64_t ts = startTime.tv_sec;
@@ -129,7 +114,7 @@ namespace Pds {
       uint64_t count() const { return _batchCount; }
     public:
       void     routine();
-      void     post(Batch* batch);
+      void     post(const Batch* batch);
     private:
       Batch*  _pend();
     private:
@@ -271,7 +256,7 @@ void TstEbInlet::process()
 
   uint64_t contribCount = 0;
   timespec startTime;
-  clock_gettime(CLOCK_REALTIME, &startTime);
+  clock_gettime(CLOCK_MONOTONIC, &startTime);
 
   while (_running)
   {
@@ -286,7 +271,7 @@ void TstEbInlet::process()
       unsigned idx  = (((char*)batch - _inlet.base()) / _maxBatchSize) % _maxBatches;
       unsigned from = batch->xtc.src.log() & 0xff;
       printf("EbInlet  rcvd  %6d        batch[%2d]    @ %16p, ts %014lx, sz %3zd from Contrib %d\n", ++cnt, idx,
-             batch, batch->seq.stamp().pulseId(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
+             batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
     }
 
     contribCount += processBulk(batch);
@@ -295,7 +280,7 @@ void TstEbInlet::process()
   cancel();                             // Stop the event timeout timer
 
   timespec endTime;
-  clock_gettime(CLOCK_REALTIME, &endTime);
+  clock_gettime(CLOCK_MONOTONIC, &endTime);
 
   dumpStats("Inlet per contributor rate",
             startTime, endTime, contribCount / __builtin_popcountl(_contract));
@@ -350,7 +335,7 @@ void TstEbInlet::process(EbEvent* event)
   if (lverbose > 2)
   {
     printf("EbInlet  processed          result[%2d] @ %16p, ts %014lx, sz %3zd\n",
-           rDest->destination(0).phy(), rdg, rdg->seq.stamp().pulseId(), sizeof(*rdg) + rdg->xtc.sizeofPayload());
+           rDest->destination(0).phy(), rdg, rdg->seq.pulseId().value(), sizeof(*rdg) + rdg->xtc.sizeofPayload());
   }
 }
 
@@ -448,18 +433,18 @@ Batch* TstEbOutlet::_pend()
   {
     const Dgram* bdg  = batch->datagram();
     printf("EbOutlet read                batch[%2d] @ %16p, ts %014lx, sz %3zd\n",
-           batch->index(), bdg, bdg->seq.stamp().pulseId(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
+           batch->index(), bdg, bdg->seq.pulseId().value(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
   }
 
   return batch;
 }
 
-void TstEbOutlet::post(Batch* result)
+void TstEbOutlet::post(const Batch* result)
 {
   // Accumulate output datagrams (result) from the event builder into a batch
   // datagram.  When the batch completes, post it to the back end.
 
-  _pending.insert(result);
+  _pending.insert(const_cast<Batch*>(result));
   _resultSem.give();
 }
 
@@ -468,7 +453,7 @@ void TstEbOutlet::routine()
   pin_thread(_task->parameters().taskID(), thread_outlet);
 
   timespec startTime;
-  clock_gettime(CLOCK_REALTIME, &startTime);
+  clock_gettime(CLOCK_MONOTONIC, &startTime);
 
   while (_running)
   {
@@ -505,7 +490,7 @@ void TstEbOutlet::routine()
         static unsigned cnt = 0;
         void* rmtAdx = (void*)_outlet.rmtAdx(dst, idx * maxBatchSize());
         printf("EbOutlet posts       %6d result   [%2d] @ %16p, ts %014lx, sz %3zd to   Contrib %d = %16p\n",
-               ++cnt, idx, rdg, rdg->seq.stamp().pulseId(), extent, dst, rmtAdx);
+               ++cnt, idx, rdg, rdg->seq.pulseId().value(), extent, dst, rmtAdx);
       }
 
       if (_outlet.post(rdg, extent, dst, idx * maxBatchSize()))  break;
@@ -516,7 +501,7 @@ void TstEbOutlet::routine()
   }
 
   timespec endTime;
-  clock_gettime(CLOCK_REALTIME, &endTime);
+  clock_gettime(CLOCK_MONOTONIC, &endTime);
 
   BatchManager::dump();
 

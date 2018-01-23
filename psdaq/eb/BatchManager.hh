@@ -26,7 +26,7 @@ namespace Pds {
                    size_t       maxSize);
       virtual ~BatchManager();
     public:
-      virtual void post(Batch*) = 0;
+      virtual void post(const Batch*) = 0;
     public:
       void*        batchRegion() const;
       size_t       batchRegionSize() const;
