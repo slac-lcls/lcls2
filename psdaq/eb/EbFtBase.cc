@@ -72,7 +72,7 @@ static void prtVec(const char* item, const std::vector<uint64_t>& stat)
   if ((--i % 8) != 7)  printf("\n");
 }
 
-void EbFtStats::dump() const
+void EbFtStats::dump()
 {
   if (_postCnt)
   {
@@ -375,8 +375,8 @@ int EbFtBase::post(const void*    buf,
     {
       int              compCnt;
       fi_cq_data_entry cqEntry;
-      const ssize_t    maxCnt       = 1;
-      const int        tmo          = 5000; // milliseconds
+      const ssize_t    maxCnt = 1;
+      const int        tmo    = 5000;   // milliseconds
 
       ep->recv_comp_data();
 
