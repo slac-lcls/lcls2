@@ -28,11 +28,8 @@
 
 #include <stdio.h>
 
-#ifdef VXWORKS
-#  include "Interrupt.hh"
-#else
-#  include "Lock.hh"
-#endif
+#include <condition_variable>
+#include <mutex>
 
 namespace Pds {
 
@@ -58,35 +55,16 @@ class List
     Entry* insert(Entry*);
     Entry* jam(Entry*);
     Entry* remove();
+    Entry* removeW();
     Entry* remove(Entry*);
     Entry* atHead() const;
     Entry* atTail() const;
   private:
     Entry* _flink;
     Entry* _blink;
-#ifdef VXWORKS
-    class qLock {
-    public:
-      qLock() {};
-     ~qLock() {};
-
-      unsigned set()               { return Interrupt::off(); }
-      void     clear(unsigned key) { Interrupt::on(key);      }
-    } _lock;
-#else
-    class qLock : public Lock {
-    public:
-      qLock() : Lock(_lockRetries) {};
-     ~qLock() {};
-
-      unsigned set()               { get(); return 0; }
-      void     clear(unsigned key) { release();       }
-
-      void     cantLock() {printf("List: Unable to obtain queue lock\n");}
-    private:
-      enum {_lockRetries = 3};
-    } _lock;
-#endif
+  private:
+    std::mutex              _mutex;
+    std::condition_variable _condVar;
   };
 }
 
@@ -212,9 +190,9 @@ inline Pds::Entry* Pds::Entry::remove()
 
 inline Pds::Entry* Pds::List::insert(Entry* entry)
   {
-  unsigned key = _lock.set();
+  std::lock_guard<std::mutex> lk(_mutex);
   Pds::Entry* afterentry = entry->insert(atTail());
-  _lock.clear(key);
+  _condVar.notify_one();
   return afterentry;
   }
 
@@ -229,9 +207,9 @@ inline Pds::Entry* Pds::List::insert(Entry* entry)
 
 inline Pds::Entry* Pds::List::jam(Entry* entry)
   {
-  unsigned key = _lock.set();
+  std::lock_guard<std::mutex> lk(_mutex);
   Pds::Entry* afterentry = entry->insert(atHead());
-  _lock.clear(key);
+  _condVar.notify_one();
   return afterentry;
   }
 
@@ -255,9 +233,16 @@ inline Pds::Entry* Pds::Entry::previous() const {return _blink;}
 
 inline Pds::Entry* Pds::List::remove()
   {
-  unsigned key = _lock.set();
+  std::unique_lock<std::mutex> lk(_mutex);
   Pds::Entry* entry = atHead()->remove();
-  _lock.clear(key);
+  return entry;
+  }
+
+inline Pds::Entry* Pds::List::removeW()
+  {
+  std::unique_lock<std::mutex> lk(_mutex);
+  _condVar.wait(lk, [this]{ return atHead() != empty(); });
+  Pds::Entry* entry = atHead()->remove();
   return entry;
   }
 
@@ -271,9 +256,8 @@ inline Pds::Entry* Pds::List::remove()
 
 inline Pds::Entry* Pds::List::remove(Entry* entry)
   {
-  unsigned key = _lock.set();
+  std::unique_lock<std::mutex> lk(_mutex);
   Pds::Entry* theEntry = entry->remove();
-  _lock.clear(key);
   return theEntry;
   }
 
@@ -289,6 +273,7 @@ class Queue : private List
     T* insert(T* entry)        {return (T*) List::insert((Entry*)entry);}
     T* jam(T* entry)           {return (T*) List::jam((Entry*)entry);}
     T* remove()                {return (T*) List::remove();}
+    T* removeW()               {return (T*) List::removeW();}
     T* remove(T* entry)        {return (T*) List::remove((Entry*)entry);}
     T* atHead() const          {return (T*) List::atHead();}
     T* atTail() const          {return (T*) List::atTail();}
