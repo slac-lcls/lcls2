@@ -19,7 +19,7 @@ python mpi_call.py
 ```
 
 ### Creating a psconda environment in RHEL6 with the latest HDF5/h5py
-
+These scripts require HDF >1.10 and h5py >2.7. These can be installed by
 ```
 ssh psbuild-rhel6
 conda create -n snake_rhel6 --clone ana-1.3.44
