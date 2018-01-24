@@ -5,17 +5,18 @@ import os
 import platform
 import time
 import getopt
-import thread
+import _thread
 import locale
 import traceback
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import Qt, QVariant, QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtGui import QCursor, QBrush, QColor
+from PyQt5.QtWidgets import QApplication, QMessageBox, QTableWidgetItem
 from ProcMgr import ProcMgr, deduce_platform
 import ui_procStat
 import subprocess
-from string import replace
 
-__version__ = "0.4"
+__version__ = "0.5"
 
 # OutDir Full Path Example: daq-sxr-ana01: /u2/pcds/pds/sxr/e19/e19-r0026-s00-c00.xtc
 sOutDirPrefix1 = "/u2/pcds/pds/"
@@ -30,6 +31,8 @@ class CustomIOError(Exception):
 
 def getOutputFileName(iExperiment, sExpType,eventNodes):
   if iExperiment < 0:
+    return []
+  if eventNodes is None:
     return []
 
   sExpSubDir = "e%d" % (iExperiment)
@@ -48,25 +51,25 @@ def getOutputFileName(iExperiment, sExpType,eventNodes):
     output,stderr = process.communicate()
     status = process.poll()
     zeroFilesFlag = False
-    if "No such file or directory" in output:
+    if b"No such file or directory" in output:
       zeroFilesFlag = True
-    if output == "total 0\n":
+    elif b"total 0\n" in output:
       zeroFilesFlag = True
-    if len(output.split()) < 5:
-      print 'getOutputFileName: sshCommand (%s)' % sshCommand
-      print 'getOutputFileName: output too short (%s)' % output
+    elif len(output.split()) < 5:
+      print('getOutputFileName: sshCommand (%s)' % sshCommand)
+      print('getOutputFileName: output too short (%s)' % output)
       zeroFilesFlag = True
 
     # extract the output and arrange it for graphical interface
     if not zeroFilesFlag:
       splittedOutput = output.split()
       try:
-        extractFileName = splittedOutput[-1]
+        extractFileName = splittedOutput[-1].decode()
       except:
-        print 'ERROR:: %s' % output
+        print('ERROR:: %s' % output)
         raise CustomIOError
       completeFilePath = '%(host)s: %(dirPath)s/%(file)s '% {'host':eventNodes[sIndex], 'dirPath':sExpDir,'file':extractFileName}
-      extractTime = splittedOutput[-4]+'  '+splittedOutput[-3]+'  '+splittedOutput[-2]
+      extractTime = splittedOutput[-4]+b'  '+splittedOutput[-3]+b'  '+splittedOutput[-2]
       extractSize = splittedOutput[-5]
       formFileStatusDatabase.append( { "fn": completeFilePath, "size": extractSize, "mtime": extractTime } )
 
@@ -87,7 +90,7 @@ def procMgrThreadWrapper(win, sConfigFile, iExperiment, sExpType, iPlatform, fQu
     print( sErrorReport )
     printStackTrace()
     bProcMgrThreadError = True
-    evgProcMgr.emit(SIGNAL("UnknownError"), sErrorReport ) # Send out the signal to notify the main window
+    win.UnknownError.emit(sErrorReport) # Send out the signal to notify the main window
   return
 
 
@@ -96,7 +99,6 @@ def procMgrThread(win, sConfigFile, iExperiment, sExpType, iPlatform, fQueryInte
   locale.setlocale( locale.LC_ALL, "" ) # set locale for printing formatted numbers later
 
   while True:
-
     # refresh ProcMgr status
     global bProcMgrThreadError
 
@@ -108,12 +110,14 @@ def procMgrThread(win, sConfigFile, iExperiment, sExpType, iPlatform, fQueryInte
     except IOError:
       print( "procMgrThread(): ProcMgr(%s, %d): I/O error" % (sConfigFile, iPlatform) )
       printStackTrace()
-      evgProcMgr.emit(SIGNAL("IOError"), sConfigFile, iPlatform ) # Send out the signal to notify the main window
+      # Send out the signal to notify the main window
+      win.ProcMgrIOError.emit(sConfigFile, iPlatform )
 
     except:
       print( "procMgrThread(): ProcMgr(%s, %d) Failed" % (sConfigFile, iPlatform) )
       printStackTrace()
-      evgProcMgr.emit(SIGNAL("ProcMgrGeneralError"), sConfigFile, iPlatform ) # Send out the signal to notify the main window
+      # Send out the signal to notify the main window
+      win.ProcMgrGeneralError.emit(sConfigFile, iPlatform )
 
     fileStatusDatabase = None  # set default value
     try:
@@ -122,24 +126,43 @@ def procMgrThread(win, sConfigFile, iExperiment, sExpType, iPlatform, fQueryInte
     except CustomIOError:
       print( "Error in ssh or Output Directory::(%s)" % (sOutDirPrefix1) )
       printStackTrace()
-      evgProcMgr.emit(SIGNAL("OutputDirError"), sOutDirPrefix1 ) # Send out the signal to notify the main window
-
+      win.OutputDirError.emit(sOutDirPrefix1 )    # Send out the signal to notify the main window
+      
     except:
       sErrorReport = "procMgrThread(): getOutputFileName() failed due to a general error, possibly caused by filesystem disconnection\n"
       print( sErrorReport )
       printStackTrace()
-      evgProcMgr.emit(SIGNAL("ThreadGeneralError"), sErrorReport ) # Send out the signal to notify the main window
+      # Send out the signal to notify the main window
+      win.ThreadGeneralError.emit(sErrorReport)
 
     if fileStatusDatabase != None:
       # Send out the signal to notify the main window
-      evgProcMgr.emit(SIGNAL("Updated"), ldProcStatus, fileStatusDatabase, iExperiment, sExpType)
+      win.Updated.emit(ldProcStatus, fileStatusDatabase, iExperiment, sExpType)
     else:
       print( "No file status available -- skipping update" )
     time.sleep(fQueryInterval )
 
   return
 
-class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
+class WinProcStat(QtWidgets.QMainWindow, ui_procStat.Ui_mainWindow):
+
+  # define 'Updated' signal
+  Updated = pyqtSignal(list, list, int, str)
+
+  # define 'UnknownError' signal
+  UnknownError = pyqtSignal(str)
+
+  # define 'ProcMgrIOError' signal
+  ProcMgrIOError = pyqtSignal(str, int)
+
+  # define 'ProcMgrGeneralError' signal
+  ProcMgrGeneralError = pyqtSignal(str, int)
+
+  # define 'ThreadGeneralError' signal
+  ThreadGeneralError = pyqtSignal(str, int)
+
+  # define 'OutputDirError' signal
+  OutputDirError = pyqtSignal(str)
 
   def __init__(self, evgProcMgr, parent = None):
     super(WinProcStat, self).__init__(parent)
@@ -150,24 +173,26 @@ class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
     # setup message box for displaying warning messages
     self.msgBox = QMessageBox( QMessageBox.Warning, "Warning",
       "", QMessageBox.Ok, self )
-    self.msgBox.setButtonText( 1, "Continue" ) # set the button label
     self.msgBox.setWindowModality(Qt.NonModal)
 
     # adjust GUI settings
     self.bFirstSort = False;
 
     # setup signal handlers
-    self.connect(self.pushButtonConsole , SIGNAL("clicked(bool)"), self.onClickConsole)
-    self.connect(self.pushButtonLogfile , SIGNAL("clicked(bool)"), self.onClickLogfile)
-    self.connect(self.pushButtonRestart , SIGNAL("clicked(bool)"), self.onClickRestart)
-    self.connect(self.tableProcStat, SIGNAL("cellClicked(int, int)"), self.onProcCellClicked)
 
-    self.connect(evgProcMgr, SIGNAL("Updated"),             self.onProcMgrUpdated )
-    self.connect(evgProcMgr, SIGNAL("IOError"),             self.onProcMgrIOError )
-    self.connect(evgProcMgr, SIGNAL("ThreadGeneralError"),  self.onThreadGeneralError )
-    self.connect(evgProcMgr, SIGNAL("ProcMgrGeneralError"), self.onProcMgrGeneralError )
-    self.connect(evgProcMgr, SIGNAL("OutputDirError"),      self.onProcMgrOutputDirError )
-    self.connect(evgProcMgr, SIGNAL("UnknownError"),        self.onProcMgrUnknownError )
+    # built-in signals
+    self.pushButtonConsole.clicked.connect(self.onClickConsole)
+    self.pushButtonLogfile.clicked.connect(self.onClickLogfile)
+    self.pushButtonRestart.clicked.connect(self.onClickRestart)
+    self.tableProcStat.cellClicked.connect(self.onProcCellClicked)
+
+    # new signals defined using pyqtSignal()
+    self.Updated.connect(self.onProcMgrUpdated)
+    self.ProcMgrIOError.connect(self.onProcMgrIOError )
+    self.ThreadGeneralError.connect(self.onThreadGeneralError )
+    self.ProcMgrGeneralError.connect(self.onProcMgrGeneralError )
+    self.OutputDirError.connect(self.onProcMgrOutputDirError )
+    self.UnknownError.connect(self.onProcMgrUnknownError)
 
     self.iShowConsole = 0 # 0: Don't show console, 1: Show console, 2: Show logfile, 3: Restart
     self.procMgr = None
@@ -179,7 +204,6 @@ class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
     return
 
   def onProcMgrUpdated(self, ldProcStatus, ldOutputFileStatus, iExperiment, sExpType):
-
     self.statusbar.showMessage( "Refreshing ProcMgr status..." )
 
     self.tableProcStat.clear()
@@ -193,7 +217,12 @@ class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
     for iRow, dProcStatus in enumerate( ldProcStatus ):
 
       # col 1 : UniqueID
-      showId = dProcStatus["showId"]
+      if isinstance(dProcStatus["showId"], str):
+        # str
+        showId = dProcStatus["showId"]
+      else:
+        # bytes
+        showId = dProcStatus["showId"].decode()
       item = QTableWidgetItem(showId)
       item.setData(Qt.UserRole, QVariant(showId))
       self.tableProcStat.setItem(iRow, 0, item)
@@ -204,22 +233,20 @@ class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
       # col 2 : Status
       sStatus = dProcStatus["status"]
       item = QTableWidgetItem()
+      brush1 = QBrush(QColor.fromRgb( 255, 255, 255 ) )
+      item.setForeground(brush1)
       if ( sStatus == ProcMgr.STATUS_NOCONNECT ):
         item.setData(0, QVariant(" NO CONNECT"))
-        item.setBackgroundColor( QColor.fromRgb( 0, 0, 192 ) )
-        item.setTextColor( QColor.fromRgb( 255, 255, 255 ) )
+        item.setBackground( QBrush(QColor.fromRgb( 0, 0, 192 ) ) )
       elif ( sStatus == ProcMgr.STATUS_RUNNING ):
         item.setData(0, QVariant("RUNNING"))
-        item.setBackgroundColor( QColor.fromRgb( 0, 192, 0 ) )
-        item.setTextColor( QColor.fromRgb( 255, 255, 255 ) )
+        item.setBackground( QBrush(QColor.fromRgb( 0, 192, 0 ) ) )
       elif ( sStatus == ProcMgr.STATUS_SHUTDOWN ):
         item.setData(0, QVariant(" SHUTDOWN"))
-        item.setBackgroundColor( QColor.fromRgb( 192, 192, 0 ) )
-        item.setTextColor( QColor.fromRgb( 255, 255, 255 ) )
+        item.setBackground( QBrush(QColor.fromRgb( 192, 192, 0 ) ) )
       elif ( sStatus == ProcMgr.STATUS_ERROR ):
         item.setData(0, QVariant(" ERROR"))
-        item.setBackgroundColor( QColor.fromRgb( 255, 0, 0 ) )
-        item.setTextColor( QColor.fromRgb( 255, 255, 255 ) )
+        item.setBackground( QBrush(QColor.fromRgb( 255, 0, 0 ) ) )
 
       self.tableProcStat.setItem(iRow, 1, item)
 
@@ -244,7 +271,7 @@ class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
 > %s <br>
 <b>Size:</b> %s Bytes <br>
 <b>Last Modification Time:</b> %s
-""" % ( dOutputFileStatus["fn"], dOutputFileStatus["size"], dOutputFileStatus["mtime"] )
+""" % ( dOutputFileStatus["fn"], dOutputFileStatus["size"].decode(), dOutputFileStatus["mtime"].decode() )
 
       # save the scrollar positions
       hVal = self.textBrowser.horizontalScrollBar().value()
@@ -261,6 +288,7 @@ class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
     self.statusbar.clearMessage()
     return
 
+  @pyqtSlot(int, int)
   def onProcCellClicked(self, iRow, iCol):
     global localIdList
 
@@ -270,13 +298,13 @@ class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
       return
 
     if len(localIdList) == 0:
-      for kee in self.procMgr.d.iterkeys():
-        id = replace(kee, 'localhost:', '')
+      for kee in self.procMgr.d.keys():
+        id = kee.replace('localhost:', '')
         if id != kee:
           localIdList.append(id)
 
     item = self.tableProcStat.item(iRow, 0)
-    showId = item.data(Qt.UserRole).toString()
+    showId = item.data(Qt.UserRole)
     if self.iShowConsole == 1:
       self.procMgr.spawnConsole(showId, False)
     elif self.iShowConsole == 2:
@@ -332,29 +360,34 @@ class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
     else:
       self.iShowConsole = 0
 
+  @pyqtSlot(str, int)
   def onProcMgrIOError(self, sConfigFile, iPlatform):
     self.showWarningWindow( "ProcMgr IO Error",
      "<p>ProcMgr config file <b>%s</b> (platform <b>%d</b>) cannot be processed correctly, due to an IO Error.<p>" % (sConfigFile, iPlatform) +
-     "<p>Please check the input file format, or specigy a new config file instead." )
+     "<p>Please check the input file format, or specify a new config file instead." )
     return
 
+  @pyqtSlot(str, int)
   def onProcMgrGeneralError(self, sConfigFile, iPlatform):
     self.showWarningWindow( "ProcMgr General Error",
      "<p>ProcMgr config file <b>%s</b> (platform <b>%d</b>) cannot be processed correctly, due to a general Error.<p>" % (sConfigFile, iPlatform) +
      "<p>Please check the input file content, and the target machine status." )
     return
 
+  @pyqtSlot(str)
   def onProcMgrOutputDirError(self, sOutDirPrefix1):
     self.showWarningWindow( "Output Directory Does Not Exist",
      "<p>Please check if the system has access to output directory <i>%s</i>.<p>" % (sOutDirPrefix1) )
     return
 
+  @pyqtSlot(str)
   def onThreadGeneralError(self, sErrorReport):
     self.showWarningWindow( "Thread General Error",
      "<p><i>%s</i><p>" % (sErrorReport) +
      "<p>ProcMgr thread had a general error. Please check the log file for more details.\n")
     return
 
+  @pyqtSlot(str)
   def onProcMgrUnknownError(self, sErrorReport):
     QMessageBox.critical(self, "Unknown Error",
      "<p><i>%s</i><p>" % (sErrorReport) +
@@ -368,29 +401,29 @@ class WinProcStat(QMainWindow, ui_procStat.Ui_mainWindow):
     self.msgBox.show()
     return
 
-  @pyqtSignature("int,int,int,int")
+  @pyqtSlot(int,int,int,int)
   def on_tableProcStat_currentCellChanged( self, iCurRow, iCurCol, iPrevRow, iPrevCol ):
     if iCurRow < 0: return
 
     itemCur = self.tableProcStat.item(iCurRow,0)
     if itemCur == None: return
 
-    self.sCurKey = itemCur.data(Qt.UserRole).toString()
+    self.sCurKey = itemCur.data(Qt.UserRole)
     return
 
-  @pyqtSignature("")
+  @pyqtSlot()
   def on_actionOpen_triggered(self):
-    sFnConfig = unicode(QFileDialog.getOpenFileName(self, \
+    sFnConfig = str(QFileDialog.getOpenFileName(self, \
                         "ProcMgr Config File", ".", \
                         "config files (*.cnf)" ))
     return
 
-  @pyqtSignature("")
+  @pyqtSlot()
   def on_actionQuit_triggered(self):
     self.close()
     return
 
-  @pyqtSignature("")
+  @pyqtSlot()
   def on_actionAbout_triggered(self):
     QMessageBox.about(self, "About procStat",
             """<b>ProcMgr Status Monitor</b> v %s
@@ -449,13 +482,9 @@ def main():
 
 
   if not exptTypeDefined:
-    print 'Expt Type Not Defined -- using default value \''+sExpType+'\''
-  if not eventNodesDefined:
-    print 'Event Nodes Not Defined -- See Help:'
-    showUsage()
-    return 1
+    print('Expt Type Not Defined -- using default value \''+sExpType+'\'')
   if not exptIdDefined:
-    print 'Expt ID Not Defined -- using default value \'%d\'' % iExperiment
+    print('Expt ID Not Defined -- using default value \'%d\'' % iExperiment)
 
 
   if len(lsRemainder) < 1:
@@ -469,7 +498,7 @@ def main():
     try:
         iPlatform = deduce_platform(sConfigFile)
     except IOError:
-        raise CustomIOError, "main(): I/O error while reading " +  sConfigFile
+        raise CustomIOError("main(): I/O error while reading " +  sConfigFile)
 
   evgProcMgr = QObject()
 
@@ -480,7 +509,7 @@ def main():
   win = WinProcStat( evgProcMgr )
   win.show()
 
-  thread.start_new_thread( procMgrThreadWrapper, (win, sConfigFile, iExperiment, sExpType, iPlatform, fProcmgrQueryInterval, evgProcMgr,eventNodes) )
+  _thread.start_new_thread( procMgrThreadWrapper, (win, sConfigFile, iExperiment, sExpType, iPlatform, fProcmgrQueryInterval, evgProcMgr,eventNodes) )
 
   app.exec_()
 
@@ -494,7 +523,7 @@ if __name__ == "__main__":
     iRet = main()
   except:
     iRet = 101
-    print __file__ + ": %s" % (sys.exc_value)
+    print(__file__ + ": %s" % (sys.exc_info()[1]))
     print( "---- Printing program call stacks for debug ----" )
     traceback.print_exc(file=sys.stdout)
     print( "------------------------------------------------" )

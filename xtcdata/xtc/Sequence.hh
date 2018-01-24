@@ -1,8 +1,8 @@
 #ifndef PDS_SEQUENCE_HH
 #define PDS_SEQUENCE_HH
 
-#include "xtcdata/xtc/ClockTime.hh"
 #include "xtcdata/xtc/TimeStamp.hh"
+#include "xtcdata/xtc/PulseId.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
 namespace XtcData
@@ -18,8 +18,8 @@ public:
     {
     }
     Sequence(const Sequence&);
-    Sequence(const ClockTime& clock, const TimeStamp& stamp);
-    Sequence(Type, TransitionId::Value, const ClockTime&, const TimeStamp&);
+    Sequence(const TimeStamp& stamp, const PulseId& pulseId);
+    Sequence(Type, TransitionId::Value, const TimeStamp&, const PulseId&);
 
 public:
     Type type() const;
@@ -28,20 +28,20 @@ public:
     bool isEvent() const;
 
 public:
-    const ClockTime& clock() const
-    {
-        return _clock;
-    }
     const TimeStamp& stamp() const
     {
         return _stamp;
+    }
+    const PulseId& pulseId() const
+    {
+        return _pulseId;
     }
 
 public:
     Sequence& operator=(const Sequence&);
 
 private:
-    ClockTime _clock;
+    PulseId   _pulseId;
     TimeStamp _stamp;
 };
 }

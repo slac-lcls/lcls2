@@ -30,6 +30,7 @@ target_link_libraries(xpm_simple
    ${YAML_CPP_LIB}
    dl
    pthread
+   rt
 )
 
 #
@@ -47,6 +48,7 @@ target_link_libraries(xpmPVs
    ${YAML_CPP_LIB}
    dl
    pthread
+   rt
 )
 
 #
@@ -62,6 +64,7 @@ target_link_libraries(xpmPeek
    epicstools
    dl
    pthread
+   rt
 )
 
 #
@@ -79,4 +82,5 @@ target_link_libraries(xpmHsrCfg
    ${YAML_CPP_LIB}
    dl
    pthread
+   rt
 )

@@ -13,13 +13,16 @@ add_library(eb SHARED
 target_include_directories(eb PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
+  $ENV{CONDA_PREFIX}/include
 )
+
+find_library(FABRIC_CPP_LIBRARY fabric PATH $ENV{CONDA_PREFIX}/lib)
 
 target_link_libraries(eb
 #  -pg
   xtc
   service
-  fabric
+  ${FABRIC_CPP_LIBRARY}
 )
 
 add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
@@ -82,15 +85,18 @@ target_link_libraries(tstEbContributor
 #  -pg
   eb
   pthread
+  rt
 )
 
 target_link_libraries(tstEbBuilder
 #  -pg
   eb
   pthread
+  rt
 )
 
 target_link_libraries(drpEbBuilder
   eb
   pthread
+  rt
 )

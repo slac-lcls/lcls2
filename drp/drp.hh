@@ -1,5 +1,18 @@
+#ifndef DRP_H
+#define DRP_H
+
 #include <vector>
 #include <cstdint>
+
+struct EventHeader {
+    uint64_t pulseId;
+    uint64_t timeStamp;
+    uint32_t l1Count;
+    uint32_t version;
+    unsigned rawSamples:24;
+    unsigned channelMask:8;
+    uint32_t reserved;
+};
 
 class MovingAverage
 {
@@ -33,8 +46,10 @@ struct PGPData
 class Pebble
 {
 public:
-    PGPData* pgp_data() {return reinterpret_cast<PGPData*>(_pebble_buffer);}
-    void* fex_data() {return reinterpret_cast<void*>(_pebble_buffer + sizeof(PGPData));} 
+    void* fex_data() {return reinterpret_cast<void*>(_pebble_buffer);} 
+    PGPData* pgp_data;
 private:
     uint8_t _pebble_buffer[1024*1024];
 };
+
+#endif // DRP_H
