@@ -46,6 +46,7 @@ target_link_libraries(amctiming
     ${YAML_CPP_LIBRARY}
     dl
     pthread
+    rt
 )
 
 #

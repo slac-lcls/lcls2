@@ -62,9 +62,9 @@ namespace Pds {
       unsigned l0Enabled = ns.l0Enabled - os.l0Enabled;
       double dt = double(l0Enabled)*14.e-6/13.;
       unsigned numl0     = ns.numl0    - os.numl0;
-      PVPUT(0, double(numl0)/dt);
+      PVPUT(0, l0Enabled ? double(numl0)/dt :0);
       unsigned numl0Acc  = ns.numl0Acc - os.numl0Acc;
-      PVPUT(1, double(numl0Acc)/dt);
+      PVPUT(1, l0Enabled ? double(numl0Acc)/dt:0);
       PVPUT(3, ns.numl0    - _begin.numl0);
       PVPUT(4, ns.numl0Acc - _begin.numl0Acc);
       PVPUT(6, numl0 ? double(ns.numl0Inh - os.numl0Inh) / double(numl0) : 0);
