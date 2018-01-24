@@ -23,7 +23,6 @@
 #include <inttypes.h>
 #include <chrono>
 #include <atomic>
-#include <chrono>
 
 using namespace XtcData;
 using namespace Pds;
@@ -125,19 +124,17 @@ namespace Pds {
     private:
       Batch*  _pend();
     private:
-      EbFtClient              _outlet;
-      const unsigned          _id;
-      const unsigned          _maxEntries;
-      std::mutex              _mutex;
-      std::condition_variable _resultCv;
-      Queue<Batch>            _pending;
-      uint64_t                _batchCount;
-      Histogram               _depTimeHist;
-      Histogram               _postTimeHist;
-      Histogram               _postCallHist;
+      EbFtClient                            _outlet;
+      const unsigned                        _id;
+      const unsigned                        _maxEntries;
+      Queue<Batch>                          _pending;
+      uint64_t                              _batchCount;
+      Histogram                             _depTimeHist;
+      Histogram                             _postTimeHist;
+      Histogram                             _postCallHist;
       std::chrono::steady_clock::time_point _postPrevTime;
-      std::atomic<bool>       _running;
-      Task*                   _task;
+      std::atomic<bool>                     _running;
+      Task*                                 _task;
     };
 
     // NB: TstEbInlet can't be a Routine since EventBuilder already is one
@@ -165,22 +162,22 @@ namespace Pds {
       uint64_t contract(const Dgram* contrib) const;
       void     fixup(EbEvent* event, unsigned srcId);
     private:
-      const unsigned    _maxBatches;
-      const size_t      _maxBatchSize;
-      EbFtServer        _inlet;
-      const unsigned    _id;
-      const Src         _src;
-      const TypeId      _tag;
-      const uint64_t    _contract;
-      GenericPool       _results; // No RW as it shadows the batch pool, which has RW
-      //EbDummyTC         _dummy;   // Template for TC of dummy contributions  // Revisit: ???
-      BatchManager&     _outlet;
-      uint64_t          _eventCount;
-      Histogram         _arrTimeHist;
-      Histogram         _pendTimeHist;
-      Histogram         _pendCallHist;
+      const unsigned                        _maxBatches;
+      const size_t                          _maxBatchSize;
+      EbFtServer                            _inlet;
+      const unsigned                        _id;
+      const Src                             _src;
+      const TypeId                          _tag;
+      const uint64_t                        _contract;
+      GenericPool                           _results; // No RW as it shadows the batch pool, which has RW
+      //EbDummyTC                             _dummy;   // Template for TC of dummy contributions  // Revisit: ???
+      BatchManager&                         _outlet;
+      uint64_t                              _eventCount;
+      Histogram                             _arrTimeHist;
+      Histogram                             _pendTimeHist;
+      Histogram                             _pendCallHist;
       std::chrono::steady_clock::time_point _pendPrevTime;
-      std::atomic<bool> _running;
+      std::atomic<bool>                     _running;
     };
 
     class StatsMonitor : public Routine
@@ -359,7 +356,7 @@ void TstEbInlet::process(EbEvent* event)
   // Iterate over the event and build a result datagram
   const EbContribution** const  last    = event->end();
   const EbContribution*  const* contrib = event->begin();
-  Dgram                         cdg(*(event->creator()));
+  Dgram                         cdg    (*(event->creator()));
   cdg.env                               = cdg.xtc.src.log() & 0xff;
   cdg.xtc                               = Xtc(_tag, _src);
   Batch*                        batch   = _outlet.allocate(&cdg); // This may post to the outlet
@@ -440,8 +437,6 @@ TstEbOutlet::TstEbOutlet(std::vector<std::string>& cltAddr,
   _outlet      (cltAddr, cltPort, maxBatches * (sizeof(Dgram) + maxEntries * maxSize)),
   _id          (id),
   _maxEntries  (maxEntries),
-  _mutex       (),
-  _resultCv    (),
   _pending     (),
   _batchCount  (0),
   _depTimeHist (12, double(1 << 20)/1000.),
@@ -728,7 +723,7 @@ int main(int argc, char **argv)
   unsigned maxEntries = max_entries;
   unsigned monPeriod  = mon_period;;
 
-  while ((op = getopt(argc, argv, "h?vS:C:i:D:B:E:M:")) != -1)
+  while ((op = getopt(argc, argv, "h?vS:C:i:D:B:E:M:T:")) != -1)
   {
     switch (op)
     {
