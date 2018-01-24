@@ -9,6 +9,11 @@ import time
 
 import os
 
+write_limit = 20 #GB
+mb_per_img = 1
+batch_size = 16
+
+arr_size = mb_per_img*500000
 
 
 def create_image():
@@ -18,13 +23,8 @@ def create_image():
     return arr
 
 
-def write_client():
-
-    write_limit = 100 #GB
-    mb_per_img = 1
-    batch_size = 16
-
-    arr_size = mb_per_img*500000
+def write_client(comm):
+    rank = comm.Get_rank()
 
    # file_name = '/drp_dir/eliseo/data/xtc_lite/xtc_lite_%i.xtc' % rank
 
@@ -33,7 +33,7 @@ def write_client():
 
     img_mb = out_img.nbytes/10**6
 
-    path = 'path /drpffb/eliseo/data/'
+    path = '/drpffb/eliseo/data/xtc_lite/'
     file_name = path + 'xtc_lite_%i.xtc' % rank
 
     try:
@@ -49,7 +49,8 @@ def write_client():
             ct+=1
             written_mb += img_mb
             if ct%10 == 0:
-                print('Wrote image %i' % ct)
+                pass
+              #  print('Wrote image %i' % ct)
             if written_mb > write_limit*1000:
                 break
     
@@ -63,7 +64,7 @@ def do_write(comm):
     if rank == 0:
         global_start = time.time()
 
-    write_client()
+    write_client(comm)
 
     comm.Barrier()
     if rank == 0:
@@ -71,7 +72,7 @@ def do_write(comm):
         wrt_gb = size*write_limit
         av_spd = wrt_gb/(global_end-global_start)
         print('Number of clients %i' % (size))
-        print('File size %i' % wrt_gb) 
+        print('File size %i GB' % wrt_gb) 
         print('Wrote %.2f GB at an average of %.2f GB/s' % (wrt_gb, av_spd))
 
 

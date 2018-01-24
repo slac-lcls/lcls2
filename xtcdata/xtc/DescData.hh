@@ -1,3 +1,4 @@
+
 #ifndef DESCDATA__H
 #define DESCDATA__H
 
@@ -6,6 +7,7 @@
 #include <string>
 #include <map>
 #include <type_traits>
+#include <iostream>
 
 #define _unused(x) ((void)(x))
 
@@ -45,6 +47,8 @@ struct is_vec<Array<T>> : std::true_type {
 };
 
 typedef std::map<std::string, unsigned> IndexMap;
+//typedef std::map<std::string, unsigned>::iterator it;
+
 
 class NameIndex {
 public:
@@ -227,9 +231,19 @@ public:
     void set_value(const char* namestring, T val)
     {
         Data& data = _shapesdata.data();
-        unsigned index = _nameindex.nameMap()[namestring];
-        assert (index==_numentries); // require the user to fill the fields in order
-        Name& name = _nameindex.names().get(index);
+
+	if(_nameindex.nameMap().count(namestring) == 0){
+	  //	  std::cout << "Element " << namestring << " not found" << std::endl;
+	  std::string error_string  = "Element ";
+	  error_string = error_string + namestring + " not found in nameMap()";  
+
+	  throw std::runtime_error(error_string);
+	}
+
+	unsigned index = _nameindex.nameMap()[namestring];
+	assert (index==_numentries); // require the user to fill the fields in order
+	
+	Name& name = _nameindex.names().get(index);
         T* ptr = reinterpret_cast<T*>(data.payload() + _offset[index]);
         *ptr = val;
         data.alloc(sizeof(T), _shapesdata, _parent);
@@ -244,7 +258,6 @@ public:
 
     void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
         unsigned index = _nameindex.nameMap()[name];
-        assert (index==_numentries); // require the user to fill the fields in order
         unsigned shapeIndex = _nameindex.shapeMap()[name];
         assert (shapeIndex==_numarrays);
         _numentries++;
@@ -261,3 +274,30 @@ private:
 };
 
 #endif // DESCDATA__H
+
+
+
+	
+	// std::cout << _nameindex.nameMap().count("cats") << std::endl;
+	
+	// std::map<std::string, unsigned>::iterator it;
+	
+	// for (it=_nameindex.nameMap().begin(); it!=_nameindex.nameMap().end(); it++)
+	//   {
+	//     std::cout << it->first  // string (key)
+        //       << ':'
+        //       << it->second   // string's value 
+        //       << std::endl ;
+	// }
+
+	
+	// const char* indt = "floatFex";
+
+	
+ 	// std::cout << "Map find "<<indt<<": " << _nameindex.nameMap().find(indt)->second << std::endl;
+
+	// std::cout << "Namestring: " << namestring << std::endl;
+	
+ 	// std::cout << "Map find namestring: " << _nameindex.nameMap().find(namestring)->second << std::endl;
+
+ 	// std::cout << "Map end is at: " << _nameindex.nameMap().end()->second << std::endl;

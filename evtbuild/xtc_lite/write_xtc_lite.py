@@ -71,6 +71,7 @@ def do_write(comm):
         global_end = time.time()
         wrt_gb = size*write_limit
         av_spd = wrt_gb/(global_end-global_start)
+        print('Finished at %s' % time.strftime("%H:%M:%S"))
         print('Number of clients %i' % (size))
         print('File size %i GB' % wrt_gb) 
         print('Wrote %.2f GB at an average of %.2f GB/s' % (wrt_gb, av_spd))

@@ -33,7 +33,8 @@ def read_client(comm):
         f.seek(0)
         
         ct = 0
-#        read_bytes = 0
+        eof_pad = 2000
+
         while True:
             file_info = os.stat(file_name)
             size_file_mb = os.stat(file_name).st_size/10**6
@@ -44,7 +45,7 @@ def read_client(comm):
                     time.sleep(0.1)
                     size_file_mb = os.stat(file_name).st_size/10**6
                 
-                    if ct + 2000 < size_file_mb:
+                    if ct + eof_pad < size_file_mb:
                         break
 
             img = f.read(mb_per_img*batches*10**6)
@@ -80,6 +81,8 @@ def do_read(comm):
         global_end = time.time()
         wrt_gb = size*size_file_mb/1000
         av_spd = wrt_gb/(global_end-global_start)
+        print('Finished at %s' % time.strftime("%H:%M:%S"))
         print('Number of clients %i' % (size))
         print('File size %i' % wrt_gb) 
-        print('Read %.2f GB at an average of %.2f GB/s' % (wrt_gb, av_spd))
+        print('Copied %.2f GB at an average of %.2f GB/s' % (wrt_gb, av_spd))
+        

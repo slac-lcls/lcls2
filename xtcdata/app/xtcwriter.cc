@@ -1,3 +1,4 @@
+
 // to do:
 // - add set_array()
 // - figure out how to associate nameindex with correct xtc's
@@ -38,7 +39,7 @@
 
 using namespace XtcData;
 #define BUFSIZE 0x4000000
-#define NEVENT 2
+#define NEVENT 1
 
 class DebugIter : public XtcIterator
 {
@@ -167,7 +168,11 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     // if that is not done an error will be asserted.  I think
     // we could remove that requirement if we indicate which
     // array is being written in the data as they are written.
-    fex.set_value("floatFex", (float)41.0);
+
+    // Weirdness. When the map lookup fails, it returns 0. Thus, it is protected from
+    // failing on the first element because this would return 0 anyway.
+
+    fex.set_value("floatFex000", (float)99.0);
     float* ptr = (float*)fex.get_ptr();
     unsigned shape[Name::MaxRank];
     shape[0]=2;
@@ -175,6 +180,7 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     for (unsigned i=0; i<shape[0]*shape[1]; i++) ptr[i] = 142.0+i;
     fex.set_array_shape("arrayFex",shape);
     fex.set_value("intFex", 42);
+    //    fex.set_value("floatFex", (float)99.0);
 }
 
 void padExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
@@ -248,15 +254,15 @@ int main()
 
         // need to protect against putting in the wrong nameId here
         unsigned nameId = 0;
-        pgpExample(dgram.xtc, namesVec[nameId], nameId);
-        nameId++;
+	//	pgpExample(dgram.xtc, namesVec[nameId], nameId);
+	nameId++;
         fexExample(dgram.xtc, namesVec[nameId], nameId);
-        nameId++;
-        padExample(dgram.xtc, namesVec[nameId], nameId);
+	//   nameId++;
+	//	padExample(dgram.xtc, namesVec[nameId], nameId);
 
         printf("*** event %d ***\n",i);
-        DebugIter iter(&dgram.xtc, namesVec);
-        iter.iterate();
+	DebugIter iter(&dgram.xtc, namesVec);
+	iter.iterate();
 
         if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, xtcFile) != 1) {
             printf("Error writing to output xtc file.\n");
