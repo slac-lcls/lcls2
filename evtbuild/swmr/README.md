@@ -14,7 +14,7 @@ The loops are defined in ```rwc_mpi.py```. The user may wish to change the list 
 
 
 
-``python mpi_call.py```
+```python mpi_call.py```
 
 ## Creating a psconda environment in RHEL6 with the latest HDF5/h5py
 
