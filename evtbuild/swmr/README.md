@@ -12,11 +12,13 @@ These tests have mostly characterized the drp-tst-acc0x and daq-tst-dev0x nodes.
 `which mpirun` -q -map-by node --oversubscribe -n %i -H <<nodes>> python rwc_mpi.py | tee -a <<filename>>
 ```
 
-### Looping HDF test
+### Looping the HDF test
 The loops are defined in ```mpi_call.py```. The user may wish to change the list of nodes (node_list), range of cores iterated over, and number of repeititons of the test. This is called simply with
 ```
 python mpi_call.py
 ```
+The output is saved to a plaintext file for later processing. 
+
 
 ### Creating a psconda environment in RHEL6 with the latest HDF5/h5py
 These scripts require HDF >1.10 and h5py >2.7. These can be installed by
