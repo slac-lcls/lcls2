@@ -67,6 +67,6 @@ elif color == 1:
     #    #comm_test(color,comm,rank,size)
    # read_files(comm, 1) # filter
 elif color == 2:
-  #  pass
+   # pass
     read_files(comm, 0) # copy
 

@@ -39,16 +39,17 @@ class master(object):
     def find_evts(self,mfile, start_index, request_rank, num_read_events):
         
         client_rank = request_rank -1
-        
+  #      print("self.sd_eof is ", self.sd_eof)
         if not self.sd_eof:
             self.diode_dst.id.refresh()
             self.ts_dst.id.refresh()
+   #         print("Client size of small data", self.ts_dst.shape[0])
 
         # check if EOF
         if self.diode_dst[-1] == -1 and not self.sd_eof:
             self.sd_eof = True
 
-      #  print('Client %i read %i events' % (client_rank, num_read_events))
+    #    print('Client %i read %i events' % (client_rank, num_read_events))
         try:
             if self.sd_eof and num_read_events == self.final_length:
                 self.master_dump.write('Client %i at end of file. Skipping small data\n' % client_rank)
@@ -65,7 +66,7 @@ class master(object):
         
 #        dd=0
         number_of_events = self.diode_dst.shape[0]            
-      # print('Client %i dd is %i/%i ' % (client_rank, dd, number_of_events))
+     #   print('Client %i dd is %i/%i ' % (client_rank, dd, number_of_events))
       #  print('Diode values', diode_dst[dd:])
         # Location of high diode values (>(1-hit_probability))
         notable_inds = np.where(np.array(self.diode_dst[dd:]) > 1-self.hit_probability)[0]
@@ -91,7 +92,7 @@ class master(object):
         if self.sd_eof and not self.eof_lock:
             self.final_length = len(np.where(np.array(self.diode_dst) > 1-self.hit_probability)[0])
 
-            #print('Final length is %i' % self.final_length)
+            print('Final length is %i' % self.final_length)
             self.eof_lock = True
    
         return number_of_events, timestamps, self.final_length
@@ -102,7 +103,7 @@ class master(object):
         client_list = np.arange(num_clients) + 1
 
         master_file_name = '%s/swmr_small_data.h5' % (self.cfg['path'])
-
+       # print("master file name ", master_file_name)
         
                
         with h5py.File(master_file_name, 'r', swmr=True) as master_file:
@@ -168,7 +169,12 @@ class msg(object):
         self.total_events = 0
         self.num_read_events = 0
 
-def client(comm):
+def client(comm, filt):
+
+    mode_String = 'Copy'
+    if filt:
+        mode_String = 'Filter'
+
     rank = comm.Get_rank()
     cfg = load_config('sconfig')
 
@@ -202,7 +208,7 @@ def client(comm):
             # Append any events that failed to read from the last loop
             # This can happen if the file opened lags the small data synchronized to file0 
             evt_inds = np.append(retained_evts, evt_inds)
-
+            
             retained_evts = []
 
             client_start = time.time()
@@ -215,12 +221,14 @@ def client(comm):
                     rin_mb = read_in.nbytes/10.0**6
                     client_total_events += 1
                     read_events.append(evt)
+                  #  print('%s client %i read in event %i/%i' % (mode_String, rank-1, evt_ct,evt))
                 except ValueError:
                     retained_evts.append(evt)
                     rin_mb = 0
 #                    print('Event %i out of range, held over for rank %i' % (evt, client_rank))
                 total_read_in += rin_mb
-                #print('Client %i read in event %i' % (rank-1, evt_ct))
+               # if filt:
+                #    print('%s client %i read in event %i' % (mode_String, rank-1, evt_ct))
                 
             client_end = time.time()
             client_msg.num_read_events = client_total_events
@@ -256,7 +264,7 @@ def client(comm):
             # The file size isn't increasing anymore, so we need to
             # exit from the loop
 
-            eof_buffer_size = 0
+            eof_buffer_size = 2000
             while client_msg.rank_active and not eof:
                 if exit_count > 10:
                     #print('File %i stopped writing' % client_rank)
@@ -343,7 +351,7 @@ def read_files(comm,filt):
         rm = master(comm,filt)
         rm.master()
     else:
-        client(comm)
+        client(comm,filt)
     # Wait for all the clients to finish
     comm.Barrier()
 

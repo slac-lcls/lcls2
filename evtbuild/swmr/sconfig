@@ -1,17 +1,11 @@
-path	/drpffb/eliseo/data/swmr/3_stripe
-
-#path  /reg/neh/home/eliseo/lcls2/evtbuild/swmr_temp
-#path /reg/d/ffb/xpp/test/offline_eb/data/swmr 
-#path  /ztest/eliseo/data
-#path /reg/neh/home/eliseo/lcls2/evtbuild/swmr/data
-
+path /teststripe/eliseo/hdf_test
 
 hit_probability	   0.2	# Probability that a diode value is interesting
 
-file_size	   100 # Total file size in GB
-image_size	   16  # Image size in MB
+file_size	   10 # Total file size in GB
+image_size	   10  # Image size in MB
 
-batch_size  64	   # Number of images written in a batch
+batch_size  10	   # Number of images written in a batch
 
 nstripes 3  # Lustre stripe count
 
