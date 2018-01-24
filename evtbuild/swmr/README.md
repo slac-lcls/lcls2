@@ -3,7 +3,9 @@
 ## Running a single test case
 These tests have mostly characterized the drp-tst-acc0x and daq-tst-dev0x nodes. You can run a single test case with
 
-````which mpirun` -q -map-by node --oversubscribe -n %i -H <<nodes>> python rwc_mpi.py | tee -a <<filename>>```
+```
+`which mpirun` -q -map-by node --oversubscribe -n %i -H <<nodes>> python rwc_mpi.py | tee -a <<filename>>
+```
 
 
 ## Looping HDF test
