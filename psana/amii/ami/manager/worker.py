@@ -35,6 +35,7 @@ class Worker(object):
         while True:
             changed_ops = []
             srcs = []
+            print("Worker running, waiting for cfg...")
             cfg_topic = self.cfg_sock.recv_string()
             config_id = self.cfg_sock.recv_pyobj()
             new_global_config = self.cfg_sock.recv_pyobj()
