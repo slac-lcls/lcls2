@@ -1303,6 +1303,7 @@ class ProcMgr:
                     self.setStatus([key], self.STATUS_SHUTDOWN)
 
         # send ^X to connections where status is not SHUTDOWN
+        retrylist = []
         for key, connection in telnetdict.items():
             if (self.d[key][self.DICT_STATUS] == self.STATUS_SHUTDOWN):
                 continue    # skip
@@ -1314,13 +1315,41 @@ class ProcMgr:
                 # wait for KILLED message
                 response = telnetdict[key].read_until(self.MSG_KILLED, 1)
             except:
+                response = '(exception)'
+                rv = 1
+                if verbose:
+                    print('FAILED')
+                retrylist.append(key)
+                print('ERR: Exception while killing %r client: %r' % (key, sys.exc_info()[1]))
+            else:
+                if response.count(b"Restarting"):
+                    retrylist.append(key)
+                    if verbose:
+                        print('FAILED')
+                elif verbose:
+                    print('done')
+
+        # Retry: send ^X to connections for which first attempt failed
+        for key in retrylist:
+            if verbose:
+                progressMessage('retry sending ^X to %r (%s port %s)' % (key, key2host(key), stopdict[key][self.DICT_CTRL]))
+            try:
+                # 0x18 = ^X
+                telnetdict[key].write(b"\x18");
+                # wait for KILLED message
+                response = telnetdict[key].read_until(self.MSG_KILLED, 1)
+            except:
+                response = '(exception)'
                 rv = 1
                 if verbose:
                     print('FAILED')
                 print('ERR: Exception while killing %r client: %r' % (key, sys.exc_info()[1]))
             else:
                 if verbose:
-                    print('done')
+                    if response.count(b"Restarting"):
+                        print('FAILED')
+                    else:
+                        print('done')
 
         # send ^Q to all connections
         for key, connection in telnetdict.items():
