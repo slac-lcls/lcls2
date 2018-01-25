@@ -37,7 +37,7 @@ class DetectorList(QListWidget):
     def set_detectors(self, detectors):
         # detectors = dict, maps name --> type
         self.detectors = detectors
-        for k in detectors.keys():
+        for k in list(detectors.keys()):
             self.addItem(k)
         return
 
@@ -50,11 +50,11 @@ class DetectorList(QListWidget):
             # open area detector
             self.manager.get_socket().send_string('string')
             #self._spawn_window('AreaDetector')
-            print'create area detector window for:', item.text()
+            print('create area detector window for:', item.text())
 
         elif self.detectors[item.text()] == 'waveform':
             self._spawn_window('WaveformDetector')
-            print 'create waveform window for:', item.text()
+            print('create waveform window for:', item.text())
 
         else:
             raise ValueError('Type %s not valid' % self.detectors[item.text()])

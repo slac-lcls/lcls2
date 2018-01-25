@@ -20,6 +20,8 @@ class Master(object):
     @property
     def detectors(self):
         d = {}
+        self.sock.send_string('apply_config')
+        self.sock.recv_string()
         self.sock.send_string('get_config')
         cfg = self.sock.recv_pyobj()
         for topic, shape in cfg['src']['config']['sources']:
@@ -46,7 +48,7 @@ class WaveformWidget(pg.GraphicsLayoutWidget):
         else:
             self.ctx = zmqctx
         self.sock = self.ctx.socket(zmq.SUB)
-        self.sock.setsockopt_string(zmq.SUBSCRIBE, topic.decode('utf-8'))
+        self.sock.setsockopt_string(zmq.SUBSCRIBE, topic)
         self.sock.connect("tcp://localhost:55558")
         self.zmq_thread = threading.Thread(target=self.get_waveform)
         self.zmq_thread.daemon = True
@@ -72,7 +74,7 @@ class AreaDetWidget(pg.ImageView):
         else:
             self.ctx = zmqctx
         self.sock = self.ctx.socket(zmq.SUB)
-        self.sock.setsockopt_string(zmq.SUBSCRIBE, topic.decode('utf-8'))
+        self.sock.setsockopt_string(zmq.SUBSCRIBE, topic)
         self.sock.connect("tcp://localhost:55556")
         self.zmq_thread = threading.Thread(target=self.get_image)
         self.zmq_thread.daemon = True
@@ -88,7 +90,7 @@ class AreaDetWidget(pg.ImageView):
 
     #@pyqtSlot(pg.ROI)
     def roi_updated(self, roi):
-        print(roi.getAffineSliceParams(self.image, self.getImageItem()))
+        print((roi.getAffineSliceParams(self.image, self.getImageItem())))
 
 class DetectorList(QListWidget):
     
@@ -102,7 +104,7 @@ class DetectorList(QListWidget):
     def set_detectors(self, detectors):
         # detectors = dict, maps name --> type
         self.detectors = detectors
-        for k in detectors.keys():
+        for k in list(detectors.keys()):
             self.addItem(k)
         return
 
@@ -114,11 +116,11 @@ class DetectorList(QListWidget):
         if self.detectors[item.text()] == 'area':
             # open area detector
             self._spawn_window('AreaDetector', item.text(), self.ctx)
-            print 'create area detector window for:', item.text()
+            print('create area detector window for:', item.text())
 
         elif self.detectors[item.text()] == 'waveform':
             self._spawn_window('WaveformDetector', item.text(), self.ctx)
-            print 'create waveform window for:', item.text()
+            print('create waveform window for:', item.text())
 
         else:
             raise ValueError('Type %s not valid' % self.detectors[item.text()])
