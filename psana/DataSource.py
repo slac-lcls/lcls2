@@ -29,6 +29,10 @@ class DataSource:
         return event.Event(d)
 #        return event.Event(self._config)
 
+    def __jump__(self, offset=0):
+        d=dgram.Dgram(config=self._config, offset=offset)
+        return event.Event(d)
+
     def _get_verbose(self):
         return getattr(self._config, "verbose")
     def _set_verbose(self, value):
