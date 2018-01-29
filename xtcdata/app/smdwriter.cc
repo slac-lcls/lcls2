@@ -111,8 +111,8 @@ int main(int argc, char* argv[])
     CreateData smd(dgOut.xtc, namesVec[nameId], nameId);
     smd.set_value("intOffset", nowOffset);
     
-    printf("Read evt: %4d Payload size: %8d Writing offset: %10d\n", 
-        eventId++, dgIn->xtc.sizeofPayload(), nowOffset);
+    printf("Read evt: %4d Dgram size: %8lu Payload size: %8d Writing offset: %10d\n", 
+        eventId++, sizeof(*dgIn), dgIn->xtc.sizeofPayload(), nowOffset);
 
     if (fwrite(&dgOut, sizeof(dgOut) + dgOut.xtc.sizeofPayload(), 1, xtcFile) != 1) {
       printf("Error writing to output xtc file.\n");
@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
     }
 
     // Update the offset
-    nowOffset += dgIn->xtc.sizeofPayload();
+    nowOffset += sizeof(*dgIn) + dgIn->xtc.sizeofPayload();
 
   }
   printf("Done.\n");
