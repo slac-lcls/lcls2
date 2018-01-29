@@ -9,6 +9,12 @@ Entire lcls2 repo is clonned as
 **on pslogin:**
 ```
 git clone https://github.com/slac-lcls/lcls2.git
+```
+
+## Setup
+From release directory
+```
+source lcls2/set_pyenv
 
 ```
 ## References

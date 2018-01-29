@@ -1,4 +1,3 @@
-#!@PYTHON@
 ####!/usr/bin/env python
 #------------------------------
 """:py:class:`Graphics` wrapping methods for matplotlib
@@ -6,7 +5,7 @@
 
 Usage::
 
-    import pyimgalgos.Graphics as gr
+    import psana.Graphics as gr
 
     # Methods
 
@@ -28,23 +27,25 @@ Usage::
     imsh, cbar = gr.imshow_cbar(fig, axim, axcb, img, amin=None, amax=None, extent=None, interpolation='nearest', aspect='auto', origin='upper', orientation='vertical', cmap='inferno')
 
 See:
+  - :py:class:`Utils`
+  - :py:class:`NDArrUtils`
   - :py:class:`Graphics`
-  - :py:class:`GlobalGraphics`
   - :py:class:`NDArrGenerators`
-  - :py:class:`HBins`
-  - :py:class:`HPolar`
-  - :py:class:`HSpectrum`
-  - :py:class:`NDArrSpectrum`
-  - :py:class:`RadialBkgd`
-  - `Radial background <https://confluence.slac.stanford.edu/display/PSDMInternal/Radial+background+subtraction+algorithm>`_.
   - `matplotlib <https://matplotlib.org/contents.html>`_.
 
-This software was developed for the SIT project.
+This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
-Created in 2015 by Mikhail Dubrovin
+Modified on 2018-01-25 by Mikhail Dubrovin
 """
+
 #------------------------------
+
+import logging
+log = logging.getLogger('Graphics')
+
+#------------------------------
+
 import numpy as np
 
 import matplotlib
@@ -54,7 +55,7 @@ import matplotlib.pyplot  as plt
 #import matplotlib.lines   as lines
 #import matplotlib.patches as patches
 
-from CalibManager.PlotImgSpeWidget import add_stat_text
+#from CalibManager.PlotImgSpeWidget import add_stat_text
 
 #------------------------------
 
@@ -125,7 +126,6 @@ def add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=1
 #------------------------------
 
 def show(mode=None) :
-    plt.hold(True)
     if mode is None : plt.ioff() # hold contraol at show() (connect to keyboard for controllable re-drawing)
     else            : plt.ion()  # do not hold control
     plt.pause(0.001) # hack to make it work... othervise show() does not work...
@@ -144,13 +144,13 @@ def draw_fig(fig) :
 #------------------------------
 
 def save_plt(fname='img.png', verb=True) :
-    if verb : print 'Save plot in file: %s' % fname 
+    if verb : print('Save plot in file: %s' % fname)
     plt.savefig(fname)
 
 #------------------------------
 
 def save_fig(fig, fname='img.png', verb=True) :
-    if verb : print 'Save figure in file: %s' % fname 
+    if verb : print('Save figure in file: %s' % fname)
     fig.savefig(fname)
 
 #------------------------------
@@ -162,7 +162,7 @@ def hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=Fal
     hi = axhi.hist(arr.flatten(), bins=bins, range=amp_range, weights=weights, color=color, log=log) #, log=logYIsOn)
     if amp_range is not None : axhi.set_xlim(amp_range) # axhi.set_autoscale_on(False) # suppress autoscailing
     wei, bins, patches = hi
-    add_stat_text(axhi, wei, bins)
+    #add_stat_text(axhi, wei, bins)
     return hi
 
 #------------------------------
@@ -250,7 +250,7 @@ def test03() :
     fig, axim = fig_img_axes()
     imsh = None
     for i in range(10) :
-       print 'Event %3d' % i
+       print('Event %3d' % i)
        img = random_standard((1000,1000), mu=200, sigma=25)
        #axim.cla()
        set_win_title(fig, 'Event %d' % i)
@@ -275,7 +275,7 @@ def test04() :
     fig, axhi = fig_img_axes()
 
     for i in range(10) :
-       print 'Event %3d' % i
+       print('Event %3d' % i)
        arr = random_standard((500,), mu, sigma, dtype=np.float)
        axhi.cla()
        set_win_title(fig, 'Event %d' % i)
@@ -293,7 +293,7 @@ def test05() :
     move_fig(fig, x0=200, y0=0)
     imsh = None
     for i in range(20) :
-       print 'Event %3d' % i
+       print('Event %3d' % i)
        img = random_standard((1000,1000), mu=i, sigma=10)
        #axim.cla()
        set_win_title(fig, 'Event %d' % i)
@@ -313,18 +313,18 @@ def test05() :
 #------------------------------
 #------------------------------
 
-def test_selected() :
+def do_test() :
 
     from time import time
-    import sys; global sys
-    from pyimgalgos.NDArrGenerators import random_standard; global random_standard
+    #from pyimgalgos.NDArrGenerators import random_standard; global random_standard
+    from pyalgos.generic.NDArrGenerators import random_standard; global random_standard
 
     if len(sys.argv)==1   :
-        print 'Use command > python %s <test-number [1-5]>' % sys.argv[0]
+        print('Use command > python %s <test-number [1-5]>' % sys.argv[0])
         sys.exit ('Add <test-number> in command line...')
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
-    print 50*'_', '\nTest %s' % tname
+    print(50*'_', '\nTest %s' % tname)
 
     t0_sec=time()
     if   tname == '1': test01()
@@ -339,17 +339,15 @@ def test_selected() :
 
 #------------------------------
 
-def test_all() :
-    test01()
-    test02()
-    show()
-
-#------------------------------
-
 if __name__ == "__main__" :
-    test_selected()
-    #test_all()
-    print 'End of test'
+
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
+                        datefmt='%m-%d-%Y %H:%M:%S',\
+                        level=logging.DEBUG)
+
+    import sys; global sys
+    do_test()
+    sys.exit('End of test')
 
 #------------------------------
 
