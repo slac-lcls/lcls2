@@ -1,0 +1,63 @@
+{
+    "adder": {
+        "config": {
+            "outputs": [
+                ["printer3", "info"],
+                ["sender", "data"]
+            ]
+        },
+        "optype": "AddArrays"
+    },
+    "printer1": {"config": {}, "optype": "Print"},
+    "printer2": {"config": {}, "optype": "Print"},
+    "printer3": {"config": {}, "optype": "Print"},
+    "printer4": {"config": {}, "optype": "Print"},
+    "printer5": {"config": {}, "optype": "Print"},
+    "printer6": {"config": {}, "optype": "Print"},
+    "proj": {
+        "config": {
+            "axis": 0,
+            "outputs": [
+                ["printer2", "info"],
+                ["adder", "array2"]
+            ]
+        },
+        "optype": "Projection"
+    },
+   "proj2": {
+        "config": {
+            "axis": 0,
+            "outputs": [
+                ["printer4", "info"]
+            ]
+        },
+        "optype": "Projection"},
+   "zmq_src": {
+        "config": {
+            "host": "localhost",
+            "outputs": [["printer1", "info", "cspad"],
+                                ["proj", "array", "cspad"],
+                                ["adder", "array1", "acq"],
+                                ["proj2", "array", "cspad"]],
+            "port": 5555
+        },
+        "optype": "ZmqSrc"},
+    "gather": {
+        "config": {
+            "num_average": 20,
+            "outputs": [
+                ["printer6", "info", "proj_add"]
+            ],
+            "port": 5557
+        },
+        "optype": "Reduce"
+    },
+    "sender": {
+        "config": {
+            "host": "localhost",
+            "port": 5557,
+            "topic": "proj_add"
+        },
+        "optype": "Send"
+    }
+}
