@@ -179,6 +179,7 @@ void usage(const char* p) {
 
 int main(int argc, char** argv) {
 
+  printf("Start\n");
   extern char* optarg;
   char* endptr;
 
@@ -268,6 +269,7 @@ int main(int argc, char** argv) {
 
     const StreamHeader* sh_raw = 0;
     if (streams&1) {
+      printf("Starting raw\n");
       sh_raw = reinterpret_cast<const StreamHeader*>(next);
       if (!lText) {
         if (fread((void*)sh_raw, sizeof(StreamHeader), 1, f) == 0)
@@ -290,6 +292,7 @@ int main(int argc, char** argv) {
     }
 
     if (streams&2) {
+      printf("Starting fex\n");
       const StreamHeader& sh_fex = *reinterpret_cast<const StreamHeader*>(next);
       //    printf("Read header into %p\n",&sh_fex);
       if (!lText) {
