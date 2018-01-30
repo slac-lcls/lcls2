@@ -44,6 +44,7 @@ typedef struct {
     int file_descriptor;
     int verbose;
     int debug;
+    int offset;
 } PyDgramObject;
 
 static void write_object_info(PyDgramObject* self, PyObject* obj, const char* comment)
@@ -263,18 +264,21 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"config",
                              (char*)"verbose",
                              (char*)"debug",
+                             (char*)"offset",
                              NULL};
     int fd=0;
     bool isConfig;
     PyObject* configDgram=0;
     self->verbose=0;
     self->debug=0;
+    self->offset=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iO$ii", kwlist,
+                                     "|iO$iii", kwlist,
                                      &fd,
                                      &configDgram,
                                      &(self->verbose),
-                                     &(self->debug))) {
+                                     &(self->debug),
+                                     &(self->offset))) {
         return -1;
     }
     isConfig = (configDgram==0) ? true : false;
@@ -315,16 +319,30 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
         return -1;
     }
-
-    if (::read(fd, self->dgram, sizeof(*self->dgram)) <= 0) {
+    
+    off_t fOffset = (off_t)self->offset;
+    int readSuccess=0;
+    if (fOffset == 0) { 
+        readSuccess = ::read(fd, self->dgram, sizeof(*self->dgram));
+    } else {
+        readSuccess = ::pread(fd, self->dgram, sizeof(*self->dgram), fOffset);
+    }
+    if (readSuccess <= 0) {
         char s[120];
         sprintf(s, "loading self->dgram was unsuccessful -- %s", strerror(errno));
         PyErr_SetString(PyExc_StopIteration, s);
         return -1;
     }
-
+    
     size_t payloadSize = self->dgram->xtc.sizeofPayload();
-    if (::read(fd, self->dgram->xtc.payload(), payloadSize) <= 0) {
+    readSuccess = 0;
+    if (fOffset == 0) {
+        readSuccess = ::read(fd, self->dgram->xtc.payload(), payloadSize);
+    } else { 
+        fOffset += (off_t)sizeof(*self->dgram);
+        readSuccess = ::pread(fd, self->dgram->xtc.payload(), payloadSize, fOffset);
+    }
+    if (readSuccess <= 0){
         char s[120];
         sprintf(s, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
         PyErr_SetString(PyExc_StopIteration, s);
@@ -361,6 +379,10 @@ static PyMemberDef dgram_members[] = {
       T_INT, offsetof(PyDgramObject, debug),
       0,
       (char*)"attribute debug" },
+    { (char*)"offset",
+      T_INT, offsetof(PyDgramObject, offset),
+      0,
+      (char*)"attribute offset" },
     { NULL }
 };
 

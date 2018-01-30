@@ -229,8 +229,13 @@ class PvEditInt(PvEditTxt):
         super(PvEditInt, self).__init__(pv, label)
 
     def setPv(self):
-        value = self.text().toInt()
-        self.pv.put(value)
+        try:
+            value = int(self.text())
+        except ValueError:
+            # ignore input that fails to convert to int
+            pass
+        else:
+            self.pv.put(value)
 
     def update(self, err):
         print('Update '+pv)

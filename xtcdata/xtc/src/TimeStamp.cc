@@ -1,83 +1,49 @@
 #include "xtcdata/xtc/TimeStamp.hh"
+#include <math.h>
 
-/* bit field access enums
-*       v is the index of the rightmost bit
-*       k is the number bits in the field
-*       m is the mask, right justified
-*       s is the mask shifted into place
-*/
-
-namespace XtcData
-{
-    enum { v_pulseId = 0, k_pulseId = 56 };
-    enum { v_cntrl = 56, k_cntrl = 8 };
-    static const uint64_t m_pulseId = ((1ULL << k_pulseId) - 1);
-    static const uint64_t s_pulseId = (m_pulseId << v_pulseId);
-    static const uint64_t m_cntrl = ((1ULL << k_cntrl) - 1);
-    static const uint64_t s_cntrl = (m_cntrl << v_cntrl);
-}
-
-XtcData::TimeStamp::TimeStamp() : _value(0)
+XtcData::TimeStamp::TimeStamp()
 {
 }
-
-XtcData::TimeStamp::TimeStamp(const XtcData::TimeStamp& input)
-: _value(input._value)
+XtcData::TimeStamp::TimeStamp(const TimeStamp& t) : _low(t._low), _high(t._high)
 {
 }
-
-XtcData::TimeStamp::TimeStamp(const XtcData::TimeStamp& input, unsigned control)
-: _value((input._value & s_pulseId) | ((control & m_cntrl) << v_cntrl))
+XtcData::TimeStamp::TimeStamp(const timespec& ts) : _low(ts.tv_nsec), _high(ts.tv_sec)
 {
 }
-
-XtcData::TimeStamp::TimeStamp(uint64_t pulseId, unsigned control)
-: _value((pulseId & s_pulseId) | ((control & m_cntrl) << v_cntrl))
+XtcData::TimeStamp::TimeStamp(unsigned sec, unsigned nsec) : _low(nsec), _high(sec)
 {
 }
-
-uint64_t XtcData::TimeStamp::pulseId() const
+XtcData::TimeStamp::TimeStamp(double sec)
 {
-    return (_value & s_pulseId) >> v_pulseId;
+    double intpart;
+    double fracpart = modf(sec, &intpart);
+    _high = (unsigned)intpart;
+    _low = (unsigned)(1.e9 * fracpart + 0.5);
 }
 
-unsigned XtcData::TimeStamp::control() const
+bool XtcData::TimeStamp::isZero() const
 {
-    return (_value & s_cntrl) >> v_cntrl;
+    return _low == 0 && _high == 0;
 }
 
-XtcData::TimeStamp& XtcData::TimeStamp::operator=(const XtcData::TimeStamp& input)
+double XtcData::TimeStamp::asDouble() const
 {
-    _value = input._value;
+    return _high + _low / 1.e9;
+}
+
+XtcData::TimeStamp& XtcData::TimeStamp::TimeStamp::operator=(const TimeStamp& input)
+{
+    _low = input._low;
+    _high = input._high;
     return *this;
 }
 
-bool XtcData::TimeStamp::operator==(const XtcData::TimeStamp& ref) const
+bool XtcData::TimeStamp::TimeStamp::operator>(const TimeStamp& t) const
 {
-    return pulseId() == ref.pulseId();
+    return (_high > t._high) || (_high == t._high && _low > t._low);
 }
 
-bool XtcData::TimeStamp::operator!=(const XtcData::TimeStamp& ref) const
+bool XtcData::TimeStamp::TimeStamp::operator==(const TimeStamp& t) const
 {
-    return pulseId() != ref.pulseId();
-}
-
-bool XtcData::TimeStamp::operator>=(const XtcData::TimeStamp& ref) const
-{
-    return pulseId() >= ref.pulseId();
-}
-
-bool XtcData::TimeStamp::operator<=(const XtcData::TimeStamp& ref) const
-{
-    return pulseId() <= ref.pulseId();
-}
-
-bool XtcData::TimeStamp::operator>(const XtcData::TimeStamp& ref) const
-{
-    return pulseId() > ref.pulseId();
-}
-
-bool XtcData::TimeStamp::operator<(const XtcData::TimeStamp& ref) const
-{
-    return pulseId() < ref.pulseId();
+    return (_high == t._high) && (_low == t._low);
 }

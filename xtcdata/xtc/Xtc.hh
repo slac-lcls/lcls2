@@ -8,6 +8,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#pragma pack(push,4)
+
 namespace XtcData
 {
 
@@ -72,12 +74,13 @@ public:
         return buffer;
     }
 
-    Damage damage;
-    Src src;
-    TypeId contains;
+    Damage   damage;
+    Src      src;
+    TypeId   contains;
     uint32_t extent;
 };
 }
 
+#pragma pack(pop)
 
 #endif

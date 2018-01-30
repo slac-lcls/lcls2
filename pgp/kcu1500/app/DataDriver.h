@@ -24,5 +24,9 @@
 #include "FpgaProm.h"
 #include "AxiVersion.h"
 
+inline uint32_t dmaDest(uint32_t lane, uint32_t vc) 
+{
+  return lane*32 + vc;
+}
 #endif
 

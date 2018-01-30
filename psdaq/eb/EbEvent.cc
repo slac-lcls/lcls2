@@ -55,7 +55,7 @@ EbEvent::EbEvent(uint64_t      contract,
                  EbEvent*      after,
                  const Dgram*  cdg,
                  uint64_t      mask) :
-  _sequence(cdg->seq.stamp().pulseId()),
+  _sequence(cdg->seq.pulseId().value()),
   _contract(contract),
   _eb      (eb),
   _living  (MaxTimeouts),
@@ -173,19 +173,19 @@ void EbEvent::dump(int number)
   const EbContribution*  const* current = begin();
   const EbContribution*         contrib = *current;
 
-  printf("    Creator (%p) was @ source %d with an environment of %08X\n",
+  printf("    Creator (%p) was @ source %d with an environment of 0x%lux\n",
          contrib,
          contrib->number(),
-         contrib->env.value());
+         contrib->env);
 
   printf("    Contributors to this event:\n");
   while(++current != last)
   {
     contrib = *current;
-    printf("     src %02x seq %016lx size %08x env %08x\n",
+    printf("     src %02x seq %016lx size %08x env 0x%lux\n",
            contrib->number(),
-           contrib->seq.stamp().pulseId(),
+           contrib->seq.pulseId().value(),
            contrib->payloadSize(),
-           contrib->env.value());
+           contrib->env);
   }
 }

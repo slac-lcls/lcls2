@@ -19,8 +19,9 @@ using namespace std;
 
 int main (int argc, char **argv) {
 
-  int           fd;
+  int          fd;
   const char*  dev = "/dev/datadev_0";
+  unsigned     base;
 
   if (argc>2 || 
       (argc==2 && argv[1][0]=='-')) {
@@ -59,11 +60,16 @@ int main (int argc, char **argv) {
     printf("buildString     : %s\n", vsn.buildString); 
   }
 
+#define READREG(name,addr)                   \
+    if (dmaReadRegister(fd, addr, &reg)<0) { \
+      perror(#name);                         \
+      return -1;                             \
+    }
 #define PRINTFIELD(name, addr, offset, mask) {                  \
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \
     for(unsigned i=0; i<8; i++) {                               \
-      dmaReadRegister(fd, addr+0x00808000+i*0x10000, &reg);     \
+      READREG(name,addr+base+i*0x10000);                        \
       printf(" %8x", (reg>>offset)&mask);                       \
     }                                                           \
     printf("\n"); }
@@ -80,6 +86,8 @@ int main (int argc, char **argv) {
     printf("\n"); }
 
   printf("-- PgpAxiL Registers --\n");
+  base = 0x00808000;
+  PRINTFIELD(loopback , 0x08, 0, 0x7);
   PRINTBIT(phyRxActive, 0x10, 0);
   PRINTBIT(locLinkRdy , 0x10, 1);
   PRINTBIT(remLinkRdy , 0x10, 2);
@@ -88,12 +96,41 @@ int main (int argc, char **argv) {
   PRINTERR(linkErrCnt , 0x1c);
   PRINTFIELD(remRxOflow , 0x20,  0, 0xffff);
   PRINTFIELD(remRxPause , 0x20, 16, 0xffff);
-  PRINTREG(frameCnt   , 0x24);
-  PRINTERR(frameErrCnt, 0x28);
+  PRINTREG(rxFrameCnt , 0x24);
+  PRINTERR(rxFrameErrCnt, 0x28);
   PRINTFRQ(rxClkFreq  , 0x2c);
   PRINTERR(rxOpCodeCnt, 0x30);
   PRINTREG(rxOpCodeLst, 0x34);
   PRINTERR(phyRxIniCnt, 0x130);
+
+  PRINTBIT(flowCntlDis, 0x80, 0);
+  PRINTBIT(txDisable  , 0x80, 1);
+  PRINTBIT(phyTxActive, 0x84, 0);
+  PRINTBIT(linkRdy    , 0x84, 1);
+  PRINTFIELD(locOflow   , 0x8c, 0,  0xffff);
+  PRINTFIELD(locPause   , 0x8c, 16, 0xffff);
+  PRINTREG(txFrameCnt , 0x90);
+  PRINTERR(txFrameErrCnt, 0x94);
+  PRINTFRQ(txClkFreq  , 0x9c);
+  PRINTERR(txOpCodeCnt, 0xa0);
+  PRINTREG(txOpCodeLst, 0xa4);
+
+  printf("-- AppTxSim Registers --\n");
+  base = 0x00900000;
+
+  { uint32_t reg;
+    READREG(control ,0x00900100);
+    printf("%20.20s : %8x\n","control",reg);
+
+    READREG(size    ,0x00900104);
+    printf("%20.20s : %8x\n","size",reg);
+    
+    READREG(overflow,0x00900000);
+    printf("%20.20s :","overflow");
+    for(unsigned i=0; i<8; i++)
+      printf(" %8x", (reg>>(4*i))&0xf);
+    printf("\n");
+  }
 
   close(fd);
 }

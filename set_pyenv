@@ -1,0 +1,20 @@
+#!/usr/bin/bash
+
+PSCONDA=/reg/g/psdm/sw/conda2/manage/bin/psconda.sh
+
+PWD=`pwd` # e.g. /reg/neh/home/dubrovin/LCLS/con-lcls2
+#RELSCRNAME=${BASH_SOURCE[0]}         # e.g. lcls2/set_env
+RELDIR=$(dirname "${BASH_SOURCE[0]}") # e.g. lcls2
+
+REPODIR=$PWD/$RELDIR
+PSANAPATH=$REPODIR/psana
+
+echo "Run command: sources $PSCONDA"
+source $PSCONDA
+export PYTHONPATH=$PSANAPATH:${PYTHONPATH}
+
+#echo "Present working directory is $PWD"
+#echo "Repository directory: REPODIR"
+#echo "psana path $PSANAPATH"
+echo "Set: PYTHONPATH=$PYTHONPATH"
+

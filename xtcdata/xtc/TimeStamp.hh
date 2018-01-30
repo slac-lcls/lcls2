@@ -1,37 +1,40 @@
-#ifndef PDS_TIMESTAMP_HH
-#define PDS_TIMESTAMP_HH
+#ifndef XtcData_TimeStamp_hh
+#define XtcData_TimeStamp_hh
 
 #include <stdint.h>
+#include <time.h>
 
 namespace XtcData
 {
 class TimeStamp
 {
 public:
-    enum { NumPulseIdBits = 56 };
-
-public:
     TimeStamp();
-    TimeStamp(const TimeStamp&);
-    TimeStamp(const TimeStamp&, unsigned control);
-    TimeStamp(uint64_t pulseId, unsigned control = 0);
+    TimeStamp(const TimeStamp& t);
+    TimeStamp(const ::timespec& ts);
+    TimeStamp(const double sec);
+    TimeStamp(unsigned sec, unsigned nsec);
 
 public:
-    uint64_t pulseId() const; // 929kHz pulse ID
-    unsigned control() const; // internal bits for alternate interpretation
-    //   of XTC header fields
+    unsigned seconds() const
+    {
+        return _high;
+    }
+    unsigned nanoseconds() const
+    {
+        return _low;
+    }
+    double asDouble() const;
+    bool isZero() const;
+
 public:
     TimeStamp& operator=(const TimeStamp&);
-    bool operator==(const TimeStamp&) const;
-    bool operator!=(const TimeStamp&) const;
-    bool operator>=(const TimeStamp&) const;
-    bool operator<=(const TimeStamp&) const;
-    bool operator<(const TimeStamp&) const;
     bool operator>(const TimeStamp&) const;
+    bool operator==(const TimeStamp&) const;
 
 private:
-    uint64_t _value;
+    uint32_t _low;
+    uint32_t _high;
 };
 }
-
 #endif
