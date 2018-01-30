@@ -74,6 +74,30 @@ class Hsd(DetectorBase):
         self.softwareName = "hsd"
         self.__searchAttr__(self.softwareName)
 
+        import sys
+        sys.path.append('/reg/neh/home/yoon82/temp/lcls2/psalg/hsd')
+        from HSD import PY_HSD
+        self._myhsd = PY_HSD()
+
+    def raw(self, evt):
+        mychan = []
+        [mychan.append('evt.' + i) for i in self.dataAttr]
+        mychan = self.__sorted_nicely__(set(mychan))
+        # Return all channels
+        arr = None
+        for chan in mychan:
+            if arr is None:
+                arr = self._myhsd.rawChannel(eval(chan))
+            else:
+                arr = np.vstack((arr, self._myhsd.rawChannel(eval(chan))))
+        return arr
+
+    def peaks(self):
+        return self._myhsd.py_peaks()
+
+    def peaksList(self):
+        return self._myhsd.py_listPeaks()
+
     class _Factory:
         def create(self, name, config): return Hsd(name, config)
 
@@ -86,7 +110,7 @@ class Hsd(DetectorBase):
     def __adcNext__(self, adc):
         return (adc+1) & 2047
 
-    def raw(self, evt):
+    def rawPython(self, evt, verbose=0):
         mychan = []
         [mychan.append('evt.'+i) for i in self.dataAttr]
         mychan = self.__sorted_nicely__(set(mychan))
@@ -94,15 +118,16 @@ class Hsd(DetectorBase):
         arr = None
         for chan in mychan:
             if arr is None:
-                arr = self.__rawChannel__(eval(chan))
+                arr = self.__rawChannel__(eval(chan), verbose)
             else:
-                arr = np.vstack((arr, self.__rawChannel__(eval(chan))))
+                arr = np.vstack((arr, self.__rawChannel__(eval(chan), verbose)))
         return arr
 
     def __rawChannel__(self, data, verbose=0):
         unsignedSize = 4
         if verbose: print("---event header---")
         eventHeader = data[:32] # bytes
+        print("eventHeader: ", eventHeader)
         pulseId = int.from_bytes(eventHeader[0:4], byteorder='little', signed=False)
         if verbose: print("pulseId [%u]" % pulseId)
         wordCount = int.from_bytes(eventHeader[20:24], byteorder='little', signed=False)
@@ -152,9 +177,16 @@ class Hsd(DetectorBase):
         _adc = int.from_bytes(raw[boffs*2:boffs*2+2], byteorder='little', signed=False) # only set once
         if verbose: print("_pid _adc: %u %u" % (_pid, _adc))
         adc = self.__adcVal__(pulseId, _adc, _pid)
+        if verbose: print("first adc: ", adc)
         if verbose: print("expected adc: %u %x" % (adc, adc))
         i = boffs
+        lenP = 0
+        arr = np.empty((end - i,))
+        if verbose: print("len of arr: ", len(arr))
         p = int.from_bytes(raw[i*2:i*2+2], byteorder='little', signed=False)
+        if verbose: print("first p: ", p)
+        arr[lenP] = p
+        lenP += 1
         if verbose: print("adc: %u %x" % (p, p))
         if verbose: print("i p adc: %d %x %x" %(i, p, adc))
         myRaw = np.zeros((end-i,))
@@ -164,13 +196,12 @@ class Hsd(DetectorBase):
         # update adc
         adc = self.__adcNext__(p)
         i += 1
-        arr = np.empty((end-i+1,))
-        lenP = 0
-        p = int.from_bytes(raw[i * 2:i * 2 + 2], byteorder='little', signed=False)
-        arr[lenP] = p
-        lenP += 1
-        if verbose: print("expected adc: %u %x" % (adc, adc))
-        if verbose: print("adc: %u %x" % (p, p))
+
+        #p = int.from_bytes(raw[i * 2:i * 2 + 2], byteorder='little', signed=False)
+        #arr[lenP] = p
+        #lenP += 1
+        #if verbose: print("expected adc: %u %x" % (adc, adc))
+        #if verbose: print("adc: %u %x" % (p, p))
         ntest = 0
         nerror = 0
         ncorrect = 0
