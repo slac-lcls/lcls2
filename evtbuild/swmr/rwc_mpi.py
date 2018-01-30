@@ -1,3 +1,4 @@
+
 from mpi4py import MPI
 from swmr_write2 import write_files
 from swmr_read3 import read_files
@@ -6,6 +7,7 @@ from load_config import load_config
 import numpy as np
 import time
 
+#print('Start rwc_mpi')
 cfg = load_config('sconfig')
 
 #logistical MPI setup
@@ -33,6 +35,8 @@ array_inds = np.array_split(np.arange(node_count),3)
 
 if world_rank % node_count in array_inds[0]:
     color = 0 # reader
+    if world_rank == 0:
+        color = 4
 elif world_rank % node_count in array_inds[1]:
     color = 1 # filter
 elif world_rank % node_count in array_inds[2]:
@@ -42,8 +46,8 @@ key = world_rank % cores_per_group
 
 try:
     comm = world_comm.Split(color, key)
-    rank = world_rank % cores_per_group
-    size = world_size/3
+  #  rank = world_rank % cores_per_group
+   # size = world_size/3
 except:
     print(world_rank)
 
@@ -53,15 +57,16 @@ if world_rank == 0:
     clear_files(cfg['path']+'/*.h5')
 
 world_comm.Barrier()
-    
+
+#print('Passing to read/write')
 if color == 0:
  #   pass
     write_files(comm) # write
 elif color == 1:
-    #pass
+    pass
     #    #comm_test(color,comm,rank,size)
-    read_files(comm, 1) # filter
+   # read_files(comm, 1) # filter
 elif color == 2:
-  #  pass
+   # pass
     read_files(comm, 0) # copy
 

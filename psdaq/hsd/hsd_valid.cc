@@ -8,15 +8,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <new>
+#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/hsd/hsd.hh"
 
+using namespace Pds::HSD;
+
+namespace Pds {
+namespace HSD {
 class StreamHeader {
 public:
   StreamHeader() {}
 public:
   unsigned samples () const { return _word[0]&0x7fffffff; }
   bool     overflow() const { return _word[0]>>31; }
-  unsigned boffs   () const { return (_word[1]>>0)&0xff; }
-  unsigned eoffs   () const { return (_word[1]>>8)&0xff; }
+  unsigned boffs   () const { return (_word[1]>>0)&0xff; }  // padding at start
+  unsigned eoffs   () const { return (_word[1]>>8)&0xff; }  // padding at end
   unsigned buffer  () const { return _word[1]>>16; }
   unsigned toffs   () const { return _word[2]; }
   unsigned baddr   () const { return _word[3]&0xffff; }
@@ -33,35 +39,14 @@ private:
   unsigned _word[4];
 };
 
-class EventHeader {
-public:
-  EventHeader() {}
-public:
-  uint64_t pulseId   () const { return *reinterpret_cast<const uint64_t*>(&_word[0]); }
-  uint64_t timeStamp () const { return *reinterpret_cast<const uint64_t*>(&_word[2]); }
-  uint16_t trigWord  () const { return reinterpret_cast<const uint16_t*>(&_word[4])[1]; }
-  uint32_t eventCount() const { return _word[5]; }
-  unsigned samples   () const { return _word[6]&0x3ffff; }
-  unsigned channels  () const { return _word[6]>>24; }
-  unsigned sync      () const { return _word[7]&0x7; }
-
-  void dump() const 
-  {
-    for(unsigned i=0; i<8; i++)
-      printf("%08x%c", _word[i], i<7 ? '.' : '\n');
-    printf("pID [%016llx]  time [%u.%09u]  trig [%04x]  event [%u]  sync [%u]\n",
-           (unsigned long long)pulseId(), _word[3], _word[2], trigWord(), eventCount(), sync());
-  }
-private:
-  unsigned _word[8];
-};
-
 //
 //  Validate raw stream : ramp signal repeats 0..0xfe
 //      phyclk period is 0.8 ns 
 //      recTimingClk period is 5.384 ns
 //        => 1348 phyclks per beam period
 //
+
+static bool _interleave = false;
 
 class RawStream {
 public:
@@ -71,12 +56,14 @@ public:
   {
   }
 public:
+  static void interleave(bool v) { _interleave=v; }
+
   bool validate(const EventHeader& event, const StreamHeader& next) const {
     uint16_t adc = adcVal(event.pulseId());
     unsigned i=next.boffs();
     unsigned nerror(0);
     unsigned ntest (0);
-    const unsigned end = next.samples()-8 + next.eoffs();
+    const unsigned end = next.samples()-next.eoffs();
     const uint16_t* p = reinterpret_cast<const uint16_t*>(&next+1);
     if (p[i] != adc) {
         ++nerror;
@@ -105,6 +92,8 @@ private:
     uint64_t dclks = (pulseId-_pid)*1348;
     //    unsigned adc = (_adc+dclks)%255;
     unsigned adc = (_adc+dclks)&0x7ff;
+    if (_interleave)
+      adc = (_adc+4*dclks)&0x7ff;
     return adc;
   }
   uint16_t next(uint16_t adc) const {
@@ -136,8 +125,8 @@ public:
     //  (2) Verify each word of the compressed stream is found in the raw stream at the right location
 
     unsigned nerror(0), ntest(0);
-    const unsigned end = _strm.samples()-8 + _strm.eoffs() - _strm.boffs();
-    const unsigned end_j = raw.samples()-8 + raw  .eoffs() - raw  .boffs();
+    const unsigned end = _strm.samples() - _strm.eoffs() - _strm.boffs();
+    const unsigned end_j = raw.samples() - raw  .eoffs() - raw  .boffs();
     const uint16_t* p_thr = &reinterpret_cast<const uint16_t*>(&_strm+1)[_strm.boffs()];
     const uint16_t* p_raw = &reinterpret_cast<const uint16_t*>(&raw  +1)[raw  .boffs()];
     unsigned i=0, j=0;
@@ -168,6 +157,8 @@ public:
 private:
   const StreamHeader& _strm;
 };
+}
+}
     
 
 extern int optind;
@@ -175,6 +166,13 @@ extern int optind;
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -f <filename>\n");
+  printf("         -m <fex minimum>\n");
+  printf("         -M <fex maximum>\n");
+  printf("         -s <stream mask>\n");
+  printf("         -c (skip containers - DRP file)\n");
+  printf("         -n (no fex)\n");
+  printf("         -t (text file - simulation)\n");
+  printf("         -i (interleave)\n");
 }
 
 int main(int argc, char** argv) {
@@ -192,7 +190,7 @@ int main(int argc, char** argv) {
   bool lText = false;
   bool lSkipContainers = false;
 
-  while ( (c=getopt( argc, argv, "f:m:M:s:cnht")) != EOF ) {
+  while ( (c=getopt( argc, argv, "f:m:M:s:cinht")) != EOF ) {
     switch(c) {
     case 'c':
       lSkipContainers = true;
@@ -211,6 +209,9 @@ int main(int argc, char** argv) {
       break;
     case 't':
       lText = true;
+      break;
+    case 'i':
+      RawStream::interleave(true);
       break;
     case 'n':
       lNoFex = true;
@@ -239,7 +240,6 @@ int main(int argc, char** argv) {
   size_t linesz = 0x10000;
   char* line = new char[linesz];
   ssize_t sz;
-  unsigned ievent=0;
   RawStream* vraw=0;
   unsigned skipSize = 0x924;
 
@@ -247,13 +247,15 @@ int main(int argc, char** argv) {
     if (lText) {
       if ((sz=getline(&line, &linesz, f))<=0)
         break;
-      printf("Readline %d [%32.32s]\n",sz, line);
+      printf("Readline %zd [%32.32s]\n",sz, line);
       char* p = line;
       for(unsigned i=0; i<(sz+3)/4; i++, p++)
         event[i] = strtoul(p, &p, 16);
     }
 
     const EventHeader& eh = *reinterpret_cast<const EventHeader*>(event);
+    if (eh.eventType()) continue;
+
     //    printf("Read event header into %p\n", &eh);
     if (!lText) {
       if (lSkipContainers)

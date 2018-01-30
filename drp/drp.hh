@@ -46,8 +46,8 @@ struct PGPData
 class Pebble
 {
 public:
-    PGPData* pgp_data() {return reinterpret_cast<PGPData*>(_pebble_buffer);}
-    void* fex_data() {return reinterpret_cast<void*>(_pebble_buffer + sizeof(PGPData));} 
+    void* fex_data() {return reinterpret_cast<void*>(_pebble_buffer);} 
+    PGPData* pgp_data;
 private:
     uint8_t _pebble_buffer[1024*1024];
 };
