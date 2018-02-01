@@ -10,13 +10,13 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-BatchManager::BatchManager(uint64_t duration, // = ~((1 << N) - 1) = 128 uS?
+BatchManager::BatchManager(uint64_t duration,
                            unsigned batchDepth,
                            unsigned maxEntries,
                            size_t   maxSize) :
   _duration     (duration),
   _durationShift(__builtin_ctzl(duration)),
-  _durationMask (~((1 << __builtin_ctzl(duration)) - 1) & ((1UL << PulseId::NumPulseIdBits) - 1)),
+  _durationMask (~(duration - 1) & ((1UL << PulseId::NumPulseIdBits) - 1)),
   _batchDepth   (batchDepth),
   _maxEntries   (maxEntries),
   _maxBatchSize (sizeof(Dgram) + maxEntries * maxSize),
@@ -25,7 +25,7 @@ BatchManager::BatchManager(uint64_t duration, // = ~((1 << N) - 1) = 128 uS?
   _pool         (Batch::size(), batchDepth),
   _batches      (new Batch*[batchDepth])
 {
-  if (__builtin_popcountl(duration) != 1)
+  if (duration & (duration - 1))
   {
     fprintf(stderr, "Batch duration (%016lx) must be a power of 2\n",
             duration);
