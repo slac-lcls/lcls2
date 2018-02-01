@@ -40,6 +40,7 @@ class Histogram
     void     reset();
   private:
     unsigned* _buffer;        // Histogram buffer
+    unsigned  _oflow;         // Bin for overflows
     unsigned  _mask;          // Control overflows
     unsigned  _size;          // Number of entries
     uint64_t  _maxIdx;        // Maximum index seen
@@ -93,7 +94,7 @@ inline double Pds::Histogram::weight() const
 
 inline unsigned Pds::Histogram::overflows() const
   {
-  return *_buffer;
+  return _oflow;
   }
 
 /*
@@ -109,7 +110,7 @@ inline void Pds::Histogram::bump(uint64_t index)
   if (index < _size)
     buffer[index]++;
   else
-    (*buffer)++;
+    _oflow++;
   if (index > _maxIdx)  _maxIdx = index;
   }
 
