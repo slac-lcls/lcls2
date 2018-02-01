@@ -18,21 +18,8 @@ class DataSource:
         ### Parameter expStr can be an xtc filename or 
         ### an 'exp=expid:run=runno' string
         if os.path.isfile(expStr):
-            self.exp = expStr
-            self.runno = 0
             self.xtcFiles = [expStr]
         else:
-            for expKeyVal in expStr.split(":"):
-                key, val = expKeyVal.split("=")
-                if key == 'exp':
-                    self.exp = val
-                elif key == 'run':
-                    self.runno = int(val)
-                else:
-                    print("Unrecongnized argument: %s"%(expKeyVal))
-                    print("Example of valid argument: exp=cxitut13:run=10")
-                    print("System Exit")
-                    exit()
             ### Read xtc file list from somewhere...
             self.xtcFiles = ['e001-r0001-s00.smd.xtc','e001-r0001-s01.smd.xtc']
         self.configs = []
