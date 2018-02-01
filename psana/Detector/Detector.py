@@ -21,17 +21,18 @@ class DetectorBase(object):
             _parent = getattr(grandparent, parent)
             try:
                 if "software" in vars(_parent) and "version" in vars(_parent):
-                    if softwareName in getattr(_parent, "software"):
+                    if softwareName == getattr(_parent, "software"):
                         self.dataAttr.append('.'.join(tree))
-                    tree.pop()
-                else:
-                    for i, child in enumerate(vars(_parent)):
-                        children(_parent, child)
-                    tree.pop()
+
+                for i, child in enumerate(vars(_parent)):
+                    children(_parent, child)
+                tree.pop()
             except:
+                tree.pop()
                 pass
 
         tree = []
+        # this should only look at self.detectorName
         for detname in vars(self.config):
             children(self.config, detname)
 
