@@ -7,10 +7,10 @@ from Detector import Detector
 import numpy as np
 
 ds = DataSource('data.xtc')
-det = Detector('cspad0', ds.config)
+det = Detector('cspad0', ds.configs[0])
 
 for evt in ds:
-    raw = det.raw(evt)
+    raw = det.raw(evt.__next__())
     break
 
 print('Raw values and shape:' )
