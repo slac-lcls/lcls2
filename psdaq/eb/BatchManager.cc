@@ -16,7 +16,7 @@ BatchManager::BatchManager(uint64_t duration, // = ~((1 << N) - 1) = 128 uS?
                            size_t   maxSize) :
   _duration     (duration),
   _durationShift(__builtin_ctzl(duration)),
-  _durationMask (~((1 << __builtin_ctzl(duration)) - 1) & ((1UL << 56) - 1)),
+  _durationMask (~((1 << __builtin_ctzl(duration)) - 1) & ((1UL << PulseId::NumPulseIdBits) - 1)),
   _batchDepth   (batchDepth),
   _maxEntries   (maxEntries),
   _maxBatchSize (sizeof(Dgram) + maxEntries * maxSize),
