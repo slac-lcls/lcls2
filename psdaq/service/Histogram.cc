@@ -57,6 +57,8 @@ void Histogram::reset()
   unsigned  remaining = _size;
   unsigned* next      = _buffer;
   do *next++ = 0; while(--remaining);
+  _oflow  = 0;
+  _maxIdx = 0;
 
   _totalWeight = 0.0;
   _totalCounts = 0.0;
@@ -108,8 +110,6 @@ void Histogram::dump(char* fileSpec)
   unsigned  remaining   = _size;
   unsigned* next        = &_buffer[remaining];
 
-  remaining--;
-
   FILE* file = fopen (fileSpec, "w");
   if (!file)
     {
@@ -119,6 +119,8 @@ void Histogram::dump(char* fileSpec)
 
   fprintf(file, "# _size [%u], bin width [%f]\n\n",_size, _unitsCvt);
 
+  if (_oflow)  fprintf (file, "%f %u\n", double(remaining) * _unitsCvt, _oflow);
+  --remaining;
   do
     {
     unsigned counts = *--next;
@@ -131,6 +133,7 @@ void Histogram::dump(char* fileSpec)
 
   const_cast<Histogram*>(this)->sum();
   fprintf(file, "\n# entries %f\n",_totalCounts);
+  fprintf(file,   "# oflows  %u\n",_oflow);
   fprintf(file,   "# mean    %f\n",_unitsCvt*_totalWeight/_totalCounts);
   fprintf(file,   "# max     %f (idx %lu)\n",_unitsCvt*_maxIdx, _maxIdx);
 
@@ -145,9 +148,11 @@ void Histogram::dump() const
   printf("_size [%u], bin width [%f]\n",_size, _unitsCvt);
   for(unsigned i=0; i<_size; i++)
     printf("%10u%c", _buffer[i], (i%10)==9 ? '\n':' ');
+  if (_oflow)  printf("%10u", _oflow);
   printf("\n------------\n");
   const_cast<Histogram*>(this)->sum();
   printf("entries %f\n",_totalCounts);
+  printf("oflows  %u\n",_oflow);
   printf("mean    %f\n",_unitsCvt*_totalWeight/_totalCounts);
   printf("max     %f (idx %lu)\n",_unitsCvt*_maxIdx, _maxIdx);
 }
