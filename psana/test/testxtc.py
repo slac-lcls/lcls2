@@ -31,7 +31,7 @@ def myroutine2():
   assert getref(dgramObj)==6
   assert getref(arr2)==6
 
-  arr3 = pydgram.cspad0.raw.arrayRaw
+  arr3 = pydgram.cspad.raw.arrayRaw
   assert getref(dgramObj)==6
   print(arr3, arr3.dtype)
   assert(arr3[7]==7)

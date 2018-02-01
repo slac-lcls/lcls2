@@ -8,8 +8,6 @@
 // additions from xtc writer
 #include <type_traits>
 
-#include "xtcdata/xtc/DetInfo.hh"
-#include "xtcdata/xtc/ProcInfo.hh"
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 
@@ -26,7 +24,8 @@ using std::string;
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) 
 {
-  Names& fexNames = *new(parent) Names("hsd1", "fex");
+  Alg alg("offsetAlg",0,0,0);
+  Names& fexNames = *new(parent) Names("info", "offset", alg);
   fexNames.add(parent, "intOffset", Name::INT32);
   namesVec.push_back(NameIndex(fexNames));
 }
@@ -130,5 +129,3 @@ int main(int argc, char* argv[])
   return 0;
 
 }
-
-

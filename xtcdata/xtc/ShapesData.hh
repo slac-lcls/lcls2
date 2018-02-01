@@ -117,12 +117,21 @@ public:
     }
 };
 
+// in principal this should be an arbitrary hierarchy of xtc's.
+// e.g. detName.dataName.subfield1.subfield2...
+// but for code simplicity keep it to one Names xtc, which holds
+// both detName/dataName, and all the subfields are encoded in the Name
+// objects using a delimiter.  Having an arbitrary hierarchy would
+// create complications in maintaining all the xtc extents.
+
 class Names : public AutoParentAlloc
 {
 public:
 
-    Names(const char* detName, const char* dataName ) :
-        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0))
+    Names(const char* detName, const char* dataName, Alg& alg, unsigned ebId=0) :
+        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
+        _alg(alg),
+        _ebId(ebId)
     {
         strncpy(_dataName, dataName, maxNameSize);
         strncpy(_detName, detName, maxNameSize);
@@ -132,6 +141,7 @@ public:
 
     const char* dataName() {return _dataName;}
     const char* detName()  {return _detName;}
+    Alg&        alg()      {return _alg;}
 
     Name& get(unsigned index)
     {
@@ -162,6 +172,8 @@ public:
 private:
     char     _dataName[maxNameSize];
     char     _detName[maxNameSize];
+    Alg      _alg;
+    unsigned _ebId;
 };
 
 #include <stdio.h>
