@@ -9,7 +9,7 @@ import dgram
 class container:
     pass
 
-class Event:
+class PyDgram:
     """Stores variables and arrays for a single event, loaded from an XTC source.
 
        The sole purpose of the Event class is to hold variables and numpy
