@@ -1,4 +1,3 @@
-#!@PYTHON@
 ####!/usr/bin/env python
 #------------------------------
 """
@@ -9,7 +8,7 @@ Usage::
 
     # Import
     # ------
-    from pyimgalgos.HPolar import HPolar
+    from pyalgos.generic.HPolar import HPolar
 
     # Initialization
     # --------------
@@ -39,7 +38,7 @@ Usage::
 
     # Global methods
     # --------------
-    from pyimgalgos.HPolar import polarization_factor, divide_protected, cart2polar, polar2cart, bincount
+    from pyalgos.generic.HPolar import polarization_factor, divide_protected, cart2polar, polar2cart, bincount
 
     polf = polarization_factor(rad, phi, z)
     result = divide_protected(num, den, vsub_zero=0)
@@ -51,11 +50,10 @@ See:
   - :py:class:`HBins`
   - :py:class:`HPolar`
   - :py:class:`HSpectrum`
-  - :py:class:`NDArrSpectrum`
   - :py:class:`RadialBkgd`
   - `Radial background <https://confluence.slac.stanford.edu/display/PSDMInternal/Radial+background+subtraction+algorithm>`_.
 
-This software was developed for the SIT project.
+This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
 Created in 2015 by Mikhail Dubrovin
@@ -64,7 +62,7 @@ Created in 2015 by Mikhail Dubrovin
 
 import math
 import numpy as np
-from pyimgalgos.HBins import HBins
+from pyalgos.generic.HBins import HBins
 
 #------------------------------
 
@@ -181,20 +179,20 @@ class HPolar() :
 
 
     def print_attrs(self) :
-        print '%s attrbutes:' % self.__class__.__name__
-        print self.pb.strrange(fmt='Phi bins:  min:%8.1f  max:%8.1f  nbins:%5d')
-        print self.rb.strrange(fmt='Rad bins:  min:%8.1f  max:%8.1f  nbins:%5d')
+        print('%s attrbutes:' % self.__class__.__name__)
+        print(self.pb.strrange(fmt='Phi bins:  min:%8.1f  max:%8.1f  nbins:%5d'))
+        print(self.rb.strrange(fmt='Rad bins:  min:%8.1f  max:%8.1f  nbins:%5d'))
 
 
     def print_ndarrs(self) :
-        print '%s n-d arrays:' % self.__class__.__name__
+        print('%s n-d arrays:' % self.__class__.__name__)
         if self.print_ndarr is None :
-            from Detector.GlobalUtils import print_ndarr
+            from pyalgos.generic.NDArrUtils import print_ndarr
             self.print_ndarr = print_ndarr
         self.print_ndarr(self.rad, '  rad')
         self.print_ndarr(self.phi, '  phi')
         self.print_ndarr(self.mask,'  mask')
-        #print 'Phi limits: ', phiedges[0], phiedges[-1]
+        #print('Phi limits: ', phiedges[0], phiedges[-1])
 
 
     def obj_radbins(self) :
@@ -288,7 +286,7 @@ class HPolar() :
 
         # 2) add values in bin edges
         
-        if verb : print 'binv.shape: ', binv.shape
+        if verb : print('binv.shape: ', binv.shape)
         vrad_a1,  vrad_a2 = binv[0,:], binv[-1,:]
         if self.is360 :
             vrad_a1 = vrad_a2 = 0.5*(binv[0,:] + binv[-1,:]) # [iphi, irad]
@@ -297,7 +295,7 @@ class HPolar() :
         vang_rmin, vang_rmax = nodea[:,0], nodea[:,-1]
         vang_rmin.shape = vang_rmax.shape = (vang_rmin.size, 1) # it should be 2d for hstack
         val_nodes = np.hstack((vang_rmin, nodea, vang_rmax))
-        if verb : print 'nodear.shape: ', val_nodes.shape
+        if verb : print('nodear.shape: ', val_nodes.shape)
 
         # 3) extend bin-centers by limits        
         bcentsr = self.rb.bincenters()
@@ -307,18 +305,18 @@ class HPolar() :
 
         rad_nodes = np.concatenate(((blimsr[0],), bcentsr, (blimsr[1],)))
         phi_nodes = np.concatenate(((blimsp[0],), bcentsp, (blimsp[1],)))
-        if verb : print 'rad_nodes.shape', rad_nodes.shape
-        if verb : print 'phi_nodes.shape', phi_nodes.shape
+        if verb : print('rad_nodes.shape', rad_nodes.shape)
+        if verb : print('phi_nodes.shape', phi_nodes.shape)
 
         # 4) make point coordinate and value arrays
         points_rad, points_phi = np.meshgrid(rad_nodes, phi_nodes)
-        if verb : print 'points_phi.shape', points_phi.shape
-        if verb : print 'points_rad.shape', points_rad.shape
+        if verb : print('points_phi.shape', points_phi.shape)
+        if verb : print('points_rad.shape', points_rad.shape)
         points = np.array(zip(points_phi.flatten(), points_rad.flatten())) 
-        if verb : print 'points.shape', points.shape
+        if verb : print('points.shape', points.shape)
 
         values = val_nodes.flatten()
-        if verb : print 'values.shape', values.shape
+        if verb : print('values.shape', values.shape)
 
         # 4) return interpolated data on (phi, rad) grid
         grid_vals = self.griddata(points, values, (self.phi, self.rad), method=method)
@@ -335,8 +333,8 @@ def data_geo(ntest) :
     """Method for tests: returns test data numpy array and geometry object
     """
     from time import time
-    from PSCalib.NDArrIO import save_txt, load_txt
-    from PSCalib.GeometryAccess import GeometryAccess
+    from pscalib.calib.NDArrIO import save_txt, load_txt
+    from pscalib.geometry.GeometryAccess import GeometryAccess
 
     dir       = '/reg/g/psdm/detector/alignment/cspad/calib-cxi-camera2-2016-02-05'
     #fname_nda = '%s/nda-water-ring-cxij4716-r0022-e000001-CxiDs2-0-Cspad-0-ave.txt' % dir
@@ -360,7 +358,7 @@ def data_geo(ntest) :
     geo.move_geo('CSPAD:V1', 0, 1600, 0, 0)
     geo.move_geo('QUAD:V1', 2, -100, 0, 0)
     #geo.get_geo('QUAD:V1', 3).print_geo()
-    print 'Time to load geometry %.3f sec from file\n%s' % (time()-t0_sec, fname_geo)
+    print('Time to load geometry %.3f sec from file\n%s' % (time()-t0_sec, fname_geo))
 
     return arr, geo
 
@@ -370,20 +368,20 @@ def test01(ntest, prefix='fig-v01') :
     """Test for radial 1-d binning of entire image.
     """
     from time import time
-    import pyimgalgos.GlobalGraphics as gg
-    from PSCalib.GeometryAccess import img_from_pixel_arrays
+    import pyalgos.generic.Graphics as gg
+    from pscalib.geometry.GeometryAccess import img_from_pixel_arrays
 
     arr, geo = data_geo(ntest)
 
     t0_sec = time()
     iX, iY = geo.get_pixel_coord_indexes()
     X, Y, Z = geo.get_pixel_coords()
-    mask = geo.get_pixel_mask(mbits=0377).flatten() 
-    print 'Time to retrieve geometry %.3f sec' % (time()-t0_sec)
+    mask = geo.get_pixel_mask(mbits=0o377).flatten() 
+    print('Time to retrieve geometry %.3f sec' % (time()-t0_sec))
 
     t0_sec = time()
     hp = HPolar(X, Y, mask, nradbins=500, nphibins=1) # v1
-    print 'HPolar initialization time %.3f sec' % (time()-t0_sec)
+    print('HPolar initialization time %.3f sec' % (time()-t0_sec))
 
     t0_sec = time()
     nda, title = arr, None
@@ -397,10 +395,10 @@ def test01(ntest, prefix='fig-v01') :
     elif ntest == 8 : nda, title = hp.pixel_avrg(nda),    'averaged radial intensity'
     elif ntest == 9 : nda, title = hp.pixel_avrg_interpol(arr) * mask , 'interpolated radial intensity'
     else :
-        print 'Test %d is not implemented' % ntest 
+        print('Test %d is not implemented' % ntest)
         return
         
-    print 'Get %s n-d array time %.3f sec' % (title, time()-t0_sec)
+    print('Get %s n-d array time %.3f sec' % (title, time()-t0_sec))
 
     img = img_from_pixel_arrays(iX, iY, nda) if not ntest in (21,) else nda[100:300,:]
 
@@ -423,7 +421,7 @@ def test01(ntest, prefix='fig-v01') :
 
     gg.show()
 
-    print 'End of test for %s' % title    
+    print('End of test for %s' % title) 
 
 #------------------------------
 
@@ -432,23 +430,23 @@ def test02(ntest, prefix='fig-v01') :
     """
     #from Detector.GlobalUtils import print_ndarr
     from time import time
-    import pyimgalgos.GlobalGraphics as gg
-    from PSCalib.GeometryAccess import img_from_pixel_arrays
+    import pyalgos.generic.Graphics as gg
+    from pscalib.geometry.GeometryAccess import img_from_pixel_arrays
 
     arr, geo = data_geo(ntest)
 
     iX, iY = geo.get_pixel_coord_indexes()
     X, Y, Z = geo.get_pixel_coords()
-    mask = geo.get_pixel_mask(mbits=0377).flatten() 
+    mask = geo.get_pixel_mask(mbits=0o377).flatten() 
 
     t0_sec = time()
     #hp = HPolar(X, Y, mask) # v0
     hp = HPolar(X, Y, mask, nradbins=500) # , nphibins=8, phiedges=(-20, 240), radedges=(10000,80000))
-    print 'HPolar initialization time %.3f sec' % (time()-t0_sec)
+    print('HPolar initialization time %.3f sec' % (time()-t0_sec))
 
-    #print 'bin_number_of_pixels:',   hp.bin_number_of_pixels()
-    #print 'bin_intensity:', hp.bin_intensity(arr)
-    #print 'bin_avrg:',   hp.bin_avrg(arr)
+    #print('bin_number_of_pixels:',   hp.bin_number_of_pixels())
+    #print('bin_intensity:', hp.bin_intensity(arr))
+    #print('bin_avrg:',   hp.bin_avrg(arr))
 
     t0_sec = time()
     nda, title = arr, None
@@ -461,10 +459,10 @@ def test02(ntest, prefix='fig-v01') :
     elif ntest == 29 : nda, title = hp.pixel_avrg_interpol(nda), 'averaged radial interpolated intensity'
     elif ntest == 30 : nda, title = hp.bin_avrg_rad_phi(nda),'r-phi'
     else :
-        print 'Test %d is not implemented' % ntest 
+        print('Test %d is not implemented' % ntest)
         return
 
-    print 'Get %s n-d array time %.3f sec' % (title, time()-t0_sec)
+    print('Get %s n-d array time %.3f sec' % (title, time()-t0_sec))
 
     img = img_from_pixel_arrays(iX, iY, nda) if not ntest in (30,) else nda # [100:300,:]
 
@@ -487,7 +485,7 @@ def test02(ntest, prefix='fig-v01') :
 
     gg.show()
 
-    print 'End of test for %s' % title    
+    print('End of test for %s' % title)
 
 #------------------------------
 
@@ -495,25 +493,25 @@ def test03(ntest, prefix='fig-v01') :
     """Test for 2-d binning of the restricted rad-phi range of entire image
     """
     from time import time
-    import pyimgalgos.GlobalGraphics as gg
-    from PSCalib.GeometryAccess import img_from_pixel_arrays
+    import pyalgos.generic.Graphics as gg
+    from pscalib.geometry.GeometryAccess import img_from_pixel_arrays
 
     arr, geo = data_geo(ntest)
 
     iX, iY = geo.get_pixel_coord_indexes()
     X, Y, Z = geo.get_pixel_coords()
-    mask = geo.get_pixel_mask(mbits=0377).flatten() 
+    mask = geo.get_pixel_mask(mbits=0o377).flatten() 
 
     t0_sec = time()
 
     #hp = HPolar(X, Y, mask, nradbins=5, nphibins=8, phiedges=(-20, 240), radedges=(10000,80000))
     hp = HPolar(X, Y, mask, nradbins=3, nphibins=8, phiedges=(240, -20), radedges=(80000,10000)) # v3
 
-    print 'HPolar initialization time %.3f sec' % (time()-t0_sec)
+    print('HPolar initialization time %.3f sec' % (time()-t0_sec))
 
-    #print 'bin_number_of_pixels:',   hp.bin_number_of_pixels()
-    #print 'bin_intensity:', hp.bin_intensity(arr)
-    #print 'bin_avrg:',   hp.bin_avrg(arr)
+    #print('bin_number_of_pixels:',   hp.bin_number_of_pixels())
+    #print('bin_intensity:', hp.bin_intensity(arr))
+    #print('bin_avrg:',   hp.bin_avrg(arr))
 
     t0_sec = time()
     nda, title = arr, None
@@ -526,10 +524,10 @@ def test03(ntest, prefix='fig-v01') :
     elif ntest == 49 : nda, title = hp.pixel_avrg_interpol(nda), 'averaged radial interpolated intensity'
     elif ntest == 50 : nda, title = hp.bin_avrg_rad_phi(nda),'r-phi'
     else :
-        print 'Test %d is not implemented' % ntest 
+        print('Test %d is not implemented' % ntest)
         return
 
-    print 'Get %s n-d array time %.3f sec' % (title, time()-t0_sec)
+    print('Get %s n-d array time %.3f sec' % (title, time()-t0_sec))
 
     img = img_from_pixel_arrays(iX, iY, nda) if not ntest in (50,) else nda # [100:300,:]
 
@@ -552,21 +550,21 @@ def test03(ntest, prefix='fig-v01') :
 
     gg.show()
 
-    print 'End of test for %s' % title    
+    print('End of test for %s' % title)
 
 #------------------------------
 
 if __name__ == '__main__' :
     import sys
     ntest = int(sys.argv[1]) if len(sys.argv)>1 else 1
-    print 'Test # %d' % ntest
+    print('Test # %d' % ntest)
 
     prefix = 'fig-v01-cspad-HPolar'
 
     if   ntest<20 : test01(ntest, prefix)
     elif ntest<40 : test02(ntest, prefix)
     elif ntest<60 : test03(ntest, prefix)
-    else : print 'Test %d is not implemented' % ntest     
+    else : print('Test %d is not implemented' % ntest)
     #sys.exit('End of test')
  
 #------------------------------
