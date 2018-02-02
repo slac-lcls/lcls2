@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+####!/usr/bin/env python
 #------------------------------
 """
 :py:class:`NDArrIO` - i/o methods to read/write numpy array in the text file
@@ -7,7 +7,7 @@
 Usage::
 
     # Import
-    from PSCalib.NDArrIO import save_txt, load_txt, list_of_comments
+    from pscalib.calib.NDArrIO import save_txt, load_txt, list_of_comments
 
     # Save n-dimensional numpy array in the text file.
     save_txt(fname, arr, cmts=(), fmt='%.1f')
@@ -49,6 +49,7 @@ This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
 Author: Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-01
 """
 #------------------------------
 
@@ -56,7 +57,7 @@ Author: Mikhail Dubrovin
 #import sys
 #import math
 import numpy as np
-import PSCalib.GlobalUtils as gu
+import pyalgos.generic.Utils as gu
 
   
 def save_txt(fname='nda.txt', arr=None, cmts=(), fmt='%.1f', verbos=False, addmetad=True) :
@@ -89,10 +90,10 @@ def save_txt(fname='nda.txt', arr=None, cmts=(), fmt='%.1f', verbos=False, addme
     nline = '\n' if len(arr.shape)>1 else ' '
 
     hdr = '\n'.join(recs)
-    #print hdr
+    #print(hdr)
 
     np.savetxt(fname, arr, fmt, delimiter=' ', newline=nline, header=hdr, comments='') #, footer='\n') #, comments='# ')
-    if verbos : print 'File %s is saved' % fname
+    if verbos : print('File %s is saved' % fname)
 
 #------------------------------
 
@@ -253,22 +254,22 @@ def test_load_txt() :
     fname = '/reg/g/psdm/detector/alignment/andor3d/calib-andor3d-2016-02-09/calib/Andor3d::CalibV1/SxrEndstation.0:DualAndor.0/pedestals/7-end.data'
     #fname = '/reg/d/psdm/cxi/cxif5315/calib/CsPad::CalibV1/CxiDs2.0:Cspad.0/pedestals/1-end.data'
 
-    print 'Test list_of_comments:'
+    print('Test list_of_comments:')
     t0_sec = time()
     cmts = list_of_comments(fname)
-    print 'Consumed time for list_of_comments = %10.6f sec' % (time()-t0_sec)
+    print('Consumed time for list_of_comments = %10.6f sec' % (time()-t0_sec))
     if cmts is not None :
-        for cmt in cmts: print cmt
+        for cmt in cmts: print(cmt)
 
     t0_sec = time()
     nparr = load_txt(fname)
     #nparr = load_txt_v1(fname)
     #nparr = load_txt_v2(fname)
-    print 'Consumed time for load_txt = %10.6f sec' % (time()-t0_sec)
+    print('Consumed time for load_txt = %10.6f sec' % (time()-t0_sec))
 
-    print 'Test np.array from file:\n', nparr
-    print 'nparr.shape:', nparr.shape
-    print 'nparr.dtype:', nparr.dtype
+    print('Test np.array from file:\n', nparr)
+    print('nparr.shape:', nparr.shape)
+    print('nparr.dtype:', nparr.dtype)
 
 #------------------------------
 

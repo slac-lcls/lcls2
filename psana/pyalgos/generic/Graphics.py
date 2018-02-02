@@ -5,7 +5,7 @@
 
 Usage::
 
-    import psana.Graphics as gr
+    import pyalgos.generic.Graphics as gr
 
     # Methods
 
@@ -21,10 +21,26 @@ Usage::
     gr.draw_fig(fig)
     gr.save_plt(fname='img.png', verb=True)
     gr.save_fig(fig, fname='img.png', verb=True)
+    gr.save(fname='img.png', do_save=True, pbits=0o377)
+
     hi = gr.hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=False)
     imsh = gr.imshow(axim, img, amp_range=None, extent=None, interpolation='nearest', aspect='auto', origin='upper', orientation='horizontal', cmap='inferno')
     cbar = gr.colorbar(fig, imsh, axcb, orientation='vertical', amp_range=None)
     imsh, cbar = gr.imshow_cbar(fig, axim, axcb, img, amin=None, amax=None, extent=None, interpolation='nearest', aspect='auto', origin='upper', orientation='vertical', cmap='inferno')
+
+    gr.drawCircle(axes, xy0, radius, linewidth=1, color='w', fill=False)
+    gr.drawCenter(axes, xy0, s=10, linewidth=1, color='w')
+    gr.drawLine(axes, xarr, yarr, s=10, linewidth=1, color='w')
+    gr.drawRectangle(axes, xy, width, height, linewidth=1, color='w')
+ 
+    # Depricated methods from pyimgalgos.GlobalGraphics.py added for compatability  
+
+    fig, axhi, hi = gr.hist1d(arr, bins=None, amp_range=None, weights=None, color=None, show_stat=True,
+                              log=False, figsize=(6,5), axwin=(0.15, 0.12, 0.78, 0.80), title=None, 
+                              xlabel=None, ylabel=None, titwin=None)
+    axim = gr.plotImageLarge(arr, img_range=None, amp_range=None, figsize=(12,10), title='Image', origin='upper', 
+                             window=(0.05, 0.03, 0.94, 0.94), cmap='inferno')
+    fig, ax = gr.plotGraph(x,y, figsize=(5,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', lw=1)
 
 See:
   - :py:class:`Utils`
@@ -42,20 +58,18 @@ Modified on 2018-01-25 by Mikhail Dubrovin
 #------------------------------
 
 import logging
-log = logging.getLogger('Graphics')
+logger = logging.getLogger('Graphics')
 
 #------------------------------
 
 import numpy as np
 
+#from math import log10
+import math
 import matplotlib
-#if matplotlib.get_backend() != 'Qt4Agg' : matplotlib.use('Qt4Agg')
-
 import matplotlib.pyplot  as plt
-#import matplotlib.lines   as lines
-#import matplotlib.patches as patches
-
-#from CalibManager.PlotImgSpeWidget import add_stat_text
+import matplotlib.lines   as lines
+import matplotlib.patches as patches
 
 #------------------------------
 
@@ -155,6 +169,80 @@ def save_fig(fig, fname='img.png', verb=True) :
 
 #------------------------------
 
+def save(fname='img.png', do_save=True, verb=True) :
+    if not do_save : return
+    save_plt(fname, verb)
+
+#--------------------
+
+def proc_stat(weights, bins) :
+    center = np.array([0.5*(bins[i] + bins[i+1]) for i,w in enumerate(weights)])
+
+    sum_w  = weights.sum()
+    if sum_w <= 0 : return  0, 0, 0, 0, 0, 0, 0, 0, 0
+    
+    sum_w2 = (weights*weights).sum()
+    neff   = sum_w*sum_w/sum_w2 if sum_w2>0 else 0
+    sum_1  = (weights*center).sum()
+    mean = sum_1/sum_w
+    d      = center - mean
+    d2     = d * d
+    wd2    = weights*d2
+    m2     = (wd2)   .sum() / sum_w
+    m3     = (wd2*d) .sum() / sum_w
+    m4     = (wd2*d2).sum() / sum_w
+
+    #sum_2  = (weights*center*center).sum()
+    #err2 = sum_2/sum_w - mean*mean
+    #err  = math.sqrt(err2)
+
+    rms  = math.sqrt(m2) if m2>0 else 0
+    rms2 = m2
+    
+    err_mean = rms/math.sqrt(neff)
+    err_rms  = err_mean/math.sqrt(2)    
+
+    skew, kurt, var_4 = 0, 0, 0
+
+    if rms>0 and rms2>0 :
+        skew  = m3/(rms2 * rms) 
+        kurt  = m4/(rms2 * rms2) - 3
+        var_4 = (m4 - rms2*rms2*(neff-3)/(neff-1))/neff if neff>1 else 0
+    err_err = math.sqrt(math.sqrt(var_4)) if var_4>0 else 0 
+    #print  'mean:%f, rms:%f, err_mean:%f, err_rms:%f, neff:%f' % (mean, rms, err_mean, err_rms, neff)
+    #print  'skew:%f, kurt:%f, err_err:%f' % (skew, kurt, err_err)
+    return mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w
+
+#--------------------
+
+def add_stat_text(axhi, weights, bins) :
+    #mean, rms, err_mean, err_rms, neff = proc_stat(weights,bins)
+    mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w = proc_stat(weights,bins)
+    pm = r'$\pm$' 
+    txt  = 'Entries=%d\nMean=%.2f%s%.2f\nRMS=%.2f%s%.2f\n' % (sum_w, mean, pm, err_mean, rms, pm, err_rms)
+    txt += r'$\gamma1$=%.3f  $\gamma2$=%.3f' % (skew, kurt)
+    #txt += '\nErr of err=%8.2f' % (err_err)
+    xb,xe = axhi.get_xlim()     
+    yb,ye = axhi.get_ylim()     
+    #x = xb + (xe-xb)*0.84
+    #y = yb + (ye-yb)*0.66
+    #axhi.text(x, y, txt, fontsize=10, color='k', ha='center', rotation=0)
+    x = xb + (xe-xb)*0.98
+    y = yb + (ye-yb)*0.95
+
+    if axhi.get_yscale() is 'log' :
+        #print 'axhi.get_yscale():', axhi.get_yscale()
+        log_yb, log_ye = log10(yb), log10(ye)
+        log_y = log_yb + (log_ye-log_yb)*0.95
+        y = 10**log_y
+
+    axhi.text(x, y, txt, fontsize=10, color='k',
+              horizontalalignment='right',
+              verticalalignment='top',
+              rotation=0)
+
+#------------------------------
+
 def hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=False) :
     """Makes historgam from input array of values (arr), which are sorted in number of bins (bins) in the range (amp_range=(amin,amax))
     """
@@ -162,7 +250,7 @@ def hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=Fal
     hi = axhi.hist(arr.flatten(), bins=bins, range=amp_range, weights=weights, color=color, log=log) #, log=logYIsOn)
     if amp_range is not None : axhi.set_xlim(amp_range) # axhi.set_autoscale_on(False) # suppress autoscailing
     wei, bins, patches = hi
-    #add_stat_text(axhi, wei, bins)
+    add_stat_text(axhi, wei, bins)
     return hi
 
 #------------------------------
@@ -212,6 +300,75 @@ def imshow_cbar(fig, axim, axcb, img, amin=None, amax=None, extent=None,\
     return imsh, cbar
 
 #------------------------------
+
+def drawCircle(axes, xy0, radius, linewidth=1, color='w', fill=False, **kwargs) : 
+    circ = patches.Circle(xy0, radius=radius, linewidth=linewidth, color=color, fill=fill, **kwargs)
+    axes.add_artist(circ)
+
+def drawCenter(axes, xy0, s=10, linewidth=1, color='w', **kwargs) : 
+    xc, yc = xy0
+    d = 0.15*s
+    arrx = (xc+s, xc-s, xc-d, xc,   xc)
+    arry = (yc,   yc,   yc-d, yc-s, yc+s)
+    line = lines.Line2D(arrx, arry, linewidth=linewidth, color=color, **kwargs)   
+    axes.add_artist(line)
+
+def drawLine(axes, xarr, yarr, s=10, linewidth=1, color='w') : 
+    line = lines.Line2D(xarr, yarr, linewidth=linewidth, color=color, **kwargs)   
+    axes.add_artist(line)
+
+def drawRectangle(axes, xy, width, height, linewidth=1, color='w', **kwargs) :
+    rect = patches.Rectangle(xy, width, height, linewidth=linewidth, color=color, **kwargs)
+    axes.add_artist(rect)
+
+#------------------------------
+# DEPRICATED from GlobalGraphics
+#--------------------------------
+
+def plotImageLarge(arr, img_range=None, amp_range=None, figsize=(12,10), title='Image', origin='upper', window=(0.05,  0.03, 0.94, 0.94), cmap='inferno') : 
+    fig  = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
+    axim = fig.add_axes(window)
+    imsh = axim.imshow(arr, interpolation='nearest', aspect='auto', origin=origin, extent=img_range, cmap=cmap)
+    colb = fig.colorbar(imsh, pad=0.005, fraction=0.09, shrink=1, aspect=40) # orientation=1
+    if amp_range is not None : imsh.set_clim(amp_range[0], amp_range[1])
+    #else : 
+    #    ave, rms = arr.mean(), arr.std()
+    #    imsh.set_clim(ave-1*rms, ave+5*rms)
+    fig.canvas.set_window_title(title)
+    return axim
+
+#--------------------------------
+
+def hist1d(arr, bins=None, amp_range=None, weights=None, color=None, show_stat=True, log=False,\
+           figsize=(6,5), axwin=(0.15, 0.12, 0.78, 0.80),\
+           title=None, xlabel=None, ylabel=None, titwin=None) :
+    """Makes historgam from input array of values (arr), which are sorted in number of bins (bins) in the range (amp_range=(amin,amax))
+    """
+    #print 'hist1d: title=%s, size=%d' % (title, arr.size)
+    if arr.size==0 : return None, None, None
+    fig = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
+    if   titwin is not None : fig.canvas.set_window_title(titwin)
+    elif title  is not None : fig.canvas.set_window_title(title)
+    axhi = fig.add_axes(axwin)
+    hbins = bins if bins is not None else 100
+    hi = axhi.hist(arr.flatten(), bins=hbins, range=amp_range, weights=weights, color=color, log=log) #, log=logYIsOn)
+    if amp_range is not None : axhi.set_xlim(amp_range) # axhi.set_autoscale_on(False) # suppress autoscailing
+    if title  is not None : axhi.set_title(title, color='k', fontsize=20)
+    if xlabel is not None : axhi.set_xlabel(xlabel, fontsize=14)
+    if ylabel is not None : axhi.set_ylabel(ylabel, fontsize=14)
+    if show_stat :
+        weights, bins, patches = hi
+        add_stat_text(axhi, weights, bins)
+    return fig, axhi, hi
+
+#------------------------------
+
+def plotGraph(x,y, figsize=(5,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', lw=1) : 
+    fig = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
+    ax = fig.add_axes(window)
+    ax.plot(x, y, pfmt, linewidth=lw)
+    return fig, ax
+
 #------------------------------
 #------------------------------
 #------------------------------
@@ -325,14 +482,13 @@ def do_test() :
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print(50*'_', '\nTest %s' % tname)
-
     t0_sec=time()
     if   tname == '1': test01()
     elif tname == '2': test02()
     elif tname == '3': test03()
     elif tname == '4': test04()
     elif tname == '5': test05()
-    else : sys.exit('Test %s is not implemented' % tname)
+    else : sys.exit('Test %s is not implemented.    Try tests 1-5' % tname)
     msg = 'Test %s consumed time %.3f' % (tname, time()-t0_sec)
     show()
     sys.exit(msg)
