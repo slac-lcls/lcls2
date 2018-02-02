@@ -29,6 +29,13 @@ You should see an interactive QT window. There is also a `dummy_gui.py` that giv
 
 # Status/To-do
 
+2/2/18
+
+* collector is currently broken due some changes made to get the GUI tests working quickly
+* as currently setup a zmq port is needed for "thing" being collcted from a worker. This doesn't scale at all. The collector should use a pull socket on a know port.
+* In the graph each node lists which nodes it outputs to. It seems more natural for a node to know what input it depends on instead. This also makes the modification of the graph less complex
+* Ability to edit the graph graphically.
+
 1/25/18
 * merged ami2 repo into lcls2 psana
 * restored amii to functional state
