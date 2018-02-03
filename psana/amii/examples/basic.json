@@ -1,0 +1,33 @@
+{
+   "src": {
+        "config": {
+            "pedestal": 32,
+            "width": 5,
+            "sources": [
+                ["cspad", [1024, 1024]],
+                ["diode", [512]]
+            ],
+            "outputs": [
+                ["roi", "array", "cspad"],
+                ["send_wave", "data", "diode"]
+            ]
+        },
+        "optype": "RandomSrc"
+    },
+    "send_area": {
+        "config": {
+            "topic": "cspad",
+            "port": 55556,
+            "outputs": []
+        },
+        "optype": "Send"
+    },
+    "send_wave": {
+        "config": {
+            "topic": "diode",
+            "port": 55558,
+            "outputs": []
+        },
+        "optype": "Send"
+    }
+}

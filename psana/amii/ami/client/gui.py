@@ -1,5 +1,6 @@
 import zmq
 import sys
+import time
 import threading
 import numpy as np
 
@@ -8,6 +9,8 @@ from PyQt5.QtCore import pyqtSlot
 
 import pyqtgraph as pg
 
+MASTER = None
+
 
 class Master(object):
 
@@ -15,16 +18,19 @@ class Master(object):
         self.ctx = zmqctx
         self.sock = self.ctx.socket(zmq.REQ)
         self.sock.connect("tcp://%s:%d"%(host, port))
+        # Why do we need this?
+        self.sock.send_string('apply_config')
+        self.sock.recv_string()
 
+    @property
+    def graph(self):
+        self.sock.send_string('get_config')
+        return self.sock.recv_pyobj()
 
     @property
     def detectors(self):
         d = {}
-        self.sock.send_string('apply_config')
-        self.sock.recv_string()
-        self.sock.send_string('get_config')
-        cfg = self.sock.recv_pyobj()
-        for topic, shape in cfg['src']['config']['sources']:
+        for topic, shape in self.graph['src']['config']['sources']:
             if len(shape) > 1:
                 d[topic] = 'area'
             else:
@@ -90,6 +96,7 @@ class AreaDetWidget(pg.ImageView):
 
     #@pyqtSlot(pg.ROI)
     def roi_updated(self, roi):
+        print(MASTER.graph)
         print((roi.getAffineSliceParams(self.image, self.getImageItem())))
 
 class DetectorList(QListWidget):
@@ -147,15 +154,13 @@ class DetectorList(QListWidget):
 
         return win, widget
         
+if __name__ == '__main__':
+    ctx = zmq.Context()
+    app = QApplication(sys.argv)
+    MASTER  = Master(ctx, 'localhost', 5555)
+    amilist = DetectorList(zmqctx=ctx)
 
-ctx = zmq.Context()
-app = QApplication(sys.argv)
-master  = Master(ctx, 'localhost', 5555)
-amilist = DetectorList(zmqctx=ctx)
+    amilist.set_detectors(MASTER.detectors)
+    amilist.show()
 
-amilist.set_detectors(master.detectors)
-amilist.show()
-
-sys.exit(app.exec_())
-
-
+    sys.exit(app.exec_())
