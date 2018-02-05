@@ -34,11 +34,11 @@ public:
         strncpy(_alg, other._alg, maxNameSize);
     }
 
-    uint32_t getVersion() {
+    uint32_t version() {
         return _version.version();
     }
 
-    const char* getAlgName() {return _alg;}
+    const char* name() {return _alg;}
 
 private:
     char _alg[maxNameSize];
@@ -118,30 +118,33 @@ public:
 };
 
 // in principal this should be an arbitrary hierarchy of xtc's.
-// e.g. detName.dataName.subfield1.subfield2...
+// e.g. detName.detAlg.subfield1.subfield2...
 // but for code simplicity keep it to one Names xtc, which holds
-// both detName/dataName, and all the subfields are encoded in the Name
+// both detName/detAlg, and all the subfields are encoded in the Name
 // objects using a delimiter.  Having an arbitrary hierarchy would
 // create complications in maintaining all the xtc extents.
+// perhaps should split this class into two xtc's: the Alg part (DataNames?)
+// and the detName/detType/segment part (DetInfo?).
 
 class Names : public AutoParentAlloc
 {
 public:
 
-    Names(const char* detName, const char* dataName, Alg& alg, unsigned ebId=0) :
+    Names(const char* detName, Alg& alg, const char* detType, unsigned segment=0) :
         AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
         _alg(alg),
-        _ebId(ebId)
+        _segment(segment)
     {
-        strncpy(_dataName, dataName, maxNameSize);
+        strncpy(_detType, detType, maxNameSize);
         strncpy(_detName, detName, maxNameSize);
         // allocate space for our private data
         XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
 
-    const char* dataName() {return _dataName;}
-    const char* detName()  {return _detName;}
-    Alg&        alg()      {return _alg;}
+    const char* detType() {return _detType;}
+    const char* detName() {return _detName;}
+    unsigned    segment() {return _segment;}
+    Alg&        alg()     {return _alg;}
 
     Name& get(unsigned index)
     {
@@ -170,10 +173,10 @@ public:
         new (ptr) Name(name, Name::UINT8, 1, alg); // Assume array of bytes
     }
 private:
-    char     _dataName[maxNameSize];
+    char     _detType[maxNameSize];
     char     _detName[maxNameSize];
     Alg      _alg;
-    unsigned _ebId;
+    uint32_t _segment;
 };
 
 #include <stdio.h>
