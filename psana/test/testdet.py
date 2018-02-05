@@ -17,4 +17,3 @@ print('Raw values and shape:' )
 print(raw, raw.shape)
 assert(np.sum(raw)==9*17)
 assert(raw.shape==(2,3,3))
-
