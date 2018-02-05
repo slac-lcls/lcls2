@@ -15,7 +15,7 @@ def myroutine2():
   pydgram = ds.__next__().__next__()
   assert getref(pydgram)==2
 
-  arr1 = pydgram.hsd1.raw.array0Pgp
+  arr1 = pydgram.xpphsd.raw.array0Pgp
   dgramObj=arr1.base
   assert getref(arr1)==3
   assert getref(dgramObj)==6
@@ -24,14 +24,14 @@ def myroutine2():
   assert getref(arr1)==4
   assert getref(s1)==2
 
-  arr2 = pydgram.hsd1.raw.array0Pgp
+  arr2 = pydgram.xpphsd.raw.array0Pgp
   assert getref(dgramObj)==6
   s2 = arr2[3:5]
   assert s2.base is arr2
   assert getref(dgramObj)==6
   assert getref(arr2)==6
 
-  arr3 = pydgram.cspad.raw.arrayRaw
+  arr3 = pydgram.xppcspad.raw.arrayRaw
   assert getref(dgramObj)==6
   print(arr3, arr3.dtype)
   assert(arr3[7]==7)

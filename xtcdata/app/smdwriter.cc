@@ -25,7 +25,7 @@ using std::string;
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) 
 {
   Alg alg("offsetAlg",0,0,0);
-  Names& fexNames = *new(parent) Names("info", "offset", alg);
+  Names& fexNames = *new(parent) Names("info", alg, "offset");
   fexNames.add(parent, "intOffset", Name::INT32);
   namesVec.push_back(NameIndex(fexNames));
 }

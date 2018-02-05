@@ -61,8 +61,8 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
 }
 
 static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
-    const char* algName = alg.getAlgName();
-    const uint32_t _v = alg.getVersion();
+    const char* algName = alg.name();
+    const uint32_t _v = alg.version();
     char keyName[TMPSTRINGSIZE];
 
     PyObject* newobjS = Py_BuildValue("s", algName);
@@ -82,20 +82,41 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     }
 }
 
+static void setDetType(PyDgramObject* pyDgram, Names& names) {
+    char keyName[TMPSTRINGSIZE];
+    PyObject* newobjDetType = Py_BuildValue("s", names.detType());
+    snprintf(keyName,TMPSTRINGSIZE,"%s_%s",names.detName(),"dettype");
+    PyObject* keyDetType = PyUnicode_FromString(keyName);
+    if (PyDict_Contains(pyDgram->dict, keyDetType)) {
+        printf("Dgram: Ignoring duplicate key %s\n", keyName);
+    } else {
+        PyDict_SetItem(pyDgram->dict, keyDetType, newobjDetType);
+        Py_DECREF(newobjDetType);
+    }
+}
+
 void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
 {
     // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
     char baseName[TMPSTRINGSIZE];
+
     for (unsigned i = 0; i < namesVec.size(); i++) {
         Names& names = namesVec[i].names();
-        Alg& detAlg = namesVec[i].names().alg();
-        snprintf(baseName,TMPSTRINGSIZE,"%s_%s",names.detName(),names.dataName());
+        Alg& detAlg = names.alg();
+        snprintf(baseName,TMPSTRINGSIZE,"%s_%s",names.detName(),names.alg().name());
         setAlg(pyDgram,baseName,detAlg);
+
+        // this "if" statement is not ideal, and reflects the
+        // fact that the detector type should not be part of the
+        // Names object, since a given detector can have many Names
+        // but only one detector type
+        // if (i==0) setDetType(pyDgram, names);
+        setDetType(pyDgram, names);
 
         for (unsigned j = 0; j < names.num(); j++) {
             Name& name = names.get(j);
             Alg& alg = name.alg();
-            snprintf(baseName,TMPSTRINGSIZE,"%s_%s_%s",names.detName(),names.dataName(),name.name());
+            snprintf(baseName,TMPSTRINGSIZE,"%s_%s_%s",names.detName(),names.alg().name(),name.name());
             setAlg(pyDgram,baseName,alg);
         }
     }
@@ -188,8 +209,8 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             //clear NPY_ARRAY_WRITEABLE flag
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
-        snprintf(keyName,TMPSTRINGSIZE,"%s_%s_%s",names.detName(),names.dataName(),
-                name.name());
+        snprintf(keyName,TMPSTRINGSIZE,"%s_%s_%s",names.detName(),names.alg().name(),
+                 name.name());
         PyObject* key = PyUnicode_FromString(keyName);
         if (PyDict_Contains(pyDgram->dict, key)) {
             printf("Dgram: Ignoring duplicate key %s\n", tempName);

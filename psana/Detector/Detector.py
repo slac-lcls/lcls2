@@ -4,9 +4,8 @@ import re
 import numpy as np
 
 def Detector(name, config):
-    name = ''.join([i for i in name if not i.isdigit()]) # remove digits
-    name = name.title() # TODO: extract detector type from Full Name or DAQ Alias
-    df = eval(name + '._Factory()')
+    det = getattr(config,name)
+    df = eval(str(det.dettype) + '._Factory()')
     return df.create(name, config)
 
 class DetectorBase(object):
@@ -23,6 +22,7 @@ class DetectorBase(object):
                 if "software" in vars(_parent) and "version" in vars(_parent):
                     if softwareName == getattr(_parent, "software"):
                         self.dataAttr.append('.'.join(tree))
+                        print("*** adding")
 
                 for i, child in enumerate(vars(_parent)):
                     children(_parent, child)
@@ -44,17 +44,17 @@ class DetectorBase(object):
 
     def name(self): return self.detectorName
 
-class Cspad(DetectorBase):
+class cspad(DetectorBase):
     """
-    Cspad reader
+    cspad reader
     """
     def __init__(self, name, config):
-        super(Cspad, self).__init__(name, config)
-        self.softwareName = "cspad"
+        super(cspad, self).__init__(name, config)
+        self.softwareName = "cspadseg"
         self.__searchAttr__(self.softwareName)
 
     class _Factory:
-        def create(self, name, config): return Cspad(name, config)
+        def create(self, name, config): return cspad(name, config)
 
     def raw(self, evt, verbose=0):
         evtStr = 'evt.' + self.dataAttr[0]
@@ -62,8 +62,8 @@ class Cspad(DetectorBase):
         evtAttr = evtAttr.reshape((2,3,3)) # This mini cspad has 2x3x3 pixels
         return evtAttr
 
-    def calib(self, data, verbose=0): print("Cspad.calib")
-    def image(self, data, verbose=0): print("Cspad.image")
+    def calib(self, data, verbose=0): print("cspad.calib")
+    def image(self, data, verbose=0): print("cspad.image")
 
 
 class Hsd(DetectorBase):
