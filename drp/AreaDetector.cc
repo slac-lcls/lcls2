@@ -1,6 +1,22 @@
 #include "AreaDetector.hh"
+#include "xtcdata/xtc/VarDef.hh"
 
 using namespace XtcData;
+
+class RoiDef:public VarDef
+{
+public:
+  enum index
+    {
+      array_fex,
+      maxNum
+    };
+
+   RoiDef()
+   {
+     detVec.push_back({"array_fex", FLOAT});
+   }
+};
 
 void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
 {
@@ -15,7 +31,7 @@ void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
     for (unsigned i=0; i<shape[0]*shape[1]; i++) {
         ptr[i] = img[i];
     }
-    fex.set_array_shape("array_fex",shape);
+    fex.set_array_shape(RoiDef::array_fex,shape);
 }
 
 void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
@@ -23,6 +39,6 @@ void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     unsigned segment=0;
     Names& fexNames = *new(parent) Names("cspad", cspadRawAlg, "cspad", segment);
     Alg roi("roi", 1, 0, 0);
-    fexNames.add(parent, "array_fex", roi); //Name::UINT16, parent, 2);
+    fexNames.add_vec<RoiDef>(parent, roi); //Name::UINT16, parent, 2);
     namesVec.push_back(NameIndex(fexNames));
 }
