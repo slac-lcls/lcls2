@@ -121,10 +121,13 @@ public:
 // e.g. detName.detAlg.subfield1.subfield2...
 // but for code simplicity keep it to one Names xtc, which holds
 // both detName/detAlg, and all the subfields are encoded in the Name
-// objects using a delimiter.  Having an arbitrary hierarchy would
+// objects using a delimiter, currently "_".
+// Having an arbitrary xtc hierarchy would
 // create complications in maintaining all the xtc extents.
 // perhaps should split this class into two xtc's: the Alg part (DataNames?)
-// and the detName/detType/segment part (DetInfo?).
+// and the detName/detType/segment part (DetInfo?).  but then
+// if there are multiple detectors in an xtc need to come up with another
+// mechanism for the DataName to point to the correct DetInfo.
 
 class Names : public AutoParentAlloc
 {

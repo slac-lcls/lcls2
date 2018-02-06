@@ -88,7 +88,8 @@ static void setDetType(PyDgramObject* pyDgram, Names& names) {
     snprintf(keyName,TMPSTRINGSIZE,"%s_%s",names.detName(),"dettype");
     PyObject* keyDetType = PyUnicode_FromString(keyName);
     if (PyDict_Contains(pyDgram->dict, keyDetType)) {
-        printf("Dgram: Ignoring duplicate key %s\n", keyName);
+        // this will happen since the same detname/dettype pair
+        // show up once for every Names object.
     } else {
         PyDict_SetItem(pyDgram->dict, keyDetType, newobjDetType);
         Py_DECREF(newobjDetType);
@@ -105,12 +106,6 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
         Alg& detAlg = names.alg();
         snprintf(baseName,TMPSTRINGSIZE,"%s_%s",names.detName(),names.alg().name());
         setAlg(pyDgram,baseName,detAlg);
-
-        // this "if" statement is not ideal, and reflects the
-        // fact that the detector type should not be part of the
-        // Names object, since a given detector can have many Names
-        // but only one detector type
-        // if (i==0) setDetType(pyDgram, names);
         setDetType(pyDgram, names);
 
         for (unsigned j = 0; j < names.num(); j++) {
