@@ -7,7 +7,7 @@ from Detector import Detector
 import numpy as np
 
 ds = DataSource('data.xtc')
-det = Detector('xppcspad', ds.configs[0].desc)
+det = Detector('xppcspad', ds.configs[0].software)
 
 for evt in ds:
     raw = det.raw(evt.__next__())
