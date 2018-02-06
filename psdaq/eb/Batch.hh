@@ -15,8 +15,6 @@ namespace Pds {
 
   namespace Eb {
 
-#define BatchList Queue<Batch>     // Notational convenience...
-
     class Batch1;
 
     class Batch : public Pds::Entry
