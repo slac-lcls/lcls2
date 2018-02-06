@@ -38,13 +38,13 @@ def myroutine2():
   assert getref(dgramObj)==6
   assert getref(arr3)==3
 
-  return s1, pydgram
+  return s1, pydgram, ds.configs[0]
 
 def myroutine1():
-  s1, pydgram =  myroutine2()
+  s1, pydgram, config =  myroutine2()
   assert getref(s1)==2
 
-  return pydgram
+  return pydgram, config
 
 def myiter(pydgram,testvals):
   for attrname,attr in pydgram.__dict__.items():
@@ -53,10 +53,13 @@ def myiter(pydgram,testvals):
     else:
       if type(attr) is np.ndarray:
         assert np.array_equal(attr,testvals[attrname])
-      else:
+      elif type(attr) is not str and type(attr) is not tuple:
         assert attr==testvals[attrname]
 
-pydgram = myroutine1()
 from testvals import testvals
+
+pydgram, config = myroutine1()
+myiter(config,testvals)
+print('config tested',len(testvals),'values')
 myiter(pydgram,testvals)
 print('xtc tested',len(testvals),'values')
