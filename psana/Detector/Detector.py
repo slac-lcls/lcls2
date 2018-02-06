@@ -22,7 +22,6 @@ class DetectorBase(object):
                 if "software" in vars(_parent) and "version" in vars(_parent):
                     if softwareName == getattr(_parent, "software"):
                         self.dataAttr.append('.'.join(tree))
-                        print("*** adding")
 
                 for i, child in enumerate(vars(_parent)):
                     children(_parent, child)
