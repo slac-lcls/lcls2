@@ -13,51 +13,24 @@ class DetectorBase(object):
         self.detectorName = name
         self.config = config
 
-    def __searchAttr__(self, softwareName):
-        self.dataAttr = []
-        def children(grandparent, parent):
-            tree.append(parent)
-            _parent = getattr(grandparent, parent)
-            try:
-                if "software" in vars(_parent) and "version" in vars(_parent):
-                    if softwareName == getattr(_parent, "software"):
-                        self.dataAttr.append('.'.join(tree))
-
-                for i, child in enumerate(vars(_parent)):
-                    children(_parent, child)
-                tree.pop()
-            except:
-                tree.pop()
-                pass
-
-        tree = []
-        # this should only look at self.detectorName
-        for detname in vars(self.config):
-            children(self.config, detname)
-
-    def __sorted_nicely__(self, l):
-        """ Sort the given iterable in the way that humans expect."""
-        convert = lambda text: int(text) if text.isdigit() else text
-        alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
-        return sorted(l, key=alphanum_key)
-
-    def name(self): return self.detectorName
-
 class cspad(DetectorBase):
     """
     cspad reader
     """
     def __init__(self, name, config):
         super(cspad, self).__init__(name, config)
-        self.softwareName = "cspadseg"
-        self.__searchAttr__(self.softwareName)
+        self.name = name
+        detcfg = getattr(config,self.name)
+        assert detcfg.dettype      == 'cspad'
+        assert detcfg.raw.software == 'raw'
+        assert detcfg.raw.version  == (2,3,42)
 
     class _Factory:
         def create(self, name, config): return cspad(name, config)
 
     def raw(self, evt, verbose=0):
-        evtStr = 'evt.' + self.dataAttr[0]
-        evtAttr = eval(evtStr)  # evt.cspad0.raw.arrayRaw
+        det = getattr(evt,self.name)
+        evtAttr = det.raw.arrayRaw
         evtAttr = evtAttr.reshape((2,3,3)) # This mini cspad has 2x3x3 pixels
         return evtAttr
 
@@ -65,6 +38,7 @@ class cspad(DetectorBase):
     def image(self, data, verbose=0): print("cspad.image")
 
 
+# this class needs to be updated to use the simpler approach above
 class Hsd(DetectorBase):
     """
     High Speed Digitizer (HSD) reader

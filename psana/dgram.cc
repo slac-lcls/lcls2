@@ -68,14 +68,14 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     PyObject* newobjS = Py_BuildValue("s", algName);
     PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
-    snprintf(keyName,TMPSTRINGSIZE,"%s_%s",baseName,"software");
+    snprintf(keyName,TMPSTRINGSIZE,"desc_%s_%s",baseName,"software");
     PyObject* keyS = PyUnicode_FromString(keyName);
     if (PyDict_Contains(pyDgram->dict, keyS)) {
         printf("Dgram: Ignoring duplicate key %s\n", keyName);
     } else {
         PyDict_SetItem(pyDgram->dict, keyS, newobjS);
         Py_DECREF(newobjS);
-        snprintf(keyName,TMPSTRINGSIZE,"%s_%s",baseName,"version");
+        snprintf(keyName,TMPSTRINGSIZE,"desc_%s_%s",baseName,"version");
         PyObject* keyV = PyUnicode_FromString(keyName);
         PyDict_SetItem(pyDgram->dict, keyV, newobjV);
         Py_DECREF(newobjV);
@@ -85,7 +85,7 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
 static void setDetType(PyDgramObject* pyDgram, Names& names) {
     char keyName[TMPSTRINGSIZE];
     PyObject* newobjDetType = Py_BuildValue("s", names.detType());
-    snprintf(keyName,TMPSTRINGSIZE,"%s_%s",names.detName(),"dettype");
+    snprintf(keyName,TMPSTRINGSIZE,"desc_%s_%s",names.detName(),"dettype");
     PyObject* keyDetType = PyUnicode_FromString(keyName);
     if (PyDict_Contains(pyDgram->dict, keyDetType)) {
         // this will happen since the same detname/dettype pair

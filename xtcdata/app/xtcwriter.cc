@@ -218,6 +218,16 @@ void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     namesVec.push_back(NameIndex(padNames));
 }
 
+void addData(Xtc& xtc, std::vector<NameIndex>& namesVec) {
+    // need to protect against putting in the wrong nameId here
+    unsigned nameId = 0;
+    pgpExample(xtc, namesVec[nameId], nameId);
+    nameId++;
+    fexExample(xtc, namesVec[nameId], nameId);
+    nameId++;
+    padExample(xtc, namesVec[nameId], nameId);
+}
+
 int main()
 {
     FILE* xtcFile = fopen("data.xtc", "w");
@@ -234,6 +244,7 @@ int main()
     config.xtc.extent = sizeof(Xtc);
     std::vector<NameIndex> namesVec;
     add_names(config.xtc, namesVec);
+    addData(config.xtc,namesVec);
     if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
         printf("Error writing configure to output xtc file.\n");
         return -1;
@@ -248,13 +259,7 @@ int main()
         dgram.xtc.damage = 0;
         dgram.xtc.extent = sizeof(Xtc);
 
-        // need to protect against putting in the wrong nameId here
-        unsigned nameId = 0;
-        pgpExample(dgram.xtc, namesVec[nameId], nameId);
-        nameId++;
-        fexExample(dgram.xtc, namesVec[nameId], nameId);
-        nameId++;
-        padExample(dgram.xtc, namesVec[nameId], nameId);
+        addData(dgram.xtc,namesVec);
 
         printf("*** event %d ***\n",i);
         DebugIter iter(&dgram.xtc, namesVec);
