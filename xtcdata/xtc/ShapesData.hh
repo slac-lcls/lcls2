@@ -4,9 +4,13 @@
 #include <vector>
 #include <cstring>
 #include <assert.h>
+#include <iostream>
 
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/TypeId.hh"
+
+
+
 
 static const int maxNameSize = 256;
 
@@ -47,7 +51,7 @@ private:
 
 class Name {
 public:
-    enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE };
+  enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE, UINT64 };
 
     static int get_element_size(DataType type);
 
@@ -59,6 +63,14 @@ public:
         _rank = rank;
     }
 
+  Name(const char* name, int& type, int& rank) : _alg("",0,0,0) {
+        strncpy(_name, name, maxNameSize);
+        _type = DataType(type);
+        _rank = rank;
+    }
+
+
+  
     Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
         strncpy(_name, name, maxNameSize);
         _type = type;
@@ -175,6 +187,41 @@ public:
         void* ptr = alloc(sizeof(Name), parent);
         new (ptr) Name(name, Name::UINT8, 1, alg); // Assume array of bytes
     }
+
+
+  template<class T>
+      void add_vec(XtcData::Xtc& parent)
+    {
+      //   T *tmp = new T();
+
+       	// for(auto const& elem: T().detVec)
+	// {
+	//   	 printf("%s\t%i\t%i\n", elem.name,elem.type,elem.rank);
+
+	// };
+	
+      for(int i = 0; i !=T::maxNum; i++){
+
+	void* ptr = alloc(sizeof(Name), parent);
+	//	printf("%s\t%i\t%i\n", T().detVec[i].name,T().detVec[i].type,T().detVec[i].rank);
+	
+	new (ptr) Name(T().detVec[i].name, T().detVec[i].type,T().detVec[i].rank);
+      }
+       
+    }
+
+    template<class T>
+    void add_vec(XtcData::Xtc& parent, Alg& alg)
+    {
+      //   T *tmp = new T();
+      
+      for(int i = 0; i !=T::maxNum; i++){	
+	void* ptr = alloc(sizeof(Name), parent);	
+	new (ptr) Name(T().detVec[i].name, Name::UINT8, 1, alg);
+      }
+       
+    }
+  
 private:
     char     _detType[maxNameSize];
     char     _detName[maxNameSize];
