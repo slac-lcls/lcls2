@@ -1,2 +1,2 @@
-print("""__init__.py in package pyalgos""")
-#from generic import *
+#print("""__init__.py in package pyalgos""")
+#from pyalgos.generic import *

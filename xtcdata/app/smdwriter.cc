@@ -8,10 +8,9 @@
 // additions from xtc writer
 #include <type_traits>
 
-#include "xtcdata/xtc/DetInfo.hh"
-#include "xtcdata/xtc/ProcInfo.hh"
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/VarDef.hh"
 
 // additions from xtc writer
 #include "xtcdata/xtc/ShapesData.hh"
@@ -24,10 +23,26 @@ using std::string;
 
 #define BUFSIZE 0x4000000
 
+class SmdDef:public VarDef
+{
+public:
+  enum index
+    {
+      intOffset,
+      maxNum
+    };
+
+   SmdDef()
+   {
+     detVec.push_back({"intOffset", UINT64});
+   }
+};
+
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) 
 {
-  Names& fexNames = *new(parent) Names("hsd1", "fex");
-  fexNames.add(parent, "intOffset", Name::INT32);
+  Alg alg("offsetAlg",0,0,0);
+  Names& fexNames = *new(parent) Names("info", alg, "offset");
+  fexNames.add_vec<SmdDef>(parent);
   namesVec.push_back(NameIndex(fexNames));
 }
 
@@ -109,7 +124,7 @@ int main(int argc, char* argv[])
 
     unsigned nameId = 0; // smd only has one nameId
     CreateData smd(dgOut.xtc, namesVec[nameId], nameId);
-    smd.set_value("intOffset", nowOffset);
+    smd.set_value(SmdDef::intOffset, nowOffset);
     
     printf("Read evt: %4d Dgram size: %8lu Payload size: %8d Writing offset: %10d\n", 
         eventId++, sizeof(*dgIn), dgIn->xtc.sizeofPayload(), nowOffset);
@@ -130,5 +145,3 @@ int main(int argc, char* argv[])
   return 0;
 
 }
-
-

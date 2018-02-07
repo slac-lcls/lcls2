@@ -4,9 +4,13 @@
 #include <vector>
 #include <cstring>
 #include <assert.h>
+#include <iostream>
 
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/TypeId.hh"
+
+
+
 
 static const int maxNameSize = 256;
 
@@ -34,11 +38,11 @@ public:
         strncpy(_alg, other._alg, maxNameSize);
     }
 
-    uint32_t getVersion() {
+    uint32_t version() {
         return _version.version();
     }
 
-    const char* getAlgName() {return _alg;}
+    const char* name() {return _alg;}
 
 private:
     char _alg[maxNameSize];
@@ -47,7 +51,7 @@ private:
 
 class Name {
 public:
-    enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE };
+  enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE, UINT64 };
 
     static int get_element_size(DataType type);
 
@@ -59,6 +63,14 @@ public:
         _rank = rank;
     }
 
+  Name(const char* name, int& type, int& rank) : _alg("",0,0,0) {
+        strncpy(_name, name, maxNameSize);
+        _type = DataType(type);
+        _rank = rank;
+    }
+
+
+  
     Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
         strncpy(_name, name, maxNameSize);
         _type = type;
@@ -117,21 +129,37 @@ public:
     }
 };
 
+// in principal this should be an arbitrary hierarchy of xtc's.
+// e.g. detName.detAlg.subfield1.subfield2...
+// but for code simplicity keep it to one Names xtc, which holds
+// both detName/detAlg, and all the subfields are encoded in the Name
+// objects using a delimiter, currently "_".
+// Having an arbitrary xtc hierarchy would
+// create complications in maintaining all the xtc extents.
+// perhaps should split this class into two xtc's: the Alg part (DataNames?)
+// and the detName/detType/segment part (DetInfo?).  but then
+// if there are multiple detectors in an xtc need to come up with another
+// mechanism for the DataName to point to the correct DetInfo.
+
 class Names : public AutoParentAlloc
 {
 public:
 
-    Names(const char* detName, const char* dataName ) :
-        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0))
+    Names(const char* detName, Alg& alg, const char* detType, unsigned segment=0) :
+        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
+        _alg(alg),
+        _segment(segment)
     {
-        strncpy(_dataName, dataName, maxNameSize);
+        strncpy(_detType, detType, maxNameSize);
         strncpy(_detName, detName, maxNameSize);
         // allocate space for our private data
         XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
 
-    const char* dataName() {return _dataName;}
-    const char* detName()  {return _detName;}
+    const char* detType() {return _detType;}
+    const char* detName() {return _detName;}
+    unsigned    segment() {return _segment;}
+    Alg&        alg()     {return _alg;}
 
     Name& get(unsigned index)
     {
@@ -159,9 +187,46 @@ public:
         void* ptr = alloc(sizeof(Name), parent);
         new (ptr) Name(name, Name::UINT8, 1, alg); // Assume array of bytes
     }
+
+
+  template<class T>
+      void add_vec(XtcData::Xtc& parent)
+    {
+      //   T *tmp = new T();
+
+       	// for(auto const& elem: T().detVec)
+	// {
+	//   	 printf("%s\t%i\t%i\n", elem.name,elem.type,elem.rank);
+
+	// };
+	
+      for(int i = 0; i !=T::maxNum; i++){
+
+	void* ptr = alloc(sizeof(Name), parent);
+	//	printf("%s\t%i\t%i\n", T().detVec[i].name,T().detVec[i].type,T().detVec[i].rank);
+	
+	new (ptr) Name(T().detVec[i].name, T().detVec[i].type,T().detVec[i].rank);
+      }
+       
+    }
+
+    template<class T>
+    void add_vec(XtcData::Xtc& parent, Alg& alg)
+    {
+      //   T *tmp = new T();
+      
+      for(int i = 0; i !=T::maxNum; i++){	
+	void* ptr = alloc(sizeof(Name), parent);	
+	new (ptr) Name(T().detVec[i].name, Name::UINT8, 1, alg);
+      }
+       
+    }
+  
 private:
-    char     _dataName[maxNameSize];
+    char     _detType[maxNameSize];
     char     _detName[maxNameSize];
+    Alg      _alg;
+    uint32_t _segment;
 };
 
 #include <stdio.h>

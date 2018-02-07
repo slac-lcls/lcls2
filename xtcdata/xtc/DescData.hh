@@ -11,6 +11,7 @@
 
 #define _unused(x) ((void)(x))
 
+
 template <typename T>
 struct Array {
     Array(uint8_t* buffer)
@@ -47,7 +48,6 @@ struct is_vec<Array<T>> : std::true_type {
 };
 
 typedef std::map<std::string, unsigned> IndexMap;
-//typedef std::map<std::string, unsigned>::iterator it;
 
 
 class NameIndex {
@@ -165,10 +165,11 @@ protected:
         _numentries=0;
     }
 
-    void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
-        unsigned index = _nameindex.nameMap()[name];
+  void set_array_shape(unsigned index, unsigned shapeIndex, unsigned shape[Name::MaxRank]) {
+   
         unsigned rank = _nameindex.names().get(index).rank();
-        unsigned shapeIndex = _nameindex.shapeMap()[name];
+
+	
         assert (shapeIndex==_numarrays); // check that shapes are filled in order
         _unused(shapeIndex);
         Shape& sh = _shapesdata.shapes().get(_numarrays);
@@ -178,6 +179,7 @@ protected:
         _numarrays++;
     }
 
+  
     enum {MaxNames=1000};
     unsigned    _offset[MaxNames+1]; // +1 since we set up the offsets 1 in advance, for convenience
     ShapesData& _shapesdata;
@@ -201,14 +203,15 @@ public:
         _shapesdata.data().alloc(size, _shapesdata, _parent);
     }
 
-    void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
+    void set_array_shape(unsigned index, unsigned shape[Name::MaxRank]) {
         if (_numarrays==0) {
             // add the xtc that will hold the shapes of arrays
             Shapes& shapes = *new (&_shapesdata) Shapes(_parent, _namesId);
             shapes.alloc(_nameindex.shapeMap().size()*sizeof(Shape),
                          _shapesdata, _parent);
         }
-        DescData::set_array_shape(name, shape);
+	unsigned shapeIndex = _numarrays;
+        DescData::set_array_shape(index, shapeIndex, shape);
     }
 private:
     XtcData::Xtc& _parent;
@@ -228,22 +231,21 @@ public:
     }
 
     template <typename T>
-    void set_value(const char* namestring, T val)
+    void set_value(unsigned index, T val)
     {
         Data& data = _shapesdata.data();
 
-	if(_nameindex.nameMap().count(namestring) == 0){
-	  //	  std::cout << "Element " << namestring << " not found" << std::endl;
-	  std::string error_string  = "Element ";
-	  error_string = error_string + namestring + " not found in nameMap()";  
-
-	  throw std::runtime_error(error_string);
-	}
-
-	unsigned index = _nameindex.nameMap()[namestring];
-	assert (index==_numentries); // require the user to fill the fields in order
+	if(index != _numentries)
+	  {
+	   char error_string [100];
+	   const char * error_it_name = _nameindex.names().get(index).name();
+	     
+	   snprintf(error_string,100, "Item \"%s\" with index %d out of order",error_it_name, index);
+	   throw std::runtime_error(error_string);
+	  }
 	
 	Name& name = _nameindex.names().get(index);
+
         T* ptr = reinterpret_cast<T*>(data.payload() + _offset[index]);
         *ptr = val;
         data.alloc(sizeof(T), _shapesdata, _parent);
@@ -251,23 +253,40 @@ public:
         _offset[_numentries]=_offset[_numentries-1]+Name::get_element_size(name.type());
     }
 
+  
     void* get_ptr()
     {
         return reinterpret_cast<void*>(_shapesdata.data().next());
     }
 
-    void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
-        unsigned index = _nameindex.nameMap()[name];
-        unsigned shapeIndex = _nameindex.shapeMap()[name];
+    // void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
+    //     unsigned index = _nameindex.nameMap()[name];
+    //     unsigned shapeIndex = _nameindex.shapeMap()[name];
+    //     assert (shapeIndex==_numarrays);
+    //     _numentries++;
+    //     DescData::set_array_shape(name, shape);
+    //     Names& names = _nameindex.names();
+    //     Name& namecl = names.get(index);
+    //     unsigned size = _shapesdata.shapes().get(shapeIndex).size(namecl);
+    //     _offset[_numentries]=_offset[_numentries-1]+size;
+    //     _shapesdata.data().alloc(size,_shapesdata,_parent);
+    // }
+
+
+  void set_array_shape(unsigned index,unsigned shape[Name::MaxRank]) {
+        unsigned int shapeIndex = _numarrays;
+	
         assert (shapeIndex==_numarrays);
         _numentries++;
-        DescData::set_array_shape(name, shape);
+        DescData::set_array_shape(index, shapeIndex, shape);
         Names& names = _nameindex.names();
         Name& namecl = names.get(index);
         unsigned size = _shapesdata.shapes().get(shapeIndex).size(namecl);
         _offset[_numentries]=_offset[_numentries-1]+size;
         _shapesdata.data().alloc(size,_shapesdata,_parent);
     }
+  
+  
 
 private:
     XtcData::Xtc& _parent;
@@ -278,26 +297,3 @@ private:
 
 
 	
-	// std::cout << _nameindex.nameMap().count("cats") << std::endl;
-	
-	// std::map<std::string, unsigned>::iterator it;
-	
-	// for (it=_nameindex.nameMap().begin(); it!=_nameindex.nameMap().end(); it++)
-	//   {
-	//     std::cout << it->first  // string (key)
-        //       << ':'
-        //       << it->second   // string's value 
-        //       << std::endl ;
-	// }
-
-	
-	// const char* indt = "floatFex";
-
-	
- 	// std::cout << "Map find "<<indt<<": " << _nameindex.nameMap().find(indt)->second << std::endl;
-
-	// std::cout << "Namestring: " << namestring << std::endl;
-	
- 	// std::cout << "Map find namestring: " << _nameindex.nameMap().find(namestring)->second << std::endl;
-
- 	// std::cout << "Map end is at: " << _nameindex.nameMap().end()->second << std::endl;

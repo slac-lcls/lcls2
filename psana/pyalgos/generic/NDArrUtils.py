@@ -40,7 +40,7 @@ import numpy as np
 #------------------------------
 
 import logging
-log = logging.getLogger('NDArrUtils')
+logger = logging.getLogger('NDArrUtils')
 
 #------------------------------
 
@@ -227,7 +227,7 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8) :
 def test_mask_neighbors_2d(allnbrs=True) :
 
     randexp = random_exponential(shape=(40,60), a0=1)
-    fig  = gr.figure(figsize=(16,6), title='Random 2-d mask')
+    fig  = gr.figure(figsize=(16,7), title='Random 2-d mask')
     axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.40, 0.91))
     axcb1 = gr.add_axes(fig, axwin=(0.452, 0.05, 0.01, 0.91))
 
@@ -250,7 +250,7 @@ def test_mask_neighbors_3d(allnbrs=True) :
     #randexp = random_exponential(shape=(2,2,30,80), a0=1)
     randexp = random_exponential(shape=(2,30,80), a0=1)
 
-    fig  = gr.figure(figsize=(16,6), title='Random > 2-d mask')
+    fig  = gr.figure(figsize=(16,7), title='Random > 2-d mask')
     axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.40, 0.91))
     axcb1 = gr.add_axes(fig, axwin=(0.452, 0.05, 0.01, 0.91))
 
@@ -271,7 +271,7 @@ def test_mask_neighbors_3d(allnbrs=True) :
 
 def test_mask_edges_2d(mrows=1, mcols=1) :
 
-    fig  = gr.figure(figsize=(8,6), title='Mask edges 2-d')
+    fig  = gr.figure(figsize=(8,7), title='Mask edges 2-d')
     axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.87, 0.91))
     axcb1 = gr.add_axes(fig, axwin=(0.922, 0.05, 0.01, 0.91))
 
@@ -286,7 +286,7 @@ def test_mask_edges_2d(mrows=1, mcols=1) :
 
 def test_mask_edges_3d(mrows=1, mcols=1) :
 
-    fig  = gr.figure(figsize=(8,6), title='Mask edges 2-d')
+    fig  = gr.figure(figsize=(8,7), title='Mask edges 2-d')
     axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.87, 0.91))
     axcb1 = gr.add_axes(fig, axwin=(0.922, 0.05, 0.01, 0.91))
 
@@ -307,15 +307,15 @@ def do_test() :
 
     print(80*'_')
     tname = sys.argv[1] if len(sys.argv)>1 else '1'
-    if tname == '1' : test_mask_neighbors_2d(allnbrs = False)
-    if tname == '2' : test_mask_neighbors_2d(allnbrs = True)
-    if tname == '3' : test_mask_neighbors_3d(allnbrs = False)
-    if tname == '4' : test_mask_neighbors_3d(allnbrs = True)
-    if tname == '5' : test_mask_edges_2d(mrows=5, mcols=1)
-    if tname == '6' : test_mask_edges_2d(mrows=0, mcols=5)
-    if tname == '7' : test_mask_edges_3d(mrows=1, mcols=2)
-    if tname == '8' : test_mask_edges_3d(mrows=5, mcols=0)
-    else : sys.exit ('Not recognized test name: "%s"' % tname)
+    if   tname == '1' : test_mask_neighbors_2d(allnbrs = False)
+    elif tname == '2' : test_mask_neighbors_2d(allnbrs = True)
+    elif tname == '3' : test_mask_neighbors_3d(allnbrs = False)
+    elif tname == '4' : test_mask_neighbors_3d(allnbrs = True)
+    elif tname == '5' : test_mask_edges_2d(mrows=5, mcols=1)
+    elif tname == '6' : test_mask_edges_2d(mrows=0, mcols=5)
+    elif tname == '7' : test_mask_edges_3d(mrows=1, mcols=2)
+    elif tname == '8' : test_mask_edges_3d(mrows=5, mcols=0)
+    else : sys.exit ('Not recognized test name: "%s"    Try tests 1-8' % tname)
 
 #------------------------------
 

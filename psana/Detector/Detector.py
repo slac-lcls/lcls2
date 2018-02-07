@@ -4,9 +4,8 @@ import re
 import numpy as np
 
 def Detector(name, config):
-    name = ''.join([i for i in name if not i.isdigit()]) # remove digits
-    name = name.title() # TODO: extract detector type from Full Name or DAQ Alias
-    df = eval(name + '._Factory()')
+    det = getattr(config,name)
+    df = eval(str(det.dettype) + '._Factory()')
     return df.create(name, config)
 
 class DetectorBase(object):
@@ -14,57 +13,32 @@ class DetectorBase(object):
         self.detectorName = name
         self.config = config
 
-    def __searchAttr__(self, softwareName):
-        self.dataAttr = []
-        def children(grandparent, parent):
-            tree.append(parent)
-            _parent = getattr(grandparent, parent)
-            try:
-                if "software" in vars(_parent) and "version" in vars(_parent):
-                    if softwareName in getattr(_parent, "software"):
-                        self.dataAttr.append('.'.join(tree))
-                    tree.pop()
-                else:
-                    for i, child in enumerate(vars(_parent)):
-                        children(_parent, child)
-                    tree.pop()
-            except:
-                pass
-
-        tree = []
-        for detname in vars(self.config):
-            children(self.config, detname)
-
-    def __sorted_nicely__(self, l):
-        """ Sort the given iterable in the way that humans expect."""
-        convert = lambda text: int(text) if text.isdigit() else text
-        alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
-        return sorted(l, key=alphanum_key)
-
-    def name(self): return self.detectorName
-
-class Cspad(DetectorBase):
+class cspad(DetectorBase):
     """
-    Cspad reader
+    cspad reader
     """
     def __init__(self, name, config):
-        super(Cspad, self).__init__(name, config)
-        self.softwareName = "cspad"
-        self.__searchAttr__(self.softwareName)
+        super(cspad, self).__init__(name, config)
+        self.name = name
+        detcfg = getattr(config,self.name)
+        assert detcfg.dettype      == 'cspad'
+        assert detcfg.raw.software == 'raw'
+        assert detcfg.raw.version  == (2,3,42)
 
     class _Factory:
-        def create(self, name, config): return Cspad(name, config)
+        def create(self, name, config): return cspad(name, config)
 
     def raw(self, evt, verbose=0):
-        evtStr = 'evt.' + self.dataAttr[0]
-        evtAttr = eval(evtStr)  # evt.cspad0.raw.arrayRaw
+        det = getattr(evt,self.name)
+        evtAttr = det.raw.arrayRaw
         evtAttr = evtAttr.reshape((2,3,3)) # This mini cspad has 2x3x3 pixels
         return evtAttr
 
-    def calib(self, data, verbose=0): print("Cspad.calib")
-    def image(self, data, verbose=0): print("Cspad.image")
+    def calib(self, data, verbose=0): print("cspad.calib")
+    def image(self, data, verbose=0): print("cspad.image")
 
 
+# this class needs to be updated to use the simpler approach above
 class Hsd(DetectorBase):
     """
     High Speed Digitizer (HSD) reader

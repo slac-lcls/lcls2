@@ -49,7 +49,7 @@ import numpy as np
 #------------------------------
 
 import logging
-log = logging.getLogger('Utils')
+logger = logging.getLogger('Utils')
 
 #------------------------------
 
@@ -57,7 +57,7 @@ def str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=None) :
     """Returns string timestamp for specified format and time in sec or current time by default
     """
     ts = strftime(fmt, localtime(time_sec))
-    #log.debug('str_tstamp: %s' % ts)
+    #logger.debug('str_tstamp: %s' % ts)
     return ts
 
 #------------------------------
@@ -112,11 +112,11 @@ def create_directory(dir, mode=0o377) :
     """Creates directory and sets its mode
     """
     if os.path.exists(dir) :
-        log.warning('Directory exists: %s' % dir)
+        logger.warning('Directory exists: %s' % dir)
     else :
         os.makedirs(dir)
         os.chmod(dir, mode)
-        log.warning('Directory created: %s, mode(oct)=%s' % (dir, oct(mode)))
+        logger.warning('Directory created: %s, mode(oct)=%s' % (dir, oct(mode)))
 
 #------------------------------
 
@@ -127,7 +127,7 @@ def create_path(path, depth=6, mode=0o377) :
 
        Returns True if path to file exists, False othervise
     """
-    log.warning('create_path: %s' % path)
+    logger.warning('create_path: %s' % path)
 
     #subdirs = path.strip('/').split('/')
     subdirs = path.split('/')
@@ -176,19 +176,18 @@ def replace(template, pattern, subst) :
 #------------------------------
 
 def test_01() :    
-    #log.debug('debug msg')  # will print a message to the console
-    #log.warning('Watch out!')  # will print a message to the console
-    #log.info('I told you so')  # will not print anything
+    #logger.debug('debug msg')  # will print a message to the console
+    #logger.warning('Watch out!')  # will print a message to the console
+    #logger.info('I told you so')  # will not print anything
 
     print('get_enviroment("PWD") : %s' % get_enviroment(env='PWD'))
     print('get_hostname()        : %s' % get_hostname())
     print('get_cwd()             : %s' % get_cwd())
     print('get_login()           : %s' % get_login())
     print('str_tstamp()          : %s' % str_tstamp())
-    print('log_rec_on_start()    :%s' % log_rec_on_start())
     create_directory('./work', mode=0o377)
     print('file_mode("work")     : %s' % oct(file_mode('work')))
-    #print(': %s' % )
+    print('log_rec_on_start()    :%s' % log_rec_on_start())
 
 #------------------------------
 
