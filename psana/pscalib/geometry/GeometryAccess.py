@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+####!/usr/bin/env python
 #------------------------------
 """
 Class :py:class:`GeometryAccess` - holds and access hierarchical geometry for generic pixel detector
@@ -6,10 +6,10 @@ Class :py:class:`GeometryAccess` - holds and access hierarchical geometry for ge
 
 Usage::
  
-    from PSCalib.GeometryAccess import GeometryAccess, img_from_pixel_arrays
+    from pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
 
     fname_geometry = '/reg/d/psdm/CXI/cxitut13/calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/0-end.data'
-    geometry = GeometryAccess(fname_geometry, 0377)
+    geometry = GeometryAccess(fname_geometry, 0o377)
 
     # load constants from geometry file
     geometry.load_pars_from_file(path=None)
@@ -49,7 +49,7 @@ Usage::
 
     # get pixel mask array;
     # mbits = +1-mask edges, +2-wide pixels, +4-non-bonded pixels, +8/+16 - four/eight neighbours of non-bonded
-    mask = geometry.get_pixel_mask(oname=None, oindex=0, mbits=0377)
+    mask = geometry.get_pixel_mask(oname=None, oindex=0, mbits=0o377)
 
     # get index arrays for entire detector
     iX, iY = geometry.get_pixel_coord_indexes(do_tilt=True)
@@ -89,25 +89,30 @@ Usage::
     geometry.print_psf()
 
 See:
- * :py:class:`GeometryObject`, 
- * :py:class:`SegGeometry`, 
- * :py:class:`SegGeometryCspad2x1V1`, 
- * :py:class:`SegGeometryEpix100V1`, 
- * :py:class:`SegGeometryMatrixV1`, 
+ * :py:class:`SegGeometryBase`
+ * :py:class:`SegGeometryCspad2x1V1`
+ * :py:class:`SegGeometryEpix100V1`
+ * :py:class:`SegGeometryMatrixV1`
+ * :py:class:`SegGeometryJungfrauV1`
  * :py:class:`SegGeometryStore`
+ * :py:class:`GeometryAccess`
+ * :py:class:`GeometryObject`
 
 For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/display/PSDM/Detector+Geometry>`_.
 
-This software was developed for the SIT project.
+This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
 Author: Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-01
 """
 #------------------------------
 
+import logging
+logger = logging.getLogger('GeometryAccess')
+
 import os
-import sys
-from PSCalib.GeometryObject import GeometryObject
+from pscalib.geometry.GeometryObject import GeometryObject
 
 import numpy as np
 from math import floor, fabs
@@ -140,7 +145,7 @@ class GeometryAccess :
         self.valid = False
 
         if path is None or not os.path.exists(path) :
-            if pbits : print '%s: geometry file "%s" does not exist' % (self.__class__.__name__, path)
+            if pbits : print('%s: geometry file "%s" does not exist' % (self.__class__.__name__, path))
             return
 
         self.load_pars_from_file()
@@ -185,12 +190,12 @@ class GeometryAccess :
         self.dict_of_comments = {}
         self.list_of_geos = []
 
-        if self.pbits & 32 : print 'Load file: %s' % self.path
+        if self.pbits & 32 : print('Load file: %s' % self.path)
 
         f=open(self.path,'r')
         for linef in f :
             line = linef.strip('\n')
-            if self.pbits & 128 : print line
+            if self.pbits & 128 : print(line)
             if not line : continue   # discard empty strings
             if line[0] == '#' :      # process line of comments
                 self._add_comment_to_dict(line)
@@ -210,18 +215,18 @@ class GeometryAccess :
         """        
         self.valid = False
         if not isinstance(s, str) :
-            if pbits : print '%s.load_pars_from_str input parameter is not a str, s: %s' % (self.__class__.__name__, str(s))
+            if pbits : print('%s.load_pars_from_str input parameter is not a str, s: %s' % (self.__class__.__name__, str(s)))
             return
             
         self.reset_cash()
         self.dict_of_comments = {}
         self.list_of_geos = []
 
-        if self.pbits & 32 : print 'Load text: %s' % s
+        if self.pbits & 32 : print('Load text: %s' % s)
 
         for linef in s.split('\n') :
             line = linef.strip('\n')
-            if self.pbits & 128 : print line
+            if self.pbits & 128 : print(line)
             if not line : continue   # discard empty strings
             if line[0] == '#' :      # process line of comments
                 self._add_comment_to_dict(line)
@@ -239,7 +244,7 @@ class GeometryAccess :
         """        
         if not self.valid : return
 
-        if self.pbits & 32 : print 'Save file: %s' % path
+        if self.pbits & 32 : print('Save file: %s' % path)
 
         txt = ''
         # save comments
@@ -258,7 +263,7 @@ class GeometryAccess :
         f.write(txt)
         f.close()
 
-        if self.pbits & 64 : print txt
+        if self.pbits & 64 : print(txt)
     
     #------------------------------
     
@@ -275,9 +280,9 @@ class GeometryAccess :
             return
 
         #beginline, endline = cmt
-        #print '  cmt      : "%s"' % cmt
-        #print '  len(cmt) : %d' % len(cmt)        
-        #print '  line     : "%s"' % line
+        #print('  cmt      : "%s"' % cmt)
+        #print('  len(cmt) : %d' % len(cmt))       
+        #print('  line     : "%s"' % line)
 
         self.dict_of_comments[ind] = cmt.strip()
 
@@ -290,7 +295,7 @@ class GeometryAccess :
         keys = ['pname','pindex','oname','oindex','x0','y0','z0','rot_z','rot_y','rot_x','tilt_z','tilt_y','tilt_x']
         f = line.split()
         if len(f) != len(keys) :
-            print 'The list length for fields from file: %d is not equal to expected: %d' % (len(f), len(keys))
+            print('The list length for fields from file: %d is not equal to expected: %d' % (len(f), len(keys)))
             return
     
         vals = [str  (f[0]),
@@ -308,11 +313,11 @@ class GeometryAccess :
                 float(f[12])
                ]
 
-        #print 'keys: ', keys
-        #print 'vals: ', vals
+        #print('keys: ', keys)
+        #print('vals: ', vals)
     
         d = dict(zip(keys, vals))
-        #print 'd=', d
+        #print('d=', d)
         #return d
         return GeometryObject(**d)
     
@@ -350,7 +355,7 @@ class GeometryAccess :
             geo.set_parent(parent)
             parent.add_child(geo)
 
-            if self.pbits & 16 : print 'geo:%s:%d has parent:%s:%d' % (geo.oname, geo.oindex, parent.oname, parent.oindex)
+            if self.pbits & 16 : print('geo:%s:%d has parent:%s:%d' % (geo.oname, geo.oindex, parent.oname, parent.oindex))
 
     #------------------------------
 
@@ -392,7 +397,7 @@ class GeometryAccess :
 
         geo = self.get_top_geo() if oname is None else self.get_geo(oname, oindex)
         if self.pbits & 8 :
-            print 'get_pixel_coords(...) for geo:',
+            print('get_pixel_coords(...) for geo:',)
             geo.print_geo_children();
         
         self.X_old, self.Y_old, self.Z_old = geo.get_pixel_coords(do_tilt) 
@@ -430,7 +435,7 @@ class GeometryAccess :
 
     #------------------------------
 
-    def get_pixel_mask(self, oname=None, oindex=0, mbits=0377, **kwargs) :
+    def get_pixel_mask(self, oname=None, oindex=0, mbits=0o377, **kwargs) :
         """Returns pixel mask array for top or specified geometry object.
 
         mbits =+1 - mask edges
@@ -491,7 +496,7 @@ class GeometryAccess :
     
     def print_list_of_geos(self) :
         ss = '\nprint_list_of_geos():'
-        if len(self.list_of_geos) == 0 : print '%s List_of_geos is empty...' % ss
+        if len(self.list_of_geos) == 0 : print('%s List_of_geos is empty...' % ss)
         if not self.valid : return
         for geo in self.list_of_geos : geo.print_geo()
 
@@ -499,18 +504,18 @@ class GeometryAccess :
     
     def print_list_of_geos_children(self) :
         ss = '\nprint_list_of_geos_children():'
-        if len(self.list_of_geos) == 0 : print '%s List_of_geos is empty...' % ss
+        if len(self.list_of_geos) == 0 : print('%s List_of_geos is empty...' % ss)
         if not self.valid : return
         for geo in self.list_of_geos : geo.print_geo_children()
 
     #------------------------------
     
     def print_comments_from_dict(self) :
-        print '\nprint_comments_from_dict():'
+        print('\nprint_comments_from_dict():')
         if not self.valid : return
         #for k,v in self.dict_of_comments.iteritems():
         for k in sorted(self.dict_of_comments):
-            print 'key: %3d  val: %s' % (k, self.dict_of_comments[k])
+            print('key: %3d  val: %s' % (k, self.dict_of_comments[k]))
 
     #------------------------------
 
@@ -520,10 +525,10 @@ class GeometryAccess :
         if not self.valid : return
         X, Y, Z = self.get_pixel_coords(oname, oindex, do_tilt=True)
 
-        print 'size=', X.size
-        print 'X: %s...'% ', '.join(['%10.1f'%v for v in X.flatten()[0:9]])
-        print 'Y: %s...'% ', '.join(['%10.1f'%v for v in Y.flatten()[0:9]])
-        print 'Z: %s...'% ', '.join(['%10.1f'%v for v in Z.flatten()[0:9]])
+        print('size=', X.size)
+        print('X: %s...'% ', '.join(['%10.1f'%v for v in X.flatten()[0:9]]))
+        print('Y: %s...'% ', '.join(['%10.1f'%v for v in Y.flatten()[0:9]]))
+        print('Z: %s...'% ', '.join(['%10.1f'%v for v in Z.flatten()[0:9]]))
 
     #------------------------------
 
@@ -682,10 +687,10 @@ class GeometryAccess :
         """
         if not self.valid : return None
         psf = np.array(self.get_psf())
-        print 'print_psf(): psf.shape: %s \npsf vectors:' % (str(psf.shape)) 
+        print('print_psf(): psf.shape: %s \npsf vectors:' % (str(psf.shape))) 
         for (px,py,pz), (sx,xy,xz), (fx,fy,fz) in psf:
-            print '    p=(%12.2f, %12.2f, %12.2f),    s=(%8.2f, %8.2f, %8.2f)   f=(%8.2f, %8.2f, %8.2f)' \
-                  % (px,py,pz,  sx,xy,xz,  fx,fy,fz)
+            print('    p=(%12.2f, %12.2f, %12.2f),    s=(%8.2f, %8.2f, %8.2f)   f=(%8.2f, %8.2f, %8.2f)' \
+                  % (px,py,pz,  sx,xy,xz,  fx,fy,fz))
 
 #------------------------------
 #------ Global Method(s) ------
@@ -705,9 +710,10 @@ def img_from_pixel_arrays(iX, iY, W=None, dtype=np.float32, vbase=0) :
     """
     if iX.size != iY.size \
     or (W is not None and iX.size !=  W.size) :
-        msg = 'img_from_pixel_arrays(): WARNING input array sizes are different;' \
+        msg = 'img_from_pixel_arrays(): input array sizes are different;' \
             + ' iX.size=%d, iY.size=%d, W.size=%d' % (iX.size, iY.size, W.size)
-        print msg
+        #print(msg)
+        logger.warning(msg)
         return img_default()
 
     iXfl = iX.flatten()
@@ -728,11 +734,16 @@ def img_from_pixel_arrays(iX, iY, W=None, dtype=np.float32, vbase=0) :
 #------------------------------
 
 if __name__ == "__main__" :
+
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
+                        datefmt='%m-%d-%Y %H:%M:%S',\
+                        level=logging.DEBUG) #filename='example.log', filemode='w'
+
     from time import time # for test purpose only
 
     #from PSCalib.SegGeometryCspad2x1V1 import cspad2x1_one
-    import pyimgalgos.GlobalGraphics as gg # for test purpose
-    import pyimgalgos.TestImageGenerator as tig # for test purpose only
+    import pyalgos.generic.Graphics as gg # for test purpose
+    import pyalgos.generic.NDArrGenerators as ag # for test purpose only
 
 #------------------------------
 
@@ -742,11 +753,11 @@ def test_access(geometry) :
     geometry.print_list_of_geos()
     geometry.print_list_of_geos_children()
 
-    print '\nTOP GEO:'
+    print('\nTOP GEO:')
     top_geo = geometry.get_top_geo()
     top_geo.print_geo_children()
 
-    print '\nINTERMEDIATE GEO (QUAD):'
+    print('\nINTERMEDIATE GEO (QUAD):')
     geo = geometry.get_geo('QUAD:V1', 0) 
     #geo = geometry.get_top_geo() 
     geo.print_geo_children()
@@ -754,37 +765,37 @@ def test_access(geometry) :
     t0_sec = time()
     X,Y,Z = geo.get_pixel_coords(do_tilt=True)
     #X,Y = geo.get_2d_pixel_coords()
-    print 'X:\n', X
-    print 'Consumed time to get 3d pixel coordinates = %7.3f sec' % (time()-t0_sec)
-    print 'Geometry object: %s:%d X.shape:%s' % (geo.oname, geo.oindex, str(X.shape))
+    print('X:\n', X)
+    print('Consumed time to get 3d pixel coordinates = %7.3f sec' % (time()-t0_sec))
+    print('Geometry object: %s:%d X.shape:%s' % (geo.oname, geo.oindex, str(X.shape)))
 
-    print '\nTest of print_pixel_coords() for quad:'
+    print('\nTest of print_pixel_coords() for quad:')
     geometry.print_pixel_coords('QUAD:V1', 1)
-    print '\nTest of print_pixel_coords() for CSPAD:'
+    print('\nTest of print_pixel_coords() for CSPAD:')
     geometry.print_pixel_coords()
 
-    print '\nTest of get_pixel_areas() for QUAD:'
+    print('\nTest of get_pixel_areas() for QUAD:')
     A = geo.get_pixel_areas()
-    print 'Geometry object: %s:%d A.shape:%s' % (geo.oname, geo.oindex, str(A.shape))
-    print 'A[0,0:5,190:198]:\n', A[0,0:5,190:198]
+    print('Geometry object: %s:%d A.shape:%s' % (geo.oname, geo.oindex, str(A.shape)))
+    print('A[0,0:5,190:198]:\n', A[0,0:5,190:198])
  
-    print '\nTest of get_pixel_areas() for CSPAD:'
+    print('\nTest of get_pixel_areas() for CSPAD:')
     A = top_geo.get_pixel_areas()
-    print 'Geometry object: %s:%d A.shape:%s' % (geo.oname, geo.oindex, str(A.shape))
-    print 'A[0,0,0:5,190:198]:\n', A[0,0,0:5,190:198]
+    print('Geometry object: %s:%d A.shape:%s' % (geo.oname, geo.oindex, str(A.shape)))
+    print('A[0,0,0:5,190:198]:\n', A[0,0,0:5,190:198])
 
-    print '\nTest of get_size_geo_array()'
-    print 'for QUAD : %d' % geo.get_size_geo_array()
-    print 'for CSPAD: %d' % top_geo.get_size_geo_array()
+    print('\nTest of get_size_geo_array()')
+    print('for QUAD : %d' % geo.get_size_geo_array())
+    print('for CSPAD: %d' % top_geo.get_size_geo_array())
 
-    print '\nTest of get_pixel_scale_size()'
-    print 'for QUAD    : %8.2f' % geo.get_pixel_scale_size()
-    print 'for CSPAD   : %8.2f' % top_geo.get_pixel_scale_size()
-    print 'for geometry: %8.2f' % geometry.get_pixel_scale_size()
+    print('\nTest of get_pixel_scale_size()')
+    print('for QUAD    : %8.2f' % geo.get_pixel_scale_size())
+    print('for CSPAD   : %8.2f' % top_geo.get_pixel_scale_size())
+    print('for geometry: %8.2f' % geometry.get_pixel_scale_size())
 
-    print '\nTest of get_dict_of_comments():'
+    print('\nTest of get_dict_of_comments():')
     d = geometry.get_dict_of_comments()
-    print "d[0] = %s" % d[0]
+    print("d[0] = %s" % d[0])
 
 #------------------------------
 
@@ -795,11 +806,11 @@ def test_plot_quad(geometry) :
     iX, iY = geometry.get_pixel_coord_indexes('QUAD:V1', 1, pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True)
 
     # get intensity array
-    arr = tig.cspad_nparr(n2x1=iX.shape[0])
+    arr = ag.cspad_ndarr(n2x1=iX.shape[0])
     arr.shape = (8,185,388)
     amp_range = (0,185+388)
  
-    print 'iX, iY, W shape:', iX.shape, iY.shape, arr.shape 
+    print('iX, iY, W shape:', iX.shape, iY.shape, arr.shape)
     img = img_from_pixel_arrays(iX,iY,W=arr)
 
     gg.plotImageLarge(img,amp_range=amp_range)
@@ -819,7 +830,7 @@ def test_mask_quad(geometry, mbits) :
     arr.shape = (8,185,388)
     amp_range = (-1,2)
  
-    print 'iX, iY, W shape:', iX.shape, iY.shape, arr.shape 
+    print('iX, iY, W shape:', iX.shape, iY.shape, arr.shape)
     img = img_from_pixel_arrays(iX, iY, W=arr, vbase=0.5)
 
     gg.plotImageLarge(img,amp_range=amp_range)
@@ -844,13 +855,13 @@ def test_plot_cspad(geometry, fname_data, amp_range=(0,0.5)) :
     iX, iY = geometry.get_pixel_coord_indexes(xy0_off_pix=xyc, do_tilt=True)
 
     ixo, iyo = geometry.point_coord_indexes(xy0_off_pix=xyc, do_tilt=True)
-    print 'Detector origin indexes ixo, iyo:', ixo, iyo
+    print('Detector origin indexes ixo, iyo:', ixo, iyo)
 
     root, ext = os.path.splitext(fname_data)
     arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float) 
     arr.shape= (4,8,185,388)
 
-    print 'iX, iY, W shape:', iX.shape, iY.shape, arr.shape
+    print('iX, iY, W shape:', iX.shape, iY.shape, arr.shape)
 
     arr.shape = iX.shape
     img = img_from_pixel_arrays(iX, iY, W=arr)
@@ -868,7 +879,7 @@ def test_plot_cspad(geometry, fname_data, amp_range=(0,0.5)) :
 def test_img_default() :
     """ Test default image
     """
-    axim = gg.plotImageLarge( img_default() )
+    axim = gg.plotImageLarge(img_default())
     gg.move(500,10)
     gg.show()
 
@@ -899,16 +910,16 @@ def test_cspad2x2() :
     """ Test cspad2x2 geometry table
     """
     ## MecTargetChamber.0:Cspad2x2.1
-    basedir = '/reg/neh/home1/dubrovin/LCLS/CSPad2x2Alignment/calib-cspad2x2-01-2013-02-13/'    
+    basedir = '/reg/g/psdm/detector/alignment/cspad2x2/calib-cspad2x2-01-2013-02-13/'    
     fname_geometry = basedir + 'calib/CsPad2x2::CalibV1/MecTargetChamber.0:Cspad2x2.1/geometry/0-end.data'
     fname_data     = basedir + 'cspad2x2.1-ndarr-ave-meca6113-r0028.dat'    
 
     ## MecTargetChamber.0:Cspad2x2.2 
-    #basedir = '/reg/neh/home1/dubrovin/LCLS/CSPad2x2Alignment/calib-cspad2x2-02-2013-02-13/'    
+    #basedir = '/reg/g/psdm/detector/alignment/cspad2x2/calib-cspad2x2-02-2013-02-13/'    
     #fname_geometry = basedir + 'calib/CsPad2x2::CalibV1/MecTargetChamber.0:Cspad2x2.2/geometry/0-end.data'
     #fname_data     = basedir + 'cspad2x2.2-ndarr-ave-meca6113-r0028.dat'    
 
-    geometry = GeometryAccess(fname_geometry, 0377)
+    geometry = GeometryAccess(fname_geometry, 0o377)
     amp_range = (0,15000)
 
     # get pixel coordinate index arrays:
@@ -921,7 +932,7 @@ def test_cspad2x2() :
     arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float) 
     arr.shape= (185,388,2)
 
-    print 'iX, iY, W shape:', iX.shape, iY.shape, arr.shape 
+    print('iX, iY, W shape:', iX.shape, iY.shape, arr.shape)
     img = img_from_pixel_arrays(iX,iY,W=arr)
 
     axim = gg.plotImageLarge(img,amp_range=amp_range)
@@ -937,11 +948,11 @@ def test_epix100a() :
     fname_geometry = basedir + 'calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/2-end.data'
     fname_data     = basedir + 'cspad-arr-cxid2714-r0023-lysozyme-rings.txt'    
 
-    #basedir = '/reg/neh/home1/dubrovin/LCLS/GeometryCalib/calib-xpp-Epix100a-2014-11-05/'    
+    #basedir = '/reg/g/psdm/detector/alignment/epix100/calib-xpp-Epix100a-2014-11-05/'    
     #fname_geometry = basedir + 'calib/Epix100a::CalibV1/NoDetector.0:Epix100a.0/geometry/0-end.data'
     #fname_data     = basedir + 'epix100a-ndarr-ave-clb-xppi0614-r0073.dat'    
 
-    geometry = GeometryAccess(fname_geometry, 0177777)
+    geometry = GeometryAccess(fname_geometry, 0o177777)
     amp_range = (-4,10)
 
     iX, iY = geometry.get_pixel_coord_indexes()
@@ -949,7 +960,7 @@ def test_epix100a() :
     root, ext = os.path.splitext(fname_data)
     arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float) 
 
-    print 'iX, iY, W shape:', iX.shape, iY.shape, arr.shape 
+    print('iX, iY, W shape:', iX.shape, iY.shape, arr.shape)
     img = img_from_pixel_arrays(iX,iY,W=arr)
 
     axim = gg.plotImageLarge(img,amp_range=amp_range)
@@ -966,7 +977,7 @@ def test_cspad_xy_at_z() :
     fname_geometry = basedir + '2016-06-03-geometry-cxi06216-r25-camera1-z175mm.txt'
     fname_data     = basedir + '2016-06-03-chun-cxi06216-0025-DscCsPad-max.txt'    
 
-    geometry = GeometryAccess(fname_geometry, 0377)
+    geometry = GeometryAccess(fname_geometry, 0o377)
 
     # get pixel coordinate index arrays:
     xyc = xc, yc = 1000, 1000
@@ -978,15 +989,15 @@ def test_cspad_xy_at_z() :
     root, ext = os.path.splitext(fname_data)
     arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float) 
 
-    #print 'arr.shape=', arr.shape
+    #print('arr.shape=', arr.shape)
     arr.shape= (32,185,388)
 
     #ave, rms = arr.mean(), arr.std()
     #amp_range = (ave-rms, ave+3*rms)
     amp_range = (0, 1000)
-    print 'amp_range', amp_range
+    print('amp_range', amp_range)
 
-    print 'iX, iY, W shape:', iX.shape, iY.shape, arr.shape 
+    print('iX, iY, W shape:', iX.shape, iY.shape, arr.shape)
     img = img_from_pixel_arrays(iX,iY,W=arr)
 
     axim = gg.plotImageLarge(img,amp_range=amp_range)
@@ -1000,11 +1011,7 @@ def test_cspad_xy_at_z() :
 
 if __name__ == "__main__" :
 
-    ##fname = '/reg/d/psdm/cxi/cxii0114/calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/0-end.data'
-    #basedir = '/reg/neh/home1/dubrovin/LCLS/CSPadAlignment-v01/calib-cxi-ds1-2013-12-20/'
-    #fname_geometry = basedir + 'calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/1-end.data'
-    #fname_data     = basedir + 'cspad-ndarr-ave-cxi83714-r0136.dat'
-    #amp_range = (0,0.5)
+    import sys
 
     # CXI
     basedir = '/reg/g/psdm/detector/alignment/cspad/calib-cxi-ds1-2014-03-19/'
@@ -1014,39 +1021,39 @@ if __name__ == "__main__" :
     amp_range = (0,500)
 
     ## XPP
-    #basedir = '/reg/neh/home1/dubrovin/LCLS/CSPadAlignment-v01/calib-xpp-2013-01-29/'
+    #basedir = '/reg/g/psdm/detector/alignment/cspad//calib-xpp-2013-01-29/'
     #fname_data     = basedir + 'cspad-xpptut13-r1437-nda.dat'
     #fname_geometry = basedir + 'calib/CsPad::CalibV1/XppGon.0:Cspad.0/geometry/0-end.data'
     #amp_range = (1500,2500)
 
 
-    #basedir = '/home/pcds/LCLS/calib/geometry/'
+    #basedir = '/reg/g/psdm/detector/alignment/cspad/'
     #fname_geometry = basedir + '0-end.data'
     #fname_geometry = basedir + '2-end.data'
     #fname_data     = basedir + 'cspad-ndarr-ave-cxii0114-r0227.dat'
     #fname_geometry = '/reg/d/psdm/cxi/cxii0114/calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/0-end.data'
     #amp_range = (0,500)
 
-    #basedir = '/reg/neh/home1/dubrovin/LCLS/CSPadAlignment-v01/calib-cxi-ds1-2014-05-15/'
+    #basedir = '/reg/g/psdm/detector/alignment/cspad//calib-cxi-ds1-2014-05-15/'
     #fname_geometry = basedir + 'calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/2-end.data'
     #fname_data     = basedir + 'cspad-arr-cxid2714-r0023-lysozyme-rings.npy'
     #amp_range = (0,500)
 
-    print '%s\nfname_geometry: %s\nfname_data: %s' %(120*'_', fname_geometry, fname_geometry)
+    print('%s\nfname_geometry: %s\nfname_data: %s' %(120*'_', fname_geometry, fname_geometry))
 
     geometry = GeometryAccess(fname_geometry, 0)
 
-    msg = 'Use command: sys.argv[0] <num>, wher num=1,2,3,...,10'
+    msg = 'Use command: sys.argv[0] <num>, wher num=1,2,...,14'
 
-    if len(sys.argv)==1   : print 'App needs in input parameter.' + msg
+    if len(sys.argv)==1   : print('App needs in input parameter.' + msg)
     elif sys.argv[1]=='1' : test_access(geometry)
     elif sys.argv[1]=='2' : test_plot_quad(geometry)
     elif sys.argv[1]=='3' : test_plot_cspad(geometry, fname_data, amp_range)
     elif sys.argv[1]=='4' : test_img_default()
     elif sys.argv[1]=='5' :
-        print 'Init GeometryAccess is silent? (see below)'
+        print('Init GeometryAccess with pbits=0. Is it silent? (see below)')
         ga0 = GeometryAccess(fname_geometry, 0)
-    elif sys.argv[1]=='6' : ga0377 = GeometryAccess(fname_geometry, 0377)
+    elif sys.argv[1]=='6' : ga = GeometryAccess(fname_geometry, 0o377)
     elif sys.argv[1]=='7' : test_save_pars_in_file(geometry)
     elif sys.argv[1]=='8' : test_load_pars_from_file(geometry)
     elif sys.argv[1]=='9' : test_mask_quad(geometry, 1+2+8) #+16
@@ -1055,9 +1062,9 @@ if __name__ == "__main__" :
     elif sys.argv[1]=='12': test_epix100a()
     elif sys.argv[1]=='13': geometry.print_comments_from_dict()
     elif sys.argv[1]=='14': test_cspad_xy_at_z()
-    else : print 'Wrong input parameter.' + msg
+    else : print('Wrong input parameter.' + msg)
 
-    sys.exit ('End of %s' % sys.argv[0])
+    sys.exit('End of %s' % sys.argv[0])
 
 #------------------------------
 

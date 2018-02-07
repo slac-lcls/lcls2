@@ -23,6 +23,7 @@ using namespace Legion;
 
 using namespace XtcData;
 #define BUFSIZE 0x4000000
+#define TMPSTRINGSIZE 256
 
 #ifdef PSANA_USE_LEGION
 enum FieldIDs {
@@ -59,35 +60,59 @@ static void write_object_info(PyDgramObject* self, PyObject* obj, const char* co
     }
 }
 
+static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
+    const char* algName = alg.name();
+    const uint32_t _v = alg.version();
+    char keyName[TMPSTRINGSIZE];
+
+    PyObject* newobjS = Py_BuildValue("s", algName);
+    PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
+
+    snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",baseName,"software");
+    PyObject* keyS = PyUnicode_FromString(keyName);
+    if (PyDict_Contains(pyDgram->dict, keyS)) {
+        printf("Dgram: Ignoring duplicate key %s\n", keyName);
+    } else {
+        PyDict_SetItem(pyDgram->dict, keyS, newobjS);
+        Py_DECREF(newobjS);
+        snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",baseName,"version");
+        PyObject* keyV = PyUnicode_FromString(keyName);
+        PyDict_SetItem(pyDgram->dict, keyV, newobjV);
+        Py_DECREF(newobjV);
+    }
+}
+
+static void setDetType(PyDgramObject* pyDgram, Names& names) {
+    char keyName[TMPSTRINGSIZE];
+    PyObject* newobjDetType = Py_BuildValue("s", names.detType());
+    snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",names.detName(),"dettype");
+    PyObject* keyDetType = PyUnicode_FromString(keyName);
+    if (PyDict_Contains(pyDgram->dict, keyDetType)) {
+        // this will happen since the same detname/dettype pair
+        // show up once for every Names object.
+    } else {
+        PyDict_SetItem(pyDgram->dict, keyDetType, newobjDetType);
+        Py_DECREF(newobjDetType);
+    }
+}
+
 void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
 {
     // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
-    char keyName[256];
+    char baseName[TMPSTRINGSIZE];
+
     for (unsigned i = 0; i < namesVec.size(); i++) {
         Names& names = namesVec[i].names();
+        Alg& detAlg = names.alg();
+        snprintf(baseName,TMPSTRINGSIZE,"%s_%s",names.detName(),names.alg().name());
+        setAlg(pyDgram,baseName,detAlg);
+        setDetType(pyDgram, names);
 
         for (unsigned j = 0; j < names.num(); j++) {
             Name& name = names.get(j);
-
             Alg& alg = name.alg();
-            const char* algName = alg.getAlgName();
-            const uint32_t _v = alg.getVersion();
-
-            PyObject* newobjS = Py_BuildValue("s", algName);
-            PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
-
-            sprintf(keyName,"%s_%s_%s_software",names.detName(),names.dataName(),name.name());
-            PyObject* key = PyUnicode_FromString(keyName);
-            if (PyDict_Contains(pyDgram->dict, key)) { // TODO: This code can only attach one software in configDgram
-                printf("Dgram: Ignoring duplicate key %s\n", "software");
-            } else {
-                PyDict_SetItem(pyDgram->dict, key, newobjS);
-                Py_DECREF(newobjS);
-                sprintf(keyName,"%s_%s_%s_version",names.detName(),names.dataName(),name.name());
-                PyObject* key = PyUnicode_FromString(keyName);
-                PyDict_SetItem(pyDgram->dict, key, newobjV);
-                Py_DECREF(newobjV);
-            }
+            snprintf(baseName,TMPSTRINGSIZE,"%s_%s_%s",names.detName(),names.alg().name(),name.name());
+            setAlg(pyDgram,baseName,alg);
         }
     }
 }
@@ -96,7 +121,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
 {
     Names& names = descdata.nameindex().names(); // event names, chan0, chan1
 
-    char keyName[256];
+    char keyName[TMPSTRINGSIZE];
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         const char* tempName = name.name();
@@ -169,8 +194,8 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             } else {
                 // New default behaviour
                 if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
-                    char s[120];
-                    sprintf(s, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
+                    char s[TMPSTRINGSIZE];
+                    snprintf(s, TMPSTRINGSIZE, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
                     PyErr_SetString(PyExc_StopIteration, s);
                     return;
                 }
@@ -179,8 +204,8 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             //clear NPY_ARRAY_WRITEABLE flag
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
-        sprintf(keyName,"%s_%s_%s",names.detName(),names.dataName(),
-                name.name());
+        snprintf(keyName,TMPSTRINGSIZE,"%s_%s_%s",names.detName(),names.alg().name(),
+                 name.name());
         PyObject* key = PyUnicode_FromString(keyName);
         if (PyDict_Contains(pyDgram->dict, key)) {
             printf("Dgram: Ignoring duplicate key %s\n", tempName);
@@ -328,8 +353,8 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         readSuccess = ::pread(fd, self->dgram, sizeof(*self->dgram), fOffset);
     }
     if (readSuccess <= 0) {
-        char s[120];
-        sprintf(s, "loading self->dgram was unsuccessful -- %s", strerror(errno));
+        char s[TMPSTRINGSIZE];
+        snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
         PyErr_SetString(PyExc_StopIteration, s);
         return -1;
     }
@@ -343,8 +368,8 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         readSuccess = ::pread(fd, self->dgram->xtc.payload(), payloadSize, fOffset);
     }
     if (readSuccess <= 0){
-        char s[120];
-        sprintf(s, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
+        char s[TMPSTRINGSIZE];
+        snprintf(s, TMPSTRINGSIZE, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
         PyErr_SetString(PyExc_StopIteration, s);
         return -1;
     }

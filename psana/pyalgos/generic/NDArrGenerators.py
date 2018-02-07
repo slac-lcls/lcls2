@@ -202,6 +202,26 @@ def add_random_peaks(arr2d, npeaks=10, amean=100, arms=50, wmean=2, wrms=0.1) :
     return peaks
 
 #-----------------------------
+
+def cspad2x1_arr(dtype=np.float32) :
+    """returns test np.array for cspad 2x1"""
+    rows, cols = 185, 388
+    row2x1 = np.arange(cols)
+    col2x1 = np.arange(rows)
+    iY, iX = np.meshgrid(row2x1, col2x1)
+    arr2x1 = np.empty((rows,cols), dtype)
+    arr2x1[iX,iY] = iX+iY
+    return arr2x1
+
+def cspad_ndarr(n2x1=32, dtype=np.float32) :
+    """returns test np.array for cspad"""
+    arr2x1 = cspad2x1_arr(dtype)
+    rows, cols = arr2x1.shape
+    arr = np.vstack([arr2x1 for seg in range(n2x1)])
+    arr.shape = [n2x1, rows, cols]
+    return arr
+ 
+#-----------------------------
 #-----------------------------
 #-----------------------------
 #-----------------------------

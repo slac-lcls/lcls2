@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+####!/usr/bin/env python
 #------------------------------
 """
 Class :py:class:`GeometryObject` is a building block for hierarchical geometry
@@ -9,7 +9,7 @@ Usage::
     # Methods of this class are used internally in :py:class:`GeometryAccess`
     # and are not supposed to be used directly...
 
-    from PSCalib.GeometryObject import GeometryObject
+    from pscalib.geometry.GeometryObject import GeometryObject
 
     # Instatiation of the geometry object
     # d = <dictionary-of-input-parameters>
@@ -36,7 +36,7 @@ Usage::
     X,Y    = geo.get_2d_pixel_coords(do_tilt=true)
     area   = geo.get_pixel_area()
     #mbits = +1-edges, +2-wide pixels, +4-non-bonded pixels, +8/+16 - four/eight neighbours of non-bonded
-    mask   = geo.get_pixel_mask(mbits=0377)
+    mask   = geo.get_pixel_mask(mbits=0o377)
     npixels= geo.get_size_geo_array()
     pixsize= geo.get_pixel_scale_size()
     x0, y0, z0             = geo.get_origin()
@@ -57,24 +57,32 @@ Usage::
     arrTwo2x1 = data2x2ToTwo2x1(asData2x2)
     asData2x2 = two2x1ToData2x2(arrTwo2x1)
 
-See :py:class:`GeometryAccess`
+See:
+ * :py:class:`SegGeometryBase`
+ * :py:class:`SegGeometryCspad2x1V1`
+ * :py:class:`SegGeometryEpix100V1`
+ * :py:class:`SegGeometryMatrixV1`
+ * :py:class:`SegGeometryJungfrauV1`
+ * :py:class:`SegGeometryStore`
+ * :py:class:`GeometryAccess`
+ * :py:class:`GeometryObject`
 
 For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/display/PSDM/Detector+Geometry>`_.
 
-This software was developed for the SIT project.
+This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
 Author: Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-01
 """
 #------------------------------
 
-import os
-import sys
+import logging
+logger = logging.getLogger('GeometryObject')
+
 import math
 import numpy as np
-
-#from PyCSPadImage.PixCoords2x1 import cspad2x1_one
-from PSCalib.SegGeometryStore import sgs
+from pscalib.geometry.SegGeometryStore import sgs
 
 #------------------------------
 
@@ -112,7 +120,7 @@ class GeometryObject :
 
         self.set_geo_pars(x0, y0, z0, rot_z, rot_y, rot_x, tilt_z, tilt_y, tilt_x)
 
-        self.algo = sgs.Create(self.oname, pbits=0) # ex.: SegGeometryCspad2x1V1(...)
+        self.algo = sgs.Create(self.oname) # ex.: SegGeometryCspad2x1V1(...)
 
         # ---- 2-nd stage
         self.parent = None
@@ -161,10 +169,10 @@ class GeometryObject :
     def print_geo(self) :
         """ Print info about self geometry object
         """
-        print 'parent:%10s %2d   geo: %10s %2d' % (self.pname, self.pindex, self.oname, self.oindex) + \
+        print('parent:%10s %2d   geo: %10s %2d' % (self.pname, self.pindex, self.oname, self.oindex) + \
               '  x0:%8.0f  y0:%8.0f  z0:%8.0f' % (self.x0, self.y0, self.z0) + \
               '  rot_z:%8.3f  rot_y:%8.3f  rot_x:%8.3f' % (self.rot_z, self.rot_y, self.rot_x) + \
-              '  tilt_z:%8.5f  tilt_y:%8.5f  tilt_x:%8.5f' % (self.tilt_z, self.tilt_y, self.tilt_x)
+              '  tilt_z:%8.5f  tilt_y:%8.5f  tilt_x:%8.5f' % (self.tilt_z, self.tilt_y, self.tilt_x))
 
 #------------------------------
 
@@ -188,7 +196,7 @@ class GeometryObject :
               (self.pname, self.pindex, self.oname, self.oindex, len(self.list_of_children))
         for geo in self.list_of_children :
             msg += ' %s:%d' % (geo.oname, geo.oindex)
-        print msg
+        print(msg)
 
 #------------------------------
 
@@ -277,8 +285,8 @@ class GeometryObject :
         xac, yac, zac = None, None, None
         for ind, child in enumerate(self.list_of_children) :
             if child.oindex != ind :
-                print 'WARNING! Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
-                      (child.oname, child.oindex, ind)
+                print('WARNING! Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
+                      (child.oname, child.oindex, ind))
 
             xch, ych, zch = child.get_pixel_coords(do_tilt)
 
@@ -295,7 +303,7 @@ class GeometryObject :
         shape_child = xch.shape
         len_child = len(self.list_of_children)
         geo_shape = np.hstack(([len_child], xch.shape))
-        #print 'geo_shape = ', geo_shape        
+        #print('geo_shape = ', geo_shape        
         xac.shape = geo_shape
         yac.shape = geo_shape
         zac.shape = geo_shape
@@ -313,8 +321,8 @@ class GeometryObject :
         aar = None
         for ind, child in enumerate(self.list_of_children) :
             if child.oindex != ind :
-                print 'WARNING! Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
-                      (child.oname, child.oindex, ind)
+                print('WARNING! Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
+                      (child.oname, child.oindex, ind))
 
             ach = child.get_pixel_areas()
             aar = ach if ind==0 else np.vstack((aar, ach))
@@ -323,13 +331,13 @@ class GeometryObject :
         shape_child = ach.shape
         len_child = len(self.list_of_children)
         geo_shape = np.hstack(([len_child], ach.shape))
-        #print 'geo_shape = ', geo_shape        
+        #print('geo_shape = ', geo_shape        
         aar.shape = geo_shape
         return self.det_shape(aar)
 
 #------------------------------
 
-    def get_pixel_mask(self, mbits=0377, **kwargs) :
+    def get_pixel_mask(self, mbits=0o377, **kwargs) :
         """ Returns numpy array with pixel mask for self geometry object.
 
         mbits =+1 - mask edges
@@ -345,8 +353,8 @@ class GeometryObject :
         oar = None
         for ind, child in enumerate(self.list_of_children) :
             if child.oindex != ind :
-                print 'WARNING! Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
-                      (child.oname, child.oindex, ind)
+                print('WARNING! Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
+                      (child.oname, child.oindex, ind))
 
             car = child.get_pixel_mask(mbits, **kwargs)
             oar = car if ind==0 else np.vstack((oar, car))
@@ -355,7 +363,7 @@ class GeometryObject :
         shape_child = car.shape
         len_child = len(self.list_of_children)
         geo_shape = np.hstack(([len_child], car.shape))
-        #print 'geo_shape = ', geo_shape        
+        #print('geo_shape = ', geo_shape        
         oar.shape = geo_shape
         return self.det_shape(oar)
 
@@ -442,7 +450,7 @@ class GeometryObject :
     def det_shape(self, arr) :
         """ Check detector dependency and re-shape array if necessary
         """
-        #print 'PSCalib.GeometryObject.det_shape(...):  arr.size: %d   self.oname: %s' % (arr.size, self.oname)
+        #print('PSCalib.GeometryObject.det_shape(...):  arr.size: %d   self.oname: %s' % (arr.size, self.oname)
         if arr.size == 143560 and self.oname == 'CSPAD2X2:V1' : # Shuffle pixels once for 2*185*388 and CSPAD2X2:V1 ONLY:
             # shaffle array for cspad2x2
             return two2x1ToData2x2(arr)
@@ -478,7 +486,9 @@ def two2x1ToData2x2(arrTwo2x1) :
         raise ValueError('Expected n-d array shape=(2,185,388), input shape=%s' % str(arrTwo2x1.shape))
 
     arrTwo2x1.shape = (2,185,388)
-    arr2x2 = np.array(zip(arrTwo2x1[0].flatten(), arrTwo2x1[1].flatten()))
+    # HA! THIS DOES NOT WORK IN numpy with python 3 !!!
+    #arr2x2 = np.array(zip(arrTwo2x1[0].flatten(), arrTwo2x1[1].flatten()))
+    arr2x2 = np.array(list(zip(arrTwo2x1[0].flatten(), arrTwo2x1[1].flatten())))
     arr2x2.shape = (185,388,2)
     return arr2x2
 
@@ -487,8 +497,9 @@ def two2x1ToData2x2(arrTwo2x1) :
 #------------------------------
 
 if __name__ == "__main__" :
-    print 78*'='+'\n==  Tests for this module are available in pyimgalgos/src/GeometryAccess.py ==\n'+78*'='
-    sys.exit ('End of %s' % sys.argv[0])
+    import sys
+    print(78*'='+'\n==  Tests for this module are available in pyimgalgos/src/GeometryAccess.py ==\n'+78*'=')
+    sys.exit('End of %s' % sys.argv[0])
 
 #------------------------------
 #------------------------------
