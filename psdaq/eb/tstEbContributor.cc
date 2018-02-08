@@ -435,7 +435,6 @@ void TstContribOutlet::routine()
     //printf("Enter a character to take an event: ");
     //scanf("%s", str);
     //usleep(1000000);
-    usleep(1);
 
     const Dgram* event = _drpSim.genEvent();
 
