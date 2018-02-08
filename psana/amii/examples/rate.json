@@ -1,0 +1,78 @@
+{
+    "adder": {
+        "config": {
+            "outputs": [
+                ["sender", "data"]
+            ]
+        },
+        "optype": "AddArrays"
+    },
+    "proj": {
+        "config": {
+            "axis": 0,
+            "outputs": [
+                ["adder", "array2"]
+            ]
+        },
+        "optype": "Projection"
+    },
+   "proj2": {
+        "config": {
+            "axis": 0,
+            "outputs": [
+            ]
+        },
+        "optype": "Projection"},
+   "src": {
+        "config": {
+            "pedestal": 32,
+            "width": 5,
+            "sources": [
+                ["cspad", [512, 512]],
+                ["acq",   512]
+            ],
+            "outputs": [
+                ["proj", "array", "cspad"],
+                ["adder", "array1", "acq"],
+                ["proj2", "array", "cspad"],
+                ["source", "null", "acq"]
+            ]
+        },
+        "optype": "FixedSrc"},
+    "gather": {
+        "config": {
+            "num_average": 20,
+            "outputs": [
+                ["counter", "null", "proj_add"]
+            ],
+            "port": 5557
+        },
+        "optype": "Reduce"
+    },
+    "sender": {
+        "config": {
+            "host": "localhost",
+            "port": 5557,
+            "topic": "proj_add"
+        },
+        "optype": "Send"
+    },
+    "counter": {
+        "config": {
+            "name": "gather",
+            "rate": 2,
+            "outputs": [
+            ]
+        },
+        "optype": "Rate"
+    },
+    "source": {
+        "config": {
+            "name": "source",
+            "rate": 2,
+            "outputs": [
+            ]
+        },
+        "optype": "Rate"
+    }
+}

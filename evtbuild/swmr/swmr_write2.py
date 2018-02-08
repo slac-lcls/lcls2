@@ -158,7 +158,7 @@ def client(comm):
                 small_ts_dset.resize((shape[0]+batch_size,)) 
                 small_ts_dset[-batch_size:] = np.arange(batch_size) + batch_size*(batch_num-1)
                 small_file.flush()
-
+                print("Small data shape is ", small_ts_dset.shape[0])
                 
             # Write the last image as all zeros as a flag to 
             # the readers that they've reached the end of the file
@@ -178,7 +178,7 @@ def client(comm):
             cr_speed = out_img.nbytes/(10**6*(end-start))
             
             if eof:
-               # print('Client %i stopped writing' % rank)
+                print('Client %i stopped writing' % rank)
                 break
             image_num = batch_num*batch_size
         #    if image_num % 500 ==0:
@@ -187,7 +187,9 @@ def client(comm):
         
 
     finally:
+      #  time.sleep(100)
         final_size = data_dset.shape
+        print('Final size is ', final_size)
         loop_file.flush()
         loop_file.close()
         if rank == 0:

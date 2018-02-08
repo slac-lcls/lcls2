@@ -273,20 +273,6 @@ def plotImage(arr, img_range=None, amp_range=None, figsize=(12,5), title='Image'
 
 #--------------------------------
 
-def plotImageLarge(arr, img_range=None, amp_range=None, figsize=(12,10), title='Image', origin='upper', window=(0.05,  0.03, 0.94, 0.94), cmap='inferno') : 
-    fig  = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
-    axim = fig.add_axes(window)
-    imsh = axim.imshow(arr, interpolation='nearest', aspect='auto', origin=origin, extent=img_range, cmap=cmap)
-    colb = fig.colorbar(imsh, pad=0.005, fraction=0.09, shrink=1, aspect=40) # orientation=1
-    if amp_range is not None : imsh.set_clim(amp_range[0], amp_range[1])
-    #else : 
-    #    ave, rms = arr.mean(), arr.std()
-    #    imsh.set_clim(ave-1*rms, ave+5*rms)
-    fig.canvas.set_window_title(title)
-    return axim
-
-#--------------------------------
-
 def plotImageAndSpectrum(arr, amp_range=None, cmap='inferno') : #range=(0,500)
     fig  = plt.figure(figsize=(15,5), dpi=80, facecolor='w', edgecolor='w', frameon=True)
     fig.canvas.set_window_title('Image And Spectrum ' + u'\u03C6')
