@@ -22,7 +22,7 @@ setup(
     author_email='ddamiani@slac.stanford.edu',
     url='https://confluence.slac.stanford.edu/display/PSDMInternal/AMI+Replacement',
     package_dir={'ami.examples': 'examples'},
-    packages=['ami', 'ami.operation', 'ami.manager', 'ami.examples'],
+    packages=['ami', 'ami.operation', 'ami.examples'],
     install_requires=[
         'pyzmq',
         'numpy',
@@ -30,8 +30,9 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'ami-worker = ami.launcher:worker_main',
-            'ami-manager = ami.launcher:manager_main',
+            'ami-worker = ami.worker:main',
+            'ami-manager = ami.manager:main',
+            'ami-cleint = ami.client:main',
         ]
     },
     classifiers=[
@@ -42,8 +43,6 @@ setup(
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
