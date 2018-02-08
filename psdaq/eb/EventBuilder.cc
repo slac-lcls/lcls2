@@ -7,25 +7,24 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <stdlib.h>
+#include <new>
 
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-EventBuilder::EventBuilder(Task*    backEndTask,
-                           unsigned epochs,
+EventBuilder::EventBuilder(unsigned epochs,
                            unsigned entries,
                            unsigned sources,
                            uint64_t duration) :
   Timer(),
-  _backEndTask(backEndTask),
-  _mask(~(duration - 1) & ((1UL << 56) - 1)), // Revisit: ickiness
+  _mask(~(duration - 1) & ((1UL << PulseId::NumPulseIdBits) - 1)),
   _epochFreelist(sizeof(EbEpoch), epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries),
-  _timerTask(new Task(TaskObject("tEB_Timeout", 100))),
+  _timerTask(new Task(TaskObject("tEB_Timeout"))),
   _duration(100)                        // Timeout rate in ms
 {
-  if (__builtin_popcountl(duration) != 1)
+  if (duration & (duration - 1))
   {
     fprintf(stderr, "Batch duration (%016lx) must be a power of 2\n",
             duration);
@@ -47,8 +46,8 @@ EbEpoch* EventBuilder::_discard(EbEpoch* epoch)
 
 void EventBuilder::_flushBefore(EbEpoch* entry)
 {
-  EbEpoch* empty = _pending.empty();
-  EbEpoch* epoch = entry->reverse();
+  const EbEpoch* const empty = _pending.empty();
+  EbEpoch*             epoch = entry->reverse();
 
   while (epoch != empty)
   {
@@ -57,8 +56,6 @@ void EventBuilder::_flushBefore(EbEpoch* entry)
       epoch->reverse();
   }
 }
-
-#include <new>
 
 EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 {
@@ -77,9 +74,9 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 
 EbEpoch* EventBuilder::_match(uint64_t inKey)
 {
-  EbEpoch*  empty = _pending.empty();
-  EbEpoch*  epoch = _pending.reverse();
-  uint64_t  key   = inKey & _mask;
+  const EbEpoch* const empty = _pending.empty();
+  EbEpoch*             epoch = _pending.reverse();
+  const uint64_t       key   = inKey & _mask;
 
   while (epoch != empty)
   {
@@ -116,20 +113,62 @@ EbEvent* EventBuilder::_event(const Dgram* contrib,
 EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
                                const Dgram* contrib)
 {
-  EbEvent* empty = epoch->pending.empty();
-  EbEvent* event = epoch->pending.reverse();
-  uint64_t key   = contrib->seq.pulseId().value();
+  const EbEvent* const  empty = epoch->pending.empty();
+  EbEvent*              event = epoch->pending.reverse();
+  const uint64_t        key   = contrib->seq.pulseId().value();
+
 
   while (event != empty)
   {
-    uint64_t eventKey = event->sequence();
+    const uint64_t eventKey = event->sequence();
+
 
     if (eventKey == key) return event->_add(contrib);
     if (eventKey <  key) break;
     event = event->reverse();
   }
 
+
   return _event(contrib, event);
+}
+
+EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
+                               const Dgram* contrib,
+                               EbEvent*     event)
+{
+  const EbEvent* const empty = epoch->pending.empty();
+  EbEvent*             after = event;
+  const uint64_t       key   = contrib->seq.pulseId().value();
+
+  while (event != empty)
+  {
+    const uint64_t eventKey = event->sequence();
+
+    //printf("A: key = %016lx ekey = %016lx\n", key, eventKey);
+
+    if (key == eventKey) return event->_add(contrib);
+    if (key >  eventKey)
+    {
+      after = event;
+      event = event->forward();
+    }
+    else // Revisit: Still need to test the B case, which won't normally occur
+    {
+      event = event->reverse();
+      after = event;
+      if (event == empty)  break;
+
+      const uint64_t eventKey = event->sequence();
+
+      //printf("B: key = %016lx ekey = %016lx\n", key, eventKey);
+
+      if (key > eventKey)  break;
+    }
+  }
+
+  //printf("C: key = %016lx ekey = %016lx\n", key, after != empty ? after->sequence() : -1ul);
+
+  return _event(contrib, after);
 }
 
 void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
@@ -149,19 +188,21 @@ void EventBuilder::_retire(EbEvent* event)
 {
   event->disconnect();
 
-  _backEndTask->call(event);
+  process(event);
+
+  delete event;
 }
 
 void EventBuilder::_flush(EbEvent* due)
 {
-  EbEpoch* lastEpoch = _pending.empty();
-  EbEpoch* epoch     = _pending.forward();
-  EbEvent* last_due  = due;
+  const EbEpoch* const lastEpoch = _pending.empty();
+  EbEpoch*             epoch     = _pending.forward();
+  const EbEvent*       last_due  = due;
 
   do
   {
-    EbEvent* lastEvent = epoch->pending.empty();
-    EbEvent* event     = epoch->pending.forward();
+    const EbEvent* const lastEvent = epoch->pending.empty();
+    EbEvent*             event     = epoch->pending.forward();
 
     while (event != lastEvent)
     {
@@ -184,14 +225,15 @@ void EventBuilder::_flush(EbEvent* due)
 
 void EventBuilder::expired()            // Periodically called from a timer
 {
-  EbEpoch* epoch = _pending.forward();
-  EbEpoch* empty = _pending.empty();
+  EbEpoch*             epoch = _pending.forward();
+  const EbEpoch* const empty = _pending.empty();
 
   while (epoch != empty)
   {
-    EbEvent* event = epoch->pending.forward();
+    EbEvent*             event = epoch->pending.forward();
+    const EbEvent* const last  = epoch->pending.empty();
 
-    if (event != epoch->pending.empty())
+    if (event != last)
     {
       if (!event->_alive())
       {
@@ -261,14 +303,13 @@ void EventBuilder::process(const Dgram* contrib)
   if (!event->_remaining)  _flush(event);
 }
 
-unsigned EventBuilder::processBulk(const Dgram* contrib)
+void EventBuilder::processBulk(const Dgram* contrib)
 {
-  unsigned cnt   = 0;
   EbEpoch* epoch = _match(contrib->seq.pulseId().value());
-  EbEvent* event;
+  EbEvent* event = epoch->pending.forward();
 
-  const Dgram*  next = (Dgram*)contrib->xtc.payload();
-  const Dgram*  last = (Dgram*)contrib->xtc.next();
+  const Dgram* next = (Dgram*)contrib->xtc.payload();
+  const Dgram* last = (Dgram*)contrib->xtc.next();
   while(next != last)
   {
     //if (lverbose > 1)                 // Revisit: lverbose is not defined
@@ -278,16 +319,12 @@ unsigned EventBuilder::processBulk(const Dgram* contrib)
     //         next, next->seq.pulseId().value(), sizeof(*next) + next->xtc.sizeofPayload(), from);
     //}
 
-    event = _insert(epoch, next);
-
-    ++cnt;
+    event = _insert(epoch, next, event);
 
     next = (Dgram*)next->xtc.next();
   }
 
   _flush(event);
-
-  return cnt;
 }
 
 /*
@@ -301,8 +338,8 @@ void EventBuilder::dump(unsigned detail)
 {
   if (detail)
   {
-    EbEpoch* last  = _pending.empty();
-    EbEpoch* epoch = _pending.forward();
+    const EbEpoch* const last  = _pending.empty();
+    EbEpoch*             epoch = _pending.forward();
 
     if (epoch != last)
     {
