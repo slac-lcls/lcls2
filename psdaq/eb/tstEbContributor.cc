@@ -25,16 +25,13 @@
 #include <atomic>
 #include <thread>
 
-#define HACK_FOR_A_TEST 0
-
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 
-static const int      core_drpSim      = 8;
-static const int      core_inlet       = 20; //9;
-static const int      core_outlet      = 9;  //10;
-static const int      core_monitor     = 21; //11;
+static const int      core_inlet       = 18;  //12;
+static const int      core_outlet      = 6;   //8;
+static const int      core_monitor     = 18;  //12;
 static const unsigned mon_period       = 1;          // Seconds
 static const unsigned default_id       = 0;          // Contributor's ID
 static const unsigned srv_port_base    = 32768 + 64; // Base port Contributor for receiving results
@@ -48,23 +45,13 @@ static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  da
 static const size_t   result_extent    = input_extent;
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
+static const uint64_t nanosecond       = 1000000000ul;
 
 static       bool     lcheck           = false;
 static       unsigned lverbose         = 0;
-static       int      lcoreBase        = 0;
+static       int      lcoreBase        = 2; // Allows Ctrb and EB to run on the same machine
 
 typedef std::chrono::steady_clock::time_point tp_t;
-
-static void dumpStats(const char* header, tp_t startTime, tp_t endTime, uint64_t count)
-{
-  typedef std::chrono::nanoseconds ns_t;
-  int64_t dt = std::chrono::duration_cast<ns_t>(endTime - startTime).count();
-  double  ds = double(dt) * 1.e-9;
-  printf("\n%s:\n", header);
-  printf("Time diff:  %ld ns = %.0f s\n", dt, ds);
-  printf("Count:      %ld\n", count);
-  printf("Avg rate:   %f KHz\n", double(count) / ds / 1000.);
-}
 
 namespace Pds {
   namespace Eb {
@@ -85,6 +72,7 @@ namespace Pds {
     class Input : public Dgram
     {
     public:
+      Input() : Dgram() {}
       Input(const Sequence& seq_, const uint64_t env_, const Xtc& xtc_) :
         Dgram()
       {
@@ -101,23 +89,22 @@ namespace Pds {
     class DrpSim
     {
     public:
-      DrpSim(unsigned poolSize, size_t maxEvtSize, unsigned id, TstContribOutlet& outlet);
-      ~DrpSim() { }
+      DrpSim(unsigned maxBatches, unsigned maxEntries, size_t maxEvtSize, unsigned id);
+      ~DrpSim();
     public:
-      void start(TstContribOutlet*);
-      void shutdown();
+      void         shutdown();
     public:
-      void process();
+      const Dgram* genEvent();
     private:
-      const unsigned    _maxEvtSz;
-      GenericPoolW      _pool;
-      const TypeId      _typeId;
-      const Src         _src;
-      const unsigned    _id;
-      uint64_t          _pid;
-      TstContribOutlet& _outlet;
-      std::atomic<bool> _running;
-      Input*            _heldAside;
+      const unsigned _maxBatches;
+      const unsigned _maxEntries;
+      const size_t   _maxEvtSz;
+      const unsigned _id;
+      const uint64_t _env;
+      const Xtc      _xtc;
+      uint64_t       _pid;
+      GenericPoolW   _pool;
+      Input*         _heldAside;
     };
 
     class TstContribOutlet : public BatchManager,
@@ -135,43 +122,33 @@ namespace Pds {
       virtual ~TstContribOutlet();
     public:
       const char* base() const;
-      int         connect();
+      void        startup();
       void        shutdown();
+      int         connect();
     public:
       uint64_t    count() const { return _eventCount; }
     public:
       void        routine();
       void        completed();
-      void        post(const Dgram* input);
-      void        release(uint64_t id);
-      void        post(const Batch* batch);
-#if HACK_FOR_A_TEST
-      void*       testPend();             // Hack for a test!
-      void        testPost(const Batch*); // Hack for a test!
-#endif
+      void        post(const Batch*);
     private:
-      Batch*     _pend();
+      DrpSim                                _drpSim;
+      EbFtClient                            _transport;
+      const unsigned                        _id;
+      const unsigned                        _numEbs;
+      unsigned*                             _destinations;
     private:
-      EbFtClient              _outlet;
-      const unsigned          _id;
-      const unsigned          _numEbs;
-      unsigned*               _destinations;
-      Queue<Batch>            _inputBatchList;
-      std::atomic<unsigned>   _inputBatchOcc;
-      Histogram               _inputBatchHist;
-#if HACK_FOR_A_TEST
-      Queue<Batch>            _testList;
-#endif
-      std::atomic<unsigned>   _inFlightOcc;
-      Histogram               _inFlightHist;
-      uint64_t                _eventCount;
-      Histogram               _depTimeHist;
-      Histogram               _arrTimeHist;
-      Histogram               _postTimeHist;
-      Histogram               _postCallHist;
+      uint64_t                              _eventCount;
+      uint64_t                              _batchCount;
+    private:
+      std::atomic<unsigned>                 _inFlightOcc;
+      Histogram                             _inFlightHist;
+      Histogram                             _depTimeHist;
+      Histogram                             _postTimeHist;
+      Histogram                             _postCallHist;
       std::chrono::steady_clock::time_point _postPrevTime;
-      std::atomic<bool>       _running;
-      Task*                   _task;
+      std::atomic<bool>                     _running;
+      Task*                                 _task;
     };
 
     class TstContribInlet : public Routine
@@ -186,30 +163,33 @@ namespace Pds {
                       TstContribOutlet& outlet);
       virtual ~TstContribInlet() { }
     public:
-      int      connect();
+      void     startup();
       void     shutdown();
+      int      connect();
     public:
       uint64_t count() const { return _eventCount; }
     public:
       void     routine();
     private:
-      int     _process(const Dgram* result, const Dgram* input);
+      void    _process(const Dgram* result, const Dgram* input);
     private:
-      const unsigned    _id;
-      const unsigned    _numEbs;
-      const size_t      _maxBatchSize;
-      EbFtServer        _inlet;
-      TstContribOutlet& _outlet;
-      uint64_t          _eventCount;
-      Histogram         _rttHist;
-      Histogram         _pendTimeHist;
-      Histogram         _pendCallHist;
+      const unsigned                        _id;
+      const unsigned                        _numEbs;
+      const size_t                          _maxBatchSize;
+      EbFtServer                            _transport;
+      TstContribOutlet&                     _outlet;
+    private:
+      uint64_t                              _eventCount;
+    private:
+      Histogram                             _rttHist;
+      Histogram                             _pendTimeHist;
+      Histogram                             _pendCallHist;
       std::chrono::steady_clock::time_point _pendPrevTime;
-      std::atomic<bool> _running;
-      Task*             _task;
+      std::atomic<bool>                     _running;
+      Task*                                 _task;
     };
 
-    class StatsMonitor : public Routine
+    class StatsMonitor
     {
     public:
       StatsMonitor(const TstContribOutlet* outlet,
@@ -219,13 +199,12 @@ namespace Pds {
     public:
       void     shutdown();
     public:
-      void     routine();
+      void     process();
     private:
       const TstContribOutlet* _outlet;
       const TstContribInlet*  _inlet;
       const unsigned          _monPd;
       std::atomic<bool>       _running;
-      Task*                   _task;
     };
   };
 };
@@ -245,75 +224,64 @@ static void pin_thread(const pthread_t& th, int cpu)
   }
 }
 
-DrpSim::DrpSim(unsigned          poolSize,
-               size_t            maxEvtSize,
-               unsigned          id,
-               TstContribOutlet& outlet) :
-  _maxEvtSz (maxEvtSize),
-  _pool     (sizeof(Entry) + maxEvtSize, poolSize),
-  _typeId   (TypeId::Data, 0),
-  _src      (TheSrc(Level::Segment, id)),
-  _id       (id),
-  _pid      (0x01000000000003UL),  // Something non-zero and not on a batch boundary
-  _outlet   (outlet),
-  _running  (true),
-  _heldAside(new(&_pool) Input(Sequence(Sequence::Marker, TransitionId::L1Accept,
-                                        TimeStamp(), PulseId(-1)),
-                               0ul, Xtc(_typeId, _src)))
+DrpSim::DrpSim(unsigned maxBatches,
+               unsigned maxEntries,
+               size_t   maxEvtSize,
+               unsigned id) :
+  _maxBatches(maxBatches),
+  _maxEntries(maxEntries),
+  _maxEvtSz  (maxEvtSize),
+  _id        (id),
+  _env       (0),
+  _xtc       (TypeId(TypeId::Data, 0), TheSrc(Level::Segment, id)),
+  _pid       (0x01000000000003UL),  // Something non-zero and not on a batch boundary
+  _pool      (sizeof(Entry) + maxEvtSize, maxBatches * maxEntries),
+  _heldAside (new(&_pool) Input())
 {
+}
+
+DrpSim::~DrpSim()
+{
+  printf("\nDrpSim Input data pool:\n");
+  _pool.dump();
 }
 
 void DrpSim::shutdown()
 {
-  _running = false;
-
   delete _heldAside;  // Make sure there's at least one event in the pool for
                       // process() to get out of resource wait and test _running
 }
 
-void DrpSim::process()
+const Dgram* DrpSim::genEvent()
 {
   static unsigned cnt = 0;
 
-  pin_thread(pthread_self(), lcoreBase + core_drpSim);
+  // Fake datagram header
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  const Sequence seq(Sequence::Event, TransitionId::L1Accept,
+                     TimeStamp(ts), PulseId(_pid));
 
-  const uint64_t env(0);
-  const Xtc      xtc(_typeId, _src);
+  _pid += 1; //27; // Revisit: fi_tx_attr.iov_limit = 6 = 1 + max # events per batch
+  //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
+  //_pid += _maxEntries;
 
-  while(_running)
-  {
-    //char str[BUFSIZ];
-    //printf("Enter a character to take an event: ");
-    //scanf("%s", str);
+  Input* idg = new(&_pool) Input(seq, _env, _xtc);
 
-    // Fake datagram header
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    const Sequence seq(Sequence::Event, TransitionId::L1Accept,
-                       TimeStamp(ts), PulseId(_pid));
+  size_t inputSize = input_extent * sizeof(uint32_t);
 
-    _pid += 1; //27; // Revisit: fi_tx_attr.iov_limit = 6 = 1 + max # events per batch
-    //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
+  // Revisit: Here is where L3 trigger input information would be inserted into the datagram,
+  //          whatever that will look like.  SmlD is nominally the right container for this.
+  uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
+  payload[0] = ts.tv_sec;           // Revisit: Some crud for now
+  payload[1] = ts.tv_nsec;          // Revisit: Some crud for now
+  payload[2] = ++cnt;               // Revisit: Some crud for now
+  payload[3] = _id;                 // Revisit: Some crud for now
+  payload[4] = idg->seq.pulseId().value() & 0xffffffffUL; // Revisit: Some crud for now
 
-    Input* idg = new(&_pool) Input(seq, env, xtc);
-
-    size_t inputSize = input_extent * sizeof(uint32_t);
-
-    // Revisit: Here is where L3 trigger input information would be inserted into the datagram,
-    //          whatever that will look like.  SmlD is nominally the right container for this.
-    uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
-    payload[0] = ts.tv_sec;           // Revisit: Some crud for now
-    payload[1] = ts.tv_nsec;          // Revisit: Some crud for now
-    payload[2] = ++cnt;               // Revisit: Some crud for now
-    payload[3] = _id;                 // Revisit: Some crud for now
-    payload[4] = idg->seq.pulseId().value() & 0xffffffffUL; // Revisit: Some crud for now
-
-    _outlet.post(idg);
-  }
-
-  printf("\nDrpSim Input data pool:\n");
-  _pool.dump();
+  return idg;
 }
+
 
 TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
                                    std::vector<std::string>& cltPort,
@@ -323,23 +291,22 @@ TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
                                    unsigned                  maxBatches,
                                    unsigned                  maxEntries,
                                    size_t                    maxSize) :
-  BatchManager   (duration, maxBatches, maxEntries, maxSize),
-  _outlet        (cltAddr, cltPort, maxBatches * (sizeof(Dgram) + maxEntries * maxSize)),
-  _id            (id),
-  _numEbs        (__builtin_popcountl(builders)),
-  _destinations  (new unsigned[_numEbs]),
-  _inputBatchOcc (0),
-  _inputBatchHist(__builtin_ctz(maxBatches), 1.0),
-  _inFlightOcc   (0),
-  _inFlightHist  (__builtin_ctz(maxBatches), 1.0),
-  _eventCount    (0),
-  _depTimeHist   (12, double(1 << 12)/1000.),
-  _arrTimeHist   (12, double(1 << 20)/1000.),
-  _postTimeHist  (12, 1.0),
-  _postCallHist  (12, 1.0),
-  _postPrevTime  (std::chrono::steady_clock::now()),
-  _running       (true),
-  _task          (new Task(TaskObject("tOutlet", 0, 0, 0, 0, 0)))
+  BatchManager (duration, maxBatches, maxEntries, maxSize),
+  _drpSim      (maxBatches, maxEntries, maxSize, id),
+  _transport   (cltAddr, cltPort, maxBatches * (sizeof(Dgram) + maxEntries * maxSize)),
+  _id          (id),
+  _numEbs      (__builtin_popcountl(builders)),
+  _destinations(new unsigned[_numEbs]),
+  _eventCount  (0),
+  _batchCount  (0),
+  _inFlightOcc (0),
+  _inFlightHist(__builtin_ctz(maxBatches), 1.0),
+  _depTimeHist (12, double(1 << 10)/1000.),
+  _postTimeHist(12, 1.0),
+  _postCallHist(12, 1.0),
+  _postPrevTime(std::chrono::steady_clock::now()),
+  _running     (true),
+  _task        (new Task(TaskObject("tOutlet", 0, 0, 0, 0, 0)))
 {
   for (unsigned i = 0; i < _numEbs; ++i)
   {
@@ -354,12 +321,17 @@ TstContribOutlet::~TstContribOutlet()
   delete [] _destinations;
 }
 
+void TstContribOutlet::startup()
+{
+  _task->call(this);
+}
+
 void TstContribOutlet::shutdown()
 {
   pthread_t tid = _task->parameters().taskID();
 
   _running = false;
-  post(::new Batch(Batch::IsLast));
+  _drpSim.shutdown();
 
   int   ret    = 0;
   void* retval = nullptr;
@@ -370,87 +342,83 @@ void TstContribOutlet::shutdown()
 int TstContribOutlet::connect()
 {
   const unsigned tmo(120);
-  int ret = _outlet.connect(_id, tmo);
+  int ret = _transport.connect(_id, tmo);
   if (ret)
   {
     fprintf(stderr, "FtClient connect() failed\n");
     return ret;
   }
 
-  _outlet.registerMemory(batchRegion(), batchRegionSize());
-
-  _task->call(this);
+  _transport.registerMemory(batchRegion(), batchRegionSize());
 
   return ret;
 }
 
-void TstContribOutlet::post(const Dgram* input)
-{
-  if (lverbose > 1)
-  {
-    printf("DRP   Posts        input          dg           @ %16p, ts %014lx, sz %3zd, src %2d\n",
-           input, input->seq.pulseId().value(), sizeof(*input) + input->xtc.sizeofPayload(), input->xtc.src.log() & 0xff);
-  }
-
-  ++_eventCount;
-
-  process(input);
-}
-
-Batch* TstContribOutlet::_pend()
-{
-  Batch* batch = _inputBatchList.removeW();
-  _inputBatchOcc--;
-
-  if ((lverbose > 1) && !batch->isLast())
-  {
-    const Dgram* bdg = batch->datagram();
-    printf("ContribOutlet rcvd input          batch        @ %16p, ts %014lx, sz %3zd\n",
-           batch, bdg->seq.pulseId().value(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
-  }
-
-  return batch;
-}
-
 void TstContribOutlet::post(const Batch* batch)
 {
+  unsigned iDst = batchId(batch->id()) % _numEbs;
+  unsigned dst  = _destinations[iDst];
+
+  if (_batchCount > 10)
   {
     const Dgram* bdg = batch->datagram();
 
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    uint64_t dS(ts.tv_sec  - bdg->seq.stamp().seconds());
-    uint64_t dN(ts.tv_nsec - bdg->seq.stamp().nanoseconds());
-    uint64_t dT((dS * 1000000000ul + dN) >> 12);
+    int64_t dS(ts.tv_sec  - bdg->seq.stamp().seconds());
+    int64_t dN(ts.tv_nsec - bdg->seq.stamp().nanoseconds());
+    int64_t dT(dS * nanosecond + dN);
 
-    _depTimeHist.bump(dT);
+    _depTimeHist.bump(dT >> 10);
   }
 
-  if ((lverbose > 1) && !batch->isLast())
+  if (lverbose)
   {
-    const Dgram* bdg = batch->datagram();
-    printf("DRP   Posting      input          batch        @ %16p, ts %014lx, sz %3zd\n",
-           batch, bdg->seq.pulseId().value(), sizeof(*bdg) + bdg->xtc.sizeofPayload());
+    static unsigned cnt    = 0;
+    const Dgram*    bdg    = batch->datagram();
+    void*           rmtAdx = (void*)_transport.rmtAdx(dst, batch->index() * maxBatchSize());
+    printf("ContribOutlet posts %6d        batch[%2d]    @ %16p, ts %014lx, sz %3zd to   EB %d %16p\n",
+           ++cnt, batch->index(), bdg, bdg->seq.pulseId().value(), batch->extent(), dst, rmtAdx);
   }
 
-  _inputBatchList.insert(const_cast<Batch*>(batch));
-  _inputBatchOcc++;
-  _inputBatchHist.bump(_inputBatchOcc);
-}
+  ++_batchCount;
 
-#if HACK_FOR_A_TEST
-void TstContribOutlet::testPost(const Batch* batch)
-{
-  _testList.insert(const_cast<Batch*>(batch));
-}
+  auto t0 = std::chrono::steady_clock::now();
 
-void* TstContribOutlet::testPend()
-{
-  Batch* batch = _testList.removeW();
+  _transport.post(batch->buffer(), batch->extent(), dst, batch->index() * maxBatchSize());
 
-  return batch;
+  auto t1 = std::chrono::steady_clock::now();
+
+  //if (std::chrono::duration<double>(t0 - startTime).count() > 10.)
+  if (_batchCount > 9)
+  {
+    typedef std::chrono::microseconds us_t;
+
+    _postTimeHist.bump(std::chrono::duration_cast<us_t>(t1 - t0).count());
+    _postCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _postPrevTime).count());
+    _postPrevTime = t0;
+  }
+
+  _inFlightOcc++;
+  _inFlightHist.bump(_inFlightOcc);
+
+  // For open-loop running; Also comment out call to EB::processBulk()
+  //const Dgram*       bdg    = batch->datagram();
+  //const Dgram*       result = (const Dgram*)bdg->xtc.payload();
+  //const Dgram* const last   = (const Dgram*)bdg->xtc.next();
+  //unsigned           i      = 0;
+  //while(result != last)
+  //{
+  //  const Dgram* next = (const Dgram*)result->xtc.next();
+  //
+  //  delete (const Input*)(batch->datagram(i++));
+  //
+  //  result = next;
+  //}
+  //delete batch;
+
+  //usleep(1000000);
 }
-#endif
 
 void TstContribOutlet::completed()
 {
@@ -461,71 +429,33 @@ void TstContribOutlet::routine()
 {
   pin_thread(_task->parameters().taskID(), lcoreBase + core_outlet);
 
-  auto startTime = std::chrono::steady_clock::now();
-
   while (_running)
   {
-    const Batch* batch = _pend();
-    if (batch->isLast())
+    //char str[BUFSIZ];
+    //printf("Enter a character to take an event: ");
+    //scanf("%s", str);
+    //usleep(1000000);
+
+    const Dgram* event = _drpSim.genEvent();
+
+    if (lverbose > 1)
     {
-      ::delete batch;
-      continue;
+      printf("Batching           input          dg           @ %16p, ts %014lx, sz %3zd, src %2d\n",
+             event, event->seq.pulseId().value(), sizeof(*event) + event->xtc.sizeofPayload(), event->xtc.src.log() & 0xff);
     }
 
-    {
-      const Dgram*    bdg = batch->datagram();
-      struct timespec ts;
-      clock_gettime(CLOCK_MONOTONIC, &ts);
-      uint64_t dS(ts.tv_sec  - bdg->seq.stamp().seconds());
-      uint64_t dN(ts.tv_nsec - bdg->seq.stamp().nanoseconds());
-      uint64_t dT((dS * 1000000000ul + dN) >> 20);
+    ++_eventCount;
 
-      _arrTimeHist.bump(dT);
-    }
-
-    unsigned iDst = batchId(batch->id()) % _numEbs;
-    unsigned dst  = _destinations[iDst];
-
-    if (lverbose)
-    {
-      static unsigned cnt    = 0;
-      const Dgram*    bdg    = batch->datagram();
-      void*           rmtAdx = (void*)_outlet.rmtAdx(dst, batch->index() * maxBatchSize());
-      printf("ContribOutlet posts %6d        batch[%2d]    @ %16p, ts %014lx, sz %3zd to   EB %d %16p\n",
-             ++cnt, batch->index(), bdg, bdg->seq.pulseId().value(), batch->extent(), dst, rmtAdx);
-    }
-
-    auto t0 = std::chrono::steady_clock::now();
-
-#if !HACK_FOR_A_TEST
-    _outlet.post(batch->buffer(), batch->extent(), dst, batch->index() * maxBatchSize());
-#else
-    testPost(batch);
-#endif
-    auto t1 = std::chrono::steady_clock::now();
-    _inFlightOcc++;
-    _inFlightHist.bump(_inFlightOcc);
-
-    typedef std::chrono::microseconds us_t;
-
-    _postTimeHist.bump(std::chrono::duration_cast<us_t>(t1 - t0).count());
-    _postCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _postPrevTime).count());
-    _postPrevTime = t0;
+    process(event);
   }
 
-  auto endTime = std::chrono::steady_clock::now();
+  // Revisit: Call post(lastBatch) here
 
   BatchManager::dump();
 
-  dumpStats("Outlet", startTime, endTime, _eventCount);
-
-  _outlet.shutdown();
+  _transport.shutdown();
 
   char fs[80];
-  sprintf(fs, "inputBatchOcc_%d.hist", _id);
-  printf("Dumped input batch occupancy histogram to ./%s\n", fs);
-  _inputBatchHist.dump(fs);
-
   sprintf(fs, "inFlightOcc_%d.hist", _id);
   printf("Dumped in-flight occupancy histogram to ./%s\n", fs);
   _inFlightHist.dump(fs);
@@ -533,10 +463,6 @@ void TstContribOutlet::routine()
   sprintf(fs, "depTime_%d.hist", _id);
   printf("Dumped departure time histogram to ./%s\n", fs);
   _depTimeHist.dump(fs);
-
-  sprintf(fs, "arrTime_%d.hist", _id);
-  printf("Dumped arrival time histogram to ./%s\n", fs);
-  _arrTimeHist.dump(fs);
 
   sprintf(fs, "postTime_%d.hist", _id);
   printf("Dumped post time histogram to ./%s\n", fs);
@@ -549,6 +475,7 @@ void TstContribOutlet::routine()
   _task->destroy();
 }
 
+
 TstContribInlet::TstContribInlet(std::string&      srvPort,
                                  unsigned          id,
                                  uint64_t          builders,
@@ -559,14 +486,10 @@ TstContribInlet::TstContribInlet(std::string&      srvPort,
   _id          (id),
   _numEbs      (__builtin_popcountl(builders)),
   _maxBatchSize(sizeof(Dgram) + maxEntries * maxSize),
-  _inlet       (srvPort, _numEbs, maxBatches * _maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS),
+  _transport   (srvPort, _numEbs, maxBatches * _maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS),
   _outlet      (outlet),
   _eventCount  (0),
-#if !HACK_FOR_A_TEST
-  _rttHist     (12, double(1 << 20)/1000.),
-#else
   _rttHist     (12, double(1 << 10)/1000.),
-#endif
   _pendTimeHist(12, 1.0),
   _pendCallHist(12, 1.0),
   _pendPrevTime(std::chrono::steady_clock::now()),
@@ -575,15 +498,16 @@ TstContribInlet::TstContribInlet(std::string&      srvPort,
 {
 }
 
+void TstContribInlet::startup()
+{
+  _task->call(this);
+}
+
 void TstContribInlet::shutdown()
 {
   pthread_t tid = _task->parameters().taskID();
 
   _running = false;
-
-#if HACK_FOR_A_TEST
-  _outlet.testPost(::new Batch(Batch::IsLast));  // Foar a test!
-#endif
 
   int   ret    = 0;
   void* retval = nullptr;
@@ -593,14 +517,12 @@ void TstContribInlet::shutdown()
 
 int TstContribInlet::connect()
 {
-  int ret = _inlet.connect(_id);
+  int ret = _transport.connect(_id);
   if (ret)
   {
     fprintf(stderr, "FtServer connect() failed\n");
     return ret;
   }
-
-  _task->call(this);
 
   return ret;
 }
@@ -613,44 +535,25 @@ void TstContribInlet::routine()
 
   while (_running)
   {
-#if !HACK_FOR_A_TEST      // Hack for a test
     // Pend for a result datagram (batch) and process it.
     uint64_t data;
     auto t0 = std::chrono::steady_clock::now();
-    if (_inlet.pend(&data))  continue;
+    if (_transport.pend(&data))  continue;
     auto t1 = std::chrono::steady_clock::now();
     const Dgram* batch = (const Dgram*)data;
 
-    unsigned idx = ((const char*)batch - _inlet.base()) / _maxBatchSize;
+    unsigned idx = ((const char*)batch - _transport.base()) / _maxBatchSize;
 
-    if (batch->env == _id)
-#else
-    auto  t0   = std::chrono::steady_clock::now();
-    void* data = _outlet.testPend();
-    auto  t1   = std::chrono::steady_clock::now();
-    const Batch* aBatch = (const Batch*)data;
-    if (aBatch->isLast())
-    {
-      ::delete aBatch;
-      continue;
-    }
-    const Dgram* batch = aBatch->datagram();
-
-    unsigned idx = ((const char*)batch - (const char*)_outlet.batchRegion()) / _maxBatchSize;
-#endif
+    if ((batch->env == _id) && (std::chrono::duration<double>(t0 - startTime).count() > 2.))
     {
       struct timespec ts;
       clock_gettime(CLOCK_MONOTONIC, &ts);
-      uint64_t dS(ts.tv_sec  - batch->seq.stamp().seconds());
-      uint64_t dN(ts.tv_nsec - batch->seq.stamp().nanoseconds());
-#if !HACK_FOR_A_TEST      // Hack for a test
-      uint64_t dT((dS * 1000000000ul + dN) >> 20);
-#else
-      uint64_t dT((dS * 1000000000ul + dN) >> 10);
-#endif
-      _rttHist.bump(dT);
+      int64_t dS(ts.tv_sec  - batch->seq.stamp().seconds());
+      int64_t dN(ts.tv_nsec - batch->seq.stamp().nanoseconds());
+      int64_t dT(dS * nanosecond + dN);
 
-      //printf("RTT = %u S, %u ns\n", dS, dN);
+      _rttHist.bump(dT >> 10);
+      //printf("In  Batch %014lx RTT  = %ld S, %ld ns\n", batch->seq.pulseId().value(), dS, dN);
 
       typedef std::chrono::microseconds us_t;
 
@@ -658,7 +561,6 @@ void TstContribInlet::routine()
       _pendCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _pendPrevTime).count());
       _pendPrevTime = t0;
     }
-    _outlet.completed();
 
     if (lverbose)
     {
@@ -668,10 +570,10 @@ void TstContribInlet::routine()
              ++cnt, idx, batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
     }
 
-    const Batch*  input  = _outlet.batch(idx);
-    unsigned      i      = 0;
-    const Dgram*  result = (const Dgram*)batch->xtc.payload();
-    const Dgram*  last   = (const Dgram*)batch->xtc.next();
+    const Batch*       input  = _outlet.batch(idx);
+    const Dgram*       result = (const Dgram*)batch->xtc.payload();
+    const Dgram* const last   = (const Dgram*)batch->xtc.next();
+    unsigned           i      = 0;
     while(result != last)
     {
       _process(result, input->datagram(i++));
@@ -680,14 +582,12 @@ void TstContribInlet::routine()
     }
     _eventCount += i;
 
+    _outlet.completed();
+
     delete input;
   }
 
-  auto endTime = std::chrono::steady_clock::now();
-
-  dumpStats("Inlet", startTime, endTime, _eventCount);
-
-  _inlet.shutdown();
+  _transport.shutdown();
 
   char fs[80];
   sprintf(fs, "rtt_%d.hist", _id);
@@ -705,7 +605,7 @@ void TstContribInlet::routine()
   _task->destroy();
 }
 
-int TstContribInlet::_process(const Dgram* result, const Dgram* input)
+void TstContribInlet::_process(const Dgram* result, const Dgram* input)
 {
   bool     ok  = true;
   uint64_t pid = result->seq.pulseId().value();
@@ -781,35 +681,25 @@ int TstContribInlet::_process(const Dgram* result, const Dgram* input)
   //   delete pebble;
 
   delete (const Input*)input;           // Revisit: Downcast okay here?
-
-  return 0;
 }
+
 
 StatsMonitor::StatsMonitor(const TstContribOutlet* outlet,
                            const TstContribInlet*  inlet,
-                           unsigned                 monPd) :
+                           unsigned                monPd) :
   _outlet (outlet),
   _inlet  (inlet),
   _monPd  (monPd),
-  _running(true),
-  _task   (new Task(TaskObject("tMonitor", 0, 0, 0, 0, 0)))
+  _running(true)
 {
-  _task->call(this);
 }
 
 void StatsMonitor::shutdown()
 {
-  pthread_t tid = _task->parameters().taskID();
-
   _running = false;
-
-  int   ret    = 0;
-  void* retval = nullptr;
-  ret = pthread_join(tid, &retval);
-  if (ret)  perror("StatsMon pthread_join");
 }
 
-void StatsMonitor::routine()
+void StatsMonitor::process()
 {
   pin_thread(pthread_self(), lcoreBase + core_monitor);
 
@@ -839,25 +729,20 @@ void StatsMonitor::routine()
     outCntPrv = outCnt;
     inCntPrv  = inCnt;
   }
-
-  _task->destroy();
 }
 
 
-static DrpSim*           drpSim       (nullptr);
-static TstContribOutlet* contribOutlet(nullptr);
-static TstContribInlet*  contribInlet (nullptr);
-static StatsMonitor*     statsMonitor (nullptr);
+static StatsMonitor* statsMonitor(nullptr);
 
 void sigHandler(int signal)
 {
-  static unsigned callCount = 0;
+  static std::atomic<unsigned> callCount(0);
 
-  printf("sigHandler() called\n");
+  printf("sigHandler() called: call count = %u\n", callCount.load());
 
   if (callCount == 0)
   {
-    if (drpSim)  drpSim->shutdown();
+    if (statsMonitor)  statsMonitor->shutdown();
   }
 
   if (callCount++)
@@ -1001,32 +886,33 @@ int main(int argc, char **argv)
          max_result_size,  sizeof(Dgram) + maxEntries * max_result_size);
   printf("  Monitoring period:          %d\n", monPeriod);
   printf("  Thread base core number:    %d\n", lcoreBase);
+  printf("\n");
 
   // The order of the connect() calls must match the Event Builder(s) side's
 
   pin_thread(pthread_self(), lcoreBase + core_outlet);
   TstContribOutlet outlet(cltAddr, cltPort, id, builders, duration, maxBatches, maxEntries, max_contrib_size);
-  contribOutlet = &outlet;
-  if ( (ret = outlet.connect()) )  return ret; // Connect to EB's inlet
 
   pin_thread(pthread_self(), lcoreBase + core_inlet);
   TstContribInlet  inlet (         srvPort, id, builders,           maxBatches, maxEntries, max_result_size, outlet);
-  contribInlet  = &inlet;
+
+  if ( (ret = outlet.connect()) )  return ret; // Connect to EB's inlet
   if ( (ret = inlet.connect())  )  return ret; // Connect to EB's outlet
 
   pin_thread(pthread_self(), lcoreBase + core_monitor);
   StatsMonitor statsMon(&outlet, &inlet, monPeriod);
   statsMonitor = &statsMon;
 
-  pin_thread(pthread_self(), lcoreBase + core_drpSim);
-  DrpSim sim(maxBatches * maxEntries, max_contrib_size, id, outlet);
-  drpSim = &sim;
+  inlet.startup();
+  outlet.startup();
 
-  sim.process();
+  statsMon.process();
 
-  statsMon.shutdown();
-  inlet.shutdown();
+  printf("\nStatsMonitor was shut down.\n");
+  printf("\nShutting down Outlet...\n");
   outlet.shutdown();
+  printf("\nShutting down Inlet...\n");
+  inlet.shutdown();
 
   return ret;
 }
