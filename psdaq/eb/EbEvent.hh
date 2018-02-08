@@ -6,7 +6,6 @@
 #include "EbContribution.hh"
 
 #include "psdaq/service/LinkedList.hh"
-#include "psdaq/service/Routine.hh"
 #include "psdaq/service/Pool.hh"
 
 
@@ -22,7 +21,7 @@ namespace Pds {
 
     class EventBuilder;
 
-    class EbEvent : public LinkedList<EbEvent>, public Routine
+    class EbEvent : public LinkedList<EbEvent>
     {
     public:
       PoolDeclare;
@@ -33,8 +32,6 @@ namespace Pds {
               const XtcData::Dgram* contrib,
               uint64_t              mask);
       virtual ~EbEvent();
-    public:
-      virtual void routine();
     public:
       uint64_t sequence()  const;
       size_t   size()      const;
