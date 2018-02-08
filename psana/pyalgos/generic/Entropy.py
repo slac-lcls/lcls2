@@ -9,11 +9,11 @@ Usage::
 
     # Import
     # ==============
-    from pyimgalgos.Entropy import *
+    from pyalgos.generic.Entropy import *
 
     # import for test only
-    from pyimgalgos.NDArrGenerators import random_standard
-    from pyimgalgos.GlobalUtils import print_ndarr
+    from pyalgos.generic.NDArrGenerators import random_standard
+    from pyalgos.generic.NDArrUtils import print_ndarr
 
     arr_float = random_standard(shape=(1000), mu=200, sigma=25, dtype=np.float)
     arr_int16 = arr_float.astype(np.int16)  
@@ -23,8 +23,10 @@ Usage::
     print 'entropy_v1(arr_int16)  = %.6f' % entropy_v1(arr_int16)
     print 'entropy_cpo(arr_int16) = %.6f' % entropy_cpo(arr_int16)
 
-
-See :py:class:`pyimgalgos.GlobalUtils`
+See
+    - :py:class:`Utils`
+    - :py:class:`NDArrUtils`
+    - :py:class:`Graphics`
 
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
@@ -58,12 +60,12 @@ def hist_values(nda) :
 def hist_probabilities(nda) :
     """Returns histogram-array of probabilities for each of (u)int16, uint8 intensity
     """
-    #print '%s for array dtype=%s'%(FR().f_code.co_name, str(nda.dtype))
+    #print('%s for array dtype=%s'%(FR().f_code.co_name, str(nda.dtype)))
 
     nvals = nda.size
     ph = np.array(hist_values(nda), dtype=np.float)
     ph /= nvals
-    #print 'Check sum of probabilities: %.6f for number of values in array = %d' % (ph.sum(), nvals)
+    #print('Check sum of probabilities: %.6f for number of values in array = %d' % (ph.sum(), nvals))
     return ph
 
 #------------------------------
@@ -96,7 +98,7 @@ def entropy(nda) :
 def entropy_v1(nda) :
     """The same as entropy(nda) in a single place.
     """
-    #print '%s for array dtype=%s'%(FR().f_code.co_name, str(nda.dtype))
+    #print('%s for array dtype=%s'%(FR().f_code.co_name, str(nda.dtype)))
 
     unda = nda 
     if   nda.dtype == np.uint8  : unda = nda
@@ -134,10 +136,10 @@ def entropy_cpo(signal):
 
 def test_entropy():
 
-    print 'In %s' % sys._getframe().f_code.co_name
+    print('In %s' % sys._getframe().f_code.co_name)
 
-    from pyimgalgos.NDArrGenerators import random_standard
-    from pyimgalgos.GlobalUtils import print_ndarr
+    from pyalgos.generic.NDArrGenerators import random_standard
+    from pyalgos.generic.NDArrUtils import print_ndarr
     from time import time
 
     arr_float = random_standard(shape=(100000,), mu=200, sigma=25, dtype=np.float)
@@ -150,9 +152,9 @@ def test_entropy():
     ent2 = entropy_v1(arr_int16);  t2_sec = time()
     ent3 = entropy_cpo(arr_int16); t3_sec = time()
 
-    print 'entropy(arr_int16)     = %.6f, time=%.6f sec' % (ent1, t1_sec-t0_sec)
-    print 'entropy_v1(arr_int16)  = %.6f, time=%.6f sec' % (ent2, t2_sec-t1_sec)
-    print 'entropy_cpo(arr_int16) = %.6f, time=%.6f sec' % (ent3, t3_sec-t2_sec)
+    print('entropy(arr_int16)     = %.6f, time=%.6f sec' % (ent1, t1_sec-t0_sec))
+    print('entropy_v1(arr_int16)  = %.6f, time=%.6f sec' % (ent2, t2_sec-t1_sec))
+    print('entropy_cpo(arr_int16) = %.6f, time=%.6f sec' % (ent3, t3_sec-t2_sec))
 
 #------------------------------
 
@@ -160,7 +162,7 @@ if __name__ == "__main__" :
     import sys; global sys
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print 50*'_', '\nTest %s' % tname
+    print(50*'_', '\nTest %s' % tname)
     if   tname == '0': test_entropy()
     elif tname == '1': test_entropy()
     else : sys.exit('Test %s is not implemented' % tname)

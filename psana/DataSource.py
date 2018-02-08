@@ -6,28 +6,51 @@ import time
 import getopt
 import pprint
 
-import event
+from PyDgram import PyDgram
+from Event import Event
 sys.path.append('../build/psana')
 import dgram
 #
 
 class DataSource:
     """Stores variables and arrays loaded from an XTC source.\n"""
-    def __init__(self, xtcdata_filename, verbose=0, debug=0):
-        fd = os.open(xtcdata_filename,
-                     os.O_RDONLY|os.O_LARGEFILE)
-        self._config = dgram.Dgram(file_descriptor=fd,
-                                   verbose=verbose,
-                                   debug=debug)
-        self.config=event.Event(self._config)
-
+    def __init__(self, expStr, verbose=0, debug=0):
+        ### Parameter expStr can be an xtc filename or 
+        ### an 'exp=expid:run=runno' string
+        if os.path.isfile(expStr):
+            self.xtcFiles = [expStr]
+        else:
+            ### Read xtc file list from somewhere...
+            self.xtcFiles = ['e001-r0001-s00.smd.xtc','e001-r0001-s01.smd.xtc']
+        self.configs = []
+        self._configs = []
+        assert len(self.xtcFiles) > 0
+        ### Open xtc files
+        for xtcdata_filename in self.xtcFiles:
+            fd = os.open(xtcdata_filename,
+                         os.O_RDONLY|os.O_LARGEFILE)
+            self._configs.append(dgram.Dgram(file_descriptor=fd,
+                                                 verbose=verbose,
+                                                 debug=debug))
+            self.configs.append(PyDgram(self._configs[-1]))
+        
     def __iter__(self):
         return self
 
     def __next__(self):
-        d=dgram.Dgram(config=self._config)
-        return event.Event(d)
-#        return event.Event(self._config)
+        # Loop through all files and grab dgrams
+        dgrams = []
+        for _config in self._configs:
+            d=dgram.Dgram(config=_config)
+            dgrams.append(PyDgram(d))
+        return Event(dgrams=dgrams)
+
+    def jump(self, offset=0):
+        # Random access only works if the datasource is
+        # a single file (mostly used to jump around in bigdata).
+        d=dgram.Dgram(config=self._configs[0], offset=offset)
+        event = Event(dgrams=[PyDgram(d)])
+        return event
 
     def _get_verbose(self):
         return getattr(self._config, "verbose")

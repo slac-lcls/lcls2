@@ -28,6 +28,7 @@
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/VarDef.hh"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,6 +40,68 @@
 using namespace XtcData;
 #define BUFSIZE 0x4000000
 #define NEVENT 2
+
+
+
+class FexDef:public VarDef
+{
+public:
+  enum index
+    {
+      floatFex,
+      arrayFex,
+      intFex,
+      maxNum
+    };
+
+   FexDef()
+   {
+     detVec.push_back({"floatFex", FLOAT});
+     detVec.push_back({"arrayFex", FLOAT,2});
+     detVec.push_back({"intFex", INT32});
+
+   }
+};
+
+class PgpDef:public VarDef
+{
+public:
+  enum index
+    {
+      floatPgp,
+      array0Pgp,
+      intPgp,
+      array1Pgp,
+      maxNum
+    };
+
+   PgpDef()
+   {
+     detVec.push_back({"floatPgp", FLOAT});
+     detVec.push_back({"array0Pgp", FLOAT,2});
+     detVec.push_back({"intPgp", INT32});
+     detVec.push_back({"array1Pgp", FLOAT,2});
+
+   }
+};
+
+
+class PadDef:public VarDef
+{
+public:
+  enum index
+    {
+      arrayRaw,
+      maxNum
+    };
+
+   PadDef()
+   {
+     detVec.push_back({"arrayRaw"});
+   }
+};
+
+
 
 class DebugIter : public XtcIterator
 {
@@ -62,7 +125,7 @@ public:
             unsigned namesId = shapesdata.shapes().namesId();
             DescData descdata(shapesdata, _namesVec[namesId]);
             Names& names = descdata.nameindex().names();
-            printf("Found %d names\n",names.num());
+	    //   printf("Found %d names\n",names.num());
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
                 if (strncmp(name.name(),"int",3)==0) {
@@ -120,6 +183,7 @@ public:
 class PadData
 {
 public:
+  
     void* operator new(size_t size, void* p)
     {
         return p;
@@ -153,28 +217,21 @@ void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     frontEnd.set_data_length(sizeof(PgpData));
 
     unsigned shape[] = { 3, 3 };
-    frontEnd.set_array_shape("array0Pgp", shape);
-    frontEnd.set_array_shape("array1Pgp", shape);
+    frontEnd.set_array_shape(PgpDef::array0Pgp, shape);
+    frontEnd.set_array_shape(PgpDef::array1Pgp, shape);
 }
 
 void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 {
     CreateData fex(parent, nameindex, nameId);
-
-    // have to be careful to set the correct type here, unfortunately.
-    // because of variable length issues, user is currently required to
-    // fill the fields in the order that they exist in the Names.
-    // if that is not done an error will be asserted.  I think
-    // we could remove that requirement if we indicate which
-    // array is being written in the data as they are written.
-    fex.set_value("floatFex", (float)41.0);
+    fex.set_value(FexDef::floatFex, (float)41.0);
     float* ptr = (float*)fex.get_ptr();
     unsigned shape[Name::MaxRank];
     shape[0]=2;
     shape[1]=3;
     for (unsigned i=0; i<shape[0]*shape[1]; i++) ptr[i] = 142.0+i;
-    fex.set_array_shape("arrayFex",shape);
-    fex.set_value("intFex", 42);
+    fex.set_array_shape(FexDef::arrayFex,shape);
+    fex.set_value(FexDef::intFex, 42);
 }
 
 void padExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
@@ -191,29 +248,36 @@ void padExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     pad.set_data_length(sizeof(PadData));
 
     unsigned shape[] = { 18 };
-    pad.set_array_shape("arrayRaw", shape);
+    pad.set_array_shape(PadDef::arrayRaw, shape);
 }
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg alg0("hsd",1,2,3);
-    Names& frontEndNames = *new(parent) Names("hsd1", "raw");
-    frontEndNames.add(parent, "floatPgp",  Name::FLOAT);
-    frontEndNames.add(parent, "array0Pgp", Name::FLOAT, 2);
-    frontEndNames.add(parent, "intPgp",    Name::INT32);
-    frontEndNames.add(parent, "array1Pgp", Name::FLOAT, 2);
+    Alg hsdRawAlg("raw",0,0,0);
+    Names& frontEndNames = *new(parent) Names("xpphsd", hsdRawAlg, "hsd");
+    frontEndNames.add_vec<PgpDef>(parent);
     namesVec.push_back(NameIndex(frontEndNames));
 
-    Alg alg1("abc",4,5,6);
-    Names& fexNames = *new(parent) Names("hsd1", "fex");
-    fexNames.add(parent, "floatFex", Name::FLOAT);
-    fexNames.add(parent, "arrayFex", Name::FLOAT, 2);
-    fexNames.add(parent, "intFex",   Name::INT32);
+    Alg hsdFexAlg("fex",4,5,6);
+    Names& fexNames = *new(parent) Names("xpphsd", hsdFexAlg, "hsd");
+    fexNames.add_vec<FexDef>(parent);
     namesVec.push_back(NameIndex(fexNames));
 
-    Alg alg2("cspad",2,3,42);
-    Names& padNames = *new(parent) Names("cspad0", "raw");
-    padNames.add(parent, "arrayRaw", alg2); //, Name::FLOAT, parent, 3);
+    unsigned segment = 0;
+    Alg cspadRawAlg("raw",2,3,42);
+    Names& padNames = *new(parent) Names("xppcspad", cspadRawAlg, "cspad", segment);
+    Alg segmentAlg("cspadseg",2,3,42);
+    padNames.add_vec<PadDef>(parent, segmentAlg);
     namesVec.push_back(NameIndex(padNames));
+}
+
+void addData(Xtc& xtc, std::vector<NameIndex>& namesVec) {
+    // need to protect against putting in the wrong nameId here
+    unsigned nameId = 0;
+    pgpExample(xtc, namesVec[nameId], nameId);
+    nameId++;
+    fexExample(xtc, namesVec[nameId], nameId);
+    nameId++;
+    padExample(xtc, namesVec[nameId], nameId);
 }
 
 int main()
@@ -232,13 +296,21 @@ int main()
     config.xtc.extent = sizeof(Xtc);
     std::vector<NameIndex> namesVec;
     add_names(config.xtc, namesVec);
+    addData(config.xtc,namesVec);
     if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
         printf("Error writing configure to output xtc file.\n");
         return -1;
     }
 
-    void* buf = malloc(BUFSIZE);
+   
+     // for(auto const& value: namesVec[0].nameMap()){
+     //     std::cout<<value.first<<std::endl;
+     // }
 
+
+   	
+    void* buf = malloc(BUFSIZE);
+     
     for (int i = 0; i < NEVENT; i++) {
         Dgram& dgram = *(Dgram*)buf;
         TypeId tid(TypeId::Parent, 0);
@@ -246,13 +318,7 @@ int main()
         dgram.xtc.damage = 0;
         dgram.xtc.extent = sizeof(Xtc);
 
-        // need to protect against putting in the wrong nameId here
-        unsigned nameId = 0;
-        pgpExample(dgram.xtc, namesVec[nameId], nameId);
-        nameId++;
-        fexExample(dgram.xtc, namesVec[nameId], nameId);
-        nameId++;
-        padExample(dgram.xtc, namesVec[nameId], nameId);
+        addData(dgram.xtc,namesVec);
 
         printf("*** event %d ***\n",i);
         DebugIter iter(&dgram.xtc, namesVec);
@@ -262,7 +328,7 @@ int main()
             printf("Error writing to output xtc file.\n");
             return -1;
         }
-    }
+     }
     fclose(xtcFile);
 
     return 0;
