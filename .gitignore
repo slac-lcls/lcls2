@@ -1,6 +1,7 @@
 build
 install
 *.pyc
+*.egg-info/
 *~
 *.so
 *.xtc
