@@ -198,7 +198,6 @@ cdef class peak_finder_algos :
         del self.cptr
         PyMem_Free(self.drpPtr) # no-op if self.drpPtr is NULL
 
-
     def set_peak_selection_parameters(self\
                                      ,const float& npix_min\
                                      ,const float& npix_max\
@@ -207,9 +206,7 @@ cdef class peak_finder_algos :
                                      ,const float& son_min) :
         self.cptr.setPeakSelectionPars(npix_min, npix_max, amax_thr, atot_thr, son_min)
 
-
     def print_attributes(self) : self.cptr.printParameters()
-
 
     def peak_finder_v3r3_d2(self\
                            ,nptype2d data\

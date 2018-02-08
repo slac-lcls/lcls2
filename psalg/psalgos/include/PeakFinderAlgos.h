@@ -442,139 +442,58 @@ peakFinderV3r3(const T *data
   if(m_pbits) printParameters();
 
   if (drp) {
-    if (m_local_minima==0) m_local_minima = new(m_drpPtr) extrim_t[m_img_size];
-    m_drpPtr += sizeof(extrim_t)*m_img_size;    
-    if (m_local_maxima==0) m_local_maxima = new(m_drpPtr) extrim_t[m_img_size];
-    m_drpPtr += sizeof(extrim_t)*m_img_size;
+    if (m_local_minima==0) {
+      m_local_minima = new(m_drpPtr) extrim_t[m_img_size];
+      m_drpPtr += sizeof(extrim_t)*m_img_size;
+    }
+    if (m_local_maxima==0) {
+      m_local_maxima = new(m_drpPtr) extrim_t[m_img_size];
+      m_drpPtr += sizeof(extrim_t)*m_img_size;
+    }
   } else {
     if (m_local_minima==0) m_local_minima = new extrim_t[m_img_size];
     if (m_local_maxima==0) m_local_maxima = new extrim_t[m_img_size];
   }
 
-  auto t1 = Clock::now();
-
   if (drp) {
-  m_nminima = localextrema::mapOfLocalMinimums_drp<T>(data, mask, rows, cols, rank, m_local_minima, m_drpPtr); // fills m_local_minima
-  m_npksmax = localextrema::mapOfLocalMaximums_drp<T>(data, mask, rows, cols, rank, m_local_maxima, m_drpPtr); // fills m_local_maxima
-  } else {
-  m_nminima = localextrema::mapOfLocalMinimums<T>(data, mask, rows, cols, rank, m_local_minima); // fills m_local_minima
-  m_npksmax = localextrema::mapOfLocalMaximums<T>(data, mask, rows, cols, rank, m_local_maxima); // fills m_local_maxima
-  }
+    m_nminima = localextrema::mapOfLocalMinimums_drp<T>(data, mask, rows, cols,
+                                                        rank, m_local_minima, m_drpPtr); // fills m_local_minima
+    m_npksmax = localextrema::mapOfLocalMaximums_drp<T>(data, mask, rows, cols,
+                                                        rank, m_local_maxima, m_drpPtr); // fills m_local_maxima
+    _initMapsAndVectors_drp();
+    _makeMapOfConnectedPixelsForLocalMaximums_drp<T>(data); // fills m_conmap, v_peaks, vv_peak_pixinds
+    _makeVectorOfSelectedPeaks_drp();                       // make vector of selected peaks
 
-  auto t2 = Clock::now();
-
-  //std::cout << "XXX: m_npksmax =  " << m_npksmax << '\n'; 
-  //std::cout << "XXX: nminima   =  " << m_nminima << '\n'; 
-
-  _initMapsAndVectors();
-
-  auto t3 = Clock::now();
-
-  _makeMapOfConnectedPixelsForLocalMaximums<T>(data); // fills m_conmap, v_peaks, vv_peak_pixinds
-
-  auto t4 = Clock::now();
-
-  _makeVectorOfSelectedPeaks();                       // make vector of selected peaks
-
-  auto t5 = Clock::now();
-
-  std::cout << "Delta t: " << std::endl
-            << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << std::endl
-            << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count() << std::endl
-            << std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count() << std::endl
-            << std::chrono::duration_cast<std::chrono::milliseconds>(t5 - t4).count() << std::endl
-            << std::chrono::duration_cast<std::chrono::milliseconds>(t5 - t1).count() 
-            << " milliseconds" << std::endl;
-
-
-  if (m_pbits) {
-      _printVectorOfPeaks(v_peaks_sel);               // print vector of selected peaks
-      std::cout << "  number of maxima         = " << m_npksmax << '\n';
-      std::cout << "  number of minima         = " << localextrema::numberOfExtrema(m_local_minima, rows, cols, 7) << '\n';
-      std::cout << "  number of found peaks    = " << v_peaks.size() << '\n';
-      std::cout << "  number of selected peaks = " << v_peaks_sel.size() << '\n';
-  }
-}
-
-template <typename T>
-void
-peakFinderV3r3_drp(const T *data
-              ,const mask_t *mask
-              ,const size_t& rows
-              ,const size_t& cols
-              ,const size_t& rank
-	      ,const double& r0=7.0
-	      ,const double& dr=2.0
-	      ,const double& nsigm=0)
-{
-
-  auto t0 = Clock::now();
-
-  m_mask = mask;
-  m_rows = rows;
-  m_cols = cols;
-  m_rank = rank;
-  m_r0 = r0;
-  m_dr = dr;
-  m_nsigm = nsigm;
-  m_img_size = rows*cols;
-  m_pixgrp_max_size = (2*rank+1)*(2*rank+1);
-
-  if(m_pbits & LOG::DEBUG) std::cout << "in peakFinderV3r3, rank=" << rank << '\n';
-  if(m_pbits & LOG::INFO) printParameters();
-
-  if (drp) {
-    if (m_local_minima==0) m_local_minima = new(m_drpPtr) extrim_t[m_img_size];
-    m_drpPtr += sizeof(extrim_t)*m_img_size;
-    if (m_pbits) std::cout << "+peakFinderV3r3min Address stored " << (void *) m_drpPtr << std::endl;
-
-    if (m_local_maxima==0) m_local_maxima = new(m_drpPtr) extrim_t[m_img_size];
-    m_drpPtr += sizeof(extrim_t)*m_img_size;
-    if (m_pbits) std::cout << "+peakFinderV3r3max Address stored " << (void *) m_drpPtr << std::endl;
-
-  } else {
-    if (m_local_minima==0) m_local_minima = new extrim_t[m_img_size];
-    if (m_local_maxima==0) m_local_maxima = new extrim_t[m_img_size];
-  }
-
-  auto t1 = Clock::now();
-
-  m_nminima = localextrema::mapOfLocalMinimums_drp<T>(data, mask, rows, cols, rank, m_local_minima, m_drpPtr); // fills m_local_minima
-  m_npksmax = localextrema::mapOfLocalMaximums_drp<T>(data, mask, rows, cols, rank, m_local_maxima, m_drpPtr); // fills m_local_maxima
-
-  auto t2 = Clock::now();
-
-  _initMapsAndVectors_drp();
-
-  auto t3 = Clock::now();
-
-  _makeMapOfConnectedPixelsForLocalMaximums_drp<T>(data); // fills m_conmap, v_peaks, vv_peak_pixinds
-
-  auto t4 = Clock::now();
-
-  _makeVectorOfSelectedPeaks_drp(); // make vector of selected peaks
-
-  auto t5 = Clock::now();
-
-  std::cout << "Delta t: " << std::endl
-            << "t10: " << std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count() << std::endl
-            << "t21: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << std::endl
-            << "t32: " << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << std::endl
-            << "t43: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << std::endl
-            << "t54: " << std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count() << std::endl
-            << "t50: " << std::chrono::duration_cast<std::chrono::microseconds>(t5 - t0).count() 
-            << " microseconds" << std::endl;
-
-
-  if (m_pbits) {
+    if (m_pbits) {
       _printVectorOfPeaks_drp(v_peaks_sel_drp);               // print vector of selected peaks
       std::cout << "  number of maxima         = " << m_npksmax << '\n';
       std::cout << "  number of minima         = " << localextrema::numberOfExtrema(m_local_minima, rows, cols, 7) << '\n';
       std::cout << "  number of found peaks    = " << v_peaks_drp.len << '\n';
       std::cout << "  number of selected peaks = " << v_peaks_sel_drp.len << '\n';
+    }
+  } else {
+    m_nminima = localextrema::mapOfLocalMinimums<T>(data, mask, rows, cols,
+                                                    rank, m_local_minima); // fills m_local_minima
+    m_npksmax = localextrema::mapOfLocalMaximums<T>(data, mask, rows, cols,
+                                                    rank, m_local_maxima); // fills m_local_maxima
+    _initMapsAndVectors();
+    _makeMapOfConnectedPixelsForLocalMaximums<T>(data); // fills m_conmap, v_peaks, vv_peak_pixinds
+    _makeVectorOfSelectedPeaks();                       // make vector of selected peaks
+
+    if (m_pbits) {
+      _printVectorOfPeaks(v_peaks_sel);               // print vector of selected peaks
+      std::cout << "  number of maxima         = " << m_npksmax << '\n';
+      std::cout << "  number of minima         = " << localextrema::numberOfExtrema(m_local_minima, rows, cols, 7) << '\n';
+      std::cout << "  number of found peaks    = " << v_peaks.size() << '\n';
+      std::cout << "  number of selected peaks = " << v_peaks_sel.size() << '\n';
+    }
   }
 
+  //std::cout << "XXX: m_npksmax =  " << m_npksmax << '\n';
+  //std::cout << "XXX: nminima   =  " << m_nminima << '\n';
+
 }
+
 //-----------------------------
   /**
    * @brief full peak processing in a right order
@@ -605,13 +524,13 @@ _makeMapOfConnectedPixelsForLocalMaximums(const T *data)
 
         RingAvgRms bkgd = _evaluateRingAvgRmsV1<T>(data, r, c); // Reuse OK
         m_reg_thr = bkgd.avg + m_nsigm * bkgd.rms; // <<=====
-	if (m_pbits) {
-	  std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r 
-                                                    << " c=" << std::setw(4) << std::setprecision(0) << c 
-                                                    << " bkgd:" << bkgd << " thr:" << m_reg_thr << '\n';
-        }
+	    //if (m_pbits) {
+	    //  std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r
+        //                                            << " c=" << std::setw(4) << std::setprecision(0) << c
+        //                                            << " bkgd:" << bkgd << " thr:" << m_reg_thr << '\n';
+        //}
         _findConnectedPixelsForLocalMaximumV2<T>(data, r, c); // <<===== 
-	//std::cout << "XXX: number of connected pixels = " << v_ind_pixgrp.size() << '\n';
+	    //if (m_pbits) std::cout << "XXX: number of connected pixels = " << v_ind_pixgrp.size() << '\n';
 	
         if(v_ind_pixgrp.empty()) {
           //std::cout << "XXX peakFinderV3r3 WARNING: v_ind_pixgrp is empty... " << m_numreg << " " << v_ind_pixgrp.size() << std::endl;
@@ -650,22 +569,22 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
 
         RingAvgRms bkgd = _evaluateRingAvgRmsV1_drp<T>(data, r, c); // Reuse OK
         m_reg_thr = bkgd.avg + m_nsigm * bkgd.rms; // <<=====
-	if (m_pbits) {
-	  std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r 
-                                                    << " c=" << std::setw(4) << std::setprecision(0) << c 
-                                                    << " bkgd:" << bkgd << " thr:" << m_reg_thr << '\n';
-        }
+	    //if (m_pbits) {
+	    //  std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r
+        //                                            << " c=" << std::setw(4) << std::setprecision(0) << c
+        //                                            << " bkgd:" << bkgd << " thr:" << m_reg_thr << '\n';
+        //}
 
         auto t1 = Clock::now();
         dt10 += std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
         t1 = Clock::now();
 
         _findConnectedPixelsForLocalMaximumV2_drp<T>(data, r, c); // <<===== 
-	//std::cout << "YYY: number of connected pixels = " << v_ind_pixgrp_drp.len << '\n';
+	    //if (m_pbits) std::cout << "YYY: number of connected pixels = " << v_ind_pixgrp_drp.len << '\n';
 	
         //if(v_ind_pixgrp.empty()) {
         if(v_ind_pixgrp_drp.len==0) {
-	  //std::cout << "drp XXX peakFinderV3r3 WARNING: v_ind_pixgrp is empty... " << m_numreg << " " << v_ind_pixgrp_drp.len << std::endl;
+	    //std::cout << "drp XXX peakFinderV3r3 WARNING: v_ind_pixgrp is empty... " << m_numreg << " " << v_ind_pixgrp_drp.len << std::endl;
           --m_numreg; continue;
         }
 
@@ -673,30 +592,23 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
         dt21 += std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
         t2 = Clock::now();
 
-         Vector<TwoIndexes> *_v_ind_pixgrp_drp = new(m_drpPtr) Vector<TwoIndexes>(v_ind_pixgrp_drp);
-         m_drpPtr += sizeof(Vector<TwoIndexes>);
+        Vector<TwoIndexes> *_v_ind_pixgrp_drp = new(m_drpPtr) Vector<TwoIndexes>(v_ind_pixgrp_drp);
+        m_drpPtr += sizeof(Vector<TwoIndexes>);
 
         auto t3 = Clock::now();         
         dt32 += std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
         t3 = Clock::now();
 
-         vv_peak_pixinds_drp.data[vv_peak_pixinds_drp.len++] = _v_ind_pixgrp_drp;
+        vv_peak_pixinds_drp.data[vv_peak_pixinds_drp.len++] = _v_ind_pixgrp_drp;
 
         auto t4 = Clock::now();
-        //std::cout << "vv_peak: " << std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count() << std::endl;
         dt43 += std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count();
         t4 = Clock::now();
 
-         //vv_peak_pixinds_drp.len++;
+        _procPixGroupV1_drp<T>(data, bkgd, v_ind_pixgrp_drp); // proc connected group and fills v_peaks
 
         auto t5 = Clock::now();
         dt54 += std::chrono::duration_cast<std::chrono::nanoseconds>(t5 - t4).count();
-        t5 = Clock::now();
-
-        _procPixGroupV1_drp<T>(data, bkgd, v_ind_pixgrp_drp); // proc connected group and fills v_peaks
-
-        auto t6 = Clock::now();
-        dt65 += std::chrono::duration_cast<std::chrono::nanoseconds>(t6 - t5).count();
     }
   }
 
@@ -706,7 +618,6 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
             << dt32 << std::endl
             << dt43 << std::endl
             << dt54 << std::endl
-            << dt65 << std::endl
             << " nanoseconds" << std::endl;
 
 }
@@ -778,10 +689,7 @@ _evaluateRingAvgRmsV1(const T *data
 
 template <typename T>
 RingAvgRms
-_evaluateRingAvgRmsV1_drp(const T *data
-		     ,const int& row
-                     ,const int& col
-                     )
+_evaluateRingAvgRmsV1_drp(const T *data ,const int& row ,const int& col )
 {
   //if(m_pbits & LOG::DEBUG) std::cout << "in _evaluateRingAvgRmsV1\n";
 
@@ -1081,6 +989,8 @@ _procPixGroupV1(const T* data
   double noise_tot = bkgd.rms * std::sqrt(npix);
   peak.son       = (noise_tot>0) ? peak.amp_tot / noise_tot : 0;
 
+  //std::cout << "son: " << peak.son << std::endl;
+
   v_peaks.push_back(peak);
 
 }
@@ -1096,8 +1006,6 @@ _procPixGroupV1_drp(const T* data
 
   const int& r0 = vinds.data[0]->i; //const int& r0 = vinds.[0].i;
   const int& c0 = vinds.data[0]->j; //const int& c0 = vinds[0].j;
-
-  if(m_pbits) std::cout << "in _procPixGroup r0=" << r0 << " c0=" << c0 << '\n';
 
   int irc0 = r0*m_cols+c0;
 
@@ -1134,7 +1042,7 @@ _procPixGroupV1_drp(const T* data
 
   if(npix<1) return;
 
-  Peak *peak = new(m_drpPtr) Peak; // TODO: add placement new
+  Peak *peak = new(m_drpPtr) Peak;
   m_drpPtr += sizeof(Peak);
 
   peak->seg     = m_seg;
@@ -1171,8 +1079,9 @@ _procPixGroupV1_drp(const T* data
   double noise_tot = bkgd.rms * std::sqrt(npix);
   peak->son       = (noise_tot>0) ? peak->amp_tot / noise_tot : 0;
 
-  v_peaks_drp.data[v_peaks_drp.len] = peak;
-  v_peaks_drp.len++;
+  //std::cout << "son: " << peak->son << std::endl;
+
+  v_peaks_drp.data[v_peaks_drp.len++] = peak;
 
 }
 
