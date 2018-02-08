@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
 add_compile_options(-Wall)
 add_compile_options(-Wno-uninitialized)
+add_compile_options(-fno-omit-frame-pointer)
 
 find_package(PythonInterp 3.5 REQUIRED)
 find_package(PythonLibs 3.5 REQUIRED)

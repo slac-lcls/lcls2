@@ -25,8 +25,7 @@ namespace Pds {
     class EventBuilder : public Pds::Timer
     {
     public:
-      EventBuilder(Task*    backEndTask,
-                   unsigned epochs,
+      EventBuilder(unsigned epochs,
                    unsigned entries,
                    unsigned sources,
                    uint64_t mask);
@@ -42,8 +41,7 @@ namespace Pds {
       virtual unsigned   repetitive() const;
     public:
       void               process    (const XtcData::Dgram*);
-      unsigned           processBulk(const XtcData::Dgram*);
-      Task*              backEndTask() const;
+      void               processBulk(const XtcData::Dgram*);
     public:
       void               dump(unsigned detail);
     private:
@@ -56,31 +54,18 @@ namespace Pds {
       void              _flush(EbEvent*);
       void              _retire(EbEvent*);
       EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*);
+      EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*, EbEvent*);
     private:
       friend class EbEvent;
     private:
       EpochList         _pending;       // Listhead, Epochs with events pending
-      Task*             _backEndTask;   // Task for Back-end processing
       uint64_t          _mask;          // Sequence mask
       GenericPool       _epochFreelist; // Freelist for new epochs
-      GenericPoolW      _eventFreelist; // Freelist for new events
+      GenericPoolW       _eventFreelist; // Freelist for new events
       Task*             _timerTask;     // For Timer
       unsigned          _duration;      // Timer expiration rate
     };
   };
 };
-
-
-/*
-** ++
-**
-**
-** --
-*/
-
-inline Pds::Task* Pds::Eb::EventBuilder::backEndTask() const
-{
-  return _backEndTask;
-}
 
 #endif

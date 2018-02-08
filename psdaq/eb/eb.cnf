@@ -74,7 +74,7 @@ num_evt = 2
 
 #seg_nodes = [ drp_tst_acc01, drp_tst_acc02, drp_tst_acc03, drp_tst_acc04, drp_tst_acc05, drp_tst_acc06 ]
 #evt_nodes = [ daq_tst_dev02, daq_tst_dev05, daq_tst_dev04, daq_tst_dev03, daq_tst_dev01 ]
-seg_nodes = [ drp_tst_acc05, drp_tst_acc06 ]
+seg_nodes = [ daq_tst_dev05, daq_tst_dev04 ]
 evt_nodes = [ daq_tst_dev04, daq_tst_dev05 ]
 
 seg_nodes = seg_nodes[:num_seg]

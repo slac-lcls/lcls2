@@ -91,24 +91,6 @@ Pds::Eb::EbEvent::~EbEvent()
 /*
 ** ++
 **
-**    This is the function called by the EB to signify that the event
-**    is complete and can be processed.  This function runs in the context
-**    of the Back-End task.  The function will simply call the builder's
-**    process virtual method for the event and than delete the event.
-**
-** --
-*/
-
-void Pds::Eb::EbEvent::routine()
-{
-  _eb->process(this);
-
-  delete this;
-}
-
-/*
-** ++
-**
 **    This function is used to insert a "dummy" contribution into the event.
 **    The dummy contribution is identified by the input argument.
 **
