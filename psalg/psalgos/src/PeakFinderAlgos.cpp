@@ -79,12 +79,8 @@ PeakFinderAlgos::_initMapsAndVectors()
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in _initMapsAndVectors\n";
 
-  if (drp) {
-      if (m_conmap==0) m_conmap = new(m_drpPtr) conmap_t[m_img_size];
-      m_drpPtr += sizeof(conmap_t)*m_img_size;
-  } else {
-      if (m_conmap==0) m_conmap = new conmap_t[m_img_size];
-  }
+  if (m_conmap==0) m_conmap = new conmap_t[m_img_size];
+
   std::fill_n(m_conmap, int(m_img_size), conmap_t(0));
 
   if(v_ind_pixgrp.capacity() != m_pixgrp_max_size) {
@@ -98,6 +94,7 @@ PeakFinderAlgos::_initMapsAndVectors()
      v_peaks.clear();
 
   _evaluateRingIndexes();
+
 }
 
 void 
@@ -105,12 +102,11 @@ PeakFinderAlgos::_initMapsAndVectors_drp()
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in _initMapsAndVectors_drp\n";
 
-  if (drp) {
-      if (m_conmap==0) m_conmap = new(m_drpPtr) conmap_t[m_img_size];
-      m_drpPtr += sizeof(conmap_t)*m_img_size;
-  } else {
-      if (m_conmap==0) m_conmap = new conmap_t[m_img_size];
+  if (m_conmap==0) {
+    m_conmap = new(m_drpPtr) conmap_t[m_img_size];
+    m_drpPtr += sizeof(conmap_t)*m_img_size;
   }
+
   std::fill_n(m_conmap, int(m_img_size), conmap_t(0));
 
   if(v_ind_pixgrp_drp.len != m_pixgrp_max_size) {
@@ -162,15 +158,13 @@ PeakFinderAlgos::_evaluateRingIndexes_drp()
 
   if(v_indexes_drp.capacity < npixmax) v_indexes_drp.capacity = npixmax;
 
-  //std::cout << "+evaluateRingIndexes " << (void *) m_drpPtr << std::endl;
   int counter = 0;
   for (int i = indmin; i <= indmax; ++ i) {
     for (int j = indmin; j <= indmax; ++ j) {
       double r = std::sqrt(double(i*i + j*j));
       if (r < m_r0 || r > m_r0 + m_dr) continue;
-      v_indexes_drp.data[counter] = new(m_drpPtr) TwoIndexes(i,j);
+      v_indexes_drp.data[counter++] = new(m_drpPtr) TwoIndexes(i,j);
       m_drpPtr += sizeof(TwoIndexes);
-      counter++;
     }
   }
   v_indexes_drp.len = counter;
@@ -230,7 +224,7 @@ void
 PeakFinderAlgos::printVectorOfRingIndexes_drp()
 {
   if(v_indexes_drp.len == 0) {
-    _evaluateRingIndexes();
+    _evaluateRingIndexes_drp();
   }
 
   std::stringstream ss; 
@@ -298,6 +292,7 @@ PeakFinderAlgos::_makeVectorOfSelectedPeaks()
   for(std::vector<Peak>::iterator it=v_peaks.begin(); it!=v_peaks.end(); ++it) { 
     Peak& peak = (*it);
     if(_peakIsSelected(peak)) {
+    std::cout << "there" << std::endl;
         v_peaks_sel.push_back(peak);
     }
   }
@@ -313,13 +308,11 @@ PeakFinderAlgos::_makeVectorOfSelectedPeaks_drp()
 {
   if(v_peaks_sel_drp.capacity < m_npksmax) v_peaks_sel_drp.capacity = m_npksmax;
 
-  int counter = 0;
   for(unsigned int ii = 0; ii < v_peaks_drp.len; ii++) {
     Peak *peak = v_peaks_drp.data[ii];
-    counter++;
     if(_peakIsSelected(*peak)) {
-        v_peaks_sel_drp.data[v_peaks_sel_drp.len] = peak;
-        v_peaks_sel_drp.len++;
+       std::cout << "here" << std::endl;
+        v_peaks_sel_drp.data[v_peaks_sel_drp.len++] = peak;
     }
   }
   if(m_pbits) std::cout << "_makeVectorOfSelectedPeaks, seg=" << m_seg 

@@ -11,7 +11,6 @@
 
 #define _unused(x) ((void)(x))
 
-
 template <typename T>
 struct Array {
     Array(uint8_t* buffer)

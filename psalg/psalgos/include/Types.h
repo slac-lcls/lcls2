@@ -14,7 +14,7 @@ class Vector {
   public:
     Vector(){}
     unsigned int len, capacity = 0;
-    T* data[5000];
+    T* data[4500]; // TODO: fixed size (larger size seems to slows down code)
 };
 
 namespace LOG {
