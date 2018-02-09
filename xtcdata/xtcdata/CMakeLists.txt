@@ -60,6 +60,7 @@ install(FILES
     xtc/Dgram.hh
     xtc/Sequence.hh
     xtc/TypeId.hh
+    xtc/VarDef.hh
     DESTINATION include/xtcdata/xtc
 )
 
