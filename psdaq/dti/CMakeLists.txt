@@ -31,6 +31,21 @@ target_link_libraries(dti_simple
 )
 
 #
+#  dti_stats
+#
+add_executable(dti_stats dti_stats.cc)
+
+target_link_libraries(dti_stats
+   service
+   cphw
+   ${CPSW_LIB}
+   ${YAML_CPP_LIB}
+   dl
+   pthread
+   rt
+)
+
+#
 #  dtiPVs
 #
 add_executable(dtiPVs dtiPVs.cc)
