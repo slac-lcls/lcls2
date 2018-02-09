@@ -96,7 +96,7 @@ def main():
         manager = Manager("manager", manager_cfg)
         return manager.run()
     except KeyboardInterrupt:
-        print("Worker killed by user...")
+        print("Manager killed by user...")
         return 0
 
 

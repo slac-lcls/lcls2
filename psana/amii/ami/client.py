@@ -183,12 +183,17 @@ def main():
         connects={zmq.REQ: (args.host, ZmqPorts.Command)}
     )
 
-    ctx = zmq.Context()
-    app = QApplication(sys.argv)
-    amilist = DetectorList(zmqctx=ctx, zmqcfg=zmqcfg)
-    amilist.show()
+    try:
+        ctx = zmq.Context()
+        app = QApplication(sys.argv)
+        amilist = DetectorList(zmqctx=ctx, zmqcfg=zmqcfg)
+        amilist.show()
 
-    return app.exec_()
+        return app.exec_()
+    except KeyboardInterrupt:
+        print("Client killed by user...")
+        return 0
+
 
 if __name__ == '__main__':
     sys.exit(main())
