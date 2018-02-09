@@ -1,4 +1,7 @@
 build
+install
 *.pyc
 *~
 *.so
+*.xtc
+*.h5

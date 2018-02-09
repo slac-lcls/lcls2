@@ -6,8 +6,7 @@ from .det import det
 class Test:
     @classmethod
     def setup_class(cls):
-        instdir = os.environ['INSTDIR']
-        subprocess.call([os.path.join(instdir, 'bin/xtcwriter')])
+        subprocess.call(['xtcwriter'])
 
     def test_xtc(self):
         xtc()
