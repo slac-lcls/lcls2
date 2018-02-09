@@ -3,7 +3,7 @@ import sys
 import zmq
 import argparse
 import threading
-from ami.base import ZmqPorts, ZmqConfig, ZmqCollector
+from ami.comm import ZmqPorts, ZmqConfig, ZmqCollector
 
 
 class Manager(ZmqCollector):
