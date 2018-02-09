@@ -59,7 +59,8 @@ Vector<TwoIndexes>* evaluateDiagIndexes_drp(const size_t& rank, const bool drp, 
 
   Vector<TwoIndexes>* ptr = new(drpPtr) Vector<TwoIndexes>();
   drpPtr += sizeof(Vector<TwoIndexes>);
-  
+  if(ptr->capacity < npixmax) ptr->capacity = npixmax;
+
   int counter = 0;
   for (int i = indmin; i <= indmax; ++ i) {
     for (int j = indmin; j <= indmax; ++ j) {
@@ -68,14 +69,11 @@ Vector<TwoIndexes>* evaluateDiagIndexes_drp(const size_t& rank, const bool drp, 
       // remove already tested central row and column
       if (i==0 || j==0) continue;
       
-      ptr->data[counter] = new(drpPtr) TwoIndexes(i,j);
+      ptr->data[counter++] = new(drpPtr) TwoIndexes(i,j);
       drpPtr += sizeof(TwoIndexes);
-
-      counter++;
     }
   }
   ptr->len = counter;
-
   return ptr;
 }
 
@@ -201,6 +199,7 @@ Vector<TwoIndexes>* vectorOfExtremeIndexes(const extrim_t *map, const size_t& ro
 
   Vector<TwoIndexes> *ptr = new(drpPtr) Vector<TwoIndexes>();
   drpPtr += sizeof(Vector<TwoIndexes>);
+  if(ptr->capacity < _maxlen) ptr->capacity = _maxlen;
 
   int counter = 0;
   size_t irc=0;
@@ -208,13 +207,11 @@ Vector<TwoIndexes>* vectorOfExtremeIndexes(const extrim_t *map, const size_t& ro
     for (size_t c=0; c<cols; ++c) {
       irc = r*cols+c;
       if(map[irc]==vsel) {
-        ptr->data[counter] = new(drpPtr) TwoIndexes(r,c);
+        ptr->data[counter++] = new(drpPtr) TwoIndexes(r,c);
         drpPtr += sizeof(TwoIndexes);
-        counter++;
       }
     }
   }
-
   ptr->len = counter;
   return ptr;
 }

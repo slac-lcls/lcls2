@@ -23,7 +23,7 @@ int main () {
   unsigned int rows = 185;
   unsigned int cols = 388;
   int16_t *data = new int16_t[rows*cols];
-  for(int i=0; i<rows*cols; i++) {
+  for(unsigned int i=0; i<rows*cols; i++) {
       data[i] = rand() % 10;
   }
   data[1900] = 1000; // peak 1
@@ -34,7 +34,7 @@ int main () {
   data[5902] = 300;
 
   uint16_t *mask = new uint16_t[rows*cols];
-  for(int i=0; i<rows*cols; i++) {
+  for(unsigned int i=0; i<rows*cols; i++) {
       mask[i] = 1;
   }
 
@@ -74,12 +74,6 @@ int main () {
   const double nsigm = 0;
   ptr->peakFinderV3r3(data, mask, rows, cols, rank, r0, dr, nsigm);
 
-  if (pbits) {
-    Vector<Peak> peaks_drp = ptr->vectorOfPeaksSelected_drp();
-    for (unsigned int ii = 0; ii < peaks_drp.len; ii++) {
-      Peak *p_drp = peaks_drp.data[ii];
-    }
-  }
 
   auto t4 = Clock::now();
   std::cout << "Analyzing fake data, Delta t: " << std::endl 
