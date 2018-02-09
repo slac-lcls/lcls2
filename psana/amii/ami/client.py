@@ -1,68 +1,65 @@
 import zmq
 import sys
 import time
+import argparse
 import threading
 import numpy as np
 
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QTimer
 
 import pyqtgraph as pg
 
-MASTER = None
+from ami.base import ZmqPorts, ZmqConfig, ZmqBase
+from ami.data import DataTypes
+from ami.operation import ROI
 
 
-class Master(object):
+class Master(ZmqBase):
 
-    def __init__(self, zmqctx, host, port):
-        self.ctx = zmqctx
-        self.sock = self.ctx.socket(zmq.REQ)
-        self.sock.connect("tcp://%s:%d"%(host, port))
-        # Why do we need this?
-        self.sock.send_string('apply_config')
-        self.sock.recv_string()
+    def __init__(self, zmqctx, zmq_config):
+        super(__class__, self).__init__("client-master", zmq_config, zmqctx)
+        self.sock = self.connect(zmq.REQ)
 
     @property
     def graph(self):
-        self.sock.send_string('get_config')
+        self.sock.send_string('get_graph')
         return self.sock.recv_pyobj()
 
     @property
-    def detectors(self):
-        d = {}
-        for topic, shape in self.graph['src']['config']['sources']:
-            if len(shape) > 1:
-                d[topic] = 'area'
-            else:
-                d[topic] = 'waveform'
-        # would be derived from "the JSON"
+    def features(self):
+        self.sock.send_string('get_features')
+        return self.sock.recv_pyobj()
 
-        #d = {'cspad' : 'area',
-        #     'diode' : 'waveform',
-        #     'opal'  : 'area'}
-
-        return d
+    def update(self, graph):
+        self.sock.send_string('set_graph', zmq.SNDMORE)
+        self.sock.send_pyobj(graph)
+        if self.sock.recv_string() == 'ok':
+            self.sock.send_string('apply_graph')
+            return self.sock.recv_string() == 'ok'
+        else:
+            return False
 
 
 class WaveformWidget(pg.GraphicsLayoutWidget):
-    def __init__(self, topic, zmqctx, parent=None):
+    def __init__(self, topic, master, timer, parent=None):
         super(WaveformWidget, self).__init__(parent)
         self.plot_view = self.addPlot()
         self.plot = None
-        if zmqctx is None:
-            self.ctx = zmq.Context()
-        else:
-            self.ctx = zmqctx
-        self.sock = self.ctx.socket(zmq.SUB)
-        self.sock.setsockopt_string(zmq.SUBSCRIBE, topic)
-        self.sock.connect("tcp://localhost:55558")
-        self.zmq_thread = threading.Thread(target=self.get_waveform)
-        self.zmq_thread.daemon = True
+        self.master = master
+        self.topic = topic
+        self.timer = timer
+        self.sock = self.master.connect(zmq.REQ)
+        self.timer.timeout.connect(self.get_waveform)
 
+    @pyqtSlot()
     def get_waveform(self):
-        while True:
-            self.sock.recv_string()
+        self.sock.send_string("feature:%s"%self.topic)
+        reply = self.sock.recv_string()
+        if reply == 'ok':
             self.waveform_updated(self.sock.recv_pyobj())
+        else:
+            print("failed to fetch %s from manager!"%self.topic)
 
     def waveform_updated(self, data):
         if self.plot is None:
@@ -73,45 +70,53 @@ class WaveformWidget(pg.GraphicsLayoutWidget):
 
 
 class AreaDetWidget(pg.ImageView):
-    def __init__(self, topic, zmqctx, parent=None):
+    def __init__(self, topic, master, timer, parent=None):
         super(AreaDetWidget, self).__init__(parent)
-        if zmqctx is None:
-            self.ctx = zmq.Context()
-        else:
-            self.ctx = zmqctx
-        self.sock = self.ctx.socket(zmq.SUB)
-        self.sock.setsockopt_string(zmq.SUBSCRIBE, topic)
-        self.sock.connect("tcp://localhost:55556")
-        self.zmq_thread = threading.Thread(target=self.get_image)
-        self.zmq_thread.daemon = True
+        self.master = master
+        self.topic = topic
+        self.timer = timer
+        self.sock = self.master.connect(zmq.REQ)
+        self.timer.timeout.connect(self.get_image)
         self.roi.sigRegionChangeFinished.connect(self.roi_updated)
     
+    @pyqtSlot()
     def get_image(self):
-        while True:
-            self.sock.recv_string()
+        self.sock.send_string("feature:%s"%self.topic)
+        reply = self.sock.recv_string()
+        if reply == 'ok':
             self.image_updated(self.sock.recv_pyobj())
+        else:
+            print("failed to fetch %s from manager!"%self.topic)
 
     def image_updated(self, data):
         self.setImage(data)
 
     #@pyqtSlot(pg.ROI)
     def roi_updated(self, roi):
-        print(MASTER.graph)
-        print((roi.getAffineSliceParams(self.image, self.getImageItem())))
+        graph = self.master.graph
+        roi = ROI(*roi.getAffineSliceParams(self.image, self.getImageItem()), (0,1))
+        graph["%s-roi"%self.topic] = { "optype": "ROI", "config": roi.export(), "inputs": [{"name": self.topic, "required": True}] }
+        self.master.update(graph)
+        
 
 class DetectorList(QListWidget):
     
-    def __init__(self, parent=None, zmqctx=None):
+    def __init__(self, parent=None, zmqctx=None, zmqcfg=None):
         super(DetectorList, self).__init__(parent)
-        self.detectors = {}
-        self.ctx = zmqctx
+        self.master = Master(zmqctx, zmqcfg)
+        self.features = {}
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.get_features)
+        self.timer.start(1000)
         self.itemClicked.connect(self.item_clicked)
         return
 
-    def set_detectors(self, detectors):
+    @pyqtSlot()
+    def get_features(self):
         # detectors = dict, maps name --> type
-        self.detectors = detectors
-        for k in list(detectors.keys()):
+        self.features = self.master.features
+        self.clear()
+        for k in self.features.keys():
             self.addItem(k)
         return
 
@@ -120,13 +125,12 @@ class DetectorList(QListWidget):
 
         # WHERE does this enumerated list of detector types come from?
 
-        if self.detectors[item.text()] == 'area':
-            # open area detector
-            self._spawn_window('AreaDetector', item.text(), self.ctx)
+        if self.features[item.text()] == DataTypes.Image:
+            self._spawn_window('AreaDetector', item.text())
             print('create area detector window for:', item.text())
 
-        elif self.detectors[item.text()] == 'waveform':
-            self._spawn_window('WaveformDetector', item.text(), self.ctx)
+        elif self.features[item.text()] == DataTypes.Waveform:
+            self._spawn_window('WaveformDetector', item.text())
             print('create waveform window for:', item.text())
 
         else:
@@ -134,33 +138,57 @@ class DetectorList(QListWidget):
 
         return
 
-    def _spawn_window(self, window_type, topic, zmqctx):
+    def _spawn_window(self, window_type, topic):
         
         win = QMainWindow(self)
 
         if window_type == 'AreaDetector':
-            widget = AreaDetWidget(topic, zmqctx, win)
-            widget.zmq_thread.start()
+            widget = AreaDetWidget(topic, self.master, self.timer, win)
         
         elif window_type == 'WaveformDetector':
-            widget = WaveformWidget(topic, zmqctx, win)
-            widget.zmq_thread.start()
+            widget = WaveformWidget(topic, self.master, self.timer, win)
         
         else:
             raise ValueError('%s not valid window_type' % window_type)
         
         win.setCentralWidget(widget)
+        win.setWindowTitle(topic)
         win.show()
 
         return win, widget
-        
-if __name__ == '__main__':
+
+def main():
+    parser = argparse.ArgumentParser(description='AMII GUI Client')
+
+    parser.add_argument(
+        '-H',
+        '--host',
+        default='localhost',
+        help='hostname of the AMII Manager'
+    )
+
+    parser.add_argument(
+        '-p',
+        '--platform',
+        type=int,
+        default=0,
+        help='platform number of the AMII - selects port range to use (default: 0)'
+    )
+
+    args = parser.parse_args()
+
+    zmqcfg = ZmqConfig(
+        args.platform,
+        binds={},
+        connects={zmq.REQ: (args.host, ZmqPorts.Command)}
+    )
+
     ctx = zmq.Context()
     app = QApplication(sys.argv)
-    MASTER  = Master(ctx, 'localhost', 5555)
-    amilist = DetectorList(zmqctx=ctx)
-
-    amilist.set_detectors(MASTER.detectors)
+    amilist = DetectorList(zmqctx=ctx, zmqcfg=zmqcfg)
     amilist.show()
 
-    sys.exit(app.exec_())
+    return app.exec_()
+
+if __name__ == '__main__':
+    sys.exit(main())

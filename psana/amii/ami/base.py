@@ -1,7 +1,7 @@
 import zmq
 import threading
 from enum import IntEnum
-from ami.data import MsgTypes, Occurrences
+from ami.data import MsgTypes, Occurrences, Message, Datagram
 
 
 class ZmqPorts(IntEnum):
@@ -42,9 +42,9 @@ class ZmqConfig(object):
         
 
 class ZmqBase(object):
-    def __init__(self, name, host_config, zmqctx=None):
+    def __init__(self, name, zmq_config, zmqctx=None):
         self.name = name
-        self.host_config = host_config
+        self.zmq_config = zmq_config
         if zmqctx is None:
             self._zmqctx = zmq.Context()
         else:
@@ -54,19 +54,73 @@ class ZmqBase(object):
         sock = self._zmqctx.socket(zmq_type)
         for opt in opts:
             sock.setsockopt_string(*opt)
-        sock.bind(self.host_config.bind_addr(zmq_type))
+        sock.bind(self.zmq_config.bind_addr(zmq_type))
         return sock
 
     def connect(self, zmq_type, *opts):
         sock = self._zmqctx.socket(zmq_type)
         for opt in opts:
             sock.setsockopt_string(*opt)
-        sock.connect(self.host_config.connect_addr(zmq_type))
+        sock.connect(self.zmq_config.connect_addr(zmq_type))
         return sock
 
+
+class ResultStore(ZmqBase):
+    def __init__(self, zmq_config, zmqctx=None):
+        super(__class__, self).__init__("resultstore", zmq_config, zmqctx)
+        self._store = {}
+        self._updated = {}
+        self._sink = self.connect(zmq.PUSH)
+
+    def collect(self):
+        for name, result in self._store.items():
+            if self._updated[name]:
+                self.message(MsgTypes.Datagram, result)
+                self._updated[name] = False
+
+    def forward(self, msg):
+        self._sink.send_pyobj(msg)
+
+    def message(self, mtype, payload):
+        self._sink.send_pyobj(Message(mtype, payload))
+
+    def create(self, name, datatype):
+        if name in self._store:
+            raise ValueError("result named %s already exists in ResultStore"%name)
+        else:
+            self._store[name] = Datagram(name, datatype)
+            self._updated[name] = False
+
+    def is_updated(self, name):
+        return self._updated[name]
+
+    def get_dgram(self, name):
+        return self._store[name]
+
+    def get(self, name):
+        return self._store[name].data
+
+    def put_dgram(self, dgram):
+        self.put(dgram.name, dgram.dtype, dgram.data)
+
+    def put(self, name, datatype, data):
+        if name in self._store:
+            if datatype == self._store[name].dtype:
+                self._store[name].data = data
+                self._updated[name] = True
+            else:
+                raise TypeError("type of new result (%s) differs from existing (%s)"%(datatype, self._store[name].dtype))
+        else:
+            self._store[name] = Datagram(name, datatype, data)
+            self._updated[name] = True
+
+    def clear(self):
+        self._store = {}
+
+
 class ZmqListener(ZmqBase):
-    def __init__(self, name, topic, callback, host_config, zmqctx=None):
-        super(__class__, self).__init__(name, host_config, zmqctx)
+    def __init__(self, name, topic, callback, zmq_config, zmqctx=None):
+        super(__class__, self).__init__(name, zmq_config, zmqctx)
         self.listen_topic = topic
         self.listen_evt = threading.Event()
         self._listen_cb = callback
@@ -76,20 +130,21 @@ class ZmqListener(ZmqBase):
         self._listen_thread.start()
 
     def listen(self):
-        topic = self._listen_sock.recv_string()
-        payload = self._listen_sock.recv_pyobj()
-        if topic == self.listen_topic:
-            print("%s: listerner recieved new payload with topic:"%self.name, topic)
-            if self._listen_cb is not None:
-                self._listen_cb(payload)
-            self.listen_evt.set()
-        else:
-            print("%s: recieved unexpected topic: %s"%(self.name, topic))
+        while True:
+            topic = self._listen_sock.recv_string()
+            payload = self._listen_sock.recv_pyobj()
+            if topic == self.listen_topic:
+                print("%s: listerner recieved new payload with topic:"%self.name, topic)
+                if self._listen_cb is not None:
+                    self._listen_cb(payload)
+                self.listen_evt.set()
+            else:
+                print("%s: recieved unexpected topic: %s"%(self.name, topic))
 
 
 class ZmqCollector(ZmqBase):
-    def __init__(self, name, host_config, zmqctx=None):
-        super(__class__, self).__init__(name, host_config, zmqctx)
+    def __init__(self, name, zmq_config, zmqctx=None):
+        super(__class__, self).__init__(name, zmq_config, zmqctx)
         self._transition_handler = None
         self._occurrence_handler = None
         self._datagram_handler = None 

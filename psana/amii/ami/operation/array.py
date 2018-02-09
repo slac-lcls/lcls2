@@ -1,48 +1,47 @@
 import numpy as np
 import pyqtgraph as pg
-from ami.operation.base import Operation, OpConfig
+from ami.data import DataTypes
+from ami.operation.base import OpConfig, OperationError
+
+class Projection(OpConfig):
+    def __init__(self, axis):
+        super(__class__, self).__init__(DataTypes.Waveform, "axis")
+
+    def operate(self, image):
+        return np.sum(image, axis=self.axis)
 
 
-class Projection(Operation):
-    def __init__(self, opid, ops):
-        super(Projection, self).__init__(opid, ops)
-        self.add_input('array')
-        self.add_config('axis')
+class SumScalar(OpConfig):
+    def __init__(self):
+        super(__class__, self).__init__(DataTypes.Scalar)
 
-    def run(self):
-        self.outputs['proj'] = np.sum(self.array, axis=self.axis)
-        return True
+    def operate(self, value1, value2):
+        return value1 + value2
 
 
-class AddArrays(Operation):
-    def __init__(self, opid, ops):
-        super(AddArrays, self).__init__(opid, ops)
-        self.add_input('array1')
-        self.add_input('array2')
+class SumImage(OpConfig):
+    def __init__(self):
+        super(__class__, self).__init__(DataTypes.Image)
 
-    def run(self):
-        self.outputs['sum'] = self.array1 + self.array2
-        return True
+    def operate(self, image1, image2):
+        return image1 + image2
 
-class ROI(Operation):
-    params = ['shape', 'origin', 'vectors', 'axes']
-    def __init__(self, opid, ops):
-        super(ROI, self).__init__(opid, ops)
-        self.add_input('array')
-        self.config.require(*ROI.params)
 
-    @classmethod
-    def make_box(cls):
-        params = {'outputs' : []}
-        for p in ROI.params:
-            params[p] = 0
-        box = {'config': params, 'opttype': cls.__name__}
-        return box
+class SumWaveform(OpConfig):
+    def __init__(self):
+        super(__class__, self).__init__(DataTypes.Waveform)
 
-    def run(self):
-        self.outputs['roi'] = pg.affineSlice(self.array, self.config['shape'], self.config['origin'], self.config['vectors'], self.config['axes'])
-        return True
+    def operate(self, wave1, wave2):
+        return wave1 + wave2
 
-#class ROIConfig(OpConfig):
-#    def __init__(self):
-#        super(ROIConfig, self).__init__(['shape','origin'])
+
+class ROI(OpConfig):
+    def __init__(self, shape, vector, origin, axes):
+        super(__class__, self).__init__(DataTypes.Image, "shape", "vector", "origin", "axes")
+        self.shape = shape
+        self.vector = vector
+        self.origin = origin
+        self.axes = axes
+
+    def operate(self, image):
+       return pg.affineSlice(image, self.shape, self.origin, self.vector, self.axes)
