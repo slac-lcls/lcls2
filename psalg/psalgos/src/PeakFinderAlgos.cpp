@@ -232,12 +232,9 @@ PeakFinderAlgos::printVectorOfRingIndexes_drp()
   int counter_in_line=0;
   for (unsigned int ii = 0; ii < v_indexes_drp.len; ii++) {
     ss << " (" << v_indexes_drp.data[ii]->i << "," << v_indexes_drp.data[ii]->j << ')';
-  //for(vector<TwoIndexes>::const_iterator ij  = v_indexes.begin(); ij != v_indexes.end(); ij++) {
-    //ss << " (" << ij->i << "," << ij->j << ')';
     if (++counter_in_line > 9) {ss << '\n'; counter_in_line=0;}
   }   
   cout << ss.str() << '\n';
-  //MsgLog(_name(), info, ss.str());
 }
 //-----------------------------
 
@@ -292,7 +289,6 @@ PeakFinderAlgos::_makeVectorOfSelectedPeaks()
   for(std::vector<Peak>::iterator it=v_peaks.begin(); it!=v_peaks.end(); ++it) { 
     Peak& peak = (*it);
     if(_peakIsSelected(peak)) {
-    std::cout << "there" << std::endl;
         v_peaks_sel.push_back(peak);
     }
   }
@@ -311,7 +307,6 @@ PeakFinderAlgos::_makeVectorOfSelectedPeaks_drp()
   for(unsigned int ii = 0; ii < v_peaks_drp.len; ii++) {
     Peak *peak = v_peaks_drp.data[ii];
     if(_peakIsSelected(*peak)) {
-       std::cout << "here" << std::endl;
         v_peaks_sel_drp.data[v_peaks_sel_drp.len++] = peak;
     }
   }

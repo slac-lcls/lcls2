@@ -92,13 +92,11 @@ typedef types::TwoIndexes TwoIndexes;
 
 std::vector<TwoIndexes> evaluateDiagIndexes(const size_t& rank);
 Vector<TwoIndexes>* evaluateDiagIndexes_drp(const size_t& rank, const bool drp, uint8_t*& drpPtr);
-TwoIndexes** evaluateDiagIndexes_c(const size_t& rank, const bool drp, uint8_t*& drpPtr, int& len);
 void printMatrixOfDiagIndexes(const size_t& rank);
 void printVectorOfDiagIndexes(const size_t& rank);
 size_t numberOfExtrema(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel=7);
 std::vector<TwoIndexes> vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel=7, const size_t& maxlen=0);
 Vector<TwoIndexes>* vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen, const bool drp, uint8_t*& drpPtr);
-TwoIndexes** vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen, const bool drp, uint8_t*& drpPtr, int& len);
 //-----------------------------
   /**
    * @brief returns number of found minima and array local_minima of local minimums of requested rank, 
