@@ -29,6 +29,9 @@ class Transition(object):
         self.ttype = ttype
         self.payload = payload
 
+    def __str__(self):
+        return "Transition:\n type: %s\n data: %s"%(self.ttype, self.payload)
+
 class Datagram(object):
     def __init__(self, name, dtype, data=None):
         self.name = name

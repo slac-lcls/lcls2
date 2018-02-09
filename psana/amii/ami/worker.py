@@ -6,59 +6,9 @@ import json
 import argparse
 import threading
 import multiprocessing as mp
-from ami.graph import Graph
-from ami.base import ZmqPorts, ZmqConfig, ZmqBase, ZmqListener, ZmqCollector
+from ami.graph import Graph, GraphConfigError, GraphRuntimeError
+from ami.base import ZmqPorts, ZmqConfig, ZmqBase, ZmqListener, ZmqCollector, ResultStore
 from ami.data import MsgTypes, DataTypes, Transitions, Occurrences, Message, Datagram, Transition, StaticSource
-
-
-class ResultStore(ZmqBase):
-    def __init__(self, host_config, zmqctx=None):
-        super(__class__, self).__init__("resultstore", host_config, zmqctx)
-        self._store = {}
-        self._updated = {}
-        self._sink = self.connect(zmq.PUSH)
-
-    def collect(self):
-        for name, result in self._store.items():
-            if self._updated[name]:
-                self.message(MsgTypes.Datagram, result)
-                self._updated[name] = False
-
-    def forward(self, msg):
-        self._sink.send_pyobj(msg)
-
-    def message(self, mtype, payload):
-        self._sink.send_pyobj(Message(mtype, payload))
-
-    def create(self, name, datatype):
-        if name in self._store:
-            raise ValueError("result named %s already exists in ResultStore"%name)
-        else:
-            self._store[name] = Datagram(name, datatype)
-            self._updated[name] = False
-
-    def get_dgram(self, name):
-        return self._store[name]
-
-    def get(self, name):
-        return self._store[name].data
-
-    def put_dgram(self, dgram):
-        self.put(dgram.name, dgram.dtype, dgram.data)
-
-    def put(self, name, datatype, data):
-        if name in self._store:
-            if datatype == self._store[name].dtype:
-                self._store[name].data = data
-                self._updated[name] = True
-            else:
-                raise TypeError("type of new result (%s) differs from existing (%s)"%(datatype, self._store[name].dtype))
-        else:
-            self._store[name] = Datagram(name, datatype, data)
-            self._updated[name] = True
-
-    def clear(self):
-        self._store = {}
 
 
 class Worker(ZmqListener):
@@ -80,12 +30,25 @@ class Worker(ZmqListener):
         for msg in self.src.events():
             # check to see if the graph has been reconfigured after update
             if self.listen_evt.is_set():
-                self.graph.configure()
+                print("%s: Received new configuration"%self.name)
+                try:
+                    self.graph.configure()
+                    print("%s: Configuration complete"%self.name)
+                except GraphConfigError as graph_err:
+                    print("%s: Configuration failed reverting to previous config:"%self.name, graph_err)
+                    # if this fails we just die
+                    self.graph.revert()
                 self.listen_evt.clear()
             if msg.mtype == MsgTypes.Datagram:
+                updates = []
                 for dgram in msg.payload:
                     self.store.put_dgram(dgram)
-                self.graph.execute()
+                    updates.append(dgram.name)
+                try:
+                    self.graph.execute(updates)
+                except GraphRuntimeError as graph_err:
+                    print("%s: Failure encountered executing graph:"%self.name, graph_err)
+                    return 1
                 self.store.collect()
             else:
                 self.store.forward(msg)
@@ -120,7 +83,6 @@ class Collector(ZmqCollector):
                 self.counts[MsgTypes.Occurrence] = 0
         elif msg.mtype == MsgTypes.Datagram:
             self.upstream.put_dgram(msg.payload)
-            #print(msg.payload)
 
                 
 def run_worker(num, host_config, source):
@@ -138,12 +100,12 @@ def run_worker(num, host_config, source):
     else:
         print("worker%03d: unknown data source type:"%num, source[0])
     worker = Worker(num, host_config, src)
-    worker.run()
+    sys.exit(worker.run())
 
 
 def run_collector(num, host_config):
     col = Collector(num, host_config)
-    col.run()
+    sys.exit(col.run())
 
 
 def main():

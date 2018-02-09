@@ -32,7 +32,7 @@ setup(
         'console_scripts': [
             'ami-worker = ami.worker:main',
             'ami-manager = ami.manager:main',
-            'ami-cleint = ami.client:main',
+            'ami-client = ami.client:main',
         ]
     },
     classifiers=[
