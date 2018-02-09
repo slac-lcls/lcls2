@@ -77,51 +77,6 @@ Vector<TwoIndexes>* evaluateDiagIndexes_drp(const size_t& rank, const bool drp, 
   return ptr;
 }
 
-TwoIndexes** evaluateDiagIndexes_c(const size_t& rank, const bool drp, uint8_t*& drpPtr, int& len) {
-
-  std::vector<TwoIndexes> v_inddiag;
-
-  int indmax =  rank;
-  int indmin = -rank;
-  const unsigned npixmax = (2*rank+1)*(2*rank+1);
-
-  if(v_inddiag.capacity() < npixmax) v_inddiag.reserve(npixmax);
-  v_inddiag.clear();
-
-  len = npixmax;
-  TwoIndexes** team = new(drpPtr) TwoIndexes*[npixmax];
-  drpPtr += sizeof(TwoIndexes) * npixmax;
-
-  int counter = 0;
-  for (int i = indmin; i <= indmax; ++ i) {
-    for (int j = indmin; j <= indmax; ++ j) {
-
-      // use rectangular region of radius = rank
-      // remove already tested central row and column
-      if (i==0 || j==0) continue;
-      // use ring region (if un-commented)
-      //if (m_rank>2 && floor(std::sqrt(float(i*i + j*j)))>(int)m_rank) continue;
-      //TwoIndexes inds = {i,j};
-      TwoIndexes inds(i,j);
-      v_inddiag.push_back(inds);
-
-      team[counter] = new(drpPtr) TwoIndexes(i,j);
-      drpPtr += sizeof(TwoIndexes);
-
-      //std::cout << "i,j: " << i << " " << j << std::endl;
-
-      //v_inddiag_c->set(counter, std::addressof(ii));
-      //std::cout << "ptr: " << ptr[counter] << std::endl;
-      counter++;
-    }
-  }
-  //std::cout << "v_inddiag_c.data: " << v_inddiag_c->operator()(1,2) << std::endl;
-
-  //if(m_pbits & 2) printMatrixOfDiagIndexes();
-
-  return team;
-}
-
 //-----------------------------
 
 void printMatrixOfDiagIndexes(const size_t& rank)
@@ -216,32 +171,6 @@ Vector<TwoIndexes>* vectorOfExtremeIndexes(const extrim_t *map, const size_t& ro
   return ptr;
 }
 
-TwoIndexes** vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen, const bool drp, uint8_t*& drpPtr, int& len)
-{
-  //std::vector<TwoIndexes> v;
-  size_t _maxlen = (maxlen) ? maxlen : rows*cols/4;
-  //if(v.capacity() < _maxlen) v.reserve(_maxlen);
-  //v.clear();
-
-  len = _maxlen;
-  TwoIndexes** team = new(drpPtr) TwoIndexes*[len];
-  drpPtr += 10240;//sizeof(TwoIndexes) * len;
-
-  int counter = 0;
-  size_t irc=0;
-  for (size_t r=0; r<rows; ++r) {
-    for (size_t c=0; c<cols; ++c) {
-      irc = r*cols+c;
-      if(map[irc]==vsel) {
-        //v.push_back(TwoIndexes(r,c));
-        team[counter] = new(drpPtr) TwoIndexes(r,c);
-        drpPtr += sizeof(TwoIndexes);
-        counter++;
-      }
-    }
-  }
-  return team;
-}
 //-----------------------------
 //-----------------------------
 //-----------------------------

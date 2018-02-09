@@ -45,7 +45,7 @@ int main () {
     
   // Step 1: Init PeakFinderAlgos
   const size_t  seg = 0;
-  const unsigned pbits = 1;
+  const unsigned pbits = 0;
   if (pbits) std::cout << "+buf Address stored " << (void *) buf << std::endl;
   
   PeakFinderAlgos *ptr;
