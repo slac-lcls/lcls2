@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 class Event:
     """
     Event holds list of dgrams

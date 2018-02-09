@@ -1,43 +1,8 @@
+cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(xtc SHARED
-    xtc/src/BldInfo.cc
-    xtc/src/Sequence.cc
-    xtc/src/TransitionId.cc
-    xtc/src/XtcIterator.cc
-    xtc/src/TimeStamp.cc
-    xtc/src/Level.cc
-    xtc/src/Src.cc
-    xtc/src/TypeId.cc
-    xtc/src/DetInfo.cc
-    xtc/src/ProcInfo.cc
-    xtc/src/PulseId.cc
-    xtc/src/XtcFileIterator.cc
-    xtc/src/ShapesData.cc
-    xtc/src/NamesIter.cc
-)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-target_include_directories(xtc PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-)
-
-add_executable(xtcreader
-    app/xtcreader.cc
-)
-target_link_libraries(xtcreader
-    xtc
-)
-
-add_executable(xtcwriter
-    app/xtcwriter.cc
-)
-target_link_libraries(xtcwriter
-    xtc
-)
-
-add_executable(smdwriter
-    app/smdwriter.cc
-)
-target_link_libraries(smdwriter
-    xtc
-)
+add_subdirectory(xtcdata)

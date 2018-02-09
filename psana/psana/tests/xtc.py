@@ -1,13 +1,7 @@
-#!/usr/bin/env python
-#
-
 import sys
 from sys import getrefcount as getref
-sys.path.append('../../build/psana')
-from dgram import Dgram
 import numpy as np
-sys.path.append('../')
-from DataSource import DataSource
+from psana import DataSource
 
 def myroutine2():
   ds = DataSource('data.xtc')
@@ -56,10 +50,11 @@ def myiter(pydgram,testvals):
       elif type(attr) is not str and type(attr) is not tuple:
         assert attr==testvals[attrname]
 
-from testvals import testvals
+def xtc():
+  from .vals import testvals
 
-pydgram, config = myroutine1()
-myiter(config,testvals)
-print('config tested',len(testvals),'values')
-myiter(pydgram,testvals)
-print('xtc tested',len(testvals),'values')
+  pydgram, config = myroutine1()
+  myiter(config,testvals)
+  print('config tested',len(testvals),'values')
+  myiter(pydgram,testvals)
+  print('xtc tested',len(testvals),'values')
