@@ -1,16 +1,11 @@
-#!/usr/bin/env python
-#
-
 import sys, os
 import time
 import getopt
 import pprint
 
-from PyDgram import PyDgram
-from Event import Event
-sys.path.append('../build/psana')
-import dgram
-#
+from psana import dgram
+from .pydgram import PyDgram
+from .event import Event
 
 class DataSource:
     """Stores variables and arrays loaded from an XTC source.\n"""

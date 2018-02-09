@@ -3,8 +3,7 @@
 
 import sys
 
-sys.path.append('../build/psana')
-import dgram
+from psana import dgram
 
 class container:
     pass

@@ -6,6 +6,7 @@ add_compile_options(-fno-omit-frame-pointer)
 
 find_package(PythonInterp 3.5 REQUIRED)
 find_package(PythonLibs 3.5 REQUIRED)
+find_package(xtc REQUIRED)
 
 option(PSANA_USE_LEGION "Enable support for Legion" OFF)
 if(PSANA_USE_LEGION)
@@ -41,8 +42,7 @@ find_package(HDF5 REQUIRED HL)
 
 enable_testing()
 
-add_subdirectory(xtcdata)
-add_subdirectory(psana)
+#add_subdirectory(psana)
 add_subdirectory(psdaq)
 add_subdirectory(pgp)
-add_subdirectory(drp)
+#add_subdirectory(drp)
