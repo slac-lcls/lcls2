@@ -553,7 +553,7 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
 
   const unsigned BIT_SEL=4; // <<=====
 
-  double dt10, dt21, dt32, dt43, dt54, dt65 = 0.;
+  //double dt10, dt21, dt32, dt43, dt54 = 0.;
 
   int irc=0;
   m_numreg=0;
@@ -565,7 +565,7 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
 
         ++m_numreg;
 
-        auto t0 = Clock::now();
+        //auto t0 = Clock::now();
 
         RingAvgRms bkgd = _evaluateRingAvgRmsV1_drp<T>(data, r, c); // Reuse OK
         m_reg_thr = bkgd.avg + m_nsigm * bkgd.rms; // <<=====
@@ -575,9 +575,9 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
         //                                            << " bkgd:" << bkgd << " thr:" << m_reg_thr << '\n';
         //}
 
-        auto t1 = Clock::now();
-        dt10 += std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-        t1 = Clock::now();
+        //auto t1 = Clock::now();
+        //dt10 += std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
+        //t1 = Clock::now();
 
         _findConnectedPixelsForLocalMaximumV2_drp<T>(data, r, c); // <<===== 
 	    //if (m_pbits) std::cout << "YYY: number of connected pixels = " << v_ind_pixgrp_drp.len << '\n';
@@ -588,30 +588,30 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
           --m_numreg; continue;
         }
 
-        auto t2 = Clock::now();
-        dt21 += std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-        t2 = Clock::now();
+        //auto t2 = Clock::now();
+        //dt21 += std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
+        //t2 = Clock::now();
 
         Vector<TwoIndexes> *_v_ind_pixgrp_drp = new(m_drpPtr) Vector<TwoIndexes>(v_ind_pixgrp_drp);
         m_drpPtr += sizeof(Vector<TwoIndexes>);
 
-        auto t3 = Clock::now();         
-        dt32 += std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
-        t3 = Clock::now();
+        //auto t3 = Clock::now();
+        //dt32 += std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
+        //t3 = Clock::now();
 
         vv_peak_pixinds_drp.data[vv_peak_pixinds_drp.len++] = _v_ind_pixgrp_drp;
 
-        auto t4 = Clock::now();
-        dt43 += std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count();
-        t4 = Clock::now();
+        //auto t4 = Clock::now();
+        //dt43 += std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count();
+        //t4 = Clock::now();
 
         _procPixGroupV1_drp<T>(data, bkgd, v_ind_pixgrp_drp); // proc connected group and fills v_peaks
 
-        auto t5 = Clock::now();
-        dt54 += std::chrono::duration_cast<std::chrono::nanoseconds>(t5 - t4).count();
+        //auto t5 = Clock::now();
+        //dt54 += std::chrono::duration_cast<std::chrono::nanoseconds>(t5 - t4).count();
     }
   }
-
+/*
   std::cout << "_makeMapOfConnectedPixelsForLocalMaximums_drp, Delta t: " << std::endl
             << dt10 << std::endl
             << dt21 << std::endl
@@ -619,7 +619,7 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
             << dt43 << std::endl
             << dt54 << std::endl
             << " nanoseconds" << std::endl;
-
+*/
 }
 //-----------------------------
 
