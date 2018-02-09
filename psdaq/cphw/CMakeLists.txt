@@ -8,6 +8,7 @@ add_library(cphw SHARED
     HsRepeater.cc
     RingBuffer.cc
     XBar.cc
+    BldControl.cc
 )
 
 add_library(cphwr SHARED
@@ -19,6 +20,7 @@ add_library(cphwr SHARED
     HsRepeater.cc
     RingBuffer.cc
     XBar.cc
+    BldControl.cc
 )
 
 target_include_directories(cphw PUBLIC
