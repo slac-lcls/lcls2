@@ -29,28 +29,23 @@ You should see an interactive QT window. There is also a `dummy_gui.py` that giv
 
 # Status/To-do
 
-2/2/18
+2/9/18
 
-* collector is currently broken due some changes made to get the GUI tests working quickly
-* as currently setup a zmq port is needed for "thing" being collcted from a worker. This doesn't scale at all. The collector should use a pull socket on a know port.
-* In the graph each node lists which nodes it outputs to. It seems more natural for a node to know what input it depends on instead. This also makes the modification of the graph less complex
 * Ability to edit the graph graphically.
-* We had issues using zmq sockets from within a roi_update qt callback. It gave the following error:
-    QObject::startTimer: Timers cannot be started from another thread
-  It feels like we might need to be delicate with Qt. Should talk to Zack/Teddy about how they handled similar patterns in Skywalker.
-* May need to keep the Qt code into its own thread and signal to the main thread when outside work needs doing.
-
-1/25/18
-* merged ami2 repo into lcls2 psana
-* restored amii to functional state
-
-5/18/17
-* Factored OpConfig out of Operation in anticipation of editing it
-* Created an ami-manager which can be queried to get the config
-* used code below to request config from mgr, but now want to create an ROIConfig. How do we do this, since the required parameters are in the ROIOperation class?
-* Do we need an ROIConfig class?  We were hoping to avoid this to make operation creation easy for users.
-
-To do:
-- multiple outputs of boxes going to different boxes (e.g. for laser-on/laser-off filtering)
-- make the graph-editing in dummy_gui.py "real" (i.e. actually run events thru system and change graph)
-
+* Visualization of the graph
+* Minimal viable documentation ( so Dan can remember what is going on )
+* Fault tolerance
+* External interfaces:
+    - hutch python - epics / json documents broker of blue sky
+    - DRP feedback?
+* scaling of Qt in general
+* duplicate non-broken AMI functionality
+* autosave
+* read real XTC
+* only reconfigure graph on transitions
+* cache worker config in manager pub so workers get it again on restart
+* manager needs to discover when the configuration has failed to apply on one of the workers
+* Fix bug with first stage gather where collector will mess up if one worker is too far behind
+    - make sure we don't get 'off by 1'
+    - need a way to agree on the phases for the heartbeats - timing system should have some sort of number for these
+* Fix the beginning of the readme - the setup instructions are out of date
