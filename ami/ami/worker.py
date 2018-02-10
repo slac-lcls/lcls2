@@ -29,17 +29,19 @@ class Worker(ZmqListener):
             self.store.create(name, dtype)
         for msg in self.src.events():
             # check to see if the graph has been reconfigured after update
-            if self.listen_evt.is_set():
-                print("%s: Received new configuration"%self.name)
-                try:
-                    self.graph.configure()
-                    print("%s: Configuration complete"%self.name)
-                except GraphConfigError as graph_err:
-                    print("%s: Configuration failed reverting to previous config:"%self.name, graph_err)
-                    # if this fails we just die
-                    self.graph.revert()
-                self.listen_evt.clear()
-            if msg.mtype == MsgTypes.Datagram:
+            if msg.mtype == MsgTypes.Occurrence and msg.payload == Occurrences.Heartbeat:
+                if self.listen_evt.is_set():
+                    print("%s: Received new configuration"%self.name)
+                    try:
+                        self.graph.configure()
+                        print("%s: Configuration complete"%self.name)
+                    except GraphConfigError as graph_err:
+                        print("%s: Configuration failed reverting to previous config:"%self.name, graph_err)
+                        # if this fails we just die
+                        self.graph.revert()
+                    self.listen_evt.clear()
+                self.store.forward(msg)
+            elif msg.mtype == MsgTypes.Datagram:
                 updates = []
                 for dgram in msg.payload:
                     self.store.put_dgram(dgram)
