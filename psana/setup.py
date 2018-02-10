@@ -20,7 +20,7 @@ dgram_module = Extension('psana.dgram',
 setup(name = 'psana',
        version = '0.1',
        description = 'LCLS II analysis package',
-       packages = ['psana', 'psana.detector'],
+       packages = ['psana', 'psana.detector', 'psana.pscalib', 'psana.pyalgos'],
        #cmdclass = {'build': dgram_build, 'build_ext': dgram_build_ext},
        ext_modules = [dgram_module])
 
