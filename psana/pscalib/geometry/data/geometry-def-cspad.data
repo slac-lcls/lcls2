@@ -1,0 +1,57 @@
+# TITLE      Geometry parameters of CSPAD
+# DATE_TIME  2014-10-16 10:32:26 PDT
+# METROLOGY  /reg/neh/home/dubrovin/LCLS/CSPadMetrologyProc/2013-10-09-CSPAD-XPP-Metrology.txt
+# AUTHOR     dubrovin
+# EXPERIMENT MEC
+# DETECTOR   CSPAD
+# CALIB_TYPE geometry
+# COMMENT:01 Table contains the list of geometry parameters for alignment of 2x1 sensors, quads, CSPAD, etc
+# COMMENT:02 All translation and rotation pars of the object are defined w.r.t. parent object Cartesian frame
+# PARAM:01 PARENT     - name and version of the parent object
+# PARAM:02 PARENT_IND - index of the parent object
+# PARAM:03 OBJECT     - name and version of the object
+# PARAM:04 OBJECT_IND - index of the new object
+# PARAM:05 X0         - x-coordinate [um] of the object origin in the parent frame
+# PARAM:06 Y0         - y-coordinate [um] of the object origin in the parent frame
+# PARAM:07 Z0         - z-coordinate [um] of the object origin in the parent frame
+# PARAM:08 ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame
+# PARAM:09 ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame
+# PARAM:10 ROT_X      - object design rotation angle [deg] around X axis of the parent frame
+# PARAM:11 TILT_Z     - object tilt angle [deg] around Z axis of the parent frame
+# PARAM:12 TILT_Y     - object tilt angle [deg] around Y axis of the parent frame
+# PARAM:13 TILT_X     - object tilt angle [deg] around X axis of the parent frame
+# HDR PARENT IND        OBJECT IND     X0[um]   Y0[um]   Z0[um]   ROT-Z ROT-Y ROT-X     TILT-Z   TILT-Y   TILT-X
+
+CSPAD:V2      0 SENS2X1:V1    0     51621   112683      153    90.0    0.0    0.0   0.48292  0.00000  0.00263
+CSPAD:V2      0 SENS2X1:V1    1     74168   112907      135    90.0    0.0    0.0   0.48886 -0.05755  0.01316
+CSPAD:V2      0 SENS2X1:V1    2     16366   124137      107     0.0    0.0    0.0   0.32370  0.00395 -0.01096
+CSPAD:V2      0 SENS2X1:V1    3     16415   101350      185     0.0    0.0    0.0   0.15130  0.09867 -0.29055
+CSPAD:V2      0 SENS2X1:V1    4     27786   159233      123   270.0    0.0    0.0   0.24474 -0.03015  0.03948
+CSPAD:V2      0 SENS2X1:V1    5      4845   159260      106   270.0    0.0    0.0   0.05987 -0.04659  0.01053
+CSPAD:V2      0 SENS2X1:V1    6     62758   168631      132     0.0    0.0    0.0   0.44940  0.02895 -0.00548
+CSPAD:V2      0 SENS2X1:V1    7     62881   145851      137     0.0    0.0    0.0   0.20068  0.03553 -0.03015
+CSPAD:V2      0 SENS2X1:V1    8    107098   129494      165     0.0    0.0    0.0   0.01316  0.01184 -0.02742
+CSPAD:V2      0 SENS2X1:V1    9    107067   106699      152     0.0    0.0    0.0  -0.15924 -0.01316 -0.05208
+CSPAD:V2      0 SENS2X1:V1   10    118871   164660      152   270.0    0.0    0.0   0.11249 -0.02193  0.04078
+CSPAD:V2      0 SENS2X1:V1   11     95879   164632      143   270.0    0.0    0.0  -0.07632 -0.05757  0.03158
+CSPAD:V2      0 SENS2X1:V1   12    153905   153051      158   180.0    0.0    0.0  -0.03026  0.00000 -0.04385
+CSPAD:V2      0 SENS2X1:V1   13    153838   175841      140   180.0    0.0    0.0  -0.03947 -0.01973 -0.16719
+CSPAD:V2      0 SENS2X1:V1   14    163149   117980      156   270.0    0.0    0.0  -0.17500 -0.04385 -0.00526
+CSPAD:V2      0 SENS2X1:V1   15    140287   117936      153   270.0    0.0    0.0   0.00000 -0.02741 -0.00790
+CSPAD:V2      0 SENS2X1:V1   16    123905    73726      133   270.0    0.0    0.0   0.00263 -0.00548 -0.00921
+CSPAD:V2      0 SENS2X1:V1   17    101282    73699      130   270.0    0.0    0.0   0.20725 -0.02740 -0.03948
+CSPAD:V2      0 SENS2X1:V1   18    159023    62203      142   180.0    0.0    0.0  -0.05461 -0.00263 -0.03562
+CSPAD:V2      0 SENS2X1:V1   19    159024    84885      136   180.0    0.0    0.0  -0.08026  0.01579 -0.06576
+CSPAD:V2      0 SENS2X1:V1   20    147998    26847      106    90.0    0.0    0.0   0.03158 -0.08219  0.08947
+CSPAD:V2      0 SENS2X1:V1   21    170404    26856       96    90.0    0.0    0.0  -0.07893 -0.00822  0.06972
+CSPAD:V2      0 SENS2X1:V1   22    112701    17748       97   180.0    0.0    0.0   0.26908 -0.02500 -0.00548
+CSPAD:V2      0 SENS2X1:V1   23    112640    40586      100   180.0    0.0    0.0   0.03685 -0.01448  0.03836
+CSPAD:V2      0 SENS2X1:V1   24     68448    57015      119   180.0    0.0    0.0   0.27835 -0.02501  0.09319
+CSPAD:V2      0 SENS2X1:V1   25     68292    79701      120   180.0    0.0    0.0   0.37440 -0.03290 -0.04112
+CSPAD:V2      0 SENS2X1:V1   26     56919    21965       69    90.0    0.0    0.0   0.18024 -0.06578  0.07894
+CSPAD:V2      0 SENS2X1:V1   27     79497    22002       67    90.0    0.0    0.0   0.12040 -0.02740  0.09211
+CSPAD:V2      0 SENS2X1:V1   28     21658    33119       72     0.0    0.0    0.0   0.27240  0.03553 -0.12332
+CSPAD:V2      0 SENS2X1:V1   29     21748    10489       28     0.0    0.0    0.0   0.09805  0.03027 -0.07946
+CSPAD:V2      0 SENS2X1:V1   30     12357    68156       97    90.0    0.0    0.0   0.20919  0.03562  0.05789
+CSPAD:V2      0 SENS2X1:V1   31     35247    68250       89    90.0    0.0    0.0   0.09144 -0.04109  0.02368
+IP            0 CSPAD:V2      0         0        0  1000000     0.0    0.0    0.0  10.00000  0.00000  0.00000

@@ -10,13 +10,6 @@ Usage::
 
     # Methods
 
-    v = ag.prod_of_elements(arr, dtype=np.int)
-    size = ag.size_from_shape() # use nda.size()
-
-    shape = ag.shape_as_2d(sh)
-    shape = ag.shape_as_3d(sh)
-    arr2d = ag.reshape_to_2d(nda)
-    arr3d = ag.reshape_to_3d(nda)
     nda = ag.random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float)
     nda = ag.random_exponential(shape=(40,60), a0=100, dtype=np.float)
     nda = ag.random_one(shape=(40,60), dtype=np.float)
@@ -30,6 +23,7 @@ Usage::
 
 See:
   - :py:class:`graphics`
+  - :py:class:`NDArrUtils`
   - :py:class:`NDArrGenerators`
   - `numpy.random.rand <https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.random.rand.html>`_.
   - `matplotlib <https://matplotlib.org/contents.html>`_.
@@ -39,54 +33,11 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Modified for LCLS2 on 2015-01-26 by Mikhail Dubrovin
 """
+#-----------------------------
+
 import numpy as np
 import math
-
-#-----------------------------
-
-def prod_of_elements(arr, dtype=np.int) :
-    """Returns product of sequence elements
-    """
-    return np.prod(arr,axis=None,dtype=dtype)
-
-#-----------------------------
-
-def size_from_shape(shape) :
-    """Returns size from the shape sequence 
-    """
-    return prod_of_elements(shape)
-
-#-----------------------------
-
-def shape_as_2d(sh) :
-    """Returns 2-d shape for n-d shape if n>2, otherwise returns unchanged shape.
-    """
-    if len(sh)<3 : return sh
-    return (size_from_shape(sh)/sh[-1], sh[-1])
-
-#-----------------------------
-
-def shape_as_3d(sh) :
-    """Returns 3-d shape for n-d shape if n>3, otherwise returns unchanged shape.
-    """
-    if len(sh)<4 : return sh
-    return (size_from_shape(sh)/sh[-1]/sh[-2], sh[-2], sh[-1])
-
-#-----------------------------
-
-def reshape_to_2d(arr) :
-    """Returns n-d re-shaped to 2-d
-    """
-    arr.shape = shape_as_2d(arr.shape)
-    return arr
-
-#-----------------------------
-
-def reshape_to_3d(arr) :
-    """Returns n-d re-shaped to 3-d
-    """
-    arr.shape = shape_as_3d(arr.shape)
-    return arr
+#from pyalgos.generic.NDArrUtils import shape_as_2d, shape_as_3d, reshape_to_2d, reshape_to_3d
 
 #-----------------------------
 
@@ -107,7 +58,7 @@ def random_exponential(shape=(40,60), a0=100, dtype=np.float) :
 #-----------------------------
 
 def random_one(shape=(40,60), dtype=np.float) :
-    """Returns numpy array of requested shape and type filled with random numbers in the range [0,255].
+    """Returns numpy array of requested shape and type filled with random numbers in the range [0,1].
     """
     a = np.random.random(shape)
     return np.require(a, dtype) 
@@ -132,6 +83,15 @@ def random_xffffffff(shape=(40,60), dtype=np.uint32, add=0xff000000) :
     """
     a = 0xffffff*np.random.random(shape) + add
     return np.require(a, dtype)
+
+#------------------------------
+
+def size_from_shape(shape) :
+    """Returns size from the shape sequence 
+    """
+    size=1
+    for d in shape : size*=d
+    return size
 
 #-----------------------------
 
@@ -204,7 +164,7 @@ def add_random_peaks(arr2d, npeaks=10, amean=100, arms=50, wmean=2, wrms=0.1) :
 #-----------------------------
 
 def cspad2x1_arr(dtype=np.float32) :
-    """returns test np.array for cspad 2x1"""
+    """returns test np.array for cspad 2x1 with linear variation of intensity from corner (0,0) to (rmax,cmax)"""
     rows, cols = 185, 388
     row2x1 = np.arange(cols)
     col2x1 = np.arange(rows)
@@ -214,7 +174,7 @@ def cspad2x1_arr(dtype=np.float32) :
     return arr2x1
 
 def cspad_ndarr(n2x1=32, dtype=np.float32) :
-    """returns test np.array for cspad"""
+    """returns test np.array for cspad with linear variation of intensity in 2x1s"""
     arr2x1 = cspad2x1_arr(dtype)
     rows, cols = arr2x1.shape
     arr = np.vstack([arr2x1 for seg in range(n2x1)])
@@ -229,16 +189,16 @@ def cspad_ndarr(n2x1=32, dtype=np.float32) :
 
 if __name__ == '__main__':
 
-    import pyalgos.generic.utils_np as unp
+    from pyalgos.generic.NDArrUtils import print_ndarr
 
-    unp.print_ndarr(random_exponential(), 'random_exponential')
-    unp.print_ndarr(random_standard(), 'random_standard')
-    unp.print_ndarr(random_1(), 'random_1', last=10)
-    unp.print_ndarr(random_256(), 'random_256', last=10)
-    unp.print_ndarr(random_xffffffff(), 'random_xffffffff')
-    unp.print_ndarr(random_standard(), 'random_standard')
-    unp.print_ndarr(aranged_array(), 'aranged_array')
-    #unp.print_ndarr(, '')
+    print_ndarr(random_exponential(), 'random_exponential')
+    print_ndarr(random_standard(), 'random_standard')
+    print_ndarr(random_1(), 'random_1', last=10)
+    print_ndarr(random_256(), 'random_256', last=10)
+    print_ndarr(random_xffffffff(), 'random_xffffffff')
+    print_ndarr(random_standard(), 'random_standard')
+    print_ndarr(aranged_array(), 'aranged_array')
+    #print_ndarr(, '')
     print('Test is completed')
 
 #-----------------------------

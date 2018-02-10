@@ -18,3 +18,6 @@ export PYTHONPATH=$PSANAPATH:${PYTHONPATH}
 #echo "psana path $PSANAPATH"
 echo "Set: PYTHONPATH=$PYTHONPATH"
 
+echo "PATH=$PATH"
+export PATH=/reg/g/psdm/sw/conda2/inst/pkgs/mongodb-3.4.10-heb2b672_0/bin/:$PATH
+echo "Extended PATH=$PATH"
