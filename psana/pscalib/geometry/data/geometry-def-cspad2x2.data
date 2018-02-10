@@ -1,0 +1,27 @@
+# TITLE      Geometry parameters of CSPAD2x2
+# DATE_TIME  2015-06-10 09:05:08 PDT
+# METROLOGY  /reg/g/psdm/detector/alignment/cspad2x2/calib-cspad2x2-01-2013-02-13/2013-02-13-CSPAD2X2-1-MEC-Metrology.txt
+# AUTHOR     dubrovin
+# EXPERIMENT MEC
+# DETECTOR   CSPAD2x2
+# CALIB_TYPE geometry
+# COMMENT:01 Table contains the list of geometry parameters for alignment of 2x1 sensors, quads, CSPAD, etc
+# COMMENT:02 All translation and rotation pars of the object are defined w.r.t. parent object Cartesian frame
+# PARAM:01 PARENT     - name and version of the parent object
+# PARAM:02 PARENT_IND - index of the parent object
+# PARAM:03 OBJECT     - name and version of the object
+# PARAM:04 OBJECT_IND - index of the new object
+# PARAM:05 X0         - x-coordinate [um] of the object origin in the parent frame
+# PARAM:06 Y0         - y-coordinate [um] of the object origin in the parent frame
+# PARAM:07 Z0         - z-coordinate [um] of the object origin in the parent frame
+# PARAM:08 ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame
+# PARAM:09 ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame
+# PARAM:10 ROT_X      - object design rotation angle [deg] around X axis of the parent frame
+# PARAM:11 TILT_Z     - object tilt angle [deg] around Z axis of the parent frame
+# PARAM:12 TILT_Y     - object tilt angle [deg] around Y axis of the parent frame
+# PARAM:13 TILT_X     - object tilt angle [deg] around X axis of the parent frame
+# HDR PARENT IND        OBJECT IND     X0[um]   Y0[um]   Z0[um]   ROT-Z ROT-Y ROT-X     TILT-Z   TILT-Y   TILT-X
+
+CSPAD2X2:V1   0 SENS2X1:V1    0     21769    10453        9   180.0    0.0    0.0  -0.00197 -0.02369  0.01919
+CSPAD2X2:V1   0 SENS2X1:V1    1     21810    33805        3   180.0    0.0    0.0  -0.00000 -0.00658 -0.03837
+IP            0 CSPAD2X2:V1   0         0        0  1000000     0.0    0.0    0.0  10.00000  0.00000  0.00000

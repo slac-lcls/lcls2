@@ -1,0 +1,34 @@
+Update LCLS1 modules for LCLS2
+==============================
+Started on 2018-01-29
+=====================
+
+
+psana/pyalgos/generic/
+======================
+
+READY:
+======
+__init__.py
+- Entropy.py
+- NDArrGenerators.py
+- NDArrUtils.py
+- Utils.py
++ Graphics.py - may need to adapt a few methods from pyimgalgos.GlobalGraphics.py
++ HBins.py - needs in re-factoring
++ HPolar.py - needs in re-factoring
+- PSUtils.py - needs in re-factoring
+
+
+psana/pscalib/geometry/
+=======================
+- SegGeometryBase.py
+- SegGeometryCspad2x1V1.py
+- SegGeometryEpix100V1.py
+- SegGeometryJungfrauV1.py
+- SegGeometryMatrixV1.py
+- SegGeometryStore.py
+
++ GeometryAccess.py - needs in re-factoring
++ GeometryObject.py - needs in re-factoring
+

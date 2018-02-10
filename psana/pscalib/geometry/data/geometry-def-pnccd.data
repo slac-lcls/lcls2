@@ -1,0 +1,31 @@
+# 100:TITLE      Geometry parameters of pnCCD
+# 110:DATE_TIME  2015-09-09 13:16:00 PDT
+# 120:METROLOGY  no metrology available
+# 130:AUTHOR     dubrovin
+# 140:EXPERIMENT AMO
+# 150:DETECTOR   Camp.0:pnCCD.0
+# 160:CALIB_TYPE geometry
+# 170:COMMENT:01 This is a first file for pnCCD made by hands
+# 180:COMMENT:02 All translation and rotation pars of the object are defined w.r.t. parent object Cartesian frame
+# 200:PARAM:01 PARENT     - name and version of the parent object
+# 210:PARAM:02 PARENT_IND - index of the parent object
+# 220:PARAM:03 OBJECT     - name and version of the object
+# 230:PARAM:04 OBJECT_IND - index of the new object
+# 240:PARAM:05 X0         - x-coordinate [um] of the object origin in the parent frame
+# 250:PARAM:06 Y0         - y-coordinate [um] of the object origin in the parent frame
+# 260:PARAM:07 Z0         - z-coordinate [um] of the object origin in the parent frame
+# 270:PARAM:08 ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame
+# 280:PARAM:09 ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame
+# 290:PARAM:10 ROT_X      - object design rotation angle [deg] around X axis of the parent frame
+# 300:PARAM:11 TILT_Z     - object tilt angle [deg] around Z axis of the parent frame
+# 310:PARAM:12 TILT_Y     - object tilt angle [deg] around Y axis of the parent frame
+# 320:PARAM:13 TILT_X     - object tilt angle [deg] around X axis of the parent frame
+# 400:HDR PARENT IND OBJECT IND    X0[um]   Y0[um]    Z0[um]   ROT-Z   ROT-Y   ROT-X    TILT-Z    TILT-Y    TILT-X
+
+SEG2Q:V1      0 PNCCD:V1      0    -38362   -38362        0     0.0    0.0    0.0   0.00000  0.00000  0.00000
+SEG2Q:V1      0 PNCCD:V1      1     38362      -37        0   180.0    0.0    0.0   0.00000  0.00000  0.00000
+SEG2Q:V1      1 PNCCD:V1      0    -38362   -38362        0     0.0    0.0    0.0   0.00000  0.00000  0.00000
+SEG2Q:V1      1 PNCCD:V1      1     38362      -37        0   180.0    0.0    0.0   0.00000  0.00000  0.00000
+DETPNCCD:V1   0 SEG2Q:V1      0        -1    -3300        0     0.0    0.0    0.0  20.00000  0.00000  0.00000
+DETPNCCD:V1   0 SEG2Q:V1      1        -1     3300        0   180.0    0.0    0.0  20.00000  0.00000  0.00000
+IP:V1         0 DETPNCCD:V1   0         0        0   100000    90.0  180.0    0.0   0.00000  0.00000  0.00000

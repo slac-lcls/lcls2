@@ -23,18 +23,26 @@ Usage::
     #------------------------------
     # Example of the file header:
     #------------------------------
-    # TITLE      File to load ndarray of calibration parameters
-    # 
-    # EXPERIMENT amo12345
-    # DETECTOR   Camp.0:pnCCD.1
-    # CALIB_TYPE pedestals
-
-    # DATE_TIME  2014-05-06 15:24:10
-    # AUTHOR     <user-login-name>
 
     # line of comment always begins with # 
     # Mandatory fields to define the ndarray<TYPE,NDIM> and its shape as unsigned shape[NDIM] = (DIM1,DIM2,DIM3)
-    # DTYPE       float
+
+    # TITLE       File to load ndarray of calibration parameters
+    # 
+    # EXPERIMENT  amo12345
+    # DETECTOR    Camp.0:pnCCD.1
+    # CALIB_TYPE  pedestals
+    # AUTHOR      <user-login-name>
+
+    # HOST        psanaphi109
+    # WORK_DIR    /reg/neh/home/<user>/...
+    # FILE_NAME   nda.txt
+    # DATE_TIME   2018-02-02T09:40:13
+    # UID         <user-login-name>
+    # SHAPE       (2,2,3)
+    # DATATYPE    int64
+
+    # DTYPE       int64
     # NDIM        3
     # DIM:1       3
     # DIM:2       4
@@ -58,6 +66,7 @@ Adopted for LCLS2 on 2018-02-01
 #import math
 import numpy as np
 import pyalgos.generic.Utils as gu
+import pyalgos.generic.NDArrUtils as nu
 
   
 def save_txt(fname='nda.txt', arr=None, cmts=(), fmt='%.1f', verbos=False, addmetad=True) :
@@ -83,7 +92,7 @@ def save_txt(fname='nda.txt', arr=None, cmts=(), fmt='%.1f', verbos=False, addme
         for i in range(len(arr.shape)) :
             recs.append('# DIM:%d       %s'   % (i, arr.shape[i]))
 
-    arr2d = gu.reshape_nda_to_2d(arr)
+    arr2d = nu.reshape_nda_to_2d(arr)
 
     # pretty formatting
     recs.append('' if len(arr.shape)>1 else '\n')
