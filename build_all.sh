@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh
+source setup_env.sh
 
 # choose local directory where packages will be installed
 export INSTDIR=`pwd`/install
@@ -21,8 +21,10 @@ cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR ..
 make -j 4
 cd ..
 
-
-mkdir -p $INSTDIR/lib/python3.5/site-packages/
+pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
+# "python setup.py develop" seems to not create this for you
+# (although "install" does)
+mkdir -p $INSTDIR/lib/python$pyver/site-packages/
 
 # to build psana with setuptools
 cd psana
