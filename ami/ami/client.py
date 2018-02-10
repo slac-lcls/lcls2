@@ -1,6 +1,7 @@
 import zmq
 import sys
 import time
+import json
 import argparse
 import threading
 import numpy as np
@@ -111,6 +112,9 @@ class DetectorList(QListWidget):
         self.itemClicked.connect(self.item_clicked)
         return
 
+    def load(self, graph_cfg):
+        self.master.update(graph_cfg)
+
     @pyqtSlot()
     def get_features(self):
         # detectors = dict, maps name --> type
@@ -175,7 +179,25 @@ def main():
         help='platform number of the AMII - selects port range to use (default: 0)'
     )
 
+    parser.add_argument(
+        '-l',
+        '--load',
+        help='saved AMII configuration to load'
+    )
+
     args = parser.parse_args()
+
+    saved_cfg = None
+    if args.load is not None:
+        try:
+            with open(args.load, 'r') as cnf:
+                saved_cfg = json.load(cnf)
+        except OSError as os_exp:
+            print("ami-client: problem opening saved graph configuration file:", os_exp)
+            return 1
+        except json.decoder.JSONDecodeError as json_exp:
+            print("ami-client: problem parsing saved graph configuration file (%s):"%args.load, json_exp)
+            return 1
 
     zmqcfg = ZmqConfig(
         args.platform,
@@ -187,6 +209,8 @@ def main():
         ctx = zmq.Context()
         app = QApplication(sys.argv)
         amilist = DetectorList(zmqctx=ctx, zmqcfg=zmqcfg)
+        if saved_cfg is not None:
+            amilist.load(saved_cfg)
         amilist.show()
 
         return app.exec_()
