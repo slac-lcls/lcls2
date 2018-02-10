@@ -6,6 +6,7 @@ from ami.operation.base import OpConfig, OperationError
 class Projection(OpConfig):
     def __init__(self, axis):
         super(__class__, self).__init__(DataTypes.Waveform, "axis")
+        self.axis = axis
 
     def operate(self, image):
         return np.sum(image, axis=self.axis)
