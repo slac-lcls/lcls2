@@ -21,6 +21,9 @@ cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR ..
 make -j 4
 cd ..
 
+
+mkdir -p $INSTDIR/lib/python3.5/site-packages/
+
 # to build psana with setuptools
 cd psana
 python setup.py develop --xtcdata=$INSTDIR --prefix=$INSTDIR
