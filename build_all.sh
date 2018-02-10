@@ -23,4 +23,8 @@ cd ..
 
 # to build psana with setuptools
 cd psana
-python setup.py build_ext --xtcdata=$INSTDIR --inplace
+python setup.py develop --xtcdata=$INSTDIR --prefix=$INSTDIR
+cd ..
+# build ami
+cd ami
+python setup.py develop --prefix=$INSTDIR
