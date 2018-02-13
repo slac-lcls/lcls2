@@ -16,3 +16,8 @@ add_library(service SHARED
 target_include_directories(service PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 )
+
+install(TARGETS service
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+)

@@ -14,12 +14,12 @@ make -j 4 install
 cd ../..
 
 # to build psdaq and drp (after building xtcdata) with cmake
-# eventually psdaq and drp will be merged and put in the INSTDIR
+cd psdaq
 mkdir -p build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR ..
-make -j 4
-cd ..
+make -j 4 install
+cd ../..
 
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 # "python setup.py develop" seems to not create this for you

@@ -11,7 +11,7 @@ sys.argv.remove(arg[0])
 
 dgram_module = Extension('psana.dgram',
                          sources = ['src/dgram.cc'],
-                         libraries = ['xtc'],
+                         libraries = ['xtcdata'],
                          include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
                          library_dirs = [os.path.join(xtcdata, 'lib')],
                          extra_link_args = ['-Wl,-rpath='+ os.path.join(xtcdata, 'lib')],
