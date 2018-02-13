@@ -72,3 +72,12 @@ target_link_libraries(amc_eyescan
     pthread
     cphwr
 )
+
+install(TARGETS cphw
+                amctiming
+                amctiming_udp
+                amc_eyescan
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)

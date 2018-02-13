@@ -1,4 +1,4 @@
-add_library(xtc SHARED
+add_library(xtcdata SHARED
     xtc/src/BldInfo.cc
     xtc/src/Sequence.cc
     xtc/src/TransitionId.cc
@@ -15,7 +15,7 @@ add_library(xtc SHARED
     xtc/src/NamesIter.cc
 )
 
-target_include_directories(xtc PUBLIC
+target_include_directories(xtcdata PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
@@ -24,21 +24,21 @@ add_executable(xtcreader
     app/xtcreader.cc
 )
 target_link_libraries(xtcreader
-    xtc
+    xtcdata
 )
 
 add_executable(xtcwriter
     app/xtcwriter.cc
 )
 target_link_libraries(xtcwriter
-    xtc
+    xtcdata
 )
 
 add_executable(smdwriter
     app/smdwriter.cc
 )
 target_link_libraries(smdwriter
-    xtc
+    xtcdata
 )
 
 install(FILES
@@ -64,18 +64,17 @@ install(FILES
     DESTINATION include/xtcdata/xtc
 )
 
-install(TARGETS xtc
+install(TARGETS xtcdata
                 xtcreader
                 xtcwriter
                 smdwriter
-    EXPORT xtcTargets
+    EXPORT xtcdataTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
 )
 
-install(EXPORT xtcTargets
-    FILE xtcConfig.cmake
-    DESTINATION lib/cmake/xtc
+install(EXPORT xtcdataTargets
+    FILE xtcdataConfig.cmake
+    DESTINATION lib/cmake/xtcdata
 )
-

@@ -20,7 +20,7 @@ find_library(FABRIC_CPP_LIBRARY fabric PATH $ENV{CONDA_PREFIX}/lib)
 
 target_link_libraries(eb
 #  -pg
-  xtc
+  xtcdata
   service
   ${FABRIC_CPP_LIBRARY}
 )
@@ -99,4 +99,21 @@ target_link_libraries(drpEbBuilder
   eb
   pthread
   rt
+)
+
+install(TARGETS eb
+                ft_pingpong
+                ft_publish
+                ft_sub
+                ft_push
+                ft_request
+                ft_client
+                ft_server
+		ft_writemsg_server
+		tstEbContributor
+		tstEbBuilder
+		drpEbBuilder
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
 )

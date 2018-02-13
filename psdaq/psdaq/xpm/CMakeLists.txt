@@ -84,3 +84,13 @@ target_link_libraries(xpmHsrCfg
    pthread
    rt
 )
+
+install(TARGETS xpm
+		xpm_simple
+		xpmPVs
+		xpmPeek
+		xpmHsrCfg
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)

@@ -95,3 +95,14 @@ target_link_libraries(dtiHsrCfg
    pthread
    rt
 )
+
+install(TARGETS dti
+		dti_stats
+		dti_simple
+                dtiPVs
+                dti_eyescan
+                dtiHsrCfg
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)

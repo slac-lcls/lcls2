@@ -25,9 +25,6 @@ target_include_directories(hsd PUBLIC
     mmhw
 )
 
-#
-#  hsd_eyescan
-#
 add_executable(hsd_eyescan hsd_eyescan.cc)
 
 target_link_libraries(hsd_eyescan
@@ -38,9 +35,6 @@ target_link_libraries(hsd_eyescan
    rt
 )
 
-#
-#  hsdRead
-#
 add_executable(hsdRead hsdRead.cc)
 
 target_include_directories(hsdRead PUBLIC
@@ -52,9 +46,6 @@ target_link_libraries(hsdRead
    rt
 )
 
-#
-#  hsd_init
-#
 add_executable(hsd_init hsd_init.cc)
 
 target_include_directories(hsd_init PUBLIC
@@ -68,9 +59,6 @@ target_link_libraries(hsd_init
     rt
 )
 
-#
-#  hsd_pgp
-#
 add_executable(hsd_pgp hsd_pgp.cc)
 
 target_include_directories(hsd_pgp PUBLIC
@@ -84,14 +72,8 @@ target_link_libraries(hsd_pgp
     rt
 )
 
-#
-#  hsd_sim
-#
 add_executable(hsd_sim hsd_sim.cc)
 
-#
-#  hsd_test
-#
 add_executable(hsd_test hsd_test.cc)
 
 target_link_libraries(hsd_test
@@ -101,14 +83,24 @@ target_link_libraries(hsd_test
     rt
 )
 
-#
-# hsd_valid
-#
 add_executable(hsd_valid hsd_valid.cc)
 target_include_directories(hsd_valid PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
+
 target_link_libraries(hsd_valid
-    xtc
+    xtcdata
+)
+
+install(TARGETS hsd
+		hsd_eyescan
+		hsdRead
+		hsd_init
+		hsd_pgp
+		hsd_test
+		hsd_valid
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
 )

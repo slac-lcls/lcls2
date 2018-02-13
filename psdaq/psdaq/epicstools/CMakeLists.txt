@@ -9,3 +9,8 @@ target_include_directories(epicstools PUBLIC
     $ENV{CONDA_PREFIX}/epics/include
     $ENV{CONDA_PREFIX}/epics/include/os/Linux
 )
+
+install(TARGETS epicstools
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+)

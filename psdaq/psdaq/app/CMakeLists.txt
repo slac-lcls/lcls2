@@ -10,7 +10,7 @@ add_executable(h5writer
 )
 target_link_libraries(h5writer
     pshdf5
-    xtc
+    xtcdata
 )
 
 #
@@ -113,4 +113,16 @@ target_link_libraries(tprutil
    dl
    pthread
    rt
+)
+
+install(TARGETS app
+		h5writer
+		hpsBldServer
+		hpsBldClient
+		tprca
+		tprsh
+		tprutil
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
 )
