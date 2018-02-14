@@ -289,7 +289,6 @@ static void dgram_dealloc(PyDgramObject* self)
     }
 #endif
     Py_TYPE(self)->tp_free((PyObject*)self);
-    printf("free dgram\n");
 }
 
 static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
