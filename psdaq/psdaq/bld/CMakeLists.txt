@@ -10,3 +10,7 @@ target_include_directories(bld PUBLIC
     $ENV{CONDA_PREFIX}/include
 )
 
+install(TARGETS bld
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+)
