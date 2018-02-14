@@ -37,7 +37,7 @@ void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
 void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg cspadRawAlg("cspadRawAlg",1,2,3);
     unsigned segment=0;
-    Names& fexNames = *new(parent) Names("cspad", cspadRawAlg, "cspad", segment);
+    Names& fexNames = *new(parent) Names("cspad", cspadRawAlg, "cspad", "detnum1234", segment);
     Alg roi("roi", 1, 0, 0);
     fexNames.add_vec<RoiDef>(parent, roi); //Name::UINT16, parent, 2);
     namesVec.push_back(NameIndex(fexNames));

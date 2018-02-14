@@ -41,7 +41,7 @@ public:
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) 
 {
   Alg alg("offsetAlg",0,0,0);
-  Names& fexNames = *new(parent) Names("info", alg, "offset");
+  Names& fexNames = *new(parent) Names("info", alg, "offset", "");
   fexNames.add_vec<SmdDef>(parent);
   namesVec.push_back(NameIndex(fexNames));
 }

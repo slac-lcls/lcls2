@@ -82,11 +82,22 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     }
 }
 
-static void setDetType(PyDgramObject* pyDgram, Names& names) {
+static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     char keyName[TMPSTRINGSIZE];
     PyObject* newobjDetType = Py_BuildValue("s", names.detType());
     snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",names.detName(),"dettype");
     PyObject* keyDetType = PyUnicode_FromString(keyName);
+    if (PyDict_Contains(pyDgram->dict, keyDetType)) {
+        // this will happen since the same detname/dettype pair
+        // show up once for every Names object.
+    } else {
+        PyDict_SetItem(pyDgram->dict, keyDetType, newobjDetType);
+        Py_DECREF(newobjDetType);
+    }
+
+    newobjDetType = Py_BuildValue("s", names.detId());
+    snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",names.detName(),"detid");
+    keyDetType = PyUnicode_FromString(keyName);
     if (PyDict_Contains(pyDgram->dict, keyDetType)) {
         // this will happen since the same detname/dettype pair
         // show up once for every Names object.
@@ -106,7 +117,7 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
         Alg& detAlg = names.alg();
         snprintf(baseName,TMPSTRINGSIZE,"%s_%s",names.detName(),names.alg().name());
         setAlg(pyDgram,baseName,detAlg);
-        setDetType(pyDgram, names);
+        setDetInfo(pyDgram, names);
 
         for (unsigned j = 0; j < names.num(); j++) {
             Name& name = names.get(j);
