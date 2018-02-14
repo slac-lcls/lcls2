@@ -46,6 +46,7 @@ typedef struct {
     int verbose;
     int debug;
     int offset;
+    Py_buffer buf;
 } PyDgramObject;
 
 static void write_object_info(PyDgramObject* self, PyObject* obj, const char* comment)
@@ -136,7 +137,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         const char* tempName = name.name();
-        PyObject* newobj;
+        PyObject* newobj=0;
 
         if (name.rank() == 0) {
             switch (name.type()) {
@@ -272,7 +273,11 @@ static void dgram_dealloc(PyDgramObject* self)
     write_object_info(self, NULL, "Top of dgram_dealloc()");
     Py_XDECREF(self->dict);
 #ifndef PSANA_USE_LEGION
-    free(self->dgram);
+    if (self->buf.buf == NULL) {
+        free(self->dgram);
+    } else {
+        PyBuffer_Release(&(self->buf));
+    }
 #else
     {
       Runtime *runtime = Runtime::get_runtime();
@@ -284,6 +289,7 @@ static void dgram_dealloc(PyDgramObject* self)
     }
 #endif
     Py_TYPE(self)->tp_free((PyObject*)self);
+    printf("free dgram\n");
 }
 
 static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
@@ -301,6 +307,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"verbose",
                              (char*)"debug",
                              (char*)"offset",
+                             (char*)"view",
                              NULL};
     int fd=0;
     bool isConfig;
@@ -308,16 +315,20 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->verbose=0;
     self->debug=0;
     self->offset=0;
+    bool isView;
+    PyObject* view=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iO$iii", kwlist,
+                                     "|iO$iiiO", kwlist,
                                      &fd,
                                      &configDgram,
                                      &(self->verbose),
                                      &(self->debug),
-                                     &(self->offset))) {
+                                     &(self->offset),
+                                     &view)) {
         return -1;
     }
     isConfig = (configDgram==0) ? true : false;
+    isView = (view!=0) ? true : false; 
 
     if (fd==0 && configDgram==0) {
         PyErr_SetString(PyExc_StopIteration, "Must specify either file_descriptor or config");
@@ -329,9 +340,17 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     } else {
         self->file_descriptor=fd;
     }
-
+   
 #ifndef PSANA_USE_LEGION
-    self->dgram = (Dgram*)malloc(BUFSIZE);
+    if (!isView) {
+        self->dgram = (Dgram*)malloc(BUFSIZE);
+    } else {
+        if (PyObject_GetBuffer(view, &(self->buf), PyBUF_SIMPLE) == -1) {
+            PyErr_SetString(PyExc_MemoryError, "unable to pass view to Dgram object");
+            return -1;
+        }
+        self->dgram = (Dgram*)self->buf.buf;
+    } 
 #else
     {
       Runtime *runtime = Runtime::get_runtime();
@@ -355,34 +374,36 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
         return -1;
     }
+
+    if (!isView) {
+        off_t fOffset = (off_t)self->offset;
+        int readSuccess=0;
+        if (fOffset == 0) { 
+            readSuccess = ::read(fd, self->dgram, sizeof(*self->dgram));
+        } else {
+            readSuccess = ::pread(fd, self->dgram, sizeof(*self->dgram), fOffset);
+        }
+        if (readSuccess <= 0) {
+            char s[TMPSTRINGSIZE];
+            snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
+            PyErr_SetString(PyExc_StopIteration, s);
+            return -1;
+        }
     
-    off_t fOffset = (off_t)self->offset;
-    int readSuccess=0;
-    if (fOffset == 0) { 
-        readSuccess = ::read(fd, self->dgram, sizeof(*self->dgram));
-    } else {
-        readSuccess = ::pread(fd, self->dgram, sizeof(*self->dgram), fOffset);
-    }
-    if (readSuccess <= 0) {
-        char s[TMPSTRINGSIZE];
-        snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
-        PyErr_SetString(PyExc_StopIteration, s);
-        return -1;
-    }
-    
-    size_t payloadSize = self->dgram->xtc.sizeofPayload();
-    readSuccess = 0;
-    if (fOffset == 0) {
-        readSuccess = ::read(fd, self->dgram->xtc.payload(), payloadSize);
-    } else { 
-        fOffset += (off_t)sizeof(*self->dgram);
-        readSuccess = ::pread(fd, self->dgram->xtc.payload(), payloadSize, fOffset);
-    }
-    if (readSuccess <= 0){
-        char s[TMPSTRINGSIZE];
-        snprintf(s, TMPSTRINGSIZE, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
-        PyErr_SetString(PyExc_StopIteration, s);
-        return -1;
+        size_t payloadSize = self->dgram->xtc.sizeofPayload();
+        readSuccess = 0;
+        if (fOffset == 0) {
+            readSuccess = ::read(fd, self->dgram->xtc.payload(), payloadSize);
+        } else { 
+            fOffset += (off_t)sizeof(*self->dgram);
+            readSuccess = ::pread(fd, self->dgram->xtc.payload(), payloadSize, fOffset);
+        }
+        if (readSuccess <= 0){
+            char s[TMPSTRINGSIZE];
+            snprintf(s, TMPSTRINGSIZE, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
+            PyErr_SetString(PyExc_StopIteration, s);
+            return -1;
+        }
     }
 
     if (isConfig) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
@@ -397,6 +418,36 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 
     return 0;
 }
+
+static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
+{
+    if (view == 0) {
+        PyErr_SetString(PyExc_ValueError, "NULL view in getbuffer");
+        return -1;
+    }
+
+    PyDgramObject* self = (PyDgramObject*)obj;
+    view->obj = (PyObject*)self;
+    view->buf = (void*)self->dgram;
+    view->len = sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
+    view->readonly = 1;
+    view->itemsize = 1;
+    view->format = (char *)"s";
+    view->ndim = 1;
+    view->shape = NULL;
+    view->strides = NULL;
+    view->suboffsets = NULL;
+    view->internal = NULL;
+    
+    Py_INCREF(self);  
+    return 0;    
+}
+
+static PyBufferProcs PyDgramObject_as_buffer = {
+    // this definition is only compatible with Python 3.3 and above
+    (getbufferproc)PyDgramObject_getbuffer,
+    (releasebufferproc)0, // no special release required
+};
 
 static PyMemberDef dgram_members[] = {
     { (char*)"__dict__",
@@ -479,7 +530,7 @@ static PyTypeObject dgram_DgramType = {
     0, /* tp_str */
     tp_getattro, /* tp_getattro */
     0, /* tp_setattro */
-    0, /* tp_as_buffer */
+    &PyDgramObject_as_buffer, /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT, /* tp_flags */
     0, /* tp_doc */
     0, /* tp_traverse */
