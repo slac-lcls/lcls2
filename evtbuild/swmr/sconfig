@@ -1,4 +1,5 @@
-path /teststripe/eliseo/hdf_test
+path /testrr/eliseo/hdf5
+#path /drplu/eliseo/hdf5
 
 hit_probability	   0.2	# Probability that a diode value is interesting
 

@@ -9,7 +9,7 @@
 #include "xtcdata/xtc/Dgram.hh"
 #include "drp.hh"
 
-void hsdExample(XtcData::Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers, std::vector<unsigned>& lanes);
-void add_hsd_names(XtcData::Xtc& parent, std::vector<NameIndex>& namesVec);
+void hsdExample(XtcData::Xtc& parent, std::vector<XtcData::NameIndex>& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers, std::vector<unsigned>& lanes);
+void add_hsd_names(XtcData::Xtc& parent, std::vector<XtcData::NameIndex>& namesVec);
 
 #endif // DIGITIZER_H

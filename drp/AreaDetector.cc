@@ -1,26 +1,30 @@
+
 #include "AreaDetector.hh"
 #include "xtcdata/xtc/VarDef.hh"
 
+
 using namespace XtcData;
 
-class RoiDef:public VarDef
+ class RoiDef:public VarDef
 {
 public:
   enum index
     {
-      array_fex,
-      maxNum
+      array_fex
     };
-
-   RoiDef()
+  
+  RoiDef()
    {
-     detVec.push_back({"array_fex", FLOAT});
+     Alg roi("roi",1,0,0);
+     NameVec.push_back({"array_fex", Name::FLOAT, 2, roi});
    }
-};
+} RoiDef;
 
-void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
+
+  
+void roiExample(Xtc& parent,  std::vector<NameIndex>& NamesVec, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
 {
-    CreateData fex(parent, nameindex, nameId);
+    CreateData fex(parent, NamesVec, nameId);
 
     uint16_t* ptr = (uint16_t*)fex.get_ptr();
     unsigned shape[Name::MaxRank];
@@ -37,8 +41,9 @@ void roiExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
 void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg cspadRawAlg("cspadRawAlg",1,2,3);
     unsigned segment=0;
+
     Names& fexNames = *new(parent) Names("cspad", cspadRawAlg, "cspad", "detnum1234", segment);
     Alg roi("roi", 1, 0, 0);
-    fexNames.add_vec<RoiDef>(parent, roi); //Name::UINT16, parent, 2);
+    fexNames.add(parent, RoiDef); //Name::UINT16, parent, 2);
     namesVec.push_back(NameIndex(fexNames));
-}
+};

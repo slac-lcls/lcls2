@@ -1,3 +1,4 @@
+
 #ifndef HDF5WRITER__H
 #define HDF5WRITER__H
 
@@ -12,7 +13,7 @@
 class Dataset
 {
 public:
-    Dataset(hid_t file_id, Name& name, const uint32_t* shape);
+  Dataset(hid_t file_id, XtcData::Name& name, const uint32_t* shape);
     void append(const void* data);
     ~Dataset();
     Dataset(Dataset&& d);
@@ -29,14 +30,14 @@ private:
 class HDF5File : private XtcData::XtcIterator
 {
 public:
-    HDF5File(const char* name, std::vector<NameIndex>& namesVec);
+  HDF5File(const char* name, std::vector<XtcData::NameIndex>& namesVec);
     ~HDF5File();
     void save(XtcData::Dgram& dgram);
 
 private:
     enum { Stop, Continue };
-    void addDatasets(DescData& desc);
-    void appendData(DescData& data);
+  void addDatasets(XtcData::DescData& desc);
+  void appendData(XtcData::DescData& data);
     int process(XtcData::Xtc* xtc)
     {
         switch (xtc->contains.id()) {
@@ -45,10 +46,10 @@ private:
             break;
         }
         case (XtcData::TypeId::ShapesData): {
-            ShapesData& shapesdata = *(ShapesData*)xtc;
+	  XtcData::ShapesData& shapesdata = *(XtcData::ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             unsigned namesId = shapesdata.shapes().namesId();
-            DescData descdata(shapesdata, _namesVec[namesId]);
+	    XtcData::DescData descdata(shapesdata, _namesVec[namesId]);
 
             addDatasets(descdata);
             appendData(descdata);
@@ -63,7 +64,7 @@ private:
 
     hid_t fileId, faplId;
     std::unordered_map<std::string, Dataset> m_datasets;
-    std::vector<NameIndex>& _namesVec;
+  std::vector<XtcData::NameIndex>& _namesVec;
 };
 
 #endif // HDF5WRITER__H

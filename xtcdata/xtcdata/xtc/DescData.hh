@@ -1,4 +1,5 @@
 
+
 #ifndef DESCDATA__H
 #define DESCDATA__H
 
@@ -10,6 +11,10 @@
 #include <iostream>
 
 #define _unused(x) ((void)(x))
+
+
+namespace XtcData
+{
 
 template <typename T>
 struct Array {
@@ -131,28 +136,29 @@ public:
     }
 
     // for all array types
-    template <typename T>
-    typename std::enable_if<is_vec<T>::value, T>::type get_value(const char* namestring)
-    {
-        Data& data = _shapesdata.data();
-        unsigned index = _nameindex.nameMap()[namestring];
-        Name& name = _nameindex.names().get(index);
-        unsigned shapeIndex = _nameindex.shapeMap()[name.name()];
-        Shape& shape = _shapesdata.shapes().get(shapeIndex);
-        T array(data.payload() + _offset[index]);
-        array._shape.resize(name.rank());
-        for (unsigned i = 0; i < name.rank(); i++) {
-            array._shape[i] = shape.shape()[i];
-        }
-        return array;
-    }
+    // template <typename T>
+    // typename std::enable_if<is_vec<T>::value, T>::type get_value(const char* namestring)
+      
+    // {
+    //     Data& data = _shapesdata.data();
+    //     unsigned index = _nameindex.nameMap()[namestring];
+    //     Name& name = _nameindex.names().get(index);
+    //     unsigned shapeIndex = _nameindex.shapeMap()[name.name()];
+    //     Shape& shape = _shapesdata.shapes().get(shapeIndex);
+    //     T array(data.payload() + _offset[index]);
+    //     array._shape.resize(name.rank());
+    //     for (unsigned i = 0; i < name.rank(); i++) {
+    //         array._shape[i] = shape.shape()[i];
+    //     }
+    //     return array;
+    // }
 
     NameIndex&  nameindex()  {return _nameindex;}
     ShapesData& shapesdata() {return _shapesdata;}
 
 protected:
     // creating a new ShapesData to be filled in
-    DescData(NameIndex& nameindex, XtcData::Xtc& parent) :
+    DescData(NameIndex& nameindex, Xtc& parent) :
         _shapesdata(*new (parent) ShapesData()),
         _nameindex(nameindex),
         _numarrays(0)
@@ -189,12 +195,18 @@ protected:
 
 class DescribedData : public DescData {
 public:
-    DescribedData(XtcData::Xtc& parent, NameIndex& nameindex, unsigned namesId) :
+    DescribedData(Xtc& parent, NameIndex& nameindex, unsigned namesId) :
         DescData(nameindex, parent), _parent(parent), _namesId(namesId)
     {
         new (&_shapesdata) Data(_parent);
     }
 
+  DescribedData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId) :
+        DescData(NamesVec[namesId], parent), _parent(parent), _namesId(namesId)
+    {
+        new (&_shapesdata) Data(_parent);
+    }
+  
     void* data() {return _shapesdata.data().payload();}
 
     void set_data_length(unsigned size) {
@@ -213,22 +225,57 @@ public:
         DescData::set_array_shape(index, shapeIndex, shape);
     }
 private:
-    XtcData::Xtc& _parent;
+    Xtc& _parent;
     unsigned      _namesId;
 };
 
 class CreateData : public DescData {
 public:
-    CreateData(XtcData::Xtc& parent, NameIndex& nameindex, unsigned namesId) :
-        DescData(nameindex, parent), _parent(parent)
+
+  CreateData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId) :
+      //replaced namesindex with namesvec[namesId]
+        DescData(NamesVec[namesId], parent), _parent(parent)
     {
         Shapes& shapes = *new (&_shapesdata) Shapes(_parent, namesId);
         Names& names = _nameindex.names();
-        // this wastes space: should be arrays.num
-        shapes.alloc(names.num()*sizeof(Shape), _shapesdata, _parent);
+        shapes.alloc(names.numArrays()*sizeof(Shape), _shapesdata, _parent);
         new (&_shapesdata) Data(_parent);
     }
 
+
+  static void check(uint8_t val, Name& name) {
+    assert(Name::UINT8==name.type());                                               
+  }
+  static void check(uint16_t val, Name& name) {
+    assert(Name::UINT16==name.type());                                               
+  }
+  static void check(uint32_t val, Name& name) {
+    assert(Name::UINT32==name.type());                                               
+  }
+  static void check(uint64_t val, Name& name) {
+    assert(Name::UINT64==name.type());                                               
+  }
+  static void check(int8_t val, Name& name) {
+    assert(Name::INT8==name.type());                                               
+  }
+  static void check(int16_t val, Name& name) {
+    assert(Name::INT16==name.type());                                               
+  }
+  static void check(int32_t val, Name& name) {
+    assert(Name::INT32==name.type());                                               
+  }
+  static void check(int64_t val, Name& name) {
+    assert(Name::INT64==name.type());                                               
+  }
+  static void check(float val, Name& name) {
+    assert(Name::FLOAT==name.type());                                               
+  }  
+  static void check(double val, Name& name) {
+    assert(Name::DOUBLE==name.type());                                               
+  }
+
+  
+    
     template <typename T>
     void set_value(unsigned index, T val)
     {
@@ -245,6 +292,7 @@ public:
 	
 	Name& name = _nameindex.names().get(index);
 
+	check(val, name);
         T* ptr = reinterpret_cast<T*>(data.payload() + _offset[index]);
         *ptr = val;
         data.alloc(sizeof(T), _shapesdata, _parent);
@@ -257,19 +305,6 @@ public:
     {
         return reinterpret_cast<void*>(_shapesdata.data().next());
     }
-
-    // void set_array_shape(const char* name, unsigned shape[Name::MaxRank]) {
-    //     unsigned index = _nameindex.nameMap()[name];
-    //     unsigned shapeIndex = _nameindex.shapeMap()[name];
-    //     assert (shapeIndex==_numarrays);
-    //     _numentries++;
-    //     DescData::set_array_shape(name, shape);
-    //     Names& names = _nameindex.names();
-    //     Name& namecl = names.get(index);
-    //     unsigned size = _shapesdata.shapes().get(shapeIndex).size(namecl);
-    //     _offset[_numentries]=_offset[_numentries-1]+size;
-    //     _shapesdata.data().alloc(size,_shapesdata,_parent);
-    // }
 
 
   void set_array_shape(unsigned index,unsigned shape[Name::MaxRank]) {
@@ -288,9 +323,9 @@ public:
   
 
 private:
-    XtcData::Xtc& _parent;
+    Xtc& _parent;
 };
-
+};
 #endif // DESCDATA__H
 
 

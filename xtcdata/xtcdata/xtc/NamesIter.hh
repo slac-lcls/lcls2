@@ -1,6 +1,7 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/DescData.hh"
 
+namespace XtcData{
 class NamesIter : public XtcData::XtcIterator
 {
 public:
@@ -11,4 +12,5 @@ public:
     std::vector<NameIndex>& namesVec() {return _namesVec;}
 private:
     std::vector<NameIndex> _namesVec;
+};
 };
