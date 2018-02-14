@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <climits>
+#include <bitset>
 #include <new>
 #include <chrono>
 #include <atomic>
@@ -29,16 +31,15 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 
-static const int      core_inlet       = 18;  //12;
-static const int      core_outlet      = 6;   //8;
-static const int      core_monitor     = 18;  //12;
+static const int      core_base        = 6; // devXX, 8: accXX
+static const int      core_offset      = 2; // Allows Ctrb and EB to run on the same machine
 static const unsigned mon_period       = 1;          // Seconds
 static const unsigned default_id       = 0;          // Contributor's ID
 static const unsigned srv_port_base    = 32768 + 64; // Base port Contributor for receiving results
 static const unsigned clt_port_base    = 32768;      // Base port Contributor sends to EB on
-static const uint64_t batch_duration   = 0x1ul << 9; // ~512 uS; must be power of 2
 static const unsigned max_batches      = 2048;       // 1 second's worth
-static const unsigned max_entries      = 512;        // 512 uS worth
+static const unsigned max_entries      = 512;        // < or = to batch_duration
+static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  data words
 //static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
@@ -49,7 +50,8 @@ static const uint64_t nanosecond       = 1000000000ul;
 
 static       bool     lcheck           = false;
 static       unsigned lverbose         = 0;
-static       int      lcoreBase        = 2; // Allows Ctrb and EB to run on the same machine
+static       int      lcore1           = core_base + core_offset + 0;
+static       int      lcore2           = core_base + core_offset + 12; // devXX, 0 for accXX
 
 typedef std::chrono::steady_clock::time_point tp_t;
 
@@ -153,6 +155,8 @@ namespace Pds {
 
     class TstContribInlet : public Routine
     {
+    private:
+      static size_t _calcBatchSize(unsigned maxEntries, size_t maxSize);
     public:
       TstContribInlet(std::string&      srvPort,
                       unsigned          id,
@@ -167,7 +171,8 @@ namespace Pds {
       void     shutdown();
       int      connect();
     public:
-      uint64_t count() const { return _eventCount; }
+      uint64_t count()        const { return _eventCount;   }
+      size_t   maxBatchSize() const { return _maxBatchSize; }
     public:
       void     routine();
     private:
@@ -293,15 +298,15 @@ TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
                                    size_t                    maxSize) :
   BatchManager (duration, maxBatches, maxEntries, maxSize),
   _drpSim      (maxBatches, maxEntries, maxSize, id),
-  _transport   (cltAddr, cltPort, maxBatches * (sizeof(Dgram) + maxEntries * maxSize)),
+  _transport   (cltAddr, cltPort, batchRegionSize()),
   _id          (id),
-  _numEbs      (__builtin_popcountl(builders)),
+  _numEbs      (std::bitset<64>(builders).count()),
   _destinations(new unsigned[_numEbs]),
   _eventCount  (0),
   _batchCount  (0),
   _inFlightOcc (0),
   _inFlightHist(__builtin_ctz(maxBatches), 1.0),
-  _depTimeHist (12, double(1 << 10)/1000.),
+  _depTimeHist (12, double(1 << 16)/1000.),
   _postTimeHist(12, 1.0),
   _postCallHist(12, 1.0),
   _postPrevTime(std::chrono::steady_clock::now()),
@@ -369,7 +374,7 @@ void TstContribOutlet::post(const Batch* batch)
     int64_t dN(ts.tv_nsec - bdg->seq.stamp().nanoseconds());
     int64_t dT(dS * nanosecond + dN);
 
-    _depTimeHist.bump(dT >> 10);
+    _depTimeHist.bump(dT >> 16);
   }
 
   if (lverbose)
@@ -427,7 +432,7 @@ void TstContribOutlet::completed()
 
 void TstContribOutlet::routine()
 {
-  pin_thread(_task->parameters().taskID(), lcoreBase + core_outlet);
+  pin_thread(_task->parameters().taskID(), lcore1);
 
   while (_running)
   {
@@ -484,18 +489,26 @@ TstContribInlet::TstContribInlet(std::string&      srvPort,
                                  size_t            maxSize,
                                  TstContribOutlet& outlet) :
   _id          (id),
-  _numEbs      (__builtin_popcountl(builders)),
-  _maxBatchSize(sizeof(Dgram) + maxEntries * maxSize),
+  _numEbs      (std::bitset<64>(builders).count()),
+  _maxBatchSize(_calcBatchSize(maxEntries, maxSize)),
   _transport   (srvPort, _numEbs, maxBatches * _maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS),
   _outlet      (outlet),
   _eventCount  (0),
-  _rttHist     (12, double(1 << 10)/1000.),
+  _rttHist     (12, double(1 << 16)/1000.),
   _pendTimeHist(12, 1.0),
   _pendCallHist(12, 1.0),
   _pendPrevTime(std::chrono::steady_clock::now()),
   _running     (true),
   _task        (new Task(TaskObject("tInlet", 0, 0, 0, 0, 0)))
 {
+}
+
+size_t TstContribInlet::_calcBatchSize(unsigned maxEntries, size_t maxSize)
+{
+  size_t alignment = sysconf(_SC_PAGESIZE);
+  size_t size      = sizeof(Dgram) + maxEntries * maxSize;
+  size             = alignment * ((size + alignment - 1) / alignment);
+  return size;
 }
 
 void TstContribInlet::startup()
@@ -529,7 +542,7 @@ int TstContribInlet::connect()
 
 void TstContribInlet::routine()
 {
-  pin_thread(_task->parameters().taskID(), lcoreBase + core_inlet);
+  pin_thread(_task->parameters().taskID(), lcore2);
 
   auto startTime = std::chrono::steady_clock::now();
 
@@ -552,7 +565,7 @@ void TstContribInlet::routine()
       int64_t dN(ts.tv_nsec - batch->seq.stamp().nanoseconds());
       int64_t dT(dS * nanosecond + dN);
 
-      _rttHist.bump(dT >> 10);
+      _rttHist.bump(dT >> 16);
       //printf("In  Batch %014lx RTT  = %ld S, %ld ns\n", batch->seq.pulseId().value(), dS, dN);
 
       typedef std::chrono::microseconds us_t;
@@ -701,7 +714,7 @@ void StatsMonitor::shutdown()
 
 void StatsMonitor::process()
 {
-  pin_thread(pthread_self(), lcoreBase + core_monitor);
+  pin_thread(pthread_self(), lcore2);
 
   uint64_t outCnt    = 0;
   uint64_t outCntPrv = _outlet ? _outlet->count() : 0;
@@ -772,18 +785,20 @@ void usage(char *name, char *desc)
   fprintf(stderr, " %-20s %s (client: %d)\n",  "-C <clt_port>",
           "Base port number for Builders",     clt_port_base);
 
-  fprintf(stderr, " %-20s %s (default: %d)\n",      "-i <ID>",
-          "Unique ID of this Contributor (0 - 63)", default_id);
-  fprintf(stderr, " %-20s %s (default: %014lx)\n",  "-D <batch duration>",
-          "Batch duration (must be power of 2)",    batch_duration);
-  fprintf(stderr, " %-20s %s (default: %d)\n",      "-B <max batches>",
-          "Maximum number of extant batches",       max_batches);
-  fprintf(stderr, " %-20s %s (default: %d)\n",      "-E <max entries>",
-          "Maximum number of entries per batch",    max_entries);
-  fprintf(stderr, " %-20s %s (default: %d)\n",      "-M <seconds>",
-          "Monitoring printout period",             mon_period);
-  fprintf(stderr, " %-20s %s (default: %d)\n",      "-T <core>",
-          "Base core number to pin threads to",     lcoreBase);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-i <ID>",
+          "Unique ID of this Contributor (0 - 63)",   default_id);
+  fprintf(stderr, " %-20s %s (default: %014lx)\n",    "-D <batch duration>",
+          "Batch duration (must be power of 2)",      batch_duration);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-B <max batches>",
+          "Maximum number of extant batches",         max_batches);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-E <max entries>",
+          "Maximum number of entries per batch",      max_entries);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-M <seconds>",
+          "Monitoring printout period",               mon_period);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
+          "Core number for pinning Outlet thread to", lcore1);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
+          "Core number for pinning other threads to", lcore2);
 
   fprintf(stderr, " %-20s %s\n", "-c", "enable result checking");
   fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output (repeat for increased detail)");
@@ -805,7 +820,7 @@ int main(int argc, char **argv)
   unsigned maxEntries = max_entries;
   unsigned monPeriod  = mon_period;
 
-  while ((op = getopt(argc, argv, "h?vcS:C:i:D:B:E:M:T:")) != -1)
+  while ((op = getopt(argc, argv, "h?vcS:C:i:D:B:E:M:1:2:")) != -1)
   {
     switch (op)
     {
@@ -817,7 +832,8 @@ int main(int argc, char **argv)
       case 'E':  maxEntries = atoi(optarg);                 break;
       case 'c':  lcheck     = true;                         break;
       case 'M':  monPeriod  = atoi(optarg);                 break;
-      case 'T':  lcoreBase  = atoi(optarg);                 break;
+      case '1':  lcore1     = atoi(optarg);                 break;
+      case '2':  lcore2     = atoi(optarg);                 break;
       case 'v':  ++lverbose;                                break;
       case '?':
       case 'h':
@@ -831,7 +847,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "Contributor ID is out of range 0 - 63: %d\n", id);
     return 1;
   }
-  if (srvBase + id > 0x0000ffff)
+  if (srvBase + id > USHRT_MAX)
   {
     fprintf(stderr, "Server port is out of range 0 - 65535: %d\n", srvBase + id);
     return 1;
@@ -856,7 +872,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Builder ID is out of range 0 - 63: %d\n", bid);
         return 1;
       }
-      if (cltBase + bid > 0x0000ffff)
+      if (cltBase + bid > USHRT_MAX)
       {
         fprintf(stderr, "Client port is out of range 0 - 65535: %d\n", cltBase + bid);
         return 1;
@@ -874,32 +890,39 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  if (maxEntries > duration)
+  {
+    fprintf(stderr, "More batch entries (%u) requested than definable in the "
+            "batch duration (%lu); reducing to avoid wasting memory\n",
+            maxEntries, duration);
+    maxEntries = duration;
+  }
+
   ::signal( SIGINT, sigHandler );
+
+  pin_thread(pthread_self(), lcore1);
+  TstContribOutlet outlet(cltAddr, cltPort, id, builders, duration, maxBatches, maxEntries, max_contrib_size);
+
+  pin_thread(pthread_self(), lcore2);
+  TstContribInlet  inlet (         srvPort, id, builders,           maxBatches, maxEntries, max_result_size, outlet);
 
   printf("Parameters of Contributor ID %d:\n", id);
   printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);
   printf("  Batch pool depth:           %d\n", maxBatches);
   printf("  Max # of entries per batch: %d\n", maxEntries);
   printf("  Max contribution size:      %zd, batch size: %zd\n",
-         max_contrib_size, sizeof(Dgram) + maxEntries * max_contrib_size);
+         max_contrib_size, outlet.maxBatchSize());
   printf("  Max result       size:      %zd, batch size: %zd\n",
-         max_result_size,  sizeof(Dgram) + maxEntries * max_result_size);
+         max_result_size,  inlet.maxBatchSize());
   printf("  Monitoring period:          %d\n", monPeriod);
-  printf("  Thread base core number:    %d\n", lcoreBase);
+  printf("  Thread core numbers:        %d, %d\n", lcore1, lcore2);
   printf("\n");
 
   // The order of the connect() calls must match the Event Builder(s) side's
-
-  pin_thread(pthread_self(), lcoreBase + core_outlet);
-  TstContribOutlet outlet(cltAddr, cltPort, id, builders, duration, maxBatches, maxEntries, max_contrib_size);
-
-  pin_thread(pthread_self(), lcoreBase + core_inlet);
-  TstContribInlet  inlet (         srvPort, id, builders,           maxBatches, maxEntries, max_result_size, outlet);
-
   if ( (ret = outlet.connect()) )  return ret; // Connect to EB's inlet
   if ( (ret = inlet.connect())  )  return ret; // Connect to EB's outlet
 
-  pin_thread(pthread_self(), lcoreBase + core_monitor);
+  pin_thread(pthread_self(), lcore2);
   StatsMonitor statsMon(&outlet, &inlet, monPeriod);
   statsMonitor = &statsMon;
 

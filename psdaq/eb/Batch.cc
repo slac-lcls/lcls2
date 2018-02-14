@@ -108,7 +108,7 @@ void Batch::init(GenericPoolW& pool,
                  unsigned      maxEntries,
                  Batch**       batches)
 {
-  Batch** blist  = batches;
+  Batch** blist = batches;
 
   for (unsigned i = 0; i < depth; ++i)
   {

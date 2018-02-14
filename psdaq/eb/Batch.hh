@@ -2,7 +2,6 @@
 #define Pds_Eb_Batch_hh
 
 #include "xtcdata/xtc/Dgram.hh"
-#include "psdaq/service/Queue.hh"
 #include "psdaq/service/Pool.hh"
 
 #include <stdint.h>
@@ -17,7 +16,7 @@ namespace Pds {
 
     class Batch1;
 
-    class Batch : public Pds::Entry
+    class Batch
     {
     public:
       enum IsLastFlag { IsLast };
@@ -37,23 +36,23 @@ namespace Pds {
     public:
       PoolDeclare;
     public:
-      void*            allocate(size_t);
-      void             store(const XtcData::Dgram*);
-      uint64_t         id() const;
-      void             id(uint64_t pid);
-      bool             expired(uint64_t pid) const;
-      unsigned         index() const;
-      size_t           extent() const;
-      void*            buffer() const;
-      XtcData::Dgram*  datagram() const;
-      void             parameter(void*);
-      void*            parameter() const;
-      bool             isLast() const;
+      void*                 allocate(size_t);
+      void                  store(const XtcData::Dgram*);
+      uint64_t              id() const;
+      void                  id(uint64_t pid);
+      bool                  expired(uint64_t pid) const;
+      unsigned              index() const;
+      size_t                extent() const;
+      void*                 buffer() const;
+      XtcData::Dgram*       datagram() const;
+      void                  parameter(void*);
+      void*                 parameter() const;
+      bool                  isLast() const;
       const XtcData::Dgram* datagram(unsigned i) const;
     private:
-      Batch1*         _batch1() const;
+      Batch1* _batch1() const;
     private:
-      void*           _parameter;
+      void*   _parameter;
     };
   };
 };

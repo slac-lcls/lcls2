@@ -3,6 +3,8 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <memory>
+#include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <assert.h>
 
@@ -19,11 +21,12 @@ BatchManager::BatchManager(uint64_t duration,
   _durationMask (~(duration - 1) & ((1UL << PulseId::NumPulseIdBits) - 1)),
   _batchDepth   (batchDepth),
   _maxEntries   (maxEntries),
-  _maxBatchSize (sizeof(Dgram) + maxEntries * maxSize),
-  _batchBuffer  (new char[batchDepth * _maxBatchSize + sizeof(uint64_t)]),
+  _maxBatchSize (sizeof(Dgram) + maxEntries * maxSize), // Note rounding up below
+  _batchBuffer  (nullptr),
   _datagrams    (new const Dgram*[batchDepth * maxEntries]),
   _pool         (Batch::size(), batchDepth),
-  _batches      (new Batch*[batchDepth])
+  _batches      (new Batch*[batchDepth]),
+  _batch        (nullptr)
 {
   if (duration & (duration - 1))
   {
@@ -31,21 +34,30 @@ BatchManager::BatchManager(uint64_t duration,
             duration);
     abort();
   }
+  if (maxEntries < duration)
+  {
+    fprintf(stderr, "Warning: More triggers can occur in a batch duration (%lu) "
+            "than for which there are batch entries (%u).\n"
+            "Beware the trigger rate!\n",
+            duration, maxEntries);
+  }
 
-  void*  buffer      = _batchBuffer;
-  size_t size        = batchDepth * _maxBatchSize;
-  size_t space       = size + sizeof(uint64_t);
-  char*  batchBuffer = (char*)std::align(alignof(uint64_t), size, buffer, space);
-  Batch::init(_pool, batchBuffer, batchDepth, _maxBatchSize, _datagrams, maxEntries, _batches);
-
-  _batch = nullptr;
+  size_t alignment = sysconf(_SC_PAGESIZE);
+  _maxBatchSize    = alignment * ((_maxBatchSize + alignment - 1) / alignment);
+  size_t size      = batchDepth * _maxBatchSize;
+  void*  buffer    = nullptr;
+  int    ret       = posix_memalign(&buffer, alignment, size);
+  if (ret)  perror("posix_memalign");
+  assert(buffer != nullptr);
+  _batchBuffer = (char*)buffer;
+  Batch::init(_pool, _batchBuffer, batchDepth, _maxBatchSize, _datagrams, maxEntries, _batches);
 }
 
 BatchManager::~BatchManager()
 {
   delete [] _batches;
   delete [] _datagrams;
-  delete [] _batchBuffer;
+  free(_batchBuffer);
 }
 
 void* BatchManager::batchRegion() const

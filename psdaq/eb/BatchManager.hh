@@ -49,7 +49,7 @@ namespace Pds {
       uint64_t     _durationMask;       // Mask  off  insignificant bits
       unsigned     _batchDepth;         // Depth of the batch pool
       unsigned     _maxEntries;         // Max number of entries per batch
-      size_t       _maxBatchSize;       // Maximum size of a batch
+      size_t       _maxBatchSize;       // Max batch size rounded up to page boundary
       char*        _batchBuffer;        // Buffers for batches
       const XtcData::Dgram** _datagrams;// Array for holding on to datagrams
       GenericPoolW _pool;               // Pool of Batch objects
