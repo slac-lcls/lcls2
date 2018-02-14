@@ -9,9 +9,6 @@
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/TypeId.hh"
 
-
-
-
 static const int maxNameSize = 256;
 
 class AlgVersion {
@@ -145,19 +142,21 @@ class Names : public AutoParentAlloc
 {
 public:
 
-    Names(const char* detName, Alg& alg, const char* detType, unsigned segment=0) :
+    Names(const char* detName, Alg& alg, const char* detType, const char* detId, unsigned segment=0) :
         AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
         _alg(alg),
         _segment(segment)
     {
-        strncpy(_detType, detType, maxNameSize);
         strncpy(_detName, detName, maxNameSize);
+        strncpy(_detType, detType, maxNameSize);
+        strncpy(_detId,   detId,   maxNameSize);
         // allocate space for our private data
         XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
 
-    const char* detType() {return _detType;}
     const char* detName() {return _detName;}
+    const char* detType() {return _detType;}
+    const char* detId()   {return _detId;}
     unsigned    segment() {return _segment;}
     Alg&        alg()     {return _alg;}
 
@@ -223,8 +222,9 @@ public:
     }
   
 private:
-    char     _detType[maxNameSize];
     char     _detName[maxNameSize];
+    char     _detType[maxNameSize];
+    char     _detId[maxNameSize];
     Alg      _alg;
     uint32_t _segment;
 };

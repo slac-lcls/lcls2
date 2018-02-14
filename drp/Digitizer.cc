@@ -38,7 +38,7 @@ void hsdExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebb
 
 void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg hsdAlg("hsdalg",1,2,3);
-    Names& fexNames = *new(parent) Names("xpphsd", hsdAlg, "hsd");
+    Names& fexNames = *new(parent) Names("xpphsd", hsdAlg, "hsd", "detnum1234");
     
     Alg alg("hsdchan",1,2,3);
     fexNames.add_vec<HsdDef>(parent, alg);
