@@ -5,6 +5,7 @@
 #from .pydgram import 
 #from .dgram import *
 
+from .datasource import DataSource
 #__all__ = ['pyalgos',] # 'pscalib', 'detector']
 #from time import time
 #t0_sec = time()
