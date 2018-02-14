@@ -8,7 +8,7 @@ Usage::
 
     # Import
     # ------
-    from pyalgos.generic.HPolar import HPolar
+    from psana.pyalgos.generic.HPolar import HPolar
 
     # Initialization
     # --------------
@@ -38,7 +38,7 @@ Usage::
 
     # Global methods
     # --------------
-    from pyalgos.generic.HPolar import polarization_factor, divide_protected, cart2polar, polar2cart, bincount
+    from psana.pyalgos.generic.HPolar import polarization_factor, divide_protected, cart2polar, polar2cart, bincount
 
     polf = polarization_factor(rad, phi, z)
     result = divide_protected(num, den, vsub_zero=0)
@@ -62,7 +62,7 @@ Created in 2015 by Mikhail Dubrovin
 
 import math
 import numpy as np
-from pyalgos.generic.HBins import HBins
+from psana.pyalgos.generic.HBins import HBins
 
 #------------------------------
 
@@ -187,7 +187,7 @@ class HPolar() :
     def print_ndarrs(self) :
         print('%s n-d arrays:' % self.__class__.__name__)
         if self.print_ndarr is None :
-            from pyalgos.generic.NDArrUtils import print_ndarr
+            from psana.pyalgos.generic.NDArrUtils import print_ndarr
             self.print_ndarr = print_ndarr
         self.print_ndarr(self.rad, '  rad')
         self.print_ndarr(self.phi, '  phi')
@@ -333,8 +333,8 @@ def data_geo(ntest) :
     """Method for tests: returns test data numpy array and geometry object
     """
     from time import time
-    from pscalib.calib.NDArrIO import save_txt, load_txt
-    from pscalib.geometry.GeometryAccess import GeometryAccess
+    from psana.pscalib.calib.NDArrIO import save_txt, load_txt
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess
 
     dir       = '/reg/g/psdm/detector/alignment/cspad/calib-cxi-camera2-2016-02-05'
     #fname_nda = '%s/nda-water-ring-cxij4716-r0022-e000001-CxiDs2-0-Cspad-0-ave.txt' % dir
@@ -368,8 +368,8 @@ def test01(ntest, prefix='fig-v01') :
     """Test for radial 1-d binning of entire image.
     """
     from time import time
-    import pyalgos.generic.Graphics as gg
-    from pscalib.geometry.GeometryAccess import img_from_pixel_arrays
+    import psana.pyalgos.generic.Graphics as gg
+    from psana.pscalib.geometry.GeometryAccess import img_from_pixel_arrays
 
     arr, geo = data_geo(ntest)
 
@@ -430,8 +430,8 @@ def test02(ntest, prefix='fig-v01') :
     """
     #from Detector.GlobalUtils import print_ndarr
     from time import time
-    import pyalgos.generic.Graphics as gg
-    from pscalib.geometry.GeometryAccess import img_from_pixel_arrays
+    import psana.pyalgos.generic.Graphics as gg
+    from psana.pscalib.geometry.GeometryAccess import img_from_pixel_arrays
 
     arr, geo = data_geo(ntest)
 
@@ -493,8 +493,8 @@ def test03(ntest, prefix='fig-v01') :
     """Test for 2-d binning of the restricted rad-phi range of entire image
     """
     from time import time
-    import pyalgos.generic.Graphics as gg
-    from pscalib.geometry.GeometryAccess import img_from_pixel_arrays
+    import psana.pyalgos.generic.Graphics as gg
+    from psana.pscalib.geometry.GeometryAccess import img_from_pixel_arrays
 
     arr, geo = data_geo(ntest)
 

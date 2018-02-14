@@ -6,7 +6,7 @@
 
 Usage::
 
-    import pyalgos.generic.NDArrGenerators as ag
+    import psana.pyalgos.generic.NDArrGenerators as ag
 
     # Methods
 
@@ -37,7 +37,7 @@ Modified for LCLS2 on 2015-01-26 by Mikhail Dubrovin
 
 import numpy as np
 import math
-#from pyalgos.generic.NDArrUtils import shape_as_2d, shape_as_3d, reshape_to_2d, reshape_to_3d
+#from psana.pyalgos.generic.NDArrUtils import shape_as_2d, shape_as_3d, reshape_to_2d, reshape_to_3d
 
 #-----------------------------
 
@@ -189,7 +189,7 @@ def cspad_ndarr(n2x1=32, dtype=np.float32) :
 
 if __name__ == '__main__':
 
-    from pyalgos.generic.NDArrUtils import print_ndarr
+    from psana.pyalgos.generic.NDArrUtils import print_ndarr
 
     print_ndarr(random_exponential(), 'random_exponential')
     print_ndarr(random_standard(), 'random_standard')

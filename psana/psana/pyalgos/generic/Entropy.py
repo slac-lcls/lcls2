@@ -9,7 +9,7 @@ Usage::
 
     # Import
     # ==============
-    from pyalgos.generic.Entropy import *
+    from psana.pyalgos.generic.Entropy import *
 
     # import for test only
     from pyalgos.generic.NDArrGenerators import random_standard
@@ -138,8 +138,8 @@ def test_entropy():
 
     print('In %s' % sys._getframe().f_code.co_name)
 
-    from pyalgos.generic.NDArrGenerators import random_standard
-    from pyalgos.generic.NDArrUtils import print_ndarr
+    from psana.pyalgos.generic.NDArrGenerators import random_standard
+    from psana.pyalgos.generic.NDArrUtils import print_ndarr
     from time import time
 
     arr_float = random_standard(shape=(100000,), mu=200, sigma=25, dtype=np.float)

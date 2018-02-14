@@ -235,8 +235,35 @@ def replace(template, pattern, subst) :
     else :
         return template
 
+
+#------------------------------
+
+def print_command_line_parameters(parser) :
+    """Prints input arguments and optional parameters"""
+    (popts, pargs) = parser.parse_args()
+    args = pargs                             # list of positional arguments
+    opts = vars(popts)                       # dict of options
+    defs = vars(parser.get_default_values()) # dict of default options
+
+    print('Command:\n ', ' '.join(sys.argv)+\
+          '\nArgument list: %s\nOptional parameters:\n' % str(args)+\
+          '  <key>      <value>              <default>')
+    for k,v in opts.items() :
+        print('  %s %s %s' % (k.ljust(10), str(v).ljust(20), str(defs[k]).ljust(20)))
+
 #------------------------------
 #----------- TEST -------------
+#------------------------------
+
+def test_10() :
+    from psana.pyalgos.generic.NDArrGenerators import random_standard
+
+    image = random_standard()
+    verbosity=True
+    save_image_tiff(image, fname='image.tiff', verb=verbosity)
+    save_image_file(image, fname='image.png',  verb=verbosity)
+    save_image_file(image, fname='image.xyz',  verb=verbosity)
+
 #------------------------------
 
 def test_01() :    

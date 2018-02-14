@@ -6,7 +6,7 @@ Class :py:class:`GeometryAccess` - holds and access hierarchical geometry for ge
 
 Usage::
  
-    from pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
 
     fname_geometry = '/reg/d/psdm/CXI/cxitut13/calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/0-end.data'
     geometry = GeometryAccess(fname_geometry, 0o377)
@@ -112,7 +112,7 @@ import logging
 logger = logging.getLogger('GeometryAccess')
 
 import os
-from pscalib.geometry.GeometryObject import GeometryObject
+from psana.pscalib.geometry.GeometryObject import GeometryObject
 
 import numpy as np
 from math import floor, fabs
@@ -742,8 +742,8 @@ if __name__ == "__main__" :
     from time import time # for test purpose only
 
     #from PSCalib.SegGeometryCspad2x1V1 import cspad2x1_one
-    import pyalgos.generic.Graphics as gg # for test purpose
-    import pyalgos.generic.NDArrGenerators as ag # for test purpose only
+    import psana.pyalgos.generic.Graphics as gg # for test purpose
+    import psana.pyalgos.generic.NDArrGenerators as ag # for test purpose only
 
 #------------------------------
 

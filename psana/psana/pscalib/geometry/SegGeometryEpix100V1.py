@@ -38,7 +38,7 @@ In this class we use natural matrix notations like in data array
 
 Usage::
 
-    from SegGeometryEpix100V1 import epix2x2_one as sg
+    from psana.pscalib.geometry.SegGeometryEpix100V1 import epix2x2_one as sg
 
     sg.print_seg_info(0o377)
 
@@ -90,7 +90,7 @@ Adopted for LCLS2 on 2018-02-01
 
 #import math
 import numpy as np
-from pscalib.geometry.SegGeometryBase import *
+from psana.pscalib.geometry.SegGeometryBase import *
 
 #------------------------------
 
@@ -385,7 +385,7 @@ epix2x2_one = SegGeometryEpix100V1(use_wide_pix_center=False)
 #------------------------------
 
 if __name__ == "__main__" :
-    import pyimgalgos.GlobalGraphics as gg # For test purpose in main only
+    import psana.pyalgos.generic.Graphics as gg # For test purpose in main only
 
 
 def test_xyz_min_max() :

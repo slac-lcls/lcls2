@@ -7,7 +7,7 @@ Usage::
 
     # assuming that $PYTHONPATH=.../lcls2/psana
     # Import
-    import pyalgos.generic.NDArrUtils as gu
+    import psana.pyalgos.generic.NDArrUtils as gu
 
     # Methods
     #resp = gu.<method(pars)>
@@ -479,6 +479,42 @@ def locxymax(nda, order=1, mode='clip') :
 #----------- TEST -------------
 #------------------------------
 
+def test_01() :
+    from psana.pyalgos.generic.NDArrGenerators import random_standard
+
+    print('%s\n%s\n' % (80*'_','Test method subtract_bkgd(...):'))
+    shape1 = (32,185,388)
+    winds = [(s, 10, 155, 20, 358) for s in (0,1)]
+    data = random_standard(shape=shape1, mu=300, sigma=50)
+    bkgd = random_standard(shape=shape1, mu=100, sigma=10)
+    cdata = subtract_bkgd(data, bkgd, mask=None, winds=winds, pbits=0o377)
+
+#------------------------------
+
+def test_08() :
+    import psana.pyalgos.generic.Graphics as gg
+    from psana.pyalgos.generic.NDArrGenerators import random_standard
+    from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
+
+    print('%s\n%s\n' % (80*'_','Test method locxymax(nda, order, mode):'))
+    #data = random_standard(shape=(32,185,388), mu=0, sigma=10)
+    data = random_standard(shape=(2,185,388), mu=0, sigma=10)
+    t0_sec = time()
+    mask = locxymax(data, order=1, mode='clip')
+    print('Consumed t = %10.6f sec' % (time()-t0_sec))
+
+    if True :
+      img = data if len(data.shape)==2 else reshape_to_2d(data)
+      msk = mask if len(mask.shape)==2 else reshape_to_2d(mask)
+
+      ave, rms = img.mean(), img.std()
+      amin, amax = ave-2*rms, ave+2*rms
+      gg.plotImageLarge(img, amp_range=(amin, amax), title='random')
+      gg.plotImageLarge(msk, amp_range=(0, 1), title='mask loc max')
+      gg.show()
+
+#------------------------------
+
 def test_mask_neighbors_2d(allnbrs=True) :
 
     randexp = random_exponential(shape=(40,60), a0=1)
@@ -557,8 +593,8 @@ def test_mask_edges_3d(mrows=1, mcols=1) :
 
 def do_test() :
 
-    from pyalgos.generic.NDArrGenerators import random_exponential; global random_exponential 
-    import pyalgos.generic.Graphics as gr; global gr
+    from psana.pyalgos.generic.NDArrGenerators import random_exponential; global random_exponential 
+    import psana.pyalgos.generic.Graphics as gr; global gr
 
     print(80*'_')
     tname = sys.argv[1] if len(sys.argv)>1 else '1'
