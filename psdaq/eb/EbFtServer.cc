@@ -5,6 +5,7 @@
 #include <memory>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <assert.h>
 
@@ -21,14 +22,16 @@ EbFtServer::EbFtServer(std::string& port,
   _port(port),
   _lclSize(lclSize),
   _shared(shared == PEERS_SHARE_BUFFERS),
-  _lclMem(new char[sizeof(uint64_t) + (_shared ? 1 : nClients) * lclSize])
+  _lclMem(nullptr)
 {
-  assert(_lclMem != nullptr);
-
-  void*  lclMem = _lclMem;
-  size_t size   = (_shared ? 1 : nClients) * lclSize;
-  size_t space  = size + sizeof(uint64_t);
-  _base = (char*)std::align(alignof(uint64_t), size, lclMem, space);
+  size_t alignment = sysconf(_SC_PAGESIZE);
+  assert(lclSize & (alignment - 1) == 0);
+  size_t size      = (_shared ? 1 : nClients) * lclSize;
+  void*  lclMem    = nullptr;
+  int    ret       = posix_memalign(&lclMem, alignment, size);
+  if (ret)  perror("posix_memalign");
+  assert(lclMem != nullptr);
+  _base = (char*)lclMem;
 }
 
 EbFtServer::~EbFtServer()
@@ -40,7 +43,7 @@ EbFtServer::~EbFtServer()
 
   if (_pep)  delete _pep;
 
-  delete [] _base;
+  free(_base);
 }
 
 int EbFtServer::connect(unsigned myId)
