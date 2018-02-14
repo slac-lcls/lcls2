@@ -18,8 +18,8 @@ Client::Client(const char* devname)
 
   void* ptr = mmap(0, sizeof(Pds::Tpr::TprReg), PROT_READ|PROT_WRITE, MAP_SHARED, _fd, 0);
   if (ptr == MAP_FAILED) {
-    perror("Failed to map");
-    throw std::string("Failed to map");
+    perror("Failed to map master");
+    throw std::string("Failed to map master");
   }
 
   _dev = reinterpret_cast<Pds::Tpr::TprReg*>(ptr);
@@ -43,10 +43,10 @@ Client::Client(const char* devname)
     throw std::string("Could not open sh");
   }
 
-  ptr = mmap(0, sizeof(Pds::Tpr::Queues), PROT_READ, MAP_PRIVATE, _fdsh, 0);
+  ptr = mmap(0, sizeof(Pds::Tpr::Queues), PROT_READ, MAP_SHARED, _fdsh, 0);
   if (ptr == MAP_FAILED) {
-    perror("Failed to map");
-    throw std::string("Failed to map");
+    perror("Failed to map slave");
+    throw std::string("Failed to map slave");
   }
 
   _queues = reinterpret_cast<Pds::Tpr::Queues*>(ptr);
@@ -60,7 +60,7 @@ void Client::start(unsigned partn)
 {
   char buff[32];
   read(_fdsh, &buff, 32 );
-  _chnrp = _queues->chnwp[0];
+  _rp = _queues->allwp[0];
   _dev->base.setupDaq(0,partn);
 }
 
@@ -80,11 +80,11 @@ const Pds::Tpr::Frame* Client::advance(uint64_t pulseId)
   const Pds::Tpr::Queues& q = *_queues;
   const Pds::Tpr::Frame* f=0;
   while(1) {
-    while (_chnrp < q.chnwp[0]) {
-      f = reinterpret_cast<const Pds::Tpr::Frame*>(&q.chnq[0].entry[_chnrp &(MAX_TPR_CHNQ-1)].word[0]);
+    while (_rp < q.allwp[0]) {
+      f = reinterpret_cast<const Pds::Tpr::Frame*>(&q.allq [ q.allrp[0].idx[_rp &(MAX_TPR_ALLQ-1)] & (MAX_TPR_ALLQ-1)]);
       if (f->pulseId == pulseId) return f;
       if (f->pulseId >  pulseId) return 0;
-      _chnrp++;
+      _rp++;
     }
     read(_fdsh, buff, 32);
   }

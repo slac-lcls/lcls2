@@ -28,7 +28,7 @@ namespace Pds {
       Pds::Tpr::TprReg* _dev;
       int               _fdsh;
       Pds::Tpr::Queues* _queues;
-      unsigned          _chnrp;
+      unsigned          _rp;
     };
   };
 };
