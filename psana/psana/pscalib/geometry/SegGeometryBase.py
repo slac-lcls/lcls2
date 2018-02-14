@@ -12,7 +12,7 @@ class :py:class:`pscalib.geometry.SegGeometryStore`.
 
 Usage::
 
-    from pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one as sg
+    from psana.pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one as sg
 
     sg.print_seg_info(pbits=0o377)
     size_arr = sg.size()

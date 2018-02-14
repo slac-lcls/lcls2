@@ -1,7 +1,7 @@
 import os
 import sys
 import numpy as np
-from setuptools import setup, Extension
+from setuptools import setup, Extension #, find_packages
 
 arg = [arg for arg in sys.argv if arg.startswith('--xtcdata')]
 if not arg:
@@ -20,6 +20,8 @@ dgram_module = Extension('psana.dgram',
 setup(name = 'psana',
        version = '0.1',
        description = 'LCLS II analysis package',
+       #include_package_data = True,
+       #packages = find_packages(),
        packages = ['psana', 'psana.detector', 'psana.pscalib', 'psana.pyalgos'],
        #cmdclass = {'build': dgram_build, 'build_ext': dgram_build_ext},
        ext_modules = [dgram_module])

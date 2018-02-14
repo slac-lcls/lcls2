@@ -38,7 +38,7 @@ has a matrix-like numeration for rows and columns with gaps between 2x4 ASICs
 
 Usage::
 
-    from PSCalib.SegGeometryJungfrauV1 import jungfrau_one as sg
+    from psana.pscalib.geometry.SegGeometryJungfrauV1 import jungfrau_one as sg
 
     sg.print_seg_info(0o377)
 
@@ -90,7 +90,7 @@ Adopted for LCLS2 on 2018-02-01
 
 #import math
 import numpy as np
-from pscalib.geometry.SegGeometryBase import *
+from psana.pscalib.geometry.SegGeometryBase import *
 
 #------------------------------
 
@@ -380,7 +380,7 @@ jungfrau_one = SegGeometryJungfrauV1()
 #------------------------------
 
 if __name__ == "__main__" :
-    import pyimgalgos.GlobalGraphics as gg # For test purpose in main only
+    import psana.pyalgos.generic.Graphics as gg # For test purpose in main only
 
 
 def test_xyz_min_max() :

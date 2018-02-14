@@ -5,7 +5,7 @@
 
 Usage::
 
-    import pyalgos.generic.Graphics as gr
+    import psana.pyalgos.generic.Graphics as gr
 
     # Methods
 
@@ -473,8 +473,7 @@ def test05() :
 def do_test() :
 
     from time import time
-    #from pyimgalgos.NDArrGenerators import random_standard; global random_standard
-    from pyalgos.generic.NDArrGenerators import random_standard; global random_standard
+    from psana.pyalgos.generic.NDArrGenerators import random_standard; global random_standard
 
     if len(sys.argv)==1   :
         print('Use command > python %s <test-number [1-5]>' % sys.argv[0])

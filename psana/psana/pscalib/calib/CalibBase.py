@@ -8,7 +8,7 @@ Usage::
 
     # python lcls2/psana/pscalib/calib/CalibBase.py
 
-    from pscalib.calib.CalibBase import *
+    from psana.pscalib.calib.CalibBase import *
     logger = logging.getLogger('MyModuleName')
 
     cb = CalibBase()

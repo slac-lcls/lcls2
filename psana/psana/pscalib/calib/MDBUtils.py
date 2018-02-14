@@ -6,7 +6,7 @@
 Usage ::
 
     # Import
-    import pscalib.calib.MDBUtils as mu
+    import psana.pscalib.calib.MDBUtils as mu
 
     # Connect to server etc.
     client = mu.connect_to_server(host=cc.HOST, port=cc.PORT, )
@@ -48,9 +48,9 @@ import sys
 from time import time
 
 import numpy as np
-import pyalgos.generic.Utils as gu
-from   pyalgos.generic.NDArrUtils import print_ndarr
-import pscalib.calib.CalibConstants as cc
+import psana.pyalgos.generic.Utils as gu
+from   psana.pyalgos.generic.NDArrUtils import print_ndarr
+import psana.pscalib.calib.CalibConstants as cc
 
 import logging
 logger = logging.getLogger('MDBUtils')
@@ -404,7 +404,7 @@ def find_doc(col, query={'data_type' : 'xxxx'}) :
 def get_test_nda() :
     """Returns random standard nupmpy array for test purpose.
     """
-    import pyalgos.generic.NDArrGenerators as ag
+    import psana.pyalgos.generic.NDArrGenerators as ag
     return ag.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=np.float)
 
 def get_test_dic() :

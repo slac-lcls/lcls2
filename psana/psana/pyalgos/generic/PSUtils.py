@@ -8,8 +8,8 @@ Usage::
 
     # Import
     # ==============
-    from pyimgalgos.PSUtils import subtract_bkgd, #, ...
-    from pyimgalgos.NDArrGenerators import random_standard_array
+    from psana.pyalgos.generic.PSUtils import subtract_bkgd, #, ...
+    from psana.pyalgos.generic.NDArrGenerators import random_standard_array
 
     # Converters for Cheetah
     # ======================
@@ -25,7 +25,7 @@ Usage::
     # Test
     # ======================
     # is implemented for test numbers from 1 to 9. Command example
-    # python pyimgalgos/src/PSUtils.py 1
+    # python lcls2/psana/psana/pyalgos/generic/PSUtils.py 1
 
 See :py:class:`PSUtils`
 
@@ -42,9 +42,7 @@ import os
 import sys
 import math
 import numpy as np
-from scipy.signal import argrelmax
 from time import time, strptime, strftime, localtime, mktime
-
 
 #------------------------------
 
@@ -177,21 +175,6 @@ def cross_check_cspad_psana_cctbx(nda, arr) :
 #------------------------------
 #------------------------------
 
-def print_command_line_parameters(parser) :
-    """Prints input arguments and optional parameters"""
-    (popts, pargs) = parser.parse_args()
-    args = pargs                             # list of positional arguments
-    opts = vars(popts)                       # dict of options
-    defs = vars(parser.get_default_values()) # dict of default options
-
-    print('Command:\n ', ' '.join(sys.argv)+\
-          '\nArgument list: %s\nOptional parameters:\n' % str(args)+\
-          '  <key>      <value>              <default>')
-    for k,v in opts.items() :
-        print('  %s %s %s' % (k.ljust(10), str(v).ljust(20), str(defs[k]).ljust(20)))
-
-#------------------------------
-
 """Aliases"""
 
 table8x8_from_cspad_ndarr = table_from_cspad_ndarr
@@ -199,60 +182,10 @@ cspad_ndarr_from_table8x8 = cspad_ndarr_from_table
 # See tests in Detector/examples/ex_ndarray_from_image.py
 
 #------------------------------
-#------------------------------
 #----------- TEST -------------
-#------------------------------
 #------------------------------
 
 def test_01() :
-    from pyimgalgos.NDArrGenerators import random_standard
-
-    print('%s\n%s\n' % (80*'_','Test method subtract_bkgd(...):'))
-    shape1 = (32,185,388)
-    winds = [(s, 10, 155, 20, 358) for s in (0,1)]
-    data = random_standard(shape=shape1, mu=300, sigma=50)
-    bkgd = random_standard(shape=shape1, mu=100, sigma=10)
-    cdata = subtract_bkgd(data, bkgd, mask=None, winds=winds, pbits=0377)
-
-#------------------------------
-
-def test_08() :
-    import pyalgos.generic.Graphics as gg
-    from pyalgos.generic.NDArrGenerators import random_standard
-    from pyalgos.generic.NDArrUtils import reshape_to_2d
-
-    print('%s\n%s\n' % (80*'_','Test method locxymax(nda, order, mode):'))
-    #data = random_standard(shape=(32,185,388), mu=0, sigma=10)
-    data = random_standard(shape=(2,185,388), mu=0, sigma=10)
-    t0_sec = time()
-    mask = locxymax(data, order=1, mode='clip')
-    print('Consumed t = %10.6f sec' % (time()-t0_sec))
-
-    if True :
-      img = data if len(data.shape)==2 else reshape_to_2d(data)
-      msk = mask if len(mask.shape)==2 else reshape_to_2d(mask)
-
-      ave, rms = img.mean(), img.std()
-      amin, amax = ave-2*rms, ave+2*rms
-      gg.plotImageLarge(img, amp_range=(amin, amax), title='random')
-      gg.plotImageLarge(msk, amp_range=(0, 1), title='mask loc max')
-      gg.show()
-
-
-#------------------------------
-
-def test_10() :
-    from pyimgalgos.NDArrGenerators import random_standard
-
-    image = random_standard()
-    verbosity=True
-    save_image_tiff(image, fname='image.tiff', verb=verbosity)
-    save_image_file(image, fname='image.png',  verb=verbosity)
-    save_image_file(image, fname='image.xyz',  verb=verbosity)
-
-#------------------------------
-
-def test_11() :
     eventName = 'LCLS_2015_Feb22_r0169_022047_197f7'
     runnum, tstamp, tsec, fid = convertCheetahEventName(eventName, fmtts='%Y-%m-%dT%H:%M:%S')
     print('Method convertCheetahEventName converts Cheetah event name %s' % eventName,\
@@ -270,19 +203,10 @@ def usage() : return 'Use command: python %s <test-number>, where <test-number> 
 #------------------------------
 
 def main() :    
-    print '\n%s\n' % usage()
+    print('\n%s\n' % usage())
     if len(sys.argv) != 2 : test_01()
     elif sys.argv[1]=='1' : test_01()
     elif sys.argv[1]=='2' : test_02()
-    elif sys.argv[1]=='3' : test_03()
-    elif sys.argv[1]=='4' : test_04()
-    elif sys.argv[1]=='5' : test_05()
-    elif sys.argv[1]=='6' : test_06()
-    elif sys.argv[1]=='7' : test_07()
-    elif sys.argv[1]=='8' : test_08()
-    elif sys.argv[1]=='9' : test_09()
-    elif sys.argv[1]=='10': test_10()
-    elif sys.argv[1]=='11': test_11()
     else                  : sys.exit('Test number parameter is not recognized.\n%s' % usage())
 
 #------------------------------

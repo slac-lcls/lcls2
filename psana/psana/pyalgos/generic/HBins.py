@@ -5,7 +5,7 @@ Class :py:class:`HBins` histogram-style bin parameters holder
 
 Usage::
 
-    from pyalgos.generic.HBins import HBins
+    from psana.pyalgos.generic.HBins import HBins
 
     # Equal bins constructor
     hb = HBins((1,6), nbins=5)

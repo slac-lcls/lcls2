@@ -9,7 +9,7 @@ Usage::
     # Methods of this class are used internally in :py:class:`GeometryAccess`
     # and are not supposed to be used directly...
 
-    from pscalib.geometry.GeometryObject import GeometryObject
+    from psana.pscalib.geometry.GeometryObject import GeometryObject
 
     # Instatiation of the geometry object
     # d = <dictionary-of-input-parameters>
@@ -82,7 +82,7 @@ logger = logging.getLogger('GeometryObject')
 
 import math
 import numpy as np
-from pscalib.geometry.SegGeometryStore import sgs
+from psana.pscalib.geometry.SegGeometryStore import sgs
 
 #------------------------------
 

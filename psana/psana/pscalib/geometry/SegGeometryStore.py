@@ -9,7 +9,7 @@ to access their pixel geometry using :py:class:`SegGeometryBase` interface.
 
 Usage::
 
-    from pscalib.geometry.SegGeometryStore import sgs
+    from psana.pscalib.geometry.SegGeometryStore import sgs
 
     sg = sgs.Create('SENS2X1:V1')
     sg2= sgs.Create('EPIX100:V1')
@@ -58,10 +58,10 @@ Adopted for LCLS2 on 2018-02-01
 import logging
 logger = logging.getLogger('SegGeometryStore')
 
-from pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one
-from pscalib.geometry.SegGeometryEpix100V1  import epix2x2_one
-from pscalib.geometry.SegGeometryMatrixV1   import SegGeometryMatrixV1, segment_one, matrix_pars
-from pscalib.geometry.SegGeometryJungfrauV1 import jungfrau_one
+from psana.pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one
+from psana.pscalib.geometry.SegGeometryEpix100V1  import epix2x2_one
+from psana.pscalib.geometry.SegGeometryMatrixV1   import SegGeometryMatrixV1, segment_one, matrix_pars
+from psana.pscalib.geometry.SegGeometryJungfrauV1 import jungfrau_one
 
 #------------------------------
 

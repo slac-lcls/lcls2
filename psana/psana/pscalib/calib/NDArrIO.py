@@ -7,7 +7,7 @@
 Usage::
 
     # Import
-    from pscalib.calib.NDArrIO import save_txt, load_txt, list_of_comments
+    from psana.pscalib.calib.NDArrIO import save_txt, load_txt, list_of_comments
 
     # Save n-dimensional numpy array in the text file.
     save_txt(fname, arr, cmts=(), fmt='%.1f')
@@ -65,8 +65,8 @@ Adopted for LCLS2 on 2018-02-01
 #import sys
 #import math
 import numpy as np
-import pyalgos.generic.Utils as gu
-import pyalgos.generic.NDArrUtils as nu
+import psana.pyalgos.generic.Utils as gu
+import psana.pyalgos.generic.NDArrUtils as nu
 
   
 def save_txt(fname='nda.txt', arr=None, cmts=(), fmt='%.1f', verbos=False, addmetad=True) :
