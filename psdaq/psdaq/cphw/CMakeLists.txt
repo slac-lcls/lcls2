@@ -38,11 +38,11 @@ find_library(CPSW_LIBRARY cpsw PATH $ENV{CONDA_PREFIX}/lib)
 #find_package(Boost 1.65 REQUIRED PATHS $ENV{CONDA_PREFIX})
 
 #
-#  amctiming
+#  amc_timing
 #
-add_executable(amctiming amctiming.cc)
+add_executable(amc_timing amc_timing.cc)
 
-target_link_libraries(amctiming
+target_link_libraries(amc_timing
     cphw
     ${CPSW_LIBRARY}
     ${YAML_CPP_LIBRARY}
@@ -54,9 +54,9 @@ target_link_libraries(amctiming
 #
 #  amctiming_udp
 #
-add_executable(amctiming_udp amctiming.cc)
+add_executable(amc_timing_udp amc_timing.cc)
 
-target_link_libraries(amctiming_udp
+target_link_libraries(amc_timing_udp
     cphwr
     dl
     pthread
@@ -74,8 +74,8 @@ target_link_libraries(amc_eyescan
 )
 
 install(TARGETS cphw
-                amctiming
-                amctiming_udp
+                amc_timing
+                amc_timing_udp
                 amc_eyescan
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
