@@ -26,10 +26,12 @@
 ** --
 */
 
-#include <stdio.h>
+#include "psdaq/service/SpinLock.hh"
 
-#include <condition_variable>
 #include <mutex>
+#include <condition_variable>
+
+#define CACHE_LINE_SIZE 64
 
 namespace Pds {
 
@@ -43,8 +45,11 @@ class Entry
     Entry* next()     const;
     Entry* previous() const;
   private:
+    //char   _pad0[CACHE_LINE_SIZE];
     Entry* _flink;
+    //char   _pad1[CACHE_LINE_SIZE];
     Entry* _blink;
+    //char   _pad2[CACHE_LINE_SIZE];
   };
 
 class List
@@ -53,6 +58,7 @@ class List
     List();
     Entry* empty() const;
     Entry* insert(Entry*);
+    Entry* insertN(Entry*);
     Entry* jam(Entry*);
     Entry* remove();
     Entry* removeW();
@@ -60,11 +66,15 @@ class List
     Entry* atHead() const;
     Entry* atTail() const;
   private:
-    Entry* _flink;
-    Entry* _blink;
-  private:
-    std::mutex              _mutex;
+    mutable Pds::SpinLock   _lock;
+    mutable std::mutex      _mutex;
     std::condition_variable _condVar;
+  private:
+    //char   _pad0[CACHE_LINE_SIZE];
+    Entry* _flink;
+    //char   _pad1[CACHE_LINE_SIZE];
+    Entry* _blink;
+    //char   _pad2[CACHE_LINE_SIZE];
   };
 }
 
@@ -190,6 +200,14 @@ inline Pds::Entry* Pds::Entry::remove()
 
 inline Pds::Entry* Pds::List::insert(Entry* entry)
   {
+  //std::lock_guard<std::mutex> lk(_mutex);
+  std::lock_guard<Pds::SpinLock> lk(_lock);
+  Pds::Entry* afterentry = entry->insert(atTail());
+  return afterentry;
+  }
+
+inline Pds::Entry* Pds::List::insertN(Entry* entry)
+  {
   std::lock_guard<std::mutex> lk(_mutex);
   Pds::Entry* afterentry = entry->insert(atTail());
   _condVar.notify_one();
@@ -207,9 +225,9 @@ inline Pds::Entry* Pds::List::insert(Entry* entry)
 
 inline Pds::Entry* Pds::List::jam(Entry* entry)
   {
-  std::lock_guard<std::mutex> lk(_mutex);
+  //std::lock_guard<std::mutex> lk(_mutex);
+  std::lock_guard<Pds::SpinLock> lk(_lock);
   Pds::Entry* afterentry = entry->insert(atHead());
-  _condVar.notify_one();
   return afterentry;
   }
 
@@ -233,7 +251,8 @@ inline Pds::Entry* Pds::Entry::previous() const {return _blink;}
 
 inline Pds::Entry* Pds::List::remove()
   {
-  std::unique_lock<std::mutex> lk(_mutex);
+  //std::unique_lock<std::mutex> lk(_mutex);
+  std::lock_guard<Pds::SpinLock> lk(_lock);
   Pds::Entry* entry = atHead()->remove();
   return entry;
   }
@@ -256,7 +275,8 @@ inline Pds::Entry* Pds::List::removeW()
 
 inline Pds::Entry* Pds::List::remove(Entry* entry)
   {
-  std::unique_lock<std::mutex> lk(_mutex);
+  //std::unique_lock<std::mutex> lk(_mutex);
+  std::lock_guard<Pds::SpinLock> lk(_lock);
   Pds::Entry* theEntry = entry->remove();
   return theEntry;
   }
@@ -269,14 +289,15 @@ class Queue : private List
   public:
     ~Queue()                {}
     Queue()                 {}
-    T* empty() const           {return (T*) List::empty();}
-    T* insert(T* entry)        {return (T*) List::insert((Entry*)entry);}
-    T* jam(T* entry)           {return (T*) List::jam((Entry*)entry);}
-    T* remove()                {return (T*) List::remove();}
-    T* removeW()               {return (T*) List::removeW();}
-    T* remove(T* entry)        {return (T*) List::remove((Entry*)entry);}
-    T* atHead() const          {return (T*) List::atHead();}
-    T* atTail() const          {return (T*) List::atTail();}
+    T* empty() const        {return (T*) List::empty();}
+    T* insert(T* entry)     {return (T*) List::insert((Entry*)entry);}
+    T* insertN(T* entry)    {return (T*) List::insertN((Entry*)entry);}
+    T* jam(T* entry)        {return (T*) List::jam((Entry*)entry);}
+    T* remove()             {return (T*) List::remove();}
+    T* removeW()            {return (T*) List::removeW();}
+    T* remove(T* entry)     {return (T*) List::remove((Entry*)entry);}
+    T* atHead() const       {return (T*) List::atHead();}
+    T* atTail() const       {return (T*) List::atTail();}
   };
 }
 #endif
