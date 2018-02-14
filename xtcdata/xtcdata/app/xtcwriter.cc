@@ -250,13 +250,7 @@ void padExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg hsdRawAlg("raw",0,0,0);
-<<<<<<< HEAD
     Names& frontEndNames = *new(parent) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234");
-    frontEndNames.add_vec<PgpDef>(parent);
-    namesVec.push_back(NameIndex(frontEndNames));
-
-    Alg hsdFexAlg("fex",4,5,6);
-    Names& fexNames = *new(parent) Names("xpphsd", hsdFexAlg, "hsd", "detnum1234");
     frontEndNames.add(parent,PgpDef);
     namesVec.push_back(NameIndex(frontEndNames));
 

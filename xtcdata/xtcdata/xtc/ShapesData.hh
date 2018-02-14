@@ -9,17 +9,10 @@
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/VarDef.hh"
-//#include "xtcdata/xtc/VarDef2.hh"
-
-<<<<<<< HEAD
-=======
 
 namespace XtcData {
 class VarDef;
 
-
-
->>>>>>> Added DescData and ShapesData to XtcData namespace, protection against nameindex error, added asserts for maxrank, maxnamesize limits, fix wasted space in CreateData ctor, expanded DataType enum, added type checking in set_value
 static const int maxNameSize = 256;
 
 class AlgVersion {
@@ -158,13 +151,9 @@ class Names : public AutoParentAlloc
 {
 public:
 
-<<<<<<< HEAD
+
     Names(const char* detName, Alg& alg, const char* detType, const char* detId, unsigned segment=0) :
-        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
-=======
-    Names(const char* detName, Alg& alg, const char* detType, unsigned segment=0) :
         AutoParentAlloc(TypeId(TypeId::Names,0)),
->>>>>>> Added DescData and ShapesData to XtcData namespace, protection against nameindex error, added asserts for maxrank, maxnamesize limits, fix wasted space in CreateData ctor, expanded DataType enum, added type checking in set_value
         _alg(alg),
         _segment(segment)
     {
@@ -211,13 +200,10 @@ public:
   
     
 private:
-<<<<<<< HEAD
-=======
+
     unsigned _numArrays=0;
     char     _detType[maxNameSize];
->>>>>>> Added DescData and ShapesData to XtcData namespace, protection against nameindex error, added asserts for maxrank, maxnamesize limits, fix wasted space in CreateData ctor, expanded DataType enum, added type checking in set_value
     char     _detName[maxNameSize];
-    char     _detType[maxNameSize];
     char     _detId[maxNameSize];
     Alg      _alg;
     uint32_t _segment;
