@@ -1,0 +1,9 @@
+{
+    "cspad-proj": {
+        "config": {
+            "axis": 1
+        },
+        "inputs": [{"name": "cspad", "required": true}],
+        "optype": "Projection"
+    }
+}

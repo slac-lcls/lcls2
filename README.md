@@ -2,17 +2,17 @@
 ## Build instructions
 ## Note: build on psbuild-rhel6 where redhat gcc6 compilers are installed
 ```bash
-# setup conda
-source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh  (conda requires bash)
 
-mkdir build
-cd build
-cmake ..
-make (optionally with "-j N" to compile in parallel on N cores)
+# repository consists of seperate packages: xtcdata, psdaq, drp and psana
+# all packages depend on xtcdata
 
-make test (runs some quick tests writing/reading xtc and hdf5 files)
+source setup_env.sh
+./build_all.sh
+```
 
-you can change between optimize/debug builds by running cmake with the following:
+To run the psana automated tests run "nosetests psana/psana/tests" in your git root directory.
 
+You can read the above build_all.sh script to see how to build individual packages.  You can change between optimize/debug builds by running cmake with the following:
+```bash
 cmake -DCMAKE_BUILD_TYPE={Debug, RelWithDebInfo, Release} ..
 ```
