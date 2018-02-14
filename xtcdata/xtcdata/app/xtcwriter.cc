@@ -1,27 +1,25 @@
 // to do:
-// - add set_array()
-// - figure out how to associate nameindex with correct xtc's
-// - put names in real configure transition
+// - * add set_array()
+// - * figure out how to associate nameindex with correct xtc's
+// - X put names in real configure transition
 // - create new autoalloc that also allocs xtc header size
-// - faster version of routines that takes index vs. string
-// - better namespacing
-// - minimize number of name lookups
-// - provide both "safe" name-lookup xface and "performant" index xface
-// - automated testing in cmake (and jenkins/continuous integration?)
-// - use Array for both getting/setting data
+// - X faster version of routines that takes index vs. string
+// - X* better namespacing (ShapesData, DescData)
+// - X minimize number of name lookups
+// - X provide both "safe" name-lookup xface and "performant" index xface
+// - X automated testing in cmake (and jenkins/continuous integration?)
 // - Array should support slicing
 // - maybe put non-vlen array shapes in configure (use this to distinguish
 //   vlen/non-vlen?).  but this may make things too complex. could use name instead.
-// - fix wasted space in CreateData ctor
+// - * fix wasted space in CreateData ctor. CPO to think about the DescribedData ctor
 // - protection:
 //   o pass in full list of names (ensures we get early error if the
 //     nameindex number is incorrect, but breaks object-oriented encapsulation)
-//   o error when name not in map
-//   o make sure things go in name order (not a problem if we do string lookup)
+//   o X error when name not in map
+//   o X make sure things go in name order (not a problem if we do string lookup)
 //     (are offsets messed up if user leaves a "gap" with set_array/set_array_shape?)
-//   o check maxrank limit
-//   o check maxnames limit
-//   o check total offsets equal to xtc sizeofPayload (not necessary with autoalloc?)
+//   o X* check maxrank limit
+//   o X* check maxnamesize limit
 
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -30,6 +28,8 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/VarDef.hh"
 
+
+#include <vector>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -42,7 +42,6 @@ using namespace XtcData;
 #define NEVENT 2
 
 
-
 class FexDef:public VarDef
 {
 public:
@@ -50,18 +49,16 @@ public:
     {
       floatFex,
       arrayFex,
-      intFex,
-      maxNum
+      intFex
     };
 
-   FexDef()
+  FexDef()
    {
-     detVec.push_back({"floatFex", FLOAT});
-     detVec.push_back({"arrayFex", FLOAT,2});
-     detVec.push_back({"intFex", INT32});
-
+       NameVec.push_back({"floatFex",Name::FLOAT});
+       NameVec.push_back({"arrayFex",Name::FLOAT,2});
+       NameVec.push_back({"intFex",Name::INT8});
    }
-};
+} FexDef;
 
 class PgpDef:public VarDef
 {
@@ -71,19 +68,18 @@ public:
       floatPgp,
       array0Pgp,
       intPgp,
-      array1Pgp,
-      maxNum
+      array1Pgp
     };
 
+  
    PgpDef()
    {
-     detVec.push_back({"floatPgp", FLOAT});
-     detVec.push_back({"array0Pgp", FLOAT,2});
-     detVec.push_back({"intPgp", INT32});
-     detVec.push_back({"array1Pgp", FLOAT,2});
-
+     NameVec.push_back({"floatPgp",Name::FLOAT,0});
+     NameVec.push_back({"array0Pgp",Name::FLOAT,2});
+     NameVec.push_back({"intPgp",Name::INT32,0});
+     NameVec.push_back({"array1Pgp",Name::FLOAT,2});     
    }
-};
+} PgpDef;
 
 
 class PadDef:public VarDef
@@ -91,15 +87,16 @@ class PadDef:public VarDef
 public:
   enum index
     {
-      arrayRaw,
-      maxNum
+      arrayRaw
     };
-
-   PadDef()
+  
+  
+  PadDef()
    {
-     detVec.push_back({"arrayRaw"});
+     Alg segmentAlg("cspadseg",2,3,42);
+     NameVec.push_back({"arrayRaw", segmentAlg});
    }
-};
+} PadDef;
 
 
 
@@ -203,9 +200,9 @@ public:
     uint8_t array[18];
 };
 
-void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
+void pgpExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 {
-    DescribedData frontEnd(parent, nameindex, nameId);
+    DescribedData frontEnd(parent, NamesVec, nameId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -221,9 +218,9 @@ void pgpExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     frontEnd.set_array_shape(PgpDef::array1Pgp, shape);
 }
 
-void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
+void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 {
-    CreateData fex(parent, nameindex, nameId);
+    CreateData fex(parent, NamesVec, nameId);
     fex.set_value(FexDef::floatFex, (float)41.0);
     float* ptr = (float*)fex.get_ptr();
     unsigned shape[Name::MaxRank];
@@ -231,12 +228,12 @@ void fexExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
     shape[1]=3;
     for (unsigned i=0; i<shape[0]*shape[1]; i++) ptr[i] = 142.0+i;
     fex.set_array_shape(FexDef::arrayFex,shape);
-    fex.set_value(FexDef::intFex, 42);
+    fex.set_value(FexDef::intFex, (int8_t)42);
 }
 
-void padExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
+void padExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 {
-    DescribedData pad(parent, nameindex, nameId);
+    DescribedData pad(parent, NamesVec, nameId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -253,35 +250,42 @@ void padExample(Xtc& parent, NameIndex& nameindex, unsigned nameId)
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg hsdRawAlg("raw",0,0,0);
+<<<<<<< HEAD
     Names& frontEndNames = *new(parent) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234");
     frontEndNames.add_vec<PgpDef>(parent);
     namesVec.push_back(NameIndex(frontEndNames));
 
     Alg hsdFexAlg("fex",4,5,6);
     Names& fexNames = *new(parent) Names("xpphsd", hsdFexAlg, "hsd", "detnum1234");
-    fexNames.add_vec<FexDef>(parent);
+    frontEndNames.add(parent,PgpDef);
+    namesVec.push_back(NameIndex(frontEndNames));
+
+    Alg hsdFexAlg("fex",4,5,6);
+    Names& fexNames = *new(parent) Names("xpphsd", hsdFexAlg, "hsd","detnum1234");
+    fexNames.add(parent, FexDef);
     namesVec.push_back(NameIndex(fexNames));
 
     unsigned segment = 0;
     Alg cspadRawAlg("raw",2,3,42);
     Names& padNames = *new(parent) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
     Alg segmentAlg("cspadseg",2,3,42);
-    padNames.add_vec<PadDef>(parent, segmentAlg);
+    padNames.add(parent, PadDef);
     namesVec.push_back(NameIndex(padNames));
 }
 
 void addData(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     // need to protect against putting in the wrong nameId here
     unsigned nameId = 0;
-    pgpExample(xtc, namesVec[nameId], nameId);
+    pgpExample(xtc, namesVec, nameId);
     nameId++;
-    fexExample(xtc, namesVec[nameId], nameId);
+    fexExample(xtc, namesVec, nameId);
     nameId++;
-    padExample(xtc, namesVec[nameId], nameId);
+    padExample(xtc, namesVec, nameId);
 }
 
 int main()
 {
+    
     FILE* xtcFile = fopen("data.xtc", "w");
     if (!xtcFile) {
         printf("Error opening output xtc file.\n");

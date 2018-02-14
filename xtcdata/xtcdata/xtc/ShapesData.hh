@@ -8,7 +8,18 @@
 
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/VarDef.hh"
+//#include "xtcdata/xtc/VarDef2.hh"
 
+<<<<<<< HEAD
+=======
+
+namespace XtcData {
+class VarDef;
+
+
+
+>>>>>>> Added DescData and ShapesData to XtcData namespace, protection against nameindex error, added asserts for maxrank, maxnamesize limits, fix wasted space in CreateData ctor, expanded DataType enum, added type checking in set_value
 static const int maxNameSize = 256;
 
 class AlgVersion {
@@ -31,9 +42,9 @@ public:
         strncpy(_alg, alg, maxNameSize);
     }
 
-    Alg(Alg& other) : _version(other._version) {
-        strncpy(_alg, other._alg, maxNameSize);
-    }
+    // Alg(Alg& other) : _version(other._version) {
+    //     strncpy(_alg, other._alg, maxNameSize);
+    // }
 
     uint32_t version() {
         return _version.version();
@@ -48,37 +59,40 @@ private:
 
 class Name {
 public:
-  enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE, UINT64 };
-
+     enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE, UINT64, UINT32, INT8, INT16, INT64};
+  // Not sure why there is a type error if out of this particular sequence
+  //  enum DataType { UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE};
     static int get_element_size(DataType type);
 
     enum {MaxRank=5};
-
-    Name(const char* name, DataType type, int rank) : _alg("",0,0,0) {
-        strncpy(_name, name, maxNameSize);
+  
+    Name(const char* name, DataType type, int rank=0) : _alg("",0,0,0) {	
+      // Assert maxrank, maxnamesize
+      assert(rank < MaxRank);assert(strlen(name) < maxNameSize);
+      strncpy(_name, name, maxNameSize);
         _type = type;
         _rank = rank;
     }
-
-  Name(const char* name, int& type, int& rank) : _alg("",0,0,0) {
-        strncpy(_name, name, maxNameSize);
-        _type = DataType(type);
-        _rank = rank;
-    }
-
-
   
     Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
+        assert(rank < MaxRank);assert(sizeof(name) < maxNameSize);      
         strncpy(_name, name, maxNameSize);
         _type = type;
         _rank = rank;
     }
 
+    Name(const char* name, Alg& alg) : _alg(alg) {
+	assert(sizeof(name) < maxNameSize);
+        strncpy(_name, name, maxNameSize);
+        _type = Name::UINT8;
+        _rank = 1;
+    }
+       
     const char* name() {return _name;}
     DataType    type() {return _type;}
     uint32_t    rank() {return _rank;}
     Alg&        alg()  {return _alg;}
-
+  
 private:
     Alg      _alg;
     char     _name[maxNameSize];
@@ -86,10 +100,12 @@ private:
     uint32_t _rank;
 };
 
+
+
 class Shape
 {
 public:
-    Shape(unsigned shape[Name::MaxRank])
+  Shape(unsigned shape[Name::MaxRank])
     {
         memcpy(_shape, shape, sizeof(int) * Name::MaxRank);
     }
@@ -109,20 +125,20 @@ private:
 // the child Shapes or Data extent is increased.  the hope is that this
 // will make management of the Xtc's less error prone, at the price
 // of some performance (more calls to Xtc::alloc())
-class AutoParentAlloc : public XtcData::Xtc
+class AutoParentAlloc : public Xtc
 {
 public:
-    AutoParentAlloc(XtcData::TypeId typeId) : XtcData::Xtc(typeId)
+    AutoParentAlloc(TypeId typeId) : Xtc(typeId)
     {
     }
-    void* alloc(uint32_t size, XtcData::Xtc& parent) {
+    void* alloc(uint32_t size, Xtc& parent) {
         parent.alloc(size);
-        return XtcData::Xtc::alloc(size);
+        return Xtc::alloc(size);
     }
-    void* alloc(uint32_t size, XtcData::Xtc& parent, XtcData::Xtc& superparent) {
+    void* alloc(uint32_t size, Xtc& parent, Xtc& superparent) {
         superparent.alloc(size);
         parent.alloc(size);
-        return XtcData::Xtc::alloc(size);
+        return Xtc::alloc(size);
     }
 };
 
@@ -142,8 +158,13 @@ class Names : public AutoParentAlloc
 {
 public:
 
+<<<<<<< HEAD
     Names(const char* detName, Alg& alg, const char* detType, const char* detId, unsigned segment=0) :
         AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Names,0)),
+=======
+    Names(const char* detName, Alg& alg, const char* detType, unsigned segment=0) :
+        AutoParentAlloc(TypeId(TypeId::Names,0)),
+>>>>>>> Added DescData and ShapesData to XtcData namespace, protection against nameindex error, added asserts for maxrank, maxnamesize limits, fix wasted space in CreateData ctor, expanded DataType enum, added type checking in set_value
         _alg(alg),
         _segment(segment)
     {
@@ -151,7 +172,7 @@ public:
         strncpy(_detType, detType, maxNameSize);
         strncpy(_detId,   detId,   maxNameSize);
         // allocate space for our private data
-        XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
+        Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
 
     const char* detName() {return _detName;}
@@ -173,55 +194,28 @@ public:
         return sizeOfNames / sizeof(Name);
     }
 
-    // Add new item to Names
-    void add(XtcData::Xtc& parent, const char* name, Name::DataType type, int rank=0)
+    unsigned numArrays(){return _numArrays;};
+ 
+    void add(Xtc& parent, VarDef& V)
     {
-        void* ptr = alloc(sizeof(Name), parent);
-        new (ptr) Name(name, type, rank);
-    }
+      for(auto const & elem: V.NameVec)
+      	{
+      	  void* ptr = alloc(sizeof(Name), parent);
+      	  new (ptr) Name(elem);
+	  
+	  if(Name(elem).rank() > 0){_numArrays++;};
 
-    // Add new item to Names
-    void add(XtcData::Xtc& parent, const char* name, Alg& alg)
-    {
-        void* ptr = alloc(sizeof(Name), parent);
-        new (ptr) Name(name, Name::UINT8, 1, alg); // Assume array of bytes
-    }
+      	};
 
-
-  template<class T>
-      void add_vec(XtcData::Xtc& parent)
-    {
-      //   T *tmp = new T();
-
-       	// for(auto const& elem: T().detVec)
-	// {
-	//   	 printf("%s\t%i\t%i\n", elem.name,elem.type,elem.rank);
-
-	// };
-	
-      for(int i = 0; i !=T::maxNum; i++){
-
-	void* ptr = alloc(sizeof(Name), parent);
-	//	printf("%s\t%i\t%i\n", T().detVec[i].name,T().detVec[i].type,T().detVec[i].rank);
-	
-	new (ptr) Name(T().detVec[i].name, T().detVec[i].type,T().detVec[i].rank);
-      }
-       
-    }
-
-    template<class T>
-    void add_vec(XtcData::Xtc& parent, Alg& alg)
-    {
-      //   T *tmp = new T();
-      
-      for(int i = 0; i !=T::maxNum; i++){	
-	void* ptr = alloc(sizeof(Name), parent);	
-	new (ptr) Name(T().detVec[i].name, Name::UINT8, 1, alg);
-      }
-       
     }
   
+    
 private:
+<<<<<<< HEAD
+=======
+    unsigned _numArrays=0;
+    char     _detType[maxNameSize];
+>>>>>>> Added DescData and ShapesData to XtcData namespace, protection against nameindex error, added asserts for maxrank, maxnamesize limits, fix wasted space in CreateData ctor, expanded DataType enum, added type checking in set_value
     char     _detName[maxNameSize];
     char     _detType[maxNameSize];
     char     _detId[maxNameSize];
@@ -233,8 +227,8 @@ private:
 class Data : public AutoParentAlloc
 {
 public:
-    Data(XtcData::Xtc& superparent) : 
-        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Data,0))
+    Data(Xtc& superparent) : 
+        AutoParentAlloc(TypeId(TypeId::Data,0))
     {
         // go two levels up to "auto-alloc" Data Xtc header size
         superparent.alloc(sizeof(*this));
@@ -244,12 +238,12 @@ public:
 class Shapes : public AutoParentAlloc
 {
 public:
-    Shapes(XtcData::Xtc& superparent, uint32_t namesId) :
-        AutoParentAlloc(XtcData::TypeId(XtcData::TypeId::Shapes,0)),
+    Shapes(Xtc& superparent, uint32_t namesId) :
+        AutoParentAlloc(TypeId(TypeId::Shapes,0)),
         _namesId(namesId)
     {
         // allocate space for our private data
-        XtcData::Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
+        Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
         // go two levels up to "auto-alloc" Shapes size
         superparent.alloc(sizeof(*this));
     }
@@ -265,21 +259,21 @@ private:
     uint32_t _namesId;
 };
 
-class ShapesData : public XtcData::Xtc
+class ShapesData : public Xtc
 {
 public:
-    ShapesData() : XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::ShapesData,0)) {}
+    ShapesData() : Xtc(TypeId(TypeId::ShapesData,0)) {}
 
     Data& data()
     {
         if (_firstIsShapes()) {
             Data& d = reinterpret_cast<Data&>(_second());
-            assert(d.contains.id()==XtcData::TypeId::Data);
+            assert(d.contains.id()==TypeId::Data);
             return d;
         }
         else {
             Data& d = reinterpret_cast<Data&>(_first());
-            assert(d.contains.id()==XtcData::TypeId::Data);
+            assert(d.contains.id()==TypeId::Data);
             return d;
         }
     }
@@ -292,25 +286,26 @@ public:
         }
         else {
             Shapes& d = reinterpret_cast<Shapes&>(_second());
-            assert(d.contains.id()==XtcData::TypeId::Shapes);
+            assert(d.contains.id()==TypeId::Shapes);
             return d;
         }
     }
 
 private:
-    XtcData::Xtc& _first() {
-        return *(XtcData::Xtc*)payload();
+    Xtc& _first() {
+        return *(Xtc*)payload();
     }
 
-    XtcData::Xtc& _second() {
+    Xtc& _second() {
         return *_first().next();
     }
 
     bool _firstIsShapes() {
-        return _first().contains.id()==XtcData::TypeId::Shapes;
+        return _first().contains.id()==TypeId::Shapes;
     }
 
 };
-
+};
+//}
 
 #endif // SHAPESDATA__H

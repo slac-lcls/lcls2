@@ -272,15 +272,15 @@ void worker(PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, u
             // configure transition
             if (counter == 0) {
                 add_roi_names(dgram.xtc, namesVec);
-                // add_hsd_names(dgram.xtc, namesVec);
+                // add_hsd_Snames(dgram.xtc, namesVec);
             }
             // making real fex data for event
             else {
                 // need to make more robust: have to match this index
                 // to pick up the correct array element in add_NNN_names
                 unsigned nameId = 0;
-                roiExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers);
-                // hsdExample(dgram.xtc, namesVec[nameId], nameId, pebble_data, dma_buffers, lanes);
+                roiExample(dgram.xtc, namesVec, nameId, pebble_data, dma_buffers);
+                // hsdExample(dgram.xtc, namesVec, nameId, pebble_data, dma_buffers, lanes);
             }
         }
 

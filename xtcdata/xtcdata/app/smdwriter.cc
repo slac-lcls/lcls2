@@ -1,3 +1,4 @@
+
 #include <fcntl.h>
 #include <map>
 #include <stdio.h>
@@ -28,21 +29,20 @@ class SmdDef:public VarDef
 public:
   enum index
     {
-      intOffset,
-      maxNum
+      intOffset
     };
 
    SmdDef()
    {
-     detVec.push_back({"intOffset", UINT64});
+     NameVec.push_back({"intOffset", Name::UINT64});
    }
-};
+} SmdDef;
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) 
 {
   Alg alg("offsetAlg",0,0,0);
   Names& fexNames = *new(parent) Names("info", alg, "offset", "");
-  fexNames.add_vec<SmdDef>(parent);
+  fexNames.add(parent,SmdDef);
   namesVec.push_back(NameIndex(fexNames));
 }
 
@@ -114,7 +114,10 @@ int main(int argc, char* argv[])
   // Writing out data
   void* buf = malloc(BUFSIZE);
   unsigned eventId = 0;
-  unsigned nowOffset = 0;
+  //  unsigned nowOffset = 0;
+  uint64_t nowOffset = 0;
+
+  
   while ((dgIn = iter.next())) {
     Dgram& dgOut = *(Dgram*)buf;
     TypeId tid(TypeId::Parent, 0);
@@ -123,7 +126,7 @@ int main(int argc, char* argv[])
     dgOut.xtc.extent = sizeof(Xtc);
 
     unsigned nameId = 0; // smd only has one nameId
-    CreateData smd(dgOut.xtc, namesVec[nameId], nameId);
+    CreateData smd(dgOut.xtc, namesVec, nameId);
     smd.set_value(SmdDef::intOffset, nowOffset);
     
     printf("Read evt: %4d Dgram size: %8lu Payload size: %8d Writing offset: %10d\n", 

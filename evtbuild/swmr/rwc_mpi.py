@@ -29,18 +29,18 @@ def clear_files(path):
         else:
             time.sleep(0.2)
 
-cores_per_group = world_size / 3
-node_count =  3
-array_inds = np.array_split(np.arange(node_count),3)
+task_count = 3
+cores_per_group = world_size / task_count
+array_inds = np.array_split(np.arange(task_count),task_count)
 
-if world_rank % node_count in array_inds[0]:
+if world_rank % task_count in array_inds[0]:
     color = 0 # reader
     if world_rank == 0:
         color = 4
-elif world_rank % node_count in array_inds[1]:
-    color = 1 # filter
-elif world_rank % node_count in array_inds[2]:
-    color = 2 # copier
+elif world_rank % task_count in array_inds[1]:
+    color = 1 # copier
+elif world_rank % task_count in array_inds[2]:
+    color = 2 # filter
 
 key = world_rank % cores_per_group
 
@@ -61,12 +61,13 @@ world_comm.Barrier()
 #print('Passing to read/write')
 if color == 0:
  #   pass
+    print("%i is a writer", world_rank)
     write_files(comm) # write
 elif color == 1:
-    pass
-    #    #comm_test(color,comm,rank,size)
-   # read_files(comm, 1) # filter
-elif color == 2:
    # pass
+    #    #comm_test(color,comm,rank,size)
     read_files(comm, 0) # copy
+elif color == 2:
+#    pass
+    read_files(comm, 0) # filter
 

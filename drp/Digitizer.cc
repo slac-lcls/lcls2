@@ -1,4 +1,6 @@
+
 #include "Digitizer.hh"
+
 #include "xtcdata/xtc/VarDef.hh"
 
 
@@ -13,21 +15,24 @@ public:
       chan1,
       chan2,
       chan3,
-      maxNum
     };
 
+  
    HsdDef()
    {
-     detVec.push_back({"chan0"});
-     detVec.push_back({"chan1"});
-     detVec.push_back({"chan2"});
-     detVec.push_back({"chan3"});
-   }
-};
+     Alg alg("hsdchan",1,2,3);
+     NameVec.push_back({"chan0",alg});
+     NameVec.push_back({"chan1",alg});
+     NameVec.push_back({"chan2",alg});
+     NameVec.push_back({"chan3",alg});
 
-void hsdExample(Xtc& parent, NameIndex& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers, std::vector<unsigned>& lanes)
+     
+   }
+} HsdDef;
+
+void hsdExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers, std::vector<unsigned>& lanes)
 {
-    CreateData hsd(parent, nameindex, nameId);
+    CreateData hsd(parent, NamesVec, nameId);
     PGPBuffer* buffers = pebble_data->pgp_data->buffers;
     uint32_t shape[1];
     for (unsigned i=0; i<lanes.size(); i++) {
@@ -40,7 +45,7 @@ void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
     Alg hsdAlg("hsdalg",1,2,3);
     Names& fexNames = *new(parent) Names("xpphsd", hsdAlg, "hsd", "detnum1234");
     
-    Alg alg("hsdchan",1,2,3);
-    fexNames.add_vec<HsdDef>(parent, alg);
+    
+    fexNames.add(parent, HsdDef);
     namesVec.push_back(NameIndex(fexNames));
 }

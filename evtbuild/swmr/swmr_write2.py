@@ -158,7 +158,7 @@ def client(comm):
                 small_ts_dset.resize((shape[0]+batch_size,)) 
                 small_ts_dset[-batch_size:] = np.arange(batch_size) + batch_size*(batch_num-1)
                 small_file.flush()
-                print("Small data shape is ", small_ts_dset.shape[0])
+               # print("Small data shape is ", small_ts_dset.shape[0])
                 
             # Write the last image as all zeros as a flag to 
             # the readers that they've reached the end of the file

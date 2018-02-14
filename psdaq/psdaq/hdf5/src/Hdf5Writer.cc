@@ -6,7 +6,7 @@
 
 #define _unused(x) ((void)(x))
 
-Dataset::Dataset(hid_t file_id, Name& name, const uint32_t* shape)
+Dataset::Dataset(hid_t file_id, XtcData::Name& name, const uint32_t* shape)
 {
     int ndims = name.rank() + 1;
     std::vector<hsize_t> maxDims(ndims);
@@ -42,23 +42,23 @@ Dataset::Dataset(hid_t file_id, Name& name, const uint32_t* shape)
     }
 
     switch (name.type()) {
-    case Name::UINT8: {
+    case XtcData::Name::UINT8: {
         m_typeId = H5T_NATIVE_UINT8;
         break;
     }
-    case Name::UINT16: {
+    case XtcData::Name::UINT16: {
         m_typeId = H5T_NATIVE_UINT16;
         break;
     }
-    case Name::INT32: {
+    case XtcData::Name::INT32: {
         m_typeId = H5T_NATIVE_INT32;
         break;
     }
-    case Name::FLOAT: {
+    case XtcData::Name::FLOAT: {
         m_typeId = H5T_NATIVE_FLOAT;
         break;
     }
-    case Name::DOUBLE: {
+    case XtcData::Name::DOUBLE: {
         m_typeId = H5T_NATIVE_DOUBLE;
         break;
     }
@@ -120,7 +120,7 @@ Dataset::Dataset(Dataset&& d)
     m_dims_extend = std::move(d.m_dims_extend);
 }
 
-HDF5File::HDF5File(const char* name, std::vector<NameIndex>& namesVec) :
+HDF5File::HDF5File(const char* name, std::vector<XtcData::NameIndex>& namesVec) :
     XtcIterator(), _namesVec(namesVec)
 {
     faplId = H5Pcreate(H5P_FILE_ACCESS);
@@ -135,11 +135,11 @@ void HDF5File::save(XtcData::Dgram& dgram) {
     iterate(&dgram.xtc);
 }
 
-void HDF5File::addDatasets(DescData& descdata)
+void HDF5File::addDatasets(XtcData::DescData& descdata)
 {
-    Names& names = descdata.nameindex().names();
+    XtcData::Names& names = descdata.nameindex().names();
     for (unsigned i = 0; i < names.num(); i++) {
-        Name& name = names.get(i);
+        XtcData::Name& name = names.get(i);
         const char* namechar = name.name();
         std::string namestr(namechar);
         auto it = m_datasets.find(namestr);
@@ -152,11 +152,11 @@ void HDF5File::addDatasets(DescData& descdata)
     }
 }
 
-void HDF5File::appendData(DescData& descdata)
+void HDF5File::appendData(XtcData::DescData& descdata)
 {
-    Names& names = descdata.nameindex().names();
+    XtcData::Names& names = descdata.nameindex().names();
     for (unsigned i = 0; i < names.num(); i++) {
-        Name& name = names.get(i);
+        XtcData::Name& name = names.get(i);
         const char* namechar = name.name();
         std::string namestr(namechar);
         auto it = m_datasets.find(namestr);
