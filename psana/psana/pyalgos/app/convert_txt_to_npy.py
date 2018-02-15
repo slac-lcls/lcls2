@@ -35,8 +35,8 @@ def shape_and_size_from_string(s) :
 ##-----------------------------------------------------
 
 def parse_input_pars() :
-    #print 'len(sys.argv)', len(sys.argv)
-    #print sys.argv
+    #print('len(sys.argv)', len(sys.argv))
+    #print(sys.argv)
     
     if len(sys.argv)<3 : print_exit(1) 
     if len(sys.argv)>4 : print_exit(1) 
@@ -62,7 +62,7 @@ def do_main() :
         if size != nda.size : print_exit(3, size, nda.size) 
         nda.shape = shape 
 
-    print 'Convert %s to %s with shape=%s' % (finp, fout, str(shape))
+    print('Convert %s to %s with shape=%s' % (finp, fout, str(shape)))
 
     np.save(fout, nda)
 

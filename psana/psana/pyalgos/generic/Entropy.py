@@ -158,6 +158,18 @@ def test_entropy():
 
 #------------------------------
 
+def unitest_entropy():
+    import sys
+    from psana.pyalgos.generic.NDArrGenerators import random_standard
+    print('In %s' % sys._getframe().f_code.co_name)
+    np.random.seed(42)
+    arr_int16 = random_standard(shape=(100000,), mu=200, sigma=25, dtype=np.int16)
+    ent1 = entropy(arr_int16);
+    print('entropy(arr_int16) = %.6f' % ent1)
+    assert('%.6f'%ent1 == '6.690948')
+
+#------------------------------
+
 if __name__ == "__main__" :
     import sys; global sys
 
@@ -165,6 +177,7 @@ if __name__ == "__main__" :
     print(50*'_', '\nTest %s' % tname)
     if   tname == '0': test_entropy()
     elif tname == '1': test_entropy()
+    elif tname == '2': unitest_entropy()
     else : sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of Test %s' % tname)
 

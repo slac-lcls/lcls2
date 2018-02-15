@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+####!/usr/bin/env python
 ####!@PYTHON@
-###
+
 #------------------------------
 import os
 import sys
