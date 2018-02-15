@@ -5,11 +5,20 @@ source setup_env.sh
 # choose local directory where packages will be installed
 export INSTDIR=`pwd`/install
 
+if [ "$#" -eq  "0" ]
+  then
+      cmake_option="-DCMAKE_INSTALL_PREFIX=$INSTDIR"
+      echo $cmake_option
+  else
+      cmake_option="-DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_BUILD_TYPE=$1"
+      echo $cmake_option
+fi
+
 # to build xtcdata with cmake
 cd xtcdata
 mkdir -p build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR ..
+cmake $cmake_option ..
 make -j 4 install
 cd ../..
 
@@ -17,7 +26,7 @@ cd ../..
 cd psdaq
 mkdir -p build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR ..
+cmake $cmake_option ..
 make -j 4 install
 cd ../..
 
