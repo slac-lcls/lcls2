@@ -4,12 +4,12 @@ import getopt
 import pprint
 
 from psana import dgram
-from .pydgram import PyDgram
-from .event import Event
+from psana.pydgram import PyDgram
+from psana.event import Event
 
 class DataSource:
     """Stores variables and arrays loaded from an XTC source.\n"""
-    def __init__(self, expStr, verbose=0, debug=0):
+    def __init__(self, expStr):
         ### Parameter expStr can be an xtc filename or 
         ### an 'exp=expid:run=runno' string
         if os.path.isfile(expStr):
@@ -24,9 +24,7 @@ class DataSource:
         for xtcdata_filename in self.xtcFiles:
             fd = os.open(xtcdata_filename,
                          os.O_RDONLY|os.O_LARGEFILE)
-            self._configs.append(dgram.Dgram(file_descriptor=fd,
-                                                 verbose=verbose,
-                                                 debug=debug))
+            self._configs.append(dgram.Dgram(file_descriptor=fd))
             self.configs.append(PyDgram(self._configs[-1]))
         
     def __iter__(self):
@@ -47,38 +45,15 @@ class DataSource:
         event = Event(dgrams=[PyDgram(d)])
         return event
 
-    def _get_verbose(self):
-        return getattr(self._config, "verbose")
-    def _set_verbose(self, value):
-        setattr(self._config, "verbose", value)
-    _verbose = property(_get_verbose, _set_verbose)
-
-    def _get_debug(self):
-        return getattr(self._config, "debug")
-    def _set_debug(self, value):
-        setattr(self._config, "debug", value)
-    _debug = property(_get_debug, _set_debug)
-
-
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
-    verbose=0
-    debug=0
     xtcdata_filename="data.xtc"
     for option, parameter in opts:
         if option=='-h': usage_error()
-        if option=='-v': verbose+=1
-        if option=='-d': debug = int(parameter)
         if option=='-f': xtcdata_filename = parameter
     if xtcdata_filename is None:
         xtcdata_filename="data.xtc"
-    if verbose>0:
-        sys.stdout.write("xtcdata filename: %s\n" % xtcdata_filename)
-        sys.stdout.write("verbose: %d\n" % verbose)
-        sys.stdout.write("debug: %d\n" % debug)
-    elif debug>0:
-        sys.stdout.write("debug: %d\n" % debug)
-    return (args_proper, xtcdata_filename, verbose, debug)
+    return (args_proper, xtcdata_filename)
 
 def getMemUsage():
     pid=os.getpid()
@@ -89,35 +64,37 @@ def getMemUsage():
     return size
 
 def main():
-    args_proper, xtcdata_filename, verbose, debug = parse_command_line()
-    ds=DataSource(xtcdata_filename, verbose=verbose, debug=debug)
+    args_proper, xtcdata_filename = parse_command_line()
+    ds=DataSource(xtcdata_filename)
     print("vars(ds):")
     for var_name in sorted(vars(ds)):
         print("  %s:" % var_name)
         e=getattr(ds, var_name)
-        for key in sorted(e.__dict__.keys()):
-            print("%s: %s" % (key, e.__dict__[key]))
+        if not isinstance(e, (tuple, list, int, float, str)):
+            for key in sorted(e.__dict__.keys()):
+                print("%s: %s" % (key, e.__dict__[key]))
     print()
     count=0
     for evt in ds:
         print("evt:", count)
-        for var_name in sorted(vars(evt)):
-            e=getattr(evt, var_name)
-            print("  %s: %s" % (var_name, e))
-        a=evt.array0Pgp
-        try:
-            a[0][0]=999
-        except ValueError:
-            print("The evt.array0_pgp array is read-only, as it should be.")
-        else:
-            print("Warning: the evt.array0_pgp array is writable")
-        print()
+        for pydgram in evt:
+            for var_name in sorted(vars(pydgram)):
+                val=getattr(pydgram, var_name)
+                print("  %s: %s" % (var_name, val))
+            a=pydgram.xpphsd.raw.array0Pgp
+            try:
+                a[0][0]=999
+            except ValueError:
+                print("The pydgram.xpphsd.raw.array0Pgp is read-only, as it should be.")
+            else:
+                print("Warning: the evt.array0_pgp array is writable")
+            print()
         count+=1
     return
 
 def usage_error():
     s="usage: python %s" %  os.path.basename(sys.argv[0])
-    sys.stdout.write("%s [-h] [-v] [-d <DEBUG_NUMBER>]\n" % s)
+    sys.stdout.write("%s [-h]\n" % s)
     sys.stdout.write("%s [-f xtcdata_filename]\n" % (" "*len(s)))
     sys.exit(1)
 
