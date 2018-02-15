@@ -43,23 +43,9 @@ typedef struct {
     PhysicalRegion physical;
 #endif
     int file_descriptor;
-    int verbose;
-    int debug;
     int offset;
     Py_buffer buf;
 } PyDgramObject;
-
-static void write_object_info(PyDgramObject* self, PyObject* obj, const char* comment)
-{
-    if (self->verbose > 0) {
-        printf("VERBOSE=%d; %s\n", self->verbose, comment);
-        fflush(stdout);
-        printf("VERBOSE=%d;  self->debug=%d\n", self->verbose, self->debug);
-        printf("VERBOSE=%d;  self=%p\n", self->verbose, self);
-        printf("VERBOSE=%d;  Py_REFCNT(self)=%d\n", self->verbose, (int)Py_REFCNT(self));
-        fflush(stdout);
-    }
-}
 
 static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     const char* algName = alg.name();
@@ -151,8 +137,33 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
+            case Name::UINT32: {
+                const int tempVal = descdata.get_value<uint32_t>(tempName);
+                newobj = Py_BuildValue("i", tempVal);
+                break;
+            }
+            case Name::UINT64: {
+                const int tempVal = descdata.get_value<uint64_t>(tempName);
+                newobj = Py_BuildValue("i", tempVal);
+                break;
+            }
+            case Name::INT8: {
+                const int tempVal = descdata.get_value<int8_t>(tempName);
+                newobj = Py_BuildValue("i", tempVal);
+                break;
+            }
+            case Name::INT16: {
+                const int tempVal = descdata.get_value<int16_t>(tempName);
+                newobj = Py_BuildValue("i", tempVal);
+                break;
+            }
             case Name::INT32: {
                 const int tempVal = descdata.get_value<int32_t>(tempName);
+                newobj = Py_BuildValue("i", tempVal);
+                break;
+            }
+            case Name::INT64: {
+                const int tempVal = descdata.get_value<int64_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
@@ -184,9 +195,34 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                                                    NPY_UINT16, descdata.address(i));
                 break;
             }
+            case Name::UINT32: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_UINT32, descdata.address(i));
+                break;
+            }
+            case Name::UINT64: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_UINT64, descdata.address(i));
+                break;
+            }
+            case Name::INT8: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_INT8, descdata.address(i));
+                break;
+            }
+            case Name::INT16: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_INT16, descdata.address(i));
+                break;
+            }
             case Name::INT32: {
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
                                                    NPY_INT32, descdata.address(i));
+                break;
+            }
+            case Name::INT64: {
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_INT64, descdata.address(i));
                 break;
             }
             case Name::FLOAT: {
@@ -200,19 +236,14 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 break;
             }
             }
-            if ( (pyDgram->debug & 0x01) != 0 ) {
-                // place holder for old-style pointer management -- this should be remove at some point
-                printf("Warning: using old-style pointer management in DictAssign() (i.e. debug=1)\n");
-            } else {
-                // New default behaviour
-                if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
-                    char s[TMPSTRINGSIZE];
-                    snprintf(s, TMPSTRINGSIZE, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
-                    PyErr_SetString(PyExc_StopIteration, s);
-                    return;
-                }
-                Py_INCREF(pyDgram);
+            // New default behaviour
+            if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
+                char s[TMPSTRINGSIZE];
+                snprintf(s, TMPSTRINGSIZE, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
+                PyErr_SetString(PyExc_StopIteration, s);
+                return;
             }
+            Py_INCREF(pyDgram);
             //clear NPY_ARRAY_WRITEABLE flag
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
@@ -270,7 +301,6 @@ private:
 
 static void dgram_dealloc(PyDgramObject* self)
 {
-    write_object_info(self, NULL, "Top of dgram_dealloc()");
     Py_XDECREF(self->dict);
 #ifndef PSANA_USE_LEGION
     if (self->buf.buf == NULL) {
@@ -303,25 +333,19 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
     static char* kwlist[] = {(char*)"file_descriptor",
                              (char*)"config",
-                             (char*)"verbose",
-                             (char*)"debug",
                              (char*)"offset",
                              (char*)"view",
                              NULL};
     int fd=0;
     bool isConfig;
     PyObject* configDgram=0;
-    self->verbose=0;
-    self->debug=0;
     self->offset=0;
     bool isView;
     PyObject* view=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iO$iiiO", kwlist,
+                                     "|iO$iO", kwlist,
                                      &fd,
                                      &configDgram,
-                                     &(self->verbose),
-                                     &(self->debug),
                                      &(self->offset),
                                      &view)) {
         return -1;
@@ -457,14 +481,6 @@ static PyMemberDef dgram_members[] = {
       T_INT, offsetof(PyDgramObject, file_descriptor),
       0,
       (char*)"attribute file_descriptor" },
-    { (char*)"verbose",
-      T_INT, offsetof(PyDgramObject, verbose),
-      0,
-      (char*)"attribute verbose" },
-    { (char*)"debug",
-      T_INT, offsetof(PyDgramObject, debug),
-      0,
-      (char*)"attribute debug" },
     { (char*)"offset",
       T_INT, offsetof(PyDgramObject, offset),
       0,
@@ -477,32 +493,9 @@ PyObject* tp_getattro(PyObject* obj, PyObject* key)
 {
     PyObject* res = PyDict_GetItem(((PyDgramObject*)obj)->dict, key);
     if (res != NULL) {
-        if ( (((PyDgramObject*)obj)->debug & 0x01) != 0 ) {
-            // old-style pointer management -- this should be remove at some point
-            printf("Warning: using old-style pointer management in tp_getattro() (i.e. debug=1)\n");
-            if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
-                PyArrayObject* arr = (PyArrayObject*)res;
-                PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
-                                                               PyArray_DESCR(arr)->type_num, PyArray_DATA(arr));
-                if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, (PyObject*)obj) < 0) {
-                    printf("Failed to set BaseObject for numpy array.\n");
-                    return 0;
-                }
-                // this reference count will get decremented when the returned
-                // array is deleted (since the array has us as the "base" object).
-                Py_INCREF(obj);
-                //return arr_copy;
-                res=arr_copy;
-            } else {
-                // this reference count will get decremented when the returned
-                // variable is deleted, so must increment here.
-                Py_INCREF(res);
-            }
-        } else {
-            // New default behaviour
-            Py_INCREF(res);
-            PyDict_DelItem(((PyDgramObject*)obj)->dict, key);
-        }
+        // New default behaviour
+        Py_INCREF(res);
+        PyDict_DelItem(((PyDgramObject*)obj)->dict, key);
     } else {
         res = PyObject_GenericGetAttr(obj, key);
     }
