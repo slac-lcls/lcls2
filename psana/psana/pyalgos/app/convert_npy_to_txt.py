@@ -16,8 +16,8 @@ def print_exit(case) :
 ##-----------------------------------------------------
 
 def parse_input_pars() :
-    #print 'len(sys.argv)', len(sys.argv)
-    #print sys.argv
+    #print('len(sys.argv)', len(sys.argv))
+    #print(sys.argv)
     
     if len(sys.argv)!=3 : print_exit(1) 
 
@@ -36,7 +36,7 @@ def do_main() :
 
     nda =  np.load(finp)
 
-    print 'Convert %s to %s' % (finp, fout)
+    print('Convert %s to %s' % (finp, fout))
 
     if   nda.size == 32*185*388 : nda.shape = (32*185, 388)
     elif nda.size ==  2*185*388 :

@@ -6,7 +6,7 @@
 Usage::
 
     # Import
-    import psana.pyalgos.generic.Template as xxx
+    import psana.pyalgos.generic.Template as xx
 
     # Methods
     #resp = xx.<method(pars)>
@@ -15,7 +15,7 @@ See:
     - :py:class:`Utils`
     - :py:class:`NDArrUtils`
     - :py:class:`Graphics`
-    - `matplotlib <https://matplotlib.org/contents.html>`_.
+    - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
 
 This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
@@ -28,12 +28,12 @@ Adopted for LCLS2 on 2018-02-09
 import os
 import sys
 import numpy as np
-import pyalgos.generic.Utils as ut
+import psana.pyalgos.generic.Template as gtmp
 
 #------------------------------
 
 import logging
-logger = logging.getLogger('Utils')
+logger = logging.getLogger('Template')
 
 #------------------------------
 

@@ -20,11 +20,19 @@ dgram_module = Extension('psana.dgram',
 setup(name = 'psana',
        version = '0.1',
        description = 'LCLS II analysis package',
-       #include_package_data = True,
        #packages = find_packages(),
-       packages = ['psana', 'psana.detector', 'psana.pscalib', 'psana.pyalgos'],
+       packages = ['psana', 'psana.detector', 'psana.pyalgos.generic'],
        #cmdclass = {'build': dgram_build, 'build_ext': dgram_build_ext},
-       ext_modules = [dgram_module])
+       ext_modules = [dgram_module],
+       entry_points={
+            'console_scripts': [
+                'convert_npy_to_txt  = psana.pyalgos.app.convert_npy_to_txt:do_main',
+                'convert_txt_to_npy  = psana.pyalgos.app.convert_txt_to_npy:do_main',
+                'merge_mask_ndarrays = psana.pyalgos.app.merge_mask_ndarrays:do_main',
+                'merge_max_ndarrays  = psana.pyalgos.app.merge_max_ndarrays:do_main',
+            ]
+       },
+)
 
 
 

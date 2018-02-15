@@ -7,13 +7,14 @@ Usage::
 
     # assuming that $PYTHONPATH=.../lcls2/psana
     # Import
-    import pyalgos.generic.Utils as gu
+    import psana.pyalgos.generic.Utils as gu
 
     # Methods
     #resp = gu.<method(pars)>
 
     ts    = gu.str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z', time_sec=None)
     tsec, ts = gu.time_and_stamp(fmt='%Y-%m-%dT%H:%M:%S%z', time_sec=None)
+    tsec  = gu.time_sec_from_stamp(fmt='%Y-%m-%dT%H:%M:%S%z', time_stamp='1970-01-01T00:00:00-0800')
     usr   = gu.get_enviroment(env='USER')
     usr   = gu.get_login()
     host  = gu.get_hostname()
@@ -34,6 +35,7 @@ Usage::
 
 See:
     - :py:class:`Utils`
+    - :py:class:`PSUtils`
     - :py:class:`NDArrUtils`
     - :py:class:`Graphics`
 
@@ -234,7 +236,6 @@ def replace(template, pattern, subst) :
         return '%s%s%s' % (fields[0], subst, fields[1])
     else :
         return template
-
 
 #------------------------------
 
