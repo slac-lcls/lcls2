@@ -52,9 +52,8 @@ private:
 
 class Name {
 public:
-     enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE, UINT64, UINT32, INT8, INT16, INT64};
-  // Not sure why there is a type error if out of this particular sequence
-  //  enum DataType { UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE};
+    // needs to agree with sizes in ShapesData.cc
+    enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE, UINT64, UINT32, INT8, INT16, INT64};
     static int get_element_size(DataType type);
 
     enum {MaxRank=5};
