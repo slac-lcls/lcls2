@@ -21,15 +21,15 @@ def test_hbins():
 
 #------------------------------
 
-def test_utils():
-    print('In pyalgos.test_utils')
-    import psana.pyalgos.generic.Utils as gu
-    assert(gu.get_enviroment(env='USER') == gu.get_login()) 
-    fmt = '%Y-%m-%dT%H:%M:%S%z'
-    tsec = 1518640378
-    tstamp = '2018-02-14T12:32:58-0800'
-    assert(gu.str_tstamp(fmt, tsec) == tstamp)
-    assert(gu.time_sec_from_stamp(fmt, tstamp) == tsec)
+#def test_utils():
+#    print('In pyalgos.test_utils')
+#    import psana.pyalgos.generic.Utils as gu
+#    assert(gu.get_enviroment(env='USER') == gu.get_login()) 
+#    fmt = '%Y-%m-%dT%H:%M:%S%z'
+#    tsec = 1518640378
+#    tstamp = '2018-02-14T12:32:58-0800'
+#    assert(gu.str_tstamp(fmt, tsec) == tstamp)
+#    assert(gu.time_sec_from_stamp(fmt, tstamp) == tsec)
 
 #------------------------------
 
@@ -43,7 +43,7 @@ def test_entropy():
 def pyalgos() :
     test_pyalgos()
     test_hbins()
-    test_utils()
+    #test_utils()
     test_entropy()
 
 #------------------------------
