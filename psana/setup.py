@@ -14,7 +14,7 @@ dgram_module = Extension('psana.dgram',
                          libraries = ['xtcdata'],
                          include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
                          library_dirs = [os.path.join(xtcdata, 'lib')],
-                         extra_link_args = ['-Wl,-rpath='+ os.path.join(xtcdata, 'lib')],
+                         extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
                          extra_compile_args=['-std=c++11'])
 
 setup(name = 'psana',
