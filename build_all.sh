@@ -28,6 +28,8 @@ mkdir -p $INSTDIR/lib/python$pyver/site-packages/
 
 # to build psana with setuptools
 cd psana
+# force build of the dgram extention
+python setup.py build_ext --xtcdata=$INSTDIR -f --inplace
 python setup.py develop --xtcdata=$INSTDIR --prefix=$INSTDIR
 cd ..
 # build ami
