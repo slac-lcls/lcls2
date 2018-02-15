@@ -56,7 +56,7 @@ public:
    {
        NameVec.push_back({"floatFex",Name::FLOAT});
        NameVec.push_back({"arrayFex",Name::FLOAT,2});
-       NameVec.push_back({"intFex",Name::INT8});
+       NameVec.push_back({"intFex",Name::INT32});
    }
 } FexDef;
 
@@ -228,7 +228,7 @@ void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
     shape[1]=3;
     for (unsigned i=0; i<shape[0]*shape[1]; i++) ptr[i] = 142.0+i;
     fex.set_array_shape(FexDef::arrayFex,shape);
-    fex.set_value(FexDef::intFex, (int8_t)42);
+    fex.set_value(FexDef::intFex, (int32_t)42);
 }
 
 void padExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
