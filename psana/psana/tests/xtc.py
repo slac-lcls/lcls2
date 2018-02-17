@@ -12,24 +12,24 @@ def myroutine2():
   arr1 = pydgram.xpphsd.raw.array0Pgp
   dgramObj=arr1.base
   assert getref(arr1)==3
-  assert getref(dgramObj)==6
+  assert getref(dgramObj)==7
   s1 = arr1[2:4]
   assert s1.base is arr1
   assert getref(arr1)==4
   assert getref(s1)==2
 
   arr2 = pydgram.xpphsd.raw.array0Pgp
-  assert getref(dgramObj)==6
+  assert getref(dgramObj)==7
   s2 = arr2[3:5]
   assert s2.base is arr2
-  assert getref(dgramObj)==6
+  assert getref(dgramObj)==7
   assert getref(arr2)==6
 
   arr3 = pydgram.xppcspad.raw.arrayRaw
-  assert getref(dgramObj)==6
+  assert getref(dgramObj)==7
   print(arr3, arr3.dtype)
   assert(arr3[7]==7)
-  assert getref(dgramObj)==6
+  assert getref(dgramObj)==7
   assert getref(arr3)==3
 
   return s1, pydgram, ds.configs[0]
@@ -42,6 +42,7 @@ def myroutine1():
 
 def myiter(pydgram,testvals):
   for attrname,attr in pydgram.__dict__.items():
+    if attrname == 'buf': continue # Todo: need to test this? 
     if hasattr(attr,'__dict__'):
       myiter(attr,testvals)
     else:
