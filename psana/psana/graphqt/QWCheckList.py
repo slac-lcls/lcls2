@@ -1,11 +1,7 @@
-#!@PYTHON@
-
+#------------------------------
 """
-Created on 2017-07-27
-
-@author: Mikhail Dubrovin
-
-QListView/QWidget QWCheckList - works on the dictionary of checked items
+:py:class:`QWCheckList` - 
+=========================================================================================
 
 Usage::
     from graphqt.QWCheckList import QWCheckList, print_dic
@@ -13,7 +9,7 @@ Usage::
 
     d = {'CSPAD1':True, 'CSPAD2x21':False, 'pNCCD1':True, 'Opal1':False}
 
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     w = QWCheckList(parent=None, dic_item_state=d)
     w.setGeometry(100, 100, 200, 300)
     w.setWindowTitle('Test Check List')
@@ -21,25 +17,43 @@ Usage::
     app.exec_()
 
     print_dic(d)
+
+See:
+    - :py:class:`QWCheckList`
+    - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
+
+This software was developed for the LCLS2 project.
+If you use all or part of it, please give an appropriate acknowledgment.
+
+Created on 2017-07-27 by Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt
+
+import os
+
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt, QMargins # QPoint, QEvent, 
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
+
+#------------------------------
+#from PyQt4 import QtGui, QtCore
+#from PyQt4.QtCore import Qt
 #------------------------------
 
-#class QWCheckList(QtGui.QWidget):
-class QWCheckList(QtGui.QListView):
+#class QWCheckList(QtWidgets.QWidget):
+class QWCheckList(QtWidgets.QListView):
     """Gets dict of item for checkbox GUI in format {'CSPAD1':True, 'CSPAD2x21':False, 'pNCCD1':True, 'Opal1':False}
     and modify this list in gui.
     """
     def __init__(self, parent=None, dic_item_state={}) :
-        #QtGui.QWidget.__init__(self, parent)
-        QtGui.QListView.__init__(self, parent)
+        #QtWidgets.QWidget.__init__(self, parent)
+        QtWidgets.QListView.__init__(self, parent)
 
         self.set_model(dic_item_state)
         #self.set_test_model()
 
-        #self.view.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
+        #self.view.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
         #self.view.expandAll()
         #self.view.setAnimated(True)
 
@@ -56,14 +70,14 @@ class QWCheckList(QtGui.QListView):
         self.setMinimumWidth(150)
         self.setMaximumWidth(500)
         self.setMinimumHeight(200)
-        self.setContentsMargins(QtCore.QMargins(-9,-9,-9,-9))
+        self.setContentsMargins(QMargins(-9,-9,-9,-9))
 
 
     def set_test_model(self) :
         from random import randint
-        model = QtGui.QStandardItemModel()
+        model = QStandardItemModel()
         for n in range(20):
-            item = QtGui.QStandardItem('Item %02d' % n) #randint(1, 100))
+            item = QStandardItem('Item %02d' % n) #randint(1, 100))
             check = Qt.Checked
             if randint(0, 4) < 2 :
                 check = Qt.Checked
@@ -85,13 +99,13 @@ class QWCheckList(QtGui.QListView):
 
     def set_model(self, dic_item_state) :
         self.dic_item_state = dic_item_state
-        #print 'self.model()', self.model()
+        #print('self.model()', self.model())
         if self.model() is not None :
             self.model().itemChanged.disconnect(self.on_item_changed)
             #del self.model()
-        model = QtGui.QStandardItemModel()
-        for k,v in self.dic_item_state.iteritems() :
-            item = QtGui.QStandardItem('%s' % k)
+        model = QStandardItemModel()
+        for k,v in self.dic_item_state.items() :
+            item = QStandardItem('%s' % k)
             item.setCheckState(Qt.Checked if v else Qt.Unchecked)
             item.setCheckable(True)
             #item.setSelectable(True)
@@ -101,20 +115,20 @@ class QWCheckList(QtGui.QListView):
 
 
     def on_clicked_test(self, item):
-        print "Clicked on item row:'%d' col:%d" % (item.row(), item.column())
+        print("Clicked on item row:'%d' col:%d" % (item.row(), item.column()))
 
 
     def on_item_changed(self, item):
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
         item_txt = str(item.text())
-        #print "Item with text '%s', is at state %s" % (item_txt, state)
+        #print("Item with text '%s', is at state %s" % (item_txt, state))
         self.dic_item_state[item_txt] = [False, True, True][item.checkState()]
 
 
     def on_item_changed_test(self, item):
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
         item_txt = str(item.text())
-        print "Item with text '%s', is at state %s" % (item_txt, state)
+        print("Item with text '%s', is at state %s" % (item_txt, state))
         print_dic(self.dic_item_state)
 
         if item_txt == 'Opal1' :
@@ -128,8 +142,8 @@ class QWCheckList(QtGui.QListView):
 #-----------------------------
 
 def print_dic(d, fmt='%s : %s') :
-    for k,v in d.iteritems() : 
-        print fmt % (k.ljust(32),str(v).ljust(32))
+    for k,v in d.items() : 
+        print(fmt % (k.ljust(32),str(v).ljust(32)))
 
 #-----------------------------
 
@@ -137,7 +151,7 @@ if __name__ == "__main__" :
     import sys
     d = {'CSPAD1':True, 'CSPAD2x21':False, 'pNCCD1':True, 'Opal1':False}
     #d = {}
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     w = QWCheckList(parent=None, dic_item_state=d)
     w.setGeometry(100, 100, 200, 300)
     w.setWindowTitle('Test Check List')

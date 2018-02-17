@@ -1,14 +1,14 @@
 #------------------------------
 """
 :py:class:`QWPopupSelectItem` - Popup GUI for (str) item selection from the list of items
-============================================================================================
+=========================================================================================
 
 Usage::
 
     # Import
     from psana.graphqt.QWPopupSelectItem import QWPopupSelectItem
 
-    # Methods
+    # Methods - see test
     import sys
     from PyQt5 import QtWidgets
     app = QtWidgets.QApplication(sys.argv)
@@ -28,7 +28,9 @@ Adopted for LCLS2 on 2018-02-15
 
 import os
 
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt, QPoint, QEvent, QMargins
+from PyQt5.QtGui import QCursor
 
 #------------------------------  
 
@@ -72,14 +74,14 @@ class QWPopupSelectItem(QtWidgets.QDialog) :
     def fill_list(self, lst) :
         for exp in sorted(lst) :
             item = QtWidgets.QListWidgetItem(exp, self.list)
-        self.list.sortItems(QtCore.Qt.AscendingOrder)
+        self.list.sortItems(Qt.AscendingOrder)
 
 
 #    def fill_list_icons(self, lst_icons) :
 #        for ind, icon in enumerate(lst_icons) :
 #            item = QtWidgets.QListWidgetItem(icon, '%d'%ind, self.list) #'%d'%ind
 #            item.setSizeHint(QtCore.QSize(80,30))
-#        #self.list.sortItems(QtCore.Qt.AscendingOrder)
+#        #self.list.sortItems(Qt.AscendingOrder)
 
 
     def setStyle(self):
@@ -88,12 +90,12 @@ class QWPopupSelectItem(QtWidgets.QDialog) :
         self.setMinimumHeight(600)
         #self.setMaximumWidth(600)
         #self.setStyleSheet(cp.styleBkgd)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
-        self.setContentsMargins(QtCore.QMargins(-9,-9,-9,-9))
+        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        self.setContentsMargins(QMargins(-9,-9,-9,-9))
         #self.setStyleSheet(cp.styleBkgd)
         #self.but_cancel.setStyleSheet(cp.styleButton)
         #self.but_apply.setStyleSheet(cp.styleButton)
-        self.move(QtGui.QCursor.pos().__add__(QtCore.QPoint(-110,-50)))
+        self.move(QCursor.pos().__add__(QPoint(-110,-50)))
 
 
     def showToolTips(self):
@@ -119,7 +121,7 @@ class QWPopupSelectItem(QtWidgets.QDialog) :
         
     def event(self, e):
         #print('event.type', e.type())
-        if e.type() == QtCore.QEvent.WindowDeactivate :
+        if e.type() == QEvent.WindowDeactivate :
             self.reject()
         return QtWidgets.QDialog.event(self, e)
     

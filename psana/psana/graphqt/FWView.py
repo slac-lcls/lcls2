@@ -1,4 +1,4 @@
-#!@PYTHON@
+#------------------------------
 """
 Class :py:class:`FWView` is a QGraphicsView QWidget with interactive scalable scene
 =====================================================================================
@@ -11,7 +11,7 @@ Usage ::
     #-----
     import sys
     from PyQt4 import QtGui, QtCore
-    from graphqt.FWView import FWView
+    from psana.graphqt.FWView import FWView
     app = QtGui.QApplication(sys.argv)
     w = FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='UL', scale_ctl='HV')
     w.show()
@@ -19,7 +19,7 @@ Usage ::
 
     # Constructor and destructor
     #---------------------------
-    from graphqt.FWView import FWView
+    from psana.graphqt.FWView import FWView
     w = FWView(parent=None, rscene=QtCore.QRectF(0, 0, 10, 10), origin='UL', scale_ctl='HV', show_mode=0)
     w.__del__() # on w.close()
 
@@ -82,7 +82,6 @@ Usage ::
     w.disconnect_mouse_press_event_from(recip)
     w.test_mouse_press_event_reception(e)
 
-
     # w.connect_wheel_is_stopped_to(recip)
     # w.disconnect_wheel_is_stopped_from(recip)
     # w.test_wheel_is_stopped_reception()
@@ -91,23 +90,33 @@ See:
     - :class:`FWView`
     - :class:`FWViewImage`
     - :class:`QWSpectrum`
-    - `graphqt documentation <https://lcls-psana.github.io/graphqt/py-modindex.html>`_.
+    - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
+
+This software was developed for the LCLS2 project.
+If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2017-01-03 by Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt
+from PyQt5 import QtWidgets
+from PyQt5 import QtGui, QtCore
+from PyQt5.QtCore import Qt
 
 #from time import time        
 #t0_sec = time()
-#print 'time = %.6f' % (time() - t0_sec)
+#print('time = %.6f' % (time() - t0_sec))
 
 #------------------------------
 
-class FWView(QtGui.QGraphicsView) :
-    
+class FWView(QtWidgets.QGraphicsView) :
+    #wheel_is_stopped = QtCore.pyqtSignal()
+    #view_is_closed = QtCore.pyqtSignal()
+    mouse_move_event   = QtCore.pyqtSignal('QMouseEvent')
+    mouse_press_event  = QtCore.pyqtSignal('QMouseEvent')
+    scene_rect_changed = QtCore.pyqtSignal('QRectF')
+
     def __init__(self, parent=None, rscene=QtCore.QRectF(0, 0, 10, 10),\
                  origin='UL', scale_ctl='HV',\
                  show_mode=0) :
@@ -131,8 +140,8 @@ class FWView(QtGui.QGraphicsView) :
         self.set_origin(origin)           # sets self._origin_...
         self.set_scale_control(scale_ctl) # sets self._scale_ctl
 
-        sc = QtGui.QGraphicsScene()
-        QtGui.QGraphicsView.__init__(self, sc, parent)
+        sc = QtWidgets.QGraphicsScene()
+        QtWidgets.QGraphicsView.__init__(self, sc, parent)
         self.set_signs_of_transform()        
         self.set_style()
         self.set_view()
@@ -140,11 +149,11 @@ class FWView(QtGui.QGraphicsView) :
 
         self.twheel_msec = 500 # timeout for wheelEvent
         self.timer = QtCore.QTimer()
-        self.connect(self.timer, QtCore.SIGNAL('timeout()'), self.on_timeout)
+        self.timer.timeout.connect(self.on_timeout)
 
 
     def __del__(self) :
-        pass
+        pass # self.close()
 
 
     def set_origin(self, origin='UL') :
@@ -272,9 +281,9 @@ class FWView(QtGui.QGraphicsView) :
 
 
     def mouseReleaseEvent(self, e):
-        QtGui.QApplication.restoreOverrideCursor()
-        QtGui.QGraphicsView.mouseReleaseEvent(self, e)
-        #print 'FWView.mouseReleaseEvent, at point: ', e.pos(), ' diff:', e.pos() - self.pos_click
+        QtWidgets.QApplication.restoreOverrideCursor()
+        QtWidgets.QGraphicsView.mouseReleaseEvent(self, e)
+        #print('FWView.mouseReleaseEvent, at point: ', e.pos(), ' diff:', e.pos() - self.pos_click)
         #self.pos_click = e.pos()
         self.pos_click = None
         self.set_cursor_type_on_scene_rect()
@@ -284,16 +293,17 @@ class FWView(QtGui.QGraphicsView) :
 
 
 #    def mouseDoubleCkickEvent(self, e):
-#        QtGui.QGraphicsView.mouseDoubleCkickEvent(self, e)
-#        print 'mouseDoubleCkickEvent'
+#        QtWidgets.QGraphicsView.mouseDoubleCkickEvent(self, e)
+#        print('mouseDoubleCkickEvent')
 
 
     def mousePressEvent(self, e):
-        #print 'FWView.mousePressEvent, at point: ', e.pos() #e.globalX(), e.globalY() 
-        #QtGui.QApplication.setOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor)) #Qt.SizeAllCursor))# ClosedHandCursor
-        self.emit(QtCore.SIGNAL('mouse_press_event(QMouseEvent)'), e)
+        #print('FWView.mousePressEvent, at point: ', e.pos() #e.globalX(), e.globalY())
+        #QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor)) #Qt.SizeAllCursor))# ClosedHandCursor
+        #self.emit(QtCore.SIGNAL('mouse_press_event(QMouseEvent)'), e)
+        self.mouse_press_event.emit(e)
 
-        QtGui.QGraphicsView.mousePressEvent(self, e)
+        QtWidgets.QGraphicsView.mousePressEvent(self, e)
         self.pos_click = e.pos()
         self.rs_center = self.scene().sceneRect().center()
         self.invscalex = 1./self.transform().m11()
@@ -302,9 +312,10 @@ class FWView(QtGui.QGraphicsView) :
 
 
     def mouseMoveEvent(self, e):
-        QtGui.QGraphicsView.mouseMoveEvent(self, e)
-        #print 'FWView.mouseMoveEvent, at point: ', e.pos()
-        self.emit(QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), e)
+        QtWidgets.QGraphicsView.mouseMoveEvent(self, e)
+        #print('FWView.mouseMoveEvent, at point: ', e.pos())
+        #self.emit(QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), e)
+        self.mouse_move_event.emit(e)
 
         if self._scale_ctl==0 : return
         if self.pos_click is None : return        
@@ -326,22 +337,22 @@ class FWView(QtGui.QGraphicsView) :
 
 
     def wheelEvent(self, e) :
-        QtGui.QGraphicsView.wheelEvent(self, e)
+        QtWidgets.QGraphicsView.wheelEvent(self, e)
 
         if self._scale_ctl==0 : return
 
-        #print 'wheelEvent: ', e.delta()
-        f = 1 + 0.4 * (1 if e.delta()>0 else -1)
-        #print 'Scale factor =', f
+        #print('wheelEvent: ', e.angleDelta())
+        f = 1 + 0.4 * (1 if e.angleDelta().y()>0 else -1)
+        #print('Scale factor =', f)
 
         p = self.mapToScene(e.pos())
         px, py = p.x(), p.y() 
-        #print 'wheel x,y = ', e.x(), e.y(), ' on scene x,y =', p.x(), p.y() 
+        #print('wheel x,y = ', e.x(), e.y(), ' on scene x,y =', p.x(), p.y())
 
         sc = self.scene()
         rs = sc.sceneRect()
         x,y,w,h = rs.x(), rs.y(), rs.width(), rs.height()
-        #print 'Scene x,y,w,h:', x,y,w,h
+        #print('Scene x,y,w,h:', x,y,w,h)
 
         # zoom relative to mouse position
         dxc = (f-1)*(px-x)
@@ -359,7 +370,7 @@ class FWView(QtGui.QGraphicsView) :
     def on_timeout(self) :
         """Is activated by timer when wheel is stopped and interval is expired.
         """
-        #print 'on_timeout'
+        #print('on_timeout')
         self.timer.stop()
         self.emit_signal_if_scene_rect_changed()
         #self.emit(QtCore.SIGNAL('wheel_is_stopped()'))
@@ -373,7 +384,7 @@ class FWView(QtGui.QGraphicsView) :
 #        self.disconnect(self, QtCore.SIGNAL('wheel_is_stopped()'), recip)
 
 #    def test_wheel_is_stopped_reception(self) :
-#        print 'GUView.test_wheel_is_stopped_reception'
+#        print('GUView.test_wheel_is_stopped_reception')
 
 #------------------------------
 
@@ -381,52 +392,60 @@ class FWView(QtGui.QGraphicsView) :
         """Checks if scene rect have changed and submits signal with new rect.
         """
         rs = self.scene().sceneRect()
-        #print 'XXX FWView.emit_signal_if_scene_rect_changed old, new:', self.rs_old, rs
+        #print('XXX FWView.emit_signal_if_scene_rect_changed old, new:', self.rs_old, rs)
 
         #if not equal_rects(rs, self.rs_old) :
         if rs != self.rs_old :
             self.rs_old = rs
-            self.emit(QtCore.SIGNAL('scene_rect_changed(QRectF)'), rs)
+            #self.emit(QtCore.SIGNAL('scene_rect_changed(QRectF)'), rs)
+            self.scene_rect_changed.emit(rs)
 
 #------------------------------
 
     def connect_scene_rect_changed_to(self, recip) :
-        self.connect(self, QtCore.SIGNAL('scene_rect_changed(QRectF)'), recip)
+        #self.connect(self, QtCore.SIGNAL('scene_rect_changed(QRectF)'), recip)
+        #self.scene_rect_changed('QRectF').connect(recip)
+        self.scene_rect_changed.connect(recip)
 
     def disconnect_scene_rect_changed_from(self, recip) :
-        self.disconnect(self, QtCore.SIGNAL('scene_rect_changed(QRectF)'), recip)
+        self.scene_rect_changed.disconnect(recip)
 
     def test_scene_rect_changed_reception(self, rs) :
-        from graphqt.GUUtils import print_rect
-        #print 'GUView.test_scene_rect_changed_reception:', rs
+        from psana.graphqt.QWUtils import print_rect
+        #print('GUView.test_scene_rect_changed_reception:', rs)
         print_rect(rs, cmt='FWView.test_scene_rect_changed_reception')
 
 #------------------------------
 
     def enterEvent(self, e) :
-    #    print 'enterEvent'
-        QtGui.QGraphicsView.enterEvent(self, e)
+    #    print('enterEvent')
+        QtWidgets.QGraphicsView.enterEvent(self, e)
         #QtGui.QApplication.setOverrideCursor(QtGui.QCursor(Qt.CrossCursor))
         
 
     def leaveEvent(self, e) :
-    #    print 'leaveEvent'
-        QtGui.QGraphicsView.leaveEvent(self, e)
-        #QtGui.QApplication.restoreOverrideCursor()
+    #    print('leaveEvent')
+        QtWidgets.QGraphicsView.leaveEvent(self, e)
+        #QtWidgets.QApplication.restoreOverrideCursor()
 
 
     def closeEvent(self, e) :
-        #print 'FWView.closeEvent' # % self._name
-        QtGui.QGraphicsView.closeEvent(self, e)
-        
+        #print('XXX FWView.closeEvent')
+        sc = self.scene()
+        for item in sc.items() : 
+            #print('XXX removeItem:', item)
+            sc.removeItem(item)
+        QtWidgets.QGraphicsView.closeEvent(self, e)
+        #print('XXX closeEvent is over')
+
 
     #def moveEvent(self, e) :
-    #    print 'moveEvent'
-    #    print 'Geometry rect:', self.geometry()
+    #    print('moveEvent')
+    #    print('Geometry rect:', self.geometry())
 
 
     def resizeEvent(self, e) :
-        QtGui.QGraphicsView.resizeEvent(self, e)
+        QtWidgets.QGraphicsView.resizeEvent(self, e)
         rs = self.scene().sceneRect()    
         self.set_view(rs)
 
@@ -445,24 +464,24 @@ class FWView(QtGui.QGraphicsView) :
 
 
     def keyPressEvent(self, e) :
-        #print 'keyPressEvent, key=', e.key()         
+        #print('keyPressEvent, key=', e.key())       
         if   e.key() == Qt.Key_Escape :
             self.close()
 
         elif e.key() == Qt.Key_R : 
-            print 'Reset original size'
+            print('Reset original size')
             self.reset_original_size()
 
         elif e.key() in (Qt.Key_W, Qt.Key_D)  : 
             change_def = e.key()==Qt.Key_D
-            print '%s: change scene rect %s' % (self._name, 'set new default' if change_def else '')
+            print('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
             v = ag.random_standard((4,), mu=0, sigma=20, dtype=np.int)
             rs = QtCore.QRectF(v[0], v[1], v[2]+100, v[3]+100)
-            print 'Set scene rect: %s' % str(rs)
+            print('Set scene rect: %s' % str(rs))
             self.set_rect_scene(rs, set_def=change_def)
 
         else :
-            print self.key_usage()
+            print(self.key_usage())
 
 #-----------------------------
 
@@ -474,12 +493,16 @@ class FWView(QtGui.QGraphicsView) :
 
     def add_rect_to_scene(self, rect, brush=QtGui.QBrush(), pen=QtGui.QPen(Qt.yellow, 4, Qt.DashLine)) :
         """Adds rect to scene, returns GUQGraphicsRectItem - for interactive stuff"""
-        from graphqt.GUQGraphicsRectItem import GUQGraphicsRectItem
+
+        #print('XXX:QWGraphicsRectItem TBD')
+
+        from psana.graphqt.QWGraphicsRectItem import QWGraphicsRectItem
         pen.setCosmetic(True)
-        item = GUQGraphicsRectItem(rect, parent=None, scene=self.scene())
+        item = QWGraphicsRectItem(rect, parent=None, scene=self.scene())
         item.setPen(pen)
         item.setBrush(brush)
         return item
+        return None
 
 
     def add_test_items_to_scene(self, show_mode=0) :
@@ -495,26 +518,28 @@ class FWView(QtGui.QGraphicsView) :
 #------------------------------
 
     def connect_mouse_press_event_to(self, recip) :
-        self.connect(self, QtCore.SIGNAL('mouse_press_event(QMouseEvent)'), recip)
+        self.mouse_press_event.connect(recip)
 
     def disconnect_mouse_press_event_from(self, recip) :
-        self.disconnect(self, QtCore.SIGNAL('mouse_press_event(QMouseEvent)'), recip)
+        self.mouse_press_event.disconnect(recip)
 
     def test_mouse_press_event_reception(self, e) :
-        print 'FWViewImage.mouse_press_event, QMouseEvent point: x=%d y=%d' % (e.x(), e.y())
+        print('FWViewImage.mouse_press_event, QMouseEvent point: x=%d y=%d' % (e.x(), e.y()))
 
 #-----------------------------
 
     def test_mouse_move_event_reception(self, e) :
-        #print 'mouseMoveEvent, current point: ', e.x(), e.y(), ' on scene: %.1f  %.1f' % (p.x(), p.y()) 
+        #print('mouseMoveEvent, current point: ', e.x(), e.y(), ' on scene: %.1f  %.1f' % (p.x(), p.y()))
         p = self.mapToScene(e.pos())
         self.setWindowTitle('FWView: x=%.1f y=%.1f %s' % (p.x(), p.y(), 25*' '))
 
     def connect_mouse_move_event_to(self, recip) :
-        self.connect(self, QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), recip)
+        #self.connect(self, QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), recip)
+        self.mouse_move_event['QMouseEvent'].connect(recip)
 
     def disconnect_mouse_move_event_from(self, recip) :
-        self.disconnect(self, QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), recip)
+        #self.disconnect(self, QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), recip)
+        self.mouse_move_event['QMouseEvent'].disconnect(recip)
 
 #-----------------------------
 #-----------------------------
@@ -522,9 +547,9 @@ class FWView(QtGui.QGraphicsView) :
 #-----------------------------
 
 def test_fwview(tname) :
-    print '%s:' % sys._getframe().f_code.co_name
+    print('%s:' % sys._getframe().f_code.co_name)
     b="background-color:yellow; border: 0px solid green"
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     w = None
     if   tname == '0': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
     elif tname == '1': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='UL', show_mode=3, scale_ctl='HV')
@@ -536,7 +561,7 @@ def test_fwview(tname) :
     elif tname == '7': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DL', show_mode=1, scale_ctl='HV')
     elif tname == '8': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV', bkgd=b)
     else :
-        print 'test %s is not implemented' % tname
+        print('test %s is not implemented' % tname)
         return
 
     w.connect_mouse_move_event_to(w.test_mouse_move_event_reception)
@@ -544,17 +569,27 @@ def test_fwview(tname) :
     w.connect_mouse_press_event_to(w.test_mouse_press_event_reception)
 
     w.show()
+
+    #w.disconnect_mouse_move_event_from(w.test_mouse_move_event_reception)
+    #w.disconnect_scene_rect_changed_from(w.test_scene_rect_changed_reception)
+    #w.disconnect_mouse_press_event_from(w.test_mouse_press_event_reception)
+    #w.close()
+
     app.exec_()
+    app.quit()
+
+    del w
+    del app
 
 #------------------------------
 
 if __name__ == "__main__" :
     import sys; global sys
     import numpy as np; global np
-    import pyimgalgos.NDArrGenerators as ag; global ag
+    import psana.pyalgos.generic.NDArrGenerators as ag; global ag
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print 50*'_', '\nTest %s' % tname
+    print(50*'_', '\nTest %s' % tname)
     test_fwview(tname)
     sys.exit('End of Test %s' % tname)
 

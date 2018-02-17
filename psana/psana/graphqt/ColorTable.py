@@ -1,11 +1,11 @@
-#!@PYTHON@
+#------------------------------
 """
 :py:class:`ColorTable` collection of methods to generate color bars
 ===================================================================
 
 Usage ::
 
-    import graphqt.ColorTable as ct
+    import psana.graphqt.ColorTable as ct
 
     ctab = ct.color_table_monochr256()
     ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
@@ -13,21 +13,19 @@ Usage ::
     ctab = ct.color_table_interpolated(points=[0, 100, 200, 400, 500, 650, 700], colors=[0xffffff, 0xffff00, 0x00ff00, 0xff0000, 0xff00ff, 0x0000ff, 0])
 
 See:
-    - :class:`IVMain`
-    - :class:`IVMainTabs`
-    - :class:`IVMainButtons`
-    - :class:`IVImageCursorInfo`
-    - :class:`IVConfigParameters`
-    - :class:`IVTabDataControl`
-    - :class:`IVTabFileName`
-    - `graphqt documentation <https://lcls-psana.github.io/graphqt/py-modindex.html>`_.
+    - :py:class:`ColorTable`
+    - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
 
-Created on Dec 6, 2015 by Mikhail Dubrovin
+This software was developed for the LCLS2 project.
+If you use all or part of it, please give an appropriate acknowledgment.
+
+Created on 2015-12-06 by Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
 
-from PyQt4 import QtGui #, QtCore
-from PyQt4.QtCore import Qt
+from PyQt5 import QtWidgets, QtGui
+from PyQt5.QtCore import Qt
 import numpy as np
 from math import floor
 
@@ -50,9 +48,9 @@ def print_colors(arr) :
     for row in arr :
       for v in row :
         qc = QtGui.QColor(v & 0xFFFFFF) # rgb part only
-        #print v, qc.red(), qc.green(), qc.blue() 
-        print '%4d' % qc.red(),
-      print ''
+        #print(v, qc.red(), qc.green(), qc.blue())
+        print('%4d' % qc.red(),)
+      print('')
 
 
 def apply_color_table(arr, ctable=None, amin=None, amax=None) :
@@ -74,9 +72,9 @@ def apply_color_table(arr, ctable=None, amin=None, amax=None) :
 
     return ctab[ict]
 
-    #print 'XXX:indexes:\n', ict
+    #print('XXX:indexes:\n', ict)
     #a = ctab[ict]    
-    #print 'XXX:arr of colors:\n', a
+    #print('XXX:arr of colors:\n', a)
     #print_colors(a)
     #return a
 
@@ -99,7 +97,7 @@ def color_table_linear(ncolors=100) :
 def interpolate_colors(ctab, p1, p2, c1, c2) :
     '''Fills color table ctab between index/points p1 and p2 for interpolated colors from c1 to c2
     '''
-    #print p1, p2, c1, c2
+    #print(p1, p2, c1, c2)
     A = 0xff000000
     R = 0x00ff0000
     G = 0x0000ff00
@@ -108,7 +106,7 @@ def interpolate_colors(ctab, p1, p2, c1, c2) :
     g1, g2 = (c1&G)>>8,  (c2&G)>>8
     b1, b2 = c1&B, c2&B
     np = p2-p1
-    #print 'XXX: c1, c2, p1, p2, r1, r2, g1, g2,  b1, b2:', hex(c1), hex(c2), p1, p2, r1, r2, g1, g2, b1, b2
+    #print('XXX: c1, c2, p1, p2, r1, r2, g1, g2,  b1, b2:', hex(c1), hex(c2), p1, p2, r1, r2, g1, g2, b1, b2)
 
     if np<1 :
         ctab[p1] = c1 + A
@@ -127,14 +125,14 @@ def interpolate_colors(ctab, p1, p2, c1, c2) :
 
         ctab[p] = A + b + g*0x100 + r*0x10000
 
-        #print 'hex(r), hex(r<<16)', hex(r), hex(r<<16)
-        #print 'hex(b), hex(b<<8)',  hex(b), hex(b<<8)
+        #print('hex(r), hex(r<<16)', hex(r), hex(r<<16))
+        #print('hex(b), hex(b<<8)',  hex(b), hex(b<<8))
 
         #ctab[p] = A + (b + g<<8 + r<<16) & 0xffffff
 
         #color = ctab[p]
         #qc = QtGui.QColor(color & 0xFFFFFF) # rgb part only
-        #print 'XXX: point:%4d   %10s %4d %4d %4d' % (p, hex(color), qc.red(), qc.green(), qc.blue())
+        #print('XXX: point:%4d   %10s %4d %4d %4d' % (p, hex(color), qc.red(), qc.green(), qc.blue()))
 
 
 #def color_table_interpolated(points=[0,      200,      400,      600,      800],\
@@ -145,7 +143,7 @@ def color_table_interpolated(points=[0,      50,      200,      300,      500,  
                              colors=[0, 0x0000ff, 0xff00ff, 0xff0000, 0x00ff00, 0xffff00, 0xffffff]) :
     ''' Returns numpy array of colors linearly-interpolated between points with defined colors
     '''
-    #print 'XXX: number of colors: %d' % points[-1]
+    #print('XXX: number of colors: %d' % points[-1])
     ctab = np.zeros(points[-1], dtype=np.uint32)
     for i,p in enumerate(points[:-1]) :
         p1, p2 = p, points[i+1]
@@ -166,7 +164,7 @@ def next_color_table(ict=None) :
     """
     if ict is None : STOR.ictab += 1
     else           : STOR.ictab = ict
-    #print 'Color table # %d' % STOR.ictab
+    #print('Color table # %d' % STOR.ictab)
     if   STOR.ictab == 2 : return color_table_rainbow(ncolors=1000, hang1=-20, hang2=250)
     elif STOR.ictab == 3 : return color_table_monochr256()
     elif STOR.ictab == 4 : return color_table_monochr256(inverted=True)
@@ -199,8 +197,8 @@ def array_for_color_bar(ctab=color_table_monochr256(), orient='V', width=2) :
     arr = [(c,c) for c in ctab[::-1]] if orient=='V' else\
           [ctab for r in range(width)]
     npa = np.array(arr, dtype=np.uint32) #.T
-    #print 'XXX array for color bar:\n', npa
-    #print 'XXX shape: ', npa.shape
+    #print('XXX array for color bar:\n', npa)
+    #print('XXX shape: ', npa.shape)
     return npa
 
 #------------------------------
@@ -229,7 +227,7 @@ class ColorTable():
         for ic in range(ncolors) :
             hang = self.hang1 + dhang * ic
             hnorm = float(hang % 360)/360.
-            #print 'hang:%7.2f  rest(hang,360)=%7.2f' % (hang, hang % 360)
+            #print('hang:%7.2f  rest(hang,360)=%7.2f' % (hang, hang % 360))
             qc = QtGui.QColor()
             qc.setHsvF(hnorm, 1., 1., alpha=1.)
             self.ctable.append(qc)
@@ -277,7 +275,7 @@ class ColorTable():
       
     def print_color_table(self):    
         for ic, qc in enumerate(self.ctable) :
-            print 'i:%4d  R:%3d  G:%3d  B:%3d' % (ic, qc.red(), qc.green(), qc.blue())
+            print('i:%4d  R:%3d  G:%3d  B:%3d' % (ic, qc.red(), qc.green(), qc.blue()))
 
 #------------------------------
 
