@@ -11,6 +11,7 @@ Usage::
     # Methods - see test
 
 See:
+    - :py:class:`QWDateTimeSec`
     - :py:class:`QWPopupSelectItem`
     - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
 

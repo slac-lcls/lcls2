@@ -1,7 +1,19 @@
 '''
-Created on Dec 5, 2015 from http://www.justintalbot.com/research/axis-labeling/
+:py:class:`Extended` - method best_label_locs returns list of best labels
+=========================================================================
 
-@author: Talbot, Lin, Hanrahan
+Usage::
+
+    # Import
+    from psana.graphqt.AxisLabeling import best_label_locs
+
+    # Methods (see test)
+    locs = best_label_locs(vmin, vmax, size, density=1, steps=None)
+
+from http://www.justintalbot.com/research/axis-labeling/
+Authors: Talbot, Lin, Hanrahan
+Created 2015-12-05 by Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-16
 '''
 import math
 import numpy as np
@@ -168,9 +180,9 @@ def best_label_locs(vmin, vmax, size_inches, density=1, steps=None):
     locs = np.arange(best[4]) * best[2] + best[0]
     return locs # ex.: [-20. -10.   0.  10.  20.]
 
-#-----------------------------
+#------------------------------
 # Test
-#-----------------------------
+#------------------------------
 
 def test():
   
@@ -179,11 +191,11 @@ def test():
                      (0.1, 0.2, 2.5))
 
     for i,(vmin, vmax, size) in enumerate(list_of_tests) :
-      print '\nTest# %d:  vmin, vmax, size ='%i, vmin, vmax, size, 
+      print('\nTest# %d:  vmin, vmax, size ='%i, vmin, vmax, size,)
       locs = best_label_locs(vmin, vmax, size, density=1, steps=None)
-      print '   best locs:', locs
+      print('   best locs:', locs)
 
-#-----------------------------
+#------------------------------
 if __name__ == '__main__':
     test()
-#-----------------------------
+#------------------------------

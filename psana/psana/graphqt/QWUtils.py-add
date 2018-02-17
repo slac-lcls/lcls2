@@ -34,13 +34,6 @@ import math
 #        pass
 
 #------------------------------
-
-def print_rect(r, cmt='') :
-    x, y, w, h = r.x(), r.y(), r.width(), r.height()
-    L, R, T, B = r.left(), r.right(), r.top(), r.bottom()
-    print '%s x=%8.2f  y=%8.2f  w=%8.2f  h=%8.2f' % (cmt, x, y, w, h)
-    print '%s L=%8.2f  B=%8.2f  R=%8.2f  T=%8.2f' % (len(cmt)*' ', L, B, R, T)
-
 #------------------------------
 
 def select_item_from_popup_menu(list):

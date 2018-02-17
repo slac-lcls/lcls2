@@ -1,53 +1,63 @@
 #------------------------------
-# Description:
-#------------------------------
+"""
+:py:class:`QWLogger` - GUI for Logger
+========================================
 
-"""QWLogger - GUI for Logger
+Usage::
 
-This software was developed for the SIT project.
+    # Import
+    from psana.graphqt.QWLogger import QWLogger
+
+    # Methods - see test
+
+See:
+    - :py:class:`QWLogger`
+    - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
+
+This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
-@version $Id: QWLogger.py 13157 2017-02-18 00:05:34Z dubrovin@SLAC.STANFORD.EDU $
-
-@author Mikhail S. Dubrovin
+Created on 2017-02-18 by Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
 
 import os
-from PyQt4 import QtGui, QtCore
-from graphqt.Styles import style
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QMargins
+from PyQt5.QtGui import QTextCursor
+from psana.graphqt.Styles import style
 
 #------------------------------
 
-class QWLogger(QtGui.QWidget) :
-    """GUI for Logger"""
+class QWLogger(QtWidgets.QWidget) :
     _name = 'QWLogger'
 
     def __init__(self, log, cp, show_buttons=True) :
 
-        QtGui.QWidget.__init__(self, parent=None)
+        QtWidgets.QWidget.__init__(self, parent=None)
 
         self.cp = cp
         self.log = log
         self.show_buttons = show_buttons
         
-        self.box_txt    = QtGui.QTextEdit()
+        self.box_txt    = QtWidgets.QTextEdit()
  
-        #self.tit_title = QtGui.QLabel('Logger')
-        self.tit_status = QtGui.QLabel('Status:')
-        self.tit_level  = QtGui.QLabel('Verbosity level:')
-        self.but_close  = QtGui.QPushButton('&Close') 
-        self.but_save   = QtGui.QPushButton('&Save log-file') 
+        #self.tit_title = QtWidgets.QLabel('Logger')
+        self.tit_status = QtWidgets.QLabel('Status:')
+        self.tit_level  = QtWidgets.QLabel('Verbosity level:')
+        self.but_close  = QtWidgets.QPushButton('&Close') 
+        self.but_save   = QtWidgets.QPushButton('&Save log-file') 
 
         self.list_of_levels = self.log.getListOfLevels()
-        self.box_level      = QtGui.QComboBox(self) 
+        self.box_level      = QtWidgets.QComboBox(self) 
         self.box_level.addItems(self.list_of_levels)
         self.box_level.setCurrentIndex(self.list_of_levels.index(self.cp.log_level.value()))
         
-        self.hboxM = QtGui.QHBoxLayout()
+        self.hboxM = QtWidgets.QHBoxLayout()
         self.hboxM.addWidget(self.box_txt)
 
-        self.hboxB = QtGui.QHBoxLayout()
+        self.hboxB = QtWidgets.QHBoxLayout()
         self.hboxB.addWidget(self.tit_status)
         self.hboxB.addStretch(4)     
         self.hboxB.addWidget(self.tit_level)
@@ -56,17 +66,17 @@ class QWLogger(QtGui.QWidget) :
         self.hboxB.addWidget(self.but_save)
         self.hboxB.addWidget(self.but_close)
 
-        self.vbox  = QtGui.QVBoxLayout()
+        self.vbox  = QtWidgets.QVBoxLayout()
         #self.vbox.addWidget(self.tit_title)
         self.vbox.addLayout(self.hboxM)
         self.vbox.addLayout(self.hboxB)
         self.setLayout(self.vbox)
 
         if self.show_buttons :
-          self.connect(self.but_close, QtCore.SIGNAL('clicked()'), self.onClose)
-          self.connect(self.but_save,  QtCore.SIGNAL('clicked()'), self.onSave)
-          self.connect(self.box_level, QtCore.SIGNAL('currentIndexChanged(int)'), self.onBox)
- 
+          self.but_close.clicked.connect(self.onClose)
+          self.but_save.clicked.connect(self.onSave)
+          self.box_level.currentIndexChanged[int].connect(self.onBox)
+
         self.startGUILog()
 
         self.set_tool_tips()
@@ -105,7 +115,7 @@ class QWLogger(QtGui.QWidget) :
         self.but_save  .setVisible(self.show_buttons)
         self.but_close .setVisible(self.show_buttons)
 
-        if not self.show_buttons : self.setContentsMargins(QtCore.QMargins(-9,-9,-9,-9))
+        if not self.show_buttons : self.setContentsMargins(QMargins(-9,-9,-9,-9))
         self.setMinimumHeight(50)
         self.setMinimumSize(300,50)
         #self.setBaseSize(500,200)
@@ -130,7 +140,7 @@ class QWLogger(QtGui.QWidget) :
         self.log.debug('closeEvent', self._name)
         #self.log.info('%s.closeEvent' % self._name)
         #self.saveLogTotalInFile() # It will be saved at closing of GUIMain
-        QtGui.QWidget.closeEvent(self, e)
+        QtWidgets.QWidget.closeEvent(self, e)
 
 
     def onClose(self):
@@ -145,7 +155,7 @@ class QWLogger(QtGui.QWidget) :
 
     def onBox(self):
         level_selected = self.box_level.currentText()
-        self.cp.log_level.setValue( level_selected ) 
+        self.cp.log_level.setValue(level_selected) 
         self.log.info('onBox - selected ' + self.tit_level.text() + ' ' + self.cp.log_level.value(), self._name)
         self.log.setLevel(self.cp.log_level.value())
         self.box_txt.setText(self.log.getLogContent())
@@ -153,7 +163,7 @@ class QWLogger(QtGui.QWidget) :
 
     def saveLogInFile(self):
         self.log.info('saveLogInFile ' + self.fname_log, self._name)
-        path = str(QtGui.QFileDialog.getSaveFileName(self,
+        path = str(QtWidgets.QFileDialog.getSaveFileName(self,
                                                      caption   = 'Select the file to save log',
                                                      directory = self.fname_log,
                                                      filter    = '*.txt'
@@ -174,16 +184,16 @@ class QWLogger(QtGui.QWidget) :
 
     def getConfirmation(self):
         """Pop-up box for confirmation"""
-        msg = QtGui.QMessageBox(self, windowTitle='Confirm closing!',
+        msg = QtWidgets.QMessageBox(self, windowTitle='Confirm closing!',
             text='You are about to close GUI Logger...\nIf the log-file is not saved it will be lost.',
-            standardButtons=QtGui.QMessageBox.Save | QtGui.QMessageBox.Discard | QtGui.QMessageBox.Cancel)
+            standardButtons=QtWidgets.QMessageBox.Save | QtWidgets.QMessageBox.Discard | QtWidgets.QMessageBox.Cancel)
         msg.setDefaultButton(msg.Save)
 
         clicked = msg.exec_()
 
-        if   clicked == QtGui.QMessageBox.Save :
+        if   clicked == QtWidgets.QMessageBox.Save :
             self.log.info('Saving is requested', self._name)
-        elif clicked == QtGui.QMessageBox.Discard :
+        elif clicked == QtWidgets.QMessageBox.Discard :
             self.log.info('Discard is requested', self._name)
         else :
             self.log.info('Cancel is requested', self._name)
@@ -204,7 +214,7 @@ class QWLogger(QtGui.QWidget) :
         
         self.log.setGUILogger(self) 
         self.log.debug('QWLogger is open', self._name)
-        self.box_txt.moveCursor(QtGui.QTextCursor.End)
+        self.box_txt.moveCursor(QTextCursor.End)
 
 
     def appendGUILog(self, msg='...'):
@@ -213,10 +223,10 @@ class QWLogger(QtGui.QWidget) :
 
 
     def scrollDown(self):
-        #print 'scrollDown'
+        #print('scrollDown')
         #scrol_bar_v = self.box_txt.verticalScrollBar() # QScrollBar
         #scrol_bar_v.setValue(scrol_bar_v.maximum()) 
-        self.box_txt.moveCursor(QtGui.QTextCursor.End)
+        self.box_txt.moveCursor(QTextCursor.End)
         self.box_txt.repaint()
         #self.raise_()
         #self.box_txt.update()
@@ -235,14 +245,16 @@ class QWLogger(QtGui.QWidget) :
 
 if __name__ == "__main__" :
     import sys
-    from graphqt.IVConfigParameters import cp
-    from graphqt.Logger             import log
+    from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
+    from psana.pyalgos.generic.Logger import logger as log
 
-    app = QtGui.QApplication(sys.argv)
+    cp = PSConfigParameters()
+
+    app = QtWidgets.QApplication(sys.argv)
     w = QWLogger(log, cp)
     w.setWindowTitle(w._name)
 
-    from graphqt.QIcons import icon # should be imported after QApplication
+    from psana.graphqt.QIcons import icon # should be imported after QApplication
     icon.set_icons()
     w.setWindowIcon(icon.icon_logviewer)
 
