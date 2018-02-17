@@ -9,42 +9,48 @@ from psana.event import Event
 
 class DataSource:
     """Stores variables and arrays loaded from an XTC source.\n"""
-    def __init__(self, expStr):
-        ### Parameter expStr can be an xtc filename or 
-        ### an 'exp=expid:run=runno' string
-        if os.path.isfile(expStr):
-            self.xtcFiles = [expStr]
+    def __init__(self, expstr, config_bytes=[], filter=None, analyze=None):
+        # expstr is 'exp=expid:run=runno' or xtc filename
+        if isinstance(expstr, (list)):
+            self.xtc_files = expstr
+        elif os.path.isfile(expstr):
+            self.xtc_files = [expstr]
         else:
-            ### Read xtc file list from somewhere...
-            self.xtcFiles = ['e001-r0001-s00.smd.xtc','e001-r0001-s01.smd.xtc']
+            self.xtc_files = ['0.smd.xtc','1.smd.xtc'] # Todo: where from?
+        assert len(self.xtc_files) > 0
+        
+        has_configs = True if len(config_bytes) > 0 else False
+        
         self.configs = []
-        self._configs = []
-        assert len(self.xtcFiles) > 0
-        ### Open xtc files
-        for xtcdata_filename in self.xtcFiles:
-            fd = os.open(xtcdata_filename,
-                         os.O_RDONLY|os.O_LARGEFILE)
-            self._configs.append(dgram.Dgram(file_descriptor=fd))
-            self.configs.append(PyDgram(self._configs[-1]))
+        self.fds = []
+        for i, xtcdata_filename in enumerate(self.xtc_files):
+            self.fds.append(os.open(xtcdata_filename,
+                            os.O_RDONLY|os.O_LARGEFILE))
+            if not has_configs: 
+                config = PyDgram(dgram.Dgram(file_descriptor=self.fds[-1])) 
+            else:
+                config = PyDgram(dgram.Dgram(file_descriptor=self.fds[-1], view=config_bytes[i]))
+            self.configs.append(config) 
         
     def __iter__(self):
         return self
 
     def __next__(self):
-        # Loop through all files and grab dgrams
+        return self.jump()
+
+    def jump(self, offsets=[]):
         dgrams = []
-        for _config in self._configs:
-            d=dgram.Dgram(config=_config)
+        if len(offsets) == 0: offsets = [0]*len(self.fds)
+        for fd, config, offset in zip(self.fds,self.configs, offsets):
+            _config = dgram.Dgram(file_descriptor=fd, view=config.buf)
+            if offset == 0:
+                d = dgram.Dgram(config=_config)                # read sequentially
+            else:
+                d = dgram.Dgram(config=_config, offset=offset) # read rax
             dgrams.append(PyDgram(d))
+            PyDgram(_config)                                   # dealloc
         return Event(dgrams=dgrams)
-
-    def jump(self, offset=0):
-        # Random access only works if the datasource is
-        # a single file (mostly used to jump around in bigdata).
-        d=dgram.Dgram(config=self._configs[0], offset=offset)
-        event = Event(dgrams=[PyDgram(d)])
-        return event
-
+    
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
     xtcdata_filename="data.xtc"
@@ -80,7 +86,7 @@ def main():
         for pydgram in evt:
             for var_name in sorted(vars(pydgram)):
                 val=getattr(pydgram, var_name)
-                print("  %s: %s" % (var_name, val))
+                print("  %s: %s" % (var_name, type(val)))
             a=pydgram.xpphsd.raw.array0Pgp
             try:
                 a[0][0]=999
