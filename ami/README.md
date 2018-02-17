@@ -31,14 +31,14 @@ You should see an interactive QT window. There is also a `dummy_gui.py` that giv
 
 2/9/18
 
+* think about top-down vs. bottom-up for pick-N pattern (e.g. for visualizing images).  collector has to: avg/sum, scatter plot, plot vs. time/event number, plot most recent image.  Most AMI patterns can be done with gather/reduce.  pick-N is like a "throttled gather", done on a per-heartbeat basis.  conditionals in pick-N (e.g. only laser-off) can be handled by graph boxes.
 * Ability to edit the graph graphically.
 * Visualization of the graph
 * Minimal viable documentation ( so Dan can remember what is going on )
-* Fault tolerance
+* Fault tolerance (tradeoff: avoid complicating code too much which can create more failures, and cause the code to be difficult to understand)
 * External interfaces:
     - hutch python - epics / json documents broker of blue sky
     - DRP feedback?
-* scaling of Qt in general
 * duplicate non-broken AMI functionality
 * autosave
 * read real XTC
