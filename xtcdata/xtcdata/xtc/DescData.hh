@@ -206,7 +206,7 @@ public:
         Data& data = _shapesdata.data();
         unsigned index = _nameindex.nameMap()[name];
         T val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
-	//	check(val, name);
+	checkType(val, name);
         return val;
     }
 
@@ -218,7 +218,7 @@ public:
         Name& name = _nameindex.names().get(index);
 	
 	T val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
-	//check(val, name);
+	checkType(val, name);
         return val;
     }
 
