@@ -1,7 +1,5 @@
 # ami
-This is the LCLS-II online analysis monitoring package, a.k.a. the LCLS-II
-version of AMI. Currently this is nothing more than a prototype / platform for
-spitballing ideas.
+The LCLS-II online graphical analysis monitoring package.
 
 # Requirements
 * Python 3.5+
