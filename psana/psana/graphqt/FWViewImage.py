@@ -1,4 +1,3 @@
-#!@PYTHON@
 """
 Class :py:class:`FWViewImage` is a FWView for interactive image
 ===============================================================
@@ -10,10 +9,9 @@ Usage ::
     # Test
     #-----
     import sys
-    from PyQt4 import QtGui, QtCore
-    from graphqt.FWViewImage import FWViewImage
-    import graphqt.ColorTable as ct
-    app = QtGui.QApplication(sys.argv)
+    from psana.graphqt.FWViewImage import *
+    import psana.graphqt.ColorTable as ct
+    app = QApplication(sys.argv)
     ctab = ct.color_table_monochr256()
     w = FWViewImage(None, arr, origin='UL', scale_ctl='HV', coltab=ctab)
     w.show()
@@ -53,15 +51,20 @@ See:
     - :class:`FWView`
     - :class:`FWViewImage`
     - :class:`QWSpectrum`
-    - `graphqt documentation <https://lcls-psana.github.io/graphqt/py-modindex.html>`_.
+    - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
 
-Created on September 9, 2016 by Mikhail Dubrovin
+This software was developed for the LCLS2 project.
+If you use all or part of it, please give an appropriate acknowledgment.
+
+Created on 2016-09-09 by Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
 
 from math import floor
-import graphqt.ColorTable as ct
-from graphqt.FWView import *
+import psana.graphqt.ColorTable as ct
+from psana.graphqt.FWView import *
+from PyQt5.QtGui import QImage, QPixmap
 
 #------------------------------
 
@@ -72,7 +75,7 @@ class FWViewImage(FWView) :
                  origin='UL', scale_ctl='HV') :
 
         h, w = arr.shape
-        rscene = QtCore.QRectF(0, 0, w, h)
+        rscene = QRectF(0, 0, w, h)
         FWView.__init__(self, parent, rscene, origin, scale_ctl)
         self._name = self.__class__.__name__
         self.set_coltab(coltab)
@@ -89,12 +92,12 @@ class FWViewImage(FWView) :
         self.setWindowTitle('FWViewImage%s' %(30*' '))
         self.setAttribute(Qt.WA_TranslucentBackground)
         #self.setContentsMargins(-9,-9,-9,-9)
-        #self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
+        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
 
 
     #def mousePressEvent(self, e):
     #    FWView.mousePressEvent(self, e)
-    #    #print 'XXX FWViewImage.mousePressEvent'
+    #    #print('XXX FWViewImage.mousePressEvent')
 
 #------------------------------
 
@@ -105,7 +108,7 @@ class FWViewImage(FWView) :
  
 #    def closeEvent(self, e):
 #        FWView.closeEvent(self, e)
-        #print '%s.closeEvent' % self._name
+        #print('%s.closeEvent' % self._name)
 
 #------------------------------
 
@@ -121,33 +124,33 @@ class FWViewImage(FWView) :
 #------------------------------
 
     def keyPressEvent(self, e) :
-        #print 'keyPressEvent, key=', e.key()         
+        #print('keyPressEvent, key=', e.key())        
         if   e.key() == Qt.Key_Escape :
-            print 'Close app'
+            print('Close app')
             self.close()
 
         elif e.key() == Qt.Key_R : 
-            print 'Reset original size'
+            print('Reset original size')
             self.reset_original_size()
 
         elif e.key() == Qt.Key_N : 
-            print 'Set new pixel map'
+            print('Set new pixel map')
             s = self.pmi.pixmap().size()
             img = image_with_random_peaks((s.height(), s.width()))
             self.set_pixmap_from_arr(img, set_def=False)
 
         elif e.key() in (Qt.Key_W, Qt.Key_D)  : 
             change_def = e.key()==Qt.Key_D
-            print '%s: change scene rect %s' % (self._name, 'set new default' if change_def else '')
+            print('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
             v = ag.random_standard((4,), mu=0, sigma=200, dtype=np.int)
-            rs = QtCore.QRectF(v[0], v[1], v[2]+1000, v[3]+1000)
-            print 'Set scene rect: %s' % str(rs)
+            rs = QRectF(v[0], v[1], v[2]+1000, v[3]+1000)
+            print('Set scene rect: %s' % str(rs))
             #self.set_rect_scene(rs, set_def=change_def)
-            img = image_with_random_peaks((rs.height(), rs.width()))
+            img = image_with_random_peaks((int(rs.height()), int(rs.width())))
             self.set_pixmap_from_arr(img, set_def=change_def)
 
         else :
-            print self.key_usage()
+            print(self.key_usage())
 
 #------------------------------
 
@@ -164,12 +167,12 @@ class FWViewImage(FWView) :
                 ct.apply_color_table(arr, ctable=self.coltab) 
         h, w = arr.shape
 
-        image = QtGui.QImage(anorm, w, h, QtGui.QImage.Format_ARGB32)
-        pixmap = QtGui.QPixmap.fromImage(image)
+        image = QImage(anorm, w, h, QImage.Format_ARGB32)
+        pixmap = QPixmap.fromImage(image)
         self.add_pixmap_to_scene(pixmap)
 
         if set_def :
-            rs = QtCore.QRectF(0, 0, w, h)
+            rs = QRectF(0, 0, w, h)
             self.set_rect_scene(rs, set_def)
 
 #------------------------------
@@ -203,17 +206,24 @@ class FWViewImage(FWView) :
 #------------------------------
 #------------------------------
 
-def image_with_random_peaks(shape=(500, 500)) : 
-    import pyimgalgos.NDArrGenerators as ag
+if __name__ == "__main__" :
+  def image_with_random_peaks(shape=(500, 500)) : 
+    import psana.pyalgos.generic.NDArrGenerators as ag
+    from psana.pyalgos.generic.NDArrUtils import print_ndarr
+
+    print('XXX1 shape:', shape)
     img = ag.random_standard(shape, mu=0, sigma=10)
+    print_ndarr(img, 'XXX ag.random_standard')
+
     peaks = ag.add_random_peaks(img, npeaks=50, amean=100, arms=50, wmean=1.5, wrms=0.3)
     ag.add_ring(img, amp=20, row=500, col=500, rad=300, sigma=50)
     return img
 
 #------------------------------
 
-def test_wfviewimage(tname) :
-    print '%s:' % sys._getframe().f_code.co_name
+if __name__ == "__main__" :
+  def test_wfviewimage(tname) :
+    print('%s:' % sys._getframe().f_code.co_name)
     #import numpy as np
     #arr = np.random.random((1000, 1000))
     arr = image_with_random_peaks((1000, 1000))
@@ -221,7 +231,7 @@ def test_wfviewimage(tname) :
     ctab = ct.color_table_monochr256()
     #ctab = ct.color_table_interpolated()
 
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     w = None
     if   tname == '0': w = FWViewImage(None, arr, coltab=ctab, origin='UL', scale_ctl='HV')
     elif tname == '1': w = FWViewImage(None, arr, coltab=ctab, origin='UL', scale_ctl='H')
@@ -247,7 +257,7 @@ def test_wfviewimage(tname) :
         a = np.arange(15).reshape((5, 3))
         w = FWViewImage(None, a, coltab=ctab, origin='UL', scale_ctl='HV')
     else :
-        print 'test %s is not implemented' % tname
+        print('test %s is not implemented' % tname)
         return
 
     w.connect_mouse_press_event_to(w.test_mouse_press_event_reception)
@@ -257,14 +267,17 @@ def test_wfviewimage(tname) :
     w.show()
     app.exec_()
 
+    del w
+    del app
+
 #------------------------------
 
 if __name__ == "__main__" :
     import sys; global sys
     import numpy as np; global np
-    import pyimgalgos.NDArrGenerators as ag; global ag
+    import psana.pyalgos.generic.NDArrGenerators as ag; global ag
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print 50*'_', '\nTest %s' % tname
+    print(50*'_', '\nTest %s' % tname)
     test_wfviewimage(tname)
     sys.exit('End of Test %s' % tname)
 

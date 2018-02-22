@@ -25,6 +25,8 @@ Usage::
     arr2d = gu.reshape_to_2d(nda)
     arr3d = gu.reshape_to_3d(nda)
 
+    arot  = arr_rot_n90(arr, rot_ang_n90=0)
+
     mmask = gu.merge_masks(mask1=None, mask2=None, dtype=np.uint8)
     mask  = gu.mask_neighbors(mask_in, allnbrs=True, dtype=np.uint8)
     mask  = gu.mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8)
@@ -160,6 +162,15 @@ def reshape_2d_to_3d(arr) :
         sh = arr.shape
         arr.shape = (1,sh[-2],sh[-1])
     return arr
+
+#------------------------------
+
+def arr_rot_n90(arr, rot_ang_n90=0) :
+    if   rot_ang_n90==  0 : return arr
+    elif rot_ang_n90== 90 : return np.flipud(arr.T)
+    elif rot_ang_n90==180 : return np.flipud(np.fliplr(arr))
+    elif rot_ang_n90==270 : return np.fliplr(arr.T)
+    else                  : return arr
 
 #------------------------------
 
