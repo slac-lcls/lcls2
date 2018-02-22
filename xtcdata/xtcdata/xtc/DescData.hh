@@ -133,34 +133,34 @@ public:
     // add get_array here
 
     
-    static void check(uint8_t val, Name& name) {
+    static void checkType(uint8_t val, Name& name) {
 	assert(Name::UINT8==name.type());
     }
-    static void check(uint16_t val, Name& name) {
+    static void checkType(uint16_t val, Name& name) {
 	assert(Name::UINT16==name.type());
     }
-    static void check(uint32_t val, Name& name) {
+    static void checkType(uint32_t val, Name& name) {
 	assert(Name::UINT32==name.type());
     }
-    static void check(uint64_t val, Name& name) {
+    static void checkType(uint64_t val, Name& name) {
 	assert(Name::UINT64==name.type());
     }
-    static void check(int8_t val, Name& name) {
+    static void checkType(int8_t val, Name& name) {
 	assert(Name::INT8==name.type());
     }
-    static void check(int16_t val, Name& name) {
+    static void checkType(int16_t val, Name& name) {
 	assert(Name::INT16==name.type());
     }
-    static void check(int32_t val, Name& name) {
+    static void checkType(int32_t val, Name& name) {
 	assert(Name::INT32==name.type());
     }
-    static void check(int64_t val, Name& name) {
+    static void checkType(int64_t val, Name& name) {
 	assert(Name::INT64==name.type());
     }
-    static void check(float val, Name& name) {
+    static void checkType(float val, Name& name) {
 	assert(Name::FLOAT==name.type());
     }
-    static void check(double val, Name& name) {
+    static void checkType(double val, Name& name) {
 	assert(Name::DOUBLE==name.type());
     }
 
@@ -349,7 +349,7 @@ protected:
         Array<T> allocate(unsigned index, unsigned *shape)
         {
             Name& name = _nameindex.names().get(index);
-            T val;check(val, name);
+            T val;checkType(val, name);
 
             Data& data = _shapesdata.data();
             //Create a pointer to the next part of contiguous memory
@@ -381,7 +381,7 @@ protected:
 
             Name& name = _nameindex.names().get(index);
 
-            check(val, name);
+            checkType(val, name);
             T* ptr = reinterpret_cast<T*>(data.payload() + _offset[index]);
             *ptr = val;
             data.alloc(sizeof(T), _shapesdata, _parent);
