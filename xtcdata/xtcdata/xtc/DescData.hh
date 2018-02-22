@@ -201,7 +201,7 @@ public:
 
     //This should have type checking
     template <class T>
-    T get_valueD(const char* name)
+    T get_value(const char* name)
     {
         Data& data = _shapesdata.data();
         unsigned index = _nameindex.nameMap()[name];
