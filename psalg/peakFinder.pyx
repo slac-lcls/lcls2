@@ -52,6 +52,12 @@ ctypedef fused nptype2d :
 
 cdef extern from "psalgos/include/PeakFinderAlgos.h" namespace "psalgos":
     cdef cppclass PeakFinderAlgos:
+         unsigned ps_row
+         unsigned ps_col
+         float *rows
+         float *cols
+         float *intens
+         unsigned numPeaksSelected
 
          PeakFinderAlgos(const size_t& seg, const unsigned& pbits, si.uint8_t* drpPtr) except +
 
@@ -60,7 +66,6 @@ cdef extern from "psalgos/include/PeakFinderAlgos.h" namespace "psalgos":
                                   ,const float& amax_thr
                                   ,const float& atot_thr
                                   ,const float& son_min)
-
 
          void peakFinderV3r3[T](const T *data
                                ,const mask_t *mask
@@ -97,6 +102,9 @@ cdef extern from "psalgos/include/PeakFinderAlgos.h" namespace "psalgos":
          void localMinima    (extrim_t *arr2d, const size_t& rows, const size_t& cols)
 
          void connectedPixels(conmap_t *arr2d, const size_t& rows, const size_t& cols)
+
+         const vector[vector[float]] peaksSelected()
+         float *convPeaksSelected()
 
 cdef class py_peak :
     cdef Peak* cptr  # holds a C++ pointer to instance
@@ -216,9 +224,10 @@ cdef class peak_finder_algos :
                            ,const double& dr\
                            ,const double& nsigm) :
         self.cptr.peakFinderV3r3(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, r0, dr, nsigm)
-        self.rows = data.shape[0]
-        self.cols = data.shape[1]
-        return self.list_of_peaks_selected()
+        return self.getPeaksSelected()
+        #self.rows = data.shape[0]
+        #self.cols = data.shape[1]
+        #return self.list_of_peaks_selected()
 
 
     def peak_finder_v4r3_d2(self\
@@ -251,6 +260,27 @@ cdef class peak_finder_algos :
 
     def peak_selected(self, int i=0) : 
         return py_peak.factory(self.cptr.peakSelected(i))
+
+    def peaks_selected(self):
+        temp = np.asarray(self.cptr.peaksSelected()) # This makes a copy, 5e-5 sec
+        return temp
+        #cdef vector[vector[float]] peaks = self.cptr.peaksSelected() # This makes a copy, 5e-5 sec
+        #return np.asarray(peaks)
+
+    def convPeaksSelected(self):
+        # ps_row and ps_col should become properties of array
+        # TODO: test when no peaks are found
+        cdef float[:, ::1] mv = <float[:self.cptr.ps_row, :self.cptr.ps_col]>self.cptr.convPeaksSelected() # No copy, 3e-5 sec
+        cdef float[:] rows = mv[:, 0]
+        cdef float[:] cols = mv[:, 1]
+        cdef float[:] intens = mv[:, 2]
+        return np.asarray(rows), np.asarray(cols), np.asarray(intens)
+
+    def getPeaksSelected(self):
+        cdef float[::1] rows = <float[:self.cptr.numPeaksSelected]>self.cptr.rows
+        cdef float[::1] cols = <float[:self.cptr.numPeaksSelected]>self.cptr.cols
+        cdef float[::1] intens = <float[:self.cptr.numPeaksSelected]>self.cptr.intens
+        return np.asarray(rows), np.asarray(cols), np.asarray(intens)
 
 
     def local_maxima(self) :

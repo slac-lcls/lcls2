@@ -44,11 +44,16 @@ PeakFinderAlgos::PeakFinderAlgos(const size_t& seg, const unsigned& pbits, uint8
 
 PeakFinderAlgos::~PeakFinderAlgos() 
 {
+  std::cout << "in d-tor ~PeakFinderAlgos\n";
   if(m_pbits & LOG::DEBUG) std::cout << "in d-tor ~PeakFinderAlgos\n";
   if (!drp) {
       if (m_local_maxima) delete[] m_local_maxima;
       if (m_local_minima) delete[] m_local_minima;
       if (m_conmap)       delete[] m_conmap;
+      if (ps)             delete[] ps;
+      if (rows)           delete[] rows;
+      if (cols)           delete[] cols;
+      if (intens)         delete[] intens;
   }
 }
 
@@ -73,6 +78,92 @@ PeakFinderAlgos::printParameters()
 }
 
 //-----------------------------
+
+const std::vector<std::vector<float> >& PeakFinderAlgos::peaksSelected(){
+    std::cout << "start peaksSelected: " << drp << std::endl;
+    unsigned numProperties = 3;//17;
+    if (drp) {
+        std::cout << "drp" << std::endl;
+        std::vector<std::vector<float> > _temp(v_peaks_sel_drp.len, std::vector<float>(numProperties));
+        for(unsigned i = 0; i< v_peaks_sel_drp.len; i++){
+            const Peak *p = v_peaks_sel_drp.data[i];
+            _temp[i] = {p->row, p->col, p->amp_tot};
+        }
+        vv_peaks_sel = _temp;
+    } else {
+        std::cout << "here" << std::endl;
+        std::cout << vv_peaks_sel.size() << std::endl;
+        if (vv_peaks_sel.size() == 0) {
+            std::cout << "running peaksSelected" << std::endl;
+            std::vector<std::vector<float> > _temp(v_peaks_sel.size(), std::vector<float>(numProperties));
+            for(unsigned i = 0; i< v_peaks_sel.size(); i++){
+                const Peak p = v_peaks_sel[i];
+                _temp[i] = {p.row, p.col, p.amp_tot};
+                //vv_peaks_sel1[i] = {p->seg,p->row,p->col,p->npix,p->amp_max,p->amp_tot,p->row_cgrav,
+                //    p->col_cgrav,p->row_sigma,p->col_sigma,p->row_min,p->row_max,p->col_min,p->col_max,
+                //    p->bkgd,p->noise,p->son};
+            }
+            vv_peaks_sel = _temp;
+        }
+    }
+    return vv_peaks_sel;
+}
+
+void PeakFinderAlgos::_convPeaksSelected(){
+    if (drp) {
+        numPeaksSelected = v_peaks_sel_drp.len;
+        rows = new float[numPeaksSelected*sizeof(float)];
+        cols = new float[numPeaksSelected*sizeof(float)];
+        intens = new float[numPeaksSelected*sizeof(float)];
+        for(unsigned i = 0; i< numPeaksSelected; i++){
+            const Peak *p = v_peaks_sel_drp.data[i];
+            rows[i] = p->row;
+            cols[i] = p->col;
+            intens[i] = p->amp_tot;
+        }
+    } else {
+        if (!ps) { // TODO: remove this if, only used for testing memview
+            numPeaksSelected = v_peaks_sel.size();
+            rows = new float[numPeaksSelected*sizeof(float)];
+            cols = new float[numPeaksSelected*sizeof(float)];
+            intens = new float[numPeaksSelected*sizeof(float)];
+            for(unsigned i = 0; i< numPeaksSelected; i++){
+                const Peak p = v_peaks_sel[i];
+                rows[i] = p.row;
+                cols[i] = p.col;
+                intens[i] = p.amp_tot;
+            }
+        }
+    }
+}
+
+float *PeakFinderAlgos::convPeaksSelected(){
+    ps_col = 3;
+    if (drp) {
+        ps = new float[ps_col*v_peaks_sel_drp.len*sizeof(float)];
+        ps_row = v_peaks_sel_drp.len;
+        unsigned counter = 0;
+        for(unsigned i = 0; i< v_peaks_sel_drp.len; i++){
+            const Peak *p = v_peaks_sel_drp.data[i];
+            ps[counter++] = p->row;
+            ps[counter++] = p->col;
+            ps[counter++] = p->amp_tot;
+        }
+    } else {
+        if (!ps) { // TODO: remove this if, only used for testing memview
+            ps = new float[ps_col*v_peaks_sel.size()*sizeof(float)];
+            ps_row = v_peaks_sel.size();
+            unsigned counter = 0;
+            for(unsigned i = 0; i< v_peaks_sel.size(); i++){
+                const Peak p = v_peaks_sel[i];
+                ps[counter++] = p.row;
+                ps[counter++] = p.col;
+                ps[counter++] = p.amp_tot;
+            }
+        }
+    }
+    return ps;
+}
 
 void 
 PeakFinderAlgos::_initMapsAndVectors()
@@ -328,8 +419,26 @@ PeakFinderAlgos::_printVectorOfPeaks(const std::vector<Peak>& v) {
 void
 PeakFinderAlgos::_printVectorOfPeaks_drp(const Vector<Peak>& v) {
   for(unsigned int ii = 0; ii < v.len; ii++) {
-    const Peak *peak = v.data[ii];
-    std::cout << "  " << peak << '\n'; 
+    const Peak *p = v.data[ii];
+    std::cout << fixed
+       << "Seg:"      << std::setw(3) << std::setprecision(0) << p->seg
+       << " Row:"     << std::setw(4) << std::setprecision(0) << p->row
+       << " Col:"     << std::setw(4) << std::setprecision(0) << p->col
+       << " Npix:"    << std::setw(3) << std::setprecision(0) << p->npix
+       << " Imax:"    << std::setw(7) << std::setprecision(1) << p->amp_max
+       << " Itot:"    << std::setw(7) << std::setprecision(1) << p->amp_tot
+       << " CGrav r:" << std::setw(6) << std::setprecision(1) << p->row_cgrav
+       << " c:"       << std::setw(6) << std::setprecision(1) << p->col_cgrav
+       << " Sigma r:" << std::setw(5) << std::setprecision(2) << p->row_sigma
+       << " c:"       << std::setw(5) << std::setprecision(2) << p->col_sigma
+       << " Rows["    << std::setw(4) << std::setprecision(0) << p->row_min
+       << ":"         << std::setw(4) << std::setprecision(0) << p->row_max
+       << "] Cols["   << std::setw(4) << std::setprecision(0) << p->col_min
+       << ":"         << std::setw(4) << std::setprecision(0) << p->col_max
+       << "] B:"      << std::setw(5) << std::setprecision(1) << p->bkgd
+       << " N:"       << std::setw(5) << std::setprecision(1) << p->noise
+       << " S/N:"     << std::setw(5) << std::setprecision(1) << p->son
+       << std::endl;
   }
 }
 
