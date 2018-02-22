@@ -1,4 +1,3 @@
-#!@PYTHON@
 """
 Class :py:class:`FWViewAxis` is a widget with interactive axes
 ==============================================================
@@ -13,8 +12,8 @@ Usage ::
     from PyQt4 import QtGui, QtCore
     from graphqt.FWViewAxis import FWViewAxis
 
-    app = QtGui.QApplication(sys.argv)
-    rscene=QtCore.QRectF(0, 0, 100, 100)
+    app = QApplication(sys.argv)
+    rscene=QRectF(0, 0, 100, 100)
     w = FWViewAxis(None, rscene, side='D', origin='UL', fgcolor='red', bgcolor='yellow')
     w = FWViewAxis(None, rscene, side='U', origin='UL')
     w = FWViewAxis(None, rscene, side='L', origin='DR', scale_ctl=True, wwidth=50, wlength=200)
@@ -39,16 +38,28 @@ Usage ::
     w.set_style()       # sets FWView.set_style() + color, font, pen
     w.closeEvent()      # removes rulers, FWView.closeEvent()
 
-Created on December 12, 2017 by Mikhail Dubrovin
+See:
+    - :class:`FWView`
+    - :class:`FWViewImage`
+    - :class:`FWViewAxis`
+    - :class:`FWViewColorBar`
+    - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
+
+This software was developed for the LCLS2 project.
+If you use all or part of it, please give an appropriate acknowledgment.
+
+Created on 2017-12-12 by Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-20
 """
 
-from graphqt.FWView  import FWView, QtGui, QtCore, Qt
-from graphqt.FWRuler import FWRuler
-#from graphqt.GUUtils import print_rect
+from psana.graphqt.FWView  import * # FWView, QtGui, QtCore, Qt
+from psana.graphqt.FWRuler import FWRuler
+#from psana.graphqt.QWUtils import print_rect
+from PyQt5.QtGui import QColor, QFont
 
 class FWViewAxis(FWView) :
     
-    def __init__(self, parent=None, rscene=QtCore.QRectF(0, 0, 10, 10), origin='UL', side='U', **kwargs) :
+    def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10), origin='UL', side='U', **kwargs) :
 
         self.scale_ctl = kwargs.get('scale_ctl', True)
         self.wlength   = kwargs.get('wlength',   400)
@@ -69,24 +80,24 @@ class FWViewAxis(FWView) :
 
 
     def print_attributes(self) :
-        print 'scale_control: ', self.str_scale_control()
-        print 'origin       : ', self.origin()
-        print 'side         : ', self.side
+        print('scale_control: ', self.str_scale_control())
+        print('origin       : ', self.origin())
+        print('side         : ', self.side)
 
 
     def set_style(self) :
         FWView.set_style(self)
 
         #style_default = "background-color: rgb(239, 235, 231, 255); color: rgb(0, 0, 0);" # Gray bkgd 
-        #bgcolor = self.palette().color(QtGui.QPalette.Background)
+        #bgcolor = self.palette().color(QPalette.Background)
         style_default = '' if self.bgcolor is None else 'background-color: %s' % self.bgcolor
         self.setStyleSheet(style_default)
 
         #color = Qt.white
-        color = QtGui.QColor(self.fgcolor)
-        self.colax = QtGui.QColor(color)
-        self.fonax = QtGui.QFont('Courier', 12, QtGui.QFont.Normal)
-        self.penax = QtGui.QPen(color, 1, Qt.SolidLine)
+        color = QColor(self.fgcolor)
+        self.colax = QColor(color)
+        self.fonax = QFont('Courier', 12, QFont.Normal)
+        self.penax = QPen(color, 1, Qt.SolidLine)
 
         if self.side in ('U','D')  :
             self.setMinimumSize(self.wlength, 2)
@@ -95,7 +106,7 @@ class FWViewAxis(FWView) :
             self.setMinimumSize(2, self.wlength)
             self.setFixedWidth(self.wwidth)
 
-        #self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
+        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
 
 #------------------------------
 
@@ -136,15 +147,16 @@ class FWViewAxis(FWView) :
     def closeEvent(self, e):
         self.ruler.remove()
         FWView.closeEvent(self, e)
-        #print 'FWViewAxis.closeEvent'
+        #print('FWViewAxis.closeEvent')
 
 #-----------------------------
 
-def test_guiview(tname) :
-    print '%s:' % sys._getframe().f_code.co_name
-    app = QtGui.QApplication(sys.argv)
+if __name__ == "__main__" :
+  def test_guiview(tname) :
+    print('%s:' % sys._getframe().f_code.co_name)
+    app = QApplication(sys.argv)
     w = None
-    rs=QtCore.QRectF(0, 0, 1000, 10)
+    rs=QRectF(0, 0, 1000, 10)
     if   tname ==  '0': w=FWViewAxis(None, rs, side='D', origin='UL', fgcolor='red', bgcolor='yellow')
     elif tname ==  '1': w=FWViewAxis(None, rs, side='U', origin='UL')
     elif tname ==  '2': w=FWViewAxis(None, rs, side='L', origin='UL')
@@ -165,7 +177,7 @@ def test_guiview(tname) :
     elif tname == '32': w=FWViewAxis(None, rs, side='L', origin='UR')
     elif tname == '33': w=FWViewAxis(None, rs, side='R', origin='UR')
     else :
-        print 'test %s is not implemented' % tname
+        print('test %s is not implemented' % tname)
         return
 
     w.print_attributes()
@@ -175,13 +187,16 @@ def test_guiview(tname) :
     w.show()
     app.exec_()
 
+    del w
+    del app
+
 #------------------------------
 
 if __name__ == "__main__" :
     import sys; global sys
     import numpy as np; global np
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print 50*'_', '\nTest %s' % tname
+    print(50*'_', '\nTest %s' % tname)
     test_guiview(tname)
     sys.exit('End of Test %s' % tname)
 

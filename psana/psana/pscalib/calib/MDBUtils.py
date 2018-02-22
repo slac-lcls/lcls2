@@ -286,7 +286,39 @@ def insert_calib_data(data, **kwargs) :
 #------------------------------
 
 def _error_msg(msg) :
-    return 'insert_constants - wrong parameter %s' % msg
+    return 'wrong parameter %s' % msg
+
+#------------------------------
+
+def valid_experiment(experiment:str) :
+    assert isinstance(experiment,str), _error_msg('type')
+    assert 7 < len(experiment) < 10, _error_msg('length')
+
+def valid_detector(detector:str) :
+    assert isinstance(detector,str), _error_msg('type')
+    assert 1 < len(detector) < 65, _error_msg('length')
+
+def valid_ctype(ctype:str) :
+    assert isinstance(ctype,str), _error_msg('type')
+    assert 4 < len(ctype) < 32, _error_msg('length')
+
+def valid_run(run:int) :
+    assert isinstance(run,int), _error_msg('type')
+    assert -1 < run < 10000, _error_msg('value')
+
+def valid_version(version:str) :
+    assert isinstance(version,str), _error_msg('type')
+    assert 1 < len(version) < 32, _error_msg('length')
+
+def valid_comments(comments:(list,tuple)) :
+    assert isinstance(comments,tuple) or\
+           isinstance(comments,list), _error_msg('type')
+    assert len(comments) < 1000, _error_msg('length')
+
+def valid_data(data, detector:str, ctype:str) :
+    pass
+
+#------------------------------
 
 def insert_constants(data, experiment:str, detector:str, ctype:str, run:int, time_sec_or_stamp:(int,str), version:str='V001', **kwargs) :
     """Checks validity of input parameters and call insert_calib_data.
@@ -297,20 +329,12 @@ def insert_constants(data, experiment:str, detector:str, ctype:str, run:int, tim
    
     comments = kwargs.get('comments',[]),
 
-    assert isinstance(experiment,str),   _error_msg('type')
-    assert isinstance(detector,str),     _error_msg('type')
-    assert isinstance(ctype,str),        _error_msg('type')
-    assert isinstance(run,int),          _error_msg('type')
-    assert isinstance(version,str),      _error_msg('type')
-    assert isinstance(comments,tuple) or\
-           isinstance(comments,list) ,   _error_msg('type')
-
-    assert 7 < len(experiment) < 10,     _error_msg('length')
-    assert 1 < len(detector) < 65,       _error_msg('length')
-    assert 4 < len(ctype)   < 32,        _error_msg('length')
-    assert 1 < len(version) < 16,        _error_msg('length')
-
-    assert -1 < run < 10000,             _error_msg('value')
+    valid_experiment(experiment)
+    valid_detector(detector)
+    valid_ctype(ctype)
+    valid_run(run)
+    valid_comments(comments)
+    valid_data(data, detector, ctype)
 
     kwa = {
           'experiment' : experiment,
