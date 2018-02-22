@@ -74,17 +74,27 @@ int main () {
   const double nsigm = 0;
   ptr->peakFinderV3r3(data, mask, rows, cols, rank, r0, dr, nsigm);
 
-
   auto t4 = Clock::now();
-  std::cout << "Analyzing fake data, Delta t: " << std::endl 
+
+  if (pbits) std::cout << "*** BUF *** " << (void*) buf << std::endl; // TODO: update buf to the latest address
+
+  std::cout << "Analyzing fake data, Delta t: " << std::endl
             << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << std::endl
             << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count() << std::endl
             << std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count() << std::endl
             << std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t1).count() 
             << " milliseconds" << std::endl;
 
+  ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
 
-  std::cout << "*** BUF *** " << (void*) buf << std::endl; // TODO: update buf to the latest address
+  std::vector<std::vector<float> > a = ptr->peaksSelected();
+  std::cout << a[1][1] << std::endl;
+
+  float *b = ptr->convPeaksSelected();
+  std::cout << "convPeaksSelected: " << b[0] << std::endl;
+
+  //ptr->convPeaksSelected1();
+  std::cout << "convPeaksSelected1: " << ptr->rows[1] << " " << ptr->cols[1] << std::endl;
 
 // Peak 1
 //Seg:  0 Row:   4 Col: 348 Npix: 24 Imax:  995.7 Itot: 2843.5 CGrav r:   4.0 c: 349.0 Sigma r: 0.29 c: 0.86 Rows[   1:   7] Cols[ 345: 351] B:  4.3 N:  1.8 S/N:314.7
