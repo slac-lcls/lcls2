@@ -6,7 +6,7 @@
 
 Usage::
 
-    # python lcls2/psana/pscalib/calib/CalibBase.py
+    # python lcls2/psana/psana/pscalib/calib/CalibBase.py
 
     from psana.pscalib.calib.CalibBase import *
     logger = logging.getLogger('MyModuleName')
@@ -49,7 +49,7 @@ Created on 2018-02-02 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger('CalibBase')
 
-from CalibConstants import *
+from psana.pscalib.calib.CalibConstants import *
 
 #------------------------------
 

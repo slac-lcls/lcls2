@@ -19,9 +19,29 @@ dgram_module = Extension('psana.dgram',
 
 setup(name = 'psana',
        version = '0.1',
+       license = 'LCLS II',
        description = 'LCLS II analysis package',
+       install_requires=[
+         'numpy',
+       ],
        #packages = find_packages(),
-       packages = ['psana', 'psana.detector', 'psana.pyalgos.generic'],
+       packages = ['psana',
+                   'psana.detector',
+                   'psana.pscalib.calib',
+                   'psana.pscalib.geometry',
+                   'psana.pyalgos.generic',
+                   'psana.graphqt',
+       ],
+       #package_dir={
+       #             'psana.psana.pscalib.calib'    : 'calib',
+       #             'psana.psana.pscalib.geometry' : 'geometry',
+       #             'psana.psana.pyalgos.generic'  : 'generic',
+       #             'psana.psana.graphqt'          : 'graphqt',
+       #},
+       include_package_data = True,
+       package_data={'graphqt': ['data/icons/*.png','data/icons/*.gif'],
+       },
+
        #cmdclass = {'build': dgram_build, 'build_ext': dgram_build_ext},
        ext_modules = [dgram_module],
        entry_points={
@@ -30,7 +50,8 @@ setup(name = 'psana',
                 'convert_txt_to_npy  = psana.pyalgos.app.convert_txt_to_npy:do_main',
                 'merge_mask_ndarrays = psana.pyalgos.app.merge_mask_ndarrays:do_main',
                 'merge_max_ndarrays  = psana.pyalgos.app.merge_max_ndarrays:do_main',
-            ]
+                'timeconverter       = psana.graphqt.app.timeconverter:timeconverter',
+             ]
        },
 )
 

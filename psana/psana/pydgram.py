@@ -4,6 +4,7 @@
 import sys
 
 from psana import dgram
+import numpy as np
 
 class container:
     pass
@@ -35,6 +36,7 @@ class PyDgram:
         #d=dgram.Dgram(config=config)
         #for key in sorted(d.__dict__.keys()):
         #    setattr(self, key, getattr(d, key))
+        self.buf = np.asarray(d)
         keys = sorted(d.__dict__.keys())
         for k in keys:
             fields = k.split('_')
@@ -45,3 +47,4 @@ class PyDgram:
                 currobj = getattr(currobj,f)
             val = getattr(d,k)
             setattr(currobj,fields[-1],val)
+

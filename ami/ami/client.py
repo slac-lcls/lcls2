@@ -5,6 +5,7 @@ import json
 import argparse
 import threading
 import numpy as np
+import multiprocessing as mp
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import pyqtSlot, QTimer
@@ -16,10 +17,10 @@ from ami.data import DataTypes
 from ami.operation import ROI
 
 
-class Master(ZmqBase):
+class CommunicationHandler(ZmqBase):
 
     def __init__(self, zmqctx, zmq_config):
-        super(__class__, self).__init__("client-master", zmq_config, zmqctx)
+        super(__class__, self).__init__("client-commhandler", zmq_config, zmqctx)
         self.sock = self.connect(zmq.REQ)
 
     @property
@@ -43,22 +44,22 @@ class Master(ZmqBase):
 
 
 class WaveformWidget(pg.GraphicsLayoutWidget):
-    def __init__(self, topic, master, timer, parent=None):
-        super(WaveformWidget, self).__init__(parent)
+    def __init__(self, topic, zmqctx, zmqconfig, parent=None):
+        super(__class__, self).__init__(parent)
+        self.topic = topic
+        self.timer = QTimer()
+        self.comm_handler = CommunicationHandler(zmqctx, zmqconfig)
         self.plot_view = self.addPlot()
         self.plot = None
-        self.master = master
-        self.topic = topic
-        self.timer = timer
-        self.sock = self.master.connect(zmq.REQ)
         self.timer.timeout.connect(self.get_waveform)
+        self.timer.start(1000)
 
     @pyqtSlot()
     def get_waveform(self):
-        self.sock.send_string("feature:%s"%self.topic)
-        reply = self.sock.recv_string()
+        self.comm_handler.sock.send_string("feature:%s"%self.topic)
+        reply = self.comm_handler.sock.recv_string()
         if reply == 'ok':
-            self.waveform_updated(self.sock.recv_pyobj())
+            self.waveform_updated(self.comm_handler.sock.recv_pyobj())
         else:
             print("failed to fetch %s from manager!"%self.topic)
 
@@ -69,23 +70,22 @@ class WaveformWidget(pg.GraphicsLayoutWidget):
             self.plot.setData(y=data)
 
 
-
 class AreaDetWidget(pg.ImageView):
-    def __init__(self, topic, master, timer, parent=None):
+    def __init__(self, topic, zmqctx, zmqconfig, parent=None):
         super(AreaDetWidget, self).__init__(parent)
-        self.master = master
         self.topic = topic
-        self.timer = timer
-        self.sock = self.master.connect(zmq.REQ)
+        self.comm_handler = CommunicationHandler(zmqctx, zmqconfig)
+        self.timer = QTimer()
         self.timer.timeout.connect(self.get_image)
+        self.timer.start(1000)
         self.roi.sigRegionChangeFinished.connect(self.roi_updated)
     
     @pyqtSlot()
     def get_image(self):
-        self.sock.send_string("feature:%s"%self.topic)
-        reply = self.sock.recv_string()
+        self.comm_handler.sock.send_string("feature:%s"%self.topic)
+        reply = self.comm_handler.sock.recv_string()
         if reply == 'ok':
-            self.image_updated(self.sock.recv_pyobj())
+            self.image_updated(self.comm_handler.sock.recv_pyobj())
         else:
             print("failed to fetch %s from manager!"%self.topic)
 
@@ -94,17 +94,18 @@ class AreaDetWidget(pg.ImageView):
 
     #@pyqtSlot(pg.ROI)
     def roi_updated(self, roi):
-        graph = self.master.graph
+        graph = self.comm_handler.graph
         roi = ROI(*roi.getAffineSliceParams(self.image, self.getImageItem()), (0,1))
         graph["%s-roi"%self.topic] = { "optype": "ROI", "config": roi.export(), "inputs": [{"name": self.topic, "required": True}] }
-        self.master.update(graph)
+        self.comm_handler.update(graph)
         
 
 class DetectorList(QListWidget):
     
-    def __init__(self, parent=None, zmqctx=None, zmqcfg=None):
+    def __init__(self, queue, parent=None, zmqctx=None, zmqcfg=None):
         super(DetectorList, self).__init__(parent)
-        self.master = Master(zmqctx, zmqcfg)
+        self.queue = queue
+        self.comm_handler = CommunicationHandler(zmqctx, zmqcfg)
         self.features = {}
         self.timer = QTimer()
         self.timer.timeout.connect(self.get_features)
@@ -113,12 +114,12 @@ class DetectorList(QListWidget):
         return
 
     def load(self, graph_cfg):
-        self.master.update(graph_cfg)
+        self.comm_handler.update(graph_cfg)
 
     @pyqtSlot()
     def get_features(self):
         # detectors = dict, maps name --> type
-        self.features = self.master.features
+        self.features = self.comm_handler.features
         self.clear()
         for k in self.features.keys():
             self.addItem(k)
@@ -143,23 +144,41 @@ class DetectorList(QListWidget):
         return
 
     def _spawn_window(self, window_type, topic):
+        self.queue.put((window_type, topic))
         
-        win = QMainWindow(self)
 
-        if window_type == 'AreaDetector':
-            widget = AreaDetWidget(topic, self.master, self.timer, win)
-        
-        elif window_type == 'WaveformDetector':
-            widget = WaveformWidget(topic, self.master, self.timer, win)
-        
-        else:
-            raise ValueError('%s not valid window_type' % window_type)
-        
-        win.setCentralWidget(widget)
-        win.setWindowTitle(topic)
-        win.show()
+def run_list_window(queue, zmqcfg, ami_save):
+    ctx = zmq.Context()
+    app = QApplication(sys.argv)
+    amilist = DetectorList(queue, zmqctx=ctx, zmqcfg=zmqcfg)
+    if ami_save is not None:
+        amilist.load(ami_save)
+    amilist.show()
 
-        return win, widget
+    return app.exec_()
+
+
+def run_widget(queue, window_type, topic, zmqcfg):
+
+    ctx = zmq.Context()
+    app = QApplication(sys.argv)
+    win = QMainWindow()
+
+    if window_type == 'AreaDetector':
+        widget = AreaDetWidget(topic, ctx, zmqcfg, win)
+
+    elif window_type == 'WaveformDetector':
+        widget = WaveformWidget(topic, ctx, zmqcfg, win)
+
+    else:
+        raise ValueError('%s not valid window_type' % window_type)
+
+    win.setCentralWidget(widget)
+    win.setWindowTitle(topic)
+    win.show()
+
+    return app.exec_()
+
 
 def main():
     parser = argparse.ArgumentParser(description='AMII GUI Client')
@@ -206,14 +225,17 @@ def main():
     )
 
     try:
-        ctx = zmq.Context()
-        app = QApplication(sys.argv)
-        amilist = DetectorList(zmqctx=ctx, zmqcfg=zmqcfg)
-        if saved_cfg is not None:
-            amilist.load(saved_cfg)
-        amilist.show()
+        queue = mp.Queue()
+        list_proc = mp.Process(target=run_list_window, args=(queue, zmqcfg, saved_cfg))
+        list_proc.start()
+        widget_procs = []
 
-        return app.exec_()
+        while True:
+            window_type, topic = queue.get()
+            print("opening new widget:", window_type, topic)
+            proc = mp.Process(target=run_widget, args=(queue, window_type, topic, zmqcfg))
+            proc.start()
+            widget_procs.append(proc)
     except KeyboardInterrupt:
         print("Client killed by user...")
         return 0

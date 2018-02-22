@@ -254,7 +254,7 @@ class ConfigParameters :
     def getTextParameters(self) :
         txt = 'printParameters - Number of declared parameters in the dict: %d\n' % len(self.dict_pars)
         lpars = list(self.dict_pars.values())
-        lpars.sort() # sort "in situ" - it does not return anything so can't use it any other way....
+        #lpars.sort() # sort "in situ" - it does not return anything so can't use it any other way....
         list_of_recs = [par.strParInfo() for par in lpars]
         return txt + '  ' + '\n  '.join(list_of_recs)
 
@@ -281,7 +281,7 @@ class ConfigParameters :
         f=open(self.fname,'w')
 
         lpars = list(self.dict_pars.values())
-        lpars.sort() # sort "in situ" - it does not return anything so can't use it any other way....
+        #lpars.sort() # sort "in situ" - it does not return anything so can't use it any other way....
         for par in lpars :
             v = par.value()
             s = '%s %s\n' % (par.name().ljust(32), str(v))

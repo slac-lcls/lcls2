@@ -5,11 +5,20 @@ source setup_env.sh
 # choose local directory where packages will be installed
 export INSTDIR=`pwd`/install
 
+if [ "$#" -eq  "0" ]
+  then
+      cmake_option="-DCMAKE_INSTALL_PREFIX=$INSTDIR"
+      echo $cmake_option
+  else
+      cmake_option="-DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_BUILD_TYPE=$1"
+      echo $cmake_option
+fi
+
 # to build xtcdata with cmake
 cd xtcdata
 mkdir -p build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR ..
+cmake $cmake_option ..
 make -j 4 install
 cd ../..
 
@@ -17,7 +26,7 @@ cd ../..
 cd psdaq
 mkdir -p build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR ..
+cmake $cmake_option ..
 make -j 4 install
 cd ../..
 
@@ -28,6 +37,8 @@ mkdir -p $INSTDIR/lib/python$pyver/site-packages/
 
 # to build psana with setuptools
 cd psana
+# force build of the dgram extention
+python setup.py build_ext --xtcdata=$INSTDIR -f --inplace
 python setup.py develop --xtcdata=$INSTDIR --prefix=$INSTDIR
 cd ..
 # build ami
