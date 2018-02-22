@@ -4,15 +4,12 @@
 ```bash
 
 # repository consists of seperate packages: xtcdata, psdaq, drp and psana
-# all packages depend on xtcdata
 
 source setup_env.sh
-./build_all.sh
+# build all packages in the repository and install them in ./install, option to choose build type
+./build_all.sh {Release, Debug, RelWithDebInfo}
 ```
 
 To run the psana automated tests run "nosetests psana/psana/tests" in your git root directory.
 
-You can read the above build_all.sh script to see how to build individual packages.  You can change between optimize/debug builds by running cmake with the following:
-```bash
-cmake -DCMAKE_BUILD_TYPE={Debug, RelWithDebInfo, Release} ..
-```
+You can read the above build_all.sh script to see how to build individual packages.
