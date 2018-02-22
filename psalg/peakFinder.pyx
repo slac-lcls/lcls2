@@ -224,7 +224,7 @@ cdef class peak_finder_algos :
                            ,const double& dr\
                            ,const double& nsigm) :
         self.cptr.peakFinderV3r3(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, r0, dr, nsigm)
-        return self.convPeaksSelected1()
+        return self.getPeaksSelected()
         #self.rows = data.shape[0]
         #self.cols = data.shape[1]
         #return self.list_of_peaks_selected()
@@ -276,7 +276,7 @@ cdef class peak_finder_algos :
         cdef float[:] intens = mv[:, 2]
         return np.asarray(rows), np.asarray(cols), np.asarray(intens)
 
-    def convPeaksSelected1(self):
+    def getPeaksSelected(self):
         cdef float[::1] rows = <float[:self.cptr.numPeaksSelected]>self.cptr.rows
         cdef float[::1] cols = <float[:self.cptr.numPeaksSelected]>self.cptr.cols
         cdef float[::1] intens = <float[:self.cptr.numPeaksSelected]>self.cptr.intens

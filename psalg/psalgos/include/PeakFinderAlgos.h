@@ -329,9 +329,9 @@ public:
   /// Returns vector of selected peaks v_peaks_sel
   const std::vector<Peak>& vectorOfPeaksSelected(){return v_peaks_sel;}
   const Vector<Peak>& vectorOfPeaksSelected_drp(){return v_peaks_sel_drp;}
-  const std::vector<std::vector<float> >& peaksSelected();
-  float *convPeaksSelected();
-  void convPeaksSelected1();//float*& rows, float*& cols, float*& intens);
+  const std::vector<std::vector<float> >& peaksSelected(); // TODO: remove
+  float *convPeaksSelected(); // TODO: remove
+  void _convPeaksSelected();
 
   /// Fills-out (returns) array of local maxima
   void localMaxima(extrim_t *map, const size_t& rows, const size_t& cols) {
@@ -475,7 +475,7 @@ peakFinderV3r3(const T *data
     _initMapsAndVectors_drp();
     _makeMapOfConnectedPixelsForLocalMaximums_drp<T>(data); // fills m_conmap, v_peaks, vv_peak_pixinds
     _makeVectorOfSelectedPeaks_drp();                       // make vector of selected peaks
-    convPeaksSelected1();                                   // create vectors of rows,cols,intens
+    _convPeaksSelected();                                   // create vectors of rows,cols,intens
 
     if (m_pbits) {
       _printVectorOfPeaks_drp(v_peaks_sel_drp);               // print vector of selected peaks
@@ -492,7 +492,7 @@ peakFinderV3r3(const T *data
     _initMapsAndVectors();
     _makeMapOfConnectedPixelsForLocalMaximums<T>(data); // fills m_conmap, v_peaks, vv_peak_pixinds
     _makeVectorOfSelectedPeaks();                       // make vector of selected peaks
-    convPeaksSelected1();                               // create vectors of rows,cols,intens
+    _convPeaksSelected();                               // create vectors of rows,cols,intens
 
     if (m_pbits) {
       _printVectorOfPeaks(v_peaks_sel);               // print vector of selected peaks

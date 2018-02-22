@@ -87,14 +87,14 @@ int main () {
 
   ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
 
-  std::vector<std::vector<float> > a = ptr->peaksSelected();
-  std::cout << a[1][1] << std::endl;
+  //std::vector<std::vector<float> > a = ptr->peaksSelected();
+  //std::cout << a[1][1] << std::endl;
 
-  float *b = ptr->convPeaksSelected();
-  std::cout << "convPeaksSelected: " << b[0] << std::endl;
+  //float *b = ptr->convPeaksSelected();
+  //std::cout << "convPeaksSelected: " << b[0] << std::endl;
 
   //ptr->convPeaksSelected1();
-  std::cout << "convPeaksSelected1: " << ptr->rows[1] << " " << ptr->cols[1] << std::endl;
+  std::cout << "_convPeaksSelected: " << ptr->rows[1] << " " << ptr->cols[1] << std::endl;
 
 // Peak 1
 //Seg:  0 Row:   4 Col: 348 Npix: 24 Imax:  995.7 Itot: 2843.5 CGrav r:   4.0 c: 349.0 Sigma r: 0.29 c: 0.86 Rows[   1:   7] Cols[ 345: 351] B:  4.3 N:  1.8 S/N:314.7
