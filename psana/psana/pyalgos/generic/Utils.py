@@ -6,6 +6,9 @@
 Usage::
 
     # assuming that $PYTHONPATH=.../lcls2/psana
+
+    # Run test: python lcls2/psana/psana/pyalgos/generic/Utils.py 1
+
     # Import
     import psana.pyalgos.generic.Utils as gu
 
@@ -19,19 +22,40 @@ Usage::
     usr   = gu.get_login()
     host  = gu.get_hostname()
     cwd   = gu.get_cwd()
+    pid   = gu.get_pid()
     rec   = gu.log_rec_on_start()
     fmode = gu.file_mode(fname)
 
     gu.create_directory(dir, mode=0o777)
     exists = gu.create_path(path, depth=6, mode=0o777, verb=True)
 
+    flist = gu.get_list_of_files_in_dir(dirname)
+    flist = gu.get_list_of_files_in_dir_for_ext(dir, ext='.xtc')
+    flist = gu.get_list_of_files_in_dir_for_pattern(dir, pattern='-r0022')
+    owner = gu.get_path_owner(path)
+    mode  = gu.get_path_mode(path)
+    tmpf  = gu.get_tempfile(mode='r+b',suffix='.txt')
+
+    gu.print_parsed_path(path)
+
     arr  = gu.load_textfile(path)
     gu.save_textfile(text, path, mode='w') # mode: 'w'-write, 'a'-append 
+
 
     # Save image in file
     # ==================
     gu.save_image_tiff(image, fname='image.tiff', verb=True) # 16-bit tiff
     gu.save_image_file(image, fname='image.png', verb=True) # gif, pdf, eps, png, jpg, jpeg, tiff (8-bit only)
+
+    list_int = gu.list_of_int_from_list_of_str(list_str)
+    list_str = gu.list_of_str_from_list_of_int(list_int, fmt='%04d')
+
+    resp = gu.has_kerberos_ticket()
+    resp = gu.check_token(do_print=False)
+    resp = gu.get_afs_token(do_print=False)
+    resp = gu.text_sataus_of_lsf_hosts(farm='psnehfarm')
+    resp = gu.ext_status_of_queues(lst_of_queues=['psanaq', 'psnehq', 'psfehq', 'psnehprioq', 'psfehprioq'])
+
 
 See:
     - :py:class:`Utils`
@@ -53,6 +77,8 @@ import getpass
 import socket
 from time import localtime, strftime, time, strptime, mktime
 import numpy as np
+#import subprocess
+from subprocess import call, getoutput
 
 #------------------------------
 
@@ -106,6 +132,13 @@ def get_cwd() :
     """Returns current working directory
     """
     return os.getcwd()
+
+#------------------------------
+
+def get_pid() :
+    """Returns pid - process id
+    """
+    return os.getpid()
 
 #------------------------------
 
@@ -165,6 +198,78 @@ def create_path(path, depth=6, mode=0o377) :
 
     return os.path.exists(cpath)
 
+#------------------------------
+
+def get_list_of_files_in_dir(dirname) :
+    return os.listdir(dirname)
+
+#------------------------------
+
+def get_list_of_files_in_dir_for_ext(dir, ext='.xtc'):
+    """Returns the list of files in the directory for specified extension or None if directory is None."""
+    if dir is None : return []
+    if not os.path.exists(dir) : return [] 
+    
+    list_of_files_in_dir = os.listdir(dir)
+    list_of_files = []
+    for fname in list_of_files_in_dir :
+        if os.path.splitext(fname)[1] == ext :
+            list_of_files.append(fname)
+    return sorted(list_of_files)
+
+#------------------------------
+
+def get_list_of_files_in_dir_for_part_fname(dir, pattern='-r0022'):
+    """Returns the list of files in the directory for specified file name pattern or [] - empty list."""
+    if dir is None : return []
+    if not os.path.exists(dir) : return [] 
+    
+    list_of_files_in_dir = os.listdir(dir)
+    list_of_files = []
+    for fname in list_of_files_in_dir :
+        if pattern in fname :
+            fpath = os.path.join(dir,fname)
+            list_of_files.append(fpath)
+    return sorted(list_of_files)
+
+#------------------------------
+
+def get_path_owner(path) :
+    import pwd
+    stat = os.stat(path)
+    #print(' stat =', stat)
+    pwuid = pwd.getpwuid(stat.st_uid)
+    #print(' pwuid =', pwuid)
+    user_name  = pwuid.pw_name
+    #print(' uid = %s   user_name  = %s' % (uid, user_name))
+    return user_name
+
+#------------------------------
+
+def get_path_mode(path) :
+    return os.stat(path).st_mode
+
+#------------------------------
+
+def get_tempfile(mode='r+b',suffix='.txt') :
+    import tempfile
+    tf = tempfile.NamedTemporaryFile(mode=mode,suffix=suffix)
+    return tf # .name
+
+#------------------------------
+
+def print_parsed_path(path) :                       # Output for path:
+    print('print_parsed_path(path): path:',)        # path/reg/d/psdm/XCS/xcsi0112/xtc/e167-r0015-s00-c00.xtc
+    print('exists(path)  =', os.path.exists(path))  # True 
+    print('splitext(path)=', os.path.splitext(path))# ('/reg/d/psdm/XCS/xcsi0112/xtc/e167-r0015-s00-c00', '.xtc')
+    print('basename(path)=', os.path.basename(path))# e167-r0015-s00-c00.xtc
+    print('dirname(path) =', os.path.dirname(path)) # /reg/d/psdm/XCS/xcsi0112/xtc
+    print('lexists(path) =', os.path.lexists(path)) # True  
+    print('isfile(path)  =', os.path.isfile(path))  # True  
+    print('isdir(path)   =', os.path.isdir(path))   # False 
+    print('split(path)   =', os.path.split(path))   # ('/reg/d/psdm/XCS/xcsi0112/xtc', 'e167-r0015-s00-c00.xtc') 
+
+#------------------------------
 #------------------------------
 
 def save_textfile(text, path, mode='w', verb=False) :
@@ -253,10 +358,91 @@ def print_command_line_parameters(parser) :
         print('  %s %s %s' % (k.ljust(10), str(v).ljust(20), str(defs[k]).ljust(20)))
 
 #------------------------------
+
+def list_of_int_from_list_of_str(list_str) :
+    """Converts  ['0001', '0202', '0203', '0204',...] to [1, 202, 203, 204,...]
+    """
+    return [int(s) for s in list_str]
+
+#------------------------------
+
+def list_of_str_from_list_of_int(list_int, fmt='%04d') :
+    """Converts [1, 202, 203, 204,...] to ['0001', '0202', '0203', '0204',...]
+    """
+    return [fmt % i for i in list_int]
+
+#------------------------------
+
+def has_kerberos_ticket():
+    """Checks to see if the user has a valid Kerberos ticket"""
+    #stream = os.popen('klist -s')
+    #output = getoutput('klist -4')
+    #resp = call(["klist", "-s"])
+    return True if call(["klist", "-s"]) == 0 else False
+
+#------------------------------
+
+def _parse_token(token) :
+    """ from string like: User's (AFS ID 5269) tokens for afs@slac.stanford.edu [Expires Feb 28 19:16] 54 75 Expires Feb 28 19:16
+        returns date/time: Feb 28 19:16
+    """
+    timestamp = ''
+
+    for line in token.split('\n') :
+        pos_beg = line.find('[Expire')
+        if pos_beg == -1 : continue
+        pos_end = line.find(']', pos_beg)
+        #print(line)
+        timestamp = line[pos_beg+9:pos_end]
+
+        #date_object = datetime.strptime('Jun 1 2005  1:33PM', '%b %d %Y %I:%M%p')
+        #date_object = datetime.strptime(timestamp, '%b %d %H:%M')
+        #print('date_object', str(date_object))
+
+    return timestamp 
+
+#------------------------------
+
+def check_token(do_print=False) :
+    token = getoutput('tokens')
+    #if do_print(: print(token)
+    status = True if 'Expire' in token else False
+    timestamp = _parse_token(token) if status else ''
+    msg = 'Your AFS token %s %s' % ({True:'IS valid until', False:'IS NOT valid'}[status], timestamp)
+    if do_print : print(msg)
+    return status, msg
+
+#------------------------------
+
+def get_afs_token(do_print=False) :
+    output = getoutput('aklog')
+    if do_print : print(str(output))
+    return output
+
+#------------------------------
+
+def text_sataus_of_lsf_hosts(farm='psnehfarm'):
+    """Returns text output of the command: bhosts farm"""
+    cmd = 'bhosts %s' % farm
+    return cmd, getoutput(cmd)
+    
+#------------------------------
+
+def text_status_of_queues(lst_of_queues=['psanaq', 'psnehq', 'psfehq', 'psnehprioq', 'psfehprioq']):
+    """Checks status of queues"""
+    cmd = 'bqueues %s' % (' '.join(lst_of_queues))
+    return cmd, getoutput(cmd)
+
+#------------------------------
+#------------------------------
+
+#------------------------------
 #----------- TEST -------------
 #------------------------------
 
-def test_10() :
+if __name__ == "__main__" :
+
+  def test_10() :
     from psana.pyalgos.generic.NDArrGenerators import random_standard
 
     image = random_standard()
@@ -265,9 +451,9 @@ def test_10() :
     save_image_file(image, fname='image.png',  verb=verbosity)
     save_image_file(image, fname='image.xyz',  verb=verbosity)
 
-#------------------------------
+  #------------------------------
 
-def test_01() :    
+  def test_01() :    
     #logger.debug('debug msg')  # will print a message to the console
     #logger.warning('Watch out!')  # will print a message to the console
     #logger.info('I told you so')  # will not print anything

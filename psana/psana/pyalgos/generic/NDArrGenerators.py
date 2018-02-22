@@ -38,13 +38,15 @@ Modified for LCLS2 on 2015-01-26 by Mikhail Dubrovin
 import numpy as np
 import math
 #from psana.pyalgos.generic.NDArrUtils import shape_as_2d, shape_as_3d, reshape_to_2d, reshape_to_3d
+#from psana.pyalgos.generic.NDArrUtils import size_from_shape
+#from psana.pyalgos.generic.NDArrUtils import print_ndarr
 
 #-----------------------------
 
 def random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float) :
     """Returns numpy array of requested shape and type filled with normal distribution for mu and sigma.
     """
-    a = mu + sigma*np.random.standard_normal(shape)
+    a = mu + sigma*np.random.standard_normal(size=shape)
     return np.require(a, dtype)
 
 #-----------------------------
