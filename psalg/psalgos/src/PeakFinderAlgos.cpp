@@ -109,7 +109,7 @@ const std::vector<std::vector<float> >& PeakFinderAlgos::peaksSelected(){
     return vv_peaks_sel;
 }
 
-void PeakFinderAlgos::convPeaksSelected1(){//float*& rows, float*& cols, float*& intens){
+void PeakFinderAlgos::_convPeaksSelected(){
     if (drp) {
         numPeaksSelected = v_peaks_sel_drp.len;
         rows = new float[numPeaksSelected*sizeof(float)];
