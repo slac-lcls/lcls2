@@ -6,7 +6,7 @@
 Usage::
 
     # Import
-    from psana.graphqt.QWUtils import QWUtils
+    from psana.graphqt.QWUtils import *
 
     # Methods - see test
 
@@ -21,9 +21,9 @@ Created on 2017-02-08 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-15
 """
 #------------------------------
-
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import QPoint
+import os
+from PyQt5.QtWidgets import QMenu, QDialog, QFileDialog, QMessageBox
+from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor
 
 #------------------------------
@@ -33,7 +33,7 @@ def selectFromListInPopupMenu(list):
 
     if list is None : return None
     
-    popupMenu = QtWidgets.QMenu()
+    popupMenu = QMenu()
     for item in list :
         popupMenu.addAction(item)
 
@@ -55,10 +55,10 @@ def changeCheckBoxListInPopupMenu(list, win_title='Set check boxes'):
     popupMenu.move(QCursor.pos())
     response = popupMenu.exec_()
 
-    if   response == QtWidgets.QDialog.Accepted :
+    if   response == QDialog.Accepted :
         #logger.debug('New checkbox list is accepted', __name__)         
         return 1
-    elif response == QtWidgets.QDialog.Rejected :
+    elif response == QDialog.Rejected :
         #logger.debug('Will use old checkbox list', __name__)
         return 0
     else                                    :
@@ -75,7 +75,7 @@ def selectRadioButtonInPopupMenu(dict_of_pars, win_title='Select option', do_con
     popupMenu = QWPopupRadioList(None, dict_of_pars, win_title, do_confirm)
     #popupMenu.move(QPoint(50,50))
     popupMenu.move(QCursor.pos()-QPoint(100,100))
-    return popupMenu.exec_() # QtWidgets.QDialog.Accepted or QtWidgets.QDialog.Rejected
+    return popupMenu.exec_() # QDialog.Accepted or QDialog.Rejected
 
 #------------------------------
 
@@ -86,12 +86,114 @@ def print_rect(r, cmt='') :
     print('%s L=%8.2f  B=%8.2f  R=%8.2f  T=%8.2f' % (len(cmt)*' ', L, B, R, T))
 
 #------------------------------
+
+def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):       
+
+    path, fext = QFileDialog.getSaveFileName(parent,
+                                             caption   = title,
+                                             directory = path0,
+                                             filter    = filter
+                                             )
+    if path == '' :
+        #logger.debug('Saving is cancelled.', 'get_save_fname_through_dialog_box')
+        return None
+    #logger.info('Output file: ' + path, 'get_save_fname_through_dialog_box')
+    return path
+
+#------------------------------
+
+def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):       
+
+    path, fext = QFileDialog.getOpenFileName(parent, title, path0, filter=filter)
+
+    #print('XXX: get_open_fname_through_dialog_box path =', path)
+    #print('XXX: get_open_fname_through_dialog_box fext =', fext)
+
+    dname, fname = os.path.split(path)
+    if dname == '' or fname == '' :
+        #logger.info('Input directiry name or file name is empty... keep file path unchanged...')
+        #print 'Input directiry name or file name is empty... keep file path unchanged...'
+        return None
+    #logger.info('Input file: ' + path, 'get_open_fname_through_dialog_box') 
+    #print 'Input file: ' + path
+    return path
+
+#------------------------------
+def confirm_dialog_box(parent=None, text='Please confirm that you aware!', title='Please acknowledge') :
+        """Pop-up MODAL box for confirmation"""
+
+        mesbox = QMessageBox(parent, windowTitle=title,
+                                           text=text,
+                                           standardButtons=QMessageBox.Ok)
+               #standardButtons=QtGui.QMessageBox.Save | QtGui.QMessageBox.Discard | QtGui.QMessageBox.Cancel)
+        #mesbox.setDefaultButton(QtGui.QMessageBox.Ok)
+        #mesbox.setMinimumSize(400, 200)
+        #style = "background-color: rgb(255, 200, 220); color: rgb(0, 0, 100);" # Pinkish
+        #style = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
+        #mesbox.setStyleSheet (style)
+
+        clicked = mesbox.exec_() # DISPLAYS THE QMessageBox HERE
+
+        #if   clicked == QtGui.QMessageBox.Save :
+        #    logger.info('Saving is requested', __name__)
+        #elif clicked == QtGui.QMessageBox.Discard :
+        #    logger.info('Discard is requested', __name__)
+        #else :
+        #    logger.info('Cancel is requested', __name__)
+        #return clicked
+
+        #logger.info('You acknowkeged that saw the message:\n' + text, 'confirm_dialog_box')
+        return
+
+#------------------------------
+
+def confirm_or_cancel_dialog_box(parent=None, text='Please confirm or cancel', title='Confirm or cancel') :
+        """Pop-up MODAL box for confirmation"""
+
+        mesbox = QMessageBox(parent, windowTitle=title,
+                                           text=text,
+                                           standardButtons=QMessageBox.Ok | QMessageBox.Cancel)
+               #standardButtons=QtGui.QMessageBox.Save | QtGui.QMessageBox.Discard | QtGui.QMessageBox.Cancel)
+        mesbox.setDefaultButton(QMessageBox.Ok)
+        #mesbox.setMinimumSize(400, 200)
+        #style = "background-color: rgb(255, 200, 220); color: rgb(0, 0, 100);" # Pinkish
+        #style = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
+        #mesbox.setStyleSheet (style)
+
+        clicked = mesbox.exec_() # DISPLAYS THE QMessageBox HERE
+
+        if   clicked == QMessageBox.Ok     : return True
+        elif clicked == QMessageBox.Cancel : return False
+        else                               : return False
+
+#------------------------------
+
+def help_dialog_box(parent=None, text='Help message goes here', title='Help') :
+        """Pop-up NON-MODAL box for help etc."""
+        mesbox = QMessageBox(parent, windowTitle=title,
+                                      text=text,
+                                      standardButtons=QMessageBox.Ok)
+                                      #standardButtons=QMessageBox.Close)
+        #messbox.setStyleSheet(cp.styleBkgd)
+        mesbox.setDefaultButton(QMessageBox.Ok)
+        #mesbox.setWindowModality(Qt.NonModal)
+        mesbox.setModal(False)
+        mesbox.update()
+        clicked = mesbox.exec_() # For MODAL dialog
+        #clicked = mesbox.show()  # For NON-MODAL dialog
+        #logger.info('Help window is open' + text, 'help_dialog_box')
+        return mesbox
+
+#------------------------------
 #------------------------------
 #------------------------------
  
-def test_all(tname) :
+if __name__ == "__main__" :
 
-    app = QtWidgets.QApplication(sys.argv)
+  def test(tname) :
+
+    from PyQt5.QtWidgets import QApplication
+    app = QApplication(sys.argv)
 
     if tname == '0':
         instrs = ['SXR', 'AMO', 'XPP', 'CXI', 'MEC']
@@ -110,8 +212,35 @@ def test_all(tname) :
         for (k,v) in dict_of_pars.items() : print(k, v)
         print('resp:', resp)
 
+    elif tname == '3':
+        parent=None; path0='./'; title='get_save_fname_through_dialog_box'
+        resp = get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt')
+        print('Response:', resp)
+
+    elif tname == '4': 
+        parent=None; path0='./'; title='get_open_fname_through_dialog_box'
+        resp = get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt')
+        print('Response:', resp)
+
+    elif tname == '5': 
+        resp = confirm_dialog_box(parent=None, text='Confirm that you aware!', title='Acknowledge')
+        print('Response:', resp)
+
+    elif tname == '6': 
+        resp = confirm_or_cancel_dialog_box(parent=None, text='Confirm or cancel', title='Confirm or cancel') 
+        print('Response:', resp)
+
+    elif tname == '7': 
+        from time import sleep
+        resp = help_dialog_box(parent=None, text='Help message goes here', title='Help')
+        print('Response:', resp)
+        sleep(3)
+        del resp
+
     else :
         print('Sorry, not-implemented test "%s"' % tname)
+
+    del app
 
 #------------------------------
 
@@ -119,7 +248,7 @@ if __name__ == "__main__" :
     import sys; global sys
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(50*'_', '\nTest %s' % tname)
-    test_all(tname)
+    test(tname)
     sys.exit('End of test %s' % tname)
 
 #------------------------------

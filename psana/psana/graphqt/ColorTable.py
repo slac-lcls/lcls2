@@ -279,7 +279,8 @@ class ColorTable():
 
 #------------------------------
 
-def test():
+if __name__ == '__main__':
+  def test():
     ct = ColorTable()
     ct.print_color_table()
     

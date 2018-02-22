@@ -10,17 +10,16 @@ Usage ::
     # Test
     #-----
     import sys
-    from PyQt4 import QtGui, QtCore
-    from psana.graphqt.FWView import FWView
-    app = QtGui.QApplication(sys.argv)
-    w = FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='UL', scale_ctl='HV')
+    from psana.graphqt.FWView import *
+    app = QApplication(sys.argv)
+    w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='UL', scale_ctl='HV')
     w.show()
     app.exec_()
 
     # Constructor and destructor
     #---------------------------
     from psana.graphqt.FWView import FWView
-    w = FWView(parent=None, rscene=QtCore.QRectF(0, 0, 10, 10), origin='UL', scale_ctl='HV', show_mode=0)
+    w = FWView(parent=None, rscene=QRectF(0, 0, 10, 10), origin='UL', scale_ctl='HV', show_mode=0)
     w.__del__() # on w.close()
 
     # Main methods
@@ -49,8 +48,8 @@ Usage ::
 
     # Methods for tests
     #------------------
-    w.add_rect_to_scene_v1(rect, brush=QtGui.QBrush(), pen=QtGui.QPen(Qt.yellow, 4, Qt.DashLine))
-    w.add_rect_to_scene(rect, brush=QtGui.QBrush(), pen=QtGui.QPen(Qt.yellow, 4, Qt.DashLine))
+    w.add_rect_to_scene_v1(rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine))
+    w.add_rect_to_scene(rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine))
     w.add_test_items_to_scene(show_mode=0)
 
     # Call-back slots
@@ -89,7 +88,8 @@ Usage ::
 See:
     - :class:`FWView`
     - :class:`FWViewImage`
-    - :class:`QWSpectrum`
+    - :class:`FWViewAxis`
+    - :class:`FWViewColorBar`
     - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
 
 This software was developed for the LCLS2 project.
@@ -100,9 +100,9 @@ Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
 
-from PyQt5 import QtWidgets
-from PyQt5 import QtGui, QtCore
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QApplication
+from PyQt5.QtGui import QBrush, QPen, QCursor
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
 
 #from time import time        
 #t0_sec = time()
@@ -110,14 +110,14 @@ from PyQt5.QtCore import Qt
 
 #------------------------------
 
-class FWView(QtWidgets.QGraphicsView) :
-    #wheel_is_stopped = QtCore.pyqtSignal()
-    #view_is_closed = QtCore.pyqtSignal()
-    mouse_move_event   = QtCore.pyqtSignal('QMouseEvent')
-    mouse_press_event  = QtCore.pyqtSignal('QMouseEvent')
-    scene_rect_changed = QtCore.pyqtSignal('QRectF')
+class FWView(QGraphicsView) :
+    #wheel_is_stopped = pyqtSignal()
+    #view_is_closed = pyqtSignal()
+    mouse_move_event   = pyqtSignal('QMouseEvent')
+    mouse_press_event  = pyqtSignal('QMouseEvent')
+    scene_rect_changed = pyqtSignal('QRectF')
 
-    def __init__(self, parent=None, rscene=QtCore.QRectF(0, 0, 10, 10),\
+    def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10),\
                  origin='UL', scale_ctl='HV',\
                  show_mode=0) :
         """
@@ -140,15 +140,15 @@ class FWView(QtWidgets.QGraphicsView) :
         self.set_origin(origin)           # sets self._origin_...
         self.set_scale_control(scale_ctl) # sets self._scale_ctl
 
-        sc = QtWidgets.QGraphicsScene()
-        QtWidgets.QGraphicsView.__init__(self, sc, parent)
+        sc = QGraphicsScene()
+        QGraphicsView.__init__(self, sc, parent)
         self.set_signs_of_transform()        
         self.set_style()
         self.set_view()
         self.add_test_items_to_scene(show_mode)
 
         self.twheel_msec = 500 # timeout for wheelEvent
-        self.timer = QtCore.QTimer()
+        self.timer = QTimer()
         self.timer.timeout.connect(self.on_timeout)
 
 
@@ -207,16 +207,16 @@ class FWView(QtWidgets.QGraphicsView) :
         self.setWindowTitle("FWView")
         self.setStyleSheet(self.bkgd)
         #self.setContentsMargins(-9,-9,-9,-9)
-        #self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
+        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         #self.setAttribute(Qt.WA_TranslucentBackground)
         #self.setInteractive(True)
         #self.setFixedSize(600, 22)
 
-        self.brudf = QtGui.QBrush()
-        self.brubx = QtGui.QBrush(Qt.black, Qt.SolidPattern)
-        self.pendf = QtGui.QPen()
+        self.brudf = QBrush()
+        self.brubx = QBrush(Qt.black, Qt.SolidPattern)
+        self.pendf = QPen()
         self.pendf.setStyle(Qt.NoPen)
-        self.penbx = QtGui.QPen(Qt.black, 6, Qt.SolidLine)
+        self.penbx = QPen(Qt.black, 6, Qt.SolidLine)
 
 
     def set_signs_of_transform(self) :
@@ -281,8 +281,8 @@ class FWView(QtWidgets.QGraphicsView) :
 
 
     def mouseReleaseEvent(self, e):
-        QtWidgets.QApplication.restoreOverrideCursor()
-        QtWidgets.QGraphicsView.mouseReleaseEvent(self, e)
+        QApplication.restoreOverrideCursor()
+        QGraphicsView.mouseReleaseEvent(self, e)
         #print('FWView.mouseReleaseEvent, at point: ', e.pos(), ' diff:', e.pos() - self.pos_click)
         #self.pos_click = e.pos()
         self.pos_click = None
@@ -293,17 +293,17 @@ class FWView(QtWidgets.QGraphicsView) :
 
 
 #    def mouseDoubleCkickEvent(self, e):
-#        QtWidgets.QGraphicsView.mouseDoubleCkickEvent(self, e)
+#        QGraphicsView.mouseDoubleCkickEvent(self, e)
 #        print('mouseDoubleCkickEvent')
 
 
     def mousePressEvent(self, e):
         #print('FWView.mousePressEvent, at point: ', e.pos() #e.globalX(), e.globalY())
-        #QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor)) #Qt.SizeAllCursor))# ClosedHandCursor
+        #QApplication.setOverrideCursor(QCursor(Qt.ClosedHandCursor)) #Qt.SizeAllCursor))# ClosedHandCursor
         #self.emit(QtCore.SIGNAL('mouse_press_event(QMouseEvent)'), e)
         self.mouse_press_event.emit(e)
 
-        QtWidgets.QGraphicsView.mousePressEvent(self, e)
+        QGraphicsView.mousePressEvent(self, e)
         self.pos_click = e.pos()
         self.rs_center = self.scene().sceneRect().center()
         self.invscalex = 1./self.transform().m11()
@@ -312,7 +312,7 @@ class FWView(QtWidgets.QGraphicsView) :
 
 
     def mouseMoveEvent(self, e):
-        QtWidgets.QGraphicsView.mouseMoveEvent(self, e)
+        QGraphicsView.mouseMoveEvent(self, e)
         #print('FWView.mouseMoveEvent, at point: ', e.pos())
         #self.emit(QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), e)
         self.mouse_move_event.emit(e)
@@ -323,10 +323,7 @@ class FWView(QtWidgets.QGraphicsView) :
         dp = e.pos() - self.pos_click
         dx = dp.x()*self.invscalex if self._scale_ctl & 1 else 0
         dy = dp.y()*self.invscaley if self._scale_ctl & 2 else 0
-        dpsc = QtCore.QPointF(dx, dy)
-
-        # This line alone works, but gives "choppy" transitions (rounding?)
-        #dpsc = self.mapToScene(e.pos()) - self.pos_click_sc
+        dpsc = QPointF(dx, dy)
 
         sc = self.scene()
         rs = sc.sceneRect()
@@ -337,7 +334,7 @@ class FWView(QtWidgets.QGraphicsView) :
 
 
     def wheelEvent(self, e) :
-        QtWidgets.QGraphicsView.wheelEvent(self, e)
+        QGraphicsView.wheelEvent(self, e)
 
         if self._scale_ctl==0 : return
 
@@ -419,14 +416,14 @@ class FWView(QtWidgets.QGraphicsView) :
 
     def enterEvent(self, e) :
     #    print('enterEvent')
-        QtWidgets.QGraphicsView.enterEvent(self, e)
-        #QtGui.QApplication.setOverrideCursor(QtGui.QCursor(Qt.CrossCursor))
+        QGraphicsView.enterEvent(self, e)
+        #QApplication.setOverrideCursor(QCursor(Qt.CrossCursor))
         
 
     def leaveEvent(self, e) :
     #    print('leaveEvent')
-        QtWidgets.QGraphicsView.leaveEvent(self, e)
-        #QtWidgets.QApplication.restoreOverrideCursor()
+        QGraphicsView.leaveEvent(self, e)
+        #QApplication.restoreOverrideCursor()
 
 
     def closeEvent(self, e) :
@@ -435,7 +432,7 @@ class FWView(QtWidgets.QGraphicsView) :
         for item in sc.items() : 
             #print('XXX removeItem:', item)
             sc.removeItem(item)
-        QtWidgets.QGraphicsView.closeEvent(self, e)
+        QGraphicsView.closeEvent(self, e)
         #print('XXX closeEvent is over')
 
 
@@ -445,7 +442,7 @@ class FWView(QtWidgets.QGraphicsView) :
 
 
     def resizeEvent(self, e) :
-        QtWidgets.QGraphicsView.resizeEvent(self, e)
+        QGraphicsView.resizeEvent(self, e)
         rs = self.scene().sceneRect()    
         self.set_view(rs)
 
@@ -476,7 +473,7 @@ class FWView(QtWidgets.QGraphicsView) :
             change_def = e.key()==Qt.Key_D
             print('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
             v = ag.random_standard((4,), mu=0, sigma=20, dtype=np.int)
-            rs = QtCore.QRectF(v[0], v[1], v[2]+100, v[3]+100)
+            rs = QRectF(v[0], v[1], v[2]+100, v[3]+100)
             print('Set scene rect: %s' % str(rs))
             self.set_rect_scene(rs, set_def=change_def)
 
@@ -485,13 +482,13 @@ class FWView(QtWidgets.QGraphicsView) :
 
 #-----------------------------
 
-    def add_rect_to_scene_v1(self, rect, brush=QtGui.QBrush(), pen=QtGui.QPen(Qt.yellow, 4, Qt.DashLine)) :
+    def add_rect_to_scene_v1(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)) :
         """Adds rect to scene, returns QGraphicsRectItem"""
         pen.setCosmetic(True)
         return self.scene().addRect(rect, pen, brush)
 
 
-    def add_rect_to_scene(self, rect, brush=QtGui.QBrush(), pen=QtGui.QPen(Qt.yellow, 4, Qt.DashLine)) :
+    def add_rect_to_scene(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)) :
         """Adds rect to scene, returns GUQGraphicsRectItem - for interactive stuff"""
 
         #print('XXX:QWGraphicsRectItem TBD')
@@ -509,10 +506,10 @@ class FWView(QtWidgets.QGraphicsView) :
         colfld = Qt.magenta
         colori = Qt.red
         if show_mode & 1 :
-            self.rsi = self.add_rect_to_scene_v1(self.rs, pen=QtGui.QPen(Qt.NoPen), brush=QtGui.QBrush(colfld))
+            self.rsi = self.add_rect_to_scene_v1(self.rs, pen=QPen(Qt.NoPen), brush=QBrush(colfld))
         if show_mode & 2 :
-            ror=QtCore.QRectF(-1, -1, 2, 2)
-            self.rori = self.add_rect_to_scene(ror, pen=QtGui.QPen(colori, 0, Qt.SolidLine), brush=QtGui.QBrush(colori))
+            ror=QRectF(-1, -1, 2, 2)
+            self.rori = self.add_rect_to_scene(ror, pen=QPen(colori, 0, Qt.SolidLine), brush=QBrush(colori))
 
 
 #------------------------------
@@ -545,21 +542,21 @@ class FWView(QtWidgets.QGraphicsView) :
 #-----------------------------
 #-----------------------------
 #-----------------------------
-
-def test_fwview(tname) :
+if __name__ == "__main__" :
+  def test_fwview(tname) :
     print('%s:' % sys._getframe().f_code.co_name)
     b="background-color:yellow; border: 0px solid green"
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     w = None
-    if   tname == '0': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
-    elif tname == '1': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='UL', show_mode=3, scale_ctl='HV')
-    elif tname == '2': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='UR', show_mode=3, scale_ctl='HV')
-    elif tname == '3': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DR', show_mode=3, scale_ctl='HV')
-    elif tname == '4': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='')
-    elif tname == '5': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='H')
-    elif tname == '6': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='V')
-    elif tname == '7': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DL', show_mode=1, scale_ctl='HV')
-    elif tname == '8': w=FWView(None, rscene=QtCore.QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV', bkgd=b)
+    if   tname == '0': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
+    elif tname == '1': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='UL', show_mode=3, scale_ctl='HV')
+    elif tname == '2': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='UR', show_mode=3, scale_ctl='HV')
+    elif tname == '3': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DR', show_mode=3, scale_ctl='HV')
+    elif tname == '4': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='')
+    elif tname == '5': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='H')
+    elif tname == '6': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='V')
+    elif tname == '7': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=1, scale_ctl='HV')
+    elif tname == '8': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV', bkgd=b)
     else :
         print('test %s is not implemented' % tname)
         return

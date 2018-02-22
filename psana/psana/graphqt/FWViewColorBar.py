@@ -1,4 +1,3 @@
-#!@PYTHON@
 """
 Class :py:class:`FWViewColorBar` is a FWView for interactive color bar
 ======================================================================
@@ -9,11 +8,11 @@ Usage ::
 
     # Create object
     #--------------
-    from graphqt.FWViewColorBar import FWViewColorBar
-    import graphqt.ColorTable as ct
+    from psana.graphqt.FWViewColorBar import FWViewColorBar
+    import psana.graphqt.ColorTable as ct
 
     ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
-    w = FWViewColorBar(None, coltab=ctab, orient='H', wlength=200, wwidth=50, keys_on=True)
+    w = FWViewColorBar(None, coltab=ctab, orient='H', wlength=200, wwidth=50, change_mode=0o3, scale_ctl='')
 
     # Main methods
     #-------------
@@ -21,7 +20,7 @@ Usage ::
     w.set_colorbar_table(ctab)
 
     ctab = w.color_table()          # current color table used in colorbar
-    ctab_ind = color_table_index()  # current color table index
+    ctab_ind = w.color_table_index()  # current color table index
 
     w.connect_new_color_table_index_is_selected_to(recip)
     w.disconnect_new_color_table_index_is_selected_from(recip)
@@ -36,34 +35,41 @@ Usage ::
 See:
     - :class:`FWView`
     - :class:`FWViewImage`
+    - :class:`FWViewAxis`
     - :class:`FWViewColorBar`
-    - :class:`QWSpectrum`
-    - `graphqt documentation <https://lcls-psana.github.io/graphqt/py-modindex.html>`_.
+    - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
 
-Created on November 9, 2017 by Mikhail Dubrovin
+This software was developed for the LCLS2 project.
+If you use all or part of it, please give an appropriate acknowledgment.
+
+Created on 2017-11-08 by Mikhail Dubrovin
+Adopted for LCLS2 on 2018-02-20
 """
 #------------------------------
 
-import graphqt.ColorTable as ct
-from graphqt.FWViewImage import *
-from graphqt.QWPopupSelectColorBar import popup_select_color_table
+import psana.graphqt.ColorTable as ct
+from psana.graphqt.FWViewImage import *
+from psana.graphqt.QWPopupSelectColorBar import popup_select_color_table
 
 #------------------------------
 
 class FWViewColorBar(FWViewImage) :
-    
+
+    new_color_table = pyqtSignal()
+    new_color_table_index_is_selected = pyqtSignal('int')
+
     def __init__(self, parent=None,\
                  coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20),\
-                 orient='H', wlength=200, wwidth=50, keys_on=True) :
+                 orient='H', wlength=200, wwidth=50, change_mode=0o3, scale_ctl='') :
         self.orient = orient
-        #print 'XXX FWViewColorBar.orient: %s' % self.orient
+        #print('XXX FWViewColorBar.orient: %s' % self.orient)
         arrct = ct.array_for_color_bar(coltab, orient)
         self._ctab_ind = None
         self._ctab = coltab
         self.wlength = wlength
         self.wwidth  = wwidth
-        self.keys_on = keys_on
-        FWViewImage.__init__(self, parent, arrct, coltab=None, origin='UL', scale_ctl='')
+        self.change_mode = change_mode
+        FWViewImage.__init__(self, parent, arrct, coltab=None, origin='UL', scale_ctl=scale_ctl)
         self._name  = self.__class__.__name__
 
 #------------------------------
@@ -79,17 +85,18 @@ class FWViewColorBar(FWViewImage) :
             self.setMinimumSize(2, self.wlength)
             self.setFixedWidth(self.wwidth)
 
-        #self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
+        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
 
 #------------------------------
 
     def mousePressEvent(self, e):
-        self.on_colorbar(e)
+        if self.change_mode & 2 : self.on_colorbar(e)
+        else : FWViewImage.mousePressEvent(self, e)
 
 #------------------------------
 
     def on_colorbar(self, e) :
-        #print 'QWSpectrum.on_colorbar'
+        #print('QWSpectrum.on_colorbar')
         ctab_ind = popup_select_color_table(None)
         if ctab_ind is None : return
         if ctab_ind != self._ctab_ind :
@@ -103,15 +110,17 @@ class FWViewColorBar(FWViewImage) :
         ctab = ct.next_color_table(ctab_ind)
         self._ctab_ind = ctab_ind if ctab_ind is not None else ct.STOR.color_table_index()
         self.set_colorbar_table(ctab)
-        self.emit(QtCore.SIGNAL('new_color_table_index_is_selected(int)'), self._ctab_ind)
+        #self.emit(QtCore.SIGNAL('new_color_table_index_is_selected(int)'), self._ctab_ind)
+        self.new_color_table_index_is_selected.emit(self._ctab_ind)
 
     def set_colorbar_table(self, ctab) :
         """Sets color table ctab (np.array) - list of colors 32-bit unsigned words"""
         self._ctab = ct.np.array(ctab)
         arr = ct.array_for_color_bar(ctab, self.orient)
         self.set_pixmap_from_arr(arr) # method of the FWViewImage
-        #print 'XXX Color table:', ctab
-        self.emit(QtCore.SIGNAL('new_color_table()'))
+        #print('XXX Color table:', ctab)
+        #self.emit(QtCore.SIGNAL('new_color_table()'))
+        self.new_color_table.emit()
 
     def color_table(self) :
         return self._ctab
@@ -122,31 +131,35 @@ class FWViewColorBar(FWViewImage) :
 #------------------------------
 
     def connect_new_color_table_index_is_selected_to(self, recip) :
-        self.connect(self, QtCore.SIGNAL('new_color_table_index_is_selected(int)'), recip)
+        self.new_color_table_index_is_selected['int'].connect(recip)
+        #self.connect(self, QtCore.SIGNAL('new_color_table_index_is_selected(int)'), recip)
 
     def disconnect_new_color_table_index_is_selected_from(self, recip) :
-        self.disconnect(self, QtCore.SIGNAL('new_color_table_index_is_selected(int)'), recip)
+        self.new_color_table_index_is_selected['int'].disconnect(recip)
+        #self.disconnect(self, QtCore.SIGNAL('new_color_table_index_is_selected(int)'), recip)
 
     def test_new_color_table_index_is_selected_reception(self, ind) :
-        print '  FWViewColorBar.test_new_color_table_index_is_selected_reception: %s' % str(self._ctab_ind)
+        print('  FWViewColorBar.test_new_color_table_index_is_selected_reception: %s' % str(self._ctab_ind))
 
 #------------------------------
 
     def connect_new_color_table_to(self, recip) :
-        self.connect(self, QtCore.SIGNAL('new_color_table()'), recip)
+        self.new_color_table_index_is_selected.connect(recip)
+        #self.connect(self, QtCore.SIGNAL('new_color_table()'), recip)
 
     def disconnect_new_color_table_from(self, recip) :
-        self.disconnect(self, QtCore.SIGNAL('new_color_table()'), recip)
+        self.new_color_table_index_is_selected.disconnect(recip)
+        #self.disconnect(self, QtCore.SIGNAL('new_color_table()'), recip)
 
     def test_new_color_table_reception(self) :
-        print '  FWViewColorBar.test_new_color_table_reception: %s' % str(self._ctab[:5])
+        print('  FWViewColorBar.test_new_color_table_reception: %s' % str(self._ctab[:5]))
 
 #------------------------------
 
     def closeEvent(self, e):
         pass
-        #print '%s.closeEvent' % self._name
-        #QtGui.QWidget.closeEvent(self, e)
+        #print('%s.closeEvent' % self._name)
+        #QWidget.closeEvent(self, e)
 
 #------------------------------
 
@@ -160,28 +173,28 @@ class FWViewColorBar(FWViewImage) :
 #------------------------------
 
     def keyPressEvent(self, e) :
-        #print 'keyPressEvent, key=', e.key()
+        #print('keyPressEvent, key=', e.key())
 
-        if not self.keys_on : return
+        if not (self.change_mode & 1) : return
 
         if   e.key() == Qt.Key_Escape :
             self.close()
 
         elif e.key() == Qt.Key_R : 
-            print 'Reset original size'
+            print('Reset original size')
             self.set_colorbar_table_ind(ctab_ind=0)
 
         elif e.key() == Qt.Key_N : 
-            print 'Set next color table'
+            print('Set next color table')
             self.set_colorbar_table_ind(ctab_ind=None)
 
         else :
-            print self.key_usage()
+            print(self.key_usage())
   
 #------------------------------
 
 def test_wfviewcolorbar(tname) :
-    print '%s:' % sys._getframe().f_code.co_name
+    print('%s:' % sys._getframe().f_code.co_name)
     import numpy as np
     arr = np.random.random((1000, 100))
     #arr = image_with_random_peaks((1000, 1000))
@@ -189,12 +202,12 @@ def test_wfviewcolorbar(tname) :
     #ctab = ct.color_table_monochr256()
     #ctab = ct.color_table_interpolated()
 
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     w = None
-    if   tname == '0': w = FWViewColorBar(None, coltab=ctab, orient='H')
+    if   tname == '0': w = FWViewColorBar(None, coltab=ctab, orient='H', change_mode=1, scale_ctl='H')
     elif tname == '1': w = FWViewColorBar(None, coltab=ctab, orient='V')
     else :
-        print 'test %s is not implemented' % tname
+        print('test %s is not implemented' % tname)
         return
 
     w.setWindowTitle(w._name)
@@ -206,13 +219,16 @@ def test_wfviewcolorbar(tname) :
     w.show()
     app.exec_()
 
+    del w
+    del app
+
 #------------------------------
 
 if __name__ == "__main__" :
     import sys; global sys
     #import numpy as np; global np
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print 50*'_', '\nTest %s' % tname
+    print(50*'_', '\nTest %s' % tname)
     test_wfviewcolorbar(tname)
     sys.exit('End of Test %s' % tname)
 
