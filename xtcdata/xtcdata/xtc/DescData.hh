@@ -19,12 +19,12 @@ class VarDef;
 	       
 template <typename T>
 struct Array {
-    Array(void *data, uint32_t *shape, uint8_t rank){
+    Array(void *data, uint32_t *shape, uint32_t rank){
         _data = reinterpret_cast<T*>(data);
         _shape = shape;
         _rank = rank;
         _num_elem = _shape[0];
-        for(uint8_t i=1; i<rank;i++){_num_elem*=shape[i];};
+        for(uint32_t i=1; i<rank;i++){_num_elem*=shape[i];};
     }
     T& operator()(int i){
         assert(i<_num_elem);
@@ -49,7 +49,7 @@ struct Array {
     }
 
     uint64_t _num_elem;
-    uint8_t _rank;
+    uint32_t _rank;
     T *_data;
     uint32_t *_shape;
 

@@ -187,10 +187,12 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             }
             switch (name.type()) {
             case Name::UINT8: {
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_UINT8, descdata.address(i));
                 // newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                //                                    NPY_UINT8, descdata.get_array<uint8_t>(i));
+                //                                    NPY_UINT8, descdata.address(i
+                //                                                             ));
+                Array<uint8_t> arr = descdata.get_array<uint8_t>(i);
+                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
+                                                   NPY_UINT8, arr._data);
 		
                 break;
             }
