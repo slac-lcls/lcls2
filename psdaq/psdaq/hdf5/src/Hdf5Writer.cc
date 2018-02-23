@@ -161,8 +161,9 @@ void HDF5File::appendData(XtcData::DescData& descdata)
         std::string namestr(namechar);
         auto it = m_datasets.find(namestr);
         assert(it != m_datasets.end());
-        unsigned index = descdata.nameindex().nameMap()[namechar];
-        it->second.append(descdata.address(index));
+        auto arr = descdata.get_array<int32_t>(i);
+        // unsigned index = descdata.nameindex().nameMap()[namechar];
+        it->second.append(arr.data());
     }
 }
 

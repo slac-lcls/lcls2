@@ -194,29 +194,28 @@ public:
     {
         Data& data = _shapesdata.data();
         unsigned index = _nameindex.nameMap()[name];
-	
+
         T val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
-	checkType(val, _nameindex.names().get(index));
+        checkType(val, _nameindex.names().get(index));
         return val;
     }
 
     template <class T>
     T get_value(unsigned index) //, T& val)
     {
-        assert(index <= _numentries); 
+        assert(index <= _numentries);
         Data& data = _shapesdata.data();
         Name& name = _nameindex.names().get(index);
-	
-	T val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
-	checkType(val, name);
+
+        T val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
+        checkType(val, name);
         return val;
     }
 
-
-    void* address(unsigned index) {
-        Data& data = _shapesdata.data();
-        return data.payload() + _offset[index];
-    }
+    // void* address(unsigned index) {
+    //     Data& data = _shapesdata.data();
+    //     return data.payload() + _offset[index];
+    // }
 
     uint32_t* shape(Name& name) {
         Shapes& shapes = _shapesdata.shapes();
