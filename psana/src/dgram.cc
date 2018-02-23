@@ -129,52 +129,52 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
         if (name.rank() == 0) {
             switch (name.type()) {
             case Name::UINT8: {
-	      const int tempVal = descdata.get_value<uint8_t>(tempName);
+	      const auto tempVal = descdata.get_value<uint8_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::UINT16: {
-                const int tempVal = descdata.get_value<uint16_t>(tempName);
+                const auto tempVal = descdata.get_value<uint16_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::UINT32: {
-                const int tempVal = descdata.get_value<uint32_t>(tempName);
+                const auto tempVal = descdata.get_value<uint32_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::UINT64: {
-                const int tempVal = descdata.get_value<uint64_t>(tempName);
+                const auto tempVal = descdata.get_value<uint64_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::INT8: {
-                const int tempVal = descdata.get_value<int8_t>(tempName);
+                const auto tempVal = descdata.get_value<int8_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::INT16: {
-                const int tempVal = descdata.get_value<int16_t>(tempName);
+                const auto tempVal = descdata.get_value<int16_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::INT32: {
-                const int tempVal = descdata.get_value<int32_t>(tempName);
+                const auto tempVal = descdata.get_value<int32_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::INT64: {
-                const int tempVal = descdata.get_value<int64_t>(tempName);
+                const auto tempVal = descdata.get_value<int64_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::FLOAT: {
-                const float tempVal = descdata.get_value<float>(tempName);
+                const auto tempVal = descdata.get_value<float>(tempName);
                 newobj = Py_BuildValue("f", tempVal);
                 break;
             }
             case Name::DOUBLE: {
-                const double tempVal = descdata.get_value<double>(tempName);
+                const auto tempVal = descdata.get_value<double>(tempName);
                 newobj = Py_BuildValue("d", tempVal);
                 break;
             }
@@ -187,58 +187,63 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             }
             switch (name.type()) {
             case Name::UINT8: {
-                // newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                //                                    NPY_UINT8, descdata.address(i
-                //                                                             ));
-                Array<uint8_t> arr = descdata.get_array<uint8_t>(i);
+                auto arr = descdata.get_array<uint8_t>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_UINT8, arr._data);
-		
+                                                   NPY_UINT8, arr.data());
                 break;
             }
             case Name::UINT16: {
+                auto arr = descdata.get_array<uint16_t>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_UINT16, descdata.address(i));
+                                                   NPY_UINT16, arr.data());
                 break;
             }
             case Name::UINT32: {
+                auto arr = descdata.get_array<uint32_t>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_UINT32, descdata.address(i));
+                                                   NPY_UINT32, arr.data());
                 break;
             }
             case Name::UINT64: {
+                auto arr = descdata.get_array<uint64_t>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_UINT64, descdata.address(i));
+                                                   NPY_UINT64, arr.data());
                 break;
             }
             case Name::INT8: {
+                auto arr = descdata.get_array<int8_t>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_INT8, descdata.address(i));
+                                                   NPY_INT8, arr.data());
                 break;
             }
             case Name::INT16: {
+                auto arr = descdata.get_array<int16_t>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_INT16, descdata.address(i));
+                                                   NPY_INT16, arr.data());
                 break;
             }
             case Name::INT32: {
+                auto arr = descdata.get_array<int32_t>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_INT32, descdata.address(i));
+                                                   NPY_INT32, arr.data());
                 break;
             }
             case Name::INT64: {
+                auto arr = descdata.get_array<int64_t>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_INT64, descdata.address(i));
+                                                   NPY_INT64, arr.data());
                 break;
             }
             case Name::FLOAT: {
+                auto arr = descdata.get_array<float>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_FLOAT, descdata.address(i));
+                                                   NPY_FLOAT, arr.data());
                 break;
             }
             case Name::DOUBLE: {
+                auto arr = descdata.get_array<double>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_DOUBLE, descdata.address(i));
+                                                   NPY_DOUBLE, arr.data());
                 break;
             }
             }

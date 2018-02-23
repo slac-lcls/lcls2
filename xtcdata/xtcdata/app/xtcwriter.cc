@@ -134,26 +134,10 @@ public:
 		    printf("integ value %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
 		  }
 		    else{
-		      printf("float value %s: %d\n",name.name(),descdata.get_value<float>(i));
+		      printf("float value %s: %f\n",name.name(),descdata.get_value<float>(i));
 		    }
 		  
-		}
-	     
-                // if (strncmp(name.name(),"int",3)==0) {
-		//   // int32_t lt;Des
-		//   //  lt = descdata.get_valueD(name.name());
-		//   printf("integ value %s: %d\n",name.name(),descdata.get_valueD<int32_t>(name.name()));
-                // }
-                // if (strncmp(name.name(),"float",5)==0) {
-                //     printf("float value %s: %f\n",name.name(),descdata.get_value<float>(name.name()));
-                // }
-                // if (strncmp(name.name(),"array",5)==0) {
-                //     float* arr = (float *)descdata.address(i);
-                //     printf("array value %s: %f %f %f %f\n",name.name(),arr[0],arr[1],arr[2],arr[3]);
-                // }
-                //unsigned index = descdata.nameindex()[name.name()];
-                //void* addr = descdata.address(index);
-                //printOffset(name.name(),xtc,addr);
+		}	    
             }
             break;
         }

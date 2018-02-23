@@ -18,8 +18,9 @@ namespace XtcData
 class VarDef;
 	       
 template <typename T>
-struct Array {
-    Array(void *data, uint32_t *shape, uint32_t rank){
+class Array {
+public:
+  Array(void *data, uint32_t *shape, uint32_t rank){
         _data = reinterpret_cast<T*>(data);
         _shape = shape;
         _rank = rank;
@@ -47,7 +48,17 @@ struct Array {
         assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
         return _data[(i * _shape[1] + j) * _shape[2] + k];
     }
+    uint32_t rank(){
+        return _rank;    
+    }
+    uint32_t* shape(){
+        return _shape;
+    }
+    T* data(){
+        return _data;
+    }
 
+private:
     uint64_t _num_elem;
     uint32_t _rank;
     T *_data;
@@ -61,7 +72,7 @@ typedef std::map<std::string, unsigned> IndexMap;
 class NameIndex {
 public:
     NameIndex(Names& names) {
-        _init_names(names);
+        _init_names(names); 
         unsigned iarray = 0;
         for (unsigned i=0; i<_names->num(); i++) {
             Name& name = _names->get(i);
@@ -178,34 +189,11 @@ public:
         return arrT;
     };
 
-
-    // template <typename T>
-    // typename std::enable_if<std::is_fundamental<T>::value, T>::type get_value(const char* name)
-    // {
-    //     Data& data = _shapesdata.data();
-    //     unsigned index = _nameindex.nameMap()[name];
-    //     return *reinterpret_cast<T*>(data.payload() + _offset[index]);
-    // }
-
-   
-    // template <typename T>
-    // T get_value(const char* name, T &val)
-    // {
-    //     Data& data = _shapesdata.data();
-    //     unsigned index = _nameindex.nameMap()[name];
-    //     val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
-    //     return val;
-    // }
-
-
-
-    //This should have type checking
     template <class T>
     T get_value(const char* name)
     {
         Data& data = _shapesdata.data();
         unsigned index = _nameindex.nameMap()[name];
-	//	Name &namevar = _nameindex.names().get(index);
 	
         T val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
 	checkType(val, _nameindex.names().get(index));
@@ -220,7 +208,7 @@ public:
         Name& name = _nameindex.names().get(index);
 	
 	T val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
-	//	checkType(val, name);
+	checkType(val, name);
         return val;
     }
 
@@ -355,7 +343,6 @@ protected:
 
             Data& data = _shapesdata.data();
             //Create a pointer to the next part of contiguous memory
-            //    T *ptr = reinterpret_cast<T*>(_shapesdata.data().next());
             void *ptr = reinterpret_cast<void *>(_shapesdata.data().next());
 
             // Create an Array<T> struct at the memory address of ptr
