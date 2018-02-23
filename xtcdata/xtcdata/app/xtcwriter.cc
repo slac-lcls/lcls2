@@ -239,36 +239,11 @@ void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
     CreateData fex(parent, NamesVec, nameId);
     fex.set_value(FexDef::floatFex, (float)41.0);
 
-    //    // Goal is something like
-
-    //Array<float> *ptr;
-    //fex.get_array_value(FexDef::arrayFex, *ptr);
-    // return a ptr, correct shape
-    // for i, j ptr(i,j) = data[i+j]; 
-    
-    //   float *ptr =(float*)fex.get_ptr();
-    //auto *ptr = (Array<float>*)fex.get_ptr();
-    //auto *ptr = (Array<float>*)fex.get_ptr();
-
     unsigned shape[Name::MaxRank] = {2,3};
-
     Array<float> arrayT = fex.allocate<float>(FexDef::arrayFex,shape);
-
     for(unsigned i=0; i<shape[0]*shape[1]; i++){
       arrayT(i) = 142.0+i;
     };
-    
-
-    
-    // Prepare some data. The datatype must match the VarDef class 
-    // float data_array[shape[0]*shape[1]];
-    // for(unsigned i=0; i<shape[0]*shape[1]; i++){
-    // 	data_array[i] = i*i;
-    //   };
-     
-    //    fex.set_array(FexDef::arrayFex, data_array, shape);
-    //fex.set_array_shape(FexDef::arrayFex,shape);
-
     
     fex.set_value(FexDef::intFex, (int32_t) 42);
 }
