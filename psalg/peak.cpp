@@ -1,14 +1,12 @@
-//g++ -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2 peak.cpp psalgos/src/PeakFinderAlgos.cpp psalgos/src/LocalExtrema.cpp -o peak
+//g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2 peak.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peak
 
 #include <iostream>
-#include "psalgos/include/PeakFinderAlgos.h"
 #include <vector>
 #include <stdlib.h>
 
-#include "psalgos/include/LocalExtrema.h"
-
-//#include "xtcdata/xtc/DescData.hh" // struct Array, Vector
-#include "psalgos/include/Types.h"
+#include "psalg/include/PeakFinderAlgos.h"
+#include "psalg/include/LocalExtrema.h"
+#include "psalg/include/Types.h"
 
 #include <chrono> // timer
 typedef std::chrono::high_resolution_clock Clock;
