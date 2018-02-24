@@ -4,14 +4,63 @@ import numpy as np
 
 # Import the C-level symbols of numpy
 cimport numpy as cnp
+
+################# Array Wrapper ######################
+
 from libc.stdlib cimport free
+from cpython cimport PyObject, Py_INCREF
+
+# Numpy must be initialized. When using numpy from C or Cython you must
+# _always_ do that, or you will have segfaults
+cnp.import_array()
+
+# We need to build an array-wrapper class to deallocate our array when
+# the Python object is deleted.
+
+cdef class ArrayWrapper:
+    cdef void* data_ptr
+    cdef int size
+    cdef int typenum
+
+    cdef set_data(self, void* data_ptr, int size, int typenum):
+        """ Set the data of the array
+
+        This cannot be done in the constructor as it must recieve C-level
+        arguments.
+
+        Parameters:
+        -----------
+        size: int
+            Length of the array.
+        data_ptr: void*
+            Pointer to the data
+
+        """
+        self.data_ptr = data_ptr
+        self.size = size
+        self.typenum = typenum
+
+    def __array__(self):
+        """ Here we use the __array__ method, that is called when numpy
+            tries to get an array from the object."""
+        cdef cnp.npy_intp shape[1]
+        shape[0] = <cnp.npy_intp> self.size
+        # Create a 1D array, of length 'size'
+        ndarray = cnp.PyArray_SimpleNewFromData(1, shape, self.typenum, self.data_ptr)
+        return ndarray
+
+    def __dealloc__(self):
+        """ Frees the array. This is called by Python when all the
+        references to the object are gone. """
+        print("Dealloc memory")
+        free(<void*>self.data_ptr)
 
 ################# Peak Finder ######################
 
 from libcpp.vector cimport vector
 cimport libc.stdint as si
 
-cdef extern from "psalgos/include/PeakFinderAlgos.h" namespace "psalgos":
+cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psalgos":
     cdef cppclass Peak :
         Peak() except +
         Peak(const Peak& o) except +
@@ -34,7 +83,7 @@ cdef extern from "psalgos/include/PeakFinderAlgos.h" namespace "psalgos":
         float noise
         float son
 
-cdef extern from "psalgos/include/Types.h" namespace "types":
+cdef extern from "../../../psalg/psalg/include/Types.h" namespace "types":
     ctypedef unsigned shape_t
     ctypedef si.uint16_t mask_t
     ctypedef si.uint16_t extrim_t
@@ -50,7 +99,7 @@ ctypedef fused nptype2d :
     cnp.ndarray[cnp.uint32_t,  ndim=2, mode="c"]
     cnp.ndarray[cnp.uint64_t,  ndim=2, mode="c"]
 
-cdef extern from "psalgos/include/PeakFinderAlgos.h" namespace "psalgos":
+cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psalgos":
     cdef cppclass PeakFinderAlgos:
          unsigned ps_row
          unsigned ps_col
@@ -186,6 +235,7 @@ cdef class py_peak :
     def son      (self) : return self.cptr.son    
 
 #------------------------------
+
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 
 cdef class peak_finder_algos :
@@ -224,7 +274,7 @@ cdef class peak_finder_algos :
                            ,const double& dr\
                            ,const double& nsigm) :
         self.cptr.peakFinderV3r3(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, r0, dr, nsigm)
-        return self.getPeaksSelected()
+        return self.getPeaks()
         #self.rows = data.shape[0]
         #self.cols = data.shape[1]
         #return self.list_of_peaks_selected()
@@ -282,6 +332,28 @@ cdef class peak_finder_algos :
         cdef float[::1] intens = <float[:self.cptr.numPeaksSelected]>self.cptr.intens
         return np.asarray(rows), np.asarray(cols), np.asarray(intens)
 
+    def getPeaks(self):
+        cdef cnp.ndarray rows, cols, intens
+        # Call the C function
+        arr0 = ArrayWrapper()
+        arr1 = ArrayWrapper()
+        arr2 = ArrayWrapper()
+        arr0.set_data(<void*> self.cptr.rows, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        arr1.set_data(<void*> self.cptr.cols, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        arr2.set_data(<void*> self.cptr.intens, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        rows = np.array(arr0, copy=False)
+        cols = np.array(arr1, copy=False)
+        intens = np.array(arr2, copy=False)
+        # Assign our object to the 'base' of the ndarray object
+        rows.base = <PyObject*> arr0
+        cols.base = <PyObject*> arr1
+        intens.base = <PyObject*> arr2
+        # Increment the reference count, as the above assignement was done in
+        # C, and Python does not know that there is this additional reference
+        Py_INCREF(arr0)
+        Py_INCREF(arr1)
+        Py_INCREF(arr2)
+        return rows, cols, intens
 
     def local_maxima(self) :
         sh = (self.rows, self.cols)

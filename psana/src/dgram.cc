@@ -247,14 +247,6 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 break;
             }
             }
-            // New default behaviour
-            if (PyArray_SetBaseObject((PyArrayObject*)newobj, (PyObject*)pyDgram) < 0) {
-                char s[TMPSTRINGSIZE];
-                snprintf(s, TMPSTRINGSIZE, "Failed to set BaseObject for numpy array (%s)\n", strerror(errno));
-                PyErr_SetString(PyExc_StopIteration, s);
-                return;
-            }
-            Py_INCREF(pyDgram);
             //clear NPY_ARRAY_WRITEABLE flag
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
@@ -504,9 +496,25 @@ PyObject* tp_getattro(PyObject* obj, PyObject* key)
 {
     PyObject* res = PyDict_GetItem(((PyDgramObject*)obj)->dict, key);
     if (res != NULL) {
-        // New default behaviour
-        Py_INCREF(res);
-        PyDict_DelItem(((PyDgramObject*)obj)->dict, key);
+        // old-style pointer management -- reinstated prior to PyDgram removal
+        if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
+            PyArrayObject* arr = (PyArrayObject*)res;
+            PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
+                                                           PyArray_DESCR(arr)->type_num, PyArray_DATA(arr));
+            if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, (PyObject*)obj) < 0) {
+                printf("Failed to set BaseObject for numpy array.\n");
+                return 0;
+            }
+            // this reference count will get decremented when the returned
+            // array is deleted (since the array has us as the "base" object).
+            Py_INCREF(obj);
+            //return arr_copy;
+            res=arr_copy;
+        } else {
+            // this reference count will get decremented when the returned
+            // variable is deleted, so must increment here.
+            Py_INCREF(res);
+        }
     } else {
         res = PyObject_GenericGetAttr(obj, key);
     }

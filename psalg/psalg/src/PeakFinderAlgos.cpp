@@ -51,9 +51,6 @@ PeakFinderAlgos::~PeakFinderAlgos()
       if (m_local_minima) delete[] m_local_minima;
       if (m_conmap)       delete[] m_conmap;
       if (ps)             delete[] ps;
-      if (rows)           delete[] rows;
-      if (cols)           delete[] cols;
-      if (intens)         delete[] intens;
   }
 }
 
@@ -112,9 +109,12 @@ const std::vector<std::vector<float> >& PeakFinderAlgos::peaksSelected(){
 void PeakFinderAlgos::_convPeaksSelected(){
     if (drp) {
         numPeaksSelected = v_peaks_sel_drp.len;
-        rows = new float[numPeaksSelected*sizeof(float)];
-        cols = new float[numPeaksSelected*sizeof(float)];
-        intens = new float[numPeaksSelected*sizeof(float)];
+        rows = new(m_drpPtr) float[numPeaksSelected*sizeof(float)];
+        m_drpPtr += sizeof(float)*numPeaksSelected;
+        cols = new(m_drpPtr) float[numPeaksSelected*sizeof(float)];
+        m_drpPtr += sizeof(float)*numPeaksSelected;
+        intens = new(m_drpPtr) float[numPeaksSelected*sizeof(float)];
+        m_drpPtr += sizeof(float)*numPeaksSelected;
         for(unsigned i = 0; i< numPeaksSelected; i++){
             const Peak *p = v_peaks_sel_drp.data[i];
             rows[i] = p->row;
@@ -122,17 +122,16 @@ void PeakFinderAlgos::_convPeaksSelected(){
             intens[i] = p->amp_tot;
         }
     } else {
-        if (!ps) { // TODO: remove this if, only used for testing memview
-            numPeaksSelected = v_peaks_sel.size();
-            rows = new float[numPeaksSelected*sizeof(float)];
-            cols = new float[numPeaksSelected*sizeof(float)];
-            intens = new float[numPeaksSelected*sizeof(float)];
-            for(unsigned i = 0; i< numPeaksSelected; i++){
-                const Peak p = v_peaks_sel[i];
-                rows[i] = p.row;
-                cols[i] = p.col;
-                intens[i] = p.amp_tot;
-            }
+        numPeaksSelected = v_peaks_sel.size();
+        rows = new float[numPeaksSelected*sizeof(float)];
+        cols = new float[numPeaksSelected*sizeof(float)];
+        intens = new float[numPeaksSelected*sizeof(float)];
+        std::cout << "rows Address stored " << (void *) rows << std::endl;
+        for(unsigned i = 0; i< numPeaksSelected; i++){
+            const Peak p = v_peaks_sel[i];
+            rows[i] = p.row;
+            cols[i] = p.col;
+            intens[i] = p.amp_tot;
         }
     }
 }
@@ -150,7 +149,7 @@ float *PeakFinderAlgos::convPeaksSelected(){
             ps[counter++] = p->amp_tot;
         }
     } else {
-        if (!ps) { // TODO: remove this if, only used for testing memview
+        if (!ps) {
             ps = new float[ps_col*v_peaks_sel.size()*sizeof(float)];
             ps_row = v_peaks_sel.size();
             unsigned counter = 0;
