@@ -1,0 +1,466 @@
+Calling 4 cores
+Write completed at 12:12:30
+Elapsed time 65.763550 s
+Number of clients 1
+Number of events 40016
+Wrote 40.00 GB at an average of 0.61 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:13:19
+Elapsed time 48.137481 s
+Number of clients 1
+Copied 40.02 GB at an average of 0.83 GB/s
+----------------------------------------
+
+Calling 8 cores
+Write completed at 12:14:29
+Elapsed time 62.676751 s
+Number of clients 3
+Number of events 40016
+Wrote 120.00 GB at an average of 1.91 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:15:19
+Elapsed time 50.311585 s
+Number of clients 3
+Copied 120.05 GB at an average of 2.39 GB/s
+----------------------------------------
+
+Calling 12 cores
+Write completed at 12:16:34
+Elapsed time 67.173338 s
+Number of clients 5
+Number of events 40016
+Wrote 200.00 GB at an average of 2.98 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:17:40
+Elapsed time 66.035248 s
+Number of clients 5
+Copied 200.07 GB at an average of 3.03 GB/s
+----------------------------------------
+
+Calling 16 cores
+Write completed at 12:19:23
+Elapsed time 94.794427 s
+Number of clients 7
+Number of events 40016
+Wrote 280.00 GB at an average of 2.95 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:20:56
+Elapsed time 92.882069 s
+Number of clients 7
+Copied 280.11 GB at an average of 3.02 GB/s
+----------------------------------------
+
+Calling 20 cores
+Write completed at 12:22:33
+Elapsed time 90.283680 s
+Number of clients 9
+Number of events 40016
+Wrote 360.00 GB at an average of 3.99 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:24:28
+Elapsed time 114.684247 s
+Number of clients 9
+Copied 360.13 GB at an average of 3.14 GB/s
+----------------------------------------
+
+Calling 24 cores
+Write completed at 12:26:34
+Elapsed time 118.171802 s
+Number of clients 11
+Number of events 40016
+Wrote 440.00 GB at an average of 3.72 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:28:48
+Elapsed time 133.621780 s
+Number of clients 11
+Copied 440.17 GB at an average of 3.29 GB/s
+----------------------------------------
+
+Calling 28 cores
+Write completed at 12:31:26
+Elapsed time 149.330882 s
+Number of clients 13
+Number of events 40016
+Wrote 520.00 GB at an average of 3.48 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:33:59
+Elapsed time 152.961472 s
+Number of clients 13
+Copied 520.20 GB at an average of 3.40 GB/s
+----------------------------------------
+
+Calling 32 cores
+Write completed at 12:36:40
+Elapsed time 153.477622 s
+Number of clients 15
+Number of events 40016
+Wrote 600.00 GB at an average of 3.91 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:39:33
+Elapsed time 172.796706 s
+Number of clients 15
+Copied 600.23 GB at an average of 3.47 GB/s
+----------------------------------------
+
+Calling 4 cores
+Write completed at 12:40:41
+Elapsed time 60.145089 s
+Number of clients 1
+Number of events 40016
+Wrote 40.00 GB at an average of 0.67 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:41:28
+Elapsed time 47.614967 s
+Number of clients 1
+Copied 40.02 GB at an average of 0.84 GB/s
+----------------------------------------
+
+Calling 8 cores
+Write completed at 12:42:39
+Elapsed time 62.478928 s
+Number of clients 3
+Number of events 40016
+Wrote 120.00 GB at an average of 1.92 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:43:28
+Elapsed time 49.149498 s
+Number of clients 3
+Copied 120.05 GB at an average of 2.44 GB/s
+----------------------------------------
+
+Calling 12 cores
+Write completed at 12:44:48
+Elapsed time 72.557354 s
+Number of clients 5
+Number of events 40016
+Wrote 200.00 GB at an average of 2.76 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:45:50
+Elapsed time 62.667704 s
+Number of clients 5
+Copied 200.07 GB at an average of 3.19 GB/s
+----------------------------------------
+
+Calling 16 cores
+Write completed at 12:47:32
+Elapsed time 89.719486 s
+Number of clients 7
+Number of events 40016
+Wrote 280.00 GB at an average of 3.12 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:49:05
+Elapsed time 92.695548 s
+Number of clients 7
+Copied 280.11 GB at an average of 3.02 GB/s
+----------------------------------------
+
+Calling 20 cores
+Write completed at 12:51:03
+Elapsed time 110.535837 s
+Number of clients 9
+Number of events 40016
+Wrote 360.00 GB at an average of 3.26 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:52:59
+Elapsed time 115.621482 s
+Number of clients 9
+Copied 360.13 GB at an average of 3.11 GB/s
+----------------------------------------
+
+Calling 24 cores
+Write completed at 12:55:07
+Elapsed time 119.400479 s
+Number of clients 11
+Number of events 40016
+Wrote 440.00 GB at an average of 3.69 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 12:57:21
+Elapsed time 133.932953 s
+Number of clients 11
+Copied 440.17 GB at an average of 3.29 GB/s
+----------------------------------------
+
+Calling 28 cores
+Write completed at 12:59:52
+Elapsed time 143.108051 s
+Number of clients 13
+Number of events 40016
+Wrote 520.00 GB at an average of 3.63 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:02:25
+Elapsed time 153.584233 s
+Number of clients 13
+Copied 520.20 GB at an average of 3.39 GB/s
+----------------------------------------
+
+Calling 32 cores
+Write completed at 13:06:48
+Elapsed time 254.236211 s
+Number of clients 15
+Number of events 40016
+Wrote 600.00 GB at an average of 2.36 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:10:32
+Elapsed time 224.004759 s
+Number of clients 15
+Copied 600.23 GB at an average of 2.68 GB/s
+----------------------------------------
+
+Calling 4 cores
+Write completed at 13:11:39
+Elapsed time 58.472044 s
+Number of clients 1
+Number of events 40016
+Wrote 40.00 GB at an average of 0.68 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:12:27
+Elapsed time 47.973993 s
+Number of clients 1
+Copied 40.02 GB at an average of 0.83 GB/s
+----------------------------------------
+
+Calling 8 cores
+Write completed at 13:13:35
+Elapsed time 61.787254 s
+Number of clients 3
+Number of events 40016
+Wrote 120.00 GB at an average of 1.94 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:14:22
+Elapsed time 46.774170 s
+Number of clients 3
+Copied 120.05 GB at an average of 2.57 GB/s
+----------------------------------------
+
+Calling 12 cores
+Write completed at 13:15:44
+Elapsed time 74.367220 s
+Number of clients 5
+Number of events 40016
+Wrote 200.00 GB at an average of 2.69 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:16:45
+Elapsed time 61.197522 s
+Number of clients 5
+Copied 200.07 GB at an average of 3.27 GB/s
+----------------------------------------
+
+Calling 16 cores
+Write completed at 13:18:37
+Elapsed time 103.744976 s
+Number of clients 7
+Number of events 40016
+Wrote 280.00 GB at an average of 2.70 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:20:12
+Elapsed time 95.009964 s
+Number of clients 7
+Copied 280.11 GB at an average of 2.95 GB/s
+----------------------------------------
+
+Calling 20 cores
+Write completed at 13:22:06
+Elapsed time 104.151768 s
+Number of clients 9
+Number of events 40016
+Wrote 360.00 GB at an average of 3.46 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:24:01
+Elapsed time 115.078552 s
+Number of clients 9
+Copied 360.13 GB at an average of 3.13 GB/s
+----------------------------------------
+
+Calling 24 cores
+Write completed at 13:26:13
+Elapsed time 124.273639 s
+Number of clients 11
+Number of events 40016
+Wrote 440.00 GB at an average of 3.54 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:28:28
+Elapsed time 134.817283 s
+Number of clients 11
+Copied 440.17 GB at an average of 3.26 GB/s
+----------------------------------------
+
+Calling 28 cores
+Write completed at 13:32:33
+Elapsed time 237.515713 s
+Number of clients 13
+Number of events 40016
+Wrote 520.00 GB at an average of 2.19 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:36:03
+Elapsed time 209.850563 s
+Number of clients 13
+Copied 520.20 GB at an average of 2.48 GB/s
+----------------------------------------
+
+Calling 32 cores
+Write completed at 13:39:17
+Elapsed time 185.254272 s
+Number of clients 15
+Number of events 40016
+Wrote 600.00 GB at an average of 3.24 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:42:07
+Elapsed time 170.629478 s
+Number of clients 15
+Copied 600.23 GB at an average of 3.52 GB/s
+----------------------------------------
+
+Calling 4 cores
+Write completed at 13:43:19
+Elapsed time 62.805161 s
+Number of clients 1
+Number of events 40016
+Wrote 40.00 GB at an average of 0.64 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:44:07
+Elapsed time 47.961873 s
+Number of clients 1
+Copied 40.02 GB at an average of 0.83 GB/s
+----------------------------------------
+
+Calling 8 cores
+Write completed at 13:45:41
+Elapsed time 87.718728 s
+Number of clients 3
+Number of events 40016
+Wrote 120.00 GB at an average of 1.37 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:46:34
+Elapsed time 52.946771 s
+Number of clients 3
+Copied 120.05 GB at an average of 2.27 GB/s
+----------------------------------------
+
+Calling 12 cores
+Write completed at 13:47:51
+Elapsed time 69.465656 s
+Number of clients 5
+Number of events 40016
+Wrote 200.00 GB at an average of 2.88 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:48:54
+Elapsed time 63.384674 s
+Number of clients 5
+Copied 200.07 GB at an average of 3.16 GB/s
+----------------------------------------
+
+Calling 16 cores
+Write completed at 13:51:07
+Elapsed time 124.808219 s
+Number of clients 7
+Number of events 40016
+Wrote 280.00 GB at an average of 2.24 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:52:39
+Elapsed time 91.208809 s
+Number of clients 7
+Copied 280.11 GB at an average of 3.07 GB/s
+----------------------------------------
+
+Calling 20 cores
+Write completed at 13:54:29
+Elapsed time 102.903362 s
+Number of clients 9
+Number of events 40016
+Wrote 360.00 GB at an average of 3.50 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 13:56:24
+Elapsed time 114.859431 s
+Number of clients 9
+Copied 360.13 GB at an average of 3.14 GB/s
+----------------------------------------
+
+Calling 24 cores
+Write completed at 13:58:40
+Elapsed time 126.076038 s
+Number of clients 11
+Number of events 40016
+Wrote 440.00 GB at an average of 3.49 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 14:00:55
+Elapsed time 134.732513 s
+Number of clients 11
+Copied 440.17 GB at an average of 3.27 GB/s
+----------------------------------------
+
+Calling 28 cores
+Write completed at 14:03:30
+Elapsed time 146.696166 s
+Number of clients 13
+Number of events 40016
+Wrote 520.00 GB at an average of 3.54 GB/s
+Final length is 40015
+
+----------------------------------------
+Read completed at 14:06:03
+Elapsed time 153.410284 s
+Number of clients 13
+Copied 520.20 GB at an average of 3.39 GB/s
+----------------------------------------
+
+Calling 32 cores
