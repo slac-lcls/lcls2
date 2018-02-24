@@ -52,7 +52,7 @@ int main () {
   if (!buf) {
       ptr = new PeakFinderAlgos(seg, pbits);
   } else {
-      ptr = new(buf) PeakFinderAlgos(seg, pbits, buf+sizeof(PeakFinderAlgos)); // placement new
+      ptr = new(buf) PeakFinderAlgos(seg, pbits, buf+sizeof(PeakFinderAlgos)); // TODO: initialize outside the pebble, and reuse
   }
 
   auto t2 = Clock::now();
