@@ -1,0 +1,1281 @@
+Calling 12 cores
+-------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code.. Per user-direction, the job has been aborted.
+-------------------------------------------------------
+Calling 12 cores
+('%i is a writer', 2)
+('%i is a writer', 4)
+('%i is a writer', 6)
+('%i is a writer', 8)
+('%i is a writer', 10)
+Calling 12 cores
+6 is a writer
+8 is a writer
+10 is a writer
+2 is a writer
+4 is a writer
+Calling 4 cores
+2 is a writer
+Client 0 stopped writing
+('Final size is ', (1010, 5000000))
+Write completed at 09:52:57
+Elapsed time 15.999722 s
+Number of clients 1
+Number of events 1010
+Wrote 10.00 GB at an average of 0.63 GB/s
+Calling 4 cores
+2 is a writer
+Client 0 stopped writing
+('Final size is ', (1010, 5000000))
+Write completed at 09:55:48
+Elapsed time 15.970657 s
+Number of clients 1
+Number of events 1010
+Wrote 10.00 GB at an average of 0.63 GB/s
+Calling 4 cores
+2 is a writer
+Client 0 stopped writing
+('Final size is ', (1010, 5000000))
+Write completed at 09:56:47
+Elapsed time 16.026554 s
+Number of clients 1
+Number of events 1010
+Wrote 10.00 GB at an average of 0.62 GB/s
+Calling 4 cores
+2 is a writer
+1 is a reader
+3 is a reader
+Client 0 stopped writing
+('Final size is ', (1010, 5000000))
+Write completed at 09:58:03
+Elapsed time 15.861848 s
+Number of clients 1
+Number of events 1010
+Wrote 10.00 GB at an average of 0.63 GB/s
+Calling 4 cores
+-------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code.. Per user-direction, the job has been aborted.
+-------------------------------------------------------
+Calling 4 cores
+2 is a writer
+1 is a reader
+3 is a reader
+Client 0 stopped writing
+('Final size is ', (1010, 5000000))
+Write completed at 09:59:32
+Elapsed time 16.100002 s
+Number of clients 1
+Number of events 1010
+Wrote 10.00 GB at an average of 0.62 GB/s
+Calling 4 cores
+1 is a reader
+3 is a reader
+2 is a writer
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+There are 1/2 files
+Calling 4 cores
+Calling 4 cores
+2 is a writer
+1 is a reader
+3 is a reader
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 1/2 files
+----------------------------------------
+
+Done waiting for files to appear
+----------------------------------------
+
+Client 0 reading file /drplu/eliseo/6/swmr_file6.h5
+Client 0 stopped writing
+('Final size is ', (1010, 5000000))
+Write completed at 10:03:06
+Elapsed time 15.918619 s
+Number of clients 1
+Number of events 1010
+Wrote 10.00 GB at an average of 0.63 GB/s
+-------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code.. Per user-direction, the job has been aborted.
+-------------------------------------------------------
+Calling 4 cores
+2 is a writer
+1 is a reader
+3 is a reader
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 0/2 files
+There are 1/2 files
+----------------------------------------
+
+Done waiting for files to appear
+----------------------------------------
+
+Client 0 reading file /drplu/eliseo/6/swmr_file6.h5
+('master file name ', '/drplu/eliseo/swmr_small_data.h5')
+Copy client 0 read in event 0/0
+Copy client 0 read in event 1/1
+Copy client 0 read in event 2/2
+Copy client 0 read in event 3/3
+Copy client 0 read in event 4/4
+Copy client 0 read in event 5/5
+Copy client 0 read in event 6/6
+Copy client 0 read in event 7/7
+Copy client 0 read in event 8/8
+Copy client 0 read in event 9/9
+Copy client 0 read in event 10/10
+Copy client 0 read in event 11/11
+Copy client 0 read in event 12/12
+Copy client 0 read in event 13/13
+Copy client 0 read in event 14/14
+Copy client 0 read in event 15/15
+Copy client 0 read in event 16/16
+Copy client 0 read in event 17/17
+Copy client 0 read in event 18/18
+Copy client 0 read in event 19/19
+Copy client 0 read in event 20/20
+Copy client 0 read in event 21/21
+Copy client 0 read in event 22/22
+Copy client 0 read in event 23/23
+Copy client 0 read in event 24/24
+Copy client 0 read in event 25/25
+Copy client 0 read in event 26/26
+Copy client 0 read in event 27/27
+Copy client 0 read in event 28/28
+Copy client 0 read in event 29/29
+Copy client 0 read in event 30/30
+Copy client 0 read in event 31/31
+Copy client 0 read in event 32/32
+Copy client 0 read in event 33/33
+Copy client 0 read in event 34/34
+Copy client 0 read in event 35/35
+Copy client 0 read in event 36/36
+Copy client 0 read in event 37/37
+Copy client 0 read in event 38/38
+Copy client 0 read in event 39/39
+Copy client 0 read in event 40/40
+Copy client 0 read in event 41/41
+Copy client 0 read in event 42/42
+Copy client 0 read in event 43/43
+Copy client 0 read in event 44/44
+Copy client 0 read in event 45/45
+Copy client 0 read in event 46/46
+Copy client 0 read in event 47/47
+Copy client 0 read in event 48/48
+Copy client 0 read in event 49/49
+Copy client 0 read in event 50/50
+Copy client 0 read in event 51/51
+Copy client 0 read in event 52/52
+Copy client 0 read in event 53/53
+Copy client 0 read in event 54/54
+Copy client 0 read in event 55/55
+Copy client 0 read in event 56/56
+Copy client 0 read in event 57/57
+Copy client 0 read in event 58/58
+Copy client 0 read in event 59/59
+Copy client 0 read in event 60/60
+Copy client 0 read in event 61/61
+Copy client 0 read in event 62/62
+Copy client 0 read in event 63/63
+Copy client 0 read in event 64/64
+Copy client 0 read in event 65/65
+Copy client 0 read in event 66/66
+Copy client 0 read in event 67/67
+Copy client 0 read in event 68/68
+Copy client 0 read in event 69/69
+Copy client 0 read in event 70/70
+Copy client 0 read in event 71/71
+Copy client 0 read in event 72/72
+Copy client 0 read in event 73/73
+Copy client 0 read in event 74/74
+Copy client 0 read in event 75/75
+Copy client 0 read in event 76/76
+Copy client 0 read in event 77/77
+Copy client 0 read in event 78/78
+Copy client 0 read in event 79/79
+Copy client 0 read in event 80/80
+Copy client 0 read in event 81/81
+Copy client 0 read in event 82/82
+Copy client 0 read in event 83/83
+Copy client 0 read in event 84/84
+Copy client 0 read in event 85/85
+Copy client 0 read in event 86/86
+Copy client 0 read in event 87/87
+Copy client 0 read in event 88/88
+Copy client 0 read in event 89/89
+Copy client 0 read in event 90/90
+Copy client 0 read in event 91/91
+Copy client 0 read in event 92/92
+Copy client 0 read in event 93/93
+Copy client 0 read in event 94/94
+Copy client 0 read in event 95/95
+Copy client 0 read in event 96/96
+Copy client 0 read in event 97/97
+Copy client 0 read in event 98/98
+Copy client 0 read in event 99/99
+Copy client 0 read in event 100/100
+Copy client 0 read in event 101/101
+Copy client 0 read in event 102/102
+Copy client 0 read in event 103/103
+Copy client 0 read in event 104/104
+Copy client 0 read in event 105/105
+Copy client 0 read in event 106/106
+Copy client 0 read in event 107/107
+Copy client 0 read in event 108/108
+Copy client 0 read in event 109/109
+Copy client 0 read in event 110/110
+Copy client 0 read in event 111/111
+Copy client 0 read in event 112/112
+Copy client 0 read in event 113/113
+Copy client 0 read in event 114/114
+Copy client 0 read in event 115/115
+Copy client 0 read in event 116/116
+Copy client 0 read in event 117/117
+Copy client 0 read in event 118/118
+Copy client 0 read in event 119/119
+Copy client 0 read in event 120/120
+Copy client 0 read in event 121/121
+Copy client 0 read in event 122/122
+Copy client 0 read in event 123/123
+Copy client 0 read in event 124/124
+Copy client 0 read in event 125/125
+Copy client 0 read in event 126/126
+Copy client 0 read in event 127/127
+Copy client 0 read in event 128/128
+Copy client 0 read in event 129/129
+Copy client 0 read in event 130/130
+Copy client 0 read in event 131/131
+Copy client 0 read in event 132/132
+Copy client 0 read in event 133/133
+Copy client 0 read in event 134/134
+Copy client 0 read in event 135/135
+Copy client 0 read in event 136/136
+Copy client 0 read in event 137/137
+Copy client 0 read in event 138/138
+Copy client 0 read in event 139/139
+Copy client 0 read in event 140/140
+Copy client 0 read in event 141/141
+Copy client 0 read in event 142/142
+Copy client 0 read in event 143/143
+Copy client 0 read in event 144/144
+Copy client 0 read in event 145/145
+Copy client 0 read in event 146/146
+Copy client 0 read in event 147/147
+Copy client 0 read in event 148/148
+Copy client 0 read in event 149/149
+Copy client 0 read in event 150/150
+Copy client 0 read in event 151/151
+Copy client 0 read in event 152/152
+Copy client 0 read in event 153/153
+Copy client 0 read in event 154/154
+Copy client 0 read in event 155/155
+Copy client 0 read in event 156/156
+Copy client 0 read in event 157/157
+Copy client 0 read in event 158/158
+Copy client 0 read in event 159/159
+Copy client 0 read in event 160/160
+Copy client 0 read in event 161/161
+Copy client 0 read in event 162/162
+Copy client 0 read in event 163/163
+Copy client 0 read in event 164/164
+Copy client 0 read in event 165/165
+Copy client 0 read in event 166/166
+Copy client 0 read in event 167/167
+Copy client 0 read in event 168/168
+Copy client 0 read in event 169/169
+Copy client 0 read in event 170/170
+Copy client 0 read in event 171/171
+Copy client 0 read in event 172/172
+Copy client 0 read in event 173/173
+Copy client 0 read in event 174/174
+Copy client 0 read in event 175/175
+Copy client 0 read in event 176/176
+Copy client 0 read in event 177/177
+Copy client 0 read in event 178/178
+Copy client 0 read in event 179/179
+Copy client 0 read in event 180/180
+Copy client 0 read in event 181/181
+Copy client 0 read in event 182/182
+Copy client 0 read in event 183/183
+Copy client 0 read in event 184/184
+Copy client 0 read in event 185/185
+Copy client 0 read in event 186/186
+Copy client 0 read in event 187/187
+Copy client 0 read in event 188/188
+Copy client 0 read in event 189/189
+Copy client 0 read in event 190/190
+Copy client 0 read in event 191/191
+Copy client 0 read in event 192/192
+Copy client 0 read in event 193/193
+Copy client 0 read in event 194/194
+Copy client 0 read in event 195/195
+Copy client 0 read in event 196/196
+Copy client 0 read in event 197/197
+Copy client 0 read in event 198/198
+Copy client 0 read in event 199/199
+Copy client 0 read in event 200/200
+Copy client 0 read in event 201/201
+Copy client 0 read in event 202/202
+Copy client 0 read in event 203/203
+Copy client 0 read in event 204/204
+Copy client 0 read in event 205/205
+Copy client 0 read in event 206/206
+Copy client 0 read in event 207/207
+Copy client 0 read in event 208/208
+Copy client 0 read in event 209/209
+Copy client 0 read in event 0/210
+Copy client 0 read in event 1/211
+Copy client 0 read in event 2/212
+Copy client 0 read in event 3/213
+Copy client 0 read in event 4/214
+Copy client 0 read in event 5/215
+Copy client 0 read in event 6/216
+Copy client 0 read in event 7/217
+Copy client 0 read in event 8/218
+Copy client 0 read in event 9/219
+Copy client 0 read in event 10/220
+Copy client 0 read in event 11/221
+Copy client 0 read in event 12/222
+Copy client 0 read in event 13/223
+Copy client 0 read in event 14/224
+Copy client 0 read in event 15/225
+Copy client 0 read in event 16/226
+Copy client 0 read in event 17/227
+Copy client 0 read in event 18/228
+Copy client 0 read in event 19/229
+Copy client 0 read in event 20/230
+Copy client 0 read in event 21/231
+Copy client 0 read in event 22/232
+Copy client 0 read in event 23/233
+Copy client 0 read in event 24/234
+Copy client 0 read in event 25/235
+Copy client 0 read in event 26/236
+Copy client 0 read in event 27/237
+Copy client 0 read in event 28/238
+Copy client 0 read in event 29/239
+Copy client 0 read in event 30/240
+Copy client 0 read in event 31/241
+Copy client 0 read in event 32/242
+Copy client 0 read in event 33/243
+Copy client 0 read in event 34/244
+Copy client 0 read in event 35/245
+Copy client 0 read in event 36/246
+Copy client 0 read in event 37/247
+Copy client 0 read in event 38/248
+Copy client 0 read in event 39/249
+Copy client 0 read in event 40/250
+Copy client 0 read in event 41/251
+Copy client 0 read in event 42/252
+Copy client 0 read in event 43/253
+Copy client 0 read in event 44/254
+Copy client 0 read in event 45/255
+Copy client 0 read in event 46/256
+Copy client 0 read in event 47/257
+Copy client 0 read in event 48/258
+Copy client 0 read in event 49/259
+Copy client 0 read in event 50/260
+Copy client 0 read in event 51/261
+Copy client 0 read in event 52/262
+Copy client 0 read in event 53/263
+Copy client 0 read in event 54/264
+Copy client 0 read in event 55/265
+Copy client 0 read in event 56/266
+Copy client 0 read in event 57/267
+Copy client 0 read in event 58/268
+Copy client 0 read in event 59/269
+Copy client 0 read in event 60/270
+Copy client 0 read in event 61/271
+Copy client 0 read in event 62/272
+Copy client 0 read in event 63/273
+Copy client 0 read in event 64/274
+Copy client 0 read in event 65/275
+Copy client 0 read in event 66/276
+Copy client 0 read in event 67/277
+Copy client 0 read in event 68/278
+Copy client 0 read in event 69/279
+Copy client 0 read in event 70/280
+Copy client 0 read in event 71/281
+Copy client 0 read in event 72/282
+Copy client 0 read in event 73/283
+Copy client 0 read in event 74/284
+Copy client 0 read in event 75/285
+Copy client 0 read in event 76/286
+Copy client 0 read in event 77/287
+Copy client 0 read in event 78/288
+Copy client 0 read in event 79/289
+Copy client 0 read in event 80/290
+Copy client 0 read in event 81/291
+Copy client 0 read in event 82/292
+Copy client 0 read in event 83/293
+Copy client 0 read in event 84/294
+Copy client 0 read in event 85/295
+Copy client 0 read in event 86/296
+Copy client 0 read in event 87/297
+Copy client 0 read in event 88/298
+Copy client 0 read in event 89/299
+Copy client 0 read in event 90/300
+Copy client 0 read in event 91/301
+Copy client 0 read in event 92/302
+Copy client 0 read in event 93/303
+Copy client 0 read in event 94/304
+Copy client 0 read in event 95/305
+Copy client 0 read in event 96/306
+Copy client 0 read in event 97/307
+Copy client 0 read in event 98/308
+Copy client 0 read in event 99/309
+Copy client 0 read in event 100/310
+Copy client 0 read in event 101/311
+Copy client 0 read in event 102/312
+Copy client 0 read in event 103/313
+Copy client 0 read in event 104/314
+Copy client 0 read in event 105/315
+Copy client 0 read in event 106/316
+Copy client 0 read in event 107/317
+Copy client 0 read in event 108/318
+Copy client 0 read in event 109/319
+Copy client 0 read in event 110/320
+Copy client 0 read in event 111/321
+Copy client 0 read in event 112/322
+Copy client 0 read in event 113/323
+Copy client 0 read in event 114/324
+Copy client 0 read in event 115/325
+Copy client 0 read in event 116/326
+Copy client 0 read in event 117/327
+Copy client 0 read in event 118/328
+Copy client 0 read in event 119/329
+Copy client 0 read in event 120/330
+Copy client 0 read in event 121/331
+Copy client 0 read in event 122/332
+Copy client 0 read in event 123/333
+Copy client 0 read in event 124/334
+Copy client 0 read in event 125/335
+Copy client 0 read in event 126/336
+Copy client 0 read in event 127/337
+Copy client 0 read in event 128/338
+Copy client 0 read in event 129/339
+Copy client 0 read in event 130/340
+Copy client 0 read in event 131/341
+Copy client 0 read in event 132/342
+Copy client 0 read in event 133/343
+Copy client 0 read in event 134/344
+Copy client 0 read in event 135/345
+Copy client 0 read in event 136/346
+Copy client 0 read in event 137/347
+Copy client 0 read in event 138/348
+Copy client 0 read in event 139/349
+Copy client 0 read in event 140/350
+Copy client 0 read in event 141/351
+Copy client 0 read in event 142/352
+Copy client 0 read in event 143/353
+Copy client 0 read in event 144/354
+Copy client 0 read in event 145/355
+Copy client 0 read in event 146/356
+Copy client 0 read in event 147/357
+Copy client 0 read in event 148/358
+Copy client 0 read in event 149/359
+Copy client 0 read in event 150/360
+Copy client 0 read in event 151/361
+Copy client 0 read in event 152/362
+Copy client 0 read in event 153/363
+Copy client 0 read in event 154/364
+Copy client 0 read in event 155/365
+Copy client 0 read in event 156/366
+Copy client 0 read in event 157/367
+Copy client 0 read in event 158/368
+Copy client 0 read in event 159/369
+Copy client 0 read in event 160/370
+Copy client 0 read in event 161/371
+Copy client 0 read in event 162/372
+Copy client 0 read in event 163/373
+Copy client 0 read in event 164/374
+Copy client 0 read in event 165/375
+Copy client 0 read in event 166/376
+Copy client 0 read in event 167/377
+Copy client 0 read in event 168/378
+Copy client 0 read in event 169/379
+Copy client 0 read in event 170/380
+Copy client 0 read in event 171/381
+Copy client 0 read in event 172/382
+Copy client 0 read in event 173/383
+Copy client 0 read in event 174/384
+Copy client 0 read in event 175/385
+Copy client 0 read in event 176/386
+Copy client 0 read in event 177/387
+Copy client 0 read in event 178/388
+Copy client 0 read in event 179/389
+Copy client 0 read in event 180/390
+Copy client 0 read in event 181/391
+Copy client 0 read in event 182/392
+Copy client 0 read in event 183/393
+Copy client 0 read in event 184/394
+Copy client 0 read in event 185/395
+Copy client 0 read in event 186/396
+Copy client 0 read in event 187/397
+Copy client 0 read in event 188/398
+Copy client 0 read in event 189/399
+Copy client 0 read in event 190/400
+Copy client 0 read in event 191/401
+Copy client 0 read in event 192/402
+Copy client 0 read in event 193/403
+Copy client 0 read in event 194/404
+Copy client 0 read in event 195/405
+Copy client 0 read in event 196/406
+Copy client 0 read in event 197/407
+Copy client 0 read in event 198/408
+Copy client 0 read in event 199/409
+Copy client 0 read in event 200/410
+Copy client 0 read in event 201/411
+Copy client 0 read in event 202/412
+Copy client 0 read in event 203/413
+Copy client 0 read in event 204/414
+Copy client 0 read in event 205/415
+Copy client 0 read in event 206/416
+Copy client 0 read in event 207/417
+Copy client 0 read in event 208/418
+Copy client 0 read in event 209/419
+Copy client 0 read in event 210/420
+Copy client 0 read in event 211/421
+Copy client 0 read in event 212/422
+Copy client 0 read in event 213/423
+Copy client 0 read in event 214/424
+Copy client 0 read in event 215/425
+Copy client 0 read in event 216/426
+Copy client 0 read in event 217/427
+Copy client 0 read in event 218/428
+Copy client 0 read in event 219/429
+Copy client 0 read in event 220/430
+Copy client 0 read in event 221/431
+Copy client 0 read in event 222/432
+Copy client 0 read in event 223/433
+Copy client 0 read in event 224/434
+Copy client 0 read in event 225/435
+Copy client 0 read in event 226/436
+Copy client 0 read in event 227/437
+Copy client 0 read in event 228/438
+Copy client 0 read in event 229/439
+Copy client 0 read in event 230/440
+Copy client 0 read in event 231/441
+Copy client 0 read in event 232/442
+Copy client 0 read in event 233/443
+Copy client 0 read in event 234/444
+Copy client 0 read in event 235/445
+Copy client 0 read in event 236/446
+Copy client 0 read in event 237/447
+Copy client 0 read in event 238/448
+Copy client 0 read in event 239/449
+Copy client 0 read in event 240/450
+Copy client 0 read in event 241/451
+Copy client 0 read in event 242/452
+Copy client 0 read in event 243/453
+Copy client 0 read in event 244/454
+Copy client 0 read in event 245/455
+Copy client 0 read in event 246/456
+Copy client 0 read in event 247/457
+Copy client 0 read in event 248/458
+Copy client 0 read in event 249/459
+Copy client 0 read in event 250/460
+Copy client 0 read in event 251/461
+Copy client 0 read in event 252/462
+Copy client 0 read in event 253/463
+Copy client 0 read in event 254/464
+Copy client 0 read in event 255/465
+Copy client 0 read in event 256/466
+Copy client 0 read in event 257/467
+Copy client 0 read in event 258/468
+Copy client 0 read in event 259/469
+Copy client 0 read in event 260/470
+Copy client 0 read in event 261/471
+Copy client 0 read in event 262/472
+Copy client 0 read in event 263/473
+Copy client 0 read in event 264/474
+Copy client 0 read in event 265/475
+Copy client 0 read in event 266/476
+Copy client 0 read in event 267/477
+Copy client 0 read in event 268/478
+Copy client 0 read in event 269/479
+Copy client 0 read in event 270/480
+Copy client 0 read in event 271/481
+Copy client 0 read in event 272/482
+Copy client 0 read in event 273/483
+Copy client 0 read in event 274/484
+Copy client 0 read in event 275/485
+Copy client 0 read in event 276/486
+Copy client 0 read in event 277/487
+Copy client 0 read in event 278/488
+Copy client 0 read in event 279/489
+Copy client 0 read in event 280/490
+Copy client 0 read in event 281/491
+Copy client 0 read in event 282/492
+Copy client 0 read in event 283/493
+Copy client 0 read in event 284/494
+Copy client 0 read in event 285/495
+Copy client 0 read in event 286/496
+Copy client 0 read in event 287/497
+Copy client 0 read in event 288/498
+Copy client 0 read in event 289/499
+Copy client 0 read in event 290/500
+Copy client 0 read in event 291/501
+Copy client 0 read in event 292/502
+Copy client 0 read in event 293/503
+Copy client 0 read in event 294/504
+Copy client 0 read in event 295/505
+Copy client 0 read in event 296/506
+Copy client 0 read in event 297/507
+Copy client 0 read in event 298/508
+Copy client 0 read in event 299/509
+Copy client 0 read in event 300/510
+Copy client 0 read in event 301/511
+Copy client 0 read in event 302/512
+Copy client 0 read in event 303/513
+Copy client 0 read in event 304/514
+Copy client 0 read in event 305/515
+Copy client 0 read in event 306/516
+Copy client 0 read in event 307/517
+Copy client 0 read in event 308/518
+Copy client 0 read in event 309/519
+Copy client 0 read in event 310/520
+Copy client 0 read in event 311/521
+Copy client 0 read in event 312/522
+Copy client 0 read in event 313/523
+Copy client 0 read in event 314/524
+Copy client 0 read in event 315/525
+Copy client 0 read in event 316/526
+Copy client 0 read in event 317/527
+Copy client 0 read in event 318/528
+Copy client 0 read in event 319/529
+Copy client 0 read in event 0/530
+Copy client 0 read in event 1/531
+Copy client 0 read in event 2/532
+Copy client 0 read in event 3/533
+Copy client 0 read in event 4/534
+Copy client 0 read in event 5/535
+Copy client 0 read in event 6/536
+Copy client 0 read in event 7/537
+Copy client 0 read in event 8/538
+Copy client 0 read in event 9/539
+Copy client 0 read in event 10/540
+Copy client 0 read in event 11/541
+Copy client 0 read in event 12/542
+Copy client 0 read in event 13/543
+Copy client 0 read in event 14/544
+Copy client 0 read in event 15/545
+Copy client 0 read in event 16/546
+Copy client 0 read in event 17/547
+Copy client 0 read in event 18/548
+Copy client 0 read in event 19/549
+Copy client 0 read in event 20/550
+Copy client 0 read in event 21/551
+Copy client 0 read in event 22/552
+Copy client 0 read in event 23/553
+Copy client 0 read in event 24/554
+Copy client 0 read in event 25/555
+Copy client 0 read in event 26/556
+Copy client 0 read in event 27/557
+Copy client 0 read in event 28/558
+Copy client 0 read in event 29/559
+Copy client 0 read in event 30/560
+Copy client 0 read in event 31/561
+Copy client 0 read in event 32/562
+Copy client 0 read in event 33/563
+Copy client 0 read in event 34/564
+Copy client 0 read in event 35/565
+Copy client 0 read in event 36/566
+Copy client 0 read in event 37/567
+Copy client 0 read in event 38/568
+Copy client 0 read in event 39/569
+Copy client 0 read in event 40/570
+Copy client 0 read in event 41/571
+Copy client 0 read in event 42/572
+Copy client 0 read in event 43/573
+Copy client 0 read in event 44/574
+Copy client 0 read in event 45/575
+Copy client 0 read in event 46/576
+Copy client 0 read in event 47/577
+Copy client 0 read in event 48/578
+Copy client 0 read in event 49/579
+Copy client 0 read in event 50/580
+Copy client 0 read in event 51/581
+Copy client 0 read in event 52/582
+Copy client 0 read in event 53/583
+Copy client 0 read in event 54/584
+Copy client 0 read in event 55/585
+Copy client 0 read in event 56/586
+Copy client 0 read in event 57/587
+Copy client 0 read in event 58/588
+Copy client 0 read in event 59/589
+Copy client 0 read in event 60/590
+Copy client 0 read in event 61/591
+Copy client 0 read in event 62/592
+Copy client 0 read in event 63/593
+Copy client 0 read in event 64/594
+Copy client 0 read in event 65/595
+Copy client 0 read in event 66/596
+Copy client 0 read in event 67/597
+Copy client 0 read in event 68/598
+Copy client 0 read in event 69/599
+Copy client 0 read in event 70/600
+Copy client 0 read in event 71/601
+Copy client 0 read in event 72/602
+Copy client 0 read in event 73/603
+Copy client 0 read in event 74/604
+Copy client 0 read in event 75/605
+Copy client 0 read in event 76/606
+Copy client 0 read in event 77/607
+Copy client 0 read in event 78/608
+Copy client 0 read in event 79/609
+Copy client 0 read in event 80/610
+Copy client 0 read in event 81/611
+Copy client 0 read in event 82/612
+Copy client 0 read in event 83/613
+Copy client 0 read in event 84/614
+Copy client 0 read in event 85/615
+Copy client 0 read in event 86/616
+Copy client 0 read in event 87/617
+Copy client 0 read in event 88/618
+Copy client 0 read in event 89/619
+Copy client 0 read in event 90/620
+Copy client 0 read in event 91/621
+Copy client 0 read in event 92/622
+Copy client 0 read in event 93/623
+Copy client 0 read in event 94/624
+Copy client 0 read in event 95/625
+Copy client 0 read in event 96/626
+Copy client 0 read in event 97/627
+Copy client 0 read in event 98/628
+Copy client 0 read in event 99/629
+Copy client 0 read in event 100/630
+Copy client 0 read in event 101/631
+Copy client 0 read in event 102/632
+Copy client 0 read in event 103/633
+Copy client 0 read in event 104/634
+Copy client 0 read in event 105/635
+Copy client 0 read in event 106/636
+Copy client 0 read in event 107/637
+Copy client 0 read in event 108/638
+Copy client 0 read in event 109/639
+Copy client 0 read in event 110/640
+Copy client 0 read in event 111/641
+Copy client 0 read in event 112/642
+Copy client 0 read in event 113/643
+Copy client 0 read in event 114/644
+Copy client 0 read in event 115/645
+Copy client 0 read in event 116/646
+Copy client 0 read in event 117/647
+Copy client 0 read in event 118/648
+Copy client 0 read in event 119/649
+Copy client 0 read in event 120/650
+Copy client 0 read in event 121/651
+Copy client 0 read in event 122/652
+Copy client 0 read in event 123/653
+Copy client 0 read in event 124/654
+Copy client 0 read in event 125/655
+Copy client 0 read in event 126/656
+Copy client 0 read in event 127/657
+Copy client 0 read in event 128/658
+Copy client 0 read in event 129/659
+Copy client 0 read in event 130/660
+Copy client 0 read in event 131/661
+Copy client 0 read in event 132/662
+Copy client 0 read in event 133/663
+Copy client 0 read in event 134/664
+Copy client 0 read in event 135/665
+Copy client 0 read in event 136/666
+Copy client 0 read in event 137/667
+Copy client 0 read in event 138/668
+Copy client 0 read in event 139/669
+Copy client 0 read in event 140/670
+Copy client 0 read in event 141/671
+Copy client 0 read in event 142/672
+Copy client 0 read in event 143/673
+Copy client 0 read in event 144/674
+Copy client 0 read in event 145/675
+Copy client 0 read in event 146/676
+Copy client 0 read in event 147/677
+Copy client 0 read in event 148/678
+Copy client 0 read in event 149/679
+Copy client 0 read in event 150/680
+Copy client 0 read in event 151/681
+Copy client 0 read in event 152/682
+Copy client 0 read in event 153/683
+Copy client 0 read in event 154/684
+Copy client 0 read in event 155/685
+Copy client 0 read in event 156/686
+Copy client 0 read in event 157/687
+Copy client 0 read in event 158/688
+Copy client 0 read in event 159/689
+Copy client 0 read in event 160/690
+Copy client 0 read in event 161/691
+Copy client 0 read in event 162/692
+Copy client 0 read in event 163/693
+Copy client 0 read in event 164/694
+Copy client 0 read in event 165/695
+Copy client 0 read in event 166/696
+Copy client 0 read in event 167/697
+Copy client 0 read in event 168/698
+Copy client 0 read in event 169/699
+Copy client 0 read in event 170/700
+Copy client 0 read in event 171/701
+Copy client 0 read in event 172/702
+Copy client 0 read in event 173/703
+Copy client 0 read in event 174/704
+Copy client 0 read in event 175/705
+Copy client 0 read in event 176/706
+Copy client 0 read in event 177/707
+Copy client 0 read in event 178/708
+Copy client 0 read in event 179/709
+Copy client 0 read in event 180/710
+Copy client 0 read in event 181/711
+Copy client 0 read in event 182/712
+Copy client 0 read in event 183/713
+Copy client 0 read in event 184/714
+Copy client 0 read in event 185/715
+Copy client 0 read in event 186/716
+Copy client 0 read in event 187/717
+Copy client 0 read in event 188/718
+Copy client 0 read in event 189/719
+Copy client 0 read in event 190/720
+Copy client 0 read in event 191/721
+Copy client 0 read in event 192/722
+Copy client 0 read in event 193/723
+Copy client 0 read in event 194/724
+Copy client 0 read in event 195/725
+Copy client 0 read in event 196/726
+Copy client 0 read in event 197/727
+Copy client 0 read in event 198/728
+Copy client 0 read in event 199/729
+Copy client 0 read in event 200/730
+Copy client 0 read in event 201/731
+Copy client 0 read in event 202/732
+Copy client 0 read in event 203/733
+Copy client 0 read in event 204/734
+Copy client 0 read in event 205/735
+Copy client 0 read in event 206/736
+Copy client 0 read in event 207/737
+Copy client 0 read in event 208/738
+Copy client 0 read in event 209/739
+Copy client 0 read in event 210/740
+Copy client 0 read in event 211/741
+Copy client 0 read in event 212/742
+Copy client 0 read in event 213/743
+Copy client 0 read in event 214/744
+Copy client 0 read in event 215/745
+Copy client 0 read in event 216/746
+Copy client 0 read in event 217/747
+Copy client 0 read in event 218/748
+Copy client 0 read in event 219/749
+Copy client 0 read in event 220/750
+Copy client 0 read in event 221/751
+Copy client 0 read in event 222/752
+Copy client 0 read in event 223/753
+Client 0 stopped writing
+('Final size is ', (1010, 5000000))
+Copy client 0 read in event 224/754
+Copy client 0 read in event 225/755
+Write completed at 10:04:23
+Elapsed time 19.662962 s
+Number of clients 1
+Number of events 1010
+Wrote 10.00 GB at an average of 0.51 GB/s
+Copy client 0 read in event 226/756
+Copy client 0 read in event 227/757
+Copy client 0 read in event 228/758
+Copy client 0 read in event 229/759
+Copy client 0 read in event 230/760
+Copy client 0 read in event 231/761
+Copy client 0 read in event 232/762
+Copy client 0 read in event 233/763
+Copy client 0 read in event 234/764
+Copy client 0 read in event 235/765
+Copy client 0 read in event 236/766
+Copy client 0 read in event 237/767
+Copy client 0 read in event 238/768
+Copy client 0 read in event 239/769
+Copy client 0 read in event 240/770
+Copy client 0 read in event 241/771
+Copy client 0 read in event 242/772
+Copy client 0 read in event 243/773
+Copy client 0 read in event 244/774
+Copy client 0 read in event 245/775
+Copy client 0 read in event 246/776
+Copy client 0 read in event 247/777
+Copy client 0 read in event 248/778
+Copy client 0 read in event 249/779
+Copy client 0 read in event 250/780
+Copy client 0 read in event 251/781
+Copy client 0 read in event 252/782
+Copy client 0 read in event 253/783
+Copy client 0 read in event 254/784
+Copy client 0 read in event 255/785
+Copy client 0 read in event 256/786
+Copy client 0 read in event 257/787
+Copy client 0 read in event 258/788
+Copy client 0 read in event 259/789
+Copy client 0 read in event 260/790
+Copy client 0 read in event 261/791
+Copy client 0 read in event 262/792
+Copy client 0 read in event 263/793
+Copy client 0 read in event 264/794
+Copy client 0 read in event 265/795
+Copy client 0 read in event 266/796
+Copy client 0 read in event 267/797
+Copy client 0 read in event 268/798
+Copy client 0 read in event 269/799
+Copy client 0 read in event 270/800
+Copy client 0 read in event 271/801
+Copy client 0 read in event 272/802
+Copy client 0 read in event 273/803
+Copy client 0 read in event 274/804
+Copy client 0 read in event 275/805
+Copy client 0 read in event 276/806
+Copy client 0 read in event 277/807
+Copy client 0 read in event 278/808
+Copy client 0 read in event 279/809
+Copy client 0 read in event 280/810
+Copy client 0 read in event 281/811
+Copy client 0 read in event 282/812
+Copy client 0 read in event 283/813
+Copy client 0 read in event 284/814
+Copy client 0 read in event 285/815
+Copy client 0 read in event 286/816
+Copy client 0 read in event 287/817
+Copy client 0 read in event 288/818
+Copy client 0 read in event 289/819
+Copy client 0 read in event 290/820
+Copy client 0 read in event 291/821
+Copy client 0 read in event 292/822
+Copy client 0 read in event 293/823
+Copy client 0 read in event 294/824
+Copy client 0 read in event 295/825
+Copy client 0 read in event 296/826
+Copy client 0 read in event 297/827
+Copy client 0 read in event 298/828
+Copy client 0 read in event 299/829
+Copy client 0 read in event 300/830
+Copy client 0 read in event 301/831
+Copy client 0 read in event 302/832
+Copy client 0 read in event 303/833
+Copy client 0 read in event 304/834
+Copy client 0 read in event 305/835
+Copy client 0 read in event 306/836
+Copy client 0 read in event 307/837
+Copy client 0 read in event 308/838
+Copy client 0 read in event 309/839
+Copy client 0 read in event 310/840
+Copy client 0 read in event 311/841
+Copy client 0 read in event 312/842
+Copy client 0 read in event 313/843
+Copy client 0 read in event 314/844
+Copy client 0 read in event 315/845
+Copy client 0 read in event 316/846
+Copy client 0 read in event 317/847
+Copy client 0 read in event 318/848
+Copy client 0 read in event 319/849
+Copy client 0 read in event 320/850
+Copy client 0 read in event 321/851
+Copy client 0 read in event 322/852
+Copy client 0 read in event 323/853
+Copy client 0 read in event 324/854
+Copy client 0 read in event 325/855
+Copy client 0 read in event 326/856
+Copy client 0 read in event 327/857
+Copy client 0 read in event 328/858
+Copy client 0 read in event 329/859
+Copy client 0 read in event 330/860
+Copy client 0 read in event 331/861
+Copy client 0 read in event 332/862
+Copy client 0 read in event 333/863
+Copy client 0 read in event 334/864
+Copy client 0 read in event 335/865
+Copy client 0 read in event 336/866
+Copy client 0 read in event 337/867
+Copy client 0 read in event 338/868
+Copy client 0 read in event 339/869
+Copy client 0 read in event 340/870
+Copy client 0 read in event 341/871
+Copy client 0 read in event 342/872
+Copy client 0 read in event 343/873
+Copy client 0 read in event 344/874
+Copy client 0 read in event 345/875
+Copy client 0 read in event 346/876
+Copy client 0 read in event 347/877
+Copy client 0 read in event 348/878
+Copy client 0 read in event 349/879
+Copy client 0 read in event 350/880
+Copy client 0 read in event 351/881
+Copy client 0 read in event 352/882
+Copy client 0 read in event 353/883
+Copy client 0 read in event 354/884
+Copy client 0 read in event 355/885
+Copy client 0 read in event 356/886
+Copy client 0 read in event 357/887
+Copy client 0 read in event 358/888
+Copy client 0 read in event 359/889
+Final length is 1009
+Copy client 0 read in event 0/890
+Copy client 0 read in event 1/891
+Copy client 0 read in event 2/892
+Copy client 0 read in event 3/893
+Copy client 0 read in event 4/894
+Copy client 0 read in event 5/895
+Copy client 0 read in event 6/896
+Copy client 0 read in event 7/897
+Copy client 0 read in event 8/898
+Copy client 0 read in event 9/899
+Copy client 0 read in event 10/900
+Copy client 0 read in event 11/901
+Copy client 0 read in event 12/902
+Copy client 0 read in event 13/903
+Copy client 0 read in event 14/904
+Copy client 0 read in event 15/905
+Copy client 0 read in event 16/906
+Copy client 0 read in event 17/907
+Copy client 0 read in event 18/908
+Copy client 0 read in event 19/909
+Copy client 0 read in event 20/910
+Copy client 0 read in event 21/911
+Copy client 0 read in event 22/912
+Copy client 0 read in event 23/913
+Copy client 0 read in event 24/914
+Copy client 0 read in event 25/915
+Copy client 0 read in event 26/916
+Copy client 0 read in event 27/917
+Copy client 0 read in event 28/918
+Copy client 0 read in event 29/919
+Copy client 0 read in event 30/920
+Copy client 0 read in event 31/921
+Copy client 0 read in event 32/922
+Copy client 0 read in event 33/923
+Copy client 0 read in event 34/924
+Copy client 0 read in event 35/925
+Copy client 0 read in event 36/926
+Copy client 0 read in event 37/927
+Copy client 0 read in event 38/928
+Copy client 0 read in event 39/929
+Copy client 0 read in event 40/930
+Copy client 0 read in event 41/931
+Copy client 0 read in event 42/932
+Copy client 0 read in event 43/933
+Copy client 0 read in event 44/934
+Copy client 0 read in event 45/935
+Copy client 0 read in event 46/936
+Copy client 0 read in event 47/937
+Copy client 0 read in event 48/938
+Copy client 0 read in event 49/939
+Copy client 0 read in event 50/940
+Copy client 0 read in event 51/941
+Copy client 0 read in event 52/942
+Copy client 0 read in event 53/943
+Copy client 0 read in event 54/944
+Copy client 0 read in event 55/945
+Copy client 0 read in event 56/946
+Copy client 0 read in event 57/947
+Copy client 0 read in event 58/948
+Copy client 0 read in event 59/949
+Copy client 0 read in event 60/950
+Copy client 0 read in event 61/951
+Copy client 0 read in event 62/952
+Copy client 0 read in event 63/953
+Copy client 0 read in event 64/954
+Copy client 0 read in event 65/955
+Copy client 0 read in event 66/956
+Copy client 0 read in event 67/957
+Copy client 0 read in event 68/958
+Copy client 0 read in event 69/959
+Copy client 0 read in event 70/960
+Copy client 0 read in event 71/961
+Copy client 0 read in event 72/962
+Copy client 0 read in event 73/963
+Copy client 0 read in event 74/964
+Copy client 0 read in event 75/965
+Copy client 0 read in event 76/966
+Copy client 0 read in event 77/967
+Copy client 0 read in event 78/968
+Copy client 0 read in event 79/969
+Copy client 0 read in event 80/970
+Copy client 0 read in event 81/971
+Copy client 0 read in event 82/972
+Copy client 0 read in event 83/973
+Copy client 0 read in event 84/974
+Copy client 0 read in event 85/975
+Copy client 0 read in event 86/976
+Copy client 0 read in event 87/977
+Copy client 0 read in event 88/978
+Copy client 0 read in event 89/979
+Copy client 0 read in event 90/980
+Copy client 0 read in event 91/981
+Copy client 0 read in event 92/982
+Copy client 0 read in event 93/983
+Copy client 0 read in event 94/984
+Copy client 0 read in event 95/985
+Copy client 0 read in event 96/986
+Copy client 0 read in event 97/987
+Copy client 0 read in event 98/988
+Copy client 0 read in event 99/989
+Copy client 0 read in event 100/990
+Copy client 0 read in event 101/991
+Copy client 0 read in event 102/992
+Copy client 0 read in event 103/993
+Copy client 0 read in event 104/994
+Copy client 0 read in event 105/995
+Copy client 0 read in event 106/996
+Copy client 0 read in event 107/997
+Copy client 0 read in event 108/998
+Copy client 0 read in event 109/999
+Copy client 0 read in event 110/1000
+Copy client 0 read in event 111/1001
+Copy client 0 read in event 112/1002
+Copy client 0 read in event 113/1003
+Copy client 0 read in event 114/1004
+Copy client 0 read in event 115/1005
+Copy client 0 read in event 116/1006
+Copy client 0 read in event 117/1007
+Copy client 0 read in event 118/1008
+
+----------------------------------------
+Read completed at 10:04:26
+Elapsed time 22.650754 s
+Number of clients 1
+Copied 10.09 GB at an average of 0.45 GB/s
+----------------------------------------
+
+Calling 4 cores
+Client 0 stopped writing
+('Final size is ', (1010, 5000000))
+Write completed at 10:06:22
+Elapsed time 19.970285 s
+Number of clients 1
+Number of events 1010
+Wrote 10.00 GB at an average of 0.50 GB/s
+Final length is 1009
+
+----------------------------------------
+Read completed at 10:06:26
+Elapsed time 22.893698 s
+Number of clients 1
+Copied 10.09 GB at an average of 0.44 GB/s
+----------------------------------------
+
