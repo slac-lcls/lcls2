@@ -1,14 +1,12 @@
-//g++ -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2 peak.cpp psalgos/src/PeakFinderAlgos.cpp psalgos/src/LocalExtrema.cpp -o peak
+//g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2 peak.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peak
 
 #include <iostream>
-#include "psalgos/include/PeakFinderAlgos.h"
 #include <vector>
 #include <stdlib.h>
 
-#include "psalgos/include/LocalExtrema.h"
-
-//#include "xtcdata/xtc/DescData.hh" // struct Array, Vector
-#include "psalgos/include/Types.h"
+#include "psalg/include/PeakFinderAlgos.h"
+#include "psalg/include/LocalExtrema.h"
+#include "psalg/include/Types.h"
 
 #include <chrono> // timer
 typedef std::chrono::high_resolution_clock Clock;
@@ -52,7 +50,7 @@ int main () {
   if (!buf) {
       ptr = new PeakFinderAlgos(seg, pbits);
   } else {
-      ptr = new(buf) PeakFinderAlgos(seg, pbits, buf+sizeof(PeakFinderAlgos)); // placement new
+      ptr = new(buf) PeakFinderAlgos(seg, pbits, buf+sizeof(PeakFinderAlgos)); // TODO: initialize outside the pebble, and reuse
   }
 
   auto t2 = Clock::now();
