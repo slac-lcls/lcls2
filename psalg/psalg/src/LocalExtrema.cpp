@@ -57,9 +57,10 @@ Vector<TwoIndexes>* evaluateDiagIndexes_drp(const size_t& rank, const bool drp, 
   int indmin = -rank;
   const unsigned npixmax = (2*rank+1)*(2*rank+1);
 
-  Vector<TwoIndexes>* ptr = new(drpPtr) Vector<TwoIndexes>();
+  Vector<TwoIndexes>* v_inddiag = new(drpPtr) Vector<TwoIndexes>();
   drpPtr += sizeof(Vector<TwoIndexes>);
-  if(ptr->capacity < npixmax) ptr->capacity = npixmax;
+  if(v_inddiag->capacity < npixmax) v_inddiag->capacity = npixmax;
+  v_inddiag->len = 0;
 
   int counter = 0;
   for (int i = indmin; i <= indmax; ++ i) {
@@ -69,12 +70,12 @@ Vector<TwoIndexes>* evaluateDiagIndexes_drp(const size_t& rank, const bool drp, 
       // remove already tested central row and column
       if (i==0 || j==0) continue;
       
-      ptr->data[counter++] = new(drpPtr) TwoIndexes(i,j);
+      v_inddiag->data[counter++] = new(drpPtr) TwoIndexes(i,j);
       drpPtr += sizeof(TwoIndexes);
     }
   }
-  ptr->len = counter;
-  return ptr;
+  v_inddiag->len = counter;
+  return v_inddiag;
 }
 
 //-----------------------------
