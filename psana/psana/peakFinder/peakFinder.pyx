@@ -163,7 +163,6 @@ cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psa
          void connectedPixels(conmap_t *arr2d, const size_t& rows, const size_t& cols)
 
          const vector[vector[float]] peaksSelected()
-         float *convPeaksSelected()
 
 cdef class py_peak :
     cdef Peak* cptr  # holds a C++ pointer to instance
@@ -326,15 +325,6 @@ cdef class peak_finder_algos :
         return temp
         #cdef vector[vector[float]] peaks = self.cptr.peaksSelected() # This makes a copy, 5e-5 sec
         #return np.asarray(peaks)
-
-    def convPeaksSelected(self):
-        # ps_row and ps_col should become properties of array
-        # TODO: test when no peaks are found
-        cdef float[:, ::1] mv = <float[:self.cptr.ps_row, :self.cptr.ps_col]>self.cptr.convPeaksSelected() # No copy, 3e-5 sec
-        cdef float[:] rows = mv[:, 0]
-        cdef float[:] cols = mv[:, 1]
-        cdef float[:] intens = mv[:, 2]
-        return np.asarray(rows), np.asarray(cols), np.asarray(intens)
 
     def getPeaksSelected(self):
         cdef float[::1] rows = <float[:self.cptr.numPeaksSelected]>self.cptr.rows
