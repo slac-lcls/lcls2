@@ -53,7 +53,6 @@ void usage(const char* p)
   printf("         -B                             : Apply -E, -D and/or -V to B channel(s)\n");
   printf("         -A                             : Apply -E, -D and/or -V to A channel(s)\n");
   printf("         -P <value>                     : Set sigdet preset for selected link(s)\n");
-  printf("         -R                             : Reset selected link(s)\n");
   printf("         -r                             : Reset HSR registers of selected link(s)\n");
   printf("         -S                             : Reset SMBus Master of selected link(s)\n");
   printf("         -s                             : Scan EQ values of selected link(s) (overrides -E)\n");
@@ -82,7 +81,6 @@ int main(int argc, char** argv)
   int  sdp  = -1;
   int  pdn  = -1;
   int  mde  = -1;
-  bool rstLinks = false;
   bool rstRegs  = false;
   bool rstSMBus = false;
   bool scan = false;
@@ -90,7 +88,7 @@ int main(int argc, char** argv)
   bool enable = false;
   const char* ofile=0;
 
-  while ( (c=getopt( argc, argv, "a:f:p:L:D:V:E:M:P:BARerSsd01h")) != EOF ) {
+  while ( (c=getopt( argc, argv, "a:f:p:L:D:V:E:M:P:BAerSsd01h")) != EOF ) {
     switch(c) {
     case 'a':
       ip = optarg; break;
@@ -127,9 +125,6 @@ int main(int argc, char** argv)
       break;
     case 'A':
       chA = true;
-      break;
-    case 'R':
-      rstLinks = true;
       break;
     case 'r':
       rstRegs = true;

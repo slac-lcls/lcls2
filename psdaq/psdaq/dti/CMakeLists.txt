@@ -97,11 +97,11 @@ target_link_libraries(dtiHsrCfg
 )
 
 install(TARGETS dti
-		dti_stats
 		dti_simple
-                dtiPVs
-                dti_eyescan
-                dtiHsrCfg
+		dti_stats
+		dtiPVs
+		dti_eyescan
+		dtiHsrCfg
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
