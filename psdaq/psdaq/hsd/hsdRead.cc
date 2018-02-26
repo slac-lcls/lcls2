@@ -24,7 +24,7 @@ void sigHandler( int signal ) {
 }
 
 
-#include "pgp/pgpcardG3/include/PgpCardMod.h"
+#include "psdaq/pgp/pgpcardG3/include/PgpCardMod.h"
 
 using namespace std;
 

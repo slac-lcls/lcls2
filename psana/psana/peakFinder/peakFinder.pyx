@@ -1,3 +1,13 @@
+# TODO
+# ** should outputs be arrays instead of Peak class
+# ** psalg should be built with cmake to produce a .so
+# ** the cython .pyx should be in psana and built in psana
+# ** what array class are we going to use?
+# *  remove main class from pebble, so it only gets created once
+# remove the "if" statement around placement-new and non-placement-new
+# every method gets a drp-pointer
+# calling push_back could malloc?
+# pebble overwrite protection (bounds check) if arrays get too big
 
 # Import the Python-level symbols of numpy
 import numpy as np
@@ -153,7 +163,6 @@ cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psa
          void connectedPixels(conmap_t *arr2d, const size_t& rows, const size_t& cols)
 
          const vector[vector[float]] peaksSelected()
-         float *convPeaksSelected()
 
 cdef class py_peak :
     cdef Peak* cptr  # holds a C++ pointer to instance
@@ -317,23 +326,14 @@ cdef class peak_finder_algos :
         #cdef vector[vector[float]] peaks = self.cptr.peaksSelected() # This makes a copy, 5e-5 sec
         #return np.asarray(peaks)
 
-    def convPeaksSelected(self):
-        # ps_row and ps_col should become properties of array
-        # TODO: test when no peaks are found
-        cdef float[:, ::1] mv = <float[:self.cptr.ps_row, :self.cptr.ps_col]>self.cptr.convPeaksSelected() # No copy, 3e-5 sec
-        cdef float[:] rows = mv[:, 0]
-        cdef float[:] cols = mv[:, 1]
-        cdef float[:] intens = mv[:, 2]
-        return np.asarray(rows), np.asarray(cols), np.asarray(intens)
-
     def getPeaksSelected(self):
-        cdef float[::1] rows = <float[:self.cptr.numPeaksSelected]>self.cptr.rows
-        cdef float[::1] cols = <float[:self.cptr.numPeaksSelected]>self.cptr.cols
+        cdef float[::1] rows_cgrav = <float[:self.cptr.numPeaksSelected]>self.cptr.rows
+        cdef float[::1] cols_cgrav = <float[:self.cptr.numPeaksSelected]>self.cptr.cols
         cdef float[::1] intens = <float[:self.cptr.numPeaksSelected]>self.cptr.intens
-        return np.asarray(rows), np.asarray(cols), np.asarray(intens)
+        return np.asarray(rows_cgrav), np.asarray(cols_cgrav), np.asarray(intens)
 
     def getPeaks(self):
-        cdef cnp.ndarray rows, cols, intens
+        cdef cnp.ndarray rows_cgrav, cols_cgrav, intens
         # Call the C function
         arr0 = ArrayWrapper()
         arr1 = ArrayWrapper()
@@ -341,19 +341,19 @@ cdef class peak_finder_algos :
         arr0.set_data(<void*> self.cptr.rows, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
         arr1.set_data(<void*> self.cptr.cols, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
         arr2.set_data(<void*> self.cptr.intens, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        rows = np.array(arr0, copy=False)
-        cols = np.array(arr1, copy=False)
+        rows_cgrav = np.array(arr0, copy=False)
+        cols_cgrav = np.array(arr1, copy=False)
         intens = np.array(arr2, copy=False)
         # Assign our object to the 'base' of the ndarray object
-        rows.base = <PyObject*> arr0
-        cols.base = <PyObject*> arr1
+        rows_cgrav.base = <PyObject*> arr0
+        cols_cgrav.base = <PyObject*> arr1
         intens.base = <PyObject*> arr2
         # Increment the reference count, as the above assignement was done in
         # C, and Python does not know that there is this additional reference
         Py_INCREF(arr0)
         Py_INCREF(arr1)
         Py_INCREF(arr2)
-        return rows, cols, intens
+        return rows_cgrav, cols_cgrav, intens
 
     def local_maxima(self) :
         sh = (self.rows, self.cols)

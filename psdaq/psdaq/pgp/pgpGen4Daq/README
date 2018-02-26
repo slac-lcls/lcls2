@@ -1,0 +1,13 @@
+To run examples:
+
+#  Load the kernel module with a read implementation
+pushd kernel
+sudo ./pgpGen4Test_load
+
+popd
+
+#  Launch the reader
+../../../build/psdaq/pgp/pgpGen4Daq/app/qRead -c 0 -L 0xf &
+
+#  Launch the transmitter
+../../../build/psdaq/pgp/pgpGen4Daq/app/qLoopTest -T 0x7f -L 0xf -s 32 -l 0xf
