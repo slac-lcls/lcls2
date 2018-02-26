@@ -330,7 +330,6 @@ public:
   const std::vector<Peak>& vectorOfPeaksSelected(){return v_peaks_sel;}
   const Vector<Peak>& vectorOfPeaksSelected_drp(){return v_peaks_sel_drp;}
   const std::vector<std::vector<float> >& peaksSelected(); // TODO: remove
-  float *convPeaksSelected(); // TODO: remove
   void _convPeaksSelected();
 
   /// Fills-out (returns) array of local maxima
@@ -453,19 +452,8 @@ peakFinderV3r3(const T *data
   if(m_pbits & LOG::DEBUG) std::cout << "in peakFinderV3r3, rank=" << rank << '\n';
   if(m_pbits) printParameters();
 
-  if (drp) {
-    if (m_local_minima==0) {
-      m_local_minima = new(m_drpPtr) extrim_t[m_img_size];
-      m_drpPtr += sizeof(extrim_t)*m_img_size;
-    }
-    if (m_local_maxima==0) {
-      m_local_maxima = new(m_drpPtr) extrim_t[m_img_size];
-      m_drpPtr += sizeof(extrim_t)*m_img_size;
-    }
-  } else {
-    if (m_local_minima==0) m_local_minima = new extrim_t[m_img_size];
-    if (m_local_maxima==0) m_local_maxima = new extrim_t[m_img_size];
-  }
+  if (m_local_minima==0) m_local_minima = new extrim_t[m_img_size]; // This needs to persist, so not on the pebble
+  if (m_local_maxima==0) m_local_maxima = new extrim_t[m_img_size];
 
   if (drp) {
     m_nminima = localextrema::mapOfLocalMinimums_drp<T>(data, mask, rows, cols,
@@ -567,8 +555,6 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
 
   const unsigned BIT_SEL=4; // <<=====
 
-  //double dt10, dt21, dt32, dt43, dt54 = 0.;
-
   int irc=0;
   m_numreg=0;
   for(int r=0; r<(int)m_rows; r++) {
@@ -579,50 +565,30 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
 
         ++m_numreg;
 
-        //auto t0 = Clock::now();
-
-        RingAvgRms bkgd = _evaluateRingAvgRmsV1_drp<T>(data, r, c); // Reuse OK
+        RingAvgRms bkgd = _evaluateRingAvgRmsV1_drp<T>(data, r, c);
         m_reg_thr = bkgd.avg + m_nsigm * bkgd.rms; // <<=====
-	    //if (m_pbits) {
-	    //  std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r
-        //                                            << " c=" << std::setw(4) << std::setprecision(0) << c
-        //                                            << " bkgd:" << bkgd << " thr:" << m_reg_thr << '\n';
-        //}
-
-        //auto t1 = Clock::now();
-        //dt10 += std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-        //t1 = Clock::now();
+	    /*if (m_pbits) {
+	      std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r
+                                                    << " c=" << std::setw(4) << std::setprecision(0) << c
+                                                    << " bkgd:" << bkgd << " thr:" << m_reg_thr << '\n';
+        }*/
 
         _findConnectedPixelsForLocalMaximumV2_drp<T>(data, r, c); // <<===== 
-	    //if (m_pbits) std::cout << "YYY: number of connected pixels = " << v_ind_pixgrp_drp.len << '\n';
-	
-        //if(v_ind_pixgrp.empty()) {
+	    //if (m_pbits) std::cout << "YYY: number of connected pixels = " << irc << " " << m_numreg << " " << v_ind_pixgrp_drp.len << '\n';
+
         if(v_ind_pixgrp_drp.len==0) {
-	    //std::cout << "drp XXX peakFinderV3r3 WARNING: v_ind_pixgrp is empty... " << m_numreg << " " << v_ind_pixgrp_drp.len << std::endl;
+	      //std::cout << "drp XXX peakFinderV3r3 WARNING: v_ind_pixgrp is empty... " << m_numreg << " " << v_ind_pixgrp_drp.len << std::endl;
           --m_numreg; continue;
         }
-
-        //auto t2 = Clock::now();
-        //dt21 += std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-        //t2 = Clock::now();
 
         Vector<TwoIndexes> *_v_ind_pixgrp_drp = new(m_drpPtr) Vector<TwoIndexes>(v_ind_pixgrp_drp);
         m_drpPtr += sizeof(Vector<TwoIndexes>);
 
-        //auto t3 = Clock::now();
-        //dt32 += std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
-        //t3 = Clock::now();
-
+        //std::cout << vv_peak_pixinds_drp.len << std::endl;
         vv_peak_pixinds_drp.data[vv_peak_pixinds_drp.len++] = _v_ind_pixgrp_drp;
-
-        //auto t4 = Clock::now();
-        //dt43 += std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count();
-        //t4 = Clock::now();
 
         _procPixGroupV1_drp<T>(data, bkgd, v_ind_pixgrp_drp); // proc connected group and fills v_peaks
 
-        //auto t5 = Clock::now();
-        //dt54 += std::chrono::duration_cast<std::chrono::nanoseconds>(t5 - t4).count();
     }
   }
 /*

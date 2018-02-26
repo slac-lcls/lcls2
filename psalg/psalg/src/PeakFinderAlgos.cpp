@@ -46,12 +46,9 @@ PeakFinderAlgos::~PeakFinderAlgos()
 {
   std::cout << "in d-tor ~PeakFinderAlgos\n";
   if(m_pbits & LOG::DEBUG) std::cout << "in d-tor ~PeakFinderAlgos\n";
-  if (!drp) {
-      if (m_local_maxima) delete[] m_local_maxima;
-      if (m_local_minima) delete[] m_local_minima;
-      if (m_conmap)       delete[] m_conmap;
-      if (ps)             delete[] ps;
-  }
+  if (m_local_maxima) delete[] m_local_maxima;
+  if (m_local_minima) delete[] m_local_minima;
+  if (m_conmap)       delete[] m_conmap;
 }
 
 //-----------------------------
@@ -136,34 +133,6 @@ void PeakFinderAlgos::_convPeaksSelected(){
     }
 }
 
-float *PeakFinderAlgos::convPeaksSelected(){
-    ps_col = 3;
-    if (drp) {
-        ps = new float[ps_col*v_peaks_sel_drp.len*sizeof(float)];
-        ps_row = v_peaks_sel_drp.len;
-        unsigned counter = 0;
-        for(unsigned i = 0; i< v_peaks_sel_drp.len; i++){
-            const Peak *p = v_peaks_sel_drp.data[i];
-            ps[counter++] = p->row;
-            ps[counter++] = p->col;
-            ps[counter++] = p->amp_tot;
-        }
-    } else {
-        if (!ps) {
-            ps = new float[ps_col*v_peaks_sel.size()*sizeof(float)];
-            ps_row = v_peaks_sel.size();
-            unsigned counter = 0;
-            for(unsigned i = 0; i< v_peaks_sel.size(); i++){
-                const Peak p = v_peaks_sel[i];
-                ps[counter++] = p.row;
-                ps[counter++] = p.col;
-                ps[counter++] = p.amp_tot;
-            }
-        }
-    }
-    return ps;
-}
-
 void 
 PeakFinderAlgos::_initMapsAndVectors()
 {
@@ -178,10 +147,10 @@ PeakFinderAlgos::_initMapsAndVectors()
   }
 
   if(vv_peak_pixinds.capacity() < m_npksmax) vv_peak_pixinds.reserve(m_npksmax);
-     vv_peak_pixinds.clear();
+  vv_peak_pixinds.clear();
 
   if(v_peaks.capacity() < m_npksmax) v_peaks.reserve(m_npksmax);
-     v_peaks.clear();
+  v_peaks.clear();
 
   _evaluateRingIndexes();
 
@@ -192,10 +161,7 @@ PeakFinderAlgos::_initMapsAndVectors_drp()
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in _initMapsAndVectors_drp\n";
 
-  if (m_conmap==0) {
-    m_conmap = new(m_drpPtr) conmap_t[m_img_size];
-    m_drpPtr += sizeof(conmap_t)*m_img_size;
-  }
+  if (m_conmap==0) m_conmap = new conmap_t[m_img_size];
 
   std::fill_n(m_conmap, int(m_img_size), conmap_t(0));
 
@@ -204,8 +170,10 @@ PeakFinderAlgos::_initMapsAndVectors_drp()
   }
 
   if(vv_peak_pixinds_drp.len < m_npksmax) vv_peak_pixinds_drp.capacity = m_npksmax;
+  vv_peak_pixinds_drp.len = 0;
 
   if(v_peaks_drp.len < m_npksmax) v_peaks_drp.capacity = m_npksmax;
+  v_peaks_drp.len = 0;
 
   _evaluateRingIndexes_drp();
 }
@@ -247,6 +215,7 @@ PeakFinderAlgos::_evaluateRingIndexes_drp()
   unsigned npixmax = (2*indmax+1)*(2*indmax+1);
 
   if(v_indexes_drp.capacity < npixmax) v_indexes_drp.capacity = npixmax;
+  v_indexes_drp.len = 0;
 
   int counter = 0;
   for (int i = indmin; i <= indmax; ++ i) {
@@ -393,6 +362,7 @@ void
 PeakFinderAlgos::_makeVectorOfSelectedPeaks_drp()
 {
   if(v_peaks_sel_drp.capacity < m_npksmax) v_peaks_sel_drp.capacity = m_npksmax;
+  v_peaks_sel_drp.len = 0;
 
   for(unsigned int ii = 0; ii < v_peaks_drp.len; ii++) {
     Peak *peak = v_peaks_drp.data[ii];
@@ -417,6 +387,7 @@ PeakFinderAlgos::_printVectorOfPeaks(const std::vector<Peak>& v) {
 
 void
 PeakFinderAlgos::_printVectorOfPeaks_drp(const Vector<Peak>& v) {
+  std::cout << "v.len: " << v.len << std::endl;
   for(unsigned int ii = 0; ii < v.len; ii++) {
     const Peak *p = v.data[ii];
     std::cout << fixed
