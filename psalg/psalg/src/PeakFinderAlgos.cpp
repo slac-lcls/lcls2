@@ -114,8 +114,8 @@ void PeakFinderAlgos::_convPeaksSelected(){
         m_drpPtr += sizeof(float)*numPeaksSelected;
         for(unsigned i = 0; i< numPeaksSelected; i++){
             const Peak *p = v_peaks_sel_drp.data[i];
-            rows[i] = p->row;
-            cols[i] = p->col;
+            rows[i] = p->row_cgrav;
+            cols[i] = p->col_cgrav;
             intens[i] = p->amp_tot;
         }
     } else {
@@ -126,8 +126,8 @@ void PeakFinderAlgos::_convPeaksSelected(){
         std::cout << "rows Address stored " << (void *) rows << std::endl;
         for(unsigned i = 0; i< numPeaksSelected; i++){
             const Peak p = v_peaks_sel[i];
-            rows[i] = p.row;
-            cols[i] = p.col;
+            rows[i] = p.row_cgrav;
+            cols[i] = p.col_cgrav;
             intens[i] = p.amp_tot;
         }
     }
