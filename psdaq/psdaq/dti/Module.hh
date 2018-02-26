@@ -181,7 +181,7 @@ namespace Pds {
       Cphw::Reg   _usLinkObL1R;
 #else
     private:
-      uint32_t    _reserved_196[3];
+      uint32_t    _reserved_192[3];
 #endif
     public:
       //  0x00D0 - RW: Config and status of AMC PLLs
@@ -226,14 +226,60 @@ namespace Pds {
         void clearCounters() const;    // Const so that we can call it from const methods
       }           _pgp[2];               // Revisit: Only US[0] and DS[0] for now
     private:
-      uint32_t    _reserved_724[(0x10000000-724)>>2];
+      uint32_t    _reserved_724[(0x10000000-2*sizeof(Pgp2bAxi))>>2];
     public:
       // 0x2d8 - RO
       class TheRingBuffer : public Cphw::RingBuffer
       {
       public:
         void acqNdump();
-      }           _ringBuffer;
+      }           _ringBuffer;  // 0xA0000000
+
+      uint32_t    _reserved_ring[(0x10000000-sizeof(_ringBuffer))>>2];
+
+      class Pgp3Us {
+      public:
+        class Pgp3Axil {
+        public:
+          Cphw::Reg countReset;
+          Cphw::Reg autoStatus;
+          Cphw::Reg loopback;
+          Cphw::Reg skpInterval;
+          Cphw::Reg rxStatus; // phyRxActive, locLinkReady, remLinkReady
+          Cphw::Reg cellErrCnt;
+          Cphw::Reg linkDownCnt;
+          Cphw::Reg linkErrCnt;
+          Cphw::Reg remRxOflow; // +pause
+          Cphw::Reg rxFrameCnt;
+          Cphw::Reg rxFrameErrCnt;
+          Cphw::Reg rxClkFreq;
+          Cphw::Reg rxOpCodeCnt;
+          Cphw::Reg rxOpCodeLast;
+          Cphw::Reg rxOpCodeNum;
+          uint32_t  rsvd_3C;
+          uint32_t  rsvd_40[0x10];
+          // tx
+          Cphw::Reg cntrl; // flowCntDis, txDisable
+          Cphw::Reg txStatus; // phyTxActive, linkReady
+          uint32_t  rsvd_88;
+          Cphw::Reg locStatus; // locOflow, locPause
+          Cphw::Reg txFrameCnt;
+          Cphw::Reg txFrameErrCnt;
+          uint32_t  rsvd_98;
+          Cphw::Reg txClkFreq;
+          Cphw::Reg txOpCodeCnt;
+          Cphw::Reg txOpCodeLast;
+          Cphw::Reg txOpCodeNum;
+          uint32_t  rsvd_AC;
+          uint32_t  rsvd_B0[0x14];
+          uint32_t  reserved[0xF00>>2];
+        public:
+        } _pgp;
+        class Drp {
+        public:
+          uint32_t reserved[0x3000>>2];
+        } _drp;
+      } _pgpUs[7];
     };
 
     class Stats {
@@ -288,4 +334,3 @@ namespace Pds {
 };
 
 #endif
-
