@@ -1,13 +1,17 @@
-from mpi4py import MPI
+from mpi4py import MPI 
 import h5py, subprocess, glob, os
 import numpy as np
 import time
-
-#logistical MPI setup
-#assert size>1, 'At least 2 MPI ranks required'
-
-
 import os
+
+from load_config import load_config
+
+ 
+cfg = load_config('sconfig')
+write_limit = int(cfg['file_size'])
+mb_per_img = int(cfg['image_size'])
+batch_size = int(cfg['batch_size'])
+path = cfg['path']
 
 
 def read_client(comm):
@@ -15,11 +19,11 @@ def read_client(comm):
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    mb_per_img = 1
-    batches = 16
+    # mb_per_img = 1
+    # batches = 16
     arr_size = mb_per_img*500000
-    path = '/drpffb/eliseo/data/xtc_lite/'
-    file_name = path + 'xtc_lite_%i.xtc' % rank
+    # path = '/drpffb/eliseo/data/xtc_lite/'
+    file_name = path + '/xtc_lite_%i.xtc' % rank
 
     # Check if the file exists
     while True:
@@ -48,7 +52,7 @@ def read_client(comm):
                     if ct + eof_pad < size_file_mb:
                         break
 
-            img = f.read(mb_per_img*batches*10**6)
+            img = f.read(mb_per_img*batch_size*10**6)
             ct+=1
             if ct%100 == 0:
                 pass
@@ -61,11 +65,11 @@ def do_read(comm):
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    mb_per_img = 1
-    batches = 16
+    # mb_per_img = 1
+    # batch_size = 16
     arr_size = mb_per_img*500000
-    path = '/drpffb/eliseo/data/xtc_lite/'
-    file_name = path + 'xtc_lite_%i.xtc' % rank
+    # path = '/drpffb/eliseo/data/xtc_lite/'
+    file_name = path + '/xtc_lite_%i.xtc' % rank
 
 
     comm.Barrier()
@@ -81,8 +85,10 @@ def do_read(comm):
         global_end = time.time()
         wrt_gb = size*size_file_mb/1000
         av_spd = wrt_gb/(global_end-global_start)
-        print('Finished at %s' % time.strftime("%H:%M:%S"))
+        print('\n'+'-'*40)
+        print('Read completed at %s' % time.strftime("%H:%M:%S"))
         print('Number of clients %i' % (size))
         print('File size %i' % wrt_gb) 
         print('Copied %.2f GB at an average of %.2f GB/s' % (wrt_gb, av_spd))
+        print('-'*40+'\n')
         
