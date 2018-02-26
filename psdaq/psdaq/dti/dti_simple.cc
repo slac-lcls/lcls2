@@ -46,6 +46,7 @@ void usage(const char* p) {
   printf("         -f <forward mask>              : Comma separated list (no spaces) of bit masks of downstream links, one entry per enabled upstream link (default=1)\n");
   printf("         -k                             : Keep running on exit\n");
   printf("         -L <fname>                     : Load configuration from file\n");
+  printf("         -l <mask>                      : Set loopback\n");
 }
 
 class LinkStats {
@@ -161,7 +162,14 @@ public:
   unsigned qpllLock() const { return unsigned(_qpll_bpUpdate)&3; }
   unsigned monClk(unsigned i) const { return unsigned(_monClk[i]); }
 private:
-  uint32_t reserved2[(0x10000000-196)>>2];
+
+  uint32_t reserved2b[3];
+  Reg      _amcPll[2];
+  uint32_t reserved2c[2];
+public:
+  Reg      _loopbacks;
+private:
+  uint32_t reserved2[(0x10000000-228)>>2];
 
   class Pgp2bAxi {
   public:
@@ -176,7 +184,7 @@ private:
     Reg      _txOpcodes;
     Reg      _rxOpcodes;
     uint32_t _reserved4[0x80>>2];
-  } _pgp[2];
+  } _pgp[2];  //  Nothing here!
 
   uint32_t reserved3[(0x10000000-0x200)>>2];
 
@@ -236,7 +244,7 @@ public:
       for(unsigned i=0; i<7; i++) {                                     \
         const Reg* r = reinterpret_cast<const Reg*>((char*)(&_pgpUs[i]._pgp)+addr); \
         reg = *r;                                                       \
-        printf(" %8x [%p]", (reg>>offset)&mask,r);                       \
+        printf(" %8x", (reg>>offset)&mask);                           \
       }                                                                 \
       printf("\n"); }
 #define PRINTBIT(name, addr, bit)  PRINTFIELD(name, addr, bit, 1)
@@ -428,9 +436,10 @@ int main(int argc, char** argv) {
   bool lHdrOnly = false;
   unsigned upstream = 1;
   unsigned fwdmask[8]={1,0,0,0,0,0,0,0};
+  int loopbacks = -1;
   const char* ifile=0;
   char* endptr;
-  while ( (c=getopt( argc, argv, "a:t:ru:f:L:kHh")) != EOF ) {
+  while ( (c=getopt( argc, argv, "a:t:ru:f:l:L:kHh")) != EOF ) {
     switch(c) {
     case 'a': ip = optarg; break;
     case 't': _partn = strtoul(optarg, NULL, 0); break;
@@ -438,6 +447,7 @@ int main(int argc, char** argv) {
     case 'k': _keepRunning = true; break;
     case 'H': lHdrOnly = true; break;
     case 'u': upstream = strtoul(optarg, NULL, 0); break;
+    case 'l': loopbacks = strtoul(optarg, NULL, 0); break;
     case 'L': ifile = optarg; break;
     case 'f': 
       endptr = optarg;
@@ -474,8 +484,12 @@ int main(int argc, char** argv) {
     fclose(f);
   }
 
+  if (loopbacks >= 0)
+    dti->_loopbacks = unsigned(loopbacks);
+  printf("Loopbacks [%p]: %08x\n", &dti->_loopbacks, unsigned(dti->_loopbacks));
+
   dti->dumpb();
-  // FIXME dti->dumpPgp();
+  dti->dumpPgp();
   dti->start(upstream, fwdmask,lHdrOnly);
 
   LinkStats stats[7], dstats[7];

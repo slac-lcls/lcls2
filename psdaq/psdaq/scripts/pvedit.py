@@ -26,8 +26,10 @@ toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
 def initPvMon(mon,pvname):
     mon.pv = Pv.Pv(pvname)
+    print('Wait for '+pvname+' monitor_start')
     mon.pv.monitor_start()
     mon.pv.add_monitor_callback(mon.update)
+    print('Wait for '+pvname+' get')
     mon.pv.get()
     mon.update(None)
 
@@ -227,7 +229,7 @@ class PvEditInt(PvEditTxt):
 class PvInt(PvEditInt):
 
     def __init__(self,pv):
-        super(PvInt, self).__init__(pv)
+        super(PvInt, self).__init__(pv, '')
         self.setEnabled(False)
 
 class PvEditHML(PvEditTxt):
@@ -293,7 +295,7 @@ class PvEditDbl(PvEditTxt):
 class PvDbl(PvEditDbl):
 
     def __init__(self,pv):
-        super(PvDbl, self).__init__(pv)
+        super(PvDbl, self).__init__(pv, '')
         self.setEnabled(False)
 
 class PvDblArrayW(QtWidgets.QLabel):
