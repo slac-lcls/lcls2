@@ -1,17 +1,15 @@
 from mpi4py import MPI
 import h5py, subprocess, glob, os
 import numpy as np
-import time
-
-#logistical MPI setup
-#assert size>1, 'At least 2 MPI ranks required'
+import time, os
+from load_config import load_config
 
 
-import os
-
-write_limit = 20 #GB
-mb_per_img = 1
-batch_size = 16
+ 
+cfg = load_config('sconfig')
+write_limit = int(cfg['file_size'])
+mb_per_img = int(cfg['image_size'])
+batch_size = int(cfg['batch_size'])
 
 arr_size = mb_per_img*500000
 
@@ -26,15 +24,14 @@ def create_image():
 def write_client(comm):
     rank = comm.Get_rank()
 
-   # file_name = '/drp_dir/eliseo/data/xtc_lite/xtc_lite_%i.xtc' % rank
+    # file_name = '/drp_dir/eliseo/data/xtc_lite/xtc_lite_%i.xtc' % rank
 
-    
     out_img = np.array([create_image() for x in range(batch_size)])
 
     img_mb = out_img.nbytes/10**6
 
-    path = '/drpffb/eliseo/data/xtc_lite/'
-    file_name = path + 'xtc_lite_%i.xtc' % rank
+    # path = '/drpffb/eliseo/data/xtc_lite/' 
+    file_name = cfg['path']+ '/xtc_lite_%i.xtc' % rank
 
     try:
         os.remove(file_name)
@@ -43,7 +40,7 @@ def write_client(comm):
 
     with open(file_name, 'wb') as f:
         ct = 0 
-        written_mb = 0
+        written_mb = 0 
         while True:
             f.write(out_img)
             ct+=1
@@ -71,10 +68,12 @@ def do_write(comm):
         global_end = time.time()
         wrt_gb = size*write_limit
         av_spd = wrt_gb/(global_end-global_start)
-        print('Finished at %s' % time.strftime("%H:%M:%S"))
+        print('\n'+'-'*40)
+        print('Write completed  at %s' % time.strftime("%H:%M:%S"))
         print('Number of clients %i' % (size))
         print('File size %i GB' % wrt_gb) 
         print('Wrote %.2f GB at an average of %.2f GB/s' % (wrt_gb, av_spd))
-
+        
+        print('-'*40+'\n')
 
 

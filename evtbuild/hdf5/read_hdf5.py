@@ -365,3 +365,4 @@ def read_files(comm,filt):
         for ct, (client_event,client_total) in enumerate(zip(rm.total_events, rm.total_read)):
             client_gb = client_total/1000
            # print('Client %i read in %.2f GB and %i events' % (ct, client_gb, client_event))
+           
