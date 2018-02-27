@@ -1,20 +1,22 @@
-from mpi4py import MPI 
+from mpi4py import MPI
 import h5py, subprocess, glob, os
 import numpy as np
 import time
-import os
+import os, random
 
 from load_config import load_config
 
- 
+
 cfg = load_config('sconfig')
+hit_prob = float(cfg['hit_probability'])
 write_limit = int(cfg['file_size'])
 mb_per_img = int(cfg['image_size'])
 batch_size = int(cfg['batch_size'])
+bytes_per_batch = mb_per_img*batch_size*10**6
 path = cfg['path']
 
 
-def read_client(comm):
+def read_client(comm,filt=0):
 
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -31,40 +33,55 @@ def read_client(comm):
             break
         else:
             time.sleep(0.05)
-    
 
-    with open(file_name, 'rb') as f:
-        f.seek(0)
-        
-        ct = 0
-        eof_pad = 2000
+    open_flags = (os.O_NONBLOCK | os.O_RDONLY)
 
-        while True:
-            file_info = os.stat(file_name)
-            size_file_mb = os.stat(file_name).st_size/10**6
+    read_file = os.open(file_name, open_flags)
+    os.lseek(read_file,0,0)
 
-            if ct + 1000 > size_file_mb and size_file_mb < 19000:
-#                print('Near end of file. Waiting for more data')
-                while True:
-                    time.sleep(0.1)
-                    size_file_mb = os.stat(file_name).st_size/10**6
-                
-                    if ct + eof_pad < size_file_mb:
-                        break
+    ct = 0
+    eof_pad = 2000
 
-            img = f.read(mb_per_img*batch_size*10**6)
-            ct+=1
-            if ct%100 == 0:
-                pass
-#                print('Read image %i' % ct)
-            if img == '':
-                break
+    while True:
+        file_info = os.stat(file_name)
+        size_file_mb = os.stat(file_name).st_size/10**6
 
-def do_read(comm):
+        if ct + 1000 > size_file_mb and size_file_mb < 19000:
+            #                print('Near end of file. Waiting for more data')
+            while True:
+                time.sleep(0.1)
+                size_file_mb = os.stat(file_name).st_size/10**6
+
+                if ct + eof_pad < size_file_mb:
+                    break
+        if not filt:
+            img = os.read(read_file,bytes_per_batch)
+        else:
+            # Filter section
+            # If RNG is below threshold, then read an image batch
+            # else seek ahead.
+            if(random.random()<hit_prob):
+                img = os.read(read_file,bytes_per_batch)
+            else:
+                os.lseek(read_file,bytes_per_batch,os.SEEK_CUR)
+                img='fff'
+        ct+=1
+        if ct%100 == 0:
+            pass
+        #                print('Read image %i' % ct)
+        if img == '' and size_file_mb/1000 == write_limit:
+            break
+    os.close(read_file)
+
+def do_read(comm, filt=0):
    # comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
+    if filt:
+        copy_word = "Filtered"
+    else:
+        copy_word = "Copy"
     # mb_per_img = 1
     # batch_size = 16
     arr_size = mb_per_img*500000
@@ -74,21 +91,20 @@ def do_read(comm):
 
     comm.Barrier()
     if rank == 0:
-       # 
+       #
         global_start = time.time()
 
-    read_client(comm)
+    read_client(comm, filt)
 
     comm.Barrier()
     if rank == 0:
         size_file_mb = os.stat(file_name).st_size/10**6
         global_end = time.time()
-        wrt_gb = size*size_file_mb/1000
+        wrt_gb = hit_prob*size*size_file_mb/1000
         av_spd = wrt_gb/(global_end-global_start)
         print('\n'+'-'*40)
         print('Read completed at %s' % time.strftime("%H:%M:%S"))
         print('Number of clients %i' % (size))
-        print('File size %i' % wrt_gb) 
-        print('Copied %.2f GB at an average of %.2f GB/s' % (wrt_gb, av_spd))
+        print('File size %i' % wrt_gb)
+        print('%s %.2f GB at an average of %.2f GB/s' % (copy_word, wrt_gb, av_spd))
         print('-'*40+'\n')
-        

@@ -5,7 +5,7 @@ import time, os
 from load_config import load_config
 
 
- 
+
 cfg = load_config('sconfig')
 write_limit = int(cfg['file_size'])
 mb_per_img = int(cfg['image_size'])
@@ -29,8 +29,8 @@ def write_client(comm):
     out_img = np.array([create_image() for x in range(batch_size)])
 
     img_mb = out_img.nbytes/10**6
-
-    # path = '/drpffb/eliseo/data/xtc_lite/' 
+    out_img = out_img.tobytes()
+    # path = '/drpffb/eliseo/data/xtc_lite/'
     file_name = cfg['path']+ '/xtc_lite_%i.xtc' % rank
 
     try:
@@ -38,19 +38,22 @@ def write_client(comm):
     except OSError:
         pass
 
-    with open(file_name, 'wb') as f:
-        ct = 0 
-        written_mb = 0 
-        while True:
-            f.write(out_img)
-            ct+=1
-            written_mb += img_mb
-            if ct%10 == 0:
-                pass
-              #  print('Wrote image %i' % ct)
-            if written_mb > write_limit*1000:
-                break
-    
+    # with open(file_name, 'wb') as f:
+    ct = 0
+    open_flags = (os.O_CREAT | os.O_NONBLOCK | os.O_WRONLY)
+    f=os.open(file_name, open_flags)
+    written_mb = 0
+    while True:
+        os.write(f, out_img)
+        ct+=1
+        written_mb += img_mb
+        if ct%10 == 0:
+            pass
+        #  print('Wrote image %i' % ct)
+        if written_mb > write_limit*1000:
+            break
+    os.close(f)
+
 def do_write(comm):
 #    comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -71,9 +74,7 @@ def do_write(comm):
         print('\n'+'-'*40)
         print('Write completed  at %s' % time.strftime("%H:%M:%S"))
         print('Number of clients %i' % (size))
-        print('File size %i GB' % wrt_gb) 
+        print('File size %i GB' % wrt_gb)
         print('Wrote %.2f GB at an average of %.2f GB/s' % (wrt_gb, av_spd))
-        
+
         print('-'*40+'\n')
-
-
