@@ -17,7 +17,7 @@ def clear_files(path):
     files = glob.glob(path)
     for fil in files:
         os.remove(fil)
-        
+
 
     #check if the files have actually been deleted
     while True:
@@ -28,7 +28,7 @@ def clear_files(path):
             time.sleep(0.2)
 
 
-num_tasks = 2            
+num_tasks = 2
 cores_per_group = world_size / num_tasks
 node_count =  num_tasks
 array_inds = np.array_split(np.arange(node_count),num_tasks)
@@ -43,9 +43,9 @@ if world_rank % node_count in array_inds[0]:
 elif world_rank % node_count in array_inds[1]:
     color = 1 # filter
 #elif world_rank % node_count in array_inds[2]:
-#    color =  4
+#    color =  2
 
-try:    
+try:
     comm = world_comm.Split(color, key)
 except Exception as e:
     print(e)
@@ -67,8 +67,6 @@ if color == 0:
 elif color == 1:
    # pass
     #    #comm_test(color,comm,rank,size)
-    do_read(comm) # copy
-elif color == 4:
-    pass
- #   read_files(comm, 0) # copy
-
+    do_read(comm,0) # copy
+elif color == 2:
+    do_read(comm, 1) # filter
