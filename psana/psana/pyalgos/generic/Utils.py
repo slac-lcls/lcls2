@@ -56,6 +56,8 @@ Usage::
     resp = gu.text_sataus_of_lsf_hosts(farm='psnehfarm')
     resp = gu.ext_status_of_queues(lst_of_queues=['psanaq', 'psnehq', 'psfehq', 'psnehprioq', 'psfehprioq'])
 
+    gu.print_kwargs(kwargs)
+    gu.print_parser(parser) # from optparse import OptionParser
 
 See:
     - :py:class:`Utils`
@@ -434,7 +436,25 @@ def text_status_of_queues(lst_of_queues=['psanaq', 'psnehq', 'psfehq', 'psnehpri
     return cmd, getoutput(cmd)
 
 #------------------------------
+
+def print_kwargs(kwargs) :
+    print('%s\n  kwargs:' % (40*'_'))
+    for k,v in kwargs.items() : print('  %10s : %10s' % (k,v))
+    print(40*'_')
+
 #------------------------------
+
+def print_parser(parser) :
+    """Prints input parameters"""
+    popts, pargs = parser.parse_args()
+    args = pargs
+    opts = vars(popts)
+    defs = vars(parser.get_default_values())
+
+    print('Arguments: %s\nOptional parameters:\n' % str(args)+\
+          '<key>      <value>          <default>')
+    for k,v in opts.items() :
+        print('%s %s %s' % (k.ljust(10), str(v).ljust(16), str(defs[k]).ljust(16)))
 
 #------------------------------
 #----------- TEST -------------

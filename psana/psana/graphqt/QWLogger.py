@@ -254,7 +254,7 @@ if __name__ == "__main__" :
     w = QWLogger(log, cp)
     w.setWindowTitle(w._name)
 
-    from psana.graphqt.QIcons import icon # should be imported after QApplication
+    from psana.graphqt.QWIcons import icon # should be imported after QApplication
     icon.set_icons()
     w.setWindowIcon(icon.icon_logviewer)
 
