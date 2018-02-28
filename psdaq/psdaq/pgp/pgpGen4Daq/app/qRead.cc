@@ -124,8 +124,12 @@ int main (int argc, char **argv) {
     PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)mmap(NULL, sizeof(PgpDaq::PgpCard), (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0);   
     uint32_t MAX_LANES = p->nlanes();
     for(unsigned i=0; i<MAX_LANES; i++)
-      if (lanes & (1<<i))
+      if (lanes & (1<<i)) {
+        printf("dmaLane[%i] @ %p\n", i, (char*)&p->dmaLane[i]-(char*)p);
+        printf("pgpLane[%i] @ %p\n", i, (char*)&p->pgpLane[i]-(char*)p);
         p->dmaLane[i].client = client;
+        p->pgpLane[i].axil.txControl = 1;  // disable flow control
+      }
   }
 
   //
