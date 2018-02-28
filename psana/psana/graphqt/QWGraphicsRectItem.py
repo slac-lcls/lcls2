@@ -21,26 +21,21 @@ Created on 2016-06-12 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
-from PyQt5 import QtWidgets
+
+from PyQt5.QtWidgets import QGraphicsRectItem, QApplication
 from PyQt5.QtCore import Qt, pyqtSignal # , QPoint, QEvent, QMargins
 from PyQt5.QtGui import QCursor
 
-
-#from PyQt4 import QtGui#, QtCore
-#from PyQt4.QtGui import QGraphicsRectItem
-#from PyQt4.QtCore import Qt
-
 #-----------------------------
 
-class QWGraphicsRectItem(QtWidgets.QGraphicsRectItem) :    
+class QWGraphicsRectItem(QGraphicsRectItem) :    
     #                  QRectF, QGraphicsItem, QGraphicsScene
-
 
     event_on_rect = pyqtSignal('QString')
 
     def __init__(self, rect, parent=None, scene=None) :
-        #QtWidgets.QGraphicsRectItem.__init__(self, rect, parent, scene)
-        QtWidgets.QGraphicsRectItem.__init__(self, rect, parent)
+        #QGraphicsRectItem.__init__(self, rect, parent, scene)
+        QGraphicsRectItem.__init__(self, rect, parent)
         if scene is not None: scene.addItem(self)
 
         self.setAcceptHoverEvents(True)
@@ -51,7 +46,7 @@ class QWGraphicsRectItem(QtWidgets.QGraphicsRectItem) :
 
 
     def setCursorHover(self, cursor=Qt.CrossCursor) :
-        #QtWidgets.QGraphicsRectItem.setCursor(self, cursor)
+        #QGraphicsRectItem.setCursor(self, cursor)
         self.hover_cursor = cursor
 
 
@@ -61,49 +56,49 @@ class QWGraphicsRectItem(QtWidgets.QGraphicsRectItem) :
 
     def hoverEnterEvent(self, e) :
         #print('hoverEnterEvent')
-        QtWidgets.QGraphicsRectItem.hoverEnterEvent(self, e)
-        QtWidgets.QApplication.setOverrideCursor(QCursor(self.hover_cursor))
+        QGraphicsRectItem.hoverEnterEvent(self, e)
+        QApplication.setOverrideCursor(QCursor(self.hover_cursor))
 
 
     def hoverLeaveEvent(self, e) :
         #print('hoverLeaveEvent')
-        QtWidgets.QGraphicsRectItem.hoverLeaveEvent(self, e)
+        QGraphicsRectItem.hoverLeaveEvent(self, e)
         #QtWidgets.QApplication.setOverrideCursor(QCursor(self.hover_cursor))
-        QtWidgets.QApplication.restoreOverrideCursor()
+        QApplication.restoreOverrideCursor()
         
 
     def hoverMoveEvent(self, e) :
         #print('hoverMoveEvent')
-        QtWidgets.QGraphicsRectItem.hoverMoveEvent(self, e)
+        QGraphicsRectItem.hoverMoveEvent(self, e)
 
 
     def mouseMoveEvent(self, e) :
         print('QWGraphicsRectItem: mouseMoveEvent')
-        QtWidgets.QGraphicsRectItem.mouseMoveEvent(self, e)
+        QGraphicsRectItem.mouseMoveEvent(self, e)
 
 
     def mousePressEvent(self, e) :
         #print('mousePressEvent, at point: ', e.pos() #e.globalX(), e.globalY())
-        QtWidgets.QGraphicsRectItem.mousePressEvent(self, e)
-        QtWidgets.QApplication.setOverrideCursor(QCursor(self.grub_cursor))
+        QGraphicsRectItem.mousePressEvent(self, e)
+        QApplication.setOverrideCursor(QCursor(self.grub_cursor))
 
 
     def mouseReleaseEvent(self, e) :
         """ !!! This method does not receive control because module is distracted before...
         """
         #print('mouseReleaseEvent')
-        QtWidgets.QGraphicsRectItem.mouseReleaseEvent(self, e)
-        #QtWidgets.QApplication.setOverrideCursor(QCursor(self.hover_cursor))
-        QtWidgets.QApplication.restoreOverrideCursor()
+        QGraphicsRectItem.mouseReleaseEvent(self, e)
+        #QApplication.setOverrideCursor(QCursor(self.hover_cursor))
+        QApplication.restoreOverrideCursor()
 
 
 #    def mouseDoubleClickEvent(self, e) :
-#        QtWidgets.QGraphicsRectItem.hoverLeaveEvent(self, e)
+#        QGraphicsRectItem.hoverLeaveEvent(self, e)
 #        print('mouseDoubleClickEvent, at point: ', e.pos() #e.globalX(), e.globalY())
 
 
 #    def wheelEvent(self, e) :
-#        QtWidgets.QGraphicsRectItem.wheelEvent(self, e)
+#        QGraphicsRectItem.wheelEvent(self, e)
 #        #print('wheelEvent, at point: ', e.pos() #e.globalX(), e.globalY() )
 
 

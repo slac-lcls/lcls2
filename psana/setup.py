@@ -50,12 +50,12 @@ setup(name = 'psana',
                 'convert_txt_to_npy  = psana.pyalgos.app.convert_txt_to_npy:do_main',
                 'merge_mask_ndarrays = psana.pyalgos.app.merge_mask_ndarrays:do_main',
                 'merge_max_ndarrays  = psana.pyalgos.app.merge_max_ndarrays:do_main',
+                'cdb                 = psana.pscalib.app.cdb:cdb_cli',
                 'timeconverter       = psana.graphqt.app.timeconverter:timeconverter',
+                'calibman            = psana.graphqt.app.calibman:calibman_cli',
              ]
        },
 )
-
-
 
 
 '''

@@ -22,25 +22,30 @@ Adopted for LCLS2 on 2018-02-15
 """
 #------------------------------
 import os
-from PyQt5.QtWidgets import QMenu, QDialog, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QMenu, QDialog, QFileDialog, QMessageBox, QColorDialog
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor
 
 #------------------------------
 
-def selectFromListInPopupMenu(list):
+def select_item_from_popup_menu(list):
     """Shows the list as a pop-up menu and returns the selected item as a string or None"""
+    w = QMenu()
+    for item in list : w.addAction(item)
+    item = w.exec_(QCursor.pos())
+    return None if item is None else str(item.text()) # str(QString)
 
-    if list is None : return None
-    
-    popupMenu = QMenu()
-    for item in list :
-        popupMenu.addAction(item)
+#------------------------------
 
-    item_selected = popupMenu.exec_(QCursor.pos())
-
-    if item_selected is None : return None
-    else                     : return str(item_selected.text()) # QString -> str
+def select_color(colini=Qt.blue, parent=None):
+    """Select color using QColorDialog"""
+    qcd = QColorDialog
+    w = qcd(colini, parent)
+    w.setOptions(qcd.ShowAlphaChannel)# | qcd.DontUseNativeDialog | qcd.NoButtons
+    res = w.exec_()
+    color=w.selectedColor()
+    #color = QColorDialog.getColor()
+    return None if color is None else color # QColor or None
 
 #------------------------------
 
@@ -119,6 +124,7 @@ def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
     return path
 
 #------------------------------
+
 def confirm_dialog_box(parent=None, text='Please confirm that you aware!', title='Please acknowledge') :
         """Pop-up MODAL box for confirmation"""
 
@@ -197,7 +203,7 @@ if __name__ == "__main__" :
 
     if tname == '0':
         instrs = ['SXR', 'AMO', 'XPP', 'CXI', 'MEC']
-        resp = selectFromListInPopupMenu(instrs) 
+        resp = select_item_from_popup_menu(instrs) 
         print('Selected:', resp)
 
     elif tname == '1':
@@ -236,6 +242,10 @@ if __name__ == "__main__" :
         print('Response:', resp)
         sleep(3)
         del resp
+
+    elif tname == '8': 
+        resp = select_color(colini=Qt.blue, parent=None)
+        print('Response:', resp)
 
     else :
         print('Sorry, not-implemented test "%s"' % tname)

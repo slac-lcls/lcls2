@@ -24,12 +24,14 @@ Adopted for LCLS2 on 2018-02-15
 #------------------------------
 
 #import os
-#import sys
+import sys
 from time import time, strptime, strftime, mktime, localtime, struct_time
 
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QApplication
+from PyQt5.QtGui import QIntValidator
+from PyQt5.QtCore import pyqtSignal
 
-from psana.graphqt.Frame import Frame
+#from psana.graphqt.Frame import Frame
 from psana.graphqt.Styles import style
 from psana.graphqt.QWPopupSelectItem import popup_select_item_from_list
 
@@ -50,7 +52,7 @@ def time_sec(year, month=1, day=1, hour=0, minute=0, second=0) :
  
 #------------------------------
 
-class QWDateTimeSec(Frame) : # QtWidgets.QWidget
+class QWDateTimeSec(QWidget) : # Frame
     """Widget for date and time selection
     """
     year_now = int(str_tstamp(fmt='%Y', time_sec=None))
@@ -60,38 +62,39 @@ class QWDateTimeSec(Frame) : # QtWidgets.QWidget
     minutes = sorted(['%02d'%m for m in range(0,60)])
     seconds = sorted(['%02d'%m for m in range(0,60)])
 
-    path_is_changed = QtCore.pyqtSignal('QString')
+    path_is_changed = pyqtSignal('QString')
 
-    def __init__(self, parent=None, show_frame=False, verb=False) :
+    def __init__(self, parent=None, show_frame=False, verb=False, logger=None) :
 
-        #QtWidgets.QWidget.__init__(self, parent)
-        Frame.__init__(self, parent, mlw=1, vis=show_frame)
+        QWidget.__init__(self, parent)
+        #Frame.__init__(self, parent, mlw=1, vis=show_frame)
         self._name = self.__class__.__name__
         self.verb = verb
+        self.set_logger(logger)
 
-        #self.lab_year   = QtWidgets.QLabel('')
-        self.lab_month  = QtWidgets.QLabel('-')
-        self.lab_day    = QtWidgets.QLabel('-')
-        self.lab_hour   = QtWidgets.QLabel(' ')
-        self.lab_minute = QtWidgets.QLabel(':')
-        self.lab_second = QtWidgets.QLabel(':')
-        self.lab_tsec   = QtWidgets.QLabel(' <--> t(sec):')
+        #self.lab_year   = QLabel('')
+        self.lab_month  = QLabel('-')
+        self.lab_day    = QLabel('-')
+        self.lab_hour   = QLabel(' ')
+        self.lab_minute = QLabel(':')
+        self.lab_second = QLabel(':')
+        self.lab_tsec   = QLabel(' <--> t(sec):')
 
-        self.but_year   = QtWidgets.QPushButton('2008')
-        self.but_month  = QtWidgets.QPushButton('01')
-        self.but_day    = QtWidgets.QPushButton('01')
-        self.but_hour   = QtWidgets.QPushButton('00')
-        self.but_minute = QtWidgets.QPushButton('00')
-        self.but_second = QtWidgets.QPushButton('00')
+        self.but_year   = QPushButton('2008')
+        self.but_month  = QPushButton('01')
+        self.but_day    = QPushButton('01')
+        self.but_hour   = QPushButton('00')
+        self.but_minute = QPushButton('00')
+        self.but_second = QPushButton('00')
 
-        self.edi = QtWidgets.QLineEdit('1400000000')
-        self.edi.setValidator(QtGui.QIntValidator(1400000000,2000000000,self))
+        self.edi = QLineEdit('1400000000')
+        self.edi.setValidator(QIntValidator(1400000000,2000000000,self))
         #self.edi.setReadOnly(True) 
 
         self.set_date_time_fields() # current time by df
         self.set_tsec()
 
-        self.hbox = QtWidgets.QHBoxLayout() 
+        self.hbox = QHBoxLayout() 
         #self.hbox.addWidget(self.lab_year  )
         self.hbox.addWidget(self.but_year  )
         self.hbox.addWidget(self.lab_month )
@@ -161,6 +164,7 @@ class QWDateTimeSec(Frame) : # QtWidgets.QWidget
         tsec = int(self.edi.displayText())
         self.set_date_time_fields(tsec)
         if self.verb : self.print_tsec_tstamp(tsec)
+        self.msg_to_logger(tsec)
 
 
     def set_date_time_fields(self, tsec=None):
@@ -183,7 +187,17 @@ class QWDateTimeSec(Frame) : # QtWidgets.QWidget
 
 
     def print_tsec_tstamp(self, tsec):
-        print('t(sec): %d  is  %s' % (tsec, str_tstamp('%Y-%m-%d %H:%M:%S', tsec)))
+        print('t(sec): %d  is  %s' % (tsec, str_tstamp('%Y-%m-%dT%H:%M:%S%z', tsec)))
+
+
+    def set_logger(self, logger=None):
+        self.logger = logger
+
+
+    def msg_to_logger(self, tsec):
+        if self.logger is None : return
+        msg = 't(sec): %d  is  %s' % (tsec, str_tstamp('%Y-%m-%dT%H:%M:%S%z', tsec))
+        self.logger.info(msg, self._name)
 
 
     def set_tsec(self) :
@@ -200,6 +214,7 @@ class QWDateTimeSec(Frame) : # QtWidgets.QWidget
         #print('Cross-check: set t(sec): %10d for tstamp: %s' % (tsec, str_tstamp('%Y-%m-%dT%H:%M:%S', tsec)))
 
         if self.verb : self.print_tsec_tstamp(tsec)
+        self.msg_to_logger(tsec)
 
 
     def on_but(self):
@@ -248,15 +263,16 @@ class QWDateTimeSec(Frame) : # QtWidgets.QWidget
 #----------- TESTS ------------
 #------------------------------
 #------------------------------
+if __name__ == "__main__" :
 
-def test_gui(tname) :
+  def test_gui(tname) :
     w = QWDateTimeSec(None, show_frame=True)
     w.setWindowTitle('Convertor of date and time to sec')
     w.show()
     app.exec_()
 
 
-def test_select_time(tname, fmt='%Y-%m-%d %H:%M:%S') :
+  def test_select_time(tname, fmt='%Y-%m-%d %H:%M:%S') :
     #lst = sorted(os.listdir('/reg/d/psdm/CXI/'))
     #print('lst:', lst)
 
@@ -302,15 +318,18 @@ def test_select_time(tname, fmt='%Y-%m-%d %H:%M:%S') :
 #------------------------------
 
 if __name__ == "__main__" :
-    import sys; global sys
+
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print(50*'_', '\nTest %s' % tname)
 
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
 
     if   tname == '0': test_select_time(tname)
     elif tname == '1': test_gui(tname)
     else : sys.exit('Test %s is not implemented' % tname)
+
+    del app
+
     sys.exit('End of Test %s' % tname)
 
 #------------------------------

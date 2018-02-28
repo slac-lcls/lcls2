@@ -27,7 +27,7 @@ from psana.graphqt.Frame    import Frame
 from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.Styles import style
 #from ConfigParametersForApp import cp
-from psana.graphqt.QIcons import icon
+from psana.graphqt.QWIcons import icon
 
 #------------------------------
 #class QWHelp(QtWidgets.QWidget) :
