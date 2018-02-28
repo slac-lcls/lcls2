@@ -66,13 +66,9 @@ ext = Extension("peakFinder",
                 include_dirs=[np.get_include(), "../psalg/psalg/include/PeakFinderAlgos.h", "../psalg/psalg/include/LocalExtrema.h"]
 )
 
-<<<<<<< HEAD
-=======
 setup(name="peakFinder",
       ext_modules=cythonize(ext))
 
-
->>>>>>> 950ebc9f7f1ec18ea2ae5bb8a2c8f5b799960fdb
 '''
 from setuptools.command.build_ext import build_ext
 class dgram_build_ext(build_ext):
