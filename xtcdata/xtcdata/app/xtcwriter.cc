@@ -125,19 +125,19 @@ public:
 	    //   printf("Found %d names\n",names.num());
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
-                if (strncmp(name.name(),"int",3)==0) {
-                    printf("integ value %s: %d\n",name.name(),descdata.get_value<int32_t>(name.name()));
-                }
-                if (strncmp(name.name(),"float",5)==0) {
-                    printf("float value %s: %f\n",name.name(),descdata.get_value<float>(name.name()));
-                }
-                if (strncmp(name.name(),"array",5)==0) {
-                    float* arr = (float *)descdata.address(i);
-                    printf("array value %s: %f %f\n",name.name(),arr[0],arr[1]);
-                }
-                //unsigned index = descdata.nameindex()[name.name()];
-                //void* addr = descdata.address(index);
-                //printOffset(name.name(),xtc,addr);
+		if(name.rank()>0){
+		  Array<float> arrT = descdata.get_array<float>(i);
+		  printf("array float value %s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
+		}
+		else{
+		  if(name.type()<7){
+		    printf("integ value %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+		  }
+		    else{
+		      printf("float value %s: %f\n",name.name(),descdata.get_value<float>(i));
+		    }
+		  
+		}	    
             }
             break;
         }
@@ -219,20 +219,22 @@ void pgpExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 }
 
 void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
-{
+{ 
     CreateData fex(parent, NamesVec, nameId);
     fex.set_value(FexDef::floatFex, (float)41.0);
-    float* ptr = (float*)fex.get_ptr();
-    unsigned shape[Name::MaxRank];
-    shape[0]=2;
-    shape[1]=3;
-    for (unsigned i=0; i<shape[0]*shape[1]; i++) ptr[i] = 142.0+i;
-    fex.set_array_shape(FexDef::arrayFex,shape);
-    fex.set_value(FexDef::intFex, (int32_t)42);
+
+    unsigned shape[Name::MaxRank] = {2,3};
+    Array<float> arrayT = fex.allocate<float>(FexDef::arrayFex,shape);
+    for(unsigned i=0; i<shape[0]*shape[1]; i++){
+      arrayT(i) = 142.0+i;
+    };
+    
+    fex.set_value(FexDef::intFex, (int32_t) 42);
 }
+   
 
 void padExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
-{
+{ 
     DescribedData pad(parent, NamesVec, nameId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver

@@ -115,6 +115,25 @@ target_link_libraries(tprutil
    rt
 )
 
+#
+#  pgpca
+#
+add_executable(pgpca pgpca.cc)
+
+target_include_directories(pgpca PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $ENV{CONDA_PREFIX}/include
+)
+
+target_link_libraries(pgpca
+   service
+   epicstools
+   ${EPICS_CA_LIB}
+   dl
+   pthread
+   rt
+)
+
 install(TARGETS app
 		h5writer
 		hpsBldServer
@@ -122,6 +141,7 @@ install(TARGETS app
 		tprca
 		tprsh
 		tprutil
+                pgpca
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

@@ -4,12 +4,27 @@ import getopt
 import pprint
 
 from psana import dgram
-from psana.pydgram import PyDgram
 from psana.event import Event
+
+class container:
+    pass
+
+def setnames(d):  # Todo: find a good name/place for this
+    keys = sorted(d.__dict__.keys())
+    for k in keys:
+        fields = k.split('_')
+        currobj = d
+        for f in fields[:-1]:
+            if not hasattr(currobj, f):
+                setattr(currobj, f, container())
+            currobj = getattr(currobj, f)
+        val = getattr(d, k)
+        setattr(currobj, fields[-1], val)
+        delattr(d, k)
 
 class DataSource:
     """Stores variables and arrays loaded from an XTC source.\n"""
-    def __init__(self, expstr, config_bytes=[], filter=None, analyze=None):
+    def __init__(self, expstr, configs=[], filter=None, analyze=None):
         # expstr is 'exp=expid:run=runno' or xtc filename
         if isinstance(expstr, (list)):
             self.xtc_files = expstr
@@ -19,18 +34,21 @@ class DataSource:
             self.xtc_files = ['0.smd.xtc','1.smd.xtc'] # Todo: where from?
         assert len(self.xtc_files) > 0
         
-        has_configs = True if len(config_bytes) > 0 else False
+        given_configs = True if len(configs) > 0 else False
         
         self.configs = []
+        if given_configs: 
+            self.configs = configs
+            for i in range(len(self.configs)): self.configs[i].assign_dict() 
+        
         self.fds = []
         for i, xtcdata_filename in enumerate(self.xtc_files):
             self.fds.append(os.open(xtcdata_filename,
                             os.O_RDONLY|os.O_LARGEFILE))
-            if not has_configs: 
-                config = PyDgram(dgram.Dgram(file_descriptor=self.fds[-1])) 
-            else:
-                config = PyDgram(dgram.Dgram(file_descriptor=self.fds[-1], view=config_bytes[i]))
-            self.configs.append(config) 
+            if not given_configs: 
+                d = dgram.Dgram(file_descriptor=self.fds[-1])
+                setnames(d)
+                self.configs += [d]
         
     def __iter__(self):
         return self
@@ -41,15 +59,12 @@ class DataSource:
     def jump(self, offsets=[]):
         dgrams = []
         if len(offsets) == 0: offsets = [0]*len(self.fds)
-        for fd, config, offset in zip(self.fds,self.configs, offsets):
-            _config = dgram.Dgram(file_descriptor=fd, view=config.buf)
-            if offset == 0:
-                d = dgram.Dgram(config=_config)                # read sequentially
-            else:
-                d = dgram.Dgram(config=_config, offset=offset) # read rax
-            dgrams.append(PyDgram(d))
-            PyDgram(_config)                                   # dealloc
+        for fd, config, offset in zip(self.fds, self.configs, offsets):
+            d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset)   
+            setnames(d)
+            dgrams += [d]
         return Event(dgrams=dgrams)
+
     
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
@@ -83,15 +98,15 @@ def main():
     count=0
     for evt in ds:
         print("evt:", count)
-        for pydgram in evt:
-            for var_name in sorted(vars(pydgram)):
-                val=getattr(pydgram, var_name)
+        for dgram in evt:
+            for var_name in sorted(vars(dgram)):
+                val=getattr(dgram, var_name)
                 print("  %s: %s" % (var_name, type(val)))
-            a=pydgram.xpphsd.raw.array0Pgp
+            a=dgram.xpphsd.raw.array0Pgp
             try:
                 a[0][0]=999
             except ValueError:
-                print("The pydgram.xpphsd.raw.array0Pgp is read-only, as it should be.")
+                print("The dgram.xpphsd.raw.array0Pgp is read-only, as it should be.")
             else:
                 print("Warning: the evt.array0_pgp array is writable")
             print()
