@@ -13,6 +13,7 @@
 namespace XtcData {
 class VarDef;
 
+  
 static const int maxNameSize = 256;
 
 class AlgVersion {
@@ -35,10 +36,6 @@ public:
         strncpy(_alg, alg, maxNameSize);
     }
 
-    // Alg(Alg& other) : _version(other._version) {
-    //     strncpy(_alg, other._alg, maxNameSize);
-    // }
-
     uint32_t version() {
         return _version.version();
     }
@@ -52,8 +49,8 @@ private:
 
 class Name {
 public:
-    // needs to agree with sizes in ShapesData.cc
-    enum DataType { UINT8, UINT16, INT32, FLOAT, DOUBLE, UINT64, UINT32, INT8, INT16, INT64};
+  enum DataType { UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE};
+
     static int get_element_size(DataType type);
 
     enum {MaxRank=5};
@@ -181,7 +178,7 @@ public:
         assert (sizeOfNames%sizeof(Name)==0);
         return sizeOfNames / sizeof(Name);
     }
-
+ 
     unsigned numArrays(){return _numArrays;};
  
     void add(Xtc& parent, VarDef& V)

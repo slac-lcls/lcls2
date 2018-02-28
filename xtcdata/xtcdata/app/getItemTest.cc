@@ -36,27 +36,53 @@ PyObject* DataAssign(DgramObject* dgram, Data& d, Field& f)
     if (f.rank == 0) {
         switch (f.type) {
         case UINT8: {
-            const int tempVal = d.get_value<uint8_t>(tempName);
+	  const uint8_t tempVal = d.get_value(tempName);
             value = Py_BuildValue("i", tempVal);
             break;
         }
         case UINT16: {
-            const int tempVal = d.get_value<uint16_t>(tempName);
+            const uint16_t tempVal = d.get_value(tempName);
+            value = Py_BuildValue("i", tempVal);
+            break;
+        }
+	  
+        case UINT32: {
+            const uint32_t tempVal = d.get_value(tempName);
+            value = Py_BuildValue("i", tempVal);
+            break;
+        }
+        case UINT64: {
+            const uint64_t tempVal = d.get_value(tempName);
+            value = Py_BuildValue("i", tempVal);
+            break;
+        }
+        case INT8: {
+            const int8_t tempVal = d.get_value(tempName);
+            value = Py_BuildValue("i", tempVal);
+            break;
+        }
+        case INT16: {
+            const int16_t tempVal = d.get_value(tempName);
             value = Py_BuildValue("i", tempVal);
             break;
         }
         case INT32: {
-            const int tempVal = d.get_value<int32_t>(tempName);
+            const int32_t tempVal = d.get_value(tempName);
+            value = Py_BuildValue("i", tempVal);
+            break;
+        }
+        case INT64: {
+            const int64_t tempVal = d.get_value(tempName);
             value = Py_BuildValue("i", tempVal);
             break;
         }
         case FLOAT: {
-            const float tempVal = d.get_value<float>(tempName);
+            const float tempVal = d.get_value(tempName);
             value = Py_BuildValue("f", tempVal);
             break;
         }
         case DOUBLE: {
-            const int tempVal = d.get_value<double>(tempName);
+            const int tempVal = d.get_value(tempName);
             value = Py_BuildValue("d", tempVal);
             break;
         }
@@ -75,8 +101,28 @@ PyObject* DataAssign(DgramObject* dgram, Data& d, Field& f)
             value = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT16, d.get_buffer() + f.offset);
             break;
         }
+        case UINT32: {
+            value = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT32, d.get_buffer() + f.offset);
+            break;
+        }
+        case UINT64: {
+            value = PyArray_SimpleNewFromData(f.rank, dims, NPY_UINT64, d.get_buffer() + f.offset);
+            break;
+        }
+        case INT8: {
+            value = PyArray_SimpleNewFromData(f.rank, dims, NPY_INT8, d.get_buffer() + f.offset);
+            break;
+        }
+        case INT16: {
+            value = PyArray_SimpleNewFromData(f.rank, dims, NPY_INT16, d.get_buffer() + f.offset);
+            break;
+        }
         case INT32: {
             value = PyArray_SimpleNewFromData(f.rank, dims, NPY_INT32, d.get_buffer() + f.offset);
+            break;
+        }
+        case INT64: {
+            value = PyArray_SimpleNewFromData(f.rank, dims, NPY_INT64, d.get_buffer() + f.offset);
             break;
         }
         case FLOAT: {

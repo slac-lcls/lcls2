@@ -88,7 +88,16 @@ void Stats::dump() const
 
 Module* Module::locate()
 {
-  return new((void*)0) Module;
+  Module* r = new((void*)0) Module;
+  printf("_timing     @ %p\n", &r->_timing);
+  printf("_hsRepeater @ %p\n", &r->_hsRepeater[0]);
+  printf("_usLinkCfg  @ %p\n", &r->_usLinkConfig[0]);
+  printf("_usStatus   @ %p\n", &r->_usStatus);
+  printf("_dsStatus   @ %p\n", &r->_dsStatus);
+  printf("_qpllLock   @ %p\n", &r->_qpllLock);
+  printf("_pgp2b      @ %p\n", &r->_pgp[0]);
+  printf("_ringBuffer @ %p\n", &r->_ringBuffer);
+  return r;
 }
 
 Module::Module()

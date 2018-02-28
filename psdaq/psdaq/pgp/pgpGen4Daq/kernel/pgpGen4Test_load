@@ -1,0 +1,29 @@
+#!/bin/sh
+
+module="pgpGen4Test"
+device="pgpdaq"
+mode="666"
+
+/sbin/insmod ./$module.ko || exit 1
+
+# remove stale nodes
+for d in `ls /dev/${device}*`
+do
+   rm -f $d
+done
+
+major=`grep pgpGen4Test /proc/devices | cut -f1 -d' '`
+
+i=0
+
+for num in $major
+do
+   for min in 0 1 2 3
+   do
+       mknod -m 666 /dev/${device}${i}_${min} c $num $min
+   done
+   mknod -m 666 /dev/${device}${i} c $num 4
+   ((i++))
+done
+
+i=0

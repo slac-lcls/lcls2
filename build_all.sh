@@ -30,6 +30,14 @@ cmake $cmake_option ..
 make -j 4 install
 cd ../..
 
+# to build psalg with cmake
+cd psalg
+mkdir -p build
+cd build
+cmake $cmake_option ..
+make -j 4 install
+cd ../..
+
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 # "python setup.py develop" seems to not create this for you
 # (although "install" does)
