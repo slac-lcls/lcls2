@@ -175,8 +175,8 @@ int main (int argc, char **argv) {
       o << base << "LANE" << i << parm;                         \
       hist.push_back(new AxisHistogramT(o.str())); }
 
-    const unsigned NLINKS = 4;
-    const unsigned NAPPS = 2;
+    const unsigned NLINKS = p->nlanes();
+    const unsigned NAPPS  = p->nclients();
 
     std::list<AxisHistogramT*> hist;
     for(unsigned i=0; i<NLINKS; i++)

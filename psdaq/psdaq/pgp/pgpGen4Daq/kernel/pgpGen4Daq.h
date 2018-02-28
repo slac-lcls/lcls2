@@ -33,9 +33,9 @@
 
 // Max number of devices to support
 #define MAX_PCI_DEVICES 8
-#define NUMBER_OF_CLIENTS 2
+#define NUMBER_OF_CLIENTS 4
 #define NUMBER_OF_LANES 4
-#define NUMBER_OF_MINOR_DEVICES 3
+#define NUMBER_OF_MINOR_DEVICES 5
 #define SPAD_WRITE 0x55441122
 
 enum MODELS {SmallMemoryModel=4, LargeMemoryModel=8};
@@ -91,10 +91,10 @@ struct DaqReg {
   __u32     monSampleCounter;
   __u32     monReadoutCounter;
   __u32     monStatus;
-  __u32     rsvd_00800028[6];
+  __u32     rsvd_00800028[22];
   struct ClientReg clients[NUMBER_OF_CLIENTS];
   struct LaneReg   lanes  [NUMBER_OF_LANES];
-  __u32     rsvd_00800080[0x00100000-0x40];
+  __u32     rsvd_00800080[0x00100000-0x60];
   __u32     rsvd_00c00000[0x00100000];
 };
 
