@@ -7,7 +7,6 @@ def myroutine2():
   ds = DataSource('data.xtc')
   assert getref(ds)==2
   dgram = ds.__next__().__next__()
-  print(getref(dgram))
   assert getref(dgram)==6
 
   arr1 = dgram.xpphsd.raw.array0Pgp
@@ -43,7 +42,6 @@ def myroutine1():
 
 def myiter(dgram,testvals):
   for attrname,attr in dgram.__dict__.items():
-    if attrname == 'buf': continue # Todo: need to test this? 
     if hasattr(attr,'__dict__'):
       myiter(attr,testvals)
     else:
