@@ -18,10 +18,25 @@
 
 using namespace std;
 
+static void usage(const char* p)
+{
+  printf("Usage: %s <options>\n",p);
+  printf("Options:\n");
+  printf("\t-d <device>  [e.g. /dev/pgpdaq0]\n");
+}
+
 int main (int argc, char **argv) {
 
   int          fd;
   const char*  dev = "/dev/pgpdaq0";
+  int c;
+
+  while((c=getopt(argc,argv,"d:")) != EOF) {
+    switch(c) {
+    case 'd': dev    = optarg; break;
+    default: usage(argv[0]); return 0;
+    }
+  }
 
   if ( (fd = open(dev, O_RDWR)) <= 0 ) {
     cout << "Error opening " << dev << endl;
@@ -34,10 +49,13 @@ int main (int argc, char **argv) {
   printf("firmwareVersion    : %x\n", p->version);
   printf("scratch            : %x\n", p->scratch);
   printf("upTimeCnt          : %x\n", p->upTimeCnt);
-  char buildStr[256];
-  for(unsigned i=0; i<64; i++)
-    reinterpret_cast<uint32_t*>(buildStr)[i] = p->buildStr[i];
-  printf("buildString        : %s\n", buildStr);
+
+  uint32_t buildStr[64];
+  for(int i=0; i<64; i++) {
+    buildStr[i] = p->buildStr[i];
+    printf("%x\r", buildStr[i]);
+  }
+  printf("buildString        : %s\n", reinterpret_cast<char*>(buildStr));
 
   printf("-- MigToPcie --\n");
   uint32_t resources = p->resources;
@@ -81,7 +99,14 @@ int main (int argc, char **argv) {
   PRINTFIELD(blocksPause   , blocksPause, 0, 0x3ff);
   PRINTFIELD(dcountTransfer, fifoDepth  , 0, 0xffff);
   PRINTFIELD(blocksFree    , memStatus  , 0, 0x3ff);
-  PRINTFIELD(memReady      , memStatus  , 31, 1);
+  PRINTFIELD(blocksQueued  , memStatus  ,12, 0x3ff);
+  PRINTFIELD(tready        , memStatus  ,25, 1);
+  PRINTFIELD(wbusy         , memStatus  ,26, 1);
+  PRINTFIELD(wSlaveBusy    , memStatus  ,27, 1);
+  PRINTFIELD(rMasterBusy   , memStatus  ,28, 1);
+  PRINTFIELD(mm2s_err      , memStatus  ,29, 1);
+  PRINTFIELD(s2mm_err      , memStatus  ,30, 1);
+  PRINTFIELD(memReady      , memStatus  ,31, 1);
 #undef PRINTFIELD
 
 #define PRINTFIELD(name, addr, offset, mask) {                          \
