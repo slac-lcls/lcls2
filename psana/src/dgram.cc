@@ -439,7 +439,11 @@ static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
     PyDgramObject* self = (PyDgramObject*)obj;
     view->obj = (PyObject*)self;
     view->buf = (void*)self->dgram;
-    view->len = BUFSIZE; // Todo: different sizes for master and client?
+    if (self->dgram->xtc.extent == 0) {
+        view->len = BUFSIZE; // share max size for empty dgram 
+    } else {
+        view->len = sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
+    }
     view->readonly = 1;
     view->itemsize = 1;
     view->format = (char *)"s";

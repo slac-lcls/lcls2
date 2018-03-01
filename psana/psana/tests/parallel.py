@@ -26,7 +26,9 @@ def client():
         if offsets == 'endrun': break
         
         evt = ds.jump(offsets=offsets)
-        print('rank: ', rank, 'read offsets:', offsets, ' dgram.xpphsd.fex.intFex: ', [pydgram.xpphsd.fex.intFex for pydgram in evt])
+        test_vals = [pydgram.xpphsd.fex.intFex==42 for pydgram in evt]
+        assert all(test_vals)
+
 
 
 if __name__ == "__main__":
@@ -39,12 +41,16 @@ if __name__ == "__main__":
     if rank == 0:
         ds = DataSource(bigdata_files)
         configs = ds.configs
+        nbytes = [memoryview(config).nbytes for config in ds.configs]
     else:
         ds = None
         configs = [dgram.Dgram() for i in range(len(bigdata_files))]
+        nbytes = None
     
+    nbytes = comm.bcast(nbytes, root=0)
+
     for i in range(len(bigdata_files)): 
-        comm.Bcast([configs[i], MPI.BYTE], root=0)
+        comm.Bcast([configs[i], nbytes[i], MPI.BYTE], root=0)
     
     if rank == 0:
         master()
