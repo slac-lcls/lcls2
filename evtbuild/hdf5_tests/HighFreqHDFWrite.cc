@@ -5,13 +5,14 @@ using std::endl;
 #include <stdlib.h>
 #include <string>
 #include <chrono>
+#include <math.h>
 #include <sys/stat.h>
 
 #include "H5Cpp.h"
 using namespace H5;
 using namespace std::chrono;
 
-std::string filename = "smalldata_highfreq.h5";
+std::string filename = "/nvme1n1/hfdata.h5";
 const H5std_string FILE_NAME(filename);
 const H5std_string DATASETNAME("ExtendibleArray");
 
@@ -22,18 +23,18 @@ long GetFileSize(std::string filename)
   return rc == 0 ? stat_buf.st_size : -1;
 }
 
-void loop_write(int loop_limit){
+void loop_write(int loop_limit, hsize_t chunk_size, hsize_t num_bytes){
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-    hsize_t dims[2] = {1,2};        // dataset dimensions at creation
-    hsize_t maxdims[2] = {H5S_UNLIMITED, 2}; 
-    hsize_t chunk_dims[2] ={2, 2};
-    int   data[1][2];//= { {1, 1}};    // data to write 
+    hsize_t dims[2] = {1,num_bytes};        // dataset dimensions at creation
+    hsize_t maxdims[2] = {H5S_UNLIMITED, num_bytes}; 
+    hsize_t chunk_dims[2] ={chunk_size, num_bytes};
+    int32_t  data[1][num_bytes];//= { {1, 1}};    // data to write 
 
     // Variables used in extending and writing to the extended portion of dataset 
 
     hsize_t size[2];
     hsize_t offset[2];
-    hsize_t dimsext[2] = {1, 2};         // extend dimensions 
+    hsize_t dimsext[2] = {1, num_bytes};         // extend dimensions 
     //    int loop_limit = 10;
 
     // Create a new file using the default property lists. 
@@ -63,9 +64,9 @@ void loop_write(int loop_limit){
         dataset->extend(size); 
 
         // Make some random numbers
-        data[0][0] = rand();
-        data[0][1] = rand();
-
+        for(hsize_t j=0; i<dimsext[1]; i++){
+        data[0][i] = rand();
+        }
         // Select a hyperslab in extended portion of the dataset.
         DataSpace *filespace = new DataSpace(dataset->getSpace ());
         offset[0] = size[0]-1;
@@ -100,15 +101,28 @@ void loop_write(int loop_limit){
     long fileSize = GetFileSize(filename);
     float av_speed = (float)fileSize/(float)duration; // MB/s
     float av_freq = float(loop_limit)/duration;
+    float hdf_ratio = float(fileSize)/(num_bytes*loop_limit*4.0);
 
+
+    printf("\n");
+    printf("Chunk size was %i\n", chunk_size);
+    printf("Loop limit was %i\n", loop_limit);
+    printf("Number of ints per extension was %i\n", num_bytes);
     printf("Duration was %.2d ms\n", duration);
     printf("Size of dataset is %.2f MB\n", (float)fileSize/1000000);
+    printf("HDF5 ratio was %.2f\n", hdf_ratio);
     printf("Average speed was %.2f MB/s\n", av_speed/1000 );
     printf("Average frequency was %.2f kHz\n", av_freq);
+    printf("\n");
 }
 
 int main (void)
 {
-    loop_write(500000);
+    int loop_limit = 10000;
+
+    for(auto i=0; pow(2,i)<loop_limit; i++){
+    // loop limit, chunk size, integers per extension
+        loop_write(loop_limit,pow(2,i),2);
+    };
     return 0;  // successfully terminated
 }
