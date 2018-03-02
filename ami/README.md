@@ -33,7 +33,7 @@ You should see an interactive QT window. There is also a `dummy_gui.py` that giv
 * should we reuse MPI?
 * how to select multiple inputs into an analysis box
 * how to choose between two graph options (e.g. roi vs. projection)
-* think about top-down vs. bottom-up for pick-N pattern (e.g. for visualizing images).  collector has to: avg/sum, scatter plot, plot vs. time/event number, plot most recent image.  Most AMI patterns can be done with gather/reduce.  pick-N is like a "throttled gather", done on a per-heartbeat basis.  conditionals in pick-N (e.g. only laser-off) can be handled by graph boxes.
+* pick-N pattern (e.g. for visualizing images).  use top-down approach with round-robin based on heartbeat counting.  collector has to: avg/sum, scatter plot, plot vs. time/event number, plot most recent image.  Use gather/reduce pattern, but implement with send/receive plus timeout (either with mpi_probe, or heartbeat counting and discard old).  pick-N is like a "throttled gather", done on a per-heartbeat basis.  conditionals in pick-N (e.g. only laser-off) can be handled by graph boxes.
 * Ability to edit the graph graphically.
 * Visualization of the graph
 * Minimal viable documentation ( so Dan can remember what is going on )
