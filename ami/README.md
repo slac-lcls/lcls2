@@ -16,6 +16,8 @@ configuration files are included in the examples directory.
 
 To run ami with three workers run the following in lcls2/ami:
 ```ami-worker -n 3 static://examples/worker.json```
+Or for mpi:
+```mpirun -n 3 ami-worker --mpi static://examples/worker.json```
 
 Then start a manager with a specified configuration:
 ```ami-manager```
@@ -46,6 +48,7 @@ backend
     - DRP feedback?
 * only reconfigure graph on transitions
 * manager needs to discover when the configuration has failed to apply on one of the workers
+* need to fix gui and manager now that we are using MPI too
     
     
 frontend
