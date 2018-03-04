@@ -132,12 +132,95 @@ int PgpGen4Test_Release(struct inode *inode, struct file *filp) {
 // Called when the device is written to
 // Returns write count on success. Error code on failure.
 ssize_t PgpGen4Test_Write(struct file *filp, const char* buffer, size_t count, loff_t* f_pos) {
+  int i,j;
   struct Client*client = (struct Client *)filp->private_data;
   struct DaqDevice *dev = (struct DaqDevice*)(client->dev);
 
-  printk(KERN_WARNING "%s: Write not implemented. Maj=%i\n",
+  printk(KERN_WARNING "%s: Write:  Releasing memory. Maj=%i\n",
          MOD_NAME, dev->major);
-  return ERROR;
+
+  dma_free_coherent(dev->device, MON_BUFFER_SIZE, dev->monAddr, dev->monHandle);
+
+  for(j=0; j<NUMBER_OF_CLIENTS; j++) {
+    client = &dev->client[j];
+
+    for(i=0; i<RX_BUFFERS; i++)
+      dma_free_coherent(dev->device, RX_BUFFER_SIZE, 
+                        client->rxBuffer[i], client->rxHandle[i]);
+
+    dma_free_coherent(dev->device, 8*RX_DESC_SIZE, 
+                      client->rxDescPage, client->rxDescHandle);
+    kfree(client->rxBuffer);
+    kfree(client->rxHandle);
+  }
+
+  printk(KERN_WARNING "%s: Write:  User reset. Maj=%i\n",
+         MOD_NAME, dev->major);
+
+  // Reset the pipelines (auto clears)
+  dev->reg->reset = 1;
+
+  // Write scratchpad
+  dev->reg->scratch = SPAD_WRITE;
+
+  dev->monAddr = dma_alloc_coherent(dev->device, 
+                                    MON_BUFFER_SIZE,
+                                    &(dev->monHandle), 
+                                    GFP_KERNEL);
+  printk(KERN_INFO"%s: Write: monAddr %p mapped to %p\n", MOD_NAME, dev->monAddr, (void*)dev->monHandle);
+
+  iowrite32((dev->monHandle>> 0)&0xffffffff, (__u32*)dev->reg+(0x00800014>>2));
+  iowrite32((dev->monHandle>>32)&0x000000ff, (__u32*)dev->reg+(0x00800018>>2));
+
+  for(j=0; j<NUMBER_OF_CLIENTS; j++) {
+    client = &dev->client[j];
+    client->reg = (struct ClientReg*)(&dev->reg->clients[j]);
+
+    // Allocate receive descriptor page (for each application)
+    // DMA completion writes to this page
+    client->rxDescPage   = 
+      dma_alloc_coherent(dev->device,
+                         8*RX_DESC_SIZE,
+                         &(client->rxDescHandle),
+                         GFP_KERNEL);
+
+    printk(KERN_INFO"%s: Write: descPage %p mapped to %p\n", MOD_NAME, client->rxDescPage, (void*)client->rxDescHandle);
+
+    memset(client->rxDescPage, 0, 8*RX_DESC_SIZE);
+    iowrite32((client->rxDescHandle>> 0)&0xffffffff, 
+              (__u32*)&client->reg->descAddrLo);
+    iowrite32((client->rxDescHandle>>32)&0x000000ff, 
+              (__u32*)&client->reg->descAddrHi);
+
+    // Allocate receive buffers
+    client->rxBuffer = kmalloc(RX_BUFFERS*sizeof(void*)     ,GFP_KERNEL);
+    client->rxHandle = kmalloc(RX_BUFFERS*sizeof(dma_addr_t),GFP_KERNEL);
+    for(i=0; i<RX_BUFFERS; i++) {
+      client->rxBuffer[i] = dma_alloc_coherent(dev->device,
+                                               RX_BUFFER_SIZE,
+                                               &(client->rxHandle[i]),
+                                               GFP_KERNEL);
+      if (client->rxBuffer[i]==NULL) {
+        printk(KERN_WARNING"%s: Write: dma_alloc_coherent failed at index %u. Maj=%i.\n", MOD_NAME, i, dev->major);
+        break;
+      }
+      
+      if (i == 0) {
+        printk(KERN_WARNING"%s: Write: client %i first buffer at %p. Maj=%i.\n", MOD_NAME, j, client->rxBuffer[i], dev->major);
+      }
+
+      //  Write bus address and index
+      iowrite32((client->rxHandle[i]>> 0)&0xffffffff, 
+                (__u32*)&client->reg->descFifoLo);
+      iowrite32((i<<8) | ((client->rxHandle[i]>>32)&0x000000ff),
+                (__u32*)&client->reg->descFifoHi);
+    }
+
+    client->readIndex = 0;
+    client->dev       = dev;
+  }
+
+  return 0;
 }
 
 
@@ -317,13 +400,13 @@ static int PgpGen4Test_Probe(struct pci_dev *pcidev, const struct pci_device_id 
   // Remap the I/O register block so that it can be safely accessed.
   dev->reg = (struct DaqReg *)ioremap_nocache(dev->baseHdwr, dev->baseLen);
   if (! dev->reg ) {
-    printk(KERN_WARNING"%s: Init: Could not remap memory Maj=%i.\n", MOD_NAME,dev->major);
+    printk(KERN_WARNING"%s: Probe: Could not remap memory Maj=%i.\n", MOD_NAME,dev->major);
     return (ERROR);
   }
 
   // Try to gain exclusive control of memory
   if (check_mem_region(dev->baseHdwr, dev->baseLen) < 0 ) {
-    printk(KERN_WARNING"%s: Init: Memory in use Maj=%i.\n", MOD_NAME,dev->major);
+    printk(KERN_WARNING"%s: Probe: Memory in use Maj=%i.\n", MOD_NAME,dev->major);
     return (ERROR);
   }
 
@@ -332,7 +415,7 @@ static int PgpGen4Test_Probe(struct pci_dev *pcidev, const struct pci_device_id 
 
   // Get IRQ from pci_dev structure.
   dev->irq = pcidev->irq;
-  printk(KERN_INFO "%s: Init: IRQ %d Maj=%i\n", MOD_NAME, dev->irq,dev->major);
+  printk(KERN_INFO "%s: Probe: IRQ %d Maj=%i\n", MOD_NAME, dev->irq,dev->major);
 
   // Reset the pipelines (auto clears)
   dev->reg->reset = 1;
@@ -349,7 +432,7 @@ static int PgpGen4Test_Probe(struct pci_dev *pcidev, const struct pci_device_id 
                                     MON_BUFFER_SIZE,
                                     &(dev->monHandle), 
                                     GFP_KERNEL);
-  printk(KERN_INFO"%s: Init: monAddr %p mapped to %p\n", MOD_NAME, dev->monAddr, (void*)dev->monHandle);
+  printk(KERN_INFO"%s: Probe: monAddr %p mapped to %p\n", MOD_NAME, dev->monAddr, (void*)dev->monHandle);
 
   iowrite32((dev->monHandle>> 0)&0xffffffff, (__u32*)dev->reg+(0x00800014>>2));
   iowrite32((dev->monHandle>>32)&0x000000ff, (__u32*)dev->reg+(0x00800018>>2));
@@ -366,7 +449,7 @@ static int PgpGen4Test_Probe(struct pci_dev *pcidev, const struct pci_device_id 
                          &(client->rxDescHandle),
                          GFP_KERNEL);
 
-    printk(KERN_INFO"%s: Init: descPage %p mapped to %p\n", MOD_NAME, client->rxDescPage, (void*)client->rxDescHandle);
+    printk(KERN_INFO"%s: Probe: descPage %p mapped to %p\n", MOD_NAME, client->rxDescPage, (void*)client->rxDescHandle);
 
     memset(client->rxDescPage, 0, 8*RX_DESC_SIZE);
     iowrite32((client->rxDescHandle>> 0)&0xffffffff, 
@@ -383,9 +466,14 @@ static int PgpGen4Test_Probe(struct pci_dev *pcidev, const struct pci_device_id 
                                                &(client->rxHandle[i]),
                                                GFP_KERNEL);
       if (client->rxBuffer[i]==NULL) {
-        printk(KERN_WARNING"%s: Init: dma_alloc_coherent failed at index %u. Maj=%i.\n", MOD_NAME, i, dev->major);
+        printk(KERN_WARNING"%s: Probe: dma_alloc_coherent failed at index %u. Maj=%i.\n", MOD_NAME, i, dev->major);
         break;
       }
+      
+      if (i == 0) {
+        printk(KERN_WARNING"%s: Probe: client %i first buffer at %p. Maj=%i.\n", MOD_NAME, j, client->rxBuffer[i], dev->major);
+      }
+
       //  Write bus address and index
       iowrite32((client->rxHandle[i]>> 0)&0xffffffff, 
                 (__u32*)&client->reg->descFifoLo);
@@ -398,7 +486,7 @@ static int PgpGen4Test_Probe(struct pci_dev *pcidev, const struct pci_device_id 
   }
   dev->client[NUMBER_OF_CLIENTS].dev = dev;
 
-  printk(KERN_INFO"%s: Init: Driver is loaded. Maj=%i %s\n", MOD_NAME,dev->major, PGPCARD_VERSION);
+  printk(KERN_INFO"%s: Probe: Driver is loaded. Maj=%i %s\n", MOD_NAME,dev->major, PGPCARD_VERSION);
   return SUCCESS;
 }
 
@@ -448,7 +536,7 @@ static void PgpGen4Test_Remove(struct pci_dev *pcidev) {
     unregister_chrdev_region(MKDEV(dev->major,0), NUMBER_OF_MINOR_DEVICES);
 
     // Disable device
-    pci_disable_device(pcidev);
+    //    pci_disable_device(pcidev);  // Xilinx core does not re-enable Bus Master Enable bit
     dev->baseHdwr = 0;
     printk(KERN_INFO"%s: Remove: %s is unloaded. Maj=%i\n", MOD_NAME, PGPCARD_VERSION, dev->major);
   }

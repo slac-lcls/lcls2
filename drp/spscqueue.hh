@@ -47,6 +47,7 @@ public:
         }
     }
 
+    // blocking read from queue
     bool pop(T& value)
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
@@ -62,6 +63,21 @@ public:
             }
         }
 
+        value = m_ring_buffer[index & m_buffer_mask];
+        int64_t next = index + 1;
+        m_read_index.store(next, std::memory_order_release);
+        return true;
+    }
+
+    // non blocking read from queue
+    bool try_pop(T& value)
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+
+        // check if queue is empty
+        if (index == m_write_index.load(std::memory_order_acquire)) {
+            return false;
+        }
         value = m_ring_buffer[index & m_buffer_mask];
         int64_t next = index + 1;
         m_read_index.store(next, std::memory_order_release);

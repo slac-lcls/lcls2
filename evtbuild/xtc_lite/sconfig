@@ -1,0 +1,14 @@
+#path /testrr/eliseo/hdf5
+path /drplu/eliseo/hdf5/1_stripes
+
+hit_probability	   0.2	# Probability that a diode value is interesting
+
+file_size	     32  # Total file size in GB
+image_size	   1  # Image size in MB
+
+batch_size  16	   # Number of images written in a batch
+
+#nstripes 1  # Lustre stripe coun      t
+
+
+#`which mpirun` -q -map-by node --oversubscribe -n 96 -H drp-tst-acc01,drp-tst-acc02,drp-tst-acc03,drp-tst-acc04,drp-tst-acc05,drp-tst-acc06 python rwc_mpi.py

@@ -1,19 +1,15 @@
-#!@PYTHON@
 """
-Class :py:class:`GUDragBase` is a base class for draggable objects
+Class :py:class:`DragBase` is a base class for draggable objects
 ==================================================================
 
 Created on 2016-09-14 by Mikhail Dubrovin
 """
 #-----------------------------
 
-#import os
-#import math
-#from graphqt.GUView import *
-from PyQt4.QtCore import Qt
-from PyQt4 import QtGui
+from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF
+from PyQt5.QtGui import QPen, QBrush, QCursor
 
-from graphqt.GUUtils import select_item_from_popup_menu, select_color
+from psana.graphqt.QWUtils import select_item_from_popup_menu, select_color
 
 #-----------------------------
 
@@ -34,15 +30,15 @@ dic_mode_name_to_type = dict(zip(mode_names, mode_types))
 def print_warning(o, metframe) :
     wng = 'WARNING: %s.%16s - abstract interface method needs to be re-implemented in derived class.' \
           % (o.__class__.__name__, metframe.f_code.co_name)
-    print wng
+    print(wng)
     #raise NotImplementedError(wng)
 
 #-----------------------------
 
-class GUDragBase(object) :
+class DragBase(object) :
     
     def __init__(self, parent=None,\
-                 brush=QtGui.QBrush(), pen=QtGui.QPen(Qt.blue, 0, Qt.SolidLine)) :
+                 brush=QBrush(), pen=QPen(Qt.blue, 0, Qt.SolidLine)) :
         self.set_mode()
         self.set_child_item_sel()
         self.set_cursor_hover()
@@ -51,7 +47,7 @@ class GUDragBase(object) :
         self._parent = parent
         self._brush = brush
         self._pen_pos = pen
-        self._pen_inv = QtGui.QPen(Qt.white, 3, Qt.SolidLine)
+        self._pen_inv = QPen(Qt.white, 3, Qt.SolidLine)
         self._pen_pos.setCosmetic(True)
         self._pen_inv.setCosmetic(True)
 
@@ -104,7 +100,7 @@ class GUDragBase(object) :
             self.setPen(self._pen_inv if self.pen()==self._pen_pos else self._pen_pos)
 
         elif txt == 'Delete' :
-            #print 'ask parent class:', self._parent, ' to kill self:', self
+            #print('ask parent class:', self._parent, ' to kill self:', self)
             self.set_mode(DELETE)
             self.setVisible(False)
             #self._parent.delete_item(self)
@@ -114,12 +110,12 @@ class GUDragBase(object) :
 
         elif txt == 'Color' :
             color = select_color(self._pen_pos.color())
-            self._pen_pos = QtGui.QPen(color, 2, Qt.SolidLine)
+            self._pen_pos = QPen(color, 2, Qt.SolidLine)
             self._pen_pos.setCosmetic(True)
             self.setPen(self._pen_pos)
 
         else :
-            print 'GUDragBase: this point features are not implemented for item "%s"' % txt
+            print('DragBase: this point features are not implemented for item "%s"' % txt)
 
 #-----------------------------
 # Abstract interface methods
@@ -134,6 +130,6 @@ class GUDragBase(object) :
 
 #-----------------------------
 if __name__ == "__main__" :
-    print 'Self test is not implemented...'
-    print 'use > python GUViewImageWithShapes.py'
+    print('Self test is not implemented...')
+    print('use > python FWViewImageShapes.py')
 #-----------------------------

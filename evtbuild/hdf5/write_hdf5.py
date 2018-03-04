@@ -15,6 +15,9 @@ def create_image(mb_per_img):
 
 #create the files striped as above and prepared for swmr
 def master(comm):
+
+    size = comm.Get_size()
+
     cfg = load_config('sconfig')
     file_size = int(cfg['file_size'])
     mb_per_img = cfg['image_size']
@@ -24,7 +27,22 @@ def master(comm):
     for fil in files:
         os.remove(fil)
     av_files=[]
+    # file_name = cfg['path']+'/swmr_file%i.h5'
 
+    # for i in range(size):
+    #     loop_fn = file_name % i
+
+    #     try:
+    #         nstripes = int(cfg['nstripes'])
+    #         stripe_call = 'lfs setstripe -c %i %s' % (nstripes, loop_fn) 
+    #         print(stripe_call)
+    #         if i==0:
+    #             out_call = '\n Striping files over %i OST%s' % (nstripes, "s"[abs(nstripes)==1:])
+    #             print(out_call)
+    #             subprocess.call(stripe_call, shell=True)
+    #     except KeyError:
+    #         pass
+         
 def client(comm):
     rank = comm.Get_rank()
     cfg = load_config('sconfig')
@@ -53,6 +71,8 @@ def client(comm):
 
     file_name = cfg['path']+'/swmr_file%i.h5'
     loop_fn = file_name % rank
+
+
     loop_file  = h5py.File(loop_fn, 'w', libver = 'latest')
     dset = loop_file.create_dataset("data", shape = (0,arr_size), chunks = (batch_size, arr_size), maxshape=(None,arr_size), dtype = 'uint16')
 

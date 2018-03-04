@@ -18,11 +18,11 @@ i=0
 
 for num in $major
 do
-   for min in 0 1
+   for min in 0 1 2 3
    do
        mknod -m 666 /dev/${device}${i}_${min} c $num $min
    done
-   mknod -m 666 /dev/${device}${i} c $num 2
+   mknod -m 666 /dev/${device}${i} c $num 4
    ((i++))
 done
 

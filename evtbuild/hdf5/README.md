@@ -13,7 +13,7 @@ These tests have mostly characterized the drp-tst-acc0x and daq-tst-dev0x nodes.
 ```
 
 ### Looping the HDF test
-The loops are defined in ```mpi_call.py```. The user may wish to change the list of nodes (node_list), range of cores iterated over, and number of repeititons of the test. This is called simply with
+The loops are defined in ```mpi_call.py```. The user may wish to change the list of nodes (node_list), range of cores iterated over, and number of repetitions of the test. This is called simply with
 ```
 python mpi_call.py
 ```

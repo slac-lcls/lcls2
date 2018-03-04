@@ -5,18 +5,19 @@ import time
 import json
 import argparse
 import threading
+from mpi4py import MPI
 import multiprocessing as mp
 from ami.graph import Graph, GraphConfigError, GraphRuntimeError
-from ami.comm import ZmqPorts, ZmqConfig, ZmqBase, ZmqListener, ZmqCollector, ResultStore
+from ami.comm import ZmqPorts, ZmqConfig, MpiHandler, ZmqSender, ZmqReceiver, Listener, Collector, ResultStore
 from ami.data import MsgTypes, DataTypes, Transitions, Occurrences, Message, Datagram, Transition, StaticSource
 
 
-class Worker(ZmqListener):
-    def __init__(self, idnum, host_config, src, zmqctx=None):
-        super(__class__, self).__init__("worker%03d"%idnum, 'graph', self.update_graph, host_config, zmqctx)
+class Worker(Listener):
+    def __init__(self, idnum, src, col_handler):
+        super(__class__, self).__init__("worker%03d"%idnum, 'graph', self.update_graph, col_handler)
         self.idnum = idnum
         self.src = src
-        self.store = ResultStore(host_config, self._zmqctx)
+        self.store = ResultStore(col_handler)
         self.graph = Graph(self.store)
 
     def update_graph(self, new_graph):
@@ -56,14 +57,14 @@ class Worker(ZmqListener):
                 self.store.forward(msg)
 
 
-class Collector(ZmqCollector):
-    def __init__(self, num_workers, host_config, zmqctx=None):
-        super(__class__, self).__init__("collector", host_config, zmqctx)
+class Collector(Collector):
+    def __init__(self, num_workers, col_handler):
+        super(__class__, self).__init__("collector", col_handler)
         self.num_workers = num_workers
         # this does not really work - need a better way
         self.counts = { MsgTypes.Transition: 0, MsgTypes.Occurrence: 0 }
         self.set_handlers(self.store_msg)
-        self.upstream = ResultStore(host_config, self._zmqctx)
+        self.upstream = ResultStore(col_handler)
 
     def store_msg(self, msg):
         if msg.mtype == MsgTypes.Transition:
@@ -73,7 +74,7 @@ class Collector(ZmqCollector):
                 if msg.payload.ttype == Transitions.Allocate:
                     for name, dtype in msg.payload.payload:
                         self.upstream.create(name, dtype)
-                self.upstream.forward(msg)
+                #self.upstream.forward(msg)
                 self.counts[MsgTypes.Transition] = 0
         elif msg.mtype == MsgTypes.Occurrence:
             print("%s: Seen Occurence of type"%self.name, msg.payload)
@@ -81,13 +82,14 @@ class Collector(ZmqCollector):
             if self.counts[MsgTypes.Occurrence] == self.num_workers:
                 if msg.payload == Occurrences.Heartbeat:
                     self.upstream.collect()
-                self.upstream.forward(msg)
+                #self.upstream.forward(msg)
                 self.counts[MsgTypes.Occurrence] = 0
         elif msg.mtype == MsgTypes.Datagram:
-            self.upstream.put_dgram(msg.payload)
+            print(msg.payload)
+            #self.upstream.put_dgram(msg.payload)
 
                 
-def run_worker(num, host_config, source):
+def run_worker(num, source, host_config=None):
     if source[0] == 'static':
         try:
             with open(source[1], 'r') as cnf:
@@ -101,12 +103,20 @@ def run_worker(num, host_config, source):
         src = StaticSource(num, src_cfg['interval'], src_cfg['heartbeat'], src_cfg["init_time"], src_cfg['config'])
     else:
         print("worker%03d: unknown data source type:"%num, source[0])
-    worker = Worker(num, host_config, src)
+    if host_config is None:
+        col_handler = MpiHandler("worker%03d-mpi", 0)
+    else:
+        col_handler = ZmqSender("worker%03d-zmq"%num, host_config)
+    worker = Worker(num, src, col_handler)
     sys.exit(worker.run())
 
 
-def run_collector(num, host_config):
-    col = Collector(num, host_config)
+def run_collector(num, host_config=None):
+    if host_config is None:
+        col_handler = MpiHandler("collector-mpi", 0)
+    else:
+        col_handler = ZmqReceiver("collector-zmq", host_config)
+    col = Collector(num, col_handler)
     sys.exit(col.run())
 
 
@@ -145,6 +155,13 @@ def main():
     )
 
     parser.add_argument(
+        '-m',
+        '--mpi',
+        action='store_true',
+        help='use mpi'
+    )    
+
+    parser.add_argument(
         'source',
         metavar='SOURCE',
         help='data source configuration (exampes: static://test.json, psana://exp=xcsdaq13:run=14)'
@@ -173,29 +190,36 @@ def main():
             print("Invalid data source config string:", args.source)
             return 1
             
-
-        for i in range(args.num_workers):
-            proc = mp.Process(name='worker%03d-n%03d'%(i, args.node_num), target=run_worker, args=(i, worker_cfg, src_cfg))
-            proc.daemon = True
-            proc.start()
-            procs.append(proc)
-
-        collector_proc = mp.Process(name='collector-n%03d'%args.node_num, target=run_collector, args=(args.num_workers, collector_cfg))
-        collector_proc.daemon = True
-        collector_proc.start()
-        procs.append(collector_proc)
-
-        for proc in procs:
-            proc.join()
-            if proc.exitcode == 0:
-                print('%s exited successfully'%proc.name)
+        if args.mpi:
+            rank = MPI.COMM_WORLD.Get_rank()
+            size = MPI.COMM_WORLD.Get_size()
+            if rank == 0:
+                run_collector(size)
             else:
-                failed_worker = True
-                print('%s exited with non-zero status code: %d'%(proc.name, proc.exitcode))
+                run_worker(rank, src_cfg)
+        else:
+            for i in range(args.num_workers):
+                proc = mp.Process(name='worker%03d-n%03d'%(i, args.node_num), target=run_worker, args=(i, src_cfg, worker_cfg))
+                proc.daemon = True
+                proc.start()
+                procs.append(proc)
 
-        # return a non-zero status code if any workerss died
-        if failed_worker:
-            return 1
+            collector_proc = mp.Process(name='collector-n%03d'%args.node_num, target=run_collector, args=(args.num_workers, collector_cfg))
+            collector_proc.daemon = True
+            collector_proc.start()
+            procs.append(collector_proc)
+
+            for proc in procs:
+                proc.join()
+                if proc.exitcode == 0:
+                    print('%s exited successfully'%proc.name)
+                else:
+                    failed_worker = True
+                    print('%s exited with non-zero status code: %d'%(proc.name, proc.exitcode))
+
+            # return a non-zero status code if any workerss died
+            if failed_worker:
+                return 1
 
         return 0
     except KeyboardInterrupt:

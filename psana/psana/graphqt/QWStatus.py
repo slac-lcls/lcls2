@@ -9,7 +9,7 @@ from time import time
 from PyQt5.QtWidgets import QGroupBox, QTextEdit, QVBoxLayout
 from PyQt5.QtCore import QTimer #QMargins
 from psana.graphqt.Styles import style
-from psana.graphqt.QIcons import icon
+from psana.graphqt.QWIcons import icon
 
 #---------------------
 
