@@ -6,6 +6,7 @@ add_library(psalg SHARED
 target_include_directories(psalg PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $ENV{CONDA_PREFIX}/include
+    ../../install/include
 )
 
 install(TARGETS psalg

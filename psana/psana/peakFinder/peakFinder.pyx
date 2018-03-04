@@ -28,11 +28,12 @@ cnp.import_array()
 # the Python object is deleted.
 
 cdef class ArrayWrapper:
+    cdef void* shape_ptr
     cdef void* data_ptr
     cdef int size
     cdef int typenum
 
-    cdef set_data(self, void* data_ptr, int size, int typenum):
+    cdef set_data(self, void* buffer_ptr, void* data_ptr, int size, int typenum):
         """ Set the data of the array
 
         This cannot be done in the constructor as it must recieve C-level
@@ -46,7 +47,8 @@ cdef class ArrayWrapper:
             Pointer to the data
 
         """
-        self.data_ptr = data_ptr
+        self.shape_ptr = buffer_ptr
+        self.data_ptr  = data_ptr
         self.size = size
         self.typenum = typenum
 
@@ -63,7 +65,21 @@ cdef class ArrayWrapper:
         """ Frees the array. This is called by Python when all the
         references to the object are gone. """
         print("Dealloc memory")
-        free(<void*>self.data_ptr)
+        free(<void*>self.shape_ptr)
+
+################# Psana Array ######################
+
+cdef extern from "../../../psalg/psalg/include/Array.hh" namespace "temp":
+    cdef cppclass Array[T]:
+        Array() except+
+        cnp.uint32_t *shape()
+        T *data()
+
+cdef extern from "../../../psalg/psalg/include/Heap.hh":
+    cdef cppclass Heap:
+        pass
+    cdef cppclass StandardHeap(Heap):
+        pass
 
 ################# Peak Finder ######################
 
@@ -113,12 +129,12 @@ cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psa
     cdef cppclass PeakFinderAlgos:
          unsigned ps_row
          unsigned ps_col
-         float *rows
-         float *cols
-         float *intens
+         Array[float] rows
+         Array[float] cols
+         Array[float] intens
          unsigned numPeaksSelected
 
-         PeakFinderAlgos(const size_t& seg, const unsigned& pbits, si.uint8_t* drpPtr) except +
+         PeakFinderAlgos(Heap& heap, const size_t& seg, const unsigned& pbits) except +
 
          void setPeakSelectionPars(const float& npix_min
                                   ,const float& npix_max
@@ -148,13 +164,13 @@ cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psa
  
          void printParameters();
 
-         const Peak& peak(const int& i)
+         #const Peak& peak(const int& i)
 
-         const Peak& peakSelected(const int& i)
+         #const Peak& peakSelected(const int& i)
 
-         const vector[Peak]& vectorOfPeaks()
+         #const vector[Peak]& vectorOfPeaks()
 
-         const vector[Peak]& vectorOfPeaksSelected()
+         #const vector[Peak]& vectorOfPeaksSelected()
 
          void localMaxima    (extrim_t *arr2d, const size_t& rows, const size_t& cols)
 
@@ -162,7 +178,7 @@ cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psa
 
          void connectedPixels(conmap_t *arr2d, const size_t& rows, const size_t& cols)
 
-         const vector[vector[float]] peaksSelected()
+         #const vector[vector[float]] peaksSelected()
 
 cdef class py_peak :
     cdef Peak* cptr  # holds a C++ pointer to instance
@@ -245,25 +261,26 @@ cdef class py_peak :
 
 #------------------------------
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
+#from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 
 cdef class peak_finder_algos :
     """ Python wrapper for C++ class. 
     """
     cdef PeakFinderAlgos* cptr  # holds a C++ pointer to instance
     cdef si.uint16_t rows, cols
-    cdef si.uint8_t* drpPtr
+    #cdef si.uint8_t* drpPtr
+    cdef StandardHeap heap
 
-    def __cinit__(self, seg=0, pbits=0):
+    def __cinit__(self, seg=0, pbits=1):
         #print "In peak_finder_algos.__cinit__"
-        self.drpPtr = NULL
-        #self.drpPtr = <si.uint8_t*>PyMem_Malloc(10240*100000)
-        self.cptr = new PeakFinderAlgos(seg, pbits, self.drpPtr)
+        #self.drpPtr = NULL                                   # Python mode, python frees memory
+        #self.drpPtr = <si.uint8_t*>PyMem_Malloc(10240*100000) # DRP mode, do not clean up malloc
+        self.cptr = new PeakFinderAlgos(self.heap, seg, pbits)
 
     def __dealloc__(self):
         #print "In peak_finder_algos.__dealloc__"
         del self.cptr
-        PyMem_Free(self.drpPtr) # no-op if self.drpPtr is NULL
+        #PyMem_Free(self.drpPtr) # no-op if self.drpPtr is NULL
 
     def set_peak_selection_parameters(self\
                                      ,const float& npix_min\
@@ -284,53 +301,51 @@ cdef class peak_finder_algos :
                            ,const double& nsigm) :
         self.cptr.peakFinderV3r3(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, r0, dr, nsigm)
         return self.getPeaks()
-        #self.rows = data.shape[0]
-        #self.cols = data.shape[1]
-        #return self.list_of_peaks_selected()
 
 
-    def peak_finder_v4r3_d2(self\
-                           ,nptype2d data\
-                           ,cnp.ndarray[mask_t, ndim=2, mode="c"] mask\
-                           ,const double& thr_low
-                           ,const double& thr_high
-                           ,const size_t& rank\
-                           ,const double& r0\
-                           ,const double& dr) :
-        self.cptr.peakFinderV4r3(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], thr_low, thr_high, rank, r0, dr)
-        self.rows = data.shape[0]
-        self.cols = data.shape[1]
-        return self.list_of_peaks_selected()
+
+    #def peak_finder_v4r3_d2(self\
+    #                       ,nptype2d data\
+    #                       ,cnp.ndarray[mask_t, ndim=2, mode="c"] mask\
+    #                       ,const double& thr_low
+    #                       ,const double& thr_high
+    #                       ,const size_t& rank\
+    #                       ,const double& r0\
+    #                       ,const double& dr) :
+    #    self.cptr.peakFinderV4r3(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], thr_low, thr_high, rank, r0, dr)
+    #    self.rows = data.shape[0]
+    #    self.cols = data.shape[1]
+    #    return self.list_of_peaks_selected()
 
 
-    def list_of_peaks_selected(self) :
-        cdef vector[Peak] peaks = self.cptr.vectorOfPeaksSelected()
-        return [py_peak.factory(p) for p in peaks]
+    #def list_of_peaks_selected(self) :
+    #    cdef vector[Peak] peaks = self.cptr.vectorOfPeaksSelected()
+    #    return [py_peak.factory(p) for p in peaks]
 
 
-    def list_of_peaks(self) :
-        cdef vector[Peak] peaks = self.cptr.vectorOfPeaks()	
-        return [py_peak.factory(p) for p in peaks]
+    #def list_of_peaks(self) :
+    #    cdef vector[Peak] peaks = self.cptr.vectorOfPeaks()
+    #    return [py_peak.factory(p) for p in peaks]
 
 
-    def peak(self, int i=0) : 
-        return py_peak.factory(self.cptr.peak(i))
+    #def peak(self, int i=0) :
+    #    return py_peak.factory(self.cptr.peak(i))
 
 
-    def peak_selected(self, int i=0) : 
-        return py_peak.factory(self.cptr.peakSelected(i))
+    #def peak_selected(self, int i=0) :
+    #    return py_peak.factory(self.cptr.peakSelected(i))
 
-    def peaks_selected(self):
-        temp = np.asarray(self.cptr.peaksSelected()) # This makes a copy, 5e-5 sec
-        return temp
+    #def peaks_selected(self):
+    #    temp = np.asarray(self.cptr.peaksSelected()) # This makes a copy, 5e-5 sec
+    #    return temp
         #cdef vector[vector[float]] peaks = self.cptr.peaksSelected() # This makes a copy, 5e-5 sec
         #return np.asarray(peaks)
 
-    def getPeaksSelected(self):
-        cdef float[::1] rows_cgrav = <float[:self.cptr.numPeaksSelected]>self.cptr.rows
-        cdef float[::1] cols_cgrav = <float[:self.cptr.numPeaksSelected]>self.cptr.cols
-        cdef float[::1] intens = <float[:self.cptr.numPeaksSelected]>self.cptr.intens
-        return np.asarray(rows_cgrav), np.asarray(cols_cgrav), np.asarray(intens)
+    #def getPeaksSelected(self):
+    #    cdef float[::1] rows_cgrav = <float[:self.cptr.numPeaksSelected]>self.cptr.rows
+    #    cdef float[::1] cols_cgrav = <float[:self.cptr.numPeaksSelected]>self.cptr.cols
+    #    cdef float[::1] intens = <float[:self.cptr.numPeaksSelected]>self.cptr.intens
+    #    return np.asarray(rows_cgrav), np.asarray(cols_cgrav), np.asarray(intens)
 
     def getPeaks(self):
         cdef cnp.ndarray rows_cgrav, cols_cgrav, intens
@@ -338,9 +353,9 @@ cdef class peak_finder_algos :
         arr0 = ArrayWrapper()
         arr1 = ArrayWrapper()
         arr2 = ArrayWrapper()
-        arr0.set_data(<void*> self.cptr.rows, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        arr1.set_data(<void*> self.cptr.cols, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        arr2.set_data(<void*> self.cptr.intens, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        arr0.set_data(<void*> self.cptr.rows.shape(), <void*> self.cptr.rows.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        arr1.set_data(<void*> self.cptr.cols.shape(), <void*> self.cptr.cols.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        arr2.set_data(<void*> self.cptr.intens.shape(), <void*> self.cptr.intens.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
         rows_cgrav = np.array(arr0, copy=False)
         cols_cgrav = np.array(arr1, copy=False)
         intens = np.array(arr2, copy=False)
@@ -353,6 +368,7 @@ cdef class peak_finder_algos :
         Py_INCREF(arr0)
         Py_INCREF(arr1)
         Py_INCREF(arr2)
+        print("done getPeaks")
         return rows_cgrav, cols_cgrav, intens
 
     def local_maxima(self) :

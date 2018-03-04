@@ -18,10 +18,15 @@ typedef std::chrono::high_resolution_clock Clock;
 
 #include "Types.h"
 #include "LocalExtrema.h"
+#include "Heap.hh"
+#include "Array.hh"
+//#include "xtcdata/xtc/DescData.hh" // Array
+
 
 //-----------------------------
 
 using namespace std;
+using namespace temp; // Array
 
 //-----------------------------
 
@@ -271,7 +276,8 @@ public:
    */
 
   //PeakFinderAlgos();
-  PeakFinderAlgos(const size_t& seg=0, const unsigned& pbits=0, uint8_t* drpPtr=NULL);
+  //PeakFinderAlgos(const size_t& seg=0, const unsigned& pbits=0, uint8_t* drpPtr=NULL);
+  PeakFinderAlgos(Heap& heap, const size_t& seg=0, const unsigned& pbits=0);
 
   virtual ~PeakFinderAlgos();
 
@@ -283,7 +289,7 @@ public:
   void _initMapsAndVectors_drp();
 
   /// Evaluate ring indexes for S/N algorithm
-  void _evaluateRingIndexes();
+  //void _evaluateRingIndexes();
   void _evaluateRingIndexes_drp();
 
   /// Prints indexes for S/N algorithm
@@ -315,21 +321,23 @@ public:
 
   /// Prints vector of peaks, i.e. v_peaks_sel or v_peaks
   void _printVectorOfPeaks(const std::vector<Peak>& v);
-  void _printVectorOfPeaks_drp(const Vector<Peak>& v);
+  //void _printVectorOfPeaks_drp(const Vector<Peak>& v);
+  void _printVectorOfPeaks_drp(Array<Peak> v); // TODO: use const?
 
   /// Returns peak from v_peaks by specified index
-  const Peak& peak(const int& i=0){return v_peaks[i];}
+  //const Peak& peak(const int& i=0){return v_peaks[i];}
 
   /// Returns peak from v_peaks_sel by specified index
-  const Peak& peakSelected(const int& i=0){return v_peaks_sel[i];}
+  //const Peak& peakSelected(const int& i=0){return v_peaks_sel[i];}
+  const Peak& peakSelected(const int& i=0){return arr_peaks_sel_drp(i);}
 
   /// Returns vector of peaks v_peaks
-  const std::vector<Peak>& vectorOfPeaks(){return v_peaks;}
+  //const std::vector<Peak>& vectorOfPeaks(){return v_peaks;}
+  const Array<Peak>& vectorOfPeaks(){return arr_peaks_drp;}
 
   /// Returns vector of selected peaks v_peaks_sel
-  const std::vector<Peak>& vectorOfPeaksSelected(){return v_peaks_sel;}
-  const Vector<Peak>& vectorOfPeaksSelected_drp(){return v_peaks_sel_drp;}
-  const std::vector<std::vector<float> >& peaksSelected(); // TODO: remove
+  //const std::vector<Peak>& vectorOfPeaksSelected(){return v_peaks_sel;}
+  const Array<Peak>& vectorOfPeaksSelected_drp(){return arr_peaks_sel_drp;}
   void _convPeaksSelected();
 
   /// Fills-out (returns) array of local maxima
@@ -365,7 +373,6 @@ private:
   float m_thr_low;
   float m_thr_high;
 
-
   double m_reg_thr;  // threshold on intensity
   double m_reg_a0;   // intensity in the initial point for droplet
   int    m_reg_rmin; // region limit
@@ -385,34 +392,43 @@ private:
   float  m_peak_son_min;  // peak selection parameter
 
   // Replace these vectors with c-arrays
-  std::vector<TwoIndexes> v_ind_pixgrp; // vector of pixel indexes for droplet
-  Vector<TwoIndexes> v_ind_pixgrp_drp;
+  //std::vector<TwoIndexes> v_ind_pixgrp; // vector of pixel indexes for droplet
+  //Vector<TwoIndexes> v_ind_pixgrp_drp;
+  Array<TwoIndexes> arr_ind_pixgrp_drp;
 
-  std::vector< std::vector<TwoIndexes> > vv_peak_pixinds; // vector of peak vector of pixel indexes
-  Vector< Vector<TwoIndexes> > vv_peak_pixinds_drp;
+  //std::vector< std::vector<TwoIndexes> > vv_peak_pixinds; // vector of peak vector of pixel indexes
+  //Vector< Vector<TwoIndexes> > vv_peak_pixinds_drp;
+  Array<Array<TwoIndexes> > aa_peak_pixinds_drp;
 
-  std::vector<Peak> v_peaks;
-  Vector<Peak> v_peaks_drp;
+  //std::vector<Peak> v_peaks;
+  //Vector<Peak> v_peaks_drp;
+  Array<Peak> arr_peaks_drp;
 
-  std::vector<Peak> v_peaks_sel;
-  Vector<Peak> v_peaks_sel_drp;
+  //std::vector<Peak> v_peaks_sel;
+  //Vector<Peak> v_peaks_sel_drp;
+  Array<Peak> arr_peaks_sel_drp;
 
-  std::vector<TwoIndexes> v_indexes; // vector of indexes for background ring
-  Vector<TwoIndexes> v_indexes_drp;
+  //std::vector<TwoIndexes> v_indexes; // vector of indexes for background ring
+  //Vector<TwoIndexes> v_indexes_drp;
+  Array<TwoIndexes> arr_indexes_drp;
 
   std::vector<std::vector<float> > vv_peaks_sel;
   float *ps = NULL;
 
   RingAvgRms m_bkgd;
 
-  uint8_t *m_drpPtr;
-  bool drp;
+  //uint8_t *m_drpPtr;
+  //bool drp;
+
+  Heap& m_heap;
+
+  //bool firstInit = true;
 
 public:
   unsigned ps_row, ps_col; // property of float *ps
-  float *rows = NULL;
-  float *cols = NULL;
-  float *intens = NULL;
+  Array<float> rows;
+  Array<float> cols;
+  Array<float> intens;
   unsigned numPeaksSelected = 0;
 //-----------------------------
 
@@ -455,44 +471,24 @@ peakFinderV3r3(const T *data
   if (m_local_minima==0) m_local_minima = new extrim_t[m_img_size]; // This needs to persist, so not on the pebble
   if (m_local_maxima==0) m_local_maxima = new extrim_t[m_img_size];
 
-  if (drp) {
-    m_nminima = localextrema::mapOfLocalMinimums_drp<T>(data, mask, rows, cols,
-                                                        rank, m_local_minima, m_drpPtr); // fills m_local_minima
-    m_npksmax = localextrema::mapOfLocalMaximums_drp<T>(data, mask, rows, cols,
-                                                        rank, m_local_maxima, m_drpPtr); // fills m_local_maxima
-    _initMapsAndVectors_drp();
-    _makeMapOfConnectedPixelsForLocalMaximums_drp<T>(data); // fills m_conmap, v_peaks, vv_peak_pixinds
-    _makeVectorOfSelectedPeaks_drp();                       // make vector of selected peaks
-    _convPeaksSelected();                                   // create vectors of rows,cols,intens
+  m_nminima = localextrema::mapOfLocalMinimums_drp<T>(data, mask, rows, cols,
+                                                      rank, m_local_minima, m_heap); // fills m_local_minima
+  m_npksmax = localextrema::mapOfLocalMaximums_drp<T>(data, mask, rows, cols,
+                                                      rank, m_local_maxima, m_heap); // fills m_local_maxima
+  _initMapsAndVectors_drp();
+  _makeMapOfConnectedPixelsForLocalMaximums_drp<T>(data); // fills m_conmap, v_peaks, vv_peak_pixinds
+  _makeVectorOfSelectedPeaks_drp();                       // make vector of selected peaks
+  _convPeaksSelected();                                   // create vectors of rows,cols,intens
 
-    if (m_pbits) {
-      _printVectorOfPeaks_drp(v_peaks_sel_drp);               // print vector of selected peaks
-      std::cout << "  number of maxima         = " << m_npksmax << '\n';
-      std::cout << "  number of minima         = " << localextrema::numberOfExtrema(m_local_minima, rows, cols, 7) << '\n';
-      std::cout << "  number of found peaks    = " << v_peaks_drp.len << '\n';
-      std::cout << "  number of selected peaks = " << v_peaks_sel_drp.len << '\n';
-    }
-  } else {
-    m_nminima = localextrema::mapOfLocalMinimums<T>(data, mask, rows, cols,
-                                                    rank, m_local_minima); // fills m_local_minima
-    m_npksmax = localextrema::mapOfLocalMaximums<T>(data, mask, rows, cols,
-                                                    rank, m_local_maxima); // fills m_local_maxima
-    _initMapsAndVectors();
-    _makeMapOfConnectedPixelsForLocalMaximums<T>(data); // fills m_conmap, v_peaks, vv_peak_pixinds
-    _makeVectorOfSelectedPeaks();                       // make vector of selected peaks
-    _convPeaksSelected();                               // create vectors of rows,cols,intens
-
-    if (m_pbits) {
-      _printVectorOfPeaks(v_peaks_sel);               // print vector of selected peaks
-      std::cout << "  number of maxima         = " << m_npksmax << '\n';
-      std::cout << "  number of minima         = " << localextrema::numberOfExtrema(m_local_minima, rows, cols, 7) << '\n';
-      std::cout << "  number of found peaks    = " << v_peaks.size() << '\n';
-      std::cout << "  number of selected peaks = " << v_peaks_sel.size() << '\n';
-    }
+  if (m_pbits) {
+    _printVectorOfPeaks_drp(arr_peaks_sel_drp);               // print vector of selected peaks
+    std::cout << "  number of maxima         = " << m_npksmax << '\n';
+    std::cout << "  number of minima         = " << localextrema::numberOfExtrema(m_local_minima, rows, cols, 7) << '\n';
+    std::cout << "  number of found peaks    = " << arr_peaks_drp.num_elem() << '\n';
+    std::cout << "  number of selected peaks = " << arr_peaks_sel_drp.num_elem() << '\n';
   }
 
-  //std::cout << "XXX: m_npksmax =  " << m_npksmax << '\n';
-  //std::cout << "XXX: nminima   =  " << m_nminima << '\n';
+
 
 }
 
@@ -505,6 +501,7 @@ peakFinderV3r3(const T *data
    * 
    * @param[in]  data - pointer to 2-d array with calibrated intensities
    */
+/*
 template <typename T>
 void 
 _makeMapOfConnectedPixelsForLocalMaximums(const T *data)
@@ -546,6 +543,7 @@ _makeMapOfConnectedPixelsForLocalMaximums(const T *data)
 	_procPixGroupV1<T>(data, bkgd, v_ind_pixgrp); // proc connected group and fills v_peaks
     }
 }
+*/
 
 template <typename T>
 void 
@@ -576,18 +574,26 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
         _findConnectedPixelsForLocalMaximumV2_drp<T>(data, r, c); // <<===== 
 	    //if (m_pbits) std::cout << "YYY: number of connected pixels = " << irc << " " << m_numreg << " " << v_ind_pixgrp_drp.len << '\n';
 
-        if(v_ind_pixgrp_drp.len==0) {
+        if(arr_ind_pixgrp_drp.num_elem()==0) {
 	      //std::cout << "drp XXX peakFinderV3r3 WARNING: v_ind_pixgrp is empty... " << m_numreg << " " << v_ind_pixgrp_drp.len << std::endl;
           --m_numreg; continue;
         }
 
-        Vector<TwoIndexes> *_v_ind_pixgrp_drp = new(m_drpPtr) Vector<TwoIndexes>(v_ind_pixgrp_drp);
-        m_drpPtr += sizeof(Vector<TwoIndexes>);
-
-        //std::cout << vv_peak_pixinds_drp.len << std::endl;
+/*
+        Vector<TwoIndexes> *_v_ind_pixgrp_drp;
+        if(drp){
+            _v_ind_pixgrp_drp = new(m_drpPtr) Vector<TwoIndexes>(v_ind_pixgrp_drp);
+            m_drpPtr += sizeof(Vector<TwoIndexes>);
+        } else {
+            _v_ind_pixgrp_drp = new Vector<TwoIndexes>(v_ind_pixgrp_drp);
+        }
         vv_peak_pixinds_drp.data[vv_peak_pixinds_drp.len++] = _v_ind_pixgrp_drp;
+*/
+        //std::cout << "drp XXX peakFinderV3r3... " << arr_ind_pixgrp_drp.num_elem() << std::endl;
+        aa_peak_pixinds_drp.push_back(arr_ind_pixgrp_drp);
+        //std::cout << "####: " << aa_peak_pixinds_drp.num_elem() << std::endl;
 
-        _procPixGroupV1_drp<T>(data, bkgd, v_ind_pixgrp_drp); // proc connected group and fills v_peaks
+        _procPixGroupV1_drp<T>(data, bkgd, arr_ind_pixgrp_drp); // proc connected group and fills v_peaks
 
     }
   }
@@ -617,6 +623,7 @@ _makeMapOfConnectedPixelsForLocalMaximums_drp(const T *data)
    * @param[in]  col  - pixel column
    */
 
+/*
 template <typename T>
 RingAvgRms
 _evaluateRingAvgRmsV1(const T *data
@@ -666,6 +673,7 @@ _evaluateRingAvgRmsV1(const T *data
   //std::cout << "done RingAvgRms: " << sum1 << "," << sum2 << "," << sum0 << std::endl;
   return RingAvgRms(sum1, sum2, sum0); // returns avg, rms, npx
 }
+*/
 
 template <typename T>
 RingAvgRms
@@ -679,9 +687,9 @@ _evaluateRingAvgRmsV1_drp(const T *data ,const int& row ,const int& col )
   double   sum2 = 0;
   int      irc  = 0;
 
-  for(unsigned int ii = 0; ii < v_indexes_drp.len; ii++) {
-    int ir = row + v_indexes_drp.data[ii]->i; //(ij->i);
-    int ic = col + v_indexes_drp.data[ii]->j; //(ij->j);
+  for(unsigned int ii = 0; ii < arr_indexes_drp.num_elem(); ii++) {
+    int ir = row + arr_indexes_drp(ii).i; //(ij->i);
+    int ic = col + arr_indexes_drp(ii).j; //(ij->j);
 
     //std::cout << "YYY: " << " row=" << row << " col=" << col << " ir=" << ir << " ic=" << ic << '\n';
 
@@ -716,7 +724,7 @@ _evaluateRingAvgRmsV1_drp(const T *data ,const int& row ,const int& col )
 //-----------------------------
   /** The same as _evaluateRingAvgRmsV1, but selection of pixel is for Droplet
    */
-
+/*
 template <typename T>
 RingAvgRms
 _evaluateRingAvgRmsForDroplet(const T *data
@@ -763,6 +771,7 @@ _evaluateRingAvgRmsForDroplet(const T *data
 
   return RingAvgRms(sum1, sum2, sum0); // returns avg, rms, npx
 }
+*/
 
 //-----------------------------
   /**
@@ -776,7 +785,7 @@ _evaluateRingAvgRmsForDroplet(const T *data
    * @param[in]  r0 - droplet central pixel row-coordinate 
    * @param[in]  c0 - droplet central pixel column-coordinate   
    */
-
+/*
 template <typename T>
 void
 _findConnectedPixelsForLocalMaximumV2(const T* data
@@ -800,7 +809,7 @@ _findConnectedPixelsForLocalMaximumV2(const T* data
   //std::cout << "v_ind_pixgrp clear" << std::endl;
 
   _findConnectedPixelsInRegionV3<T>(data, r0, c0); // begin recursion
-}
+}*/
 
 template <typename T>
 void
@@ -820,14 +829,16 @@ _findConnectedPixelsForLocalMaximumV2_drp(const T* data
   //std::cout << "ZZZ _findConnectedPixelsForLocalMaximum : rank=" << rank  << " r0=" << r0 << " c0=" << c0 << '\n';
   //std::cout << "ZZZ: m_reg_rmin: " << m_reg_rmin << "  m_reg_rmax: " << m_reg_rmax
   //        << "  m_reg_cmin: " << m_reg_cmin << "  m_reg_cmax: " << m_reg_cmax << '\n';
-  v_ind_pixgrp_drp.len = 0;
+
+  //v_ind_pixgrp_drp.len = 0;
+  arr_ind_pixgrp_drp.shape(0);
 
   _findConnectedPixelsInRegionV3_drp<T>(data, r0, c0); // begin recursion
 }
 
 //-----------------------------
 // Templated recursive method finging connected pixels for lacalMaximums
-
+/*
 template <typename T>
 void
 _findConnectedPixelsInRegionV3(const T* data, const int& r, const int& c)
@@ -847,7 +858,7 @@ _findConnectedPixelsInRegionV3(const T* data, const int& r, const int& c)
   if(  c+1 < m_reg_cmax)  _findConnectedPixelsInRegionV3<T>(data, r, c+1);
   if(!(r-1 < m_reg_rmin)) _findConnectedPixelsInRegionV3<T>(data, r-1, c);
   if(!(c-1 < m_reg_cmin)) _findConnectedPixelsInRegionV3<T>(data, r, c-1);  
-}
+}*/
 
 template <typename T>
 void
@@ -861,8 +872,16 @@ _findConnectedPixelsInRegionV3_drp(const T* data, const int& r, const int& c)
 
   m_conmap[irc] = m_numreg; // mark pixel on map
 
-  v_ind_pixgrp_drp.data[v_ind_pixgrp_drp.len++] = new(m_drpPtr) TwoIndexes(r,c);
-  m_drpPtr += sizeof(TwoIndexes);
+/*
+  if(drp) {
+      v_ind_pixgrp_drp.data[v_ind_pixgrp_drp.len++] = new(m_drpPtr) TwoIndexes(r,c);
+      m_drpPtr += sizeof(TwoIndexes);
+  } else {
+      v_ind_pixgrp_drp.data[v_ind_pixgrp_drp.len++] = new TwoIndexes(r,c);
+  }
+*/
+  arr_ind_pixgrp_drp.push_back(TwoIndexes(r,c));
+  //std::cout << "###: "<< arr_ind_pixgrp_drp.num_elem() << std::endl;
 
   if(  r+1 < m_reg_rmax)  _findConnectedPixelsInRegionV3_drp<T>(data, r+1, c);
   if(  c+1 < m_reg_cmax)  _findConnectedPixelsInRegionV3_drp<T>(data, r, c+1);
@@ -882,7 +901,7 @@ _findConnectedPixelsInRegionV3_drp(const T* data, const int& r, const int& c)
    * @param[in] bkgd  - structure of base level ave, rms, npix
    * @param[in] vinds - vector of connected pixel indexes
    */
-
+/*
 template <typename T>
 void
 _procPixGroupV1(const T* data
@@ -973,19 +992,19 @@ _procPixGroupV1(const T* data
 
   v_peaks.push_back(peak);
 
-}
+}*/
 
 template <typename T>
 void
 _procPixGroupV1_drp(const T* data
 	       ,const RingAvgRms& bkgd
-	       ,const Vector<TwoIndexes>& vinds
+	       ,Array<TwoIndexes>& vinds // TODO: use const?
                )
 {
-  if (vinds.len == 0) return; //if(vinds.empty()) return;
+  if (vinds.num_elem() == 0) return; //if(vinds.empty()) return;
 
-  const int& r0 = vinds.data[0]->i; //const int& r0 = vinds.[0].i;
-  const int& c0 = vinds.data[0]->j; //const int& c0 = vinds[0].j;
+  const int& r0 = vinds(0).i; //const int& r0 = vinds.[0].i;
+  const int& c0 = vinds(0).j; //const int& c0 = vinds[0].j;
 
   int irc0 = r0*m_cols+c0;
 
@@ -1001,9 +1020,9 @@ _procPixGroupV1_drp(const T* data
   int      rmax = 0;
   int      cmax = 0;
 
-  for(unsigned int ii = 0; ii < vinds.len; ii++) {
-      int r = vinds.data[ii]->i;
-      int c = vinds.data[ii]->j;
+  for(unsigned int ii = 0; ii < vinds.num_elem(); ii++) {
+      int r = vinds(ii).i;
+      int c = vinds(ii).j;
       int irc = r*m_cols+c;
       double a = data[irc] - bkgd.avg;
 
@@ -1022,46 +1041,53 @@ _procPixGroupV1_drp(const T* data
 
   if(npix<1) return;
 
-  Peak *peak = new(m_drpPtr) Peak;
-  m_drpPtr += sizeof(Peak);
+  /*Peak *peak;
+  if(drp){
+    peak = new(m_drpPtr) Peak;
+    m_drpPtr += sizeof(Peak);
+  } else {
+    peak = new Peak;
+  }*/
+  Peak peak;
 
-  peak->seg     = m_seg;
-  peak->row     = r0;
-  peak->col     = c0;
-  peak->npix    = npix;
-  peak->amp_max = a0; // - bkgd.avg;
-  peak->amp_tot = samp; // - bkgd.avg * npix;
+  peak.seg     = m_seg;
+  peak.row     = r0;
+  peak.col     = c0;
+  peak.npix    = npix;
+  peak.amp_max = a0; // - bkgd.avg;
+  peak.amp_tot = samp; // - bkgd.avg * npix;
 
   if(samp>0) {
     sar1 /= samp;
     sac1 /= samp;
     sar2 = sar2/samp - sar1*sar1;
     sac2 = sac2/samp - sac1*sac1;
-    peak->row_cgrav = sar1;
-    peak->col_cgrav = sac1;
-    peak->row_sigma = (npix>1 && sar2>0) ? std::sqrt(sar2) : 0;
-    peak->col_sigma = (npix>1 && sac2>0) ? std::sqrt(sac2) : 0;
+    peak.row_cgrav = sar1;
+    peak.col_cgrav = sac1;
+    peak.row_sigma = (npix>1 && sar2>0) ? std::sqrt(sar2) : 0;
+    peak.col_sigma = (npix>1 && sac2>0) ? std::sqrt(sac2) : 0;
   }
   else {
-    peak->row_cgrav = r0;
-    peak->col_cgrav = c0;
-    peak->row_sigma = 0;
-    peak->col_sigma = 0;
+    peak.row_cgrav = r0;
+    peak.col_cgrav = c0;
+    peak.row_sigma = 0;
+    peak.col_sigma = 0;
   }
 
-  peak->row_min   = rmin;
-  peak->row_max   = rmax;
-  peak->col_min   = cmin;
-  peak->col_max   = cmax;  
-  peak->bkgd      = bkgd.avg;
-  peak->noise     = bkgd.rms;
+  peak.row_min   = rmin;
+  peak.row_max   = rmax;
+  peak.col_min   = cmin;
+  peak.col_max   = cmax;
+  peak.bkgd      = bkgd.avg;
+  peak.noise     = bkgd.rms;
   //peak.bkgnpx   = bkgd.npx;
   double noise_tot = bkgd.rms * std::sqrt(npix);
-  peak->son       = (noise_tot>0) ? peak->amp_tot / noise_tot : 0;
+  peak.son       = (noise_tot>0) ? peak.amp_tot / noise_tot : 0;
 
   //std::cout << "son: " << peak->son << std::endl;
 
-  v_peaks_drp.data[v_peaks_drp.len++] = peak;
+  //v_peaks_drp.data[v_peaks_drp.len++] = peak;
+  arr_peaks_drp.push_back(peak);
 
 }
 
@@ -1076,6 +1102,7 @@ _procPixGroupV1_drp(const T* data
    *   - get rid of ndarray
    *   - pass most of parameters via member data - "Droplet-finder" - further improvement of V4r1.
    */
+/*
 template <typename T>
 void
 peakFinderV4r3(const T *data
@@ -1121,6 +1148,7 @@ peakFinderV4r3(const T *data
   //std::cout << "XXX: number of connected pixels = " << v_ind_pixgrp.size() << '\n';
 
 }
+*/
 
 //-----------------------------
 //-----------------------------
@@ -1132,6 +1160,7 @@ peakFinderV4r3(const T *data
    * 
    * @param[in]  data - pointer to 2-d array with calibrated intensities
    */
+/*
 template <typename T>
 void 
 _makeMapOfConnectedPixelsForDroplets(const T *data)
@@ -1170,6 +1199,7 @@ _makeMapOfConnectedPixelsForDroplets(const T *data)
 	_procPixGroupV1<T>(data, bkgd, v_ind_pixgrp); // proc connected group and fills v_peaks
     }
 }
+*/
 
 //-----------------------------
   /**
@@ -1180,6 +1210,7 @@ _makeMapOfConnectedPixelsForDroplets(const T *data)
    * @param[in]  c0 - droplet central pixel column-coordinate   
    */
 
+/*
 //template <typename T>
 void
 _findConnectedPixelsForDroplet(const int& r0
@@ -1219,7 +1250,7 @@ _findConnectedPixelsInDroplet(const int& r, const int& c)
   if(!(r-1 < m_reg_rmin)) _findConnectedPixelsInDroplet(r-1, c);
   if(!(c-1 < m_reg_cmin)) _findConnectedPixelsInDroplet(r, c-1);  
 }
-
+*/
 //-----------------------------
 //-----------------------------
 //-----------------------------
