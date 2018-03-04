@@ -43,5 +43,10 @@ ax.imshow(data1, interpolation='none')
 ax.scatter(cols1, rows1, s=50, facecolors='none', edgecolors='r')
 plt.show()
 
-#print("rows1: ", rows1)
-#print("rows: ", rows)
+print("rows1: ", rows1)
+print("rows: ", rows)
+
+exit(0)
+
+for i in range(10000):
+    r, c, _ = pk.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)

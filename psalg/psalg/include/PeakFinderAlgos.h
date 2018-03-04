@@ -275,9 +275,7 @@ public:
    * @param[in] pbits  - print control bit-word; =0-print nothing, =1 debug, =2 info, ...
    */
 
-  //PeakFinderAlgos();
-  //PeakFinderAlgos(const size_t& seg=0, const unsigned& pbits=0, uint8_t* drpPtr=NULL);
-  PeakFinderAlgos(Heap& heap, const size_t& seg=0, const unsigned& pbits=0);
+  PeakFinderAlgos(const size_t& seg=0, const unsigned& pbits=0);
 
   virtual ~PeakFinderAlgos();
 
@@ -285,7 +283,7 @@ public:
   void printParameters();
 
   /// Initialaise maps and vectors per event; uses m_img_size, m_npksmax, vectors and maps
-  void _initMapsAndVectors();
+  //void _initMapsAndVectors();
   void _initMapsAndVectors_drp();
 
   /// Evaluate ring indexes for S/N algorithm
@@ -295,7 +293,7 @@ public:
   /// Prints indexes for S/N algorithm
   void printMatrixOfRingIndexes();
 
-  void printVectorOfRingIndexes();
+  //void printVectorOfRingIndexes();
   void printVectorOfRingIndexes_drp();
 
   /// Recursive method finding connected pixels in constrained region and filling vector of indexes for V3r3.
@@ -316,12 +314,11 @@ public:
   bool _peakIsSelected(const Peak& peak);
 
   /// Makes vector of selected peaks v_peaks_sel from v_peaks
-  void _makeVectorOfSelectedPeaks();
+  //void _makeVectorOfSelectedPeaks();
   void _makeVectorOfSelectedPeaks_drp();
 
   /// Prints vector of peaks, i.e. v_peaks_sel or v_peaks
-  void _printVectorOfPeaks(const std::vector<Peak>& v);
-  //void _printVectorOfPeaks_drp(const Vector<Peak>& v);
+  //void _printVectorOfPeaks(const std::vector<Peak>& v);
   void _printVectorOfPeaks_drp(Array<Peak> v); // TODO: use const?
 
   /// Returns peak from v_peaks by specified index
@@ -354,6 +351,8 @@ public:
   void connectedPixels(conmap_t *map, const size_t& rows, const size_t& cols) {
     std::memcpy(map, m_conmap, rows*cols*sizeof(conmap_t)); 
   }
+
+  void setHeap(Heap& heap);
 
 private:
   size_t m_seg;      // segment index (for list of images)
@@ -391,41 +390,21 @@ private:
   float  m_peak_atot_thr; // peak selection parameter
   float  m_peak_son_min;  // peak selection parameter
 
-  // Replace these vectors with c-arrays
-  //std::vector<TwoIndexes> v_ind_pixgrp; // vector of pixel indexes for droplet
-  //Vector<TwoIndexes> v_ind_pixgrp_drp;
-  Array<TwoIndexes> arr_ind_pixgrp_drp;
-
-  //std::vector< std::vector<TwoIndexes> > vv_peak_pixinds; // vector of peak vector of pixel indexes
-  //Vector< Vector<TwoIndexes> > vv_peak_pixinds_drp;
-  Array<Array<TwoIndexes> > aa_peak_pixinds_drp;
-
-  //std::vector<Peak> v_peaks;
-  //Vector<Peak> v_peaks_drp;
+  Array<TwoIndexes> arr_ind_pixgrp_drp; // vector of pixel indexes for droplet
+  Array<Array<TwoIndexes> > aa_peak_pixinds_drp; // vector of peak vector of pixel indexes
   Array<Peak> arr_peaks_drp;
-
-  //std::vector<Peak> v_peaks_sel;
-  //Vector<Peak> v_peaks_sel_drp;
   Array<Peak> arr_peaks_sel_drp;
-
-  //std::vector<TwoIndexes> v_indexes; // vector of indexes for background ring
-  //Vector<TwoIndexes> v_indexes_drp;
-  Array<TwoIndexes> arr_indexes_drp;
+  Array<TwoIndexes> arr_indexes_drp; // vector of indexes for background ring
 
   std::vector<std::vector<float> > vv_peaks_sel;
   float *ps = NULL;
 
   RingAvgRms m_bkgd;
 
-  //uint8_t *m_drpPtr;
-  //bool drp;
-
-  Heap& m_heap;
-
-  //bool firstInit = true;
+  StandardHeap heap;
+  Heap& m_heap = heap;
 
 public:
-  unsigned ps_row, ps_col; // property of float *ps
   Array<float> rows;
   Array<float> cols;
   Array<float> intens;

@@ -7,7 +7,6 @@
 class Heap{
 public:
     virtual void *malloc_array(size_t size){
-        std::cout << "malloc: " << size << "+" << sizeof(XtcData::Shape) << " bytes" << std::endl;
         return malloc(size+sizeof(XtcData::Shape));
     }
     virtual void free(void *ptr) = 0;
