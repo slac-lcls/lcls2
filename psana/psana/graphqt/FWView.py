@@ -142,6 +142,7 @@ class FWView(QGraphicsView) :
 
         sc = QGraphicsScene()
         QGraphicsView.__init__(self, sc, parent)
+
         self.set_signs_of_transform()        
         self.set_style()
         self.set_view()

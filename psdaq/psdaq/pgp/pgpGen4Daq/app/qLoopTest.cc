@@ -73,7 +73,7 @@ int main (int argc, char **argv) {
 
   if (loopb >= 0)
     for(unsigned i=0; i<4; i++)
-      p->pgpLane[i].loopback = (loopb & (1<<i)) ? (2<<16) : 0;
+      p->pgpLane[i].misc.loopback = (loopb & (1<<i)) ? (2<<16) : 0;
 
   uint32_t control = p->sim.control;
   printf("AppTxSim control = %08x\n", control);

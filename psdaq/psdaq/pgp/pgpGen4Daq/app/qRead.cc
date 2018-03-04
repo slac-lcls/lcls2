@@ -27,11 +27,13 @@ static void usage(const char* p)
   printf("\t-d <device>  [e.g. /dev/pgpdaq0]\n");
   printf("\t-c <client>  \n");
   printf("\t-L <lanes>   [mask of lanes]\n");
+  printf("\t-P <nprint>  [events to print]\n");
 }
 
 static uint32_t events = 0;
 static uint64_t bytes  = 0;
 static uint32_t misses = 0;
+static uint32_t excepts= 0;
 
 static void printrate(const char* name,
                       const char* units,
@@ -57,6 +59,7 @@ static void* countThread(void* p)
   uint32_t pevents = events;
   uint32_t pmisses = misses;
   uint64_t pbytes  = bytes;
+  uint64_t pexcepts= excepts;
 
   timespec ptv;
   clock_gettime(CLOCK_REALTIME, &ptv);
@@ -72,9 +75,11 @@ static void* countThread(void* p)
     printrate("\n ", "Hz", revents);
     printrate("\t ", "B/s", rbytes);
     printrate("\t misses ", "Hz", rmisses);
+    printf("\t excepts %u", (excepts-pexcepts));
     pevents = events;
     pmisses = misses;
     pbytes  = bytes;
+    pexcepts= excepts;
     ptv     = tv;
   }
 
@@ -87,14 +92,16 @@ int main (int argc, char **argv) {
   const char*  dev = "/dev/pgpdaq0";
   unsigned     client = 0;
   unsigned     lanes  = 1;
+  unsigned     nprint = 0;
   bool         lverbose = false;
   int c;
 
-  while((c=getopt(argc,argv,"d:c:L:")) != EOF) {
+  while((c=getopt(argc,argv,"d:c:L:P:")) != EOF) {
     switch(c) {
     case 'c': client = strtoul(optarg,NULL,0); break;
     case 'd': dev    = optarg; break;
     case 'L': lanes  = strtoul(optarg,NULL,0); break;
+    case 'P': nprint = strtoul(optarg,NULL,0); break;
     default: usage(argv[0]); return 0;
     }
   }
@@ -124,8 +131,12 @@ int main (int argc, char **argv) {
     PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)mmap(NULL, sizeof(PgpDaq::PgpCard), (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0);   
     uint32_t MAX_LANES = p->nlanes();
     for(unsigned i=0; i<MAX_LANES; i++)
-      if (lanes & (1<<i))
+      if (lanes & (1<<i)) {
+        printf("dmaLane[%i] @ %p\n", i, (char*)&p->dmaLane[i]-(char*)p);
+        printf("pgpLane[%i] @ %p\n", i, (char*)&p->pgpLane[i]-(char*)p);
         p->dmaLane[i].client = client;
+        p->pgpLane[i].axil.txControl = 1;  // disable flow control
+      }
   }
 
   //
@@ -135,6 +146,7 @@ int main (int argc, char **argv) {
   rd.data  = reinterpret_cast<uintptr_t>(new char[0x200000]);
   unsigned index = 0;
   uint32_t qlast = 0;
+  unsigned slast = 0;
   while(1) {
     //    usleep(1000);
     rd.index = 0;
@@ -149,11 +161,20 @@ int main (int argc, char **argv) {
       continue;
     }
 
-    if (lverbose) {
+    if (rd.size != slast) {
+      excepts++;
+      slast = rd.size;
+    }
+
+    if (nprint) {
       const uint32_t* q = reinterpret_cast<const uint32_t*>(rd.data);
       printf("%08x [%d] [%x], idx %03x, dst %02x, flags %02x, err %01x, size %06x\n", 
              q[0], q[0]-qlast, index, rd.index, rd.dest, rd.flags, rd.error, rd.size);
+      for(unsigned i=0; i<(rd.size>>2); i++)
+        printf("%08x%c",q[i],(i%8)==7 ? '\n':' ');
+      printf("\n");
       qlast = q[0];
+      nprint--;
     }
 
     events++;

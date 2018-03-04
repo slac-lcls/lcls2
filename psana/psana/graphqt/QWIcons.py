@@ -1,13 +1,13 @@
 #------------------------------
 """
-:py:class:`QIcons` - access to icons
+:py:class:`QWIcons` - access to icons
 ====================================
 
 Usage::
 
 
     # Import
-    from psana.graphqt.QIcons import icon
+    from psana.graphqt.QWIcons import icon
     from PyQt5 import QtWidgets
 
     app = QtWidgets.QApplication(sys.argv)
@@ -18,7 +18,7 @@ Usage::
     icon2 = icon.icon_home
 
 See:
-    - :py:class:`QIcons`
+    - :py:class:`QWIcons`
     - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
 
 This software was developed for the LCLS2 project.
@@ -34,7 +34,7 @@ from PyQt5 import QtWidgets, QtGui#, QtCore
 
 #------------------------------
 
-class QIcons() :
+class QWIcons() :
     """A singleton storage of icons with caching.
     """
     def __init__(self) :
@@ -133,11 +133,11 @@ class QIcons() :
  
 #------------------------------
         
-icon = QIcons()
+icon = QWIcons()
 
 #------------------------------
 
-def test_QIcons() :
+def test_QWIcons() :
     print('Icon pathes:')
     print(icon.path_icon_contents)
     print(icon.path_icon_mail_forward)
@@ -170,7 +170,7 @@ if __name__ == "__main__" :
     import sys
     app = QtWidgets.QApplication(sys.argv)
     icon.set_icons()
-    test_QIcons()
+    test_QWIcons()
     sys.exit(0)
 
 #------------------------------

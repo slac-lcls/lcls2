@@ -27,6 +27,18 @@ target_link_libraries(qRead
   rt
 )
 
+add_executable(qReset   qReset.cc)
+target_include_directories(qReset PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $ENV{CONDA_PREFIX}/include
+)
+
+target_link_libraries(qRead
+  dl
+  pthread
+  rt
+)
+
 add_executable(qLoopTest qLoopTest.cc)
 target_include_directories(qLoopTest PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>

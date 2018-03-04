@@ -4,7 +4,7 @@ import time
 # Use snek environment on RHEL7
 # snake-RHEL6 on RHEL6
 
-file_name = 'test_results/out_two_node.txt'
+file_name = 'test_results/drp_two_nodes_4stripe.txt'
 
 sub_call = '`which mpirun` -q -map-by node --oversubscribe -n %i -H drp-tst-acc01,drp-tst-acc02,drp-tst-acc03,drp-tst-acc04,drp-tst-acc05,drp-tst-acc06 python rwc_mpi.py'# | tee -a out_6nodes3.txt'
 
@@ -21,8 +21,8 @@ nodes = ','.join(node_list)
 sub_call = '`which mpirun` -q -map-by node --oversubscribe -n %i -H '+ nodes + ' python rwc_mpi.py | tee -a ' + file_name
 
 
-for i in range(1):
-    for cores in [4]:
+for i in range(4):
+    for cores in range(2,17,2):
         tot_cores = cores*len(node_list)
         out_call = sub_call % tot_cores
         out_print = 'Calling %i cores' % tot_cores
