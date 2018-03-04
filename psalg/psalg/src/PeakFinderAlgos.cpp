@@ -18,7 +18,7 @@ namespace psalgos {
 
 //-----------------------------
 
-PeakFinderAlgos::PeakFinderAlgos(Heap& heap, const size_t& seg, const unsigned& pbits)
+PeakFinderAlgos::PeakFinderAlgos(const size_t& seg, const unsigned& pbits)
   : m_seg(seg)
   , m_pbits(pbits)
   , m_local_maxima(0)
@@ -29,7 +29,6 @@ PeakFinderAlgos::PeakFinderAlgos(Heap& heap, const size_t& seg, const unsigned& 
   , m_peak_amax_thr(0)
   , m_peak_atot_thr(0)
   , m_peak_son_min(0)
-  , m_heap(heap)
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in c-tor PeakFinderAlgos\n";
 }
@@ -44,6 +43,9 @@ PeakFinderAlgos::~PeakFinderAlgos()
   if (m_local_minima) delete[] m_local_minima;
   if (m_conmap)       delete[] m_conmap;
 }
+
+void
+PeakFinderAlgos::setHeap(Heap& heap) { m_heap = heap; }
 
 //-----------------------------
 
@@ -69,11 +71,11 @@ PeakFinderAlgos::printParameters()
 
 void PeakFinderAlgos::_convPeaksSelected(){
     numPeaksSelected = arr_peaks_sel_drp.num_elem(); //v_peaks_sel_drp.len;
-    rows = Array<float>(m_heap.malloc_array(numPeaksSelected*sizeof(float)),1);
+    rows = Array<float>(m_heap, numPeaksSelected*sizeof(float), 1);
     rows.shape(numPeaksSelected);
-    cols = Array<float>(m_heap.malloc_array(numPeaksSelected*sizeof(float)),1);
+    cols = Array<float>(m_heap, numPeaksSelected*sizeof(float), 1);
     cols.shape(numPeaksSelected);
-    intens = Array<float>(m_heap.malloc_array(numPeaksSelected*sizeof(float)),1);
+    intens = Array<float>(m_heap, numPeaksSelected*sizeof(float), 1);
     intens.shape(numPeaksSelected);
     for(unsigned i = 0; i< numPeaksSelected; i++){
         //const Peak *p = v_peaks_sel_drp.data[i];
@@ -362,13 +364,6 @@ PeakFinderAlgos::_makeVectorOfSelectedPeaks_drp()
 
 
 //-----------------------------
-
-void
-PeakFinderAlgos::_printVectorOfPeaks(const std::vector<Peak>& v) {
-  for(std::vector<Peak>::const_iterator it=v.begin(); it!=v.end(); ++it)
-    //const Peak& peak = (*it);
-    std::cout << "  " << (*it) << '\n'; 
-}
 
 void
 PeakFinderAlgos::_printVectorOfPeaks_drp(Array<Peak> v) {

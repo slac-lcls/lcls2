@@ -75,11 +75,11 @@ cdef extern from "../../../psalg/psalg/include/Array.hh" namespace "temp":
         cnp.uint32_t *shape()
         T *data()
 
-cdef extern from "../../../psalg/psalg/include/Heap.hh":
-    cdef cppclass Heap:
-        pass
-    cdef cppclass StandardHeap(Heap):
-        pass
+#cdef extern from "../../../psalg/psalg/include/Heap.hh":
+#    cdef cppclass Heap:
+#        pass
+#    cdef cppclass StandardHeap(Heap):
+#        pass
 
 ################# Peak Finder ######################
 
@@ -134,7 +134,7 @@ cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psa
          Array[float] intens
          unsigned numPeaksSelected
 
-         PeakFinderAlgos(Heap& heap, const size_t& seg, const unsigned& pbits) except +
+         PeakFinderAlgos(const size_t& seg, const unsigned& pbits) except +
 
          void setPeakSelectionPars(const float& npix_min
                                   ,const float& npix_max
@@ -269,13 +269,13 @@ cdef class peak_finder_algos :
     cdef PeakFinderAlgos* cptr  # holds a C++ pointer to instance
     cdef si.uint16_t rows, cols
     #cdef si.uint8_t* drpPtr
-    cdef StandardHeap heap
+    #cdef StandardHeap heap
 
-    def __cinit__(self, seg=0, pbits=1):
+    def __cinit__(self, seg=0, pbits=0):
         #print "In peak_finder_algos.__cinit__"
         #self.drpPtr = NULL                                   # Python mode, python frees memory
         #self.drpPtr = <si.uint8_t*>PyMem_Malloc(10240*100000) # DRP mode, do not clean up malloc
-        self.cptr = new PeakFinderAlgos(self.heap, seg, pbits)
+        self.cptr = new PeakFinderAlgos(seg, pbits)
 
     def __dealloc__(self):
         #print "In peak_finder_algos.__dealloc__"

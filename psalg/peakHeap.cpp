@@ -1,4 +1,4 @@
-//g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2 peak.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peak
+//g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peakHeap
 
 #include <iostream>
 #include <stdlib.h>
@@ -9,6 +9,9 @@
 
 //#include "xtcdata/xtc/DescData.hh" // Array
 #include "psalg/include/Array.hh"
+
+#include <chrono> // timer
+typedef std::chrono::high_resolution_clock Clock;
 
 using namespace psalgos;
 using namespace temp;
@@ -46,10 +49,11 @@ int main () {
 
   // Step 1: Init PeakFinderAlgos
   const size_t  seg = 0;
-  const unsigned pbits = 1;
+  const unsigned pbits = 0;
 
   PeakFinderAlgos *ptr;
-  ptr = new PeakFinderAlgos(m_heap, seg, pbits);
+  ptr = new PeakFinderAlgos(seg, pbits);
+  ptr->setHeap(m_heap);
 
   // Step 2: Set params
   const float npix_min = 2;
@@ -72,6 +76,24 @@ int main () {
 
   ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
 
+  auto tic = Clock::now();
+
+  int numEvents = 1000;
+  for(int i = 0; i < numEvents; i++){
+    PebbleHeap m_heap;
+    ptr->setHeap(m_heap);
+    if(i%2==0) {
+      ptr->peakFinderV3r3(data, mask, rows, cols, rank, r0, dr, nsigm);
+    } else {
+      ptr->peakFinderV3r3(data1, mask, rows, cols, rank, r0, dr, nsigm);
+    }
+    //ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
+  }
+
+  auto toc = Clock::now();
+  std::cout << "Delta t: " << std::endl
+            << std::chrono::duration_cast<std::chrono::microseconds>(toc - tic).count() / numEvents
+            << " microseconds" << std::endl;
 // DATA
 // Peak 1
 //Seg:  0 Row:   4 Col: 348 Npix: 24 Imax:  995.7 Itot: 2843.5 CGrav r:   4.0 c: 349.0 Sigma r: 0.29 c: 0.86 Rows[   1:   7] Cols[ 345: 351] B:  4.3 N:  1.8 S/N:314.7
