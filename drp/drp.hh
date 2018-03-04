@@ -46,10 +46,18 @@ struct PGPData
 class Pebble
 {
 public:
-    void* fex_data() {return reinterpret_cast<void*>(_pebble_buffer);} 
+    Pebble():_stack(_stack_buffer){}
+    void* fex_data() {return reinterpret_cast<void*>(_fex_buffer);}
     PGPData* pgp_data;
+    void *malloc(size_t size) {
+        void *curr_stack = _stack;
+        _stack += size;
+        return curr_stack;
+    }
 private:
-    uint8_t _pebble_buffer[1024*1024];
+    uint8_t _fex_buffer[1024*1024];
+    uint8_t _stack_buffer[1024*1024];
+    uint8_t *_stack;
 };
 
 #endif // DRP_H

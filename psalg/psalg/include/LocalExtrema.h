@@ -13,10 +13,13 @@
 #include <cmath>    // for sqrt
 
 #include "Types.h"
+#include "Array.hh"
+#include "Heap.hh"
 
 //-----------------------------
 
 using namespace std;
+using namespace temp; // Array
 
 //-----------------------------
 
@@ -91,12 +94,12 @@ typedef types::TwoIndexes TwoIndexes;
 //-----------------------------
 
 std::vector<TwoIndexes> evaluateDiagIndexes(const size_t& rank);
-Vector<TwoIndexes>* evaluateDiagIndexes_drp(const size_t& rank, const bool drp, uint8_t*& drpPtr);
+Array<TwoIndexes> evaluateDiagIndexes_drp(const size_t& rank, Heap& heap);
 void printMatrixOfDiagIndexes(const size_t& rank);
 void printVectorOfDiagIndexes(const size_t& rank);
 size_t numberOfExtrema(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel=7);
-std::vector<TwoIndexes> vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel=7, const size_t& maxlen=0);
-Vector<TwoIndexes>* vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen, const bool drp, uint8_t*& drpPtr);
+//std::vector<TwoIndexes> vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel=7, const size_t& maxlen=0);
+//Vector<TwoIndexes>* vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen, const bool drp, uint8_t*& drpPtr);
 //-----------------------------
   /**
    * @brief returns number of found minima and array local_minima of local minimums of requested rank, 
@@ -344,7 +347,7 @@ mapOfLocalMinimums(const T *data
   extrim_t *_local_minima = local_minima;
 
   //if(_local_minima.empty()) 
-  //   _local_minima = make_ndarray<extrim_t>(data.shape()[0], data.shape()[1]);
+  //   _local_minima = make_ndarray<extrim_t>(data.num_elem(), data.shape()[1]);
   std::fill_n(_local_minima, int(rows*cols), extrim_t(0));
 
   size_t counter = 0;
@@ -481,19 +484,19 @@ mapOfLocalMinimums_drp(const T *data
                   ,const size_t& cols
                   ,const size_t& rank
                   ,extrim_t *local_minima
-                  ,uint8_t*& drpPtr
+                  ,Heap& heap
                   )
 {
   // std::cout << "XXX mapOfLocalMinimums point E \n";
   // MsgLog(_name(), debug, "in napOfLocalMinimums, rank=" << rank << "\n);
 
   // initialization of indexes
-  Vector<TwoIndexes> *v_inddiag_drp = evaluateDiagIndexes_drp(rank, true, drpPtr);
+  Array<TwoIndexes> arr_inddiag_drp = evaluateDiagIndexes_drp(rank, heap);
 
   extrim_t *_local_minima = local_minima;
 
   //if(_local_minima.empty()) 
-  //   _local_minima = make_ndarray<extrim_t>(data.shape()[0], data.shape()[1]);
+  //   _local_minima = make_ndarray<extrim_t>(data.num_elem(), data.shape()[1]);
   std::fill_n(_local_minima, int(rows*cols), extrim_t(0));
 
   size_t counter = 0;
@@ -595,10 +598,10 @@ mapOfLocalMinimums_drp(const T *data
       if(_local_minima[irc] != 3) continue;
       _local_minima[irc] |= 4; // set 3rd bit
 
-      for(unsigned int ii = 0; ii < v_inddiag_drp->len; ii++) {
+      for(unsigned int ii = 0; ii < arr_inddiag_drp.num_elem(); ii++) {
         
-        int ir = r + (v_inddiag_drp->data[ii]->i);
-        int ic = c + (v_inddiag_drp->data[ii]->j);
+        int ir = r + (arr_inddiag_drp(ii).i);
+        int ic = c + (arr_inddiag_drp(ii).j);
         
         if(  ir<(int)rmin)  continue;
         if(  ic<(int)cmin)  continue;
@@ -619,6 +622,7 @@ mapOfLocalMinimums_drp(const T *data
       }
     }
   }
+
   return counter;
 }
 
@@ -789,14 +793,14 @@ mapOfLocalMaximums_drp(const T *data
                   ,const size_t& cols
                   ,const size_t& rank
                   ,extrim_t *local_maxima
-                  ,uint8_t *&drpPtr
+                  ,Heap& heap
                   )
 {
   //std::cout << "in mapOfLocalMaximums, rank=" << rank << "\n";
 
   // initialization of indexes
   //std::vector<TwoIndexes> v_inddiag = evaluateDiagIndexes(rank);
-  Vector<TwoIndexes> *v_inddiag_drp = evaluateDiagIndexes_drp(rank,true,drpPtr);
+  Array<TwoIndexes> arr_inddiag_drp = evaluateDiagIndexes_drp(rank, heap);
 
   extrim_t *_local_maxima = local_maxima;
   std::fill_n(&_local_maxima[0], int(rows*cols), extrim_t(0));
@@ -900,9 +904,9 @@ mapOfLocalMaximums_drp(const T *data
       if(_local_maxima[irc] != 3) continue;
       _local_maxima[irc] |= 4; // set 3rd bit
 
-      for(unsigned int ii = 0; ii < v_inddiag_drp->len; ii++) {
-        int ir = r + (v_inddiag_drp->data[ii]->i);
-        int ic = c + (v_inddiag_drp->data[ii]->j);
+      for(unsigned int ii = 0; ii < arr_inddiag_drp.num_elem(); ii++) {
+        int ir = r + (arr_inddiag_drp(ii).i);
+        int ic = c + (arr_inddiag_drp(ii).j);
 
         if(  ir<(int)rmin)  continue;
         if(  ic<(int)cmin)  continue;
@@ -923,6 +927,7 @@ mapOfLocalMaximums_drp(const T *data
       }
     }
   }
+
   return counter;
 }
 //-----------------------------

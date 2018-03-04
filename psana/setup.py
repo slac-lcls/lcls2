@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from setuptools import setup, Extension #, find_packages
 
+
 arg = [arg for arg in sys.argv if arg.startswith('--xtcdata')]
 if not arg:
     raise Exception('Parameter --xtcdata is missing')
@@ -61,7 +62,11 @@ ext = Extension("peakFinder",
                 sources=["psana/peakFinder/peakFinder.pyx", "../psalg/psalg/src/PeakFinderAlgos.cpp", "../psalg/psalg/src/LocalExtrema.cpp"],
                 language="c++",
                 extra_compile_args=['-std=c++11'],
-                include_dirs=[np.get_include(), "../psalg/psalg/include/PeakFinderAlgos.h", "../psalg/psalg/include/LocalExtrema.h"]
+                include_dirs=[np.get_include(),
+                              "../psalg/psalg/include/Array.hh",
+                              "../install/include",
+                              "../psalg/psalg/include/PeakFinderAlgos.h",
+                              "../psalg/psalg/include/LocalExtrema.h"]
 )
 
 setup(name="peakFinder",
