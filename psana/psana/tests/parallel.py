@@ -8,8 +8,18 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 assert size>1, 'Parallel read requires at least 2 ranks.'
 
+def filter(evt):
+    return True
+
+def analyze(evt):
+    print("Event")
+    for dgram in evt:
+        for var_name in sorted(vars(dgram)):
+            val=getattr(dgram, var_name)
+            print("  %s: %s" % (var_name, type(val)))
+
 def master():
-    ds = DataSource(['smd.xtc','smd_1.xtc'])
+    ds = DataSource(['smd.xtc','smd_1.xtc'], filter=filter)
     for evt in ds:
         rankreq = comm.recv(source=MPI.ANY_SOURCE)
         offsets = [pydgram.info.offsetAlg.intOffset for pydgram in evt]
@@ -19,7 +29,7 @@ def master():
         comm.send('endrun', dest=rankreq)
 
 def client():
-    ds = DataSource(bigdata_files, configs=configs)
+    ds = DataSource(bigdata_files, configs=configs, analyze=analyze)
     while True:
         comm.send(rank, dest=0)
         offsets = comm.recv(source=0)

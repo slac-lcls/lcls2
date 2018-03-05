@@ -9,7 +9,7 @@ from psana.event import Event
 class container:
     pass
 
-def setnames(d):  # Todo: find a good name/place for this
+def setnames(d):  
     keys = sorted(d.__dict__.keys())
     for k in keys:
         fields = k.split('_')
@@ -50,11 +50,18 @@ class DataSource:
                 setnames(d)
                 self.configs += [d]
         
+        self.filter = filter
+        self.analyze = analyze
+        
     def __iter__(self):
         return self
 
     def __next__(self):
-        return self.jump()
+        evt = self.jump()
+        if self.filter: 
+            if not self.filter(evt):
+                self.__next__()
+        return evt
 
     def jump(self, offsets=[]):
         dgrams = []
@@ -63,7 +70,13 @@ class DataSource:
             d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset)   
             setnames(d)
             dgrams += [d]
-        return Event(dgrams=dgrams)
+        
+        evt = Event(dgrams=dgrams)
+        
+        if self.analyze: 
+            self.analyze(evt)
+        
+        return evt
 
     
 def parse_command_line():
