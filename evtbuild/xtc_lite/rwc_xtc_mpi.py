@@ -5,6 +5,7 @@ import glob,os
 from load_config import load_config
 import numpy as np
 import time
+import subprocess
 
 
 cfg = load_config('sconfig')
@@ -29,7 +30,8 @@ def clear_files(path):
 
 
 num_tasks = 2
-cores_per_group = world_size / num_tasks
+# print("World size is ", world_size)
+cores_per_group = 2#world_size / num_tasks
 node_count =  num_tasks
 array_inds = np.array_split(np.arange(node_count),num_tasks)
 
@@ -45,6 +47,8 @@ elif world_rank % node_count in array_inds[1]:
 #elif world_rank % node_count in array_inds[2]:
 #    color =  2
 
+color=0
+
 try:
     comm = world_comm.Split(color, key)
 except Exception as e:
@@ -55,7 +59,8 @@ except Exception as e:
 
 if world_rank == 0:
 #    print('Removing files')
-    clear_files(cfg['path']+'/*.xtc')
+    for rnk in range(0,6,1):
+        clear_files(cfg['path'] % rnk+'/*.xtc')
 
 world_comm.Barrier()
 
@@ -64,7 +69,15 @@ world_comm.Barrier()
 if color == 0:
  #   pass
     do_write(comm) # writ e
-elif color == 1:
+world_comm.Barrier()
+
+if world_rank ==0:
+    subprocess.call("./clear_cache.sh", shell=True)
+world_comm.Barrier()
+
+
+if color == 0:
+
    # pass
     #    #comm_test(color,comm,rank,size)
     do_read(comm,0) # copy

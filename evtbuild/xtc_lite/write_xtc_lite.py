@@ -31,7 +31,7 @@ def write_client(comm):
     img_mb = out_img.nbytes/10**6
     out_img = out_img.tobytes()
     # path = '/drpffb/eliseo/data/xtc_lite/'
-    file_name = cfg['path']+ '/xtc_lite_%i.xtc' % rank
+    file_name = cfg['path'] % rank+ '/xtc_lite_%i.xtc' % rank
 
     try:
         os.remove(file_name)
