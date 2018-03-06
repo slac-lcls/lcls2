@@ -25,7 +25,7 @@ def read_client(comm,filt=0):
     # batches = 16
     arr_size = mb_per_img*500000
     # path = '/drpffb/eliseo/data/xtc_lite/'
-    file_name = path + '/xtc_lite_%i.xtc' % rank
+    file_name = path % rank + '/xtc_lite_%i.xtc' % rank
 
     # Check if the file exists
     while True:
@@ -81,12 +81,13 @@ def do_read(comm, filt=0):
     if filt:
         copy_word = "Filtered"
     else:
-        copy_word = "Copy"
+        copy_word = "Copied"
+        hit_prob = 1
     # mb_per_img = 1
     # batch_size = 16
     arr_size = mb_per_img*500000
     # path = '/drpffb/eliseo/data/xtc_lite/'
-    file_name = path + '/xtc_lite_%i.xtc' % rank
+    file_name = path % rank + '/xtc_lite_%i.xtc' % rank
 
 
     comm.Barrier()

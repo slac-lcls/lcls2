@@ -3,17 +3,17 @@ import time
 
 
 
-file_name = '../hdf5/test_results/xtc_two_nodes_1_stripe_fread_filt.txt'
-node_list = ['drp-tst-acc05','drp-tst-acc06']
+file_name = '../hdf5/test_results/xtc_oss10_test0.txt'
+node_list = ['drp-tst-oss10']
 
 nodes = ','.join(node_list)
 
-sub_call = '`which mpirun` -q -map-by node --oversubscribe -n %i -H '+ nodes + ' python f_rwc_xtc_mpi.py | tee -a ' + file_name
+sub_call = '`which mpirun` -q -map-by node --oversubscribe -n %i -H '+ nodes + ' python rwc_xtc_mpi.py | tee -a ' + file_name
 
 
 
-for i in range(3):
-    for core in range(1,17,2):
+for i in range(5):
+    for core in range(1,7,1):
         tot_cores = core*len(node_list)
 
         out_call = sub_call % (tot_cores)
