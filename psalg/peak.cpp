@@ -47,6 +47,11 @@ int main () {
   shape[0] = 2;
   shape[1] = 3;
   uint32_t dim = 2;
+
+  XtcData::Array<float> arr1;
+  arr1(dat, shape, dim);
+
+  std::cout << "arr1 rank: " << arr1.rank() << std::endl;
   XtcData::Array<float> arr(dat, shape, dim);
   std::cout << "val: " << arr(1,2) << std::endl;
   std::cout << "rank: " << arr.rank() << std::endl;

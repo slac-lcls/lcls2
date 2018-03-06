@@ -18,7 +18,7 @@ namespace psalgos {
 
 //-----------------------------
 
-PeakFinderAlgos::PeakFinderAlgos(const size_t& seg, const unsigned& pbits, uint8_t* drpPtr)
+PeakFinderAlgos::PeakFinderAlgos(const size_t& seg, const unsigned& pbits)
   : m_seg(seg)
   , m_pbits(pbits)
   , m_local_maxima(0)
@@ -29,15 +29,8 @@ PeakFinderAlgos::PeakFinderAlgos(const size_t& seg, const unsigned& pbits, uint8
   , m_peak_amax_thr(0)
   , m_peak_atot_thr(0)
   , m_peak_son_min(0)
-  , m_drpPtr(drpPtr)
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in c-tor PeakFinderAlgos\n";
-  
-  drp = (!m_drpPtr) ? false : true;
-  printf("drp mode: %s\n", drp ? "true" : "false");
-  if (m_pbits) {
-    std::cout << "+ m_drpPtr Address stored " << (void *) m_drpPtr << std::endl;
-  }
 }
 
 //-----------------------------
@@ -50,6 +43,9 @@ PeakFinderAlgos::~PeakFinderAlgos()
   if (m_local_minima) delete[] m_local_minima;
   if (m_conmap)       delete[] m_conmap;
 }
+
+void
+PeakFinderAlgos::setHeap(Heap& heap) { m_heap = heap; }
 
 //-----------------------------
 
@@ -73,66 +69,27 @@ PeakFinderAlgos::printParameters()
 
 //-----------------------------
 
-const std::vector<std::vector<float> >& PeakFinderAlgos::peaksSelected(){
-    std::cout << "start peaksSelected: " << drp << std::endl;
-    unsigned numProperties = 3;//17;
-    if (drp) {
-        std::cout << "drp" << std::endl;
-        std::vector<std::vector<float> > _temp(v_peaks_sel_drp.len, std::vector<float>(numProperties));
-        for(unsigned i = 0; i< v_peaks_sel_drp.len; i++){
-            const Peak *p = v_peaks_sel_drp.data[i];
-            _temp[i] = {p->row, p->col, p->amp_tot};
-        }
-        vv_peaks_sel = _temp;
-    } else {
-        std::cout << "here" << std::endl;
-        std::cout << vv_peaks_sel.size() << std::endl;
-        if (vv_peaks_sel.size() == 0) {
-            std::cout << "running peaksSelected" << std::endl;
-            std::vector<std::vector<float> > _temp(v_peaks_sel.size(), std::vector<float>(numProperties));
-            for(unsigned i = 0; i< v_peaks_sel.size(); i++){
-                const Peak p = v_peaks_sel[i];
-                _temp[i] = {p.row, p.col, p.amp_tot};
-                //vv_peaks_sel1[i] = {p->seg,p->row,p->col,p->npix,p->amp_max,p->amp_tot,p->row_cgrav,
-                //    p->col_cgrav,p->row_sigma,p->col_sigma,p->row_min,p->row_max,p->col_min,p->col_max,
-                //    p->bkgd,p->noise,p->son};
-            }
-            vv_peaks_sel = _temp;
-        }
-    }
-    return vv_peaks_sel;
-}
-
 void PeakFinderAlgos::_convPeaksSelected(){
-    if (drp) {
-        numPeaksSelected = v_peaks_sel_drp.len;
-        rows = new(m_drpPtr) float[numPeaksSelected*sizeof(float)];
-        m_drpPtr += sizeof(float)*numPeaksSelected;
-        cols = new(m_drpPtr) float[numPeaksSelected*sizeof(float)];
-        m_drpPtr += sizeof(float)*numPeaksSelected;
-        intens = new(m_drpPtr) float[numPeaksSelected*sizeof(float)];
-        m_drpPtr += sizeof(float)*numPeaksSelected;
-        for(unsigned i = 0; i< numPeaksSelected; i++){
-            const Peak *p = v_peaks_sel_drp.data[i];
-            rows[i] = p->row_cgrav;
-            cols[i] = p->col_cgrav;
-            intens[i] = p->amp_tot;
-        }
-    } else {
-        numPeaksSelected = v_peaks_sel.size();
-        rows = new float[numPeaksSelected*sizeof(float)];
-        cols = new float[numPeaksSelected*sizeof(float)];
-        intens = new float[numPeaksSelected*sizeof(float)];
-        std::cout << "rows Address stored " << (void *) rows << std::endl;
-        for(unsigned i = 0; i< numPeaksSelected; i++){
-            const Peak p = v_peaks_sel[i];
-            rows[i] = p.row_cgrav;
-            cols[i] = p.col_cgrav;
-            intens[i] = p.amp_tot;
-        }
+    numPeaksSelected = arr_peaks_sel_drp.num_elem(); //v_peaks_sel_drp.len;
+    rows = Array<float>(m_heap, numPeaksSelected*sizeof(float), 1);
+    rows.shape(numPeaksSelected);
+    cols = Array<float>(m_heap, numPeaksSelected*sizeof(float), 1);
+    cols.shape(numPeaksSelected);
+    intens = Array<float>(m_heap, numPeaksSelected*sizeof(float), 1);
+    intens.shape(numPeaksSelected);
+    for(unsigned i = 0; i< numPeaksSelected; i++){
+        //const Peak *p = v_peaks_sel_drp.data[i];
+        //rows(i) = p->row_cgrav;
+        //cols(i) = p->col_cgrav;
+        //intens(i) = p->amp_tot;
+        const Peak p = arr_peaks_sel_drp(i);
+        rows(i) = p.row_cgrav;
+        cols(i) = p.col_cgrav;
+        intens(i) = p.amp_tot;
     }
 }
 
+/*
 void 
 PeakFinderAlgos::_initMapsAndVectors()
 {
@@ -154,32 +111,52 @@ PeakFinderAlgos::_initMapsAndVectors()
 
   _evaluateRingIndexes();
 
-}
+}*/
 
 void 
 PeakFinderAlgos::_initMapsAndVectors_drp()
 {
+
   if(m_pbits & LOG::DEBUG) std::cout << "in _initMapsAndVectors_drp\n";
 
   if (m_conmap==0) m_conmap = new conmap_t[m_img_size];
 
   std::fill_n(m_conmap, int(m_img_size), conmap_t(0));
 
-  if(v_ind_pixgrp_drp.len != m_pixgrp_max_size) {
-      v_ind_pixgrp_drp.capacity = m_pixgrp_max_size;
+  //if(v_ind_pixgrp_drp.len != m_pixgrp_max_size) {
+  //    v_ind_pixgrp_drp.capacity = m_pixgrp_max_size;
+  //}
+
+  if (arr_ind_pixgrp_drp.rank() == 0) {
+    arr_ind_pixgrp_drp = Array<TwoIndexes>(m_heap, m_pixgrp_max_size*sizeof(TwoIndexes), 1);
+  } else {
+    arr_ind_pixgrp_drp.shape(0);
   }
 
-  if(vv_peak_pixinds_drp.len < m_npksmax) vv_peak_pixinds_drp.capacity = m_npksmax;
-  vv_peak_pixinds_drp.len = 0;
+  //if(vv_peak_pixinds_drp.len < m_npksmax) vv_peak_pixinds_drp.capacity = m_npksmax;
+  //vv_peak_pixinds_drp.len = 0;
+  if (aa_peak_pixinds_drp.rank() == 0) {
+    aa_peak_pixinds_drp = Array<Array<TwoIndexes> >(m_heap, m_npksmax*sizeof(Array<TwoIndexes>), 1);
+  } else {
+    aa_peak_pixinds_drp.shape(0);
+  }
 
-  if(v_peaks_drp.len < m_npksmax) v_peaks_drp.capacity = m_npksmax;
-  v_peaks_drp.len = 0;
+  //if(v_peaks_drp.len < m_npksmax) v_peaks_drp.capacity = m_npksmax;
+  //v_peaks_drp.len = 0;
+  if (arr_peaks_drp.rank() == 0) {
+    arr_peaks_drp = Array<Peak>(m_heap, m_npksmax*sizeof(Peak), 1);
+  } else {
+    arr_peaks_drp.shape(0);
+  }
 
   _evaluateRingIndexes_drp();
+
+  //if (firstInit) firstInit = false;
+
 }
 
 //-----------------------------
-
+/*
 void 
 PeakFinderAlgos::_evaluateRingIndexes()
 {
@@ -204,7 +181,7 @@ PeakFinderAlgos::_evaluateRingIndexes()
     printVectorOfRingIndexes();
   }
 }
-
+*/
 void 
 PeakFinderAlgos::_evaluateRingIndexes_drp()
 {
@@ -212,21 +189,22 @@ PeakFinderAlgos::_evaluateRingIndexes_drp()
 
   int indmax = (int)std::ceil(m_r0 + m_dr);
   int indmin = -indmax;
-  unsigned npixmax = (2*indmax+1)*(2*indmax+1);
 
-  if(v_indexes_drp.capacity < npixmax) v_indexes_drp.capacity = npixmax;
-  v_indexes_drp.len = 0;
+  //if(v_indexes_drp.capacity < npixmax) v_indexes_drp.capacity = npixmax;
+  //v_indexes_drp.len = 0;
+  if (arr_indexes_drp.rank()==0) {
+    arr_indexes_drp = Array<TwoIndexes>(m_heap, (indmax-indmin+1)*(indmax-indmin+1)*sizeof(TwoIndexes), 1);
+  } else {
+    arr_indexes_drp.shape(0);
+  }
 
-  int counter = 0;
   for (int i = indmin; i <= indmax; ++ i) {
     for (int j = indmin; j <= indmax; ++ j) {
       double r = std::sqrt(double(i*i + j*j));
       if (r < m_r0 || r > m_r0 + m_dr) continue;
-      v_indexes_drp.data[counter++] = new(m_drpPtr) TwoIndexes(i,j);
-      m_drpPtr += sizeof(TwoIndexes);
+      arr_indexes_drp.push_back(TwoIndexes(i,j));
     }
   }
-  v_indexes_drp.len = counter;
 
   if(m_pbits) {
     printMatrixOfRingIndexes();
@@ -260,6 +238,7 @@ PeakFinderAlgos::printMatrixOfRingIndexes()
 
 //-----------------------------
 
+/*
 void 
 PeakFinderAlgos::printVectorOfRingIndexes()
 {
@@ -277,20 +256,20 @@ PeakFinderAlgos::printVectorOfRingIndexes()
   }   
   cout << ss.str() << '\n';
   //MsgLog(_name(), info, ss.str());
-}
+}*/
 
 void 
 PeakFinderAlgos::printVectorOfRingIndexes_drp()
 {
-  if(v_indexes_drp.len == 0) {
+  if(arr_indexes_drp.num_elem() == 0) {
     _evaluateRingIndexes_drp();
   }
 
   std::stringstream ss; 
-  ss << "In printVectorOfRingIndexes:\n Vector size: " << v_indexes_drp.len << '\n';
+  ss << "In printVectorOfRingIndexes:\n Vector size: " << arr_indexes_drp.num_elem() << '\n';
   int counter_in_line=0;
-  for (unsigned int ii = 0; ii < v_indexes_drp.len; ii++) {
-    ss << " (" << v_indexes_drp.data[ii]->i << "," << v_indexes_drp.data[ii]->j << ')';
+  for (unsigned int ii = 0; ii < arr_indexes_drp.num_elem(); ii++) {
+    ss << " (" << arr_indexes_drp(ii).i << "," << arr_indexes_drp(ii).j << ')';
     if (++counter_in_line > 9) {ss << '\n'; counter_in_line=0;}
   }   
   cout << ss.str() << '\n';
@@ -339,6 +318,7 @@ PeakFinderAlgos::_peakIsSelected(const Peak& peak)
 
 //-----------------------------
 
+/*
 void
 PeakFinderAlgos::_makeVectorOfSelectedPeaks()
 {
@@ -357,57 +337,56 @@ PeakFinderAlgos::_makeVectorOfSelectedPeaks()
 				    << "  sel=" << v_peaks_sel.size() << '\n';
   }
 }
+*/
 
 void
 PeakFinderAlgos::_makeVectorOfSelectedPeaks_drp()
 {
-  if(v_peaks_sel_drp.capacity < m_npksmax) v_peaks_sel_drp.capacity = m_npksmax;
-  v_peaks_sel_drp.len = 0;
+  //if(v_peaks_sel_drp.capacity < m_npksmax) v_peaks_sel_drp.capacity = m_npksmax;
+  //v_peaks_sel_drp.len = 0;
+  if (arr_peaks_sel_drp.rank() == 0) {
+    arr_peaks_sel_drp = Array<Peak>(m_heap, arr_peaks_drp.num_elem()*sizeof(Peak), 1);
+  } else {
+    arr_peaks_sel_drp.shape(0);
+  }
 
-  for(unsigned int ii = 0; ii < v_peaks_drp.len; ii++) {
-    Peak *peak = v_peaks_drp.data[ii];
-    if(_peakIsSelected(*peak)) {
-        v_peaks_sel_drp.data[v_peaks_sel_drp.len++] = peak;
+  for(unsigned int ii = 0; ii < arr_peaks_drp.num_elem(); ii++) {
+    Peak peak = arr_peaks_drp(ii);
+    if(_peakIsSelected(peak)) {
+        //v_peaks_sel_drp.data[v_peaks_sel_drp.len++] = peak;
+        arr_peaks_sel_drp.push_back(peak);
     }
   }
   if(m_pbits) std::cout << "_makeVectorOfSelectedPeaks, seg=" << m_seg 
-                                    << "  #peaks raw=" << v_peaks_drp.len 
-				    << "  sel=" << v_peaks_sel_drp.len << '\n';
+                        << "  #peaks raw=" << arr_peaks_drp.num_elem()
+				        << "  sel=" << arr_peaks_sel_drp.num_elem() << '\n';
 }
 
 
 //-----------------------------
 
 void
-PeakFinderAlgos::_printVectorOfPeaks(const std::vector<Peak>& v) {
-  for(std::vector<Peak>::const_iterator it=v.begin(); it!=v.end(); ++it)
-    //const Peak& peak = (*it);
-    std::cout << "  " << (*it) << '\n'; 
-}
-
-void
-PeakFinderAlgos::_printVectorOfPeaks_drp(const Vector<Peak>& v) {
-  std::cout << "v.len: " << v.len << std::endl;
-  for(unsigned int ii = 0; ii < v.len; ii++) {
-    const Peak *p = v.data[ii];
+PeakFinderAlgos::_printVectorOfPeaks_drp(Array<Peak> v) {
+  for(unsigned int ii = 0; ii < v.num_elem(); ii++) {
+    const Peak p = v(ii);
     std::cout << fixed
-       << "Seg:"      << std::setw(3) << std::setprecision(0) << p->seg
-       << " Row:"     << std::setw(4) << std::setprecision(0) << p->row
-       << " Col:"     << std::setw(4) << std::setprecision(0) << p->col
-       << " Npix:"    << std::setw(3) << std::setprecision(0) << p->npix
-       << " Imax:"    << std::setw(7) << std::setprecision(1) << p->amp_max
-       << " Itot:"    << std::setw(7) << std::setprecision(1) << p->amp_tot
-       << " CGrav r:" << std::setw(6) << std::setprecision(1) << p->row_cgrav
-       << " c:"       << std::setw(6) << std::setprecision(1) << p->col_cgrav
-       << " Sigma r:" << std::setw(5) << std::setprecision(2) << p->row_sigma
-       << " c:"       << std::setw(5) << std::setprecision(2) << p->col_sigma
-       << " Rows["    << std::setw(4) << std::setprecision(0) << p->row_min
-       << ":"         << std::setw(4) << std::setprecision(0) << p->row_max
-       << "] Cols["   << std::setw(4) << std::setprecision(0) << p->col_min
-       << ":"         << std::setw(4) << std::setprecision(0) << p->col_max
-       << "] B:"      << std::setw(5) << std::setprecision(1) << p->bkgd
-       << " N:"       << std::setw(5) << std::setprecision(1) << p->noise
-       << " S/N:"     << std::setw(5) << std::setprecision(1) << p->son
+       << "Seg:"      << std::setw(3) << std::setprecision(0) << p.seg
+       << " Row:"     << std::setw(4) << std::setprecision(0) << p.row
+       << " Col:"     << std::setw(4) << std::setprecision(0) << p.col
+       << " Npix:"    << std::setw(3) << std::setprecision(0) << p.npix
+       << " Imax:"    << std::setw(7) << std::setprecision(1) << p.amp_max
+       << " Itot:"    << std::setw(7) << std::setprecision(1) << p.amp_tot
+       << " CGrav r:" << std::setw(6) << std::setprecision(1) << p.row_cgrav
+       << " c:"       << std::setw(6) << std::setprecision(1) << p.col_cgrav
+       << " Sigma r:" << std::setw(5) << std::setprecision(2) << p.row_sigma
+       << " c:"       << std::setw(5) << std::setprecision(2) << p.col_sigma
+       << " Rows["    << std::setw(4) << std::setprecision(0) << p.row_min
+       << ":"         << std::setw(4) << std::setprecision(0) << p.row_max
+       << "] Cols["   << std::setw(4) << std::setprecision(0) << p.col_min
+       << ":"         << std::setw(4) << std::setprecision(0) << p.col_max
+       << "] B:"      << std::setw(5) << std::setprecision(1) << p.bkgd
+       << " N:"       << std::setw(5) << std::setprecision(1) << p.noise
+       << " S/N:"     << std::setw(5) << std::setprecision(1) << p.son
        << std::endl;
   }
 }
