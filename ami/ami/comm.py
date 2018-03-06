@@ -1,5 +1,6 @@
 import zmq
 import threading
+from mpi4py import MPI
 from enum import IntEnum
 from ami.data import MsgTypes, Occurrences, Message, Datagram
 
@@ -65,12 +66,41 @@ class ZmqBase(object):
         return sock
 
 
-class ResultStore(ZmqBase):
-    def __init__(self, zmq_config, zmqctx=None):
-        super(__class__, self).__init__("resultstore", zmq_config, zmqctx)
+class ZmqSender(ZmqBase):
+    def __init__(self, name, zmq_config, zmqctx=None):
+        super(__class__, self).__init__(name, zmq_config, zmqctx)
+        self.sock = self.connect(zmq.PUSH)
+
+    def send(self, msg):
+        self.sock.send_pyobj(msg)
+
+
+class ZmqReceiver(ZmqBase):
+    def __init__(self, name, zmq_config, zmqctx=None):
+        super(__class__, self).__init__(name, zmq_config, zmqctx)
+        self.sock = self.bind(zmq.PULL)
+
+    def recv(self):
+        return self.sock.recv_pyobj()
+
+class MpiHandler(object):
+    def __init__(self, name, col_rank):
+        self.name = name
+        self.col_rank = col_rank
+    
+    def send(self, msg):
+        MPI.COMM_WORLD.send(msg, dest=self.col_rank)
+
+    def recv(self):
+        return MPI.COMM_WORLD.recv(source=MPI.ANY_SOURCE)
+
+
+class ResultStore(object):
+    def __init__(self, col_handler):
+        self.name = "resultstore"
         self._store = {}
         self._updated = {}
-        self._sink = self.connect(zmq.PUSH)
+        self.col_handler = col_handler
 
     def collect(self):
         for name, result in self._store.items():
@@ -79,10 +109,10 @@ class ResultStore(ZmqBase):
                 self._updated[name] = False
 
     def forward(self, msg):
-        self._sink.send_pyobj(msg)
+        self.col_handler.send(msg)
 
     def message(self, mtype, payload):
-        self._sink.send_pyobj(Message(mtype, payload))
+        self.col_handler.send(Message(mtype, payload))
 
     def create(self, name, datatype):
         if name in self._store:
@@ -118,16 +148,16 @@ class ResultStore(ZmqBase):
         self._store = {}
 
 
-class ZmqListener(ZmqBase):
+class Listener(ZmqBase):
     def __init__(self, name, topic, callback, zmq_config, zmqctx=None):
         super(__class__, self).__init__(name, zmq_config, zmqctx)
         self.listen_topic = topic
         self.listen_evt = threading.Event()
         self._listen_cb = callback
-        self._listen_sock = self.connect(zmq.SUB, (zmq.SUBSCRIBE, self.listen_topic))
-        self._listen_thread = threading.Thread(name="%s-listen"%self.name, target=self.listen)
-        self._listen_thread.daemon = True
-        self._listen_thread.start()
+        #self._listen_sock = self.connect(zmq.SUB, (zmq.SUBSCRIBE, self.listen_topic))
+        #self._listen_thread = threading.Thread(name="%s-listen"%self.name, target=self.listen)
+        #self._listen_thread.daemon = True
+        #self._listen_thread.start()
 
     def listen(self):
         while True:
@@ -142,13 +172,13 @@ class ZmqListener(ZmqBase):
                 print("%s: recieved unexpected topic: %s"%(self.name, topic))
 
 
-class ZmqCollector(ZmqBase):
-    def __init__(self, name, zmq_config, zmqctx=None):
-        super(__class__, self).__init__(name, zmq_config, zmqctx)
+class Collector(object):
+    def __init__(self, name, col_handler):
+        self.name = name
         self._transition_handler = None
         self._occurrence_handler = None
-        self._datagram_handler = None 
-        self.collect = self.bind(zmq.PULL)
+        self._datagram_handler = None
+        self.col_handler = col_handler
 
     def set_transition_handler(self, handler):
         self._transition_handler = handler
@@ -166,7 +196,7 @@ class ZmqCollector(ZmqBase):
         
     def run(self):
         while True:
-            msg = self.collect.recv_pyobj()
+            msg = self.col_handler.recv()
             if msg.mtype == MsgTypes.Transition:
                 if self._transition_handler is not None:
                     self._transition_handler(msg)

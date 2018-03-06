@@ -51,31 +51,23 @@ std::vector<TwoIndexes> evaluateDiagIndexes(const size_t& rank)
   return v_inddiag;
 }
 
-Vector<TwoIndexes>* evaluateDiagIndexes_drp(const size_t& rank, const bool drp, uint8_t*& drpPtr) { // TODO: remove bool drp 
+Array<TwoIndexes> evaluateDiagIndexes_drp(const size_t& rank, Heap& heap) {
 
   int indmax =  rank;
   int indmin = -rank;
-  const unsigned npixmax = (2*rank+1)*(2*rank+1);
+  Array<TwoIndexes> arr_inddiag(heap, (indmax-indmin+1)*(indmax-indmin+1)*sizeof(TwoIndexes), 1);
 
-  Vector<TwoIndexes>* v_inddiag = new(drpPtr) Vector<TwoIndexes>();
-  drpPtr += sizeof(Vector<TwoIndexes>);
-  if(v_inddiag->capacity < npixmax) v_inddiag->capacity = npixmax;
-  v_inddiag->len = 0;
-
-  int counter = 0;
   for (int i = indmin; i <= indmax; ++ i) {
     for (int j = indmin; j <= indmax; ++ j) {
-
       // use rectangular region of radius = rank
       // remove already tested central row and column
       if (i==0 || j==0) continue;
-      
-      v_inddiag->data[counter++] = new(drpPtr) TwoIndexes(i,j);
-      drpPtr += sizeof(TwoIndexes);
+
+      arr_inddiag.push_back(TwoIndexes(i,j));
     }
   }
-  v_inddiag->len = counter;
-  return v_inddiag;
+
+  return arr_inddiag;
 }
 
 //-----------------------------
@@ -133,6 +125,7 @@ size_t numberOfExtrema(const extrim_t *map, const size_t& rows, const size_t& co
 
 //-----------------------------
 
+/*
 std::vector<TwoIndexes> vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen)
 {
   std::vector<TwoIndexes> v;
@@ -148,6 +141,7 @@ std::vector<TwoIndexes> vectorOfExtremeIndexes(const extrim_t *map, const size_t
   }
   return v;
 }
+
 
 Vector<TwoIndexes>* vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen, const bool drp, uint8_t*& drpPtr)
 {
@@ -171,6 +165,7 @@ Vector<TwoIndexes>* vectorOfExtremeIndexes(const extrim_t *map, const size_t& ro
   ptr->len = counter;
   return ptr;
 }
+*/
 
 //-----------------------------
 //-----------------------------
