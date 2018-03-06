@@ -17,4 +17,6 @@ The test cases are
    - The chunk size is varied in powers of two from one to 2^13
 
 
-The scripts can be called with `HFbuild.sh` or `VLbuild.sh`. A text file of the results will be written out to the test_results/ directory. The results can be plotted with matplotlib using test_results/plot_HF_HDF5.py.
+The scripts can be called with `HFbuild.sh` or `VLbuild.sh`. The write path for the .h5 file must be set in these scripts.  
+
+A text file of the results will be written out to the test_results/ directory. The results can be plotted with matplotlib using test_results/plot_HF_HDF5.py.
