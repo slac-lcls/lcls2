@@ -4,6 +4,9 @@
 #include <vector>
 #include <cstdint>
 
+#include "spscqueue.hh"
+#include "pgpdriver.h"
+
 struct EventHeader {
     uint64_t pulseId;
     uint64_t timeStamp;
@@ -14,50 +17,50 @@ struct EventHeader {
     uint32_t reserved;
 };
 
-class MovingAverage
-{
-public:
-    MovingAverage(int n);
-    int add_value(int value);
-private:
-    int64_t index;
-    int sum;
-    int N;
-    std::vector<int> values;
-};
-
-struct PGPBuffer
-{
-    uint32_t length;
-    uint32_t dma_index;
-};
-
 struct PGPData
 {
     uint64_t pulse_id;
     uint8_t lane_mask;
     unsigned damaged : 1;
     unsigned counter : 7;
-    // max of 8 lanes on pgp card
-    PGPBuffer buffers[8];
+    DmaBuffer* buffers[8];
 };
 
 // Per-Event-Buffer-with-Boundaries-Listed-Explicitly
 class Pebble
 {
 public:
-    Pebble():_stack(_stack_buffer){}
+    Pebble() : _stack(_stack_buffer) {}
     void* fex_data() {return reinterpret_cast<void*>(_fex_buffer);}
     PGPData* pgp_data;
-    void *malloc(size_t size) {
-        void *curr_stack = _stack;
+    void* malloc(size_t size)
+    {
+        void* curr_stack = _stack;
         _stack += size;
         return curr_stack;
     }
 private:
     uint8_t _fex_buffer[1024*1024];
     uint8_t _stack_buffer[1024*1024];
-    uint8_t *_stack;
+    uint8_t* _stack;
+};
+
+
+using PebbleQueue = SPSCQueue<Pebble*>;
+
+struct MemPool
+{
+    MemPool(int num_workers, int num_entries);
+    ~MemPool();
+    DmaBufferPool dma;
+    std::vector<PGPData> pgp_data;
+    PebbleQueue pebble_queue;
+    std::vector<PebbleQueue> worker_input_queues;
+    std::vector<PebbleQueue> worker_output_queues;
+    SPSCQueue<int> collector_queue;
+    int num_entries;
+private:
+    std::vector<Pebble> pebble;
 };
 
 #endif // DRP_H

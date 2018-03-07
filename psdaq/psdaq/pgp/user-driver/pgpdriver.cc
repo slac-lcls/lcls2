@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <dirent.h>
 #include <errno.h>
 #include <cassert>
 #include <sys/stat.h>
@@ -9,8 +10,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <linux/limits.h>
+#include <string>
+#include <fstream>
 
 #include "pgpdriver.h"
+
+#define MAX_LANES 4
 
 // translate a virtual address to a physical address
 uintptr_t virt_to_phys(void* virt)
@@ -78,7 +83,7 @@ uint8_t* map_pci_resource(const char* pci_addr)
                                       MAP_SHARED, fd, 0), "mmap pci resource");
 }
 
-Mempool::Mempool(size_t num_entries, size_t entry_size) : buffer_queue(num_entries),
+DmaBufferPool::DmaBufferPool(size_t num_entries, size_t entry_size) : buffer_queue(num_entries),
                                                     buffers(num_entries)
 {
     if (HUGE_PAGE_SIZE % entry_size) {
@@ -94,13 +99,37 @@ Mempool::Mempool(size_t num_entries, size_t entry_size) : buffer_queue(num_entri
     }
 }
 
-AxisG2Device::AxisG2Device(const char* bus_id)
+long get_id(std::string file_name)
 {
-    pci_resource = map_pci_resource(bus_id);
-   
+    std::ifstream in(file_name);
+    std::string line;
+    std::getline(in, line);
+    return strtol(line.c_str(), NULL, 0);
 }
 
-void AxisG2Device::init(Mempool* pool)
+std::string get_pgp_bus_id()
+{
+    std::string base_dir = "/sys/bus/pci/devices/";
+    DIR* parent = opendir(base_dir.c_str());
+    while (dirent* child = readdir(parent)) {
+        long vendor =  get_id(base_dir + child->d_name + "/vendor");
+        long device =  get_id(base_dir + child->d_name + "/device");
+        if ((vendor == PGP_VENDOR) & (device == PGP_DEVICE)) {
+             printf("Found PGP card at: %s\n", child->d_name);
+             return std::string(child->d_name);
+        }
+    }
+    printf("Error no PGP card found! Aborting!\n");
+    exit(-1);
+}
+
+AxisG2Device::AxisG2Device()
+{
+    std::string bus_id = get_pgp_bus_id();
+    pci_resource = map_pci_resource(bus_id.c_str());
+}
+
+void AxisG2Device::init(DmaBufferPool* pool)
 {
     this->pool = pool;
 
@@ -132,13 +161,6 @@ void AxisG2Device::init(Mempool* pool)
         set_reg32(pci_resource, client_base + DESC_FIFO_LO, fifo[i]->phys & 0xFFFFFFFF);
         set_reg32(pci_resource, client_base + DESC_FIFO_HI, (i << 8) | ((fifo[i]->phys >> 32) & 0x000000FF));
     }
-
-    // FIXME 
-    for (int i=0; i<4; i++) {
-        set_reg32(pci_resource, DMA_LANES(i) + CLIENT, 0);
-        set_reg32(pci_resource, PGP_LANES(i) + TX_CONTROL, 1);
-    }
-
 }
 
 void AxisG2Device::print_dma_lane(const char* name, int addr, int offset, int mask)
@@ -212,12 +234,22 @@ void AxisG2Device::status()
     print_pgp_lane("txFrameCnt" , 0x90, 0, 0xffffffff);
 }
 
-void AxisG2Device::loop_test(int lanes, int size, int op_code)
+void AxisG2Device::setup_lanes(int lane_mask)
+{
+    for (int i=0; i<MAX_LANES; i++) {
+        if (lane_mask & (1<<i)) {
+            set_reg32(pci_resource, DMA_LANES(i) + CLIENT, 0);
+            set_reg32(pci_resource, PGP_LANES(i) + TX_CONTROL, 1);
+        }
+    }   
+}
+
+void AxisG2Device::loop_test(int lane_mask, int size, int op_code)
 {
     int loopb = 0xf;
 
     // set loopback mode
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<MAX_LANES; i++) {
         set_reg32(pci_resource, PGP_LANES(i) + LOOPBACK, (loopb & (1<<i)) ? (2<<16) : 0);
     }   
     int tx_req_delay = 0;
@@ -229,7 +261,7 @@ void AxisG2Device::loop_test(int lanes, int size, int op_code)
     set_reg32(pci_resource, PGP_TX_SIM + CONTROL, control);
     set_reg32(pci_resource, PGP_TX_SIM + SIZE, size);
 
-    control |= ((lanes&0xff)<<0) | ((op_code > 0x7f ? 0 : ((op_code<<1)|1))<<8);
+    control |= ((lane_mask & 0xff) << 0) | ((op_code > 0x7f ? 0 : ((op_code << 1) | 1)) << 8);
     set_reg32(pci_resource, PGP_TX_SIM + CONTROL, control);
 
     printf("AppTxSim control = %08x\n", control);
@@ -249,9 +281,8 @@ DmaBuffer* AxisG2Device::read()
     DmaBuffer* buffer = fifo[buffer_index];
 
     buffer->size  = (dma_data >> 32) & 0xFFFFFF;
-    buffer->dest = (dma_data >> 56) & 0xFF;
-    // printf("Buffer index: %u  Size: %u  Dest: %u\n", buffer_index, buffer->size, buffer->dest);
-    // printf("Buffer number from data %u\n", ((uint32_t*)buffer->virt)[0]);
+    uint32_t dest = (dma_data >> 56) & 0xFF;
+    buffer->dest = dest >> 5;
     
     // refill buffer with new buffer from big memory pool and return to hardware
     pool->buffer_queue.pop(fifo[buffer_index]);

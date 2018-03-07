@@ -1,3 +1,6 @@
+#ifndef PGPDRIVER_H
+#define PGPDRIVER_H
+
 #include <stdint.h>
 #include <errno.h>
 #include <vector>
@@ -45,7 +48,10 @@
 
 // 2048kB
 #define HUGE_PAGE_BITS 21
-#define HUGE_PAGE_SIZE (1 << HUGE_PAGE_BITS) 
+#define HUGE_PAGE_SIZE (1 << HUGE_PAGE_BITS)
+
+#define PGP_VENDOR 0x1a4a
+#define PGP_DEVICE 0x2031
 
 struct DmaBuffer
 {
@@ -56,9 +62,9 @@ struct DmaBuffer
     uint32_t dest;
 };
 
-struct Mempool
+struct DmaBufferPool
 {
-    Mempool(size_t num_entries, size_t entry_size);
+    DmaBufferPool(size_t num_entries, size_t entry_size);
     SPSCQueue<DmaBuffer*> buffer_queue;
 private:
     std::vector<DmaBuffer> buffers;
@@ -67,10 +73,11 @@ private:
 class AxisG2Device
 {
 public:
-    AxisG2Device(const char* bus_id);
-    void init(Mempool* pool);
+    AxisG2Device();
+    void init(DmaBufferPool* pool);
     void status();
-    void loop_test(int lanes, int size, int op_code);
+    void setup_lanes(int lane_mask);
+    void loop_test(int lane_mask, int size, int op_code);
     DmaBuffer* read();
     void write();
 private:
@@ -80,7 +87,7 @@ private:
     std::vector<DmaBuffer*> fifo;
     void* rx_desc;
     uint32_t read_index;
-    Mempool* pool;
+    DmaBufferPool* pool;
 };
 
 static inline uint32_t get_reg32(uint8_t* base, int reg) {
@@ -102,3 +109,5 @@ static inline void set_reg32(uint8_t* base, int reg, uint32_t value) {
     }\
 	result;\
 })
+
+#endif // PGPDRIVER_H

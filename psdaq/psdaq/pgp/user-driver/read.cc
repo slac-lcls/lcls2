@@ -2,13 +2,14 @@
 #include <atomic>
 #include <chrono>
 #include <unistd.h>
+#include <cstring>
 #include "pgpdriver.h"
 
 struct Counters
 {
-    Counters() : total_bytes_received(0), event_count(0) {}
     int64_t total_bytes_received;
     int64_t event_count;
+    int64_t pool_size;
 };
 
 void monitor(std::atomic<Counters*>& p)
@@ -34,30 +35,52 @@ void monitor(std::atomic<Counters*>& p)
         double data_rate = double(new_bytes - old_bytes) / duration;
         double event_rate = double(new_count - old_count) / duration * 1.0e3;
         printf("Event rate %.2f kHz    Data rate  %.2f MB/s\n", event_rate, data_rate);
+        printf("Pool size %ld\n", c->pool_size);
         old_bytes = new_bytes;
         old_count = new_count;
     }
 }
 
-
-int main()
+static void usage(const char* p)
 {
+    printf("Usage: %s <options>\n", p);
+    printf("Options:\n");
+    printf("\t-P <bus_id>  [pci bus id of pgg card from lcpsi | grep SLAC]\n");
+}
+
+
+int main(int argc, char* argv[])
+{
+    char bus_id[32];
+    int c;
+    while((c = getopt(argc, argv, "P")) != EOF) {
+        switch(c) {
+            case 'P':  
+                strcpy(bus_id, optarg); 
+                break;
+            default: 
+                usage(argv[0]);
+                return 0;
+        }
+    }
+
     // start monitoring thread
     Counters c1, c2;
-    Counters* c = &c2;
+    Counters* counter = &c2;
     std::atomic<Counters*> p(&c1);
     std::thread monitor_thread(monitor, std::ref(p));
 
     int num_entries = 1048576;
-    Mempool pool(num_entries, RX_BUFFER_SIZE);
-    AxisG2Device dev("0000:af:00.0");
+    DmaBufferPool pool(num_entries, RX_BUFFER_SIZE);
+    AxisG2Device dev;
     dev.init(&pool);                 
-    dev.loop_test(1, 32, 0x41);
+    dev.loop_test(0x3, 32, 0x41);
     int64_t event_count = 0;
     int64_t total_bytes_received = 0;
     uint32_t event;
     for (size_t i=0; i<60000000; i++) {    
         DmaBuffer* buffer = dev.read();
+        /*
         if (i == 0) {
             event = ((uint32_t*)buffer->virt)[0];
         } 
@@ -68,11 +91,14 @@ int main()
             }
             event = new_event;
         }
+        */
+        // printf("Size: %u  Dest: %u\n", buffer->size, buffer->dest);        
         event_count += 1;
         total_bytes_received += buffer->size;
-        c->event_count = event_count;
-        c->total_bytes_received = total_bytes_received;
-        c = p.exchange(c, std::memory_order_release);
+        counter->event_count = event_count;
+        counter->total_bytes_received = total_bytes_received;
+        counter->pool_size = pool.buffer_queue.guess_size();
+        counter = p.exchange(counter, std::memory_order_release);
         // return buffer to memory pool
         pool.buffer_queue.push(buffer);
 
@@ -80,7 +106,7 @@ int main()
     dev.loop_test(0, 32, 0x7f0);   
 
     // shutdown monitor thread
-    c->total_bytes_received = -1;
-    p.exchange(c, std::memory_order_release); 
+    counter->total_bytes_received = -1;
+    p.exchange(counter, std::memory_order_release); 
     monitor_thread.join();    
 } 
