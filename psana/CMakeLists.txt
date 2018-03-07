@@ -1,17 +1,22 @@
+cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+
+find_package(xtcdata REQUIRED)
+find_package(PythonInterp 3.5 REQUIRED)
+find_package(PythonLibs 3.5 REQUIRED)
+
+execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
+    "import numpy; print(numpy.get_include(), end='')"
+    OUTPUT_VARIABLE NUMPY_INCLUDE_DIRS
+)
 
 add_library(dgram SHARED
-    dgram.cc
+    src/dgram.cc
 )
 
 target_link_libraries(dgram
-    xtc
+    xtcdata
     ${PYTHON_LIBRARIES}
 )
-
-if(PSANA_USE_LEGION)
-  target_compile_definitions(dgram PRIVATE PSANA_USE_LEGION)
-  target_link_libraries(dgram Legion::Legion)
-endif()
 
 target_include_directories(dgram PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> 
@@ -21,13 +26,3 @@ target_include_directories(dgram PUBLIC
 
 set_target_properties(dgram PROPERTIES PREFIX "")
 
-add_test(NAME xtcwriter COMMAND ${CMAKE_BINARY_DIR}/xtcdata/xtcwriter
-	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
-add_test(NAME testxtc COMMAND python testxtc.py
-	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
-add_test(NAME h5writer COMMAND ${CMAKE_BINARY_DIR}/psdaq/app/h5writer
-	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
-add_test(NAME testh5 COMMAND python testh5.py
-	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)
-add_test(NAME testdet COMMAND python testdet.py
-	 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test)

@@ -51,7 +51,6 @@ using PebbleQueue = SPSCQueue<Pebble*>;
 struct MemPool
 {
     MemPool(int num_workers, int num_entries);
-    ~MemPool();
     DmaBufferPool dma;
     std::vector<PGPData> pgp_data;
     PebbleQueue pebble_queue;
