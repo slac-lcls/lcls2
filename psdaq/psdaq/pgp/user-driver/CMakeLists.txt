@@ -28,3 +28,10 @@ target_link_libraries(read
     pthread
     pgpdriver
 )
+
+add_executable(looptest
+    looptest.cc
+)
+target_link_libraries(looptest
+    pgpdriver
+)
