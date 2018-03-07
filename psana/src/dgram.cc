@@ -358,17 +358,6 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-    if (fd==0 && configDgram==0) {
-        self->dgram = (Dgram*)malloc(BUFSIZE);
-        return 0;
-    }
-
-    if (fd==0) {
-        fd=((PyDgramObject*)configDgram)->file_descriptor;
-    } else {
-        self->file_descriptor=fd;
-    }
-   
 #ifndef PSANA_USE_LEGION
     self->dgram = (Dgram*)malloc(BUFSIZE);
 #else
@@ -394,37 +383,47 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
         return -1;
     }
-
-    off_t fOffset = (off_t)self->offset;
-    int readSuccess=0;
-    if (fOffset == 0) { 
-        readSuccess = ::read(fd, self->dgram, sizeof(*self->dgram));
+    
+    if (fd==0 && configDgram==0) {
+        self->dgram->xtc.extent = 0; // for empty dgram
     } else {
-        readSuccess = ::pread(fd, self->dgram, sizeof(*self->dgram), fOffset);
-    }
-    if (readSuccess <= 0) {
-        char s[TMPSTRINGSIZE];
-        snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
-        PyErr_SetString(PyExc_StopIteration, s);
-        return -1;
-    }
+        if (fd==0) {
+            fd=((PyDgramObject*)configDgram)->file_descriptor;
+        } else {
+            self->file_descriptor=fd;
+        }
+
+        off_t fOffset = (off_t)self->offset;
+        int readSuccess=0;
+        if (fOffset == 0) { 
+            readSuccess = ::read(fd, self->dgram, sizeof(*self->dgram));
+        } else {
+            readSuccess = ::pread(fd, self->dgram, sizeof(*self->dgram), fOffset);
+        }
+        if (readSuccess <= 0) {
+            char s[TMPSTRINGSIZE];
+            snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
+            PyErr_SetString(PyExc_StopIteration, s);
+            return -1;
+        }
     
-    size_t payloadSize = self->dgram->xtc.sizeofPayload();
-    readSuccess = 0;
-    if (fOffset == 0) {
-        readSuccess = ::read(fd, self->dgram->xtc.payload(), payloadSize);
-    } else { 
-        fOffset += (off_t)sizeof(*self->dgram);
-        readSuccess = ::pread(fd, self->dgram->xtc.payload(), payloadSize, fOffset);
-    }
-    if (readSuccess <= 0){
-        char s[TMPSTRINGSIZE];
-        snprintf(s, TMPSTRINGSIZE, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
-        PyErr_SetString(PyExc_StopIteration, s);
-        return -1;
-    }
+        size_t payloadSize = self->dgram->xtc.sizeofPayload();
+        readSuccess = 0;
+        if (fOffset == 0) {
+            readSuccess = ::read(fd, self->dgram->xtc.payload(), payloadSize);
+        } else { 
+            fOffset += (off_t)sizeof(*self->dgram);
+            readSuccess = ::pread(fd, self->dgram->xtc.payload(), payloadSize, fOffset);
+        }
+        if (readSuccess <= 0){
+            char s[TMPSTRINGSIZE];
+            snprintf(s, TMPSTRINGSIZE, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
+            PyErr_SetString(PyExc_StopIteration, s);
+            return -1;
+        }
     
-    AssignDict(self, configDgram);
+        AssignDict(self, configDgram);
+    }
 
     return 0;
 }
