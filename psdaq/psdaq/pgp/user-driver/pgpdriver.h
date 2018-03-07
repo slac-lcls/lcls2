@@ -40,6 +40,7 @@
 #define DESC_FIFO_HI 0x000C
 #define FIFO_DEPTH   0x0010
 
+#define MAX_LANES 4
 #define MON_BUFFER_SIZE 0x10000
 #define RX_BUFFER_SIZE (4*1024)
 #define RX_DESC_SIZE 0x1000

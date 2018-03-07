@@ -15,8 +15,6 @@
 
 #include "pgpdriver.h"
 
-#define MAX_LANES 4
-
 // translate a virtual address to a physical address
 uintptr_t virt_to_phys(void* virt)
 {

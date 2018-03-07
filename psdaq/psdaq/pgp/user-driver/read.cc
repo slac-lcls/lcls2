@@ -73,25 +73,26 @@ int main(int argc, char* argv[])
     int num_entries = 1048576;
     DmaBufferPool pool(num_entries, RX_BUFFER_SIZE);
     AxisG2Device dev;
-    dev.init(&pool);                 
-    dev.loop_test(0x3, 32, 0x41);
+    dev.init(&pool);       
+    dev.setup_lanes(0xF);
     int64_t event_count = 0;
     int64_t total_bytes_received = 0;
-    uint32_t event;
-    for (size_t i=0; i<60000000; i++) {    
+    bool validate = true;
+    uint32_t event[MAX_LANES];
+    while (true) {    
         DmaBuffer* buffer = dev.read();
-        /*
-        if (i == 0) {
-            event = ((uint32_t*)buffer->virt)[0];
-        } 
-        else {
-            uint32_t new_event = ((uint32_t*)buffer->virt)[0];
-            if ((event + 1) != new_event) {
-                printf("Wrong data, expecting, %u, but got %u instead\n", event+1, new_event);
+        if (validate) {
+            if (event_count == 0) {
+                event[buffer->dest] = ((uint32_t*)buffer->virt)[0];
+            } 
+            else {
+                uint32_t new_event = ((uint32_t*)buffer->virt)[0];
+                if ((event[buffer->dest] + 1) != new_event) {
+                    printf("Wrong data, expecting, %u, but got %u instead\n", event[buffer->dest]+1, new_event);
+                }
+                event[buffer->dest] = new_event;
             }
-            event = new_event;
         }
-        */
         // printf("Size: %u  Dest: %u\n", buffer->size, buffer->dest);        
         event_count += 1;
         total_bytes_received += buffer->size;
@@ -103,7 +104,6 @@ int main(int argc, char* argv[])
         pool.buffer_queue.push(buffer);
 
     }                                
-    dev.loop_test(0, 32, 0x7f0);   
 
     // shutdown monitor thread
     counter->total_bytes_received = -1;
