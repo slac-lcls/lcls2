@@ -130,7 +130,8 @@ namespace Pds {
     private:
       static size_t _calcBatchSize(unsigned maxEntries, size_t maxSize);
     public:
-      TstEbInlet(std::string&  srvPort,
+      TstEbInlet(const char*   srvAddr,
+                 std::string&  srvPort,
                  unsigned      id,
                  uint64_t      duration,
                  unsigned      maxBatches,
@@ -208,7 +209,8 @@ static void pin_thread(const pthread_t& th, int cpu)
   }
 }
 
-TstEbInlet::TstEbInlet(std::string&  srvPort,
+TstEbInlet::TstEbInlet(const char*   srvAddr,
+                       std::string&  srvPort,
                        unsigned      id,
                        uint64_t      duration,
                        unsigned      maxBatches,
@@ -219,7 +221,7 @@ TstEbInlet::TstEbInlet(std::string&  srvPort,
   EventBuilder (maxBatches, maxEntries, std::bitset<64>(contributors).count(), duration),
   _maxBatches  (maxBatches),
   _maxBatchSize(_calcBatchSize(maxEntries, maxSize)),
-  _transport   (srvPort, std::bitset<64>(contributors).count(), maxBatches * _maxBatchSize, EbFtServer::PER_PEER_BUFFERS),
+  _transport   (srvAddr, srvPort, std::bitset<64>(contributors).count(), maxBatches * _maxBatchSize, EbFtServer::PER_PEER_BUFFERS),
   _id          (id),
   _xtc         (TypeId(TypeId::Data, 0), TheSrc(Level::Event, id)), //_l3SummaryType
   _contract    (contributors),
@@ -635,6 +637,9 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, "\nOptions:\n");
 
+  fprintf(stderr, " %-20s %s (default: %s)\n",  "-A <interface_addr>",
+          "IP address of the interface to use", "libfabric's 'best' choice");
+
   fprintf(stderr, " %-20s %s (server: %d)\n",  "-S <srv_port>",
           "Base port number for Builders",     srv_port_base);
   fprintf(stderr, " %-20s %s (client: %d)\n",  "-C <clt_port>",
@@ -663,6 +668,7 @@ int main(int argc, char **argv)
 {
   int op, ret = 0;
   unsigned id         = default_id;
+  char*    srvAddr    = nullptr;
   unsigned srvBase    = srv_port_base;  // Port served to contributors
   unsigned cltBase    = clt_port_base;  // Port served by contributors
   uint64_t duration   = batch_duration;
@@ -670,10 +676,11 @@ int main(int argc, char **argv)
   unsigned maxEntries = max_entries;
   unsigned monPeriod  = mon_period;
 
-  while ((op = getopt(argc, argv, "h?vS:C:i:D:B:E:M:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vA:S:C:i:D:B:E:M:1:2:")) != -1)
   {
     switch (op)
     {
+      case 'A':  srvAddr    = optarg;                       break;
       case 'S':  srvBase    = strtoul(optarg, nullptr, 0);  break;
       case 'C':  cltBase    = strtoul(optarg, nullptr, 0);  break;
       case 'i':  id         = atoi(optarg);                 break;
@@ -746,7 +753,7 @@ int main(int argc, char **argv)
   TstEbOutlet outlet(cltAddr, cltPort, id, duration, maxBatches, maxEntries, max_result_size);
 
   pin_thread(pthread_self(), lcore2);
-  TstEbInlet  inlet (         srvPort, id, duration, maxBatches, maxEntries, max_contrib_size, contributors, outlet);
+  TstEbInlet  inlet (srvAddr, srvPort, id, duration, maxBatches, maxEntries, max_contrib_size, contributors, outlet);
   ebInlet  = &inlet;
 
   printf("Parameters of Builder ID %d:\n", id);

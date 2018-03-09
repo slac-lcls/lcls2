@@ -89,7 +89,7 @@ void Histogram::sum()
     totalWeight += counts*(double)remaining;
     totalCounts += counts;
     }
-  while(--remaining);
+  while(remaining--);
 
   _totalWeight = totalWeight;
   _totalCounts = totalCounts;

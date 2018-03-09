@@ -34,9 +34,10 @@ using namespace Pds::Fabrics;
 static const int      core_base        = 6; // devXX, 8: accXX
 static const int      core_offset      = 2; // Allows Ctrb and EB to run on the same machine
 static const unsigned mon_period       = 1;          // Seconds
-static const unsigned default_id       = 0;          // Contributor's ID
-static const unsigned srv_port_base    = 32768 + 64; // Base port Contributor for receiving results
-static const unsigned clt_port_base    = 32768;      // Base port Contributor sends to EB on
+static const unsigned default_id       = 0;          // Contributor's ID (< 64)
+static const unsigned max_ctrbs        = 64;         // Maximum possible number of contributors
+static const unsigned srv_port_base    = 32768 + max_ctrbs; // Base port Ctrb receives results       on
+static const unsigned clt_port_base    = 32768;             // Base port Ctrb sends    contributions on
 static const unsigned max_batches      = 2048;       // 1 second's worth
 static const unsigned max_entries      = 512;        // < or = to batch_duration
 static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2
@@ -54,6 +55,9 @@ static       int      lcore1           = core_base + core_offset + 0;
 static       int      lcore2           = core_base + core_offset + 12; // devXX, 0 for accXX
 
 typedef std::chrono::steady_clock::time_point tp_t;
+typedef std::chrono::microseconds             us_t;
+typedef std::chrono::nanoseconds              ns_t;
+
 
 namespace Pds {
   namespace Eb {
@@ -158,7 +162,8 @@ namespace Pds {
     private:
       static size_t _calcBatchSize(unsigned maxEntries, size_t maxSize);
     public:
-      TstContribInlet(std::string&      srvPort,
+      TstContribInlet(const char*       srvAddr,
+                      std::string&      srvPort,
                       unsigned          id,
                       uint64_t          builders,
                       unsigned          maxBatches,
@@ -307,7 +312,7 @@ TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
   _inFlightOcc (0),
   _inFlightHist(__builtin_ctz(maxBatches), 1.0),
   _depTimeHist (12, double(1 << 16)/1000.),
-  _postTimeHist(12, 1.0),
+  _postTimeHist(12, double(1 <<  8)/1000.),
   _postCallHist(12, 1.0),
   _postPrevTime(std::chrono::steady_clock::now()),
   _running     (true),
@@ -395,11 +400,11 @@ void TstContribOutlet::post(const Batch* batch)
   auto t1 = std::chrono::steady_clock::now();
 
   //if (std::chrono::duration<double>(t0 - startTime).count() > 10.)
-  if (_batchCount > 9)
+  //if (_batchCount > 9)
   {
-    typedef std::chrono::microseconds us_t;
-
-    _postTimeHist.bump(std::chrono::duration_cast<us_t>(t1 - t0).count());
+    int64_t dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
+    if (dT > 1048576)  printf("postTime = %ld\n", dT);
+    _postTimeHist.bump(dT >> 8);
     _postCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _postPrevTime).count());
     _postPrevTime = t0;
   }
@@ -481,7 +486,8 @@ void TstContribOutlet::routine()
 }
 
 
-TstContribInlet::TstContribInlet(std::string&      srvPort,
+TstContribInlet::TstContribInlet(const char*       srvAddr,
+                                 std::string&      srvPort,
                                  unsigned          id,
                                  uint64_t          builders,
                                  unsigned          maxBatches,
@@ -491,11 +497,11 @@ TstContribInlet::TstContribInlet(std::string&      srvPort,
   _id          (id),
   _numEbs      (std::bitset<64>(builders).count()),
   _maxBatchSize(_calcBatchSize(maxEntries, maxSize)),
-  _transport   (srvPort, _numEbs, maxBatches * _maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS),
+  _transport   (srvAddr, srvPort, _numEbs, maxBatches * _maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS),
   _outlet      (outlet),
   _eventCount  (0),
   _rttHist     (12, double(1 << 16)/1000.),
-  _pendTimeHist(12, 1.0),
+  _pendTimeHist(12, double(1 <<  8)/1000.),
   _pendCallHist(12, 1.0),
   _pendPrevTime(std::chrono::steady_clock::now()),
   _running     (true),
@@ -557,7 +563,7 @@ void TstContribInlet::routine()
 
     unsigned idx = ((const char*)batch - _transport.base()) / _maxBatchSize;
 
-    if ((batch->env == _id) && (std::chrono::duration<double>(t0 - startTime).count() > 2.))
+    if ((batch->env == _id) /*&& (std::chrono::duration<double>(t0 - startTime).count() > 2.)*/)
     {
       struct timespec ts;
       clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -568,9 +574,9 @@ void TstContribInlet::routine()
       _rttHist.bump(dT >> 16);
       //printf("In  Batch %014lx RTT  = %ld S, %ld ns\n", batch->seq.pulseId().value(), dS, dN);
 
-      typedef std::chrono::microseconds us_t;
-
-      _pendTimeHist.bump(std::chrono::duration_cast<us_t>(t1 - t0).count());
+      dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
+      if (dT > 1048576)  printf("pendTime = %ld\n", dT);
+      _pendTimeHist.bump(dT >> 8);
       _pendCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _pendPrevTime).count());
       _pendPrevTime = t0;
     }
@@ -732,7 +738,7 @@ void StatsMonitor::process()
     outCnt    = _outlet ? _outlet->count() : outCntPrv;
     inCnt     = _inlet  ? _inlet->count()  : inCntPrv;
 
-    auto dT   = std::chrono::duration_cast<std::chrono::microseconds>(now - then).count();
+    auto dT   = std::chrono::duration_cast<us_t>(now - then).count();
     auto dOC  = outCnt - outCntPrv;
     auto dIC  = inCnt  - inCntPrv;
 
@@ -780,6 +786,9 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, "\nOptions:\n");
 
+  fprintf(stderr, " %-20s %s (default: %s)\n",  "-A <interface_addr>",
+          "IP address of the interface to use", "libfabric's 'best' choice");
+
   fprintf(stderr, " %-20s %s (server: %d)\n",  "-S <srv_port>",
           "Base port number for Contributors", srv_port_base);
   fprintf(stderr, " %-20s %s (client: %d)\n",  "-C <clt_port>",
@@ -813,6 +822,7 @@ int main(int argc, char **argv)
 
   int op, ret = 0;
   unsigned id         = default_id;
+  char*    srvAddr    = nullptr;
   unsigned srvBase    = srv_port_base;  // Port served to builders
   unsigned cltBase    = clt_port_base;  // Port served by builders
   uint64_t duration   = batch_duration;
@@ -820,10 +830,11 @@ int main(int argc, char **argv)
   unsigned maxEntries = max_entries;
   unsigned monPeriod  = mon_period;
 
-  while ((op = getopt(argc, argv, "h?vcS:C:i:D:B:E:M:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vcA:S:C:i:D:B:E:M:1:2:")) != -1)
   {
     switch (op)
     {
+      case 'A':  srvAddr    = optarg;                       break;
       case 'S':  srvBase    = strtoul(optarg, nullptr, 0);  break;
       case 'C':  cltBase    = strtoul(optarg, nullptr, 0);  break;
       case 'i':  id         = strtoul(optarg, nullptr, 0);  break;
@@ -904,7 +915,7 @@ int main(int argc, char **argv)
   TstContribOutlet outlet(cltAddr, cltPort, id, builders, duration, maxBatches, maxEntries, max_contrib_size);
 
   pin_thread(pthread_self(), lcore2);
-  TstContribInlet  inlet (         srvPort, id, builders,           maxBatches, maxEntries, max_result_size, outlet);
+  TstContribInlet  inlet (srvAddr, srvPort, id, builders,           maxBatches, maxEntries, max_result_size, outlet);
 
   printf("Parameters of Contributor ID %d:\n", id);
   printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);

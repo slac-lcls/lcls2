@@ -14,11 +14,13 @@ using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
 
-EbFtServer::EbFtServer(std::string& port,
+EbFtServer::EbFtServer(const char*  addr,
+                       std::string& port,
                        unsigned     nClients,
                        size_t       lclSize,
                        PeerSharing  shared) :
   EbFtBase(nClients),
+  _addr(addr),
   _port(port),
   _lclSize(lclSize),
   _shared(shared == PEERS_SHARE_BUFFERS),
@@ -58,7 +60,7 @@ int EbFtServer::connect(unsigned myId)
     return -1;
   }
 
-  _pep = new PassiveEndpoint(nullptr, _port.c_str());
+  _pep = new PassiveEndpoint(_addr, _port.c_str());
   if (!_pep)
   {
     fprintf(stderr, "Passive Endpoint creation failed\n");
@@ -71,6 +73,8 @@ int EbFtServer::connect(unsigned myId)
   }
 
   Fabric* fab = _pep->fabric();
+
+  printf("Server is using %s provider\n", fab->provider());
 
   _cqPoller = new CompletionPoller(fab, _ep.size());
   if (!_cqPoller)

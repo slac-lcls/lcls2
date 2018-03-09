@@ -91,6 +91,8 @@ int EbFtClient::_connect(unsigned       myId,
 
   Fabric* fab = ep->fabric();
 
+  printf("Client is using %s provider\n", fab->provider());
+
   mr = fab->register_memory(pool, _lclSize);
   if (!mr)
   {

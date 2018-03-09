@@ -122,12 +122,10 @@ EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
   {
     const uint64_t eventKey = event->sequence();
 
-
     if (eventKey == key) return event->_add(contrib);
     if (eventKey <  key) break;
     event = event->reverse();
   }
-
 
   return _event(contrib, event);
 }
@@ -136,37 +134,29 @@ EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
                                const Dgram* contrib,
                                EbEvent*     event)
 {
-  const EbEvent* const empty = epoch->pending.empty();
-  EbEvent*             after = event;
-  const uint64_t       key   = contrib->seq.pulseId().value();
+  const EbEvent* const empty    = epoch->pending.empty();
+  EbEvent*             after    = event;
+  const uint64_t       key      = contrib->seq.pulseId().value();
+  bool                 reversed = false;
 
   while (event != empty)
   {
     const uint64_t eventKey = event->sequence();
 
-    //printf("A: key = %016lx ekey = %016lx\n", key, eventKey);
-
     if (key == eventKey) return event->_add(contrib);
     if (key >  eventKey)
     {
-      after = event;
-      event = event->forward();
+      if (reversed)  break;
+      after    = event;
+      event    = event->forward();
     }
-    else // Revisit: Still need to test the B case, which won't normally occur
+    else
     {
-      event = event->reverse();
-      after = event;
-      if (event == empty)  break;
-
-      const uint64_t eventKey = event->sequence();
-
-      //printf("B: key = %016lx ekey = %016lx\n", key, eventKey);
-
-      if (key > eventKey)  break;
+      event    = event->reverse();
+      after    = event;
+      reversed = true;
     }
   }
-
-  //printf("C: key = %016lx ekey = %016lx\n", key, after != empty ? after->sequence() : -1ul);
 
   return _event(contrib, after);
 }
@@ -178,7 +168,9 @@ void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
   do
   {
     unsigned srcId = __builtin_ffsl(remaining) - 1;
+
     fixup(event, srcId);
+
     remaining &= ~(1ul << srcId);
   }
   while (remaining);
@@ -235,9 +227,9 @@ void EventBuilder::expired()            // Periodically called from a timer
 
     if (event != last)
     {
-      if (!event->_alive())
+      if (event->_remaining && !event->_alive())
       {
-        printf("Flushing event %014lx, size %zu, remaining %016lx\n",
+        printf("Event timed out: %014lx, size %zu, remaining %016lx\n",
                event->sequence(),
                event->size(),
                event->_remaining);
@@ -310,12 +302,12 @@ void EventBuilder::processBulk(const Dgram* contrib)
 
   const Dgram* next = (Dgram*)contrib->xtc.payload();
   const Dgram* last = (Dgram*)contrib->xtc.next();
-  while(next != last)
+  while (next != last)
   {
     //if (lverbose > 1)                 // Revisit: lverbose is not defined
     //{
     //  unsigned from = next->xtc.src.log() & 0xff;
-    //  printf("EventBuilder found          a  contrib @ %16p, ts %014lx, sz %3zd from Contrib %d\n",
+    //  printf("EventBuilder found          a  contrib @    %16p, ts %014lx, sz %3zd from Contrib %d\n",
     //         next, next->seq.pulseId().value(), sizeof(*next) + next->xtc.sizeofPayload(), from);
     //}
 
