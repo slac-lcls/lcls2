@@ -318,9 +318,10 @@ int EbFtBase::post(const void*    buf,
   RemoteAddress ra   (_ra[idx].rkey, _ra[idx].addr + offset, len);
   MemoryRegion* mr  = _lMr[idx];
   //void*         ctx = nullptr;
-  int           rc  = 0;
+  int           rc;
   do
   {
+    rc = 0;
     if (!ep->write_data_sync(buf, len, &ra, /*ctx,*/ offset, mr))
     {
       if ((rc = ep->error_num()) != -FI_EAGAIN)
@@ -357,11 +358,11 @@ int EbFtBase::post(const void*    buf,
     //            _rOuts[idx], _rxDepth[idx], idx, dst);
     //  }
     //}
-    //if (!ep->recv_comp_data())
-    //{
-    //  if (ep->error_num() != -FI_EAGAIN)
-    //    fprintf(stderr, "Post: recv_comp_data() error: %s\n", ep->error());
-    //}
+    if (!ep->recv_comp_data())
+    {
+      if (ep->error_num() != -FI_EAGAIN)
+        fprintf(stderr, "Post: recv_comp_data() error: %s\n", ep->error());
+    }
   }
   while (rc == -FI_EAGAIN);
 
