@@ -317,11 +317,11 @@ int EbFtBase::post(const void*    buf,
   Endpoint*     ep  = _ep[idx];
   RemoteAddress ra   (_ra[idx].rkey, _ra[idx].addr + offset, len);
   MemoryRegion* mr  = _lMr[idx];
-  void*         ctx = nullptr;
+  //void*         ctx = nullptr;
   int           rc  = 0;
   do
   {
-    if (!ep->write_data(buf, len, &ra, ctx, offset, mr))
+    if (!ep->write_data_sync(buf, len, &ra, /*ctx,*/ offset, mr))
     {
       if ((rc = ep->error_num()) != -FI_EAGAIN)
       {
@@ -331,22 +331,22 @@ int EbFtBase::post(const void*    buf,
       ++repostCnt;
     }
 
-    // It appears that the CQ must always be read, not just after EAGAIN
-    int              compCnt;
-    fi_cq_data_entry cqEntry;
-    const ssize_t    maxCnt = 1;
-    const int        tmo    = 5000;   // milliseconds
-    if (!ep->comp_wait(&cqEntry, &compCnt, maxCnt, tmo))
-    {
-      if (ep->error_num() != -FI_EAGAIN) // EAGAIN => timeout or signal
-      {                                  // Occurs when peer disconnects
-        fprintf(stderr, "Error completing post to peer %u: %s\n",
-                idx, ep->error());
-      }
-      rc = ep->error_num();
-      //ep->recv_comp_data();
-      return rc;
-    }
+    //// It appears that the CQ must always be read, not just after EAGAIN
+    //int              compCnt;
+    //fi_cq_data_entry cqEntry;
+    //const ssize_t    maxCnt = 1;
+    //const int        tmo    = 5000;   // milliseconds
+    //if (!ep->comp_wait(&cqEntry, &compCnt, maxCnt, tmo))
+    //{
+    //  if (ep->error_num() != -FI_EAGAIN) // EAGAIN => timeout or signal
+    //  {                                  // Occurs when peer disconnects
+    //    fprintf(stderr, "Error completing post to peer %u: %s\n",
+    //            idx, ep->error());
+    //  }
+    //  rc = ep->error_num();
+    //  ep->recv_comp_data();
+    //  return rc;
+    //}
 
     //if (--_rOuts[idx] <= 1)
     //{
