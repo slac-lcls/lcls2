@@ -16,9 +16,9 @@ namespace Pds {
     class CompletionPoller;
   };
 
-#define EpList std::vector<Fabrics::Endpoint*>
-#define MrList std::vector<Fabrics::MemoryRegion*>
-#define RaList std::vector<Fabrics::RemoteAddress>
+  typedef std::vector<Fabrics::Endpoint*>     EpList;
+  typedef std::vector<Fabrics::MemoryRegion*> MrList;
+  typedef std::vector<Fabrics::RemoteAddress> RaList;
 
   namespace Eb {
 
@@ -38,7 +38,6 @@ namespace Pds {
       uint64_t              _postCnt;
       uint64_t              _repostCnt;
       uint64_t              _repostMax;
-      uint64_t              _postWtAgnCnt;
       uint64_t              _pendCnt;
       uint64_t              _pendTmoCnt;
       uint64_t              _rependCnt;
@@ -57,7 +56,7 @@ namespace Pds {
       int      pend(uint64_t* data);
       //int      post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t offset, void* ctx);
       int      post(const void* buf, size_t len, unsigned dst, uint64_t offset);
-      uint64_t rmtAdx(unsigned dst, uint64_t offset); // Revisit: For debugging, remove
+      uint64_t rmtAdx(unsigned dst, uint64_t offset) const; // Revisit: For debugging, remove
     public:
       virtual int shutdown() = 0;
     public:
@@ -74,6 +73,7 @@ namespace Pds {
                           Fabrics::Endpoint*      ep,
                           Fabrics::MemoryRegion*  mr,
                           Fabrics::RemoteAddress& ra);
+      int      _postCompRecv(Fabrics::Endpoint* ep, unsigned count);
     private:
       int      _tryCq(uint64_t* data);
     protected:
@@ -82,6 +82,8 @@ namespace Pds {
       MrList                     _rMr;  // List of remote Memory Regions per EP
       RaList                     _ra;   // List of remote address descriptors
       Fabrics::CompletionPoller* _cqPoller;
+      //std::vector<unsigned>      _rxDepth;
+      //std::vector<unsigned>      _rOuts;
       std::vector<unsigned>      _id;
       unsigned*                  _mappedId;
       EbFtStats                  _stats;

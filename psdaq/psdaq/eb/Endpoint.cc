@@ -984,7 +984,10 @@ bool Endpoint::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, int*
 {
   struct fi_cq_err_entry comp_err;
 
-  if (comp_ret < 0) {
+  if (comp_ret >= 0) {
+    *comp_num = (int) comp_ret;
+    return true;
+  } else {
     *comp_num = -1;
     _errno = (int) comp_ret;
     if (_errno == -FI_EAVAIL) {
@@ -995,9 +998,6 @@ bool Endpoint::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, int*
       set_error(cmd);
     }
     return false;
-  } else {
-    *comp_num = (int) comp_ret;
-    return true;
   }
 }
 

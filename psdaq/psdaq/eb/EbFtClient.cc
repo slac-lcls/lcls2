@@ -18,16 +18,11 @@ static const size_t scratch_size = sizeof(Fabrics::RemoteAddress);
 
 
 EbFtClient::EbFtClient(StringList& peers,
-                       StringList& port,
-                       size_t      rmtSize) :
+                       StringList& port) :
   EbFtBase(peers.size()),
   _peers(peers),
-  _port(port),
-  _lclSize(scratch_size),
-  _rmtSize(rmtSize),
-  _base(new char[peers.size() * scratch_size]) // No big deal if unaligned
+  _port(port)
 {
-  assert(_base != nullptr);
 }
 
 EbFtClient::~EbFtClient()
@@ -36,23 +31,16 @@ EbFtClient::~EbFtClient()
 
   for (unsigned i = 0; i < nEp; ++i)
     if (_ep[i])   delete _ep[i];
-
-  delete[] _base;
 }
 
-int EbFtClient::connect(unsigned id, unsigned tmo)
+int EbFtClient::connect(unsigned id, unsigned tmo, size_t rmtSize)
 {
-  if (_base == nullptr)
-  {
-    fprintf(stderr, "No memory available for a region of size %zd\n", _lclSize);
-    return -1;
-  }
+  char pool[scratch_size];              // No big deal if unaligned
 
-  char* pool = _base;
   for (unsigned i = 0; i < _peers.size(); ++i)
   {
     _lMr[i] = nullptr;
-    int ret = _connect(id, _peers[i], _port[i], tmo, pool, _ep[i], _rMr[i], _id[i]);
+    int ret = _connect(_peers[i], _port[i], tmo, _ep[i]);
     if (ret)
     {
       fprintf(stderr, "_connect() failed at index %u (%s:%s)\n",
@@ -60,10 +48,31 @@ int EbFtClient::connect(unsigned id, unsigned tmo)
       return ret;
     }
 
-    ret = _syncRmtMr(pool, _rmtSize, _ep[i], _rMr[i], _ra[i]);
+    ret = _exchangeIds(id, pool, sizeof(pool), _ep[i], _rMr[i], _id[i]);
+    if (ret)
+    {
+      fprintf(stderr, "_exchangeId() failed at index %u (%s:%s)\n",
+              i, _peers[i].c_str(), _port[i].c_str());
+      return ret;
+    }
+
+    ret = _syncRmtMr(pool, rmtSize, _ep[i], _rMr[i], _ra[i]);
     if (ret)  return ret;
 
-    pool += scratch_size;
+    //_rxDepth[i] = _ep[i]->fabric()->info()->rx_attr->size;
+    //
+    //_rOuts[i] = _postCompRecv(_ep[i], _rxDepth[i]);
+    //if (_rOuts[i] < _rxDepth[i])
+    //{
+    //  fprintf(stderr, "Posted only %d of %d CQ buffers at index %d(%d)\n",
+    //          _rOuts[i], _rxDepth[i], i, _id[i]);
+    //}
+
+    if (!_ep[i]->recv_comp_data())
+    {
+      fprintf(stderr, "Failed to post a CQ buffer for client index %d: %s\n",
+              i, _ep[i]->error());
+    }
   }
 
   _mapIds(_peers.size());
@@ -71,14 +80,10 @@ int EbFtClient::connect(unsigned id, unsigned tmo)
   return 0;
 }
 
-int EbFtClient::_connect(unsigned       myId,
-                         std::string&   peer,
+int EbFtClient::_connect(std::string&   peer,
                          std::string&   port,
                          unsigned       tmo,
-                         char*          pool,
-                         Endpoint*&     ep,
-                         MemoryRegion*& mr,
-                         unsigned&      id)
+                         Endpoint*&     ep)
 {
   ep = new Endpoint(peer.c_str(), port.c_str());
   if (!ep || (ep->state() != EP_UP))
@@ -93,21 +98,13 @@ int EbFtClient::_connect(unsigned       myId,
 
   printf("Client is using %s provider\n", fab->provider());
 
-  mr = fab->register_memory(pool, _lclSize);
-  if (!mr)
-  {
-    fprintf(stderr, "Failed to register memory region @ %p, sz %zu: %s\n",
-            pool, _lclSize, fab->error());
-    perror("fab->register_memory");
-    return fab->error_num();
-  }
-
   printf("Waiting for server %s on port %s\n", peer.c_str(), port.c_str());
 
   bool tmoEnabled = tmo != 0;
+  tmo *= 10;
   while (!ep->connect() && (!tmoEnabled || --tmo))
   {
-    sleep (1);
+    usleep(100000);
   }
   if (tmoEnabled && (tmo == 0))
   {
@@ -117,20 +114,42 @@ int EbFtClient::_connect(unsigned       myId,
     return -1;
   }
 
+  printf("Server %s:%s connected\n", peer.c_str(), port.c_str());
+
+  return 0;
+}
+
+int EbFtClient::_exchangeIds(unsigned       myId,
+                             char*          pool,
+                             size_t         size,
+                             Endpoint*      ep,
+                             MemoryRegion*& mr,
+                             unsigned&      id)
+{
+  Fabric* fab = ep->fabric();
+
+  mr = fab->register_memory(pool, size);
+  if (!mr)
+  {
+    fprintf(stderr, "Failed to register memory region @ %p, sz %zu: %s\n",
+            pool, size, fab->error());
+    perror("fab->register_memory");
+    return fab->error_num();
+  }
+
   *(unsigned*)pool = myId;
   if (!ep->send_sync(pool, sizeof(myId)))
   {
     fprintf(stderr, "Failed sending peer our ID: %s\n", ep->error());
     return -1;
   }
+
   if (!ep->recv_sync(pool, sizeof(id), mr))
   {
     fprintf(stderr, "Failed receiving peer's ID: %s\n", ep->error());
     return -1;
   }
   id = *(unsigned*)pool;
-
-  printf("Server %d (%s:%s) connected\n", id, peer.c_str(), port.c_str());
 
   return 0;
 }

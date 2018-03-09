@@ -28,28 +28,26 @@ namespace Pds {
     {
     public:
       EbFtClient(StringList& peers,
-                 StringList& port,
-                 size_t      rmtSize);
+                 StringList& port);
       virtual ~EbFtClient();
     public:
-      int connect(unsigned id, unsigned tmo);
+      int connect(unsigned id, unsigned tmo, size_t rmtSize);
     public:
       virtual int shutdown();
     private:
-      int _connect(unsigned                myId,
-                   std::string&            peer,
-                   std::string&            port,
-                   unsigned                tmo,
-                   char*                   pool,
-                   Fabrics::Endpoint*&     ep,
-                   Fabrics::MemoryRegion*& mr,
-                   unsigned&               id);
+      int _connect(std::string&        peer,
+                   std::string&        port,
+                   unsigned            tmo,
+                   Fabrics::Endpoint*& ep);
+      int _exchangeIds(unsigned                myId,
+                       char*                   pool,
+                       size_t                  lclSize,
+                       Fabrics::Endpoint*      ep,
+                       Fabrics::MemoryRegion*& mr,
+                       unsigned&               id);
     private:
       StringList& _peers;               // List of peers
       StringList& _port;                // The port to listen on
-      size_t      _lclSize;             // Local  memory region size
-      size_t      _rmtSize;             // Remote memory region size
-      char*       _base;                // The local memory region
     };
   };
 };
