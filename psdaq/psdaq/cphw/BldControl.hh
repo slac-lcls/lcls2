@@ -20,8 +20,10 @@ namespace Pds {
       void setMaxSize(unsigned v);
       void enable (const sockaddr_in& sa);
       void disable();
+    public:
+      Pds::Cphw::AmcTiming  _timing;
     private:
-      char  _rsvd_0[0x09030000];       // 09030000
+      char  _rsvd_0[0x09030000-sizeof(Module::_timing)];       // 09030000
       Reg   maxSize_enable;
     public:
       Reg   channelMask;
