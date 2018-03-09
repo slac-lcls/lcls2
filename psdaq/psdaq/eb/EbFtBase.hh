@@ -41,14 +41,10 @@ namespace Pds {
       uint64_t              _postWtAgnCnt;
       uint64_t              _pendCnt;
       uint64_t              _pendTmoCnt;
-      uint64_t              _pendAgnCnt;
-      uint64_t              _pendAgnMax;
       uint64_t              _rependCnt;
       uint64_t              _rependMax;
       std::vector<uint64_t> _rmtWrCnt;
       std::vector<uint64_t> _compAgnCnt;
-      std::vector<uint64_t> _compAgnMax;
-      uint64_t              _compNoneCnt;
     };
 
     class EbFtBase

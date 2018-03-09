@@ -3,8 +3,8 @@
 
 #include "GenericPool.hh"
 
-//#include <mutex>
-//#include <condition_variable>
+#include <mutex>
+#include <condition_variable>
 
 namespace Pds {
 
@@ -16,8 +16,8 @@ namespace Pds {
     virtual void* deque();
     virtual void  enque(PoolEntry*);
   private:
-    //mutable std::mutex      _mutex;
-    //std::condition_variable _condVar;
+    mutable std::mutex      _mutex;
+    std::condition_variable _condVar;
   };
 
 }
@@ -25,19 +25,17 @@ namespace Pds {
 
 inline void* Pds::GenericPoolW::deque()
 {
-  //std::unique_lock<std::mutex> lk(_mutex);
-  //_condVar.wait(lk, [this]{ return atHead() != empty(); });
-  //return Pds::GenericPool::deque();
-  Pds::PoolEntry* entry = removeW();
+  std::unique_lock<std::mutex> lk(_mutex);
+  _condVar.wait(lk, [this]{ return atHead() != empty(); });
+  Pds::PoolEntry* entry = removeNL();
   return (void*)&entry[1];
 }
 
 inline void Pds::GenericPoolW::enque(PoolEntry* entry)
 {
-  //std::lock_guard<std::mutex> lk(_mutex);
-  //Pds::GenericPool::enque(entry);
-  //_condVar.notify_one();
-  insertN(entry);
+  std::lock_guard<std::mutex> lk(_mutex);
+  insertNL(entry);
+  _condVar.notify_one();
 }
 
 #endif

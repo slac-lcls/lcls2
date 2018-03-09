@@ -518,7 +518,7 @@ void* MemoryRegion::start() const { return _start; }
 
 size_t MemoryRegion::length() const { return _len; }
 
-bool MemoryRegion::contains(void* start, size_t len) const
+bool MemoryRegion::contains(const void* start, size_t len) const
 {
   return (start >= _start) && ( ((char*) start + len) <= ((char*) _start + _len) );
 }
@@ -613,7 +613,7 @@ MemoryRegion* Fabric::register_memory(LocalAddress* laddr)
   return NULL;
 }
 
-MemoryRegion* Fabric::lookup_memory(void* start, size_t len) const
+MemoryRegion* Fabric::lookup_memory(const void* start, size_t len) const
 {
   for (unsigned i=0; i<_mem_regions.size(); i++) {
     if (_mem_regions[i] && _mem_regions[i]->contains(start, len))
@@ -1204,7 +1204,7 @@ bool Endpoint::write_sync(LocalAddress* laddr, const RemoteAddress* raddr)
   return write_sync(laddr->buf(), laddr->len(), raddr, laddr->mr());
 }
 
-bool Endpoint::write_data(void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr)
+bool Endpoint::write_data(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_writedata");
 
@@ -1218,7 +1218,7 @@ bool Endpoint::write_data(void* buf, size_t len, const RemoteAddress* raddr, voi
   return true;
 }
 
-bool Endpoint::write_data_sync(void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr)
+bool Endpoint::write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr)
 {
   int context = _counter++;
 
@@ -1229,12 +1229,12 @@ bool Endpoint::write_data_sync(void* buf, size_t len, const RemoteAddress* raddr
   return false;
 }
 
-bool Endpoint::write_data(LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data)
+bool Endpoint::write_data(const LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data)
 {
   return write_data(laddr->buf(), laddr->len(), raddr, context, data, laddr->mr());
 }
 
-bool Endpoint::write_data_sync(LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data)
+bool Endpoint::write_data_sync(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data)
 {
   return write_data_sync(laddr->buf(), laddr->len(), raddr, data, laddr->mr());
 }
@@ -1627,25 +1627,27 @@ bool CompletionPoller::poll(int timeout)
   int ret = 0;
 
   ret = fi_trywait(_fabric->fabric(), _pfid, _nfd);
+  if (ret == -FI_EAGAIN) {
+    return true;
+  }
   if (ret == FI_SUCCESS) {
     npoll = ::poll(_pfd, _nfd, timeout);
-    if (npoll < 0) {
-      _errno = npoll;
-      set_error("poll");
-    } else if (npoll == 0) {
+    if (npoll > 0) {
+      clear_error();
+      return true;
+    }
+    if (npoll == 0) {
       _errno = -FI_ETIMEDOUT;
       set_error("poll");
     } else {
-      clear_error();
+      _errno = npoll;
+      set_error("poll");
     }
     return (npoll > 0);
-  } else if (ret == -FI_EAGAIN) {
-    return true;
-  } else {
-    _errno = ret;
-    set_error("fi_trywait");
-    return false;
   }
+  _errno = ret;
+  set_error("fi_trywait");
+  return false;
 }
 
 void CompletionPoller::check_size()

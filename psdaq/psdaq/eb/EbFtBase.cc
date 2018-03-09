@@ -19,20 +19,15 @@ EbFtStats::EbFtStats(unsigned nPeers) :
   _postWtAgnCnt(0),
   _pendCnt(0),
   _pendTmoCnt(0),
-  _pendAgnCnt(0),
-  _pendAgnMax(0),
   _rependCnt(0),
   _rependMax(0),
   _rmtWrCnt(nPeers),
-  _compAgnCnt(nPeers),
-  _compAgnMax(nPeers),
-  _compNoneCnt(0)
+  _compAgnCnt(nPeers)
 {
   for (unsigned i = 0; i < nPeers; ++i)
   {
     _rmtWrCnt[i]    = 0;
     _compAgnCnt[i]  = 0;
-    _compAgnMax[i]  = 0;
   }
 }
 
@@ -49,13 +44,11 @@ void EbFtStats::clear()
   _pendCnt      = 0;
   _rependCnt    = 0;
   _rependMax    = 0;
-  _compNoneCnt  = 0;
 
   for (unsigned i = 0; i < _rmtWrCnt.size(); ++i)
   {
     _rmtWrCnt[i]    = 0;
     _compAgnCnt[i]  = 0;
-    _compAgnMax[i]  = 0;
   }
 }
 
@@ -81,12 +74,11 @@ void EbFtStats::dump()
   }
   if (_pendCnt)
   {
-    printf("pend: count %8ld, timeouts %8ld, again %8ld (max %8ld) retries %8ld (max %8ld), None %8ld\n",
-           _pendCnt, _pendTmoCnt, _pendAgnCnt, _pendAgnMax, _rependCnt, _rependMax, _compNoneCnt);
+    printf("pend: count %8ld, repends %8ld (max %8ld), timeouts %8ld\n",
+           _pendCnt, _rependCnt, _rependMax, _pendTmoCnt);
 
     prtVec("rmtWrCnt",    _rmtWrCnt);
     prtVec("compAgnCnt",  _compAgnCnt);
-    prtVec("compAgnMax",  _compAgnMax);
   }
 }
 
@@ -109,8 +101,14 @@ EbFtBase::~EbFtBase()
   if (_mappedId)  delete [] _mappedId;
 }
 
+//#include <sys/mman.h>
+
 void EbFtBase::registerMemory(void* buffer, size_t size)
 {
+  // No obvious effect:
+  //int ret = mlock(buffer, size);
+  //if (ret) perror ("mlock");
+
   for (unsigned i = 0; i < _ep.size(); ++i)
   {
     Endpoint* ep = _ep[i];
@@ -209,7 +207,10 @@ int EbFtBase::_tryCq(uint64_t* data)
     fi_cq_data_entry cqEntry;
     const int        maxCnt = 1;
 
-    ep->recv_comp_data();
+    if (!ep->recv_comp_data())
+    {
+      //fprintf(stderr, "Pend: recv_comp_data() error: %s\n", ep->error());
+    }
 
     if (ep->comp(&cqEntry, &compCnt, maxCnt) && (compCnt == maxCnt))
     {
@@ -238,45 +239,37 @@ int EbFtBase::_tryCq(uint64_t* data)
     ++_stats._compAgnCnt[iSrc];
   }
 
-  ++_stats._compNoneCnt;
-
   return -FI_EAGAIN;
 }
 
 int EbFtBase::pend(uint64_t* data)
 {
   int      ret;
-  uint64_t pendAgnCnt = 0;
   uint64_t rependCnt  = 0;
   ++_stats._pendCnt;
 
   while ((ret = _tryCq(data)) == -FI_EAGAIN)
   {
     const int tmo = 5000;               // milliseconds
-    if (!_cqPoller->poll(tmo))
+    if (_cqPoller->poll(tmo))
     {
-      if (_cqPoller->error_num() != -FI_EAGAIN)
-      {
-        if (_cqPoller->error_num() == -FI_ETIMEDOUT)
-        {
-          ++_stats._pendTmoCnt;
-        }
-        else
-        {
-          fprintf(stderr, "Error polling completion queues: %s\n",
-                  _cqPoller->error());
-        }
-        return _cqPoller->error_num();
-      }
-      ++pendAgnCnt;
-      continue;
+      ++rependCnt;
     }
-    ++rependCnt;
+    else
+    {
+      if (_cqPoller->error_num() == -FI_ETIMEDOUT)
+      {
+        ++_stats._pendTmoCnt;
+      }
+      else
+      {
+        fprintf(stderr, "Error polling completion queues: %s\n",
+                _cqPoller->error());
+      }
+      return _cqPoller->error_num();
+    }
   }
 
-  if (pendAgnCnt > _stats._pendAgnMax)
-    _stats._pendAgnMax = pendAgnCnt;
-  _stats._pendAgnCnt += pendAgnCnt;
   if (rependCnt > _stats._rependMax)
     _stats._rependMax = rependCnt;
   _stats._rependCnt += rependCnt;
@@ -369,7 +362,7 @@ int EbFtBase::post(const void*    buf,
 
   Endpoint*     ep = _ep[idx];
   MemoryRegion* mr = _lMr[idx];
-  while (!ep->write_data(const_cast<void*>(buf), len, &rmtAdx, ctx, offset, mr))
+  while (!ep->write_data(buf, len, &rmtAdx, ctx, offset, mr))
   {
     if (ep->error_num() == -FI_EAGAIN)
     {
@@ -378,7 +371,10 @@ int EbFtBase::post(const void*    buf,
       const ssize_t    maxCnt = 1;
       const int        tmo    = 5000;   // milliseconds
 
-      ep->recv_comp_data();
+      if (!ep->recv_comp_data())
+      {
+        //fprintf(stderr, "Post: recv_comp_data() error: %s\n", ep->error());
+      }
 
       if (!ep->comp_wait(&cqEntry, &compCnt, maxCnt, tmo))
       {

@@ -35,7 +35,7 @@ namespace Pds {
       void* start() const;
       size_t length() const;
       struct fid_mr* fid() const;
-      bool contains(void* start, size_t len) const;
+      bool contains(const void* start, size_t len) const;
     private:
       struct fid_mr* _mr;
       void*          _start;
@@ -153,7 +153,7 @@ namespace Pds {
       ~Fabric();
       MemoryRegion* register_memory(void* start, size_t len);
       MemoryRegion* register_memory(LocalAddress* laddr);
-      MemoryRegion* lookup_memory(void* start, size_t len) const;
+      MemoryRegion* lookup_memory(const void* start, size_t len) const;
       MemoryRegion* lookup_memory(LocalAddress* laddr) const;
       bool lookup_memory_iovec(LocalIOVec* iov) const;
       bool up() const;
@@ -219,13 +219,13 @@ namespace Pds {
       bool recv(void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
       bool read(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
       bool write(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
-      bool write_data(void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr=NULL);
+      bool write_data(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr=NULL);
       /* Asynchronous calls (LocalAddress wrapper) */
       bool send(LocalAddress* laddr, void* context);
       bool recv(LocalAddress* laddr, void* context);
       bool read(LocalAddress* laddr, const RemoteAddress* raddr, void* context);
       bool write(LocalAddress* laddr, const RemoteAddress* raddr, void* context);
-      bool write_data(LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data);
+      bool write_data(const LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data);
       /* Vectored Asynchronous calls */
       bool sendv(LocalIOVec* iov, void* context);
       bool recvv(LocalIOVec* iov, void* context);
@@ -239,13 +239,13 @@ namespace Pds {
       bool recv_sync(void* buf, size_t len, const MemoryRegion* mr=NULL);
       bool read_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
       bool write_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
-      bool write_data_sync(void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr=NULL);
+      bool write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr=NULL);
       /* Synchronous calls (LocalAddress wrapper) */
       bool send_sync(LocalAddress* laddr);
       bool recv_sync(LocalAddress* laddr);
       bool read_sync(LocalAddress* laddr, const RemoteAddress* raddr);
       bool write_sync(LocalAddress* laddr, const RemoteAddress* raddr);
-      bool write_data_sync(LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data);
+      bool write_data_sync(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data);
       /* Vectored Synchronous calls */
       bool sendv_sync(LocalIOVec* iov);
       bool recvv_sync(LocalIOVec* iov);
