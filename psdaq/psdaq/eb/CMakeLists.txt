@@ -109,6 +109,7 @@ install(TARGETS eb
                 ft_request
                 ft_client
                 ft_server
+		ft_writemsg_client
 		ft_writemsg_server
 		tstEbContributor
 		tstEbBuilder
