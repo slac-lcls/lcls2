@@ -34,10 +34,18 @@ namespace Pds {
                  PeerSharing  shared);
       virtual ~EbFtServer();
     public:
-      int connect(unsigned myId);
+      int connect(unsigned id);
       const char* base() const;
     public:
       virtual int shutdown();
+    private:
+      int _connect();
+      int _exchangeIds(unsigned                 myId,
+                       char*                    pool,
+                       size_t                   lclSize,
+                       Fabrics::Endpoint*       ep,
+                       Fabrics::MemoryRegion*&  mr,
+                       unsigned&                id);
     private:
       const char*               _addr;   // The interface address to use
       std::string&              _port;   // The port to listen on

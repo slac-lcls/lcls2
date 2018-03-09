@@ -429,7 +429,7 @@ TstEbOutlet::TstEbOutlet(std::vector<std::string>& cltAddr,
                          unsigned                  maxEntries,
                          size_t                    maxSize) :
   BatchManager (duration, maxBatches, maxEntries, maxSize),
-  _transport   (cltAddr, cltPort, batchRegionSize()),
+  _transport   (cltAddr, cltPort),
   _id          (id),
   _maxEntries  (maxEntries),
   _batchCount  (0),
@@ -463,7 +463,7 @@ void TstEbOutlet::shutdown()
 int TstEbOutlet::connect()
 {
   const unsigned tmo(120);
-  int ret = _transport.connect(_id, tmo);
+  int ret = _transport.connect(_id, tmo, batchRegionSize());
   if (ret)
   {
     fprintf(stderr, "FtClient connect() failed\n");

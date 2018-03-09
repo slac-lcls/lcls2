@@ -303,7 +303,7 @@ TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
                                    size_t                    maxSize) :
   BatchManager (duration, maxBatches, maxEntries, maxSize),
   _drpSim      (maxBatches, maxEntries, maxSize, id),
-  _transport   (cltAddr, cltPort, batchRegionSize()),
+  _transport   (cltAddr, cltPort),
   _id          (id),
   _numEbs      (std::bitset<64>(builders).count()),
   _destinations(new unsigned[_numEbs]),
@@ -352,7 +352,7 @@ void TstContribOutlet::shutdown()
 int TstContribOutlet::connect()
 {
   const unsigned tmo(120);
-  int ret = _transport.connect(_id, tmo);
+  int ret = _transport.connect(_id, tmo, batchRegionSize());
   if (ret)
   {
     fprintf(stderr, "FtClient connect() failed\n");
@@ -427,7 +427,7 @@ void TstContribOutlet::post(const Batch* batch)
   //}
   //delete batch;
 
-  //usleep(1000000);
+  //usleep(10000);
 }
 
 void TstContribOutlet::completed()
