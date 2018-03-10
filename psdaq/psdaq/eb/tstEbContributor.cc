@@ -1,5 +1,5 @@
-#include "psdaq/eb/BatchManager.hh"
 #include "psdaq/eb/Endpoint.hh"
+#include "psdaq/eb/BatchManager.hh"
 
 #include "psdaq/eb/EbLfClient.hh"
 
@@ -35,18 +35,17 @@ static const int      core_offset      = 2; // Allows Ctrb and EB to run on the 
 static const unsigned mon_period       = 1;          // Seconds
 static const unsigned default_id       = 0;          // Contributor's ID (< 64)
 static const unsigned max_peers        = 64;         // Maximum possible number of contributors
-//static const unsigned srv_port_base    = 32768 + max_peers; // Base port Ctrb receives results       on
-static const unsigned clt_port_base    = 32768;             // Base port Ctrb sends    contributions on
-static const unsigned max_batches      = 2048;       // 1 second's worth
+static const unsigned port_base        = 32768;      // Base port Ctrb sends contributions on
+static const unsigned max_batches      = 2048;       // Maximum number of batches in circulation
 static const unsigned max_entries      = 512;        // < or = to batch_duration
-static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2
+static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  data words
 //static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
 static const size_t   result_extent    = input_extent;
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
-static const uint64_t nanosecond       = 1000000000ul;
+static const uint64_t nanosecond       = 1000000000ul; // Nonconfigurable constant: don't change
 
 static       bool     lcheck           = false;
 static       unsigned lverbose         = 0;
@@ -743,25 +742,19 @@ void sigHandler(int signal)
 void usage(char *name, char *desc)
 {
   fprintf(stderr, "Usage:\n");
-  fprintf(stderr, "  %s [OPTIONS] <builder_spec> [<builder_spec> [...]]\n", name);
+  fprintf(stderr, "  %s [OPTIONS] <builder_spec> [<builder_id> [...]]\n", name);
 
   if (desc)
     fprintf(stderr, "\n%s\n", desc);
 
-  fprintf(stderr, "\n<builder_spec> has the form '[<builder_id>:]<builder_addr>'\n");
-  fprintf(stderr, "  <builder_id> must be in the range 0 - %d.\n", max_peers - 1);
-  fprintf(stderr, "  If the ':' is omitted, <builder_id> will be given the\n");
-  fprintf(stderr, "  spec's positional value from 0 - %d, from left to right.\n", max_peers - 1);
+  fprintf(stderr, "\n<builder_id> must be in the range 0 - %d.\n", max_peers - 1);
 
   fprintf(stderr, "\nOptions:\n");
 
   fprintf(stderr, " %-20s %s (default: %s)\n",  "-A <interface_addr>",
           "IP address of the interface to use", "libfabric's 'best' choice");
-
-  //fprintf(stderr, " %-20s %s (server: %d)\n",  "-S <srv_port>",
-  //        "Base port number for Contributors", srv_port_base);
-  fprintf(stderr, " %-20s %s (client: %d)\n",  "-C <clt_port>",
-          "Base port number for Builders",     clt_port_base);
+  fprintf(stderr, " %-20s %s (default: %d)\n",  "-P <port>",
+          "Base port number to use",            port_base);
 
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-i <ID>",
           "Unique ID of this Contributor (0 - 63)",   default_id);
@@ -791,21 +784,17 @@ int main(int argc, char **argv)
 
   int      op, ret    = 0;
   unsigned id         = default_id;
-  //char*    srvAddr    = nullptr;
-  //unsigned srvBase    = srv_port_base;  // Port served to builders
-  unsigned cltBase    = clt_port_base;  // Port served by builders
+  unsigned portBase   = port_base;      // Port served by builders
   uint64_t duration   = batch_duration;
   unsigned maxBatches = max_batches;
   unsigned maxEntries = max_entries;
   unsigned monPeriod  = mon_period;
 
-  while ((op = getopt(argc, argv, "h?vcA:S:C:i:D:B:E:M:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vcP:i:D:B:E:M:1:2:")) != -1)
   {
     switch (op)
     {
-      //case 'A':  srvAddr    = optarg;        break;
-      //case 'S':  srvBase    = atoi(optarg);  break;
-      case 'C':  cltBase    = atoi(optarg);  break;
+      case 'P':  portBase   = atoi(optarg);  break;
       case 'i':  id         = atoi(optarg);  break;
       case 'D':  duration   = atoll(optarg); break;
       case 'B':  maxBatches = atoi(optarg);  break;
@@ -827,17 +816,10 @@ int main(int argc, char **argv)
     fprintf(stderr, "Contributor ID is out of range 0 - %d: %d\n", max_peers - 1, id);
     return 1;
   }
-  //if (srvBase + id > USHRT_MAX)
-  //{
-  //  fprintf(stderr, "Server port is out of range 0 - 65535: %d\n", srvBase + id);
-  //  return 1;
-  //}
-  char port[8];
-  //snprintf(port, sizeof(port), "%d", srvBase + id);
-  //std::string srvPort(port);
 
-  std::vector<std::string> cltAddr;
-  std::vector<std::string> cltPort;
+  char port[8];
+  std::vector<std::string> ebAddr;
+  std::vector<std::string> ebPort;
   uint64_t builders = 0;
   if (optind < argc)
   {
@@ -852,15 +834,15 @@ int main(int argc, char **argv)
         fprintf(stderr, "Builder ID is out of range 0 - %d: %d\n", max_peers - 1, bid);
         return 1;
       }
-      if (cltBase + bid > USHRT_MAX)
+      if (portBase + bid > USHRT_MAX)
       {
-        fprintf(stderr, "Client port is out of range 0 - 65535: %d\n", cltBase + bid);
+        fprintf(stderr, "Client port is out of range 0 - 65535: %d\n", portBase + bid);
         return 1;
       }
       builders |= 1ul << bid;
-      snprintf(port, sizeof(port), "%d", cltBase + bid);
-      cltAddr.push_back(std::string(colon ? &colon[1] : builder));
-      cltPort.push_back(std::string(port));
+      snprintf(port, sizeof(port), "%d", portBase + bid);
+      ebAddr.push_back(std::string(colon ? &colon[1] : builder));
+      ebPort.push_back(std::string(port));
     }
     while (++optind < argc);
   }
@@ -881,7 +863,7 @@ int main(int argc, char **argv)
   ::signal( SIGINT, sigHandler );
 
   const unsigned tmo(120000);           // mS
-  EbLfClient* client = new EbLfClient(cltAddr, cltPort);
+  EbLfClient* client = new EbLfClient(ebAddr, ebPort);
   if ( (ret = client->connect(id, tmo)) )  { delete client;  return ret; }
 
   pin_thread(pthread_self(), lcore1);

@@ -35,19 +35,18 @@ static const int      core_base        = 6; // devXX, 8: accXX
 static const int      core_offset      = 1; // Allows Ctrb and EB to run on the same machine
 static const unsigned mon_period       = 1;          // Seconds
 static const unsigned default_id       = 0;          // Builder's ID (< 64)
-static const unsigned max_peers          = 64;         // Maximum possible number of Builders
-static const unsigned srv_port_base    = 32768;           // Base port EB receives contributions on
-//static const unsigned clt_port_base    = 32768 + max_peers; // Base port EB sends    results       on
-static const unsigned max_batches      = 2048;       // 1 second's worth
+static const unsigned max_peers        = 64;         // Maximum possible number of Builders
+static const unsigned port_base        = 32768;      // Base port EB receives contributions on
+static const unsigned max_batches      = 2048;       // Maximum number of batches in circulation
 static const unsigned max_entries      = 512;        // < or = to batch_duration
-static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2
+static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  data words
 //static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
 static const size_t   result_extent    = input_extent;
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
-static const uint64_t nanosecond       = 1000000000ul;
+static const uint64_t nanosecond       = 1000000000ul; // Nonconfigurable constant: don't change
 
 static       unsigned lverbose         = 0;
 static       int      lcore1           = core_base + core_offset + 0;
@@ -275,15 +274,14 @@ void TstEbInlet::process(BatchManager* outlet)
     auto t1  = std::chrono::steady_clock::now();
 
     unsigned     idx   = wc.data & 0x00ffffff;
-    const Dgram* batch = (const Dgram*)(_transport.lclAdx(wc.data >> 24, idx * _maxBatchSize));
+    unsigned     srcId = wc.data >> 24;
+    const Dgram* batch = (const Dgram*)_transport.lclAdx(srcId, idx * _maxBatchSize);
 
     if (lverbose)
     {
       static unsigned cnt = 0;
-      //unsigned idx  = (wc.data / _maxBatchSize) % _maxBatches;
-      unsigned from = batch->xtc.src.log() & 0xff;
       printf("EbInlet  rcvd  %6d        batch[%4d]    @ %16p, ts %014lx, sz %3zd from Contrib %d\n", ++cnt, idx,
-             batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
+             batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), srcId);
     }
 
     {
@@ -462,7 +460,6 @@ void TstEbOutlet::post(const Batch* batch)
   const size_t nDsts  = rDest->nDsts();
   const Dgram* bdg    = batch->datagram();
   size_t       extent = batch->extent();
-  ++_batchCount;
 
   if (lverbose > 2)
   {
@@ -491,8 +488,8 @@ void TstEbOutlet::post(const Batch* batch)
 
     if (lverbose)
     {
-      uint64_t        pid = bdg->seq.pulseId().value();
-      void* rmtAdx = (void*)_transport.rmtAdx(dst, idx * maxBatchSize());
+      uint64_t pid    = bdg->seq.pulseId().value();
+      void*    rmtAdx = (void*)_transport.rmtAdx(dst, idx * maxBatchSize());
       printf("EbOutlet posts       %6ld result   [%4d] @ %16p, ts %014lx, sz %3zd to   Contrib %d = %16p\n",
              _batchCount, idx, bdg, pid, extent, dst, rmtAdx);
     }
@@ -500,6 +497,8 @@ void TstEbOutlet::post(const Batch* batch)
     if (_transport.post(bdg, extent, dst, (_id << 24) + idx))  break;
   }
   auto t1 = std::chrono::steady_clock::now();
+
+  ++_batchCount;
 
   //if (std::chrono::duration<double>(t0 - startTime).count() > 10.)
   //if (_batchCount > 10)
@@ -614,11 +613,8 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, " %-20s %s (default: %s)\n",  "-A <interface_addr>",
           "IP address of the interface to use", "libfabric's 'best' choice");
-
-  fprintf(stderr, " %-20s %s (server: %d)\n",  "-S <srv_port>",
-          "Base port number for Builders",     srv_port_base);
-  //fprintf(stderr, " %-20s %s (client: %d)\n",  "-C <clt_port>",
-  //        "Base port number for Contributors", clt_port_base);
+  fprintf(stderr, " %-20s %s (default: %d)\n",  "-P <port>",
+          "Base port number to use",            port_base);
 
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-i <ID>",
           "Unique ID of this builder (0 - 63)",       default_id);
@@ -643,21 +639,19 @@ int main(int argc, char **argv)
 {
   int      op, ret    = 0;
   unsigned id         = default_id;
-  char*    srvAddr    = nullptr;
-  unsigned srvBase    = srv_port_base;  // Port served to contributors
-  //unsigned cltBase    = clt_port_base;  // Port served by contributors
+  char*    ifAddr     = nullptr;
+  unsigned portBase   = port_base;      // Port served to contributors
   uint64_t duration   = batch_duration;
   unsigned maxBatches = max_batches;
   unsigned maxEntries = max_entries;
   unsigned monPeriod  = mon_period;
 
-  while ((op = getopt(argc, argv, "h?vA:S:C:i:D:B:E:M:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vA:P:i:D:B:E:M:1:2:")) != -1)
   {
     switch (op)
     {
-      case 'A':  srvAddr    = optarg;         break;
-      case 'S':  srvBase    = atoi(optarg);   break;
-      //case 'C':  cltBase    = atoi(optarg);   break;
+      case 'A':  ifAddr     = optarg;         break;
+      case 'P':  portBase   = atoi(optarg);   break;
       case 'i':  id         = atoi(optarg);   break;
       case 'D':  duration   = atoll(optarg);  break;
       case 'B':  maxBatches = atoi(optarg);   break;
@@ -679,46 +673,33 @@ int main(int argc, char **argv)
     fprintf(stderr, "Builder ID is out of range 0 - %d: %d\n", max_peers - 1, id);
     return 1;
   }
-  if (srvBase + id > USHRT_MAX)
+  if (portBase + id > USHRT_MAX)
   {
-    fprintf(stderr, "Server port is out of range 0 - 65535: %d\n", srvBase + id);
+    fprintf(stderr, "Server port is out of range 0 - 65535: %d\n", portBase + id);
     return 1;
   }
   char port[8];
-  snprintf(port, sizeof(port), "%d", srvBase + id);
-  std::string srvPort(port);
+  snprintf(port, sizeof(port), "%d", portBase + id);
+  std::string basePort(port);
 
-  //std::vector<std::string> cltAddr;
-  //std::vector<std::string> cltPort;
   uint64_t contributors = 0;
   if (optind < argc)
   {
-  //  unsigned srcId = 0;
     do
     {
-      char* contributor = argv[optind];
-  //    char* colon       = strchr(contributor, ':');
-      unsigned cid      = /*colon ?*/ atoi(contributor)/* : srcId++*/;
+      char*    contributor = argv[optind];
+      unsigned cid         = atoi(contributor);
       if (cid >= max_peers)
       {
         fprintf(stderr, "Contributor ID is out of the range 0 - %d: %d\n", max_peers - 1, cid);
         return 1;
       }
-  //    if (cltBase + cid > USHRT_MAX)
-  //    {
-  //      fprintf(stderr, "Client port is out of range 0 - 65535: %d\n", cltBase + cid);
-  //      return 1;
-  //    }
       contributors |= 1ul << cid;
-  //    snprintf(port, sizeof(port), "%d", cltBase + cid);
-  //    cltAddr.push_back(std::string(colon ? &colon[1] : contributor));
-  //    cltPort.push_back(std::string(port));
     }
     while (++optind < argc);
   }
   else
   {
-    //fprintf(stderr, "Contributor address(s) is required\n");
     fprintf(stderr, "Contributor id(s) is required\n");
     return 1;
   }
@@ -733,7 +714,7 @@ int main(int argc, char **argv)
 
   ::signal( SIGINT, sigHandler );
 
-  EbLfServer* server = new EbLfServer(srvAddr, srvPort, std::bitset<64>(contributors).count());
+  EbLfServer* server = new EbLfServer(ifAddr, basePort, std::bitset<64>(contributors).count());
   if ( (ret = server->connect(id)) )  { delete server;  return ret; }
 
   pin_thread(pthread_self(), lcore2);
