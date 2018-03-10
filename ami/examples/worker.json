@@ -1,7 +1,7 @@
 {
-    "interval": 2,
-    "heartbeat": 5,
-    "init_time": 1.5,
+    "interval": 1,
+    "heartbeat": 1,
+    "init_time": 0.5,
     "config": {
         "acq01": {"dtype": "Waveform", "pedestal": 0.1, "width": 2.5, "shape": [512]},
         "cspad": {"dtype": "Image", "pedestal": 5, "width": 1, "shape": [512,512]}
