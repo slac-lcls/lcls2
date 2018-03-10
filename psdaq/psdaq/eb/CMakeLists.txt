@@ -43,7 +43,7 @@ add_executable(eblf_pingpong    eblf_pingpong.cc)
 
 add_executable(tstEbContributor tstEbContributor.cc)
 add_executable(tstEbBuilder     tstEbBuilder.cc)
-#add_executable(drpEbBuilder     drpEbBuilder.cc)
+add_executable(drpEbBuilder     drpEbBuilder.cc)
 
 #target_compile_options(eb               PRIVATE -pg)
 #target_compile_options(tstEbContributor PRIVATE -pg)
@@ -104,26 +104,26 @@ target_link_libraries(tstEbBuilder
   rt
 )
 
-#target_link_libraries(drpEbBuilder
-#  eb
-#  pthread
-#  rt
-#)
+target_link_libraries(drpEbBuilder
+  eb
+  pthread
+  rt
+)
 
 install(TARGETS eb
-                ft_pingpong
-#                ft_publish
-#                ft_sub
-#                ft_push
-#                ft_request
-#                ft_client
-#                ft_server
-#		ft_writemsg_client
-#		ft_writemsg_server
-		tstEbContributor
-		tstEbBuilder
-#		drpEbBuilder
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
+  ft_pingpong
+#  ft_publish
+#  ft_sub
+#  ft_push
+#  ft_request
+#  ft_client
+#  ft_server
+#	 ft_writemsg_client
+#	 ft_writemsg_server
+  tstEbContributor
+	tstEbBuilder
+	drpEbBuilder
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )
