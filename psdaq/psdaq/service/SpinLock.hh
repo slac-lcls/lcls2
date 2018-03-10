@@ -47,22 +47,3 @@ inline void Pds::SpinLock::unlock()
 }
 
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
