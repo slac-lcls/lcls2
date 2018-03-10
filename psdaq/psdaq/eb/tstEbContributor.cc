@@ -1,8 +1,7 @@
 #include "psdaq/eb/BatchManager.hh"
 #include "psdaq/eb/Endpoint.hh"
 
-#include "psdaq/eb/EbFtClient.hh"
-#include "psdaq/eb/EbFtServer.hh"
+#include "psdaq/eb/EbLfClient.hh"
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
@@ -35,8 +34,8 @@ static const int      core_base        = 6; // devXX, 8: accXX
 static const int      core_offset      = 2; // Allows Ctrb and EB to run on the same machine
 static const unsigned mon_period       = 1;          // Seconds
 static const unsigned default_id       = 0;          // Contributor's ID (< 64)
-static const unsigned max_ctrbs        = 64;         // Maximum possible number of contributors
-static const unsigned srv_port_base    = 32768 + max_ctrbs; // Base port Ctrb receives results       on
+static const unsigned max_peers        = 64;         // Maximum possible number of contributors
+//static const unsigned srv_port_base    = 32768 + max_peers; // Base port Ctrb receives results       on
 static const unsigned clt_port_base    = 32768;             // Base port Ctrb sends    contributions on
 static const unsigned max_batches      = 2048;       // 1 second's worth
 static const unsigned max_entries      = 512;        // < or = to batch_duration
@@ -54,7 +53,7 @@ static       unsigned lverbose         = 0;
 static       int      lcore1           = core_base + core_offset + 0;
 static       int      lcore2           = core_base + core_offset + 12; // devXX, 0 for accXX
 
-typedef std::chrono::steady_clock::time_point tp_t;
+typedef std::chrono::steady_clock::time_point TimePoint_t;
 typedef std::chrono::microseconds             us_t;
 typedef std::chrono::nanoseconds              ns_t;
 
@@ -117,17 +116,15 @@ namespace Pds {
                              public Routine
     {
     public:
-      TstContribOutlet(std::vector<std::string>& cltAddr,
-                       std::vector<std::string>& cltPort,
-                       unsigned                  id,
-                       uint64_t                  builders,
-                       uint64_t                  duration,
-                       unsigned                  maxBatches,
-                       unsigned                  maxEntries,
-                       size_t                    maxSize);
+      TstContribOutlet(EbLfClient& client,
+                       unsigned    id,
+                       uint64_t    builders,
+                       uint64_t    duration,
+                       unsigned    maxBatches,
+                       unsigned    maxEntries,
+                       size_t      maxSize);
       virtual ~TstContribOutlet();
     public:
-      const char* base() const;
       void        startup();
       void        shutdown();
       int         connect();
@@ -138,41 +135,39 @@ namespace Pds {
       void        completed();
       void        post(const Batch*);
     private:
-      DrpSim                                _drpSim;
-      EbFtClient                            _transport;
-      const unsigned                        _id;
-      const unsigned                        _numEbs;
-      unsigned*                             _destinations;
+      DrpSim                _drpSim;
+      EbLfClient&           _transport;
+      const unsigned        _id;
+      const unsigned        _numEbs;
+      unsigned*             _destinations;
     private:
-      uint64_t                              _eventCount;
-      uint64_t                              _batchCount;
+      uint64_t              _eventCount;
+      uint64_t              _batchCount;
     private:
-      std::atomic<unsigned>                 _inFlightOcc;
-      Histogram                             _inFlightHist;
-      Histogram                             _depTimeHist;
-      Histogram                             _postTimeHist;
-      Histogram                             _postCallHist;
-      std::chrono::steady_clock::time_point _postPrevTime;
-      std::atomic<bool>                     _running;
-      Task*                                 _task;
+      std::atomic<unsigned> _inFlightOcc;
+      Histogram             _inFlightHist;
+      Histogram             _depTimeHist;
+      Histogram             _postTimeHist;
+      Histogram             _postCallHist;
+      TimePoint_t           _postPrevTime;
+      std::atomic<bool>     _running;
+      Task*                 _task;
     };
 
     class TstContribInlet : public Routine
     {
     private:
-      static size_t _calcBatchSize(unsigned maxEntries, size_t maxSize);
+      size_t _calcBatchSize(unsigned maxEntries, size_t maxSize);
     public:
-      TstContribInlet(const char*       srvAddr,
-                      std::string&      srvPort,
-                      unsigned          id,
-                      uint64_t          builders,
-                      unsigned          maxBatches,
-                      unsigned          maxEntries,
-                      size_t            maxSize,
-                      TstContribOutlet& outlet);
+      TstContribInlet(EbLfClient& client,
+                      unsigned    id,
+                      uint64_t    builders,
+                      unsigned    maxBatches,
+                      unsigned    maxEntries,
+                      size_t      maxSize);
       virtual ~TstContribInlet() { }
     public:
-      void     startup();
+      void     startup(TstContribOutlet* outlet);
       void     shutdown();
       int      connect();
     public:
@@ -183,20 +178,20 @@ namespace Pds {
     private:
       void    _process(const Dgram* result, const Dgram* input);
     private:
-      const unsigned                        _id;
-      const unsigned                        _numEbs;
-      const size_t                          _maxBatchSize;
-      EbFtServer                            _transport;
-      TstContribOutlet&                     _outlet;
+      const unsigned    _id;
+      const unsigned    _numEbs;
+      const size_t      _maxBatchSize;
+      EbLfClient&       _transport;
+      TstContribOutlet* _outlet;
     private:
-      uint64_t                              _eventCount;
+      uint64_t          _eventCount;
     private:
-      Histogram                             _rttHist;
-      Histogram                             _pendTimeHist;
-      Histogram                             _pendCallHist;
-      std::chrono::steady_clock::time_point _pendPrevTime;
-      std::atomic<bool>                     _running;
-      Task*                                 _task;
+      Histogram         _rttHist;
+      Histogram         _pendTimeHist;
+      Histogram         _pendCallHist;
+      TimePoint_t       _pendPrevTime;
+      std::atomic<bool> _running;
+      Task*             _task;
     };
 
     class StatsMonitor
@@ -293,17 +288,16 @@ const Dgram* DrpSim::genEvent()
 }
 
 
-TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
-                                   std::vector<std::string>& cltPort,
-                                   unsigned                  id,
-                                   uint64_t                  builders,
-                                   uint64_t                  duration,
-                                   unsigned                  maxBatches,
-                                   unsigned                  maxEntries,
-                                   size_t                    maxSize) :
+TstContribOutlet::TstContribOutlet(EbLfClient& client,
+                                   unsigned    id,
+                                   uint64_t    builders,
+                                   uint64_t    duration,
+                                   unsigned    maxBatches,
+                                   unsigned    maxEntries,
+                                   size_t      maxSize) :
   BatchManager (duration, maxBatches, maxEntries, maxSize),
   _drpSim      (maxBatches, maxEntries, maxSize, id),
-  _transport   (cltAddr, cltPort),
+  _transport   (client),
   _id          (id),
   _numEbs      (std::bitset<64>(builders).count()),
   _destinations(new unsigned[_numEbs]),
@@ -323,6 +317,12 @@ TstContribOutlet::TstContribOutlet(std::vector<std::string>& cltAddr,
     unsigned bit = __builtin_ffsl(builders) - 1;
     builders &= ~(1ul << bit);
     _destinations[i] = bit;
+  }
+
+  if (_transport.prepareRmtMr(batchRegion(), batchRegionSize()))
+  {
+    fprintf(stderr, "TstContribOutlet: Failed to prepare remote memory region\n");
+    abort();
   }
 }
 
@@ -349,30 +349,23 @@ void TstContribOutlet::shutdown()
   if (ret)  perror("Outlet pthread_join");
 }
 
-int TstContribOutlet::connect()
-{
-  const unsigned tmo(120);
-  int ret = _transport.connect(_id, tmo, batchRegionSize());
-  if (ret)
-  {
-    fprintf(stderr, "FtClient connect() failed\n");
-    return ret;
-  }
-
-  _transport.registerMemory(batchRegion(), batchRegionSize());
-
-  return ret;
-}
-
 void TstContribOutlet::post(const Batch* batch)
 {
-  unsigned iDst = batchId(batch->id()) % _numEbs;
-  unsigned dst  = _destinations[iDst];
+  unsigned     dst    = _destinations[batchId(batch->id()) % _numEbs];
+  const Dgram* bdg    = batch->datagram();
+  size_t       extent = batch->extent();
+  uint32_t     idx    = batch->index();
 
-  if (_batchCount > 10)
+  if (lverbose)
   {
-    const Dgram* bdg = batch->datagram();
+    uint64_t pid    = bdg->seq.pulseId().value();
+    void*    rmtAdx = (void*)_transport.rmtAdx(dst, idx * maxBatchSize());
+    printf("ContribOutlet posts %6ld        batch[%4d]    @ %16p, ts %014lx, sz %3zd to   EB %d %16p\n",
+           _batchCount, idx, bdg, pid, extent, dst, rmtAdx);
+  }
 
+  //if (_batchCount > 10)
+  {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     int64_t dS(ts.tv_sec  - bdg->seq.stamp().seconds());
@@ -382,25 +375,14 @@ void TstContribOutlet::post(const Batch* batch)
     _depTimeHist.bump(dT >> 16);
   }
 
-  if (lverbose)
-  {
-    static unsigned cnt    = 0;
-    const Dgram*    bdg    = batch->datagram();
-    void*           rmtAdx = (void*)_transport.rmtAdx(dst, batch->index() * maxBatchSize());
-    printf("ContribOutlet posts %6d        batch[%2d]    @ %16p, ts %014lx, sz %3zd to   EB %d %16p\n",
-           ++cnt, batch->index(), bdg, bdg->seq.pulseId().value(), batch->extent(), dst, rmtAdx);
-  }
+  auto t0 = std::chrono::steady_clock::now();
+  _transport.post(bdg, extent, dst, (_id << 24) + idx);
+  auto t1 = std::chrono::steady_clock::now();
 
   ++_batchCount;
 
-  auto t0 = std::chrono::steady_clock::now();
-
-  _transport.post(batch->buffer(), batch->extent(), dst, batch->index() * maxBatchSize());
-
-  auto t1 = std::chrono::steady_clock::now();
-
   //if (std::chrono::duration<double>(t0 - startTime).count() > 10.)
-  //if (_batchCount > 9)
+  //if (_batchCount > 10)
   {
     int64_t dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
     if (dT > 1048576)  printf("postTime = %ld\n", dT);
@@ -463,8 +445,6 @@ void TstContribOutlet::routine()
 
   BatchManager::dump();
 
-  _transport.shutdown();
-
   char fs[80];
   sprintf(fs, "inFlightOcc_%d.hist", _id);
   printf("Dumped in-flight occupancy histogram to ./%s\n", fs);
@@ -486,19 +466,17 @@ void TstContribOutlet::routine()
 }
 
 
-TstContribInlet::TstContribInlet(const char*       srvAddr,
-                                 std::string&      srvPort,
-                                 unsigned          id,
-                                 uint64_t          builders,
-                                 unsigned          maxBatches,
-                                 unsigned          maxEntries,
-                                 size_t            maxSize,
-                                 TstContribOutlet& outlet) :
+TstContribInlet::TstContribInlet(EbLfClient& client,
+                                 unsigned    id,
+                                 uint64_t    builders,
+                                 unsigned    maxBatches,
+                                 unsigned    maxEntries,
+                                 size_t      maxSize) :
   _id          (id),
   _numEbs      (std::bitset<64>(builders).count()),
   _maxBatchSize(_calcBatchSize(maxEntries, maxSize)),
-  _transport   (srvAddr, srvPort, _numEbs, maxBatches * _maxBatchSize, EbFtServer::PEERS_SHARE_BUFFERS),
-  _outlet      (outlet),
+  _transport   (client),
+  _outlet      (nullptr),
   _eventCount  (0),
   _rttHist     (12, double(1 << 16)/1000.),
   _pendTimeHist(12, double(1 <<  8)/1000.),
@@ -507,6 +485,11 @@ TstContribInlet::TstContribInlet(const char*       srvAddr,
   _running     (true),
   _task        (new Task(TaskObject("tInlet", 0, 0, 0, 0, 0)))
 {
+  if (_transport.prepareLclMr(maxBatches * _maxBatchSize, EbLfBase::PEERS_SHARE_BUFFERS))
+  {
+    fprintf(stderr, "TstContribInlet: Failed to prepare local memory region\n");
+    abort();
+  }
 }
 
 size_t TstContribInlet::_calcBatchSize(unsigned maxEntries, size_t maxSize)
@@ -517,8 +500,10 @@ size_t TstContribInlet::_calcBatchSize(unsigned maxEntries, size_t maxSize)
   return size;
 }
 
-void TstContribInlet::startup()
+void TstContribInlet::startup(TstContribOutlet* outlet)
 {
+  _outlet = outlet;
+
   _task->call(this);
 }
 
@@ -534,36 +519,30 @@ void TstContribInlet::shutdown()
   if (ret)  perror("Inlet pthread_join");
 }
 
-int TstContribInlet::connect()
-{
-  int ret = _transport.connect(_id);
-  if (ret)
-  {
-    fprintf(stderr, "FtServer connect() failed\n");
-    return ret;
-  }
-
-  return ret;
-}
-
 void TstContribInlet::routine()
 {
   pin_thread(_task->parameters().taskID(), lcore2);
 
-  auto startTime = std::chrono::steady_clock::now();
-
   while (_running)
   {
     // Pend for a result datagram (batch) and process it.
-    uint64_t data;
-    auto t0 = std::chrono::steady_clock::now();
-    if (_transport.pend(&data))  continue;
-    auto t1 = std::chrono::steady_clock::now();
-    const Dgram* batch = (const Dgram*)data;
+    fi_cq_data_entry wc;
+    auto t0  = std::chrono::steady_clock::now();
+    if (_transport.pend(&wc))  continue;
+    auto t1  = std::chrono::steady_clock::now();
 
-    unsigned idx = ((const char*)batch - _transport.base()) / _maxBatchSize;
+    unsigned     idx   = wc.data & 0x00ffffff;
+    const Dgram* batch = (const Dgram*)(_transport.lclAdx(wc.data >> 24, idx * _maxBatchSize));
 
-    if ((batch->env == _id) /*&& (std::chrono::duration<double>(t0 - startTime).count() > 2.)*/)
+    if (lverbose)
+    {
+      static unsigned cnt = 0;
+      unsigned from = batch->xtc.src.log() & 0xff;
+      printf("ContribInlet  rcvd        %6d result   [%4d] @ %16p, ts %014lx, sz %3zd from EB %d\n",
+             ++cnt, idx, batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
+    }
+
+    if (batch->env == _id)
     {
       struct timespec ts;
       clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -581,15 +560,7 @@ void TstContribInlet::routine()
       _pendPrevTime = t0;
     }
 
-    if (lverbose)
-    {
-      static unsigned cnt = 0;
-      unsigned from = batch->xtc.src.log() & 0xff;
-      printf("ContribInlet  rcvd        %6d result   [%2d] @ %16p, ts %014lx, sz %3zd from EB %d\n",
-             ++cnt, idx, batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
-    }
-
-    const Batch*       input  = _outlet.batch(idx);
+    const Batch*       input  = _outlet->batch(idx);
     const Dgram*       result = (const Dgram*)batch->xtc.payload();
     const Dgram* const last   = (const Dgram*)batch->xtc.next();
     unsigned           i      = 0;
@@ -601,12 +572,10 @@ void TstContribInlet::routine()
     }
     _eventCount += i;
 
-    _outlet.completed();
+    _outlet->completed();
 
     delete input;
   }
-
-  _transport.shutdown();
 
   char fs[80];
   sprintf(fs, "rtt_%d.hist", _id);
@@ -780,17 +749,17 @@ void usage(char *name, char *desc)
     fprintf(stderr, "\n%s\n", desc);
 
   fprintf(stderr, "\n<builder_spec> has the form '[<builder_id>:]<builder_addr>'\n");
-  fprintf(stderr, "  <builder_id> must be in the range 0 - 63.\n");
+  fprintf(stderr, "  <builder_id> must be in the range 0 - %d.\n", max_peers - 1);
   fprintf(stderr, "  If the ':' is omitted, <builder_id> will be given the\n");
-  fprintf(stderr, "  spec's positional value from 0 - 63, from left to right.\n");
+  fprintf(stderr, "  spec's positional value from 0 - %d, from left to right.\n", max_peers - 1);
 
   fprintf(stderr, "\nOptions:\n");
 
   fprintf(stderr, " %-20s %s (default: %s)\n",  "-A <interface_addr>",
           "IP address of the interface to use", "libfabric's 'best' choice");
 
-  fprintf(stderr, " %-20s %s (server: %d)\n",  "-S <srv_port>",
-          "Base port number for Contributors", srv_port_base);
+  //fprintf(stderr, " %-20s %s (server: %d)\n",  "-S <srv_port>",
+  //        "Base port number for Contributors", srv_port_base);
   fprintf(stderr, " %-20s %s (client: %d)\n",  "-C <clt_port>",
           "Base port number for Builders",     clt_port_base);
 
@@ -820,10 +789,10 @@ int main(int argc, char **argv)
   // - Somehow ensure this list is the same for all instances of the client
   // - Maybe pingpong this list around to see whether anyone disagrees with it?
 
-  int op, ret = 0;
+  int      op, ret    = 0;
   unsigned id         = default_id;
-  char*    srvAddr    = nullptr;
-  unsigned srvBase    = srv_port_base;  // Port served to builders
+  //char*    srvAddr    = nullptr;
+  //unsigned srvBase    = srv_port_base;  // Port served to builders
   unsigned cltBase    = clt_port_base;  // Port served by builders
   uint64_t duration   = batch_duration;
   unsigned maxBatches = max_batches;
@@ -834,18 +803,18 @@ int main(int argc, char **argv)
   {
     switch (op)
     {
-      case 'A':  srvAddr    = optarg;                       break;
-      case 'S':  srvBase    = strtoul(optarg, nullptr, 0);  break;
-      case 'C':  cltBase    = strtoul(optarg, nullptr, 0);  break;
-      case 'i':  id         = strtoul(optarg, nullptr, 0);  break;
-      case 'D':  duration   = atoll(optarg);                break;
-      case 'B':  maxBatches = atoi(optarg);                 break;
-      case 'E':  maxEntries = atoi(optarg);                 break;
-      case 'c':  lcheck     = true;                         break;
-      case 'M':  monPeriod  = atoi(optarg);                 break;
-      case '1':  lcore1     = atoi(optarg);                 break;
-      case '2':  lcore2     = atoi(optarg);                 break;
-      case 'v':  ++lverbose;                                break;
+      //case 'A':  srvAddr    = optarg;        break;
+      //case 'S':  srvBase    = atoi(optarg);  break;
+      case 'C':  cltBase    = atoi(optarg);  break;
+      case 'i':  id         = atoi(optarg);  break;
+      case 'D':  duration   = atoll(optarg); break;
+      case 'B':  maxBatches = atoi(optarg);  break;
+      case 'E':  maxEntries = atoi(optarg);  break;
+      case 'c':  lcheck     = true;          break;
+      case 'M':  monPeriod  = atoi(optarg);  break;
+      case '1':  lcore1     = atoi(optarg);  break;
+      case '2':  lcore2     = atoi(optarg);  break;
+      case 'v':  ++lverbose;                 break;
       case '?':
       case 'h':
         usage(argv[0], (char*)"Test event contributor");
@@ -853,19 +822,19 @@ int main(int argc, char **argv)
     }
   }
 
-  if (id > 63)
+  if (id >= max_peers)
   {
-    fprintf(stderr, "Contributor ID is out of range 0 - 63: %d\n", id);
+    fprintf(stderr, "Contributor ID is out of range 0 - %d: %d\n", max_peers - 1, id);
     return 1;
   }
-  if (srvBase + id > USHRT_MAX)
-  {
-    fprintf(stderr, "Server port is out of range 0 - 65535: %d\n", srvBase + id);
-    return 1;
-  }
+  //if (srvBase + id > USHRT_MAX)
+  //{
+  //  fprintf(stderr, "Server port is out of range 0 - 65535: %d\n", srvBase + id);
+  //  return 1;
+  //}
   char port[8];
-  snprintf(port, sizeof(port), "%d", srvBase + id);
-  std::string srvPort(port);
+  //snprintf(port, sizeof(port), "%d", srvBase + id);
+  //std::string srvPort(port);
 
   std::vector<std::string> cltAddr;
   std::vector<std::string> cltPort;
@@ -878,9 +847,9 @@ int main(int argc, char **argv)
       char* builder = argv[optind];
       char* colon   = strchr(builder, ':');
       unsigned bid  = colon ? atoi(builder) : srcId++;
-      if (bid > 63)
+      if (bid >= max_peers)
       {
-        fprintf(stderr, "Builder ID is out of range 0 - 63: %d\n", bid);
+        fprintf(stderr, "Builder ID is out of range 0 - %d: %d\n", max_peers - 1, bid);
         return 1;
       }
       if (cltBase + bid > USHRT_MAX)
@@ -911,42 +880,48 @@ int main(int argc, char **argv)
 
   ::signal( SIGINT, sigHandler );
 
+  const unsigned tmo(120000);           // mS
+  EbLfClient* client = new EbLfClient(cltAddr, cltPort);
+  if ( (ret = client->connect(id, tmo)) )  { delete client;  return ret; }
+
   pin_thread(pthread_self(), lcore1);
-  TstContribOutlet outlet(cltAddr, cltPort, id, builders, duration, maxBatches, maxEntries, max_contrib_size);
+  TstContribOutlet* outlet = new TstContribOutlet(*client, id, builders, duration, maxBatches, maxEntries, max_contrib_size);
 
   pin_thread(pthread_self(), lcore2);
-  TstContribInlet  inlet (srvAddr, srvPort, id, builders,           maxBatches, maxEntries, max_result_size, outlet);
+  TstContribInlet*  inlet  = new TstContribInlet (*client, id, builders,           maxBatches, maxEntries, max_result_size);
 
-  printf("Parameters of Contributor ID %d:\n", id);
+  printf("\nParameters of Contributor ID %d:\n", id);
   printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);
   printf("  Batch pool depth:           %d\n", maxBatches);
   printf("  Max # of entries per batch: %d\n", maxEntries);
   printf("  Max contribution size:      %zd, batch size: %zd\n",
-         max_contrib_size, outlet.maxBatchSize());
+         max_contrib_size, outlet->maxBatchSize());
   printf("  Max result       size:      %zd, batch size: %zd\n",
-         max_result_size,  inlet.maxBatchSize());
+         max_result_size,  inlet->maxBatchSize());
   printf("  Monitoring period:          %d\n", monPeriod);
   printf("  Thread core numbers:        %d, %d\n", lcore1, lcore2);
   printf("\n");
 
-  // The order of the connect() calls must match the Event Builder(s) side's
-  if ( (ret = outlet.connect()) )  return ret; // Connect to EB's inlet
-  if ( (ret = inlet.connect())  )  return ret; // Connect to EB's outlet
-
   pin_thread(pthread_self(), lcore2);
-  StatsMonitor statsMon(&outlet, &inlet, monPeriod);
-  statsMonitor = &statsMon;
+  StatsMonitor* statsMon = new StatsMonitor(outlet, inlet, monPeriod);
+  statsMonitor = statsMon;
 
-  inlet.startup();
-  outlet.startup();
+  inlet->startup(outlet);
+  outlet->startup();
 
-  statsMon.process();
+  statsMon->process();
 
   printf("\nStatsMonitor was shut down.\n");
   printf("\nShutting down Outlet...\n");
-  outlet.shutdown();
+  outlet->shutdown();
   printf("\nShutting down Inlet...\n");
-  inlet.shutdown();
+  inlet->shutdown();
+  client->shutdown();
+
+  delete statsMon;
+  delete inlet;
+  delete outlet;
+  delete client;
 
   return ret;
 }
