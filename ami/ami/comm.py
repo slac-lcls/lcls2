@@ -1,3 +1,5 @@
+
+import sys
 import zmq
 import threading
 from mpi4py import MPI
@@ -32,7 +34,6 @@ class ZmqConfig(object):
     def bind_addr(self, zmq_type):
         if zmq_type in self.binds:
             return self.base % self.binds[zmq_type]
-        else:
             raise ValueError("Unsupported zmq type for bind:", zmq_type)
 
     def connect_addr(self, zmq_type):
@@ -83,9 +84,14 @@ class ZmqReceiver(ZmqBase):
     def recv(self):
         return self.sock.recv_pyobj()
 
+
 class MpiHandler(object):
-    def __init__(self, name, col_rank):
-        self.name = name
+    def __init__(self, col_rank):
+        """
+        col_rank : int
+            The rank of the target process that recieves data from
+            this process
+        """
         self.col_rank = col_rank
     
     def send(self, msg):
@@ -96,11 +102,11 @@ class MpiHandler(object):
 
 
 class ResultStore(object):
-    def __init__(self, col_handler):
+    def __init__(self, collector_rank):
         self.name = "resultstore"
         self._store = {}
         self._updated = {}
-        self.col_handler = col_handler
+        self.collector_rank = collector_rank
 
     def collect(self):
         for name, result in self._store.items():
@@ -108,11 +114,11 @@ class ResultStore(object):
                 self.message(MsgTypes.Datagram, result)
                 self._updated[name] = False
 
-    def forward(self, msg):
-        self.col_handler.send(msg)
+    def send(self, msg):
+        MPI.COMM_WORLD.send(msg, dest=self.collector_rank)
 
     def message(self, mtype, payload):
-        self.col_handler.send(Message(mtype, payload))
+        self.send(Message(mtype, payload))
 
     def create(self, name, datatype):
         if name in self._store:
@@ -148,16 +154,12 @@ class ResultStore(object):
         self._store = {}
 
 
-class Listener(ZmqBase):
+class ZmqListener(ZmqBase):
     def __init__(self, name, topic, callback, zmq_config, zmqctx=None):
         super(__class__, self).__init__(name, zmq_config, zmqctx)
         self.listen_topic = topic
-        self.listen_evt = threading.Event()
+        self.listen_evt = False
         self._listen_cb = callback
-        #self._listen_sock = self.connect(zmq.SUB, (zmq.SUBSCRIBE, self.listen_topic))
-        #self._listen_thread = threading.Thread(name="%s-listen"%self.name, target=self.listen)
-        #self._listen_thread.daemon = True
-        #self._listen_thread.start()
 
     def listen(self):
         while True:
@@ -167,18 +169,43 @@ class Listener(ZmqBase):
                 print("%s: listerner recieved new payload with topic:"%self.name, topic)
                 if self._listen_cb is not None:
                     self._listen_cb(payload)
-                self.listen_evt.set()
+                self.listen_evt = True
             else:
                 print("%s: recieved unexpected topic: %s"%(self.name, topic))
 
 
+#class Listener(MpiHandler):
+#    """
+#    Listener with MPI
+#    """
+#    def __init__(self, name, topic, callback, handler):
+#        super(__class__, self).__init__(name, handler)
+#        self.listen_topic = topic
+#        self.listen_evt = False
+#        self._listen_cb = callback
+#
+#    def listen(self):
+#        while True:
+#            #topic = self._listen_sock.recv_string()
+#            #payload = self._listen_sock.recv_pyobj()
+#            payload = self.recv()
+#            print("%s: listerner recieved new payload with topic:"%self.name, topic)
+#            if self._listen_cb is not None:
+#                self._listen_cb(payload)
+#            self.listen_evt = True
+
+
 class Collector(object):
-    def __init__(self, name, col_handler):
-        self.name = name
+
+    def __init__(self):
         self._transition_handler = None
         self._occurrence_handler = None
         self._datagram_handler = None
-        self.col_handler = col_handler
+
+    def recv(self):
+        return MPI.COMM_WORLD.recv(source=MPI.ANY_SOURCE)
+
+    # TJ says: we should not use callbacks
 
     def set_transition_handler(self, handler):
         self._transition_handler = handler
@@ -196,7 +223,7 @@ class Collector(object):
         
     def run(self):
         while True:
-            msg = self.col_handler.recv()
+            msg = self.recv()
             if msg.mtype == MsgTypes.Transition:
                 if self._transition_handler is not None:
                     self._transition_handler(msg)

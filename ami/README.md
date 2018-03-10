@@ -33,11 +33,14 @@ You should see an interactive QT window. There is also a `dummy_gui.py` that giv
 
 backend
 -------
+* DOCSTRINGS
 * integration with EPICS
-* should we reuse MPI?
-    - yes. bigger question: should we maintain a ZMQ message passing mode
-    - mpi event-builder (timeout)
+* should we use MPI? YES
+    - remove old ZMQ stuff
+    - clean up Collector callbacks
+    - fix GUI client
     - send/receive for the graph (handle the case where the different clients are in inconsistent graph states)
+    - mpi event-builder (timeout)
 * throttling [pick-N pattern, done on a per-heartbeat basis] (e.g. for visualizing images)
     - use top-down approach with round-robin based on heartbeat counting.  collector has to: avg/sum, scatter plot, plot vs. time/event number, plot most recent image.  
     - Use gather/reduce pattern, but implement with send/receive plus timeout (either with mpi_probe, or heartbeat counting and discard old). 

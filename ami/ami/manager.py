@@ -3,22 +3,30 @@ import sys
 import zmq
 import argparse
 import threading
-from ami.comm import ZmqPorts, ZmqConfig, ZmqCollector
+from ami.comm import Collector
 
 
-class Manager(ZmqCollector):
-    def __init__(self, name, host_config, zmqctx=None):
-        super(__class__, self).__init__("manager", host_config, zmqctx)
+class Manager(Collector):
+    def __init__(self, gui_port):
+        """
+        protocol right now only tells you how to communicate with workers
+        """
+        super(__class__, self).__init__()
         self.feature_store = {}
         self.feature_req = re.compile("feature:(?P<name>.*)")
         self.graph = {}
-        self.comm = self.bind(zmq.REP)
-        self.graph_comm = self.bind(zmq.PUB)
+
+        # ZMQ setup
+        self.ctx = zmq.Context()
+        self.comm = self.ctx.socket(zmq.REP)
+        self.comm.bind("tcp://*:%d"%gui_port)
         self.set_datagram_handler(self.publish)
         #self.set_occurence_handler(self.publish)
-        self.cmd_thread = threading.Thread(name="%s-command"%name, target=self.command_listener)
-        self.cmd_thread.daemon = True
-        self.cmd_thread.start()
+
+        # TO DELETE
+        #self.cmd_thread = threading.Thread(name="%s-command"%name, target=self.command_listener)
+        #self.cmd_thread.daemon = True
+        #self.cmd_thread.start()
 
     @property
     def features(self):
@@ -29,11 +37,8 @@ class Manager(ZmqCollector):
 
     def publish(self, msg):
         self.feature_store[msg.payload.name] = msg.payload
-        #print(msg.payload)
-
-    def apply_graph(self):
-        self.graph_comm.send_string('graph', zmq.SNDMORE)
-        self.graph_comm.send_pyobj(self.graph)
+        print(msg.payload)
+        sys.stdout.flush()
 
     def feature_request(self, request):
         matched = self.feature_req.match(request)
@@ -58,14 +63,18 @@ class Manager(ZmqCollector):
                 elif request == 'get_graph':
                     self.comm.send_pyobj(self.graph)
                 elif request == 'set_graph':
-                    self.graph = self.comm.recv_pyobj()
-                    self.comm.send_string('ok')
-                elif request == 'apply_graph':
+                    self.graph = self.recv_graph()
                     self.apply_graph()
-                    self.comm.send_string('ok')
                 else:
                     self.comm.send_string('error')
 
+        def recv_graph(self):
+            self.comm.recv_pyobj() # zmq for now, could be EPICS in future?
+            return graph
+
+        def apply_graph(self):
+            MPI.COMM_WORLD.send(self.graph)
+            return
 
 def main():
     parser = argparse.ArgumentParser(description='AMII Manager App')
@@ -79,21 +88,21 @@ def main():
 
     parser.add_argument(
         '-p',
-        '--platform',
+        '--port',
         type=int,
-        default=0,
-        help='platform number of the AMII - selects port range to use (default: 0)'
+        default=5556,
+        help='port for GUI-Manager communication'
     )
 
     args = parser.parse_args()
-    manager_cfg = ZmqConfig(
-        platform=args.platform,
-        binds={zmq.PULL: (args.host, ZmqPorts.FinalCollector), zmq.PUB: (args.host, ZmqPorts.Graph), zmq.REP: (args.host, ZmqPorts.Command)},
-        connects={}
-    )
+    #manager_cfg = ZmqConfig(
+    #    platform=args.platform,
+    #    binds={zmq.PULL: (args.host, ZmqPorts.FinalCollector), zmq.PUB: (args.host, ZmqPorts.Graph), zmq.REP: (args.host, ZmqPorts.Command)},
+    #    connects={}
+    #)
 
     try:
-        manager = Manager("manager", manager_cfg)
+        manager = Manager("manager", args.port)
         return manager.run()
     except KeyboardInterrupt:
         print("Manager killed by user...")
