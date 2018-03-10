@@ -45,7 +45,7 @@ static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  da
 static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
-static const uint64_t nanosecond       = 1000000000ul; // Constant: don't change
+static const uint64_t nanosecond       = 1000000000ul; // Nonconfigurable constant: don't change
 
 static       unsigned lverbose         = 0;
 static       int      lcore1           = core_base + core_offset + 0;
@@ -607,7 +607,6 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, " %-20s %s (default: %s)\n",  "-A <interface_addr>",
           "IP address of the interface to use", "libfabric's 'best' choice");
-
   fprintf(stderr, " %-20s %s (default: %d)\n",  "-P <port>",
           "Base port number to use",            port_base);
 
