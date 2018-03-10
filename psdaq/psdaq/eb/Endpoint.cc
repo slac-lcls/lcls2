@@ -27,8 +27,9 @@
     mr = _fabric->lookup_memory(buf, len);                                                                                          \
     if (!mr) {                                                                                                                      \
       set_custom_error("%s: requested buffer starting at %p with len %lu is not within a registered memory region", cmd, buf, len); \
-      _errno = -FI_EINVAL;                                                                                                          \
-      return false;                                                                                                                 \
+      ssize_t rret = -FI_EINVAL;                                                                                                    \
+      _errno = rret;                                                                                                                \
+      return rret;                                                                                                                  \
     }                                                                                                                               \
   }
 
@@ -36,8 +37,9 @@
   if (!iov->check_mr()) {                                                                               \
     if (!_fabric->lookup_memory_iovec(iov)) {                                                           \
       set_custom_error("%s: requested buffer in iovec is not within a registered memory region", cmd);  \
-      _errno = -FI_EINVAL;                                                                              \
-      return false;                                                                                     \
+      ssize_t rret = -FI_EINVAL;                                                                        \
+      _errno = rret;                                                                                    \
+      return rret;                                                                                      \
     }                                                                                                   \
   }
 
@@ -752,7 +754,8 @@ EndpointBase::EndpointBase(const char* addr, const char* port, uint64_t flags) :
   _fab_owner(true),
   _fabric(new Fabric(addr, port, flags)),
   _eq(0),
-  _cq(0)
+  _txcq(0),
+  _rxcq(0)
 {
   if (!initialize())
     _state = EP_CLOSED;
@@ -763,7 +766,8 @@ EndpointBase::EndpointBase(Fabric* fabric) :
   _fab_owner(false),
   _fabric(fabric),
   _eq(0),
-  _cq(0)
+  _txcq(0),
+  _rxcq(0)
 {
   if (!initialize())
     _state = EP_CLOSED;
@@ -783,7 +787,9 @@ Fabric* EndpointBase::fabric() const { return _fabric; };
 
 struct fid_eq* EndpointBase::eq() const { return _eq; }
 
-struct fid_cq* EndpointBase::cq() const { return _cq; }
+struct fid_cq* EndpointBase::txcq() const { return _txcq; }
+
+struct fid_cq* EndpointBase::rxcq() const { return _rxcq; }
 
 bool EndpointBase::event(uint32_t* event, void* entry, bool* cm_entry)
 {
@@ -851,9 +857,13 @@ bool EndpointBase::handle_event(ssize_t event_ret, bool* cm_entry, const char* c
 
 void EndpointBase::shutdown()
 {
-  if (_cq) {
-    fi_close(&_cq->fid);
-    _cq = 0;
+  if (_rxcq) {
+    fi_close(&_rxcq->fid);
+    _rxcq = 0;
+  }
+  if (_txcq) {
+    fi_close(&_txcq->fid);
+    _txcq = 0;
   }
   if (_eq) {
     fi_close(&_eq->fid);
@@ -890,7 +900,8 @@ bool EndpointBase::initialize()
   };
 
   CHECK_ERR(fi_eq_open(_fabric->fabric(), &eq_attr, &_eq, NULL), "fi_eq_open");
-  CHECK_ERR(fi_cq_open(_fabric->domain(), &cq_attr, &_cq, NULL), "fi_cq_open");
+  CHECK_ERR(fi_cq_open(_fabric->domain(), &cq_attr, &_txcq, NULL), "fi_cq_open(txcq)");
+  CHECK_ERR(fi_cq_open(_fabric->domain(), &cq_attr, &_rxcq, NULL), "fi_cq_open(rxcq)");
 
   _state = EP_UP;
 
@@ -924,22 +935,23 @@ void Endpoint::shutdown()
   EndpointBase::shutdown();
 }
 
-bool Endpoint::connect()
+bool Endpoint::connect(int timeout)
 {
   bool cm_entry;
   struct fi_eq_cm_entry entry;
   uint32_t event;
 
-  if (!check_connection_state())
+  if (check_connection_state() != FI_SUCCESS)
     return false;
 
   CHECK_ERR(fi_endpoint(_fabric->domain(), _fabric->info(), &_ep, NULL), "fi_endpoint");
   CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
-  CHECK_ERR(fi_ep_bind(_ep, &_cq->fid, FI_TRANSMIT | FI_RECV), "fi_ep_bind(cq)");
+  CHECK_ERR(fi_ep_bind(_ep, &_txcq->fid, FI_TRANSMIT /*| FI_SELECTIVE_COMPLETION*/), "fi_ep_bind(txcq)");
+  CHECK_ERR(fi_ep_bind(_ep, &_rxcq->fid, FI_RECV), "fi_ep_bind(rxcq)");
   CHECK_ERR(fi_enable(_ep), "fi_enable");
   CHECK_ERR(fi_connect(_ep, _fabric->info()->dest_addr, NULL, 0), "fi_connect");
 
-  CHECK(event_wait(&event, &entry, &cm_entry));
+  CHECK(event_wait(&event, &entry, &cm_entry, timeout));
 
   if (!cm_entry || event != FI_CONNECTED) {
     set_custom_error("unexpected event %u - expected FI_CONNECTED (%u)", event, FI_CONNECTED);
@@ -952,22 +964,23 @@ bool Endpoint::connect()
   return true;
 }
 
-bool Endpoint::accept(struct fi_info* remote_info)
+bool Endpoint::accept(struct fi_info* remote_info, int timeout)
 {
   bool cm_entry;
   struct fi_eq_cm_entry entry;
   uint32_t event;
 
-  if (!check_connection_state())
+  if (check_connection_state() != FI_SUCCESS)
     return false;
 
   CHECK_ERR(fi_endpoint(_fabric->domain(), remote_info, &_ep, NULL), "fi_endpoint");
   CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
-  CHECK_ERR(fi_ep_bind(_ep, &_cq->fid, FI_TRANSMIT | FI_RECV), "fi_ep_bind(cq)");
+  CHECK_ERR(fi_ep_bind(_ep, &_txcq->fid, FI_TRANSMIT /*| FI_SELECTIVE_COMPLETION*/), "fi_ep_bind(txcq)");
+  CHECK_ERR(fi_ep_bind(_ep, &_rxcq->fid, FI_RECV), "fi_ep_bind(rxcq)");
   CHECK_ERR(fi_enable(_ep), "fi_enable");
   CHECK_ERR(fi_accept(_ep, NULL, 0), "fi_accept");
 
-  CHECK(event_wait(&event, &entry, &cm_entry));
+  CHECK(event_wait(&event, &entry, &cm_entry, timeout));
 
   if (!cm_entry || event != FI_CONNECTED) {
     set_custom_error("unexpected event %u - expected FI_CONNECTED (%u)", event, FI_CONNECTED);
@@ -980,91 +993,85 @@ bool Endpoint::accept(struct fi_info* remote_info)
   return true;
 }
 
-bool Endpoint::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, int* comp_num, const char* cmd)
+ssize_t Endpoint::handle_comp(ssize_t comp_ret, struct fid_cq* cq, struct fi_cq_data_entry* comp, const char* cmd)
 {
   struct fi_cq_err_entry comp_err;
 
-  if (comp_ret >= 0) {
-    *comp_num = (int) comp_ret;
-    return true;
-  } else {
-    *comp_num = -1;
+  if ((comp_ret < 0) && (comp_ret != -FI_EAGAIN)) {
     _errno = (int) comp_ret;
-    if (_errno == -FI_EAVAIL) {
-      if (comp_error(&comp_err)) {
-        fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, _error, ERR_MSG_LEN);
+    if (comp_ret == -FI_EAVAIL) {
+      if (comp_error(cq, &comp_err) > 0) {
+        fi_cq_strerror(cq, comp_err.prov_errno, comp_err.err_data, _error, ERR_MSG_LEN);
       }
     } else {
       set_error(cmd);
     }
-    return false;
   }
+  return comp_ret;
 }
 
-bool Endpoint::comp(struct fi_cq_data_entry* comp, int* comp_num, ssize_t max_count)
+ssize_t Endpoint::comp(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count)
 {
-  return handle_comp(fi_cq_read(_cq, comp, max_count), comp, comp_num, "fi_cq_read");
+  return handle_comp(fi_cq_read(cq, comp, max_count), cq, comp, "fi_cq_read");
 }
 
-bool Endpoint::comp_wait(struct fi_cq_data_entry* comp, int* comp_num, ssize_t max_count, int timeout)
+ssize_t Endpoint::comp_wait(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count, int timeout)
 {
-  return handle_comp(fi_cq_sread(_cq, comp, max_count, NULL, timeout), comp, comp_num, "fi_cq_sread");
+  return handle_comp(fi_cq_sread(cq, comp, max_count, NULL, timeout), cq, comp, "fi_cq_sread");
 }
 
-bool Endpoint::comp_error(struct fi_cq_err_entry* comp_err)
+ssize_t Endpoint::comp_error(struct fid_cq* cq, struct fi_cq_err_entry* comp_err)
 {
-  ssize_t rret = fi_cq_readerr(_cq, comp_err, 0);
+  ssize_t rret = fi_cq_readerr(cq, comp_err, 0);
   if (rret < 0) {
-    _errno = (int) rret;
     set_error("fi_cq_readerr");
-    return false;
   } else if (rret == 0) {
     set_custom_error("fi_cq_readerr: no errors to be read");
-    _errno = FI_SUCCESS;
-    return false;
+    rret = FI_SUCCESS;
   }
+  _errno = (int) rret;
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::post_comp_data_recv(void* context)
+ssize_t Endpoint::post_comp_data_recv(void* context)
 {
   ssize_t rret = fi_recv(_ep, NULL, 0, NULL, 0, context);
-  if (rret != FI_SUCCESS) {
+  if ((rret != FI_SUCCESS) && (rret != -FI_EAGAIN)) {
     _errno = (int) rret;
     set_error("fi_recv");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::recv_comp_data()
+ssize_t Endpoint::recv_comp_data(void* context)
 {
   if (_fabric->has_rma_event_support()) {
-    return true;
+    return FI_SUCCESS;
   } else {
     // post a recieve buffer for remote completion
-    return post_comp_data_recv();
+    return post_comp_data_recv(context);
   }
 }
 
-bool Endpoint::recv_comp_data_sync(uint64_t* data)
+ssize_t Endpoint::recv_comp_data_sync(struct fid_cq* cq, uint64_t* data)
 {
   if (_fabric->has_rma_event_support()) {
-    return check_completion_noctx(FI_REMOTE_CQ_DATA, data);
+    return check_completion_noctx(cq, FI_REMOTE_CQ_DATA, data);
   } else {
     int context = _counter++;
 
-    if(post_comp_data_recv(&context)) {
-      return check_completion(context, FI_REMOTE_CQ_DATA, data);
+    ssize_t rret = post_comp_data_recv(&context);
+    if (rret == FI_SUCCESS) {
+      return check_completion(cq, context, FI_REMOTE_CQ_DATA, data);
     }
 
-    return false;
+    return rret;
   }
 }
 
-bool Endpoint::send(void* buf, size_t len, void* context, const MemoryRegion* mr)
+ssize_t Endpoint::send(const void* buf, size_t len, void* context, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_send");
 
@@ -1072,34 +1079,34 @@ bool Endpoint::send(void* buf, size_t len, void* context, const MemoryRegion* mr
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_send");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::send_sync(void* buf, size_t len, const MemoryRegion* mr)
+ssize_t Endpoint::send_sync(const void* buf, size_t len, const MemoryRegion* mr)
 {
   int context = _counter++;
 
-  if (send(buf, len, &context, mr)) {
-    return check_completion(context, FI_SEND | FI_MSG);
+  ssize_t rret = send(buf, len, &context, mr);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_txcq, context, FI_SEND | FI_MSG);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::send(LocalAddress* laddr, void* context)
+ssize_t Endpoint::send(const LocalAddress* laddr, void* context)
 {
   return send(laddr->buf(), laddr->len(), context, laddr->mr());
 }
 
-bool Endpoint::send_sync(LocalAddress* laddr)
+ssize_t Endpoint::send_sync(const LocalAddress* laddr)
 {
   return send_sync(laddr->buf(), laddr->len(), laddr->mr());
 }
 
-bool Endpoint::recv(void* buf, size_t len, void* context, const MemoryRegion* mr)
+ssize_t Endpoint::recv(void* buf, size_t len, void* context, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_recv");
 
@@ -1107,34 +1114,34 @@ bool Endpoint::recv(void* buf, size_t len, void* context, const MemoryRegion* mr
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_recv");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::recv_sync(void* buf, size_t len, const MemoryRegion* mr)
+ssize_t Endpoint::recv_sync(void* buf, size_t len, const MemoryRegion* mr)
 {
   int context = _counter++;
 
-  if (recv(buf, len, &context, mr)) {
-    return check_completion(context, FI_RECV | FI_MSG);
+  ssize_t rret = recv(buf, len, &context, mr);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_rxcq, context, FI_RECV | FI_MSG);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::recv(LocalAddress* laddr, void* context)
+ssize_t Endpoint::recv(LocalAddress* laddr, void* context)
 {
   return recv(laddr->buf(), laddr->len(), context, laddr->mr());
 }
 
-bool Endpoint::recv_sync(LocalAddress* laddr)
+ssize_t Endpoint::recv_sync(LocalAddress* laddr)
 {
   return recv_sync(laddr->buf(), laddr->len(), laddr->mr());
 }
 
-bool Endpoint::read(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr)
+ssize_t Endpoint::read(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_read");
 
@@ -1142,34 +1149,34 @@ bool Endpoint::read(void* buf, size_t len, const RemoteAddress* raddr, void* con
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_read");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::read_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr)
+ssize_t Endpoint::read_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr)
 {
   int context = _counter++;
 
-  if (read(buf, len, raddr, &context, mr)) {
-    return check_completion(context, FI_READ | FI_RMA);
+  ssize_t rret = read(buf, len, raddr, &context, mr);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_rxcq, context, FI_READ | FI_RMA);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::read(LocalAddress* laddr, const RemoteAddress* raddr, void* context)
+ssize_t Endpoint::read(LocalAddress* laddr, const RemoteAddress* raddr, void* context)
 {
   return read(laddr->buf(), laddr->len(), raddr, context, laddr->mr());
 }
 
-bool Endpoint::read_sync(LocalAddress* laddr, const RemoteAddress* raddr)
+ssize_t Endpoint::read_sync(LocalAddress* laddr, const RemoteAddress* raddr)
 {
   return read_sync(laddr->buf(), laddr->len(), raddr, laddr->mr());
 }
 
-bool Endpoint::write(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr)
+ssize_t Endpoint::write(const void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_write");
 
@@ -1177,69 +1184,71 @@ bool Endpoint::write(void* buf, size_t len, const RemoteAddress* raddr, void* co
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_write");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::write_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr)
+ssize_t Endpoint::write_sync(const void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr)
 {
   int context = _counter++;
 
-  if (write(buf, len, raddr, &context, mr)) {
-    return check_completion(context, FI_WRITE | FI_RMA);
+  ssize_t rret = write(buf, len, raddr, &context, mr);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_txcq, context, FI_WRITE | FI_RMA);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::write(LocalAddress* laddr, const RemoteAddress* raddr, void* context)
+ssize_t Endpoint::write(const LocalAddress* laddr, const RemoteAddress* raddr, void* context)
 {
   return write(laddr->buf(), laddr->len(), raddr, context, laddr->mr());
 }
 
-bool Endpoint::write_sync(LocalAddress* laddr, const RemoteAddress* raddr)
+ssize_t Endpoint::write_sync(const LocalAddress* laddr, const RemoteAddress* raddr)
 {
   return write_sync(laddr->buf(), laddr->len(), raddr, laddr->mr());
 }
 
-bool Endpoint::write_data(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr)
+ssize_t Endpoint::write_data(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_writedata");
 
-  ssize_t rret = fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
-  if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_writedata");
-    return false;
-  }
+  return fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
 
-  return true;
+  //ssize_t rret = fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
+  //if (rret != FI_SUCCESS) {
+  //  _errno = (int) rret;
+  //  set_error("fi_writedata");
+  //}
+  //
+  //return rret;
 }
 
-bool Endpoint::write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr)
+ssize_t Endpoint::write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr)
 {
   int context = _counter++;
 
-  if (write_data(buf, len, raddr, &context, data, mr)) {
-    return check_completion(context, FI_WRITE | FI_RMA);
+  ssize_t rret = write_data(buf, len, raddr, &context, data, mr);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_txcq, context, FI_WRITE | FI_RMA);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::write_data(const LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data)
+ssize_t Endpoint::write_data(const LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data)
 {
   return write_data(laddr->buf(), laddr->len(), raddr, context, data, laddr->mr());
 }
 
-bool Endpoint::write_data_sync(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data)
+ssize_t Endpoint::write_data_sync(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data)
 {
   return write_data_sync(laddr->buf(), laddr->len(), raddr, data, laddr->mr());
 }
 
-bool Endpoint::recvv(LocalIOVec* iov, void* context)
+ssize_t Endpoint::recvv(LocalIOVec* iov, void* context)
 {
   CHECK_MR_IOVEC(iov, "fi_recvv");
 
@@ -1247,23 +1256,24 @@ bool Endpoint::recvv(LocalIOVec* iov, void* context)
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_recvv");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::recvv_sync(LocalIOVec* iov)
+ssize_t Endpoint::recvv_sync(LocalIOVec* iov)
 {
   int context = _counter++;
-  if (recvv(iov, &context)) {
-    return check_completion(context, FI_RECV | FI_RMA);
+
+  ssize_t rret = recvv(iov, &context);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_rxcq, context, FI_RECV | FI_RMA);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::sendv(LocalIOVec* iov, void* context)
+ssize_t Endpoint::sendv(LocalIOVec* iov, void* context)
 {
   CHECK_MR_IOVEC(iov, "fi_sendv");
 
@@ -1271,23 +1281,24 @@ bool Endpoint::sendv(LocalIOVec* iov, void* context)
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_sendv");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::sendv_sync(LocalIOVec* iov)
+ssize_t Endpoint::sendv_sync(LocalIOVec* iov)
 {
   int context = _counter++;
-  if (recvv(iov, &context)) {
-    return check_completion(context, FI_SEND | FI_RMA);
+
+  ssize_t rret = sendv(iov, &context);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_txcq, context, FI_SEND | FI_RMA);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::readv(LocalIOVec* iov, const RemoteAddress* raddr, void* context)
+ssize_t Endpoint::readv(LocalIOVec* iov, const RemoteAddress* raddr, void* context)
 {
   CHECK_MR_IOVEC(iov, "fi_readv");
 
@@ -1295,23 +1306,24 @@ bool Endpoint::readv(LocalIOVec* iov, const RemoteAddress* raddr, void* context)
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_readv");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::readv_sync(LocalIOVec* iov, const RemoteAddress* raddr)
+ssize_t Endpoint::readv_sync(LocalIOVec* iov, const RemoteAddress* raddr)
 {
   int context = _counter++;
-  if (readv(iov, raddr, &context)) {
-    return check_completion(context, FI_READ | FI_RMA);
+
+  ssize_t rret = readv(iov, raddr, &context);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_rxcq, context, FI_READ | FI_RMA);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::writev(LocalIOVec* iov, const RemoteAddress* raddr, void* context)
+ssize_t Endpoint::writev(LocalIOVec* iov, const RemoteAddress* raddr, void* context)
 {
   CHECK_MR_IOVEC(iov, "fi_writev");
 
@@ -1319,23 +1331,24 @@ bool Endpoint::writev(LocalIOVec* iov, const RemoteAddress* raddr, void* context
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_writev");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::writev_sync(LocalIOVec* iov, const RemoteAddress* raddr)
+ssize_t Endpoint::writev_sync(LocalIOVec* iov, const RemoteAddress* raddr)
 {
   int context = _counter++;
-  if (readv(iov, raddr, &context)) {
-    return check_completion(context, FI_READ | FI_RMA);
+
+  ssize_t rret = readv(iov, raddr, &context);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_txcq, context, FI_READ | FI_RMA);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::readmsg(RmaMessage* msg, uint64_t flags)
+ssize_t Endpoint::readmsg(RmaMessage* msg, uint64_t flags)
 {
   CHECK_MR_IOVEC(msg->loc_iov(), "fi_readmsg");
 
@@ -1343,24 +1356,25 @@ bool Endpoint::readmsg(RmaMessage* msg, uint64_t flags)
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_readmsg");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::readmsg_sync(RmaMessage* msg, uint64_t flags)
+ssize_t Endpoint::readmsg_sync(RmaMessage* msg, uint64_t flags)
 {
   int context = _counter++;
   msg->context(&context);
-  if (readmsg(msg, flags)) {
-    return check_completion(context, FI_READ | FI_RMA);
+
+  ssize_t rret = readmsg(msg, flags);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_rxcq, context, FI_READ | FI_RMA);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::writemsg(RmaMessage* msg, uint64_t flags)
+ssize_t Endpoint::writemsg(RmaMessage* msg, uint64_t flags)
 {
   CHECK_MR_IOVEC(msg->loc_iov(), "fi_writemsg");
 
@@ -1368,81 +1382,79 @@ bool Endpoint::writemsg(RmaMessage* msg, uint64_t flags)
   if (rret != FI_SUCCESS) {
     _errno = (int) rret;
     set_error("fi_writemsg");
-    return false;
   }
 
-  return true;
+  return rret;
 }
 
-bool Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
+ssize_t Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
 {
   int context = _counter++;
   msg->context(&context);
-  if (writemsg(msg, flags)) {
-    return check_completion(context, FI_WRITE | FI_RMA);
+
+  ssize_t rret = writemsg(msg, flags);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_txcq, context, FI_WRITE | FI_RMA);
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::check_completion(int context, unsigned flags, uint64_t* data)
+ssize_t Endpoint::check_completion(struct fid_cq* cq, int context, unsigned flags, uint64_t* data)
 {
-  int num_comp;
   struct fi_cq_data_entry comp;
 
-  if (comp_wait(&comp, &num_comp, 1) && num_comp == 1) {
+  ssize_t rret = comp_wait(cq, &comp, 1);
+  if (rret == 1) {
     if ((comp.flags & flags) == flags) {
       if (*((int*) comp.op_context) == context) {
         if (data)
           *data = comp.data;
-        return true;
       }
     }
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::check_completion_noctx(unsigned flags, uint64_t* data)
+ssize_t Endpoint::check_completion_noctx(struct fid_cq* cq, unsigned flags, uint64_t* data)
 {
-  int num_comp;
   struct fi_cq_data_entry comp;
 
-  if (comp_wait(&comp, &num_comp, 1) && num_comp == 1) {
+  ssize_t rret = comp_wait(cq, &comp, 1);
+  if (rret == 1) {
     if ((comp.flags & flags) == flags) {
       if (data)
         *data = comp.data;
-      return true;
     }
   }
 
-  return false;
+  return rret;
 }
 
-bool Endpoint::check_connection_state()
+ssize_t Endpoint::check_connection_state()
 {
+  ssize_t rret = FI_SUCCESS;
+
   if (_state > EP_UP) {
     if (_state == EP_CONNECTED) {
-      _errno = -FI_EISCONN;
+      rret = -FI_EISCONN;
       set_error("Endpoint is already in a connected state");
-      _errno = -FI_EISCONN;
+      rret = -FI_EISCONN;
     } else {
-      _errno = -FI_EOPNOTSUPP;
+      rret = -FI_EOPNOTSUPP;
       set_error("Connecting is not possible in current state");
     }
-
-    return false;
   }
-
-  if (_state < EP_UP) {
+  else if (_state < EP_UP) {
     if (!EndpointBase::initialize()) {
-      _errno = -FI_EOPNOTSUPP;
+      rret = -FI_EOPNOTSUPP;
       set_error("Connecting is not possible in current state");
-      return false;
     }
   }
+  _errno = rret;
 
-  return true;
+  return rret;
 }
 
 PassiveEndpoint::PassiveEndpoint(const char* addr, const char* port, uint64_t flags) :
@@ -1484,7 +1496,7 @@ bool PassiveEndpoint::listen()
   return true;
 }
 
-Endpoint* PassiveEndpoint::accept()
+Endpoint* PassiveEndpoint::accept(int timeout)
 {
   bool cm_entry;
   struct fi_eq_cm_entry entry;
@@ -1496,7 +1508,7 @@ Endpoint* PassiveEndpoint::accept()
     return NULL;
   }
 
-  if (!event_wait(&event, &entry, &cm_entry))
+  if (!event_wait(&event, &entry, &cm_entry, timeout))
     return NULL;
 
   if (!cm_entry || event != FI_CONNREQ) {
@@ -1518,7 +1530,7 @@ Endpoint* PassiveEndpoint::accept()
   }
 }
 
-bool PassiveEndpoint::reject()
+bool PassiveEndpoint::reject(int timeout)
 {
   bool cm_entry;
   struct fi_eq_cm_entry entry;
@@ -1530,7 +1542,7 @@ bool PassiveEndpoint::reject()
     return false;
   }
 
-  CHECK(event_wait(&event, &entry, &cm_entry));
+  CHECK(event_wait(&event, &entry, &cm_entry, timeout));
 
   if (!cm_entry || event != FI_CONNREQ) {
     set_custom_error("unexpected event %u - expected FI_CONNECTED (%u)", event, FI_CONNREQ);
@@ -1578,7 +1590,7 @@ CompletionPoller::~CompletionPoller()
 
 bool CompletionPoller::up() const { return _up; }
 
-bool CompletionPoller::add(Endpoint* endp)
+bool CompletionPoller::add(Endpoint* endp, struct fid_cq* cq)
 {
   for (unsigned i=0; i<_nfd; i++) {
     if (_endps[i] == endp)
@@ -1587,11 +1599,11 @@ bool CompletionPoller::add(Endpoint* endp)
 
   check_size();
 
-  CHECK_ERR(fi_control(&endp->cq()->fid, FI_GETWAIT, (void *) &_pfd[_nfd].fd), "fi_control");
+  CHECK_ERR(fi_control(&cq->fid, FI_GETWAIT, (void *) &_pfd[_nfd].fd), "fi_control");
 
   _pfd[_nfd].events   = POLLIN;
   _pfd[_nfd].revents  = 0;
-  _pfid[_nfd]         = &endp->cq()->fid;
+  _pfid[_nfd]         = &cq->fid;
   _endps[_nfd]        = endp;
   _nfd++;
 
@@ -1621,33 +1633,27 @@ bool CompletionPoller::del(Endpoint* endp)
   }
 }
 
-bool CompletionPoller::poll(int timeout)
+int CompletionPoller::poll(int timeout)
 {
-  int npoll = 0;
   int ret = 0;
 
   ret = fi_trywait(_fabric->fabric(), _pfid, _nfd);
   if (ret == -FI_EAGAIN) {
-    return true;
+    return ret;
   }
   if (ret == FI_SUCCESS) {
-    npoll = ::poll(_pfd, _nfd, timeout);
-    if (npoll > 0) {
+    ret = ::poll(_pfd, _nfd, timeout);
+    if (ret >= 0) {
       clear_error();
-      return true;
-    }
-    if (npoll == 0) {
-      _errno = -FI_ETIMEDOUT;
-      set_error("poll");
     } else {
-      _errno = npoll;
+      _errno = ret;
       set_error("poll");
     }
-    return (npoll > 0);
+    return ret;
   }
   _errno = ret;
   set_error("fi_trywait");
-  return false;
+  return ret;
 }
 
 void CompletionPoller::check_size()
