@@ -1,7 +1,7 @@
 ## HDF5 high-frequency data testing scripts
 
 
-This folder contains two testings scripts for measuring the write performance of HDF5. A dataset is grown by appending to the dataset one element at a time. The write performance is measured in each case by varying the chunk size.
+This folder contains two testings scripts for measuring the read/write performance of HDF5. A dataset is grown by appending to the dataset one element at a time. The read/write performance is measured by accessing one element at a time. The tests are repeated with varying the chunk size.
 
 
 The test cases are 
