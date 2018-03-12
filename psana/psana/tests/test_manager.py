@@ -11,14 +11,15 @@ class Test:
     def test_xtc(self):
         xtc()
 
-    def test_det(self):
-        det()
-
     def test_parallel(self):
         subprocess.call(['smdwriter','-f','data.xtc'])
         import shutil
         shutil.copy('data.xtc','data_1.xtc')
         shutil.copy('smd.xtc', 'smd_1.xtc')
-        parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'parallel.py')
+        parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
         subprocess.call(['mpirun','-n','2','python',parallel])
+    
+    def test_det(self):
+        det()
+
 

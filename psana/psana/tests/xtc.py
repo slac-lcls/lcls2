@@ -2,9 +2,10 @@ import sys
 from sys import getrefcount as getref
 import numpy as np
 from psana import DataSource
+from psana.dgrammanager import DgramManager
 
 def myroutine2():
-  ds = DataSource('data.xtc')
+  ds = DgramManager('data.xtc')  # todo: change back to DataSource
   assert getref(ds)==2
   dgram = ds.__next__().__next__()
   assert getref(dgram)==6
