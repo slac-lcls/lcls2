@@ -13,14 +13,16 @@ warnings.filterwarnings("ignore")
 
 #plt.style.use('ggplot')
 
+
 if plt.get_fignums():
 	for axe in ax:
 		axe.clear()
 else:	
-	fig, ax = plt.subplots(3, sharex=True, figsize=(6*1.6,6))
-		
-		
+	fig, ax = plt.subplots(3, sharex=True, figsize=(6*1.6,6))		
+	
 def plot_HF_data(filename):
+
+	
 	fns = filename.split('_')
 	
 	data = np.loadtxt(filename, skiprows=1)
@@ -56,11 +58,11 @@ def plot_HF_data(filename):
 
 	fig.savefig('HDF_%s_%s_%s_test.pdf' % (fns[1], fns[0],fns[-1][:-4]))
 
-#plot_HF_data("HF_2byte_write.txt")	
+plot_HF_data("HF_2byte_write.txt")	
 #plot_HF_data("HF_2byte_read.txt")	
 #plot_HF_data("HF_1M_write.txt")	
 #plot_HF_data("HF_1M_read.txt")	
 #plot_HF_data("VL_1M_read.txt")
 #plot_HF_data("VL_1M_write.txt")
-plot_HF_data("VL_2byte_read.txt")
+#plot_HF_data("VL_2byte_read.txt")
 #plot_HF_data("VL_2byte_write.txt")
