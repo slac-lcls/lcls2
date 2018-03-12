@@ -55,6 +55,8 @@ def plot_HF_data(filename):
 
 
 	fig.savefig('HDF_%s_%s_test.pdf' % (fns[0], fns[-1][:-4]))
-	
-#plot_HF_data("HF_2bytes.txt")
+
+#plot_HF_data("HF_2bytes_read.txt")	
+#plot_HF_data("HF_2bytes_write.txt")	
+#plot_HF_data("VL_1M_read.txt")
 plot_HF_data("VL_1M_write.txt")
