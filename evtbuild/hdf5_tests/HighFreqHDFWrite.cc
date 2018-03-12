@@ -39,6 +39,12 @@ void loop_write(const char* filename, int loop_limit, hsize_t chunk_size, hsize_
     DSetCreatPropList prop;
     prop.setChunk(2, chunk_dims);
 
+    // Increase cache size to match chunks. Guessing on the parameters here. 
+    size_t rd_chunk_bytes = chunk_dims[0]*8;
+    FileAccPropList fprop;
+    fprop.setCache((int) chunk_dims[0], (size_t) chunk_dims[0], rd_chunk_bytes, 1);
+
+
     // Create the chunked dataset.  Note the use of pointer.
     DataSet *dataset = new DataSet(file.createDataSet( DATASETNAME, 
                                                        PredType::STD_I32LE, *dataspace, prop) );
@@ -87,7 +93,7 @@ void loop_write(const char* filename, int loop_limit, hsize_t chunk_size, hsize_
     float hdf_ratio = 1000000*fileSize/(num_bytes*loop_limit*4.0);
 
 
-    printf("%-20i%-20i%-20i%-20i%-20.2f%-20.2f%-20.2f%-20.2f\n", chunk_size , loop_limit, num_bytes, duration, fileSize, hdf_ratio, av_speed, av_freq); 
+    printf("%-20i%-20i%-20i%-20i%-20.2f%-20.2f%-20.2f%-20.2f\n", chunk_size , loop_limit, 4*num_bytes, duration, fileSize, hdf_ratio, av_speed, av_freq); 
         };
 
 int main (int argc, char *argv[])
@@ -96,13 +102,22 @@ int main (int argc, char *argv[])
     const H5std_string FILE_NAME(argv[1]);   
     const H5std_string DATASETNAME("ExtendibleArray");
 
-    printf("%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s\n", "Chunk size", "Loop limit", "Bytes/extension", "Duration (ms)", "Filesize (MB)", "HDF Ratio", "Write speed (MB/s)", "Frequency (kHz)"); 
+    // printf("%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s\n", "Chunk size", "Loop limit", "Bytes/extension", "Duration (ms)", "Filesize (MB)", "HDF Ratio", "Write speed (MB/s)", "Frequency (kHz)"); 
 
-    int loop_limit = 1000000;
-    int num_bytes = 2;
-    for(size_t  i=0; pow(2,i)<loop_limit; i++){
-    // loop limit, chunk size, integers per extension
-        loop_write(argv[1], loop_limit,pow(2,i),num_bytes);
+    // int loop_limit = 100;
+    // int num_bytes = 2;
+    // for(size_t  i=0; pow(2,i)<loop_limit; i++){
+    // // loop limit, chunk size, integers per extension
+    //     loop_write(argv[1], loop_limit,pow(2,i),num_bytes);
+    // };
+    //Increment the chunk size by powers of two up to the loop limit
+//    for(size_t i=0; pow(2,i)<loop_limit;i++){
+
+    // void loop_write(const char* filename, size_t loop_limit, hsize_t chunk_size, size_t num_bytes){
+    auto chunk_size = (hsize_t) atoi(argv[3]);
+    if(atoi(argv[3])==1){
+        printf("%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s\n", "Chunk size", "Loop limit", "Bytes/extension", "Duration (ms)", "Filesize (MB)", "HDF Ratio", "Write speed (MB/s)", "Frequency (kHz)");
     };
+    loop_write(argv[1], (size_t)atoi(argv[2]), chunk_size,(size_t)atoi(argv[4]));
     return 0;  // successfully terminated
 }

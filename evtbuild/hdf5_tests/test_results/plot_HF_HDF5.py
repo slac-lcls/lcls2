@@ -21,13 +21,15 @@ else:
 		
 		
 def plot_HF_data(filename):
+	fns = filename.split('_')
+	
 	data = np.loadtxt(filename, skiprows=1)
 	
 
 	ax[0].semilogx(data[:,0], data[:,6], 'C0',lw=3)
 	ax[2].axhline(8, c='r',linestyle='--', lw=2)
 	ax[1].semilogx(data[:,0], data[:,3]/1000, 'C0',lw=3)
-	ax[2].semilogx(data[:,0], data[:,5]*8, 'C0',lw=3)
+	ax[2].semilogx(data[:,0], data[:,4], 'C0',lw=3)
 	
 	
 	
@@ -48,11 +50,11 @@ def plot_HF_data(filename):
 		   
 
 	plt.tight_layout()
-	fig.suptitle('HDF test results for %s writing' % filename[:2])
+	fig.suptitle('HDF test results for %s %s' % (fns[0], fns[-1][:-4]))
 	fig.subplots_adjust(top=0.93)
 
 
-	fig.savefig('HDF_%s_write_test.pdf' % filename[:2])
+	fig.savefig('HDF_%s_%s_test.pdf' % (fns[0], fns[-1][:-4]))
 	
 #plot_HF_data("HF_2bytes.txt")
-plot_HF_data("VL_1M.txt")
+plot_HF_data("VL_1M_write.txt")
