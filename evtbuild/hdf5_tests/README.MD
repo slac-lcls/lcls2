@@ -5,13 +5,13 @@ This folder contains two testings scripts for measuring the read/write performan
 
 
 The test cases are 
-1. Small amounts of data: `HighFreqHDFWrite.cc`
+1. Small amounts of data: `HighFreqHDFWrite.cc, HighFreqHDFRead.cc`
    - 2 bytes are added to the dataset at a time
    - The addition is repeated one million times
    - The chunk size is varied in powers of two from one to 2^19
 
 
-2. Variable length images: `VarLenHDFWrite`
+2. Variable length images: `VarLenHDFWrite.cc, VarLenHDFRead.cc`
    - 1 MB images are added to the dataset one at a time
    - The addition is repeated ten thousand times
    - The chunk size is varied in powers of two from one to 2^13
