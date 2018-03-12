@@ -50,13 +50,17 @@ def plot_HF_data(filename):
 		   
 
 	plt.tight_layout()
-	fig.suptitle('HDF test results for %s %s' % (fns[0], fns[-1][:-4]))
-	fig.subplots_adjust(top=0.93)
+	fig.suptitle('HDF %s test results for %s %s' % (fns[1], fns[0], fns[-1][:-4]))
+	fig.subplots_adjust(top=0.9)
 
 
-	fig.savefig('HDF_%s_%s_test.pdf' % (fns[0], fns[-1][:-4]))
+	fig.savefig('HDF_%s_%s_%s_test.pdf' % (fns[1], fns[0],fns[-1][:-4]))
 
-#plot_HF_data("HF_2bytes_read.txt")	
-#plot_HF_data("HF_2bytes_write.txt")	
+#plot_HF_data("HF_2byte_write.txt")	
+#plot_HF_data("HF_2byte_read.txt")	
+#plot_HF_data("HF_1M_write.txt")	
+#plot_HF_data("HF_1M_read.txt")	
 #plot_HF_data("VL_1M_read.txt")
-plot_HF_data("VL_1M_write.txt")
+#plot_HF_data("VL_1M_write.txt")
+plot_HF_data("VL_2byte_read.txt")
+#plot_HF_data("VL_2byte_write.txt")

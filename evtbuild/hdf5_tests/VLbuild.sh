@@ -1,5 +1,5 @@
 #!/bin/bash
- 
+
 path='/nvme1n1/vldata.h5'
 # h5c++ -o VLWrite VarLenHDFWrite.cc
 # h5c++ -o VLRead VarLenHDFRead.cc
@@ -15,7 +15,7 @@ while [ $x -lt $it_limit ]
 do
     rm -f $path
     chunks=$(echo "2^$x" | bc)
-    ./VLWrite $path $loop_limit $chunk $num_bytes| tee -a "test_results/VL_1M_write.txt"
+    ./VLWrite $path $loop_limit $chunks $num_bytes| tee -a "test_results/VL_1M_write.txt"
     echo 3 | sudo tee /proc/sys/vm/drop_caches
     ./VLRead $path $x | tee -a "test_results/VL_1M_read.txt"
     x=$(( $x+1 ))

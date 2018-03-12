@@ -21,14 +21,12 @@ void loop_write(const char* filename, int loop_limit, hsize_t chunk_size, hsize_
     hsize_t dims[2] = {1,num_bytes};        // dataset dimensions at creation
     hsize_t maxdims[2] = {H5S_UNLIMITED, num_bytes}; 
     hsize_t chunk_dims[2] ={chunk_size, num_bytes};
-    int32_t  data[1][num_bytes];//= { {1, 1}};    // data to write 
-
+    int num_ints = (int)num_bytes/4;
+    int32_t  data[num_bytes];//= { {1, 1}};    // data to writ
     // Variables used in extending and writing to the extended portion of dataset 
-    
     hsize_t size[2];
     hsize_t offset[2];
     hsize_t dimsext[2] = {1, num_bytes};         // extend dimensions 
-    //    int loop_limit = 10;
 
     // Create a new file using the default property lists. 
     H5File file(FILE_NAME, H5F_ACC_TRUNC);
@@ -48,20 +46,12 @@ void loop_write(const char* filename, int loop_limit, hsize_t chunk_size, hsize_
     // Create the chunked dataset.  Note the use of pointer.
     DataSet *dataset = new DataSet(file.createDataSet( DATASETNAME, 
                                                        PredType::STD_I32LE, *dataspace, prop) );
-    //int i=0;
-    // Write data to dataset.
-    // dataset->write(data, PredType::NATIVE_INT);
-
     for(int i=0; i<loop_limit; i++){
         // Extend the dataset. Dataset becomes n+1 x 3.
         size[0] = dims[0] + i*dimsext[0];
         size[1] = dims[1];
         dataset->extend(size); 
 
-        // Make some random numbers
-        for(hsize_t j=0; i<dimsext[1]; i++){
-        data[0][i] = rand();
-        }
         // Select a hyperslab in extended portion of the dataset.
         DataSpace *filespace = new DataSpace(dataset->getSpace ());
         offset[0] = size[0]-1;
@@ -102,22 +92,12 @@ int main (int argc, char *argv[])
     const H5std_string FILE_NAME(argv[1]);   
     const H5std_string DATASETNAME("ExtendibleArray");
 
-    // printf("%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s\n", "Chunk size", "Loop limit", "Bytes/extension", "Duration (ms)", "Filesize (MB)", "HDF Ratio", "Write speed (MB/s)", "Frequency (kHz)"); 
-
-    // int loop_limit = 100;
-    // int num_bytes = 2;
-    // for(size_t  i=0; pow(2,i)<loop_limit; i++){
-    // // loop limit, chunk size, integers per extension
-    //     loop_write(argv[1], loop_limit,pow(2,i),num_bytes);
-    // };
-    //Increment the chunk size by powers of two up to the loop limit
-//    for(size_t i=0; pow(2,i)<loop_limit;i++){
 
     // void loop_write(const char* filename, size_t loop_limit, hsize_t chunk_size, size_t num_bytes){
     auto chunk_size = (hsize_t) atoi(argv[3]);
     if(atoi(argv[3])==1){
         printf("%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s\n", "Chunk size", "Loop limit", "Bytes/extension", "Duration (ms)", "Filesize (MB)", "HDF Ratio", "Write speed (MB/s)", "Frequency (kHz)");
     };
-    loop_write(argv[1], (size_t)atoi(argv[2]), chunk_size,(size_t)atoi(argv[4]));
+    loop_write(argv[1], atoi(argv[2]), chunk_size,(size_t)atoi(argv[4])/4);
     return 0;  // successfully terminated
 }
