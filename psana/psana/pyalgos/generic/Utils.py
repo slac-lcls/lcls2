@@ -23,6 +23,7 @@ Usage::
     host  = gu.get_hostname()
     cwd   = gu.get_cwd()
     pid   = gu.get_pid()
+    stat  = gu.shell_command_is_available(cmd='mongorestore', verb=True)
     rec   = gu.log_rec_on_start()
     fmode = gu.file_mode(fname)
 
@@ -149,6 +150,14 @@ def get_login() :
     """
     #return os.getlogin()
     return getpass.getuser()
+
+#------------------------------
+
+def shell_command_is_available(cmd='mongorestore', verb=True) :
+    import shutil
+    if shutil.which(cmd) is None :
+        if verb : print('WARNING: shell command "%s" is unavailable.' % cmd)
+        return 
 
 #------------------------------
 
