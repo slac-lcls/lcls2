@@ -61,14 +61,13 @@ if world_rank == 0:
 #    print('Removing files')
     for rnk in range(0,6,1):
         clear_files(cfg['path'] % rnk+'/*.xtc')
-
+    subprocess.call("./clear_cache.sh", shell=True)
 world_comm.Barrier()
-
 
 
 if color == 0:
  #   pass
-    do_write(comm) # writ e
+    do_write(comm) # write
 world_comm.Barrier()
 
 if world_rank ==0:
@@ -77,7 +76,6 @@ world_comm.Barrier()
 
 
 if color == 0:
-
    # pass
     #    #comm_test(color,comm,rank,size)
     do_read(comm,0) # copy
