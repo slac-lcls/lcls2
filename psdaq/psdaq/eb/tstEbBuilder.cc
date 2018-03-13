@@ -275,24 +275,26 @@ void TstEbInlet::process(BatchManager* outlet)
 
     unsigned     idx   = wc.data & 0x00ffffff;
     unsigned     srcId = wc.data >> 24;
-    const Dgram* batch = (const Dgram*)_transport.lclAdx(srcId, idx * _maxBatchSize);
+    const Dgram* bdg   = (const Dgram*)_transport.lclAdx(srcId, idx * _maxBatchSize);
 
     if (lverbose)
     {
-      static unsigned cnt = 0;
-      printf("EbInlet  rcvd  %6d        batch[%4d]    @ %16p, ts %014lx, sz %3zd from Contrib %d\n", ++cnt, idx,
-             batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), srcId);
+      static unsigned cnt    = 0;
+      uint64_t        pid    = bdg->seq.pulseId().value();
+      size_t          extent = sizeof(*bdg) + bdg->xtc.sizeofPayload();
+      printf("EbInlet  rcvd  %6d        batch[%4d]    @ %16p, ts %014lx, sz %3zd from Contrib %d\n",
+             cnt++, idx, bdg, pid, extent, srcId);
     }
 
     {
       struct timespec ts;
       clock_gettime(CLOCK_MONOTONIC, &ts);
-      int64_t dS(ts.tv_sec  - batch->seq.stamp().seconds());
-      int64_t dN(ts.tv_nsec - batch->seq.stamp().nanoseconds());
+      int64_t dS(ts.tv_sec  - bdg->seq.stamp().seconds());
+      int64_t dN(ts.tv_nsec - bdg->seq.stamp().nanoseconds());
       int64_t dT(dS * nanosecond + dN);
 
       _arrTimeHist.bump(dT >> 16);
-      //printf("In  Batch  %014lx Pend = %ld S, %ld ns\n", batch->seq.pulseId().value(), dS, dN);
+      //printf("In  Batch  %014lx Pend = %ld S, %ld ns\n", bdg->seq.pulseId().value(), dS, dN);
 
       dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
       if (dT > 1048576)  printf("pendTime = %ld\n", dT);
@@ -301,7 +303,7 @@ void TstEbInlet::process(BatchManager* outlet)
       _pendPrevTime = t0;
     }
 
-    processBulk(batch);                 // Comment out for open-loop running
+    processBulk(bdg);                 // Comment out for open-loop running
   }
 
   //cancel();                             // Stop the event timeout timer
@@ -461,14 +463,6 @@ void TstEbOutlet::post(const Batch* batch)
   const Dgram* bdg    = batch->datagram();
   size_t       extent = batch->extent();
 
-  if (lverbose > 2)
-  {
-    uint64_t pid = bdg->seq.pulseId().value();
-    printf("EbOutlet read                batch[%4d] @ %16p, ts %014lx, sz %3zd\n",
-           batch->index(), bdg, pid, sizeof(*bdg) + bdg->xtc.sizeofPayload());
-  }
-
-  //if (_batchCount > 10)
   {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -490,18 +484,16 @@ void TstEbOutlet::post(const Batch* batch)
     {
       uint64_t pid    = bdg->seq.pulseId().value();
       void*    rmtAdx = (void*)_transport.rmtAdx(dst, idx * maxBatchSize());
-      printf("EbOutlet posts       %6ld result   [%4d] @ %16p, ts %014lx, sz %3zd to   Contrib %d = %16p\n",
+      printf("EbOutlet posts       %6ld result   [%4d] @ %16p, ts %014lx, sz %3zd to   Contrib %d %16p\n",
              _batchCount, idx, bdg, pid, extent, dst, rmtAdx);
     }
 
-    if (_transport.post(bdg, extent, dst, (_id << 24) + idx))  break;
+    if (_transport.post(dst, bdg, extent, idx * maxBatchSize(), (_id << 24) + idx))  break;
   }
   auto t1 = std::chrono::steady_clock::now();
 
   ++_batchCount;
 
-  //if (std::chrono::duration<double>(t0 - startTime).count() > 10.)
-  //if (_batchCount > 10)
   {
     int64_t dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
     if (dT > 1048576)  printf("postTime = %ld\n", dT);

@@ -63,9 +63,8 @@ namespace Pds {
       int         postCompRecv(unsigned dst, unsigned count, void* ctx);
       int         pend(fi_cq_data_entry*);
       int         pendW(fi_cq_data_entry*);
+      int         post(unsigned dst, const void* buf, size_t len, uint64_t os, uint64_t immData, void* ctx = nullptr);
       //int         post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t offset, void* ctx);
-      int         post(const void* buf, size_t len, unsigned dst, uint64_t offset, void* ctx = nullptr);
-      int         postW(const void* buf, size_t len, unsigned dst, uint64_t offset);
       void*       lclAdx(unsigned src, uint64_t offset) const;
       uintptr_t   rmtAdx(unsigned dst, uint64_t offset) const; // Revisit: For debugging, remove
     public:

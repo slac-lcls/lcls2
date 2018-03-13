@@ -207,7 +207,7 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    if (transport->post(buffer, size, dstId, 0, (void *)(uintptr_t)PINGPONG_SEND_WCID))
+    if (transport->post(dstId, buffer, size, 0, 0, (void *)(uintptr_t)PINGPONG_SEND_WCID))
     {
       fprintf(stderr, "Client: failed to post a buffer\n");
       return 1;
@@ -263,7 +263,7 @@ int main(int argc, char **argv)
     pending &= ~(int) (uintptr_t) wc.op_context;
     if (scnt < iters && !pending)
     {
-      if (transport->post(buffer, size, dstId, 0, (void *)(uintptr_t)PINGPONG_SEND_WCID))
+      if (transport->post(dstId, buffer, size, 0, 0, (void *)(uintptr_t)PINGPONG_SEND_WCID))
       {
         fprintf(stderr, "Failed to post a buffer\n");
         ret = 1;
