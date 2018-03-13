@@ -287,18 +287,18 @@ int EbLfBase::_tryCq(fi_cq_data_entry* cqEntry)
     Endpoint*& ep = _ep[iSrc];
     if (!ep)  continue;
 
-    ssize_t   rc;
     const int maxCnt = 1;
-    if ((rc = ep->comp(ep->rxcq(), cqEntry, maxCnt)) == maxCnt)
+    ssize_t   rc     = ep->comp(ep->rxcq(), cqEntry, maxCnt);
+    if (rc == maxCnt)
     {
-      const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
-
-      if ((rc = ep->recv_comp_data()) < 0)
+      ssize_t ret = ep->recv_comp_data();
+      if (ret < 0)
       {
-        if (rc != -FI_EAGAIN)
+        if (ret != -FI_EAGAIN)
           fprintf(stderr, "tryCq: recv_comp_data() error: %s\n", ep->error());
       }
 
+      const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
       if ((cqEntry->flags & flags) == flags)
       {
         ++_stats._rmtWrCnt[iSrc];
@@ -407,15 +407,20 @@ static int pollForComp(Endpoint* ep, unsigned idx)
 
   while (1)
   {
-    if ((rc = ep->recv_comp_data()) < 0)
+    if ((rc = ep->comp(ep->txcq(), &cqEntry, maxCnt)) == maxCnt)
     {
-      if (rc != -FI_EAGAIN)
-        fprintf(stderr, "pollForComp: recv_comp_data() error: %s\n", ep->error());
+      if ((rc = ep->recv_comp_data()) < 0)
+      {
+        if (rc != -FI_EAGAIN)
+          fprintf(stderr, "pollForComp: recv_comp_data() error: %s\n", ep->error());
+      }
+      return 0;
     }
-
-    if ((rc = ep->comp(ep->txcq(), &cqEntry, maxCnt)) == maxCnt)  return 0;
-
-    if (rc != -FI_EAGAIN)
+    else if (rc == -FI_EAGAIN)
+    {
+      return 0;
+    }
+    else
     {
       fprintf(stderr, "Error completing post to peer %u: %s\n",
               idx, ep->error());
@@ -431,9 +436,10 @@ static int pollForComp(Endpoint* ep, unsigned idx)
 }
 #endif
 
-int EbLfBase::post(const void* buf,
+int EbLfBase::post(unsigned    dst,
+                   const void* buf,
                    size_t      len,
-                   unsigned    dst,
+                   uint64_t    os,
                    uint64_t    immData,
                    void*       ctx)
 {
@@ -442,9 +448,14 @@ int EbLfBase::post(const void* buf,
 
   unsigned      idx = _mappedId[dst];
   Endpoint*     ep  = _ep[idx];
-  uintptr_t     os  = (const char*)buf - (const char*)_rMr[idx]->start();
+  //uintptr_t     os  = (const char*)buf - (const char*)_rMr[idx]->start();
   RemoteAddress ra   (_ra[idx].rkey, _ra[idx].addr + os, len);
   MemoryRegion* mr  = _rMr[idx];
+
+  //printf("buf = %p, sz = %zd, dst = %d, idx = %d, immData = 0x%08lx, "
+  //       "os = %08lx, srcMr = %p, dstAdx = 0x%016lx, 0x%016lx\n",
+  //       buf, len, dst, idx, immData, os,
+  //       _rMr[idx]->start(), _ra[idx].addr, _ra[idx].addr + os);
   ssize_t       rc;
   do
   {
@@ -459,12 +470,13 @@ int EbLfBase::post(const void* buf,
     }
 
     // It appears that the CQ must always be read, not just after EAGAIN
-    //if ( (rc = pollForComp(ep, idx)) )  return rc;
+    //ssize_t ret = pollForComp(ep, idx);
+    //if (ret)  return ret;
 
-    ssize_t          ret;
     fi_cq_data_entry cqEntry;
     const ssize_t    maxCnt = 1;
-    if ((ret = ep->comp(ep->txcq(), &cqEntry, maxCnt)) == maxCnt)
+    ssize_t          ret    = ep->comp(ep->txcq(), &cqEntry, maxCnt);
+    if (ret == maxCnt)
     {
       if ((ret = ep->recv_comp_data()) < 0)
       {
@@ -489,9 +501,9 @@ int EbLfBase::post(const void* buf,
 }
 
 #if 0                                   // No longer used
-int EbLfBase::post(LocalIOVec& lclIov,
+int EbLfBase::post(unsigned    dst,
+                   LocalIOVec& lclIov,
                    size_t      len,
-                   unsigned    dst,
                    uint64_t    offset,
                    void*       ctx)
 {

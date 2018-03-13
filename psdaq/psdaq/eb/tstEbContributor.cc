@@ -355,15 +355,6 @@ void TstContribOutlet::post(const Batch* batch)
   size_t       extent = batch->extent();
   uint32_t     idx    = batch->index();
 
-  if (lverbose)
-  {
-    uint64_t pid    = bdg->seq.pulseId().value();
-    void*    rmtAdx = (void*)_transport.rmtAdx(dst, idx * maxBatchSize());
-    printf("ContribOutlet posts %6ld        batch[%4d]    @ %16p, ts %014lx, sz %3zd to   EB %d %16p\n",
-           _batchCount, idx, bdg, pid, extent, dst, rmtAdx);
-  }
-
-  //if (_batchCount > 10)
   {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -374,14 +365,20 @@ void TstContribOutlet::post(const Batch* batch)
     _depTimeHist.bump(dT >> 16);
   }
 
+  if (lverbose)
+  {
+    uint64_t pid    = bdg->seq.pulseId().value();
+    void*    rmtAdx = (void*)_transport.rmtAdx(dst, idx * maxBatchSize());
+    printf("ContribOutlet posts %6ld        batch[%4d]    @ %16p, ts %014lx, sz %3zd to   EB %d %16p\n",
+           _batchCount, idx, bdg, pid, extent, dst, rmtAdx);
+  }
+
   auto t0 = std::chrono::steady_clock::now();
-  _transport.post(bdg, extent, dst, (_id << 24) + idx);
+  _transport.post(dst, bdg, extent, idx * maxBatchSize(), (_id << 24) + idx);
   auto t1 = std::chrono::steady_clock::now();
 
   ++_batchCount;
 
-  //if (std::chrono::duration<double>(t0 - startTime).count() > 10.)
-  //if (_batchCount > 10)
   {
     int64_t dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
     if (dT > 1048576)  printf("postTime = %ld\n", dT);
@@ -531,26 +528,28 @@ void TstContribInlet::routine()
     auto t1  = std::chrono::steady_clock::now();
 
     unsigned     idx   = wc.data & 0x00ffffff;
-    const Dgram* batch = (const Dgram*)(_transport.lclAdx(wc.data >> 24, idx * _maxBatchSize));
+    unsigned     srcId = wc.data >> 24;
+    const Dgram* bdg   = (const Dgram*)(_transport.lclAdx(srcId, idx * _maxBatchSize));
 
     if (lverbose)
     {
-      static unsigned cnt = 0;
-      unsigned from = batch->xtc.src.log() & 0xff;
+      static unsigned cnt    = 0;
+      uint64_t        pid    = bdg->seq.pulseId().value();
+      size_t          extent = sizeof(*bdg) + bdg->xtc.sizeofPayload();
       printf("ContribInlet  rcvd        %6d result   [%4d] @ %16p, ts %014lx, sz %3zd from EB %d\n",
-             ++cnt, idx, batch, batch->seq.pulseId().value(), sizeof(*batch) + batch->xtc.sizeofPayload(), from);
+             cnt++, idx, bdg, pid, extent, srcId);
     }
 
-    if (batch->env == _id)
+    if (bdg->env == _id)
     {
       struct timespec ts;
       clock_gettime(CLOCK_MONOTONIC, &ts);
-      int64_t dS(ts.tv_sec  - batch->seq.stamp().seconds());
-      int64_t dN(ts.tv_nsec - batch->seq.stamp().nanoseconds());
+      int64_t dS(ts.tv_sec  - bdg->seq.stamp().seconds());
+      int64_t dN(ts.tv_nsec - bdg->seq.stamp().nanoseconds());
       int64_t dT(dS * nanosecond + dN);
 
       _rttHist.bump(dT >> 16);
-      //printf("In  Batch %014lx RTT  = %ld S, %ld ns\n", batch->seq.pulseId().value(), dS, dN);
+      //printf("In  Batch %014lx RTT  = %ld S, %ld ns\n", bdg->seq.pulseId().value(), dS, dN);
 
       dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
       if (dT > 1048576)  printf("pendTime = %ld\n", dT);
@@ -560,8 +559,8 @@ void TstContribInlet::routine()
     }
 
     const Batch*       input  = _outlet->batch(idx);
-    const Dgram*       result = (const Dgram*)batch->xtc.payload();
-    const Dgram* const last   = (const Dgram*)batch->xtc.next();
+    const Dgram*       result = (const Dgram*)bdg->xtc.payload();
+    const Dgram* const last   = (const Dgram*)bdg->xtc.next();
     unsigned           i      = 0;
     while(result != last)
     {
