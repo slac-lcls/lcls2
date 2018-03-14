@@ -120,7 +120,8 @@ class PvPushButton(QtWidgets.QPushButton):
         self.pv = Pv.Pv(pvname)
 
     def buttonClicked(self):
-        self.pv.put(1)          # Value is immaterial
+        self.pv.put(1)
+        self.pv.put(0)
 
 class CheckBox(QtWidgets.QCheckBox):
 
@@ -499,11 +500,14 @@ class PvEditTS(PvEditCmb):
         super(PvEditTS, self).__init__(pvname, ['%u'%i for i in range(16)])
 
 class PvInput:
-    def __init__(self, widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True):
+    def __init__(self, widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True):
         pvname = pvbase+name
         print(pvname)
 
-        layout = QtWidgets.QHBoxLayout()
+        if horiz:
+            layout = QtWidgets.QHBoxLayout()
+        else:
+            layout = QtWidgets.QVBoxLayout()
         label  = QtWidgets.QLabel(name)
         label.setMinimumWidth(100)
         layout.addWidget(label)
@@ -523,11 +527,11 @@ class PvInput:
 def LblPushButton(parent, pvbase, name, count=1):
     return PvInput(PvPushButton, parent, pvbase, name, count)
 
-def LblCheckBox(parent, pvbase, name, count=1, start=0, istart=0, enable=True):
-    return PvInput(PvCheckBox, parent, pvbase, name, count, start, istart, enable)
+def LblCheckBox(parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True):
+    return PvInput(PvCheckBox, parent, pvbase, name, count, start, istart, enable, horiz=horiz)
 
-def LblEditInt(parent, pvbase, name, count=1):
-    return PvInput(PvEditInt, parent, pvbase, name, count)
+def LblEditInt(parent, pvbase, name, count=1, horiz=True):
+    return PvInput(PvEditInt, parent, pvbase, name, count, horiz=horiz)
 
 def LblEditHML(parent, pvbase, name, count=1):
     return PvInput(PvEditHML, parent, pvbase, name, count)
@@ -540,4 +544,5 @@ def LblEditEvt(parent, pvbase, name, count=1):
 
 def LblEditDst(parent, pvbase, name, count=1):
     return PvInput(PvEditDst, parent, pvbase, name, count)
+
 

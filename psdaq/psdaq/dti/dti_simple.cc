@@ -295,7 +295,7 @@ public:
     _timing.xbar.setOut( XBar::RTM0, XBar::FPGA );
     _timing.xbar.setOut( XBar::FPGA, lRTM ? XBar::RTM0 : XBar::BP );
 
-    _qpll_bpUpdate = 100<<16;
+    _qpll_bpUpdate = 200<<16;
   }
 
   void dumpb()
@@ -317,6 +317,7 @@ public:
     for(unsigned i=0; i<4; i++)
       printf(" %f(%u)", float(_monClk[i]&0x1fffffff)*1.e-6, unsigned(_monClk[i])>>29);
     printf("\n");
+    printf("bpupdate : %u\n", unsigned(_qpll_bpUpdate)>>16);
 
     _linkIdx = 1<<30;
 #ifndef NO_USPGP
@@ -516,7 +517,8 @@ int main(int argc, char** argv) {
       "dsRxOpcodes",
       "usTxOpcodes",
       "dsTxOpcodes",
-      "bpLinkSent " };
+      "bpLinkSent ",
+      NULL };
 
   unsigned fwdlink[7];
   memset(fwdlink,0,sizeof(fwdlink));
@@ -552,7 +554,7 @@ int main(int argc, char** argv) {
         dti->stats(stats[i],dstats[i],i,fwdlink[i]);
       }
     }
-    for(unsigned j=0; j<20; j++) {
+    for(unsigned j=0; title[j]!=NULL; j++) {
       printf("%s: ", title[j]);
       for(unsigned i=0; i<7; i++) {
         if (upstream & (1<<i))
