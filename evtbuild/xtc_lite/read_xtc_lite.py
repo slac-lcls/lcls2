@@ -13,7 +13,14 @@ write_limit = int(cfg['file_size'])
 mb_per_img = int(cfg['image_size'])
 batch_size = int(cfg['batch_size'])
 bytes_per_batch = mb_per_img*batch_size*10**6
-path = cfg['path']
+
+
+if int(cfg['parallel_disks']):
+    disk_num = rank
+else:
+    disk_num = int(cfg['disk_num'])
+    
+path = cfg['path'] % disk_num
 
 
 def read_client(comm,filt=0):
@@ -25,6 +32,8 @@ def read_client(comm,filt=0):
     # batches = 16
     arr_size = mb_per_img*500000
     # path = '/drpffb/eliseo/data/xtc_lite/'
+   # file_name = path % rank + '/xtc_lite_%i.xtc' % rank
+
     file_name = path + '/xtc_lite_%i.xtc' % rank
 
     # Check if the file exists
@@ -40,7 +49,7 @@ def read_client(comm,filt=0):
     os.lseek(read_file,0,0)
 
     ct = 0
-    eof_pad = 2000
+    eof_pad = 20
 
     while True:
         file_info = os.stat(file_name)
@@ -81,12 +90,13 @@ def do_read(comm, filt=0):
     if filt:
         copy_word = "Filtered"
     else:
-        copy_word = "Copy"
+        copy_word = "Copied"
+        hit_prob = 1
     # mb_per_img = 1
     # batch_size = 16
     arr_size = mb_per_img*500000
     # path = '/drpffb/eliseo/data/xtc_lite/'
-    file_name = path + '/xtc_lite_%i.xtc' % rank
+    file_name = path  + '/xtc_lite_%i.xtc' % rank
 
 
     comm.Barrier()

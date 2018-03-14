@@ -1,10 +1,11 @@
-#!@PYTHON@
 #####!/usr/bin/env python
 #------------------------------
 import os
 import sys
 from time import time
-import PSCalib.RunProcUtils as rpu
+import psana.pscalib.proc.RunProcUtils as rpu
+#import PSCalib.RunProcUtils as rpu
+
 #------------------------------
 
 def proc_info(parser) :
@@ -16,8 +17,8 @@ def proc_info(parser) :
     app      = popts.app
 
     if app :
-        print 'arguments: %s' % str(pargs)
-        print 'options  : %s' % str(popts)
+        print('arguments: %s' % str(pargs))
+        print('options  : %s' % str(popts))
 
     INS = None if ins is None else ins.upper()
     t0_sec = time()
@@ -32,9 +33,9 @@ def proc_info(parser) :
     elif tname=='5' : rpu.print_experiments_count_runs()
 
     else : sys.exit ('Not recognized command "%s"' % tname)
-    print 'Command "%s" consumed time (sec) = %.3f' % (tname, time()-t0_sec)
+    print('Command "%s" consumed time (sec) = %.3f' % (tname, time()-t0_sec))
 
-    if len(sys.argv)<2 : print usage()
+    if len(sys.argv)<2 : print(usage())
 
 #------------------------------
 
@@ -75,18 +76,23 @@ def input_option_parser() :
     parser.add_option('-a', '--app', default=d_app, action='store_true',           help=h_app)
  
     return parser
-  
+
 #------------------------------
 
-if __name__ == "__main__" :
+def do_main() :
 
     parser = input_option_parser()
 
     if len(sys.argv) == 1 : 
         parser.print_help()
-        print 'WARNING: using ALL default parameters...'
+        print('WARNING: using ALL default parameters...')
 
     proc_info(parser)
     sys.exit(0)
+  
+#------------------------------
+
+if __name__ == "__main__" :
+    do_main()
 
 #------------------------------

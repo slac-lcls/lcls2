@@ -5,24 +5,22 @@
 
 using namespace XtcData;
 
- class RoiDef:public VarDef
+class RoiDef : public VarDef
 {
 public:
-  enum index
+    enum index
     {
       array_fex
     };
-  
-  RoiDef()
-   {
-     Alg roi("roi",1,0,0);
-     NameVec.push_back({"array_fex", Name::FLOAT, 2, roi});
-   }
-} RoiDef;
 
+    RoiDef()
+    {
+        Alg roi("roi", 1, 0, 0);
+        NameVec.push_back({"array_fex", Name::FLOAT, 2, roi});
+    }
+};
 
-  
-void roiExample(Xtc& parent,  std::vector<NameIndex>& NamesVec, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
+void roiExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
 {
     CreateData fex(parent, NamesVec, nameId);
 
@@ -38,7 +36,8 @@ void roiExample(Xtc& parent,  std::vector<NameIndex>& NamesVec, unsigned nameId,
     fex.set_array_shape(RoiDef::array_fex,shape);
 }
 
-void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
+void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec)
+{
     Alg cspadRawAlg("cspadRawAlg",1,2,3);
     unsigned segment=0;
 

@@ -31,7 +31,7 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-static const int MaxTimeouts = 0x100;      // Revisit: Was 0xffff
+static const int MaxTimeouts = 10; //0x100;      // Revisit: Was 0xffff
 
 // Revisit: Fix stale comments:
 /*

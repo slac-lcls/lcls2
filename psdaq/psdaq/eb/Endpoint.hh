@@ -35,7 +35,7 @@ namespace Pds {
       void* start() const;
       size_t length() const;
       struct fid_mr* fid() const;
-      bool contains(void* start, size_t len) const;
+      bool contains(const void* start, size_t len) const;
     private:
       struct fid_mr* _mr;
       void*          _start;
@@ -153,7 +153,7 @@ namespace Pds {
       ~Fabric();
       MemoryRegion* register_memory(void* start, size_t len);
       MemoryRegion* register_memory(LocalAddress* laddr);
-      MemoryRegion* lookup_memory(void* start, size_t len) const;
+      MemoryRegion* lookup_memory(const void* start, size_t len) const;
       MemoryRegion* lookup_memory(LocalAddress* laddr) const;
       bool lookup_memory_iovec(LocalIOVec* iov) const;
       bool up() const;
@@ -185,7 +185,8 @@ namespace Pds {
       State state() const;
       Fabric* fabric() const;
       struct fid_eq* eq() const;
-      struct fid_cq* cq() const;
+      struct fid_cq* txcq() const;
+      struct fid_cq* rxcq() const;
       virtual void shutdown();
       bool event(uint32_t* event, void* entry, bool* cm_entry);
       bool event_wait(uint32_t* event, void* entry, bool* cm_entry, int timeout=-1);
@@ -194,11 +195,12 @@ namespace Pds {
       bool handle_event(ssize_t event_ret, bool* cm_entry, const char* cmd);
       bool initialize();
     protected:
-      State                       _state;
-      const bool                  _fab_owner;
-      Fabric*                     _fabric;
-      struct fid_eq*              _eq;
-      struct fid_cq*              _cq;
+      State          _state;
+      const bool     _fab_owner;
+      Fabric*        _fabric;
+      struct fid_eq* _eq;
+      struct fid_cq* _txcq;
+      struct fid_cq* _rxcq;
     };
 
     class Endpoint : public EndpointBase {
@@ -208,57 +210,57 @@ namespace Pds {
       ~Endpoint();
     public:
       void shutdown();
-      bool connect();
-      bool accept(struct fi_info* remote_info);
-      bool comp(struct fi_cq_data_entry* comp, int* comp_num, ssize_t max_count);
-      bool comp_wait(struct fi_cq_data_entry* comp, int* comp_num, ssize_t max_count, int timeout=-1);
-      bool comp_error(struct fi_cq_err_entry* comp_err);
+      bool connect(int timeout=-1);
+      bool accept(struct fi_info* remote_info, int timeout=-1);
+      ssize_t comp(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count);
+      ssize_t comp_wait(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count, int timeout=-1);
+      ssize_t comp_error(struct fid_cq* cq, struct fi_cq_err_entry* comp_err);
       /* Asynchronous calls (raw buffer) */
-      bool recv_comp_data();
-      bool send(void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
-      bool recv(void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
-      bool read(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
-      bool write(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
-      bool write_data(void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr=NULL);
+      ssize_t recv_comp_data(void* context=NULL);
+      ssize_t send(const void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
+      ssize_t recv(void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
+      ssize_t read(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
+      ssize_t write(const void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
+      ssize_t write_data(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr=NULL);
       /* Asynchronous calls (LocalAddress wrapper) */
-      bool send(LocalAddress* laddr, void* context);
-      bool recv(LocalAddress* laddr, void* context);
-      bool read(LocalAddress* laddr, const RemoteAddress* raddr, void* context);
-      bool write(LocalAddress* laddr, const RemoteAddress* raddr, void* context);
-      bool write_data(LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data);
+      ssize_t send(const LocalAddress* laddr, void* context);
+      ssize_t recv(LocalAddress* laddr, void* context);
+      ssize_t read(LocalAddress* laddr, const RemoteAddress* raddr, void* context);
+      ssize_t write(const LocalAddress* laddr, const RemoteAddress* raddr, void* context);
+      ssize_t write_data(const LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data);
       /* Vectored Asynchronous calls */
-      bool sendv(LocalIOVec* iov, void* context);
-      bool recvv(LocalIOVec* iov, void* context);
-      bool readv(LocalIOVec* iov, const RemoteAddress* raddr, void* context);
-      bool writev(LocalIOVec* iov, const RemoteAddress* raddr, void* context);
-      bool readmsg(RmaMessage* msg, uint64_t flags);
-      bool writemsg(RmaMessage* msg, uint64_t flags);
+      ssize_t sendv(LocalIOVec* iov, void* context);
+      ssize_t recvv(LocalIOVec* iov, void* context);
+      ssize_t readv(LocalIOVec* iov, const RemoteAddress* raddr, void* context);
+      ssize_t writev(LocalIOVec* iov, const RemoteAddress* raddr, void* context);
+      ssize_t readmsg(RmaMessage* msg, uint64_t flags);
+      ssize_t writemsg(RmaMessage* msg, uint64_t flags);
       /* Synchronous calls (raw buffer) */
-      bool recv_comp_data_sync(uint64_t* data=NULL);
-      bool send_sync(void* buf, size_t len, const MemoryRegion* mr=NULL);
-      bool recv_sync(void* buf, size_t len, const MemoryRegion* mr=NULL);
-      bool read_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
-      bool write_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
-      bool write_data_sync(void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr=NULL);
+      ssize_t recv_comp_data_sync(struct fid_cq* cq, uint64_t* data=NULL);
+      ssize_t send_sync(const void* buf, size_t len, const MemoryRegion* mr=NULL);
+      ssize_t recv_sync(void* buf, size_t len, const MemoryRegion* mr=NULL);
+      ssize_t read_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
+      ssize_t write_sync(const void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
+      ssize_t write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr=NULL);
       /* Synchronous calls (LocalAddress wrapper) */
-      bool send_sync(LocalAddress* laddr);
-      bool recv_sync(LocalAddress* laddr);
-      bool read_sync(LocalAddress* laddr, const RemoteAddress* raddr);
-      bool write_sync(LocalAddress* laddr, const RemoteAddress* raddr);
-      bool write_data_sync(LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data);
+      ssize_t send_sync(const LocalAddress* laddr);
+      ssize_t recv_sync(LocalAddress* laddr);
+      ssize_t read_sync(LocalAddress* laddr, const RemoteAddress* raddr);
+      ssize_t write_sync(const LocalAddress* laddr, const RemoteAddress* raddr);
+      ssize_t write_data_sync(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data);
       /* Vectored Synchronous calls */
-      bool sendv_sync(LocalIOVec* iov);
-      bool recvv_sync(LocalIOVec* iov);
-      bool readv_sync(LocalIOVec* iov, const RemoteAddress* raddr);
-      bool writev_sync(LocalIOVec* iov, const RemoteAddress* raddr);
-      bool readmsg_sync(RmaMessage* msg, uint64_t flags=0);
-      bool writemsg_sync(RmaMessage* msg, uint64_t flags=0);
+      ssize_t sendv_sync(LocalIOVec* iov);
+      ssize_t recvv_sync(LocalIOVec* iov);
+      ssize_t readv_sync(LocalIOVec* iov, const RemoteAddress* raddr);
+      ssize_t writev_sync(LocalIOVec* iov, const RemoteAddress* raddr);
+      ssize_t readmsg_sync(RmaMessage* msg, uint64_t flags=0);
+      ssize_t writemsg_sync(RmaMessage* msg, uint64_t flags=0);
     private:
-      bool post_comp_data_recv(void* context=NULL);
-      bool handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, int* comp_num, const char* cmd);
-      bool check_completion(int context, unsigned flags, uint64_t* data=0);
-      bool check_completion_noctx(unsigned flags, uint64_t* data=0);
-      bool check_connection_state();
+      ssize_t post_comp_data_recv(void* context=NULL);
+      ssize_t handle_comp(ssize_t comp_ret, struct fid_cq* cq, struct fi_cq_data_entry* comp, const char* cmd);
+      ssize_t check_completion(struct fid_cq* cq, int context, unsigned flags, uint64_t* data=0);
+      ssize_t check_completion_noctx(struct fid_cq* cq, unsigned flags, uint64_t* data=0);
+      ssize_t check_connection_state();
     private:
       uint64_t        _counter;
       struct fid_ep*  _ep;
@@ -271,8 +273,8 @@ namespace Pds {
     public:
       void shutdown();
       bool listen();
-      Endpoint* accept();
-      bool reject();
+      Endpoint* accept(int timeout=-1);
+      bool reject(int timeout=-1);
       bool close(Endpoint* endpoint);
     private:
       int                     _flags;
@@ -285,9 +287,9 @@ namespace Pds {
       CompletionPoller(Fabric* fabric, nfds_t size_hint=1);
       ~CompletionPoller();
       bool up() const;
-      bool add(Endpoint* endp);
+      bool add(Endpoint* endp, struct fid_cq* cq);
       bool del(Endpoint* endp);
-      bool poll(int timeout=-1);
+      int  poll(int timeout=-1);
       void shutdown();
     private:
       bool initialize();

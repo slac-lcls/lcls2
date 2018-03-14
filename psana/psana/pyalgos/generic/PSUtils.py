@@ -35,7 +35,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-02
 """
-
 #------------------------------
 
 import os
@@ -43,6 +42,80 @@ import sys
 import math
 import numpy as np
 from time import time, strptime, strftime, localtime, mktime
+#from psana.pyalgos.generic.PSNameManager import nm
+
+#------------------------------
+
+def list_of_experiments(direxp=None) : # e.g. '/reg/d/psdm/XPP'
+    """ Returns list of experiments in experimental directiory defined through configuration parameters.
+
+    Parameters
+    direxp : str - directory of experiments for particular instrument  # e.g. '/reg/d/psdm/XPP'
+    """
+    #ptrn = cp.instr_name.value().lower() if pattern is None else pattern # e.g. 'xpp'
+    #dir  = nm.dir_exp() if direxp is None else direxp
+    dir  = direxp
+    ptrn = dir.rstrip('/').rsplit('/',1)[1].lower()    # e.g. 'xpp'
+    #print('dir: %s  ptrn: %s' % (dir, ptrn))
+    ldir = sorted(os.listdir(dir))
+    #print('XXX list_of_experiments:', ldir)
+    return [e for e in ldir if e[:3] == ptrn]
+
+#------------------------------
+
+def list_of_files_in_dir(dirname) :
+    return os.listdir(dirname)
+
+#------------------------------
+
+def list_of_files_in_dir_for_ext(dir, ext='.xtc') :
+    """Returns the list of files in the directory for specified extension or None if directory is None."""
+    if dir is None : return []
+    if not os.path.exists(dir) : return [] 
+    return sorted([f for f in os.listdir(dir) if os.path.splitext(f)[1] == ext])
+    
+#------------------------------
+
+def list_of_pathes_in_dir_for_ext(dir, ext='.xtc') :
+    """Returns the list of pathes in the directory for specified extension or None if directory is None."""
+    return [os.path.join(dir,f) for f in list_of_files_in_dir_for_ext(dir, ext)]
+    
+#------------------------------
+
+def list_of_files_in_dir_for_pattern(dir, pattern='-r0022') :
+    """Returns the list of files in the directory for specified file name pattern or [] - empty list."""
+    if dir is None : return []
+    if not os.path.exists(dir) : return []
+    return sorted([os.path.join(dir,f) for f in os.listdir(dir) if pattern in f])
+
+#------------------------------
+
+def list_of_int_from_list_of_str(list_in) :
+    """Converts  ['0001', '0202', '0203', '0204',...] to [1, 202, 203, 204,...]
+    """
+    return [int(item.lstrip('0')) for item in list_in]
+
+#------------------------------
+
+def list_of_str_from_list_of_int(list_in, fmt='%04d') :
+    """Converts [1, 202, 203, 204,...] to ['0001', '0202', '0203', '0204',...]
+    """
+    return [fmt % item for item in list_in]
+
+#------------------------------
+
+def list_of_runs_in_xtc_dir(dirxtc) :  # e.g. '/reg/d/psdm/XPP/xpptut13/xtc'
+    #dir = nm.dir_xtc() if dirxtc is None else dirxtc
+    dir = dirxtc
+    xtcfiles = list_of_files_in_dir_for_ext(dir, ext='.xtc')
+    runs = [f.split('-')[1].lstrip('r') for f in xtcfiles]
+    return set(runs)
+
+#------------------------------
+
+def src_type_alias_from_cfg_key(key) :
+    """Returns striped object 'EventKey(type=None, src='DetInfo(CxiDs2.0:Cspad.0)', alias='DsdCsPad')'"""
+    return k.src(), k.type(), k.alias()
 
 #------------------------------
 
@@ -173,7 +246,6 @@ def cross_check_cspad_psana_cctbx(nda, arr) :
     print('cctbx ndarray is equal to converted from psana: %s, time = %.6f sec' % (np.array_equal(arr, arr_c), dt2))
 
 #------------------------------
-#------------------------------
 
 """Aliases"""
 
@@ -185,35 +257,93 @@ cspad_ndarr_from_table8x8 = cspad_ndarr_from_table
 #----------- TEST -------------
 #------------------------------
 
-def test_01() :
+if __name__ == "__main__" :
+
+  def test_convertCheetahEventName() :
     eventName = 'LCLS_2015_Feb22_r0169_022047_197f7'
     runnum, tstamp, tsec, fid = convertCheetahEventName(eventName, fmtts='%Y-%m-%dT%H:%M:%S')
     print('Method convertCheetahEventName converts Cheetah event name %s' % eventName,\
           '\nto runnum: %d  tstamp: %s  tsec: %d  fid: %s' % (runnum, tstamp, tsec, fid))
 
 #------------------------------
+
+  def test_list_of_files_in_dir() :
+    print('%s:' % sys._getframe().f_code.co_name)
+    lfiles = list_of_files_in_dir('/reg/d/psdm/sxr/sxrtut13/xtc/')
+    for fname in lfiles : print(fname)
+
 #------------------------------
+
+  def test_list_of_files_in_dir_for_pattern() :
+    print('%s:' % sys._getframe().f_code.co_name)
+    lfiles = list_of_files_in_dir_for_pattern('/reg/d/psdm/cxi/cxitut13/xtc/', pattern='-r0011')
+    for fname in lfiles : print(fname)
+
 #------------------------------
+
+  def test_list_of_files_in_dir_for_ext() :
+    print('%s:' % sys._getframe().f_code.co_name)
+    lfiles = list_of_files_in_dir_for_ext('/reg/d/psdm/sxr/sxrtut13/xtc/', ext='.xtc')
+    for fname in lfiles : print(fname)
+
+#------------------------------
+
+  def test_list_of_str_from_list_of_int() :
+    print('%s:' % sys._getframe().f_code.co_name)
+    print(list_of_str_from_list_of_int([1, 202, 203, 204], fmt='%04d'))
+
+#------------------------------
+
+  def test_list_of_int_from_list_of_str() :
+    print('%s:' % sys._getframe().f_code.co_name)
+    print(list_of_int_from_list_of_str(['0001', '0202', '0203', '0204']))
+
+#------------------------------
+
+  def test_list_of_experiments(tname) :
+    print('%s:' % sys._getframe().f_code.co_name)
+
+    lexps = list_of_experiments('/reg/d/psdm/XPP')
+    s = 'list_of_experiments():\n'
+    for i,e in enumerate(lexps) :
+        s += '%9s '%e
+        if not (i+1)%10 : s += '\n'
+    print(s)
+
+#------------------------------
+
+  def test_list_of_runs_in_xtc_dir() :
+    print('%s:' % sys._getframe().f_code.co_name)
+    print(list_of_runs_in_xtc_dir('/reg/d/psdm/XPP/xpptut13/xtc'))
+
 #------------------------------
 #------------------------------
 #------------------------------
 
-def usage() : return 'Use command: python %s <test-number>, where <test-number> = 1,2,...,7,...' % sys.argv[0]
+  def usage() : return 'Use command: python %s <test-number>, where <test-number> = 1,2,...,8,...' % sys.argv[0]
 
 #------------------------------
-
-def main() :    
+  def test_all(tname) :
     print('\n%s\n' % usage())
     if len(sys.argv) != 2 : test_01()
-    elif sys.argv[1]=='1' : test_01()
-    elif sys.argv[1]=='2' : test_02()
-    else                  : sys.exit('Test number parameter is not recognized.\n%s' % usage())
+    elif tname == '1': test_convertCheetahEventName()
+    elif tname == '2': test_list_of_experiments(tname)
+    elif tname == '3': test_list_of_str_from_list_of_int() 
+    elif tname == '4': test_list_of_int_from_list_of_str()
+    elif tname == '5': test_list_of_files_in_dir()
+    elif tname == '6': test_list_of_files_in_dir_for_ext()
+    elif tname == '7': test_list_of_files_in_dir_for_pattern()
+    elif tname == '8': test_list_of_runs_in_xtc_dir()
+    else : sys.exit('Test number parameter is not recognized.\n%s' % usage())
 
 #------------------------------
 
 if __name__ == "__main__" :
-    main()
-    sys.exit('End of test')
+    import sys; global sys
+    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
+    print(50*'_', '\nTest %s' % tname)
+    test_all(tname)
+    sys.exit('End of Test %s' % tname)
 
 #------------------------------
 #------------------------------

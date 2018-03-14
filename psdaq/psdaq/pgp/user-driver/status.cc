@@ -2,7 +2,7 @@
 
 int main()
 {
-    AxisG2Device dev("0000:af:00.0");
+    AxisG2Device dev;
     dev.status();
 }
 

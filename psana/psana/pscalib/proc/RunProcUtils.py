@@ -1,11 +1,5 @@
-#!/usr/bin/env python
+####!/usr/bin/env python
 #------------------------------
-
-import os
-import sys
-from time import time
-from expmon.EMUtils import list_of_runs_in_xtc_dir #, list_of_files_in_dir_for_ext 
-import PSCalib.GlobalUtils as gu
 
 """
 :py:class:`NewRunFinderUtils` contains a set of utilities helping find new runs in xtc directory for data processing
@@ -18,7 +12,7 @@ can be retrieved. After new run(s) processing log record(s) should be appended.
 Usage::
 
     # Import
-    import PSCalib.RunProcUtils as rpu
+    import psana.pscalib.proc.RunProcUtils as rpu
 
     # Parameters
     exp = 'xpptut15'
@@ -79,12 +73,20 @@ This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2017-10-05 by Mikhail Dubrovin
+Adopted for LCLS2 on 2018-03-05
 """
 #------------------------------
 
-INSTRUMENTS = ('SXR', 'AMO', 'XPP', 'XCS', 'CXI', 'MEC', 'MFX', 'DET', 'MOB', 'USR', 'DIA')
-DIR_INS = '/reg/d/psdm'
-DIR_LOG = '/reg/g/psdm/logs/run_proc'
+import os
+import sys
+from time import time
+import psana.pyalgos.generic.Utils as gu
+from psana.pyalgos.generic.PSUtils import list_of_runs_in_xtc_dir #, list_of_files_in_dir_for_ext 
+from psana.pyalgos.generic.PSConstants import INSTRUMENTS, DIR_INS, DIR_LOGS
+
+#------------------------------
+
+DIR_LOG = '%s/run_proc' % DIR_LOGS
 
 #------------------------------
 
@@ -154,7 +156,7 @@ def runs_in_xtc_dir(exp='xpptut15', verb=0) :
     dirxtc = xtc_dir(exp)
     if not os.path.lexists(dirxtc) : return []
         #raise IOError('Directory %s is not available' % dirxtc)
-    if verb : print 'Scan directory: %s' % dirxtc
+    if verb : print('Scan directory: %s' % dirxtc)
     return sorted(list_of_runs_in_xtc_dir(dirxtc))
 
 #------------------------------
@@ -164,9 +166,9 @@ def recs_in_log_file(exp='xpptut15', procname='pixel_status', verb=0) :
        E.g. of one record: '0151 2017-10-05T15:19:21'
     """
     fname_log = log_file(exp, procname)
-    if verb : print 'Log file: %s' % fname_log
+    if verb : print('Log file: %s' % fname_log)
     if not os.path.lexists(fname_log) : 
-        if verb : print 'Log file "%s" does not exist' % fname_log
+        if verb : print('Log file "%s" does not exist' % fname_log)
         return []
     recs = gu.load_textfile(fname_log).split('\n')
     return recs # list of records, each record is '0059 <time-stamp>'
@@ -202,13 +204,13 @@ def append_log_file(exp='xpptut15', procname='pixel_status', runs=[], verb=0) :
     """Appends records in the log file for list of (str) runs for specified experiment and process name.
     """
     fname_log = log_file(exp, procname)
-    if verb : print 'Append log file: %s' % fname_log
-    gu.create_path(fname_log, depth=6, mode=0774, verb=False)
+    if verb : print('Append log file: %s' % fname_log)
+    gu.create_path(fname_log, depth=6, mode=0o774, verb=False)
     text = msg_to_log(runs)
     if text is None : return
-    #print 'Save in file text "%s"' % text
+    #print('Save in file text "%s"' % text)
     gu.save_textfile(text, fname_log, mode='a')
-    os.chmod(fname_log, 0664)
+    os.chmod(fname_log, 0o664)
 
 #------------------------------
 
@@ -217,7 +219,7 @@ def move_recs_to_archive(procname, exp, runs) :
     """
     fname_log = log_file(exp, procname)
     fname_arc = arc_file(exp, procname)
-    print 'Move records for old runs to archive file: %s\n' % fname_arc
+    print('Move records for old runs to archive file: %s\n' % fname_arc)
     recs = gu.load_textfile(fname_log).split('\n')
 
     recs_log = [rec for rec in recs if not(rec[:4] in runs)]
@@ -231,14 +233,14 @@ def move_recs_to_archive(procname, exp, runs) :
     text_arc+='\n'
     #if len(runs)==1 : text_arc+='\n'
 
-    #print '  ==> log\n%s' % text_log
-    #print '  ==> arc\n%s' % text_arc
+    #print('  ==> log\n%s' % text_log)
+    #print('  ==> arc\n%s' % text_arc)
 
     gu.save_textfile(text_log, fname_log, mode='w')
-    os.chmod(fname_log, 0664)
+    os.chmod(fname_log, 0o664)
 
     gu.save_textfile(text_arc, fname_arc, mode='a')
-    os.chmod(fname_log, 0664)
+    os.chmod(fname_log, 0o664)
 
 #------------------------------
 
@@ -252,14 +254,14 @@ def runs_new_in_exp(exp='xpptut15', procname='pixel_status', verb=0) :
 
     if verb & 2:
         for srun in runs_xtc :
-            if srun in runs_new : print '%s - new' % srun
-            else :                print '%s - processed %s' % (srun, dsname(exp, srun))
+            if srun in runs_new : print('%s - new' % srun)
+            else :                print('%s - processed %s' % (srun, dsname(exp, srun)))
 
     if verb :
-        print '\nScan summary for exp=%s process="%s"' % (exp, procname)
-        print '%4d runs in xtc dir  : %s' % (len(runs_xtc), xtc_dir(exp)),\
+        print('\nScan summary for exp=%s process="%s"' % (exp, procname))
+        print('%4d runs in xtc dir  : %s' % (len(runs_xtc), xtc_dir(exp)),\
               '\n%4d runs in log file : %s' % (len(runs_log), log_file(exp, procname)),\
-              '\n%4d runs NEW in xtc directory' % len(runs_new)
+              '\n%4d runs NEW in xtc directory' % len(runs_new))
 
     return runs_new
 
@@ -275,14 +277,14 @@ def runs_old_in_exp(exp='xpptut15', procname='pixel_status', verb=0) :
 
     if verb & 2:
         for srun in runs_log :
-            if srun in runs_old : print '%s - old' % srun
-            else :                print '%s - processed %s' % (srun, dsname(exp, srun))
+            if srun in runs_old : print('%s - old' % srun)
+            else :                print('%s - processed %s' % (srun, dsname(exp, srun)))
 
     if verb :
-        print '\nScan summary for exp=%s process="%s"' % (exp, procname)
-        print '%4d runs in xtc dir  : %s' % (len(runs_xtc), xtc_dir(exp)),\
+        print('\nScan summary for exp=%s process="%s"' % (exp, procname))
+        print('%4d runs in xtc dir  : %s' % (len(runs_xtc), xtc_dir(exp)),\
               '\n%4d runs in log file : %s' % (len(runs_log), log_file(exp, procname)),\
-              '\n%4d runs OLD in log file' % len(runs_old)
+              '\n%4d runs OLD in log file' % len(runs_old))
 
     return runs_old
 
@@ -312,7 +314,7 @@ def experiments_under_control(procname='pixel_status') :
     fname = control_file(procname)
     if not os.path.lexists(fname) : 
         #raise IOError('Control file "%s" does not exist' % fname)
-        print 'WARNING: control file "%s" does not exist' % fname
+        print('WARNING: control file "%s" does not exist' % fname)
         return []
     recs = gu.load_textfile(fname).split('\n')
     return [rec for rec in recs if (rec and (rec[0]!='#'))] # skip empty and commented records
@@ -372,30 +374,30 @@ def dict_exp_run_old(ins='CXI', procname='pixel_status') :
 def print_new_runs(exp='xpptut15', procname='pixel_status', verb=1) :
     runs_new = runs_new_in_exp(exp, procname, verb)
     if len(runs_new) :
-        print 'New runs found in %s for process %s:' % (exp, procname)
+        print('New runs found in %s for process %s:' % (exp, procname))
         for srun in runs_new :
-            print srun,
-        print ''
+            print(srun,)
+        print('')
         append_log_file(exp, procname, runs_new)
     else :
-        print 'No new runs found in %s for process %s' % (exp, procname)
+        print('No new runs found in %s for process %s' % (exp, procname))
 
         #ctime_sec = os.path.getctime(fname)
         #ctime_str = gu.str_tstamp('%Y-%m-%dT%H:%M:%S', ctime_sec)
-        #print ctime_str, fname
+        #print(ctime_str, fname)
 
 #------------------------------
 
 def print_experiments_under_control(procname='pixel_status') :
     for exp in experiments_under_control(procname) :
-        print '%s\nProcess new runs for %s' % (50*'=', exp)
+        print('%s\nProcess new runs for %s' % (50*'=', exp))
         print_new_runs(exp, procname)
 
 #------------------------------
 
 def print_experiments_all(procname='pixel_status', ins=None) :
     for exp in experiments(ins) :
-        print '%s\nProcess new runs for %s' % (50*'=', exp)
+        print('%s\nProcess new runs for %s' % (50*'=', exp))
         print_new_runs(exp, procname)
 
 #------------------------------
@@ -406,9 +408,9 @@ def print_experiments_all(procname='pixel_status', ins=None) :
 def print_experiments(ins='CXI') :
     exps = experiments(ins)
     for exp in exps :
-        print exp
+        print(exp)
     dname = '%s/<all-ins>/<all-exp>/'%DIR_INS if ins is None else instrument_dir(ins)
-    print '%d experiments found in %s' % (len(exps), dname)
+    print('%d experiments found in %s' % (len(exps), dname))
 
 #------------------------------
 
@@ -426,29 +428,29 @@ def print_experiments_count_runs() : # ins='CXI'
             nruns = len(runs)
             nruns_ins += nruns
             nruns_tot += nruns
-            print '  %10s  nruns:%4d' % (exp, nruns)
+            print('  %10s  nruns:%4d' % (exp, nruns))
         d_ins_nruns[ins] = nruns_ins
         d_ins_nexps[ins] = len(exps)
 
-    print '\nSummary on %s\n%s'%(gu.str_tstamp('%Y-%m-%dT%H:%M:%S', time()), 40*'_')
-    for ins,nruns in d_ins_nruns.iteritems() :
-        print '%6d runs in %4d experiments of %s' % (nruns, d_ins_nexps[ins], ins)
+    print('\nSummary on %s\n%s'%(gu.str_tstamp('%Y-%m-%dT%H:%M:%S', time()), 40*'_'))
+    for ins,nruns in d_ins_nruns.items() :
+        print('%6d runs in %4d experiments of %s' % (nruns, d_ins_nexps[ins], ins))
 
     dname = '%s/<all-ins>/<all-exp>/'%DIR_INS
-    print '%s\n%6d runs in %4d experiments of %s' % (40*'_', nruns_tot, nexps, dname)
+    print('%s\n%6d runs in %4d experiments of %s' % (40*'_', nruns_tot, nexps, dname))
 
 #------------------------------
 
 def print_explogs_under_control(procname='pixel_status') :
-    print '%s\nExperiments under control:' % (110*'_')
+    print('%s\nExperiments under control:' % (110*'_'))
     for i, exp in enumerate(experiments_under_control(procname)) :
-        print '%4d %s %s'%(i+1, exp.ljust(10), log_file(exp, procname))
+        print('%4d %s %s'%(i+1, exp.ljust(10), log_file(exp, procname)))
 
 #------------------------------
 
 def print_experiments_under_control(procname='pixel_status') :
     for exp in experiments_under_control(procname) :
-        print exp
+        print(exp)
 
 #------------------------------
 
@@ -458,15 +460,15 @@ def print_all_experiments() :
     for ins in INSTRUMENTS : 
         exps = experiments(ins)
         for exp in exps :
-            print exp
+            print(exp)
             tot_nexps += 1
-        print '%d experiments found in %s\n' % (len(exps), instrument_dir(ins))
+        print('%d experiments found in %s\n' % (len(exps), instrument_dir(ins)))
         ins_nexps[ins] = len(exps)
 
-    print 'Number of expriments per instrument'
-    #print '%d experiments found in %s' % (len(exps), ''.join(INSTRUMENTS))
-    for ins in INSTRUMENTS : print '%s : %4d' % (ins, ins_nexps[ins])
-    print 'Total number of expriments %d' % tot_nexps
+    print('Number of expriments per instrument')
+    #print('%d experiments found in %s' % (len(exps), ''.join(INSTRUMENTS)))
+    for ins in INSTRUMENTS : print('%s : %4d' % (ins, ins_nexps[ins]))
+    print('Total number of expriments %d' % tot_nexps)
 
 #------------------------------
 #------------------------------
@@ -477,11 +479,11 @@ def print_exp_runs(exp_runs, procname='pixel_status', add_to_log=False) :
     for i,(exp,run) in enumerate(exp_runs) :
         dsname = 'exp=%s:run=%s'%(exp, run.lstrip('0'))
         logname = log_file(exp, procname)
-        print '%4d %s %4s %s %s'%(i+1, exp.ljust(10), run, dsname.ljust(22), logname)
+        print('%4d %s %4s %s %s'%(i+1, exp.ljust(10), run, dsname.ljust(22), logname))
         #--------------
         if add_to_log : append_log_file(exp, procname, [run,])
         #--------------
-    print '%d new runs found' % (len(exp_runs))
+    print('%d new runs found' % (len(exp_runs)))
 
 #------------------------------
 
@@ -499,19 +501,19 @@ def print_datasets_new_under_control(procname='pixel_status', add_to_log=False) 
 
 def print_exp_runs_old(dic_exp_runs, procname='pixel_status', move_to_archive=False) :
     nruns = 0
-    for exp,runs in dic_exp_runs.iteritems() :
+    for exp,runs in dic_exp_runs.items() :
         #dsname = 'exp=%s:run=%s'%(exp, run.lstrip('0'))
-        logname = log_file(exp, procname)
-        print '%s%s\n  '%(exp.ljust(10), logname),
+        logname = log_file(exp, procname)        
+        s = '%s%s\n  ' % (exp.ljust(10), logname)
         for i, run in enumerate(runs) : 
-           print run,
-           if i and ((i+1)%10)==0 : print '\n  ',
-        print '\n'
+           s += '%s ' % run
+           if i and ((i+1)%10)==0 : s += '\n  '
+        print('%s\n' %s )
         nruns += len(runs) 
         #--------------
         if move_to_archive : move_recs_to_archive(procname, exp, runs)
         #--------------
-    print '%d old runs found in logs which are missing in xtc directories' % nruns
+    print('%d old runs found in logs which are missing in xtc directories' % nruns)
 
 #------------------------------
 
@@ -537,7 +539,7 @@ def usage() :
 #------------------------------
 
 if __name__ == "__main__" :
-    print 80*'_'
+    print(80*'_')
     tname = sys.argv[1] if len(sys.argv)>1 else '5' # 'CXI'
     cname = tname.upper()
     t0_sec = time()
@@ -562,9 +564,9 @@ if __name__ == "__main__" :
     elif tname=='5' : print_experiments_count_runs()
 
     else : sys.exit ('Not recognized test name: "%s"' % tname)
-    print 'Test %s time (sec) = %.3f' % (tname, time()-t0_sec)
+    print('Test %s time (sec) = %.3f' % (tname, time()-t0_sec))
 
-    if len(sys.argv)<2 : print usage()
+    if len(sys.argv)<2 : print(usage())
 
     sys.exit ('End of %s' % sys.argv[0])
 

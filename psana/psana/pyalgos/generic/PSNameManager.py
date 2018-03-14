@@ -1,15 +1,16 @@
 #------------------------------
 """
-@version $Id: PSNameManager.py 13157 2017-02-18 00:05:34Z dubrovin@SLAC.STANFORD.EDU $
 
-@author Mikhail S. Dubrovin
+from psana.pyalgos.generic.PSNameManager import nm
 
-Usage ::
-    see method test_all()
 """
 #------------------------------
 #import sys
 #import os
+#------------------------------
+
+from psana.pyalgos.generic.PSConstants import INSTRUMENTS, DIR_INS, DIR_FFB # , DIR_LOG
+
 #------------------------------
 
 class PSNameManager :
@@ -17,61 +18,64 @@ class PSNameManager :
     """
     _name = 'PSNameManager'
 
-    def __init__(self, cp=None, log=None) :
-        #log.info('object is init-ed', self._name)
-        self.set_cp_and_log(cp, log)
-        
-    def set_cp_and_log(self, cp, log) :
-        self.cp  = cp
-        self.log = log
+#------------------------------
 
-    def set_config_pars(self, cp) :
-        #log.info('config pars object is set from file: %s' % cp.fname_cp, self._name)
-        self.cp  = cp
-
-    def set_logger(self, log) :
-        #log.info('config pars object is set from file: %s' % cp.fname_cp, self._name)
-        self.log = log 
-    
-    def cpars(self) :
-        if self.cp is None :
-            from expmon.PSConfigParameters import PSConfigParameters
-            self.cp = PSConfigParameters()
-        return self.cp
-
-#    def logger(self) :
-#        if self.log is None :
-#            from expmon.Logger import log
-#            self.log = log
-#        return self.log
+    def __init__(self, instr_dir=DIR_INS) :
+        self.set_instrument_directory(instr_dir)
 
 #------------------------------
 
-    def dir_exp(self) :
+    def set_instrument_directory(self, instr_dir=DIR_INS) :
+        self.instr_dir = instr_dir
+
+#------------------------------
+
+    def instrument(self, exp_name) :
+        """Returns 3-letter uppercase instrument for experiment name, e.g.: CXI for exp_name=cxi12345"""
+        for ins in INSTRUMENTS :
+            if ins.lower() in exp_name : return ins
+        raise IOError('Specified experiment %s does not belong to any instrument: %s' % exp_name, str(INSTRUMENTS))
+
+#------------------------------
+
+    def dir_exp(self, exp_name) :
         """Returns directory of experiments, e.g.: /reg/d/psdm/CXI"""
-        return '%s/%s' % (self.cpars().instr_dir.value(), self.cpars().instr_name.value())
+        return '%s/%s' % (self.instr_dir, self.instrument(exp_name))
 
 #------------------------------
 
-    def dir_xtc(self) :
+    def dir_xtc(self, exp_name) :
         """Returns xtc directory, e.g.: /reg/d/psdm/CXI/cxi02117/xtc"""
-        return '%s/%s/%s/xtc' % (self.cpars().instr_dir.value(), self.cpars().instr_name.value(), self.cpars().exp_name.value())
-    
+        return '%s/%s/xtc' % (self.dir_exp(exp_name), exp_name)
+
 #------------------------------
 
-    def dir_ffb(self) :
+    def dir_ffb(self, exp_name) :
         """Returns ffb xtc directory, e.g.: /reg/d/ffb/cxi/cxi02117/xtc"""
-        return '%s/%s/%s/xtc' % (self.cpars().instr_dir.value(), self.cpars().instr_name.value().lower(), self.cpars().exp_name.value())
-    
+        return '%s/%s/%s/xtc' % (DIR_FFB, self.instrument(exp_name).lower(), exp_name)
+
 #------------------------------
 
-    def dir_calib(self) :
+    def dir_calib(self, exp_name) :
         """Returns calib directory, e.g.: /reg/d/psdm/CXI/cxi02117/calib"""
-        return '%s/%s/%s/calib' % (self.cpars().instr_dir.value(), self.cpars().instr_name.value(), self.cpars().exp_name.value())
+        return '%s/%s/calib' % (self.dir_exp(exp_name), exp_name)
 
 #------------------------------
 
-    def dsname(self) :
+    def log_file_repo(self) :
+        import os
+        import expmon.PSUtils as psu
+
+        if None in (self.cp, self.log) : return None
+        # Returns name like /reg/g/psdm/logs/emon/2017/07/2016-05-17-10:16:00-log-dubrovin-562.txt
+        fname = self.log.getLogFileName()     # 2016-07-19-11:53:02-log.txt
+        year, month = fname.split('-')[:2]  # 2016, 07
+        name, ext = os.path.splitext(fname) # 2016-07-19-11:53:02-log, .txt   
+        return '%s/%s/%s/%s-%s-%s%s' % (self.cp.dir_log_repo.value(), year, month, name, psu.get_login(), psu.get_pid(), ext)
+
+#------------------------------
+'''
+    def dsname(self, exp='cxi12316', run=0, ext='None') :
         """Returns string like exp=cxi12316:run=1234:..."""
         cp = self.cpars()
         ext = cp.dsextension.value()
@@ -92,19 +96,7 @@ class PSNameManager :
             return '%s:%s:dir=%s' % (base, ext, self.dir_ffb())
 
         return base
-
-#------------------------------
-
-    def log_file_repo(self) :
-        import os
-        import expmon.PSUtils as psu
-
-        if None in (self.cp, self.log) : return None
-        # Returns name like /reg/g/psdm/logs/emon/2017/07/2016-05-17-10:16:00-log-dubrovin-562.txt
-        fname = self.log.getLogFileName()     # 2016-07-19-11:53:02-log.txt
-        year, month = fname.split('-')[:2]  # 2016, 07
-        name, ext = os.path.splitext(fname) # 2016-07-19-11:53:02-log, .txt   
-        return '%s/%s/%s/%s-%s-%s%s' % (self.cp.dir_log_repo.value(), year, month, name, psu.get_login(), psu.get_pid(), ext)
+'''
 
 #------------------------------
 
@@ -112,17 +104,18 @@ nm = PSNameManager()
 
 #------------------------------
 
-def test_all() :
+if __name__ == "__main__" :
+  def test_all() :
 
-    #from expmon.PSNameManager import nm
-    from expmon.EMConfigParameters import cp
-    nm.set_config_pars(cp)
+    #from psana.pyalgos.generic.PSNameManager import nm
 
-    print 'dir_exp   :', nm.dir_exp()
-    print 'dir_xtc   :', nm.dir_xtc()
-    print 'dir_ffb   :', nm.dir_ffb()
-    print 'dir_calib :', nm.dir_calib()
-    print 'dsname    :', nm.dsname()
+    exp = 'cxix25615'
+    print('instrument:', nm.instrument(exp))
+    print('dir_exp   :', nm.dir_exp(exp))
+    print('dir_xtc   :', nm.dir_xtc(exp))
+    print('dir_ffb   :', nm.dir_ffb(exp))
+    print('dir_calib :', nm.dir_calib(exp))
+    #print('dsname    :', nm.dsname(exp))
 
 #------------------------------
 

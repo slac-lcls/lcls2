@@ -67,9 +67,15 @@ if __name__ == '__main__':
         pvdb[stationstr+':%d:AnaTagPush'   %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:AnaTagWrite'  %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:PipelineDepth'%i] = {'type' : 'int'}
+        #  Generic message interface
         pvdb[stationstr+':%d:MsgHeader'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:MsgInsert'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:MsgPayload'   %i] = {'type' : 'int'}
+        #  Specific messages
+        pvdb[stationstr+':%d:MsgConfig'    %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:MsgConfigKey' %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:MsgEnable'    %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:MsgDisable'   %i] = {'type' : 'int'}
         for j in range(4):
             pvdb[stationstr+':%d:InhInterval%d'  %(i,j)] = {'type' : 'int', 'value': 1}
             pvdb[stationstr+':%d:InhLimit%d'     %(i,j)] = {'type' : 'int', 'value': 1}

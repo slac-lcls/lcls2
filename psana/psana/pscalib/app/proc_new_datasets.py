@@ -1,4 +1,3 @@
-#!@PYTHON@
 #####!/usr/bin/env python
 #------------------------------
 
@@ -6,10 +5,16 @@ import os
 import sys
 from time import time, sleep
 
-import PSCalib.RunProcUtils as rpu
-from PSCalib.SubprocUtils import subproc, number_of_batch_jobs, batch_job_ids, batch_job_kill
-#import PSCalib.SubprocUtils as spu
-#import PSCalib.GlobalUtils as gu
+import psana.pscalib.proc.RunProcUtils as rpu
+from   psana.pscalib.proc.SubprocUtils import subproc, number_of_batch_jobs, batch_job_ids, batch_job_kill
+#import psana.pscalib.proc.SubprocUtils as spu
+#import psana.pyalgos.generic.Utils as gu
+
+
+#import PSCalib.RunProcUtils as rpu
+#from PSCalib.SubprocUtils import subproc, number_of_batch_jobs, batch_job_ids, batch_job_kill
+##import PSCalib.SubprocUtils as spu
+##import PSCalib.GlobalUtils as gu
 
 #------------------------------
 
@@ -29,36 +34,36 @@ def proc_exp_runs(exp_runs, procname='pixel_status', do_proc=False, qname='psneh
                        dt_sec=60, sources='cspad,opal,epix100,pnccd,princeton,andor') :
 
     njobs_in_queue = number_of_batch_jobs(qname=qname)
-    print '%d jobs found in queue %s' % (njobs_in_queue, qname)
+    print('%d jobs found in queue %s' % (njobs_in_queue, qname)))
 
     for kstatus in ('SSUSP','UNKWN') :
       for id in batch_job_ids(status=kstatus, user=None, qname=qname) : 
-        print '  kill %s job %s' % (kstatus, id)
+        print('  kill %s job %s' % (kstatus, id))
         batch_job_kill(id, user=None, qname=qname, addopts='-r')
 
     for i,(exp,run) in enumerate(exp_runs) :
         dsname = 'exp=%s:run=%s'%(exp, run.lstrip('0'))
         logname = rpu.log_file(exp, procname)
-        print '%4d %s %4s %s %s'%(i+1, exp.ljust(10), run, dsname.ljust(22), logname)
+        print('%4d %s %4s %s %s'%(i+1, exp.ljust(10), run, dsname.ljust(22), logname))
         #--------------
         gap = 5*' '
         if do_proc and i<njobs and njobs_in_queue<njobs: 
             cmd = subprocess_command(exp, run, procname, qname, dt_sec, sources)
             if cmd is None : raise IOError('ERROR: batch submission command is None...')
 
-            print '%sStart subprocess: %s' % (gap, cmd)
+            print('%sStart subprocess: %s' % (gap, cmd))
             t0_sec = time()
             out, err = subproc(cmd, env=None, shell=False, do_wait=False)
-            print '%sSubprocess starting time dt=%7.3f sec' % (gap, time()-t0_sec)
-            #print '%sSubprocess starting response:\n       out: %s\n       err: "%s"'%\
-            #      (gap, out, err.strip('\n'))
+            print('%sSubprocess starting time dt=%7.3f sec' % (gap, time()-t0_sec))
+            #print('%sSubprocess starting response:\n       out: %s\n       err: "%s"'%\
+            #      (gap, out, err.strip('\n')))
 
             # mark dataset as processed in any case
             #==============================================
             rpu.append_log_file(exp, procname, [str(run),])
             #==============================================
         #--------------
-    print '%d new runs found' % (len(exp_runs))
+    print('%d new runs found' % (len(exp_runs)))
 
 #------------------------------
 #------------------------------
@@ -81,7 +86,7 @@ def proc_new_datasets(parser) :
 
     #tstamp = gu.str_tstamp('%Y-%m-%dT%H:%M:%S', time())
 
-    #print 'default command: %s' % subprocess_command()
+    #print('default command: %s' % subprocess_command())
     #print_datasets_new_under_control(procname, add_to_log=False)
 
     rpu.print_explogs_under_control(procname)
@@ -132,16 +137,21 @@ def input_option_parser() :
   
 #------------------------------
 
-if __name__ == "__main__" :
+def do_main() :
 
     parser = input_option_parser()
 
     if len(sys.argv) == 1 : 
         parser.print_help()
         #sys.exit('WARNING: using ALL default parameters...')
-        print 'WARNING: using ALL default parameters...'
+        print('WARNING: using ALL default parameters...')
 
     proc_new_datasets(parser)
     sys.exit(0)
+
+#------------------------------
+
+if __name__ == "__main__" :
+    do_main()
 
 #------------------------------

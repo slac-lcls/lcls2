@@ -88,7 +88,7 @@ class QWDateTimeSec(QWidget) : # Frame
         self.but_second = QPushButton('00')
 
         self.edi = QLineEdit('1400000000')
-        self.edi.setValidator(QIntValidator(1400000000,2000000000,self))
+        self.edi.setValidator(QIntValidator(1000000000,2000000000,self))
         #self.edi.setReadOnly(True) 
 
         self.set_date_time_fields() # current time by df
