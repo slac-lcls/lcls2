@@ -91,7 +91,7 @@ module_exit(PgpGen4Test_Exit);
 
 #define MON_BUFFER_SIZE 0x10000
 #define RX_BUFFER_SIZE (2*1024*1024)
-#define RX_BUFFERS 0x80
+#define RX_BUFFERS 0x40
 #define RX_DESC_SIZE 0x1000
 
 // Global Variable
@@ -135,6 +135,7 @@ ssize_t PgpGen4Test_Write(struct file *filp, const char* buffer, size_t count, l
   int i,j;
   struct Client*client = (struct Client *)filp->private_data;
   struct DaqDevice *dev = (struct DaqDevice*)(client->dev);
+  unsigned nclients = 0;
 
   printk(KERN_WARNING "%s: Write:  Releasing memory. Maj=%i\n",
          MOD_NAME, dev->major);
@@ -172,7 +173,9 @@ ssize_t PgpGen4Test_Write(struct file *filp, const char* buffer, size_t count, l
   iowrite32((dev->monHandle>> 0)&0xffffffff, (__u32*)dev->reg+(0x00800014>>2));
   iowrite32((dev->monHandle>>32)&0x000000ff, (__u32*)dev->reg+(0x00800018>>2));
 
-  for(j=0; j<NUMBER_OF_CLIENTS; j++) {
+  nclients = (dev->reg->params >> 4)&0xf;
+
+  for(j=0; j<nclients; j++) {
     client = &dev->client[j];
     client->reg = (struct ClientReg*)(&dev->reg->clients[j]);
 
@@ -194,7 +197,9 @@ ssize_t PgpGen4Test_Write(struct file *filp, const char* buffer, size_t count, l
 
     // Allocate receive buffers
     client->rxBuffer = kmalloc(RX_BUFFERS*sizeof(void*)     ,GFP_KERNEL);
+    memset(client->rxBuffer, 0, RX_BUFFERS*sizeof(void*));
     client->rxHandle = kmalloc(RX_BUFFERS*sizeof(dma_addr_t),GFP_KERNEL);
+    
     for(i=0; i<RX_BUFFERS; i++) {
       client->rxBuffer[i] = dma_alloc_coherent(dev->device,
                                                RX_BUFFER_SIZE,
@@ -345,6 +350,7 @@ static int PgpGen4Test_Probe(struct pci_dev *pcidev, const struct pci_device_id 
   struct DaqDevice *dev;
   struct Client *client;
   struct pci_device_id *id = (struct pci_device_id *) dev_id;
+  unsigned nclients = 0;
 
   // We keep device instance number in id->driver_data
   id->driver_data = -1;
@@ -437,7 +443,9 @@ static int PgpGen4Test_Probe(struct pci_dev *pcidev, const struct pci_device_id 
   iowrite32((dev->monHandle>> 0)&0xffffffff, (__u32*)dev->reg+(0x00800014>>2));
   iowrite32((dev->monHandle>>32)&0x000000ff, (__u32*)dev->reg+(0x00800018>>2));
 
-  for(j=0; j<NUMBER_OF_CLIENTS; j++) {
+  nclients = (dev->reg->params >> 4)&0xf;
+
+  for(j=0; j<nclients; j++) {
     client = &dev->client[j];
     client->reg = (struct ClientReg*)(&dev->reg->clients[j]);
 
@@ -459,6 +467,7 @@ static int PgpGen4Test_Probe(struct pci_dev *pcidev, const struct pci_device_id 
 
     // Allocate receive buffers
     client->rxBuffer = kmalloc(RX_BUFFERS*sizeof(void*)     ,GFP_KERNEL);
+    memset(client->rxBuffer, 0, RX_BUFFERS*sizeof(void*));
     client->rxHandle = kmalloc(RX_BUFFERS*sizeof(dma_addr_t),GFP_KERNEL);
     for(i=0; i<RX_BUFFERS; i++) {
       client->rxBuffer[i] = dma_alloc_coherent(dev->device,
@@ -516,8 +525,9 @@ static void PgpGen4Test_Remove(struct pci_dev *pcidev) {
       client = &dev->client[j];
 
       for(i=0; i<RX_BUFFERS; i++)
-        dma_free_coherent(dev->device, RX_BUFFER_SIZE, 
-                          client->rxBuffer[i], client->rxHandle[i]);
+        if (client->rxBuffer[i])
+          dma_free_coherent(dev->device, RX_BUFFER_SIZE, 
+                            client->rxBuffer[i], client->rxHandle[i]);
 
       dma_free_coherent(dev->device, 8*RX_DESC_SIZE, 
                         client->rxDescPage, client->rxDescHandle);
