@@ -6,29 +6,26 @@
 
 using namespace XtcData;
 
-class HsdDef:public VarDef
+class HsdDef : public VarDef
 {
 public:
-  enum index
+    enum index
     {
-      chan0,
-      chan1,
-      chan2,
-      chan3,
+        chan0,
+        chan1,
+        chan2,
+        chan3,
     };
 
-  
-   HsdDef()
-   {
-     Alg alg("hsdchan",1,2,3);
-     NameVec.push_back({"chan0",alg});
-     NameVec.push_back({"chan1",alg});
-     NameVec.push_back({"chan2",alg});
-     NameVec.push_back({"chan3",alg});
-
-     
-   }
-} HsdDef;
+    HsdDef()
+    {
+        Alg alg("hsdchan", 1, 2, 3);
+        NameVec.push_back({"chan0", alg});
+        NameVec.push_back({"chan1", alg});
+        NameVec.push_back({"chan2", alg});
+        NameVec.push_back({"chan3", alg});
+    }
+};
 
 void hsdExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers, std::vector<unsigned>& lanes)
 {
@@ -41,11 +38,10 @@ void hsdExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId, 
     }
 }
 
-void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
-    Alg hsdAlg("hsdalg",1,2,3);
+void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec)
+{
+    Alg hsdAlg("hsdalg", 1, 2, 3);
     Names& fexNames = *new(parent) Names("xpphsd", hsdAlg, "hsd", "detnum1234");
-    
-    
     fexNames.add(parent, HsdDef);
     namesVec.push_back(NameIndex(fexNames));
 }

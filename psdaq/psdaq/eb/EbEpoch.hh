@@ -24,15 +24,13 @@
 
 #include "EbEvent.hh"
 
-#include "psdaq/service/LinkedList.hh"
+#include "psdaq/service/LinkedListSL.hh"
 #include "psdaq/service/Pool.hh"
 
 namespace Pds {
   namespace Eb {
 
-#define EbEventList LinkedList<EbEvent> // Notational convenience...
-
-    class EbEpoch : public Pds::LinkedList<EbEpoch>
+    class EbEpoch : public Pds::LinkedListSL<EbEpoch>
     {
     public:
       PoolDeclare;
@@ -42,8 +40,8 @@ namespace Pds {
     public:
       void dump(int number);
     public:
-      EbEventList pending;              // Listhead, events pending;
-      uint64_t    key;                  // Epoch sequence number
+      LinkedListSL<EbEvent> pending;    // Listhead, events pending;
+      uint64_t              key;        // Epoch sequence number
     };
   };
 };

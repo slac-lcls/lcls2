@@ -27,17 +27,27 @@ namespace Pds {
     public:
       enum PeerSharing { PER_PEER_BUFFERS, PEERS_SHARE_BUFFERS };
     public:
-      EbFtServer(std::string& port,
+      EbFtServer(const char*  addr,
+                 std::string& port,
                  unsigned     nClients,
                  size_t       lclSize,
                  PeerSharing  shared);
       virtual ~EbFtServer();
     public:
-      int connect(unsigned myId);
+      int connect(unsigned id);
       const char* base() const;
     public:
       virtual int shutdown();
     private:
+      int _connect();
+      int _exchangeIds(unsigned                 myId,
+                       char*                    pool,
+                       size_t                   lclSize,
+                       Fabrics::Endpoint*       ep,
+                       Fabrics::MemoryRegion*&  mr,
+                       unsigned&                id);
+    private:
+      const char*               _addr;   // The interface address to use
       std::string&              _port;   // The port to listen on
       Fabrics::PassiveEndpoint* _pep;    // Endpoint for establishing connections
       size_t                    _lclSize;// Local  memory region size

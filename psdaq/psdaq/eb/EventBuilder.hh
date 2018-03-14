@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-#include "psdaq/service/LinkedList.hh"
+#include "psdaq/service/LinkedListSL.hh"
 #include "psdaq/service/Timer.hh"
-#include "psdaq/service/GenericPoolW.hh"
+#include "psdaq/service/GenericPool.hh"
 
 namespace XtcData {
   class Dgram;
@@ -16,8 +16,6 @@ namespace Pds {
   class Task;
 
   namespace Eb {
-
-#define EpochList LinkedList<EbEpoch>   // Notational convenience...
 
     class EbEpoch;
     class EbEvent;
@@ -58,12 +56,12 @@ namespace Pds {
     private:
       friend class EbEvent;
     private:
-      EpochList         _pending;       // Listhead, Epochs with events pending
-      uint64_t          _mask;          // Sequence mask
-      GenericPool       _epochFreelist; // Freelist for new epochs
-      GenericPoolW       _eventFreelist; // Freelist for new events
-      Task*             _timerTask;     // For Timer
-      unsigned          _duration;      // Timer expiration rate
+      LinkedListSL<EbEpoch> _pending;       // Listhead, Epochs with events pending
+      uint64_t              _mask;          // Sequence mask
+      GenericPool           _epochFreelist; // Freelist for new epochs
+      GenericPool           _eventFreelist; // Freelist for new events
+      Task*                 _timerTask;     // For Timer
+      unsigned              _duration;      // Timer expiration rate
     };
   };
 };

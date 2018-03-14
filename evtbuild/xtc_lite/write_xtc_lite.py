@@ -13,6 +13,12 @@ batch_size = int(cfg['batch_size'])
 
 arr_size = mb_per_img*500000
 
+if int(cfg['parallel_disks']):
+    disk_num = rank
+else:
+    disk_num = int(cfg['disk_num'])
+    
+path = cfg['path'] % disk_num
 
 def create_image():
     image = np.random.randint(0,2**16,size=(250,250,8*mb_per_img), dtype='uint16')
@@ -31,7 +37,10 @@ def write_client(comm):
     img_mb = out_img.nbytes/10**6
     out_img = out_img.tobytes()
     # path = '/drpffb/eliseo/data/xtc_lite/'
-    file_name = cfg['path']+ '/xtc_lite_%i.xtc' % rank
+
+    # uncomment for writing to n disks
+
+    file_name =path + '/xtc_lite_%i.xtc' % rank
 
     try:
         os.remove(file_name)
@@ -62,6 +71,9 @@ def do_write(comm):
 
     comm.Barrier()
     if rank == 0:
+        files = glob.glob(path+'/*')
+        for f in files:
+            os.remove(f)
         global_start = time.time()
 
     write_client(comm)

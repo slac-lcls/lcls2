@@ -1,124 +1,120 @@
 import sys, os
-import time
-import getopt
-import pprint
-
 from psana import dgram
-from psana.event import Event
+from psana.dgrammanager import DgramManager
+import numpy as np
 
-class container:
-    pass
+rank = 0
+size = 1
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+except ImportError:
+    pass # do single core read if no mpi
 
-def setnames(d):  # Todo: find a good name/place for this
-    keys = sorted(d.__dict__.keys())
-    for k in keys:
-        fields = k.split('_')
-        currobj = d
-        for f in fields[:-1]:
-            if not hasattr(currobj, f):
-                setattr(currobj, f, container())
-            currobj = getattr(currobj, f)
-        val = getattr(d, k)
-        setattr(currobj, fields[-1], val)
-        delattr(d, k)
+FN_L = 100
 
-class DataSource:
-    """Stores variables and arrays loaded from an XTC source.\n"""
-    def __init__(self, expstr, configs=[], filter=None, analyze=None):
-        # expstr is 'exp=expid:run=runno' or xtc filename
-        if isinstance(expstr, (list)):
-            self.xtc_files = expstr
-        elif os.path.isfile(expstr):
-            self.xtc_files = [expstr]
+def debug(evt):
+    if os.environ.get('PSANA_DEBUG'):
+        print("Debug Mode")
+        test_vals = [d.xpphsd.fex.intFex==42 for d in evt]
+        assert all(test_vals)
+
+def process_batch(dm, offset_batch, analyze):
+    if (offset_batch == -1).all(): return False
+    for offsets in offset_batch:
+        if all(offsets == -1): break
+        evt = dm.next(offsets=offsets)
+        analyze(evt)
+        debug(evt)
+    return True
+
+def reader(ds, analyze, filter):
+    smd_dm = DgramManager(ds.smd_files)
+    dm = DgramManager(ds.xtc_files)
+    for offset_evt in smd_dm:
+        if filter: 
+            if not filter(offset_evt): continue
+        offsets = np.asarray([d.info.offsetAlg.intOffset for d in offset_evt], dtype='i')
+        evt = dm.next(offsets=offsets)
+        
+        analyze(evt)
+        debug(evt)
+        
+def server(ds, filter):
+    dm = DgramManager(ds.smd_files)
+    byterank = bytearray(32)
+    offset_batch = np.ones([ds.lbatch, ds.nfiles], dtype='i') * -1
+    nevent = 0
+    for evt in dm:
+        if filter: 
+            if not filter(evt): continue
+        offset_batch[nevent % ds.lbatch, :] = [d.info.offsetAlg.intOffset for d in evt]
+        if nevent % ds.lbatch == ds.lbatch - 1:
+            comm.Recv(byterank, source=MPI.ANY_SOURCE)
+            rankreq = int.from_bytes(byterank, byteorder=sys.byteorder)
+            comm.Send(offset_batch, dest=rankreq)
+            offset_batch = offset_batch * 0 -1
+        nevent += 1
+
+    if not (offset_batch==-1).all():
+        comm.Recv(byterank, source=MPI.ANY_SOURCE)
+        rankreq = int.from_bytes(byterank, byteorder=sys.byteorder)
+        comm.Send(offset_batch, dest=rankreq)
+
+    for rankreq in range(size-1):
+        comm.Recv(byterank, source=MPI.ANY_SOURCE)
+        rankreq = int.from_bytes(byterank, byteorder=sys.byteorder)
+        comm.Send(offset_batch * 0 -1, dest=rankreq)
+
+def client(ds, configs, analyze):
+    dm = DgramManager(ds.xtc_files, configs=configs)
+    while True:
+        comm.Send(rank.to_bytes(32, byteorder=sys.byteorder), dest=0)
+        offset_batch = np.empty([ds.lbatch, ds.nfiles], dtype='i')
+        comm.Recv(offset_batch, source=0)
+        if not process_batch(dm, offset_batch, analyze): break
+
+class DataSource(object):
+    """ Uses DgramManager to read XTC files  """ 
+    def __init__(self, expstr):
+        if size == 1:
+            self.xtc_files = np.array(['data.xtc', 'data_1.xtc'], dtype='U%s'%FN_L)
+            self.smd_files = np.array(['smd.xtc', 'smd_1.xtc'], dtype='U%s'%FN_L)
         else:
-            self.xtc_files = ['0.smd.xtc','1.smd.xtc'] # Todo: where from?
-        assert len(self.xtc_files) > 0
-        
-        given_configs = True if len(configs) > 0 else False
-        
-        self.configs = []
-        if given_configs: 
-            self.configs = configs
-            for i in range(len(self.configs)): self.configs[i].assign_dict() 
-        
-        self.fds = []
-        for i, xtcdata_filename in enumerate(self.xtc_files):
-            self.fds.append(os.open(xtcdata_filename,
-                            os.O_RDONLY|os.O_LARGEFILE))
-            if not given_configs: 
-                d = dgram.Dgram(file_descriptor=self.fds[-1])
-                setnames(d)
-                self.configs += [d]
-        
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self.jump()
-
-    def jump(self, offsets=[]):
-        dgrams = []
-        if len(offsets) == 0: offsets = [0]*len(self.fds)
-        for fd, config, offset in zip(self.fds, self.configs, offsets):
-            d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset)   
-            setnames(d)
-            dgrams += [d]
-        return Event(dgrams=dgrams)
-
-    
-def parse_command_line():
-    opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
-    xtcdata_filename="data.xtc"
-    for option, parameter in opts:
-        if option=='-h': usage_error()
-        if option=='-f': xtcdata_filename = parameter
-    if xtcdata_filename is None:
-        xtcdata_filename="data.xtc"
-    return (args_proper, xtcdata_filename)
-
-def getMemUsage():
-    pid=os.getpid()
-    ppid=os.getppid()
-    cmd="/usr/bin/ps -q %d --no-headers -eo size" % pid
-    p=os.popen(cmd)
-    size=int(p.read())
-    return size
-
-def main():
-    args_proper, xtcdata_filename = parse_command_line()
-    ds=DataSource(xtcdata_filename)
-    print("vars(ds):")
-    for var_name in sorted(vars(ds)):
-        print("  %s:" % var_name)
-        e=getattr(ds, var_name)
-        if not isinstance(e, (tuple, list, int, float, str)):
-            for key in sorted(e.__dict__.keys()):
-                print("%s: %s" % (key, e.__dict__[key]))
-    print()
-    count=0
-    for evt in ds:
-        print("evt:", count)
-        for dgram in evt:
-            for var_name in sorted(vars(dgram)):
-                val=getattr(dgram, var_name)
-                print("  %s: %s" % (var_name, type(val)))
-            a=dgram.xpphsd.raw.array0Pgp
-            try:
-                a[0][0]=999
-            except ValueError:
-                print("The dgram.xpphsd.raw.array0Pgp is read-only, as it should be.")
+            self.nfiles = 2
+            if rank == 0:
+                self.xtc_files = np.array(['data.xtc','data_1.xtc'], dtype='U%s'%FN_L)
+                self.smd_files = np.array(['smd.xtc', 'smd_1.xtc'], dtype='U%s'%FN_L)
             else:
-                print("Warning: the evt.array0_pgp array is writable")
-            print()
-        count+=1
-    return
+                self.xtc_files = np.empty(self.nfiles, dtype='U%s'%FN_L)
+                self.smd_files = np.empty(self.nfiles, dtype='U%s'%FN_L)
+            
+            comm.Bcast([self.xtc_files, MPI.CHAR], root=0)
+            comm.Bcast([self.smd_files, MPI.CHAR], root=0)
+ 
+    def start(self, analyze, filter=None, lbatch=1):
+        assert lbatch > 0
+        self.lbatch = lbatch
+        if size == 1:
+            reader(self, analyze, filter)
+            return
 
-def usage_error():
-    s="usage: python %s" %  os.path.basename(sys.argv[0])
-    sys.stdout.write("%s [-h]\n" % s)
-    sys.stdout.write("%s [-f xtcdata_filename]\n" % (" "*len(s)))
-    sys.exit(1)
-
-if __name__=='__main__':
-    main()
-
+        if rank == 0:
+            dm = DgramManager(self.xtc_files) # todo: remove this server only works with sml ds
+            configs = dm.configs
+            nbytes = np.array([memoryview(config).nbytes for config in configs], dtype='i')
+        else:
+            dm = None
+            configs = [dgram.Dgram() for i in range(self.nfiles)]
+            nbytes = np.empty(self.nfiles, dtype='i')
+    
+        comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
+        for i in range(self.nfiles): 
+            comm.Bcast([configs[i], nbytes[i], MPI.BYTE], root=0)
+    
+        if rank == 0:
+            server(self, filter)
+        else:
+            client(self, configs, analyze)

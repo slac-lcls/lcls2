@@ -14,11 +14,13 @@ using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
 
-EbFtServer::EbFtServer(std::string& port,
+EbFtServer::EbFtServer(const char*  addr,
+                       std::string& port,
                        unsigned     nClients,
                        size_t       lclSize,
                        PeerSharing  shared) :
   EbFtBase(nClients),
+  _addr(addr),
   _port(port),
   _lclSize(lclSize),
   _shared(shared == PEERS_SHARE_BUFFERS),
@@ -58,73 +60,42 @@ int EbFtServer::connect(unsigned myId)
     return -1;
   }
 
-  _pep = new PassiveEndpoint(nullptr, _port.c_str());
-  if (!_pep)
+  ret = _connect();
+  if (ret)
   {
-    fprintf(stderr, "Passive Endpoint creation failed\n");
-    return -1;
+    fprintf(stderr, "_connect() failed\n");
+    return ret;
   }
-  if (_pep->state() != EP_UP)
-  {
-    fprintf(stderr, "Failed to initialize fabrics endpoint: %s\n", _pep->error());
-    return _pep->error_num();
-  }
-
-  Fabric* fab = _pep->fabric();
-
-  _cqPoller = new CompletionPoller(fab, _ep.size());
-  if (!_cqPoller)
-  {
-    fprintf(stderr, "Completion Poller creation failed\n");
-    return -1;
-  }
-
-  if(!_pep->listen())
-  {
-    fprintf(stderr, "Failed to set passive fabrics endpoint to listening state: %s\n", _pep->error());
-    return _pep->error_num();
-  }
-  printf("Listening for client(s) on port %s\n", _port.c_str());
 
   unsigned i        = 0;           // Not necessarily the same as the source ID
   char*    pool     = _base;
   unsigned nClients = _ep.size();
   do
   {
-    _ep[i] = _pep->accept();
-    if (!_ep[i])
+    ret = _exchangeIds(myId, pool, _lclSize, _ep[i], _rMr[i], _id[i]);
+    if (ret)
     {
-      fprintf(stderr, "Endpoint accept failed for client %d: %s\n", i, _pep->error());
-      ret = _pep->error_num();
-      break;
-    }
-
-    _lMr[i] = nullptr;
-    _rMr[i] = fab->register_memory(pool, _lclSize);
-    if (!_rMr[i])
-    {
-      fprintf(stderr, "Failed to register memory region @ %p, size %zu: %s\n",
-              pool, _lclSize, fab->error());
-      return fab->error_num();
-    }
-
-    _cqPoller->add(_ep[i]);
-
-    if (!_ep[i]->recv_sync(pool, sizeof(_id[i]), _rMr[i]))
-    {
-      fprintf(stderr, "Failed receiving peer's ID: %s\n", _ep[i]->error());
-      return -1;
-    }
-    _id[i] = *(unsigned*)pool;
-    *(unsigned*)pool = myId;
-    if (!_ep[i]->send_sync(pool, sizeof(myId)))
-    {
-      fprintf(stderr, "Failed sending peer our ID: %s\n", _ep[i]->error());
-      return -1;
+      fprintf(stderr, "_exchangeIds() failed at index %d(%d)\n", i, _id[i]);
+      return ret;
     }
 
     ret = _syncLclMr(pool, _lclSize, _ep[i], _rMr[i], _ra[i]);
-    if (ret)  break;
+    if (ret)  return ret;
+
+    //_rxDepth[i] = _ep[i]->fabric()->info()->rx_attr->size;
+    //
+    //_rOuts[i] = _postCompRecv(_ep[i], _rxDepth[i]);
+    //if (_rOuts[i] < _rxDepth[i])
+    //{
+    //  fprintf(stderr, "Posted only %d of %d CQ buffers at index %d(%d)\n",
+    //          _rOuts[i], _rxDepth[i], i, _id[i]);
+    //}
+
+    if (!_ep[i]->recv_comp_data())
+    {
+      fprintf(stderr, "Failed to post a CQ buffer for client index %d: %s\n",
+              i, _ep[i]->error());
+    }
 
     printf("Client %d connected\n", _id[i]);
 
@@ -135,6 +106,92 @@ int EbFtServer::connect(unsigned myId)
   _mapIds(nClients);
 
   return ret;
+}
+
+int EbFtServer::_connect()
+{
+  _pep = new PassiveEndpoint(_addr, _port.c_str());
+  if (!_pep)
+  {
+    fprintf(stderr, "Passive Endpoint creation failed\n");
+    return -1;
+  }
+  if (_pep->state() != EP_UP)
+  {
+    fprintf(stderr, "Passive Endpoint state is not UP: %s\n", _pep->error());
+    return _pep->error_num();
+  }
+
+  Fabric* fab = _pep->fabric();
+
+  printf("Server is using %s provider\n", fab->provider());
+
+  _cqPoller = new CompletionPoller(fab, _ep.size());
+  if (!_cqPoller)
+  {
+    fprintf(stderr, "Completion Poller creation failed\n");
+    return -1;
+  }
+
+  if(!_pep->listen())
+  {
+    fprintf(stderr, "Failed to set passive endpoint to listening state: %s\n",
+            _pep->error());
+    return _pep->error_num();
+  }
+  printf("Listening for client(s) on port %s\n", _port.c_str());
+
+  unsigned i        = 0;           // Not necessarily the same as the source ID
+  unsigned nClients = _ep.size();
+  do
+  {
+    _ep[i] = _pep->accept();
+    if (!_ep[i])
+    {
+      fprintf(stderr, "Endpoint accept failed at client index %d: %s\n",
+              i, _pep->error());
+      return _pep->error_num();
+    }
+
+    _cqPoller->add(_ep[i]);
+  }
+  while (++i < nClients);
+
+  return 0;
+}
+
+int EbFtServer::_exchangeIds(unsigned       myId,
+                             char*          pool,
+                             size_t         size,
+                             Endpoint*      ep,
+                             MemoryRegion*& mr,
+                             unsigned&      id)
+{
+  Fabric* fab = ep->fabric();
+
+  mr = fab->register_memory(pool, size);
+  if (!mr)
+  {
+    fprintf(stderr, "Failed to register memory region @ %p, size %zu: %s\n",
+            pool, size, fab->error());
+    return fab->error_num();
+  }
+
+  if (!ep->recv_sync(pool, sizeof(id), mr))
+  {
+    fprintf(stderr, "Failed receiving peer's ID: %s\n", ep->error());
+    return -1;
+  }
+  id = *(unsigned*)pool;
+
+  *(unsigned*)pool = myId;
+  if (!ep->send_sync(pool, sizeof(myId)))
+  {
+    fprintf(stderr, "Failed sending peer our ID: %s\n", ep->error());
+    return -1;
+  }
+
+  return 0;
 }
 
 const char* EbFtServer::base() const

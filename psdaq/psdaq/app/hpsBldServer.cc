@@ -246,6 +246,9 @@ int main(int argc, char* argv[])
     }
   }
 
+  //  Program the crossbar to pull timing off the backplane
+  cntl->_timing.xbar.setOut( Pds::Cphw::XBar::FPGA, Pds::Cphw::XBar::BP );
+
   const unsigned buffsize=Pds::Bld::Header::MTU;
   char* buff = new char[buffsize];
 
