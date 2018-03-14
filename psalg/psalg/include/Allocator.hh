@@ -1,5 +1,5 @@
-#ifndef HEAP__H
-#define HEAP__H
+#ifndef ALLOCATOR__H
+#define ALLOCATOR__H
 
 #include <iostream>
 #include "xtcdata/xtc/ShapesData.hh"
@@ -42,4 +42,4 @@ private:
     }
 };
 
-#endif // HEAP__H
+#endif // ALLOCATOR__H
