@@ -19,13 +19,13 @@ private:
     uint8_t *_allocator;
 
     virtual void free(void *ptr) {
-        std::cout << "**** Stack free" << std::endl;
+        //std::cout << "**** Stack free (No Op): " << ptr << std::endl;
     }
 
     virtual void *malloc(size_t size) {
-        std::cout << "**** Stack malloc" << std::endl;
         void *curr_allocator = _allocator;
         _allocator += size;
+        //std::cout << "**** Stack malloc: " << curr_allocator << std::endl;
         return curr_allocator;
     }
 };
@@ -36,26 +36,14 @@ public:
 
 private:
     virtual void free(void *ptr) {
-        std::cout << "**** Heap free" << std::endl;
+        //std::cout << "**** Heap free: " << ptr << std::endl;
         return ::free(ptr);
     }
     virtual void *malloc(size_t size) {
-        std::cout << "**** Heap malloc" << std::endl;
-        return ::malloc(size);
+        void *ptr = ::malloc(size);
+        //std::cout << "**** Heap malloc: " << ptr << std::endl;
+        return ptr;
     }
 };
-
-/*
-class Pebble
-{
-public:
-    void* fex_data() {return reinterpret_cast<void*>(_fex_buffer);}
-    PGPData* pgp_data;
-
-private:
-    uint8_t _fex_buffer[1024*1024];
-    Allocator _allocator;
-};
-*/
 
 #endif // HEAP__H

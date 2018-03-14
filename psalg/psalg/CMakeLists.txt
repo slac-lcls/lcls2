@@ -20,3 +20,24 @@ install(FILES
     include/Types.h
     DESTINATION include/psalg
 )
+
+add_executable(test_array
+    test/test_array.cpp
+)
+target_link_libraries(test_array
+    psalg
+)
+MESSAGE( STATUS "###### CMAKE_BINARY_DIR:         " ${CMAKE_BINARY_DIR} )
+MESSAGE( STATUS "###### CMAKE_CURRENT_SOURCE_DIR:         " ${CMAKE_CURRENT_SOURCE_DIR} )
+add_test(NAME test_array COMMAND ${CMAKE_BINARY_DIR}/psalg/test_array
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(test_peakFinder
+    test/peakHeap.cpp
+)
+target_link_libraries(test_peakFinder
+    psalg
+)
+add_test(NAME test_peakFinder COMMAND ${CMAKE_BINARY_DIR}/psalg/test_peakFinder
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
