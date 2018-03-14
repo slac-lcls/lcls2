@@ -7,13 +7,9 @@ def filter(evt):
 # to analyze() 
         
 def analyze(evt): # Use detector interface here and in filter
-    print("Event")
-    for dgram in evt:
-        for var_name in sorted(vars(dgram)):
-            val=getattr(dgram, var_name)
-            print("  %s: %s" % (var_name, type(val)))
+    pass
 
 ds = DataSource('exp=xpptut13:run=1')
-ds.start(analyze, filter=filter)
+ds.start(analyze, filter=filter, lbatch=2)
 
 ######## end of user.py
