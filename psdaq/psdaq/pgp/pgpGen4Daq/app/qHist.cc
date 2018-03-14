@@ -123,6 +123,7 @@ static void usage(const char* p)
 {
   printf("Usage: %p <options>\n",p);
   printf("Options:\n");
+  printf("\t-d <device>        defaults to /dev/pgpdaq0\n");
   printf("\t-M                 enable monitoring\n");
   printf("\t-m                 disable monitoring\n");
   printf("\t-L                 lanes to map to app 0\n");
@@ -142,8 +143,9 @@ int main (int argc, char **argv) {
   bool         lDisable = false;
   int c;
 
-  while((c=getopt(argc,argv,"mML:P:s:r:")) != EOF) {
+  while((c=getopt(argc,argv,"d:mML:P:s:r:")) != EOF) {
     switch(c) {
+    case 'd': dev = optarg; break;
     case 'm': lDisable = true; break;
     case 'M': lEnable = true; break;
     case 's': sample_period = strtoul(optarg, NULL, 0); break;
