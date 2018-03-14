@@ -2,14 +2,13 @@ import peakFinder
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+
 calib = np.load("/reg/neh/home4/yoon82/temp/lcls2/cxitut13_r10_32.npy")
 data = calib[0]
-print(data)
 mask = np.ones_like(data, dtype=np.uint16)
-print(mask.shape)
 
 # step 1
-pk = peakFinder.peak_finder_algos()
+pk = peakFinder.peak_finder_algos(pbits=0, lim_peaks=2048)
 print("Done step1")
 
 # step 2
@@ -26,6 +25,8 @@ fig, ax = plt.subplots()
 ax.imshow(data, interpolation='none')
 ax.scatter(cols, rows, s=50, facecolors='none', edgecolors='r')
 plt.show()
+
+print("Done plot")
 
 #print("rows: ", rows)
 #rows[0] = -1
@@ -46,7 +47,11 @@ plt.show()
 print("rows1: ", rows1)
 print("rows: ", rows)
 
-exit(0)
-
-for i in range(10000):
+"""
+print("Timing 1000 events...")
+tic = time.time()
+for i in range(1000):
     r, c, _ = pk.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)
+toc = time.time()
+print("Time (sec) [avg over 1000 events]: ", (toc-tic)/1000.)
+"""
