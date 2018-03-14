@@ -21,6 +21,18 @@ The scripts can be called with `HFbuild.sh` or `VLbuild.sh`. The write path for 
 
 A text file of the results will be written out to the test_results/ directory. The results can be plotted with matplotlib using test_results/plot_HF_HDF5.py.
 
+The executables may be called individually by
+```
+.\HFWrite $path_to_out_file $number_of_elements_added_to_HDF $elements_per_chunk $bytes_per_element
+```
+
+and
+
+```
+.\HFread $path_to_out_file $dummy
+```
+where a dummy value of 0 will print a text description of the result columns written to test_results/ and anything else will not. 
+
 
 ### Test results comparing HF to VL
 ```
