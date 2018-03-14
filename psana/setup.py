@@ -65,10 +65,13 @@ ext = Extension("peakFinder",
                 language="c++",
                 extra_compile_args=['-std=c++11'],
                 include_dirs=[np.get_include(),
+                              "../xtcdata/xtcdata/xtc/ShapesData.hh",
                               "../psalg/psalg/include/Array.hh",
+                              "../psalg/psalg/include/Allocator.hh",
                               "../install/include",
                               "../psalg/psalg/include/PeakFinderAlgos.h",
-                              "../psalg/psalg/include/LocalExtrema.h"]
+                              "../psalg/psalg/include/LocalExtrema.h",
+                              ]
 )
 
 setup(name="peakFinder",
