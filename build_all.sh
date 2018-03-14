@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# USAGE: ./build_all.sh (Optional arguments: Release (default), RelWithDebInfo, Debug)
+
 set -e
 source setup_env.sh
 
