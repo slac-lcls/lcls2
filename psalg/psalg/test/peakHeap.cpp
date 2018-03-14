@@ -91,10 +91,8 @@ int main () {
   std::cout << chrono::duration_cast<chrono::microseconds>(toc - tic).count() << " microseconds" << std::endl;
 
   tic = Clock::now();
-  int numEvents = 1000;
+  int numEvents = 10;
   for(int i = 0; i < numEvents; i++){
-    Stack _stack;
-    ptr->setAllocator(&_stack);
     if(i%2==0) {
       ptr->peakFinderV3r3(data, mask, rows, cols, rank, r0, dr, nsigm);
     } else {
