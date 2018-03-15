@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-calib = np.load("/reg/neh/home4/yoon82/temp/lcls2/cxitut13_r10_32.npy")
+calib = np.load("../psalg/psalg/test/cxitut13_r10_32.npy")
 data = calib[0]
 mask = np.ones_like(data, dtype=np.uint16)
 
@@ -33,8 +33,8 @@ print("Done plot")
 #print("rows: ", rows)
 
 data1 = np.flipud(data)
-np.save("/reg/neh/home4/yoon82/temp/lcls2/cxitut13_r10_32_flipud.npy", data1)
-data1 = np.load("/reg/neh/home4/yoon82/temp/lcls2/cxitut13_r10_32_flipud.npy")
+np.save("../psalg/psalg/test/cxitut13_r10_32_flipud.npy", data1)
+data1 = np.load("../psalg/psalg/test/cxitut13_r10_32_flipud.npy")
 rows1, cols1, intens1 = \
 pk.peak_finder_v3r3_d2(data1, mask, rank=3, r0=4, dr=2, nsigm=0)
 print("Done step3")
