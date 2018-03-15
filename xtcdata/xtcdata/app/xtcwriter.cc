@@ -126,17 +126,16 @@ public:
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
 		if(name.rank()>0){
-		  Array<float> arrT = descdata.get_array<float>(i);
-		  printf("array float value %s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    // Array<float> arrT = descdata.get_array<float>(i);
+                    // printf("array float value %s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
 		}
 		else{
-		  if(name.type()<7){
-		    printf("integ value %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
-		  }
-		    else{
-		      printf("float value %s: %f\n",name.name(),descdata.get_value<float>(i));
-		    }
-		  
+                    if(name.type()<7){
+                        printf("integ value %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+                    }
+                    else{
+                        printf("float value %s: %f\n",name.name(),descdata.get_value<float>(i));
+                    }
 		}	    
             }
             break;
@@ -225,8 +224,10 @@ void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 
     unsigned shape[Name::MaxRank] = {2,3};
     Array<float> arrayT = fex.allocate<float>(FexDef::arrayFex,shape);
-    for(unsigned i=0; i<shape[0]*shape[1]; i++){
-      arrayT(i) = 142.0+i;
+    for(unsigned i=0; i<shape[0]; i++){
+        for (unsigned j=0; j<shape[1]; j++) {
+            arrayT(i,j) = 142.0+i*shape[1]+j;
+        }
     };
     
     fex.set_value(FexDef::intFex, (int32_t) 42);
