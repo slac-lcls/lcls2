@@ -43,11 +43,10 @@ def reader(ds, analyze, filter):
         debug(evt)
         
 def server(ds, filter):
-    dm = DgramManager(ds.smd_files)
     byterank = bytearray(32)
     offset_batch = np.ones([ds.lbatch, ds.nfiles], dtype='i') * -1
     nevent = 0
-    for evt in dm:
+    for evt in ds.dm:
         if filter: 
             if not filter(evt): continue
         offset_batch[nevent % ds.lbatch, :] = [d.info.offsetAlg.intOffset for d in evt]
@@ -68,13 +67,12 @@ def server(ds, filter):
         rankreq = int.from_bytes(byterank, byteorder=sys.byteorder)
         comm.Send(offset_batch * 0 -1, dest=rankreq)
 
-def client(ds, configs, analyze):
-    dm = DgramManager(ds.xtc_files, configs=configs)
+def client(ds, analyze):
     while True:
         comm.Send(rank.to_bytes(32, byteorder=sys.byteorder), dest=0)
         offset_batch = np.empty([ds.lbatch, ds.nfiles], dtype='i')
         comm.Recv(offset_batch, source=0)
-        if not process_batch(dm, offset_batch, analyze): break
+        if not process_batch(ds.dm, offset_batch, analyze): break
 
 class DataSource(object):
     """ Uses DgramManager to read XTC files  """ 
@@ -102,11 +100,11 @@ class DataSource(object):
             return
 
         if rank == 0:
-            dm = DgramManager(self.xtc_files) # todo: remove this server only works with sml ds
-            configs = dm.configs
+            self.dm = DgramManager(self.smd_files) 
+            configs = self.dm.configs
             nbytes = np.array([memoryview(config).nbytes for config in configs], dtype='i')
         else:
-            dm = None
+            self.dm = None
             configs = [dgram.Dgram() for i in range(self.nfiles)]
             nbytes = np.empty(self.nfiles, dtype='i')
     
@@ -117,4 +115,5 @@ class DataSource(object):
         if rank == 0:
             server(self, filter)
         else:
-            client(self, configs, analyze)
+            self.dm = DgramManager(self.xtc_files, configs=configs)
+            client(self, analyze)

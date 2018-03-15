@@ -39,11 +39,16 @@ namespace Pds {
       void seqBit    (unsigned v);
       void dstSelect (unsigned v);
       void dstMask   (unsigned v);
-      void messageHdr(unsigned v);
+      void msgHeader (unsigned v);
+      void msgPayload(unsigned v);
+      void configKey (unsigned v);
 
       void setL0Select ();
       void setDstSelect();
-      void messageIns  ();
+      void msgInsert   ();
+      void msg_config  ();
+      void msg_enable  ();
+      void msg_disable ();
       void dump() const;
     public:
       enum { FixedRate, ACRate, Sequence };
@@ -62,6 +67,8 @@ namespace Pds {
       unsigned _dstSelect;
       unsigned _dstMask;
       unsigned _msgHdr;
+      unsigned _msgPayload;
+      unsigned _cfgKey;
     };
   };
 };

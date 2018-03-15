@@ -137,6 +137,11 @@ void Module::init()
 
   setLink(il);
 
+  //  Set the timing crossbar
+  _timing.xbar.setOut( Pds::Cphw::XBar::BP  , Pds::Cphw::XBar::FPGA );
+  _timing.xbar.setOut( Pds::Cphw::XBar::RTM0, Pds::Cphw::XBar::FPGA );
+  _timing.xbar.setOut( Pds::Cphw::XBar::RTM1, Pds::Cphw::XBar::FPGA );
+
   /*
   printf("l0 enabled [%x]  reset [%x]\n",
          unsigned(_l0Control)>>16, unsigned(_l0Control)&0xffff);
