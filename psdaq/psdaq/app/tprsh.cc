@@ -11,47 +11,9 @@
 #include <string>
 #include <vector>
 
+#include "psdaq/tpr/Queues.hh"
+
 extern int optind;
-
-#define MOD_SHARED 12
-#define MAX_TPR_ALLQ (32*1024)
-#define MAX_TPR_CHNQ  1024
-#define MSG_SIZE      32
-
-namespace Pds {
-  namespace Tpr {
-
-// DMA Buffer Size, Bytes (could be as small as 512B)
-#define BUF_SIZE 4096
-#define NUMBER_OF_RX_BUFFERS 256
-
-    class TprEntry {
-    public:
-      uint32_t word[MSG_SIZE];
-    };
-
-    class ChnQueue {
-    public:
-      TprEntry entry[MAX_TPR_CHNQ];
-    };
-
-    class TprQIndex {
-    public:
-      long long idx[MAX_TPR_ALLQ];
-    };
-
-    class TprQueues {
-    public:
-      TprEntry  allq  [MAX_TPR_ALLQ];
-      ChnQueue  chnq  [MOD_SHARED];
-      TprQIndex allrp [MOD_SHARED]; // indices into allq
-      long long        allwp [MOD_SHARED]; // write pointer into allrp
-      long long        chnwp [MOD_SHARED]; // write pointer into chnq's
-      long long        gwp;
-      int              fifofull;
-    };
-  };
-};
 
 using namespace Pds::Tpr;
 
@@ -166,7 +128,7 @@ int main(int argc, char** argv) {
       return -1;
     }
 
-    void* ptr = mmap(0, sizeof(TprQueues), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    void* ptr = mmap(0, sizeof(Pds::Tpr::Queues), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
     if (ptr == MAP_FAILED) {
       perror("Failed to map");
       return -2;
@@ -180,56 +142,24 @@ int main(int argc, char** argv) {
         perror("Error creating read thread");
     }
 
-    TprQueues& q = *(TprQueues*)ptr;
+    Pds::Tpr::Queues& q = *(Pds::Tpr::Queues*)ptr;
 
     char* buff = new char[32];
 
     if (idx>=0) {
-      int64_t allrp = q.allwp[idx];
-      int64_t chnrp = q.chnwp[idx];
+      int64_t rp = q.allwp[idx];
       while(1) {
         read(fd, buff, 32);
         if (lverbose) { 
-          printf("allwp 0x%llx,  chnwp 0x%llx,  gwp 0x%llx\n",
+          printf("allwp 0x%llx,  bsawp 0x%llx,  gwp 0x%llx\n",
                  q.allwp[idx],
-                 q.chnwp[idx],
+                 q.bsawp,
                  q.gwp);
-          while(chnrp < q.chnwp[idx]) {
-            dumpFrame(reinterpret_cast<const uint32_t*>(&q.chnq[idx].entry[chnrp &(MAX_TPR_CHNQ-1)].word[0]));
-            chnrp++;
+          while(rp < q.allwp[idx]) {
+            long long qi = q.allrp[idx].idx[rp%MAX_TPR_ALLQ]%MAX_TPR_ALLQ;
+            dumpFrame(reinterpret_cast<const uint32_t*>(&q.allq[qi].word[0]));
+            rp++;
           }
-          while(allrp < q.allwp[idx]) {
-            dumpFrame(reinterpret_cast<const uint32_t*>
-                      (&q.allq[q.allrp[idx].idx[allrp &(MAX_TPR_ALLQ-1)] &(MAX_TPR_ALLQ-1) ].word[0]));
-            allrp++;
-          }
-        }
-        else {
-          while(chnrp < q.chnwp[idx]) {
-            countFrame(reinterpret_cast<const uint32_t*>(&q.chnq[idx].entry[chnrp &(MAX_TPR_CHNQ-1)].word[0]));
-            chnrp++;
-          }
-          while(allrp < q.allwp[idx]) {
-            countFrame(reinterpret_cast<const uint32_t*>
-                      (&q.allq[q.allrp[idx].idx[allrp &(MAX_TPR_ALLQ-1)] &(MAX_TPR_ALLQ-1) ].word[0]));
-            allrp++;
-          }
-        }
-      }
-    }
-    else {
-      int64_t grp = q.gwp;
-      while(1) {
-        while(grp == q.gwp)
-          sleep(1);
-        printf("allwp 0x%llx,  chnwp 0x%llx,  gwp 0x%llx\n",
-               q.allwp[idx],
-               q.chnwp[idx],
-               q.gwp);
-        while(grp < q.gwp) {
-          dumpFrame(reinterpret_cast<const uint32_t*>
-                    (&q.allq[grp &(MAX_TPR_ALLQ-1) ].word[0]));
-          grp++;
         }
       }
     }
