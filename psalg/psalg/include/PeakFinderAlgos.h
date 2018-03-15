@@ -48,7 +48,7 @@ struct Peak{
   float row;
   float col;
   float npix;
-  float npos;
+  float npos=0;
   float amp_max;
   float amp_tot;
   float row_cgrav; 
