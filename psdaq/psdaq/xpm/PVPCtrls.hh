@@ -40,10 +40,14 @@ namespace Pds {
       void dstSelect (unsigned v);
       void dstMask   (unsigned v);
       void messageHdr(unsigned v);
+      void configKey (unsigned v);
 
       void setL0Select ();
       void setDstSelect();
       void messageIns  ();
+      void msg_config  ();
+      void msg_enable  ();
+      void msg_disable ();
       void dump() const;
     public:
       enum { FixedRate, ACRate, Sequence };
@@ -62,6 +66,7 @@ namespace Pds {
       unsigned _dstSelect;
       unsigned _dstMask;
       unsigned _msgHdr;
+      unsigned _cfgKey;
     };
   };
 };
