@@ -21,28 +21,28 @@ template <typename T>
 class Array {
 public:
 
-    Array(void *data=NULL, uint32_t *shape=NULL, uint32_t rank=0){
+    Array(void *data, uint32_t *shape, uint32_t rank){
         _shape = shape;
         _data = reinterpret_cast<T*>(data);
         _rank = rank;
     }
-    T& operator()(int i){
-        assert(i < (int)_shape[0]);
+    T& operator()(unsigned i){
+        assert(i < _shape[0]);
         return _data[i];
     }
-    T& operator()(int i, int j){
-        assert(i<(int)_shape[0]);assert(j<(int)_shape[1]);
+    T& operator()(unsigned i, unsigned j){
+        assert(i<_shape[0]);assert(j<_shape[1]);
         return _data[i * _shape[1] + j];
     }
-    const T& operator()(int i, int j) const{
+    const T& operator()(unsigned i, unsigned j) const{
         assert(i< _shape[0]);assert(j<_shape[1]);
         return _data[i * _shape[1] + j];
     }
-    T& operator()(int i, int j, int k){
+    T& operator()(unsigned i, unsigned j, unsigned k){
         assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
         return _data[(i * _shape[1] + j) * _shape[2] + k];
     }
-    const T& operator()(int i, int j, int k) const
+    const T& operator()(unsigned i, unsigned j, unsigned k) const
     {
         assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
         return _data[(i * _shape[1] + j) * _shape[2] + k];
@@ -75,6 +75,7 @@ protected:
     uint32_t *_shape;
     T        *_data;
     uint32_t  _rank;
+    Array(){}
 };
 
 typedef std::map<std::string, unsigned> IndexMap;
