@@ -9,7 +9,7 @@
 #include "psalg/include/LocalExtrema.h"
 #include "psalg/include/Types.h"
 
-#include "psalg/include/Array.hh"
+#include "psalg/include/AllocArray.hh"
 #include "psalg/include/Allocator.hh"
 
 #include <chrono> // timer

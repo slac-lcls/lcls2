@@ -19,8 +19,7 @@ typedef std::chrono::high_resolution_clock Clock;
 #include "Types.h"
 #include "LocalExtrema.h"
 #include "Allocator.hh"
-#include "Array.hh"
-//#include "xtcdata/xtc/DescData.hh" // Array
+#include "AllocArray.hh"
 
 //-----------------------------
 
