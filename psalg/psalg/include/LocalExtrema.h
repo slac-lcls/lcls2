@@ -13,7 +13,7 @@
 #include <cmath>    // for sqrt
 
 #include "Types.h"
-#include "Array.hh"
+#include "AllocArray.hh"
 #include "Allocator.hh"
 
 //-----------------------------

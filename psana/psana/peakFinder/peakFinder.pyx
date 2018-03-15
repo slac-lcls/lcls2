@@ -72,7 +72,7 @@ cdef class ArrayWrapper:
 
 ################# Psana Array ######################
 
-cdef extern from "../../../psalg/psalg/include/Array.hh" namespace "psalg":
+cdef extern from "../../../psalg/psalg/include/AllocArray.hh" namespace "psalg":
     cdef cppclass Array[T]:
         Array() except+
         cnp.uint32_t *shape()
