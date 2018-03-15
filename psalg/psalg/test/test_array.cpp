@@ -5,11 +5,10 @@
 #include <vector>
 #include <stdlib.h>
 
-//#include "xtcdata/xtc/DescData.hh" // Array
 #include "../include/Array.hh"
 #include "../include/Allocator.hh"
 
-using namespace temp;
+using namespace psalg;
 
 class Foo{
 public:

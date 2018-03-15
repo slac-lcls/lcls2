@@ -19,7 +19,7 @@
 //-----------------------------
 
 using namespace std;
-using namespace temp; // Array
+using namespace psalg; // Array
 
 //-----------------------------
 

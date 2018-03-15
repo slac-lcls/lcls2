@@ -9,7 +9,6 @@
 #include "psalg/include/LocalExtrema.h"
 #include "psalg/include/Types.h"
 
-//#include "xtcdata/xtc/DescData.hh" // Array
 #include "psalg/include/Array.hh"
 #include "psalg/include/Allocator.hh"
 
@@ -17,7 +16,7 @@
 typedef std::chrono::high_resolution_clock Clock;
 
 using namespace psalgos;
-using namespace temp;
+using namespace psalg;
 
 int main () {
 

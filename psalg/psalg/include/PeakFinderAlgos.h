@@ -25,7 +25,7 @@ typedef std::chrono::high_resolution_clock Clock;
 //-----------------------------
 
 using namespace std;
-using namespace temp; // Array
+using namespace psalg; // Array
 
 //-----------------------------
 

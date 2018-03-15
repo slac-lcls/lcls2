@@ -2,90 +2,32 @@
 #define ARRAY__H
 
 #include <assert.h>
-#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/ShapesData.hh" // Shape
+#include "xtcdata/xtc/DescData.hh"
 #include "Allocator.hh"
 
-namespace temp {
+using namespace XtcData; // Array
 
-template <typename T>
-class Array {
-public:
-
-    Array(void *data=NULL, uint32_t *shape=NULL, uint32_t rank=0){
-        _shape = shape;
-        _data = reinterpret_cast<T*>(data);
-        _rank = rank;
-    }
-    T& operator()(int i){
-        assert(i < (int)_shape[0]);
-        return _data[i];
-    }
-    T& operator()(int i, int j){
-        assert(i<(int)_shape[0]);assert(j<(int)_shape[1]);
-        return _data[i * _shape[1] + j];
-    }
-    const T& operator()(int i, int j) const{
-        assert(i< _shape[0]);assert(j<_shape[1]);
-        return _data[i * _shape[1] + j];
-    }
-    T& operator()(int i, int j, int k){
-        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
-        return _data[(i * _shape[1] + j) * _shape[2] + k];
-    }
-    const T& operator()(int i, int j, int k) const
-    {
-        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
-        return _data[(i * _shape[1] + j) * _shape[2] + k];
-    }
-    uint32_t rank(){
-        return _rank;
-    }
-    uint32_t* shape(){
-        return _shape;
-    }
-    T* data(){
-        return _data;
-    }
-    uint64_t num_elem(){
-        uint64_t _num_elem = _shape[0];
-        for(uint32_t i=1; i<_rank;i++){_num_elem*=_shape[i];};
-        return _num_elem;
-    }
-    void shape(uint32_t a, uint32_t b=0, uint32_t c=0, uint32_t d=0, uint32_t e=0){
-        assert(_rank > 0);
-        assert(XtcData::Name::MaxRank == 5);
-        _shape[0] = a;
-        _shape[1] = b;
-        _shape[2] = c;
-        _shape[3] = d;
-        _shape[4] = e;
-    }
-
-protected:
-    uint32_t *_shape;
-    T        *_data;
-    uint32_t  _rank;
-};
+namespace psalg {
 
 template <typename T>
 class AllocArray:public Array<T>{
 public:
 
     AllocArray(Allocator& allocator, size_t maxElem, uint32_t rank):_allocator(allocator){
-        void *ptr = _allocator.malloc(sizeof(XtcData::Shape) +
+        void *ptr = _allocator.malloc(sizeof(Shape) +
                                             sizeof(*_refCntPtr) +
                                             maxElem*sizeof(T)); // shape + refcnt + data
         Array<T>::_shape = reinterpret_cast<uint32_t*>(ptr);
-        _refCntPtr = reinterpret_cast<uint32_t*>(Array<T>::_shape+XtcData::Name::MaxRank);
+        _refCntPtr = reinterpret_cast<uint32_t*>(Array<T>::_shape+Name::MaxRank);
         Array<T>::_data = reinterpret_cast<T*>(_refCntPtr+1);
         Array<T>::_rank = rank;
         *_refCntPtr = 1;
-        for(int i = 0; i < XtcData::Name::MaxRank; i++) Array<T>::_shape[i] = 0;
+        for(int i = 0; i < Name::MaxRank; i++) Array<T>::_shape[i] = 0;
     }
 
     AllocArray(const AllocArray<T>& other):_allocator(other._allocator){ // copy constructor
         if (this != &other) {
-            //std::cout << "# copy" << std::endl;
             this->_shape = other._shape;
             this->_data = other._data;
             this->_rank = other._rank;
@@ -96,7 +38,6 @@ public:
 
     AllocArray<T>& operator=(const AllocArray<T>& other){ // assignment operator
         if (this != &other) {
-            //std::cout << "# assign" << std::endl;
             refCnt()--;
             if (refCnt() == 0) _allocator.free(this->_shape);
 
@@ -165,7 +106,7 @@ public:
         return *this;
     }
 
-    // std::vector-like methods
+    // ----- std::vector-like methods
 
     void push_back(const T& i){
         assert(AllocArray<T>::_shape[0] < _maxShape);
@@ -179,7 +120,7 @@ public:
             // this could include decrementing reference counts if we are
             // are array-of-arrays.
             Array<T>::_data[i].~T();
-        } // TODO: look at assembly code when T is a float, gcc -S
+        }
         AllocArray<T>::_shape[0] = 0;
     }
 
