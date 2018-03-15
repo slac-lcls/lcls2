@@ -131,12 +131,12 @@ namespace Pds {
     CPV(PipelineDepth,  { PVG(_pipelineDepth = TOU(data()));      },
                         { PVP(_pipelineDepth);                    })
 
-    CPV(MsgHeader,      { _ctrl.messageHdr(TOU(data()));          },
-                        { _ctrl.messageHdr(TOU(data()));          })
-    CPV(MsgInsert,      { if (TOU(data())!=0) _ctrl.messageIns(); },
+    CPV(MsgHeader,      { _ctrl.msgHeader(TOU(data()));           },
+                        { _ctrl.msgHeader(TOU(data()));           })
+    CPV(MsgInsert,      { if (TOU(data())!=0) _ctrl.msgInsert();  },
                         {                                         })
-    CPV(MsgPayload,     { PVG(messagePayload(_idx,TOU(data())));  },
-                        { PVP(messagePayload(_idx));              })
+    CPV(MsgPayload,     { _ctrl.msgPayload(TOU(data()));          },
+                        { _ctrl.msgPayload(TOU(data()));          })
     CPV(MsgConfigKey,   { _ctrl.configKey     (TOU(data()));      },
                         { _ctrl.configKey     (TOU(data()));      })
     CPV(MsgConfig,      { if (TOU(data())!=0) _ctrl.msg_config(); },
@@ -252,7 +252,8 @@ namespace Pds {
     void PVPCtrls::seqBit    (unsigned v) { _seqBit     = v; }
     void PVPCtrls::dstSelect (unsigned v) { _dstSelect  = v; }
     void PVPCtrls::dstMask   (unsigned v) { _dstMask    = v; }
-    void PVPCtrls::messageHdr(unsigned v) { _msgHdr     = v; }
+    void PVPCtrls::msgHeader (unsigned v) { _msgHdr     = v; }
+    void PVPCtrls::msgPayload(unsigned v) { _msgPayload = v; }
     void PVPCtrls::configKey (unsigned v) { _cfgKey     = v; }
 
     void PVPCtrls::setL0Select()
@@ -279,11 +280,12 @@ namespace Pds {
       dump();
     }
 
-    void PVPCtrls::messageIns()
+    void PVPCtrls::msgInsert()
     {
       printf("msg_insert [%x]\n", _msgHdr);
       _sem.take();
-      _m.messageHdr(_partition, _msgHdr);
+      _m.messagePayload(_partition, _msgPayload);
+      _m.messageHdr    (_partition, _msgHdr);
       _sem.give();
     }
 
