@@ -1,10 +1,12 @@
 
 import sys
+import abc
 import zmq
 import threading
 from mpi4py import MPI
 from enum import IntEnum
-from ami.data import MsgTypes, Occurrences, Message, Datagram
+
+from ami.data import MsgTypes, Message, Datagram
 
 
 class ZmqPorts(IntEnum):
@@ -102,6 +104,13 @@ class MpiHandler(object):
 
 
 class ResultStore(object):
+    """
+    This class is a AMI graph node that collects results
+    from a single process and has the ability to send them
+    to another (via MPI). The sending end point is typically
+    a Collector object.
+    """
+
     def __init__(self, collector_rank):
         self.name = "resultstore"
         self._store = {}
@@ -145,7 +154,8 @@ class ResultStore(object):
                 self._store[name].data = data
                 self._updated[name] = True
             else:
-                raise TypeError("type of new result (%s) differs from existing (%s)"%(datatype, self._store[name].dtype))
+                raise TypeError("type of new result (%s) differs from existing"
+                                " (%s)"%(datatype, self._store[name].dtype))
         else:
             self._store[name] = Datagram(name, datatype, data)
             self._updated[name] = True
@@ -154,26 +164,26 @@ class ResultStore(object):
         self._store = {}
 
 
-class ZmqListener(ZmqBase):
-    def __init__(self, name, topic, callback, zmq_config, zmqctx=None):
-        super(__class__, self).__init__(name, zmq_config, zmqctx)
-        self.listen_topic = topic
-        self.listen_evt = False
-        self._listen_cb = callback
-
-    def listen(self):
-        while True:
-            topic = self._listen_sock.recv_string()
-            payload = self._listen_sock.recv_pyobj()
-            if topic == self.listen_topic:
-                print("%s: listerner recieved new payload with topic:"%self.name, topic)
-                if self._listen_cb is not None:
-                    self._listen_cb(payload)
-                self.listen_evt = True
-            else:
-                print("%s: recieved unexpected topic: %s"%(self.name, topic))
-
-
+#class ZmqListener(ZmqBase):
+#    def __init__(self, name, topic, callback, zmq_config, zmqctx=None):
+#        super(__class__, self).__init__(name, zmq_config, zmqctx)
+#        self.listen_topic = topic
+#        self.listen_evt = False
+#        self._listen_cb = callback
+#
+#    def listen(self):
+#        while True:
+#            topic = self._listen_sock.recv_string()
+#            payload = self._listen_sock.recv_pyobj()
+#            if topic == self.listen_topic:
+#                print("%s: listerner recieved new payload with topic:"%self.name, topic)
+#                if self._listen_cb is not None:
+#                    self._listen_cb(payload)
+#                self.listen_evt = True
+#            else:
+#                print("%s: recieved unexpected topic: %s"%(self.name, topic))
+#
+#
 #class Listener(MpiHandler):
 #    """
 #    Listener with MPI
@@ -195,41 +205,24 @@ class ZmqListener(ZmqBase):
 #            self.listen_evt = True
 
 
-class Collector(object):
+class Collector(abc.ABC):
+    """
+    This class gathers (via MPI) results from many
+    ResultsStores. But rather than use gather, it employs
+    an async send/recieve pattern.
+    """
 
     def __init__(self):
-        self._transition_handler = None
-        self._occurrence_handler = None
-        self._datagram_handler = None
+        return
 
     def recv(self):
         return MPI.COMM_WORLD.recv(source=MPI.ANY_SOURCE)
 
-    # TJ says: we should not use callbacks
+    @abc.abstractmethod
+    def process_msg(self, msg):
+        return
 
-    def set_transition_handler(self, handler):
-        self._transition_handler = handler
-
-    def set_occurrence_handler(self, handler):
-        self._occurrence_handler = handler
-
-    def set_datagram_handler(self, handler):
-        self._datagram_handler = handler
-
-    def set_handlers(self, handler):
-        self._transition_handler = handler
-        self._occurrence_handler = handler
-        self._datagram_handler = handler
-        
     def run(self):
         while True:
             msg = self.recv()
-            if msg.mtype == MsgTypes.Transition:
-                if self._transition_handler is not None:
-                    self._transition_handler(msg)
-            elif msg.mtype == MsgTypes.Occurrence:
-                if self._occurrence_handler is not None:
-                    self._occurrence_handler(msg)
-            elif msg.mtype == MsgTypes.Datagram:
-                if self._datagram_handler is not None:
-                    self._datagram_handler(msg)
+            self.process_msg(msg)
