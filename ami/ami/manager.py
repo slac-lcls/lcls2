@@ -4,6 +4,7 @@ import zmq
 import argparse
 import threading
 from ami.comm import Collector
+from ami.data import MsgTypes
 
 
 class Manager(Collector):
@@ -20,13 +21,7 @@ class Manager(Collector):
         self.ctx = zmq.Context()
         self.comm = self.ctx.socket(zmq.REP)
         self.comm.bind("tcp://*:%d"%gui_port)
-        self.set_datagram_handler(self.publish)
-        #self.set_occurence_handler(self.publish)
 
-        # TO DELETE
-        #self.cmd_thread = threading.Thread(name="%s-command"%name, target=self.command_listener)
-        #self.cmd_thread.daemon = True
-        #self.cmd_thread.start()
 
     @property
     def features(self):
@@ -35,10 +30,12 @@ class Manager(Collector):
             dets[key] = value.dtype
         return dets
 
-    def publish(self, msg):
-        self.feature_store[msg.payload.name] = msg.payload
-        print(msg.payload)
-        sys.stdout.flush()
+    def process_msg(self, msg):
+        if msg.mtype == MsgTypes.Datagram:
+            self.feature_store[msg.payload.name] = msg.payload
+            print(msg.payload)
+            sys.stdout.flush()
+        return
 
     def feature_request(self, request):
         matched = self.feature_req.match(request)
