@@ -9,13 +9,30 @@
 # calling push_back could malloc?
 # pebble overwrite protection (bounds check) if arrays get too big
 
+import sys # flush
+
 # Import the Python-level symbols of numpy
 import numpy as np
 
 # Import the C-level symbols of numpy
 cimport numpy as cnp
 
-################# Array Wrapper ######################
+################# Psana Array ######################
+
+cdef extern from "../../../psalg/psalg/include/AllocArray.hh" namespace "psalg":
+    cdef cppclass Array[T]:
+        Array() except+
+        cnp.uint32_t *shape()
+        T *data()
+        void incRefCnt()
+
+cdef extern from "../../../psalg/psalg/include/Allocator.hh":
+    cdef cppclass Allocator:
+        pass
+    cdef cppclass Heap(Allocator):
+        pass
+
+################# PyAllocArray1D ######################
 
 from libc.stdlib cimport free
 from cpython cimport PyObject, Py_INCREF
@@ -27,26 +44,13 @@ cnp.import_array()
 # We need to build an array-wrapper class to deallocate our array when
 # the Python object is deleted.
 
-cdef class ArrayWrapper:
+cdef class PyAllocArray1D:
     cdef void* shape_ptr
     cdef void* data_ptr
     cdef int size
     cdef int typenum
 
-    cdef set_data(self, void* buffer_ptr, void* data_ptr, int size, int typenum):
-        """ Set the data of the array
-
-        This cannot be done in the constructor as it must recieve C-level
-        arguments.
-
-        Parameters:
-        -----------
-        size: int
-            Length of the array.
-        data_ptr: void*
-            Pointer to the data
-
-        """
+    cdef init(self, void* buffer_ptr, void* data_ptr, int size, int typenum):
         self.shape_ptr = buffer_ptr
         self.data_ptr  = data_ptr
         self.size = size
@@ -59,27 +63,16 @@ cdef class ArrayWrapper:
         shape[0] = <cnp.npy_intp> self.size
         # Create a 1D array, of length 'size'
         ndarray = cnp.PyArray_SimpleNewFromData(1, shape, self.typenum, self.data_ptr)
+
+        # Increment the reference count, as the above assignement was done in
+        # C, and Python does not know that there is this additional reference
+        Py_INCREF(self)
         return ndarray
 
     def __dealloc__(self):
         """ Frees the array. This is called by Python when all the
         references to the object are gone. """
-        print("Dealloc memory")
         free(<void*>self.shape_ptr)
-
-################# Psana Array ######################
-
-cdef extern from "../../../psalg/psalg/include/Array.hh" namespace "temp":
-    cdef cppclass Array[T]:
-        Array() except+
-        cnp.uint32_t *shape()
-        T *data()
-
-#cdef extern from "../../../psalg/psalg/include/Heap.hh":
-#    cdef cppclass Heap:
-#        pass
-#    cdef cppclass StandardHeap(Heap):
-#        pass
 
 ################# Peak Finder ######################
 
@@ -127,14 +120,12 @@ ctypedef fused nptype2d :
 
 cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psalgos":
     cdef cppclass PeakFinderAlgos:
-         unsigned ps_row
-         unsigned ps_col
          Array[float] rows
          Array[float] cols
          Array[float] intens
          unsigned numPeaksSelected
 
-         PeakFinderAlgos(const size_t& seg, const unsigned& pbits) except +
+         PeakFinderAlgos(Allocator *allocator, const size_t& seg, const unsigned& pbits, const size_t& lim_rank, const size_t& lim_peaks) except +
 
          void setPeakSelectionPars(const float& npix_min
                                   ,const float& npix_max
@@ -147,38 +138,17 @@ cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psa
                                ,const size_t& rows
                                ,const size_t& cols
                                ,const size_t& rank
-	                       ,const double& r0
-	                       ,const double& dr
-	                       ,const double& nsigm)
-
-         void peakFinderV4r3[T](const T *data
-                               ,const mask_t *mask
-                               ,const size_t& rows
-                               ,const size_t& cols
-                               ,const double& thr_low
-                               ,const double& thr_high
-                               ,const size_t& rank
-	                       ,const double& r0
-	                       ,const double& dr
-                               )
+                               ,const double& r0
+                               ,const double& dr
+                               ,const double& nsigm)
  
          void printParameters();
-
-         #const Peak& peak(const int& i)
-
-         #const Peak& peakSelected(const int& i)
-
-         #const vector[Peak]& vectorOfPeaks()
-
-         #const vector[Peak]& vectorOfPeaksSelected()
 
          void localMaxima    (extrim_t *arr2d, const size_t& rows, const size_t& cols)
 
          void localMinima    (extrim_t *arr2d, const size_t& rows, const size_t& cols)
 
          void connectedPixels(conmap_t *arr2d, const size_t& rows, const size_t& cols)
-
-         #const vector[vector[float]] peaksSelected()
 
 cdef class py_peak :
     cdef Peak* cptr  # holds a C++ pointer to instance
@@ -189,7 +159,7 @@ cdef class py_peak :
             self.cptr = new Peak()
 
     def __dealloc__(self):
-        print "In py_peak.__dealloc__"
+        #print "In py_peak.__dealloc__"
         if self.cptr is not NULL :
             del self.cptr
             self.cptr = NULL
@@ -261,26 +231,20 @@ cdef class py_peak :
 
 #------------------------------
 
-#from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
-
 cdef class peak_finder_algos :
     """ Python wrapper for C++ class. 
     """
     cdef PeakFinderAlgos* cptr  # holds a C++ pointer to instance
     cdef si.uint16_t rows, cols
-    #cdef si.uint8_t* drpPtr
-    #cdef StandardHeap heap
+    cdef Heap heap
+    cdef Heap *hptr
 
-    def __cinit__(self, seg=0, pbits=0):
-        #print "In peak_finder_algos.__cinit__"
-        #self.drpPtr = NULL                                   # Python mode, python frees memory
-        #self.drpPtr = <si.uint8_t*>PyMem_Malloc(10240*100000) # DRP mode, do not clean up malloc
-        self.cptr = new PeakFinderAlgos(seg, pbits)
+    def __cinit__(self, seg=0, pbits=0, lim_rank=50, lim_peaks=4096):
+        self.hptr = &self.heap
+        self.cptr = new PeakFinderAlgos(self.hptr, seg, pbits, lim_rank, lim_peaks)
 
     def __dealloc__(self):
-        #print "In peak_finder_algos.__dealloc__"
         del self.cptr
-        #PyMem_Free(self.drpPtr) # no-op if self.drpPtr is NULL
 
     def set_peak_selection_parameters(self\
                                      ,const float& npix_min\
@@ -302,73 +266,27 @@ cdef class peak_finder_algos :
         self.cptr.peakFinderV3r3(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, r0, dr, nsigm)
         return self.getPeaks()
 
-
-
-    #def peak_finder_v4r3_d2(self\
-    #                       ,nptype2d data\
-    #                       ,cnp.ndarray[mask_t, ndim=2, mode="c"] mask\
-    #                       ,const double& thr_low
-    #                       ,const double& thr_high
-    #                       ,const size_t& rank\
-    #                       ,const double& r0\
-    #                       ,const double& dr) :
-    #    self.cptr.peakFinderV4r3(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], thr_low, thr_high, rank, r0, dr)
-    #    self.rows = data.shape[0]
-    #    self.cols = data.shape[1]
-    #    return self.list_of_peaks_selected()
-
-
-    #def list_of_peaks_selected(self) :
-    #    cdef vector[Peak] peaks = self.cptr.vectorOfPeaksSelected()
-    #    return [py_peak.factory(p) for p in peaks]
-
-
-    #def list_of_peaks(self) :
-    #    cdef vector[Peak] peaks = self.cptr.vectorOfPeaks()
-    #    return [py_peak.factory(p) for p in peaks]
-
-
-    #def peak(self, int i=0) :
-    #    return py_peak.factory(self.cptr.peak(i))
-
-
-    #def peak_selected(self, int i=0) :
-    #    return py_peak.factory(self.cptr.peakSelected(i))
-
-    #def peaks_selected(self):
-    #    temp = np.asarray(self.cptr.peaksSelected()) # This makes a copy, 5e-5 sec
-    #    return temp
-        #cdef vector[vector[float]] peaks = self.cptr.peaksSelected() # This makes a copy, 5e-5 sec
-        #return np.asarray(peaks)
-
-    #def getPeaksSelected(self):
-    #    cdef float[::1] rows_cgrav = <float[:self.cptr.numPeaksSelected]>self.cptr.rows
-    #    cdef float[::1] cols_cgrav = <float[:self.cptr.numPeaksSelected]>self.cptr.cols
-    #    cdef float[::1] intens = <float[:self.cptr.numPeaksSelected]>self.cptr.intens
-    #    return np.asarray(rows_cgrav), np.asarray(cols_cgrav), np.asarray(intens)
-
     def getPeaks(self):
-        cdef cnp.ndarray rows_cgrav, cols_cgrav, intens
-        # Call the C function
-        arr0 = ArrayWrapper()
-        arr1 = ArrayWrapper()
-        arr2 = ArrayWrapper()
-        arr0.set_data(<void*> self.cptr.rows.shape(), <void*> self.cptr.rows.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        arr1.set_data(<void*> self.cptr.cols.shape(), <void*> self.cptr.cols.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        arr2.set_data(<void*> self.cptr.intens.shape(), <void*> self.cptr.intens.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        cdef cnp.ndarray rows_cgrav, cols_cgrav, intens # make readonly
+
+        arr0 = PyAllocArray1D()
+        arr0.init(<void*> self.cptr.rows.shape(), <void*> self.cptr.rows.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
         rows_cgrav = np.array(arr0, copy=False)
-        cols_cgrav = np.array(arr1, copy=False)
-        intens = np.array(arr2, copy=False)
-        # Assign our object to the 'base' of the ndarray object
         rows_cgrav.base = <PyObject*> arr0
+        self.cptr.rows.incRefCnt() # increment ref count so that C++ doesn't delete array
+
+        arr1 = PyAllocArray1D()
+        arr1.init(<void*> self.cptr.cols.shape(), <void*> self.cptr.cols.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        cols_cgrav = np.array(arr1, copy=False)
         cols_cgrav.base = <PyObject*> arr1
-        intens.base = <PyObject*> arr2
-        # Increment the reference count, as the above assignement was done in
-        # C, and Python does not know that there is this additional reference
-        Py_INCREF(arr0)
-        Py_INCREF(arr1)
-        Py_INCREF(arr2)
-        print("done getPeaks")
+        self.cptr.cols.incRefCnt()
+
+        arr2 = PyAllocArray1D()
+        arr2.init(<void*> self.cptr.intens.shape(), <void*> self.cptr.intens.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        intens     = np.array(arr2, copy=False)
+        intens.base     = <PyObject*> arr2
+        self.cptr.intens.incRefCnt()
+
         return rows_cgrav, cols_cgrav, intens
 
     def local_maxima(self) :

@@ -1,15 +1,13 @@
 import peakFinder
 import numpy as np
 import matplotlib.pyplot as plt
-import time
-calib = np.load("/reg/neh/home4/yoon82/temp/lcls2/cxitut13_r10_32.npy")
-data = calib[0]
-print(data)
-mask = np.ones_like(data, dtype=np.uint16)
-print(mask.shape)
 
+calib = np.load("cxitut13_r10_32.npy")
+data = calib[0]
+mask = np.ones_like(data, dtype=np.uint16)
+print(mask)
 # step 1
-pk = peakFinder.peak_finder_algos()
+pk = peakFinder.peak_finder_algos(pbits=0, lim_peaks=2048)
 print("Done step1")
 
 # step 2
@@ -27,13 +25,11 @@ ax.imshow(data, interpolation='none')
 ax.scatter(cols, rows, s=50, facecolors='none', edgecolors='r')
 plt.show()
 
-#print("rows: ", rows)
-#rows[0] = -1
-#print("rows: ", rows)
+print("Done plot")
 
 data1 = np.flipud(data)
-np.save("/reg/neh/home4/yoon82/temp/lcls2/cxitut13_r10_32_flipud.npy", data1)
-data1 = np.load("/reg/neh/home4/yoon82/temp/lcls2/cxitut13_r10_32_flipud.npy")
+np.save("cxitut13_r10_32_flipud.npy", data1)
+data1 = np.load("cxitut13_r10_32_flipud.npy")
 rows1, cols1, intens1 = \
 pk.peak_finder_v3r3_d2(data1, mask, rank=3, r0=4, dr=2, nsigm=0)
 print("Done step3")
@@ -45,8 +41,3 @@ plt.show()
 
 print("rows1: ", rows1)
 print("rows: ", rows)
-
-exit(0)
-
-for i in range(10000):
-    r, c, _ = pk.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)

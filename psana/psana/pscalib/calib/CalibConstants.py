@@ -8,7 +8,7 @@ Usage ::
 
     # python lcls2/psana/pscalib/calib/CalibConstants.py
 
-    from psana.pscalib.calib.CalibBase import *
+    from psana.pscalib.calib.CalibConstants import *
 
     for k,v in dic_det_type_to_name.items() : print('%16s : %s' % (str(k), str(v)))
 

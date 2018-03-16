@@ -1,4 +1,3 @@
-#!@PYTHON@
 #####!/usr/bin/env python
 #------------------------------
 
@@ -6,9 +5,9 @@ import os
 import sys
 from time import time, sleep
 
-import PSCalib.SubprocUtils as spu
-import PSCalib.RunProcUtils as rpu
-import PSCalib.GlobalUtils as gu
+import psana.pscalib.proc.SubprocUtils as spu
+import psana.pscalib.proc.RunProcUtils as rpu
+import psana.pyalgos.generic.Utils as gu
 
 #------------------------------
 
@@ -142,7 +141,7 @@ def input_option_parser() :
   
 #------------------------------
 
-if __name__ == "__main__" :
+def do_main() :
 
     parser = input_option_parser()
 
@@ -152,5 +151,10 @@ if __name__ == "__main__" :
 
     proc_control(parser)
     sys.exit(0)
+
+#------------------------------
+
+if __name__ == "__main__" :
+    do_main()
 
 #------------------------------

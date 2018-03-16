@@ -28,13 +28,17 @@ namespace PgpDaq {
     uint32_t rsvd_c;
     uint32_t fifoDepth;
     uint32_t memStatus;
-    uint32_t rsvd_18[2];
+    uint32_t queueCount;
+    uint32_t ddrReadCmd;
   };
 
   class PgpLaneMisc {
   public:
     uint32_t loopback;
-    uint32_t rsvd_4[0x400-1];
+    uint32_t countReset;
+    uint32_t dropCount;
+    uint32_t truncCount;
+    uint32_t rsvd_10[0x400-4];
   };
 
   class AxiStreamMonAxiL {

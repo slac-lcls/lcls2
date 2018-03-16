@@ -9,13 +9,14 @@
 #include <cstddef>  // for size_t
 #include <stdint.h> // for uint8_t, uint16_t etc.
 
+/*
 template <typename T>
 class Vector {
   public:
     Vector(){}
     unsigned int len, capacity = 0;
     T* data[4500]; // TODO: fixed size (larger size seems to slows down code)
-};
+};*/
 
 namespace LOG {
   enum {NONE=0, DEBUG=1, INFO=2, WARNING=4, ERROR=8, CRITICAL=16};

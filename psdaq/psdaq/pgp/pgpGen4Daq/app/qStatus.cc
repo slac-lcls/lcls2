@@ -107,6 +107,10 @@ int main (int argc, char **argv) {
   PRINTFIELD(mm2s_err      , memStatus  ,29, 1);
   PRINTFIELD(s2mm_err      , memStatus  ,30, 1);
   PRINTFIELD(memReady      , memStatus  ,31, 1);
+  PRINTFIELD(ddrWriteQue   , queueCount , 0, 0xff);
+  PRINTFIELD(ddrReadQue    , queueCount , 8, 0xff);
+  PRINTFIELD(dataWriteQue  , queueCount ,16, 0xff);
+  PRINTFIELD(descWriteQue  , queueCount ,24, 0xff);
 #undef PRINTFIELD
 
 #define PRINTFIELD(name, addr, offset, mask) {                          \
@@ -123,6 +127,8 @@ int main (int argc, char **argv) {
     PRINTFIELD(vcBlowoff, 0x0,  0, 0x1);
     PRINTFIELD(loopback , 0x0, 16, 0x7);
     PRINTFIELD(rxReset  , 0x0, 31, 0x1);
+    PRINTFIELD(dropCount , 0x8, 0, 0xffffffff);
+    PRINTFIELD(truncCount, 0xc, 0, 0xffffffff);
 
 #undef PRINTFIELD
   

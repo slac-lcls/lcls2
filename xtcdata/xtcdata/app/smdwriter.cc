@@ -24,6 +24,61 @@ using std::string;
 
 #define BUFSIZE 0x4000000
 
+class FexDef:public VarDef
+{
+public:
+  enum index
+    {
+      floatFex,
+      arrayFex,
+      intFex
+    };
+
+  FexDef()
+   {
+       NameVec.push_back({"floatFex",Name::FLOAT});
+       NameVec.push_back({"arrayFex",Name::FLOAT,2});
+       NameVec.push_back({"intFex",Name::INT32});
+   }
+} FexDef;
+
+class PgpDef:public VarDef
+{
+public:
+  enum index
+    {
+      floatPgp,
+      array0Pgp,
+      intPgp,
+      array1Pgp
+    };
+
+
+   PgpDef()
+   {
+     NameVec.push_back({"floatPgp",Name::FLOAT,0});
+     NameVec.push_back({"array0Pgp",Name::FLOAT,2});
+     NameVec.push_back({"intPgp",Name::INT32,0});
+     NameVec.push_back({"array1Pgp",Name::FLOAT,2});
+   }
+} PgpDef;
+
+class PadDef:public VarDef
+{
+public:
+  enum index
+    {
+      arrayRaw
+    };
+
+
+  PadDef()
+   {
+     Alg segmentAlg("cspadseg",2,3,42);
+     NameVec.push_back({"arrayRaw", segmentAlg});
+   }
+} PadDef;
+
 class SmdDef:public VarDef
 {
 public:
@@ -40,10 +95,27 @@ public:
 
 void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) 
 {
-  Alg alg("offsetAlg",0,0,0);
-  Names& fexNames = *new(parent) Names("info", alg, "offset", "");
-  fexNames.add(parent,SmdDef);
-  namesVec.push_back(NameIndex(fexNames));
+    Alg hsdRawAlg("raw",0,0,0);
+    Names& frontEndNames = *new(parent) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234");
+    frontEndNames.add(parent,PgpDef);
+    namesVec.push_back(NameIndex(frontEndNames));
+
+    Alg hsdFexAlg("fex",4,5,6);
+    Names& fexNames = *new(parent) Names("xpphsd", hsdFexAlg, "hsd","detnum1234");
+    fexNames.add(parent, FexDef);
+    namesVec.push_back(NameIndex(fexNames));
+
+    unsigned segment = 0;
+    Alg cspadRawAlg("raw",2,3,42);
+    Names& padNames = *new(parent) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
+    Alg segmentAlg("cspadseg",2,3,42);
+    padNames.add(parent, PadDef);
+    namesVec.push_back(NameIndex(padNames)); 
+
+    Alg alg("offsetAlg",0,0,0);
+    Names& offsetNames = *new(parent) Names("info", alg, "offset", "");
+    offsetNames.add(parent,SmdDef);
+    namesVec.push_back(NameIndex(offsetNames));
 }
 
 void usage(char* progname)
@@ -117,7 +189,7 @@ int main(int argc, char* argv[])
   //  unsigned nowOffset = 0;
   uint64_t nowOffset = 0;
 
-  
+  printf("\nStart writing offsets.\n"); 
   while ((dgIn = iter.next())) {
     Dgram& dgOut = *(Dgram*)buf;
     TypeId tid(TypeId::Parent, 0);
@@ -125,7 +197,7 @@ int main(int argc, char* argv[])
     dgOut.xtc.damage = 0;
     dgOut.xtc.extent = sizeof(Xtc);
 
-    unsigned nameId = 0; // smd only has one nameId
+    unsigned nameId = 3; // offset is the last
     CreateData smd(dgOut.xtc, namesVec, nameId);
     smd.set_value(SmdDef::intOffset, nowOffset);
     

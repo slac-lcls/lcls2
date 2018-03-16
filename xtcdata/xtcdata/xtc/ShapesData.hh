@@ -55,7 +55,7 @@ public:
 
     enum {MaxRank=5};
   
-    Name(const char* name, DataType type, int rank=0) : _alg("",0,0,0) {	
+    Name(const char* name, DataType type, int rank=0) : _alg("",0,0,0) {
       // Assert maxrank, maxnamesize
       assert(rank < MaxRank);assert(strlen(name) < maxNameSize);
       strncpy(_name, name, maxNameSize);
