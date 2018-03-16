@@ -12,7 +12,6 @@ from PyQt5.QtCore import pyqtSlot, QTimer
 
 import pyqtgraph as pg
 
-from ami.comm import ZmqPorts, ZmqConfig, ZmqBase
 from ami.data import DataTypes
 from ami.operation import ROI
 

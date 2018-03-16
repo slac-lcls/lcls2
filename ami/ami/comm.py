@@ -9,98 +9,23 @@ from enum import IntEnum
 from ami.data import MsgTypes, Message, Datagram
 
 
-class ZmqPorts(IntEnum):
-    Collector = 0
-    FinalCollector = 1
-    Graph = 2
-    Command = 3
-    Offset = 10
-    StartingPort = 15000
+# Dan and TJ:
+# we don't think we need this any more
 
-
-class ZmqConfig(object):
-    def __init__(self, platform, binds, connects):
-        self.platform = platform
-        self.binds = self._fixup(binds)
-        self.connects = self._fixup(connects)
-        self.base = "tcp://%s:%d"
-
-    def _fixup(self, cfg):
-        for key, value in cfg.items():
-            cfg[key] = (value[0], self.get_port(value[1]))
-        return cfg
-
-    def get_port(self, port_enum):
-        return ZmqPorts.StartingPort + ZmqPorts.Offset * self.platform + port_enum
-
-    def bind_addr(self, zmq_type):
-        if zmq_type in self.binds:
-            return self.base % self.binds[zmq_type]
-            raise ValueError("Unsupported zmq type for bind:", zmq_type)
-
-    def connect_addr(self, zmq_type):
-        if zmq_type in self.connects:
-            return self.base % self.connects[zmq_type]
-        else:
-            raise ValueError("Unsupported zmq type for connect:", zmq_type)
-        
-
-class ZmqBase(object):
-    def __init__(self, name, zmq_config, zmqctx=None):
-        self.name = name
-        self.zmq_config = zmq_config
-        if zmqctx is None:
-            self._zmqctx = zmq.Context()
-        else:
-            self._zmqctx = zmqctx
-
-    def bind(self, zmq_type, *opts):
-        sock = self._zmqctx.socket(zmq_type)
-        for opt in opts:
-            sock.setsockopt_string(*opt)
-        sock.bind(self.zmq_config.bind_addr(zmq_type))
-        return sock
-
-    def connect(self, zmq_type, *opts):
-        sock = self._zmqctx.socket(zmq_type)
-        for opt in opts:
-            sock.setsockopt_string(*opt)
-        sock.connect(self.zmq_config.connect_addr(zmq_type))
-        return sock
-
-
-class ZmqSender(ZmqBase):
-    def __init__(self, name, zmq_config, zmqctx=None):
-        super(__class__, self).__init__(name, zmq_config, zmqctx)
-        self.sock = self.connect(zmq.PUSH)
-
-    def send(self, msg):
-        self.sock.send_pyobj(msg)
-
-
-class ZmqReceiver(ZmqBase):
-    def __init__(self, name, zmq_config, zmqctx=None):
-        super(__class__, self).__init__(name, zmq_config, zmqctx)
-        self.sock = self.bind(zmq.PULL)
-
-    def recv(self):
-        return self.sock.recv_pyobj()
-
-
-class MpiHandler(object):
-    def __init__(self, col_rank):
-        """
-        col_rank : int
-            The rank of the target process that recieves data from
-            this process
-        """
-        self.col_rank = col_rank
-    
-    def send(self, msg):
-        MPI.COMM_WORLD.send(msg, dest=self.col_rank)
-
-    def recv(self):
-        return MPI.COMM_WORLD.recv(source=MPI.ANY_SOURCE)
+#class MpiHandler(object):
+#    def __init__(self, col_rank):
+#        """
+#        col_rank : int
+#            The rank of the target process that recieves data from
+#            this process
+#        """
+#        self.col_rank = col_rank
+#    
+#    def send(self, msg):
+#        MPI.COMM_WORLD.send(msg, dest=self.col_rank)
+#
+#    def recv(self):
+#        return MPI.COMM_WORLD.recv(source=MPI.ANY_SOURCE)
 
 
 class ResultStore(object):
