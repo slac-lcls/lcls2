@@ -47,11 +47,10 @@ plt.show()
 print("rows1: ", rows1)
 print("rows: ", rows)
 
-"""
-print("Timing 1000 events...")
+
+print("Timing 10 events...")
 tic = time.time()
-for i in range(1000):
+for i in range(10):
     r, c, _ = pk.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)
 toc = time.time()
-print("Time (sec) [avg over 1000 events]: ", (toc-tic)/1000.)
-"""
+print("Time (sec) [avg over 1000 events]: ", (toc-tic)/10.)
