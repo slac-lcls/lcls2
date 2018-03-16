@@ -32,7 +32,7 @@ cdef extern from "../../../psalg/psalg/include/Allocator.hh":
     cdef cppclass Heap(Allocator):
         pass
 
-################# Array Wrapper ######################
+################# PyAllocArray1D ######################
 
 from libc.stdlib cimport free
 from cpython cimport PyObject, Py_INCREF
@@ -44,26 +44,13 @@ cnp.import_array()
 # We need to build an array-wrapper class to deallocate our array when
 # the Python object is deleted.
 
-cdef class AllocArray1D:
+cdef class PyAllocArray1D:
     cdef void* shape_ptr
     cdef void* data_ptr
     cdef int size
     cdef int typenum
 
     cdef init(self, void* buffer_ptr, void* data_ptr, int size, int typenum):
-        """ Set the data of the array
-
-        This cannot be done in the constructor as it must recieve C-level
-        arguments.
-
-        Parameters:
-        -----------
-        size: int
-            Length of the array.
-        data_ptr: void*
-            Pointer to the data
-
-        """
         self.shape_ptr = buffer_ptr
         self.data_ptr  = data_ptr
         self.size = size
@@ -178,7 +165,7 @@ cdef class py_peak :
             self.cptr = NULL
 
 
-    # https://groups.google.com/forum/#!topic/cython-users/39Nwqsksdto # TODO: mention this in confluence
+    # https://groups.google.com/forum/#!topic/cython-users/39Nwqsksdto
     @staticmethod
     cdef factory(Peak cpp_obj):
         py_obj = py_peak.__new__(py_peak, _make_obj=False)
@@ -282,19 +269,19 @@ cdef class peak_finder_algos :
     def getPeaks(self):
         cdef cnp.ndarray rows_cgrav, cols_cgrav, intens # make readonly
 
-        arr0 = AllocArray1D()
+        arr0 = PyAllocArray1D()
         arr0.init(<void*> self.cptr.rows.shape(), <void*> self.cptr.rows.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
         rows_cgrav = np.array(arr0, copy=False)
         rows_cgrav.base = <PyObject*> arr0
         self.cptr.rows.incRefCnt() # increment ref count so that C++ doesn't delete array
 
-        arr1 = AllocArray1D()
+        arr1 = PyAllocArray1D()
         arr1.init(<void*> self.cptr.cols.shape(), <void*> self.cptr.cols.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
         cols_cgrav = np.array(arr1, copy=False)
         cols_cgrav.base = <PyObject*> arr1
         self.cptr.cols.incRefCnt()
 
-        arr2 = AllocArray1D()
+        arr2 = PyAllocArray1D()
         arr2.init(<void*> self.cptr.intens.shape(), <void*> self.cptr.intens.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
         intens     = np.array(arr2, copy=False)
         intens.base     = <PyObject*> arr2
