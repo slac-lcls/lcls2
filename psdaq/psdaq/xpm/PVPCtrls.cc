@@ -12,6 +12,13 @@
 
 using Pds_Epics::PVBase;
 
+//  XPM Message Enum
+enum { MsgClear =0,
+       MsgDelay =1,
+       MsgConfig=2,
+       MsgEnable=3,
+       MsgDisable=4, };
+
 namespace Pds {
   namespace Xpm {
 
@@ -124,12 +131,20 @@ namespace Pds {
     CPV(PipelineDepth,  { PVG(_pipelineDepth = TOU(data()));      },
                         { PVP(_pipelineDepth);                    })
 
-    CPV(MsgHeader,      { _ctrl.messageHdr(TOU(data()));          },
+    CPV(MsgHeader,      { _ctrl.msgHeader(TOU(data()));           },
+                        { _ctrl.msgHeader(TOU(data()));           })
+    CPV(MsgInsert,      { if (TOU(data())!=0) _ctrl.msgInsert();  },
                         {                                         })
-    CPV(MsgInsert,      { _ctrl.messageIns();                     },
+    CPV(MsgPayload,     { _ctrl.msgPayload(TOU(data()));          },
+                        { _ctrl.msgPayload(TOU(data()));          })
+    CPV(MsgConfigKey,   { _ctrl.configKey     (TOU(data()));      },
+                        { _ctrl.configKey     (TOU(data()));      })
+    CPV(MsgConfig,      { if (TOU(data())!=0) _ctrl.msg_config(); },
                         {                                         })
-    CPV(MsgPayload,     { PVG(messagePayload(_idx,TOU(data())));  },
-                        { PVP(messagePayload(_idx));              })
+    CPV(MsgEnable,      { if (TOU(data())!=0) _ctrl.msg_enable(); },
+                        {                                         })
+    CPV(MsgDisable,     { if (TOU(data())!=0) _ctrl.msg_disable();},
+                        {                                         })
     CPV(InhInterval,    { PVG(inhibitInt(_idx, TOU(data())));     },
                         { PVP(inhibitInt(_idx));                  })
     CPV(InhLimit,       { PVG(inhibitLim(_idx, TOU(data())));     },
@@ -190,6 +205,10 @@ namespace Pds {
       NPV ( MsgHeader           );
       NPV ( MsgInsert           );
       NPV ( MsgPayload          );
+      NPV ( MsgConfig           );
+      NPV ( MsgConfigKey        );
+      NPV ( MsgEnable           );
+      NPV ( MsgDisable          );
       NPVN( InhInterval         ,4);
       NPVN( InhLimit            ,4);
       NPVN( InhEnable           ,4);
@@ -233,7 +252,9 @@ namespace Pds {
     void PVPCtrls::seqBit    (unsigned v) { _seqBit     = v; }
     void PVPCtrls::dstSelect (unsigned v) { _dstSelect  = v; }
     void PVPCtrls::dstMask   (unsigned v) { _dstMask    = v; }
-    void PVPCtrls::messageHdr(unsigned v) { _msgHdr     = v; }
+    void PVPCtrls::msgHeader (unsigned v) { _msgHdr     = v; }
+    void PVPCtrls::msgPayload(unsigned v) { _msgPayload = v; }
+    void PVPCtrls::configKey (unsigned v) { _cfgKey     = v; }
 
     void PVPCtrls::setL0Select()
     {
@@ -259,13 +280,40 @@ namespace Pds {
       dump();
     }
 
-    void PVPCtrls::messageIns()
+    void PVPCtrls::msgInsert()
     {
+      printf("msg_insert [%x]\n", _msgHdr);
       _sem.take();
-      _m.messageHdr(_partition, _msgHdr);
+      _m.messagePayload(_partition, _msgPayload);
+      _m.messageHdr    (_partition, _msgHdr);
       _sem.give();
     }
-    
+
+    void PVPCtrls::msg_config()
+    {
+      printf("msg_config [%x]\n",_cfgKey);
+      _sem.take();
+      _m.messagePayload(_partition, _cfgKey);
+      _m.messageHdr    (_partition, MsgConfig);
+      _sem.give();
+    }
+
+    void PVPCtrls::msg_enable()
+    {
+      printf("msg_enable\n");
+      _sem.take();
+      _m.messageHdr    (_partition, MsgEnable);
+      _sem.give();
+    }
+
+    void PVPCtrls::msg_disable()
+    {
+      printf("msg_disable\n");
+      _sem.take();
+      _m.messageHdr    (_partition, MsgDisable);
+      _sem.give();
+    }
+
     void PVPCtrls::dump() const
     {
 #ifdef DBUG

@@ -1,4 +1,6 @@
 //g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peakHeap
+// To turn off debug:
+//g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -DNDEBUG -o peakHeap
 
 #include <iostream>
 #include <stdlib.h>
@@ -7,18 +9,22 @@
 #include "psalg/include/LocalExtrema.h"
 #include "psalg/include/Types.h"
 
-//#include "xtcdata/xtc/DescData.hh" // Array
-#include "psalg/include/Array.hh"
+#include "psalg/include/AllocArray.hh"
+#include "psalg/include/Allocator.hh"
 
 #include <chrono> // timer
 typedef std::chrono::high_resolution_clock Clock;
 
 using namespace psalgos;
-using namespace temp;
+using namespace psalg;
 
 int main () {
 
-  PebbleHeap m_heap;
+  //Heap *hptr = new Heap;
+  //Stack *sptr = new Stack;
+  //Stack *sptr1 = new Stack;
+  Stack stack;
+  Stack stack1;
 
   // Step 0: fake data and mask
   unsigned int rows = 185;
@@ -52,8 +58,7 @@ int main () {
   const unsigned pbits = 0;
 
   PeakFinderAlgos *ptr;
-  ptr = new PeakFinderAlgos(seg, pbits);
-  ptr->setHeap(m_heap);
+  ptr = new PeakFinderAlgos(&stack, seg, pbits);
 
   // Step 2: Set params
   const float npix_min = 2;
@@ -68,20 +73,25 @@ int main () {
   const double r0 = 4;
   const double dr = 2;
   const double nsigm = 0;
-  ptr->peakFinderV3r3(data, mask, rows, cols, rank, r0, dr, nsigm);
-
-  ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
-
-  ptr->peakFinderV3r3(data1, mask, rows, cols, rank, r0, dr, nsigm);
-
-  ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
 
   auto tic = Clock::now();
+  ptr->peakFinderV3r3(data, mask, rows, cols, rank, r0, dr, nsigm);
+  auto toc = Clock::now();
+  ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
+  std::cout << chrono::duration_cast<chrono::microseconds>(toc - tic).count() << " microseconds" << std::endl;
 
-  int numEvents = 1000;
+  ptr->setAllocator(&stack1); // simulate PEBBLE
+
+  tic = Clock::now();
+  ptr->peakFinderV3r3(data1, mask, rows, cols, rank, r0, dr, nsigm);
+  toc = Clock::now();
+  ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
+
+  std::cout << chrono::duration_cast<chrono::microseconds>(toc - tic).count() << " microseconds" << std::endl;
+
+  tic = Clock::now();
+  int numEvents = 10;
   for(int i = 0; i < numEvents; i++){
-    PebbleHeap m_heap;
-    ptr->setHeap(m_heap);
     if(i%2==0) {
       ptr->peakFinderV3r3(data, mask, rows, cols, rank, r0, dr, nsigm);
     } else {
@@ -89,11 +99,11 @@ int main () {
     }
     //ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
   }
-
-  auto toc = Clock::now();
+  toc = Clock::now();
   std::cout << "Delta t: " << std::endl
             << std::chrono::duration_cast<std::chrono::microseconds>(toc - tic).count() / numEvents
             << " microseconds" << std::endl;
+
 // DATA
 // Peak 1
 //Seg:  0 Row:   4 Col: 348 Npix: 24 Imax:  995.7 Itot: 2843.5 CGrav r:   4.0 c: 349.0 Sigma r: 0.29 c: 0.86 Rows[   1:   7] Cols[ 345: 351] B:  4.3 N:  1.8 S/N:314.7
@@ -105,6 +115,11 @@ int main () {
 //Seg:  0 Row:   2 Col: 124 Npix: 18 Imax:  994.6 Itot: 2808.5 CGrav r:   2.0 c: 125.0 Sigma r: 0.21 c: 0.85 Rows[   1:   5] Cols[ 121: 127] B:  5.4 N:  2.3 S/N:289.4
 // Peak 2
 //Seg:  0 Row:  10 Col:  21 Npix: 16 Imax:  795.4 Itot: 1611.8 CGrav r:  10.0 c:  20.9 Sigma r: 0.28 c: 0.71 Rows[   7:  13] Cols[  18:  22] B:  4.6 N:  1.7 S/N:241.4
+
+  delete[] data;
+  delete[] data1;
+  delete[] mask;
+  delete ptr;
 
   return 0;
 }

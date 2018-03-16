@@ -1,4 +1,3 @@
-
 """
 1. Start server
 2. Use this API test: python lcls2/psana/pscalib/calib/MDBUtils.py 1 ... 12
@@ -8,18 +7,40 @@ Usage ::
     # Import
     import psana.pscalib.calib.MDBUtils as mu
 
-    # Connect to server etc.
+    # Connect client to server
     client = mu.connect_to_server(host=cc.HOST, port=cc.PORT, )
-    db = mu.db(client, dbname='calib-cspad-0-cxids1-0')
-    db, fs = mu.db_and_fs(client, dbname='calib-cxi12345')
+
+    # Access databases, fs, collections
+    db = mu.database(client, dbname='cdb-cspad-0-cxids1-0')
+    db, fs = mu.db_and_fs(client, dbname='cdb-cxi12345')
     col = mu.collection(db, cname='camera-0-cxids1-0')
 
+    # Get host and port
+    host = mu.client_host(client)
+    port = mu.client_port(client)
+
+    # Get list of database and collection names
+    names = mu.database_names(client)
+    names = mu.collection_names(db, include_system_collections=False)
+
+    status = mu.database_exists(client, dbname)
+    status = mu.collection_exists(db, cname)
+
+    # Delete methods
+    mu.delete_database(client, dbname:str='cdb-cspad-0-cxids1-0')
+    mu.delete_database_obj(odb)
+    mu.delete_collection(db, cname:str)
+    mu.delete_collection_obj(col)
+    mu.delete_document_from_collection(col, id)
+
     # All connect methods in one call
-    detname, expname, client, db_det, db_exp, fs, col_det, col_exp =\
+    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
         mu.connect(host='psanaphi105', port=27017, experiment='cxi12345', detector='camera-0-cxids1-0', verbose=False) 
 
-    # Insert data
-    id_data = mu.insert_data(data, fs)
+    dbname = mu.db_prefixed_name(name:str)
+
+    ts,   = mu._timestamp(time_sec:str,int,float)
+    t, ts = mu.time_and_timestamp(**kwargs)
 
     # Make document
     doc = mu.docdic(data, id_data, **kwargs)
@@ -31,11 +52,37 @@ Usage ::
     # Insert document in collection
     doc_id = mu.insert_document(doc, col)
 
+    # Insert data
+    id_data = mu.insert_data(data, fs)
+
+    id_data_exp, id_data_det, id_exp, id_det = mu.insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs)
+    mu.insert_calib_data(data, **kwargs)
+
+    msg = mu._error_msg(msg:str) 
+
+    mu.valid_experiment(experiment:str)
+    mu.valid_detector(detector:str)
+    mu.valid_ctype(ctype:str)
+    mu.valid_run(run:str)
+    mu.valid_version(version:str)
+    mu.valid_comment(comment:str)
+    #mu.valid_data(data, detector:str, ctype:str)
+
+    mu.insert_constants(data, experiment:str, detector:str, ctype:str, run:str, time_sec:str, **kwargs)
+
     # Find document in collection
     doc  = mu.find_doc(col, query={'data_type' : 'xxxx'})
 
     # Get data
     data = mu.get_data_for_doc(fs, doc)
+
+    keys = mu.document_keys(doc)
+    s_vals, s_keys = mu.document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detector','ctype','run','id_data','data_type'), fmt:str='%24s %10s %11s %20s %16s %4s %30s %10s')
+    s = mu.database_info(client, name, level:int=10, gap:str='  ')
+    s = mu.client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, gap:str='  ')
+
+    # Test methods
+
 """
 #------------------------------
 
@@ -60,21 +107,21 @@ TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 #------------------------------
 
 def connect_to_server(host:str=cc.HOST, port:int=cc.PORT) :
-    """Returns client.
+    """Returns MongoDB client.
     """
     return MongoClient(host, port)
 
 #------------------------------
 
-def db(client, dbname:str='calib-cspad-0-cxids1-0') :
-    """Returns db.
+def database(client, dbname:str) :
+    """Returns db for client and (str) dbname, e.g. dbname='cdb-cspad-0-cxids1-0'
     """
     return client[dbname]
 
 #------------------------------
 
-def db_and_fs(client, dbname:str='calib-cxi12345') :
-    """Returns db and fs.
+def db_and_fs(client, dbname:str) :
+    """Returns db and fs for client and (str) dbname, e.g. dbname='cdb-cxi12345'.
     """
     db = client[dbname]
     fs = gridfs.GridFS(db)
@@ -82,21 +129,96 @@ def db_and_fs(client, dbname:str='calib-cxi12345') :
 
 #------------------------------
 
-def collection(db, cname:str='camera-0-cxids1-0') :
-    """Returns collection.
+def collection(db, cname:str) :
+    """Returns collection for db and (str) cname, e.g. cname='camera-0-cxids1-0'.
     """
     return db[cname]
 
 #------------------------------
 
-def _add_prefix(name:str) -> str :
-    """Returns name with prefix for data-bases.
+def client_host(client) -> str :
+    """Returns client host.
+       ??? returns localhost in stead of psanaphi105 ???
     """
-    assert isinstance(name,str), '_add_prefix parameter should be str'
+    return client.HOST
+    #return client.server_info()
+
+#------------------------------
+
+def client_port(client) -> int :
+    """Returns client port.
+    """
+    return client.PORT
+
+#------------------------------
+
+def database_names(client) :
+    """Returns list of database names for client.
+    """
+    return client.database_names()
+
+#------------------------------
+
+def collection_names(db, include_system_collections=False) :
+    """Returns list of collection names.
+    """
+    return db.collection_names(include_system_collections)
+
+#------------------------------
+
+def database_exists(client, dbname:str) :
+    """Returns True if (str) dbname in the list of databases and False otherwise.
+    """
+    return dbname in database_names(client)
+
+#------------------------------
+
+def collection_exists(db, cname:str) :
+    """Returns True if (str) cname in the list of collections and False otherwise.
+    """
+    return cname in collection_names(db)
+
+#------------------------------
+
+def delete_database(client, dbname:str) :
+    """Deletes database for client and (str) dbname, e.g. dbname='cdb-cspad-0-cxids1-0'.
+    """
+    client.drop_database(dbname)
+
+#------------------------------
+
+def delete_database_obj(odb) :
+    """Deletes database for database object.
+    """
+    odb.dropDatabase()
+
+#------------------------------
+
+def delete_collection(db, cname:str) :
+    """Deletes db collection for database and (str) cname, e.g. cname='camera-0-cxids1-0'.
+    """
+    db.drop_collection(cname)
+
+#------------------------------
+
+def delete_collection_obj(ocol) :
+    ocol.drop()
+
+#------------------------------
+
+def delete_document_from_collection(col, id:str) :
+    col.deleteOne({'_id':id})
+
+#------------------------------
+
+def db_prefixed_name(name:str, prefix='cdb-') -> str :
+    """Returns database name with prefix, e.g. name='cxi12345' -> 'cdb-cxi12345'.
+    """
+    assert isinstance(name,str), 'db_prefixed_name parameter should be str'
     nchars = len(name)
-    assert nchars > 0 and nchars < 128, 'name length should be betwen 0 and 128'
+    assert nchars > 0 and nchars < 128, 'name length should be <128 characters'
     logger.info('name %s has %d chars' % (name, nchars))
-    return 'calib-%s' % name
+    return '%s%s' % (prefix, name)
 
 #------------------------------
 
@@ -109,14 +231,14 @@ def connect(**kwargs) :
     detname = kwargs.get('detector', 'camera-0-cxids1-0')
     verbose = kwargs.get('verbose', False)
 
-    dbname_exp = _add_prefix(expname)
-    dbname_det = _add_prefix(detname)
+    dbname_exp = db_prefixed_name(expname)
+    dbname_det = db_prefixed_name(detname)
 
     t0_sec = time()
 
     client = connect_to_server(host, port)
-    db_exp, fs = db_and_fs(client, dbname=dbname_exp)
-    db_det = db(client, dbname=dbname_det)
+    db_exp, fs_exp = db_and_fs(client, dbname=dbname_exp)
+    db_det, fs_det = db_and_fs(client, dbname=dbname_det)
     col_det = collection(db_det, cname=detname)
     col_exp = collection(db_exp, cname=expname)
 
@@ -128,65 +250,65 @@ def connect(**kwargs) :
         print('col_det : %s' % col_det.name)
         print('==== Connect to host: %s port: %d connection time %.6f sec' % (host, port, time()-t0_sec))
 
-    return  detname, expname, client, db_det, db_exp, fs, col_det, col_exp
+    return client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det
 
 #------------------------------
 #------------------------------
 #------------------------------
 
-def _timestamp(time_sec:int) -> str :
-    return gu.str_tstamp(TSFORMAT, time_sec)
+def _timestamp(time_sec:str,int,float) -> str :
+    return gu.str_tstamp(TSFORMAT, int(time_sec))
 
 #------------------------------
 
-def _time_and_timestamp(**kwargs) :
+def time_and_timestamp(**kwargs) :
     """Returns "time_sec" and "time_stamp" from **kwargs.
        If one of these parameters is missing, another is reconstructed from available one.
        If both missing - current time is used.
     """
-
     time_sec   = kwargs.get('time_sec', None)
     time_stamp = kwargs.get('time_stamp', None)
 
     if time_sec is not None :
-        assert isinstance(time_sec, int) or\
-               isinstance(time_sec, float) , '_time_and_timestamp - parameter time_sec should be int or float'
-        assert 0 < time_sec<5000000000,  '_time_and_timestamp - parameter time_sec should be in allowed range'
+        assert isinstance(time_sec, str) ,    'time_and_timestamp - parameter time_sec should be str'
+        int_time_sec = int(time_sec)
+        assert 0 < int_time_sec < 5000000000, 'time_and_timestamp - parameter time_sec should be in allowed range'
 
         if time_stamp is None : 
-            time_stamp = gu.str_tstamp(TSFORMAT, time_sec)
+            time_stamp = gu.str_tstamp(TSFORMAT, int_time_sec)
     else :
         if time_stamp is None : 
             time_sec, time_stamp = gu.time_and_stamp(TSFORMAT)
         else :
             time_sec = gu.time_sec_from_stamp(TSFORMAT, time_stamp)
 
-    return time_sec, time_stamp
+    return str(time_sec), time_stamp
 
 #------------------------------
 
 def docdic(data, id_data, **kwargs) :
     """Returns dictionary for db document in style of JSON object.
     """
-    time_sec, time_stamp = _time_and_timestamp(**kwargs)
-
     doc = {
-          'experiment' : kwargs.get('experiment', 'cxi12345'),
+          'experiment' : kwargs.get('experiment', None),
           'run'        : kwargs.get('run', '0'),
-          'detector'   : kwargs.get('detector', 'camera-0-cxids1-0'),
-          'ctype'      : kwargs.get('ctype', 'pedestals'),
-          'time_sec'   : '%d' % time_sec,
-          'time_stamp' : time_stamp,
-          'version'    : 'v01',
+          'run_end'    : kwargs.get('run_end', 'end'),
+          'detector'   : kwargs.get('detector', None),
+          'ctype'      : kwargs.get('ctype', None),
+          'time_sec'   : kwargs.get('time_sec', None),
+          'time_stamp' : kwargs.get('time_stamp', None),
+          'version'    : kwargs.get('version', 'v00'),
+          'comment'    : kwargs.get('comment', ''),
+          'extpars'    : kwargs.get('extpars', None),
           'uid'        : gu.get_login(),
           'host'       : gu.get_hostname(),
           'cwd'        : gu.get_cwd(),
-          'comments'   : ['very good constants', 'eat this document before reading!'],
           'id_data'    : id_data,
           }
 
     if isinstance(data, np.ndarray) :
         doc['data_type']  = 'ndarray'
+        doc['data_dtype'] = str(data.dtype)
         doc['data_size']  = '%d' % data.size
         doc['data_ndim']  = '%d' % data.ndim
         doc['data_shape'] = str(data.shape)
@@ -206,14 +328,18 @@ def docdic(data, id_data, **kwargs) :
 
 def print_doc(doc) :
     print('Data document attributes')
+    if doc is None :
+        print('print_doc: Data document is None...')
+        return
+        
     for k,v in doc.items() : 
         print('%16s : %s' % (k,v))
 
 #------------------------------
 
-def print_doc_keys(doc, keys=('run', 'time_stamp', 'data_size', 'id_data')) :
+def print_doc_keys(doc, keys=('run', 'time_stamp', 'data_size', 'id_data', 'extpars')) :
     for k in keys :
-        print('  %s : %s' % (k, doc[k]),)
+        print('  %s : %s' % (k, doc.get(k,'N/A'),))
     print('')
 
 #------------------------------
@@ -251,41 +377,49 @@ def insert_data(data, fs) :
 
 #------------------------------
 
-def insert_data_and_two_docs(data, fs, col_exp, col_det, **kwargs) :
+def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     """For open connection inserts calib data and two documents.
        Returns inserted id_data, id_exp, id_det.
     """
     verbose = kwargs.get('verbose', False)
 
     t0_sec = time()
-    id_data = insert_data(data, fs)
+    id_data_exp = insert_data(data, fs_exp)
+    id_data_det = insert_data(data, fs_det)
     if verbose :
-        print('Insert data in %s id_data: %s time %.6f sec' % (fs, id_data, time()-t0_sec))
+        print('Insert data time %.6f sec' % (time()-t0_sec))
+        print('  - in fs_exp %s id_data_exp: %s' % (fs_exp, id_data_exp))
+        print('  - in fs_det %s id_data_det: %s' % (fs_det, id_data_det))
 
-    doc = docdic(data, id_data, **kwargs)
-    if verbose :
-        print_doc(doc)
+    doc = docdic(data, id_data_exp, **kwargs)
+    if verbose : 
+         print_doc(doc)
+         print('XXX: inset data_type: "%s"' % doc['data_type'])
 
     t0_sec = time()
     id_exp = insert_document(doc, col_exp)
-    doc['id_exp'] = id_exp
+    doc['id_data'] = id_data_det # override
+    doc['id_exp']  = id_exp      # add
     id_det = insert_document(doc, col_det)
     if verbose :
         print('Insert 2 docs time %.6f sec' % (time()-t0_sec))
+        print('  - in collection %20s id_exp : %s' % (col_exp.name, id_exp))
+        print('  - in collection %20s id_det : %s' % (col_det.name, id_det))
 
-    return id_data, id_exp, id_det
+    return id_data_exp, id_data_det, id_exp, id_det
 
 #------------------------------
 
 def insert_calib_data(data, **kwargs) :
     """Connects to calibration data base and inserts calib data.
     """
-    detname, expname, client, db_det, db_exp, fs, col_det, col_exp = connect(**kwargs)
-    id_data, id_exp, id_det = insert_data_and_two_docs(data, fs, col_exp, col_det, **kwargs)
+    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(**kwargs)
+    #id_data_exp, id_data_det, id_exp, id_det = \
+    _,_,_,_ = insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs)
 
 #------------------------------
 
-def _error_msg(msg) :
+def _error_msg(msg:str) :
     return 'wrong parameter %s' % msg
 
 #------------------------------
@@ -302,52 +436,57 @@ def valid_ctype(ctype:str) :
     assert isinstance(ctype,str), _error_msg('type')
     assert 4 < len(ctype) < 32, _error_msg('length')
 
-def valid_run(run:int) :
-    assert isinstance(run,int), _error_msg('type')
-    assert -1 < run < 10000, _error_msg('value')
+def valid_run(run:str) :
+    assert isinstance(run,str), _error_msg('type')
+    assert -1 < int(run) < 10000, _error_msg('value')
 
 def valid_version(version:str) :
     assert isinstance(version,str), _error_msg('type')
     assert 1 < len(version) < 32, _error_msg('length')
 
-def valid_comments(comments:(list,tuple)) :
-    assert isinstance(comments,tuple) or\
-           isinstance(comments,list), _error_msg('type')
-    assert len(comments) < 1000, _error_msg('length')
+def valid_version(version:str) :
+    assert isinstance(version,str), _error_msg('type')
+    assert len(version) < 128, _error_msg('length')
+
+def valid_comment(comment:str) :
+    assert isinstance(comment,str), _error_msg('type')
+    assert len(comment) < 1000000, _error_msg('length')
 
 def valid_data(data, detector:str, ctype:str) :
     pass
 
 #------------------------------
 
-def insert_constants(data, experiment:str, detector:str, ctype:str, run:int, time_sec_or_stamp:(int,str), version:str='V001', **kwargs) :
+def insert_constants(data, experiment:str, detector:str, ctype:str, run:str, time_sec:str, **kwargs) :
     """Checks validity of input parameters and call insert_calib_data.
     """
-    _time_sec   = time_sec_or_stamp if isinstance(time_sec_or_stamp, int) else None
-    _time_stamp = time_sec_or_stamp if isinstance(time_sec_or_stamp, str) else None
-    time_sec, time_stamp = _time_and_timestamp(time_sec=_time_sec, time_stamp=_time_stamp)
-   
-    comments = kwargs.get('comments',[]),
+    _time_sec, _time_stamp = time_and_timestamp(time_sec=time_sec,\
+                                                time_stamp=kwargs.get('time_stamp', None))
+    _version = kwargs.get('version', 'v00')
+    _comment = kwargs.get('comment', ''),
 
     valid_experiment(experiment)
     valid_detector(detector)
     valid_ctype(ctype)
     valid_run(run)
-    valid_comments(comments)
+    valid_version(_version)
+    valid_comment(_comment)
     valid_data(data, detector, ctype)
 
     kwa = {
           'experiment' : experiment,
           'run'        : run,
+          'run_end'    : kwargs.get('run_end', end),
           'detector'   : detector,
           'ctype'      : ctype,
-          'time_sec'   : time_sec,
-          'time_stamp' : time_stamp,
-          'version'    : version,
-          'comments'   : comments,
+          'time_sec'   : _time_sec,
+          'time_stamp' : _time_stamp,
+          'version'    : _version,
+          'comment'    : _comment,
           'host'       : kwargs.get('host', cc.HOST),
           'port'       : kwargs.get('port', cc.PORT),
-          'verbose'    : kwargs.get('verbose', False)
+          'verbose'    : kwargs.get('verbose', False),
+          'extpars'    : kwargs.get('extpars', None),
           }
 
     insert_calib_data(data, **kwa)
@@ -359,6 +498,10 @@ def insert_constants(data, experiment:str, detector:str, ctype:str, run:int, tim
 def get_data_for_doc(fs, doc) :
     """Returns data referred by the document.
     """
+    if doc is None :
+        print('get_data_for_doc: Data document is None...')
+        return
+
     try :
         out = fs.get(doc['id_data'])
     except:
@@ -367,11 +510,19 @@ def get_data_for_doc(fs, doc) :
         sys.exit(msg)
 
     s = out.read()
-    dtype = doc['data_type']
-    if dtype == 'str'     : return s.decode()
-    if dtype == 'ndarray' : 
-        nda = np.fromstring(s)
+    data_type = doc['data_type']
+    print('get_data_for_doc data_type: %s' % data_type)
+    
+    if data_type == 'str'     : return s.decode()
+    if data_type == 'ndarray' : 
+        str_dtype = doc['data_dtype']
+        print('XXX str_dtype:', str_dtype)
+        #dtype = np.dtype(eval(str_dtype))
+        #print('XXX  np.dtype:', dtype)
+        nda = np.fromstring(s, dtype=str_dtype)
         nda.shape = eval(doc['data_shape']) # eval converts string shape to tuple
+        print('XXX nda.shape =', nda.shape)
+
         #str_sh = doc['data_shape'] #.lstrip('(').rstrip(')')
         #nda.shape = tuple(np.fromstring(str_sh, dtype=int, sep=','))
         #print_ndarr(nda, 'XXX: nda re-shaped')
@@ -385,7 +536,7 @@ def find_doc(col, query={'data_type' : 'xxxx'}) :
     """
     #tstamp = kwargs.get('time_stamp', '2018-02-05T17:38:33-0800')
 
-    #query = {'run': 125}
+    #query = {'run': '125'}
     #query = {'time_stamp' : tstamp} 
     #query = {
     #    'experiment' : kwargs.get('experiment', 'cxi12345'),
@@ -398,8 +549,8 @@ def find_doc(col, query={'data_type' : 'xxxx'}) :
     #    'id_data'    : id_data,
     #    }
 
-    #dtype  = kwargs.get('data_type', 'N/A')
-    #query = {'data_type' : dtype}
+    #data_type  = kwargs.get('data_type', 'N/A')
+    #query = {'data_type' : data_type}
     #query = {'data_type' : 'xxxx'}
 
     try :
@@ -422,38 +573,122 @@ def find_doc(col, query={'data_type' : 'xxxx'}) :
     return docs[0]
 
 #------------------------------
-#----------- TEST -------------
+
+def document_keys(doc) -> str :
+    """Returns strings of document keys. 
+    """
+    keys = doc.keys()
+    return 'doc %d keys: %s' % (len(keys), ' '.join([k for k in keys]))
+
 #------------------------------
 
-def get_test_nda() :
+def document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detector','ctype','run','id_data','data_type'),\
+                  fmt:str='%24s %10s %11s %20s %16s %4s %30s %10s') -> str :
+    """Returns strings for formatted document values and title made of keys. 
+    """
+    vals = tuple([str(doc.get(k,None)) for k in keys])
+    return fmt % vals, fmt % keys
+
+#------------------------------
+
+def database_info(client, name, level:int=10, gap:str='  ') -> str :
+    """Returns string with database info
+    """
+    dbname = db_prefixed_name(name)
+
+    dbnames = database_names(client)
+    #assert dbname in dbnames, 'dbname: %s is not found in the %s' % (dbname, str(dbnames))
+    if not(dbname in dbnames) :
+        return 'dbname: %s is not found in the list of databases:\n%s' % (dbname, str(dbnames))
+
+    s = '%s\ndbnames %s' % (gap, str(dbnames))
+    db = database(client, dbname)
+    cnames = collection_names(db)
+    s += '\n%sDB %s has %d collections: %s' % (gap, dbname.ljust(12), len(cnames), str(cnames))
+    if level==1 : return s
+
+    for cname in cnames :
+        col = collection(db, cname) # or db[cname]
+        docs = col.find()
+        s += '\n%s%sCOL %s has %d docs' % (gap, gap, cname.ljust(12), docs.count())
+        #for idoc, doc in enumerate(docs) :
+    if level==2 : return s
+
+    col = collection(db, name)
+    docs = col.find()
+    s += '\n%s%sDetails for collection %s %d documents' % (gap, gap, name, docs.count())
+ 
+    if docs.count() > 0 :
+        doc = docs[0]
+        s += ':\n%s%s%s' % (gap, gap, document_keys(doc)) # str(doc.keys()))
+        _, title = document_info(doc)
+        s += '\n%s%s%s %s' % (gap, gap, 'doc#', title)
+        for idoc, doc in enumerate(docs) :
+            vals,_ = document_info(doc)
+            s += '\n%s%s%4d %s' % (gap, gap, idoc, vals)
+    return s
+
+#------------------------------
+
+def client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, gap:str='  ') -> str :
+    """Returns string with generic information about MongoDB client (or host:port) 
+    """
+    _client = client if client is not None else connect_to_server(host, port)
+    #s = '\nMongoDB client host:%s port:%d' % (client_host(_client), client_port(_client))
+    dbnames = database_names(_client)
+    s = '\n%shas %d databases: %s' % (gap, len(dbnames), str(dbnames))
+    if level==1 : return s
+    for idb, dbname in enumerate(dbnames) :
+        db = database(_client, dbname) # client[dbname]
+        cnames = collection_names(db)
+        s += '\n%sDB %s has %2d collections: %s' % (gap, dbname.ljust(12), len(cnames), str(cnames))
+        if level==2 : continue
+        for icol, cname in enumerate(cnames) :
+            col = collection(db, cname) # or db[cname]
+            docs = col.find()
+            s += '\n%s%sCOL %s has %d docs' % (gap, gap, cname.ljust(12), docs.count())
+            #for idoc, doc in enumerate(docs) :
+            if docs.count() > 0 :
+                doc = docs[0]
+                s += ': %s' % (str(doc.keys()))
+                #print('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
+            if level==3 : continue
+    return s
+
+#------------------------------
+#----------- TEST -------------
+#------------------------------
+if __name__ == "__main__" :
+
+  def get_test_nda() :
     """Returns random standard nupmpy array for test purpose.
     """
     import psana.pyalgos.generic.NDArrGenerators as ag
     return ag.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=np.float)
 
-def get_test_dic() :
+  def get_test_dic() :
     """Returns dict for test purpose.
     """
     arr = np.array(range(12))
     arr.shape = (3,4)
     return {'1':1, 5:'super', 'a':arr}
 
-def get_test_txt() :
+  def get_test_txt() :
     """Returns text for test purpose.
     """
     return '%s\nThis is a string\n to test\ncalibration storage' % gu.str_tstamp()
 
 #------------------------------
 
-def test_connect(tname) :
+  def test_connect(tname) :
     """Connect to host, port get db handls.
     """
-    detname, expname, client, db_det, db_exp, fs, col_det, col_exp =\
+    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
         connect(host=cc.HOST, port=cc.PORT, experiment='cxi12345', detector='camera-0-cxids1-0', verbose=True) 
 
 #------------------------------
 
-def test_insert_one(tname) :
+  def test_insert_one(tname) :
     """Insert one calibration data in data base.
     """
     data = None 
@@ -462,10 +697,10 @@ def test_insert_one(tname) :
     elif tname == '3' : data = get_test_dic(); print('dict:', data)
 
     #insert_calib_data(data, host=cc.HOST, port=cc.PORT, experiment='cxi12345', detector='camera-0-cxids1-0',\
-    #                  run=10, ctype='pedestals', time_sec=time(), verbose=True)
+    #                  run='10', ctype='pedestals', time_sec=str(int(time())), verbose=True)
 
-    #insert_constants(data, 'cxi12345', 'camera-0-cxids1-0', 'pedestals', 10, 1600000000, 'V001', verbose=True)
-    insert_constants(data, 'cxi12345', 'camera-0-cxids1-0', 'pedestals', 10, '2018-01-01T00:00:00-0800', 'V001', verbose=True)
+    insert_constants(data, 'cxi12345', 'camera-0-cxids1-0', 'pedestals', '10', '1600000000', 'V001', verbose=True,\
+                     time_stamp='2018-01-01T00:00:00-0800', )
     #t0_sec = time()
     #id_data = insert_data(data, fs)
     #print('Insert data in %s id_data: %s time %.6f sec' % (fs, id_data, time()-t0_sec))
@@ -480,10 +715,10 @@ def test_insert_one(tname) :
 
 #------------------------------
 
-def test_insert_many(tname) :
+  def test_insert_many(tname) :
     """Insert many documents in loop
     """
-    detname, expname, client, db_det, db_exp, fs, col_det, col_exp =\
+    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
         connect(host=cc.HOST, port=cc.PORT, experiment='cxi12345', detector='camera-0-cxids1-0', verbose=True)
 
     t_data = 0
@@ -495,15 +730,15 @@ def test_insert_many(tname) :
         print_ndarr(data, 'data nda') 
 
         t0_sec = time()
-        id_data, id_exp, id_det = insert_data_and_two_docs(data, fs, col_exp, col_det,\
-             experiment=expname, detector=detname, ctype='pedestals', time_sec=time(), run=10, verbose=True)
+        id_data_exp, id_data_det, id_exp, id_det = insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det,\
+             experiment=expname, detector=detname, ctype='pedestals', time_sec=str(int(time())), run='10', verbose=True)
 
         #id_data = insert_data(nda, fs)
         dt_sec = time() - t0_sec
         t_data += dt_sec
         print('Insert data in %s id_data: %s time %.6f sec ' % (fs, id_data, dt_sec))
 
-        #doc = docdic(nda, id_data, experiment=expname, detector=detname, run=10, ctype='pedestals')
+        #doc = docdic(nda, id_data, experiment=expname, detector=detname, run='10', ctype='pedestals')
         #print_doc_keys(doc)
 
         #t0_sec = time()
@@ -517,17 +752,17 @@ def test_insert_many(tname) :
 
 #------------------------------
 
-def test_get_data(tname) :
+  def test_get_data(tname) :
     """Get doc and data
     """
-    detname, expname, client, db_det, db_exp, fs, col_det, col_exp = connect(verbose=True)
+    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(verbose=True)
 
     t0_sec = time()
-    dtype='any' 
-    if tname == '11' : dtype='str' 
-    if tname == '12' : dtype='ndarray' 
+    data_type='any' 
+    if tname == '11' : data_type='str' 
+    if tname == '12' : data_type='ndarray' 
 
-    doc = find_doc(col_det) # query={'data_type' : 'xxxx'}
+    doc = find_doc(col_det, query={'data_type' : data_type})
     print('Find doc time %.6f sec' % (time()-t0_sec))
     print('doc:\n', doc)
     print_doc(doc)
@@ -539,6 +774,34 @@ def test_get_data(tname) :
 
 #------------------------------
 
+  def test_database_content(tname, level=3) :
+    """Insert many documents in loop
+    """
+    #client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
+    #    connect(host=cc.HOST, port=cc.PORT)
+
+    client = connect_to_server(host=cc.HOST, port=cc.PORT)
+    print('host:%s port:%d' % (client_host(client), client_port(client)))
+    dbnames = database_names(client)
+    print('databases: %s' % str(dbnames))
+    for idb, dbname in enumerate(dbnames) :
+        db = database(client, dbname) # client[dbname]
+        cnames = collection_names(db)
+        print('==== DB %2d: %12s # cols :%2d' % (idb, dbname, len(cnames)))
+        if level==1 : continue
+        for icol, cname in enumerate(cnames) :
+            col = collection(db, cname) # or db[cname]
+            docs = col.find()
+            print('     COL %2d: %12s #docs: %d' % (icol, cname.ljust(12), docs.count()))
+            if level==2 : continue
+            #for idoc, doc in enumerate(docs) :
+            if docs.count() > 0 :
+                #print('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
+                doc = docs[0]
+                print('%s doc[0] %s' % (10*' ', str(doc.keys())))
+
+#------------------------------
+
 if __name__ == "__main__" :
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
                         datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO) # WARNING
@@ -547,6 +810,7 @@ if __name__ == "__main__" :
     if   tname == '0' : test_connect(tname);
     elif tname in ('1','2','3') : test_insert_one(tname);
     elif tname == '4' : test_insert_many(tname)
+    elif tname == '5' : test_database_content(tname)
     elif tname in ('11','12','13') : test_get_data(tname)
     else : print('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)

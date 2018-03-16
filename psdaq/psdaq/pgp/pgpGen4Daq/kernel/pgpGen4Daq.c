@@ -90,8 +90,6 @@ module_exit(PgpGen4Daq_Exit);
 #define ERROR -1
 
 #define MON_BUFFER_SIZE 0x10000
-#define RX_BUFFER_SIZE (2*1024*1024)
-#define RX_BUFFERS 0x80
 
 // Global Variable
 struct DaqDevice gDaqDevices[MAX_PCI_DEVICES];
@@ -145,49 +143,21 @@ ssize_t PgpGen4Daq_Write(struct file *filp, const char* buffer, size_t count, lo
 // Returns read count on success. Error code on failure.
 ssize_t PgpGen4Daq_Read(struct file *filp, char *buffer, size_t count, loff_t *f_pos) {
   ssize_t            ret;
-  ssize_t            res;
   struct Client*  client = (struct Client *)filp->private_data;
   struct DaqDevice*  dev = client->dev;
  
-  struct DmaReadData rd;
-
-  // Verify that size of passed structure
-  if ( count != sizeof(struct DmaReadData) ) {
-    dev_warn(dev->device,
-             "Read: Called with incorrect size. Got=%li, Exp=%li\n",
-             count,sizeof(struct DmaReadData));
-    return(-1);
-  }
-
-  // Copy read structure
-  if ( (ret=copy_from_user(&rd,buffer,sizeof(struct DmaReadData)))) {
-    dev_warn(dev->device,
-             "Read: failed to copy struct from user space ret=%li, user=%p kern=%p\n",
-             ret, (void *)buffer, (void *)&rd);
-    return -1;
-  }
-
   //
   //  Read monitoring buffer
   //
-  if ( (ret=copy_to_user((void*)rd.data, dev->monAddr, MON_BUFFER_SIZE) )) {
+  if ( (ret=copy_to_user((void*)buffer, dev->monAddr, MON_BUFFER_SIZE) )) {
     dev_warn(dev->device,
              "Read: failed to copy data to user space ret=%li,\
  user=%p kern=%p size=%u.\n",
-             ret, (void*)rd.data, dev->monAddr, MON_BUFFER_SIZE);
-    res = -1;
+             ret, (void*)buffer, dev->monAddr, MON_BUFFER_SIZE);
+    ret = -1;
   }
 
-  if ( (ret=copy_to_user(buffer, &rd, sizeof(rd))) ) {
-    dev_warn(dev->device,
-             "Read: failed to copy struct to user space ret=%li, user=%p, kern=%p\n",
-             ret, (void*)buffer, (void*)&rd);
-    res = -1;
-  }
-  else
-    res = ret;
-
-  return res;
+  return ret;
 }
 
 // IRQ Handler
@@ -296,6 +266,7 @@ static int PgpGen4Daq_Probe(struct pci_dev *pcidev, const struct pci_device_id *
 
   iowrite32((dev->monHandle>> 0)&0xffffffff, (__u32*)dev->reg+(0x00800014>>2));
   iowrite32((dev->monHandle>>32)&0x000000ff, (__u32*)dev->reg+(0x00800018>>2));
+  iowrite32(1, (__u32*)dev->reg+(0x00800010>>2));
 
   dev->client[NUMBER_OF_CLIENTS].dev = dev;
 
@@ -335,7 +306,7 @@ static void PgpGen4Daq_Remove(struct pci_dev *pcidev) {
     unregister_chrdev_region(MKDEV(dev->major,0), NUMBER_OF_MINOR_DEVICES);
 
     // Disable device
-    pci_disable_device(pcidev);
+    //    pci_disable_device(pcidev);
     dev->baseHdwr = 0;
     printk(KERN_INFO"%s: Remove: %s is unloaded. Maj=%i\n", MOD_NAME, PGPCARD_VERSION, dev->major);
   }

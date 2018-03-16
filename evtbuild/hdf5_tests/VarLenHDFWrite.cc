@@ -29,7 +29,7 @@ void loop_write(const char* filename, size_t loop_limit, hsize_t chunk_size, siz
     hsize_t vl_size[1] = {ext_size};    // initial size of data
 
     // Declare data to append. It's full of garbage from memory
-    int data_ext[num_bytes];
+    int data_ext[num_bytes/4];// = {0,1,2,3,4,5,6,7,8,9};
 
     // Variable length structure for data
     hvl_t dat[1];
@@ -57,11 +57,10 @@ void loop_write(const char* filename, size_t loop_limit, hsize_t chunk_size, siz
 
     // Write data to the dataset.
     for(size_t i=0; i<loop_limit; i++){
+        vl_size[0] = i+1;
+        offset[0] = i; 
 
-        vl_size[0] += dimsext[0]*i;
-        offset[0] = vl_size[0]-1;
         dataset->extend(vl_size);
-
         DataSpace *filespace = new DataSpace(dataset -> getSpace ());
         filespace->selectHyperslab(H5S_SELECT_SET, dimsext, offset);
 
@@ -93,15 +92,24 @@ void loop_write(const char* filename, size_t loop_limit, hsize_t chunk_size, siz
 
 int main (int argc, char *argv[])
 {
-    printf("%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s\n", "Chunk size", "Loop limit", "Bytes/extension", "Duration (ms)", "Filesize (MB)", "HDF Ratio", "Write speed (MB/s)", "Frequency (kHz)");
+    //  printf("%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s\n", "Chunk size", "Loop limit", "Bytes/extension", "Duration (ms)", "Filesize (MB)", "HDF Ratio", "Write speed (MB/s)", "Frequency (kHz)");
      
-    int loop_limit = 10000;
-    int num_bytes = 1000000;
-    // Increment the chunk size by powers of two up to the loop limit
-    for(size_t i=0; pow(2,i)<loop_limit;i++){
-        loop_write(argv[1], loop_limit,pow(2,i),num_bytes);
-    }
+   //  int loop_limit = 10;
+//     int num_bytes = 1000000;
+//     //Increment the chunk size by powers of two up to the loop limit
+// //    for(size_t i=0; pow(2,i)<loop_limit;i++){
 
+//     // void loop_write(const char* filename, size_t loop_limit, hsize_t chunk_size, size_t num_bytes){
+//     auto chunk_size = (hsize_t) pow(2,(int)argv[3])
+//     loop_write(argv[1], (size_t)argv[2],(hsize_t)argv[3],(size_t)argv[4]);
+//         //  }
+    
+    // loop_write(argv[1], loop_limit,1,num_bytes);
+    auto chunk_size = (hsize_t) atoi(argv[3]);
+    if(atoi(argv[3])==1){
+          printf("%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s\n", "Chunk size", "Loop limit", "Bytes/extension", "Duration (ms)", "Filesize (MB)", "HDF Ratio", "Write speed (MB/s)", "Frequency (kHz)");
+    };
+    loop_write(argv[1], (size_t)atoi(argv[2]), chunk_size,(size_t)atoi(argv[4]));
     return 0;  // successfully terminated
 }
 

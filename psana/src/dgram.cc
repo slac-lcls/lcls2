@@ -467,11 +467,11 @@ static PyMemberDef dgram_members[] = {
       T_OBJECT_EX, offsetof(PyDgramObject, dict),
       0,
       (char*)"attribute dictionary" },
-    { (char*)"file_descriptor",
+    { (char*)"_file_descriptor",
       T_INT, offsetof(PyDgramObject, file_descriptor),
       0,
       (char*)"attribute file_descriptor" },
-    { (char*)"offset",
+    { (char*)"_offset",
       T_INT, offsetof(PyDgramObject, offset),
       0,
       (char*)"attribute offset" },
@@ -484,7 +484,7 @@ static PyObject* dgram_assign_dict(PyDgramObject* self) {
 }
 
 static PyMethodDef dgram_methods[] = {
-    {"assign_dict", (PyCFunction)dgram_assign_dict, METH_NOARGS,
+    {"_assign_dict", (PyCFunction)dgram_assign_dict, METH_NOARGS,
      "Assign dictionary to the dgram"
     },
     {NULL}  /* Sentinel */

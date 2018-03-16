@@ -489,7 +489,7 @@ void TstEbOutlet::post(const Batch* batch)
              _batchCount, idx, bdg, pid, extent, dst, rmtAdx);
     }
 
-    if (_transport.post(bdg, extent, dst, (_id << 24) + idx))  break;
+    if (_transport.post(dst, bdg, extent, idx * maxBatchSize(), (_id << 24) + idx))  break;
   }
   auto t1 = std::chrono::steady_clock::now();
 

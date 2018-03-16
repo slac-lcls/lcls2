@@ -13,21 +13,25 @@ warnings.filterwarnings("ignore")
 
 #plt.style.use('ggplot')
 
+
 if plt.get_fignums():
 	for axe in ax:
 		axe.clear()
 else:	
-	fig, ax = plt.subplots(3, sharex=True, figsize=(6*1.6,6))
-		
-		
+	fig, ax = plt.subplots(3, sharex=True, figsize=(6*1.6,6))		
+	
 def plot_HF_data(filename):
+
+	
+	fns = filename.split('_')
+	
 	data = np.loadtxt(filename, skiprows=1)
 	
 
 	ax[0].semilogx(data[:,0], data[:,6], 'C0',lw=3)
 	ax[2].axhline(8, c='r',linestyle='--', lw=2)
 	ax[1].semilogx(data[:,0], data[:,3]/1000, 'C0',lw=3)
-	ax[2].semilogx(data[:,0], data[:,5]*8, 'C0',lw=3)
+	ax[2].semilogx(data[:,0], data[:,4], 'C0',lw=3)
 	
 	
 	
@@ -48,11 +52,17 @@ def plot_HF_data(filename):
 		   
 
 	plt.tight_layout()
-	fig.suptitle('HDF test results for %s writing' % filename[:2])
-	fig.subplots_adjust(top=0.93)
+	fig.suptitle('HDF %s test results for %s %s' % (fns[1], fns[0], fns[-1][:-4]))
+	fig.subplots_adjust(top=0.9)
 
 
-	fig.savefig('HDF_%s_write_test.pdf' % filename[:2])
-	
-#plot_HF_data("HF_2bytes.txt")
-plot_HF_data("VL_1M.txt")
+	fig.savefig('HDF_%s_%s_%s_test.pdf' % (fns[1], fns[0],fns[-1][:-4]))
+
+plot_HF_data("HF_2byte_write.txt")	
+#plot_HF_data("HF_2byte_read.txt")	
+#plot_HF_data("HF_1M_write.txt")	
+#plot_HF_data("HF_1M_read.txt")	
+#plot_HF_data("VL_1M_read.txt")
+#plot_HF_data("VL_1M_write.txt")
+#plot_HF_data("VL_2byte_read.txt")
+#plot_HF_data("VL_2byte_write.txt")

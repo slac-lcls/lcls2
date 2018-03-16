@@ -1,16 +1,10 @@
 
 //-----------------------------
 
-//#include "psalgos/Types.h" // TwoIndexes
 #include "../include/LocalExtrema.h"
 #include <sstream>   // for stringstream
-//#include <cmath>     // floor, ceil
-//#include <iomanip>   // for std::setw
 
 //-----------------------------
-
-//typedef psalgos::types::TwoIndexes TwoIndexes;
-//typedef psalgos::localextrema::TwoIndexes TwoIndexes;
 
 using namespace std;
 
@@ -22,7 +16,6 @@ namespace localextrema {
 
 std::vector<TwoIndexes> evaluateDiagIndexes(const size_t& rank)
 {
-  //MsgLog(_name(), debug, "in evaluateDiagIndexes, rank=" << rank);
 
   std::vector<TwoIndexes> v_inddiag;
 
@@ -46,16 +39,14 @@ std::vector<TwoIndexes> evaluateDiagIndexes(const size_t& rank)
     }
   }
 
-  //if(m_pbits & 2) printMatrixOfDiagIndexes();
-
   return v_inddiag;
 }
 
-Array<TwoIndexes> evaluateDiagIndexes_drp(const size_t& rank, Heap& heap) {
+AllocArray1D<TwoIndexes> evaluateDiagIndexes_drp(const size_t& rank, Allocator *allocator) {
 
   int indmax =  rank;
   int indmin = -rank;
-  Array<TwoIndexes> arr_inddiag(heap, (indmax-indmin+1)*(indmax-indmin+1)*sizeof(TwoIndexes), 1);
+  AllocArray1D<TwoIndexes> arr_inddiag(allocator, (indmax-indmin+1)*(indmax-indmin+1));
 
   for (int i = indmin; i <= indmax; ++ i) {
     for (int j = indmin; j <= indmax; ++ j) {
@@ -90,8 +81,6 @@ void printMatrixOfDiagIndexes(const size_t& rank)
     }
     ss << '\n';
   }
-
-  //MsgLog(_name(), info, ss.str());
   cout << ss.str();
 }
 
@@ -110,7 +99,6 @@ void printVectorOfDiagIndexes(const size_t& rank)
     if ( ++n_pairs_in_line > 9 ) {ss << "\n"; n_pairs_in_line=0;}
   }   
   ss << '\n';
-  //MsgLog(_name(), info, ss.str());
   cout << ss.str();
 }
 
@@ -123,52 +111,6 @@ size_t numberOfExtrema(const extrim_t *map, const size_t& rows, const size_t& co
   return counter;
 }
 
-//-----------------------------
-
-/*
-std::vector<TwoIndexes> vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen)
-{
-  std::vector<TwoIndexes> v;
-  size_t _maxlen = (maxlen) ? maxlen : rows*cols/4;
-  if(v.capacity() < _maxlen) v.reserve(_maxlen);
-  v.clear();
-  size_t irc=0;
-  for (size_t r=0; r<rows; ++r) {
-    for (size_t c=0; c<cols; ++c) {
-      irc = r*cols+c;
-      if(map[irc]==vsel) v.push_back(TwoIndexes(r,c));
-    }
-  }
-  return v;
-}
-
-
-Vector<TwoIndexes>* vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen, const bool drp, uint8_t*& drpPtr)
-{
-  size_t _maxlen = (maxlen) ? maxlen : rows*cols/4;
-
-  Vector<TwoIndexes> *ptr = new(drpPtr) Vector<TwoIndexes>();
-  drpPtr += sizeof(Vector<TwoIndexes>);
-  if(ptr->capacity < _maxlen) ptr->capacity = _maxlen;
-
-  int counter = 0;
-  size_t irc=0;
-  for (size_t r=0; r<rows; ++r) {
-    for (size_t c=0; c<cols; ++c) {
-      irc = r*cols+c;
-      if(map[irc]==vsel) {
-        ptr->data[counter++] = new(drpPtr) TwoIndexes(r,c);
-        drpPtr += sizeof(TwoIndexes);
-      }
-    }
-  }
-  ptr->len = counter;
-  return ptr;
-}
-*/
-
-//-----------------------------
-//-----------------------------
 //-----------------------------
 //-----------------------------
 
