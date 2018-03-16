@@ -164,47 +164,6 @@ class ResultStore(object):
         self._store = {}
 
 
-#class ZmqListener(ZmqBase):
-#    def __init__(self, name, topic, callback, zmq_config, zmqctx=None):
-#        super(__class__, self).__init__(name, zmq_config, zmqctx)
-#        self.listen_topic = topic
-#        self.listen_evt = False
-#        self._listen_cb = callback
-#
-#    def listen(self):
-#        while True:
-#            topic = self._listen_sock.recv_string()
-#            payload = self._listen_sock.recv_pyobj()
-#            if topic == self.listen_topic:
-#                print("%s: listerner recieved new payload with topic:"%self.name, topic)
-#                if self._listen_cb is not None:
-#                    self._listen_cb(payload)
-#                self.listen_evt = True
-#            else:
-#                print("%s: recieved unexpected topic: %s"%(self.name, topic))
-#
-#
-#class Listener(MpiHandler):
-#    """
-#    Listener with MPI
-#    """
-#    def __init__(self, name, topic, callback, handler):
-#        super(__class__, self).__init__(name, handler)
-#        self.listen_topic = topic
-#        self.listen_evt = False
-#        self._listen_cb = callback
-#
-#    def listen(self):
-#        while True:
-#            #topic = self._listen_sock.recv_string()
-#            #payload = self._listen_sock.recv_pyobj()
-#            payload = self.recv()
-#            print("%s: listerner recieved new payload with topic:"%self.name, topic)
-#            if self._listen_cb is not None:
-#                self._listen_cb(payload)
-#            self.listen_evt = True
-
-
 class Collector(abc.ABC):
     """
     This class gathers (via MPI) results from many

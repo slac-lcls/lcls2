@@ -8,6 +8,14 @@ from ami.data import MsgTypes
 
 
 class Manager(Collector):
+    """
+    An AMI graph Manager is the control point for an
+    active "tree" of workers. It is the final collection
+    point for all results, broadcasts those results to 
+    clients (e.g. plots/GUIs), and handles requests for
+    configuration changes to the graph.
+    """
+
     def __init__(self, gui_port):
         """
         protocol right now only tells you how to communicate with workers
@@ -20,15 +28,11 @@ class Manager(Collector):
         # ZMQ setup
         self.ctx = zmq.Context()
         self.comm = self.ctx.socket(zmq.REP)
-        self.comm.bind("tcp://*:%d"%gui_port)
+        self.comm.bind("tcp://*:%d" % gui_port)
 
-
-    @property
-    def features(self):
-        dets = {}
-        for key, value in self.feature_store.items():
-            dets[key] = value.dtype
-        return dets
+        self.client_listener_thread = threading.Thread(target=self.client_listener)
+        self.client_listener_thread.daemon = True
+        self.client_listener_thread.start()
 
     def process_msg(self, msg):
         if msg.mtype == MsgTypes.Datagram:
@@ -36,6 +40,13 @@ class Manager(Collector):
             print(msg.payload)
             sys.stdout.flush()
         return
+
+    @property
+    def features(self):
+        dets = {}
+        for key, value in self.feature_store.items():
+            dets[key] = value.dtype
+        return dets
 
     def feature_request(self, request):
         matched = self.feature_req.match(request)
@@ -49,7 +60,9 @@ class Manager(Collector):
         else:
             return False
 
-    def command_listener(self):
+    def client_listener(self):
+        print('*** started client listen thread')
+        sys.stdout.flush()
         while True:
             request = self.comm.recv_string()
             
@@ -65,46 +78,47 @@ class Manager(Collector):
                 else:
                     self.comm.send_string('error')
 
-        def recv_graph(self):
-            self.comm.recv_pyobj() # zmq for now, could be EPICS in future?
-            return graph
+    def recv_graph(self):
+        self.comm.recv_pyobj() # zmq for now, could be EPICS in future?
+        return graph
 
-        def apply_graph(self):
-            MPI.COMM_WORLD.send(self.graph)
-            return
-
-def main():
-    parser = argparse.ArgumentParser(description='AMII Manager App')
-
-    parser.add_argument(
-        '-H',
-        '--host',
-        default='*',
-        help='interface the AMII manager listens on (default: all)'
-    )
-
-    parser.add_argument(
-        '-p',
-        '--port',
-        type=int,
-        default=5556,
-        help='port for GUI-Manager communication'
-    )
-
-    args = parser.parse_args()
-    #manager_cfg = ZmqConfig(
-    #    platform=args.platform,
-    #    binds={zmq.PULL: (args.host, ZmqPorts.FinalCollector), zmq.PUB: (args.host, ZmqPorts.Graph), zmq.REP: (args.host, ZmqPorts.Command)},
-    #    connects={}
-    #)
-
-    try:
-        manager = Manager("manager", args.port)
-        return manager.run()
-    except KeyboardInterrupt:
-        print("Manager killed by user...")
-        return 0
+    def apply_graph(self):
+        MPI.COMM_WORLD.send(self.graph)
+        return
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+# TJL note to self:
+# we do not need this any more
+
+#def main():
+#    parser = argparse.ArgumentParser(description='AMII Manager App')
+#
+#    parser.add_argument(
+#        '-H',
+#        '--host',
+#        default='*',
+#        help='interface the AMII manager listens on (default: all)'
+#    )
+#
+#    parser.add_argument(
+#        '-p',
+#        '--port',
+#        type=int,
+#        default=5557,
+#        help='port for GUI-Manager communication'
+#    )
+#
+#    args = parser.parse_args()
+#
+#    try:
+#        manager = Manager(args.port)
+#        return manager.run()
+#    except KeyboardInterrupt:
+#        print("Manager killed by user...")
+#        return 0
+#
+#
+#if __name__ == '__main__':
+#    sys.exit(main())
+
+

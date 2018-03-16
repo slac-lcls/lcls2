@@ -17,11 +17,14 @@ from ami.data import DataTypes
 from ami.operation import ROI
 
 
-class CommunicationHandler(ZmqBase):
+class CommunicationHandler(object):
 
-    def __init__(self, zmqctx, zmq_config):
-        super(__class__, self).__init__("client-commhandler", zmq_config, zmqctx)
-        self.sock = self.connect(zmq.REQ)
+    def __init__(self, host, port):
+        self.ctx  = zmq.Context()
+        self.port = port
+        self.host = host
+        self.sock = self.ctx.socket(zmq.REQ)
+        self.sock.connect('tcp://%s:%d' % (self.host, self.port))
 
     @property
     def graph(self):
@@ -44,11 +47,11 @@ class CommunicationHandler(ZmqBase):
 
 
 class WaveformWidget(pg.GraphicsLayoutWidget):
-    def __init__(self, topic, zmqctx, zmqconfig, parent=None):
+    def __init__(self, topic, host, port, parent=None):
         super(__class__, self).__init__(parent)
         self.topic = topic
         self.timer = QTimer()
-        self.comm_handler = CommunicationHandler(zmqctx, zmqconfig)
+        self.comm_handler = CommunicationHandler(host, port)
         self.plot_view = self.addPlot()
         self.plot = None
         self.timer.timeout.connect(self.get_waveform)
@@ -71,10 +74,10 @@ class WaveformWidget(pg.GraphicsLayoutWidget):
 
 
 class AreaDetWidget(pg.ImageView):
-    def __init__(self, topic, zmqctx, zmqconfig, parent=None):
+    def __init__(self, topic, host, port, parent=None):
         super(AreaDetWidget, self).__init__(parent)
         self.topic = topic
-        self.comm_handler = CommunicationHandler(zmqctx, zmqconfig)
+        self.comm_handler = CommunicationHandler(host, port)
         self.timer = QTimer()
         self.timer.timeout.connect(self.get_image)
         self.timer.start(1000)
@@ -102,10 +105,10 @@ class AreaDetWidget(pg.ImageView):
 
 class DetectorList(QListWidget):
     
-    def __init__(self, queue, parent=None, zmqctx=None, zmqcfg=None):
+    def __init__(self, queue, host, port, parent=None):
         super(DetectorList, self).__init__(parent)
         self.queue = queue
-        self.comm_handler = CommunicationHandler(zmqctx, zmqcfg)
+        self.comm_handler = CommunicationHandler(host, port)
         self.features = {}
         self.timer = QTimer()
         self.timer.timeout.connect(self.get_features)
@@ -147,10 +150,9 @@ class DetectorList(QListWidget):
         self.queue.put((window_type, topic))
         
 
-def run_list_window(queue, zmqcfg, ami_save):
-    ctx = zmq.Context()
+def run_list_window(queue, host, port, ami_save):
     app = QApplication(sys.argv)
-    amilist = DetectorList(queue, zmqctx=ctx, zmqcfg=zmqcfg)
+    amilist = DetectorList(queue, host, port)
     if ami_save is not None:
         amilist.load(ami_save)
     amilist.show()
@@ -158,17 +160,17 @@ def run_list_window(queue, zmqcfg, ami_save):
     return app.exec_()
 
 
-def run_widget(queue, window_type, topic, zmqcfg):
+def run_widget(queue, window_type, topic, host, port):
 
     ctx = zmq.Context()
     app = QApplication(sys.argv)
     win = QMainWindow()
 
     if window_type == 'AreaDetector':
-        widget = AreaDetWidget(topic, ctx, zmqcfg, win)
+        widget = AreaDetWidget(topic, host, port, win)
 
     elif window_type == 'WaveformDetector':
-        widget = WaveformWidget(topic, ctx, zmqcfg, win)
+        widget = WaveformWidget(topic, host, port, win)
 
     else:
         raise ValueError('%s not valid window_type' % window_type)
@@ -192,10 +194,10 @@ def main():
 
     parser.add_argument(
         '-p',
-        '--platform',
+        '--port',
         type=int,
-        default=0,
-        help='platform number of the AMII - selects port range to use (default: 0)'
+        default=5556,
+        help='port for manager/client (GUI) communication'
     )
 
     parser.add_argument(
@@ -218,22 +220,17 @@ def main():
             print("ami-client: problem parsing saved graph configuration file (%s):"%args.load, json_exp)
             return 1
 
-    zmqcfg = ZmqConfig(
-        args.platform,
-        binds={},
-        connects={zmq.REQ: (args.host, ZmqPorts.Command)}
-    )
 
     try:
         queue = mp.Queue()
-        list_proc = mp.Process(target=run_list_window, args=(queue, zmqcfg, saved_cfg))
+        list_proc = mp.Process(target=run_list_window, args=(queue, args.host, args.port, saved_cfg))
         list_proc.start()
         widget_procs = []
 
         while True:
             window_type, topic = queue.get()
             print("opening new widget:", window_type, topic)
-            proc = mp.Process(target=run_widget, args=(queue, window_type, topic, zmqcfg))
+            proc = mp.Process(target=run_widget, args=(queue, window_type, topic, args.host, args.port))
             proc.start()
             widget_procs.append(proc)
     except KeyboardInterrupt:

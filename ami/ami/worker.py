@@ -103,7 +103,7 @@ class Worker(object):
 #            print(msg.payload)
 #            #self.upstream.put_dgram(msg.payload)
 
-                
+               
 def run_worker(num, source, collector_rank=0):
 
     print('Starting worker # %d, sending to collector %d' % (num, collector_rank))
@@ -195,3 +195,5 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+ 
