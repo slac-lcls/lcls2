@@ -9,7 +9,7 @@ from mpi4py import MPI
 import multiprocessing as mp
 from ami.manager import Manager
 from ami.graph import Graph, GraphConfigError, GraphRuntimeError
-from ami.comm import ZmqPorts, ZmqConfig, Collector, ResultStore
+from ami.comm import Collector, ResultStore
 from ami.data import MsgTypes, DataTypes, Transitions, Occurrences, Message, Datagram, Transition, StaticSource
 
 
