@@ -61,18 +61,31 @@ setup(name = 'psana',
 )
 
 from Cython.Build import cythonize
-ext = Extension("peakFinder",
+# ext = Extension("peakFinder",
+#                 packages=['psana.peakfinder',],
+#                 sources=["psana/peakFinder/peakFinder.pyx", "../psalg/psalg/src/PeakFinderAlgos.cpp", "../psalg/psalg/src/LocalExtrema.cpp"],
+#                 language="c++",
+#                 extra_compile_args=['-std=c++11'],
+#                 include_dirs=[np.get_include(),
+#                               "../psalg/psalg/include/Array.hh",
+#                               "../install/include",
+#                               "../psalg/psalg/include/PeakFinderAlgos.h",
+#                               "../psalg/psalg/include/LocalExtrema.h"]
+# )
+
+# setup(name="peakFinder",
+#       ext_modules=cythonize(ext))
+
+ext = Extension('dgramCreate',
                 packages=['psana.peakfinder',],
-                sources=["psana/peakFinder/peakFinder.pyx",
-                         "../psalg/psalg/src/PeakFinderAlgos.cpp",
-                         "../psalg/psalg/src/LocalExtrema.cpp"],
+                sources=["psana/peakFinder/dgramCreate.pyx"],
                 language="c++",
                 extra_compile_args=['-std=c++11'],
                 include_dirs=[np.get_include(),
                               "../install/include"]
 )
 
-setup(name="peakFinder",
+setup(name='dgramCreate',
       ext_modules=cythonize(ext))
 
 '''
