@@ -3,6 +3,7 @@ import sys
 import zmq
 import argparse
 import threading
+from mpi4py import MPI
 from ami.comm import Collector
 from ami.data import MsgTypes
 
@@ -37,8 +38,8 @@ class Manager(Collector):
     def process_msg(self, msg):
         if msg.mtype == MsgTypes.Datagram:
             self.feature_store[msg.payload.name] = msg.payload
-            print(msg.payload)
-            sys.stdout.flush()
+            #print(msg.payload)
+            #sys.stdout.flush()
         return
 
     @property
@@ -74,17 +75,33 @@ class Manager(Collector):
                     self.comm.send_pyobj(self.graph)
                 elif request == 'set_graph':
                     self.graph = self.recv_graph()
-                    self.apply_graph()
+                    sys.stdout.flush()
+                    if self.apply_graph():
+                        self.comm.send_string('ok')
+                    else:
+                        self.comm.send_string('error')
                 else:
                     self.comm.send_string('error')
 
     def recv_graph(self):
-        self.comm.recv_pyobj() # zmq for now, could be EPICS in future?
-        return graph
+        return self.comm.recv_pyobj() # zmq for now, could be EPICS in future?
 
     def apply_graph(self):
-        MPI.COMM_WORLD.send(self.graph)
-        return
+        reqs = []
+        print("manager: sending requested graph...")
+        sys.stdout.flush()
+        try:
+            for rank in range(1, MPI.COMM_WORLD.Get_size()):
+                reqs.append(MPI.COMM_WORLD.isend(self.graph, tag=1, dest=rank))
+            for req in reqs:
+                req.wait()
+        except Exception as exp:
+            print("manager: failed to send graph -", exp)
+            sys.stdout.flush() 
+            return False
+        print("manager: sending of graph completed")
+        sys.stdout.flush()
+        return True
 
 
 # TJL note to self:

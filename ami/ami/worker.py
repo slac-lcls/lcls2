@@ -26,10 +26,6 @@ class Worker(object):
         self.collector_rank = collector_rank
         self.store = ResultStore(self.collector_rank)
         self.graph = Graph(self.store)
-        self.new_graph_available = False
-
-    def update_graph(self, new_graph):
-        self.graph.update(new_graph)
 
     def run(self):
         partition = self.src.partition()
@@ -41,20 +37,18 @@ class Worker(object):
             # check to see if the graph has been reconfigured after update
             if msg.mtype == MsgTypes.Occurrence and msg.payload == Occurrences.Heartbeat:
 
-                # TJL 3/9/18
-                # THIS IS BROKEN
-                # We need to connect the Manager's ZMQ to a special
-                # kind of MPI message here saying there is a new graph
-
-                if self.new_graph_available:
-                    print("%s: Received new configuration"%self.name)
+                if MPI.COMM_WORLD.Iprobe(source=0, tag=1):
+                    new_graph = MPI.COMM_WORLD.recv(source=0, tag=1)
+                    self.graph.update(new_graph)
+                    print("worker%d: Received new configuration"%self.idnum)
                     try:
                         self.graph.configure()
-                        print("%s: Configuration complete"%self.name)
+                        print("worker%d: Configuration complete"%self.idnum)
                     except GraphConfigError as graph_err:
-                        print("%s: Configuration failed reverting to previous config:"%self.name, graph_err)
+                        print("worker%d: Configuration failed reverting to previous config:"%self.idnum, graph_err)
                         # if this fails we just die
                         self.graph.revert()
+                    sys.stdout.flush()
                     self.new_graph_available = False
                 self.store.send(msg)
             elif msg.mtype == MsgTypes.Datagram:

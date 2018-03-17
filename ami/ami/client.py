@@ -38,11 +38,7 @@ class CommunicationHandler(object):
     def update(self, graph):
         self.sock.send_string('set_graph', zmq.SNDMORE)
         self.sock.send_pyobj(graph)
-        if self.sock.recv_string() == 'ok':
-            self.sock.send_string('apply_graph')
-            return self.sock.recv_string() == 'ok'
-        else:
-            return False
+        return self.sock.recv_string() == 'ok'
 
 
 class WaveformWidget(pg.GraphicsLayoutWidget):

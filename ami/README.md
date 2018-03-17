@@ -31,10 +31,7 @@ backend
 * DOCSTRINGS
 * integration with EPICS
 * should we use MPI? YES
-    - remove old ZMQ stuff
-    - clean up Collector callbacks
-    - fix GUI client
-    - send/receive for the graph (handle the case where the different clients are in inconsistent graph states)
+    - handle the case where the different clients are in inconsistent graph states
     - mpi event-builder (timeout)
 * throttling [pick-N pattern, done on a per-heartbeat basis] (e.g. for visualizing images)
     - use top-down approach with round-robin based on heartbeat counting.  collector has to: avg/sum, scatter plot, plot vs. time/event number, plot most recent image.  
