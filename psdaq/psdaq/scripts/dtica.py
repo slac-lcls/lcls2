@@ -4,6 +4,10 @@ from psp import Pv
 from PyQt5 import QtCore, QtGui, QtWidgets
 from pvedit import *
 
+NUsLinks = 7
+NDsLinks = 7
+NPartitions = 8
+
 try:
     QString = unicode
 except NameError:
@@ -37,6 +41,32 @@ class PvEditIntX(PvEditInt):
         super(PvEditIntX, self).__init__(pv, label)
 #       self.setMaximumWidth(70)
 
+class PvEditCheckList:
+
+    def __init__(self, pv, grid, row, col, entries):
+        self.boxes = QtWidgets.QButtonGroup()
+        for i in range(entries):
+            cb = QtWidgets.QCheckBox()
+            grid.addWidget( cb, row, col+i,
+                            QtCore.Qt.AlignHCenter )
+            self.boxes.addButton(cb,i)
+        self.boxes.buttonClicked.connect(self.buttonClicked)
+        initPvMon(self,pv)
+
+    def buttonClicked(self, button):
+        value = self.boxes.checkedId()-1
+        self.pv.put(value)
+
+    def update(self, err):
+        q = self.pv.value+1
+        if err is None:
+            try:
+                self.boxes.button(int(q)).setChecked(True)
+            except:
+                pass
+        else:
+            print(err)
+
 class PvCmb(PvEditCmb):
 
     def __init__(self, pvname, choices):
@@ -49,80 +79,137 @@ def LblPushButtonX(parent, pvbase, name, count=1, start=0, istart=0):
 def LblEditIntX(parent, pvbase, name, count=1, start=0, istart=0, enable=True):
     return PvInput(PvEditIntX, parent, pvbase, name, count, start, istart, enable)
 
+class DtiAllocMon(object):
+    def __init__(self, parent, pvname):
+        self.parent = parent
+        initPvMon(self,pvname)
+
+    def update(self,err):
+        self.parent.updateTable(err)
+
+class DtiAllocation(QtWidgets.QWidget):
+
+    def __init__(self, pvbase):
+        super(DtiAllocation, self).__init__()
+        
+        glo = QtWidgets.QGridLayout()
+
+        row = 0
+        colp = 2
+        cold = 12
+        glo.addWidget( QtWidgets.QLabel('US'), row, 0,
+                       QtCore.Qt.AlignHCenter )
+        glo.addItem  ( QtWidgets.QSpacerItem( 15, 5 ), row, colp-1 )
+        glo.addWidget( QtWidgets.QLabel('Partition'), row, colp, 1, 9, 
+                       QtCore.Qt.AlignHCenter )
+        glo.addItem  ( QtWidgets.QSpacerItem( 15, 5 ), row, cold-1 )
+        glo.addWidget( QtWidgets.QLabel('DS Links') , row, cold, 1, NDsLinks, 
+                       QtCore.Qt.AlignHCenter )
+        row += 1
+        glo.addWidget( QtWidgets.QLabel('None'), row, colp,
+                       QtCore.Qt.AlignHCenter )
+        for i in range(NPartitions):
+            glo.addWidget( QtWidgets.QLabel('%d'%i), row, i+colp+1,
+                           QtCore.Qt.AlignHCenter )
+        for i in range(NUsLinks):
+            glo.addWidget( QtWidgets.QLabel('%d'%i), row, i+cold,
+                           QtCore.Qt.AlignHCenter )
+
+        self.pvbase = pvbase
+        self.groups = []
+        for j in range(NDsLinks):
+            self.groups.append(QtWidgets.QButtonGroup())
+        for i in range(NUsLinks):
+            row += 1
+            glo.addWidget( QtWidgets.QLabel('%d'%i), row, 0,
+                           QtCore.Qt.AlignHCenter )
+            PvEditCheckList(pvbase+'UsLinkPartition%d'%i, glo, row, colp, 9)
+            for j in range(NDsLinks):
+                cb = QtWidgets.QCheckBox()
+                self.groups[j].addButton(cb,i)
+                glo.addWidget( cb, row, j+cold,
+                               QtCore.Qt.AlignHCenter )
+                cb.clicked.connect(self.update)
+
+        self.mon = []
+        for i in range(NUsLinks):
+            self.mon.append(DtiAllocMon(self,pvbase+'UsLinkFwdMask%d'%i))
+        
+        self.setLayout(glo)
+
+    def updateTable(self,err):
+        usmask = [0]*len(self.mon)
+        for i,mon in enumerate(self.mon):
+            usmask[i] = mon.pv.value
+            for j in range(NDsLinks):
+                if ((usmask[i] & (1<<j))!=0):
+                    self.groups[j].button(i).setChecked(True)
+        
+    def update(self):
+        usmask = [0]*NUsLinks
+        for j in range(NDsLinks):
+            i = self.groups[j].checkedId()
+            if i >=0:
+                usmask[i] = usmask[i] | (1<<j)
+        for i in range(NUsLinks):
+            self.mon[i].pv.put(usmask[i])
+        
+class DtiStatistics(QtWidgets.QWidget):
+
+    def __init__(self, pvbase):
+        super(DtiStatistics, self).__init__()
+        
+        lor = QtWidgets.QVBoxLayout()
+        if True:
+            hbox = QtWidgets.QHBoxLayout()
+            hbox.addLayout( LblMask(pvbase, 'BpLinkUp', 1) )
+            hbox.addLayout( LblMask(pvbase, 'UsLinkUp', NUsLinks) )
+            hbox.addLayout( LblMask(pvbase, 'DsLinkUp', NDsLinks) )
+            lor.addLayout(hbox)
+
+        lor.addWidget( PvPushButton(pvbase, "CountClear") )
+
+        lor.addWidget(PvIntTable('Upstream Link Stats', pvbase, 
+                                 ['UsWrFifoD','UsRdFifoD','dUsIbEvt','dUsRxFull','dUsRxInh','dUsRxErrs'],
+                                 ['FifoWr'   ,'FifoRd'   ,'IbEvt'   ,'Full' ,'InhEvts' ,'RxErrs'],
+                                 NUsLinks))
+
+        lor.addWidget(PvIntTable('Downstream Link Stats', pvbase, 
+                                 ['dDsRxErrs','dDsRxFull','dDsObSent'],
+                                 ['RxErrs'   ,'Full' ,'MBytes'],
+                                 NDsLinks))
+
+        PvLabel(lor, pvbase, "QpllLock"    )
+        PvLabel(lor, pvbase, "MonClkRate", scale=1.e-6, units='MHz' )
+
+        self.setLayout(lor)
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, title):
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
 
-        pvbase = title + ':'
         lol = QtWidgets.QVBoxLayout()
-        lor = QtWidgets.QVBoxLayout()
+        lol.addWidget( QtWidgets.QLabel('Allocation') )
 
-        # left side
+        alloctab = QtWidgets.QTabWidget()
+        for i in range(3,8):
+            pvslot = title + ':%d:'%i
+            alloctab.addTab( DtiAllocation(pvslot), 'Slot-%d'%i )
+        lol.addWidget(alloctab)
 
-        LblPushButtonX(lol, pvbase, "CountClear"  )
+        lol.addWidget( QtWidgets.QLabel('Status') )
 
-        LblCheckBox   (lol, pvbase, "UsLinkEn",         7 )
+        statstab = QtWidgets.QTabWidget()
+        for i in range(3,8):
+            pvslot = title + ':%d:'%i
+            statstab.addTab( DtiStatistics(pvslot), 'Slot-%d'%i )
+        lol.addWidget(statstab)
 
-        LblEditInt    (lol, pvbase, "UsLinkPartition",  7 )
-        LblEditInt    (lol, pvbase, "UsLinkFwdMask",    7 )
-        LblEditInt    (lol, pvbase, "UsLinkTrigDelay",  7 )
+        self.centralWidget.setLayout(lol)
 
-        # right side
-
-        PvLabel(lor, pvbase, "UsLinkUp"  )
-        PvLabel(lor, pvbase, "BpLinkUp"  )
-        PvLabel(lor, pvbase, "DsLinkUp"  )
-
-        PvLabel(lor, pvbase, "UsRxErrs", "dUsRxErrs"   )
-        PvLabel(lor, pvbase, "UsRxFull", "dUsRxFull"   )
-        PvLabel(lor, pvbase, "UsIbRecv", "dUsIbRecv"   )
-        PvLabel(lor, pvbase, "UsIbEvt",  "dUsIbEvt"    )
-        PvLabel(lor, pvbase, "DsRxErrs", "dDsRxErrs"   )
-        PvLabel(lor, pvbase, "DsRxFull", "dDsRxFull"   )
-        PvLabel(lor, pvbase, "DsObSent", "dDsObSent"   )
-
-        PvLabel(lor, pvbase, "QpllLock"    )
-        PvLabel(lor, pvbase, "MonClkRate"  )
-        PvLabel(lor, pvbase, "MonClkSlow"  )
-        PvLabel(lor, pvbase, "MonClkFast"  )
-        PvLabel(lor, pvbase, "MonClkLock"  )
-
-        PvLabel(lor, pvbase, "UsLinkObL0",  "dUsLinkObL0"    )
-        PvLabel(lor, pvbase, "UsLinkObL1A", "dUsLinkObL1A"   )
-        PvLabel(lor, pvbase, "UsLinkObL1R", "dUsLinkObL1R"   )
-        PvLabel(lor, pvbase, "RxFrErrs", "dRxFrErrs"         )
-        PvLabel(lor, pvbase, "RxFrames", "dRxFrames"         )
-        PvLabel(lor, pvbase, "RxOpCodes", "dRxOpCodes"       )
-        PvLabel(lor, pvbase, "TxFrErrs", "dTxFrErrs"         )
-        PvLabel(lor, pvbase, "TxFrames", "dTxFrames"         )
-        PvLabel(lor, pvbase, "TxOpCodes", "dTxOpCodes"       )
-
-        ltable = QtWidgets.QWidget()
-        ltable.setLayout(lol)
-        rtable = QtWidgets.QWidget()
-        rtable.setLayout(lor)
-
-        lscroll = QtWidgets.QScrollArea()
-        lscroll.setWidget(ltable)
-        rscroll = QtWidgets.QScrollArea()
-        rscroll.setWidget(rtable)
-
-        splitter = QtWidgets.QSplitter()
-        splitter.addWidget(lscroll)
-        splitter.addWidget(rscroll)
-
-        # splitter: left side stretch = 2x right side stretch
-        splitter.setStretchFactor(0,2)
-        splitter.setStretchFactor(1,1)
-
-        layout = QtWidgets.QHBoxLayout()
-        layout.addWidget(splitter)
-
-        self.centralWidget.setLayout(layout)
-
-        MainWindow.resize(1500,550)
+        MainWindow.resize(500,550)
         MainWindow.setWindowTitle(title)
         MainWindow.setCentralWidget(self.centralWidget)
 

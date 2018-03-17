@@ -30,14 +30,14 @@ void Stats::dump() const
 
   printf("Link Up:  US: %x  BP: %x  DS: %x\n", usLinkUp, bpLinkUp, dsLinkUp);
 
-  printf("UsLink  RxErrs    RxFull    IbRecv    IbEvt     ObRecv    ObSent\n");
+  printf("UsLink  RxErrs    RxFull    RxInh     IbEvt     ObRecv    ObSent\n");
   //      0      00000000  00000000  00000000  00000000  00000000  00000000
   for (unsigned i = 0; i < Module::NUsLinks; ++i)
   {
     printf("%d      %08x  %08x  %08x  %08x  %08x  %08x\n", i,
            us[i].rxErrs,
            us[i].rxFull,
-           us[i].ibRecv,
+           us[i].rxInh,
            us[i].ibEvt,
            us[i].obRecv,
            us[i].obSent);
@@ -97,13 +97,14 @@ Module* Module::locate()
   printf("_qpllLock   @ %p\n", &r->_qpllLock);
   printf("_pgp2b      @ %p\n", &r->_pgp[0]);
   printf("_ringBuffer @ %p\n", &r->_ringBuffer);
+  setf(const_cast<Pds::Cphw::Reg&>(r->_index), 1, 1, 31);
   return r;
 }
 
 Module::Module()
 {
   clearCounters();
-  updateCounters();                     // Revisit: Necessary?
+  setf(const_cast<Pds::Cphw::Reg&>(_index), 1, 1, 31);
 
   //  Program the crossbar to pull timing off the backplane
   _timing.xbar.setOut( Pds::Cphw::XBar::FPGA, Pds::Cphw::XBar::BP );
@@ -238,13 +239,21 @@ void     Module::usLinkFwdMask(unsigned idx, unsigned v)
   _usLinkConfig[idx].fwdMask(v);
 }
 
-unsigned Module::usLinkPartition(unsigned idx) const
+int      Module::usLinkPartition(unsigned idx) const
 {
-  return (unsigned) _usLinkConfig[idx].partition();
+  if (_usLinkConfig[idx].enabled())
+    return _usLinkConfig[idx].partition();
+  else
+    return -1;
 }
-void     Module::usLinkPartition(unsigned idx, unsigned v)
+void     Module::usLinkPartition(unsigned idx, int v)
 {
-  _usLinkConfig[idx].partition(v);
+  if (v < 0)
+    _usLinkConfig[idx].enable(false);
+  else {
+    _usLinkConfig[idx].partition(v);
+    _usLinkConfig[idx].enable(true);
+  }
 }
 
 unsigned Module::usLink() const        { return getf(_index,      4,  0); }
@@ -323,7 +332,10 @@ Stats Module::stats() const
     s.us[i].rxErrs = _usStatus.rxErrs();
     s.us[i].rxFull = _usStatus._rxFull;
     //s.us[i].ibRecv = _usStatus._ibRecv;
-    s.us[i].ibRecv = _usStatus._ibDump;
+    { uint32_t v = _usStatus._ibDump;
+      s.us[i].rxInh  = v&0xffffff;
+      s.us[i].wrFifoD = (v>>24)&0xf;
+      s.us[i].rdFifoD = (v>>28)&0xf; }
     s.us[i].ibEvt  = _usStatus._ibEvt;
     s.us[i].obRecv = _usObRecv;
     s.us[i].obSent = _usObSent;
@@ -342,7 +354,7 @@ Stats Module::stats() const
 
   s.qpllLock = qpllLock();
 
-  updateCounters();                     // Revisit: Is this needed?
+  //  updateCounters();                     // Revisit: Is this needed?
 
   for (unsigned i = 0; i < 4; ++i)
   {

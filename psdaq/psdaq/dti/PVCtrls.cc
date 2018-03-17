@@ -54,9 +54,6 @@ namespace Pds {
     CPV(ModuleInit,     { PVG(init());        }, { })
     CPV(CountClear,     { PVG(clearCounters()); }, { })
 
-    CPV(UsLinkEn,       { PVG(usLinkEnabled(_idx, TOU(data())));    },
-                        { PVP(usLinkEnabled(_idx));                 })
-
     CPV(UsLinkTrigDelay,  { PVG(usLinkTrigDelay(_idx, TOU(data())));    },
                           { PVP(usLinkTrigDelay(_idx));                 })
 
@@ -94,7 +91,6 @@ namespace Pds {
 
       NPV ( ModuleInit                              );
       NPV ( CountClear                              );
-      NPVN( UsLinkEn,           Module::NUsLinks    );
       NPVN( UsLinkTrigDelay,    Module::NUsLinks    );
       NPVN( UsLinkFwdMask,      Module::NUsLinks    );
       NPVN( UsLinkPartition,    Module::NUsLinks    );

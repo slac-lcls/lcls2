@@ -49,12 +49,13 @@ if __name__ == '__main__':
 
     # PVs
 
-    for p2 in p2set:
+    for slot in range(3,8):
+      p2 = '%d:'%slot
       for i in range (numUsLinks):
-        pvdb[p2+'UsLinkEn'        +'%d'%i] = {'type' : 'int'}
+#        pvdb[p2+'UsLinkEn'        +'%d'%i] = {'type' : 'int'}
         pvdb[p2+'UsLinkTagEn'     +'%d'%i] = {'type' : 'int'}
         pvdb[p2+'UsLinkL1En'      +'%d'%i] = {'type' : 'int'}
-        pvdb[p2+'UsLinkPartition' +'%d'%i] = {'type' : 'int'}
+        pvdb[p2+'UsLinkPartition' +'%d'%i] = {'type' : 'int', 'value' : -1 }
         pvdb[p2+'UsLinkTrigDelay' +'%d'%i] = {'type' : 'int'}
         pvdb[p2+'UsLinkFwdMask'   +'%d'%i] = {'type' : 'int'}
         pvdb[p2+'UsLinkFwdMode'   +'%d'%i] = {'type' : 'int'}
@@ -70,27 +71,27 @@ if __name__ == '__main__':
       pvdb[p2+'BpLinkUp'       ] = {'type' : 'int'}
       pvdb[p2+'DsLinkUp'       ] = {'type' : 'int'}
 
-      pvdb[p2+'UsRxErrs'       ] = {'type' : 'int'}
-      pvdb[p2+'dUsRxErrs'      ] = {'type' : 'float'}
-      pvdb[p2+'UsRemLinkID'    ] = {'type' : 'int'}
-      pvdb[p2+'UsRxFull'       ] = {'type' : 'int'}
-      pvdb[p2+'dUsRxFull'      ] = {'type' : 'float'}
-      pvdb[p2+'UsIbRecv'       ] = {'type' : 'int'}
-      pvdb[p2+'dUsIbRecv'      ] = {'type' : 'float'}
-      pvdb[p2+'UsIbDump'       ] = {'type' : 'int'}
-      pvdb[p2+'UsIbEvt'        ] = {'type' : 'int'}
-      pvdb[p2+'dUsIbEvt'       ] = {'type' : 'float'}
-      pvdb[p2+'UsAppObRecv'    ] = {'type' : 'int'}
-      pvdb[p2+'dUsAppObRecv'   ] = {'type' : 'float'}
-      pvdb[p2+'UsAppObSent'    ] = {'type' : 'int'}
-      pvdb[p2+'dUsAppObSent'   ] = {'type' : 'float'}
-      pvdb[p2+'DsRxErrs'       ] = {'type' : 'int'}
-      pvdb[p2+'dDsRxErrs'      ] = {'type' : 'float'}
-      pvdb[p2+'DsRemLinkID'    ] = {'type' : 'int'}
-      pvdb[p2+'DsRxFull'       ] = {'type' : 'int'}
-      pvdb[p2+'dDsRxFull'      ] = {'type' : 'float'}
-      pvdb[p2+'DsObSent'       ] = {'type' : 'int'}
-      pvdb[p2+'dDsObSent'      ] = {'type' : 'float'}
+      pvdb[p2+'UsRxErrs'       ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dUsRxErrs'      ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'UsRxFull'       ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dUsRxFull'      ] = {'type' : 'float', 'count' : numUsLinks }
+#      pvdb[p2+'UsIbRecv'       ] = {'type' : 'int', 'count' : numUsLinks }
+#      pvdb[p2+'dUsIbRecv'      ] = {'type' : 'float', 'count' : numUsLinks }
+      pvdb[p2+'UsRxInh'        ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dUsRxInh'       ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'UsWrFifoD'      ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dUsWrFifoD'     ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'UsRdFifoD'      ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dUsRdFifoD'     ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'UsIbEvt'        ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dUsIbEvt'       ] = {'type' : 'int', 'count' : numUsLinks }
+
+      pvdb[p2+'DsRxErrs'       ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dDsRxErrs'      ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'DsRxFull'       ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dDsRxFull'      ] = {'type' : 'float', 'count' : numUsLinks }
+      pvdb[p2+'DsObSent'       ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dDsObSent'      ] = {'type' : 'float', 'count' : numUsLinks }
 
       pvdb[p2+'QpllLock'       ] = {'type' : 'int'}
       pvdb[p2+'BpTxInterval'   ] = {'type' : 'int'}
@@ -100,56 +101,56 @@ if __name__ == '__main__':
       pvdb[p2+'MonClkFast'     ] = {'type' : 'int', 'count' : 4}
       pvdb[p2+'MonClkLock'     ] = {'type' : 'int', 'count' : 4}
 
-      pvdb[p2+'UsLinkObL0'     ] = {'type' : 'int'}
-      pvdb[p2+'dUsLinkObL0'    ] = {'type' : 'float'}
-      pvdb[p2+'UsLinkObL1A'    ] = {'type' : 'int'}
-      pvdb[p2+'dUsLinkObL1A'   ] = {'type' : 'float'}
-      pvdb[p2+'UsLinkObL1R'    ] = {'type' : 'int'}
-      pvdb[p2+'dUsLinkObL1R'   ] = {'type' : 'float'}
+      pvdb[p2+'UsLinkObL0'     ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dUsLinkObL0'    ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'UsLinkObL1A'    ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dUsLinkObL1A'   ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'UsLinkObL1R'    ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'dUsLinkObL1R'   ] = {'type' : 'int', 'count' : numUsLinks }
 
       # The following PVs correspond to DtiDsPgp5Gb.yaml.
-      pvdb[p2+'CountReset0'   ] = {'type' : 'int'}
-      pvdb[p2+'CountReset1'   ] = {'type' : 'int'}
+#      pvdb[p2+'CountReset0'   ] = {'type' : 'int'}
+#      pvdb[p2+'CountReset1'   ] = {'type' : 'int'}
 
-      pvdb[p2+'ResetRx'       ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'Flush'         ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'Loopback'      ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'TxLocData'     ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'TxLocDataEn'   ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'AutoStatSendEn'] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'FlowControlDis'] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'RxPhyRdy'      ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'TxPhyRdy'      ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'LocLinkRdy'    ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'RemLinkRdy'    ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'TxRdy'         ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'RxPolarity'    ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'RemPauseStat'  ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'LocPauseStat'  ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'RemOflowStat'  ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'LocOflowStat'  ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'RemData'       ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'CellErrs'      ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'LinkDowns'     ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'LinkErrs'      ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'RemOflowVC'    ] = {'type' : 'int', 'count' : 2 * 4}
-      pvdb[p2+'RxFrErrs'      ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'dRxFrErrs'     ] = {'type' : 'float', 'count' : 2}
-      pvdb[p2+'RxFrames'      ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'dRxFrames'     ] = {'type' : 'float', 'count' : 2}
-      pvdb[p2+'LocOflowVC'    ] = {'type' : 'int', 'count' : 2 * 4}
-      pvdb[p2+'TxFrErrs'      ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'dTxFrErrs'     ] = {'type' : 'float', 'count' : 2}
-      pvdb[p2+'TxFrames'      ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'dTxFrames'     ] = {'type' : 'float', 'count' : 2}
-      pvdb[p2+'RxClockFreq'   ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'TxClockFreq'   ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'TxLastOpCode'  ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'RxLastOpCode'  ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'RxOpCodes'     ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'dRxOpCodes'    ] = {'type' : 'float', 'count' : 2}
-      pvdb[p2+'TxOpCodes'     ] = {'type' : 'int', 'count' : 2}
-      pvdb[p2+'dTxOpCodes'    ] = {'type' : 'float', 'count' : 2}
+#      pvdb[p2+'ResetRx'       ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'Flush'         ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'Loopback'      ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'TxLocData'     ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'TxLocDataEn'   ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'AutoStatSendEn'] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'FlowControlDis'] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'RxPhyRdy'      ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'TxPhyRdy'      ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'LocLinkRdy'    ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'RemLinkRdy'    ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'TxRdy'         ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'RxPolarity'    ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'RemPauseStat'  ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'LocPauseStat'  ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'RemOflowStat'  ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'LocOflowStat'  ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'RemData'       ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'CellErrs'      ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'LinkDowns'     ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'LinkErrs'      ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'RemOflowVC'    ] = {'type' : 'int', 'count' : 2 * 4}
+#      pvdb[p2+'RxFrErrs'      ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'dRxFrErrs'     ] = {'type' : 'float', 'count' : 2}
+#      pvdb[p2+'RxFrames'      ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'dRxFrames'     ] = {'type' : 'float', 'count' : 2}
+#      pvdb[p2+'LocOflowVC'    ] = {'type' : 'int', 'count' : 2 * 4}
+#      pvdb[p2+'TxFrErrs'      ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'dTxFrErrs'     ] = {'type' : 'float', 'count' : 2}
+#      pvdb[p2+'TxFrames'      ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'dTxFrames'     ] = {'type' : 'float', 'count' : 2}
+#      pvdb[p2+'RxClockFreq'   ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'TxClockFreq'   ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'TxLastOpCode'  ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'RxLastOpCode'  ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'RxOpCodes'     ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'dRxOpCodes'    ] = {'type' : 'float', 'count' : 2}
+#      pvdb[p2+'TxOpCodes'     ] = {'type' : 'int', 'count' : 2}
+#      pvdb[p2+'dTxOpCodes'    ] = {'type' : 'float', 'count' : 2}
 
     # printDb(pvdb, prefix)
     printDb()
