@@ -44,8 +44,8 @@ namespace Pds {
       void     usLinkTrigDelay(unsigned idx, unsigned v);
       unsigned usLinkFwdMask(unsigned idx) const;
       void     usLinkFwdMask(unsigned idx, unsigned v);
-      unsigned usLinkPartition(unsigned idx) const;
-      void     usLinkPartition(unsigned idx, unsigned v);
+      int      usLinkPartition(unsigned idx) const;
+      void     usLinkPartition(unsigned idx, int v);
     public:
       unsigned usLink()         const;
       void     usLink(unsigned) const; // Callable from const methods
@@ -147,7 +147,8 @@ namespace Pds {
         Cphw::Reg   _rxFull;
         //  0x0098 - RO: Indexed downstream link - tx words count
         //  [47:0]   obSent
-        Cphw::Reg64 _obSent;
+        Cphw::Reg   _obSent;
+        uint32_t    _reserved;
       }           _dsStatus;
       //  0x00A0 - RO: Indexed upstream link - rx control words count
       Cphw::Reg   _usObRecv;
@@ -297,7 +298,10 @@ namespace Pds {
       {
         unsigned rxErrs;
         unsigned rxFull;
-        unsigned ibRecv;
+        //        unsigned ibRecv;
+        unsigned rxInh;
+        unsigned wrFifoD;
+        unsigned rdFifoD;
         unsigned ibEvt;
         unsigned obRecv;
         unsigned obSent;

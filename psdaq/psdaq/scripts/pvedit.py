@@ -29,7 +29,7 @@ def initPvMon(mon,pvname):
     print('Wait for '+pvname+' monitor_start')
     mon.pv.monitor_start()
     mon.pv.add_monitor_callback(mon.update)
-    print('Wait for '+pvname+' get')
+#    print('Wait for '+pvname+' get')
     mon.pv.get()
     mon.update(None)
 
@@ -48,7 +48,7 @@ class PvDisplay(QtWidgets.QLabel):
         self.setText(value)
 
 class PvLabel:
-    def __init__(self, parent, pvbase, name, dName=None, isInt=False):
+    def __init__(self, parent, pvbase, name, dName=None, isInt=False, scale=1.0, units=None):
         layout = QtWidgets.QHBoxLayout()
         label  = QtWidgets.QLabel(name)
         label.setMinimumWidth(100)
@@ -69,6 +69,8 @@ class PvLabel:
         else:
             self.dPv = None
         self.isInt = isInt
+        self.scale = scale
+        self.units = units
         initPvMon(self,pvname)
 
     def update(self, err):
@@ -85,19 +87,25 @@ class PvLabel:
                     if dq is not None:
                         s = s + QString(" [%s (0x%s)]") % ((QString(int(dq))),(format(int(dq)&0xffffffff, 'x')))
                 else:
-                    s = QString(q)
+                    s = QString(q*self.scale)
                     if dq is not None:
-                        s = s + QString(" [%s]") % (QString(dq))
+                        s = s + QString(" [%s]") % (QString(dq*self.scale))
+                    if self.units is not None:
+                        s = s + self.units
             except:
                 v = ''
                 for i in range(len(q)):
                     #v = v + ' %f'%q[i]
-                    v = v + ' ' + QString(q[i])
+#                    v = v + ' ' + QString(q[i]*self.scale)
+                    v = v + " %5.2f" % (q[i]*self.scale)
                     if dq is not None:
-                        v = v + QString(" [%s]") % (QString(dq[i]))
+#                        v = v + QString(" [%s]") % (QString(dq[i]*self.scale))
+                        v = v + " %5.2f" % (dq[i]*self.scale)
                         #v = v + ' [' + '%f'%dq[i] + ']'
                     if ((i%8)==7):
                         v = v + '\n'
+                if self.units is not None:
+                    v = v + self.units
                 s = QString(v)
 
             self.__display.valueSet.emit(s)
@@ -231,7 +239,10 @@ class PvInt(PvEditInt):
 
     def __init__(self,pv):
         super(PvInt, self).__init__(pv, '')
-        self.setEnabled(False)
+#        self.setEnabled(False)
+
+    def setPv(self):
+        pass
 
 class PvEditHML(PvEditTxt):
 
@@ -355,6 +366,54 @@ class PvCmb(PvEditCmb):
         super(PvCmb, self).__init__(pvname, choices)
         self.setEnabled(False)
 
+class PvIntRow(object):
+    def __init__(self, layout, name, pvname, row, length):
+        layout.addWidget( QtWidgets.QLabel(name), row, 0 )
+        self.cells = []
+        for j in range(length):
+            lbl = QtWidgets.QLabel()
+            layout.addWidget( lbl, row, j+1 )
+            self.cells.append(lbl)
+        initPvMon(self,pvname)
+
+    def update(self, err):
+        q = self.pv.value
+        for i in range(len(q)):
+            if type(q[i]) == int:
+                self.cells[i].setText('%d'%q[i])
+            else:
+                self.cells[i].setText('{0:.4f}'.format(q[i]))
+
+class PvIntTable(QtWidgets.QGroupBox):
+    def __init__(self, title, pvbase, pvlist, names, length):
+        super(PvIntTable, self).__init__(title)
+
+        lo = QtWidgets.QGridLayout()
+        for i,name in enumerate(names):
+            PvIntRow( lo, name, pvbase+pvlist[i], i, length )
+        self.setLayout(lo)
+
+
+class PvMask(object):
+    
+    def __init__(self, parent, pvname, bits):
+        super(PvMask,self).__init__()
+
+        self.chkBox = []
+        for i in range(bits):
+            chkB = QtWidgets.QCheckBox()
+            parent.addWidget( chkB )
+            self.chkBox.append(chkB)
+            chkB.setEnabled(False)
+        initPvMon(self, pvname)
+
+    def update(self, err):
+        v = self.pv.value
+        for i in range(len(self.chkBox)):
+            if v & (1<<i):
+                self.chkBox[i].setChecked(True)
+            else:
+                self.chkBox[i].setChecked(False)
 
 class PvMaskTab(QtWidgets.QWidget):
     
@@ -545,4 +604,10 @@ def LblEditEvt(parent, pvbase, name, count=1):
 def LblEditDst(parent, pvbase, name, count=1):
     return PvInput(PvEditDst, parent, pvbase, name, count)
 
-
+def LblMask(pvbase, label, bits=1):
+    hbox = QtWidgets.QHBoxLayout()
+    hbox.addWidget( QtWidgets.QLabel(label) )
+    PvMask(hbox, pvbase+label, bits)
+    hbox.addStretch(1)
+    return hbox
+    

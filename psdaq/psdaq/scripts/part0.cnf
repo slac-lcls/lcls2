@@ -43,12 +43,15 @@ ip_addr = '10.0.'+shelf
 procmgr_config = [
  { host: epics_host,  id:'partcas',port:'29450', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/partcas.py -P DAQ:LAB2'},
  { host: epics_host,  id:'modcas' ,port:'29451', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/modcas.py -P DAQ:LAB2:XPM:'+shelf},
-
+ { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
+ { host: epics_host,  id:'dticas' ,port:'29453', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/dticas.py -P DAQ:LAB2:DTI:'+shelf},
+ { host: epics_host,  id:'dtiioc' ,port:'29454', flags:'s', env:epics_env, cmd:bin_path+'psdaq/dti/dtiPVs -a '+ip_addr+'.104 -P DAQ:LAB2:DTI:'+shelf+':4' },
  {                       id:'partca-'+platform ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/partca.py DAQ:LAB2:PART:'+platform},
+ {                       id:'partca-4' ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/partca.py DAQ:LAB2:PART:4'},
  {                       id:'modca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
  {                       id:'deadca-'+platform  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
- { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
- {                       id:'dti-104' , flags:'sx', cmd:bin_path+'psdaq/dti/dti_simple -a '+ip_addr+'.104 -u 0xf -f 1,2,4,8 -t '+platform},
+ {                       id:'dtica'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/dtica.py DAQ:LAB2:DTI:'+shelf},
+# {                       id:'dti-104' , flags:'sx', cmd:bin_path+'psdaq/dti/dti_simple -a '+ip_addr+'.104 -u 0xf -f 1,2,4,8 -t '+platform},
 # {                       id:'dti-103' , flags:'sx', cmd:bin_path+'psdaq/dti/dti_simple -a '+ip_addr+'.103 -u 0xf -f 1,2,4,8 -t '+platform},
 
 ## procstat
