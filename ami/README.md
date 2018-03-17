@@ -43,15 +43,13 @@ backend
 * External interfaces:
     - hutch python - epics / json documents broker of blue sky
     - DRP feedback?
-* only reconfigure graph on transitions
 * manager needs to discover when the configuration has failed to apply on one of the workers
-* need to fix gui and manager now that we are using MPI too
     
     
 frontend
 --------
-* how to select multiple inputs into an analysis box
-* how to choose between two graph options (e.g. roi vs. projection)
+* __how to select multiple inputs into an analysis box__
+* __how to choose between two graph options (e.g. roi vs. projection)__
 * Ability to edit the graph graphically.
 * Visualization of the graph
 * duplicate non-broken AMI functionality
