@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# default to "develop" python installation.  can override it with "install" python installation.
+pyInstallStyle=${1-develop}
+echo $pyInstallStyle
+
 # USAGE: ./build_all.sh (Optional arguments: Release (default), RelWithDebInfo, Debug)
 
 set -e
@@ -50,8 +54,8 @@ mkdir -p $INSTDIR/lib/python$pyver/site-packages/
 cd psana
 # force build of the dgram extention
 python setup.py build_ext --xtcdata=$INSTDIR -f --inplace
-python setup.py develop --xtcdata=$INSTDIR --prefix=$INSTDIR
+python setup.py $pyInstallStyle --xtcdata=$INSTDIR --prefix=$INSTDIR
 cd ..
 # build ami
 cd ami
-python setup.py develop --prefix=$INSTDIR
+python setup.py $pyInstallStyle --prefix=$INSTDIR
