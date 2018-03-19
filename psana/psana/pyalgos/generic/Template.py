@@ -37,7 +37,7 @@ logger = logging.getLogger('Template')
 
 #------------------------------
 
-def test_01()
+def test_01():
     pass
 
 #------------------------------
