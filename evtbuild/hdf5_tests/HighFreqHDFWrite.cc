@@ -27,6 +27,12 @@ void loop_write(const char* filename, int loop_limit, hsize_t chunk_size, hsize_
     hsize_t size[2];
     hsize_t offset[2];
     hsize_t dimsext[2] = {1, num_bytes};         // extend dimensions 
+    // FileCreatPropList fcparm;
+        // Increase cache size to match chunks. Guessing on the parameters here. 
+    // size_t rd_chunk_bytes = chunk_dims[0]*chunk_dims[1]*4;
+    // FileAccPropList fprop;
+    // fprop.setCache((int) chunk_dims[0]*chunk_dims[1], (size_t) chunk_dims[0]*chunk_dims[1], rd_chunk_bytes, 1);
+
 
     // Create a new file using the default property lists. 
     H5File file(FILE_NAME, H5F_ACC_TRUNC);
@@ -37,10 +43,7 @@ void loop_write(const char* filename, int loop_limit, hsize_t chunk_size, hsize_
     DSetCreatPropList prop;
     prop.setChunk(2, chunk_dims);
 
-    // Increase cache size to match chunks. Guessing on the parameters here. 
-    size_t rd_chunk_bytes = chunk_dims[0]*8;
-    FileAccPropList fprop;
-    fprop.setCache((int) chunk_dims[0], (size_t) chunk_dims[0], rd_chunk_bytes, 1);
+    // fprop.setCache((int) chunk_dims[0]*chunk_dims[1], (size_t) chunk_dims[0]*chunk_dims[1]);
 
 
     // Create the chunked dataset.  Note the use of pointer.
