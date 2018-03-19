@@ -16,10 +16,16 @@ long GetFileSize(std::string filename)
     return rc == 0 ? stat_buf.st_size : -1;
 };
 
-void loop_read(const char* filename){
+void loop_read(const char* filename, int buffer_size){
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     const H5std_string FILE_NAME( filename );
-    H5File file(FILE_NAME, H5F_ACC_RDONLY);
+    FileCreatPropList fcparm;
+    FileAccPropList fprop;
+
+    //Set a 64 Mb cache
+    fprop.setCache((int) 0, (size_t) buffer_size, buffer_size*1048576, 1);
+
+    H5File file(FILE_NAME, H5F_ACC_RDONLY, fcparm, fprop);
     DataSet dataset = file.openDataSet(DATASET_NAME);
 
     H5T_class_t type_class = dataset.getTypeClass();
@@ -67,7 +73,7 @@ int main(int argc,  char *argv[]){
     if(atoi(argv[2])==0){
     printf("%-20s%-20s%-20s%-20s%-20s%-20s%-20s%-20s\n", "Chunk size", "Loop limit", "Bytes/extension", "Duration (ms)", "Filesize (MB)", "HDF Ratio", "Read  speed (MB/s)", "Frequency (kHz)");
     };
-    loop_read(argv[1]);
+    loop_read(argv[1], atoi(argv[3]));
     return 0;
 
 

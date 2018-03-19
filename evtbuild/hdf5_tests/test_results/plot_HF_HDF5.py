@@ -56,6 +56,7 @@ def plot_HF_data(filename):
 	fig.subplots_adjust(top=0.9)
 
 
+	fig.savefig('HDF_%s_%s_%s_test.png' % (fns[1], fns[0],fns[-1][:-4]))
 	fig.savefig('HDF_%s_%s_%s_test.pdf' % (fns[1], fns[0],fns[-1][:-4]))
 
 plot_HF_data("HF_2byte_write.txt")	
