@@ -72,6 +72,8 @@ class CMConfigParameters(PSConfigParameters) :
         self.main_win_width  = self.declareParameter(name='MAIN_WIN_WIDTH',  val_def=1200, type='int')
         self.main_win_height = self.declareParameter(name='MAIN_WIN_HEIGHT', val_def=700,  type='int')
 
+        self.main_tab_name = self.declareParameter(name='MAIN_TAB_NAME', val_def='',  type='str')
+
 #------------------------------
 
 cp = CMConfigParameters()

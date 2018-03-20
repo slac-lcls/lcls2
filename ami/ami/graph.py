@@ -35,7 +35,7 @@ class Graph(object):
                     cfg_obj = getattr(operation,  op_cfg['optype'])(**op_cfg['config'])
                     if not cfg_obj.valid:
                         raise GraphConfigError("operation %s has an invalid configuration"%name)
-                    self.operations[name] = operation.Operation(name, cfg_obj.dtype, self.store, op_cfg['inputs'], cfg_obj)
+                    self.operations[name] = operation.Operation(name, self.store, op_cfg['inputs'], cfg_obj)
                     for inp in self.operations[name].inputs:
                         self.subscribe(inp['name'], name)
                 except Exception as exp:

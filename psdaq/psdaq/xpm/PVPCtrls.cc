@@ -145,6 +145,8 @@ namespace Pds {
                         {                                         })
     CPV(MsgDisable,     { if (TOU(data())!=0) _ctrl.msg_disable();},
                         {                                         })
+    CPV(MsgClear,       { if (TOU(data())!=0) _ctrl.msg_clear();  },
+                        {                                         })
     CPV(InhInterval,    { PVG(inhibitInt(_idx, TOU(data())));     },
                         { PVP(inhibitInt(_idx));                  })
     CPV(InhLimit,       { PVG(inhibitLim(_idx, TOU(data())));     },
@@ -209,6 +211,7 @@ namespace Pds {
       NPV ( MsgConfigKey        );
       NPV ( MsgEnable           );
       NPV ( MsgDisable          );
+      NPV ( MsgClear            );
       NPVN( InhInterval         ,4);
       NPVN( InhLimit            ,4);
       NPVN( InhEnable           ,4);
@@ -311,6 +314,15 @@ namespace Pds {
       printf("msg_disable\n");
       _sem.take();
       _m.messageHdr    (_partition, MsgDisable);
+      _sem.give();
+    }
+
+    void PVPCtrls::msg_clear()
+    {
+      printf("msg_clear\n");
+      _sem.take();
+      _m.messagePayload(_partition, 0);
+      _m.messageHdr    (_partition, MsgClear);
       _sem.give();
     }
 

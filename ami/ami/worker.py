@@ -59,7 +59,7 @@ class Worker(object):
                 try:
                     self.graph.execute(updates)
                 except GraphRuntimeError as graph_err:
-                    print("%s: Failure encountered executing graph:"%self.name, graph_err)
+                    print("worker%s: Failure encountered executing graph:"%self.idnum, graph_err)
                     return 1
                 self.store.collect()
             else:

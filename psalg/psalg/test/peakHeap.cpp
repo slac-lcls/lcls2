@@ -1,7 +1,14 @@
-//g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peakHeap
+//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peakHeap
 // To turn off debug:
-//g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -DNDEBUG -o peakHeap
+//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -DNDEBUG -o peakHeap
+//valgrind ./peakHeap
 
+/*
+ * Test program for the AllocArray peak finder
+ * This code can be used to run with the Heap or the Stack
+ * setAllocator can be used to test switching to a new Stack every event
+ * (NOTE: valgrind will complain about maximum stack size. Try: valgrind --max-stackframe=3097464 ./peakHeap)
+ */
 #include <iostream>
 #include <stdlib.h>
 
@@ -20,11 +27,10 @@ using namespace psalg;
 
 int main () {
 
-  //Heap *hptr = new Heap;
-  //Stack *sptr = new Stack;
-  //Stack *sptr1 = new Stack;
-  Stack stack;
-  Stack stack1;
+  Heap buf;
+  Heap buf1;
+  //Stack buf;
+  //Stack buf1;
 
   // Step 0: fake data and mask
   unsigned int rows = 185;
@@ -58,7 +64,7 @@ int main () {
   const unsigned pbits = 0;
 
   PeakFinderAlgos *ptr;
-  ptr = new PeakFinderAlgos(&stack, seg, pbits);
+  ptr = new PeakFinderAlgos(&buf, seg, pbits);
 
   // Step 2: Set params
   const float npix_min = 2;
@@ -80,7 +86,7 @@ int main () {
   ptr->_printVectorOfPeaks_drp(ptr->vectorOfPeaksSelected_drp());
   std::cout << chrono::duration_cast<chrono::microseconds>(toc - tic).count() << " microseconds" << std::endl;
 
-  ptr->setAllocator(&stack1); // simulate PEBBLE
+  ptr->setAllocator(&buf1); // simulate PEBBLE
 
   tic = Clock::now();
   ptr->peakFinderV3r3(data1, mask, rows, cols, rank, r0, dr, nsigm);

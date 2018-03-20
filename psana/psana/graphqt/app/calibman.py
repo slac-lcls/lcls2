@@ -12,11 +12,13 @@ from psana.graphqt.CMMain import calibman
 #------------------------------
 
 def usage():
-    return 'command examples\n'\
-           '  calibman print -e cxi12345 -d camera-0-cxids1-0 -c pedestals -r 123 \n'\
-           '  calibman save  -e cxi12345 -d camera-0-cxids1-0 -c pedestals -r 123 -f my_constants_save.txt\n'\
-           '  calibman get   -e cxi12345 -d camera-0-cxids1-0 -c pedestals -r 123 -f my_constants_get.txt\n'\
-           '  calibman -h'
+    return '%s - TBD' % (sys._getframe().f_code.co_name)
+    #return 'command examples\n'\
+    #       '  calibman print -e cxi12345 -d camera-0-cxids1-0 -c pedestals -r 123 \n'\
+
+#------------------------------
+
+def print_hline() : print(80*'_')
 
 #------------------------------
 
@@ -26,14 +28,14 @@ def calibman_cli() :
     parser = input_option_parser()
 
     if len(sys.argv) == 1 : 
-        print(80*'_')
+        print_hline()
         parser.print_help()
-        print(80*'_')
+        print_hline()
         parser.print_usage()
-        print(80*'_')
-        msg = 'WARNING: COMMAND WITH ALL DEFAULT PARAMETERS IS USELESS...'
+        print_hline()
+        #msg = 'WARNING: COMMAND WITH ALL DEFAULT PARAMETERS IS USELESS...'
         #print(msg)
-        sys.exit(msg)
+        #sys.exit(msg)
 
     #print_parser(parser)
     calibman(parser)
@@ -61,9 +63,6 @@ def input_option_parser() :
     d_verbose    = True
     d_iofname    = './fname.txt'
 
-    #d_evskip = 0
-    #d_events = 1000
- 
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
     h_experiment = 'experiment name, default = %s' % d_experiment 
@@ -75,10 +74,7 @@ def input_option_parser() :
     h_verbose    = 'verbosity, default = %s' % d_verbose
     h_iofname    = 'output file prefix, default = %s' % d_iofname
 
-    #h_evskip     = 'number of events to skip before start processing, default = %s' % d_evskip
-    #h_events     = 'number of events to process, default = %s' % d_events
-
-    parser = OptionParser(description='Process hexanode xtc data and creates "small data" hdf5', usage=usage())
+    parser = OptionParser(description='Calibration manager UI', usage=usage())
 
     parser.add_option('--host',             default=d_host,       action='store', type='string', help=h_host)
     parser.add_option('--port',             default=d_port,       action='store', type='string', help=h_port)
@@ -90,9 +86,6 @@ def input_option_parser() :
     parser.add_option('-v', '--version',    default=d_version,    action='store', type='string', help=h_version)
     parser.add_option('-p', '--verbose',    default=d_verbose,    action='store_false',          help=h_verbose)
     parser.add_option('-f', '--iofname',    default=d_iofname,    action='store', type='string', help=h_iofname)
-
-    #parser.add_option('-m', '--evskip', default=d_evskip, action='store', type='int',    help=h_evskip)
-    #parser.add_option('-n', '--events', default=d_events, action='store', type='int',    help=h_events)
 
     return parser
   

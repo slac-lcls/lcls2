@@ -101,6 +101,15 @@ def str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z', time_sec=None) :
 
 #------------------------------
 
+def str_tstamp_v1(fmt='%Y-%m-%dT%H:%M:%S.%f%z', time_sec=None) :
+    """Returns string timestamp for specified format and time in sec or current time by default
+    """
+    from datetime import datetime
+    dt = datetime.fromtimestamp(time() if time_sec is None else time_sec)
+    return dt.strftime(fmt)
+
+#------------------------------
+
 def time_and_stamp(fmt='%Y-%m-%dT%H:%M:%S%z', time_sec=None) :
     tsec = time() if time_sec is None else time_sec
     return tsec, str_tstamp(fmt, tsec)
@@ -466,6 +475,13 @@ def print_parser(parser) :
         print('%s %s %s' % (k.ljust(10), str(v).ljust(16), str(defs[k]).ljust(16)))
 
 #------------------------------
+
+#def get_grpnames(user='root') :
+#    """Returns tuple of group names"""
+#    from grp import getgrnam
+#    return getgrnam(user)
+
+#------------------------------
 #----------- TEST -------------
 #------------------------------
 
@@ -479,6 +495,23 @@ if __name__ == "__main__" :
     save_image_tiff(image, fname='image.tiff', verb=verbosity)
     save_image_file(image, fname='image.png',  verb=verbosity)
     save_image_file(image, fname='image.xyz',  verb=verbosity)
+
+  #------------------------------
+
+  def test_datetime() :    
+    from datetime import datetime
+    t_sec = time()
+    print('t_sec:', t_sec)
+    t = datetime.fromtimestamp(t_sec)
+    print('t:', t)
+    tnow = datetime.now()
+    print('datetime.now:', tnow)
+    tstamp = t.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+    zone = strftime('%z', localtime(t_sec))
+    print(tstamp)
+    print('zone', zone)
+    tsz = '%s%s' % (tstamp,zone)
+    print('tsz', tsz)
 
   #------------------------------
 
@@ -496,6 +529,7 @@ if __name__ == "__main__" :
     create_directory('./work', mode=0o377)
     print('file_mode("work")     : %s' % oct(file_mode('work')))
     print('log_rec_on_start()    :%s' % log_rec_on_start())
+    #print('get_grpnames()        :%s' % str(get_grpnames('root')))
 
 #------------------------------
 
@@ -505,6 +539,7 @@ if __name__ == "__main__" :
                         level=logging.DEBUG)
                         #filename='example.log', filemode='w'
     test_01()
+    test_datetime()
     sys.exit('\nEnd of test')
 
 #------------------------------

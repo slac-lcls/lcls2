@@ -61,7 +61,7 @@ cp = SSConfigParameters()
 def test_SSConfigParameters() :
     from expmon.Logger import log
 
-    log.setPrintBits(0377)
+    log.setPrintBits(0o377)
     cp.readParametersFromFile()
     cp.printParameters()
     cp.log_level.setValue('debug')

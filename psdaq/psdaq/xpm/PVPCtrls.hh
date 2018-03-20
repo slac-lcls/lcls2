@@ -49,6 +49,7 @@ namespace Pds {
       void msg_config  ();
       void msg_enable  ();
       void msg_disable ();
+      void msg_clear   ();
       void dump() const;
     public:
       enum { FixedRate, ACRate, Sequence };

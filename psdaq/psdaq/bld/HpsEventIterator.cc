@@ -44,6 +44,8 @@ bool HpsEventIterator::next()
   for(unsigned m=v.mask; m!=0; m&=(m-1),i++)
     v.channels[i-2] = _next[i];
   v.valid     = _next[i++];
+
   _next   += i;
+
   return true;
 }
