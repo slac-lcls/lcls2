@@ -4,7 +4,7 @@ import numpy as np
 # Import the C-level symbols of numpy
 cimport numpy as cnp
 
-from libc.stdlib cimport free
+from libc.stdlib cimport malloc,free
 from cpython cimport PyObject, Py_INCREF
 
 # Numpy must be initialized. When using numpy from C or Cython you must
@@ -14,6 +14,7 @@ cnp.import_array()
 from libcpp.vector cimport vector
 cimport libc.stdint as si
 
+# These classes are imported from ShapesData.hh by DescData.hh
 cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
     cdef cppclass AlgVersion:
         AlgVersion(cnp.uint8_t major, cnp.uint8_t minor, cnp.uint8_t micro) except+
@@ -29,6 +30,31 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
         const char* name()
         DataType    type()
         cnp.uint32_t    rank()
+
+cdef extern from "xtcdata/xtc/Xtc.hh" namespace "XtcData":
+    cdef cppclass Xtc:
+        Xtc()
+
+cdef extern from "xtcdata/xtc/Dgram.hh" namespace "XtcData":
+    cdef cppclass Dgram:
+        Dgram()
+
+cdef extern from "xtcdata/xtc/TypeId.hh" namespace "XtcData":
+    cdef cppclass TypeId:
+        enum Type: Parent, ShapesData, Shapes, Data, Names, NumberOf
+        TypeId(Type type, int version)
+
+
+cdef class PyTypeId:
+    cdef TypeId* cptr
+
+    def __cinit__(self, int type, int version):
+        self.cptr = new TypeId(<TypeId.Type>type,version)
+
+    def __dealloc__(self):
+        del self.cptr
+
+
 
 cdef class PyAlgVer:
     cdef AlgVersion* cptr
@@ -66,3 +92,17 @@ cdef class PyName:
 
     #def name(self):
     #    return <unicode>self.cptr.name()
+
+# cdef class CreateDgram:
+
+#     cdef Dgram* cptr
+
+#     def __cinit__(self):
+#         cdef int bufsize = 0x4000000
+#         cdef void* configbuf = malloc(bufsize)
+#         cdef Dgram *config = <Dgram*>configbuf
+#         # cdef const char* cats "cats"
+#         # tid = Type(0,0)
+#         # self.tid = tid
+#     def __dealloc__(self):
+#         del self.cptr
