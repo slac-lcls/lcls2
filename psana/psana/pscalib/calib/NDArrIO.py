@@ -134,6 +134,9 @@ def _metadata_from_comments(cmts) :
     ndim = None
     shape = []
 
+    str_dtype0 = ''
+    str_shape0 = ''
+
     if cmts is not None :
         for rec in cmts :
             fields = rec.split(' ', 2)
@@ -141,8 +144,14 @@ def _metadata_from_comments(cmts) :
             if   fields[1] == 'DTYPE'    : str_dtype = fields[2].rstrip('\n').strip(' ')
             elif fields[1] == 'NDIM'     : ndim = int(fields[2])
             elif fields[1][:4] == 'DIM:' : shape.append(int(fields[2]))
+            elif fields[1] == 'SHAPE'    : str_shape0 = fields[2].rstrip('\n').strip(' ')
+            elif fields[1] == 'DATATYPE' : str_dtype0 = fields[2].rstrip('\n').strip(' ')
 
-    dtype = np.dtype(str_dtype) if str_dtype else np.float32
+    dtype = np.dtype(str_dtype0) if str_dtype0 else\
+            np.dtype(str_dtype)  if str_dtype  else np.float32
+
+    if str_shape0 : shape = eval(str_shape0)
+    if len(shape) : ndim = len(shape)
 
     return ndim, shape, dtype
 

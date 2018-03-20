@@ -72,8 +72,9 @@ class CalibBase() :
 #------------------------------
 
 if __name__ == "__main__" :
-    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
-                        datefmt='%m-%d-%Y %H:%M:%S',\
+    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
+    logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s: %(message)s',\
+                        datefmt='%Y-%m-%dT%H:%M:%S',\
                         level=logging.DEBUG) #filename='example.log', filemode='w'
     o = CalibBase()
     o.put(None)

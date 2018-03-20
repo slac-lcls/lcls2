@@ -37,7 +37,7 @@ static void dump_by2(const uint32_t* p,
 {
       for(int j=7; j>=0; j--) {
         for(unsigned i=0; i<n/2; i++) {
-          unsigned v = p[2*i+0] + p[2*i+1];
+          uint32_t v = p[2*i+0] + p[2*i+1];
           v >>= 4*j;
           unsigned d = v&0xf;
           if (v)
@@ -91,6 +91,8 @@ public:
     if (1) {
       for(unsigned i=0; i<sz; i++) {
         _diff[i] = p[i+1]-_data[i];
+        // if (_data[i] > p[i+1])
+        //   printf("[%02x] (%04x - %04x : %04x)\n", i, p[i+1],_data[i],_diff[i]);
         _data[i] = p[i+1];
       }
       // printf("%s: sum\n",_name.c_str());

@@ -4,6 +4,8 @@
 #export PSPKG_RELEASE=controls-0.0.8
 #source $PSPKG_ROOT/etc/set_env.sh
 source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh
+SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export PATH=$SCRIPTDIR/../../../install/bin:${PATH}
 #source $PSPKG_ROOT/etc/env_add_pkg.sh pyqtgraph/0.9.10
 #source $PSPKG_ROOT/etc/env_add_pkg.sh
 export EPICS_CA_SERVER_PORT=5066

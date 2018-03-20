@@ -36,7 +36,7 @@ from time import time, localtime, strftime
 
 #------------------------------
 
-def create_directory(dir, mode=0777) :
+def create_directory(dir, mode=0o777) :
     #print('XXX: create_directory: %s' % dir)
     if os.path.exists(dir) :
         pass
@@ -51,7 +51,7 @@ def create_directory(dir, mode=0777) :
 
 #------------------------------
 
-def create_path(path, depth=5, mode=0777) : 
+def create_path(path, depth=5, mode=0o777) : 
     # Creates missing path for /reg/g/psdm/logs/calibman/2016/07/2016-07-19-12:20:59-log-dubrovin-562.txt
     # if path to file exists return True, othervise False
     subdirs = path.strip('/').split('/')
@@ -153,7 +153,7 @@ class NotificationLog :
             msg = 'Can not create path to the file: %s' % path
             logger.warning(msg, self.__class__.__name__)
         
-\------------------------------
+#------------------------------
 #------------------------------
 #----------- TESTS ------------
 #------------------------------

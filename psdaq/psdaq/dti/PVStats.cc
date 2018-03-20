@@ -12,7 +12,10 @@ using Pds_Epics::PVWriter;
 
 using Pds_Epics::PVWriter;
 
-enum { _UsLinkUp,
+enum { _TimLinkUp,
+       _TimRefClk,
+       _TimFrRate,
+       _UsLinkUp,
        _BpLinkUp,
        _DsLinkUp,
        _UsRxErrs,
@@ -79,6 +82,9 @@ namespace Pds {
 #define PV_ADD(name  ) { _pv[_##name] = new PVWriter((pvbase + #name).c_str()); }
 #define PV_ADDV(name,n) { _pv[_##name] = new PVWriter((pvbase + #name).c_str(), n); }
 
+      PV_ADD (TimLinkUp);
+      PV_ADD (TimRefClk);
+      PV_ADD (TimFrRate);
       PV_ADD (UsLinkUp);
       PV_ADD (BpLinkUp);
       PV_ADD (DsLinkUp);
@@ -126,8 +132,6 @@ namespace Pds {
       printf("PVs allocated\n");
     }
 
-    static unsigned myTestCounter = 0;
-
     void PVStats::update(const Stats& ns, const Stats& os, double dt)
     {
 #define PVPUTU(i,v)    { *reinterpret_cast<unsigned*>(_pv[i]->data())    = unsigned(v+0.5); _pv[i]->put(); }
@@ -140,6 +144,10 @@ namespace Pds {
                            reinterpret_cast<double  *>(_pv[p]->data())[i] = double  (v); \
                          _pv[p]->put();                                                  \
                        }
+
+      PVPUTU ( _TimLinkUp, ns.timLinkUp);
+      PVPUTD ( _TimRefClk, ((ns.timRefCount-os.timRefCount)*16/dt));
+      PVPUTD ( _TimFrRate, (ns.timFrCount -os.timFrCount) / dt);
 
       PVPUTU ( _UsLinkUp, ns.usLinkUp);
       PVPUTU ( _BpLinkUp, ns.bpLinkUp);
@@ -192,6 +200,9 @@ namespace Pds {
       PVPUTU ( _BpObSent ,        ns.bpObSent);
       PVPUTU ( _dBpObSent, double(ns.bpObSent - os.bpObSent) / dt);
 
+#undef PVPUT_ABS
+#undef PVPUT_DEL
+
 #define PVPUT_ABS( idx, elm ) {                                         \
         for(unsigned i=0; i<Module::NDsLinks; i++)                      \
           reinterpret_cast<unsigned*>(_pv[idx]->data())[i] = ns.ds[i].elm; \
@@ -214,7 +225,7 @@ namespace Pds {
       //      PVPUT_DEL( _dDsObSent, obSent);
       { for(unsigned i=0; i<Module::NDsLinks; i++)
           reinterpret_cast<double*>(_pv[_dDsObSent]->data())[i] = 
-            (ns.ds[i].obSent-os.ds[i].obSent)*8.e-6;
+            double(ns.ds[i].obSent-os.ds[i].obSent)*8.e-6;
         _pv[_dDsObSent]->put(); }
 
       PVPUTU ( _QpllLock , ns.qpllLock);

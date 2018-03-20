@@ -182,11 +182,13 @@ int main (int argc, char **argv) {
     PRINTERR(txOpCodeCnt, 0xa0);
     PRINTREG(txOpCodeLst, 0xa4);
 
+    /*
     printf("sim @ %p\n", &p->sim);
     printf("-- AppTxSim Registers --\n");
     printf("overflow: %08x\n", p->sim.overflow);
     printf("control : %08x\n", p->sim.control);
     printf("size    : %08x\n", p->sim.size);
+    */
 
   close(fd);
 }

@@ -290,6 +290,9 @@ namespace Pds {
       // Revisit: Useful?  unsigned enabled;
       // Revisit: Useful?  unsigned tagEnabled;
       // Revisit: Useful?  unsigned l1Enabled;
+      unsigned timLinkUp;
+      unsigned timRefCount;
+      unsigned timFrCount;
 
       unsigned usLinkUp;
       unsigned bpLinkUp;

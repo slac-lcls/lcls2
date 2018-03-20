@@ -5,12 +5,17 @@
 
 Usage::
 
+    # test: python psana/psana/pyalgos/generic/NDArrUtils.py 12
+
     # assuming that $PYTHONPATH=.../lcls2/psana
     # Import
     import psana.pyalgos.generic.NDArrUtils as gu
 
     # Methods
     #resp = gu.<method(pars)>
+
+    gu.print_ndarr(nda, name='', first=0, last=5)
+    s = gu.info_ndarr(nda, name='', first=0, last=5)
 
     shape = (32,185,388)
     size  = size_from_shape(shape) # returns 32*185*388   
@@ -77,14 +82,29 @@ logger = logging.getLogger('NDArrUtils')
 
 #------------------------------
 
-def print_ndarr(nda, name='', first=0, last=5) :
-    if nda is None : print('%s: %s', name, nda)
-    elif isinstance(nda, tuple) : print_ndarr(np.array(nda), 'ndarray from tuple: %s' % name)
-    elif isinstance(nda, list)  : print_ndarr(np.array(nda), 'ndarray from list: %s' % name)
+def info_ndarr(nda, name='', first=0, last=5) :
+    s = ''
+    if nda is None : s = '%s: %s' % (name, nda)
+    elif isinstance(nda, tuple) : s += info_ndarr(np.array(nda), 'ndarray from tuple: %s' % name)
+    elif isinstance(nda, list)  : s += info_ndarr(np.array(nda), 'ndarray from list: %s' % name)
     elif not isinstance(nda, np.ndarray) :
-                     print('%s: %s' % (name, type(nda)))
-    else           : print('%s:  shape:%s  size:%d  dtype:%s %s...'%\
-                           (name, str(nda.shape), nda.size, nda.dtype, nda.flatten()[first:last]))
+                     s = '%s: %s' % (name, type(nda))
+    else : s = '%s:  shape:%s  size:%d  dtype:%s %s...'%\
+               (name, str(nda.shape), nda.size, nda.dtype, nda.flatten()[first:last])
+    return s
+
+#------------------------------
+
+def print_ndarr(nda, name='', first=0, last=5) :
+    print(info_ndarr(nda, name, first, last))
+
+#    if nda is None : print('%s: %s', name, nda)
+#    elif isinstance(nda, tuple) : print_ndarr(np.array(nda), 'ndarray from tuple: %s' % name)
+#    elif isinstance(nda, list)  : print_ndarr(np.array(nda), 'ndarray from list: %s' % name)
+#    elif not isinstance(nda, np.ndarray) :
+#                     print('%s: %s' % (name, type(nda)))
+#    else           : print('%s:  shape:%s  size:%d  dtype:%s %s...'%\
+#                           (name, str(nda.shape), nda.size, nda.dtype, nda.flatten()[first:last]))
 
 #------------------------------
 
@@ -489,8 +509,9 @@ def locxymax(nda, order=1, mode='clip') :
 #------------------------------
 #----------- TEST -------------
 #------------------------------
+if __name__ == "__main__" :
 
-def test_01() :
+  def test_01() :
     from psana.pyalgos.generic.NDArrGenerators import random_standard
 
     print('%s\n%s\n' % (80*'_','Test method subtract_bkgd(...):'))
@@ -499,10 +520,18 @@ def test_01() :
     data = random_standard(shape=shape1, mu=300, sigma=50)
     bkgd = random_standard(shape=shape1, mu=100, sigma=10)
     cdata = subtract_bkgd(data, bkgd, mask=None, winds=winds, pbits=0o377)
+#------------------------------
+
+  def test_02() :
+    from psana.pyalgos.generic.NDArrGenerators import random_standard
+    shape1 = (32,185,388)
+    data = random_standard(shape=shape1, mu=300, sigma=50)
+    print(info_ndarr(data, 'test_02: info_ndarr', first=0, last=3))
+    print(info_ndarr(shape1, 'test_02: info_ndarr'))
 
 #------------------------------
 
-def test_08() :
+  def test_08() :
     import psana.pyalgos.generic.Graphics as gg
     from psana.pyalgos.generic.NDArrGenerators import random_standard
     from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
@@ -525,8 +554,8 @@ def test_08() :
       gg.show()
 
 #------------------------------
-
-def test_mask_neighbors_2d(allnbrs=True) :
+ 
+  def test_mask_neighbors_2d(allnbrs=True) :
 
     randexp = random_exponential(shape=(40,60), a0=1)
     fig  = gr.figure(figsize=(16,7), title='Random 2-d mask')
@@ -547,7 +576,7 @@ def test_mask_neighbors_2d(allnbrs=True) :
     
 #------------------------------
 
-def test_mask_neighbors_3d(allnbrs=True) :
+  def test_mask_neighbors_3d(allnbrs=True) :
 
     #randexp = random_exponential(shape=(2,2,30,80), a0=1)
     randexp = random_exponential(shape=(2,30,80), a0=1)
@@ -571,7 +600,7 @@ def test_mask_neighbors_3d(allnbrs=True) :
     
 #------------------------------
 
-def test_mask_edges_2d(mrows=1, mcols=1) :
+  def test_mask_edges_2d(mrows=1, mcols=1) :
 
     fig  = gr.figure(figsize=(8,7), title='Mask edges 2-d')
     axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.87, 0.91))
@@ -586,7 +615,7 @@ def test_mask_edges_2d(mrows=1, mcols=1) :
     
 #------------------------------
 
-def test_mask_edges_3d(mrows=1, mcols=1) :
+  def test_mask_edges_3d(mrows=1, mcols=1) :
 
     fig  = gr.figure(figsize=(8,7), title='Mask edges 2-d')
     axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.87, 0.91))
@@ -602,7 +631,7 @@ def test_mask_edges_3d(mrows=1, mcols=1) :
     
 #-----------------------------
 
-def do_test() :
+  def do_test() :
 
     from psana.pyalgos.generic.NDArrGenerators import random_exponential; global random_exponential 
     import psana.pyalgos.generic.Graphics as gr; global gr
@@ -617,6 +646,7 @@ def do_test() :
     elif tname == '6' : test_mask_edges_2d(mrows=0, mcols=5)
     elif tname == '7' : test_mask_edges_3d(mrows=1, mcols=2)
     elif tname == '8' : test_mask_edges_3d(mrows=5, mcols=0)
+    elif tname == '12': test_02()
     else : sys.exit ('Not recognized test name: "%s"    Try tests 1-8' % tname)
 
 #------------------------------
