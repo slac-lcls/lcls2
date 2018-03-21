@@ -139,7 +139,7 @@ int main(int argc, char** argv)
 
   const char* ip = "10.0.2.103";
   const char* prefix = "DAQ:LAB2:DTI";
-  unsigned short port = 8193;
+  unsigned short port = 8192;
 
   while ( (c=getopt( argc, argv, "a:p:P:h")) != EOF ) {
     switch(c) {

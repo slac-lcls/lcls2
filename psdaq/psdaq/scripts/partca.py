@@ -37,13 +37,13 @@ class Ui_MainWindow(object):
 
         trbox = QtWidgets.QGroupBox('Transitions')
         trlo  = QtWidgets.QVBoxLayout()
-#        trlo.addWidget(PvPushButton(pvbase+"MsgClear" ,"ClearFifo"))
         cfglo = QtWidgets.QHBoxLayout()
         cfglo.addWidget(PvPushButton(pvbase+"MsgConfig","Configure"))
         cfglo.addWidget(PvEditInt   (pvbase+"MsgConfigKey","Key"))
         trlo.addLayout(cfglo)
         trlo.addWidget(PvPushButton(pvbase+"MsgEnable"     ,"Enable"))
         trlo.addWidget(PvPushButton(pvbase+"MsgDisable"    ,"Disable"))
+        trlo.addWidget(PvPushButton(pvbase+"MsgClear" ,"ClearReadout"))
         trbox.setLayout(trlo)
         lol.addWidget(trbox)
 
