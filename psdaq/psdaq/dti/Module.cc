@@ -89,31 +89,29 @@ void Stats::dump() const
 Module* Module::locate()
 {
   Module* r = new((void*)0) Module;
-  printf("_timing     @ %p\n", &r->_timing);
-  printf("_hsRepeater @ %p\n", &r->_hsRepeater[0]);
-  printf("_usLinkCfg  @ %p\n", &r->_usLinkConfig[0]);
-  printf("_usStatus   @ %p\n", &r->_usStatus);
-  printf("_dsStatus   @ %p\n", &r->_dsStatus);
-  printf("_qpllLock   @ %p\n", &r->_qpllLock);
-  printf("_pgp2b      @ %p\n", &r->_pgp[0]);
-  printf("_ringBuffer @ %p\n", &r->_ringBuffer);
-  setf(const_cast<Pds::Cphw::Reg&>(r->_index), 1, 1, 31);
+  r->init();
   return r;
 }
 
 Module::Module()
+{
+  init();
+}
+
+void Module::init()
 {
   clearCounters();
   setf(const_cast<Pds::Cphw::Reg&>(_index), 1, 1, 31);
 
   //  Program the crossbar to pull timing off the backplane
   _timing.xbar.setOut( Pds::Cphw::XBar::FPGA, Pds::Cphw::XBar::BP );
-  
-  /*init();*/
-}
+  _timing.xbar.dump();
 
-void Module::init()
-{
+  _hsRepeater[0].init();
+  _hsRepeater[1].init();
+  _hsRepeater[3].init();
+  _hsRepeater[4].init();
+
   printf("Index:      UsLink %u  DsLink %u\n", usLink(), dsLink());
   printf("Link Up:    Us %02x  Bp %d  Ds %02x\n", usLinkUp(), bpLinkUp(), dsLinkUp());
 
@@ -320,6 +318,10 @@ Stats Module::stats() const
   // Revisit: Useful?  s.enabled    = enabled();
   // Revisit: Useful?  s.tagEnabled = tagEnabled();
   // Revisit: Useful?  s.l1Enabled  = l1Enabled();
+
+  s.timLinkUp   = _timing.linkUp() ? 1:0;
+  s.timRefCount = _timing.TxRefClks;
+  s.timFrCount  = _timing.SOFcounts;
 
   s.usLinkUp = usLinkUp();
   s.bpLinkUp = bpLinkUp();

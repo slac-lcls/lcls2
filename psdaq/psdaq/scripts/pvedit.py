@@ -48,7 +48,7 @@ class PvDisplay(QtWidgets.QLabel):
         self.setText(value)
 
 class PvLabel:
-    def __init__(self, parent, pvbase, name, dName=None, isInt=False, scale=1.0, units=None):
+    def __init__(self, parent, pvbase, name, dName=None, isInt=False, scale=None, units=None):
         layout = QtWidgets.QHBoxLayout()
         label  = QtWidgets.QLabel(name)
         label.setMinimumWidth(100)
@@ -87,9 +87,14 @@ class PvLabel:
                     if dq is not None:
                         s = s + QString(" [%s (0x%s)]") % ((QString(int(dq))),(format(int(dq)&0xffffffff, 'x')))
                 else:
-                    s = QString(q*self.scale)
-                    if dq is not None:
-                        s = s + QString(" [%s]") % (QString(dq*self.scale))
+                    if self.scale is None:
+                        s = QString(q)
+                        if dq is not None:
+                            s = s + QString(" [%s]") % (QString(dq))
+                    else:
+                        s = '{0:.4f}'.format(q*self.scale)
+                        if dq is not None:
+                            s = s + ' [{0:.4f}]'.format(dq*self.scale)
                     if self.units is not None:
                         s = s + self.units
             except:
