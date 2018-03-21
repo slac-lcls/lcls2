@@ -11,6 +11,8 @@ import subprocess # for subprocess.Popen
 
 Usage::
 
+    # Run test > python lcls2/psana/psana/pscalib/proc/SubprocUtils.py 7
+
     # Import
     import psana.pscalib.proc.SubprocUtils as su
 
@@ -173,6 +175,16 @@ def batch_job_ids(status=None, user=None, qname=None, addopts='') : # qname='psn
     return job_ids
 
 #------------------------------
+
+def is_text(fname):
+    #import re
+    #msg = subprocess.Popen(['file', '--mime', fname], stdout=subprocess.PIPE).communicate()[0]
+    #return re.search('text', msg) != None
+
+    import mimetypes
+    return mimetypes.guess_type(fname)[0] == 'text/plain'
+
+#------------------------------
 #------------------------------
 #------------------------------
 #------------------------------
@@ -225,6 +237,14 @@ if __name__ == "__main__" :
     print('job ids: %s' % str(job_ids))
 
 #------------------------------
+
+  def test_is_text() :
+      fname1 = '/reg/d/psdm/XCS/xcsm9816/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/30-end.data'
+      fname2 = '/reg/d/psdm/XCS/xcsls3716/calib/Jungfrau::CalibV1/XcsEndstation.0:Jungfrau.0/pixel_offset/0-end.data'
+      print('is_text %s file %s' % (is_text(fname1), fname1))
+      print('is_text %s file %s' % (is_text(fname2), fname2))
+
+#------------------------------
 #------------------------------
 #------------------------------
 
@@ -251,6 +271,7 @@ if __name__ == "__main__" :
     elif tname=='4': test_batch_job_kill(sys.argv[2], user=None, qname='psnehq')
     elif tname=='5': test_batch_job_ids(status=None, user=None, qname='psnehq')
     elif tname=='6': test_batch_job_ids(status='SSUSP', user=None, qname=None)
+    elif tname=='7': test_is_text()
     else : sys.exit ('Not recognized test name: "%s"' % tname)
     print('Test %s time (sec) = %.3f' % (tname, time()-t0_sec))
 
