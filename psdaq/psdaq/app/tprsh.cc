@@ -17,14 +17,24 @@ extern int optind;
 
 using namespace Pds::Tpr;
 
+static bool lverbose = false;
+
 static void dumpFrame(const uint32_t* p)
 {
+  if (lverbose) {
+    printf("dumpFrame:");
+    for(unsigned i=0; i<8; i++)
+      printf(" %08x", p[i]);
+    printf("\n");
+  }
+
   const uint64_t* pl = reinterpret_cast<const uint64_t*>(p);
   char m = p[0]&(1<<30) ? 'D':' ';
+  unsigned mtyp = (p[0]>>16)&0x3;
   //
   //  We only expect BSA_CHN messages in this queue
   //
-  switch(p[1]&0xffff) {
+  switch(mtyp) {
   case 0:
     printf("EVENT [x%x]: %16lx %16lx %16lx %16lx %16lx %c\n",
            (p[1]>>16)&0xffff,pl[0],pl[1],pl[2],pl[3],pl[4],m);
@@ -53,7 +63,8 @@ static void countFrame(const uint32_t* p)
   //
   //  We only expect BSA_CHN messages in this queue
   //
-  switch(p[1]&0xffff) {
+  unsigned mtyp = (p[0]>>16)&0x3;
+  switch(mtyp) {
   case 0:
     eventFrames++;
     break;
@@ -78,7 +89,6 @@ int main(int argc, char** argv) {
   extern char* optarg;
   char tprid='a';
   int idx=0;
-  bool lverbose=false;
 
   int c;
   bool lUsage = false;
@@ -148,6 +158,12 @@ int main(int argc, char** argv) {
 
     if (idx>=0) {
       int64_t rp = q.allwp[idx];
+      if (lverbose) { 
+        printf("allwp 0x%llx,  bsawp 0x%llx,  gwp 0x%llx\n",
+               q.allwp[idx],
+               q.bsawp,
+               q.gwp);
+      }
       while(1) {
         read(fd, buff, 32);
         if (lverbose) { 
@@ -158,6 +174,13 @@ int main(int argc, char** argv) {
           while(rp < q.allwp[idx]) {
             long long qi = q.allrp[idx].idx[rp%MAX_TPR_ALLQ]%MAX_TPR_ALLQ;
             dumpFrame(reinterpret_cast<const uint32_t*>(&q.allq[qi].word[0]));
+            rp++;
+          }
+        }
+        else {
+          while(rp < q.allwp[idx]) {
+            long long qi = q.allrp[idx].idx[rp%MAX_TPR_ALLQ]%MAX_TPR_ALLQ;
+            countFrame(reinterpret_cast<const uint32_t*>(&q.allq[qi].word[0]));
             rp++;
           }
         }

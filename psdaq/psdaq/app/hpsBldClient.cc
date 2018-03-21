@@ -26,10 +26,9 @@ void usage(const char* p) {
   printf("         -p <UDP port>\n");
 }
 
-static int      count = 0;
 static int      event = 0;
 static int64_t  bytes = 0;
-static unsigned lanes = 0;
+static unsigned misses = 0;
 
 static Pds::Tpr::Client* tpr = 0;
 
@@ -37,35 +36,25 @@ void* countThread(void* args)
 {
   timespec tv;
   clock_gettime(CLOCK_REALTIME,&tv);
-  unsigned ocount = count;
   unsigned oevent = event;
   int64_t  obytes = bytes;
+  unsigned omisses = misses;
   while(1) {
     usleep(1000000);
     timespec otv = tv;
     clock_gettime(CLOCK_REALTIME,&tv);
-    unsigned ncount = count;
     unsigned nevent = event;
     int64_t  nbytes = bytes;
+    unsigned nmisses = misses;
 
     double dt     = double( tv.tv_sec - otv.tv_sec) + 1.e-9*(double(tv.tv_nsec)-double(otv.tv_nsec));
-    double rate   = double(ncount-ocount)/dt;
     double erate  = double(nevent-oevent)/dt;
+    double mrate  = double(nmisses-omisses)/dt;
     double dbytes = double(nbytes-obytes)/dt;
-    double tbytes = dbytes/rate;
-    unsigned dbsc = 0, rsc=0, ersc=0, tbsc=0;
+    double ebytes = dbytes/erate;
+    unsigned dbsc = 0, ersc=0, mrsc=0, tbsc=0, ebsc=0;
     
-    if (count < 0) break;
-
     static const char scchar[] = { ' ', 'k', 'M' };
-    if (rate > 1.e6) {
-      rsc     = 2;
-      rate   *= 1.e-6;
-    }
-    else if (rate > 1.e3) {
-      rsc     = 1;
-      rate   *= 1.e-3;
-    }
 
     if (erate > 1.e6) {
       ersc     = 2;
@@ -76,6 +65,15 @@ void* countThread(void* args)
       erate   *= 1.e-3;
     }
 
+    if (mrate > 1.e6) {
+      mrsc     = 2;
+      mrate   *= 1.e-6;
+    }
+    else if (mrate > 1.e3) {
+      mrsc     = 1;
+      mrate   *= 1.e-3;
+    }
+
     if (dbytes > 1.e6) {
       dbsc    = 2;
       dbytes *= 1.e-6;
@@ -84,27 +82,25 @@ void* countThread(void* args)
       dbsc    = 1;
       dbytes *= 1.e-3;
     }
-    
-    if (tbytes > 1.e6) {
-      tbsc    = 2;
-      tbytes *= 1.e-6;
-    }
-    else if (tbytes > 1.e3) {
-      tbsc    = 1;
-      tbytes *= 1.e-3;
-    }
-    
-    printf("Packets %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B] (%7.2f %cB/evt): Events %7.2f %cHz [%u]:  valid %02x\n", 
-           rate  , scchar[rsc ], ncount, 
-           dbytes, scchar[dbsc], (long long)nbytes, 
-           tbytes, scchar[tbsc], 
-           erate , scchar[ersc], nevent, 
-           lanes);
-    lanes = 0;
 
-    ocount = ncount;
+    if (ebytes > 1.e6) {
+      ebsc    = 2;
+      ebytes *= 1.e-6;
+    }
+    else if (ebytes > 1.e3) {
+      ebsc    = 1;
+      ebytes *= 1.e-3;
+    }
+      
+    printf("Events %7.2f %cHz [%u]:  Size %7.2f %cBps (%7.2f %cB/evt): Misses %7.2f %cHz\n", 
+           erate , scchar[ersc], nevent, 
+           dbytes, scchar[dbsc], 
+           ebytes, scchar[ebsc],
+           mrate , scchar[mrsc]);
+
     oevent = nevent;
     obytes = nbytes;
+    omisses = nmisses;
   }
   return 0;
 }
@@ -125,8 +121,10 @@ int main(int argc, char* argv[])
   unsigned intf = 0;
   unsigned short port = 8197;
   unsigned partn = 0;
-
-  while ( (c=getopt( argc, argv, "a:i:p:P:")) != EOF ) {
+  bool lverbose = false;
+  unsigned nprint = 10;
+  
+  while ( (c=getopt( argc, argv, "a:i:p:P:v")) != EOF ) {
     switch(c) {
     case 'a':
       addr = Psdaq::AppUtils::parse_ip       (optarg);
@@ -139,6 +137,9 @@ int main(int argc, char* argv[])
       break;
     case 'P':
       partn = strtoul(optarg,NULL,0);
+      break;
+    case 'v':
+      lverbose = true;
       break;
     default:
       usage(argv[0]);
@@ -179,24 +180,45 @@ int main(int argc, char* argv[])
 
   tpr->start(partn);
 
-  char* event = new char[ sizeof(XtcData::Dgram)+sizeof(Pds::Bld::TestType) ];
+  char* eventb = new char[ sizeof(XtcData::Dgram)+sizeof(Pds::Bld::TestType) ];
+  uint64_t ppulseId=0;
 
   while(1) {
 
+    XtcData::Dgram* dgram = reinterpret_cast<XtcData::Dgram*>(eventb);
+    XtcData::Xtc&   xtc   = *new((char*)&dgram->xtc) 
+      XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0));
+    
     //  First, fetch BLD component
-    uint64_t pulseId = bld.fetch(event+sizeof(XtcData::Dgram), sizeof(Pds::Bld::TestType));
+    uint64_t pulseId = bld.fetch((char*)xtc.alloc(sizeof(Pds::Bld::TestType)), 
+                                 sizeof(Pds::Bld::TestType));
     
     //  Second, fetch header (should already be waiting)
     const Pds::Tpr::Frame* frame = tpr->advance(pulseId);
 
     if (frame) {
-      new (event) XtcData::Sequence(XtcData::Sequence::Event, 
-                                    XtcData::TransitionId::L1Accept,
-                                    *reinterpret_cast<const XtcData::TimeStamp*>(&frame->timeStamp),
-                                    XtcData::PulseId(frame->pulseId));
-      count++;
+      ppulseId = pulseId;
+      new (&dgram->seq) XtcData::Sequence(XtcData::Sequence::Event, 
+                                          XtcData::TransitionId::L1Accept,
+                                          *reinterpret_cast<const XtcData::TimeStamp*>(&frame->timeStamp),
+                                          XtcData::PulseId(frame->pulseId));
       event++;
       bytes += sizeof(XtcData::Dgram)+sizeof(Pds::Bld::TestType);
+      if (lverbose)
+        printf(" %9u.%09u %016llx extent 0x%x payload %08x %08x...\n",
+               dgram->seq.stamp().seconds(),
+               dgram->seq.stamp().nanoseconds(),
+               dgram->seq.pulseId().value(),
+               dgram->xtc.extent,
+               reinterpret_cast<uint32_t*>(dgram->xtc.payload())[0],
+               reinterpret_cast<uint32_t*>(dgram->xtc.payload())[1]);
+    }
+    else {
+      misses++;
+      if (nprint) {
+        printf("Miss: %016llx  prev %016llx\n",
+               pulseId, ppulseId);
+      }
     }
   }
 

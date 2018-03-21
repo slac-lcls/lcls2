@@ -14,6 +14,7 @@ namespace Pds {
                    uint64_t    timeStamp,
                    const char* T,
                    unsigned    sizeofT);
+      void flush  ();
     private:
       int      _fd;
       unsigned _src;

@@ -109,11 +109,11 @@ void* countThread(void* args)
       tbytes *= 1.e-3;
     }
     
-    printf("Packets %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B] (%7.2f %cB/evt): Events %7.2f %cHz [%u]:  valid %02x\n", 
-           rate  , scchar[rsc ], ncount, 
-           dbytes, scchar[dbsc], (long long)nbytes, 
+    printf("Packets %7.2f %cHz:  Size %7.2f %cBps (%7.2f %cB/evt): Events %7.2f %cHz:  valid %02x\n", 
+           rate  , scchar[rsc ],
+           dbytes, scchar[dbsc], 
            tbytes, scchar[tbsc], 
-           erate , scchar[ersc], nevent, 
+           erate , scchar[ersc],
            lanes);
     lanes = 0;
 
@@ -284,6 +284,10 @@ int main(int argc, char* argv[])
                          (char*)&contents, sizeof(contents) );
       
     } while(it.next());
+
+    //  Force BLD out
+    bldServer.flush();
+
   } while(1);
 
   pthread_join(thr,NULL);
