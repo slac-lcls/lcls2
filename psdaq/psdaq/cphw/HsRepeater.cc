@@ -149,6 +149,19 @@ void HsChannel::load(FILE* f)
 #undef GETR
 }
 
+void HsRepeater::init()
+{
+  smbusEnable(true);
+  for(unsigned i=0; i<NChannels; i++) {
+    _chA[i].sigDetPreset(1);
+    _chA[i].mode_sel(0);
+    _chA[i]._eqCtl = 0;
+    _chB[i].sigDetPreset(1);
+    _chB[i].mode_sel(0);
+    _chB[i]._eqCtl = 0;
+  }
+}
+
 void HsRepeater::dump(unsigned channels) const
 {
   printf("%-10s:       %p\n", "Base", this);
