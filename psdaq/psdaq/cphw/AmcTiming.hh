@@ -19,6 +19,7 @@ namespace Pds {
       void setRxAlignTarget(unsigned);
       void setRxResetLength(unsigned);
       void dumpRxAlign     () const;
+      bool linkUp          () const;
     public:
       //  AxiVersion @ 0
       AxiVersion version;

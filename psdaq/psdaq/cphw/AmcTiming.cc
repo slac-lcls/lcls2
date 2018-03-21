@@ -49,6 +49,11 @@ void AmcTiming::resetStats()
   CSR = v;
 }
 
+bool AmcTiming::linkUp() const {
+  unsigned v = CSR;
+  return v & (1<<1);
+}
+
 void AmcTiming::dumpStats() const
 {
 #define PR(r) printf("%10.10s: 0x%x\n",#r,unsigned(r))
