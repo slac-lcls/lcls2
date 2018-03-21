@@ -13,27 +13,26 @@ from psana.pscalib.calib.MDB_CLI import cdb
 
 def usage():
     return 'command examples\n'\
+           '  cdb\n'\
+           '  cdb -h\n'\
            '  cdb print\n'\
-           '  cdb print --host psanaphi105 --port 27017\n'\
-           '  cdb print -e cxi12345\n'\
-           '  cdb print -d camera-0-cxids1-0\n'\
-           '  cdb print -e cxi12345 -d camera-0-cxids1-0 -c pedestals -r 123 \n'\
-           '  cdb add   -e cxi12345 -d camera-0-cxids1-0 -c pedestals -r 123 -f my_constants_save.txt\n'\
-           '  cdb get   -e cxi12345 -d camera-0-cxids1-0 -c pedestals -r 123 -f my_constants_get.txt\n'\
-           '  cdb convert -e cxix25615 -p\n'\
-           '  cdb delete  -e cxix25615\n'\
-           '  cdb delete --dbname cxix25615\n'\
+           '  cdb print -e cxix25615\n'\
+           '  cdb print -d camera_0_cxids1_0\n'\
+           '  cdb convert -e xcs01116\n'\
+           '  cdb add -e cxi12345 -d camera_0_cxids1_0 -c pedestals -r 123 -f my.txt\n'\
+           '  cdb get -e cxix25615 -d cxids1_0_cspad_0 -c pedestals -s 1520977960 -p -f peds.txt\n'\
+           '  cdb get -e xcsh8215 -d xcsendstation_0_cspad_0 -c pedestals -r 100 -f my.txt\n'\
+           '  cdb get -d xcsendstation_0_cspad_0 -c pedestals -r 100 -f my.txt\n'\
+           '  cdb deldoc -e cxix25615 -d cxids1_0_cspad_0 -c pedestals -r 125 \n'\
+           '  cdb deldoc -e cxix25615 -d cxids1_0_cspad_0 -c pedestals -s 1520977960 \n'\
+           '  cdb delcol -e cxix25615 -d cxids1_0_cspad_0\n'\
+           '  cdb delcol -d cxids1_0_cspad_0\n'\
+           '  cdb deldb -e cxix25615\n'\
+           '  cdb deldb -d cxids1_0_cspad_0\n'\
+           '  cdb deldb --dbname cdb_cxids1_0_cspad_0\n'\
+           '  cdb delall\n'\
            '  cdb export --dbname cxix25615\n'\
            '  cdb import --dbname cxix25615 --iofname cdb-...arc\n'\
-           '  cdb get -e cxif5315 -d cxids2-0-cspad-0 -c geometry -r 1 -f geo.txt -p\n'\
-           '  cdb get -e cxix25115 -d cxidg3-0-opal1000-0 -c pedestals -r 6 -f nda.npy -p\n'\
-           '  cdb -h\n'\
-           '  cdb\n'\
-           '  \nTEST:\n'\
-           '  cdb print -e exp12345 -d camera-1 -c pedestals -r 123 -p\n'\
-           '  cdb add   -e exp12345 -d camera-1 -c pedestals -r 123 -f 6-end.data -p\n'\
-           '  cdb get   -e exp12345 -d camera-1 -c pedestals -r 123 -f nda.npy -p\n'\
-           '  etc.'\
 
 #------------------------------
 
@@ -73,19 +72,21 @@ def input_option_parser() :
     d_dbname     = None
     d_experiment = None
     d_detector   = None
-    d_ctype      = cc.list_calib_names[0]
+    d_ctype      = None # cc.list_calib_names[0], 'pedestals'
     d_run        = '0'
     d_run_end    = 'end'
     d_time_stamp = None # '2001-09-08T18:46:40-0700'
-    d_time_sec   = None # '1000000000'
+    d_time_sec   = '1000000000'
     d_version    = 'v0'
     d_verbose    = False
+    d_confirm    = False
     d_iofname    = None # './fname.txt'
     d_comment    = 'No comment'
+    d_loglevel   = 'info'
 
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
-    h_dbname     = 'database name for direct command like "delete", default = %s' % d_dbname
+    h_dbname     = 'database name, works for mode "print" or "delete", default = %s' % d_dbname
     h_experiment = 'experiment name, default = %s' % d_experiment 
     h_detector   = 'detector name, default = %s' % d_detector
     h_ctype      = 'calibration constant type, default = %s' % d_ctype 
@@ -94,9 +95,11 @@ def input_option_parser() :
     h_time_stamp = 'time stamp, default = %s' % d_time_stamp 
     h_time_sec   = 'time (sec), default = %s' % d_time_sec
     h_version    = 'version of constants, default = %s' % d_version
+    h_confirm    = 'confirmation of the action, default = %s' % d_confirm
     h_verbose    = 'verbosity, default = %s' % d_verbose
     h_iofname    = 'output file prefix, default = %s' % d_iofname
     h_comment    = 'comment to the document, default = %s' % d_comment
+    h_loglevel   = 'python logging level (info, debug, error, warning, critical), default = %s' % d_loglevel
 
     parser = OptionParser(description='Command line interface to LCLS2 calibration data base', usage=usage())
 
@@ -112,8 +115,10 @@ def input_option_parser() :
     parser.add_option('-u', '--run_end',    default=d_run_end,    action='store', type='string', help=h_run_end)
     parser.add_option('-v', '--version',    default=d_version,    action='store', type='string', help=h_version)
     parser.add_option('-p', '--verbose',    default=d_verbose,    action='store_true',           help=h_verbose)
+    parser.add_option('-C', '--confirm',    default=d_confirm,    action='store_true',           help=h_confirm)
     parser.add_option('-f', '--iofname',    default=d_iofname,    action='store', type='string', help=h_iofname)
     parser.add_option('-m', '--comment',    default=d_comment,    action='store', type='string', help=h_comment)
+    parser.add_option('--loglevel',         default=d_loglevel,   action='store', type='string', help=h_loglevel)
 
     return parser
   
