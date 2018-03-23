@@ -84,6 +84,7 @@ namespace Pds {
     public:
       HsRepeater();
     public:
+      void     init();  // Initialize with defaults
       void     dump(unsigned links = (1 << NChannels)-1) const;
       void     save(FILE*) const;
       void     load(FILE*);

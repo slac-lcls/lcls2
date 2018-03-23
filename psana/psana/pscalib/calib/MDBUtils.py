@@ -78,7 +78,7 @@ Usage ::
 
     keys = mu.document_keys(doc)
     s_vals, s_keys = mu.document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detector','ctype','run','id_data','data_type'), fmt:str='%24s %10s %11s %20s %16s %4s %30s %10s')
-    s = mu.database_info(client, name, level:int=10, gap:str='  ')
+    s = mu.database_info(client, dbname, level:int=10, gap:str='  ')
     s = mu.client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, gap:str='  ')
 
     # Test methods
@@ -88,7 +88,7 @@ Usage ::
 
 import pickle
 import gridfs
-from pymongo import MongoClient, errors
+from pymongo import MongoClient, errors, ASCENDING, DESCENDING
 #import pymongo
 
 import sys
@@ -96,8 +96,11 @@ from time import time
 
 import numpy as np
 import psana.pyalgos.generic.Utils as gu
-from   psana.pyalgos.generic.NDArrUtils import print_ndarr
+from   psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
 import psana.pscalib.calib.CalibConstants as cc
+
+from bson.objectid import ObjectId
+from psana.pscalib.calib.Time import Time
 
 import logging
 logger = logging.getLogger('MDBUtils')
@@ -207,18 +210,38 @@ def delete_collection_obj(ocol) :
 #------------------------------
 
 def delete_document_from_collection(col, id:str) :
-    col.deleteOne({'_id':id})
+    col.remove({'_id':id})
 
 #------------------------------
 
-def db_prefixed_name(name:str, prefix='cdb-') -> str :
+def db_prefixed_name(name:str, prefix='cdb_') -> str :
     """Returns database name with prefix, e.g. name='cxi12345' -> 'cdb-cxi12345'.
     """
     assert isinstance(name,str), 'db_prefixed_name parameter should be str'
     nchars = len(name)
-    assert nchars > 0 and nchars < 128, 'name length should be <128 characters'
-    logger.info('name %s has %d chars' % (name, nchars))
+    assert nchars < 128, 'name length should be <128 characters'
+    logger.debug('name %s has %d chars' % (name, nchars))
     return '%s%s' % (prefix, name)
+
+#------------------------------
+
+def get_dbname(**kwargs) :
+    """Returns (str) dbname or None. Implements logistic for db selection:
+       -- dbname is used if defined else
+       -- prefixed experiment else
+       -- prefixed detector else None
+    """
+    exp    = kwargs.get('experiment', None)
+    det    = kwargs.get('detector', None)
+    dbname = kwargs.get('dbname', None)
+
+    if dbname is None :
+        name = exp if not (exp is None) else det
+        if name is None :
+            logger.warning('dbname, experiment, or detector name must to be specified.')
+            return None
+        dbname = db_prefixed_name(name)
+    return dbname
 
 #------------------------------
 
@@ -240,7 +263,7 @@ def connect(**kwargs) :
     db_exp, fs_exp = db_and_fs(client, dbname=dbname_exp)
     db_det, fs_det = db_and_fs(client, dbname=dbname_det)
     col_det = collection(db_det, cname=detname)
-    col_exp = collection(db_exp, cname=expname)
+    col_exp = collection(db_exp, cname=detname) 
 
     if verbose :
         print('client  : %s' % client.name)
@@ -256,8 +279,20 @@ def connect(**kwargs) :
 #------------------------------
 #------------------------------
 
-def _timestamp(time_sec:str,int,float) -> str :
+def _timestamp(time_sec) -> str :
     return gu.str_tstamp(TSFORMAT, int(time_sec))
+
+
+def timestamp_id(id:str) -> str :
+    str_ts = str(ObjectId(id).generation_time) # '2018-03-14 21:59:37+00:00'
+    tobj = Time.parse(str_ts)                  # Time object from parsed string
+    tsec = int(tobj.sec())                     # 1521064777
+    str_tsf = _timestamp(tsec)                 # re-formatted time stamp
+    #print('XXX: str_ts', str_ts, tsec, tsf)
+    return str_tsf
+
+def timestamp_doc(doc) -> str :
+    timestamp_id(doc['_id'])
 
 #------------------------------
 
@@ -377,6 +412,21 @@ def insert_data(data, fs) :
 
 #------------------------------
 
+def del_collection_data(col, fs) :
+    """From fs removes data associated with documents in colllection col.
+    """
+    for doc in col.find() :
+        fs.delete(doc['id_data'])
+
+#------------------------------
+
+def del_document_data(doc, fs) :
+    """From fs removes data associated with documents in colllection col.
+    """
+    fs.delete(doc['id_data'])
+
+#------------------------------
+
 def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     """For open connection inserts calib data and two documents.
        Returns inserted id_data, id_exp, id_det.
@@ -394,7 +444,7 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     doc = docdic(data, id_data_exp, **kwargs)
     if verbose : 
          print_doc(doc)
-         print('XXX: inset data_type: "%s"' % doc['data_type'])
+         #print('XXX: inset data_type: "%s"' % doc['data_type'])
 
     t0_sec = time()
     id_exp = insert_document(doc, col_exp)
@@ -499,7 +549,7 @@ def get_data_for_doc(fs, doc) :
     """Returns data referred by the document.
     """
     if doc is None :
-        print('get_data_for_doc: Data document is None...')
+        logger.warning('get_data_for_doc: Data document is None...')
         return
 
     try :
@@ -511,17 +561,17 @@ def get_data_for_doc(fs, doc) :
 
     s = out.read()
     data_type = doc['data_type']
-    print('get_data_for_doc data_type: %s' % data_type)
+    logger.debug('get_data_for_doc data_type: %s' % data_type)
     
     if data_type == 'str'     : return s.decode()
     if data_type == 'ndarray' : 
         str_dtype = doc['data_dtype']
-        print('XXX str_dtype:', str_dtype)
+        #print('XXX str_dtype:', str_dtype)
         #dtype = np.dtype(eval(str_dtype))
         #print('XXX  np.dtype:', dtype)
         nda = np.fromstring(s, dtype=str_dtype)
         nda.shape = eval(doc['data_shape']) # eval converts string shape to tuple
-        print('XXX nda.shape =', nda.shape)
+        #print('XXX nda.shape =', nda.shape)
 
         #str_sh = doc['data_shape'] #.lstrip('(').rstrip(')')
         #nda.shape = tuple(np.fromstring(str_sh, dtype=int, sep=','))
@@ -531,30 +581,11 @@ def get_data_for_doc(fs, doc) :
 
 #------------------------------
 
-def find_doc(col, query={'data_type' : 'xxxx'}) :
-    """Returns list of documents in responce on query.
+def find_docs(col, query={'ctype':'pedestals'}) :
+    """Returns list of documents for query.
     """
-    #tstamp = kwargs.get('time_stamp', '2018-02-05T17:38:33-0800')
-
-    #query = {'run': '125'}
-    #query = {'time_stamp' : tstamp} 
-    #query = {
-    #    'experiment' : kwargs.get('experiment', 'cxi12345'),
-    #    'run'        : kwargs.get('run', '0'),
-    #    'detector'   : kwargs.get('detector', 'camera-0-cxids1-0'),
-    #    'ctype'      : kwargs.get('ctype', 'pedestals'),
-    #    'time_sec'   : '%.9f' % time_sec,
-    #    'time_stamp' : time_stamp,
-    #    'version'    : 'v01',
-    #    'id_data'    : id_data,
-    #    }
-
-    #data_type  = kwargs.get('data_type', 'N/A')
-    #query = {'data_type' : data_type}
-    #query = {'data_type' : 'xxxx'}
-
     try :
-        docs = col.find(query)
+        return col.find(query)
 
     except errors.ServerSelectionTimeoutError as err: 
         logger.exception(err)
@@ -568,9 +599,24 @@ def find_doc(col, query={'data_type' : 'xxxx'}) :
         logger.warning('Query: %s\nis not consistent with any document...')
         return None
 
-    print('XXX number of found docs:', docs.count())
+#------------------------------
 
-    return docs[0]
+def find_doc(col, query={'ctype':'pedestals'}) :
+    """Returns the document with latest time_sec for query.
+    """
+    docs = find_docs(col, query)
+    if docs is None : return None
+
+    qkeys = query.keys()
+    key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+    doc = docs.sort(key_sort, DESCENDING)[0]
+    msg = 'query: %s\n  %d docs found, selected doc["%s"]=%s'%\
+          (query, docs.count(), key_sort, doc[key_sort])
+
+    logger.info(msg)
+    #print(msg)
+
+    return doc
 
 #------------------------------
 
@@ -578,12 +624,18 @@ def document_keys(doc) -> str :
     """Returns strings of document keys. 
     """
     keys = doc.keys()
-    return 'doc %d keys: %s' % (len(keys), ' '.join([k for k in keys]))
+    s = '%d document keys:' % len(keys)
+    for i,k in enumerate(keys) :
+        if not(i%5) : s += '\n      ' 
+        s += ' %s' % k.ljust(16)
+    return s
+    #return '%d doc keys:\n      %s' % (len(keys), '\n      '.join([k for k in keys]))
 
 #------------------------------
 
-def document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detector','ctype','run','id_data','data_type'),\
-                  fmt:str='%24s %10s %11s %20s %16s %4s %30s %10s') -> str :
+def document_info(doc, keys:tuple=('time_sec','time_stamp','experiment',\
+                  'detector','ctype','run','ts_data','data_type','data_dtype'),\
+                  fmt:str='%10s %24s %11s %24s %16s %4s %30s %10s %10s') -> str :
     """Returns strings for formatted document values and title made of keys. 
     """
     vals = tuple([str(doc.get(k,None)) for k in keys])
@@ -591,10 +643,20 @@ def document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detecto
 
 #------------------------------
 
-def database_info(client, name, level:int=10, gap:str='  ') -> str :
+def database_fs_info(db, gap:str='  ') -> str :
+    s = '%sDB "%s" data collections:' % (gap, db.name)
+    for cname in collection_names(db) :
+       if cname in ('fs.chunks', 'fs.files') :
+           docs = collection(db, cname).find()
+           s += '\n%s   COL: %s has %d docs' % (gap, cname.ljust(9), docs.count())
+    return s
+
+#------------------------------
+
+def database_info(client, dbname, level:int=10, gap:str='  ') -> str :
     """Returns string with database info
     """
-    dbname = db_prefixed_name(name)
+    #dbname = db_prefixed_name(name)
 
     dbnames = database_names(client)
     #assert dbname in dbnames, 'dbname: %s is not found in the %s' % (dbname, str(dbnames))
@@ -604,26 +666,30 @@ def database_info(client, name, level:int=10, gap:str='  ') -> str :
     s = '%s\ndbnames %s' % (gap, str(dbnames))
     db = database(client, dbname)
     cnames = collection_names(db)
-    s += '\n%sDB %s has %d collections: %s' % (gap, dbname.ljust(12), len(cnames), str(cnames))
+    s += '\n%sDB %s contains %d collections: %s' % (gap, dbname.ljust(12), len(cnames), str(cnames))
     if level==1 : return s
 
     for cname in cnames :
-        col = collection(db, cname) # or db[cname]
-        docs = col.find()
-        s += '\n%s%sCOL %s has %d docs' % (gap, gap, cname.ljust(12), docs.count())
-        #for idoc, doc in enumerate(docs) :
-    if level==2 : return s
+      col = collection(db, cname) # or db[cname]
+      docs = col.find()
+      s += '\n%s%s%s' % (gap, gap, 52*'_')
+      s += '\n%s%sCOL %s contains %d docs' % (gap, gap, cname.ljust(12), docs.count())
+      #for idoc, doc in enumerate(docs) :
 
-    col = collection(db, name)
-    docs = col.find()
-    s += '\n%s%sDetails for collection %s %d documents' % (gap, gap, name, docs.count())
+      if level==2 : continue
+
+      if col.name in ('fs.chunks', 'fs.files') : continue
+
+      s += '\n%s%sDetails for collection %s %d documents' % (gap, gap, col.name, docs.count())
  
-    if docs.count() > 0 :
+      if docs.count() > 0 :
         doc = docs[0]
         s += ':\n%s%s%s' % (gap, gap, document_keys(doc)) # str(doc.keys()))
         _, title = document_info(doc)
         s += '\n%s%s%s %s' % (gap, gap, 'doc#', title)
         for idoc, doc in enumerate(docs) :
+            id_data = doc.get('id_data', None)
+            if id_data is not None : doc['ts_data'] = timestamp_id(id_data)
             vals,_ = document_info(doc)
             s += '\n%s%s%4d %s' % (gap, gap, idoc, vals)
     return s
@@ -636,7 +702,7 @@ def client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, g
     _client = client if client is not None else connect_to_server(host, port)
     #s = '\nMongoDB client host:%s port:%d' % (client_host(_client), client_port(_client))
     dbnames = database_names(_client)
-    s = '\n%shas %d databases: %s' % (gap, len(dbnames), str(dbnames))
+    s = '%sClient contains %d databases: %s' % (gap, len(dbnames), str(dbnames))
     if level==1 : return s
     for idb, dbname in enumerate(dbnames) :
         db = database(_client, dbname) # client[dbname]
@@ -654,6 +720,11 @@ def client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, g
                 #print('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
             if level==3 : continue
     return s
+
+#------------------------------
+
+def request_confirmation() :
+    logger.warning('Use confirm "-C" option to proceed with request.')
 
 #------------------------------
 #----------- TEST -------------
@@ -692,9 +763,9 @@ if __name__ == "__main__" :
     """Insert one calibration data in data base.
     """
     data = None 
-    if   tname == '1' : data = get_test_txt(); print('txt:', data)
-    elif tname == '2' : data = get_test_nda(); print_ndarr(data, 'nda') 
-    elif tname == '3' : data = get_test_dic(); print('dict:', data)
+    if   tname == '1' : data = get_test_txt(); logger.debug('txt:', data)
+    elif tname == '2' : data = get_test_nda(); logger.debug(info_ndarr(data, 'nda'))
+    elif tname == '3' : data = get_test_dic(); logger.debug('dict:', data)
 
     #insert_calib_data(data, host=cc.HOST, port=cc.PORT, experiment='cxi12345', detector='camera-0-cxids1-0',\
     #                  run='10', ctype='pedestals', time_sec=str(int(time())), verbose=True)

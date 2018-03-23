@@ -9,10 +9,23 @@ class MsgTypes(Enum):
     Datagram = 2
 
 class DataTypes(Enum):
-    Unknown = 0
+    Unknown = -1
+    Unset = 0
     Scalar = 1
     Waveform = 2
     Image = 3
+
+    @staticmethod
+    def get_type(data):
+        if isinstance(data, np.ndarray):
+            if data.ndim == 1:
+                return DataTypes.Waveform
+            elif data.ndim == 2:
+                return DataTypes.Image
+            else:
+                return DataTypes.Unknown
+        else:
+            return DataTypes.Scalar
 
 class Transitions(Enum):
     Allocate = 0

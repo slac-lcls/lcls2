@@ -21,6 +21,10 @@ install(FILES
     DESTINATION include/psalg
 )
 
+# Needed for valgrind
+include(CTest) # ctest -T memcheck
+
+# Test 1: AllocArray
 add_executable(test_array
     test/test_array.cpp
 )
@@ -30,6 +34,7 @@ target_link_libraries(test_array
 add_test(NAME test_array COMMAND ${CMAKE_BINARY_DIR}/psalg/test_array
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Test 2: Peak finder
 add_executable(test_peakFinder
     test/peakHeap.cpp
 )

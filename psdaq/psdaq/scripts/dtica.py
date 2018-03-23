@@ -170,8 +170,8 @@ class DtiStatistics(QtWidgets.QWidget):
         lor.addWidget( PvPushButton(pvbase, "CountClear") )
 
         lor.addWidget(PvIntTable('Upstream Link Stats', pvbase, 
-                                 ['UsWrFifoD','UsRdFifoD','dUsIbEvt','dUsRxFull','dUsRxInh','dUsRxErrs'],
-                                 ['FifoWr'   ,'FifoRd'   ,'IbEvt'   ,'Full' ,'InhEvts' ,'RxErrs'],
+                                 ['UsWrFifoD','UsRdFifoD','dUsIbEvt','UsObSent','UsObRecv','dUsRxFull','dUsRxInh','dUsRxErrs'],
+                                 ['FifoWr'   ,'FifoRd'   ,'IbEvt'   ,'CtlOut'  ,'CtlIn'   ,'Full'     ,'InhEvts' ,'RxErrs'],
                                  NUsLinks))
 
         lor.addWidget(PvIntTable('Downstream Link Stats', pvbase, 
@@ -181,6 +181,9 @@ class DtiStatistics(QtWidgets.QWidget):
 
         PvLabel(lor, pvbase, "QpllLock"    )
         PvLabel(lor, pvbase, "MonClkRate", scale=1.e-6, units='MHz' )
+        PvLabel(lor, pvbase, "TimLinkUp"    )
+        PvLabel(lor, pvbase, "TimRefClk" , scale=1.e-6, units='MHz' )
+        PvLabel(lor, pvbase, "TimFrRate" , scale=1.e-3, units='kHz' )
 
         self.setLayout(lor)
 

@@ -32,8 +32,8 @@ Client::Client(unsigned interface,
     throw std::string("bind");
   }
     
-  char y = '1';
-  if(setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, (char*)&y, sizeof(y)) == -1) {
+  int y = 1;
+  if(setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, (const void*)&y, sizeof(y)) == -1) {
     perror("set reuseaddr");
     throw std::string("set reuseaddr");
   }
@@ -91,7 +91,8 @@ uint64_t Client::fetch(char* payload, unsigned sizeofT)
   //  Fill the payload with the next entry
   //
   else {
-    result = (new (_buffer+_buffer_next) Header)->pulseId();
+    result = (new (_buffer) Header)->pulseId();
+    result += *reinterpret_cast<uint32_t*>(_buffer+_buffer_next)>>20;
     memcpy(payload, _buffer+_buffer_next+Header::sizeofNext, sizeofT);
     _buffer_next += Header::sizeofNext + sizeofT;
   }

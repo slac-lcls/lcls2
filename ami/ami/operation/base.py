@@ -16,8 +16,7 @@ class OperationError(Exception):
 
 
 class OpConfig(object):
-    def __init__(self, dtype, *keys):
-        self.dtype = dtype
+    def __init__(self, *keys):
         self.required = set(keys) # the list of required parameters
 
     @property
@@ -35,9 +34,8 @@ class OpConfig(object):
 
 
 class Operation(object):
-    def __init__(self, name, dtype, store, inputs, config):
+    def __init__(self, name, store, inputs, config):
         self.name = name
-        self.dtype = dtype
         self.store = store
         self.inputs = inputs
         self.config = config
@@ -53,4 +51,4 @@ class Operation(object):
             input_data = []
             for inp in self.inputs:
                 input_data.append(self.store.get(inp["name"]))
-            self.store.put(self.name, self.config.dtype, self.config.operate(*input_data))
+            self.store.put(self.name, self.config.operate(*input_data))

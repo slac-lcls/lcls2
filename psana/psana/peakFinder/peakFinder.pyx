@@ -25,6 +25,10 @@ cdef extern from "../../../psalg/psalg/include/AllocArray.hh" namespace "psalg":
         cnp.uint32_t *shape()
         T *data()
         void incRefCnt()
+    cdef cppclass AllocArray[T](Array[T]):
+        pass
+    cdef cppclass AllocArray1D[T](AllocArray[T]):
+        pass
 
 cdef extern from "../../../psalg/psalg/include/Allocator.hh":
     cdef cppclass Allocator:
@@ -44,17 +48,25 @@ cnp.import_array()
 # We need to build an array-wrapper class to deallocate our array when
 # the Python object is deleted.
 
+ctypedef AllocArray1D[float] arrf
+
 cdef class PyAllocArray1D:
     cdef void* shape_ptr
     cdef void* data_ptr
     cdef int size
     cdef int typenum
+    cdef cnp.ndarray arr
 
-    cdef init(self, void* buffer_ptr, void* data_ptr, int size, int typenum):
-        self.shape_ptr = buffer_ptr
-        self.data_ptr  = data_ptr
+    cdef init(self, arrf* carr, int size, int typenum):
+        self.shape_ptr = carr.shape()
+        self.data_ptr  = carr.data()
         self.size = size
         self.typenum = typenum
+        # Increment the reference count of C array, so that C knows not to free memory.
+        carr.incRefCnt()
+        # Convert to numpy array, which calls __array__
+        arr = np.array(self, copy=False)
+        return arr
 
     def __array__(self):
         """ Here we use the __array__ method, that is called when numpy
@@ -67,6 +79,7 @@ cdef class PyAllocArray1D:
         # Increment the reference count, as the above assignement was done in
         # C, and Python does not know that there is this additional reference
         Py_INCREF(self)
+
         return ndarray
 
     def __dealloc__(self):
@@ -120,9 +133,9 @@ ctypedef fused nptype2d :
 
 cdef extern from "../../../psalg/psalg/include/PeakFinderAlgos.h" namespace "psalgos":
     cdef cppclass PeakFinderAlgos:
-         Array[float] rows
-         Array[float] cols
-         Array[float] intens
+         AllocArray1D[float] rows
+         AllocArray1D[float] cols
+         AllocArray1D[float] intens
          unsigned numPeaksSelected
 
          PeakFinderAlgos(Allocator *allocator, const size_t& seg, const unsigned& pbits, const size_t& lim_rank, const size_t& lim_peaks) except +
@@ -270,22 +283,16 @@ cdef class peak_finder_algos :
         cdef cnp.ndarray rows_cgrav, cols_cgrav, intens # make readonly
 
         arr0 = PyAllocArray1D()
-        arr0.init(<void*> self.cptr.rows.shape(), <void*> self.cptr.rows.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        rows_cgrav = np.array(arr0, copy=False)
+        rows_cgrav = arr0.init(&self.cptr.rows, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
         rows_cgrav.base = <PyObject*> arr0
-        self.cptr.rows.incRefCnt() # increment ref count so that C++ doesn't delete array
 
         arr1 = PyAllocArray1D()
-        arr1.init(<void*> self.cptr.cols.shape(), <void*> self.cptr.cols.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        cols_cgrav = np.array(arr1, copy=False)
+        cols_cgrav = arr1.init(&self.cptr.cols, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
         cols_cgrav.base = <PyObject*> arr1
-        self.cptr.cols.incRefCnt()
 
         arr2 = PyAllocArray1D()
-        arr2.init(<void*> self.cptr.intens.shape(), <void*> self.cptr.intens.data(), self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        intens     = np.array(arr2, copy=False)
-        intens.base     = <PyObject*> arr2
-        self.cptr.intens.incRefCnt()
+        intens = arr2.init(&self.cptr.intens, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
+        intens.base = <PyObject*> arr2
 
         return rows_cgrav, cols_cgrav, intens
 

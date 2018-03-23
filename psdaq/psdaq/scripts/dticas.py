@@ -51,6 +51,10 @@ if __name__ == '__main__':
 
     for slot in range(3,8):
       p2 = '%d:'%slot
+      pvdb[p2+'TimLinkUp'] = {'type' : 'int'}
+      pvdb[p2+'TimRefClk'] = {'type' : 'float'}
+      pvdb[p2+'TimFrRate'] = {'type' : 'float'}
+
       for i in range (numUsLinks):
 #        pvdb[p2+'UsLinkEn'        +'%d'%i] = {'type' : 'int'}
         pvdb[p2+'UsLinkTagEn'     +'%d'%i] = {'type' : 'int'}
@@ -75,8 +79,10 @@ if __name__ == '__main__':
       pvdb[p2+'dUsRxErrs'      ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'UsRxFull'       ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'dUsRxFull'      ] = {'type' : 'float', 'count' : numUsLinks }
-#      pvdb[p2+'UsIbRecv'       ] = {'type' : 'int', 'count' : numUsLinks }
-#      pvdb[p2+'dUsIbRecv'      ] = {'type' : 'float', 'count' : numUsLinks }
+      pvdb[p2+'UsObSent'       ] = {'type' : 'int', 'count' : numUsLinks }
+#      pvdb[p2+'dUsObSent'      ] = {'type' : 'float', 'count' : numUsLinks }
+      pvdb[p2+'UsObRecv'       ] = {'type' : 'int', 'count' : numUsLinks }
+#      pvdb[p2+'dUsObRecv'      ] = {'type' : 'float', 'count' : numUsLinks }
       pvdb[p2+'UsRxInh'        ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'dUsRxInh'       ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'UsWrFifoD'      ] = {'type' : 'int', 'count' : numUsLinks }

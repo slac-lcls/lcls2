@@ -76,6 +76,7 @@ if __name__ == '__main__':
         pvdb[stationstr+':%d:MsgConfigKey' %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:MsgEnable'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:MsgDisable'   %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:MsgClear'     %i] = {'type' : 'int'}
         for j in range(4):
             pvdb[stationstr+':%d:InhInterval%d'  %(i,j)] = {'type' : 'int', 'value': 1}
             pvdb[stationstr+':%d:InhLimit%d'     %(i,j)] = {'type' : 'int', 'value': 1}
