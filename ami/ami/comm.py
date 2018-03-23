@@ -6,7 +6,7 @@ import threading
 from mpi4py import MPI
 from enum import IntEnum
 
-from ami.data import MsgTypes, Message, Datagram
+from ami.data import MsgTypes, Message, DataTypes, Datagram
 
 
 # Dan and TJ:
@@ -30,7 +30,7 @@ from ami.data import MsgTypes, Message, Datagram
 
 class ResultStore(object):
     """
-    This class is a AMI graph node that collects results
+    This class is a AMI /graph node that collects results
     from a single process and has the ability to send them
     to another (via MPI). The sending end point is typically
     a Collector object.
@@ -54,7 +54,7 @@ class ResultStore(object):
     def message(self, mtype, payload):
         self.send(Message(mtype, payload))
 
-    def create(self, name, datatype):
+    def create(self, name, datatype=DataTypes.Unset):
         if name in self._store:
             raise ValueError("result named %s already exists in ResultStore"%name)
         else:
@@ -71,11 +71,13 @@ class ResultStore(object):
         return self._store[name].data
 
     def put_dgram(self, dgram):
-        self.put(dgram.name, dgram.dtype, dgram.data)
+        self.put(dgram.name, dgram.data)
 
-    def put(self, name, datatype, data):
+    def put(self, name, data):
+        datatype = DataTypes.get_type(data)
         if name in self._store:
-            if datatype == self._store[name].dtype:
+            if datatype == self._store[name].dtype or self._store[name].dtype == DataTypes.Unset:
+                self._store[name].dtype = datatype
                 self._store[name].data = data
                 self._updated[name] = True
             else:
