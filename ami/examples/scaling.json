@@ -1,0 +1,15 @@
+{
+    "cspad-proj": {
+        "config": {
+            "axis": 1
+        },
+        "inputs": [{"name": "cspad", "required": true}],
+        "optype": "Projection"
+    },
+    "scaled-proj": {
+        "config":   {},
+        "inputs":   [{"name": "cspad-proj", "required": true},
+                     {"name": "gasdet", "required": true}],
+        "optype":   "Scale"
+    }
+}
