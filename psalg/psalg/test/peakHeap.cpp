@@ -1,11 +1,13 @@
-//g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peakHeap
+//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peakHeap
 // To turn off debug:
-//g++ -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -DNDEBUG -o peakHeap
+//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -DNDEBUG -o peakHeap
+//valgrind ./peakHeap
 
 /*
  * Test program for the AllocArray peak finder
  * This code can be used to run with the Heap or the Stack
- * setAllocator can be used to test switching to a new Stack every event (NOTE: valgrind will complain)
+ * setAllocator can be used to test switching to a new Stack every event
+ * (NOTE: valgrind will complain about maximum stack size. Try: valgrind --max-stackframe=3097464 ./peakHeap)
  */
 #include <iostream>
 #include <stdlib.h>
