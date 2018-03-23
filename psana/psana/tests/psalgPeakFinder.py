@@ -56,9 +56,31 @@ print("Peaks found (rows, cols, intens): ", rows, cols, intens)
 assert(len(rows)==1)
 assert(intens[0]>1500)
 
+rows1, cols1, intens1 = \
+pk.peak_finder_v3r3_d2(data+6, mask, rank=3, r0=4, dr=2, nsigm=0)
+
+
+
+print("intens:",intens)
+print("intens1:",intens1)
+temp = intens
+temp[0]=999
+print("intens:",intens)
+print("intens1:",intens1)
+
 if doPlot:
     fig, ax = plt.subplots()
     ax.imshow(data, interpolation='none')
     ax.scatter(cols, rows, s=50, facecolors='none', edgecolors='r')
     plt.show()
 
+tr = rows
+tr[0] = 888
+
+for i in range(10):
+    rows, cols, intens = \
+        pk.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)
+    print("Peaks found (rows, cols, intens): ", rows, cols, intens)
+print("intens:",intens)
+print("temp:",temp)
+print("tr:",tr)

@@ -64,6 +64,24 @@ target_link_libraries(dtiPVs
 )
 
 #
+#  dtiPVs
+#
+add_executable(dtiPVr dtiPVs.cc)
+
+target_link_libraries(dtiPVr
+   service
+   cphwr
+   dti
+   epicstools
+   ${EPICS_CA_LIB}
+   ${CPSW_LIB}
+   ${YAML_CPP_LIB}
+   dl
+   pthread
+   rt
+)
+
+#
 #  dti_eyescan
 #
 add_executable(dti_eyescan dti_eyescan.cc)
@@ -96,11 +114,28 @@ target_link_libraries(dtiHsrCfg
    rt
 )
 
+#
+#  dti_appreg
+#
+add_executable(dti_appreg dti_appreg.cc)
+
+target_link_libraries(dti_appreg
+   service
+   cphw
+   ${CPSW_LIB}
+   ${YAML_CPP_LIB}
+   dl
+   pthread
+   rt
+)
+
+
 install(TARGETS dti
 		dti_simple
 		dti_stats
 		dtiPVs
 		dti_eyescan
+		dti_appreg
 		dtiHsrCfg
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

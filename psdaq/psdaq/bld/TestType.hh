@@ -9,6 +9,7 @@ namespace Pds {
     class TestType {
     public:
       enum { Src = 0xface, Port=11001, IP=0xefff8001 };
+      //      enum { Src = 0xface, Port=11001, IP=0x0a000004 };
       TestType(std::vector<unsigned> channels,
                unsigned valid) :
         _damageMask(valid)

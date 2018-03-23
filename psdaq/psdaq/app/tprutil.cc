@@ -99,14 +99,17 @@ int main(int argc, char** argv) {
       return -1;
     }
 
+    void* ptr = mmap(0, sizeof(Tpr::TprReg), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    if (ptr == MAP_FAILED) {
+      perror("Failed to map");
+      return -2;
+    }
+
+    Tpr::TprReg* p = reinterpret_cast<Tpr::TprReg*>(ptr);
+    printf("FpgaVersion: %08x\n", p->version.FpgaVersion);
+    printf("BuildStamp: %s\n", p->version.buildStamp().c_str());
+
     if (lCheckClk) {
-      void* ptr = mmap(0, sizeof(Tpr::TprReg), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-      if (ptr == MAP_FAILED) {
-        perror("Failed to map");
-        return -2;
-      }
-      
-      Tpr::TprReg* p = reinterpret_cast<Tpr::TprReg*>(ptr);
       p->tpr.dump();
       dumpClk(p->tpr);
       //      p->tpr.dump();

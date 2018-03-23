@@ -44,5 +44,13 @@ void Server::publish(uint64_t    pulseId,
   }
 }
 
+void Server::flush()
+{
+  if (_buffer_next) {
+    ::send(_fd, _buffer, _buffer_next, 0);
+    _buffer_next = 0;
+  }
+}
+
 Server::~Server() {}
 
