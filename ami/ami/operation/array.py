@@ -12,28 +12,15 @@ class Projection(OpConfig):
         return np.sum(image, axis=self.axis)
 
 
-class SumScalar(OpConfig):
-    def __init__(self):
-        super(__class__, self).__init__()
-
-    def operate(self, value1, value2):
-        return value1 + value2
+class Sum(OpConfig):
+    def operate(self, a, b):
+        return a + b
 
 
-class SumImage(OpConfig):
-    def __init__(self):
-        super(__class__, self).__init__()
-
-    def operate(self, image1, image2):
-        return image1 + image2
-
-
-class SumWaveform(OpConfig):
-    def __init__(self):
-        super(__class__, self).__init__()
-
-    def operate(self, wave1, wave2):
-        return wave1 + wave2
+class Scale(OpConfig):
+    # maybe should just be "Multiply"?
+    def operate(self, inpt, scale_factor):
+        return inpt * scale_factor
 
 
 class ROI(OpConfig):
