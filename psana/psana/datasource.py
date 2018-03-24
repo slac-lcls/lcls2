@@ -32,7 +32,7 @@ def process_batch(dm, offset_batch, analyze):
 
 def reader(ds, analyze, filter):
     smd_dm = DgramManager(ds.smd_files)
-    dm = DgramManager(ds.xtc_files)
+    dm = DgramManager(ds.xtc_files, configs=smd_dm.configs)
     for offset_evt in smd_dm:
         if filter: 
             if not filter(offset_evt): continue
