@@ -7,6 +7,8 @@ from psana import dgram
 from psana.event import Event
 import numpy as np
 
+FN_L = 100
+
 class container:
     pass
 
@@ -27,9 +29,9 @@ class DgramManager:
     """Stores variables and arrays loaded from an XTC source.\n"""
     def __init__(self, xtc_files, configs=[]):
         if isinstance(xtc_files, (str)):
-            self.xtc_files = np.array([xtc_files], dtype='U25')
+            self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
         elif isinstance(xtc_files, (list, np.ndarray)):
-            self.xtc_files = np.asarray(xtc_files, dtype='U25')
+            self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
         assert len(self.xtc_files) > 0
         
         given_configs = True if len(configs) > 0 else False
@@ -48,21 +50,36 @@ class DgramManager:
                 d = dgram.Dgram(file_descriptor=self.fds[-1])
                 setnames(d)
                 self.configs += [d]
+
+        self.offsets = [_config._offset for _config in self.configs]
         
     def __iter__(self):
         return self
 
     def __next__(self):
-        evt = self.next()
+        evt = self.next(offsets=self.offsets, read_chunk=True)
+        self.offsets = evt.offsets
         return evt
 
-    def next(self, offsets=[]):  
+    def next(self, offsets=[], read_chunk=False):  
+        assert len(offsets) > 0
+
         dgrams = []
-        if len(offsets) == 0: offsets = [0]*len(self.fds)
         for fd, config, offset in zip(self.fds, self.configs, offsets):
-            d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset)   
-            setnames(d)
-            dgrams += [d]
+            d = 0
+            try:
+                if (read_chunk) :
+                    d = dgram.Dgram(config=config, offset=offset)
+                else:
+                    d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset)   
+            except StopIteration:
+                pass 
+            if d:
+                setnames(d)
+                dgrams += [d]
+        
+        if not dgrams: 
+            raise StopIteration
         
         evt = Event(dgrams=dgrams)
         return evt
