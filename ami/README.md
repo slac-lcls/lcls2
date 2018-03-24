@@ -26,8 +26,22 @@ You should see an interactive QT window. There is also a `dummy_gui.py` that giv
 
 2/9/18
 
+graph building
+-------------- 
+How to build graphs?
+* Add a simple “normalize” button to the waveform widget or image widget
+* What is the best behavior for the “calculator”?
+* We need to enumerate the elementary operations
+* We need to only “display” explicitly tagged Results
+
+evaluating arbitrary math expressions
+    — https://ruslanspivak.com/lsbasi-part7/
+    — http://newville.github.io/asteval/basics.html
+    — https://stackoverflow.com/questions/2371436/evaluating-a-mathematical-expression-in-a-string
+             
 backend
 -------
+* where should we do e.g. stripchart caching?
 * DOCSTRINGS
 * integration with EPICS
 * should we use MPI? YES
