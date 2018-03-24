@@ -8,8 +8,8 @@ from psana import DataSource
 def filter(evt):
     return True
         
-def analyze(evt): 
-    pass
+def analyze(evt):
+    pass 
 
 ds = DataSource('exp=xpptut13:run=1')
 ds.start(analyze, filter=filter)
