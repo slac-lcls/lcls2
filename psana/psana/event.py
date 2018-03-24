@@ -4,6 +4,7 @@ class Event:
     """
     def __init__(self, dgrams=[]):
         self.dgrams = dgrams
+        self.offsets = [_d._offset for _d in self.dgrams]
         self.position = 0
 
     def __iter__(self):
