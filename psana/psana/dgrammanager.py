@@ -25,7 +25,7 @@ def setnames(d):
         setattr(currobj, fields[-1], val)
         delattr(d, k)
 
-class DgramManager:
+class DgramManager():
     """Stores variables and arrays loaded from an XTC source.\n"""
     def __init__(self, xtc_files, configs=[]):
         if isinstance(xtc_files, (str)):
@@ -57,12 +57,12 @@ class DgramManager:
         return self
 
     def __next__(self):
-        evt = self.next(offsets=self.offsets, read_chunk=True)
-        self.offsets = evt.offsets
-        return evt
-
-    def next(self, offsets=[], read_chunk=False):  
-        assert len(offsets) > 0
+        return self.next()
+    
+    def next(self, offsets=[], read_chunk=True):
+        assert len(self.offsets) > 0 or len(offsets) > 0
+        
+        if len(offsets) == 0: offsets = self.offsets
 
         dgrams = []
         for fd, config, offset in zip(self.fds, self.configs, offsets):
@@ -82,8 +82,8 @@ class DgramManager:
             raise StopIteration
         
         evt = Event(dgrams=dgrams)
+        self.offsets = evt.offsets
         return evt
-
     
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')

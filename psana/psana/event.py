@@ -1,4 +1,4 @@
-class Event:
+class Event():
     """
     Event holds list of dgrams
     """
@@ -11,9 +11,13 @@ class Event:
         return self
 
     def __next__(self):
+        return self.next()
+
+    def next(self):
         if self.position >= len(self.dgrams):
             raise StopIteration
         event = self.dgrams[self.position]
         self.position += 1
         return event
+
 

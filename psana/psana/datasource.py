@@ -25,7 +25,7 @@ def process_batch(dm, offset_batch, analyze):
     if (offset_batch == -1).all(): return False
     for offsets in offset_batch:
         if all(offsets == -1): break
-        evt = dm.next(offsets=offsets)
+        evt = dm.next(offsets=offsets, read_chunk=False)
         analyze(evt)
         debug(evt)
     return True
@@ -37,13 +37,13 @@ def reader(ds, analyze, filter):
         if filter: 
             if not filter(offset_evt): continue
         offsets = np.asarray([d.info.offsetAlg.intOffset for d in offset_evt], dtype='i')
-        evt = dm.next(offsets=offsets)
+        evt = dm.next(offsets=offsets, read_chunk=False)
         
         analyze(evt)
         debug(evt)
         
 def server(ds, filter):
-    byterank = bytearray(32)
+    rankreq = np.empty(1, dtype='i')
     offset_batch = np.ones([ds.lbatch, ds.nfiles], dtype='i') * -1
     nevent = 0
     for evt in ds.dm:
@@ -51,25 +51,22 @@ def server(ds, filter):
             if not filter(evt): continue
         offset_batch[nevent % ds.lbatch, :] = [d.info.offsetAlg.intOffset for d in evt]
         if nevent % ds.lbatch == ds.lbatch - 1:
-            comm.Recv(byterank, source=MPI.ANY_SOURCE)
-            rankreq = int.from_bytes(byterank, byteorder=sys.byteorder)
-            comm.Send(offset_batch, dest=rankreq)
+            comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            comm.Send(offset_batch, dest=rankreq[0])
             offset_batch = offset_batch * 0 -1
         nevent += 1
 
     if not (offset_batch==-1).all():
-        comm.Recv(byterank, source=MPI.ANY_SOURCE)
-        rankreq = int.from_bytes(byterank, byteorder=sys.byteorder)
-        comm.Send(offset_batch, dest=rankreq)
+        comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+        comm.Send(offset_batch, dest=rankreq[0])
 
-    for rankreq in range(size-1):
-        comm.Recv(byterank, source=MPI.ANY_SOURCE)
-        rankreq = int.from_bytes(byterank, byteorder=sys.byteorder)
-        comm.Send(offset_batch * 0 -1, dest=rankreq)
+    for i in range(size-1):
+        comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+        comm.Send(offset_batch * 0 -1, dest=rankreq[0])
 
 def client(ds, analyze):
     while True:
-        comm.Send(rank.to_bytes(32, byteorder=sys.byteorder), dest=0)
+        comm.Send(np.array([rank], dtype='i'), dest=0)
         offset_batch = np.empty([ds.lbatch, ds.nfiles], dtype='i')
         comm.Recv(offset_batch, source=0)
         if not process_batch(ds.dm, offset_batch, analyze): break
@@ -102,7 +99,7 @@ class DataSource(object):
         if rank == 0:
             self.dm = DgramManager(self.smd_files) 
             configs = self.dm.configs
-            nbytes = np.array([memoryview(config).nbytes for config in configs], dtype='i')
+            nbytes = np.array([memoryview(config).shape[0] for config in configs], dtype='i')
         else:
             self.dm = None
             configs = [dgram.Dgram() for i in range(self.nfiles)]
