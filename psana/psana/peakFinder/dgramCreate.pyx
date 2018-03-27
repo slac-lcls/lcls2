@@ -6,7 +6,6 @@ cimport numpy as cnp
 
 from cpython cimport array
 import array
-import sys
 import ctypes
 import hashlib
 import copy
