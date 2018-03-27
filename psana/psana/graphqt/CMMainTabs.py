@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTabBar, QTextEdi
 from PyQt5.QtGui import QPalette, QColor# , QSizePolicy
 
 #from psana.pyalgos.generic.PSConfigParameters import cp
-
+from psana.graphqt.CMConfigParameters import cp
 from psana.pyalgos.generic.Logger import logger
 
 from psana.graphqt.QWDateTimeSec import QWDateTimeSec
@@ -37,12 +37,15 @@ class CMMainTabs(QWidget) :
         QWidget.__init__(self, parent)
         self._name = self.__class__.__name__
 
+        self.main_tab_name = cp.main_tab_name
+        tab_name = self.main_tab_name.value()
+
         self.orientation = orientation
 
         self.monitors    = []
         self.tab_types   = [self.TAB1,    self.TAB1,    self.TAB1,    self.TAB2,   self.TCONV]
         self.tab_names   = ['Mon-A', 'Mon-B', 'Mon-C', 'Mon-D', 't-converter']
-        self.current_tab = self.tab_names[1]
+        self.current_tab = tab_name if tab_name else self.tab_names[0]
 
         self.gui_win = None
 
@@ -93,9 +96,10 @@ class CMMainTabs(QWidget) :
         #self.butSave    .setIcon(icon.icon_save_cfg)
         #self.butStop    .setIcon(icon.icon_stop)
 
-        self.setMinimumHeight(250)
-        self.setMinimumWidth(550)
-        self.setContentsMargins(-5,-5,-5,-5) # QMargins(-5,-5,-5,-5)
+        #self.setMinimumHeight(250)
+        #self.setMinimumWidth(550)
+        #self.setContentsMargins(-5,-5,-5,-5) # QMargins(-5,-5,-5,-5)
+        self.setContentsMargins(-9,-9,-9,-9) # QMargins(-5,-5,-5,-5)
 
         #self.adjustSize()
         #self.        setStyleSheet(style.styleBkgd)
@@ -173,6 +177,7 @@ class CMMainTabs(QWidget) :
     def on_tab_bar(self, ind):
         tab_name = str(self.tab_bar.tabText(ind))
         self.current_tab = tab_name
+        self.main_tab_name.setValue(tab_name)
         msg = 'Selected tab: %i - %s' % (ind, tab_name)
         logger.info(msg, self._name)
         self.gui_selector()

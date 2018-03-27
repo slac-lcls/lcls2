@@ -25,7 +25,7 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 #import math
 
 from math import floor
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtGui import QPen, QBrush
 from PyQt5.QtCore import Qt, QPoint
 
@@ -64,24 +64,27 @@ class CMMain(QWidget) :
 
         self.wtab = CMMainTabs()
         self.wlog = QWLogger(log, cp, show_buttons=False)
+        self.wtmp =QTextEdit('Some text')
 
-        self.vbox = QVBoxLayout() 
-        self.vbox.addWidget(self.wtab) 
-        self.vbox.addStretch(1)
+        #self.vbox = QVBoxLayout() 
+        #self.vbox.addWidget(self.wtab) 
+        #self.vbox.addStretch(1)
 
-        self.wrig = QWidget()
-        self.wrig.setLayout(self.vbox)
+        #self.wrig = QWidget()
+        #self.wrig.setLayout(self.vbox)
 
         self.vspl = QSplitter(Qt.Vertical)
-        self.vspl.addWidget(self.wrig) 
+        #self.vspl.addWidget(self.wrig) 
+        self.vspl.addWidget(self.wtab) 
         self.vspl.addWidget(self.wlog) 
 
-        self.hspl = QSplitter(Qt.Horizontal)
-        self.hspl.addWidget(self.vspl)
+        #self.hspl = QSplitter(Qt.Horizontal)
+        #self.hspl.addWidget(self.vspl)
+        #self.hspl.addWidget(self.wtmp)
         #self.hspl.addWidget(self.wrig)
 
         self.mbox = QHBoxLayout() 
-        self.mbox.addWidget(self.hspl)
+        self.mbox.addWidget(self.vspl)
         self.setLayout(self.mbox)
 
         self.set_style()
@@ -163,15 +166,15 @@ class CMMain(QWidget) :
                          self.main_win_width .value(),\
                          self.main_win_height.value())
 
-        self.setMinimumSize(1200, 700)
+        self.setMinimumSize(500, 400)
 
         w = self.main_win_width.value()
 
         self.setContentsMargins(-9,-9,-9,-9)
 
-        self.wrig.setContentsMargins(-9,-9,-9,-9)
-        self.wrig.setMinimumWidth(350)
-        self.wrig.setMaximumWidth(450)
+        #self.wrig.setContentsMargins(-9,-9,-9,-9)
+        #self.wrig.setMinimumWidth(350)
+        #self.wrig.setMaximumWidth(450)
 
         #self.wrig.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Ignored)
         #self.hspl.moveSplitter(w*0.5,0)
@@ -227,9 +230,9 @@ class CMMain(QWidget) :
             self.close()
 
         elif e.key() == Qt.Key_U : 
-            log.info('%s: Test set new image' % self._name)
-            img = image_with_random_peaks((1000, 1000))
-            self.set_image_data(img)
+            log.info('%s: Test:u TBD' % self._name)
+            #img = image_with_random_peaks((1000, 1000))
+            #self.set_image_data(img)
 
 
 
@@ -260,14 +263,11 @@ class CMMain(QWidget) :
 def calibman(parser=None) :
     import sys
     from PyQt5.QtWidgets import QApplication
-
     log.setPrintBits(0o377) 
-
     app = QApplication(sys.argv)
     w = CMMain(parser)
     w.show()
     app.exec_()
-
     del w
     del app
 

@@ -56,6 +56,17 @@ def config_logger(loglevel='info',\
 
 #------------------------------
 
+class MyLogFilter(logging.Filter):
+    """Can be used to intercept all messages.
+    """
+    def filter(self, record):
+        if not record.args:
+            if record.levelno == logging.WARNING:
+                print('LogFilter: ', record.name, record.levelname, record.created, record.msg) #record.__dict__)
+        return True
+
+#------------------------------
+
 if __name__ == "__main__" :
   def test_logger(level) :
 
@@ -64,11 +75,13 @@ if __name__ == "__main__" :
     config_logger(loglevel=level)#, filename='log.txt')
 
     logger = logging.getLogger('My_Module')
-    logger.debug   ('This is a test message 1')
-    logger.info    ('This is a test message 2')
-    logger.warning ('This is a test message 3')
-    logger.error   ('This is a test message 4')
-    logger.critical('This is a test message 5')
+    logger.addFilter(MyLogFilter())
+
+    logger.debug    ('This is a test message 1')
+    logger.info     ('This is a test message 2')
+    logger.warning  ('This is a test message 3')
+    logger.error    ('This is a test message 4')
+    logger.critical ('This is a test message 5')
     logger.exception('This is a test message logger.exception')
     logger.log(logging.DEBUG, 'This is a test message logger.log')
 

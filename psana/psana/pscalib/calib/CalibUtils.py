@@ -26,12 +26,22 @@ import psana.pyalgos.generic.Utils as gu
 
 #------------------------------
 
-def history_list_of_dicts(history, verb=True) :
-    """Returns list of dictionaries from history file.
+def history_records(history, verb=True) :
+    """Returns list of (str) records from history file.
     """
     if not os.path.exists(history) : return None
-    recs = gu.load_textfile(history, verb).split('\n')        
-    return [dict([f.split(':',1) for f in r.split()]) for r in recs if r]
+    return gu.load_textfile(history, verb).split('\n')
+
+#------------------------------
+
+def history_list_of_dicts(history, verb=True) :
+    """Returns list of dictionaries from history file.
+       NOTE: "comment" records with spaces are ignored beyond the 1-st word.
+       e.g.: "comment:converted from crystfel geometry" -> {"comment":"converted"}
+    """
+    recs = history_records(history, verb)
+    if recs is None : return None
+    return [dict([f.split(':',1) for f in r.split() if ':' in f]) for r in recs if r]
 
 #------------------------------
 
