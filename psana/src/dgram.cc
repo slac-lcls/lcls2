@@ -448,15 +448,16 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"config",
                              (char*)"offset",
                              NULL};
+
     int fd=0;
     PyObject* configDgram=0;
     self->offset=0;
     self->is_done=false;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iO$l", kwlist,
+                                     "|iOl", kwlist,
                                      &fd,
                                      &configDgram,
-                                     &(self->offset))) {
+                                     &self->offset)) {
         return -1;
     }
 
@@ -544,6 +545,29 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     return 0;
 }
 
+#if PY_MAJOR_VERSION < 3
+static Py_ssize_t PyDgramObject_getsegcount(PyDgramObject *self, Py_ssize_t *lenp) {
+    return 1; // only supports single segment
+}
+
+static Py_ssize_t PyDgramObject_getreadbuf(PyDgramObject *self, Py_ssize_t segment, void **ptrptr) {
+    *ptrptr = (void*)self->dgram;
+    if (self->dgram->xtc.extent == 0) {
+        return BUFSIZE;
+    } else {
+        return sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
+    }
+}
+
+static Py_ssize_t PyDgramObject_getwritebuf(PyDgramObject *self, Py_ssize_t segment, void **ptrptr) {
+    return PyDgramObject_getreadbuf(self, segment, (void **)ptrptr);
+}
+
+static Py_ssize_t PyDgramObject_getcharbuf(PyDgramObject *self, Py_ssize_t segment, constchar **ptrptr) {
+    return PyDgramObject_getreadbuf(self, segment, (void **) ptrptr);
+}
+#endif /* PY_MAJOR_VERSION < 3 */
+
 static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
 {
     if (view == 0) {
@@ -563,8 +587,8 @@ static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
     view->itemsize = 1;
     view->format = (char *)"s";
     view->ndim = 1;
-    view->shape = NULL;
-    view->strides = NULL;
+    view->shape = &view->len;
+    view->strides = &view->itemsize;
     view->suboffsets = NULL;
     view->internal = NULL;
     
@@ -573,6 +597,12 @@ static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
 }
 
 static PyBufferProcs PyDgramObject_as_buffer = {
+#if PY_MAJOR_VERSION < 3
+    (readbufferproc)PyDgramObject_getreadbuf,   /*bf_getreadbuffer*/
+    (writebufferproc)PyDgramObject_getwritebuf, /*bf_getwritebuffer*/
+    (segcountproc)PyDgramObject_getsegcount,    /*bf_getsegcount*/
+    (charbufferproc)PyDgramObject_getcharbuf,   /*bf_getcharbuffer*/
+#endif
     // this definition is only compatible with Python 3.3 and above
     (getbufferproc)PyDgramObject_getbuffer,
     (releasebufferproc)0, // no special release required
@@ -656,7 +686,12 @@ static PyTypeObject dgram_DgramType = {
     tp_getattro, /* tp_getattro */
     0, /* tp_setattro */
     &PyDgramObject_as_buffer, /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT, /* tp_flags */
+    (Py_TPFLAGS_DEFAULT 
+#if PY_MAJOR_VERSION < 3
+    | Py_TPFLAGS_CHECKTYPES
+    | Py_TPFLAGS_HAVE_NEWBUFFER
+#endif
+    | Py_TPFLAGS_BASETYPE),   /* tp_flags */
     0, /* tp_doc */
     0, /* tp_traverse */
     0, /* tp_clear */
@@ -685,12 +720,16 @@ static PyTypeObject dgram_DgramType = {
     (destructor)dgram_dealloc, /* tp_del*/
 };
 
+#if PY_MAJOR_VERSION > 2
 static PyModuleDef dgrammodule =
 { PyModuleDef_HEAD_INIT, "dgram", NULL, -1, NULL, NULL, NULL, NULL, NULL };
+#endif
 
 #ifndef PyMODINIT_FUNC /* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
 #endif
+
+#if PY_MAJOR_VERSION > 2
 PyMODINIT_FUNC PyInit_dgram(void)
 {
     PyObject* m;
@@ -710,3 +749,21 @@ PyMODINIT_FUNC PyInit_dgram(void)
     PyModule_AddObject(m, "Dgram", (PyObject*)&dgram_DgramType);
     return m;
 }
+#else
+PyMODINIT_FUNC initdgram(void) {
+    PyObject *m;
+    
+    import_array();
+
+    if (PyType_Ready(&dgram_DgramType) < 0)
+        return;
+
+    m = Py_InitModule3("dgram", dgram_methods, "Dgram module.");
+
+    if (m == NULL)
+        return;
+
+    Py_INCREF(&dgram_DgramType);
+    PyModule_AddObject(m, "Dgram", (PyObject *)&dgram_DgramType);
+}
+#endif
