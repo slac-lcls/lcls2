@@ -8,10 +8,13 @@ from cpython cimport array
 import array
 import sys
 import ctypes
+import hashlib
+import copy
 
 from libc.stdlib cimport malloc,free
 from cpython cimport PyObject, Py_INCREF
 from libc.string cimport memcpy
+from libc.stdio cimport *
 
 # C++ vector class
 from libcpp.vector cimport vector
@@ -70,6 +73,7 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
         # Name(const char* name, DataType type, int rank)
         # Name2 "Name"(const char* name, DataType type, int rank,Alg& alg)
         Name(const char* name, Alg& alg)
+        Name(const char* name, DataType type, int rank, Alg& alg)
         const char* name()
         DataType    type()
         cnp.uint32_t    rank()
@@ -79,59 +83,9 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
         cnp.uint32_t* shape()
 
 
-cdef extern from "xtcdata/xtc/ShapesData.hh" namespace "XtcData":
-    cdef cppclass AutoParentAlloc:
-        AutoParentAlloc(TypeId typeId): Xtc(typeId)
-        # void* alloc(cnp.uint32_t, Xtc& parent)
-        # void* alloc(cnp.uint32_t, Xtc& parent, Xtc& superparent)
-
-    cdef cppclass Names(AutoParentAlloc):
-        Names(const char* detName, Alg& alg, const char* detType, const char* detId, unsigned segment):\
-             # AutoParentAlloc(TypeId(<TypeId.Type>Names,0)), _alg(alg),_segment(segment)
-            pass
-    cdef cppclass NameIndex: 
-        NameIndex(Names &names)
-
-    cdef cppclass Shapes:
-        Shapes(Xtc superparent, cnp.uint32_t namesId): AutoParentAlloc(TypeId(<TypeId.Type>Shapes,0)),_namesId(namesId)
-
-
-
-# cdef extern from "xtcdata/xtc/src/xtcwriter.cc" namespace "XtcData":
-    # void add_names(Xtc parent, vector[NameIndex] namesVec) 
-
-cdef class PyXtc:
-    cdef Xtc* cptr
-    def __cinit__(self, int sizet, charp):
-        self.cptr = new Xtc()
-
-    def __dealloc__(self):
-        del self.cptr
-
-cdef class PyShapes:
-    cdef Shapes* cptr
-    def __cinit__(self, superparent, int namesId):
-        self.cptr = new Shapes(<Xtc&>superparent, <cnp.uint32_t>namesId)
-
-    def __dealloc__(self):
-        del self.cptr
-
-
-cdef class PyNames:
-    cdef Names* cptr
-
-    def __cinit__(self, detName, alg, detType,detId, segment):
-        pass
-        # self.cptr = new Names(<const char*>detName, <Alg&>alg, <const char*>detType, <const char*>detId, <unsigned>segment)
-        # self.cptr = new Names(detName, <Alg&>alg, detType, detId, segment)
-
-    def __dealloc__(self):
-        del self.cptr
-
-
 cdef class PyTypeId:
     cdef TypeId* cptr
- 
+
     def __cinit__(self, int type, int version):
         self.cptr = new TypeId(<TypeId.Type>type,version)
 
@@ -184,6 +138,24 @@ cdef class PyName:
 
     def name(self):
          return <char*>self.cptr.name()
+
+cdef class PyName2:
+    cdef Name* cptr
+
+    def __cinit__(self, bytes namestring, int type, int rank, PyAlg pyalg):
+        self.cptr = new Name(namestring,<Name.DataType>type, rank, pyalg.cptr[0])
+
+    def __dealloc__(self):
+        del self.cptr
+
+    def type(self):
+        return self.cptr.type()
+
+
+    def name(self):
+         return <char*>self.cptr.name()
+
+
 cdef class PyShape:
     cdef Shape* cptr
     
@@ -196,33 +168,42 @@ cdef class PyShape:
     def __dealloc__(self):
         del self.cptr
 
+def parse_type(data_arr):
+    dat_type = data_arr.dtype
 
-def blockcreate(data):
+    types = ['uint8','uint16','uint32','uint64','int8','int16','int32','int64','float','double']
+    nptypes = list(map(lambda x: np.dtype(x), types))
+    type_dict = dict(zip(nptypes, range(len(nptypes))))
+    return type_dict[dat_type]
+
+def blockcreate(data, verbose=False):
     cdef Name* namesptr = <Name*> malloc(len(data)*sizeof(Name))
     cdef Shape* shapesptr = <Shape*> malloc(len(data)*sizeof(Shape))
     cdef cnp.uint8_t* dataptr  = <cnp.uint8_t*> malloc(0x4000000)
-
     cdef cnp.uint8_t* dataptr2  = <cnp.uint8_t*> malloc(0x0100000)
 
     cdef cnp.ndarray[int, mode="c", ndim=2] shop
-
+    xtc_bytes = 0
     for ct,entry in enumerate(data):
-        # Create the name object
-        pyname = PyName(entry[0][0],PyAlg(entry[0][1].algname,\
-                                              entry[0][1].major, entry[0][1].minor, entry[0][1].micro))
-        # Copy the name to namesptr
-        memcpy(namesptr, pyname.cptr,sizeof(Name))
-        print("Block %i:" % ct)
-        print("\tName from py object: %s" % <char*>namesptr.name())
-        print("\tName from malloc'd memory: %s" %<char*>pyname.cptr.name())
-        namesptr+=1
-
         # Deduce the shape of the data
         array_size = np.array(entry[1].shape)
         array_rank = len(array_size)
-        array_size = np.array(np.r_[array_size, (5-array_rank)*[0]], dtype=np.uint32)
+        array_size_pad = np.array(np.r_[array_size, (5-array_rank)*[0]], dtype=np.uint32)
+        # Find the type of the data
+        data_type = parse_type(entry[1])
+
+        # Create the name object
+        pyname = PyName2(entry[0][0],data_type, array_rank, PyAlg(entry[0][1].algname,\
+                                          entry[0][1].major, entry[0][1].minor, entry[0][1].micro))
+        # Copy the name to namesptr
+        memcpy(namesptr, pyname.cptr,sizeof(Name))
+        if verbose:
+            print("Block %i:" % ct)
+            print("\tName from py object: %s" % <char*>namesptr.name())
+            print("\tName from malloc'd memory: %s" %<char*>pyname.cptr.name())
+        namesptr+=1
         # Create the shape object
-        pyshape = PyShape(array_size)
+        pyshape = PyShape(array_size_pad)
 
         # Copy the shape to shapesptr
         memcpy(shapesptr, pyshape.cptr, sizeof(Shape))
@@ -234,9 +215,9 @@ def blockcreate(data):
         dimsmal = ''
         for i in range(array_rank):
             dimsmal+=str(shapesptr.shape()[i])+'x'
-
-        print("\tShape from py object: %s" % dims[:-1])
-        print("\tShape from malloc'd memory: %s" % dimsmal[:-1])
+        if verbose:
+            print("\tShape from py object: %s" % dims[:-1])
+            print("\tShape from malloc'd memory: %s" % dimsmal[:-1])
 
         shapesptr+=1
 
@@ -250,69 +231,25 @@ def blockcreate(data):
         result_malloc = []
         result_pyobj = []
 
-        for i in range(int(entry[1].nbytes/4)):
-            intap = int.from_bytes(dataptr[i*4:(i+1)*4], byteorder='little')
-            result_malloc.append(intap)
+        bstr_m = dataptr[0:entry[1].nbytes]
+        bstr_py = data_char[0:entry[1].nbytes]
 
-        for i in range(int(entry[1].nbytes/4)):
-            intap = int.from_bytes(data_char[i*4:(i+1)*4], byteorder='little')
-            result_pyobj.append(intap)
+        data_m = np.resize(np.frombuffer(bstr_m, dtype = entry[1].dtype), array_size)
+        data_py = np.resize(np.frombuffer(bstr_py, dtype = entry[1].dtype), array_size)
 
-        res1 = np.array(result_malloc)
-        res2 = np.array(result_pyobj)
+        dataptr += entry[1].nbytes
+        xtc_bytes += entry[1].nbytes
+        if verbose:
+            print("malloc'd array hash: ", hashlib.md5(data_m.tobytes()).hexdigest())
+            print("py array hash: ", hashlib.md5(data_py.tobytes()).hexdigest())
 
-        print("\tPy obj and malloc'd memory difference %i\n: " %np.sum(res1-res2))
-        dataptr+=entry[1].nbytes
+    dataptr -= xtc_bytes
+    shapesptr -= len(data)
+    namesptr -= len(data)
 
-        
-        # Copy the data to the dataptr buffer
-        # arr = array_contig(entry[1])
-        # if array_rank == 2:
-        #     arr2 = entry[1]
-        #     memcpy(dataptr, <cnp.uint8_t*>arr2.data, entry[1].nbytes)#  <--- TypeError here
-        # if array_rank == 3:
-        #     arr3 = entry[1]
-        #     memcpy(dataptr, <cnp.uint8_t*>arr3.data, entry[1].nbytes)#  <--- TypeError here
-        # if array_rank == 4:
-        #     arr4 = entry[1]
-        #     memcpy(dataptr, <cnp.uint8_t*>arr4.data, entry[1].nbytes)#  <--- TypeError here
-        # if array_rank == 5:
-        #     arr5 = entry[1]
-        #     memcpy(dataptr, <cnp.uint8_t*>arr5.data, entry[1].nbytes)#  <--- TypeError here
+    cdef FILE *f = fopen('data.xtc', 'w')
+    fwrite(&dataptr, xtc_bytes, 1, f)
+    fwrite(&shapesptr, len(data)*sizeof(Shape), 1, f)
+    fwrite(&namesptr, len(data)*sizeof(Name), 1, f)
+    fclose(f)
 
-        # arr = entry[1]
-        # dataptr2 = entry[1].ctypes.data_as(ctypes.POINTER(ctypes.c_char))
-        #dataptr2 = <cnp.uint8_t*>entry[1].ctypes.data
-        # memcpy(dataptr, <cnp.uint8_t*>arr.data, entry[1].nbytes)#  <--- TypeError here
-       # memcpy(dataptr, dataptr2, entry[1].nbytes)#  <--- TypeError here
-        # dataptr += sizeof(entry[1].data)
-
-     # for _ in range(len(data)):
-
-    # def pyadd_names(Xtc parent, vector[NameIndauex] namesVec):
-#    return add_names(parent, namesVec) #cdef Alg* = new Alg("hsd", 0, 0, 0)
-# # Alg = PyAlg()
-#     # frontEndNames = PyNames("xpphsd", Alg, "foo", "bar",0)
-
-# cdef class CreateDgram:
-
-#     cdef Dgram* cptr
-
-#     def __cinit__(self):
-#         cdef int bufsize = 0x4000000
-#         cdef int dam = 0
-#         cdef void* configbuf = malloc(bufsize)
-#         cdef Dgram *config = <Dgram*>configbuf
-#         tid = PyTypeId(0,0)
-#         dmg = PyDamage(0)
-
-#         config.xtc.contains = tid.cptr[0]
-#         config.xtc.damage = dmg.cptr[0]
-#         config.xtc.extent = sizeof(Xtc)
-
-#         namesVec = new vector[NameIndex]()
-#         # pyadd_names(config.xtc,namesVec)
-
-
-#     def __dealloc__(self):
-#         del self.cptr

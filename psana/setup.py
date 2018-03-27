@@ -9,30 +9,13 @@ if not arg:
 xtcdata = arg[0].split('=')[1]
 sys.argv.remove(arg[0])
 
-arg = [arg for arg in sys.argv if arg.startswith('--legion')]
-if arg:
-    legion = arg[0].split('=')[1]
-    sys.argv.remove(arg[0])
-
-    legion_lib = ['legion']
-    legion_inc_dir = [os.path.join(legion, 'include')]
-    legion_lib_dir = [os.path.join(legion, 'lib'), os.path.join(legion, 'lib64')]
-    legion_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(legion, 'lib'))]
-    legion_compile_args = ['-DPSANA_USE_LEGION']
-else:
-    legion_lib = []
-    legion_inc_dir = []
-    legion_lib_dir = []
-    legion_link_args = []
-    legion_compile_args = []
-
 dgram_module = Extension('psana.dgram',
                          sources = ['src/dgram.cc'],
-                         libraries = ['xtcdata'] + legion_lib,
-                         include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')] + legion_inc_dir,
-                         library_dirs = [os.path.join(xtcdata, 'lib')] + legion_lib_dir,
-                         extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))] + legion_link_args,
-                         extra_compile_args=['-std=c++11'] + legion_compile_args)
+                         libraries = ['xtcdata'],
+                         include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
+                         library_dirs = [os.path.join(xtcdata, 'lib')],
+                         extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                         extra_compile_args=['-std=c++11'])
 
 setup(name = 'psana',
        version = '0.1',
@@ -96,10 +79,14 @@ from Cython.Build import cythonize
 ext = Extension('dgramCreate',
                 packages=['psana.peakfinder',],
                 sources=["psana/peakFinder/dgramCreate.pyx"],
+                libraries = ['xtcdata'],
+                include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
+                library_dirs = [os.path.join(xtcdata, 'lib')],
                 language="c++",
                 extra_compile_args=['-std=c++11'],
-                include_dirs=[np.get_include(),
-                              "../install/include"]
+                extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                # include_dirs=[np.get_include(),
+                              # "../install/include"]
 )
 
 setup(name='dgramCreate',
