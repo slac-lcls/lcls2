@@ -33,13 +33,16 @@ Usage ::
     mu.delete_collection_obj(col)
     mu.delete_document_from_collection(col, id)
 
+    dbname = mu.db_prefixed_name(name:str)
+    dbname = mu.get_dbname(**kwargs)
+
     # All connect methods in one call
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
         mu.connect(host='psanaphi105', port=27017, experiment='cxi12345', detector='camera-0-cxids1-0', verbose=False) 
 
-    dbname = mu.db_prefixed_name(name:str)
-
-    ts,   = mu._timestamp(time_sec:str,int,float)
+    ts    = mu._timestamp(time_sec:str,int,float)
+    ts    = mu.timestamp_id(id:str)
+    ts    = mu.timestamp_doc(doc)
     t, ts = mu.time_and_timestamp(**kwargs)
 
     # Make document
@@ -54,21 +57,23 @@ Usage ::
 
     # Insert data
     id_data = mu.insert_data(data, fs)
-
     id_data_exp, id_data_det, id_exp, id_det = mu.insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs)
     mu.insert_calib_data(data, **kwargs)
 
     msg = mu._error_msg(msg:str) 
-
     mu.valid_experiment(experiment:str)
     mu.valid_detector(detector:str)
     mu.valid_ctype(ctype:str)
     mu.valid_run(run:str)
     mu.valid_version(version:str)
     mu.valid_comment(comment:str)
-    #mu.valid_data(data, detector:str, ctype:str)
+    mu.valid_data(data, detector:str, ctype:str)
 
     mu.insert_constants(data, experiment:str, detector:str, ctype:str, run:str, time_sec:str, **kwargs)
+
+    # Delete data
+    mu.del_document_data(doc, fs)
+    mu.del_collection_data(col, fs)
 
     # Find document in collection
     doc  = mu.find_doc(col, query={'data_type' : 'xxxx'})
@@ -79,10 +84,13 @@ Usage ::
     keys = mu.document_keys(doc)
     s_vals, s_keys = mu.document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detector','ctype','run','id_data','data_type'), fmt:str='%24s %10s %11s %20s %16s %4s %30s %10s')
     s = mu.database_info(client, dbname, level:int=10, gap:str='  ')
+    s = mu.database_fs_info(db, gap:str='  ')
     s = mu.client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, gap:str='  ')
 
-    # Test methods
+    mu.request_confirmation()
 
+    # Test methods
+    ...
 """
 #------------------------------
 
@@ -226,7 +234,7 @@ def db_prefixed_name(name:str, prefix='cdb_') -> str :
 #------------------------------
 
 def get_dbname(**kwargs) :
-    """Returns (str) dbname or None. Implements logistic for db selection:
+    """Returns (str) dbname or None. Implements logics for dbname selection:
        -- dbname is used if defined else
        -- prefixed experiment else
        -- prefixed detector else None
@@ -280,10 +288,14 @@ def connect(**kwargs) :
 #------------------------------
 
 def _timestamp(time_sec) -> str :
+    """Converts time_sec in timestamp of adopted format TSFORMAT.
+    """
     return gu.str_tstamp(TSFORMAT, int(time_sec))
 
 
 def timestamp_id(id:str) -> str :
+    """Converts MongoDB (str) id to (str) timestamp of adopted format.
+    """
     str_ts = str(ObjectId(id).generation_time) # '2018-03-14 21:59:37+00:00'
     tobj = Time.parse(str_ts)                  # Time object from parsed string
     tsec = int(tobj.sec())                     # 1521064777
@@ -291,7 +303,10 @@ def timestamp_id(id:str) -> str :
     #print('XXX: str_ts', str_ts, tsec, tsf)
     return str_tsf
 
+
 def timestamp_doc(doc) -> str :
+    """Returns document creation (str) timestamp from its id.
+    """
     timestamp_id(doc['_id'])
 
 #------------------------------
@@ -412,21 +427,6 @@ def insert_data(data, fs) :
 
 #------------------------------
 
-def del_collection_data(col, fs) :
-    """From fs removes data associated with documents in colllection col.
-    """
-    for doc in col.find() :
-        fs.delete(doc['id_data'])
-
-#------------------------------
-
-def del_document_data(doc, fs) :
-    """From fs removes data associated with documents in colllection col.
-    """
-    fs.delete(doc['id_data'])
-
-#------------------------------
-
 def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     """For open connection inserts calib data and two documents.
        Returns inserted id_data, id_exp, id_det.
@@ -513,7 +513,7 @@ def insert_constants(data, experiment:str, detector:str, ctype:str, run:str, tim
     _time_sec, _time_stamp = time_and_timestamp(time_sec=time_sec,\
                                                 time_stamp=kwargs.get('time_stamp', None))
     _version = kwargs.get('version', 'v00')
-    _comment = kwargs.get('comment', ''),
+    _comment = kwargs.get('comment', 'default comment')
 
     valid_experiment(experiment)
     valid_detector(detector)
@@ -526,7 +526,7 @@ def insert_constants(data, experiment:str, detector:str, ctype:str, run:str, tim
     kwa = {
           'experiment' : experiment,
           'run'        : run,
-          'run_end'    : kwargs.get('run_end', end),
+          'run_end'    : kwargs.get('run_end', 'end'),
           'detector'   : detector,
           'ctype'      : ctype,
           'time_sec'   : _time_sec,
@@ -540,6 +540,21 @@ def insert_constants(data, experiment:str, detector:str, ctype:str, run:str, tim
           }
 
     insert_calib_data(data, **kwa)
+
+#------------------------------
+
+def del_document_data(doc, fs) :
+    """From fs removes data associated with a single document.
+    """
+    fs.delete(doc['id_data'])
+
+#------------------------------
+
+def del_collection_data(col, fs) :
+    """From fs removes data associated with multiple documents in colllection col.
+    """
+    for doc in col.find() :
+        fs.delete(doc['id_data'])
 
 #------------------------------
 #------------------------------
@@ -602,7 +617,7 @@ def find_docs(col, query={'ctype':'pedestals'}) :
 #------------------------------
 
 def find_doc(col, query={'ctype':'pedestals'}) :
-    """Returns the document with latest time_sec for query.
+    """Returns the document with latest time_sec or run number for specified query.
     """
     docs = find_docs(col, query)
     if docs is None : return None
@@ -621,7 +636,7 @@ def find_doc(col, query={'ctype':'pedestals'}) :
 #------------------------------
 
 def document_keys(doc) -> str :
-    """Returns strings of document keys. 
+    """Returns formatted strings of document keys. 
     """
     keys = doc.keys()
     s = '%d document keys:' % len(keys)
@@ -635,26 +650,16 @@ def document_keys(doc) -> str :
 
 def document_info(doc, keys:tuple=('time_sec','time_stamp','experiment',\
                   'detector','ctype','run','ts_data','data_type','data_dtype'),\
-                  fmt:str='%10s %24s %11s %24s %16s %4s %30s %10s %10s') -> str :
-    """Returns strings for formatted document values and title made of keys. 
+                  fmt:str='%10s %24s %11s %24s %16s %4s %30s %10s %10s') :
+    """Returns (str, str) for formatted document values and title made of keys. 
     """
     vals = tuple([str(doc.get(k,None)) for k in keys])
     return fmt % vals, fmt % keys
 
 #------------------------------
 
-def database_fs_info(db, gap:str='  ') -> str :
-    s = '%sDB "%s" data collections:' % (gap, db.name)
-    for cname in collection_names(db) :
-       if cname in ('fs.chunks', 'fs.files') :
-           docs = collection(db, cname).find()
-           s += '\n%s   COL: %s has %d docs' % (gap, cname.ljust(9), docs.count())
-    return s
-
-#------------------------------
-
 def database_info(client, dbname, level:int=10, gap:str='  ') -> str :
-    """Returns string with database info
+    """Returns (str) info about database
     """
     #dbname = db_prefixed_name(name)
 
@@ -671,7 +676,8 @@ def database_info(client, dbname, level:int=10, gap:str='  ') -> str :
 
     for cname in cnames :
       col = collection(db, cname) # or db[cname]
-      docs = col.find()
+      docs = col.find().sort('ctype', DESCENDING)
+              # {'ctype':DESCENDING, 'time_sec':DESCENDING, 'run':ASCENDING}
       s += '\n%s%s%s' % (gap, gap, 52*'_')
       s += '\n%s%sCOL %s contains %d docs' % (gap, gap, cname.ljust(12), docs.count())
       #for idoc, doc in enumerate(docs) :
@@ -696,8 +702,20 @@ def database_info(client, dbname, level:int=10, gap:str='  ') -> str :
 
 #------------------------------
 
+def database_fs_info(db, gap:str='  ') -> str :
+    """Returns (str) info about database fs collections 
+    """
+    s = '%sDB "%s" data collections:' % (gap, db.name)
+    for cname in collection_names(db) :
+       if cname in ('fs.chunks', 'fs.files') :
+           docs = collection(db, cname).find()
+           s += '\n%s   COL: %s has %d docs' % (gap, cname.ljust(9), docs.count())
+    return s
+
+#------------------------------
+
 def client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, gap:str='  ') -> str :
-    """Returns string with generic information about MongoDB client (or host:port) 
+    """Returns (str) with generic information about MongoDB client (or host:port) 
     """
     _client = client if client is not None else connect_to_server(host, port)
     #s = '\nMongoDB client host:%s port:%d' % (client_host(_client), client_port(_client))
@@ -724,6 +742,8 @@ def client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, g
 #------------------------------
 
 def request_confirmation() :
+    """Dumps request for confirmation of specified (delete) action.
+    """
     logger.warning('Use confirm "-C" option to proceed with request.')
 
 #------------------------------
@@ -769,8 +789,7 @@ if __name__ == "__main__" :
 
     #insert_calib_data(data, host=cc.HOST, port=cc.PORT, experiment='cxi12345', detector='camera-0-cxids1-0',\
     #                  run='10', ctype='pedestals', time_sec=str(int(time())), verbose=True)
-
-    insert_constants(data, 'cxi12345', 'camera-0-cxids1-0', 'pedestals', '10', '1600000000', 'V001', verbose=True,\
+    insert_constants(data, 'cxi12345', 'camera-0-cxids1-0', 'pedestals', '10', '1600000000', verbose=True,\
                      time_stamp='2018-01-01T00:00:00-0800', )
     #t0_sec = time()
     #id_data = insert_data(data, fs)
