@@ -94,9 +94,9 @@ private:
 class Shape
 {
 public:
-  Shape(unsigned shape[Name::MaxRank])
+  Shape(uint32_t shape[Name::MaxRank])
     {
-        memcpy(_shape, shape, sizeof(int) * Name::MaxRank);
+        memcpy(_shape, shape, sizeof(uint32_t) * Name::MaxRank);
     }
     unsigned size(Name& name) {
         unsigned size = 1;
