@@ -12,8 +12,8 @@ Usage::
     fig = gr.figure(figsize=(13,12), title='Image', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=None)
     gr.move_fig(fig, x0=200, y0=100)
     gr.move(x0=200, y0=100)
-    gr.add_axes(fig, axwin=(0.05, 0.03, 0.87, 0.93))
-    gr.fig_img_cbar_axes(fig=None, win_axim=(0.05,  0.03, 0.87, 0.93), win_axcb=(0.923, 0.03, 0.02, 0.93))
+    fig, axis = gr.add_axes(fig, axwin=(0.05, 0.03, 0.87, 0.93))
+    fig, axim, axcb = gr.fig_img_cbar_axes(fig=None, win_axim=(0.05,0.03,0.87,0.93), win_axcb=(0.923,0.03,0.02,0.93))
     gr.set_win_title(fig, titwin='Image')
     gr.add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=14, fstit=20, color='k')
     gr.show(mode=None)
@@ -73,15 +73,15 @@ import matplotlib.patches as patches
 
 #------------------------------
 
-def figure(figsize=(13,12), title='Image', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=None) :
+def figure(figsize=(13,12), title='Image', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=None, **kwargs) :
     """ Creates and returns figure
     """
     fig = plt.figure(figsize=figsize,\
                      dpi=dpi,\
                      facecolor=facecolor,\
                      edgecolor=edgecolor,\
-                     frameon=frameon)
-    fig.canvas.set_window_title(title)
+                     frameon=frameon, **kwargs)
+    fig.canvas.set_window_title(title, **kwargs)
     if move is not None : move_fig(fig, x0=move[0], y0=move[1])
     return fig
 
@@ -99,43 +99,43 @@ def move(x0=200,y0=100) :
 
 #------------------------------
 
-def add_axes(fig, axwin=(0.05, 0.03, 0.87, 0.93)) :
+def add_axes(fig, axwin=(0.05, 0.03, 0.87, 0.93), **kwargs) :
     """Add axes to figure from input list of windows.
     """
-    return fig.add_axes(axwin)
+    return fig.add_axes(axwin, **kwargs)
 
 #------------------------------
 
-def fig_img_axes(fig=None, win_axim=(0.08,  0.05, 0.89, 0.93)) :
+def fig_img_axes(fig=None, win_axim=(0.08, 0.05, 0.89, 0.93), **kwargs) :
     """ Returns figure and image axes
     """
     _fig = figure(figsize=(6,5)) if fig is None else fig
-    axim = _fig.add_axes(win_axim)
+    axim = _fig.add_axes(win_axim, **kwargs)
     return _fig, axim
 
 #------------------------------
 
 def fig_img_cbar_axes(fig=None,\
-             win_axim=(0.05,  0.03, 0.87, 0.93),\
-             win_axcb=(0.923, 0.03, 0.02, 0.93)) :
+             win_axim=(0.05,  0.05, 0.87, 0.93),\
+             win_axcb=(0.923, 0.05, 0.02, 0.93), **kwargs) :
     """ Returns figure and axes for image and color bar
     """
     _fig = figure() if fig is None else fig
-    axim = _fig.add_axes(win_axim)
-    axcb = _fig.add_axes(win_axcb)
+    axim = _fig.add_axes(win_axim, **kwargs)
+    axcb = _fig.add_axes(win_axcb, **kwargs)
     return _fig, axim, axcb
 
 #------------------------------
 
-def set_win_title(fig, titwin='Image') :
-    fig.canvas.set_window_title(titwin)
+def set_win_title(fig, titwin='Image', **kwargs) :
+    fig.canvas.set_window_title(titwin, **kwargs)
 
 #------------------------------
 
-def add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=14, fstit=20, color='k') :
-    if title  is not None : axes.set_title(title, color=color, fontsize=fstit)
-    if xlabel is not None : axes.set_xlabel(xlabel, fontsize=fslab)
-    if ylabel is not None : axes.set_ylabel(ylabel, fontsize=fslab)
+def add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=14, fstit=20, color='k', **kwargs) :
+    if title  is not None : axes.set_title(title, color=color, fontsize=fstit, **kwargs)
+    if xlabel is not None : axes.set_xlabel(xlabel, fontsize=fslab, **kwargs)
+    if ylabel is not None : axes.set_ylabel(ylabel, fontsize=fslab, **kwargs)
 
 #------------------------------
 
@@ -157,21 +157,21 @@ def draw_fig(fig) :
 
 #------------------------------
 
-def save_plt(fname='img.png', verb=True) :
+def save_plt(fname='img.png', verb=True, **kwargs) :
     if verb : print('Save plot in file: %s' % fname)
-    plt.savefig(fname)
+    plt.savefig(fname, **kwargs)
 
 #------------------------------
 
-def save_fig(fig, fname='img.png', verb=True) :
+def save_fig(fig, fname='img.png', verb=True, **kwargs) :
     if verb : print('Save figure in file: %s' % fname)
-    fig.savefig(fname)
+    fig.savefig(fname, **kwargs)
 
 #------------------------------
 
-def save(fname='img.png', do_save=True, verb=True) :
+def save(fname='img.png', do_save=True, verb=True, **kwargs) :
     if not do_save : return
-    save_plt(fname, verb)
+    save_plt(fname, verb, **kwargs)
 
 #--------------------
 
@@ -243,11 +243,11 @@ def add_stat_text(axhi, weights, bins) :
 
 #------------------------------
 
-def hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=False) :
+def hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=False, **kwargs) :
     """Makes historgam from input array of values (arr), which are sorted in number of bins (bins) in the range (amp_range=(amin,amax))
     """
     #axhi.cla()
-    hi = axhi.hist(arr.flatten(), bins=bins, range=amp_range, weights=weights, color=color, log=log) #, log=logYIsOn)
+    hi = axhi.hist(arr.flatten(), bins=bins, range=amp_range, weights=weights, color=color, log=log, **kwargs) #, log=logYIsOn)
     if amp_range is not None : axhi.set_xlim(amp_range) # axhi.set_autoscale_on(False) # suppress autoscailing
     wei, bins, patches = hi
     add_stat_text(axhi, wei, bins)
@@ -257,32 +257,32 @@ def hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=Fal
 
 def imshow(axim, img, amp_range=None, extent=None,\
            interpolation='nearest', aspect='auto', origin='upper',\
-           orientation='horizontal', cmap='inferno') :
+           orientation='horizontal', cmap='inferno', **kwargs) :
     """
     extent - list of four image physical limits for labeling,
     cmap: 'jet', 'gray_r', 'inferno'
     #axim.cla()
     """
-    imsh = axim.imshow(img, interpolation=interpolation, aspect=aspect, origin=origin, extent=extent, cmap=cmap)
+    imsh = axim.imshow(img, interpolation=interpolation, aspect=aspect, origin=origin, extent=extent, cmap=cmap, **kwargs)
     if amp_range is not None : imsh.set_clim(amp_range[0],amp_range[1])
     return imsh
 
 #------------------------------
 
-def colorbar(fig, imsh, axcb, orientation='vertical', amp_range=None) :
+def colorbar(fig, imsh, axcb, orientation='vertical', amp_range=None, **kwargs) :
     """
     orientation = 'horizontal'
     amp_range = (-10,50)
     """
     if amp_range is not None : imsh.set_clim(amp_range[0],amp_range[1])
-    cbar = fig.colorbar(imsh, cax=axcb, orientation=orientation)
+    cbar = fig.colorbar(imsh, cax=axcb, orientation=orientation, **kwargs)
     return cbar
 
 #------------------------------
 
 def imshow_cbar(fig, axim, axcb, img, amin=None, amax=None, extent=None,\
                 interpolation='nearest', aspect='auto', origin='upper',\
-                orientation='vertical', cmap='inferno') :
+                orientation='vertical', cmap='inferno', **kwargs) :
     """
     extent - list of four image physical limits for labeling,
     cmap: 'gray_r'
@@ -290,13 +290,13 @@ def imshow_cbar(fig, axim, axcb, img, amin=None, amax=None, extent=None,\
     """
     axim.cla()
     if img is None : return
-    imsh = axim.imshow(img, interpolation=interpolation, aspect=aspect, origin=origin, extent=extent, cmap=cmap)
+    imsh = axim.imshow(img, interpolation=interpolation, aspect=aspect, origin=origin, extent=extent, cmap=cmap, **kwargs)
     ave = np.mean(img) if amin is None and amax is None else None
     rms = np.std(img)  if amin is None and amax is None else None
     cmin = amin if amin is not None else ave-1*rms if ave is not None else None
     cmax = amax if amax is not None else ave+3*rms if ave is not None else None
     if cmin is not None : imsh.set_clim(cmin, cmax)
-    cbar = fig.colorbar(imsh, cax=axcb, orientation=orientation)
+    cbar = fig.colorbar(imsh, cax=axcb, orientation=orientation, **kwargs)
     return imsh, cbar
 
 #------------------------------
@@ -469,6 +469,19 @@ def test05() :
 #------------------------------
 #------------------------------
 #------------------------------
+#------------------------------
+
+def usage() :
+    msg = 'Usage: python psalgos/examples/ex-02-localextrema.py <test-number>'\
+          '\n  where <test-number> ='\
+          '\n  1 - single 2d random image'\
+          '\n  2 - single random histgram'\
+          '\n  3 - in loop 2d random images'\
+          '\n  4 - in loop random histgrams'\
+          '\n  5 - in loop 2d large random images'
+    print(msg)
+
+#------------------------------
 
 def do_test() :
 
@@ -487,7 +500,7 @@ def do_test() :
     elif tname == '3': test03()
     elif tname == '4': test04()
     elif tname == '5': test05()
-    else : sys.exit('Test %s is not implemented.    Try tests 1-5' % tname)
+    else : usage(); sys.exit('Test %s is not implemented' % tname)
     msg = 'Test %s consumed time %.3f' % (tname, time()-t0_sec)
     show()
     sys.exit(msg)

@@ -42,8 +42,8 @@ class CMMainTabs(QWidget) :
 
         self.orientation = orientation
 
-        self.monitors    = []
-        self.tab_types   = [self.TAB1,    self.TAB1,    self.TAB1,    self.TAB2,   self.TCONV]
+        self.tab_widgets = []
+        self.tab_types   = [self.TAB1, self.TAB1, self.TAB1, self.TAB2, self.TCONV]
         self.tab_names   = ['Mon-A', 'Mon-B', 'Mon-C', 'Mon-D', 't-converter']
         self.current_tab = tab_name if tab_name else self.tab_names[0]
 
@@ -51,7 +51,7 @@ class CMMainTabs(QWidget) :
 
         self.hboxW = QHBoxLayout()
 
-        self.make_monitors()
+        self.make_tab_widgets()
         self.make_tab_bar()
         self.gui_selector()
 
@@ -145,16 +145,16 @@ class CMMainTabs(QWidget) :
 
     #--------------------------
 
-    def reset_monitors(self):
-        for mon in self.monitors :
+    def reset_tab_widgets(self):
+        for mon in self.tab_widgets :
             mon.reset_monitor()
 
     #--------------------------
 
-    def make_monitors(self):
-        self.monitors = []
+    def make_tab_widgets(self):
+        self.tab_widgets = []
         for itab in range(len(self.tab_names)) :
-            self.monitors.append(QTextEdit('tab1 window: %d'%itab) if self.tab_types[itab] == self.TAB1 else\
+            self.tab_widgets.append(QTextEdit('tab1 window: %d'%itab) if self.tab_types[itab] == self.TAB1 else\
                                  QTextEdit('tab2 window: %d'%itab) if self.tab_types[itab] == self.TAB1 else\
                                  QWDateTimeSec(logger=logger) if self.tab_types[itab] == self.TCONV else\
                                  QTextEdit('Unknown tab type for tab %d'%itab)\
@@ -167,7 +167,7 @@ class CMMainTabs(QWidget) :
 
         for itab in range(len(self.tab_names)) :
             if self.current_tab  == self.tab_names[itab] :
-               self.gui_win = self.monitors[itab]
+               self.gui_win = self.tab_widgets[itab]
                self.gui_win.setVisible(True)
 
         self.hboxW.addWidget(self.gui_win)
@@ -207,7 +207,7 @@ class CMMainTabs(QWidget) :
         logger.debug('closeEvent', self._name)
         #logger.info('%s.closeEvent' % self._name)
 
-        for mon in self.monitors :
+        for mon in self.tab_widgets :
             mon.close()
 
         #try    : self.gui_win.close()
