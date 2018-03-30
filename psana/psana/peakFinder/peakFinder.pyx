@@ -121,6 +121,16 @@ cdef extern from "../../../psalg/psalg/include/Types.h" namespace "types":
     ctypedef si.uint16_t extrim_t
     ctypedef si.uint32_t conmap_t
 
+ctypedef fused nptype1d :
+    cnp.ndarray[cnp.float64_t, ndim=1, mode="c"]
+    cnp.ndarray[cnp.float32_t, ndim=1, mode="c"]
+    cnp.ndarray[cnp.int16_t,   ndim=1, mode="c"]
+    cnp.ndarray[cnp.int32_t,   ndim=1, mode="c"]
+    cnp.ndarray[cnp.int64_t,   ndim=1, mode="c"]
+    cnp.ndarray[cnp.uint16_t,  ndim=1, mode="c"]
+    cnp.ndarray[cnp.uint32_t,  ndim=1, mode="c"]
+    cnp.ndarray[cnp.uint64_t,  ndim=1, mode="c"]
+
 ctypedef fused nptype2d :
     cnp.ndarray[cnp.float64_t, ndim=2, mode="c"]
     cnp.ndarray[cnp.float32_t, ndim=2, mode="c"]
@@ -316,8 +326,127 @@ cdef class peak_finder_algos :
         self.cptr.connectedPixels(&arr2d[0,0], self.rows, self.cols)
         return arr2d
 
+#------------------------------
+#------------------------------
+#------------------------------
+#------------------------------
+#------------------------------
+#------------------------------
+
+cdef extern from "../../../psalg/psalg/include/LocalExtrema.h" namespace "localextrema":
+
+    size_t localMinima1d[T](const T *data
+                           ,const mask_t *mask
+                           ,const size_t& cols
+                           ,const size_t& stride
+                           ,const size_t& rank
+                           ,extrim_t *arr1d
+                           )
+
+    size_t localMaxima1d[T](const T *data
+                           ,const mask_t *mask
+                           ,const size_t& cols
+                           ,const size_t& stride
+                           ,const size_t& rank
+                           ,extrim_t *arr1d
+                           )
+
+    size_t mapOfLocalMinimums[T](const T *data
+                                ,const mask_t *mask
+                                ,const size_t& rows
+                                ,const size_t& cols
+                                ,const size_t& rank
+                                ,extrim_t *arr2d
+                                )
+
+    size_t mapOfLocalMaximums[T](const T *data
+                                ,const mask_t *mask
+                                ,const size_t& rows
+                                ,const size_t& cols
+                                ,const size_t& rank
+                                ,extrim_t *arr2d
+                                )
+
+    size_t mapOfLocalMaximumsRank1Cross[T](const T *data
+                                          ,const mask_t *mask
+                                          ,const size_t& rows
+                                          ,const size_t& cols
+                                          ,extrim_t *arr2d
+                                          )
+
+    size_t mapOfThresholdMaximums[T](const T *data
+                                    ,const mask_t *mask
+                                    ,const size_t& rows
+                                    ,const size_t& cols
+                                    ,const size_t& rank
+		                    ,const double& thr_low 
+		                    ,const double& thr_high 
+                                    ,extrim_t *arr2d
+                                    )
+
+    void printMatrixOfDiagIndexes(const size_t& rank)
+    void printVectorOfDiagIndexes(const size_t& rank)
 
 
+def local_minima_1d(nptype1d data,\
+                    cnp.ndarray[mask_t, ndim=1, mode="c"] mask,\
+                    si.int32_t rank,\
+                    cnp.ndarray[extrim_t, ndim=1, mode="c"] arr1d\
+                   ):
+    stride = 1;
+    #print 'XXX psalgos_ext.py - data.size: %d   rank: %d' % (data.size, rank)
+    return localMinima1d(&data[0], &mask[0], data.size, stride, rank, &arr1d[0])
+
+
+def local_maxima_1d(nptype1d data,\
+                    cnp.ndarray[mask_t, ndim=1, mode="c"] mask,\
+                    si.int32_t rank,\
+                    cnp.ndarray[extrim_t, ndim=1, mode="c"] arr1d\
+                   ):
+    stride = 1;
+    #print 'XXX psalgos_ext.py - data.size: %d   rank: %d' % (data.size, rank)
+    return localMaxima1d(&data[0], &mask[0], data.size, stride, rank, &arr1d[0])
+
+
+def local_minimums(nptype2d data,\
+                   cnp.ndarray[mask_t, ndim=2, mode="c"] mask,\
+                   si.int32_t rank,\
+                   cnp.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
+                  ): 
+    return mapOfLocalMinimums(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, &arr2d[0,0])
+
+
+def local_maximums(nptype2d data,\
+                   cnp.ndarray[mask_t, ndim=2, mode="c"] mask,\
+                   si.int32_t rank,\
+                   cnp.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
+                  ): 
+    return mapOfLocalMaximums(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, &arr2d[0,0])
+
+
+def local_maximums_rank1_cross(nptype2d data,\
+                   cnp.ndarray[mask_t, ndim=2, mode="c"] mask,\
+                   cnp.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
+                  ): 
+    return mapOfLocalMaximumsRank1Cross(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], &arr2d[0,0])
+
+
+def threshold_maximums(nptype2d data,\
+                       cnp.ndarray[mask_t, ndim=2, mode="c"] mask,\
+                       si.int32_t rank,\
+                       double thr_low,\
+                       double thr_high,\
+                       cnp.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
+                      ) : 
+    return mapOfThresholdMaximums(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, thr_low, thr_high, &arr2d[0,0])
+
+
+def print_matrix_of_diag_indexes(si.int32_t& rank) : printMatrixOfDiagIndexes(rank)
+
+
+def print_vector_of_diag_indexes(si.int32_t& rank) : printVectorOfDiagIndexes(rank)
+
+#------------------------------
 
 
 

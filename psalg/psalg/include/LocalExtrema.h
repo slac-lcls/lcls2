@@ -69,6 +69,9 @@ namespace localextrema {
  *  @li Call methods
  *  \n
  *  @code
+ *  size_t n = localMinima1d(data, mask, cols, stride, rank, local_minima);
+ *  size_t n = localMaxima1d(data, mask, cols, stride, rank, local_maxima);
+ *  
  *  size_t n = mapOfLocalMinimums(data, mask, rows, cols, rank, arr2d);
  *  size_t n = mapOfLocalMaximums(data, mask, rows, cols, rank, arr2d);
  *  size_t n = mapOfLocalMaximumsRank1Cross(data, mask, rows, cols, arr2d);
@@ -97,6 +100,8 @@ AllocArray1D<TwoIndexes> evaluateDiagIndexes_drp(const size_t& rank, Allocator *
 void printMatrixOfDiagIndexes(const size_t& rank);
 void printVectorOfDiagIndexes(const size_t& rank);
 size_t numberOfExtrema(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel=7);
+std::vector<TwoIndexes> evaluateDiagIndexes(const size_t& rank);
+std::vector<TwoIndexes> vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel=7, const size_t& maxlen=0);
 
 //-----------------------------
   /**
@@ -124,6 +129,10 @@ localMinima1d(const T *data
              ,extrim_t *local_minima=0
              )
 {
+  #ifndef NDEBUG
+  std::cout << "in localMinima1d, rank=" << rank << "\n";
+  #endif
+
   extrim_t *_local_minima = local_minima;
   size_t counter = 0;
 
@@ -135,6 +144,7 @@ localMinima1d(const T *data
   for(unsigned c=0; c<rank; c++) {
       i = c*stride;
       if(!mask[i]) continue;
+      if(!(data[i]<data[i+stride])) continue;
       _local_minima[i] |= 2;
       for(unsigned cc=c+1; cc<c+rank+1; cc++) {
       ii = cc*stride;
@@ -154,6 +164,7 @@ localMinima1d(const T *data
   for(unsigned c=rank; c<cols-rank; c++) {
       i = c*stride;
       if(!mask[i]) continue;
+      if(!(data[i]<data[i+stride])) continue;
       _local_minima[i] |= 2; // set 2nd bit
 
       // check positive side of c
@@ -184,6 +195,7 @@ localMinima1d(const T *data
   for(unsigned c=cols-1; c>cols-rank-1; c--) {
       i = c*stride;
       if(!mask[i]) continue;
+      if(!(data[i]<data[i-stride])) continue;
       _local_minima[i] |= 2;
       for(unsigned cc=c-1; cc>c-rank-1; cc--) {
       ii = cc*stride;
@@ -205,11 +217,11 @@ localMinima1d(const T *data
 //-----------------------------
 //-----------------------------
   /**
-   * @brief returns number of found maxima and array local_maxima of local minimums of requested rank, 
-   *        where rank defins a square region [cols-rank, cols+rank]. Assumes that cols > 2*rank...
+   * @brief returns number of found maxima and array local_maxima of local maximums of requested rank, 
+   *        where rank defins a region [cols-rank, cols+rank]. Assumes that cols > 2*rank...
    * 
-   * 1-d array of local minumum of (uint16) values of data shape, 
-   * with 0/+1/+2 for bad/non-minumum/minimum in rank region.   
+   * 1-d array of local maxumum of (uint16) values of data shape, 
+   * with 0/+1/+2 for bad/non-maxumum/maximum in rank region.   
    * @param[in]  data - pointer to data array
    * @param[in]  mask - pointer to mask array; mask marks bad/good (0/1) pixels
    * @param[in]  cols - number of columns in 1d array
@@ -229,6 +241,10 @@ localMaxima1d(const T *data
              ,extrim_t *local_maxima=0
              )
 {
+  #ifndef NDEBUG
+  std::cout << "in localMaxima1d, rank=" << rank << "\n";
+  #endif
+
   extrim_t *_local_maxima = local_maxima;
   size_t counter = 0;
 
@@ -240,6 +256,7 @@ localMaxima1d(const T *data
   for(unsigned c=0; c<rank; c++) {
       i = c*stride;
       if(!mask[i]) continue;
+      if(!(data[i]>data[i+stride])) continue;
       _local_maxima[i] |= 2;
       for(unsigned cc=c+1; cc<c+rank+1; cc++) {
       ii = cc*stride;
@@ -259,6 +276,7 @@ localMaxima1d(const T *data
   for(unsigned c=rank; c<cols-rank; c++) {
       i = c*stride;
       if(!mask[i]) continue;
+      if(!(data[i]>data[i+stride])) continue;
       _local_maxima[i] |= 2; // set 2nd bit
 
       // check positive side of c
@@ -289,6 +307,7 @@ localMaxima1d(const T *data
   for(unsigned c=cols-1; c>cols-rank-1; c--) {
       i = c*stride;
       if(!mask[i]) continue;
+      if(!(data[i]>data[i-stride])) continue;
       _local_maxima[i] |= 2;
       for(unsigned cc=c-1; cc>c-rank-1; cc--) {
       ii = cc*stride;
@@ -344,8 +363,8 @@ mapOfLocalMinimums_drp(const T *data
   AllocArray1D<TwoIndexes> arr_inddiag_drp = evaluateDiagIndexes_drp(rank, allocator);
 
   extrim_t *_local_minima = local_minima;
-
-  std::fill_n(_local_minima, int(rows*cols), extrim_t(0));
+  size_t size = rows*cols;
+  std::fill_n(_local_minima, int(size), extrim_t(0));
 
   size_t counter = 0;
 
@@ -366,6 +385,8 @@ mapOfLocalMinimums_drp(const T *data
       irc = r*cols+c;
 
       if(!mask[irc]) continue;
+      if(!(c+1<cmax)) continue;
+      if(!(data[irc]<data[irc+1])) continue;
       _local_minima[irc] = 1;
 
       // positive side of c 
@@ -406,6 +427,8 @@ mapOfLocalMinimums_drp(const T *data
       irc = r*cols+c;
 
       if(!mask[irc]) continue;
+      if(!(r+1<rmax)) continue;
+      if(!(data[irc]<data[irc+cols])) continue;
       _local_minima[irc] |= 2; // set 2nd bit
 
       // positive side of r 
@@ -527,6 +550,8 @@ mapOfLocalMaximums_drp(const T *data
     for(unsigned c = cmin; c<cmax; c++) {
       irc = r*cols+c;
       if(!mask[irc]) continue;
+      if(!(c+1<cmax)) continue;
+      if(!(data[irc]>data[irc+1])) continue;
       _local_maxima[irc] = 1;
 
       // positive side of c 
@@ -567,6 +592,8 @@ mapOfLocalMaximums_drp(const T *data
       //if(!_local_maxima[irc]) continue;
 
       if(!mask[irc]) continue;
+      if(!(r+1<rmax)) continue;
+      if(!(data[irc]>data[irc+cols])) continue;
       _local_maxima[irc] |= 2; // set 2nd bit
 
       // positive side of r 
@@ -691,8 +718,8 @@ mapOfLocalMaximumsRank1Cross(const T *data
     for(; c<cmax-1; c++) {
       irc = r*cols+c;
       if(!mask[irc]) continue;                                       // go to the next pixel
-      if(mask[irc+1] && (data[irc+1] > data[irc])) continue;         // go to the next pixel
-      if(mask[irc-1] && (data[irc-1] > data[irc])) {c+=1; continue;} // jump ahead 
+      if(mask[irc+1] && (data[irc+1] >= data[irc])) continue;         // go to the next pixel
+      if(mask[irc-1] && (data[irc-1] >= data[irc])) {c+=1; continue;} // jump ahead 
       _local_maxima[irc] |= 1;  // set 1st bit
       c+=1; // jump ahead 
     }
@@ -720,9 +747,9 @@ mapOfLocalMaximumsRank1Cross(const T *data
       irc = r*cols+c;
       if(!mask[irc]) continue;
       ircm = (r+1)*cols+c;
-      if(mask[ircm] && (data[ircm] > data[irc])) continue;         // go to the next pixel
+      if(mask[ircm] && (data[ircm] >= data[irc])) continue;         // go to the next pixel
       ircm = (r-1)*cols+c;
-      if(mask[ircm] && (data[ircm] > data[irc])) {r+=1; continue;} // jump ahead 
+      if(mask[ircm] && (data[ircm] >= data[irc])) {r+=1; continue;} // jump ahead 
       _local_maxima[irc] |= 2; // set 2nd bit
       r+=1; // jump ahead 
 
@@ -760,14 +787,14 @@ mapOfLocalMaximumsRank1Cross(const T *data
 template <typename T>
 size_t
 mapOfThresholdMaximums(const T *data
-                      ,const mask_t *mask
-                      ,const size_t& rows
-                      ,const size_t& cols
-                      ,const size_t& rank
-              ,const double& thr_low
-              ,const T& thr_high
-                      ,extrim_t *thr_maxima
-                      )
+		      ,const mask_t *mask
+		      ,const size_t& rows
+		      ,const size_t& cols
+		      ,const size_t& rank
+		      ,const double& thr_low
+		      ,const T& thr_high
+		      ,extrim_t *thr_maxima
+		      )
 {
   #ifndef NDEBUG
   std::cout << "XXX: in mapOfThresholdMaximums\n" ;
@@ -825,6 +852,345 @@ mapOfThresholdMaximums(const T *data
 }
 
 //-----------------------------
+
+
+
+//-----------------------------
+  /**
+   * @brief returns map of local minimums of requested rank, 
+   *        where rank defins a square region around central pixel [rowc-rank, rowc+rank], [colc-rank, colc+rank].
+   * 
+   * Map of local minumum is a 2-d array of (uint16) values of data shape, 
+   * with 0/+1/+2/+4 for non-minumum / minumum in column / minumum in row / minimum in square of radius rank.   
+   * @param[in]  data - pointer to data array
+   * @param[in]  mask - pointer to mask array; mask marks bad/good (0/1) pixels
+   * @param[in]  rows - number of rows in all 2-d arrays
+   * @param[in]  cols - number of columns in all 2-d arrays
+   * @param[in]  rank - radius of the square region in which central pixel has a maximal value
+   * @param[out] local_minima  - pointer to map of local minimums
+   */
+//-----------------------------
+
+template <typename T>
+size_t 
+mapOfLocalMinimums(const T *data
+                  ,const mask_t *mask
+                  ,const size_t& rows
+                  ,const size_t& cols
+                  ,const size_t& rank
+                  ,extrim_t *local_minima
+                  )
+{
+  #ifndef NDEBUG
+  std::cout << "XXX mapOfLocalMinimums point E \n";
+  #endif
+
+  // initialization of indexes
+  //if(v_inddiag.empty())   
+  std::vector<TwoIndexes> v_inddiag = evaluateDiagIndexes(rank);
+
+  extrim_t *_local_minima = local_minima;
+  size_t size = rows*cols;
+
+  //if(_local_minima.empty()) 
+  //   _local_minima = make_ndarray<extrim_t>(data.shape()[0], data.shape()[1]);
+  std::fill_n(_local_minima, int(size), extrim_t(0));
+
+  size_t counter = 0;
+
+  unsigned rmin = 0;
+  unsigned rmax = (int)rows;
+  unsigned cmin = 0;
+  unsigned cmax = (int)cols;
+  int irank = (int)rank;
+
+  int irc=0;
+  int ircd=0;
+  int irdc=0;
+  int iric=0;
+
+  // check rank minimum in columns and set the 1st bit (1)
+  for(unsigned r = rmin; r<rmax; r++) {
+    for(unsigned c = cmin; c<cmax; c++) {
+      irc = r*cols+c;
+
+      if(!mask[irc]) continue;
+      if(!(c+1<cmax)) continue;
+      if(!(data[irc]<data[irc+1])) continue;
+      _local_minima[irc] = 1;
+
+      // positive side of c 
+      unsigned dmax = min((int)cmax-1, int(c)+irank);
+      for(unsigned cd=c+1; cd<=dmax; cd++) {
+        ircd = r*cols+cd;
+	if(mask[ircd] && (data[ircd] < data[irc])) { 
+          _local_minima[irc] &=~1; // clear 1st bit
+          c=cd-1; // jump ahead 
+	  break;
+	}
+      }
+
+      if(_local_minima[irc] & 1) {
+        // negative side of c 
+        unsigned dmin = max((int)cmin, int(c)-irank);
+        for(unsigned cd=dmin; cd<c; cd++) {
+          ircd = r*cols+cd;
+	  if(mask[ircd] && (data[ircd] < data[irc])) { 
+            _local_minima[irc] &=~1; // clear 1st bit
+            c=cd+rank; // jump ahead 
+	    break;
+	  }
+        }
+      }
+
+      // (r,c) is a local dip, jump ahead through the tested rank range
+      if(!(c<cmax)) break;
+      if(_local_minima[irc] & 1) c+=rank;
+    }
+  }
+
+  // check rank minimum in rows and set the 2nd bit (2)
+  for(unsigned c = cmin; c<cmax; c++) {
+    for(unsigned r = rmin; r<rmax; r++) {
+      // if it is not a local maximum from previous algorithm
+      //if(!_local_minima[irc]) continue;
+      irc = r*cols+c;
+
+      if(!mask[irc]) continue;
+      if(!(r+1<rmax)) continue;
+      if(!(data[irc]<data[irc+cols])) continue;
+      _local_minima[irc] |= 2; // set 2nd bit
+
+      // positive side of r 
+      unsigned dmax = min((int)rmax-1, int(r)+irank);
+      for(unsigned rd=r+1; rd<=dmax; rd++) {
+        irdc = rd*cols+c;
+	if(mask[irdc] && (data[irdc] < data[irc])) { 
+          _local_minima[irc] &=~2; // clear 2nd bit
+          r=rd-1; // jump ahead 
+	  break;
+	}
+      }
+
+      if(_local_minima[irc] & 2) {
+        // negative side of r
+        unsigned dmin = max((int)rmin, int(r)-irank);
+        for(unsigned rd=dmin; rd<r; rd++) {
+          irdc = rd*cols+c;
+	  if(mask[irdc] && (data[irdc] < data[irc])) { 
+            _local_minima[irc] &=~2; // clear 2nd bit
+            r=rd+rank; // jump ahead 
+	    break;
+	  }
+        }
+      }
+
+      // (r,c) is a local dip, jump ahead through the tested rank range
+      if(!(r<rmax)) break;
+      if(_local_minima[irc] & 2) r+=rank;
+    }
+  }
+
+  // check rank minimum in "diagonal" regions and set the 3rd bit (4)
+  for(unsigned r = rmin; r<rmax; r++) {
+    for(unsigned c = cmin; c<cmax; c++) {
+      irc = r*cols+c;
+      // if it is not a local minimum from two previous algorithm
+      if(_local_minima[irc] != 3) continue;
+      _local_minima[irc] |= 4; // set 3rd bit
+
+      for(vector<TwoIndexes>::const_iterator ij  = v_inddiag.begin();
+                                             ij != v_inddiag.end(); ij++) {
+        int ir = r + (ij->i);
+        int ic = c + (ij->j);
+
+        if(  ir<(int)rmin)  continue;
+        if(  ic<(int)cmin)  continue;
+        if(!(ir<(int)rmax)) continue;
+        if(!(ic<(int)cmax)) continue;
+
+        iric = ir*cols+ic;
+	if(mask[iric] && (data[iric] < data[irc])) {
+          _local_minima[irc] &=~4; // clear 3rd bit
+	  break;
+	}
+      }
+
+      // (r,c) is a local peak, jump ahead through the tested rank range
+      if(_local_minima[irc] & 4) {
+         c+=rank;
+	 counter ++;
+      }
+    }
+  }
+  return counter;
+}
+
+//--------------------
+  /**
+   * @brief returns map of local maximums of requested rank, 
+   *        where rank defins a square region around central pixel [rowc-rank, rowc+rank], [colc-rank, colc+rank].
+   * 
+   * Map of local maximum is a 2-d array of (uint16) values of data shape, 
+   * with 0/+1/+2/+4 for non-maximum / maximum in column / maximum in row / minimum in square of radius rank.   
+   * @param[in]  data - pointer to data array
+   * @param[in]  mask - pointer to mask array; mask marks bad/good (0/1) pixels
+   * @param[in]  rows - number of rows in all 2-d arrays
+   * @param[in]  cols - number of columns in all 2-d arrays
+   * @param[in]  rank - radius of the square region in which central pixel has a maximal value
+   * @param[out] local_maxima  - pointer to map of local maximums
+   */
+
+template <typename T>
+size_t 
+mapOfLocalMaximums(const T *data
+                  ,const mask_t *mask
+                  ,const size_t& rows
+                  ,const size_t& cols
+                  ,const size_t& rank
+                  ,extrim_t *local_maxima
+                  )
+{
+  #ifndef NDEBUG
+  std::cout << "in mapOfLocalMaximums, rank=" << rank << "\n";
+  #endif
+
+  // initialization of indexes
+  std::vector<TwoIndexes> v_inddiag = evaluateDiagIndexes(rank);
+
+  extrim_t *_local_maxima = local_maxima;
+  std::fill_n(&_local_maxima[0], int(rows*cols), extrim_t(0));
+
+  size_t counter = 0;
+
+  unsigned rmin = 0;
+  unsigned rmax = (int)rows;
+  unsigned cmin = 0;
+  unsigned cmax = (int)cols;
+  int irank = (int)rank;
+
+  int irc=0;
+  int ircd=0;
+  int irdc=0;
+  int iric=0;
+
+  // check rank maximum in columns and set the 1st bit (1)
+  for(unsigned r = rmin; r<rmax; r++) {
+    for(unsigned c = cmin; c<cmax; c++) {
+      irc = r*cols+c;
+      if(!mask[irc]) continue;
+      if(!(c+1<cmax)) continue;
+      if(!(data[irc]>data[irc+1])) continue;
+      _local_maxima[irc] = 1;
+
+      // positive side of c 
+      unsigned dmax = min((int)cmax-1, int(c)+irank);
+      for(unsigned cd=c+1; cd<=dmax; cd++) {
+        ircd = r*cols+cd;
+	if(mask[ircd] && (data[ircd] > data[irc])) { 
+          _local_maxima[irc] &=~1; // clear 1st bit
+          c=cd-1; // jump ahead 
+	  break;
+	}
+      }
+
+      if(_local_maxima[irc] & 1) {
+        // negative side of c 
+        unsigned dmin = max((int)cmin, int(c)-irank);
+        for(unsigned cd=dmin; cd<c; cd++) {
+          ircd = r*cols+cd;
+	  if(mask[ircd] && (data[ircd] > data[irc])) { 
+            _local_maxima[irc] &=~1; // clear 1st bit
+            c=cd+rank; // jump ahead 
+	    break;
+	  }
+        }
+      }
+
+      // (r,c) is a local dip, jump ahead through the tested rank range
+      if(!(c<cmax)) break;
+      if(_local_maxima[irc] & 1) c+=rank;
+    }
+  }
+
+  // check rank maximum in rows and set the 2nd bit (2)
+  for(unsigned c = cmin; c<cmax; c++) {
+    for(unsigned r = rmin; r<rmax; r++) {
+      irc = r*cols+c;
+      // if it is not a local maximum from previous algorithm
+      //if(!_local_maxima[irc]) continue;
+
+      if(!mask[irc]) continue;
+      if(!(r+1<rmax)) continue;
+      if(!(data[irc]>data[irc+cols])) continue;
+      _local_maxima[irc] |= 2; // set 2nd bit
+
+      // positive side of r 
+      unsigned dmax = min((int)rmax-1, int(r)+irank);
+      for(unsigned rd=r+1; rd<=dmax; rd++) {
+        irdc = rd*cols+c;
+	if(mask[irdc] && (data[irdc] > data[irc])) { 
+          _local_maxima[irc] &=~2; // clear 2nd bit
+          r=rd-1; // jump ahead 
+	  break;
+	}
+      }
+
+      if(_local_maxima[irc] & 2) {
+        // negative side of r
+        unsigned dmin = max((int)rmin, int(r)-irank);
+        for(unsigned rd=dmin; rd<r; rd++) {
+          irdc = rd*cols+c;
+	  if(mask[irdc] && (data[irdc] > data[irc])) { 
+            _local_maxima[irc] &=~2; // clear 2nd bit
+            r=rd+rank; // jump ahead 
+	    break;
+	  }
+        }
+      }
+
+      // (r,c) is a local dip, jump ahead through the tested rank range
+      if(!(r<rmax)) break;
+      if(_local_maxima[irc] & 2) r+=rank;
+    }
+  }
+
+  // check rank maximum in "diagonal" regions and set the 3rd bit (4)
+  for(unsigned r = rmin; r<rmax; r++) {
+    for(unsigned c = cmin; c<cmax; c++) {
+      // if it is not a local maximum from two previous algorithm
+      irc = r*cols+c;
+
+      if(_local_maxima[irc] != 3) continue;
+      _local_maxima[irc] |= 4; // set 3rd bit
+
+      for(vector<TwoIndexes>::const_iterator ij  = v_inddiag.begin();
+                                             ij != v_inddiag.end(); ij++) {
+        int ir = r + (ij->i);
+        int ic = c + (ij->j);
+
+        if(  ir<(int)rmin)  continue;
+        if(  ic<(int)cmin)  continue;
+        if(!(ir<(int)rmax)) continue;
+        if(!(ic<(int)cmax)) continue;
+
+        iric = ir*cols+ic;
+	if(mask[iric] && (data[iric] > data[irc])) {
+          _local_maxima[irc] &=~4; // clear 3rd bit
+	  break;
+	}
+      }
+
+      // (r,c) is a local peak, jump ahead through the tested rank range
+      if(_local_maxima[irc] & 4) {
+         c+=rank;
+	 counter ++;
+      }
+    }
+  }
+  return counter;
+}
+
 //-----------------------------
 //-----------------------------
 //-----------------------------

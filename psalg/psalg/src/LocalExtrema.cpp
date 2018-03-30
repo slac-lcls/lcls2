@@ -112,6 +112,23 @@ size_t numberOfExtrema(const extrim_t *map, const size_t& rows, const size_t& co
 }
 
 //-----------------------------
+
+std::vector<TwoIndexes> vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel, const size_t& maxlen)
+{
+  std::vector<TwoIndexes> v;
+  size_t _maxlen = (maxlen) ? maxlen : rows*cols/4;
+  if(v.capacity() < _maxlen) v.reserve(_maxlen);
+  v.clear();
+  size_t irc=0;
+  for (size_t r=0; r<rows; ++r) {
+    for (size_t c=0; c<cols; ++c) {
+      irc = r*cols+c;
+      if(map[irc]==vsel) v.push_back(TwoIndexes(r,c));
+    }
+  }
+  return v;
+}
+
 //-----------------------------
 
 } // namespace localextrema
