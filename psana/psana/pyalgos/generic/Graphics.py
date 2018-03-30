@@ -264,6 +264,7 @@ def imshow(axim, img, amp_range=None, extent=None,\
     #axim.cla()
     """
     imsh = axim.imshow(img, interpolation=interpolation, aspect=aspect, origin=origin, extent=extent, cmap=cmap, **kwargs)
+    axim.autoscale(False)
     if amp_range is not None : imsh.set_clim(amp_range[0],amp_range[1])
     return imsh
 
@@ -291,6 +292,7 @@ def imshow_cbar(fig, axim, axcb, img, amin=None, amax=None, extent=None,\
     axim.cla()
     if img is None : return
     imsh = axim.imshow(img, interpolation=interpolation, aspect=aspect, origin=origin, extent=extent, cmap=cmap, **kwargs)
+    axim.autoscale(False)
     ave = np.mean(img) if amin is None and amax is None else None
     rms = np.std(img)  if amin is None and amax is None else None
     cmin = amin if amin is not None else ave-1*rms if ave is not None else None
@@ -329,6 +331,7 @@ def plotImageLarge(arr, img_range=None, amp_range=None, figsize=(12,10), title='
     fig  = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
     axim = fig.add_axes(window)
     imsh = axim.imshow(arr, interpolation='nearest', aspect='auto', origin=origin, extent=img_range, cmap=cmap)
+    axim.autoscale(False)
     colb = fig.colorbar(imsh, pad=0.005, fraction=0.09, shrink=1, aspect=40) # orientation=1
     if amp_range is not None : imsh.set_clim(amp_range[0], amp_range[1])
     #else : 
