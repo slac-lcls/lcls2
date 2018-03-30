@@ -527,7 +527,7 @@ _evaluateRingAvgRmsV1_drp(const T *data ,const int& row ,const int& col )
 
 //-----------------------------
   /**
-   * @brief _findConnectedPixelsForLocalMaximumV2 - apply flood filling algorithms to find a group of connected pixels
+   * @brief _findConnectedPixelsForLocalMaximumV2_drp - apply flood filling algorithms to find a group of connected pixels
    * around r0,c0 in constrained by rad region. 
    *   - check that r0,c0 is absolute maximum, returns false if not found
    *   - apply flood filling and make vector of connected pixels in rad constrained by region. 
@@ -550,8 +550,12 @@ _findConnectedPixelsForLocalMaximumV2_drp(const T* data
   m_reg_cmin = std::max(0,           int(c0-m_rank));
   m_reg_cmax = std::min((int)m_cols, int(c0+m_rank+1));
 
+  //Clean rank-size m_conmap
+  for(int r=m_reg_rmin; r<m_reg_rmax; r++)
+    for(int c=m_reg_cmin; c<m_reg_cmax; c++) m_conmap[r*m_cols+c] = 0;
+
   #ifndef NDEBUG
-  if(m_pbits & LOG::DEBUG) std::cout << "in _findConnectedPixelsForLocalMaximum, seg=" << m_seg
+  if(m_pbits & LOG::DEBUG) std::cout << "in _findConnectedPixelsForLocalMaximumV2_drp, seg=" << m_seg
                                      << " rank=" << m_rank  << " r0=" << r0 << " c0=" << c0 << '\n';
   #endif
 

@@ -385,8 +385,7 @@ mapOfLocalMinimums_drp(const T *data
       irc = r*cols+c;
 
       if(!mask[irc]) continue;
-      if(!(c+1<cmax)) continue;
-      if(!(data[irc]<data[irc+1])) continue;
+      if((c+1<cmax) && !(data[irc]<data[irc+1])) continue;
       _local_minima[irc] = 1;
 
       // positive side of c 
@@ -427,8 +426,7 @@ mapOfLocalMinimums_drp(const T *data
       irc = r*cols+c;
 
       if(!mask[irc]) continue;
-      if(!(r+1<rmax)) continue;
-      if(!(data[irc]<data[irc+cols])) continue;
+      if((r+1<rmax) && !(data[irc]<data[irc+cols])) continue;
       _local_minima[irc] |= 2; // set 2nd bit
 
       // positive side of r 
@@ -550,8 +548,7 @@ mapOfLocalMaximums_drp(const T *data
     for(unsigned c = cmin; c<cmax; c++) {
       irc = r*cols+c;
       if(!mask[irc]) continue;
-      if(!(c+1<cmax)) continue;
-      if(!(data[irc]>data[irc+1])) continue;
+      if((c+1<cmax) && !(data[irc]>data[irc+1])) continue;
       _local_maxima[irc] = 1;
 
       // positive side of c 
@@ -592,8 +589,7 @@ mapOfLocalMaximums_drp(const T *data
       //if(!_local_maxima[irc]) continue;
 
       if(!mask[irc]) continue;
-      if(!(r+1<rmax)) continue;
-      if(!(data[irc]>data[irc+cols])) continue;
+      if((r+1<rmax) && !(data[irc]>data[irc+cols])) continue;
       _local_maxima[irc] |= 2; // set 2nd bit
 
       // positive side of r 
@@ -915,8 +911,7 @@ mapOfLocalMinimums(const T *data
       irc = r*cols+c;
 
       if(!mask[irc]) continue;
-      if(!(c+1<cmax)) continue;
-      if(!(data[irc]<data[irc+1])) continue;
+      if((c+1<cmax) && !(data[irc]<data[irc+1])) continue;
       _local_minima[irc] = 1;
 
       // positive side of c 
@@ -957,8 +952,7 @@ mapOfLocalMinimums(const T *data
       irc = r*cols+c;
 
       if(!mask[irc]) continue;
-      if(!(r+1<rmax)) continue;
-      if(!(data[irc]<data[irc+cols])) continue;
+      if((r+1<rmax) && !(data[irc]<data[irc+cols])) continue;
       _local_minima[irc] |= 2; // set 2nd bit
 
       // positive side of r 
@@ -1079,8 +1073,7 @@ mapOfLocalMaximums(const T *data
     for(unsigned c = cmin; c<cmax; c++) {
       irc = r*cols+c;
       if(!mask[irc]) continue;
-      if(!(c+1<cmax)) continue;
-      if(!(data[irc]>data[irc+1])) continue;
+      if((c+1<cmax) && !(data[irc]>data[irc+1])) continue;
       _local_maxima[irc] = 1;
 
       // positive side of c 
@@ -1121,8 +1114,7 @@ mapOfLocalMaximums(const T *data
       //if(!_local_maxima[irc]) continue;
 
       if(!mask[irc]) continue;
-      if(!(r+1<rmax)) continue;
-      if(!(data[irc]>data[irc+cols])) continue;
+      if((r+1<rmax) && !(data[irc]>data[irc+cols])) continue;
       _local_maxima[irc] |= 2; // set 2nd bit
 
       // positive side of r 
