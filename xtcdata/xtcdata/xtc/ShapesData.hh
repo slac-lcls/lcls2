@@ -197,7 +197,7 @@ public:
     
 private:
 
-    unsigned _numArrays=0;
+    uint32_t _numArrays=0;
     char     _detType[maxNameSize];
     char     _detName[maxNameSize];
     char     _detId[maxNameSize];

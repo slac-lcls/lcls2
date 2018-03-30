@@ -9,34 +9,45 @@
 #include "xtcdata/xtc/ProcInfo.hh"
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+//#include "xtcdata/xtc/DescData.hh"
 
 using namespace XtcData;
 using std::string;
 
-class myLevelIter : public XtcIterator
+class DebugIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    myLevelIter(Xtc* xtc, unsigned depth)
-    : XtcIterator(xtc), _depth(depth)
+    DebugIter(Xtc* xtc) : XtcIterator(xtc)
     {
     }
 
     int process(Xtc* xtc)
     {
-        unsigned i = _depth;
-        while (i--)
-            printf("  ");
-        Level::Type level = xtc->src.level();
-        printf("%s level payload size %d contains %s damage "
-               "0x%x\n",
-               Level::name(level), xtc->sizeofPayload(),
-               TypeId::name(xtc->contains.id()), xtc->damage.value());
-
+        printf("found typeid %s extent %d\n",XtcData::TypeId::name(xtc->contains.id()),xtc->extent);
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            myLevelIter iter(xtc, _depth + 1);
-            iter.iterate();
+            iterate(xtc);
+            break;
+        }
+        case (TypeId::Names): {
+            Names& names = *(Names*)xtc;
+	    printf("Found %d names\n",names.num());
+            for (unsigned i = 0; i < names.num(); i++) {
+                Name& name = names.get(i);
+                printf("name %s\n",name.name());
+            }
+            break;
+        }
+        case (TypeId::ShapesData): {
+            ShapesData& shapesdata = *(ShapesData*)xtc;
+            printf("found shapesdata\n");
+            iterate(xtc);
+            // lookup the index of the names we are supposed to use
+            // unsigned namesId = shapesdata.shapes().namesId();
+            // DescData descdata(shapesdata, _namesVec[namesId]);
+            // Names& names = descdata.nameindex().names();
             break;
         }
         default:
@@ -44,10 +55,9 @@ public:
         }
         return Continue;
     }
-
-private:
-    unsigned _depth;
+    // std::vector<NameIndex>& _namesVec;
 };
+
 
 void usage(char* progname)
 {
@@ -92,7 +102,8 @@ int main(int argc, char* argv[])
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
                dg->env, dg->xtc.sizeofPayload());
-        myLevelIter iter(&(dg->xtc), 0);
+        printf("*** dg xtc extent %d\n",dg->xtc.extent);
+        DebugIter iter(&(dg->xtc));
         iter.iterate();
     }
 
