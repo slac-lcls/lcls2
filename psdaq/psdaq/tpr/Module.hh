@@ -42,15 +42,29 @@ namespace Pds {
       volatile uint32_t outMap[4];
     };
 
+    class TprCsr {
+    public:
+      void setupDma    (unsigned fullThr=0x3f2);
+      void dump        () const;
+    public:
+      volatile uint32_t irqEnable;
+      volatile uint32_t irqStatus;
+      volatile uint32_t partitionAddr;
+      volatile uint32_t gtxDebug;
+      volatile uint32_t countReset;
+      volatile uint32_t trigMaster;
+      volatile uint32_t dmaFullThr;
+      volatile uint32_t reserved_1C;
+    };
+
     class TprBase {
     public:
-      enum { NCHANNELS=12 };
+      enum { NCHANNELS=14 };
       enum { NTRIGGERS=12 };
       enum Destination { Any };
       enum FixedRate { _1M, _500K, _100K, _10K, _1K, _100H, _10H, _1H };
     public:
       void dump() const;
-      void setupDma    (unsigned fullThr=0x3f2);
       void setupDaq    (unsigned i,
                         unsigned partition);
       void setupChannel(unsigned i,
@@ -66,15 +80,7 @@ namespace Pds {
                         unsigned width,
                         unsigned delayTap=0);
     public:
-      volatile uint32_t irqEnable;
-      volatile uint32_t irqStatus;
-      volatile uint32_t partitionAddr;
-      volatile uint32_t gtxDebug;
-      volatile uint32_t countReset;
-      volatile uint32_t trigMaster;
-      volatile uint32_t dmaFullThr;
-      volatile uint32_t reserved_1C;
-      struct {  // 0x20
+      struct { 
         volatile uint32_t control;
         volatile uint32_t evtSel;
         volatile uint32_t evtCount;
@@ -82,19 +88,20 @@ namespace Pds {
         volatile uint32_t bsaWidth;
         volatile uint32_t bsaCount; // not implemented
         volatile uint32_t bsaData;  // not implemented
-        volatile uint32_t reserved[1];
+        volatile uint32_t reserved[0x3f9];
       } channel[NCHANNELS];
       volatile uint32_t reserved_20[2];
       volatile uint32_t frameCount;
       volatile uint32_t reserved_2C[2];
       volatile uint32_t bsaCntlCount; // not implemented
       volatile uint32_t bsaCntlData;  // not implemented
-      volatile uint32_t reserved_b[1+(14-NCHANNELS)*8];
-      struct { // 0x200
+      volatile uint32_t reserved_b[0x3f9+0x400*(31-NCHANNELS)];
+      struct {
         volatile uint32_t control; // input, polarity, enabled
         volatile uint32_t delay;
         volatile uint32_t width;
         volatile uint32_t delayTap;
+        volatile uint32_t reserved[0x3fc];
       } trigger[NTRIGGERS];
     };
 
@@ -191,11 +198,13 @@ namespace Pds {
       AxiVersion version;  // 0x00010000
       uint32_t   reserved_10000[(0x40000-0x20000)>>2];  // boot_mem is here
       XBar       xbar;     // 0x00040000
-      uint32_t   reserved_30010[(0x80000-0x40010)>>2];
+      uint32_t   reserved_30010[(0x60000-0x40010)>>2];
+      TprCsr     csr;      // 0x00060000
+      uint32_t   reserved_60400[(0x400-sizeof(TprCsr))/4];
+      DmaControl dma;      // 0x00060400
+      uint32_t   reserved_80000[(0x1FC00-sizeof(DmaControl))/4];
       TprBase    base;     // 0x00080000
-      uint32_t   reserved_80400[(0x400-sizeof(TprBase))/4];
-      DmaControl dma;      // 0x00080400
-      uint32_t   reserved_1    [(0x40000-0x400-sizeof(DmaControl))/4];
+      uint32_t   reserved_C0000[(0x40000-sizeof(TprBase))/4];
       TprCore    tpr;      // 0x000C0000
       uint32_t   reserved_tpr  [(0x10000-sizeof(TprCore))/4];
       RingB      ring0;    // 0x000D0000

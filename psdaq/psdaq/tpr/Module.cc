@@ -17,12 +17,15 @@ void XBar::setTpr( InMode  m ) { outMap[3] = m==StraightIn  ? 1:3; }
 void XBar::setTpr( OutMode m ) { outMap[1] = m==StraightOut ? 3:1; }
 void XBar::dump() const { for(unsigned i=0; i<4; i++) printf("Out[%d]: %d\n",i,outMap[i]); }
 
-void TprBase::dump() const {
-  static const unsigned NChan=12;
+void TprCsr::dump() const {
   printf("irqEnable [%p]: %08x\n",&irqEnable,irqEnable);
   printf("irqStatus [%p]: %08x\n",&irqStatus,irqStatus);
   printf("gtxDebug  [%p]: %08x\n",&gtxDebug  ,gtxDebug);
   printf("trigSel   [%p]: %08x\n",&trigMaster,trigMaster);
+}
+
+void TprBase::dump() const {
+  static const unsigned NChan=12;
   printf("channel0  [%p]\n",&channel[0].control);
   printf("control : ");
   for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].control);
@@ -50,7 +53,7 @@ void TprBase::dump() const {
   printf("\n");
 }
 
-void TprBase::setupDma    (unsigned fullThr) {
+void TprCsr::setupDma    (unsigned fullThr) {
   dmaFullThr = fullThr;
 }
 
