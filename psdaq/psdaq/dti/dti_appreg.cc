@@ -98,6 +98,9 @@ int main(int argc, char** argv) {
   }
 
   if (readReg >= 0) {
+    sz = 0;
+    while(sz == 0) {
+
     hdr.insert(buf, sizeof(buf));
     bb = (readReg<<2) | 1;
     bb |= uint64_t(0)<<32;
@@ -111,10 +114,10 @@ int main(int argc, char** argv) {
     sz += hdr.getTailSize();
     strm->write(buf, sz);
 
-    sz = strm->read( buf, sizeof(buf), CTimeout(900000), 0 );
+    sz = strm->read( buf, sizeof(buf), CTimeout(90000), 0 );
     if (sz == 0) {
       printf("Read timeout\n");
-      return -1;
+      continue;
     }
 
     if (!hdr.parse(buf, sizeof(buf))) {
@@ -131,6 +134,7 @@ int main(int argc, char** argv) {
     for( unsigned i=0; i< sz - hdr.getSize() - hdr.getTailSize(); i++)
       printf("%02x", buf[hdr.getSize()+i]);
     printf("\n");
+  }
   }
 
   return 0;
