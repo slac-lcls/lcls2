@@ -1,29 +1,15 @@
-#
-#  Put it all together
-#
-bin_path     = '/reg/neh/home/weaver/lcls2/build/'
-scripts_path = '/reg/neh/home/weaver/lcls2/psdaq/scripts/'
+bin_path  = '/reg/neh/home/weaver/lcls2/psdaq/build/'
+bins_path = '/reg/neh/home/weaver/lcls2/psdaq/psdaq/scripts/'
 
-platform = '4'
+platform = '7'
 username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
 
-daq_tst_dev01 = "172.21.42.97"
-daq_tst_dev02 = "172.21.42.150"
-daq_tst_dev03 = "172.21.42.110"
-daq_tst_dev04 = "172.21.42.148"
-daq_tst_dev05 = "172.21.42.155"
-drp_tst_acc01 = "172.21.42.201"
-drp_tst_acc02 = "172.21.42.202"
-drp_tst_acc03 = "172.21.42.221"
-drp_tst_acc04 = "172.21.42.222"
-drp_tst_acc05 = "172.21.42.223"
-drp_tst_acc06 = "172.21.42.224"
+epics_host = 'daq-tst-dev02'
 
-epics_host = daq_tst_dev02
 epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067'
-pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.3.2'
+pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.0.2'
 shelf = '2'
 ip_addr = '10.0.'+shelf
 
@@ -42,17 +28,17 @@ ip_addr = '10.0.'+shelf
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                       id:'modca'  ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
- {                       id:'partca' ,flags:'s', cmd:scripts_path+'/launch_py '+scripts_path+'/partca-sum.py DAQ:LAB2:PART'},
-#
-#  XPM controller
-#
- { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
-#
-#  Diagnostics
-#
- {                       id:'epics', flags:'sx', cmd:epics_env, cmd:'/usr/bin/bash'},
+ { host: epics_host,  id:'partcas',port:'29450', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/partcas.py -P DAQ:LAB2'},
+ { host: epics_host,  id:'modcas' ,port:'29451', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/modcas.py -P DAQ:LAB2:XPM:'+shelf},
+ { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
+ { host: epics_host,  id:'dticas' ,port:'29453', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/dticas.py -P DAQ:LAB2:DTI:'+shelf},
+ { host: epics_host,  id:'dtiioc-103' ,port:'29455', flags:'s', env:epics_env, cmd:bin_path+'psdaq/dti/dtiPVr -a '+ip_addr+'.103 -P DAQ:LAB2:DTI:'+shelf+':3' },
+ { host: epics_host,  id:'dtiioc-104' ,port:'29454', flags:'s', env:epics_env, cmd:bin_path+'psdaq/dti/dtiPVs -a '+ip_addr+'.104 -P DAQ:LAB2:DTI:'+shelf+':4' },
+ { host: epics_host,  id:'dtiioc-105' ,port:'29456', flags:'s', env:epics_env, cmd:bin_path+'psdaq/dti/dtiPVr -a '+ip_addr+'.105 -P DAQ:LAB2:DTI:'+shelf+':5' },
+ { host: epics_host,  id:'dtiioc-106' ,port:'29457', flags:'s', env:epics_env, cmd:bin_path+'psdaq/dti/dtiPVr -a '+ip_addr+'.106 -P DAQ:LAB2:DTI:'+shelf+':6' },
+ { host: epics_host,  id:'hsdcas-dev02' ,port:'29458', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/hsdcas.py -P DAQ:LAB2:HSD:DEV02'},
 
 ## procstat
  {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
   ]
+
