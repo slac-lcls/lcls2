@@ -19,7 +19,8 @@ namespace Pds {
       //  High level API
       //
       static Module* create(int fd);
-      
+      static Module* create(int fd, TimingType);
+
       ~Module();
 
       uint64_t device_dna() const;
@@ -71,6 +72,7 @@ namespace Pds {
       void setRxResetLength(unsigned);
       void dumpRxAlign     () const;
       void dumpPgp         () const;
+      void dumpBase        () const;
 
       FexCfg* fex();
 

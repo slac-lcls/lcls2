@@ -281,7 +281,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  Module* p = Module::create(fd);
+  Module* p = Module::create(fd, LCLSII);
 
   if (lReset) {
     reinterpret_cast<QABase*>((char*)p->reg()+0x80000)->resetFbPLL();

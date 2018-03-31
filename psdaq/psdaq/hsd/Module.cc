@@ -142,6 +142,52 @@ Module* Module::create(int fd)
   return m;
 }
 
+Module* Module::create(int fd, TimingType timing)
+{
+  Module* m = create(fd);
+
+  //
+  //  Verify clock synthesizer is setup
+  //
+  if (timing != EXTERNAL) {
+    timespec tvb;
+    clock_gettime(CLOCK_REALTIME,&tvb);
+    unsigned vvb = m->tpr().TxRefClks;
+
+    usleep(10000);
+
+    timespec tve;
+    clock_gettime(CLOCK_REALTIME,&tve);
+    unsigned vve = m->tpr().TxRefClks;
+    
+    double dt = double(tve.tv_sec-tvb.tv_sec)+1.e-9*(double(tve.tv_nsec)-double(tvb.tv_nsec));
+    double txclkr = 16.e-6*double(vve-vvb)/dt;
+    printf("TxRefClk: %f MHz\n", txclkr);
+
+    static const double TXCLKR_MIN[] = { 118., 185. };
+    static const double TXCLKR_MAX[] = { 120., 187. };
+    if (txclkr < TXCLKR_MIN[timing] ||
+        txclkr > TXCLKR_MAX[timing]) {
+      m->fmc_clksynth_setup(timing);
+
+      usleep(100000);
+      if (timing==LCLS)
+        m->tpr().setLCLS();
+      else
+        m->tpr().setLCLSII();
+      m->tpr().resetRxPll();
+      usleep(10000);
+      m->tpr().resetRx();
+
+      usleep(100000);
+      m->fmc_init(timing);
+      m->train_io(0);
+    }
+  }
+
+  return m;
+}
+
 Module::~Module()
 {
 }
@@ -516,6 +562,11 @@ void Module::PrivateData::dumpPgp     () const
   for(unsigned i=0; i<4; i++)
     const_cast<Module::PrivateData*>(this)->pgp[i]._rxReset = 0;
 #endif
+}
+
+void Module::dumpBase() const
+{
+  p->base.dump();
 }
 
 void Module::PrivateData::setAdcMux(bool     interleave,
