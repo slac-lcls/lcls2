@@ -135,15 +135,6 @@ int main(int argc, char** argv) {
 
   p->board_status();
 
-  if (lTrain) {
-    p->fmc_init(timing);
-    p->train_io(trainRefDelay);
-  }
-
-  if (lTrainNoReset) {
-    p->train_io(trainRefDelay);
-  }
-
   p->fmc_dump();
 
   if (lSetupClkSynth) {
@@ -155,6 +146,9 @@ int main(int argc, char** argv) {
   }
 
   if (lResetRx) {
+    if (lSetupClkSynth)
+      sleep(1);
+
     switch(timing) {
     case LCLS:
       p->tpr().setLCLS();
@@ -205,6 +199,17 @@ int main(int argc, char** argv) {
     
     double dt = double(tve.tv_sec-tvb.tv_sec)+1.e-9*(double(tve.tv_nsec)-double(tvb.tv_nsec));
     printf("RxRecClk rate = %f MHz\n", 16.e-6*double(vve-vvb)/dt);
+  }
+
+  if (lTrain) {
+    if (lResetRx)
+      sleep(1);
+    p->fmc_init(timing);
+    p->train_io(trainRefDelay);
+  }
+
+  if (lTrainNoReset) {
+    p->train_io(trainRefDelay);
   }
 
   if (fWrite) {

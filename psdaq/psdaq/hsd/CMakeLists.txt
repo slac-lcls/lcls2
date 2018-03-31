@@ -72,6 +72,22 @@ target_link_libraries(hsd_pgp
     rt
 )
 
+add_executable(hsdPVs hsdPVs.cc PVCtrls.cc PVStats.cc)
+
+target_include_directories(hsd_pgp PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(hsdPVs
+    service
+    epicstools
+    ${EPICS_CA_LIB}
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
 add_executable(hsd_sim hsd_sim.cc)
 
 add_executable(hsd_test hsd_test.cc)
