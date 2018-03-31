@@ -62,6 +62,7 @@ target_link_libraries(hpsBldClient
 add_executable(tprca tprca.cc)
 
 target_include_directories(tprca PUBLIC
+    tpr
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $ENV{CONDA_PREFIX}/include
 )
@@ -71,6 +72,7 @@ target_link_libraries(tprca
    ${EPICS_CA_LIB}
 #   ${CPSW_LIB}
 #   ${YAML_CPP_LIB}
+   tpr
    app
    dl
    pthread

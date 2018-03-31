@@ -41,10 +41,8 @@ int main(int argc, char** argv) {
   extern char* optarg;
   char evrid='a';
 
-  char* endptr;
   int c;
   bool lUsage = false;
-  bool parseOK;
 
   bool lCheckClk = false;
 
