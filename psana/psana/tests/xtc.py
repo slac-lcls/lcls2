@@ -28,7 +28,6 @@ def myroutine2():
 
   arr3 = dgram.xppcspad.raw.arrayRaw
   assert getref(dgramObj)==7
-  print(arr3, arr3.dtype)
   assert(arr3[7]==7)
   assert getref(dgramObj)==7
   assert getref(arr3)==3
