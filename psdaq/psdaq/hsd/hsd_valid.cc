@@ -19,14 +19,16 @@ class StreamHeader {
 public:
   StreamHeader() {}
 public:
-  unsigned samples () const { return _word[0]&0x7fffffff; }
-  bool     overflow() const { return _word[0]>>31; }
+  unsigned samples () const { return _word[0]&0x7fffffff; } // number of samples
+  bool     overflow() const { return _word[0]>>31; }        // overflow of memory buffer
   unsigned boffs   () const { return (_word[1]>>0)&0xff; }  // padding at start
   unsigned eoffs   () const { return (_word[1]>>8)&0xff; }  // padding at end
-  unsigned buffer  () const { return _word[1]>>16; }
-  unsigned toffs   () const { return _word[2]; }
-  unsigned baddr   () const { return _word[3]&0xffff; }
-  unsigned eaddr   () const { return _word[3]>>16; }
+  unsigned buffer  () const { return _word[1]>>16; }        // 16 front-end buffers (like FEE)
+                                                            // (only need 4 bits but using 16)
+  unsigned toffs   () const { return _word[2]; }            // phase between sample clock and timing clock (1.25GHz)
+                                                            // wrong if this value is not fixed
+  unsigned baddr   () const { return _word[3]&0xffff; }     // begin address in circular buffer
+  unsigned eaddr   () const { return _word[3]>>16; }        // end address in circular buffer
   void     dump    () const
   {
     printf("  ");
@@ -36,7 +38,7 @@ public:
            samples(), boffs(), eoffs(), buffer(), toffs(), baddr(), eaddr());
   }
 private:
-  unsigned _word[4];
+  uint32_t _word[4];
 };
 
 //
