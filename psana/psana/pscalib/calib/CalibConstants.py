@@ -46,6 +46,7 @@ GEOMETRY      = 7
 PIXEL_OFFSET  = 8
 PIXEL_DATAST  = 9
 CODE_GEOMETRY = 10
+LASINGOFFREFERENCE = 11
 
 ctype_tuple = (
     (PEDESTALS,      'pedestals',     np.float32), 
@@ -58,7 +59,8 @@ ctype_tuple = (
     (GEOMETRY,       'geometry',      str       ), 
     (PIXEL_OFFSET,   'pixel_offset',  np.float32), 
     (PIXEL_DATAST,   'pixel_datast',  np.uint16 ), 
-    (CODE_GEOMETRY,  'code_geometry', str       )
+    (CODE_GEOMETRY,  'code_geometry', str       ),
+    (LASINGOFFREFERENCE, 'lasingoffreference', 'hdf5')
 )
 
 list_calib_types  = [rec[0] for rec in ctype_tuple]
