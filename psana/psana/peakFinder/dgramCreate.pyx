@@ -1,5 +1,6 @@
 # Import the Python-level symbols of numpy
 import numpy as np
+import struct
 
 # Import the C-level symbols of numpy
 cimport numpy as cnp
@@ -24,6 +25,12 @@ cnp.import_array()
 from libcpp.vector cimport vector
 cimport libc.stdint as si
 
+cdef extern from 'xtcdata/xtc/ShapesData.hh' namespace "XtcData":
+    cdef cppclass pyDgram:
+        pyDgram(cnp.uint8_t *name_block, cnp.uint8_t* shape_block, size_t block_elems,
+                   cnp.uint8_t* data_block, size_t sizeofdata,void* buffdgram)
+        cnp.uint32_t dgramSize()
+
 # These classes are imported from ShapesData.hh by DescData.hh
 cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
     cdef cppclass AlgVersion:
@@ -34,6 +41,8 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
         Alg(const char* alg, cnp.uint8_t major, cnp.uint8_t minor, cnp.uint8_t micro)
         const char* name()
 
+    cdef cppclass NameInfo: 
+        NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, cnp.uint32_t segment0):alg(alg0), segment(segment0)
 
     cdef cppclass Name:
         enum DataType: UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE
@@ -47,6 +56,40 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
     cdef cppclass Shape:
         Shape(unsigned shape[5])
         cnp.uint32_t* shape()
+
+cdef class PyDgram:
+    cdef pyDgram* cptr
+    cdef buff
+    cdef size_t total_size
+    cdef size_t buffer_size
+    cdef block_elems
+    cdef cnp.uint8_t* buffer
+    cdef cnp.uint32_t* sizedg
+
+    def __cinit__(self, PyNameBlock pyn, PyShapeBlock pys, PyDataBlock pyd):
+        if pyn.ct != pys.ct:
+            raise AttributeError("Names and shapes blocks have different sizes")
+        else:
+            self.block_elems = pyn.ct
+
+        # print("size of shape %i" % sizeof(Shape))
+        # print("total size is %i" % self.total_size)
+        # print("Data size is %i" % pyd.get_bytes())
+        self.buffer_size =0x4000000
+
+        self.buffer  = <cnp.uint8_t*> malloc(self.buffer_size)
+
+        # print("Buffer hash before: %s" % hashlib.md5(buffer).hexdigest())
+        self.cptr = new pyDgram(pyn.cptr_start, pys.cptr_start, self.block_elems, pyd.cptr_start, pyd.get_bytes(), self.buffer)
+        # print("Buffer hash: %s" % hashlib.md5(self.buffer[:self.cptr.dgramSize()]).hexdigest())
+
+    def write(self):
+        cdef FILE *f = fopen('data.xtc', 'w')
+        fwrite(self.buffer, sizeof(cnp.uint8_t), self.cptr.dgramSize(), f)
+        fclose(f)
+
+    def __dealloc__(self):
+        del self.cptr
 
 
 cdef class PyAlgVer:
@@ -71,34 +114,73 @@ cdef class PyAlg:
     def name(self):
         return self.cptr.name()
 
-cdef class PyName:
-    cdef Name* cptr
+cdef class PyNameInfo:
+    cdef NameInfo* cptr
 
-    def __cinit__(self, bytes namestring, int type, int rank, PyAlg pyalg):
-        self.cptr = new Name(namestring,<Name.DataType>type, rank, pyalg.cptr[0])
+    def __cinit__(self,detNames, PyAlg pyalg, detType, detId, segment=0):
+        self.cptr = new NameInfo(detNames, pyalg.cptr[0], detType, detId, segment)
 
     def __dealloc__(self):
         del self.cptr
 
-    def type(self):
-        return self.cptr.type()
+cdef class PyNameBlock:
+    cdef cnp.uint8_t* cptr
+    cdef cnp.uint8_t* cptr_start
+    cdef ct
 
+    def __cinit__(self, num_elems):
+        self.cptr = <cnp.uint8_t*>malloc(sizeof(NameInfo)+num_elems*sizeof(Name))
+        self.cptr_start = self.cptr
+        self.ct = 0
 
-    def name(self):
-         return <char*>self.cptr.name()
+    def addNameInfo(self, PyNameInfo pynameinfo):
+        memcpy(self.cptr, pynameinfo.cptr, sizeof(NameInfo))
+        self.cptr += sizeof(NameInfo)
 
+    def addName(self, bytes namestring, int type, int rank, PyAlg pyalg):
+        newName = new Name(namestring,<Name.DataType>type, rank, pyalg.cptr[0])
+        memcpy(self.cptr, newName, sizeof(Name))
+        self.cptr+=sizeof(Name)
+        self.ct +=1
 
-cdef class PyShape:
-    cdef Shape* cptr
+        # def __dealloc__(self):
+    #     del self.cptr
 
-    def __cinit__(self, cnp.ndarray[cnp.uint32_t, ndim=1, mode="c"] shape):
-       self.cptr= new Shape(<cnp.uint32_t*>shape.data)
+cdef class PyShapeBlock:
+    cdef cnp.uint8_t* cptr
+    cdef cnp.uint8_t* cptr_start
+    cdef ct
 
-    def getshape(self, num):
-        cdef cnp.uint32_t* shapen = self.cptr.shape()
-        return shapen[num]
-    def __dealloc__(self):
-        del self.cptr
+    def __cinit__(self, cnp.uint32_t namesId, int num_elems):
+        self.cptr = <cnp.uint8_t*> malloc(sizeof(cnp.uint32_t)+num_elems*sizeof(Shape))
+        self.cptr_start = self.cptr
+        memcpy(self.cptr, &namesId, sizeof(cnp.uint32_t))
+        self.cptr += sizeof(cnp.uint32_t)
+        self.ct = 0
+    def addShape(self,  cnp.ndarray[cnp.uint32_t, ndim=1, mode="c"] shape):
+        newShape = new Shape(<cnp.uint32_t*>shape.data)
+        memcpy(self.cptr, newShape, sizeof(Shape))
+        self.cptr += sizeof(Shape)
+        self.ct +=1
+    # def __dealloc__(self):
+    #     #del self.cptr
+
+cdef class PyDataBlock:
+    cdef cnp.uint8_t* cptr
+    cdef cnp.uint8_t* cptr_start
+
+    def __cinit__(self):
+        self.cptr = <cnp.uint8_t*> malloc(0x4000000)
+        self.cptr_start = self.cptr
+
+    def addData(self, array):
+         cdef cnp.ndarray[cnp.uint8_t, ndim=1, mode='c'] carr
+         carr = np.array(bytearray(array.tobytes()), dtype=np.uint8)
+         memcpy(self.cptr, carr.data, carr.nbytes)
+         self.cptr+=carr.nbytes
+
+    def get_bytes(self):
+        return int(self.cptr - self.cptr_start)
 
 def parse_type(data_arr):
     dat_type = data_arr.dtype
@@ -108,15 +190,27 @@ def parse_type(data_arr):
     type_dict = dict(zip(nptypes, range(len(nptypes))))
     return type_dict[dat_type]
 
-def blockcreate(data, verbose=False):
-    cdef Name* namesptr = <Name*> malloc(len(data)*sizeof(Name))
-    cdef Shape* shapesptr = <Shape*> malloc(len(data)*sizeof(Shape))
-    cdef cnp.uint8_t* dataptr  = <cnp.uint8_t*> malloc(0x4000000)
-    cdef cnp.uint8_t* dataptr2  = <cnp.uint8_t*> malloc(0x0100000)
 
-    cdef cnp.ndarray[int, mode="c", ndim=2] shop
+def blockcreate(data, verbose=False):
+
+    namesId = 1234
+    py_shape = PyShapeBlock(namesId, len(data))
+    py_name = PyNameBlock(len(data))
+    py_data = PyDataBlock()
+
+    # Create the alg object
+    pyalg = PyAlg(data[0][0][1].algname,data[0][0][1].major, data[0][0][1].minor, data[0][0][1].micro)
+
     xtc_bytes = 0
+
+    detName = b'xpphsd'
+    detType = b'cspad'
+    detId = b'detnum1234'
+    py_nameinfo = PyNameInfo(detName, pyalg, detType, detId)
+    py_name.addNameInfo(py_nameinfo)
+
     for ct,entry in enumerate(data):
+
         # Deduce the shape of the data
         array_size = np.array(entry[1].shape)
         array_rank = len(array_size)
@@ -124,64 +218,20 @@ def blockcreate(data, verbose=False):
         # Find the type of the data
         data_type = parse_type(entry[1])
 
-        # Create the name object
-        pyname = PyName(entry[0][0],data_type, array_rank, PyAlg(entry[0][1].algname,\
-                                          entry[0][1].major, entry[0][1].minor, entry[0][1].micro))
-        # Copy the name to namesptr
-        memcpy(namesptr, pyname.cptr,sizeof(Name))
-        if verbose:
-            print("Block %i:" % ct)
-            print("\tName from py object:       %s" % <char*>namesptr.name())
-            print("\tName from malloc'd memory: %s" %<char*>pyname.cptr.name())
-        namesptr+=1
-        # Create the shape object
-        pyshape = PyShape(array_size_pad)
+        # Create the alg
+        pyalg = PyAlg(entry[0][1].algname,entry[0][1].major, entry[0][1].minor, entry[0][1].micro)
 
-        # Copy the shape to shapesptr
-        memcpy(shapesptr, pyshape.cptr, sizeof(Shape))
+        # Copy the name to the block
+        py_name.addName(entry[0][0],data_type, array_rank,pyalg)
 
-        dims = ''
-        for i in range(array_rank):
-            dims+=str(pyshape.getshape(i))+'x'
+        # Copy the shape to the block
+        py_shape.addShape(array_size_pad)
 
-        dimsmal = ''
-        for i in range(array_rank):
-            dimsmal+=str(shapesptr.shape()[i])+'x'
-        if verbose:
-            print("\tShape from py object:       %s" % dims[:-1])
-            print("\tShape from malloc'd memory: %s" % dimsmal[:-1])
+        carr = np.array(bytearray(entry[1].tobytes()), dtype=np.uint8)
+        py_data.addData(entry[1])
 
-        shapesptr+=1
+  
+    pydgram = PyDgram(py_name, py_shape, py_data)
+    pydgram.write()
 
-        data_char = entry[1].ctypes.data_as(ctypes.POINTER(ctypes.c_char))
-
-        for i in range(entry[1].nbytes):
-            dataptr2[i] = ord(data_char[i]) 
-
-        memcpy(dataptr, dataptr2, entry[1].nbytes)#  <--- TypeError here
-
-        result_malloc = []
-        result_pyobj = []
-
-        bstr_m = dataptr[0:entry[1].nbytes]
-        bstr_py = data_char[0:entry[1].nbytes]
-
-        data_m = np.resize(np.frombuffer(bstr_m, dtype = entry[1].dtype), array_size)
-        data_py = np.resize(np.frombuffer(bstr_py, dtype = entry[1].dtype), array_size)
-
-        dataptr += entry[1].nbytes
-        xtc_bytes += entry[1].nbytes
-        if verbose:
-            print("\tmalloc'd array hash: %s" % hashlib.md5(data_m.tobytes()).hexdigest())
-            print("\tpy array hash:       %s" % hashlib.md5(data_py.tobytes()).hexdigest())
-
-    dataptr -= xtc_bytes
-    shapesptr -= len(data)
-    namesptr -= len(data)
-    print('size of xtc bytes %i' % xtc_bytes)
-    cdef FILE *f = fopen('data.xtc', 'w')
-    fwrite(dataptr, sizeof(cnp.uint8_t), xtc_bytes, f)
-    fwrite(shapesptr, sizeof(Shape), len(data), f)
-    fwrite(namesptr, sizeof(Name), len(data), f)
-    fclose(f)
 
