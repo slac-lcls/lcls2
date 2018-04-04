@@ -6,24 +6,31 @@ import struct
 cimport numpy as cnp
 
 from cpython cimport array
-import array
-import ctypes
-import hashlib
-import copy
+# import array
 
 from libc.stdlib cimport malloc,free
 from cpython cimport PyObject, Py_INCREF
 from libc.string cimport memcpy
 from libc.stdio cimport *
 
-# C++ vector class
-from libcpp.vector cimport vector
 # Numpy must be initialized. When using numpy from C or Cython you must
 # _always_ do that, or you will have segfaults
 cnp.import_array()
 
-from libcpp.vector cimport vector
 cimport libc.stdint as si
+
+# python helper classes
+class alg:
+    def __init__(self, name,version):
+        self.algname = name
+        [self.major,self.minor,self.micro] = version
+
+class nameinfo:
+    def __init__(self, dname, detype, did, namesid):
+        self.detName = dname
+        self.detType = detype
+        self.detId = did
+        self.namesId = namesid
 
 cdef extern from 'xtcdata/xtc/ShapesData.hh' namespace "XtcData":
     cdef cppclass pyDgram:
@@ -193,23 +200,22 @@ def parse_type(data_arr):
 
 def blockcreate(data, verbose=False):
 
-    namesId = 1234
-    py_shape = PyShapeBlock(namesId, len(data))
-    py_name = PyNameBlock(len(data))
+    # detName = data[0][0]
+    # detType = data[0][1]
+    # detId = data[0][2]
+    # namesId = data[0][3]
+
+    py_shape = PyShapeBlock(data[0][0].namesId, len(data[1:]))
+    py_name = PyNameBlock(len(data[1:]))
     py_data = PyDataBlock()
 
     # Create the alg object
-    pyalg = PyAlg(data[0][0][1].algname,data[0][0][1].major, data[0][0][1].minor, data[0][0][1].micro)
+    pyalg = PyAlg(data[1][0][1].algname,data[1][0][1].major, data[1][0][1].minor, data[1][0][1].micro)
 
-    xtc_bytes = 0
-
-    detName = b'xpphsd'
-    detType = b'cspad'
-    detId = b'detnum1234'
-    py_nameinfo = PyNameInfo(detName, pyalg, detType, detId)
+    py_nameinfo = PyNameInfo(data[0][0].detName, pyalg, data[0][0].detType, data[0][0].detId)
     py_name.addNameInfo(py_nameinfo)
 
-    for ct,entry in enumerate(data):
+    for ct,entry in enumerate(data[1:]):
 
         # Deduce the shape of the data
         array_size = np.array(entry[1].shape)
