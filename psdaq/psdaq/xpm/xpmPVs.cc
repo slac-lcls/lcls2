@@ -304,7 +304,7 @@ int main(int argc, char** argv)
   }
 
   //  Crate number is "c" in IP a.b.c.d
-  sprintf(module_prefix   ,"%s:XPM:%u" ,
+  sprintf(module_prefix   ,"%s:XPM:%lu" ,
           prefix,
           strtoul(strchr(strchr(ip,'.')+1,'.')+1,NULL,10));
   sprintf(partition_prefix,"%s:PART",prefix);
