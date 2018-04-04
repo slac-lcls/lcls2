@@ -42,26 +42,46 @@ Dataset::Dataset(hid_t file_id, XtcData::Name& name, const uint32_t* shape)
     }
 
     switch (name.type()) {
-    case XtcData::Name::UINT8: {
-        m_typeId = H5T_NATIVE_UINT8;
-        break;
-    }
-    case XtcData::Name::UINT16: {
-        m_typeId = H5T_NATIVE_UINT16;
-        break;
-    }
-    case XtcData::Name::INT32: {
-        m_typeId = H5T_NATIVE_INT32;
-        break;
-    }
-    case XtcData::Name::FLOAT: {
-        m_typeId = H5T_NATIVE_FLOAT;
-        break;
-    }
-    case XtcData::Name::DOUBLE: {
-        m_typeId = H5T_NATIVE_DOUBLE;
-        break;
-    }
+        case XtcData::Name::INT8: {
+            m_typeId = H5T_NATIVE_INT8;
+            break;
+        }
+        case XtcData::Name::UINT8: {
+            m_typeId = H5T_NATIVE_UINT8;
+            break;
+        }
+        case XtcData::Name::INT16: {
+            m_typeId = H5T_NATIVE_INT16;
+            break;
+        }   
+        case XtcData::Name::UINT16: {
+            m_typeId = H5T_NATIVE_UINT16;
+            break;
+        }
+        case XtcData::Name::INT32: {
+            m_typeId = H5T_NATIVE_INT32;
+            break;
+        }
+        case XtcData::Name::UINT32: {
+            m_typeId = H5T_NATIVE_UINT32;
+            break;
+        }
+        case XtcData::Name::INT64: {
+            m_typeId = H5T_NATIVE_INT64;
+            break;      
+        }               
+        case XtcData::Name::UINT64: {
+            m_typeId = H5T_NATIVE_UINT64;
+            break;         
+        }               
+        case XtcData::Name::FLOAT: {
+            m_typeId = H5T_NATIVE_FLOAT;
+            break;
+        }
+        case XtcData::Name::DOUBLE: {
+            m_typeId = H5T_NATIVE_DOUBLE;
+            break;
+        }
     }
     m_dsetId = H5Dcreate2(file_id, name.name(), m_typeId, m_dataspaceId, H5P_DEFAULT, m_plistId, H5P_DEFAULT);
     if (m_dsetId < 0) {
