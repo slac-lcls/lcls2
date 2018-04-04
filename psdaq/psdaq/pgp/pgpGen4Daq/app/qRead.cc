@@ -82,7 +82,7 @@ static void dumphist(const uint32_t* p,
   printf("\n");
 
   printf("Events: %u\n"  , events);
-  printf("Bytes : %llu\n", bytes);
+  printf("Bytes : %lu\n", bytes);
   printf("Misses: %u\n"  , misses);
   printf("Drops : %u\n"  , drops);
   printf("Excpts: %u\n"  , excepts);
@@ -292,7 +292,7 @@ int main (int argc, char **argv) {
       uint64_t pid = *reinterpret_cast<const uint64_t*>(&q[0]);
       if ((pid>>56)!=0) {
         //  Datagram is a non-L1 transition
-        printf("\nNon-L1 [%x]", (pid>>56));
+        printf("\nNon-L1 [%lx]", (pid>>56));
         for(unsigned i=0; i<8; i++)
           printf("%c%08x", (i==0) ? ' ':':', q[i]);
         continue;
@@ -336,7 +336,7 @@ int main (int argc, char **argv) {
       //
 
       if (lEventHdr && (nprint || (emask&vmask))) {
-        printf("\n dPID[%llx] dEC[%x]", dpid, dec);
+        printf("\n dPID[%lx] dEC[%x]", dpid, dec);
         for(unsigned i=0; i<8; i++)
           printf("%c%08x", (i==0) ? ' ':':', reinterpret_cast<const uint32_t*>(rd.data)[i]);
       }

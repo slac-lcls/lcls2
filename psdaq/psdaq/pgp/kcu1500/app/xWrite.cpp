@@ -195,7 +195,7 @@ void* readThread(void* args)
 
   // Allocate a buffer
   const uint maxSize = 1024*256;
-  const uint maxPrint = 32;
+  const int maxPrint = 32;
 
   uint* data = (uint *)malloc(sizeof(uint)*maxSize);
 
@@ -234,7 +234,7 @@ void* readThread(void* args)
       cout << ", size=" << dec << ret;
       cout << endl << "   ";
       
-      for (uint x=0; x<ret && x<maxPrint; x++) {
+      for (int x=0; x<ret && x<maxPrint; x++) {
         cout << " 0x" << setw(8) << setfill('0') << hex << data[x];
         if ( ((x+1)%10) == 0 ) cout << endl << "   ";
       }

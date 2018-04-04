@@ -37,7 +37,7 @@ int main (int argc, char **argv) {
   int          autoFill = -1;
   unsigned     apps[LANES];
   int          pauseTh  = -1;
-  unsigned     ndescriptors = 0;
+  //unsigned     ndescriptors = 0;
   int c;
 
   memset(apps, 0, sizeof(apps));
@@ -53,7 +53,7 @@ int main (int argc, char **argv) {
           endptr++;
         } } break;
     case 'P': pauseTh        = strtoul(optarg, NULL, 0); break;
-    case 'd': ndescriptors   = strtoul(optarg, NULL, 0); break;
+    //case 'd': ndescriptors   = strtoul(optarg, NULL, 0); break;
     default: usage(argv[0]); return 0;
     }
   }

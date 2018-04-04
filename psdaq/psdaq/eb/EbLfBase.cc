@@ -122,7 +122,7 @@ const char* EbLfBase::base() const
 int EbLfBase::prepareLclMr(size_t lclSize, PeerSharing shared)
 {
   size_t   alignment = sysconf(_SC_PAGESIZE);
-  assert(lclSize & (alignment - 1) == 0);
+  assert((lclSize & (alignment - 1)) == 0);
   unsigned nClients  = _ep.size();
   size_t   size      = (shared == PEERS_SHARE_BUFFERS ? 1 : nClients) * lclSize;
   void*    lclMem    = nullptr;
