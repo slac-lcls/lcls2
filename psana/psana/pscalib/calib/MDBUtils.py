@@ -620,10 +620,16 @@ def find_doc(col, query={'ctype':'pedestals'}) :
     """Returns the document with latest time_sec or run number for specified query.
     """
     docs = find_docs(col, query)
-    if docs is None : return None
+    #print('XXX Number of documents found:', docs.count())
+
+    if (docs is None)\
+    or (docs.count()==0) :
+        logger.warning('DB %s collection %s does not have document for query %s' % (col.database.name, col.name, str(query)))
+        return None
 
     qkeys = query.keys()
     key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+
     doc = docs.sort(key_sort, DESCENDING)[0]
     msg = 'query: %s\n  %d docs found, selected doc["%s"]=%s'%\
           (query, docs.count(), key_sort, doc[key_sort])

@@ -52,7 +52,7 @@ void* countThread(void* args)
     double mrate  = double(nmisses-omisses)/dt;
     double dbytes = double(nbytes-obytes)/dt;
     double ebytes = dbytes/erate;
-    unsigned dbsc = 0, ersc=0, mrsc=0, tbsc=0, ebsc=0;
+    unsigned dbsc = 0, ersc=0, mrsc=0, ebsc=0;
     
     static const char scchar[] = { ' ', 'k', 'M' };
 
@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
       event++;
       bytes += sizeof(XtcData::Dgram)+sizeof(Pds::Bld::TestType);
       if (lverbose)
-        printf(" %9u.%09u %016llx extent 0x%x payload %08x %08x...\n",
+        printf(" %9u.%09u %016lx extent 0x%x payload %08x %08x...\n",
                dgram->seq.stamp().seconds(),
                dgram->seq.stamp().nanoseconds(),
                dgram->seq.pulseId().value(),
@@ -216,7 +216,7 @@ int main(int argc, char* argv[])
     else {
       misses++;
       if (nprint) {
-        printf("Miss: %016llx  prev %016llx\n",
+        printf("Miss: %016lx  prev %016lx\n",
                pulseId, ppulseId);
       }
     }

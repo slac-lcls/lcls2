@@ -52,29 +52,29 @@ static void dump_by2(const uint32_t* p,
       printf("\n");
 }
 
-static void dump_by4(const uint32_t* p,
-                     const unsigned  n)
-{
-      for(int j=7; j>=0; j--) {
-        for(unsigned i=0; i<n/4; i++) {
-          unsigned v = 0;
-          v += p[4*i+0];
-          v += p[4*i+1];
-          v += p[4*i+2];
-          v += p[4*i+3];
-          v >>= 4*j;
-          unsigned d = v&0xf;
-          if (v)
-            printf("%01x",d);
-          else
-            printf(" ");
-        }
-        printf("\n");
-      }
-      for(unsigned i=0; i<n/16; i++)
-        printf("%x...", i);
-      printf("\n");
-}
+// static void dump_by4(const uint32_t* p,
+//                      const unsigned  n)
+// {
+//       for(int j=7; j>=0; j--) {
+//         for(unsigned i=0; i<n/4; i++) {
+//           unsigned v = 0;
+//           v += p[4*i+0];
+//           v += p[4*i+1];
+//           v += p[4*i+2];
+//           v += p[4*i+3];
+//           v >>= 4*j;
+//           unsigned d = v&0xf;
+//           if (v)
+//             printf("%01x",d);
+//           else
+//             printf(" ");
+//         }
+//         printf("\n");
+//       }
+//       for(unsigned i=0; i<n/16; i++)
+//         printf("%x...", i);
+//       printf("\n");
+// }
 
 class AxisHistogramT {
 public:
