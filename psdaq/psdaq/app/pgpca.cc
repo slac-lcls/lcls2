@@ -15,7 +15,7 @@
 #include <linux/types.h>
 
 #include <list>
-#include <strstream>
+#include <sstream>
 
 #include "psdaq/pgp/pgpGen4Daq/app/PgpDaq.hh"
 #include "psdaq/epicstools/PVWriter.hh"
@@ -117,9 +117,9 @@ int main (int argc, char **argv) {
     p->monEnable = 1;
 
 #define LANE_HIST(i,parm) {                                     \
-      ostrstream o;                                             \
+      std::stringstream o;                                          \
       o << base << parm << i;                                   \
-      hist.push_back(new AxisHistogram(o.str())); }
+      hist.push_back(new AxisHistogram(o.str().c_str())); }
 
     const unsigned NLINKS = 4;
     const unsigned NAPPS  = 4;

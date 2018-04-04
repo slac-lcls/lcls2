@@ -8,7 +8,6 @@ import os
 from psana.pyalgos.generic.Utils import print_kwargs, print_parser
 import psana.pyalgos.generic.Utils as gu
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
-#import psana.pscalib.calib.CalibConstants as cc
 from psana.pscalib.calib.NDArrIO import load_txt, save_txt
 
 import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestamp
@@ -51,9 +50,6 @@ class MDB_CLI :
         #host = kwargs.get('host', None),
 
         self.mode = mode = pargs[0] if len(pargs)>0 else 'print'
-        assert mode in ('print', 'add', 'get', 'convert', 'export', 'import',\
-                        'deldb', 'delall', 'delcol', 'deldoc', 'test'),\
-                        'Not allowed command mode "%s"' % mode 
 
         kwargs = vars(popts)
 
@@ -387,7 +383,6 @@ class MDB_CLI :
         print('XXX : dbnames:', dbnames)
 
 
-
     def _warning(self) :
         logger.warning('MDB_CLI: TBD for mode: %s' % self.mode)
 
@@ -407,7 +402,7 @@ class MDB_CLI :
         elif 'import'    in mode : self.importdb()
         elif 'test'      in mode : self.test()
         #elif 'get'      in mode : self._warning()
-        else : logger.warning('Not allowed command mode "%s"' % mode)
+        else : logger.warning('Non-implemented command mode "%s"' % mode)
 
 #------------------------------
 

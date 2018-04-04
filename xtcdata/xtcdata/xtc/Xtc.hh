@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #pragma pack(push,4)
 
@@ -36,7 +37,10 @@ public:
     : damage(_damage), src(_src), contains(_tag), extent(sizeof(Xtc))
     {
     }
-
+    void* operator new(size_t size)
+    {
+        return (void*)std::malloc(size);
+    }
     void* operator new(size_t size, char* p)
     {
         return (void*)p;

@@ -91,7 +91,7 @@ int main (int argc, char **argv) {
   Reg::set(fd);
 
   for(unsigned i=0; i<8; i++)
-    gth[i] = new ((void*)(0x00809000+i*0x10000))GthEyeScan;
+      gth[i] = new ((void*)(uintptr_t)(0x00809000+i*0x10000))GthEyeScan;
 
   pthread_t tid[8];
   unsigned lane[8];

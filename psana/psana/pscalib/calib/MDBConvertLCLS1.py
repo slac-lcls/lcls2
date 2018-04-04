@@ -8,7 +8,7 @@ Usage ::
 
     # python lcls2/psana/pscalib/calib/CalibUtils.py
 
-    from psana.pscalib.calib.CalibUtils import *
+    from psana.pscalib.calib.MDBConvertLCLS1 import *
 
 See:
  * :py:class:`CalibBase`
@@ -37,6 +37,8 @@ import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestam
 
 from psana.pscalib.calib.CalibUtils import history_dict_for_file, history_list_of_dicts, parse_calib_file_name
 
+from psana.pscalib.calib.XtcavConstants import Load #, Save
+
 import logging
 logger = logging.getLogger('MDBConvertLCLS1')
 
@@ -54,6 +56,23 @@ def run_begin_end_time(exp:str, runnum:int) :
 
 #------------------------------
 
+def load_xtcav_calib_file(fpath) :
+    """Returns object retrieved from hdf5 file by XtcavConstants.Load method.
+
+       Xtcav constants are wrapped in python object and accessible through attributes with arbitrary names.
+       list of attribute names can be retrieved as dir(o) 
+       and filtred from system names like '__*__' by the comprehension list [p for p in dir(o) if p[:2] != '__']
+       access to attributes can be done through the python built-in method getattr(o, name, None), etc...
+    """
+    logger.info('Load xtcav calib object from file: %s'%fpath)
+    return Load(fpath)
+
+
+def is_xtcav(calibvers, cftype) : 
+    return ('Xtcav' in calibvers) and (cftype in ('lasingoffreference', 'pedestals'))
+
+#------------------------------
+
 def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdir, listdicts, **kwargs) :
     """
     """
@@ -68,7 +87,9 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
     if None in (begin, end, ext) : return
 
     fpath = '%s/%s' % (cfdir, fname)
-    data = gu.load_textfile(fpath, verbose) if cftype == 'geometry' else\
+
+    data = gu.load_textfile(fpath, verbose) if cftype in ('geometry','code_geometry') else\
+           load_xtcav_calib_file(fpath) if is_xtcav(calibvers, cftype) else\
            load_txt(fpath) # using NDArrIO
 
     begin_time, end_time = run_begin_end_time(exp, int(begin))
@@ -77,6 +98,11 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
         ndu.print_ndarr(data, 'scan calib: data')
         print('scan calib:', exp, cfdir, fname, begin, end, ext, calibvers, detname, cftype)
         print('begin_time, end_time:', begin_time, end_time)
+
+    if data is None :
+        msg = 'data is None, conversion is dropped for for file: %s' % fpath
+        logger.warning(msg)        
+        return
 
     kwargs['run']        = begin
     kwargs['run_end']    = end
@@ -93,6 +119,13 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
 
 #------------------------------
 
+def detname_conversion(detname='XcsEndstation.0:Epix100a.1') :
+    """Converts LCLS1 detector name like 'XcsEndstation.0:Epix100a.1' to 'xcsendstation_0_epix100a_1'
+    """
+    return detname.replace(":","_").replace(".","_").lower()
+
+#------------------------------
+
 def scan_calib_for_experiment(exp='cxix25615', **kwargs) :
 
     host    = kwargs.get('host', None)
@@ -102,9 +135,11 @@ def scan_calib_for_experiment(exp='cxix25615', **kwargs) :
     client = dbu.connect_to_server(host, port)
     dbname = dbu.db_prefixed_name(exp)
     if dbu.database_exists(client, dbname) :
-        print('Experiment %s already has a database. Consider to delete it from the list:\n%s'%\
-              (exp, str(dbu.database_names(client))))
-        print('Use command: cdb deldb --dbname %s -C' % dbname)
+        msg = 'Experiment %s already has a database. Consider to delete it from the list:\n%s'%\
+              (exp, str(dbu.database_names(client)))+\
+              '\nBefore adding consider to delete existing DB using command: cdb deldb --dbname %s -C' % dbname
+        logger.warning(msg)
+        #print(msg)
         return
 
     dircalib = nm.dir_calib(exp)
@@ -119,7 +154,7 @@ def scan_calib_for_experiment(exp='cxix25615', **kwargs) :
         for dir1 in gu.get_list_of_files_in_dir_for_part_fname(dir0, pattern=':') :
             if not os.path.isdir(dir1) : continue
             detname = os.path.basename(dir1)
-            detname_m = detname.replace(":","_").replace(".","_").lower()
+            detname_m = detname_conversion(detname)
             if verbose : print('    %s' % detname_m)        
 
             for cftype in gu.get_list_of_files_in_dir(dir1) :
@@ -141,7 +176,6 @@ def scan_calib_for_experiment(exp='cxix25615', **kwargs) :
                     count += 1
 
                 print('  converted %3d files from: %s' % (count, cfdir))
-
 
 #------------------------------
 

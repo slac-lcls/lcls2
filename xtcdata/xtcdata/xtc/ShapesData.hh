@@ -9,11 +9,11 @@
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/VarDef.hh"
-
+#include "xtcdata/xtc/Dgram.hh"
 namespace XtcData {
 class VarDef;
 
-  
+
 static const int maxNameSize = 256;
 
 class AlgVersion {
@@ -141,7 +141,28 @@ public:
 // perhaps should split this class into two xtc's: the Alg part (DataNames?)
 // and the detName/detType/segment part (DetInfo?).  but then
 // if there are multiple detectors in an xtc need to come up with another
-// mechanism for the DataName to point to the correct DetInfo.
+ /// mechanism for the DataName to point to the correct DetInfo.
+
+
+class NameInfo
+{
+public:
+    uint32_t numArrays=0;
+    char     detType[maxNameSize];
+    char     detName[maxNameSize];
+    char     detId[maxNameSize];
+    Alg      alg;
+    uint32_t segment;
+
+    NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, uint32_t segment0):alg(alg0), segment(segment0){
+        strncpy(detName, detname, maxNameSize);
+        strncpy(detType, dettype, maxNameSize);
+        strncpy(detId,   detid,   maxNameSize);
+    }
+
+
+};
+
 
 class Names : public AutoParentAlloc
 {
@@ -150,21 +171,19 @@ public:
 
     Names(const char* detName, Alg& alg, const char* detType, const char* detId, unsigned segment=0) :
         AutoParentAlloc(TypeId(TypeId::Names,0)),
-        _alg(alg),
-        _segment(segment)
+        _NameInfo(detName, alg, detType, detId, segment)
     {
-        strncpy(_detName, detName, maxNameSize);
-        strncpy(_detType, detType, maxNameSize);
-        strncpy(_detId,   detId,   maxNameSize);
+
         // allocate space for our private data
         Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
 
-    const char* detName() {return _detName;}
-    const char* detType() {return _detType;}
-    const char* detId()   {return _detId;}
-    unsigned    segment() {return _segment;}
-    Alg&        alg()     {return _alg;}
+    uint32_t numArrays(){return _NameInfo.numArrays;}; 
+    const char* detName() {return _NameInfo.detName;}
+    const char* detType() {return _NameInfo.detType;}
+    const char* detId()   {return _NameInfo.detId;}
+    unsigned    segment() {return _NameInfo.segment;}
+    Alg&        alg()     {return _NameInfo.alg;}
 
     Name& get(unsigned index)
     {
@@ -178,31 +197,21 @@ public:
         assert (sizeOfNames%sizeof(Name)==0);
         return sizeOfNames / sizeof(Name);
     }
- 
-    unsigned numArrays(){return _numArrays;};
- 
+
+
     void add(Xtc& parent, VarDef& V)
     {
       for(auto const & elem: V.NameVec)
       	{
       	  void* ptr = alloc(sizeof(Name), parent);
       	  new (ptr) Name(elem);
-	  
-	  if(Name(elem).rank() > 0){_numArrays++;};
 
+	  if(Name(elem).rank() > 0){_NameInfo.numArrays++;};
       	};
 
     }
-  
-    
 private:
-
-    uint32_t _numArrays=0;
-    char     _detType[maxNameSize];
-    char     _detName[maxNameSize];
-    char     _detId[maxNameSize];
-    Alg      _alg;
-    uint32_t _segment;
+    NameInfo _NameInfo;
 };
 
 #include <stdio.h>
@@ -286,8 +295,74 @@ private:
         return _first().contains.id()==TypeId::Shapes;
     }
 
+
 };
+
+class pyDgram : public Xtc
+{ 
+public:
+    // Dgram& dgram = *(Dgram*)malloc(0x1);
+
+    pyDgram(uint8_t *name_block, uint8_t* shape_block, size_t block_elems,
+                   uint8_t* data_block, size_t sizeofdata, uint8_t* buffdgram){
+    // dgram = *(Dgram*)buffdgram;
+    Dgram& dgram = *(Dgram*)buffdgram;
+    TypeId tid(TypeId::Parent, 0);
+    dgram.xtc.contains = tid;
+    dgram.xtc.damage = 0;
+    dgram.xtc.extent = sizeof(Xtc);
+
+    // Xtc& namesxtc = *new(dgram.xtc.next()) Xtc(TypeId(TypeId::Names, 0));
+    Xtc& namesxtc = *new((char*)dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Names, 0));
+    size_t nameblock_size = sizeof(NameInfo) + block_elems*sizeof(Name);
+
+    // printf("Dgram extent: %i, namesxtc extent: %i, sizeof(dgram): %zu, sizeof(xtc) %zu\n", dgram.xtc.extent, namesxtc.extent, sizeof(Dgram), sizeof(Xtc));
+    // printf("Size of names %zu\n", block_elems*sizeof(Name));
+    // printf("Size of nameblock %zu\n", nameblock_size);
+
+    memcpy(namesxtc.payload(), name_block, nameblock_size);
+    namesxtc.alloc(nameblock_size);
+    dgram.xtc.alloc(nameblock_size);
+    // printf("Dgram extent: %i, namesxtc extent: %i, sizeof(dgram): %zu, sizeof(xtc) %zu\n", dgram.xtc.extent, namesxtc.extent, sizeof(Dgram), sizeof(Xtc));
+
+    // Xtc& shapesdata = *new(dgram.xtc.next()) Xtc(TypeId(TypeId::ShapesData, 0));
+    Xtc& shapesdata = *new((char*)dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::ShapesData, 0));
+
+// Xtc& shapes = *new((char*)shapesdata.alloc(sizeof(Xtc)) Xtc(TypeId(TypeId::Shapes, 0));
+    Xtc& shapes = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Shapes, 0));
+    size_t shapeblock_size = sizeof(uint32_t) + block_elems*sizeof(Shape);
+    memcpy(shapes.payload(), shape_block, shapeblock_size);
+    shapes.alloc(shapeblock_size);
+    shapesdata.alloc(shapeblock_size);
+    dgram.xtc.alloc(shapeblock_size+sizeof(Xtc));
+
+
+    // printf("Dgram extent: %i, shapesdata extent: %i, shapes extent: %i, sizeof(dgram): %zu, sizeof(xtc) %zu\n", dgram.xtc.extent, shapesdata.extent, shapes.extent, sizeof(Dgram), sizeof(Xtc));
+    // Xtc& data = *new((char*)shapesdata.alloc(sizeof(Xtc)) Xtc(TypeId(TypeId::Data, 0));
+    // printf("Size of payload is %zu", sizeof(Dgram)+dgram.xtc.sizeofPayload());
+    Xtc& data = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Data, 0));
+    // printf("Size of payload is %zu", sizeof(Dgram)+dgram.xtc.sizeofPayload());
+    memcpy(data.payload(), data_block, sizeofdata);
+
+    // printf("Size of payload is %zu", sizeof(Dgram)+dgram.xtc.sizeofPayload());
+    data.alloc(sizeofdata);
+    shapesdata.alloc(sizeofdata);
+    dgram.xtc.alloc(sizeofdata+sizeof(Xtc));
+    _sizeDgram =sizeof(Dgram)+dgram.xtc.sizeofPayload();
+    // printf("Dgram extent: %i, data extent: %i, sizeof(data): %zu, sizeof(xtc) %zu\n ", dgram.xtc.extent, data.extent, sizeofdata, sizeof(Xtc));
+    // printf("Size of payload is %zu", sizeof(Dgram)+dgram.xtc.sizeofPayload());
+    // _sizeDgram =  sizeof(Dgram)+dgram.xtc.sizeofPayload();
+    }
+
+    uint32_t dgramSize(){
+      return _sizeDgram;
+     }
+
+    uint32_t _sizeDgram;
 };
+
+};
+
 //}
 
 #endif // SHAPESDATA__H
