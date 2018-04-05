@@ -13,34 +13,6 @@
 
 using namespace Pds::HSD;
 
-namespace Pds {
-namespace HSD {
-class StreamHeader {
-public:
-  StreamHeader() {}
-public:
-  unsigned samples () const { return _word[0]&0x7fffffff; } // number of samples
-  bool     overflow() const { return _word[0]>>31; }        // overflow of memory buffer
-  unsigned boffs   () const { return (_word[1]>>0)&0xff; }  // padding at start
-  unsigned eoffs   () const { return (_word[1]>>8)&0xff; }  // padding at end
-  unsigned buffer  () const { return _word[1]>>16; }        // 16 front-end buffers (like FEE)
-                                                            // (only need 4 bits but using 16)
-  unsigned toffs   () const { return _word[2]; }            // phase between sample clock and timing clock (1.25GHz)
-                                                            // wrong if this value is not fixed
-  unsigned baddr   () const { return _word[3]&0xffff; }     // begin address in circular buffer
-  unsigned eaddr   () const { return _word[3]>>16; }        // end address in circular buffer
-  void     dump    () const
-  {
-    printf("  ");
-    for(unsigned i=0; i<4; i++)
-      printf("%08x%c", _word[i], i<3 ? '.' : '\n');
-    printf("  size [%04u]  boffs [%u]  eoffs [%u]  buff [%u]  toffs[%04u]  baddr [%04x]  eaddr [%04x]\n",
-           samples(), boffs(), eoffs(), buffer(), toffs(), baddr(), eaddr());
-  }
-private:
-  uint32_t _word[4];
-};
-
 //
 //  Validate raw stream : ramp signal repeats 0..0xfe
 //      phyclk period is 0.8 ns 
@@ -50,6 +22,8 @@ private:
 
 static bool _interleave = false;
 
+namespace Pds {
+  namespace HSD {
 class RawStream {
 public:
   RawStream(const EventHeader& event, const StreamHeader& strm) :
@@ -65,12 +39,12 @@ public:
     unsigned i=next.boffs();
     unsigned nerror(0);
     unsigned ntest (0);
-    const unsigned end = next.samples()-next.eoffs();
+    const unsigned end = next.samples()-8+next.eoffs();
     const uint16_t* p = reinterpret_cast<const uint16_t*>(&next+1);
     if (p[i] != adc) {
         ++nerror;
         printf("=== ERROR: Mismatch at first sample: adc [%x]  expected [%x]  delta[%d]\n",
-               p[i], adc, p[i]-adc);
+               p[i], adc, (p[i]-adc)&0x7ff);
     }
     adc = this->next(p[i]);
 
@@ -91,6 +65,7 @@ public:
   }
 private:
   unsigned adcVal(uint64_t pulseId) const {
+    printf("DPID = %u\n", (pulseId-_pid)&0xffffffff);
     uint64_t dclks = (pulseId-_pid)*1348;
     //    unsigned adc = (_adc+dclks)%255;
     unsigned adc = (_adc+dclks)&0x7ff;
@@ -127,11 +102,11 @@ public:
     //  (2) Verify each word of the compressed stream is found in the raw stream at the right location
 
     unsigned nerror(0), ntest(0);
-    const unsigned end = _strm.samples() - _strm.eoffs() - _strm.boffs();
-    const unsigned end_j = raw.samples() - raw  .eoffs() - raw  .boffs();
-    const uint16_t* p_thr = &reinterpret_cast<const uint16_t*>(&_strm+1)[_strm.boffs()];
-    const uint16_t* p_raw = &reinterpret_cast<const uint16_t*>(&raw  +1)[raw  .boffs()];
-    unsigned i=0, j=0;
+    const unsigned end = _strm.samples()-8+_strm.eoffs();
+    const unsigned end_j = raw.samples()-8+raw  .eoffs();
+    const uint16_t* p_thr = reinterpret_cast<const uint16_t*>(&_strm+1);
+    const uint16_t* p_raw = reinterpret_cast<const uint16_t*>(&raw  +1);
+    unsigned i=_strm.boffs(), j=raw.boffs();
     if (p_thr[i] & 0x8000) { // skip to the sample with the trigger
       i++;
       j++;

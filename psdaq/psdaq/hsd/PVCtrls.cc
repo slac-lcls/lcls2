@@ -4,6 +4,7 @@
 #include "psdaq/hsd/QABase.hh"
 #include "psdaq/hsd/Pgp2bAxi.hh"
 #include "psdaq/epicstools/EpicsCA.hh"
+#include "psdaq/epicstools/PvServer.hh"
 
 #include <algorithm>
 #include <sstream>
@@ -11,6 +12,7 @@
 #include <stdio.h>
 
 using Pds_Epics::EpicsCA;
+using Pds_Epics::PvServer;
 using Pds_Epics::PVMonitorCb;
 
 static std::string STOU(std::string s) {
@@ -61,15 +63,6 @@ namespace Pds {
     CPV(Reset       ,{if (TOU(data())) _ctrl.reset    ();}, {})
     CPV(PgpLoopback ,{_ctrl.loopback (TOU(data())!=0);   }, {})
 
-    class GPV : public EpicsCA {
-    public:
-      GPV(const char* pvName) :
-        EpicsCA(pvName, NULL) {}
-    public:
-      virtual ~GPV() {}
-    public:
-      void get() { if (connected()) _channel.get(); }
-    };
 
     PVCtrls::PVCtrls(Module& m) : _pv(0), _m(m) {}
     PVCtrls::~PVCtrls() {}
@@ -91,7 +84,7 @@ namespace Pds {
       std::string pvbase = o.str();
 
 #define NPV(name,pv)  _pv.push_back( new PV(name)(*this, (pvbase+pv).c_str()) )
-#define NPV1(name)  _pv.push_back( new GPV(STOU(pvbase+#name).c_str()) )
+#define NPV1(name)  _pv.push_back( new PvServer(STOU(pvbase+#name).c_str()) )
 
       NPV1(Enable);
       NPV1(Raw_Gate);
@@ -103,9 +96,9 @@ namespace Pds {
       NPV1(Fex_Xpre);
       NPV1(Fex_Xpost);
       NPV1(TestPattern);
-      NPV1(IntTrigVal);
-      NPV1(IntAFullVal);
-      _pv.push_back(new GPV((pvbase+"BASE:PARTITION").c_str()));
+      _pv.push_back(new PvServer((pvbase+"BASE:INTTRIGVAL" ).c_str()));
+      _pv.push_back(new PvServer((pvbase+"BASE:INTAFULLVAL").c_str()));
+      _pv.push_back(new PvServer((pvbase+"BASE:PARTITION"  ).c_str()));
       
       NPV(ApplyConfig,"BASE:APPLYCONFIG");
       NPV(Reset      ,"RESET");
@@ -127,49 +120,108 @@ namespace Pds {
       _m.stop();
 
       // Update all necessary PVs
-      for(unsigned i=0; i<LastPv; i++)
-        static_cast<GPV*>(_pv[i])->get();
+      for(unsigned i=0; i<LastPv; i++) {
+        PvServer* pv = static_cast<PvServer*>(_pv[i]);
+        while (!pv->EpicsCA::connected()) {
+          printf("pv[%u] not connected\n",i);
+          usleep(100000);
+        }
+        pv->update();
+      }
       ca_pend_io(0);
+
+      for(unsigned i=0; i<LastPv; i++) {
+        EpicsCA* pv = _pv[i];
+        printf("pv[%u] :",i);
+        unsigned* q = reinterpret_cast<unsigned*>(_pv[i]->data());
+        for(unsigned j=0; j<pv->data_size()/4; j++ )
+          printf(" %u", q[j]);
+        printf("\n");
+      }
+
+      _m.dumpPgp();
 
       // set testpattern
       int pattern = *reinterpret_cast<int*>(_pv[TestPattern]->data());
-      if (pattern<0)
-        _m.disable_test_pattern();
-      else
+      printf("Pattern: %d\n",pattern);
+      _m.disable_test_pattern();
+      if (pattern>=0)
         _m.enable_test_pattern((Module::TestPattern)pattern);
+
+      // _m.sample_init(32+48*length, 0, 0);
+      QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x80000);
+      base.init();
+      //  These aren't used...
+      //      base.samples = ;
+      //      base.prescale = ;
 
       // configure fex's for each channel
       unsigned channelMask = 0;
       for(unsigned i=0; i<4; i++) {
-        FexCfg& fex = _m.fex()[i];
-        if (TON(_pv[Enable]->data(),i)) {
+        if (TON(_pv[Enable]->data(),i))
           channelMask |= (1<<i);
-          fex._base[0].setGate(4,TON(_pv[Raw_Gate]->data(),i));
-          fex._base[0].setFull(0xc00,4);
-          fex._base[0]._prescale=TON(_pv[Raw_PS]->data(),i);
-          fex._base[0].setGate(4,TON(_pv[Fex_Gate]->data(),i));
-          fex._base[0].setFull(0xc00,4);
-          fex._base[0]._prescale=TON(_pv[Fex_PS]->data(),i);
-          fex._stream[1].parms[0].v=TON(_pv[Fex_Ymin]->data(),i);
-          fex._stream[1].parms[1].v=TON(_pv[Fex_Ymax]->data(),i);
-          fex._stream[1].parms[2].v=TON(_pv[Fex_Xpre]->data(),i);
-          fex._stream[1].parms[3].v=TON(_pv[Fex_Xpost]->data(),i);
-          fex._streams= (TON(_pv[Raw_PS]->data(),i)?1:0) | 
-            (TON(_pv[Fex_PS]->data(),i)?2:0);
+      }
+      printf("channelMask 0x%x\n",channelMask);
+      _m.setAdcMux( false, channelMask );
+
+      unsigned partition = TOU(_pv[Partition]->data());
+      _m.trig_daq(partition);
+
+      // configure fex's for each channel
+      for(unsigned i=0; i<4; i++) {
+        FexCfg& fex = _m.fex()[i];
+        if ((1<<i)&channelMask) {
+          unsigned streamMask=0;
+          if (TON(_pv[Raw_PS]->data(),i)) {
+            streamMask |= (1<<0);
+            fex._base[0].setGate(4,TON(_pv[Raw_Gate]->data(),i));
+            fex._base[0].setFull(0xc00,4);
+            fex._base[0]._prescale=TON(_pv[Raw_PS]->data(),i)-1;
+          }
+          if (TON(_pv[Fex_PS]->data(),i)) {
+            streamMask |= (1<<1);
+            fex._base[1].setGate(4,TON(_pv[Fex_Gate]->data(),i));
+            fex._base[1].setFull(0xc00,4);
+            fex._base[1]._prescale=TON(_pv[Fex_PS]->data(),i)-1;
+            fex._stream[1].parms[0].v=TON(_pv[Fex_Ymin]->data(),i);
+            fex._stream[1].parms[1].v=TON(_pv[Fex_Ymax]->data(),i);
+            fex._stream[1].parms[2].v=TON(_pv[Fex_Xpre]->data(),i);
+            fex._stream[1].parms[3].v=TON(_pv[Fex_Xpost]->data(),i);
+          }
+          fex._streams= streamMask;
         }
         else
           fex._streams= 0;
       }
 
-      // set base gate and mux
-      QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x80000);
-      base.init();
-      //      _m.sample_init(32+48*length, 0, 0);
-      _m.setAdcMux(false, channelMask);
 
-      // set trig (partition)
-      unsigned partition = TOU(_pv[Partition]->data());
-      _m.trig_daq(partition);
+#define PRINT_FEX_FIELD(title,arg,op) {                 \
+        printf("%12.12s:",title);                       \
+        for(unsigned i=0; i<4; i++) {                   \
+          if (((1<<i)&channelMask)==0) continue;        \
+          printf(" %u/%u",                              \
+                 fex[i]._base[0].arg op,                \
+                 fex[i]._base[1].arg op);               \
+        }                                               \
+        printf("\n"); }                             
+  
+      FexCfg* fex = _m.fex();
+      PRINT_FEX_FIELD("GateBeg", _gate, &0x3fff);
+      PRINT_FEX_FIELD("GateLen", _gate, >>16&0x3fff);
+      PRINT_FEX_FIELD("FullRow", _full, &0xffff);
+      PRINT_FEX_FIELD("FullEvt", _full, >>16&0x1f);
+      PRINT_FEX_FIELD("Prescal", _prescale, &0x3ff);
+
+      printf("streams:");
+      for(unsigned i=0; i<4; i++) {
+        if (((1<<i)&channelMask)==0) continue;
+        printf(" %2u", fex[i]._streams &0xf);
+      }
+      printf("\n");
+
+#undef PRINT_FEX_FIELD
+
+      base.dump();
 
       printf("Configure done\n");
 

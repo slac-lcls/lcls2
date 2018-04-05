@@ -35,17 +35,6 @@ target_link_libraries(hsd_eyescan
    rt
 )
 
-add_executable(hsdRead hsdRead.cc)
-
-target_include_directories(hsdRead PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-)
-
-target_link_libraries(hsdRead
-   pthread
-   rt
-)
-
 add_executable(hsd_init hsd_init.cc)
 
 target_include_directories(hsd_init PUBLIC
@@ -86,6 +75,21 @@ target_link_libraries(hsdPVs
     hsd
     mmhw
     rt
+)
+
+add_executable(hsdRead hsdRead.cc)
+
+target_include_directories(hsdRead PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(hsdRead
+   xtcdata
+   epicstools
+   ${EPICS_CA_LIB}
+   pthread
+   rt
 )
 
 add_executable(hsd_sim hsd_sim.cc)

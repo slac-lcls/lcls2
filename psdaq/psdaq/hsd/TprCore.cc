@@ -34,6 +34,13 @@ void TprCore::resetRxPll() {
   CSR = (v&~(1<<7));
 }
 
+void TprCore::resetBB() {
+  volatile uint32_t v = CSR;
+  CSR = (v|(1<<6));
+  usleep(10);
+  CSR = (v&~(1<<6));
+}
+
 void TprCore::resetCounts() {
   volatile uint32_t v = CSR;
   CSR = (v|1);

@@ -12,6 +12,7 @@ namespace Pds {
       void rxPolarity (bool p);
       void resetRx    ();
       void resetRxPll ();
+      void resetBB    ();
       void resetCounts();
       void setLCLS    ();
       void setLCLSII  ();
