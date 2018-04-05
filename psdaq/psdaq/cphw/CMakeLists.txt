@@ -73,6 +73,20 @@ target_link_libraries(amc_eyescan
     cphwr
 )
 
+#
+#  hsrCfg
+#
+add_executable(hsrCfg hsrCfg.cc)
+
+target_link_libraries(hsrCfg
+    cphwr
+    ${CPSW_LIBRARY}
+    ${YAML_CPP_LIBRARY}
+    dl
+    pthread
+    rt
+)
+
 install(TARGETS cphw
                 amc_timing
                 amc_timing_udp
