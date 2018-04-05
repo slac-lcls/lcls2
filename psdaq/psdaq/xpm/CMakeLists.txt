@@ -74,7 +74,7 @@ add_executable(xpmHsrCfg xpmHsrCfg.cc)
 
 target_link_libraries(xpmHsrCfg
    service
-   cphw
+   cphwr
    xpm
    ${EPICS_CA_LIB}
    epicstools

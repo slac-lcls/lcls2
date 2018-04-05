@@ -13,17 +13,20 @@ namespace Pds {
   namespace Xpm {
 
     class Module;
+    class PVPStats;
 
     class PVPCtrls
     {
     public:
       PVPCtrls(Module&,
                Semaphore&,
+               PVPStats&,
+               unsigned shelf,
                unsigned partition);
       ~PVPCtrls();
     public:
       void allocate(const std::string& title);
-      void enable(bool);
+      void enable(unsigned shelf);
       void update();
       bool enabled() const;
       void setPartition();
@@ -55,8 +58,10 @@ namespace Pds {
       enum { FixedRate, ACRate, Sequence };
     private:
       std::vector<Pds_Epics::PVBase*> _pv;
-      Module&  _m;
+      Module&    _m;
       Semaphore& _sem;
+      PVPStats&  _stats;
+      unsigned _shelf;
       unsigned _partition;
       bool     _enabled;
       unsigned _l0Select;

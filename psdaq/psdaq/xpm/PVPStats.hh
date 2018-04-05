@@ -14,15 +14,17 @@ namespace Pds {
   namespace Xpm {
     class PVPStats {
     public:
-      PVPStats();
+      PVPStats(Module&, unsigned partition);
       ~PVPStats();
     public:
       void allocate(const std::string& base);
-      void begin (const L0Stats& s);
-      void update(const L0Stats& ns, const L0Stats& os);
+      void update();
     private:
+      Module&                           _dev;
+      unsigned                          _partition;
       std::vector<Pds_Epics::PVWriter*> _pv;
       L0Stats                           _begin;
+      L0Stats                           _last;
     };
   };
 };

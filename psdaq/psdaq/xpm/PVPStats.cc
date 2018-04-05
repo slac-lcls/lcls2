@@ -13,7 +13,8 @@ using Pds_Epics::PVWriter;
 namespace Pds {
   namespace Xpm {
 
-    PVPStats::PVPStats() : _pv(0) {}
+    PVPStats::PVPStats(Module& dev, unsigned partition) : 
+      _dev(dev), _partition(partition), _pv(0) {}
     PVPStats::~PVPStats() {}
 
     void PVPStats::allocate(const std::string& title) {
@@ -43,21 +44,17 @@ namespace Pds {
       printf("Partition PVs allocated\n");
     }
 
-    void PVPStats::begin(const L0Stats& s)
-    {
-      _begin=s;
-      printf("Begin NumL0 %lu  Acc %lu\n",
-             s.numl0, s.numl0Acc);
-    }
-
 #define PVPUT(i,v)    { *reinterpret_cast<double*>(_pv[i]->data()) = double(v); _pv[i]->put(); }
 #define PVPUTA(p,m,v) { for (unsigned i = 0; i < m; ++i)                                \
                           reinterpret_cast<double  *>(_pv[p]->data())[i] = double  (v); \
                         _pv[p]->put();                                                  \
                       }
 
-    void PVPStats::update(const L0Stats& ns, const L0Stats& os)
+    void PVPStats::update()
     {
+      _dev.setPartition(_partition);
+      const L0Stats& os = _last;
+      L0Stats ns(_dev.l0Stats());
       PVPUT(9, double(ns.l0Enabled)*14.e-6/13.);
       unsigned l0Enabled = ns.l0Enabled - os.l0Enabled;
       double dt = double(l0Enabled)*14.e-6/13.;
@@ -73,6 +70,7 @@ namespace Pds {
         PVPUTA(8, 32, double(ns.linkInh[i]  - os.linkInh[i])  / double(numl0));
       }
       ca_flush_io();
+      _last = ns;
     }
   };
 };

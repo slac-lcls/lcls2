@@ -50,6 +50,8 @@ namespace Pds {
       for(unsigned i=0; i<32; i++) {
         PVPUSH(LinkTxReady);
         PVPUSH(LinkRxReady);
+        PVPUSH(LinkTxResetDone);
+        PVPUSH(LinkRxResetDone);
         PVPUSH(LinkRxRcv);
         PVPUSH(LinkRxErr);
         PVPUSH(LinkIsXpm);
@@ -83,6 +85,8 @@ namespace Pds {
       for(unsigned i=0; i<32; i++) {
         PVPUTI( nl[i].txReady );
         PVPUTI( nl[i].rxReady );
+        PVPUTI( nl[i].txResetDone );
+        PVPUTI( nl[i].rxResetDone );
         PVPUTI( (nl[i].rxRcvs - ol[i].rxRcvs) );
         PVPUTI( (nl[i].rxErrs - ol[i].rxErrs) );
         PVPUTI( nl[i].isXpm );

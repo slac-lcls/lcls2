@@ -25,6 +25,8 @@ L0Stats::L0Stats() {
 LinkStatus::LinkStatus() {
   txReady = 0;
   rxReady = 0;
+  txResetDone = 0;
+  rxResetDone = 0;
   isXpm   = 0;
   rxRcvs  = 0;
   rxErrs  = 0;
@@ -106,18 +108,20 @@ void Module::init()
 
   unsigned il = getLink();
 
-  printf("DsLnkCfg:  %4.4s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s\n",
-         "Link", "TxDelay", "Partn", "TrigSrc", "Loopback", "TxReset", "RxReset", "Enable");
+  printf("DsLnkCfg:  %4.4s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s\n",
+         "Link", "TxDelay", "Partn", "TrigSrc", "Loopback", "TxReset", "RxReset", "TxPllRst", "RxPllRst", "Enable");
   for(unsigned i=0; i<NDSLinks; i++) {
     setLink(i);
     printf("           %4u %8u %8u %8u %8u %8u %8u %8u\n",
            i,
-           getf(_dsLinkConfig,20,0),
+           getf(_dsLinkConfig,18,0),
            getf(_dsLinkConfig,4,20),
            getf(_dsLinkConfig,4,24),
            getf(_dsLinkConfig,1,28),
            getf(_dsLinkConfig,1,29),
            getf(_dsLinkConfig,1,30),
+           getf(_dsLinkConfig,1,18),
+           getf(_dsLinkConfig,1,19),
            getf(_dsLinkConfig,1,31));
   }
 
@@ -141,6 +145,15 @@ void Module::init()
   _timing.xbar.setOut( Pds::Cphw::XBar::BP  , Pds::Cphw::XBar::FPGA );
   _timing.xbar.setOut( Pds::Cphw::XBar::RTM0, Pds::Cphw::XBar::FPGA );
   _timing.xbar.setOut( Pds::Cphw::XBar::RTM1, Pds::Cphw::XBar::FPGA );
+
+  _hsRepeater[0].init();
+  _hsRepeater[1].init();
+  _hsRepeater[3].init();
+  _hsRepeater[4].init();
+
+  //  Consider resetting the backplane tx link
+  //  Would be disruptive to already running acquisitions
+  txLinkReset(16);
 
   /*
   printf("l0 enabled [%x]  reset [%x]\n",
@@ -175,12 +188,12 @@ void Module::clearLinks()
 void Module::linkTxDelay(unsigned link, unsigned v)
 {
   setLink(link);
-  setf(_dsLinkConfig, v, 20, 0);
+  setf(_dsLinkConfig, v, 18, 0);
 }
 unsigned Module::linkTxDelay(unsigned link) const
 {
   setLink(link);
-  return getf(_dsLinkConfig,    20, 0);
+  return getf(_dsLinkConfig,    18, 0);
 }
 
 void Module::linkPartition(unsigned link, unsigned v)
@@ -230,6 +243,22 @@ void Module::rxLinkReset(unsigned link)
   setf(_dsLinkConfig,1,1,30);
   usleep(10);
   setf(_dsLinkConfig,0,1,30);
+}
+
+void Module::txLinkPllReset(unsigned link)
+{
+  setLink(link);
+  setf(_dsLinkConfig,1,1,18);
+  usleep(10);
+  setf(_dsLinkConfig,0,1,18);
+}
+
+void Module::rxLinkPllReset(unsigned link)
+{
+  setLink(link);
+  setf(_dsLinkConfig,1,1,19);
+  usleep(10);
+  setf(_dsLinkConfig,0,1,19);
 }
 
 void Module::rxLinkDump(unsigned link) const
@@ -318,8 +347,10 @@ LinkStatus Module::linkStatus(unsigned link) const
   setLink(link);
   unsigned dsLinkStatus = _dsLinkStatus;
   //  printf("LinkStatus[%u] %08x\n", link,dsLinkStatus);
-  s.txReady = getf(dsLinkStatus,1,17);
-  s.rxReady = getf(dsLinkStatus,1,19);
+  s.txResetDone = getf(dsLinkStatus,1,16);
+  s.txReady     = getf(dsLinkStatus,1,17);
+  s.rxResetDone = getf(dsLinkStatus,1,18);
+  s.rxReady     = getf(dsLinkStatus,1,19);
   s.isXpm   = getf(dsLinkStatus,1,20);
   s.rxErrs  = getf(_dsLinkStatus,16,0);
   s.rxRcvs  = _dsLinkRcvs;
