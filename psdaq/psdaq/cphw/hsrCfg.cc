@@ -82,7 +82,7 @@ int main(int argc, char** argv)
   int  mde  = -1;
   bool rstRegs  = false;
   bool rstSMBus = false;
-  bool scan = false;
+  //  bool scan = false;
   bool dump = false;
   bool enable = false;
   const char* ofile=0;
@@ -132,7 +132,7 @@ int main(int argc, char** argv)
       rstSMBus = true;
       break;
     case 's':
-      scan = true;
+      //      scan = true;
       break;
     case 'd':
       dump = true;

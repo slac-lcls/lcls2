@@ -112,7 +112,7 @@ void Module::init()
          "Link", "TxDelay", "Partn", "TrigSrc", "Loopback", "TxReset", "RxReset", "TxPllRst", "RxPllRst", "Enable");
   for(unsigned i=0; i<NDSLinks; i++) {
     setLink(i);
-    printf("           %4u %8u %8u %8u %8u %8u %8u %8u\n",
+    printf("           %4u %8u %8u %8u %8u %8u %8u %8u %8u %8u\n",
            i,
            getf(_dsLinkConfig,18,0),
            getf(_dsLinkConfig,4,20),

@@ -265,7 +265,7 @@ int main(int argc, char** argv)
 
   unsigned shelf = strtoul(strchr(strchr(ip,'.')+1,'.')+1,NULL,10);
   //  Crate number is "c" in IP a.b.c.d
-  sprintf(module_prefix   ,"%s:XPM:%lu" ,
+  sprintf(module_prefix   ,"%s:XPM:%u" ,
           prefix,
           shelf);
   sprintf(partition_prefix,"%s:PART",prefix);

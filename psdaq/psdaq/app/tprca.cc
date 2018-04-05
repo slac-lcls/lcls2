@@ -949,9 +949,9 @@ int main(int argc, char** argv) {
     SEVCHK ( ca_context_create(ca_enable_preemptive_callback ), 
              "tprca calling ca_context_create" );
 
-    *new Pds::TprControl(reinterpret_cast<TprReg*>(ptr),
-                         name);
-
+    Pds::TprControl* tpr = new Pds::TprControl(reinterpret_cast<TprReg*>(ptr),
+                                               name);
+    delete tpr;
   }
 
   return 0;
