@@ -45,6 +45,7 @@ if __name__ == '__main__':
     # PVs
 
     for i in range(NPartitions):
+        pvdb[stationstr+':%d:XPM'                %i] = {'type' : 'int', 'value': 2}
         pvdb[stationstr+':%d:L0Select'           %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:L0Select_FixedRate' %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:L0Select_ACRate'    %i] = {'type' : 'int'}

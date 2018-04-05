@@ -88,6 +88,15 @@ class HsdConfig(QtWidgets.QWidget):
         PvRow( glo, 8, pvbase+':FEX_XPRE' , 'Fex Xpre')
         PvRow( glo, 9, pvbase+':FEX_XPOST', 'Fex Xpost')
         lo.addLayout(glo)
+
+        hlo = QtWidgets.QHBoxLayout()
+        hlo.addWidget(QtWidgets.QLabel('Test Pattern (None=-1)'))
+        hlo.addWidget(PvEditInt(pvbase+':TESTPATTERN',''))
+        hlo.addStretch(1)
+        lo.addLayout(hlo)
+
+        lo.addWidget(PvPushButton( pvbase+':BASE:APPLYCONFIG', 'Configure'))
+
         lo.addStretch(1)
         
         self.setLayout(lo)
@@ -164,13 +173,6 @@ class HsdExpert(QtWidgets.QWidget):
         lo.addWidget(PvPushButton( pvbase+':RESET', 'Reset'))
         lo.addWidget(PvCheckBox( pvbase+':PGPLOOPBACK', 'Loopback'))
 
-        hlo = QtWidgets.QHBoxLayout()
-        hlo.addWidget(QtWidgets.QLabel('Test Pattern (None=-1)'))
-        hlo.addWidget(PvEditInt(pvbase+':TESTPATTERN',''))
-        hlo.addStretch(1)
-
-        lo.addWidget(PvPushButton( pvbase+':BASE:APPLYCONFIG', 'Configure'))
-        lo.addLayout(hlo)
         lo.addStretch(1)
 
         self.setLayout(lo)

@@ -10,6 +10,7 @@ import pdb
 
 NLanes = 4
 NApps = 4
+WfLen = 1024
 
 class myDriver(Driver):
     def __init__(self):
@@ -94,7 +95,7 @@ if __name__ == '__main__':
                                     'value' : [200]*4 }
     pvdb[stationstr+'FEX_PS'   ] = {'type' : 'int', 
                                     'count': 4,
-                                    'value' : [1]*2 }
+                                    'value' : [1]*4 }
     pvdb[stationstr+'FEX_YMIN' ] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [508]*4 }
@@ -185,6 +186,14 @@ if __name__ == '__main__':
     pvdb[stationstr+'FEX_FREEBUFEVT'] = {'type' : 'int',
                                         'count': 4,
                                         'value' : [0]*4 }
+
+    # Data monitoring
+    pvdb[stationstr+'RAWDATA'] = {'type' : 'int',
+                                  'count': WfLen,
+                                  'value' : [512]*WfLen }
+    pvdb[stationstr+'FEXDATA'] = {'type' : 'int',
+                                  'count': WfLen,
+                                  'value' : [512]*WfLen }
 
     # printDb(pvdb, prefix)
     printDb()
