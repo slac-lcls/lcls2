@@ -13,6 +13,9 @@ class Ui_MainWindow(object):
 
         lol = QtWidgets.QVBoxLayout()
 
+        LblEditInt   (lol, pvbase, 'XPM')
+#        lol.addWidget( PvEditInt(pvbase+'XPM','XPM') );
+
         trgbox = QtWidgets.QGroupBox('Trigger')
         trglo = QtWidgets.QVBoxLayout()
         LblEditEvt   (trglo, pvbase, "L0Select"        )

@@ -98,8 +98,9 @@ class PvInt(PvEditInt):
 
 class PvEditDbl(PvEditTxt):
 
-    def __init__(self, pv):
+    def __init__(self, pv,fmt='{:g}'):
         super(PvEditDbl, self).__init__(pv)
+        self.fmt = fmt
 
     def setPv(self):
         value = float(self.text())
@@ -110,11 +111,11 @@ class PvEditDbl(PvEditTxt):
         if err is None:
             s = 'fail'
             try:
-                s = '{:.2f}'.format(q)
+                s = self.fmt.format(q)
             except:
                 v = ''
                 for i in range(len(q)):
-                    v = v + ' {:.2f}'.format(q[i])
+                    v = v + ' ' + self.fmt.format(q[i])
                 s = v
 
             self.valueSet.emit(s)
@@ -123,8 +124,8 @@ class PvEditDbl(PvEditTxt):
 
 class PvDbl(PvEditDbl):
 
-    def __init__(self,pv):
-        super(PvDbl, self).__init__(pv)
+    def __init__(self,pv,fmt='{:g}'):
+        super(PvDbl, self).__init__(pv,fmt)
         self.setEnabled(False)
 
 
@@ -230,13 +231,13 @@ class PvEditDst(QtWidgets.QWidget):
         self.setLayout(vbox)
 
 class PvRowDbl():
-    def __init__(self, row, layout, prefix, pv, label, ncols=NReadoutChannels):
+    def __init__(self, row, layout, prefix, pv, label, ncols=NReadoutChannels, fmt='{:'):
         qlabel = QtWidgets.QLabel(label)
         qlabel.setMinimumWidth(RowHdrLen)
         layout.addWidget(qlabel,row,0)
 
         for i in range(ncols):
-            qedit = PvEditDbl(prefix+':CH%u:'%i+pv)
+            qedit = PvEditDbl(prefix+':CH%u:'%i+pv, fmt)
             layout.addWidget(qedit,row,i+1)
         row += 1
 
@@ -340,7 +341,7 @@ class Ui_MainWindow(object):
         PvRowEvt( row+6, layout, pvname)
         PvRowInt( row+7, layout, pvname, "BSTART", "BsaStart [pul]")
         PvRowInt( row+8, layout, pvname, "BWIDTH", "BsaWidth [pul]")
-        PvRowDbl( row+9, layout, pvname, "RATE"  , "Rate [Hz]")
+        PvRowDbl( row+9, layout, pvname, "RATE"  , "Rate [Hz]", fmt='{:.2f}')
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
         scroll = QtWidgets.QScrollArea()

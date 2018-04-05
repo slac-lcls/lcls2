@@ -69,7 +69,8 @@ class PvPushButtonX(QtWidgets.QPushButton):
         self.pv = Pv.Pv(pvname)
 
     def buttonClicked(self):
-        self.pv.put(1)          # Value is immaterial
+        self.pv.put(1)
+        self.pv.put(0)
 
 class PvEditIntX(PvEditInt):
 
@@ -100,7 +101,9 @@ def FrontPanelAMC(pvbase,iamc):
         LblPushButtonX(dslo, pvbase, "RxLinkReset",    NDsLinks, start=iamc*NDsLinks)
         LblPushButtonX(dslo, pvbase, "RxLinkDump" ,    NDsLinks, start=iamc*NDsLinks)
         LblCheckBox   (dslo, pvbase, "LinkEnable",     NDsLinks, start=iamc*NDsLinks)
+        LblCheckBox   (dslo, pvbase, "LinkRxResetDone", NDsLinks, start=iamc*NDsLinks, enable=False)
         LblCheckBox   (dslo, pvbase, "LinkRxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkTxResetDone", NDsLinks, start=iamc*NDsLinks, enable=False)
         LblCheckBox   (dslo, pvbase, "LinkTxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
         LblCheckBox   (dslo, pvbase, "LinkIsXpm",      NDsLinks, start=iamc*NDsLinks, enable=False)
         LblCheckBox   (dslo, pvbase, "LinkLoopback",   NDsLinks)
@@ -122,7 +125,7 @@ class Ui_MainWindow(object):
         lol = QtWidgets.QVBoxLayout()
         lor = QtWidgets.QVBoxLayout()
 
-        PvLabel  (lol, pvbase, "PARTITIONS"  )
+#        PvLabel  (lol, pvbase, "PARTITIONS"  )
         PvLabel  (lol, pvbase, "PAddr"       , isInt=True)
         PvCString(lol, pvbase, "FwBuild"     )
 
