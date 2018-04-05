@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <new>
+#include <cinttypes>
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/hsd/hsd.hh"
 
@@ -65,7 +66,7 @@ public:
   }
 private:
   unsigned adcVal(uint64_t pulseId) const {
-    printf("DPID = %u\n", (pulseId-_pid)&0xffffffff);
+    printf("DPID = %" PRIu64 "\n", (pulseId-_pid)&0xffffffff);
     uint64_t dclks = (pulseId-_pid)*1348;
     //    unsigned adc = (_adc+dclks)%255;
     unsigned adc = (_adc+dclks)&0x7ff;
