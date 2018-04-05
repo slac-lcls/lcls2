@@ -1,3 +1,7 @@
+#include "psdaq/epicstools/PVWriter.hh"
+using Pds_Epics::PVWriter;
+
+#include "psdaq/hsd/hsd.hh"
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -41,7 +45,8 @@ void printUsage(char* name) {
       "                bit 00          print out progress\n"
       "    -N        Exit after N events\n"
       "    -r        Report rate\n"
-      "    -v <mask> Validate each event\n",
+      "    -v <mask> Validate each event\n"
+      "    -E <str>  Push 1Hz waveforms to record <str>\n",
       name
   );
 }
@@ -73,12 +78,13 @@ int main (int argc, char **argv) {
   unsigned            payloadBuffers      = 0;
   bool                reportRate          = false;
   unsigned            nlanes              = 0;
+  const char*         pv                  = 0;
   ::signal( SIGINT, sigHandler );
 
   //  char*               endptr;
   extern char*        optarg;
   int c;
-  while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:N:o:rv:V:" ) ) != EOF ) {
+  while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:N:o:rv:V:E:" ) ) != EOF ) {
     switch(c) {
     case 'P':
       strcpy(pgpcard, optarg);
@@ -123,6 +129,9 @@ int main (int argc, char **argv) {
     case 'V':
       payloadBuffers = strtoul(optarg, NULL, 0);
       break;
+    case 'E':
+      pv = optarg;
+      break;
     case 'h':
       printUsage(argv[0]);
       return 0;
@@ -160,6 +169,19 @@ int main (int argc, char **argv) {
     ret = write(fd,&pgpCardTx,sizeof(PgpCardTx));
   }
 
+  PVWriter* pvraw=0;
+  PVWriter* pvfex=0;
+  if (pv) {
+    printf("Initializing context\n");
+    SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
+             "Calling ca_context_create" );
+
+    std::string pvbase(pv);
+    pvraw = new PVWriter((pvbase+":RAWDATA").c_str());
+    pvfex = new PVWriter((pvbase+":FEXDATA").c_str());
+    ca_pend_io(0);
+  }
+
   // Allocate a buffer
   maxSize = 1024*1024*2;
   data = (uint *)malloc(sizeof(uint)*maxSize);
@@ -180,6 +202,8 @@ int main (int argc, char **argv) {
   uint64_t ppulseId =0, dpulseId =0;
   memset(nextCount,0,sizeof(nextCount));
 
+  unsigned tsec=0;
+
   // DMA Read
   do {
     ret = read(fd,&pgpCardRx,sizeof(PgpCardRx));
@@ -188,6 +212,7 @@ int main (int argc, char **argv) {
       break;
 
     if ( ret != 0 ) {
+
       if (print) {
 
         cout << "Ret=" << dec << ret;
@@ -253,6 +278,43 @@ int main (int argc, char **argv) {
       if (writeFile) {
         data[6] |= (pgpCardRx.pgpLane<<20);  // write the lane into the event header
         fwrite(pgpCardRx.data,sizeof(unsigned),ret,writeFile);
+      }
+
+      if (pv && tsec != data[3] && pgpCardRx.pgpLane==0) {
+        tsec = data[3];
+
+        Pds::HSD::EventHeader& evhdr = *reinterpret_cast<Pds::HSD::EventHeader*>(pgpCardRx.data); 
+
+        Pds::HSD::StreamHeader& rawhdr = *new(&evhdr+1) Pds::HSD::StreamHeader;
+
+        const uint16_t* raw = reinterpret_cast<const uint16_t*>(&rawhdr+1) + rawhdr.boffs();
+        for(unsigned i=0; i<rawhdr.samples() && i<pvraw->nelem(); i++)
+          reinterpret_cast<unsigned*>(pvraw->data())[i] = raw[i];
+        pvraw->put();
+
+        void* next = const_cast<uint16_t*>(&raw[rawhdr.samples()]);
+
+        Pds::HSD::StreamHeader& fexhdr = *new(next) Pds::HSD::StreamHeader;
+
+        const uint16_t* fex = reinterpret_cast<const uint16_t*>(&fexhdr+1) + fexhdr.boffs();
+        int nskip=0;
+        for(unsigned i=0; i<fexhdr.samples() && i<pvfex->nelem(); i++) {
+          if (nskip) {
+            reinterpret_cast<unsigned*>(pvfex->data())[i] = 0x200;
+            nskip--;
+          }
+          else {
+            if (fex[i]&0x8000) {
+              nskip = fex[i]&0x7fff;
+              reinterpret_cast<unsigned*>(pvfex->data())[i] = 0x200;
+            }
+            else
+              reinterpret_cast<unsigned*>(pvfex->data())[i] = fex[i];
+          }
+        }
+        pvfex->put();
+
+        ca_flush_io();
       }
 
       if (delay) {

@@ -10,7 +10,8 @@ namespace Pds_Epics {
     PVWriter(const char* pvName) : EpicsCA(pvName,0) {}
     ~PVWriter() {}
   public:
-    void  put() { if (connected()) _channel.put(); }
+    void     put  () { if (connected()) _channel.put(); }
+    unsigned nelem() const { return _channel.nelements(); }
   };
 
 };

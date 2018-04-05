@@ -15,6 +15,7 @@
 #include "psdaq/hsd/Module.hh"
 #include "psdaq/hsd/Globals.hh"
 #include "psdaq/hsd/TprCore.hh"
+#include "psdaq/hsd/QABase.hh"
 #include "psdaq/mmhw/RingBuffer.hh"
 
 using Pds::Mmhw::RingBuffer;
@@ -31,6 +32,7 @@ void usage(const char* p) {
   printf("\t-C <initialize clock synthesizer>\n");
   printf("\t-R <reset timing frame counters>\n");
   printf("\t-X <reset gtx timing receiver>\n");
+  printf("\t-Y <reset gtx timing transmitter>\n");
   printf("\t-P <reverse gtx rx polarity>\n");
   printf("\t-0 <dump raw timing receive buffer>\n");
   printf("\t-1 <dump timing message buffer>\n");
@@ -49,6 +51,7 @@ int main(int argc, char** argv) {
   bool lSetupClkSynth = false;
   bool lReset = false;
   bool lResetRx = false;
+  bool lResetTx = false;
   bool lPolarity = false;
   bool lRing0 = false;
   bool lRing1 = false;
@@ -63,7 +66,7 @@ int main(int argc, char** argv) {
 #endif
   unsigned trainRefDelay = 0;
 
-  while ( (c=getopt( argc, argv, "CRXP0123D:d:htT:W:")) != EOF ) {
+  while ( (c=getopt( argc, argv, "CRXYP0123D:d:htT:W:")) != EOF ) {
     switch(c) {
     case 'C':
       lSetupClkSynth = true;
@@ -76,6 +79,9 @@ int main(int argc, char** argv) {
       break;
     case 'X':
       lResetRx = true;
+      break;
+    case 'Y':
+      lResetTx = true;
       break;
     case '0':
       lRing0 = true;
@@ -161,8 +167,16 @@ int main(int argc, char** argv) {
       break;
     }
     p->tpr().resetRxPll();
-    usleep(10000);
-    p->tpr().resetRx();
+    usleep(1000000);
+    //    p->tpr().resetRx();
+    p->tpr().resetBB();
+  }
+
+  if (lResetTx) {
+    QABase& base = *reinterpret_cast<QABase*>((char*)p->reg()+0x80000);
+    base.resetFbPLL();
+    usleep(100000);
+    base.resetFb();
   }
 
   if (lReset)

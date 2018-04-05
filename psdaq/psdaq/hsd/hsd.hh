@@ -2,6 +2,7 @@
 #define HSD_EVENTHEADER_HH
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include "xtcdata/xtc/Dgram.hh"
 
@@ -26,7 +27,7 @@ namespace Pds {
         uint32_t* word = (uint32_t*) this;
         for(unsigned i=0; i<8; i++)
           printf("%08x%c", word[i], i<7 ? '.' : '\n');
-        printf("pID [%016lux]  time [%u.%09u]  trig [%04x]  event [%u]  sync [%u]\n",
+        printf("pID [%016llx]  time [%u.%09u]  trig [%04x]  event [%u]  sync [%u]\n",
                pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
                readoutGroups(), eventCount(), sync());
       }
@@ -34,6 +35,31 @@ namespace Pds {
       uint32_t _syncword;
     };
 
+    class StreamHeader {
+    public:
+      StreamHeader() {}
+    public:
+      unsigned samples () const { return _word[0]&0x7fffffff; } // number of samples
+      bool     overflow() const { return _word[0]>>31; }        // overflow of memory buffer
+      unsigned boffs   () const { return (_word[1]>>0)&0xff; }  // padding at start
+      unsigned eoffs   () const { return (_word[1]>>8)&0xff; }  // padding at end
+      unsigned buffer  () const { return _word[1]>>16; }        // 16 front-end buffers (like FEE)
+      // (only need 4 bits but using 16)
+      unsigned toffs   () const { return _word[2]; }            // phase between sample clock and timing clock (1.25GHz)
+      // wrong if this value is not fixed
+      unsigned baddr   () const { return _word[3]&0xffff; }     // begin address in circular buffer
+      unsigned eaddr   () const { return _word[3]>>16; }        // end address in circular buffer
+      void     dump    () const
+      {
+        printf("  ");
+        for(unsigned i=0; i<4; i++)
+          printf("%08x%c", _word[i], i<3 ? '.' : '\n');
+        printf("  size [%04u]  boffs [%u]  eoffs [%u]  buff [%u]  toffs[%04u]  baddr [%04x]  eaddr [%04x]\n",
+               samples(), boffs(), eoffs(), buffer(), toffs(), baddr(), eaddr());
+      }
+    private:
+      uint32_t _word[4];
+    };
   }
 }
 
