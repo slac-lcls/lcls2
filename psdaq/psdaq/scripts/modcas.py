@@ -44,8 +44,7 @@ if __name__ == '__main__':
     prefix = args.P
     
     # PVs
-    pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 255}
-    #pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 1}
+#    pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 255}
     pvdb[':PAddr'              ] = {'type' : 'int'}
     pvdb[':FwBuild'            ] = {'type' : 'char', 'count':256}
     pvdb[':ModuleInit'         ] = {'type' : 'int'}
@@ -75,6 +74,8 @@ if __name__ == '__main__':
         pvdb[':LinkEnable'   +'%d'%i] = {'type' : 'int', 'value' : LinkEnable[i] }
         pvdb[':LinkTxReady'  +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkRxReady'  +'%d'%i] = {'type' : 'int'}
+        pvdb[':LinkTxResetDone'  +'%d'%i] = {'type' : 'int'}
+        pvdb[':LinkRxResetDone'  +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkRxRcv'    +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkRxErr'    +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkIsXpm'    +'%d'%i] = {'type' : 'int'}
