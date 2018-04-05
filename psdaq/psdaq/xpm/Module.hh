@@ -47,7 +47,9 @@ namespace Pds {
     public:
       LinkStatus();
     public:
+      bool     txResetDone;
       bool     txReady;
+      bool     rxResetDone;
       bool     rxReady;
       bool     isXpm;
       uint32_t rxRcvs;
@@ -143,6 +145,8 @@ namespace Pds {
       bool     linkLoopback(unsigned) const;
       void     txLinkReset (unsigned);
       void     rxLinkReset (unsigned);
+      void     txLinkPllReset (unsigned);
+      void     rxLinkPllReset (unsigned);
       void     rxLinkDump  (unsigned) const;
       void     linkEnable  (unsigned, bool);
       bool     linkEnable  (unsigned) const;
@@ -187,7 +191,9 @@ namespace Pds {
       //  [24]    tagStream     Enable tag FIFO streaming input
       Cphw::Reg   _index;
       //  0x0008 - RW: ds link configuration for link[index]
-      //  [19:0]  txDelay       Transmit delay
+      //  [17:0]  txDelay       Transmit delay
+      //  [18]    txPllReset    Transmit reset
+      //  [19]    rxPllReset    Receive  reset
       //  [23:20] partition     Partition
       //  [27:24] trigsrc       Trigger source
       //  [28]    loopback      Loopback mode

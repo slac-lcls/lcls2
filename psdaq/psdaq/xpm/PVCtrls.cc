@@ -83,14 +83,20 @@ namespace Pds {
     CPV(LinkEnable,     { GPVG(linkEnable(_idx, TOU(data()) != 0));    },
                         { GPVP(linkEnable(_idx));                      })
 
+#if 0
     CPV(LinkRxReady,    { },
                         { GPVP(linkRxReady(_idx));                     })
     CPV(LinkTxReady,    { },
                         { GPVP(linkTxReady(_idx));                     })
+    CPV(LinkRxResetDone,{ },
+                        { GPVP(linkRxResetDone(_idx));                 })
+    CPV(LinkTxResetDone,{ },
+                        { GPVP(linkTxResetDone(_idx));                 })
     CPV(LinkIsXpm,      { },
                         { GPVP(linkIsXpm(_idx));                       })
     CPV(LinkRxErr,      { },
                         { GPVP(linkRxErr(_idx));                       })
+#endif
 
     CPV(PLL_BW_Select,  { GPVG(pllBwSel  (_idx, TOU(data())));         },
                         { GPVP(pllBwSel  (_idx));                      })

@@ -48,13 +48,14 @@ namespace Pds {
       ::exit(signal);
     }
 
-    class StatsTimer : public Timer, public PVMonitorCb {
+    class StatsTimer : public Timer {
     public:
       StatsTimer(Module& dev);
       ~StatsTimer() { _task->destroy(); }
     public:
       void allocate(const char* module_prefix,
-                    const char* partition_prefix);
+                    const char* partition_prefix,
+                    unsigned    shelf);
       void start   ();
       void cancel  ();
       void expired ();
@@ -72,15 +73,15 @@ namespace Pds {
       Task*      _task;
       string     _module_prefix;
       string     _partition_prefix;
+      unsigned   _shelf;
       EpicsCA*   _partPV;
       PVWriter*    _paddrPV;
       PVWriter*    _fwBuildPV;
-      unsigned   _partitions;
       timespec   _t;
       CoreCounts _c;
       LinkStatus _links[32];
       L0Stats    _s    [Pds::Xpm::Module::NPartitions];
-      PVPStats   _pvps [Pds::Xpm::Module::NPartitions];
+      PVPStats*  _pvps [Pds::Xpm::Module::NPartitions];
       PVStats    _pvs;
       PVCtrls    _pvc;
       PVPCtrls*  _pvpc [Pds::Xpm::Module::NPartitions];
@@ -106,16 +107,17 @@ StatsTimer::StatsTimer(Module& dev) :
   _dev       (dev),
   _sem       (Semaphore::FULL),
   _task      (new Task(TaskObject("PtnS"))),
-  _partitions(0),
   _pvc       (dev,_sem)
 {
 }
 
 void StatsTimer::allocate(const char* module_prefix,
-                          const char* partition_prefix)
+                          const char* partition_prefix,
+                          unsigned    shelf)
 {
   _module_prefix    = module_prefix;
   _partition_prefix = partition_prefix;
+  _shelf            = shelf;
 
   _task->call(new PvAllocate(*this));
 }
@@ -128,14 +130,11 @@ void StatsTimer::_allocate()
   for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
     std::stringstream ostr;
     ostr << _partition_prefix << ":" << i;
-    _pvps[i].allocate(ostr.str());
-    _pvpc[i] = new PVPCtrls(_dev,_sem,i);
+    _pvps[i] = new PVPStats(_dev,i);
+    _pvps[i]->allocate(ostr.str());
+    _pvpc[i] = new PVPCtrls(_dev,_sem,*_pvps[i],_shelf,i);
     _pvpc[i]->allocate(ostr.str());
   }
-
-  { std::stringstream ostr;
-    ostr << _module_prefix << ":PARTITIONS";
-    _partPV  = new EpicsCA(ostr.str().c_str(),this); }
 
   { std::stringstream ostr;
     ostr << _module_prefix << ":PAddr";
@@ -151,47 +150,13 @@ void StatsTimer::_allocate()
   ca_pend_io(0);
 }
 
-void StatsTimer::updated()  // PARTITIONS updated
-{
-  unsigned partitions = *reinterpret_cast<const unsigned*>(_partPV->data());
-
-  printf("StatsTimer::updated  _partitions %08x -> %08x\n",
-         _partitions, partitions);
-
-  //
-  //  Disable partition control 
-  //
-  unsigned disabled = _partitions & ~partitions;
-  for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
-    if ((1<<i)&disabled) {
-      _pvpc[i]->enable(false);
-    }
-  }
-
-  //
-  //  Update new partition controls
-  //
-  unsigned enabled = partitions & ~_partitions;
-  for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
-    if ((1<<i)&enabled) {
-      _sem.take();
-      _dev.setPartition(i);
-      _s[i] = _dev.l0Stats();
-      _sem.give();
-      _pvpc[i]->enable(true);
-    }
-  }
-
-  _partitions = partitions;
-}
-
 void StatsTimer::start()
 {
   //theTimer = this;
 
   _dev._timing.resetStats();
 
-  //  _pvs.begin(_dev.l0Stats());
+  //  _pvs.begin();
   Timer::start();
 }
 
@@ -220,16 +185,11 @@ void StatsTimer::expired()
   _t=t;
 
   for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
-    if ((1<<i)&_partitions) {
+    if (_pvpc[i]->enabled()) {
       _sem.take();
       _dev.setPartition(i);
-      L0Stats    s = _dev.l0Stats();
-      _pvps[i].update(s,_s[i]);
+      _pvps[i]->update();
       _sem.give();
-      _s[i]=s;
-      //      printf("-- partition %u --\n",i);
-      //      _pvpc[i]->dump();
-      //      s.dump();
     }
   }
   _pvc.dump();
@@ -303,10 +263,11 @@ int main(int argc, char** argv)
     exit(1);
   }
 
+  unsigned shelf = strtoul(strchr(strchr(ip,'.')+1,'.')+1,NULL,10);
   //  Crate number is "c" in IP a.b.c.d
   sprintf(module_prefix   ,"%s:XPM:%lu" ,
           prefix,
-          strtoul(strchr(strchr(ip,'.')+1,'.')+1,NULL,10));
+          shelf);
   sprintf(partition_prefix,"%s:PART",prefix);
 
   Pds::Cphw::Reg::set(ip, port, 0);
@@ -321,7 +282,8 @@ int main(int argc, char** argv)
   ::signal( SIGINT, sigHandler );
 
   timer->allocate(module_prefix,
-                  partition_prefix);
+                  partition_prefix,
+                  shelf);
   timer->start();
 
   task->mainLoop();

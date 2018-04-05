@@ -1,5 +1,6 @@
 #include "psdaq/xpm/PVPCtrls.hh"
 #include "psdaq/xpm/Module.hh"
+#include "psdaq/xpm/PVPStats.hh"
 #include "psdaq/epicstools/PVBase.hh"
 #include "psdaq/service/Semaphore.hh"
 
@@ -75,6 +76,8 @@ namespace Pds {
 
     //    CPV(Inhibit,        { PVG(setInhibit  (TOU(data())));             },
     //                        { PVP(getInhibit  ());                        })
+    CPV(XPM,                 {} _ctrl.enable(TOU(data()));,
+                             {                                           })
     CPV(TagStream,      { PVG(setTagStream(TOU(data())));             },
                         { PVP(getTagStream());                        })
 
@@ -156,8 +159,11 @@ namespace Pds {
 
     PVPCtrls::PVPCtrls(Module&  m,
                        Semaphore& sem,
+                       PVPStats&  stats,
+                       unsigned shelf,
                        unsigned partition) : 
-    _pv(0), _m(m), _sem(sem), _partition(partition), _enabled(false) {}
+    _pv(0), _m(m), _sem(sem), _stats(stats),
+      _shelf(shelf), _partition(partition), _enabled(false) {}
     PVPCtrls::~PVPCtrls() {}
 
     void PVPCtrls::allocate(const std::string& title)
@@ -184,6 +190,7 @@ namespace Pds {
       }
 
       //      NPV ( Inhibit             );  // Not implemented in firmware
+      NPV ( XPM                 );
       NPV ( TagStream           );
       NPV ( L0Select            );
       NPV ( L0Select_FixedRate  );
@@ -220,11 +227,20 @@ namespace Pds {
       ca_pend_io(0);
     }
 
-    void PVPCtrls::enable(bool v)
+    void PVPCtrls::enable(unsigned shelf)
     {
+      printf("PVPCtrls::enable %u(%u)\n", shelf, _shelf);
+      bool v = (shelf==_shelf);
       _enabled = v;
+
       if (v) {
-        for(unsigned i=0; i<_pv.size(); i++)
+        sem().take();
+        setPartition();
+        _m.resetL0();
+        sem().give();
+
+        //  Must not update "XPM" else we call ourselves recursively
+        for(unsigned i=1; i<_pv.size(); i++)
           _pv[i]->updated();
 
 #define PrV(v) printf("\t %15.15s: %x\n", #v, v)
