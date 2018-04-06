@@ -8,7 +8,7 @@ import numpy as np
 import multiprocessing as mp
 
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import pyqtSlot, QTimer
+from PyQt5.QtCore import pyqtSlot, QTimer, QRect
 
 import pyqtgraph as pg
 
@@ -39,6 +39,30 @@ class CommunicationHandler(object):
         self.sock.send_string('set_graph', zmq.SNDMORE)
         self.sock.send_pyobj(graph)
         return self.sock.recv_string() == 'ok'
+
+
+class ScalarWidget(QLCDNumber):
+    def __init__(self, topic, host, port, parent=None):
+        super(__class__, self).__init__(parent)
+        self.topic = topic
+        self.timer = QTimer()
+        self.setGeometry(QRect(320, 180, 191, 81))
+        self.setObjectName(topic)
+        self.comm_handler = CommunicationHandler(host, port)
+        self.timer.timeout.connect(self.get_scalar)
+        self.timer.start(1000)
+
+    @pyqtSlot()
+    def get_scalar(self):
+        self.comm_handler.sock.send_string("feature:%s"%self.topic)
+        reply = self.comm_handler.sock.recv_string()
+        if reply == 'ok':
+            self.scalar_updated(self.comm_handler.sock.recv_pyobj())
+        else:
+            print("failed to fetch %s from manager!"%self.topic)
+
+    def scalar_updated(self, data):
+        self.display(data)
 
 
 class WaveformWidget(pg.GraphicsLayoutWidget):
@@ -136,8 +160,12 @@ class DetectorList(QListWidget):
             self._spawn_window('WaveformDetector', item.text())
             print('create waveform window for:', item.text())
 
+        elif self.features[item.text()] == DataTypes.Scalar:
+            self._spawn_window('ScalarDetector', item.text())
+            print('create waveform window for:', item.text())
+
         else:
-            raise ValueError('Type %s not valid' % self.detectors[item.text()])
+            print('Type %s not valid' % self.features[item.text()])
 
         return
 
@@ -166,6 +194,9 @@ def run_widget(queue, window_type, topic, host, port):
 
     elif window_type == 'WaveformDetector':
         widget = WaveformWidget(topic, host, port, win)
+
+    elif window_type == 'ScalarDetector':
+        widget = ScalarWidget(topic, host, port, win)
 
     else:
         raise ValueError('%s not valid window_type' % window_type)
