@@ -2,9 +2,9 @@ import numpy as np
 import dgramCreate as dc
 
 DETNAME = b'xpphsd'
-DETTYPE = b'cspad'
+DETTYPE = b'hsd'
 DETID = b'detnum1234'
-NAMESID = 1234
+NAMESID = 0
 NUM_ELEM = 2
 
 def generate_block(det_name, det_type, det_id, names_id, num_elem):
@@ -27,10 +27,10 @@ def generate_block(det_name, det_type, det_id, names_id, num_elem):
     data_block = [[dc.nameinfo(det_name, det_type, det_id, names_id)]]
 
     for i in range(num_elem):
-        data_block.append([[b"name%i" % i, dc.alg(b"alg%i" % i, [0, 1, 2])], dat_arr[i]])
+        data_block.append([[b"name%i" % i, dc.alg(b"raw", [0, 0, 0])], dat_arr[i]])
     return data_block, dat_arr
 
-VERBOSE = True
+VERBOSE = 1
 DATA_BLOCK, DAT_ARR = generate_block(DETNAME, DETTYPE, DETID, NAMESID, NUM_ELEM)
 dc.blockcreate(DATA_BLOCK)
 
