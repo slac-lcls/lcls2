@@ -301,34 +301,24 @@ private:
 class pyDgram : public Xtc
 { 
 public:
-    // Dgram& dgram = *(Dgram*)malloc(0x1);
 
     pyDgram(uint8_t *name_block, uint8_t* shape_block, size_t block_elems,
                    uint8_t* data_block, size_t sizeofdata, uint8_t* buffdgram){
-    // dgram = *(Dgram*)buffdgram;
     Dgram& dgram = *(Dgram*)buffdgram;
     TypeId tid(TypeId::Parent, 0);
     dgram.xtc.contains = tid;
     dgram.xtc.damage = 0;
     dgram.xtc.extent = sizeof(Xtc);
 
-    // Xtc& namesxtc = *new(dgram.xtc.next()) Xtc(TypeId(TypeId::Names, 0));
     Xtc& namesxtc = *new((char*)dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Names, 0));
     size_t nameblock_size = sizeof(NameInfo) + block_elems*sizeof(Name);
-
-    // printf("Dgram extent: %i, namesxtc extent: %i, sizeof(dgram): %zu, sizeof(xtc) %zu\n", dgram.xtc.extent, namesxtc.extent, sizeof(Dgram), sizeof(Xtc));
-    // printf("Size of names %zu\n", block_elems*sizeof(Name));
-    // printf("Size of nameblock %zu\n", nameblock_size);
 
     memcpy(namesxtc.payload(), name_block, nameblock_size);
     namesxtc.alloc(nameblock_size);
     dgram.xtc.alloc(nameblock_size);
-    // printf("Dgram extent: %i, namesxtc extent: %i, sizeof(dgram): %zu, sizeof(xtc) %zu\n", dgram.xtc.extent, namesxtc.extent, sizeof(Dgram), sizeof(Xtc));
 
-    // Xtc& shapesdata = *new(dgram.xtc.next()) Xtc(TypeId(TypeId::ShapesData, 0));
     Xtc& shapesdata = *new((char*)dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::ShapesData, 0));
 
-// Xtc& shapes = *new((char*)shapesdata.alloc(sizeof(Xtc)) Xtc(TypeId(TypeId::Shapes, 0));
     Xtc& shapes = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Shapes, 0));
     size_t shapeblock_size = sizeof(uint32_t) + block_elems*sizeof(Shape);
     memcpy(shapes.payload(), shape_block, shapeblock_size);
@@ -337,32 +327,57 @@ public:
     dgram.xtc.alloc(shapeblock_size+sizeof(Xtc));
 
 
-    // printf("Dgram extent: %i, shapesdata extent: %i, shapes extent: %i, sizeof(dgram): %zu, sizeof(xtc) %zu\n", dgram.xtc.extent, shapesdata.extent, shapes.extent, sizeof(Dgram), sizeof(Xtc));
-    // Xtc& data = *new((char*)shapesdata.alloc(sizeof(Xtc)) Xtc(TypeId(TypeId::Data, 0));
-    // printf("Size of payload is %zu", sizeof(Dgram)+dgram.xtc.sizeofPayload());
     Xtc& data = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Data, 0));
-    // printf("Size of payload is %zu", sizeof(Dgram)+dgram.xtc.sizeofPayload());
     memcpy(data.payload(), data_block, sizeofdata);
 
-    // printf("Size of payload is %zu", sizeof(Dgram)+dgram.xtc.sizeofPayload());
     data.alloc(sizeofdata);
     shapesdata.alloc(sizeofdata);
     dgram.xtc.alloc(sizeofdata+sizeof(Xtc));
     _sizeDgram =sizeof(Dgram)+dgram.xtc.sizeofPayload();
-    // printf("Dgram extent: %i, data extent: %i, sizeof(data): %zu, sizeof(xtc) %zu\n ", dgram.xtc.extent, data.extent, sizeofdata, sizeof(Xtc));
-    // printf("Size of payload is %zu", sizeof(Dgram)+dgram.xtc.sizeofPayload());
-    // _sizeDgram =  sizeof(Dgram)+dgram.xtc.sizeofPayload();
-    }
+    };
+
+
+    void addEvent(uint8_t* shape_block, size_t block_elems, uint8_t* data_block, size_t sizeofdata, uint8_t* buffdgram)
+    {
+        Dgram& dgram = *(Dgram*)malloc(0x400000);
+        TypeId tid(TypeId::Parent, 0);
+        dgram.xtc.contains = tid;
+        dgram.xtc.damage = 0;
+        dgram.xtc.extent = sizeof(Xtc);
+
+        Xtc& shapesdata = *new((char*)dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::ShapesData, 0));
+
+        Xtc& shapes = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Shapes, 0));
+        size_t shapeblock_size = sizeof(uint32_t) + block_elems*sizeof(Shape);
+        memcpy(shapes.payload(), shape_block, shapeblock_size);
+        shapes.alloc(shapeblock_size);
+        shapesdata.alloc(shapeblock_size);
+        dgram.xtc.alloc(shapeblock_size+sizeof(Xtc));
+
+
+        Xtc& data = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Data, 0));
+        memcpy(data.payload(), data_block, sizeofdata);
+
+        data.alloc(sizeofdata);
+        shapesdata.alloc(sizeofdata);
+        dgram.xtc.alloc(sizeofdata+sizeof(Xtc));
+
+        size_t eventSize = sizeof(Dgram)+dgram.xtc.sizeofPayload();
+
+        memcpy(buffdgram + _sizeDgram, &dgram, eventSize);
+
+        _sizeDgram += sizeof(Dgram)+dgram.xtc.sizeofPayload();
+    };
 
     uint32_t dgramSize(){
-      return _sizeDgram;
-     }
+        return _sizeDgram;
+    };
 
-    uint32_t _sizeDgram;
+private:
+    size_t _sizeDgram = 0;
+
+};
 };
 
-};
-
-//}
 
 #endif // SHAPESDATA__H

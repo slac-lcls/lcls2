@@ -1,6 +1,5 @@
 # Import the Python-level symbols of numpy
 import numpy as np
-import struct
 
 # Import the C-level symbols of numpy
 cimport numpy as cnp
@@ -19,7 +18,7 @@ cnp.import_array()
 
 cimport libc.stdint as si
 
-# python helper classes
+# python classes to make the test script tidier
 class alg:
     def __init__(self, name,version):
         self.algname = name
@@ -36,6 +35,10 @@ cdef extern from 'xtcdata/xtc/ShapesData.hh' namespace "XtcData":
     cdef cppclass pyDgram:
         pyDgram(cnp.uint8_t *name_block, cnp.uint8_t* shape_block, size_t block_elems,
                    cnp.uint8_t* data_block, size_t sizeofdata,void* buffdgram)
+
+        void addEvent(cnp.uint8_t* shape_block, size_t block_elems,
+                cnp.uint8_t* data_block, size_t sizeofdata,void* buffdgram)
+
         cnp.uint32_t dgramSize()
 
 # These classes are imported from ShapesData.hh by DescData.hh
@@ -66,12 +69,10 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
 
 cdef class PyDgram:
     cdef pyDgram* cptr
-    cdef buff
-    cdef size_t total_size
     cdef size_t buffer_size
     cdef block_elems
     cdef cnp.uint8_t* buffer
-    cdef cnp.uint32_t* sizedg
+    cdef cnp.uint8_t* addBuff
 
     def __cinit__(self, PyNameBlock pyn, PyShapeBlock pys, PyDataBlock pyd):
         if pyn.ct != pys.ct:
@@ -81,7 +82,7 @@ cdef class PyDgram:
 
         # print("size of shape %i" % sizeof(Shape))
         # print("total size is %i" % self.total_size)
-        # print("Data size is %i" % pyd.get_bytes())
+        # print("Data asize is %i" % pyd.get_bytes())
         self.buffer_size =0x4000000
 
         self.buffer  = <cnp.uint8_t*> malloc(self.buffer_size)
@@ -89,6 +90,9 @@ cdef class PyDgram:
         # print("Buffer hash before: %s" % hashlib.md5(buffer).hexdigest())
         self.cptr = new pyDgram(pyn.cptr_start, pys.cptr_start, self.block_elems, pyd.cptr_start, pyd.get_bytes(), self.buffer)
         # print("Buffer hash: %s" % hashlib.md5(self.buffer[:self.cptr.dgramSize()]).hexdigest())
+
+    def addEvent(self, PyShapeBlock pys, PyDataBlock pyd):
+        self.cptr.addEvent(pys.cptr_start, self.block_elems, pyd.cptr_start, pyd.get_bytes(), self.buffer)
 
     def write(self):
         cdef FILE *f = fopen('data.xtc', 'w')
@@ -238,6 +242,7 @@ def blockcreate(data, verbose=False):
 
   
     pydgram = PyDgram(py_name, py_shape, py_data)
+    pydgram.addEvent(py_shape, py_data)
     pydgram.write()
 
 
