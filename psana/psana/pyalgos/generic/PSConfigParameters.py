@@ -44,6 +44,7 @@ class PSConfigParameters(ConfigParameters) :
         #log.debug('In %s c-tor' % self._name) #, self._name)
 
         ConfigParameters.__init__(self)
+        self._name = 'PSConfigParameters'
 
         self.declareBaseParameters()
 
@@ -72,6 +73,18 @@ class PSConfigParameters(ConfigParameters) :
         self.nevents_update  = self.declareParameter(name='EVENTS_UPDATE',   val_def=100,           type='int')
         self.log_level       = self.declareParameter(name='LOG_LEVEL_OF_MSGS',val_def='info',      type='str' ) 
         self.log_file        = self.declareParameter(name='LOG_FILE_FOR_LEVEL', val_def='./log_for_level.txt', type='str' )
+        self.save_cp_at_exit = self.declareParameter(name='SAVE_CONFIG_AT_EXIT', val_def=True, type='bool')
+
+#------------------------------
+        
+#    def __del__(self) :
+#        #from psana.pyalgos.generic.Logger import logger
+#        #logger.debug('In d-tor:', self.__class__.__name__)
+#        print('In PSConfigParameters d-tor')
+#        if self.save_cp_at_exit.value() :
+#            self.saveParametersInFile()
+#        #ConfigParameters.__del__(self)
+
 #------------------------------
 
 # creation of singleton should be done in the derived class

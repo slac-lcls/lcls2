@@ -61,6 +61,11 @@ class QWTree(QTreeView) :
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].disconnect(recipient)
 
 
+    def clear_model(self):
+        rows = self.model.rowCount()
+        self.model.removeRows(0, rows)
+
+
     def fill_tree_model(self):
         for k in range(0, 4):
             parentItem = self.model.invisibleRootItem()
@@ -129,6 +134,11 @@ class QWTree(QTreeView) :
         #self.model.set_all_group_icons(self.icon_collapse)
         self.collapseAll()
         #self.tree_view_is_expanded = False
+
+
+    #def expand_collapse(self):
+    #    if self.isExpanded() : self.collapseAll()
+    #    else                 : self.expandAll()
 
     #--------------------------
     #--------------------------

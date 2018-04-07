@@ -7,7 +7,7 @@ Created on 2018-02-26 by Mikhail Dubrovin
 import sys
 #from psana.pyalgos.generic.Utils import print_parser #print_kwargs
 import psana.pscalib.calib.CalibConstants as cc
-from psana.graphqt.CMMain import calibman
+from psana.graphqt.CMWMain import calibman
 
 #------------------------------
 

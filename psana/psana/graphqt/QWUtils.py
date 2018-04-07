@@ -21,8 +21,9 @@ Created on 2017-02-08 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-15
 """
 #------------------------------
+
 import os
-from PyQt5.QtWidgets import QMenu, QDialog, QFileDialog, QMessageBox, QColorDialog
+from PyQt5.QtWidgets import QMenu, QDialog, QFileDialog, QMessageBox, QColorDialog, QWigget, QVBoxLayout
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor
 
@@ -191,6 +192,19 @@ def help_dialog_box(parent=None, text='Help message goes here', title='Help') :
         return mesbox
 
 #------------------------------
+
+def widget_from_layout(l) :
+    w = QWigget()
+    w.setLayout(l)
+    return w
+
+#------------------------------
+
+def layout_from_widget(w, layout=QVBoxLayout) :
+    l = layout()
+    l.addWidget(w)
+    return l
+
 #------------------------------
 #------------------------------
  
