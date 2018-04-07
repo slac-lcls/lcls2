@@ -27,7 +27,7 @@ Adopted for LCLS2 on 2018-02-15
 import sys
 from time import time, strptime, strftime, mktime, localtime, struct_time
 
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QApplication
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QApplication
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtCore import pyqtSignal
 
@@ -111,7 +111,12 @@ class QWDateTimeSec(QWidget) : # Frame
         self.hbox.addWidget(self.lab_tsec)
         self.hbox.addWidget(self.edi)
         self.hbox.addStretch(1)
-        self.setLayout(self.hbox)
+
+        self.vbox = QVBoxLayout() 
+        self.vbox.addLayout(self.hbox)
+        self.vbox.addStretch(1)
+
+        self.setLayout(self.vbox)
 
         self.set_tool_tips()
         self.set_style()
@@ -131,7 +136,7 @@ class QWDateTimeSec(QWidget) : # Frame
 
     def set_style(self) :
         self.setMinimumSize(300,40)
-        self.setContentsMargins(-9,-9,-9,-9)
+        #self.setContentsMargins(-9,-9,-9,-9)
         #self.but_year  .setStyleSheet(style.styleButton)
         w2d = 30
         self.but_year  .setFixedWidth(50)

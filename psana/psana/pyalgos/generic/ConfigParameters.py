@@ -204,8 +204,13 @@ class ConfigParameters :
            - fname - the file name with configuration parameters,
            if not specified then it will be set to the default value at declaration.
         """
-        self.name = self.__class__.__name__
+        self.name = 'ConfigParameters' #self.__class__.__name__
         self.fname_cp = 'confpars.txt'
+
+
+#    def __del__(self) :
+#        logger.debug('XXX: In d-tor', self.name)
+#        #print('XXX: In ConfigParameters d-tor')
 
 
     def declareParameter(self, name='EMPTY', val=None, val_def=None, type='str', index=None) :

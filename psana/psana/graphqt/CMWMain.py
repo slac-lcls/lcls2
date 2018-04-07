@@ -1,20 +1,20 @@
 """
-Class :py:class:`CMMain` is a QWidget for interactive image
+Class :py:class:`CMWMain` is a QWidget for interactive image
 ===========================================================
 
 Usage ::
 
     import sys
     from PyQt5.QtWidgets import QApplication
-    from psana.graphqt.CMMain import CMMain
+    from psana.graphqt.CMWMain import CMWMain
     app = QApplication(sys.argv)
-    w = CMMain(None, app)
+    w = CMWMain(None, app)
     w.show()
     app.exec_()
 
 See:
-    - :class:`CMMain`
-    - :class:`CMMainTabs`
+    - :class:`CMWMain`
+    - :class:`CMWMainTabs`
     - :class:`CMConfigParameters`
     - `graphqt documentation <https://lcls-psana.github.io/graphqt/py-modindex.html>`_.
 
@@ -33,7 +33,7 @@ from psana.graphqt.CMConfigParameters import cp
 from psana.pyalgos.generic.Logger import logger as log
 from psana.graphqt.QWLogger import QWLogger
 
-from psana.graphqt.CMMainTabs import CMMainTabs
+from psana.graphqt.CMWMainTabs import CMWMainTabs
 
 #from psana.graphqt.QWUtils import selectFromListInPopupMenu
 
@@ -43,15 +43,17 @@ from psana.graphqt.Styles import style
 
 #------------------------------
 
-#class CMMain(Frame) :
-class CMMain(QWidget) :
+#class CMWMain(Frame) :
+class CMWMain(QWidget) :
 
-    _name = 'CMMain'
+    _name = 'CMWMain'
 
     def __init__(self, parser=None) : # **dict_opts) :
         #Frame.__init__(self, parent=None, mlw=1)
         QWidget.__init__(self, parent=None)
         #self._name = self.__class__.__name__
+
+        cp.cmwmain = self
 
         self.proc_parser(parser)
             
@@ -62,7 +64,7 @@ class CMMain(QWidget) :
 
         #icon.set_icons()
 
-        self.wtab = CMMainTabs()
+        self.wtab = CMWMainTabs()
         self.wlog = QWLogger(log, cp, show_buttons=False)
         self.wtmp =QTextEdit('Some text')
 
@@ -165,12 +167,16 @@ class CMMain(QWidget) :
                          self.main_win_pos_y .value(),\
                          self.main_win_width .value(),\
                          self.main_win_height.value())
+        w_height = self.main_win_height.value()
 
         self.setMinimumSize(500, 400)
 
         w = self.main_win_width.value()
 
         self.setContentsMargins(-9,-9,-9,-9)
+
+        spl_pos = cp.main_vsplitter.value()
+        self.vspl.setSizes((spl_pos,w_height-spl_pos,))
 
         #self.wrig.setContentsMargins(-9,-9,-9,-9)
         #self.wrig.setMinimumWidth(350)
@@ -203,6 +209,8 @@ class CMMain(QWidget) :
         #try : self.wspe.close()
         #except : pass
 
+        self.wtab.close()
+
         self.on_save()
 
         QWidget.closeEvent(self, e)
@@ -210,7 +218,7 @@ class CMMain(QWidget) :
  
     def resizeEvent(self, e):
         #log.debug('resizeEvent', self._name) 
-        #log.info('CMMain.resizeEvent: %s' % str(self.size()))
+        #log.info('CMWMain.resizeEvent: %s' % str(self.size()))
         pass
 
 
@@ -219,20 +227,27 @@ class CMMain(QWidget) :
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
         #log.debug('moveEvent - pos:' + str(self.position), __name__)       
-        #log.info('CMMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
+        #log.info('CMWMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
         #self.wimg.move(self.pos() + QPoint(self.width()+5, 0))
         pass
 
 
+    def key_usage(self) :
+        return 'Keys:'\
+               '\n  V - view/hide tabs'\
+               '\n'
+
+
     def keyPressEvent(self, e) :
-        log.info('%s.keyPressEvent, key=%d' % (self._name, e.key()))         
-        if e.key() == Qt.Key_Escape :
+        #print('keyPressEvent, key=', e.key())       
+        if   e.key() == Qt.Key_Escape :
             self.close()
 
-        elif e.key() == Qt.Key_U : 
-            log.info('%s: Test:u TBD' % self._name)
-            #img = image_with_random_peaks((1000, 1000))
-            #self.set_image_data(img)
+        elif e.key() == Qt.Key_V : 
+            self.wtab.view_hide_tabs()
+
+        else :
+            print(self.key_usage())
 
 
 
@@ -250,8 +265,14 @@ class CMMain(QWidget) :
         self.main_win_width .setValue(w)
         self.main_win_height.setValue(h)
 
+        spl_pos = self.vspl.sizes()[0]
+        msg = 'XXX: Save main v-splitter position %d' % spl_pos
+        print(msg)
+
+        cp.main_vsplitter.setValue(spl_pos)
+
         cp.printParameters()
-        cp.saveParametersInFile()
+        cp.saveParametersInFile() # moved to PSConfigParameters
 
         if cp.save_log_at_exit.value() :
             log.saveLogInFile(cp.log_file.value())
@@ -265,7 +286,7 @@ def calibman(parser=None) :
     from PyQt5.QtWidgets import QApplication
     log.setPrintBits(0o377) 
     app = QApplication(sys.argv)
-    w = CMMain(parser)
+    w = CMWMain(parser)
     w.show()
     app.exec_()
     del w

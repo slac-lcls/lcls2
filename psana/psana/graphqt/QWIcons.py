@@ -1,16 +1,17 @@
 #------------------------------
 """
-:py:class:`QWIcons` - access to icons
-====================================
+:py:class:`QWIcons` - singleton access to icons
+================================================
 
 Usage::
 
+    # Test: python lcls2/psana/psana/graphqt/QWIcons.py
 
     # Import
     from psana.graphqt.QWIcons import icon
-    from PyQt5 import QtWidgets
+    from PyQt5.QtWidgets import QApplication
 
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
 
     # Get QIcon objects
     icon.set_icons()
@@ -30,7 +31,7 @@ Adopted for LCLS2 on 2018-02-15
 #------------------------------
 
 import os
-from PyQt5 import QtWidgets, QtGui#, QtCore
+from PyQt5.QtGui import QIcon
 
 #------------------------------
 
@@ -44,7 +45,6 @@ class QWIcons() :
 #------------------------------
 
     def path_to_icons(self) :
-        import os
         _ROOT = os.path.abspath(os.path.dirname(__file__))
         #path_icon = 'psana/psana/graphqt/data/icons'
         path_icon = '%s/data/icons' % _ROOT
@@ -52,19 +52,17 @@ class QWIcons() :
         return path_icon
 
 #------------------------------
-
-    def path_to_icons_v1(self) :
-        import pkgutil
-        path_icon = pkgutil.get_data('graphqt', 'data/icons/contents.png')
-        print('XXX set_icons :path_icon', path_icon)
-        print('XXX set_icons :__name__', __name__)
-        print('XXX set_icons :__file__', __file__)
-        return path_icon
-
+#    def path_to_icons_v1(self) :
+#        import pkgutil
+#        path_icon = pkgutil.get_data('graphqt', 'data/icons/contents.png')
+#        print('XXX set_icons :path_icon', path_icon)
+#        print('XXX set_icons :__name__', __name__)
+#        print('XXX set_icons :__file__', __file__)
+#        return path_icon
 #------------------------------
 
     def set_icons(self) :
-        """SHOULD BE CALLED AFTER QtGui.QApplication"""
+        """QIcon SHOULD BE CALLED AFTER QApplication"""
 
         if self.icons_are_loaded : return
         self.icons_are_loaded = True
@@ -97,31 +95,31 @@ class QWIcons() :
         self.path_icon_folder_closed = '%s/folder_closed.gif' % path_icon
         self.path_icon_expcheck      = '%s/folder_open_checked.png' % path_icon
  
-        self.icon_contents      = QtGui.QIcon(self.path_icon_contents     )
-        self.icon_mail_forward  = QtGui.QIcon(self.path_icon_mail_forward )
-        self.icon_button_ok     = QtGui.QIcon(self.path_icon_button_ok    )
-        self.icon_button_cancel = QtGui.QIcon(self.path_icon_button_cancel)
-        self.icon_exit          = QtGui.QIcon(self.path_icon_exit         )
-        self.icon_home          = QtGui.QIcon(self.path_icon_home         )
-        self.icon_redo          = QtGui.QIcon(self.path_icon_redo         )
-        self.icon_undo          = QtGui.QIcon(self.path_icon_undo         )
-        self.icon_reload        = QtGui.QIcon(self.path_icon_reload       )
-        self.icon_save          = QtGui.QIcon(self.path_icon_save         )
-        self.icon_save_cfg      = QtGui.QIcon(self.path_icon_save_cfg     )
-        self.icon_edit          = QtGui.QIcon(self.path_icon_edit         )
-        self.icon_browser       = QtGui.QIcon(self.path_icon_browser      )
-        self.icon_monitor       = QtGui.QIcon(self.path_icon_monitor      )
-        self.icon_unknown       = QtGui.QIcon(self.path_icon_unknown      )
-        self.icon_plus          = QtGui.QIcon(self.path_icon_plus         )
-        self.icon_minus         = QtGui.QIcon(self.path_icon_minus        )
-        self.icon_logviewer     = QtGui.QIcon(self.path_icon_logviewer    )
-        self.icon_lock          = QtGui.QIcon(self.path_icon_lock         )
-        self.icon_unlock        = QtGui.QIcon(self.path_icon_unlock       )
-        self.icon_convert       = QtGui.QIcon(self.path_icon_convert      )
-        self.icon_table         = QtGui.QIcon(self.path_icon_table        )
-        self.icon_folder_open   = QtGui.QIcon(self.path_icon_folder_open  )
-        self.icon_folder_closed = QtGui.QIcon(self.path_icon_folder_closed)
-        self.icon_expcheck      = QtGui.QIcon(self.path_icon_expcheck     )
+        self.icon_contents      = QIcon(self.path_icon_contents     )
+        self.icon_mail_forward  = QIcon(self.path_icon_mail_forward )
+        self.icon_button_ok     = QIcon(self.path_icon_button_ok    )
+        self.icon_button_cancel = QIcon(self.path_icon_button_cancel)
+        self.icon_exit          = QIcon(self.path_icon_exit         )
+        self.icon_home          = QIcon(self.path_icon_home         )
+        self.icon_redo          = QIcon(self.path_icon_redo         )
+        self.icon_undo          = QIcon(self.path_icon_undo         )
+        self.icon_reload        = QIcon(self.path_icon_reload       )
+        self.icon_save          = QIcon(self.path_icon_save         )
+        self.icon_save_cfg      = QIcon(self.path_icon_save_cfg     )
+        self.icon_edit          = QIcon(self.path_icon_edit         )
+        self.icon_browser       = QIcon(self.path_icon_browser      )
+        self.icon_monitor       = QIcon(self.path_icon_monitor      )
+        self.icon_unknown       = QIcon(self.path_icon_unknown      )
+        self.icon_plus          = QIcon(self.path_icon_plus         )
+        self.icon_minus         = QIcon(self.path_icon_minus        )
+        self.icon_logviewer     = QIcon(self.path_icon_logviewer    )
+        self.icon_lock          = QIcon(self.path_icon_lock         )
+        self.icon_unlock        = QIcon(self.path_icon_unlock       )
+        self.icon_convert       = QIcon(self.path_icon_convert      )
+        self.icon_table         = QIcon(self.path_icon_table        )
+        self.icon_folder_open   = QIcon(self.path_icon_folder_open  )
+        self.icon_folder_closed = QIcon(self.path_icon_folder_closed)
+        self.icon_expcheck      = QIcon(self.path_icon_expcheck     )
 
         self.icon_data          = self.icon_table
         self.icon_apply         = self.icon_button_ok
@@ -137,7 +135,9 @@ icon = QWIcons()
 
 #------------------------------
 
-def test_QWIcons() :
+if __name__ == "__main__" :
+
+  def test_QWIcons() :
     print('Icon pathes:')
     print(icon.path_icon_contents)
     print(icon.path_icon_mail_forward)
@@ -168,7 +168,8 @@ def test_QWIcons() :
 
 if __name__ == "__main__" :
     import sys
-    app = QtWidgets.QApplication(sys.argv)
+    from PyQt5.QtWidgets import QApplication
+    app = QApplication(sys.argv)
     icon.set_icons()
     test_QWIcons()
     sys.exit(0)
