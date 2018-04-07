@@ -27,6 +27,17 @@ You should see an interactive QT window. There is also a `dummy_gui.py` that giv
 
 # Status/To-do
 
+4/6/18
+
+TJL created "pythonbackend" branch to explore python centric alternatives
+
+To Decide:
+* what is the best representation for "the graph"
+* where does the python code associated with nodes "live"
+* syntax for declaring global/posted/feature variables
+
+
+
 2/9/18
 
 graph building
