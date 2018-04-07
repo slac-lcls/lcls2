@@ -34,14 +34,37 @@ class Request(object):
             return True
         return False
 
+
+def build_dep_tree(json):
+    """
+    Take a json representation of a configuration and produce a DAG
+    that shows dependencies (ie outputs) instead of inputs.
+    """
+
+    
+
+
+    return
+
+def dep_resolve(node, resolved):
+    print node.name
+    for edge in node.edges:
+        if edge not in resolved:
+            dep_resolve(edge, resolved)
+    resolved.append(node)
+    return resolved
+   
+
 class Worker(object):
     def __init__(self, idnum, src, collector_addr, graph_addr):
+
         """
         idnum : int
             a unique integer identifying this worker
         src : object
             object with an events() method that is an iterable (like psana.DataSource)
         """
+
         self.idnum = idnum
         self.src = src
         self.ctx = zmq.Context()
@@ -54,12 +77,9 @@ class Worker(object):
         self.requests = []
 
     def run(self):
-        partition = self.src.partition()
-        self.store.message(MsgTypes.Transition, 
-                           Transition(Transitions.Allocate, partition))
-        for name, dtype in partition:
-            self.store.create(name, dtype)
+
         for msg in self.src.events():
+
             # check to see if the graph has been reconfigured after update
             if msg.mtype == MsgTypes.Occurrence and msg.payload == Occurrences.Heartbeat:
                 new_graph = None
