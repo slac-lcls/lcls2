@@ -12,7 +12,9 @@
 
 namespace Pds {
   namespace Fabrics {
-    enum State { EP_CLOSED, EP_INIT, EP_UP, EP_LISTEN, EP_CONNECTED };
+    class CompletionQueue;
+
+    enum State { EP_CLOSED, EP_INIT, EP_UP, EP_ENABLED, EP_LISTEN, EP_CONNECTED };
 
     class RemoteAddress {
     public:
@@ -132,6 +134,28 @@ namespace Pds {
       struct fi_msg_rma*  _msg;
     };
 
+    class Message {
+    public:
+      Message();
+      Message(LocalIOVec* iov, fi_addr_t addr, void* context, uint64_t data=0);
+      ~Message();
+      LocalIOVec* iov() const;
+      void iov(LocalIOVec* iov);
+      const struct iovec* msg_iov() const;
+      void** desc() const;
+      size_t iov_count() const;
+      fi_addr_t addr() const;
+      void addr(fi_addr_t addr);
+      void* context() const;
+      void context(void* context);
+      uint64_t data() const;
+      void data(uint64_t data);
+      const struct fi_msg* msg() const;
+    private:
+      LocalIOVec*     _iov;
+      struct fi_msg*  _msg;
+    };
+
     class ErrorHandler {
     public:
       ErrorHandler();
@@ -179,14 +203,14 @@ namespace Pds {
     class EndpointBase : public ErrorHandler {
     protected:
       EndpointBase(const char* addr, const char* port, uint64_t flags=0);
-      EndpointBase(Fabric* fabric);
+      EndpointBase(Fabric* fabric, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
       virtual ~EndpointBase();
     public:
       State state() const;
       Fabric* fabric() const;
       struct fid_eq* eq() const;
-      struct fid_cq* txcq() const;
-      struct fid_cq* rxcq() const;
+      CompletionQueue* txcq() const;
+      CompletionQueue* rxcq() const;
       virtual void shutdown();
       bool event(uint32_t* event, void* entry, bool* cm_entry);
       bool event_wait(uint32_t* event, void* entry, bool* cm_entry, int timeout=-1);
@@ -195,26 +219,32 @@ namespace Pds {
       bool handle_event(ssize_t event_ret, bool* cm_entry, const char* cmd);
       bool initialize();
     protected:
-      State          _state;
-      const bool     _fab_owner;
-      Fabric*        _fabric;
-      struct fid_eq* _eq;
-      struct fid_cq* _txcq;
-      struct fid_cq* _rxcq;
+      State            _state;
+      const bool       _fab_owner;
+      bool             _txcq_owner;
+      bool             _rxcq_owner;
+      Fabric*          _fabric;
+      struct fid_eq*   _eq;
+      CompletionQueue* _txcq;
+      CompletionQueue* _rxcq;
     };
-
     class Endpoint : public EndpointBase {
     public:
       Endpoint(const char* addr, const char* port, uint64_t flags=0);
-      Endpoint(Fabric* fabric);
+      Endpoint(Fabric* fabric, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
       ~Endpoint();
     public:
+      struct fid_ep* endpoint() const;
       void shutdown();
-      bool connect(int timeout=-1);
-      bool accept(struct fi_info* remote_info, int timeout=-1);
-      ssize_t comp(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count);
-      ssize_t comp_wait(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count, int timeout=-1);
-      ssize_t comp_error(struct fid_cq* cq, struct fi_cq_err_entry* comp_err);
+      bool open(struct fi_info* info);
+      bool enable();
+      bool connect(int timeout);
+      bool accept(int timeout);
+      bool connect();
+      bool accept(struct fi_info* remote_info);
+      //ssize_t comp(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count);
+      //ssize_t comp_wait(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count, int timeout=-1);
+      //ssize_t comp_error(struct fid_cq* cq, struct fi_cq_err_entry* comp_err);
       /* Asynchronous calls (raw buffer) */
       ssize_t recv_comp_data(void* context=NULL);
       ssize_t send(const void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
@@ -231,12 +261,14 @@ namespace Pds {
       /* Vectored Asynchronous calls */
       ssize_t sendv(LocalIOVec* iov, void* context);
       ssize_t recvv(LocalIOVec* iov, void* context);
+      ssize_t recvmsg(Message* msg, uint64_t flags=0);
+      ssize_t sendmsg(Message* msg, uint64_t flags=0);
       ssize_t readv(LocalIOVec* iov, const RemoteAddress* raddr, void* context);
       ssize_t writev(LocalIOVec* iov, const RemoteAddress* raddr, void* context);
       ssize_t readmsg(RmaMessage* msg, uint64_t flags);
       ssize_t writemsg(RmaMessage* msg, uint64_t flags);
       /* Synchronous calls (raw buffer) */
-      ssize_t recv_comp_data_sync(struct fid_cq* cq, uint64_t* data=NULL);
+      ssize_t recv_comp_data_sync(CompletionQueue* cq, uint64_t* data=NULL);
       ssize_t send_sync(const void* buf, size_t len, const MemoryRegion* mr=NULL);
       ssize_t recv_sync(void* buf, size_t len, const MemoryRegion* mr=NULL);
       ssize_t read_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
@@ -251,15 +283,20 @@ namespace Pds {
       /* Vectored Synchronous calls */
       ssize_t sendv_sync(LocalIOVec* iov);
       ssize_t recvv_sync(LocalIOVec* iov);
+      ssize_t recvmsg_sync(Message* msg, uint64_t flags=0);
+      ssize_t sendmsg_sync(Message* msg, uint64_t flags=0);
       ssize_t readv_sync(LocalIOVec* iov, const RemoteAddress* raddr);
       ssize_t writev_sync(LocalIOVec* iov, const RemoteAddress* raddr);
       ssize_t readmsg_sync(RmaMessage* msg, uint64_t flags=0);
       ssize_t writemsg_sync(RmaMessage* msg, uint64_t flags=0);
     private:
+      bool complete_connect(int timeout);
       ssize_t post_comp_data_recv(void* context=NULL);
-      ssize_t handle_comp(ssize_t comp_ret, struct fid_cq* cq, struct fi_cq_data_entry* comp, const char* cmd);
-      ssize_t check_completion(struct fid_cq* cq, int context, unsigned flags, uint64_t* data=0);
-      ssize_t check_completion_noctx(struct fid_cq* cq, unsigned flags, uint64_t* data=0);
+      //ssize_t handle_comp(ssize_t comp_ret, struct fid_cq* cq, struct fi_cq_data_entry* comp, const char* cmd);
+      ssize_t check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data=0);
+      ssize_t check_completion_noctx(CompletionQueue* cq, unsigned flags, uint64_t* data=0);
+      //ssize_t check_completion(struct fid_cq* cq, int context, unsigned flags, uint64_t* data=0);
+      //ssize_t check_completion_noctx(struct fid_cq* cq, unsigned flags, uint64_t* data=0);
       ssize_t check_connection_state();
     private:
       uint64_t        _counter;
@@ -273,6 +310,7 @@ namespace Pds {
     public:
       void shutdown();
       bool listen();
+      Endpoint* open(int timeout=-1, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
       Endpoint* accept(int timeout=-1);
       bool reject(int timeout=-1);
       bool close(Endpoint* endpoint);
@@ -287,7 +325,7 @@ namespace Pds {
       CompletionPoller(Fabric* fabric, nfds_t size_hint=1);
       ~CompletionPoller();
       bool up() const;
-      bool add(Endpoint* endp, struct fid_cq* cq);
+      bool add(Endpoint* endp, CompletionQueue* cq);
       bool del(Endpoint* endp);
       int  poll(int timeout=-1);
       void shutdown();
@@ -302,6 +340,30 @@ namespace Pds {
       pollfd*       _pfd;
       struct fid**  _pfid;
       Endpoint**    _endps;
+    };
+
+    class CompletionQueue : public ErrorHandler {
+    public:
+      CompletionQueue(Fabric* fabric, struct fi_cq_attr* cq_attr, void* context);
+      ~CompletionQueue();
+      struct fid_cq* cq() const;
+      ssize_t comp(struct fi_cq_data_entry* comp, ssize_t max_count);
+      ssize_t comp_wait(struct fi_cq_data_entry* comp, ssize_t max_count, int timeout=-1);
+      ssize_t comp_error(struct fi_cq_err_entry* comp_err);
+      bool up() const;
+      bool bind(Endpoint* ep, uint64_t flags);
+      void shutdown();
+    private:
+      bool initialize(struct fi_cq_attr* cq_attr, void* context);
+    private:
+      friend Endpoint;
+      ssize_t handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, const char* cmd);
+      ssize_t check_completion(int context, unsigned flags, uint64_t* data=0);
+      ssize_t check_completion_noctx(unsigned flags, uint64_t* data=0);
+    private:
+      bool           _up;
+      Fabric*        _fabric;
+      struct fid_cq* _cq;
     };
   }
 }

@@ -4,6 +4,7 @@
 #include "psdaq/eb/EbEvent.hh"
 
 #include "psdaq/eb/EbLfServer.hh"
+#include "psdaq/eb/EbLfClient.hh"
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
@@ -21,6 +22,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <inttypes.h>
+#include <assert.h>
 #include <climits>
 #include <bitset>
 #include <chrono>
@@ -35,8 +37,9 @@ static const int      core_base        = 6; // devXX, 8: accXX
 static const int      core_offset      = 1; // Allows Ctrb and EB to run on the same machine
 static const unsigned mon_period       = 1;          // Seconds
 static const unsigned default_id       = 0;          // Builder's ID (< 64)
-static const unsigned max_peers        = 64;         // Maximum possible number of Builders
-static const unsigned port_base        = 32768;      // Base port EB receives contributions on
+static const unsigned max_ebs          = 64;         // Maximum possible number of Builders
+static const unsigned srv_port_base    = 32768;           // Base port EB receives contributions on
+static const unsigned clt_port_base    = 32768 + max_ebs; // Base port EB sends    results       on
 static const unsigned max_batches      = 2048;       // Maximum number of batches in circulation
 static const unsigned max_entries      = 512;        // < or = to batch_duration
 static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
@@ -100,13 +103,15 @@ namespace Pds {
     class TstEbOutlet : public BatchManager
     {
     public:
-      TstEbOutlet(EbLfServer& server,
-                  unsigned    id,
-                  uint64_t    duration,
-                  unsigned    maxBatches,
-                  unsigned    maxEntries,
-                  size_t      maxSize);
-      virtual ~TstEbOutlet() { }
+      TstEbOutlet(std::vector<std::string>& addrs,
+                  std::vector<std::string>& ports,
+                  unsigned                  id,
+                  uint64_t                  duration,
+                  unsigned                  maxBatches,
+                  unsigned                  maxEntries,
+                  size_t                    maxSize,
+                  uint64_t                  contributors);
+      virtual ~TstEbOutlet();
     public:
       void     shutdown();
     public:
@@ -114,7 +119,7 @@ namespace Pds {
     public:
       void     post(const Batch* batch);
     private:
-      EbLfServer&    _transport;
+      EbLfClient*    _transport;
       const unsigned _id;
       const unsigned _maxEntries;
     private:
@@ -131,17 +136,19 @@ namespace Pds {
     {
     private:
       static size_t _calcBatchSize(unsigned maxEntries, size_t maxSize);
+      static void*  _allocBatchRegion(unsigned nClients, unsigned maxBatches, size_t maxBatchSize);
     public:
-      TstEbInlet(EbLfServer& server,
-                 unsigned    id,
-                 uint64_t    duration,
-                 unsigned    maxBatches,
-                 unsigned    maxEntries,
-                 size_t      maxSize,
-                 uint64_t    contributors);
-      virtual ~TstEbInlet() { };
+      TstEbInlet(const char*  ifAddr,
+                 std::string& port,
+                 unsigned     id,
+                 uint64_t     duration,
+                 unsigned     maxBatches,
+                 unsigned     maxEntries,
+                 size_t       maxSize,
+                 uint64_t     contributors);
+      virtual ~TstEbInlet();
     public:
-      void     shutdown()    { _running = false;   }
+      void     shutdown()  { _running = false; }
     public:
       uint64_t count()        const { return _eventCount;   }
       size_t   maxBatchSize() const { return _maxBatchSize; }
@@ -154,7 +161,8 @@ namespace Pds {
     private:
       const unsigned    _maxBatches;
       const size_t      _maxBatchSize;
-      EbLfServer&       _transport;
+      void*             _region;
+      EbLfServer*       _transport;
       const unsigned    _id;
       const Xtc         _xtc;
       const uint64_t    _contract;
@@ -208,17 +216,19 @@ static void pin_thread(const pthread_t& th, int cpu)
   }
 }
 
-TstEbInlet::TstEbInlet(EbLfServer& server,
-                       unsigned    id,
-                       uint64_t    duration,
-                       unsigned    maxBatches,
-                       unsigned    maxEntries,
-                       size_t      maxSize,
-                       uint64_t    contributors) :
+TstEbInlet::TstEbInlet(const char*  ifAddr,
+                       std::string& port,
+                       unsigned     id,
+                       uint64_t     duration,
+                       unsigned     maxBatches,
+                       unsigned     maxEntries,
+                       size_t       maxSize,
+                       uint64_t     contributors) :
   EventBuilder (maxBatches, maxEntries, std::bitset<64>(contributors).count(), duration),
   _maxBatches  (maxBatches),
   _maxBatchSize(_calcBatchSize(maxEntries, maxSize)),
-  _transport   (server),
+  _region      (_allocBatchRegion(std::bitset<64>(contributors).count(), maxBatches, _maxBatchSize)),
+  _transport   (new EbLfServer(ifAddr, port, std::bitset<64>(contributors).count())),
   _id          (id),
   _xtc         (TypeId(TypeId::Data, 0), TheSrc(Level::Event, id)), //_l3SummaryType
   _contract    (contributors),
@@ -232,11 +242,26 @@ TstEbInlet::TstEbInlet(EbLfServer& server,
   _pendPrevTime(std::chrono::steady_clock::now()),
   _running     (true)
 {
-  if (_transport.prepareLclMr(maxBatches * _maxBatchSize, EbLfBase::PER_PEER_BUFFERS))
+  size_t size = maxBatches * _maxBatchSize;
+
+  if (_region == nullptr)
   {
-    fprintf(stderr, "TstEbInlet: Failed to prepare local memory region\n");
+    fprintf(stderr, "No memory found for a batch region of size %zd\n",
+            std::bitset<64>(contributors).count() * size);
     abort();
   }
+
+  if (_transport->connect(id, _region, size, EbLfBase::PER_PEER_BUFFERS))
+  {
+    fprintf(stderr, "TstEbInlet: Transport connect failed\n");
+    abort();
+  }
+}
+
+TstEbInlet::~TstEbInlet()
+{
+  if (_transport)  delete _transport;
+  if (_region)     free  (_region);
 }
 
 size_t TstEbInlet::_calcBatchSize(unsigned maxEntries, size_t maxSize)
@@ -245,6 +270,22 @@ size_t TstEbInlet::_calcBatchSize(unsigned maxEntries, size_t maxSize)
   size_t size      = sizeof(Dgram) + maxEntries * maxSize;
   size             = alignment * ((size + alignment - 1) / alignment);
   return size;
+}
+
+void* TstEbInlet::_allocBatchRegion(unsigned nClients, unsigned maxBatches, size_t maxBatchSize)
+{
+  size_t   alignment = sysconf(_SC_PAGESIZE);
+  size_t   size      = nClients * maxBatches * maxBatchSize;
+  assert((size & (alignment - 1)) == 0);
+  void*    region    = nullptr;
+  int      ret       = posix_memalign(&region, alignment, size);
+  if (ret)
+  {
+    perror("posix_memalign");
+    return nullptr;
+  }
+
+  return region;
 }
 
 void TstEbInlet::process(BatchManager* outlet)
@@ -269,13 +310,15 @@ void TstEbInlet::process(BatchManager* outlet)
   {
     // Pend for an input datagram (batch) and pass its datagrams to the event builder.
     fi_cq_data_entry wc;
-    auto t0  = std::chrono::steady_clock::now();
-    if (_transport.pend(&wc))  continue;
-    auto t1  = std::chrono::steady_clock::now();
+    auto t0 = std::chrono::steady_clock::now();
+    if (_transport->pend(&wc))  continue;
+    auto t1 = std::chrono::steady_clock::now();
 
     unsigned     idx   = wc.data & 0x00ffffff;
     unsigned     srcId = wc.data >> 24;
-    const Dgram* bdg   = (const Dgram*)_transport.lclAdx(srcId, idx * _maxBatchSize);
+    const Dgram* bdg   = (const Dgram*)_transport->lclAdx(srcId, idx * _maxBatchSize);
+
+    _transport->postCompRecv(srcId);
 
     if (lverbose)
     {
@@ -326,6 +369,8 @@ void TstEbInlet::process(BatchManager* outlet)
   sprintf(fs, "pendCallRate_%d.hist", _id);
   printf("Dumped pend call rate histogram to ./%s\n", fs);
   _pendCallHist.dump(fs);
+
+  _transport->shutdown();
 }
 
 void TstEbInlet::process(EbEvent* event)
@@ -412,14 +457,16 @@ void TstEbInlet::fixup(EbEvent* event, unsigned srcId)
 }
 
 
-TstEbOutlet::TstEbOutlet(EbLfServer& server,
-                         unsigned    id,
-                         uint64_t    duration,
-                         unsigned    maxBatches,
-                         unsigned    maxEntries,
-                         size_t      maxSize) :
+TstEbOutlet::TstEbOutlet(std::vector<std::string>& addrs,
+                         std::vector<std::string>& ports,
+                         unsigned                  id,
+                         uint64_t                  duration,
+                         unsigned                  maxBatches,
+                         unsigned                  maxEntries,
+                         size_t                    maxSize,
+                         uint64_t                  contributors) :
   BatchManager (duration, maxBatches, maxEntries, maxSize),
-  _transport   (server),
+  _transport   (new EbLfClient(addrs, ports)),
   _id          (id),
   _maxEntries  (maxEntries),
   _batchCount  (0),
@@ -428,11 +475,17 @@ TstEbOutlet::TstEbOutlet(EbLfServer& server,
   _postCallHist(12, 1.0),
   _postPrevTime(std::chrono::steady_clock::now())
 {
-  if (_transport.prepareRmtMr(batchRegion(), batchRegionSize()))
+  const unsigned tmo(120);              // Seconds
+  if (_transport->connect(id, tmo, batchRegion(), batchRegionSize()))
   {
-    fprintf(stderr, "TstEbOutlet: Failed to prepare remote memory region\n");
+    fprintf(stderr, "TstEbOutlet: Transport connect failed\n");
     abort();
   }
+}
+
+TstEbOutlet::~TstEbOutlet()
+{
+  if (_transport)  delete _transport;
 }
 
 void TstEbOutlet::shutdown()
@@ -451,6 +504,8 @@ void TstEbOutlet::shutdown()
   sprintf(fs, "postCallRate_%d.hist", _id);
   printf("Dumped post call rate histogram to ./%s\n", fs);
   _postCallHist.dump(fs);
+
+  _transport->shutdown();
 }
 
 void TstEbOutlet::post(const Batch* batch)
@@ -483,12 +538,12 @@ void TstEbOutlet::post(const Batch* batch)
     if (lverbose)
     {
       uint64_t pid    = bdg->seq.pulseId().value();
-      void*    rmtAdx = (void*)_transport.rmtAdx(dst, idx * maxBatchSize());
+      void*    rmtAdx = (void*)_transport->rmtAdx(dst, idx * maxBatchSize());
       printf("EbOutlet posts       %6ld result   [%4d] @ %16p, ts %014lx, sz %3zd to   Contrib %d %16p\n",
              _batchCount, idx, bdg, pid, extent, dst, rmtAdx);
     }
 
-    if (_transport.post(dst, bdg, extent, idx * maxBatchSize(), (_id << 24) + idx))  break;
+    if (_transport->post(dst, bdg, extent, idx * maxBatchSize(), (_id << 24) + idx))  break;
   }
   auto t1 = std::chrono::steady_clock::now();
 
@@ -597,16 +652,18 @@ void usage(char *name, char *desc)
     fprintf(stderr, "\n%s\n", desc);
 
   fprintf(stderr, "\n<contributor_spec> has the form '[<contributor_id>:]<contributor_addr>'\n");
-  fprintf(stderr, "  <contributor_id> must be in the range 0 - %d.\n", max_peers - 1);
+  fprintf(stderr, "  <contributor_id> must be in the range 0 - %d.\n", max_ebs - 1);
   fprintf(stderr, "  If the ':' is omitted, <contributor_id> will be given the\n");
-  fprintf(stderr, "  spec's positional value from 0 - %d, from left to right.\n", max_peers - 1);
+  fprintf(stderr, "  spec's positional value from 0 - %d, from left to right.\n", max_ebs - 1);
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s (default: %s)\n",  "-A <interface_addr>",
-          "IP address of the interface to use", "libfabric's 'best' choice");
-  fprintf(stderr, " %-20s %s (default: %d)\n",  "-P <port>",
-          "Base port number to use",            port_base);
+  fprintf(stderr, " %-20s %s (default: %s)\n",        "-A <interface_addr>",
+          "IP address of the interface to use",       "libfabric's 'best' choice");
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-S <port>",
+          "Base port for sending results",            srv_port_base);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-C <port>",
+          "Base port for receiving contributions",    clt_port_base);
 
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-i <ID>",
           "Unique ID of this builder (0 - 63)",       default_id);
@@ -632,18 +689,20 @@ int main(int argc, char **argv)
   int      op, ret    = 0;
   unsigned id         = default_id;
   char*    ifAddr     = nullptr;
-  unsigned portBase   = port_base;      // Port served to contributors
+  unsigned srvBase    = srv_port_base;  // Port served to contributors
+  unsigned cltBase    = clt_port_base;  // Port served by contributors
   uint64_t duration   = batch_duration;
   unsigned maxBatches = max_batches;
   unsigned maxEntries = max_entries;
   unsigned monPeriod  = mon_period;
 
-  while ((op = getopt(argc, argv, "h?vA:P:i:D:B:E:M:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vA:S:C:P:i:D:B:E:M:1:2:")) != -1)
   {
     switch (op)
     {
       case 'A':  ifAddr     = optarg;         break;
-      case 'P':  portBase   = atoi(optarg);   break;
+      case 'S':  srvBase    = atoi(optarg);   break;
+      case 'C':  cltBase    = atoi(optarg);   break;
       case 'i':  id         = atoi(optarg);   break;
       case 'D':  duration   = atoll(optarg);  break;
       case 'B':  maxBatches = atoi(optarg);   break;
@@ -660,39 +719,52 @@ int main(int argc, char **argv)
     }
   }
 
-  if (id >= max_peers)
+  if (id >= max_ebs)
   {
-    fprintf(stderr, "Builder ID is out of range 0 - %d: %d\n", max_peers - 1, id);
+    fprintf(stderr, "Builder ID %d is out of range 0 - %d\n", id, max_ebs - 1);
     return 1;
   }
-  if (portBase + id > USHRT_MAX)
+  if (srvBase + id + max_ebs > USHRT_MAX)
   {
-    fprintf(stderr, "Server port is out of range 0 - 65535: %d\n", portBase + id);
+    fprintf(stderr, "Server port %d is out of range 0 - %d\n", srvBase + id + max_ebs, USHRT_MAX);
     return 1;
   }
-  char port[8];
-  snprintf(port, sizeof(port), "%d", portBase + id);
-  std::string basePort(port);
 
+  char port[8];
+  snprintf(port, sizeof(port), "%d", srvBase + id);
+  std::string srvPort(port);
+
+  std::vector<std::string> cltAddr;
+  std::vector<std::string> cltPort;
   uint64_t contributors = 0;
   if (optind < argc)
   {
+    unsigned srcId = 0;
     do
     {
       char*    contributor = argv[optind];
-      unsigned cid         = atoi(contributor);
-      if (cid >= max_peers)
+      char*    colon       = strchr(contributor, ':');
+      unsigned cid         = colon ? atoi(contributor) : srcId++;
+      if (cid > max_ebs - 1)
       {
-        fprintf(stderr, "Contributor ID is out of the range 0 - %d: %d\n", max_peers - 1, cid);
+        fprintf(stderr, "Contributor ID %d is out of the range 0 - %d\n", cid, max_ebs - 1);
+        return 1;
+      }
+      if (cltBase + cid > USHRT_MAX)
+      {
+        fprintf(stderr, "Client port is out of range 0 - 65535: %d\n", cltBase + cid);
         return 1;
       }
       contributors |= 1ul << cid;
+      snprintf(port, sizeof(port), "%d", cltBase + cid);
+      cltAddr.push_back(std::string(colon ? &colon[1] : contributor));
+      cltPort.push_back(std::string(port));
     }
     while (++optind < argc);
   }
   else
   {
-    fprintf(stderr, "Contributor id(s) is required\n");
+    fprintf(stderr, "Contributor address(es) is required\n");
     return 1;
   }
 
@@ -706,15 +778,12 @@ int main(int argc, char **argv)
 
   ::signal( SIGINT, sigHandler );
 
-  EbLfServer* server = new EbLfServer(ifAddr, basePort, std::bitset<64>(contributors).count());
-  if ( (ret = server->connect(id)) )  { delete server;  return ret; }
-
   pin_thread(pthread_self(), lcore2);
-  TstEbInlet*  inlet = new TstEbInlet(*server, id, duration, maxBatches, maxEntries, max_contrib_size, contributors);
+  TstEbInlet*  inlet  = new TstEbInlet (ifAddr,  srvPort, id, duration, maxBatches, maxEntries, max_contrib_size, contributors);
   ebInlet  = inlet;
 
   pin_thread(pthread_self(), lcore1);
-  TstEbOutlet* outlet = new TstEbOutlet(*server, id, duration, maxBatches, maxEntries, max_result_size);
+  TstEbOutlet* outlet = new TstEbOutlet(cltAddr, cltPort, id, duration, maxBatches, maxEntries, max_result_size, contributors);
 
   printf("\nParameters of Builder ID %d:\n", id);
   printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);
@@ -738,12 +807,10 @@ int main(int argc, char **argv)
   statsMon->shutdown();
   printf("\nShutting down Outlet...\n");
   outlet->shutdown();
-  server->shutdown();
 
   delete statsMon;
   delete outlet;
   delete inlet;
-  delete server;
 
   return ret;
 }

@@ -14,9 +14,9 @@ static void showUsage(const char* p)
 {
   printf("\nSimple libfabrics subscriber example (its pair is the ft_publish example).\n"
          "\n"
-         "This example is simulating something similar to zeromq's publish/suscribe model - a.k.a\n"
+         "This example is simulating something similar to zeromq's publish/subscribe model - a.k.a\n"
          "a simulated multicast using an underlying connected interface. The server periodically sends a\n"
-         "data buffer to all of its subscribers. A client connects to server to 'suscribe' and disconnects\n"
+         "data buffer to all of its subscribers. A client connects to server to 'subscribe' and disconnects\n"
          "to unsubscribe.\n"
          "\n"
          "Usage: %s [-h|--help]\n"
@@ -58,12 +58,12 @@ int connect(Endpoint* endp, char* buff, size_t buff_size, uint64_t max_count)
       }
     }
 
-    if (!endp->recv(buff, buff_size, mr)) {
+    if (endp->recv(buff, buff_size, mr)) {
       fprintf(stderr, "Failed receiving data from remote server: %s\n", endp->error());
       return endp->error_num();
     }
 
-    if (endp->comp_wait(&comp, &comp_num, 1, 1000)) {
+    if ( (comp_num = endp->txcq()->comp_wait(&comp, 1, 1000)) > 0) {
       if (comp_num == 1 && comp.flags & FI_RECV) {
         printf("data");
         uint64_t* data_buff = (uint64_t*) buff;

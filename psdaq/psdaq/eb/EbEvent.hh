@@ -5,7 +5,7 @@
 
 #include "EbContribution.hh"
 
-#include "psdaq/service/LinkedListSL.hh"
+#include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
 
 
@@ -21,7 +21,7 @@ namespace Pds {
 
     class EventBuilder;
 
-    class EbEvent : public LinkedListSL<EbEvent>
+    class EbEvent : public LinkedList<EbEvent>
     {
     public:
       PoolDeclare;

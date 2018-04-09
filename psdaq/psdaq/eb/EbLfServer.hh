@@ -26,14 +26,19 @@ namespace Pds {
                  unsigned     nClients);
       virtual ~EbLfServer();
     public:
-      int connect(unsigned id);
+      int connect(unsigned    id,
+                  void*       region,
+                  size_t      size,
+                  PeerSharing shared = EbLfBase::PEERS_SHARE_BUFFERS,
+                  void*       ctx    = nullptr);
     public:
       virtual int shutdown();
     private:
-      int _connect();
-      int _exchangeIds(Fabrics::Endpoint* ep,
-                       unsigned           myId,
-                       unsigned&          id);
+      int _connect(unsigned id);
+      int _exchangeIds(Fabrics::Endpoint*     ep,
+                       Fabrics::MemoryRegion* mr,
+                       unsigned               myId,
+                       unsigned&              id);
     private:
       const char*               _addr; // The interface address to use
       std::string&              _port; // The port to listen on

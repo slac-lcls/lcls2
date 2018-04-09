@@ -89,142 +89,95 @@ void EbLfStats::dump()
 
 EbLfBase::EbLfBase(unsigned nPeers) :
   _ep(nPeers),
-  _lMr(nPeers),
-  _rMr(nPeers),
+  _mr(nPeers),
   _ra(nPeers),
-  _cqPoller(nullptr),
-  _base(nullptr),
+  _txcq(nPeers),
+  _rxcq(0), //nPeers),
   _rxDepth(0),
   _rOuts(nPeers),
   _id(nPeers),
   _mappedId(nullptr),
-  _stats(nPeers),
-  _iSrc(0)
+  _stats(nPeers)
 {
 }
 
 EbLfBase::~EbLfBase()
 {
-  unsigned nEp = _ep.size();
-  for (unsigned i = 0; i < nEp; ++i)
-    if (_cqPoller && _ep[i])  _cqPoller->del(_ep[i]);
-  if (_cqPoller)  delete _cqPoller;
-
-  if (_base)      free(_base);
   if (_mappedId)  delete [] _mappedId;
 }
 
-const char* EbLfBase::base() const
+int EbLfBase::_setupMr(Endpoint*      ep,
+                       void*          region,
+                       size_t         size,
+                       MemoryRegion*& mr)
 {
-  return _base;
+  Fabric* fab = ep->fabric();
+
+  mr = fab->register_memory(region, size);
+  if (!mr)
+  {
+    fprintf(stderr, "Failed to register memory region @ %p, size %zu: %s\n",
+            region, size, fab->error());
+    return fab->error_num();
+  }
+
+  printf("Registered      memory region: %10p : %10p, size %zd\n",
+         region, (char*)region + size, size);
+
+  return 0;
 }
 
-int EbLfBase::prepareLclMr(size_t lclSize, PeerSharing shared)
+int EbLfBase::_syncLclMr(Endpoint*      ep,
+                         MemoryRegion*  mr,
+                         RemoteAddress& ra)
 {
-  size_t   alignment = sysconf(_SC_PAGESIZE);
-  assert((lclSize & (alignment - 1)) == 0);
-  unsigned nClients  = _ep.size();
-  size_t   size      = (shared == PEERS_SHARE_BUFFERS ? 1 : nClients) * lclSize;
-  void*    lclMem    = nullptr;
-  int      ret       = posix_memalign(&lclMem, alignment, size);
-  if (ret)
+  ssize_t      rc;
+  void*        buf = mr->start();
+  size_t       len = mr->length();
+  ra = RemoteAddress(mr->rkey(), (uint64_t)buf, len);
+
+  LocalAddress adx(buf, sizeof(ra), mr);
+  LocalIOVec   iov(&adx, 1);
+  Message      msg(&iov, 0, NULL, 0);
+
+  memcpy(buf, &ra, sizeof(ra));
+  if ((rc = ep->sendmsg_sync(&msg, FI_COMPLETION)) < 0)
   {
-    perror("posix_memalign");
-    return ret;
+    fprintf(stderr, "Failed sending local memory specs to peer: %s\n",
+            ep->error());
+    return rc;
   }
-  if (lclMem == nullptr)
+
+  printf("Sent     local  memory region: %10p : %10p, size %zd\n",
+         buf, (char*)buf + len, len);
+
+  return 0;
+}
+
+int EbLfBase::_syncRmtMr(Endpoint*      ep,
+                         MemoryRegion*  mr,
+                         RemoteAddress& ra,
+                         size_t         size)
+{
+  ssize_t  rc;
+  if ((rc = ep->recv_sync(mr->start(), sizeof(ra), mr)) < 0)
   {
-    fprintf(stderr, "No memory found for a region of size %zd\n", lclSize);
+    fprintf(stderr, "Failed receiving remote region specs from peer: %s\n",
+            ep->error());
+    return rc;
+  }
+
+  memcpy(&ra, mr->start(), sizeof(ra));
+
+  if (size > ra.extent)
+  {
+    fprintf(stderr, "Remote region size (%lu) is less than required (%lu)\n",
+            ra.extent, size);
     return -1;
   }
-  _base = (char*)lclMem;
 
-  char*    region = _base;
-  for (unsigned i = 0; i < _ep.size(); ++i)
-  {
-    Endpoint*     ep  = _ep[i];
-    Fabric*       fab = ep->fabric();
-    MemoryRegion* mr  = fab->register_memory(region, lclSize);
-    if (!mr)
-    {
-      fprintf(stderr, "Failed to register memory region @ %p, size %zu: %s\n",
-              region, lclSize, fab->error());
-      return fab->error_num();
-    }
-    _lMr[i] = mr;
-
-    printf("Sink   memory region[%2d]: %10p : %10p, size %zd\n",
-           i, region, (char*)region + lclSize, lclSize);
-
-    ssize_t       rc;
-    RemoteAddress ra(mr->rkey(), (uint64_t)mr->start(), mr->length());
-    memcpy(mr->start(), &ra, sizeof(ra));
-
-    if ((rc = ep->send_sync(mr->start(), sizeof(ra), mr)) < 0)
-    {
-      fprintf(stderr, "Failed sending local memory specs to peer: %s\n",
-              ep->error());
-      return rc;
-    }
-
-    if (shared == PER_PEER_BUFFERS)  region += lclSize;
-  }
-
-  return ret;
-}
-
-//#include <sys/mman.h>
-
-int EbLfBase::prepareRmtMr(void* region, size_t rmtSize)
-{
-  // No obvious effect:
-  //int ret = mlock(region, rmtSize);
-  //if (ret) perror ("mlock");
-
-  for (unsigned i = 0; i < _ep.size(); ++i)
-  {
-    Endpoint*     ep  = _ep[i];
-    Fabric*       fab = ep->fabric();
-    MemoryRegion* mr  = fab->register_memory(region, rmtSize);
-    if (!mr)
-    {
-      fprintf(stderr, "Failed to register memory region @ %p, size %zu: %s\n",
-              region, rmtSize, fab->error());
-      return fab->error_num();
-    }
-    _rMr[i] = mr;
-
-    printf("Source memory region[%2d]: %10p : %10p, size %zd\n",
-           i, region, (char*)region + rmtSize, rmtSize);
-
-    ssize_t        rc;
-    RemoteAddress& ra = _ra[i];
-    if ((rc = ep->recv_sync(mr->start(), sizeof(ra), mr)) < 0)
-    {
-      fprintf(stderr, "Failed receiving remote region specs from peer: %s\n",
-              ep->error());
-      return rc;
-    }
-
-    memcpy(&ra, mr->start(), sizeof(ra));
-
-    if (rmtSize > ra.extent)
-    {
-      fprintf(stderr, "Remote region size (%lu) is less than required (%lu)\n",
-              ra.extent, rmtSize);
-      return -1;
-    }
-
-    printf("Remote memory region[%2d]: %10p : %10p, size %zd\n",
-           i, (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent);
-
-    if ((rc = ep->recv_comp_data()) < 0)
-    {
-      if (rc != -FI_EAGAIN)
-        fprintf(stderr, "recv_comp_data() error for index %d: %s\n",
-                i, ep->error());
-    }
-  }
+  printf("Received remote memory region: %10p : %10p, size %zd\n",
+         (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent);
 
   return 0;
 }
@@ -249,7 +202,7 @@ const EbLfStats& EbLfBase::stats() const
 
 void* EbLfBase::lclAdx(unsigned src, uint64_t offset) const
 {
-  return (char*)_lMr[_mappedId[src]]->start() + offset;
+  return (char*)_mr[_mappedId[src]]->start() + offset;
 }
 
 uintptr_t EbLfBase::rmtAdx(unsigned dst, uint64_t offset) const
@@ -257,10 +210,27 @@ uintptr_t EbLfBase::rmtAdx(unsigned dst, uint64_t offset) const
   return _ra[_mappedId[dst]].addr + offset;
 }
 
-int EbLfBase::postCompRecv(unsigned dst, unsigned count, void* ctx)
+int EbLfBase::postCompRecv(unsigned dst, void* ctx)
 {
-  Endpoint* ep = _ep[_mappedId[dst]];
-  unsigned  i;
+  unsigned idx = _mappedId[dst];
+
+  if (--_rOuts[idx] <= 1)
+  {
+    unsigned count = _rxDepth - _rOuts[idx];
+    _rOuts[idx] += _postCompRecv(_ep[idx], count, ctx);
+    if (_rOuts[idx] < _rxDepth)
+    {
+      fprintf(stderr, "Failed to post all %d receives for id %d: %d\n",
+              count, _id[idx], _rOuts[idx]);
+    }
+  }
+
+  return _rOuts[idx];
+}
+
+int EbLfBase::_postCompRecv(Endpoint* ep, unsigned count, void* ctx)
+{
+  unsigned i;
 
   for (i = 0; i < count; ++i)
   {
@@ -278,58 +248,40 @@ int EbLfBase::postCompRecv(unsigned dst, unsigned count, void* ctx)
 
 int EbLfBase::_tryCq(fi_cq_data_entry* cqEntry)
 {
-  // Cycle through all sources to find which one has data
-  for (unsigned i = 0; i < _ep.size(); ++i)
+  const int maxCnt = 1;
+  ssize_t   rc     = _rxcq->comp(cqEntry, maxCnt);
+  if (rc == maxCnt)
   {
-    unsigned iSrc = _iSrc++;
-    if (_iSrc == _ep.size())  _iSrc = 0;
-
-    Endpoint*& ep = _ep[iSrc];
-    if (!ep)  continue;
-
-    const int maxCnt = 1;
-    ssize_t   rc     = ep->comp(ep->rxcq(), cqEntry, maxCnt);
-    if (rc == maxCnt)
+    const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
+    if ((cqEntry->flags & flags) == flags)
     {
-      ssize_t ret = ep->recv_comp_data();
-      if (ret < 0)
-      {
-        if (ret != -FI_EAGAIN)
-          fprintf(stderr, "tryCq: recv_comp_data() error: %s\n", ep->error());
-      }
+      //fprintf(stderr, "Expected   CQ entry: count %zd, got flags %016lx vs %016lx, data = %08lx\n",
+      //        rc, cqEntry->flags, flags, cqEntry->data);
+      //fprintf(stderr, "                     ctx   %p, len %zd, buf %p\n",
+      //        cqEntry->op_context, cqEntry->len, cqEntry->buf);
 
-      const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
-      if ((cqEntry->flags & flags) == flags)
-      {
-        ++_stats._rmtWrCnt[iSrc];
-
-        //fprintf(stderr, "Expected   completion queue entry of peer %u: count %d, got flags %016lx vs %016lx, data = %08lx\n",
-        //        _id[iSrc], compCnt, cqEntry->flags, flags, cqEntry->data);
-
-        //*data = (char*)_lMr[iSrc]->start() + cqEntry->data; // imm_data is only 32 bits for verbs!
-        return 0;
-      }
-
-      fprintf(stderr, "Unexpected completion queue entry of peer %u: count %ld, got flags %016lx vs %016lx\n",
-              _id[iSrc], rc, cqEntry->flags, flags);
-      return 1;
-    }
-    else
-    {
-      if (rc != -FI_EAGAIN)
-      {
-        static int _errno = 0;
-        if (rc != _errno)
-        {
-          fprintf(stderr, "Error reading completion queue of peer %u: %s\n",
-                  _id[iSrc], ep->error());
-          _errno = rc;
-        }
-        return rc;
-      }
+      return 0;
     }
 
-    ++_stats._compAgnCnt[iSrc];
+    fprintf(stderr, "Unexpected CQ entry: count %zd, got flags %016lx vs %016lx\n",
+            rc, cqEntry->flags, flags);
+    fprintf(stderr, "                     ctx   %p, len %zd, buf %p\n",
+            cqEntry->op_context, cqEntry->len, cqEntry->buf);
+    return -FI_EAGAIN;
+  }
+  else
+  {
+    if (rc != -FI_EAGAIN)
+    {
+      static int _errno = 0;
+      if (rc != _errno)
+      {
+        fprintf(stderr, "Error reading RX completion queue: %s\n",
+                _rxcq->error());
+        _errno = rc;
+      }
+      return rc;
+    }
   }
 
   return -FI_EAGAIN;
@@ -362,101 +314,22 @@ int EbLfBase::pend(fi_cq_data_entry* cqEntry)
   return rc;
 }
 
-int EbLfBase::pendW(fi_cq_data_entry* cqEntry)
-{
-  int      rc;
-  uint64_t rependCnt  = 0;
-  ++_stats._pendCnt;
-
-  while ((rc = _tryCq(cqEntry)) < 0)
-  {
-    if (rc != -FI_EAGAIN)  return rc;
-
-    const int tmo = 5000;               // milliseconds
-    rc = _cqPoller->poll(tmo);
-    if ((rc <= 0) && (rc != -FI_EAGAIN))
-    {
-      if (rc == 0)
-      {
-        ++_stats._pendTmoCnt;
-      }
-      else
-      {
-        fprintf(stderr, "Error polling completion queues: %s\n",
-                _cqPoller->error());
-      }
-      return rc;
-    }
-    ++rependCnt;
-  }
-
-  if (rependCnt > _stats._rependMax)
-    _stats._rependMax = rependCnt;
-  _stats._rependCnt += rependCnt;
-
-  return rc;
-}
-
-#if 0
-static int pollForComp(Endpoint* ep, unsigned idx)
-{
-  ssize_t          rc;
-  fi_cq_data_entry cqEntry;
-  const ssize_t    maxCnt = 1;
-  auto t0 = std::chrono::steady_clock::now();
-
-  while (1)
-  {
-    if ((rc = ep->comp(ep->txcq(), &cqEntry, maxCnt)) == maxCnt)
-    {
-      if ((rc = ep->recv_comp_data()) < 0)
-      {
-        if (rc != -FI_EAGAIN)
-          fprintf(stderr, "pollForComp: recv_comp_data() error: %s\n", ep->error());
-      }
-      return 0;
-    }
-    else if (rc == -FI_EAGAIN)
-    {
-      return 0;
-    }
-    else
-    {
-      fprintf(stderr, "Error completing post to peer %u: %s\n",
-              idx, ep->error());
-      return rc;
-    }
-
-    const int tmo = 5000;               // milliseconds
-    auto t1 = std::chrono::steady_clock::now();
-
-    if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > tmo)
-      return -FI_ETIMEDOUT;
-  }
-}
-#endif
-
 int EbLfBase::post(unsigned    dst,
                    const void* buf,
                    size_t      len,
-                   uint64_t    os,
+                   uint64_t    offset,
                    uint64_t    immData,
                    void*       ctx)
 {
   uint64_t repostCnt = 0;
   ++_stats._postCnt;
 
-  unsigned      idx = _mappedId[dst];
-  Endpoint*     ep  = _ep[idx];
-  //uintptr_t     os  = (const char*)buf - (const char*)_rMr[idx]->start();
-  RemoteAddress ra   (_ra[idx].rkey, _ra[idx].addr + os, len);
-  MemoryRegion* mr  = _rMr[idx];
-
-  //printf("buf = %p, sz = %zd, dst = %d, idx = %d, immData = 0x%08lx, "
-  //       "os = %08lx, srcMr = %p, dstAdx = 0x%016lx, 0x%016lx\n",
-  //       buf, len, dst, idx, immData, os,
-  //       _rMr[idx]->start(), _ra[idx].addr, _ra[idx].addr + os);
-  ssize_t       rc;
+  unsigned         idx = _mappedId[dst];
+  Endpoint*        ep  = _ep[idx];
+  RemoteAddress    ra   (_ra[idx].rkey, _ra[idx].addr + offset, len);
+  MemoryRegion*    mr  = _mr[idx];
+  CompletionQueue* cq  = _txcq[idx];
+  ssize_t          rc;
   do
   {
     if ((rc = ep->write_data(buf, len, &ra, ctx, immData, mr)) < 0)
@@ -469,26 +342,17 @@ int EbLfBase::post(unsigned    dst,
       ++repostCnt;
     }
 
-    // It appears that the CQ must always be read, not just after EAGAIN
-    //ssize_t ret = pollForComp(ep, idx);
-    //if (ret)  return ret;
-
     fi_cq_data_entry cqEntry;
     const ssize_t    maxCnt = 1;
-    ssize_t          ret    = ep->comp(ep->txcq(), &cqEntry, maxCnt);
-    if (ret == maxCnt)
+    ssize_t          ret    = cq->comp(&cqEntry, maxCnt);
+    if (ret != maxCnt)
     {
-      if ((ret = ep->recv_comp_data()) < 0)
+      if (ret != -FI_EAGAIN)            // EAGAIN means no completions available
       {
-        if (ret != -FI_EAGAIN)
-          fprintf(stderr, "pollForComp: recv_comp_data() error: %s\n", ep->error());
+        fprintf(stderr, "Error reading TX completing queue %u: %s\n",
+                idx, cq->error());
+        return ret;
       }
-    }
-    else if (ret != -FI_EAGAIN)
-    {
-      fprintf(stderr, "Error completing post to peer %u: %s\n",
-              idx, ep->error());
-      return ret;
     }
   }
   while (rc == -FI_EAGAIN);
@@ -499,68 +363,3 @@ int EbLfBase::post(unsigned    dst,
 
   return 0;
 }
-
-#if 0                                   // No longer used
-int EbLfBase::post(unsigned    dst,
-                   LocalIOVec& lclIov,
-                   size_t      len,
-                   uint64_t    offset,
-                   void*       ctx)
-{
-  //static unsigned wrtCnt  = 0;
-  //static unsigned wrtCnt2 = 0;
-  //static unsigned waitCnt = 0;
-
-  //const struct iovec* iov = lclIov.iovecs();
-  //void**              dsc = lclIov.desc();
-  //
-  //for (unsigned i = 0; i < lclIov.count(); ++i)
-  //{
-  //  printf("lclIov[%d]: base   = %p, size = %zd, desc = %p\n", i, iov[i].iov_base, iov[i].iov_len, dsc[i]);
-  //}
-
-  unsigned idx = _mappedId[dst];
-
-  RemoteAddress rmtAdx(_ra[idx].rkey, _ra[idx].addr + offset, len);
-  RemoteIOVec   rmtIov(&rmtAdx, 1);
-  RmaMessage    rmaMsg(&lclIov, &rmtIov, ctx, offset); // imm_data is only 32 bits for verbs!
-
-  //printf("rmtIov: rmtAdx = %p, size = %zd\n", (void*)rmtAdx.addr, len);
-
-  //++wrtCnt;
-  Endpoint* ep = _ep[idx];
-  do
-  {
-    //++wrtCnt2;
-    if (ep->writemsg(&rmaMsg, FI_REMOTE_CQ_DATA))  break;
-
-    if (ep->error_num() == -FI_EAGAIN)
-    {
-      int              compCnt;
-      fi_cq_data_entry cqEntry;
-      const int        maxCnt = 1;
-
-      ep->recv_comp_data();
-
-      //printf("EbLfBase::post: Waiting for comp... %d of %d, %d\n", ++waitCnt, wrtCnt, wrtCnt2);
-      if (!ep->comp_wait(&cqEntry, &compCnt, maxCnt))
-      {
-        if (ep->error_num() != -FI_EAGAIN)
-        {
-          fprintf(stderr, "Error completing operation with peer %u: %s\n",
-                  idx, ep->error());
-          return ep->error_num();
-        }
-      }
-    }
-    else
-    {
-      fprintf(stderr, "writemsg failed: %s\n", ep->error());
-      return ep->error_num();
-    }
-  }
-  while (ep->state() == EP_CONNECTED);
-
-  return 0;
-}
-#endif

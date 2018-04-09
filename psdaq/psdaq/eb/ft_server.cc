@@ -17,7 +17,7 @@ static void showUsage(const char* p)
          "In this simple example the server waits for a connection, and when a client connects the server\n"
          "sends a message containing info on a readable memory region. The client then initiates a specified\n"
          "number of remote reads on that memory and then disconnects. After disconnect the server can accept\n"
-         "new incoming connections.\n" 
+         "new incoming connections.\n"
          "\n"
          "Usage: %s [-h|--help]\n"
          "    -a|--addr     the local address to which the server binds (default: libfabrics 'best' choice)\n"
@@ -49,7 +49,8 @@ int listen(PassiveEndpoint* pendp, MemoryRegion* mr, char* key_buff, size_t key_
     memcpy(data_buff, &value, sizeof(value));
     value++;
 
-    if (!endp->send_sync(key_buff, key_size, mr)) {
+    ssize_t rc;
+    if ((rc = endp->send_sync(key_buff, key_size, mr))) {
       fprintf(stderr, "Sending of local memory keys failed: %s\n", endp->error());
       ret = endp->error_num();
       pendp->close(endp);
@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
   char* data_buff = NULL;
 
   const char* str_opts = ":ha:b:p:";
-  const struct option lo_opts[] = 
+  const struct option lo_opts[] =
   {
     {"help",    0, 0, 'h'},
     {"addr",    1, 0, 'a'},
@@ -141,7 +142,7 @@ int main(int argc, char *argv[])
   buff_size += data_size;
   buff = new char[buff_size];
   data_buff = buff + sizeof(RemoteAddress);
-  
+
   ((uint64_t*) data_buff)[1] = 0xadd;
   ((uint64_t*) data_buff)[2] = 0xdeadbeef;
   for (unsigned i=3; i< (data_size / sizeof(uint64_t)); i++)

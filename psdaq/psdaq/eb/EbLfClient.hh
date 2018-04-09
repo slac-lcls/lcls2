@@ -26,20 +26,28 @@ namespace Pds {
                  StringList& port);
       virtual ~EbLfClient();
     public:
-      int connect(unsigned id, unsigned tmo);
+      int connect(unsigned    id,
+                  unsigned    tmo,
+                  void*       region,
+                  size_t      size,
+                  PeerSharing shared = EbLfBase::PEERS_SHARE_BUFFERS,
+                  void*       ctx    = nullptr);
     public:
       virtual int shutdown();
     private:
-      int _connect(std::string&        peer,
-                   std::string&        port,
-                   unsigned            tmo,
-                   Fabrics::Endpoint*& ep);
-      int _exchangeIds(Fabrics::Endpoint* ep,
-                       unsigned           myId,
-                       unsigned&          id);
+      int _connect    (std::string&               peer,
+                       std::string&               port,
+                       unsigned                   tmo,
+                       Fabrics::Endpoint*&        ep,
+                       Fabrics::CompletionQueue*& txcq,
+                       Fabrics::CompletionQueue*& rxcq);
+      int _exchangeIds(Fabrics::Endpoint*         ep,
+                       Fabrics::MemoryRegion*     mr,
+                       unsigned                   myId,
+                       unsigned&                  id);
     private:
       StringList& _peers;               // List of peers
-      StringList& _port;                // The port to listen on
+      StringList& _ports;               // The ports to listen on
     };
   };
 };

@@ -31,7 +31,6 @@ static void showUsage(const char* p)
 int connect(Endpoint* endp, char* buff, size_t buff_size, unsigned size, unsigned count)
 {
   int* comp_num;
-  int num_comp;
   struct fi_cq_data_entry comp;
   RemoteAddress keys;
 
@@ -49,7 +48,7 @@ int connect(Endpoint* endp, char* buff, size_t buff_size, unsigned size, unsigne
     return endp->error_num();
   }
 
-  if (!endp->recv_sync(buff, sizeof (keys), mr)) {
+  if (endp->recv_sync(buff, sizeof (keys), mr)) {
     fprintf(stderr, "Failed receiving memory keys from remote server: %s\n", endp->error());
     return endp->error_num();
   }
@@ -61,12 +60,12 @@ int connect(Endpoint* endp, char* buff, size_t buff_size, unsigned size, unsigne
   }
 
   for (unsigned i = 0; i < count; i++) {
-    if (!endp->read(buff, size*sizeof(uint64_t), &keys, &i, mr)) {
+    if (endp->read(buff, size*sizeof(uint64_t), &keys, &i, mr)) {
       fprintf(stderr, "Failed posting read to endpoint: %s\n", endp->error());
       return endp->error_num();;
     }
 
-    if (!endp->comp_wait(&comp, &num_comp, 1)) {
+    if (endp->rxcq()->comp_wait(&comp, 1) < 0) {
       fprintf(stderr, "Failed waiting for read completion: %s\n", endp->error());
       return endp->error_num();
     }
@@ -96,9 +95,9 @@ int main(int argc, char *argv[])
   unsigned count = COUNT_DEF;
   size_t buff_size = 0;
   char* buff = NULL;
-  
+
   const char* str_opts = ":ha:p:s:c:";
-  const struct option lo_opts[] = 
+  const struct option lo_opts[] =
   {
       {"help",  0, 0, 'h'},
       {"addr",  1, 0, 'a'},
