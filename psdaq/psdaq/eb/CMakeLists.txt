@@ -5,9 +5,6 @@ add_library(eb SHARED
   EventBuilder.cc
   EbEpoch.cc
   EbEvent.cc
-  #EbFtBase.cc
-  #EbFtServer.cc
-  #EbFtClient.cc
   EbLfBase.cc
   EbLfServer.cc
   EbLfClient.cc
@@ -118,6 +115,7 @@ install(TARGETS eb
   ft_server
   ft_writemsg_client
 	ft_writemsg_server
+  eblf_pingpong
   tstEbContributor
 	tstEbBuilder
 	drpEbBuilder
