@@ -469,9 +469,9 @@ void TstContribOutlet::routine()
   printf("Dumped post call rate histogram to ./%s\n", fs);
   _postCallHist.dump(fs);
 
-  _task->destroy();
-
   _transport->shutdown();
+
+  _task->destroy();
 }
 
 
@@ -634,6 +634,8 @@ void TstContribInlet::routine()
   sprintf(fs, "pendCallRate_%d.hist", _id);
   printf("Dumped pend call rate histogram to ./%s\n", fs);
   _pendCallHist.dump(fs);
+
+  _transport->shutdown();
 
   _task->destroy();
 }
