@@ -32,14 +32,8 @@ static const unsigned default_id    = 0;
 static const unsigned default_size  = 4096;
 static const unsigned rx_depth      =  500;
 static const unsigned default_iters = 1000;
-static const bool     default_poll  = true;
 
 typedef std::chrono::microseconds us_t;
-
-// Work Completion IDs
-enum { PINGPONG_RECV_WCID = 1,
-       PINGPONG_SEND_WCID = 2,
-};
 
 
 void usage(char *name, char *desc)
@@ -48,8 +42,10 @@ void usage(char *name, char *desc)
     fprintf(stderr, "\n%s\n", desc);
 
   fprintf(stderr, "Usage:\n");
-  fprintf(stderr, "  %s [OPTIONS]          start server\n", name);
-  fprintf(stderr, "  %s [OPTIONS] <host>   connect to server\n", name);
+  fprintf(stderr, "  %s [OPTIONS] <host>\n", name);
+
+  fprintf(stderr, "\nWhere:\n"
+          "  <host> is the IP address of the replying side\n");
 
   fprintf(stderr, "\nOptions:\n");
 
@@ -60,12 +56,12 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, " %-20s %s (default: %d)\n",    "-s <size>",
           "Size of message to exchange",          default_size);
-  fprintf(stderr, " %-20s %s (default: %d)\n",    "-r <rx-depth>",
-          "Number of receives to post at a time", rx_depth);
+  //fprintf(stderr, " %-20s %s (default: %d)\n",    "-r <rx-depth>",
+  //        "Number of receives to post at a time", rx_depth);
   fprintf(stderr, " %-20s %s (default: %d)\n",    "-n <iters>",
           "Number of exchanges",                  default_iters);
-  fprintf(stderr, " %-20s %s (default: %s)\n",    "-e",
-          "Sleep on CQ events",                   default_poll ? "poll" : "sleep");
+  fprintf(stderr, " %-20s %s\n",                  "-S",
+          "Start flag: one side must specify this\n");
 
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
 }
@@ -73,24 +69,24 @@ void usage(char *name, char *desc)
 int main(int argc, char **argv)
 {
   int      op, ret  = 0;
-  unsigned srcId    = default_id;
+  unsigned id       = default_id;
   char*    ifAddr   = nullptr;
   unsigned portBase = port_base;
   unsigned size     = default_size;
-  unsigned rxDepth  = rx_depth;
+  //unsigned rxDepth  = rx_depth;
   unsigned iters    = default_iters;
-  bool     usePoll  = default_poll;
+  bool     start    = false;
 
-  while ((op = getopt(argc, argv, "h?A:P:s:r:n:e")) != -1)
+  while ((op = getopt(argc, argv, "h?A:P:s:r:n:S")) != -1)
   {
     switch (op)
     {
       case 'A':  ifAddr   = optarg;        break;
       case 'P':  portBase = atoi(optarg);  break;
       case 's':  size     = atoi(optarg);  break;
-      case 'r':  rxDepth  = atoi(optarg);  break;
       case 'n':  iters    = atoi(optarg);  break;
-      case 'e':  usePoll  = false;         break;
+      case 'S':  start    = true;          break;
+      case 'r':  //rxDepth  = atoi(optarg);  break;
       case '?':
       case 'h':
       default:
@@ -99,36 +95,39 @@ int main(int argc, char **argv)
     }
   }
 
-  if (portBase + srcId > USHRT_MAX)
+  unsigned srvBase = portBase + (start ? 1 : 0);
+  if (srvBase > USHRT_MAX)
   {
-    fprintf(stderr, "Server port is out of range 0 - 65535: %d\n",
-            portBase + srcId);
+    fprintf(stderr, "Server port is out of range 0 - %u: %d\n",
+            USHRT_MAX, srvBase);
     return 1;
   }
 
   char port[8];
-  std::string srvPort;
+  snprintf(port, sizeof(port), "%d", srvBase);
+  std::string srvPort(port);
+
   std::vector<std::string> cltAddr;
   std::vector<std::string> cltPort;
-  unsigned dstId = default_id;
-  uint64_t peers = 1ul << dstId;
-  if (optind == argc - 1)
+  uint64_t peers = 1ul << id;
+  if (optind < argc)
   {
-    char* peer = argv[optind];
-    if (portBase + dstId > USHRT_MAX)
+    char*    peer    = argv[optind];
+    unsigned cltBase = portBase + (start ? 0 : 1);
+    if (cltBase > USHRT_MAX)
     {
-      fprintf(stderr, "Peer port is out of range 0 - 65535: %d\n",
-              portBase + dstId);
+      fprintf(stderr, "Peer port is out of range 0 - %u: %d\n",
+              USHRT_MAX, cltBase);
       return 1;
     }
-    snprintf(port, sizeof(port), "%d", portBase + dstId);
+    snprintf(port, sizeof(port), "%d", cltBase);
     cltAddr.push_back(std::string(peer));
     cltPort.push_back(std::string(port));
   }
   else
   {
-    snprintf(port, sizeof(port), "%d", portBase + srcId);
-    srvPort = std::string(port);
+    fprintf(stderr, "Peer address is required\n");
+    return 1;
   }
 
   //if (rxDepth) {
@@ -145,131 +144,80 @@ int main(int argc, char **argv)
 
   size_t alignment = sysconf(_SC_PAGESIZE);
   size             = alignment * ((size + alignment - 1) / alignment);
-  void*  buffer    = nullptr;
-  ret              = posix_memalign(&buffer, alignment, size);
-  if (ret)  perror("posix_memalign");
-  assert(buffer != nullptr);
+  void*  srcBuf    = nullptr;
+  ret              = posix_memalign(&srcBuf, alignment, size);
+  if (ret)  perror("posix_memalign: source buffer");
+  assert(srcBuf != nullptr);
 
-  unsigned pending = PINGPONG_RECV_WCID;
-  unsigned routs   = 0;
+  void*  snkBuf    = nullptr;
+  ret              = posix_memalign(&snkBuf, alignment, size);
+  if (ret)  perror("posix_memalign: sink buffer");
+  assert(snkBuf != nullptr);
 
-  EbLfServer* server = nullptr;
-  EbLfClient* client = nullptr;
-  EbLfBase*   transport;
-  if (cltAddr.size() == 0)
+  EbLfServer* pender = nullptr;
+  EbLfClient* poster = nullptr;
+  if (!start)
   {
-    server = new EbLfServer(ifAddr, srvPort, std::bitset<64>(peers).count());
-    if ( (ret = server->connect(srcId)) )  return ret;
-    transport = server;
-
-    if (transport->prepareLclMr(size)) // Sequence must match client's prepareRmtMr()
-    {
-      fprintf(stderr, "Server: Failed to prepare local memory region\n");
-      return 1;
-    }
-
-    if (transport->prepareRmtMr(buffer, size)) // Sequence must match client's prepareLclMr()
-    {
-      fprintf(stderr, "Server: Failed to prepare remote memory region\n");
-      return 1;
-    }
-
-    routs = transport->postCompRecv(dstId, rxDepth, (void *)(uintptr_t)PINGPONG_RECV_WCID);
-    if (routs < rxDepth)
-    {
-      fprintf(stderr, "Couldn't post receive (%d)\n", routs);
-      return 1;
-    }
+    pender = new EbLfServer(ifAddr, srvPort, std::bitset<64>(peers).count());
+    if ( (ret = pender->connect(id,
+                                snkBuf,
+                                size,
+                                EbLfBase::PEERS_SHARE_BUFFERS)) )  return ret;
+    const unsigned tmo(120);
+    poster = new EbLfClient(cltAddr, cltPort);
+    if ( (ret = poster->connect(id,
+                                tmo,
+                                srcBuf,
+                                size,
+                                EbLfBase::PEERS_SHARE_BUFFERS)) )  return ret;
   }
   else
   {
     const unsigned tmo(120);
-    client = new EbLfClient(cltAddr, cltPort);
-    if ( (ret = client->connect(srcId, tmo)) )  return ret;
-    transport = client;
+    poster = new EbLfClient(cltAddr, cltPort);
+    if ( (ret = poster->connect(id,
+                                tmo,
+                                srcBuf,
+                                size,
+                                EbLfBase::PEERS_SHARE_BUFFERS)) )  return ret;
+    pender = new EbLfServer(ifAddr, srvPort, std::bitset<64>(peers).count());
+    if ( (ret = pender->connect(id,
+                                snkBuf,
+                                size,
+                                EbLfBase::PEERS_SHARE_BUFFERS)) )  return ret;
 
-    if (transport->prepareRmtMr(buffer, size)) // Sequence must match server's prepareLclMr()
+    if (poster->post(id, srcBuf, size, 0, 0))
     {
-      fprintf(stderr, "Client: Failed to prepare remote memory region\n");
+      fprintf(stderr, "Poster: failed to post a buffer\n");
       return 1;
     }
-
-    if (transport->prepareLclMr(size)) // Sequence must match server's prepareRmtMr()
-    {
-      fprintf(stderr, "Client: Failed to prepare local memory region\n");
-      return 1;
-    }
-
-    routs = transport->postCompRecv(dstId, rxDepth, (void *)(uintptr_t)PINGPONG_RECV_WCID);
-    if (routs < rxDepth)
-    {
-      fprintf(stderr, "Couldn't post receive (%d)\n", routs);
-      return 1;
-    }
-
-    if (transport->post(dstId, buffer, size, 0, 0, (void *)(uintptr_t)PINGPONG_SEND_WCID))
-    {
-      fprintf(stderr, "Client: failed to post a buffer\n");
-      return 1;
-    }
-    pending |= PINGPONG_SEND_WCID;
   }
 
   auto tStart = std::chrono::steady_clock::now();
   unsigned rcnt = 0;
-  unsigned scnt = 0;
-  while ((rcnt < iters || scnt < iters) && (ret == 0))
+  unsigned scnt = start ? 1 : 0;
+  while (rcnt < iters || scnt < iters)
   {
     fi_cq_data_entry wc;
-    if (usePoll)
-      ret = transport->pend(&wc);
-    else
-      ret = transport->pendW(&wc);
-    if (ret)
+    if ( (ret = pender->pend(&wc)) )
     {
       fprintf(stderr, "Failed pending for a buffer: %s(%d)\n",
               fi_strerror(-ret), ret);
       break;
     }
+    ++rcnt;
 
-    switch ((int) (uintptr_t) wc.op_context)
+    pender->postCompRecv(id);
+
+    if (scnt < iters)
     {
-      case PINGPONG_SEND_WCID:
-        ++scnt;
-        break;
-
-      case PINGPONG_RECV_WCID:
-        if (--routs <= 1)
-        {
-          routs += transport->postCompRecv(dstId, rxDepth - routs, wc.op_context);
-          if (routs < rxDepth)
-          {
-            fprintf(stderr, "Couldn't post receive (%d)\n", routs);
-            ret = 1;
-            break;
-          }
-        }
-
-        ++rcnt;
-        break;
-
-      default:
-        fprintf(stderr, "Completion for unknown wc_id %d\n",
-                (int) (uintptr_t) wc.op_context);
-        ret = 1;
-        break;
-    }
-
-    pending &= ~(int) (uintptr_t) wc.op_context;
-    if (scnt < iters && !pending)
-    {
-      if (transport->post(dstId, buffer, size, 0, 0, (void *)(uintptr_t)PINGPONG_SEND_WCID))
+      if (poster->post(id, srcBuf, size, 0, 0))
       {
         fprintf(stderr, "Failed to post a buffer\n");
         ret = 1;
         break;
       }
-      pending = PINGPONG_RECV_WCID | PINGPONG_SEND_WCID;
+      ++scnt;
     }
   }
   auto tEnd = std::chrono::steady_clock::now();
@@ -284,15 +232,15 @@ int main(int argc, char **argv)
            iters, usecs / 1000000., usecs / iters);
   }
 
-  if (server)
+  if (pender)
   {
-    server->shutdown();
-    delete server;
+    pender->shutdown();
+    delete pender;
   }
-  if (client)
+  if (poster)
   {
-    client->shutdown();
-    delete client;
+    poster->shutdown();
+    delete poster;
   }
 
   return ret;

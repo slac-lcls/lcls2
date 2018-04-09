@@ -14,42 +14,59 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
-static const size_t scratch_size = sizeof(Fabrics::RemoteAddress);
-
 
 EbLfClient::EbLfClient(StringList& peers,
-                       StringList& port) :
+                       StringList& ports) :
   EbLfBase(peers.size()),
   _peers(peers),
-  _port(port)
+  _ports(ports)
 {
 }
 
 EbLfClient::~EbLfClient()
 {
   unsigned nEp = _ep.size();
-
   for (unsigned i = 0; i < nEp; ++i)
-    if (_ep[i])   delete _ep[i];
+  {
+    if (_ep[i]->fabric())  delete _ep[i]->fabric();
+    if (_ep[i])            delete _ep[i];
+  }
+
+  if (_rxcq)  delete _rxcq;
+  for (unsigned i = 0; i < nEp; ++i)
+  {
+    if (_txcq[i])  delete _txcq[i];
+  }
 }
 
-int EbLfClient::connect(unsigned id, unsigned tmo)
+int EbLfClient::connect(unsigned    id,
+                        unsigned    tmo,
+                        void*       region,
+                        size_t      size,
+                        PeerSharing shared,
+                        void*       ctx)
 {
   for (unsigned i = 0; i < _peers.size(); ++i)
   {
-    int ret = _connect(_peers[i], _port[i], tmo, _ep[i]);
-    if (ret)
-    {
-      fprintf(stderr, "_connect() failed at index %u (%s:%s)\n",
-              i, _peers[i].c_str(), _port[i].c_str());
-      return ret;
-    }
+    int ret = _connect(_peers[i], _ports[i], tmo, _ep[i], _txcq[i], _rxcq);
+    if (ret)  return ret;
 
-    ret = _exchangeIds(_ep[i], id, _id[i]);
-    if (ret)
+    ret = _setupMr(_ep[i], region, size, _mr[i]);
+    if (ret)  return ret;
+
+    if (shared == PER_PEER_BUFFERS)  region = (char*)region + size;
+
+    ret = _exchangeIds(_ep[i], _mr[i], id, _id[i]);
+    if (ret)  return ret;
+
+    ret = _syncRmtMr(_ep[i], _mr[i], _ra[i], size);
+    if (ret)  return ret;
+
+    _rOuts[i] = _postCompRecv(_ep[i], _rxDepth, ctx);
+    if (_rOuts[i] < _rxDepth)
     {
-      fprintf(stderr, "Exchanging IDs failed at index %d\n", i);
-      return ret;
+      fprintf(stderr, "Posted only %d of %d CQ buffers at index %d(%d)\n",
+              _rOuts[i], _rxDepth, i, _id[i]);
     }
 
     printf("Server[%d] %d connected\n", i, _id[i]);
@@ -60,64 +77,111 @@ int EbLfClient::connect(unsigned id, unsigned tmo)
   return 0;
 }
 
-int EbLfClient::_connect(std::string& peer,
-                         std::string& port,
-                         unsigned     tmo,
-                         Endpoint*&   ep)
+int EbLfClient::_connect(std::string&      peer,
+                         std::string&      port,
+                         unsigned          tmo,
+                         Endpoint*&        ep,
+                         CompletionQueue*& txcq,
+                         CompletionQueue*& rxcq)
 {
-  ep = new Endpoint(peer.c_str(), port.c_str());
-  if (!ep || (ep->state() != EP_UP))
+  unsigned idx = &peer - &_peers[0];
+
+  Fabric* fab = new Fabric(peer.c_str(), port.c_str());
+  if (!fab || !fab->up())
   {
-    fprintf(stderr, "Failed to initialize fabrics endpoint %s:%s: %s\n",
-            peer.c_str(), port.c_str(), ep ? ep->error() : "");
-    if (!ep)  perror("new Endpoint");
-    return ep ? ep->error_num() : errno;
+    fprintf(stderr, "Failed to create Fabric[%d]: %s\n",
+            idx, fab ? fab->error() : "No memory");
+    return fab ? fab->error_num() : -FI_ENOMEM;
   }
 
-  Fabric* fab = ep->fabric();
+  printf("Client[%d] is using '%s' provider\n", idx, fab->provider());
 
-  printf("Client is using %s provider\n", fab->provider());
+  struct fi_cq_attr cq_attr = {
+    .size             = 0,
+    .flags            = 0,
+    .format           = FI_CQ_FORMAT_DATA,
+    .wait_obj         = FI_WAIT_UNSPEC,
+    .signaling_vector = 0,
+    .wait_cond        = FI_CQ_COND_NONE,
+    .wait_set         = NULL,
+  };
 
-  //if (!_rxDepth)
-  //{
-  //  const unsigned rxDepth = 500;
-  //  if (rxDepth > fab->info()->rx_attr->size)
-  //  {
-  //    fprintf(stderr, "rxDepth requested: %d, "
-  //            "rxDepth supported: %zd\n", rxDepth, fab->info()->rx_attr->size);
-  //    return -1;
-  //  }
-  //  _rxDepth = rxDepth;
-
-  //if (!_cqPoller)
-  //{
-  //  _cqPoller = new CompletionPoller(fab, _ep.size());
-  //  if (!_cqPoller)
-  //  {
-  //    fprintf(stderr, "Completion Poller creation failed\n");
-  //    return -1;
-  //  }
-  //}
-  //
-  //if (!_cqPoller->add(ep, ep->rxcq()))
-  //{
-  //  fprintf(stderr, "Failed to add Endpoing to completion poller: %s\n",
-  //          _cqPoller->error());
-  //  return _cqPoller->error_num();
-  //}
-
-  printf("Waiting for server %s on port %s\n", peer.c_str(), port.c_str());
-
-  int  ret;
-  bool tmoEnabled = tmo != 0;
-  int  timeout    = tmoEnabled ? 1000 * tmo : -1;
-  tmo *= 10;
-  while (!(ret = ep->connect(timeout)) && tmoEnabled && --tmo)
+  cq_attr.size = fab->info()->tx_attr->size + 1;
+  txcq = new CompletionQueue(fab, &cq_attr, NULL);
+  if (!txcq)
   {
-    if (ep->error_num() == -FI_ENODATA)  break;
+    fprintf(stderr, "Failed to create TX completion queue[%d]: %s\n",
+            idx, "No memory");
+    return -FI_ENOMEM;
+  }
+
+  if (!rxcq)
+  {
+    _rxDepth     = fab->info()->rx_attr->size;
+    cq_attr.size = _rxDepth + 1;
+    rxcq = new CompletionQueue(fab, &cq_attr, NULL);
+    if (!rxcq)
+    {
+      fprintf(stderr, "Failed to create RX completion queue: %s\n",
+              "No memory");
+      return -FI_ENOMEM;
+    }
+  }
+
+  printf("Waiting for server %s:%s\n", peer.c_str(), port.c_str());
+
+  bool tmoEnabled = tmo != 0;
+  int  timeout    = tmoEnabled ? 1000 * tmo : -1; // mS
+  tmo *= 10;
+  do
+  {
+    if (ep)                         // Can't try to connect on an EP a 2nd time
+      delete ep;
+
+    ep = new Endpoint(fab, txcq, rxcq);
+    if (!ep || (ep->state() != EP_UP))
+    {
+      fprintf(stderr, "Failed to initialize Endpoint[%d]: %s\n",
+              idx, ep ? ep->error() : "No memory");
+      return ep ? ep->error_num() : -FI_ENOMEM;
+    }
+
+    if (!ep->open(fab->info()))
+    {
+      fprintf(stderr, "Failed to open Endpoint[%d]: %s\n",
+              idx, ep->error());
+      return ep->error_num();
+    }
+
+    if (!txcq->bind(ep, FI_TRANSMIT | FI_SELECTIVE_COMPLETION))
+    {
+      fprintf(stderr, "Failed to bind Endpoint[%d] to TX completion queue: %s\n",
+              idx, txcq->error());
+      return txcq->error_num();
+    }
+
+    if (!rxcq->bind(ep, FI_RECV))
+    {
+      fprintf(stderr, "Failed to bind Endpoint[%d] to RX completion queue: %s\n",
+              idx, rxcq->error());
+      return rxcq->error_num();
+    }
+
+    if (!ep->enable())
+    {
+      fprintf(stderr, "Failed to enable Endpoint[%d]: %s\n",
+              idx, ep->error());
+      return ep->error_num();
+    }
+
+    if (ep->connect(timeout))  break;
+
+    if (ep->error_num() == -FI_ENODATA)  break; // Revisit: Why this again?
+
     usleep(100000);
   }
-  if (!ret || (tmoEnabled && (tmo == 0)))
+  while (tmoEnabled && --tmo);
+  if ((ep->error_num() != FI_SUCCESS) || (tmoEnabled && (tmo == 0)))
   {
     const char* msg = tmoEnabled ? "Timed out connecting" : "Failed to connect";
     fprintf(stderr, "%s to %s:%s: %s\n", msg,
@@ -125,40 +189,37 @@ int EbLfClient::_connect(std::string& peer,
     return ep->error_num();
   }
 
-  printf("Server %s:%s connected\n", peer.c_str(), port.c_str());
-
   return 0;
 }
 
-int EbLfClient::_exchangeIds(Endpoint* ep,
-                             unsigned  myId,
-                             unsigned& id)
+int EbLfClient::_exchangeIds(Endpoint*     ep,
+                             MemoryRegion* mr,
+                             unsigned      myId,
+                             unsigned&     id)
 {
-  ssize_t rc;
-  char    scratch[scratch_size];           // No big deal if unaligned
-  Fabric* fab = ep->fabric();
+  ssize_t      rc;
+  unsigned     idx = &ep - &_ep[0];
+  void*        buf = mr->start();
 
-  MemoryRegion* mr = fab->register_memory(scratch, sizeof(scratch));
-  if (!mr)
-  {
-    fprintf(stderr, "Failed to register memory region @ %p, size %zu: %s\n",
-            scratch, sizeof(scratch), fab->error());
-    return fab->error_num();
-  }
+  LocalAddress adx(buf, sizeof(myId), mr);
+  LocalIOVec   iov(&adx, 1);
+  Message      msg(&iov, 0, NULL, 0);
 
-  *(unsigned*)scratch = myId;
-  if ((rc = ep->send_sync(scratch, sizeof(myId))) < 0)
+  *(unsigned*)buf = myId;
+  if ((rc = ep->sendmsg_sync(&msg, FI_TRANSMIT_COMPLETE | FI_COMPLETION)) < 0)
   {
-    fprintf(stderr, "Failed sending peer our ID: %s\n", ep->error());
+      fprintf(stderr, "Failed sending peer[%d] our ID: %s\n",
+              idx, ep->error());
     return rc;
   }
 
-  if ((rc = ep->recv_sync(scratch, sizeof(id), mr)) < 0)
+  if ((rc = ep->recv_sync(buf, sizeof(id), mr)) < 0)
   {
-    fprintf(stderr, "Failed receiving peer's ID: %s\n", ep->error());
+    fprintf(stderr, "Failed receiving peer[%d]'s ID: %s\n",
+            idx, ep->error());
     return rc;
   }
-  id = *(unsigned*)scratch;
+  id = *(unsigned*)buf;
 
   return 0;
 }

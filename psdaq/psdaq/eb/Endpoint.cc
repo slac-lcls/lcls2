@@ -1,4 +1,4 @@
-#include "psdaq/eb/Endpoint.hh"
+#include "Endpoint.hh"
 
 #include <rdma/fi_cm.h>
 
@@ -499,6 +499,64 @@ void RmaMessage::data(uint64_t data) { _msg->data = data; }
 
 const struct fi_msg_rma* RmaMessage::msg() const { return _msg; }
 
+Message::Message() :
+  _iov(0),
+  _msg(new struct fi_msg)
+{}
+
+Message::Message(LocalIOVec* iov, fi_addr_t addr, void* context, uint64_t data) :
+  _iov(iov),
+  _msg(new struct fi_msg)
+{
+  if (_iov) {
+    _msg->msg_iov = iov->iovecs();
+    _msg->desc = iov->desc();
+    _msg->iov_count = iov->count();
+  }
+  _msg->addr = addr;
+  _msg->context = context;
+  _msg->data = data;
+}
+
+Message::~Message()
+{
+  if (_msg) {
+    delete _msg;
+  }
+}
+
+LocalIOVec* Message::iov() const { return _iov; }
+
+void Message::iov(LocalIOVec* iov)
+{
+  if (iov) {
+    _iov = iov;
+    _msg->msg_iov = iov->iovecs();
+    _msg->desc = iov->desc();
+    _msg->iov_count = iov->count();
+  }
+}
+
+const struct iovec* Message::msg_iov() const { return _msg->msg_iov; }
+
+void** Message::desc() const { return _msg->desc; }
+
+size_t Message::iov_count() const { return _msg->iov_count; }
+
+fi_addr_t Message::addr() const { return _msg->addr; }
+
+void Message::addr(fi_addr_t addr) { _msg->addr = addr; }
+
+void* Message::context() const { return _msg->context; }
+
+void Message::context(void* context) { _msg->context = context; }
+
+uint64_t Message::data() const { return _msg->data; }
+
+void Message::data(uint64_t data) { _msg->data = data; }
+
+const struct fi_msg* Message::msg() const { return _msg; }
+
 MemoryRegion::MemoryRegion(struct fid_mr* mr, void* start, size_t len) :
   _mr(mr),
   _start(start),
@@ -752,6 +810,8 @@ void Fabric::shutdown()
 EndpointBase::EndpointBase(const char* addr, const char* port, uint64_t flags) :
   _state(EP_INIT),
   _fab_owner(true),
+  _txcq_owner(true),
+  _rxcq_owner(true),
   _fabric(new Fabric(addr, port, flags)),
   _eq(0),
   _txcq(0),
@@ -761,13 +821,15 @@ EndpointBase::EndpointBase(const char* addr, const char* port, uint64_t flags) :
     _state = EP_CLOSED;
 }
 
-EndpointBase::EndpointBase(Fabric* fabric) :
+EndpointBase::EndpointBase(Fabric* fabric, CompletionQueue* txcq, CompletionQueue* rxcq) :
   _state(EP_INIT),
   _fab_owner(false),
+  _txcq_owner(false),
+  _rxcq_owner(false),
   _fabric(fabric),
   _eq(0),
-  _txcq(0),
-  _rxcq(0)
+  _txcq(txcq),
+  _rxcq(rxcq)
 {
   if (!initialize())
     _state = EP_CLOSED;
@@ -787,9 +849,9 @@ Fabric* EndpointBase::fabric() const { return _fabric; };
 
 struct fid_eq* EndpointBase::eq() const { return _eq; }
 
-struct fid_cq* EndpointBase::txcq() const { return _txcq; }
+CompletionQueue* EndpointBase::txcq() const { return _txcq; }
 
-struct fid_cq* EndpointBase::rxcq() const { return _rxcq; }
+CompletionQueue* EndpointBase::rxcq() const { return _rxcq; }
 
 bool EndpointBase::event(uint32_t* event, void* entry, bool* cm_entry)
 {
@@ -857,12 +919,14 @@ bool EndpointBase::handle_event(ssize_t event_ret, bool* cm_entry, const char* c
 
 void EndpointBase::shutdown()
 {
-  if (_rxcq) {
-    fi_close(&_rxcq->fid);
+  if (_rxcq && _rxcq_owner) {
+    delete _rxcq;
+    if (_txcq == _rxcq)
+      _txcq = 0;
     _rxcq = 0;
   }
-  if (_txcq) {
-    fi_close(&_txcq->fid);
+  if (_txcq && _txcq_owner) {
+    delete _txcq;
     _txcq = 0;
   }
   if (_eq) {
@@ -900,8 +964,15 @@ bool EndpointBase::initialize()
   };
 
   CHECK_ERR(fi_eq_open(_fabric->fabric(), &eq_attr, &_eq, NULL), "fi_eq_open");
-  CHECK_ERR(fi_cq_open(_fabric->domain(), &cq_attr, &_txcq, NULL), "fi_cq_open(txcq)");
-  CHECK_ERR(fi_cq_open(_fabric->domain(), &cq_attr, &_rxcq, NULL), "fi_cq_open(rxcq)");
+
+  if (!_txcq) {
+    _txcq = new CompletionQueue(_fabric, &cq_attr, NULL);
+    _txcq_owner = true;
+  }
+  if (!_rxcq) {
+    _rxcq = _txcq_owner ? _txcq : new CompletionQueue(_fabric, &cq_attr, NULL);
+    _rxcq_owner = true;
+  }
 
   _state = EP_UP;
 
@@ -914,14 +985,19 @@ Endpoint::Endpoint(const char* addr, const char* port, uint64_t flags) :
   _ep(0)
 {}
 
-Endpoint::Endpoint(Fabric* fabric) :
-  EndpointBase(fabric),
+Endpoint::Endpoint(Fabric* fabric, CompletionQueue* txcq, CompletionQueue* rxcq) :
+  EndpointBase(fabric, txcq, rxcq),
   _ep(0)
 {}
 
 Endpoint::~Endpoint()
 {
   shutdown();
+}
+
+struct fid_ep* Endpoint::endpoint() const
+{
+  return _ep;
 }
 
 void Endpoint::shutdown()
@@ -935,51 +1011,67 @@ void Endpoint::shutdown()
   EndpointBase::shutdown();
 }
 
+bool Endpoint::open(struct fi_info* info)
+{
+  if (check_connection_state() != FI_SUCCESS)
+    return false;
+
+  CHECK_ERR(fi_endpoint(_fabric->domain(), info, &_ep, NULL), "fi_endpoint");
+
+  CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
+
+  if (_txcq_owner) {
+    uint64_t flags = _txcq == _rxcq ? FI_TRANSMIT | FI_RECV : FI_TRANSMIT;
+    CHECK(_txcq->bind(this, flags));
+  }
+  if (_rxcq_owner && (_txcq != _rxcq)) {
+    CHECK(_rxcq->bind(this, FI_RECV));
+  }
+
+  return true;
+}
+
+bool Endpoint::enable()
+{
+  CHECK_ERR(fi_enable(_ep), "fi_enable");
+
+  _state = EP_ENABLED;
+
+  return true;
+}
+
 bool Endpoint::connect(int timeout)
 {
-  bool cm_entry;
-  struct fi_eq_cm_entry entry;
-  uint32_t event;
-
-  if (check_connection_state() != FI_SUCCESS)
+  if (_state != EP_ENABLED) {
+    _errno = -FI_EOPNOTSUPP;
+    set_error("Endpoint must be in the enabled state to accept connections");
     return false;
+  }
 
-  CHECK_ERR(fi_endpoint(_fabric->domain(), _fabric->info(), &_ep, NULL), "fi_endpoint");
-  CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
-  CHECK_ERR(fi_ep_bind(_ep, &_txcq->fid, FI_TRANSMIT /*| FI_SELECTIVE_COMPLETION*/), "fi_ep_bind(txcq)");
-  CHECK_ERR(fi_ep_bind(_ep, &_rxcq->fid, FI_RECV), "fi_ep_bind(rxcq)");
-  CHECK_ERR(fi_enable(_ep), "fi_enable");
   CHECK_ERR(fi_connect(_ep, _fabric->info()->dest_addr, NULL, 0), "fi_connect");
 
-  CHECK(event_wait(&event, &entry, &cm_entry, timeout));
+  return complete_connect(timeout);
+}
 
-  if (!cm_entry || event != FI_CONNECTED) {
-    set_custom_error("unexpected event %u - expected FI_CONNECTED (%u)", event, FI_CONNECTED);
-    _errno = -FI_ECONNREFUSED;
+bool Endpoint::accept(int timeout)
+{
+  if (_state != EP_ENABLED) {
+    _errno = -FI_EOPNOTSUPP;
+    set_error("Endpoint must be in the enabled state to accept connections");
     return false;
   }
 
-  _state = EP_CONNECTED;
+  CHECK_ERR(fi_accept(_ep, NULL, 0), "fi_accept");
 
-  return true;
+  return complete_connect(timeout);
 }
 
-bool Endpoint::accept(struct fi_info* remote_info, int timeout)
+bool Endpoint::complete_connect(int timeout)
 {
   bool cm_entry;
   struct fi_eq_cm_entry entry;
   uint32_t event;
 
-  if (check_connection_state() != FI_SUCCESS)
-    return false;
-
-  CHECK_ERR(fi_endpoint(_fabric->domain(), remote_info, &_ep, NULL), "fi_endpoint");
-  CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
-  CHECK_ERR(fi_ep_bind(_ep, &_txcq->fid, FI_TRANSMIT /*| FI_SELECTIVE_COMPLETION*/), "fi_ep_bind(txcq)");
-  CHECK_ERR(fi_ep_bind(_ep, &_rxcq->fid, FI_RECV), "fi_ep_bind(rxcq)");
-  CHECK_ERR(fi_enable(_ep), "fi_enable");
-  CHECK_ERR(fi_accept(_ep, NULL, 0), "fi_accept");
-
   CHECK(event_wait(&event, &entry, &cm_entry, timeout));
 
   if (!cm_entry || event != FI_CONNECTED) {
@@ -993,46 +1085,70 @@ bool Endpoint::accept(struct fi_info* remote_info, int timeout)
   return true;
 }
 
-ssize_t Endpoint::handle_comp(ssize_t comp_ret, struct fid_cq* cq, struct fi_cq_data_entry* comp, const char* cmd)
+bool Endpoint::connect()
 {
-  struct fi_cq_err_entry comp_err;
+  int timeout = -1;
 
-  if ((comp_ret < 0) && (comp_ret != -FI_EAGAIN)) {
-    _errno = (int) comp_ret;
-    if (comp_ret == -FI_EAVAIL) {
-      if (comp_error(cq, &comp_err) > 0) {
-        fi_cq_strerror(cq, comp_err.prov_errno, comp_err.err_data, _error, ERR_MSG_LEN);
-      }
-    } else {
-      set_error(cmd);
-    }
-  }
-  return comp_ret;
+  CHECK(open(_fabric->info()));
+  CHECK(enable());
+  CHECK(connect(timeout));
+
+  return true;
 }
 
-ssize_t Endpoint::comp(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count)
+bool Endpoint::accept(struct fi_info* remote_info)
 {
-  return handle_comp(fi_cq_read(cq, comp, max_count), cq, comp, "fi_cq_read");
+  int timeout = -1;
+
+  CHECK(open(remote_info));
+  CHECK(enable());
+  CHECK(accept(timeout));
+
+  return true;
 }
 
-ssize_t Endpoint::comp_wait(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count, int timeout)
-{
-  return handle_comp(fi_cq_sread(cq, comp, max_count, NULL, timeout), cq, comp, "fi_cq_sread");
-}
+//ssize_t Endpoint::handle_comp(ssize_t comp_ret, struct fid_cq* cq, struct fi_cq_data_entry* comp, const char* cmd)
+//{
+//  struct fi_cq_err_entry comp_err;
+//
+//  if ((comp_ret < 0) && (comp_ret != -FI_EAGAIN)) {
+//    _errno = (int) comp_ret;
+//    if (comp_ret == -FI_EAVAIL) {
+//      if (comp_error(cq, &comp_err) > 0) {
+//        fi_cq_strerror(cq, comp_err.prov_errno, comp_err.err_data, _error, ERR_MSG_LEN);
+//      }
+//    } else {
+//      set_error(cmd);
+//    }
+//  }
+//  return comp_ret;
+//}
 
-ssize_t Endpoint::comp_error(struct fid_cq* cq, struct fi_cq_err_entry* comp_err)
-{
-  ssize_t rret = fi_cq_readerr(cq, comp_err, 0);
-  if (rret < 0) {
-    set_error("fi_cq_readerr");
-  } else if (rret == 0) {
-    set_custom_error("fi_cq_readerr: no errors to be read");
-    rret = FI_SUCCESS;
-  }
-  _errno = (int) rret;
+//ssize_t Endpoint::comp(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count)
+//{
+//  //return handle_comp(fi_cq_read(cq, comp, max_count), cq, comp, "fi_cq_read");
+//  return cq->comp(comp, max_count);
+//}
 
-  return rret;
-}
+//ssize_t Endpoint::comp_wait(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count, int timeout)
+//{
+//  //return handle_comp(fi_cq_sread(cq, comp, max_count, NULL, timeout), cq, comp, "fi_cq_sread");
+//  return cq->comp_wait(comp, max_count, timeout);
+//}
+
+//ssize_t Endpoint::comp_error(struct fid_cq* cq, struct fi_cq_err_entry* comp_err)
+//{
+//  ssize_t rret = fi_cq_readerr(cq, comp_err, 0);
+//  if (rret < 0) {
+//    set_error("fi_cq_readerr");
+//  } else if (rret == 0) {
+//    set_custom_error("fi_cq_readerr: no errors to be read");
+//    rret = FI_SUCCESS;
+//  }
+//  _errno = (int) rret;
+//
+//  return rret;
+//}
 
 ssize_t Endpoint::post_comp_data_recv(void* context)
 {
@@ -1055,7 +1171,7 @@ ssize_t Endpoint::recv_comp_data(void* context)
   }
 }
 
-ssize_t Endpoint::recv_comp_data_sync(struct fid_cq* cq, uint64_t* data)
+ssize_t Endpoint::recv_comp_data_sync(CompletionQueue* cq, uint64_t* data)
 {
   if (_fabric->has_rma_event_support()) {
     return check_completion_noctx(cq, FI_REMOTE_CQ_DATA, data);
@@ -1216,14 +1332,6 @@ ssize_t Endpoint::write_data(const void* buf, size_t len, const RemoteAddress* r
   CHECK_MR(buf, len, mr, "fi_writedata");
 
   return fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
-
-  //ssize_t rret = fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
-  //if (rret != FI_SUCCESS) {
-  //  _errno = (int) rret;
-  //  set_error("fi_writedata");
-  //}
-  //
-  //return rret;
 }
 
 ssize_t Endpoint::write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr)
@@ -1293,6 +1401,58 @@ ssize_t Endpoint::sendv_sync(LocalIOVec* iov)
   ssize_t rret = sendv(iov, &context);
   if (rret == FI_SUCCESS) {
     return check_completion(_txcq, context, FI_SEND | FI_RMA);
+  }
+
+  return rret;
+}
+
+ssize_t Endpoint::recvmsg(Message* msg, uint64_t flags)
+{
+  CHECK_MR_IOVEC(msg->iov(), "fi_recvmsg");
+
+  ssize_t rret = fi_recvmsg(_ep, msg->msg(), flags);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_readmsg");
+  }
+
+  return rret;
+}
+
+ssize_t Endpoint::recvmsg_sync(Message* msg, uint64_t flags)
+{
+  int context = _counter++;
+  msg->context(&context);
+
+  ssize_t rret = recvmsg(msg, flags);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_rxcq, context, FI_RECV | FI_MSG);
+  }
+
+  return rret;
+}
+
+ssize_t Endpoint::sendmsg(Message* msg, uint64_t flags)
+{
+  CHECK_MR_IOVEC(msg->iov(), "fi_sendmsg");
+
+  ssize_t rret = fi_sendmsg(_ep, msg->msg(), flags);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_sendmsg");
+  }
+
+  return rret;
+}
+
+ssize_t Endpoint::sendmsg_sync(Message* msg, uint64_t flags)
+{
+  int context = _counter++;
+  msg->context(&context);
+
+  ssize_t rret = sendmsg(msg, flags);
+  if (rret == FI_SUCCESS) {
+    return check_completion(_txcq, context, FI_SEND | FI_MSG);
   }
 
   return rret;
@@ -1400,37 +1560,61 @@ ssize_t Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
   return rret;
 }
 
-ssize_t Endpoint::check_completion(struct fid_cq* cq, int context, unsigned flags, uint64_t* data)
+ssize_t Endpoint::check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data)
 {
-  struct fi_cq_data_entry comp;
-
-  ssize_t rret = comp_wait(cq, &comp, 1);
-  if (rret == 1) {
-    if ((comp.flags & flags) == flags) {
-      if (*((int*) comp.op_context) == context) {
-        if (data)
-          *data = comp.data;
-      }
-    }
+  ssize_t rret = cq->check_completion(context, flags, data);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) cq->error_num();
+    strncpy(_error, cq->error(), ERR_MSG_LEN);
   }
 
   return rret;
 }
 
-ssize_t Endpoint::check_completion_noctx(struct fid_cq* cq, unsigned flags, uint64_t* data)
+ssize_t Endpoint::check_completion_noctx(CompletionQueue* cq, unsigned flags, uint64_t* data)
 {
-  struct fi_cq_data_entry comp;
-
-  ssize_t rret = comp_wait(cq, &comp, 1);
-  if (rret == 1) {
-    if ((comp.flags & flags) == flags) {
-      if (data)
-        *data = comp.data;
-    }
+  ssize_t rret = cq->check_completion_noctx(flags, data);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) cq->error_num();
+    strncpy(_error, cq->error(), ERR_MSG_LEN);
   }
 
   return rret;
 }
+
+//ssize_t Endpoint::check_completion(struct fid_cq* cq, int context, unsigned flags, uint64_t* data)
+//{
+//  struct fi_cq_data_entry comp;
+//
+//  ssize_t rret = cq->comp_wait(&comp, 1);
+//  if (rret == 1) {
+//    if ((comp.flags & flags) == flags) {
+//      if (*((int*) comp.op_context) == context) {
+//        if (data)
+//          *data = comp.data;
+//        return FI_SUCCESS;
+//      }
+//    }
+//  }
+//
+//  return rret;
+//}
+
+//ssize_t Endpoint::check_completion_noctx(struct fid_cq* cq, unsigned flags, uint64_t* data)
+//{
+//  struct fi_cq_data_entry comp;
+//
+//  ssize_t rret = cq->comp_wait(&comp, 1);
+//  if (rret == 1) {
+//    if ((comp.flags & flags) == flags) {
+//      if (data)
+//        *data = comp.data;
+//      return FI_SUCCESS;
+//    }
+//  }
+//
+//  return rret;
+//}
 
 ssize_t Endpoint::check_connection_state()
 {
@@ -1440,7 +1624,6 @@ ssize_t Endpoint::check_connection_state()
     if (_state == EP_CONNECTED) {
       rret = -FI_EISCONN;
       set_error("Endpoint is already in a connected state");
-      rret = -FI_EISCONN;
     } else {
       rret = -FI_EOPNOTSUPP;
       set_error("Connecting is not possible in current state");
@@ -1496,6 +1679,40 @@ bool PassiveEndpoint::listen()
   return true;
 }
 
+Endpoint* PassiveEndpoint::open(int timeout, CompletionQueue* txcq, CompletionQueue* rxcq)
+{
+  bool cm_entry;
+  struct fi_eq_cm_entry entry;
+  uint32_t event;
+
+  if (_state != EP_LISTEN) {
+    _errno = -FI_EOPNOTSUPP;
+    set_error("Passive endpoint must be in a listening state to open connections");
+    return NULL;
+  }
+
+  if (!event_wait(&event, &entry, &cm_entry, timeout))
+    return NULL;
+
+  if (!cm_entry || event != FI_CONNREQ) {
+    set_custom_error("unexpected event %u - expected FI_CONNECTED (%u)", event, FI_CONNREQ);
+    _errno = -FI_ECONNABORTED;
+    return NULL;
+  }
+
+  Endpoint *endp = new Endpoint(_fabric, txcq, rxcq);
+  if (endp->open(entry.info)) {
+    _endpoints.push_back(endp);
+    return endp;
+  } else {
+    _errno = -FI_ECONNABORTED;
+    set_error("active endpoint creation failed");
+    delete endp;
+    fi_reject(_pep, entry.info->handle, NULL, 0);
+    return NULL;
+  }
+}
+
 Endpoint* PassiveEndpoint::accept(int timeout)
 {
   bool cm_entry;
@@ -1504,7 +1721,7 @@ Endpoint* PassiveEndpoint::accept(int timeout)
 
   if (_state != EP_LISTEN) {
     _errno = -FI_EOPNOTSUPP;
-    set_error("Passive endpoint must be in a listening state to accept connections");
+    set_error("Passive endpoint must be in a listening state to open connections");
     return NULL;
   }
 
@@ -1590,7 +1807,7 @@ CompletionPoller::~CompletionPoller()
 
 bool CompletionPoller::up() const { return _up; }
 
-bool CompletionPoller::add(Endpoint* endp, struct fid_cq* cq)
+bool CompletionPoller::add(Endpoint* endp, CompletionQueue* cq)
 {
   for (unsigned i=0; i<_nfd; i++) {
     if (_endps[i] == endp)
@@ -1599,11 +1816,11 @@ bool CompletionPoller::add(Endpoint* endp, struct fid_cq* cq)
 
   check_size();
 
-  CHECK_ERR(fi_control(&cq->fid, FI_GETWAIT, (void *) &_pfd[_nfd].fd), "fi_control");
+  CHECK_ERR(fi_control(&cq->cq()->fid, FI_GETWAIT, (void *) &_pfd[_nfd].fd), "fi_control");
 
   _pfd[_nfd].events   = POLLIN;
   _pfd[_nfd].revents  = 0;
-  _pfid[_nfd]         = &cq->fid;
+  _pfid[_nfd]         = &cq->cq()->fid;
   _endps[_nfd]        = endp;
   _nfd++;
 
@@ -1709,6 +1926,132 @@ void CompletionPoller::shutdown()
     }
     if (_endps) {
       delete[] _endps;
+    }
+  }
+  _up = false;
+}
+
+
+CompletionQueue::CompletionQueue(Fabric* fabric, struct fi_cq_attr* cq_attr, void* context) :
+  _up(false),
+  _fabric(fabric),
+  _cq(nullptr)
+{
+  _up = initialize(cq_attr, context);
+}
+
+CompletionQueue::~CompletionQueue()
+{
+  shutdown();
+}
+
+struct fid_cq* CompletionQueue::cq() const { return _cq; }
+
+ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, const char* cmd)
+{
+  struct fi_cq_err_entry comp_err;
+
+  if ((comp_ret < 0) && (comp_ret != -FI_EAGAIN)) {
+    _errno = (int) comp_ret;
+    if (comp_ret == -FI_EAVAIL) {
+      if (comp_error(&comp_err) > 0) {
+        fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, _error, ERR_MSG_LEN);
+      }
+    } else {
+      set_error(cmd);
+    }
+  }
+  return comp_ret;
+}
+
+ssize_t CompletionQueue::comp(struct fi_cq_data_entry* comp, ssize_t max_count)
+{
+  return handle_comp(fi_cq_read(_cq, comp, max_count), comp, "fi_cq_read");
+}
+
+ssize_t CompletionQueue::comp_wait(struct fi_cq_data_entry* comp, ssize_t max_count, int timeout)
+{
+  return handle_comp(fi_cq_sread(_cq, comp, max_count, NULL, timeout), comp, "fi_cq_sread");
+}
+
+ssize_t CompletionQueue::comp_error(struct fi_cq_err_entry* comp_err)
+{
+  ssize_t rret = fi_cq_readerr(_cq, comp_err, 0);
+  if (rret < 0) {
+    set_error("fi_cq_readerr");
+  } else if (rret == 0) {
+    set_custom_error("fi_cq_readerr: no errors to be read");
+    rret = FI_SUCCESS;
+  }
+  _errno = (int) rret;
+
+  return rret;
+}
+
+ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t* data)
+{
+  struct fi_cq_data_entry comp;
+
+  ssize_t rret = comp_wait(&comp, 1);
+  if (rret == 1) {
+    if ((comp.flags & flags) == flags) {
+      if (*((int*) comp.op_context) == context) {
+        if (data)
+          *data = comp.data;
+        return FI_SUCCESS;
+      }
+    }
+  }
+
+  return rret ? rret : -FI_EAGAIN;     // Revisit case when comp_wait returns 0
+}
+
+ssize_t CompletionQueue::check_completion_noctx(unsigned flags, uint64_t* data)
+{
+  struct fi_cq_data_entry comp;
+
+  ssize_t rret = comp_wait(&comp, 1);
+  if (rret == 1) {
+    if ((comp.flags & flags) == flags) {
+      if (data)
+        *data = comp.data;
+      return FI_SUCCESS;
+    }
+  }
+
+  return rret ? rret : -FI_EAGAIN;     // Revisit case when comp_wait returns 0
+}
+
+bool CompletionQueue::up() const { return _up; }
+
+bool CompletionQueue::bind(Endpoint* ep, uint64_t flags)
+{
+  CHECK_ERR(fi_ep_bind(ep->endpoint(), &_cq->fid, flags), "fi_ep_bind()");
+
+  return true;
+}
+
+bool CompletionQueue::initialize(struct fi_cq_attr* cq_attr, void* context)
+{
+  if (!_fabric->up()) {
+    _errno = _fabric->error_num();
+    set_custom_error(_fabric->error());
+    return false;
+  }
+
+  if (!_up) {
+    CHECK_ERR(fi_cq_open(_fabric->domain(), cq_attr, &_cq, context), "fi_cq_open()");
+  }
+
+  return true;
+}
+
+void CompletionQueue::shutdown()
+{
+  if (_up) {
+    if (_cq) {
+      fi_close(&_cq->fid);
+      _cq = nullptr;
     }
   }
   _up = false;

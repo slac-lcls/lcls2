@@ -14,7 +14,7 @@ static void showUsage(const char* p)
 {
   printf("\nSimple libfabrics push example (its pair is the ft_request example).\n"
          "\n"
-         "In this example the push server waits for a connection, and when a client connects the server\n"
+         "In this example the push server waits for a connection, and when a client connects to the server\n"
          "it recieves a message containing info on a writable memory region on the client. The server then\n"
          "initiates a remote write to that memory and then waits for a disconnect from the client. After\n"
          "disconnect the server can accept new incoming connections.\n"
@@ -49,7 +49,7 @@ int listen(PassiveEndpoint* pendp, MemoryRegion* mr, char* key_buff, size_t key_
     printf("client connected!\n");
 
     // Wait for remote buffer information for the client that connected
-    if (!endp->recv_sync(key_buff, key_size, mr)) {
+    if (endp->recv_sync(key_buff, key_size, mr)) {
       fprintf(stderr, "Reciveing of remote memory keys failed: %s\n", endp->error());
       ret = endp->error_num();
       pendp->close(endp);
@@ -66,7 +66,7 @@ int listen(PassiveEndpoint* pendp, MemoryRegion* mr, char* key_buff, size_t key_
     }
 
     // write the local buffer to address on the remote client - send the number of times remote writes have been requested as the immediate data
-    if(!endp->write_data_sync(data_buff, keys->extent, keys, value++, mr)) {
+    if(endp->write_data_sync(data_buff, keys->extent, keys, value++, mr)) {
       fprintf(stderr, "Writeing of data to remote client failed: %s\n", endp->error());
       ret = endp->error_num();
       pendp->close(endp);
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
   buff_size += data_size;
   buff = new char[buff_size];
   data_buff = buff + sizeof(RemoteAddress);
-  
+
   ((uint64_t*) data_buff)[0] = 0xadd;
   ((uint64_t*) data_buff)[1] = 0xdeadbeef;
   for (unsigned i=2; i< (data_size / sizeof(uint64_t)); i++)

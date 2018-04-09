@@ -16,12 +16,14 @@ namespace Pds {
     class MemoryRegion;
     class RemoteAddress;
     class LocalIOVec;
+    class CompletionQueue;
     class CompletionPoller;
   };
 
-  typedef std::vector<Fabrics::Endpoint*>     EpList;
-  typedef std::vector<Fabrics::MemoryRegion*> MrList;
-  typedef std::vector<Fabrics::RemoteAddress> RaList;
+  typedef std::vector<Fabrics::Endpoint*>        EpList;
+  typedef std::vector<Fabrics::MemoryRegion*>    MrList;
+  typedef std::vector<Fabrics::RemoteAddress>    RaList;
+  typedef std::vector<Fabrics::CompletionQueue*> CqList;
 
   namespace Eb {
 
@@ -57,39 +59,42 @@ namespace Pds {
       EbLfBase(unsigned nPeers);
       virtual ~EbLfBase();
     public:
-      const char* base() const;
-      int         prepareRmtMr(void* buffer, size_t rmtSize);
-      int         prepareLclMr(size_t lclSize, PeerSharing shared = PER_PEER_BUFFERS);
-      int         postCompRecv(unsigned dst, unsigned count, void* ctx);
-      int         pend(fi_cq_data_entry*);
-      int         pendW(fi_cq_data_entry*);
-      int         post(unsigned dst, const void* buf, size_t len, uint64_t os, uint64_t immData, void* ctx = nullptr);
-      //int         post(Fabrics::LocalIOVec&, size_t len, unsigned dst, uint64_t offset, void* ctx);
       void*       lclAdx(unsigned src, uint64_t offset) const;
-      uintptr_t   rmtAdx(unsigned dst, uint64_t offset) const; // Revisit: For debugging, remove
+      uintptr_t   rmtAdx(unsigned dst, uint64_t offset) const;
+      int         postCompRecv(unsigned dst, void* ctx=NULL);
+      int         pend(fi_cq_data_entry*);
+      int         post(unsigned dst, const void* buf, size_t len, uint64_t offset, uint64_t immData, void* ctx = nullptr);
     public:
       virtual int shutdown() = 0;
     public:
       const EbLfStats& stats() const;
     protected:
+      int      _setupMr(Fabrics::Endpoint*        ep,
+                        void*                     region,
+                        size_t                    size,
+                        Fabrics::MemoryRegion*&   mr);
+      int      _syncLclMr(Fabrics::Endpoint*      ep,
+                          Fabrics::MemoryRegion*  mr,
+                          Fabrics::RemoteAddress& ra);
+      int      _syncRmtMr(Fabrics::Endpoint*      ep,
+                          Fabrics::MemoryRegion*  mr,
+                          Fabrics::RemoteAddress& ra,
+                          size_t                  size);
+      int      _postCompRecv(Fabrics::Endpoint*, unsigned count, void* ctx=NULL);
       void     _mapIds(unsigned nPeers);
-      //int      _postCompRecv(Fabrics::Endpoint* ep, unsigned count);
     private:
       int      _tryCq(fi_cq_data_entry*);
     protected:
       EpList                     _ep;   // List of Endpoints
-      MrList                     _lMr;  // List of local  Memory Regions per EP
-      MrList                     _rMr;  // List of remote Memory Regions per EP
+      MrList                     _mr;   // List of Memory Regions per EP
       RaList                     _ra;   // List of remote address descriptors
-      Fabrics::CompletionPoller* _cqPoller;
-      char*                      _base; // Aligned local memory region
-      unsigned                   _rxDepth;
-      std::vector<unsigned>      _rOuts;
+      CqList                     _txcq;
+      Fabrics::CompletionQueue*  _rxcq;
+      int                        _rxDepth;
+      std::vector<int>           _rOuts;
       std::vector<unsigned>      _id;
       unsigned*                  _mappedId;
       EbLfStats                  _stats;
-    private:
-      unsigned                   _iSrc;
     };
   };
 };

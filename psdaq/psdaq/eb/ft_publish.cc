@@ -20,9 +20,9 @@ static void showUsage(const char* p)
 {
   printf("\nSimple libfabrics publisher example (its pair is the ft_sub example).\n"
          "\n"
-         "This example is simulating something similar to zeromq's publish/suscribe model - a.k.a\n"
+         "This example is simulating something similar to zeromq's publish/subscribe model - a.k.a\n"
          "a simulated multicast using an underlying connected interface. The server periodically sends a\n"
-         "data buffer to all of its subscribers. A client connects to server to 'suscribe' and disconnects\n"
+         "data buffer to all of its subscribers. A client connects to server to 'subscribe' and disconnects\n"
          "to unsubscribe.\n"
          "\n"
          "Usage: %s [-h|--help]\n"
@@ -65,7 +65,7 @@ class Listener : public Routine {
         printf("client connected!\n");
         _sem.take();
         _subs.push_back(endp);
-        _cpoller->add(endp);
+        _cpoller->add(endp, endp->txcq());
         _sem.give();
       }
       _task->call(this);
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
   char* buff = new char[buff_size];
   uint64_t* data_buff = (uint64_t*) buff;
   uint64_t max_count = COUNT_DEF;
-  
+
   const char* str_opts = ":ha:p:c:";
   const struct option lo_opts[] =
   {
@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
       }
 
       // post a send for this sub
-      if (!subs[i]->send(buff, buff_size, &count, mr)) {
+      if (subs[i]->send(buff, buff_size, &count, mr)) {
         pendp->close(subs[i]);
         cqpoll->del(subs[i]);
         subs[i]=0;
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
           if (!subs[i]) continue;
 
           // check if send has completed
-          if (!subs[i]->comp(&comp, &num_comp, 1)) {
+          if ( (num_comp = subs[i]->txcq()->comp(&comp, 1)) < 0) {
             if (subs[i]->error_num() != -FI_EAGAIN) {
               pendp->close(subs[i]);
               cqpoll->del(subs[i]);

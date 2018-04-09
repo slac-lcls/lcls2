@@ -362,20 +362,17 @@ int main()
     int queue_size = 8192;
     std::vector<unsigned> lanes = {0, 1, 2, 3}; // must be contiguous
 
-    // StringList peers;
+    // Pds::StringList peers;
     // peers.push_back("172.21.52.136"); //acc05
-    // StringList port;
-    // port.push_back("32768");
-    // size_t rmtSize = maxBatches * (sizeof(Dgram) + maxEntries * maxSize);
-    // printf("*** rmtsize %zd\n",rmtSize);
-    // EbFtClient myEbFtClient(peers,port,rmtSize);
+    // Pds::StringList ports;
+    // ports.push_back("32768");
+    // EbLfClient myEbLfClient(peers,ports);
 
-    // MyBatchManager myBatchMan(myEbFtClient);
+    // MyBatchManager myBatchMan(myEbLfClient);
 
     // unsigned timeout = 120;
-    // myEbFtClient.connect(ContribId, timeout);
+    // myEbLfClient.connect(ContribId, timeout, myBatchMan.batchRegion(), myBatchMan.batchRegionSize());
 
-    // myEbFtClient.registerMemory(myBatchMan.batchRegion(), myBatchMan.batchRegionSize());
     // printf("*** myEb %p %zd\n",myBatchMan.batchRegion(), myBatchMan.batchRegionSize());
     // // start eb receiver thread
     // std::thread eb_rcvr_thread(eb_rcvr, std::ref(myBatchMan));

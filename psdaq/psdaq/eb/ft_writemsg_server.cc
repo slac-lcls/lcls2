@@ -106,18 +106,17 @@ int main(int argc, char *argv[])
     memcpy(data_buffer, &num, sizeof(num));
 
     endp->recv_comp_data();
-    if (!endp->send_sync(data_buffer, sizeof(num))) {
+    if (endp->send_sync(data_buffer, sizeof(num))) {
       fprintf(stderr, "Endpoint send error %s\n", endp->error());
     }
-    if (!endp->send_sync(raddr, sizeof(RemoteAddress), mr_keys)) {
+    if (endp->send_sync(raddr, sizeof(RemoteAddress), mr_keys)) {
       fprintf(stderr, "Endpoint send error %s\n", endp->error());
     }
 
-    int num_comp;
     struct fi_cq_data_entry comp;
 
     printf("waiting!\n");
-    endp->comp_wait(&comp, &num_comp, 1);
+    endp->txcq()->comp_wait(&comp, 1);
 
     if ((comp.flags & FI_REMOTE_WRITE) && (comp.flags & FI_REMOTE_CQ_DATA)) {
       for (unsigned i=0; i<num; i++) {

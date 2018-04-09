@@ -37,21 +37,21 @@ int connect(Endpoint* endp, LocalIOVec *iov)
   MemoryRegion* mr = endp->fabric()->register_memory(key_buff, key_buff_size);
   if (mr) {
     if (endp->connect()) {
-      if (endp->recv_sync(key_buff, sizeof (int), mr)) {
+      if (!endp->recv_sync(key_buff, sizeof (int), mr)) {
         num_remote = *((int*) key_buff);
         if ((unsigned) num_remote < iov->count()) {
           fprintf(stderr, "Requested munber of remote buffers (%d) is less than local iov size: %lu\n", num_remote, iov->count());
           ret = -1;
         } else {
-          if (endp->recv_sync(key_buff, sizeof(RemoteAddress), mr)) {
+          if (!endp->recv_sync(key_buff, sizeof(RemoteAddress), mr)) {
             RemoteIOVec rem_iov(keys, 1);
             RmaMessage msg(iov, &rem_iov, NULL, num_remote);
-            if (!endp->writemsg_sync(&msg, FI_REMOTE_CQ_DATA)) {
+            if (endp->writemsg_sync(&msg, FI_REMOTE_CQ_DATA)) {
               fprintf(stderr, "Failed writing data to remote addresses: %s\n", endp->error());
               ret = endp->error_num();
             } else {
               sleep(2);
-              if (!endp->readmsg_sync(&msg, 0)) {
+              if (endp->readmsg_sync(&msg, 0)) {
                 fprintf(stderr, "Failed reading back data from remote addresses: %s\n", endp->error());
                 ret = endp->error_num();
               }

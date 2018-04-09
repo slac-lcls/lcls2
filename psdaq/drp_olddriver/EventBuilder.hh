@@ -4,8 +4,8 @@
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/eb/BatchManager.hh"
-#include "psdaq/eb/EbFtClient.hh"
-#include "psdaq/eb/EbFtServer.hh"
+#include "psdaq/eb/EbLfClient.hh"
+#include "psdaq/eb/EbLfServer.hh"
 
 // these parameters must agree with the server side
 unsigned maxBatches = 1000; // size of the pool of batches
@@ -36,15 +36,15 @@ size_t maxSize = sizeof(MyDgram);
 
 class MyBatchManager: public Pds::Eb::BatchManager {
 public:
-    MyBatchManager(Pds::Eb::EbFtClient& ebFtClient) :
+    MyBatchManager(Pds::Eb::EbLfClient& ebFtClient) :
         Pds::Eb::BatchManager(BatchSizeInPulseIds, maxBatches, maxEntries, maxSize),
-        _ebFtClient(ebFtClient)
+        _ebLfClient(ebFtClient)
     {}
-    void post(Pds::Eb::Batch* batch) {
-        _ebFtClient.post(batch->buffer(), batch->extent(), EbId, batch->index() * maxBatchSize());
+    void post(const Pds::Eb::Batch* batch) {
+      _ebLfClient.post(EbId, batch->datagram(), batch->extent(), batch->index() * maxBatchSize(), (ContribId << 24) + batch->index());
     }
 private:
-    Pds::Eb::EbFtClient& _ebFtClient;
+    Pds::Eb::EbLfClient& _ebLfClient;
 };
 
 void eb_rcvr(MyBatchManager& myBatchMan);
