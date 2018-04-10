@@ -56,6 +56,8 @@ namespace Pds {
       uint16_t rxErrs;
     };
 
+    class XpmSequenceEngine;
+
     class Module {
     public:
       enum { NAmcs=2 };
@@ -179,7 +181,7 @@ namespace Pds {
       unsigned inhibitLim(unsigned) const;
       void     inhibitEnb(unsigned, unsigned);
       unsigned inhibitEnb(unsigned) const;
-    public:
+    public:  // 0x80000000
       //  0x0000 - RO: physical link address
       Cphw::Reg   _paddr;
       //  0x0004 - RW: programming index
@@ -289,7 +291,13 @@ namespace Pds {
     private:
       uint32_t    _reserved_168[(0x10000-288)>>2];
       //
-      Cphw::RingBuffer _rxRing;
+      Cphw::RingBuffer _rxRing;  // 0x80010000
+      uint32_t    _reserved_80020000[(0x10000-sizeof(_rxRing))>>2];
+      
+    public:
+      XpmSequenceEngine& sequenceEngine();
+    private:
+      uint32_t    _reserved_engine[0x10000>>2];
     };
   };
 };

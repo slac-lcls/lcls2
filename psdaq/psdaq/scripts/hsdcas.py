@@ -79,6 +79,8 @@ if __name__ == '__main__':
     #  This PV triggers execution of all configuration parameters
     pvdb[stationstr+'BASE:APPLYCONFIG'  ] = {'type' : 'int', 
                                              'value' : 0 }
+    pvdb[stationstr+'BASE:UNDOCONFIG'   ] = {'type' : 'int', 
+                                             'value' : 0 }
 
     # Specific PVs
     pvdb[stationstr+'ENABLE'   ] = {'type' : 'int', 
@@ -115,6 +117,18 @@ if __name__ == '__main__':
                                         'value' : 0 }
     pvdb[stationstr+'TESTPATTERN'  ] = {'type' : 'int', 
                                         'value' : -1 }
+    pvdb[stationstr+'TESTPATTERR'  ] = {'type' : 'int', 
+                                        'count' : 4,
+                                        'value' : [0]*4 }
+    pvdb[stationstr+'TESTPATTBIT'  ] = {'type' : 'int',
+                                        'count' : 4,
+                                        'value' : [0]*4 }
+    pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
+                                      'count' : 4,
+                                      'value' : [0]*4 }
+    pvdb[stationstr+'RDFIFOCNT'  ] = {'type' : 'int',
+                                      'count' : 4,
+                                      'value' : [0]*4 }
 
     # Status Monitoring
 

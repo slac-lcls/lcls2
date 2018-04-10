@@ -76,7 +76,9 @@ void EpicsCA::connected   (bool c)
   if (_pvsiz < sz) {
     delete[] _pvdata;
     _pvdata = new char[_pvsiz=sz];
+#ifdef DBUG
     printf("pvdata allocated @ %p sz %d type %d\n",_pvdata,sz,int(_channel.type()));
+#endif
   }
   else {
 #ifdef DBUG
@@ -199,7 +201,6 @@ void EpicsCAChannel::connStatusCallback(struct connection_handler_args chArgs)
 #endif  
 
   if ( chArgs.op == CA_OP_CONN_UP ) {
-    printf("EpicsCAChannel::connStatusCallback %s connected (%p)\n",_epicsName, this);
     _connected = Connected;
     int dbfType = ca_field_type(_epicsChanID);
 

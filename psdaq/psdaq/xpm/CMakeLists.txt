@@ -5,6 +5,8 @@ add_library(xpm SHARED
     PVCtrls.cc
     PVPCtrls.cc
     PVLinkCtrls.cc
+    user_sequence.cc
+    XpmSequenceEngine.cc
     Module.cc
 )
 

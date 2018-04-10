@@ -1,5 +1,6 @@
 #include "Module.hh"
 #include "psdaq/cphw/Utils.hh"
+#include "psdaq/xpm/XpmSequenceEngine.hh"
 
 #include <string.h>
 #include <unistd.h>
@@ -520,12 +521,13 @@ void Module::dumpTiming(unsigned b) const
 {
   Module& cthis = *const_cast<Module*>(this);
   Pds::Cphw::RingBuffer& ring = b==0 ? cthis._timing.ring0 : cthis._timing.ring1;
+  unsigned dataWidth = b==0 ? 18 : 32;
 
   ring.clear();
   ring.enable(true);
   usleep(100);
   ring.enable(false);
-  ring.dump(18);
+  ring.dump(dataWidth);
 }
 
 void     Module::setPartition(unsigned v) const
@@ -663,4 +665,9 @@ void Module::inhibitEnb(unsigned inh, unsigned v)
 unsigned Module::inhibitEnb(unsigned inh) const
 {
   return getf(_inhibitConfig[inh], 1, 31);
+}
+
+XpmSequenceEngine& Module::sequenceEngine()
+{
+  return *new XpmSequenceEngine(&_reserved_engine[0], 0);
 }
