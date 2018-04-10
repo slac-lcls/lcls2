@@ -96,6 +96,7 @@ class HsdConfig(QtWidgets.QWidget):
         lo.addLayout(hlo)
 
         lo.addWidget(PvPushButton( pvbase+':BASE:APPLYCONFIG', 'Configure'))
+        lo.addWidget(PvPushButton( pvbase+':BASE:UNDOCONFIG' , 'Unconfigure'))
 
         lo.addStretch(1)
         
@@ -133,6 +134,11 @@ class HsdStatus(QtWidgets.QWidget):
         PvRow( glo,10, pvbase+':RAW_FREEBUFEVT' , 'Raw Free Events', False)
         PvRow( glo,11, pvbase+':FEX_FREEBUFSZ'  , 'Fex Free Bytes' , False)
         PvRow( glo,12, pvbase+':FEX_FREEBUFEVT' , 'Fex Free Events', False)
+        PvRow( glo,13, pvbase+':TESTPATTERR' , 'Test Pattern Errors', False)
+        PvRow( glo,14, pvbase+':TESTPATTBIT' , 'Test Pattern ErrBits', False)
+        PvRow( glo,15, pvbase+':WRFIFOCNT' , 'Write FIFO Count', False)
+        PvRow( glo,16, pvbase+':RDFIFOCNT' , 'Read FIFO Count', False)
+
         lo.addLayout(glo)
         lo.addStretch(1)
 
@@ -216,7 +222,8 @@ class DetBase(QtWidgets.QWidget):
         v = Pv.Pv(prefix+'DNSTREAMRTT').get()
         lo.addWidget(QtWidgets.QLabel('Downstream round trip time (usecs)): %f'%v))
 
-        PvLabel( lo, prefix, 'PARTITION' )
+#        PvLabel( lo, prefix, 'PARTITION' )
+        lo.addWidget(PvEditInt( prefix+'PARTITION', 'Partition' ))
 
         lo.addStretch(1)
 

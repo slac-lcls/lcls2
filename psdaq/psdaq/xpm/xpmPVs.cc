@@ -15,6 +15,7 @@
 #include "psdaq/xpm/PVCtrls.hh"
 #include "psdaq/xpm/PVPStats.hh"
 #include "psdaq/xpm/PVPCtrls.hh"
+#include "psdaq/xpm/XpmSequenceEngine.hh"
 
 #include "psdaq/epicstools/EpicsCA.hh"
 #include "psdaq/epicstools/PVWriter.hh"
@@ -274,6 +275,33 @@ int main(int argc, char** argv)
 
   Module* m = Module::locate();
   m->init();
+
+  //
+  // Program sequencer
+  //
+  XpmSequenceEngine& engine = m->sequenceEngine();
+  engine.verbosity(2);
+  // Setup a 45 pulse sequence to repeat 20000 times each second
+  std::vector<TPGen::Instruction*> seq;
+  seq.push_back(new TPGen::FixedRateSync(6,1));  // sync start to 1Hz
+  for(unsigned i=0; i<45; i++) {
+    unsigned bits=0;
+    for(unsigned j=0; j<16; j++)
+      if ((i*(j+1))%45 < (j+1))
+        bits |= (1<<j);
+    seq.push_back(new TPGen::ExptRequest(bits));
+    seq.push_back(new TPGen::FixedRateSync(0,1)); // next pulse
+  }
+  seq.push_back(new TPGen::Branch(1, TPGen::ctrA,199));
+  seq.push_back(new TPGen::Branch(1, TPGen::ctrB, 99));
+  seq.push_back(new TPGen::Branch(0));
+  int rval = engine.insertSequence(seq);
+  if (rval < 0)
+    printf("Insert sequence failed [%d]\n", rval);
+  engine.dump  ();
+  engine.enable(true);
+  engine.setAddress(rval,0,0);
+  engine.reset ();
 
   StatsTimer* timer = new StatsTimer(*m);
 

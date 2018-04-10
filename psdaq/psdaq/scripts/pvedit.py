@@ -20,6 +20,7 @@ seqBits     = ['b%u'%i for i in range(16)]
 seqIdxs     = ['s%u'%i for i in range(18)]
 seqBursts   = ['%u x %.2fus'%(2*(i%4+1),float(i/4+1)*interval) for i in range(16)]
 seqRates    = ['%u0kHz'%(i+1) for i in range(16)]
+seqLocal    = ['%u0kHz'%(2*i+2) for i in range(16)]
 
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
@@ -460,13 +461,14 @@ class PvDefSeq(QtWidgets.QWidget):
 
         lo = QtWidgets.QVBoxLayout()
         self.seqsel = QtWidgets.QComboBox()
-        self.seqsel.addItems(['Bursts','10k Rates'])
+        self.seqsel.addItems(['Bursts','10k Rates','Local'])
         self.seqsel.currentIndexChanged.connect(self.setValue)
         lo.addWidget(self.seqsel)
 
         seqstack = QtWidgets.QStackedWidget()
         seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqBursts))
         seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqRates))
+        seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqLocal))
         self.seqsel.currentIndexChanged.connect(seqstack.setCurrentIndex)
         lo.addWidget(seqstack)
 

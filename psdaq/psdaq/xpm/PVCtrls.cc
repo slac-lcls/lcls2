@@ -18,7 +18,8 @@ namespace Pds {
 #define PV(name)    Q(name, PV)
 
 #define TOU(value)  *reinterpret_cast<unsigned*>(value)
-#define PRT(value)  printf("%60.60s: %32.32s: 0x%02x\n", __PRETTY_FUNCTION__, _channel.epicsName(), value)
+    //#define PRT(value)  printf("%60.60s: %32.32s: 0x%02x\n", __PRETTY_FUNCTION__, _channel.epicsName(), value)
+#define PRT(value)  {}
 
 #define PVG(i)      PRT(TOU(data()));    _ctrl.module().i;
 #define GPVG(i)   {                                        \
