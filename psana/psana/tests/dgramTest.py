@@ -22,19 +22,23 @@ def generate_event(num_elem, zero):
     return event_dict
 
 alg = dc.alg(b"raw", [2, 3, 42])
-ninfo = dc.nameinfo(DETNAME, DETTYPE, DETID, NAMESID)
-ninfo2 = dc.nameinfo(DETNAME, DETTYPE, DETID, 1)
+ninfo = dc.nameinfo(b'xpphsd', b'cspad', b'detnum1234', 0)
+ninfo2 = dc.nameinfo(b'xpphsd2', b'cspad', b'detnum1234', 0)
 
 
 pydgram = dc.writeDgram2(FILE_NAME)
-pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 0))
-pydgram.addDet(ninfo2, alg, generate_event(NUM_ELEM, 0))
-pydgram.writeToFile()
-
 
 pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 0))
-pydgram.addDet(ninfo2, alg, generate_event(NUM_ELEM, 0))
+# pydgram.addDet(ninfo2, alg, generate_event(NUM_ELEM, 0))
 pydgram.writeToFile()
 
+ 
+pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 1))
+# pydgram.addDet(ninfo2, alg, generate_event(NUM_ELEM, 0))
+pydgram.writeToFile()
+
+pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 2))
+# pydgram.addDet(ninfo2, alg, generate_event(NUM_ELEM, 0))
+pydgram.writeToFile()
 
  
