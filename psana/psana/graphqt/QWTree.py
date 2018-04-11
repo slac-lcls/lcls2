@@ -13,11 +13,11 @@ Created on 2017-03-23 by Mikhail Dubrovin
 """
 #------------------------------
 
-from PyQt5.QtWidgets import QTreeView, QVBoxLayout # QWidget
+from PyQt5.QtWidgets import QTreeView, QVBoxLayout, QAbstractItemView
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, QModelIndex
 
-from psana.graphqt.CMConfigParameters import cp
+#from psana.graphqt.CMConfigParameters import cp
 from psana.pyalgos.generic.Logger import logger
 
 from psana.graphqt.QWIcons import icon
@@ -28,6 +28,12 @@ from psana.graphqt.QWIcons import icon
 class QWTree(QTreeView) :
     """Widget for tree
     """
+    dic_smodes = {'single'      : QAbstractItemView.SingleSelection,
+                  'contiguous'  : QAbstractItemView.ContiguousSelection,
+                  'extended'    : QAbstractItemView.ExtendedSelection,
+                  'multi'       : QAbstractItemView.MultiSelection,
+                  'no selection': QAbstractItemView.NoSelection}
+
     def __init__ (self, parent=None) :
 
         QTreeView.__init__(self, parent)
@@ -36,6 +42,7 @@ class QWTree(QTreeView) :
         icon.set_icons()
 
         self.model = QStandardItemModel()
+        self.set_selection_mode()
 
         self.fill_tree_model() # defines self.model
 
@@ -47,11 +54,16 @@ class QWTree(QTreeView) :
 
         self.expanded.connect(self.on_item_expanded)
         self.collapsed.connect(self.on_item_collapsed)
-        self.model.itemChanged.connect(self.on_item_changed)
+        #self.model.itemChanged.connect(self.on_item_changed)
         self.connect_item_selected_to(self.on_item_selected)
-        #self.clicked.connect(self.on_click)       # This works
-        #self.doubleClicked.connect(self.on_double_click) # This works
+        self.clicked[QModelIndex].connect(self.on_click)       # This works
+        #self.doubleClicked[QModelIndex].connect(self.on_double_click) # This works
  
+
+    def set_selection_mode(self, smode='extended') :
+        logger.info('Set selection mode: %s'%smode, self._name)
+        self.setSelectionMode(self.dic_smodes[smode])
+
 
     def connect_item_selected_to(self, recipient) :
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].connect(recipient)
@@ -59,6 +71,15 @@ class QWTree(QTreeView) :
 
     def disconnect_item_selected_from(self, recipient) :
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].disconnect(recipient)
+
+
+    def selected_indexes(self):
+        return self.selectedIndexes()
+
+
+    def selected_items(self):
+        indexes =  self.selectedIndexes()
+        return [self.model.itemFromIndex(i) for i in self.selectedIndexes()]
 
 
     def clear_model(self):
@@ -85,38 +106,49 @@ class QWTree(QTreeView) :
     def on_item_expanded(self, ind):
         item = self.model.itemFromIndex(ind) # get QStandardItem
         item.setIcon(icon.icon_folder_open)
-        print('Item expanded : ', item.text())
+        #msg = 'on_item_expanded: %s' % item.text()
+        #logger.info(msg, self._name)
 
 
     def on_item_collapsed(self, ind):
         item = self.model.itemFromIndex(ind)
         item.setIcon(icon.icon_folder_closed)
-        print('Item collapsed : ', item.text())
+        #msg = 'on_item_collapsed: %s' % item.text()
+        #logger.info(msg, self._name)
 
 
     def on_item_selected(self, selected, deselected):
         itemsel = self.model.itemFromIndex(selected)
         if itemsel is not None :
             parent = itemsel.parent()
-            spar = parent.text() if parent is not None else 'None'
-            msg = 'row: %d selected: %s parent: %s' % (selected.row(), itemsel.text(), spar) 
-            print(msg)
+            parname = parent.text() if parent is not None else None
+            msg = 'on_item_selected row: %d selected: %s parent: %s' % (selected.row(), itemsel.text(), parname) 
+            #print(msg)
+            logger.info(msg, self._name)
 
-        itemdes = self.model.itemFromIndex(deselected)
-        if itemdes is not None :
-            print('row:', deselected.row(), " deselected", itemdes.text())
+        #itemdes = self.model.itemFromIndex(deselected)
+        #if itemdes is not None :
+        #    msg = 'on_item_selected row: %d deselected %s' % (deselected.row(), itemdes.text())
+        #    logger.info(msg, self._name)
 
 
-    def on_item_changed(self,  item):
+    def on_item_changed(self, item):
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
-        print("Item with text '%s', is at state %s\n" % ( item.text(),  state))
-        #print("Item with text '%s' is changed\n" % ( item.text() ))
-    
+        msg = 'on_item_changed: item "%s", is at state %s\n' % (item.text(), state)
+        #logger.info(msg, self._name)
+        print(msg)
 
-    def on_click(self):
-        print('1-clicked!')
 
-    def on_double_click(self):
+    def on_click(self, index):
+        item = self.model.itemFromIndex(index)
+        parent = item.parent()
+        spar = parent.text() if parent is not None else None
+        msg = 'on_click item: %s parent: %s' % (item.text(), spar) # index.row()
+        #print(msg)
+        logger.info(msg, self._name)
+
+
+    def on_double_click(self, index):
         print('2-clicked!')
 
     #--------------------------

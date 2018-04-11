@@ -1,19 +1,19 @@
 #------------------------------
 """
-:py:class:`QWPopupCheckList` - Popup GUI
+:py:class:`QWPopupCheckDict` - Popup GUI
 ========================================
 
 Usage::
 
-    # Test: python lcls2/psana/psana/graphqt/QWPopupCheckList.py
+    # Test: python lcls2/psana/psana/graphqt/QWPopupCheckDict.py
 
     # Import
-    from psana.graphqt.QWPopupCheckList import QWPopupCheckList
+    from psana.graphqt.QWPopupCheckDict import QWPopupCheckDict
 
     # Methods - see test
 
 See:
-    - :py:class:`QWPopupCheckList`
+    - :py:class:`QWPopupCheckDict`
     - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
 
 This software was developed for the LCLS2 project.
@@ -28,17 +28,18 @@ from PyQt5.QtCore import Qt
 
 #------------------------------
 
-class QWPopupCheckList(QDialog) :
-    """Gets list of item for checkbox GUI in format [['name1',false], ['name2',true], ..., ['nameN',false]], 
-    and modify this list in popup dialog gui.
+class QWPopupCheckDict(QDialog) :
+    """Gets dict of item for checkbox GUI in format {name:(bool)status,}, 
+    e.g.: {'name1':False, 'name2':True, ..., 'nameN':False}, 
+    and modify this dict in popup dialog gui.
     """
-    def __init__(self, parent=None, list_in_out=[], win_title=None):
+    def __init__(self, parent=None, dict_in_out={}, win_title=None):
         QDialog.__init__(self,parent)
  
         #self.setModal(True)
         if win_title is not None : self.setWindowTitle(win_title)
 
-        self.list_in_out = list_in_out
+        self.dict_in_out = dict_in_out
 
         self.vbox = QVBoxLayout()
 
@@ -68,7 +69,7 @@ class QWPopupCheckList(QDialog) :
 
     def make_gui_checkbox(self) :
         self.dict_of_items = {}
-        for k,[name,state] in enumerate(self.list_in_out) :        
+        for name,state in self.dict_in_out.items() :        
             cbx = QCheckBox(name) 
             if state : cbx.setCheckState(Qt.Checked)
             else     : cbx.setCheckState(Qt.Unchecked)
@@ -76,13 +77,13 @@ class QWPopupCheckList(QDialog) :
             cbx.stateChanged[int].connect(self.onCBox)
             self.vbox.addWidget(cbx)
 
-            self.dict_of_items[cbx] = [k,name,state] 
+            self.dict_of_items[cbx] = [name,state] 
 
 #-----------------------------  
 
     def showToolTips(self):
-        self.but_apply.setToolTip('Apply changes to the list')
-        self.but_cancel.setToolTip('Use default list')
+        self.but_apply.setToolTip('Apply changes to the dict')
+        self.but_cancel.setToolTip('Use default dict')
         
 
     def setStyle(self):
@@ -126,12 +127,12 @@ class QWPopupCheckList(QDialog) :
     def onCBox(self, tristate):
         for cbx in self.dict_of_items.keys() :
             if cbx.hasFocus() :
-                k,name,state = self.dict_of_items[cbx]
+                name,state = self.dict_of_items[cbx]
                 state_new = cbx.isChecked()
-                msg = 'onCBox: Checkbox #%d:%s - state is changed to %s, tristate=%s'%(k, name, state_new, tristate)
+                msg = 'onCBox: Checkbox %s - state is changed to %s, tristate=%s'%(name, state_new, tristate)
                 #print(msg)
                 #logger.debug(msg, __name__)
-                self.dict_of_items[cbx] = [k,name,state_new]
+                self.dict_of_items[cbx] = [name,state_new]
 
 
     def onCancel(self):
@@ -141,14 +142,14 @@ class QWPopupCheckList(QDialog) :
 
     def onApply(self):
         #logger.debug('onApply', __name__)  
-        self.fill_output_list()
+        self.fill_output_dict()
         self.accept()
 
 
-    def fill_output_list(self):
-        """Fills output list"""
-        for cbx,[k,name,state] in self.dict_of_items.items() :
-            self.list_in_out[k] = [name,state]
+    def fill_output_dict(self):
+        """Fills output dict"""
+        for cbx,[name,state] in self.dict_of_items.items() :
+            self.dict_in_out[name] = state
 
 #------------------------------
 
@@ -157,10 +158,10 @@ if __name__ == "__main__" :
     from PyQt5.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    list_in = [['CSPAD1',True], ['CSPAD2x21', False], ['pNCCD1', True], ['Opal1', False], \
-               ['CSPAD2',True], ['CSPAD2x22', False], ['pNCCD2', True], ['Opal2', False]]
-    for name,state in list_in : print( '%s checkbox is in state %s' % (name.ljust(10), state))
-    w = QWPopupCheckList(None, list_in)
+    dict_in = {'CSPAD1':True, 'CSPAD2x21':False, 'pNCCD1':True, 'Opal1':False, \
+               'CSPAD2':True, 'CSPAD2x22':False, 'pNCCD2':True, 'Opal2':False}
+    for name,state in dict_in.items() : print('%s checkbox is in state %s' % (name.ljust(10), state))
+    w = QWPopupCheckDict(None, dict_in)
     #w.setGeometry(20, 40, 500, 200)
     w.setWindowTitle('Set check boxes')
     #w.show()
@@ -169,7 +170,7 @@ if __name__ == "__main__" :
     print('QtWidgets.QDialog.Rejected: ', QDialog.Rejected)
     print('QtWidgets.QDialog.Accepted: ', QDialog.Accepted)
 
-    for name,state in list_in : print('%s checkbox is in state %s' % (name.ljust(10), state))
+    for name,state in dict_in.items() : print('%s checkbox is in state %s' % (name.ljust(10), state))
 
     del w
     del app

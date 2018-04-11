@@ -32,6 +32,11 @@ from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.Styles import style
 from psana.graphqt.QWIcons import icon
 
+from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu,\
+     confirm_or_cancel_dialog_box, select_item_from_popup_menu
+
+import psana.graphqt.CMDBUtils as dbu
+
 #------------------------------
 
 class CMWDBButtons(QWidget) :
@@ -44,6 +49,7 @@ class CMWDBButtons(QWidget) :
         self.lab_host = QLabel('Host:')
         self.lab_port = QLabel('Port:')
         self.lab_db_filter = QLabel('DB filter:')
+        self.lab_docs = QLabel('Docs:')
 
         self.cmb_host = QComboBox(self)        
         self.cmb_host.addItems(cp.list_of_hosts)
@@ -53,12 +59,27 @@ class CMWDBButtons(QWidget) :
         self.cmb_port.addItems(cp.list_of_str_ports)
         self.cmb_port.setCurrentIndex(cp.list_of_str_ports.index(str(cp.cdb_port.value())))
 
+        self.cmb_docw = QComboBox(self)        
+        self.cmb_docw.addItems(cp.list_of_doc_widgets)
+        self.cmb_docw.setCurrentIndex(cp.list_of_doc_widgets.index(str(cp.cdb_docw.value())))
+
         self.but_exp_col  = QPushButton('Expand')
-        self.but_tabs     = QPushButton('Hide tabs')
+        self.but_tabs     = QPushButton('Tabs %s' % cp.char_expand)
         self.but_test     = QPushButton('Test')
+        self.but_buts     = QPushButton('Buts %s' % cp.char_expand)
+        self.but_del      = QPushButton('Delete')
+        self.but_add      = QPushButton('Add')
+        self.but_docs     = QPushButton('Doc %s' % cp.char_expand)
+        self.but_selm     = QPushButton('Mode %s' % cp.char_expand)
+
         self.list_of_buts = (
              self.but_exp_col,
              self.but_tabs,
+             self.but_buts,
+             self.but_del,
+             self.but_add,
+             self.but_docs,
+             self.but_selm,
              self.but_test
         )
 
@@ -106,15 +127,22 @@ class CMWDBButtons(QWidget) :
         self.hbox.addWidget(self.lab_db_filter)
         self.hbox.addWidget(self.edi_db_filter)
         self.hbox.addWidget(self.but_exp_col)
+        self.hbox.addWidget(self.but_selm)
         self.hbox.addWidget(self.lab_host)
         self.hbox.addWidget(self.cmb_host)
         self.hbox.addWidget(self.lab_port)
         self.hbox.addWidget(self.cmb_port)
+        self.hbox.addWidget(self.but_add)
+        self.hbox.addWidget(self.but_del)
         self.hbox.addStretch(1) 
         self.hbox.addSpacing(50)
         #self.hbox.addStrut(50)
         #self.hbox.addSpacerItem(QSpacerItem)
         self.hbox.addWidget(self.but_test)
+        self.hbox.addWidget(self.lab_docs)
+        self.hbox.addWidget(self.cmb_docw)
+        self.hbox.addWidget(self.but_docs)
+        self.hbox.addWidget(self.but_buts)
         self.hbox.addWidget(self.but_tabs)
         #self.hbox.addLayout(self.grid)
         self.setLayout(self.hbox)
@@ -124,20 +152,26 @@ class CMWDBButtons(QWidget) :
         #self.cbx_host.stateChanged[int].connect(self.on_cbx_host_changed)
         self.cmb_host.currentIndexChanged[int].connect(self.on_cmb_host_changed)
         self.cmb_port.currentIndexChanged[int].connect(self.on_cmb_port_changed)
+        self.cmb_docw.currentIndexChanged[int].connect(self.on_cmb_docw_changed)
 
         self.edi_db_filter.editingFinished.connect(self.on_edi_db_filter_finished)
 
-        self.but_exp_col .clicked.connect(self.on_but_clicked)
-        self.but_tabs    .clicked.connect(self.on_but_clicked)
-
+        self.but_exp_col.clicked.connect(self.on_but_clicked)
+        self.but_tabs   .clicked.connect(self.on_but_clicked)
+        self.but_buts   .clicked.connect(self.on_but_clicked)
+        self.but_add    .clicked.connect(self.on_but_clicked)
+        self.but_del    .clicked.connect(self.on_but_clicked)
+        self.but_docs   .clicked.connect(self.on_but_clicked)
+        self.but_selm   .clicked.connect(self.on_but_clicked)
+ 
         self.but_test.clicked .connect(self.on_but_clicked)
         self.but_test.released.connect(self.on_but_released)
         self.but_test.pressed .connect(self.on_but_pressed)
         self.but_test.toggled .connect(self.on_but_toggled)
 
-
         self.set_tool_tips()
         self.set_style()
+        self.set_buttons_visiable()
 
 
     def set_tool_tips(self):
@@ -145,7 +179,11 @@ class CMWDBButtons(QWidget) :
         self.cmb_host.setToolTip('Select DB host')
         self.cmb_port.setToolTip('Select DB port')
         self.but_tabs.setToolTip('Show/hide tabs')
+        self.but_buts.setToolTip('Show/hide buttons')
         self.but_exp_col.setToolTip('Expand/collapse DB tree')
+        self.edi_db_filter.setToolTip('Enter text in DB names\nto filter tree')
+        self.but_docs.setToolTip('Select style of documents presentation')
+        self.cmb_docw.setToolTip('Select style of documents presentation')
 
 
     def set_style(self):
@@ -153,14 +191,21 @@ class CMWDBButtons(QWidget) :
         self.lab_db_filter.setStyleSheet(style.styleLabel)
         self.lab_host.setStyleSheet(style.styleLabel)
         self.lab_port.setStyleSheet(style.styleLabel)
+        self.lab_docs.setStyleSheet(style.styleLabel)
 
         icon.set_icons()
 
         self.but_exp_col .setIcon(icon.icon_folder_open)
+        self.but_add     .setIcon(icon.icon_plus)
+        self.but_del     .setIcon(icon.icon_minus)
+        self.but_docs    .setIcon(icon.icon_table)
+
+        #self.lab_docs    .setPixmap(icon.icon_table)
 
         #self.but_exp_col.setStyleSheet(style.styleButton)
 
         self.but_tabs.setStyleSheet(style.styleButtonGood)
+        self.but_buts.setStyleSheet(style.styleButton)
         #self.but_tabs.setFixedWidth(40)
 
         # TEST BUTTON
@@ -180,6 +225,16 @@ class CMWDBButtons(QWidget) :
         self.setFixedHeight(size_hint.height())
         #self.setMinimumSize(433,46)
 
+        self.but_tabs.setFixedWidth(55)
+        self.but_buts.setFixedWidth(55)
+        self.but_add .setFixedWidth(60)
+        self.but_del .setFixedWidth(60)
+        self.but_docs.setFixedWidth(60)
+        self.but_selm.setFixedWidth(80)
+        self.cmb_docw.setFixedWidth(60)
+
+        self.edi_db_filter.setFixedWidth(80)
+
 #        self.tit_dir_work     .setStyleSheet(style.styleTitle)
 #        self.edi_dir_work     .setStyleSheet(style.styleEditInfo)       
 #        self.lab_fname_prefix .setStyleSheet(style.styleLabel)
@@ -189,18 +244,15 @@ class CMWDBButtons(QWidget) :
 #        self.edi_dir_work    .setAlignment(QtCore.Qt.AlignRight)
 #        self.lab_pix_status  .setAlignment(QtCore.Qt.AlignLeft)
 #
-#        self.edi_dir_work    .setMinimumWidth(300)
-#        self.but_dir_work    .setFixedWidth(80)
-#
 #    def set_parent(self,parent) :
 #        self.parent = parent
 
-    def resizeEvent(self, e):
-        logger.debug('resizeEvent size: %s' % str(e.size()), self._name) 
+    #def resizeEvent(self, e):
+    #    logger.debug('resizeEvent size: %s' % str(e.size()), self._name) 
 
 
-    def moveEvent(self, e):
-        logger.debug('moveEvent pos: %s' % str(e.pos()), self._name) 
+    #def moveEvent(self, e):
+    #    logger.debug('moveEvent pos: %s' % str(e.pos()), self._name) 
 #        #cp.posGUIMain = (self.pos().x(),self.pos().y())
 
     def closeEvent(self, event):
@@ -253,6 +305,101 @@ class CMWDBButtons(QWidget) :
         wtree.fill_tree_model(pattern=txt)
 
 #-----------------------------
+#-----------------------------
+
+    def buttons_dict(self):
+        r = cp.cdb_buttons.value()
+        return {'DB filter'  : r & 1,\
+                'Expand'     : r & 2,\
+                'Host & port': r & 4,\
+                'Add'        : r & 8,\
+                'Delete'     : r & 16,\
+                'Docs'       : r & 32,\
+                'Docw'       : r & 64,\
+                'Tabs'       : r & 128,\
+                'Test'       : r & 256,\
+                'Selection'  : r & 512,\
+                }
+
+
+    def set_buttons_config_bitword(self, d):
+        w = 0
+        if d['DB filter']  : w |= 1
+        if d['Expand']     : w |= 2
+        if d['Host & port']: w |= 4
+        if d['Add']        : w |= 8
+        if d['Delete']     : w |= 16
+        if d['Docs']       : w |= 32
+        if d['Docw']       : w |= 64
+        if d['Tabs']       : w |= 128
+        if d['Test']       : w |= 256
+        if d['Selection']  : w |= 512
+        #if  : w |= 0
+        cp.cdb_buttons.setValue(w)
+
+
+    def set_buttons_visiable(self, dic_buts=None):
+        d = self.buttons_dict() if dic_buts is None else dic_buts
+        self.set_db_filter_visible (d['DB filter'])
+        self.set_host_port_visible (d['Host & port'])
+        self.but_exp_col.setVisible(d['Expand'])
+        self.but_add.setVisible    (d['Add'])
+        self.but_del.setVisible    (d['Delete'])
+        self.cmb_docw.setVisible   (d['Docw'])
+        self.lab_docs.setVisible   (d['Docw'])
+        self.but_docs.setVisible   (d['Docs'])
+        self.but_tabs.setVisible   (d['Tabs'])
+        self.but_test.setVisible   (d['Test'])
+        self.but_selm.setVisible   (d['Selection'])
+        #self.set_tabs_visible     (d['Tabs'])      
+
+
+    def select_visible_buttons(self):
+        logger.debug('select_visible_buttons', self._name)
+        d = self.buttons_dict()
+        resp = change_check_box_dict_in_popup_menu(d, 'Select buttons')
+        print('XXX:select_visible_buttons resp:', resp)
+        if resp==1 :
+            self.set_buttons_visiable(d)
+            self.set_buttons_config_bitword(d)
+
+
+    def select_doc_widget(self):
+        logger.debug('select_doc_widget', self._name)
+        resp = select_item_from_popup_menu(cp.list_of_doc_widgets)
+        print('XXX: select_doc_widget resp:', resp)
+        if resp is None : return
+        cp.cdb_docw.setValue(resp)
+        cp.cmwdbmain.wdocs.gui_selector()
+
+#-----------------------------
+#-----------------------------
+
+    def set_host_port_visible(self, is_visible=True):
+        self.lab_host.setVisible(is_visible)
+        self.lab_port.setVisible(is_visible)
+        self.cmb_host.setVisible(is_visible)
+        self.cmb_port.setVisible(is_visible)
+
+
+    def set_db_filter_visible(self, is_visible=True):
+        self.lab_db_filter.setVisible(is_visible)
+        self.edi_db_filter.setVisible(is_visible)
+
+
+    def set_tabs_visible(self, is_visible=True):
+        wtabs = cp.cmwmaintabs
+        wtabs.set_tabs_visible(is_visible)
+
+#-----------------------------
+
+    def view_hide_tabs(self):
+        wtabs = cp.cmwmaintabs
+        but = self.but_tabs
+        if wtabs is None : return
+        is_visible = wtabs.tab_bar_is_visible()
+        but.setText('Tabs %s'%cp.char_shrink if is_visible else 'Tabs %s'%cp.char_expand)
+        wtabs.set_tabs_visible(not is_visible)
 
 #-----------------------------
 
@@ -266,15 +413,11 @@ class CMWDBButtons(QWidget) :
         cp.cdb_port.setValue(int(selected)) 
         logger.info('on_cmb_port_changed - selected: %s' % selected, self._name)
 
-#-----------------------------
-
-    def view_hide_tabs(self):
-        wtabs = cp.cmwmaintabs
-        but = self.but_tabs
-        if wtabs is None : return
-        is_visible = wtabs.tab_bar_is_visible()
-        but.setText('Show tabs' if is_visible else 'Hide tabs')
-        wtabs.set_tabs_visible(not is_visible)
+    def on_cmb_docw_changed(self):
+        selected = self.cmb_docw.currentText()
+        cp.cdb_docw.setValue(selected)
+        logger.info('on_cmb_docw_changed - selected: %s' % selected, self._name)
+        cp.cmwdbmain.wdocs.gui_selector()
 
 #-----------------------------
 
@@ -293,12 +436,85 @@ class CMWDBButtons(QWidget) :
 
 #-----------------------------
 
+    def delete_selected_items(self):
+        wtree = cp.cmwdbtree
+        if wtree is None :
+            logger.warning('delete_selected_items - tree object does not exist?', self._name)
+            return
+        # dict of pairs {<item-name> : <item-parent-name>}
+        # where <item-parent-name> is None for DB item or DB name for collection item.
+        dic_name_parent = dict([(item.text(), None if item.parent() is None else item.parent().text())\
+                          for item in wtree.selected_items()])
+
+        if not len(dic_name_parent) :
+            logger.warning('delete_selected_items - selected nothing - nothing to delete...', self._name)
+            return
+
+        for k,v in dic_name_parent.items() :
+            print('  %s : %s' % (k.ljust(20),v))
+
+        # Define del_mode = 'collections' or 'DBs' if at least one DB is selected
+        del_mode = 'collections'
+        for v in dic_name_parent.values() :
+            if v is None : 
+                del_mode = 'DBs'
+                break
+
+        list_db_names = [] # list of DB names
+        dic_db_cols = {}   # dict {DBname : list of collection names} 
+        msg = 'Delete %s:\n  ' % del_mode
+
+        if del_mode == 'DBs' : 
+            list_db_names = [k for k,v in dic_name_parent.items() if v is None]
+            msg += '\n  '.join(list_db_names)
+        else :
+            for name,parent in dic_name_parent.items() :
+                if parent not in dic_db_cols :
+                    dic_db_cols[parent] = [name,]
+                else :
+                    dic_db_cols[parent].append(name)
+
+            for dbname, lstcols in dic_db_cols.items() :
+                msg += '\nfrom DB: %s\n    ' % dbname
+                msg += '\n    '.join(lstcols)
+
+        logger.info(msg, self._name)
+        resp = confirm_or_cancel_dialog_box(parent=None, text=msg, title='Confirm or cancel')
+        print('Response: ', resp)
+
+        if resp :
+           if del_mode == 'DBs' : dbu.delete_databases(list_db_names)
+           else                 : dbu.delete_collections(dic_db_cols)
+
+           # Regenerate tree model
+           self.on_edi_db_filter_finished()
+
+ #-----------------------------
+
+    def set_selection_mode(self):
+        #logger.debug('set_selection_model', self._name)
+        wtree = cp.cmwdbtree
+        if wtree is None : return
+        selected = select_item_from_popup_menu(wtree.dic_smodes.keys(), title='Select mode',\
+                                               default=cp.cdb_selection_mode.value())
+        logger.debug('set_selection_model: %s' % selected, self._name)
+        if selected is None : return
+        cp.cdb_selection_mode.setValue(selected)
+        wtree.set_selection_mode(selected)
+
+ #-----------------------------
+
     def on_but_clicked(self):
         for but in self.list_of_buts :
             if but.hasFocus() : break
         logger.debug('on_but_clicked "%s"' % but.text())
-        if but == self.but_exp_col  : self.expand_collapse_dbtree()
-        if but == self.but_tabs     : self.view_hide_tabs()
+        if   but == self.but_exp_col  : self.expand_collapse_dbtree()
+        elif but == self.but_tabs     : self.view_hide_tabs()
+        elif but == self.but_buts     : self.select_visible_buttons()
+        elif but == self.but_del      : self.delete_selected_items()
+        elif but == self.but_docs     : self.select_doc_widget()
+        elif but == self.but_selm     : self.set_selection_mode()
+        elif but == self.but_add      : print('TBD')
 
 
     def on_but_pressed(self):

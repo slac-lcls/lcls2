@@ -258,7 +258,6 @@ class CMWMainTabs(QWidget) :
         else :
             print(self.key_usage())
 
-
 #------------------------------
 
 if __name__ == "__main__" :

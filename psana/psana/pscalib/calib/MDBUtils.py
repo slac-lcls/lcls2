@@ -83,6 +83,7 @@ Usage ::
 
     keys = mu.document_keys(doc)
     s_vals, s_keys = mu.document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detector','ctype','run','id_data','data_type'), fmt:str='%24s %10s %11s %20s %16s %4s %30s %10s')
+    s = mu.collection_info(client, dbname, cname) 
     s = mu.database_info(client, dbname, level:int=10, gap:str='  ')
     s = mu.database_fs_info(db, gap:str='  ')
     s = mu.client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, gap:str='  ')
@@ -205,6 +206,14 @@ def delete_database_obj(odb) :
 
 #------------------------------
 
+def delete_databases(client, dbnames:list) :
+    """Deletes databases for client and (list of str) dbnames,
+       e.g. dbnames=['cdb-cspad-0-cxids1-0','cdb-cspad-0-cxids2-0'].
+    """
+    for name in dbnames : client.drop_database(name)
+
+#------------------------------
+
 def delete_collection(db, cname:str) :
     """Deletes db collection for database and (str) cname, e.g. cname='camera-0-cxids1-0'.
     """
@@ -214,6 +223,13 @@ def delete_collection(db, cname:str) :
 
 def delete_collection_obj(ocol) :
     ocol.drop()
+
+#------------------------------
+
+def delete_collections(db, cnames:list) :
+    """Deletes list of collections from database db, e.g. cname='camera-0-cxids1-0'.
+    """
+    for cname in cnames : db.drop_collection(cname)
 
 #------------------------------
 
@@ -644,7 +660,7 @@ def find_doc(col, query={'ctype':'pedestals'}) :
 def document_keys(doc) -> str :
     """Returns formatted strings of document keys. 
     """
-    keys = doc.keys()
+    keys = sorted(doc.keys())
     s = '%d document keys:' % len(keys)
     for i,k in enumerate(keys) :
         if not(i%5) : s += '\n      ' 
@@ -659,8 +675,54 @@ def document_info(doc, keys:tuple=('time_sec','time_stamp','experiment',\
                   fmt:str='%10s %24s %11s %24s %16s %4s %30s %10s %10s') :
     """Returns (str, str) for formatted document values and title made of keys. 
     """
-    vals = tuple([str(doc.get(k,None)) for k in keys])
-    return fmt % vals, fmt % keys
+    doc_keys = sorted(doc.keys())
+    if 'experiment' in doc_keys : # CDDB type of document
+        vals = tuple([str(doc.get(k,None)) for k in keys])
+        return fmt % vals, fmt % keys
+
+    else : # OTHER type of document
+        title = '  '.join(doc_keys)
+        vals = tuple([str(doc.get(k,None) if k != 'data' else '<some data>') for k in doc_keys])
+        info = '  '.join(vals)
+        return info, title
+
+#------------------------------
+
+def collection_info(client, dbname, cname) -> str :
+    """Returns (str) info regarding collection documents. 
+    """
+    s = 'DB %s collection %s' % (dbname, cname)
+    db = database(client, dbname)
+    col = collection(db, cname) # or db[cname]
+    docs = col.find().sort('_id', DESCENDING)
+    #          # {'ctype':DESCENDING, 'time_sec':DESCENDING, 'run':ASCENDING}
+    #  s += '\n%s%s%s' % (gap, gap, 52*'_')
+    #s += '\n%s%sCOL %s contains %d docs' % (gap, gap, cname.ljust(12), docs.count())
+    #for idoc, doc in enumerate(docs) :
+
+    ndocs = docs.count()
+
+    if not ndocs : return s
+        
+    s += ' contains %d docs\n' % ndocs
+ 
+    doc = docs[0]
+    s += '\n  %s' % (document_keys(doc)) # str(doc.keys()))
+
+    #if cname in ('fs.chunks',) :
+    #    s += '\n\ncol: "%s" does not have good presentation for documents...' % cname
+    #    return s
+
+    _, title = document_info(doc)
+    s += '\n  %s%s' % ('doc#', title)
+    
+    for idoc, doc in enumerate(docs) :
+        #id_data = doc.get('id_data', None)
+        #if id_data is not None : doc['ts_data'] = timestamp_id(id_data)
+        vals,_ = document_info(doc)
+        s += '\n  %4d %s' % (idoc, vals)
+
+    return s
 
 #------------------------------
 

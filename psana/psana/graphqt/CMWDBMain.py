@@ -30,6 +30,9 @@ from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.CMWDBTree import CMWDBTree
 from psana.graphqt.CMWDBButtons import CMWDBButtons
 
+
+from psana.graphqt.CMWDBDocs import CMWDBDocs
+
 #from psana.graphqt.QWIcons import icon
 #from psana.graphqt.Styles import style
 
@@ -48,7 +51,7 @@ class CMWDBMain(QWidget) :
 
         self.wbuts = CMWDBButtons()
         self.wtree = CMWDBTree()
-        self.wtmp  = QTextEdit('Some text')
+        self.wdocs = CMWDBDocs() # QTextEdit('Some text')
 
         #self.vbox = QVBoxLayout() 
         #self.vbox.addWidget(self.wtab) 
@@ -59,7 +62,7 @@ class CMWDBMain(QWidget) :
         # Horizontal splitter widget
         self.hspl = QSplitter(Qt.Horizontal)
         self.hspl.addWidget(self.wtree) 
-        self.hspl.addWidget(self.wtmp) 
+        self.hspl.addWidget(self.wdocs) 
 
         # Vertical splitter widget
         self.vspl = QSplitter(Qt.Vertical) # QVBoxLayout() 
@@ -157,7 +160,7 @@ class CMWDBMain(QWidget) :
         pos_hspl = cp.cdb_hsplitter.value()
         self.hspl.setSizes((pos_hspl,1000,))
 
-        #self.hspl.moveSplitter(200, self.hspl.indexOf(self.wtmp))
+        #self.hspl.moveSplitter(200, self.hspl.indexOf(self.wdocs))
 
         #print('saveState:', self.hspl.saveState())
         #self.hspl.restoreState(state)
@@ -208,16 +211,29 @@ class CMWDBMain(QWidget) :
         pass
 
 
+    def view_hide_tabs(self) :
+        #self.set_tabs_visible(not self.tab_bar.isVisible())
+        #self.wbuts.tab_bar.setVisible(not self.tab_bar.isVisible())
+        self.wbuts.view_hide_tabs()
+
+
+    def key_usage(self) :
+        return 'Keys:'\
+               '\n  V - view/hide tabs'\
+               '\n'
+
+
     def keyPressEvent(self, e) :
+        #print('keyPressEvent, key=', e.key())       
         logger.info('%s.keyPressEvent, key=%d' % (self._name, e.key()))         
-        if e.key() == Qt.Key_Escape :
+        if   e.key() == Qt.Key_Escape :
             self.close()
 
-        elif e.key() == Qt.Key_U : 
-            logger.info('%s: Test:u TBD' % self._name)
-            #img = image_with_random_peaks((1000, 1000))
-            #self.set_image_data(img)
+        elif e.key() == Qt.Key_V : 
+            self.view_hide_tabs()
 
+        else :
+            print(self.key_usage())
 
 
     def on_save(self):
