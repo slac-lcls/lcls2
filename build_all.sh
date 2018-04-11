@@ -1,49 +1,41 @@
 #!/bin/bash
 
-# default to "develop" python installation.  can override it with "install" python installation.
-pyInstallStyle=${1-develop}
-echo $pyInstallStyle
-
-# USAGE: ./build_all.sh (Optional arguments: Release (default), RelWithDebInfo, Debug)
-
 set -e
 source setup_env.sh
 
 # choose local directory where packages will be installed
 export INSTDIR=`pwd`/install
 
-if [ "$#" -eq  "0" ]
-  then
-      cmake_option="-DCMAKE_INSTALL_PREFIX=$INSTDIR"
-      echo $cmake_option
-  else
-      cmake_option="-DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_BUILD_TYPE=$1"
-      echo $cmake_option
-fi
+cmake_option="Debug"
+pyInstallStyle="develop"
 
-# to build xtcdata with cmake
-cd xtcdata
-mkdir -p build
-cd build
-cmake $cmake_option ..
-make -j 4 install
-cd ../..
+while getopts ":c:p:" opt; do
+  case $opt in
+    c) cmake_option="$OPTARG"
+    ;;
+    p) pyInstallStyle="$OPTARG"
+    ;;
+    \?) echo "Invalid option -$OPTARG" >&2
+    ;;
+  esac
+done
 
-# to build psdaq and drp (after building xtcdata) with cmake
-cd psdaq
-mkdir -p build
-cd build
-cmake $cmake_option ..
-make -j 4 install
-cd ../..
+echo "CMAKE_BUILD_TYPE:" $cmake_option
+echo "Python install option:" $pyInstallStyle
 
-# to build psalg with cmake
-cd psalg
-mkdir -p build
-cd build
-cmake $cmake_option ..
-make -j 4 install
-cd ../..
+
+function cmake_build() {
+    cd $1
+    mkdir -p build
+    cd build
+    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_BUILD_TYPE=$cmake_option ..
+    make -j 4 install
+    cd ../..
+}
+
+cmake_build xtcdata
+cmake_build psdaq
+cmake_build psalg
 
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 # "python setup.py develop" seems to not create this for you

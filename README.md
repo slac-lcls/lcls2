@@ -1,13 +1,12 @@
 # LCLS II development repository
 ## Build instructions
-## Note: build on psbuild-rhel6 where redhat gcc6 compilers are installed
+### Note: build on psbuild-rhel6 where redhat gcc6 compilers are installed
 ```bash
 
 # repository consists of seperate packages: xtcdata, psdaq, drp and psana
 
-source setup_env.sh
 # build all packages in the repository and install them in ./install, option to choose build type
-./build_all.sh {Release, Debug, RelWithDebInfo}
+./build_all.sh -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 ```
 
 To run the psana automated tests run "nosetests psana/psana/tests" in your git root directory.
