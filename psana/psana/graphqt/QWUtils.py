@@ -4,6 +4,7 @@
 ================================
 
 Usage::
+    # Test: python lcls2/psana/psana/graphqt/QWUtils.py 0
 
     # Import
     from psana.graphqt.QWUtils import *
@@ -23,16 +24,25 @@ Adopted for LCLS2 on 2018-02-15
 #------------------------------
 
 import os
-from PyQt5.QtWidgets import QMenu, QDialog, QFileDialog, QMessageBox, QColorDialog, QWigget, QVBoxLayout
+from PyQt5.QtWidgets import QMenu, QDialog, QFileDialog, QMessageBox, QColorDialog, QWidget, QVBoxLayout
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor
 
 #------------------------------
 
-def select_item_from_popup_menu(list):
+def select_item_from_popup_menu(lst, title=None, default=None):
     """Shows the list as a pop-up menu and returns the selected item as a string or None"""
     w = QMenu()
-    for item in list : w.addAction(item)
+    _title = title if title is not None else 'Select'
+    #w.setTitle(_title)
+    atitle = w.addAction(_title)
+    atitle.setDisabled(True)
+    asep = w.addSeparator()
+    for name in lst : 
+       action = w.addAction(name)
+       if name == default :
+           #w.setDefaultAction(action)
+           w.setActiveAction(action)
     item = w.exec_(QCursor.pos())
     return None if item is None else str(item.text()) # str(QString)
 
@@ -50,7 +60,7 @@ def select_color(colini=Qt.blue, parent=None):
 
 #------------------------------
 
-def changeCheckBoxListInPopupMenu(list, win_title='Set check boxes'):
+def change_check_box_list_in_popup_menu(list, win_title='Set check boxes'):
     """Shows the list of check-boxes as a dialog pop-up menu and returns the (un)changed list"""
     if list is None : return 0
 
@@ -73,7 +83,30 @@ def changeCheckBoxListInPopupMenu(list, win_title='Set check boxes'):
 
 #------------------------------
 
-def selectRadioButtonInPopupMenu(dict_of_pars, win_title='Select option', do_confirm=False):
+def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes'):
+    """Shows the dict of check-boxes as a dialog pop-up menu and returns the (un)changed dict"""
+    if dict is None : return 0
+
+    from psana.graphqt.QWPopupCheckDict import QWPopupCheckDict
+
+    popupMenu = QWPopupCheckDict(None, dict, win_title)
+    #popupMenu.move(QPoint(50,50))
+    popupMenu.move(QCursor.pos())
+    response = popupMenu.exec_()
+
+    if   response == QDialog.Accepted :
+        #logger.debug('New checkbox dict is accepted', __name__)         
+        return 1
+    elif response == QDialog.Rejected :
+        #logger.debug('Will use old checkbox dict', __name__)
+        return 0
+    else                                    :
+        #logger.error('Unknown response...', __name__)
+        return 2
+
+#------------------------------
+
+def select_radio_button_in_popup_menu(dict_of_pars, win_title='Select option', do_confirm=False):
     """Popup GUI to select radio button from the list:  dict_of_pars = {'checked':'radio1', 'list':['radio0', 'radio1', 'radio2']}
     """
     from psana.graphqt.QWPopupRadioList import QWPopupRadioList
@@ -217,18 +250,18 @@ if __name__ == "__main__" :
 
     if tname == '0':
         instrs = ['SXR', 'AMO', 'XPP', 'CXI', 'MEC']
-        resp = select_item_from_popup_menu(instrs) 
+        resp = select_item_from_popup_menu(instrs, title='Select INS', default='AMO') 
         print('Selected:', resp)
 
     elif tname == '1':
         list_of_cbox = [['VAR1', True], ['VAR2', False], ['VAR3', False], ['VAR4', False], ['VAR5', False]]
-        resp = changeCheckBoxListInPopupMenu(list_of_cbox, win_title='Select vars(s)')
+        resp = change_check_box_list_in_popup_menu(list_of_cbox, win_title='Select vars(s)')
         for (var,stat) in list_of_cbox : print(var, stat)
         print('resp:', resp)
         
     elif tname == '2': 
         dict_of_pars = {'checked':'radio1', 'list':['radio0', 'radio1', 'radio2']}
-        resp = selectRadioButtonInPopupMenu(dict_of_pars, win_title='Select vars(s)', do_confirm=True)
+        resp = select_radio_button_in_popup_menu(dict_of_pars, win_title='Select vars(s)', do_confirm=True)
         for (k,v) in dict_of_pars.items() : print(k, v)
         print('resp:', resp)
 
@@ -261,6 +294,12 @@ if __name__ == "__main__" :
         resp = select_color(colini=Qt.blue, parent=None)
         print('Response:', resp)
 
+    elif tname == '9':
+        dict_of_cbox = {'VAR1':True, 'VAR2':False, 'VAR3':False, 'VAR4':False, 'VAR5':False}
+        resp = change_check_box_dict_in_popup_menu(dict_of_cbox, win_title='Select vars(s)')
+        for (var,stat) in dict_of_cbox.items() : print(var, stat)
+        print('resp:', resp)
+        
     else :
         print('Sorry, not-implemented test "%s"' % tname)
 

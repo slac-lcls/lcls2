@@ -29,12 +29,16 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
 
 #from expmon.PSNameManager import nm # It is here for initialization
+from psana.pyalgos.generic.Utils import list_of_hosts as lshosts
 
 #------------------------------
 
 class CMConfigParameters(PSConfigParameters) :
     """A storage of configuration parameters for LCLS-2 Calibration Manager (CM)
     """
+    char_expand    = u' \u25BC' # down-head triangle
+    char_shrink    = u' \u25B2' # solid up-head triangle
+ 
     def __init__(self, fname=None) :
         """fname : str - the file name with configuration parameters, if not specified then use default.
         """
@@ -54,15 +58,19 @@ class CMConfigParameters(PSConfigParameters) :
 
         #nm.set_config_pars(self)
 
-        self.list_of_hosts = ('psanaphi105', 'psanaphi106', 'psanaphi107')
+        self.list_of_hosts = lshosts(filter='psanaphi') # ('psanaphi105', 'psanaphi106', 'psanaphi107')
+
         self.list_of_ports = (27017, 27018, 27019, 27020, 27021)
         self.list_of_str_ports = [str(v) for v in self.list_of_ports]
+
+        self.list_of_doc_widgets = ('Text','List','Table')
 
         # Widgets with direct access
         self.cmwmain     = None
         self.cmwmaintabs = None
         self.cmwdbmain   = None
         self.cmwdbtree   = None
+        self.cmwdbdocs   = None
 
 #------------------------------
         
@@ -88,7 +96,10 @@ class CMConfigParameters(PSConfigParameters) :
         self.cdb_host = self.declareParameter(name='CDB_HOST', val_def='psanaphi105', type='str')
         self.cdb_port = self.declareParameter(name='CDB_PORT', val_def=27017, type='int')
         self.cdb_hsplitter = self.declareParameter(name='CDB_HSPLITTER', val_def=250, type='int')
-        self.cdb_filter = self.declareParameter(name='CDB_FILTER', val_def='', type='str')
+        self.cdb_filter  = self.declareParameter(name='CDB_FILTER', val_def='', type='str')
+        self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=0o177777, type='int')
+        self.cdb_docw = self.declareParameter(name='CDB_DOC_WIDGET', val_def='Text', type='str')
+        self.cdb_selection_mode = self.declareParameter(name='CDB_SELECTION_MODE', val_def='extended', type='str')
 
 #------------------------------
         

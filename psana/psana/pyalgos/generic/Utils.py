@@ -54,6 +54,7 @@ Usage::
     resp = gu.has_kerberos_ticket()
     resp = gu.check_token(do_print=False)
     resp = gu.get_afs_token(do_print=False)
+    hlst = gu.list_of_hosts_from_lshosts(filter='ps')
     resp = gu.text_sataus_of_lsf_hosts(farm='psnehfarm')
     resp = gu.ext_status_of_queues(lst_of_queues=['psanaq', 'psnehq', 'psfehq', 'psnehprioq', 'psfehprioq'])
 
@@ -441,6 +442,15 @@ def get_afs_token(do_print=False) :
 
 #------------------------------
 
+def list_of_hosts(filter='psana'):
+    """Returns list of hosts for lshosts"""
+    cmd = 'lshosts | grep %s' % filter
+    lines = getoutput(cmd).split('\n')
+    hosts = [line.split()[0] for line in lines]
+    return hosts
+    
+#------------------------------
+
 def text_sataus_of_lsf_hosts(farm='psnehfarm'):
     """Returns text output of the command: bhosts farm"""
     cmd = 'bhosts %s' % farm
@@ -530,6 +540,7 @@ if __name__ == "__main__" :
     print('file_mode("work")     : %s' % oct(file_mode('work')))
     print('log_rec_on_start()    :%s' % log_rec_on_start())
     #print('get_grpnames()        :%s' % str(get_grpnames('root')))
+    print('list_of_hosts         :%s' % list_of_hosts())
 
 #------------------------------
 

@@ -21,23 +21,29 @@ Created on 2017-03-23 by Mikhail Dubrovin
 
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
-import psana.pscalib.calib.MDBUtils as dbu
+import psana.graphqt.CMDBUtils as dbu
+#import psana.pscalib.calib.MDBUtils as dbu
+from PyQt5.QtCore import pyqtSignal # Qt 
 
 #------------------------------
 
 class CMWDBTree(QWTree) :
     """GUI for database-collection tree 
     """
-    def __init__ (self, parent=None) :
+    db_and_collection_selected = pyqtSignal('QString','QString')
+
+    def __init__(self, parent=None) :
 
         QWTree.__init__(self, parent)
         self._name = self.__class__.__name__
         cp.cmwdbtree = self
+        self.set_selection_mode(cp.cdb_selection_mode.value())
+        self.db_and_collection_selected.connect(self.on_db_and_collection_selected)
 
 
-    def fill_tree_model(self, pattern=''):
+    def fill_tree_model(self, pattern='') :
 
-        client = dbu.connect_to_server()# host, port)
+        client = dbu.connect_client()
 
         #pattern = 'cdb_xcs'
         #pattern = 'cspad'
@@ -53,6 +59,7 @@ class CMWDBTree(QWTree) :
 
             itdb = QStandardItem(dbname)
             itdb.setIcon(icon.icon_folder_closed)
+
             #itdb.setCheckable(True) 
             parentItem.appendRow(itdb)
 
@@ -67,6 +74,26 @@ class CMWDBTree(QWTree) :
                 #item.setIcon(icon.icon_table)
                 #item.setCheckable(True) 
                 #print('append item %s' % (item.text()))
+
+#------------------------------
+
+    def on_click(self, index) :
+        """Override method from QWTree"""
+        item = self.model.itemFromIndex(index)
+        itemname = item.text()
+        parent = item.parent()
+        parname = parent.text() if parent is not None else None
+        msg = 'on_click item: %s parent: %s' % (itemname, parname) # index.row()
+        logger.info(msg, self._name)
+        if parent is not None : self.db_and_collection_selected.emit(parname, itemname)
+
+
+    def on_db_and_collection_selected(self, dbname, colname) :
+        msg = 'on_db_and_collection_selected DB: %s collection: %s' % (dbname, colname)
+        logger.info(msg, self._name)
+        wdocs = cp.cmwdbdocs
+        if wdocs is None : return
+        wdocs.show_documents(dbname, colname)
 
 #------------------------------
 
