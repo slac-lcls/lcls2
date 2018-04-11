@@ -1,6 +1,7 @@
 #include <thread>
 #include <cstdio>
 #include <chrono>
+#include <bitset>
 #include <unistd.h>
 #include "pgpdriver.h"
 #include "PGPReader.hh"
@@ -15,6 +16,7 @@ MemPool::MemPool(int num_workers, int num_entries) :
     pgp_data(num_entries),
     pebble_queue(num_entries),
     collector_queue(num_entries),
+    output_queue(num_entries),
     num_entries(num_entries),
     pebble(num_entries)
 {
@@ -24,6 +26,8 @@ MemPool::MemPool(int num_workers, int num_entries) :
     }
 
     for (int i = 0; i < num_entries; i++) {
+        pgp_data[i].counter = 0;
+        pgp_data[i].buffer_mask = 0;
         pebble_queue.push(&pebble[i]);
     }
 }
@@ -38,10 +42,21 @@ int MovingAverage::add_value(int value)
     return sum;
 }
 
-PGPReader::PGPReader(MemPool& pool, int num_lanes, int nworkers) : 
-    m_pool(pool), 
+PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
+    m_dev(0x2032),
+    m_pool(pool),
     m_avg_queue_size(nworkers)
 {
+    std::bitset<32> bs(lane_mask);
+    m_nlanes = bs.count();
+    m_last_complete = 0;
+
+    m_worker = 0;
+    m_nworkers = nworkers;
+
+    m_buffer_mask = m_pool.num_entries - 1;
+    m_dev.init(&m_pool.dma);
+    m_dev.setup_lanes(lane_mask);
 }
 
 PGPData* PGPReader::process_lane(DmaBuffer* buffer)
@@ -52,9 +67,8 @@ PGPData* PGPReader::process_lane(DmaBuffer* buffer)
     p->buffers[buffer->dest] = buffer;
 
     // set bit in lane mask for lane
-    p->lane_mask |= (1 << buffer->dest);
+    p->buffer_mask |= (1 << buffer->dest);
     p->counter++;
-
     if (p->counter == m_nlanes) {
         if (event_header->evtCounter != (m_last_complete + 1)) {
             printf("Jump in complete l1Count %d -> %u\n",
@@ -88,6 +102,15 @@ void PGPReader::send_to_worker(Pebble* pebble_data)
     m_worker++;
 }
 
+void PGPReader::send_all_workers(Pebble* pebble)
+{
+    for (int i=0; i<m_nworkers; i++) {
+        m_pool.worker_input_queues[i].push(pebble);
+    }
+    // only pass on event from worker 0 to collector
+    m_pool.collector_queue.push(0);
+}
+
 void monitor_pgp(std::atomic<Counters*>& p)
 {
     Counters* c = p.load(std::memory_order_acquire);
@@ -116,7 +139,6 @@ void monitor_pgp(std::atomic<Counters*>& p)
     }
 }
 
-
 void PGPReader::run()
 {
     // start monitoring thread
@@ -125,33 +147,43 @@ void PGPReader::run()
     std::atomic<Counters*> p(&c1);
     std::thread monitor_thread(monitor_pgp, std::ref(p));
 
-
-    // fake up configure transition
-    //XtcData::Sequence seq(Sequence::Configure);
-
     int64_t event_count = 0;
     int64_t total_bytes_received = 0;
-    
-    for (int i=0; i<100; i++) {
+    while (true) {
         DmaBuffer* buffer = m_dev.read();
         total_bytes_received += buffer->size;
-        PGPData* pgp_data = process_lane(buffer);
-        if (pgp_data) {
+        PGPData* pgp = process_lane(buffer);
+        if (pgp) {
+            // get first set bit to find index of the first lane
+            int index = __builtin_ffs(pgp->buffer_mask) - 1;
+            Transition* event_header = reinterpret_cast<Transition*>(pgp->buffers[index]->virt);
+            TransitionId::Value transition_id = event_header->seq.service();
+            //printf("Complete evevent:  Transition id %d pulse id %lu  event counter %u\n", 
+            //        transition_id, event_header->seq.pulseId().value(), event_header->evtCounter);
             Pebble* pebble;
             m_pool.pebble_queue.pop(pebble);
-            pebble->pgp_data = pgp_data;
-            send_to_worker(pebble);
-        }
-        
-        event_count += 1;
-        
-        counter->event_count = event_count;
-        counter->total_bytes_received = total_bytes_received;
-        counter = p.exchange(counter, std::memory_order_release);
-    }
+            pebble->pgp_data = pgp;
+            switch (transition_id) {
+                case 0:
+                    send_to_worker(pebble);
+                    break;
 
+                case 2:
+                    send_all_workers(pebble);
+                    break;
+                default:
+                    printf("Unknown transition %d\n", transition_id);
+                    break;
+            }
+            event_count += 1;
+
+            counter->event_count = event_count;
+            counter->total_bytes_received = total_bytes_received;
+            counter = p.exchange(counter, std::memory_order_release);
+        }
+    }
     // shutdown monitor thread
     counter->total_bytes_received = -1;
-    p.exchange(counter, std::memory_order_release); 
-    monitor_thread.join();    
+    p.exchange(counter, std::memory_order_release);
+    monitor_thread.join();
 }

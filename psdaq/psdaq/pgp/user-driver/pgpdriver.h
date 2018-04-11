@@ -52,7 +52,6 @@
 #define HUGE_PAGE_SIZE (1 << HUGE_PAGE_BITS)
 
 #define PGP_VENDOR 0x1a4a
-#define PGP_DEVICE 0x2031
 
 struct DmaBuffer
 {
@@ -74,11 +73,11 @@ private:
 class AxisG2Device
 {
 public:
-    AxisG2Device();
+    AxisG2Device(int device_id);
     void init(DmaBufferPool* pool);
     void status();
     void setup_lanes(int lane_mask);
-    void loop_test(int lane_mask, int size, int op_code);
+    void loop_test(int lane_mask, int loopb, int size, int op_code, int fifolo);
     DmaBuffer* read();
     void write();
 private:
