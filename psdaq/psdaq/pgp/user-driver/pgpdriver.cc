@@ -105,14 +105,14 @@ long get_id(std::string file_name)
     return strtol(line.c_str(), NULL, 0);
 }
 
-std::string get_pgp_bus_id()
+std::string get_pgp_bus_id(int device_id)
 {
     std::string base_dir = "/sys/bus/pci/devices/";
     DIR* parent = opendir(base_dir.c_str());
     while (dirent* child = readdir(parent)) {
         long vendor =  get_id(base_dir + child->d_name + "/vendor");
         long device =  get_id(base_dir + child->d_name + "/device");
-        if ((vendor == PGP_VENDOR) & (device == PGP_DEVICE)) {
+        if ((vendor == PGP_VENDOR) & (device == device_id)) {
              printf("Found PGP card at: %s\n", child->d_name);
              return std::string(child->d_name);
         }
@@ -121,9 +121,9 @@ std::string get_pgp_bus_id()
     exit(-1);
 }
 
-AxisG2Device::AxisG2Device()
+AxisG2Device::AxisG2Device(int device_id)
 {
-    std::string bus_id = get_pgp_bus_id();
+    std::string bus_id = get_pgp_bus_id(device_id);
     pci_resource = map_pci_resource(bus_id.c_str());
 }
 
@@ -195,7 +195,7 @@ void AxisG2Device::status()
     printf("-- Core Axi Version --\n");
     printf("  firmware version  :  %x\n", version);
     printf("  scratch           :  %x\n", scratch);
-    printf("  uptime count      :  %x\n", uptime_count);
+    printf("  uptime count      :  %d\n", uptime_count);
     printf("  build string      :  %s\n", build_string);
     
     printf("  lanes             :  %u\n", lanes);
@@ -242,16 +242,14 @@ void AxisG2Device::setup_lanes(int lane_mask)
     }   
 }
 
-void AxisG2Device::loop_test(int lane_mask, int size, int op_code)
+void AxisG2Device::loop_test(int lane_mask, int loopb, int size, int op_code, int fifolo)
 {
-    int loopb = 0xf;
-
-    // set loopback mode
-    for (int i=0; i<MAX_LANES; i++) {
-        set_reg32(pci_resource, PGP_LANES(i) + LOOPBACK, (loopb & (1<<i)) ? (2<<16) : 0);
+    if (loopb >= 0) {
+        for(int i=0; i<4; i++) {
+            set_reg32(pci_resource, PGP_LANES(i) + LOOPBACK, (loopb & (1<<i)) ? (2<<16) : 0);
+        }
     }   
     int tx_req_delay = 0;
-    int fifolo = 4;
     uint32_t control = get_reg32(pci_resource, PGP_TX_SIM + CONTROL);
     printf("AppTxSim control = %08x\n", control);
 

@@ -20,10 +20,16 @@ struct EventHeader {
 struct PGPData
 {
     uint64_t pulse_id;
-    uint8_t lane_mask;
+    uint8_t buffer_mask;
     unsigned damaged : 1;
     unsigned counter : 7;
     DmaBuffer* buffers[8];
+};
+
+struct Parameters
+{
+    std::string eb_server_ip;
+    unsigned contributor_id;
 };
 
 // Per-Event-Buffer-with-Boundaries-Listed-Explicitly
@@ -57,6 +63,7 @@ struct MemPool
     std::vector<PebbleQueue> worker_input_queues;
     std::vector<PebbleQueue> worker_output_queues;
     SPSCQueue<int> collector_queue;
+    PebbleQueue output_queue;
     int num_entries;
 private:
     std::vector<Pebble> pebble;

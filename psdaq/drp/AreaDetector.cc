@@ -2,7 +2,6 @@
 #include "AreaDetector.hh"
 #include "xtcdata/xtc/VarDef.hh"
 
-
 using namespace XtcData;
 
 class RoiDef : public VarDef
@@ -20,9 +19,21 @@ public:
     }
 };
 
-void roiExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers)
+void AreaDetector::configure(Xtc& parent)
 {
-    CreateData fex(parent, NamesVec, nameId);
+    Alg cspadRawAlg("cspadRawAlg", 1, 2, 3);
+    unsigned segment = 0;
+
+    Names& fexNames = *new(parent) Names("cspad", cspadRawAlg, "cspad", "detnum1234", segment);
+    Alg roi("roi", 1, 0, 0);
+    // fexNames.add(parent, RoiDef); FIXME
+    m_namesVec.push_back(NameIndex(fexNames));
+}
+
+void AreaDetector::event(Xtc& parent)
+{
+    /*
+    CreateData fex(parent, m_namesVec, nameId);
 
     uint16_t* ptr = (uint16_t*)fex.get_ptr();
     unsigned shape[Name::MaxRank];
@@ -34,15 +45,6 @@ void roiExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId, 
         ptr[i] = img[i];
     }
     fex.set_array_shape(RoiDef::array_fex,shape);
+    */
 }
 
-void add_roi_names(Xtc& parent, std::vector<NameIndex>& namesVec)
-{
-    Alg cspadRawAlg("cspadRawAlg",1,2,3);
-    unsigned segment=0;
-
-    Names& fexNames = *new(parent) Names("cspad", cspadRawAlg, "cspad", "detnum1234", segment);
-    Alg roi("roi", 1, 0, 0);
-    fexNames.add(parent, RoiDef); //Name::UINT16, parent, 2);
-    namesVec.push_back(NameIndex(fexNames));
-};

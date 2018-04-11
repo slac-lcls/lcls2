@@ -3,30 +3,53 @@
 #include <cstring>
 #include <getopt.h>
 #include "PGPReader.hh"
+#include "AreaDetector.hh"
+#include "Worker.hh"
+#include "Collector.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/Sequence.hh"
 
-int main(int argc, char* argv[]) 
+using namespace XtcData;
+
+int main(int argc, char* argv[])
 {
-    char dev_name[128];
-    unsigned num_lanes;
+    Parameters para;
     int c;
-    while((c = getopt(argc, argv, "aP:L:D")) != EOF) {
+    while((c = getopt(argc, argv, "P:i:")) != EOF) {
         switch(c) {
             case 'P':
-                strcpy(dev_name, optarg);
+                para.eb_server_ip = optarg;
                 break;
-            case 'L':
-                num_lanes = strtoul(optarg, NULL, 0);
-                break;
-            case 'D':
+            case 'i':
+                para.contributor_id = atoi(optarg);
                 break;
         }
     }
+    printf("eb server ip: %s\n", para.eb_server_ip.c_str());
+    printf("contributor id: %u\n", para.contributor_id);
 
-   
-    int num_workers = 2; 
-    MemPool pool(num_workers, 10000);
-    PGPReader pgp_reader(pool, num_lanes, num_workers);
+    Factory<Detector> f;
+    f.register_type<AreaDetector>("AreaDetector");
+    Detector *d = f.create("AreaDetector");
+    printf("%p\n", d);
+
+    int num_workers = 2;
+    MemPool pool(num_workers, 2*4096);
+    int lane_mask = 0xf;
+    PGPReader pgp_reader(pool, lane_mask, num_workers);
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
+
+    // start worker threads
+    std::vector<std::thread> worker_threads;
+    for (int i = 0; i < num_workers; i++) {
+        worker_threads.emplace_back(worker, d, std::ref(pool.worker_input_queues[i]),
+                                    std::ref(pool.worker_output_queues[i]), i);
+    }
+
+    collector(pool, para);
+
     pgp_thread.join();
-    
+    for (int i = 0; i < num_workers; i++) {
+        worker_threads[i].join();
+    }
 }
