@@ -27,19 +27,21 @@ def reader(ds):
     for offset_evt in smd_dm:
         if ds.filter: 
             if not ds.filter(offset_evt): continue
-        offsets = np.asarray([d.info.offsetAlg.intOffset for d in offset_evt], dtype='i')
-        evt = dm.next(offsets=offsets, read_chunk=False)
+        offsets_and_sizes = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] for d in offset_evt], dtype='i')
+        evt = dm.next(offsets=offsets_and_sizes[:,0], 
+                      sizes=offsets_and_sizes[:,1], read_chunk=False)
         debug(evt)
         yield evt
         
 def server(ds):
     rankreq = np.empty(1, dtype='i')
-    offset_batch = np.ones([ds.lbatch, ds.nfiles], dtype='i') * -1
+    offset_batch = np.ones([ds.nfiles, 2, ds.lbatch], dtype='i') * -1
     nevent = 0
     for evt in ds.dm:
         if ds.filter: 
             if not ds.filter(evt): continue
-        offset_batch[nevent % ds.lbatch, :] = [d.info.offsetAlg.intOffset for d in evt]
+        offset_batch[:,:,nevent % ds.lbatch] = [[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] \
+                                               for d in evt]
         if nevent % ds.lbatch == ds.lbatch - 1:
             comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             comm.Send(offset_batch, dest=rankreq[0])
@@ -58,13 +60,15 @@ def client(ds):
     is_done = False
     while not is_done:
         comm.Send(np.array([rank], dtype='i'), dest=0)
-        offset_batch = np.empty([ds.lbatch, ds.nfiles], dtype='i')
+        offset_batch = np.empty([ds.nfiles, 2, ds.lbatch], dtype='i')
         comm.Recv(offset_batch, source=0)
-        for offsets in offset_batch:
-            if all(offsets == -1): 
+        for i in range(offset_batch.shape[2]):
+            offsets_and_sizes = offset_batch[:,:,i]
+            if (offsets_and_sizes == -1).all(): 
                 is_done = True
                 break
-            evt = ds.dm.next(offsets=offsets, read_chunk=False)
+            evt = ds.dm.next(offsets=offsets_and_sizes[:,0],
+                          sizes=offsets_and_sizes[:,1], read_chunk=False)
             debug(evt)
             yield evt
 

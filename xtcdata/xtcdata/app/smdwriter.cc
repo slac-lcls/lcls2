@@ -84,12 +84,14 @@ class SmdDef:public VarDef
 public:
   enum index
     {
-      intOffset
+      intOffset,
+      intDgramSize
     };
 
    SmdDef()
    {
      NameVec.push_back({"intOffset", Name::UINT64});
+     NameVec.push_back({"intDgramSize", Name::UINT64});
    }
 } SmdDef;
 
@@ -186,8 +188,8 @@ int main(int argc, char* argv[])
   // Writing out data
   void* buf = malloc(BUFSIZE);
   unsigned eventId = 0;
-  //  unsigned nowOffset = 0;
   uint64_t nowOffset = 0;
+  uint64_t nowDgramSize = 0;
 
   printf("\nStart writing offsets.\n"); 
   while ((dgIn = iter.next())) {
@@ -200,9 +202,11 @@ int main(int argc, char* argv[])
     unsigned nameId = 3; // offset is the last
     CreateData smd(dgOut.xtc, namesVec, nameId);
     smd.set_value(SmdDef::intOffset, nowOffset);
+    nowDgramSize = sizeof(*dgIn) + dgIn->xtc.sizeofPayload();
+    smd.set_value(SmdDef::intDgramSize, nowDgramSize);
     
-    printf("Read evt: %4d Dgram size: %8lu Payload size: %8d Writing offset: %10d\n", 
-        eventId++, sizeof(*dgIn), dgIn->xtc.sizeofPayload(), nowOffset);
+    printf("Read evt: %4d Header size: %8lu Payload size: %8d Writing offset: %10d size: %10d\n", 
+        eventId++, sizeof(*dgIn), dgIn->xtc.sizeofPayload(), nowOffset, nowDgramSize);
 
     if (fwrite(&dgOut, sizeof(dgOut) + dgOut.xtc.sizeofPayload(), 1, xtcFile) != 1) {
       printf("Error writing to output xtc file.\n");

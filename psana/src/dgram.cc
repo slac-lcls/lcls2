@@ -447,17 +447,20 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     static char* kwlist[] = {(char*)"file_descriptor",
                              (char*)"config",
                              (char*)"offset",
+                             (char*)"size",
                              NULL};
 
     int fd=0;
     PyObject* configDgram=0;
     self->offset=0;
     self->is_done=false;
+    ssize_t dgram_size=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iOl", kwlist,
+                                     "|iOll", kwlist,
                                      &fd,
                                      &configDgram,
-                                     &self->offset)) {
+                                     &self->offset,
+                                     &dgram_size)) {
         return -1;
     }
 
@@ -520,21 +523,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             }
         } else {
             off_t fOffset = (off_t)self->offset;
-            readSuccess = pread(self->file_descriptor, self->dgram, sizeof(*self->dgram), fOffset);
+            readSuccess = pread(self->file_descriptor, self->dgram, dgram_size, fOffset);
             if (readSuccess <= 0) {
                 char s[TMPSTRINGSIZE];
                 snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
-                PyErr_SetString(PyExc_StopIteration, s);
-                return -1;
-            }
-    
-            size_t payloadSize = self->dgram->xtc.sizeofPayload();
-            readSuccess = 0;
-            fOffset += (off_t)sizeof(*self->dgram);
-            readSuccess = pread(self->file_descriptor, self->dgram->xtc.payload(), payloadSize, fOffset);
-            if (readSuccess <= 0){
-                char s[TMPSTRINGSIZE];
-                snprintf(s, TMPSTRINGSIZE, "loading self->dgram->xtc.payload() was unsuccessful -- %s", strerror(errno));
                 PyErr_SetString(PyExc_StopIteration, s);
                 return -1;
             }

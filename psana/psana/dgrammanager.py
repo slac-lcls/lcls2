@@ -59,19 +59,21 @@ class DgramManager():
     def __next__(self):
         return self.next()
     
-    def next(self, offsets=[], read_chunk=True):
+    def next(self, offsets=[], sizes=[], read_chunk=True):
         assert len(self.offsets) > 0 or len(offsets) > 0
         
         if len(offsets) == 0: offsets = self.offsets
+        if len(sizes) == 0: sizes = [0]*len(offsets)
 
         dgrams = []
-        for fd, config, offset in zip(self.fds, self.configs, offsets):
+        for fd, config, offset, size in zip(self.fds, self.configs, offsets, sizes):
             d = 0
             try:
                 if (read_chunk) :
                     d = dgram.Dgram(config=config, offset=offset)
                 else:
-                    d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset)   
+                    assert size > 0
+                    d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             except StopIteration:
                 pass 
             if d:
