@@ -205,17 +205,21 @@ int main(int argc, char* argv[])
     nowDgramSize = sizeof(*dgIn) + dgIn->xtc.sizeofPayload();
     smd.set_value(SmdDef::intDgramSize, nowDgramSize);
     
-    printf("Read evt: %4d Header size: %8lu Payload size: %8d Writing offset: %10d size: %10d\n", 
-        eventId++, sizeof(*dgIn), dgIn->xtc.sizeofPayload(), nowOffset, nowDgramSize);
+    if (eventId > 0) { 
+        printf("Read evt: %4d Header size: %8lu Payload size: %8d Writing offset: %10d size: %10d\n", 
+        eventId, sizeof(*dgIn), dgIn->xtc.sizeofPayload(), nowOffset, nowDgramSize);
 
-    if (fwrite(&dgOut, sizeof(dgOut) + dgOut.xtc.sizeofPayload(), 1, xtcFile) != 1) {
-      printf("Error writing to output xtc file.\n");
-      return -1;
+        if (fwrite(&dgOut, sizeof(dgOut) + dgOut.xtc.sizeofPayload(), 1, xtcFile) != 1) {
+            printf("Error writing to output xtc file.\n");
+            return -1;
+        }
+    } else {
+        printf("Skip evt: 0 (config)\n");
     }
 
     // Update the offset
     nowOffset += sizeof(*dgIn) + dgIn->xtc.sizeofPayload();
-
+    eventId++;
   }
   printf("Done.\n");
   fclose(xtcFile);
