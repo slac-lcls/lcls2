@@ -341,8 +341,13 @@ int create_dgram(PyDgramObject* self) {
     
     bool is_between = (self->offset + (ssize_t)sizeof(Dgram) > chunk_en) ? true : false;
     end = read_chunk(self, is_between);
+
     if (end == 0) {
-        return 1;
+        return -1;
+    }
+
+    if (self->offset >= end) {
+        return -1;
     }
 
     // create a dgram_scratch (header part of the dgram)
@@ -392,7 +397,7 @@ int create_dgram(PyDgramObject* self) {
 
     self->offset += payloadSize;
     
-    return (end < CHUNKSIZE && self->offset-chunk_st == end) ? -1 : 0;
+    return 0;
 
 }
 

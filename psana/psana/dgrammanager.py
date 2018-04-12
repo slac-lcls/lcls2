@@ -52,6 +52,7 @@ class DgramManager():
                 self.configs += [d]
 
         self.offsets = [_config._offset for _config in self.configs]
+        self.active = True
         
     def __iter__(self):
         return self
@@ -60,6 +61,12 @@ class DgramManager():
         return self.next()
     
     def next(self, offsets=[], sizes=[], read_chunk=True):
+        # self.active protects dgram from being accessed after
+        # chunks were freed. Todo: find a better way
+        # to maintain the life cycle of chunks.
+        if not self.active:
+            raise StopIteration()
+
         assert len(self.offsets) > 0 or len(offsets) > 0
         
         if len(offsets) == 0: offsets = self.offsets
@@ -75,7 +82,8 @@ class DgramManager():
                     assert size > 0
                     d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             except StopIteration:
-                pass 
+                self.active = False
+                break
             if d:
                 setnames(d)
                 dgrams += [d]
