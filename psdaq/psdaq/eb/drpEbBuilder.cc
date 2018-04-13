@@ -339,6 +339,7 @@ void TstEbInlet::process(BatchManager* outlet)
       //printf("In  Batch  %014lx Pend = %ld S, %ld ns\n", bdg->seq.pulseId().value(), dS, dN);
 
       dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
+      //if (dT > 1048576)  printf("pendTime = %ld ns\n", dT);
       _pendTimeHist.bump(dT >> 8);
       _pendCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _pendPrevTime).count());
       _pendPrevTime = t0;
@@ -546,6 +547,7 @@ void TstEbOutlet::post(const Batch* batch)
 
   {
     int64_t dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
+    //if (dT > 1048576)  printf("postTime = %ld ns\n", dT);
     _postTimeHist.bump(dT >> 8);
     _postCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _postPrevTime).count());
     _postPrevTime = t0;

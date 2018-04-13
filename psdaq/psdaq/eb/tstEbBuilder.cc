@@ -340,7 +340,7 @@ void TstEbInlet::process(BatchManager* outlet)
       //printf("In  Batch  %014lx Pend = %ld S, %ld ns\n", bdg->seq.pulseId().value(), dS, dN);
 
       dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
-      if (dT > 1048576)  printf("pendTime = %ld\n", dT);
+      if (dT > 1048576)  printf("pendTime = %ld ns\n", dT);
       _pendTimeHist.bump(dT >> 8);
       _pendCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _pendPrevTime).count());
       _pendPrevTime = t0;
@@ -551,7 +551,7 @@ void TstEbOutlet::post(const Batch* batch)
 
   {
     int64_t dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
-    if (dT > 1048576)  printf("postTime = %ld\n", dT);
+    if (dT > 1048576)  printf("postTime = %ld ns\n", dT);
     _postTimeHist.bump(dT >> 8);
     _postCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _postPrevTime).count());
     _postPrevTime = t0;
@@ -789,10 +789,15 @@ int main(int argc, char **argv)
   printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);
   printf("  Batch pool depth:           %d\n", maxBatches);
   printf("  Max # of entries per batch: %d\n", maxEntries);
-  printf("  Max contribution size:      %zd, batch size: %zd\n",
-         max_contrib_size, inlet->maxBatchSize());
-  printf("  Max result       size:      %zd, batch size: %zd\n",
-         max_result_size,  outlet->maxBatchSize());
+  const unsigned ibMtu = 4096;
+  unsigned mtuCnt = (sizeof(Dgram) + maxEntries * max_contrib_size + ibMtu - 1) / ibMtu;
+  unsigned mtuRem = (sizeof(Dgram) + maxEntries * max_contrib_size) % ibMtu;
+  printf("  Max contribution size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
+         max_contrib_size, outlet->maxBatchSize(), mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
+  mtuCnt = (sizeof(Dgram) + maxEntries * max_result_size + ibMtu - 1) / ibMtu;
+  mtuRem = (sizeof(Dgram) + maxEntries * max_result_size) % ibMtu;
+  printf("  Max result       size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
+         max_result_size,  inlet->maxBatchSize(),  mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
   printf("  Monitoring period:          %d\n", monPeriod);
   printf("  Thread core numbers:        %d, %d\n", lcore1, lcore2);
   printf("\n");
