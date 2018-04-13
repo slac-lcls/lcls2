@@ -1331,7 +1331,13 @@ ssize_t Endpoint::write_data(const void* buf, size_t len, const RemoteAddress* r
 {
   CHECK_MR(buf, len, mr, "fi_writedata");
 
-  return fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
+  ssize_t rret = fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_writedata");
+  }
+
+  return rret;
 }
 
 ssize_t Endpoint::write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr)
@@ -1581,40 +1587,6 @@ ssize_t Endpoint::check_completion_noctx(CompletionQueue* cq, unsigned flags, ui
 
   return rret;
 }
-
-//ssize_t Endpoint::check_completion(struct fid_cq* cq, int context, unsigned flags, uint64_t* data)
-//{
-//  struct fi_cq_data_entry comp;
-//
-//  ssize_t rret = cq->comp_wait(&comp, 1);
-//  if (rret == 1) {
-//    if ((comp.flags & flags) == flags) {
-//      if (*((int*) comp.op_context) == context) {
-//        if (data)
-//          *data = comp.data;
-//        return FI_SUCCESS;
-//      }
-//    }
-//  }
-//
-//  return rret;
-//}
-
-//ssize_t Endpoint::check_completion_noctx(struct fid_cq* cq, unsigned flags, uint64_t* data)
-//{
-//  struct fi_cq_data_entry comp;
-//
-//  ssize_t rret = cq->comp_wait(&comp, 1);
-//  if (rret == 1) {
-//    if ((comp.flags & flags) == flags) {
-//      if (data)
-//        *data = comp.data;
-//      return FI_SUCCESS;
-//    }
-//  }
-//
-//  return rret;
-//}
 
 ssize_t Endpoint::check_connection_state()
 {

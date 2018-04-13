@@ -40,15 +40,13 @@ namespace Pds {
     private:
       friend class EbLfBase;
     private:
-      uint64_t              _postCnt;
-      uint64_t              _repostCnt;
-      uint64_t              _repostMax;
-      uint64_t              _pendCnt;
-      uint64_t              _pendTmoCnt;
-      uint64_t              _rependCnt;
-      uint64_t              _rependMax;
-      std::vector<uint64_t> _rmtWrCnt;
-      std::vector<uint64_t> _compAgnCnt;
+      uint64_t _postCnt;
+      uint64_t _repostCnt;
+      uint64_t _repostMax;
+      uint64_t _pendCnt;
+      uint64_t _pendTmoCnt;
+      uint64_t _rependCnt;
+      uint64_t _rependMax;
     };
 
     class EbLfBase
