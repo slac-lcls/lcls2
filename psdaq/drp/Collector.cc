@@ -100,7 +100,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
     size_t maxBatchSize = calcBatchSize(maxEntries, maxSize);
     void* region = allocBatchRegion(maxBatches, maxBatchSize);
     EbLfServer myEbLfServer(ifAddr, srvPort, numEb);
-    printf("*** rcvr %d %zd\n",maxBatches,maxBatchSize);
+    printf("*** rcvr %d %zd\n", maxBatches, maxBatchSize);
     myEbLfServer.connect(para.contributor_id, region, maxBatches * maxBatchSize,
                          EbLfServer::PEERS_SHARE_BUFFERS);
     unsigned nreceive = 0;
@@ -126,9 +126,12 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
 
             Pebble* pebble;
             pool.output_queue.pop(pebble);
+
+            // usleep(10);
+
             // return buffer to memory pool
             for (int l=0; l<8; l++) {
-                if (pebble->pgp_data->buffer_mask  & (1 << l)) {
+                if (pebble->pgp_data->buffer_mask & (1 << l)) {
                     pool.dma.buffer_queue.push(pebble->pgp_data->buffers[l]);
                 }
             }
@@ -144,7 +147,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
             } else {
                 printf("error %ld\n",val);
             }
-            if (nreceive%10000==0) printf("%d %d %d\n", nreceive, none, nzero);
+            // if (nreceive%10000==0) printf("%d %d %d\n", nreceive, none, nzero);
         }
         delete input;
     }

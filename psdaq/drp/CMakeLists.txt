@@ -4,6 +4,7 @@ add_library(drp SHARED
     Worker.cc
     Collector.cc
     PGPReader.cc
+    drp.cc
 )
 
 target_link_libraries(drp
@@ -11,6 +12,8 @@ target_link_libraries(drp
     pgpdriver
     #pshdf5
     eb
+    $ENV{CONDA_PREFIX}/lib/libzmq.so
+    $ENV{CONDA_PREFIX}/lib/libstdc++.so.6
 )
 
 target_include_directories(drp PUBLIC

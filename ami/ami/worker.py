@@ -36,20 +36,39 @@ class Worker(object):
         for msg in self.src.events():
             # check to see if the graph has been reconfigured after update
             if msg.mtype == MsgTypes.Occurrence and msg.payload == Occurrences.Heartbeat:
-
-                if MPI.COMM_WORLD.Iprobe(source=0, tag=1):
-                    new_graph = MPI.COMM_WORLD.recv(source=0, tag=1)
-                    self.graph.update(new_graph)
-                    print("worker%d: Received new configuration"%self.idnum)
-                    try:
-                        self.graph.configure()
-                        print("worker%d: Configuration complete"%self.idnum)
-                    except GraphConfigError as graph_err:
-                        print("worker%d: Configuration failed reverting to previous config:"%self.idnum, graph_err)
-                        # if this fails we just die
-                        self.graph.revert()
+                status = MPI.Status()
+                if MPI.COMM_WORLD.Iprobe(source=0, tag=MPI.ANY_TAG):
                     sys.stdout.flush()
-                    self.new_graph_available = False
+                    mpi_msg = MPI.COMM_WORLD.recv(source=0, tag=MPI.ANY_TAG, status=status)
+                    tag = status.Get_tag()
+                    print(tag, mpi_msg)
+                    sys.stdout.flush()
+                    if tag == 1: 
+                        self.graph.update(mpi_msg)
+                        print("worker%d: Received new configuration"%self.idnum)
+                        try:
+                            self.graph.configure()
+                            print("worker%d: Configuration complete"%self.idnum)
+                        except GraphConfigError as graph_err:
+                            print("worker%d: Configuration failed reverting to previous config:"%self.idnum, graph_err)
+                            # if this fails we just die
+                            self.graph.revert()
+                        sys.stdout.flush()
+                        self.new_graph_available = False
+                    elif tag == 2:
+                        print('Recv worker tag 2')
+                        #####
+                        print("mpi_msg", mpi_msg)
+                        name, num = mpi_msg
+                        # send back 'rank' images in feature store
+                        MPI.COMM_WORLD.send(MPI.COMM_WORLD.Get_rank(), dest=0, tag=2) 
+                        print('Send worker tag 2')
+                        # answer from collector on how many images to send to collector
+                        num = MPI.COMM_WORLD.recv(source=0, tag=2)
+                        print('Recv worker tag 2')
+                        print('Num images to send', num, MPI.COMM_WORLD.Get_rank())
+                        ######
+
                 self.store.send(msg)
             elif msg.mtype == MsgTypes.Datagram:
                 updates = []
@@ -177,6 +196,7 @@ def main():
         rank = MPI.COMM_WORLD.Get_rank()
         size = MPI.COMM_WORLD.Get_size()
         if rank == 0:
+            print('rank', rank)
             m = Manager(args.port)
             m.run()
         else:
