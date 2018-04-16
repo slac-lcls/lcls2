@@ -41,6 +41,4 @@ struct Counters
     int64_t event_count;
 };
 
-
-
 #endif // PGPREADER_H

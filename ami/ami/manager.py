@@ -29,10 +29,11 @@ class Manager(Collector):
         # ZMQ setup
         self.ctx = zmq.Context()
         self.comm = self.ctx.socket(zmq.REP)
+        print("port", gui_port)
         self.comm.bind("tcp://*:%d" % gui_port)
 
         self.client_listener_thread = threading.Thread(target=self.client_listener)
-        self.client_listener_thread.daemon = True
+        #self.client_listener_thread.daemon = True
         self.client_listener_thread.start()
 
     def process_msg(self, msg):
@@ -52,6 +53,31 @@ class Manager(Collector):
     def feature_request(self, request):
         matched = self.feature_req.match(request)
         if matched:
+            print("in feature_request", matched.group('name'))            
+            
+            reqs = []
+            ########## 
+            for rank in range(1, MPI.COMM_WORLD.Get_size()):
+                reqs.append(MPI.COMM_WORLD.isend([matched.group('name'), 2], tag=2, dest=rank))
+            for req in reqs:
+                req.wait()
+            reqs.clear() 
+
+            # answer from workers on how many images they have
+            for i in range(1, MPI.COMM_WORLD.Get_size()):
+                answer = MPI.COMM_WORLD.recv(tag=2, source=MPI.ANY_SOURCE)
+            
+            for rank in range(1, MPI.COMM_WORLD.Get_size()):
+                if rank == 1:
+                    num = 2
+                else:
+                    num = 0
+                reqs.append(MPI.COMM_WORLD.isend(num, tag=2, dest=rank))
+            for req in reqs:
+                req.wait()
+        
+            ###########
+            
             if matched.group('name') in self.feature_store:
                 self.comm.send_string('ok', zmq.SNDMORE)
                 self.comm.send_pyobj(self.feature_store[matched.group('name')].data)
