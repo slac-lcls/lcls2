@@ -110,6 +110,12 @@ if __name__ == '__main__':
     pvdb[stationstr+'FEX_XPOST'] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [3]*4 }
+    pvdb[stationstr+'NAT_GATE' ] = {'type' : 'int', 
+                                    'count': 4,
+                                    'value' : [200]*4 }
+    pvdb[stationstr+'NAT_PS'   ] = {'type' : 'int', 
+                                    'count': 4,
+                                    'value' : [1]*4 }
 
     pvdb[stationstr+'RESET'  ] = {'type' : 'int', 
                                   'value' : 0 }
@@ -121,6 +127,18 @@ if __name__ == '__main__':
                                         'count' : 4,
                                         'value' : [0]*4 }
     pvdb[stationstr+'TESTPATTBIT'  ] = {'type' : 'int',
+                                        'count' : 4,
+                                        'value' : [0]*4 }
+    pvdb[stationstr+'BRAMWRERR'    ] = {'type' : 'int', 
+                                        'count' : 4,
+                                        'value' : [0]*4 }
+    pvdb[stationstr+'BRAMWRSAMP'   ] = {'type' : 'int',
+                                        'count' : 4,
+                                        'value' : [0]*4 }
+    pvdb[stationstr+'BRAMRDERR'    ] = {'type' : 'int', 
+                                        'count' : 4,
+                                        'value' : [0]*4 }
+    pvdb[stationstr+'BRAMRDSAMP'   ] = {'type' : 'int',
                                         'count' : 4,
                                         'value' : [0]*4 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 

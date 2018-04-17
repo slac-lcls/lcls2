@@ -87,6 +87,8 @@ class HsdConfig(QtWidgets.QWidget):
         PvRow( glo, 7, pvbase+':FEX_YMAX' , 'Fex Ymax')
         PvRow( glo, 8, pvbase+':FEX_XPRE' , 'Fex Xpre')
         PvRow( glo, 9, pvbase+':FEX_XPOST', 'Fex Xpost')
+        PvRow( glo,10, pvbase+':NAT_GATE' , 'Native Gate')
+        PvRow( glo,11, pvbase+':NAT_PS'   , 'Native Prescale')
         lo.addLayout(glo)
 
         hlo = QtWidgets.QHBoxLayout()
@@ -136,8 +138,12 @@ class HsdStatus(QtWidgets.QWidget):
         PvRow( glo,12, pvbase+':FEX_FREEBUFEVT' , 'Fex Free Events', False)
         PvRow( glo,13, pvbase+':TESTPATTERR' , 'Test Pattern Errors', False)
         PvRow( glo,14, pvbase+':TESTPATTBIT' , 'Test Pattern ErrBits', False)
-        PvRow( glo,15, pvbase+':WRFIFOCNT' , 'Write FIFO Count', False)
-        PvRow( glo,16, pvbase+':RDFIFOCNT' , 'Read FIFO Count', False)
+        PvRow( glo,15, pvbase+':BRAMWRERR'   , 'Bram Write Errors', False)
+        PvRow( glo,16, pvbase+':BRAMWRSAMP'  , 'Bram Write Sample', False)
+        PvRow( glo,17, pvbase+':BRAMRDERR'   , 'Bram Read Errors', False)
+        PvRow( glo,18, pvbase+':BRAMRDSAMP'  , 'Bram Read Sample', False)
+        PvRow( glo,19, pvbase+':WRFIFOCNT' , 'Write FIFO Count', False)
+        PvRow( glo,20, pvbase+':RDFIFOCNT' , 'Read FIFO Count', False)
 
         lo.addLayout(glo)
         lo.addStretch(1)
