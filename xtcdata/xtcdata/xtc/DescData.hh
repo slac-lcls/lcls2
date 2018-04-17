@@ -187,7 +187,7 @@ public:
 	assert(Name::DOUBLE==name.type());
     }
 
-    
+
     template <typename T>
     Array<T> get_array(unsigned index)
     {

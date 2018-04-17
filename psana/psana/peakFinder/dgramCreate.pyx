@@ -18,19 +18,26 @@ cnp.import_array()
 cimport libc.stdint as si
 
 # python classes to make the test script tidier
+
+def fix_encoding(input):
+    try:
+        return input.encode()
+    except AttributeError:
+        return input
+
 class alg:
     def __init__(self, name,version):
         # cast to bytestring
-
-        self.algname = name
+        self.algname = fix_encoding(name)
         [self.major,self.minor,self.micro] = version
 
 class nameinfo:
     def __init__(self, dname, detype, did, namesid):
-        self.detName = dname
-        self.detType = detype
-        self.detId = did
+        self.detName = fix_encoding(dname)
+        self.detType = fix_encoding(detype)
+        self.detId = fix_encoding(did)
         self.namesId = namesid
+
 
 cdef extern from 'xtcdata/xtc/ShapesData.hh' namespace "XtcData":
 
@@ -40,6 +47,9 @@ cdef extern from 'xtcdata/xtc/ShapesData.hh' namespace "XtcData":
         void addNamesBlock(cnp.uint8_t* name_block, size_t block_elems)
         void addShapesDataBlock(cnp.uint8_t* shape_block, cnp.uint8_t* data_block,\
                            size_t sizeofdata, size_t block_elems)
+
+        void addDataBlock(cnp.uint8_t* data_block,size_t sizeofdata)
+
 
         cnp.uint32_t dgramSize()
 
@@ -55,7 +65,7 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
         const char* name()
 
     cdef cppclass NameInfo: 
-        NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, cnp.uint32_t segment0):alg(alg0), segment(segment0)
+        NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, cnp.uint32_t segment0, cnp.uint32_t numarr):alg(alg0), segment(segment0)
 
     cdef cppclass Name:
         enum DataType: UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE
@@ -88,7 +98,10 @@ cdef class PyBlockDgram:
         self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct)
 
     def addShapesDataBlock(self, PyShapeBlock pys, PyDataBlock pyd):
-        self.cptr.addShapesDataBlock(pys.cptr_start, pyd.cptr_start, pyd.get_bytes(), pys.ct)
+        if pys.ct>0:
+            self.cptr.addShapesDataBlock(pys.cptr_start, pyd.cptr_start, pyd.get_bytes(), pys.ct)
+        else:
+            self.cptr.addDataBlock(pyd.cptr_start, pyd.get_bytes())
 
     def writeToFile(self, filename):
         cdef FILE *f = fopen(filename, 'a')
@@ -124,9 +137,9 @@ cdef class PyAlg:
 cdef class PyNameInfo:
     cdef NameInfo* cptr
 
-    def __cinit__(self,detNames, PyAlg pyalg, detType, detId, segment=0):
-        self.cptr = new NameInfo(detNames, pyalg.cptr[0], detType, detId, segment)
-
+    def __cinit__(self,detNames, PyAlg pyalg, detType, detId, numarr, segment=0):
+        self.cptr = new NameInfo(detNames, pyalg.cptr[0], detType, detId, segment, numarr)
+        
     def __dealloc__(self):
         del self.cptr
 
@@ -139,13 +152,16 @@ cdef class PyNameBlock:
         self.cptr = <cnp.uint8_t*>malloc(sizeof(NameInfo)+num_elems*sizeof(Name))
         self.cptr_start = self.cptr
         self.ct = 0
-
-    def addNameInfo(self, PyNameInfo pynameinfo):
-        memcpy(self.cptr, pynameinfo.cptr, sizeof(NameInfo))
         self.cptr += sizeof(NameInfo)
 
-    def addName(self, bytes namestring, int type, int rank, PyAlg pyalg):
-        newName = new Name(namestring,<Name.DataType>type, rank, pyalg.cptr[0])
+    def addNameInfo(self, PyNameInfo pynameinfo):
+        memcpy(self.cptr_start, pynameinfo.cptr, sizeof(NameInfo))
+
+    def addName(self, bytes namestring, PyAlg alg, int type=-1, int rank=-1):
+        if type == -1 and rank == -1:
+            newName = new Name(namestring, alg.cptr[0])
+        else:
+            newName = new Name(namestring,<Name.DataType>type, rank, alg.cptr[0])
         memcpy(self.cptr, newName, sizeof(Name))
         self.cptr+=sizeof(Name)
         self.ct +=1
@@ -197,44 +213,56 @@ cdef class PyDataBlock:
 
 def parse_type(data_arr):
     dat_type = data_arr.dtype
-
-    types = ['uint8','uint16','uint32','uint64','int8','int16','int32','int64','float','double']
+    types = ['uint8','uint16','uint32','uint64','int8','int16','int32','int64','float32','float64']
     nptypes = list(map(lambda x: np.dtype(x), types))
     type_dict = dict(zip(nptypes, range(len(nptypes))))
     return type_dict[dat_type]
-
-class writeDgram2():
+ 
+class writeDgram():
     def __init__(self, filename):
         self.write_configure = True
-        self.filename = filename
+        self.filename = fix_encoding(filename)
         self.config_block = []
- 
+
     def addDet(self, nameinfo, alg, event_dict):
         num_elem = len(event_dict)
         py_shape = PyShapeBlock(nameinfo.namesId, num_elem)
         py_name = PyNameBlock(num_elem)
         py_data = PyDataBlock()
 
-        pyalg = PyAlg(alg.algname,alg.major, alg.minor, alg.micro)
+        basealg = PyAlg(alg.algname,alg.major, alg.minor, alg.micro)
 
-        py_nameinfo = PyNameInfo(nameinfo.detName, pyalg, nameinfo.detType, nameinfo.detId)
-        py_name.addNameInfo(py_nameinfo)
-
+        num_arrays = 0
         for name, array in event_dict.items():
+            try:
+                array_alg = bool(type(array[1]) == type(alg))
+            except (IndexError,TypeError):
+                array_alg = False
+            if array_alg:
+                arr = np.asarray(array[0])
+                pyalg = PyAlg(array[1].algname,array[1].major, array[1].minor, array[1].micro)
+            else:
+                arr = np.asarray(array)
+                pyalg = basealg
+
             # Deduce the shape of the data
-            array_size = np.array(array.shape)
+            array_size = np.array(arr.shape)
             array_rank = len(array_size)
+
             array_size_pad = np.array(np.r_[array_size, (5-array_rank)*[0]], dtype=np.uint32)
             # Find the type of the data
-            data_type = parse_type(array)
-
+            data_type = parse_type(arr)
             # Copy the name to the block
-            py_name.addName(name,data_type, array_rank,pyalg)
+            py_name.addName(fix_encoding(name), pyalg, data_type, array_rank)
 
             # Copy the shape to the block
-            py_shape.addShape(array_size_pad)
+            if array_rank > 0:
+                num_arrays += 1
+                py_shape.addShape(array_size_pad)
+            py_data.addData(arr)
 
-            py_data.addData(array)
+        py_nameinfo = PyNameInfo(nameinfo.detName, basealg, nameinfo.detType, nameinfo.detId, num_arrays)
+        py_name.addNameInfo(py_nameinfo)
         self.config_block.append([py_name, py_shape, py_data])
 
     def writeToFile(self):
@@ -252,37 +280,3 @@ class writeDgram2():
         self.config_block = []
 
 
-class writeDgram():
-    def __init__(self, nameinfo):
-        self.nameinfo = nameinfo
-        self.config_block = []
-
-    def addDet(self, nameinfo, alg, event_dict):
-        num_elem = len(event_dict)
-        py_shape = PyShapeBlock(nameinfo.namesId, num_elem)
-        py_name = PyNameBlock(num_elem)
-        py_data = PyDataBlock()
-
-        pyalg = PyAlg(alg.algname,alg.major, alg.minor, alg.micro)
-
-        py_nameinfo = PyNameInfo(nameinfo.detName, pyalg, nameinfo.detType, nameinfo.detId)
-        py_name.addNameInfo(py_nameinfo)
-
-        for name, array in event_dict.items():
-            # Deduce the shape of the data
-            array_size = np.array(array.shape)
-            array_rank = len(array_size)
-            array_size_pad = np.array(np.r_[array_size, (5-array_rank)*[0]], dtype=np.uint32)
-            # Find the type of the data
-            data_type = parse_type(array)
-
-            # Copy the name to the block
-            py_name.addName(name,data_type, array_rank,pyalg)
-
-            # Copy the shape to the block
-            py_shape.addShape(array_size_pad)
-
-            py_data.addData(array)
-        self.config_block.append(py_name, py_shape, py_data)
-
-  

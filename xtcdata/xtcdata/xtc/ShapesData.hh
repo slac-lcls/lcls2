@@ -56,6 +56,9 @@ public:
     enum {MaxRank=5};
   
     Name(const char* name, DataType type, int rank=0) : _alg("",0,0,0) {
+        // For compatibility with python
+        //assert(rank != 0 && (type=INT64 || type = DOUBLE));
+
       // Assert maxrank, maxnamesize
       assert(rank < MaxRank);assert(strlen(name) < maxNameSize);
       strncpy(_name, name, maxNameSize);
@@ -68,7 +71,7 @@ public:
         strncpy(_name, name, maxNameSize);
         _type = type;
         _rank = rank;
-    }
+    } 
 
     Name(const char* name, Alg& alg) : _alg(alg) {
 	assert(sizeof(name) < maxNameSize);
@@ -147,14 +150,15 @@ public:
 class NameInfo
 {
 public:
-    uint32_t numArrays=0;
+    uint32_t numArrays;
     char     detType[maxNameSize];
     char     detName[maxNameSize];
     char     detId[maxNameSize];
     Alg      alg;
     uint32_t segment;
 
-    NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, uint32_t segment0):alg(alg0), segment(segment0){
+    NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, uint32_t segment0, uint32_t numarr=0):alg(alg0), segment(segment0){
+        numArrays = numarr;
         strncpy(detName, detname, maxNameSize);
         strncpy(detType, dettype, maxNameSize);
         strncpy(detId,   detid,   maxNameSize);
@@ -331,6 +335,18 @@ public:
         shapesdata.alloc(shapeblock_size);
         _dgram.xtc.alloc(shapeblock_size+sizeof(Xtc));
 
+
+        Xtc& data = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Data, 0));
+        memcpy(data.payload(), data_block, sizeofdata);
+
+        data.alloc(sizeofdata);
+        shapesdata.alloc(sizeofdata);
+        _dgram.xtc.alloc(sizeofdata+sizeof(Xtc));
+        _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
+    }
+
+    void addDataBlock(uint8_t* data_block, size_t sizeofdata){
+        Xtc& shapesdata = *new((char*)_dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::ShapesData, 0));
 
         Xtc& data = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Data, 0));
         memcpy(data.payload(), data_block, sizeofdata);
