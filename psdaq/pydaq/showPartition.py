@@ -3,10 +3,18 @@
 CM show command
 """
 import sys
+import os
 import zmq
 import pickle
 import pprint
 from CMMsg import CMMsg
+
+def getHost():
+    try:
+        host = os.environ['CM_HOST']
+    except KeyError:
+        host = 'localhost'
+    return host
 
 def main():
 
@@ -15,7 +23,8 @@ def main():
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
     cmd.RCVTIMEO = 5000 # in milliseconds
-    cmd.connect("tcp://localhost:5556")
+    hostname = getHost()
+    cmd.connect("tcp://%s:5556" % hostname)
 
     cmd.send(CMMsg.GETSTATE)
     while True:
