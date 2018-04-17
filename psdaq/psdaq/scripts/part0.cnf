@@ -6,18 +6,6 @@ username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
 
-daq_tst_dev01 = "172.21.42.97"
-daq_tst_dev02 = "172.21.42.150"
-daq_tst_dev03 = "172.21.42.110"
-daq_tst_dev04 = "172.21.42.148"
-daq_tst_dev05 = "172.21.42.155"
-drp_tst_acc01 = "172.21.42.201"
-drp_tst_acc02 = "172.21.42.202"
-drp_tst_acc03 = "172.21.42.221"
-drp_tst_acc04 = "172.21.42.222"
-drp_tst_acc05 = "172.21.42.223"
-drp_tst_acc06 = "172.21.42.224"
-
 #epics_host = daq_tst_dev02
 epics_host = 'daq-tst-dev02'
 
@@ -50,7 +38,7 @@ procmgr_config = [
  {                       id:'deadca-'+platform  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
 # {                       id:'dtica'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/dtica.py DAQ:LAB2:DTI:'+shelf},
  {                       id:'hsdca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/hsdca.py DAQ:LAB2:HSD:DEV02'},
- { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -P /dev/pgpcardG3_0_1 -L 4 -c 8 -o 32 -r -E DAQ:LAB2:HSD:DEV02' },
+ { host: 'daq-tst-dev01', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -P /dev/pgpcardG3_0_1 -L 4 -c 8 -o 32 -r -E DAQ:LAB2:HSD:DEV02' },
 
 ## procstat
  {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
