@@ -2,7 +2,6 @@
 """
 CM get command
 """
-#import random
 import time
 import zmq
 import pickle
@@ -16,7 +15,7 @@ def main():
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
     cmd.RCVTIMEO = 5000 # in milliseconds
-    cmd.connect("tcp://localhost:5556")
+    cmd.connect("tcp://%s:5556" % CMMsg.host())
 
     cmd.send(CMMsg.GETSTATE)
     while True:

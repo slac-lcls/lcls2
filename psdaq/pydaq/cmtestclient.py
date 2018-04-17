@@ -3,19 +3,11 @@
 import time
 import zmq
 from CMMsg import CMMsg
-import os
 import sys
 import pickle
 
-def getHost():
-    try:
-        host = os.environ['CM_HOST']
-    except:
-        host = 'localhost'
-    return host
-
 def usage():
-    print("Usage: %s <0-9>" % sys.argv[0])
+    print("Usage: %s <clientId (0-9)>" % sys.argv[0])
 
 def main():
 
@@ -29,17 +21,15 @@ def main():
         usage()
         sys.exit(1)
 
-    hostname = getHost()
-
     # Prepare our context and sockets
     ctx = zmq.Context()
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
-    cmd.connect("tcp://%s:5556" % hostname)
+    cmd.connect("tcp://%s:5556" % CMMsg.host())
     subscriber = ctx.socket(zmq.SUB)
     subscriber.linger = 0
     subscriber.setsockopt_string(zmq.SUBSCRIBE, '')
-    subscriber.connect("tcp://%s:5557" % hostname)
+    subscriber.connect("tcp://%s:5557" % CMMsg.host())
 
     poller = zmq.Poller()
     poller.register(subscriber, zmq.POLLIN)
@@ -97,6 +87,9 @@ def main():
             elif cmmsg.key == CMMsg.DIE:
                 print( "I: Received DIE, exiting")
                 break       # Interrupted
+
+            elif cmmsg.key == CMMsg.KILL:
+                print( "I: Received KILL, ignoring")
 
             else:
                 print( "I: Received key=\"%s\"" % cmmsg.key)

@@ -1,20 +1,12 @@
 #!/usr/bin/env python
 """
-CM show command
+CM showPartition command
 """
 import sys
-import os
 import zmq
 import pickle
 import pprint
 from CMMsg import CMMsg
-
-def getHost():
-    try:
-        host = os.environ['CM_HOST']
-    except KeyError:
-        host = 'localhost'
-    return host
 
 def main():
 
@@ -23,8 +15,7 @@ def main():
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
     cmd.RCVTIMEO = 5000 # in milliseconds
-    hostname = getHost()
-    cmd.connect("tcp://%s:5556" % hostname)
+    cmd.connect("tcp://%s:5556" % CMMsg.host())
 
     cmd.send(CMMsg.GETSTATE)
     while True:
@@ -36,7 +27,6 @@ def main():
 
         request = msg[0]
         if request == CMMsg.STATE:
-#           print ("I: Received STATE")
             if len(msg) == 4:
                 props = pickle.loads(msg[3])
 
@@ -46,7 +36,6 @@ def main():
                     platform = props['platform']
                 except:
                     print('E: platform key not found')
-#               print ('Platform:', platform)
 
                 # partition name
                 partName = '(None)'
@@ -54,7 +43,6 @@ def main():
                     partName = props['partName']
                 except KeyError:
                     print('E: partName key not found')
-#               print ('Partition name:', partName)
 
                 # nodes
                 nodes = []
