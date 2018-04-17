@@ -38,6 +38,75 @@ class nameinfo:
         self.detId = fix_encoding(did)
         self.namesId = namesid
 
+class parse_xtc():
+    def __init__(self, datasource):
+        self.datasource = datasource
+        self.events_dict = []
+        self.config_dict = {}
+        self.parse_configure()
+
+    def parse_configure(self):
+        config = vars(self.datasource.configs[0])
+        sw_config = vars(config['software'])
+        det_names = [x for x in config.keys() if x not in ('software')]
+
+        det_dict = {}
+        namesid = 0
+        for detector in det_names:
+            det_sw_config = vars(sw_config[detector])
+            det_config = vars(config[detector])
+
+
+            alg_types = [x for x in det_config.keys() if x not in ('detid', 'dettype')]
+            det_entries = []
+            for algt in alg_types:
+                ninfo = nameinfo(detector, det_sw_config['dettype'], \
+                                    det_sw_config['detid'], namesid)
+                namesid += 1
+                base_alg = alg(det_sw_config[algt].software, det_sw_config[algt].version)
+                base_alg_name = det_sw_config[algt].software
+                data_algs_block = vars(det_sw_config[algt])
+                data_algs = {}
+                data = vars(det_config[algt])
+                for data_name in data.keys():
+                    alg_dict = data_algs_block[data_name]
+                    minor_alg = alg(alg_dict.software, alg_dict.version)
+                    data_algs[data_name] = [data[data_name], minor_alg]
+
+                det_entries.append({'nameinfo':ninfo, 'base_alg':base_alg, \
+                                    'base_alg_name':base_alg_name, 'data':data_algs})
+
+            det_dict[detector] = det_entries
+
+        self.config_dict=det_dict
+        self.events_dict.append(det_dict)
+
+    def parse_event(self, evt):
+        event_dict = {}
+        for key, value in self.config_dict.items():
+            det_entries = []
+            for iterd in value:
+                self.iterd = iterd
+                try:
+                    dgram = vars(vars(evt.dgrams[0])[key])
+                except KeyError:
+                    continue
+                event_data = vars(dgram[iterd['base_alg_name']])
+                det_entries.append({'nameinfo':iterd['nameinfo'], 'base_alg':iterd['base_alg'],\
+                                    'data':event_data})
+            if det_entries:
+                event_dict[key] = det_entries
+
+        self.events_dict.append(event_dict)
+
+    def write_events(self, pydgram):
+        for event in self.events_dict:
+            for key, value in event.items():
+                for detector in value:
+                    pydgram.addDet(detector['nameinfo'], detector['base_alg'], detector['data'])
+            pydgram.writeToFile()
+
+
 
 cdef extern from 'xtcdata/xtc/ShapesData.hh' namespace "XtcData":
 
