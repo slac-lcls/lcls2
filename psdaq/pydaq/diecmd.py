@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 """
-die cmd
+CM die cmd
 """
-import random
 import time
 import zmq
 from CMMsg import CMMsg
@@ -14,9 +13,7 @@ def main():
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
     cmd.RCVTIMEO = 5000 # in milliseconds
-    cmd.connect("tcp://localhost:5556")
-
-    random.seed(time.time())
+    cmd.connect("tcp://%s:5556" % CMMsg.host())
 
     # Initiate client exit
     cmd.send(CMMsg.STARTDIE)

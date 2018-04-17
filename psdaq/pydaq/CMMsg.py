@@ -10,6 +10,7 @@ Based on kvmsg class by Min RK <benjaminrk@gmail.com>
 
 import struct # for packing integers
 import sys
+import os
 from uuid import uuid4
 
 import zmq
@@ -71,6 +72,14 @@ class CMMsg(object):
         except Exception as ex:
             print("decode_properties(): %s" % ex)
         return prop
+
+    @staticmethod
+    def host():
+        try:
+            host = os.environ['CM_HOST']
+        except KeyError:
+            host = 'localhost'
+        return host
 
     def __init__(self, sequence, uuid=None, key=None, properties=None):
         assert isinstance(sequence, int)
