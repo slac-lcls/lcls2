@@ -32,26 +32,20 @@ uintptr_t virt_to_phys(void* virt)
     return (phy & 0x7fffffffffffffULL) * pagesize + ((uintptr_t) virt) % pagesize;
 }
 
-void* memory_allocate_dma(size_t size)
+void* memory_allocate_dma(size_t size, const char* path)
 {
-    static uint32_t huge_pg_id = 0;
     // round up to multiples of hugepage size
     if (size % HUGE_PAGE_SIZE) {
         size = ((size >> HUGE_PAGE_BITS) + 1) << HUGE_PAGE_BITS;
     }
-    uint32_t id = __sync_fetch_and_add(&huge_pg_id, 1);
-    char path[PATH_MAX];
-    snprintf(path, PATH_MAX, "/mnt/huge/ixy-%d-%d", getpid(), id);
     int fd = check_error(open(path, O_CREAT | O_RDWR, S_IRWXU),
                          "open hugetlbfs file, check that /mnt/huge is mounted");
     check_error(ftruncate(fd, (off_t) size), "");
     void* virt_addr = (void*) check_error(mmap(NULL, size, PROT_READ | PROT_WRITE,
-                                               MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB,
-                                               fd, 0),
+                                               MAP_PRIVATE, fd, 0),
                                           "mmap hugepage");
     check_error(mlock(virt_addr, size), "disable swap for DMA memory");
     close(fd);
-    unlink(path);
     return virt_addr;
 }
 
@@ -88,7 +82,7 @@ DmaBufferPool::DmaBufferPool(size_t num_entries, size_t entry_size) : buffer_que
         printf("entry_size must to be a divisor of the huge page size %d kB\n", HUGE_PAGE_SIZE/1024);
         exit(-1);
     }
-    void* base = memory_allocate_dma(num_entries * entry_size);
+    void* base = memory_allocate_dma(num_entries * entry_size, "/mnt/huge/pgp_dma_buffers");
     for (size_t i=0; i<num_entries; i++) {
         void* virt = (void*) (((uint8_t*)base) + i*entry_size);
         buffers[i].virt = virt;
@@ -137,7 +131,7 @@ void AxisG2Device::init(DmaBufferPool* pool)
     set_reg32(pci_resource, SCRATCH, SPAD_WRITE);
 
     // allocate mon buffer and enable monitoring
-    void* mon_addr = memory_allocate_dma(MON_BUFFER_SIZE);
+    void* mon_addr = memory_allocate_dma(MON_BUFFER_SIZE, "/mnt/huge/pgp_mon");
     uintptr_t phys = virt_to_phys(mon_addr);
     set_reg32(pci_resource, MON_HIST_ADDR_LO, phys & 0xFFFFFFFF);
     set_reg32(pci_resource, MON_HIST_ADDR_HI, (phys >> 32) & 0x000000FF);
@@ -145,7 +139,7 @@ void AxisG2Device::init(DmaBufferPool* pool)
 
     uint32_t client_base = CLIENTS(0);
     // allocate receive descriptors that are written to by the hardware
-    rx_desc = memory_allocate_dma(RX_DESC_SIZE*8);
+    rx_desc = memory_allocate_dma(RX_DESC_SIZE*8, "/mnt/huge/pgp_rx_desc");
     memset(rx_desc, 0, RX_DESC_SIZE*8);
     phys = virt_to_phys(rx_desc);
     set_reg32(pci_resource, client_base + DESC_ADDR_LO, phys & 0xFFFFFFFF);
