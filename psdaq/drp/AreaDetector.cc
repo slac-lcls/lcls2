@@ -38,7 +38,6 @@ static RawDef myRawDef;
 
 void AreaDetector::configure(Xtc& parent)
 {
-    printf("configure\n");
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;
     Names& fexNames = *new(parent) Names("xppcspad", cspadFexAlg, "cspad", "detnum1234", segment);
@@ -55,8 +54,6 @@ AreaDetector::AreaDetector() : m_evtcount(0) {}
 
 void AreaDetector::event(Xtc& parent, PGPData* pgp_data)
 {
-    printf("event\n");
-    if (m_evtcount==0) configure(parent);
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
     Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
