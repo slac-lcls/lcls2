@@ -11,10 +11,12 @@
 class AreaDetector : public Detector
 {
 public:
-    virtual void configure(XtcData::Xtc& parent);
-    virtual void event(XtcData::Xtc& parent);
+    AreaDetector();
+    virtual void configure(XtcData::Xtc& xtc);
+    virtual void event(XtcData::Xtc& xtc, PGPData* pgp_data);
 private:
     std::vector<XtcData::NameIndex> m_namesVec;
+    unsigned m_evtcount;
 };
 
 #endif // AREA_DETECTOR_H

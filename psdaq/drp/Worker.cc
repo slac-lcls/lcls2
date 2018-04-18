@@ -51,7 +51,7 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
         dgram.xtc.extent = sizeof(Xtc);
 
         if (transition_id == 0) {
-            det->event(dgram.xtc);
+            det->event(dgram.xtc, pebble->pgp_data);
         }
 
         if ((rank == 0) | (transition_id == 0)) {
