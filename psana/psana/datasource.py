@@ -22,6 +22,7 @@ def debug(evt):
         assert all(test_vals)
 
 def reader(ds):
+    """ reads dgram sequentially """
     smd_dm = DgramManager(ds.smd_files)
     dm = DgramManager(ds.xtc_files, configs=smd_dm.configs)
     for offset_evt in smd_dm:
@@ -34,6 +35,10 @@ def reader(ds):
         yield evt
         
 def server(ds):
+    """ 
+    server reads small data for offsets and dgram sizes 
+    then hands them out clients in a batch (batch default size=1)
+    """
     rankreq = np.empty(1, dtype='i')
     offset_batch = np.ones([ds.nfiles, 2, ds.lbatch], dtype='i') * -1
     nevent = 0
@@ -57,6 +62,10 @@ def server(ds):
         comm.Send(offset_batch * 0 -1, dest=rankreq[0])
 
 def client(ds):
+    """
+    client uses offsets and dgram sizes to read
+    big data
+    """
     is_done = False
     while not is_done:
         comm.Send(np.array([rank], dtype='i'), dest=0)
@@ -72,19 +81,42 @@ def client(ds):
             debug(evt)
             yield evt
 
+def read_event(ds, event_type=None):
+    """ 
+    reads an event (parallel read when size > 1)
+    : this def is used to go throuh events
+    using offsets from smd files. event_type is
+    used to determined config updates or other
+    types of event.
+    """
+    if size == 1:
+        for evt in reader(ds): yield evt       # safe for python2
+    else:
+        if rank == 0:
+            server(ds)
+        else:
+            for evt in client(ds): yield evt 
+
 class Run(object):
     """ Run generator """
     def __init__(self, ds):
         self.ds = ds
 
-    def events(self): # second generator: expose Event object
-        if size == 1:
-            for evt in reader(self.ds): yield evt       # safe for python2
-        else:
-            if rank == 0:
-                server(self.ds)
-            else:
-                for evt in client(self.ds): yield evt 
+    def events(self): 
+        for evt in read_event(self.ds): yield evt
+            
+    def configUpdates(self):
+        for i in range(1):
+            yield ConfigUpdate(self)
+
+class ConfigUpdate(object):
+    """ ConfigUpdate generator """
+    def __init__(self, run):
+        self.run = run
+
+    def events(self):
+        for evt in read_event(self.run.ds, event_type="config"):
+            yield evt
 
 class DataSource(object):
     """ Uses DgramManager to read XTC files  """ 
@@ -124,7 +156,13 @@ class DataSource(object):
             if rank > 0:
                 self.dm = DgramManager(self.xtc_files, configs=configs)
  
-    def runs(self): # first generator: expose Run object
+    def runs(self): 
         nruns = 1
         for run_no in range(nruns):
             yield Run(self)
+
+    def events(self): 
+        for run in self.runs():
+            for evt in run.events(): yield evt
+
+
