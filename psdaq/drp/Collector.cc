@@ -127,6 +127,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
             Pebble* pebble;
             pool.output_queue.pop(pebble);
 
+            // perform file writing here
             // usleep(10);
 
             // return buffer to memory pool
