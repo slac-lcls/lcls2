@@ -16,10 +16,9 @@ except ImportError:
 FN_L = 100
 
 def debug(evt):
-    if os.environ.get('PSANA_DEBUG'):
-        test_vals = [d.xpphsd.fex.intFex==42 for d in evt]
-        print("-debug mode- rank: %d %s"%(rank, test_vals))
-        assert all(test_vals)
+    test_vals = [d.xpphsd.fex.intFex==42 for d in evt]
+    print("-debug mode- rank: %d %s"%(rank, test_vals))
+    assert all(test_vals)
 
 def reader(ds):
     """ reads dgram sequentially """
