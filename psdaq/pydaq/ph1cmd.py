@@ -5,27 +5,30 @@ CM Phase 1 command
 import time
 import zmq
 import sys
+import argparse
 from CMMsg import CMMsg
 
 def main():
 
     # Process arguments
-    if len(sys.argv) == 2:
-        partName = sys.argv[1]
-    else:
-        print("Usage: %s <partition name>" % sys.argv[0])
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('partName', help='Partition name')
+    parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    args = parser.parse_args()
+
+    # Compose message
+    newmsg = CMMsg(key=CMMsg.STARTPH1)
+    newmsg['partName'] = args.partName
+    newmsg['platform'] = args.p
 
     # Prepare our context and DEALER socket
     ctx = zmq.Context()
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
     cmd.RCVTIMEO = 5000 # in milliseconds
-    cmd.connect("tcp://%s:5556" % CMMsg.host())
+    cmd.connect("tcp://%s:%d" % (CMMsg.host(), CMMsg.router_port(args.p)))
 
-    # Initiate phase 1
-    newmsg = CMMsg(0, key=CMMsg.STARTPH1)
-    newmsg['partName'] = partName
+    # Send message
     newmsg.send(cmd)
 
     while True:
@@ -33,6 +36,7 @@ def main():
             cmmsg = CMMsg.recv(cmd)
         except Exception as ex:
             print(ex)
+            raise
             return
 
         if cmmsg.key == CMMsg.PH1STARTED:

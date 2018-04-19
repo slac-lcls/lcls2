@@ -6,16 +6,23 @@ import sys
 import zmq
 import pickle
 import pprint
+import argparse
 from CMMsg import CMMsg
 
 def main():
+
+    # Process arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    parser.add_argument('--noheader', action='store_true', help='do not print header')
+    args = parser.parse_args()
 
     # Prepare our context and DEALER socket
     ctx = zmq.Context()
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
     cmd.RCVTIMEO = 5000 # in milliseconds
-    cmd.connect("tcp://%s:5556" % CMMsg.host())
+    cmd.connect("tcp://%s:%d" % (CMMsg.host(), CMMsg.router_port(args.p)))
 
     cmd.send(CMMsg.GETSTATE)
     while True:
@@ -67,9 +74,10 @@ def main():
                     display = "%d/%05d/%-16s  %s" % (level, pid, ip, portDisplay)
                     displayList.append(display)
 
-                print("Platform | Partition  |    Node                 | Ports")
-                print("         | id/name    |  level/ pid /    ip     |")
-                print("---------+------------+-------------------------+----------")
+                if not args.noheader:
+                    print("Platform | Partition  |    Node                 | Ports")
+                    print("         | id/name    |  level/ pid /    ip     |")
+                    print("---------+------------+-------------------------+----------")
                 print("  %03d      %02d/%7s" % (platform, platform, partName), end='')
                 firstLine = True
                 for nn in sorted(displayList):

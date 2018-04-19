@@ -5,31 +5,29 @@ import zmq
 from CMMsg import CMMsg
 import sys
 import pickle
-
-def usage():
-    print("Usage: %s <clientId (0-9)>" % sys.argv[0])
+import argparse
 
 def main():
 
-    clientId = -1   # not set
-    if len(sys.argv) == 2:
-        try:
-            clientId = int(sys.argv[1])
-        except:
-            pass
-    if clientId < 0 or clientId > 9:
-        usage()
-        sys.exit(1)
+    # Process arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('clientId', type=int, choices=range(0, 10), help='client ID')
+    parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    parser.add_argument('-v', action='store_true', help='be verbose')
+    args = parser.parse_args()
+
+    clientId = args.clientId
+    verbose = args.v
 
     # Prepare our context and sockets
     ctx = zmq.Context()
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
-    cmd.connect("tcp://%s:5556" % CMMsg.host())
+    cmd.connect("tcp://%s:%d" % (CMMsg.host(), CMMsg.router_port(args.p)))
     subscriber = ctx.socket(zmq.SUB)
     subscriber.linger = 0
     subscriber.setsockopt_string(zmq.SUBSCRIBE, '')
-    subscriber.connect("tcp://%s:5557" % CMMsg.host())
+    subscriber.connect("tcp://%s:%d" % (CMMsg.host(), CMMsg.pub_port(args.p)))
 
     poller = zmq.Poller()
     poller.register(subscriber, zmq.POLLIN)
@@ -45,15 +43,17 @@ def main():
         if subscriber in items:
             cmmsg = CMMsg.recv(subscriber)
             if cmmsg.key == CMMsg.PING:
-                print( "I: Received PING, sending PONG")
+                if verbose:
+                    print( "Received PING, sending PONG")
                 cmd.send(CMMsg.PONG)
 
             elif cmmsg.key == CMMsg.PH1:
-                print( "I: Received PH1, sending HELLO")
-                newmsg = CMMsg(0, key=CMMsg.HELLO)
-                # Create simulated ports entry based on clientId N
+                if verbose:
+                    print( "Received PH1, sending HELLO (platform=%d)" % args.p)
+                newmsg = CMMsg(key=CMMsg.HELLO)
+                # Create simulated ports entry based on clientId N, platform P
                 # {
-                #   'platform' : 0
+                #   'platform' : P
                 #   'group'    : N
                 #   'uid'      : N
                 #   'level'    : N
@@ -61,7 +61,7 @@ def main():
                 #   'ip'       : '172.NN.NN.NN'
                 #   'ether'    : 'NN:NN:NN:NN:NN:NN'
                 # }
-                newmsg['platform'] = 0
+                newmsg['platform'] = args.p
                 newmsg['group'] = clientId
                 newmsg['uid'] = clientId
                 newmsg['level'] = clientId
@@ -71,8 +71,9 @@ def main():
                 newmsg.send(cmd)
 
             elif cmmsg.key == CMMsg.PH2:
-                print( "I: Received PH2, sending PORTS")
-                newmsg = CMMsg(0, key=CMMsg.PORTS)
+                if verbose:
+                    print( "Received PH2, sending PORTS")
+                newmsg = CMMsg(key=CMMsg.PORTS)
                 # Create simulated ports entry based on clientId N
                 # {
                 #   'name' : 'portN',
@@ -85,14 +86,17 @@ def main():
                 newmsg.send(cmd)
 
             elif cmmsg.key == CMMsg.DIE:
-                print( "I: Received DIE, exiting")
+                if verbose:
+                    print( "Received DIE, exiting")
                 break       # Interrupted
 
             elif cmmsg.key == CMMsg.KILL:
-                print( "I: Received KILL, ignoring")
+                if verbose:
+                    print( "Received KILL, ignoring")
 
             else:
-                print( "I: Received key=\"%s\"" % cmmsg.key)
+                if verbose:
+                    print( "Received key=\"%s\"" % cmmsg.key)
 
     print ("Interrupted")
     sys.exit(0)

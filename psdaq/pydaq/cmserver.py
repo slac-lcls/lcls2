@@ -12,6 +12,7 @@ import time
 import logging
 import pickle
 import pprint
+import argparse
 
 from CMMsg import CMMsg
 from ZTimer import ZTimer
@@ -116,30 +117,32 @@ def test_cmstate (verbose=1):
         cmstate1.dump()
         cmstate2.dump()
 
-verbose = False
-
 def main():
 
-    global verbose
-    if '-v' in sys.argv:
-        verbose = True
-    if verbose:
+    # Process arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    parser.add_argument('-v', action='store_true', help='be verbose')
+    args = parser.parse_args()
+
+    if args.v:
         logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
     else:
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+
     logging.info('cmserver starting')
 
     timer1started = False
     # CM state
-    cmstate = CMState(0)
+    cmstate = CMState(platform=args.p)
 
     pongCount = 0
     # context and sockets
     ctx = zmq.Context()
     cmd = ctx.socket(zmq.ROUTER)
-    cmd.bind("tcp://*:5556")
+    cmd.bind("tcp://*:%d" % CMMsg.router_port(cmstate.platform()))
     publisher = ctx.socket(zmq.PUB)
-    publisher.bind("tcp://*:5557")
+    publisher.bind("tcp://*:%d" % CMMsg.pub_port(cmstate.platform()))
     timerReceive = ctx.socket(zmq.PAIR)
     timerEndpoint = "inproc://timer"
     timerReceive.sndtimeo = 0
@@ -170,7 +173,7 @@ def main():
 
                 if request == CMMsg.STARTPING:
                     # Send PING broadcast
-                    cmmsg = CMMsg(0, None, CMMsg.PING)
+                    cmmsg = CMMsg(key=CMMsg.PING)
                     cmmsg.send(publisher)
                     logging.debug("Published <PING>")
                     continue
@@ -196,7 +199,7 @@ def main():
                     # Send STATE reply to client
                     logging.debug("Sending STATE reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(0, None, CMMsg.STATE)
+                    cmmsg = CMMsg(key=CMMsg.STATE)
                     cmmsg['platform'] = cmstate.platform()
                     cmmsg['partName'] = cmstate.partName()
                     cmmsg['nodes'] = pickle.dumps(cmstate.nodes())
@@ -216,33 +219,33 @@ def main():
 
                     # Send PH1 broadcast
                     logging.debug("Sending PH1 broadcast")
-                    cmmsg = CMMsg(0, None, CMMsg.PH1)
+                    cmmsg = CMMsg(key=CMMsg.PH1)
                     cmmsg.send(publisher)
 
                     # Send PH1STARTED reply to client
                     logging.debug("Sending PH1STARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(0, None, CMMsg.PH1STARTED)
+                    cmmsg = CMMsg(key=CMMsg.PH1STARTED)
                     cmmsg.send(cmd)
                     continue
 
                 if request == CMMsg.STARTPH2:
                     # Send PH2 broadcast
                     logging.debug("Sending PH2 broadcast")
-                    cmmsg = CMMsg(0, None, CMMsg.PH2)
+                    cmmsg = CMMsg(key=CMMsg.PH2)
                     cmmsg.send(publisher)
 
                     # Send PH2STARTED reply to client
                     logging.debug("Sending PH2STARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(0, None, CMMsg.PH2STARTED)
+                    cmmsg = CMMsg(key=CMMsg.PH2STARTED)
                     cmmsg.send(cmd)
                     continue
 
                 if request == CMMsg.STARTKILL:
                     # Send KILL broadcast
                     logging.debug("Sending KILL broadcast")
-                    cmmsg = CMMsg(0, None, CMMsg.KILL)
+                    cmmsg = CMMsg(key=CMMsg.KILL)
                     cmmsg['platform'] = cmstate.platform()
                     cmmsg.send(publisher)
 
@@ -252,7 +255,7 @@ def main():
                     # Send KILLSTARTED reply to client
                     logging.debug("Sending KILLSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(0, None, CMMsg.KILLSTARTED)
+                    cmmsg = CMMsg(key=CMMsg.KILLSTARTED)
                     cmmsg['platform'] = cmstate.platform()
                     cmmsg.send(cmd)
                     continue
@@ -260,13 +263,13 @@ def main():
                 elif request == CMMsg.STARTDIE:
                     # Send DIE broadcast
                     logging.debug("Sending DIE broadcast")
-                    cmmsg = CMMsg(0, None, CMMsg.DIE)
+                    cmmsg = CMMsg(key=CMMsg.DIE)
                     cmmsg.send(publisher)
 
                     # Send DIESTARTED reply to client
                     logging.debug("Sending DIESTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(0, None, CMMsg.DIESTARTED)
+                    cmmsg = CMMsg(key=CMMsg.DIESTARTED)
                     cmmsg.send(cmd)
                     continue
 
@@ -324,7 +327,7 @@ def main():
                     # Send reply to client
                     logging.debug("Sending DUMPSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(0, None, CMMsg.DUMPSTARTED)
+                    cmmsg = CMMsg(key=CMMsg.DUMPSTARTED)
                     cmmsg.send(cmd)
 
                     # Dump state to console
@@ -341,7 +344,7 @@ def main():
                     # Send reply to client
                     logging.debug("Sending <HUH?> reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(0, None, CMMsg.HUH)
+                    cmmsg = CMMsg(key=CMMsg.HUH)
                     cmmsg.send(cmd)
                     continue
 
