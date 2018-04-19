@@ -44,7 +44,7 @@ backend
 * where should we do e.g. stripchart caching?
 * DOCSTRINGS
 * integration with EPICS
-* should we use MPI? YES
+* should we use MPI? NO
     - handle the case where the different clients are in inconsistent graph states
     - mpi event-builder (timeout)
 * throttling [pick-N pattern, done on a per-heartbeat basis] (e.g. for visualizing images)
