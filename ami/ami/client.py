@@ -13,6 +13,7 @@ from PyQt5.QtCore import pyqtSlot, QTimer, QRect
 import pyqtgraph as pg
 
 from ami.data import DataTypes
+from ami.comm import Ports
 from ami.operation import ROI
 
 
@@ -180,7 +181,13 @@ def run_list_window(queue, host, port, ami_save):
         amilist.load(ami_save)
     amilist.show()
 
-    return app.exec_()
+    # wait for the qt app to exit
+    retval = app.exec_()
+
+    # send exit signal to master process
+    queue.put(("exit", None))
+
+    return retval
 
 
 def run_widget(queue, window_type, topic, host, port):
@@ -215,15 +222,15 @@ def main():
         '-H',
         '--host',
         default='localhost',
-        help='hostname of the AMII Manager'
+        help='hostname of the AMII Manager (default: localhost)'
     )
 
     parser.add_argument(
         '-p',
         '--port',
         type=int,
-        default=5556,
-        help='port for manager/client (GUI) communication'
+        default=Ports.Comm,
+        help='port for manager/client (GUI) communication (default: %d)'%Ports.Comm
     )
 
     parser.add_argument(
@@ -255,6 +262,9 @@ def main():
 
         while True:
             window_type, topic = queue.get()
+            if window_type == 'exit':
+                print("received exit signal - exiting!")
+                break;
             print("opening new widget:", window_type, topic)
             proc = mp.Process(target=run_widget, args=(queue, window_type, topic, args.host, args.port))
             proc.start()
