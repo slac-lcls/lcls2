@@ -236,15 +236,8 @@ namespace Pds {
     public:
       struct fid_ep* endpoint() const;
       void shutdown();
-      bool open(struct fi_info* info);
-      bool enable();
-      bool connect(int timeout);
-      bool accept(int timeout);
-      bool connect();
-      bool accept(struct fi_info* remote_info);
-      //ssize_t comp(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count);
-      //ssize_t comp_wait(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count, int timeout=-1);
-      //ssize_t comp_error(struct fid_cq* cq, struct fi_cq_err_entry* comp_err);
+      bool connect(int timeout=-1, uint64_t txFlags=0, uint64_t rxFlags=0);
+      bool accept(struct fi_info* remote_info, int timeout=-1, uint64_t txFlags=0, uint64_t rxFlags=0);
       /* Asynchronous calls (raw buffer) */
       ssize_t recv_comp_data(void* context=NULL);
       ssize_t send(const void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
@@ -290,13 +283,10 @@ namespace Pds {
       ssize_t readmsg_sync(RmaMessage* msg, uint64_t flags=0);
       ssize_t writemsg_sync(RmaMessage* msg, uint64_t flags=0);
     private:
-      bool complete_connect(int timeout);
+      bool    complete_connect(int timeout);
       ssize_t post_comp_data_recv(void* context=NULL);
-      //ssize_t handle_comp(ssize_t comp_ret, struct fid_cq* cq, struct fi_cq_data_entry* comp, const char* cmd);
       ssize_t check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data=0);
       ssize_t check_completion_noctx(CompletionQueue* cq, unsigned flags, uint64_t* data=0);
-      //ssize_t check_completion(struct fid_cq* cq, int context, unsigned flags, uint64_t* data=0);
-      //ssize_t check_completion_noctx(struct fid_cq* cq, unsigned flags, uint64_t* data=0);
       ssize_t check_connection_state();
     private:
       uint64_t        _counter;
@@ -310,8 +300,7 @@ namespace Pds {
     public:
       void shutdown();
       bool listen();
-      Endpoint* open(int timeout=-1, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
-      Endpoint* accept(int timeout=-1);
+      Endpoint* accept(int timeout=-1, CompletionQueue* txcq=0, uint64_t txFlags=0, CompletionQueue* rxcq=0, uint64_t rxFlags=0);
       bool reject(int timeout=-1);
       bool close(Endpoint* endpoint);
     private:

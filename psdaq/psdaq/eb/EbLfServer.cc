@@ -25,14 +25,8 @@ EbLfServer::EbLfServer(const char*  addr,
 
 EbLfServer::~EbLfServer()
 {
-  unsigned nEp = _ep.size();
-  for (unsigned i = 0; i < nEp; ++i)
-  {
-    if (_txcq[i])  delete _txcq[i];
-  }
   if (_rxcq)  delete _rxcq;
-
-  if (_pep)  delete _pep;
+  if (_pep)   delete _pep;
 }
 
 int EbLfServer::connect(unsigned    id,
@@ -86,14 +80,6 @@ int EbLfServer::_connect(unsigned id)
 
   printf("Server is using '%s' provider\n", fab->provider());
 
-  if(!_pep->listen())
-  {
-    fprintf(stderr, "Failed to set passive endpoint to listening state: %s\n",
-            _pep->error());
-    return _pep->error_num();
-  }
-  printf("Listening for client(s) on port %s\n", _port.c_str());
-
   struct fi_cq_attr cq_attr = {
     .size             = 0,
     .flags            = 0,
@@ -114,47 +100,19 @@ int EbLfServer::_connect(unsigned id)
     return -FI_ENOMEM;
   }
 
-  cq_attr.size = fab->info()->tx_attr->size + 1;
+  if(!_pep->listen())
+  {
+    fprintf(stderr, "Failed to set passive endpoint to listening state: %s\n",
+            _pep->error());
+    return _pep->error_num();
+  }
+  printf("Listening for client(s) on port %s\n", _port.c_str());
+
   for (unsigned i = 0; i < _ep.size(); ++i)
   {
-    _txcq[i] = new CompletionQueue(fab, &cq_attr, NULL);
-    if (!_txcq[i])
-    {
-      fprintf(stderr, "Failed to create TX completion queue at index %d: %s\n",
-              i, "No memory");
-      return -FI_ENOMEM;
-    }
-
     int tmo = -1;
-    _ep[i] = _pep->open(tmo, _txcq[i], _rxcq);
+    _ep[i] = _pep->accept(tmo, nullptr, 0, _rxcq, FI_RECV);
     if (!_ep[i])
-    {
-      fprintf(stderr, "Failed to open Endpoint[%d]: %s\n",
-              i, _pep->error());
-      return _pep->error_num();
-    }
-
-    if (!_txcq[i]->bind(_ep[i], FI_TRANSMIT | FI_SELECTIVE_COMPLETION))
-    {
-      fprintf(stderr, "Failed to bind Endpoint[%d] to TX completion queue: %s\n",
-              i, _txcq[i]->error());
-      return _txcq[i]->error_num();
-    }
-    if (!_rxcq->bind(_ep[i], FI_RECV))
-    {
-      fprintf(stderr, "Failed to bind Endpoint[%d] to RX completion queue: %s\n",
-              i, _rxcq->error());
-      return _rxcq->error_num();
-    }
-
-    if (!_ep[i]->enable())
-    {
-      fprintf(stderr, "Endpoint[%d] enable failed: %s\n",
-              i, _ep[i]->error());
-      return _ep[i]->error_num();
-    }
-
-    if (!_ep[i]->accept(tmo))
     {
       fprintf(stderr, "Failed to accept connection for Endpoint[%d]: %s\n",
               i, _ep[i]->error());
