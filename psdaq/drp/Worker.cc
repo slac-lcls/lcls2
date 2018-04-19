@@ -10,20 +10,20 @@ bool check_pulse_id(PGPData* pgp_data)
     uint64_t pulse_id = 0;
     for (int l=0; l<8; l++) {
         if (pgp_data->buffer_mask  & (1 << l)) {
-              Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[l]->virt);
-              if (pulse_id == 0) {
-                  pulse_id = event_header->seq.pulseId().value();
-              }
-              else {
-                  if (pulse_id != event_header->seq.pulseId().value()) {
-                      printf("Wrong pulse id! expected %lu but got %lu instea  d\n", pulse_id, event_header->seq.pulseId().value());
-                      return false;
-                  }
-              }
-          }
-      }
-      return true;
-  }
+            Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[l]->virt);
+            if (pulse_id == 0) {
+                pulse_id = event_header->seq.pulseId().value();
+            }
+            else {
+                if (pulse_id != event_header->seq.pulseId().value()) {
+                    printf("Wrong pulse id! expected %lu but got %lu instea  d\n", pulse_id, event_header->seq.pulseId().value());
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
 
 
 void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, int rank)
@@ -52,6 +52,9 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
 
         if (transition_id == 0) {
             det->event(dgram.xtc, pebble->pgp_data);
+        }
+        else if (transition_id == 2) {
+            det->configure(dgram.xtc);
         }
 
         if ((rank == 0) | (transition_id == 0)) {

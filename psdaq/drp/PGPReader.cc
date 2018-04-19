@@ -156,18 +156,25 @@ void PGPReader::run()
             Pebble* pebble;
             m_pool.pebble_queue.pop(pebble);
             pebble->pgp_data = pgp;
+
+            send_to_worker(pebble);
+
+            /*
             switch (transition_id) {
                 case 0:
                     send_to_worker(pebble);
                     break;
 
                 case 2:
-                    send_all_workers(pebble);
+                    // FIXME
+                    // send_all_workers(pebble);
+                    send_to_worker(pebble);
                     break;
                 default:
                     printf("Unknown transition %d\n", transition_id);
                     break;
             }
+            */
             event_count += 1;
 
             counter->event_count = event_count;
