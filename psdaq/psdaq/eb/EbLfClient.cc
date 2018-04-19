@@ -32,7 +32,6 @@ EbLfClient::~EbLfClient()
     if (_ep[i])            delete _ep[i];
   }
 
-  if (_rxcq)  delete _rxcq;
   for (unsigned i = 0; i < nEp; ++i)
   {
     if (_txcq[i])  delete _txcq[i];
@@ -48,7 +47,7 @@ int EbLfClient::connect(unsigned    id,
 {
   for (unsigned i = 0; i < _peers.size(); ++i)
   {
-    int ret = _connect(_peers[i], _ports[i], tmo, _ep[i], _txcq[i], _rxcq);
+    int ret = _connect(_peers[i], _ports[i], tmo, _ep[i], _txcq[i]);
     if (ret)  return ret;
 
     ret = _setupMr(_ep[i], region, size, _mr[i]);
@@ -81,8 +80,7 @@ int EbLfClient::_connect(std::string&      peer,
                          std::string&      port,
                          unsigned          tmo,
                          Endpoint*&        ep,
-                         CompletionQueue*& txcq,
-                         CompletionQueue*& rxcq)
+                         CompletionQueue*& txcq)
 {
   unsigned idx = &peer - &_peers[0];
 
@@ -115,19 +113,6 @@ int EbLfClient::_connect(std::string&      peer,
     return -FI_ENOMEM;
   }
 
-  if (!rxcq)
-  {
-    _rxDepth     = fab->info()->rx_attr->size;
-    cq_attr.size = _rxDepth + 1;
-    rxcq = new CompletionQueue(fab, &cq_attr, NULL);
-    if (!rxcq)
-    {
-      fprintf(stderr, "Failed to create RX completion queue: %s\n",
-              "No memory");
-      return -FI_ENOMEM;
-    }
-  }
-
   printf("Waiting for server %s:%s\n", peer.c_str(), port.c_str());
 
   bool tmoEnabled = tmo != 0;
@@ -135,10 +120,7 @@ int EbLfClient::_connect(std::string&      peer,
   tmo *= 10;
   do
   {
-    if (ep)                         // Can't try to connect on an EP a 2nd time
-      delete ep;
-
-    ep = new Endpoint(fab, txcq, rxcq);
+    ep = new Endpoint(fab, txcq, nullptr);
     if (!ep || (ep->state() != EP_UP))
     {
       fprintf(stderr, "Failed to initialize Endpoint[%d]: %s\n",
@@ -146,37 +128,10 @@ int EbLfClient::_connect(std::string&      peer,
       return ep ? ep->error_num() : -FI_ENOMEM;
     }
 
-    if (!ep->open(fab->info()))
-    {
-      fprintf(stderr, "Failed to open Endpoint[%d]: %s\n",
-              idx, ep->error());
-      return ep->error_num();
-    }
+    if (ep->connect(timeout, FI_TRANSMIT | FI_SELECTIVE_COMPLETION, 0))  break;
+    if (ep->error_num() == -FI_ENODATA)  break; // connect() timed out
 
-    if (!txcq->bind(ep, FI_TRANSMIT | FI_SELECTIVE_COMPLETION))
-    {
-      fprintf(stderr, "Failed to bind Endpoint[%d] to TX completion queue: %s\n",
-              idx, txcq->error());
-      return txcq->error_num();
-    }
-
-    if (!rxcq->bind(ep, FI_RECV))
-    {
-      fprintf(stderr, "Failed to bind Endpoint[%d] to RX completion queue: %s\n",
-              idx, rxcq->error());
-      return rxcq->error_num();
-    }
-
-    if (!ep->enable())
-    {
-      fprintf(stderr, "Failed to enable Endpoint[%d]: %s\n",
-              idx, ep->error());
-      return ep->error_num();
-    }
-
-    if (ep->connect(timeout))  break;
-
-    if (ep->error_num() == -FI_ENODATA)  break; // Revisit: Why this again?
+    delete ep;                      // Can't try to connect on an EP a 2nd time
 
     usleep(100000);
   }
