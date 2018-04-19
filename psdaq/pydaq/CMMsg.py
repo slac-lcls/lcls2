@@ -18,6 +18,8 @@ import pickle
 
 class CMMsg(object):
 
+    PORTBASE = 29980
+
     # message keys
     STARTPING   = b'STARTPING'
     PING        = b'PING'
@@ -81,7 +83,7 @@ class CMMsg(object):
             host = 'localhost'
         return host
 
-    def __init__(self, sequence, uuid=None, key=None, properties=None):
+    def __init__(self, *, sequence=0, uuid=None, key=None, properties=None):
         assert isinstance(sequence, int)
         self.sequence = sequence
         if uuid is None:
@@ -109,7 +111,7 @@ class CMMsg(object):
             del dikt[self.key]
 
     def send(self, socket):
-        """Send key-value message to socket; any empty frames are sent as such."""
+        """Send message to socket; any empty frames are sent as such."""
         key = b'' if self.key is None else self.key
         seq_s = struct.pack('!q', self.sequence)
         prop_s = self.encode_properties(self.properties)
@@ -117,17 +119,17 @@ class CMMsg(object):
 
     @classmethod
     def recv(cls, socket):
-        """Reads key-value message from socket, returns new cmmsg instance."""
+        """Reads message from socket, returns new cmmsg instance."""
         return cls.from_msg(socket.recv_multipart())
 
     @classmethod
     def from_msg(cls, msg):
-        """Construct key-value message from a multipart message"""
+        """Construct message from a multipart message"""
         key, seq_s, uuid, prop_s = msg
         key = key if key else None
         seq = struct.unpack('!q',seq_s)[0]
         prop = cls.decode_properties(prop_s)
-        return cls(seq, uuid=uuid, key=key, properties=prop)
+        return cls(sequence=seq, uuid=uuid, key=key, properties=prop)
     
     def __repr__(self):
         mstr = "[seq:{seq}][key:{key}][props:{props}]".format(
@@ -137,8 +139,17 @@ class CMMsg(object):
             props=self.encode_properties(self.properties),
         )
         return mstr
-        
-    
+
+    @classmethod
+    def router_port(cls, platform):
+        assert platform >= 0 and platform <= 7
+        return cls.PORTBASE + platform
+
+    @classmethod
+    def pub_port(cls, platform):
+        assert platform >= 0 and platform <= 7
+        return cls.PORTBASE + platform + 10
+
     def dump(self):
         print("<<", str(self), ">>", file=sys.stderr)
 
@@ -157,7 +168,7 @@ def test_cmmsg (verbose=True):
 
     cmmap = {}
     # Test send and receive of simple message
-    cmmsg = CMMsg(1)
+    cmmsg = CMMsg(sequence=1)
     cmmsg.key = b"key"
     if verbose:
         cmmsg.dump()
@@ -173,7 +184,7 @@ def test_cmmsg (verbose=True):
     assert len(cmmap) == 1 # shouldn't be different
 
     # test send/recv with properties:
-    cmmsg = CMMsg(2, key=b'key')
+    cmmsg = CMMsg(sequence=2, key=b'key')
     cmmsg['level'] = 0
     cmmsg['pid'] = 25707
     cmmsg['ip'] = '172.21.21.35'

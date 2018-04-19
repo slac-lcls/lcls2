@@ -5,3 +5,4 @@ alias die=./diecmd.py
 alias get=./getcmd.py
 alias showPartition=./showPartition.py
 alias killPartition=./killPartition.py
+alias show3="./showPartition.py ; ./showPartition.py -p1 --noheader ; ./showPartition.py -p 2 --noheader"
