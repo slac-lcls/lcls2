@@ -36,9 +36,9 @@ public:
 
   FexDef()
    {
-       NameVec.push_back({"floatFex",Name::FLOAT});
+       NameVec.push_back({"floatFex",Name::DOUBLE});
        NameVec.push_back({"arrayFex",Name::FLOAT,2});
-       NameVec.push_back({"intFex",Name::INT32});
+       NameVec.push_back({"intFex",Name::INT64});
    }
 } FexDef;
 
@@ -56,9 +56,9 @@ public:
 
    PgpDef()
    {
-     NameVec.push_back({"floatPgp",Name::FLOAT,0});
+     NameVec.push_back({"floatPgp",Name::DOUBLE,0});
      NameVec.push_back({"array0Pgp",Name::FLOAT,2});
-     NameVec.push_back({"intPgp",Name::INT32,0});
+     NameVec.push_back({"intPgp",Name::INT64,0});
      NameVec.push_back({"array1Pgp",Name::FLOAT,2});
    }
 } PgpDef;
