@@ -34,7 +34,6 @@ class Test:
         ds = DgramManager(input)
         pyxtc = dc.parse_xtc(ds)
 
-
         for evt in ds:
             pyxtc.parse_event(evt)
 

@@ -303,7 +303,7 @@ private:
 };
 
 class blockDgram : public Xtc
-{ 
+{
 public:
     blockDgram(uint8_t* buffdgram):_dgram(*(Dgram*)buffdgram){
         // _Dgram& dgram = *(Dgram*)buffdgram;
@@ -358,8 +358,8 @@ public:
     }
 
     uint32_t dgramSize(){
-        return _sizeDgram; 
-    };  
+        return _sizeDgram;
+    };
 
 private:
     size_t _sizeDgram = 0;

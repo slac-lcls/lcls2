@@ -177,6 +177,10 @@ cdef class PyBlockDgram:
         fwrite(self.buffer, sizeof(cnp.uint8_t), self.cptr.dgramSize(), f)
         fclose(f)
 
+    def retByArr(self):
+        cdef cnp.uint8_t[:] view = <cnp.uint8_t[:self.cptr.dgramSize()]>self.buffer
+        numpy_arr = np.asarray(view)
+        return numpy_arr
 
     def __dealloc__(self):
         del self.cptr
@@ -208,7 +212,7 @@ cdef class PyNameInfo:
 
     def __cinit__(self,detNames, PyAlg pyalg, detType, detId, numarr, segment=0):
         self.cptr = new NameInfo(detNames, pyalg.cptr[0], detType, detId, segment, numarr)
-        
+
     def __dealloc__(self):
         del self.cptr
 
@@ -334,7 +338,7 @@ class writeDgram():
         py_name.addNameInfo(py_nameinfo)
         self.config_block.append([py_name, py_shape, py_data])
 
-    def writeToFile(self):
+    def constructBlock(self):
         self.pydgram = PyBlockDgram()
 
         if self.write_configure:
@@ -345,7 +349,15 @@ class writeDgram():
         for _, shape, data in self.config_block: 
             self.pydgram.addShapesDataBlock(shape, data)
 
+    def writeToFile(self):
+        if self.config_block:
+            self.constructBlock()
+            self.config_block = []
         self.pydgram.writeToFile(self.filename)
-        self.config_block = []
 
+    def getByteArray(self):
+        if self.config_block:
+            self.constructBlock()
+            self.config_block = []
+        return self.pydgram.retByArr()
 

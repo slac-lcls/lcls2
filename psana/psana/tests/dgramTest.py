@@ -1,6 +1,6 @@
 import numpy as np
 import dgramCreate as dc
-import os
+import os, subprocess
 
 try:
     os.remove('data.xtc')
@@ -25,13 +25,21 @@ alg2 = dc.alg('alg2', [0, 0, 0])
 
 ninfo = dc.nameinfo('xpphsd', 'cspad', 'detnum1234', 0)
 ninfo2 = dc.nameinfo('xpphsd', 'cspad', 'detnum1234', 1)
-# ninfo3 = dc.nameinfo('xpphsd3', 'cspad', 'detnum1236', 2)
+
+xtc_bytes = b''
 
 pydgram = dc.writeDgram(FILE_NAME)
-pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 0))
-pydgram.writeToFile()
-# pydgram.addDet(ninfo2, alg2, generate_event(NUM_ELEM, 0))
-# for _ in range(10):
-#     pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 1))
-#     pydgram.addDet(ninfo2, alg2, generate_event(NUM_ELEM, 1))
-#     pydgram.writeToFile()
+for _ in range(10):
+    pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 0))
+    pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 0))
+    pydgram.writeToFile()
+    xtc_bytes += pydgram.getByteArray().tobytes()
+
+with open('data_bytes.xtc', 'wb') as f:
+    f.write(xtc_bytes)
+
+h1 = subprocess.check_output(['md5sum', 'data.xtc'])
+h2 = subprocess.check_output(['md5sum', 'data_bytes.xtc'])
+
+print("Hash of xtc file written to disk :", h1)
+print("Hash of xtc retrieved from memory:", h2)
