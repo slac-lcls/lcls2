@@ -22,16 +22,20 @@ def debug(evt):
 
 def reader(ds):
     """ reads dgram sequentially """
-    smd_dm = DgramManager(ds.smd_files)
-    dm = DgramManager(ds.xtc_files, configs=smd_dm.configs)
-    for offset_evt in smd_dm:
-        if ds.filter: 
-            if not ds.filter(offset_evt): continue
-        offsets_and_sizes = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] for d in offset_evt], dtype='i')
-        evt = dm.next(offsets=offsets_and_sizes[:,0], 
+    if ds.smd_files is None:
+        for evt in ds.dm:
+            yield evt
+    else:
+        smd_dm = DgramManager(ds.smd_files)
+        dm = DgramManager(ds.xtc_files, configs=smd_dm.configs)
+        for offset_evt in smd_dm:
+            if ds.filter: 
+                if not ds.filter(offset_evt): continue
+            offsets_and_sizes = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] for d in offset_evt], dtype='i')
+            evt = dm.next(offsets=offsets_and_sizes[:,0], 
                       sizes=offsets_and_sizes[:,1], read_chunk=False)
-        debug(evt)
-        yield evt
+            debug(evt)
+            yield evt
         
 def server(ds):
     """ 
@@ -123,37 +127,51 @@ class DataSource(object):
         assert lbatch > 0
         self.lbatch = lbatch
         self.filter = filter
-
-        if size == 1:
-            self.xtc_files = np.array(['data.xtc', 'data_1.xtc'], dtype='U%s'%FN_L)
-            self.smd_files = np.array(['smd.xtc', 'smd_1.xtc'], dtype='U%s'%FN_L)
+        
+        is_test = False
+        if isinstance(expstr, (str)):
+            if expstr.find("exp") == -1:
+                self.xtc_files = np.array([expstr], dtype='U%s'%FN_L)
+                self.smd_files = None
+            else:
+                is_test = True
+        elif isinstance(expstr, (list, np.ndarray)):
+            self.xtc_files = np.asarray(expstr, dtype='U%s'%FN_L)
+            self.smd_files = None
+        
+        if not is_test:
+            self.dm = DgramManager(self.xtc_files)
         else:
-            self.nfiles = 2
-            if rank == 0:
-                self.xtc_files = np.array(['data.xtc','data_1.xtc'], dtype='U%s'%FN_L)
+            if size == 1:
+                self.xtc_files = np.array(['data.xtc', 'data_1.xtc'], dtype='U%s'%FN_L)
                 self.smd_files = np.array(['smd.xtc', 'smd_1.xtc'], dtype='U%s'%FN_L)
             else:
-                self.xtc_files = np.empty(self.nfiles, dtype='U%s'%FN_L)
-                self.smd_files = np.empty(self.nfiles, dtype='U%s'%FN_L)
+                self.nfiles = 2
+                if rank == 0:
+                    self.xtc_files = np.array(['data.xtc','data_1.xtc'], dtype='U%s'%FN_L)
+                    self.smd_files = np.array(['smd.xtc', 'smd_1.xtc'], dtype='U%s'%FN_L)
+                else:
+                    self.xtc_files = np.empty(self.nfiles, dtype='U%s'%FN_L)
+                    self.smd_files = np.empty(self.nfiles, dtype='U%s'%FN_L)
             
-            comm.Bcast([self.xtc_files, MPI.CHAR], root=0)
-            comm.Bcast([self.smd_files, MPI.CHAR], root=0)
+                comm.Bcast([self.xtc_files, MPI.CHAR], root=0)
+                comm.Bcast([self.smd_files, MPI.CHAR], root=0)
         
-            if rank == 0:
-                self.dm = DgramManager(self.smd_files) 
-                configs = self.dm.configs
-                nbytes = np.array([memoryview(config).shape[0] for config in configs], dtype='i')
-            else:
-                self.dm = None
-                configs = [dgram.Dgram() for i in range(self.nfiles)]
-                nbytes = np.empty(self.nfiles, dtype='i')
+                if rank == 0:
+                    self.dm = DgramManager(self.smd_files) 
+                    configs = self.dm.configs
+                    nbytes = np.array([memoryview(config).shape[0] for config in configs], dtype='i')
+                else:
+                    self.dm = None
+                    configs = [dgram.Dgram() for i in range(self.nfiles)]
+                    nbytes = np.empty(self.nfiles, dtype='i')
     
-            comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
-            for i in range(self.nfiles): 
-                comm.Bcast([configs[i], nbytes[i], MPI.BYTE], root=0)
+                comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
+                for i in range(self.nfiles): 
+                    comm.Bcast([configs[i], nbytes[i], MPI.BYTE], root=0)
             
-            if rank > 0:
-                self.dm = DgramManager(self.xtc_files, configs=configs)
+                if rank > 0:
+                    self.dm = DgramManager(self.xtc_files, configs=configs)
  
     def runs(self): 
         nruns = 1
