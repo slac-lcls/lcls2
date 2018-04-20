@@ -75,14 +75,6 @@ class CMMsg(object):
             print("decode_properties(): %s" % ex)
         return prop
 
-    @staticmethod
-    def host():
-        try:
-            host = os.environ['CM_HOST']
-        except KeyError:
-            host = 'localhost'
-        return host
-
     def __init__(self, *, sequence=0, uuid=None, key=None, properties=None):
         assert isinstance(sequence, int)
         self.sequence = sequence
