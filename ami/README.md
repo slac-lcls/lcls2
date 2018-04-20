@@ -15,7 +15,10 @@ scripts available on your path: `ami-worker` and `ami-manager`. Several example
 configuration files are included in the examples directory.
 
 To run ami with three workers run the following in lcls2/ami:
-```mpirun -n 3 ami-worker static://examples/worker.json```
+```ami-worker -n 3 static://examples/worker.json```
+
+Then start the manager:
+```ami-manager```
 
 Then, start a GUI (client):
 ```ami-client```
