@@ -13,6 +13,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('clientId', type=int, choices=range(0, 10), help='client ID')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    parser.add_argument('-C', metavar='CM_HOST', default='localhost', help='Collection Manager host')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
 
@@ -23,11 +24,11 @@ def main():
     ctx = zmq.Context()
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
-    cmd.connect("tcp://%s:%d" % (CMMsg.host(), CMMsg.router_port(args.p)))
+    cmd.connect("tcp://%s:%d" % (args.C, CMMsg.router_port(args.p)))
     subscriber = ctx.socket(zmq.SUB)
     subscriber.linger = 0
     subscriber.setsockopt_string(zmq.SUBSCRIBE, '')
-    subscriber.connect("tcp://%s:%d" % (CMMsg.host(), CMMsg.pub_port(args.p)))
+    subscriber.connect("tcp://%s:%d" % (args.C, CMMsg.pub_port(args.p)))
 
     poller = zmq.Poller()
     poller.register(subscriber, zmq.POLLIN)
