@@ -2,7 +2,6 @@ import re
 import sys
 import zmq
 import argparse
-import threading
 from ami.comm import Ports, Collector
 from ami.data import MsgTypes
 
@@ -27,12 +26,9 @@ class Manager(Collector):
 
         self.comm = self.ctx.socket(zmq.REP)
         self.comm.bind(comm_addr)
+        self.register(self.comm, self.client_request)
         self.graph_comm = self.ctx.socket(zmq.PUB)
         self.graph_comm.bind(graph_addr)
-
-        self.client_listener_thread = threading.Thread(target=self.client_listener)
-        self.client_listener_thread.daemon = True
-        self.client_listener_thread.start()
 
     def process_msg(self, msg):
         if msg.mtype == MsgTypes.Datagram:
@@ -58,24 +54,22 @@ class Manager(Collector):
         else:
             return False
 
-    def client_listener(self):
-        print('*** started client listen thread')
-        while True:
-            request = self.comm.recv_string()
-            # check if it is a feature request
-            if not self.feature_request(request):
-                if request == 'get_features':
-                    self.comm.send_pyobj(self.features)
-                elif request == 'get_graph':
-                    self.comm.send_pyobj(self.graph)
-                elif request == 'set_graph':
-                    self.graph = self.recv_graph()
-                    if self.apply_graph():
-                        self.comm.send_string('ok')
-                    else:
-                        self.comm.send_string('error')
+    def client_request(self):
+        request = self.comm.recv_string()
+        # check if it is a feature request
+        if not self.feature_request(request):
+            if request == 'get_features':
+                self.comm.send_pyobj(self.features)
+            elif request == 'get_graph':
+                self.comm.send_pyobj(self.graph)
+            elif request == 'set_graph':
+                self.graph = self.recv_graph()
+                if self.apply_graph():
+                    self.comm.send_string('ok')
                 else:
                     self.comm.send_string('error')
+            else:
+                self.comm.send_string('error')
 
     def recv_graph(self):
         return self.comm.recv_pyobj() # zmq for now, could be EPICS in future?

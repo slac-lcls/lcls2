@@ -93,9 +93,21 @@ class Collector(abc.ABC):
             self.ctx = zmq.Context()
         else:
             self.ctx = ctx
+        self.poller = zmq.Poller()
         self.collector = self.ctx.socket(zmq.PULL)
         self.collector.bind(addr)
+        self.poller.register(self.collector, zmq.POLLIN)
+        self.handlers = {}
         return
+
+    def register(self, sock, handler):
+        self.handlers[sock] = handler
+        self.poller.register(sock, zmq.POLLIN)
+
+    def unregister(self, sock):
+        if sock in self.handlers:
+            del self.handlers[sock]
+            self.poller.unregister(sock)
 
     def recv(self):
         return self.collector.recv_pyobj()
@@ -106,5 +118,11 @@ class Collector(abc.ABC):
 
     def run(self):
         while True:
-            msg = self.recv()
-            self.process_msg(msg)
+            for sock, flag in self.poller.poll():
+                if flag != zmq.POLLIN:
+                    continue
+                if sock is self.collector:
+                    msg = self.recv()
+                    self.process_msg(msg)
+                elif sock in self.handlers:
+                    self.handlers[sock]()
