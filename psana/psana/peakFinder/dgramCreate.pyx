@@ -363,3 +363,8 @@ class CyDgram():
         self.config_block = []
         return self.pydgram.retByArr().tobytes()
 
+    def getArray(self):
+        self.constructBlock()
+        self.config_block = []
+        return self.pydgram.retByArr()
+
