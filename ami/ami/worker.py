@@ -44,7 +44,6 @@ class Worker(object):
                 while True:
                     try:
                         topic = self.graph_comm.recv_string(flags=zmq.NOBLOCK)
-                        print("topic", topic)
                         payload = self.graph_comm.recv_pyobj()
                         if topic == "graph":
                             new_graph = payload
