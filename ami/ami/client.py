@@ -15,7 +15,7 @@ import pyqtgraph as pg
 
 from ami.data import DataTypes
 from ami.comm import Ports
-from ami.operation import ROI, EvalNode
+from ami.operation import ROINode, EvalNode
 
 
 class CommunicationHandler(object):
@@ -120,8 +120,8 @@ class AreaDetWidget(pg.ImageView):
     #@pyqtSlot(pg.ROI)
     def roi_updated(self, roi):
         graph = self.comm_handler.graph
-        roi = ROI(*roi.getAffineSliceParams(self.image, self.getImageItem()), (0,1))
-        graph["%s-roi"%self.topic] = { "optype": "ROI", "config": roi.export(), "inputs": [{"name": self.topic, "required": True}] }
+        roi = ROINode("%s-roi"%self.topic, *roi.getAffineSliceParams(self.image, self.getImageItem()), (0,1), self.topic)
+        graph[roi.name] = roi.export()
         self.comm_handler.update(graph)
         
 

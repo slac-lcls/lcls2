@@ -1,7 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
 from ami.data import DataTypes
-from ami.operation.base import OpConfig, OperationError
+from ami.operation.base import NodeConfig, OpConfig, OperationError
 
 class Projection(OpConfig):
     def __init__(self, axis):
@@ -33,3 +33,11 @@ class ROI(OpConfig):
 
     def operate(self, image):
        return pg.affineSlice(image, self.shape, self.origin, self.vector, self.axes)
+
+class ROINode(NodeConfig):
+    def __init__(self, name, shape, vector, origin, axes, *inputs):
+        super(__class__, self).__init__(name, "ROI", *inputs)
+        self.add_to_config("shape", shape)
+        self.add_to_config("origin", origin)
+        self.add_to_config("vector", vector)
+        self.add_to_config("axes", axes)
