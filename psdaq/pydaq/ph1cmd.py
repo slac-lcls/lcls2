@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('partName', help='Partition name')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    parser.add_argument('-C', metavar='CM_HOST', default='localhost', help='Collection Manager host')
     args = parser.parse_args()
 
     # Compose message
@@ -26,7 +27,7 @@ def main():
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
     cmd.RCVTIMEO = 5000 # in milliseconds
-    cmd.connect("tcp://%s:%d" % (CMMsg.host(), CMMsg.router_port(args.p)))
+    cmd.connect("tcp://%s:%d" % (args.C, CMMsg.router_port(args.p)))
 
     # Send message
     newmsg.send(cmd)
