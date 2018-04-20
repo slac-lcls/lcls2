@@ -26,20 +26,16 @@ alg2 = dc.alg('alg2', [0, 0, 0])
 ninfo = dc.nameinfo('xpphsd', 'cspad', 'detnum1234', 0)
 ninfo2 = dc.nameinfo('xpphsd', 'cspad', 'detnum1234', 1)
 
-xtc_bytes = b''
 
-pydgram = dc.writeDgram(FILE_NAME)
-for _ in range(10):
-    pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 0))
-    pydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 0))
-    pydgram.writeToFile()
-    xtc_bytes += pydgram.getByteArray().tobytes()
+cydgram = dc.CyDgram()
 
-with open('data_bytes.xtc', 'wb') as f:
-    f.write(xtc_bytes)
 
-h1 = subprocess.check_output(['md5sum', 'data.xtc'])
-h2 = subprocess.check_output(['md5sum', 'data_bytes.xtc'])
 
-print("Hash of xtc file written to disk :", h1)
-print("Hash of xtc retrieved from memory:", h2)
+with open(FILE_NAME, 'wb') as f:
+    for _ in range(10):
+        cydgram.addDet(ninfo, alg, generate_event(NUM_ELEM, 0))
+        cydgram.addDet(ninfo2, alg2, generate_event(NUM_ELEM, 0))
+        # pydgram.writeToFile()
+        xtc_byte = cydgram.get()
+        f.write(xtc_byte)
+

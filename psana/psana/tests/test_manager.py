@@ -37,12 +37,11 @@ class Test:
         for evt in ds:
             pyxtc.parse_event(evt)
 
-        pydgram = dc.writeDgram(input2)
-        pyxtc.write_events(pydgram)
+        cydgram = dc.CyDgram()
+        pyxtc.write_events(input2, cydgram)
 
         h1 = self.hash_xtc(input)
         h2 = self.hash_xtc(input2)
-
         assert(h1==h2)
 
     def test_xtc(self):

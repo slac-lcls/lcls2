@@ -99,12 +99,16 @@ class parse_xtc():
 
         self.events_dict.append(event_dict)
 
-    def write_events(self, pydgram):
-        for event in self.events_dict:
-            for key, value in event.items():
-                for detector in value:
-                    pydgram.addDet(detector['nameinfo'], detector['base_alg'], detector['data'])
-            pydgram.writeToFile()
+    def write_events(self, fileName, cydgram):
+        with open(fileName, 'wb') as f:
+            for event in self.events_dict:
+                for key, value in event.items():
+                    for detector in value:
+                        cydgram.addDet(detector['nameinfo'], detector['base_alg'], detector['data'])
+                xtc_byte = cydgram.get()
+                f.write(xtc_byte)
+
+            # pydgram.writeToFile()
 
 
 
@@ -291,10 +295,10 @@ def parse_type(data_arr):
     type_dict = dict(zip(nptypes, range(len(nptypes))))
     return type_dict[dat_type]
  
-class writeDgram():
-    def __init__(self, filename):
+class CyDgram():
+    def __init__(self):
         self.write_configure = True
-        self.filename = fix_encoding(filename)
+        # self.filename = fix_encoding(filename)
         self.config_block = []
 
     def addDet(self, nameinfo, alg, event_dict):
@@ -346,18 +350,16 @@ class writeDgram():
                 self.pydgram.addNamesBlock(name)
             self.write_configure = False
 
-        for _, shape, data in self.config_block: 
+        for _, shape, data in self.config_block:
             self.pydgram.addShapesDataBlock(shape, data)
+     # def writeToFile(self):
+     #    if self.config_block:
+     #        self.constructBlock()
+     #        self.config_block = []
+     #    self.pydgram.writeToFile(self.filename)
 
-    def writeToFile(self):
-        if self.config_block:
-            self.constructBlock()
-            self.config_block = []
-        self.pydgram.writeToFile(self.filename)
-
-    def getByteArray(self):
-        if self.config_block:
-            self.constructBlock()
-            self.config_block = []
-        return self.pydgram.retByArr()
+    def get(self):
+        self.constructBlock()
+        self.config_block = []
+        return self.pydgram.retByArr().tobytes()
 
