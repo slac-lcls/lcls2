@@ -9,7 +9,6 @@ import tempfile
 import argparse
 import threading
 import multiprocessing as mp
-from ami.manager import Manager
 from ami.graph import Graph, GraphConfigError, GraphRuntimeError
 from ami.comm import Ports, Collector, ResultStore
 from ami.data import MsgTypes, DataTypes, Transitions, Occurrences, Message, Datagram, Transition, StaticSource
