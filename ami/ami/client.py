@@ -15,7 +15,7 @@ import pyqtgraph as pg
 
 from ami.data import DataTypes
 from ami.comm import Ports
-from ami.operation import ROINode, EvalNode
+from ami.graph import GraphNode
 
 
 class CommunicationHandler(object):
@@ -119,9 +119,11 @@ class AreaDetWidget(pg.ImageView):
     #@pyqtSlot(pg.ROI)
     def roi_updated(self, roi):
         graph = self.comm_handler.graph
-        roi = ROINode("%s-roi"%self.topic, *roi.getAffineSliceParams(self.image, self.getImageItem()), (0,1), self.topic)
-        graph[roi.name] = roi.export()
-        self.comm_handler.update(graph)
+        #shape, vector, origin = roi.getAffineSliceParams(self.image, self.getImageItem())
+        #roi = GraphNode("pg.affineSlice(%s, self.shape, self.origin, self.vector, self.axes)"%(self.topic, shape.__repr__(), origin.__repr__(), vector.__repr__(), (0,1).__repr__())
+        #roi = ROINode("%s-roi"%self.topic, *roi.getAffineSliceParams(self.image, self.getImageItem()), (0,1), self.topic)
+        #graph["%s-roi"%self.topic] = roi.export()
+        #self.comm_handler.update(graph)
         
 
 class Calculator(QWidget):
@@ -169,10 +171,10 @@ class Calculator(QWidget):
             return None
 
     def make_graph_node(self):
-        node = EvalNode(self.importsBox.text(), self.codeBox.text(), *self.parse_inputs())
+        node = GraphNode("%s = %s"%(self.nameBox.text(), self.codeBox.text()), self.parse_inputs(), [self.nameBox.text()])
         imports = self.parse_imports()
         if imports is not None:
-            node.imports(*imports)
+            node.add_option("imports", imports)
         return node.export()
 
     @pyqtSlot()
