@@ -94,7 +94,6 @@ class WaveformWidget(pg.GraphicsLayoutWidget):
         else:
             self.plot.setData(y=data)
 
-
 class AreaDetWidget(pg.ImageView):
     def __init__(self, topic, host, port, parent=None):
         super(AreaDetWidget, self).__init__(parent)
@@ -215,6 +214,9 @@ class DetectorList(QListWidget):
         if self.features[item.text()] == DataTypes.Image:
             self._spawn_window('AreaDetector', item.text())
             print('create area detector window for:', item.text())
+            # cpo/weninc test of "request" pattern for AMI
+            #self.comm_handler.sock.send_string("reqimages:%s:3"%item.text())
+            #reply = self.comm_handler.sock.recv_string()
 
         elif self.features[item.text()] == DataTypes.Waveform:
             self._spawn_window('WaveformDetector', item.text())
