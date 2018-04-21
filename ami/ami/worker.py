@@ -13,7 +13,6 @@ import multiprocessing as mp
 from ami.graph import Graph, GraphConfigError, GraphRuntimeError
 from ami.comm import Ports, Collector, ResultStore
 from ami.data import MsgTypes, DataTypes, Transitions, Occurrences, Message, Datagram, Transition, StaticSource
-import numpy as np
 
 class Request(object):
     def __init__(self, store, name, number):
@@ -91,8 +90,8 @@ def resolve_dependencies(dependencies):
         d = dict(((k, v-t) for k, v in d.items() if v))
 
     return r
-   
-
+ 
+  
 class Worker(object):
     def __init__(self, idnum, src, collector_addr, graph_addr):
 
@@ -168,26 +167,6 @@ class Worker(object):
                 for dgram in msg.payload:
                     self.store.put_dgram(dgram)
 
-                """
-                # loop over operations in the correct order
-                for op in resolve_dependencies(simple_tree(self.graph)):
-
-                    # this takes care of "base" data (e.g. given by the DAQ)
-                    if op in self.store.namespace:
-                        continue
-
-                    # at the end of the executed code, inject outputs in to the feature store
-                    store_put_list = ['store.put("%s", %s)'%(output, output) for output in self.graph[op]['outputs']]
-                    store_put = '\n' + '; '.join(store_put_list)
-
-                    # generate the local & global namespaces for the execution of the graph operation
-                    loc = {'store': self.store}
-                    loc.update(self.store.namespace)
-                    glb = {"np" : np} # TODO be smarter :)
-
-                    # execute the operation code (graph is the json)
-                    exec(self.graph[op]['code'] + store_put, glb, loc)
-                """
                 try:
                     self.graph.execute()
                 except GraphRuntimeError as graph_err:
