@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import argparse
 import threading
+import numpy as np
 import multiprocessing as mp
 from ami.graph import Graph, GraphConfigError, GraphRuntimeError
 from ami.comm import Ports, Collector, ResultStore
@@ -34,25 +35,62 @@ class Request(object):
             return True
         return False
 
-
-def build_dep_tree(json):
+def simple_tree(json):
     """
-    Take a json representation of a configuration and produce a DAG
-    that shows dependencies (ie outputs) instead of inputs.
+    Generate a dependency tree from a json input
+
+    Parameters
+    ----------
+    json : json object
+
+    Returns
+    -------
+    graph : dict
+        dict where the keys are operations, the value are upstream
+        (dependent) operations that should be done first
+    """
+    graph = {}
+    for op in json:
+        graph[op] = json[op]['inputs']
+    return graph
+
+
+def resolve_dependencies(dependencies):
+    """
+    Dependency resolver
+
+    Parameters
+    ----------
+    dependencies : dict
+        the values are the dependencies of their respective keys
+
+    Returns
+    -------
+    order : list
+        a list of the order in which to resolve dependencies
     """
 
-    
+    # this just makes sure there are no duplicate dependencies
+    d = dict( (k, set(dependencies[k])) for k in dependencies )
 
+    # output list
+    r = []
 
-    return
+    while d:
 
-def dep_resolve(node, resolved):
-    print node.name
-    for edge in node.edges:
-        if edge not in resolved:
-            dep_resolve(edge, resolved)
-    resolved.append(node)
-    return resolved
+        # find all nodes without dependencies (roots)
+        t = set(i for v in d.values() for i in v) - set(d.keys())
+
+        # and items with no dependencies (disjoint nodes)
+        t.update(k for k, v in d.items() if not v)
+
+        # both of these can be resolved
+        r.extend(t)
+
+        # remove resolved depedencies from the tree
+        d = dict(((k, v-t) for k, v in d.items() if v))
+
+    return r
    
 
 class Worker(object):
@@ -69,7 +107,11 @@ class Worker(object):
         self.src = src
         self.ctx = zmq.Context()
         self.store = ResultStore(collector_addr, self.ctx)
-        self.graph = Graph(self.store)
+
+        # >>> NON PYTHONBACKEND
+        #self.graph = Graph(self.store)
+
+        self.graph = {}
         self.graph_comm = self.ctx.socket(zmq.SUB)
         #self.graph_comm.setsockopt_string(zmq.SUBSCRIBE, "graph")
         self.graph_comm.setsockopt_string(zmq.SUBSCRIBE, "")
@@ -96,27 +138,55 @@ class Worker(object):
                     except zmq.Again:
                         break
                 if new_graph is not None:
-                    self.graph.update(new_graph)
+
+                    # >>> NON PYTHONBACKEND
+                    #self.graph.update(new_graph)
+
+                    self.graph = new_graph
                     print("worker%d: Received new configuration"%self.idnum)
-                    try:
-                        self.graph.configure()
-                        print("worker%d: Configuration complete"%self.idnum)
-                    except GraphConfigError as graph_err:
-                        print("worker%d: Configuration failed reverting to previous config:"%self.idnum, graph_err)
-                        # if this fails we just die
-                        self.graph.revert()
+
+
+                    # >>> NON PYTHONBACKEND
+                    # >>> TODO figure out how to check graph
+                    #try:
+                    #    self.graph.configure()
+                    #    print("worker%d: Configuration complete"%self.idnum)
+                    #except GraphConfigError as graph_err:
+                    #    print("worker%d: Configuration failed reverting to previous config:"%self.idnum, graph_err)
+                    #    # if this fails we just die
+                    #    self.graph.revert()
+
                     self.new_graph_available = False
                 self.store.send(msg)
             elif msg.mtype == MsgTypes.Datagram:
-                updates = []
                 for dgram in msg.payload:
                     self.store.put_dgram(dgram)
-                    updates.append(dgram.name)
-                try:
-                    self.graph.execute(updates)
-                except GraphRuntimeError as graph_err:
-                    print("worker%s: Failure encountered executing graph:"%self.idnum, graph_err)
-                    return 1
+
+                # loop over operations in the correct order
+                for op in resolve_dependencies(simple_tree(self.graph)):
+
+                    # this takes care of "base" data (e.g. given by the DAQ)
+                    if op in self.store.namespace:
+                        continue
+
+                    # at the end of the executed code, inject outputs in to the feature store
+                    store_put_list = ['store.put("%s", %s)'%(output, output) for output in self.graph[op]['outputs']]
+                    store_put = '\n' + '; '.join(store_put_list)
+
+                    # generate the local & global namespaces for the execution of the graph operation
+                    loc = {'store': self.store}
+                    loc.update(self.store.namespace)
+                    glb = {"np" : np} # TODO be smarter :)
+
+                    # execute the operation code (graph is the json)
+                    exec(self.graph[op]['code'] + store_put, glb, loc)
+
+                #try:
+                #    self.graph.execute(updates)
+                #except GraphRuntimeError as graph_err:
+                #    print("worker%s: Failure encountered executing graph:"%self.idnum, graph_err)
+                #    return 1
+
                 self.store.collect()
                 for r in self.requests:
                     if (r.update()):

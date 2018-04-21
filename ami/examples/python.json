@@ -1,16 +1,16 @@
 {
     "sumall": {
         "inputs":  ["cspad", "cspad_roi"],
-        "code":    "cspad_sum = np.sum(cspad) + np.sum(cspad_roi)",
-        "outputs": ["cspad_sum"]
+        "code":    "cspad_sum = np.sum(cspad) + np.sum(cspad_roi); a = 1",
+        "outputs": ["cspad_sum", "a"]
     },
-    "cspad-roi": {
+    "cspad_roi": {
         "inputs":  ["cspad"],
         "code":    "cspad_roi = cspad[100:200,100:200]",
         "outputs": ["cspad_roi"]
     },
-    "cspad-roi-proj": {
-        "inputs":  ["cspad_roi"],
+    "cspad_roi_proj": {
+        "inputs":  ["cspad_roi", "cspad_roi"],
         "code":    "cspad_projection = cspad_roi.sum(axis=1)",
         "outputs": ["cspad_projection"]
     }
