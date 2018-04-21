@@ -57,6 +57,7 @@ class ResultStore(object):
     def get_dgram(self, name):
         return self._store[name]
 
+    @property
     def namespace(self):
         ns = {"store": self}
         for k in self._store.keys():
