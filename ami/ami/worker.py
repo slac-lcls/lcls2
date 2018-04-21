@@ -12,7 +12,27 @@ import multiprocessing as mp
 from ami.graph import Graph, GraphConfigError, GraphRuntimeError
 from ami.comm import Ports, Collector, ResultStore
 from ami.data import MsgTypes, DataTypes, Transitions, Occurrences, Message, Datagram, Transition, StaticSource
+import numpy as np
 
+class Request(object):
+    def __init__(self, store, name, number):
+        self.name = name
+        self.number = number
+        self.progress = 0
+        self.store = store
+        self.sum = None
+    def update(self):
+        data = self.store.get(self.name)
+        if data is None: return False
+        if self.sum is None:
+            self.sum = data
+        else:
+            self.sum += data
+        self.progress +=1
+        if self.progress==self.number:
+            self.store.put(self.name+'_avg_'+str(self.number),self.sum)
+            return True
+        return False
 
 class Worker(object):
     def __init__(self, idnum, src, collector_addr, graph_addr):
@@ -28,8 +48,10 @@ class Worker(object):
         self.store = ResultStore(collector_addr, self.ctx)
         self.graph = Graph(self.store)
         self.graph_comm = self.ctx.socket(zmq.SUB)
-        self.graph_comm.setsockopt_string(zmq.SUBSCRIBE, "graph")
+        #self.graph_comm.setsockopt_string(zmq.SUBSCRIBE, "graph")
+        self.graph_comm.setsockopt_string(zmq.SUBSCRIBE, "")
         self.graph_comm.connect(graph_addr)
+        self.requests = []
 
     def run(self):
         partition = self.src.partition()
@@ -47,6 +69,8 @@ class Worker(object):
                         payload = self.graph_comm.recv_pyobj()
                         if topic == "graph":
                             new_graph = payload
+                        if topic == "request":
+                            self.requests.append(Request(self.store,*payload))
                         else:
                             print("worker%d: No handler for received topic: %s"%(self.idnum, topic))
                     except zmq.Again:
@@ -74,6 +98,10 @@ class Worker(object):
                     print("worker%s: Failure encountered executing graph:"%self.idnum, graph_err)
                     return 1
                 self.store.collect()
+                for r in self.requests:
+                    if (r.update()):
+                        self.requests.remove(r)
+                        print(self.store.get('cspad_avg_3').shape)
             else:
                 self.store.send(msg)
 

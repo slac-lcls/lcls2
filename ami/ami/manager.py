@@ -68,6 +68,14 @@ class Manager(Collector):
                     self.comm.send_string('ok')
                 else:
                     self.comm.send_string('error')
+            elif request.startswith('reqimage'):
+                self.comm.send_string('ok')
+                self.graph_comm.send_string('request', zmq.SNDMORE)
+                # FIXME: need to divide by number of workers here, and think
+                # about double collectors, instead of going directly
+                # to the workers
+                splitrequest = request.split(':')
+                self.graph_comm.send_pyobj([splitrequest[1],int(splitrequest[2])])
             else:
                 self.comm.send_string('error')
 
