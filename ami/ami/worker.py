@@ -109,9 +109,8 @@ class Worker(object):
         self.store = ResultStore(collector_addr, self.ctx)
 
         # >>> NON PYTHONBACKEND
-        #self.graph = Graph(self.store)
+        self.graph = Graph(self.store)
 
-        self.graph = {}
         self.graph_comm = self.ctx.socket(zmq.SUB)
         #self.graph_comm.setsockopt_string(zmq.SUBSCRIBE, "graph")
         self.graph_comm.setsockopt_string(zmq.SUBSCRIBE, "")
@@ -119,9 +118,15 @@ class Worker(object):
         self.requests = []
 
     def run(self):
+        sources = []
+        partition = self.src.partition()
+        self.store.message(MsgTypes.Transition, 
+                           Transition(Transitions.Allocate, partition))
+        for name, dtype in partition:
+            self.store.create(name, dtype)
+            sources.append(name)
 
         for msg in self.src.events():
-
             # check to see if the graph has been reconfigured after update
             if msg.mtype == MsgTypes.Occurrence and msg.payload == Occurrences.Heartbeat:
                 new_graph = None
@@ -140,28 +145,30 @@ class Worker(object):
                 if new_graph is not None:
 
                     # >>> NON PYTHONBACKEND
-                    #self.graph.update(new_graph)
+                    self.graph.update(new_graph)
 
-                    self.graph = new_graph
                     print("worker%d: Received new configuration"%self.idnum)
 
 
                     # >>> NON PYTHONBACKEND
                     # >>> TODO figure out how to check graph
-                    #try:
-                    #    self.graph.configure()
-                    #    print("worker%d: Configuration complete"%self.idnum)
-                    #except GraphConfigError as graph_err:
-                    #    print("worker%d: Configuration failed reverting to previous config:"%self.idnum, graph_err)
-                    #    # if this fails we just die
-                    #    self.graph.revert()
+                    try:
+                        self.graph.configure(sources)
+                        print("worker%d: Configuration complete"%self.idnum)
+                    except GraphConfigError as graph_err:
+                        print("worker%d: Configuration failed reverting to previous config:"%self.idnum, graph_err)
+                        # if this fails we just die
+                        self.graph.revert()
 
                     self.new_graph_available = False
                 self.store.send(msg)
             elif msg.mtype == MsgTypes.Datagram:
+                # clear old values from the store
+                self.store.clear()
                 for dgram in msg.payload:
                     self.store.put_dgram(dgram)
 
+                """
                 # loop over operations in the correct order
                 for op in resolve_dependencies(simple_tree(self.graph)):
 
@@ -180,12 +187,12 @@ class Worker(object):
 
                     # execute the operation code (graph is the json)
                     exec(self.graph[op]['code'] + store_put, glb, loc)
-
-                #try:
-                #    self.graph.execute(updates)
-                #except GraphRuntimeError as graph_err:
-                #    print("worker%s: Failure encountered executing graph:"%self.idnum, graph_err)
-                #    return 1
+                """
+                try:
+                    self.graph.execute()
+                except GraphRuntimeError as graph_err:
+                    print("worker%s: Failure encountered executing graph:"%self.idnum, graph_err)
+                    return 1
 
                 self.store.collect()
                 for r in self.requests:
