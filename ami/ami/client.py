@@ -15,7 +15,7 @@ import pyqtgraph as pg
 
 from ami.data import DataTypes
 from ami.comm import Ports
-from ami.graph import GraphNode
+from ami.graph import Graph
 
 
 class CommunicationHandler(object):
@@ -119,11 +119,22 @@ class AreaDetWidget(pg.ImageView):
     #@pyqtSlot(pg.ROI)
     def roi_updated(self, roi):
         graph = self.comm_handler.graph
-        #shape, vector, origin = roi.getAffineSliceParams(self.image, self.getImageItem())
-        #roi = GraphNode("pg.affineSlice(%s, self.shape, self.origin, self.vector, self.axes)"%(self.topic, shape.__repr__(), origin.__repr__(), vector.__repr__(), (0,1).__repr__())
-        #roi = ROINode("%s-roi"%self.topic, *roi.getAffineSliceParams(self.image, self.getImageItem()), (0,1), self.topic)
-        #graph["%s-roi"%self.topic] = roi.export()
-        #self.comm_handler.update(graph)
+        shape, vector, origin = roi.getAffineSliceParams(self.image, self.getImageItem())
+        config = {
+            "shape": shape,
+            "vector": vector,
+            "origin": origin,
+            "axes": (0,1),
+        }
+        roi = Graph.build_node(
+            "{0:s}_roi = pg.affineSlice({0:s}, config['shape'], config['origin'], config['vector'], config['axes'])".format(self.topic),
+            self.topic,
+            "%s_roi"%self.topic,
+            config,
+            [('pyqtgraph', 'pg')],
+        )
+        graph["%s_roi"%self.topic] = roi
+        self.comm_handler.update(graph)
         
 
 class Calculator(QWidget):
@@ -166,21 +177,20 @@ class Calculator(QWidget):
 
     def parse_imports(self):
         if self.importsBox.text():
-            return self.field_parse.split(self.importsBox.text())
+            return [(imp, imp) for imp in self.field_parse.split(self.importsBox.text())]
         else:
             return None
-
-    def make_graph_node(self):
-        node = GraphNode("%s = %s"%(self.nameBox.text(), self.codeBox.text()), self.parse_inputs(), [self.nameBox.text()])
-        imports = self.parse_imports()
-        if imports is not None:
-            node.add_option("imports", imports)
-        return node.export()
 
     @pyqtSlot()
     def on_click(self):
         graph = self.comm.graph
-        graph[self.nameBox.text()] = self.make_graph_node()
+        graph[self.nameBox.text()] = Graph.build_node(
+            "%s = %s"%(self.nameBox.text(),
+            self.codeBox.text()),
+            self.parse_inputs(),
+            self.nameBox.text(),
+            self.parse_imports()
+        )
         self.comm.update(graph)
 
 class DetectorList(QListWidget):

@@ -1,4 +1,5 @@
 import importlib
+import collections
 from ami import operation
 
 class GraphConfigError(Exception):
@@ -6,27 +7,6 @@ class GraphConfigError(Exception):
 
 class GraphRuntimeError(Exception):
     pass
-
-class GraphNode(object):
-    def __init__(self, code, inputs, outputs, imports=None):
-        self.code = code
-        self.inputs = inputs
-        self.outputs = outputs
-        self.options = []
-    
-    def add_option(self, key, value):
-        self.options.append((key, value))
-        
-
-    def export(self):
-        cfg = {
-            "inputs": self.inputs,
-            "code": self.code,
-            "outputs": self.outputs,
-        }
-        for key, value in self.options:
-            cfg[key] = value
-        return cfg
 
 
 class Graph(object):
@@ -40,6 +20,27 @@ class Graph(object):
         self.subs = {}
         self.store = store
         self.operations = []
+
+    @staticmethod
+    def build_node(code, inputs, outputs, config=None, imports=None):
+        cfg = {"code": code}
+        # make inputs into list if not
+        if not isinstance(inputs, str) and isinstance(inputs, collections.Sequence):
+            cfg["inputs"]= inputs
+        else:
+            cfg["inputs"]= [inputs]
+        # make outputs into list if not
+        if not isinstance(outputs, str) and isinstance(outputs, collections.Sequence):
+            cfg["outputs"]= outputs
+        else:
+            cfg["outputs"]= [outputs]
+        # add config if passed in
+        if config is not None:
+            cfg["config"] = config
+        # add imports if passed in
+        if imports is not None:
+            cfg["imports"] = imports
+        return cfg
 
     @staticmethod
     def generate_tree(cfg):
@@ -115,8 +116,15 @@ class Graph(object):
                 # generate the global namespace for the execution of the graph operation
                 glb = {} #{"np" : np} # TODO be smarter :)
                 if 'imports' in self.cfg[op]:
-                    for imp in self.cfg[op]['imports']:
-                        glb[imp] = importlib.import_module(imp)
+                    for import_info in self.cfg[op]['imports']:
+                        try:
+                            imp, imp_name = import_info
+                        except ValueError:
+                            imp = import_info
+                            imp_name = imp
+                        glb[imp_name] = importlib.import_module(imp)
+                if 'config' in self.cfg[op]:
+                    glb['config'] = self.cfg[op]['config']
 
                 self.operations.append((op, compile(self.cfg[op]['code'] + store_put, '<string>', 'exec'), glb))
             except Exception as exp:
