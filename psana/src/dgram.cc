@@ -537,9 +537,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             AssignDict(self, configDgram);
         }
     } else {
-        if (configDgram != 0) {
-            AssignDict(self, configDgram); // for create dgram from memory with config
-        }
+        AssignDict(self, configDgram); // for create dgram from memory
     }
 
     return 0;
