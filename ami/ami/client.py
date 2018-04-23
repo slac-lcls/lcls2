@@ -37,6 +37,14 @@ class CommunicationHandler(object):
         self.sock.send_string('get_features')
         return self.sock.recv_pyobj()
 
+    def clear(self):
+        self.sock.send_string('clear_graph')
+        return self.sock.recv_string() == 'ok'
+
+    def reset(self):
+        self.sock.send_string('reset_features')
+        return self.sock.recv_string() == 'ok'
+
     def update(self, graph):
         self.sock.send_string('set_graph', zmq.SNDMORE)
         self.sock.send_pyobj(graph)
@@ -130,8 +138,8 @@ class AreaDetWidget(pg.ImageView):
             "{0:s}_roi = pg.affineSlice({0:s}, config['shape'], config['origin'], config['vector'], config['axes'])".format(self.topic),
             self.topic,
             "%s_roi"%self.topic,
-            config,
-            [('pyqtgraph', 'pg')],
+            config=config,
+            imports=[('pyqtgraph', 'pg')],
         )
         graph["%s_roi"%self.topic] = roi
         self.comm_handler.update(graph)
@@ -185,22 +193,23 @@ class Calculator(QWidget):
     def on_click(self):
         graph = self.comm.graph
         graph[self.nameBox.text()] = Graph.build_node(
-            "%s = %s"%(self.nameBox.text(),
-            self.codeBox.text()),
+            "%s = %s"%(self.nameBox.text(), self.codeBox.text()),
             self.parse_inputs(),
             self.nameBox.text(),
-            self.parse_imports()
+            imports=self.parse_imports()
         )
         self.comm.update(graph)
 
 class DetectorList(QListWidget):
     
     def __init__(self, queue, comm_handler, parent=None):
-        super(DetectorList, self).__init__(parent)
+        super(__class__, self).__init__(parent)
         self.queue = queue
         self.comm_handler = comm_handler
         self.features = {}
         self.timer = QTimer()
+        self.calc_id = "calculator"
+        self.calc = None
         self.timer.timeout.connect(self.get_features)
         self.timer.start(1000)
         self.itemClicked.connect(self.item_clicked)
@@ -214,6 +223,7 @@ class DetectorList(QListWidget):
         # detectors = dict, maps name --> type
         self.features = self.comm_handler.features
         self.clear()
+        self.addItem(self.calc_id)
         for k in self.features.keys():
             self.addItem(k)
         return
@@ -223,7 +233,12 @@ class DetectorList(QListWidget):
 
         # WHERE does this enumerated list of detector types come from?
 
-        if self.features[item.text()] == DataTypes.Image:
+        if item.text() == self.calc_id:
+            if self.calc is None:
+                print('create calculator widget')
+                self.calc = Calculator(self.comm_handler)
+            self.calc.show()
+        elif self.features[item.text()] == DataTypes.Image:
             self._spawn_window('AreaDetector', item.text())
             print('create area detector window for:', item.text())
             # cpo/weninc test of "request" pattern for AMI
@@ -245,17 +260,78 @@ class DetectorList(QListWidget):
 
     def _spawn_window(self, window_type, topic):
         self.queue.put((window_type, topic))
-        
 
-def run_list_window(queue, host, port, ami_save):
+
+class AmiGui(QWidget):
+    def __init__(self, queue, host, port, ami_save, parent=None):
+        super(__class__, self).__init__(parent)
+        self.setWindowTitle("AMI Client")
+        self.comm_handler = CommunicationHandler(host, port)
+
+        self.setupLabel = QLabel('Setup:', self)
+        self.save_button = QPushButton('Save', self)
+        self.save_button.clicked.connect(self.save)
+        self.load_button = QPushButton('Load', self)
+        self.load_button.clicked.connect(self.load)
+        self.clear_button = QPushButton('Clear', self)
+        self.clear_button.clicked.connect(self.clear)
+        self.reset_button = QPushButton('Reset Plots', self)
+        self.reset_button.clicked.connect(self.reset)
+        self.dataLabel = QLabel('Data:', self)
+        self.amilist = DetectorList(queue, self.comm_handler)
+        if ami_save is not None:
+            self.amilist.load(ami_save)
+
+        self.setup = QWidget(self)
+        self.setup_layout = QHBoxLayout(self.setup)
+        self.setup_layout.addWidget(self.save_button)
+        self.setup_layout.addWidget(self.load_button)
+        self.setup_layout.addWidget(self.clear_button)
+
+        self.ami_layout = QVBoxLayout(self)
+        self.ami_layout.addWidget(self.setup)
+        self.ami_layout.addWidget(self.dataLabel)
+        self.ami_layout.addWidget(self.reset_button)
+        self.ami_layout.addWidget(self.amilist)
+
+    @pyqtSlot()
+    def load(self):
+        load_file = QFileDialog.getOpenFileName(self, "Open file", "", "AMI Autosave files (*.ami);;All Files (*)")
+        if load_file[0]:
+            try:
+                with open(load_file[0], 'r') as cnf:
+                    self.amilist.load(json.load(cnf))
+            except OSError as os_exp:
+                print("ami-client: problem opening saved graph configuration file:", os_exp)
+            except json.decoder.JSONDecodeError as json_exp:
+                print("ami-client: problem parsing saved graph configuration file (%s):"%load_file[0], json_exp)
+
+    @pyqtSlot()
+    def save(self):
+        save_file = QFileDialog.getSaveFileName(self,"Save file", "autosave.ami", "AMI Autosave files (*.ami);;All Files (*)")
+        if save_file[0]:
+            print("ami-client: saving graph configuration to file (%s)"%save_file[0])
+            try:
+                with open(save_file[0], 'w') as cnf:
+                    json.dump(self.comm_handler.graph, cnf, indent=4)
+            except OSError as os_exp:
+                print("ami-client: problem opening saved graph configuration file:", os_exp)
+
+    @pyqtSlot()
+    def reset(self):
+        if not self.comm_handler.reset():
+            print("ami-client: unable to reset feature store of the manager!")
+
+    @pyqtSlot()
+    def clear(self):
+        if not self.comm_handler.clear():
+            print("ami-client: unable to clear the graph configuration of the manager!")
+
+
+def run_main_window(queue, host, port, ami_save):
     app = QApplication(sys.argv)
-    comm_handler = CommunicationHandler(host, port)
-    amilist = DetectorList(queue, comm_handler)
-    if ami_save is not None:
-        amilist.load(ami_save)
-    amilist.show()
-    calc = Calculator(comm_handler)
-    calc.show()
+    gui = AmiGui(queue, host, port, ami_save)
+    gui.show()
 
     # wait for the qt app to exit
     retval = app.exec_()
@@ -332,7 +408,7 @@ def main():
 
     try:
         queue = mp.Queue()
-        list_proc = mp.Process(target=run_list_window, args=(queue, args.host, args.port, saved_cfg))
+        list_proc = mp.Process(target=run_main_window, args=(queue, args.host, args.port, saved_cfg))
         list_proc.start()
         widget_procs = []
 

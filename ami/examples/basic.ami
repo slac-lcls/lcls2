@@ -1,6 +1,7 @@
 {
     "sumall": {
         "inputs":  ["cspad", "cspad_roi"],
+        "imports": [["numpy", "np"]],
         "code":    "cspad_sum = np.sum(cspad) + np.sum(cspad_roi); a = 1",
         "outputs": ["cspad_sum", "a"]
     },
