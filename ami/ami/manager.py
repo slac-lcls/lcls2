@@ -60,6 +60,15 @@ class Manager(Collector):
         if not self.feature_request(request):
             if request == 'get_features':
                 self.comm.send_pyobj(self.features)
+            elif request == 'clear_graph':
+                self.graph.clear()
+                if self.apply_graph():
+                    self.comm.send_string('ok')
+                else:
+                    self.comm.send_string('error')
+            elif request == 'reset_features':
+                self.feature_store.clear()
+                self.comm.send_string('ok')
             elif request == 'get_graph':
                 self.comm.send_pyobj(self.graph)
             elif request == 'set_graph':

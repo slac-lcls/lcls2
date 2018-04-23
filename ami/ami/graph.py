@@ -8,7 +8,6 @@ class GraphConfigError(Exception):
 class GraphRuntimeError(Exception):
     pass
 
-
 class Graph(object):
     def __init__(self, store, cfg=None):
         self.cfg_old = {}
@@ -22,7 +21,8 @@ class Graph(object):
         self.operations = []
 
     @staticmethod
-    def build_node(code, inputs, outputs, config=None, imports=None):
+    def build_node(code, inputs, outputs, config=None, imports=None, setup=None):
+        # code to be executed on each event
         cfg = {"code": code}
         # make inputs into list if not
         if not isinstance(inputs, str) and isinstance(inputs, collections.Sequence):
@@ -34,12 +34,15 @@ class Graph(object):
             cfg["outputs"]= outputs
         else:
             cfg["outputs"]= [outputs]
-        # add config if passed in
+        # add config if passed in - these are constants to be used executed code
         if config is not None:
             cfg["config"] = config
         # add imports if passed in
         if imports is not None:
             cfg["imports"] = imports
+        # add setup code to be executed on setup
+        if setup is not None:
+            cfg["setup"] = setup
         return cfg
 
     @staticmethod
@@ -115,6 +118,7 @@ class Graph(object):
 
                 # generate the global namespace for the execution of the graph operation
                 glb = {} #{"np" : np} # TODO be smarter :)
+                loc = {}
                 if 'imports' in self.cfg[op]:
                     for import_info in self.cfg[op]['imports']:
                         try:
@@ -125,8 +129,10 @@ class Graph(object):
                         glb[imp_name] = importlib.import_module(imp)
                 if 'config' in self.cfg[op]:
                     glb['config'] = self.cfg[op]['config']
+                if 'setup' in self.cfg[op]:
+                    exec(self.cfg[op]['setup'], glb, loc)
 
-                self.operations.append((op, compile(self.cfg[op]['code'] + store_put, '<string>', 'exec'), glb))
+                self.operations.append((op, compile(self.cfg[op]['code'] + store_put, '<string>', 'exec'), glb, loc))
             except Exception as exp:
                 raise GraphConfigError("exception encounterd adding operation %s to the graph: %s"%(op, exp))
         self.sources = sources
@@ -136,7 +142,7 @@ class Graph(object):
         self.configure(self.sources)
 
     def execute(self):
-        for op, code, glb in self.operations:
+        for op, code, glb, loc in self.operations:
             # check if all inputs have new data
             ready = True
             for inp in self.cfg[op]['inputs']:
@@ -145,7 +151,7 @@ class Graph(object):
             try:
                 if ready:
                     # fetch the current result store namespace
-                    loc = {'store': self.store}
+                    loc['store'] = self.store
                     loc.update(self.store.namespace)
                     # exec compiled code
                     exec(code, glb, loc)
