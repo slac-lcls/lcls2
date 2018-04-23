@@ -15,13 +15,13 @@ public:
     Sequence seq;
     unsigned evtCounter:24;
     unsigned version:8;
-    uint64_t env;
+    uint32_t env[3];
 };
 
 class L1Transition : public Transition {
 public:
-    uint16_t trigLines()     const { return (env>>16)&0xffff; }
-    uint16_t readoutGroups() const { return (env)&0xffff; }
+    uint16_t trigLines()     const { return (env[0]>>16)&0xffff; }
+    uint16_t readoutGroups() const { return (env[0])&0xffff; }
 };
 
 class Dgram : public Transition {

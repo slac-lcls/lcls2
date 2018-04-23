@@ -382,8 +382,8 @@ void TstEbInlet::process(EbEvent* event)
   // Iterate over the event and build a result datagram
   const EbContribution** const  last    = event->end();
   const EbContribution*  const* contrib = event->begin();
-  Dgram                         cdg    (*(event->creator()));       // Initialize a new DG
-  cdg.env                               = cdg.xtc.src.log() & 0xff; // Revisit: Used only for measuring RTT?
+  Dgram                         cdg    (*(event->creator()));     // Initialize a new DG
+  cdg.env[0]                            = cdg.xtc.src.log() & 0xff; // Revisit: Used only for measuring RTT?
   cdg.xtc                               = _xtc;
   Batch*                        batch   = _batMgr->allocate(&cdg);  // This may post to the outlet
   ResultDest*                   rDest   = (ResultDest*)batch->parameter();

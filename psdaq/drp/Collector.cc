@@ -12,7 +12,7 @@ using namespace Pds::Eb;
 MyDgram::MyDgram(unsigned pulseId, uint64_t val, unsigned contributor_id)
 {
     seq = XtcData::Sequence(Sequence::Event, TransitionId::L1Accept, TimeStamp(), PulseId(pulseId));
-    env = 0;
+    env[0] = 0;
     xtc = Xtc(TypeId(TypeId::Data, 0), TheSrc(Level::Segment, contributor_id));
     _data = val;
     xtc.alloc(sizeof(_data));
@@ -79,12 +79,13 @@ void collector(MemPool& pool, Parameters& para)
 
         // Dgram& dgram = *reinterpret_cast<Dgram*>(pebble->fex_data());
         uint64_t val;
-        if (i%3==0) {
+        if (i%3 == 0) {
             val = 0xdeadbeef;
         } else {
             val = 0xabadcafe;
         }
         MyDgram dg(i, val, para.contributor_id);
+        // printf("process dg %lx\n", *(uint64_t*)(dg.xtc.payload()));
         myBatchMan.process(&dg);
         pool.output_queue.push(pebble);
         i++;
@@ -123,7 +124,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
             nreceive++;
             // printf("--- result %lx\n",*(uint64_t*)(result->xtc.payload()));
             uint64_t val = *(uint64_t*)(result->xtc.payload());
-
+            // printf("val %lu\n", val);
             Pebble* pebble;
             pool.output_queue.pop(pebble);
 
@@ -141,9 +142,9 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
             pool.pebble_queue.push(pebble);
 
             result = (Dgram*)result->xtc.next();
-            if (val==0) {
+            if (val == 0) {
                 nzero++;
-            } else if (val==1) {
+            } else if (val == 1) {
                 none++;
             } else {
                 printf("error %ld\n",val);
