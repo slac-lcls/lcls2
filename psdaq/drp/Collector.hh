@@ -25,12 +25,14 @@ public:
     }
 };
 
+#pragma pack(push,4)
 class MyDgram : public XtcData::Dgram {
 public:
     MyDgram(unsigned pulseId, uint64_t val, unsigned contributor_id);
 private:
     uint64_t _data;
 };
+#pragma pack(pop)
 
 size_t maxSize = sizeof(MyDgram);
 

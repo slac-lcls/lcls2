@@ -79,11 +79,11 @@ namespace Pds {
     {
     public:
       Input() : Dgram() {}
-      Input(const Sequence& seq_, const uint64_t env_, const Xtc& xtc_) :
+      Input(const Sequence& seq_, const uint32_t env_, const Xtc& xtc_) :
         Dgram()
       {
         seq = seq_;
-        env = env_;
+        env[0] = env_;
         xtc = xtc_;
       }
     public:
@@ -576,7 +576,7 @@ void TstContribInlet::routine()
              cnt++, idx, bdg, pid, extent, srcId);
     }
 
-    if (bdg->env == _id)
+    if (bdg->env[0] == _id)
     {
       auto d = std::chrono::seconds            { bdg->seq.stamp().seconds()     } +
                std::chrono::nanoseconds        { bdg->seq.stamp().nanoseconds() };

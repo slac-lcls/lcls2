@@ -38,6 +38,7 @@ static RawDef myRawDef;
 
 void AreaDetector::configure(Xtc& parent)
 {
+    printf("AreaDetector configure\n");
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;
     Names& fexNames = *new(parent) Names("xppcspad", cspadFexAlg, "cspad", "detnum1234", segment);
