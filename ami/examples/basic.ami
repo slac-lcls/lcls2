@@ -1,18 +1,68 @@
 {
     "sumall": {
-        "inputs":  ["cspad", "cspad_roi"],
-        "imports": [["numpy", "np"]],
-        "code":    "cspad_sum = np.sum(cspad) + np.sum(cspad_roi); a = 1",
-        "outputs": ["cspad_sum", "a"]
-    },
-    "cspad_roi": {
-        "inputs":  ["cspad"],
-        "code":    "cspad_roi = cspad[100:200,100:200]",
-        "outputs": ["cspad_roi"]
+        "setup": "counter=0",
+        "outputs": [
+            "cspad_sum",
+            "counter"
+        ],
+        "imports": [
+            [
+                "numpy",
+                "np"
+            ]
+        ],
+        "code": "cspad_sum = np.sum(cspad) + np.sum(cspad_roi); counter += 1",
+        "inputs": [
+            "cspad",
+            "cspad_roi"
+        ]
     },
     "cspad_roi_proj": {
-        "inputs":  ["cspad_roi", "cspad_roi"],
-        "code":    "cspad_projection = cspad_roi.sum(axis=1)",
-        "outputs": ["cspad_projection"]
+        "inputs": [
+            "cspad_roi"
+        ],
+        "outputs": [
+            "cspad_projection"
+        ],
+        "code": "cspad_projection = cspad_roi.sum(axis=1)"
+    },
+    "cspad_roi": {
+        "inputs": [
+            "cspad"
+        ],
+        "outputs": [
+            "cspad_roi"
+        ],
+        "imports": [
+            [
+                "pyqtgraph",
+                "pg"
+            ]
+        ],
+        "code": "cspad_roi = pg.affineSlice(cspad, config['shape'], config['origin'], config['vector'], config['axes'])",
+        "config": {
+            "vector": [
+                [
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0
+                ]
+            ],
+            "origin": [
+                95.02293693574359,
+                96.14085384086991
+            ],
+            "axes": [
+                0,
+                1
+            ],
+            "shape": [
+                340.9034039174127,
+                304.0121460482416
+            ]
+        }
     }
 }
