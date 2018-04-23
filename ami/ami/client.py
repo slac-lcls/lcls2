@@ -313,7 +313,7 @@ class AmiGui(QWidget):
             print("ami-client: saving graph configuration to file (%s)"%save_file[0])
             try:
                 with open(save_file[0], 'w') as cnf:
-                    json.dump(self.comm_handler.graph, cnf, indent=4)
+                    json.dump(self.comm_handler.graph, cnf, indent=4, sort_keys=True)
             except OSError as os_exp:
                 print("ami-client: problem opening saved graph configuration file:", os_exp)
 
