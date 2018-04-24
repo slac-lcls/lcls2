@@ -21,26 +21,24 @@ def debug(evt):
     assert all(test_vals)
 
 def reader(ds):
-    """ reads dgram sequentially """
+    """Reads dgram sequentially """
     if ds.smd_files is None:
         for evt in ds.dm:
             yield evt
     else:
-        smd_dm = DgramManager(ds.smd_files)
-        dm = DgramManager(ds.xtc_files, configs=smd_dm.configs)
-        for offset_evt in smd_dm:
+        for offset_evt in ds.smd_dm:
             if ds.filter: 
                 if not ds.filter(offset_evt): continue
             offsets_and_sizes = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] for d in offset_evt], dtype='i')
-            evt = dm.next(offsets=offsets_and_sizes[:,0], 
+            evt = ds.dm.next(offsets=offsets_and_sizes[:,0], 
                       sizes=offsets_and_sizes[:,1], read_chunk=False)
             debug(evt)
             yield evt
         
 def server(ds):
-    """ 
-    server reads small data for offsets and dgram sizes 
-    then hands them out clients in a batch (batch default size=1)
+    """Reads small data. 
+    extracts offsets and dgram sizes then hands them out to clients 
+    in a batch (batch default size=1)
     """
     rankreq = np.empty(1, dtype='i')
     offset_batch = np.ones([ds.nfiles, 2, ds.lbatch], dtype='i') * -1
@@ -65,10 +63,7 @@ def server(ds):
         comm.Send(offset_batch * 0 -1, dest=rankreq[0])
 
 def client(ds):
-    """
-    client uses offsets and dgram sizes to read
-    big data
-    """
+    """Uses offsets and dgram sizes to read big data"""
     is_done = False
     while not is_done:
         comm.Send(np.array([rank], dtype='i'), dest=0)
@@ -85,12 +80,12 @@ def client(ds):
             yield evt
 
 def read_event(ds, event_type=None):
-    """ 
-    reads an event (parallel read when size > 1)
-    : this def is used to go throuh events
-    using offsets from smd files. event_type is
-    used to determined config updates or other
-    types of event.
+    """Reads an event.
+
+    Keywords:
+    ds         -- DataSource with access to the smd or xtc files
+    event_type -- used to determined config updates or other
+                  types of event.
     """
     if size == 1:
         for evt in reader(ds): yield evt       # safe for python2
@@ -124,27 +119,46 @@ class ConfigUpdate(object):
 class DataSource(object):
     """ Uses DgramManager to read XTC files  """ 
     def __init__(self, expstr, filter=filter, lbatch=1):
+        """Initializes datasource.
+        
+        Keyword arguments:
+        expstr -- experiment string (eg. exp=xpptut13:run=1) or 
+                  a file or list of files (eg. 'data.xtc' or ['data0.xtc','dataN.xtc'])
+        lbatch -- length of batched offsets
+        
+        Supports:
+        reading file(s) -- DgramManager handles those files (single core)
+        reading an exp  -- Single core owns both smd and xtc DgramManagers
+                           Multiple cores: rank 0 owns smd DgramManager
+                           rank 1 owns xtc DgramManager
+        """
+
         assert lbatch > 0
         self.lbatch = lbatch
         self.filter = filter
         
-        is_test = False
+        # Check if we are reading file(s) or an experiment
+        self.read_files = False
         if isinstance(expstr, (str)):
             if expstr.find("exp") == -1:
                 self.xtc_files = np.array([expstr], dtype='U%s'%FN_L)
                 self.smd_files = None
             else:
-                is_test = True
+                self.read_files = True
         elif isinstance(expstr, (list, np.ndarray)):
             self.xtc_files = np.asarray(expstr, dtype='U%s'%FN_L)
             self.smd_files = None
         
-        if not is_test:
+        # Create DgramManager
+        if not self.read_files:
             self.dm = DgramManager(self.xtc_files)
         else:
+            #TODO: replace data.xtc/smd.xtc with experimental files
             if size == 1:
                 self.xtc_files = np.array(['data.xtc', 'data_1.xtc'], dtype='U%s'%FN_L)
                 self.smd_files = np.array(['smd.xtc', 'smd_1.xtc'], dtype='U%s'%FN_L)
+                self.smd_dm = DgramManager(self.smd_files) 
+                self.dm = DgramManager(self.xtc_files, configs=self.smd_dm.configs)
             else:
                 self.nfiles = 2
                 if rank == 0:
@@ -171,7 +185,7 @@ class DataSource(object):
                     comm.Bcast([configs[i], nbytes[i], MPI.BYTE], root=0)
             
                 if rank > 0:
-                    self.dm = DgramManager(self.xtc_files, configs=configs)
+                    self.dm = DgramManager(self.xtc_files, configs=configs) 
  
     def runs(self): 
         nruns = 1
@@ -182,4 +196,12 @@ class DataSource(object):
         for run in self.runs():
             for evt in run.events(): yield evt
 
+    def _configs(self):
+        """ Returns configs 
+        reading file(s) -- returns configs of these files
+        reading an exp  -- returns configs of xtc DgramManager for both
+                           single and multiple core read.
+        """
+        assert len(self.dm.configs) > 0
+        return self.dm.configs
 
