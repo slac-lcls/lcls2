@@ -214,7 +214,7 @@ int EbLfBase::postCompRecv(unsigned dst, void* ctx)
     _rOuts[idx] += _postCompRecv(_ep[idx], count, ctx);
     if (_rOuts[idx] < _rxDepth)
     {
-      fprintf(stderr, "Failed to post all %d receives for id %d: %d\n",
+      fprintf(stderr, "Failed to post all %d receives for ID %d: %d\n",
               count, _id[idx], _rOuts[idx]);
     }
   }

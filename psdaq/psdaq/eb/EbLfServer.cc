@@ -115,8 +115,8 @@ int EbLfServer::_connect(unsigned id)
     if (!_ep[i])
     {
       fprintf(stderr, "Failed to accept connection for Endpoint[%d]: %s\n",
-              i, _ep[i]->error());
-      return _ep[i]->error_num();
+              i, _pep->error());
+      return _pep->error_num();
     }
   }
 
