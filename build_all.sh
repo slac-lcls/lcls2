@@ -8,12 +8,15 @@ export INSTDIR=`pwd`/install
 
 cmake_option="Debug"
 pyInstallStyle="develop"
+psana_setup_args=""
 
-while getopts ":c:p:" opt; do
+while getopts ":c:p:s:" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
     p) pyInstallStyle="$OPTARG"
+    ;;
+    s) psana_setup_args="$OPTARG"
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
     ;;
@@ -46,7 +49,7 @@ mkdir -p $INSTDIR/lib/python$pyver/site-packages/
 cd psana
 # force build of the dgram extention
 python setup.py build_ext --xtcdata=$INSTDIR -f --inplace
-python setup.py $pyInstallStyle --xtcdata=$INSTDIR --prefix=$INSTDIR
+python setup.py $pyInstallStyle $psana_setup_args --xtcdata=$INSTDIR --prefix=$INSTDIR
 cd ..
 # build ami
 cd ami
