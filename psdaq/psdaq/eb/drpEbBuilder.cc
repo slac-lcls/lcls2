@@ -54,6 +54,7 @@ static       int      lcore1           = core_base + core_offset + 0;
 static       int      lcore2           = core_base + core_offset + 12; // devXX, 0 for accXX
 
 typedef std::chrono::steady_clock::time_point TimePoint_t;
+typedef std::chrono::steady_clock::duration   Duration_t;
 typedef std::chrono::microseconds             us_t;
 typedef std::chrono::nanoseconds              ns_t;
 
@@ -326,10 +327,10 @@ void TstEbInlet::process(BatchManager* batMgr)
     }
 
     {
-      auto d = std::chrono::seconds            { bdg->seq.stamp().seconds()     } +
-               std::chrono::nanoseconds        { bdg->seq.stamp().nanoseconds() };
-      std::chrono::steady_clock::time_point tp { std::chrono::duration_cast<std::chrono::steady_clock::duration>(d) };
-      int64_t dT(std::chrono::duration_cast<ns_t>(t1 - tp).count());
+      auto d = std::chrono::seconds     { bdg->seq.stamp().seconds()     } +
+               std::chrono::nanoseconds { bdg->seq.stamp().nanoseconds() };
+      TimePoint_t tp { std::chrono::duration_cast<Duration_t>(d) };
+      int64_t     dT ( std::chrono::duration_cast<ns_t>(t1 - tp).count() );
       _arrTimeHist.bump(dT >> 16);
       //printf("In  Batch  %014lx Pend = %ld S, %ld ns\n", bdg->seq.pulseId().value(), dS, dN);
 
@@ -382,8 +383,7 @@ void TstEbInlet::process(EbEvent* event)
   // Iterate over the event and build a result datagram
   const EbContribution** const  last    = event->end();
   const EbContribution*  const* contrib = event->begin();
-  Dgram                         cdg    (*(event->creator()));     // Initialize a new DG
-  cdg.env[0]                            = cdg.xtc.src.log() & 0xff; // Revisit: Used only for measuring RTT?
+  Dgram                         cdg    (*(event->creator()));       // Initialize a new DG
   cdg.xtc                               = _xtc;
   Batch*                        batch   = _batMgr->allocate(&cdg);  // This may post to the outlet
   ResultDest*                   rDest   = (ResultDest*)batch->parameter();
@@ -402,7 +402,7 @@ void TstEbInlet::process(EbEvent* event)
 
     rDest->destination(idg->xtc.src);
 
-    uint32_t*    payload = (uint32_t*)idg->xtc.payload();
+    uint32_t* payload = (uint32_t*)idg->xtc.payload();
     *(uint64_t*)buffer = *(uint64_t*)payload == 0xdeadbeef ? 1 : 0;
   }
   while (++contrib != last);
@@ -533,10 +533,10 @@ void TstEbOutlet::post(const Batch* batch)
   ++_batchCount;
 
   {
-    auto d = std::chrono::seconds            { bdg->seq.stamp().seconds()     } +
-             std::chrono::nanoseconds        { bdg->seq.stamp().nanoseconds() };
-    std::chrono::steady_clock::time_point tp { std::chrono::duration_cast<std::chrono::steady_clock::duration>(d) };
-    int64_t dT(std::chrono::duration_cast<ns_t>(t0 - tp).count());
+    auto d = std::chrono::seconds     { bdg->seq.stamp().seconds()     } +
+             std::chrono::nanoseconds { bdg->seq.stamp().nanoseconds() };
+    TimePoint_t tp { std::chrono::duration_cast<Duration_t>(d) };
+    int64_t     dT ( std::chrono::duration_cast<ns_t>(t0 - tp).count() );
 
     _depTimeHist.bump(dT >> 16);
 
@@ -719,7 +719,6 @@ int main(int argc, char **argv)
     fprintf(stderr, "Server port %d is out of range 0 - %d\n", srvBase + id + max_ebs, USHRT_MAX);
     return 1;
   }
-
   std::string srvPort(std::to_string(srvBase + id));
 
   std::vector<std::string> cltAddr;
@@ -751,7 +750,7 @@ int main(int argc, char **argv)
   }
   else
   {
-    fprintf(stderr, "Contributor address(es) is required\n");
+    fprintf(stderr, "Missing required contributor address(es)\n");
     return 1;
   }
 
