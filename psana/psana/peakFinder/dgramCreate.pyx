@@ -303,6 +303,9 @@ class CyDgram():
 
     def addDet(self, nameinfo, alg, event_dict):
         num_elem = len(event_dict)
+        if num_elem == 0:
+            return False, "No elements added"
+
         py_shape = PyShapeBlock(nameinfo.namesId, num_elem)
         py_name = PyNameBlock(num_elem)
         py_data = PyDataBlock()
