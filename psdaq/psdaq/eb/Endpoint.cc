@@ -1488,6 +1488,17 @@ ssize_t Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
   return rret;
 }
 
+ssize_t Endpoint::inject_data(const void* buf, size_t len, uint64_t data)
+{
+  ssize_t rret = fi_injectdata(_ep, buf, len, data, 0);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_injectdata");
+  }
+
+  return rret;
+}
+
 ssize_t Endpoint::check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data)
 {
   ssize_t rret = cq->check_completion(context, flags, data);

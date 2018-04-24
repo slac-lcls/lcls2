@@ -245,6 +245,7 @@ namespace Pds {
       ssize_t read(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
       ssize_t write(const void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
       ssize_t write_data(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr=NULL);
+      ssize_t inject_data(const void* buf, size_t len, uint64_t data);
       /* Asynchronous calls (LocalAddress wrapper) */
       ssize_t send(const LocalAddress* laddr, void* context);
       ssize_t recv(LocalAddress* laddr, void* context);
