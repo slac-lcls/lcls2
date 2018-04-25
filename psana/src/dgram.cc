@@ -440,7 +440,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"view",
                              NULL};
 
-    int fd=0;
+    int fd=-1;
     PyObject* configDgram=0;
     self->offset=0;
     ssize_t dgram_size=0;
@@ -468,7 +468,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     if (!isView) {
         self->dgram = (Dgram*)malloc(BUFSIZE);
         if (configDgram == 0) {
-            if (fd > 0) {
+            if (fd > -1) {
                 // this is server reading config.
                 // allocates a buffer for reading offsets
                 self->reader = buffered_reader_new(fd);
@@ -509,17 +509,17 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
     
     if (!isView) {
-        if (fd==0 && configDgram==0) {
+        if (fd==-1 && configDgram==0) {
             self->dgram->xtc.extent = 0; // for empty dgram
         } else {
-            if (fd==0) {
+            if (fd==-1) {
                 self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
             } else {
                 self->file_descriptor=fd;
             }
 
             int readSuccess=0;
-            if ( (fd==0) != (configDgram==0) ) {
+            if ( (fd==-1) != (configDgram==0) ) {
                 readSuccess = read_dgram(self); // for read sequentially
                 if (readSuccess < 0) {
                     self->offset = -1; // set termination
