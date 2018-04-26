@@ -7,7 +7,6 @@ import json
 import shutil
 import tempfile
 import argparse
-import threading
 import multiprocessing as mp
 from ami.graph import Graph, GraphConfigError, GraphRuntimeError
 from ami.comm import Ports, Collector, ResultStore
@@ -250,6 +249,7 @@ def main():
     comm_addr = "tcp://%s:%d"%(args.host, args.port)
 
     procs = []
+    failed_worker = False
 
     try:
         src_url_match = re.match('(?P<prot>.*)://(?P<body>.*)', args.source)

@@ -103,6 +103,11 @@ class Manager(Collector):
         return True
 
 
+def run_manager(collector_addr, graph_addr, comm_addr):
+    manager = Manager(collector_addr, graph_addr, comm_addr)
+    return manager.run()
+
+
 def main():
     parser = argparse.ArgumentParser(description='AMII Manager App')
 
@@ -144,8 +149,7 @@ def main():
     comm_addr = "tcp://%s:%d"%(args.host, args.port)
 
     try:
-        manager = Manager(collector_addr, graph_addr, comm_addr)
-        return manager.run()
+        return run_manager(collector_addr, graph_addr, comm_addr)
     except KeyboardInterrupt:
         print("Manager killed by user...")
         return 0

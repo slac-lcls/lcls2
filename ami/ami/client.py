@@ -20,12 +20,11 @@ from ami.graph import Graph
 
 class CommunicationHandler(object):
 
-    def __init__(self, host, port):
+    def __init__(self, addr):
         self.ctx  = zmq.Context()
-        self.port = port
-        self.host = host
+        self.addr = addr
         self.sock = self.ctx.socket(zmq.REQ)
-        self.sock.connect('tcp://%s:%d' % (self.host, self.port))
+        self.sock.connect(self.addr)
 
     @property
     def graph(self):
@@ -52,14 +51,14 @@ class CommunicationHandler(object):
 
 
 class ScalarWidget(QLCDNumber):
-    def __init__(self, topic, host, port, parent=None):
+    def __init__(self, topic, addr, parent=None):
         super(__class__, self).__init__(parent)
         self.topic = topic
         self.timer = QTimer()
         self.setGeometry(QRect(320, 180, 191, 81))
         self.setDigitCount(10)
         self.setObjectName(topic)
-        self.comm_handler = CommunicationHandler(host, port)
+        self.comm_handler = CommunicationHandler(addr)
         self.timer.timeout.connect(self.get_scalar)
         self.timer.start(1000)
 
@@ -77,11 +76,11 @@ class ScalarWidget(QLCDNumber):
 
 
 class WaveformWidget(pg.GraphicsLayoutWidget):
-    def __init__(self, topic, host, port, parent=None):
+    def __init__(self, topic, addr, parent=None):
         super(__class__, self).__init__(parent)
         self.topic = topic
         self.timer = QTimer()
-        self.comm_handler = CommunicationHandler(host, port)
+        self.comm_handler = CommunicationHandler(addr)
         self.plot_view = self.addPlot()
         self.plot = None
         self.timer.timeout.connect(self.get_waveform)
@@ -103,10 +102,10 @@ class WaveformWidget(pg.GraphicsLayoutWidget):
             self.plot.setData(y=data)
 
 class AreaDetWidget(pg.ImageView):
-    def __init__(self, topic, host, port, parent=None):
+    def __init__(self, topic, addr, parent=None):
         super(AreaDetWidget, self).__init__(parent)
         self.topic = topic
-        self.comm_handler = CommunicationHandler(host, port)
+        self.comm_handler = CommunicationHandler(addr)
         self.timer = QTimer()
         self.timer.timeout.connect(self.get_image)
         self.timer.start(1000)
@@ -263,10 +262,10 @@ class DetectorList(QListWidget):
 
 
 class AmiGui(QWidget):
-    def __init__(self, queue, host, port, ami_save, parent=None):
+    def __init__(self, queue, addr, ami_save, parent=None):
         super(__class__, self).__init__(parent)
         self.setWindowTitle("AMI Client")
-        self.comm_handler = CommunicationHandler(host, port)
+        self.comm_handler = CommunicationHandler(addr)
 
         self.setupLabel = QLabel('Setup:', self)
         self.save_button = QPushButton('Save', self)
@@ -329,9 +328,9 @@ class AmiGui(QWidget):
             print("ami-client: unable to clear the graph configuration of the manager!")
 
 
-def run_main_window(queue, host, port, ami_save):
+def run_main_window(queue, addr, ami_save):
     app = QApplication(sys.argv)
-    gui = AmiGui(queue, host, port, ami_save)
+    gui = AmiGui(queue, addr, ami_save)
     gui.show()
 
     # wait for the qt app to exit
@@ -343,20 +342,20 @@ def run_main_window(queue, host, port, ami_save):
     return retval
 
 
-def run_widget(queue, window_type, topic, host, port):
+def run_widget(queue, window_type, topic, addr):
 
     ctx = zmq.Context()
     app = QApplication(sys.argv)
     win = QMainWindow()
 
     if window_type == 'AreaDetector':
-        widget = AreaDetWidget(topic, host, port, win)
+        widget = AreaDetWidget(topic, addr, win)
 
     elif window_type == 'WaveformDetector':
-        widget = WaveformWidget(topic, host, port, win)
+        widget = WaveformWidget(topic, addr, win)
 
     elif window_type == 'ScalarDetector':
-        widget = ScalarWidget(topic, host, port, win)
+        widget = ScalarWidget(topic, addr, win)
 
     else:
         raise ValueError('%s not valid window_type' % window_type)
@@ -366,6 +365,36 @@ def run_widget(queue, window_type, topic, host, port):
     win.show()
 
     return app.exec_()
+
+
+def run_client(addr, load):
+    saved_cfg = None
+    if load is not None:
+        try:
+            with open(load, 'r') as cnf:
+                saved_cfg = json.load(cnf)
+        except OSError as os_exp:
+            print("ami-client: problem opening saved graph configuration file:", os_exp)
+            return 1
+        except json.decoder.JSONDecodeError as json_exp:
+            print("ami-client: problem parsing saved graph configuration file (%s):"%load, json_exp)
+            return 1
+
+
+    queue = mp.Queue()
+    list_proc = mp.Process(target=run_main_window, args=(queue, addr, saved_cfg))
+    list_proc.start()
+    widget_procs = []
+
+    while True:
+        window_type, topic = queue.get()
+        if window_type == 'exit':
+            print("received exit signal - exiting!")
+            break;
+        print("opening new widget:", window_type, topic)
+        proc = mp.Process(target=run_widget, args=(queue, window_type, topic, addr))
+        proc.start()
+        widget_procs.append(proc)
 
 
 def main():
@@ -393,35 +422,10 @@ def main():
     )
 
     args = parser.parse_args()
-
-    saved_cfg = None
-    if args.load is not None:
-        try:
-            with open(args.load, 'r') as cnf:
-                saved_cfg = json.load(cnf)
-        except OSError as os_exp:
-            print("ami-client: problem opening saved graph configuration file:", os_exp)
-            return 1
-        except json.decoder.JSONDecodeError as json_exp:
-            print("ami-client: problem parsing saved graph configuration file (%s):"%args.load, json_exp)
-            return 1
-
+    addr = "tcp://%s:%d"%(args.host, args.port)
 
     try:
-        queue = mp.Queue()
-        list_proc = mp.Process(target=run_main_window, args=(queue, args.host, args.port, saved_cfg))
-        list_proc.start()
-        widget_procs = []
-
-        while True:
-            window_type, topic = queue.get()
-            if window_type == 'exit':
-                print("received exit signal - exiting!")
-                break;
-            print("opening new widget:", window_type, topic)
-            proc = mp.Process(target=run_widget, args=(queue, window_type, topic, args.host, args.port))
-            proc.start()
-            widget_procs.append(proc)
+        return run_client(addr, args.load)
     except KeyboardInterrupt:
         print("Client killed by user...")
         return 0
