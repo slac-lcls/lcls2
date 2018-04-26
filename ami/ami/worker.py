@@ -78,7 +78,7 @@ class Worker(object):
                         payload = self.graph_comm.recv_pyobj()
                         if topic == "graph":
                             new_graph = payload
-                        if topic == "request":
+                        elif topic == "request":
                             self.requests.append(Request(self.store,*payload))
                         else:
                             print("worker%d: No handler for received topic: %s"%(self.idnum, topic))
