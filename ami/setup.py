@@ -22,7 +22,7 @@ setup(
     author_email='ddamiani@slac.stanford.edu',
     url='https://confluence.slac.stanford.edu/display/PSDMInternal/AMI+Replacement',
     package_dir={'ami.examples': 'examples'},
-    packages=['ami', 'ami.operation', 'ami.examples'],
+    packages=['ami', 'ami.examples'],
     install_requires=[
         'pyzmq',
         'numpy',
