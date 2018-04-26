@@ -180,10 +180,10 @@ cfgd = parse_dgram(ds, source, detector, config, event_limit)
 with open("crystal_xray.json", 'w') as f:
     f.write(json.dumps(cfgd.events))
 
-# cs = ds.env().configStore()
-# conf = cs.get(config, source)
+cs = ds.env().configStore()
+conf = cs.get(config, source)
 
-# evt = ds.events().next()
-# evt = ds.events().next()
+evt = ds.events().next()
+evt = ds.events().next()
 
-# framev2 = evt.get(detector, source)
+framev2 = evt.get(detector, source)

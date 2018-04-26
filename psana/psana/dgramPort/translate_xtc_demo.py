@@ -21,7 +21,7 @@ def load_json(filename):
     return event_dict
 
 
-def translate_xtc_demo(job_type):
+def translate_xtc_demo(job_type, offset=1):
     configure_file = '%s_configure.xtc' % job_type
     event_file = '%s_evts.xtc' % job_type
 
@@ -57,7 +57,7 @@ def translate_xtc_demo(job_type):
     cydgram = dc.CyDgram()
 
     with open(event_file, 'wb') as f:
-        for event_dgram in lcls1_xtc[1:]:
+        for event_dgram in lcls1_xtc[offset:]:
             cydgram.addDet(ninfo, alg, event_dgram)
             df = cydgram.get()
             f.write(df)
@@ -68,9 +68,18 @@ def translate_xtc_demo(job_type):
 
 
 # Examples
+# The LCLS1 dgrams are organized differently than the LCLS2 version
+# In LCLS2, the configure contains all the names in the subsequent event dgrams
+# This isn't the case for LCLS1, so I define the first event as a pseudo-configure
+# and the second event as a configure for the rest of the events
+# There is an edge case for the crystal data, as the second event is blank
+# This causes a segfault when loading the LCLS2 xtc file with DgramManager
+# My workaround is to define the second event as the configure for the events
+# with the optional offset argument to translate_xtc_demo
+
 
 translate_xtc_demo('jungfrau')
 translate_xtc_demo('epix')
 
-translate_xtc_demo('crystal_dark')
-translate_xtc_demo('crystal_xray')
+translate_xtc_demo('crystal_dark', 2)
+translate_xtc_demo('crystal_xray', 2)
