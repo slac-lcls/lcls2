@@ -33,6 +33,7 @@ setup(
             'ami-worker = ami.worker:main',
             'ami-manager = ami.manager:main',
             'ami-client = ami.client:main',
+            'ami-offline = ami.offline:main',
         ]
     },
     classifiers=[
