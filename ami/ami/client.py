@@ -289,6 +289,7 @@ class AmiGui(QWidget):
         self.setup_layout.addWidget(self.clear_button)
 
         self.ami_layout = QVBoxLayout(self)
+        self.ami_layout.addWidget(self.setupLabel)
         self.ami_layout.addWidget(self.setup)
         self.ami_layout.addWidget(self.dataLabel)
         self.ami_layout.addWidget(self.reset_button)
