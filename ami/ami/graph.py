@@ -1,6 +1,5 @@
 import importlib
 import collections
-from ami import operation
 
 class GraphConfigError(Exception):
     pass
