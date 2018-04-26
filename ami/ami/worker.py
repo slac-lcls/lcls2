@@ -13,6 +13,7 @@ from ami.graph import Graph, GraphConfigError, GraphRuntimeError
 from ami.comm import Ports, Collector, ResultStore
 from ami.data import MsgTypes, DataTypes, Transitions, Occurrences, Message, Datagram, Transition, StaticSource
 
+
 class Request(object):
     def __init__(self, store, name, number):
         self.name = name
