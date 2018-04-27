@@ -29,6 +29,14 @@ that when you want to run all parts of ami on a single node:
 
 # Status/To-do
 
+4/26/18
+
+* Collector event builder
+* pick 1/avg N as part of the graph
+* plot of A vs. B (scatter plots)
+* stripcharts/scans
+* feedback of data from the collector to the worker
+
 4/6/18
 
 TJL created "pythonbackend" branch to explore python centric alternatives
