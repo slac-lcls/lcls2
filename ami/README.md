@@ -36,6 +36,7 @@ that when you want to run all parts of ami on a single node:
 * plot of A vs. B (scatter plots)
 * stripcharts/scans
 * feedback of data from the collector to the worker
+* test speed of multiple exec's of compiled code
 
 4/6/18
 
