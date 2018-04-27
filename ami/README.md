@@ -38,6 +38,13 @@ that when you want to run all parts of ami on a single node:
 * feedback of data from the collector to the worker
 * test speed of multiple exec's of compiled code
 
+* Notes on implementing averaging:
+  - averages should only put to the feature store when they want to update that
+    can be collected.
+  - don't want old values to collected twice
+  - what do we do in the case of very slow workers
+
+
 4/6/18
 
 TJL created "pythonbackend" branch to explore python centric alternatives
