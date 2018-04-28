@@ -1,6 +1,6 @@
 #------------------------------
 """Class :py:class:`CMWDBDocs` is a QWidget for configuration parameters
-==============================================================================
+========================================================================
 
 Usage ::
     # Test: python lcls2/psana/psana/graphqt/CMWDBDocs.py
@@ -19,16 +19,36 @@ Created on 2017-04-05 by Mikhail Dubrovin
 """
 #------------------------------
 
+import logging
+logger = logging.getLogger(__name__)
+
+#from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.CMConfigParameters import cp
-from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.Styles import style
 
-#from psana.graphqt.CMWDBDocsText  import CMWDBDocsText 
-#from psana.graphqt.CMWDBDocsList  import CMWDBDocsList
-#from psana.graphqt.CMWDBDocsTable import CMWDBDocsTable
+from psana.graphqt.CMDBUtils import list_of_documents
+from psana.graphqt.CMWDBDocsText  import CMWDBDocsText 
+from psana.graphqt.CMWDBDocsList  import CMWDBDocsList
+from psana.graphqt.CMWDBDocsTable import CMWDBDocsTable
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTextEdit #, QTabBar, QLabel, QPushButton, QHBoxLayout, 
 #from PyQt5.QtGui import QColor#, QFont
 #from PyQt5.QtCore import Qt
+
+#------------------------------
+
+def docs_widget_selector(dwtype):
+    """Factory method for selection of the document widget.
+    """
+    dwtypes = cp.list_of_doc_widgets
+
+    logger.info('Set doc widget: %s' % dwtype)
+
+    if   dwtype == dwtypes[0] : return CMWDBDocsText()
+    elif dwtype == dwtypes[1] : return CMWDBDocsList()
+    elif dwtype == dwtypes[2] : return CMWDBDocsTable()
+    else :
+        logger.warning('Unknown doc widget type "%s"' % dwtype)
+        return QTextEdit(dwtype)
 
 #------------------------------
 
@@ -41,13 +61,16 @@ class CMWDBDocs(QWidget) :
 
         cp.cmwdbdocs = self
 
+        self.dbname  = None
+        self.colname = None
+
         #self.but_close  = QPushButton('&Close') 
 
         self.list_of_doc_widgets = cp.list_of_doc_widgets # ('Text','List','Table')
 
         self.hboxw = QHBoxLayout()
         self.gui_win = None
-        self.gui_selector(cp.cdb_docw.value())
+        self.set_docs_widget(cp.cdb_docw.value())
 
         self.vbox = QVBoxLayout()
         self.vbox.addLayout(self.hboxw)
@@ -67,72 +90,61 @@ class CMWDBDocs(QWidget) :
 
 
     def set_style(self):
-        self.          setStyleSheet(style.styleBkgd)
+        self.setStyleSheet(style.styleBkgd)
         #self.but_close.setStyleSheet(style.styleButton)
         #self.setMinimumSize(600,360)
         self.setContentsMargins(-9,-9,-9,-9)
 
 
-    def gui_selector(self, docw=None):
+    def set_docs_widget(self, docw=None):
 
         if self.gui_win is not None : 
             self.gui_win.close()
             del self.gui_win
 
-        w_height = 500
-
         docw_type = docw if docw is not None else cp.cdb_docw.value()
-
-        print('gui_selector docw_type: %s' % docw_type)
-
-
-        if docw_type == self.list_of_doc_widgets[0] :
-            self.gui_win = QTextEdit(docw_type)
-
-        elif docw_type == self.list_of_doc_widgets[1] :
-            self.gui_win = QTextEdit(docw_type)
-            w_height = 170
-
-        elif docw_type == self.list_of_doc_widgets[2] :
-            self.gui_win = QTextEdit(docw_type)
-
-        else :
-            logger.warning('Unknown doc widget name "%s"' % docw_type, self._name)
+        self.gui_win = docs_widget_selector(docw_type)
 
         #self.set_status(0, 'Set configuration file')
-        #self.gui_win.setFixedHeight(w_height)
+        #self.gui_win.setFixedHeight(500)
         self.hboxw.addWidget(self.gui_win)
         self.gui_win.setVisible(True)
 
+        self.show_documents(self.dbname, self.colname)
 
-    def show_documents(self, dbname, colname) :
 
-        #self.gui_win.show_documents(dbname, colname)
-        # use temporary solution
+    def show_documents(self, dbname, colname, force_update=False) :
 
-        import psana.graphqt.CMDBUtils as dbu
+        if None in (dbname, colname) : return
 
-        txt = dbu.collection_info(dbname, colname)
-        self.gui_win.setText(txt)
+        if ((dbname, colname) != (self.dbname, self.colname))\
+        or force_update :
+            self.current_docs = list_of_documents(dbname, colname)
+            self.dbname, self.colname = dbname, colname
+
+        self.gui_win.show_documents(dbname, colname, self.current_docs)
+
+        #txt = dbu.collection_info(dbname, colname)
+        #self.gui_win.setText(txt)
 
 
     #def resizeEvent(self, e):
-        #logger.debug('resizeEvent', self._name) 
-        #print self._name + ' config: self.size():', self.size()
+        #logger.debug('resizeEvent') 
+        #logger.info self._name + ' config: self.size():', self.size()
         #self.setMinimumSize( self.size().width(), self.size().height()-40 )
         #pass
 
 
     #def moveEvent(self, e):
-        #logger.debug('moveEvent', self._name) 
+        #logger.debug('moveEvent') 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
-        #logger.debug('moveEvent: new pos:' + str(self.position), self._name)
+        #logger.debug('moveEvent: new pos:' + str(self.position))
         #pass
 
 
     def closeEvent(self, e):
-        logger.debug('closeEvent', self._name)
+        logger.debug('closeEvent')
         #self.tab_bar.close()        
         if self.gui_win is not None : self.gui_win.close()
         QWidget.close(self)
@@ -148,23 +160,24 @@ class CMWDBDocs(QWidget) :
 
 
     def keyPressEvent(self, e) :
-        print('keyPressEvent, key=', e.key())       
+        logger.info('keyPressEvent, key=', e.key())       
 
         if   e.key() == Qt.Key_Escape :
             self.close()
         elif e.key() in (Qt.Key_0, Qt.Key_1, Qt.Key_2)  : 
             docw_type = self.list_of_doc_widgets[int(e.key())]
             cp.cdb_docw.setValue(docw_type)
-            self.gui_selector()
+            self.set_docs_widget()
         else :
-            print(self.key_usage())
+            logger.info(self.key_usage())
 
 #-----------------------------
 
 if __name__ == "__main__" :
     from PyQt5.QtWidgets import QApplication
     import sys
-    logger.setPrintBits(0o177777)
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
+    #logger.setPrintBits(0o177777)
     app = QApplication(sys.argv)
     w = CMWDBDocs()
     #w.setGeometry(1, 1, 600, 200)

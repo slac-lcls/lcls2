@@ -18,6 +18,8 @@ See:
 Created on 2017-04-05 by Mikhail Dubrovin
 """
 #------------------------------
+import logging
+logger = logging.getLogger(__name__)
 
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.CMWConfigPars import CMWConfigPars
@@ -25,7 +27,6 @@ from psana.graphqt.CMWConfigFile import CMWConfigFile
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QHBoxLayout, QVBoxLayout, QTabBar
 from PyQt5.QtGui import QColor#, QFont
 from PyQt5.QtCore import Qt
-from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.Styles import style
 
 #------------------------------
@@ -35,7 +36,6 @@ class CMWConfig(QWidget) :
 
     def __init__(self, parent=None) :
         QWidget.__init__(self, parent)
-        self._name = 'CMWConfig'
 
         #self.lab_title  = QLabel     ('Configuration settings')
         #self.lab_status = QLabel     ('Status: ')
@@ -123,7 +123,7 @@ class CMWConfig(QWidget) :
 
         self.tab_bar.setCurrentIndex(tab_index)
 
-        logger.debug(' make_tab_bar - set tab: ' + cp.current_config_tab.value(), self._name)
+        logger.debug(' make_tab_bar - set tab: ' + cp.current_config_tab.value())
 
         #self.connect(self.tab_bar, QtCore.SIGNAL('currentChanged(int)'), self.on_tab_bar)
         self.tab_bar.currentChanged[int].connect(self.on_tab_bar)
@@ -151,7 +151,7 @@ class CMWConfig(QWidget) :
             w_height = 170
 
         else :
-            logger.warning('Unknown tab name "%s"' % tab_name, self._name)
+            logger.warning('Unknown tab name "%s"' % tab_name)
 
         #self.set_status(0, 'Set configuration file')
         self.gui_win.setFixedHeight(w_height)
@@ -167,9 +167,8 @@ class CMWConfig(QWidget) :
 
     def on_tab_bar(self):
         tab_ind, tab_name = self.current_tab_index_and_name()
-        logger.debug('tab_name: %s' % tab_name, self._name)
+        logger.info('Selected tab "%s" with index %d' % (tab_name, tab_ind))
         cp.current_config_tab.setValue(tab_name)
-        logger.info('Selected tab index: %d name: %s' % (tab_ind, tab_name), self._name)
         self.gui_selector(tab_name)
 
 
@@ -178,22 +177,22 @@ class CMWConfig(QWidget) :
 
 
     #def resizeEvent(self, e):
-        #logger.debug('resizeEvent', self._name) 
+        #logger.debug('resizeEvent') 
         #print self._name + ' config: self.size():', self.size()
         #self.setMinimumSize( self.size().width(), self.size().height()-40 )
         #pass
 
 
     #def moveEvent(self, e):
-        #logger.debug('moveEvent', self._name) 
+        #logger.debug('moveEvent') 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
-        #logger.debug('moveEvent: new pos:' + str(self.position), self._name)
+        #logger.debug('moveEvent: new pos:' + str(self.position))
         #pass
 
 
     def closeEvent(self, e):
-        logger.debug('closeEvent', self._name)
+        logger.debug('closeEvent')
 
         self.tab_bar.close()        
         if self.gui_win is not None : self.gui_win.close()
@@ -202,17 +201,17 @@ class CMWConfig(QWidget) :
 
 
     def on_close(self):
-        logger.debug('on_close', self._name)
+        logger.debug('on_close')
         self.close()
 
 
     def on_save(self):
-        logger.debug('on_save', self._name)
+        logger.debug('on_save')
         cp.saveParametersInFile( cp.fname_cp.value() )
 
 
     def on_show(self):
-        logger.debug('on_show - is not implemented yet...', self._name)
+        logger.debug('on_show - is not implemented yet...')
 
 
 #    def set_status(self, status_index=0, msg=''):
@@ -228,7 +227,7 @@ class CMWConfig(QWidget) :
 if __name__ == "__main__" :
     from PyQt5.QtWidgets import QApplication
     import sys
-    logger.setPrintBits(0o177777)
+    logging.basicConfig(level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = CMWConfig()
     w.setGeometry(1, 1, 600, 200)

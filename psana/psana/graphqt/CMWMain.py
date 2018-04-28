@@ -24,14 +24,20 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 #import os
 #import math
 
+#------------------------------
+
+import logging
+logger = logging.getLogger(__name__)
+
+#------------------------------
+
 from math import floor
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtGui import QPen, QBrush
 from PyQt5.QtCore import Qt, QPoint
 
 from psana.graphqt.CMConfigParameters import cp
-from psana.pyalgos.generic.Logger import logger as log
-from psana.graphqt.QWLogger import QWLogger
+from psana.graphqt.QWLoggerStd import QWLoggerStd#, QWFilter
 
 from psana.graphqt.CMWMainTabs import CMWMainTabs
 
@@ -65,8 +71,9 @@ class CMWMain(QWidget) :
         #icon.set_icons()
 
         self.wtab = CMWMainTabs()
-        self.wlog = QWLogger(log, cp, show_buttons=False)
-        self.wtmp =QTextEdit('Some text')
+        #self.wlog = QWLogger(log, cp, show_buttons=False)
+        self.wlog = QWLoggerStd(cp, show_buttons=False)
+        self.wtmp = QTextEdit('Some text')
 
         #self.vbox = QVBoxLayout() 
         #self.vbox.addWidget(self.wtab) 
@@ -94,9 +101,7 @@ class CMWMain(QWidget) :
 
         self.connect_signals_to_slots()
 
-        #self.spectrum_show(self.arr)
-        self.move(self.pos()) # + QPoint(self.width()+5, 0))
-        #self.wimg.show()
+        #self.move(self.pos()) # + QPoint(self.width()+5, 0))
 
 
     def connect_signals_to_slots(self) :
@@ -148,7 +153,7 @@ class CMWMain(QWidget) :
                  None
         
         if ifname is not None :
-            log.info('Input image file name: %s' % ifname)
+            logger.info('Input image file name: %s' % ifname)
             cp.fname_img.setValue(ifname)
             cp.current_tab.setValue('File')
         #else :
@@ -204,7 +209,7 @@ class CMWMain(QWidget) :
 
 
     def closeEvent(self, e) :
-        log.debug('%s.closeEvent' % self._name)
+        logger.debug('%s.closeEvent' % self._name)
 
         #try : self.wspe.close()
         #except : pass
@@ -217,17 +222,17 @@ class CMWMain(QWidget) :
 
  
     def resizeEvent(self, e):
-        #log.debug('resizeEvent', self._name) 
-        #log.info('CMWMain.resizeEvent: %s' % str(self.size()))
+        #logger.debug('resizeEvent', self._name) 
+        #logger.info('CMWMain.resizeEvent: %s' % str(self.size()))
         pass
 
 
     def moveEvent(self, e) :
-        #log.debug('moveEvent', self._name) 
+        #logger.debug('moveEvent', self._name) 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
-        #log.debug('moveEvent - pos:' + str(self.position), __name__)       
-        #log.info('CMWMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
+        #logger.debug('moveEvent - pos:' + str(self.position), __name__)       
+        #logger.info('CMWMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
         #self.wimg.move(self.pos() + QPoint(self.width()+5, 0))
         pass
 
@@ -242,13 +247,10 @@ class CMWMain(QWidget) :
         #print('keyPressEvent, key=', e.key())       
         if   e.key() == Qt.Key_Escape :
             self.close()
-
         elif e.key() == Qt.Key_V : 
             self.wtab.view_hide_tabs()
-
         else :
-            print(self.key_usage())
-
+            logger.info(self.key_usage())
 
 
     def on_save(self):
@@ -256,7 +258,7 @@ class CMWMain(QWidget) :
         point, size = self.mapToGlobal(QPoint(-5,-22)), self.size() # Offset (-5,-22) for frame size.
         x,y,w,h = point.x(), point.y(), size.width(), size.height()
         msg = 'Save main window x,y,w,h : %d, %d, %d, %d' % (x,y,w,h)
-        log.info(msg, self._name)
+        logger.info(msg) #, self._name)
         #print(msg)
 
         #Save main window position and size
@@ -266,8 +268,8 @@ class CMWMain(QWidget) :
         self.main_win_height.setValue(h)
 
         spl_pos = self.vspl.sizes()[0]
-        msg = 'XXX: Save main v-splitter position %d' % spl_pos
-        print(msg)
+        msg = 'Save main v-splitter position %d' % spl_pos
+        logger.debug(msg)
 
         cp.main_vsplitter.setValue(spl_pos)
 
@@ -275,7 +277,9 @@ class CMWMain(QWidget) :
         cp.saveParametersInFile() # moved to PSConfigParameters
 
         if cp.save_log_at_exit.value() :
-            log.saveLogInFile(cp.log_file.value())
+            pass
+            # ?????
+            #log.saveLogInFile(cp.log_file.value())
             #print('Saved log file: %s' % cp.log_file.value())
             #log.saveLogTotalInFile(fnm.log_file_total())
 
@@ -283,8 +287,10 @@ class CMWMain(QWidget) :
 
 def calibman(parser=None) :
     import sys
+    #sys.stdout = sys.stderr = open('/dev/null', 'w') # open('%s-stdout-stderr' % cp.log_file.value(), 'w')
+
     from PyQt5.QtWidgets import QApplication
-    log.setPrintBits(0o377) 
+    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = CMWMain(parser)
     w.show()

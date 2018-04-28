@@ -29,7 +29,7 @@ import numpy as np
 
 
 
-HOST = 'psanaphi105'
+HOST = 'psanaphi103'
 PORT = 27017
 TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T08:40:28-0800
 

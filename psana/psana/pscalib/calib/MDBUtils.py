@@ -95,9 +95,13 @@ Usage ::
 """
 #------------------------------
 
+import logging
+logger = logging.getLogger(__name__)
+
 import pickle
 import gridfs
 from pymongo import MongoClient, errors, ASCENDING, DESCENDING
+#from pymongo.errors import ConnectionFailure
 #import pymongo
 
 import sys
@@ -111,9 +115,6 @@ import psana.pscalib.calib.CalibConstants as cc
 from bson.objectid import ObjectId
 from psana.pscalib.calib.Time import Time
 
-import logging
-logger = logging.getLogger('MDBUtils')
-
 TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 
 #------------------------------
@@ -121,7 +122,16 @@ TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 def connect_to_server(host:str=cc.HOST, port:int=cc.PORT) :
     """Returns MongoDB client.
     """
-    return MongoClient(host, port)
+    client = MongoClient(host, port, connect=False)
+    try :
+        result = client.admin.command("ismaster")
+        return client
+
+    except errors.ConnectionFailure:
+        print("Server not available for port:%s host: %d" % (host, port))
+        #logger.exception(err)
+        #sys.exit("ERROR can't connect to port:%s host: %d" % (host, port))
+        return None
 
 #------------------------------
 
@@ -289,13 +299,12 @@ def connect(**kwargs) :
     col_det = collection(db_det, cname=detname)
     col_exp = collection(db_exp, cname=detname) 
 
-    if verbose :
-        print('client  : %s' % client.name)
-        print('db_exp  : %s' % db_exp.name)
-        print('col_exp : %s' % col_exp.name)
-        print('db_det  : %s' % db_det.name)
-        print('col_det : %s' % col_det.name)
-        print('==== Connect to host: %s port: %d connection time %.6f sec' % (host, port, time()-t0_sec))
+    logger.debug('client  : %s' % client.name)
+    logger.debug('db_exp  : %s' % db_exp.name)
+    logger.debug('col_exp : %s' % col_exp.name)
+    logger.debug('db_det  : %s' % db_det.name)
+    logger.debug('col_det : %s' % col_det.name)
+    logger.debug('==== Connect to host: %s port: %d connection time %.6f sec' % (host, port, time()-t0_sec))
 
     return client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det
 
@@ -316,7 +325,7 @@ def timestamp_id(id:str) -> str :
     tobj = Time.parse(str_ts)                  # Time object from parsed string
     tsec = int(tobj.sec())                     # 1521064777
     str_tsf = _timestamp(tsec)                 # re-formatted time stamp
-    #print('XXX: str_ts', str_ts, tsec, tsf)
+    #logger.debug('XXX: str_ts', str_ts, tsec, tsf)
     return str_tsf
 
 
@@ -393,20 +402,23 @@ def docdic(data, id_data, **kwargs) :
 #------------------------------
 
 def print_doc(doc) :
-    print('Data document attributes')
+    logger.info('Data document attributes')
     if doc is None :
-        print('print_doc: Data document is None...')
+        logger.info('print_doc: Data document is None...')
         return
         
+    msg = ''
     for k,v in doc.items() : 
-        print('%16s : %s' % (k,v))
+        msg += '%16s : %s' % (k,v)
+    logger.info(msg)
 
 #------------------------------
 
 def print_doc_keys(doc, keys=('run', 'time_stamp', 'data_size', 'id_data', 'extpars')) :
+    msg = ''
     for k in keys :
-        print('  %s : %s' % (k, doc.get(k,'N/A'),))
-    print('')
+        msg += '  %s : %s' % (k, doc.get(k,'N/A'))
+    logger.info(msg)
 
 #------------------------------
 
@@ -452,25 +464,25 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     t0_sec = time()
     id_data_exp = insert_data(data, fs_exp)
     id_data_det = insert_data(data, fs_det)
-    if verbose :
-        print('Insert data time %.6f sec' % (time()-t0_sec))
-        print('  - in fs_exp %s id_data_exp: %s' % (fs_exp, id_data_exp))
-        print('  - in fs_det %s id_data_det: %s' % (fs_det, id_data_det))
+
+    logger.debug('Insert data time %.6f sec' % (time()-t0_sec))
+    logger.debug('  - in fs_exp %s id_data_exp: %s' % (fs_exp, id_data_exp))
+    logger.debug('  - in fs_det %s id_data_det: %s' % (fs_det, id_data_det))
 
     doc = docdic(data, id_data_exp, **kwargs)
-    if verbose : 
-         print_doc(doc)
-         #print('XXX: inset data_type: "%s"' % doc['data_type'])
+    if verbose :
+        print_doc(doc)
+        #logger.debug('XXX: inset data_type: "%s"' % doc['data_type'])
 
     t0_sec = time()
     id_exp = insert_document(doc, col_exp)
     doc['id_data'] = id_data_det # override
     doc['id_exp']  = id_exp      # add
     id_det = insert_document(doc, col_det)
-    if verbose :
-        print('Insert 2 docs time %.6f sec' % (time()-t0_sec))
-        print('  - in collection %20s id_exp : %s' % (col_exp.name, id_exp))
-        print('  - in collection %20s id_det : %s' % (col_det.name, id_det))
+
+    logger.debug('Insert 2 docs time %.6f sec' % (time()-t0_sec))
+    logger.debug('  - in collection %20s id_exp : %s' % (col_exp.name, id_exp))
+    logger.debug('  - in collection %20s id_det : %s' % (col_det.name, id_det))
 
     return id_data_exp, id_data_det, id_exp, id_det
 
@@ -562,7 +574,9 @@ def insert_constants(data, experiment:str, detector:str, ctype:str, run:str, tim
 def del_document_data(doc, fs) :
     """From fs removes data associated with a single document.
     """
-    fs.delete(doc['id_data'])
+    oid = doc.get('id_data', None)
+    if oid is None : return
+    fs.delete(oid)
 
 #------------------------------
 
@@ -570,7 +584,10 @@ def del_collection_data(col, fs) :
     """From fs removes data associated with multiple documents in colllection col.
     """
     for doc in col.find() :
-        fs.delete(doc['id_data'])
+        del_document_data(doc, fs)
+        #oid = doc.get('id_data', None)
+        #if oid is None : return
+        #fs.delete(oid)
 
 #------------------------------
 #------------------------------
@@ -597,12 +614,12 @@ def get_data_for_doc(fs, doc) :
     if data_type == 'str'     : return s.decode()
     if data_type == 'ndarray' : 
         str_dtype = doc['data_dtype']
-        #print('XXX str_dtype:', str_dtype)
+        #logger.debug('XXX str_dtype:', str_dtype)
         #dtype = np.dtype(eval(str_dtype))
-        #print('XXX  np.dtype:', dtype)
+        #logger.debug('XXX  np.dtype:', dtype)
         nda = np.fromstring(s, dtype=str_dtype)
         nda.shape = eval(doc['data_shape']) # eval converts string shape to tuple
-        #print('XXX nda.shape =', nda.shape)
+        #logger.debug('XXX nda.shape =', nda.shape)
 
         #str_sh = doc['data_shape'] #.lstrip('(').rstrip(')')
         #nda.shape = tuple(np.fromstring(str_sh, dtype=int, sep=','))
@@ -615,20 +632,20 @@ def get_data_for_doc(fs, doc) :
 def find_docs(col, query={'ctype':'pedestals'}) :
     """Returns list of documents for query.
     """
-    try :
-        return col.find(query)
-
-    except errors.ServerSelectionTimeoutError as err: 
-        logger.exception(err)
-        sys.exit('ERROR at attempt to find data in database. Check server.')
-
-    except errors.TypeError as err: 
-        logger.exception(err)
-        sys.exit('ERROR in arguments passed to find.')
-
+    docs = col.find(query)
     if docs.count() == 0 :
-        logger.warning('Query: %s\nis not consistent with any document...')
+        logger.warning('col: %s query: %s is not consistent with any document...' % (col.name, query))
         return None
+    else : return docs
+
+    #try :
+    #    return col.find(query)
+    #except errors.ServerSelectionTimeoutError as err: 
+    #    logger.exception(err)
+    #    sys.exit('ERROR at attempt to find data in database. Check server.')
+    #except errors.TypeError as err: 
+    #    logger.exception(err)
+    #    sys.exit('ERROR in arguments passed to find.')
 
 #------------------------------
 
@@ -636,7 +653,7 @@ def find_doc(col, query={'ctype':'pedestals'}) :
     """Returns the document with latest time_sec or run number for specified query.
     """
     docs = find_docs(col, query)
-    #print('XXX Number of documents found:', docs.count())
+    #logger.debug('XXX Number of documents found:', docs.count())
 
     if (docs is None)\
     or (docs.count()==0) :
@@ -647,11 +664,9 @@ def find_doc(col, query={'ctype':'pedestals'}) :
     key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
 
     doc = docs.sort(key_sort, DESCENDING)[0]
-    msg = 'query: %s\n  %d docs found, selected doc["%s"]=%s'%\
-          (query, docs.count(), key_sort, doc[key_sort])
-
-    logger.info(msg)
-    #print(msg)
+    #msg = 'query: %s\n  %d docs found, selected doc["%s"]=%s'%\
+    #      (query, docs.count(), key_sort, doc[key_sort])
+    #logger.info(msg)
 
     return doc
 
@@ -788,7 +803,7 @@ def client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, g
     _client = client if client is not None else connect_to_server(host, port)
     #s = '\nMongoDB client host:%s port:%d' % (client_host(_client), client_port(_client))
     dbnames = database_names(_client)
-    s = '%sClient contains %d databases: %s' % (gap, len(dbnames), str(dbnames))
+    s = '\n%sClient contains %d databases: %s' % (gap, len(dbnames), ', '.join(dbnames))
     if level==1 : return s
     for idb, dbname in enumerate(dbnames) :
         db = database(_client, dbname) # client[dbname]
@@ -803,7 +818,7 @@ def client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, g
             if docs.count() > 0 :
                 doc = docs[0]
                 s += ': %s' % (str(doc.keys()))
-                #print('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
+                #logger.debug('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
             if level==3 : continue
     return s
 
@@ -861,7 +876,7 @@ if __name__ == "__main__" :
                      time_stamp='2018-01-01T00:00:00-0800', )
     #t0_sec = time()
     #id_data = insert_data(data, fs)
-    #print('Insert data in %s id_data: %s time %.6f sec' % (fs, id_data, time()-t0_sec))
+    #logger.debug('Insert data in %s id_data: %s time %.6f sec' % (fs, id_data, time()-t0_sec))
 
     #doc = docdic(data, id_data, experiment=expname, detector=detname)
     #print_doc(doc)
@@ -869,7 +884,7 @@ if __name__ == "__main__" :
     #t0_sec = time()
     #insert_document(doc, col_exp)
     #insert_document(doc, col_det)
-    #print('Insert 2 docs time %.6f sec' % (time()-t0_sec))
+    #logger.debug('Insert 2 docs time %.6f sec' % (time()-t0_sec))
 
 #------------------------------
 
@@ -883,7 +898,7 @@ if __name__ == "__main__" :
     nloops = 10
 
     for i in range(nloops) :
-        print('%s\nEntry: %4d' % (50*'_', i))
+        logger.info('%s\nEntry: %4d' % (50*'_', i))
         data = get_test_nda()
         print_ndarr(data, 'data nda') 
 
@@ -894,7 +909,7 @@ if __name__ == "__main__" :
         #id_data = insert_data(nda, fs)
         dt_sec = time() - t0_sec
         t_data += dt_sec
-        print('Insert data in %s id_data: %s time %.6f sec ' % (fs, id_data, dt_sec))
+        logger.info('Insert data in %s id_data: %s time %.6f sec ' % (fs, id_data, dt_sec))
 
         #doc = docdic(nda, id_data, experiment=expname, detector=detname, run='10', ctype='pedestals')
         #print_doc_keys(doc)
@@ -904,9 +919,9 @@ if __name__ == "__main__" :
         #idd_det = insert_document(doc, col_det)
         #dt_sec = time() - t0_sec
         #t_doc += dt_sec
-        #print('Insert 2 docs %s, %s time %.6f sec' % (idd_exp, idd_det, dt_sec))
+        #logger.info('Insert 2 docs %s, %s time %.6f sec' % (idd_exp, idd_det, dt_sec))
 
-    print('Average time to insert data and two docs: %.6f sec' % (t_data/nloops))
+    logger.info('Average time to insert data and two docs: %.6f sec' % (t_data/nloops))
 
 #------------------------------
 
@@ -921,14 +936,14 @@ if __name__ == "__main__" :
     if tname == '12' : data_type='ndarray' 
 
     doc = find_doc(col_det, query={'data_type' : data_type})
-    print('Find doc time %.6f sec' % (time()-t0_sec))
-    print('doc:\n', doc)
+    logger.info('Find doc time %.6f sec' % (time()-t0_sec))
+    logger.info('doc:\n%s' % str(doc))
     print_doc(doc)
 
     t0_sec = time()
     data = get_data_for_doc(fs, doc)
-    print('get data time %.6f sec' % (time()-t0_sec))
-    print('data:\n', data)
+    logger.info('get data time %.6f sec' % (time()-t0_sec))
+    logger.info('data:\n%s' % str(data))
 
 #------------------------------
 
@@ -939,38 +954,39 @@ if __name__ == "__main__" :
     #    connect(host=cc.HOST, port=cc.PORT)
 
     client = connect_to_server(host=cc.HOST, port=cc.PORT)
-    print('host:%s port:%d' % (client_host(client), client_port(client)))
+    logger.info('host:%s port:%d' % (client_host(client), client_port(client)))
     dbnames = database_names(client)
-    print('databases: %s' % str(dbnames))
+    logger.info('databases: %s' % str(dbnames))
     for idb, dbname in enumerate(dbnames) :
         db = database(client, dbname) # client[dbname]
         cnames = collection_names(db)
-        print('==== DB %2d: %12s # cols :%2d' % (idb, dbname, len(cnames)))
+        logger.info('==== DB %2d: %12s # cols :%2d' % (idb, dbname, len(cnames)))
         if level==1 : continue
         for icol, cname in enumerate(cnames) :
             col = collection(db, cname) # or db[cname]
             docs = col.find()
-            print('     COL %2d: %12s #docs: %d' % (icol, cname.ljust(12), docs.count()))
+            logger.info('     COL %2d: %12s #docs: %d' % (icol, cname.ljust(12), docs.count()))
             if level==2 : continue
             #for idoc, doc in enumerate(docs) :
             if docs.count() > 0 :
-                #print('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
+                #logger.info('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
                 doc = docs[0]
-                print('%s doc[0] %s' % (10*' ', str(doc.keys())))
+                logger.info('%s doc[0] %s' % (10*' ', str(doc.keys())))
 
 #------------------------------
 
 if __name__ == "__main__" :
-    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
-                        datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO) # WARNING
+    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
+    #                    datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO) # WARNING
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
-    print('%s\nTest %s:' % (50*'_',tname))
+    logger.info('%s\nTest %s:' % (50*'_',tname))
     if   tname == '0' : test_connect(tname);
     elif tname in ('1','2','3') : test_insert_one(tname);
     elif tname == '4' : test_insert_many(tname)
     elif tname == '5' : test_database_content(tname)
     elif tname in ('11','12','13') : test_get_data(tname)
-    else : print('Not-recognized test name: %s' % tname)
+    else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 
 #------------------------------

@@ -55,7 +55,7 @@ setup(name = 'psana',
                 'proc_control        = psana.pscalib.app.proc_control:do_main',
                 'proc_new_datasets   = psana.pscalib.app.proc_new_datasets:do_main',
                 'timeconverter       = psana.graphqt.app.timeconverter:timeconverter',
-                'calibman            = psana.graphqt.app.calibman:calibman_cli',
+                'calibman            = psana.graphqt.app.calibman:calibman_gui',
              ]
        },
 )

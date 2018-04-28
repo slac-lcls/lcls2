@@ -10,12 +10,16 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
 #------------------------------
 
+import logging
+logger = logging.getLogger(__name__)
+
+#------------------------------
+
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTabBar, QTextEdit, QSplitter
 from PyQt5.QtGui import QColor # QPalette, QSizePolicy
 from PyQt5.QtCore import Qt #, QPoint
 
 from psana.graphqt.CMConfigParameters import cp
-from psana.pyalgos.generic.Logger import logger
 
 from psana.graphqt.QWDateTimeSec import QWDateTimeSec
 from psana.graphqt.CMWConfig     import CMWConfig
@@ -31,7 +35,6 @@ class CMWMainTabs(QWidget) :
     def __init__ (self, parent=None, app=None) :
 
         QWidget.__init__(self, parent)
-        self._name = self.__class__.__name__
 
         cp.cmwmaintabs = self
 
@@ -62,7 +65,7 @@ class CMWMainTabs(QWidget) :
 
         #self.move(10,25)
         
-        #print('End of init')
+        #logger.debug('End of init')
         #self.set_tabs_visible(False)
 
     #--------------------------
@@ -121,7 +124,7 @@ class CMWMainTabs(QWidget) :
 
         tab_index = self.tab_names.index(cp.main_tab_name.value())            
         self.tab_bar.setCurrentIndex(tab_index)
-        logger.debug(' make_tab_bar - set tab index: %d'%tab_index, self._name)
+        logger.debug('make_tab_bar - set tab index: %d'%tab_index)
 
         self.tab_bar.currentChanged['int'].connect(self.on_tab_bar)
         self.tab_bar.tabCloseRequested.connect(self.on_tab_close_request)
@@ -147,7 +150,7 @@ class CMWMainTabs(QWidget) :
             self.gui_win = CMWConfig()
 
         elif tab_name == 't-converter' :
-            self.gui_win = QWDateTimeSec(logger=logger)
+            self.gui_win = QWDateTimeSec()
             self.gui_win.setMaximumWidth(500)
             w_height = 80
             #self.gui_win.setMaximumHeight(w_height)
@@ -169,46 +172,45 @@ class CMWMainTabs(QWidget) :
         tab_name = str(self.tab_bar.tabText(tab_ind))
         return tab_ind, tab_name
 
-    #--------------------------
+    #-------------------
 
     def on_tab_bar(self, ind):
         tab_ind, tab_name = self.current_tab_index_and_name()
-        logger.debug('Selected tab name: %s index: %d' % (tab_name,tab_ind), self._name)
+        logger.info('Selected tab "%s" with index %d' % (tab_name, tab_ind))
         cp.main_tab_name.setValue(tab_name)
         self.gui_selector(tab_name)
 
     #-------------------
 
     def on_tab_close_request(self, ind):
-        logger.debug('%s.on_tab_close_request ind:%d' % (self._name, ind))
+        logger.debug('on_tab_close_request ind:%d' % ind)
         #self.tab_bar.removeTab(ind)
-        #print('%s.on_tab_close_request tab index:%d' % (self._name, itab))
+        #logger.debug('on_tab_close_request tab index:%d' % (itab))
 
     #-------------------
 
     def on_tab_moved(self, inew, iold) :
-        print('%s.on_tab_close_request tab index begin:%d -> end:%d' % (self._name, iold, inew))
+        logger.debug('on_tab_close_request tab index begin:%d -> end:%d' % (iold, inew))
 
     #-------------------
  
     #def resizeEvent(self, e):
         #pass
         #self.frame.setGeometry(self.rect())
-        #logger.debug('resizeEvent', self._name) 
-        #print('CMWMainTabs resizeEvent: %s' % str(self.size()))
+        #logger.debug('resizeEvent') 
+        #logger.debug('CMWMainTabs resizeEvent: %s' % str(self.size()))
 
 
     #def moveEvent(self, e):
-        #logger.debug('moveEvent', self._name) 
+        #logger.debug('moveEvent') 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position), __name__)       
+        #logger.debug('moveEvent - pos:' + str(self.position))       
         #pass
 
 
     def closeEvent(self, e):
-        logger.debug('closeEvent', self._name)
-        #logger.info('%s.closeEvent' % self._name)
+        logger.debug('closeEvent')
 
         #try    : self.gui_win.close()
         #except : pass
@@ -223,12 +225,12 @@ class CMWMainTabs(QWidget) :
 
 
     def onExit(self):
-        logger.debug('onExit', self._name)
+        logger.debug('onExit')
         self.close()
 
 
     def set_tabs_visible(self, is_visible):
-        #print('XXX CMWMainTabs.set_tabs_visible: is_visible', is_visible)
+        logger.debug('set_tabs_visible: is_visible %s' % is_visible)
         self.tab_bar.setVisible(is_visible)
 
 
@@ -237,7 +239,6 @@ class CMWMainTabs(QWidget) :
 
 
     def view_hide_tabs(self) :
-        #self.set_tabs_visible(not self.tab_bar.isVisible())
         self.tab_bar.setVisible(not self.tab_bar.isVisible())
 
 
@@ -248,7 +249,7 @@ class CMWMainTabs(QWidget) :
 
 
     def keyPressEvent(self, e) :
-        #print('keyPressEvent, key=', e.key())       
+        #logger.debug('keyPressEvent, key=%s' % e.key())       
         if   e.key() == Qt.Key_Escape :
             self.close()
 
@@ -256,7 +257,7 @@ class CMWMainTabs(QWidget) :
             self.view_hide_tabs()
 
         else :
-            print(self.key_usage())
+            logger.debug(self.key_usage())
 
 #------------------------------
 
@@ -265,10 +266,12 @@ if __name__ == "__main__" :
     import sys
     from PyQt5.QtWidgets import QApplication
 
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+
     app = QApplication(sys.argv)
     w = CMWMainTabs()
     w.setGeometry(10, 25, 400, 600)
-    w.setWindowTitle(w._name)
+    w.setWindowTitle('CMWMainTabs')
     w.move(100,50)
     w.show()
     app.exec_()

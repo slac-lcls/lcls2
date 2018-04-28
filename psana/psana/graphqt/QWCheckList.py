@@ -29,6 +29,8 @@ Created on 2017-07-27 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
+import logging
+logger = logging.getLogger(__name__)
 
 import os
 
@@ -99,7 +101,7 @@ class QWCheckList(QtWidgets.QListView):
 
     def set_model(self, dic_item_state) :
         self.dic_item_state = dic_item_state
-        #print('self.model()', self.model())
+        #logger.debug('self.model()', self.model())
         if self.model() is not None :
             self.model().itemChanged.disconnect(self.on_item_changed)
             #del self.model()
@@ -115,20 +117,20 @@ class QWCheckList(QtWidgets.QListView):
 
 
     def on_clicked_test(self, item):
-        print("Clicked on item row:'%d' col:%d" % (item.row(), item.column()))
+        logger.debug("Clicked on item row:'%d' col:%d" % (item.row(), item.column()))
 
 
     def on_item_changed(self, item):
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
         item_txt = str(item.text())
-        #print("Item with text '%s', is at state %s" % (item_txt, state))
+        #logger.debug("Item with text '%s', is at state %s" % (item_txt, state))
         self.dic_item_state[item_txt] = [False, True, True][item.checkState()]
 
 
     def on_item_changed_test(self, item):
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
         item_txt = str(item.text())
-        print("Item with text '%s', is at state %s" % (item_txt, state))
+        logger.debug("Item with text '%s', is at state %s" % (item_txt, state))
         print_dic(self.dic_item_state)
 
         if item_txt == 'Opal1' :
@@ -143,12 +145,14 @@ class QWCheckList(QtWidgets.QListView):
 
 def print_dic(d, fmt='%s : %s') :
     for k,v in d.items() : 
-        print(fmt % (k.ljust(32),str(v).ljust(32)))
+        logger.debug(fmt % (k.ljust(32),str(v).ljust(32)))
 
 #-----------------------------
 
 if __name__ == "__main__" :
     import sys
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+
     d = {'CSPAD1':True, 'CSPAD2x21':False, 'pNCCD1':True, 'Opal1':False}
     #d = {}
     app = QtWidgets.QApplication(sys.argv)

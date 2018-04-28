@@ -21,10 +21,12 @@ Created on 2017-04-05 by Mikhail Dubrovin
 
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QCheckBox, QGridLayout, QVBoxLayout, QFileDialog
 # QHBoxLayout, QVBoxLayout #QTextEdit, QComboBox, QHBoxLayout, QVBoxLayout
 from psana.graphqt.CMConfigParameters import cp
-from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.Styles import style
 
 #------------------------------
@@ -117,29 +119,29 @@ class CMWConfigFile(QWidget) :
 
 
     #def resizeEvent(self, e):
-        #logger.debug('resizeEvent', self._name) 
+        #logger.debug('resizeEvent') 
         #pass
 
 
     #def moveEvent(self, e):
-        #logger.debug('moveEvent', self._name) 
+        #logger.debug('moveEvent') 
         #cp.posGUIMain = (self.pos().x(),self.pos().y())
         #pass
 
 
     def closeEvent(self, event):
-        logger.debug('closeEvent', self._name)
+        logger.debug('closeEvent')
         #try    : del cp.guiconfigparameters 
         #except : pass
 
 
     def onClose(self):
-        logger.debug('onClose', self._name)
+        logger.debug('onClose')
         self.close()
 
 
     def onRead(self):
-        logger.debug('onRead', self._name)
+        logger.debug('onRead')
         cp.readParametersFromFile( self.getFileNameFromEditField() )
         self.ediFile.setText( cp.fname_cp )
         #self.parent.ediFile.setText( cp.fname_cp )
@@ -148,52 +150,52 @@ class CMWConfigFile(QWidget) :
 
     def onWrite(self):
         fname = self.getFileNameFromEditField()
-        logger.info('onWrite - save all configuration parameters in file: ' + fname, self._name)
+        logger.info('onWrite - save all configuration parameters in file: %s' % fname)
         cp.saveParametersInFile( fname )
 
 
     def onSave(self):
         fname = cp.fname_cp
-        logger.info('onSave - save all configuration parameters in file: ' + fname, self._name)
+        logger.info('onSave - save all configuration parameters in file: %s' % fname)
         cp.saveParametersInFile( fname )
 
 
     def onDefault(self):
-        logger.info('onDefault - Set default values of configuration parameters.', self._name)
+        logger.info('onDefault - Set default values of configuration parameters.')
         cp.setDefaultValues()
         self.ediFile.setText( cp.fname_cp )
         #self.refreshGUIWhatToDisplay()
 
 
     def onPrint(self):
-        logger.info('onPrint', self._name)
+        logger.info('onPrint')
         cp.printParameters()
 
 
     def onFile(self):
-        logger.debug('onFile', self._name)
+        logger.debug('onFile')
         self.path = self.getFileNameFromEditField()
         self.dname,self.fname = os.path.split(self.path)
-        logger.info('dname : %s' % (self.dname), self._name)
-        logger.info('fname : %s' % (self.fname), self._name)
+        logger.info('dname : %s' % self.dname)
+        logger.info('fname : %s' % self.fname)
         self.path = str(QFileDialog.getOpenFileName(self,'Open file',self.dname))
         self.dname,self.fname = os.path.split(self.path)
 
         if self.dname == '' or self.fname == '' :
-            logger.info('Input directiry name or file name is empty... use default values', self._name)
+            logger.info('Input directiry name or file name is empty... use default values')
         else :
             self.ediFile.setText(self.path)
             cp.fname_cp = self.path
 
 
     def onEditFile(self):
-        logger.debug('onEditFile', self._name)
+        logger.debug('onEditFile')
         self.path = self.getFileNameFromEditField()
         #cp.fname_cp.setValue(self.path)
         cp.fname_cp = self.path
         dname,fname = os.path.split(self.path)
-        logger.info('Set dname : %s' % (dname), self._name)
-        logger.info('Set fname : %s' % (fname), self._name)
+        logger.info('Set dname : %s' % dname)
+        logger.info('Set fname : %s' % fname)
 
 
     def getFileNameFromEditField(self):
@@ -207,15 +209,15 @@ class CMWConfigFile(QWidget) :
         tit = cbx.text()
 
         par.setValue(cbx.isChecked())
-        msg = 'check box ' + tit  + ' is set to: ' + str(par.value())
-        logger.info(msg, self._name)
-
+        msg = 'check box "%s" is set to: %s' % (tit, str(par.value()))
+        logger.info(msg)
 
 #------------------------------
 
 if __name__ == "__main__" :
     from PyQt5.QtWidgets import QApplication
     import sys
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = CMWConfigFile()
     w.setGeometry(370, 350, 500,150)

@@ -21,12 +21,18 @@ See:
 Created on 2017-02-01 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
+#------------------------------
+
+import logging
+logger = logging.getLogger(__name__)
+
+#------------------------------
 
 from PyQt5.QtWidgets import QWidget, QSplitter, QTextEdit, QVBoxLayout#, QVBoxLayout
 from PyQt5.QtCore import Qt, QPoint
 
 from psana.graphqt.CMConfigParameters import cp
-from psana.pyalgos.generic.Logger import logger
+#from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.CMWDBTree import CMWDBTree
 from psana.graphqt.CMWDBButtons import CMWDBButtons
 
@@ -86,7 +92,7 @@ class CMWDBMain(QWidget) :
         #self.wbuts.but_tabs.clicked.connect(self.on_but_tabs_clicked_test)
 
     def on_but_tabs_clicked_test(self) :
-        print('XXX: CMWDBMain.on_but_tabs_clicked')
+        logger.debug('on_but_tabs_clicked')
 
 #------------------------------
 
@@ -162,7 +168,7 @@ class CMWDBMain(QWidget) :
 
         #self.hspl.moveSplitter(200, self.hspl.indexOf(self.wdocs))
 
-        #print('saveState:', self.hspl.saveState())
+        #logger.debug('saveState: %s' % self.hspl.saveState())
         #self.hspl.restoreState(state)
 
         #self.wrig.setContentsMargins(-9,-9,-9,-9)
@@ -196,16 +202,16 @@ class CMWDBMain(QWidget) :
 
  
     def resizeEvent(self, e):
-        #logger.debug('resizeEvent', self._name) 
+        #logger.debug('resizeEvent') 
         #logger.info('CMWDBMain.resizeEvent: %s' % str(self.size()))
         pass
 
 
     def moveEvent(self, e) :
-        #logger.debug('moveEvent', self._name) 
+        #logger.debug('moveEvent') 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position), __name__)       
+        #logger.debug('moveEvent - pos:' + str(self.position))       
         #logger.info('CMWDBMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
         #self.wimg.move(self.pos() + QPoint(self.width()+5, 0))
         pass
@@ -224,7 +230,7 @@ class CMWDBMain(QWidget) :
 
 
     def keyPressEvent(self, e) :
-        #print('keyPressEvent, key=', e.key())       
+        #logger.debug('keyPressEvent, key=', e.key())       
         logger.info('%s.keyPressEvent, key=%d' % (self._name, e.key()))         
         if   e.key() == Qt.Key_Escape :
             self.close()
@@ -233,15 +239,14 @@ class CMWDBMain(QWidget) :
             self.view_hide_tabs()
 
         else :
-            print(self.key_usage())
+            logger.debug(self.key_usage())
 
 
     def on_save(self):
         #point, size = self.mapToGlobal(QPoint(-5,-22)), self.size() # Offset (-5,-22) for frame size.
         #x,y,w,h = point.x(), point.y(), size.width(), size.height()
         #msg = 'Save main window x,y,w,h : %d, %d, %d, %d' % (x,y,w,h)
-        #logger.info(msg, self._name)
-        #print(msg)
+        #logger.info(msg)
 
         spl_pos = self.hspl.sizes()[0]
         msg = 'Save h-splitter position %d' % spl_pos
@@ -258,7 +263,7 @@ if __name__ == "__main__" :
   def test_CMWDBMain() :
     import sys
     from PyQt5.QtWidgets import QApplication
-    logger.setPrintBits(0o377) 
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = CMWDBMain()
     w.setMinimumSize(600, 300)

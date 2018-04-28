@@ -24,6 +24,9 @@ Adopted for LCLS2 on 2018-02-15
 #------------------------------
 
 import os
+import logging
+logger = logging.getLogger(__name__)
+
 from PyQt5.QtWidgets import QMenu, QDialog, QFileDialog, QMessageBox, QColorDialog, QWidget, QVBoxLayout
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor
@@ -72,13 +75,13 @@ def change_check_box_list_in_popup_menu(list, win_title='Set check boxes'):
     response = popupMenu.exec_()
 
     if   response == QDialog.Accepted :
-        #logger.debug('New checkbox list is accepted', __name__)         
+        #logger.debug('New checkbox list is accepted')         
         return 1
     elif response == QDialog.Rejected :
-        #logger.debug('Will use old checkbox list', __name__)
+        #logger.debug('Will use old checkbox list')
         return 0
     else                                    :
-        #logger.error('Unknown response...', __name__)
+        #logger.error('Unknown response...')
         return 2
 
 #------------------------------
@@ -95,13 +98,13 @@ def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes'):
     response = popupMenu.exec_()
 
     if   response == QDialog.Accepted :
-        #logger.debug('New checkbox dict is accepted', __name__)         
+        #logger.debug('New checkbox dict is accepted',)         
         return 1
     elif response == QDialog.Rejected :
-        #logger.debug('Will use old checkbox dict', __name__)
+        #logger.debug('Will use old checkbox dict')
         return 0
     else                                    :
-        #logger.error('Unknown response...', __name__)
+        #logger.error('Unknown response...')
         return 2
 
 #------------------------------
@@ -121,8 +124,8 @@ def select_radio_button_in_popup_menu(dict_of_pars, win_title='Select option', d
 def print_rect(r, cmt='') :
     x, y, w, h = r.x(), r.y(), r.width(), r.height()
     L, R, T, B = r.left(), r.right(), r.top(), r.bottom()
-    print('%s x=%8.2f  y=%8.2f  w=%8.2f  h=%8.2f' % (cmt, x, y, w, h))
-    print('%s L=%8.2f  B=%8.2f  R=%8.2f  T=%8.2f' % (len(cmt)*' ', L, B, R, T))
+    logger.debug('%s x=%8.2f  y=%8.2f  w=%8.2f  h=%8.2f' % (cmt, x, y, w, h))
+    logger.debug('%s L=%8.2f  B=%8.2f  R=%8.2f  T=%8.2f' % (len(cmt)*' ', L, B, R, T))
 
 #------------------------------
 
@@ -134,9 +137,9 @@ def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
                                              filter    = filter
                                              )
     if path == '' :
-        #logger.debug('Saving is cancelled.', 'get_save_fname_through_dialog_box')
+        #logger.debug('Saving is cancelled. get_save_fname_through_dialog_box')
         return None
-    #logger.info('Output file: ' + path, 'get_save_fname_through_dialog_box')
+    #logger.debug('Output file: ' + path + ' get_save_fname_through_dialog_box')
     return path
 
 #------------------------------
@@ -145,16 +148,14 @@ def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
 
     path, fext = QFileDialog.getOpenFileName(parent, title, path0, filter=filter)
 
-    #print('XXX: get_open_fname_through_dialog_box path =', path)
-    #print('XXX: get_open_fname_through_dialog_box fext =', fext)
+    #logger.debug('XXX: get_open_fname_through_dialog_box path =', path)
+    #logger.debug('XXX: get_open_fname_through_dialog_box fext =', fext)
 
     dname, fname = os.path.split(path)
     if dname == '' or fname == '' :
-        #logger.info('Input directiry name or file name is empty... keep file path unchanged...')
-        #print 'Input directiry name or file name is empty... keep file path unchanged...'
+        #logger.debug('Input directiry name or file name is empty... keep file path unchanged...'
         return None
-    #logger.info('Input file: ' + path, 'get_open_fname_through_dialog_box') 
-    #print 'Input file: ' + path
+    #logger.info('Input file: ' + path + 'get_open_fname_through_dialog_box') 
     return path
 
 #------------------------------
@@ -173,6 +174,7 @@ def confirm_dialog_box(parent=None, text='Please confirm that you aware!', title
         #mesbox.setStyleSheet (style)
 
         clicked = mesbox.exec_() # DISPLAYS THE QMessageBox HERE
+        mesbox.setDefaultButton(QMessageBox.Ok)
 
         #if   clicked == QtGui.QMessageBox.Save :
         #    logger.info('Saving is requested', __name__)
@@ -183,7 +185,8 @@ def confirm_dialog_box(parent=None, text='Please confirm that you aware!', title
         #return clicked
 
         #logger.info('You acknowkeged that saw the message:\n' + text, 'confirm_dialog_box')
-        return
+
+        return True if clicked == QMessageBox.Ok else False
 
 #------------------------------
 
@@ -251,57 +254,56 @@ if __name__ == "__main__" :
     if tname == '0':
         instrs = ['SXR', 'AMO', 'XPP', 'CXI', 'MEC']
         resp = select_item_from_popup_menu(instrs, title='Select INS', default='AMO') 
-        print('Selected:', resp)
+        logger.debug('Selected: %s' % resp)
 
     elif tname == '1':
         list_of_cbox = [['VAR1', True], ['VAR2', False], ['VAR3', False], ['VAR4', False], ['VAR5', False]]
         resp = change_check_box_list_in_popup_menu(list_of_cbox, win_title='Select vars(s)')
-        for (var,stat) in list_of_cbox : print(var, stat)
-        print('resp:', resp)
+        for (var,stat) in list_of_cbox : logger.debug('%s: %s' % (var, stat))
+        logger.debug('resp: %s' % resp)
         
     elif tname == '2': 
         dict_of_pars = {'checked':'radio1', 'list':['radio0', 'radio1', 'radio2']}
         resp = select_radio_button_in_popup_menu(dict_of_pars, win_title='Select vars(s)', do_confirm=True)
-        for (k,v) in dict_of_pars.items() : print(k, v)
-        print('resp:', resp)
+        for (k,v) in dict_of_pars.items() : logger.debug('%s: %s' % (k, v))
+        logger.debug('resp: %s' % resp)
 
     elif tname == '3':
         parent=None; path0='./'; title='get_save_fname_through_dialog_box'
         resp = get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt')
-        print('Response:', resp)
+        logger.debug('resp: %s' % resp)
 
     elif tname == '4': 
         parent=None; path0='./'; title='get_open_fname_through_dialog_box'
         resp = get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt')
-        print('Response:', resp)
+        logger.debug('resp: %s' % resp)
 
     elif tname == '5': 
         resp = confirm_dialog_box(parent=None, text='Confirm that you aware!', title='Acknowledge')
-        print('Response:', resp)
+        logger.debug('resp: %s' % resp)
 
     elif tname == '6': 
         resp = confirm_or_cancel_dialog_box(parent=None, text='Confirm or cancel', title='Confirm or cancel') 
-        print('Response:', resp)
+        logger.debug('resp: %s' % resp)
 
     elif tname == '7': 
         from time import sleep
         resp = help_dialog_box(parent=None, text='Help message goes here', title='Help')
-        print('Response:', resp)
+        logger.debug('resp: %s' % resp)
         sleep(3)
         del resp
 
     elif tname == '8': 
         resp = select_color(colini=Qt.blue, parent=None)
-        print('Response:', resp)
 
     elif tname == '9':
         dict_of_cbox = {'VAR1':True, 'VAR2':False, 'VAR3':False, 'VAR4':False, 'VAR5':False}
         resp = change_check_box_dict_in_popup_menu(dict_of_cbox, win_title='Select vars(s)')
-        for (var,stat) in dict_of_cbox.items() : print(var, stat)
-        print('resp:', resp)
+        for (var,stat) in dict_of_cbox.items() : logger.debug('%s: %s' % (var, stat))
+        logger.debug('resp: %s' % resp)
         
     else :
-        print('Sorry, not-implemented test "%s"' % tname)
+        logger.debug('Sorry, not-implemented test "%s"' % tname)
 
     del app
 
@@ -309,8 +311,11 @@ if __name__ == "__main__" :
 
 if __name__ == "__main__" :
     import sys; global sys
+
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print(50*'_', '\nTest %s' % tname)
+    logger.debug('%s\nTest %s' % (50*'_', tname))
     test(tname)
     sys.exit('End of test %s' % tname)
 

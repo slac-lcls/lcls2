@@ -21,20 +21,21 @@ Adopted for LCLS2 on 2018-02-16 by Mikhail Dubrovin
 """
 #------------------------------
 
-from PyQt5 import QtWidgets
+import logging
+logger = logging.getLogger(__name__)
+
+from PyQt5.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QButtonGroup, QPushButton, QRadioButton
 from PyQt5.QtCore import Qt
 
 #------------------------------  
-__version__ = "v2018-02-16"
-#------------------------------  
 
-class QWPopupRadioList(QtWidgets.QDialog) :
+class QWPopupRadioList(QDialog) :
     """Gets list of item for checkbox GUI in format [['name1',false], ['name2',true], ..., ['nameN',false]], 
     and modify this list in popup dialog gui.
     """
 
     def __init__(self, parent=None, dict_of_pars={}, win_title='Load action', do_confirm=True):
-        QtWidgets.QDialog.__init__(self,parent)
+        QDialog.__init__(self,parent)
         #self.setGeometry(20, 40, 500, 200)
         self.setWindowTitle(win_title)
  
@@ -42,17 +43,17 @@ class QWPopupRadioList(QtWidgets.QDialog) :
         self.dict_of_pars = dict_of_pars
         self.do_confirm   = do_confirm
 
-        self.vbox = QtWidgets.QVBoxLayout()
+        self.vbox = QVBoxLayout()
 
         self.make_radio_buttons()
 
-        self.but_cancel = QtWidgets.QPushButton('&Cancel') 
-        self.but_apply  = QtWidgets.QPushButton('&Apply') 
+        self.but_cancel = QPushButton('&Cancel') 
+        self.but_apply  = QPushButton('&Apply') 
 
         self.but_cancel.clicked.connect(self.onCancel)
         self.but_apply.clicked.connect(self.onApply)
 
-        self.hbox = QtWidgets.QHBoxLayout()
+        self.hbox = QHBoxLayout()
         self.hbox.addWidget(self.but_cancel)
         self.hbox.addWidget(self.but_apply)
         self.hbox.addStretch(1)
@@ -69,12 +70,12 @@ class QWPopupRadioList(QtWidgets.QDialog) :
 
     def make_radio_buttons(self) :
         self.list_of_rad = []
-        self.rad_grp = QtWidgets.QButtonGroup()
+        self.rad_grp = QButtonGroup()
 
         pattern = self.dict_of_pars['checked']
 
         for name in self.dict_of_pars['list']:
-            rad = QtWidgets.QRadioButton(name) 
+            rad = QRadioButton(name) 
             self.list_of_rad.append(rad)
             self.vbox.addWidget(rad)
             #self.connect(rad, QtCore.SIGNAL('clicked()'), self.onRadioButton)
@@ -118,13 +119,13 @@ class QWPopupRadioList(QtWidgets.QDialog) :
 
     #def closeEvent(self, event):
         #logger.debug('closeEvent', __name__)
-        #print('closeEvent')
+        #logger.debug('closeEvent')
         #try    : self.widg_pars.close()
         #except : pass
 
 
     #def event(self, event):
-    #    print('Event happens...:', event)
+    #    logger.debug('Event happens...:', event)
 
     
     def onRadioButton(self):
@@ -162,16 +163,21 @@ class QWPopupRadioList(QtWidgets.QDialog) :
 
 if __name__ == "__main__" :
     import sys
-    app = QtWidgets.QApplication(sys.argv)
+    from PyQt5.QtWidgets import QApplication
+
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+
+    app = QApplication(sys.argv)
     dict_of_pars = {'checked':'radio1', 'list':['radio0', 'radio1', 'radio2']}
     #w = QWPopupRadioList (None, dict_of_pars, win_title='Radio buttons', do_confirm=True)
     w = QWPopupRadioList (None, dict_of_pars, win_title='Radio buttons', do_confirm=False)
     #w.show()
     resp=w.exec_()
-    print('dict=',str(dict_of_pars))
-    print('resp=',resp)
-    print('QtWidgets.QDialog.Rejected: ', QtWidgets.QDialog.Rejected)
-    print('QtWidgets.QDialog.Accepted: ', QtWidgets.QDialog.Accepted)
+    logger.debug('dict=%s' % str(dict_of_pars))
+    logger.debug('resp=%s' % resp)
+    logger.debug('QtWidgets.QDialog.Rejected: %d' % QDialog.Rejected)
+    logger.debug('QtWidgets.QDialog.Accepted: %d' % QDialog.Accepted)
+
     #app.exec_()
 
 #------------------------------

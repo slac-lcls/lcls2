@@ -24,15 +24,20 @@ Adopted for LCLS2 on 2018-02-15
 
 import os
 import sys
-from psana.graphqt.Frame import Frame
-from PyQt5 import QtWidgets, QtCore # QtGui, 
+
+import logging
+logger = logging.getLogger(__name__)
+
+#from psana.graphqt.Frame import Frame
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QFileDialog
+from PyQt5.QtCore import pyqtSignal #, Qt, QRectF, QPointF, QTimer
 
 #------------------------------
 
-class QWFileName(Frame) : # QtWidgets.QWidget
+class QWFileName(QWidget) :
     """Widget for file name input
     """
-    path_is_changed = QtCore.pyqtSignal('QString')
+    path_is_changed = pyqtSignal('QString')
 
     def __init__(self, parent=None, butname='Browse', label='File:',\
                  path='/reg/neh/home/dubrovin/LCLS/rel-expmon/log.txt',\
@@ -40,21 +45,20 @@ class QWFileName(Frame) : # QtWidgets.QWidget
                  fltr='*.txt *.data *.png *.gif *.jpg *.jpeg\n *',\
                  show_frame=False) :
 
-        #QtWidgets.QWidget.__init__(self, parent)
-        Frame.__init__(self, parent, mlw=1, vis=show_frame)
-        self._name = self.__class__.__name__
+        QWidget.__init__(self, parent)
+        #Frame.__init__(self, parent, mlw=1, vis=show_frame)
 
         self.mode = mode
         self.path = path
         self.fltr = fltr
         self.show_frame = show_frame
 
-        self.lab = QtWidgets.QLabel(label)
-        self.but = QtWidgets.QPushButton(butname)
-        self.edi = QtWidgets.QLineEdit(path)
+        self.lab = QLabel(label)
+        self.but = QPushButton(butname)
+        self.edi = QLineEdit(path)
         self.edi.setReadOnly(True) 
 
-        self.hbox = QtWidgets.QHBoxLayout() 
+        self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.lab)
         self.hbox.addWidget(self.edi)
         self.hbox.addWidget(self.but)
@@ -99,43 +103,49 @@ class QWFileName(Frame) : # QtWidgets.QWidget
 #------------------------------
  
     def on_but(self):
-        self.path = str(QtWidgets.QFileDialog.getSaveFileName(self, 'Output file', self.path, filter=self.fltr)) \
-                    if self.mode == 'w' else \
-                    str(QtWidgets.QFileDialog.getOpenFileName(self, 'Input file', self.path, filter=self.fltr))
+        logger.debug('on_but')
+        resp = QFileDialog.getSaveFileName(self, 'Output file', self.path, filter=self.fltr) \
+               if self.mode == 'w' else \
+               QFileDialog.getOpenFileName(self, 'Input file', self.path, filter=self.fltr)
+
+        logger.debug('response: %s len=%d' % (resp, len(resp)))
+
+        self.path, filter = resp
 
         dname, fname = os.path.split(self.path)
 
         if self.mode == 'r' and not os.path.lexists(self.path) :
+            logger.debug('pass does not exist: %s' % self.path)
             return
             #raise IOError('File %s is not available' % self.path)
 
         elif dname == '' or fname == '' :
+            logger.debug('Input directiry name or file name is empty... use default values')
             return
-            #logger.info('Input directiry name or file name is empty... use default values', __name__)
-            #print('Input directiry name or file name is empty... use default values')
 
         else :
+            logger.debug('Selected file: %s' % self.path)
             self.edi.setText(self.path)
-            #self.emit(QtCore.SIGNAL('path_is_changed(QString)'), self.path)
             self.path_is_changed.emit(self.path)
-            #logger.info('Selected file:\n' + self.path, __name__)
-            #print('Selected file: %s' % self.path)
 
 #------------------------------
 
     def connect_path_is_changed_to_recipient(self, recip) :
-        #self.connect(self, QtCore.SIGNAL('path_is_changed(QString)'), recip)
         self.path_is_changed['QString'].connect(recip)
 
 #------------------------------
  
     def test_signal_reception(self, s) :
-        print('%s.%s: str=%s' % (self._name, sys._getframe().f_code.co_name, s))
+        logger.debug('test_signal_reception: %s' % s)
 
 #------------------------------
 
 if __name__ == "__main__" :
-    app = QtWidgets.QApplication(sys.argv)
+
+    from PyQt5.QtWidgets import QApplication
+
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+    app = QApplication(sys.argv)
     w = QWFileName(None, butname='Select', label='Path:',\
                    path='/reg/neh/home/dubrovin/LCLS/rel-expmon/log.txt', show_frame=True)
     w.connect_path_is_changed_to_recipient(w.test_signal_reception)

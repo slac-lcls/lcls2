@@ -19,6 +19,11 @@ Created on 2017-03-23 by Mikhail Dubrovin
 """
 #------------------------------
 
+import logging
+logger = logging.getLogger(__name__)
+
+#------------------------------
+
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
 import psana.graphqt.CMDBUtils as dbu
@@ -43,15 +48,18 @@ class CMWDBTree(QWTree) :
 
     def fill_tree_model(self, pattern='') :
 
+        self.clear_model()
+
         client = dbu.connect_client()
+        if client is None :
+            logger.warning("Can't connect to server")
+            return
 
         #pattern = 'cdb_xcs'
         #pattern = 'cspad'
         dbnames = dbu.database_names(client)
         if pattern :
             dbnames = [name for name in dbnames if pattern in name]
-
-        self.clear_model()
 
         for dbname in dbnames :
             parentItem = self.model.invisibleRootItem()
@@ -83,17 +91,25 @@ class CMWDBTree(QWTree) :
         itemname = item.text()
         parent = item.parent()
         parname = parent.text() if parent is not None else None
-        msg = 'on_click item: %s parent: %s' % (itemname, parname) # index.row()
-        logger.info(msg, self._name)
+        msg = 'clicked item: %s parent: %s' % (itemname, parname) # index.row()
+        logger.info(msg)
         if parent is not None : self.db_and_collection_selected.emit(parname, itemname)
 
 
     def on_db_and_collection_selected(self, dbname, colname) :
         msg = 'on_db_and_collection_selected DB: %s collection: %s' % (dbname, colname)
-        logger.info(msg, self._name)
+        logger.debug(msg)
         wdocs = cp.cmwdbdocs
         if wdocs is None : return
         wdocs.show_documents(dbname, colname)
+ 
+
+    def on_item_selected(self, selected, deselected):
+        QWTree.on_item_selected(self, selected, deselected)
+
+        itemsel = self.model.itemFromIndex(selected)
+        if itemsel is not None :
+            cp.last_selection = cp.DB_COLS
 
 #------------------------------
 

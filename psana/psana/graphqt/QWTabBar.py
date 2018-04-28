@@ -21,6 +21,8 @@ Created on 2017-02-08 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
+import logging
+logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QTabBar#, QWidget
 from PyQt5.QtCore import QPoint, QSize # Qt, QEvent
@@ -33,7 +35,7 @@ class QWTabBar(QTabBar) :
     """
     def __init__ (self, parent=None, width=80) :
         QTabBar.__init__(self, parent)
-        self._name = self.__class__.__name__
+        #self._name = self.__class__.__name__
         icon.set_icons()
 
         self.tab_width = width
@@ -89,14 +91,14 @@ class QWTabBar(QTabBar) :
         self.tabMoved[int,int].connect(self.on_tab_moved)
 
       #but_close.setVisible(True)
-        #print(str(but_close))
+        #logger.debug(str(but_close))
     
-        #print(dir(but_close))
+        #logger.debug(dir(but_close))
 
     #-------------------
 
     def on_current_changed(self, itab) :
-        print('%s.on_current_changed tab index:%d' % (self._name, itab))
+        logger.debug('on_current_changed tab index:%d' % (itab))
 
     #-------------------
 
@@ -109,17 +111,17 @@ class QWTabBar(QTabBar) :
 
     def on_tab_close(self) :
         tab_ind, tab_name = self.current_tab_index_and_name()
-        print('%s.on_tab_close tab index:%d name:%s' % (self._name, tab_ind, tab_name))
+        logger.debug('on_tab_close tab index:%d name:%s' % (tab_ind, tab_name))
 
     #-------------------
 
     def on_tab_close_request(self, itab) :
-        print('%s.on_tab_close_request tab index:%d' % (self._name, itab))
+        logger.debug('on_tab_close_request tab index:%d' % itab)
 
     #-------------------
 
     def on_tab_moved(self, inew, iold) :
-        print('%s.on_tab_close_request tab index begin:%d -> end:%d' % (self._name, iold, inew))
+        logger.debug('on_tab_close_request tab index begin:%d -> end:%d' % (iold, inew))
 
     #-------------------
 
@@ -135,7 +137,7 @@ class QWTabBar(QTabBar) :
 
 
     def enterEvent(self, e) :
-        print('%s.enterEvent' % self._name, e.type())
+        logger.debug('enterEvent %s' % e.type())
         #if e.type() == QEvent.Enter :
         #self.setTabEnabled(self.tabi_add, True)
         #self.setTabsClosable(True)
@@ -146,7 +148,7 @@ class QWTabBar(QTabBar) :
 
 
     def leaveEvent(self, e) :
-        print('%s.leaveEvent' % self._name, e.type())
+        logger.debug('leaveEvent %s' % e.type())
         #if e.type() == QtCore.QEvent.Leave :
         #self.setTabEnabled(self.tabi_add, False)
         #self.setTabsClosable(False)
@@ -163,7 +165,7 @@ class QWTabBar(QTabBar) :
 
     #def event(self, e) :
     #    QTabBar.event(self, e)
-    #    print('%s.event' % self._name, e.type())
+    #    logger.debug('event %s' % e.type())
 
 
     #def setExpanding(self, enabled) :
@@ -171,16 +173,15 @@ class QWTabBar(QTabBar) :
 
 
     #def mouseMoveEvent(self, e) :
-    #    print '%s.mouseMoveEvent x,y=' % self._name, e.x(), e.y()
+    #    logger.debug('mouseMoveEvent x,y=%.3f,%.3f' % (e.x(), e.y()))
 
 
     def mouseHoverEvent(self, e) :
-        print('%s.mouseHoverEvent' % self._name)
+        logger.debug('mouseHoverEvent')
 
 
-    #def closeEvent(self, event):
-        #print '%s.closeEvent' % self._name
-        #log.info('closeEvent', self._name)
+    def closeEvent(self, event):
+        logger.debug('closeEvent')
 
         #try    : self.gui_win.close()
         #except : pass
