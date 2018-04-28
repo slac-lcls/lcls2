@@ -8,7 +8,9 @@ namespace Pds {
     class FexCfg {
     public:
       uint32_t _streams;
-      uint32_t _rsvd[3];
+      uint32_t _rsvd;
+      uint32_t _test_pattern_errors;      
+      uint32_t _test_pattern_errbits;
 
       class StreamBase {
       public:
@@ -28,7 +30,13 @@ namespace Pds {
         uint32_t _free;
       } _base  [4];
 
-      uint32_t _rsvd2[44];
+      uint32_t _rsvd_50[0x20>>2];
+      uint32_t _bram_wr_errors;
+      uint32_t _bram_wr_sample;
+      uint32_t _bram_rd_errors;
+      uint32_t _bram_rd_sample;
+
+      uint32_t _rsvd_80[32];
 
       class Stream {
       public:

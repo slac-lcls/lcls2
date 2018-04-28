@@ -24,7 +24,7 @@ namespace Pds {
       uint32_t _match;
       uint32_t _rsvd;
       uint32_t _delay[8];
-      uint32_t _rsvd2[0xf4];
+      uint32_t _rsvd2[0x1f4];
     };
   };
 };

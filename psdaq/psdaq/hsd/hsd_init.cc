@@ -139,6 +139,8 @@ int main(int argc, char** argv) {
 
   Module* p = Module::create(fd);
 
+  p->dumpMap();
+
   p->board_status();
 
   p->fmc_dump();

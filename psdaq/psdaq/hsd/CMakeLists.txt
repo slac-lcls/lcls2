@@ -13,7 +13,8 @@ add_library(hsd SHARED
   LocalCpld.cc
   Mmcm.cc
   Module.cc
-  Pgp2bAxi.cc
+  Pgp2b.cc
+  Pgp3.cc
   PhyCore.cc
   QABase.cc
   TprCore.cc
