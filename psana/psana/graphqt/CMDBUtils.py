@@ -19,13 +19,24 @@ See:
 Created on 2018-04-10 by Mikhail Dubrovin
 """
 #------------------------------
+import logging
+logger = logging.getLogger(__name__)
+#_name = 'DCMDBUtils'
+#from psana.pyalgos.generic.Logger import logger
 
 import psana.pscalib.calib.MDBUtils as dbu
+
+ObjectId          = dbu.ObjectId
 
 connect_to_server = dbu.connect_to_server
 database_names    = dbu.database_names
 database          = dbu.database
 collection_names  = dbu.collection_names   
+collection        = dbu.collection
+
+timestamp_id      = dbu.timestamp_id
+
+#document_info     = dbu.document_info
 #db_prefixed_name  = dbu.db_prefixed_name   # ('') 
 #delete_databases  = dbu.delete_databases   # (list_db_names)
 #delete_collections= dbu.delete_collections # (dic_db_cols)
@@ -33,16 +44,13 @@ collection_names  = dbu.collection_names
 
 #------------------------------
 from psana.graphqt.CMConfigParameters import cp
-from psana.pyalgos.generic.Logger import logger
-
-_name = 'DCMDBUtils'
 
 #------------------------------
 
 def connect_client() :
     host = cp.cdb_host.value()
     port = cp.cdb_port.value()
-    logger.debug('Connect client to host: %s port: %d' % (host, port), _name)
+    logger.debug('Connect client to host: %s port: %d' % (host, port))
     return dbu.connect_to_server(host, port)
 
 #------------------------------
@@ -51,7 +59,7 @@ def delete_databases(list_db_names) :
     """Delete databases specified in the list_db_names
     """
     client = connect_client()
-    logger.debug('Delete databases:\n  %s' % ('\n  '.join(list_db_names)), _name)
+    logger.debug('Delete databases:\n  %s' % ('\n  '.join(list_db_names)))
     dbu.delete_databases(client, list_db_names)
 
 #------------------------------
@@ -65,7 +73,27 @@ def delete_collections(dic_db_cols) :
         db = dbu.database(client, dbname)
         msg += '\nFrom database: %s delete collections:\n  %s' % (dbname, '\n  '.join(lstcols))
         dbu.delete_collections(db, lstcols)
-    logger.debug(msg, _name)
+    logger.debug(msg)
+
+#------------------------------
+
+def delete_documents(dbname, colname, doc_ids) :
+    """Delete documents with _id-s in doc_ids from dbname, colname
+    """
+    #logger.debug('Deleting documents:\n  %s' % ('\n  '.join(doc_ids)))
+    client = connect_client()
+    db, fs = dbu.db_and_fs(client, dbname)
+    col = collection(db, colname)
+    #msg = 'Deleted documents from db: %s col: %s' % (dbname, colname)
+    for s in doc_ids :
+        oid = ObjectId(s)
+        doc = dbu.find_doc(col, query={'_id':oid})
+        if doc is None : continue
+        #msg += '\n  %s and its data' % doc.get('_id', 'N/A')
+        dbu.del_document_data(doc, fs)
+        dbu.delete_document_from_collection(col, oid)
+
+    #logger.debug(msg)
 
 #------------------------------
 
@@ -78,4 +106,22 @@ def collection_info(dbname, colname) :
 
 #------------------------------
 
+def list_of_documents(dbname, colname) :
+    client = connect_client()
+    db = database(client, dbname)
+    #db, fs = dbu.db_and_fs(client, dbname='cdb-cxi12345')
+    col = collection(db, colname)
+    docs = col.find().sort('_id', dbu.DESCENDING)
+    return [d for d in docs]
+
+#------------------------------
+
+def document_info(doc, keys:tuple=('time_sec','time_stamp','experiment',\
+                  'detector','ctype','run','ts_data','data_type','data_dtype', '_id'),\
+                  fmt:str='%10s %24s %11s %24s %16s %4s %30s %10s %10s %24s') :
+    """The same as dbu.document_info, but with different default parameters (added _id).
+    """
+    return dbu.document_info(doc, keys, fmt)
+
+#------------------------------
 

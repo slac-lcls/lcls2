@@ -23,8 +23,12 @@ Adopted for LCLS2 on 2018-02-16 by Mikhail Dubrovin
 """
 #------------------------------
 
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, QPoint, QMargins, QEvent, QSize
+import logging
+logger = logging.getLogger(__name__)
+
+from PyQt5.QtWidgets import QDialog, QPushButton, QListWidget, QVBoxLayout,\
+                            QListWidgetItem, QLabel
+from PyQt5.QtCore import Qt, QPoint, QEvent, QSize
 from PyQt5.QtGui import QCursor
 
 import psana.graphqt.ColorTable as ct
@@ -32,16 +36,16 @@ from psana.graphqt.Styles import style
 
 #------------------------------
 
-class QWPopupSelectColorBar(QtWidgets.QDialog) :
+class QWPopupSelectColorBar(QDialog) :
 
     def __init__(self, parent=None):
 
-        QtWidgets.QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent)
 
         # Confirmation buttons
-        self.but_cancel = QtWidgets.QPushButton('&Cancel') 
-        #self.but_apply  = QtWidgets.QPushButton('&Apply') 
-        #self.but_create = QtWidgets.QPushButton('&Create') 
+        self.but_cancel = QPushButton('&Cancel') 
+        #self.but_apply  = QPushButton('&Apply') 
+        #self.but_create = QPushButton('&Create') 
 
         #cp.setIcons()
         #self.but_cancel.setIcon(cp.icon_button_cancel)
@@ -49,17 +53,17 @@ class QWPopupSelectColorBar(QtWidgets.QDialog) :
         #self.connect(self.but_cancel, QtCore.SIGNAL('clicked()'), self.onCancel)
         #self.connect(self.but_apply,  QtCore.SIGNAL('clicked()'), self.onApply)
 
-        #self.hbox = QtWidgets.QVBoxLayout()
+        #self.hbox = QVBoxLayout()
         #self.hbox.addWidget(self.but_cancel)
         #self.hbox.addWidget(self.but_apply)
         ##self.hbox.addStretch(1)
 
         self.ctab_selected = None
-        self.list = QtWidgets.QListWidget(parent)
+        self.list = QListWidget(parent)
 
         self.fill_list()
 
-        vbox = QtWidgets.QVBoxLayout()
+        vbox = QVBoxLayout()
         vbox.addWidget(self.list)
         self.setLayout(vbox)
 
@@ -72,15 +76,15 @@ class QWPopupSelectColorBar(QtWidgets.QDialog) :
 
     def fill_list(self) :
         for i in range(1,9) :
-           item = QtWidgets.QListWidgetItem('%02d'%i, self.list)
+           item = QListWidgetItem('%02d'%i, self.list)
            item.setSizeHint(QSize(200,30))
            item._coltab_index = i
            #item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-           lab = QtWidgets.QLabel(parent=None)
+           lab = QLabel(parent=None)
            lab.setPixmap(ct.get_pixmap(i, size=(200,30)))
            self.list.setItemWidget(item, lab)
 
-        item = QtWidgets.QListWidgetItem('cancel', self.list)
+        item = QListWidgetItem('cancel', self.list)
         self.list.setItemWidget(item, self.but_cancel)
         
   
@@ -89,22 +93,22 @@ class QWPopupSelectColorBar(QtWidgets.QDialog) :
         self.accept()
 
 
-#class QWPopupSelectColorBarV0(QtWidgets.QDialog) :
+#class QWPopupSelectColorBarV0(QDialog) :
 
     def __init__V0(self, parent=None):
 
-        QtWidgets.QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent)
 
         self.ctab_selected = None
-        #self.list = QtWidgets.QListWidget(parent)
+        #self.list = QListWidget(parent)
 
         #self.fill_list(lst)
         #self.fill_list_icons(lst_icons)
 
         # Confirmation buttons
-        self.but_cancel = QtWidgets.QPushButton('&Cancel') 
-        #self.but_apply  = QtWidgets.QPushButton('&Apply') 
-        #self.but_create = QtWidgets.QPushButton('&Create') 
+        self.but_cancel = QPushButton('&Cancel') 
+        #self.but_apply  = QPushButton('&Apply') 
+        #self.but_create = QPushButton('&Create') 
 
         #cp.setIcons()
         #self.but_cancel.setIcon(cp.icon_button_cancel)
@@ -112,15 +116,15 @@ class QWPopupSelectColorBar(QtWidgets.QDialog) :
         #self.connect(self.but_cancel, QtCore.SIGNAL('clicked()'), self.onCancel)
         #self.connect(self.but_apply,  QtCore.SIGNAL('clicked()'), self.onApply)
 
-        #self.hbox = QtWidgets.QVBoxLayout()
+        #self.hbox = QVBoxLayout()
         #self.hbox.addWidget(self.but_cancel)
         #self.hbox.addWidget(self.but_apply)
         ##self.hbox.addStretch(1)
 
 
-        vbox = QtWidgets.QVBoxLayout()
+        vbox = QVBoxLayout()
         for i in range(1,9) :
-           lab = QtWidgets.QLabel(parent=None)
+           lab = QLabel(parent=None)
            lab.setPixmap(ct.get_pixmap(i, size=(200,30)))
            #lab.setText('%02d'%i) # set text !!!OR!!! pixmam
            #lab.setContentsMargins(QMargins(-5,-5,-5,-5))
@@ -146,7 +150,7 @@ class QWPopupSelectColorBar(QtWidgets.QDialog) :
         #self.setMaximumWidth(600)
         #self.setStyleSheet(style.styleBkgd)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-        self.setContentsMargins(QMargins(-9,-9,-9,-9))
+        self.setContentsMargins(-9,-9,-9,-9)
         #self.setStyleSheet(style.styleBkgd)
         #self.but_create.setStyleSheet(style.styleButton)
         #self.but_apply.setStyleSheet(style.styleButton)
@@ -162,23 +166,23 @@ class QWPopupSelectColorBar(QtWidgets.QDialog) :
 
 
     def mousePressEvent(self, e):
-        #print('mousePressEvent')
+        logger.debug('mousePressEvent')
         child = self.childAt(e.pos())
-        if isinstance(child, QtWidgets.QLabel) :
-            #print('Selected color table index: %d' % child._coltab_index)
+        if isinstance(child, QLabel) :
+            logger.debug('Selected color table index: %d' % child._coltab_index)
             self.ctab_selected = child._coltab_index
             self.accept()
 
 
     def event(self, e):
-        #print('event.type', e.type())
+        #logger.debug('event.type %s' % e.type())
         if e.type() == QEvent.WindowDeactivate :
             self.reject()
-        return QtWidgets.QDialog.event(self, e)
+        return QDialog.event(self, e)
     
 
     def closeEvent(self, e) :
-        #logger.info('closeEvent', __name__)
+        logger.debug('closeEvent')
         self.reject()
 
 
@@ -187,7 +191,7 @@ class QWPopupSelectColorBar(QtWidgets.QDialog) :
 
  
     def onCancel(self):
-        #logger.debug('onCancel', __name__)
+        logger.debug('onCancel', __name__)
         self.reject()
 
 
@@ -197,7 +201,7 @@ class QWPopupSelectColorBar(QtWidgets.QDialog) :
 
 
 #    def onSelect(self):
-#        print('onSelect')
+#        logger.debug('onSelect')
 
 #------------------------------  
 
@@ -205,8 +209,8 @@ def popup_select_color_table(parent) :
     w = QWPopupSelectColorBar(parent)
     ##w.show()
     resp=w.exec_()
-    if   resp == QtWidgets.QDialog.Accepted : return w.selectedColorTable()
-    elif resp == QtWidgets.QDialog.Rejected : return None
+    if   resp == QDialog.Accepted : return w.selectedColorTable()
+    elif resp == QDialog.Rejected : return None
     else : return None
 
 #------------------------------
@@ -216,19 +220,24 @@ def popup_select_color_table(parent) :
 #------------------------------
  
 def test_select_color_table(tname) :
+    from PyQt5.QtWidgets import QApplication
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     #lst = sorted(os.listdir('/reg/d/psdm/CXI/'))
-    #print('lst:', lst)
-    app = QtWidgets.QApplication(sys.argv)
+    #logger.debug('lst: %s' % lst)
+    app = QApplication(sys.argv)
     ctab_ind = popup_select_color_table(None)
-    print('Selected color table index = %s' % ctab_ind)
+    logger.debug('Selected color table index = %s' % ctab_ind)
 
 #------------------------------
  
 
 if __name__ == "__main__" :
     import sys; global sys
+
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print(50*'_', '\nTest %s' % tname)
+    logger.debug('%s\nTest %s' % (50*'_', tname))
     if   tname == '0': test_select_color_table(tname)
     #elif tname == '1': test_select_icon(tname)
     else : sys.exit('Test %s is not implemented' % tname)

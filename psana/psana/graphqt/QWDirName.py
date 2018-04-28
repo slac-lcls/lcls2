@@ -31,19 +31,19 @@ class QWDirName(QWFileName) : # QtGui.QWidget
     """
     def __init__(self, parent=None, butname='Select', label='Dir:',\
                  path='/reg/neh/home/dubrovin/LCLS/rel-expmon/',\
-                 fltr=QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks,\
+                 fltr=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,\
                  show_frame=False) :
 
         QWFileName.__init__(self, parent, butname, label, path, mode='r', fltr=fltr, show_frame=show_frame)
-        self._name = self.__class__.__name__
 
 #------------------------------
  
     def on_but(self):
+        logger.debug('on_but')
         path0 = self.edi.text()
         #pdir, dir = os.path.split(path0)
         #pdir, dir = path0.rsplit('/',1)
-        path1 = str(QtWidgets.QFileDialog.getExistingDirectory(self,'Select directory', path0, self.fltr))
+        path1 = str(QFileDialog.getExistingDirectory(self,'Select directory', path0, self.fltr))
 
         if   path1 == ''    : return # if nothing is selected
         elif path1 == path0 : return # is selected the same directory
@@ -53,12 +53,14 @@ class QWDirName(QWFileName) : # QtGui.QWidget
             self.path_is_changed.emit(self.path)
             #self.emit(QtCore.SIGNAL('path_is_changed(QString)'), self.path)
             #logger.info('Selected file:\n' + self.path, __name__)
-            #print 'Selected file: %s' % self.path
+            logger.debug('Selected file: %s' % self.path)
 
 #------------------------------
 
 if __name__ == "__main__" :
-    app = QtWidgets.QApplication(sys.argv)
+    from PyQt5.QtWidgets import QApplication
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+    app = QApplication(sys.argv)
     w = QWDirName(None, butname='Select', label='Dir:', path='/reg/neh/home/dubrovin/LCLS/rel-expmon', show_frame=True)
     w.connect_path_is_changed_to_recipient(w.test_signal_reception)
     w.show()

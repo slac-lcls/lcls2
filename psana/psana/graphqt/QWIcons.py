@@ -31,6 +31,9 @@ Adopted for LCLS2 on 2018-02-15
 #------------------------------
 
 import os
+import logging
+logger = logging.getLogger(__name__)
+
 from PyQt5.QtGui import QIcon
 
 #------------------------------
@@ -48,16 +51,16 @@ class QWIcons() :
         _ROOT = os.path.abspath(os.path.dirname(__file__))
         #path_icon = 'psana/psana/graphqt/data/icons'
         path_icon = '%s/data/icons' % _ROOT
-        #print('XXX set_icons :path_icon', path_icon)
+        #logger.debug('XXX set_icons :path_icon', path_icon)
         return path_icon
 
 #------------------------------
 #    def path_to_icons_v1(self) :
 #        import pkgutil
 #        path_icon = pkgutil.get_data('graphqt', 'data/icons/contents.png')
-#        print('XXX set_icons :path_icon', path_icon)
-#        print('XXX set_icons :__name__', __name__)
-#        print('XXX set_icons :__file__', __file__)
+#        logger.debug('XXX set_icons :path_icon', path_icon)
+#        logger.debug('XXX set_icons :__name__', __name__)
+#        logger.debug('XXX set_icons :__file__', __file__)
 #        return path_icon
 #------------------------------
 
@@ -138,37 +141,38 @@ icon = QWIcons()
 if __name__ == "__main__" :
 
   def test_QWIcons() :
-    print('Icon pathes:')
-    print(icon.path_icon_contents)
-    print(icon.path_icon_mail_forward)
-    print(icon.path_icon_button_ok)
-    print(icon.path_icon_button_cancel)
-    print(icon.path_icon_exit)
-    print(icon.path_icon_home)
-    print(icon.path_icon_redo)
-    print(icon.path_icon_undo)  
-    print(icon.path_icon_reload)
-    print(icon.path_icon_save)
-    print(icon.path_icon_save_cfg)
-    print(icon.path_icon_edit)
-    print(icon.path_icon_browser)
-    print(icon.path_icon_monitor)
-    print(icon.path_icon_unknown)
-    print(icon.path_icon_plus)
-    print(icon.path_icon_minus)
-    print(icon.path_icon_logviewer)
-    print(icon.path_icon_lock)
-    print(icon.path_icon_unlock)
-    print(icon.path_icon_convert)
-    print(icon.path_icon_table)
-    print(icon.path_icon_folder_open)
-    print(icon.path_icon_folder_closed)
+    logger.debug('Icon pathes:')
+    logger.debug(icon.path_icon_contents)
+    logger.debug(icon.path_icon_mail_forward)
+    logger.debug(icon.path_icon_button_ok)
+    logger.debug(icon.path_icon_button_cancel)
+    logger.debug(icon.path_icon_exit)
+    logger.debug(icon.path_icon_home)
+    logger.debug(icon.path_icon_redo)
+    logger.debug(icon.path_icon_undo)  
+    logger.debug(icon.path_icon_reload)
+    logger.debug(icon.path_icon_save)
+    logger.debug(icon.path_icon_save_cfg)
+    logger.debug(icon.path_icon_edit)
+    logger.debug(icon.path_icon_browser)
+    logger.debug(icon.path_icon_monitor)
+    logger.debug(icon.path_icon_unknown)
+    logger.debug(icon.path_icon_plus)
+    logger.debug(icon.path_icon_minus)
+    logger.debug(icon.path_icon_logviewer)
+    logger.debug(icon.path_icon_lock)
+    logger.debug(icon.path_icon_unlock)
+    logger.debug(icon.path_icon_convert)
+    logger.debug(icon.path_icon_table)
+    logger.debug(icon.path_icon_folder_open)
+    logger.debug(icon.path_icon_folder_closed)
 
 #------------------------------
 
 if __name__ == "__main__" :
     import sys
     from PyQt5.QtWidgets import QApplication
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
     icon.set_icons()
     test_QWIcons()

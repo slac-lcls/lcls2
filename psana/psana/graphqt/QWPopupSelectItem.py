@@ -110,17 +110,17 @@ class QWPopupSelectItem(QtWidgets.QDialog) :
         #item.checkState()
         self.name_sel = item.text()
         #if self.name_sel in self.years : return # ignore selection of year
-        #print(self.name_sel)
+        #logger.debug(self.name_sel)
         #logger.debug('Selected experiment %s' % self.name_sel, __name__)  
         self.accept()
 
 
     #def mousePressEvent(self, e):
-    #    print('mousePressEvent')
+    #    logger.debug('mousePressEvent')
 
         
     def event(self, e):
-        #print('event.type', e.type())
+        #logger.debug('event.type', e.type())
         if e.type() == QEvent.WindowDeactivate :
             self.reject()
         return QtWidgets.QDialog.event(self, e)
@@ -159,20 +159,26 @@ def popup_select_item_from_list(parent, lst) :
 #----------- TESTS ------------
 #------------------------------
 #------------------------------
- 
-def test_select_exp(tname) :
+
+if __name__ == "__main__" :
+  import logging
+  logger = logging.getLogger(__name__)
+  logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
+
+  def test_select_exp(tname) :
     lst = sorted(os.listdir('/reg/d/psdm/CXI/'))
-    print('lst:', lst)
+    logger.debug('lst:', lst)
     app = QtWidgets.QApplication(sys.argv)
     exp_name = popup_select_item_from_list(None, lst)
-    print('exp_name = %s' % exp_name) 
+    logger.debug('exp_name = %s' % exp_name) 
 
 #------------------------------
 
 if __name__ == "__main__" :
     import sys; global sys
+
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print(50*'_', '\nTest %s' % tname)
+    logger.debug(50*'_', '\nTest %s' % tname)
     if   tname == '0': test_select_exp(tname)
     #elif tname == '1': test_select_icon(tname)
     else : sys.exit('Test %s is not implemented' % tname)

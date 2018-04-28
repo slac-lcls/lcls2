@@ -140,7 +140,7 @@ class QWRange(QWidget) :
 
     def emitFieldIsChangedSignal(self,msg) :
         self.update.emit(msg)
-        #print(msg)
+
   
     def onEdiFrom(self):
         #logger.debug('onEdiFrom', __name__ )

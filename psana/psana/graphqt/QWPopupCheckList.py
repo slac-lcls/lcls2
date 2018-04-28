@@ -23,6 +23,9 @@ Adopted for LCLS2 on 2018-02-16 by Mikhail Dubrovin
 """
 #------------------------------
 
+import logging
+logger = logging.getLogger(__name__)
+
 from PyQt5.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QCheckBox
 from PyQt5.QtCore import Qt
 
@@ -104,23 +107,18 @@ class QWPopupCheckList(QDialog) :
 
  
     #def resizeEvent(self, e):
-        #logger.debug('resizeEvent', __name__) 
-        #pass
-
+        #logger.debug('resizeEvent') 
 
     #def moveEvent(self, e):
-        #pass
-
+        #logger.debug('moveEvent')
 
     #def closeEvent(self, event):
-        #pass
-        #logger.debug('closeEvent', __name__)
-        #print('closeEvent')
+        #logger.debug('closeEvent')
         #try    : self.widg_pars.close()
         #except : pass
 
     #def event(self, event):
-        #print('Event happens...:', event)
+        #logger.debug('Event happens...: %s' % str(event))
 
     
     def onCBox(self, tristate):
@@ -129,18 +127,17 @@ class QWPopupCheckList(QDialog) :
                 k,name,state = self.dict_of_items[cbx]
                 state_new = cbx.isChecked()
                 msg = 'onCBox: Checkbox #%d:%s - state is changed to %s, tristate=%s'%(k, name, state_new, tristate)
-                #print(msg)
-                #logger.debug(msg, __name__)
+                logger.debug(msg)
                 self.dict_of_items[cbx] = [k,name,state_new]
 
 
     def onCancel(self):
-        #logger.debug('onCancel', __name__)
+        logger.debug('onCancel')
         self.reject()
 
 
     def onApply(self):
-        #logger.debug('onApply', __name__)  
+        logger.debug('onApply')  
         self.fill_output_list()
         self.accept()
 
@@ -156,20 +153,22 @@ if __name__ == "__main__" :
     import sys
     from PyQt5.QtWidgets import QApplication
 
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+
     app = QApplication(sys.argv)
     list_in = [['CSPAD1',True], ['CSPAD2x21', False], ['pNCCD1', True], ['Opal1', False], \
                ['CSPAD2',True], ['CSPAD2x22', False], ['pNCCD2', True], ['Opal2', False]]
-    for name,state in list_in : print( '%s checkbox is in state %s' % (name.ljust(10), state))
+    for name,state in list_in : logger.debug('%s checkbox is in state %s' % (name.ljust(10), state))
     w = QWPopupCheckList(None, list_in)
     #w.setGeometry(20, 40, 500, 200)
     w.setWindowTitle('Set check boxes')
     #w.show()
     resp=w.exec_()
-    print('resp=',resp)
-    print('QtWidgets.QDialog.Rejected: ', QDialog.Rejected)
-    print('QtWidgets.QDialog.Accepted: ', QDialog.Accepted)
+    logger.debug('resp=%s' % resp)
+    logger.debug('QtWidgets.QDialog.Rejected: %d' % QDialog.Rejected)
+    logger.debug('QtWidgets.QDialog.Accepted: %d' % QDialog.Accepted)
 
-    for name,state in list_in : print('%s checkbox is in state %s' % (name.ljust(10), state))
+    for name,state in list_in : logger.debug('%s checkbox is in state %s' % (name.ljust(10), state))
 
     del w
     del app

@@ -23,8 +23,11 @@ Adopted for LCLS2 on 2018-02-16 by Mikhail Dubrovin
 
 from PyQt5 import QtWidgets
 
+import logging
+logger = logging.getLogger(__name__)
+#from psana.pyalgos.generic.Logger import logger
+
 from psana.graphqt.Frame    import Frame
-from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.Styles import style
 #from ConfigParametersForApp import cp
 from psana.graphqt.QWIcons import icon
@@ -89,18 +92,18 @@ class QWHelp(Frame) :
 
 
     #def resizeEvent(self, e):
-        #logger.debug('resizeEvent', __name__) 
+        #logger.debug('resizeEvent') 
         #self.frame.setGeometry(self.rect())
         #pass
 
     #def moveEvent(self, e):
-        #logger.debug('moveEvent', __name__) 
+        #logger.debug('moveEvent') 
         #cp.posGUIMain = (self.pos().x(),self.pos().y())
         #pass
 
 
     def closeEvent(self, event):
-        logger.debug('closeEvent', __name__)
+        logger.debug('closeEvent')
         #self.saveLogTotalInFile() # It will be saved at closing of GUIMain
 
         #try    : cp.guimain.butLogger.setStyleSheet(cp.styleButtonBad)
@@ -113,12 +116,12 @@ class QWHelp(Frame) :
 
 
     def onClose(self):
-        logger.debug('onClose', __name__)
+        logger.debug('onClose')
         self.close()
 
 
     def setHelpMessage(self, msg) :
-        logger.debug('Set help message',__name__)
+        logger.debug('Set help message')
         self.box_txt.setText(msg)
         self.setStatus(0, 'Status: show help info...')
 
@@ -136,6 +139,7 @@ class QWHelp(Frame) :
 
 if __name__ == "__main__" :
     import sys
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QtWidgets.QApplication(sys.argv)
     w = QWHelp()
     w.setHelpMessage('This is a test message to test methods of QWHelp...')

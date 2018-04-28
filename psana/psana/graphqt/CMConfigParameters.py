@@ -8,9 +8,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Usage ::
 
-    from psana.pyalgos.generic.Logger import logger
-
-    logger.setPrintBits(0o377)
     cp.readParametersFromFile()
     cp.printParameters()
     cp.log_level.setValue('debug')
@@ -26,6 +23,11 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
 #------------------------------
 
+import logging
+logger = logging.getLogger(__name__)
+
+#------------------------------
+
 from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
 
 #from expmon.PSNameManager import nm # It is here for initialization
@@ -38,6 +40,12 @@ class CMConfigParameters(PSConfigParameters) :
     """
     char_expand    = u' \u25BC' # down-head triangle
     char_shrink    = u' \u25B2' # solid up-head triangle
+
+    # delete flags:
+    DB_COLS = 1
+    DOCS    = 4
+    COLS    = 'collections'
+    DBS     = 'DBs'
  
     def __init__(self, fname=None) :
         """fname : str - the file name with configuration parameters, if not specified then use default.
@@ -45,9 +53,7 @@ class CMConfigParameters(PSConfigParameters) :
 
         PSConfigParameters.__init__(self)
 
-        self._name = 'CMConfigParameters'
-        #log.debug('In c-tor', self._name)
-        print('In %s c-tor' % self._name)
+        logger.debug('In %s c-tor')
 
         #self.fname_cp = '%s/%s' % (os.path.expanduser('~'), '.confpars-montool.txt') # Default config file name
         self.fname_cp = './cm-confpars.txt' # Default config file name
@@ -71,12 +77,16 @@ class CMConfigParameters(PSConfigParameters) :
         self.cmwdbmain   = None
         self.cmwdbtree   = None
         self.cmwdbdocs   = None
+        self.cmwdbdocswidg=None
+        self.qwloggerstd = None
+
+        self.last_selection = None # self.DB_COLS, DOCS
 
 #------------------------------
         
     def declareParameters(self) :
         # Possible typs for declaration : 'str', 'int', 'long', 'float', 'bool'
-        self.log_level = self.declareParameter(name='LOG_LEVEL_OF_MSGS', val_def='info', type='str')
+        self.log_level = self.declareParameter(name='LOG_LEVEL_OF_MSGS', val_def='NOTSET', type='str')
         #self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='/reg/g/psdm/logs/montool/log.txt', type='str')
         self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='cm-log.txt', type='str')
 
@@ -104,9 +114,8 @@ class CMConfigParameters(PSConfigParameters) :
 #------------------------------
         
 #    def __del__(self) :
-#        #from psana.pyalgos.generic.Logger import logger
-#        #logger.debug('In d-tor:', self.__class__.__name__)
-#        print('In CMConfigParameters d-tor')
+#        logger.debug('In d-tor: %s')
+#        logger.debug('In CMConfigParameters d-tor')
 #        if self.save_cp_at_exit.value() :
 #            self.saveParametersInFile()
 #        #ConfigParameters.__del__(self)
@@ -118,9 +127,9 @@ cp = CMConfigParameters()
 #------------------------------
 
 def test_CMConfigParameters() :
-    from psana.pyalgos.generic.Logger import logger as log
 
-    log.setPrintBits(0o377)
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+
     cp.readParametersFromFile()
     cp.printParameters()
     cp.log_level.setValue('debug')

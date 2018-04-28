@@ -4,6 +4,9 @@
 
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+
 #from PyQt4 import QtGui, QtCore
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QTextEdit, QComboBox, QHBoxLayout, QVBoxLayout
 from PyQt5.QtCore import Qt #, QMargins
@@ -119,18 +122,18 @@ class QWFileBrowser(QWidget) :
 
 
     #def resizeEvent(self, e):
-        #logger.debug('resizeEvent', __name__) 
+        #logger.debug('resizeEvent') 
         #pass
 
 
     #def moveEvent(self, e):
-        #logger.debug('moveEvent', __name__) 
+        #logger.debug('moveEvent') 
         #cp.posGUIMain = (self.pos().x(),self.pos().y())
         #pass
 
 
     def closeEvent(self, event):
-        #logger.debug('closeEvent', __name__)
+        logger.debug('closeEvent')
         #self.saveLogTotalInFile() # It will be saved at closing of GUIMain
 
         #try    : cp.guimain.butFBrowser.setStyleSheet(style.styleButtonBad)
@@ -148,33 +151,33 @@ class QWFileBrowser(QWidget) :
 
 
     def onClose(self):
-        #logger.debug('onClose', __name__)
+        logger.debug('onClose')
         self.close()
 
 
     def onSave(self):
-        #logger.debug('onSave', __name__)
+        logger.debug('onSave')
         path = gu.get_save_fname_through_dialog_box(self, self.fname, 'Select file to save', filter='*.txt')
         if path is None or path == '' : return
         text = str(self.box_txt.toPlainText())
-        #logger.info('Save in file:\n'+text, __name__)
+        logger.info('Save in file:\n'+text)
         f=open(path,'w')
         f.write( text )
         f.close() 
 
 
     def onBrow(self):
-        #logger.debug('onBrow - select file', __name__)
+        logger.debug('onBrow - select file')
 
         path0 ='./'
         if len(self.list_of_files) > 1 : path0 = self.list_of_files[1]
 
         path = gu.get_open_fname_through_dialog_box(self, path0, 'Select text file for browser', filter='Text files (*.txt *.dat *.data *.cfg *.npy)\nAll files (*)')
         if path is None or path == '' or path == path0 :
-            #logger.debug('Loading is cancelled...', __name__ )
+            #logger.debug('Loading is cancelled...')
             return
 
-        #logger.info('File selected for browser: %s' % path, __name__)        
+        #logger.info('File selected for browser: %s' % path)        
 
 
         if not path in self.list_of_files :
@@ -188,7 +191,7 @@ class QWFileBrowser(QWidget) :
  
     def onBox(self):
         self.fname = str( self.box_file.currentText() )
-        #logger.info('onBox - selected file: ' + self.fname, __name__)
+        #logger.debug('onBox - selected file: ' + self.fname)
 
         if self.fname == '' : return
 
@@ -197,8 +200,8 @@ class QWFileBrowser(QWidget) :
         self.str_of_supported = ''
         for ext in self.list_of_supported : self.str_of_supported += ' ' + ext
 
-        #print('self.fname = ', self.fname)
-        #print('self.list_of_files', self.list_of_files)
+        logger.debug('self.fname = %s' % self.fname)
+        logger.debug('self.list_of_files: %s' % ', '.join(self.list_of_files))
 
         if self.list_of_files.index(self.fname) == 0 :
             self.setStatus(0, 'Waiting for file selection...')
@@ -222,7 +225,7 @@ class QWFileBrowser(QWidget) :
 
 
     def startFileBrowser(self, selected_file=None) :
-        #logger.debug('Start the QWFileBrowser.',__name__)
+        logger.debug('Start the QWFileBrowser.')
         self.setStatus(0, 'Waiting for file selection...')
 
         if selected_file is not None and selected_file in self.list_of_files :
@@ -257,6 +260,7 @@ class QWFileBrowser(QWidget) :
 if __name__ == "__main__" :
     import sys
     from PyQt5.QtWidgets import QApplication
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
     widget = QWFileBrowser ()
     widget.show()

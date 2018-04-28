@@ -13,9 +13,9 @@ from psana.pscalib.calib.NDArrIO import load_txt, save_txt
 import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestamp
 import numpy as np
 
-#import logging
 from psana.pyalgos.generic.logger import logging, config_logger
-logger = logging.getLogger('MDB_CLI')
+#import logging
+logger = logging.getLogger(__name__)
 
 #------------------------------
 
@@ -38,7 +38,6 @@ class MDB_CLI :
           -  time_stamp
           -  time_sec
           -  version   
-          -  verbose   
           -  iofname
           -  comment
           -  dbname
@@ -60,11 +59,10 @@ class MDB_CLI :
         self.kwargs = kwargs
         self.defs = vars(parser.get_default_values())
 
-        if popts.verbose : 
-            print_parser(parser)
-            print_kwargs(kwargs)
+        print_parser(parser)
+        print_kwargs(kwargs)
 
-        level = kwargs.get('loglevel','info')
+        level = kwargs.get('loglevel','DEBUG')
         config_logger(loglevel=level)
 
 
@@ -87,8 +85,8 @@ class MDB_CLI :
     def print_content(self) :
         dbname = dbu.get_dbname(**self.kwargs)
         client = self.client()
-        if dbname is not None : print(dbu.database_info(client, dbname, level=3))
-        else                  : print(dbu.client_info(client, level=2))
+        if dbname is not None : logger.info(dbu.database_info(client, dbname, level=3))
+        else                  : logger.info(dbu.client_info(client, level=2))
 
 
     def convert(self) :
@@ -214,7 +212,8 @@ class MDB_CLI :
             return
 
         for i,doc in enumerate(docs) :
-            print('  deldoc %2d:'%i, doc['time_stamp'], doc['time_sec'], '%s'%doc['ctype'].ljust(16), '%4s'%doc['run'], doc['id_data'])
+            msg = '  deldoc %2d:'%i + doc['time_stamp'] + doc['time_sec'] + '%s'%doc['ctype'].ljust(16) + '%4s'%doc['run'] + doc['id_data']
+            logger.info(msg)
             if confirm : 
                 dbu.delete_document_from_collection(col, doc['_id'])
                 dbu.del_document_data(doc, fs)
@@ -256,7 +255,6 @@ class MDB_CLI :
         tsec   = kwargs.get('time_sec', None)
         tstamp = kwargs.get('time_stamp', None)
         vers   = kwargs.get('version', None)
-        verb   = kwargs.get('verbose', False)
         fname  = kwargs.get('iofname', None)
 
         query={'detector':det, 'ctype':ctype}
@@ -380,7 +378,7 @@ class MDB_CLI :
         ofname = kwargs.get('iofname', None)
 
         dbnames = dbu.database_names(self.client())
-        print('XXX : dbnames:', dbnames)
+        logger.info('XXX : dbnames:' % dbnames)
 
 
     def _warning(self) :
@@ -389,7 +387,7 @@ class MDB_CLI :
 
     def dispatcher(self) :
         mode = self.mode
-        #print('Mode: %s' % mode)
+        #logger.info('Mode: %s' % mode)
         if   'print'     in mode : self.print_content()
         elif 'convert'   in mode : self.convert()
         elif 'deldoc'    in mode : self.deldoc()
