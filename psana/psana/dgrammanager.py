@@ -67,21 +67,13 @@ class DgramManager():
 
         dgrams = []
         for fd, config, offset, size in zip(self.fds, self.configs, offsets, sizes):
-            d = 0
-            try:
-                if (read_chunk) :
-                    d = dgram.Dgram(config=config, offset=offset)
-                else:
-                    assert size > 0
-                    d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
-            except StopIteration:
-                pass 
-            if d:
-                setnames(d)
-                dgrams += [d]
-        
-        if not dgrams: 
-            raise StopIteration
+            if (read_chunk) :
+                d = dgram.Dgram(config=config, offset=offset)
+            else:
+                assert size > 0
+                d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
+            setnames(d)
+            dgrams += [d]
         
         evt = Event(dgrams=dgrams)
         self.offsets = evt.offsets

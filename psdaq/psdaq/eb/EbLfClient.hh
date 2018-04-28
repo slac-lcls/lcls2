@@ -39,8 +39,7 @@ namespace Pds {
                        std::string&               port,
                        unsigned                   tmo,
                        Fabrics::Endpoint*&        ep,
-                       Fabrics::CompletionQueue*& txcq,
-                       Fabrics::CompletionQueue*& rxcq);
+                       Fabrics::CompletionQueue*& txcq);
       int _exchangeIds(Fabrics::Endpoint*         ep,
                        Fabrics::MemoryRegion*     mr,
                        unsigned                   myId,

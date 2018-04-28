@@ -155,19 +155,19 @@ void EbEvent::dump(int number)
   const EbContribution*  const* current = begin();
   const EbContribution*         contrib = *current;
 
-  printf("    Creator (%p) was @ source %d with an environment of 0x%lux\n",
+  printf("    Creator (%p) was @ source %d with an environment of 0x%ux\n",
          contrib,
          contrib->number(),
-         contrib->env);
+         contrib->env[0]);
 
   printf("    Contributors to this event:\n");
   while(++current != last)
   {
     contrib = *current;
-    printf("     src %02x seq %016lx size %08x env 0x%lux\n",
+    printf("     src %02x seq %016lx size %08x env 0x%ux\n",
            contrib->number(),
            contrib->seq.pulseId().value(),
            contrib->payloadSize(),
-           contrib->env);
+           contrib->env[0]);
   }
 }

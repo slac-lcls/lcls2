@@ -36,9 +36,9 @@ public:
 
   FexDef()
    {
-       NameVec.push_back({"floatFex",Name::FLOAT});
+       NameVec.push_back({"floatFex",Name::DOUBLE});
        NameVec.push_back({"arrayFex",Name::FLOAT,2});
-       NameVec.push_back({"intFex",Name::INT32});
+       NameVec.push_back({"intFex",Name::INT64});
    }
 } FexDef;
 
@@ -56,9 +56,9 @@ public:
 
    PgpDef()
    {
-     NameVec.push_back({"floatPgp",Name::FLOAT,0});
+     NameVec.push_back({"floatPgp",Name::DOUBLE,0});
      NameVec.push_back({"array0Pgp",Name::FLOAT,2});
-     NameVec.push_back({"intPgp",Name::INT32,0});
+     NameVec.push_back({"intPgp",Name::INT64,0});
      NameVec.push_back({"array1Pgp",Name::FLOAT,2});
    }
 } PgpDef;
@@ -205,17 +205,21 @@ int main(int argc, char* argv[])
     nowDgramSize = sizeof(*dgIn) + dgIn->xtc.sizeofPayload();
     smd.set_value(SmdDef::intDgramSize, nowDgramSize);
     
-    printf("Read evt: %4d Header size: %8lu Payload size: %8d Writing offset: %10d size: %10d\n", 
-        eventId++, sizeof(*dgIn), dgIn->xtc.sizeofPayload(), nowOffset, nowDgramSize);
+    if (eventId > 0) { 
+        printf("Read evt: %4d Header size: %8lu Payload size: %8d Writing offset: %10d size: %10d\n", 
+        eventId, sizeof(*dgIn), dgIn->xtc.sizeofPayload(), nowOffset, nowDgramSize);
 
-    if (fwrite(&dgOut, sizeof(dgOut) + dgOut.xtc.sizeofPayload(), 1, xtcFile) != 1) {
-      printf("Error writing to output xtc file.\n");
-      return -1;
+        if (fwrite(&dgOut, sizeof(dgOut) + dgOut.xtc.sizeofPayload(), 1, xtcFile) != 1) {
+            printf("Error writing to output xtc file.\n");
+            return -1;
+        }
+    } else {
+        printf("Skip evt: 0 (config)\n");
     }
 
     // Update the offset
     nowOffset += sizeof(*dgIn) + dgIn->xtc.sizeofPayload();
-
+    eventId++;
   }
   printf("Done.\n");
   fclose(xtcFile);

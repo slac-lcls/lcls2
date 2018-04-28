@@ -3,44 +3,34 @@ import sys
 import abc
 import zmq
 import threading
-from mpi4py import MPI
 from enum import IntEnum
 
 from ami.data import MsgTypes, Message, DataTypes, Datagram
 
 
-# Dan and TJ:
-# we don't think we need this any more
-
-#class MpiHandler(object):
-#    def __init__(self, col_rank):
-#        """
-#        col_rank : int
-#            The rank of the target process that recieves data from
-#            this process
-#        """
-#        self.col_rank = col_rank
-#    
-#    def send(self, msg):
-#        MPI.COMM_WORLD.send(msg, dest=self.col_rank)
-#
-#    def recv(self):
-#        return MPI.COMM_WORLD.recv(source=MPI.ANY_SOURCE)
+class Ports(IntEnum):
+    Comm = 5555
+    Graph = 5556
+    Collector = 5557
 
 
 class ResultStore(object):
     """
     This class is a AMI /graph node that collects results
     from a single process and has the ability to send them
-    to another (via MPI). The sending end point is typically
+    to another (via zeromq). The sending end point is typically
     a Collector object.
     """
 
-    def __init__(self, collector_rank):
-        self.name = "resultstore"
+    def __init__(self, addr, ctx=None):
         self._store = {}
         self._updated = {}
-        self.collector_rank = collector_rank
+        if ctx is None:
+            self.ctx = zmq.Context()
+        else:
+            self.ctx = ctx
+        self.collector = self.ctx.socket(zmq.PUSH)
+        self.collector.connect(addr)
 
     def collect(self):
         for name, result in self._store.items():
@@ -49,7 +39,7 @@ class ResultStore(object):
                 self._updated[name] = False
 
     def send(self, msg):
-        MPI.COMM_WORLD.send(msg, dest=self.collector_rank)
+        self.collector.send_pyobj(msg)
 
     def message(self, mtype, payload):
         self.send(Message(mtype, payload))
@@ -66,6 +56,13 @@ class ResultStore(object):
 
     def get_dgram(self, name):
         return self._store[name]
+
+    @property
+    def namespace(self):
+        ns = {"store": self}
+        for k in self._store.keys():
+            ns[k] = self._store[k].data
+        return ns
 
     def get(self, name):
         return self._store[name].data
@@ -93,16 +90,34 @@ class ResultStore(object):
 
 class Collector(abc.ABC):
     """
-    This class gathers (via MPI) results from many
+    This class gathers (via zeromq) results from many
     ResultsStores. But rather than use gather, it employs
     an async send/recieve pattern.
     """
 
-    def __init__(self):
+    def __init__(self, addr, ctx=None):
+        if ctx is None:
+            self.ctx = zmq.Context()
+        else:
+            self.ctx = ctx
+        self.poller = zmq.Poller()
+        self.collector = self.ctx.socket(zmq.PULL)
+        self.collector.bind(addr)
+        self.poller.register(self.collector, zmq.POLLIN)
+        self.handlers = {}
         return
 
+    def register(self, sock, handler):
+        self.handlers[sock] = handler
+        self.poller.register(sock, zmq.POLLIN)
+
+    def unregister(self, sock):
+        if sock in self.handlers:
+            del self.handlers[sock]
+            self.poller.unregister(sock)
+
     def recv(self):
-        return MPI.COMM_WORLD.recv(source=MPI.ANY_SOURCE)
+        return self.collector.recv_pyobj()
 
     @abc.abstractmethod
     def process_msg(self, msg):
@@ -110,5 +125,11 @@ class Collector(abc.ABC):
 
     def run(self):
         while True:
-            msg = self.recv()
-            self.process_msg(msg)
+            for sock, flag in self.poller.poll():
+                if flag != zmq.POLLIN:
+                    continue
+                if sock is self.collector:
+                    msg = self.recv()
+                    self.process_msg(msg)
+                elif sock in self.handlers:
+                    self.handlers[sock]()

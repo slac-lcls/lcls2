@@ -54,9 +54,9 @@ public:
 
   FexDef()
    {
-       NameVec.push_back({"floatFex",Name::FLOAT});
+       NameVec.push_back({"floatFex",Name::DOUBLE});
        NameVec.push_back({"arrayFex",Name::FLOAT,2});
-       NameVec.push_back({"intFex",Name::INT32});
+       NameVec.push_back({"intFex",Name::INT64});
    }
 } FexDef;
 
@@ -74,9 +74,9 @@ public:
   
    PgpDef()
    {
-     NameVec.push_back({"floatPgp",Name::FLOAT,0});
+     NameVec.push_back({"floatPgp",Name::DOUBLE,0});
      NameVec.push_back({"array0Pgp",Name::FLOAT,2});
-     NameVec.push_back({"intPgp",Name::INT32,0});
+     NameVec.push_back({"intPgp",Name::INT64,0});
      NameVec.push_back({"array1Pgp",Name::FLOAT,2});     
    }
 } PgpDef;
@@ -108,10 +108,134 @@ public:
     {
     }
 
+    void get_value(int i, Name& name, DescData& descdata){
+        int data_rank = name.rank();
+        int data_type = name.type();
+
+        switch(name.type()){
+        case(0):{
+            if(data_rank > 0){
+                Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<uint8_t>(i));
+            }
+            break;
+        }
+
+        case(1):{
+            if(data_rank > 0){
+                Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<uint16_t>(i));
+            }
+            break;
+        }
+
+        case(2):{
+            if(data_rank > 0){
+                Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<uint32_t>(i));
+            }
+            break;
+        }
+
+        case(3):{
+            if(data_rank > 0){
+                Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
+            }
+            break;
+        }
+
+        case(4):{
+            if(data_rank > 0){
+                Array<int8_t> arrT = descdata.get_array<int8_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int8_t>(i));
+            }
+            break;
+        }
+
+        case(5):{
+            if(data_rank > 0){
+                Array<int16_t> arrT = descdata.get_array<int16_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int16_t>(i));
+            }
+            break;
+        }
+
+        case(6):{
+            if(data_rank > 0){
+                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+            }
+            break;
+        }
+
+        case(7):{
+            if(data_rank > 0){
+                Array<int64_t> arrT = descdata.get_array<int64_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int64_t>(i));
+            }
+            break;
+        }
+
+        case(8):{
+            if(data_rank > 0){
+                Array<float> arrT = descdata.get_array<float>(i);
+                printf("%s: %f, %f\n",name.name(),arrT(0),arrT(1));
+                    }
+            else{
+                printf("%s: %f\n",name.name(),descdata.get_value<float>(i));
+            }
+            break;
+        }
+
+        case(9):{
+            if(data_rank > 0){
+                Array<double> arrT = descdata.get_array<double>(i);
+                printf("%s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
+                    }
+            else{
+                printf("%s: %f\n",name.name(),descdata.get_value<double>(i));
+            }
+            break;
+        }
+
+        }
+
+    }
+
     int process(Xtc* xtc)
     {
         // printf("found typeid %s\n",XtcData::TypeId::name(xtc->contains.id()));
         switch (xtc->contains.id()) {
+
+        case (TypeId::Names): {
+            // printf("Names pointer is %p\n", xtc);
+            break;
+        }
         case (TypeId::Parent): {
             iterate(xtc);
             break;
@@ -123,20 +247,11 @@ public:
             DescData descdata(shapesdata, _namesVec[namesId]);
             Names& names = descdata.nameindex().names();
 	    //   printf("Found %d names\n",names.num());
+            // printf("data shapes extents %d %d %d\n", shapesdata.data().extent,
+                   // shapesdata.shapes().extent, sizeof(double));
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
-		if(name.rank()>0){
-                    // Array<float> arrT = descdata.get_array<float>(i);
-                    // printf("array float value %s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
-		}
-		else{
-                    if(name.type()<7){
-                        printf("integ value %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
-                    }
-                    else{
-                        printf("float value %s: %f\n",name.name(),descdata.get_value<float>(i));
-                    }
-		}	    
+                get_value(i, name, descdata);
             }
             break;
         }
@@ -151,6 +266,7 @@ public:
     }
 };
 
+#pragma pack(push,1)
 class PgpData
 {
 public:
@@ -170,11 +286,12 @@ public:
         }
     }
 
-    float _fdata;
+    double _fdata;
     float array[3][3];
-    int _idata;
+    int64_t _idata;
     float array2[3][3];
 };
+#pragma pack(pop)
 
 class PadData
 {
@@ -210,6 +327,7 @@ void pgpExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 
     // now that data has arrived update with the number of bytes received
     // it is required to call this before set_array_shape
+    // printf("sizeof pgpdata %d\n",sizeof(PgpData));
     frontEnd.set_data_length(sizeof(PgpData));
 
     unsigned shape[] = { 3, 3 };
@@ -220,7 +338,7 @@ void pgpExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 { 
     CreateData fex(parent, NamesVec, nameId);
-    fex.set_value(FexDef::floatFex, (float)41.0);
+    fex.set_value(FexDef::floatFex, (double)41.0);
 
     unsigned shape[Name::MaxRank] = {2,3};
     Array<float> arrayT = fex.allocate<float>(FexDef::arrayFex,shape);
@@ -230,7 +348,7 @@ void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
         }
     };
     
-    fex.set_value(FexDef::intFex, (int32_t) 42);
+    fex.set_value(FexDef::intFex, (int64_t) 42);
 }
    
 
@@ -298,20 +416,22 @@ int main()
     std::vector<NameIndex> namesVec;
     add_names(config.xtc, namesVec);
     addData(config.xtc,namesVec);
+
+    DebugIter iter(&config.xtc, namesVec);
+    iter.iterate();
+
     if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
         printf("Error writing configure to output xtc file.\n");
         return -1;
     }
 
-   
      // for(auto const& value: namesVec[0].nameMap()){
      //     std::cout<<value.first<<std::endl;
      // }
 
 
-   	
     void* buf = malloc(BUFSIZE);
-     
+ 
     for (int i = 0; i < NEVENT; i++) {
         Dgram& dgram = *(Dgram*)buf;
         TypeId tid(TypeId::Parent, 0);

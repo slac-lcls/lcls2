@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <time.h>
 #include <inttypes.h>
 #include <assert.h>
 #include <climits>
@@ -41,12 +40,11 @@ static const unsigned max_ebs          = 64;         // Maximum possible number 
 static const unsigned srv_port_base    = 32768;           // Base port EB receives contributions on
 static const unsigned clt_port_base    = 32768 + max_ebs; // Base port EB sends    results       on
 static const unsigned max_batches      = 2048;       // Maximum number of batches in circulation
-static const unsigned max_entries      = 512;        // < or = to batch_duration
+static const unsigned max_entries      = 64;        // < or = to batch_duration
 static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
 static const size_t   header_size      = sizeof(Dgram);
-static const size_t   input_extent     = 5; // Revisit: Number of "L3" input  data words
-//static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
-static const size_t   result_extent    = input_extent;
+static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
+static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const uint64_t nanosecond       = 1000000000ul; // Nonconfigurable constant: don't change
@@ -56,6 +54,7 @@ static       int      lcore1           = core_base + core_offset + 0;
 static       int      lcore2           = core_base + core_offset + 12; // devXX, 0 for accXX
 
 typedef std::chrono::steady_clock::time_point TimePoint_t;
+typedef std::chrono::steady_clock::duration   Duration_t;
 typedef std::chrono::microseconds             us_t;
 typedef std::chrono::nanoseconds              ns_t;
 
@@ -153,7 +152,7 @@ namespace Pds {
       uint64_t count()        const { return _eventCount;   }
       size_t   maxBatchSize() const { return _maxBatchSize; }
     public:
-      void     process(BatchManager* outlet);
+      void     process(BatchManager* batMgr);
     public:
       void     process(EbEvent* event);
       uint64_t contract(const Dgram* contrib) const;
@@ -168,7 +167,7 @@ namespace Pds {
       const uint64_t    _contract;
       GenericPool       _results; // No RW as it shadows the batch pool, which has RW
       //EbDummyTC         _dummy;   // Template for TC of dummy contributions  // Revisit: ???
-      BatchManager*     _outlet;
+      BatchManager*     _batMgr;
     private:
       uint64_t          _eventCount;
     private:
@@ -234,10 +233,10 @@ TstEbInlet::TstEbInlet(const char*  ifAddr,
   _contract    (contributors),
   _results     (sizeof(ResultDest) + std::bitset<64>(contributors).count() * sizeof(Src) , maxBatches * maxEntries),
   //_dummy       (Level::Fragment),
-  _outlet      (nullptr),
+  _batMgr      (nullptr),
   _eventCount  (0),
   _arrTimeHist (12, double(1 << 16)/1000.),
-  _pendTimeHist(12, double(1 <<  8)/1000.),
+  _pendTimeHist(12, 1.0),
   _pendCallHist(12, 1.0),
   _pendPrevTime(std::chrono::steady_clock::now()),
   _running     (true)
@@ -288,7 +287,7 @@ void* TstEbInlet::_allocBatchRegion(unsigned nClients, unsigned maxBatches, size
   return region;
 }
 
-void TstEbInlet::process(BatchManager* outlet)
+void TstEbInlet::process(BatchManager* batMgr)
 {
   // Event builder sorts contributions into a time ordered list
   // Then calls the user's process with complete events to build the result datagram
@@ -297,7 +296,7 @@ void TstEbInlet::process(BatchManager* outlet)
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
 
-  _outlet = outlet;
+  _batMgr = batMgr;
 
   pin_thread(task()->parameters().taskID(), lcore2);
   pin_thread(pthread_self(),                lcore2);
@@ -318,8 +317,6 @@ void TstEbInlet::process(BatchManager* outlet)
     unsigned     srcId = wc.data >> 24;
     const Dgram* bdg   = (const Dgram*)_transport->lclAdx(srcId, idx * _maxBatchSize);
 
-    _transport->postCompRecv(srcId);
-
     if (lverbose)
     {
       static unsigned cnt    = 0;
@@ -330,21 +327,21 @@ void TstEbInlet::process(BatchManager* outlet)
     }
 
     {
-      struct timespec ts;
-      clock_gettime(CLOCK_MONOTONIC, &ts);
-      int64_t dS(ts.tv_sec  - bdg->seq.stamp().seconds());
-      int64_t dN(ts.tv_nsec - bdg->seq.stamp().nanoseconds());
-      int64_t dT(dS * nanosecond + dN);
-
+      auto d = std::chrono::seconds     { bdg->seq.stamp().seconds()     } +
+               std::chrono::nanoseconds { bdg->seq.stamp().nanoseconds() };
+      TimePoint_t tp { std::chrono::duration_cast<Duration_t>(d) };
+      int64_t     dT ( std::chrono::duration_cast<ns_t>(t1 - tp).count() );
       _arrTimeHist.bump(dT >> 16);
       //printf("In  Batch  %014lx Pend = %ld S, %ld ns\n", bdg->seq.pulseId().value(), dS, dN);
 
-      dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
-      if (dT > 1048576)  printf("pendTime = %ld\n", dT);
-      _pendTimeHist.bump(dT >> 8);
+      dT = std::chrono::duration_cast<us_t>(t1 - t0).count();
+      if (dT > 4095)  printf("pendTime = %ld us\n", dT);
+      _pendTimeHist.bump(dT);
       _pendCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _pendPrevTime).count());
       _pendPrevTime = t0;
     }
+
+    _transport->postCompRecv(srcId);
 
     processBulk(bdg);                 // Comment out for open-loop running
   }
@@ -386,10 +383,9 @@ void TstEbInlet::process(EbEvent* event)
   // Iterate over the event and build a result datagram
   const EbContribution** const  last    = event->end();
   const EbContribution*  const* contrib = event->begin();
-  Dgram                         cdg    (*(event->creator()));     // Initialize a new DG
-  cdg.env                               = cdg.xtc.src.log() & 0xff; // Revisit: Used only for measuring RTT?
+  Dgram                         cdg    (*(event->creator()));       // Initialize a new DG
   cdg.xtc                               = _xtc;
-  Batch*                        batch   = _outlet->allocate(&cdg); // This may post to the outlet
+  Batch*                        batch   = _batMgr->allocate(&cdg);  // This may post to the outlet
   ResultDest*                   rDest   = (ResultDest*)batch->parameter();
   if (!rDest)
   {
@@ -471,7 +467,7 @@ TstEbOutlet::TstEbOutlet(std::vector<std::string>& addrs,
   _maxEntries  (maxEntries),
   _batchCount  (0),
   _depTimeHist (12, double(1 << 16)/1000.),
-  _postTimeHist(12, double(1 <<  8)/1000.),
+  _postTimeHist(12, 1.0),
   _postCallHist(12, 1.0),
   _postPrevTime(std::chrono::steady_clock::now())
 {
@@ -518,16 +514,6 @@ void TstEbOutlet::post(const Batch* batch)
   const Dgram* bdg    = batch->datagram();
   size_t       extent = batch->extent();
 
-  {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    int64_t dS(ts.tv_sec  - bdg->seq.stamp().seconds());
-    int64_t dN(ts.tv_nsec - bdg->seq.stamp().nanoseconds());
-    int64_t dT(dS * nanosecond + dN);
-
-    _depTimeHist.bump(dT >> 16);
-  }
-
   auto t0 = std::chrono::steady_clock::now();
   for (unsigned iDst = 0; iDst < nDsts; ++iDst)
   {
@@ -550,9 +536,16 @@ void TstEbOutlet::post(const Batch* batch)
   ++_batchCount;
 
   {
-    int64_t dT = std::chrono::duration_cast<ns_t>(t1 - t0).count();
-    if (dT > 1048576)  printf("postTime = %ld\n", dT);
-    _postTimeHist.bump(dT >> 8);
+    auto d = std::chrono::seconds     { bdg->seq.stamp().seconds()     } +
+             std::chrono::nanoseconds { bdg->seq.stamp().nanoseconds() };
+    TimePoint_t tp { std::chrono::duration_cast<Duration_t>(d) };
+    int64_t     dT ( std::chrono::duration_cast<ns_t>(t0 - tp).count() );
+
+    _depTimeHist.bump(dT >> 16);
+
+    dT = std::chrono::duration_cast<us_t>(t1 - t0).count();
+    if (dT > 4095)  printf("postTime = %ld us\n", dT);
+    _postTimeHist.bump(dT);
     _postCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _postPrevTime).count());
     _postPrevTime = t0;
   }
@@ -729,10 +722,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "Server port %d is out of range 0 - %d\n", srvBase + id + max_ebs, USHRT_MAX);
     return 1;
   }
-
-  char port[8];
-  snprintf(port, sizeof(port), "%d", srvBase + id);
-  std::string srvPort(port);
+  std::string srvPort(std::to_string(srvBase + id));
 
   std::vector<std::string> cltAddr;
   std::vector<std::string> cltPort;
@@ -756,15 +746,14 @@ int main(int argc, char **argv)
         return 1;
       }
       contributors |= 1ul << cid;
-      snprintf(port, sizeof(port), "%d", cltBase + cid);
       cltAddr.push_back(std::string(colon ? &colon[1] : contributor));
-      cltPort.push_back(std::string(port));
+      cltPort.push_back(std::string(std::to_string(cltBase + cid)));
     }
     while (++optind < argc);
   }
   else
   {
-    fprintf(stderr, "Contributor address(es) is required\n");
+    fprintf(stderr, "Missing required contributor address(es)\n");
     return 1;
   }
 
@@ -789,10 +778,15 @@ int main(int argc, char **argv)
   printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);
   printf("  Batch pool depth:           %d\n", maxBatches);
   printf("  Max # of entries per batch: %d\n", maxEntries);
-  printf("  Max contribution size:      %zd, batch size: %zd\n",
-         max_contrib_size, inlet->maxBatchSize());
-  printf("  Max result       size:      %zd, batch size: %zd\n",
-         max_result_size,  outlet->maxBatchSize());
+  const unsigned ibMtu = 4096;
+  unsigned mtuCnt = (sizeof(Dgram) + maxEntries * max_contrib_size + ibMtu - 1) / ibMtu;
+  unsigned mtuRem = (sizeof(Dgram) + maxEntries * max_contrib_size) % ibMtu;
+  printf("  Max contribution size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
+         max_contrib_size, outlet->maxBatchSize(), mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
+  mtuCnt = (sizeof(Dgram) + maxEntries * max_result_size + ibMtu - 1) / ibMtu;
+  mtuRem = (sizeof(Dgram) + maxEntries * max_result_size) % ibMtu;
+  printf("  Max result       size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
+         max_result_size,  inlet->maxBatchSize(),  mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
   printf("  Monitoring period:          %d\n", monPeriod);
   printf("  Thread core numbers:        %d, %d\n", lcore1, lcore2);
   printf("\n");

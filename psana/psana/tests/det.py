@@ -5,12 +5,10 @@ from psana.detector import Detector
 import numpy as np
 
 def det():
-    #ds = DataSource('data.xtc')
-    #det = Detector('xppcspad', ds.configs[0].software)
-    ds = DgramManager('data.xtc')  # todo: change back to DataSource
-    det = Detector('xppcspad', ds.configs[0].software)
+    ds = DataSource('data.xtc')
+    det = Detector('xppcspad', ds._configs()[0].software)
 
-    for evt in ds:
+    for evt in ds.events():
         raw = det.raw(evt.__next__())
         break
 
@@ -18,8 +16,8 @@ def det():
     print(raw, raw.shape)
     assert(np.sum(raw)==9*17)
     assert(raw.shape==(2,3,3))
-    assert(ds.configs[0].software.xppcspad.dettype == 'cspad')
-    assert(ds.configs[0].software.xppcspad.detid == 'detnum1234')
+    assert(ds._configs()[0].software.xppcspad.dettype == 'cspad')
+    assert(ds._configs()[0].software.xppcspad.detid == 'detnum1234')
 
 if __name__ == '__main__':
     det()
