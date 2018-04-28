@@ -1,7 +1,8 @@
 #include "psdaq/hsd/PVStats.hh"
 #include "psdaq/hsd/Module.hh"
 #include "psdaq/hsd/FexCfg.hh"
-#include "psdaq/hsd/Pgp2bAxi.hh"
+#include "psdaq/hsd/HdrFifo.hh"
+#include "psdaq/hsd/Pgp.hh"
 #include "psdaq/hsd/QABase.hh"
 
 #include "psdaq/epicstools/PVWriter.hh"
@@ -13,6 +14,7 @@ using Pds_Epics::PVWriter;
 #include <string>
 #include <vector>
 
+#include <unistd.h>
 #include <stdio.h>
 
 static std::string STOU(std::string s) {
@@ -35,9 +37,13 @@ namespace Pds {
            _Raw_FreeBufSz, _Raw_FreeBufEvt,
            _Fex_FreeBufSz, _Fex_FreeBufEvt,
            _Raw_BufState, _Raw_TrgState, _Raw_BufBeg, _Raw_BufEnd,
+           _TestPattErr, _TestPattBit,
+           _BramWrErr, _BramWrSamp,
+           _BramRdErr, _BramRdSamp,
+           _WrFifoCnt, _RdFifoCnt,
            _NumberOf };
 
-    PVStats::PVStats(Module& m) : _m(m), _pv(_NumberOf), _v(_NumberOf*16) {}
+    PVStats::PVStats(Module& m) : _m(m), _pgp(m.pgp()), _pv(_NumberOf), _v(_NumberOf*16) {}
     PVStats::~PVStats() {}
 
     void PVStats::allocate(const std::string& title) {
@@ -79,6 +85,14 @@ namespace Pds {
       PV_ADDV(Raw_TrgState   ,16);
       PV_ADDV(Raw_BufBeg     ,16);
       PV_ADDV(Raw_BufEnd     ,16);
+      PV_ADDV(TestPattErr    ,4);
+      PV_ADDV(TestPattBit    ,4);
+      PV_ADDV(BramWrErr      ,4);
+      PV_ADDV(BramWrSamp     ,4);
+      PV_ADDV(BramRdErr      ,4);
+      PV_ADDV(BramRdSamp     ,4);
+      PV_ADDV(WrFifoCnt      ,4);
+      PV_ADDV(RdFifoCnt      ,4);
 
 #undef PV_ADD
 #undef PV_ADDV
@@ -121,15 +135,14 @@ namespace Pds {
       PVPUTDU ( TimFrameCnt, base.countEnable);
       PVPUTDU ( TimPauseCnt, base.countInhibit);
 
-      Pgp2bAxi* pgp = reinterpret_cast<Pgp2bAxi*>((char*)_m.reg()+0x00090000);
-      PVPUTAU  ( PgpLocLinkRdy, 4, ((pgp[i]._status>>2)&1) ); 
-      PVPUTAU  ( PgpRemLinkRdy, 4, ((pgp[i]._status>>3)&1) ); 
-      PVPUTAU  ( PgpTxClkFreq , 4, (pgp[i]._txClkFreq*1.e-6) );
-      PVPUTAU  ( PgpRxClkFreq , 4, (pgp[i]._rxClkFreq*1.e-6) );
-      PVPUTDAU ( PgpTxCnt     , 4, pgp[i]._txFrames ); 
-      PVPUTDAU ( PgpTxErrCnt  , 4, pgp[i]._txFrameErrs );
-      PVPUTDAU ( PgpRxCnt     , 4, pgp[i]._rxOpcodes );
-      PVPUTAU  ( PgpRxLast    , 4, pgp[i]._lastRxOpcode );
+      PVPUTAU  ( PgpLocLinkRdy, 4, _pgp[i]->localLinkReady ()?1:0);
+      PVPUTAU  ( PgpRemLinkRdy, 4, _pgp[i]->remoteLinkReady()?1:0);
+      PVPUTAU  ( PgpTxClkFreq , 4, _pgp[i]->txClkFreqMHz());
+      PVPUTAU  ( PgpRxClkFreq , 4, _pgp[i]->rxClkFreqMHz());
+      PVPUTDAU ( PgpTxCnt     , 4, _pgp[i]->txCount     () ); 
+      PVPUTDAU ( PgpTxErrCnt  , 4, _pgp[i]->txErrCount  () );
+      PVPUTDAU ( PgpRxCnt     , 4, _pgp[i]->rxOpCodeCount() );
+      PVPUTAU  ( PgpRxLast    , 4, _pgp[i]->rxOpCodeLast () );
 
       FexCfg* fex = _m.fex();
       PVPUTAU ( Raw_FreeBufSz  , 4, ((fex[i]._base[0]._free>> 0)&0xffff) ); 
@@ -149,6 +162,18 @@ namespace Pds {
       PVPUTAU ( Raw_TrgState   , 16, ((state[i]>>4)&0xf) );
       PVPUTAU ( Raw_BufBeg     , 16, ((addr[i]>> 0)&0xffff) );
       PVPUTAU ( Raw_BufEnd     , 16, ((addr[i]>>16)&0xffff) );
+
+      PVPUTAU ( TestPattErr , 4, (fex[i]._test_pattern_errors) );
+      PVPUTAU ( TestPattBit , 4, (fex[i]._test_pattern_errbits) );
+
+      PVPUTAU ( BramWrErr   , 4, (fex[i]._bram_wr_errors) );
+      PVPUTAU ( BramWrSamp  , 4, (fex[i]._bram_wr_sample) );
+      PVPUTAU ( BramRdErr   , 4, (fex[i]._bram_rd_errors) );
+      PVPUTAU ( BramRdSamp  , 4, (fex[i]._bram_rd_sample) );
+
+      HdrFifo* hdrf = _m.hdrFifo();
+      PVPUTAU ( WrFifoCnt , 4, (hdrf[i]._wrFifoCnt&0xf) );
+      PVPUTAU ( RdFifoCnt , 4, (hdrf[i]._rdFifoCnt&0xf) );
     
 #undef PVPUTDU
 #undef PVPUTDAU

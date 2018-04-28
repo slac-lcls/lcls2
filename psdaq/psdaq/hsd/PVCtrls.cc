@@ -60,6 +60,7 @@ namespace Pds {
     }
 
     CPV(ApplyConfig ,{if (TOU(data())) _ctrl.configure();}, {})
+    CPV(UndoConfig  ,{if (TOU(data())) _ctrl.unconfigure();}, {})
     CPV(Reset       ,{if (TOU(data())) _ctrl.reset    ();}, {})
     CPV(PgpLoopback ,{_ctrl.loopback (TOU(data())!=0);   }, {})
 
@@ -95,12 +96,15 @@ namespace Pds {
       NPV1(Fex_Ymax);
       NPV1(Fex_Xpre);
       NPV1(Fex_Xpost);
+      NPV1(Nat_Gate);
+      NPV1(Nat_PS);
       NPV1(TestPattern);
       _pv.push_back(new PvServer((pvbase+"BASE:INTTRIGVAL" ).c_str()));
       _pv.push_back(new PvServer((pvbase+"BASE:INTAFULLVAL").c_str()));
       _pv.push_back(new PvServer((pvbase+"BASE:PARTITION"  ).c_str()));
       
       NPV(ApplyConfig,"BASE:APPLYCONFIG");
+      NPV(UndoConfig ,"BASE:UNDOCONFIG");
       NPV(Reset      ,"RESET");
       NPV(PgpLoopback,"PGPLOOPBACK");
 
@@ -112,9 +116,14 @@ namespace Pds {
     enum PvIndex { Enable, Raw_Gate, Raw_PS, 
                    Fex_Gate, Fex_PS, 
                    Fex_Ymin, Fex_Ymax, Fex_Xpre, Fex_Xpost,
+                   Nat_Gate, Nat_PS,
                    TestPattern, IntTrigVal, IntAFullVal, Partition, LastPv };
 
     Module& PVCtrls::module() { return _m; }
+
+    void PVCtrls::unconfigure() {
+      _m.stop();
+    }
 
     void PVCtrls::configure() {
       _m.stop();
@@ -147,6 +156,9 @@ namespace Pds {
       _m.disable_test_pattern();
       if (pattern>=0)
         _m.enable_test_pattern((Module::TestPattern)pattern);
+
+      // zero the testpattern error counts
+      _m.clear_test_pattern_errors();
 
       // _m.sample_init(32+48*length, 0, 0);
       QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x80000);
@@ -188,6 +200,12 @@ namespace Pds {
             fex._stream[1].parms[2].v=TON(_pv[Fex_Xpre]->data(),i);
             fex._stream[1].parms[3].v=TON(_pv[Fex_Xpost]->data(),i);
           }
+          if (TON(_pv[Nat_PS]->data(),i)) {
+            streamMask |= (1<<2);
+            fex._base[2].setGate(4,TON(_pv[Nat_Gate]->data(),i));
+            fex._base[2].setFull(0xc00,4);
+            fex._base[2]._prescale=TON(_pv[Nat_PS]->data(),i)-1;
+          }
           fex._streams= streamMask;
         }
         else
@@ -199,9 +217,10 @@ namespace Pds {
         printf("%12.12s:",title);                       \
         for(unsigned i=0; i<4; i++) {                   \
           if (((1<<i)&channelMask)==0) continue;        \
-          printf(" %u/%u",                              \
+          printf(" %u/%u/%u",                           \
                  fex[i]._base[0].arg op,                \
-                 fex[i]._base[1].arg op);               \
+                 fex[i]._base[1].arg op,                \
+                 fex[i]._base[2].arg op);               \
         }                                               \
         printf("\n"); }                             
   

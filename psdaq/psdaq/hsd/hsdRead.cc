@@ -28,25 +28,26 @@ void sigHandler( int signal ) {
 }
 
 
-#include "psdaq/pgp/pgpcardG3/include/PgpCardMod.h"
+#include "psdaq/pgp/pgpGen4Daq/include/DmaDriver.h"
+#include "psdaq/pgp/pgpGen4Daq/app/PgpDaq.hh"
 
 using namespace std;
 
 void printUsage(char* name) {
   printf( "Usage: %s [-h]  -P <deviceName> [options]\n"
-      "    -h        Show usage\n"
-      "    -P        Set pgpcard device name  (REQUIRED)\n"
-      "    -L <num>  Number of lanes\n"
-      "    -c        number of times to read\n"
-      "    -o        Print out up to maxPrint words when reading data\n"
-      "    -f <file> Record to file\n"
-      "    -d <nsec> Delay given number of nanoseconds per event\n"
-      "    -D        Set debug value           [Default: 0]\n"
-      "                bit 00          print out progress\n"
-      "    -N        Exit after N events\n"
-      "    -r        Report rate\n"
-      "    -v <mask> Validate each event\n"
-      "    -E <str>  Push 1Hz waveforms to record <str>\n",
+      "    -h         Show usage\n"
+      "    -P         Set pgpcard device name\n"
+      "    -L <lanes> Mask of lanes\n"
+      "    -c         number of times to read\n"
+      "    -o         Print out up to maxPrint words when reading data\n"
+      "    -f <file>  Record to file\n"
+      "    -d <nsec>  Delay given number of nanoseconds per event\n"
+      "    -D         Set debug value           [Default: 0]\n"
+      "                 bit 00          print out progress\n"
+      "    -N         Exit after N events\n"
+      "    -r         Report rate\n"
+      "    -v <mask>  Validate each event\n"
+      "    -E <str>   Push 1Hz waveforms to record <str>\n",
       name
   );
 }
@@ -57,27 +58,22 @@ static int      count = 0;
 static int64_t  bytes = 0;
 static unsigned lanes = 0;
 static unsigned buffs = 0;
+static unsigned errs  = 0;
 
 int main (int argc, char **argv) {
-  PgpCardRx     pgpCardRx;
-  PgpCardTx     pgpCardTx;
-  int           x;
-  int           ret, fd;
+  int           fd;
   int           numb;
   bool          print = false;
-  uint          maxSize;
-  uint          *data;
-  char          err[128];
-  char          pgpcard[128]              = "";
+  const char*         dev = "/dev/pgpdaq0";
+  unsigned            client              = 0;
   int                 maxPrint            = 1024;
-  bool                cardGiven           = false;
   unsigned            debug               = 0;
   unsigned            nevents             = unsigned(-1);
   unsigned            delay               = 0;
   unsigned            lvalidate           = 0;
   unsigned            payloadBuffers      = 0;
   bool                reportRate          = false;
-  unsigned            nlanes              = 0;
+  unsigned            lanem               = 0;
   const char*         pv                  = 0;
   ::signal( SIGINT, sigHandler );
 
@@ -87,15 +83,10 @@ int main (int argc, char **argv) {
   while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:N:o:rv:V:E:" ) ) != EOF ) {
     switch(c) {
     case 'P':
-      strcpy(pgpcard, optarg);
-      cardGiven = true;
+      dev = optarg;
       break;
     case 'L':
-      { unsigned nl = strtoul(optarg,NULL,0);
-        if (nl > 0 && nl <= 8)
-          nlanes = nl-1;
-        printf("Asking for %d lanes; granting %d\n",nl,nlanes+1);
-      }
+      lanem = strtoul(optarg,NULL,0);
       break;
     case 'N':
       nevents = strtoul(optarg,NULL, 0);
@@ -144,30 +135,26 @@ int main (int argc, char **argv) {
     }
   }
 
-  if (!cardGiven) {
-    printf("PGP card must be specified !!\n");
-    printUsage(argv[0]);
-    return 1;
-  }
-  fd = open( pgpcard,  O_RDWR );
-  if (fd < 0) {
-    sprintf(err, "%s opening %s failed", argv[0], pgpcard);
-    perror(err);
-    return 1;
+  char cdev[64];
+  sprintf(cdev,"%s_%u",dev,client);
+  if ( (fd = open(cdev, O_RDWR)) <= 0 ) {
+    cout << "Error opening " << cdev << endl;
+    return(1);
   }
 
-  pgpCardTx.cmd = IOCTL_Set_Debug;
-  pgpCardTx.model = sizeof(&pgpCardTx);
-  pgpCardTx.size = sizeof(PgpCardTx);
-  pgpCardTx.data = reinterpret_cast<__u32*>(debug);
-
-  ret = write(fd,&pgpCardTx,sizeof(PgpCardTx));
-
-  if (nlanes > 0) {
-    pgpCardTx.cmd = IOCTL_Add_More_Ports;
-    pgpCardTx.data = reinterpret_cast<__u32*>(nlanes);
-    ret = write(fd,&pgpCardTx,sizeof(PgpCardTx));
+  //
+  //  Map the lanes to this reader
+  //
+  {
+    PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)mmap(NULL, sizeof(PgpDaq::PgpCard), (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0);   
+    uint32_t MAX_LANES = p->nlanes();
+    for(unsigned i=0; i<MAX_LANES; i++)
+      if (lanem & (1<<i)) {
+        p->dmaLane[i].client = client;
+        p->pgpLane[i].axil.txControl = 1;  // disable flow control
+      }
   }
+
 
   PVWriter* pvraw=0;
   PVWriter* pvfex=0;
@@ -183,12 +170,9 @@ int main (int argc, char **argv) {
   }
 
   // Allocate a buffer
-  maxSize = 1024*1024*2;
-  data = (uint *)malloc(sizeof(uint)*maxSize);
-
-  pgpCardRx.maxSize = maxSize;
-  pgpCardRx.data    = reinterpret_cast<__u32*>(data);
-  pgpCardRx.model   = sizeof(data);
+  uint32_t* data = new uint32_t[0x80000];
+  struct DmaReadData rd;
+  rd.data  = reinterpret_cast<uintptr_t>(data);
 
   pthread_attr_t tattr;
   pthread_attr_init(&tattr);
@@ -204,135 +188,161 @@ int main (int argc, char **argv) {
 
   unsigned tsec=0;
 
+  struct tm tm_epoch;
+  memset(&tm_epoch, 0, sizeof(tm_epoch));
+  tm_epoch.tm_mday = 1;
+  tm_epoch.tm_mon  = 0;
+  tm_epoch.tm_year = 90;
+  tm_epoch.tm_isdst = 0;
+
+  time_t t_epoch = mktime(&tm_epoch);
+
   // DMA Read
-  do {
-    ret = read(fd,&pgpCardRx,sizeof(PgpCardRx));
+  while(1) {
+    rd.index = 0;
+    ssize_t ret = read(fd, &rd, sizeof(rd));
+    if (ret < 0) {
+      perror("Reading buffer");
+      break;
+    }
+    unsigned nwords = ret>>2;
+    unsigned lane   = (rd.dest>>5)&7;
+
+    if (!rd.size) {
+      continue;
+    }
 
     if (nevents-- == 0)
       break;
 
-    if ( ret != 0 ) {
+    if (print) {
 
-      if (print) {
+      cout << "Ret=" << dec << ret;
+      cout << ", pgpLane  =" << dec << lane;
+      cout << ", pgpVc    =" << dec << ((rd.dest>>0)&0x1f);
+      cout << ", EOFE     =" << dec << rd.error;
+      cout << ", FifoErr  =" << dec << 0;
+      cout << ", LengthErr=" << dec << 0;
+      cout << endl << "   ";
 
-        cout << "Ret=" << dec << ret;
-        cout << ", pgpLane=" << dec << pgpCardRx.pgpLane;
-        cout << ", pgpVc=" << dec << pgpCardRx.pgpVc;
-        cout << ", EOFE=" << dec << pgpCardRx.eofe;
-        cout << ", FifoErr=" << dec << pgpCardRx.fifoErr;
-        cout << ", LengthErr=" << dec << pgpCardRx.lengthErr;
-        cout << endl << "   ";
-
-        for (x=0; x<ret && x<maxPrint; x++) {
-          cout << " 0x" << setw(8) << setfill('0') << hex << data[x];
-          if ( ((x+1)%10) == 0 ) cout << endl << "   ";
-        }
-        cout << endl;
-
-        if (count >= numb)
-          print = false;
+      for (unsigned x=0; x<nwords && x<maxPrint; x++) {
+        cout << " 0x" << setw(8) << setfill('0') << hex << data[x];
+        if ( ((x+1)%10) == 0 ) cout << endl << "   ";
       }
-      if (ret>0)
-        bytes += ret*sizeof(uint);
+      cout << endl;
 
-      if (lvalidate) {
-        if (lvalidate&1) {
-          //  Check that pulseId increments by a constant
-          uint64_t pulseId = (uint64_t(data[1])<<32) | data[0];
-          if (ppulseId) {
-            if (dpulseId > 100 && pulseId != (ppulseId+dpulseId))
-              printf("\tPulseId = %016llx [%016llx, %016llx]\n", 
-                     (unsigned long long)pulseId, 
-                     (unsigned long long)(pulseId+dpulseId), 
-                     (unsigned long long)(pulseId-ppulseId));
-            dpulseId = pulseId - ppulseId;
-          }
-          ppulseId = pulseId;
+      cout << "PID: " << hex << data[1] << setw(9) << setfill('0') << data[0] << endl;
+      cout << "TS : " << dec << data[3] << "." << setw(9) << setfill('0') << data[2] << endl;
+      time_t t = t_epoch + data[3];
+      cout << asctime( localtime(&t) ) << endl;
+
+      if (count >= numb)
+        print = false;
+    }
+    if (ret>0)
+      bytes += ret;
+
+    if (lvalidate) {
+      if (lvalidate&1) {
+        //  Check that pulseId increments by a constant
+        uint64_t pulseId = (uint64_t(data[1])<<32) | data[0];
+        if (ppulseId) {
+          if (dpulseId > 100 && pulseId != (ppulseId+dpulseId))
+            printf("\tPulseId = %016llx [%016llx, %016llx]\n", 
+                   (unsigned long long)pulseId, 
+                   (unsigned long long)(pulseId+dpulseId), 
+                   (unsigned long long)(pulseId-ppulseId));
+          dpulseId = pulseId - ppulseId;
         }
-        if (lvalidate&2) {
-          //  Check that analysis count increments by one
-          //        unsigned count = data[5];
-          unsigned count = data[4];
-          if (nextCount[pgpCardRx.pgpLane] && count != nextCount[pgpCardRx.pgpLane])
-            printf("\tanalysisCount = %08x [%08x] lane %u\n", 
-                   count, nextCount[pgpCardRx.pgpLane], pgpCardRx.pgpLane);
-          nextCount[pgpCardRx.pgpLane] = count+1;
-        }
-        if (lvalidate&4) {
-          //  Check that the first payload word increments by one
-          if (payloadBuffers) {
-            if (nextPword && data[8] != nextPword)
-              printf("\tpayloadWord = %08x [%08x]\n", data[8], nextPword);
-            nextPword = (data[8]+1)%payloadBuffers;
-          }
+        ppulseId = pulseId;
+      }
+      if (lvalidate&2) {
+        //  Check that analysis count increments by one
+        //        unsigned count = data[5];
+        unsigned count = data[4];
+        if (nextCount[lane] && count != nextCount[lane])
+          printf("\tanalysisCount = %08x [%08x] lane %u\n", 
+                 count, nextCount[lane], lane);
+        nextCount[lane] = count+1;
+      }
+      if (lvalidate&4) {
+        //  Check that the first payload word increments by one
+        if (payloadBuffers) {
+          if (nextPword && data[8] != nextPword)
+            printf("\tpayloadWord = %08x [%08x]\n", data[8], nextPword);
+          nextPword = (data[8]+1)%payloadBuffers;
         }
       }
+    }
 
-      lanes |= 1<<pgpCardRx.pgpLane;
+    lanes |= 1<<lane;
 
-      { unsigned buff = data[9]>>16;
-        buffs |= (1<<buff); }
+    { unsigned buff = data[9]>>16;
+      buffs |= (1<<buff); }
 
-      ++count;
+    //  Check for pgp errors
+    if (rd.error)
+      ++errs;
 
-      if (writeFile) {
-        data[6] |= (pgpCardRx.pgpLane<<20);  // write the lane into the event header
-        fwrite(pgpCardRx.data,sizeof(unsigned),ret,writeFile);
-      }
+    //  Check for length errors
+    { unsigned ext = 8;
+      while( ext < nwords )
+        ext += data[ext]/2 + 4;
+      if (ext != nwords) errs++;
+    }
+      
+    ++count;
 
-      if (pv && tsec != data[3] && pgpCardRx.pgpLane==0) {
-        tsec = data[3];
+    if (writeFile) {
+      data[6] |= (lane<<20);  // write the lane into the event header
+      fwrite(data,ret,1,writeFile);
+    }
 
-        Pds::HSD::EventHeader& evhdr = *reinterpret_cast<Pds::HSD::EventHeader*>(pgpCardRx.data); 
+    if (pv && tsec != data[3] && lane==0) {
+      tsec = data[3];
 
-        Pds::HSD::StreamHeader& rawhdr = *new(&evhdr+1) Pds::HSD::StreamHeader;
+      Pds::HSD::EventHeader& evhdr = *reinterpret_cast<Pds::HSD::EventHeader*>(data); 
 
-        const uint16_t* raw = reinterpret_cast<const uint16_t*>(&rawhdr+1) + rawhdr.boffs();
-        for(unsigned i=0; i<rawhdr.samples() && i<pvraw->nelem(); i++)
-          reinterpret_cast<unsigned*>(pvraw->data())[i] = raw[i];
-        pvraw->put();
+      Pds::HSD::StreamHeader& rawhdr = *new(&evhdr+1) Pds::HSD::StreamHeader;
 
-        void* next = const_cast<uint16_t*>(&raw[rawhdr.samples()]);
+      const uint16_t* raw = reinterpret_cast<const uint16_t*>(&rawhdr+1) + rawhdr.boffs();
+      for(unsigned i=0; i<rawhdr.samples() && i<pvraw->nelem(); i++)
+        reinterpret_cast<unsigned*>(pvraw->data())[i] = raw[i];
+      pvraw->put();
 
-        Pds::HSD::StreamHeader& fexhdr = *new(next) Pds::HSD::StreamHeader;
+      void* next = const_cast<uint16_t*>(&raw[rawhdr.samples()]);
 
-        const uint16_t* fex = reinterpret_cast<const uint16_t*>(&fexhdr+1) + fexhdr.boffs();
-        int nskip=0;
-        for(unsigned i=0; i<fexhdr.samples() && i<pvfex->nelem(); i++) {
-          if (nskip) {
+      Pds::HSD::StreamHeader& fexhdr = *new(next) Pds::HSD::StreamHeader;
+
+      const uint16_t* fex = reinterpret_cast<const uint16_t*>(&fexhdr+1) + fexhdr.boffs();
+      int nskip=0;
+      for(unsigned i=0; i<fexhdr.samples() && i<pvfex->nelem(); i++) {
+        if (nskip) {
+          reinterpret_cast<unsigned*>(pvfex->data())[i] = 0x200;
+          nskip--;
+        }
+        else {
+          if (fex[i]&0x8000) {
+            nskip = fex[i]&0x7fff;
             reinterpret_cast<unsigned*>(pvfex->data())[i] = 0x200;
-            nskip--;
           }
-          else {
-            if (fex[i]&0x8000) {
-              nskip = fex[i]&0x7fff;
-              reinterpret_cast<unsigned*>(pvfex->data())[i] = 0x200;
-            }
-            else
-              reinterpret_cast<unsigned*>(pvfex->data())[i] = fex[i];
-          }
+          else
+            reinterpret_cast<unsigned*>(pvfex->data())[i] = fex[i];
         }
-        pvfex->put();
-
-        ca_flush_io();
       }
+      pvfex->put();
 
-      if (delay) {
-        timespec tv = { .tv_sec=0, .tv_nsec=delay };
-        while( nanosleep(&tv, &tv) )
-          ;
-      }
+      ca_flush_io();
     }
-    else {
-      printf("ret == 0\n");
+
+    if (delay) {
+      timespec tv = { .tv_sec=0, .tv_nsec=delay };
+      while( nanosleep(&tv, &tv) )
+        ;
     }
-  } while ( ret > 0 );
-  count = -1;
-  if (ret < 0) {
-    sprintf(err, "%s reading %s failed ", argv[0], pgpcard);
-    perror(err);
-    return 1;
   }
+  count = -1;
+
   if (reportRate)
     pthread_join(thr,NULL);
   free(data);
@@ -380,9 +390,9 @@ void* countThread(void* args)
       dbytes *= 1.e-3;
     }
     
-    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B]  lanes %02x  buffs %04x\n", 
+    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B]  lanes %02x  buffs %04x  errs %04x\n", 
            rate  , scchar[rsc ], ncount, 
-           dbytes, scchar[dbsc], (long long)nbytes, lanes, buffs);
+           dbytes, scchar[dbsc], (long long)nbytes, lanes, buffs, errs);
     lanes = 0;
     buffs = 0;
 

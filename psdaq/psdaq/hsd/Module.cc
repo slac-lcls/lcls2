@@ -7,7 +7,10 @@
 #include "psdaq/hsd/Mmcm.hh"
 #include "psdaq/hsd/DmaCore.hh"
 #include "psdaq/hsd/PhyCore.hh"
-#include "psdaq/hsd/Pgp2bAxi.hh"
+#include "psdaq/hsd/Pgp2b.hh"
+#include "psdaq/mmhw/Pgp2bAxi.hh"
+#include "psdaq/hsd/Pgp3.hh"
+#include "psdaq/mmhw/Pgp3Axil.hh"
 #include "psdaq/mmhw/RingBuffer.hh"
 #include "psdaq/hsd/I2cSwitch.hh"
 #include "psdaq/hsd/LocalCpld.hh"
@@ -19,9 +22,12 @@
 #include "psdaq/hsd/AdcSync.hh"
 #include "psdaq/hsd/FmcCore.hh"
 #include "psdaq/hsd/FexCfg.hh"
+#include "psdaq/hsd/HdrFifo.hh"
 #include "psdaq/hsd/FlashController.hh"
 
 using Pds::Mmhw::AxiVersion;
+using Pds::Mmhw::Pgp2bAxi;
+using Pds::Mmhw::Pgp3Axil;
 using Pds::Mmhw::RingBuffer;
 
 #include <string>
@@ -30,6 +36,8 @@ using Pds::Mmhw::RingBuffer;
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <poll.h>
+
+using std::string;
 
 namespace Pds {
   namespace HSD {
@@ -111,16 +119,18 @@ namespace Pds {
       AdcCore  adca_core;        // 0x81400
       FmcCore  fmcb_core;        // 0x81800
       AdcCore  adcb_core;        // 0x81C00
-      AdcSync  adc_sync;
-      uint32_t rsvd_to_0x88000  [(0x6000-sizeof(AdcSync))/4];
+      AdcSync  adc_sync;         // 0x82000
+      HdrFifo  hdr_fifo[4];      // 0x82800
+      uint32_t rsvd_to_0x88000  [(0x5800-4*sizeof(HdrFifo))/4];
 
       FexCfg   fex_chan[4];      // 0x88000
       uint32_t rsvd_to_0x90000  [(0x8000-4*sizeof(FexCfg))/4];
 
       //  Pgp (optional)  
-      Pgp2bAxi pgp[4];           // 0x90000
-      uint32_t pgp_fmc1;
-      uint32_t pgp_fmc2;
+      //      Pgp2bAxi pgp[4];           // 0x90000
+      //      uint32_t pgp_fmc1;
+      //      uint32_t pgp_fmc2;
+      uint32_t pgp_reg[0x4000>>2];
     };
   };
 };
@@ -176,8 +186,16 @@ Module* Module::create(int fd, TimingType timing)
       else
         m->tpr().setLCLSII();
       m->tpr().resetRxPll();
-      usleep(10000);
-      m->tpr().resetRx();
+      usleep(1000000);
+      m->tpr().resetBB();
+
+      m->p->base.resetFbPLL();
+      usleep(1000000);
+      m->p->base.resetFb ();
+      m->p->base.resetDma();
+      usleep(1000000);
+
+      m->tpr().resetCounts();
 
       usleep(100000);
       m->fmc_init(timing);
@@ -468,17 +486,6 @@ void Module::PrivateData::dumpRxAlign     () const
   printf("\n");
 }
 
-void Module::PrivateData::dumpPgp     () const
-{
-  //  Need to reset after clocks come back
-  //  const_cast<Module::PrivateData*>(this)->pgp_fmc2 = 0x9;
-  //  const_cast<Module::PrivateData*>(this)->base.resetDma();
-  
-  // for(unsigned i=0; i<4; i++) {
-  //   printf("Lane %d [%p]:\n",i, &pgp[i]);
-  //   pgp[i].dump();
-  // }
-  {
 #define LPRINT(title,field) {                     \
       printf("\t%20.20s :",title);                \
       for(unsigned i=0; i<4; i++)                 \
@@ -507,6 +514,14 @@ void Module::PrivateData::dumpPgp     () const
         printf(" %11.4f",double(pgp[i].field)*1.e-6);   \
       printf("\n"); }
     
+void Module::PrivateData::dumpPgp     () const
+{
+  string buildStamp = version.buildStamp();
+  if (buildStamp.find("pgp")==string::npos)
+    return;
+
+  if (buildStamp.find("pgp3")==string::npos) {
+    const Pgp2bAxi* pgp = reinterpret_cast<const Pgp2bAxi*>(pgp_reg);
     LPRINT("loopback",_loopback);
     LPRINT("txUserData",_txUserData);
     LPRBF ("rxPhyReady",_status,0,1);
@@ -535,38 +550,50 @@ void Module::PrivateData::dumpPgp     () const
     LPRINT("lastRxOp",_lastRxOpcode);
     LPRINT("nTxOps",_txOpcodes);
     LPRINT("nRxOps",_rxOpcodes);
+  }
+
+  else {
+    const Pgp3Axil* pgp = reinterpret_cast<const Pgp3Axil*>(pgp_reg);
+    LPRINT("loopback"       ,loopback);
+    LPRINT("skpInterval"    ,skpInterval);
+    LPRBF ("localLinkReady" ,rxStatus,1,1);
+    LPRBF ("remoteLinkReady",rxStatus,2,1);
+    LPRINT("framesRxErr"    ,rxFrameErrCnt);
+    LPRINT("framesRx"       ,rxFrameCnt);
+    LPRINT("framesTxErr"    ,txFrameErrCnt);
+    LPRINT("framesTx"       ,txFrameCnt);
+    LPRFRQ("rxClkFreq"      ,rxClkFreq);
+    LPRFRQ("txClkFreq"      ,txClkFreq);
+    LPRINT("lastTxOp"       ,txOpCodeLast);
+    LPRINT("lastRxOp"       ,rxOpCodeLast);
+    LPRINT("nTxOps"         ,txOpCodeCnt);
+    LPRINT("nRxOps"         ,rxOpCodeCnt);
+  }
+}
 
 #undef LPRINT
 #undef LPRBF
 #undef LPRVC
 #undef LPRFRQ
-  }
-
-  printf("pgp_fmc: %08x:%08x\n",
-         pgp_fmc1, pgp_fmc2);
-  printf("\n");
-
-  // for(unsigned i=0; i<4; i++)
-  //    const_cast<Module::PrivateData*>(this)->pgp[i]._countReset = 1;
-  // usleep(10);
-  // for(unsigned i=0; i<4; i++)
-  //    const_cast<Module::PrivateData*>(this)->pgp[i]._countReset = 0;
-
-  //   These registers are not yet writable
-#if 0
-  for(unsigned i=0; i<4; i++)
-    const_cast<Module::PrivateData*>(this)->pgp[i]._loopback = 2;
-  for(unsigned i=0; i<4; i++)
-    const_cast<Module::PrivateData*>(this)->pgp[i]._rxReset = 1;
-  usleep(10);
-  for(unsigned i=0; i<4; i++)
-    const_cast<Module::PrivateData*>(this)->pgp[i]._rxReset = 0;
-#endif
-}
 
 void Module::dumpBase() const
 {
   p->base.dump();
+}
+
+void Module::dumpMap() const
+{
+  printf("AxiVersion     : %p\n", &p->version);
+  printf("FlashController: %p\n", &p->flash);
+  printf("I2cSwitch      : %p\n", &p->i2c_sw_control);
+  printf("ClkSynth       : %p\n", &p->clksynth);
+  printf("LocalCpld      : %p\n", &p->local_cpld);
+  printf("FmcSpi         : %p\n", &p->fmc_spi);
+  printf("DmaCore        : %p\n", &p->dma_core);
+  printf("TprCore        : %p\n", &p->tpr);
+  printf("QABase         : %p\n", &p->base);
+  printf("HdrFifo        : %p\n", &p->hdr_fifo[0]);
+  printf("FexCfg         : %p\n", &p->fex_chan[0]);
 }
 
 void Module::PrivateData::setAdcMux(bool     interleave,
@@ -697,6 +724,13 @@ void Module::enable_test_pattern(TestPattern t) { p->enable_test_pattern(t); }
 
 void Module::disable_test_pattern() { p->disable_test_pattern(); }
 
+void Module::clear_test_pattern_errors() {
+  for(unsigned i=0; i<4; i++) {
+    p->fex_chan[i]._test_pattern_errors  = 0;
+    p->fex_chan[i]._test_pattern_errbits = 0;
+  }
+}
+
 void Module::enable_cal () { p->enable_cal(); }
 
 void Module::disable_cal() { p->disable_cal(); }
@@ -826,4 +860,28 @@ void Module::set_gain(unsigned channel, unsigned value)
 
 void* Module::reg() { return (void*)p; }
 
+std::vector<Pgp*> Module::pgp() {
+  std::vector<Pgp*> v(0);
+  while(1) {
+    string buildStamp = p->version.buildStamp();
+    if (buildStamp.find("pgp")==string::npos)
+      break;
+    if (buildStamp.find("pgp3")==string::npos) {
+      Pgp2bAxi* pgp = reinterpret_cast<Pgp2bAxi*>(p->pgp_reg);
+      for(unsigned i=0; i<4; i++)
+        v.push_back(new Pgp2b(pgp[i]));
+      break;
+    }
+    else {
+      Pgp3Axil* pgp = reinterpret_cast<Pgp3Axil*>(p->pgp_reg);
+      for(unsigned i=0; i<4; i++)
+        v.push_back(new Pgp3(pgp[i]));
+      break;
+    }
+  }
+  return v;
+}
+
 FexCfg* Module::fex() { return &p->fex_chan[0]; }
+
+HdrFifo* Module::hdrFifo() { return &p->hdr_fifo[0]; }

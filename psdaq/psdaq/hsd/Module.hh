@@ -4,6 +4,7 @@
 #include "psdaq/hsd/Globals.hh"
 #include <stdint.h>
 #include <stdio.h>
+#include <vector>
 
 namespace Pds {
   namespace Mmhw {
@@ -12,7 +13,8 @@ namespace Pds {
   namespace HSD {
     class TprCore;
     class FexCfg;
-
+    class HdrFifo;
+    class Pgp;
     class Module {
     public:
       //
@@ -42,6 +44,8 @@ namespace Pds {
       enum TestPattern { Ramp=0, Flash11=1, Flash12=3, Flash16=5, DMA=8 };
       void enable_test_pattern(TestPattern);
       void disable_test_pattern();
+      void clear_test_pattern_errors();
+
       void enable_cal ();
       void disable_cal();
       void setAdcMux(unsigned channels);
@@ -73,8 +77,10 @@ namespace Pds {
       void dumpRxAlign     () const;
       void dumpPgp         () const;
       void dumpBase        () const;
+      void dumpMap         () const;
 
       FexCfg* fex();
+      HdrFifo* hdrFifo();
 
       //  Zero copy read semantics
       //      ssize_t dequeue(void*&);
@@ -83,6 +89,7 @@ namespace Pds {
       int read(uint32_t* data, unsigned data_size);
 
       void* reg();
+      std::vector<Pgp*> pgp();
     private:
       Module() {}
 

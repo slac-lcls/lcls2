@@ -22,7 +22,8 @@ namespace Pds {
     public:
       Module& module();
     public:
-      void configure();
+      void configure  ();
+      void unconfigure();
       void reset    ();
       void loopback (bool);
     private:

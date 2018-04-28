@@ -40,7 +40,7 @@ public:
     unsigned i=next.boffs();
     unsigned nerror(0);
     unsigned ntest (0);
-    const unsigned end = next.samples()-8+next.eoffs();
+    const unsigned end = next.samples()-next.eoffs();
     const uint16_t* p = reinterpret_cast<const uint16_t*>(&next+1);
     if (p[i] != adc) {
         ++nerror;
@@ -103,8 +103,8 @@ public:
     //  (2) Verify each word of the compressed stream is found in the raw stream at the right location
 
     unsigned nerror(0), ntest(0);
-    const unsigned end = _strm.samples()-8+_strm.eoffs();
-    const unsigned end_j = raw.samples()-8+raw  .eoffs();
+    const unsigned end = _strm.samples()-_strm.eoffs();
+    const unsigned end_j = raw.samples()-raw  .eoffs();
     const uint16_t* p_thr = reinterpret_cast<const uint16_t*>(&_strm+1);
     const uint16_t* p_raw = reinterpret_cast<const uint16_t*>(&raw  +1);
     unsigned i=_strm.boffs(), j=raw.boffs();
@@ -232,7 +232,6 @@ int main(int argc, char** argv) {
     }
 
     const EventHeader& eh = *reinterpret_cast<const EventHeader*>(event);
-    if (eh.eventType()) continue;
 
     //    printf("Read event header into %p\n", &eh);
     if (!lText) {
@@ -244,6 +243,7 @@ int main(int argc, char** argv) {
       skipSize = 0xc8;
     }
     eh.dump();
+    if (eh.eventType()) continue;
 
     const char* next = reinterpret_cast<const char*>(&eh+1);
 
