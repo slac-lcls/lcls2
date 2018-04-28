@@ -45,6 +45,7 @@ static void usage(const char* p)
   printf("Options:\n");
   printf("\t-d <device>  [e.g. /dev/pgpdaq0]\n");
   printf("\t-c <client>  \n");
+  printf("\t-f <path>    [record to file]\n");
   printf("\t-L <lanes>   [mask of lanes]\n");
   printf("\t-S <nanosec> [sleep each event]\n");
   printf("\t-P <nprint>  [events to print]\n");
@@ -60,6 +61,7 @@ static uint32_t misses = 0;
 static uint32_t drops  = 0;
 static uint32_t excepts= 0;
 static uint32_t xmask  = 0;
+static uint32_t lmask  = 0;
 static uint32_t idxhst[0x40];
 
 static void dumphist(const uint32_t* p,
@@ -139,6 +141,7 @@ static void* countThread(void* p)
     printf("\t drops %u", (drops-pdrops));
     printf("\t excepts %u", (excepts-pexcepts));
     printf("\t emask %x", xmask);
+    printf("\t lanes %x", lmask);
     pevents = events;
     pmisses = misses;
     pdrops  = drops;
@@ -146,6 +149,7 @@ static void* countThread(void* p)
     pexcepts= excepts;
     ptv     = tv;
     xmask   = 0;
+    lmask   = 0;
   }
 
   return 0;
@@ -176,6 +180,7 @@ int main (int argc, char **argv) {
 
   int          fd;
   const char*  dev = "/dev/pgpdaq0";
+  const char* outf = 0;
   unsigned     client = 0;
   unsigned     lanes  = 1;
   unsigned     nprint = 0;
@@ -184,10 +189,11 @@ int main (int argc, char **argv) {
   bool         lEventHdr = false;
   int c;
 
-  while((c=getopt(argc,argv,"d:c:L:P:S:V:E")) != EOF) {
+  while((c=getopt(argc,argv,"d:c:f:L:P:S:V:E")) != EOF) {
     switch(c) {
     case 'c': client  = strtoul(optarg,NULL,0); break;
     case 'd': dev     = optarg; break;
+    case 'f': outf    = optarg; break;
     case 'E': lEventHdr = true; break;
     case 'L': lanes   = strtoul(optarg,NULL,0); break;
     case 'P': nprint  = strtoul(optarg,NULL,0); break;
@@ -233,6 +239,10 @@ int main (int argc, char **argv) {
   ::signal( SIGINT , sigHandler );
   ::signal( SIGABRT, sigHandler );
   ::signal( SIGKILL, sigHandler );
+
+  FILE* f = 0;
+  if (outf)
+    f = fopen(outf,"w");
 
   //
   //  Launch the read loop
@@ -377,6 +387,10 @@ int main (int argc, char **argv) {
     bytes += rd.size;
     index++;
     xmask |= emask;
+    lmask |= (1<<lane);
+
+    if (f)
+      fwrite(q, rd.size, 1, f);
 
     if (nsSleep)
       nanospin(nsSleep);
