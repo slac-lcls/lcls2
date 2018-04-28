@@ -2,9 +2,7 @@ import re
 import sys
 import zmq
 import argparse
-import threading
-from mpi4py import MPI
-from ami.comm import Collector
+from ami.comm import Ports, Collector
 from ami.data import MsgTypes
 
 
@@ -17,29 +15,24 @@ class Manager(Collector):
     configuration changes to the graph.
     """
 
-    def __init__(self, gui_port):
+    def __init__(self, collector_addr, graph_addr, comm_addr):
         """
         protocol right now only tells you how to communicate with workers
         """
-        super(__class__, self).__init__()
+        super(__class__, self).__init__(collector_addr)
         self.feature_store = {}
         self.feature_req = re.compile("feature:(?P<name>.*)")
         self.graph = {}
 
-        # ZMQ setup
-        self.ctx = zmq.Context()
         self.comm = self.ctx.socket(zmq.REP)
-        self.comm.bind("tcp://*:%d" % gui_port)
-
-        self.client_listener_thread = threading.Thread(target=self.client_listener)
-        self.client_listener_thread.daemon = True
-        self.client_listener_thread.start()
+        self.comm.bind(comm_addr)
+        self.register(self.comm, self.client_request)
+        self.graph_comm = self.ctx.socket(zmq.PUB)
+        self.graph_comm.bind(graph_addr)
 
     def process_msg(self, msg):
         if msg.mtype == MsgTypes.Datagram:
             self.feature_store[msg.payload.name] = msg.payload
-            #print(msg.payload)
-            #sys.stdout.flush()
         return
 
     @property
@@ -61,81 +54,106 @@ class Manager(Collector):
         else:
             return False
 
-    def client_listener(self):
-        print('*** started client listen thread')
-        sys.stdout.flush()
-        while True:
-            request = self.comm.recv_string()
-            
-            # check if it is a feature request
-            if not self.feature_request(request):
-                if request == 'get_features':
-                    self.comm.send_pyobj(self.features)
-                elif request == 'get_graph':
-                    self.comm.send_pyobj(self.graph)
-                elif request == 'set_graph':
-                    self.graph = self.recv_graph()
-                    sys.stdout.flush()
-                    if self.apply_graph():
-                        self.comm.send_string('ok')
-                    else:
-                        self.comm.send_string('error')
+    def client_request(self):
+        request = self.comm.recv_string()
+        # check if it is a feature request
+        if not self.feature_request(request):
+            if request == 'get_features':
+                self.comm.send_pyobj(self.features)
+            elif request == 'clear_graph':
+                self.graph.clear()
+                if self.apply_graph():
+                    self.comm.send_string('ok')
                 else:
                     self.comm.send_string('error')
+            elif request == 'reset_features':
+                self.feature_store.clear()
+                self.comm.send_string('ok')
+            elif request == 'get_graph':
+                self.comm.send_pyobj(self.graph)
+            elif request == 'set_graph':
+                self.graph = self.recv_graph()
+                if self.apply_graph():
+                    self.comm.send_string('ok')
+                else:
+                    self.comm.send_string('error')
+            elif request.startswith('reqimage'):
+                self.comm.send_string('ok')
+                self.graph_comm.send_string('request', zmq.SNDMORE)
+                # FIXME: need to divide by number of workers here, and think
+                # about double collectors, instead of going directly
+                # to the workers
+                splitrequest = request.split(':')
+                self.graph_comm.send_pyobj([splitrequest[1],int(splitrequest[2])])
+            else:
+                self.comm.send_string('error')
 
     def recv_graph(self):
         return self.comm.recv_pyobj() # zmq for now, could be EPICS in future?
 
     def apply_graph(self):
-        reqs = []
         print("manager: sending requested graph...")
-        sys.stdout.flush()
         try:
-            for rank in range(1, MPI.COMM_WORLD.Get_size()):
-                reqs.append(MPI.COMM_WORLD.isend(self.graph, tag=1, dest=rank))
-            for req in reqs:
-                req.wait()
+            self.graph_comm.send_string("graph", zmq.SNDMORE)
+            self.graph_comm.send_pyobj(self.graph)
         except Exception as exp:
             print("manager: failed to send graph -", exp)
-            sys.stdout.flush() 
             return False
         print("manager: sending of graph completed")
-        sys.stdout.flush()
         return True
 
 
-# TJL note to self:
-# we do not need this any more
-
-#def main():
-#    parser = argparse.ArgumentParser(description='AMII Manager App')
-#
-#    parser.add_argument(
-#        '-H',
-#        '--host',
-#        default='*',
-#        help='interface the AMII manager listens on (default: all)'
-#    )
-#
-#    parser.add_argument(
-#        '-p',
-#        '--port',
-#        type=int,
-#        default=5557,
-#        help='port for GUI-Manager communication'
-#    )
-#
-#    args = parser.parse_args()
-#
-#    try:
-#        manager = Manager(args.port)
-#        return manager.run()
-#    except KeyboardInterrupt:
-#        print("Manager killed by user...")
-#        return 0
-#
-#
-#if __name__ == '__main__':
-#    sys.exit(main())
+def run_manager(collector_addr, graph_addr, comm_addr):
+    manager = Manager(collector_addr, graph_addr, comm_addr)
+    return manager.run()
 
 
+def main():
+    parser = argparse.ArgumentParser(description='AMII Manager App')
+
+    parser.add_argument(
+        '-H',
+        '--host',
+        default='*',
+        help='interface the AMII manager listens on (default: all)'
+    )
+
+    parser.add_argument(
+        '-p',
+        '--port',
+        type=int,
+        default=Ports.Comm,
+        help='port for GUI-Manager communication (default: %d)'%Ports.Comm
+    )
+
+    parser.add_argument(
+        '-g',
+        '--graph',
+        type=int,
+        default=Ports.Graph,
+        help='port for graph communication (default: %d)'%Ports.Graph
+    )
+
+    parser.add_argument(
+        '-c',
+        '--collector',
+        type=int,
+        default=Ports.Collector,
+        help='port for final collector (default: %d)'%Ports.Collector
+    )
+
+    args = parser.parse_args()
+
+    collector_addr = "tcp://%s:%d"%(args.host, args.collector)
+    graph_addr = "tcp://%s:%d"%(args.host, args.graph)
+    comm_addr = "tcp://%s:%d"%(args.host, args.port)
+
+    try:
+        return run_manager(collector_addr, graph_addr, comm_addr)
+    except KeyboardInterrupt:
+        print("Manager killed by user...")
+        return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

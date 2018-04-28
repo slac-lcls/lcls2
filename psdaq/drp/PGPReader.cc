@@ -3,34 +3,13 @@
 #include <chrono>
 #include <bitset>
 #include <unistd.h>
+#include <zmq.h>
 #include "pgpdriver.h"
 #include "PGPReader.hh"
-
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/Sequence.hh"
 
 using namespace XtcData;
-
-MemPool::MemPool(int num_workers, int num_entries) :
-    dma(num_entries, RX_BUFFER_SIZE),
-    pgp_data(num_entries),
-    pebble_queue(num_entries),
-    collector_queue(num_entries),
-    output_queue(num_entries),
-    num_entries(num_entries),
-    pebble(num_entries)
-{
-    for (int i = 0; i < num_workers; i++) {
-        worker_input_queues.emplace_back(PebbleQueue(num_entries));
-        worker_output_queues.emplace_back(PebbleQueue(num_entries));
-    }
-
-    for (int i = 0; i < num_entries; i++) {
-        pgp_data[i].counter = 0;
-        pgp_data[i].buffer_mask = 0;
-        pebble_queue.push(&pebble[i]);
-    }
-}
 
 MovingAverage::MovingAverage(int n) : index(0), sum(0), N(n), values(N, 0) {}
 int MovingAverage::add_value(int value)
@@ -111,8 +90,13 @@ void PGPReader::send_all_workers(Pebble* pebble)
     m_pool.collector_queue.push(0);
 }
 
-void monitor_pgp(std::atomic<Counters*>& p)
+void monitor_pgp(std::atomic<Counters*>& p, MemPool& pool)
 {
+    void* context = zmq_ctx_new();
+    void* socket = zmq_socket(context, ZMQ_PUB);
+    zmq_connect(socket, "tcp://psdev7b:5559");
+    char buffer[2048];
+
     Counters* c = p.load(std::memory_order_acquire);
     int64_t old_bytes = c->total_bytes_received;
     int64_t old_count = c->event_count;
@@ -129,11 +113,20 @@ void monitor_pgp(std::atomic<Counters*>& p)
             break;
         }
         int64_t new_count = c->event_count;
+        int buffer_queue_size = pool.dma.buffer_queue.guess_size();
+        int output_queue_size = pool.output_queue.guess_size();
 
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t - oldt).count();
         double data_rate = double(new_bytes - old_bytes) / duration;
         double event_rate = double(new_count - old_count) / duration * 1.0e3;
         printf("Event rate %.2f kHz    Data rate  %.2f MB/s\n", event_rate, data_rate);
+        int64_t epoch = std::chrono::duration_cast<std::chrono::duration<int64_t>>(
+                        std::chrono::system_clock::now().time_since_epoch()).count();
+        int size = snprintf(buffer, 2048,
+                R"({"time": [%ld], "event_rate": [%f], "data_rate": [%f], "buffer_queue": [%d], "output_queue": [%d]})",
+                epoch, event_rate, data_rate, buffer_queue_size, output_queue_size);
+        zmq_send(socket, buffer, size, 0);
+
         old_bytes = new_bytes;
         old_count = new_count;
     }
@@ -145,7 +138,7 @@ void PGPReader::run()
     Counters c1, c2;
     Counters* counter = &c2;
     std::atomic<Counters*> p(&c1);
-    std::thread monitor_thread(monitor_pgp, std::ref(p));
+    std::thread monitor_thread(monitor_pgp, std::ref(p), std::ref(m_pool));
 
     int64_t event_count = 0;
     int64_t total_bytes_received = 0;
@@ -158,23 +151,30 @@ void PGPReader::run()
             int index = __builtin_ffs(pgp->buffer_mask) - 1;
             Transition* event_header = reinterpret_cast<Transition*>(pgp->buffers[index]->virt);
             TransitionId::Value transition_id = event_header->seq.service();
-            //printf("Complete evevent:  Transition id %d pulse id %lu  event counter %u\n", 
+            //printf("Complete evevent:  Transition id %d pulse id %lu  event counter %u\n",
             //        transition_id, event_header->seq.pulseId().value(), event_header->evtCounter);
             Pebble* pebble;
             m_pool.pebble_queue.pop(pebble);
             pebble->pgp_data = pgp;
+
+            send_to_worker(pebble);
+
+            /*
             switch (transition_id) {
                 case 0:
                     send_to_worker(pebble);
                     break;
 
                 case 2:
-                    send_all_workers(pebble);
+                    // FIXME
+                    // send_all_workers(pebble);
+                    send_to_worker(pebble);
                     break;
                 default:
                     printf("Unknown transition %d\n", transition_id);
                     break;
             }
+            */
             event_count += 1;
 
             counter->event_count = event_count;

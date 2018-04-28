@@ -14,6 +14,7 @@
 #include <numpy/arrayobject.h>
 #include <numpy/ndarraytypes.h>
 #include <structmember.h>
+#include <assert.h>
 
 #ifdef PSANA_USE_LEGION
 #define LEGION_ENABLE_C_BINDINGS
@@ -25,9 +26,10 @@ using namespace Legion;
 using namespace XtcData;
 #define BUFSIZE 0x4000000
 #define TMPSTRINGSIZE 256
-#define CHUNKSIZE 0x100000
-#define CACHESIZE 0x200000
-#define MAXCHUNK CACHESIZE/CHUNKSIZE
+#define CHUNKSIZE 1<<20
+#define MAXRETRIES 5
+
+using namespace std;
 
 #ifdef PSANA_USE_LEGION
 enum FieldIDs {
@@ -37,6 +39,14 @@ enum FieldIDs {
 
 // to avoid compiler warnings for debug variables
 #define _unused(x) ((void)(x))
+
+struct buffered_reader_t {
+public:
+    int fd;
+    char *chunk;
+    size_t offset;
+    size_t got;
+};
 
 typedef struct {
     PyObject_HEAD
@@ -48,9 +58,79 @@ typedef struct {
 #endif
     int file_descriptor;
     ssize_t offset;
-    char* chunks[MAXCHUNK];
-    bool is_done;
+    buffered_reader_t* reader;
+    Py_buffer buf;
 } PyDgramObject;
+
+/* buffered_reader */
+// reads and stores data in a chunk of CHUNKSIZE bytes
+// when fails, try to read until MAXRETRIES is reached.
+
+buffered_reader_t *buffered_reader_new(int fd) {
+    buffered_reader_t *reader = new buffered_reader_t;
+    reader->fd = fd;
+    reader->chunk = 0;
+    reader->offset = 0;
+    reader->got = 0;
+    return reader;
+}
+
+static void buffered_reader_free(buffered_reader_t *reader) {
+    delete reader;
+}
+
+static ssize_t read_with_retries(int fd, void *buf, size_t count, int retries) {
+    size_t requested = count;
+    for (int attempt = 0; attempt < retries; attempt++) {
+        size_t got = read(fd, buf, count);
+        if (got == count) { // got what we wanted
+            return requested;
+        } else { // need to wait for more
+            buf = (void *)(((char *)buf) + got);
+            count -= got;
+            // FIXME: sleep?
+        }
+    }
+    return requested - count; // return with whatever got at time out
+}
+
+static void buffered_reader_read(buffered_reader_t *reader, void *buf, size_t count) {
+    if (!reader->chunk) {
+        reader->chunk = (char *)malloc(CHUNKSIZE);
+        reader->got = read_with_retries(reader->fd, reader->chunk, CHUNKSIZE, MAXRETRIES);
+    }
+
+    while (count > 0) {
+        size_t remaining = reader->got - reader->offset;
+        if (count < remaining) {
+            // just copy it
+            memcpy(buf, reader->chunk + reader->offset, count);
+            reader->offset += count;
+            count = 0;
+        } else {
+            // copy rest of chunk
+            memcpy(buf, reader->chunk + reader->offset, remaining);
+
+            // get new chunk
+            reader->got = read_with_retries(reader->fd, reader->chunk, CHUNKSIZE, MAXRETRIES);
+            reader->offset = 0;
+            buf = (void *)(((char *)buf) + remaining);
+            count -= remaining;
+        }
+    }
+}
+
+static int read_dgram(PyDgramObject* self) {
+    // reads dgram header and payload
+    buffered_reader_read(self->reader, self->dgram, sizeof(Dgram));
+    buffered_reader_read(self->reader, self->dgram + 1, self->dgram->xtc.sizeofPayload());
+    if (!self->reader->got) {
+        return -1;
+    }
+    return 0; 
+}
+
+/* end buffered_reader */
 
 static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     const char* algName = alg.name();
@@ -133,7 +213,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
         if (name.rank() == 0) {
             switch (name.type()) {
             case Name::UINT8: {
-	      const auto tempVal = descdata.get_value<uint8_t>(tempName);
+	            const auto tempVal = descdata.get_value<uint8_t>(tempName);
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
@@ -306,96 +386,6 @@ private:
     std::vector<NameIndex>& _namesVec; // need one of these for each source
 };
 
-ssize_t read_chunk(PyDgramObject* self, bool is_between) {
-    ssize_t chunk_i = (ssize_t)(self->offset / CHUNKSIZE);
-    ssize_t chunk_st = chunk_i * CHUNKSIZE;
-    static ssize_t end=0;
-
-    // read fd to the current buffer or the next
-    // if the current one is overflown
-    if (self->offset == chunk_st) {
-        end = read(self->file_descriptor, self->chunks[chunk_i], CHUNKSIZE);
-    } else if (is_between) {
-        size_t next_buf = (chunk_i + 1 == MAXCHUNK) ? 0 : chunk_i + 1;
-        end = read(self->file_descriptor, self->chunks[next_buf], CHUNKSIZE);
-    }
-
-    // handle failed read
-    if (end < 0) {
-        end = 0;
-    }
-
-    return end;
-}
-
-int create_dgram(PyDgramObject* self) {
-    ssize_t chunk_i = (ssize_t)(self->offset / CHUNKSIZE);
-    if (chunk_i == MAXCHUNK) {
-        self->offset -= MAXCHUNK * CHUNKSIZE;
-        chunk_i = 0;
-    }
-
-    ssize_t chunk_st = chunk_i * CHUNKSIZE;
-    ssize_t chunk_en = chunk_st + CHUNKSIZE;
-    ssize_t end=0;
-    
-    bool is_between = (self->offset + (ssize_t)sizeof(Dgram) > chunk_en) ? true : false;
-    end = read_chunk(self, is_between);
-    if (end == 0) {
-        return 1;
-    }
-
-    // create a dgram_scratch (header part of the dgram)
-    // to extract payload size.
-    Dgram dgram_scratch;
-    if (!is_between) {
-        memcpy(&dgram_scratch, self->chunks[chunk_i]+(self->offset-chunk_st), sizeof(Dgram));
-        self->offset += sizeof(Dgram);
-    } else {
-        ssize_t buf_gap = chunk_en - self->offset;
-        memcpy(&dgram_scratch, self->chunks[chunk_i]+(self->offset-chunk_st), buf_gap);
-
-        // move to next buffer
-        chunk_i++;
-        if (chunk_i == MAXCHUNK) {
-            self->offset = self->offset + sizeof(Dgram) - chunk_en;
-            chunk_i = 0;
-        } else {
-            self->offset += sizeof(Dgram);
-        }
-        chunk_st = chunk_i * CHUNKSIZE;
-        chunk_en = chunk_st + CHUNKSIZE;
-
-        memcpy(( (char *)(&dgram_scratch) )+buf_gap, self->chunks[chunk_i], sizeof(Dgram)-buf_gap);
-    }
-
-    ssize_t payloadSize = dgram_scratch.xtc.sizeofPayload();
-    // check between chunks again only if the header part of 
-    // the dgram is not between the chunks.
-    if (!is_between) {
-        is_between = (self->offset + payloadSize > chunk_en) ? true : false;
-        end = read_chunk(self, is_between);
-    } else {
-        is_between = false;
-    }
-
-    // create a dgram 
-    memcpy(self->dgram, &dgram_scratch, sizeof(dgram_scratch));
-    if (!is_between) {
-        memcpy(( (char *)(self->dgram) )+sizeof(dgram_scratch), self->chunks[chunk_i]+(self->offset-chunk_st), payloadSize);
-    } else {
-        ssize_t buf_gap = chunk_en - self->offset;
-        memcpy(( (char *)(self->dgram) )+sizeof(dgram_scratch), self->chunks[chunk_i]+(self->offset-chunk_st), buf_gap);
-        ssize_t next_buf = (chunk_i + 1 == MAXCHUNK) ? 0 : chunk_i + 1;
-        memcpy(( (char *)(self->dgram) )+sizeof(dgram_scratch)+buf_gap, self->chunks[next_buf], payloadSize - buf_gap);
-    }
-
-    self->offset += payloadSize;
-    
-    return (end < CHUNKSIZE && self->offset-chunk_st == end) ? -1 : 0;
-
-}
-
 void AssignDict(PyDgramObject* self, PyObject* configDgram) {
     bool isConfig;
     isConfig = (configDgram == 0) ? true : false;
@@ -415,11 +405,10 @@ static void dgram_dealloc(PyDgramObject* self)
 {
     Py_XDECREF(self->dict);
 #ifndef PSANA_USE_LEGION
-    free(self->dgram);
-    if (self->is_done) {
-        for(int i=0; i<MAXCHUNK; i++) {
-            free(self->chunks[i]);
-        }
+    if (self->buf.buf == NULL) {
+        free(self->dgram);
+    } else {
+        PyBuffer_Release(&(self->buf));
     }
 #else
     {
@@ -448,37 +437,52 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"config",
                              (char*)"offset",
                              (char*)"size",
+                             (char*)"view",
                              NULL};
 
-    int fd=0;
+    int fd=-1;
     PyObject* configDgram=0;
     self->offset=0;
-    self->is_done=false;
     ssize_t dgram_size=0;
+    bool isView=0;
+    PyObject* view=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iOll", kwlist,
+                                     "|iOllO", kwlist,
                                      &fd,
                                      &configDgram,
                                      &self->offset,
-                                     &dgram_size)) {
+                                     &dgram_size,
+                                     &view)) {
+        return -1;
+    }
+
+    isView = (view!=0) ? true : false;
+
+    if (self->offset == -1) {
+        buffered_reader_free(self->reader);
+        PyErr_SetNone(PyExc_StopIteration); // fixme: use shared_ptr
         return -1;
     }
 
 #ifndef PSANA_USE_LEGION
-    self->dgram = (Dgram*)malloc(BUFSIZE);
-    if (configDgram == 0) {
-        if (fd > 0) {
-            // this is server reading config.
-            // -> allocate chunks for reading in offsets
-            for(int i=0; i<MAXCHUNK; i++) {
-                self->chunks[i] = (char *)malloc(CHUNKSIZE);
+    if (!isView) {
+        self->dgram = (Dgram*)malloc(BUFSIZE);
+        if (configDgram == 0) {
+            if (fd > -1) {
+                // this is server reading config.
+                // allocates a buffer for reading offsets
+                self->reader = buffered_reader_new(fd);
             } 
-        } 
-    } else {
-        PyDgramObject* _configDgram = (PyDgramObject*)configDgram;
-        for (int i=0; i<MAXCHUNK; i++) {
-            self->chunks[i] = _configDgram->chunks[i];
+        } else {
+            PyDgramObject* _configDgram = (PyDgramObject*)configDgram;
+            self->reader = _configDgram->reader;
         }
+    } else {
+        if (PyObject_GetBuffer(view, &(self->buf), PyBUF_SIMPLE) == -1) {
+            PyErr_SetString(PyExc_MemoryError, "unable to create dgram with the given view");
+            return -1;
+        }
+        self->dgram = (Dgram*)self->buf.buf;
     }
 #else
     {
@@ -503,35 +507,37 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
         return -1;
     }
+    
+    if (!isView) {
+        if (fd==-1 && configDgram==0) {
+            self->dgram->xtc.extent = 0; // for empty dgram
+        } else {
+            if (fd==-1) {
+                self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
+            } else {
+                self->file_descriptor=fd;
+            }
 
-    if (fd==0 && configDgram==0) {
-        self->dgram->xtc.extent = 0; // for empty dgram
+            int readSuccess=0;
+            if ( (fd==-1) != (configDgram==0) ) {
+                readSuccess = read_dgram(self); // for read sequentially
+                if (readSuccess < 0) {
+                    self->offset = -1; // set termination
+                }
+            } else {
+                off_t fOffset = (off_t)self->offset;
+                readSuccess = pread(self->file_descriptor, self->dgram, dgram_size, fOffset); // for read with offset
+                if (readSuccess <= 0) {
+                    char s[TMPSTRINGSIZE];
+                    snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
+                    PyErr_SetString(PyExc_StopIteration, s);
+                    return -1;
+                }
+            }
+            AssignDict(self, configDgram);
+        }
     } else {
-        if (fd==0) {
-            self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
-        } else {
-            self->file_descriptor=fd;
-        }
-
-        int readSuccess=0;
-        if ( (fd==0) != (configDgram==0) ) {
-            readSuccess = create_dgram(self);
-            if (readSuccess < 0) {
-                self->is_done = true;
-                PyErr_SetNone(PyExc_StopIteration);
-                return -1;
-            }
-        } else {
-            off_t fOffset = (off_t)self->offset;
-            readSuccess = pread(self->file_descriptor, self->dgram, dgram_size, fOffset);
-            if (readSuccess <= 0) {
-                char s[TMPSTRINGSIZE];
-                snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
-                PyErr_SetString(PyExc_StopIteration, s);
-                return -1;
-            }
-        }
-        AssignDict(self, configDgram);
+        AssignDict(self, configDgram); // for create dgram from memory
     }
 
     return 0;

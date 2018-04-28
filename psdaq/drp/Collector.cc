@@ -12,7 +12,7 @@ using namespace Pds::Eb;
 MyDgram::MyDgram(unsigned pulseId, uint64_t val, unsigned contributor_id)
 {
     seq = XtcData::Sequence(Sequence::Event, TransitionId::L1Accept, TimeStamp(), PulseId(pulseId));
-    env = 0;
+    env[0] = 0;
     xtc = Xtc(TypeId(TypeId::Data, 0), TheSrc(Level::Segment, contributor_id));
     _data = val;
     xtc.alloc(sizeof(_data));
@@ -79,12 +79,13 @@ void collector(MemPool& pool, Parameters& para)
 
         // Dgram& dgram = *reinterpret_cast<Dgram*>(pebble->fex_data());
         uint64_t val;
-        if (i%3==0) {
+        if (i%3 == 0) {
             val = 0xdeadbeef;
         } else {
             val = 0xabadcafe;
         }
         MyDgram dg(i, val, para.contributor_id);
+        // printf("process dg %lx\n", *(uint64_t*)(dg.xtc.payload()));
         myBatchMan.process(&dg);
         pool.output_queue.push(pebble);
         i++;
@@ -100,7 +101,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
     size_t maxBatchSize = calcBatchSize(maxEntries, maxSize);
     void* region = allocBatchRegion(maxBatches, maxBatchSize);
     EbLfServer myEbLfServer(ifAddr, srvPort, numEb);
-    printf("*** rcvr %d %zd\n",maxBatches,maxBatchSize);
+    printf("*** rcvr %d %zd\n", maxBatches, maxBatchSize);
     myEbLfServer.connect(para.contributor_id, region, maxBatches * maxBatchSize,
                          EbLfServer::PEERS_SHARE_BUFFERS);
     unsigned nreceive = 0;
@@ -123,12 +124,16 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
             nreceive++;
             // printf("--- result %lx\n",*(uint64_t*)(result->xtc.payload()));
             uint64_t val = *(uint64_t*)(result->xtc.payload());
-
+            // printf("val %lu\n", val);
             Pebble* pebble;
             pool.output_queue.pop(pebble);
+
+            // perform file writing here
+            // usleep(10);
+
             // return buffer to memory pool
             for (int l=0; l<8; l++) {
-                if (pebble->pgp_data->buffer_mask  & (1 << l)) {
+                if (pebble->pgp_data->buffer_mask & (1 << l)) {
                     pool.dma.buffer_queue.push(pebble->pgp_data->buffers[l]);
                 }
             }
@@ -137,14 +142,14 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
             pool.pebble_queue.push(pebble);
 
             result = (Dgram*)result->xtc.next();
-            if (val==0) {
+            if (val == 0) {
                 nzero++;
-            } else if (val==1) {
+            } else if (val == 1) {
                 none++;
             } else {
                 printf("error %ld\n",val);
             }
-            if (nreceive%10000==0) printf("%d %d %d\n", nreceive, none, nzero);
+            // if (nreceive%10000==0) printf("%d %d %d\n", nreceive, none, nzero);
         }
         delete input;
     }

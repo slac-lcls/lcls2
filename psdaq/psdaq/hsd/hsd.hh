@@ -18,10 +18,10 @@ namespace Pds {
       unsigned eventType () const { return seq.pulseId().control(); }
       uint64_t timeStamp () const { return seq.stamp().nanoseconds() | (uint64_t)(seq.stamp().seconds())<<32; }
       uint32_t eventCount() const { return evtCounter; }
-      unsigned samples   () const { return (env>>32)&0xfffff; }
-      unsigned streams   () const { return (env>>52)&0xf; }
-      unsigned channels  () const { return (env>>56)&0xff; }
-      unsigned sync      () const { return _syncword&0x7; }
+      unsigned samples   () const { return env[1]&0xfffff; }
+      unsigned streams   () const { return (env[1]>>20)&0xf; }
+      unsigned channels  () const { return (env[1]>>24)&0xff; }
+      unsigned sync      () const { return env[2]&0x7; }
 
       void dump() const
       {
@@ -32,8 +32,6 @@ namespace Pds {
                pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
                readoutGroups(), eventCount(), sync());
       }
-    private:
-      uint32_t _syncword;
     };
 
     class StreamHeader {

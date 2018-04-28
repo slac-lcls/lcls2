@@ -25,15 +25,8 @@ EbLfStats::EbLfStats(unsigned nPeers) :
   _pendCnt(0),
   _pendTmoCnt(0),
   _rependCnt(0),
-  _rependMax(0),
-  _rmtWrCnt(nPeers),
-  _compAgnCnt(nPeers)
+  _rependMax(0)
 {
-  for (unsigned i = 0; i < nPeers; ++i)
-  {
-    _rmtWrCnt[i]    = 0;
-    _compAgnCnt[i]  = 0;
-  }
 }
 
 EbLfStats::~EbLfStats()
@@ -48,25 +41,6 @@ void EbLfStats::clear()
   _pendCnt      = 0;
   _rependCnt    = 0;
   _rependMax    = 0;
-
-  for (unsigned i = 0; i < _rmtWrCnt.size(); ++i)
-  {
-    _rmtWrCnt[i]    = 0;
-    _compAgnCnt[i]  = 0;
-  }
-}
-
-static void prtVec(const char* item, const std::vector<uint64_t>& stat)
-{
-  unsigned i;
-
-  printf("%s:\n", item);
-  for (i = 0; i < stat.size(); ++i)
-  {
-    printf(" %8ld", stat[i]);
-    if ((i % 8) == 7)  printf("\n");
-  }
-  if ((--i % 8) != 7)  printf("\n");
 }
 
 void EbLfStats::dump()
@@ -81,8 +55,6 @@ void EbLfStats::dump()
     printf("pend: count %8ld, repends %8ld (max %8ld), timeouts %8ld\n",
            _pendCnt, _rependCnt, _rependMax, _pendTmoCnt);
 
-    prtVec("rmtWrCnt",    _rmtWrCnt);
-    prtVec("compAgnCnt",  _compAgnCnt);
   }
 }
 
@@ -92,7 +64,7 @@ EbLfBase::EbLfBase(unsigned nPeers) :
   _mr(nPeers),
   _ra(nPeers),
   _txcq(nPeers),
-  _rxcq(0), //nPeers),
+  _rxcq(0),
   _rxDepth(0),
   _rOuts(nPeers),
   _id(nPeers),
@@ -191,6 +163,9 @@ void EbLfBase::_mapIds(unsigned nPeers)
   _mappedId = new unsigned[idMax + 1];
   assert(_mappedId);
 
+  for (unsigned i = 0; i < idMax + 1; ++i)
+    _mappedId[i] = -1;
+
   for (unsigned i = 0; i < nPeers; ++i)
     _mappedId[_id[i]] = i;
 }
@@ -202,17 +177,36 @@ const EbLfStats& EbLfBase::stats() const
 
 void* EbLfBase::lclAdx(unsigned src, uint64_t offset) const
 {
+  unsigned idx = _mappedId[src];
+  if (idx == -1u)
+  {
+    fprintf(stderr, "%s: Invalid ID: %d\n", __PRETTY_FUNCTION__, src);
+    return nullptr;
+  }
+
   return (char*)_mr[_mappedId[src]]->start() + offset;
 }
 
 uintptr_t EbLfBase::rmtAdx(unsigned dst, uint64_t offset) const
 {
+  unsigned idx = _mappedId[dst];
+  if (idx == -1u)
+  {
+    fprintf(stderr, "%s: Invalid ID: %d\n", __PRETTY_FUNCTION__, dst);
+    return 0;
+  }
+
   return _ra[_mappedId[dst]].addr + offset;
 }
 
 int EbLfBase::postCompRecv(unsigned dst, void* ctx)
 {
   unsigned idx = _mappedId[dst];
+  if (idx == -1u)
+  {
+    fprintf(stderr, "%s: Invalid ID: %d\n", __PRETTY_FUNCTION__, dst);
+    return -1;
+  }
 
   if (--_rOuts[idx] <= 1)
   {
@@ -220,7 +214,7 @@ int EbLfBase::postCompRecv(unsigned dst, void* ctx)
     _rOuts[idx] += _postCompRecv(_ep[idx], count, ctx);
     if (_rOuts[idx] < _rxDepth)
     {
-      fprintf(stderr, "Failed to post all %d receives for id %d: %d\n",
+      fprintf(stderr, "Failed to post all %d receives for ID %d: %d\n",
               count, _id[idx], _rOuts[idx]);
     }
   }
@@ -249,7 +243,9 @@ int EbLfBase::_postCompRecv(Endpoint* ep, unsigned count, void* ctx)
 int EbLfBase::_tryCq(fi_cq_data_entry* cqEntry)
 {
   const int maxCnt = 1;
-  ssize_t   rc     = _rxcq->comp(cqEntry, maxCnt);
+  //const int tmo    = 5000;              // milliseconds
+  //ssize_t rc = _rxcq->comp_wait(cqEntry, maxCnt, tmo); // Waiting favors throughput
+  ssize_t rc = _rxcq->comp(cqEntry, maxCnt);           // Polling favors latency
   if (rc == maxCnt)
   {
     const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
@@ -290,19 +286,20 @@ int EbLfBase::_tryCq(fi_cq_data_entry* cqEntry)
 int EbLfBase::pend(fi_cq_data_entry* cqEntry)
 {
   int      rc;
-  uint64_t rependCnt  = 0;
+  uint64_t rependCnt = 0;
   ++_stats._pendCnt;
+
   auto t0 = std::chrono::steady_clock::now();
-
-  while ((rc = _tryCq(cqEntry)) < 0)
+  while ((rc = _tryCq(cqEntry)) == -FI_EAGAIN)
   {
-    if (rc != -FI_EAGAIN)  return rc;
-
-    const int tmo = 5000;               // milliseconds
     auto t1 = std::chrono::steady_clock::now();
 
+    const int tmo = 5000;               // milliseconds
     if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > tmo)
+    {
+      ++_stats._pendTmoCnt;
       return -FI_ETIMEDOUT;
+    }
 
     ++rependCnt;
   }
@@ -324,42 +321,42 @@ int EbLfBase::post(unsigned    dst,
   uint64_t repostCnt = 0;
   ++_stats._postCnt;
 
+  ssize_t          rc;
   unsigned         idx = _mappedId[dst];
+  if (idx == -1u)
+  {
+    fprintf(stderr, "%s: Invalid ID: %d\n", __PRETTY_FUNCTION__, dst);
+    return -FI_EINVAL;
+  }
+
   Endpoint*        ep  = _ep[idx];
   RemoteAddress    ra   (_ra[idx].rkey, _ra[idx].addr + offset, len);
   MemoryRegion*    mr  = _mr[idx];
-  CompletionQueue* cq  = _txcq[idx];
-  ssize_t          rc;
-  do
+  CompletionQueue* cq  = ep->txcq();    // Same as _txcq[idx]
+
+  while ((rc = ep->write_data(buf, len, &ra, ctx, immData, mr)) < 0)
   {
-    if ((rc = ep->write_data(buf, len, &ra, ctx, immData, mr)) < 0)
+    if (rc != -FI_EAGAIN)
     {
-      if (rc != -FI_EAGAIN)
-      {
-        fprintf(stderr, "write_data failed: %s\n", ep->error());
-        --repostCnt;
-      }
-      ++repostCnt;
+      fprintf(stderr, "write_data failed: %s\n", ep->error());
+      break;
     }
+    ++repostCnt;
 
     fi_cq_data_entry cqEntry;
     const ssize_t    maxCnt = 1;
-    ssize_t          ret    = cq->comp(&cqEntry, maxCnt);
-    if (ret != maxCnt)
+    rc = cq->comp(&cqEntry, maxCnt);
+    if ((rc != -FI_EAGAIN) && (rc != maxCnt)) // EAGAIN means no completions available
     {
-      if (ret != -FI_EAGAIN)            // EAGAIN means no completions available
-      {
-        fprintf(stderr, "Error reading TX completing queue %u: %s\n",
-                idx, cq->error());
-        return ret;
-      }
+      fprintf(stderr, "Error reading TX completing queue %u: %s\n",
+              idx, cq->error());
+      break;
     }
   }
-  while (rc == -FI_EAGAIN);
 
   if (repostCnt > _stats._repostMax)
     _stats._repostMax = repostCnt;
   _stats._repostCnt += repostCnt;
 
-  return 0;
+  return rc;
 }

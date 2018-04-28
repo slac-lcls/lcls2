@@ -1011,61 +1011,6 @@ void Endpoint::shutdown()
   EndpointBase::shutdown();
 }
 
-bool Endpoint::open(struct fi_info* info)
-{
-  if (check_connection_state() != FI_SUCCESS)
-    return false;
-
-  CHECK_ERR(fi_endpoint(_fabric->domain(), info, &_ep, NULL), "fi_endpoint");
-
-  CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
-
-  if (_txcq_owner) {
-    uint64_t flags = _txcq == _rxcq ? FI_TRANSMIT | FI_RECV : FI_TRANSMIT;
-    CHECK(_txcq->bind(this, flags));
-  }
-  if (_rxcq_owner && (_txcq != _rxcq)) {
-    CHECK(_rxcq->bind(this, FI_RECV));
-  }
-
-  return true;
-}
-
-bool Endpoint::enable()
-{
-  CHECK_ERR(fi_enable(_ep), "fi_enable");
-
-  _state = EP_ENABLED;
-
-  return true;
-}
-
-bool Endpoint::connect(int timeout)
-{
-  if (_state != EP_ENABLED) {
-    _errno = -FI_EOPNOTSUPP;
-    set_error("Endpoint must be in the enabled state to accept connections");
-    return false;
-  }
-
-  CHECK_ERR(fi_connect(_ep, _fabric->info()->dest_addr, NULL, 0), "fi_connect");
-
-  return complete_connect(timeout);
-}
-
-bool Endpoint::accept(int timeout)
-{
-  if (_state != EP_ENABLED) {
-    _errno = -FI_EOPNOTSUPP;
-    set_error("Endpoint must be in the enabled state to accept connections");
-    return false;
-  }
-
-  CHECK_ERR(fi_accept(_ep, NULL, 0), "fi_accept");
-
-  return complete_connect(timeout);
-}
-
 bool Endpoint::complete_connect(int timeout)
 {
   bool cm_entry;
@@ -1085,70 +1030,47 @@ bool Endpoint::complete_connect(int timeout)
   return true;
 }
 
-bool Endpoint::connect()
+bool Endpoint::connect(int timeout, uint64_t txFlags, uint64_t rxFlags)
 {
-  int timeout = -1;
+  if (check_connection_state() != FI_SUCCESS)
+    return false;
 
-  CHECK(open(_fabric->info()));
-  CHECK(enable());
-  CHECK(connect(timeout));
+  if (_txcq_owner && !txFlags)  txFlags  = FI_TRANSMIT;
+  if (_rxcq_owner && !rxFlags)  rxFlags  = FI_RECV;
+  if (_txcq == _rxcq)           txFlags |= rxFlags;
 
-  return true;
+  CHECK_ERR(fi_endpoint(_fabric->domain(), _fabric->info(), &_ep, NULL), "fi_endpoint");
+  CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
+  CHECK(_txcq->bind(this, txFlags));
+  if (_txcq != _rxcq) {
+    CHECK(_rxcq->bind(this, rxFlags));
+  }
+  CHECK_ERR(fi_enable(_ep), "fi_enable");
+  CHECK_ERR(fi_connect(_ep, _fabric->info()->dest_addr, NULL, 0), "fi_connect");
+
+  return complete_connect(timeout);
 }
 
-bool Endpoint::accept(struct fi_info* remote_info)
+bool Endpoint::accept(struct fi_info* remote_info, int timeout, uint64_t txFlags, uint64_t rxFlags)
 {
-  int timeout = -1;
+  if (check_connection_state() != FI_SUCCESS)
+    return false;
 
-  CHECK(open(remote_info));
-  CHECK(enable());
-  CHECK(accept(timeout));
+  if (_txcq_owner && !txFlags)  txFlags  = FI_TRANSMIT;
+  if (_rxcq_owner && !rxFlags)  rxFlags  = FI_RECV;
+  if (_txcq == _rxcq)           txFlags |= rxFlags;
 
-  return true;
+  CHECK_ERR(fi_endpoint(_fabric->domain(), remote_info, &_ep, NULL), "fi_endpoint");
+  CHECK_ERR(fi_ep_bind(_ep, &_eq->fid, 0), "fi_ep_bind(eq)");
+  CHECK(_txcq->bind(this, txFlags));
+  if (_txcq != _rxcq) {
+    CHECK(_rxcq->bind(this, rxFlags));
+  }
+  CHECK_ERR(fi_enable(_ep), "fi_enable");
+  CHECK_ERR(fi_accept(_ep, NULL, 0), "fi_accept");
+
+  return complete_connect(timeout);
 }
-
-//ssize_t Endpoint::handle_comp(ssize_t comp_ret, struct fid_cq* cq, struct fi_cq_data_entry* comp, const char* cmd)
-//{
-//  struct fi_cq_err_entry comp_err;
-//
-//  if ((comp_ret < 0) && (comp_ret != -FI_EAGAIN)) {
-//    _errno = (int) comp_ret;
-//    if (comp_ret == -FI_EAVAIL) {
-//      if (comp_error(cq, &comp_err) > 0) {
-//        fi_cq_strerror(cq, comp_err.prov_errno, comp_err.err_data, _error, ERR_MSG_LEN);
-//      }
-//    } else {
-//      set_error(cmd);
-//    }
-//  }
-//  return comp_ret;
-//}
-
-//ssize_t Endpoint::comp(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count)
-//{
-//  //return handle_comp(fi_cq_read(cq, comp, max_count), cq, comp, "fi_cq_read");
-//  return cq->comp(comp, max_count);
-//}
-
-//ssize_t Endpoint::comp_wait(struct fid_cq* cq, struct fi_cq_data_entry* comp, ssize_t max_count, int timeout)
-//{
-//  //return handle_comp(fi_cq_sread(cq, comp, max_count, NULL, timeout), cq, comp, "fi_cq_sread");
-//  return cq->comp_wait(comp, max_count, timeout);
-//}
-
-//ssize_t Endpoint::comp_error(struct fid_cq* cq, struct fi_cq_err_entry* comp_err)
-//{
-//  ssize_t rret = fi_cq_readerr(cq, comp_err, 0);
-//  if (rret < 0) {
-//    set_error("fi_cq_readerr");
-//  } else if (rret == 0) {
-//    set_custom_error("fi_cq_readerr: no errors to be read");
-//    rret = FI_SUCCESS;
-//  }
-//  _errno = (int) rret;
-//
-//  return rret;
-//}
 
 ssize_t Endpoint::post_comp_data_recv(void* context)
 {
@@ -1331,7 +1253,13 @@ ssize_t Endpoint::write_data(const void* buf, size_t len, const RemoteAddress* r
 {
   CHECK_MR(buf, len, mr, "fi_writedata");
 
-  return fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
+  ssize_t rret = fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_writedata");
+  }
+
+  return rret;
 }
 
 ssize_t Endpoint::write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr)
@@ -1560,6 +1488,17 @@ ssize_t Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
   return rret;
 }
 
+ssize_t Endpoint::inject_data(const void* buf, size_t len, uint64_t data)
+{
+  ssize_t rret = fi_injectdata(_ep, buf, len, data, 0);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_injectdata");
+  }
+
+  return rret;
+}
+
 ssize_t Endpoint::check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data)
 {
   ssize_t rret = cq->check_completion(context, flags, data);
@@ -1581,40 +1520,6 @@ ssize_t Endpoint::check_completion_noctx(CompletionQueue* cq, unsigned flags, ui
 
   return rret;
 }
-
-//ssize_t Endpoint::check_completion(struct fid_cq* cq, int context, unsigned flags, uint64_t* data)
-//{
-//  struct fi_cq_data_entry comp;
-//
-//  ssize_t rret = cq->comp_wait(&comp, 1);
-//  if (rret == 1) {
-//    if ((comp.flags & flags) == flags) {
-//      if (*((int*) comp.op_context) == context) {
-//        if (data)
-//          *data = comp.data;
-//        return FI_SUCCESS;
-//      }
-//    }
-//  }
-//
-//  return rret;
-//}
-
-//ssize_t Endpoint::check_completion_noctx(struct fid_cq* cq, unsigned flags, uint64_t* data)
-//{
-//  struct fi_cq_data_entry comp;
-//
-//  ssize_t rret = cq->comp_wait(&comp, 1);
-//  if (rret == 1) {
-//    if ((comp.flags & flags) == flags) {
-//      if (data)
-//        *data = comp.data;
-//      return FI_SUCCESS;
-//    }
-//  }
-//
-//  return rret;
-//}
 
 ssize_t Endpoint::check_connection_state()
 {
@@ -1679,7 +1584,7 @@ bool PassiveEndpoint::listen()
   return true;
 }
 
-Endpoint* PassiveEndpoint::open(int timeout, CompletionQueue* txcq, CompletionQueue* rxcq)
+Endpoint* PassiveEndpoint::accept(int timeout, CompletionQueue* txcq, uint64_t txFlags, CompletionQueue* rxcq, uint64_t rxFlags)
 {
   bool cm_entry;
   struct fi_eq_cm_entry entry;
@@ -1701,41 +1606,8 @@ Endpoint* PassiveEndpoint::open(int timeout, CompletionQueue* txcq, CompletionQu
   }
 
   Endpoint *endp = new Endpoint(_fabric, txcq, rxcq);
-  if (endp->open(entry.info)) {
-    _endpoints.push_back(endp);
-    return endp;
-  } else {
-    _errno = -FI_ECONNABORTED;
-    set_error("active endpoint creation failed");
-    delete endp;
-    fi_reject(_pep, entry.info->handle, NULL, 0);
-    return NULL;
-  }
-}
-
-Endpoint* PassiveEndpoint::accept(int timeout)
-{
-  bool cm_entry;
-  struct fi_eq_cm_entry entry;
-  uint32_t event;
-
-  if (_state != EP_LISTEN) {
-    _errno = -FI_EOPNOTSUPP;
-    set_error("Passive endpoint must be in a listening state to open connections");
-    return NULL;
-  }
-
-  if (!event_wait(&event, &entry, &cm_entry, timeout))
-    return NULL;
-
-  if (!cm_entry || event != FI_CONNREQ) {
-    set_custom_error("unexpected event %u - expected FI_CONNECTED (%u)", event, FI_CONNREQ);
-    _errno = -FI_ECONNABORTED;
-    return NULL;
-  }
-
-  Endpoint *endp = new Endpoint(_fabric);
-  if (endp->accept(entry.info)) {
+  int tmo = -1;
+  if (endp->accept(entry.info, tmo, txFlags, rxFlags)) {
     _endpoints.push_back(endp);
     return endp;
   } else {

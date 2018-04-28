@@ -1,5 +1,5 @@
-bin_path  = '/reg/neh/home/weaver/lcls2/psdaq/build/'
-bins_path = '/reg/neh/home/weaver/lcls2/psdaq/psdaq/scripts/'
+bin_path  = '/reg/neh/home/weninc/lcls2/psdaq/build/'
+bins_path = '/reg/neh/home/weninc/lcls2/psdaq/psdaq/scripts/'
 
 platform = '1'
 username = 'lcls2'
@@ -18,10 +18,10 @@ drp_tst_acc04 = "172.21.42.222"
 drp_tst_acc05 = "172.21.42.223"
 drp_tst_acc06 = "172.21.42.224"
 
-epics_host = 'daq-tst-dev02'
+epics_host = 'daq-tst-dev04'
 
 epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067'
-pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.0.2'
+pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.0.4'
 shelf = '2'
 ip_addr = '10.0.'+shelf
 
@@ -47,7 +47,8 @@ procmgr_config = [
  {                       id:'modca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
  {                       id:'deadca-'+platform  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
  { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
- {                       id:'dti-103' , flags:'sx', cmd:bin_path+'psdaq/dti/dti_simple -a '+ip_addr+'.103 -u 0xf -f 1,2,4,8 -t '+platform},
+# {                       id:'dti-103' , flags:'sx', cmd:bin_path+'psdaq/dti/dti_simple -a '+ip_addr+'.103 -u 0xf -f 1,2,4,8 -t '+platform},
+ { id:'dtica' ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/dtica.py DAQ:LAB2:DTI:'+shelf},
 # { host: 'drp-tst-acc06', id:'simcam', flags:'s', cmd:bin_path+'psdaq/pgp/pgpGen4Daq/app/qLoopTest -T 0x80 -L 0xf -l 0 -F 15 -s 64'},
 ## procstat
  {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},

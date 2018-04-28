@@ -15,14 +15,46 @@ scripts available on your path: `ami-worker` and `ami-manager`. Several example
 configuration files are included in the examples directory.
 
 To run ami with three workers run the following in lcls2/ami:
-```mpirun -n 3 ami-worker static://examples/worker.json```
+```ami-worker -n 3 static://examples/worker.json```
+
+Then start the manager:
+```ami-manager```
 
 Then, start a GUI (client):
 ```ami-client```
 
-You should see an interactive QT window. There is also a `dummy_gui.py` that gives just text output.
+You should see an interactive QT window. There is also a convenience launcher
+that when you want to run all parts of ami on a single node:
+```ami-offline -n 3 static://examples/worker.json```
 
 # Status/To-do
+
+4/26/18
+
+* Collector event builder
+* pick 1/avg N as part of the graph
+* plot of A vs. B (scatter plots)
+* stripcharts/scans
+* feedback of data from the collector to the worker
+* test speed of multiple exec's of compiled code
+
+* Notes on implementing averaging:
+  - averages should only put to the feature store when they want to update that
+    can be collected.
+  - don't want old values to collected twice
+  - what do we do in the case of very slow workers
+
+
+4/6/18
+
+TJL created "pythonbackend" branch to explore python centric alternatives
+
+To Decide:
+* what is the best representation for "the graph"
+* where does the python code associated with nodes "live"
+* syntax for declaring global/posted/feature variables
+
+
 
 2/9/18
 
@@ -44,7 +76,7 @@ backend
 * where should we do e.g. stripchart caching?
 * DOCSTRINGS
 * integration with EPICS
-* should we use MPI? YES
+* should we use MPI? NO
     - handle the case where the different clients are in inconsistent graph states
     - mpi event-builder (timeout)
 * throttling [pick-N pattern, done on a per-heartbeat basis] (e.g. for visualizing images)

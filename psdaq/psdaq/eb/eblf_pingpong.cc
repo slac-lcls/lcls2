@@ -26,11 +26,8 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
-static const unsigned max_peers     = 64;    // Maximum possible number of peers
-static const unsigned port_base     = 32768; // Base port number
-static const unsigned default_id    = 0;
+static const unsigned port_base     = 54321; // Base port number
 static const unsigned default_size  = 4096;
-static const unsigned rx_depth      =  500;
 static const unsigned default_iters = 1000;
 
 typedef std::chrono::microseconds us_t;
@@ -39,7 +36,7 @@ typedef std::chrono::microseconds us_t;
 void usage(char *name, char *desc)
 {
   if (desc)
-    fprintf(stderr, "\n%s\n", desc);
+    fprintf(stderr, "%s\n\n", desc);
 
   fprintf(stderr, "Usage:\n");
   fprintf(stderr, "  %s [OPTIONS] <host>\n", name);
@@ -56,12 +53,10 @@ void usage(char *name, char *desc)
 
   fprintf(stderr, " %-20s %s (default: %d)\n",    "-s <size>",
           "Size of message to exchange",          default_size);
-  //fprintf(stderr, " %-20s %s (default: %d)\n",    "-r <rx-depth>",
-  //        "Number of receives to post at a time", rx_depth);
   fprintf(stderr, " %-20s %s (default: %d)\n",    "-n <iters>",
           "Number of exchanges",                  default_iters);
   fprintf(stderr, " %-20s %s\n",                  "-S",
-          "Start flag: one side must specify this\n");
+          "Start flag: one side must specify this");
 
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
 }
@@ -69,11 +64,9 @@ void usage(char *name, char *desc)
 int main(int argc, char **argv)
 {
   int      op, ret  = 0;
-  unsigned id       = default_id;
   char*    ifAddr   = nullptr;
   unsigned portBase = port_base;
   unsigned size     = default_size;
-  //unsigned rxDepth  = rx_depth;
   unsigned iters    = default_iters;
   bool     start    = false;
 
@@ -86,11 +79,11 @@ int main(int argc, char **argv)
       case 's':  size     = atoi(optarg);  break;
       case 'n':  iters    = atoi(optarg);  break;
       case 'S':  start    = true;          break;
-      case 'r':  //rxDepth  = atoi(optarg);  break;
       case '?':
       case 'h':
       default:
-        usage(argv[0], (char*)"EbLfPingpong test");
+        usage(argv[0], (char*)"EbLfPingpong sends 'pings' from one port and "
+                              "receives 'pongs' on an adjacent port.");
         return 1;
     }
   }
@@ -102,14 +95,10 @@ int main(int argc, char **argv)
             USHRT_MAX, srvBase);
     return 1;
   }
-
-  char port[8];
-  snprintf(port, sizeof(port), "%d", srvBase);
-  std::string srvPort(port);
+  std::string srvPort(std::to_string(srvBase));
 
   std::vector<std::string> cltAddr;
   std::vector<std::string> cltPort;
-  uint64_t peers = 1ul << id;
   if (optind < argc)
   {
     char*    peer    = argv[optind];
@@ -120,27 +109,14 @@ int main(int argc, char **argv)
               USHRT_MAX, cltBase);
       return 1;
     }
-    snprintf(port, sizeof(port), "%d", cltBase);
     cltAddr.push_back(std::string(peer));
-    cltPort.push_back(std::string(port));
+    cltPort.push_back(std::string(std::to_string(cltBase)));
   }
   else
   {
     fprintf(stderr, "Peer address is required\n");
     return 1;
   }
-
-  //if (rxDepth) {
-  //  if (rxDepth > fi->rx_attr->size) {
-  //    fprintf(stderr, "rxDepth requested: %d, "
-  //            "rxDepth supported: %zd\n", rxDepth, fi->rx_attr->size);
-  //    rc = 1;
-  //    goto err1;
-  //  }
-  //} else {
-  //  rxDepth = (rx_depth > fi->rx_attr->size) ?
-  //    fi->rx_attr->size : rx_depth;
-  //}
 
   size_t alignment = sysconf(_SC_PAGESIZE);
   size             = alignment * ((size + alignment - 1) / alignment);
@@ -154,11 +130,13 @@ int main(int argc, char **argv)
   if (ret)  perror("posix_memalign: sink buffer");
   assert(snkBuf != nullptr);
 
+  unsigned    id     = 0;
+  unsigned    nPeers = 1;
   EbLfServer* pender = nullptr;
   EbLfClient* poster = nullptr;
   if (!start)
   {
-    pender = new EbLfServer(ifAddr, srvPort, std::bitset<64>(peers).count());
+    pender = new EbLfServer(ifAddr, srvPort, nPeers);
     if ( (ret = pender->connect(id,
                                 snkBuf,
                                 size,
@@ -180,7 +158,7 @@ int main(int argc, char **argv)
                                 srcBuf,
                                 size,
                                 EbLfBase::PEERS_SHARE_BUFFERS)) )  return ret;
-    pender = new EbLfServer(ifAddr, srvPort, std::bitset<64>(peers).count());
+    pender = new EbLfServer(ifAddr, srvPort, nPeers);
     if ( (ret = pender->connect(id,
                                 snkBuf,
                                 size,

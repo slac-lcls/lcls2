@@ -8,8 +8,8 @@
 class Detector
 {
 public:
-    virtual void configure(XtcData::Xtc& parent) = 0;
-    virtual void event(XtcData::Xtc& parent) = 0;
+    virtual void configure(XtcData::Xtc& xtc) = 0;
+    virtual void event(XtcData::Xtc& xtc, PGPData* pgp_data) = 0;
 };
 
 template <typename T>

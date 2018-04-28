@@ -8,6 +8,8 @@ add_library(eb SHARED
   EbLfBase.cc
   EbLfServer.cc
   EbLfClient.cc
+  MonLfServer.cc
+  MonLfClient.cc
 )
 
 target_include_directories(eb PUBLIC
@@ -40,6 +42,8 @@ add_executable(eblf_pingpong    eblf_pingpong.cc)
 add_executable(tstEbContributor tstEbContributor.cc)
 add_executable(tstEbBuilder     tstEbBuilder.cc)
 add_executable(drpEbBuilder     drpEbBuilder.cc)
+
+add_executable(tstMonLfLink     tstMonLfLink.cc)
 
 #target_compile_options(eb               PRIVATE -pg)
 #target_compile_options(tstEbContributor PRIVATE -pg)
@@ -100,6 +104,12 @@ target_link_libraries(tstEbBuilder
 )
 
 target_link_libraries(drpEbBuilder
+  eb
+  pthread
+  rt
+)
+
+target_link_libraries(tstMonLfLink
   eb
   pthread
   rt
