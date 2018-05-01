@@ -109,8 +109,10 @@ void Module::init()
 
   _hsRepeater[0].init();
   _hsRepeater[1].init();
-  _hsRepeater[3].init();
+  _hsRepeater[2].init();
+  _hsRepeater[3].init();  // why is this a problem?
   _hsRepeater[4].init();
+  _hsRepeater[5].init();
 
   printf("Index:      UsLink %u  DsLink %u\n", usLink(), dsLink());
   printf("Link Up:    Us %02x  Bp %d  Ds %02x\n", usLinkUp(), bpLinkUp(), dsLinkUp());
