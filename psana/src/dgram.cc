@@ -51,6 +51,7 @@ public:
 typedef struct {
     PyObject_HEAD
     PyObject* dict;
+    PyObject* pyseq;
     Dgram* dgram;
 #ifdef PSANA_USE_LEGION
     LogicalRegionT<1> region;
@@ -403,6 +404,10 @@ void AssignDict(PyDgramObject* self, PyObject* configDgram) {
 
 static void dgram_dealloc(PyDgramObject* self)
 {
+    // cpo: this should not need to be XDECREF for pyseq.  how are
+    // we creating dgrams with a NULL value for pyseq?
+    if (!self->pyseq) printf("**** pyseq zero\n");
+    Py_XDECREF(self->pyseq);
     Py_XDECREF(self->dict);
 #ifndef PSANA_USE_LEGION
     if (self->buf.buf == NULL) {
@@ -540,6 +545,16 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         AssignDict(self, configDgram); // for create dgram from memory
     }
 
+    //cpo: wasteful to do the Import here every time?
+    PyObject* seqmod = PyImport_ImportModule("psana.seq");
+    PyObject* pyseqtype = PyObject_GetAttrString(seqmod,"Seq");
+    PyObject* capsule = PyCapsule_New((void*)&(self->dgram->seq), NULL, NULL);
+    PyObject* arglist = Py_BuildValue("(O)", capsule);
+    Py_DECREF(capsule); // now owned by the arglist
+    Py_DECREF(seqmod);
+    Py_DECREF(pyseqtype);
+    self->pyseq = PyObject_CallObject(pyseqtype, arglist);
+
     return 0;
 }
 
@@ -619,17 +634,29 @@ static PyMemberDef dgram_members[] = {
       T_INT, offsetof(PyDgramObject, offset),
       0,
       (char*)"attribute offset" },
+    { (char*)"seq",
+      T_OBJECT_EX, offsetof(PyDgramObject, pyseq),
+      0,
+      (char*)"Dgram::Sequence" },
     { NULL }
 };
 
 static PyObject* dgram_assign_dict(PyDgramObject* self) {
     AssignDict(self, 0); // Todo: may need to be fixed for other non-config dgrams
-    return PyLong_FromLong(0);  // Todo: must return a new ref?
+    Py_RETURN_NONE;
+}
+
+static PyObject* dgram_decref(PyDgramObject* self) {
+    Py_DECREF(self);
+    Py_RETURN_NONE;
 }
 
 static PyMethodDef dgram_methods[] = {
     {"_assign_dict", (PyCFunction)dgram_assign_dict, METH_NOARGS,
      "Assign dictionary to the dgram"
+    },
+    {"_decref", (PyCFunction)dgram_decref, METH_NOARGS,
+     "Decrement reference count"
     },
     {NULL}  /* Sentinel */
 };

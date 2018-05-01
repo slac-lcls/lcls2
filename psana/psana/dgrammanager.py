@@ -12,6 +12,11 @@ FN_L = 100
 class container:
     pass
 
+# expands ShapesData::Name like "field_subfield1_subfield2" into dgram
+# attributes that can be accessed like "field.subfield1.subfield2".
+# ideally this routine would be rewritten to be part of dgram.cc
+# but quicker to try the idea by writing it in python.  Let's all hope
+# you're not reading this comment in 2020 and beyond.  cpo 4/30/18
 def setnames(d):  
     keys = sorted(d.__dict__.keys())
     for k in keys:
@@ -23,6 +28,12 @@ def setnames(d):
             currobj = getattr(currobj, f)
         val = getattr(d, k)
         setattr(currobj, fields[-1], val)
+        # this decref for arrays is necessary because the getattr
+        # above increments the datagram reference count, and then
+        # "val" never gets deleted because the array is added back
+        # to the datagram object. - cpo 4/30/18
+        #if type(val) is np.ndarray:
+        #    d._decref()
         delattr(d, k)
 
 class DgramManager():
