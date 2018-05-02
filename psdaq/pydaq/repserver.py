@@ -22,19 +22,11 @@ import time
 import logging
 import pprint
 import argparse
+import struct
+from psana.dgrammanager import DgramManager
+from psana.dgrammanager import setnames
+from psana import dgram
 
-storedValue = b'\x00\x00\x00\x00\x00\x00\x00\x00'
-
-def doStore(socket, msg):
-    global storedValue
-    socket.send(b"STORED")
-    storedValue = msg[1]
-    return
-
-def doLoad(socket):
-    global storedValue
-    socket.send_multipart([ b"LOADED", storedValue ])
-    return
 
 def main():
 
@@ -55,15 +47,16 @@ def main():
     repSocket = ctx.socket(zmq.REP)
     repSocket.bind("tcp://*:5560")
 
-    sequence = 0
-
+    sequence = 0 
+    storedDgram = None
     try:
         while True:
 
             # Wait for next request from client
             msg = repSocket.recv_multipart()
-            print("Received request: %s" % msg)
 
+
+            print("Received request: %s" % msg[0])
             time.sleep(0.5)
 
             # Send reply back to client
@@ -72,9 +65,27 @@ def main():
             elif msg[0] == b"Hello":
                 repSocket.send(b"World")
             elif msg[0] == b"Load":
-                doLoad(repSocket)
+                # doLoad(repSocket)
+                if storedDgram:
+                    xtc_len = struct.pack("<q", len(storedDgram))
+                    repSocket.send_multipart([b"LOADED", storedDgram[:52], storedDgram])
+                    storedDgram = None
+                else:
+                    repSocket.send_multipart([b"No data found"])
+
+
             elif msg[0] == b"Store":
-                doStore(repSocket, msg)
+
+                config = dgram.Dgram(view = msg[1])
+                setnames(config)
+                if config:
+                    print("Python server parsed the datagram")
+                    # Make changes to the datagram with cydgram
+                    # Get bytes object back to send to c++ code
+
+                storedDgram = msg[1]
+
+                repSocket.send(b"STORED")
             else:
                 repSocket.send(b"Huh?")
 
