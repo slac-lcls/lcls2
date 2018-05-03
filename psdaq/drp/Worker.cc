@@ -43,22 +43,23 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
 
         check_pulse_id(pebble->pgp_data);
 
+        uint16_t* rawdata = (uint16_t*)(event_header+1);
+        // printf("data %u %u \n", rawdata[0], rawdata[1]);
 
         Dgram& dgram = *(Dgram*)pebble->fex_data();
         TypeId tid(TypeId::Parent, 0);
         dgram.xtc.contains = tid;
         dgram.xtc.damage = 0;
         dgram.xtc.extent = sizeof(Xtc);
-
+        // Event
         if (transition_id == 0) {
-            det->event(dgram.xtc, pebble->pgp_data);
+            det->event(dgram, pebble->pgp_data);
         }
+        // Configure
         else if (transition_id == 2) {
-            det->configure(dgram.xtc);
+            det->configure(dgram);
         }
 
-        if ((rank == 0) | (transition_id == 0)) {
-            worker_output_queue.push(pebble);
-        }
+        worker_output_queue.push(pebble);
     }
 }

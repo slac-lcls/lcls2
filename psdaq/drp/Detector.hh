@@ -3,13 +3,13 @@
 
 #include <string>
 #include <unordered_map>
-#include "xtcdata/xtc/Xtc.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 class Detector
 {
 public:
-    virtual void configure(XtcData::Xtc& xtc) = 0;
-    virtual void event(XtcData::Xtc& xtc, PGPData* pgp_data) = 0;
+    virtual void configure(XtcData::Dgram& dgram) = 0;
+    virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
 };
 
 template <typename T>

@@ -36,31 +36,31 @@ public:
 };
 static RawDef myRawDef;
 
-void AreaDetector::configure(Xtc& parent)
+void AreaDetector::configure(Dgram& dgram)
 {
     printf("AreaDetector configure\n");
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;
-    Names& fexNames = *new(parent) Names("xppcspad", cspadFexAlg, "cspad", "detnum1234", segment);
-    fexNames.add(parent, myFexDef);
+    Names& fexNames = *new(dgram.xtc) Names("xppcspad", cspadFexAlg, "cspad", "detnum1234", segment);
+    fexNames.add(dgram.xtc, myFexDef);
     m_namesVec.push_back(NameIndex(fexNames));
 
     Alg cspadRawAlg("cspadRawAlg", 1, 2, 3);
-    Names& rawNames = *new(parent) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
-    rawNames.add(parent, myRawDef);
+    Names& rawNames = *new(dgram.xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
+    rawNames.add(dgram.xtc, myRawDef);
     m_namesVec.push_back(NameIndex(rawNames));
 }
 
 AreaDetector::AreaDetector() : m_evtcount(0) {}
 
-void AreaDetector::event(Xtc& parent, PGPData* pgp_data)
+void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
 {
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
     Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
 
     unsigned nameId=0;
-    CreateData fex(parent, m_namesVec, nameId);
+    CreateData fex(dgram.xtc, m_namesVec, nameId);
     unsigned shape[Name::MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
     uint16_t* rawdata = (uint16_t*)(event_header+1);
@@ -69,16 +69,23 @@ void AreaDetector::event(Xtc& parent, PGPData* pgp_data)
             arrayT(i,j) = i+j;
         }
     }
-
-    if (m_evtcount%10==0) {
-        nameId=1;
-        CreateData raw(parent, m_namesVec, nameId);
-        unsigned shape[Name::MaxRank] = {5,5};
-        Array<uint16_t> arrayT = raw.allocate<uint16_t>(RawDef::array_raw,shape);
-        for(unsigned i=0; i<shape[0]; i++){
-            for (unsigned j=0; j<shape[1]; j++) {
-                arrayT(i,j) = i+j;
-            }
-        }
-    }
+    
+    // raw data
+    memcpy(&dgram, event_header, 32);
+    nameId = 1;
+    DescribedData raw(dgram.xtc, m_namesVec, nameId);
+    unsigned size = 0;
+    unsigned nlanes = 0;
+    for (int l=0; l<8; l++) {
+        if (pgp_data->buffer_mask & (1 << l)) {
+            // size without Event header
+            int data_size = pgp_data->buffers[l]->size - 32;
+            memcpy((uint8_t*)raw.data() + size, (uint8_t*)pgp_data->buffers[l]->virt + 32, data_size);
+            size += data_size;
+            nlanes++;
+         }
+     }
+    raw.set_data_length(size);
+    unsigned raw_shape[Name::MaxRank] = {nlanes, size / nlanes / 2};
+    raw.set_array_shape(RawDef::array_raw, raw_shape);
 }

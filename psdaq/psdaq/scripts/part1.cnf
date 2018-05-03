@@ -40,13 +40,13 @@ ip_addr = '10.0.'+shelf
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: epics_host,  id:'partcas',port:'29450', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/partcas.py -P DAQ:LAB2'},
- { host: epics_host,  id:'modcas' ,port:'29451', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/modcas.py -P DAQ:LAB2:XPM:'+shelf},
+# { host: epics_host,  id:'partcas',port:'29450', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/partcas.py -P DAQ:LAB2'},
+# { host: epics_host,  id:'modcas' ,port:'29451', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/modcas.py -P DAQ:LAB2:XPM:'+shelf},
 
  {                       id:'partca-'+platform ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/partca.py DAQ:LAB2:PART:'+platform},
  {                       id:'modca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
  {                       id:'deadca-'+platform  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
- { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
+# { host: epics_host,  id:'xpmioc' ,port:'29452', flags:'s', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a '+ip_addr+'.102 -P DAQ:LAB2'},
 # {                       id:'dti-103' , flags:'sx', cmd:bin_path+'psdaq/dti/dti_simple -a '+ip_addr+'.103 -u 0xf -f 1,2,4,8 -t '+platform},
  { id:'dtica' ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/dtica.py DAQ:LAB2:DTI:'+shelf},
 # { host: 'drp-tst-acc06', id:'simcam', flags:'s', cmd:bin_path+'psdaq/pgp/pgpGen4Daq/app/qLoopTest -T 0x80 -L 0xf -l 0 -F 15 -s 64'},
