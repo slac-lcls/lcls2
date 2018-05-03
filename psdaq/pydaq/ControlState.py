@@ -116,6 +116,19 @@ class TestStateMachine(object):
 
 def test():
 
+    # ControlState tests
+
+    test_key = b'LIME'
+    ww = ControlState(test_key)
+    assert(ww.key() == test_key)
+
+    xx = ww.on_transition(b'TEST')
+    assert(ww == xx)
+
+    print("ControlState OK")
+
+    # TestStateMachine tests
+
     yy = TestStateMachine()
     print("TestStateMachine state:", yy.state())
     assert(yy.state() == yy.state_unconfigured)
@@ -143,6 +156,8 @@ def test():
     yy.on_transition(yy.transition_unconfigure)
     print("TestStateMachine state:", yy.state())
     assert(yy.state() == yy.state_unconfigured)
+
+    print("TestStateMachine OK")
 
     return
 
