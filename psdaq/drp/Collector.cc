@@ -1,5 +1,5 @@
 #include "Collector.hh"
-
+#include <linux/limits.h>
 #include <rdma/fi_domain.h>
 #include <thread>
 #include <cassert>
@@ -107,6 +107,15 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
     unsigned nreceive = 0;
     unsigned none = 0;
     unsigned nzero = 0;
+
+    char file_name[PATH_MAX];
+    snprintf(file_name, PATH_MAX, "/drpffb/wenic/data-%02d.xtc", para.contributor_id);
+    FILE* xtcFile = fopen(file_name, "w");
+    if (!xtcFile) {
+        printf("Error opening output xtc file.\n");
+        return;
+    }
+
     while(1) {
         fi_cq_data_entry wc;
         if (myEbLfServer.pend(&wc))  continue;
@@ -123,14 +132,20 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
         while(result != last) {
             nreceive++;
             // printf("--- result %lx\n",*(uint64_t*)(result->xtc.payload()));
-            uint64_t val = *(uint64_t*)(result->xtc.payload());
-            // printf("val %lu\n", val);
+            uint64_t eb_decision = *(uint64_t*)(result->xtc.payload());
+            // printf("eb decision %lu\n", eb_decision);
             Pebble* pebble;
             pool.output_queue.pop(pebble);
 
             // perform file writing here
-            // usleep(10);
-
+            if (eb_decision == 1) {
+                Dgram* dgram = (Dgram*)pebble->fex_data();
+                if (fwrite(dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 1, xtcFile) != 1) {
+                    printf("Error writing to output xtc file.\n");
+                    return;
+                }
+            }
+            
             // return buffer to memory pool
             for (int l=0; l<8; l++) {
                 if (pebble->pgp_data->buffer_mask & (1 << l)) {
@@ -142,14 +157,6 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
             pool.pebble_queue.push(pebble);
 
             result = (Dgram*)result->xtc.next();
-            if (val == 0) {
-                nzero++;
-            } else if (val == 1) {
-                none++;
-            } else {
-                printf("error %ld\n",val);
-            }
-            // if (nreceive%10000==0) printf("%d %d %d\n", nreceive, none, nzero);
         }
         delete input;
     }
