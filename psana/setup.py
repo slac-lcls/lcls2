@@ -14,12 +14,14 @@ if arg:
     legion = arg[0].split('=')[1]
     sys.argv.remove(arg[0])
 
+    legion_src = ['src/legion_helper.cc']
     legion_lib = ['legion']
     legion_inc_dir = [os.path.join(legion, 'include')]
     legion_lib_dir = [os.path.join(legion, 'lib'), os.path.join(legion, 'lib64')]
     legion_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(legion, 'lib'))]
     legion_compile_args = ['-DPSANA_USE_LEGION']
 else:
+    legion_src = []
     legion_lib = []
     legion_inc_dir = []
     legion_lib_dir = []
@@ -27,9 +29,9 @@ else:
     legion_compile_args = []
 
 dgram_module = Extension('psana.dgram',
-                         sources = ['src/dgram.cc'],
+                         sources = ['src/dgram.cc'] + legion_src,
                          libraries = ['xtcdata'] + legion_lib,
-                         include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')] + legion_inc_dir,
+                         include_dirs = ['src', np.get_include(), os.path.join(xtcdata, 'include')] + legion_inc_dir,
                          library_dirs = [os.path.join(xtcdata, 'lib')] + legion_lib_dir,
                          extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))] + legion_link_args,
                          extra_compile_args=['-std=c++11'] + legion_compile_args)
