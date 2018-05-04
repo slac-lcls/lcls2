@@ -55,6 +55,7 @@ public:
     ssize_t offset;
     buffered_reader_t* reader;
     Py_buffer buf;
+    PyObject* config;
 };
 
 Dgram*& PyDgramObject::dgram()
@@ -413,6 +414,7 @@ static void dgram_dealloc(PyDgramObject* self)
     if (!self->pyseq) printf("**** pyseq zero\n");
     Py_XDECREF(self->pyseq);
     Py_XDECREF(self->dict);
+    Py_XINCREF(self->config);
 #ifndef PSANA_USE_LEGION
     if (self->buf.buf == NULL) {
         free(self->dgram());
@@ -491,11 +493,19 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         }
         self->dgram() = (Dgram*)self->buf.buf;
     }
+
+    // Avoid blocking to check the pointer in the Legion case
+#ifndef PSANA_USE_LEGION
     if (self->dgram() == NULL) {
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
         return -1;
     }
-    
+#endif
+
+    // Store an internal reference to configDgram to be used in dgram_get_dict
+    self->config = configDgram;
+    Py_XINCREF(self->config);
+
     if (!isView) {
         if (fd==-1 && configDgram==0) {
             self->dgram()->xtc.extent = 0; // for empty dgram
@@ -522,10 +532,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                     return -1;
                 }
             }
-            AssignDict(self, configDgram);
         }
-    } else {
-        AssignDict(self, configDgram); // for create dgram from memory
     }
 
     //cpo: wasteful to do the Import here every time?
@@ -592,6 +599,15 @@ static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
     return 0;    
 }
 
+static PyObject* dgram_get_dict(PyDgramObject* self, void *closure) {
+    if (self->dgram()->xtc.extent != 0) {
+        AssignDict(self, self->config);
+    }
+
+    Py_INCREF(self->dict);
+    return self->dict;
+}
+
 static PyBufferProcs PyDgramObject_as_buffer = {
 #if PY_MAJOR_VERSION < 3
     (readbufferproc)PyDgramObject_getreadbuf,   /*bf_getreadbuffer*/
@@ -605,10 +621,6 @@ static PyBufferProcs PyDgramObject_as_buffer = {
 };
 
 static PyMemberDef dgram_members[] = {
-    { (char*)"__dict__",
-      T_OBJECT_EX, offsetof(PyDgramObject, dict),
-      0,
-      (char*)"attribute dictionary" },
     { (char*)"_file_descriptor",
       T_INT, offsetof(PyDgramObject, file_descriptor),
       0,
@@ -621,6 +633,15 @@ static PyMemberDef dgram_members[] = {
       T_OBJECT_EX, offsetof(PyDgramObject, pyseq),
       0,
       (char*)"Dgram::Sequence" },
+    { NULL }
+};
+
+static PyGetSetDef dgram_getset[] = {
+    { (char*)"__dict__",
+      (getter)dgram_get_dict,
+      NULL,
+      (char*)"attribute dictionary",
+      NULL },
     { NULL }
 };
 
@@ -709,7 +730,7 @@ static PyTypeObject dgram_DgramType = {
     0, /* tp_iternext */
     dgram_methods, /* tp_methods */
     dgram_members, /* tp_members */
-    0, /* tp_getset */
+    dgram_getset, /* tp_getset */
     0, /* tp_base */
     0, /* tp_dict */
     0, /* tp_descr_get */
