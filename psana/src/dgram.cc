@@ -17,10 +17,7 @@
 #include <assert.h>
 
 #ifdef PSANA_USE_LEGION
-#define LEGION_ENABLE_C_BINDINGS
-#include <legion.h>
-#include <legion/legion_c_util.h>
-using namespace Legion;
+#include "legion_helper.h"
 #endif
 
 using namespace XtcData;
@@ -30,12 +27,6 @@ using namespace XtcData;
 #define MAXRETRIES 5
 
 using namespace std;
-
-#ifdef PSANA_USE_LEGION
-enum FieldIDs {
-  FID_X = 101,
-};
-#endif
 
 // to avoid compiler warnings for debug variables
 #define _unused(x) ((void)(x))
@@ -54,8 +45,7 @@ typedef struct {
     PyObject* pyseq;
     Dgram* dgram;
 #ifdef PSANA_USE_LEGION
-    LogicalRegionT<1> region;
-    PhysicalRegion physical;
+    LegionArray array;
 #endif
     int file_descriptor;
     ssize_t offset;
@@ -416,14 +406,8 @@ static void dgram_dealloc(PyDgramObject* self)
         PyBuffer_Release(&(self->buf));
     }
 #else
-    {
-      Runtime *runtime = Runtime::get_runtime();
-      Context ctx = Runtime::get_context();
-
-      // FIXME: Causes runtime type error
-      // self->physical = PhysicalRegion();
-      runtime->destroy_logical_region(ctx, self->region);
-    }
+    // In-place destructor is necessary because the dgram is deallocated with free below.
+    self->array.~LegionArray();
 #endif
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -469,9 +453,13 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-#ifndef PSANA_USE_LEGION
     if (!isView) {
+#ifndef PSANA_USE_LEGION
         self->dgram = (Dgram*)malloc(BUFSIZE);
+#else
+        self->array = LegionArray(BUFSIZE);
+        self->dgram = (Dgram*)self->array.get_pointer();
+#endif
         if (configDgram == 0) {
             if (fd > -1) {
                 // this is server reading config.
@@ -489,25 +477,6 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         }
         self->dgram = (Dgram*)self->buf.buf;
     }
-#else
-    {
-      Runtime *runtime = Runtime::get_runtime();
-      Context ctx = Runtime::get_context();
-
-      IndexSpaceT<1> ispace = runtime->create_index_space(ctx, Rect<1>(0, BUFSIZE-1));
-      FieldSpace fspace = runtime->create_field_space(ctx);
-      FieldAllocator falloc = runtime->create_field_allocator(ctx, fspace);
-      falloc.allocate_field(1, FID_X);
-      self->region = runtime->create_logical_region(ctx, ispace, fspace);
-
-      InlineLauncher launcher(RegionRequirement(self->region, READ_WRITE, EXCLUSIVE, self->region));
-      launcher.add_field(FID_X);
-      self->physical = runtime->map_region(ctx, launcher);
-      self->physical.wait_until_valid();
-      UnsafeFieldAccessor<char,1,coord_t,Realm::AffineAccessor<char,1,coord_t> > acc(self->physical, FID_X);
-      self->dgram = (Dgram*)acc.ptr(0);
-    }
-#endif
     if (self->dgram == NULL) {
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
         return -1;
