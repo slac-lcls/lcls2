@@ -30,7 +30,7 @@ LegionArray::~LegionArray()
         Runtime *runtime = Runtime::get_runtime();
         Context ctx = Runtime::get_context();
 
-        if (physical.is_valid()) {
+        if (physical.is_mapped()) {
             runtime->unmap_region(ctx, physical);
         }
 
@@ -45,7 +45,7 @@ LegionArray &LegionArray::operator=(LegionArray &&array)
         Runtime *runtime = Runtime::get_runtime();
         Context ctx = Runtime::get_context();
 
-        if (physical.is_valid()) {
+        if (physical.is_mapped()) {
             runtime->unmap_region(ctx, physical);
         }
         runtime->destroy_logical_region(ctx, region);
@@ -67,7 +67,7 @@ char *LegionArray::get_pointer()
 {
     assert(region != LogicalRegion::NO_REGION);
 
-    if (!physical.is_valid()) {
+    if (!physical.is_mapped()) {
         Runtime *runtime = Runtime::get_runtime();
         Context ctx = Runtime::get_context();
 
