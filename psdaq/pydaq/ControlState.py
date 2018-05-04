@@ -33,7 +33,23 @@ class ControlState(object):
         return retval
 
 
-class TestStateMachine(object):
+class StateMachine(object):
+
+    def __init__(self):
+
+        # Start with a default state.
+        # (Subclasses should override this method)
+        self._state = ControlState(b'DEFAULT')
+
+    def on_transition(self, transition):
+        # The next state will be the result of the on_transition function.
+        self._state = self._state.on_transition(transition)
+
+    def state(self):
+        return self._state
+
+
+class TestStateMachine(StateMachine):
 
     # Define transitions
 
@@ -81,13 +97,6 @@ class TestStateMachine(object):
 
         # Start with a default state.
         self._state = self.state_unconfigured
-
-    def on_transition(self, transition):
-        # The next state will be the result of the on_transition function.
-        self._state = self._state.on_transition(transition)
-
-    def state(self):
-        return self._state
 
     def configfunc(self):
         print ("Running configfunc()")
