@@ -58,6 +58,11 @@ LegionArray &LegionArray::operator=(LegionArray &&array)
     array.physical = PhysicalRegion();
 }
 
+LegionArray::operator bool() const
+{
+    return region != LogicalRegion::NO_REGION;
+}
+
 char *LegionArray::get_pointer()
 {
     assert(region != LogicalRegion::NO_REGION);

@@ -39,11 +39,15 @@ public:
     size_t got;
 };
 
-typedef struct {
+struct PyDgramObject {
     PyObject_HEAD
     PyObject* dict;
     PyObject* pyseq;
-    Dgram* dgram;
+// Please do not access the dgram field directly. Instead use dgram()
+private:
+    Dgram* dgram_;
+public:
+    Dgram*& dgram();
 #ifdef PSANA_USE_LEGION
     LegionArray array;
 #endif
@@ -51,7 +55,17 @@ typedef struct {
     ssize_t offset;
     buffered_reader_t* reader;
     Py_buffer buf;
-} PyDgramObject;
+};
+
+Dgram*& PyDgramObject::dgram()
+{
+#ifdef PSANA_USE_LEGION
+    if (array) {
+        dgram_ = (Dgram*)array.get_pointer();
+    }
+#endif
+  return dgram_;
+}
 
 /* buffered_reader */
 // reads and stores data in a chunk of CHUNKSIZE bytes
@@ -113,8 +127,8 @@ static void buffered_reader_read(buffered_reader_t *reader, void *buf, size_t co
 
 static int read_dgram(PyDgramObject* self) {
     // reads dgram header and payload
-    buffered_reader_read(self->reader, self->dgram, sizeof(Dgram));
-    buffered_reader_read(self->reader, self->dgram + 1, self->dgram->xtc.sizeofPayload());
+    buffered_reader_read(self->reader, self->dgram(), sizeof(Dgram));
+    buffered_reader_read(self->reader, self->dgram() + 1, self->dgram()->xtc.sizeofPayload());
     if (!self->reader->got) {
         return -1;
     }
@@ -383,12 +397,12 @@ void AssignDict(PyDgramObject* self, PyObject* configDgram) {
     
     if (isConfig) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
     
-    NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
+    NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram()->xtc);
     namesIter.iterate();
     
     if (isConfig) DictAssignAlg((PyDgramObject*)configDgram, namesIter.namesVec());
     
-    PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
+    PyConvertIter iter(&self->dgram()->xtc, self, namesIter.namesVec());
     iter.iterate();
 }
 
@@ -401,7 +415,7 @@ static void dgram_dealloc(PyDgramObject* self)
     Py_XDECREF(self->dict);
 #ifndef PSANA_USE_LEGION
     if (self->buf.buf == NULL) {
-        free(self->dgram);
+        free(self->dgram());
     } else {
         PyBuffer_Release(&(self->buf));
     }
@@ -455,10 +469,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 
     if (!isView) {
 #ifndef PSANA_USE_LEGION
-        self->dgram = (Dgram*)malloc(BUFSIZE);
+        self->dgram() = (Dgram*)malloc(BUFSIZE);
 #else
         self->array = LegionArray(BUFSIZE);
-        self->dgram = (Dgram*)self->array.get_pointer();
+        self->dgram() = (Dgram*)self->array.get_pointer();
 #endif
         if (configDgram == 0) {
             if (fd > -1) {
@@ -475,16 +489,16 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             PyErr_SetString(PyExc_MemoryError, "unable to create dgram with the given view");
             return -1;
         }
-        self->dgram = (Dgram*)self->buf.buf;
+        self->dgram() = (Dgram*)self->buf.buf;
     }
-    if (self->dgram == NULL) {
+    if (self->dgram() == NULL) {
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
         return -1;
     }
     
     if (!isView) {
         if (fd==-1 && configDgram==0) {
-            self->dgram->xtc.extent = 0; // for empty dgram
+            self->dgram()->xtc.extent = 0; // for empty dgram
         } else {
             if (fd==-1) {
                 self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
@@ -500,10 +514,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                 }
             } else {
                 off_t fOffset = (off_t)self->offset;
-                readSuccess = pread(self->file_descriptor, self->dgram, dgram_size, fOffset); // for read with offset
+                readSuccess = pread(self->file_descriptor, self->dgram(), dgram_size, fOffset); // for read with offset
                 if (readSuccess <= 0) {
                     char s[TMPSTRINGSIZE];
-                    snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
+                    snprintf(s, TMPSTRINGSIZE, "loading self->dgram() was unsuccessful -- %s", strerror(errno));
                     PyErr_SetString(PyExc_StopIteration, s);
                     return -1;
                 }
@@ -517,7 +531,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     //cpo: wasteful to do the Import here every time?
     PyObject* seqmod = PyImport_ImportModule("psana.seq");
     PyObject* pyseqtype = PyObject_GetAttrString(seqmod,"Seq");
-    PyObject* capsule = PyCapsule_New((void*)&(self->dgram->seq), NULL, NULL);
+    PyObject* capsule = PyCapsule_New((void*)&(self->dgram()->seq), NULL, NULL);
     PyObject* arglist = Py_BuildValue("(O)", capsule);
     Py_DECREF(capsule); // now owned by the arglist
     Py_DECREF(seqmod);
@@ -533,11 +547,11 @@ static Py_ssize_t PyDgramObject_getsegcount(PyDgramObject *self, Py_ssize_t *len
 }
 
 static Py_ssize_t PyDgramObject_getreadbuf(PyDgramObject *self, Py_ssize_t segment, void **ptrptr) {
-    *ptrptr = (void*)self->dgram;
-    if (self->dgram->xtc.extent == 0) {
+    *ptrptr = (void*)self->dgram();
+    if (self->dgram()->xtc.extent == 0) {
         return BUFSIZE;
     } else {
-        return sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
+        return sizeof(*self->dgram()) + self->dgram()->xtc.sizeofPayload();
     }
 }
 
@@ -559,11 +573,11 @@ static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
 
     PyDgramObject* self = (PyDgramObject*)obj;
     view->obj = (PyObject*)self;
-    view->buf = (void*)self->dgram;
-    if (self->dgram->xtc.extent == 0) {
+    view->buf = (void*)self->dgram();
+    if (self->dgram()->xtc.extent == 0) {
         view->len = BUFSIZE; // share max size for empty dgram 
     } else {
-        view->len = sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
+        view->len = sizeof(*self->dgram()) + self->dgram()->xtc.sizeofPayload();
     }
     view->readonly = 1;
     view->itemsize = 1;
