@@ -18,6 +18,8 @@ public:
 
     LegionArray &operator=(LegionArray &&array); // consumes array
 
+    operator bool() const;
+
     char *get_pointer();
 
 private:
