@@ -44,6 +44,7 @@ struct PyDgramObject {
     PyObject* dict;
     bool is_dict_valid;
     PyObject* pyseq;
+    bool is_pyseq_valid;
 // Please do not access the dgram field directly. Instead use dgram()
 private:
     Dgram* dgram_;
@@ -507,6 +508,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->config = configDgram;
     Py_XINCREF(self->config);
 
+    // The dict and pyseq fields are initialized in dgram_get_*
+    self->is_dict_valid = false;
+    self->is_pyseq_valid = false;
+
     if (!isView) {
         if (fd==-1 && configDgram==0) {
             self->dgram()->xtc.extent = 0; // for empty dgram
@@ -535,16 +540,6 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             }
         }
     }
-
-    //cpo: wasteful to do the Import here every time?
-    PyObject* seqmod = PyImport_ImportModule("psana.seq");
-    PyObject* pyseqtype = PyObject_GetAttrString(seqmod,"Seq");
-    PyObject* capsule = PyCapsule_New((void*)&(self->dgram()->seq), NULL, NULL);
-    PyObject* arglist = Py_BuildValue("(O)", capsule);
-    Py_DECREF(capsule); // now owned by the arglist
-    Py_DECREF(seqmod);
-    Py_DECREF(pyseqtype);
-    self->pyseq = PyObject_CallObject(pyseqtype, arglist);
 
     return 0;
 }
@@ -610,6 +605,24 @@ static PyObject* dgram_get_dict(PyDgramObject* self, void *closure) {
     return self->dict;
 }
 
+static PyObject* dgram_get_seq(PyDgramObject* self, void *closure) {
+    if (!self->is_pyseq_valid) {
+        //cpo: wasteful to do the Import here every time?
+        PyObject* seqmod = PyImport_ImportModule("psana.seq");
+        PyObject* pyseqtype = PyObject_GetAttrString(seqmod,"Seq");
+        PyObject* capsule = PyCapsule_New((void*)&(self->dgram()->seq), NULL, NULL);
+        PyObject* arglist = Py_BuildValue("(O)", capsule);
+        Py_DECREF(capsule); // now owned by the arglist
+        Py_DECREF(seqmod);
+        Py_DECREF(pyseqtype);
+        self->pyseq = PyObject_CallObject(pyseqtype, arglist);
+        self->is_pyseq_valid = true;
+    }
+
+    Py_INCREF(self->pyseq);
+    return self->pyseq;
+}
+
 static PyBufferProcs PyDgramObject_as_buffer = {
 #if PY_MAJOR_VERSION < 3
     (readbufferproc)PyDgramObject_getreadbuf,   /*bf_getreadbuffer*/
@@ -631,10 +644,6 @@ static PyMemberDef dgram_members[] = {
       T_INT, offsetof(PyDgramObject, offset),
       0,
       (char*)"attribute offset" },
-    { (char*)"seq",
-      T_OBJECT_EX, offsetof(PyDgramObject, pyseq),
-      0,
-      (char*)"Dgram::Sequence" },
     { NULL }
 };
 
@@ -643,6 +652,11 @@ static PyGetSetDef dgram_getset[] = {
       (getter)dgram_get_dict,
       NULL,
       (char*)"attribute dictionary",
+      NULL },
+    { (char*)"seq",
+      (getter)dgram_get_seq,
+      NULL,
+      (char*)"Dgram::Sequence",
       NULL },
     { NULL }
 };
