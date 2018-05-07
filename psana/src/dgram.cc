@@ -413,7 +413,6 @@ static void dgram_dealloc(PyDgramObject* self)
 {
     // cpo: this should not need to be XDECREF for pyseq.  how are
     // we creating dgrams with a NULL value for pyseq?
-    if (!self->pyseq) printf("**** pyseq zero\n");
     Py_XDECREF(self->pyseq);
     Py_XDECREF(self->dict);
     Py_XINCREF(self->config);
