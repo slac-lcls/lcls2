@@ -7,8 +7,11 @@
 
 #include <stddef.h>
 
+#include <vector>
+
 #include <legion.h>
 
+// Helper for creating a logical region
 class LegionArray {
 public:
     LegionArray();
@@ -25,6 +28,34 @@ public:
 private:
     Legion::LogicalRegionT<1> region;
     Legion::PhysicalRegion physical;
+
+    template <class C, typename ... Ts>
+    friend class LegionTask;
 };
+
+// Helper for creating a task
+template <class C, typename ... Ts>
+class LegionTask {
+public:
+    LegionTask();
+    void add_args(const void *args, size_t arglen);
+    void add_array(const LegionArray &array);
+    void launch();
+
+protected:
+    std::vector<LegionArray> arrays; // valid inside run()
+
+private:
+    Legion::TaskLauncher launcher;
+
+protected:
+    static Legion::TaskID register_task(const char *task_name);
+public:
+    static void task_wrapper(const Legion::Task *task,
+                             const std::vector<Legion::PhysicalRegion> &regions,
+                             Legion::Context ctx, Legion::Runtime *runtime);
+};
+
+#include "legion_helper.inl"
 
 #endif

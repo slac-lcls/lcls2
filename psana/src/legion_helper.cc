@@ -4,10 +4,6 @@
 
 using namespace Legion;
 
-enum FieldIDs {
-  FID_X = 101,
-};
-
 LegionArray::LegionArray()
 {
 }
