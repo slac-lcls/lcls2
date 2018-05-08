@@ -1,3 +1,4 @@
+alias state=./statecmd.py
 alias dump=./dumpcmd.py
 alias ph1=./ph1cmd.py
 alias ph2=./ph2cmd.py
