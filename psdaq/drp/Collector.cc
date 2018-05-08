@@ -109,7 +109,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
     unsigned nzero = 0;
 
     char file_name[PATH_MAX];
-    snprintf(file_name, PATH_MAX, "/drpffb/wenic/data-%02d.xtc", para.contributor_id);
+    snprintf(file_name, PATH_MAX, "/drpffb/weninc/data-%02d.xtc", para.contributor_id);
     FILE* xtcFile = fopen(file_name, "w");
     if (!xtcFile) {
         printf("Error opening output xtc file.\n");
@@ -137,8 +137,12 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
             Pebble* pebble;
             pool.output_queue.pop(pebble);
 
-            // perform file writing here
-            if (eb_decision == 1) {
+            int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
+            Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index]->virt);
+            TransitionId::Value transition_id = event_header->seq.service();
+
+            // write event to file if it passes event builder or is a configure transition
+            if (eb_decision == 1 || (transition_id == 2)) {
                 Dgram* dgram = (Dgram*)pebble->fex_data();
                 if (fwrite(dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 1, xtcFile) != 1) {
                     printf("Error writing to output xtc file.\n");

@@ -43,7 +43,7 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
 
         check_pulse_id(pebble->pgp_data);
 
-        uint16_t* rawdata = (uint16_t*)(event_header+1);
+        // uint16_t* rawdata = (uint16_t*)(event_header+1);
         // printf("data %u %u \n", rawdata[0], rawdata[1]);
 
         Dgram& dgram = *(Dgram*)pebble->fex_data();
@@ -57,7 +57,7 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
         }
         // Configure
         else if (transition_id == 2) {
-            det->configure(dgram);
+            det->configure(dgram, pebble->pgp_data);
         }
 
         worker_output_queue.push(pebble);
