@@ -38,7 +38,7 @@ template <class C, typename ... Ts>
 class LegionTask {
 public:
     LegionTask();
-    void add_args(const void *args, size_t arglen);
+    LegionTask(Ts ... ts);
     void add_array(const LegionArray &array);
     void launch();
 
