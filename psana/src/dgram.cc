@@ -51,6 +51,7 @@ private:
 public:
     Dgram*& dgram();
 #ifdef PSANA_USE_LEGION
+    bool is_dgram_valid;
     LegionArray array;
 #endif
     int file_descriptor;
@@ -63,8 +64,9 @@ public:
 Dgram*& PyDgramObject::dgram()
 {
 #ifdef PSANA_USE_LEGION
-    if (array) {
+    if (array && !is_dgram_valid) {
         dgram_ = (Dgram*)array.get_pointer();
+        is_dgram_valid = true;
     }
 #endif
   return dgram_;
@@ -437,6 +439,77 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
+#ifdef PSANA_USE_LEGION
+class LegionDgramRead : public LegionTask<LegionDgramRead> {
+public:
+    struct Args {
+        Args(int fd_, ssize_t dgram_size_, off_t offset_)
+            : fd(fd_), dgram_size(dgram_size_), offset(offset_)
+        {
+        }
+
+        int fd;
+        ssize_t dgram_size;
+        off_t offset;
+    };
+
+    LegionDgramRead()
+    {
+    }
+
+    LegionDgramRead(int fd, LegionArray &array, ssize_t dgram_size, off_t offset)
+    {
+        Args args(fd, dgram_size, offset);
+        add_args(&args, sizeof(args));
+
+        add_array(array);
+    }
+
+    void run(Args args)
+    {
+        int fd = args.fd;
+        ssize_t dgram_size = args.dgram_size;
+        off_t offset = args.offset;
+
+        Dgram *dgram = (Dgram *)arrays[0].get_pointer();
+        int readSuccess = pread(fd, dgram, dgram_size, offset);
+        if (readSuccess <= 0) {
+            abort(); // Elliott: need better error handling for asynchronous case
+        }
+    }
+
+    static Legion::TaskID task_id;
+};
+
+Legion::TaskID LegionDgramRead::task_id = LegionDgramRead::register_task("dgram_read");
+#endif
+
+static int dgram_read(PyDgramObject* self, ssize_t dgram_size, int sequential)
+{
+    int readSuccess=0;
+    if (sequential) {
+        readSuccess = read_dgram(self); // for read sequentially
+        if (readSuccess < 0) {
+            self->offset = -1; // set termination
+        }
+    } else {
+        off_t fOffset = (off_t)self->offset;
+#ifndef PSANA_USE_LEGION
+        readSuccess = pread(self->file_descriptor, self->dgram(), dgram_size, fOffset); // for read with offset
+        if (readSuccess <= 0) {
+            char s[TMPSTRINGSIZE];
+            snprintf(s, TMPSTRINGSIZE, "loading self->dgram() was unsuccessful -- %s", strerror(errno));
+            PyErr_SetString(PyExc_StopIteration, s);
+            return -1;
+        }
+#else
+        LegionDgramRead task(self->file_descriptor, self->array, dgram_size, fOffset);
+        task.launch();
+#endif
+    }
+    return 0;
+}
+
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
     static char* kwlist[] = {(char*)"file_descriptor",
@@ -475,18 +548,8 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         self->dgram() = (Dgram*)malloc(BUFSIZE);
 #else
         self->array = LegionArray(BUFSIZE);
-        self->dgram() = (Dgram*)self->array.get_pointer();
+        self->is_dgram_valid = false;
 #endif
-        if (configDgram == 0) {
-            if (fd > -1) {
-                // this is server reading config.
-                // allocates a buffer for reading offsets
-                self->reader = buffered_reader_new(fd);
-            } 
-        } else {
-            PyDgramObject* _configDgram = (PyDgramObject*)configDgram;
-            self->reader = _configDgram->reader;
-        }
     } else {
         if (PyObject_GetBuffer(view, &(self->buf), PyBUF_SIMPLE) == -1) {
             PyErr_SetString(PyExc_MemoryError, "unable to create dgram with the given view");
@@ -511,7 +574,19 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->is_dict_valid = false;
     self->is_pyseq_valid = false;
 
+    // Read the data if this dgram is not a view
     if (!isView) {
+        if (configDgram == 0) {
+            if (fd > -1) {
+                // this is server reading config.
+                // allocates a buffer for reading offsets
+                self->reader = buffered_reader_new(fd);
+            }
+        } else {
+            PyDgramObject* _configDgram = (PyDgramObject*)configDgram;
+            self->reader = _configDgram->reader;
+        }
+
         if (fd==-1 && configDgram==0) {
             self->dgram()->xtc.extent = 0; // for empty dgram
         } else {
@@ -521,22 +596,9 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                 self->file_descriptor=fd;
             }
 
-            int readSuccess=0;
-            if ( (fd==-1) != (configDgram==0) ) {
-                readSuccess = read_dgram(self); // for read sequentially
-                if (readSuccess < 0) {
-                    self->offset = -1; // set termination
-                }
-            } else {
-                off_t fOffset = (off_t)self->offset;
-                readSuccess = pread(self->file_descriptor, self->dgram(), dgram_size, fOffset); // for read with offset
-                if (readSuccess <= 0) {
-                    char s[TMPSTRINGSIZE];
-                    snprintf(s, TMPSTRINGSIZE, "loading self->dgram() was unsuccessful -- %s", strerror(errno));
-                    PyErr_SetString(PyExc_StopIteration, s);
-                    return -1;
-                }
-            }
+            bool sequential = (fd==-1) != (configDgram==0);
+            int err = dgram_read(self, dgram_size, sequential);
+            if (err) return err;
         }
     }
 
