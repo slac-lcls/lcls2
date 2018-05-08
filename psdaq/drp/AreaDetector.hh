@@ -12,7 +12,7 @@ class AreaDetector : public Detector
 {
 public:
     AreaDetector();
-    virtual void configure(XtcData::Dgram& dgram);
+    virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data);
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
 private:
     std::vector<XtcData::NameIndex> m_namesVec;

@@ -8,7 +8,7 @@
 class Detector
 {
 public:
-    virtual void configure(XtcData::Dgram& dgram) = 0;
+    virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
 };
 

@@ -36,9 +36,16 @@ public:
 };
 static RawDef myRawDef;
 
-void AreaDetector::configure(Dgram& dgram)
+void AreaDetector::configure(Dgram& dgram, PGPData* pgp_data)
 {
     printf("AreaDetector configure\n");
+
+    // copy Event header into beginning of Datagram
+    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
+    printf("index %d\n", index);
+    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
+    memcpy(&dgram, event_header, 32);
+
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;
     Names& fexNames = *new(dgram.xtc) Names("xppcspad", cspadFexAlg, "cspad", "detnum1234", segment);
