@@ -440,37 +440,18 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 }
 
 #ifdef PSANA_USE_LEGION
-class LegionDgramRead : public LegionTask<LegionDgramRead> {
+class LegionDgramRead : public LegionTask<LegionDgramRead, int, ssize_t, off_t> {
 public:
-    struct Args {
-        Args(int fd_, ssize_t dgram_size_, off_t offset_)
-            : fd(fd_), dgram_size(dgram_size_), offset(offset_)
-        {
-        }
-
-        int fd;
-        ssize_t dgram_size;
-        off_t offset;
-    };
-
-    LegionDgramRead()
-    {
-    }
+    LegionDgramRead() {}
 
     LegionDgramRead(int fd, LegionArray &array, ssize_t dgram_size, off_t offset)
+      : LegionTask(fd, dgram_size, offset)
     {
-        Args args(fd, dgram_size, offset);
-        add_args(&args, sizeof(args));
-
         add_array(array);
     }
 
-    void run(Args args)
+    void run(int fd, ssize_t dgram_size, off_t offset)
     {
-        int fd = args.fd;
-        ssize_t dgram_size = args.dgram_size;
-        off_t offset = args.offset;
-
         Dgram *dgram = (Dgram *)arrays[0].get_pointer();
         int readSuccess = pread(fd, dgram, dgram_size, offset);
         if (readSuccess <= 0) {
