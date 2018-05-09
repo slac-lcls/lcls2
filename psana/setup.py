@@ -44,6 +44,14 @@ seq_module = Extension('psana.seq',
                          extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
                          extra_compile_args=['-std=c++11'])
 
+container_module = Extension('psana.container',
+                         sources = ['src/container.cc'],
+                         libraries = ['xtcdata'],
+                         include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
+                         library_dirs = [os.path.join(xtcdata, 'lib')],
+                         extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                         extra_compile_args=['-std=c++11'])
+
 setup(name = 'psana',
        version = '0.1',
        license = 'LCLS II',
@@ -70,7 +78,7 @@ setup(name = 'psana',
        },
 
        #cmdclass = {'build': dgram_build, 'build_ext': dgram_build_ext},
-       ext_modules = [dgram_module, seq_module],
+       ext_modules = [dgram_module, seq_module, container_module],
        entry_points={
             'console_scripts': [
                 'convert_npy_to_txt  = psana.pyalgos.app.convert_npy_to_txt:do_main',
