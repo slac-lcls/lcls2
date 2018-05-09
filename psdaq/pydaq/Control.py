@@ -9,6 +9,7 @@ from ControlTransition import ControlTransition as Transition
 from CMMsg import CMMsg as ControlMsg
 from ControlState import ControlState, StateMachine
 from psp import PV
+import pyca
 import logging
 import argparse
 import time
@@ -25,9 +26,12 @@ class ControlStateMachine(StateMachine):
 
         # initialize PVs
 
-        self.pvMsgEnable = PV(pv_base+':MsgEnable')
-        self.pvMsgDisable = PV(pv_base+':MsgDisable')
-        self.pvRun = PV(pv_base+':Run')
+        self.pvMsgEnable = PV(pv_base+':MsgEnable', initialize=True)
+        logging.debug("Create PV: %s" % self.pvMsgEnable.name)
+        self.pvMsgDisable = PV(pv_base+':MsgDisable', initialize=True)
+        logging.debug("Create PV: %s" % self.pvMsgDisable.name)
+        self.pvRun = PV(pv_base+':Run', initialize=True)
+        logging.debug("Create PV: %s" % self.pvRun.name)
 
         # register callbacks for each valid state+transition combination
 
@@ -58,50 +62,60 @@ class ControlStateMachine(StateMachine):
         # Start with a default state.
         self._state = self.state_unconfigured
 
+    @staticmethod
+    def pv_put(pv, val):
+        retval = False
+        if not pv.isinitialized:
+            logging.error("PV not initialized: %s" % pv.name)
+        elif not pv.isconnected:
+            logging.error("PV not connected: %s" % pv.name)
+        else:
+            try:
+                pv.put(val)
+            except pyca.pyexc:
+                logging.error("PV put(%d) timeout: %s" % (val, pv.name))
+            else:
+                retval = True
+                logging.debug("PV put(%d): %s" % (val, pv.name))
+        return retval
+
     def configfunc(self):
         logging.debug("configfunc()")
-        logging.debug("PV Run = 0")
-        self.pvRun.put(0)
-        return True
+        return self.pv_put(self.pvRun, 0)   # PV Run=0
 
     def unconfigfunc(self):
         logging.debug("unconfigfunc()")
-        logging.debug("PV Run = 0")
-        self.pvRun.put(0)
-        return True
+        return self.pv_put(self.pvRun, 0)   # PV Run=0
 
     def beginrunfunc(self):
         logging.debug("beginrunfunc()")
-        logging.debug("PV Run = 1")
-        self.pvRun.put(1)
-        return True
+        return self.pv_put(self.pvRun, 1)   # PV Run=1
 
     def endrunfunc(self):
         logging.debug("endrunfunc()")
-        logging.debug("PV Run = 0")
-        self.pvRun.put(0)
-        return True
+        return self.pv_put(self.pvRun, 0)   # PV Run=0
 
     def enablefunc(self):
         logging.debug("enablefunc()")
-        logging.debug("PV MsgEnable = 0->1->0")
-        self.pvMsgEnable.put(0)
-        self.pvMsgEnable.put(1)
-        self.pvMsgEnable.put(0)
-        logging.debug("PV Run = 1")
-        self.pvRun.put(1)
-        return True
+        # PV MsgEnable=0
+        # PV MsgEnable=1
+        # PV MsgEnable=0
+        # PV Run=1
+        return (self.pv_put(self.pvMsgEnable, 0) and
+                self.pv_put(self.pvMsgEnable, 1) and
+                self.pv_put(self.pvMsgEnable, 0) and
+                self.pv_put(self.pvRun, 1))
 
     def disablefunc(self):
         logging.debug("disablefunc()")
-        logging.debug("PV MsgDisable = 0->1->0")
-        self.pvMsgDisable.put(0)
-        self.pvMsgDisable.put(1)
-        self.pvMsgDisable.put(0)
-        logging.debug("PV Run = 1")
-        self.pvRun.put(1)
-        return True
-
+        # PV MsgDisable=0
+        # PV MsgDisable=1
+        # PV MsgDisable=0
+        # PV Run=1
+        return (self.pv_put(self.pvMsgDisable, 0) and
+                self.pv_put(self.pvMsgDisable, 1) and
+                self.pv_put(self.pvMsgDisable, 0) and
+                self.pv_put(self.pvRun, 1))
 
 def test_ControlStateMachine():
 
@@ -158,7 +172,7 @@ def main():
 
     # CM state
     yy = ControlStateMachine(args.pvbase)
-    logging.debug("Initial ControlStateMachine state: %s" % yy.state())
+    logging.debug("ControlStateMachine state: %s" % yy.state())
 
     # context and sockets
     ctx = zmq.Context()

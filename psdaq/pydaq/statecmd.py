@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-statecmd - send a state command via zmq
+statecmd - send a state command via ZMQ
 
 Author: Chris Ford <caf@slac.stanford.edu>
 """
@@ -44,7 +44,7 @@ def main():
     except Exception as ex:
         print(ex)
     else:
-        print ("Received \"%s\"" % cmmsg.key)
+        print ("Received \"%s\"" % cmmsg.key.decode())
     return
 
 if __name__ == '__main__':
