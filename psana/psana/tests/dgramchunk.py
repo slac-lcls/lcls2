@@ -14,9 +14,8 @@ def smd_server(fd, config):
     view = dchunk.get(displacement, n_events)
     rankreq = np.empty(1, dtype='i')
     while view != 0:
-        if view != 0:
-            comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            comm.Send(view, dest=rankreq[0])
+        comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+        comm.Send(view, dest=rankreq[0])
         displacement += view.nbytes
         view = dchunk.get(displacement, n_events)
     
