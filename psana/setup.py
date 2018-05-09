@@ -116,6 +116,11 @@ ext = Extension('dgramCreate',
 setup(name='dgramCreate',
       ext_modules=cythonize(ext))
 
+ext = Extension("psana.dgramchunk",
+                sources=["src/dgramchunk.pyx"])
+
+setup(name='dgramchunk',
+      ext_modules = cythonize(ext))
 '''
 from setuptools.command.build_ext import build_ext
 class dgram_build_ext(build_ext):

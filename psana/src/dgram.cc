@@ -534,7 +534,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             PyErr_SetString(PyExc_MemoryError, "unable to create dgram with the given view");
             return -1;
         }
-        self->dgram() = (Dgram*)self->buf.buf;
+        self->dgram() = (Dgram*)(((char *)self->buf.buf) + self->offset);
     }
 
     // Avoid blocking to check the pointer in the Legion case
