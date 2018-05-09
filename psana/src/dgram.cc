@@ -45,10 +45,8 @@ struct PyDgramObject {
     bool is_dict_valid;
     PyObject* pyseq;
     bool is_pyseq_valid;
-// Please do not access the dgram field directly. Instead use dgram()
-private:
+// Please DO NOT access the dgram_ field directly. Instead use dgram()
     Dgram* dgram_;
-public:
     Dgram*& dgram();
 #ifdef PSANA_USE_LEGION
     bool is_dgram_valid;
