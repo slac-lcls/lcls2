@@ -16,6 +16,10 @@ public:
     TimeStamp(unsigned sec, unsigned nsec);
 
 public:
+    uint64_t value() const
+    {
+        return ((uint64_t)_high << 32) | _low;
+    }
     unsigned seconds() const
     {
         return _high;

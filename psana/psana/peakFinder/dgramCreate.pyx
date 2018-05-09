@@ -48,16 +48,19 @@ class parse_xtc():
     def parse_configure(self):
         config = vars(self.datasource.configs[0])
         sw_config = vars(config['software'])
-        det_names = [x for x in config.keys() if x not in ('software')]
-
+        # det_names = [x for x in config.keys() if x not in ('software')]
+        det_names = list(sw_config.keys())
         det_dict = {}
         namesid = 0
         for detector in det_names:
             det_sw_config = vars(sw_config[detector])
-            det_config = vars(config[detector])
+            try:
+                det_config = vars(config[detector])
+            except KeyError:
+                det_config = {}
 
 
-            alg_types = [x for x in det_config.keys() if x not in ('detid', 'dettype')]
+            alg_types = [x for x in det_sw_config.keys() if x not in ('detid', 'dettype')]
             det_entries = []
             for algt in alg_types:
                 ninfo = nameinfo(detector, det_sw_config['dettype'], \
@@ -65,13 +68,15 @@ class parse_xtc():
                 namesid += 1
                 base_alg = alg(det_sw_config[algt].software, det_sw_config[algt].version)
                 base_alg_name = det_sw_config[algt].software
-                data_algs_block = vars(det_sw_config[algt])
+
                 data_algs = {}
-                data = vars(det_config[algt])
-                for data_name in data.keys():
-                    alg_dict = data_algs_block[data_name]
-                    minor_alg = alg(alg_dict.software, alg_dict.version)
-                    data_algs[data_name] = [data[data_name], minor_alg]
+                if det_config:
+                    data_algs_block = vars(det_sw_config[algt])
+                    data = vars(det_config[algt])
+                    for data_name in data.keys():
+                        alg_dict = data_algs_block[data_name]
+                        minor_alg = alg(alg_dict.software, alg_dict.version)
+                        data_algs[data_name] = [data[data_name], minor_alg]
 
                 det_entries.append({'nameinfo':ninfo, 'base_alg':base_alg, \
                                     'base_alg_name':base_alg_name, 'data':data_algs})
@@ -99,13 +104,16 @@ class parse_xtc():
 
         self.events_dict.append(event_dict)
 
+    def cydgram_add_det(self, event, cydgram):
+        for key, value in event.items():
+            for detector in value:
+                cydgram.addDet(detector['nameinfo'], detector['base_alg'], detector['data'])
+        return cydgram.get()
+
     def write_events(self, fileName, cydgram):
         with open(fileName, 'wb') as f:
             for event in self.events_dict:
-                for key, value in event.items():
-                    for detector in value:
-                        cydgram.addDet(detector['nameinfo'], detector['base_alg'], detector['data'])
-                xtc_byte = cydgram.get()
+                xtc_byte = self.cydgram_add_det(event,cydgram)
                 f.write(xtc_byte)
 
             # pydgram.writeToFile()

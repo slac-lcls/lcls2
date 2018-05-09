@@ -43,8 +43,13 @@ static PyObject* service(PySeqObject* self) {
     return PyLong_FromLong(self->seq->service());
 }
 
+static PyObject* timestamp(PySeqObject* self) {
+  return PyLong_FromLong(self->seq->stamp().value());
+}
+
 static PyMethodDef seq_methods[] = {
     {"service", (PyCFunction)service, METH_NOARGS, "service"},
+    {"timestamp", (PyCFunction)timestamp, METH_NOARGS, "timestamp"},
     {NULL}  /* Sentinel */
 };
 
