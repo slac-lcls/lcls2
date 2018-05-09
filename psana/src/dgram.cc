@@ -11,6 +11,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 #include <numpy/arrayobject.h>
 #include <numpy/ndarraytypes.h>
 #include <structmember.h>
@@ -45,7 +46,7 @@ struct PyDgramObject {
     bool is_dict_valid;
     PyObject* pyseq;
     bool is_pyseq_valid;
-// Please DO NOT access the dgram_ field directly. Instead use dgram()
+// Please do not access the dgram field directly. Instead use dgram()
     Dgram* dgram_;
     Dgram*& dgram();
 #ifdef PSANA_USE_LEGION
@@ -140,51 +141,69 @@ static int read_dgram(PyDgramObject* self) {
 
 /* end buffered_reader */
 
+static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
+    // these three initializations should happen once per event - cpo
+    PyObject* containermod = PyImport_ImportModule("psana.container");
+    PyObject* pycontainertype = PyObject_GetAttrString(containermod,"Container");
+    PyObject* arglist = Py_BuildValue("(O)", dgram);
+
+    char namecopy[TMPSTRINGSIZE];
+    strncpy(namecopy,name,TMPSTRINGSIZE);
+    PyObject* parent = (PyObject*)dgram;
+    char *key = ::strtok(namecopy,"_");
+    while(1) {
+        char* next = ::strtok(NULL, "_");
+        bool last = (next == NULL);
+        if (last) {
+            // add the real object
+            int fail = PyObject_SetAttrString(parent, key, obj);
+            if (fail) printf("Dgram: failed to set object attribute\n");
+            Py_DECREF(obj); // transfer ownership to parent
+            break;
+        } else {
+            if (!PyObject_HasAttrString(parent, key)) {
+                PyObject* container = PyObject_CallObject(pycontainertype, arglist);
+                int fail = PyObject_SetAttrString(parent, key, container);
+                if (fail) printf("Dgram: failed to set container attribute\n");
+                Py_DECREF(container); // transfer ownership to parent
+            }
+            parent = PyObject_GetAttrString(parent, key);
+        }
+        key=next;
+    }
+
+    Py_DECREF(arglist);
+    Py_DECREF(containermod);
+    Py_DECREF(pycontainertype);
+}
+
 static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     const char* algName = alg.name();
     const uint32_t _v = alg.version();
     char keyName[TMPSTRINGSIZE];
 
-    PyObject* newobjS = Py_BuildValue("s", algName);
-    PyObject* newobjV= Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
+    PyObject* software = Py_BuildValue("s", algName);
+    PyObject* version  = Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
     snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",baseName,"software");
-    PyObject* keyS = PyUnicode_FromString(keyName);
-    if (PyDict_Contains(pyDgram->dict, keyS)) {
-        printf("Dgram: Ignoring duplicate key %s\n", keyName);
-    } else {
-        PyDict_SetItem(pyDgram->dict, keyS, newobjS);
-        Py_DECREF(newobjS);
-        snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",baseName,"version");
-        PyObject* keyV = PyUnicode_FromString(keyName);
-        PyDict_SetItem(pyDgram->dict, keyV, newobjV);
-        Py_DECREF(newobjV);
-    }
+    addObj(pyDgram, keyName, software);
+    snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",baseName,"version");
+    addObj(pyDgram, keyName, version);
+
+    assert(Py_GETREF(software)==1);
 }
 
 static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     char keyName[TMPSTRINGSIZE];
-    PyObject* newobjDetType = Py_BuildValue("s", names.detType());
+    PyObject* detType = Py_BuildValue("s", names.detType());
     snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",names.detName(),"dettype");
-    PyObject* keyDetType = PyUnicode_FromString(keyName);
-    if (PyDict_Contains(pyDgram->dict, keyDetType)) {
-        // this will happen since the same detname/dettype pair
-        // show up once for every Names object.
-    } else {
-        PyDict_SetItem(pyDgram->dict, keyDetType, newobjDetType);
-        Py_DECREF(newobjDetType);
-    }
+    addObj(pyDgram, keyName, detType);
 
-    newobjDetType = Py_BuildValue("s", names.detId());
+    PyObject* detId = Py_BuildValue("s", names.detId());
     snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",names.detName(),"detid");
-    keyDetType = PyUnicode_FromString(keyName);
-    if (PyDict_Contains(pyDgram->dict, keyDetType)) {
-        // this will happen since the same detname/dettype pair
-        // show up once for every Names object.
-    } else {
-        PyDict_SetItem(pyDgram->dict, keyDetType, newobjDetType);
-        Py_DECREF(newobjDetType);
-    }
+    addObj(pyDgram, keyName, detId);
+
+    assert(Py_GETREF(detType)==1);
 }
 
 void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
@@ -344,18 +363,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
         }
         snprintf(keyName,TMPSTRINGSIZE,"%s_%s_%s",names.detName(),names.alg().name(),
                  name.name());
-        PyObject* key = PyUnicode_FromString(keyName);
-        if (PyDict_Contains(pyDgram->dict, key)) {
-            printf("Dgram: Ignoring duplicate key %s\n", tempName);
-        } else {
-            PyDict_SetItem(pyDgram->dict, key, newobj);
-            // when the new objects are created they get a reference
-            // count of 1.  PyDict_SetItem increases this to 2.  we
-            // decrease it back to 1 here, which effectively gives
-            // ownership of the new objects to the dictionary.  when
-            // the dictionary is deleted, the objects will be deleted.
-            Py_DECREF(newobj);
-        }
+        addObj(pyDgram, keyName, newobj);
     }
 }
 
@@ -725,36 +733,6 @@ static PyMethodDef dgram_methods[] = {
     {NULL}  /* Sentinel */
 };
 
-PyObject* tp_getattro(PyObject* obj, PyObject* key)
-{
-    PyObject* res = PyDict_GetItem(((PyDgramObject*)obj)->dict, key);
-    if (res != NULL) {
-        // old-style pointer management -- reinstated prior to PyDgram removal
-        if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
-            PyArrayObject* arr = (PyArrayObject*)res;
-            PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
-                                                           PyArray_DESCR(arr)->type_num, PyArray_DATA(arr));
-            if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, (PyObject*)obj) < 0) {
-                printf("Failed to set BaseObject for numpy array.\n");
-                return 0;
-            }
-            // this reference count will get decremented when the returned
-            // array is deleted (since the array has us as the "base" object).
-            Py_INCREF(obj);
-            //return arr_copy;
-            res=arr_copy;
-        } else {
-            // this reference count will get decremented when the returned
-            // variable is deleted, so must increment here.
-            Py_INCREF(res);
-        }
-    } else {
-        res = PyObject_GenericGetAttr(obj, key);
-    }
-
-    return res;
-}
-
 static PyTypeObject dgram_DgramType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "dgram.Dgram", /* tp_name */
@@ -772,7 +750,7 @@ static PyTypeObject dgram_DgramType = {
     0, /* tp_hash */
     0, /* tp_call */
     0, /* tp_str */
-    tp_getattro, /* tp_getattro */
+    0, /* tp_getattro */
     0, /* tp_setattro */
     &PyDgramObject_as_buffer, /* tp_as_buffer */
     (Py_TPFLAGS_DEFAULT 
