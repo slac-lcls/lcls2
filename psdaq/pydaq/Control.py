@@ -30,6 +30,10 @@ class ControlStateMachine(StateMachine):
         logging.debug("Create PV: %s" % self.pvMsgEnable.name)
         self.pvMsgDisable = PV(pv_base+':MsgDisable', initialize=True)
         logging.debug("Create PV: %s" % self.pvMsgDisable.name)
+        self.pvMsgConfig = PV(pv_base+':MsgConfig', initialize=True)
+        logging.debug("Create PV: %s" % self.pvMsgConfig.name)
+        self.pvMsgUnconfig = PV(pv_base+':MsgUnconfig', initialize=True)
+        logging.debug("Create PV: %s" % self.pvMsgUnconfig.name)
         self.pvRun = PV(pv_base+':Run', initialize=True)
         logging.debug("Create PV: %s" % self.pvRun.name)
 
@@ -81,19 +85,35 @@ class ControlStateMachine(StateMachine):
 
     def configfunc(self):
         logging.debug("configfunc()")
-        return self.pv_put(self.pvRun, 0)   # PV Run=0
+        # PV MsgConfig=0
+        # PV MsgConfig=1
+        # PV MsgConfig=0
+        # PV Run=0
+        return (self.pv_put(self.pvMsgConfig, 0) and
+                self.pv_put(self.pvMsgConfig, 1) and
+                self.pv_put(self.pvMsgConfig, 0) and
+                self.pv_put(self.pvRun, 0))
 
     def unconfigfunc(self):
         logging.debug("unconfigfunc()")
-        return self.pv_put(self.pvRun, 0)   # PV Run=0
+        # PV MsgUnconfig=0
+        # PV MsgUnconfig=1
+        # PV MsgUnconfig=0
+        # PV Run=0
+        return (self.pv_put(self.pvMsgUnconfig, 0) and
+                self.pv_put(self.pvMsgUnconfig, 1) and
+                self.pv_put(self.pvMsgUnconfig, 0) and
+                self.pv_put(self.pvRun, 0))
 
     def beginrunfunc(self):
         logging.debug("beginrunfunc()")
-        return self.pv_put(self.pvRun, 1)   # PV Run=1
+        # PV Run=1
+        return self.pv_put(self.pvRun, 1)
 
     def endrunfunc(self):
         logging.debug("endrunfunc()")
-        return self.pv_put(self.pvRun, 0)   # PV Run=0
+        # PV Run=0
+        return self.pv_put(self.pvRun, 0)
 
     def enablefunc(self):
         logging.debug("enablefunc()")

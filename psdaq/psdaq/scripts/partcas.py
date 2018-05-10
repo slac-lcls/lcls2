@@ -75,6 +75,7 @@ if __name__ == '__main__':
         #  Specific messages
         pvdb[stationstr+':%d:MsgConfig'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:MsgConfigKey' %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:MsgUnconfig'  %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:MsgEnable'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:MsgDisable'   %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:MsgClear'     %i] = {'type' : 'int'}
