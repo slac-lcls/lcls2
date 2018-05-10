@@ -1,11 +1,12 @@
-#include "Collector.hh"
 #include <linux/limits.h>
 #include <rdma/fi_domain.h>
 #include <thread>
 #include <cassert>
-#include <unistd.h>                     // sysconf
-#include <stdlib.h>                     // posix_memalign
-#include <stdio.h>                      // perror
+#include <unistd.h>
+#include <stdlib.h>                     
+#include <stdio.h> 
+#include <zmq.h>
+#include "Collector.hh"
 using namespace XtcData;
 using namespace Pds::Eb;
 
@@ -42,10 +43,11 @@ static void* allocBatchRegion(unsigned maxBatches, size_t maxBatchSize)
   return region;
 }
 
+// collects events from the workers and sends them to the event builder
 void collector(MemPool& pool, Parameters& para)
 {
     Pds::StringList peers;
-    peers.push_back(para.eb_server_ip); //acc04 172.21.52.129
+    peers.push_back(para.eb_server_ip);
     Pds::StringList ports;
     ports.push_back("32768");
     Pds::Eb::EbLfClient myEbLfClient(peers, ports);
@@ -85,7 +87,6 @@ void collector(MemPool& pool, Parameters& para)
             val = 0xabadcafe;
         }
         MyDgram dg(i, val, para.contributor_id);
-        // printf("process dg %lx\n", *(uint64_t*)(dg.xtc.payload()));
         myBatchMan.process(&dg);
         pool.output_queue.push(pebble);
         i++;
@@ -105,8 +106,6 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
     myEbLfServer.connect(para.contributor_id, region, maxBatches * maxBatchSize,
                          EbLfServer::PEERS_SHARE_BUFFERS);
     unsigned nreceive = 0;
-    unsigned none = 0;
-    unsigned nzero = 0;
 
     char file_name[PATH_MAX];
     snprintf(file_name, PATH_MAX, "/drpffb/weninc/data-%02d.xtc", para.contributor_id);
@@ -115,6 +114,10 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
         printf("Error opening output xtc file.\n");
         return;
     }
+
+    void* context = zmq_ctx_new();
+    void* socket = zmq_socket(context, ZMQ_PUSH);
+    zmq_connect(socket, "tcp://localhost:5559");
 
     while(1) {
         fi_cq_data_entry wc;
@@ -150,6 +153,12 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
                 }
             }
             
+            // pass non L1 accepts to control level
+            if (transition_id != 0) {
+                Dgram* dgram = (Dgram*)pebble->fex_data();
+                zmq_send(socket, dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 0);
+            }
+
             // return buffer to memory pool
             for (int l=0; l<8; l++) {
                 if (pebble->pgp_data->buffer_mask & (1 << l)) {
