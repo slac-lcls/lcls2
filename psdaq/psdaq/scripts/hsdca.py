@@ -97,6 +97,24 @@ class HsdConfig(QtWidgets.QWidget):
         hlo.addStretch(1)
         lo.addLayout(hlo)
 
+        hlo = QtWidgets.QHBoxLayout()
+        hlo.addWidget(QtWidgets.QLabel('Full Threshold (Events)'))
+        hlo.addWidget(PvEditInt(pvbase+':FULLEVT',''))
+        hlo.addStretch(1)
+        lo.addLayout(hlo)
+
+        hlo = QtWidgets.QHBoxLayout()
+        hlo.addWidget(QtWidgets.QLabel('Full Threshold (Size)'))
+        hlo.addWidget(PvEditInt(pvbase+':FULLSIZE',''))
+        hlo.addStretch(1)
+        lo.addLayout(hlo)
+
+        hlo = QtWidgets.QHBoxLayout()
+        hlo.addWidget(QtWidgets.QLabel('Trigger Shift (0..3)'))
+        hlo.addWidget(PvEditInt(pvbase+':TRIGSHIFT',''))
+        hlo.addStretch(1)
+        lo.addLayout(hlo)
+
         lo.addWidget(PvPushButton( pvbase+':BASE:APPLYCONFIG', 'Configure'))
         lo.addWidget(PvPushButton( pvbase+':BASE:UNDOCONFIG' , 'Unconfigure'))
 
@@ -115,6 +133,11 @@ class HsdStatus(QtWidgets.QWidget):
 
         PvLabel( lo, prefix, 'TIMFRAMECNT' )
         PvLabel( lo, prefix, 'TIMPAUSECNT' )
+        PvLabel( lo, prefix, 'TRIGCNT' )
+        PvLabel( lo, prefix, 'TRIGCNTSUM' )
+        PvLabel( lo, prefix, 'READCNTSUM' )
+        PvLabel( lo, prefix, 'STARTCNTSUM' )
+        PvLabel( lo, prefix, 'QUEUECNTSUM' )
 
         glo = QtWidgets.QGridLayout()
         # Table headers
@@ -128,22 +151,17 @@ class HsdStatus(QtWidgets.QWidget):
         PvRow( glo, 2, pvbase+':PGPREMLINKRDY', 'PgpRemoteRdy' , False)
         PvRow( glo, 3, pvbase+':PGPTXCLKFREQ' , 'PgpTx clk freq' , False)
         PvRow( glo, 4, pvbase+':PGPRXCLKFREQ' , 'PgpRx clk freq' , False)
-        PvRow( glo, 5, pvbase+':PGPTXCNT'   , 'PgpTx frame count' , False)
-        PvRow( glo, 6, pvbase+':PGPTXERRCNT', 'PgpTx error count' , False)
-        PvRow( glo, 7, pvbase+':PGPRXCNT'   , 'PgpRx opcode count', False)
-        PvRow( glo, 8, pvbase+':PGPRXLAST'  , 'PgpRx last opcode' , False)
-        PvRow( glo, 9, pvbase+':RAW_FREEBUFSZ'  , 'Raw Free Bytes' , False)
-        PvRow( glo,10, pvbase+':RAW_FREEBUFEVT' , 'Raw Free Events', False)
-        PvRow( glo,11, pvbase+':FEX_FREEBUFSZ'  , 'Fex Free Bytes' , False)
-        PvRow( glo,12, pvbase+':FEX_FREEBUFEVT' , 'Fex Free Events', False)
-        PvRow( glo,13, pvbase+':TESTPATTERR' , 'Test Pattern Errors', False)
-        PvRow( glo,14, pvbase+':TESTPATTBIT' , 'Test Pattern ErrBits', False)
-        PvRow( glo,15, pvbase+':BRAMWRERR'   , 'Bram Write Errors', False)
-        PvRow( glo,16, pvbase+':BRAMWRSAMP'  , 'Bram Write Sample', False)
-        PvRow( glo,17, pvbase+':BRAMRDERR'   , 'Bram Read Errors', False)
-        PvRow( glo,18, pvbase+':BRAMRDSAMP'  , 'Bram Read Sample', False)
-        PvRow( glo,19, pvbase+':WRFIFOCNT' , 'Write FIFO Count', False)
-        PvRow( glo,20, pvbase+':RDFIFOCNT' , 'Read FIFO Count', False)
+        PvRow( glo, 5, pvbase+':PGPTXCNT'   , 'PgpTx frame rate' , False)
+        PvRow( glo, 6, pvbase+':PGPTXCNTSUM', 'PgpTx frame count' , False)
+        PvRow( glo, 7, pvbase+':PGPTXERRCNT', 'PgpTx error count' , False)
+        PvRow( glo, 8, pvbase+':PGPRXCNT'   , 'PgpRx opcode count', False)
+        PvRow( glo, 9, pvbase+':PGPRXLAST'  , 'PgpRx last opcode' , False)
+        PvRow( glo,10, pvbase+':RAW_FREEBUFSZ'  , 'Raw Free Bytes' , False)
+        PvRow( glo,11, pvbase+':RAW_FREEBUFEVT' , 'Raw Free Events', False)
+        PvRow( glo,12, pvbase+':FEX_FREEBUFSZ'  , 'Fex Free Bytes' , False)
+        PvRow( glo,13, pvbase+':FEX_FREEBUFEVT' , 'Fex Free Events', False)
+        PvRow( glo,14, pvbase+':WRFIFOCNT' , 'Write FIFO Count', False)
+        PvRow( glo,15, pvbase+':RDFIFOCNT' , 'Read FIFO Count', False)
 
         lo.addLayout(glo)
         lo.addStretch(1)
@@ -180,10 +198,23 @@ class HsdExpert(QtWidgets.QWidget):
     def __init__(self, pvbase):
         super(HsdExpert, self).__init__()
 
+        prefix = pvbase+':'
+
         lo = QtWidgets.QVBoxLayout()
         
         lo.addWidget(PvPushButton( pvbase+':RESET', 'Reset'))
         lo.addWidget(PvCheckBox( pvbase+':PGPLOOPBACK', 'Loopback'))
+
+        PvLabel( lo, prefix, 'LOCAL12V'  , scale=1 )
+        PvLabel( lo, prefix, 'EDGE12V'   , scale=1 )
+        PvLabel( lo, prefix, 'AUX12V'    , scale=1 )
+        PvLabel( lo, prefix, 'FMC12V'    , scale=1 )
+        PvLabel( lo, prefix, 'BOARDTEMP' , scale=1 )
+        PvLabel( lo, prefix, 'LOCAL3_3V' , scale=1 )
+        PvLabel( lo, prefix, 'LOCAL2_5V' , scale=1 )
+        PvLabel( lo, prefix, 'LOCAL1_8V' , scale=1 )
+        PvLabel( lo, prefix, 'TOTALPOWER', scale=1 )
+        PvLabel( lo, prefix, 'FMCPOWER'  , scale=1 )
 
         lo.addStretch(1)
 

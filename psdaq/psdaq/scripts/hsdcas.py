@@ -97,7 +97,7 @@ if __name__ == '__main__':
                                     'value' : [200]*4 }
     pvdb[stationstr+'FEX_PS'   ] = {'type' : 'int', 
                                     'count': 4,
-                                    'value' : [1]*4 }
+                                    'value' : [0]*4 }
     pvdb[stationstr+'FEX_YMIN' ] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [508]*4 }
@@ -115,32 +115,20 @@ if __name__ == '__main__':
                                     'value' : [200]*4 }
     pvdb[stationstr+'NAT_PS'   ] = {'type' : 'int', 
                                     'count': 4,
-                                    'value' : [1]*4 }
+                                    'value' : [0]*4 }
 
     pvdb[stationstr+'RESET'  ] = {'type' : 'int', 
                                   'value' : 0 }
     pvdb[stationstr+'PGPLOOPBACK'  ] = {'type' : 'int', 
                                         'value' : 0 }
+    pvdb[stationstr+'FULLEVT'      ] = {'type' : 'int', 
+                                        'value' : 4 }
+    pvdb[stationstr+'FULLSIZE'     ] = {'type' : 'int', 
+                                        'value' : 3072 }
     pvdb[stationstr+'TESTPATTERN'  ] = {'type' : 'int', 
                                         'value' : -1 }
-    pvdb[stationstr+'TESTPATTERR'  ] = {'type' : 'int', 
-                                        'count' : 4,
-                                        'value' : [0]*4 }
-    pvdb[stationstr+'TESTPATTBIT'  ] = {'type' : 'int',
-                                        'count' : 4,
-                                        'value' : [0]*4 }
-    pvdb[stationstr+'BRAMWRERR'    ] = {'type' : 'int', 
-                                        'count' : 4,
-                                        'value' : [0]*4 }
-    pvdb[stationstr+'BRAMWRSAMP'   ] = {'type' : 'int',
-                                        'count' : 4,
-                                        'value' : [0]*4 }
-    pvdb[stationstr+'BRAMRDERR'    ] = {'type' : 'int', 
-                                        'count' : 4,
-                                        'value' : [0]*4 }
-    pvdb[stationstr+'BRAMRDSAMP'   ] = {'type' : 'int',
-                                        'count' : 4,
-                                        'value' : [0]*4 }
+    pvdb[stationstr+'TRIGSHIFT'  ] = {'type' : 'int', 
+                                      'value' : 0 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
                                       'count' : 4,
                                       'value' : [0]*4 }
@@ -155,6 +143,21 @@ if __name__ == '__main__':
                                         'value' : 0 }
     # Timing link cycles paused (deadtime)
     pvdb[stationstr+'TIMPAUSECNT'  ] = {'type' : 'int', 
+                                        'value' : 0 }
+    # Trigger counts (rate)
+    pvdb[stationstr+'TRIGCNT'      ] = {'type' : 'int', 
+                                        'value' : 0 }
+    # Trigger counts (total)
+    pvdb[stationstr+'TRIGCNTSUM'   ] = {'type' : 'int', 
+                                        'value' : 0 }
+    # Header read counts (total)
+    pvdb[stationstr+'READCNTSUM'   ] = {'type' : 'int', 
+                                        'value' : 0 }
+    # Start counts (total)
+    pvdb[stationstr+'STARTCNTSUM'   ] = {'type' : 'int', 
+                                        'value' : 0 }
+    # Queue counts (total)
+    pvdb[stationstr+'QUEUECNTSUM'   ] = {'type' : 'int', 
                                         'value' : 0 }
     # PGP link status
     pvdb[stationstr+'PGPLOCLINKRDY'] = {'type' : 'int',
@@ -172,6 +175,9 @@ if __name__ == '__main__':
                                         'value' : [0]*4 }
     # PGP frames transmitted
     pvdb[stationstr+'PGPTXCNT'     ] = {'type' : 'int',
+                                        'count': 4,
+                                        'value' : [0]*4 }
+    pvdb[stationstr+'PGPTXCNTSUM'  ] = {'type' : 'int',
                                         'count': 4,
                                         'value' : [0]*4 }
     # PGP frames error in transmission
@@ -226,6 +232,28 @@ if __name__ == '__main__':
     pvdb[stationstr+'FEXDATA'] = {'type' : 'int',
                                   'count': WfLen,
                                   'value' : [512]*WfLen }
+
+    # Environmental monitoring
+    pvdb[stationstr+'LOCAL12V'  ] = {'type'  : 'float',
+                                     'value' : 0 }
+    pvdb[stationstr+'EDGE12V'   ] = {'type'  : 'float',
+                                     'value' : 0 }
+    pvdb[stationstr+'AUX12V'    ] = {'type'  : 'float',
+                                     'value' : 0 }
+    pvdb[stationstr+'FMC12V'    ] = {'type'  : 'float',
+                                     'value' : 0 }
+    pvdb[stationstr+'BOARDTEMP' ] = {'type'  : 'float',
+                                     'value' : 0 }
+    pvdb[stationstr+'LOCAL3_3V' ] = {'type'  : 'float',
+                                     'value' : 0 }
+    pvdb[stationstr+'LOCAL2_5V' ] = {'type'  : 'float',
+                                     'value' : 0 }
+    pvdb[stationstr+'LOCAL1_8V' ] = {'type'  : 'float',
+                                     'value' : 0 }
+    pvdb[stationstr+'TOTALPOWER'] = {'type'  : 'float',
+                                     'value' : 0 }
+    pvdb[stationstr+'FMCPOWER'  ] = {'type'  : 'float',
+                                     'value' : 0 }
 
     # printDb(pvdb, prefix)
     printDb()
