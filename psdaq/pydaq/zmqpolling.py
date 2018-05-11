@@ -91,7 +91,7 @@ if __name__ == "__main__":
         dgram_queue.put(msg)
 
     # Now we can run a few servers
-    server_push_port = '5555'
+    server_push_port = '5559'
     server = Thread(target=server_pull, args=(server_push_port, recv_queue))
 
     clients = []
@@ -99,11 +99,11 @@ if __name__ == "__main__":
         clients.append(Thread(target=client, args=(server_push_port,\
                                                    dgram_queue)))
 
-    server.start()
+    # server.start()
     [t.start() for t in clients]
 
-    server.join()
+    # server.join()
     [t.join() for t in clients]
 
-    dgrams = unpack_dgrams(recv_queue)
+    # dgrams = unpack_dgrams(recv_queue)
 
