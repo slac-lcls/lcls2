@@ -48,11 +48,13 @@ def unpack_dgrams(recv_queue):
             config_ind = ct
             break
 
-    with open('config.xtc', 'wb') as f:
-        f.write(lq[config_ind][1:])
+    # with open('config.xtc', 'wb') as f:
+    #     f.write(lq[config_ind][1:])
 
-    fd = os.open('config.xtc', os.O_RDONLY)
-    config = dgram.Dgram(file_descriptor=fd)
+    # fd = os.open('config.xtc', os.O_RDONLY)
+    # config = dgram.Dgram(file_descriptor=fd)
+
+    config = dgram.Dgram(view = lq[config_ind][1:])
 
     dgrams = [config]
     for ct,dgrm in enumerate(lq):
