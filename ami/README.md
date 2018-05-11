@@ -29,6 +29,14 @@ that when you want to run all parts of ami on a single node:
 
 # Status/To-do
 
+5/10/18
+
+Issues for next time:
+
+* cross-time patterns: sum, average-N, stripchart, image background subtraction
+* new ideas: redis for store and graph distribution (allows works to access collected data)
+* what python syntax to use for cross-time patterns where values have to be fetched from feature-store?
+
 4/26/18
 
 * Collector event builder
@@ -37,12 +45,6 @@ that when you want to run all parts of ami on a single node:
 * stripcharts/scans
 * feedback of data from the collector to the worker
 * test speed of multiple exec's of compiled code
-
-* Notes on implementing averaging:
-  - averages should only put to the feature store when they want to update that
-    can be collected.
-  - don't want old values to collected twice
-  - what do we do in the case of very slow workers
 
 
 4/6/18
