@@ -13,13 +13,15 @@ unsigned Adt7411::interruptStatus() const { return REG(0x00) & (REG(0x01)<<8); }
 unsigned Adt7411::interruptMask  () const { return REG(0x1d) & (REG(0x1e)<<8); }
 unsigned Adt7411::internalTemp   () const { return REG(0x03) & (REG(0x07)<<8); }
 unsigned Adt7411::externalTemp   () const { return REG(0x04) & (REG(0x08)<<8); }
-void     Adt7411::dump           ()
+
+void     Adt7411::start()
 {
   _reg[0x18] = 0x9;  // start conversions
   _reg[0x19] = 0x0;
+}
 
-  usleep(500000);
-
+Adt7411_Mon Adt7411::mon() 
+{
   unsigned r[128];
   for(unsigned i=0; i<128; i++) {
     r[i]=REG(i);
@@ -52,14 +54,29 @@ void     Adt7411::dump           ()
     ain[i] |= (v<<2)&0x3fc;
   }
 
-  printf("Tint %03x [%6.2fC]  Vdd %03x [%6.2fV]\n",
-         Tint, double(int(Tint<<22))*0.25/double(1<<22)+40,
-         Vdd , double(Vdd)*3.11*2.197e-3);
+  Adt7411_Mon m;
+  m.Tint = double(int(Tint<<22))*0.25/double(1<<22)+40;
+  m.Vdd  = double(Vdd)*3.11*2.197e-3;
+  for(unsigned i=0; i<8; i++)
+    m.ain[i] = double(ain[i])*2.197e-3;
+  return m;
+}
+
+void     Adt7411::dump           ()
+{
+  start();
+
+  usleep(500000);
+
+  Adt7411_Mon m = mon();
+  printf("Tint %6.2fC  Vdd %6.2fV\n",
+         m.Tint,
+         m.Vdd );
   for(unsigned i=0; i<4; i++)
-    printf("  Ain[%u] %03x [%6.2fV]",i,ain[i],double(ain[i])*2.197e-3);
+    printf("  Ain[%u] %6.2fV",i,m.ain[i]);
   printf("\n");
   for(unsigned i=4; i<8; i++)
-    printf("  Ain[%u] %03x [%6.2fV]",i,ain[i],double(ain[i])*2.197e-3);
+    printf("  Ain[%u] %6.2fV",i,m.ain[i]);
   printf("\n");
 }
 

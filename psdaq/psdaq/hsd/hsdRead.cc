@@ -2,6 +2,7 @@
 using Pds_Epics::PVWriter;
 
 #include "psdaq/hsd/hsd.hh"
+#include "psdaq/hsd/stream.hh"
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -32,6 +33,10 @@ void sigHandler( int signal ) {
 #include "psdaq/pgp/pgpGen4Daq/app/PgpDaq.hh"
 
 using namespace std;
+using Pds::HSD::EventHeader;
+using Pds::HSD::StreamHeader;
+using Pds::HSD::RawStream;
+using Pds::HSD::ThrStream;
 
 void printUsage(char* name) {
   printf( "Usage: %s [-h]  -P <deviceName> [options]\n"
@@ -59,6 +64,7 @@ static int64_t  bytes = 0;
 static unsigned lanes = 0;
 static unsigned buffs = 0;
 static unsigned errs  = 0;
+static unsigned polls = 0;
 
 int main (int argc, char **argv) {
   int           fd;
@@ -71,7 +77,6 @@ int main (int argc, char **argv) {
   unsigned            nevents             = unsigned(-1);
   unsigned            delay               = 0;
   unsigned            lvalidate           = 0;
-  unsigned            payloadBuffers      = 0;
   bool                reportRate          = false;
   unsigned            lanem               = 0;
   const char*         pv                  = 0;
@@ -80,7 +85,7 @@ int main (int argc, char **argv) {
   //  char*               endptr;
   extern char*        optarg;
   int c;
-  while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:N:o:rv:V:E:" ) ) != EOF ) {
+  while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:N:o:rv:E:" ) ) != EOF ) {
     switch(c) {
     case 'P':
       dev = optarg;
@@ -117,9 +122,6 @@ int main (int argc, char **argv) {
     case 'v':
       lvalidate = strtoul(optarg, NULL, 0);
       break;
-    case 'V':
-      payloadBuffers = strtoul(optarg, NULL, 0);
-      break;
     case 'E':
       pv = optarg;
       break;
@@ -151,6 +153,7 @@ int main (int argc, char **argv) {
     for(unsigned i=0; i<MAX_LANES; i++)
       if (lanem & (1<<i)) {
         p->dmaLane[i].client = client;
+        p->dmaLane[i].blocksPause = 32<<8;
         p->pgpLane[i].axil.txControl = 1;  // disable flow control
       }
   }
@@ -182,6 +185,10 @@ int main (int argc, char **argv) {
       perror("Error creating RDMA status thread");
   }
 
+  RawStream::verbose( (lvalidate>>28)&7 );
+  const EventHeader* event = reinterpret_cast<const EventHeader*>(data);
+  RawStream* raw = 0;
+
   unsigned nextCount[8], nextPword=0;
   uint64_t ppulseId =0, dpulseId =0;
   memset(nextCount,0,sizeof(nextCount));
@@ -199,14 +206,16 @@ int main (int argc, char **argv) {
 
   // DMA Read
   while(1) {
+    bool lerr = false;
+
     rd.index = 0;
     ssize_t ret = read(fd, &rd, sizeof(rd));
     if (ret < 0) {
       perror("Reading buffer");
       break;
     }
-    unsigned nwords = ret>>2;
-    unsigned lane   = (rd.dest>>5)&7;
+
+    polls++;
 
     if (!rd.size) {
       continue;
@@ -215,32 +224,22 @@ int main (int argc, char **argv) {
     if (nevents-- == 0)
       break;
 
+    unsigned lane   = (rd.dest>>5)&7;
+
     if (print) {
 
-      cout << "Ret=" << dec << ret;
-      cout << ", pgpLane  =" << dec << lane;
-      cout << ", pgpVc    =" << dec << ((rd.dest>>0)&0x1f);
-      cout << ", EOFE     =" << dec << rd.error;
-      cout << ", FifoErr  =" << dec << 0;
-      cout << ", LengthErr=" << dec << 0;
-      cout << endl << "   ";
+      event->dump();
 
-      for (unsigned x=0; x<nwords && x<maxPrint; x++) {
-        cout << " 0x" << setw(8) << setfill('0') << hex << data[x];
-        if ( ((x+1)%10) == 0 ) cout << endl << "   ";
+      for (unsigned x=0; x<maxPrint; x++) {
+        printf("%08x%c", data[x], (x%8)==7 ? '\n':' ');
       }
-      cout << endl;
-
-      cout << "PID: " << hex << data[1] << setw(9) << setfill('0') << data[0] << endl;
-      cout << "TS : " << dec << data[3] << "." << setw(9) << setfill('0') << data[2] << endl;
-      time_t t = t_epoch + data[3];
-      cout << asctime( localtime(&t) ) << endl;
+      if (maxPrint%8)
+        printf("\n");
 
       if (count >= numb)
         print = false;
     }
-    if (ret>0)
-      bytes += ret;
+    bytes += rd.size;
 
     if (lvalidate) {
       if (lvalidate&1) {
@@ -260,17 +259,31 @@ int main (int argc, char **argv) {
         //  Check that analysis count increments by one
         //        unsigned count = data[5];
         unsigned count = data[4];
-        if (nextCount[lane] && count != nextCount[lane])
-          printf("\tanalysisCount = %08x [%08x] lane %u\n", 
-                 count, nextCount[lane], lane);
-        nextCount[lane] = count+1;
+        if (nextCount[lane] && (count != nextCount[lane])) {
+          lerr = true;
+          if (errs < 100)
+            printf("\tanalysisCount = %08x [%08x] lane %u  delta %d\n", 
+                   count, nextCount[lane], lane, count-nextCount[lane]);
+        }
+        nextCount[lane] = (count+1)&0x00ffffff;
       }
-      if (lvalidate&4) {
-        //  Check that the first payload word increments by one
-        if (payloadBuffers) {
-          if (nextPword && data[8] != nextPword)
-            printf("\tpayloadWord = %08x [%08x]\n", data[8], nextPword);
-          nextPword = (data[8]+1)%payloadBuffers;
+      const StreamHeader& rhdr = *reinterpret_cast<const StreamHeader*>(event+1);
+      if (rhdr.strmtype()==0 && (lvalidate&4)) {
+        //  Check that the raw payload for the test pattern is in lock step
+        if (!raw)
+          raw = new RawStream(*event, rhdr);
+        else 
+          lerr |= !raw->validate(*event, rhdr);
+      }
+      if (rhdr.strmtype()==0 && (lvalidate&8)) {
+        //  Check that the fex payload matches the raw payload
+        const StreamHeader* thdr = reinterpret_cast<const StreamHeader*>(event+1);
+        for(unsigned i=1; i<event->streams(); i++) {
+          if (thdr->strmtype()==1) {
+            ThrStream tstr(*thdr);
+            lerr |= !tstr.validate(rhdr);
+            break;
+          }
         }
       }
     }
@@ -281,21 +294,20 @@ int main (int argc, char **argv) {
       buffs |= (1<<buff); }
 
     //  Check for pgp errors
-    if (rd.error)
-      ++errs;
+    lerr |= rd.error;
 
-    //  Check for length errors
-    { unsigned ext = 8;
-      while( ext < nwords )
-        ext += data[ext]/2 + 4;
-      if (ext != nwords) errs++;
-    }
-      
     ++count;
+    if (lerr) {
+      if (++errs > 20) {
+        RawStream::verbose(0);
+      }
+      if (lvalidate&(1<<31))
+        event->dump();
+    }
 
     if (writeFile) {
       data[6] |= (lane<<20);  // write the lane into the event header
-      fwrite(data,ret,1,writeFile);
+      fwrite(data,rd.size,1,writeFile);
     }
 
     if (pv && tsec != data[3] && lane==0) {
@@ -355,23 +367,36 @@ void* countThread(void* args)
 {
   timespec tv;
   clock_gettime(CLOCK_REALTIME,&tv);
+  unsigned opolls = polls;
   unsigned ocount = count;
   int64_t  obytes = bytes;
   while(1) {
     usleep(1000000);
     timespec otv = tv;
     clock_gettime(CLOCK_REALTIME,&tv);
+    unsigned npolls = polls;
     unsigned ncount = count;
     int64_t  nbytes = bytes;
 
     double dt     = double( tv.tv_sec - otv.tv_sec) + 1.e-9*(double(tv.tv_nsec)-double(otv.tv_nsec));
+    double prate  = double(npolls-opolls)/dt;
     double rate   = double(ncount-ocount)/dt;
     double dbytes = double(nbytes-obytes)/dt;
-    unsigned dbsc = 0, rsc=0;
+    unsigned dbsc = 0, rsc=0, prsc=0;
     
     if (count < 0) break;
 
     static const char scchar[] = { ' ', 'k', 'M' };
+    
+    if (prate > 1.e6) {
+      prsc     = 2;
+      prate   *= 1.e-6;
+    }
+    else if (prate > 1.e3) {
+      prsc     = 1;
+      prate   *= 1.e-3;
+    }
+
     if (rate > 1.e6) {
       rsc     = 2;
       rate   *= 1.e-6;
@@ -390,12 +415,14 @@ void* countThread(void* args)
       dbytes *= 1.e-3;
     }
     
-    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B]  lanes %02x  buffs %04x  errs %04x\n", 
+    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B]  lanes %02x  buffs %04x  errs %04x : polls %7.2f %cHz\n", 
            rate  , scchar[rsc ], ncount, 
-           dbytes, scchar[dbsc], (long long)nbytes, lanes, buffs, errs);
+           dbytes, scchar[dbsc], (long long)nbytes, lanes, buffs, errs,
+           prate , scchar[prsc]);
     lanes = 0;
     buffs = 0;
 
+    opolls = npolls;
     ocount = ncount;
     obytes = nbytes;
   }

@@ -19,12 +19,21 @@ add_library(hsd SHARED
   QABase.cc
   TprCore.cc
   Tps2481.cc
+  stream.cc
 )
 
 target_include_directories(hsd PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     mmhw
 )
+
+target_link_libraries(hsd
+    xtcdata
+    mmhw
+    rt
+)
+
+
 
 add_executable(hsd_eyescan hsd_eyescan.cc)
 
@@ -86,6 +95,7 @@ target_include_directories(hsdRead PUBLIC
 )
 
 target_link_libraries(hsdRead
+   hsd
    xtcdata
    epicstools
    ${EPICS_CA_LIB}
@@ -94,6 +104,9 @@ target_link_libraries(hsdRead
 )
 
 add_executable(hsd_sim hsd_sim.cc)
+target_link_libraries(hsd_sim
+    hsd
+)
 
 add_executable(hsd_test hsd_test.cc)
 
@@ -111,6 +124,7 @@ target_include_directories(hsd_valid PUBLIC
 )
 
 target_link_libraries(hsd_valid
+    hsd
     xtcdata
 )
 

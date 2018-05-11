@@ -7,6 +7,9 @@ namespace Pds {
   namespace HSD {
     class Tps2481 {
     public:
+      double   current_A      () const;
+      double   power_W        () const;
+      void     start          ();
       void     dump           ();
     private:
       uint32_t _cfg;

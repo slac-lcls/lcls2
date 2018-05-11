@@ -7,18 +7,22 @@
 namespace Pds_Epics { class EpicsCA; };
 
 namespace Pds {
+  class Task;
   namespace HSD {
 
     class Module;
 
+    enum Action { Configure, Unconfigure, Reset };
+
     class PVCtrls
     {
     public:
-      PVCtrls(Module&);
+      PVCtrls(Module&, Pds::Task&);
       ~PVCtrls();
     public:
       void allocate(const std::string& title);
       void update();
+      void call  (Action);
     public:
       Module& module();
     public:
@@ -29,6 +33,7 @@ namespace Pds {
     private:
       std::vector<Pds_Epics::EpicsCA*> _pv;
       Module& _m;
+      Pds::Task& _task;
     };
   };
 };

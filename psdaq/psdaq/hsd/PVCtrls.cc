@@ -2,18 +2,22 @@
 #include "psdaq/hsd/Module.hh"
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/QABase.hh"
-#include "psdaq/hsd/Pgp2bAxi.hh"
+#include "psdaq/hsd/Pgp.hh"
 #include "psdaq/epicstools/EpicsCA.hh"
 #include "psdaq/epicstools/PvServer.hh"
+#include "psdaq/service/Task.hh"
+#include "psdaq/service/Routine.hh"
 
 #include <algorithm>
 #include <sstream>
 #include <cctype>
 #include <stdio.h>
+#include <unistd.h>
 
 using Pds_Epics::EpicsCA;
 using Pds_Epics::PvServer;
 using Pds_Epics::PVMonitorCb;
+using Pds::Routine;
 
 static std::string STOU(std::string s) {
   std::transform(s.begin(), s.end(), s.begin(),
@@ -24,6 +28,23 @@ static std::string STOU(std::string s) {
 
 namespace Pds {
   namespace HSD {
+
+    class PVC_Routine : public Routine {
+    public:
+      PVC_Routine(PVCtrls& pvc, Action a) : _pvc(pvc), _a(a) {}
+      void routine() {
+        switch(_a) {
+        case Configure  : _pvc.configure(); break;
+        case Unconfigure: _pvc.unconfigure(); break;
+        case Reset      : _pvc.reset(); break;
+        default: break;
+        }
+      }
+    private:
+      PVCtrls& _pvc;
+      Action   _a;
+    };
+      
 
 #define Q(a,b)      a ## b
 #define PV(name)    Q(name, PV)
@@ -58,15 +79,16 @@ namespace Pds {
       this->EpicsCA::connected(c);                                      \
       connectedBody                                                     \
     }
-
-    CPV(ApplyConfig ,{if (TOU(data())) _ctrl.configure();}, {})
-    CPV(UndoConfig  ,{if (TOU(data())) _ctrl.unconfigure();}, {})
-    CPV(Reset       ,{if (TOU(data())) _ctrl.reset    ();}, {})
+    
+    CPV(ApplyConfig ,{if (TOU(data())) _ctrl.call(Configure  );}, {})
+    CPV(UndoConfig  ,{if (TOU(data())) _ctrl.call(Unconfigure);}, {})
+    CPV(Reset       ,{if (TOU(data())) _ctrl.call(Reset      );}, {})
     CPV(PgpLoopback ,{_ctrl.loopback (TOU(data())!=0);   }, {})
 
-
-    PVCtrls::PVCtrls(Module& m) : _pv(0), _m(m) {}
+    PVCtrls::PVCtrls(Module& m, Pds::Task& t) : _pv(0), _m(m), _task(t) {}
     PVCtrls::~PVCtrls() {}
+
+    void PVCtrls::call(Action a) { _task.call(new PVC_Routine(*this, a)); }
 
     void PVCtrls::allocate(const std::string& title)
     {
@@ -98,7 +120,10 @@ namespace Pds {
       NPV1(Fex_Xpost);
       NPV1(Nat_Gate);
       NPV1(Nat_PS);
+      NPV1(FullEvt);
+      NPV1(FullSize);
       NPV1(TestPattern);
+      NPV1(TrigShift);
       _pv.push_back(new PvServer((pvbase+"BASE:INTTRIGVAL" ).c_str()));
       _pv.push_back(new PvServer((pvbase+"BASE:INTAFULLVAL").c_str()));
       _pv.push_back(new PvServer((pvbase+"BASE:PARTITION"  ).c_str()));
@@ -117,7 +142,8 @@ namespace Pds {
                    Fex_Gate, Fex_PS, 
                    Fex_Ymin, Fex_Ymax, Fex_Xpre, Fex_Xpost,
                    Nat_Gate, Nat_PS,
-                   TestPattern, IntTrigVal, IntAFullVal, Partition, LastPv };
+                   FullEvt, FullSize,
+                   TestPattern, TrigShift, IntTrigVal, IntAFullVal, Partition, LastPv };
 
     Module& PVCtrls::module() { return _m; }
 
@@ -150,6 +176,10 @@ namespace Pds {
 
       _m.dumpPgp();
 
+      // set trigger shift
+      int shift = *reinterpret_cast<int*>(_pv[TrigShift]->data());
+      _m.trig_shift(shift);
+
       // set testpattern
       int pattern = *reinterpret_cast<int*>(_pv[TestPattern]->data());
       printf("Pattern: %d\n",pattern);
@@ -163,6 +193,12 @@ namespace Pds {
       // _m.sample_init(32+48*length, 0, 0);
       QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x80000);
       base.init();
+      base.resetCounts();
+
+      { std::vector<Pgp*> pgp = _m.pgp();
+        for(unsigned i=0; i<pgp.size(); i++)
+          pgp[i]->resetCounts(); }
+
       //  These aren't used...
       //      base.samples = ;
       //      base.prescale = ;
@@ -180,6 +216,8 @@ namespace Pds {
       _m.trig_daq(partition);
 
       // configure fex's for each channel
+      unsigned fullEvt  = TOU(_pv[FullEvt ]->data());
+      unsigned fullSize = TOU(_pv[FullSize]->data());
       for(unsigned i=0; i<4; i++) {
         FexCfg& fex = _m.fex()[i];
         if ((1<<i)&channelMask) {
@@ -187,7 +225,7 @@ namespace Pds {
           if (TON(_pv[Raw_PS]->data(),i)) {
             streamMask |= (1<<0);
             fex._base[0].setGate(4,TON(_pv[Raw_Gate]->data(),i));
-            fex._base[0].setFull(0xc00,4);
+            fex._base[0].setFull(fullSize,fullEvt);
             fex._base[0]._prescale=TON(_pv[Raw_PS]->data(),i)-1;
           }
           if (TON(_pv[Fex_PS]->data(),i)) {
@@ -257,19 +295,16 @@ namespace Pds {
     }
 
     void PVCtrls::loopback(bool v) {
-      Pgp2bAxi* pgp = reinterpret_cast<Pgp2bAxi*>((char*)_m.reg()+0x90000);
+      std::vector<Pgp*> pgp = _m.pgp();
       for(unsigned i=0; i<4; i++)
-        if (v)
-          pgp[i]._loopback |= 2;
-        else
-          pgp[i]._loopback &= ~2;
+        pgp[i]->loopback(v);
 
-      for(unsigned i=0; i<4; i++)
-        pgp[i]._rxReset = 1;
-      usleep(10);
-      for(unsigned i=0; i<4; i++)
-        pgp[i]._rxReset = 0;
-      usleep(100);
+      // for(unsigned i=0; i<4; i++)
+      //   pgp[i]._rxReset = 1;
+      // usleep(10);
+      // for(unsigned i=0; i<4; i++)
+      //   pgp[i]._rxReset = 0;
+      // usleep(100);
     }
   };
 };

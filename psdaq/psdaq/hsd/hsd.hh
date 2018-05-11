@@ -40,6 +40,7 @@ namespace Pds {
     public:
       unsigned samples () const { return _word[0]&0x7fffffff; } // number of samples
       bool     overflow() const { return _word[0]>>31; }        // overflow of memory buffer
+      unsigned strmtype() const { return (_word[1]>>24)&0xff; } // type of stream {raw, thr, ...}
       unsigned boffs   () const { return (_word[1]>>0)&0xff; }  // padding at start
       unsigned eoffs   () const { return (_word[1]>>8)&0xff; }  // padding at end
       unsigned buffer  () const { return _word[1]>>16; }        // 16 front-end buffers (like FEE)

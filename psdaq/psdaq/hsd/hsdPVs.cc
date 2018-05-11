@@ -73,7 +73,7 @@ namespace Pds {
       unsigned repetitive() const { return 1; }
     private:
       Module&  _dev;
-      Task*    _task;
+      Task*    _task;  // Serialize all register access through this task
       PVStats  _pvs;
       PVCtrls  _pvc;
     };
@@ -86,7 +86,7 @@ StatsTimer::StatsTimer(Module& dev) :
   _dev      (dev),
   _task     (new Task(TaskObject("PtnS"))),
   _pvs      (dev),
-  _pvc      (dev)
+  _pvc      (dev, *_task)
 {
 }
 

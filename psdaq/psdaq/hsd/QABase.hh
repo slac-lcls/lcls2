@@ -15,6 +15,7 @@ namespace Pds {
       void setupDaq (unsigned partition);
       void setupLCLS(unsigned rate);
       void setupLCLSII(unsigned rate);
+      void setTrigShift(unsigned shift);
       void enableDmaTest(bool);
       void start();
       void stop ();
@@ -23,7 +24,6 @@ namespace Pds {
       void resetDma   ();
       void resetFb    ();
       void resetFbPLL ();
-      bool clockLocked() const;
       void dump() const;
     public:
       uint32_t irqEnable;
@@ -50,6 +50,7 @@ namespace Pds {
       // [7:0] channel enable mask
       // [8:8] interleave
       // [19:16] partition
+      // [20]  inhibit
       uint32_t samples;       //  Must be a multiple of 16
       uint32_t prescale;
       //   Prescale
@@ -71,9 +72,9 @@ namespace Pds {
       uint32_t countAcquire;
       uint32_t countEnable;
       uint32_t countInhibit;
-      uint32_t dmaFullQ;
-      uint32_t adcSync;
-      uint32_t reserved_60;
+      uint32_t countRead;
+      uint32_t countStart;
+      uint32_t countQueue;
       //
       uint32_t cacheSel;
       uint32_t cacheState;

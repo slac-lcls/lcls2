@@ -815,6 +815,11 @@ void Module::trig_daq   (unsigned partition)
   p->base.setupDaq(partition);
 }
 
+void Module::trig_shift (unsigned shift)
+{
+  p->base.setTrigShift(shift);
+}
+
 void Module::start()
 {
   p->base.start();
@@ -870,14 +875,13 @@ std::vector<Pgp*> Module::pgp() {
       Pgp2bAxi* pgp = reinterpret_cast<Pgp2bAxi*>(p->pgp_reg);
       for(unsigned i=0; i<4; i++)
         v.push_back(new Pgp2b(pgp[i]));
-      break;
     }
     else {
       Pgp3Axil* pgp = reinterpret_cast<Pgp3Axil*>(p->pgp_reg);
       for(unsigned i=0; i<4; i++)
         v.push_back(new Pgp3(pgp[i]));
-      break;
     }
+    break;
   }
   return v;
 }
@@ -885,3 +889,36 @@ std::vector<Pgp*> Module::pgp() {
 FexCfg* Module::fex() { return &p->fex_chan[0]; }
 
 HdrFifo* Module::hdrFifo() { return &p->hdr_fifo[0]; }
+
+void   Module::mon_start()
+{
+  p->i2c_sw_control.select(I2cSwitch::LocalBus);
+  p->vtmon1.start();
+  p->vtmon2.start();
+  p->vtmon3.start();
+  p->imona.start();
+  p->imonb.start();
+}
+
+EnvMon Module::mon() const
+{
+  p->i2c_sw_control.select(I2cSwitch::LocalBus);
+  EnvMon v;
+  Adt7411_Mon m;
+  m = p->vtmon1.mon();
+  v.local12v = m.ain[3]*6.;
+  v.edge12v  = m.ain[6]*6.;
+  v.aux12v   = m.ain[7]*6.;
+  m = p->vtmon2.mon();
+  v.boardTemp = m.Tint;
+  v.local1_8v = m.ain[6];
+  m = p->vtmon3.mon();
+  v.fmc12v = m.ain[2]*6.;
+  v.local2_5v = m.ain[6]*2.;
+  v.local3_3v = m.ain[7]*2.;
+
+  v.fmcPower   = p->imona.power_W();
+  v.totalPower = p->imonb.power_W();
+  return v;
+}
+

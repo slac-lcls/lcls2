@@ -10,6 +10,9 @@ namespace Pds {
     public:
       Pgp3(Mmhw::Pgp3Axil&);
     public:
+      virtual void   resetCounts    ();
+      virtual void   loopback       (bool v);
+    public:
       virtual bool   localLinkReady () const;
       virtual bool   remoteLinkReady() const;
       virtual double   txClkFreqMHz () const;
@@ -18,6 +21,7 @@ namespace Pds {
       virtual unsigned txErrCount   () const;
       virtual unsigned rxOpCodeCount() const;
       virtual unsigned rxOpCodeLast () const;
+      virtual bool     loopback     () const;
     private:
       Mmhw::Pgp3Axil& _axi;
     };

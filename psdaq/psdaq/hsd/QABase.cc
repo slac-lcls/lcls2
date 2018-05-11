@@ -83,6 +83,12 @@ void QABase::setupLCLSII(unsigned rate)
   csr = v | (1<<0);
 }
 
+void QABase::setTrigShift(unsigned shift)
+{
+  unsigned v = csr & ~0xff00;
+  csr = v | ((shift & 0xff)<<8);
+}
+
 void QABase::enableDmaTest(bool enable)
 {
   unsigned v = csr;
@@ -101,18 +107,6 @@ void QABase::resetClock(bool r)
   else
     v &= ~(1<<3);
   csr = v;
-
-  if (!r) {
-    // check for locked bit
-    for(unsigned i=0; i<5; i++) {
-      if (clockLocked()) {
-        printf("clock locked\n");
-        return;
-      }
-      usleep(10000);
-    }
-    printf("clock not locked\n");
-  }
 }
 
 void QABase::resetDma()
@@ -147,12 +141,6 @@ void QABase::resetFbPLL()
   usleep(10);
 }
 
-bool QABase::clockLocked() const
-{
-  unsigned v = adcSync;
-  return v&(1<<31);
-}
-
 void QABase::dump() const
 {
 #define PR(r) printf("%9.9s: %08x\n",#r, r)
@@ -170,8 +158,9 @@ void QABase::dump() const
   PR(countAcquire);
   PR(countEnable);
   PR(countInhibit);
-  PR(dmaFullQ);
-  PR(adcSync);
+  PR(countRead);
+  PR(countStart);
+  PR(countQueue);
 
 #undef PR
 }

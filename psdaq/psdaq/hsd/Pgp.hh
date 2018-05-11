@@ -7,6 +7,9 @@ namespace Pds {
     public:
       virtual ~Pgp() {}
     public:
+      virtual void   resetCounts    ()       = 0;
+      virtual void   loopback       (bool)   = 0;
+    public:
       virtual bool   localLinkReady () const = 0;
       virtual bool   remoteLinkReady() const = 0;
       virtual double   txClkFreqMHz () const = 0;
@@ -15,6 +18,7 @@ namespace Pds {
       virtual unsigned txErrCount   () const = 0;
       virtual unsigned rxOpCodeCount() const = 0;
       virtual unsigned rxOpCodeLast () const = 0;
+      virtual bool     loopback     () const = 0;
     };
   };
 };

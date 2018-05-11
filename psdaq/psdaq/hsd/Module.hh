@@ -15,6 +15,21 @@ namespace Pds {
     class FexCfg;
     class HdrFifo;
     class Pgp;
+
+    class EnvMon {
+    public:
+      double local12v;
+      double edge12v;
+      double aux12v;
+      double fmc12v;
+      double local3_3v;
+      double local2_5v;
+      double local1_8v;
+      double totalPower;
+      double fmcPower;
+      double boardTemp;
+    };
+
     class Module {
     public:
       //
@@ -59,6 +74,7 @@ namespace Pds {
       void trig_lcls  (unsigned eventcode);
       void trig_lclsii(unsigned fixedrate);
       void trig_daq   (unsigned partition);
+      void trig_shift (unsigned shift);
 
       void start      ();
       void stop       ();
@@ -90,6 +106,11 @@ namespace Pds {
 
       void* reg();
       std::vector<Pgp*> pgp();
+
+      //  Monitoring
+      void   mon_start();
+      EnvMon mon() const;
+      
     private:
       Module() {}
 

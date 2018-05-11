@@ -31,15 +31,17 @@ namespace Pds {
 
     //  enumeration of PV insert order below
     enum { _TimFrameCnt, _TimPauseCnt,
+           _TrigCnt, _TrigCntSum, _ReadCntSum, _StartCntSum, _QueueCntSum,
            _PgpLocLinkRdy, _PgpRemLinkRdy,
            _PgpTxClkFreq, _PgpRxClkFreq,
-           _PgpTxCnt, _PgpTxErrCnt, _PgpRxCnt, _PgpRxLast,
+           _PgpTxCnt, _PgpTxCntSum, _PgpTxErrCnt, _PgpRxCnt, _PgpRxLast,
            _Raw_FreeBufSz, _Raw_FreeBufEvt,
            _Fex_FreeBufSz, _Fex_FreeBufEvt,
            _Raw_BufState, _Raw_TrgState, _Raw_BufBeg, _Raw_BufEnd,
-           _TestPattErr, _TestPattBit,
-           _BramWrErr, _BramWrSamp,
-           _BramRdErr, _BramRdSamp,
+           _Local12V, _Edge12V, _Aux12V,
+           _Fmc12V, _BoardTemp,
+           _Local3_3V, _Local2_5V, _Local1_8V, 
+           _TotalPower, _FmcPower, 
            _WrFifoCnt, _RdFifoCnt,
            _NumberOf };
 
@@ -68,11 +70,17 @@ namespace Pds {
 
       PV_ADD (TimFrameCnt);
       PV_ADD (TimPauseCnt);
+      PV_ADD (TrigCnt);
+      PV_ADD (TrigCntSum);
+      PV_ADD (ReadCntSum);
+      PV_ADD (StartCntSum);
+      PV_ADD (QueueCntSum);
       PV_ADDV(PgpLocLinkRdy,4);
       PV_ADDV(PgpRemLinkRdy,4);
       PV_ADDV(PgpTxClkFreq ,4);
       PV_ADDV(PgpRxClkFreq ,4);
       PV_ADDV(PgpTxCnt     ,4);
+      PV_ADDV(PgpTxCntSum  ,4);
       PV_ADDV(PgpTxErrCnt  ,4);
       PV_ADDV(PgpRxCnt     ,4);
       PV_ADDV(PgpRxLast    ,4);
@@ -85,12 +93,18 @@ namespace Pds {
       PV_ADDV(Raw_TrgState   ,16);
       PV_ADDV(Raw_BufBeg     ,16);
       PV_ADDV(Raw_BufEnd     ,16);
-      PV_ADDV(TestPattErr    ,4);
-      PV_ADDV(TestPattBit    ,4);
-      PV_ADDV(BramWrErr      ,4);
-      PV_ADDV(BramWrSamp     ,4);
-      PV_ADDV(BramRdErr      ,4);
-      PV_ADDV(BramRdSamp     ,4);
+
+      PV_ADD(Local12V);
+      PV_ADD(Edge12V);
+      PV_ADD(Aux12V);
+      PV_ADD(Fmc12V);
+      PV_ADD(BoardTemp);
+      PV_ADD(Local3_3V);
+      PV_ADD(Local2_5V);
+      PV_ADD(Local1_8V);
+      PV_ADD(TotalPower);
+      PV_ADD(FmcPower);
+
       PV_ADDV(WrFifoCnt      ,4);
       PV_ADDV(RdFifoCnt      ,4);
 
@@ -99,11 +113,18 @@ namespace Pds {
 
       ca_pend_io(0);
       printf("PVs allocated\n");
+
+      _m.mon_start();
     }
 
     void PVStats::update()
     {
    
+#define PVPUTD(i,v)    {                                                \
+        Pds_Epics::PVWriter& pv = *_pv[_##i];                           \
+        if (pv.connected()) {                                           \
+          *reinterpret_cast<double*>(pv.data()) = double(v);            \
+          pv.put(); } }
 #define PVPUTU(i,v)    {                                                \
         Pds_Epics::PVWriter& pv = *_pv[_##i];                           \
         if (pv.connected()) {                                           \
@@ -134,11 +155,17 @@ namespace Pds {
       QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x00080000);
       PVPUTDU ( TimFrameCnt, base.countEnable);
       PVPUTDU ( TimPauseCnt, base.countInhibit);
+      PVPUTDU ( TrigCnt    , base.countAcquire);
+      PVPUTU  ( TrigCntSum , base.countAcquire);
+      PVPUTU  ( ReadCntSum , base.countRead);
+      PVPUTU  ( StartCntSum, base.countStart);
+      PVPUTU  ( QueueCntSum, base.countQueue);
 
       PVPUTAU  ( PgpLocLinkRdy, 4, _pgp[i]->localLinkReady ()?1:0);
       PVPUTAU  ( PgpRemLinkRdy, 4, _pgp[i]->remoteLinkReady()?1:0);
       PVPUTAU  ( PgpTxClkFreq , 4, _pgp[i]->txClkFreqMHz());
       PVPUTAU  ( PgpRxClkFreq , 4, _pgp[i]->rxClkFreqMHz());
+      PVPUTAU  ( PgpTxCntSum  , 4, _pgp[i]->txCount     () ); 
       PVPUTDAU ( PgpTxCnt     , 4, _pgp[i]->txCount     () ); 
       PVPUTDAU ( PgpTxErrCnt  , 4, _pgp[i]->txErrCount  () );
       PVPUTDAU ( PgpRxCnt     , 4, _pgp[i]->rxOpCodeCount() );
@@ -163,13 +190,17 @@ namespace Pds {
       PVPUTAU ( Raw_BufBeg     , 16, ((addr[i]>> 0)&0xffff) );
       PVPUTAU ( Raw_BufEnd     , 16, ((addr[i]>>16)&0xffff) );
 
-      PVPUTAU ( TestPattErr , 4, (fex[i]._test_pattern_errors) );
-      PVPUTAU ( TestPattBit , 4, (fex[i]._test_pattern_errbits) );
-
-      PVPUTAU ( BramWrErr   , 4, (fex[i]._bram_wr_errors) );
-      PVPUTAU ( BramWrSamp  , 4, (fex[i]._bram_wr_sample) );
-      PVPUTAU ( BramRdErr   , 4, (fex[i]._bram_rd_errors) );
-      PVPUTAU ( BramRdSamp  , 4, (fex[i]._bram_rd_sample) );
+      Pds::HSD::EnvMon mon = _m.mon();
+      PVPUTD  ( Local12V  , mon.local12v   );
+      PVPUTD  ( Edge12V   , mon.edge12v    );
+      PVPUTD  ( Aux12V    , mon.aux12v     );
+      PVPUTD  ( Fmc12V    , mon.fmc12v     );
+      PVPUTD  ( BoardTemp , mon.boardTemp  );
+      PVPUTD  ( Local3_3V , mon.local3_3v  );
+      PVPUTD  ( Local2_5V , mon.local2_5v  );
+      PVPUTD  ( Local1_8V , mon.local1_8v  );
+      PVPUTD  ( TotalPower, mon.totalPower );
+      PVPUTD  ( FmcPower  , mon.fmcPower   ); 
 
       HdrFifo* hdrf = _m.hdrFifo();
       PVPUTAU ( WrFifoCnt , 4, (hdrf[i]._wrFifoCnt&0xf) );

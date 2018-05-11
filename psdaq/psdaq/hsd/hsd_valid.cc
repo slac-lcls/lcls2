@@ -11,133 +11,9 @@
 #include <cinttypes>
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/hsd/hsd.hh"
+#include "psdaq/hsd/stream.hh"
 
 using namespace Pds::HSD;
-
-//
-//  Validate raw stream : ramp signal repeats 0..0xfe
-//      phyclk period is 0.8 ns 
-//      recTimingClk period is 5.384 ns
-//        => 1348 phyclks per beam period
-//
-
-static bool _interleave = false;
-
-namespace Pds {
-  namespace HSD {
-class RawStream {
-public:
-  RawStream(const EventHeader& event, const StreamHeader& strm) :
-    _adc(reinterpret_cast<const uint16_t*>(&strm+1)[strm.boffs()]),
-    _pid(event.pulseId())
-  {
-  }
-public:
-  static void interleave(bool v) { _interleave=v; }
-
-  bool validate(const EventHeader& event, const StreamHeader& next) const {
-    uint16_t adc = adcVal(event.pulseId());
-    unsigned i=next.boffs();
-    unsigned nerror(0);
-    unsigned ntest (0);
-    const unsigned end = next.samples()-next.eoffs();
-    const uint16_t* p = reinterpret_cast<const uint16_t*>(&next+1);
-    if (p[i] != adc) {
-        ++nerror;
-        printf("=== ERROR: Mismatch at first sample: adc [%x]  expected [%x]  delta[%d]\n",
-               p[i], adc, (p[i]-adc)&0x7ff);
-    }
-    adc = this->next(p[i]);
-
-    i++;
-    while(i<end) {
-      ntest++;
-      if (p[i] != adc) {
-        ++nerror;
-        if (nerror < 10)
-          printf("=== ERROR: Mismatch at index %u : adc [%x]  expected [%x]\n",
-                 i, p[i], adc);
-      }
-      adc = this->next(p[i]);
-      i++;
-    }
-    printf("RawStream::validate %u/%u errors\n", nerror, ntest);
-    return nerror==0;
-  }
-private:
-  unsigned adcVal(uint64_t pulseId) const {
-    printf("DPID = %" PRIu64 "\n", (pulseId-_pid)&0xffffffff);
-    uint64_t dclks = (pulseId-_pid)*1348;
-    //    unsigned adc = (_adc+dclks)%255;
-    unsigned adc = (_adc+dclks)&0x7ff;
-    if (_interleave)
-      adc = (_adc+4*dclks)&0x7ff;
-    return adc;
-  }
-  uint16_t next(uint16_t adc) const {
-    //    return (adc+1)%255;
-    return (adc+1)&0x7ff;
-  }
-private:
-  unsigned _adc;
-  uint64_t _pid;
-};
-    
-
-//
-//  Validate threshold stream : ramp signal repeats 0..0xfe
-//      phyclk period is 0.8 ns 
-//      recTimingClk period is 5.384 ns
-//        => 1346 phyclks per beam period
-//
-
-class ThrStream {
-public:
-  ThrStream(const StreamHeader& strm) :
-    _strm(strm)
-  {
-  }
-public:
-  bool validate(const StreamHeader& raw) const {
-    //  (1) Generate a compressed stream from the raw stream and compare, or
-    //  (2) Verify each word of the compressed stream is found in the raw stream at the right location
-
-    unsigned nerror(0), ntest(0);
-    const unsigned end = _strm.samples()-_strm.eoffs();
-    const unsigned end_j = raw.samples()-raw  .eoffs();
-    const uint16_t* p_thr = reinterpret_cast<const uint16_t*>(&_strm+1);
-    const uint16_t* p_raw = reinterpret_cast<const uint16_t*>(&raw  +1);
-    unsigned i=_strm.boffs(), j=raw.boffs();
-    if (p_thr[i] & 0x8000) { // skip to the sample with the trigger
-      i++;
-      j++;
-    }
-    while(i<end && j<end_j) {
-      if (p_thr[i] & 0x8000) {  // skip
-        j += p_thr[i] & 0x7fff;
-      }
-      else {
-        ntest++;
-        if (p_thr[i] != p_raw[j]) {
-          nerror++;
-          if (nerror < 10)
-            printf("=== ERROR: Mismatch at index thr[%u], raw[%u] : adc thr[%x] raw[%x]\n",
-                   i, j, p_thr[i], p_raw[j]);
-        }
-        j++;
-      }
-      i++;
-    }
-
-    printf("ThrStream::validate %u/%u errors\n", nerror, ntest);
-    return nerror==0;
-  }
-private:
-  const StreamHeader& _strm;
-};
-}
-}
-    
 
 extern int optind;
 
@@ -212,6 +88,8 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  RawStream::verbose(2);
+
   uint32_t* event = new uint32_t[0x100000];
   uint16_t* compr = new uint16_t[0x1000];
 
@@ -225,7 +103,7 @@ int main(int argc, char** argv) {
     if (lText) {
       if ((sz=getline(&line, &linesz, f))<=0)
         break;
-      printf("Readline %zd [%32.32s]\n",sz, line);
+      //      printf("Readline %zd [%32.32s]\n",sz, line);
       char* p = line;
       for(unsigned i=0; i<(sz+3)/4; i++, p++)
         event[i] = strtoul(p, &p, 16);
@@ -263,6 +141,7 @@ int main(int argc, char** argv) {
           break;
       }
       printf("\t"); for(unsigned i=0; i<8; i++) printf(" %04x", raw[i]); printf("\n");
+      printf("\t"); for(unsigned i=sh_raw->samples()-8; i<sh_raw->samples(); i++) printf(" %04x", raw[i]); printf("\n");
 
       if (!vraw)
         vraw = new RawStream(eh, *sh_raw);
