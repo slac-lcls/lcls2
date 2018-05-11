@@ -4,12 +4,19 @@ from libc.string cimport memcpy
 from libc.stdlib cimport malloc, free
 from posix.unistd cimport pread
 
-cdef struct Dgram:
-    int junks[12]
-    int extent
-
 cdef struct Xtc:
-    int junks[5]
+    int junks[4]
+    unsigned extent
+
+cdef struct Sequence:
+    int junks[2]
+    unsigned low
+    unsigned high
+
+cdef struct Dgram:
+    Sequence seq
+    int junks[4]
+    Xtc xtc
 
 cdef class DgramChunk:
     cdef char* buf
@@ -32,12 +39,19 @@ cdef class DgramChunk:
         
         if got == 0:
             return 0
+        
+        cdef unsigned long ts_value = 0
+        cdef unsigned ts_seconds = 0
+        cdef unsigned ts_nanoseconds = 0
 
         for i in range(n_events):
             if offset >= got: 
                 break
             d = <Dgram *>(self.buf + offset)
-            payload = d.extent - sizeof(Xtc)
+            ts_value = <unsigned long>d.seq.high << 32 | d.seq.low
+            ts_seconds = d.seq.high
+            ts_nanoseconds = d.seq.low
+            payload = d.xtc.extent - sizeof(Xtc)
             offset += sizeof(Dgram) + payload
         
         cdef char [:] view = <char [:offset]> self.buf
