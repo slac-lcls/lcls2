@@ -379,8 +379,12 @@ public:
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             unsigned namesId = shapesdata.shapes().namesId();
-            DescData descdata(shapesdata, _namesVec[namesId]);
-            DictAssign(_pyDgram, descdata);
+            // protect against the fact that this datagram
+            // may not have a _namesVec
+            if (namesId<_namesVec.size()) {
+                DescData descdata(shapesdata, _namesVec[namesId]);
+                DictAssign(_pyDgram, descdata);
+            }
             break;
         }
         default:
