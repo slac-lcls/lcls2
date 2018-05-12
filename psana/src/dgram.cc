@@ -43,7 +43,6 @@ public:
 struct PyDgramObject {
     PyObject_HEAD
     PyObject* dict;
-    bool is_dict_valid;
     PyObject* pyseq;
     bool is_pyseq_valid;
 // Please do not access the dgram field directly. Instead use dgram()
@@ -57,7 +56,6 @@ struct PyDgramObject {
     ssize_t offset;
     buffered_reader_t* reader;
     Py_buffer buf;
-    PyObject* config;
 };
 
 Dgram*& PyDgramObject::dgram()
@@ -427,7 +425,6 @@ static void dgram_dealloc(PyDgramObject* self)
     // we creating dgrams with a NULL value for pyseq?
     Py_XDECREF(self->pyseq);
     Py_XDECREF(self->dict);
-    Py_XINCREF(self->config);
 #ifndef PSANA_USE_LEGION
     if (self->buf.buf == NULL) {
         free(self->dgram());
@@ -557,12 +554,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
 #endif
 
-    // Store an internal reference to configDgram to be used in dgram_get_dict
-    self->config = configDgram;
-    Py_XINCREF(self->config);
-
-    // The dict and pyseq fields are initialized in dgram_get_*
-    self->is_dict_valid = false;
+    // The pyseq fields are initialized in dgram_get_*
     self->is_pyseq_valid = false;
 
     // Read the data if this dgram is not a view
@@ -592,6 +584,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             if (err) return err;
         }
     }
+    AssignDict(self, configDgram);
 
     return 0;
 }
@@ -647,16 +640,6 @@ static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
     return 0;    
 }
 
-static PyObject* dgram_get_dict(PyDgramObject* self, void *closure) {
-    if (self->dgram()->xtc.extent != 0 && !self->is_dict_valid) {
-        AssignDict(self, self->config);
-        self->is_dict_valid = true;
-    }
-
-    Py_INCREF(self->dict);
-    return self->dict;
-}
-
 static PyObject* dgram_get_seq(PyDgramObject* self, void *closure) {
     if (!self->is_pyseq_valid) {
         //cpo: wasteful to do the Import here every time?
@@ -688,6 +671,10 @@ static PyBufferProcs PyDgramObject_as_buffer = {
 };
 
 static PyMemberDef dgram_members[] = {
+    { (char*)"__dict__",
+      T_OBJECT_EX, offsetof(PyDgramObject, dict),
+      0,
+      (char*)"attribute dictionary" },
     { (char*)"_file_descriptor",
       T_INT, offsetof(PyDgramObject, file_descriptor),
       0,
@@ -700,11 +687,6 @@ static PyMemberDef dgram_members[] = {
 };
 
 static PyGetSetDef dgram_getset[] = {
-    { (char*)"__dict__",
-      (getter)dgram_get_dict,
-      NULL,
-      (char*)"attribute dictionary",
-      NULL },
     { (char*)"seq",
       (getter)dgram_get_seq,
       NULL,
@@ -718,17 +700,9 @@ static PyObject* dgram_assign_dict(PyDgramObject* self) {
     Py_RETURN_NONE;
 }
 
-static PyObject* dgram_decref(PyDgramObject* self) {
-    Py_DECREF(self);
-    Py_RETURN_NONE;
-}
-
 static PyMethodDef dgram_methods[] = {
     {"_assign_dict", (PyCFunction)dgram_assign_dict, METH_NOARGS,
      "Assign dictionary to the dgram"
-    },
-    {"_decref", (PyCFunction)dgram_decref, METH_NOARGS,
-     "Decrement reference count"
     },
     {NULL}  /* Sentinel */
 };

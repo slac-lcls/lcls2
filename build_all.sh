@@ -47,7 +47,9 @@ mkdir -p $INSTDIR/lib/python$pyver/site-packages/
 
 # to build psana with setuptools
 cd psana
-# force build of the dgram extention
+# force build of the extensions.  do this because in some cases
+# setup.py is unable to detect if an external header file changed
+# (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
 python setup.py build_ext --xtcdata=$INSTDIR -f --inplace
 python setup.py $pyInstallStyle $psana_setup_args --xtcdata=$INSTDIR --prefix=$INSTDIR
 cd ..
