@@ -13,6 +13,8 @@ import pyca
 import logging
 import argparse
 import time
+from psana.dgrammanager import DgramManager
+from psana import dgram
 
 class ControlStateMachine(StateMachine):
 
@@ -197,15 +199,26 @@ def main():
     # context and sockets
     ctx = zmq.Context()
     cmd = ctx.socket(zmq.ROUTER)
+    pull = ctx.socket(zmq.PULL)
     cmd.bind("tcp://*:%d" % ControlMsg.router_port(args.p))
+    pull.bind("tcp://*:%d" % ControlMsg.pull_port(args.p))
 
     sequence = 0
 
     poller = zmq.Poller()
     poller.register(cmd, zmq.POLLIN)
+    poller.register(pull, zmq.POLLIN)
     try:
         while True:
             items = dict(poller.poll(1000))
+
+            # Handle pull socket
+            if pull in items:
+                msg = pull.recv()
+                config = dgram.Dgram(view=msg)
+                # now it's in dgram.Dgram object
+                ttt = config.seq.timestamp()
+                print('Timestamp:', ttt)    # FIXME
 
             # Execute state cmd request
             if cmd in items:
@@ -259,6 +272,7 @@ def main():
 
     # close zmq sockets
     cmd.close()
+    pull.close()
 
     # terminate zmq context
     ctx.term()
