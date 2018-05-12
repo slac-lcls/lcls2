@@ -3,6 +3,7 @@
 #include <stddef.h>
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
+#include <structmember.h>
 
 typedef struct {
     PyObject_HEAD
@@ -29,6 +30,14 @@ static int container_init(PyContainerObject* self, PyObject* args, PyObject* kwd
     return 0;
 }
 
+static PyMemberDef container_members[] = {
+    { (char*)"__dict__",
+      T_OBJECT_EX, offsetof(PyContainerObject, dict),
+      0,
+      (char*)"attribute dictionary" },
+    { NULL }
+};
+
 static PyObject* tp_getattro(PyObject* self, PyObject* key)
 {
     PyObject* res = PyDict_GetItem(((PyContainerObject*)self)->dict, key);
@@ -41,6 +50,8 @@ static PyObject* tp_getattro(PyObject* self, PyObject* key)
                 printf("Failed to set BaseObject for numpy array.\n");
                 return 0;
             }
+            //clear NPY_ARRAY_WRITEABLE flag
+            PyArray_CLEARFLAGS((PyArrayObject*)arr_copy, NPY_ARRAY_WRITEABLE);
             // this reference count will get decremented when the returned
             // array is deleted (since the array has us as the "base" object).
             Py_INCREF(((PyContainerObject*)self)->dgram);
@@ -90,7 +101,7 @@ static PyTypeObject container_ContainerType = {
     0, /* tp_iter */
     0, /* tp_iternext */
     0, /* tp_methods */
-    0, /* tp_members */
+    container_members, /* tp_members */
     0, /* tp_getset */
     0, /* tp_base */
     0, /* tp_dict */
