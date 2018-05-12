@@ -138,6 +138,11 @@ class CMMsg(object):
         return cls.PORTBASE + platform
 
     @classmethod
+    def pull_port(cls, platform):
+        assert platform >= 0 and platform <= 7
+        return 5559 # FIXME
+
+    @classmethod
     def pub_port(cls, platform):
         assert platform >= 0 and platform <= 7
         return cls.PORTBASE + platform + 10
