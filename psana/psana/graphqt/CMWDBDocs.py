@@ -158,7 +158,7 @@ class CMWDBDocs(QWidget) :
                '\n  2 - set another widget'\
                '\n'
 
-
+"""
     def keyPressEvent(self, e) :
         logger.info('keyPressEvent, key=', e.key())       
 
@@ -170,6 +170,7 @@ class CMWDBDocs(QWidget) :
             self.set_docs_widget()
         else :
             logger.info(self.key_usage())
+"""
 
 #-----------------------------
 

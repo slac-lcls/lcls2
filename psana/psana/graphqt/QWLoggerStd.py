@@ -142,10 +142,11 @@ class QWLoggerStd(QWidget) :
     def config_logger(self) :
         self.append_qwlogger('Configure logger')
 
-        fmt = '%(asctime)s %(name)s %(levelname)s: %(message)s'
-        tsfmt='%Y-%m-%dT%H:%M:%S'
-
         level = self.dict_name_to_level[self.log_level.value()] # e.g. logging.DEBUG
+
+        tsfmt='%Y-%m-%dT%H:%M:%S'
+        fmt = '%(levelname)s %(name)s: %(message)s' if level==logging.DEBUG else\
+              '%(asctime)s %(levelname)s %(name)s: %(message)s'
 
         #sys.stdout = sys.stderr = open('/dev/null', 'w')
 

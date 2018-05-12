@@ -79,6 +79,7 @@ class CMConfigParameters(PSConfigParameters) :
         self.cmwdbdocs   = None
         self.cmwdbdocswidg=None
         self.qwloggerstd = None
+        self.cmwdbdoceditor = None
 
         self.last_selection = None # self.DB_COLS, DOCS
 
@@ -105,7 +106,9 @@ class CMConfigParameters(PSConfigParameters) :
         self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Configuration File', type='str')
         self.cdb_host = self.declareParameter(name='CDB_HOST', val_def='psanaphi105', type='str')
         self.cdb_port = self.declareParameter(name='CDB_PORT', val_def=27017, type='int')
-        self.cdb_hsplitter = self.declareParameter(name='CDB_HSPLITTER', val_def=250, type='int')
+        self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=250, type='int')
+        self.cdb_hsplitter1 = self.declareParameter(name='CDB_HSPLITTER1', val_def=1000, type='int')
+        self.cdb_hsplitter2 = self.declareParameter(name='CDB_HSPLITTER2', val_def=0, type='int')
         self.cdb_filter  = self.declareParameter(name='CDB_FILTER', val_def='', type='str')
         self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=0o177777, type='int')
         self.cdb_docw = self.declareParameter(name='CDB_DOC_WIDGET', val_def='Text', type='str')

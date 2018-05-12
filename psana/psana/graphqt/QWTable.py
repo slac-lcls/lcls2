@@ -33,15 +33,17 @@ class QWTable(QTableView):
 
         icon.set_icons()
 
+        self.is_connected_item_changed = False
+
         self.model = QStandardItemModel()
         self.set_selection_mode()
         self.fill_table_model() # defines self.model
         self.setModel(self.model)
 
-        self.connect_item_selected_to(self.on_cell_selected)
-        #self.clicked.connect(self.on_click)
-        #self.doubleClicked.connect(self.on_double_click)
-        self.model.itemChanged.connect(self.on_item_changed)
+        self.connect_item_selected_to(self.on_item_selected)
+        self.clicked.connect(self.on_click)
+        self.doubleClicked.connect(self.on_double_click)
+        #self.connect_item_changed_to(self.on_item_changed)
 
         self.set_style()
 
@@ -51,8 +53,18 @@ class QWTable(QTableView):
         self.setSelectionMode(smode)
 
 
+    def connect_item_changed_to(self, recipient) :
+        self.model.itemChanged.connect(recipient)
+        self.is_connected_item_changed = True
+
+
+    def disconnect_item_changed_from(self, recipient) :
+        if self.is_connected_item_changed :
+            self.model.itemChanged.disconnect(recipient)
+            self.is_connected_item_changed = False
+
+
     def connect_item_selected_to(self, recipient) :
-        #self.selectionModel().selectionChanged[QModelIndex, QModelIndex].connect(recipient)
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].connect(recipient)
 
 
@@ -63,6 +75,7 @@ class QWTable(QTableView):
 
     def set_style(self): 
         self.setStyleSheet("QTableView::item:hover{background-color:#00FFAA;}")
+        #self.setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed)
 
 
     def fill_table_model(self):
@@ -122,33 +135,46 @@ class QWTable(QTableView):
             self._getFullName(ind_par)
 
 
+#    def resizeEvent(self, e) :
+#        logger.debug('resizeEvent')
+
+
     def closeEvent(self, event): # if the x is clicked
         logger.debug('closeEvent')
 
 
     def on_click(self, index):
         item = self.model.itemFromIndex(index)
-        msg = 'on_click item in row:%02d text: %s' % (index.row(), item.text())
-        logger.info(msg)
+        msg = 'on_click: item in row:%02d text: %s' % (index.row(), item.text())
+        logger.debug(msg)
 
 
     def on_double_click(self, index):
         item = self.model.itemFromIndex(index)
-        msg = 'on_double_click item in row:%02d text: %s' % (index.row(), item.text())
+        msg = 'on_double_click: item in row:%02d text: %s' % (index.row(), item.text())
         logger.debug(msg)
 
 
     def on_item_selected(self, selected, deselected):
-        logger.info("%d items selected" % len(selected))
-        logger.debug("%d items deselected" % len(deselected))
+        logger.info("on_item_selected: %d selected" % len(selected))
+        logger.debug("on_item_selected: %d deselected" % len(deselected))
 
-        
-    def on_cell_selected(self, ind_sel, ind_desel):
+
+#    def on_current_changed(self, ind_sel, ind_desel):    
+#        item_sel = self.model.itemFromIndex(ind_sel)
+#        item_desel = self.model.itemFromIndex(ind_desel)
+#        logger.debug("on_current_changed: %s-selected %s-deselected" %\
+#                      (item_sel.text() if item_sel is not None else None,\
+#                       item_desel.text() if item_desel is not None else None))
+
+
+
+    def on_item_selected(self, ind_sel, ind_desel):
         #logger.debug("ind   selected : ", ind_sel.row(),  ind_sel.column())
         #logger.debug("ind deselected : ", ind_desel.row(),ind_desel.column()) 
         item = self.model.itemFromIndex(ind_sel)
-        logger.info("Item with text '%s' is selected" % (item.text() if item is not None else None),)
-        logger.debug("full name: %s" % self.getFullNameFromItem(item))
+        logger.info('on_item_selected: "%s" is selected' % (item.text() if item is not None else None))
+        logger.debug('on_item_selected: %s' % self.getFullNameFromItem(item))
         #logger.debug(' isEnabled=',item.isEnabled())
         #logger.debug(' isCheckable=',item.isCheckable()) 
         #logger.debug(' checkState=',item.checkState())
@@ -160,7 +186,7 @@ class QWTable(QTableView):
 
     def on_item_changed(self, item):
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
-        logger.info("Item with full name %s, is at state %s\n" % (self.getFullNameFromItem(item), state))
+        logger.debug('abstract on_item_changed: "%s" at state %s' % (self.getFullNameFromItem(item), state))
 
 
     def process_selected_items(self) :

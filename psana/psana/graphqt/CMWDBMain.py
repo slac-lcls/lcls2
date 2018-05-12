@@ -38,6 +38,7 @@ from psana.graphqt.CMWDBButtons import CMWDBButtons
 
 
 from psana.graphqt.CMWDBDocs import CMWDBDocs
+from psana.graphqt.CMWDBDocEditor import CMWDBDocEditor
 
 #from psana.graphqt.QWIcons import icon
 #from psana.graphqt.Styles import style
@@ -58,6 +59,8 @@ class CMWDBMain(QWidget) :
         self.wbuts = CMWDBButtons()
         self.wtree = CMWDBTree()
         self.wdocs = CMWDBDocs() # QTextEdit('Some text')
+        self.wdoce = CMWDBDocEditor()
+        #self.wdoce = QTextEdit('Template for doc editor') # MWDBDocs()
 
         #self.vbox = QVBoxLayout() 
         #self.vbox.addWidget(self.wtab) 
@@ -69,6 +72,7 @@ class CMWDBMain(QWidget) :
         self.hspl = QSplitter(Qt.Horizontal)
         self.hspl.addWidget(self.wtree) 
         self.hspl.addWidget(self.wdocs) 
+        self.hspl.addWidget(self.wdoce) 
 
         # Vertical splitter widget
         self.vspl = QSplitter(Qt.Vertical) # QVBoxLayout() 
@@ -151,6 +155,37 @@ class CMWDBMain(QWidget) :
         #self.butStop.setToolTip('Not implemented yet...')
 
 
+#------------------------------
+
+    def set_hsplitter_sizes(self, s0=None, s1=None, s2=None) :
+        _s0 = cp.cdb_hsplitter0.value() if s0 is None else s0
+        _s1 = cp.cdb_hsplitter1.value() if s1 is None else s1
+        _s2 = cp.cdb_hsplitter2.value() if s2 is None else s2
+        self.hspl.setSizes((_s0, _s1, _s2))
+
+
+    def set_hsplitter_size2(self, s2=0) :
+        _s0, _s1, _s2 = self.hsplitter_sizes()
+        self.set_hsplitter_sizes(_s0, _s1+_s2-s2, s2 )
+
+
+    def hsplitter_sizes(self) :
+        return self.hspl.sizes() #[0]
+
+
+    def save_hsplitter_sizes(self) :
+        """Save hsplitter sizes in configuration parameters.
+        """
+        s0, s1, s2 = self.hsplitter_sizes()
+        msg = 'Save h-splitter sizes %d %d %d' % (s0, s1, s2)
+        logger.debug(msg)
+
+        cp.cdb_hsplitter0.setValue(s0)
+        cp.cdb_hsplitter1.setValue(s1)
+        cp.cdb_hsplitter2.setValue(s2)
+
+#------------------------------
+
     def set_style(self) :
         #self.setGeometry(self.main_win_pos_x .value(),\
         #                 self.main_win_pos_y .value(),\
@@ -163,8 +198,7 @@ class CMWDBMain(QWidget) :
         self.wtree.setMinimumWidth(100)
         self.wtree.setMaximumWidth(600)
 
-        pos_hspl = cp.cdb_hsplitter.value()
-        self.hspl.setSizes((pos_hspl,1000,))
+        self.set_hsplitter_sizes()
 
         #self.hspl.moveSplitter(200, self.hspl.indexOf(self.wdocs))
 
@@ -248,11 +282,8 @@ class CMWDBMain(QWidget) :
         #msg = 'Save main window x,y,w,h : %d, %d, %d, %d' % (x,y,w,h)
         #logger.info(msg)
 
-        spl_pos = self.hspl.sizes()[0]
-        msg = 'Save h-splitter position %d' % spl_pos
+        self.save_hsplitter_sizes()
 
-        #Save main window position and size
-        cp.cdb_hsplitter.setValue(spl_pos)
         #self.main_win_pos_y .setValue(y)
         #self.main_win_width .setValue(w)
         #self.main_win_height.setValue(h)

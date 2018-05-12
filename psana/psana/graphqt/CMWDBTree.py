@@ -67,7 +67,7 @@ class CMWDBTree(QWTree) :
 
             itdb = QStandardItem(dbname)
             itdb.setIcon(icon.icon_folder_closed)
-
+            itdb.setEditable(False)
             #itdb.setCheckable(True) 
             parentItem.appendRow(itdb)
 
@@ -77,6 +77,7 @@ class CMWDBTree(QWTree) :
                 if not col : continue
                 itcol = QStandardItem(col)  
                 itcol.setIcon(icon.icon_folder_closed)
+                itcol.setEditable(False)
                 itdb.appendRow(itcol)
 
                 #item.setIcon(icon.icon_table)
@@ -86,7 +87,7 @@ class CMWDBTree(QWTree) :
 #------------------------------
 
     def on_click(self, index) :
-        """Override method from QWTree"""
+        """Override method in QWTree"""
         item = self.model.itemFromIndex(index)
         itemname = item.text()
         parent = item.parent()

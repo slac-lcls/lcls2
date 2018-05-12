@@ -18,6 +18,7 @@ Created on 2017-04-20 by Mikhail Dubrovin
 
 from psana.graphqt.CMWDBDocsBase import *
 from psana.graphqt.QWTable import QWTable, QStandardItem, icon
+
 #from psana.graphqt.CMDBUtils import timestamp_id # use dbu
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
 #------------------------------
 
     def show_documents(self, dbname, colname, docs) :        
-        """Implementation of the abstract method in CMWDBDocsBase
+        """Implementation of the abstract method in CMWDBDocsBase.show_documents
         """
         CMWDBDocsBase.show_documents(self, dbname, colname, docs)
         msg = 'Show documents for db: %s col: %s'%(dbname, colname)
@@ -42,10 +43,12 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
         #for doc in docs : print(doc)
         self.fill_table_model(docs)
 
+        cp.cmwdbmain.set_hsplitter_size2(0)
+
 #------------------------------
 
     def fill_table_model(self, docs=None):
-        """Re-implementation of the method in QWList.fill_list_model
+        """Re-implementation of the method in QWTable.fill_table_model
         """
         self.clear_model()
 
@@ -65,6 +68,7 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
             keys = sorted(docs[0].keys())
             #self.model.setVerticalHeaderLabels(keys) 
             self.model.setHorizontalHeaderLabels(keys) 
+
             for r,doc in enumerate(docs):
                 for c,key in enumerate(keys):
                      v = str(doc.get(key,'N/A'))
@@ -74,6 +78,7 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
                          msg = '%s = %s converted to %s' % (('doc["%s"]'%key).ljust(16), v, s)
                          logger.debug(msg)
                      item = QStandardItem(s)
+                     item.setEditable(False)
                      self.model.setItem(r,c,item)
 
 #------------------------------

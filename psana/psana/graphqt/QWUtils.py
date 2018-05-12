@@ -33,9 +33,9 @@ from PyQt5.QtGui import QCursor
 
 #------------------------------
 
-def select_item_from_popup_menu(lst, title=None, default=None):
+def select_item_from_popup_menu(lst, title=None, default=None, parent=None):
     """Shows the list as a pop-up menu and returns the selected item as a string or None"""
-    w = QMenu()
+    w = QMenu(parent)
     _title = title if title is not None else 'Select'
     #w.setTitle(_title)
     atitle = w.addAction(_title)
@@ -63,13 +63,13 @@ def select_color(colini=Qt.blue, parent=None):
 
 #------------------------------
 
-def change_check_box_list_in_popup_menu(list, win_title='Set check boxes'):
+def change_check_box_list_in_popup_menu(list, win_title='Set check boxes', parent=None):
     """Shows the list of check-boxes as a dialog pop-up menu and returns the (un)changed list"""
     if list is None : return 0
 
     from psana.graphqt.QWPopupCheckList import QWPopupCheckList
 
-    popupMenu = QWPopupCheckList(None, list, win_title)
+    popupMenu = QWPopupCheckList(parent, list, win_title)
     #popupMenu.move(QPoint(50,50))
     popupMenu.move(QCursor.pos())
     response = popupMenu.exec_()
@@ -86,13 +86,13 @@ def change_check_box_list_in_popup_menu(list, win_title='Set check boxes'):
 
 #------------------------------
 
-def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes'):
+def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes', parent=None):
     """Shows the dict of check-boxes as a dialog pop-up menu and returns the (un)changed dict"""
     if dict is None : return 0
 
     from psana.graphqt.QWPopupCheckDict import QWPopupCheckDict
 
-    popupMenu = QWPopupCheckDict(None, dict, win_title)
+    popupMenu = QWPopupCheckDict(parent, dict, win_title)
     #popupMenu.move(QPoint(50,50))
     popupMenu.move(QCursor.pos())
     response = popupMenu.exec_()
@@ -109,12 +109,12 @@ def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes'):
 
 #------------------------------
 
-def select_radio_button_in_popup_menu(dict_of_pars, win_title='Select option', do_confirm=False):
+def select_radio_button_in_popup_menu(dict_of_pars, win_title='Select option', do_confirm=False, parent=None):
     """Popup GUI to select radio button from the list:  dict_of_pars = {'checked':'radio1', 'list':['radio0', 'radio1', 'radio2']}
     """
     from psana.graphqt.QWPopupRadioList import QWPopupRadioList
 
-    popupMenu = QWPopupRadioList(None, dict_of_pars, win_title, do_confirm)
+    popupMenu = QWPopupRadioList(parent, dict_of_pars, win_title, do_confirm)
     #popupMenu.move(QPoint(50,50))
     popupMenu.move(QCursor.pos()-QPoint(100,100))
     return popupMenu.exec_() # QDialog.Accepted or QDialog.Rejected

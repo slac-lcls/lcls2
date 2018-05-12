@@ -361,7 +361,7 @@ class CMWDBButtons(QWidget) :
     def select_visible_buttons(self):
         logger.debug('select_visible_buttons')
         d = self.buttons_dict()
-        resp = change_check_box_dict_in_popup_menu(d, 'Select buttons')
+        resp = change_check_box_dict_in_popup_menu(d, 'Select buttons', parent=self.but_buts)
         logger.info('select_visible_buttons resp: %s' % resp)
         if resp is None : return
         if resp==1 :
@@ -370,7 +370,7 @@ class CMWDBButtons(QWidget) :
 
 
     def select_doc_widget(self):
-        resp = select_item_from_popup_menu(cp.list_of_doc_widgets)
+        resp = select_item_from_popup_menu(cp.list_of_doc_widgets, parent=self)
         logger.debug('select_doc_widget resp: %s' % resp)
         if resp is None : return
         cp.cdb_docw.setValue(resp)
@@ -468,7 +468,7 @@ class CMWDBButtons(QWidget) :
         msg += '\n  '.join(msg_recs)
 
         logger.info(msg)
-        resp = confirm_or_cancel_dialog_box(parent=None, text=msg, title='Confirm or cancel')
+        resp = confirm_or_cancel_dialog_box(parent=self.but_del, text=msg, title='Confirm or cancel')
         logger.info('Response: %s' % resp)
 
         if resp :
@@ -519,7 +519,7 @@ class CMWDBButtons(QWidget) :
                 msg += '\n    '.join(lstcols)
 
         logger.info(msg)
-        resp = confirm_or_cancel_dialog_box(parent=None, text=msg, title='Confirm or cancel')
+        resp = confirm_or_cancel_dialog_box(parent=self.but_del, text=msg, title='Confirm or cancel')
         logger.info('Response: %s' % resp)
 
         if resp :
@@ -529,20 +529,33 @@ class CMWDBButtons(QWidget) :
            # Regenerate tree model
            self.on_edi_db_filter_finished()
 
- #-----------------------------
+#-----------------------------
 
     def set_selection_mode(self):
         #logger.debug('set_selection_model')
         wtree = cp.cmwdbtree
         if wtree is None : return
         selected = select_item_from_popup_menu(wtree.dic_smodes.keys(), title='Select mode',\
-                                               default=cp.cdb_selection_mode.value())
+                                               default=cp.cdb_selection_mode.value(), parent=self)
         logger.info('set_selection_model: %s' % selected)
         if selected is None : return
         cp.cdb_selection_mode.setValue(selected)
         wtree.set_selection_mode(selected)
 
- #-----------------------------
+#-----------------------------
+
+    def add_doc(self):
+        logger.info('add_doc')
+        wdocs = cp.cmwdbdocswidg
+        if wdocs is None :
+            logger.warning('add_doc - doc widget object does not exist?')
+            return
+
+        #cp.cmwdbdoceditor.show_document(wdocs.dbname, wdocs.colname, force_update=True)
+         
+
+
+#-----------------------------
 
     def on_but_clicked(self):
         for but in self.list_of_buts :
@@ -554,7 +567,7 @@ class CMWDBButtons(QWidget) :
         elif but == self.but_del      : self.delete_selected_items()
         elif but == self.but_docs     : self.select_doc_widget()
         elif but == self.but_selm     : self.set_selection_mode()
-        elif but == self.but_add      : logger.debug('TBD')
+        elif but == self.but_add      : self.add_doc()
 
 
     def on_but_pressed(self):

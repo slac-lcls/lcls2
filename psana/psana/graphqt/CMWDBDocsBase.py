@@ -20,6 +20,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QTextEdit
+from PyQt5.QtCore import Qt
 
 from psana.graphqt.CMConfigParameters import cp # used in CMWDBDocsList
 import psana.graphqt.CMDBUtils as dbu
@@ -49,6 +50,8 @@ class CMWDBDocsBase() :
         #      (self.dbname, self.colname)
         #logger.warning(msg)
         self.dbname, self.colname, self.current_docs = dbname, colname, docs
+
+        #cp.cmwdbmain.set_hsplitter_size2(0)
 
 #------------------------------
 
