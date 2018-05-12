@@ -30,7 +30,7 @@ class CMWDBDocsText(CMWDBDocsBase, QTextEdit) :
 #------------------------------
 
     def show_documents(self, dbname, colname, docs) :
-        """Re-implementation of the method in QWList.fill_list_model
+        """Re-implementation of the method in CMWDBDocsBase.show_documents
         """
         CMWDBDocsBase.show_documents(self, dbname, colname, docs)
         msg = 'Show documents for db: %s col: %s' % (dbname, colname)
@@ -38,5 +38,10 @@ class CMWDBDocsText(CMWDBDocsBase, QTextEdit) :
         #docs = self.current_docs
         txt = dbu.collection_info(dbname, colname)
         self.setText(txt)
+        self.setReadOnly(True)
+        #QTextEdit.setFlags(self.windowFlags() ^ Qt.TextSelectableByMouse)
+        #self.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        QTextEdit.setTextInteractionFlags(self,Qt.TextBrowserInteraction)
+        cp.cmwdbmain.set_hsplitter_size2(0)
 
 #------------------------------

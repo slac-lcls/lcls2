@@ -37,7 +37,7 @@ class QWPopupCheckDict(QDialog) :
     and modify this dict in popup dialog gui.
     """
     def __init__(self, parent=None, dict_in_out={}, win_title=None):
-        QDialog.__init__(self,parent)
+        QDialog.__init__(self, parent)
  
         #self.setModal(True)
         if win_title is not None : self.setWindowTitle(win_title)
