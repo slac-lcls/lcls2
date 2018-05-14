@@ -1,5 +1,6 @@
 # Import the Python-level symbols of numpy
 import numpy as np
+import copy
 
 # Import the C-level symbols of numpy
 cimport numpy as cnp
@@ -96,7 +97,8 @@ class parse_xtc():
                     dgram = vars(vars(evt.dgrams[0])[key])
                 except KeyError:
                     continue
-                event_data = vars(dgram[iterd['base_alg_name']])
+                event_data = copy.deepcopy(vars(dgram[iterd['base_alg_name']]))
+                # event_data = vars(dgram[iterd['base_alg_name']])
                 det_entries.append({'nameinfo':iterd['nameinfo'], 'base_alg':iterd['base_alg'],\
                                     'data':event_data})
             if det_entries:
