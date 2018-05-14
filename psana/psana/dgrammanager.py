@@ -7,6 +7,17 @@ from psana import dgram
 from psana.event import Event
 import numpy as np
 
+def dumpDict(dict,indent):
+    for k in sorted(dict.keys()):
+        if hasattr(dict[k],'__dict__'):
+            print(' '*indent,k)
+            dumpDict(dict[k].__dict__,indent+2)
+        else:
+            print(' '*indent,k,dict[k])
+
+def dumpDgram(d):
+    dumpDict(d.__dict__,0)
+
 FN_L = 100
 
 class DgramManager():
