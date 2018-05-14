@@ -101,19 +101,21 @@ static ssize_t read_with_retries(int fd, void *buf, size_t count, int retries) {
     return requested - count; // return with whatever got at time out
 }
 
-static void buffered_reader_read(buffered_reader_t *reader, void *buf, size_t count) {
+static int buffered_reader_read(buffered_reader_t *reader, void *buf, size_t count) {
     if (!reader->chunk) {
         reader->chunk = (char *)malloc(CHUNKSIZE);
         reader->got = read_with_retries(reader->fd, reader->chunk, CHUNKSIZE, MAXRETRIES);
     }
-
-    while (count > 0) {
+    
+    int read_success = -1;
+    while (count > 0 && reader->got > 0) {
         size_t remaining = reader->got - reader->offset;
         if (count < remaining) {
             // just copy it
             memcpy(buf, reader->chunk + reader->offset, count);
             reader->offset += count;
             count = 0;
+            read_success = 0;
         } else {
             // copy rest of chunk
             memcpy(buf, reader->chunk + reader->offset, remaining);
@@ -125,16 +127,15 @@ static void buffered_reader_read(buffered_reader_t *reader, void *buf, size_t co
             count -= remaining;
         }
     }
+
+    return read_success;
 }
 
 static int read_dgram(PyDgramObject* self) {
     // reads dgram header and payload
-    buffered_reader_read(self->reader, self->dgram(), sizeof(Dgram));
-    buffered_reader_read(self->reader, self->dgram() + 1, self->dgram()->xtc.sizeofPayload());
-    if (!self->reader->got) {
-        return -1;
-    }
-    return 0; 
+    int read_header_success = buffered_reader_read(self->reader, self->dgram(), sizeof(Dgram));
+    int read_payload_success = buffered_reader_read(self->reader, self->dgram() + 1, self->dgram()->xtc.sizeofPayload());
+    return (read_header_success & read_payload_success); 
 }
 
 /* end buffered_reader */
@@ -477,8 +478,9 @@ static int dgram_read(PyDgramObject* self, ssize_t dgram_size, int sequential)
     int readSuccess=0;
     if (sequential) {
         readSuccess = read_dgram(self); // for read sequentially
-        if (readSuccess < 0) {
-            self->offset = -1; // set termination
+        if (readSuccess != 0) {
+            PyErr_SetString(PyExc_StopIteration, "loading self->dgram() was unsuccessful");
+            return -1;
         }
     } else {
         off_t fOffset = (off_t)self->offset;
@@ -521,6 +523,13 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                                      &dgram_size,
                                      &view)) {
         return -1;
+    }
+    
+    if (fd > -1) {
+        if (fcntl(fd, F_GETFD) == -1) {
+            PyErr_SetString(PyExc_OSError, "invalid file descriptor");
+            return -1;
+        }
     }
 
     isView = (view!=0) ? true : false;

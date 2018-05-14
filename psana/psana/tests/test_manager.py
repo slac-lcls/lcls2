@@ -2,6 +2,7 @@ import os
 import subprocess
 from .xtc import xtc
 from .det import det
+from .test_dgraminit import run as run_test_dgraminit
 
 import hashlib
 from psana.dgrammanager import DgramManager
@@ -57,5 +58,8 @@ class Test:
     
     def test_det(self):
         det()
+
+    def test_dgram(self):
+        run_test_dgraminit()
 
 
