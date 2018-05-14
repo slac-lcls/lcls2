@@ -15,6 +15,7 @@ def dumpDict(dict,indent):
         else:
             print(' '*indent,k,dict[k])
 
+# method to dump dgrams to stdout.  ideally this would move into dgram.cc
 def dumpDgram(d):
     dumpDict(d.__dict__,0)
 
