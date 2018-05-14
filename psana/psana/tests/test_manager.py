@@ -43,7 +43,7 @@ class Test:
 
         h1 = self.hash_xtc(input)
         h2 = self.hash_xtc(input2)
-        #assert(h1==h2)
+        assert(h1==h2)
 
     def test_xtc(self):
         xtc()
