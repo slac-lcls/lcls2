@@ -101,7 +101,7 @@ public:
         _nameMap = old._nameMap;
     }
     NameIndex& operator=(const NameIndex& rhs) = delete;
-    ~NameIndex() {delete _names;}
+    ~NameIndex() {free(_names);}
     IndexMap& shapeMap() {return _shapeMap;}
     IndexMap& nameMap()  {return _nameMap;}
     Names& names() {return *_names;}
