@@ -7,7 +7,7 @@ Author: Chris Ford <caf@slac.stanford.edu>
 import time
 import zmq
 import argparse
-from CMMsg import CMMsg
+from ControlMsg import ControlMsg
 from ControlTransition import ControlTransition as Transition
 
 def main():
@@ -19,7 +19,7 @@ def main():
                      'disable': Transition.disable,
                      'endrun': Transition.endrun,
                      'unconfigure': Transition.unconfigure,
-                     'getstate': CMMsg.GETSTATE }
+                     'getstate': ControlMsg.GETSTATE }
 
     # Process arguments
     parser = argparse.ArgumentParser()
@@ -33,14 +33,14 @@ def main():
     cmd_socket = ctx.socket(zmq.DEALER)
     cmd_socket.linger = 0
     cmd_socket.RCVTIMEO = 5000 # in milliseconds
-    cmd_socket.connect("tcp://%s:%d" % (args.C, CMMsg.router_port(args.p)))
+    cmd_socket.connect("tcp://%s:%d" % (args.C, ControlMsg.router_port(args.p)))
 
     # Send command
     cmd_socket.send(command_dict[args.command])
 
     # Receive reply
     try:
-        cmmsg = CMMsg.recv(cmd_socket)
+        cmmsg = ControlMsg.recv(cmd_socket)
     except Exception as ex:
         print(ex)
     else:
