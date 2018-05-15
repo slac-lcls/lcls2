@@ -27,6 +27,8 @@ using namespace XtcData;
 #define CHUNKSIZE 1<<20
 #define MAXRETRIES 5
 
+static const char* PyNameDelim=".";
+
 using namespace std;
 
 // to avoid compiler warnings for debug variables
@@ -149,9 +151,9 @@ static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
     char namecopy[TMPSTRINGSIZE];
     strncpy(namecopy,name,TMPSTRINGSIZE);
     PyObject* parent = (PyObject*)dgram;
-    char *key = ::strtok(namecopy,"_");
+    char *key = ::strtok(namecopy,PyNameDelim);
     while(1) {
-        char* next = ::strtok(NULL, "_");
+        char* next = ::strtok(NULL, PyNameDelim);
         bool last = (next == NULL);
         if (last) {
             // add the real object
@@ -184,9 +186,11 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     PyObject* software = Py_BuildValue("s", algName);
     PyObject* version  = Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
-    snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",baseName,"software");
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%ssoftware",
+             PyNameDelim,baseName,PyNameDelim);
     addObj(pyDgram, keyName, software);
-    snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",baseName,"version");
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%sversion",
+             PyNameDelim,baseName,PyNameDelim);
     addObj(pyDgram, keyName, version);
 
     assert(Py_GETREF(software)==1);
@@ -195,11 +199,13 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
 static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     char keyName[TMPSTRINGSIZE];
     PyObject* detType = Py_BuildValue("s", names.detType());
-    snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",names.detName(),"dettype");
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%sdettype",
+             PyNameDelim,names.detName(),PyNameDelim);
     addObj(pyDgram, keyName, detType);
 
     PyObject* detId = Py_BuildValue("s", names.detId());
-    snprintf(keyName,TMPSTRINGSIZE,"software_%s_%s",names.detName(),"detid");
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%sdetid",
+             PyNameDelim,names.detName(),PyNameDelim);
     addObj(pyDgram, keyName, detId);
 
     assert(Py_GETREF(detType)==1);
@@ -213,14 +219,17 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
     for (unsigned i = 0; i < namesVec.size(); i++) {
         Names& names = namesVec[i].names();
         Alg& detAlg = names.alg();
-        snprintf(baseName,TMPSTRINGSIZE,"%s_%s",names.detName(),names.alg().name());
+        snprintf(baseName,TMPSTRINGSIZE,"%s%s%s",
+                 names.detName(),PyNameDelim,names.alg().name());
         setAlg(pyDgram,baseName,detAlg);
         setDetInfo(pyDgram, names);
 
         for (unsigned j = 0; j < names.num(); j++) {
             Name& name = names.get(j);
             Alg& alg = name.alg();
-            snprintf(baseName,TMPSTRINGSIZE,"%s_%s_%s",names.detName(),names.alg().name(),name.name());
+            snprintf(baseName,TMPSTRINGSIZE,"%s%s%s%s%s",
+                     names.detName(),PyNameDelim,names.alg().name(),
+                     PyNameDelim,name.name());
             setAlg(pyDgram,baseName,alg);
         }
     }
@@ -360,8 +369,9 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             //clear NPY_ARRAY_WRITEABLE flag
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
-        snprintf(keyName,TMPSTRINGSIZE,"%s_%s_%s",names.detName(),names.alg().name(),
-                 name.name());
+        snprintf(keyName,TMPSTRINGSIZE,"%s%s%s%s%s",
+                 names.detName(),PyNameDelim,names.alg().name(),
+                 PyNameDelim,name.name());
         addObj(pyDgram, keyName, newobj);
     }
 }
