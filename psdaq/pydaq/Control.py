@@ -6,7 +6,7 @@ Author: Chris Ford <caf@slac.stanford.edu>
 
 import zmq
 from ControlTransition import ControlTransition as Transition
-from CMMsg import CMMsg as ControlMsg
+from ControlMsg import ControlMsg
 from ControlState import ControlState, StateMachine
 from psp import PV
 import pyca
@@ -231,7 +231,7 @@ def main():
                     # Send reply to client
                     logging.debug("Sending <PONG> reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = ControlMsg(key=ControlMsg.PONG)
+                    cmmsg = ControlMsg(sequence, key=ControlMsg.PONG)
                     cmmsg.send(cmd)
                     continue
 
@@ -244,12 +244,16 @@ def main():
                                 ControlMsg.GETSTATE]:
 
                     if request != ControlMsg.GETSTATE:
+                        oldstate = yy.state()
                         # Do transition
                         yy.on_transition(request)
+                        newstate = yy.state()
+                        if newstate != oldstate:
+                            logging.debug("ControlStateMachine state: %s" % newstate)
 
                     # Send reply to client
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = ControlMsg(key=yy.state().key())
+                    cmmsg = ControlMsg(sequence, key=yy.state().key())
                     cmmsg.send(cmd)
                     continue
 
@@ -258,7 +262,7 @@ def main():
                     # Send reply to client
                     logging.debug("Sending <HUH?> reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = ControlMsg(key=ControlMsg.HUH)
+                    cmmsg = ControlMsg(sequence, key=ControlMsg.HUH)
                     cmmsg.send(cmd)
                     continue
 
