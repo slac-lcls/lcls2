@@ -16,6 +16,8 @@
 #include <numpy/ndarraytypes.h>
 #include <structmember.h>
 #include <assert.h>
+#include <iostream>
+#include <memory>
 
 #ifdef PSANA_USE_LEGION
 #include "legion_helper.h"
@@ -56,7 +58,7 @@ struct PyDgramObject {
 #endif
     int file_descriptor;
     ssize_t offset;
-    buffered_reader_t* reader;
+    shared_ptr<buffered_reader_t> reader;
     Py_buffer buf;
 };
 
@@ -75,17 +77,13 @@ Dgram*& PyDgramObject::dgram()
 // reads and stores data in a chunk of CHUNKSIZE bytes
 // when fails, try to read until MAXRETRIES is reached.
 
-buffered_reader_t *buffered_reader_new(int fd) {
-    buffered_reader_t *reader = new buffered_reader_t;
+shared_ptr<buffered_reader_t> buffered_reader_new(int fd) {
+    shared_ptr<buffered_reader_t> reader (new buffered_reader_t);
     reader->fd = fd;
     reader->chunk = 0;
     reader->offset = 0;
     reader->got = 0;
     return reader;
-}
-
-static void buffered_reader_free(buffered_reader_t *reader) {
-    delete reader;
 }
 
 static ssize_t read_with_retries(int fd, void *buf, size_t count, int retries) {
@@ -103,7 +101,7 @@ static ssize_t read_with_retries(int fd, void *buf, size_t count, int retries) {
     return requested - count; // return with whatever got at time out
 }
 
-static int buffered_reader_read(buffered_reader_t *reader, void *buf, size_t count) {
+static int buffered_reader_read(shared_ptr<buffered_reader_t> reader, void *buf, size_t count) {
     if (!reader->chunk) {
         reader->chunk = (char *)malloc(CHUNKSIZE);
         reader->got = read_with_retries(reader->fd, reader->chunk, CHUNKSIZE, MAXRETRIES);
@@ -436,6 +434,7 @@ static void dgram_dealloc(PyDgramObject* self)
     // we creating dgrams with a NULL value for pyseq?
     Py_XDECREF(self->pyseq);
     Py_XDECREF(self->dict);
+    self->reader.reset();
 #ifndef PSANA_USE_LEGION
     if (self->buf.buf == NULL) {
         free(self->dgram());
@@ -543,12 +542,6 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
 
     isView = (view!=0) ? true : false;
-
-    if (self->offset == -1) {
-        buffered_reader_free(self->reader);
-        PyErr_SetNone(PyExc_StopIteration); // fixme: use shared_ptr
-        return -1;
-    }
 
     if (!isView) {
 #ifndef PSANA_USE_LEGION
