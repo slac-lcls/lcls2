@@ -42,6 +42,12 @@ public:
     size_t got;
 };
 
+struct ContainerInfo {
+    PyObject* containermod;
+    PyObject* pycontainertype;
+    PyObject* arglist;
+};
+
 struct PyDgramObject {
     PyObject_HEAD
     PyObject* dict;
@@ -58,6 +64,7 @@ struct PyDgramObject {
     ssize_t offset;
     buffered_reader_t* reader;
     Py_buffer buf;
+    ContainerInfo contInfo;
 };
 
 Dgram*& PyDgramObject::dgram()
@@ -143,11 +150,6 @@ static int read_dgram(PyDgramObject* self) {
 /* end buffered_reader */
 
 static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
-    // these three initializations should happen once per event - cpo
-    PyObject* containermod = PyImport_ImportModule("psana.container");
-    PyObject* pycontainertype = PyObject_GetAttrString(containermod,"Container");
-    PyObject* arglist = Py_BuildValue("(O)", dgram);
-
     char namecopy[TMPSTRINGSIZE];
     strncpy(namecopy,name,TMPSTRINGSIZE);
     PyObject* parent = (PyObject*)dgram;
@@ -163,7 +165,7 @@ static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
             break;
         } else {
             if (!PyObject_HasAttrString(parent, key)) {
-                PyObject* container = PyObject_CallObject(pycontainertype, arglist);
+                PyObject* container = PyObject_CallObject(dgram->contInfo.pycontainertype, dgram->contInfo.arglist);
                 int fail = PyObject_SetAttrString(parent, key, container);
                 if (fail) printf("Dgram: failed to set container attribute\n");
                 Py_DECREF(container); // transfer ownership to parent
@@ -172,10 +174,6 @@ static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
         }
         key=next;
     }
-
-    Py_DECREF(arglist);
-    Py_DECREF(containermod);
-    Py_DECREF(pycontainertype);
 }
 
 static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
@@ -416,6 +414,14 @@ private:
 };
 
 void AssignDict(PyDgramObject* self, PyObject* configDgram) {
+    // ideally this would be in dgram_init, but it creates
+    // a circular reference putting the pointer in the arglist
+    // this perhaps suggests that we should refactor dgram back
+    // into two pieces, to avoid the circular references
+    self->contInfo.containermod = PyImport_ImportModule("psana.container");
+    self->contInfo.pycontainertype = PyObject_GetAttrString(self->contInfo.containermod,"Container");
+    self->contInfo.arglist = Py_BuildValue("(O)", self);
+
     bool isConfig;
     isConfig = (configDgram == 0) ? true : false;
     
@@ -428,6 +434,10 @@ void AssignDict(PyDgramObject* self, PyObject* configDgram) {
     
     PyConvertIter iter(&self->dgram()->xtc, self, namesIter.namesVec());
     iter.iterate();
+
+    Py_DECREF(self->contInfo.arglist);
+    Py_DECREF(self->contInfo.containermod);
+    Py_DECREF(self->contInfo.pycontainertype);
 }
 
 static void dgram_dealloc(PyDgramObject* self)
