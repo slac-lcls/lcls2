@@ -25,7 +25,7 @@ Then, start a GUI (client):
 
 You should see an interactive QT window. There is also a convenience launcher
 that when you want to run all parts of ami on a single node:
-```ami-offline -n 3 static://examples/worker.json```
+```ami-local -n 3 static://examples/worker.json```
 
 # Status/To-do
 
