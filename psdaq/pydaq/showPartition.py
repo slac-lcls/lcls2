@@ -28,69 +28,67 @@ def main():
     cmd.send(CMMsg.GETSTATE)
     while True:
         try:
-            msg = cmd.recv_multipart()
+            msg = CMMsg.recv(cmd)
         except Exception as ex:
             print(ex)
             return
 
-        request = msg[0]
+        request = msg.key
         if request == CMMsg.STATE:
-            if len(msg) == 4:
-                props = pickle.loads(msg[3])
+            props = msg.properties
 
-                # platform
-                platform = 0
-                try:
-                    platform = props['platform']
-                except:
-                    print('E: platform key not found')
+            # platform
+            platform = '0'
+            try:
+                platform = props[b'platform'].decode()
+            except KeyError:
+                print('E: platform key not found')
 
-                # partition name
-                partName = '(None)'
-                try:
-                    partName = props['partName']
-                except KeyError:
-                    print('E: partName key not found')
+            # partition name
+            partName = '(None)'
+            try:
+                partName = props[b'partName'].decode()
+            except KeyError:
+                print('E: partName key not found')
 
-                # nodes
+            # nodes
+            nodes = []
+            try:
+                nodes = pickle.loads(msg.body)
+            except EOFError:
+                print('E: pickle.loads(msg.body) EOF')
                 nodes = []
-                try:
-                    nodes = pickle.loads(props['nodes'])
-                except Exception:
-                    print('E: nodes key not found')
-                displayList = []
-                for nn in nodes:
-                    level = nn['level']
-                    pid = nn['pid']
-                    ip = nn['ip']
-                    portDisplay = ""
-                    if 'ports' in nn:
-                        try:
-                            ports = pickle.loads(nn['ports'])
-                        except:
-                            print ("E: pickle.loads()")
-                            ports = []
-                        if len(ports) > 0:
-                            portDisplay = pprint.pformat(ports)
-                    display = "%d/%05d/%-16s  %s" % (level, pid, ip, portDisplay)
-                    displayList.append(display)
+            displayList = []
+            for nn in nodes:
+                level = nn[b'level'].decode()
+                pid = nn[b'pid'].decode()
+                ip = nn[b'ip'].decode()
+                portDisplay = ""
+                if b'ports' in nn:
+                    try:
+                        ports = pickle.loads(nn[b'ports'])
+                    except:
+                        print ("E: pickle.loads(ports)")
+                        ports = []
+                    if len(ports) > 0:
+                        portDisplay = pprint.pformat(ports)
+                display = "%s/%s/%-16s  %s" % (level, pid, ip, portDisplay)
+                displayList.append(display)
 
-                if not args.noheader:
-                    print("Platform | Partition  |    Node                 | Ports")
-                    print("         | id/name    |  level/ pid /    ip     |")
-                    print("---------+------------+-------------------------+----------")
-                print("  %03d      %02d/%7s" % (platform, platform, partName), end='')
-                firstLine = True
-                for nn in sorted(displayList):
-                    if firstLine:
-                        print("  ", nn)
-                        firstLine = False
-                    else:
-                        print("                       ", nn)
+            if not args.noheader:
+                print("Platform | Partition      |    Node                 | Ports")
+                print("         | id/name        |  level/ pid /    ip     |")
+                print("---------+----------------+-------------------------+----------")
+            print("  %3s     %2s/%-12s" % (platform, platform, partName), end='')
+            firstLine = True
+            for nn in sorted(displayList):
                 if firstLine:
-                    print()
-            else:
-                print ("E: STATE message len %d, expected 4" % len(msg))
+                    print("  ", nn)
+                    firstLine = False
+                else:
+                    print("                           ", nn)
+            if firstLine:
+                print()
             break          # Done
         else:
             print ("W: Received key \"%s\"" % request)

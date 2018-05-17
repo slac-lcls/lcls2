@@ -7,6 +7,7 @@ import zmq
 import pickle
 import pprint
 import argparse
+from kvmsg import decode_properties
 from CMMsg import CMMsg
 
 def main():
@@ -35,35 +36,36 @@ def main():
         request = msg[0]
         if request == CMMsg.STATE:
             print ("I: Received STATE")
-            if len(msg) == 4:
-                props = pickle.loads(msg[3])
+            if len(msg) == 5:
+                # msg[0]: key
+                # msg[1]: sequence
+                # msg[2]: identity
+                # msg[3]: properties
+                # msg[4]: body
+                props = decode_properties(msg[3])
 
                 # platform
                 platform = 0
                 try:
-                    platform = props['platform']
-                except:
+                    platform = props[b'platform'].decode()
+                except KeyError:
                     print('E: platform key not found')
                 print ('Platform:', platform)
 
                 # partition name
                 partName = '(None)'
                 try:
-                    partName = props['partName']
+                    partName = props[b'partName'].decode()
                 except KeyError:
                     print('E: partName key not found')
                 print ('Partition name:', partName)
 
                 # nodes
-                nodes = []
-                try:
-                    nodes = pickle.loads(props['nodes'])
-                except Exception:
-                    print('E: nodes key not found')
+                nodes = pickle.loads(msg[4])
                 print ('Nodes:')
                 pprint.pprint (nodes)
             else:
-                print ("E: STATE message len %d, expected 4" % len(msg))
+                print ("E: STATE message len %d, expected 5" % len(msg))
             break          # Done
         else:
             print ("W: Received key \"%s\"" % request)

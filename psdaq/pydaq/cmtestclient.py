@@ -7,6 +7,12 @@ import sys
 import pickle
 import argparse
 
+def encode_int(in_int):
+    return ('%d' % in_int).encode(encoding='UTF-8')
+
+def encode_str(in_str):
+    return in_str.encode(encoding='UTF-8')
+
 def main():
 
     # Process arguments
@@ -51,7 +57,7 @@ def main():
             elif cmmsg.key == CMMsg.PH1:
                 if verbose:
                     print( "Received PH1, sending HELLO (platform=%d)" % args.p)
-                newmsg = CMMsg(key=CMMsg.HELLO)
+                newmsg = CMMsg(0, key=CMMsg.HELLO)
                 # Create simulated ports entry based on clientId N, platform P
                 # {
                 #   'platform' : P
@@ -62,28 +68,31 @@ def main():
                 #   'ip'       : '172.NN.NN.NN'
                 #   'ether'    : 'NN:NN:NN:NN:NN:NN'
                 # }
-                newmsg['platform'] = args.p
-                newmsg['group'] = clientId
-                newmsg['uid'] = clientId
-                newmsg['level'] = clientId
-                newmsg['pid'] = 25000 + (111 * clientId)
-                newmsg['ip'] = '172' + (3 * ('.%d%d' % (clientId, clientId)))
-                newmsg['ether'] = ('%d%d' % (clientId, clientId)) + (5 * (':%d%d' % (clientId, clientId)))
+                newmsg[b'platform'] = encode_int(args.p)
+                newmsg[b'group'] = newmsg[b'uid'] = newmsg[b'level'] = \
+                    encode_int(clientId)
+                newmsg[b'pid'] = \
+                    encode_int(25000 + (111 * clientId))
+                newmsg[b'ip'] = \
+                    encode_str('172' + (3 * ('.%d%d' % (clientId, clientId))))
+                newmsg[b'ether'] = \
+                    encode_str(('%d%d' % (clientId, clientId)) +
+                               (5 * (':%d%d' % (clientId, clientId))))
                 newmsg.send(cmd)
 
             elif cmmsg.key == CMMsg.PH2:
                 if verbose:
                     print( "Received PH2, sending PORTS")
-                newmsg = CMMsg(key=CMMsg.PORTS)
+                newmsg = CMMsg(0, key=CMMsg.PORTS)
                 # Create simulated ports entry based on clientId N
                 # {
                 #   'name' : 'portN',
                 #   'endpoint' : 'tcp://localhost:NNNN'
                 # }
                 ports = {}
-                ports['name'] = 'port%d' % clientId
-                ports['endpoint'] = 'tcp://localhost:' + 4 * str(clientId)
-                newmsg['ports'] = pickle.dumps(ports)
+                ports[b'name'] = 'port%d' % clientId
+                ports[b'endpoint'] = 'tcp://localhost:' + 4 * str(clientId)
+                newmsg[b'ports'] = pickle.dumps(ports)
                 newmsg.send(cmd)
 
             elif cmmsg.key == CMMsg.DIE:

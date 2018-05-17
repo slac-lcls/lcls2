@@ -17,7 +17,7 @@ def main():
     args = parser.parse_args()
 
     # Compose message
-    newmsg = CMMsg(key=CMMsg.STARTPH2)
+    newmsg = CMMsg(0, key=CMMsg.STARTPH2)
 
     # Prepare our context and DEALER socket
     ctx = zmq.Context()

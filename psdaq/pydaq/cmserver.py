@@ -14,6 +14,7 @@ import pickle
 import pprint
 import argparse
 
+from kvmsg import decode_properties
 from CMMsg import CMMsg
 from ZTimer import ZTimer
 
@@ -80,7 +81,7 @@ class CMState(object):
         for k in self.entries.keys():
             try:
                 # check for matching ip+pid
-                if ((self.entries[k]['ip'] == prop['ip']) and (self.entries[k]['pid'] == prop['pid'])):
+                if ((self.entries[k][b'ip'] == prop[b'ip']) and (self.entries[k][b'pid'] == prop[b'pid'])):
                     rv.append(k)
             except:
                 pass
@@ -90,7 +91,8 @@ class CMState(object):
         rlist = []
         for k in keylist:
             if k in self.entries:
-                rlist.append("%s/%s" % (self.entries[k]['ip'], self.entries[k]['pid']))
+                rlist.append("%s/%s" % (self.entries[k][b'ip'].decode(),
+                             self.entries[k][b'pid'].decode()))
                 del self.entries[k]
         return rlist
 
@@ -173,7 +175,7 @@ def main():
 
                 if request == CMMsg.STARTPING:
                     # Send PING broadcast
-                    cmmsg = CMMsg(key=CMMsg.PING)
+                    cmmsg = CMMsg(sequence, key=CMMsg.PING)
                     cmmsg.send(publisher)
                     logging.debug("Published <PING>")
                     continue
@@ -199,53 +201,55 @@ def main():
                     # Send STATE reply to client
                     logging.debug("Sending STATE reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(key=CMMsg.STATE)
-                    cmmsg['platform'] = cmstate.platform()
-                    cmmsg['partName'] = cmstate.partName()
-                    cmmsg['nodes'] = pickle.dumps(cmstate.nodes())
+                    testbody = pickle.dumps(cmstate.nodes())
+                    cmmsg = CMMsg(sequence, key=CMMsg.STATE, body=testbody)
+                    cmmsg[b'platform'] = ('%d' % cmstate.platform()).encode('UTF-8')
+                    cmmsg[b'partName'] = cmstate.partName().encode('UTF-8')
                     cmmsg.send(cmd)
                     continue
 
                 if request == CMMsg.STARTPH1:
                     # Assign partition name
                     try:
-                        prop = CMMsg.decode_properties(msg[4])
+                        prop = decode_properties(msg[4])
                     except Exception as ex:
                         logging.error(ex)
                         prop = {}
-                    if "partName" in prop:
-                        cmstate._partName = prop["partName"]
+                    if b'partName' in prop:
+                        cmstate._partName = prop[b'partName'].decode()
                         logging.debug("Partition name: %s" % cmstate.partName())
+                    else:
+                        logging.error("STARTPH1 message: No partName property")
 
                     # Send PH1 broadcast
                     logging.debug("Sending PH1 broadcast")
-                    cmmsg = CMMsg(key=CMMsg.PH1)
+                    cmmsg = CMMsg(sequence, key=CMMsg.PH1)
                     cmmsg.send(publisher)
 
                     # Send PH1STARTED reply to client
                     logging.debug("Sending PH1STARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(key=CMMsg.PH1STARTED)
+                    cmmsg = CMMsg(sequence, key=CMMsg.PH1STARTED)
                     cmmsg.send(cmd)
                     continue
 
                 if request == CMMsg.STARTPH2:
                     # Send PH2 broadcast
                     logging.debug("Sending PH2 broadcast")
-                    cmmsg = CMMsg(key=CMMsg.PH2)
+                    cmmsg = CMMsg(sequence, key=CMMsg.PH2)
                     cmmsg.send(publisher)
 
                     # Send PH2STARTED reply to client
                     logging.debug("Sending PH2STARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(key=CMMsg.PH2STARTED)
+                    cmmsg = CMMsg(sequence, key=CMMsg.PH2STARTED)
                     cmmsg.send(cmd)
                     continue
 
                 if request == CMMsg.STARTKILL:
                     # Send KILL broadcast
                     logging.debug("Sending KILL broadcast")
-                    cmmsg = CMMsg(key=CMMsg.KILL)
+                    cmmsg = CMMsg(sequence, key=CMMsg.KILL)
                     cmmsg['platform'] = cmstate.platform()
                     cmmsg.send(publisher)
 
@@ -255,7 +259,7 @@ def main():
                     # Send KILLSTARTED reply to client
                     logging.debug("Sending KILLSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(key=CMMsg.KILLSTARTED)
+                    cmmsg = CMMsg(sequence, key=CMMsg.KILLSTARTED)
                     cmmsg['platform'] = cmstate.platform()
                     cmmsg.send(cmd)
                     continue
@@ -263,19 +267,19 @@ def main():
                 elif request == CMMsg.STARTDIE:
                     # Send DIE broadcast
                     logging.debug("Sending DIE broadcast")
-                    cmmsg = CMMsg(key=CMMsg.DIE)
+                    cmmsg = CMMsg(sequence, key=CMMsg.DIE)
                     cmmsg.send(publisher)
 
                     # Send DIESTARTED reply to client
                     logging.debug("Sending DIESTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(key=CMMsg.DIESTARTED)
+                    cmmsg = CMMsg(sequence, key=CMMsg.DIESTARTED)
                     cmmsg.send(cmd)
                     continue
 
                 elif request == CMMsg.HELLO:
                     try:
-                        prop = CMMsg.decode_properties(msg[4])
+                        prop = decode_properties(msg[4])
                     except Exception as ex:
                         logging.error(ex)
                         prop = {}
@@ -301,15 +305,17 @@ def main():
 
                 elif request == CMMsg.PORTS:
                     try:
-                        prop = CMMsg.decode_properties(msg[4])
+                        prop = decode_properties(msg[4])
                     except:
                         prop = {}
 
-                    if 'ports' in prop:
+                    if b'ports' in prop:
                         try:
-                            cmstate[identity]['ports'] = prop['ports']
+                            cmstate[identity][b'ports'] = prop[b'ports']
                         except:
                             logging.debug("Setting PORTS property failed")
+                    else:
+                        logging.error("PORTS message: No ports property")
                     continue
 
                 elif request == CMMsg.PONG:
@@ -327,7 +333,7 @@ def main():
                     # Send reply to client
                     logging.debug("Sending DUMPSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(key=CMMsg.DUMPSTARTED)
+                    cmmsg = CMMsg(sequence, key=CMMsg.DUMPSTARTED)
                     cmmsg.send(cmd)
 
                     # Dump state to console
@@ -344,7 +350,7 @@ def main():
                     # Send reply to client
                     logging.debug("Sending <HUH?> reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(key=CMMsg.HUH)
+                    cmmsg = CMMsg(sequence, key=CMMsg.HUH)
                     cmmsg.send(cmd)
                     continue
 

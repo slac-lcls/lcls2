@@ -18,9 +18,9 @@ def main():
     args = parser.parse_args()
 
     # Compose message
-    newmsg = CMMsg(key=CMMsg.STARTPH1)
-    newmsg['partName'] = args.partName
-    newmsg['platform'] = args.p
+    newmsg = CMMsg(0, key=CMMsg.STARTPH1)
+    newmsg[b'partName'] = args.partName.encode(encoding='UTF-8')
+    newmsg[b'platform'] = ('%d' % args.p).encode(encoding='UTF-8')
 
     # Prepare our context and DEALER socket
     ctx = zmq.Context()
