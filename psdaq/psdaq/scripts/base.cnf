@@ -39,6 +39,6 @@ procmgr_config = [
  { host: epics_host,  id:'hsdcas-dev02' ,port:'29458', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/hsdcas.py -P DAQ:LAB2:HSD:DEV02'},
 
 ## procstat
- {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
+ {                       id:'procstat',    flags:'s',  cmd:bins_path+'../procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
   ]
 
