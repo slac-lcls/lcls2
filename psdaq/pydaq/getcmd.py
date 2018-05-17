@@ -7,7 +7,6 @@ import zmq
 import pickle
 import pprint
 import argparse
-from kvmsg import decode_properties
 from CMMsg import CMMsg
 
 def main():
@@ -28,47 +27,39 @@ def main():
     cmd.send(CMMsg.GETSTATE)
     while True:
         try:
-            msg = cmd.recv_multipart()
+            msg = CMMsg.recv(cmd)
         except Exception as ex:
             print(ex)
             return
 
-        request = msg[0]
-        if request == CMMsg.STATE:
+        if msg.key == CMMsg.STATE:
             print ("I: Received STATE")
-            if len(msg) == 5:
-                # msg[0]: key
-                # msg[1]: sequence
-                # msg[2]: identity
-                # msg[3]: properties
-                # msg[4]: body
-                props = decode_properties(msg[3])
 
-                # platform
-                platform = 0
-                try:
-                    platform = props[b'platform'].decode()
-                except KeyError:
-                    print('E: platform key not found')
-                print ('Platform:', platform)
+            props = msg.properties
 
-                # partition name
-                partName = '(None)'
-                try:
-                    partName = props[b'partName'].decode()
-                except KeyError:
-                    print('E: partName key not found')
-                print ('Partition name:', partName)
+            # platform
+            platform = 0
+            try:
+                platform = props[b'platform'].decode()
+            except KeyError:
+                print('E: platform key not found')
+            print ('Platform:', platform)
 
-                # nodes
-                nodes = pickle.loads(msg[4])
-                print ('Nodes:')
-                pprint.pprint (nodes)
-            else:
-                print ("E: STATE message len %d, expected 5" % len(msg))
+            # partition name
+            partName = '(None)'
+            try:
+                partName = props[b'partName'].decode()
+            except KeyError:
+                print('E: partName key not found')
+            print ('Partition name:', partName)
+
+            # nodes
+            nodes = pickle.loads(msg.body)
+            print ('Nodes:')
+            pprint.pprint (nodes)
             break          # Done
         else:
-            print ("W: Received key \"%s\"" % request)
+            print ("W: Received key \"%s\"" % msg.key)
             continue
 
     print ("Done")
