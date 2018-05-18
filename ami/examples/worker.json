@@ -1,6 +1,6 @@
 {
     "interval": 1,
-    "heartbeat": 1,
+    "heartbeat": 3,
     "init_time": 0.5,
     "config": {
         "acq01": {"dtype": "Waveform", "pedestal": 0.1, "width": 2.5, "shape": [512]},

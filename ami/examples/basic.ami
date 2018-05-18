@@ -2,8 +2,7 @@
     "sumall": {
         "setup": "counter=0",
         "outputs": [
-            "cspad_sum",
-            "counter"
+            ["cspad_sum", null]
         ],
         "imports": [
             [
@@ -11,7 +10,25 @@
                 "np"
             ]
         ],
-        "code": "cspad_sum = np.sum(cspad) + np.sum(cspad_roi); counter += 1",
+        "code": "cspad_sum = np.sum(cspad) + np.sum(cspad_roi)",
+        "inputs": [
+            "cspad",
+            "cspad_roi"
+        ]
+    },
+    "sum2": {
+        "setup": "counter=0;sum2=None",
+        "auto_put": false,
+        "outputs": [
+            ["sum2", "Reduce"]
+        ],
+        "imports": [
+            [
+                "numpy",
+                "np"
+            ]
+        ],
+        "code": "if counter < 2:\n\tif sum2 is None:\n\t\tsum2=np.copy(cspad)\n\telse:\n\t\tsum2 += cspad\n\tcounter += 1\n\tif counter == 2:\n\t\tstore.put('sum2', sum2)\n\t\tcounter=0\n\t\tsum2=None",
         "inputs": [
             "cspad",
             "cspad_roi"
@@ -22,7 +39,7 @@
             "cspad_roi"
         ],
         "outputs": [
-            "cspad_projection"
+            ["cspad_projection", null]
         ],
         "code": "cspad_projection = cspad_roi.sum(axis=1)"
     },
@@ -31,7 +48,7 @@
             "cspad"
         ],
         "outputs": [
-            "cspad_roi"
+            ["cspad_roi", null]
         ],
         "imports": [
             [

@@ -48,6 +48,7 @@ class Worker(object):
         self.src = src
         self.ctx = zmq.Context()
         self.store = ResultStore(collector_addr, self.ctx)
+        self.store.put("heartbeat", False)
 
         # >>> NON PYTHONBACKEND
         self.graph = Graph(self.store)
@@ -103,14 +104,16 @@ class Worker(object):
 
                     self.new_graph_available = False
                 self.store.send(msg)
+                self.store.put("heartbeat", True)
             elif msg.mtype == MsgTypes.Datagram:
                 # clear old values from the store
-                self.store.clear()
+                #self.store.clear()
                 for dgram in msg.payload:
                     self.store.put_dgram(dgram)
 
                 try:
                     self.graph.execute()
+                    self.store.put("heartbeat", False)
                 except GraphRuntimeError as graph_err:
                     print("worker%s: Failure encountered executing graph:"%self.idnum, graph_err)
                     return 1

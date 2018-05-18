@@ -112,8 +112,12 @@ class Graph(object):
 
             try:
                 # at the end of the executed code, inject outputs in to the feature store
-                store_put_list = ['store.put("%s", %s)'%(output, output) for output in self.cfg[op]['outputs']]
-                store_put = '\n' + '; '.join(store_put_list)
+                auto_put = True
+                if 'auto_put' in self.cfg[op]:
+                    auto_put = self.cfg[op]['auto_put']
+                if auto_put: 
+                    store_put_list = ['store.put("%s", %s)'%(output, output) for output, _ in self.cfg[op]['outputs']]
+                    store_put = '\n' + '; '.join(store_put_list)
 
                 # generate the global namespace for the execution of the graph operation
                 glb = {} #{"np" : np} # TODO be smarter :)
