@@ -29,6 +29,24 @@ that when you want to run all parts of ami on a single node:
 
 # Status/To-do
 
+5/17/18
+
+next week:
+* collector gets graphs from workers, not zmq
+* graph has config-id for each box, as well as overall config-id
+* collector rejects data from boxes with old config-id's
+* dependencies of changed boxes also get new config-id's
+
+three major patterns for cross-time patterns:
+* pickN: divide up N by number of workers, each worker sends when it reaches that number (reduce or gather)
+* binned (reduce) scatter plot
+* unbinned (gather) scatter plot
+
+other patterns solved for the above:
+* sum (same as pickN, but just always sum).  how to reset?
+* stripchart: same as binned/unbinned 2D scatter plot
+* image background subtraction (like timetool): use redis at collector and "2D" stripchart pattern to getting rolling-window average
+
 5/10/18
 
 Issues for next time:
