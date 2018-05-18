@@ -28,7 +28,7 @@ Usage::
     fmode = gu.file_mode(fname)
 
     gu.create_directory(dir, mode=0o777)
-    exists = gu.create_path(path, depth=6, mode=0o777, verb=True)
+    exists = gu.create_path(path, depth=6, mode=0o777)
 
     flist = gu.get_list_of_files_in_dir(dirname)
     flist = gu.get_list_of_files_in_dir_for_ext(dir, ext='.xtc')
@@ -191,11 +191,11 @@ def create_directory(dir, mode=0o377) :
     """Creates directory and sets its mode
     """
     if os.path.exists(dir) :
-        logger.warning('Directory exists: %s' % dir)
+        logger.debug('Directory exists: %s' % dir)
     else :
         os.makedirs(dir)
         os.chmod(dir, mode)
-        logger.warning('Directory created: %s, mode(oct)=%s' % (dir, oct(mode)))
+        logger.debug('Directory created: %s, mode(oct)=%s' % (dir, oct(mode)))
 
 #------------------------------
 
@@ -206,7 +206,7 @@ def create_path(path, depth=6, mode=0o377) :
 
        Returns True if path to file exists, False othervise
     """
-    logger.warning('create_path: %s' % path)
+    logger.debug('create_path: %s' % path)
 
     #subdirs = path.strip('/').split('/')
     subdirs = path.split('/')
@@ -215,7 +215,7 @@ def create_path(path, depth=6, mode=0o377) :
         if i>0 : cpath += '/%s'% sd 
         if i<depth : continue
         if cpath=='' : continue
-        create_directory_with_mode(cpath, mode, verb)
+        create_directory(cpath, mode)
 
     return os.path.exists(cpath)
 

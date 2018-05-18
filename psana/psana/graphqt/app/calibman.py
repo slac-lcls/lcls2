@@ -13,7 +13,8 @@ from psana.graphqt.CMWMain import calibman
 def usage():
     return 'command examples for app %s\n'%sys.argv[0]\
          + '  calibman\n'\
-         + '  calibman --host=psanaphi105 --port=27017'
+         + '  calibman --host=psanaphi105 --port=27017\n'\
+         + '  calibman --host=psanaphi103 -l DEBUG -p cm-log'
     #return '%s - TBD' % (sys._getframe().f_code.co_name)
  
 #------------------------------
@@ -51,23 +52,15 @@ def input_option_parser() :
     d_port       = cc.PORT
     d_experiment = 'cxi12345'
     d_detector   = 'camera-0-cxids1-0'
-    d_ctype      = cc.list_calib_names[0]
-    d_run        = 0
-    d_time_stamp = '2008-01-01T00:00:00-0800'
-    d_version    = 'v0'
-    d_loglevel   = 'DEBUG'
-    d_iofname    = './fname.txt'
+    d_loglevel   = 'INFO'
+    d_logdir     = './cm-logger'
 
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
     h_experiment = 'experiment name, default = %s' % d_experiment
     h_detector   = 'detector name, default = %s' % d_detector
-    h_ctype      = 'calibration constant type, default = %s' % d_ctype
-    h_run        = 'run number, default = %d' % d_run
-    h_time_stamp = 'time stamp, default = %s' % d_time_stamp
-    h_version    = 'version of constants, default = %s' % d_version
-    h_loglevel   = 'logger level, default = %s' % d_loglevel
-    h_iofname    = 'output file prefix, default = %s' % d_iofname
+    h_loglevel   = 'logger level (INFO, DEBUG, ERROR,...), default = %s' % d_loglevel
+    h_logdir     = 'logger directory, default = %s' % d_logdir
 
     parser = OptionParser(description='Calibration manager UI', usage=usage())
 
@@ -75,13 +68,9 @@ def input_option_parser() :
     parser.add_option('--port',             default=d_port,       action='store', type='string', help=h_port)
     parser.add_option('-d', '--detector',   default=d_detector,   action='store', type='string', help=h_detector)
     parser.add_option('-e', '--experiment', default=d_experiment, action='store', type='string', help=h_experiment)
-    parser.add_option('-t', '--time_stamp', default=d_time_stamp, action='store', type='string', help=h_time_stamp)
-    parser.add_option('-c', '--ctype',      default=d_ctype,      action='store', type='string', help=h_ctype)
-    parser.add_option('-r', '--run',        default=d_run,        action='store', type='int',    help=h_run)
-    parser.add_option('-v', '--version',    default=d_version,    action='store', type='string', help=h_version)
     parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
-    parser.add_option('-f', '--iofname',    default=d_iofname,    action='store', type='string', help=h_iofname)
-    #parser.add_option('-p', '--loglevel',   default=d_loglevel,   action='store_false',          help=h_loglevel)
+    parser.add_option('-p', '--logdir',     default=d_logdir,     action='store', type='string', help=h_logdir)
+    #parser.add_option('-v', '--verbose',    default=d_verbose,    action='store_false',          help=h_verbose)
 
     return parser
   

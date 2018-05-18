@@ -74,7 +74,7 @@ class QWPopupCheckDict(QDialog) :
 
     def make_gui_checkbox(self) :
         self.dict_of_items = {}
-        for name,state in self.dict_in_out.items() :        
+        for name,state in sorted(self.dict_in_out.items()) :        
             cbx = QCheckBox(name) 
             if state : cbx.setCheckState(Qt.Checked)
             else     : cbx.setCheckState(Qt.Unchecked)

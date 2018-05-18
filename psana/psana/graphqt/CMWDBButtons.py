@@ -150,7 +150,7 @@ class CMWDBButtons(QWidget) :
         self.hbox.addWidget(self.but_del)
         self.hbox.addWidget(self.but_save)
         self.hbox.addStretch(1) 
-        self.hbox.addSpacing(50)
+        #self.hbox.addSpacing(20)
         #self.hbox.addStrut(50)
         #self.hbox.addSpacerItem(QSpacerItem)
         self.hbox.addWidget(self.but_test)
@@ -202,10 +202,10 @@ class CMWDBButtons(QWidget) :
         self.edi_db_filter.setToolTip('Enter pattern for\nDB tree item filter')
         self.but_docs.setToolTip('Select style of\ndocuments presentation')
         self.cmb_docw.setToolTip('Select style of\ndocuments presentation')
-        self.but_selm.setToolTip('Set tree items selection mode')
-        self.but_add.setToolTip('Add edited document to DB')
+        self.but_selm.setToolTip('Set items\nselection mode')
+        self.but_add.setToolTip('Add current\ndocument to DB')
         self.but_del.setToolTip('Delete selected\nDBs, collections, documents')
-        self.but_save.setToolTip('Save selected document and data in file')
+        self.but_save.setToolTip('Save current document\nand data in file')
         self.cmb_level.setToolTip('Select logger level')
 
 
@@ -243,10 +243,11 @@ class CMWDBButtons(QWidget) :
         #self.but_test.setFixedHeight(100) 
         #self.but_test.setIconSize(QSize(96,96)) 
 
-        self.setContentsMargins(-9,-9,-9,-9)
+        self.setContentsMargins(-9,-9,-5,-9)
 
         size_hint = self.minimumSizeHint()
-        self.setMinimumWidth(size_hint.width())
+        #self.setMinimumWidth(size_hint.width())
+        self.setMinimumWidth(500)
         self.setFixedHeight(size_hint.height())
         #self.setMinimumSize(433,46)
 
@@ -348,8 +349,9 @@ class CMWDBButtons(QWidget) :
                 'Tabs'       : r & 128,\
                 'Test'       : r & 256,\
                 'Selection'  : r & 512,\
-                'Save'       : r & 1024,\
-                'Level'      : r & 2048,\
+                'Save'       : r & 1<<10,\
+                'Level'      : r & 1<<11,\
+                'Labels'     : r & 1<<12,\
                 }
 
 
@@ -365,8 +367,9 @@ class CMWDBButtons(QWidget) :
         if d['Tabs']       : w |= 128
         if d['Test']       : w |= 256
         if d['Selection']  : w |= 512
-        if d['Save']       : w |= 1024
-        if d['Level']      : w |= 2048
+        if d['Save']       : w |= 1<<10
+        if d['Level']      : w |= 1<<11
+        if d['Labels']     : w |= 1<<12
         #if  : w |= 0
         cp.cdb_buttons.setValue(w)
 
@@ -386,7 +389,10 @@ class CMWDBButtons(QWidget) :
         self.but_test.setVisible   (d['Test'])
         self.but_selm.setVisible   (d['Selection'])
         self.cmb_level.setVisible  (d['Level'])
-        #self.set_tabs_visible     (d['Tabs'])      
+
+        self.lab_docs.setVisible   (d['Labels'])
+        self.lab_host.setVisible   (d['Labels'])
+        self.lab_port.setVisible   (d['Labels'])
 
 
     def select_visible_buttons(self):

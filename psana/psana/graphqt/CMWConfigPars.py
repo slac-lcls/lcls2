@@ -47,6 +47,8 @@ class CMWConfigPars(QWidget) :
         self.lab_host = QLabel('Host:')
         self.lab_port = QLabel('Port:')
         self.lab_level= QLabel('Log level:')
+        self.lab_log_file = QLabel('Log dir:')
+        self.edi_log_file = QLineEdit(cp.log_prefix.value())        
 
         self.cmb_host = QComboBox(self)        
         self.cmb_host.addItems(cp.list_of_hosts)
@@ -59,9 +61,6 @@ class CMWConfigPars(QWidget) :
         self.cmb_level = QComboBox(self)        
         self.cmb_level.addItems(self.log_level_names)
         self.cmb_level.setCurrentIndex(self.log_level_names.index(cp.log_level.value()))
-
-        self.lab_log_file = QLabel('Log_file:')
-        self.edi_log_file = QLineEdit(cp.log_file.value())        
 
 #        #self.tit_dir_work = QtGui.QLabel('Parameters:')
 #
@@ -325,8 +324,8 @@ class CMWConfigPars(QWidget) :
 
     def on_edi_log_file(self):
         #logger.debug('on_edi_log_file')
-        cp.log_file.setValue(str(self.edi_log_file.displayText()))
-        logger.info('Set logger file name: ' + str(cp.log_file.value()))
+        cp.log_prefix.setValue(str(self.edi_log_file.displayText()))
+        logger.info('Set logger file name: ' + str(cp.log_prefix.value()))
 
 #-----------------------------
 

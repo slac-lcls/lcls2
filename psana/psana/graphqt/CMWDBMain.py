@@ -56,7 +56,7 @@ class CMWDBMain(QWidget) :
 
         #icon.set_icons()
 
-        self.wbuts = CMWDBButtons()
+        self.wbuts = CMWDBButtons(parent=self)
         self.wtree = CMWDBTree()
         self.wdocs = CMWDBDocs() # QTextEdit('Some text')
         self.wdoce = CMWDBDocEditor()

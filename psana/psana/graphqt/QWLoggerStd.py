@@ -35,6 +35,18 @@ from PyQt5.QtGui import QTextCursor
 from psana.graphqt.Styles import style
 
 #------------------------------
+import psana.pyalgos.generic.Utils as gu
+
+def log_file_name(lfpath) :
+    """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/2018/20180518T122407-dubrovin.txt
+    """
+    t0_sec = gu.time()
+    tstamp = gu.str_tstamp('%Y%m%dT%H%M%S', t0_sec) 
+    #year_month = gu.str_tstamp('%Y/%m', time_sec=None) 
+    year = gu.str_tstamp('%Y', time_sec=None) 
+    return '%s/%s/%s-%s.txt' % (lfpath, year, tstamp, gu.get_login())#, os.getpid())
+
+#------------------------------
 
 class QWFilter(logging.Filter) :
     def __init__(self, qwlogger) :
@@ -67,7 +79,14 @@ class QWLoggerStd(QWidget) :
         QWidget.__init__(self, parent=None)
 
         self.log_level = cp.log_level
-        self.log_file  = cp.log_file
+        self.log_prefix  = cp.log_prefix
+        self.log_file  = cp.log_file # DEPRICATED
+
+        log_fname = log_file_name(self.log_prefix.value())
+        depth = 6 if log_fname[0]=='/' else 1
+        gu.create_path(log_fname, depth, mode=0o0777)
+        #print('Log file: %s' % log_fname)
+
         self.show_buttons = show_buttons
         cp.qwloggerstd = self
 
@@ -110,10 +129,10 @@ class QWLoggerStd(QWidget) :
         self.set_style()
         self.set_tool_tips()
 
-        self.config_logger()
+        self.config_logger(log_fname)
 
 
-    def config_logger_v0(self) :
+    def config_logger_v0(self, log_fname='cm-log.txt') :
         self.append_qwlogger('Configure logger')
 
         fmt = '%(asctime)s %(name)s %(levelname)s: %(message)s'
@@ -123,7 +142,7 @@ class QWLoggerStd(QWidget) :
 
         self.formatter = logging.Formatter(fmt, datefmt=tsfmt)
         #self.handler = logging.StreamHandler()
-        self.handler = logging.FileHandler(self.log_file.value(), 'w')
+        self.handler = logging.FileHandler(log_fname, 'w')
         self.handler.setLevel(logging.NONSET)
         self.handler.addFilter(QWFilter(self))
         self.handler.setFormatter(self.formatter)
@@ -133,15 +152,15 @@ class QWLoggerStd(QWidget) :
                             level=level,\
                             handlers=[self.handler,]
         ) 
-        #                    filename=self.log_file.value(), filemode='w',\
+        #                    filename=log_fname, filemode='w',\
         ## if filename is not specified - all messages go to sys.tty
 
         #self.set_level(self.log_level.value()) # pass level name
 
 
-    def config_logger(self) :
+    def config_logger(self, log_fname='cm-log.txt') :
 
-        self.append_qwlogger('Start logger')
+        self.append_qwlogger('Start logger\nLog file: %s' % log_fname)
 
         levname = self.log_level.value()
         level = self.dict_name_to_level[levname] # e.g. logging.DEBUG
@@ -156,8 +175,8 @@ class QWLoggerStd(QWidget) :
         #logger.addFilter(QWFilter(self)) # register self for callback from filter
 
         # TRICK: add filter to handler to intercept ALL messages
-        #self.handler = logging.StreamHandler() # self.log_file.value())
-        self.handler = logging.FileHandler(self.log_file.value(), 'w')
+        #self.handler = logging.StreamHandler()
+        self.handler = logging.FileHandler(log_fname, 'w')
         self.handler.addFilter(QWFilter(self))
         #self.handler.setLevel(logging.NOTSET) # level
         self.handler.setFormatter(self.formatter)
