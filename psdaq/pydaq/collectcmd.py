@@ -6,6 +6,8 @@ Author: Chris Ford <caf@slac.stanford.edu>
 """
 import time
 import zmq
+import pickle
+import pprint
 import argparse
 from CMMsg import CMMsg
 
@@ -15,6 +17,7 @@ def main():
     command_dict = { 'ph1': CMMsg.STARTPH1,
                      'ph2': CMMsg.STARTPH2,
                      'dump': CMMsg.STARTDUMP,
+                     'die': CMMsg.STARTDIE,
                      'kill': CMMsg.STARTKILL,
                      'getstate': CMMsg.GETSTATE }
 
@@ -48,6 +51,37 @@ def main():
         print(ex)
     else:
         print ("Received \"%s\"" % cmmsg.key.decode())
+
+    if cmmsg.key == CMMsg.STATE:
+        props = cmmsg.properties
+
+        # platform
+        platform = 0
+        try:
+            platform = props[b'platform'].decode()
+        except KeyError:
+            print('E: platform key not found')
+        else:
+            print ('Platform:', platform)
+
+        # partition name
+        partName = '(None)'
+        try:
+            partName = props[b'partName'].decode()
+        except KeyError:
+            print('E: partName key not found')
+        else:
+            print ('Partition name:', partName)
+
+        # nodes
+        try:
+            nodes = pickle.loads(cmmsg.body)
+        except Exception as ex:
+            print('E: pickle.loads()', ex)
+        else:
+            print ('Nodes:')
+            pprint.pprint (nodes)
+
     return
 
 if __name__ == '__main__':
