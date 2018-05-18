@@ -39,7 +39,7 @@ static const unsigned default_id       = 0;          // Builder's ID (< 64)
 static const unsigned max_ebs          = 64;         // Maximum possible number of Builders
 static const unsigned srv_port_base    = 32768;           // Base port EB receives contributions on
 static const unsigned clt_port_base    = 32768 + max_ebs; // Base port EB sends    results       on
-static const unsigned max_batches      = 1024;       // Maximum number of batches in circulation
+static const unsigned max_batches      = 8192;       // Maximum number of batches in circulation
 static const unsigned max_entries      = 8;          // < or = to batch_duration
 static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
 static const size_t   header_size      = sizeof(Dgram);

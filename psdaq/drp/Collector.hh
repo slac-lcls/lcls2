@@ -9,7 +9,7 @@
 #include "psdaq/eb/EbLfServer.hh"
 
 // these parameters must agree with the server side
-unsigned maxBatches = 1024; // size of the pool of batches
+unsigned maxBatches = 8192; // size of the pool of batches
 unsigned maxEntries = 8; // maximum number of events in a batch
 unsigned BatchSizeInPulseIds = 8; // age of the batch. should never exceed maxEntries above, must be a power of 2
 

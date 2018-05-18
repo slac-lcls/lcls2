@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
     printf("%p\n", d);
 
     int num_workers = 2;
-    MemPool pool(num_workers, 4*4096);
+    MemPool pool(num_workers, 65536);
     int lane_mask = 0xf;
     PGPReader pgp_reader(pool, lane_mask, num_workers);
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
