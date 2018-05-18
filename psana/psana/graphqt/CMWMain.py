@@ -116,7 +116,34 @@ class CMWMain(QWidget) :
 
         if parser is None :
             return
-        return
+
+        (popts, pargs) = parser.parse_args()
+        self.args = pargs
+        self.opts = vars(popts)
+        self.defs = vars(parser.get_default_values())
+
+        host       = popts.host # self.opts['host']
+        port       = popts.port # self.opts['port']
+        exp        = popts.experiment
+        det        = popts.detector
+        ctype      = popts.ctype
+        run        = popts.run
+        time_stamp = popts.time_stamp
+        version    = popts.version
+        loglevel   = popts.loglevel
+        iofname    = popts.iofname
+
+        if host       != self.defs['host']       : cp.cdb_host.setValue(host)
+        if port       != self.defs['port']       : cp.cdb_port.setValue(port)
+        if exp        != self.defs['experiment'] : cp.exp_name.setValue(exp)
+        if det        != self.defs['detector']   : cp.data_source.setValue(det)
+        if loglevel   != self.defs['loglevel']   : cp.log_level.setValue(loglevel)
+
+        #if version    != self.defs['version']    : cp..setValue(version)
+        #if ctype      != self.defs['ctype']      : cp..setValue(ctype)
+        #if run        != self.defs['run']        : cp.str_runnum .setValue(run)
+        #if time_stamp != self.defs['time_stamp'] : cp..setValue(time_stamp)
+        #if iofname    != self.defs['iofname']    : cp.log_level.setValue(iofname)
 
 #------------------------------
 
@@ -242,8 +269,8 @@ class CMWMain(QWidget) :
                '\n  V - view/hide tabs'\
                '\n'
 
-
-    def keyPressEvent(self, e) :
+    if __name__ == "__main__" :
+      def keyPressEvent(self, e) :
         #print('keyPressEvent, key=', e.key())       
         if   e.key() == Qt.Key_Escape :
             self.close()

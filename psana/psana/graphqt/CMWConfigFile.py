@@ -47,8 +47,8 @@ class CMWConfigFile(QWidget) :
         self.butWrite    = QPushButton('Save')
         self.butDefault  = QPushButton('Reset default')
         self.butPrint    = QPushButton('Print current')
-        self.ediFile     = QLineEdit( cp.fname_cp )        
-        self.cbxSave     = QCheckBox('&Save at exit')
+        self.ediFile     = QLineEdit(cp.fname_cp)        
+        self.cbxSave     = QCheckBox('Save at exit')
         self.cbxSave.setChecked(cp.save_cp_at_exit.value())
  
         grid = QGridLayout()
@@ -102,6 +102,7 @@ class CMWConfigFile(QWidget) :
         self.titFile   .setStyleSheet(style.styleLabel)
         self.titPars   .setStyleSheet(style.styleLabel)
         self.ediFile   .setStyleSheet(style.styleEdit) 
+        self.ediFile   .setReadOnly(True)
 
         self.butFile   .setStyleSheet(style.styleButton) 
         self.butRead   .setStyleSheet(style.styleButton)
@@ -141,34 +142,35 @@ class CMWConfigFile(QWidget) :
 
 
     def onRead(self):
-        logger.debug('onRead')
-        cp.readParametersFromFile( self.getFileNameFromEditField() )
-        self.ediFile.setText( cp.fname_cp )
-        #self.parent.ediFile.setText( cp.fname_cp )
+        fname = self.getFileNameFromEditField()
+        logger.info('Load configuration parameters from file %s' % fname)
+        cp.readParametersFromFile(fname)
+        self.ediFile.setText(cp.fname_cp)
+        #self.parent.ediFile.setText(cp.fname_cp)
         #self.refreshGUIWhatToDisplay()
 
 
     def onWrite(self):
         fname = self.getFileNameFromEditField()
-        logger.info('onWrite - save all configuration parameters in file: %s' % fname)
-        cp.saveParametersInFile( fname )
+        logger.info('Save configuration parameters in file: %s' % fname)
+        cp.saveParametersInFile(fname)
 
 
     def onSave(self):
         fname = cp.fname_cp
-        logger.info('onSave - save all configuration parameters in file: %s' % fname)
-        cp.saveParametersInFile( fname )
+        logger.info('Save configuration parameters in file: %s' % fname)
+        cp.saveParametersInFile(fname)
 
 
     def onDefault(self):
-        logger.info('onDefault - Set default values of configuration parameters.')
+        logger.info('Set default values of configuration parameters')
         cp.setDefaultValues()
-        self.ediFile.setText( cp.fname_cp )
+        self.ediFile.setText(cp.fname_cp)
         #self.refreshGUIWhatToDisplay()
 
 
     def onPrint(self):
-        logger.info('onPrint')
+        logger.debug('onPrint')
         cp.printParameters()
 
 
@@ -176,17 +178,17 @@ class CMWConfigFile(QWidget) :
         logger.debug('onFile')
         self.path = self.getFileNameFromEditField()
         self.dname,self.fname = os.path.split(self.path)
-        logger.info('dname : %s' % self.dname)
-        logger.info('fname : %s' % self.fname)
-        self.path = str(QFileDialog.getOpenFileName(self,'Open file',self.dname))
-        self.dname,self.fname = os.path.split(self.path)
+        logger.debug('dname "%s"    fname "%s"' % (self.dname, self.fname))
+        self.path = QFileDialog.getOpenFileName(self,'Open file',self.dname)[0]
+        self.dname, self.fname = os.path.split(self.path)
 
         if self.dname == '' or self.fname == '' :
             logger.info('Input directiry name or file name is empty... use default values')
         else :
             self.ediFile.setText(self.path)
             cp.fname_cp = self.path
-
+            logger.info('Set configuration file name: %s' % cp.fname_cp)
+            
 
     def onEditFile(self):
         logger.debug('onEditFile')
@@ -209,7 +211,7 @@ class CMWConfigFile(QWidget) :
         tit = cbx.text()
 
         par.setValue(cbx.isChecked())
-        msg = 'check box "%s" is set to: %s' % (tit, str(par.value()))
+        msg = 'Check box "%s" is set to %s' % (tit, str(par.value()))
         logger.info(msg)
 
 #------------------------------

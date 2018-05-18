@@ -41,7 +41,7 @@ def docs_widget_selector(dwtype):
     """
     dwtypes = cp.list_of_doc_widgets
 
-    logger.info('Set doc widget: %s' % dwtype)
+    logger.info('Set document browser in mode %s' % dwtype)
 
     if   dwtype == dwtypes[0] : return CMWDBDocsText()
     elif dwtype == dwtypes[1] : return CMWDBDocsList()
@@ -149,8 +149,9 @@ class CMWDBDocs(QWidget) :
         if self.gui_win is not None : self.gui_win.close()
         QWidget.close(self)
 
+    if __name__ == "__main__" :
 
-    def key_usage(self) :
+      def key_usage(self) :
         return 'Keys:'\
                '\n  ESC - exit'\
                '\n  0 - set widget'\
@@ -158,8 +159,8 @@ class CMWDBDocs(QWidget) :
                '\n  2 - set another widget'\
                '\n'
 
-"""
-    def keyPressEvent(self, e) :
+
+      def keyPressEvent(self, e) :
         logger.info('keyPressEvent, key=', e.key())       
 
         if   e.key() == Qt.Key_Escape :
@@ -170,7 +171,6 @@ class CMWDBDocs(QWidget) :
             self.set_docs_widget()
         else :
             logger.info(self.key_usage())
-"""
 
 #-----------------------------
 

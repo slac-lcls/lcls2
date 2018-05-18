@@ -61,7 +61,7 @@ class QWTree(QTreeView) :
  
 
     def set_selection_mode(self, smode='extended') :
-        logger.info('Set selection mode: %s'%smode)
+        logger.debug('Set selection mode: %s'%smode)
         mode = self.dic_smodes[smode]
         self.setSelectionMode(mode)
 
@@ -102,21 +102,21 @@ class QWTree(QTreeView) :
                 item.setIcon(icon.icon_folder_closed)
                 parentItem.appendRow(item)
                 parentItem = item
-                logger.info('append item %s' % (item.text()))
+                logger.debug('append item %s' % (item.text()))
 
 
     def on_item_expanded(self, ind):
         item = self.model.itemFromIndex(ind) # get QStandardItem
         item.setIcon(icon.icon_folder_open)
         #msg = 'on_item_expanded: %s' % item.text()
-        #logger.info(msg)
+        #logger.debug(msg)
 
 
     def on_item_collapsed(self, ind):
         item = self.model.itemFromIndex(ind)
         item.setIcon(icon.icon_folder_closed)
         #msg = 'on_item_collapsed: %s' % item.text()
-        #logger.info(msg)
+        #logger.debug(msg)
 
 
     def on_item_selected(self, selected, deselected):
@@ -125,18 +125,18 @@ class QWTree(QTreeView) :
             parent = itemsel.parent()
             parname = parent.text() if parent is not None else None
             msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), parname) 
-            logger.info(msg)
+            logger.debug(msg)
 
         #itemdes = self.model.itemFromIndex(deselected)
         #if itemdes is not None :
         #    msg = 'on_item_selected row: %d deselected %s' % (deselected.row(), itemdes.text())
-        #    logger.info(msg)
+        #    logger.debug(msg)
 
 
     def on_item_changed(self, item):
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
         msg = 'on_item_changed: item "%s", is at state %s' % (item.text(), state)
-        logger.info(msg)
+        logger.debug(msg)
 
 
     def on_click(self, index):
@@ -144,13 +144,13 @@ class QWTree(QTreeView) :
         parent = item.parent()
         spar = parent.text() if parent is not None else None
         msg = 'clicked item: %s parent: %s' % (item.text(), spar) # index.row()
-        logger.info(msg)
+        logger.debug(msg)
 
 
     def on_double_click(self, index):
         item = self.model.itemFromIndex(index)
         msg = 'on_double_click item in row:%02d text: %s' % (index.row(), item.text())
-        logger.info(msg)
+        logger.debug(msg)
 
     #--------------------------
     #--------------------------
@@ -235,7 +235,9 @@ class QWTree(QTreeView) :
         self.close()
 
 
-    def key_usage(self) :
+    if __name__ == "__main__" :
+
+      def key_usage(self) :
         return 'Keys:'\
                '\n  ESC - exit'\
                '\n  E - expand'\
@@ -243,7 +245,7 @@ class QWTree(QTreeView) :
                '\n'
 
 
-    def keyPressEvent(self, e) :
+      def keyPressEvent(self, e) :
         #logger.debug('keyPressEvent, key = %s'%e.key())       
         if   e.key() == Qt.Key_Escape :
             self.close()
@@ -255,7 +257,7 @@ class QWTree(QTreeView) :
             self.process_collapse()
 
         else :
-            logger.info(self.key_usage())
+            logger.debug(self.key_usage())
 
 
 #------------------------------

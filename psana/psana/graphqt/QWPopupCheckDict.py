@@ -26,7 +26,7 @@ Adopted for LCLS2 on 2018-02-16 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QCheckBox
+from PyQt5.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QCheckBox, QTextEdit, QFrame, QSizePolicy
 from PyQt5.QtCore import Qt
 
 #------------------------------
@@ -36,7 +36,7 @@ class QWPopupCheckDict(QDialog) :
     e.g.: {'name1':False, 'name2':True, ..., 'nameN':False}, 
     and modify this dict in popup dialog gui.
     """
-    def __init__(self, parent=None, dict_in_out={}, win_title=None):
+    def __init__(self, parent=None, dict_in_out={}, win_title=None, msg=''):
         QDialog.__init__(self, parent)
  
         #self.setModal(True)
@@ -45,6 +45,8 @@ class QWPopupCheckDict(QDialog) :
         self.dict_in_out = dict_in_out
 
         self.vbox = QVBoxLayout()
+        self.edi_msg = QTextEdit(msg)
+        self.vbox.addWidget(self.edi_msg)
 
         self.make_gui_checkbox()
 
@@ -98,7 +100,19 @@ class QWPopupCheckDict(QDialog) :
         self.setStyleSheet(styleDefault)
         self.but_cancel.setStyleSheet(styleGray)
         self.but_apply.setStyleSheet(styleGray)
+        self.set_style_msg(styleGray)
 
+
+    def set_style_msg(self, style_bkgd):
+        self.edi_msg.setReadOnly(True)
+        self.edi_msg.setStyleSheet(style_bkgd)
+        self.edi_msg.setFrameStyle(QFrame.NoFrame)
+        self.edi_msg.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding) # Ignored, Fixed, Expanding, Preferred
+        #self.edi_msg.updateGeometry()
+        #s = self.edi_msg.document().size()
+        #print('XXX:document().size()', s.width(), s.height())
+        #self.edi_msg.setMinimumSize(200,50)
+        self.edi_msg.setFixedSize(180,50)
 
     def setIcons(self):
         from psana.graphqt.QWIcons import icon
@@ -128,7 +142,7 @@ class QWPopupCheckDict(QDialog) :
             if cbx.hasFocus() :
                 name,state = self.dict_of_items[cbx]
                 state_new = cbx.isChecked()
-                msg = 'onCBox: Checkbox %s - state is changed to %s, tristate=%s'%(name, state_new, tristate)
+                msg = 'Checkbox "%s" set %s'%(name, state_new)#, tristate)
                 logger.debug(msg)
                 self.dict_of_items[cbx] = [name,state_new]
 

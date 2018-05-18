@@ -48,6 +48,10 @@ class QWTable(QTableView):
         self.set_style()
 
 
+    #def __del__(self) :
+    #    QTableView.__del__(self) - it does not have __del__
+
+
     def set_selection_mode(self, smode=QAbstractItemView.ExtendedSelection) :
         logger.debug('Set selection mode: %s'%smode)
         self.setSelectionMode(smode)
@@ -155,33 +159,12 @@ class QWTable(QTableView):
         logger.debug(msg)
 
 
-    def on_item_selected(self, selected, deselected):
-        logger.info("on_item_selected: %d selected" % len(selected))
-        logger.debug("on_item_selected: %d deselected" % len(deselected))
-
-
-#    def on_current_changed(self, ind_sel, ind_desel):    
-#        item_sel = self.model.itemFromIndex(ind_sel)
-#        item_desel = self.model.itemFromIndex(ind_desel)
-#        logger.debug("on_current_changed: %s-selected %s-deselected" %\
-#                      (item_sel.text() if item_sel is not None else None,\
-#                       item_desel.text() if item_desel is not None else None))
-
-
-
     def on_item_selected(self, ind_sel, ind_desel):
         #logger.debug("ind   selected : ", ind_sel.row(),  ind_sel.column())
         #logger.debug("ind deselected : ", ind_desel.row(),ind_desel.column()) 
         item = self.model.itemFromIndex(ind_sel)
-        logger.info('on_item_selected: "%s" is selected' % (item.text() if item is not None else None))
-        logger.debug('on_item_selected: %s' % self.getFullNameFromItem(item))
-        #logger.debug(' isEnabled=',item.isEnabled())
-        #logger.debug(' isCheckable=',item.isCheckable()) 
-        #logger.debug(' checkState=',item.checkState())
-        #logger.debug(' isSelectable=',item.isSelectable()) 
-        #logger.debug(' isTristate=',item.isTristate())
-        #logger.debug(' isEditable=',item.isEditable())
-        #logger.debug(' isExpanded=',self.view.isExpanded(ind_sel))
+        logger.debug('on_item_selected: "%s" is selected' % (item.text() if item is not None else None))
+        #logger.debug('on_item_selected: %s' % self.getFullNameFromItem(item))
 
 
     def on_item_changed(self, item):

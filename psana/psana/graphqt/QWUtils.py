@@ -86,13 +86,13 @@ def change_check_box_list_in_popup_menu(list, win_title='Set check boxes', paren
 
 #------------------------------
 
-def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes', parent=None):
+def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes', parent=None, msg=''):
     """Shows the dict of check-boxes as a dialog pop-up menu and returns the (un)changed dict"""
     if dict is None : return 0
 
     from psana.graphqt.QWPopupCheckDict import QWPopupCheckDict
 
-    popupMenu = QWPopupCheckDict(parent, dict, win_title)
+    popupMenu = QWPopupCheckDict(parent, dict, win_title, msg)
     #popupMenu.move(QPoint(50,50))
     popupMenu.move(QCursor.pos())
     response = popupMenu.exec_()

@@ -30,7 +30,7 @@ from psana.graphqt.CMWDBMain     import CMWDBMain
 class CMWMainTabs(QWidget) :
     """GUI for tabs and associated widgets
     """
-    tab_names   = ['CDB', 't-converter', 'Configuration', 'Mon-A', 'Mon-B']
+    tab_names   = ['CDB', 'Configuration', 't-converter', 'Mon-A', 'Mon-B']
 
     def __init__ (self, parent=None, app=None) :
 
@@ -176,7 +176,7 @@ class CMWMainTabs(QWidget) :
 
     def on_tab_bar(self, ind):
         tab_ind, tab_name = self.current_tab_index_and_name()
-        logger.info('Selected tab "%s" with index %d' % (tab_name, tab_ind))
+        logger.info('Selected tab "%s"' % tab_name)
         cp.main_tab_name.setValue(tab_name)
         self.gui_selector(tab_name)
 
@@ -247,8 +247,8 @@ class CMWMainTabs(QWidget) :
                '\n  V - view/hide tabs'\
                '\n'
 
-
-    def keyPressEvent(self, e) :
+    if __name__ == "__main__" :
+      def keyPressEvent(self, e) :
         #logger.debug('keyPressEvent, key=%s' % e.key())       
         if   e.key() == Qt.Key_Escape :
             self.close()

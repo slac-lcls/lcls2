@@ -262,8 +262,8 @@ class CMWDBMain(QWidget) :
                '\n  V - view/hide tabs'\
                '\n'
 
-
-    def keyPressEvent(self, e) :
+    if __name__ == "__main__" :
+      def keyPressEvent(self, e) :
         #logger.debug('keyPressEvent, key=', e.key())       
         logger.info('%s.keyPressEvent, key=%d' % (self._name, e.key()))         
         if   e.key() == Qt.Key_Escape :

@@ -93,7 +93,7 @@ class CMWDBTree(QWTree) :
         parent = item.parent()
         parname = parent.text() if parent is not None else None
         msg = 'clicked item: %s parent: %s' % (itemname, parname) # index.row()
-        logger.info(msg)
+        logger.debug(msg)
         if parent is not None : self.db_and_collection_selected.emit(parname, itemname)
 
 

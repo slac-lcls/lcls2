@@ -193,15 +193,16 @@ class QWList(QListView) :
             msg += '\n  %s' % i.text()
         logger.info(msg)
 
+    if __name__ == "__main__" :
 
-    def key_usage(self) :
+      def key_usage(self) :
         return 'Keys:'\
                '\n  ESC - exit'\
                '\n  S - show selected items'\
                '\n'
 
 
-    def keyPressEvent(self, e) :
+      def keyPressEvent(self, e) :
         #logger.info('keyPressEvent, key=', e.key())       
         if   e.key() == Qt.Key_Escape :
             self.close()

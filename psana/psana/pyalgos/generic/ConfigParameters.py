@@ -46,7 +46,9 @@ Adopted for LCLS2 on 2018-02-12
 #--------------------------------
 
 import os
-from psana.pyalgos.generic.Logger import logger
+#from psana.pyalgos.generic.Logger import logger
+import logging
+logger = logging.getLogger(__name__)
 
 #------------------------------
 
@@ -209,7 +211,7 @@ class ConfigParameters :
 
 
 #    def __del__(self) :
-#        logger.debug('XXX: In d-tor', self.name)
+#        logger.debug('XXX: In d-tor')
 #        #print('XXX: In ConfigParameters d-tor')
 
 
@@ -253,11 +255,11 @@ class ConfigParameters :
 
     def printParameters(self) :
         msg = self.getTextParameters()
-        logger.info(msg, self.name)
+        logger.info(msg)
 
 
     def getTextParameters(self) :
-        txt = 'printParameters - Number of declared parameters in the dict: %d\n' % len(self.dict_pars)
+        txt = 'Number of declared parameters: %d\n' % len(self.dict_pars)
         lpars = list(self.dict_pars.values())
         #lpars.sort() # sort "in situ" - it does not return anything so can't use it any other way....
         list_of_recs = [par.strParInfo() for par in lpars]
@@ -282,7 +284,7 @@ class ConfigParameters :
 
     def saveParametersInFile(self, fname=None) :
         self.setParsFileName(fname)        
-        logger.info('Save configuration parameters in file: %s' % self.fname, self.name)
+        logger.debug('Save configuration parameters in file: %s' % self.fname)
         f=open(self.fname,'w')
 
         lpars = list(self.dict_pars.values())
@@ -296,7 +298,7 @@ class ConfigParameters :
 
     def saveParametersInFileV0(self, fname=None) :
         self.setParsFileName(fname)        
-        logger.info('Save configuration parameters in file: %s' % self.fname, self.name)
+        logger.debug('Save configuration parameters in file: %s' % self.fname)
         f=open(self.fname,'w')
         for par in self.dict_pars.values() :
             v = par.value()
@@ -320,12 +322,12 @@ class ConfigParameters :
     def readParametersFromFile(self, fname=None) :
         self.setParsFileName(fname)        
         msg = 'Read configuration parameters from file: ' + self.fname
-        logger.info(msg, self.name)
+        logger.debug(msg)
         #print(msg)
 
         if not os.path.exists(self.fname) :
             msg = 'The file %s is not found, use default parameters.' % self.fname
-            logger.warning(msg, self.name)
+            logger.warning(msg)
             #print(msg)
             return
  
@@ -343,7 +345,7 @@ def usage() :
     msg  = 'Use command: %s [<configuration-file-name>]\n'\
            'with a single or without arguments.' % sys.argv[0]
     msg = '\n%s\n%s\n%s' % (51*'-', msg, 51*'-')
-    logger.warning(msg, self.name)
+    logger.warning(msg)
     #print(msg)
 
 
@@ -356,7 +358,7 @@ def getConfigFileFromInput() :
 
     msg = 'Input pars sys.argv: '
     for par in sys.argv :  msg += par
-    logger.debug(msg, self.name)
+    logger.debug(msg)
     #print(msg)
 
     if len(sys.argv) > 2 : 

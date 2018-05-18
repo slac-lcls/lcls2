@@ -19,6 +19,8 @@ Created on 2017-04-20 by Mikhail Dubrovin
 from psana.graphqt.CMWDBDocsBase import *
 from psana.graphqt.QWTable import QWTable, QStandardItem, icon
 
+from psana.pscalib.calib.MDBUtils import ObjectId
+
 #from psana.graphqt.CMDBUtils import timestamp_id # use dbu
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,8 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
         CMWDBDocsBase.__init__(self)
         logger.debug('c-tor CMWDBDocsTable')
 
-        self.model.itemChanged.disconnect(self.on_item_changed)
+        #self.connect_item_changed_to(self.on_item_changed)
+        self.disconnect_item_changed_from(self.on_item_changed)
 
 #------------------------------
 
@@ -50,6 +53,8 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
     def fill_table_model(self, docs=None):
         """Re-implementation of the method in QWTable.fill_table_model
         """
+        self.disconnect_item_changed_from(self.on_item_changed)
+
         self.clear_model()
 
         if docs is None :
@@ -72,14 +77,19 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
             for r,doc in enumerate(docs):
                 for c,key in enumerate(keys):
                      v = str(doc.get(key,'N/A'))
-                     s = v if (isinstance(v,str) and len(v)<128) else 'str longer 128 chars'
+                     #s = v if (isinstance(v,str) and len(v)<128) else 'str longer 128 chars'
+                     cond = any([isinstance(v,o) for o in (str,dict,ObjectId)])
+                     s = str(v) if (cond and len(str(v))<512) else 'str longer 512 chars'
+
                      if key in ('_id', 'id_data') : 
                          s = dbu.timestamp_id(v)
-                         msg = '%s = %s converted to %s' % (('doc["%s"]'%key).ljust(16), v, s)
-                         logger.debug(msg)
+                         #msg = '%s = %s converted to %s' % (('doc["%s"]'%key).ljust(16), v, s)
+                         #logger.debug(msg)
                      item = QStandardItem(s)
                      item.setEditable(False)
                      self.model.setItem(r,c,item)
+
+        self.connect_item_changed_to(self.on_item_changed)
 
 #------------------------------
 

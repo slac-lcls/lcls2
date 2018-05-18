@@ -33,9 +33,12 @@ database_names    = dbu.database_names
 database          = dbu.database
 collection_names  = dbu.collection_names   
 collection        = dbu.collection
-
 timestamp_id      = dbu.timestamp_id
+db_prefixed_name  = dbu.db_prefixed_name
+time_and_timestamp= dbu.time_and_timestamp
 
+
+#insert_data_and_doc = dbu.insert_data_and_doc
 #document_info     = dbu.document_info
 #db_prefixed_name  = dbu.db_prefixed_name   # ('') 
 #delete_databases  = dbu.delete_databases   # (list_db_names)
@@ -95,6 +98,24 @@ def delete_documents(dbname, colname, doc_ids) :
 
     #logger.debug(msg)
 
+#------------------------------
+#------------------------------
+
+def insert_document_and_data(dbname, colname, doc, data) :
+    client = connect_client()
+    db, fs = dbu.db_and_fs(client, dbname)
+    col = collection(db, colname)
+    id_data, id_doc = dbu.insert_data_and_doc(data, fs, col, **doc)
+    return id_data, id_doc
+
+#------------------------------
+
+def get_data_for_doc(dbname, doc) :
+    client = connect_client()
+    db, fs = dbu.db_and_fs(client, dbname)
+    return dbu.get_data_for_doc(fs, doc)
+
+#------------------------------
 #------------------------------
 
 def collection_info(dbname, colname) :

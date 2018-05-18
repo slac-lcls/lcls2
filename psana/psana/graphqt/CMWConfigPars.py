@@ -311,22 +311,22 @@ class CMWConfigPars(QWidget) :
     def on_cmb_host_changed(self):
         selected = self.cmb_host.currentText()
         cp.cdb_host.setValue(selected) 
-        logger.info('on_cmb_host_changed - selected: %s' % selected)
+        logger.info('Set DB host: %s' % selected)
 
     def on_cmb_port_changed(self):
         selected = self.cmb_port.currentText()
         cp.cdb_port.setValue(int(selected)) 
-        logger.info('on_cmb_port_changed - selected: %s' % selected)
+        logger.info('Set DB port: %s' % selected)
 
     def on_cmb_level_changed(self):
         selected = self.cmb_level.currentText()
         cp.log_level.setValue(selected) 
-        logger.info('on_cmb_log_level_changed - selected: %s' % selected)
+        logger.info('Set logger level %s' % selected)
 
     def on_edi_log_file(self):
-        logger.debug('on_edi_log_file')
+        #logger.debug('on_edi_log_file')
         cp.log_file.setValue(str(self.edi_log_file.displayText()))
-        logger.info('Set file name common prefix: ' + str(cp.log_file.value()))
+        logger.info('Set logger file name: ' + str(cp.log_file.value()))
 
 #-----------------------------
 

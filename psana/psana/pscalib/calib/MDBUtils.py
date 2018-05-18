@@ -57,6 +57,7 @@ Usage ::
 
     # Insert data
     id_data = mu.insert_data(data, fs)
+    id_data, id_doc = mu.insert_data_and_doc(data, fs, col, **kwargs)
     id_data_exp, id_data_det, id_exp, id_det = mu.insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs)
     mu.insert_calib_data(data, **kwargs)
 
@@ -361,7 +362,7 @@ def time_and_timestamp(**kwargs) :
 
 #------------------------------
 
-def docdic(data, id_data, **kwargs) :
+def docdic(data, dataid, **kwargs) :
     """Returns dictionary for db document in style of JSON object.
     """
     doc = {
@@ -378,7 +379,7 @@ def docdic(data, id_data, **kwargs) :
           'uid'        : gu.get_login(),
           'host'       : gu.get_hostname(),
           'cwd'        : gu.get_cwd(),
-          'id_data'    : id_data,
+          'id_data'    : dataid,
           }
 
     if isinstance(data, np.ndarray) :
@@ -452,6 +453,19 @@ def insert_data(data, fs) :
         msg = 'Unexpected ERROR: %s' % sys.exc_info()[0]
         logger.exception(msg)
         sys.exit(msg)
+
+#------------------------------
+
+def insert_data_and_doc(data, fs, col, **kwargs) :
+    """For open collection col and GridFS fs inserts calib data and document.
+       Returns inserted id_data in fs and id_doc in col.
+    """
+    id_data = insert_data(data, fs)
+    logger.debug('  - in fs %s id_data: %s' % (fs, id_data))
+    doc = docdic(data, id_data, **kwargs)
+    id_doc = insert_document(doc, col)
+    logger.debug('  - in collection %20s id_det : %s' % (col.name, id_doc))
+    return id_data, id_doc
 
 #------------------------------
 
@@ -598,14 +612,18 @@ def get_data_for_doc(fs, doc) :
     """
     if doc is None :
         logger.warning('get_data_for_doc: Data document is None...')
-        return
+        return None
 
-    try :
-        out = fs.get(doc['id_data'])
-    except:
-        msg = 'Unexpected ERROR: %s' % sys.exc_info()[0]
-        logger.exception(msg)
-        sys.exit(msg)
+    idd = doc.get('id_data', None)
+    if idd is None :
+        logger.debug("get_data_for_doc: key 'id_data' is missing in selected document...")
+        return None
+    out = fs.get(idd)
+
+    #except:
+    #    msg = 'Unexpected ERROR: %s' % sys.exc_info()[0]
+    #    logger.exception(msg)
+    #    sys.exit(msg)
 
     s = out.read()
     data_type = doc['data_type']

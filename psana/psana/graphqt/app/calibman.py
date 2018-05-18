@@ -55,18 +55,18 @@ def input_option_parser() :
     d_run        = 0
     d_time_stamp = '2008-01-01T00:00:00-0800'
     d_version    = 'v0'
-    d_verbose    = True
+    d_loglevel   = 'DEBUG'
     d_iofname    = './fname.txt'
 
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
-    h_experiment = 'experiment name, default = %s' % d_experiment 
+    h_experiment = 'experiment name, default = %s' % d_experiment
     h_detector   = 'detector name, default = %s' % d_detector
-    h_ctype      = 'calibration constant type, default = %s' % d_ctype 
-    h_run        = 'run number, default = %d' % d_run 
-    h_time_stamp = 'time stamp, default = %s' % d_time_stamp 
+    h_ctype      = 'calibration constant type, default = %s' % d_ctype
+    h_run        = 'run number, default = %d' % d_run
+    h_time_stamp = 'time stamp, default = %s' % d_time_stamp
     h_version    = 'version of constants, default = %s' % d_version
-    h_verbose    = 'verbosity, default = %s' % d_verbose
+    h_loglevel   = 'logger level, default = %s' % d_loglevel
     h_iofname    = 'output file prefix, default = %s' % d_iofname
 
     parser = OptionParser(description='Calibration manager UI', usage=usage())
@@ -79,8 +79,9 @@ def input_option_parser() :
     parser.add_option('-c', '--ctype',      default=d_ctype,      action='store', type='string', help=h_ctype)
     parser.add_option('-r', '--run',        default=d_run,        action='store', type='int',    help=h_run)
     parser.add_option('-v', '--version',    default=d_version,    action='store', type='string', help=h_version)
-    parser.add_option('-p', '--verbose',    default=d_verbose,    action='store_false',          help=h_verbose)
+    parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
     parser.add_option('-f', '--iofname',    default=d_iofname,    action='store', type='string', help=h_iofname)
+    #parser.add_option('-p', '--loglevel',   default=d_loglevel,   action='store_false',          help=h_loglevel)
 
     return parser
   

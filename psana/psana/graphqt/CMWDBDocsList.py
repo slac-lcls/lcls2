@@ -98,9 +98,8 @@ class CMWDBDocsList(CMWDBDocsBase, QWList) :
         if itemsel is not None :
             txt = itemsel.text()
             txtshow = txt if len(txt)<50 else '%s...'%txt[:50]
-            msg = 'doc selected in row%02d: %s' % (selected.row(), txtshow) 
+            msg = 'Selected document: %s' % txtshow # selected.row()
             logger.info(msg)
-
         cp.last_selection = cp.DOCS
 
 #------------------------------

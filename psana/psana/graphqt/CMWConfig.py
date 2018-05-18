@@ -167,7 +167,7 @@ class CMWConfig(QWidget) :
 
     def on_tab_bar(self):
         tab_ind, tab_name = self.current_tab_index_and_name()
-        logger.info('Selected tab "%s" with index %d' % (tab_name, tab_ind))
+        logger.info('Selected tab "%s"' % tab_name)
         cp.current_config_tab.setValue(tab_name)
         self.gui_selector(tab_name)
 

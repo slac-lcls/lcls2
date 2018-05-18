@@ -33,6 +33,10 @@ from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu,\
      confirm_or_cancel_dialog_box, select_item_from_popup_menu
 
 import psana.graphqt.CMDBUtils as dbu
+from psana.pyalgos.generic.NDArrUtils import info_ndarr
+
+from psana.pyalgos.generic.Utils import save_textfile
+from psana.pscalib.calib.NDArrIO import save_txt # load_txt
 
 #------------------------------
 #------------------------------
@@ -43,6 +47,8 @@ class CMWDBButtons(QWidget) :
     def __init__(self, parent=None) :
         QWidget.__init__(self, parent)
         self._name = 'CMWDBButtons'
+
+        self.log_level_names = list(logging._levelToName.values())
 
         self.lab_host = QLabel('Host:')
         self.lab_port = QLabel('Port:')
@@ -61,14 +67,20 @@ class CMWDBButtons(QWidget) :
         self.cmb_docw.addItems(cp.list_of_doc_widgets)
         self.cmb_docw.setCurrentIndex(cp.list_of_doc_widgets.index(str(cp.cdb_docw.value())))
 
+        self.cmb_level = QComboBox(self)        
+        self.cmb_level.addItems(self.log_level_names)
+        self.cmb_level.setCurrentIndex(self.log_level_names.index(cp.log_level.value()))
+
         self.but_exp_col  = QPushButton('Expand')
         self.but_tabs     = QPushButton('Tabs %s' % cp.char_expand)
         self.but_test     = QPushButton('Test')
         self.but_buts     = QPushButton('Buts %s' % cp.char_expand)
         self.but_del      = QPushButton('Delete')
         self.but_add      = QPushButton('Add')
+        self.but_save     = QPushButton('Save')
         self.but_docs     = QPushButton('%s %s' % (cp.cdb_docw.value(), cp.char_expand))
         self.but_selm     = QPushButton('Selection %s' % cp.char_expand)
+        #self.but_level    = QPushButton('Add')
 
         self.list_of_buts = (
              self.but_exp_col,
@@ -76,10 +88,12 @@ class CMWDBButtons(QWidget) :
              self.but_buts,
              self.but_del,
              self.but_add,
+             self.but_save,
              self.but_docs,
              self.but_selm,
              self.but_test
         )
+#             self.but_level,
 
         self.edi_db_filter = QLineEdit(cp.cdb_filter.value()) 
         self.edi_db_filter.setPlaceholderText('DB filter')       
@@ -131,8 +145,10 @@ class CMWDBButtons(QWidget) :
         self.hbox.addWidget(self.cmb_host)
         self.hbox.addWidget(self.lab_port)
         self.hbox.addWidget(self.cmb_port)
+        self.hbox.addWidget(self.cmb_level)
         self.hbox.addWidget(self.but_add)
         self.hbox.addWidget(self.but_del)
+        self.hbox.addWidget(self.but_save)
         self.hbox.addStretch(1) 
         self.hbox.addSpacing(50)
         #self.hbox.addStrut(50)
@@ -152,6 +168,7 @@ class CMWDBButtons(QWidget) :
         self.cmb_host.currentIndexChanged[int].connect(self.on_cmb_host_changed)
         self.cmb_port.currentIndexChanged[int].connect(self.on_cmb_port_changed)
         self.cmb_docw.currentIndexChanged[int].connect(self.on_cmb_docw_changed)
+        self.cmb_level.currentIndexChanged[int].connect(self.on_cmb_level_changed)
 
         self.edi_db_filter.editingFinished.connect(self.on_edi_db_filter_finished)
 
@@ -160,8 +177,10 @@ class CMWDBButtons(QWidget) :
         self.but_buts   .clicked.connect(self.on_but_clicked)
         self.but_add    .clicked.connect(self.on_but_clicked)
         self.but_del    .clicked.connect(self.on_but_clicked)
+        self.but_save   .clicked.connect(self.on_but_clicked)
         self.but_docs   .clicked.connect(self.on_but_clicked)
         self.but_selm   .clicked.connect(self.on_but_clicked)
+        #self.but_level  .clicked.connect(self.on_but_clicked)
  
         self.but_test.clicked .connect(self.on_but_clicked)
         self.but_test.released.connect(self.on_but_released)
@@ -184,8 +203,10 @@ class CMWDBButtons(QWidget) :
         self.but_docs.setToolTip('Select style of\ndocuments presentation')
         self.cmb_docw.setToolTip('Select style of\ndocuments presentation')
         self.but_selm.setToolTip('Set tree items selection mode')
-        self.but_add.setToolTip('Add document')
+        self.but_add.setToolTip('Add edited document to DB')
         self.but_del.setToolTip('Delete selected\nDBs, collections, documents')
+        self.but_save.setToolTip('Save selected document and data in file')
+        self.cmb_level.setToolTip('Select logger level')
 
 
     def set_style(self):
@@ -199,8 +220,10 @@ class CMWDBButtons(QWidget) :
 
         self.but_exp_col .setIcon(icon.icon_folder_open)
         self.but_add     .setIcon(icon.icon_plus)
+        self.but_save    .setIcon(icon.icon_save)
         self.but_del     .setIcon(icon.icon_minus)
         self.but_docs    .setIcon(icon.icon_table)
+        #self.but_level   .setIcon(icon.icon_logger)
 
         #self.lab_docs    .setPixmap(icon.icon_table)
 
@@ -227,13 +250,15 @@ class CMWDBButtons(QWidget) :
         self.setFixedHeight(size_hint.height())
         #self.setMinimumSize(433,46)
 
-        self.but_tabs.setFixedWidth(55)
-        self.but_buts.setFixedWidth(55)
-        self.but_add .setFixedWidth(60)
-        self.but_del .setFixedWidth(60)
-        self.but_docs.setFixedWidth(80)
-        self.but_selm.setFixedWidth(80)
-        self.cmb_docw.setFixedWidth(60)
+        self.but_tabs .setFixedWidth(55)
+        self.but_buts .setFixedWidth(55)
+        self.but_add  .setFixedWidth(60)
+        self.but_del  .setFixedWidth(60)
+        self.but_save .setFixedWidth(60)
+        self.but_docs .setFixedWidth(80)
+        self.but_selm .setFixedWidth(80)
+        self.cmb_docw .setFixedWidth(60)
+        self.cmb_level.setFixedWidth(80)
 
         self.edi_db_filter.setFixedWidth(80)
 
@@ -305,7 +330,7 @@ class CMWDBButtons(QWidget) :
         if wtree is None : return
         edi = self.edi_db_filter
         txt = edi.displayText()
-        logger.info('on_edi_db_filter_finished txt: "%s"' % txt)
+        logger.info('Set filter pattern: "%s"' % txt)
         wtree.fill_tree_model(pattern=txt)
 
 #-----------------------------
@@ -323,6 +348,8 @@ class CMWDBButtons(QWidget) :
                 'Tabs'       : r & 128,\
                 'Test'       : r & 256,\
                 'Selection'  : r & 512,\
+                'Save'       : r & 1024,\
+                'Level'      : r & 2048,\
                 }
 
 
@@ -338,6 +365,8 @@ class CMWDBButtons(QWidget) :
         if d['Tabs']       : w |= 128
         if d['Test']       : w |= 256
         if d['Selection']  : w |= 512
+        if d['Save']       : w |= 1024
+        if d['Level']      : w |= 2048
         #if  : w |= 0
         cp.cdb_buttons.setValue(w)
 
@@ -349,22 +378,27 @@ class CMWDBButtons(QWidget) :
         self.but_exp_col.setVisible(d['Expand'])
         self.but_add.setVisible    (d['Add'])
         self.but_del.setVisible    (d['Delete'])
+        self.but_save.setVisible   (d['Save'])
         self.cmb_docw.setVisible   (d['Docw'])
         self.lab_docs.setVisible   (d['Docw'])
         self.but_docs.setVisible   (d['Docs'])
         self.but_tabs.setVisible   (d['Tabs'])
         self.but_test.setVisible   (d['Test'])
         self.but_selm.setVisible   (d['Selection'])
+        self.cmb_level.setVisible  (d['Level'])
         #self.set_tabs_visible     (d['Tabs'])      
 
 
     def select_visible_buttons(self):
         logger.debug('select_visible_buttons')
         d = self.buttons_dict()
-        resp = change_check_box_dict_in_popup_menu(d, 'Select buttons', parent=self.but_buts)
-        logger.info('select_visible_buttons resp: %s' % resp)
-        if resp is None : return
+        resp = change_check_box_dict_in_popup_menu(d, 'Select buttons', msg='Check visible buttons then click Apply or Cancel', parent=self.but_buts)
+        logger.debug('select_visible_buttons resp: %s' % resp)
+        if resp is None :
+            logger.info('Visible buttons selection is cancelled')
+            return
         if resp==1 :
+            logger.info('Visible buttons: %s' % str(d))
             self.set_buttons_visiable(d)
             self.set_buttons_config_bitword(d)
 
@@ -427,6 +461,13 @@ class CMWDBButtons(QWidget) :
         logger.info('on_cmb_docw_changed - selected: %s' % selected)
         cp.cmwdbmain.wdocs.set_docs_widget()
 
+    def on_cmb_level_changed(self):
+        selected = self.cmb_level.currentText()
+        cp.log_level.setValue(selected)
+        logger.info('Set logger level %s' % selected)
+        #cp.cmwdbmain.wdocs.set_docs_widget()
+        if cp.qwloggerstd is not None : cp.qwloggerstd.set_level(selected)
+
 #-----------------------------
 
     def expand_collapse_dbtree(self):
@@ -450,7 +491,10 @@ class CMWDBButtons(QWidget) :
         """
         if   cp.last_selection == cp.DB_COLS: self.delete_selected_items_db_cols()
         elif cp.last_selection == cp.DOCS   : self.delete_selected_items_docs()
-        else : return
+        else :
+            logger.warning('Nothing selected to delete. Select DBs, collections, '\
+                           'or documents then click on Delete button again.')
+            return
 
 #-----------------------------
 
@@ -458,24 +502,23 @@ class CMWDBButtons(QWidget) :
         logger.debug('delete_selected_items_docs')
         wdocs = cp.cmwdbdocswidg
         if wdocs is None :
-            logger.warning('delete_selected_items_docs - doc widget object does not exist?')
+            logger.warning('Window with a List of documents does not exist?')
             return
 
-        msg = 'From db: %s\n col: %s\ndelete docs:\n  ' % (wdocs.dbname, wdocs.colname)
+        msg = 'From db: %s\n  col: %s\n  delete docs:\n    ' % (wdocs.dbname, wdocs.colname)
         doc_ids = [item.accessibleText() for item in wdocs.selected_items()]
         msg_recs = ['%s : %s'%(id, dbu.timestamp_id(id)) for id in doc_ids]
-        #msg += '\n  '.join(doc_ids)
-        msg += '\n  '.join(msg_recs)
+        msg += '\n    '.join(msg_recs)
 
         logger.info(msg)
         resp = confirm_or_cancel_dialog_box(parent=self.but_del, text=msg, title='Confirm or cancel')
-        logger.info('Response: %s' % resp)
+        logger.debug('delete_selected_items_docs response: %s' % resp)
 
         if resp :
             dbu.delete_documents(wdocs.dbname, wdocs.colname, doc_ids)
-
-            #wdocs.show_documents
             cp.cmwdbdocs.show_documents(wdocs.dbname, wdocs.colname, force_update=True)
+        else :
+            logger.warning('Command "Delete" is cancelled')
 
 #-----------------------------
 
@@ -520,7 +563,7 @@ class CMWDBButtons(QWidget) :
 
         logger.info(msg)
         resp = confirm_or_cancel_dialog_box(parent=self.but_del, text=msg, title='Confirm or cancel')
-        logger.info('Response: %s' % resp)
+        logger.debug('delete_selected_items_db_cols response: %s' % resp)
 
         if resp :
            if del_mode == cp.DBS : dbu.delete_databases(list_db_names)
@@ -528,6 +571,9 @@ class CMWDBButtons(QWidget) :
 
            # Regenerate tree model
            self.on_edi_db_filter_finished()
+
+        else :
+            logger.warning('Command "Delete" is cancelled')
 
 #-----------------------------
 
@@ -537,7 +583,7 @@ class CMWDBButtons(QWidget) :
         if wtree is None : return
         selected = select_item_from_popup_menu(wtree.dic_smodes.keys(), title='Select mode',\
                                                default=cp.cdb_selection_mode.value(), parent=self)
-        logger.info('set_selection_model: %s' % selected)
+        logger.info('Set selection mode: %s' % selected)
         if selected is None : return
         cp.cdb_selection_mode.setValue(selected)
         wtree.set_selection_mode(selected)
@@ -545,22 +591,88 @@ class CMWDBButtons(QWidget) :
 #-----------------------------
 
     def add_doc(self):
-        logger.info('add_doc')
-        wdocs = cp.cmwdbdocswidg
-        if wdocs is None :
-            logger.warning('add_doc - doc widget object does not exist?')
+        """Adds document from editor to DB
+        """
+        logger.debug('In add_doc')
+        wdoce = cp.cmwdbdoceditor
+        if wdoce is None or wdoce.data_nda is None :
+            logger.warning('Document is not selected. Select collection in DB then document in List mode.')
             return
 
-        #cp.cmwdbdoceditor.show_document(wdocs.dbname, wdocs.colname, force_update=True)
-         
+        dicdoc = wdoce.get_model_dicdoc()
+        nda = wdoce.get_data_nda()
 
+        msg = '\n  '.join(['%12s : %s' % (k,v) for k,v in dicdoc.items()])
+        logger.debug('add_doc \n%s  \n%s' % (msg, info_ndarr(nda, 'data n-d array ')))
+
+        dbnexp = dbu.db_prefixed_name(dicdoc.get('experiment', 'exp_def'))
+        dbndet = dbu.db_prefixed_name(dicdoc.get('detector', 'det_def'))
+        colname = dicdoc.get('detector', None)
+
+        d = {dbnexp : True, dbndet : True}
+        resp = change_check_box_dict_in_popup_menu(d, msg='Add constants\nand metadata to DB', parent=self.but_add)
+        logger.debug('add_doc resp: %s' % resp)
+
+        if resp==1 :
+            if d[dbnexp] : _,_=dbu.insert_document_and_data(dbnexp, colname, dicdoc, nda)
+            if d[dbndet] : _,_=dbu.insert_document_and_data(dbndet, colname, dicdoc, nda)
+
+            wdocs = cp.cmwdbdocswidg
+            if wdocs is None : return
+            cp.cmwdbdocs.show_documents(wdocs.dbname, wdocs.colname, force_update=True)
+
+        else : 
+            logger.warning('Uploading of calibration constants in DB is cancelled')
+
+#-----------------------------
+
+    def out_fname_prefix(self, d):
+        exp = d.get('experiment', 'exp')
+        det = d.get('detector', 'det')
+        run = int(d.get('run', '0'))
+        ctype = d.get('ctype', 'ctype')
+        return 'doc-%s-%s-r%04d-%s' % (exp, det, run, ctype)
+
+#-----------------------------
+
+    def save_doc(self):
+        """Saves document metadata and data in files
+        """
+        logger.debug('In save_doc')
+
+        wdoce = cp.cmwdbdoceditor
+        if wdoce is None  or wdoce.data_nda is None :
+            logger.warning('Document editor is not available. Select collection in DB then document in List mode.')
+            return
+
+        dicdoc = wdoce.get_model_dicdoc(discard_id_ts=False)
+        nda = wdoce.get_data_nda()
+
+        msg = '\n '.join(['%12s : %s' % (k,dicdoc[k]) for k in sorted(dicdoc.keys())])
+        logger.info('Save array and document metadata in files\n%s  \n%s' % (msg, info_ndarr(nda, 'data n-d array ')))
+        prefix = self.out_fname_prefix(dicdoc)
+
+        d = {'data' : True, 'meta' : True}
+        resp = change_check_box_dict_in_popup_menu(d, 'Select and confirm',\
+               msg='Save current document in file\n%s\nfor types:'%prefix, parent=self.but_add)
+
+        if resp==1 :
+            logger.info('Save document data and metadata in files with prefix: %s' % prefix)
+            for k in d.keys() :
+                if d[k] :
+                    fname = '%s.%s' % (prefix, k)
+                    logger.debug('save_doc %s in file %s' % (k, fname))
+                    if k == 'data' : save_txt(fname, nda, cmts=(), fmt='%.1f')
+                    if k == 'meta' : save_textfile(msg, fname, mode='w')
+        else : 
+            logger.warning('Command "Save" is cancelled')
 
 #-----------------------------
 
     def on_but_clicked(self):
         for but in self.list_of_buts :
             if but.hasFocus() : break
-        logger.info('clicked button "%s"' % but.text())
+        logger.info('Click on "%s"' % but.text())
         if   but == self.but_exp_col  : self.expand_collapse_dbtree()
         elif but == self.but_tabs     : self.view_hide_tabs()
         elif but == self.but_buts     : self.select_visible_buttons()
@@ -568,6 +680,8 @@ class CMWDBButtons(QWidget) :
         elif but == self.but_docs     : self.select_doc_widget()
         elif but == self.but_selm     : self.set_selection_mode()
         elif but == self.but_add      : self.add_doc()
+        elif but == self.but_save     : self.save_doc()
+        #elif but == self.but_level    : self.set_logger_level()
 
 
     def on_but_pressed(self):
@@ -585,7 +699,11 @@ class CMWDBButtons(QWidget) :
     def on_but_toggled(self):
         for but in self.list_of_buts :
             if but.hasFocus() : break
-        logger.debug('on_but_pressed "%s"' % but.text())
+        logger.debug('on_but_toggled "%s"' % but.text())
+
+
+    def set_logger_level(self): 
+        logger.debug('In set_logger_level')
 
 #-----------------------------
 

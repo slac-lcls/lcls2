@@ -87,7 +87,7 @@ class CMConfigParameters(PSConfigParameters) :
         
     def declareParameters(self) :
         # Possible typs for declaration : 'str', 'int', 'long', 'float', 'bool'
-        self.log_level = self.declareParameter(name='LOG_LEVEL_OF_MSGS', val_def='NOTSET', type='str')
+        self.log_level = self.declareParameter(name='LOG_LEVEL', val_def='DEBUG', type='str') # val_def='NOTSET'
         #self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='/reg/g/psdm/logs/montool/log.txt', type='str')
         self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='cm-log.txt', type='str')
 
@@ -101,7 +101,6 @@ class CMConfigParameters(PSConfigParameters) :
 
         self.main_vsplitter  = self.declareParameter(name='MAIN_VSPLITTER', val_def=600, type='int')
         self.main_tab_name   = self.declareParameter(name='MAIN_TAB_NAME', val_def='Configuration', type='str')
-
 
         self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Configuration File', type='str')
         self.cdb_host = self.declareParameter(name='CDB_HOST', val_def='psanaphi105', type='str')

@@ -140,9 +140,11 @@ class QWLoggerStd(QWidget) :
 
 
     def config_logger(self) :
-        self.append_qwlogger('Configure logger')
 
-        level = self.dict_name_to_level[self.log_level.value()] # e.g. logging.DEBUG
+        self.append_qwlogger('Start logger')
+
+        levname = self.log_level.value()
+        level = self.dict_name_to_level[levname] # e.g. logging.DEBUG
 
         tsfmt='%Y-%m-%dT%H:%M:%S'
         fmt = '%(levelname)s %(name)s: %(message)s' if level==logging.DEBUG else\
@@ -160,18 +162,19 @@ class QWLoggerStd(QWidget) :
         #self.handler.setLevel(logging.NOTSET) # level
         self.handler.setFormatter(self.formatter)
         logger.addHandler(self.handler)
-        self.set_level(self.log_level.value()) # pass level name
+        self.set_level(levname) # pass level name
 
         #logger.debug('dir(self.handler):' , dir(self.handler))
 
 
     def set_level(self, level_name='DEBUG') :
-        self.append_qwlogger('Requested layer: %s' % level_name)
+        #self.append_qwlogger('Set logger layer: %s' % level_name)
         #logger.setLevel(level_name) # {0: 'NOTSET'}
         level = self.dict_name_to_level[level_name]
         logger.setLevel(level)
-        msg = 'Set logger level %s of the list:\n      %s' % (self.log_level.value(), ', '.join(self.level_names))
-        logger.debug(msg)
+        #msg = 'Set logger level %s of the list: %s' % (level_name, ', '.join(self.level_names))
+        #logger.debug(msg)
+        logger.info('Set logger level %s' % level_name)
 
 
     def connect_buttons(self):
