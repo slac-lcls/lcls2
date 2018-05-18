@@ -157,6 +157,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
             if (transition_id != 0) {
                 Dgram* dgram = (Dgram*)pebble->fex_data();
                 zmq_send(socket, dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 0);
+                printf("Send transition over zeromq socket\n");
             }
 
             // return buffer to memory pool
