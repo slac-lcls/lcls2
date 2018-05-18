@@ -250,7 +250,7 @@ def main():
                     # Send KILL broadcast
                     logging.debug("Sending KILL broadcast")
                     cmmsg = CMMsg(sequence, key=CMMsg.KILL)
-                    cmmsg['platform'] = cmstate.platform()
+                    cmmsg[b'platform'] = ('%d' % cmstate.platform()).encode('UTF-8')
                     cmmsg.send(publisher)
 
                     # reset the CM state
@@ -260,7 +260,7 @@ def main():
                     logging.debug("Sending KILLSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
                     cmmsg = CMMsg(sequence, key=CMMsg.KILLSTARTED)
-                    cmmsg['platform'] = cmstate.platform()
+                    cmmsg[b'platform'] = ('%d' % cmstate.platform()).encode('UTF-8')
                     cmmsg.send(cmd)
                     continue
 
