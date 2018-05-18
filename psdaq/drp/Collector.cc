@@ -46,6 +46,10 @@ static void* allocBatchRegion(unsigned maxBatches, size_t maxBatchSize)
 // collects events from the workers and sends them to the event builder
 void collector(MemPool& pool, Parameters& para)
 {
+    void* context = zmq_ctx_new();
+    void* socket = zmq_socket(context, ZMQ_PUSH);
+    zmq_connect(socket, "tcp://localhost:5559");
+
     Pds::StringList peers;
     peers.push_back(para.eb_server_ip);
     Pds::StringList ports;
@@ -75,6 +79,13 @@ void collector(MemPool& pool, Parameters& para)
          if (transition_id == 2) {
             printf("Collector saw configure transition\n");
         }
+        // pass non L1 accepts to control level
+        if (transition_id != 0) {
+            Dgram* dgram = (Dgram*)pebble->fex_data();
+            zmq_send(socket, dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 0);
+            printf("Send transition over zeromq socket\n");
+        }
+
         // printf("Collector:  Transition id %d pulse id %lu event counter %u \n",
         //        transition_id, event_header->seq.pulseId().value(), event_header->evtCounter);
 
@@ -115,10 +126,6 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
         return;
     }
 
-    void* context = zmq_ctx_new();
-    void* socket = zmq_socket(context, ZMQ_PUSH);
-    zmq_connect(socket, "tcp://localhost:5559");
-
     while(1) {
         fi_cq_data_entry wc;
         if (myEbLfServer.pend(&wc))  continue;
@@ -153,13 +160,6 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
                 }
             }
             
-            // pass non L1 accepts to control level
-            if (transition_id != 0) {
-                Dgram* dgram = (Dgram*)pebble->fex_data();
-                zmq_send(socket, dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 0);
-                printf("Send transition over zeromq socket\n");
-            }
-
             // return buffer to memory pool
             for (int l=0; l<8; l++) {
                 if (pebble->pgp_data->buffer_mask & (1 << l)) {
