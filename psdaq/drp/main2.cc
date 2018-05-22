@@ -25,8 +25,10 @@ int main(int argc, char* argv[])
                 break;
         }
     }
+    para.output_dir = "/drpffb/yoon82";
     printf("eb server ip: %s\n", para.eb_server_ip.c_str());
     printf("contributor id: %u\n", para.contributor_id);
+    printf("output dir: %s\n", para.output_dir.c_str());
 
     Factory<Detector> f;
     f.register_type<AreaDetector>("AreaDetector");
@@ -36,7 +38,8 @@ int main(int argc, char* argv[])
     int num_workers = 2;
     MemPool pool(num_workers, 65536);
     int lane_mask = 0xf;
-    PGPReader pgp_reader(pool, lane_mask, num_workers);
+    int device_id = 0x2031;
+    PGPReader pgp_reader(pool, device_id, lane_mask, num_workers);
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
 
     // start worker threads

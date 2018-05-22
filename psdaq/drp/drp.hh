@@ -30,6 +30,7 @@ struct Parameters
 {
     std::string eb_server_ip;
     unsigned contributor_id;
+    std::string output_dir;
 };
 
 // Per-Event-Buffer-with-Boundaries-Listed-Explicitly

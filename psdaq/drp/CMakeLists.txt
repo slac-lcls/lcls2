@@ -1,5 +1,6 @@
 add_library(drp SHARED
     #Digitizer.cc
+    DigitizerNew.cc
     AreaDetector.cc
     Worker.cc
     Collector.cc
@@ -27,6 +28,15 @@ add_executable(main
 )
 
 target_link_libraries(main
+    drp
+    pthread
+)
+
+add_executable(hsdDrpMain
+    hsdDrpMain.cc
+)
+
+target_link_libraries(hsdDrpMain
     drp
     pthread
 )

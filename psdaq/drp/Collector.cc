@@ -108,7 +108,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
     unsigned nreceive = 0;
 
     char file_name[PATH_MAX];
-    snprintf(file_name, PATH_MAX, "/drpffb/weninc/data-%02d.xtc", para.contributor_id);
+    snprintf(file_name, PATH_MAX, "%s/data-%02d.xtc", para.output_dir.c_str(), para.contributor_id);
     FILE* xtcFile = fopen(file_name, "w");
     if (!xtcFile) {
         printf("Error opening output xtc file.\n");
