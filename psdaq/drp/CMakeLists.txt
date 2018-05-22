@@ -1,6 +1,5 @@
 add_library(drp SHARED
-    #Digitizer.cc
-    DigitizerNew.cc
+    Digitizer.cc
     AreaDetector.cc
     Worker.cc
     Collector.cc
