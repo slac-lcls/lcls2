@@ -14,5 +14,5 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_subdirectory(psdaq)
 add_subdirectory(drp)
-add_subdirectory(drp_olddriver)
+#add_subdirectory(drp_olddriver)
 add_subdirectory(pydaq)

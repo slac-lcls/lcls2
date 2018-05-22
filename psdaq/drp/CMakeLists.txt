@@ -1,13 +1,13 @@
-add_library(drp SHARED
+add_library(utils SHARED
     Digitizer.cc
     AreaDetector.cc
     Worker.cc
     Collector.cc
     PGPReader.cc
-    drp.cc
+    utils.cc
 )
 
-target_link_libraries(drp
+target_link_libraries(utils
     xtcdata
     pgpdriver
     #pshdf5
@@ -16,26 +16,17 @@ target_link_libraries(drp
     $ENV{CONDA_PREFIX}/lib/libstdc++.so.6
 )
 
-target_include_directories(drp PUBLIC
+target_include_directories(utils PUBLIC
     ../psdaq/pgp/user-driver
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 
-add_executable(main
-    main2.cc
+add_executable(drp
+    drp.cc
 )
 
-target_link_libraries(main
-    drp
-    pthread
-)
-
-add_executable(hsdDrpMain
-    hsdDrpMain.cc
-)
-
-target_link_libraries(hsdDrpMain
-    drp
+target_link_libraries(drp
+    utils
     pthread
 )

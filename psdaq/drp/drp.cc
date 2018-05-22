@@ -1,33 +1,84 @@
-#include "drp.hh"
+#include <thread>
+#include <cstdio>
+#include <cstring>
+#include <getopt.h>
+#include "PGPReader.hh"
+#include "AreaDetector.hh"
+#include "Digitizer.hh"
+#include "Worker.hh"
+#include "Collector.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/Sequence.hh"
+#include <sstream>
+#include <iostream>
 
-MemPool::MemPool(int num_workers, int num_entries) :
-    dma(num_entries, RX_BUFFER_SIZE),
-    pgp_data(num_entries),
-    pebble_queue(num_entries),
-    collector_queue(num_entries),
-    output_queue(num_entries),
-    num_entries(num_entries),
-    pebble(num_entries)
-{
-    for (int i = 0; i < num_workers; i++) {
-        worker_input_queues.emplace_back(PebbleQueue(num_entries));
-        worker_output_queues.emplace_back(PebbleQueue(num_entries));
-    }
+using namespace XtcData;
 
-    for (int i = 0; i < num_entries; i++) {
-        pgp_data[i].counter = 0;
-        pgp_data[i].buffer_mask = 0;
-        pebble_queue.push(&pebble[i]);
-    }
+void print_usage(){
+    printf("Usage: drp -P <EB server IP address> -i <Contributor ID> -o <Output XTC dir> -d <Device id> -l <Lane mask> -D <Detector type>\n");
+    printf("e.g.: sudo psdaq/build/drp/drp -P 172.21.52.128 -i 0 -o /drpffb/yoon82 -d 0x2032 -l 0xf -D Digitizer\n");
 }
 
-void pin_thread(const pthread_t& th, int cpu)
+int main(int argc, char* argv[])
 {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(cpu, &cpuset);
-    int rc = pthread_setaffinity_np(th, sizeof(cpu_set_t), &cpuset);
-    if (rc != 0) {
-        printf("Error calling pthread_setaffinity_np: %d\n ", rc);
+    Parameters para;
+    int device_id = 0x2031;
+    int lane_mask = 0xf;
+    std::string detector_type;
+    int c;
+    while((c = getopt(argc, argv, "P:i:o:d:l:D:")) != EOF) {
+        switch(c) {
+            case 'P':
+                para.eb_server_ip = optarg;
+                break;
+            case 'i':
+                para.contributor_id = atoi(optarg);
+                break;
+            case 'o':
+                para.output_dir = optarg;
+                break;
+            case 'd':
+                device_id = std::stoul(optarg, nullptr, 16);
+                break;
+            case 'l':
+                lane_mask = std::stoul(optarg, nullptr, 16);
+                break;
+            case 'D':
+                detector_type = optarg;
+                break;
+            default:
+                print_usage();
+                exit(1);
+        }
+    }
+    printf("eb server ip: %s\n", para.eb_server_ip.c_str());
+    printf("contributor id: %u\n", para.contributor_id);
+    printf("output dir: %s\n", para.output_dir.c_str());
+
+    Factory<Detector> f;
+    f.register_type<Digitizer>("Digitizer");
+    f.register_type<AreaDetector>("AreaDetector");
+    Detector *d = f.create(detector_type.c_str());
+    printf("%p\n", d);
+
+
+    int num_workers = 2;
+    int num_entries = 8192;
+    MemPool pool(num_workers, num_entries);
+    PGPReader pgp_reader(pool, device_id, lane_mask, num_workers);
+    std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
+
+    // start worker threads
+    std::vector<std::thread> worker_threads;
+    for (int i = 0; i < num_workers; i++) {
+        worker_threads.emplace_back(worker, d, std::ref(pool.worker_input_queues[i]),
+                                    std::ref(pool.worker_output_queues[i]), i);
+    }
+
+    collector(pool, para);
+
+    pgp_thread.join();
+    for (int i = 0; i < num_workers; i++) {
+        worker_threads[i].join();
     }
 }

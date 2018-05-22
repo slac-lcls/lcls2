@@ -1,5 +1,5 @@
 
-#include "DigitizerNew.hh"
+#include "Digitizer.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 
