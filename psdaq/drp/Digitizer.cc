@@ -1,9 +1,9 @@
 
-#include "Digitizer.hh"
-
+#include "DigitizerNew.hh"
 #include "xtcdata/xtc/VarDef.hh"
+#include "xtcdata/xtc/DescData.hh"
 
-
+// temp1
 using namespace XtcData;
 
 class HsdDef : public VarDef
@@ -19,29 +19,50 @@ public:
 
     HsdDef()
     {
-        Alg alg("hsdchan", 1, 2, 3);
+        Alg alg("fpga", 1, 2, 3);
         NameVec.push_back({"chan0", alg});
         NameVec.push_back({"chan1", alg});
         NameVec.push_back({"chan2", alg});
         NameVec.push_back({"chan3", alg});
     }
 };
+static HsdDef myHsdDef;
 
-void hsdExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers, std::vector<unsigned>& lanes)
+Digitizer::Digitizer() : m_evtcount(0) {}
+
+void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
 {
-    CreateData hsd(parent, NamesVec, nameId);
-    PGPBuffer* buffers = pebble_data->pgp_data->buffers;
-    uint32_t shape[1];
-    for (unsigned i=0; i<lanes.size(); i++) {
-        shape[0] = buffers[lanes[i]].length*sizeof(uint32_t);
-        hsd.set_array_shape(i, shape);
-    }
+    printf("Digitizer configure\n");
+
+    // copy Event header into beginning of Datagram
+    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
+    printf("index %d\n", index);
+    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
+    memcpy(&dgram, event_header, sizeof(Transition));
+
+    Alg hsdAlg("hsd", 1, 2, 3);
+    unsigned segment = 0;
+    Names& hsdNames = *new(dgram.xtc) Names("xpphsd", hsdAlg, "hsd", "detnum0", segment);
+    hsdNames.add(dgram.xtc, myHsdDef);
+    m_namesVec.push_back(NameIndex(hsdNames));
 }
 
-void add_hsd_names(Xtc& parent, std::vector<NameIndex>& namesVec)
+void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
 {
-    Alg hsdAlg("hsdalg", 1, 2, 3);
-    Names& fexNames = *new(parent) Names("xpphsd", hsdAlg, "hsd", "detnum1234");
-    fexNames.add(parent, HsdDef);
-    namesVec.push_back(NameIndex(fexNames));
+    m_evtcount+=1;
+    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
+    unsigned nameId=0;
+    CreateData hsd(dgram.xtc, m_namesVec, nameId);
+    
+    unsigned data_size;
+    unsigned shape[Name::MaxRank];
+    for (int l=0; l<8; l++) {
+        if (pgp_data->buffer_mask & (1 << l)) {
+            // size without Event header
+            data_size = pgp_data->buffers[l]->size - sizeof(Transition);
+            shape[0] = data_size;
+            Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l, shape);
+            memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l]->virt + sizeof(Transition), data_size);
+         }
+    }
 }

@@ -2,14 +2,21 @@
 #define DIGITIZER_H
 
 #include <vector>
-
+#include "drp.hh"
+#include "Detector.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/DescData.hh"
-#include "xtcdata/xtc/Dgram.hh"
-#include "drp.hh"
 
-void hsdExample(XtcData::Xtc& parent, std::vector<XtcData::NameIndex>& nameindex, unsigned nameId, Pebble* pebble_data, uint32_t** dma_buffers, std::vector<unsigned>& lanes);
-void add_hsd_names(XtcData::Xtc& parent, std::vector<XtcData::NameIndex>& namesVec);
+class Digitizer : public Detector
+{
+public:
+    Digitizer();
+    virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data);
+    virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
+private:
+    std::vector<XtcData::NameIndex> m_namesVec;
+    unsigned m_evtcount;
+};
 
 #endif // DIGITIZER_H
