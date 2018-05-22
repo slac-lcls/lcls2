@@ -50,7 +50,6 @@ class CMConfigParameters(PSConfigParameters) :
     def __init__(self, fname=None) :
         """fname : str - the file name with configuration parameters, if not specified then use default.
         """
-
         PSConfigParameters.__init__(self)
 
         logger.debug('In %s c-tor')
@@ -87,12 +86,14 @@ class CMConfigParameters(PSConfigParameters) :
         
     def declareParameters(self) :
         # Possible typs for declaration : 'str', 'int', 'long', 'float', 'bool'
-        self.log_level = self.declareParameter(name='LOG_LEVEL', val_def='DEBUG', type='str') # val_def='NOTSET'
-        #self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='/reg/g/psdm/logs/montool/log.txt', type='str')
-        self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='cm-log.txt', type='str')
+        self.log_level = self.declareParameter(name='LOG_LEVEL', val_def='INFO', type='str') # val_def='NOTSET'
 
-        self.save_log_at_exit = self.declareParameter( name='SAVE_LOG_AT_EXIT', val_def=True,  type='bool')
-        #self.dir_log_global      = self.declareParameter( name='DIR_LOG_FILE_GLOBAL', val_def='/reg/g/psdm/logs/calibman', type='str')
+        #self.log_file - DEPRICATED
+        self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='cm-log.txt', type='str')
+        self.log_prefix = self.declareParameter(name='LOG_FILE_PREFIX', val_def='/reg/g/psdm/logs/calibman/lcls2', type='str')
+        #self.log_prefix = self.declareParameter(name='LOG_FILE_PREFIX', val_def='./cm-log', type='str')
+        self.save_log_at_exit = self.declareParameter(name='SAVE_LOG_AT_EXIT', val_def=True,  type='bool')
+        #self.dir_log_global  = self.declareParameter(name='DIR_LOG_FILE_GLOBAL', val_def='/reg/g/psdm/logs/calibman', type='str')
 
         self.main_win_pos_x  = self.declareParameter(name='MAIN_WIN_POS_X',  val_def=5,    type='int')
         self.main_win_pos_y  = self.declareParameter(name='MAIN_WIN_POS_Y',  val_def=5,    type='int')
@@ -103,14 +104,14 @@ class CMConfigParameters(PSConfigParameters) :
         self.main_tab_name   = self.declareParameter(name='MAIN_TAB_NAME', val_def='Configuration', type='str')
 
         self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Configuration File', type='str')
-        self.cdb_host = self.declareParameter(name='CDB_HOST', val_def='psanaphi105', type='str')
+        self.cdb_host = self.declareParameter(name='CDB_HOST', val_def='psanaphi103', type='str')
         self.cdb_port = self.declareParameter(name='CDB_PORT', val_def=27017, type='int')
         self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=250, type='int')
         self.cdb_hsplitter1 = self.declareParameter(name='CDB_HSPLITTER1', val_def=1000, type='int')
         self.cdb_hsplitter2 = self.declareParameter(name='CDB_HSPLITTER2', val_def=0, type='int')
         self.cdb_filter  = self.declareParameter(name='CDB_FILTER', val_def='', type='str')
-        self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=0o177777, type='int')
-        self.cdb_docw = self.declareParameter(name='CDB_DOC_WIDGET', val_def='Text', type='str')
+        self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=3259, type='int')
+        self.cdb_docw = self.declareParameter(name='CDB_DOC_WIDGET', val_def='List', type='str')
         self.cdb_selection_mode = self.declareParameter(name='CDB_SELECTION_MODE', val_def='extended', type='str')
 
 #------------------------------

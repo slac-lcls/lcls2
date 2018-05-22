@@ -70,4 +70,6 @@ private:
     std::vector<Pebble> pebble;
 };
 
+void pin_thread(const pthread_t& th, int cpu);
+
 #endif // DRP_H
