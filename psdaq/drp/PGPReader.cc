@@ -23,8 +23,8 @@ int MovingAverage::add_value(int value)
     return sum;
 }
 
-PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
-    m_dev(0x2032),
+PGPReader::PGPReader(MemPool& pool, int device_id, int lane_mask, int nworkers) :
+    m_dev(device_id),
     m_pool(pool),
     m_avg_queue_size(nworkers)
 {

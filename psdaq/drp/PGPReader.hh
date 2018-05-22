@@ -19,7 +19,7 @@ private:
 class PGPReader
 {
 public:
-    PGPReader(MemPool& pool, int lanes_mask, int nworkers);
+    PGPReader(MemPool& pool, int device_id, int lanes_mask, int nworkers);
     PGPData* process_lane(DmaBuffer* buffer);
     void send_to_worker(Pebble* pebble_data);
     void send_all_workers(Pebble* pebble);
