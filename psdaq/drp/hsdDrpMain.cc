@@ -15,8 +15,8 @@
 using namespace XtcData;
 
 void print_usage(){
-    printf("Usage: main -P <EB server IP address> -i <Contributor ID> -o <Output XTC dir> -d <Device id> -l <Lane mask>\n");
-    printf("e.g.: sudo psdaq/build/drp/main -P 172.21.52.128 -i 0 -o /drpffb/yoon82 -d 0x2032 -l 0xf\n");
+    printf("Usage: hsdDrpMain -P <EB server IP address> -i <Contributor ID> -o <Output XTC dir> -d <Device id> -l <Lane mask>\n");
+    printf("e.g.: sudo psdaq/build/drp/hsdDrpMain -P 172.21.52.128 -i 0 -o /drpffb/yoon82 -d 0x2032 -l 0xf\n");
 }
 
 int main(int argc, char* argv[])
