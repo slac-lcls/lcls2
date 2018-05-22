@@ -358,7 +358,7 @@ protected:
 
             // Create an Array<T> struct at the memory address of ptr
             Array<T> arrT(ptr, shape, name.rank());
-            this->set_array_shape(index, shape);
+            CreateData::set_array_shape(index, shape);
 
             // Return the Array struct. Use it to assign values with arrayT(i,j)
             return arrT;
@@ -404,7 +404,6 @@ protected:
             Names& names = _nameindex.names();
             Name& namecl = names.get(index);
             unsigned size = _shapesdata.shapes().get(shapeIndex).size(namecl);
-            //	printf("Sizeof size is %i\n", size);
             _offset[_numentries]=_offset[_numentries-1]+size;
             _shapesdata.data().alloc(size,_shapesdata,_parent);
         }
