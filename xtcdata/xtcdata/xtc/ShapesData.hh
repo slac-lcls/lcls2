@@ -106,7 +106,9 @@ public:
         for (unsigned i = 0; i < name.rank(); i++) {
             size *= _shape[i];
         }
-        return size*Name::get_element_size(name.type());
+        unsigned totSize = size*Name::get_element_size(name.type());
+        assert(totSize);
+        return totSize;
     }
     uint32_t* shape() {return _shape;}
 private:
