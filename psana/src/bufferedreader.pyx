@@ -25,6 +25,7 @@ cdef class BufferedReader:
     cdef char* chunk
     cdef size_t got
     cdef size_t offset
+    cdef unsigned long ts_value
 
     def __init__(self, int fd):
         self.fd = fd
@@ -33,6 +34,7 @@ cdef class BufferedReader:
         self.chunk = NULL
         self.got = 0
         self.offset = 0
+        self.ts_value = 0
 
     def __dealloc__(self):
         free(self.chunk)
@@ -64,7 +66,7 @@ cdef class BufferedReader:
             self.got = remaining + new_got
         self.offset = dgram_offset - block_offset
 
-    def get(self, unsigned n_events):
+    def get(self, unsigned n_events, unsigned long limit_ts = 0):
         if self.chunk == NULL:
             self.chunk = <char*> malloc(self.chunksize)
             self.got = self._read_with_retries(0, self.chunksize)
@@ -75,8 +77,10 @@ cdef class BufferedReader:
         cdef unsigned got_events = 0
         cdef size_t block_offset = self.offset
         cdef size_t dgram_offset = 0
+        cdef unsigned long ts_value = 0
 
-        while (got_events < n_events and self.got > 0):
+        while (got_events < n_events and self.got > 0
+               and (limit_ts == 0 or ts_value <= limit_ts)):
             dgram_offset = self.offset
             remaining = self.got - self.offset
             if sizeof(Dgram) <= remaining:
@@ -89,6 +93,7 @@ cdef class BufferedReader:
                     # got dgram
                     self.offset += payload
                     got_events += 1
+                    ts_value = <unsigned long>d.seq.high << 32 | d.seq.low
                 else:
                     # not enough for the whole block, shift and reread
                     self._read_partial(block_offset, dgram_offset)
@@ -101,6 +106,10 @@ cdef class BufferedReader:
         cdef size_t block_size = self.offset - block_offset
         if block_size == 0:
             return 0
-
+        
+        self.ts_value = ts_value
         cdef char [:] view = <char [:self.offset - block_offset]> (self.chunk + block_offset)
         return view
+
+    def last_ts(self):
+        return self.ts_value
