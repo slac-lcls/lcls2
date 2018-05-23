@@ -167,22 +167,22 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             switch (name.type()) {
             case Name::UINT8: {
 	            const auto tempVal = descdata.get_value<uint8_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("I", tempVal);
                 break;
             }
             case Name::UINT16: {
                 const auto tempVal = descdata.get_value<uint16_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("I", tempVal);
                 break;
             }
             case Name::UINT32: {
                 const auto tempVal = descdata.get_value<uint32_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("k", tempVal);
                 break;
             }
             case Name::UINT64: {
                 const auto tempVal = descdata.get_value<uint64_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("K", tempVal);
                 break;
             }
             case Name::INT8: {
@@ -197,12 +197,12 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             }
             case Name::INT32: {
                 const auto tempVal = descdata.get_value<int32_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("l", tempVal);
                 break;
             }
             case Name::INT64: {
                 const auto tempVal = descdata.get_value<int64_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("L", tempVal);
                 break;
             }
             case Name::FLOAT: {
