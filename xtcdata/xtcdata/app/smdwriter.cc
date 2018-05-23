@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
+#include <iostream>
 
 // additions from xtc writer
 #include <type_traits>
@@ -21,6 +22,7 @@
 
 using namespace XtcData;
 using std::string;
+using namespace std;
 
 #define BUFSIZE 0x4000000
 
@@ -198,17 +200,23 @@ int main(int argc, char* argv[])
     dgOut.xtc.contains = tid;
     dgOut.xtc.damage = 0;
     dgOut.xtc.extent = sizeof(Xtc);
+    dgOut.seq = dgIn->seq;
 
     unsigned nameId = 3; // offset is the last
     CreateData smd(dgOut.xtc, namesVec, nameId);
     smd.set_value(SmdDef::intOffset, nowOffset);
-    nowDgramSize = sizeof(*dgIn) + dgIn->xtc.sizeofPayload();
+    nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     smd.set_value(SmdDef::intDgramSize, nowDgramSize);
     
     if (eventId > 0) { 
-        printf("Read evt: %4d Header size: %8lu Payload size: %8d Writing offset: %10d size: %10d\n", 
-        eventId, sizeof(*dgIn), dgIn->xtc.sizeofPayload(), nowOffset, nowDgramSize);
-
+        if (nowOffset <= 0) {
+            cout << "Error offset value (offset=" << nowOffset << ")" << endl;
+            return -1;
+        }
+        if (nowDgramSize <= 0) {
+            cout << "Error size value (size=" << nowDgramSize << ")" << endl;
+            return -1;
+        }
         if (fwrite(&dgOut, sizeof(dgOut) + dgOut.xtc.sizeofPayload(), 1, xtcFile) != 1) {
             printf("Error writing to output xtc file.\n");
             return -1;
@@ -218,10 +226,10 @@ int main(int argc, char* argv[])
     }
 
     // Update the offset
-    nowOffset += sizeof(*dgIn) + dgIn->xtc.sizeofPayload();
+    nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     eventId++;
   }
-  printf("Done.\n");
+  printf("Finished writing smd for %u events\n", eventId);
   fclose(xtcFile);
   ::close(fd);
   
