@@ -37,6 +37,8 @@ next week:
 * collector rejects data from boxes with old config-id's
 * dependencies of changed boxes also get new config-id's
 
+also added the "collector behavior" field for each output from the graph (e.g. Reduce or Null)
+
 three major patterns for cross-time patterns:
 * pickN: divide up N by number of workers, each worker sends when it reaches that number (reduce or gather)
 * binned (reduce) scatter plot
