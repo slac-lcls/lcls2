@@ -3,43 +3,23 @@ from sys import getrefcount as getref
 import numpy as np
 from psana import DataSource
 
-def myroutine2():
+def myroutine():
   ds = DataSource('data.xtc')  
-  for evt in ds.events():
-      break
-  dgram = evt.dgrams[0]
-  evt = None # to remove reference count that evt has to dgram to simplify test
+  for nevent,evt in enumerate(ds.events()):
+      if nevent==0:
+        dgrambytes_event0=evt.dgrams[0]._dgrambytes
+      elif nevent==1:
+        dgram_event1 = evt.dgrams[0]
 
   # be sure you know what you are doing before you change
   # these reference count numbers. - cpo
-  assert getref(dgram)==2
+  dgrambytes_event1 = dgram_event1._dgrambytes
+  # 4 for arrays, 1 for dgram, 1 for getref, 1 for dgrambytes_event1
+  assert getref(dgrambytes_event1)==7
+  # event0 dgram is deleted, so only 1 for dgrambytes_event0 and 1 for getref
+  assert getref(dgrambytes_event0)==2
 
-  arr1 = dgram.xpphsd.raw.array0Pgp
-  assert getref(dgram)==3
-
-  assert arr1.base is dgram
-  s1 = arr1[2:4]
-  assert getref(arr1)==3
-  assert s1.base is arr1
-  assert getref(s1)==2
-
-  arr2 = dgram.xpphsd.raw.array0Pgp
-  assert getref(dgram)==4
-  s2 = arr2[3:5]
-  assert s2.base is arr2
-  assert getref(dgram)==4
-
-  arr3 = dgram.xppcspad.raw.arrayRaw
-  assert getref(dgram)==5
-  assert(arr3[7]==7)
-
-  return s1, dgram, ds.dm.configs[0]
-
-def myroutine1():
-  s1, dgram, config =  myroutine2()
-  assert getref(s1)==2
-  assert getref(dgram)==3
-  return dgram, config
+  return dgram_event1, ds._configs()[0]
 
 class DgramTester:
   def __init__(self,testvals):
@@ -61,7 +41,7 @@ class DgramTester:
 def xtc():
   from .vals import testvals
 
-  dgram, config = myroutine1()
+  dgram, config = myroutine()
   configtester = DgramTester(testvals)
   ntested = configtester.iter(config)
   assert(ntested==len(testvals))
