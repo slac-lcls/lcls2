@@ -25,7 +25,8 @@ cdef class BufferedReader:
     cdef char* chunk
     cdef size_t got
     cdef size_t offset
-    cdef unsigned long ts_value
+    cdef unsigned long timestamp
+    cdef unsigned nevents
 
     def __init__(self, int fd):
         self.fd = fd
@@ -34,7 +35,8 @@ cdef class BufferedReader:
         self.chunk = NULL
         self.got = 0
         self.offset = 0
-        self.ts_value = 0
+        self.timestamp = 0
+        self.nevents = 0
 
     def __dealloc__(self):
         free(self.chunk)
@@ -58,7 +60,8 @@ cdef class BufferedReader:
         the chunk then re-read to fill in the chunk.
         """
         cdef size_t remaining = self.chunksize - block_offset
-        memcpy(self.chunk, self.chunk + block_offset, remaining)
+        if remaining > 0:
+            memcpy(self.chunk, self.chunk + block_offset, remaining)
         cdef size_t new_got = self._read_with_retries(remaining, self.chunksize - remaining)
         if new_got == 0:
             self.got = 0 # nothing more to read
@@ -66,7 +69,7 @@ cdef class BufferedReader:
             self.got = remaining + new_got
         self.offset = dgram_offset - block_offset
 
-    def get(self, unsigned n_events, unsigned long limit_ts = 0):
+    def get(self, unsigned n_events = 1, unsigned long limit_ts = 0):
         if self.chunk == NULL:
             self.chunk = <char*> malloc(self.chunksize)
             self.got = self._read_with_retries(0, self.chunksize)
@@ -77,10 +80,10 @@ cdef class BufferedReader:
         cdef unsigned got_events = 0
         cdef size_t block_offset = self.offset
         cdef size_t dgram_offset = 0
-        cdef unsigned long ts_value = 0
+        cdef unsigned long timestamp = 0
 
         while (got_events < n_events and self.got > 0
-               and (limit_ts == 0 or ts_value <= limit_ts)):
+               and (limit_ts == 0 or timestamp <= limit_ts)):
             dgram_offset = self.offset
             remaining = self.got - self.offset
             if sizeof(Dgram) <= remaining:
@@ -93,7 +96,7 @@ cdef class BufferedReader:
                     # got dgram
                     self.offset += payload
                     got_events += 1
-                    ts_value = <unsigned long>d.seq.high << 32 | d.seq.low
+                    timestamp = <unsigned long>d.seq.high << 32 | d.seq.low
                 else:
                     # not enough for the whole block, shift and reread
                     self._read_partial(block_offset, dgram_offset)
@@ -105,11 +108,22 @@ cdef class BufferedReader:
             
         cdef size_t block_size = self.offset - block_offset
         if block_size == 0:
+            self.nevents = 0
             return 0
         
-        self.ts_value = ts_value
+        self.timestamp = timestamp
+        self.nevents = got_events
         cdef char [:] view = <char [:self.offset - block_offset]> (self.chunk + block_offset)
         return view
+    
+    @property
+    def timestamp(self):
+        return self.timestamp
 
-    def last_ts(self):
-        return self.ts_value
+    @property
+    def nevents(self):
+        return self.nevents
+
+    @property
+    def got(self):
+        return self.got
