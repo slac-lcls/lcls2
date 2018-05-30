@@ -258,10 +258,21 @@ def main():
                     continue
 
                 if request == CMMsg.STARTCONNECT:
-                    # Send CONNECT broadcast
-                    logging.debug("Sending CONNECT broadcast")
+                    # Send CONNECT individually
+                    logging.debug("Sending CONNECT individually")
                     cmmsg = CMMsg(sequence, key=CMMsg.CONNECT)
-                    cmmsg.send(publisher)
+                    for key in cmstate.entries.keys():
+                        # skip connecting this entry if property select=0
+                        try:
+                            select = cmstate.entries[key][b'select']
+                        except KeyError:
+                            pass
+                        else:
+                            if select == b'0':
+                                continue
+
+                        cmd.send(key, zmq.SNDMORE)
+                        cmmsg.send(cmd)
 
                     # Send CONNECTSTARTED reply to client
                     logging.debug("Sending CONNECTSTARTED reply")
