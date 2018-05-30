@@ -14,8 +14,9 @@ from CMMsg import CMMsg
 def main():
 
     # Define commands
-    command_dict = { 'ph1': CMMsg.STARTPH1,
-                     'ph2': CMMsg.STARTPH2,
+    command_dict = { 'plat': CMMsg.STARTPLAT,
+                     'alloc': CMMsg.STARTALLOC,
+                     'connect': CMMsg.STARTCONNECT,
                      'dump': CMMsg.STARTDUMP,
                      'die': CMMsg.STARTDIE,
                      'kill': CMMsg.STARTKILL,
@@ -52,35 +53,35 @@ def main():
     else:
         print ("Received \"%s\"" % cmmsg.key.decode())
 
-    if cmmsg.key == CMMsg.STATE:
-        props = cmmsg.properties
+        if cmmsg.key == CMMsg.STATE:
+            props = cmmsg.properties
 
-        # platform
-        platform = 0
-        try:
-            platform = props[b'platform'].decode()
-        except KeyError:
-            print('E: platform key not found')
-        else:
-            print ('Platform:', platform)
+            # platform
+            platform = 0
+            try:
+                platform = props[b'platform'].decode()
+            except KeyError:
+                print('E: platform key not found')
+            else:
+                print ('Platform:', platform)
 
-        # partition name
-        partName = '(None)'
-        try:
-            partName = props[b'partName'].decode()
-        except KeyError:
-            print('E: partName key not found')
-        else:
-            print ('Partition name:', partName)
+            # partition name
+            partName = '(None)'
+            try:
+                partName = props[b'partName'].decode()
+            except KeyError:
+                print('E: partName key not found')
+            else:
+                print ('Partition name:', partName)
 
-        # nodes
-        try:
-            nodes = pickle.loads(cmmsg.body)
-        except Exception as ex:
-            print('E: pickle.loads()', ex)
-        else:
-            print ('Nodes:')
-            pprint.pprint (nodes)
+            # nodes
+            try:
+                nodes = pickle.loads(cmmsg.body)
+            except Exception as ex:
+                print('E: pickle.loads()', ex)
+            else:
+                print ('Nodes:')
+                pprint.pprint (nodes)
 
     return
 

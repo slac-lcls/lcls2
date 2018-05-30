@@ -208,7 +208,7 @@ def main():
                     cmmsg.send(cmd)
                     continue
 
-                if request == CMMsg.STARTPH1:
+                if request == CMMsg.STARTPLAT:
                     # Assign partition name
                     try:
                         prop = decode_properties(msg[4])
@@ -219,30 +219,54 @@ def main():
                         cmstate._partName = prop[b'partName'].decode()
                         logging.debug("Partition name: %s" % cmstate.partName())
                     else:
-                        logging.error("STARTPH1 message: No partName property")
+                        logging.error("STARTPLAT message: No partName property")
 
-                    # Send PH1 broadcast
-                    logging.debug("Sending PH1 broadcast")
-                    cmmsg = CMMsg(sequence, key=CMMsg.PH1)
+                    # Send PLAT broadcast
+                    logging.debug("Sending PLAT broadcast")
+                    cmmsg = CMMsg(sequence, key=CMMsg.PLAT)
                     cmmsg.send(publisher)
 
-                    # Send PH1STARTED reply to client
-                    logging.debug("Sending PH1STARTED reply")
+                    # Send PLATSTARTED reply to client
+                    logging.debug("Sending PLATSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(sequence, key=CMMsg.PH1STARTED)
+                    cmmsg = CMMsg(sequence, key=CMMsg.PLATSTARTED)
                     cmmsg.send(cmd)
                     continue
 
-                if request == CMMsg.STARTPH2:
-                    # Send PH2 broadcast
-                    logging.debug("Sending PH2 broadcast")
-                    cmmsg = CMMsg(sequence, key=CMMsg.PH2)
+                if request == CMMsg.STARTALLOC:
+                    # Send ALLOC individually
+                    logging.debug("Sending ALLOC individually")
+                    cmmsg = CMMsg(sequence, key=CMMsg.ALLOC)
+                    for key in cmstate.entries.keys():
+                        # skip allocating this entry if property select=0
+                        try:
+                            select = cmstate.entries[key][b'select']
+                        except KeyError:
+                            pass
+                        else:
+                            if select == b'0':
+                                continue
+
+                        cmd.send(key, zmq.SNDMORE)
+                        cmmsg.send(cmd)
+
+                    # Send ALLOCSTARTED reply to client
+                    logging.debug("Sending ALLOCSTARTED reply")
+                    cmd.send(identity, zmq.SNDMORE)
+                    cmmsg = CMMsg(sequence, key=CMMsg.ALLOCSTARTED)
+                    cmmsg.send(cmd)
+                    continue
+
+                if request == CMMsg.STARTCONNECT:
+                    # Send CONNECT broadcast
+                    logging.debug("Sending CONNECT broadcast")
+                    cmmsg = CMMsg(sequence, key=CMMsg.CONNECT)
                     cmmsg.send(publisher)
 
-                    # Send PH2STARTED reply to client
-                    logging.debug("Sending PH2STARTED reply")
+                    # Send CONNECTSTARTED reply to client
+                    logging.debug("Sending CONNECTSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(sequence, key=CMMsg.PH2STARTED)
+                    cmmsg = CMMsg(sequence, key=CMMsg.CONNECTSTARTED)
                     cmmsg.send(cmd)
                     continue
 
