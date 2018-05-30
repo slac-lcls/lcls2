@@ -1,4 +1,5 @@
 #include "psdaq/hsd/stream.hh"
+#include "psdaq/hsd/hsd.hh"
 
 #include <stdio.h>
 #include <ctype.h>
@@ -35,6 +36,7 @@ bool RawStream::validate(const EventHeader& event, const StreamHeader& next) con
              p[i], adc, (p[i]-adc)&0x7ff);
     }    
   }
+  ntest++;
   adc = this->next(p[i]);
 
   i++;
@@ -107,6 +109,6 @@ bool ThrStream::validate(const StreamHeader& raw) const {
     }
     i++;
   }
-        
+  printf("nerror/ntest: %d %d\n", nerror, ntest);
   return nerror==0;
 }

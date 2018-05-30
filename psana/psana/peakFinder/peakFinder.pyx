@@ -25,6 +25,7 @@ cdef extern from "../../../psalg/psalg/include/AllocArray.hh" namespace "psalg":
         cnp.uint32_t *shape()
         T *data()
         void incRefCnt()
+        T& operator()(unsigned i)
     cdef cppclass AllocArray[T](Array[T]):
         pass
     cdef cppclass AllocArray1D[T](AllocArray[T]):
@@ -48,7 +49,10 @@ cnp.import_array()
 # We need to build an array-wrapper class to deallocate our array when
 # the Python object is deleted.
 
-ctypedef AllocArray1D[float] arrf
+ctypedef fused arrf:
+    AllocArray1D[float]
+    AllocArray1D[cnp.uint8_t]
+    AllocArray1D[cnp.uint16_t]
 
 cdef class PyAllocArray1D:
     cdef void* shape_ptr
@@ -76,7 +80,7 @@ cdef class PyAllocArray1D:
         # Create a 1D array, of length 'size'
         ndarray = cnp.PyArray_SimpleNewFromData(1, shape, self.typenum, self.data_ptr)
 
-        # Increment the reference count, as the above assignement was done in
+        # Increment the reference count, as the above assignment was done in
         # C, and Python does not know that there is this additional reference
         Py_INCREF(self)
 

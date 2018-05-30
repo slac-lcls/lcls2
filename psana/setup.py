@@ -136,6 +136,23 @@ setup(name='bufferedreader',
                     sources=["src/bufferedreader.pyx"],  
       )))
 
+ext = Extension("hsd",
+                sources=["psana/hsd/hsd.pyx", "../psalg/psalg/src/PeakFinderAlgos.cpp", "../psalg/psalg/src/LocalExtrema.cpp"],
+                libraries=['xtcdata'],
+                language="c++",
+                extra_compile_args=['-std=c++11'],
+                include_dirs=[np.get_include(),
+                              "../psalg/psalg/include",
+                              "../install/include",
+                              "../psdaq/psdaq/hsd",
+                              os.path.join(xtcdata, 'include')],
+                library_dirs = [os.path.join(xtcdata, 'lib')],
+                extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+)
+
+setup(name="hsd",
+      ext_modules=cythonize(ext))
+
 '''
 from setuptools.command.build_ext import build_ext
 class dgram_build_ext(build_ext):

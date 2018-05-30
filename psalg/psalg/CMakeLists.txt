@@ -44,3 +44,13 @@ target_link_libraries(test_peakFinder
 add_test(NAME test_peakFinder COMMAND ${CMAKE_BINARY_DIR}/psalg/test_peakFinder
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Test 3: Hsd
+add_executable(test_hsd
+    test/test_hsd.cpp
+)
+target_link_libraries(test_hsd
+    psalg
+    xtcdata
+)
+add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

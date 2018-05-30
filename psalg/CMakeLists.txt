@@ -4,7 +4,7 @@ add_compile_options(-Wall)
 add_compile_options(-Wno-uninitialized)
 add_compile_options(-fno-omit-frame-pointer)
 
-#find_package(xtcdata REQUIRED)
+find_package(xtcdata REQUIRED)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

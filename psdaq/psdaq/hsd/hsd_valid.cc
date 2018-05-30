@@ -97,38 +97,22 @@ int main(int argc, char** argv) {
   char* line = new char[linesz];
   ssize_t sz;
   RawStream* vraw=0;
-  unsigned skipSize = 0x924;
 
   while(1) {  // event loop
     if (lText) {
       if ((sz=getline(&line, &linesz, f))<=0)
         break;
-      //      printf("Readline %zd [%32.32s]\n",sz, line);
       char* p = line;
       for(unsigned i=0; i<(sz+3)/4; i++, p++)
         event[i] = strtoul(p, &p, 16);
     }
 
     const EventHeader& eh = *reinterpret_cast<const EventHeader*>(event);
-
-    //    printf("Read event header into %p\n", &eh);
-    if (!lText) {
-      if (lSkipContainers)
-        if (fread((void*)&eh, skipSize, 1, f) == 0)
-          return 0;
-      if (fread((void*)&eh, sizeof(EventHeader), 1, f) == 0)
-        return 0;
-      skipSize = 0xc8;
-    }
-    eh.dump();
-    if (eh.eventType()) continue;
-
-    const char* next = reinterpret_cast<const char*>(&eh+1);
-
+    const char* next = 0;
     const StreamHeader* sh_raw = 0;
     if (streams&1) {
       printf("Starting raw\n");
-      sh_raw = reinterpret_cast<const StreamHeader*>(next);
+      sh_raw = reinterpret_cast<const StreamHeader*>(&eh);
       if (!lText) {
         if (fread((void*)sh_raw, sizeof(StreamHeader), 1, f) == 0)
           break;
@@ -140,8 +124,8 @@ int main(int argc, char** argv) {
         if (fread((void*)raw, 2, sh_raw->samples(), f) == 0)
           break;
       }
-      printf("\t"); for(unsigned i=0; i<8; i++) printf(" %04x", raw[i]); printf("\n");
-      printf("\t"); for(unsigned i=sh_raw->samples()-8; i<sh_raw->samples(); i++) printf(" %04x", raw[i]); printf("\n");
+      printf("sh_raw head:\t"); for(unsigned i=0; i<16; i++) printf(" %04x", raw[i]); printf("\n");
+      printf("sh_raw tail:\t"); for(unsigned i=sh_raw->samples()-16; i<sh_raw->samples(); i++) printf(" %04x", raw[i]); printf("\n");
 
       if (!vraw)
         vraw = new RawStream(eh, *sh_raw);
