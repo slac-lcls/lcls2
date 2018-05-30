@@ -2,14 +2,9 @@
 #define HSD_STREAMHEADER_HH
 
 #include "xtcdata/xtc/Dgram.hh"
-//#include "psdaq/hsd/hsd.hh"
 #include <stdint.h>
-
 #include <stdio.h>
 #include <cinttypes>
-//using namespace Pds::HSD;
-//using Pds::HSD::EventHeader;
-//using Pds::HSD::StreamHeader;
 
 namespace Pds {
   namespace HSD {
@@ -33,7 +28,7 @@ namespace Pds {
         uint32_t* word = (uint32_t*) this;
         for(unsigned i=0; i<8; i++)
           printf("[%d] %08x ", i, word[i]);//, i<7 ? '.' : '\n');
-        printf("pID [%016" PRIx64 "]  time [%u.%09u]  trig [%04x]  event [%u]  sync [%u]\n",
+        printf("pID [%016u]  time [%u.%09u]  trig [%04x]  event [%u]  sync [%u]\n",
                pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
                readoutGroups(), eventCount(), sync());
       }
