@@ -9,14 +9,17 @@ export INSTDIR=`pwd`/install
 cmake_option="Debug"
 pyInstallStyle="develop"
 psana_setup_args=""
+force_clean=0
 
-while getopts ":c:p:s:" opt; do
+while getopts ":c:p:s:f" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
     p) pyInstallStyle="$OPTARG"
     ;;
     s) psana_setup_args="$OPTARG"
+    ;;
+    f) force_clean=1                       # Force clean is required building between rhel6&7
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
     ;;
@@ -26,6 +29,21 @@ done
 echo "CMAKE_BUILD_TYPE:" $cmake_option
 echo "Python install option:" $pyInstallStyle
 
+if [ $force_clean == 1 ]; then
+    echo "force_clean"
+    if [ -d install ]; then
+        rm -rf install
+    fi
+    if [ -d xtcdata/build ]; then
+        rm -rf xtcdata/build
+    fi
+    if [ -d psdaq/build ]; then
+        rm -rf psdaq/build
+    fi
+    if [ -d psalg/build ]; then
+        rm -rf psalg/build
+    fi
+fi
 
 function cmake_build() {
     cd $1
