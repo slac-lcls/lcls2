@@ -8,11 +8,11 @@
 typedef struct {
     PyObject_HEAD
     PyObject* dict;
-    PyObject* dgram;
 } PyContainerObject;
 
 static void container_dealloc(PyContainerObject* self)
 {
+    Py_DECREF(self->dict);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -26,7 +26,6 @@ static PyObject* container_new(PyTypeObject* type, PyObject* args, PyObject* kwd
 
 static int container_init(PyContainerObject* self, PyObject* args, PyObject* kwds)
 {
-    PyArg_ParseTuple(args, "O", &(self->dgram));
     return 0;
 }
 
@@ -37,36 +36,6 @@ static PyMemberDef container_members[] = {
       (char*)"attribute dictionary" },
     { NULL }
 };
-
-static PyObject* tp_getattro(PyObject* self, PyObject* key)
-{
-    PyObject* res = PyDict_GetItem(((PyContainerObject*)self)->dict, key);
-    if (res != NULL) {
-        if (strcmp("numpy.ndarray", res->ob_type->tp_name) == 0) {
-            PyArrayObject* arr = (PyArrayObject*)res;
-            PyObject* arr_copy = PyArray_SimpleNewFromData(PyArray_NDIM(arr), PyArray_DIMS(arr),
-                                                           PyArray_DESCR(arr)->type_num, PyArray_DATA(arr));
-            if (PyArray_SetBaseObject((PyArrayObject*)arr_copy, ((PyContainerObject*)self)->dgram) < 0) {
-                printf("Failed to set BaseObject for numpy array.\n");
-                return 0;
-            }
-            //clear NPY_ARRAY_WRITEABLE flag
-            PyArray_CLEARFLAGS((PyArrayObject*)arr_copy, NPY_ARRAY_WRITEABLE);
-            // this reference count will get decremented when the returned
-            // array is deleted (since the array has us as the "base" object).
-            Py_INCREF(((PyContainerObject*)self)->dgram);
-            res=arr_copy;
-        } else {
-            // this reference count will get decremented when the returned
-            // variable is deleted, so must increment here.
-            Py_INCREF(res);
-        }
-    } else {
-        res = PyObject_GenericGetAttr(self, key);
-    }
-
-    return res;
-}
 
 static PyTypeObject container_ContainerType = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -85,7 +54,7 @@ static PyTypeObject container_ContainerType = {
     0, /* tp_hash */
     0, /* tp_call */
     0, /* tp_str */
-    tp_getattro, /* tp_getattro */
+    0, /* tp_getattro */
     0, /* tp_setattro */
     0, /* tp_as_buffer */
     (Py_TPFLAGS_DEFAULT 

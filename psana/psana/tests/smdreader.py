@@ -1,4 +1,4 @@
-from psana import bufferedreader, dgram
+from psana import smdreader, dgram
 import os, time
 import numpy as np
 from mpi4py import MPI
@@ -14,27 +14,19 @@ def smd_server(fds):
     """ Sends byte data to client
     Finds matching events across all smd files
     then sends byte data to all clients
-    FIXME: now first smd is assumed to be the
-    fastest dectector.
     """
     assert len(fds) > 0
     
-    eof = False
-    limit_ts = 0
-    bufrs = [bufferedreader.BufferedReader(fd) for fd in fds]
-    while not eof:
+    smdr = smdreader.SmdReader(fds)
+    got_events = -1
+    while got_events != 0:
+        smdr.get(n_events)
+        got_events = smdr.got_events
         views = bytearray()
-        for i, bufr in enumerate(bufrs):
-            if i == 0:
-                view = bufr.get(n_events)
-                limit_ts = bufr.timestamp
-                if view == 0:
-                    eof = True
-                    break
-            else:
-                view = bufr.get(n_events = n_events, limit_ts = limit_ts)
-            
-            views.extend(view)
+        for i in range(len(fds)):
+            view = smdr.view(i)
+            if view != 0:
+                views.extend(view)
             if i < len(fds) - 1:
                 views.extend(b'endofstream')
 

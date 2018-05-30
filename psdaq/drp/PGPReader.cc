@@ -141,6 +141,9 @@ void monitor_pgp(std::atomic<Counters*>& p, MemPool& pool)
         printf("Event rate %.2f kHz    Data rate  %.2f MB/s\n", event_rate, data_rate);
         int64_t epoch = std::chrono::duration_cast<std::chrono::duration<int64_t>>(
                         std::chrono::system_clock::now().time_since_epoch()).count();
+
+        printf("collector queue %u\n", pool.collector_queue.guess_size());
+
         // Inifiband counters are divided by 4 (lanes) https://community.mellanox.com/docs/DOC-2751
         double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / duration;
         double xmit_rate = 4.0*double(port_xmit_data - old_port_xmit_data) / duration;
@@ -169,6 +172,10 @@ void PGPReader::run()
     int64_t total_bytes_received = 0;
     while (true) {
         DmaBuffer* buffer = m_dev.read();
+        if (buffer->size > RX_BUFFER_SIZE) {
+            printf("ERROR: Buffer overflow, pgp message %d kB is bigger than RX_BUFFER_SIZE %d kB\n",
+                    buffer->size/1024, RX_BUFFER_SIZE/1024);
+        }
         total_bytes_received += buffer->size;
         PGPData* pgp = process_lane(buffer);
         if (pgp) {

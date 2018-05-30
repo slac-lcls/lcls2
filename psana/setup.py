@@ -133,7 +133,15 @@ setup(name='dgramchunk',
 setup(name='bufferedreader', 
       ext_modules = cythonize(Extension(
                     "psana.bufferedreader",                                 
-                    sources=["src/bufferedreader.pyx"],  
+                    sources=["psana/bufferedreader.pyx"],  
+                    include_dirs=["psana"],
+      )))
+
+setup(name='smdreader', 
+      ext_modules = cythonize(Extension(
+                    "psana.smdreader",                                 
+                    sources=["psana/smdreader.pyx"],  
+                    include_dirs=["psana"],
       )))
 
 ext = Extension("hsd",

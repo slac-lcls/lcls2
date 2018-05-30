@@ -37,7 +37,6 @@ using namespace std;
 struct ContainerInfo {
     PyObject* containermod;
     PyObject* pycontainertype;
-    PyObject* arglist;
 };
 
 struct PyDgramObject {
@@ -46,6 +45,7 @@ struct PyDgramObject {
     PyObject* pyseq;
     bool is_pyseq_valid;
 // Please do not access the dgram field directly. Instead use dgram()
+    PyObject* dgrambytes;
     Dgram* dgram_;
     Dgram*& dgram();
 #ifdef PSANA_USE_LEGION
@@ -85,12 +85,13 @@ static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
             break;
         } else {
             if (!PyObject_HasAttrString(parent, key)) {
-                PyObject* container = PyObject_CallObject(dgram->contInfo.pycontainertype, dgram->contInfo.arglist);
+                PyObject* container = PyObject_CallObject(dgram->contInfo.pycontainertype, NULL);
                 int fail = PyObject_SetAttrString(parent, key, container);
                 if (fail) printf("Dgram: failed to set container attribute\n");
                 Py_DECREF(container); // transfer ownership to parent
             }
             parent = PyObject_GetAttrString(parent, key);
+            Py_DECREF(parent); // we just want the pointer, not a new reference
         }
         key=next;
     }
@@ -167,22 +168,22 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             switch (name.type()) {
             case Name::UINT8: {
 	            const auto tempVal = descdata.get_value<uint8_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("I", tempVal);
                 break;
             }
             case Name::UINT16: {
                 const auto tempVal = descdata.get_value<uint16_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("I", tempVal);
                 break;
             }
             case Name::UINT32: {
                 const auto tempVal = descdata.get_value<uint32_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("k", tempVal);
                 break;
             }
             case Name::UINT64: {
                 const auto tempVal = descdata.get_value<uint64_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("K", tempVal);
                 break;
             }
             case Name::INT8: {
@@ -197,12 +198,12 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             }
             case Name::INT32: {
                 const auto tempVal = descdata.get_value<int32_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("l", tempVal);
                 break;
             }
             case Name::INT64: {
                 const auto tempVal = descdata.get_value<int64_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("L", tempVal);
                 break;
             }
             case Name::FLOAT: {
@@ -284,6 +285,12 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 break;
             }
             }
+            if (PyArray_SetBaseObject((PyArrayObject*)newobj, pyDgram->dgrambytes) < 0) {
+                printf("Failed to set BaseObject for numpy array.\n");
+            }
+            // PyArray_SetBaseObject steals a reference to the dgrambytes
+            // but we want the dgram to also keep a reference to it as well.
+            Py_INCREF(pyDgram->dgrambytes);
             //clear NPY_ARRAY_WRITEABLE flag
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
@@ -334,14 +341,6 @@ private:
 };
 
 void AssignDict(PyDgramObject* self, PyObject* configDgram) {
-    // ideally this would be in dgram_init, but it creates
-    // a circular reference putting the pointer in the arglist
-    // this perhaps suggests that we should refactor dgram back
-    // into two pieces, to avoid the circular references
-    self->contInfo.containermod = PyImport_ImportModule("psana.container");
-    self->contInfo.pycontainertype = PyObject_GetAttrString(self->contInfo.containermod,"Container");
-    self->contInfo.arglist = Py_BuildValue("(O)", self);
-
     bool isConfig;
     isConfig = (configDgram == 0) ? true : false;
     
@@ -354,10 +353,6 @@ void AssignDict(PyDgramObject* self, PyObject* configDgram) {
     
     PyConvertIter iter(&self->dgram()->xtc, self, namesIter.namesVec());
     iter.iterate();
-
-    Py_DECREF(self->contInfo.arglist);
-    Py_DECREF(self->contInfo.containermod);
-    Py_DECREF(self->contInfo.pycontainertype);
 }
 
 static void dgram_dealloc(PyDgramObject* self)
@@ -368,7 +363,8 @@ static void dgram_dealloc(PyDgramObject* self)
     Py_XDECREF(self->dict);
 #ifndef PSANA_USE_LEGION
     if (self->buf.buf == NULL) {
-        free(self->dgram());
+        // can be NULL if we had a problem early in dgram_init
+        Py_XDECREF(self->dgrambytes);
     } else {
         PyBuffer_Release(&(self->buf));
     }
@@ -376,6 +372,10 @@ static void dgram_dealloc(PyDgramObject* self)
     // In-place destructor is necessary because the dgram is deallocated with free below.
     self->array.~LegionArray();
 #endif
+    // can be NULL if we had a problem early in dgram_init
+    Py_XDECREF(self->contInfo.containermod);
+    Py_XDECREF(self->contInfo.pycontainertype);
+
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -480,9 +480,17 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 
     isView = (view!=0) ? true : false;
 
+    self->contInfo.containermod = PyImport_ImportModule("psana.container");
+    self->contInfo.pycontainertype = PyObject_GetAttrString(self->contInfo.containermod,"Container");
+
     if (!isView) {
 #ifndef PSANA_USE_LEGION
-        self->dgram() = (Dgram*)malloc(BUFSIZE);
+        PyObject* arglist = Py_BuildValue("(i)",BUFSIZE);
+        // I believe this memsets the buffer to 0, which we don't need.
+        // Perhaps ideally we would write a custom object to avoid this. - cpo
+        self->dgrambytes = PyObject_CallObject((PyObject*)&PyByteArray_Type, arglist);
+        Py_DECREF(arglist);
+        self->dgram() = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
 #else
         self->array = LegionArray(BUFSIZE);
         self->is_dgram_valid = false;
@@ -619,6 +627,10 @@ static PyMemberDef dgram_members[] = {
       (char*)"attribute file_descriptor" },
     { (char*)"_offset",
       T_INT, offsetof(PyDgramObject, offset),
+      0,
+      (char*)"attribute offset" },
+    { (char*)"_dgrambytes",
+      T_OBJECT_EX, offsetof(PyDgramObject, dgrambytes),
       0,
       (char*)"attribute offset" },
     { NULL }

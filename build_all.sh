@@ -54,5 +54,5 @@ python setup.py build_ext --xtcdata=$INSTDIR -f --inplace
 python setup.py $pyInstallStyle $psana_setup_args --xtcdata=$INSTDIR --prefix=$INSTDIR
 cd ..
 # build ami
-cd ami
-python setup.py $pyInstallStyle --prefix=$INSTDIR
+# cd ami
+# python setup.py $pyInstallStyle --prefix=$INSTDIR
