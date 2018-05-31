@@ -36,7 +36,8 @@ collection        = dbu.collection
 timestamp_id      = dbu.timestamp_id
 db_prefixed_name  = dbu.db_prefixed_name
 time_and_timestamp= dbu.time_and_timestamp
-
+exportdb          = dbu.exportdb
+importdb          = dbu.importdb
 
 #insert_data_and_doc = dbu.insert_data_and_doc
 #document_info     = dbu.document_info
@@ -50,11 +51,11 @@ from psana.graphqt.CMConfigParameters import cp
 
 #------------------------------
 
-def connect_client() :
-    host = cp.cdb_host.value()
-    port = cp.cdb_port.value()
-    logger.debug('Connect client to host: %s port: %d' % (host, port))
-    return dbu.connect_to_server(host, port)
+def connect_client(host=None, port=None) :
+    _host = cp.cdb_host.value() if host is None else host
+    _port = cp.cdb_port.value() if port is None else port
+    #logger.debug('Connect client to host: %s port: %d' % (_host, _port))
+    return dbu.connect_to_server(_host, _port)
 
 #------------------------------
 

@@ -44,7 +44,7 @@ def test_01():
 
 if __name__ == "__main__" :
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
-                        datefmt='%Y-%m-%dT%H:%M:S', level=logging.DEBUG) #filename='example.log', filemode='w'
+                        datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG) #filename='example.log', filemode='w'
     test_01()
     sys.exit('\nEnd of test')
 

@@ -27,8 +27,11 @@ logger = logging.getLogger(__name__)
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
 import psana.graphqt.CMDBUtils as dbu
+from psana.graphqt.CMQThreadClient import CMQThreadClient
+
 #import psana.pscalib.calib.MDBUtils as dbu
 from PyQt5.QtCore import pyqtSignal # Qt 
+    
 
 #------------------------------
 
@@ -39,6 +42,7 @@ class CMWDBTree(QWTree) :
 
     def __init__(self, parent=None) :
 
+        self.thread = None
         QWTree.__init__(self, parent)
         self._name = self.__class__.__name__
         cp.cmwdbtree = self
@@ -47,16 +51,33 @@ class CMWDBTree(QWTree) :
 
 
     def fill_tree_model(self, pattern='') :
-
+        self._pattern = pattern
         self.clear_model()
 
-        client = dbu.connect_client()
+        #self.fill_tree_model_for_client()
+
+        # connect in thread
+        if self.thread is not None : self.thread.quit()
+        self.thread = CMQThreadClient()
+        self.thread.connect_client_is_ready_to(self.fill_tree_model_for_client)
+        self.thread.start()
+
+
+    def fill_tree_model_for_client(self) :
+        #client = dbu.connect_client()
+
+        client = self.thread.client()
+        stat = self.thread.quit()
+
         if client is None :
-            logger.warning("Can't connect to server")
+            host = cp.cdb_host.value()
+            port = cp.cdb_port.value()
+            logger.warning("Can't connect to host: %s port: %d" % (host, port))
             return
 
         #pattern = 'cdb_xcs'
         #pattern = 'cspad'
+        pattern = self._pattern
         dbnames = dbu.database_names(client)
         if pattern :
             dbnames = [name for name in dbnames if pattern in name]

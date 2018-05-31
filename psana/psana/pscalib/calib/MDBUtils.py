@@ -72,6 +72,10 @@ Usage ::
 
     mu.insert_constants(data, experiment:str, detector:str, ctype:str, run:str, time_sec:str, **kwargs)
 
+    mu.exec_command(cmd)
+    mu.exportdb(host, port, dbname, fname, **kwa) 
+    mu.importdb(host, port, dbname, fname, **kwa) 
+
     # Delete data
     mu.del_document_data(doc, fs)
     mu.del_collection_data(col, fs)
@@ -120,16 +124,18 @@ TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 
 #------------------------------
 
-def connect_to_server(host:str=cc.HOST, port:int=cc.PORT) :
+def connect_to_server(host:str=cc.HOST, port:int=cc.PORT, ctout=5000, stout=30000) :
     """Returns MongoDB client.
     """
-    client = MongoClient(host, port, connect=False)
+    client = MongoClient(host, port, connect=False, connectTimeoutMS=ctout, socketTimeoutMS=stout)
     try :
         result = client.admin.command("ismaster")
         return client
 
     except errors.ConnectionFailure:
-        print("Server not available for port:%s host: %d" % (host, port))
+        #msg = 'Server not available for port:%s host: %d' % (host, port)
+        #print(msg)
+        #logger.debug(msg)
         #logger.exception(err)
         #sys.exit("ERROR can't connect to port:%s host: %d" % (host, port))
         return None
@@ -602,6 +608,45 @@ def del_collection_data(col, fs) :
         #oid = doc.get('id_data', None)
         #if oid is None : return
         #fs.delete(oid)
+
+#------------------------------
+
+def exec_command(cmd) :
+    from psana.pscalib.proc.SubprocUtils import subproc
+    logger.debug('Execute shell command: %s' % cmd)
+    if not gu.shell_command_is_available(cmd.split()[0], verb=True) : return
+    out,err = subproc(cmd, env=None, shell=False, do_wait=True)
+    if out or err :
+        logger.warning('err: %s\nout: %s' % (err,out))
+
+#------------------------------
+
+def exportdb(host, port, dbname, fname, **kwa) :
+    client = connect_to_server(host, port)
+    dbnames = database_names(client)
+    if not (dbname in dbnames) :
+        logger.warning('--dbname %s is not available in the list:\n%s' % (dbname, dbnames))
+        return
+
+    cmd = 'mongodump --host %s --port %s --db %s --archive %s' % (host, port, dbname, fname) # --gzip 
+    exec_command(cmd)
+
+#------------------------------
+
+def importdb(host, port, dbname, fname, **kwa) :
+
+    if fname is None :
+        logger.warning('WARNING input archive file name should be specified as --iofname <fname>')
+        return 
+
+    client = connect_to_server(host, port)
+    dbnames = database_names(client)
+    if dbname in dbnames :
+        logger.warning('WARNING: --dbname %s is already available in the list:\n%s' % (dbname, dbnames))
+        return
+
+    cmd = 'mongorestore --host %s --port %s --db %s --archive %s' % (host, port, dbname, fname)
+    exec_command(cmd)
 
 #------------------------------
 #------------------------------

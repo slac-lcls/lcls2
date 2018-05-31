@@ -87,7 +87,7 @@ from subprocess import call, getoutput
 #------------------------------
 
 import logging
-logger = logging.getLogger('Utils')
+logger = logging.getLogger('__name__')
 
 TSFORMAT = '%Y-%m-%dT%H:%M:%S%z'
 
@@ -166,7 +166,7 @@ def get_login() :
 def shell_command_is_available(cmd='mongorestore', verb=True) :
     import shutil
     if shutil.which(cmd) is None :
-        if verb : print('WARNING: shell command "%s" is unavailable.' % cmd)
+        if verb : logger.warning('shell command "%s" is unavailable.' % cmd)
         return 
 
 #------------------------------
@@ -546,7 +546,7 @@ if __name__ == "__main__" :
 
 if __name__ == "__main__" :
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
-                        datefmt='%Y-%m-%dT%H:%M:S',\
+                        datefmt='%Y-%m-%dT%H:%M:%S',\
                         level=logging.DEBUG)
                         #filename='example.log', filemode='w'
     test_01()

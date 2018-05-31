@@ -317,66 +317,38 @@ class MDB_CLI :
         logger.info('Save constants in file: %s' % fname)
 
 
-    def exec_command(self, cmd) :
-        from psana.pscalib.proc.SubprocUtils import subproc
-        logger.info('Execute shell command: %s' % cmd)
-        if not gu.shell_command_is_available(cmd.split()[0], verb=True) : return
-        out,err = subproc(cmd, env=None, shell=False, do_wait=True)
-        logger.info('err: %s\nout: %s' % (err,out))
+    def host_port_dbname_fname(self) :
+        kwargs = self.kwargs
+        host   = kwargs.get('host', None)
+        port   = kwargs.get('port', None)
+        dbname = kwargs.get('dbname', None)
+        fname  = kwargs.get('iofname', None)
+        return host, port, dbname, fname
 
 
     def exportdb(self) :
         """Exports database. Equivalent to: mongodump -d <dbname> -o <filename>
            mongodump --host psanaphi105 --port 27017 --db calib-cxi12345 --archive=db.20180122.arc 
         """
-        kwargs = self.kwargs
-        host   = kwargs.get('host', None)
-        port   = kwargs.get('port', None)
-        dbname = kwargs.get('dbname', None)
-        ofname = kwargs.get('iofname', None)
-
-        dbnames = dbu.database_names(self.client())
-        if not (dbname in dbnames) :
-            logger.warning('--dbname %s is not available in the list:\n%s' % (dbname, dbnames))
-            return
+        host, port, dbname, fname = self.host_port_dbname_fname()
 
         tstamp = gu.str_tstamp(fmt='%Y-%m-%dT%H-%M-%S')
-        fname = 'cdb-%s-%s.arc' % (tstamp, dbname) if ofname is None else ofname
+        fname = 'cdb-%s-%s.arc' % (tstamp, dbname) if fname is None else fname
 
-        cmd = 'mongodump --host %s --port %s --db %s --archive %s' % (host, port, dbname, fname)
-        self.exec_command(cmd)
+        dbu.exportdb(host, port, dbname, fname)
 
 
     def importdb(self) :
         """Imports database. Equivalent to: mongorestore -d <dbname> --archive <filename>
            mongorestore --archive cdb-2018-03-09T10-19-30-cdb-cxix25115.arc --db calib-cxi12345
         """
-        kwargs = self.kwargs
-        host   = kwargs.get('host', None)
-        port   = kwargs.get('port', None)
-        dbname = kwargs.get('dbname', None)
-        fname  = kwargs.get('iofname', None)
+        host, port, dbname, fname = self.host_port_dbname_fname()
 
-        if fname is None :
-            logger.warning('WARNING input archive file name should be specified as --iofname <fname>')
-            return 
-
-        dbnames = dbu.database_names(self.client())
-        if dbname in dbnames :
-            logger.warning('WARNING: --dbname %s is already available in the list:\n%s' % (dbname, dbnames))
-            return
-
-        cmd = 'mongorestore --host %s --port %s --db %s --archive %s' % (host, port, dbname, fname)
-        self.exec_command(cmd)
+        dbu.importdb(host, port, dbname, fname)
 
 
     def test(self) :
-        kwargs = self.kwargs
-        host   = kwargs.get('host', None)
-        port   = kwargs.get('port', None)
-        dbname = kwargs.get('dbname', None)
-        ofname = kwargs.get('iofname', None)
-
+        host, port, dbname, fname = self.host_port_dbname_fname()
         dbnames = dbu.database_names(self.client())
         logger.info('XXX : dbnames:' % dbnames)
 

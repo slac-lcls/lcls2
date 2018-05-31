@@ -160,6 +160,22 @@ def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
 
 #------------------------------
 
+def get_existing_directory_through_dialog_box(parent, path0, title, options = QFileDialog.ShowDirsOnly):       
+
+    path = QFileDialog.getExistingDirectory(parent, title, path0, options)
+
+    #logger.debug('XXX: get_open_fname_through_dialog_box path =', path)
+    #logger.debug('XXX: get_open_fname_through_dialog_box fext =', fext)
+
+    dname = path #, fname = os.path.split(path)
+    if dname == '' :
+        # logger.debug('Input directiry name or file name is empty... keep file path unchanged...'
+        return None
+    logger.info('Selected directory: %s' % path) 
+    return path
+
+#------------------------------
+
 def confirm_dialog_box(parent=None, text='Please confirm that you aware!', title='Please acknowledge') :
         """Pop-up MODAL box for confirmation"""
 

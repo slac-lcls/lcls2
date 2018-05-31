@@ -18,7 +18,7 @@ See:
 Created on 2017-04-05 by Mikhail Dubrovin
 """
 #------------------------------
-
+import os
 import logging
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,9 @@ from psana.graphqt.Styles import style
 from psana.graphqt.QWIcons import icon
 
 from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu,\
-     confirm_or_cancel_dialog_box, select_item_from_popup_menu
+     confirm_or_cancel_dialog_box, select_item_from_popup_menu,\
+     get_existing_directory_through_dialog_box,\
+     get_open_fname_through_dialog_box
 
 import psana.graphqt.CMDBUtils as dbu
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
@@ -531,7 +533,7 @@ class CMWDBButtons(QWidget) :
     def delete_selected_items_db_cols(self):
         wtree = cp.cmwdbtree
         if wtree is None :
-            logger.warning('delete_selected_items_db_cols - tree object does not exist?')
+            logger.warning('delete_selected_items_db_cols - CMWDBTree object does not exist?')
             return
         # dict of pairs {<item-name> : <item-parent-name>}
         # where <item-parent-name> is None for DB item or DB name for collection item.
@@ -596,6 +598,40 @@ class CMWDBButtons(QWidget) :
 
 #-----------------------------
 
+    def add_selected_item(self):
+        """On press of Add button deside what to add
+           db from file or document from editor window
+        """
+        if cp.last_selection == cp.DOCS : self.add_doc()
+        else : self.add_db()
+        #if cp.last_selection == cp.DB_COLS: self.add_db()
+        #else :
+        #    logger.warning('Nothing selected to delete. Select DBs, collections, '\
+        #                   'or documents then click on Delete button again.')
+
+#-----------------------------
+
+    def add_db(self):
+        """Adds DB from file
+        """
+        logger.debug('TBD: In add_db - Adds DB from file')
+
+        path0 = '.'
+        path = get_open_fname_through_dialog_box(self, path0, 'Select file with DB to add', filter='*')
+        if path is None : 
+            logger.warning('DB file selection is cancelled')
+            return
+
+        host = cp.cdb_host.value()
+        port = cp.cdb_port.value()
+
+        dbname = os.path.basename(path) # ????????????????????? split file extension?
+
+        logger.info('Add DB "%s" from file %s' % (dbname, path))
+        dbu.importdb(host, port, dbname, path) #, **kwa)
+
+#-----------------------------
+
     def add_doc(self):
         """Adds document from editor to DB
         """
@@ -638,6 +674,51 @@ class CMWDBButtons(QWidget) :
         run = int(d.get('run', '0'))
         ctype = d.get('ctype', 'ctype')
         return 'doc-%s-%s-r%04d-%s' % (exp, det, run, ctype)
+
+#-----------------------------
+
+    def save_selected_item(self):
+        """On press of Delete button deside what to delete 
+           dbs and collections from the tree or documents from the list
+        """
+        if   cp.last_selection == cp.DB_COLS: self.save_db()
+        elif cp.last_selection == cp.DOCS   : self.save_doc()
+        else :
+            logger.warning('Nothing selected to delete. Select DBs, collections, '\
+                           'or documents then click on Delete button again.')
+            return
+
+#-----------------------------
+
+    def selected_db_names(self):
+        wtree = cp.cmwdbtree
+        if wtree is None :
+            logger.warning('selected_db_names - CMWDBTree object does not exist?')
+            return []
+        return [item.text() for item in wtree.selected_items() if item.parent() is None]
+
+#-----------------------------
+
+    def save_db(self):
+        """Saves selected DBs in files
+        """
+        bdnames = self.selected_db_names()
+        logger.debug('In save_db bdnames:\n    %s' % '\n    '.join(bdnames))
+
+        host = cp.cdb_host.value()
+        port = cp.cdb_port.value()
+
+        path0 = '.'
+        #resp = get_open_fname_through_dialog_box(self, path0, title='Select directory for DB files', filter='*')
+        resp = get_existing_directory_through_dialog_box(self, path0, title='Select directory for DB files')
+
+        if resp is None : 
+            logger.warning('Saving of DBs is cancelled')
+            return
+
+        for dbname in bdnames :
+            fname = '%s/%s' % (resp, dbname)
+            dbu.exportdb(host, port, dbname, fname) #, **kwa)
 
 #-----------------------------
 
@@ -685,8 +766,8 @@ class CMWDBButtons(QWidget) :
         elif but == self.but_del      : self.delete_selected_items()
         elif but == self.but_docs     : self.select_doc_widget()
         elif but == self.but_selm     : self.set_selection_mode()
-        elif but == self.but_add      : self.add_doc()
-        elif but == self.but_save     : self.save_doc()
+        elif but == self.but_add      : self.add_selected_item()
+        elif but == self.but_save     : self.save_selected_item()
         #elif but == self.but_level    : self.set_logger_level()
 
 
