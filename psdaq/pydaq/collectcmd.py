@@ -6,7 +6,7 @@ Author: Chris Ford <caf@slac.stanford.edu>
 """
 import time
 import zmq
-import pickle
+import zmq.utils.jsonapi as json
 import pprint
 import argparse
 from CMMsg import CMMsg
@@ -39,8 +39,8 @@ def main():
 
     # Compose message
     newmsg = CMMsg(0, key=command_dict[args.command])
-    newmsg[b'partName'] = args.P.encode(encoding='UTF-8')
-    newmsg[b'platform'] = ('%d' % args.p).encode(encoding='UTF-8')
+    newmsg['partName'] = args.P
+    newmsg['platform'] = ('%d' % args.p)
 
     # Send message
     newmsg.send(cmd_socket)
@@ -59,7 +59,7 @@ def main():
             # platform
             platform = 0
             try:
-                platform = props[b'platform'].decode()
+                platform = props['platform']
             except KeyError:
                 print('E: platform key not found')
             else:
@@ -68,7 +68,7 @@ def main():
             # partition name
             partName = '(None)'
             try:
-                partName = props[b'partName'].decode()
+                partName = props['partName']
             except KeyError:
                 print('E: partName key not found')
             else:
@@ -76,9 +76,9 @@ def main():
 
             # nodes
             try:
-                nodes = pickle.loads(cmmsg.body)
+                nodes = json.loads(cmmsg.body)
             except Exception as ex:
-                print('E: pickle.loads()', ex)
+                print('E: json.loads()', ex)
             else:
                 print ('Nodes:')
                 pprint.pprint (nodes)

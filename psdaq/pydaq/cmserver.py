@@ -10,11 +10,10 @@ import zmq
 import sys
 import time
 import logging
-import pickle
+import zmq.utils.jsonapi as json
 import pprint
 import argparse
 
-from kvmsg import decode_properties
 from CMMsg import CMMsg
 from ZTimer import ZTimer
 
@@ -81,7 +80,7 @@ class CMState(object):
         for k in self.entries.keys():
             try:
                 # check for matching ip+pid
-                if ((self.entries[k][b'ip'] == prop[b'ip']) and (self.entries[k][b'pid'] == prop[b'pid'])):
+                if ((self.entries[k]['ip'] == prop['ip']) and (self.entries[k]['pid'] == prop['pid'])):
                     rv.append(k)
             except:
                 pass
@@ -91,8 +90,8 @@ class CMState(object):
         rlist = []
         for k in keylist:
             if k in self.entries:
-                rlist.append("%s/%s" % (self.entries[k][b'ip'].decode(),
-                             self.entries[k][b'pid'].decode()))
+                rlist.append("%s/%s" % (self.entries[k]['ip'],
+                             self.entries[k]['pid']))
                 del self.entries[k]
         return rlist
 
@@ -201,25 +200,32 @@ def main():
                     # Send STATE reply to client
                     logging.debug("Sending STATE reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    testbody = pickle.dumps(cmstate.nodes())
+                    print('cmstate.nodes():', cmstate.nodes())
+                    try:
+#                       testbody = json.dumps([{'key5': 5, 'key7': 7}, "Hi"])
+                        testbody = json.dumps(cmstate.nodes())
+                    except Exception as ex:
+                        logging.error(ex)
+                        testbody = ''
                     cmmsg = CMMsg(sequence, key=CMMsg.STATE, body=testbody)
-                    cmmsg[b'platform'] = ('%d' % cmstate.platform()).encode('UTF-8')
-                    cmmsg[b'partName'] = cmstate.partName().encode('UTF-8')
+                    cmmsg['platform'] = cmstate.platform()
+                    cmmsg['partName'] = cmstate.partName()
                     cmmsg.send(cmd)
                     continue
 
                 if request == CMMsg.STARTPLAT:
                     # Assign partition name
                     try:
-                        prop = decode_properties(msg[4])
+                        prop = json.loads(msg[4])
                     except Exception as ex:
                         logging.error(ex)
                         prop = {}
-                    if b'partName' in prop:
-                        cmstate._partName = prop[b'partName'].decode()
-                        logging.debug("Partition name: %s" % cmstate.partName())
-                    else:
+                    try:
+                        cmstate._partName = prop['partName']
+                    except KeyError:
                         logging.error("STARTPLAT message: No partName property")
+                        cmstate._partName = 'Unassigned'
+                    logging.debug("Partition name: %s" % cmstate._partName)
 
                     # Send PLAT broadcast
                     logging.debug("Sending PLAT broadcast")
@@ -240,11 +246,11 @@ def main():
                     for key in cmstate.entries.keys():
                         # skip allocating this entry if property select=0
                         try:
-                            select = cmstate.entries[key][b'select']
+                            select = cmstate.entries[key]['select']
                         except KeyError:
                             pass
                         else:
-                            if select == b'0':
+                            if select == 0:
                                 continue
 
                         cmd.send(key, zmq.SNDMORE)
@@ -264,11 +270,11 @@ def main():
                     for key in cmstate.entries.keys():
                         # skip connecting this entry if property select=0
                         try:
-                            select = cmstate.entries[key][b'select']
+                            select = cmstate.entries[key]['select']
                         except KeyError:
                             pass
                         else:
-                            if select == b'0':
+                            if select == 0:
                                 continue
 
                         cmd.send(key, zmq.SNDMORE)
@@ -285,7 +291,7 @@ def main():
                     # Send KILL broadcast
                     logging.debug("Sending KILL broadcast")
                     cmmsg = CMMsg(sequence, key=CMMsg.KILL)
-                    cmmsg[b'platform'] = ('%d' % cmstate.platform()).encode('UTF-8')
+                    cmmsg['platform'] = cmstate.platform()
                     cmmsg.send(publisher)
 
                     # reset the CM state
@@ -295,7 +301,7 @@ def main():
                     logging.debug("Sending KILLSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
                     cmmsg = CMMsg(sequence, key=CMMsg.KILLSTARTED)
-                    cmmsg[b'platform'] = ('%d' % cmstate.platform()).encode('UTF-8')
+                    cmmsg['platform'] = cmstate.platform()
                     cmmsg.send(cmd)
                     continue
 
@@ -314,7 +320,7 @@ def main():
 
                 elif request == CMMsg.HELLO:
                     try:
-                        prop = decode_properties(msg[4])
+                        prop = json.loads(msg[4])
                     except Exception as ex:
                         logging.error(ex)
                         prop = {}
@@ -340,13 +346,13 @@ def main():
 
                 elif request == CMMsg.PORTS:
                     try:
-                        prop = decode_properties(msg[4])
+                        prop = json.loads(msg[4])
                     except:
                         prop = {}
 
-                    if b'ports' in prop:
+                    if 'ports' in prop:
                         try:
-                            cmstate[identity][b'ports'] = prop[b'ports']
+                            cmstate[identity]['ports'] = prop['ports']
                         except:
                             logging.debug("Setting PORTS property failed")
                     else:

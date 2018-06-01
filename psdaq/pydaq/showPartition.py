@@ -4,7 +4,7 @@ CM showPartition command
 """
 import sys
 import zmq
-import pickle
+import zmq.utils.jsonapi as json
 import pprint
 import argparse
 from CMMsg import CMMsg
@@ -40,38 +40,45 @@ def main():
             # platform
             platform = '0'
             try:
-                platform = props[b'platform'].decode()
+                platform = props['platform']
             except KeyError:
                 print('E: platform key not found')
 
             # partition name
             partName = '(None)'
             try:
-                partName = props[b'partName'].decode()
+                partName = props['partName']
             except KeyError:
                 print('E: partName key not found')
 
             # nodes
             nodes = []
             try:
-                nodes = pickle.loads(msg.body)
-            except EOFError:
-                print('E: pickle.loads(msg.body) EOF')
+                nodes = json.loads(msg.body)
+            except Exception as ex:
+                print('E: json.loads()', ex)
                 nodes = []
             displayList = []
             for nn in nodes:
-                level = nn[b'level'].decode()
-                pid = nn[b'pid'].decode()
-                ip = nn[b'ip'].decode()
-                portDisplay = ""
-                if b'ports' in nn:
-                    try:
-                        ports = pickle.loads(nn[b'ports'])
-                    except:
-                        print ("E: pickle.loads(ports)")
-                        ports = []
-                    if len(ports) > 0:
-                        portDisplay = pprint.pformat(ports)
+                try:
+                    level = nn['level']
+                except KeyError:
+                    print('E: level key not found')
+                    level = 0
+                try:
+                    pid = nn['pid']
+                except KeyError:
+                    print('E: pid key not found')
+                    pid = 0
+                try:
+                    ip = nn['ip']
+                except KeyError:
+                    print('E: ip key not found')
+                    pid = '0.0.0.0'
+                try:
+                    portDisplay = "%s" % nn['ports']
+                except KeyError:
+                    portDisplay = ""
                 display = "%s/%s/%-16s  %s" % (level, pid, ip, portDisplay)
                 displayList.append(display)
 

@@ -12,27 +12,7 @@ from uuid import uuid4
 
 import zmq
 # zmq.jsonapi ensures bytes, instead of unicode:
-
-def encode_properties(properties_dict):
-    prop_s = b""
-    for key, value in properties_dict.items():
-        prop_s += b"%s=%s\n" % (key, value)
-    return prop_s
-
-
-def decode_properties(prop_s):
-    prop = {}
-    line_array = prop_s.split(b"\n")
-
-    for line in line_array:
-        try:
-            key, value = line.split(b"=")
-            prop[key] = value
-        except ValueError as e:
-            #Catch empty line
-            pass
-
-    return prop
+import zmq.utils.jsonapi as json
 
 class KVMsg(object):
     """
@@ -82,7 +62,7 @@ class KVMsg(object):
         key = b'' if self.key is None else self.key
         seq_s = struct.pack('!q', self.sequence)
         body = b'' if self.body is None else self.body
-        prop_s = encode_properties(self.properties)
+        prop_s = json.dumps(self.properties)
         socket.send_multipart([ key, seq_s, self.uuid, prop_s, body ])
 
     @classmethod
@@ -97,30 +77,25 @@ class KVMsg(object):
         key = key if key else None
         seq = struct.unpack('!q',seq_s)[0]
         body = body if body else None
-        prop = decode_properties(prop_s)
+        prop = json.loads(prop_s)
         return cls(seq, uuid=uuid, key=key, properties=prop, body=body)
     
-    def __repr__(self):
+    def dump(self):
         if self.body is None:
             size = 0
-            data=b'NULL'
+            data='NULL'
         else:
             size = len(self.body)
-            data = repr(self.body)
-        
-        mstr = "[seq:{seq}][key:{key}][size:{size}][props:{props}][data:{data}]".format(
+            data=repr(self.body)
+        print >> sys.stderr, "[seq:{seq}][key:{key}][size:{size}] {props} {data}".format(
             seq=self.sequence,
             # uuid=hexlify(self.uuid),
             key=self.key,
             size=size,
-            props=encode_properties(self.properties),
+            props=json.dumps(self.properties),
             data=data,
         )
-        return mstr
-        
-    
-    def dump(self):
-        print("<<", str(self), ">>", file=sys.stderr)
+
 # ---------------------------------------------------------------------
 # Runs self test of class
 

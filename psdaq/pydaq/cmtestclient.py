@@ -4,14 +4,7 @@ import time
 import zmq
 from CMMsg import CMMsg
 import sys
-import pickle
 import argparse
-
-def encode_int(in_int):
-    return ('%d' % in_int).encode(encoding='UTF-8')
-
-def encode_str(in_str):
-    return in_str.encode(encoding='UTF-8')
 
 def main():
 
@@ -72,19 +65,22 @@ def main():
                 #   'ip'       : '172.NN.NN.NN'
                 #   'ether'    : 'NN:NN:NN:NN:NN:NN'
                 # }
-                newmsg[b'platform'] = encode_int(args.p)
+                newmsg['platform'] = args.p
                 if unselect:
-                    newmsg[b'select'] = encode_int(0)
-                newmsg[b'group'] = newmsg[b'uid'] = newmsg[b'level'] = \
-                    encode_int(clientId)
-                newmsg[b'pid'] = \
-                    encode_int(25000 + (111 * clientId))
-                newmsg[b'ip'] = \
-                    encode_str('172' + (3 * ('.%d%d' % (clientId, clientId))))
-                newmsg[b'ether'] = \
-                    encode_str(('%d%d' % (clientId, clientId)) +
-                               (5 * (':%d%d' % (clientId, clientId))))
-                newmsg.send(cmd)
+                    newmsg['select'] = 0
+                newmsg['group'] = newmsg['uid'] = newmsg['level'] = \
+                    clientId
+                newmsg['pid'] = \
+                    25000 + (111 * clientId)
+                newmsg['ip'] = \
+                    '172' + (3 * ('.%d%d' % (clientId, clientId)))
+                newmsg['ether'] = \
+                    '%d%d' % (clientId, clientId) + \
+                               (5 * (':%d%d' % (clientId, clientId)))
+                try:
+                    newmsg.send(cmd)
+                except Exception as ex:
+                    print('E: newmsg.send()', ex)
 
             elif cmmsg.key == CMMsg.ALLOC:
                 if verbose:
@@ -96,9 +92,9 @@ def main():
                 #   'endpoint' : 'tcp://localhost:NNNN'
                 # }
                 ports = {}
-                ports[b'name'] = 'port%d' % clientId
-                ports[b'endpoint'] = 'tcp://localhost:' + 4 * str(clientId)
-                newmsg[b'ports'] = pickle.dumps(ports)
+                ports['name'] = 'port%d' % clientId
+                ports['endpoint'] = 'tcp://localhost:' + 4 * str(clientId)
+                newmsg['ports'] = ports
                 newmsg.send(cmd)
 
             elif cmmsg.key == CMMsg.DIE:
@@ -126,10 +122,13 @@ def main():
                 #   'endpoint' : 'tcp://localhost:NNNN'
                 # }
                 ports = {}
-                ports[b'name'] = 'port%d' % clientId
-                ports[b'endpoint'] = 'tcp://localhost:' + 4 * str(clientId)
-                newmsg[b'ports'] = pickle.dumps(ports)
-                newmsg.send(cmd)
+                ports['name'] = 'port%d' % clientId
+                ports['endpoint'] = 'tcp://localhost:' + 4 * str(clientId)
+                newmsg['ports'] = ports
+                try:
+                    newmsg.send(cmd)
+                except Exception as ex:
+                    print('E: newmsg.send()', ex)
 
             else:
                 if verbose:
