@@ -5,6 +5,7 @@ import zmq
 from CMMsg import CMMsg
 import sys
 import argparse
+import socket
 
 def main():
 
@@ -82,21 +83,6 @@ def main():
                 except Exception as ex:
                     print('E: newmsg.send()', ex)
 
-            elif cmmsg.key == CMMsg.ALLOC:
-                if verbose:
-                    print( "Received ALLOC, sending PORTS")
-                newmsg = CMMsg(0, key=CMMsg.PORTS)
-                # Create simulated ports entry based on clientId N
-                # {
-                #   'name' : 'portN',
-                #   'endpoint' : 'tcp://localhost:NNNN'
-                # }
-                ports = {}
-                ports['name'] = 'port%d' % clientId
-                ports['endpoint'] = 'tcp://localhost:' + 4 * str(clientId)
-                newmsg['ports'] = ports
-                newmsg.send(cmd)
-
             elif cmmsg.key == CMMsg.DIE:
                 if verbose:
                     print( "Received DIE, exiting")
@@ -106,9 +92,8 @@ def main():
                 if verbose:
                     print( "Received KILL, ignoring")
 
-            else:
-                if verbose:
-                    print( "Client ID %d: Received key=\"%s\" on SUB socket" % (clientId, cmmsg.key))
+            elif verbose:
+                print( "Client ID %d: Received key=\"%s\" on SUB socket" % (clientId, cmmsg.key))
 
         if cmd in items:
             cmmsg = CMMsg.recv(cmd)
@@ -118,21 +103,19 @@ def main():
                 newmsg = CMMsg(0, key=CMMsg.PORTS)
                 # Create simulated ports entry based on clientId N
                 # {
-                #   'name' : 'portN',
-                #   'endpoint' : 'tcp://localhost:NNNN'
+                #   'name' : 'port<N>',
+                #   'host' : 'HHHHH',
+                #   'port' : 5550<N>
                 # }
                 ports = {}
                 ports['name'] = 'port%d' % clientId
-                ports['endpoint'] = 'tcp://localhost:' + 4 * str(clientId)
-                newmsg['ports'] = ports
-                try:
-                    newmsg.send(cmd)
-                except Exception as ex:
-                    print('E: newmsg.send()', ex)
+                ports['host'] = socket.gethostname()
+                ports['port'] = 55500 + clientId
+                newmsg['ports'] = [ ports ]
+                newmsg.send(cmd)
 
-            else:
-                if verbose:
-                    print( "Client ID %d: Received key=\"%s\" on DEALER socket" % (clientId, cmmsg.key))
+            elif verbose:
+                print( "Client ID %d: Received key=\"%s\" on DEALER socket" % (clientId, cmmsg.key))
 
     print ("Interrupted")
     sys.exit(0)
