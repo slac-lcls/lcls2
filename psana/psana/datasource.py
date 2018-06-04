@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, glob
 from psana import dgram
 from psana.dgrammanager import DgramManager
 import numpy as np
@@ -41,7 +41,7 @@ def server(ds):
     in a batch (batch default size=1)
     """
     rankreq = np.empty(1, dtype='i')
-    offset_batch = np.ones([ds.nfiles, 2, ds.lbatch], dtype='i') * -1
+    offset_batch = np.ones([ds.nfiles[0], 2, ds.lbatch], dtype='i') * -1
     nevent = 0
     for evt in ds.dm:
         if ds.filter: 
@@ -67,7 +67,7 @@ def client(ds):
     is_done = False
     while not is_done:
         comm.Send(np.array([rank], dtype='i'), dest=0)
-        offset_batch = np.empty([ds.nfiles, 2, ds.lbatch], dtype='i')
+        offset_batch = np.empty([ds.nfiles[0], 2, ds.lbatch], dtype='i')
         comm.Recv(offset_batch, source=0)
         for i in range(offset_batch.shape[2]):
             offsets_and_sizes = offset_batch[:,:,i]
@@ -153,20 +153,43 @@ class DataSource(object):
         if not self.read_files:
             self.dm = DgramManager(self.xtc_files)
         else:
-            #TODO: replace data.xtc/smd.xtc with experimental files
+            if rank == 0:
+                opts = expstr.split(':')
+                exp = {}
+                for opt in opts:
+                    items = opt.split('=')
+                    assert len(items) == 2
+                    exp[items[0]] = items[1]
+            
+                if 'dir' in exp:
+                    xtc_path = exp['dir']
+                    run = ''
+                else:
+                    assert exp['exp'] != '' and exp['run'] != ''
+                    xtc_path = '/reg/d/psdm/%s/%s/xtc'%(exp['exp'][:3], exp['exp'])
+                    run = exp['run']
+            
+                if run:
+                    self.xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(run.zfill(4)))), dtype='U%s'%FN_L)
+                    self.smd_files = np.array(glob.glob(os.path.join(xtc_path, 'smalldata', '*r%s*.xtc'%(run.zfill(4)))), dtype='U%s'%FN_L)
+                else:
+                    self.xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*.xtc')), dtype='U%s'%FN_L)
+                    self.smd_files = np.array(glob.glob(os.path.join(xtc_path, 'smalldata', '*.xtc')), dtype='U%s'%FN_L)
+                
+                self.nfiles = np.array([len(self.xtc_files)], dtype='i')
+                assert self.nfiles[0] > 0
+            else:
+                self.nfiles = np.zeros(1, dtype='i')
+
             if size == 1:
-                self.xtc_files = np.array(['data.xtc', 'data_1.xtc'], dtype='U%s'%FN_L)
-                self.smd_files = np.array(['smd.xtc', 'smd_1.xtc'], dtype='U%s'%FN_L)
                 self.smd_dm = DgramManager(self.smd_files) 
                 self.dm = DgramManager(self.xtc_files, configs=self.smd_dm.configs)
             else:
-                self.nfiles = 2
-                if rank == 0:
-                    self.xtc_files = np.array(['data.xtc','data_1.xtc'], dtype='U%s'%FN_L)
-                    self.smd_files = np.array(['smd.xtc', 'smd_1.xtc'], dtype='U%s'%FN_L)
-                else:
-                    self.xtc_files = np.empty(self.nfiles, dtype='U%s'%FN_L)
-                    self.smd_files = np.empty(self.nfiles, dtype='U%s'%FN_L)
+                comm.Bcast(self.nfiles, root=0)
+
+                if rank > 0:
+                    self.xtc_files = np.empty(self.nfiles[0], dtype='U%s'%FN_L)
+                    self.smd_files = np.empty(self.nfiles[0], dtype='U%s'%FN_L)
             
                 comm.Bcast([self.xtc_files, MPI.CHAR], root=0)
                 comm.Bcast([self.smd_files, MPI.CHAR], root=0)
@@ -177,11 +200,11 @@ class DataSource(object):
                     nbytes = np.array([memoryview(config).shape[0] for config in configs], dtype='i')
                 else:
                     self.dm = None
-                    configs = [dgram.Dgram() for i in range(self.nfiles)]
-                    nbytes = np.empty(self.nfiles, dtype='i')
+                    configs = [dgram.Dgram() for i in range(self.nfiles[0])]
+                    nbytes = np.empty(self.nfiles[0], dtype='i')
     
                 comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
-                for i in range(self.nfiles): 
+                for i in range(self.nfiles[0]): 
                     comm.Bcast([configs[i], nbytes[i], MPI.BYTE], root=0)
             
                 if rank > 0:

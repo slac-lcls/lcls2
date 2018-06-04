@@ -1,4 +1,4 @@
-import os
+import os, shutil
 import subprocess
 from .xtc import xtc
 from .det import det
@@ -50,9 +50,13 @@ class Test:
 
     def test_parallel(self):
         subprocess.call(['smdwriter','-f','data.xtc'])
-        import shutil
-        shutil.copy('data.xtc','data_1.xtc')
-        shutil.copy('smd.xtc', 'smd_1.xtc')
+        tmp_dir = os.path.join('.tmp','smalldata')
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+        shutil.copy('data.xtc',os.path.join('.tmp','data.xtc'))
+        shutil.copy('data.xtc',os.path.join('.tmp','data_1.xtc'))
+        shutil.copy('smd.xtc',os.path.join(tmp_dir,'smd.xtc'))
+        shutil.copy('smd.xtc',os.path.join(tmp_dir,'smd_1.xtc'))
         parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
         subprocess.call(['mpirun','-n','2','python',parallel])
     
@@ -61,5 +65,4 @@ class Test:
 
     def test_dgram(self):
         run_test_dgraminit()
-
 
