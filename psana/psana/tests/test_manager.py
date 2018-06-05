@@ -51,12 +51,13 @@ class Test:
     def test_parallel(self):
         subprocess.call(['smdwriter','-f','data.xtc'])
         tmp_dir = os.path.join('.tmp','smalldata')
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-        shutil.copy('data.xtc',os.path.join('.tmp','data.xtc'))
-        shutil.copy('data.xtc',os.path.join('.tmp','data_1.xtc'))
-        shutil.copy('smd.xtc',os.path.join(tmp_dir,'smd.xtc'))
-        shutil.copy('smd.xtc',os.path.join(tmp_dir,'smd_1.xtc'))
+        if os.path.exists(tmp_dir):
+            shutil.rmtree(tmp_dir)
+        os.makedirs(tmp_dir)
+        shutil.copy('data.xtc',os.path.join('.tmp','data-0.xtc'))
+        shutil.copy('data.xtc',os.path.join('.tmp','data-1.xtc'))
+        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-0.smd.xtc'))
+        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-1.smd.xtc'))
         parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
         subprocess.call(['mpirun','-n','2','python',parallel])
     
