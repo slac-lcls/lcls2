@@ -144,7 +144,6 @@ setup(name='smdreader',
                     include_dirs=["psana"],
       )))
 
-"""
 ext = Extension("hsd",
                 sources=["psana/hsd/hsd.pyx", "../psalg/psalg/src/PeakFinderAlgos.cpp", "../psalg/psalg/src/LocalExtrema.cpp"],
                 libraries=['xtcdata','psalg'],
@@ -161,7 +160,6 @@ ext = Extension("hsd",
 
 setup(name="hsd",
       ext_modules=cythonize(ext))
-"""
 
 '''
 from setuptools.command.build_ext import build_ext
