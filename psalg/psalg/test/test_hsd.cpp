@@ -7,11 +7,9 @@
 #include <stdlib.h>
 #include <fstream>
 
-#include "../include/AllocArray.hh"
-#include "../include/Allocator.hh"
-//#include "../include/Hsd.hh"
-
-#include "../../../psdaq/psdaq/hsd/hsd.hh"
+#include "psalg/include/AllocArray.hh"
+#include "psalg/include/Allocator.hh"
+#include "psalg/include/hsd.hh"
 
 //using namespace psalgos;
 using namespace psalg;

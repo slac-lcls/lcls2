@@ -5,6 +5,7 @@ add_compile_options(-Wno-uninitialized)
 add_compile_options(-fno-omit-frame-pointer)
 
 find_package(xtcdata REQUIRED)
+find_package(psalg REQUIRED)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,3 +17,4 @@ add_subdirectory(psdaq)
 add_subdirectory(drp)
 #add_subdirectory(drp_olddriver)
 add_subdirectory(pydaq)
+

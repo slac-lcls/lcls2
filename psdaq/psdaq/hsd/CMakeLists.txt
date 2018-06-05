@@ -19,7 +19,6 @@ add_library(hsd SHARED
   QABase.cc
   TprCore.cc
   Tps2481.cc
-  stream.cc
 )
 
 target_include_directories(hsd PUBLIC
@@ -87,22 +86,6 @@ target_link_libraries(hsdPVs
     rt
 )
 
-add_executable(hsdRead hsdRead.cc)
-
-target_include_directories(hsdRead PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-)
-
-target_link_libraries(hsdRead
-   hsd
-   xtcdata
-   epicstools
-   ${EPICS_CA_LIB}
-   pthread
-   rt
-)
-
 add_executable(hsd_sim hsd_sim.cc)
 target_link_libraries(hsd_sim
     hsd
@@ -117,24 +100,29 @@ target_link_libraries(hsd_test
     rt
 )
 
-add_executable(hsd_valid hsd_valid.cc)
-target_include_directories(hsd_valid PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
+add_executable(hsdRead hsdRead.cc ../../../psalg/psalg/src/stream.cc)
+
+target_include_directories(hsdRead PUBLIC
+     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/../install/include>
+     $<INSTALL_INTERFACE:../install/include>
 )
 
-target_link_libraries(hsd_valid
-    hsd
-    xtcdata
+target_link_libraries(hsdRead
+   hsd
+   xtcdata
+   epicstools
+   ${EPICS_CA_LIB}
+   pthread
+   rt
 )
 
 install(TARGETS hsd
 		hsd_eyescan
-		hsdRead
 		hsd_init
 		hsd_pgp
 		hsd_test
-		hsd_valid
+ 		hsdRead
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

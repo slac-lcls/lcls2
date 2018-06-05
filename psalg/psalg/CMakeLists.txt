@@ -1,24 +1,34 @@
-add_library(psalg SHARED
-    src/LocalExtrema.cpp
-    src/PeakFinderAlgos.cpp
-)
-
-target_include_directories(psalg PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $ENV{CONDA_PREFIX}/include
-    ../../install/include
-)
-
-install(TARGETS psalg
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-)
-
 install(FILES
     include/LocalExtrema.h
     include/PeakFinderAlgos.h
     include/Types.h
-    DESTINATION include/psalg
+    include/stream.hh
+    include/hsd.hh
+    include/AllocArray.hh
+    include/Allocator.hh
+    DESTINATION include/psalg/include
+)
+
+add_library(psalg SHARED
+    src/LocalExtrema.cpp
+    src/PeakFinderAlgos.cpp
+    src/stream.cc
+)
+
+target_include_directories(psalg PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/../install/include>
+    $<INSTALL_INTERFACE:../install/include>
+)
+
+add_executable(hsd_valid test/hsd_valid.cc)
+target_include_directories(hsd_valid PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(hsd_valid
+    psalg
+    xtcdata
 )
 
 # Needed for valgrind
@@ -30,6 +40,7 @@ add_executable(test_array
 )
 target_link_libraries(test_array
     psalg
+    xtcdata
 )
 add_test(NAME test_array COMMAND ${CMAKE_BINARY_DIR}/psalg/test_array
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -40,6 +51,7 @@ add_executable(test_peakFinder
 )
 target_link_libraries(test_peakFinder
     psalg
+    xtcdata
 )
 add_test(NAME test_peakFinder COMMAND ${CMAKE_BINARY_DIR}/psalg/test_peakFinder
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -54,3 +66,18 @@ target_link_libraries(test_hsd
 )
 add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+install(TARGETS psalg
+                test_array
+                test_peakFinder
+                test_hsd
+    EXPORT psalgTargets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+install(EXPORT psalgTargets
+    FILE psalgConfig.cmake
+    DESTINATION lib/cmake/psalg
+)

@@ -1,8 +1,8 @@
 #include "psdaq/epicstools/PVWriter.hh"
 using Pds_Epics::PVWriter;
 
-#include "psdaq/hsd/hsd.hh"
-#include "psdaq/hsd/stream.hh"
+//#include "psalg/include/hsd.hh"
+#include "psalg/include/stream.hh"
 
 #include <sys/types.h>
 #include <unistd.h>

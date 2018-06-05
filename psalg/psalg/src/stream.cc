@@ -1,5 +1,5 @@
-#include "psdaq/hsd/stream.hh"
-#include "psdaq/hsd/hsd.hh"
+#include "psalg/include/stream.hh"
+#include "psalg/include/hsd.hh"
 
 #include <stdio.h>
 #include <ctype.h>

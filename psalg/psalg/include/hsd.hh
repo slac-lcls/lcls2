@@ -7,8 +7,8 @@
 
 #include "xtcdata/xtc/Dgram.hh"
 #include "stream.hh"
-#include "../../../psalg/psalg/include/Allocator.hh"
-#include "../../../psalg/psalg/include/AllocArray.hh"
+#include "Allocator.hh"
+#include "AllocArray.hh"
 using namespace psalg;
 
 namespace Pds {
@@ -105,7 +105,7 @@ namespace Pds {
             // ------------ FEX --------------
             nextx = reinterpret_cast<const char*>(&rawx[sh_rawx->samples()]);
             const Pds::HSD::StreamHeader& sh_fexx = *reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
-            const uint16_t* fexx = reinterpret_cast<const uint16_t*>(&sh_fexx+1);
+            //const uint16_t* fexx = reinterpret_cast<const uint16_t*>(&sh_fexx+1);
             //printf("Address fexx: %p\n", (void*)fexx);
 
             const unsigned end = sh_fexx.samples() - sh_fexx.eoffs() - sh_fexx.boffs();

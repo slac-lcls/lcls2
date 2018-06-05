@@ -13,7 +13,7 @@ include "../peakFinder/peakFinder.pyx"
 
 ctypedef AllocArray1D[cnp.uint16_t*] arrp
 
-cdef extern from "../../../psdaq/psdaq/hsd/hsd.hh" namespace "Pds::HSD":
+cdef extern from "../../../psalg/psalg/include/hsd.hh" namespace "Pds::HSD":
 
     cdef cppclass HsdEventHeaderV1:
         void printVersion()
