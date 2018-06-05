@@ -3,6 +3,14 @@ from psana import dgram
 from psana.dgrammanager import DgramManager
 import numpy as np
 
+class Error(Exception):
+    pass
+
+class InputError(Error):
+    def __init__(self, expression, message):
+        self.expression = expression
+        self.message = message
+
 rank = 0
 size = 1
 try:
@@ -149,10 +157,10 @@ class DataSource(object):
             self.xtc_files = np.asarray(expstr, dtype='U%s'%FN_L)
             self.smd_files = None
         
-        # Create DgramManager
         if not self.read_files:
             self.dm = DgramManager(self.xtc_files)
         else:
+            # Fetch xtc files
             if rank == 0:
                 opts = expstr.split(':')
                 exp = {}
@@ -160,21 +168,31 @@ class DataSource(object):
                     items = opt.split('=')
                     assert len(items) == 2
                     exp[items[0]] = items[1]
-            
+                
+                run = ''
                 if 'dir' in exp:
                     xtc_path = exp['dir']
-                    run = ''
                 else:
-                    assert exp['exp'] != '' and exp['run'] != ''
-                    xtc_path = '/reg/d/psdm/%s/%s/xtc'%(exp['exp'][:3], exp['exp'])
-                    run = exp['run']
+                    xtc_dir = os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm')
+                    xtc_path = os.path.join(xtc_dir, exp['exp'][:3], exp['exp'], 'xtc')
+                    if 'run' in exp:
+                        run = exp['run']
             
                 if run:
                     self.xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(run.zfill(4)))), dtype='U%s'%FN_L)
-                    self.smd_files = np.array(glob.glob(os.path.join(xtc_path, 'smalldata', '*r%s*.xtc'%(run.zfill(4)))), dtype='U%s'%FN_L)
                 else:
                     self.xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*.xtc')), dtype='U%s'%FN_L)
-                    self.smd_files = np.array(glob.glob(os.path.join(xtc_path, 'smalldata', '*.xtc')), dtype='U%s'%FN_L)
+
+                self.xtc_files.sort()
+                self.smd_files = np.empty(len(self.xtc_files), dtype='U%s'%FN_L)
+                smd_dir = os.path.join(xtc_path, 'smalldata')
+                for i, xtc_file in enumerate(self.xtc_files):
+                    smd_file = os.path.join(smd_dir, 
+                            os.path.splitext(os.path.basename(xtc_file))[0] + '.smd.xtc')
+                    if os.path.isfile(smd_file):
+                        self.smd_files[i] = smd_file
+                    else:
+                        raise InputError(smd_file, "File not found.")
                 
                 self.nfiles = np.array([len(self.xtc_files)], dtype='i')
                 assert self.nfiles[0] > 0
