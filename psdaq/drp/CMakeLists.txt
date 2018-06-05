@@ -12,8 +12,7 @@ target_link_libraries(utils
     pgpdriver
     #pshdf5
     eb
-    $ENV{CONDA_PREFIX}/lib/libzmq.so
-    $ENV{CONDA_PREFIX}/lib/libstdc++.so.6
+    zmq
 )
 
 target_include_directories(utils PUBLIC
