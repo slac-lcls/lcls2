@@ -10,8 +10,12 @@ find_package(psalg REQUIRED)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib;$ENV{CONDA_PREFIX}/lib")
+# We are explicitly added the conda lib to the RPATH and stopping others paths from
+# being added implicitly by link_directories
+#set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+link_directories($ENV{CONDA_PREFIX}/lib)
 
 add_subdirectory(psdaq)
 add_subdirectory(drp)

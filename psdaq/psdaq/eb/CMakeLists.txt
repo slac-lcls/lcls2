@@ -18,12 +18,10 @@ target_include_directories(eb PUBLIC
   $ENV{CONDA_PREFIX}/include
 )
 
-find_library(FABRIC_CPP_LIBRARY fabric PATH $ENV{CONDA_PREFIX}/lib)
-
 target_link_libraries(eb
   xtcdata
   service
-  ${FABRIC_CPP_LIBRARY}
+  fabric
 )
 
 add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
@@ -88,7 +86,6 @@ target_link_libraries(ft_writemsg_server
 
 target_link_libraries(eblf_pingpong
   eb
-  ${FABRIC_CPP_LIBRARY}
 )
 
 target_link_libraries(tstEbContributor
