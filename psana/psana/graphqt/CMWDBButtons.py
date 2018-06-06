@@ -500,8 +500,8 @@ class CMWDBButtons(QWidget) :
         if   cp.last_selection == cp.DB_COLS: self.delete_selected_items_db_cols()
         elif cp.last_selection == cp.DOCS   : self.delete_selected_items_docs()
         else :
-            logger.warning('Nothing selected to delete. Select DBs, collections, '\
-                           'or documents then click on Delete button again.')
+            logger.warning('Nothing selected. Select DBs, collections, '\
+                           'or documents then click on Add/Delete/Save button again.')
             return
 
 #-----------------------------
@@ -703,8 +703,11 @@ class CMWDBButtons(QWidget) :
         """Saves selected DBs in files
         """
         bdnames = self.selected_db_names()
-        logger.debug('In save_db bdnames:\n    %s' % '\n    '.join(bdnames))
+        if len(bdnames) == 0 :
+            logger.warning('DB is not selected. Click on DB(s) before "Save" button.')
+            return
 
+        logger.debug('In save_db bdnames:\n    %s' % '\n    '.join(bdnames))
         host = cp.cdb_host.value()
         port = cp.cdb_port.value()
 

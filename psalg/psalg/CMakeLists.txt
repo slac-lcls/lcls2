@@ -21,6 +21,13 @@ target_include_directories(psalg PUBLIC
     $<INSTALL_INTERFACE:../install/include>
 )
 
+#add_executable(datareader
+#    app/datareader.cc
+#)
+#target_link_libraries(datareader
+#    psalg
+#)
+
 add_executable(hsd_valid test/hsd_valid.cc)
 target_include_directories(hsd_valid PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -67,6 +74,7 @@ target_link_libraries(test_hsd
 add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
+#                datareader
 install(TARGETS psalg
                 test_array
                 test_peakFinder
