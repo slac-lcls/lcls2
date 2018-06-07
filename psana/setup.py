@@ -1,11 +1,10 @@
 
-# https://stackoverflow.com/questions/31043774/customize-location-of-so-file-generated-by-cython
-# https://stackoverflow.com/questions/34344934/specify-cython-output-file
-
 import os
 import sys
 import numpy as np
 from setuptools import setup, Extension #, find_packages
+
+print('Begin: %s' % ' '.join(sys.argv))
 
 arg = [arg for arg in sys.argv if arg.startswith('--xtcdata')]
 if not arg:
@@ -31,11 +30,6 @@ else:
     legion_lib_dir = []
     legion_link_args = []
     legion_compile_args = []
-
-print('Input parameters of %s:' % sys.argv[0])
-for arg in sys.argv :
-    print('    %s' % arg)
-#sys.exit("TEST EXIT")
 
 dgram_module = Extension('psana.dgram',
                          sources = ['src/dgram.cc'] + legion_src,
