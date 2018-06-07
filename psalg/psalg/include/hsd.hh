@@ -64,7 +64,7 @@ namespace Pds {
         }
 
         void printVersion() {
-            std::cout << "I am v" << version << std::endl;
+            std::cout << "hsd version " << version << std::endl;
         }
 
         // FIXME: channels have different lengths
@@ -83,20 +83,14 @@ namespace Pds {
         // FIXME: find out what to parse Raw, Fex, or Raw+Fex
         int parseChan(const uint8_t* data, const unsigned chanNum) // byte offset to get the next channel
         {
-            printf("----------- parseChan %d\n", chanNum);
-            printf("Address data: %p\n", (void *) data);
+            //printf("Address data: %p\n", (void *) data);
             const Pds::HSD::EventHeader& ehx = *reinterpret_cast<const Pds::HSD::EventHeader*>(data);
-            //printf("Address ehx: %p\n", (void *) &ehx);
             //ehx.dump();
             const char* nextx = reinterpret_cast<const char*>(&ehx);
             const Pds::HSD::StreamHeader* sh_rawx = 0;
             sh_rawx = reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
             const uint16_t* rawx = reinterpret_cast<const uint16_t*>(sh_rawx+1);
-            printf("Address rawx: %p\n", (void*)rawx);
-            sh_rawx->dump();
-
-            printf("\t"); for(unsigned i=0; i<8; i++) printf(" %04x", rawx[i]); printf("\n");
-            printf("boffs %d, samples %d, eoffs %d\n", sh_rawx->boffs(), sh_rawx->samples(), sh_rawx->eoffs());
+            //sh_rawx->dump();
 
             numPixels.push_back((unsigned) (sh_rawx->samples()-sh_rawx->eoffs()-sh_rawx->boffs()));
             rawPtr.push_back((uint16_t *) (rawx+sh_rawx->boffs()));
@@ -105,19 +99,8 @@ namespace Pds {
             // ------------ FEX --------------
             nextx = reinterpret_cast<const char*>(&rawx[sh_rawx->samples()]);
             const Pds::HSD::StreamHeader& sh_fexx = *reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
-            //const uint16_t* fexx = reinterpret_cast<const uint16_t*>(&sh_fexx+1);
-            //printf("Address fexx: %p\n", (void*)fexx);
-
             const unsigned end = sh_fexx.samples() - sh_fexx.eoffs() - sh_fexx.boffs();
-
-            //unsigned counter = 0;
-            //for(unsigned i = sh_fexx.boffs(); i < sh_fexx.samples() - sh_fexx.eoffs(); i++){
-            //    printf("%d %d\n",counter,fexx[i]);
-            //    counter++;
-            //}
-
             const uint16_t* p_thr = &reinterpret_cast<const uint16_t*>(&sh_fexx+1)[sh_fexx.boffs()];
-            //printf("Address p_thr: %p %p\n", (void*)p_thr, p_thr);
 
             unsigned i=0, j=0;
             bool skipped = true;
@@ -130,9 +113,9 @@ namespace Pds {
                 if (p_thr[i] & 0x8000) {
                     j += p_thr[i] & 0x7fff;
                     if (skipped) {
-                        printf(" consecutive skip\n"); // TODO: remove
+                        //printf(" consecutive skip\n"); // TODO: remove
                     } else {
-                        printf(" SKIP\n");
+                        //printf(" SKIP\n");
                         if (in) {
                             lenx(chanNum).push_back(i-fexPos(chanNum)(numFexPeaksx(chanNum)));
                             numFexPeaksx(chanNum) = numFexPeaksx(chanNum)+1;
@@ -142,7 +125,7 @@ namespace Pds {
                     skipped = true;
                 } else {
                     if (skipped) {
-                        printf(" New beginning\n");
+                        //printf(" New beginning\n");
                         sPosx(chanNum).push_back(j);
                         fexPos(chanNum).push_back(i);
                         fexPtr(chanNum).push_back((uint16_t *) (p_thr+i));
@@ -158,8 +141,6 @@ namespace Pds {
                 lenx(chanNum).push_back(i-fexPos(chanNum)(numFexPeaksx(chanNum)));
                 numFexPeaksx(chanNum) = numFexPeaksx(chanNum)+1;
             }
-            printf("numPeaks: %d\n", numFexPeaksx(chanNum));
-
             return 0;
         }
     public:

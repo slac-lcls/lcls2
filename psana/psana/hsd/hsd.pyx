@@ -78,7 +78,6 @@ cdef class hsd_v1_0_0:
         cdef cnp.npy_intp shape[1]
         for i in range(len(self.chans)): # TODO: disable bounds, wraparound check
             shape[0] = <cnp.npy_intp> self.ptr100.numPixels(i)
-            print("waveform length: {}".format(shape[0]))
             w = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16,
                             <cnp.uint16_t*>self.ptr100.rawPtr(i))
             w.base = <PyObject*> self.chans[i]

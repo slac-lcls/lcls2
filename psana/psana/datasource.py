@@ -1,6 +1,7 @@
 import sys, os, glob
 from psana import dgram
 from psana.dgrammanager import DgramManager
+from psana.detector import Detector
 import numpy as np
 
 class Error(Exception):
@@ -226,8 +227,10 @@ class DataSource(object):
                     comm.Bcast([configs[i], nbytes[i], MPI.BYTE], root=0)
             
                 if rank > 0:
-                    self.dm = DgramManager(self.xtc_files, configs=configs) 
- 
+                    self.dm = DgramManager(self.xtc_files, configs=configs)
+
+        self.Detector = Detector(self.dm.configs[0])
+
     def runs(self): 
         nruns = 1
         for run_no in range(nruns):

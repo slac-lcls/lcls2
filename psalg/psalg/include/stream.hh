@@ -9,7 +9,6 @@
 namespace Pds {
   namespace HSD {
 
-
   class EventHeader : public XtcData::L1Transition {
     public:
       EventHeader() {}
