@@ -9,31 +9,56 @@
 // Then run it (from lcls2/install/bin/datareader) as 
 // datareader
 
-//#include <stdio.h>
 //#include <stdlib.h>
 //#include <strings.h>
 
 #include <iostream> // for cout, puts etc.
 #include <getopt.h>
 #include <stdio.h>
+#include <fstream>
 
-//===================
+using namespace std;
+
+//-------------------
 
 void usage(char* name) {
   std::cout << "Usage: " << name << " [-a <aaa>] [-b <bbb>] [-c <ccc>] [-h] <p1> [<p2> [<p3> ...]] \n";
 }
 
-//===================
+//-------------------
 
-int main (int argc, char **argv)
-{
-    std::cout << "\n\nJust a test\n\n";
+void read_data() {
+  /*
+    std::string fname("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
+    std::cout << fname << '\n';
+    std::ifstream inf(fname.c_str());
+  */
+    std::ifstream inf("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
+
+    std::string str; 
+    int counter=0;
+
+    while(getline(inf,str)) {
+      counter++; 
+      if(counter<40) cout << str << '\n'; // break;
+    }
+
+    std::cout << "Number of lines in file: " << counter << '\n';
+
+    inf.close();
 }
 
-//===================
+//-------------------
 
-/*
-int main (int argc, char **argv)
+int main(int argc, char **argv) {
+    std::cout << "\nTest read from text file\n"; 
+    read_data(); 
+    return EXIT_SUCCESS;
+}
+
+//-------------------
+
+int main_test(int argc, char **argv)
 {
     std::cout << "\n\nJust a test\n\n";
 
@@ -43,7 +68,7 @@ int main (int argc, char **argv)
     int index;
     int c;
     extern char *optarg;
-    extern int optind, optopt, opterr;
+    extern int optind, optopt; //opterr;
  
     while((c = getopt (argc, argv, ":a:b:c:h")) != -1)
         switch(c)
@@ -84,4 +109,5 @@ int main (int argc, char **argv)
         printf("Non-option argument %s\n", argv[index]);
     return EXIT_SUCCESS;
 }
-*/
+
+//-------------------

@@ -52,7 +52,9 @@ class CMWConfigPars(QWidget) :
 
         self.cmb_host = QComboBox(self)        
         self.cmb_host.addItems(cp.list_of_hosts)
-        self.cmb_host.setCurrentIndex(cp.list_of_hosts.index(cp.cdb_host.value()))
+        hostname = cp.cdb_host.value()
+        idx = cp.list_of_hosts.index(hostname) if hostname in cp.list_of_hosts else 1
+        self.cmb_host.setCurrentIndex(idx)
 
         self.cmb_port = QComboBox(self)        
         self.cmb_port.addItems(cp.list_of_str_ports)

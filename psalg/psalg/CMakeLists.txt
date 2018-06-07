@@ -21,12 +21,14 @@ target_include_directories(psalg PUBLIC
     $<INSTALL_INTERFACE:../install/include>
 )
 
-#add_executable(datareader
-#    app/datareader.cc
-#)
-#target_link_libraries(datareader
-#    psalg
-#)
+# datareader - test of data reader from non-xtc files
+add_executable(datareader
+    app/datareader.cc
+)
+target_link_libraries(datareader
+    psalg
+    xtcdata
+)
 
 add_executable(hsd_valid test/hsd_valid.cc)
 target_include_directories(hsd_valid PUBLIC
@@ -74,11 +76,11 @@ target_link_libraries(test_hsd
 add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-#                datareader
 install(TARGETS psalg
                 test_array
                 test_peakFinder
                 test_hsd
+                datareader
     EXPORT psalgTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
