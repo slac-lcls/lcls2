@@ -64,14 +64,16 @@ world_comm.Barrier()
 
 #print('Passing to read/write')
 if color == 0:
- #   pass
-    # print("%i is a writer", world_rank)
     write_files(comm) # write
-elif color == 1:
-   # pass
-    #    #comm_test(color,comm,rank,size)
+
+if int(cfg['sequential']):
+    world_comm.Barrier()
+    time.sleep(5)
+
+
+if color == 1:
     read_files(comm, 0) # copy
-elif color == 2:
-#    pass
+
+if color == 2:
     read_files(comm, 0) # filter
 
