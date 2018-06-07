@@ -9,7 +9,12 @@ doPlot = 0
 
 def test_peakFinder():
     import peakFinder
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import time
+    import sys
 
+    #doPlot = int(sys.argv[1])
     data = np.array([[  4.46530676e+00,   1.92752438e+01,   1.88353024e+01,
                         2.29152584e+01,   1.43527770e+00,   2.69853268e+01,
                         3.34531188e+00,  -1.46735292e-02,   2.40352535e+01,
