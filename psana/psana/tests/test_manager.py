@@ -1,8 +1,10 @@
 import os, shutil
 import subprocess
-from .xtc import xtc
-from .det import det
-from .test_dgraminit import run as run_test_dgraminit
+import sys, os
+sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
+from xtc import xtc
+from det import det
+from test_dgraminit import run as run_test_dgraminit
 
 import hashlib
 from psana.dgrammanager import DgramManager

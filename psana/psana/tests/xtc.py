@@ -39,7 +39,10 @@ class DgramTester:
     return self.ntested
 
 def xtc():
-  from .vals import testvals
+
+  import sys, os
+  sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
+  from vals import testvals
 
   dgram, config = myroutine()
   configtester = DgramTester(testvals)
