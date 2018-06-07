@@ -1,6 +1,6 @@
 # Polymorphic factory methods.
 from __future__ import generators
-import psana.opaque as opaque
+import psana.detector.opaque as opaque
 
 class Detector():
     def __init__(self, config):
@@ -8,6 +8,7 @@ class Detector():
 
     def __call__(self, name):
         det = getattr(self.config.software, name)
+        print("dettype: ", det.dettype)
         df = eval(str(det.dettype).upper() + '._Factory()') # HSD._Factory()
         return df.create(name, self.config)
 
@@ -28,7 +29,7 @@ class HSD(DetectorBase):
         except:
             return None
         chans = [x for x in dir(detcfg) if x.startswith('chan')]
-        self.numChans = len(chans) # TODO: pass numChans to OpaqueRawData
+        self.numChans = len(chans)
         assert detcfg.chan0.software == 'fpga'
         assert detcfg.chan0.version  == (1,2,3)
 
@@ -37,6 +38,10 @@ class HSD(DetectorBase):
 
     class _Factory:
         def create(self, name, config): return HSD(name, config)
+
+    def __call__(self, evt):
+        myrawhsd = self.rawData(evt)
+        return
 
     def waveform(self, evt):
         myrawhsd = self.rawData(evt)
@@ -73,13 +78,13 @@ class CSPAD(DetectorBase):
     def __init__(self, name, config):
         super(CSPAD, self).__init__(name, config)
         self.name = name
-        detcfg = getattr(config,self.name)
+        detcfg = getattr(config.software, self.name)
         assert detcfg.dettype      == 'cspad'
         assert detcfg.raw.software == 'raw'
         assert detcfg.raw.version  == (2,3,42)
 
     class _Factory:
-        def create(self, name, config): return cspad(name, config)
+        def create(self, name, config): return CSPAD(name, config)
 
     def raw(self, evt, verbose=0):
         det = getattr(evt,self.name)

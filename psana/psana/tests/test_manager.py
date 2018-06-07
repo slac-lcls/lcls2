@@ -60,6 +60,10 @@ class Test:
         shutil.copy('data.xtc',os.path.join('.tmp','data-1.xtc'))
         shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-0.smd.xtc'))
         shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-1.smd.xtc'))
+
+        shutil.copy('smd.xtc', os.path.join(tmp_dir, 'data.smd.xtc')) # FIXME: chuck's hack to fix nosetests
+        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data_1.smd.xtc')) # FIXME: chuck's hack to fix nosetests
+
         parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
         subprocess.call(['mpirun','-n','2','python',parallel])
     

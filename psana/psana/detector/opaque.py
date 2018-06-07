@@ -25,17 +25,9 @@ class hsd(OpaqueRawDataBase):
         assert detcfg.hsd.software == 'hsd'
 
     def __call__(self, evt):
-        # FIXME: discover how many channels there are
-        # FIXME: find out 0 in dgrams[0]
-        #chan0 = evt.dgrams[0].xpphsd.hsd.chan0
-        #chan1 = evt.dgrams[0].xpphsd.hsd.chan1
-        #chan2 = evt.dgrams[0].xpphsd.hsd.chan2
-        #chan3 = evt.dgrams[0].xpphsd.hsd.chan3
-        #chans = [chan0, chan1, chan2, chan3]
-
         chans = []
         for i in range(self.nchan):
-            chans.append( eval('evt.dgrams[0].xpphsd.hsd.chan'+str(i)) )
+            chans.append( eval('evt.dgrams[0].xpphsd.hsd.chan'+str(i)) ) # FIXME: find out 0 in dgrams[0]
         nonOpaqueHsd = Hsd.hsd("1.0.0", chans)  # make an object per event
         return nonOpaqueHsd
 

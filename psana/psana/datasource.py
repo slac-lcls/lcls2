@@ -1,7 +1,7 @@
 import sys, os, glob
 from psana import dgram
 from psana.dgrammanager import DgramManager
-from psana.detector import Detector
+from psana.detector.detector import Detector
 import numpy as np
 
 class Error(Exception):

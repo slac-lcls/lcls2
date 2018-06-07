@@ -1,12 +1,10 @@
 import sys
 from psana import DataSource
-from psana.dgrammanager import DgramManager
-from psana.detector import Detector
 import numpy as np
 
 def det():
     ds = DataSource('data.xtc')
-    det = Detector('xppcspad', ds._configs()[0].software)
+    det = ds.Detector('xppcspad')
 
     for evt in ds.events():
         raw = det.raw(evt.__next__())

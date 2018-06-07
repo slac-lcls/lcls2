@@ -17,8 +17,11 @@ def test_hsd():
 
     chanNum = 2
     for i, evt in enumerate(ds.events()):
+        # hsd = det(evt)
+        # hsd.wf()
+        # hsd.times()
         waveform = det.waveform(evt)
-        listOfPeaks, sPos = det.peaks(evt, chanNum)
+        listOfPeaks, sPos = det.peaks(evt, chanNum) # TODO: return times
 
         print("waveform: ", waveform)
         print("list of peaks:", listOfPeaks)

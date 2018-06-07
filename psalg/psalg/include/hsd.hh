@@ -13,7 +13,7 @@ using namespace psalg;
 
 namespace Pds {
   namespace HSD {
-    class HsdEventHeaderV1 : public XtcData::L1Transition {  // TODO: check whether we need to inherit L1Transition
+    class HsdEventHeaderV1 : public XtcData::L1Transition {
     public:
         static HsdEventHeaderV1* Create(Allocator *allocator, const char* version, const unsigned nChan);
         virtual ~HsdEventHeaderV1(){}
@@ -67,7 +67,6 @@ namespace Pds {
             std::cout << "hsd version " << version << std::endl;
         }
 
-        // FIXME: channels have different lengths
         unsigned samples   ()  { return env[1]&0xfffff; }    // NOTE: These 3 functions assume
         unsigned streams   ()  { return (env[1]>>20)&0xf; }  // all event headers in each
         unsigned channels  ()  { return (env[1]>>24)&0xff; } // channel are identical
@@ -81,6 +80,7 @@ namespace Pds {
         }
 
         // FIXME: find out what to parse Raw, Fex, or Raw+Fex
+        // TODO: find out how to convert bin number to time
         int parseChan(const uint8_t* data, const unsigned chanNum) // byte offset to get the next channel
         {
             //printf("Address data: %p\n", (void *) data);
@@ -145,7 +145,7 @@ namespace Pds {
         }
     public:
         Allocator *m_allocator;
-        AllocArray1D<unsigned> numPixels; // FIXME: channels have different lengths
+        AllocArray1D<unsigned> numPixels;
         AllocArray1D<AllocArray1D<uint16_t> > sPosx; // nChan x maxLength
         AllocArray1D<AllocArray1D<uint16_t> > lenx; // nChan x maxLength
         AllocArray1D<AllocArray1D<uint16_t> > fexPos; // nChan x maxLength
