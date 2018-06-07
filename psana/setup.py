@@ -37,8 +37,7 @@ for arg in sys.argv :
     print('    %s' % arg)
 #sys.exit("TEST EXIT")
 
-#dgram_module = Extension('psana.dgram',
-dgram_module = Extension('build.dgram',
+dgram_module = Extension('psana.dgram',
                          sources = ['src/dgram.cc'] + legion_src,
                          libraries = ['xtcdata'] + legion_lib,
                          include_dirs = ['src', np.get_include(), os.path.join(xtcdata, 'include')] + legion_inc_dir,
@@ -46,8 +45,7 @@ dgram_module = Extension('build.dgram',
                          extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))] + legion_link_args,
                          extra_compile_args=['-std=c++11'] + legion_compile_args)
 
-#seq_module = Extension('psana.seq',
-seq_module = Extension('build.seq',
+seq_module = Extension('psana.seq',
                          sources = ['src/seq.cc'],
                          libraries = ['xtcdata'],
                          include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
@@ -55,8 +53,7 @@ seq_module = Extension('build.seq',
                          extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
                          extra_compile_args=['-std=c++11'])
 
-#container_module = Extension('psana.container',
-container_module = Extension('build.container',
+container_module = Extension('psana.container',
                          sources = ['src/container.cc'],
                          libraries = ['xtcdata'],
                          include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
@@ -104,8 +101,7 @@ setup(name = 'psana',
 CYT_BLD_DIR = 'build'
 
 from Cython.Build import cythonize
-#ext = Extension("peakFinder",
-ext = Extension("build.peakFinder",
+ext = Extension("peakFinder",
                 sources=["psana/peakFinder/peakFinder.pyx", "../psalg/psalg/src/PeakFinderAlgos.cpp", "../psalg/psalg/src/LocalExtrema.cpp"],
                 language="c++",
                 extra_compile_args=['-std=c++11'],
@@ -117,8 +113,7 @@ ext = Extension("build.peakFinder",
 setup(name="peakFinder",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
-#ext = Extension('dgramCreate',
-ext = Extension('build.dgramCreate',
+ext = Extension('dgramCreate',
                 #packages=['psana.peakfinder',],
                 sources=["psana/peakFinder/dgramCreate.pyx"],
                 libraries = ['xtcdata'],
@@ -136,29 +131,25 @@ setup(name='dgramCreate',
 
 setup(name='dgramchunk',
       ext_modules = cythonize(Extension(
-                    #"psana.dgramchunk",
-                    "build.dgramchunk",
+                    "psana.dgramchunk",
                     sources=["src/dgramchunk.pyx"],
       ), build_dir=CYT_BLD_DIR))
 
 setup(name='bufferedreader', 
       ext_modules = cythonize(Extension(
-#                    "psana.bufferedreader",
-                    "build.bufferedreader",
+                    "psana.bufferedreader",
                     sources=["psana/bufferedreader.pyx"],
                     include_dirs=["psana"],
       ), build_dir=CYT_BLD_DIR))
 
 setup(name='smdreader',
       ext_modules = cythonize(Extension(
-                    #"psana.smdreader",
-                    "build.smdreader",
+                    "psana.smdreader",
                     sources=["psana/smdreader.pyx"],
                     include_dirs=["psana"],
       ), build_dir=CYT_BLD_DIR))
 
-#ext = Extension("hsd",
-ext = Extension("build.hsd",
+ext = Extension("hsd",
                 sources=["psana/hsd/hsd.pyx", "../psalg/psalg/src/PeakFinderAlgos.cpp", "../psalg/psalg/src/LocalExtrema.cpp"],
                 libraries=['xtcdata'],
                 language="c++",
