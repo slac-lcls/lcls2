@@ -12,3 +12,11 @@ def load_config(fname):
 
              config_dict[key] = val
     return config_dict
+
+
+
+def save_config(config, fname):
+    with open(fname, 'w') as f:
+        for key, value in config.items():
+            f.write("%s\t%s\n" % (key, value))
+

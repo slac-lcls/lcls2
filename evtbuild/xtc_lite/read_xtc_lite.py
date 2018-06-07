@@ -15,11 +15,7 @@ batch_size = int(cfg['batch_size'])
 bytes_per_batch = mb_per_img*batch_size*10**6
 
 
-if int(cfg['parallel_disks']):
-    disk_num = rank
-else:
-    disk_num = int(cfg['disk_num'])
-    
+disk_num = int(cfg['disk_num'])
 path = cfg['path'] % disk_num
 
 
@@ -49,14 +45,25 @@ def read_client(comm,filt=0):
     os.lseek(read_file,0,0)
 
     ct = 0
-    eof_pad = 20
+    size_read_data = 0
+    eof_pad = 2000
+    time.sleep(1)
+
+    file_wait_time = 0
 
     while True:
-        file_info = os.stat(file_name)
-        size_file_mb = os.stat(file_name).st_size/10**6
-
-        if ct + 1000 > size_file_mb and size_file_mb < 19000:
-            #                print('Near end of file. Waiting for more data')
+        try:
+            file_info = os.stat(file_name)
+            size_file_mb = os.stat(file_name).st_size/10**6
+        except OSError:
+            time.sleep(1)
+            file_wait_time += 1
+            if file_wait_time > 60:
+                raise OSError("Timed out waiting for file stats")
+            continue
+        # print(size_read_data, size_file_mb, write_limit*1000)
+        if size_read_data + eof_pad > size_file_mb and size_read_data + eof_pad < write_limit*1000:
+            # print('Near end of file. Waiting for more data')
             while True:
                 time.sleep(0.1)
                 size_file_mb = os.stat(file_name).st_size/10**6
@@ -75,9 +82,13 @@ def read_client(comm,filt=0):
                 os.lseek(read_file,bytes_per_batch,os.SEEK_CUR)
                 img='fff'
         ct+=1
+        size_read_data = ct*bytes_per_batch/10**6
+
         if ct%100 == 0:
+
+        # print(size_read_data, size_file_mb, write_limit*1000)
             pass
-        #                print('Read image %i' % ct)
+            # print('Read image %i' % ct)
         if img == '' and size_file_mb/1000 == write_limit:
             break
     os.close(read_file)

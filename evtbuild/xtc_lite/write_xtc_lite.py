@@ -13,11 +13,7 @@ batch_size = int(cfg['batch_size'])
 
 arr_size = mb_per_img*500000
 
-if int(cfg['parallel_disks']):
-    disk_num = rank
-else:
-    disk_num = int(cfg['disk_num'])
-    
+disk_num = int(cfg['disk_num'])
 path = cfg['path'] % disk_num
 
 def create_image():
@@ -27,7 +23,7 @@ def create_image():
     return arr
 
 
-def write_client(comm):
+def write_client(comm, ind):
     rank = comm.Get_rank()
 
     # file_name = '/drp_dir/eliseo/data/xtc_lite/xtc_lite_%i.xtc' % rank
@@ -40,7 +36,7 @@ def write_client(comm):
 
     # uncomment for writing to n disks
 
-    file_name =path + '/xtc_lite_%i.xtc' % rank
+    file_name =path + '/%sxtc_lite_%i.xtc' % (ind, rank)
 
     try:
         os.remove(file_name)
@@ -49,7 +45,7 @@ def write_client(comm):
 
     # with open(file_name, 'wb') as f:
     ct = 0
-    open_flags = (os.O_CREAT | os.O_NONBLOCK | os.O_WRONLY)
+    open_flags = (os.O_CREAT | os.O_WRONLY)
     f=os.open(file_name, open_flags)
     written_mb = 0
     while True:
@@ -63,7 +59,7 @@ def write_client(comm):
             break
     os.close(f)
 
-def do_write(comm):
+def do_write(comm, ind =''):
 #    comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -71,12 +67,12 @@ def do_write(comm):
 
     comm.Barrier()
     if rank == 0:
-        files = glob.glob(path+'/*')
-        for f in files:
-            os.remove(f)
+        # files = glob.glob(path+'/*.xtc')
+        # for f in files:
+        #     os.remove(f)
         global_start = time.time()
 
-    write_client(comm)
+    write_client(comm, ind)
 
     comm.Barrier()
     if rank == 0:
