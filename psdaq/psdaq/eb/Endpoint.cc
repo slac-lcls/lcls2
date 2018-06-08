@@ -619,14 +619,14 @@ void ErrorHandler::set_custom_error(const char* fmt, ...)
 }
 
 
-Fabric::Fabric(const char* node, const char* service, uint64_t flags) :
+Fabric::Fabric(const char* node, const char* service, uint64_t flags,  size_t tx_size, size_t rx_size) :
   _up(false),
   _hints(0),
   _info(0),
   _fabric(0),
   _domain(0)
 {
-  _up = initialize(node, service, flags);
+  _up = initialize(node, service, flags, tx_size, rx_size);
 }
 
 Fabric::~Fabric()
@@ -752,7 +752,7 @@ struct fid_fabric* Fabric::fabric() const { return _fabric; }
 
 struct fid_domain* Fabric::domain() const { return _domain; }
 
-bool Fabric::initialize(const char* node, const char* service, uint64_t flags)
+bool Fabric::initialize(const char* node, const char* service, uint64_t flags, size_t tx_size, size_t rx_size)
 {
   if (!_up) {
     _hints = fi_allocinfo();
@@ -767,6 +767,10 @@ bool Fabric::initialize(const char* node, const char* service, uint64_t flags)
     _hints->domain_attr->mr_mode = FI_MR_BASIC;
     _hints->caps = FI_MSG | FI_RMA;
     _hints->mode = FI_LOCAL_MR | FI_RX_CQ_DATA;
+    if (tx_size)
+      _hints->tx_attr->size = tx_size;
+    if (rx_size)
+      _hints->rx_attr->size = rx_size;
 
     if (!node)
       flags |= FI_SOURCE;
@@ -807,12 +811,12 @@ void Fabric::shutdown()
 }
 
 
-EndpointBase::EndpointBase(const char* addr, const char* port, uint64_t flags) :
+EndpointBase::EndpointBase(const char* addr, const char* port, uint64_t flags, size_t tx_size, size_t rx_size) :
   _state(EP_INIT),
   _fab_owner(true),
   _txcq_owner(true),
   _rxcq_owner(true),
-  _fabric(new Fabric(addr, port, flags)),
+  _fabric(new Fabric(addr, port, flags, tx_size, rx_size)),
   _eq(0),
   _txcq(0),
   _rxcq(0)
@@ -980,8 +984,8 @@ bool EndpointBase::initialize()
 }
 
 
-Endpoint::Endpoint(const char* addr, const char* port, uint64_t flags) :
-  EndpointBase(addr, port, flags),
+Endpoint::Endpoint(const char* addr, const char* port, uint64_t flags, size_t tx_size, size_t rx_size) :
+  EndpointBase(addr, port, flags, tx_size, rx_size),
   _ep(0)
 {}
 
@@ -1545,8 +1549,8 @@ ssize_t Endpoint::check_connection_state()
   return rret;
 }
 
-PassiveEndpoint::PassiveEndpoint(const char* addr, const char* port, uint64_t flags) :
-  EndpointBase(addr, port, flags | FI_SOURCE),
+PassiveEndpoint::PassiveEndpoint(const char* addr, const char* port, uint64_t flags, size_t tx_size, size_t rx_size) :
+  EndpointBase(addr, port, flags | FI_SOURCE, tx_size, rx_size),
   _flags(flags),
   _pep(0)
 {}
@@ -1803,6 +1807,23 @@ void CompletionPoller::shutdown()
   _up = false;
 }
 
+CompletionQueue::CompletionQueue(Fabric* fabric) :
+  _up(false),
+  _fabric(fabric),
+  _cq(nullptr)
+{
+  struct fi_cq_attr cq_attr = {
+    .size = 0,
+    .flags = 0,
+    .format = FI_CQ_FORMAT_DATA,
+    .wait_obj = FI_WAIT_UNSPEC,
+    .signaling_vector = 0,
+    .wait_cond = FI_CQ_COND_NONE,
+    .wait_set = NULL,
+  };
+
+  _up = initialize(&cq_attr, NULL);
+}
 
 CompletionQueue::CompletionQueue(Fabric* fabric, struct fi_cq_attr* cq_attr, void* context) :
   _up(false),

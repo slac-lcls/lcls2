@@ -173,7 +173,7 @@ namespace Pds {
 
     class Fabric : public ErrorHandler {
     public:
-      Fabric(const char* node, const char* service, uint64_t flags=0);
+      Fabric(const char* node, const char* service, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
       ~Fabric();
       MemoryRegion* register_memory(void* start, size_t len);
       MemoryRegion* register_memory(LocalAddress* laddr);
@@ -189,7 +189,7 @@ namespace Pds {
       struct fid_fabric* fabric() const;
       struct fid_domain* domain() const;
     private:
-      bool initialize(const char* node, const char* service, uint64_t flags);
+      bool initialize(const char* node, const char* service, uint64_t flags, size_t tx_size, size_t rx_size);
       void shutdown();
     private:
       bool                        _up;
@@ -202,7 +202,7 @@ namespace Pds {
 
     class EndpointBase : public ErrorHandler {
     protected:
-      EndpointBase(const char* addr, const char* port, uint64_t flags=0);
+      EndpointBase(const char* addr, const char* port, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
       EndpointBase(Fabric* fabric, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
       virtual ~EndpointBase();
     public:
@@ -230,7 +230,7 @@ namespace Pds {
     };
     class Endpoint : public EndpointBase {
     public:
-      Endpoint(const char* addr, const char* port, uint64_t flags=0);
+      Endpoint(const char* addr, const char* port, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
       Endpoint(Fabric* fabric, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
       ~Endpoint();
     public:
@@ -296,7 +296,7 @@ namespace Pds {
 
     class PassiveEndpoint : public EndpointBase {
     public:
-      PassiveEndpoint(const char* addr, const char* port, uint64_t flags=0);
+      PassiveEndpoint(const char* addr, const char* port, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
       ~PassiveEndpoint();
     public:
       void shutdown();
@@ -334,6 +334,7 @@ namespace Pds {
 
     class CompletionQueue : public ErrorHandler {
     public:
+      CompletionQueue(Fabric* fabric);
       CompletionQueue(Fabric* fabric, struct fi_cq_attr* cq_attr, void* context);
       ~CompletionQueue();
       struct fid_cq* cq() const;

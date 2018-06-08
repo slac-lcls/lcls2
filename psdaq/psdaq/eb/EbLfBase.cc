@@ -225,6 +225,7 @@ int EbLfBase::postCompRecv(unsigned dst, void* ctx)
 int EbLfBase::_postCompRecv(Endpoint* ep, unsigned count, void* ctx)
 {
   unsigned i;
+  unsigned posted=0;
 
   for (i = 0; i < count; ++i)
   {
@@ -234,10 +235,12 @@ int EbLfBase::_postCompRecv(Endpoint* ep, unsigned count, void* ctx)
       if (rc != -FI_EAGAIN)
         fprintf(stderr, "Failed to post a CQ buffer: %s\n", ep->error());
       break;
+    } else {
+      posted++;
     }
   }
 
-  return i;
+  return posted;
 }
 
 int EbLfBase::_tryCq(fi_cq_data_entry* cqEntry)
