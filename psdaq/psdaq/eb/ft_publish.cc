@@ -31,6 +31,7 @@ static void showUsage(const char* p)
          "    -p|--port     the port or libfaric 'service' the server will use (default: %s)\n"
          "    -c|--count    the max number of times to publish the data to subscribers before exiting (default: %lu)\n"
          "    -i|--interval the number of microseconds to wait between publishing data (default: %ld)\n"
+         "    -s|--shared   use a shared completion queue instead of a poller\n"
          "    -h|--help     print this message and exit\n", p, PORT_DEF, COUNT_DEF, INTERVAL_DEF);
 }
 
@@ -39,6 +40,20 @@ class Listener : public Routine {
     Listener(PassiveEndpoint* pendp, CompletionPoller* cpoller, Semaphore& sem, Task* task, std::vector<Endpoint*>& subs) :
       _pendp(pendp),
       _cpoller(cpoller),
+      _cq(NULL),
+      _sem(sem),
+      _task(task),
+      _subs(subs),
+      _run(true)
+  {
+    _run = _pendp->listen();
+    printf("listening\n");
+  }
+
+  Listener(PassiveEndpoint* pendp, CompletionQueue* cq, Semaphore& sem, Task* task, std::vector<Endpoint*>& subs) :
+      _pendp(pendp),
+      _cpoller(NULL),
+      _cq(cq),
       _sem(sem),
       _task(task),
       _subs(subs),
@@ -61,13 +76,20 @@ class Listener : public Routine {
 
   void routine() {
     if (_run) {
-      Endpoint *endp = _pendp->accept();
+      Endpoint *endp = NULL;
+      if (_cpoller) {
+        endp = _pendp->accept();
+      } else if (_cq) {
+        endp = _pendp->accept(-1, _cq, FI_TRANSMIT);
+      }
 
       if (endp) {
         printf("client connected!\n");
         _sem.take();
         _subs.push_back(endp);
-        _cpoller->add(endp, endp->txcq());
+        if (_cpoller) {
+          _cpoller->add(endp, endp->txcq());
+        }
         _sem.give();
       }
       _task->call(this);
@@ -77,6 +99,7 @@ class Listener : public Routine {
   private:
     PassiveEndpoint*        _pendp;
     CompletionPoller*       _cpoller;
+    CompletionQueue*        _cq;
     Semaphore&              _sem;
     Task*                   _task;
     std::vector<Endpoint*>& _subs;
@@ -86,6 +109,7 @@ class Listener : public Routine {
 int main(int argc, char *argv[])
 {
   unsigned buff_num = 10;
+  bool use_poller = true;
   bool show_usage = false;
   const char *addr = NULL;
   const char *port = PORT_DEF;
@@ -95,9 +119,12 @@ int main(int argc, char *argv[])
   uint64_t max_count = COUNT_DEF;
   long interval_us = INTERVAL_DEF;
   timespec interval;
+  Listener* listener = NULL;
+  CompletionPoller* cqpoll = NULL;
+  CompletionQueue* cq = NULL;
 
 
-  const char* str_opts = ":ha:p:c:i:";
+  const char* str_opts = ":ha:p:c:i:s";
   const struct option lo_opts[] =
   {
       {"help",     0, 0, 'h'},
@@ -105,6 +132,7 @@ int main(int argc, char *argv[])
       {"port",     1, 0, 'p'},
       {"count",    1, 0, 'c'},
       {"interval", 1, 0, 'i'},
+      {"shared",   0, 0, 's'},
       {0,          0, 0,  0 }
   };
 
@@ -127,6 +155,9 @@ int main(int argc, char *argv[])
         break;
       case 'i':
         interval_us = strtol(optarg, NULL, 0);
+        break;
+      case 's':
+        use_poller = false;
         break;
       default:
         show_usage = true;
@@ -166,14 +197,22 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Failed to register memory region: %s\n", fab->error());
     return fab->error_num();
   }
-  // Create a cq poller
-  CompletionPoller* cqpoll = new CompletionPoller(fab);
+
+  if (use_poller) {
+    cqpoll = new CompletionPoller(fab);
+  } else {
+    cq = new CompletionQueue(fab);
+  }
 
   Semaphore sem(Semaphore::FULL);
   std::vector<Endpoint*> subs;
   Task* task = new Task(TaskObject("Sublisten",35));
 
-  Listener* listener = new Listener(pendp, cqpoll, sem, task, subs);
+  if (use_poller) {
+    listener = new Listener(pendp, cqpoll, sem, task, subs);
+  } else {
+    listener = new Listener(pendp, cq, sem, task, subs);
+  }
   listener->start();
 
   bool cm_entry;
@@ -197,7 +236,8 @@ int main(int argc, char *argv[])
       if(subs[i]->event(&event, &entry, &cm_entry)) {
         if (cm_entry && event == FI_SHUTDOWN) {
           pendp->close(subs[i]);
-          cqpoll->del(subs[i]);
+          if (use_poller)
+            cqpoll->del(subs[i]);
           subs[i]=0;
           printf("client disconnected!\n");
           continue;
@@ -205,9 +245,10 @@ int main(int argc, char *argv[])
       }
 
       // post a send for this sub
-      if (subs[i]->send(buff, buff_size, &count, mr)) {
+      if (subs[i]->send(buff, buff_size, (void*) subs[i], mr)) {
         pendp->close(subs[i]);
-        cqpoll->del(subs[i]);
+        if (use_poller)
+          cqpoll->del(subs[i]);
         subs[i]=0;
         printf("error posting send to client %u - dropping!\n", i);
       }
@@ -216,26 +257,46 @@ int main(int argc, char *argv[])
     }
 
     while (npend > 0) {
-      if (cqpoll->poll()) {
-        for (unsigned i=0; i<subs.size(); i++) {
-          if (!subs[i]) continue;
+      if (use_poller) {
+        if (cqpoll->poll()) {
+          for (unsigned i=0; i<subs.size(); i++) {
+            if (!subs[i]) continue;
 
-          // check if send has completed
-          if ( (num_comp = subs[i]->txcq()->comp(&comp, 1)) < 0) {
-            if (subs[i]->error_num() != -FI_EAGAIN) {
-              pendp->close(subs[i]);
-              cqpoll->del(subs[i]);
-              subs[i]=0;
-              printf("error completing send to client %u - dropping!\n", i);
+            // check if send has completed
+            if ( (num_comp = subs[i]->txcq()->comp(&comp, 1)) < 0) {
+              if (subs[i]->error_num() != -FI_EAGAIN) {
+                pendp->close(subs[i]);
+                cqpoll->del(subs[i]);
+                subs[i]=0;
+                printf("error completing send to client %u - dropping!\n", i);
+              }
+            } else {
+              npend -= num_comp;
             }
-          } else {
-            npend -= num_comp;
           }
+        } else {
+          printf("error polling completion queues: %s - aborting!", cqpoll->error());
+          dead = true;
+          break;
         }
       } else {
-        printf("error polling completion queues: %s - aborting!", cqpoll->error());
-        dead = true;
-        break;
+        if ( (num_comp = cq->comp_wait(&comp, 1)) < 0) {
+          if (cq->error_num() != -FI_EAGAIN) {
+            if (comp.op_context) {
+              Endpoint* current = (Endpoint*) comp.op_context;
+              pendp->close(current);
+              for (unsigned i=0; i<subs.size(); i++) {
+                if (current==subs[i]) {
+                  pendp->close(subs[i]);
+                  subs[i]=0;
+                  printf("error completing send to client %u - dropping!\n", i);
+                }
+              }
+            }
+          }
+        } else {
+          npend -= num_comp;
+        }
       }
     }
 
