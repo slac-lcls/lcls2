@@ -8,7 +8,6 @@ class Detector():
 
     def __call__(self, name):
         det = getattr(self.config.software, name)
-        print("dettype: ", det.dettype)
         df = eval(str(det.dettype).upper() + '._Factory()') # HSD._Factory()
         return df.create(name, self.config)
 
@@ -40,8 +39,7 @@ class HSD(DetectorBase):
         def create(self, name, config): return HSD(name, config)
 
     def __call__(self, evt):
-        myrawhsd = self.rawData(evt)
-        return
+        return self.rawData(evt)
 
     def waveform(self, evt):
         myrawhsd = self.rawData(evt)

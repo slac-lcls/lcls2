@@ -71,7 +71,7 @@ cdef class hsd_v1_0_0:
     def printVersion(self):
         self.hptr.printVersion()
 
-    def raw(self):
+    def waveform(self):
         cdef list waveform
         waveform = []
         cdef cnp.ndarray w
@@ -85,7 +85,7 @@ cdef class hsd_v1_0_0:
             waveform.append(w)
         return waveform
 
-    def fex(self, chanNum):
+    def peaks(self, chanNum):
         cdef list listOfPeaks, sPos # TODO: check whether this helps with speed
         listOfPeaks = []
         sPos = []
