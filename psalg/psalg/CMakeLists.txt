@@ -6,6 +6,8 @@ install(FILES
     include/hsd.hh
     include/AllocArray.hh
     include/Allocator.hh
+    include/ArrayIO.h
+    include/Logger.h
     DESTINATION include/psalg/include
 )
 
@@ -13,6 +15,7 @@ add_library(psalg SHARED
     src/LocalExtrema.cpp
     src/PeakFinderAlgos.cpp
     src/stream.cc
+    src/ArrayIO.cpp
 )
 
 target_include_directories(psalg PUBLIC
