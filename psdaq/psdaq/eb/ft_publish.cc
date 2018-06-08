@@ -15,6 +15,7 @@ using namespace Pds;
 
 static const char* PORT_DEF = "12345";
 static const uint64_t COUNT_DEF = 100;
+static const long INTERVAL_DEF = 10000;
 
 static void showUsage(const char* p)
 {
@@ -29,7 +30,8 @@ static void showUsage(const char* p)
          "    -a|--addr     the local address to which the server binds (default: libfabrics 'best' choice)\n"
          "    -p|--port     the port or libfaric 'service' the server will use (default: %s)\n"
          "    -c|--count    the max number of times to publish the data to subscribers before exiting (default: %lu)\n"
-         "    -h|--help     print this message and exit\n", p, PORT_DEF, COUNT_DEF);
+         "    -i|--interval the number of microseconds to wait between publishing data (default: %ld)\n"
+         "    -h|--help     print this message and exit\n", p, PORT_DEF, COUNT_DEF, INTERVAL_DEF);
 }
 
 class Listener : public Routine {
@@ -91,15 +93,19 @@ int main(int argc, char *argv[])
   char* buff = new char[buff_size];
   uint64_t* data_buff = (uint64_t*) buff;
   uint64_t max_count = COUNT_DEF;
+  long interval_us = INTERVAL_DEF;
+  timespec interval;
 
-  const char* str_opts = ":ha:p:c:";
+
+  const char* str_opts = ":ha:p:c:i:";
   const struct option lo_opts[] =
   {
-      {"help",  0, 0, 'h'},
-      {"addr",  1, 0, 'a'},
-      {"port",  1, 0, 'p'},
-      {"count", 1, 0, 'c'},
-      {0,       0, 0,  0 }
+      {"help",     0, 0, 'h'},
+      {"addr",     1, 0, 'a'},
+      {"port",     1, 0, 'p'},
+      {"count",    1, 0, 'c'},
+      {"interval", 1, 0, 'i'},
+      {0,          0, 0,  0 }
   };
 
   int option_idx = 0;
@@ -119,6 +125,9 @@ int main(int argc, char *argv[])
       case 'c':
         max_count = strtoul(optarg, NULL, 0);
         break;
+      case 'i':
+        interval_us = strtol(optarg, NULL, 0);
+        break;
       default:
         show_usage = true;
         break;
@@ -135,6 +144,8 @@ int main(int argc, char *argv[])
     return 1;
   }
 
+  interval.tv_sec = (time_t)(interval_us/1000000);
+  interval.tv_nsec = (interval_us % 1000000) * 1000;
   data_buff[1] = 0xadd;
   data_buff[2] = 0xdeadbeef;
   for (unsigned i=3; i< buff_num; i++)
@@ -230,7 +241,7 @@ int main(int argc, char *argv[])
 
     sem.give();
     if (dead) break;
-    sleep(2);
+    nanosleep(&interval, 0);
   }
 
   delete listener;
