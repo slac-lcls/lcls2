@@ -12,7 +12,7 @@ namespace Pds {
 
     class Module;
 
-    enum Action { Configure, Unconfigure, Reset };
+    enum Action { Configure, Unconfigure, EnableTr, DisableTr, Reset };
 
     class PVCtrls
     {
@@ -26,8 +26,9 @@ namespace Pds {
     public:
       Module& module();
     public:
-      void configure  ();
-      void unconfigure();
+      void configure();
+      void enable   ();
+      void disable  ();
       void reset    ();
       void loopback (bool);
     private:

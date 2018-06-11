@@ -26,17 +26,37 @@ extern int optind;
 
 using namespace Pds::HSD;
 
+static double calc_phase(unsigned even,
+                         unsigned odd)
+{
+  const double periodr = 1000./156.25;
+  const double periodt = 7000./1300.;
+  if (even)
+    return double(even)/double(0x80000)*periodt;
+  else
+    return double(odd )/double(0x80000)*periodt + 0.5*periodr;
+}
+
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -d <dev id>\n");
   printf("\t-C <initialize clock synthesizer>\n");
   printf("\t-R <reset timing frame counters>\n");
+  printf("\t-S <sync ADC>\n");
+  printf("\t-U <sync clocktree>\n");
   printf("\t-X <reset gtx timing receiver>\n");
   printf("\t-Y <reset gtx timing transmitter>\n");
+  printf("\t-Z <reset 625M PLL>\n");
   printf("\t-P <reverse gtx rx polarity>\n");
+  printf("\t-T <train i/o delays>\n");
+  printf("\t-W filename <write new PROM>\n");
   printf("\t-0 <dump raw timing receive buffer>\n");
   printf("\t-1 <dump timing message buffer>\n");
   printf("\t-2 <configure for LCLSII>\n");
+  printf("\t-3 <configure for EXTERNAL>\n");
+  printf("\t-4 <configure for K929>\n");
+  printf("\t-5 <configure for M3_7>\n");
+  printf("\t-6 <configure for M7_4>\n");
   //  printf("Options: -a <IP addr (dotted notation)> : Use network <IP>\n");
 }
 
@@ -57,6 +77,9 @@ int main(int argc, char** argv) {
   bool lRing1 = false;
   bool lTrain = false;
   bool lTrainNoReset = false;
+  bool lClkSync = false;
+  bool lAdcSync = false;
+  bool lAdcSyncRst = false;
   TimingType timing=LCLS;
 
   const char* fWrite=0;
@@ -66,7 +89,7 @@ int main(int argc, char** argv) {
 #endif
   unsigned trainRefDelay = 0;
 
-  while ( (c=getopt( argc, argv, "CRXYP0123D:d:htT:W:")) != EOF ) {
+  while ( (c=getopt( argc, argv, "CRXYP0123456D:d:htST:UW:Z")) != EOF ) {
     switch(c) {
     case 'C':
       lSetupClkSynth = true;
@@ -95,6 +118,15 @@ int main(int argc, char** argv) {
     case '3':
       timing = EXTERNAL;
       break;
+    case '4':
+      timing = K929;
+      break;
+    case '5':
+      timing = M3_7;
+      break;
+    case '6':
+      timing = M7_4;
+      break;
     case 'd':
       qadc = optarg[0];
       break;
@@ -114,8 +146,17 @@ int main(int argc, char** argv) {
       }
 #endif
       break;
+    case 'U':
+      lClkSync = true;
+      break;
     case 'W':
       fWrite = optarg;
+      break;
+    case 'S':
+      lAdcSync = true;
+      break;
+    case 'Z':
+      lAdcSyncRst = true;
       break;
     case '?':
     default:
@@ -144,6 +185,18 @@ int main(int argc, char** argv) {
   p->board_status();
 
   p->fmc_dump();
+
+  { unsigned trg_even = p->trgPhase()[0];
+    unsigned trg_odd  = p->trgPhase()[1];
+    unsigned clkt_even = p->trgPhase()[2];
+    unsigned clkt_odd  = p->trgPhase()[3];
+    double trg_ph  = calc_phase(trg_even,trg_odd);
+    double clkt_ph = calc_phase(clkt_even,clkt_odd);
+    printf("Trigger Phase: %x/%x %x/%x [%f %f]\n",
+           trg_even, trg_odd,
+           clkt_even, clkt_odd,
+           trg_ph, clkt_ph);
+  }
 
   if (lSetupClkSynth) {
     p->fmc_clksynth_setup(timing);
@@ -179,6 +232,19 @@ int main(int argc, char** argv) {
     base.resetFbPLL();
     usleep(100000);
     base.resetFb();
+  }
+
+  if (lClkSync) {
+    p->clocktree_sync();
+  }
+
+  if (lAdcSync) {
+    p->sync();
+  }
+
+  if (lAdcSyncRst) {
+    QABase& base = *reinterpret_cast<QABase*>((char*)p->reg()+0x80000);
+    base.resetClock(true);
   }
 
   if (lReset)

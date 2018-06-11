@@ -57,6 +57,32 @@ target_link_libraries(hsd_init
     rt
 )
 
+add_executable(hsd_phase hsd_phase.cc)
+
+target_include_directories(hsd_phase PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(hsd_phase
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
+add_executable(hsd_clocktree hsd_clocktree.cc)
+
+target_include_directories(hsd_clocktree PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(hsd_clocktree
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
 add_executable(hsd_pgp hsd_pgp.cc)
 
 target_include_directories(hsd_pgp PUBLIC
@@ -120,6 +146,7 @@ target_link_libraries(hsdRead
 install(TARGETS hsd
 		hsd_eyescan
 		hsd_init
+		hsd_phase
 		hsd_pgp
 		hsd_test
  		hsdRead

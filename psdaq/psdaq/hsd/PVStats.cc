@@ -32,6 +32,7 @@ namespace Pds {
     //  enumeration of PV insert order below
     enum { _TimFrameCnt, _TimPauseCnt,
            _TrigCnt, _TrigCntSum, _ReadCntSum, _StartCntSum, _QueueCntSum,
+           _MsgDelaySet, _MsgDelayGet, _HeaderCntL0, _HeaderCntOF,
            _PgpLocLinkRdy, _PgpRemLinkRdy,
            _PgpTxClkFreq, _PgpRxClkFreq,
            _PgpTxCnt, _PgpTxCntSum, _PgpTxErrCnt, _PgpRxCnt, _PgpRxLast,
@@ -43,6 +44,7 @@ namespace Pds {
            _Local3_3V, _Local2_5V, _Local1_8V, 
            _TotalPower, _FmcPower, 
            _WrFifoCnt, _RdFifoCnt,
+           _SyncE, _SyncO,
            _NumberOf };
 
     PVStats::PVStats(Module& m) : _m(m), _pgp(m.pgp()), _pv(_NumberOf), _v(_NumberOf*16) {}
@@ -75,6 +77,10 @@ namespace Pds {
       PV_ADD (ReadCntSum);
       PV_ADD (StartCntSum);
       PV_ADD (QueueCntSum);
+      PV_ADD (MsgDelaySet);
+      PV_ADD (MsgDelayGet);
+      PV_ADD (HeaderCntL0);
+      PV_ADD (HeaderCntOF);
       PV_ADDV(PgpLocLinkRdy,4);
       PV_ADDV(PgpRemLinkRdy,4);
       PV_ADDV(PgpTxClkFreq ,4);
@@ -108,6 +114,8 @@ namespace Pds {
       PV_ADDV(WrFifoCnt      ,4);
       PV_ADDV(RdFifoCnt      ,4);
 
+      PV_ADD(SyncE);
+      PV_ADD(SyncO);
 #undef PV_ADD
 #undef PV_ADDV
 
@@ -160,6 +168,10 @@ namespace Pds {
       PVPUTU  ( ReadCntSum , base.countRead);
       PVPUTU  ( StartCntSum, base.countStart);
       PVPUTU  ( QueueCntSum, base.countQueue);
+      PVPUTU  ( MsgDelaySet, (base.msgDelay&0xff) );
+      PVPUTU  ( MsgDelayGet, ((base.msgDelay>>16)&0xff) );
+      PVPUTU  ( HeaderCntL0, (base.headerCnt&0xfffff) );
+      PVPUTU  ( HeaderCntOF, ((base.headerCnt>>24)&0xff) );
 
       PVPUTAU  ( PgpLocLinkRdy, 4, _pgp[i]->localLinkReady ()?1:0);
       PVPUTAU  ( PgpRemLinkRdy, 4, _pgp[i]->remoteLinkReady()?1:0);
@@ -206,6 +218,8 @@ namespace Pds {
       PVPUTAU ( WrFifoCnt , 4, (hdrf[i]._wrFifoCnt&0xf) );
       PVPUTAU ( RdFifoCnt , 4, (hdrf[i]._rdFifoCnt&0xf) );
     
+      PVPUTU  ( SyncE     , _m.trgPhase()[0]);
+      PVPUTU  ( SyncO     , _m.trgPhase()[1]);
 #undef PVPUTDU
 #undef PVPUTDAU
 #undef PVPUTU
