@@ -16,6 +16,7 @@ add_library(psalg SHARED
     src/PeakFinderAlgos.cpp
     src/stream.cc
     src/ArrayIO.cpp
+    src/hsd.cpp
 )
 
 target_include_directories(psalg PUBLIC

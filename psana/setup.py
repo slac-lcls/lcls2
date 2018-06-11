@@ -144,8 +144,10 @@ setup(name='smdreader',
       ), build_dir=CYT_BLD_DIR))
 
 ext = Extension("hsd",
-                sources=["psana/hsd/hsd.pyx", "../psalg/psalg/src/PeakFinderAlgos.cpp", "../psalg/psalg/src/LocalExtrema.cpp"],
-                libraries=['xtcdata'],
+                sources=["psana/hsd/hsd.pyx",
+                         "../psalg/psalg/src/PeakFinderAlgos.cpp",
+                         "../psalg/psalg/src/LocalExtrema.cpp"],
+                libraries=['xtcdata','psalg'],
                 language="c++",
                 extra_compile_args=['-std=c++11'],
                 include_dirs=[np.get_include(),

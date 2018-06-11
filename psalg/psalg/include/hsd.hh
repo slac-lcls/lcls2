@@ -31,34 +31,16 @@ namespace Pds {
 
     class Hsd_v1_0_0 : public HsdEventHeaderV1 {
     public:
-        Hsd_v1_0_0(Allocator *allocator, const unsigned nChan): m_allocator(allocator)
-        , numPixels(allocator, 0)
-        , rawPtr(allocator, 0)
-        , sPosx(allocator, 0)
-        , numFexPeaksx(allocator, 0)
-        , lenx(allocator, 0)
-        , fexPtr(allocator, 0)
-        , fexPos(allocator, 0)
-        {
-            version = "1.0.0";
-            sPosx = AllocArray1D<AllocArray1D<uint16_t> >(m_allocator, nChan);
-            lenx = AllocArray1D<AllocArray1D<uint16_t> >(m_allocator, nChan);
-            fexPos = AllocArray1D<AllocArray1D<uint16_t> >(m_allocator, nChan);
-            fexPtr = AllocArray1D<AllocArray1D<uint16_t*> >(m_allocator, nChan);
-            for (unsigned i=0; i<nChan; i++) {
-                auto _t = AllocArray1D<uint16_t>(m_allocator, 1600); // FIXME: better way to set array length?
-                sPosx.push_back(_t);
-                auto _p = AllocArray1D<uint16_t>(m_allocator, 1600);
-                lenx.push_back(_p);
-                auto _r = AllocArray1D<uint16_t>(m_allocator, 1600);
-                fexPos.push_back(_r);
-                auto _q = AllocArray1D<uint16_t*>(m_allocator, 1600);
-                fexPtr.push_back(_q);
-            }
-            numFexPeaksx = AllocArray1D<unsigned>(m_allocator, nChan);
-            rawPtr = AllocArray1D<uint16_t*>(m_allocator, nChan);
-            numPixels = AllocArray1D<unsigned>(m_allocator, nChan);
-        }
+        Allocator *m_allocator;
+        AllocArray1D<unsigned> numPixels;
+        AllocArray1D<AllocArray1D<uint16_t> > sPosx; // nChan x maxLength
+        AllocArray1D<AllocArray1D<uint16_t> > lenx; // nChan x maxLength
+        AllocArray1D<AllocArray1D<uint16_t> > fexPos; // nChan x maxLength
+        AllocArray1D<AllocArray1D<uint16_t*> > fexPtr; // nChan x maxLength
+        AllocArray1D<unsigned> numFexPeaksx; // nChan x 1
+        AllocArray1D<uint16_t*> rawPtr; // nChan x 1
+    public:
+        Hsd_v1_0_0(Allocator *allocator, const unsigned nChan);
 
         ~Hsd_v1_0_0(){
         }
@@ -143,15 +125,6 @@ namespace Pds {
             }
             return 0;
         }
-    public:
-        Allocator *m_allocator;
-        AllocArray1D<unsigned> numPixels;
-        AllocArray1D<AllocArray1D<uint16_t> > sPosx; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t> > lenx; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t> > fexPos; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t*> > fexPtr; // nChan x maxLength
-        AllocArray1D<unsigned> numFexPeaksx; // nChan x 1
-        AllocArray1D<uint16_t*> rawPtr; // nChan x 1
     };
 
     HsdEventHeaderV1* HsdEventHeaderV1::Create(Allocator *allocator, const char* version, const unsigned nChan) {
