@@ -78,45 +78,43 @@ class HsdConfig(QtWidgets.QWidget):
             glo.addWidget( QtWidgets.QLabel('%d'%i), 0, i+1,
                            QtCore.Qt.AlignHCenter )
         # Table data
-        PvRow( glo, 1, pvbase+':ENABLE'   , 'Enable')
-        PvRow( glo, 2, pvbase+':RAW_GATE' , 'Raw Gate')
-        PvRow( glo, 3, pvbase+':RAW_PS'   , 'Raw Prescale')
-        PvRow( glo, 4, pvbase+':FEX_GATE' , 'Fex Gate')
-        PvRow( glo, 5, pvbase+':FEX_PS'   , 'Fex Prescale')
-        PvRow( glo, 6, pvbase+':FEX_YMIN' , 'Fex Ymin')
-        PvRow( glo, 7, pvbase+':FEX_YMAX' , 'Fex Ymax')
-        PvRow( glo, 8, pvbase+':FEX_XPRE' , 'Fex Xpre')
-        PvRow( glo, 9, pvbase+':FEX_XPOST', 'Fex Xpost')
-        PvRow( glo,10, pvbase+':NAT_GATE' , 'Native Gate')
-        PvRow( glo,11, pvbase+':NAT_PS'   , 'Native Prescale')
+        pvtable = [('Enable'         ,'ENABLE'),
+                   ('Raw Start'      ,'RAW_START'),
+                   ('Raw Gate'       ,'RAW_GATE'),
+                   ('Raw Prescale'   ,'RAW_PS'),
+                   ('Fex Start'      ,'FEX_START'),
+                   ('Fex Gate'       ,'FEX_GATE'),
+                   ('Fex Prescale'   ,'FEX_PS'),
+                   ('Fex Ymin'       ,'FEX_YMIN'),
+                   ('Fex Ymax'       ,'FEX_YMAX'),
+                   ('Fex Xpre'       ,'FEX_XPRE'),
+                   ('Fex Xpost'      ,'FEX_XPOST'),
+                   ('Native Start'   ,'NAT_START'),
+                   ('Native Gate'    ,'NAT_GATE'),
+                   ('Native Prescale','NAT_PS')]
+        for i,elem in enumerate(pvtable):
+            PvRow( glo, i+1, pvbase+':'+elem[1], elem[0] )
         lo.addLayout(glo)
 
-        hlo = QtWidgets.QHBoxLayout()
-        hlo.addWidget(QtWidgets.QLabel('Test Pattern (None=-1)'))
-        hlo.addWidget(PvEditInt(pvbase+':TESTPATTERN',''))
-        hlo.addStretch(1)
-        lo.addLayout(hlo)
-
-        hlo = QtWidgets.QHBoxLayout()
-        hlo.addWidget(QtWidgets.QLabel('Full Threshold (Events)'))
-        hlo.addWidget(PvEditInt(pvbase+':FULLEVT',''))
-        hlo.addStretch(1)
-        lo.addLayout(hlo)
-
-        hlo = QtWidgets.QHBoxLayout()
-        hlo.addWidget(QtWidgets.QLabel('Full Threshold (Size)'))
-        hlo.addWidget(PvEditInt(pvbase+':FULLSIZE',''))
-        hlo.addStretch(1)
-        lo.addLayout(hlo)
-
-        hlo = QtWidgets.QHBoxLayout()
-        hlo.addWidget(QtWidgets.QLabel('Trigger Shift (0..3)'))
-        hlo.addWidget(PvEditInt(pvbase+':TRIGSHIFT',''))
-        hlo.addStretch(1)
-        lo.addLayout(hlo)
+        pvtable = [('Test Pattern (None=-1)','TESTPATTERN'),
+                   ('Even PhaseLock Low'    ,'SYNCELO'),
+                   ('Even PhaseLock High'   ,'SYNCEHI'),
+                   ('Odd PhaseLock Low'     ,'SYNCOLO'),
+                   ('Odd PhaseLock High'    ,'SYNCOHI'),
+                   ('Full Threshold(Events)','FULLEVT'),
+                   ('Full Size     (Rows)  ','FULLSIZE'),
+                   ('Trigger Shift (0..3)  ','TRIGSHIFT')]
+        for elem in pvtable:
+            hlo = QtWidgets.QHBoxLayout()
+            hlo.addWidget(QtWidgets.QLabel(elem[0]))
+            hlo.addWidget(PvEditInt(pvbase+':'+elem[1],''))
+            hlo.addStretch(1)
+            lo.addLayout(hlo)
 
         lo.addWidget(PvPushButton( pvbase+':BASE:APPLYCONFIG', 'Configure'))
         lo.addWidget(PvPushButton( pvbase+':BASE:UNDOCONFIG' , 'Unconfigure'))
+        lo.addWidget(PvPushButton( pvbase+':BASE:ENABLETR'   , 'Enable'))
+        lo.addWidget(PvPushButton( pvbase+':BASE:DISABLETR'  , 'Disable'))
 
         lo.addStretch(1)
         
@@ -135,9 +133,12 @@ class HsdStatus(QtWidgets.QWidget):
         PvLabel( lo, prefix, 'TIMPAUSECNT' )
         PvLabel( lo, prefix, 'TRIGCNT' )
         PvLabel( lo, prefix, 'TRIGCNTSUM' )
-        PvLabel( lo, prefix, 'READCNTSUM' )
-        PvLabel( lo, prefix, 'STARTCNTSUM' )
-        PvLabel( lo, prefix, 'QUEUECNTSUM' )
+#        PvLabel( lo, prefix, 'READCNTSUM' )
+#        PvLabel( lo, prefix, 'STARTCNTSUM' )
+        PvLabel( lo, prefix, 'MSGDELAYSET' )
+        PvLabel( lo, prefix, 'MSGDELAYGET' )
+        PvLabel( lo, prefix, 'HEADERCNTL0' )
+        PvLabel( lo, prefix, 'HEADERCNTOF' )
 
         glo = QtWidgets.QGridLayout()
         # Table headers
@@ -189,6 +190,10 @@ class HsdDetail(QtWidgets.QWidget):
         PvCol( glo, 3, pvbase+':RAW_BUFBEG'     , 'Begin Address', False)
         PvCol( glo, 4, pvbase+':RAW_BUFEND'     , 'End Address'  , False)
         lo.addLayout(glo)
+        lo.addStretch(1)
+
+        PvLabel( lo, prefix, 'SYNCE' )
+        PvLabel( lo, prefix, 'SYNCO' )
         lo.addStretch(1)
 
         self.setLayout(lo)

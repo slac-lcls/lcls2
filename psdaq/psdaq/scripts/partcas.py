@@ -85,6 +85,7 @@ if __name__ == '__main__':
             pvdb[stationstr+':%d:InhEnable%d'    %(i,j)] = {'type' : 'int', 'value': 0}
 
         pvdb[stationstr+':%d:RunTime'  %i] = {'type' : 'float', 'value': 0}
+        pvdb[stationstr+':%d:MsgDelay' %i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:L0InpRate'%i] = {'type' : 'float', 'value': 0, 'mdel' : 0}
         pvdb[stationstr+':%d:L0AccRate'%i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:L1Rate'   %i] = {'type' : 'float', 'value': 0}

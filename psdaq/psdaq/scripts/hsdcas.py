@@ -81,17 +81,27 @@ if __name__ == '__main__':
                                              'value' : 0 }
     pvdb[stationstr+'BASE:UNDOCONFIG'   ] = {'type' : 'int', 
                                              'value' : 0 }
+    pvdb[stationstr+'BASE:ENABLETR'     ] = {'type' : 'int', 
+                                             'value' : 0 }
+    pvdb[stationstr+'BASE:DISABLETR'    ] = {'type' : 'int', 
+                                             'value' : 0 }
 
     # Specific PVs
     pvdb[stationstr+'ENABLE'   ] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [0]*4 }
+    pvdb[stationstr+'RAW_START' ] = {'type' : 'int', 
+                                     'count': 4,
+                                     'value' : [4]*4 }
     pvdb[stationstr+'RAW_GATE' ] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [200]*4 }
     pvdb[stationstr+'RAW_PS'   ] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [1]*4 }
+    pvdb[stationstr+'FEX_START' ] = {'type' : 'int', 
+                                     'count': 4,
+                                     'value' : [4]*4 }
     pvdb[stationstr+'FEX_GATE' ] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [200]*4 }
@@ -110,6 +120,9 @@ if __name__ == '__main__':
     pvdb[stationstr+'FEX_XPOST'] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [3]*4 }
+    pvdb[stationstr+'NAT_START' ] = {'type' : 'int', 
+                                     'count': 4,
+                                     'value' : [4]*4 }
     pvdb[stationstr+'NAT_GATE' ] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [200]*4 }
@@ -129,6 +142,18 @@ if __name__ == '__main__':
                                         'value' : -1 }
     pvdb[stationstr+'TRIGSHIFT'  ] = {'type' : 'int', 
                                       'value' : 0 }
+    pvdb[stationstr+'SYNCE'       ] = {'type' : 'int', 
+                                      'value' : 0 }
+    pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int', 
+                                      'value' : 1800 }
+    pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
+                                      'value' : 2100 }
+    pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
+                                      'value' : 0 }
+    pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
+                                      'value' : 11600 }
+    pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
+                                      'value' : 11900 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
                                       'count' : 4,
                                       'value' : [0]*4 }
@@ -159,6 +184,18 @@ if __name__ == '__main__':
     # Queue counts (total)
     pvdb[stationstr+'QUEUECNTSUM'   ] = {'type' : 'int', 
                                         'value' : 0 }
+    # Msg Delay
+    pvdb[stationstr+'MSGDELAYSET'   ] = {'type' : 'int', 
+                                        'value' : 0 }
+    # Msg Delay
+    pvdb[stationstr+'MSGDELAYGET'   ] = {'type' : 'int', 
+                                        'value' : 0 }
+    # Header Count
+    pvdb[stationstr+'HEADERCNTL0'   ] = {'type' : 'int', 
+                                         'value' : 0 }
+    # Header Count
+    pvdb[stationstr+'HEADERCNTOF'   ] = {'type' : 'int', 
+                                         'value' : 0 }
     # PGP link status
     pvdb[stationstr+'PGPLOCLINKRDY'] = {'type' : 'int',
                                         'count': 4,
