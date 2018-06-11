@@ -4,17 +4,21 @@
 static inline unsigned getf(unsigned i, unsigned n, unsigned sh)
 {
   unsigned v = i;
-  return (v>>sh)&((1<<n)-1);
+  return n > 31 ? v : (v>>sh)&((1<<n)-1);
 }
 
 static inline unsigned getf(const Pds::Cphw::Reg& i, unsigned n, unsigned sh)
 {
   unsigned v = i;
-  return (v>>sh)&((1<<n)-1);
+  return n > 31 ? v : (v>>sh)&((1<<n)-1);
 }
 
 static inline unsigned setf(Pds::Cphw::Reg& o, unsigned v, unsigned n, unsigned sh)
 {
+  if (n>31) {
+    o = v;
+    return v;
+  }
   unsigned r = unsigned(o);
   unsigned q = r;
   q &= ~(((1<<n)-1)<<sh);
