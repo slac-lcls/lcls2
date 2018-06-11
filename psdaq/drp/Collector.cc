@@ -3,17 +3,38 @@
 #include <thread>
 #include <cassert>
 #include <unistd.h>
-#include <stdlib.h>                     
-#include <stdio.h> 
+#include <stdlib.h>
+#include <stdio.h>
 #include <zmq.h>
 #include "Collector.hh"
 using namespace XtcData;
 using namespace Pds::Eb;
 
-MyDgram::MyDgram(unsigned pulseId, uint64_t val, unsigned contributor_id)
+// these parameters must agree with the server side
+unsigned maxBatches = 8192; // size of the pool of batches
+unsigned maxEntries = 64 ; // maximum number of events in a batch
+unsigned BatchSizeInPulseIds = 64; // age of the batch. should never exceed maxEntries above, must be a power of 2
+unsigned EbId = 0; // from 0-63, maximum number of event builders
+size_t maxSize = sizeof(MyDgram);
+
+MyBatchManager::MyBatchManager(Pds::Eb::EbLfClient& ebFtClient, unsigned contributor_id) :
+    Pds::Eb::BatchManager(BatchSizeInPulseIds, maxBatches, maxEntries, maxSize),
+    inflight_count(0),
+    _ebLfClient(ebFtClient),
+    _contributor_id(contributor_id)
+{}
+
+void MyBatchManager::post(const Pds::Eb::Batch* batch)
 {
-    seq = XtcData::Sequence(Sequence::Event, TransitionId::L1Accept, TimeStamp(), PulseId(pulseId));
-    env[0] = 0;
+    _ebLfClient.post(EbId, batch->datagram(), batch->extent(),
+                     batch->index() * maxBatchSize(),
+                     (_contributor_id << 24) + batch->index());
+    inflight_count.fetch_add(1);
+}
+
+MyDgram::MyDgram(Sequence& sequence, uint64_t val, unsigned contributor_id)
+{
+    seq = sequence;
     xtc = Xtc(TypeId(TypeId::Data, 0), TheSrc(Level::Segment, contributor_id));
     _data = val;
     xtc.alloc(sizeof(_data));
@@ -44,22 +65,11 @@ static void* allocBatchRegion(unsigned maxBatches, size_t maxBatchSize)
 }
 
 // collects events from the workers and sends them to the event builder
-void collector(MemPool& pool, Parameters& para)
+void collector(MemPool& pool, Parameters& para, MyBatchManager& myBatchMan)
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUSH);
     zmq_connect(socket, "tcp://localhost:5559");
-
-    Pds::StringList peers;
-    peers.push_back(para.eb_server_ip);
-    Pds::StringList ports;
-    ports.push_back("32768");
-    Pds::Eb::EbLfClient myEbLfClient(peers, ports);
-
-    MyBatchManager myBatchMan(myEbLfClient, para.contributor_id);
-
-    unsigned timeout = 120;
-    myEbLfClient.connect(para.contributor_id, timeout, myBatchMan.batchRegion(), myBatchMan.batchRegionSize());
 
     printf("*** myEb %p %zd\n",myBatchMan.batchRegion(), myBatchMan.batchRegionSize());
     // // start eb receiver thread
@@ -90,14 +100,21 @@ void collector(MemPool& pool, Parameters& para)
         //        transition_id, event_header->seq.pulseId().value(), event_header->evtCounter);
 
 
-        // Dgram& dgram = *reinterpret_cast<Dgram*>(pebble->fex_data());
+        Dgram& dgram = *reinterpret_cast<Dgram*>(pebble->fex_data());
         uint64_t val;
-        if (i%3 == 0) {
+        if (i%5 == 0) {
             val = 0xdeadbeef;
         } else {
             val = 0xabadcafe;
         }
-        MyDgram dg(i, val, para.contributor_id);
+        MyDgram dg(dgram.seq, val, para.contributor_id);
+        /* 
+        Dgram dg(dgram);
+        dg.xtc.src = TheSrc(Level::Segment, para.contributor_id);
+        dg.xtc.extent = sizeof(dg.xtc);
+        uint64_t* payload = (uint64_t*)dg.xtc.alloc(8);
+        *payload = val;
+        */
         myBatchMan.process(&dg);
         pool.output_queue.push(pebble);
         i++;
@@ -141,15 +158,20 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
         const Dgram* last   = (const Dgram*)batch->xtc.next();
         while(result != last) {
             nreceive++;
-            // printf("--- result %lx\n",*(uint64_t*)(result->xtc.payload()));
             uint64_t eb_decision = *(uint64_t*)(result->xtc.payload());
             // printf("eb decision %lu\n", eb_decision);
             Pebble* pebble;
-            pool.output_queue.pop(pebble);
+            if (!pool.output_queue.pop(pebble)) {
+                printf("output_queue empty and finished\n");
+            }
 
             int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
             Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index]->virt);
             TransitionId::Value transition_id = event_header->seq.service();
+
+            if (event_header->seq.pulseId().value() != result->seq.pulseId().value()) {
+                printf("crap timestamps dont match\n");
+            }
 
             // write event to file if it passes event builder or is a configure transition
             if (eb_decision == 1 || (transition_id == 2)) {
@@ -159,7 +181,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
                     return;
                 }
             }
-            
+
             // return buffer to memory pool
             for (int l=0; l<8; l++) {
                 if (pebble->pgp_data->buffer_mask & (1 << l)) {
@@ -172,6 +194,7 @@ void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para)
 
             result = (Dgram*)result->xtc.next();
         }
+        myBatchMan.inflight_count.fetch_sub(1);
         delete input;
     }
 }

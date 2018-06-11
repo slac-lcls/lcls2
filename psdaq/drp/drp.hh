@@ -47,8 +47,8 @@ public:
         return curr_stack;
     }
 private:
-    uint8_t _fex_buffer[256*1024];
-    uint8_t _stack_buffer[256*1024];
+    uint8_t _fex_buffer[128*1024];
+    uint8_t _stack_buffer[128*1024];
     uint8_t* _stack;
 };
 
@@ -70,6 +70,16 @@ private:
     std::vector<Pebble> pebble;
 };
 
+struct Counters
+{
+    int64_t total_bytes_received;
+    int64_t event_count;
+    Counters() : total_bytes_received(0), event_count(0) {}
+};
+
+class MyBatchManager;
+
 void pin_thread(const pthread_t& th, int cpu);
+void monitor_func(std::atomic<Counters*>& p, MemPool& pool, MyBatchManager& myBatchMan);
 
 #endif // DRP_H
