@@ -58,27 +58,51 @@ int main(int argc, char* argv[])
     Factory<Detector> f;
     f.register_type<Digitizer>("Digitizer");
     f.register_type<AreaDetector>("AreaDetector");
-    Detector *d = f.create(detector_type.c_str());
-    printf("%p\n", d);
-
+    Detector* d = f.create(detector_type.c_str());
 
     int num_workers = 2;
-    int num_entries = 8192;
+    int num_entries = 131072;
     MemPool pool(num_workers, num_entries);
     PGPReader pgp_reader(pool, device_id, lane_mask, num_workers);
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
+    pin_thread(pgp_thread.native_handle(), 1);
+
+    // event builder
+    Pds::StringList peers;
+    peers.push_back(para.eb_server_ip);
+    Pds::StringList ports;
+    ports.push_back("32768");
+    Pds::Eb::EbLfClient myEbLfClient(peers, ports);
+    MyBatchManager myBatchMan(myEbLfClient, para.contributor_id);
+    unsigned timeout = 10;
+    int ret = myEbLfClient.connect(para.contributor_id, timeout,
+                                   myBatchMan.batchRegion(), 
+                                   myBatchMan.batchRegionSize());
+    if (ret) {
+        printf("ERROR in connecting to event builder!!!!\n");
+    }
+
+    // start performance monitor thread
+    std::thread monitor_thread(monitor_func, std::ref(pgp_reader.get_counters()),
+                               std::ref(pool), std::ref(myBatchMan));
 
     // start worker threads
     std::vector<std::thread> worker_threads;
     for (int i = 0; i < num_workers; i++) {
         worker_threads.emplace_back(worker, d, std::ref(pool.worker_input_queues[i]),
                                     std::ref(pool.worker_output_queues[i]), i);
+        pin_thread(worker_threads[i].native_handle(), 2 + i);
     }
 
-    collector(pool, para);
+    collector(pool, para, myBatchMan);
 
     pgp_thread.join();
     for (int i = 0; i < num_workers; i++) {
         worker_threads[i].join();
     }
+
+    // shutdown monitor thread
+    // counter->total_bytes_received = -1;
+    //p.exchange(counter, std::memory_order_release);
+    // monitor_thread.join();
 }

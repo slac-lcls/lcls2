@@ -40,8 +40,8 @@ static const unsigned max_ebs          = 64;         // Maximum possible number 
 static const unsigned srv_port_base    = 32768;           // Base port EB receives contributions on
 static const unsigned clt_port_base    = 32768 + max_ebs; // Base port EB sends    results       on
 static const unsigned max_batches      = 8192;       // Maximum number of batches in circulation
-static const unsigned max_entries      = 8;          // < or = to batch_duration
-static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
+static const unsigned max_entries      = 64;          // < or = to batch_duration
+static const uint64_t batch_duration   =  max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
