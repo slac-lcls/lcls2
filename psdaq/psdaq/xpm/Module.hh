@@ -213,14 +213,14 @@ namespace Pds {
       Cphw::Reg  _dsLinkStatus;
       //  [31:0]  rxRcvCnts
       Cphw::Reg  _dsLinkRcvs;
-
+      //  0x0014 - 
       Cphw::AmcPLL _amcPll;
-      //  0x0014 - RW: L0 selection control for partition[index]
+      //  0x0018 - RW: L0 selection control for partition[index]
       //  [0]     reset
       //  [16]    enable
       //  [31]    enable counter update
       Cphw::Reg   _l0Control;
-      //  0x0018 - RW: L0 selection criteria for partition[index]
+      //  0x001c - RW: L0 selection criteria for partition[index]
       //  [15: 0]  rateSel      L0 rate selection
       //  [31:16]  destSel      L0 destination selection
       //
@@ -229,50 +229,50 @@ namespace Pds {
       //  [15:14]=10 (sequence),   [13:8] sequencer, [3:0] sequencer bit
       //  [31]=1 any destination or match any of [14:0] mask of destinations
       Cphw::Reg   _l0Select;
-      //  0x001c - RO: Clks enabled for partition[index]
+      //  0x0020 - RO: Clks enabled for partition[index]
       Cphw::Reg64 _l0Enabled;
-      //  0x0024 - RO: Clks inhibited for partition[index]
+      //  0x0028 - RO: Clks inhibited for partition[index]
       Cphw::Reg64 _l0Inhibited;
-      //  0x002c - RO: Num L0s input for partition[index]
+      //  0x0030 - RO: Num L0s input for partition[index]
       Cphw::Reg64 _numl0;
-      //  0x0034 - RO: Num L0s inhibited for partition[index]
+      //  0x0038 - RO: Num L0s inhibited for partition[index]
       Cphw::Reg64 _numl0Inh;
-      //  0x003c - RO: Num L0s accepted for partition[index]
+      //  0x0040 - RO: Num L0s accepted for partition[index]
       Cphw::Reg64 _numl0Acc;
-      //  0x0044 - RO: Num L1s accepted for partition[index]
+      //  0x0048 - RO: Num L1s accepted for partition[index]
       Cphw::Reg64 _numl1Acc;
-      //  0x004c - RW: L1 select config for partition[index]
+      //  0x0050 - RW: L1 select config for partition[index]
       //  [0]     NL1Triggers clear  mask bits
       //  [16]    NL1Triggers enable mask bits
       Cphw::Reg   _l1config0;
-      //  0x0050 - RW: L1 select config for partition[index]
+      //  0x0054 - RW: L1 select config for partition[index]
       //  [3:0]   trigsrc       L1 trigger source link
       //  [12:4]  trigword      L1 trigger word
       //  [16]    trigwr        L1 trigger write mask
       Cphw::Reg   _l1config1;
-      //  0x0054 - RW: Analysis tag reset for partition[index]
+      //  0x0058 - RW: Analysis tag reset for partition[index]
       //  [3:0]   reset
       Cphw::Reg   _analysisRst;
-      //  0x0058 - RW: Analysis tag for partition[index]
+      //  0x005c - RW: Analysis tag for partition[index]
       //  [31:0]  tag[3:0]
       Cphw::Reg   _analysisTag;
-      //  0x005c - RW: Analysis push for partition[index]
+      //  0x0060 - RW: Analysis push for partition[index]
       //  [3:0]   push
       Cphw::Reg   _analysisPush;
-      //  0x0060 - RO: Analysis tag push counts for partition[index]
+      //  0x0064 - RO: Analysis tag push counts for partition[index]
       Cphw::Reg   _analysisTagWr;
-      //  0x0064 - RO: Analysis tag pull counts for partition[index]
+      //  0x0068 - RO: Analysis tag pull counts for partition[index]
       Cphw::Reg   _analysisTagRd;
-      //  0x0068 - RW: Pipeline depth for partition[index]
+      //  0x006c - RW: Pipeline depth for partition[index]
       Cphw::Reg   _pipelineDepth;
-      //  0x006c - RW: Message setup for partition[index]
+      //  0x0070 - RW: Message setup for partition[index]
       //  [14: 0]  Header
       //  [15]     Insert
       Cphw::Reg   _message;
-      //  0x0070 - RW: Message payload for partition[index]
+      //  0x0074 - RW: Message payload for partition[index]
       Cphw::Reg   _messagePayload;
     private:
-      uint32_t    _reserved_116[2];
+      uint32_t    _reserved_120[2];
     public:
       //  0x0080 - RW: Inhibit configurations for partition[index]
       //  [11:0]  interval      interval (929kHz ticks)
@@ -289,7 +289,7 @@ namespace Pds {
       //  [31]     Lock
       Cphw::Reg _monClk[4];
     private:
-      uint32_t    _reserved_168[(0x10000-288)>>2];
+      uint32_t    _reserved_288[(0x10000-288)>>2];
       //
       Cphw::RingBuffer _rxRing;  // 0x80010000
       uint32_t    _reserved_80020000[(0x10000-sizeof(_rxRing))>>2];
