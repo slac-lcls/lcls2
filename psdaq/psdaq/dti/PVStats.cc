@@ -53,6 +53,9 @@ enum { _TimLinkUp,
        _dUsLinkObL1A,
        _UsLinkObL1R,
        _dUsLinkObL1R,
+
+       _UsLinkMsgDelay,
+       _PartMsgDelay,
        _NumberOf,
 };
 
@@ -126,6 +129,9 @@ namespace Pds {
       PV_ADDV(dUsLinkObL1A,Module::NUsLinks);
       PV_ADDV(UsLinkObL1R ,Module::NUsLinks);
       PV_ADDV(dUsLinkObL1R,Module::NUsLinks);
+
+      PV_ADDV(UsLinkMsgDelay,Module::NUsLinks);
+      PV_ADDV(PartMsgDelay  ,8);
 #undef PV_ADD
 #undef PV_ADDV
 
@@ -231,6 +237,14 @@ namespace Pds {
       PVPUTU ( _QpllLock , ns.qpllLock);
 
       PVPUTAU( _MonClkRate, 4,  ns.monClk[i].rate);
+
+      for(unsigned i=0; i<Module::NUsLinks; i++)
+        reinterpret_cast<unsigned*>(_pv[_UsLinkMsgDelay]->data())[i] = ns.usLinkMsgDelay[i];
+      _pv[_UsLinkMsgDelay]->put();
+
+      for(unsigned i=0; i<8; i++)
+        reinterpret_cast<unsigned*>(_pv[_PartMsgDelay]->data())[i] = ns.partMsgDelay[i];
+      _pv[_PartMsgDelay]->put();
 
 #undef PVPUT_ABS
 #undef PVPUT_DEL
