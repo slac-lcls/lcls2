@@ -8,7 +8,7 @@ class Detector:
         df = eval(str(det.dettype).upper() + '._Factory()')  # HSD._Factory()
         return df.create(name, self.config)
 
-class DetectorBase:
+class DetectorBase(object):
     def __init__(self, name, config):
         self.detectorName = name
         self.config = config
