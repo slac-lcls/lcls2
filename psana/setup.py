@@ -143,6 +143,13 @@ setup(name='smdreader',
                     include_dirs=["psana"],
       ), build_dir=CYT_BLD_DIR))
 
+setup(name='eventbuilder', 
+      ext_modules = cythonize(Extension(
+                    "psana.eventbuilder",                                 
+                    sources=["psana/eventbuilder.pyx"],  
+                    include_dirs=["psana"],
+      )))
+
 ext = Extension("hsd",
                 sources=["psana/hsd/hsd.pyx",
                          "../psalg/psalg/src/PeakFinderAlgos.cpp",

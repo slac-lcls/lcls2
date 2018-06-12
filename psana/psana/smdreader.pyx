@@ -1,7 +1,7 @@
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from posix.unistd cimport read
-
+"""
 cdef struct Xtc:
     int junks[4]
     unsigned extent
@@ -24,15 +24,14 @@ cdef struct Buffer:
     unsigned long timestamp
     size_t block_offset
     size_t block_size
-
+"""
 cdef class SmdReader:
-    cdef int* fds
-    cdef size_t chunksize
-    cdef int maxretries 
-    cdef Buffer *bufs
-    cdef int nfiles
-    cdef unsigned got_events
-
+    #cdef int* fds
+    #cdef size_t chunksize
+    #cdef int maxretries 
+    #cdef Buffer *bufs
+    #cdef int nfiles
+    #cdef unsigned got_events
     def __init__(self, fds):
         self.chunksize = 0x1000000
         self.maxretries = 5
