@@ -6,6 +6,7 @@ def det():
     ds = DataSource('data.xtc')
     det = ds.Detector('xppcspad')
 
+'''
     for evt in ds.events():
         raw = det.raw(evt.__next__())
         break
@@ -16,6 +17,7 @@ def det():
     assert(raw.shape==(2,3,3))
     assert(ds._configs()[0].software.xppcspad.dettype == 'cspad')
     assert(ds._configs()[0].software.xppcspad.detid == 'detnum1234')
+'''
 
 if __name__ == '__main__':
     det()
