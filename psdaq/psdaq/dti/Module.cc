@@ -110,9 +110,9 @@ void Module::init()
   _hsRepeater[0].init();
   _hsRepeater[1].init();
   _hsRepeater[2].init();
-  _hsRepeater[3].init();  // why is this a problem?
-  _hsRepeater[4].init();
-  _hsRepeater[5].init();
+  // _hsRepeater[3].init();  // why is this a problem?
+  // _hsRepeater[4].init();
+  // _hsRepeater[5].init();
 
   printf("Index:      UsLink %u  DsLink %u\n", usLink(), dsLink());
   printf("Link Up:    Us %02x  Bp %d  Ds %02x\n", usLinkUp(), bpLinkUp(), dsLinkUp());
@@ -367,6 +367,17 @@ Stats Module::stats() const
     s.monClk[i].fast = monClkFast(i);
     s.monClk[i].lock = monClkLock(i);
   }
+
+  uint32_t v[2];
+  v[0] = _msgDelaySet[0];
+  v[1] = _msgDelaySet[1];
+  for  (unsigned i = 0; i < NUsLinks; i++) 
+    s.usLinkMsgDelay[i] = reinterpret_cast<uint8_t*>(v)[i];
+
+  v[0] = _msgDelayGet[0];
+  v[1] = _msgDelayGet[1];
+  for  (unsigned i = 0; i < 8; i++)
+    s.partMsgDelay[i] = reinterpret_cast<uint8_t*>(v)[i];
 
   // @todo: These are not available yet
   //s.usLinkObL0  = _usLinkObL0;

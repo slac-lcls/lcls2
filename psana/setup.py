@@ -129,19 +129,19 @@ setup(name='dgramchunk',
                     sources=["src/dgramchunk.pyx"],
       ), build_dir=CYT_BLD_DIR))
 
-setup(name='bufferedreader', 
-      ext_modules = cythonize(Extension(
-                    "psana.bufferedreader",
-                    sources=["psana/bufferedreader.pyx"],
-                    include_dirs=["psana"],
-      ), build_dir=CYT_BLD_DIR))
-
 setup(name='smdreader',
       ext_modules = cythonize(Extension(
                     "psana.smdreader",
                     sources=["psana/smdreader.pyx"],
                     include_dirs=["psana"],
       ), build_dir=CYT_BLD_DIR))
+
+setup(name='eventbuilder', 
+      ext_modules = cythonize(Extension(
+                    "psana.eventbuilder",                                 
+                    sources=["psana/eventbuilder.pyx"],  
+                    include_dirs=["psana"],
+      )))
 
 ext = Extension("hsd",
                 sources=["psana/hsd/hsd.pyx",

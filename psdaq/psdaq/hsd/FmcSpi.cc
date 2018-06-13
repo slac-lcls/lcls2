@@ -170,13 +170,36 @@ int FmcSpi::clocktree_init(unsigned   clocksource,
     A = 4; B = 78;
     P = 6; // P-counter = 32
     R = 10;
+    // This could be recalculated for 8.5 MHz refclk
+    // A = 28; B = 91; P = 6; R = 10
     break;
   case LCLSII:
-    // 14-6/7 MHz refclk (LCLSII)
+    // 14-6/7 MHz refclk (LCLSII) [929kHz * 16]
     // Gives 2696 samples / 929kHz beam cycle
-    A = 21; B = 52;
+    A = 21; B = 52; // [ (52*32 + 21)/10 = 168.5 ]
     P = 6; // P-counter = 32
     R = 10;
+    break;
+  case K929:
+    // 929 kHz refclk (LCLSII)
+    // Gives 2696 samples / 929kHz beam cycle
+    A = 8; B = 84; // [ (84*32 + 8)/1 = 2696 ]
+    P = 6; // P-counter = 32
+    R = 1;
+    break;
+  case M3_7:
+    // 4*929 kHz refclk (LCLSII)
+    // Gives 674*4 / 929kHz beam cycle
+    A = 2; B = 21; // [ (21*32 + 2)/1 = 674 ]
+    P = 6; // P-counter = 32
+    R = 1;
+    break;
+  case M7_4:
+    // 8*929 kHz refclk (LCLSII)
+    // Gives 337*8 / 929kHz beam cycle
+    A = 17; B = 10; // [ (10*32 + 17)/1 = 337 ]
+    P = 6; // P-counter = 32
+    R = 1;
     break;
   case EXTERNAL:
   default:
@@ -223,7 +246,7 @@ int FmcSpi::clocktree_init(unsigned   clocksource,
   _writeAD9517(0x19B, 0x00); //div2.2, /2
   _writeAD9517(0x19C, 0x00); //div2.1 on, div2.2 on
   _writeAD9517(0x19D, 0x00); //div2 dcc on
-  _writeAD9517(0x19E, 0x00); //div3.1, /2
+  _writeAD9517(0x19E, 0x11); //div3.1, /4
   _writeAD9517(0x19F, 0x00); //phase
   _writeAD9517(0x1A0, 0x00); //div3.2, /2
   _writeAD9517(0x1A1, 0x00); //div3.1 on, div3.2 on
@@ -251,6 +274,61 @@ int FmcSpi::clocktree_init(unsigned   clocksource,
   return 0;
 }
 
+int FmcSpi::clocktree_modify(int A,
+                             int B,
+                             int P,
+                             int R,
+                             int ab,
+                             int cp)
+{
+  unsigned v;
+
+  printf("clocktree A=%u, B=%u, P=%u, R=%u\n",
+         A,B,P,R);
+
+  v = 0xc | ((cp&3)<<4);
+  _writeAD9517( 0x10, v); //CP 4.8mA, normal op.
+  _writeAD9517( 0x11, R);    //R lo
+  _writeAD9517( 0x12, 0x00); //R hi
+  _writeAD9517( 0x13, A); //A
+  _writeAD9517( 0x14, B); //B
+  _writeAD9517( 0x14, B); //B lo
+  _writeAD9517( 0x15, 0); //B hi
+  _writeAD9517( 0x16, P); //presc. DM16
+
+  v = 0x84 | (ab&3);
+  _writeAD9517( 0x17, v); //STATUS = DLD
+
+  _writeAD9517(0x230, 0x01); //no pwd, sync
+  _writeAD9517(0x232, 0x01); //update 
+  
+  _writeAD9517(0x230, 0x00); //no pwd, no sync
+  _writeAD9517(0x232, 0x01); //update 
+  
+  usleep(100000);
+  
+  // verify CLK0 PLL status
+  v = _readAD9517(0x1F);
+  if ((v&0x01)!=0x01) {
+  printf("PLL not locked!!!\n");
+  return -1;
+} else {
+  printf("PLL locked!!!\n");
+}
+
+  clockWhileSync();
+
+  return 0;
+}
+
+void FmcSpi::clocktree_sync()
+{
+  _writeAD9517(0x230, 0x01); //assert sync
+  _writeAD9517(0x232, 0x01); //update 
+  _writeAD9517(0x230, 0x00); //release sync
+  _writeAD9517(0x232, 0x01); //update 
+}
+
 void FmcSpi::limitBandwidth(bool b)
 {
   unsigned v = _readADC(1);
@@ -270,6 +348,8 @@ void FmcSpi::clockWhileSync()
   v = 1;
   _writeADC(6,v);
 }
+
+void FmcSpi::applySync() { _applySync(); }
 
 void FmcSpi::_applySync()
 {

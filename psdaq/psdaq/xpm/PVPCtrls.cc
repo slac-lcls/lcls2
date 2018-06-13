@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 
-#define DBUG
+//#define DBUG
 
 using Pds_Epics::PVBase;
 
@@ -203,6 +203,7 @@ namespace Pds {
       NPV ( DstSelect_Mask      );
       NPV ( ResetL0             );
       NPV ( Run                 );
+      NPV ( L0Delay             );
       NPV ( L1TrgClear          );
       NPV ( L1TrgEnable         );
       NPV ( L1TrgSource         );
@@ -230,7 +231,7 @@ namespace Pds {
 
     void PVPCtrls::enable(unsigned shelf)
     {
-      printf("PVPCtrls::enable %u(%u)\n", shelf, _shelf);
+      //      printf("PVPCtrls::enable %u(%u)\n", shelf, _shelf);
       bool v = (shelf==_shelf);
       _enabled = v;
 

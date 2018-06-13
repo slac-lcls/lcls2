@@ -23,6 +23,7 @@
 #include "psdaq/hsd/FmcCore.hh"
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/HdrFifo.hh"
+#include "psdaq/hsd/PhaseMsmt.hh"
 #include "psdaq/hsd/FlashController.hh"
 
 using Pds::Mmhw::AxiVersion;
@@ -121,7 +122,8 @@ namespace Pds {
       AdcCore  adcb_core;        // 0x81C00
       AdcSync  adc_sync;         // 0x82000
       HdrFifo  hdr_fifo[4];      // 0x82800
-      uint32_t rsvd_to_0x88000  [(0x5800-4*sizeof(HdrFifo))/4];
+      PhaseMsmt trg_phase[2];
+      uint32_t rsvd_to_0x88000  [(0x5800-4*sizeof(HdrFifo)-2*sizeof(PhaseMsmt))/4];
 
       FexCfg   fex_chan[4];      // 0x88000
       uint32_t rsvd_to_0x90000  [(0x8000-4*sizeof(FexCfg))/4];
@@ -139,7 +141,7 @@ using namespace Pds::HSD;
 
 Module* Module::create(int fd)
 {
-  void* ptr = mmap(0, sizeof(Pds::HSD::Module::PrivateData), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+  void* ptr = mmap(0, sizeof(Pds::HSD::Module::PrivateData), PROT_READ|PROT_WRITE, (MAP_SHARED|MAP_LOCKED), fd, 0);
   if (ptr == MAP_FAILED) {
     perror("Failed to map");
     return 0;
@@ -174,8 +176,8 @@ Module* Module::create(int fd, TimingType timing)
     double txclkr = 16.e-6*double(vve-vvb)/dt;
     printf("TxRefClk: %f MHz\n", txclkr);
 
-    static const double TXCLKR_MIN[] = { 118., 185. };
-    static const double TXCLKR_MAX[] = { 120., 187. };
+    static const double TXCLKR_MIN[] = { 118., 185., -1.00, 185., 185., 185. };
+    static const double TXCLKR_MAX[] = { 120., 187., 1000., 187., 187., 187. };
     if (txclkr < TXCLKR_MIN[timing] ||
         txclkr > TXCLKR_MAX[timing]) {
       m->fmc_clksynth_setup(timing);
@@ -654,6 +656,12 @@ void Module::fmc_clksynth_setup(TimingType timing)
   p->clksynth.dump ();
 }
 
+void Module::fmc_modify(int A, int B, int P, int R, int cp, int ab)
+{ 
+  p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+  p->fmc_spi.clocktree_modify(A,B,P,R,cp,ab);
+}
+
 uint64_t Module::device_dna() const
 {
   uint64_t v = p->version.DeviceDnaHigh;
@@ -863,6 +871,18 @@ void Module::set_gain(unsigned channel, unsigned value)
   p->fmc_spi.set_gain(channel&0x3,value);
 }
 
+void Module::clocktree_sync()
+{
+  p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+  p->fmc_spi.clocktree_sync();
+}
+
+void Module::sync()
+{
+  p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+  p->fmc_spi.applySync();
+}
+
 void* Module::reg() { return (void*)p; }
 
 std::vector<Pgp*> Module::pgp() {
@@ -889,6 +909,8 @@ std::vector<Pgp*> Module::pgp() {
 FexCfg* Module::fex() { return &p->fex_chan[0]; }
 
 HdrFifo* Module::hdrFifo() { return &p->hdr_fifo[0]; }
+
+uint32_t* Module::trgPhase() { return reinterpret_cast<uint32_t*>(&p->trg_phase[0]); }
 
 void   Module::mon_start()
 {

@@ -79,6 +79,9 @@ namespace Pds {
       uint32_t cacheSel;
       uint32_t cacheState;
       uint32_t cacheAddr;
+
+      uint32_t msgDelay;
+      uint32_t headerCnt;
       //
       //      uint32_t status;
       //      uint32_t statusCount[32];

@@ -1,5 +1,6 @@
 #include <limits.h>
 #include <unistd.h>
+#include <time.h>  
 #include <fstream>
 #include <zmq.h>
 #include "Collector.hh"
@@ -87,16 +88,27 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, MyBatchManager& myBa
                 event_rate, data_rate,
                 pool.collector_queue.guess_size(),
                 myBatchMan.inflight_count.load(std::memory_order_relaxed));
-        int64_t epoch = std::chrono::duration_cast<std::chrono::duration<int64_t>>(
-                        std::chrono::system_clock::now().time_since_epoch()).count();
 
         // Inifiband counters are divided by 4 (lanes) https://community.mellanox.com/docs/DOC-2751
         double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / duration;
         double xmit_rate = 4.0*double(port_xmit_data - old_port_xmit_data) / duration;
+        
+        time_t rawtime;
+        tm* timeinfo;
+        time (&rawtime);
+        timeinfo = localtime(&rawtime);
+
+        char time_buffer[80];
+        strftime(time_buffer, 80, "%Y-%m-%d %H:%M:%S", timeinfo);
 
         int size = snprintf(buffer, 4096,
-                R"(["%s",{"time": [%ld], "event_rate": [%f], "data_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "rcv_rate": [%f], "xmit_rate": [%f]}])",
+                R"({"host": "%s", "x": "%s", "data": {"event_rate": [%f], "data_rate": [%f], "rcv_rate": [%f], "xmit_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "used_batches": [%d]}})", 
+                hostname, time_buffer, event_rate, data_rate, rcv_rate, xmit_rate, buffer_queue_size, output_queue_size, myBatchMan.inflight_count.load(std::memory_order_relaxed));
+
+        /*
+ "event_rate": [%f], "data_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "rcv_rate": [%f], "xmit_rate": [%f]}])",
                 hostname, epoch, event_rate, data_rate, buffer_queue_size, output_queue_size, rcv_rate, xmit_rate);
+                */
         zmq_send(socket, buffer, size, 0);
         // printf("%s\n", buffer);
         old_bytes = new_bytes;

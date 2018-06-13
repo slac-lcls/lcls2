@@ -199,8 +199,10 @@ namespace Pds {
       //  [30:28] pllCount[1]   PLL count[1] for AMC[index] (RO)
       //  [31]    pllStat[1]    PLL stat[1]  for AMC[index] (RO)
       Cphw::AmcPLL _amcPll[2];
+      Cphw::Reg    _msgDelaySet[2]; // Message Delay Advertised
+      Cphw::Reg    _msgDelayGet[2]; // Message Delay Measured
     private:
-      uint32_t    _reserved_216[(0x10000000-216)>>2];
+      uint32_t    _reserved_220[(0x10000000-220)>>2];
     public:
       class Pgp2bAxi
       {
@@ -336,6 +338,8 @@ namespace Pds {
          unsigned txOpcodes;
          unsigned rxOpcodes;
       }        pgp[2];
+      unsigned usLinkMsgDelay[Module::NUsLinks];
+      unsigned partMsgDelay  [8];
     };
   };
 };

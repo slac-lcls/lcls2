@@ -18,7 +18,7 @@ acTS        = ['TS%u'%(i+1) for i in range(6)]
 seqBits     = ['b%u'%i for i in range(16)]
 # Sequence 16 is programmed for rates stepping at 10kHz
 seqIdxs     = ['s%u'%i for i in range(18)]
-seqBursts   = ['%u x %.2fus'%(2*(i%4+1),float(int(i/4+1))*interval) for i in range(16)]
+seqBursts   = ['%u x %.2fus'%(2<<(i%4),float(int(i/4+1))*interval) for i in range(16)]
 seqRates    = ['%u0kHz'%(i+1) for i in range(16)]
 seqLocal    = ['%u0kHz'%(2*i+2) for i in range(16)]
 

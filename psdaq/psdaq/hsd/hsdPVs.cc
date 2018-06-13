@@ -12,6 +12,7 @@
 #include "psdaq/hsd/QABase.hh"
 #include "psdaq/hsd/PVStats.hh"
 #include "psdaq/hsd/PVCtrls.hh"
+#include "psdaq/mmhw/AxiVersion.hh"
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
@@ -160,7 +161,11 @@ int main(int argc, char** argv)
     return -1;
   }
 
-  Module* m = Module::create(fd, LCLSII);
+  //  Module* m = Module::create(fd, K929);
+  Module* m = Module::create(fd, M3_7);
+  //  Module* m = Module::create(fd, M7_4);
+  std::string buildStamp = m->version().buildStamp();
+  printf("BuildStamp: %s\n",buildStamp.c_str());
 
   StatsTimer* timer = new StatsTimer(*m);
 
