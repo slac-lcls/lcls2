@@ -129,13 +129,6 @@ setup(name='dgramchunk',
                     sources=["src/dgramchunk.pyx"],
       ), build_dir=CYT_BLD_DIR))
 
-setup(name='bufferedreader', 
-      ext_modules = cythonize(Extension(
-                    "psana.bufferedreader",
-                    sources=["psana/bufferedreader.pyx"],
-                    include_dirs=["psana"],
-      ), build_dir=CYT_BLD_DIR))
-
 setup(name='smdreader',
       ext_modules = cythonize(Extension(
                     "psana.smdreader",
