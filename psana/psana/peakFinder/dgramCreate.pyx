@@ -320,7 +320,7 @@ class CyDgram():
         py_name = PyNameBlock(num_elem)
         py_data = PyDataBlock()
 
-        basealg = PyAlg(alg.algname,alg.major, alg.minor, alg.micro)
+        basealg = PyAlg(alg.algname, alg.major, alg.minor, alg.micro)
 
         num_arrays = 0
         for name, array in event_dict.items():

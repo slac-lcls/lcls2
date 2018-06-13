@@ -31,15 +31,6 @@ namespace Pds {
 
     class Hsd_v1_0_0 : public HsdEventHeaderV1 {
     public:
-        Allocator *m_allocator;
-        AllocArray1D<unsigned> numPixels;
-        AllocArray1D<AllocArray1D<uint16_t> > sPosx; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t> > lenx; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t> > fexPos; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t*> > fexPtr; // nChan x maxLength
-        AllocArray1D<unsigned> numFexPeaksx; // nChan x 1
-        AllocArray1D<uint16_t*> rawPtr; // nChan x 1
-    public:
         Hsd_v1_0_0(Allocator *allocator, const unsigned nChan);
 
         ~Hsd_v1_0_0(){
@@ -125,6 +116,15 @@ namespace Pds {
             }
             return 0;
         }
+    public:
+        Allocator *m_allocator;
+        AllocArray1D<unsigned> numPixels;
+        AllocArray1D<AllocArray1D<uint16_t> > sPosx; // nChan x maxLength
+        AllocArray1D<AllocArray1D<uint16_t> > lenx; // nChan x maxLength
+        AllocArray1D<AllocArray1D<uint16_t> > fexPos; // nChan x maxLength
+        AllocArray1D<AllocArray1D<uint16_t*> > fexPtr; // nChan x maxLength
+        AllocArray1D<unsigned> numFexPeaksx; // nChan x 1
+        AllocArray1D<uint16_t*> rawPtr; // nChan x 1
     };
 
     HsdEventHeaderV1* HsdEventHeaderV1::Create(Allocator *allocator, const char* version, const unsigned nChan) {

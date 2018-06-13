@@ -5,7 +5,7 @@
 
 using namespace Pds::HSD;
 
-Hsd_v1_0_0::Hsd_v1_0_0(Allocator *allocator, const unsigned nChan)
+Hsd_v1_0_0::Hsd_v1_0_0(Allocator *allocator, const unsigned nChan) // Pass array of lengths nChan
 : m_allocator(allocator)
 , numPixels(allocator, nChan)
 , sPosx(allocator, nChan)
@@ -17,7 +17,7 @@ Hsd_v1_0_0::Hsd_v1_0_0(Allocator *allocator, const unsigned nChan)
 {
     version = "1.0.0";
     for (unsigned i=0; i<nChan; i++) {
-        auto _t = AllocArray1D<uint16_t>(m_allocator, 1600); // FIXME: better way to set array length?
+        auto _t = AllocArray1D<uint16_t>(m_allocator, 1600); // FIXME: better way to set array length? Get from hsd configure
         sPosx.push_back(_t);
         auto _p = AllocArray1D<uint16_t>(m_allocator, 1600);
         lenx.push_back(_p);

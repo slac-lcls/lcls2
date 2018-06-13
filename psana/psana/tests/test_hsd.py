@@ -18,8 +18,8 @@ def test_hsd():
     chanNum = 2
     for i, evt in enumerate(ds.events()):
         hsd = det(evt)
-        waveform = hsd.waveform()
-        listOfPeaks, sPos = hsd.peaks(chanNum) # TODO: return times
+        waveform = hsd.waveform() # FIXME: return dictionary
+        listOfPeaks, sPos = hsd.peaks(chanNum) # TODO: return times instead of sPos. Get sampling rate from hsd configure
 
         print("waveform: ", waveform)
         print("list of peaks:", listOfPeaks)

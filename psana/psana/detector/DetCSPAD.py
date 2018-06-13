@@ -1,24 +1,25 @@
 from psana.detector.detector import DetectorBase
-import psana.detector.opaque as opaque
+import numpy as np
 
 class CSPAD(DetectorBase):
 
-    def __init__(self, name, config):
-        super(CSPAD, self).__init__(name, config)
+    def __init__(self, name, config, dgramInd):
+        super(CSPAD, self).__init__(name, config, dgramInd)
         self.name = name
+        self.ind = dgramInd[0]
+        config = config[self.ind]
         detcfg = getattr(config.software, self.name)
         assert detcfg.dettype == 'cspad'
-        assert detcfg.raw.software == 'raw'
-        assert detcfg.raw.version == (2, 3, 42)
 
     class _Factory:
-        def create(self, name, config): return CSPAD(name, config)
+        def create(self, name, config, dgramInd): return CSPAD(name, config, dgramInd)
 
     def raw(self, evt, verbose=0):
-        det = getattr(evt, self.name)
-        evtAttr = det.raw.arrayRaw
-        evtAttr = evtAttr.reshape((2, 3, 3))  # This mini cspad has 2x3x3 pixels
-        return evtAttr
+        quad0 = eval('evt.dgrams[self.ind].'+self.name).raw.quads0_data
+        quad1 = eval('evt.dgrams[self.ind].'+self.name).raw.quads1_data
+        quad2 = eval('evt.dgrams[self.ind].'+self.name).raw.quads2_data
+        quad3 = eval('evt.dgrams[self.ind].'+self.name).raw.quads3_data
+        return np.concatenate((quad0, quad1, quad2, quad3), axis=0)
 
     def calib(self, data, verbose=0): print("cspad.calib")
 
