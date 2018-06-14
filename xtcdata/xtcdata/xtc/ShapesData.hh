@@ -7,12 +7,14 @@
 #include <iostream>
 
 #include "xtcdata/xtc/Xtc.hh"
+#include "xtcdata/xtc/Array.hh"
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/Dgram.hh"
-namespace XtcData {
-class VarDef;
 
+namespace XtcData {
+
+class VarDef;
 
 static const int maxNameSize = 256;
 
@@ -53,15 +55,14 @@ public:
 
     static int get_element_size(DataType type);
 
-    enum {MaxRank=5};
-  
     Name(const char* name, DataType type, int rank=0) : _alg("",0,0,0) {
-        // For compatibility with python
-        //assert(rank != 0 && (type=INT64 || type = DOUBLE));
+        // We should consider using this for creating datagrams
+        // from python, since python only support INT64/DOUBLE
+        // (apart from arrays)
+        // assert(rank != 0 && (type=INT64 || type = DOUBLE));
 
-      // Assert maxrank, maxnamesize
-      assert(rank < MaxRank);assert(strlen(name) < maxNameSize);
-      strncpy(_name, name, maxNameSize);
+        assert(rank < MaxRank);assert(strlen(name) < maxNameSize);
+        strncpy(_name, name, maxNameSize);
         _type = type;
         _rank = rank;
     }
@@ -97,9 +98,9 @@ private:
 class Shape
 {
 public:
-  Shape(uint32_t shape[Name::MaxRank])
+  Shape(uint32_t shape[MaxRank])
     {
-        memcpy(_shape, shape, sizeof(uint32_t) * Name::MaxRank);
+        memcpy(_shape, shape, sizeof(uint32_t) * MaxRank);
     }
     unsigned size(Name& name) {
         unsigned size = 1;
@@ -112,7 +113,7 @@ public:
     }
     uint32_t* shape() {return _shape;}
 private:
-    uint32_t _shape[Name::MaxRank]; // in an ideal world this would have variable length "rank"
+    uint32_t _shape[MaxRank]; // in an ideal world this would have variable length "rank"
 };
 
 // this class updates the "parent" Xtc extent at the same time
@@ -301,74 +302,8 @@ private:
         return _first().contains.id()==TypeId::Shapes;
     }
 
-
 };
 
-class blockDgram : public Xtc
-{
-public:
-    blockDgram(uint8_t* buffdgram):_dgram(*(Dgram*)buffdgram){
-        // _Dgram& dgram = *(Dgram*)buffdgram;
-        TypeId tid(TypeId::Parent, 0);
-        _dgram.xtc.contains = tid;
-        _dgram.xtc.damage = 0;
-        _dgram.xtc.extent = sizeof(Xtc);
-
-        _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
-    };
-
-    void addNamesBlock(uint8_t* name_block, size_t block_elems){
-        Xtc& namesxtc = *new((char*)_dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Names, 0));
-        size_t nameblock_size = sizeof(NameInfo) + block_elems*sizeof(Name);
-        memcpy(namesxtc.payload(), name_block, nameblock_size);
-        namesxtc.alloc(nameblock_size);
-        _dgram.xtc.alloc(nameblock_size);
-
-        _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
-    }
-
-    void addShapesDataBlock(uint8_t* shape_block, uint8_t* data_block, size_t sizeofdata, size_t block_elems){
-        Xtc& shapesdata = *new((char*)_dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::ShapesData, 0));
-
-        Xtc& shapes = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Shapes, 0));
-        size_t shapeblock_size = sizeof(uint32_t) + block_elems*sizeof(Shape);
-        memcpy(shapes.payload(), shape_block, shapeblock_size);
-        shapes.alloc(shapeblock_size);
-        shapesdata.alloc(shapeblock_size);
-        _dgram.xtc.alloc(shapeblock_size+sizeof(Xtc));
-
-
-        Xtc& data = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Data, 0));
-        memcpy(data.payload(), data_block, sizeofdata);
-
-        data.alloc(sizeofdata);
-        shapesdata.alloc(sizeofdata);
-        _dgram.xtc.alloc(sizeofdata+sizeof(Xtc));
-        _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
-    }
-
-    void addDataBlock(uint8_t* data_block, size_t sizeofdata){
-        Xtc& shapesdata = *new((char*)_dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::ShapesData, 0));
-
-        Xtc& data = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Data, 0));
-        memcpy(data.payload(), data_block, sizeofdata);
-
-        data.alloc(sizeofdata);
-        shapesdata.alloc(sizeofdata);
-        _dgram.xtc.alloc(sizeofdata+sizeof(Xtc));
-        _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
-    }
-
-    uint32_t dgramSize(){
-        return _sizeDgram;
-    };
-
-private:
-    size_t _sizeDgram = 0;
-    Dgram& _dgram;
-
-};
-};
-
+}; // namespace XtcData
 
 #endif // SHAPESDATA__H

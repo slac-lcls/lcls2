@@ -1,8 +1,8 @@
-#ifndef ARRAY__H
-#define ARRAY__H
+#ifndef ALLOCARRAY__H
+#define ALLOCARRAY__H
 
 #include <assert.h>
-#include "xtcdata/xtc/ShapesData.hh" // Shape
+#include "xtcdata/xtc/Array.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "Allocator.hh"
 
@@ -19,11 +19,11 @@ public:
                                             sizeof(*_refCntPtr) +
                                             maxElem*sizeof(T)); // shape + refcnt + data
         Array<T>::_shape = reinterpret_cast<uint32_t*>(ptr);
-        _refCntPtr = reinterpret_cast<uint32_t*>(Array<T>::_shape+Name::MaxRank);
+        _refCntPtr = reinterpret_cast<uint32_t*>(Array<T>::_shape+MaxRank);
         Array<T>::_data = reinterpret_cast<T*>(_refCntPtr+1);
         Array<T>::_rank = rank;
         *_refCntPtr = 1;
-        for(int i = 0; i < Name::MaxRank; i++) Array<T>::_shape[i] = 0;
+        for(int i = 0; i < MaxRank; i++) Array<T>::_shape[i] = 0;
     }
 
     AllocArray(const AllocArray<T>& other):_allocator(other._allocator){ // copy constructor
@@ -140,4 +140,4 @@ private:
 
 } // namespace
 
-#endif // ARRAY__H
+#endif // ALLOCARRAY__H

@@ -1,6 +1,7 @@
 #ifndef DESCDATA__H
 #define DESCDATA__H
 
+#include "xtcdata/xtc/Array.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/VarDef.hh"
@@ -8,7 +9,6 @@
 #include <string>
 #include <map>
 #include <type_traits>
-#include <iostream>
 
 #define _unused(x) ((void)(x))
  
@@ -16,70 +16,8 @@ namespace XtcData
 {
 
 class VarDef;
-	       
-template <typename T>
-class Array {
-public:
-
-    Array(void *data, uint32_t *shape, uint32_t rank){
-        _shape = shape;
-        _data = reinterpret_cast<T*>(data);
-        _rank = rank;
-    }
-    T& operator()(unsigned i){
-        assert(i < _shape[0]);
-        return _data[i];
-    }
-    T& operator()(unsigned i, unsigned j){
-        assert(i<_shape[0]);assert(j<_shape[1]);
-        return _data[i * _shape[1] + j];
-    }
-    const T& operator()(unsigned i, unsigned j) const{
-        assert(i< _shape[0]);assert(j<_shape[1]);
-        return _data[i * _shape[1] + j];
-    }
-    T& operator()(unsigned i, unsigned j, unsigned k){
-        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
-        return _data[(i * _shape[1] + j) * _shape[2] + k];
-    }
-    const T& operator()(unsigned i, unsigned j, unsigned k) const
-    {
-        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
-        return _data[(i * _shape[1] + j) * _shape[2] + k];
-    }
-    uint32_t rank(){
-        return _rank;
-    }
-    uint32_t* shape(){
-        return _shape;
-    }
-    T* data(){
-        return _data;
-    }
-    uint64_t num_elem(){
-        uint64_t _num_elem = _shape[0];
-        for(uint32_t i=1; i<_rank;i++){_num_elem*=_shape[i];};
-        return _num_elem;
-    }
-    void shape(uint32_t a, uint32_t b=0, uint32_t c=0, uint32_t d=0, uint32_t e=0){
-        assert(_rank > 0);
-        assert(XtcData::Name::MaxRank == 5);
-        _shape[0] = a;
-        _shape[1] = b;
-        _shape[2] = c;
-        _shape[3] = d;
-        _shape[4] = e;
-    }
-
-protected:
-    uint32_t *_shape;
-    T        *_data;
-    uint32_t  _rank;
-    Array(){}
-};
 
 typedef std::map<std::string, unsigned> IndexMap;
-
 
 class NameIndex {
 public:
@@ -263,7 +201,7 @@ protected:
         _offset[0]=0;
         _numentries=0;
     }
-    void set_array_shape(unsigned index, unsigned shapeIndex, unsigned shape[Name::MaxRank]) {
+    void set_array_shape(unsigned index, unsigned shapeIndex, unsigned shape[MaxRank]) {
 
         unsigned rank = _nameindex.names().get(index).rank();
 
@@ -307,7 +245,7 @@ protected:
             _shapesdata.data().alloc(size, _shapesdata, _parent);
         }
 
-        void set_array_shape(unsigned index, unsigned shape[Name::MaxRank]) {
+        void set_array_shape(unsigned index, unsigned shape[MaxRank]) {
             if (_numarrays==0) {
                 // add the xtc that will hold the shapes of arrays
                 Shapes& shapes = *new (&_shapesdata) Shapes(_parent, _namesId);
@@ -395,7 +333,7 @@ protected:
             return reinterpret_cast<void*>(_shapesdata.data().next());
         }
 
-        void set_array_shape(unsigned index,unsigned shape[Name::MaxRank]) {
+        void set_array_shape(unsigned index,unsigned shape[MaxRank]) {
             unsigned int shapeIndex = _numarrays;
 
             assert (shapeIndex==_numarrays);
@@ -408,14 +346,10 @@ protected:
             _shapesdata.data().alloc(size,_shapesdata,_parent);
         }
 
-
-
     private:
         Xtc& _parent;
     };
-};
+
+}; // namespace XtcData
+
 #endif // DESCDATA__H
-
-
-
-

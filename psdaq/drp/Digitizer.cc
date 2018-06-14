@@ -3,7 +3,6 @@
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 
-// temp1
 using namespace XtcData;
 
 class HsdDef : public VarDef
@@ -55,7 +54,7 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     CreateData hsd(dgram.xtc, m_namesVec, nameId);
     
     unsigned data_size;
-    unsigned shape[Name::MaxRank];
+    unsigned shape[MaxRank];
     for (int l=0; l<8; l++) {
         if (pgp_data->buffer_mask & (1 << l)) {
             // size without Event header

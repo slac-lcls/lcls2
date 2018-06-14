@@ -340,7 +340,7 @@ void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
     CreateData fex(parent, NamesVec, nameId);
     fex.set_value(FexDef::floatFex, (double)41.0);
 
-    unsigned shape[Name::MaxRank] = {2,3};
+    unsigned shape[MaxRank] = {2,3};
     Array<float> arrayT = fex.allocate<float>(FexDef::arrayFex,shape);
     for(unsigned i=0; i<shape[0]; i++){
         for (unsigned j=0; j<shape[1]; j++) {
