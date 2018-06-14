@@ -1,4 +1,9 @@
-// Build locally
+// == Build locally
+// cd .../lcls2/psalg/build
+// make
+// == Then run
+// psalg/6datareader
+// 
 // g++ datareader.cc -o mytest datareader
 
 // Build in lcls2/install/bin/
@@ -35,6 +40,17 @@ void usage(char* name) {
 
 void print_hline(const uint nchars, const char c) {
     printf("%s\n", std::string(nchars,c).c_str());
+}
+
+//-------------------
+
+void test_logger_single() {
+  std::cout << "In test_logger_single\n";
+  Logger::instance()->print();
+  LOGPRINT();
+  LOGMSG("Hi, this is my test message for logger singleton");
+  LOGMSG("Hi, this is my another message for logger singleton");
+  LOGGER.print();
 }
 
 //-------------------
@@ -164,6 +180,7 @@ int main(int argc, char **argv) {
     read_data();          print_hline(80,'_');
     test_Array();         print_hline(80,'_');
     test_ArrayIO();       print_hline(80,'_');
+    test_logger_single(); print_hline(80,'_');
     return EXIT_SUCCESS;
 }
 

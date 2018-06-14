@@ -7,6 +7,7 @@ install(FILES
     include/AllocArray.hh
     include/Allocator.hh
     include/ArrayIO.h
+    include/ArrayMetadata.h
     include/Logger.h
     DESTINATION include/psalg/include
 )
@@ -16,6 +17,7 @@ add_library(psalg SHARED
     src/PeakFinderAlgos.cpp
     src/stream.cc
     src/ArrayIO.cpp
+    src/Logger.cpp
 )
 
 target_include_directories(psalg PUBLIC
@@ -83,6 +85,7 @@ install(TARGETS psalg
                 test_array
                 test_peakFinder
                 test_hsd
+                test_logger
                 datareader
     EXPORT psalgTargets
     ARCHIVE DESTINATION lib

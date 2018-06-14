@@ -2,16 +2,16 @@
 // Adopted to lcls2 on 2018-06-06 by Mikhail Dubrovin
 //---------------------------------------------------
 
-#include "../include/ArrayIO.h"
-#include "../include/Logger.h" // for MsgLog
+#include "psalg/include/ArrayIO.h"
+#include "psalg/include/Logger.h" // MsgLog
 
-//#include "MsgLogger/MsgLogger.h"
 //#include <algorithm>
 //#include <stdexcept>
+
 #include <fstream>
-#include <sstream>   // for stringstream
-#include <stdlib.h>  // for atoi
-#include <cstring>   // for memcpy
+#include <sstream>   // stringstream
+#include <stdlib.h>  // atoi
+#include <cstring>   // memcpy
 #include <sstream>   // stringstream, streambuf
 
 using namespace psalg;
@@ -28,8 +28,9 @@ ArrayIO<TDATA>::ArrayIO(const std::string& fname)
   //  , _val_def(0)
   //  , _nda_def(ndarray<const TDATA>())
 {
-  init();
+  _init();
   //_size = 0; // actual size is loaded from metadata
+  _load_array();
 }
 
 //-----------------------------
@@ -38,7 +39,7 @@ template <typename TDATA>
 ArrayIO<TDATA>::~ArrayIO()
 {
   std::stringstream ss;
-  MsgLog(__name__(), DEBUG, ss << "DESTRUCTOR for ctor:" << _ctor << ", fname=" << _fname);
+  MsgLog(__name__(), DEBUG, ss << "DESTRUCTOR for ctor:" << _ctor << " fname=" << _fname);
 
   //delete p_nda;
 }
@@ -46,106 +47,213 @@ ArrayIO<TDATA>::~ArrayIO()
 //-----------------------------
 
 template <typename TDATA>
-void ArrayIO<TDATA>::init()
+void ArrayIO<TDATA>::_init()
 {
-  std::stringstream ss;
-  MsgLog(__name__(), DEBUG, ss << "ctor:" << _ctor << ", fname=" << _fname);
-
+  //std::stringstream ss;
+  //MsgLog(__name__(), DEBUG, ss << "ctor:" << _ctor << " fname=" << _fname);
+  MSGLOG(__name__(), DEBUG, "ctor:" << _ctor << " fname=" << _fname);
   _status = ArrayIO<TDATA>::UNDEFINED;
+  //_metad.clear();
 }
 
-//-----------------------------
-/*
 
-template <typename TDATA, unsigned NDIM>
-ArrayIO<TDATA, NDIM>::ArrayIO(const std::string& fname
-				 ,const shape_t* shape_def
-				 ,const TDATA& val_def 
-                                 ,const unsigned print_bits) 
-  : p_nda(0)
-  , m_fname(fname)
-  , m_val_def(val_def)
-  , m_nda_def(ndarray<const TDATA, NDIM>())
-  , m_print_bits(print_bits)
-  , m_ctor(1)
-{
-  init();
-  std::memcpy(&m_shape[0], shape_def, c_ndim*sizeof(shape_t));  
-  //for(unsigned i=0; i<c_ndim; ++i) m_shape[i] = shape_def[i];
-  //cout << "TIOV1: shape_def : [" << shape_def[0] << "," << shape_def[1] << "]\n";
-  //cout << "TIOV1: m_shape   : [" << m_shape[0] << "," << m_shape[1] << "]\n";
-}
 
-//-----------------------------
 
-template <typename TDATA, unsigned NDIM>
-ArrayIO<TDATA, NDIM>::ArrayIO(const std::string& fname
-	                         ,const ndarray<const TDATA, NDIM>& nda_def
-                                 ,const unsigned print_bits) 
-  : p_nda(0)
-  , m_fname(fname)
-  , m_val_def(0)
-  , m_nda_def(nda_def)
-  , m_print_bits(print_bits)
-  , m_ctor(2)
-{
-  init();
-  m_size = nda_def.size();
-  std::memcpy(&m_shape[0], nda_def.shape(), c_ndim*sizeof(shape_t));  
-  //std::cout << "XXX m_nda_def in c-tor 2: " << m_nda_def << '\n';
-}
 
-//-----------------------------
 
-//-----------------------------
+
+
+
+
+
+
 
 //-----------------------------
 
 template <typename TDATA>
-void ArrayIO<TDATA>::load_ndarray()
+void ArrayIO<TDATA>::_load_array()
 {
-    // if file is not available - create default ndarray
-    if ((!file_is_available()) && m_ctor>0) { 
-        if( m_print_bits & 4 ) MsgLog(__name__(), warning, "Use default calibration parameters.");
-        create_ndarray(true);
-        m_status = ArrayIO<TDATA>::DEFAULT; // std::string("used default");
-        return; 
-    }
+  //// if file is not available - create default ndarray
+    //if ((!file_is_available()) && m_ctor>0) { 
+    //    if( m_print_bits & 4 ) MsgLog(__name__(), warning, "Use default calibration parameters.");
+    //    create_ndarray(true);
+    //    m_status = ArrayIO<TDATA>::DEFAULT; // std::string("used default");
+    //    return; 
+    //}
 
-    if( m_print_bits & 1 ) MsgLog(__name__(), info, "Load file \"" << m_fname << "\"");
+    //std::stringstream ss;
+    MSGLOG(__name__(), DEBUG, "Load file " << _fname << '\n');
 
-    m_count_str_data = 0;
-    m_count_str_comt = 0;
-    m_count_data     = 0;
+    _count_1st_line = 0;
+    _count_str_data = 0;
+    _count_str_comt = 0;
+    _count_data     = 0;
 
     // open file
-    std::ifstream in(m_fname.c_str());
-    if (not in.good()) { 
-        if(m_print_bits) MsgLog(__name__(), error, "Failed to open file: \"" + m_fname + "\""); 
-	m_status = ArrayIO<TDATA, NDIM>::UNREADABLE; // std::string("file is unreadable");
+    std::ifstream in(_fname.c_str());
+    if (in.good()) { 
+        MsgLog(__name__(), DEBUG, "File is open");
+    }
+    else { 
+        MsgLog(__name__(), WARNING, "Failed to open file: \"" + _fname + "\""); 
+	_status = ArrayIO<TDATA>::UNREADABLE; // std::string("file is unreadable");
         return;
     }
-  
+
     // read and process all strings
-    std::string str; 
-    while(getline(in,str)) {
+    std::string s; 
+    while(getline(in,s)) {
         // cout << str << '\n';
 
         // 1. parse lines with comments marked by # in the 1st position
-        if(str[0] == '#') parse_str_of_comment(str.substr(1));
+        if(s[0] == '#') _parse_str_of_comment(s.substr(1));
 
         // 2. skip empty lines 
-        else if (str.find_first_not_of(" ")==string::npos) continue; 
+        //else if (s.find_first_not_of(" ")==string::npos) continue; 
+        else if (s.empty()) continue; 
 
         // 3. parse 1st line and load other data
-        else load_data(in,str);
+        else _load_data(in,s);
+        //else {_load_data(in,s); break;}
     }
 
     //close file
     in.close();
-    m_status = ArrayIO<TDATA>::LOADED; // std::string("loaded from file");
+    _status = ArrayIO<TDATA>::LOADED; // std::string("loaded from file");
+
+    cout << endl;
+
+    //ArrayMetadata amd(_shape, _ndim);
+    //std::stringstream msg;
+    //MsgLog(__name__(), INFO, msg << "Input array " << amd << " of type " << _dtype_name);
+
+    std::stringstream msg;
+    MsgLog(__name__(), INFO, msg << "Input array " << _metad << " of type " << _dtype_name);
 }
 
+//-----------------------------
+
+template <typename TDATA>
+void ArrayIO<TDATA>::_parse_str_of_comment(const std::string& s)
+{
+    _count_str_comt ++;
+    // cout << "comment, str.size()=" << str.size() << '\n';
+    // cout << "TO-DO parse cmt: " << s << '\n';
+    std::stringstream msg;
+    MsgLog(__name__(), DEBUG, msg << "TODO : _parse_str_of_comment " << s);
+
+    std::stringstream ss(s);
+    std::string key;
+    std::string value;
+    std::string fld;
+    //std::vector<std::string> fields;
+
+    ss >> key;
+    do {ss >> fld; if(! value.empty()) value+=' '; value+=fld;} while(ss.good()); 
+    cout << " k:" << key << " v:" << value << endl;
+    //_metad[key] = value;
+
+    if     (key=="SHAPE")    _parse_shape(value);
+    else if(key=="DATATYPE") _dtype_name = value;
+}
+
+//-----------------------------
+/// Converts string like "(704,768)" to array _shape={704,768} and counts _ndim
+template <typename TDATA>
+void ArrayIO<TDATA>::_parse_shape(const std::string& str) {
+  std::string s(str.substr(1, str.size()-2)); // remove '(' and ')'
+  for (std::string::iterator it = s.begin(); it!=s.end(); ++it) if(*it==',') *it=' '; 
+  //MsgLog(__name__(), DEBUG, "TODO : _parse_shape: " + s + '\n');
+  std::stringstream ss(s);
+  std::string fld;
+  _ndim=0;
+  do {ss >> fld; 
+    shape_t v = (shape_t)atoi(fld.c_str());
+    cout << "   " << v << endl;
+    _shape[_ndim++]=v;
+  } while(ss.good());
+
+  _metad.set(_shape, _ndim);
+  _size = _metad.size();
+
+}
+
+//-----------------------------
+
+template <typename TDATA>
+void ArrayIO<TDATA>::_load_data(std::ifstream& in, const std::string& str)
+{
+  //std::stringstream ss;
+  //MsgLog(__name__(), DEBUG, ss << "TODO : _load_data " << str.substr(0,50));
+  //cout << '*';
+  
+  //if (! _count_str_data++) create_ndarray();
+
+    _count_str_data ++;
+
+    // parse the 1st string
+    TDATA val;
+    //TDATA* it=p_data; 
+
+    std::stringstream ss(str);
+    while (ss >> val && _count_data < _size) { //&& _count_data != _size) { 
+      // *it++ = val;
+      ++_count_data;
+      cout << ' ' << val;
+    }
+
+    _count_1st_line = _count_data;
+
+    // load all data by the end
+    while(in >> val && _count_data < _size) {
+      //*it++ = val;
+      ++_count_data;
+      //if(!(_count_data < _size)) {
+      //	MsgLog(__name__(), WARNING, "Input number of data fields exceed expected array size");
+      //  	break;
+      //}
+      //cout << ' ' << val;
+    }
+
+    cout << "\ncounter of data fields = " << _count_data 
+         << " #lines = " << _count_str_data
+         << " 1-st line = " << _count_1st_line << '\n';
+}
+
+
+    /*
+
+    // check that we read whole array
+    if (m_count_data != m_size) {
+      std::stringstream ss;
+      ss << "NDArray file:\n  " << m_fname << "\n  does not have enough data: "
+         << "read " << m_count_data << " numbers, expecting " << m_size;
+      // MsgLog(__name__(), warning, ss.str());
+      if( ndim()>1 ) throw std::runtime_error(ss.str());
+    }
+
+    // and no data left after we finished reading
+    if ( in >> val ) {
+      ++ m_count_data;
+      std::stringstream ss;
+      ss << "NDArray file:\n  " << m_fname << "\n  has extra data: "
+         << "read " << m_count_data << " numbers, expecting " << m_size; 
+      MsgLog(__name__(), warning, ss.str());
+      if( ndim()>1 ) throw std::runtime_error(ss.str());
+    }
+}
+
+    */
+
+
+
+
+
+
+/*
+//-----------------------------
+//-----------------------------
+//-----------------------------
 //-----------------------------
 
 template <typename TDATA, unsigned NDIM>
@@ -179,71 +287,6 @@ bool ArrayIO<TDATA>::file_is_available()
 
 //-----------------------------
 
-template <typename TDATA>
-void ArrayIO<TDATA>::parse_str_of_comment(const std::string& str)
-{
-    m_count_str_comt ++;
-    // cout << "comment, str.size()=" << str.size() << '\n';
-
-    std::string field;
-    std::stringstream ss(str);
-
-    ss >> field;
-
-    if (field=="DTYPE") { 
-      ss >> m_str_type;
-      m_enum_type = enumDataTypeForString(m_str_type);
-
-      if( m_print_bits & 32 )
-        if (m_enum_type != enumDataType<TDATA>()) {
-          std::stringstream smsg; 
-          smsg << "(enum) DTYPE in file metadata (" << strDataTypeForEnum(m_enum_type)
-               << ") is different from expected (" << strDataTypeForEnum(enumDataType<TDATA>()) << ")";
-          MsgLog(__name__(), warning, smsg.str());
-        }
-    }
-
-    else if (field=="NDIM") {
-      ss >> m_ndim;
-      if (m_ndim != ndim()) {	
-	std::stringstream smsg; 
-        smsg << "NDIM in file metadata: " << m_ndim 
-             << " is different from declaration: " << ndim();
-        MsgLog(__name__(), warning, smsg.str());
-        //throw std::runtime_error(smsg.str());
-      }
-    }
-
-    else if (field.substr(0,4)=="DIM:") { 
-        //cout << "field.substr(0,4)" << field.substr(0,4) << "field[4]" << field[4] << endl;
-        int dim = atoi(&field[4]); 
-	shape_t val;    
-        ss >> val;
-
-	if (m_ctor == 0) { // get ndarray shape and size from metadata
-            m_shape[dim] = val;
-	    m_size *= val;
-	    // cout << "Current m_size = " << m_size << '\n';
-	}
-	else if (m_shape[dim] !=val) { // check that metadata is consistent with expected
-	   std::stringstream smsg; 
-	   smsg << "NDArray metadata shape field " << field
-                << " = " << val 
-	        << " is different from expected " << m_shape[dim] 
-                << " in file " << m_fname
-	        << "\nCheck that calibration file has expected shape and data...";
-           MsgLog(__name__(), warning, smsg.str());
-           //throw std::runtime_error(smsg.str());
-	}
-    }
-
-    else 
-      //MsgLog(__name__(), info, "Ignore comment: " << str );
-      return;
-}
-
-//-----------------------------
-
 template <typename TDATA, unsigned NDIM>
 void ArrayIO<TDATA, NDIM>::create_ndarray(const bool& fill_def)
 {
@@ -264,50 +307,6 @@ void ArrayIO<TDATA, NDIM>::create_ndarray(const bool& fill_def)
     if( m_print_bits & 32 ) MsgLog(__name__(), info, "Created ndarray: " << *p_nda);
 }
 
-//-----------------------------
-
-template <typename TDATA, unsigned NDIM>
-void ArrayIO<TDATA, NDIM>::load_data(std::ifstream& in, const std::string& str)
-{
-    if (! m_count_str_data++) create_ndarray();
-
-    // parse the 1st string
-    TDATA val;
-    TDATA* it=p_data; 
-
-    std::stringstream ss(str);
-    while (ss >> val and m_count_data != m_size) { 
-      *it++ = val;
-      ++m_count_data;
-      //if( ndim()==1 ) cout << "count:data = " << m_count_data << " : " << val << '\n';
-    }
-
-    // load all data by the end
-    while(in >> val and m_count_data != m_size) {
-      *it++ = val;
-      ++m_count_data;
-      //if( ndim()==1 ) cout << "count:data = " << m_count_data << " : " << val << '\n';
-    }
-
-    // check that we read whole array
-    if (m_count_data != m_size) {
-      std::stringstream ss;
-      ss << "NDArray file:\n  " << m_fname << "\n  does not have enough data: "
-         << "read " << m_count_data << " numbers, expecting " << m_size;
-      // MsgLog(__name__(), warning, ss.str());
-      if( ndim()>1 ) throw std::runtime_error(ss.str());
-    }
-
-    // and no data left after we finished reading
-    if ( in >> val ) {
-      ++ m_count_data;
-      std::stringstream ss;
-      ss << "NDArray file:\n  " << m_fname << "\n  has extra data: "
-         << "read " << m_count_data << " numbers, expecting " << m_size; 
-      MsgLog(__name__(), warning, ss.str());
-      if( ndim()>1 ) throw std::runtime_error(ss.str());
-    }
-}
 
 //-----------------------------
 
