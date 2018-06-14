@@ -2,7 +2,7 @@
 #define BLOCKDGRAM__H
 
 // class used by cython to create dgrams with "blocks" of memory,
-// the three block types be Shapes, Data, and ShapesData
+// the three block types being Shapes, Data, and ShapesData
 
 #include "xtcdata/xtc/ShapesData.hh"
 
