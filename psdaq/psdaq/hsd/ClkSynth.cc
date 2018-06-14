@@ -407,6 +407,9 @@ void Pds::HSD::ClkSynth::setup(TimingType timing)
     _setup(_reg, write_values_119M);
     break;
   case LCLSII:
+  case K929:
+  case M3_7:
+  case M7_4:
     _setup(_reg, write_values_186M);
     break;
   default:

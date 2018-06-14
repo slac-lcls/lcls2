@@ -18,7 +18,15 @@ namespace Pds {
       int clocktree_init   (unsigned   clksrc, 
                             unsigned   vcotype,
                             TimingType timing = LCLS);
+      int clocktree_modify(int A,
+                           int B,
+                           int P,
+                           int R,
+                           int ab,
+                           int cp);
+      void clocktree_sync  ();
       void clockWhileSync  ();
+      void applySync       ();
       void limitBandwidth  (bool);
       int adc_enable_test  (unsigned pattern);
       int adc_disable_test ();

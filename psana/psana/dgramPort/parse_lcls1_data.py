@@ -13,7 +13,7 @@ class parse_dgram():
         self.source = source
         self.detector = detector
         self.config = config
-        self.ignored_keys = ['common_mode','bit_length', 'conjugate', 'denominator', 'imag', 'numerator', 'real']
+        self.ignored_keys = ['common_mode', 'bit_length', 'conjugate', 'denominator', 'imag', 'numerator', 'real']
         self.end_types = (int, float, np.ndarray, list)
 
         self.process_dgram()

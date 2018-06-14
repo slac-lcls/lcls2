@@ -120,6 +120,10 @@ PyMODINIT_FUNC PyInit_container(void)
     return m;
 }
 #else
+static PyMethodDef container_methods[] = {
+    {NULL}  /* Sentinel */
+};
+
 PyMODINIT_FUNC initcontainer(void) {
     PyObject *m;
     

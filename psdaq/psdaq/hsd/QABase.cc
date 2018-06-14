@@ -104,8 +104,9 @@ void QABase::resetClock(bool r)
   unsigned v = csr;
   if (r) 
     v |= (1<<3);
-  else
-    v &= ~(1<<3);
+  // Self clearing (synchronous to EVR strobe)
+  // else
+  //   v &= ~(1<<3);
   csr = v;
 }
 

@@ -8,6 +8,7 @@ import pdb
 
 # yaml metadata
 numUsLinks = 7
+numPartitions = 8
 
 
 class myDriver(Driver):
@@ -113,6 +114,9 @@ if __name__ == '__main__':
       pvdb[p2+'dUsLinkObL1A'   ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'UsLinkObL1R'    ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'dUsLinkObL1R'   ] = {'type' : 'int', 'count' : numUsLinks }
+
+      pvdb[p2+'UsLinkMsgDelay' ] = {'type' : 'int', 'count' : numUsLinks }
+      pvdb[p2+'PartMsgDelay'   ] = {'type' : 'int', 'count' : numPartitions }
 
       # The following PVs correspond to DtiDsPgp5Gb.yaml.
 #      pvdb[p2+'CountReset0'   ] = {'type' : 'int'}

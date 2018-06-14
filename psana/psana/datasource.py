@@ -229,7 +229,7 @@ class DataSource(object):
                 if rank > 0:
                     self.dm = DgramManager(self.xtc_files, configs=configs)
 
-        self.Detector = Detector(self.dm.configs[0])
+        self.Detector = Detector(self.dm.configs)
 
     def runs(self): 
         nruns = 1

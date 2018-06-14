@@ -18,6 +18,7 @@ add_library(psalg SHARED
     src/stream.cc
     src/ArrayIO.cpp
     src/Logger.cpp
+    src/hsd.cpp
 )
 
 target_include_directories(psalg PUBLIC
@@ -80,6 +81,15 @@ target_link_libraries(test_hsd
 )
 add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Test Logger
+add_executable(test_logger
+    test/test_logger.cpp
+)
+target_link_libraries(test_logger
+    psalg
+    xtcdata
+)
 
 install(TARGETS psalg
                 test_array

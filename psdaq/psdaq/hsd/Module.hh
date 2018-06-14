@@ -14,6 +14,7 @@ namespace Pds {
     class TprCore;
     class FexCfg;
     class HdrFifo;
+    class PhaseMsmt;
     class Pgp;
 
     class EnvMon {
@@ -53,6 +54,7 @@ namespace Pds {
       void fmc_init          (TimingType =LCLS);
       void fmc_clksynth_setup(TimingType =LCLS);
       void fmc_dump();
+      void fmc_modify(int,int,int,int,int,int);
 
       int  train_io(unsigned);
 
@@ -84,6 +86,8 @@ namespace Pds {
       unsigned get_gain  (unsigned channel);
       void     set_offset(unsigned channel, unsigned value);
       void     set_gain  (unsigned channel, unsigned value);
+      void     sync      ();
+      void     clocktree_sync();
 
       const Pds::Mmhw::AxiVersion& version() const;
       Pds::HSD::TprCore&    tpr    ();
@@ -95,8 +99,9 @@ namespace Pds {
       void dumpBase        () const;
       void dumpMap         () const;
 
-      FexCfg* fex();
-      HdrFifo* hdrFifo();
+      FexCfg*   fex     ();
+      HdrFifo*  hdrFifo ();
+      uint32_t* trgPhase();
 
       //  Zero copy read semantics
       //      ssize_t dequeue(void*&);

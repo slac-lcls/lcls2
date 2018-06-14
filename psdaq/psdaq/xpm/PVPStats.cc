@@ -40,6 +40,7 @@ namespace Pds {
       _pv.push_back( new PVWriter((pvbase+"DeadTime" ).c_str()) );
       _pv.push_back( new PVWriter((pvbase+"DeadFLnk" ).c_str(),32) );
       _pv.push_back( new PVWriter((pvbase+"RunTime"  ).c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"MsgDelay" ).c_str()) );
 
       printf("Partition PVs allocated\n");
     }
@@ -56,6 +57,7 @@ namespace Pds {
       const L0Stats& os = _last;
       L0Stats ns(_dev.l0Stats());
       PVPUT(9, double(ns.l0Enabled)*14.e-6/13.);
+      PVPUT(10, double(_dev.getL0Delay(_partition)));
       unsigned l0Enabled = ns.l0Enabled - os.l0Enabled;
       double dt = double(l0Enabled)*14.e-6/13.;
       unsigned numl0     = ns.numl0    - os.numl0;

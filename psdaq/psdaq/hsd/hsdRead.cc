@@ -20,10 +20,12 @@ using Pds_Epics::PVWriter;
 #include <new>
 
 FILE*               writeFile           = 0;
+FILE*               summaryFile         = 0;
 
 void sigHandler( int signal ) {
   psignal( signal, "Signal received by pgpWidget");
-  if (writeFile) fclose(writeFile);
+  if (writeFile  ) fclose(writeFile);
+  if (summaryFile) fclose(summaryFile);
   printf("Signal handler pulling the plug\n");
   ::exit(signal);
 }
@@ -85,7 +87,7 @@ int main (int argc, char **argv) {
   //  char*               endptr;
   extern char*        optarg;
   int c;
-  while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:N:o:rv:E:" ) ) != EOF ) {
+  while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:F:N:o:rv:E:" ) ) != EOF ) {
     switch(c) {
     case 'P':
       dev = optarg;
@@ -109,6 +111,12 @@ int main (int argc, char **argv) {
     case 'f':
       if (!(writeFile = fopen(optarg,"w"))) {
         perror("Opening save file");
+        return -1;
+      }
+      break;
+    case 'F':
+      if (!(summaryFile = fopen(optarg,"w"))) {
+        perror("Opening summary file");
         return -1;
       }
       break;
@@ -226,7 +234,7 @@ int main (int argc, char **argv) {
 
     unsigned lane   = (rd.dest>>5)&7;
 
-    if (print) {
+    if (print || event->eventType()) {
 
       event->dump();
 
@@ -267,22 +275,25 @@ int main (int argc, char **argv) {
         }
         nextCount[lane] = (count+1)&0x00ffffff;
       }
-      const StreamHeader& rhdr = *reinterpret_cast<const StreamHeader*>(event+1);
-      if (rhdr.strmtype()==0 && (lvalidate&4)) {
-        //  Check that the raw payload for the test pattern is in lock step
-        if (!raw)
-          raw = new RawStream(*event, rhdr);
-        else 
-          lerr |= !raw->validate(*event, rhdr);
-      }
-      if (rhdr.strmtype()==0 && (lvalidate&8)) {
-        //  Check that the fex payload matches the raw payload
-        const StreamHeader* thdr = reinterpret_cast<const StreamHeader*>(event+1);
-        for(unsigned i=1; i<event->streams(); i++) {
-          if (thdr->strmtype()==1) {
-            ThrStream tstr(*thdr);
-            lerr |= !tstr.validate(rhdr);
-            break;
+
+      if (event->eventType()==0) {
+        const StreamHeader& rhdr = *reinterpret_cast<const StreamHeader*>(event+1);
+        if (rhdr.strmtype()==0 && (lvalidate&4)) {
+          //  Check that the raw payload for the test pattern is in lock step
+          if (!raw)
+            raw = new RawStream(*event, rhdr);
+          else 
+            lerr |= !raw->validate(*event, rhdr);
+        }
+        if (rhdr.strmtype()==0 && (lvalidate&8)) {
+          //  Check that the fex payload matches the raw payload
+          const StreamHeader* thdr = reinterpret_cast<const StreamHeader*>(event+1);
+          for(unsigned i=1; i<event->streams(); i++) {
+            if (thdr->strmtype()==1) {
+              ThrStream tstr(*thdr);
+              lerr |= !tstr.validate(rhdr);
+              break;
+            }
           }
         }
       }
@@ -308,6 +319,10 @@ int main (int argc, char **argv) {
     if (writeFile) {
       data[6] |= (lane<<20);  // write the lane into the event header
       fwrite(data,rd.size,1,writeFile);
+    }
+
+    if (summaryFile) {
+      fwrite(event,sizeof(*event),1,summaryFile);
     }
 
     if (pv && tsec != data[3] && lane==0) {

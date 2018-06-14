@@ -30,13 +30,10 @@ int main () {
     unsigned nChan = 4;
 
     Pds::HSD::Client *pClient = new Pds::HSD::Client(&heap, "1.0.0", nChan);
-
     Pds::HSD::HsdEventHeaderV1 *pHsd = pClient->getHsd();
     Pds::HSD::Hsd_v1_0_0 *vHsd = (Pds::HSD::Hsd_v1_0_0*) pHsd;
-
     for (unsigned i = 0; i < nChan; i++) {
         vHsd->parseChan((const uint8_t*)buffer, i);
-        printf("numPixels: %d\n", vHsd->numPixels(i));
     }
 
     delete pClient;

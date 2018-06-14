@@ -122,10 +122,10 @@ class parse_xtc():
 
 
 
-cdef extern from 'xtcdata/xtc/ShapesData.hh' namespace "XtcData":
+cdef extern from 'xtcdata/xtc/BlockDgram.hh' namespace "XtcData":
 
-    cdef cppclass blockDgram:
-        blockDgram(void* buffdgram)
+    cdef cppclass BlockDgram:
+        BlockDgram(void* buffdgram)
 
         void addNamesBlock(cnp.uint8_t* name_block, size_t block_elems)
         void addShapesDataBlock(cnp.uint8_t* shape_block, cnp.uint8_t* data_block,\
@@ -164,7 +164,7 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
         cnp.uint32_t* shape()
 
 cdef class PyBlockDgram:
-    cdef blockDgram* cptr
+    cdef BlockDgram* cptr
     cdef size_t buffer_size
     cdef cnp.uint8_t* buffer
     cdef cnp.uint8_t* addBuff
@@ -175,7 +175,7 @@ cdef class PyBlockDgram:
 
         self.buffer_size =0x4000000
         self.buffer  = <cnp.uint8_t*> malloc(self.buffer_size)
-        self.cptr = new blockDgram(self.buffer)
+        self.cptr = new BlockDgram(self.buffer)
 
     def addNamesBlock(self, PyNameBlock pyn):
         self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct)
@@ -320,7 +320,7 @@ class CyDgram():
         py_name = PyNameBlock(num_elem)
         py_data = PyDataBlock()
 
-        basealg = PyAlg(alg.algname,alg.major, alg.minor, alg.micro)
+        basealg = PyAlg(alg.algname, alg.major, alg.minor, alg.micro)
 
         num_arrays = 0
         for name, array in event_dict.items():

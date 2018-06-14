@@ -68,7 +68,7 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
 
     unsigned nameId=0;
     CreateData fex(dgram.xtc, m_namesVec, nameId);
-    unsigned shape[Name::MaxRank] = {3,3};
+    unsigned shape[MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
     uint16_t* rawdata = (uint16_t*)(event_header+1);
     for(unsigned i=0; i<shape[0]; i++){
@@ -93,6 +93,6 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
          }
      }
     raw.set_data_length(size);
-    unsigned raw_shape[Name::MaxRank] = {nlanes, size / nlanes / 2};
+    unsigned raw_shape[MaxRank] = {nlanes, size / nlanes / 2};
     raw.set_array_shape(RawDef::array_raw, raw_shape);
 }

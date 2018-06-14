@@ -90,9 +90,8 @@ int EbLfServer::_connect(unsigned id)
     .wait_set         = NULL,
   };
 
-  size_t rx_size = fab->info()->rx_attr->size;
-  _rxDepth     = rx_size * 2 / 3; // Only use 2/3 of rx for completions
-  cq_attr.size = rx_size + 1;
+  _rxDepth     = fab->info()->rx_attr->size;
+  cq_attr.size = (_rxDepth * 3 / 2) + 1; //over provision the cq size compared to the rxDepth
   _rxcq = new CompletionQueue(fab, &cq_attr, NULL);
   if (!_rxcq)
   {

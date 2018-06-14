@@ -24,6 +24,7 @@ public:
     void send_to_worker(Pebble* pebble_data);
     void send_all_workers(Pebble* pebble);
     void run();
+    std::atomic<Counters*>& get_counters() {return m_pcounter;};
 private:
     AxisG2Device m_dev;
     MemPool& m_pool;
@@ -33,12 +34,8 @@ private:
     uint64_t m_worker;
     int m_nworkers;
     MovingAverage m_avg_queue_size;
-};
-
-struct Counters
-{
-    int64_t total_bytes_received;
-    int64_t event_count;
+    Counters m_c1, m_c2;
+    std::atomic<Counters*> m_pcounter;
 };
 
 #endif // PGPREADER_H

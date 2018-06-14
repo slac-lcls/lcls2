@@ -45,6 +45,8 @@ install(FILES
     xtc/BldInfo.hh
     xtc/Level.hh
     xtc/ShapesData.hh
+    xtc/BlockDgram.hh
+    xtc/Array.hh
     xtc/XtcFileIterator.hh
     xtc/Damage.hh
     xtc/NamesIter.hh

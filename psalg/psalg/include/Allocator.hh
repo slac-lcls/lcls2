@@ -2,7 +2,7 @@
 #define ALLOCATOR__H
 
 #include <iostream>
-#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/Array.hh"
 
 class Allocator{ //Heap -> Allocator
 public:

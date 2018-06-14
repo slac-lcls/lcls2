@@ -1,11 +1,7 @@
-#include <limits.h>
 #include <thread>
 #include <cstdio>
 #include <chrono>
 #include <bitset>
-#include <fstream>
-#include <unistd.h>
-#include <zmq.h>
 #include "pgpdriver.h"
 #include "PGPReader.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -26,7 +22,8 @@ int MovingAverage::add_value(int value)
 PGPReader::PGPReader(MemPool& pool, int device_id, int lane_mask, int nworkers) :
     m_dev(device_id),
     m_pool(pool),
-    m_avg_queue_size(nworkers)
+    m_avg_queue_size(nworkers),
+    m_pcounter(&m_c1)
 {
     std::bitset<32> bs(lane_mask);
     m_nlanes = bs.count();
@@ -92,81 +89,9 @@ void PGPReader::send_all_workers(Pebble* pebble)
     m_pool.collector_queue.push(0);
 }
 
-long read_infiniband_counter(const char* counter)
-{
-    char path[PATH_MAX];
-    snprintf(path, PATH_MAX, "/sys/class/infiniband/mlx4_0/ports/1/counters/%s", counter);
-    std::ifstream in(path);
-    std::string line;
-    std::getline(in, line);
-    return stol(line);
-}
-
-void monitor_pgp(std::atomic<Counters*>& p, MemPool& pool)
-{
-    void* context = zmq_ctx_new();
-    void* socket = zmq_socket(context, ZMQ_PUB);
-    zmq_connect(socket, "tcp://psdev7b:5559");
-    char buffer[4096];
-    char hostname[HOST_NAME_MAX];
-    gethostname(hostname, HOST_NAME_MAX);
-
-    Counters* c = p.load(std::memory_order_acquire);
-    int64_t old_bytes = c->total_bytes_received;
-    int64_t old_count = c->event_count;
-    auto t = std::chrono::steady_clock::now();
-
-    long old_port_rcv_data = read_infiniband_counter("port_rcv_data");
-    long old_port_xmit_data = read_infiniband_counter("port_xmit_data");
-
-    while(1) {
-        sleep(1);
-        auto oldt = t;
-        t = std::chrono::steady_clock::now();
-
-        Counters* c = p.load(std::memory_order_acquire);
-        int64_t new_bytes = c->total_bytes_received;
-        if (new_bytes == -1) {
-            break;
-        }
-        int64_t new_count = c->event_count;
-        int buffer_queue_size = pool.dma.buffer_queue.guess_size();
-        int output_queue_size = pool.output_queue.guess_size();
-        long port_rcv_data = read_infiniband_counter("port_rcv_data");
-        long port_xmit_data = read_infiniband_counter("port_xmit_data");
-
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t - oldt).count();
-        double data_rate = double(new_bytes - old_bytes) / duration;
-        double event_rate = double(new_count - old_count) / duration * 1.0e3;
-        printf("Event rate %.2f kHz    Data rate  %.2f MB/s\n", event_rate, data_rate);
-        int64_t epoch = std::chrono::duration_cast<std::chrono::duration<int64_t>>(
-                        std::chrono::system_clock::now().time_since_epoch()).count();
-
-        printf("collector queue %u\n", pool.collector_queue.guess_size());
-
-        // Inifiband counters are divided by 4 (lanes) https://community.mellanox.com/docs/DOC-2751
-        double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / duration;
-        double xmit_rate = 4.0*double(port_xmit_data - old_port_xmit_data) / duration;
-
-        int size = snprintf(buffer, 4096,
-                R"(["%s",{"time": [%ld], "event_rate": [%f], "data_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "rcv_rate": [%f], "xmit_rate": [%f]}])",
-                hostname, epoch, event_rate, data_rate, buffer_queue_size, output_queue_size, rcv_rate, xmit_rate);
-        zmq_send(socket, buffer, size, 0);
-        // printf("%s\n", buffer);
-        old_bytes = new_bytes;
-        old_count = new_count;
-        old_port_rcv_data = port_rcv_data;
-        old_port_xmit_data = port_xmit_data;
-    }
-}
-
 void PGPReader::run()
 {
-    // start monitoring thread
-    Counters c1, c2;
-    Counters* counter = &c2;
-    std::atomic<Counters*> p(&c1);
-    std::thread monitor_thread(monitor_pgp, std::ref(p), std::ref(m_pool));
+    Counters* counter = &m_c2;
 
     int64_t event_count = 0;
     int64_t total_bytes_received = 0;
@@ -211,11 +136,7 @@ void PGPReader::run()
 
             counter->event_count = event_count;
             counter->total_bytes_received = total_bytes_received;
-            counter = p.exchange(counter, std::memory_order_release);
+            counter = m_pcounter.exchange(counter, std::memory_order_release);
         }
     }
-    // shutdown monitor thread
-    counter->total_bytes_received = -1;
-    p.exchange(counter, std::memory_order_release);
-    monitor_thread.join();
 }

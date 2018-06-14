@@ -411,7 +411,7 @@ bool Module::l0Reset() const
 
 void Module::setL0Enabled(bool v)
 {
-  printf("L0Select: %08x\n", unsigned(_l0Select));
+  //  printf("L0Select: %08x\n", unsigned(_l0Select));
   setf(_l0Control,v?1:0,1,16);
 }
 
@@ -560,15 +560,14 @@ void Module::setL0Delay(unsigned partition, unsigned v)
 {
   setPartition(partition);
   setf(_pipelineDepth, v*200, 32, 0);
-  resetL0();
-  setf(_messagePayload, v, 32, 0);
-  setf(_message, ((1<<15) | MSG_DELAY_PWORD), 16, 0);
+  messagePayload(partition,v);
+  messageHdr    (partition,MSG_DELAY_PWORD);
 }
 
 unsigned Module::getL0Delay(unsigned partition) const
 {
   setPartition(partition);
-  return getf(_pipelineDepth, 32, 0);
+  return _pipelineDepth/200;
 }
 
 void Module::setL1TrgClr(unsigned partition, unsigned v)
