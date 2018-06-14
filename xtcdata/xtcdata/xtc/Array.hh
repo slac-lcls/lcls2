@@ -7,6 +7,10 @@
 namespace XtcData
 {
 
+// this enum is outside the Array class so people don't have to add a template
+// type to access the enum.  Unfortunate, but it seems to be the way
+// C++ works.
+
 enum {MaxRank=5};
 
 template <typename T>
