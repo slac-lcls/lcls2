@@ -7,7 +7,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#define FIVER FI_VERSION(1, 4)
+#define FIVER FI_VERSION(1, 5)
 
 #define ERR_MSG_LEN 256
 
@@ -764,7 +764,7 @@ bool Fabric::initialize(const char* node, const char* service, uint64_t flags, s
 
     _hints->addr_format = FI_SOCKADDR_IN;
     _hints->ep_attr->type = FI_EP_MSG;
-    _hints->domain_attr->mr_mode = FI_MR_BASIC;
+    _hints->domain_attr->mr_mode = FI_MR_LOCAL | FI_MR_VIRT_ADDR | FI_MR_ALLOCATED | FI_MR_PROV_KEY;
     _hints->caps = FI_MSG | FI_RMA;
     _hints->mode = FI_LOCAL_MR | FI_RX_CQ_DATA;
     if (tx_size)
