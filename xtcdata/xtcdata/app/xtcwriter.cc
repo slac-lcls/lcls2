@@ -36,6 +36,7 @@
 #include <unistd.h>
 #include <type_traits>
 #include <cstring>
+#include <sys/time.h>
 
 using namespace XtcData;
 #define BUFSIZE 0x4000000
@@ -398,10 +399,35 @@ void addData(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     padExample(xtc, namesVec, nameId);
 }
 
-int main()
+void usage(char* progname)
 {
-    
-    FILE* xtcFile = fopen("data.xtc", "w");
+    fprintf(stderr, "Usage: %s [-f <filename> -t -h]\n", progname);
+}
+
+int main(int argc, char* argv[])
+{
+    int c;
+    int writeTs = 0;
+    int parseErr = 0;
+    char* xtcname = "data.xtc";
+
+    while ((c = getopt(argc, argv, "htf:")) != -1) {
+        switch (c) {
+            case 'h':
+                usage(argv[0]);
+                exit(0);
+            case 't':
+                writeTs = 1;
+                break;
+            case 'f':
+                xtcname = optarg;
+                break;
+            default:
+                parseErr++;
+        }
+    }
+
+    FILE* xtcFile = fopen(xtcname, "w");
     if (!xtcFile) {
         printf("Error opening output xtc file.\n");
         return -1;
@@ -431,6 +457,8 @@ int main()
 
 
     void* buf = malloc(BUFSIZE);
+    struct timeval tv;
+    uint64_t pulseId = 0;
  
     for (int i = 0; i < NEVENT; i++) {
         Dgram& dgram = *(Dgram*)buf;
@@ -438,10 +466,20 @@ int main()
         dgram.xtc.contains = tid;
         dgram.xtc.damage = 0;
         dgram.xtc.extent = sizeof(Xtc);
+        
+        if (writeTs != 0) {
+            gettimeofday(&tv, NULL);
+            dgram.seq = Sequence(TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId));
+        }
 
         addData(dgram.xtc,namesVec);
 
         printf("*** event %d ***\n",i);
+
+        if (writeTs != 0) {
+            std::cout << "timestamp: " << dgram.seq.stamp().value() << std::endl;
+        }
+
         DebugIter iter(&dgram.xtc, namesVec);
         iter.iterate();
 

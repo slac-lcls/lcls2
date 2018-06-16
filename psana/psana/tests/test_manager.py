@@ -51,13 +51,14 @@ class Test:
         xtc()
 
     def test_parallel(self):
-        subprocess.call(['smdwriter','-f','data.xtc'])
+        subprocess.call(['xtcwriter','-f','data-ts.xtc', '-t']) # Mona FIXME: writing seq in xtcwriter broke dgramCreate
+        subprocess.call(['smdwriter','-f','data-ts.xtc'])
         tmp_dir = os.path.join('.tmp','smalldata')
         if os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir)
         os.makedirs(tmp_dir)
-        shutil.copy('data.xtc',os.path.join('.tmp','data-0.xtc'))
-        shutil.copy('data.xtc',os.path.join('.tmp','data-1.xtc'))
+        shutil.copy('data-ts.xtc',os.path.join('.tmp','data-0.xtc'))
+        shutil.copy('data-ts.xtc',os.path.join('.tmp','data-1.xtc'))
         shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-0.smd.xtc'))
         shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-1.smd.xtc'))
 
@@ -65,7 +66,7 @@ class Test:
         shutil.copy('smd.xtc',os.path.join(tmp_dir,'data_1.smd.xtc')) # FIXME: chuck's hack to fix nosetests
 
         parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
-        subprocess.call(['mpirun','-n','2','python',parallel])
+        subprocess.call(['mpirun','-n','3','python',parallel])
     
     def test_det(self):
         det()

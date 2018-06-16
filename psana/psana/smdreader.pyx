@@ -1,7 +1,7 @@
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from posix.unistd cimport read
-"""
+
 cdef struct Xtc:
     int junks[4]
     unsigned extent
@@ -24,14 +24,15 @@ cdef struct Buffer:
     unsigned long timestamp
     size_t block_offset
     size_t block_size
-"""
+
 cdef class SmdReader:
-    #cdef int* fds
-    #cdef size_t chunksize
-    #cdef int maxretries 
-    #cdef Buffer *bufs
-    #cdef int nfiles
-    #cdef unsigned got_events
+    cdef int* fds
+    cdef size_t chunksize
+    cdef int maxretries 
+    cdef Buffer *bufs
+    cdef int nfiles
+    cdef unsigned got_events
+    
     def __init__(self, fds):
         self.chunksize = 0x1000000
         self.maxretries = 5
@@ -44,8 +45,9 @@ cdef class SmdReader:
 
     def __dealloc__(self):
         # FIXME with cppclass?
-        for i in range(self.nfiles):
-            free(self.bufs[i].chunk)
+        if self.bufs:
+            for i in range(self.nfiles):
+                free(self.bufs[i].chunk)
 
     def _init_buffers(self):
         for i in range(self.nfiles):
@@ -88,7 +90,7 @@ cdef class SmdReader:
         self.bufs[buf_id].offset = dgram_offset - block_offset
 
     def get(self, unsigned n_events = 1, unsigned long limit_ts = 1):
-        if self.bufs == NULL:
+        if not self.bufs:
             self.bufs = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
             self._init_buffers()
         

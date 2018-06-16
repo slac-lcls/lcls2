@@ -1,3 +1,8 @@
+# NOTE:
+# To test on 'real' bigdata: 
+# xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona"
+# >bsub -n 64 -q psfehq -o log.txt mpirun python user.py
+#
 # Todo
 # - Use detector interface in eventCode
 import os
@@ -15,7 +20,8 @@ for run in ds.runs():
     #beginRunCode
     for evt in run.events():
         #eventCode
-        pass 
+        for d in evt:
+            pass
     #endRunCode
 #endJobCode
 
