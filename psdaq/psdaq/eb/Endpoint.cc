@@ -7,9 +7,11 @@
 #include <stdarg.h>
 #include <string.h>
 
-#define FIVER FI_VERSION(1, 5)
+#define FIVER FI_VERSION(1, 6)
 
 #define ERR_MSG_LEN 256
+
+#define ANY_ADDR "0.0.0.0"
 
 #define CHECK_ERR(function, msg)  \
   _errno = function;              \
@@ -775,7 +777,7 @@ bool Fabric::initialize(const char* node, const char* service, uint64_t flags, s
     if (!node)
       flags |= FI_SOURCE;
 
-    CHECK_ERR(fi_getinfo(FIVER, node, service, flags, _hints, &_info), "fi_getinfo");
+    CHECK_ERR(fi_getinfo(FIVER, node ? node : ANY_ADDR, service, flags, _hints, &_info), "fi_getinfo");
     CHECK_ERR(fi_fabric(_info->fabric_attr, &_fabric, NULL), "fi_fabric");
     CHECK_ERR(fi_domain(_fabric, _info, &_domain, NULL), "fi_domain");
   }
@@ -1951,6 +1953,7 @@ void CompletionQueue::shutdown()
 }
 
 #undef ERR_MSG_LEN
+#undef ANY_ADDR
 #undef CHECK_ERR
 #undef CHECK
 #undef CHECK_MR
