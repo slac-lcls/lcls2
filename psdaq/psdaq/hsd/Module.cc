@@ -141,7 +141,7 @@ using namespace Pds::HSD;
 
 Module* Module::create(int fd)
 {
-  void* ptr = mmap(0, sizeof(Pds::HSD::Module::PrivateData), PROT_READ|PROT_WRITE, (MAP_SHARED|MAP_LOCKED), fd, 0);
+  void* ptr = mmap(0, sizeof(Pds::HSD::Module::PrivateData), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
   if (ptr == MAP_FAILED) {
     perror("Failed to map");
     return 0;
@@ -709,16 +709,17 @@ void Module::board_status()
          p->fmcb_core.present() ? "":"not",
          p->fmcb_core.powerGood() ? "up":"down");
 
-  p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-  p->i2c_sw_control.dump();
+  if (p->fmca_core.present()) {
+    p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+    p->i2c_sw_control.dump();
+    printf("vtmona mfg:dev %x:%x\n", p->vtmona.manufacturerId(), p->vtmona.deviceId());
+  }
 
-  printf("vtmona mfg:dev %x:%x\n", p->vtmona.manufacturerId(), p->vtmona.deviceId());
-
-
-  p->i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-  p->i2c_sw_control.dump();
-
-  printf("vtmonb mfg:dev %x:%x\n", p->vtmona.manufacturerId(), p->vtmona.deviceId());
+  if (p->fmcb_core.present()) {
+    p->i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
+    p->i2c_sw_control.dump();
+    printf("vtmonb mfg:dev %x:%x\n", p->vtmona.manufacturerId(), p->vtmona.deviceId());
+  }
 }
 
 void Module::flash_write(FILE* f)
