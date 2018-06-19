@@ -1,8 +1,14 @@
 #!/usr/bin/env python
 
+"""
+collectTest - Collection Manager test client
+
+Author: Chris Ford <caf@slac.stanford.edu>
+"""
+
 import time
 import zmq
-from CMMsg import CMMsg
+from CollectMsg import CollectMsg
 import sys
 import argparse
 import socket
@@ -26,11 +32,11 @@ def main():
     ctx = zmq.Context()
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
-    cmd.connect("tcp://%s:%d" % (args.C, CMMsg.router_port(args.p)))
+    cmd.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
     subscriber = ctx.socket(zmq.SUB)
     subscriber.linger = 0
     subscriber.setsockopt_string(zmq.SUBSCRIBE, '')
-    subscriber.connect("tcp://%s:%d" % (args.C, CMMsg.pub_port(args.p)))
+    subscriber.connect("tcp://%s:%d" % (args.C, CollectMsg.pub_port(args.p)))
 
     poller = zmq.Poller()
     # Listen to both DEALER and SUB sockets
@@ -46,16 +52,16 @@ def main():
             break           # Interrupted
 
         if subscriber in items:
-            cmmsg = CMMsg.recv(subscriber)
-            if cmmsg.key == CMMsg.PING:
+            cmmsg = CollectMsg.recv(subscriber)
+            if cmmsg.key == CollectMsg.PING:
                 if verbose:
                     print( "Received PING, sending PONG")
-                cmd.send(CMMsg.PONG)
+                cmd.send(CollectMsg.PONG)
 
-            elif cmmsg.key == CMMsg.PLAT:
+            elif cmmsg.key == CollectMsg.PLAT:
                 if verbose:
                     print( "Received PLAT, sending HELLO (platform=%d)" % args.p)
-                newmsg = CMMsg(0, key=CMMsg.HELLO)
+                newmsg = CollectMsg(0, key=CollectMsg.HELLO)
                 # Create simulated ports entry based on clientId N, platform P
                 # {
                 #   'platform' : P
@@ -83,12 +89,12 @@ def main():
                 except Exception as ex:
                     print('E: newmsg.send()', ex)
 
-            elif cmmsg.key == CMMsg.DIE:
+            elif cmmsg.key == CollectMsg.DIE:
                 if verbose:
                     print( "Received DIE, exiting")
                 break       # Interrupted
 
-            elif cmmsg.key == CMMsg.KILL:
+            elif cmmsg.key == CollectMsg.KILL:
                 if verbose:
                     print( "Received KILL, ignoring")
 
@@ -96,11 +102,11 @@ def main():
                 print( "Client ID %d: Received key=\"%s\" on SUB socket" % (clientId, cmmsg.key))
 
         if cmd in items:
-            cmmsg = CMMsg.recv(cmd)
-            if cmmsg.key == CMMsg.ALLOC:
+            cmmsg = CollectMsg.recv(cmd)
+            if cmmsg.key == CollectMsg.ALLOC:
                 if verbose:
                     print( "Received ALLOC, sending PORTS")
-                newmsg = CMMsg(0, key=CMMsg.PORTS)
+                newmsg = CollectMsg(0, key=CollectMsg.PORTS)
                 # Create simulated ports entry based on clientId N
                 # {
                 #   'name' : 'port<N>',

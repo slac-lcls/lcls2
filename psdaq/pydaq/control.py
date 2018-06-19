@@ -1,5 +1,5 @@
 """
-Control - Control server
+control - Control level
 
 Author: Chris Ford <caf@slac.stanford.edu>
 """

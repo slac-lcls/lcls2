@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
-CM showPartition command
+Collection Manager showPlatform command
 """
 import sys
 import zmq
 import zmq.utils.jsonapi as json
 import pprint
 import argparse
-from CMMsg import CMMsg
+from CollectMsg import CollectMsg
 
 def main():
 
@@ -23,18 +23,18 @@ def main():
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
     cmd.RCVTIMEO = 5000 # in milliseconds
-    cmd.connect("tcp://%s:%d" % (args.C, CMMsg.router_port(args.p)))
+    cmd.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
 
-    cmd.send(CMMsg.GETSTATE)
+    cmd.send(CollectMsg.GETSTATE)
     while True:
         try:
-            msg = CMMsg.recv(cmd)
+            msg = CollectMsg.recv(cmd)
         except Exception as ex:
             print(ex)
             return
 
         request = msg.key
-        if request == CMMsg.STATE:
+        if request == CollectMsg.STATE:
             props = msg.properties
 
             # platform

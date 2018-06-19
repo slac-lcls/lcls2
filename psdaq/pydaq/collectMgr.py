@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-cmserver - Collection Manager server
+collectMgr - Collection Manager
 
 Author: Chris Ford <caf@slac.stanford.edu>
 """
@@ -14,7 +14,7 @@ import zmq.utils.jsonapi as json
 import pprint
 import argparse
 
-from CMMsg import CMMsg
+from CollectMsg import CollectMsg
 from ZTimer import ZTimer
 
 class CMState(object):
@@ -141,9 +141,9 @@ def main():
     # context and sockets
     ctx = zmq.Context()
     cmd = ctx.socket(zmq.ROUTER)
-    cmd.bind("tcp://*:%d" % CMMsg.router_port(cmstate.platform()))
+    cmd.bind("tcp://*:%d" % CollectMsg.router_port(cmstate.platform()))
     publisher = ctx.socket(zmq.PUB)
-    publisher.bind("tcp://*:%d" % CMMsg.pub_port(cmstate.platform()))
+    publisher.bind("tcp://*:%d" % CollectMsg.pub_port(cmstate.platform()))
     timerReceive = ctx.socket(zmq.PAIR)
     timerEndpoint = "inproc://timer"
     timerReceive.sndtimeo = 0
@@ -151,8 +151,8 @@ def main():
 
     if cmstate.heartbeatInterval() > 0:
         # create timer thread
-        timers = [ { 'period' : cmstate.heartbeatInterval(), 'offset' :  0, 'msg' : CMMsg.STARTPING },
-                   { 'period' : cmstate.heartbeatInterval(), 'offset' :  1, 'msg' : CMMsg.STARTEXP  } ]
+        timers = [ { 'period' : cmstate.heartbeatInterval(), 'offset' :  0, 'msg' : CollectMsg.STARTPING },
+                   { 'period' : cmstate.heartbeatInterval(), 'offset' :  1, 'msg' : CollectMsg.STARTEXP  } ]
 
         timer1 = ZTimer("Timer-1", ctx, timerEndpoint, timers)
         timer1.start()
@@ -172,13 +172,13 @@ def main():
                 request = timerReceive.recv()
                 logging.debug('Received <%s> from timer' % request.decode())
 
-                if request == CMMsg.STARTPING:
+                if request == CollectMsg.STARTPING:
                     # Send PING broadcast
-                    cmmsg = CMMsg(sequence, key=CMMsg.PING)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.PING)
                     cmmsg.send(publisher)
                     logging.debug("Published <PING>")
                     continue
-                elif request == CMMsg.STARTEXP:
+                elif request == CollectMsg.STARTEXP:
                     # Remove expired keys
                     exlist = cmstate.expired_keys(cmstate.nodeTimeout())
                     if len(exlist) > 0:
@@ -195,7 +195,7 @@ def main():
                 request = msg[1]
                 logging.debug('Received <%s> from cmd' % request.decode())
 
-                if request == CMMsg.GETSTATE:
+                if request == CollectMsg.GETSTATE:
 
                     # Send STATE reply to client
                     logging.debug("Sending STATE reply")
@@ -207,13 +207,13 @@ def main():
                     except Exception as ex:
                         logging.error(ex)
                         testbody = ''
-                    cmmsg = CMMsg(sequence, key=CMMsg.STATE, body=testbody)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.STATE, body=testbody)
                     cmmsg['platform'] = cmstate.platform()
                     cmmsg['partName'] = cmstate.partName()
                     cmmsg.send(cmd)
                     continue
 
-                if request == CMMsg.STARTPLAT:
+                if request == CollectMsg.STARTPLAT:
                     # Assign partition name
                     try:
                         prop = json.loads(msg[4])
@@ -229,20 +229,20 @@ def main():
 
                     # Send PLAT broadcast
                     logging.debug("Sending PLAT broadcast")
-                    cmmsg = CMMsg(sequence, key=CMMsg.PLAT)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.PLAT)
                     cmmsg.send(publisher)
 
                     # Send PLATSTARTED reply to client
                     logging.debug("Sending PLATSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(sequence, key=CMMsg.PLATSTARTED)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.PLATSTARTED)
                     cmmsg.send(cmd)
                     continue
 
-                if request == CMMsg.STARTALLOC:
+                if request == CollectMsg.STARTALLOC:
                     # Send ALLOC individually
                     logging.debug("Sending ALLOC individually")
-                    cmmsg = CMMsg(sequence, key=CMMsg.ALLOC)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.ALLOC)
                     for key in cmstate.entries.keys():
                         # skip allocating this entry if property select=0
                         try:
@@ -259,14 +259,14 @@ def main():
                     # Send ALLOCSTARTED reply to client
                     logging.debug("Sending ALLOCSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(sequence, key=CMMsg.ALLOCSTARTED)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.ALLOCSTARTED)
                     cmmsg.send(cmd)
                     continue
 
-                if request == CMMsg.STARTCONNECT:
+                if request == CollectMsg.STARTCONNECT:
                     # Send CONNECT individually
                     logging.debug("Sending CONNECT individually")
-                    cmmsg = CMMsg(sequence, key=CMMsg.CONNECT)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.CONNECT)
                     for key in cmstate.entries.keys():
                         # skip connecting this entry if property select=0
                         try:
@@ -283,14 +283,14 @@ def main():
                     # Send CONNECTSTARTED reply to client
                     logging.debug("Sending CONNECTSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(sequence, key=CMMsg.CONNECTSTARTED)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.CONNECTSTARTED)
                     cmmsg.send(cmd)
                     continue
 
-                if request == CMMsg.STARTKILL:
+                if request == CollectMsg.STARTKILL:
                     # Send KILL broadcast
                     logging.debug("Sending KILL broadcast")
-                    cmmsg = CMMsg(sequence, key=CMMsg.KILL)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.KILL)
                     cmmsg['platform'] = cmstate.platform()
                     cmmsg.send(publisher)
 
@@ -300,25 +300,25 @@ def main():
                     # Send KILLSTARTED reply to client
                     logging.debug("Sending KILLSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(sequence, key=CMMsg.KILLSTARTED)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.KILLSTARTED)
                     cmmsg['platform'] = cmstate.platform()
                     cmmsg.send(cmd)
                     continue
 
-                elif request == CMMsg.STARTDIE:
+                elif request == CollectMsg.STARTDIE:
                     # Send DIE broadcast
                     logging.debug("Sending DIE broadcast")
-                    cmmsg = CMMsg(sequence, key=CMMsg.DIE)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.DIE)
                     cmmsg.send(publisher)
 
                     # Send DIESTARTED reply to client
                     logging.debug("Sending DIESTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(sequence, key=CMMsg.DIESTARTED)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.DIESTARTED)
                     cmmsg.send(cmd)
                     continue
 
-                elif request == CMMsg.HELLO:
+                elif request == CollectMsg.HELLO:
                     try:
                         prop = json.loads(msg[4])
                     except Exception as ex:
@@ -344,7 +344,7 @@ def main():
 
                     continue
 
-                elif request == CMMsg.PORTS:
+                elif request == CollectMsg.PORTS:
                     try:
                         prop = json.loads(msg[4])
                     except:
@@ -359,7 +359,7 @@ def main():
                         logging.error("PORTS message: No ports property")
                     continue
 
-                elif request == CMMsg.PONG:
+                elif request == CollectMsg.PONG:
                     pongCount += 1
                     logging.debug("PONG #%d" % pongCount)
                     if identity in cmstate.keys():
@@ -370,11 +370,11 @@ def main():
                             logging.debug("PONG timestamp failed")
                     continue
 
-                elif request == CMMsg.STARTDUMP:
+                elif request == CollectMsg.STARTDUMP:
                     # Send reply to client
                     logging.debug("Sending DUMPSTARTED reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(sequence, key=CMMsg.DUMPSTARTED)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.DUMPSTARTED)
                     cmmsg.send(cmd)
 
                     # Dump state to console
@@ -391,7 +391,7 @@ def main():
                     # Send reply to client
                     logging.debug("Sending <HUH?> reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CMMsg(sequence, key=CMMsg.HUH)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.HUH)
                     cmmsg.send(cmd)
                     continue
 

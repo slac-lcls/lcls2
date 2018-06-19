@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-collectcmd - send a collection command via ZMQ
+collectCmd - send a collection command via ZMQ
 
 Author: Chris Ford <caf@slac.stanford.edu>
 """
@@ -9,18 +9,18 @@ import zmq
 import zmq.utils.jsonapi as json
 import pprint
 import argparse
-from CMMsg import CMMsg
+from CollectMsg import CollectMsg
 
 def main():
 
     # Define commands
-    command_dict = { 'plat': CMMsg.STARTPLAT,
-                     'alloc': CMMsg.STARTALLOC,
-                     'connect': CMMsg.STARTCONNECT,
-                     'dump': CMMsg.STARTDUMP,
-                     'die': CMMsg.STARTDIE,
-                     'kill': CMMsg.STARTKILL,
-                     'getstate': CMMsg.GETSTATE }
+    command_dict = { 'plat': CollectMsg.STARTPLAT,
+                     'alloc': CollectMsg.STARTALLOC,
+                     'connect': CollectMsg.STARTCONNECT,
+                     'dump': CollectMsg.STARTDUMP,
+                     'die': CollectMsg.STARTDIE,
+                     'kill': CollectMsg.STARTKILL,
+                     'getstate': CollectMsg.GETSTATE }
 
     # Process arguments
     parser = argparse.ArgumentParser()
@@ -35,10 +35,10 @@ def main():
     cmd_socket = ctx.socket(zmq.DEALER)
     cmd_socket.linger = 0
     cmd_socket.RCVTIMEO = 5000 # in milliseconds
-    cmd_socket.connect("tcp://%s:%d" % (args.C, CMMsg.router_port(args.p)))
+    cmd_socket.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
 
     # Compose message
-    newmsg = CMMsg(0, key=command_dict[args.command])
+    newmsg = CollectMsg(0, key=command_dict[args.command])
     newmsg['partName'] = args.P
     newmsg['platform'] = ('%d' % args.p)
 
@@ -47,13 +47,13 @@ def main():
 
     # Receive reply
     try:
-        cmmsg = CMMsg.recv(cmd_socket)
+        cmmsg = CollectMsg.recv(cmd_socket)
     except Exception as ex:
         print(ex)
     else:
         print ("Received \"%s\"" % cmmsg.key.decode())
 
-        if cmmsg.key == CMMsg.STATE:
+        if cmmsg.key == CollectMsg.STATE:
             props = cmmsg.properties
 
             # platform

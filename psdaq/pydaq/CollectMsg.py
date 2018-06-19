@@ -1,6 +1,6 @@
 """
 =====================================================================
-CMMsg - Collection Manager message class
+CollectMsg - Collection Manager message class
 
 Author: Chris Ford <caf@slac.stanford.edu>
 
@@ -10,9 +10,9 @@ Based on kvmsg class by Min RK <benjaminrk@gmail.com>
 
 import sys
 import zmq
-from kvmsg import KVMsg
+from KVMsg import KVMsg
 
-class CMMsg(KVMsg):
+class CollectMsg(KVMsg):
 
     PORTBASE = 29980
 
@@ -73,7 +73,7 @@ def test_cmmsg (verbose):
 
     kvmap = {}
     # Test send and receive of simple message
-    cmmsg = CMMsg(1)
+    cmmsg = CollectMsg(1)
     cmmsg.key = b"key"
     cmmsg.body = b"body"
     if verbose:
@@ -81,7 +81,7 @@ def test_cmmsg (verbose):
     cmmsg.send(output)
     cmmsg.store(kvmap)
 
-    cmmsg2 = CMMsg.recv(input)
+    cmmsg2 = CollectMsg.recv(input)
     if verbose:
         cmmsg2.dump()
     assert cmmsg2.key == b"key"
@@ -90,7 +90,7 @@ def test_cmmsg (verbose):
     assert len(kvmap) == 1 # shouldn't be different
 
     # test send/recv with properties:
-    cmmsg = CMMsg(2, key=b"key", body=b"body")
+    cmmsg = CollectMsg(2, key=b"key", body=b"body")
     cmmsg[b"prop1"] = b"value1"
     cmmsg[b"prop2"] = b"value2"
     cmmsg[b"prop3"] = b"value3"
@@ -98,7 +98,7 @@ def test_cmmsg (verbose):
     if verbose:
         cmmsg.dump()
     cmmsg.send(output)
-    cmmsg2 = CMMsg.recv(input)
+    cmmsg2 = CollectMsg.recv(input)
     if verbose:
         cmmsg2.dump()
     # ensure properties were preserved
