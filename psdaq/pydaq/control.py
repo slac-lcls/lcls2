@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 control - Control level
 
@@ -5,10 +7,13 @@ Author: Chris Ford <caf@slac.stanford.edu>
 """
 
 import zmq
+from CollectMsg import CollectMsg
 from ControlTransition import ControlTransition as Transition
 from ControlMsg import ControlMsg
 from ControlState import ControlState, StateMachine
 from psp import PV
+from os import getpid
+from socket import gethostname
 import pyca
 import logging
 import argparse
@@ -176,12 +181,23 @@ def test_ControlStateMachine():
     return
 
 
+def parse_port(inbytestring):
+    try:
+        retval = int(inbytestring.split(b':')[-1])
+    except:
+        print("Failed to parse", inbytestring)
+        retval = 0
+    return retval
+
+
 def main():
 
     # Process arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('pvbase', help='EPICS PV base (e.g. DAQ:LAB2:PART:2)')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    parser.add_argument('-C', metavar='CM_HOST', default='localhost', help='Collection Manager host')
+    parser.add_argument('-u', metavar='UNIQUE_ID', default='control', help='Name')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
 
@@ -190,49 +206,70 @@ def main():
     else:
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    logging.info('control server starting')
+    logging.info('control level starting')
 
-    # CM state
+    # Control state
     yy = ControlStateMachine(args.pvbase)
     logging.debug("ControlStateMachine state: %s" % yy.state())
 
-    # context and sockets
+    # zmq context
     ctx = zmq.Context()
-    cmd = ctx.socket(zmq.ROUTER)
-    pull = ctx.socket(zmq.PULL)
-    cmd.bind("tcp://*:%d" % ControlMsg.router_port(args.p))
-    pull.bind("tcp://*:%d" % ControlMsg.pull_port(args.p))
+
+    # control sockets (ephemeral ports)
+    control_router_socket = ctx.socket(zmq.ROUTER)
+    control_pull_socket = ctx.socket(zmq.PULL)
+    control_router_socket.bind("tcp://*:*")
+    control_pull_socket.bind("tcp://*:*")
+    control_router_port = parse_port(control_router_socket.getsockopt(zmq.LAST_ENDPOINT))
+    control_pull_port = parse_port(control_pull_socket.getsockopt(zmq.LAST_ENDPOINT))
+    logging.debug('control_router_port = %d' % control_router_port)
+    logging.debug('control_pull_port = %d' % control_pull_port)
+
+    # collection mgr sockets (well known ports)
+    collect_dealer_socket = ctx.socket(zmq.DEALER)
+    collect_sub_socket = ctx.socket(zmq.SUB)
+    collect_dealer_socket.linger = 0
+    collect_sub_socket.linger = 0
+    collect_sub_socket.setsockopt_string(zmq.SUBSCRIBE, '')
+    collect_dealer_socket.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
+    collect_sub_socket.connect("tcp://%s:%d" % (args.C, CollectMsg.pub_port(args.p)))
+    collect_dealer_port = parse_port(collect_dealer_socket.getsockopt(zmq.LAST_ENDPOINT))
+    collect_sub_port = parse_port(collect_sub_socket.getsockopt(zmq.LAST_ENDPOINT))
+    logging.debug('collect_dealer_port = %d' % collect_dealer_port)
+    logging.debug('collect_sub_port = %d' % collect_sub_port)
 
     sequence = 0
 
     poller = zmq.Poller()
-    poller.register(cmd, zmq.POLLIN)
-    poller.register(pull, zmq.POLLIN)
+    poller.register(control_router_socket, zmq.POLLIN)
+    poller.register(control_pull_socket, zmq.POLLIN)
+    poller.register(collect_dealer_socket, zmq.POLLIN)
+    poller.register(collect_sub_socket, zmq.POLLIN)
     try:
         while True:
             items = dict(poller.poll(1000))
 
-            # Handle pull socket
-            if pull in items:
-                msg = pull.recv()
+            # Handle control_pull_socket socket
+            if control_pull_socket in items:
+                msg = control_pull_socket.recv()
                 config = dgram.Dgram(view=msg)
                 # now it's in dgram.Dgram object
                 ttt = config.seq.timestamp()
                 print('Timestamp:', ttt)    # FIXME
 
-            # Execute state cmd request
-            if cmd in items:
-                msg = cmd.recv_multipart()
+            # Execute state command request
+            if control_router_socket in items:
+                msg = control_router_socket.recv_multipart()
                 identity = msg[0]
                 request = msg[1]
-                logging.debug('Received <%s> from cmd' % request.decode())
+                logging.debug('Received <%s> from control_router_socket' % request.decode())
 
                 if request == ControlMsg.PING:
                     # Send reply to client
                     logging.debug("Sending <PONG> reply")
-                    cmd.send(identity, zmq.SNDMORE)
+                    control_router_socket.send(identity, zmq.SNDMORE)
                     cmmsg = ControlMsg(sequence, key=ControlMsg.PONG)
-                    cmmsg.send(cmd)
+                    cmmsg.send(control_router_socket)
                     continue
 
                 if request == ControlMsg.PONG:
@@ -252,19 +289,56 @@ def main():
                             logging.debug("ControlStateMachine state: %s" % newstate)
 
                     # Send reply to client
-                    cmd.send(identity, zmq.SNDMORE)
+                    control_router_socket.send(identity, zmq.SNDMORE)
                     cmmsg = ControlMsg(sequence, key=yy.state().key())
-                    cmmsg.send(cmd)
+                    cmmsg.send(control_router_socket)
                     continue
 
                 else:
                     logging.warning("Unknown msg <%s>" % request.decode())
                     # Send reply to client
                     logging.debug("Sending <HUH?> reply")
-                    cmd.send(identity, zmq.SNDMORE)
+                    control_router_socket.send(identity, zmq.SNDMORE)
                     cmmsg = ControlMsg(sequence, key=ControlMsg.HUH)
-                    cmmsg.send(cmd)
+                    cmmsg.send(control_router_socket)
                     continue
+
+            # Collection Mgr client: DEALER socket
+            if collect_dealer_socket in items:
+                cmmsg = CollectMsg.recv(collect_dealer_socket)
+                if cmmsg.key == CollectMsg.ALLOC:
+                    logging.debug("Received ALLOC, sending PORTS")
+                    ports = {}
+                    ports['router_port'] = control_router_port
+                    ports['pull_port'] = control_pull_port
+                    newmsg['ports'] = [ ports ]
+                    newmsg.send(collect_dealer_socket)
+                elif cmmsg.key == CollectMsg.CONNECT:
+                    logging.debug("Received CONNECT, ignoring")
+                else:
+                    logging.debug("Received key=\"%s\" on collect_dealer_socket" % cmmsg.key)
+
+            # Collection Mgr client: SUB socket
+            if collect_sub_socket in items:
+                cmmsg = CollectMsg.recv(collect_sub_socket)
+                if cmmsg.key == CollectMsg.PING:
+                    logging.debug("Received PING, sending PONG")
+                    collect_dealer_socket.send(CollectMsg.PONG)
+
+                elif cmmsg.key == CollectMsg.PLAT:
+                    logging.debug("Received PLAT, sending HELLO (platform=%d)" % args.p)
+                    newmsg = CollectMsg(0, key=CollectMsg.HELLO)
+                    newmsg['level'] = 0
+                    newmsg['name'] = args.u
+                    newmsg['host'] = gethostname()
+                    newmsg['pid'] = getpid()
+                    try:
+                        newmsg.send(collect_dealer_socket)
+                    except Exception as ex:
+                        logging.error("newmsg.send(): %s" % ex)
+                else:
+                    logging.debug("Received key=\"%s\" on collect_sub_socket" %
+                                  cmmsg.key)
 
     except KeyboardInterrupt:
         logging.debug("Interrupt received")
@@ -275,13 +349,15 @@ def main():
     time.sleep(.25)
 
     # close zmq sockets
-    cmd.close()
-    pull.close()
+    control_router_socket.close()
+    control_pull_socket.close()
+    collect_dealer_socket.close()
+    collect_sub_socket.close()
 
     # terminate zmq context
     ctx.term()
 
-    logging.info('control server exiting')
+    logging.info('control level exiting')
 
 if __name__ == '__main__':
     main()

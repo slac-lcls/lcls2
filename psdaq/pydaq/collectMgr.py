@@ -90,8 +90,10 @@ class CMState(object):
         rlist = []
         for k in keylist:
             if k in self.entries:
-                rlist.append("%s/%s" % (self.entries[k]['ip'],
-                             self.entries[k]['pid']))
+                try:
+                    rlist.append(self.entries[k]['name'])
+                except KeyError:
+                    rlist.append("(no name)")
                 del self.entries[k]
         return rlist
 
@@ -131,7 +133,7 @@ def main():
     else:
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    logging.info('cmserver starting')
+    logging.info('collectMgr starting')
 
     timer1started = False
     # CM state
@@ -244,17 +246,9 @@ def main():
                     logging.debug("Sending ALLOC individually")
                     cmmsg = CollectMsg(sequence, key=CollectMsg.ALLOC)
                     for key in cmstate.entries.keys():
-                        # skip allocating this entry if property select=0
-                        try:
-                            select = cmstate.entries[key]['select']
-                        except KeyError:
-                            pass
-                        else:
-                            if select == 0:
-                                continue
-
                         cmd.send(key, zmq.SNDMORE)
                         cmmsg.send(cmd)
+                        logging.debug("...sent ALLOC")
 
                     # Send ALLOCSTARTED reply to client
                     logging.debug("Sending ALLOCSTARTED reply")
@@ -266,19 +260,45 @@ def main():
                 if request == CollectMsg.STARTCONNECT:
                     # Send CONNECT individually
                     logging.debug("Sending CONNECT individually")
-                    cmmsg = CollectMsg(sequence, key=CollectMsg.CONNECT)
+
+                    pybody = {'key': 'ports'}
+
+                    # add ports for level0 (control)
+                    pybody['level0'] = []
                     for key in cmstate.entries.keys():
-                        # skip connecting this entry if property select=0
                         try:
-                            select = cmstate.entries[key]['select']
+                            level = cmstate.entries[key]['level']
                         except KeyError:
                             pass
                         else:
-                            if select == 0:
-                                continue
+                            if level == 0:
+                                # copy ports entry
+                                try:
+                                    pybody['level0'].append({'ports': cmstate.entries[key]['ports']})
+                                except KeyError:
+                                    pass
+                                else:
+                                    logging.debug("Copied level0 ports entry")
+                                # copy name entry
+                                try:
+                                    pybody['level0'].append({'name': cmstate.entries[key]['name']})
+                                except KeyError:
+                                    pass
+                                else:
+                                    logging.debug("Copied level0 name entry")
+                                # done
+                                break
 
+                    jsonbody = json.dumps(pybody)
+                    cmmsg = CollectMsg(sequence, key=CollectMsg.CONNECT, body=jsonbody)
+
+                    for key in cmstate.entries.keys():
                         cmd.send(key, zmq.SNDMORE)
                         cmmsg.send(cmd)
+                        logging.debug("...sent CONNECT")
+
+                    cmd.send(key, zmq.SNDMORE)
+                    cmmsg.send(cmd)
 
                     # Send CONNECTSTARTED reply to client
                     logging.debug("Sending CONNECTSTARTED reply")
@@ -319,12 +339,17 @@ def main():
                     continue
 
                 elif request == CollectMsg.HELLO:
-                    try:
-                        prop = json.loads(msg[4])
-                    except Exception as ex:
-                        logging.error(ex)
+                    logging.debug("Loading HELLO properties with JSON")
+                    if len(msg) == 5 or len(msg) == 6:
+                        try:
+                            prop = json.loads(msg[4])
+                        except Exception as ex:
+                            logging.error(ex)
+                            prop = {}
+                        logging.debug("HELLO properties = %s" % prop)
+                    else:
+                        logging.error("Got HELLO msg of len %d, expected 5 or 6" % len(msg))
                         prop = {}
-                    logging.debug("properties = %s" % prop)
 
                     # remove any duplicates before adding new entry
                     exlist = cmstate.find_duplicates(prop)
@@ -418,7 +443,7 @@ def main():
     if timer1started:
         timer1.join()         # join timer thread
 
-    logging.info('cmserver exiting')
+    logging.info('collectMgr exiting')
 
 if __name__ == '__main__':
     main()

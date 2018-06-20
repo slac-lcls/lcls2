@@ -14,8 +14,6 @@ from KVMsg import KVMsg
 
 class ControlMsg(KVMsg):
 
-    PORTBASE = 29960
-
     # message keys
     STARTPING   = b'STARTPING'
     PING        = b'PING'
@@ -28,16 +26,6 @@ class ControlMsg(KVMsg):
     GETSTATE    = b'GETSTATE'
     STATE       = b'STATE'
     HUH         = b'HUH?'
-
-    @classmethod
-    def router_port(cls, platform):
-        assert platform >= 0 and platform <= 7
-        return cls.PORTBASE + platform
-
-    @classmethod
-    def pull_port(cls, platform):
-        assert platform >= 0 and platform <= 7
-        return 5559 # FIXME
 
 
 # ---------------------------------------------------------------------
