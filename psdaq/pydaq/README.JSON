@@ -37,7 +37,7 @@ Example RapidJSON parsing code:
 
         // interpret Document
         if (document.HasMember("key")) {
-            printf("--> key=%s\n", document["key"].GetString());
+            printf("--> key=\"%s\"\n", document["key"].GetString());
         }
         if (document.HasMember("control") &&
             document["control"].HasMember("ports") &&
@@ -55,5 +55,5 @@ Example RapidJSON parsing code:
 
 Output from the above example RapidJSON parsing code:
 
-    --> key=ports
+    --> key="ports"
     --> pull_port: adrs="psbuild-rhel6" port=45880
