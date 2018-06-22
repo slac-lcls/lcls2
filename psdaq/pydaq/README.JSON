@@ -1,59 +1,65 @@
 Example JSON string:
 
-{"key":"ports","control":{"ports":{"router_port":{"adrs":"psbuild-rhel6","port":36152},"pull_port":{"adrs":"psbuild-rhel6","port":45880}},"name":"control"}}
+{"msgType":"connect","msgVer":1,"platform":0,"procs":{"control":{"name":"xppcontrol","ports":{"router_port":{"adrs":"psbuild-rhel6","port":44855},"pull_port":{"adrs":"psbuild-rhel6","port":36776}}}}}
 
 
 The same JSON content, pretty printed:
 
-{
-    "key": "ports",
-    "control": {
-        "ports": {
-            "router_port": {
-                "adrs": "psbuild-rhel6",
-                "port": 36152
-            },
-            "pull_port": {
-                "adrs": "psbuild-rhel6",
-                "port": 45880
+    {
+        "msgType": "connect",
+        "msgVer": 1,
+        "platform": 0,
+        "procs": {
+            "control": {
+                "name": "xppcontrol",
+                "ports": {
+                    "router_port": {
+                        "adrs": "psbuild-rhel6",
+                        "port": 44855
+                    },
+                    "pull_port": {
+                        "adrs": "psbuild-rhel6",
+                        "port": 36776
+                    }
+                }
             }
-        },
-        "name": "control"
+        }
     }
-}
 
 
 Example RapidJSON parsing code:
 
     #include "rapidjson/document.h"
 
-      ...
+     ...
 
-        char buf[] = "<JSON string>"
+    char buf[] = "<JSON string>"
 
-        // parse JSON into a Document
-        rapidjson::Document document;
-        document.Parse(buf);
+    // parse JSON into a Document
+    rapidjson::Document document;
+    document.Parse(buf);
 
-        // interpret Document
-        if (document.HasMember("key")) {
-            printf("--> key=\"%s\"\n", document["key"].GetString());
-        }
-        if (document.HasMember("control") &&
-            document["control"].HasMember("ports") &&
-            document["control"]["ports"].HasMember("pull_port") &&
-            document["control"]["ports"]["pull_port"].HasMember("adrs") &&
-            document["control"]["ports"]["pull_port"].HasMember("port")) {
+    // interpret Document
+    if (document.HasMember("msgType") && document.HasMember("msgVer")) {
+        printf("JSON: msgType=\"%s\" msgVer=%d\n",
+               document["msgType"].GetString(),
+               document["msgVer"].GetInt());
+
+        // if the ALLOC step was not completed, ports entry will be missing
+        if (document["procs"]["control"].HasMember("ports")) {
             // get references to pull_port adrs and port
-            rapidjson::Value& adrs = document["control"]["ports"]["pull_port"]["adrs"];
-            rapidjson::Value& port = document["control"]["ports"]["pull_port"]["port"];
-            printf("--> pull_port: adrs=\"%s\" port=%d\n", adrs.GetString(), port.GetInt());
+            rapidjson::Value& adrs = document["procs"]["control"]["ports"]["pull_port"]["adrs"];
+            rapidjson::Value& port = document["procs"]["control"]["ports"]["pull_port"]["port"];
+            printf("JSON: pull_port adrs=\"%s\" port=%d\n", adrs.GetString(), port.GetInt());
         } else {
-            printf("failed to find pull_port adrs and port in JSON\n");
+            printf("JSON: control ports not found\n");
         }
+    } else {
+        printf("JSON: msgType and msgVer not found\n");
+    }
 
 
 Output from the above example RapidJSON parsing code:
 
-    --> key="ports"
-    --> pull_port: adrs="psbuild-rhel6" port=45880
+    JSON: msgType="connect" msgVer=1
+    JSON: pull_port adrs="psbuild-rhel6" port=36776
