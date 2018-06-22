@@ -204,7 +204,6 @@ def main():
                     cmd.send(identity, zmq.SNDMORE)
                     print('cmstate.nodes():', cmstate.nodes())
                     try:
-#                       testbody = json.dumps([{'key5': 5, 'key7': 7}, "Hi"])
                         testbody = json.dumps(cmstate.nodes())
                     except Exception as ex:
                         logging.error(ex)
@@ -261,10 +260,13 @@ def main():
                     # Send CONNECT individually
                     logging.debug("Sending CONNECT individually")
 
-                    pybody = {'key': 'ports'}
+                    # start composing JSON message
+                    pybody = {'msgType': 'connect', 'msgVer' : 1}
+                    pybody['platform'] = cmstate.platform()
+                    pybody['procs'] = {}
 
-                    # add ports for level0 (control)
-                    pybody['level0'] = []
+                    # add ports for control level
+                    pybody['procs']['control'] = {}
                     for key in cmstate.entries.keys():
                         try:
                             level = cmstate.entries[key]['level']
@@ -272,20 +274,15 @@ def main():
                             pass
                         else:
                             if level == 0:
-                                # copy ports entry
+                                # copy some entries
                                 try:
-                                    pybody['level0'].append({'ports': cmstate.entries[key]['ports']})
-                                except KeyError:
+                                    pybody['procs']['control']['name'] = cmstate.entries[key]['name']
+                                    pybody['procs']['control']['ports'] = cmstate.entries[key]['ports']
+                                except Exception as ex:
+                                    logging.error("Failed to copy control entries: %s" % ex)
                                     pass
                                 else:
-                                    logging.debug("Copied level0 ports entry")
-                                # copy name entry
-                                try:
-                                    pybody['level0'].append({'name': cmstate.entries[key]['name']})
-                                except KeyError:
-                                    pass
-                                else:
-                                    logging.debug("Copied level0 name entry")
+                                    logging.debug("Copied control entries")
                                 # done
                                 break
 
@@ -297,8 +294,8 @@ def main():
                         cmmsg.send(cmd)
                         logging.debug("...sent CONNECT")
 
-                    cmd.send(key, zmq.SNDMORE)
-                    cmmsg.send(cmd)
+#                   cmd.send(key, zmq.SNDMORE)
+#                   cmmsg.send(cmd)
 
                     # Send CONNECTSTARTED reply to client
                     logging.debug("Sending CONNECTSTARTED reply")

@@ -309,12 +309,13 @@ def main():
                 if cmmsg.key == CollectMsg.ALLOC:
                     logging.debug("Received ALLOC, sending PORTS")
                     ports = {}
-                    ports['router_port'] = control_router_port
-                    ports['pull_port'] = control_pull_port
-                    newmsg['ports'] = [ ports ]
+                    ports['router_port'] = {'adrs': gethostname(), 'port': control_router_port}
+                    ports['pull_port'] =   {'adrs': gethostname(), 'port': control_pull_port}
+                    newmsg['ports'] = ports
                     newmsg.send(collect_dealer_socket)
                 elif cmmsg.key == CollectMsg.CONNECT:
-                    logging.debug("Received CONNECT, ignoring")
+                    logging.debug("Received CONNECT, printing")
+                    print("body=<%s>" % cmmsg.body)
                 else:
                     logging.debug("Received key=\"%s\" on collect_dealer_socket" % cmmsg.key)
 
