@@ -1,6 +1,6 @@
 """
 =====================================================================
-ControlMsg - Control message class
+ControlMsg - Control level message class
 
 Author: Chris Ford <caf@slac.stanford.edu>
 
@@ -10,11 +10,9 @@ Based on kvmsg class by Min RK <benjaminrk@gmail.com>
 
 import sys
 import zmq
-from kvmsg import KVMsg
+from KVMsg import KVMsg
 
 class ControlMsg(KVMsg):
-
-    PORTBASE = 29980
 
     # message keys
     STARTPING   = b'STARTPING'
@@ -28,21 +26,6 @@ class ControlMsg(KVMsg):
     GETSTATE    = b'GETSTATE'
     STATE       = b'STATE'
     HUH         = b'HUH?'
-
-    @classmethod
-    def router_port(cls, platform):
-        assert platform >= 0 and platform <= 7
-        return cls.PORTBASE + platform
-
-    @classmethod
-    def pull_port(cls, platform):
-        assert platform >= 0 and platform <= 7
-        return 5559 # FIXME
-
-    @classmethod
-    def pub_port(cls, platform):
-        assert platform >= 0 and platform <= 7
-        return cls.PORTBASE + platform + 10
 
 
 # ---------------------------------------------------------------------

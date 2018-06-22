@@ -35,7 +35,6 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
 
     // copy Event header into beginning of Datagram
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    printf("index %d\n", index);
     Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
     memcpy(&dgram, event_header, sizeof(Transition));
 
@@ -51,6 +50,8 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
     unsigned nameId=0;
+    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
+    memcpy(&dgram, event_header, sizeof(Transition));
     CreateData hsd(dgram.xtc, m_namesVec, nameId);
     
     unsigned data_size;

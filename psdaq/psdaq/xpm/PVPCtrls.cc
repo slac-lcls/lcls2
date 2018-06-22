@@ -112,18 +112,18 @@ namespace Pds {
     CPV(Run,            { PVG(setL0Enabled (TOU(data()) != 0));   },
                         { PVP(getL0Enabled ());                   })
 
-    CPV(L0Delay,        { PVG(setL0Delay(_idx, TOU(data())));     },
-                        { PVP(getL0Delay(_idx));                  })
-    CPV(L1TrgClear,     { PVG(setL1TrgClr  (_idx, TOU(data())));  },
-                        { PVP(getL1TrgClr  (_idx));               })
-    CPV(L1TrgEnable,    { PVG(setL1TrgEnb  (_idx, TOU(data())));  },
-                        { PVP(getL1TrgEnb  (_idx));               })
-    CPV(L1TrgSource,    { PVG(setL1TrgSrc  (_idx, TOU(data())));  },
-                        { PVP(getL1TrgSrc  (_idx));               })
-    CPV(L1TrgWord,      { PVG(setL1TrgWord (_idx, TOU(data())));  },
-                        { PVP(getL1TrgWord (_idx));               })
-    CPV(L1TrgWrite,     { PVG(setL1TrgWrite(_idx, TOU(data())));  },
-                        { PVP(getL1TrgWrite(_idx));               })
+    CPV(L0Delay,        { PVG(setL0Delay(TOU(data())));           },
+                        { PVP(getL0Delay());                      })
+    CPV(L1TrgClear,     { PVG(setL1TrgClr  (TOU(data())));        },
+                        { PVP(getL1TrgClr  ());                   })
+    CPV(L1TrgEnable,    { PVG(setL1TrgEnb  (TOU(data())));        },
+                        { PVP(getL1TrgEnb  ());                   })
+    CPV(L1TrgSource,    { PVG(setL1TrgSrc  (TOU(data())));        },
+                        { PVP(getL1TrgSrc  ());                   })
+    CPV(L1TrgWord,      { PVG(setL1TrgWord (TOU(data())));        },
+                        { PVP(getL1TrgWord ());                   })
+    CPV(L1TrgWrite,     { PVG(setL1TrgWrite(TOU(data())));        },
+                        { PVP(getL1TrgWrite());                   })
 
     CPV(AnaTagReset,    { PVG(_analysisRst = TOU(data()));        },
                         { PVP(_analysisRst);                      })

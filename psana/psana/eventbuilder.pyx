@@ -1,4 +1,3 @@
-from psana.smdreader cimport Xtc
 from cpython cimport array
 import array
 from psana.dgram import Dgram
@@ -42,49 +41,6 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def get(self):
-        evt = 0
-        if self._has_more():
-            evt = Event(size=self.nsmds)
-            array.zero(self.timestamps)
-            array.zero(self.dgram_sizes)
-            dgrams = []
-            for i, view in enumerate(self.views):
-                if self.offsets[i] < self.sizes[i]:
-                    d = Dgram(config=self.configs[i], view=view, offset=self.offsets[i])
-                    dgrams.append(d)
-                    self.timestamps[i] = d.seq.timestamp()
-                    self.dgram_sizes[i] = memoryview(d).shape[0]
-
-            sorted_smd_id = np.argsort(self.timestamps)
-            for smd_id in sorted_smd_id:
-                if self.timestamps[smd_id] == 0:
-                    continue
-
-                array.zero(self.event_timestamps)
-                self.event_timestamps[smd_id] = self.timestamps[smd_id]
-                self.offsets[smd_id] += self.dgram_sizes[smd_id]
-                evt.replace(smd_id, dgrams[smd_id])
-                for i, view in enumerate(self.views):
-                    if i == smd_id or self.offsets[i] >= self.sizes[i]:
-                        continue
-
-                    d = Dgram(config=self.configs[i], view=view, offset=self.offsets[i])
-                    while d.seq.timestamp() <= self.event_timestamps[smd_id]:
-                        if d.seq.timestamp() == self.event_timestamps[smd_id]:
-                            self.event_timestamps[i] = d.seq.timestamp()
-                            self.timestamps[i] = 0
-                            evt.replace(i, d)
-
-                        self.offsets[i] += memoryview(d).shape[0]
-
-                        if self.offsets[i] == self.sizes[i]:
-                            break
-
-                        d = Dgram(config=self.configs[i], view=view, offset=self.offsets[i])
-        
-        return evt
-    
     def build(self, unsigned batch_size=1, filter=0):
         cdef unsigned got = 0
         batch = bytearray()
@@ -130,7 +86,10 @@ cdef class EventBuilder:
                 if filter:
                     if filter(evt):
                         batch.extend(evt.to_bytes())
-                        got +=1
+                        got += 1
+                else:
+                    batch.extend(evt.to_bytes())
+                    got += 1
                 
                 if got == batch_size:
                     break

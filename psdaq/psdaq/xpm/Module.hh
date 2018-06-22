@@ -157,18 +157,18 @@ namespace Pds {
       bool     linkIsXpm   (unsigned) const;
       bool     linkRxErr   (unsigned) const;
     public:
-      void     setL0Delay (unsigned, unsigned);
-      unsigned getL0Delay (unsigned) const;
-      void     setL1TrgClr(unsigned, unsigned);
-      unsigned getL1TrgClr(unsigned) const;
-      void     setL1TrgEnb(unsigned, unsigned);
-      unsigned getL1TrgEnb(unsigned) const;
-      void     setL1TrgSrc(unsigned, unsigned);
-      unsigned getL1TrgSrc(unsigned) const;
-      void     setL1TrgWord(unsigned, unsigned);
-      unsigned getL1TrgWord(unsigned) const;
-      void     setL1TrgWrite(unsigned, unsigned);
-      unsigned getL1TrgWrite(unsigned) const;
+      void     setL0Delay (unsigned);
+      unsigned getL0Delay () const;
+      void     setL1TrgClr(unsigned);
+      unsigned getL1TrgClr() const;
+      void     setL1TrgEnb(unsigned);
+      unsigned getL1TrgEnb() const;
+      void     setL1TrgSrc(unsigned);
+      unsigned getL1TrgSrc() const;
+      void     setL1TrgWord(unsigned);
+      unsigned getL1TrgWord() const;
+      void     setL1TrgWrite(unsigned);
+      unsigned getL1TrgWrite() const;
     public:
       void     messagePayload(unsigned, unsigned);
       unsigned messagePayload(unsigned) const;

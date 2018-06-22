@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """
-CM Phase 2 command
+Collection Manager killPlatform command
 """
 import time
 import zmq
 import argparse
-from CMMsg import CMMsg
+from CollectMsg import CollectMsg
 
 def main():
 
@@ -20,18 +20,18 @@ def main():
     cmd = ctx.socket(zmq.DEALER)
     cmd.linger = 0
     cmd.RCVTIMEO = 5000 # in milliseconds
-    cmd.connect("tcp://%s:%d" % (args.C, CMMsg.router_port(args.p)))
+    cmd.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
 
     # Initiate partition kill
-    cmd.send(CMMsg.STARTKILL)
+    cmd.send(CollectMsg.STARTKILL)
     while True:
         try:
-            cmmsg = CMMsg.recv(cmd)
+            cmmsg = CollectMsg.recv(cmd)
         except Exception as ex:
             print(ex)
             return
 
-        if cmmsg.key == CMMsg.KILLSTARTED:
+        if cmmsg.key == CollectMsg.KILLSTARTED:
             print ("I: Received KILLSTARTED")
             break          # Done
         else:

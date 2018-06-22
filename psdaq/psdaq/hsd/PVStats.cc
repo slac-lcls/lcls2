@@ -127,7 +127,6 @@ namespace Pds {
 
     void PVStats::update()
     {
-   
 #define PVPUTD(i,v)    {                                                \
         Pds_Epics::PVWriter& pv = *_pv[_##i];                           \
         if (pv.connected()) {                                           \
@@ -183,11 +182,13 @@ namespace Pds {
       PVPUTDAU ( PgpRxCnt     , 4, _pgp[i]->rxOpCodeCount() );
       PVPUTAU  ( PgpRxLast    , 4, _pgp[i]->rxOpCodeLast () );
 
-      FexCfg* fex = _m.fex();
-      PVPUTAU ( Raw_FreeBufSz  , 4, ((fex[i]._base[0]._free>> 0)&0xffff) ); 
-      PVPUTAU ( Raw_FreeBufEvt , 4, ((fex[i]._base[0]._free>>16)&0x1f) ); 
-      PVPUTAU ( Fex_FreeBufSz  , 4, ((fex[i]._base[1]._free>> 0)&0xffff) ); 
-      PVPUTAU ( Fex_FreeBufEvt , 4, ((fex[i]._base[1]._free>>16)&0x1f) ); 
+      if ((base.csr&0x10)==0) {
+        FexCfg* fex = _m.fex();
+        PVPUTAU ( Raw_FreeBufSz  , 4, ((fex[i]._base[0]._free>> 0)&0xffff) ); 
+        PVPUTAU ( Raw_FreeBufEvt , 4, ((fex[i]._base[0]._free>>16)&0x1f) ); 
+        PVPUTAU ( Fex_FreeBufSz  , 4, ((fex[i]._base[1]._free>> 0)&0xffff) ); 
+        PVPUTAU ( Fex_FreeBufEvt , 4, ((fex[i]._base[1]._free>>16)&0x1f) ); 
+      }
 
       unsigned state[16], addr[16];
       for(unsigned i=0; i<16; i++) {

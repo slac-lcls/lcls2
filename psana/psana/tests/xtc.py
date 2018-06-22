@@ -19,7 +19,7 @@ def myroutine():
   # event0 dgram is deleted, so only 1 for dgrambytes_event0 and 1 for getref
   assert getref(dgrambytes_event0)==2
 
-  return dgram_event1, ds._configs()[0]
+  return dgram_event1, ds._configs[0]
 
 class DgramTester:
   def __init__(self,testvals):

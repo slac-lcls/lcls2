@@ -13,6 +13,8 @@
 
 #include "psdaq/hsd/Module.hh"
 #include "psdaq/hsd/Globals.hh"
+#include "psdaq/hsd/FexCfg.hh"
+#include "psdaq/mmhw/AxiVersion.hh"
 
 #include <string>
 
@@ -34,6 +36,11 @@ static double calc_phase(unsigned even,
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -d <dev id>\n");
+  printf("\t-E <exit>\n");
+  printf("\t-C <close>\n");
+  printf("\t-R <read>\n");
+  printf("\t-W <write>\n");
+  printf("\t-V <version>\n");
   printf("\t-S <sync ADC>\n");
   printf("\t-U <sync clocktree>\n");
   printf("\t-F <measure phases>\n");
@@ -47,14 +54,38 @@ int main(int argc, char** argv) {
   char qadc='a';
   int c;
   bool lUsage = false;
+  bool lBufferStatus = false;
   bool lClkSync = false;
   bool lAdcSync = false;
+  bool lRead = false;
+  bool lWrite = false;
+  bool lClose = false;
+  bool lExit = false;
+  bool lVersion = false;
   int  nPhase  = 0;
-
-  while ( (c=getopt( argc, argv, "SUF:")) != EOF ) {
+  
+  while ( (c=getopt( argc, argv, "BCERVWSUF:")) != EOF ) {
     switch(c) {
+    case 'B':
+      lBufferStatus = true;
+      break;
     case 'U':
       lClkSync = true;
+      break;
+    case 'C':
+      lClose = true;
+      break;
+    case 'E':
+      lExit = true;
+      break;
+    case 'R':
+      lRead = true;
+      break;
+    case 'V':
+      lVersion = true;
+      break;
+    case 'W':
+      lWrite = true;
       break;
     case 'S':
       lAdcSync = true;
@@ -82,7 +113,33 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  if (lExit)
+    return 0;
+
+  if (lClose) {
+    close(fd);
+    return 0;
+  }
+
+  if (lWrite) {
+    char buff[32];
+    ::write(fd, buff, 1);
+    close(fd);
+    return 0;
+  }
+
+  if (lRead) {
+    char buff[32];
+    ::read(fd, buff, 1);
+    close(fd);
+    return 0;
+  }
+
   Module* p = Module::create(fd);
+
+  while (lVersion) {
+    printf("BuildStamp: %s\n", p->version().buildStamp().c_str());
+  }
 
   if (lAdcSync) {
     p->sync();
@@ -90,6 +147,19 @@ int main(int argc, char** argv) {
 
   if (lClkSync) {
     p->clocktree_sync();
+  }
+
+  if (lBufferStatus) {
+    p->dumpBase();
+    return 0;
+    FexCfg* fex = p->fex();
+    unsigned v0 = fex[0]._base[0]._free;
+    unsigned v1 = fex[0]._base[1]._free;
+    printf("bufferStatus: %04x.%04x.%04x.%04x\n",
+           (v0>> 0)&0xffff,
+           (v0>>16)&0x1f,
+           (v1>> 0)&0xffff,
+           (v1>>16)&0x1f );
   }
 
   while (nPhase) {

@@ -554,70 +554,59 @@ unsigned Module::getInhibit() const     { return getf(_index,  2,20); }
 void     Module::setTagStream(unsigned v) {        setf(_index,v,1,24); }
 unsigned Module::getTagStream() const     { return getf(_index,  1,24); }
 
-//  Update pipeline depth
-//  Insert message to communicate downstream
-void Module::setL0Delay(unsigned partition, unsigned v)
+void Module::setL0Delay(unsigned v)
 {
-  setPartition(partition);
+  //  Update pipeline depth
   setf(_pipelineDepth, v*200, 32, 0);
-  messagePayload(partition,v);
-  messageHdr    (partition,MSG_DELAY_PWORD);
+  //  Insert message to communicate downstream
+  setf(_messagePayload, v, 32, 0);
+  v = MSG_DELAY_PWORD | (1<<15);
+  setf(_message, v, 16, 0);
 }
 
-unsigned Module::getL0Delay(unsigned partition) const
+unsigned Module::getL0Delay() const
 {
-  setPartition(partition);
   return _pipelineDepth/200;
 }
 
-void Module::setL1TrgClr(unsigned partition, unsigned v)
+void Module::setL1TrgClr(unsigned v)
 {
-  setPartition(partition);
   setf(_l1config0, v, 1, 0);
 }
-unsigned Module::getL1TrgClr(unsigned partition) const
+unsigned Module::getL1TrgClr() const
 {
-  setPartition(partition);
   return getf(_l1config0, 1, 0);
 }
-void Module::setL1TrgEnb(unsigned partition, unsigned v)
+void Module::setL1TrgEnb(unsigned v)
 {
-  setPartition(partition);
   setf(_l1config0, v, 1, 16);
 }
-unsigned Module::getL1TrgEnb(unsigned partition) const
+unsigned Module::getL1TrgEnb() const
 {
-  setPartition(partition);
   return getf(_l1config0, 1, 16);
 }
-void Module::setL1TrgSrc(unsigned partition, unsigned v)
+void Module::setL1TrgSrc(unsigned v)
 {
-  setPartition(partition);
   setf(_l1config1, v, 4, 0);
 }
-unsigned Module::getL1TrgSrc(unsigned partition) const
+unsigned Module::getL1TrgSrc() const
 {
-  setPartition(partition);
   return getf(_l1config1, 4, 0);
 }
-void Module::setL1TrgWord(unsigned partition, unsigned v)
+void Module::setL1TrgWord(unsigned v)
 {
-  setPartition(partition);
   setf(_l1config1, v, 9, 4);
 }
-unsigned Module::getL1TrgWord(unsigned partition) const
+unsigned Module::getL1TrgWord() const
 {
-  setPartition(partition);
   return getf(_l1config1, 9, 4);
 }
-void Module::setL1TrgWrite(unsigned partition, unsigned v)
+void Module::setL1TrgWrite(unsigned v)
 {
-  setPartition(partition);
   setf(_l1config1, v, 1, 16);
 }
-unsigned Module::getL1TrgWrite(unsigned partition) const
+unsigned Module::getL1TrgWrite() const
 {
-  setPartition(partition);
   return getf(_l1config1, 1, 16);
 }
 void Module::messageHdr(unsigned partition, unsigned v)

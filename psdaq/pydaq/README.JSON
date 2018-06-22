@@ -1,0 +1,65 @@
+Example JSON string:
+
+{"msgType":"connect","msgVer":1,"platform":0,"procs":{"control":{"name":"xppcontrol","ports":{"router_port":{"adrs":"psbuild-rhel6","port":44855},"pull_port":{"adrs":"psbuild-rhel6","port":36776}}}}}
+
+
+The same JSON content, pretty printed:
+
+    {
+        "msgType": "connect",
+        "msgVer": 1,
+        "platform": 0,
+        "procs": {
+            "control": {
+                "name": "xppcontrol",
+                "ports": {
+                    "router_port": {
+                        "adrs": "psbuild-rhel6",
+                        "port": 44855
+                    },
+                    "pull_port": {
+                        "adrs": "psbuild-rhel6",
+                        "port": 36776
+                    }
+                }
+            }
+        }
+    }
+
+
+Example RapidJSON parsing code:
+
+    #include "rapidjson/document.h"
+
+     ...
+
+    char buf[] = "<JSON string>"
+
+    // parse JSON into a Document
+    rapidjson::Document document;
+    document.Parse(buf);
+
+    // interpret Document
+    if (document.HasMember("msgType") && document.HasMember("msgVer")) {
+        printf("JSON: msgType=\"%s\" msgVer=%d\n",
+               document["msgType"].GetString(),
+               document["msgVer"].GetInt());
+
+        // if the ALLOC step was not completed, ports entry will be missing
+        if (document["procs"]["control"].HasMember("ports")) {
+            // get references to pull_port adrs and port
+            rapidjson::Value& adrs = document["procs"]["control"]["ports"]["pull_port"]["adrs"];
+            rapidjson::Value& port = document["procs"]["control"]["ports"]["pull_port"]["port"];
+            printf("JSON: pull_port adrs=\"%s\" port=%d\n", adrs.GetString(), port.GetInt());
+        } else {
+            printf("JSON: control ports not found\n");
+        }
+    } else {
+        printf("JSON: msgType and msgVer not found\n");
+    }
+
+
+Output from the above example RapidJSON parsing code:
+
+    JSON: msgType="connect" msgVer=1
+    JSON: pull_port adrs="psbuild-rhel6" port=36776

@@ -386,7 +386,7 @@ void Pds::HSD::ClkSynth::dump() const
 #define SET_REG(i,q) {                                          \
     timespec tvb,tve;                                           \
     clock_gettime(CLOCK_REALTIME, &tvb);                        \
-    unsigned t = _reg[i&0xff];                                  \
+    unsigned t = _reg[i&0xff];                                  \ 
     if (t!=q) {                                                    \
       _reg[i&0xff] = q;                                         \
       unsigned u = _reg[i&0xff];                                \
@@ -449,7 +449,7 @@ void _setup(volatile uint32_t* _reg,
   while( (_reg[218]&LOS_MASK) )
     ;
   clock_gettime(CLOCK_REALTIME, &tve);
-  printf("Time1 : %f sec\n", tdiff(tve,tvb));
+  printf("Time1 : %f sec\n", tdiff(tvb,tve));
 
   { unsigned q = _reg[49]&0x7f;
     SET_REG(49,q); }

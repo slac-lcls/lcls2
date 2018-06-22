@@ -15,8 +15,8 @@ def det():
     print(raw, raw.shape)
     assert(np.sum(raw)==9*17)
     assert(raw.shape==(2,3,3))
-    assert(ds._configs()[0].software.xppcspad.dettype == 'cspad')
-    assert(ds._configs()[0].software.xppcspad.detid == 'detnum1234')
+    assert(ds._configs[0].software.xppcspad.dettype == 'cspad')
+    assert(ds._configs[0].software.xppcspad.detid == 'detnum1234')
 '''
 
 if __name__ == '__main__':

@@ -264,8 +264,12 @@ class DetBase(QtWidgets.QWidget):
         v = Pv.Pv(prefix+'DNSTREAMRTT').get()
         lo.addWidget(QtWidgets.QLabel('Downstream round trip time (usecs)): %f'%v))
 
-#        PvLabel( lo, prefix, 'PARTITION' )
-        lo.addWidget(PvEditInt( prefix+'PARTITION', 'Partition' ))
+        if True:
+            hlo = QtWidgets.QHBoxLayout()
+            hlo.addWidget(QtWidgets.QLabel('PARTITION'))
+            hlo.addWidget(PvEditInt(prefix+'PARTITION',''))
+            hlo.addStretch(1)
+            lo.addLayout(hlo)
 
         lo.addStretch(1)
 
