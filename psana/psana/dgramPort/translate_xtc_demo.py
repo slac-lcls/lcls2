@@ -5,6 +5,9 @@ import os, pickle, json, base64
 from psana.dgrammanager import DgramManager
 from psana import DataSource
 
+import sys, os
+outdir = ''
+if len(sys.argv) == 2: outdir = sys.argv[1]
 
 def load_json(filename):
     with open(filename, 'r') as f:
@@ -32,9 +35,7 @@ def translate_xtc_demo(job_type, offset=1):
 
     lcls1_xtc = load_json("%s.json" % job_type)
 
-
     alg = dc.alg('raw', [1, 2, 3])
-
     ninfo = dc.nameinfo('DscCsPad', 'cspad', 'detnum1234', 0)
 
     # This is needed for some reason.
@@ -44,7 +45,6 @@ def translate_xtc_demo(job_type, offset=1):
         del lcls1_xtc[0]['version']
     except KeyError:
         pass
-
 
     cydgram = dc.CyDgram()
 
@@ -62,10 +62,8 @@ def translate_xtc_demo(job_type, offset=1):
             df = cydgram.get()
             f.write(df)
 
-
     ds_cfg = DgramManager(configure_file)
     ds_evt = DgramManager(event_file)
-
 
 # Examples
 # The LCLS1 dgrams are organized differently than the LCLS2 version
@@ -78,8 +76,7 @@ def translate_xtc_demo(job_type, offset=1):
 # with the optional offset argument to translate_xtc_demo
 
 
-translate_xtc_demo('jungfrau')
-translate_xtc_demo('epix')
-
-translate_xtc_demo('crystal_dark', 2)
-translate_xtc_demo('crystal_xray', 2)
+#translate_xtc_demo(os.path.join(outdir,'jungfrau'))
+#translate_xtc_demo(os.path.join(outdir,'epix'))
+translate_xtc_demo(os.path.join(outdir,'crystal_dark'), 2)
+translate_xtc_demo(os.path.join(outdir,'crystal_xray'), 2)
