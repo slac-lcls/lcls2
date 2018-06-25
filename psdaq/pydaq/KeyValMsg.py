@@ -14,7 +14,7 @@ import zmq
 # zmq.jsonapi ensures bytes, instead of unicode:
 import zmq.utils.jsonapi as json
 
-class KVMsg(object):
+class KeyValMsg(object):
     """
     Message is formatted on wire as 5 frames:
     frame 0: key (0MQ string)
@@ -111,7 +111,7 @@ def test_kvmsg (verbose):
 
     kvmap = {}
     # Test send and receive of simple message
-    kvmsg = KVMsg(1)
+    kvmsg = KeyValMsg(1)
     kvmsg.key = b"key"
     kvmsg.body = b"body"
     if verbose:
@@ -119,7 +119,7 @@ def test_kvmsg (verbose):
     kvmsg.send(output)
     kvmsg.store(kvmap)
 
-    kvmsg2 = KVMsg.recv(input)
+    kvmsg2 = KeyValMsg.recv(input)
     if verbose:
         kvmsg2.dump()
     assert kvmsg2.key == b"key"
@@ -128,7 +128,7 @@ def test_kvmsg (verbose):
     assert len(kvmap) == 1 # shouldn't be different
 
     # test send/recv with properties:
-    kvmsg = KVMsg(2, key=b"key", body=b"body")
+    kvmsg = KeyValMsg(2, key=b"key", body=b"body")
     kvmsg[b"prop1"] = b"value1"
     kvmsg[b"prop2"] = b"value2"
     kvmsg[b"prop3"] = b"value3"
@@ -136,7 +136,7 @@ def test_kvmsg (verbose):
     if verbose:
         kvmsg.dump()
     kvmsg.send(output)
-    kvmsg2 = KVMsg.recv(input)
+    kvmsg2 = KeyValMsg.recv(input)
     if verbose:
         kvmsg2.dump()
     # ensure properties were preserved

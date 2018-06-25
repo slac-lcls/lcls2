@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include "zmq.h"
 
-int run_cm_client(std::string addr, std::string alias, int platform, std::string cm_host);
+int run_cm_client(std::string addr, std::string name, int platform, std::string cm_host);
 
 using namespace XtcData;
 
@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
     int device_id = 0x2031;
     int lane_mask = 0xf;
     std::string detector_type;
-    const char *alias = "drp";
+    const char *name = "drp";
     const char *cm_host = "localhost";
     int platform = 0;
     int c;
@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
                 detector_type = optarg;
                 break;
             case 'u':
-                alias = optarg;
+                name = optarg;
                 break;
             case 'p':
                 platform = atoi(optarg);
@@ -72,8 +72,8 @@ int main(int argc, char* argv[])
     printf("output dir: %s\n", para.output_dir.c_str());
 
     printf("Calling run_cm_client(\"%s\", \"%s\", %d, \"%s\")...\n",
-           para.eb_server_ip.c_str(), alias, platform, cm_host);
-    run_cm_client(para.eb_server_ip, alias, platform, cm_host);
+           para.eb_server_ip.c_str(), name, platform, cm_host);
+    run_cm_client(para.eb_server_ip, name, platform, cm_host);
 
     Factory<Detector> f;
     f.register_type<Digitizer>("Digitizer");
@@ -137,14 +137,14 @@ int main(int argc, char* argv[])
 using namespace rapidjson;
 
 // FIXME set drp level
-#define HELLO_FORMAT "{\"level\":4,\"host\":\"%s\",\"pid\":%d,\"alias\":\"%s\"}"
+#define HELLO_FORMAT "{\"level\":4,\"host\":\"%s\",\"pid\":%d,\"name\":\"%s\"}"
 
     class CMClient : public Pds::Routine
     {
     public:
-      CMClient(std::string addr, std::string alias, int platform, std::string cm_host, void *context) :
+      CMClient(std::string addr, std::string name, int platform, std::string cm_host, void *context) :
         _addr(addr),
-        _alias(alias),
+        _name(name),
         _platform(platform),
         _cm_host(cm_host),
         _context(context)
@@ -160,7 +160,7 @@ using namespace rapidjson;
 
     private:
       std::string _addr;
-      std::string _alias;
+      std::string _name;
       int _platform;
       std::string _cm_host;
       void * _context;
@@ -188,7 +188,7 @@ using namespace rapidjson;
         zmq_pollitem_t items[2];
 
         printf(" ** %s: addr=\"%s\"\n", __PRETTY_FUNCTION__, _addr.c_str());
-        printf(" ** alias=\"%s\"\n", _alias.c_str());
+        printf(" ** name=\"%s\"\n", _name.c_str());
         printf(" ** platform=%d\n", _platform);
         printf(" ** cm_host=\"%s\"\n", _cm_host.c_str());
         printf(" ** context=%p\n", _context);
@@ -234,7 +234,7 @@ using namespace rapidjson;
             sprintf(hostbuf, "%s", "unknown");
         }
         int pid = getpid();
-        snprintf(hello_msg, sizeof(hello_msg), HELLO_FORMAT, hostbuf, pid, _alias.c_str());
+        snprintf(hello_msg, sizeof(hello_msg), HELLO_FORMAT, hostbuf, pid, _name.c_str());
 
         // set up for polling two ZMQ sockets
         items[0].socket = dealer;
@@ -351,10 +351,10 @@ cm_task_shutdown:
         if (zmq_close(xmitter)) {
             perror("zmq_close(xmitter)");
         }
-        printf(" ** CM client task shutdown **\n");
+        printf(" ** collection mgr client task shutdown **\n");
     }
 
-int run_cm_client(std::string addr, std::string alias, int platform, std::string cm_host)
+int run_cm_client(std::string addr, std::string name, int platform, std::string cm_host)
 {
     char buf[512];
 
@@ -370,7 +370,7 @@ int run_cm_client(std::string addr, std::string alias, int platform, std::string
     zmq_bind (receiver, "inproc://pair");
 
     // create collection mgr client routine
-    CMClient *_cmClient = new CMClient(addr, alias, platform, cm_host, context);
+    CMClient *_cmClient = new CMClient(addr, name, platform, cm_host, context);
 
     // create collection mgr client task
     Pds::Task *_cmTask = new Pds::Task(Pds::TaskObject("cmclient"));
@@ -378,14 +378,14 @@ int run_cm_client(std::string addr, std::string alias, int platform, std::string
     // create collection mgr client thread
     _cmTask->call(_cmClient);
 
-    printf(" ** wait for msg from CM client task **\n");
+    printf(" ** wait for msg from collection mgr client task **\n");
     int len = zmq_recv(receiver, buf, sizeof(buf), 0);
     if (len == -1) {
         perror("zmq_recv");
     } else {
         printf("Received msg of len %d on PAIR socket\n", len);
-
-        printf("\nRaw JSON:\n");
+        buf[len] = '\0';    // add NULL termination
+        printf("\nRaw msg:\n");
         printf("--------------------------------------------------------------\n");
         printf("%s\n", buf);
         printf("--------------------------------------------------------------\n");
@@ -393,32 +393,36 @@ int run_cm_client(std::string addr, std::string alias, int platform, std::string
         rapidjson::Document document;
         document.Parse(buf);
 
-        // use JSON PrettyWriter
-        printf("\nPretty JSON:\n");
-        printf("--------------------------------------------------------------\n");
-        StringBuffer sb;
-        PrettyWriter<StringBuffer> writer(sb);
-        document.Accept(writer);    // Accept() traverses the DOM and generates Handler events.
-        puts(sb.GetString());
-        printf("--------------------------------------------------------------\n");
-
-        // interpret Document
-        if (document.HasMember("msgType") && document.HasMember("msgVer")) {
-            printf("JSON: msgType=\"%s\" msgVer=%d\n",
-                   document["msgType"].GetString(),
-                   document["msgVer"].GetInt());
-
-            // if the ALLOC step was not completed, ports entry will be missing
-            if (document["procs"]["control"].HasMember("ports")) {
-                // get references to pull_port adrs and port
-                rapidjson::Value& adrs = document["procs"]["control"]["ports"]["pull_port"]["adrs"];
-                rapidjson::Value& port = document["procs"]["control"]["ports"]["pull_port"]["port"];
-                printf("JSON: pull_port adrs=\"%s\" port=%d\n", adrs.GetString(), port.GetInt());
-            } else {
-                printf("JSON: control ports not found\n");
-            }
+        if (!document.IsObject()) {
+            printf("JSON: object not found\n");
         } else {
-            printf("JSON: msgType and msgVer not found\n");
+            // use JSON PrettyWriter
+            printf("\nJSON msg:\n");
+            printf("--------------------------------------------------------------\n");
+            StringBuffer sb;
+            PrettyWriter<StringBuffer> writer(sb);
+            document.Accept(writer);    // Accept() traverses the DOM and generates Handler events.
+            puts(sb.GetString());
+            printf("--------------------------------------------------------------\n");
+
+            // interpret Document
+            if (document.HasMember("msgType") && document.HasMember("msgVer")) {
+                printf("JSON: msgType=\"%s\" msgVer=%d\n",
+                       document["msgType"].GetString(),
+                       document["msgVer"].GetInt());
+
+                // if the ALLOC step was not completed, ports entry will be missing
+                if (document["procs"]["control"].HasMember("ports")) {
+                    // get references to pull_port adrs and port
+                    rapidjson::Value& adrs = document["procs"]["control"]["ports"]["pull_port"]["adrs"];
+                    rapidjson::Value& port = document["procs"]["control"]["ports"]["pull_port"]["port"];
+                    printf("JSON: pull_port adrs=\"%s\" port=%d\n", adrs.GetString(), port.GetInt());
+                } else {
+                    printf("JSON: control ports not found\n");
+                }
+            } else {
+                printf("JSON: msgType and msgVer not found\n");
+            }
         }
     }
 
