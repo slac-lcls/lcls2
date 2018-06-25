@@ -22,8 +22,7 @@
 #include <stdio.h> // printf
 #include <fstream> // ifstream
 
-//#include "../include/Logger.h" // MsgLog
-#include "psalg/include/Logger.h" // MsgLog
+#include "psalg/include/Logger.h" // MSG
 #include "xtcdata/xtc/DescData.hh" // Array
 #include "psalg/include/ArrayIO.h" // ArrayIO
 
@@ -44,22 +43,23 @@ void print_hline(const uint nchars, const char c) {
 
 //-------------------
 
+/*
 void test_logger_single() {
   std::cout << "In test_logger_single\n";
-  Logger::instance()->print();
+  Logger::Logger::instance()->print();
   LOGPRINT();
-  LOGMSG("Hi, this is my test message for logger singleton");
-  LOGMSG("Hi, this is my another message for logger singleton");
+  MSG(DEBUG, "Hi, this is my test message for logger singleton");
+  MSG(DEBUG, "Hi, this is my another message for logger singleton");
   LOGGER.print();
 }
+*/
 
 //-------------------
 
 void test_ArrayIO() {
 
-  std::cout << "In test_ArrayIO\n";
-
-  MsgLog("test_ArrayIO", DEBUG, "test Logger");
+  //std::cout << "In test_ArrayIO\n";
+  MSG(DEBUG, "In test_ArrayIO");
 
 
   //Array(void *data, uint32_t *shape, uint32_t rank)
@@ -70,7 +70,10 @@ void test_ArrayIO() {
 
 void test_Array() {
 
-  std::cout << "In test_Array\n";
+  // std::cout << "In test_Array\n";
+  MSG(DEBUG, "In test_Array");
+
+
   //Array(void *data, uint32_t *shape, uint32_t rank)
 
   float data[] = {1,2,3,4,5,6,7,8,9,10,11,12};
@@ -113,6 +116,7 @@ void read_data() {
     }
 
     std::cout << "Number of lines in file: " << counter << '\n';
+    MSG(INFO, "Number of lines in file: " << counter);
 
     inf.close();
 }
@@ -180,7 +184,7 @@ int main(int argc, char **argv) {
     read_data();          print_hline(80,'_');
     test_Array();         print_hline(80,'_');
     test_ArrayIO();       print_hline(80,'_');
-    test_logger_single(); print_hline(80,'_');
+    //test_logger_single(); print_hline(80,'_');
     return EXIT_SUCCESS;
 }
 

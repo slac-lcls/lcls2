@@ -141,7 +141,7 @@ setup(name='eventbuilder',
                     "psana.eventbuilder",                                 
                     sources=["psana/eventbuilder.pyx"],  
                     include_dirs=["psana"],
-      )))
+      ), build_dir=CYT_BLD_DIR))
 
 ext = Extension("hsd",
                 sources=["psana/hsd/hsd.pyx",

@@ -13,7 +13,7 @@
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
 #include "psalg/include/ArrayMetadata.h"
-#include "xtcdata/xtc/DescData.hh" // for Array
+#include "xtcdata/xtc/Array.hh" // for Array
 
 #include "psalg/include/Logger.h" // for MsgLog
 //#include <vector>

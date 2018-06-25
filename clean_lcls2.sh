@@ -27,4 +27,9 @@ echo rm -rf $REPODIR/xtcdata/build
 #echo rm {bufferedreader.c,hsd/hsd.cpp,peakFinder/dgramCreate.cpp,peakFinder/peakFinder.cpp,smdreader.c,../src/dgramchunk.c}
 #     rm {bufferedreader.c,hsd/hsd.cpp,peakFinder/dgramCreate.cpp,peakFinder/peakFinder.cpp,smdreader.c,../src/dgramchunk.c}
 
+echo find . -name "*~"
+     find . -name "*~"
+echo find . -name "*~" -delete
+     find . -name "*~" -delete
+
 echo "Cleaning is done"

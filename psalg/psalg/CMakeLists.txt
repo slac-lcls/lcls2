@@ -83,6 +83,7 @@ add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Test Logger
+set (CMAKE_EXE_LINKER_FLAGS -lrt)
 add_executable(test_logger
     test/test_logger.cpp
 )
