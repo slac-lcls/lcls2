@@ -14,6 +14,9 @@ class CSPAD(DetectorBase):
     class _Factory:
         def create(self, name, config, dgramInd): return CSPAD(name, config, dgramInd)
 
+    def photonEnergy(self, evt):
+        return eval('evt.dgrams[self.ind].' + self.name + '.raw.photonEnergy')
+
     def raw(self, evt, verbose=0):
         quad0 = eval('evt.dgrams[self.ind].'+self.name).raw.quads0_data
         quad1 = eval('evt.dgrams[self.ind].'+self.name).raw.quads1_data

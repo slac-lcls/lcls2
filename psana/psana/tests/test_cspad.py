@@ -3,14 +3,14 @@
 #
 #------------------------------
 
-doPlot = 0
+doPlot = 1
 
 #------------------------------
 
 import psana
 if doPlot: import matplotlib.pyplot as plt
 
-ds = psana.DataSource('/reg/neh/home/yoon82/Software/lcls2/psana/psana/dgramPort/crystal_xray_evts.xtc')
+ds = psana.DataSource('/reg/common/package/temp/crystal_dark_evts.xtc')
 det = ds.Detector("DscCsPad")
 for i, evt in enumerate(ds.events()):
     raw = det.raw(evt)
