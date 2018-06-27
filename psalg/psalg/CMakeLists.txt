@@ -27,6 +27,11 @@ target_include_directories(psalg PUBLIC
     $<INSTALL_INTERFACE:../install/include>
 )
 
+# this is necessary only on RHEL6 where we need to pick up clock_gettime
+target_link_libraries(psalg
+    rt
+)
+
 # datareader - test of data reader from non-xtc files
 add_executable(datareader
     app/datareader.cc
@@ -83,7 +88,6 @@ add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Test Logger
-set (CMAKE_EXE_LINKER_FLAGS -lrt)
 add_executable(test_logger
     test/test_logger.cc
 )
