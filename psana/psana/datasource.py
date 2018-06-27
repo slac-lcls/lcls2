@@ -124,7 +124,7 @@ def bd_node(ds, smd_node_id):
         views = view.split(b'endofevt')
         for event_bytes in views:
             if event_bytes:
-                evt = Event.from_bytes(configs, event_bytes)
+                evt = Event().from_bytes(configs, event_bytes)
                 # get big data
                 ofsz = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] \
                         for d in evt])

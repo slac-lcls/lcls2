@@ -26,7 +26,7 @@ cdef class EventBuilder:
     def __init__(self, views, configs):
         self.nsmds = len(views)
         self.offsets = array.array('I', [0]*self.nsmds)
-        self.sizes = array.array('I', [memoryview(view).nbytes for view in views])
+        self.sizes = array.array('I', [memoryview(view).shape[0] for view in views])
         self.timestamps = array.array('L', [0]*self.nsmds)
         self.dgram_sizes = array.array('I', [0]*self.nsmds)
         self.dgram_timestamps = array.array('L', [0]*self.nsmds)

@@ -44,7 +44,7 @@ class Event():
 
         return event_bytes
 
-    def from_bytes(configs, event_bytes):
+    def from_bytes(self, configs, event_bytes):
         dgrams = []
         if event_bytes:
             dgrams_bytes = event_bytes.split(b'eod')
