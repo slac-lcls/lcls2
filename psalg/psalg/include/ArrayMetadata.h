@@ -29,9 +29,9 @@ public:
 
   //const static size_t MAXNDIM = 10; 
   enum {MAXNDIM = 10};
-  //typedef std::size_t shape_t;
   typedef uint32_t shape_t;
   typedef uint32_t size_t;
+  //typedef std::size_t shape_t;
 
   ArrayMetadata(const shape_t* shape=0, const size_t ndim=0) : _shape(shape), _ndim(ndim) {
     //std::memcpy(_shape, shape, sizeof(ndim_t)*ndim);
@@ -52,7 +52,6 @@ public:
   {
     const size_t   nd = o.ndim();
     const shape_t* sh = o.shape(); 
-    //const size_t size = o.size(); 
     os << "ndim=" << nd << " size=" << o.size() << " shape=(";
     for(size_t i=0; i<nd; i++) {os << sh[i]; if(i != (nd-1)) os << ",";}
     os << ")";

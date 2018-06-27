@@ -24,12 +24,9 @@ template <typename TDATA>
 ArrayIO<TDATA>::ArrayIO(const std::string& fname)
   : _fname(fname)
   , _ctor(0)
-  //  : _nda(0)
-  //  , _val_def(0)
-  //  , _nda_def(ndarray<const TDATA>())
 {
+   MSG(TRACE, "ctor:" << _ctor << " fname=" << _fname);
   _init();
-  //_size = 0; // actual size is loaded from metadata
   _load_array();
 }
 
@@ -38,9 +35,7 @@ ArrayIO<TDATA>::ArrayIO(const std::string& fname)
 template <typename TDATA>
 ArrayIO<TDATA>::~ArrayIO()
 {
-  std::stringstream ss; ss << "DESTRUCTOR for ctor:" << _ctor << " fname=" << _fname;
-  MSGLOG(__name__(), DEBUG, ss.str());
-
+  MSG(TRACE, "DESTRUCTOR for ctor:" << _ctor << " fname=" << _fname);
   //delete p_nda;
 }
 
@@ -49,18 +44,9 @@ ArrayIO<TDATA>::~ArrayIO()
 template <typename TDATA>
 void ArrayIO<TDATA>::_init()
 {
-  std::stringstream ss; ss << "ctor:" << _ctor << " fname=" << _fname;
-  MSGLOG(__name__(), DEBUG, ss.str());
   _status = ArrayIO<TDATA>::UNDEFINED;
   //_metad.clear();
 }
-
-
-
-
-
-
-
 
 
 
@@ -80,8 +66,8 @@ void ArrayIO<TDATA>::_load_array()
     //    return; 
     //}
 
-    std::stringstream ss1; ss1 << "Load file " << _fname << '\n';
-    MSGLOG(__name__(), DEBUG, ss1.str());
+    //std::stringstream ss1; ss1 << "Load file " << _fname << '\n';
+    MSG(TRACE, "Load file " << _fname);
 
     _count_1st_line = 0;
     _count_str_data = 0;
@@ -91,10 +77,10 @@ void ArrayIO<TDATA>::_load_array()
     // open file
     std::ifstream in(_fname.c_str());
     if (in.good()) { 
-        MSGLOG(__name__(), DEBUG, "File is open");
+        MSG(TRACE, "File is open");
     }
     else { 
-        MSGLOG(__name__(), WARNING, "Failed to open file: \"" + _fname + "\""); 
+      MSG(WARNING, "Failed to open file: \"" << _fname << "\""); 
 	_status = ArrayIO<TDATA>::UNREADABLE; // std::string("file is unreadable");
         return;
     }
@@ -120,14 +106,14 @@ void ArrayIO<TDATA>::_load_array()
     in.close();
     _status = ArrayIO<TDATA>::LOADED; // std::string("loaded from file");
 
-    cout << endl;
+    //cout << endl;
 
     //ArrayMetadata amd(_shape, _ndim);
     //std::stringstream msg;
     //MSGLOG(__name__(), INFO, msg << "Input array " << amd << " of type " << _dtype_name);
 
-    std::stringstream ss2; ss2 << "Input array " << _metad << " of type " << _dtype_name;
-    MSGLOG(__name__(), INFO, ss2.str());
+    //std::stringstream ss2; ss2 << "Input array " << _metad << " of type " << _dtype_name;
+    MSG(INFO, "Input array " << _metad << " of type " << _dtype_name);
 }
 
 //-----------------------------
@@ -138,8 +124,8 @@ void ArrayIO<TDATA>::_parse_str_of_comment(const std::string& s)
     _count_str_comt ++;
     // cout << "comment, str.size()=" << str.size() << '\n';
     // cout << "TO-DO parse cmt: " << s << '\n';
-    std::stringstream smsg; smsg << "TODO : _parse_str_of_comment " << s;
-    MSGLOG(__name__(), DEBUG, smsg.str());
+    //std::stringstream smsg; smsg << "TODO : _parse_str_of_comment " << s;
+    MSG(DEBUG, "TODO : _parse_str_of_comment " << s);
 
     std::stringstream ss(s);
     std::string key;
@@ -182,8 +168,7 @@ void ArrayIO<TDATA>::_parse_shape(const std::string& str) {
 template <typename TDATA>
 void ArrayIO<TDATA>::_load_data(std::ifstream& in, const std::string& str)
 {
-  //std::stringstream ss;
-  //MSGLOG(__name__(), DEBUG, ss << "TODO : _load_data " << str.substr(0,50));
+  MSG(TRACE, "TODO : _load_data " << str.substr(0,50));
   //cout << '*';
   
   //if (! _count_str_data++) create_ndarray();
@@ -200,23 +185,29 @@ void ArrayIO<TDATA>::_load_data(std::ifstream& in, const std::string& str)
       ++_count_data;
       cout << ' ' << val;
     }
+    cout << '\n';
 
     _count_1st_line = _count_data;
 
     // load all data by the end
-    while(in >> val && _count_data < _size) {
+    //while (in >> val && _count_data < _size) {
+    while (in >> val) {
       //*it++ = val;
       ++_count_data;
-      //if(!(_count_data < _size)) {
-      //	MSGLOG(__name__(), WARNING, "Input number of data fields exceed expected array size");
-      //  	break;
-      //}
       //cout << ' ' << val;
     }
 
-    cout << "\ncounter of data fields = " << _count_data 
-         << " #lines = " << _count_str_data
-         << " 1-st line = " << _count_1st_line << '\n';
+    if(_count_data > _size) {
+        MSG(WARNING, "Input number of data fields " << _count_data << " exceeds expected array size " << _size);
+    } 
+    else if (_count_data < _size) {
+        MSG(WARNING, "Input number of data fields " << _count_data << " is less then expected array size " << _size);
+    }
+    else {
+        MSG(DEBUG, "counter of data fields = " << _count_data 
+                   << " #lines = " << _count_str_data
+	           << " 1-st line size = " << _count_1st_line);
+    }
 }
 
 

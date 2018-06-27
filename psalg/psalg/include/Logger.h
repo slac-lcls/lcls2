@@ -5,16 +5,46 @@
 // Created 2018-06-06 by Mikhail Dubrovin
 //---------------------------------------------------
 //-------------------
-// #include "psalg/include/Logger.h" // MSG, MSGLOG, LOGGER, Logger
+/**  Usage mainstream:
+ *   =================
+ *   #include "psalg/include/Logger.h" // MSG, MSGLOG, LOGGER, MSGSTREAM
+ *   
+ *   MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
+ *   LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
+ *
+ *   MSG(DEBUG,   "Test MSG DEBUG" << " as stream");
+ *   MSG(TRACE,   "Test MSG TRACE");
+ *   MSG(INFO,    "Test MSG INFO");
+ *   MSG(WARNING, "Test MSG WARNING");
+ *   MSG(ERROR,   "Test MSG ERROR");
+ *   MSG(FATAL,   "Test MSG FATAL");
+ *   MSG(NOLOG,   "Test MSG NOLOG");
+ *   MSGSTREAM(INFO, out){out << "Test MSGSTREAM INFO"; out << " which supports block of output statements as a single message";} 
+ *   
+ *   Usage optional
+ *   ==============
+ *   LOGGER.setLevel(LL::DEBUG);
+ *   LOGGER.setTimeFormat("%Y-%m-%d %H:%M:%S.%f");
+ *   LOGGER.loggerInfo(std::cout); // or Logger::Logger::instance()->loggerIinfo(out);
+ */
+
 //-------------------
  
 //extern "C" {}
 
 #include <vector>
 #include <string>
-#include <iostream> // cout, puts etc.
 #include <sstream>   // stringstream, streambuf
 //#include <fstream>
+
+//-------------------
+
+/*
+namespace {
+  void formattedTime(std::string fmt, std::ostream& out);
+  const char* tstampNow(std::string fmt="%Y-%m-%d %H:%M:%S.f");
+}
+*/
 
 //-------------------
 
@@ -44,18 +74,21 @@ public:
 
   void logmsg(const LogStream& ss, const LEVEL& sev=DEBUG);
 
-  void logger_info(std::ostream& out);
+  void loggerInfo(std::ostream& out);
+  const char* tstampStart() {return _tstamp_start.c_str();}
 
-  inline void set_logname(const std::string& logname) {_logname=logname;}
-  inline void set_level(const LEVEL& level) {_level=level;}
+  inline void setLogname(const std::string& logname) {_logname=logname;}
+  inline void setLevel(const LEVEL& level) {_level=level;}
   inline bool logging(const LEVEL& sev) {return (sev >= _level);}
-  const char* level_to_name(const LEVEL& level);
+  const char* levelToName(const LEVEL& level);
   LEVEL name_to_level(const std::string& name);
   void log(const LogRecord& rec);
   const unsigned counter() {return _counter;} 
+  void setLogger(const LEVEL& level=DEBUG, const std::string& timefmt="%H:%M:%S.%f");
 
   /// add a handler for the messages, takes ownership of the object
   void addHandler(LogHandler* handler) {_handlers.push_back(handler);}
+  void setTimeFormat(const std::string& timefmt="%Y-%m-%d %H:%M:%S.%f");
 
 private:
   typedef std::vector<LogHandler*> HandlerList;
@@ -63,13 +96,15 @@ private:
   Logger();
  
   virtual ~Logger(); 
-  void _init_level_names();
+  void _initLevelNames();
 
   static Logger* _pinstance; // !!! Singleton instance
 
   unsigned    _counter; // record counter
   std::string _logname; // logger name
   LEVEL       _level;   // level of messages
+  //const char* _tstamp_start; // start logeer timestamp
+  const std::string _tstamp_start; // start logeer timestamp
 
   HandlerList _handlers;
 
@@ -92,11 +127,18 @@ public:
   inline const char* file() const {return _filename;}
   inline const int line() const {return _linenum;}
 
+  /// get the state of the stream
+  bool ok() const {return _ok;}
+
+  // set the state of the stream to "not OK"
+  void finish(){_ok=false;}
+
 private:
   std::string _logname;
   level_t _sev;
   const char* _filename;
   int _linenum;
+  bool _ok;
   void _emit_content() const;
 
   LogStream(const LogStream&);             // Copy Constructor
@@ -157,12 +199,14 @@ public:
 
   typedef Logger::LEVEL level_t;
 
-  LogFormatter(const std::string& fmt="", const std::string& timefmt="");
+  LogFormatter(const std::string& fmt="", const std::string& timefmt=""); //%Y-%m-%d %H:%M:%S.%f");
 
   virtual ~LogFormatter() {}
 
   /// add format
   virtual void addFormat(const level_t& level, const std::string& fmt);
+
+  virtual void setTimeFormat(const std::string& timefmt=""); // "%Y-%m-%d %H:%M:%S.%f";
 
   /// format message to the output stream
   virtual void format(const LogRecord& rec, std::ostream& out);
@@ -174,8 +218,8 @@ protected:
 
 private:
 
-  std::string _timefmt ;
-  std::string _fmtMap[level_t::NUM_LEVELS] ;
+  std::string _timefmt;
+  std::string _fmtMap[level_t::NUM_LEVELS];
 
   LogFormatter(const LogFormatter&);
   LogFormatter& operator= (const LogFormatter&);
@@ -197,11 +241,12 @@ public:
   /// get the stream for the specified log level
   virtual bool log(const LogRecord& record) const=0;
 
+  /// get formatter
+  LogFormatter& formatter() const;
+
 protected:
 
   LogHandler();
-  /// get formatter
-  LogFormatter& formatter() const;
 
 private:
 
@@ -256,9 +301,11 @@ public:
     Logger::LogStream _log_stream(std::string(),LL::sev,__MACROPARS); _log_stream << msg; \
   }
 
-//    LOGGER.logmsg(_log_stream, Logger::Logger::sev);	
-//_log_stream.logger_ostream() << msg; 
-//    std::stringstream ss; ss<<msg;
+#ifdef MSGSTREAM
+#undef MSGSTREAM
+#endif
+#define MSGSTREAM(sev,strm) \
+    for(Logger::LogStream strm(std::string(),LL::sev,__MACROPARS); strm.ok(); strm.finish())
 
 //-------------------
 

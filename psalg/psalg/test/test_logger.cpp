@@ -8,12 +8,13 @@
 //DEBUG, TRACE, INFO, WARNING, ERROR, FATAL, NOLOG
 void test_logger() {
 
-  std::cout << "In test_logger\n";
-
-  LOGGER.set_level(Logger::Logger::DEBUG);
+  //LOGGER.setLevel(LL::DEBUG);
+  // LOGGER.setTimeFormat("%Y-%m-%d %H:%M:%S.%f");
   //std::stringstream& out
-  LOGGER.logger_info(std::cout); // or Logger::Logger::instance()->logger_info(out);
+  //LOGGER.loggerInfo(std::cout); // or Logger::Logger::instance()->loggerIinfo(out);
   //MSG(INFO, out.str());
+  MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
+  LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
 
   int v=345;
   MSGLOG("mylog", DEBUG, "Test MSGLOG" << " this is a test message for logger singleton " << v);
@@ -25,6 +26,14 @@ void test_logger() {
   MSG(ERROR,   "Test MSG ERROR");
   MSG(FATAL,   "Test MSG FATAL");
   MSG(NOLOG,   "Test MSG NOLOG");
+  MSGSTREAM(INFO, out){out << "Test MSGSTREAM INFO"; out << " which supports block of output statements as a single message";} 
+  MSG(DEBUG,    "Start logger on " << LOGGER.tstampStart());
+
+  LOGGER.setTimeFormat("%Y-%m-%d %H:%M:%S.%f");
+  MSG(INFO, "Test setTimeFormat");
+
+  LOGGER.setTimeFormat("");
+  MSG(INFO, "Test setTimeFormat(empty)");
 }
 
 //-------------------

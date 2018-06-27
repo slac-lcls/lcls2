@@ -2,8 +2,7 @@
 //-------------------
 #include "psalg/include/Logger.h" // MsgLog, Logger, LOGPRINT, LOGMSG
 //-------------------
- 
-//#include <iostream> // cout
+#include <iostream> // cout
 #include <stdexcept>
 #include <cstring>  // memcpy
 #include <iomanip>   // std::setw(8), setfill, left
@@ -13,6 +12,7 @@
 namespace {
   // default format string
   const std::string s_def_fmt = "TBD default format";
+  const std::string s_def_tst = "%Y-%m-%d %H:%M:%S.%f";
 
   // get current time and format it
   void formattedTime(std::string fmt, std::ostream& out)
@@ -41,18 +41,26 @@ namespace {
     out << buf ;
   }
 
+//-------------------
+
+  const char* tstampNow(std::string fmt) {
+    std::stringstream ss; 
+    formattedTime(fmt, ss);
+    return ss.str().c_str(); 
+  }
+
 } // namespace unnamed
+
+//-------------------
+//-------------------
+//-------------------
 
 namespace Logger {
 
 //-------------------
-//-------------------
-//-------------------
-//-------------------
 
-  Logger::Logger() : _counter(0), _logname(""), _level(Logger::INFO), _handlers() {
-  _init_level_names();
-
+  Logger::Logger() : _counter(0), _logname(""), _level(Logger::INFO), _tstamp_start(tstampNow(s_def_tst)), _handlers() {
+  _initLevelNames();
   addHandler(new LogHandlerStdStreams);
 }
 
@@ -65,7 +73,7 @@ Logger::~Logger() {
 
 //-------------------
 
-void Logger::_init_level_names() {
+void Logger::_initLevelNames() {
   char* levelcn[NUM_LEVELS]={(char*)"DEBUG", (char*)"TRACE", (char*)"INFO", (char*)"WARNING", (char*)"ERROR", (char*)"FATAL", (char*)"NOLOG"};
   char* levelc3[NUM_LEVELS]={(char*)"DBG", (char*)"TRC", (char*)"INF", (char*)"WRN", (char*)"ERR", (char*)"FTL", (char*)"NLG"};
   char  levelc1[NUM_LEVELS]={'D','T','I','W','E','F','N'};
@@ -80,10 +88,11 @@ Logger* Logger::_pinstance = NULL; // init static pointer for singleton
 
 //-------------------
 
-void Logger::logger_info(std::ostream& out) {
-  formattedTime("%Y-%m-%d %H:%M:%S", out);
-  out << " Single instance of the class Logger:"
-      << " level: " << level_to_name(_level)
+void Logger::loggerInfo(std::ostream& out) {
+  //formattedTime("%Y-%m-%d %H:%M:%S", out);
+  out << tstampStart()
+      << " Single instance of the class Logger:"
+      << " level: " << levelToName(_level)
       << " logname: \"" << _logname << '\"'
       << " number of levels=" << NUM_LEVELS
       << '\n';
@@ -91,7 +100,7 @@ void Logger::logger_info(std::ostream& out) {
 
 //-------------------
 
-const char* Logger::level_to_name(const Logger::LEVEL& level)
+const char* Logger::levelToName(const Logger::LEVEL& level)
 {
   return LEVELC3[level];
 }
@@ -114,7 +123,6 @@ Logger::LEVEL Logger::name_to_level(const std::string& levname) {
 void Logger::logmsg(const LogStream& ss, const Logger::LEVEL& sev) {
   _counter++;
   std::cout << std::setfill('0') << std::setw(4)<< _counter <<  ' ' << LEVELC3[sev] << ' ' << ss.str();
-
   if(sev>Logger::INFO) std::cout << " from:" << ss.file() <<  " line:" << ss.line() << '\n';
   else std::cout << '\n';
 } 
@@ -125,9 +133,21 @@ void Logger::logmsg(const LogStream& ss, const Logger::LEVEL& sev) {
 void Logger::log(const LogRecord& rec) {
   _counter++;
 
-  for (HandlerList::const_iterator it = _handlers.begin(); it != _handlers.end(); ++it) {
+  for (HandlerList::const_iterator it = _handlers.begin(); it != _handlers.end(); ++it)
       (*it)->log(rec);
-  }
+}
+
+//-------------------
+
+void Logger::setTimeFormat(const std::string& timefmt) {
+  for (HandlerList::const_iterator it = _handlers.begin(); it != _handlers.end(); ++it) 
+      (*it)->formatter().setTimeFormat(timefmt);
+}
+//-------------------
+
+void Logger::setLogger(const LEVEL& level, const std::string& timefmt) {
+  setLevel(level);
+  setTimeFormat(timefmt);
 }
 
 //-------------------
@@ -136,21 +156,14 @@ void Logger::log(const LogRecord& rec) {
 
 LogStream::LogStream(const std::string& logname, const Logger::LEVEL& sev, const char* file, int line)
    : std::stringstream(), _logname(logname), _sev(sev), _filename(file), _linenum(line) {
-  //std::cout << "YYY In LogStream\n";
-  //std::cout<<"XXX LogStream sev:" << LOGGER.LEVELC3[sev] << "  logname:\"" << logname << "\" from:" << file <<" line:" << line <<'\n';
+   _ok = LOGGER.logging(sev);
 };
 
 //-------------------
 
 void LogStream::_emit_content() const {
-
   LogRecord record(_logname, _sev, _filename, _linenum, rdbuf());
   LOGGER.log(record);
-  //if (_sev == Logger::FATAL) abort();
-
-  //std::cout<<"XXX LogStream sev:" << LOGGER.LEVELC3[_sev] << "  logname:\"" << _logname << "\" from:" << _filename <<" line:" << _linenum <<'\n';
-  //std::cout << "XXX: emit_content\n";
-  //std::cout << "stream msg:" << rdbuf() << '\n';
 }
 
 //-------------------
@@ -160,13 +173,19 @@ void LogStream::_emit_content() const {
 LogFormatter::LogFormatter(const std::string& afmt, const std::string& timefmt)
   : _timefmt(timefmt)
 {
-  if(_timefmt.empty()) _timefmt = "%H:%M:%S.%f"; // "%Y-%m-%d %H:%M:%S.%f";
+  //if(_timefmt.empty()) _timefmt = "%H:%M:%S.%f"; // "%Y-%m-%d %H:%M:%S.%f";
 }
 
 // add level-specific format
 void
 LogFormatter::addFormat(const level_t& level, const std::string& fmt) {
   _fmtMap[level] = fmt;
+}
+
+// set time format
+void
+LogFormatter::setTimeFormat(const std::string& timefmt) {
+  _timefmt = timefmt;
 }
 
 // get a format string for a given level
@@ -188,12 +207,14 @@ LogFormatter::format(const LogRecord& rec, std::ostream& out)
   std::string s = rec.file();
   std::size_t pos = s.rfind('/');
   std::string str = (pos != std::string::npos) ? s.substr(pos+1) : s; 
+  if(!_timefmt.empty()) out << ' '; 
+  out << std::setfill('0') << std::setw(4) << LOGGER.counter()
+      << ' ' << LOGGER.levelToName(rec.level());
 
-  out << ' ' << std::setfill('0') << std::setw(4) << LOGGER.counter()
-      << ' ' << LOGGER.level_to_name(rec.level())
-      << ' ' << str
-      << ':' << rec.line()
-      << ' ' << rec.msgbuf();
+  if(rec.level() != LL::INFO)
+      out << ' ' << str << ':' << rec.line();
+
+  out << ' ' << rec.msgbuf();
 }
 
 //-------------------
@@ -205,7 +226,7 @@ LogHandler::LogHandler() : _formatter(0) {}
 LogHandler::~LogHandler(){delete _formatter;}
 
 void
-LogHandler::setFormatter (LogFormatter* formatter){delete _formatter; _formatter = formatter;}
+LogHandler::setFormatter(LogFormatter* formatter){delete _formatter; _formatter = formatter;}
 
 // get the formatter
 LogFormatter& 
@@ -227,7 +248,6 @@ bool
 LogHandlerStdStreams::log(const LogRecord& record) const
 {
   //if(! logging(record.level())) return false;
-  //std::cout << "ZZZ In LogHandlerStdStreams::log\n";
 
   if (record.level() <= Logger::LEVEL::INFO) {
     formatter().format(record, std::cout) ;

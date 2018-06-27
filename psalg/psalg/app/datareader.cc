@@ -19,8 +19,9 @@
 
 #include <iostream> // cout, puts etc.
 #include <getopt.h>
-#include <stdio.h> // printf
-#include <fstream> // ifstream
+#include <stdio.h>  // printf
+#include <fstream>  // ifstream
+#include <iomanip>  // std::setw
 
 #include "psalg/include/Logger.h" // MSG
 #include "xtcdata/xtc/DescData.hh" // Array
@@ -32,7 +33,7 @@ using namespace psalg;
 //-------------------
 
 void usage(char* name) {
-  std::cout << "Usage: " << name << " some stuff about arguments and options \n";
+  MSG(INFO, "Usage: " << name << " some stuff about arguments and options");
 }
 
 //-------------------
@@ -43,25 +44,9 @@ void print_hline(const uint nchars, const char c) {
 
 //-------------------
 
-/*
-void test_logger_single() {
-  std::cout << "In test_logger_single\n";
-  Logger::Logger::instance()->print();
-  LOGPRINT();
-  MSG(DEBUG, "Hi, this is my test message for logger singleton");
-  MSG(DEBUG, "Hi, this is my another message for logger singleton");
-  LOGGER.print();
-}
-*/
-
-//-------------------
-
 void test_ArrayIO() {
-
   //std::cout << "In test_ArrayIO\n";
-  MSG(DEBUG, "In test_ArrayIO");
-
-
+  MSG(INFO, "In test_ArrayIO");
   //Array(void *data, uint32_t *shape, uint32_t rank)
   ArrayIO<float> a("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
 }
@@ -73,7 +58,6 @@ void test_Array() {
   // std::cout << "In test_Array\n";
   MSG(DEBUG, "In test_Array");
 
-
   //Array(void *data, uint32_t *shape, uint32_t rank)
 
   float data[] = {1,2,3,4,5,6,7,8,9,10,11,12};
@@ -82,9 +66,9 @@ void test_Array() {
   XtcData::Array<float> a(data, sh, rank);
 
   for(uint32_t r=0; r<sh[0]; r++) {
-    std::cout << "\nrow:" << r;
+    std::cout << "\nrow " << r << ':';
     for(uint32_t c=0; c<sh[1]; c++)
-      std::cout << " " << a(r,c);
+      std::cout << " " << std::setw(4) << a(r,c);
   }
 
   std::cout << '\n';
@@ -97,13 +81,9 @@ void test_Array() {
 
 //-------------------
 
-void read_data() {
-    /*
-    std::string fname("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
-    std::cout << fname << '\n';
-    std::ifstream inf(fname.c_str());
-    */
-    char fname[] = "/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt";
+void read_file_lines(const char* fname) {
+
+    MSG(DEBUG, "Line-by-line read file " << fname);
 
     std::ifstream inf(fname);
  
@@ -112,7 +92,7 @@ void read_data() {
 
     while(getline(inf,str)) {
       counter++; 
-      if(counter<10) cout << str << '\n'; // break;
+      if(counter<20) cout << str << '\n'; // break;
     }
 
     std::cout << "Number of lines in file: " << counter << '\n';
@@ -178,11 +158,15 @@ int test_cli(int argc, char **argv)
 //-------------------
 
 int main(int argc, char **argv) {
-    std::cout << "\nTests\n"; 
-    //test_cli(argc, argv);
-                          print_hline(80,'_');
-    read_data();          print_hline(80,'_');
-    test_Array();         print_hline(80,'_');
+
+  MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
+  LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
+
+    // test_cli(argc, argv); 
+    // print_hline(80,'_');
+    // read_file_lines("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
+    print_hline(80,'_');
+    // test_Array();         print_hline(80,'_');
     test_ArrayIO();       print_hline(80,'_');
     //test_logger_single(); print_hline(80,'_');
     return EXIT_SUCCESS;
