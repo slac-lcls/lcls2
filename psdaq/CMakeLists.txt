@@ -7,6 +7,12 @@ add_compile_options(-fno-omit-frame-pointer)
 find_package(xtcdata REQUIRED)
 find_package(psalg REQUIRED)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0")
+    message(FATAL_ERROR "Insufficient gcc version")
+  endif()
+endif()
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
