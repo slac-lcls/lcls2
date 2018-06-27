@@ -25,8 +25,8 @@ void loop_read(const char* filename, int buffer_size){
     //Set a 64 Mb cache
     fprop.setCache((int) 0, (size_t) buffer_size, buffer_size*1048576, 1);
 
-    H5File file(FILE_NAME, H5F_ACC_RDONLY,fcparm, fprop);
-    DataSet dataset = file.openDataSet(DATASET_NAME);
+    H5File file(FILE_NAME.c_str(), H5F_ACC_RDONLY,fcparm, fprop);
+    DataSet dataset = file.openDataSet(DATASET_NAME.c_str());
 
     H5T_class_t type_class = dataset.getTypeClass();
 

@@ -61,7 +61,8 @@ int main(int argc, char* argv[])
     Detector* d = f.create(detector_type.c_str());
 
     int num_workers = 2;
-    int num_entries = 131072;
+    // int num_entries = 131072;
+    int num_entries = 8192;
     MemPool pool(num_workers, num_entries);
     PGPReader pgp_reader(pool, device_id, lane_mask, num_workers);
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));

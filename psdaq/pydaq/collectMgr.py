@@ -176,18 +176,19 @@ def main():
 
                 if request == CollectMsg.STARTPING:
                     # Send PING broadcast
-                    cmmsg = CollectMsg(sequence, key=CollectMsg.PING)
-                    cmmsg.send(publisher)
-                    logging.debug("Published <PING>")
+                    #cmmsg = CollectMsg(sequence, key=CollectMsg.PING)
+                    #cmmsg.send(publisher)
+                    #logging.debug("Published <PING>")
                     continue
                 elif request == CollectMsg.STARTEXP:
                     # Remove expired keys
                     exlist = cmstate.expired_keys(cmstate.nodeTimeout())
                     if len(exlist) > 0:
-                        removed = cmstate.remove_keys(exlist)
-                        for rr in removed:
-                            logging.warning("Node timed out: %s" % rr)
-                        logging.warning("Removed %d nodes after %ds timeout" % (len(removed), cmstate.nodeTimeout()))
+                        pass
+                        #removed = cmstate.remove_keys(exlist)
+                        #for rr in removed:
+                        #    logging.warning("Node timed out: %s" % rr)
+                        #logging.warning("Removed %d nodes after %ds timeout" % (len(removed), cmstate.nodeTimeout()))
                     continue
 
             # Execute state cmd request

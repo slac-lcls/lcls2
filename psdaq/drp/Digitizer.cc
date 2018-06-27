@@ -53,6 +53,7 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
     memcpy(&dgram, event_header, sizeof(Transition));
     CreateData hsd(dgram.xtc, m_namesVec, nameId);
+    printf("*** evt count %d isevt %d control %x\n",event_header->evtCounter,dgram.seq.isEvent(),dgram.seq.pulseId().control());
     
     unsigned data_size;
     unsigned shape[MaxRank];

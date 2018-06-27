@@ -7,9 +7,11 @@ Author: Chris Ford <caf@slac.stanford.edu>
 """
 
 import zmq
-from CollectMsg import CollectMsg
+import Collection
+from Collection import Collection
 from ControlTransition import ControlTransition as Transition
 from ControlMsg import ControlMsg
+from CollectMsg import CollectMsg
 from ControlState import ControlState, StateMachine
 from psp import PV
 from os import getpid
@@ -180,16 +182,6 @@ def test_ControlStateMachine():
 
     return
 
-
-def parse_port(inbytestring):
-    try:
-        retval = int(inbytestring.split(b':')[-1])
-    except:
-        print("Failed to parse", inbytestring)
-        retval = 0
-    return retval
-
-
 def main():
 
     # Process arguments
@@ -208,43 +200,48 @@ def main():
 
     logging.info('control level starting')
 
-    # Control state
-    yy = ControlStateMachine(args.pvbase)
-    logging.debug("ControlStateMachine state: %s" % yy.state())
-
-    # zmq context
     ctx = zmq.Context()
 
+    coll = Collection(ctx, args.C, args.p)
+    collmsg = CollectMsg(0, key=CollectMsg.HELLO)
+    collmsg['level'] = 0
+    collmsg['name'] = args.u
+    collmsg['host'] = gethostname()
+    collmsg['pid'] = getpid()
+    partition = coll.partitionInfo(collmsg)
+    print('*** received partition',partition)
+
+    # set up our end of connections, potentially based on the information
+    # about who is in the partition (e.g. number of eb/drp nodes)
     # control sockets (ephemeral ports)
     control_router_socket = ctx.socket(zmq.ROUTER)
     control_pull_socket = ctx.socket(zmq.PULL)
     control_router_socket.bind("tcp://*:*")
     control_pull_socket.bind("tcp://*:*")
-    control_router_port = parse_port(control_router_socket.getsockopt(zmq.LAST_ENDPOINT))
-    control_pull_port = parse_port(control_pull_socket.getsockopt(zmq.LAST_ENDPOINT))
+    control_router_port = Collection.parse_port(control_router_socket.getsockopt(zmq.LAST_ENDPOINT))
+    control_pull_port = Collection.parse_port(control_pull_socket.getsockopt(zmq.LAST_ENDPOINT))
     logging.debug('control_router_port = %d' % control_router_port)
     logging.debug('control_pull_port = %d' % control_pull_port)
 
-    # collection mgr sockets (well known ports)
-    collect_dealer_socket = ctx.socket(zmq.DEALER)
-    collect_sub_socket = ctx.socket(zmq.SUB)
-    collect_dealer_socket.linger = 0
-    collect_sub_socket.linger = 0
-    collect_sub_socket.setsockopt_string(zmq.SUBSCRIBE, '')
-    collect_dealer_socket.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
-    collect_sub_socket.connect("tcp://%s:%d" % (args.C, CollectMsg.pub_port(args.p)))
-    collect_dealer_port = parse_port(collect_dealer_socket.getsockopt(zmq.LAST_ENDPOINT))
-    collect_sub_port = parse_port(collect_sub_socket.getsockopt(zmq.LAST_ENDPOINT))
-    logging.debug('collect_dealer_port = %d' % collect_dealer_port)
-    logging.debug('collect_sub_port = %d' % collect_sub_port)
+    ports = {}
+    ports['router_port'] = {'adrs': gethostname(), 'port': control_router_port}
+    ports['pull_port'] =   {'adrs': gethostname(), 'port': control_pull_port}
+    collmsg['ports'] = ports
+    connect_info = coll.connectionInfo(collmsg)
+
+    # now make the connections and report to CM when done
+    print("*** received connection info: <%s>" % connect_info)
+
+    # Control state
+    yy = ControlStateMachine(args.pvbase)
+    logging.debug("ControlStateMachine state: %s" % yy.state())
+
 
     sequence = 0
 
     poller = zmq.Poller()
     poller.register(control_router_socket, zmq.POLLIN)
     poller.register(control_pull_socket, zmq.POLLIN)
-    poller.register(collect_dealer_socket, zmq.POLLIN)
-    poller.register(collect_sub_socket, zmq.POLLIN)
     try:
         while True:
             items = dict(poller.poll(1000))
@@ -303,44 +300,6 @@ def main():
                     cmmsg.send(control_router_socket)
                     continue
 
-            # Collection Mgr client: DEALER socket
-            if collect_dealer_socket in items:
-                cmmsg = CollectMsg.recv(collect_dealer_socket)
-                if cmmsg.key == CollectMsg.ALLOC:
-                    logging.debug("Received ALLOC, sending PORTS")
-                    ports = {}
-                    ports['router_port'] = {'adrs': gethostname(), 'port': control_router_port}
-                    ports['pull_port'] =   {'adrs': gethostname(), 'port': control_pull_port}
-                    newmsg['ports'] = ports
-                    newmsg.send(collect_dealer_socket)
-                elif cmmsg.key == CollectMsg.CONNECT:
-                    logging.debug("Received CONNECT, printing")
-                    print("body=<%s>" % cmmsg.body)
-                else:
-                    logging.debug("Received key=\"%s\" on collect_dealer_socket" % cmmsg.key)
-
-            # Collection Mgr client: SUB socket
-            if collect_sub_socket in items:
-                cmmsg = CollectMsg.recv(collect_sub_socket)
-                if cmmsg.key == CollectMsg.PING:
-                    logging.debug("Received PING, sending PONG")
-                    collect_dealer_socket.send(CollectMsg.PONG)
-
-                elif cmmsg.key == CollectMsg.PLAT:
-                    logging.debug("Received PLAT, sending HELLO (platform=%d)" % args.p)
-                    newmsg = CollectMsg(0, key=CollectMsg.HELLO)
-                    newmsg['level'] = 0
-                    newmsg['name'] = args.u
-                    newmsg['host'] = gethostname()
-                    newmsg['pid'] = getpid()
-                    try:
-                        newmsg.send(collect_dealer_socket)
-                    except Exception as ex:
-                        logging.error("newmsg.send(): %s" % ex)
-                else:
-                    logging.debug("Received key=\"%s\" on collect_sub_socket" %
-                                  cmmsg.key)
-
     except KeyboardInterrupt:
         logging.debug("Interrupt received")
 
@@ -352,8 +311,6 @@ def main():
     # close zmq sockets
     control_router_socket.close()
     control_pull_socket.close()
-    collect_dealer_socket.close()
-    collect_sub_socket.close()
 
     # terminate zmq context
     ctx.term()

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-path='/nvme1n1/hfdata.h5'
+path='/tmp/cpo/hfdata.h5'
 #h5c++ -o HFWrite HighFreqHDFWrite.cc
 #h5c++ -o HFRead HighFreqHDFRead.cc
 

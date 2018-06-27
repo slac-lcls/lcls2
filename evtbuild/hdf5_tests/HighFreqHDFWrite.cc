@@ -35,7 +35,7 @@ void loop_write(const char* filename, int loop_limit, hsize_t chunk_size, hsize_
 
 
     // Create a new file using the default property lists. 
-    H5File file(FILE_NAME, H5F_ACC_TRUNC);
+    H5File file(FILE_NAME.c_str(), H5F_ACC_TRUNC);
 
     DataSpace *dataspace = new DataSpace (2, dims, maxdims);
 
@@ -47,7 +47,7 @@ void loop_write(const char* filename, int loop_limit, hsize_t chunk_size, hsize_
 
 
     // Create the chunked dataset.  Note the use of pointer.
-    DataSet *dataset = new DataSet(file.createDataSet( DATASETNAME, 
+    DataSet *dataset = new DataSet(file.createDataSet( DATASETNAME.c_str(), 
                                                        PredType::STD_I32LE, *dataspace, prop) );
     for(int i=0; i<loop_limit; i++){
         // Extend the dataset. Dataset becomes n+1 x 3.
