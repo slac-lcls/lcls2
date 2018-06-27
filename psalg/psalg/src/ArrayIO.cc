@@ -20,8 +20,8 @@ namespace psalg {
 
 //-----------------------------
 
-template <typename TDATA>
-ArrayIO<TDATA>::ArrayIO(const std::string& fname)
+template <typename T>
+ArrayIO<T>::ArrayIO(const std::string& fname)
   : _fname(fname)
   , _ctor(0)
 {
@@ -32,8 +32,8 @@ ArrayIO<TDATA>::ArrayIO(const std::string& fname)
 
 //-----------------------------
 
-template <typename TDATA>
-ArrayIO<TDATA>::~ArrayIO()
+template <typename T>
+ArrayIO<T>::~ArrayIO()
 {
   MSG(TRACE, "DESTRUCTOR for ctor:" << _ctor << " fname=" << _fname);
   //delete p_nda;
@@ -41,10 +41,10 @@ ArrayIO<TDATA>::~ArrayIO()
 
 //-----------------------------
 
-template <typename TDATA>
-void ArrayIO<TDATA>::_init()
+template <typename T>
+void ArrayIO<T>::_init()
 {
-  _status = ArrayIO<TDATA>::UNDEFINED;
+  _status = ArrayIO<T>::UNDEFINED;
   //_metad.clear();
 }
 
@@ -55,14 +55,14 @@ void ArrayIO<TDATA>::_init()
 
 //-----------------------------
 
-template <typename TDATA>
-void ArrayIO<TDATA>::_load_array()
+template <typename T>
+void ArrayIO<T>::_load_array()
 {
   //// if file is not available - create default ndarray
     //if ((!file_is_available()) && m_ctor>0) { 
     //    if( m_print_bits & 4 ) MSGLOG(__name__(), warning, "Use default calibration parameters.");
     //    create_ndarray(true);
-    //    m_status = ArrayIO<TDATA>::DEFAULT; // std::string("used default");
+    //    m_status = ArrayIO<T>::DEFAULT; // std::string("used default");
     //    return; 
     //}
 
@@ -81,7 +81,7 @@ void ArrayIO<TDATA>::_load_array()
     }
     else { 
       MSG(WARNING, "Failed to open file: \"" << _fname << "\""); 
-	_status = ArrayIO<TDATA>::UNREADABLE; // std::string("file is unreadable");
+	_status = ArrayIO<T>::UNREADABLE; // std::string("file is unreadable");
         return;
     }
 
@@ -104,7 +104,7 @@ void ArrayIO<TDATA>::_load_array()
 
     //close file
     in.close();
-    _status = ArrayIO<TDATA>::LOADED; // std::string("loaded from file");
+    _status = ArrayIO<T>::LOADED; // std::string("loaded from file");
 
     //cout << endl;
 
@@ -118,8 +118,8 @@ void ArrayIO<TDATA>::_load_array()
 
 //-----------------------------
 
-template <typename TDATA>
-void ArrayIO<TDATA>::_parse_str_of_comment(const std::string& s)
+template <typename T>
+void ArrayIO<T>::_parse_str_of_comment(const std::string& s)
 {
     _count_str_comt ++;
     // cout << "comment, str.size()=" << str.size() << '\n';
@@ -144,8 +144,8 @@ void ArrayIO<TDATA>::_parse_str_of_comment(const std::string& s)
 
 //-----------------------------
 /// Converts string like "(704,768)" to array _shape={704,768} and counts _ndim
-template <typename TDATA>
-void ArrayIO<TDATA>::_parse_shape(const std::string& str) {
+template <typename T>
+void ArrayIO<T>::_parse_shape(const std::string& str) {
   std::string s(str.substr(1, str.size()-2)); // remove '(' and ')'
   for (std::string::iterator it = s.begin(); it!=s.end(); ++it) if(*it==',') *it=' '; 
   //MSGLOG(__name__(), DEBUG, "TODO : _parse_shape: " + s + '\n');
@@ -165,8 +165,8 @@ void ArrayIO<TDATA>::_parse_shape(const std::string& str) {
 
 //-----------------------------
 
-template <typename TDATA>
-void ArrayIO<TDATA>::_load_data(std::ifstream& in, const std::string& str)
+template <typename T>
+void ArrayIO<T>::_load_data(std::ifstream& in, const std::string& str)
 {
   MSG(TRACE, "TODO : _load_data " << str.substr(0,50));
   //cout << '*';
@@ -176,8 +176,8 @@ void ArrayIO<TDATA>::_load_data(std::ifstream& in, const std::string& str)
     _count_str_data ++;
 
     // parse the 1st string
-    TDATA val;
-    //TDATA* it=p_data; 
+    T val;
+    //T* it=p_data; 
 
     std::stringstream ss(str);
     while (ss >> val && _count_data < _size) { //&& _count_data != _size) { 
@@ -246,20 +246,20 @@ void ArrayIO<TDATA>::_load_data(std::ifstream& in, const std::string& str)
 //-----------------------------
 //-----------------------------
 
-template <typename TDATA, unsigned NDIM>
-std::string ArrayIO<TDATA>::str_status()
+template <typename T, unsigned NDIM>
+std::string ArrayIO<T>::str_status()
 {
-  if      (_status == ArrayIO<TDATA>::LOADED)     return std::string("loaded from file");
-  else if (_status == ArrayIO<TDATA>::DEFAULT)    return std::string("used default");
-  else if (_status == ArrayIO<TDATA>::UNREADABLE) return std::string("file is unreadable");
-  else if (_status == ArrayIO<TDATA>::UNDEFINED)  return std::string("undefined...");
+  if      (_status == ArrayIO<T>::LOADED)     return std::string("loaded from file");
+  else if (_status == ArrayIO<T>::DEFAULT)    return std::string("used default");
+  else if (_status == ArrayIO<T>::UNREADABLE) return std::string("file is unreadable");
+  else if (_status == ArrayIO<T>::UNDEFINED)  return std::string("undefined...");
   else                                              return std::string("unknown...");
 }
 
 //-----------------------------
 
-template <typename TDATA, unsigned NDIM>
-bool ArrayIO<TDATA>::file_is_available()
+template <typename T, unsigned NDIM>
+bool ArrayIO<T>::file_is_available()
 {
   if(m_fname.empty()) {
     if( m_print_bits & 4 ) MSGLOG(__name__(), warning, "File name IS EMPTY!");
@@ -277,19 +277,19 @@ bool ArrayIO<TDATA>::file_is_available()
 
 //-----------------------------
 
-template <typename TDATA, unsigned NDIM>
-void ArrayIO<TDATA, NDIM>::create_ndarray(const bool& fill_def)
+template <typename T, unsigned NDIM>
+void ArrayIO<T, NDIM>::create_ndarray(const bool& fill_def)
 {
     if (p_nda) delete p_nda; // prevent memory leak
     // shape should already be available for
     // m_ctor = 0 - from parsing input file header,
     // m_ctor = 1,2 - from input pars
-    p_nda = new ndarray<TDATA, NDIM>(m_shape);
+    p_nda = new ndarray<T, NDIM>(m_shape);
     p_data = p_nda->data();
     m_size = p_nda->size();
 
     if (m_ctor>0 && fill_def) {
-      if      (m_ctor==2) std::memcpy (p_data, m_nda_def.data(), m_size*sizeof(TDATA));
+      if      (m_ctor==2) std::memcpy (p_data, m_nda_def.data(), m_size*sizeof(T));
       else if (m_ctor==1) std::fill_n (p_data, m_size, m_val_def);
       else return; // There is no default initialization for ctor=0 w/o shape
     }    
@@ -300,10 +300,10 @@ void ArrayIO<TDATA, NDIM>::create_ndarray(const bool& fill_def)
 
 //-----------------------------
 
-template <typename TDATA, unsigned NDIM>
-//ndarray<const TDATA, NDIM>& 
-ndarray<TDATA, NDIM>& 
-ArrayIO<TDATA, NDIM>::get_ndarray(const std::string& fname)
+template <typename T, unsigned NDIM>
+//ndarray<const T, NDIM>& 
+ndarray<T, NDIM>& 
+ArrayIO<T, NDIM>::get_ndarray(const std::string& fname)
 {
   if ( (!fname.empty()) && fname != m_fname) {
     m_fname = fname;
@@ -323,24 +323,24 @@ ArrayIO<TDATA, NDIM>::get_ndarray(const std::string& fname)
 
 //-----------------------------
 
-template <typename TDATA, unsigned NDIM>
-void ArrayIO<TDATA, NDIM>::print()
+template <typename T, unsigned NDIM>
+void ArrayIO<T, NDIM>::print()
 {
     std::stringstream ss; 
     ss << "print()"
        << "\n  Constructor          # " << m_ctor
        << "\n  Number of dimensions : " << ndim()
-       << "\n  Data type and size   : " << strOfDataTypeAndSize<TDATA>()
-       << "\n  Enumerated data type : " << enumDataType<TDATA>()
-       << "\n  String data type     : " << strDataType<TDATA>()
+       << "\n  Data type and size   : " << strOfDataTypeAndSize<T>()
+       << "\n  Enumerated data type : " << enumDataType<T>()
+       << "\n  String data type     : " << strDataType<T>()
        << '\n';
     MSGLOG(__name__(), info, ss.str());
 }
 
 //-----------------------------
 
-template <typename TDATA, unsigned NDIM>
-void ArrayIO<TDATA, NDIM>::print_file()
+template <typename T, unsigned NDIM>
+void ArrayIO<T, NDIM>::print_file()
 {
     if (! file_is_available() ) {
       MSGLOG(__name__(), warning, "print_file() : file " << m_fname << " is not available!");
@@ -366,15 +366,15 @@ void ArrayIO<TDATA, NDIM>::print_file()
 
 //-----------------------------
 
-template <typename TDATA>
-void ArrayIO<TDATA, NDIM>::print_ndarray()
+template <typename T>
+void ArrayIO<T, NDIM>::print_ndarray()
 {
-    //const ndarray<const TDATA, NDIM> nda = get_ndarray();
+    //const ndarray<const T, NDIM> nda = get_ndarray();
     if (! p_nda) load_ndarray();
     if (! p_nda) return;
 
     std::stringstream smsg; 
-    smsg << "Print ndarray<" << strDataType<TDATA>() 
+    smsg << "Print ndarray<" << strDataType<T>() 
          << "," << ndim()
          << "> of size=" << p_nda->size()
          << ":\n" << *p_nda;
@@ -383,19 +383,19 @@ void ArrayIO<TDATA, NDIM>::print_ndarray()
 
 //-----------------------------
 
-template <typename TDATA>
-std::string ArrayIO<TDATA>::str_ndarray_info()
+template <typename T>
+std::string ArrayIO<T>::str_ndarray_info()
 {
-  //const ndarray<const TDATA, NDIM>& nda = get_ndarray();
+  //const ndarray<const T, NDIM>& nda = get_ndarray();
     if (! p_nda) load_ndarray();
     if (! p_nda) return std::string("ndarray is non-accessible...");
 
     std::stringstream smsg; 
-    smsg << "ndarray<" << std::setw(8) << std::left << strDataType<TDATA>() 
+    smsg << "ndarray<" << std::setw(8) << std::left << strDataType<T>() 
          << "," << ndim()
          << "> of size=" << p_nda->size()
          << ":";
-    TDATA* it = p_nda->data();
+    T* it = p_nda->data();
     for( unsigned i=0; i<min(size_t(10),p_nda->size()); i++ ) smsg << " " << *it++; smsg << " ...";
     //MSGLOG(__name__(), info, smsg.str());
     return smsg.str();
@@ -403,8 +403,8 @@ std::string ArrayIO<TDATA>::str_ndarray_info()
 
 //-----------------------------
 
-template <typename TDATA>
-std::string ArrayIO<TDATA>::str_shape()
+template <typename T>
+std::string ArrayIO<T>::str_shape()
 {
   std::stringstream smsg;
   for( unsigned i=0; i<ndim(); i++ ) {
@@ -415,14 +415,14 @@ std::string ArrayIO<TDATA>::str_shape()
 
 //-----------------------------
 
-template <typename TDATA>
-void ArrayIO<TDATA>::save_ndarray(const ndarray<const TDATA, NDIM>& nda, 
+template <typename T>
+void ArrayIO<T>::save_ndarray(const ndarray<const T, NDIM>& nda, 
                                     const std::string& fname,
                                     const std::vector<std::string>& vcoms, 
 	                            const unsigned& print_bits)
 {
     const unsigned ndim = NDIM;
-    std::string str_dtype = strDataType<TDATA>();
+    std::string str_dtype = strDataType<T>();
     std::stringstream sstype; sstype << "ndarray<" << str_dtype 
                                      << "," << ndim << ">";
 
@@ -465,7 +465,7 @@ void ArrayIO<TDATA>::save_ndarray(const ndarray<const TDATA, NDIM>& nda,
     unsigned nmax_in_line = (ndim>1) ? nda.shape()[ndim-1] : 10; 
     unsigned count_in_line=0; 
 
-    typename ndarray<const TDATA>::iterator it = nda.begin();
+    typename ndarray<const T>::iterator it = nda.begin();
     for (; it!=nda.end(); ++it) {
       out << std::setw(10) << *it << " ";
       if( ++count_in_line < nmax_in_line) continue;

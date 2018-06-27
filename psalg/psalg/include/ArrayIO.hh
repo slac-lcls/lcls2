@@ -12,7 +12,9 @@
 #include <fstream>
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
+#include "psalg/psalg/include/ArrayIO.hh"
 #include "psalg/include/ArrayMetadata.hh"
+#include "psalg/include/AllocArray.hh"
 #include "xtcdata/xtc/Array.hh" // for Array
 
 #include "psalg/include/Logger.hh" // for MsgLog
@@ -25,12 +27,12 @@ namespace psalg {
 
 //-------------------
 
-template <typename TDATA>
+template <typename T>
 class ArrayIO {
 
 public:
 
-  typedef TDATA data_t;
+  typedef T data_t;
   typedef ArrayMetadata::shape_t shape_t; // uint32_t
   typedef ArrayMetadata::size_t size_t; // uint32_t
 
@@ -49,7 +51,7 @@ protected:
 
 private:
 
-  //Array<TDATA>* p_nda;
+  //Array<T>* p_nda;
 
   std::string _fname;
   unsigned    _ctor;
@@ -66,6 +68,8 @@ private:
   std::string _dtype_name;
 
   ArrayMetadata _metad;
+
+  AllocArray<T> _arr;
 
   //std::map<std::string,std::string> _metad;
 
@@ -89,7 +93,7 @@ private:
 };
 
 /*
-template <typename TDATA>
+template <typename T>
 class ArrayIO {
 
   //static const unsigned c_ndim = NDIM;
@@ -98,11 +102,11 @@ public:
 
   ArrayIO(const std::string& fname
 	   ,const shape_t* shape_def
-	   ,const TDATA& val_def=TDATA(0) 
+	   ,const T& val_def=T(0) 
 	   ,const unsigned print_bits=0377);
 
   ArrayIO(const std::string& fname
-	   ,const Array<const TDATA>& nda_def
+	   ,const Array<const T>& nda_def
 	   ,const unsigned print_bits=0377);
 
   /// Returns number of dimensions of array.
@@ -119,8 +123,8 @@ public:
   void print_array();
 
   /// Loads (if necessary) array from file and returns it.
-  Array<TDATA, NDIM>& get_array(const std::string& fname = std::string());
-  //Array<const TDATA, NDIM>& get_array(const std::string& fname = std::string());
+  Array<T, NDIM>& get_array(const std::string& fname = std::string());
+  //Array<const T, NDIM>& get_array(const std::string& fname = std::string());
 
   /// Returns string with status of calibration constants.
   std::string str_status();
@@ -135,7 +139,7 @@ public:
   std::string str_shape();
 
   /// Static method to save array in file with internal metadata and external comments
-  static void save_ndarray(const Array<const TDATA, NDIM>& nda, 
+  static void save_ndarray(const Array<const T, NDIM>& nda, 
                            const std::string& fname,
                            const std::vector<std::string>& vcoms = std::vector<std::string>(), 
 	                   const unsigned& print_bits=0377);
@@ -146,12 +150,12 @@ private:
 
   /// Data members  
 
-  Array<TDATA, NDIM>* p_nda;
+  Array<T, NDIM>* p_nda;
 
   std::string m_fname;
-  TDATA       m_val_def;
-  const Array<const TDATA, NDIM> m_nda_def;
-  Array<TDATA, NDIM> m_nda_empty;
+  T       m_val_def;
+  const Array<const T, NDIM> m_nda_def;
+  Array<T, NDIM> m_nda_empty;
   unsigned    m_print_bits;
 
   unsigned    m_ndim;
@@ -160,7 +164,7 @@ private:
   std::string m_str_type;
   DATA_TYPE   m_enum_type;
 
-  TDATA* p_data;
+  T* p_data;
 
   /// true if the file name non empty anf file is readable
   bool file_is_available();
