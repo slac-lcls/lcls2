@@ -1,6 +1,6 @@
 //-------------------
 
-#include "psalg/include/Logger.h" // MsgLog
+#include "psalg/include/Logger.hh" // MsgLog
 
 //typedef Logger::LEVEL level_t;
 

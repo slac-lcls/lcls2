@@ -1,6 +1,6 @@
 
 //-------------------
-#include "psalg/include/Logger.h" // MsgLog, Logger, LOGPRINT, LOGMSG
+#include "psalg/include/Logger.hh" // MsgLog, Logger, LOGPRINT, LOGMSG
 //-------------------
 #include <iostream> // cout
 #include <stdexcept>

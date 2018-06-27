@@ -15,7 +15,7 @@
 //#include <cstddef>  // size_t 
 #include <iostream> //ostream
 //#include "xtcdata/xtc/DescData.hh" // for Array
-//#include "psalg/include/Logger.h" // for MsgLog
+//#include "psalg/include/Logger.hh" // for MsgLog
 
 using namespace std;
 

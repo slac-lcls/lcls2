@@ -7,7 +7,7 @@
 //-------------------
 /**  Usage mainstream:
  *   =================
- *   #include "psalg/include/Logger.h" // MSG, MSGLOG, LOGGER, MSGSTREAM
+ *   #include "psalg/include/Logger.hh" // MSG, MSGLOG, LOGGER, MSGSTREAM
  *   
  *   MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
  *   LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format

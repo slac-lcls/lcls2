@@ -2,8 +2,8 @@
 // Adopted to lcls2 on 2018-06-06 by Mikhail Dubrovin
 //---------------------------------------------------
 
-#include "psalg/include/ArrayIO.h"
-#include "psalg/include/Logger.h" // MsgLog
+#include "psalg/include/ArrayIO.hh"
+#include "psalg/include/Logger.hh" // MsgLog
 
 //#include <algorithm>
 //#include <stdexcept>

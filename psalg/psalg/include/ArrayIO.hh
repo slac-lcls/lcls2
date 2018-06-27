@@ -12,10 +12,10 @@
 #include <fstream>
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
-#include "psalg/include/ArrayMetadata.h"
+#include "psalg/include/ArrayMetadata.hh"
 #include "xtcdata/xtc/Array.hh" // for Array
 
-#include "psalg/include/Logger.h" // for MsgLog
+#include "psalg/include/Logger.hh" // for MsgLog
 //#include <vector>
 //#include "pdscalibdata/GlobalMethods.h"
 
