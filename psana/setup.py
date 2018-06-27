@@ -96,7 +96,9 @@ CYT_BLD_DIR = 'build'
 
 from Cython.Build import cythonize
 ext = Extension("peakFinder",
-                sources=["psana/peakFinder/peakFinder.pyx", "../psalg/psalg/src/PeakFinderAlgos.cpp", "../psalg/psalg/src/LocalExtrema.cpp"],
+                sources=["psana/peakFinder/peakFinder.pyx",
+                         "../psalg/psalg/src/PeakFinderAlgos.cc",
+                         "../psalg/psalg/src/LocalExtrema.cc"],
                 language="c++",
                 extra_compile_args=['-std=c++11'],
                 include_dirs=[np.get_include(),
@@ -145,8 +147,8 @@ setup(name='eventbuilder',
 
 ext = Extension("hsd",
                 sources=["psana/hsd/hsd.pyx",
-                         "../psalg/psalg/src/PeakFinderAlgos.cpp",
-                         "../psalg/psalg/src/LocalExtrema.cpp"],
+                         "../psalg/psalg/src/PeakFinderAlgos.cc",
+                         "../psalg/psalg/src/LocalExtrema.cc"],
                 libraries=['xtcdata','psalg'],
                 language="c++",
                 extra_compile_args=['-std=c++11'],

@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <cstdlib>
 
 #pragma pack(push,4)
 

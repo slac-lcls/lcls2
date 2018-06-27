@@ -12,30 +12,31 @@ def test_hsd():
     import numpy as np
     import matplotlib.pyplot as plt
 
-    ds = psana.DataSource('/reg/neh/home/yoon82/Software/lcls2/hsd_052218b.xtc')
+    ds = psana.DataSource('/reg/neh/home/yoon82/temp1/lcls2/hsd_061918.xtc')
     det = ds.Detector("xpphsd")
 
-    chanNum = 2
+    chanNum = 3
     for i, evt in enumerate(ds.events()):
-        hsd = det(evt)
-        waveform = hsd.waveform() # FIXME: return dictionary
-        listOfPeaks, sPos = hsd.peaks(chanNum) # TODO: return times instead of sPos. Get sampling rate from hsd configure
+        waveforms = det.waveforms(evt)
+        peaks, startPos = det.peaks(evt, chanNum)
+        #print("waveform: ", waveforms)
+        #print("list of peaks:", peaks)
+        #print("list of pos:", startPos)
 
-        print("waveform: ", waveform)
-        print("list of peaks:", listOfPeaks)
-        print("list of pos:", sPos)
+        #hsd = det(evt)
+        #waveform = hsd.waveform() # FIXME: return dictionary
+        #peaks, startPos = hsd.peaks(chanNum) # TODO: return times instead of sPos. Get sampling rate from hsd configure
 
         if doPlot:
             plt.plot(waveform[0], 'o-')
             plt.title('Event {}, Waveform channel: {}'.format(i, chanNum))
             plt.show()
 
-        recon = -999 * np.ones((1600,))
-        xaxis = np.zeros((1600,))
-        for j in range(len(listOfPeaks)):
-            recon[sPos[j]:sPos[j] + len(listOfPeaks[j])] = listOfPeaks[j]
+            recon = -999 * np.ones((1600,))
+            xaxis = np.zeros((1600,))
+            for j in range(len(peaks)):
+                recon[startPos[j]:startPos[j] + len(peaks[j])] = peaks[j]
 
-        if doPlot:
             plt.plot(recon, 'o-')
             plt.plot(xaxis, 'r-')
             plt.title('Event {}, Reconstructed Fex channel: {}'.format(i, chanNum))

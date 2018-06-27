@@ -16,8 +16,8 @@
 #include <chrono> // timer
 typedef std::chrono::high_resolution_clock Clock;
 
-#include "Types.h"
-#include "LocalExtrema.h"
+#include "Types.hh"
+#include "LocalExtrema.hh"
 #include "Allocator.hh"
 #include "AllocArray.hh"
 

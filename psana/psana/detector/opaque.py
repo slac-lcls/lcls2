@@ -1,5 +1,8 @@
 import hsd as Hsd
 
+def version2str(version):
+    return str(version[0]) + '.' + str(version[1]) + '.' + str(version[2])
+
 def OpaqueRawData(name, config):
     sw = getattr(config, 'software')
     det = getattr(sw, name)
@@ -23,12 +26,13 @@ class hsd(OpaqueRawDataBase):
         self.nchan = getattr(config, 'nchan')
         assert detcfg.dettype == 'hsd'
         assert detcfg.hsd.software == 'hsd'
+        self.version = detcfg.hsd.version
 
     def __call__(self, evt):
         chans = []
         for i in range(self.nchan):
             chans.append( eval('evt.dgrams[0].xpphsd.hsd.chan'+str(i)) ) # FIXME: find out 0 in dgrams[0]
-        nonOpaqueHsd = Hsd.hsd("1.0.0", chans)  # make an object per event
+        nonOpaqueHsd = Hsd.hsd(version2str(self.version), chans)  # make an object per event, calls hsd.pyx def hsd()
         return nonOpaqueHsd
 
     class _Factory:

@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 #from psana.dgrammanager import DgramManager
 import psana
-ds = psana.DataSource('/reg/neh/home/yoon82/Software/lcls2/hsd_052218b.xtc') # chan0a
+ds = psana.DataSource('/reg/neh/home/yoon82/temp1/lcls2/hsd_061918.xtc') # chan0a
 #ds = DgramManager('/reg/neh/home/cpo/hsd_040518.xtc') # chan0b
 for i, evt in enumerate(ds.events()):
    print("Event: ", i)

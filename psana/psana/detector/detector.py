@@ -7,7 +7,7 @@ class Detector:
         """Search datagrams for name and return a list of dgram indices."""
         dgramInd = []
         for i, dgram in enumerate(self.config):
-           if hasattr(dgram.software, name): dgramInd.append(i)
+           if hasattr(dgram.software, name): dgramInd.append(i) # TODO: throw error if two the same
         return dgramInd
 
     def __call__(self, name):
@@ -25,3 +25,4 @@ class DetectorBase(object):
 from psana.detector.DetHSD import HSD
 from psana.detector.DetEPIX import EPIX
 from psana.detector.DetCSPAD import CSPAD
+

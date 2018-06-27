@@ -1,4 +1,5 @@
-# source /reg/g/psdm/etc/psconda.sh
+# Remember to run on psana machine and source /reg/g/psdm/etc/psconda.sh
+# Then run translate_xtc_demo.py on psbuild-rhel7 and source setup_env.sh
 from psana import *
 import json
 import cPickle as pickle

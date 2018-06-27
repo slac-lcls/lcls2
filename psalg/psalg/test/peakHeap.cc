@@ -1,6 +1,6 @@
-//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -o peakHeap
+//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cc psalg/src/PeakFinderAlgos.cc psalg/src/LocalExtrema.cpp -o peakHeap
 // To turn off debug:
-//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cpp psalg/src/PeakFinderAlgos.cpp psalg/src/LocalExtrema.cpp -DNDEBUG -o peakHeap
+//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cc psalg/src/PeakFinderAlgos.cc psalg/src/LocalExtrema.cpp -DNDEBUG -o peakHeap
 //valgrind ./peakHeap
 
 /*
@@ -12,9 +12,9 @@
 #include <iostream>
 #include <stdlib.h>
 
-#include "psalg/include/PeakFinderAlgos.h"
-#include "psalg/include/LocalExtrema.h"
-#include "psalg/include/Types.h"
+#include "psalg/include/PeakFinderAlgos.hh"
+#include "psalg/include/LocalExtrema.hh"
+#include "psalg/include/Types.hh"
 
 #include "psalg/include/AllocArray.hh"
 #include "psalg/include/Allocator.hh"

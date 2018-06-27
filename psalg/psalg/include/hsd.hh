@@ -29,11 +29,11 @@ namespace Pds {
         std::string version;
     };
 
-    class Hsd_v1_0_0 : public HsdEventHeaderV1 {
+    class Hsd_v1_2_3 : public HsdEventHeaderV1 {
     public:
-        Hsd_v1_0_0(Allocator *allocator, const unsigned nChan);
+        Hsd_v1_2_3(Allocator *allocator, const unsigned nChan);
 
-        ~Hsd_v1_0_0(){
+        ~Hsd_v1_2_3(){
         }
 
         void printVersion() {
@@ -57,9 +57,11 @@ namespace Pds {
         int parseChan(const uint8_t* data, const unsigned chanNum) // byte offset to get the next channel
         {
             //printf("Address data: %p\n", (void *) data);
-            const Pds::HSD::EventHeader& ehx = *reinterpret_cast<const Pds::HSD::EventHeader*>(data);
+            //const Pds::HSD::EventHeader& ehx = *reinterpret_cast<const Pds::HSD::EventHeader*>(data);
             //ehx.dump();
-            const char* nextx = reinterpret_cast<const char*>(&ehx);
+            //printf("#### %lu\n", ehx.timeStamp());
+
+            const char* nextx = reinterpret_cast<const char*>(data);
             const Pds::HSD::StreamHeader* sh_rawx = 0;
             sh_rawx = reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
             const uint16_t* rawx = reinterpret_cast<const uint16_t*>(sh_rawx+1);
@@ -72,6 +74,7 @@ namespace Pds {
             // ------------ FEX --------------
             nextx = reinterpret_cast<const char*>(&rawx[sh_rawx->samples()]);
             const Pds::HSD::StreamHeader& sh_fexx = *reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
+            //sh_fexx.dump();
             const unsigned end = sh_fexx.samples() - sh_fexx.eoffs() - sh_fexx.boffs();
             const uint16_t* p_thr = &reinterpret_cast<const uint16_t*>(&sh_fexx+1)[sh_fexx.boffs()];
 
@@ -128,8 +131,8 @@ namespace Pds {
     };
 
     HsdEventHeaderV1* HsdEventHeaderV1::Create(Allocator *allocator, const char* version, const unsigned nChan) {
-        if ( strcmp(version, "1.0.0") == 0 )
-            return new Hsd_v1_0_0(allocator, nChan);
+        if ( strcmp(version, "1.2.3") == 0 )
+            return new Hsd_v1_2_3(allocator, nChan);
         else
             return NULL;
     }

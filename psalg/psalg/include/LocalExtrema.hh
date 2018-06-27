@@ -12,7 +12,7 @@
 #include <cstring>  // for memcpy
 #include <cmath>    // for sqrt
 
-#include "Types.h"
+#include "Types.hh"
 #include "AllocArray.hh"
 #include "Allocator.hh"
 

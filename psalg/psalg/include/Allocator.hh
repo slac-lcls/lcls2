@@ -1,8 +1,6 @@
 #ifndef ALLOCATOR__H
 #define ALLOCATOR__H
 
-//#include <iostream>
-//#include "xtcdata/xtc/Array.hh"
 #include <stdint.h>
 
 class Allocator{ //Heap -> Allocator

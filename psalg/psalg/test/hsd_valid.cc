@@ -108,14 +108,19 @@ int main(int argc, char** argv) {
     }
 
     const EventHeader& eh = *reinterpret_cast<const EventHeader*>(event);
+    printf("Dumping eventheader\n");
+    eh.dump();
+
     const char* next = 0;
     const StreamHeader* sh_raw = 0;
     if (streams&1) {
       printf("Starting raw\n");
       sh_raw = reinterpret_cast<const StreamHeader*>(&eh);
       if (!lText) {
-        if (fread((void*)sh_raw, sizeof(StreamHeader), 1, f) == 0)
-          break;
+        if (fread((void*)sh_raw, sizeof(StreamHeader), 1, f) == 0) {
+            printf("breaking\n");
+            break;
+          }
       }
       sh_raw->dump();
 

@@ -51,7 +51,7 @@ for i, evt in enumerate(ds.events()):
         evtDict['photonEnergy'] = photonEnergy
         # timestamp
         evtDict['timestamp'] = timestamp
-        events.append(evtDict)
+        events.append(evtDict) # TODO: Out of memory. Use ZMQ sockets to bypass writing to json
         if i == nevents: break
 
 with open(os.path.join(outdir,"crystal_"+tag+".json"), 'w') as f:

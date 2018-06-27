@@ -1,7 +1,7 @@
 install(FILES
-    include/LocalExtrema.h
-    include/PeakFinderAlgos.h
-    include/Types.h
+    include/LocalExtrema.hh
+    include/PeakFinderAlgos.hh
+    include/Types.hh
     include/stream.hh
     include/hsd.hh
     include/AllocArray.hh
@@ -13,12 +13,12 @@ install(FILES
 )
 
 add_library(psalg SHARED
-    src/LocalExtrema.cpp
-    src/PeakFinderAlgos.cpp
+    src/LocalExtrema.cc
+    src/PeakFinderAlgos.cc
     src/stream.cc
     src/ArrayIO.cpp
     src/Logger.cpp
-    src/hsd.cpp
+    src/hsd.cc
 )
 
 target_include_directories(psalg PUBLIC
@@ -51,7 +51,7 @@ include(CTest) # ctest -T memcheck
 
 # Test 1: AllocArray
 add_executable(test_array
-    test/test_array.cpp
+    test/test_array.cc
 )
 target_link_libraries(test_array
     psalg
@@ -62,7 +62,7 @@ add_test(NAME test_array COMMAND ${CMAKE_BINARY_DIR}/psalg/test_array
 
 # Test 2: Peak finder
 add_executable(test_peakFinder
-    test/peakHeap.cpp
+    test/peakHeap.cc
 )
 target_link_libraries(test_peakFinder
     psalg
@@ -73,7 +73,7 @@ add_test(NAME test_peakFinder COMMAND ${CMAKE_BINARY_DIR}/psalg/test_peakFinder
 
 # Test 3: Hsd
 add_executable(test_hsd
-    test/test_hsd.cpp
+    test/test_hsd.cc
 )
 target_link_libraries(test_hsd
     psalg
@@ -85,7 +85,7 @@ add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
 # Test Logger
 set (CMAKE_EXE_LINKER_FLAGS -lrt)
 add_executable(test_logger
-    test/test_logger.cpp
+    test/test_logger.cc
 )
 target_link_libraries(test_logger
     psalg
