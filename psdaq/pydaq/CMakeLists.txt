@@ -13,9 +13,8 @@ target_include_directories(reqclient PRIVATE
     $ENV{CONDA_PREFIX}/include
 )
 target_link_libraries(reqclient
-    $ENV{CONDA_PREFIX}/lib/libzmq.so
-    $ENV{CONDA_PREFIX}/lib/libstdc++.so.6
-    xtc
+    zmq
+    xtcdata::xtc
 )
 install(TARGETS reqclient
     RUNTIME DESTINATION bin

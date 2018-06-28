@@ -38,7 +38,7 @@ add_executable(datareader
 )
 target_link_libraries(datareader
     psalg
-    xtc
+    xtcdata::xtc
 )
 
 add_executable(hsd_valid test/hsd_valid.cc)
@@ -48,7 +48,7 @@ target_include_directories(hsd_valid PUBLIC
 
 target_link_libraries(hsd_valid
     psalg
-    xtc
+    xtcdata::xtc
 )
 
 # Needed for valgrind
@@ -60,7 +60,7 @@ add_executable(test_array
 )
 target_link_libraries(test_array
     psalg
-    xtc
+    xtcdata::xtc
 )
 add_test(NAME test_array COMMAND ${CMAKE_BINARY_DIR}/psalg/test_array
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -71,7 +71,7 @@ add_executable(test_peakFinder
 )
 target_link_libraries(test_peakFinder
     psalg
-    xtc
+    xtcdata::xtc
 )
 add_test(NAME test_peakFinder COMMAND ${CMAKE_BINARY_DIR}/psalg/test_peakFinder
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -82,7 +82,7 @@ add_executable(test_hsd
 )
 target_link_libraries(test_hsd
     psalg
-    xtc
+    xtcdata::xtc
 )
 add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -93,7 +93,7 @@ add_executable(test_logger
 )
 target_link_libraries(test_logger
     psalg
-    xtc
+    xtcdata::xtc
 )
 
 install(TARGETS psalg

@@ -11,7 +11,7 @@ target_include_directories(pshdf5 PUBLIC
 )
 
 target_link_libraries(pshdf5
-    xtc
+    xtcdata::xtc
     ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES}
     $ENV{CONDA_PREFIX}/lib/libstdc++.so.6

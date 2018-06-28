@@ -4,7 +4,7 @@ add_library(tpr SHARED
 )
 
 target_link_libraries(tpr
-  xtc
+  xtcdata::xtc
 )
 
 install(TARGETS tpr
