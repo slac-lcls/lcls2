@@ -31,7 +31,7 @@ namespace Pds {
         printf("pID [%016lu]  time [%u.%09u]  trig [%04x]  event [%u]  sync [%u]\n",
                pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
                readoutGroups(), eventCount(), sync());
-        printf("####@ 0x%x 0x%x 0x%x %u %u %u %llu\n", env[0], env[1], env[2], samples(), streams(), channels(), timeStamp());
+        printf("####@ 0x%x 0x%x 0x%x %u %u %u %lu\n", env[0], env[1], env[2], samples(), streams(), channels(), timeStamp());
       }
   };
 

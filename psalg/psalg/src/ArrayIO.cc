@@ -2,13 +2,13 @@
 // Adopted to lcls2 on 2018-06-06 by Mikhail Dubrovin
 //---------------------------------------------------
 
-#include "psalg/include/ArrayIO.hh"
-#include "psalg/include/Logger.hh" // MsgLog
+#include "psalg/ArrayIO.hh"
+//#include "psalg/Logger.hh" // MSG
 
 //#include <algorithm>
 //#include <stdexcept>
 
-#include <fstream>
+#include <iostream>  // cout, puts
 #include <sstream>   // stringstream
 #include <stdlib.h>  // atoi
 #include <cstring>   // memcpy

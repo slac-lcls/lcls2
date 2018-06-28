@@ -6,9 +6,9 @@ install(FILES
     include/hsd.hh
     include/AllocArray.hh
     include/Allocator.hh
-    include/ArrayIO.hh
-    include/ArrayMetadata.hh
-    include/Logger.hh
+    ArrayIO.hh
+    ArrayMetadata.hh
+    Logger.hh
     DESTINATION include/psalg/include
 )
 

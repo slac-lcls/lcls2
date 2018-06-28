@@ -6,18 +6,18 @@
 // Adopted to lcls2 on 2018-06-06 by Mikhail Dubrovin
 //---------------------------------------------------
 
-#include <map>
+//#include <map>
+//#include <iostream> // cout, puts etc.
 #include <string>
-#include <iostream> // for cout, puts etc.
-#include <fstream>
+#include <fstream> // in *.hh
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
-#include "psalg/include/ArrayIO.hh"
-#include "psalg/include/ArrayMetadata.hh"
+//#include "xtcdata/xtc/Array.hh" // Array
+//#include "AllocArray.hh"
 //#include "psalg/include/AllocArray.hh"
-#include "xtcdata/xtc/Array.hh" // for Array
+#include "psalg/ArrayMetadata.hh"
 
-#include "psalg/include/Logger.hh" // for MsgLog
+#include "psalg/Logger.hh" // for MSG
 //#include <vector>
 //#include "pdscalibdata/GlobalMethods.h"
 
@@ -51,7 +51,8 @@ protected:
 
 private:
 
-  //Array<T>* p_nda;
+  //Array<T>* _nda;
+  //psalg::AllocArray1D<T> _1da; // reserve memory for data
 
   std::string _fname;
   unsigned    _ctor;

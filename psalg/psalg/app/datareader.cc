@@ -23,9 +23,9 @@
 #include <fstream>  // ifstream
 #include <iomanip>  // std::setw
 
-#include "psalg/include/Logger.hh" // MSG
+#include "psalg/Logger.hh" // MSG
 #include "xtcdata/xtc/DescData.hh" // Array
-#include "psalg/include/ArrayIO.hh" // ArrayIO
+#include "psalg/ArrayIO.hh" // ArrayIO
 
 using namespace std;
 using namespace psalg;
