@@ -12,9 +12,9 @@
 #include <fstream>
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
-#include "psalg/psalg/include/ArrayIO.hh"
+#include "psalg/include/ArrayIO.hh"
 #include "psalg/include/ArrayMetadata.hh"
-#include "psalg/include/AllocArray.hh"
+//#include "psalg/include/AllocArray.hh"
 #include "xtcdata/xtc/Array.hh" // for Array
 
 #include "psalg/include/Logger.hh" // for MsgLog
@@ -69,7 +69,7 @@ private:
 
   ArrayMetadata _metad;
 
-  AllocArray<T> _arr;
+  //AllocArray<T> _arr;
 
   //std::map<std::string,std::string> _metad;
 
