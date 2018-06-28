@@ -12,14 +12,21 @@ tag     = sys.argv[5]
 outdir = ''
 if len(sys.argv) < 6:
     print("Usage: python parse_lcls1_sfx.py expname run detname nevents tag (optional)outdir")
-    print("Example: python parse_lcls1_sfx.py cxid9114 95 CxiDs1.0:Cspad.0 500 xray /reg/common/package/temp")
+    print("Example: python parse_lcls1_sfx.py cxid9114 95 CxiDs2.0:Cspad.0 500 xray /reg/common/package/temp")
     exit(0)
 elif len(sys.argv) == 7:
     outdir  = sys.argv[6]
 
-ds = DataSource('exp='+expname+':run='+run) # 89 dark 95 xray
+if 'xray' in tag and 'cxid9114' in expname:
+    #ds = DataSource('exp='+expname+':run='+run)
+    ds = DataSource('exp='+expname+':run='+run+':dir=/reg/d/psdm/cxi/cxid9114/demo/xtc') # 89 dark 95 xray
+else:
+    ds = DataSource('exp='+expname+':run='+run)
+
 det = Detector(detname)
 epics = ds.env().epicsStore()
+print "det: ", det, dir(det)
+print "epics: ", epics
 
 def bitwise_array(value):
     if np.isscalar(value):
@@ -30,17 +37,23 @@ def bitwise_array(value):
 events = []
 
 for i, evt in enumerate(ds.events()):
+    print "####: ", i, evt
     raw = det.raw(evt)
+    calib = det.calib(evt)
+    print "$$$$: ", raw
 
     ebeam = evt.get(Bld.BldDataEBeamV7, Source('BldInfo(EBeam)'))
     photonEnergy = epics.value('SIOC:SYS0:ML00:AO541')
+    print "photonEnergy: ", photonEnergy
 
     evtId = evt.get(EventId)
     sec = evtId.time()[0]
     nsec = evtId.time()[1]
     timestamp = (sec << 32) | nsec
+    print "timestamp: ", timestamp
 
     if raw is not None:
+        print "raw: ", raw.shape, calib.shape
         evtDict = {}
         # det.raw
         evtDict['quads0_data'] = bitwise_array(raw[0:8])
@@ -52,7 +65,7 @@ for i, evt in enumerate(ds.events()):
         # timestamp
         evtDict['timestamp'] = timestamp
         events.append(evtDict) # TODO: Out of memory. Use ZMQ sockets to bypass writing to json
-        if i == nevents: break
+    if i == nevents: break
 
 with open(os.path.join(outdir,"crystal_"+tag+".json"), 'w') as f:
     f.write(json.dumps(events))

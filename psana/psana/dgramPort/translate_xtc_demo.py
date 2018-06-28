@@ -36,7 +36,7 @@ def translate_xtc_demo(job_type, offset=1):
     lcls1_xtc = load_json("%s.json" % job_type)
 
     alg = dc.alg('raw', [1, 2, 3])
-    ninfo = dc.nameinfo('DscCsPad', 'cspad', 'detnum1234', 0)
+    ninfo = dc.nameinfo('DsdCsPad', 'cspad', 'detnum1234', 0)
 
     # This is needed for some reason.
     # Perhaps a collision of lcls1 xtc "version" with lcls2 counterpart

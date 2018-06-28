@@ -11,7 +11,7 @@ import psana
 if doPlot: import matplotlib.pyplot as plt
 
 ds = psana.DataSource('/reg/common/package/temp/crystal_xray_evts.xtc')
-det = ds.Detector("DscCsPad")
+det = ds.Detector("DsdCsPad")
 for i, evt in enumerate(ds.events()):
     raw = det.raw(evt)
     photonEnergy = det.photonEnergy(evt)
