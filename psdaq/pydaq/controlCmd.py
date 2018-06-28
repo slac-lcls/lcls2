@@ -16,6 +16,7 @@ from ControlTransition import ControlTransition as Transition
 verbose = False
 
 def getControlPorts(body):
+    global verbose
     host = router_port = pull_port = None
     try:
         nodes = json.loads(body)
@@ -27,8 +28,8 @@ def getControlPorts(body):
             if node['level'] == 0:
                 foundControl = True
                 host = node['host']
-                router_port = node['ports'][0]['router_port']
-                pull_port = node['ports'][0]['pull_port']
+                router_port = node['ports']['router_port']['port']
+                pull_port = node['ports']['pull_port']['port']
                 if verbose:
                     print('control node in collection:')
                     pprint.pprint(node)
