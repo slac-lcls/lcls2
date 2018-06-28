@@ -18,7 +18,7 @@
 #include <assert.h>
 
 #ifdef PSANA_USE_LEGION
-#include "legion_helper.h"
+#include "legion_helper.hh"
 #endif
 
 using namespace XtcData;
