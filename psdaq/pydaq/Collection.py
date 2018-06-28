@@ -59,14 +59,3 @@ class Collection:
                 cmmsg = CollectMsg.recv(self.sub_socket)
                 if cmmsg.key == msg_type:
                     return cmmsg
-            
-    def __del__(self):
-        # Clean up
-        logging.debug("Clean up")
-    
-        # we shouldn't need this, I would hope - cpo
-        time.sleep(.25)
-    
-        # close zmq sockets
-        self.dealer_socket.close()
-        self.sub_socket.close()

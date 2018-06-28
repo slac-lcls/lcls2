@@ -7,7 +7,7 @@ Author: Chris Ford <caf@slac.stanford.edu>
 """
 
 import zmq
-import Collection
+#import Collection
 from Collection import Collection
 from ControlTransition import ControlTransition as Transition
 from ControlMsg import ControlMsg
@@ -304,16 +304,11 @@ def main():
         logging.debug("Interrupt received")
 
     # Clean up
-    logging.debug("Clean up")
+    logging.debug("Clean up control level")
 
-    time.sleep(.25)
-
-    # close zmq sockets
-    control_router_socket.close()
-    control_pull_socket.close()
-
-    # terminate zmq context
-    ctx.term()
+    # Close all sockets associated with this context, and then
+    # terminate the context.
+    ctx.destroy(0)
 
     logging.info('control level exiting')
 
