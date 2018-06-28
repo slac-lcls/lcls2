@@ -10,7 +10,7 @@ add_executable(h5writer
 )
 target_link_libraries(h5writer
     pshdf5
-    xtc
+    xtcdata::xtc
 )
 
 #

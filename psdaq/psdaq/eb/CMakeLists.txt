@@ -19,7 +19,7 @@ target_include_directories(eb PUBLIC
 )
 
 target_link_libraries(eb
-  xtc
+  xtcdata::xtc
   service
   fabric
 )

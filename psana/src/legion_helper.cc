@@ -1,4 +1,4 @@
-#include "legion_helper.h"
+#include "legion_helper.hh"
 
 #include <legion.h>
 

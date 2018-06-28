@@ -2,7 +2,7 @@
 #define LEGION_HELPER_H
 
 #ifndef PSANA_USE_LEGION
-#error legion_helper.h requires PSANA_USE_LEGION
+#error legion_helper.hh requires PSANA_USE_LEGION
 #endif
 
 #include <stddef.h>
