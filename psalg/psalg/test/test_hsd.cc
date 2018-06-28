@@ -148,11 +148,11 @@ int main (int argc, char* argv[]) {
 
 
             Heap heap;
-            unsigned nChan = 4;
+            //unsigned nChan = 4;
 
-            Pds::HSD::Client *pClient = new Pds::HSD::Client(&heap, "1.2.3", nChan);
-            Pds::HSD::HsdEventHeaderV1 *pHsd = pClient->getHsd();
-            Pds::HSD::Hsd_v1_2_3 *vHsd = (Pds::HSD::Hsd_v1_2_3*) pHsd;
+            //Pds::HSD::Client *pClient = new Pds::HSD::Client(&heap, "1.2.3", nChan);
+            //Pds::HSD::HsdEventHeaderV1 *pHsd = pClient->getHsd();
+            //Pds::HSD::Hsd_v1_2_3 *vHsd = (Pds::HSD::Hsd_v1_2_3*) pHsd;
 
             const Pds::HSD::EventHeader& eh = *reinterpret_cast<const Pds::HSD::EventHeader*>(dg);
             printf("Address of eh: %u %u\n", &eh, &eh+1);

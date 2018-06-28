@@ -15,9 +15,9 @@
 //#include "xtcdata/xtc/Array.hh" // Array
 //#include "AllocArray.hh"
 //#include "psalg/include/AllocArray.hh"
-#include "psalg/ArrayMetadata.hh"
+#include "psalg/calib/ArrayMetadata.hh"
 
-#include "psalg/Logger.hh" // for MSG
+#include "psalg/utils/Logger.hh" // for MSG
 //#include <vector>
 //#include "pdscalibdata/GlobalMethods.h"
 
