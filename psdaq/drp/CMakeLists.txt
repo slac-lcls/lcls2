@@ -8,7 +8,7 @@ add_library(utils SHARED
 )
 
 target_link_libraries(utils
-    xtcdata
+    xtc
     pgpdriver
     #pshdf5
     eb

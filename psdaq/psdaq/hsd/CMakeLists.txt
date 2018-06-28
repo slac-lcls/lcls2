@@ -27,7 +27,7 @@ target_include_directories(hsd PUBLIC
 )
 
 target_link_libraries(hsd
-    xtcdata
+    xtc
     mmhw
     rt
 )
@@ -136,7 +136,7 @@ target_include_directories(hsdRead PUBLIC
 
 target_link_libraries(hsdRead
    hsd
-   xtcdata
+   xtc
    epicstools
    ${EPICS_CA_LIB}
    pthread
