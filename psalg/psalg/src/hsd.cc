@@ -1,4 +1,4 @@
-#include "psalg/include/hsd.hh"
+#include "psalg/hsd.hh"
 
 #include <stdio.h>
 #include <ctype.h>

@@ -2,8 +2,8 @@
 #define PSANA_AREADETECTORBASE_H
 //-----------------------------
 
-#include "psalg/include/Logger.h" // MSG, LOGGER
-#include "psalg/include/AllocArray.hh"
+#include "psalg/Logger.hh" // MSG, LOGGER
+#include "psalg/AllocArray.hh"
 
 namespace Detector {
 

@@ -12,12 +12,11 @@
 #include <iostream>
 #include <stdlib.h>
 
-#include "psalg/include/PeakFinderAlgos.hh"
-#include "psalg/include/LocalExtrema.hh"
-#include "psalg/include/Types.hh"
-
-#include "psalg/include/AllocArray.hh"
-#include "psalg/include/Allocator.hh"
+#include "psalg/PeakFinderAlgos.hh"
+#include "psalg/LocalExtrema.hh"
+#include "psalg/Types.hh"
+#include "psalg/AllocArray.hh"
+#include "psalg/Allocator.hh"
 
 #include <chrono> // timer
 typedef std::chrono::high_resolution_clock Clock;

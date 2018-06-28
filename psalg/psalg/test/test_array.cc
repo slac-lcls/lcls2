@@ -5,8 +5,8 @@
 #include <vector>
 #include <stdlib.h>
 
-#include "psalg/include/AllocArray.hh"
-#include "psalg/include/Allocator.hh"
+#include "psalg/AllocArray.hh"
+#include "psalg/Allocator.hh"
 
 using namespace psalg;
 

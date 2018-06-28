@@ -1,15 +1,15 @@
 install(FILES
-    include/LocalExtrema.hh
-    include/PeakFinderAlgos.hh
-    include/Types.hh
-    include/stream.hh
-    include/hsd.hh
-    include/AllocArray.hh
-    include/Allocator.hh
+    LocalExtrema.hh
+    PeakFinderAlgos.hh
+    Types.hh
+    stream.hh
+    hsd.hh
+    AllocArray.hh
+    Allocator.hh
     ArrayIO.hh
     ArrayMetadata.hh
     Logger.hh
-    DESTINATION include/psalg/include
+    DESTINATION include/psalg
 )
 
 add_library(psalg SHARED

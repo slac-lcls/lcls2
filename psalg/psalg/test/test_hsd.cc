@@ -12,9 +12,9 @@
 #include <string>
 #include <unistd.h>
 
-#include "psalg/include/AllocArray.hh"
-#include "psalg/include/Allocator.hh"
-#include "psalg/include/hsd.hh"
+#include "psalg/AllocArray.hh"
+#include "psalg/Allocator.hh"
+#include "psalg/hsd.hh"
 
 #include "xtcdata/xtc/DetInfo.hh"
 #include "xtcdata/xtc/ProcInfo.hh"
