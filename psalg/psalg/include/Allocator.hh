@@ -2,6 +2,7 @@
 #define ALLOCATOR__H
 
 #include <stdint.h>
+#include <stdlib.h>
 
 class Allocator{ //Heap -> Allocator
 public:
