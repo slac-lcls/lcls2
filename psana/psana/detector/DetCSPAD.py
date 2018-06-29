@@ -1,5 +1,6 @@
 from psana.detector.detector import DetectorBase
 import numpy as np
+import os
 
 class CSPAD(DetectorBase):
 
@@ -30,3 +31,10 @@ class CSPAD(DetectorBase):
     def calib(self, data, verbose=0): print("cspad.calib")
 
     def image(self, data, verbose=0): print("cspad.image")
+
+    def pedestals(self, run):
+        try:
+            dir = os.environ['DEMO_CXID9114']
+        except:
+            dir = '/reg/common/package/temp'
+        return np.load(os.path.join(dir,'cxid9114_r0089_pedestals.npy'))

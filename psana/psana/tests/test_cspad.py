@@ -12,11 +12,13 @@ if doPlot: import matplotlib.pyplot as plt
 
 ds = psana.DataSource('/reg/common/package/temp/crystal_xray_evts.xtc')
 det = ds.Detector("DsdCsPad")
+run = 96
 for i, evt in enumerate(ds.events()):
     raw = det.raw(evt)
+    ped = det.pedestals(run)
     photonEnergy = det.photonEnergy(evt)
     timestamp = det.timestamp(evt)
-    print(i, raw.shape)
+    print(i, raw.shape, ped.shape)
     print(photonEnergy)
     print(timestamp)
 
