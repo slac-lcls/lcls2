@@ -1,3 +1,6 @@
+#add_subdirectory(utils)
+#add_subdirectory(calib)
+
 install(FILES
     LocalExtrema.hh
     PeakFinderAlgos.hh
@@ -111,4 +114,5 @@ install(TARGETS psalg
 install(EXPORT psalgTargets
     FILE psalgConfig.cmake
     DESTINATION lib/cmake/psalg
+    NAMESPACE psalg::
 )

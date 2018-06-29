@@ -7,21 +7,20 @@
 //---------------------------------------------------
 
 //#include <map>
+//#include <vector>
 //#include <iostream> // cout, puts etc.
 #include <string>
 #include <fstream> // in *.hh
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
 //#include "xtcdata/xtc/Array.hh" // Array
-//#include "AllocArray.hh"
-//#include "psalg/include/AllocArray.hh"
+#include "psalg/AllocArray.hh"
 #include "psalg/calib/ArrayMetadata.hh"
-
-#include "psalg/utils/Logger.hh" // for MSG
-//#include <vector>
-//#include "pdscalibdata/GlobalMethods.h"
+//#include "psalg/utils/Logger.hh" // for MSG
+#include "psalg/Logger.hh" // for MSG
 
 using namespace std;
+using namespace psalg;
 
 namespace psalg {
 
@@ -51,8 +50,12 @@ protected:
 
 private:
 
+  //AllocArray<T> _arr;
   //Array<T>* _nda;
-  //psalg::AllocArray1D<T> _1da; // reserve memory for data
+  //AllocArray1D<T> _1da; // reserve memory for data
+  //AllocArray1D<float> _1da; // reserve memory for data
+
+  Stack* _stack; // reserve memory for data
 
   std::string _fname;
   unsigned    _ctor;
@@ -69,8 +72,6 @@ private:
   std::string _dtype_name;
 
   ArrayMetadata _metad;
-
-  //AllocArray<T> _arr;
 
   //std::map<std::string,std::string> _metad;
 
@@ -92,90 +93,6 @@ private:
   ArrayIO(const ArrayIO&) ;
   ArrayIO& operator = (const ArrayIO&) ;
 };
-
-/*
-template <typename T>
-class ArrayIO {
-
-  //static const unsigned c_ndim = NDIM;
-
-public:
-
-  ArrayIO(const std::string& fname
-	   ,const shape_t* shape_def
-	   ,const T& val_def=T(0) 
-	   ,const unsigned print_bits=0377);
-
-  ArrayIO(const std::string& fname
-	   ,const Array<const T>& nda_def
-	   ,const unsigned print_bits=0377);
-
-  /// Returns number of dimensions of array.
-  unsigned int ndim() const {return NDIM;}
-
-  /// Access methods
-  /// prints recognized templated parameters.
-  void print();
-
-  /// Prints input file line-by-line.
-  void print_file();
-
-  /// Loads (if necessary) array from file and print it.
-  void print_array();
-
-  /// Loads (if necessary) array from file and returns it.
-  Array<T, NDIM>& get_array(const std::string& fname = std::string());
-  //Array<const T, NDIM>& get_array(const std::string& fname = std::string());
-
-  /// Returns string with status of calibration constants.
-  std::string str_status();
-
-  /// Returns enumerated status of calibration constants.
-  STATUS status(){return m_status;}
-
-  /// Returns string with info about array.
-  std::string str_array_info();
-
-  /// Returns string of shape.
-  std::string str_shape();
-
-  /// Static method to save array in file with internal metadata and external comments
-  static void save_ndarray(const Array<const T, NDIM>& nda, 
-                           const std::string& fname,
-                           const std::vector<std::string>& vcoms = std::vector<std::string>(), 
-	                   const unsigned& print_bits=0377);
-
-protected:
-
-private:
-
-  /// Data members  
-
-  Array<T, NDIM>* p_nda;
-
-  std::string m_fname;
-  T       m_val_def;
-  const Array<const T, NDIM> m_nda_def;
-  Array<T, NDIM> m_nda_empty;
-  unsigned    m_print_bits;
-
-  unsigned    m_ndim;
-  size_t      m_size;
-  shape_t     m_shape[NDIM];
-  std::string m_str_type;
-  DATA_TYPE   m_enum_type;
-
-  T* p_data;
-
-  /// true if the file name non empty anf file is readable
-  bool file_is_available();
-
-  /// creates Array<TYPE,NDIM> with shape from constructor parameter or metadata.
-  void create_array(const bool& fill_def=false);
-
-};
-
-*/
 
 } // namespace psalg
 

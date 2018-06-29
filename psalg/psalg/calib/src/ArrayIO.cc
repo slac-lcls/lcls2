@@ -2,11 +2,7 @@
 // Adopted to lcls2 on 2018-06-06 by Mikhail Dubrovin
 //---------------------------------------------------
 
-#include "psalg/calib/ArrayIO.hh"
-//#include "psalg/utils/Logger.hh" // MSG
-
-//#include <algorithm>
-//#include <stdexcept>
+#include "psalg/ArrayIO.hh"
 
 #include <iostream>  // cout, puts
 #include <sstream>   // stringstream
@@ -47,11 +43,6 @@ void ArrayIO<T>::_init()
   _status = ArrayIO<T>::UNDEFINED;
   //_metad.clear();
 }
-
-
-
-
-
 
 //-----------------------------
 
@@ -160,7 +151,6 @@ void ArrayIO<T>::_parse_shape(const std::string& str) {
 
   _metad.set(_shape, _ndim);
   _size = _metad.size();
-
 }
 
 //-----------------------------
