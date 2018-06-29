@@ -16,8 +16,7 @@
 //#include "xtcdata/xtc/Array.hh" // Array
 #include "psalg/AllocArray.hh"
 #include "psalg/calib/ArrayMetadata.hh"
-//#include "psalg/utils/Logger.hh" // for MSG
-#include "psalg/Logger.hh" // for MSG
+#include "psalg/utils/Logger.hh" // for MSG
 
 using namespace std;
 using namespace psalg;

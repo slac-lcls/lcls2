@@ -1,6 +1,11 @@
 add_library(calib SHARED
-    src/Logger.cc
+    src/ArrayIO.cc
 )
+
+target_link_libraries(calib
+    xtcdata::xtc
+)
+
 
 target_include_directories(calib PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>

@@ -1,5 +1,5 @@
-#add_subdirectory(utils)
-#add_subdirectory(calib)
+add_subdirectory(utils)
+add_subdirectory(calib)
 
 install(FILES
     LocalExtrema.hh
@@ -11,7 +11,7 @@ install(FILES
     Allocator.hh
     calib/ArrayIO.hh
     calib/ArrayMetadata.hh
-    utils/Logger.hh
+#    utils/Logger.hh
     DESTINATION include/psalg
 )
 
@@ -20,7 +20,7 @@ add_library(psalg SHARED
     src/PeakFinderAlgos.cc
     src/stream.cc
     calib/src/ArrayIO.cc
-    utils/src/Logger.cc
+#    utils/src/Logger.cc
     src/hsd.cc
 )
 
@@ -32,6 +32,8 @@ target_include_directories(psalg PUBLIC
 
 # this is necessary only on RHEL6 where we need to pick up clock_gettime
 target_link_libraries(psalg
+    utils
+    calib
     rt
 )
 
