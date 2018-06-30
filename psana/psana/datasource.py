@@ -31,13 +31,9 @@ if size > 1:
         raise InputError(size, "Parallel processing needs at least 3 cores.")
 
 FN_L = 200
-n_events = 10000
+N_EVENTS = int(os.environ.get('PS_SMD_N_EVENTS', 100))
 PERCENT_SMD = .25
 
-def debug(evt):
-    test_vals = [d.xpphsd.fex.intFex==42 for d in evt]
-    print("-debug mode- rank: %d %s"%(rank, test_vals))
-    assert all(test_vals)
 
 def smd_0(fds, n_smd_nodes):
     """ Sends blocks of smds to smd_node
@@ -50,7 +46,7 @@ def smd_0(fds, n_smd_nodes):
     rankreq = np.empty(1, dtype='i')
 
     while got_events != 0:
-        smdr.get(n_events)
+        smdr.get(N_EVENTS)
         got_events = smdr.got_events
         views = bytearray()
         for i in range(len(fds)):
@@ -97,7 +93,6 @@ def smd_node(configs, n_bd_nodes, batch_size=1, filter=0):
             # build batch of events
             eb = EventBuilder(views, configs)
             batch = eb.build(batch_size=batch_size, filter=filter)
-            
             while eb.nevents:
                 comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
                 comm.Send(batch, dest=rankreq[0])
@@ -110,7 +105,6 @@ def smd_node(configs, n_bd_nodes, batch_size=1, filter=0):
         comm.Send(bytearray(b'eof'), dest=rankreq[0])
 
 def bd_node(ds, smd_node_id):
-    configs = ds.configs
     while True:
         comm.Send(np.array([rank], dtype='i'), dest=smd_node_id, tag=13)
         info = MPI.Status()
@@ -124,13 +118,12 @@ def bd_node(ds, smd_node_id):
         views = view.split(b'endofevt')
         for event_bytes in views:
             if event_bytes:
-                evt = Event().from_bytes(configs, event_bytes)
+                evt = Event().from_bytes(ds.smd_configs, event_bytes)
                 # get big data
                 ofsz = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] \
                         for d in evt])
                 bd_evt = ds.dm.next(offsets=ofsz[:,0], sizes=ofsz[:,1], read_chunk=False)
                 yield bd_evt
-
 
 def reader(ds):
     """Reads dgram sequentially """
@@ -158,10 +151,10 @@ def read_event(ds, event_type=None):
         for evt in reader(ds): yield evt       # safe for python2
     else:
         if ds.nodetype == 'smd0':
-            smd_0(ds._file_descriptors, ds.nsmds)
+            smd_0(ds.smd_dm.fds, ds.nsmds)
         elif ds.nodetype == 'smd':
             bd_nodes = (np.arange(size)[ds.nsmds+1:] % ds.nsmds) + 1
-            smd_node(ds.configs, len(bd_nodes[bd_nodes==rank]), \
+            smd_node(ds.smd_configs, len(bd_nodes[bd_nodes==rank]), \
                     batch_size=ds.batch_size, filter=ds.filter)
         elif ds.nodetype == 'bd':
             smd_node_id = (rank % ds.nsmds) + 1
@@ -268,8 +261,8 @@ class DataSource(object):
 
             if size == 1:
                 self.smd_dm = DgramManager(self.smd_files) 
-                self.dm = DgramManager(self.xtc_files, configs=self.smd_dm.configs)
-                self.configs = self.smd_dm.configs
+                self.dm = DgramManager(self.xtc_files)
+                self.configs = self.dm.configs
             else:
                 # Send filenames
                 comm.Bcast(self.nfiles, root=0)
@@ -283,15 +276,26 @@ class DataSource(object):
                 
                 # Send configs
                 if rank == 0:
-                    self.dm = DgramManager(self.smd_files) 
+                    self.smd_dm = DgramManager(self.smd_files) 
+                    self.smd_configs = self.smd_dm.configs # FIXME: there should only be one type of config
+                    smd_nbytes = np.array([memoryview(config).shape[0] for config in self.smd_configs], \
+                            dtype='i')
+                    self.dm = DgramManager(self.xtc_files)
                     self.configs = self.dm.configs
                     nbytes = np.array([memoryview(config).shape[0] for config in self.configs], \
-                            dtype='i')
+                                                        dtype='i')
                 else:
+                    self.smd_dm = None
+                    self.smd_configs = [dgram.Dgram() for i in range(self.nfiles[0])]
+                    smd_nbytes = np.empty(self.nfiles[0], dtype='i')
                     self.dm = None
                     self.configs = [dgram.Dgram() for i in range(self.nfiles[0])]
                     nbytes = np.empty(self.nfiles[0], dtype='i')
     
+                comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich
+                for i in range(self.nfiles[0]): 
+                    comm.Bcast([self.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
+                
                 comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
                 for i in range(self.nfiles[0]): 
                     comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
@@ -303,11 +307,12 @@ class DataSource(object):
                 elif rank < self.nsmds + 1:
                     self.nodetype = 'smd'
                 
-                # Big-data nodes own big data
                 if self.nodetype == 'bd':
                     self.dm = DgramManager(self.xtc_files, configs=self.configs)
+       
+        if self.nodetype == 'bd':
+            self.Detector = Detector(self.configs)
         
-        self.Detector = Detector(self.configs)
 
     def runs(self): 
         nruns = 1
@@ -328,9 +333,3 @@ class DataSource(object):
         assert len(self.configs) > 0
         return self.configs
     
-    @property
-    def _file_descriptors(self):
-        if self.dm:
-            return self.dm.fds
-        else:
-            return 0

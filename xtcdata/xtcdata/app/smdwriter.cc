@@ -6,6 +6,9 @@
 #include <string>
 #include <unistd.h>
 #include <iostream>
+#include <sys/time.h>
+#include <fstream>
+#include <array>
 
 // additions from xtc writer
 #include <type_traits>
@@ -135,14 +138,20 @@ int main(int argc, char* argv[])
    * then writes out (fseek) offset in smd.xtc file.
    */ 
   int c;
+  int writeTs = 0;
+  char* tsname = 0;
   char* xtcname = 0;
   int parseErr = 0;
 
-  while ((c = getopt(argc, argv, "hf:")) != -1) {
+  while ((c = getopt(argc, argv, "ht:f:")) != -1) {
     switch (c) {
       case 'h':
         usage(argv[0]);
         exit(0);
+      case 't':
+        writeTs = 1;
+        tsname = optarg;
+        break;
       case 'f':
         xtcname = optarg;
         break;
@@ -172,7 +181,26 @@ int main(int argc, char* argv[])
     printf("Error opening output xtc file.\n");
     return -1;
   }
-
+  
+  // Read timestamp
+  array<time_t, 500> sec_arr = {};
+  array<long, 500> nsec_arr = {};
+  sec_arr[0] = 0;
+  nsec_arr[0] = 0;
+  if (tsname != 0) {
+    ifstream tsfile(tsname);
+    time_t sec = 0;
+    long nsec = 0;
+    int i = 1;
+    while (tsfile >> sec >> nsec) {
+        sec_arr[i] = sec;
+        nsec_arr[i] = nsec;
+        cout << sec_arr[i] << " " << nsec_arr[i] << endl;
+        i++;
+    }  
+    printf("found %d timestamps", i); 
+  }
+  
   // Setting names
   void* configbuf = malloc(BUFSIZE);
   Dgram& config = *(Dgram*)configbuf;
@@ -192,6 +220,8 @@ int main(int argc, char* argv[])
   unsigned eventId = 0;
   uint64_t nowOffset = 0;
   uint64_t nowDgramSize = 0;
+  struct timeval tv;
+  uint64_t pulseId = 0;
 
   printf("\nStart writing offsets.\n"); 
   while ((dgIn = iter.next())) {
@@ -200,16 +230,27 @@ int main(int argc, char* argv[])
     dgOut.xtc.contains = tid;
     dgOut.xtc.damage = 0;
     dgOut.xtc.extent = sizeof(Xtc);
-    dgOut.seq = dgIn->seq;
 
-    unsigned nameId = 3; // offset is the last
+    if (writeTs != 0) {
+        if (tsname != 0) {
+            dgOut.seq = Sequence(TimeStamp(sec_arr[eventId], nsec_arr[eventId]), PulseId(pulseId));
+        } else {
+            gettimeofday(&tv, NULL);
+            dgOut.seq = Sequence(TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId));
+            cout << tv.tv_sec << " " << tv.tv_usec << endl;
+        }
+    } else {
+        dgOut.seq = dgIn->seq;
+    }
+
+    unsigned nameId = 3; 
     CreateData smd(dgOut.xtc, namesVec, nameId);
     smd.set_value(SmdDef::intOffset, nowOffset);
     nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     smd.set_value(SmdDef::intDgramSize, nowDgramSize);
     
-    if (eventId > 0) { 
-        if (nowOffset <= 0) {
+    if (eventId > 0 ) {
+        if (nowOffset < 0) {
             cout << "Error offset value (offset=" << nowOffset << ")" << endl;
             return -1;
         }
@@ -221,13 +262,14 @@ int main(int argc, char* argv[])
             printf("Error writing to output xtc file.\n");
             return -1;
         }
-    } else {
-        printf("Skip evt: 0 (config)\n");
     }
 
     // Update the offset
     nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     eventId++;
+    if (eventId == 404) { // FIXME: to be removed when ts issue is fixed
+        break;
+    }
   }
   printf("Finished writing smd for %u events\n", eventId);
   fclose(xtcFile);
