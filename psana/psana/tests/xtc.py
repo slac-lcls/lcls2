@@ -3,8 +3,8 @@ from sys import getrefcount as getref
 import numpy as np
 from psana import DataSource
 
-def myroutine():
-  ds = DataSource('data.xtc')  
+def myroutine(fname):
+  ds = DataSource(fname)  
   for nevent,evt in enumerate(ds.events()):
       if nevent==0:
         dgrambytes_event0=evt.dgrams[0]._dgrambytes
@@ -38,13 +38,13 @@ class DgramTester:
           self.ntested+=1
     return self.ntested
 
-def xtc():
+def xtc(fname):
 
   import sys, os
   sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
   from vals import testvals
 
-  dgram, config = myroutine()
+  dgram, config = myroutine(fname)
   configtester = DgramTester(testvals)
   ntested = configtester.iter(config)
   assert(ntested==len(testvals))

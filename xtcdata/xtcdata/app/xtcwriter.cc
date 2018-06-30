@@ -404,12 +404,15 @@ void usage(char* progname)
     fprintf(stderr, "Usage: %s [-f <filename> -t -h]\n", progname);
 }
 
+#define MAX_FNAME_LEN 256
+
 int main(int argc, char* argv[])
 {
     int c;
     int writeTs = 0;
     int parseErr = 0;
-    char* xtcname = "data.xtc";
+    char xtcname[MAX_FNAME_LEN];
+    strncpy(xtcname, "data.xtc", MAX_FNAME_LEN);
 
     while ((c = getopt(argc, argv, "htf:")) != -1) {
         switch (c) {
@@ -420,7 +423,7 @@ int main(int argc, char* argv[])
                 writeTs = 1;
                 break;
             case 'f':
-                xtcname = optarg;
+                strncpy(xtcname, optarg, MAX_FNAME_LEN);
                 break;
             default:
                 parseErr++;
@@ -469,7 +472,7 @@ int main(int argc, char* argv[])
         
         if (writeTs != 0) {
             gettimeofday(&tv, NULL);
-            dgram.seq = Sequence(TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId));
+            dgram.seq = Sequence(TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
         }
 
         addData(dgram.xtc,namesVec);

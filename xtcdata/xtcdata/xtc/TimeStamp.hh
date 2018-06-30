@@ -14,6 +14,7 @@ public:
     TimeStamp(const ::timespec& ts);
     TimeStamp(const double sec);
     TimeStamp(unsigned sec, unsigned nsec);
+    TimeStamp(uint64_t stamp);
 
 public:
     uint64_t value() const

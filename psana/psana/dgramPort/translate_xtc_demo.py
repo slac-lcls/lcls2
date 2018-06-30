@@ -14,14 +14,16 @@ def load_json(filename):
         data = json.load(f)
 
     event_dict = []
+    timestamps = []
     for event in data:
-        for key,val in event.items():
+        for key,val in event['data'].items():
             try:
-                event[key]= np.frombuffer(base64.b64decode(val[0]), dtype = np.dtype(val[2])).reshape(val[1])
+                event['data'][key]= np.frombuffer(base64.b64decode(val[0]), dtype = np.dtype(val[2])).reshape(val[1])
             except TypeError:
                 pass
-        event_dict.append(event)
-    return event_dict
+        event_dict.append(event['data'])
+        timestamps.append(event['timestamp'])
+    return event_dict,timestamps
 
 
 def translate_xtc_demo(job_type, offset=1):
@@ -33,7 +35,7 @@ def translate_xtc_demo(job_type, offset=1):
     except:
         pass
 
-    lcls1_xtc = load_json("%s.json" % job_type)
+    lcls1_xtc,timestamps = load_json("%s.json" % job_type)
 
     alg = dc.alg('raw', [1, 2, 3])
     ninfo = dc.nameinfo('DsdCsPad', 'cspad', 'detnum1234', 0)
@@ -50,16 +52,16 @@ def translate_xtc_demo(job_type, offset=1):
 
     with open(configure_file, 'wb') as f:
         cydgram.addDet(ninfo, alg, lcls1_xtc[0])
-        df = cydgram.get()
+        df = cydgram.get(timestamps[0],0,0)
         f.write(df)
 
     del cydgram
     cydgram = dc.CyDgram()
 
     with open(event_file, 'wb') as f:
-        for event_dgram in lcls1_xtc[offset:]:
-            cydgram.addDet(ninfo, alg, event_dgram)
-            df = cydgram.get()
+        for event_dict,timestamp in zip(lcls1_xtc[offset:],timestamps[offset:]):
+            cydgram.addDet(ninfo, alg, event_dict)
+            df = cydgram.get(timestamp,0,0)
             f.write(df)
 
     ds_cfg = DgramManager(configure_file)

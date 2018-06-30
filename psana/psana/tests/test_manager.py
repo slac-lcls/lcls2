@@ -16,39 +16,29 @@ class Test:
     def setup_class(cls):
         subprocess.call(['xtcwriter'])
 
-    def hash_xtc(self, filename):
-        with open(filename, "rb") as f:
-            data=f.read()
-        data = bytes(sorted(data))
-        md5 = hashlib.md5()
-        md5.update(data)
-
-        return md5.hexdigest()
-
-    def test_copy(self):
+    def test_cydgram(self):
+        fname = 'data_cydgram.xtc'
         try:
-            os.remove('data_copy.xtc')
+            os.remove(fname)
         except:
             pass
 
-        input = 'data.xtc'
-        input2 = 'data_copy.xtc'
-
-        ds = DgramManager(input)
+        # read in an old xtc file
+        ds = DgramManager('data.xtc')
         pyxtc = dc.parse_xtc(ds)
 
         for evt in ds:
             pyxtc.parse_event(evt)
 
+        # put the dictionaries in a new xtc file
         cydgram = dc.CyDgram()
-        pyxtc.write_events(input2, cydgram)
+        pyxtc.write_events(fname, cydgram)
 
-        h1 = self.hash_xtc(input)
-        h2 = self.hash_xtc(input2)
-        assert(h1==h2)
+        # test that the values in the new file are correct
+        xtc(fname)
 
     def test_xtc(self):
-        xtc()
+        xtc('data.xtc')
 
     def test_parallel(self):
         subprocess.call(['xtcwriter','-f','data-ts.xtc', '-t']) # Mona FIXME: writing seq in xtcwriter broke dgramCreate

@@ -24,6 +24,7 @@ else:
     ds = DataSource('exp='+expname+':run='+run)
 
 det = Detector(detname)
+ebeamDet = Detector('EBeam')
 epics = ds.env().epicsStore()
 print "det: ", det, dir(det)
 print "epics: ", epics
@@ -40,9 +41,8 @@ for i, evt in enumerate(ds.events()):
     print "####: ", i, evt
     raw = det.raw(evt)
     calib = det.calib(evt)
-    print "$$$$: ", raw
 
-    ebeam = evt.get(Bld.BldDataEBeamV7, Source('BldInfo(EBeam)'))
+    ebeam = ebeamDet.get(evt)
     photonEnergy = epics.value('SIOC:SYS0:ML00:AO541')
     print "photonEnergy: ", photonEnergy
 
@@ -55,15 +55,15 @@ for i, evt in enumerate(ds.events()):
     if raw is not None:
         print "raw: ", raw.shape, calib.shape
         evtDict = {}
-        # det.raw
-        evtDict['quads0_data'] = bitwise_array(raw[0:8])
-        evtDict['quads1_data'] = bitwise_array(raw[8:16])
-        evtDict['quads2_data'] = bitwise_array(raw[16:24])
-        evtDict['quads3_data'] = bitwise_array(raw[24:32])
-        # photon energy
-        evtDict['photonEnergy'] = photonEnergy
-        # timestamp
         evtDict['timestamp'] = timestamp
+        evtDict['data'] = {}
+        # det.raw
+        evtDict['data']['quads0_data'] = bitwise_array(raw[0:8])
+        evtDict['data']['quads1_data'] = bitwise_array(raw[8:16])
+        evtDict['data']['quads2_data'] = bitwise_array(raw[16:24])
+        evtDict['data']['quads3_data'] = bitwise_array(raw[24:32])
+        # photon energy
+        evtDict['data']['photonEnergy'] = photonEnergy
         events.append(evtDict) # TODO: Out of memory. Use ZMQ sockets to bypass writing to json
     if i == nevents: break
 

@@ -39,6 +39,7 @@ class nameinfo:
         self.detId = fix_encoding(did)
         self.namesId = namesid
 
+# I believe this method is only used for testing
 class parse_xtc():
     def __init__(self, datasource):
         self.datasource = datasource
@@ -110,7 +111,7 @@ class parse_xtc():
         for key, value in event.items():
             for detector in value:
                 cydgram.addDet(detector['nameinfo'], detector['base_alg'], detector['data'])
-        return cydgram.get()
+        return cydgram.get(0,0,0)
 
     def write_events(self, fileName, cydgram):
         with open(fileName, 'wb') as f:
@@ -125,7 +126,7 @@ class parse_xtc():
 cdef extern from 'xtcdata/xtc/BlockDgram.hh' namespace "XtcData":
 
     cdef cppclass BlockDgram:
-        BlockDgram(void* buffdgram)
+        BlockDgram(void* buffdgram, cnp.uint64_t tstamp, cnp.uint64_t pulseId, unsigned transitionId)
 
         void addNamesBlock(cnp.uint8_t* name_block, size_t block_elems)
         void addShapesDataBlock(cnp.uint8_t* shape_block, cnp.uint8_t* data_block,\
@@ -169,13 +170,16 @@ cdef class PyBlockDgram:
     cdef cnp.uint8_t* buffer
     cdef cnp.uint8_t* addBuff
     cdef size_t block_elems
+    cdef cnp.uint64_t tstamp
+    cdef cnp.uint64_t pulseId
+    cdef unsigned transitionId
 
 
-    def __cinit__(self):
+    def __cinit__(self, tstamp, pulseId, transitionId):
 
         self.buffer_size =0x4000000
         self.buffer  = <cnp.uint8_t*> malloc(self.buffer_size)
-        self.cptr = new BlockDgram(self.buffer)
+        self.cptr = new BlockDgram(self.buffer, tstamp, pulseId, transitionId)
 
     def addNamesBlock(self, PyNameBlock pyn):
         self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct)
@@ -355,8 +359,12 @@ class CyDgram():
         py_name.addNameInfo(py_nameinfo)
         self.config_block.append([py_name, py_shape, py_data])
 
-    def constructBlock(self):
-        self.pydgram = PyBlockDgram()
+    # the user calls this via get() which constructs the datagram header
+    # with the specified timestamp, pulseId and transitionId.
+    # header, adds in the Names block if it's the first time ("configure")
+    # and then adds the Shapes and Data blocks
+    def constructBlock(self, tstamp, pulseId, transitionId):
+        self.pydgram = PyBlockDgram(tstamp, pulseId, transitionId)
 
         if self.write_configure:
             for name, _, _ in self.config_block:
@@ -371,13 +379,12 @@ class CyDgram():
      #        self.config_block = []
      #    self.pydgram.writeToFile(self.filename)
 
-    def get(self):
-        self.constructBlock()
+    def get(self, timestamp, pulseId, transitionId):
+        self.constructBlock(timestamp, pulseId, transitionId)
         self.config_block = []
         return self.pydgram.retByArr().tobytes()
 
-    def getArray(self):
-        self.constructBlock()
+    def getArray(self, timestamp, pulseId, transitionId):
+        self.constructBlock(timestamp, pulseId, transitionId)
         self.config_block = []
         return self.pydgram.retByArr()
-

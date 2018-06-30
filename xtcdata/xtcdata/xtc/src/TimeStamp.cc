@@ -4,15 +4,25 @@
 XtcData::TimeStamp::TimeStamp()
 {
 }
+
 XtcData::TimeStamp::TimeStamp(const TimeStamp& t) : _low(t._low), _high(t._high)
 {
 }
+
 XtcData::TimeStamp::TimeStamp(const timespec& ts) : _low(ts.tv_nsec), _high(ts.tv_sec)
 {
 }
+
 XtcData::TimeStamp::TimeStamp(unsigned sec, unsigned nsec) : _low(nsec), _high(sec)
 {
 }
+
+XtcData::TimeStamp::TimeStamp(uint64_t stamp)
+{
+    _low = stamp&0xffffffff;
+    _high = (stamp>>32)&0xffffffff;
+}
+
 XtcData::TimeStamp::TimeStamp(double sec)
 {
     double intpart;
