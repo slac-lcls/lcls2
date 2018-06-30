@@ -22,7 +22,7 @@ class CMState(object):
     entries = {}
     UNASSIGNED = "Unassigned"
 
-    def __init__(self, platform, heartbeatInterval=10):
+    def __init__(self, platform, heartbeatInterval=0):
         self._platform = platform
         self._heartbeatInterval = heartbeatInterval
         self._nodeTimeout = 3 * heartbeatInterval
@@ -79,10 +79,10 @@ class CMState(object):
         rv = []
         for k in self.entries.keys():
             try:
-                # check for matching ip+pid
-                if ((self.entries[k]['ip'] == prop['ip']) and (self.entries[k]['pid'] == prop['pid'])):
+                # check for multiple control levels
+                if (self.entries[k]['level'] == prop['level'] == 0):
                     rv.append(k)
-            except:
+            except Exception:
                 pass
         return rv
 
