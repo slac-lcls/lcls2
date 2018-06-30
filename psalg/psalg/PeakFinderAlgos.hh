@@ -235,7 +235,7 @@ public:
    * @param[in] pbits  - print control bit-word; =0-print nothing, =1 debug, =2 info, ...
    */
 
-  PeakFinderAlgos(Allocator *allocator, const size_t& seg=0, const unsigned& pbits=0, const size_t& lim_rank=50, const size_t& lim_peaks=4096);
+  PeakFinderAlgos(Allocator *allocator, const size_t& seg=0, const unsigned& pbits=0, const size_t& lim_rank=50, const size_t& lim_peaks=6000);
 
   virtual ~PeakFinderAlgos();
 
