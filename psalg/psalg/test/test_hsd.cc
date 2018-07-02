@@ -12,8 +12,8 @@
 #include <string>
 #include <unistd.h>
 
-#include "psalg/AllocArray.hh"
-#include "psalg/Allocator.hh"
+#include "psalg/alloc/AllocArray.hh"
+#include "psalg/alloc/Allocator.hh"
 #include "psalg/hsd.hh"
 
 #include "xtcdata/xtc/DetInfo.hh"

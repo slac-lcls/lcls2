@@ -14,7 +14,7 @@
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
 //#include "xtcdata/xtc/Array.hh" // Array
-#include "psalg/AllocArray.hh"
+#include "psalg/alloc/AllocArray.hh"
 #include "psalg/calib/ArrayMetadata.hh"
 #include "psalg/utils/Logger.hh" // for MSG
 
