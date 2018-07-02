@@ -63,8 +63,11 @@ def main():
             elif cmmsg.key == CollectMsg.PLAT:
                 if verbose:
                     print( "Received PLAT, sending HELLO (platform=%d)" % args.p)
-                newmsg = CollectMsg(0, key=CollectMsg.HELLO)
-                # Create simulated ports entry based on clientId N, platform P
+
+                # start composing JSON message
+                pybody = {}
+
+                # Create simulated HELLO entry based on clientId N, platform P
                 # {
                 #   'platform' : P
                 #   'name'     : 'collectTestN'
@@ -76,23 +79,25 @@ def main():
                 #   'host'     : '<hostname>'
                 #   'ether'    : 'NN:NN:NN:NN:NN:NN'
                 # }
-                newmsg['platform'] = args.p
-                newmsg['name'] = 'collectTest%d' % clientId
-                if unselect:
-                    newmsg['select'] = 0
-                newmsg['group'] = newmsg['uid'] = newmsg['level'] = \
+
+                pybody['platform'] = args.p
+                pybody['name'] = 'collectTest%d' % clientId
+                pybody['group'] = pybody['uid'] = pybody['level'] = \
                     clientId
-                newmsg['ip'] = \
+                pybody['ip'] = \
                     '172' + (3 * ('.%d%d' % (clientId, clientId)))
-                newmsg['pid'] = 25000 + (111 * clientId)
-                newmsg['host'] = socket.gethostname()
-                newmsg['ether'] = \
+                pybody['pid'] = 25000 + (111 * clientId)
+                pybody['host'] = socket.gethostname()
+                pybody['ether'] = \
                     '%d%d' % (clientId, clientId) + \
                                (5 * (':%d%d' % (clientId, clientId)))
+
+                jsonbody = json.dumps(pybody)
+                hellomsg = CollectMsg(key=CollectMsg.HELLO, body=jsonbody)
                 try:
-                    newmsg.send(collect_cmd)
+                    hellomsg.send(collect_cmd)
                 except Exception as ex:
-                    print('E: newmsg.send()', ex)
+                    print('E: hellomsg.send()', ex)
 
             elif cmmsg.key == CollectMsg.DIE:
                 if verbose:
@@ -111,15 +116,20 @@ def main():
             if cmmsg.key == CollectMsg.ALLOC:
                 if verbose:
                     print( "Received ALLOC, sending PORTS")
-                newmsg = CollectMsg(0, key=CollectMsg.PORTS)
-                # Create simulated ports entry based on clientId N
+
+                # start composing JSON message
+                pybody = {}
+
+                # Create simulated PORTS entry based on clientId N
                 # {
                 #   'port' : [ '<hostname>', 5550<N> ]
                 # }
-                ports = {}
-                ports['port'] = [ socket.gethostname(), 55500 + clientId ]
-                newmsg['ports'] = [ ports ]
-                newmsg.send(collect_cmd)
+
+                pybody['port'] = [ socket.gethostname(), 55500 + clientId ]
+
+                jsonbody = json.dumps(pybody)
+                portsmsg = CollectMsg(key=CollectMsg.PORTS, body=jsonbody)
+                portsmsg.send(collect_cmd)
 
             elif cmmsg.key == CollectMsg.CONNECT:
                 if verbose:

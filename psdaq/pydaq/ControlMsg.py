@@ -10,9 +10,9 @@ Based on kvmsg class by Min RK <benjaminrk@gmail.com>
 
 import sys
 import zmq
-from KeyValMsg import KeyValMsg
+from JsonMsg import JsonMsg
 
-class ControlMsg(KeyValMsg):
+class ControlMsg(JsonMsg):
 
     # message keys
     STARTPING   = b'STARTPING'

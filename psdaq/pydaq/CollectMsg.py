@@ -10,9 +10,9 @@ Based on kvmsg class by Min RK <benjaminrk@gmail.com>
 
 import sys
 import zmq
-from KeyValMsg import KeyValMsg
+from JsonMsg import JsonMsg
 
-class CollectMsg(KeyValMsg):
+class CollectMsg(JsonMsg):
 
     PORTBASE = 29980
 

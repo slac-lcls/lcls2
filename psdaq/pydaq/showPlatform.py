@@ -35,21 +35,11 @@ def main():
 
         request = msg.key
         if request == CollectMsg.STATE:
-            props = msg.properties
-
-            # platform
+            # platform FIXME
             platform = '0'
-            try:
-                platform = props['platform']
-            except KeyError:
-                print('E: platform key not found')
 
-            # partition name
+            # partition name FIXME
             partName = '(None)'
-            try:
-                partName = props['partName']
-            except KeyError:
-                print('E: partName key not found')
 
             # nodes
             nodes = []

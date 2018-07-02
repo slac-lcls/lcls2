@@ -38,9 +38,9 @@ def main():
     cmd_socket.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
 
     # Compose message
-    newmsg = CollectMsg(0, key=command_dict[args.command])
-    newmsg['partName'] = args.P
-    newmsg['platform'] = ('%d' % args.p)
+    newmsg = CollectMsg(key=command_dict[args.command])
+#   newmsg['partName'] = args.P
+#   newmsg['platform'] = ('%d' % args.p)
 
     # Send message
     newmsg.send(cmd_socket)
@@ -54,26 +54,6 @@ def main():
         print ("Received \"%s\"" % cmmsg.key.decode())
 
         if cmmsg.key == CollectMsg.STATE:
-            props = cmmsg.properties
-
-            # platform
-            platform = 0
-            try:
-                platform = props['platform']
-            except KeyError:
-                print('E: platform key not found')
-            else:
-                print ('Platform:', platform)
-
-            # partition name
-            partName = '(None)'
-            try:
-                partName = props['partName']
-            except KeyError:
-                print('E: partName key not found')
-            else:
-                print ('Partition name:', partName)
-
             # nodes
             try:
                 nodes = json.loads(cmmsg.body)
