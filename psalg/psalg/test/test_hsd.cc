@@ -14,7 +14,7 @@
 
 #include "psalg/alloc/AllocArray.hh"
 #include "psalg/alloc/Allocator.hh"
-#include "psalg/hsd.hh"
+#include "psalg/digitizer/Hsd.hh"
 
 #include "xtcdata/xtc/DetInfo.hh"
 #include "xtcdata/xtc/ProcInfo.hh"

@@ -6,9 +6,9 @@
 #include <cinttypes>
 
 #include "xtcdata/xtc/Dgram.hh"
-#include "stream.hh"
-#include "alloc/Allocator.hh"
-#include "alloc/AllocArray.hh"
+#include "Stream.hh"
+#include "psalg/alloc/Allocator.hh"
+#include "psalg/alloc/AllocArray.hh"
 using namespace psalg;
 
 namespace Pds {

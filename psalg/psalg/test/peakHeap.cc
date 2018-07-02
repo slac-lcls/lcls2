@@ -12,9 +12,9 @@
 #include <iostream>
 #include <stdlib.h>
 
-#include "psalg/peakFinder/PeakFinderAlgos.hh"
-#include "psalg/peakFinder/LocalExtrema.hh"
-#include "psalg/peakFinder/Types.hh"
+#include "psalg/peaks/PeakFinderAlgos.hh"
+#include "psalg/peaks/LocalExtrema.hh"
+#include "psalg/peaks/Types.hh"
 #include "psalg/alloc/AllocArray.hh"
 #include "psalg/alloc/Allocator.hh"
 

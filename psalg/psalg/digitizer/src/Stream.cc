@@ -1,5 +1,4 @@
-#include "psalg/stream.hh"
-//#include "psalg/hsd.hh"
+#include "psalg/digitizer/Stream.hh"
 
 #include <stdio.h>
 #include <ctype.h>

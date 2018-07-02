@@ -126,7 +126,7 @@ target_link_libraries(hsd_test
     rt
 )
 
-add_executable(hsdRead hsdRead.cc ../../../psalg/psalg/src/stream.cc)
+add_executable(hsdRead hsdRead.cc ../../../psalg/psalg/digitizer/src/Stream.cc)
 
 target_include_directories(hsdRead PUBLIC
      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>

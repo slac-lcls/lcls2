@@ -1,4 +1,4 @@
-#include "psalg/hsd.hh"
+#include "psalg/digitizer/Hsd.hh"
 
 #include <stdio.h>
 #include <ctype.h>

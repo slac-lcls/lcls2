@@ -10,8 +10,8 @@
 #include <new>
 #include <cinttypes>
 #include "xtcdata/xtc/Dgram.hh"
-#include "psalg/hsd.hh"
-#include "psalg/stream.hh"
+#include "psalg/digitizer/Hsd.hh"
+#include "psalg/digitizer/Stream.hh"
 
 using namespace Pds::HSD;
 

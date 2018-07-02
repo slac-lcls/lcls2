@@ -1,16 +1,10 @@
 add_subdirectory(utils)
 add_subdirectory(calib)
 add_subdirectory(alloc)
-add_subdirectory(peakFinder)
+add_subdirectory(peaks)
+add_subdirectory(digitizer)
 
 install(FILES
-#    LocalExtrema.hh
-#    PeakFinderAlgos.hh
-#    Types.hh
-    stream.hh
-    hsd.hh
-#    AllocArray.hh
-#    Allocator.hh
     calib/ArrayIO.hh
     calib/ArrayMetadata.hh
 #    utils/Logger.hh
@@ -18,12 +12,8 @@ install(FILES
 )
 
 add_library(psalg SHARED
-#    src/LocalExtrema.cc
-#    src/PeakFinderAlgos.cc
-    src/stream.cc
     calib/src/ArrayIO.cc
 #    utils/src/Logger.cc
-    src/hsd.cc
 )
 
 target_include_directories(psalg PUBLIC
@@ -36,7 +26,8 @@ target_include_directories(psalg PUBLIC
 target_link_libraries(psalg
     utils
     calib
-    peakFinder
+    peaks
+    digitizer
     rt
 )
 
