@@ -19,7 +19,7 @@ cimport numpy as cnp
 
 ################# Psana Array ######################
 
-cdef extern from "../../../psalg/psalg/AllocArray.hh" namespace "psalg":
+cdef extern from "../../../psalg/psalg/alloc/AllocArray.hh" namespace "psalg":
     cdef cppclass Array[T]:
         Array() except+
         cnp.uint32_t *shape()
@@ -31,7 +31,7 @@ cdef extern from "../../../psalg/psalg/AllocArray.hh" namespace "psalg":
     cdef cppclass AllocArray1D[T](AllocArray[T]):
         pass
 
-cdef extern from "../../../psalg/psalg/Allocator.hh":
+cdef extern from "../../../psalg/psalg/alloc/Allocator.hh":
     cdef cppclass Allocator:
         pass
     cdef cppclass Heap(Allocator):
@@ -96,7 +96,7 @@ cdef class PyAllocArray1D:
 from libcpp.vector cimport vector
 cimport libc.stdint as si
 
-cdef extern from "../../../psalg/psalg/PeakFinderAlgos.hh" namespace "psalgos":
+cdef extern from "../../../psalg/psalg/peakFinder/PeakFinderAlgos.hh" namespace "psalgos":
     cdef cppclass Peak :
         Peak() except +
         Peak(const Peak& o) except +
@@ -119,7 +119,7 @@ cdef extern from "../../../psalg/psalg/PeakFinderAlgos.hh" namespace "psalgos":
         float noise
         float son
 
-cdef extern from "../../../psalg/psalg/Types.hh" namespace "types":
+cdef extern from "../../../psalg/psalg/peakFinder/Types.hh" namespace "types":
     ctypedef unsigned shape_t
     ctypedef si.uint16_t mask_t
     ctypedef si.uint16_t extrim_t
@@ -145,7 +145,7 @@ ctypedef fused nptype2d :
     cnp.ndarray[cnp.uint32_t,  ndim=2, mode="c"]
     cnp.ndarray[cnp.uint64_t,  ndim=2, mode="c"]
 
-cdef extern from "../../../psalg/psalg/PeakFinderAlgos.hh" namespace "psalgos":
+cdef extern from "../../../psalg/psalg/peakFinder/PeakFinderAlgos.hh" namespace "psalgos":
     cdef cppclass PeakFinderAlgos:
          AllocArray1D[float] rows
          AllocArray1D[float] cols
@@ -337,7 +337,7 @@ cdef class peak_finder_algos :
 #------------------------------
 #------------------------------
 
-cdef extern from "../../../psalg/psalg/LocalExtrema.hh" namespace "localextrema":
+cdef extern from "../../../psalg/psalg/peakFinder/LocalExtrema.hh" namespace "localextrema":
 
     size_t localMinima1d[T](const T *data
                            ,const mask_t *mask

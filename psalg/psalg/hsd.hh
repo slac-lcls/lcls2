@@ -7,8 +7,8 @@
 
 #include "xtcdata/xtc/Dgram.hh"
 #include "stream.hh"
-#include "Allocator.hh"
-#include "AllocArray.hh"
+#include "alloc/Allocator.hh"
+#include "alloc/AllocArray.hh"
 using namespace psalg;
 
 namespace Pds {
