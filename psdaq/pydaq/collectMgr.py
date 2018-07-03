@@ -36,7 +36,8 @@ class CMState(object):
         self.entries[k] = v
 
     def timestamp(self, k):
-        self.entries[k]['_lastContact'] = int(time.monotonic())
+#       self.entries[k]['_lastContact'] = int(time.monotonic())
+        return
 
     def keys(self):
         return list(self.entries.keys())
