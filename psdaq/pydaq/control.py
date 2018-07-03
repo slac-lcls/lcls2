@@ -16,10 +16,12 @@ from ControlState import ControlState, StateMachine
 from psp import PV
 from os import getpid
 from socket import gethostname
+import pprint
 import pyca
 import logging
 import argparse
 import time
+import zmq.utils.jsonapi as json
 from psana.dgrammanager import DgramManager
 from psana import dgram
 
@@ -203,13 +205,15 @@ def main():
     ctx = zmq.Context()
 
     coll = Collection(ctx, args.C, args.p)
-    collmsg = CollectMsg(0, key=CollectMsg.HELLO)
-    collmsg['level'] = 0
-    collmsg['name'] = args.u
-    collmsg['host'] = gethostname()
-    collmsg['pid'] = getpid()
-    partition = coll.partitionInfo(collmsg)
-    print('*** received partition',partition)
+
+    pybody = {}
+    pybody['level'] = 0
+    pybody['name'] = args.u
+    pybody['host'] = gethostname()
+    pybody['pid'] = getpid()
+    hellomsg = CollectMsg(key=CollectMsg.HELLO, body=json.dumps(pybody))
+    partition = coll.partitionInfo(hellomsg)
+    #pprint.pprint(json.loads(partition.body))
 
     # set up our end of connections, potentially based on the information
     # about who is in the partition (e.g. number of eb/drp nodes)
@@ -223,14 +227,17 @@ def main():
     logging.debug('control_router_port = %d' % control_router_port)
     logging.debug('control_pull_port = %d' % control_pull_port)
 
+    pybody = {}
     ports = {}
     ports['router_port'] = {'adrs': gethostname(), 'port': control_router_port}
     ports['pull_port'] =   {'adrs': gethostname(), 'port': control_pull_port}
-    collmsg['ports'] = ports
-    connect_info = coll.connectionInfo(collmsg)
+    pybody['ports'] = ports
+    pybody['level'] = 0
+    portsmsg = CollectMsg(key=CollectMsg.PORTS, body=json.dumps(pybody))
+    connect_info = coll.connectionInfo(portsmsg)
+    #pprint.pprint(json.loads(connect_info.body))
 
     # now make the connections and report to CM when done
-    print("*** received connection info: <%s>" % connect_info)
 
     # Control state
     yy = ControlStateMachine(args.pvbase)

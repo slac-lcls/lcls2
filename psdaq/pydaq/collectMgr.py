@@ -244,10 +244,12 @@ def main():
                 if request == CollectMsg.STARTALLOC:
                     # Send ALLOC individually
                     logging.debug("Sending ALLOC individually")
-                    cmmsg = CollectMsg(key=CollectMsg.ALLOC)
+                    pybody = list(cmstate.entries.values())
+                    cmmsg = CollectMsg(key=CollectMsg.ALLOC, body=json.dumps(pybody))
                     for key in cmstate.entries.keys():
                         cmd.send(key, zmq.SNDMORE)
                         cmmsg.send(cmd)
+                        print('---',cmmsg.body)
                         logging.debug("...sent ALLOC")
 
                     # Send ALLOCSTARTED reply to client
