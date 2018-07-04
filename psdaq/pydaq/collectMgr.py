@@ -13,6 +13,7 @@ import logging
 import zmq.utils.jsonapi as json
 import pprint
 import argparse
+import copy
 
 from CollectMsg import CollectMsg
 from ZTimer import ZTimer
@@ -140,6 +141,8 @@ def main():
     # CM state
     cmstate = CMState(platform=args.p)
 
+    identityDict = {}
+
     pongCount = 0
     # context and sockets
     ctx = zmq.Context()
@@ -216,6 +219,7 @@ def main():
                 if request == CollectMsg.STARTPLAT:
                     # Reset the CM state
                     cmstate.reset()
+                    identityDict = {}
 
                     # Assign partition name
                     try:
@@ -245,13 +249,25 @@ def main():
                 if request == CollectMsg.STARTALLOC:
                     # Send ALLOC individually
                     logging.debug("Sending ALLOC individually")
-                    pybody = list(cmstate.entries.values())
-                    cmmsg = CollectMsg(key=CollectMsg.ALLOC, body=json.dumps(pybody))
-                    for key in cmstate.entries.keys():
-                        cmd.send(key, zmq.SNDMORE)
-                        cmmsg.send(cmd)
-                        print('---',cmmsg.body)
-                        logging.debug("...sent ALLOC")
+
+                    for level,nodes in cmstate.entries.items():
+                        for nodeid,node in enumerate(nodes):
+                            # map to the identity
+                            # could also create a reverse-mapping dict
+                            who = (level,nodeid)
+                            for identityKey,item in identityDict.items():
+                                if item==who:
+                                    break
+                                # should raise error if not found
+                            body = copy.copy(cmstate.entries)
+                            body['id'] = nodeid
+                            cmmsg = CollectMsg(key=CollectMsg.ALLOC, body=json.dumps(body))
+                            # perhaps ideally next two lines should be:
+                            # cmd.send_multipart([identityKey, CollectMsg.ALLOC, json.dumps(body)])
+                            cmd.send(identityKey, zmq.SNDMORE)
+                            cmmsg.send(cmd)
+                            print('---',cmmsg.body)
+                            logging.debug("...sent ALLOC")
 
                     # Send ALLOCSTARTED reply to client
                     logging.debug("Sending ALLOCSTARTED reply")
@@ -263,31 +279,11 @@ def main():
                 if request == CollectMsg.STARTCONNECT:
                     # Send CONNECT individually
                     logging.debug("Sending CONNECT individually")
-
-                    # start composing JSON message
-                    pybody = {}
-                    pybody['platform'] = cmstate.platform()
-                    pybody['procs'] = {}
-
-                    # add ports
-                    pybody['procs'] = {}
-                    for key in cmstate.entries.keys():
-                        if 'name' in cmstate.entries[key] and   \
-                           'ports' in cmstate.entries[key] and  \
-                           'level' in cmstate.entries[key]:
-                            # copy entries
-                            name = cmstate.entries[key]['name']
-                            pybody['procs'][name] = {}
-                            pybody['procs'][name]['ports'] = cmstate.entries[key]['ports']
-                            pybody['procs'][name]['level'] = cmstate.entries[key]['level']
-                            logging.debug("Copied ports for proc \'%s\'" % name)
-
-                    jsonbody = json.dumps(pybody)
-                    connectmsg = CollectMsg(key=CollectMsg.CONNECT, body=jsonbody)
-
-                    for key in cmstate.entries.keys():
+                    cmmsg = CollectMsg(key=CollectMsg.CONNECT, body=json.dumps(cmstate.entries))
+                    for key in identityDict.keys():
                         cmd.send(key, zmq.SNDMORE)
-                        connectmsg.send(cmd)
+                        cmmsg.send(cmd)
+                        print('---',cmmsg.body)
                         logging.debug("...sent CONNECT")
 
                     # Send CONNECTSTARTED reply to client
@@ -332,30 +328,37 @@ def main():
                     logging.debug("Loading HELLO properties with JSON")
                     if len(msg) == 3:
                         try:
-                            prop5 = json.loads(msg[2])
+                            hellodict = json.loads(msg[2])
                         except Exception as ex:
                             logging.error(ex)
-                            prop5 = {}
-                        logging.debug("HELLO msg[2] = %s" % prop5)
+                            hellodict = {}
+                        logging.debug("HELLO msg[2] = %s" % hellodict)
                     else:
                         logging.error("Got HELLO msg of len %d, expected 3" % len(msg))
-                        prop5 = {}
+                        hellodict = {}
 
                     # remove any duplicates before adding new entry
-                    exlist = cmstate.find_duplicates(prop5)
-                    if len(exlist) > 0:
-                        removed = cmstate.remove_keys(exlist)
-                        for rr in removed:
-                            logging.warning("Node duplicated: %s" % rr)
-                        logging.warning("Removed %d duplicate nodes" % len(removed))
+                    #exlist = cmstate.find_duplicates(hellodict)
+                    #if len(exlist) > 0:
+                    #    removed = cmstate.remove_keys(exlist)
+                    #    for rr in removed:
+                    #        logging.warning("Node duplicated: %s" % rr)
+                    #    logging.warning("Removed %d duplicate nodes" % len(removed))
 
                     # add new entry
-                    cmstate[identity] = prop5
-                    try:
+                    #cmstate[identity] = hellodict
+                    for level,item in hellodict.items():
+                        keys = cmstate.keys()
+                        if level not in keys:
+                            cmstate[level] = []
+                        identityDict[identity]=(level,len(cmstate[level]))
+                        cmstate[level].append(item)
+                        break
+                    #try:
                         # update timestamp
-                        cmstate.timestamp(identity)
-                    except:
-                        logging.debug("HELLO timestamp failed")
+                    #    cmstate.timestamp(identity)
+                    #except:
+                    #    logging.debug("HELLO timestamp failed")
 
                     continue
 
@@ -363,17 +366,18 @@ def main():
                     logging.debug("Loading PORTS properties with JSON")
                     if len(msg) == 3:
                         try:
-                            prop5 = json.loads(msg[2])
+                            connectInfo = json.loads(msg[2])
                         except Exception as ex:
                             logging.error(ex)
-                            prop5 = {}
-                        logging.debug("PORTS msg[2] = %s" % prop5)
+                            connectInfo = {}
+                        logging.debug("PORTS msg[2] = %s" % connectInfo)
                     else:
                         logging.error("Got PORTS msg of len %d, expected 3" % len(msg))
-                        prop5 = {}
+                        connectInfo = {}
 
                     try:
-                        cmstate[identity]['ports'] = prop5
+                        level, index = identityDict[identity]
+                        cmstate[level][index].update(connectInfo[level])
                     except Exception as ex:
                         logging.error(ex)
 

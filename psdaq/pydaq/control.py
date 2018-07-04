@@ -207,13 +207,15 @@ def main():
     coll = Collection(ctx, args.C, args.p)
 
     pybody = {}
-    pybody['level'] = 0
-    pybody['name'] = args.u
     pybody['host'] = gethostname()
     pybody['pid'] = getpid()
-    hellomsg = CollectMsg(key=CollectMsg.HELLO, body=json.dumps(pybody))
+    idbody = {}
+    idbody['procInfo']=pybody
+    mainbody = {}
+    mainbody['control']=idbody
+    hellomsg = CollectMsg(key=CollectMsg.HELLO, body=json.dumps(mainbody))
     partition = coll.partitionInfo(hellomsg)
-    #pprint.pprint(json.loads(partition.body))
+    pprint.pprint(json.loads(partition.body))
 
     # set up our end of connections, potentially based on the information
     # about who is in the partition (e.g. number of eb/drp nodes)
@@ -228,14 +230,16 @@ def main():
     logging.debug('control_pull_port = %d' % control_pull_port)
 
     pybody = {}
-    ports = {}
-    ports['router_port'] = {'adrs': gethostname(), 'port': control_router_port}
-    ports['pull_port'] =   {'adrs': gethostname(), 'port': control_pull_port}
-    pybody['ports'] = ports
-    pybody['level'] = 0
-    portsmsg = CollectMsg(key=CollectMsg.PORTS, body=json.dumps(pybody))
+    pybody['router_port'] = {'adrs': gethostname(), 'port': control_router_port}
+    pybody['pull_port'] =   {'adrs': gethostname(), 'port': control_pull_port}
+    connbody = {}
+    connbody['connectInfo']=pybody
+    mainbody = {}
+    mainbody['control']=connbody
+
+    portsmsg = CollectMsg(key=CollectMsg.PORTS, body=json.dumps(mainbody))
     connect_info = coll.connectionInfo(portsmsg)
-    #pprint.pprint(json.loads(connect_info.body))
+    pprint.pprint(json.loads(connect_info.body))
 
     # now make the connections and report to CM when done
 
