@@ -237,7 +237,7 @@ def main():
     mainbody = {}
     mainbody['control']=connbody
 
-    portsmsg = CollectMsg(key=CollectMsg.PORTS, body=json.dumps(mainbody))
+    portsmsg = CollectMsg(key=CollectMsg.CONNECTINFO, body=json.dumps(mainbody))
     connect_info = coll.connectionInfo(portsmsg)
     pprint.pprint(json.loads(connect_info.body))
 

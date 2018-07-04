@@ -362,17 +362,17 @@ def main():
 
                     continue
 
-                elif request == CollectMsg.PORTS:
-                    logging.debug("Loading PORTS properties with JSON")
+                elif request == CollectMsg.CONNECTINFO:
+                    logging.debug("Loading CONNECTINFO with JSON")
                     if len(msg) == 3:
                         try:
                             connectInfo = json.loads(msg[2])
                         except Exception as ex:
                             logging.error(ex)
                             connectInfo = {}
-                        logging.debug("PORTS msg[2] = %s" % connectInfo)
+                        logging.debug("CONNECTINFO msg[2] = %s" % connectInfo)
                     else:
-                        logging.error("Got PORTS msg of len %d, expected 3" % len(msg))
+                        logging.error("Got CONNECTINFO msg of len %d, expected 3" % len(msg))
                         connectInfo = {}
 
                     try:

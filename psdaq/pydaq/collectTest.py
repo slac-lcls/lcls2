@@ -115,12 +115,12 @@ def main():
             cmmsg = CollectMsg.recv(collect_cmd)
             if cmmsg.key == CollectMsg.ALLOC:
                 if verbose:
-                    print( "Received ALLOC, sending PORTS")
+                    print( "Received ALLOC, sending CONNECTINFO")
 
                 # start composing JSON message
                 pybody = {}
 
-                # Create simulated PORTS entry based on clientId N
+                # Create simulated CONNECTINFO entry based on clientId N
                 # {
                 #   'port' : [ '<hostname>', 5550<N> ]
                 # }
@@ -128,7 +128,7 @@ def main():
                 pybody['port'] = [ socket.gethostname(), 55500 + clientId ]
 
                 jsonbody = json.dumps(pybody)
-                portsmsg = CollectMsg(key=CollectMsg.PORTS, body=jsonbody)
+                portsmsg = CollectMsg(key=CollectMsg.CONNECTINFO, body=jsonbody)
                 portsmsg.send(collect_cmd)
 
             elif cmmsg.key == CollectMsg.CONNECT:
