@@ -12,6 +12,7 @@ from CollectMsg import CollectMsg
 import sys
 import argparse
 import socket
+from os import getpid
 from zmq.utils import jsonapi as json
 import pprint
 
@@ -66,31 +67,14 @@ def main():
 
                 # start composing JSON message
                 pybody = {}
+                pyinfo = {}
 
-                # Create simulated HELLO entry based on clientId N, platform P
-                # {
-                #   'platform' : P
-                #   'name'     : 'collectTestN'
-                #   'group'    : N
-                #   'uid'      : N
-                #   'level'    : N
-                #   'pid'      : 25NNN
-                #   'ip'       : '172.NN.NN.NN'
-                #   'host'     : '<hostname>'
-                #   'ether'    : 'NN:NN:NN:NN:NN:NN'
-                # }
+                # Create simulated HELLO entry
+                #  {'test': {'procInfo': {'host': 'psbuild-rhel6', 'pid': 31314}}}
 
-                pybody['platform'] = args.p
-                pybody['name'] = 'collectTest%d' % clientId
-                pybody['group'] = pybody['uid'] = pybody['level'] = \
-                    clientId
-                pybody['ip'] = \
-                    '172' + (3 * ('.%d%d' % (clientId, clientId)))
-                pybody['pid'] = 25000 + (111 * clientId)
-                pybody['host'] = socket.gethostname()
-                pybody['ether'] = \
-                    '%d%d' % (clientId, clientId) + \
-                               (5 * (':%d%d' % (clientId, clientId)))
+                pyinfo['host'] = socket.gethostname()
+                pyinfo['pid'] = getpid()
+                pybody['test'] = {'procInfo': pyinfo}
 
                 jsonbody = json.dumps(pybody)
                 hellomsg = CollectMsg(key=CollectMsg.HELLO, body=jsonbody)
@@ -117,19 +101,18 @@ def main():
                 if verbose:
                     print( "Received ALLOC, sending CONNECTINFO")
 
-                # start composing JSON message
                 pybody = {}
+                pyinfo = {}
 
-                # Create simulated CONNECTINFO entry based on clientId N
-                # {
-                #   'port' : [ '<hostname>', 5550<N> ]
-                # }
+                # Create simulated CONNECTINFO entry
+                #  {'test': {'connectInfo': {'test_port': {'adrs': 'psbuild-rhel6', 'port': 55500}}}}
 
-                pybody['port'] = [ socket.gethostname(), 55500 + clientId ]
+                pyinfo['test_port'] = { 'adrs': socket.gethostname(), 'port': 55500 + clientId }
+                pybody['test'] = {'connectInfo': pyinfo}
 
                 jsonbody = json.dumps(pybody)
-                portsmsg = CollectMsg(key=CollectMsg.CONNECTINFO, body=jsonbody)
-                portsmsg.send(collect_cmd)
+                connectInfoMsg = CollectMsg(key=CollectMsg.CONNECTINFO, body=jsonbody)
+                connectInfoMsg.send(collect_cmd)
 
             elif cmmsg.key == CollectMsg.CONNECT:
                 if verbose:

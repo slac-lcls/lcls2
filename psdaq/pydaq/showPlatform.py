@@ -5,7 +5,6 @@ Collection Manager showPlatform command
 import sys
 import zmq
 import zmq.utils.jsonapi as json
-import pprint
 import argparse
 from CollectMsg import CollectMsg
 
@@ -49,40 +48,31 @@ def main():
                 print('E: json.loads()', ex)
                 nodes = []
             displayList = []
-            for nn in nodes:
-                try:
-                    level = nn['level']
-                except KeyError:
-                    print('E: level key not found')
-                    level = 0
-                try:
-                    pid = nn['pid']
-                except KeyError:
-                    print('E: pid key not found')
-                    pid = 0
-                try:
-                    host = nn['host']
-                except KeyError:
-                    print('E: host key not found')
-                    host = '(unknown)'
-                try:
-                    name = nn['name']
-                except KeyError:
-                    print('E: name key not found')
-                    name = '(unknown)'
-                # remove hostname suffix if present
-                if host.count('.') > 0:
-                    host = host.split('.')[0]
-                display = "%s/%s/%s/%-16s" % (level, name, pid, host)
-                displayList.append(display)
+
+            for level, nodelist in nodes.items():
+                for node in nodelist:
+                    try:
+                        host = node['procInfo']['host']
+                    except KeyError:
+                        host = '(Unknown)'
+                    try:
+                        pid = node['procInfo']['pid']
+                    except KeyError:
+                        pid = 0
+                    display = "%s/%s/%-16s" % (level, pid, host)
+                    if level == 'control':
+                        # show control level first 
+                        displayList.insert(0, display)
+                    else:
+                        displayList.append(display)
 
             if not args.noheader:
                 print("Platform | Partition      |    Node")
-                print("         | id/name        | level/name/pid/host")
+                print("         | id/name        | level/pid/host")
                 print("---------+----------------+------------------------------------")
             print("  %3s     %2s/%-12s" % (platform, platform, partName), end='')
             firstLine = True
-            for nn in sorted(displayList):
+            for nn in displayList:
                 if firstLine:
                     print("  ", nn)
                     firstLine = False

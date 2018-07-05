@@ -205,9 +205,9 @@ def main():
                     # Send STATE reply to client
                     logging.debug("Sending STATE reply")
                     cmd.send(identity, zmq.SNDMORE)
-                    print('cmstate.nodes():', cmstate.nodes())
+                    print('cmstate.entries:', cmstate.entries)
                     try:
-                        testbody = json.dumps(cmstate.nodes())
+                        testbody = json.dumps(cmstate.entries)
                     except Exception as ex:
                         logging.error(ex)
                         testbody = ''
