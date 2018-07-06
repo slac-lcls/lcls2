@@ -247,9 +247,6 @@ def main():
     yy = ControlStateMachine(args.pvbase)
     logging.debug("ControlStateMachine state: %s" % yy.state())
 
-
-    sequence = 0
-
     poller = zmq.Poller()
     poller.register(control_router_socket, zmq.POLLIN)
     poller.register(control_pull_socket, zmq.POLLIN)
@@ -276,7 +273,7 @@ def main():
                     # Send reply to client
                     logging.debug("Sending <PONG> reply")
                     control_router_socket.send(identity, zmq.SNDMORE)
-                    cmmsg = ControlMsg(sequence, key=ControlMsg.PONG)
+                    cmmsg = ControlMsg(key=ControlMsg.PONG)
                     cmmsg.send(control_router_socket)
                     continue
 
@@ -298,7 +295,7 @@ def main():
 
                     # Send reply to client
                     control_router_socket.send(identity, zmq.SNDMORE)
-                    cmmsg = ControlMsg(sequence, key=yy.state().key())
+                    cmmsg = ControlMsg(key=yy.state().key())
                     cmmsg.send(control_router_socket)
                     continue
 
@@ -307,7 +304,7 @@ def main():
                     # Send reply to client
                     logging.debug("Sending <HUH?> reply")
                     control_router_socket.send(identity, zmq.SNDMORE)
-                    cmmsg = ControlMsg(sequence, key=ControlMsg.HUH)
+                    cmmsg = ControlMsg(key=ControlMsg.HUH)
                     cmmsg.send(control_router_socket)
                     continue
 

@@ -24,16 +24,21 @@ def getControlPorts(body):
         print('json.loads() failed:', ex)
     else:
         foundControl = False
-        for node in nodes:
-            if node['level'] == 0:
-                foundControl = True
-                host = node['host']
-                router_port = node['ports']['router_port']['port']
-                pull_port = node['ports']['pull_port']['port']
-                if verbose:
-                    print('control node in collection:')
-                    pprint.pprint(node)
-        if not foundControl:
+        try:
+            ctrl = nodes['control'][0]
+        except KeyError:
+            ctrl = {}
+        else:
+            foundControl = True
+            if verbose:
+                print('control node in collection:')
+                pprint.pprint(ctrl)
+            
+        if foundControl:
+            host = ctrl['connectInfo']['router_port']['adrs']
+            router_port = ctrl['connectInfo']['router_port']['port']
+            pull_port = ctrl['connectInfo']['pull_port']['port']
+        else:
             print('No control node found in collection')
 
     return host, router_port, pull_port
