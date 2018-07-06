@@ -12,7 +12,7 @@ def test_hsd():
     import numpy as np
     import matplotlib.pyplot as plt
 
-    ds = psana.DataSource('/reg/neh/home/yoon82/temp1/lcls2/hsd_061918.xtc')
+    ds = psana.DataSource('/reg/neh/home/yoon82/data/hsd_061918.xtc')
     det = ds.Detector("xpphsd")
 
     chanNum = 3
