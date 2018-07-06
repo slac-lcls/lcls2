@@ -15,6 +15,7 @@ target_include_directories(calib PUBLIC
 install(FILES
     ArrayIO.hh
     ArrayMetadata.hh
+    NDArray.hh
     DESTINATION include/psalg/calib
 )
 

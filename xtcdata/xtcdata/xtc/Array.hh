@@ -16,6 +16,8 @@ enum {MaxRank=5};
 template <typename T>
 class Array {
 public:
+    typedef uint32_t shape_t;
+    typedef uint32_t size_t;
 
     Array(void *data, uint32_t *shape, uint32_t rank){
         _shape = shape;
@@ -59,7 +61,7 @@ public:
     }
     void shape(uint32_t a, uint32_t b=0, uint32_t c=0, uint32_t d=0, uint32_t e=0){
         assert(_rank > 0);
-        assert(MaxRank == 5);
+        assert(_rank < MaxRank);
         _shape[0] = a;
         _shape[1] = b;
         _shape[2] = c;

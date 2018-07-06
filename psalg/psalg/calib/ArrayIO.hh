@@ -34,16 +34,18 @@ public:
   typedef ArrayMetadata::shape_t shape_t; // uint32_t
   typedef ArrayMetadata::size_t size_t; // uint32_t
 
+  //enum {MAXBUFSIZE=704*768};
   enum        STATUS     {LOADED=0, DEFAULT,   UNREADABLE,   UNDEFINED};
   std::string STRAUS[4]={"LOADED", "DEFAULT", "UNREADABLE", "UNDEFINED"};
 
-  ArrayIO(const std::string& fname);
+  ArrayIO(const std::string& fname, void *buf=0);
 
   ~ArrayIO();
 
   inline char* __name__(){return (char*)"ArrayIO";}
   inline const STATUS status() const {return _status;}
-  inline const std::string& dtype_name() const {return _dtype_name;};
+  inline const std::string str_status() const {return STRAUS[_status];}
+  inline const std::string& dtype_name() const {return _dtype_name;}
 
 protected:
 
@@ -56,8 +58,12 @@ private:
 
   Stack* _stack; // reserve memory for data
 
-  std::string _fname;
   unsigned    _ctor;
+  std::string _fname;
+  T*          _buf_ext;
+  T*          _buf_own;
+  T*          _pdata;
+
   STATUS      _status;
 
   size_t      _count_1st_line;
@@ -75,6 +81,8 @@ private:
   //std::map<std::string,std::string> _metad;
 
   void _init();
+
+  void _reset_data_pointer();
 
   /// loads metadata and data from file
   void _load_array();

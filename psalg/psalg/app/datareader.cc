@@ -26,6 +26,7 @@
 #include "psalg/utils/Logger.hh" // MSG
 #include "xtcdata/xtc/DescData.hh" // Array
 #include "psalg/calib/ArrayIO.hh" // ArrayIO
+#include "psalg/calib/NDArray.hh" // NDArray
 
 using namespace std;
 using namespace psalg;
@@ -45,17 +46,17 @@ void print_hline(const uint nchars, const char c) {
 //-------------------
 
 void test_ArrayIO() {
-  //std::cout << "In test_ArrayIO\n";
   MSG(INFO, "In test_ArrayIO");
   //Array(void *data, uint32_t *shape, uint32_t rank)
   ArrayIO<float> a("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
+
+  MSG(INFO, "array status: " << a.str_status());
 }
 
 //-------------------
 
 void test_Array() {
 
-  // std::cout << "In test_Array\n";
   MSG(DEBUG, "In test_Array");
 
   //Array(void *data, uint32_t *shape, uint32_t rank)
@@ -72,11 +73,36 @@ void test_Array() {
   }
 
   std::cout << '\n';
+}
 
-    //printf("%s: %i  %i  %\n",name.name(),arrT(0),arrT(1));
-    // T* ptr = reinterpret_cast<T*>(data.payload() + _offset[index]);
-    // Array<float> arrT = descdata.get_array<float>(i);
-    // printf("%s: %f, %f\n",name.name(),arrT(0),arrT(1));
+//-------------------
+
+void test_NDArray() {
+
+  MSG(DEBUG, "In test_NDArray");
+
+  //Array(void *data, uint32_t *shape, uint32_t rank)
+
+  float data[] = {1,2,3,4,5,6,7,8,9,10,11,12};
+  uint32_t sh[2] = {3,4};
+  uint32_t rank = 2;
+  NDArray<float> a(data, sh, rank);
+
+  for(uint32_t r=0; r<sh[0]; r++) {
+    std::cout << "\nrow " << r << ':';
+    for(uint32_t c=0; c<sh[1]; c++)
+      std::cout << " " << std::setw(4) << a(r,c);
+  }
+  
+  std::cout << "\narray ndim: " << a.ndim() << '\n';
+  std::cout << "\narray size: " << a.size() << '\n';
+  std::cout << "ostream array: " << a << '\n';
+
+  uint32_t sh2x6[2] = {2,6};
+  a.reshape(sh2x6, rank);
+  std::cout << "reshaped array: " << a << '\n';
+
+  std::cout << '\n';
 }
 
 //-------------------
@@ -105,7 +131,7 @@ void read_file_lines(const char* fname) {
 
 int test_cli(int argc, char **argv)
 {
-    std::cout << "\n\nJust a test\n\n";
+    MSG(INFO, "\n\nJust a test\n\n");
 
     char *avalue = NULL;
     char *bvalue = NULL;
@@ -168,6 +194,7 @@ int main(int argc, char **argv) {
     print_hline(80,'_');
     // test_Array();         print_hline(80,'_');
     test_ArrayIO();       print_hline(80,'_');
+    test_NDArray();       print_hline(80,'_');
     //test_logger_single(); print_hline(80,'_');
     return EXIT_SUCCESS;
 }

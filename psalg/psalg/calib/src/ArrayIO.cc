@@ -17,9 +17,11 @@ namespace psalg {
 //-----------------------------
 
 template <typename T>
-ArrayIO<T>::ArrayIO(const std::string& fname)
-  : _fname(fname)
-  , _ctor(0)
+ArrayIO<T>::ArrayIO(const std::string& fname, void *buf)
+  : _ctor(0)
+  , _fname(fname)
+  , _buf_ext(reinterpret_cast<T*>(buf))
+  , _buf_own(0)
 {
    MSG(TRACE, "ctor:" << _ctor << " fname=" << _fname);
   _init();
@@ -32,7 +34,7 @@ template <typename T>
 ArrayIO<T>::~ArrayIO()
 {
   MSG(TRACE, "DESTRUCTOR for ctor:" << _ctor << " fname=" << _fname);
-  //delete p_nda;
+  if(_buf_own) delete _buf_own;
 }
 
 //-----------------------------
@@ -156,6 +158,18 @@ void ArrayIO<T>::_parse_shape(const std::string& str) {
 //-----------------------------
 
 template <typename T>
+void ArrayIO<T>::_reset_data_pointer()
+{
+  if(_buf_ext) _pdata = _buf_ext;
+  else {
+    if(!_buf_own) _buf_own = new T[_size];
+    _pdata = _buf_own;
+  }
+}
+
+//-----------------------------
+
+template <typename T>
 void ArrayIO<T>::_load_data(std::ifstream& in, const std::string& str)
 {
   MSG(TRACE, "TODO : _load_data " << str.substr(0,50));
@@ -167,11 +181,11 @@ void ArrayIO<T>::_load_data(std::ifstream& in, const std::string& str)
 
     // parse the 1st string
     T val;
-    //T* it=p_data; 
+    _reset_data_pointer();
 
     std::stringstream ss(str);
     while (ss >> val && _count_data < _size) { //&& _count_data != _size) { 
-      // *it++ = val;
+      *_pdata++ = val;
       ++_count_data;
       cout << ' ' << val;
     }
@@ -182,7 +196,7 @@ void ArrayIO<T>::_load_data(std::ifstream& in, const std::string& str)
     // load all data by the end
     //while (in >> val && _count_data < _size) {
     while (in >> val) {
-      //*it++ = val;
+      *_pdata++ = val;
       ++_count_data;
       //cout << ' ' << val;
     }
@@ -228,42 +242,13 @@ void ArrayIO<T>::_load_data(std::ifstream& in, const std::string& str)
 
 
 
+//-----------------------------
 
 
 /*
 //-----------------------------
 //-----------------------------
 //-----------------------------
-//-----------------------------
-
-template <typename T, unsigned NDIM>
-std::string ArrayIO<T>::str_status()
-{
-  if      (_status == ArrayIO<T>::LOADED)     return std::string("loaded from file");
-  else if (_status == ArrayIO<T>::DEFAULT)    return std::string("used default");
-  else if (_status == ArrayIO<T>::UNREADABLE) return std::string("file is unreadable");
-  else if (_status == ArrayIO<T>::UNDEFINED)  return std::string("undefined...");
-  else                                              return std::string("unknown...");
-}
-
-//-----------------------------
-
-template <typename T, unsigned NDIM>
-bool ArrayIO<T>::file_is_available()
-{
-  if(m_fname.empty()) {
-    if( m_print_bits & 4 ) MSGLOG(__name__(), warning, "File name IS EMPTY!");
-    return false;
-  }
-
-  std::ifstream file(m_fname.c_str());
-  if(!file.good()) {
-    if( m_print_bits & 8 ) MSGLOG(__name__(), warning, "File: " << m_fname << " DOES NOT EXIST!");
-    return false;
-  }
-  file.close();
-  return true;  
-}
 
 //-----------------------------
 
