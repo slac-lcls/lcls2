@@ -1,71 +1,57 @@
+# Run from psana machine, source setup_env.sh
 import numpy as np
 import dgramCreate as dc
-import os, pickle, json, base64
+import base64
+import zmq
 
 from psana.dgrammanager import DgramManager
 from psana import DataSource
 
 import sys, os
-outdir = ''
-if len(sys.argv) == 2: outdir = sys.argv[1]
 
-def load_json(filename):
-    with open(filename, 'r') as f:
-        data = json.load(f)
+outdir = sys.argv[1]
+fname  = sys.argv[2]
 
-    event_dict = []
-    timestamps = []
-    for event in data:
+if len(sys.argv) < 3: 
+    print("Usage: python trans.py paths filename")
+    print("Example: python trans.py /reg/common/package/temp crystal_xray")
+
+context = zmq.Context()
+# receive work
+consumer_receiver = context.socket(zmq.PULL)
+consumer_receiver.connect("tcp://127.0.0.1:5557")
+
+def munge_json(event):
+    if 'done' in event:
+        return None, None
+    else:
         for key,val in event['data'].items():
             try:
                 event['data'][key]= np.frombuffer(base64.b64decode(val[0]), dtype = np.dtype(val[2])).reshape(val[1])
             except TypeError:
                 pass
-        event_dict.append(event['data'])
-        timestamps.append(event['timestamp'])
-    return event_dict,timestamps
+            event_dict = event['data']
+            timestamp = event['timestamp']
+        return event_dict, timestamp
 
-
-def translate_xtc_demo(job_type, offset=1):
-    configure_file = '%s_configure.xtc' % job_type
+def translate_xtc_demo(job_type):
     event_file = '%s_evts.xtc' % job_type
 
-    try:
-        os.remove(FILE_NAME)
-    except:
-        pass
-
-    lcls1_xtc,timestamps = load_json("%s.json" % job_type)
-
-    alg = dc.alg('raw', [1, 2, 3])
     ninfo = dc.nameinfo('DsdCsPad', 'cspad', 'detnum1234', 0)
+    alg = dc.alg('raw', [1, 2, 3])
 
-    # This is needed for some reason.
-    # Perhaps a collision of lcls1 xtc "version" with lcls2 counterpart
-    try:
-        lcls1_xtc[0]['version.'] = lcls1_xtc[0]['version']
-        del lcls1_xtc[0]['version']
-    except KeyError:
-        pass
-
-    cydgram = dc.CyDgram()
-
-    with open(configure_file, 'wb') as f:
-        cydgram.addDet(ninfo, alg, lcls1_xtc[0])
-        df = cydgram.get(timestamps[0],0,0)
-        f.write(df)
-
-    del cydgram
     cydgram = dc.CyDgram()
 
     with open(event_file, 'wb') as f:
-        for event_dict,timestamp in zip(lcls1_xtc[offset:],timestamps[offset:]):
+        while True:
+            work = consumer_receiver.recv_json()
+            event_dict, timestamp = munge_json(work)
+            if event_dict is None: break
             cydgram.addDet(ninfo, alg, event_dict)
             df = cydgram.get(timestamp,0,0)
             f.write(df)
 
-    ds_cfg = DgramManager(configure_file)
-    ds_evt = DgramManager(event_file)
+    print("Output: ", event_file)
 
 # Examples
 # The LCLS1 dgrams are organized differently than the LCLS2 version
@@ -80,5 +66,5 @@ def translate_xtc_demo(job_type, offset=1):
 
 #translate_xtc_demo(os.path.join(outdir,'jungfrau'))
 #translate_xtc_demo(os.path.join(outdir,'epix'))
-translate_xtc_demo(os.path.join(outdir,'crystal_dark'), 2)
-translate_xtc_demo(os.path.join(outdir,'crystal_xray'), 2)
+#translate_xtc_demo(os.path.join(outdir,'crystal_dark'), 2)
+translate_xtc_demo(os.path.join(outdir, fname))

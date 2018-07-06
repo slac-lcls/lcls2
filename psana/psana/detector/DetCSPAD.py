@@ -15,9 +15,6 @@ class CSPAD(DetectorBase):
     class _Factory:
         def create(self, name, config, dgramInd): return CSPAD(name, config, dgramInd)
 
-    def timestamp(self, evt):
-        return eval('evt.dgrams[self.ind].' + self.name + '.raw.timestamp')
-
     def photonEnergy(self, evt):
         return eval('evt.dgrams[self.ind].' + self.name + '.raw.photonEnergy')
 
