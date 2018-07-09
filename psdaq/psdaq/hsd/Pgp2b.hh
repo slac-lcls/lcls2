@@ -12,6 +12,7 @@ namespace Pds {
     public:
       virtual void   resetCounts    ();
       virtual void   loopback       (bool v);
+      virtual void   skip_interval  (unsigned) {}
     public:
       virtual bool   localLinkReady () const;
       virtual bool   remoteLinkReady() const;

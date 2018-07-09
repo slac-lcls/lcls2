@@ -39,6 +39,40 @@ using Pds::HSD::StreamHeader;
 using Pds::HSD::RawStream;
 using Pds::HSD::ThrStream;
 
+class IlvBuilder {
+public:
+  IlvBuilder(unsigned blen) : _buffer(new char[4*blen]),
+                              _blen  (blen),
+                              _extent(0),
+                              _lanes (0) {}
+public:
+  void next(const char* p, unsigned len, unsigned lane) {
+    if (_lanes && len != _extent) {
+      printf("IlvBuilder wrong length  len %u  lane %u  extent %u\n",
+             len, lane, _extent);
+    }
+    _extent = len;
+
+    unsigned blen = (_blen < len) ? _blen : len;
+    for(unsigned i=0; i<blen; i++) {
+      _buffer[i*4+lane] = p[i];
+    }
+    _lanes |= (1<<lane);
+    if (_lanes == 0xf) {
+      _lanes = 0;
+      uint32_t* q = reinterpret_cast<uint32_t*>(_buffer);
+      printf("--ILV--\n");
+      for(unsigned i=0; i<blen; i++)
+        printf("%08x%c",q[i],(i&7)==7 ? '\n':' ');
+    }
+  }
+private:
+  char*    _buffer;
+  unsigned _blen;
+  unsigned _extent;
+  unsigned _lanes;
+};
+
 void printUsage(char* name) {
   printf( "Usage: %s [-h]  -P <deviceName> [options]\n"
       "    -h         Show usage\n"
@@ -53,7 +87,8 @@ void printUsage(char* name) {
       "    -N         Exit after N events\n"
       "    -r         Report rate\n"
       "    -v <mask>  Validate each event\n"
-      "    -E <str>   Push 1Hz waveforms to record <str>\n",
+      "    -E <str>   Push 1Hz waveforms to record <str>\n"
+      "    -I <len>   Interleaved\n",
       name
   );
 }
@@ -81,13 +116,17 @@ int main (int argc, char **argv) {
   bool                reportRate          = false;
   unsigned            lanem               = 0;
   const char*         pv                  = 0;
+  IlvBuilder*         ilv                 = 0;
   ::signal( SIGINT, sigHandler );
 
   //  char*               endptr;
   extern char*        optarg;
   int c;
-  while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:F:N:o:rv:E:" ) ) != EOF ) {
+  while( ( c = getopt( argc, argv, "hI:P:L:d:D:c:f:F:N:o:rv:E:" ) ) != EOF ) {
     switch(c) {
+    case 'I':
+      ilv = new IlvBuilder(strtoul(optarg,NULL,0));
+      break;
     case 'P':
       dev = optarg;
       break;
@@ -180,7 +219,7 @@ int main (int argc, char **argv) {
   }
 
   // Allocate a buffer
-  uint32_t* data = new uint32_t[0x80000];
+  uint32_t* data  = new uint32_t[0x80000];
   struct DmaReadData rd;
   rd.data  = reinterpret_cast<uintptr_t>(data);
 
@@ -314,6 +353,9 @@ int main (int argc, char **argv) {
       if (lvalidate&(1<<31))
         event->dump();
     }
+
+    if (ilv)
+      ilv->next(reinterpret_cast<const char*>(data),rd.size,lane);
 
     if (writeFile) {
       data[6] |= (lane<<20);  // write the lane into the event header

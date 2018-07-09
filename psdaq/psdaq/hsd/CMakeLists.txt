@@ -34,6 +34,13 @@ target_link_libraries(hsd
 
 
 
+add_executable(mempeek mempeek.cc)
+
+target_link_libraries(mempeek
+   dl
+   rt
+)
+
 add_executable(hsd_eyescan hsd_eyescan.cc)
 
 target_link_libraries(hsd_eyescan

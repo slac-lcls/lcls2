@@ -96,14 +96,7 @@ class HsdConfig(QtWidgets.QWidget):
             PvRow( glo, i+1, pvbase+':'+elem[1], elem[0] )
         lo.addLayout(glo)
 
-        pvtable = [('Test Pattern (None=-1)','TESTPATTERN'),
-                   ('Even PhaseLock Low'    ,'SYNCELO'),
-                   ('Even PhaseLock High'   ,'SYNCEHI'),
-                   ('Odd PhaseLock Low'     ,'SYNCOLO'),
-                   ('Odd PhaseLock High'    ,'SYNCOHI'),
-                   ('Full Threshold(Events)','FULLEVT'),
-                   ('Full Size     (Rows)  ','FULLSIZE'),
-                   ('Trigger Shift (0..3)  ','TRIGSHIFT')]
+        pvtable = [('Test Pattern (None=-1)','TESTPATTERN')]
         for elem in pvtable:
             hlo = QtWidgets.QHBoxLayout()
             hlo.addWidget(QtWidgets.QLabel(elem[0]))
@@ -209,6 +202,21 @@ class HsdExpert(QtWidgets.QWidget):
         
         lo.addWidget(PvPushButton( pvbase+':RESET', 'Reset'))
         lo.addWidget(PvCheckBox( pvbase+':PGPLOOPBACK', 'Loopback'))
+
+        pvtable = [('Even PhaseLock Low'    ,'SYNCELO'),
+                   ('Even PhaseLock High'   ,'SYNCEHI'),
+                   ('Odd PhaseLock Low'     ,'SYNCOLO'),
+                   ('Odd PhaseLock High'    ,'SYNCOHI'),
+                   ('Full Threshold(Events)','FULLEVT'),
+                   ('Full Size     (Rows)  ','FULLSIZE'),
+                   ('Trigger Shift (0..3)  ','TRIGSHIFT'),
+                   ('PGP Skp Interval'      ,'PGPSKPINTVL')]
+        for elem in pvtable:
+            hlo = QtWidgets.QHBoxLayout()
+            hlo.addWidget(QtWidgets.QLabel(elem[0]))
+            hlo.addWidget(PvEditInt(pvbase+':'+elem[1],''))
+            hlo.addStretch(1)
+            lo.addLayout(hlo)
 
         PvLabel( lo, prefix, 'LOCAL12V'  , scale=1 )
         PvLabel( lo, prefix, 'EDGE12V'   , scale=1 )

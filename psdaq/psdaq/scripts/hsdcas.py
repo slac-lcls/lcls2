@@ -134,6 +134,8 @@ if __name__ == '__main__':
                                   'value' : 0 }
     pvdb[stationstr+'PGPLOOPBACK'  ] = {'type' : 'int', 
                                         'value' : 0 }
+    pvdb[stationstr+'PGPSKPINTVL'  ] = {'type' : 'int', 
+                                        'value' : 0xfff0 }
     pvdb[stationstr+'FULLEVT'      ] = {'type' : 'int', 
                                         'value' : 4 }
     pvdb[stationstr+'FULLSIZE'     ] = {'type' : 'int', 
@@ -144,16 +146,20 @@ if __name__ == '__main__':
                                       'value' : 0 }
     pvdb[stationstr+'SYNCE'       ] = {'type' : 'int', 
                                       'value' : 0 }
-    pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int', 
-                                      'value' : 1800 }
+    pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int',
+#                                       'value' : 2050 } 
+                                       'value' : 1600 }
     pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
-                                      'value' : 2100 }
+#                                       'value' : 2400 }
+                                       'value' : 1950 }
     pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
                                       'value' : 0 }
     pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
-                                      'value' : 11600 }
+#                                       'value' : 11800 }
+                                       'value' : 11400 }
     pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
-                                      'value' : 11900 }
+#                                       'value': 12200 }
+                                       'value' : 11750 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
                                       'count' : 4,
                                       'value' : [0]*4 }

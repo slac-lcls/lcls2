@@ -1,0 +1,49 @@
+bin_path  = '/reg/neh/home/weaver/lcls2/psdaq/build/'
+bins_path = '/reg/neh/home/weaver/lcls2/psdaq/psdaq/scripts/'
+
+platform = '0'
+username = 'lcls2'
+expname  = 'expname'
+expnum   = 'expnum'
+
+#epics_host = daq_tst_dev02
+epics_host = 'daq-tst-dev02'
+
+epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067'
+pcas_env = 'EPICS_CAS_INTF_ADDR_LIST=10.0.0.2'
+shelf = '2'
+ip_addr = '10.0.'+shelf
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ { host: 'daq-tst-dev02', id:'hsdioc-dev02', flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdPVs -P DAQ:LAB2:HSD:DEV02 -I'},
+# { host: 'daq-tst-dev02', id:'hsdioc', flags:'sx', cmd:bin_path+'psdaq/hsd/hsd_pgp -c 0xf -s 0x3 -p 0 -l 320'},
+# { host: 'daq-tst-dev02', id:'hsdioc', flags:'sx', cmd:bin_path+'psdaq/hsd/hsd_pgp -c 0x1 -s 0x1 -p 0 -l 320 -t 0'},
+ {                       id:'partca-'+platform ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/partca.py DAQ:LAB2:PART:'+platform},
+# {                       id:'partca-4' ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/partca.py DAQ:LAB2:PART:4'},
+ {                       id:'modca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
+ {                       id:'deadca-'+platform  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
+ {                       id:'dtica'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/dtica.py DAQ:LAB2:DTI:'+shelf},
+ {                       id:'hsdca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/hsdca.py DAQ:LAB2:HSD:DEV02'},
+# { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -r -F /tmp/hsd.evt' },
+# { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -c 8 -o 32 -r -v 0x1ffffffe' },
+ { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -c 8 -o 32 -r -v 0x2' },
+# { host: 'daq-tst-dev02', id:'qRead' ,flags:'sx', cmd:bin_path+'psdaq/pgp/pgpGen4Daq/app/qRead -c 0 -L 0xf -P 8' },
+
+## procstat
+ {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
+  ]
+

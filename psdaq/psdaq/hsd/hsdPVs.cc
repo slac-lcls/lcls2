@@ -13,6 +13,7 @@
 #include "psdaq/hsd/PVStats.hh"
 #include "psdaq/hsd/PVCtrls.hh"
 #include "psdaq/mmhw/AxiVersion.hh"
+#include "psdaq/mmhw/Xvc.hh"
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
@@ -121,7 +122,8 @@ void StatsTimer::expired()
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -d <device>  (default: /dev/qadca)\n"
-         "         -P <prefix>  (default: DAQ:LAB2:HSD)\n");
+         "         -P <prefix>  (default: DAQ:LAB2:HSD)\n"
+         "         -I           (Interleave)\n");
 }
 
 int main(int argc, char** argv)
@@ -134,12 +136,14 @@ int main(int argc, char** argv)
   const char* dev    = "/dev/qadca";
   const char* prefix = "DAQ:LAB2:HSD";
 
-  while ( (c=getopt( argc, argv, "d:P:h")) != EOF ) {
+  while ( (c=getopt( argc, argv, "d:P:Ih")) != EOF ) {
     switch(c) {
     case 'd':
       dev    = optarg;      break;
     case 'P':
       prefix = optarg;      break;
+    case 'I':
+      Pds::HSD::PVCtrls::interleave(true); break;
     case '?':
     default:
       lUsage = true;      break;
@@ -169,14 +173,12 @@ int main(int argc, char** argv)
 
   StatsTimer* timer = new StatsTimer(*m);
 
-  Task* task = new Task(Task::MakeThisATask);
-
   ::signal( SIGINT, sigHandler );
 
   timer->allocate(prefix);
   timer->start();
 
-  task->mainLoop();
+  Pds::Mmhw::Xvc::launch( m->xvc(), false );
 
   sleep(1);                    // Seems to help prevent a crash in cpsw on exit
 

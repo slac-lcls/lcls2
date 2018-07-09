@@ -9,6 +9,7 @@
 namespace Pds {
   namespace Mmhw {
     class AxiVersion;
+    class Jtag;
   };
   namespace HSD {
     class TprCore;
@@ -111,6 +112,7 @@ namespace Pds {
 
       void* reg();
       std::vector<Pgp*> pgp();
+      Pds::Mmhw::Jtag*  xvc();
 
       //  Monitoring
       void   mon_start();

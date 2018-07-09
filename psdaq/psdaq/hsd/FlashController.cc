@@ -63,9 +63,9 @@ void FlashController::write(FILE* f)
   _command = 0;
   usleep(250000);
 
-  // printf("Writing %u words\n", nw);
-  // write(reinterpret_cast<const uint32_t*>(d), nw);
-  // usleep(1000000);
+  printf("Writing %u words\n", nw);
+  write(reinterpret_cast<const uint32_t*>(d), nw);
+  usleep(1000000);
   read (reinterpret_cast<const uint32_t*>(d), nw);
   delete[] d;
 }

@@ -31,6 +31,8 @@ namespace Pds {
       void disable  ();
       void reset    ();
       void loopback (bool);
+    public:
+      static void interleave(bool);
     private:
       std::vector<Pds_Epics::EpicsCA*> _pv;
       Module& _m;

@@ -41,6 +41,7 @@ void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -d <dev id>\n");
   printf("\t-C <initialize clock synthesizer>\n");
+  printf("\t-D <add debug timer>\n");
   printf("\t-R <reset timing frame counters>\n");
   printf("\t-S <sync ADC>\n");
   printf("\t-U <sync clocktree>\n");
@@ -59,6 +60,8 @@ void usage(const char* p) {
   printf("\t-6 <configure for M7_4>\n");
   //  printf("Options: -a <IP addr (dotted notation)> : Use network <IP>\n");
 }
+
+void* debugThread(void*);
 
 int main(int argc, char** argv) {
 
@@ -89,10 +92,18 @@ int main(int argc, char** argv) {
 #endif
   unsigned trainRefDelay = 0;
 
-  while ( (c=getopt( argc, argv, "CRXYP0123456D:d:htST:UW:Z")) != EOF ) {
+  while ( (c=getopt( argc, argv, "CDRXYP0123456d:htST:UW:Z")) != EOF ) {
     switch(c) {
     case 'C':
       lSetupClkSynth = true;
+      break;
+    case 'D':
+      { pthread_attr_t tattr;
+        pthread_attr_init(&tattr);
+        pthread_t thr;
+        if (pthread_create(&thr, &tattr, &debugThread, 0))
+          perror("Error creating debug thread");
+      }
       break;
     case 'P':
       lPolarity = true;
@@ -136,15 +147,6 @@ int main(int argc, char** argv) {
     case 'T':
       lTrain = true;
       trainRefDelay = strtoul(optarg,&endptr,0);
-      break;
-    case 'D':
-#if 0      
-      lSetPhase = true;
-      delay_int  = strtoul(optarg,&endptr,0);
-      if (endptr[0]) {
-        delay_frac = strtoul(endptr+1,&endptr,0);
-      }
-#endif
       break;
     case 'U':
       lClkSync = true;
@@ -312,4 +314,14 @@ int main(int argc, char** argv) {
   }
 
   return 0;
+}
+
+void* debugThread(void* args)
+{
+  unsigned count=0;
+  while(1) {
+    usleep(1000);
+    printf("\r%u",count);
+    count++;
+  }
 }

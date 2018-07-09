@@ -12,6 +12,7 @@
 #include "psdaq/hsd/Pgp3.hh"
 #include "psdaq/mmhw/Pgp3Axil.hh"
 #include "psdaq/mmhw/RingBuffer.hh"
+#include "psdaq/mmhw/Xvc.hh"
 #include "psdaq/hsd/I2cSwitch.hh"
 #include "psdaq/hsd/LocalCpld.hh"
 #include "psdaq/hsd/FmcSpi.hh"
@@ -98,7 +99,11 @@ namespace Pds {
       uint32_t rsvd_to_0x31100  [54];
       uint32_t gthAlignTarget;
       uint32_t gthAlignLast;
-      uint32_t rsvd_to_0x40000[(0xF000-0x108)/4];
+      uint32_t rsvd_to_0x32000[(0x1000-0x108)/4];
+
+      // XVC
+      Pds::Mmhw::Jtag    xvc;
+      uint32_t rsvd_to_0x40000[(0xE000-sizeof(xvc))/4];
 
       // Timing
       Pds::HSD::TprCore  tpr;     // 0x40000
@@ -906,6 +911,8 @@ std::vector<Pgp*> Module::pgp() {
   }
   return v;
 }
+
+Pds::Mmhw::Jtag* Module::xvc() { return &p->xvc; }
 
 FexCfg* Module::fex() { return &p->fex_chan[0]; }
 

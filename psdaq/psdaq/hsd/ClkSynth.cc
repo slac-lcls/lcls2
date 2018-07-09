@@ -383,19 +383,18 @@ void Pds::HSD::ClkSynth::dump() const
   *r255 = 0;
 }
 
-#define SET_REG(i,q) {                                          \
-    timespec tvb,tve;                                           \
-    clock_gettime(CLOCK_REALTIME, &tvb);                        \
-    unsigned t = _reg[i&0xff];                                  \ 
-    if (t!=q) {                                                    \
-      _reg[i&0xff] = q;                                         \
-      unsigned u = _reg[i&0xff];                                \
-      clock_gettime(CLOCK_REALTIME, &tve);                              \
-      printf("RMW[%03u] %02x -> %02x [%02x] (%02x): %f sec  %c\n",      \
-             i, t, q, u, _reg[2], tdiff(tvb,tve), (u==q)?'X':' ');      \
-    }                                                                   \
+#define SET_REG(i,q) {                                                  \
+  timespec tvb,tve;                                                     \
+  clock_gettime(CLOCK_REALTIME, &tvb);                                  \
+  unsigned t = _reg[i&0xff];                                            \
+  if (t!=q) {                                                           \
+    _reg[i&0xff] = q;                                                   \
+    unsigned u = _reg[i&0xff];                                          \
+    clock_gettime(CLOCK_REALTIME, &tve);                                \
+    printf("RMW[%03u] %02x -> %02x [%02x] (%02x): %f sec  %c\n",        \
+           i, t, q, u, _reg[2], tdiff(tvb,tve), (u==q)?'X':' ');        \
+  }                                                                     \
   }
-
 
 static void _setup(volatile uint32_t* _reg,
                    const uint8_t*     write_values);
@@ -423,6 +422,10 @@ void _setup(volatile uint32_t* _reg,
   static const unsigned LOS_MASK  = 0x04;
   static const unsigned LOCK_MASK = 0x15;
 
+  timespec tvb, tve;
+
+  for(unsigned j=0; j<1; j++) {
+
   SET_REG(255,0);
   SET_REG(230,0x10);
   SET_REG(241,0xe5);
@@ -444,10 +447,10 @@ void _setup(volatile uint32_t* _reg,
 
   SET_REG(255,0);
 
-  timespec tvb, tve;
   clock_gettime(CLOCK_REALTIME, &tvb);
   while( (_reg[218]&LOS_MASK) )
-    ;
+    usleep(20);
+
   clock_gettime(CLOCK_REALTIME, &tve);
   printf("Time1 : %f sec\n", tdiff(tvb,tve));
 
@@ -455,7 +458,9 @@ void _setup(volatile uint32_t* _reg,
     SET_REG(49,q); }
   printf("SET_REG 49 done\n");
 
-  SET_REG(246,2);
+  }  // loop to prevent reboot
+
+  SET_REG(246,2);   // This causes a hang/reboot first time after power cycle
   printf("SET_REG 246 done\n");
 
   usleep(50000);
