@@ -43,7 +43,14 @@ int main (int argc, char **argv) {
     return(1);
   }
 
-  PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)mmap(NULL, 0x01000000, (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0);   
+  //  void* praw = mmap(NULL, 0x01000000, (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0); 
+  void* praw = mmap(NULL, sizeof(PgpDaq::PgpCard), (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0); 
+  if (praw == MAP_FAILED) {
+    perror("Map failed");
+    return -1;
+  }
+
+  PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)praw;
 
   printf("-- Core Axi Version --\n");
   printf("firmwareVersion    : %x\n", p->version);
@@ -96,7 +103,7 @@ int main (int argc, char **argv) {
   printf("dmaLane[0] @ %p\n", &p->dmaLane[0]);
   PRINTFIELD(client        , client     , 0, 0xf);
   PRINTFIELD(blockSize     , blockSize  , 0, 0xf);
-  PRINTFIELD(blocksPause   , blocksPause, 0, 0x3ff);
+  PRINTFIELD(blocksPause   , blocksPause, 8, 0x3ff);
   PRINTFIELD(dcountTransfer, fifoDepth  , 0, 0xffff);
   PRINTFIELD(blocksFree    , memStatus  , 0, 0x3ff);
   PRINTFIELD(blocksQueued  , memStatus  ,12, 0x3ff);
@@ -182,13 +189,28 @@ int main (int argc, char **argv) {
     PRINTERR(txOpCodeCnt, 0xa0);
     PRINTREG(txOpCodeLst, 0xa4);
 
-    /*
-    printf("sim @ %p\n", &p->sim);
-    printf("-- AppTxSim Registers --\n");
-    printf("overflow: %08x\n", p->sim.overflow);
-    printf("control : %08x\n", p->sim.control);
-    printf("size    : %08x\n", p->sim.size);
-    */
+#undef PRINTFIELD
+#define PRINTFIELD(name, addr, offset, mask) {                          \
+    uint32_t reg;                                                       \
+    printf("%20.20s :", #name);                                         \
+    for(unsigned i=0; i<4; i++) {                                       \
+      reg = q[(0x10*i+addr)>>2];                                        \
+      printf(" %8x", (reg>>offset)&mask);                               \
+    }                                                                   \
+    printf("\n"); }
+
+    q = reinterpret_cast<const uint32_t*>(&p->sim);
+    printf("sim @ %p\n", q);
+    printf("-- PgpTxSim Registers --\n");
+    PRINTFIELD(txEnable , 0,  0, 0x1);
+    PRINTFIELD(txFixed  , 0,  8, 0x1);
+    PRINTFIELD(txIntBase, 0,  9, 0xf);
+    PRINTFIELD(txIntExp , 0, 13, 0x7);
+    PRINTFIELD(txClear  , 0, 16, 0x1);
+    PRINTFIELD(txReqDly , 0, 24, 0xf);
+    PRINTFIELD(txReqMax , 0, 28, 0xf);
+    PRINTFIELD(txLength , 4,  0, 0xffffffff);
+    PRINTFIELD(overflow , 8,  0, 0xffffffff);
 
   close(fd);
 }

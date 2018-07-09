@@ -15,6 +15,12 @@ target_include_directories(qConfig PUBLIC
 )
 
 
+add_executable(qDesc   qDesc.cc)
+target_include_directories(qDesc PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $ENV{CONDA_PREFIX}/include
+)
+
 add_executable(qRead   qRead.cc)
 target_include_directories(qRead PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -39,14 +45,26 @@ target_link_libraries(qRead
   rt
 )
 
-add_executable(qLoopTest qLoopTest.cc)
-target_include_directories(qLoopTest PUBLIC
+#add_executable(qLoopTest qLoopTest.cc)
+#target_include_directories(qLoopTest PUBLIC
+#    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#    $ENV{CONDA_PREFIX}/include
+#)
+
+add_executable(qHist qHist.cc)
+target_include_directories(qHist PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $ENV{CONDA_PREFIX}/include
 )
 
-add_executable(qHist qHist.cc)
-target_include_directories(qHist PUBLIC
+add_executable(cStatus cStatus.cc)
+target_include_directories(cStatus PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $ENV{CONDA_PREFIX}/include
+)
+
+add_executable(cLoopTest cLoopTest.cc)
+target_include_directories(cLoopTest PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $ENV{CONDA_PREFIX}/include
 )

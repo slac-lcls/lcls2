@@ -51,8 +51,8 @@ unsigned Timer::cancel() {
 // Executed in the timer task
 void Timer::routine() {
   if (repetitive()) {
-    expired();
     _service.submit();
+    expired();
   } else {
      // Disarm before expired so that user can call start from expired
     _service.disarmTimer();

@@ -104,10 +104,10 @@ namespace PgpDaq {
   class PgpTxSim {
   public:
     uint32_t overflow;
-    uint32_t rsvd_4[0x40-1];
+    uint32_t rsvd[63];
     uint32_t control;
     uint32_t size;
-    uint32_t rsvd_48[0x00040000-0x42];
+    uint32_t rsvd_40[(0x00100000-0x108)>>2];
   };
 
   class PgpCard {
@@ -140,7 +140,7 @@ namespace PgpDaq {
     PgpLane  pgpLane[LANES];     // @ 0x00C00000
     uint32_t rsvd_00C40000[0x00030000];
     PgpTxSim sim;                // @ 0x00D00000
-    uint32_t rsvd_00e00000[0x00080000];
+    uint32_t rsvd_00e00000[0x00040000];
   };
 
   inline unsigned PgpCard::nlanes() const {

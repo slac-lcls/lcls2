@@ -16,6 +16,7 @@
 #include <linux/types.h>
 
 #include "../include/DmaDriver.h"
+#include "PgpDaq.hh"
 
 using namespace std;
 
@@ -45,14 +46,14 @@ int main (int argc, char **argv) {
   }
 
   //
-  //  Launch the read loop
+  //  Map the lanes to this reader and flush
   //
-  struct DmaWriteData wr;
-  wr.data  = reinterpret_cast<uintptr_t>(new char[0x200000]);
-  ssize_t sz = write(fd, &wr, sizeof(wr));
-  if (sz < 0) {
-    perror("Writing buffer");
-    return -1;
+  {
+    PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)mmap(NULL, sizeof(PgpDaq::PgpCard), (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0);   
+    uint32_t MAX_LANES = p->nlanes();
+    unsigned client    = p->nclients();
+    for(unsigned i=0; i<MAX_LANES; i++)
+      p->dmaLane[i].client = client;
   }
 
   close(fd);

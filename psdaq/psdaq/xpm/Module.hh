@@ -7,6 +7,7 @@
 #include "psdaq/cphw/AmcTiming.hh"
 #include "psdaq/cphw/HsRepeater.hh"
 #include "psdaq/cphw/RingBuffer.hh"
+#include "psdaq/cphw/Xvc.hh"
 
 namespace Pds {
   namespace Xpm {
@@ -75,7 +76,11 @@ namespace Pds {
     public:
       Pds::Cphw::HsRepeater _hsRepeater[6];
     private:
-      uint32_t _reserved_HR[(0x77000000-sizeof(Module::_hsRepeater))>>2];
+      uint32_t _reserved_HR[(0x03000000-sizeof(Module::_hsRepeater))>>2];
+    public:
+      Pds::Cphw::Jtag       _jtag;
+    private:
+      uint32_t _reserved_JT[(0x74000000-sizeof(Module::_jtag))>>2];
     public:
       CoreCounts counts    () const;
       bool       l0Enabled () const;

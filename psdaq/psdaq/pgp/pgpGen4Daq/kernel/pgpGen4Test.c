@@ -267,6 +267,22 @@ ssize_t PgpGen4Test_Read(struct file *filp, char *buffer, size_t count, loff_t *
                ret, (void*)rd.data, dev->monAddr, MON_BUFFER_SIZE);
       res = -1;
     }
+    rd.size = MON_BUFFER_SIZE;
+  }
+
+  else if (rd.index & (1<<30)) {
+    //
+    //  Read descriptor page from another client
+    //
+    client = &dev->client[rd.index&0xf];
+    if ( (ret=copy_to_user((void*)rd.data, client->rxDescPage, 8*RX_DESC_SIZE) )) {
+      dev_warn(dev->device,
+               "Read: failed to copy data to user space ret=%li,\
+ user=%p kern=%p size=%u.\n",
+               ret, (void*)rd.data, client->rxDescPage, 8*RX_DESC_SIZE);
+      res = -1;
+    }
+    rd.size = 8*RX_DESC_SIZE;
   }
 
   else {
