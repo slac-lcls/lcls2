@@ -9,6 +9,7 @@ add_library(cphw SHARED
     RingBuffer.cc
     XBar.cc
     BldControl.cc
+    Xvc.cc
 )
 
 add_library(cphwr SHARED
@@ -21,6 +22,7 @@ add_library(cphwr SHARED
     RingBuffer.cc
     XBar.cc
     BldControl.cc
+    Xvc.cc
 )
 
 target_include_directories(cphw PUBLIC
