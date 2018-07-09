@@ -3,6 +3,7 @@ import os
 import sys
 import numpy as np
 from setuptools import setup, Extension #, find_packages
+import versioneer
 
 print('Begin: %s' % ' '.join(sys.argv))
 
@@ -55,10 +56,14 @@ container_module = Extension('psana.container',
                          extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
                          extra_compile_args=['-std=c++11'])
 
-setup(name = 'psana',
-       version = '0.1',
+setup(
+       name = 'psana',
        license = 'LCLS II',
        description = 'LCLS II analysis package',
+
+       version=versioneer.get_version(),
+       cmdclass=versioneer.get_cmdclass(),
+
        install_requires=[
          'numpy',
        ],
