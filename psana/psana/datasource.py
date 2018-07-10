@@ -31,11 +31,10 @@ if size > 1:
         raise InputError(size, "Parallel processing needs at least 3 cores.")
 
 FN_L = 200
-N_EVENTS = int(os.environ.get('PS_SMD_N_EVENTS', 100))
 PERCENT_SMD = .25
 
 
-def smd_0(fds, n_smd_nodes):
+def smd_0(fds, n_smd_nodes, max_events=0):
     """ Sends blocks of smds to smd_node
     Identifies limit timestamp of the slowest detector then
     sends all smds within that timestamp to an smd_node.
@@ -43,11 +42,18 @@ def smd_0(fds, n_smd_nodes):
     assert len(fds) > 0
     smdr = SmdReader(fds)
     got_events = -1
+    processed_events = 0
     rankreq = np.empty(1, dtype='i')
 
+    n_events = int(os.environ.get('PS_SMD_N_EVENTS', 100))
+    if max_events:
+        if max_events < n_events:
+            n_events = max_events
+
     while got_events != 0:
-        smdr.get(N_EVENTS)
+        smdr.get(n_events)
         got_events = smdr.got_events
+        processed_events += got_events
         views = bytearray()
         for i in range(len(fds)):
             view = smdr.view(i)
@@ -59,6 +65,10 @@ def smd_0(fds, n_smd_nodes):
         if views:
             comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             comm.Send(views, dest=rankreq[0], tag=12)
+
+        if max_events:
+            if processed_events == max_events:
+                break
 
     for i in range(n_smd_nodes):
         comm.Recv(rankreq, source=MPI.ANY_SOURCE)
@@ -151,7 +161,7 @@ def read_event(ds, event_type=None):
         for evt in reader(ds): yield evt       # safe for python2
     else:
         if ds.nodetype == 'smd0':
-            smd_0(ds.smd_dm.fds, ds.nsmds)
+            smd_0(ds.smd_dm.fds, ds.nsmds, max_events=ds.max_events)
         elif ds.nodetype == 'smd':
             bd_nodes = (np.arange(size)[ds.nsmds+1:] % ds.nsmds) + 1
             smd_node(ds.smd_configs, len(bd_nodes[bd_nodes==rank]), \
@@ -173,6 +183,11 @@ class Run(object):
         for i in range(1):
             yield ConfigUpdate(self)
 
+    def run(self):
+        """ Returns integer representaion of run no.
+        default: (when no run is given) is set to -1"""
+        return self.ds.run
+
 class ConfigUpdate(object):
     """ ConfigUpdate generator """
     def __init__(self, run):
@@ -184,7 +199,7 @@ class ConfigUpdate(object):
 
 class DataSource(object):
     """ Uses DgramManager to read XTC files  """ 
-    def __init__(self, expstr, filter=filter, batch_size=1):
+    def __init__(self, expstr, filter=filter, batch_size=1, max_events=0):
         """Initializes datasource.
         
         Keyword arguments:
@@ -203,6 +218,8 @@ class DataSource(object):
         self.batch_size = batch_size
         self.filter = filter
         self.nodetype = 'bd'
+        self.run = -1
+        self.max_events = max_events
 
         # Check if we are reading file(s) or an experiment
         self.read_files = False
@@ -229,20 +246,21 @@ class DataSource(object):
                     assert len(items) == 2
                     exp[items[0]] = items[1]
                 
-                run = ''
+                run = -1
                 if 'dir' in exp:
                     xtc_path = exp['dir']
                 else:
                     xtc_dir = os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm')
                     xtc_path = os.path.join(xtc_dir, exp['exp'][:3], exp['exp'], 'xtc')
                     if 'run' in exp:
-                        run = exp['run']
+                        run = int(exp['run'])
             
-                if run:
-                    self.xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(run.zfill(4)))), dtype='U%s'%FN_L)
+                if run > -1:
+                    self.xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(str(run).zfill(4)))), dtype='U%s'%FN_L)
                 else:
                     self.xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*.xtc')), dtype='U%s'%FN_L)
 
+                self.run = run
                 self.xtc_files.sort()
                 self.smd_files = np.empty(len(self.xtc_files), dtype='U%s'%FN_L)
                 smd_dir = os.path.join(xtc_path, 'smalldata')
