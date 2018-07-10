@@ -12,6 +12,13 @@ target_link_libraries(xtcwriter
     xtc
 )
 
+add_executable(xtcsave
+    xtcsave.cc
+)
+target_link_libraries(xtcsave
+    xtc
+)
+
 add_executable(smdwriter
     smdwriter.cc
 )
