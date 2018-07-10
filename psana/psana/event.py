@@ -53,4 +53,16 @@ class Event():
                     for i in range(len(configs))]
         evt = Event(dgrams=dgrams)
         return evt
+    
+    @property
+    def seconds(self):
+        _high = (self.dgrams[0].seq.timestamp() >> 32) & 0xffffffff
+        return _high
+    
+    @property
+    def nanoseconds(self):
+        _low = self.dgrams[0].seq.timestamp() & 0xffffffff
+        return _low
+
+
 
