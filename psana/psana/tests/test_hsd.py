@@ -3,7 +3,7 @@
 #
 #------------------------------
 
-doPlot = 1
+doPlot = 0
 
 #------------------------------
 
@@ -15,7 +15,7 @@ def test_hsd():
     ds = psana.DataSource('/reg/neh/home/yoon82/data/hsd_061918.xtc')
     det = ds.Detector("xpphsd")
 
-    chanNum = 2
+    chanNum = 3
     for i, evt in enumerate(ds.events()):
         waveforms = det.waveforms(evt)
         peaks, startPos = det.peaks(evt, chanNum)
