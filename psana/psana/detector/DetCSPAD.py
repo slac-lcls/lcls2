@@ -7,7 +7,7 @@ class CSPAD(DetectorBase):
     def __init__(self, name, config, dgramInd):
         super(CSPAD, self).__init__(name, config, dgramInd)
         self.name = name
-        self.ind = dgramInd[0]
+        self.ind = dgramInd
         config = config[self.ind]
         detcfg = getattr(config.software, self.name)
         assert detcfg.dettype == 'cspad'

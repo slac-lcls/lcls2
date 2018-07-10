@@ -5,15 +5,15 @@ class Detector:
 
     def searchDgramName(self, name):
         """Search datagrams for name and return a list of dgram indices."""
-        dgramInd = []
+        dgramInd = None
         for i, dgram in enumerate(self.config):
            if hasattr(dgram, "software"):
-               if hasattr(dgram.software, name): dgramInd.append(i) # TODO: throw error if two the same
+               if hasattr(dgram.software, name): dgramInd = i # TODO: throw error if two the same
         return dgramInd
 
     def __call__(self, name):
         dgramInd = self.searchDgramName(name)
-        det = getattr(self.config[dgramInd[0]].software, name)
+        det = getattr(self.config[dgramInd].software, name)
         df = eval(str(det.dettype).upper() + '._Factory()')  # HSD._Factory()
         return df.create(name, self.config, dgramInd)
 

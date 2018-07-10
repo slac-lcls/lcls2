@@ -3,7 +3,7 @@
 #
 #------------------------------
 
-doPlot = 0
+doPlot = 1
 
 #------------------------------
 
@@ -15,20 +15,20 @@ def test_hsd():
     ds = psana.DataSource('/reg/neh/home/yoon82/data/hsd_061918.xtc')
     det = ds.Detector("xpphsd")
 
-    chanNum = 3
+    chanNum = 2
     for i, evt in enumerate(ds.events()):
         waveforms = det.waveforms(evt)
         peaks, startPos = det.peaks(evt, chanNum)
-        #print("waveform: ", waveforms)
-        #print("list of peaks:", peaks)
-        #print("list of pos:", startPos)
+        print("waveform: ", waveforms)
+        print("list of peaks:", peaks)
+        print("list of pos:", startPos)
 
         #hsd = det(evt)
         #waveform = hsd.waveform() # FIXME: return dictionary
         #peaks, startPos = hsd.peaks(chanNum) # TODO: return times instead of sPos. Get sampling rate from hsd configure
 
         if doPlot:
-            plt.plot(waveform[0], 'o-')
+            plt.plot(waveforms[0], 'o-')
             plt.title('Event {}, Waveform channel: {}'.format(i, chanNum))
             plt.show()
 
