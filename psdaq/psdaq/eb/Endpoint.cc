@@ -774,10 +774,11 @@ bool Fabric::initialize(const char* node, const char* service, uint64_t flags, s
     if (rx_size)
       _hints->rx_attr->size = rx_size;
 
-    if (!node)
-      flags |= FI_SOURCE;
-
     CHECK_ERR(fi_getinfo(FIVER, node ? node : ANY_ADDR, service, flags, _hints, &_info), "fi_getinfo");
+    // sockets provider and maybe others ignore the hints so let's explicitly set the mr_mode bits.
+    if (_info->domain_attr->mr_mode == FI_MR_UNSPEC) {
+      _info->domain_attr->mr_mode = FI_MR_LOCAL | FI_MR_VIRT_ADDR | FI_MR_ALLOCATED | FI_MR_PROV_KEY;
+    }
     CHECK_ERR(fi_fabric(_info->fabric_attr, &_fabric, NULL), "fi_fabric");
     CHECK_ERR(fi_domain(_fabric, _info, &_domain, NULL), "fi_domain");
   }
