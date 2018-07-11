@@ -1092,28 +1092,20 @@ ssize_t Endpoint::post_comp_data_recv(void* context)
 
 ssize_t Endpoint::recv_comp_data(void* context)
 {
-  if (_fabric->has_rma_event_support()) {
-    return FI_SUCCESS;
-  } else {
-    // post a recieve buffer for remote completion
-    return post_comp_data_recv(context);
-  }
+  // post a recieve buffer for remote completion
+  return post_comp_data_recv(context);
 }
 
 ssize_t Endpoint::recv_comp_data_sync(CompletionQueue* cq, uint64_t* data)
 {
-  if (_fabric->has_rma_event_support()) {
-    return check_completion_noctx(cq, FI_REMOTE_CQ_DATA, data);
-  } else {
-    int context = _counter++;
+  int context = _counter++;
 
-    ssize_t rret = post_comp_data_recv(&context);
-    if (rret == FI_SUCCESS) {
-      return check_completion(cq, context, FI_REMOTE_CQ_DATA, data);
-    }
-
-    return rret;
+  ssize_t rret = post_comp_data_recv(&context);
+  if (rret == FI_SUCCESS) {
+    return check_completion(cq, context, FI_REMOTE_CQ_DATA, data);
   }
+
+  return rret;
 }
 
 ssize_t Endpoint::send(const void* buf, size_t len, void* context, const MemoryRegion* mr)
