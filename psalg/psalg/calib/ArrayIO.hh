@@ -1,4 +1,3 @@
-
 #ifndef PSALG_ARRAYIO_H
 #define PSALG_ARRAYIO_H
 
