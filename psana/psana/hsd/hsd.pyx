@@ -23,11 +23,11 @@ cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
         int parseChan(const cnp.uint8_t* data, const unsigned chanNum) except +
         AllocArray1D[unsigned] numPixels
         AllocArray1D[cnp.uint16_t*] rawPtr
-        AllocArray1D[AllocArray1D[cnp.uint16_t]] sPosx
-        AllocArray1D[AllocArray1D[cnp.uint16_t]] lenx
+        AllocArray1D[AllocArray1D[cnp.uint16_t]] sPos
+        AllocArray1D[AllocArray1D[cnp.uint16_t]] len
         AllocArray1D[AllocArray1D[cnp.uint16_t]] fexPos
         AllocArray1D[arrp] fexPtr
-        AllocArray1D[unsigned] numFexPeaksx
+        AllocArray1D[unsigned] numFexPeaks
 
     cdef cppclass Client:
          Client(Allocator *allocator, const char* version, const unsigned nChan) except +
@@ -90,12 +90,12 @@ cdef class hsd_v1_2_3:
         sPos = []
         cdef cnp.ndarray peak
         cdef cnp.npy_intp shape[1]
-        for i in range(self.ptr123.numFexPeaksx(chanNum)): # TODO: disable bounds, wraparound check
-            shape[0] = <cnp.npy_intp> self.ptr123.lenx(chanNum)(i) # len
+        for i in range(self.ptr123.numFexPeaks(chanNum)): # TODO: disable bounds, wraparound check
+            shape[0] = <cnp.npy_intp> self.ptr123.len(chanNum)(i) # len
             peak = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16,
                                <cnp.uint16_t*>self.ptr123.fexPtr(chanNum)(i))
             peak.base = <PyObject*> self.chans[i]
             Py_INCREF(self.chans[i])
             listOfPeaks.append(peak)
-            sPos.append(self.ptr123.sPosx(chanNum)(i))
+            sPos.append(self.ptr123.sPos(chanNum)(i))
         return listOfPeaks, sPos

@@ -56,11 +56,6 @@ namespace Pds {
         // TODO: find out how to convert bin number to time
         int parseChan(const uint8_t* data, const unsigned chanNum) // byte offset to get the next channel
         {
-            //printf("Address data: %p\n", (void *) data);
-            //const Pds::HSD::EventHeader& ehx = *reinterpret_cast<const Pds::HSD::EventHeader*>(data);
-            //ehx.dump();
-            //printf("#### %lu\n", ehx.timeStamp());
-
             const char* nextx = reinterpret_cast<const char*>(data);
             const Pds::HSD::StreamHeader* sh_rawx = 0;
             sh_rawx = reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
@@ -69,7 +64,7 @@ namespace Pds {
 
             numPixels.push_back((unsigned) (sh_rawx->samples()-sh_rawx->eoffs()-sh_rawx->boffs()));
             rawPtr.push_back((uint16_t *) (rawx+sh_rawx->boffs()));
-            numFexPeaksx.push_back(0);
+            numFexPeaks.push_back(0);
 
             // ------------ FEX --------------
             nextx = reinterpret_cast<const char*>(&rawx[sh_rawx->samples()]);
@@ -93,8 +88,8 @@ namespace Pds {
                     } else {
                         //printf(" SKIP\n");
                         if (in) {
-                            lenx(chanNum).push_back(i-fexPos(chanNum)(numFexPeaksx(chanNum)));
-                            numFexPeaksx(chanNum) = numFexPeaksx(chanNum)+1;
+                            len(chanNum).push_back(i-fexPos(chanNum)(numFexPeaks(chanNum)));
+                            numFexPeaks(chanNum) = numFexPeaks(chanNum)+1;
                         }
                     }
                     in = false;
@@ -102,7 +97,7 @@ namespace Pds {
                 } else {
                     if (skipped) {
                         //printf(" New beginning\n");
-                        sPosx(chanNum).push_back(j);
+                        sPos(chanNum).push_back(j);
                         fexPos(chanNum).push_back(i);
                         fexPtr(chanNum).push_back((uint16_t *) (p_thr+i));
 
@@ -114,19 +109,19 @@ namespace Pds {
                 i++;
             }
             if (in) {
-                lenx(chanNum).push_back(i-fexPos(chanNum)(numFexPeaksx(chanNum)));
-                numFexPeaksx(chanNum) = numFexPeaksx(chanNum)+1;
+                len(chanNum).push_back(i-fexPos(chanNum)(numFexPeaks(chanNum)));
+                numFexPeaks(chanNum) = numFexPeaks(chanNum)+1;
             }
             return 0;
         }
     public:
         Allocator *m_allocator;
         AllocArray1D<unsigned> numPixels;
-        AllocArray1D<AllocArray1D<uint16_t> > sPosx; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t> > lenx; // nChan x maxLength
+        AllocArray1D<AllocArray1D<uint16_t> > sPos; // nChan x maxLength
+        AllocArray1D<AllocArray1D<uint16_t> > len; // nChan x maxLength
         AllocArray1D<AllocArray1D<uint16_t> > fexPos; // nChan x maxLength
         AllocArray1D<AllocArray1D<uint16_t*> > fexPtr; // nChan x maxLength
-        AllocArray1D<unsigned> numFexPeaksx; // nChan x 1
+        AllocArray1D<unsigned> numFexPeaks; // nChan x 1
         AllocArray1D<uint16_t*> rawPtr; // nChan x 1
     };
 

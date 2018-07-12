@@ -32,7 +32,7 @@ using std::string;
 
 void usage(char* progname)
 {
-    fprintf(stderr, "Usage: %s -f <filename> [-h]\n", progname);
+    fprintf(stderr, "Usage: %s -f <xtc> [-h]\n", progname);
 }
 
 class HsdIter : public XtcIterator
@@ -77,6 +77,7 @@ public:
     }
     std::vector<NameIndex>& _namesVec;
 
+
 public:
     std::map <std::string, uint8_t*> chanPtr;
 };
@@ -114,13 +115,14 @@ int main (int argc, char* argv[]) {
     XtcFileIterator iter(fd, 0x4000000);
     Dgram* dg;
     unsigned counter = 0;
+    unsigned ind     = 0;
+    Heap heap;
 
     dg = iter.next();
     NamesIter namesIter(&dg->xtc);
     namesIter.iterate();
 
     while ((dg = iter.next())) {
-
 
         printf("%s transition: time %d.%09d, pulseId 0x%lux, env 0x%lux, "
                "payloadSize %d\n",
@@ -129,47 +131,31 @@ int main (int argc, char* argv[]) {
                dg->env, dg->xtc.sizeofPayload());
         printf("*** dg xtc extent %d\n",dg->xtc.extent);
 
-        if (dg->seq.isEvent()) { // FIXME: this is always false for now
+        if (dg->seq.isEvent()) { // FIXME: this is always false
             printf("Found event\n");
         }
 
-        if (counter == 1) {
-            HsdIter hsdIter(&dg->xtc, namesIter.namesVec());
-            hsdIter.iterate();
+        printf("Counter: %u\n", counter);
+        HsdIter hsdIter(&dg->xtc, namesIter.namesVec());
+        hsdIter.iterate();
 
-            const Pds::HSD::StreamHeader* sh_rawx = 0;
-            sh_rawx = reinterpret_cast<const Pds::HSD::StreamHeader*>(hsdIter.chanPtr["chan0"]);
-            const uint16_t* rawx = reinterpret_cast<const uint16_t*>(sh_rawx+1);
-            sh_rawx->dump();
-
-            // ------------ FEX --------------
-            const char* nextx = reinterpret_cast<const char*>(&rawx[sh_rawx->samples()]);
-            const Pds::HSD::StreamHeader& sh_fexx = *reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
-            printf("FEX DUMP\n");
-            sh_fexx.dump();
-
-            break;
+        // Test with heap
+        unsigned nChan = hsdIter.chanPtr.size();
+        Pds::HSD::Client *pClient = new Pds::HSD::Client(&heap, "1.2.3", nChan);
+        Pds::HSD::HsdEventHeaderV1 *pHsd = pClient->getHsd();
+        Pds::HSD::Hsd_v1_2_3 *vHsd = (Pds::HSD::Hsd_v1_2_3*) pHsd;
+        ind = 0;
+        for (std::map<std::string, uint8_t*>::iterator it=hsdIter.chanPtr.begin(); it!=hsdIter.chanPtr.end(); ++it, ind++){
+            std::cout << it->first << std::endl;
+            vHsd->parseChan((const uint8_t*)hsdIter.chanPtr[it->first], ind); // it->first = "chanX"
         }
-        counter++;
+        delete pClient;
 
+        counter++;
     }
 
     ::close(fd);
 
-/*
-    // Test with heap
-    Heap heap;
-    unsigned nChan = 4;
-
-    Pds::HSD::Client *pClient = new Pds::HSD::Client(&heap, "1.0.0", nChan);
-    Pds::HSD::HsdEventHeaderV1 *pHsd = pClient->getHsd();
-    Pds::HSD::Hsd_v1_0_0 *vHsd = (Pds::HSD::Hsd_v1_0_0*) pHsd;
-    for (unsigned i = 0; i < nChan; i++) {
-        vHsd->parseChan((const uint8_t*)buffer, i);
-    }
-
-    delete pClient;
-*/
     return 0;
 }
 
