@@ -168,6 +168,14 @@ void ArrayIO<T>::_reset_data_pointer()
 }
 
 //-----------------------------
+/*
+template <typename T>
+T* ArrayIO<T>::_pointer_to_data()
+{
+  return (_buf_ext)? _buf_ext : _buf_own;
+}
+*/
+//-----------------------------
 
 template <typename T>
 void ArrayIO<T>::_load_data(std::ifstream& in, const std::string& str)

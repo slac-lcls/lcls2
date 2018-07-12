@@ -11,11 +11,19 @@
 #include <string>
 #include <fstream> // in *.hh
 #include <stdint.h>  // uint8_t, uint32_t, etc.
+#include <cstring> // memcpy
 
 //#include "xtcdata/xtc/Array.hh" // Array
-#include "psalg/alloc/AllocArray.hh"
+//#include "psalg/alloc/AllocArray.hh"
+
+
+//?????
+
+
 #include "psalg/calib/ArrayMetadata.hh"
+#include "psalg/calib/NDArray.hh" // NDArray
 #include "psalg/utils/Logger.hh" // for MSG
+
 
 using namespace std;
 using namespace psalg;
@@ -30,8 +38,10 @@ class ArrayIO {
 public:
 
   typedef T data_t;
+  //typedef psalg::NDArray::shape_t shape_t; // uint32_t
+  //typedef psalg::NDArray::size_t  size_t; // uint32_t
   typedef ArrayMetadata::shape_t shape_t; // uint32_t
-  typedef ArrayMetadata::size_t size_t; // uint32_t
+  typedef ArrayMetadata::size_t  size_t; // uint32_t
 
   //enum {MAXBUFSIZE=704*768};
   enum        STATUS     {LOADED=0, DEFAULT,   UNREADABLE,   UNDEFINED};
@@ -46,16 +56,18 @@ public:
   inline const std::string str_status() const {return STRAUS[_status];}
   inline const std::string& dtype_name() const {return _dtype_name;}
 
+  /// returns NDArray
+  //NDArray<T>& ndarray<T>() {
+  //  //_reset_data_pointer();
+  //  return NDArray<T>(_pointer_to_data(), _shape, _ndim);
+  //}
+
+
 protected:
 
 private:
 
-  //AllocArray<T> _arr;
-  //Array<T>* _nda;
-  //AllocArray1D<T> _1da; // reserve memory for data
-  //AllocArray1D<float> _1da; // reserve memory for data
-
-  Stack* _stack; // reserve memory for data
+  //Stack* _stack; // reserve memory for data
 
   unsigned    _ctor;
   std::string _fname;
@@ -75,6 +87,7 @@ private:
   size_t      _size;
   std::string _dtype_name;
 
+  //NDArray     _nda;
   ArrayMetadata _metad;
 
   //std::map<std::string,std::string> _metad;
@@ -94,6 +107,8 @@ private:
 
   /// creates array, begins to fill data from the 1st string and reads data by the end
   void _load_data(std::ifstream& in, const std::string& str);
+
+  T* _pointer_to_data();
 
   /// Copy constructor and assignment are disabled by default
   ArrayIO(const ArrayIO&) ;
