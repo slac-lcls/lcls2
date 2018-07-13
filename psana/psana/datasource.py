@@ -6,6 +6,7 @@ from psana.smdreader import SmdReader
 from psana.event import Event
 from psana.eventbuilder import EventBuilder
 import numpy as np
+import pickle
 
 class Error(Exception):
     pass
@@ -236,6 +237,7 @@ class DataSource(object):
         if not self.read_files:
             self.dm = DgramManager(self.xtc_files)
             self.configs = self.dm.configs
+            self.calib = self.get_calib_dict()
         else:
             # Fetch xtc files
             if rank == 0:
@@ -281,6 +283,7 @@ class DataSource(object):
                 self.smd_dm = DgramManager(self.smd_files) 
                 self.dm = DgramManager(self.xtc_files)
                 self.configs = self.dm.configs
+                self.calib = self.get_calib_dict()
             else:
                 # Send filenames
                 comm.Bcast(self.nfiles, root=0)
@@ -317,6 +320,13 @@ class DataSource(object):
                 comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
                 for i in range(self.nfiles[0]): 
                     comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
+
+                # Send calib
+                if rank == 0:
+                    self.calib = self.get_calib_dict()
+                else:
+                    self.calib = None
+                self.calib = comm.bcast(self.calib, root=0)
                  
                 # Assign node types
                 self.nsmds = int(os.environ.get('PS_SMD_NODES', np.ceil((size-1)*PERCENT_SMD)))
@@ -329,8 +339,23 @@ class DataSource(object):
                     self.dm = DgramManager(self.xtc_files, configs=self.configs)
        
         if self.nodetype == 'bd':
-            self.Detector = Detector(self.configs)
+            self.Detector = Detector(self.configs, calib=self.calib)
         
+    def get_calib_dict(self):
+        """ Creates dictionary object that stores calibration constants.
+        This routine will be replaced with calibration reading (psana2 style)"""
+        calib_dir = os.environ.get('PS_CALIB_DIR')
+        calib = None
+        if calib_dir:
+            gain_mask = None
+            pedestals = None
+            if os.path.exists(os.path.join(calib_dir,'gain_mask.pickle')):
+                gain_mask = pickle.load(open(os.path.join(calib_dir,'gain_mask.pickle'), 'r'))
+            if os.path.exists(os.path.join(calib_dir,'pedestals.npy')):
+                pedestals = np.load(os.path.join(calib_dir,'pedestals.npy'))
+            calib = {'gain_mask': gain_mask,
+                     'pedestals': pedestals}
+        return calib
 
     def runs(self): 
         nruns = 1

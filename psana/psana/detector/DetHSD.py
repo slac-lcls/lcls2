@@ -2,8 +2,8 @@ from psana.detector.detector import DetectorBase
 import psana.detector.opaque as opaque
 
 class HSD(DetectorBase):
-    def __init__(self, name, config, dgramInd):
-        super(HSD, self).__init__(name, config, dgramInd)
+    def __init__(self, name, config, dgramInd, calib):
+        super(HSD, self).__init__(name, config, dgramInd, calib)
         config = config[self.dgramInd]
         det = getattr(config.software, name)
         try:
@@ -22,7 +22,8 @@ class HSD(DetectorBase):
         self._startPos = None
 
     class _Factory:
-        def create(self, name, config, dgramInd): return HSD(name, config, dgramInd)
+        def create(self, name, config, dgramInd, calib): 
+            return HSD(name, config, dgramInd, calib)
 
     def __call__(self, evt):
         return self._rawData(evt)

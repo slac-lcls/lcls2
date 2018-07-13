@@ -2,8 +2,8 @@ from psana.detector.detector import DetectorBase
 import psana.detector.opaque as opaque
 
 class EPIX(DetectorBase):
-    def __init__(self, name, config, dgramInd):
-        super(EPIX, self).__init__(name, config, dgramInd)
+    def __init__(self, name, config, dgramInd, calib):
+        super(EPIX, self).__init__(name, config, dgramInd, calib)
         det = getattr(config.software, name) # FIXME: index config with dgramInd
         try:
             detcfg = getattr(det, 'epix')
@@ -11,7 +11,8 @@ class EPIX(DetectorBase):
             return None
 
     class _Factory:
-        def create(self, name, config, dgramInd): return EPIX(name, config, dgramInd)
+        def create(self, name, config, dgramInd, calib): 
+            return EPIX(name, config, dgramInd, calib)
 
     def raw(self, evt, verbose=0):
         print("epix.raw")
