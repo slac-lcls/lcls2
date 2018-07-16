@@ -1,6 +1,4 @@
 import sys, os, glob
-from psana import dgram
-from psana.dgrammanager import DgramManager
 from psana.detector.detector import Detector
 from psana.psexp.run import Run
 from psana.psexp.tools import MpiComm, DataSourceHelper
