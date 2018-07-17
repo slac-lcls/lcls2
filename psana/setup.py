@@ -2,7 +2,7 @@
 import os
 import sys
 import numpy as np
-from setuptools import setup, Extension #, find_packages
+from setuptools import setup, Extension, find_packages
 import versioneer
 
 print('Begin: %s' % ' '.join(sys.argv))
@@ -67,14 +67,7 @@ setup(
        install_requires=[
          'numpy',
        ],
-       #packages = find_packages(),
-       packages = ['psana',
-                   'psana.detector',
-                   'psana.pscalib.calib',
-                   'psana.pscalib.geometry',
-                   'psana.pyalgos.generic',
-                   'psana.graphqt',
-       ],
+       packages = find_packages(),
        include_package_data = True,
        package_data={'graphqt': ['data/icons/*.png','data/icons/*.gif'],
        },
