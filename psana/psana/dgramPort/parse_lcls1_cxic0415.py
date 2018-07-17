@@ -15,7 +15,7 @@ tag     = sys.argv[5]
 outdir = ''
 if len(sys.argv) < 6:
     print("Usage: python parse_lcls1_cxic0415.py expname run detname nevents tag (optional)outdir")
-    print("Example: python parse_lcls1_cxic0415.py cxic0415 101 CxiDs1.0:Cspad.0 100 101 /reg/common/package/temp")
+    print("Example: python parse_lcls1_cxic0415.py cxic0415 101 CxiDs1.0:Cspad.0 -1 101 /reg/common/package/temp")
     exit(0)
 elif len(sys.argv) == 7:
     outdir  = sys.argv[6]
