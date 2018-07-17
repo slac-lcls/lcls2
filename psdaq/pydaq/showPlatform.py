@@ -33,7 +33,8 @@ def main():
             return
 
         request = msg.key
-        if request == CollectMsg.STATE:
+        if request in [CollectMsg.NOPLAT, CollectMsg.PLAT,
+                       CollectMsg.ALLOC, CollectMsg.CONNECT]:
             # platform FIXME
             platform = '0'
 

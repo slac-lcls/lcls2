@@ -14,12 +14,12 @@ from CollectMsg import CollectMsg
 def main():
 
     # Define commands
-    command_dict = { 'plat': CollectMsg.STARTPLAT,
-                     'alloc': CollectMsg.STARTALLOC,
-                     'connect': CollectMsg.STARTCONNECT,
-                     'dump': CollectMsg.STARTDUMP,
-                     'die': CollectMsg.STARTDIE,
-                     'kill': CollectMsg.STARTKILL,
+    command_dict = { 'plat': CollectMsg.PLAT,
+                     'alloc': CollectMsg.ALLOC,
+                     'connect': CollectMsg.CONNECT,
+                     'dump': CollectMsg.DUMP,
+                     'die': CollectMsg.DIE,
+                     'kill': CollectMsg.KILL,
                      'getstate': CollectMsg.GETSTATE }
 
     # Process arguments
@@ -28,6 +28,7 @@ def main():
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host (default localhost)')
     parser.add_argument('-P', metavar='PARTITION', default='AMO', help='partition name (default AMO)')
+    parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
 
     # Prepare our context and DEALER socket
@@ -53,16 +54,25 @@ def main():
     else:
         print ("Received \"%s\"" % cmmsg.key.decode())
 
-        if cmmsg.key == CollectMsg.STATE:
-            # nodes
+        if (cmmsg.body is not None) and (len(cmmsg.body) > 2):
+            # JSON body
             try:
-                nodes = json.loads(cmmsg.body)
+                entries = json.loads(cmmsg.body)
             except Exception as ex:
-                print('E: json.loads()', ex)
+                print('E: json.loads(): %s' % ex)
             else:
-                print ('Nodes:')
-                pprint.pprint (nodes)
-
+                if args.v:
+                    print ('Entries:')
+                    pprint.pprint (entries)
+                # print any error messages found
+                for level,nodes in entries.items():
+                    for nodeid,node in enumerate(nodes):
+                        try:
+                            msg = node['errorInfo']['msg']
+                        except KeyError:
+                            pass
+                        else:
+                            print('%s%d: %s' % (level, nodeid, msg))
     return
 
 if __name__ == '__main__':

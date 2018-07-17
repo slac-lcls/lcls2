@@ -23,22 +23,14 @@ def main():
     cmd.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
 
     # Initiate partition kill
-    cmd.send(CollectMsg.STARTKILL)
-    while True:
-        try:
-            cmmsg = CollectMsg.recv(cmd)
-        except Exception as ex:
-            print(ex)
-            return
+    cmd.send(CollectMsg.KILL)
 
-        if cmmsg.key == CollectMsg.KILLSTARTED:
-            print ("I: Received KILLSTARTED")
-            break          # Done
-        else:
-            print ("W: Received key <%s>" % cmmsg.key.decode())
-            continue
-
-#   print ("Done")
+    try:
+        cmmsg = CollectMsg.recv(cmd)
+    except Exception as ex:
+        print('CollectMsg.recv() exception: %s' % ex)
+    else:
+        print ("Received \"%s\"" % cmmsg.key.decode())
 
 if __name__ == '__main__':
     main()
