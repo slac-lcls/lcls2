@@ -10,6 +10,6 @@
 ./build_all.sh -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 ```
 
-To run the psana automated tests run "nosetests psana/psana/tests" in your git root directory.
+To run the psana automated tests run "pytest psana/psana/tests/" in your git root directory.
 
 You can read the above build_all.sh script to see how to build individual packages.
