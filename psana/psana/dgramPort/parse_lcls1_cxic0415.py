@@ -1,9 +1,11 @@
-# Run from psanagpuXXX machine, source /reg/g/psdm/etc/psconda.sh
+# Run from psanagpuXXX machine, source /reg/g/psdm/etc/psconda.sh and use python2
 # Also run translate_xtc_demo.py
 from psana import *
 import numpy as np
 import base64
 import sys, zmq
+
+from psalgos.pypsalgos import PyAlgos
 
 expname = sys.argv[1]
 run     = sys.argv[2]
@@ -12,11 +14,21 @@ nevents = int(sys.argv[4])
 tag     = sys.argv[5]
 outdir = ''
 if len(sys.argv) < 6:
-    print("Usage: python parse_lcls1_sfx.py expname run detname nevents tag (optional)outdir")
-    print("Example: python parse_lcls1_sfx.py cxid9114 96 CxiDs2.0:Cspad.0 500 xray /reg/common/package/temp")
+    print("Usage: python parse_lcls1_cxic0415.py expname run detname nevents tag (optional)outdir")
+    print("Example: python parse_lcls1_cxic0415.py cxic0415 101 CxiDs1.0:Cspad.0 100 101 /reg/common/package/temp")
     exit(0)
 elif len(sys.argv) == 7:
     outdir  = sys.argv[6]
+
+minPeaks = 15
+hitParam_alg1_npix_min = 2
+hitParam_alg1_npix_max = 10
+hitParam_alg1_amax_thr = 300
+hitParam_alg1_atot_thr = 600
+hitParam_alg1_son_min = 10
+hitParam_alg1_rank = 3
+hitParam_alg1_radius = 3
+hitParam_alg1_dr = 2
 
 if 'xray' in tag and 'cxid9114' in expname:
     ds = DataSource('exp='+expname+':run='+run+':dir=/reg/d/psdm/cxi/cxid9114/demo/xtc') # 89 dark 95 xray
@@ -33,17 +45,31 @@ def bitwise_array(value):
     val = np.asarray(value)
     return [base64.b64encode(val), val.shape, val.dtype.str]
 
+mask = det.mask(int(run),calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
+
+alg = PyAlgos(mask=None, pbits=0)
+peakRadius = int(hitParam_alg1_radius)
+alg.set_peak_selection_pars(npix_min=hitParam_alg1_npix_min, npix_max=hitParam_alg1_npix_max, \
+                                 amax_thr=hitParam_alg1_amax_thr, atot_thr=hitParam_alg1_atot_thr, \
+                                 son_min=hitParam_alg1_son_min)
+
 # Start your translate_xtc_demo.py before you start this script
 context = zmq.Context()
 zmq_socket = context.socket(zmq.PUSH)
 zmq_socket.bind("tcp://127.0.0.1:5557")
 
-events = []
 for i, evt in enumerate(ds.events()):
     if i == nevents: break
-    print "Event: ", i
     raw = det.raw(evt)
     calib = det.calib(evt)
+
+    peaks = alg.peak_finder_v3r3(calib,
+                                 rank=int(hitParam_alg1_rank),
+                                 r0=peakRadius,
+                                 dr=hitParam_alg1_dr,
+                                 nsigm=hitParam_alg1_son_min,
+                                 mask=mask.astype(np.uint16))
+    npeaks = peaks.shape[0]
 
     ebeam = ebeamDet.get(evt)
     photonEnergy = epics.value('SIOC:SYS0:ML00:AO541')
@@ -53,7 +79,8 @@ for i, evt in enumerate(ds.events()):
     nsec = evtId.time()[1]
     timestamp = (sec << 32) | nsec
 
-    if raw is not None:
+    if raw is not None and npeaks >= minPeaks:
+        print "Event: ", i
         evtDict = {}
         evtDict['timestamp'] = timestamp
         evtDict['data'] = {}
@@ -64,7 +91,6 @@ for i, evt in enumerate(ds.events()):
         evtDict['data']['quads3_data'] = bitwise_array(raw[24:32])
         # photon energy
         evtDict['data']['photonEnergy'] = photonEnergy
-        events.append(evtDict)
         zmq_socket.send_json(evtDict)
 
 doneDict = {'done': True}

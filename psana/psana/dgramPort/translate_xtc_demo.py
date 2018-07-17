@@ -1,4 +1,4 @@
-# Run from psana machine, source setup_env.sh
+# Run from psanagpuXXX machine, source setup_env.sh and use python3
 import numpy as np
 import dgramCreate as dc
 import base64
@@ -11,10 +11,11 @@ import sys, os
 
 outdir = sys.argv[1]
 fname  = sys.argv[2]
+detAlias = sys.argv[3]
 
 if len(sys.argv) < 3: 
-    print("Usage: python trans.py paths filename")
-    print("Example: python trans.py /reg/common/package/temp crystal_xray")
+    print("Usage: python translate_xtc_demo.py paths filename detAlias")
+    print("Example: python translate_xtc_demo.py /reg/common/package/temp crystal_xray DscCsPad")
 
 context = zmq.Context()
 # receive work
@@ -37,7 +38,7 @@ def munge_json(event):
 def translate_xtc_demo(job_type):
     event_file = '%s_evts.xtc' % job_type
 
-    ninfo = dc.nameinfo('DsdCsPad', 'cspad', 'detnum1234', 0)
+    ninfo = dc.nameinfo(detAlias, 'cspad', 'detnum1234', 0)
     alg = dc.alg('raw', [1, 2, 3])
 
     cydgram = dc.CyDgram()
