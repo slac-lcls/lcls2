@@ -1,14 +1,12 @@
 """
 =====================================================================
-kvmsg - key-value message class for example applications
+JsonMsg - JSON message class
 
-Author: Min RK <benjaminrk@gmail.com>
+Author: Chris Ford <caf@slac.stanford.edu>
 
 """
 
-import struct # for packing integers
 import sys
-from uuid import uuid4
 
 import zmq
 # zmq.jsonapi ensures bytes, instead of unicode:
@@ -16,40 +14,16 @@ import zmq.utils.jsonapi as json
 
 class JsonMsg(object):
     """
-    Message is formatted on wire as 5 frames:
+    Message is formatted on wire as 2 frames:
     frame 0: key (0MQ string)
-#   frame 1: sequence (8 bytes, network order)
-#   frame 2: uuid (blob, 16 bytes)
-#   frame 3: properties (0MQ string)
     frame 1: body (blob)
     """
     key = None
-#   sequence = 0
-#   uuid=None
-#   properties = None
     body = None
 
     def __init__(self, key=None, body=None):
         self.key = key
         self.body = body
-
-#   # dictionary access maps to properties:
-#   def __getitem__(self, k):
-#       return self.properties[k]
-#
-#   def __setitem__(self, k, v):
-#       self.properties[k] = v
-#
-#   def get(self, k, default=None):
-#       return self.properties.get(k, default)
-#
-#   def store(self, dikt):
-#       """Store me in a dict if I have anything to store 
-#       else delete me from the dict."""
-#       if self.key is not None and self.body is not None:
-#           dikt[self.key] = self
-#       elif self.key in dikt:
-#           del dikt[self.key]
 
     def send(self, socket):
         """Send key-value message to socket; any empty frames are sent as such."""
