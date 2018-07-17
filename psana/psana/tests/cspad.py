@@ -14,7 +14,7 @@ if doPlot: import matplotlib.pyplot as plt
 import os
 os.environ['PS_CALIB_DIR'] = "/reg/common/package/mona/cxid9114"
 
-ds = psana.DataSource('/reg/common/package/temp/crystal_101_evts.xtc')
+ds = psana.DataSource('/reg/d/psdm/cxi/cxitut13/scratch/yoon82/crystal_101_evts.xtc')
 det = ds.Detector("DscCsPad")
 run = 101
 for i, evt in enumerate(ds.events()):
