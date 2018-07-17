@@ -16,6 +16,7 @@ enum {MaxRank=5};
 template <typename T>
 class Array {
 public:
+
     typedef uint32_t shape_t;
     typedef uint32_t size_t;
 

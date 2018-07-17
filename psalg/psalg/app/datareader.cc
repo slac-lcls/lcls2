@@ -48,9 +48,12 @@ void print_hline(const uint nchars, const char c) {
 void test_ArrayIO() {
   MSG(INFO, "In test_ArrayIO");
   //Array(void *data, uint32_t *shape, uint32_t rank)
-  ArrayIO<float> a("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
+  ArrayIO<float> aio("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
 
-  MSG(INFO, "array status: " << a.str_status());
+  MSG(INFO, "array status: " << aio.str_status());
+
+  NDArray<float>& arr = aio.ndarray();
+  MSG(INFO, "ndarray: " << arr);
 }
 
 //-------------------
@@ -84,9 +87,10 @@ void test_NDArray() {
   //Array(void *data, uint32_t *shape, uint32_t rank)
 
   float data[] = {1,2,3,4,5,6,7,8,9,10,11,12};
-  uint32_t sh[2] = {3,4};
-  uint32_t rank = 2;
-  NDArray<float> a(data, sh, rank);
+  psalg::types::shape_t sh[2] = {3,4}; // uint32_t
+  psalg::types::size_t rank = 2;
+
+  NDArray<float> a(sh, rank, data);
 
   for(uint32_t r=0; r<sh[0]; r++) {
     std::cout << "\nrow " << r << ':';
