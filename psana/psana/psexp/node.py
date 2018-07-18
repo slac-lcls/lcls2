@@ -154,16 +154,11 @@ class SmdNode(Node):
             batch = eb.build(batch_size=self.batch_size, filter=self.filter)
 
 class BigDataNode(Node):
-    dm = None
-
-    def __init__(self, mpi, smd_configs, smd_node_id):
+    def __init__(self, mpi, smd_configs, dm, smd_node_id):
         Node.__init__(self, mpi)
         self.smd_configs = smd_configs
+        self.dm = dm
         self.smd_node_id = smd_node_id
-
-    @classmethod
-    def set_datamanager(cls, dm):
-        cls.dm = dm
 
     def run_mpi(self):
         rank = self.mpi.rank
@@ -187,7 +182,7 @@ class BigDataNode(Node):
 
     @task
     def run_legion_task(batch, configs):
-        bd = BigDataNode(None, configs, None)
+        bd = BigDataNode(None, configs, None, None) # FIXME: Need dm
         bd.run_legion(batch)
 
     def events(self, view):

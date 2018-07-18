@@ -23,8 +23,7 @@ def read_event(ds, event_type=None):
             smd_node.run_mpi()
         elif ds.nodetype == 'bd':
             smd_node_id = (rank % ds.nsmds) + 1
-            bd_node = BigDataNode(ds.mpi, ds.smd_configs, smd_node_id)
-            bd_node.set_datamanager(ds.dm)
+            bd_node = BigDataNode(ds.mpi, ds.smd_configs, ds.dm, smd_node_id)
             for evt in bd_node.run_mpi():
                 yield evt
 
