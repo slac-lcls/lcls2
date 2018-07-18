@@ -21,5 +21,3 @@ cd psana
 python setup.py build_ext --xtcdata=$INSTDIR -f --inplace
 python setup.py develop  --xtcdata=$INSTDIR --prefix=$INSTDIR
 cd ..
-
-nosetests psana/psana/tests
