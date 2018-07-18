@@ -53,8 +53,9 @@ class DataSourceHelper(object):
                 else:
                     xtc_dir = os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm')
                     xtc_path = os.path.join(xtc_dir, exp['exp'][:3], exp['exp'], 'xtc')
-                    if 'run' in exp:
-                        run = int(exp['run'])
+                
+                if 'run' in exp:
+                    run = int(exp['run'])
 
                 if run > -1:
                     xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(str(run).zfill(4)))), dtype='U%s'%FILENAME_LEN)
@@ -77,7 +78,8 @@ class DataSourceHelper(object):
                             raise InputError(smd_file, "File not found.")
 
                 nfiles = np.array([len(xtc_files)], dtype='i')
-                assert nfiles[0] > 0
+                if nfiles[0] == 0:
+                    raise InputError(nfiles[0]==0, "No file found for the given experiment and run no.")
             else:
                 # Do nothing on other ranks
                 nfiles = np.zeros(1, dtype='i')
@@ -87,7 +89,7 @@ class DataSourceHelper(object):
             # This is one-core read.
             ds.dm = DgramManager(xtc_files)
             ds.configs = ds.dm.configs
-            ds.calib = self.get_calib_dict()
+            ds.calib = self.get_calib_dict(run_no=ds.run)
         else:
             # This is parallel read. 
             comm.Bcast(nfiles, root=0)
@@ -126,7 +128,7 @@ class DataSourceHelper(object):
                 
             # Send calib
             if rank == 0:
-                ds.calib = self.get_calib_dict()
+                ds.calib = self.get_calib_dict(run_no=ds.run)
             else:
                 ds.calib = None
             ds.calib = comm.bcast(ds.calib, root=0)
@@ -140,7 +142,7 @@ class DataSourceHelper(object):
             if ds.nodetype == 'bd':
                 ds.dm = DgramManager(xtc_files, configs=ds.configs)
 
-    def get_calib_dict(self):
+    def get_calib_dict(self, run_no=-1):
         """ Creates dictionary object that stores calibration constants.
         This routine will be replaced with calibration reading (psana2 style)"""
         calib_dir = os.environ.get('PS_CALIB_DIR')
@@ -150,8 +152,18 @@ class DataSourceHelper(object):
             pedestals = None
             if os.path.exists(os.path.join(calib_dir,'gain_mask.pickle')):
                 gain_mask = pickle.load(open(os.path.join(calib_dir,'gain_mask.pickle'), 'r'))
-            if os.path.exists(os.path.join(calib_dir,'pedestals.npy')):
-                pedestals = np.load(os.path.join(calib_dir,'pedestals.npy'))
+            
+            # Find corresponding pedestals
+            if run_no > -1: # Do not fetch pedestals when run_no is not given
+                if os.path.exists(os.path.join(calib_dir,'pedestals.npy')):
+                    pedestals = np.load(os.path.join(calib_dir,'pedestals.npy'))
+                else:
+                    files = glob.glob(os.path.join(calib_dir,"*-end.npy"))
+                    darks = np.sort([int(os.path.basename(file_name).split('-')[0]) for file_name in files])
+                    sel_darks = darks[(darks < run_no)]
+                    if sel_darks.size > 0:
+                        if os.path.exists(os.path.join(calib_dir,'%s-end.npy'%sel_darks[0])):
+                            pedestals = np.load(os.path.join(calib_dir, '%s-end.npy'%sel_darks[0]))
             calib = {'gain_mask': gain_mask,
                      'pedestals': pedestals}
         return calib
