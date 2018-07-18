@@ -19,7 +19,7 @@ def dumpDict(dict,indent):
 def dumpDgram(d):
     dumpDict(d.__dict__,0)
 
-FN_L = 100
+FN_L = 200
 
 class DgramManager():
     """Stores variables and arrays loaded from an XTC source.\n"""
