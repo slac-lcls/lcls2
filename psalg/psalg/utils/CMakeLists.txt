@@ -1,5 +1,6 @@
 add_library(utils SHARED
     src/Logger.cc
+    src/DirFileIterator.cc
 )
 
 target_include_directories(utils PUBLIC
@@ -9,6 +10,8 @@ target_include_directories(utils PUBLIC
 
 install(FILES
     Logger.hh
+    Utils.hh
+    DirFileIterator.hh
     DESTINATION include/psalg/utils
 )
 

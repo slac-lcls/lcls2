@@ -23,10 +23,13 @@
 #include <fstream>  // ifstream
 #include <iomanip>  // std::setw
 
+#include <dirent.h> // opendir, readdir, closedir, dirent, DIR
+#include "psalg/utils/Utils.hh" // files_in_dir, dir_content
 #include "psalg/utils/Logger.hh" // MSG
 #include "xtcdata/xtc/DescData.hh" // Array
 #include "psalg/calib/ArrayIO.hh" // ArrayIO
 #include "psalg/calib/NDArray.hh" // NDArray
+#include "psalg/utils/DirFileIterator.hh"
 
 using namespace std;
 using namespace psalg;
@@ -41,6 +44,60 @@ void usage(char* name) {
 
 void print_hline(const uint nchars, const char c) {
     printf("%s\n", std::string(nchars,c).c_str());
+}
+
+//-------------------
+
+void test_image_loop() {
+  MSG(INFO, "In test_image_loop");
+
+  std::vector<std::string> v = 
+    files_in_dir("/reg/neh/home/dubrovin/LCLS/con-detector/work",
+		 "nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1");
+
+  cout << "  found files: \n";
+  std::vector<std::string>::iterator it = v.begin();
+  for (; it != v.end(); ++it) {
+    cout << "  --==-- " << *it << '\n';
+    ArrayIO<float> aio(*it);
+    //MSG(INFO, "array status: " << aio.str_status());
+    NDArray<float>& arr = aio.ndarray();
+    cout << "          ndarray: " << arr << '\n';
+  }
+}
+
+//-------------------
+
+void test_DirFileIterator() {
+  MSG(INFO, "In test_DirFileIterator");
+  DirFileIterator dfi("/reg/neh/home/dubrovin/LCLS/con-detector/work",
+		      "nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1");
+  std::string fname;
+  while (!(fname=dfi.next()).empty()) {
+    std::cout << "next file: " << fname << '\n';
+  }
+}
+
+//-------------------
+
+void test_files_in_dir() {
+  MSG(INFO, "In test_files_in_dir");
+
+  std::vector<std::string> v = 
+    files_in_dir("/reg/neh/home/dubrovin/LCLS/con-detector/work",
+		 "nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1");
+
+  cout << "  found files: \n";
+
+  std::vector<std::string>::iterator it = v.begin();
+  for (; it != v.end(); ++it) cout << "  -- " << *it << '\n';
+}
+
+//-------------------
+
+void test_dircontent() {
+  MSG(INFO, "In test_dircontent");
+  dir_content();
 }
 
 //-------------------
@@ -190,16 +247,24 @@ int test_cli(int argc, char **argv)
 int main(int argc, char **argv) {
 
   MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
-  LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
+  //LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
+  LOGGER.setLogger(LL::INFO, "%H:%M:%S.%f");           // set level and time format
 
     // test_cli(argc, argv); 
     // print_hline(80,'_');
     // read_file_lines("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
     print_hline(80,'_');
     // test_Array();         print_hline(80,'_');
-    test_ArrayIO();       print_hline(80,'_');
-    test_NDArray();       print_hline(80,'_');
+    test_ArrayIO();         print_hline(80,'_');
+    test_NDArray();         print_hline(80,'_');
     //test_logger_single(); print_hline(80,'_');
+
+    test_dircontent();      print_hline(80,'_');
+    test_DirFileIterator(); print_hline(80,'_');
+
+    test_files_in_dir();    print_hline(80,'_');
+    test_image_loop();      print_hline(80,'_');
+
     return EXIT_SUCCESS;
 }
 

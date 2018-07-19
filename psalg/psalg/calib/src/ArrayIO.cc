@@ -150,9 +150,9 @@ void ArrayIO<T>::_load_data(std::ifstream& in, const std::string& str)
     while (ss >> val && _count_data < _size) { //&& _count_data != _size) { 
       *_pdata++ = val;
       ++_count_data;
-      cout << ' ' << val;
+      //cout << ' ' << val;
     }
-    cout << '\n';
+    //cout << '\n';
 
     _count_1st_line = _count_data;
 

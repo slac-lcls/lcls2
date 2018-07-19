@@ -1,0 +1,24 @@
+add_library(detector SHARED
+    src/AreaDetector.cc
+)
+
+target_link_libraries(detector
+    xtcdata::xtc
+)
+
+target_include_directories(detector PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+install(FILES
+    AreaDetectorBase.hh
+    DESTINATION include/psalg/detector
+)
+
+install(TARGETS detector
+    EXPORT psalgTargets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)

@@ -5,7 +5,7 @@
 // Created on 2018-07-06 by Mikhail Dubrovin
 //---------------------------------------------------
 
-/** Usage example
+/** Usage
  *
  *  #include "psalg/calib/NDArray.hh"
  *

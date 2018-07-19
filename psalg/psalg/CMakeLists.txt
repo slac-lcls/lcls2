@@ -19,6 +19,7 @@ add_subdirectory(calib)
 add_subdirectory(alloc)
 add_subdirectory(peaks)
 add_subdirectory(digitizer)
+#add_subdirectory(detector)
 
 add_library(psalg SHARED
     calib/src/ArrayIO.cc
@@ -39,6 +40,7 @@ target_link_libraries(psalg
     digitizer
     rt
 )
+    #detector
 
 # datareader - test of data reader from non-xtc files
 add_executable(datareader

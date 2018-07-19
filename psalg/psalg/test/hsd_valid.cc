@@ -42,12 +42,12 @@ int main(int argc, char** argv) {
   unsigned FMIN=0x41, FMAX=0x3bf;
   bool lNoFex = false;
   bool lText = false;
-  bool lSkipContainers = false;
+  //bool lSkipContainers = false;
 
   while ( (c=getopt( argc, argv, "f:m:M:s:cinht")) != EOF ) {
     switch(c) {
     case 'c':
-      lSkipContainers = true;
+      //lSkipContainers = true;
       break;
     case 'f':
       fname = optarg;
