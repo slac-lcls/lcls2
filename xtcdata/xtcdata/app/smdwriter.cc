@@ -267,9 +267,6 @@ int main(int argc, char* argv[])
     // Update the offset
     nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     eventId++;
-    if (eventId == 404) { // FIXME: to be removed when ts issue is fixed
-        break;
-    }
   }
   printf("Finished writing smd for %u events\n", eventId);
   fclose(xtcFile);
