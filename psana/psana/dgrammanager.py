@@ -47,7 +47,11 @@ class DgramManager():
                 self.configs += [d]
 
         self.offsets = [_config._offset for _config in self.configs]
-        
+
+    def __del__(self):
+        for fd in self.fds:
+            os.close(fd)
+
     def __iter__(self):
         return self
 
