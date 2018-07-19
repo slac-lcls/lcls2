@@ -5,7 +5,6 @@ from psana import dgram
 from mpi4py import MPI
 import pickle
 
-FILENAME_LEN = 200
 PERCENT_SMD = .25
 
 class Error(Exception):
@@ -93,12 +92,12 @@ class DataSourceHelper(object):
         read_exp = False
         if isinstance(expstr, (str)):
             if expstr.find("exp") == -1:
-                xtc_files = np.array([expstr], dtype='U%s'%FILENAME_LEN)
+                xtc_files = [expstr]
                 smd_files = None
             else:
                 read_exp = True
         elif isinstance(expstr, (list, np.ndarray)):
-            xtc_files = np.asarray(expstr, dtype='U%s'%FILENAME_LEN)
+            xtc_files = expstr
             smd_files = None
 
         # Reads list of xtc files from experiment folder
@@ -121,18 +120,16 @@ class DataSourceHelper(object):
                 run = int(exp['run'])
 
             if run > -1:
-                xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(str(run).zfill(4)))), dtype='U%s'%FILENAME_LEN)
+                xtc_files = glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(str(run).zfill(4))))
             else:
-                xtc_files = np.array(glob.glob(os.path.join(xtc_path, '*.xtc')), dtype='U%s'%FILENAME_LEN)
+                xtc_files = glob.glob(os.path.join(xtc_path, '*.xtc'))
 
             xtc_files.sort()
 
-            smd_files = np.empty(len(xtc_files), dtype='U%s'%FILENAME_LEN)
             smd_dir = os.path.join(xtc_path, 'smalldata')
-            for i, xtc_file in enumerate(xtc_files):
-                smd_file = os.path.join(smd_dir,
-                        os.path.splitext(os.path.basename(xtc_file))[0] + '.smd.xtc')
-                smd_files[i] = smd_file
+            smd_files = [os.path.join(smd_dir,
+                                      os.path.splitext(os.path.basename(xtc_file))[0] + '.smd.xtc')
+                         for xtc_file in xtc_files]
 
         return xtc_files, smd_files, run
 
