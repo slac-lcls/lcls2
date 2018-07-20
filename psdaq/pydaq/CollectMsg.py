@@ -61,53 +61,30 @@ class CollectMsg(JsonMsg):
 # ---------------------------------------------------------------------
 # Runs self test of class
 
-def test_cmmsg (verbose):
-    print(" * cmmsg: ", end='')
+def test_collectmsg (verbose):
+    print(" * collectmsg: ", end='')
 
     # Prepare our context and sockets
     ctx = zmq.Context()
     output = ctx.socket(zmq.DEALER)
-    output.bind("ipc://cmmsg_selftest.ipc")
+    output.bind("ipc://collectmsg_selftest.ipc")
     input = ctx.socket(zmq.DEALER)
-    input.connect("ipc://cmmsg_selftest.ipc")
+    input.connect("ipc://collectmsg_selftest.ipc")
 
-    kvmap = {}
     # Test send and receive of simple message
-    cmmsg = CollectMsg(1)
-    cmmsg.key = b"key"
-    cmmsg.body = b"body"
+    collectmsg = CollectMsg(1)
+    collectmsg.key = b"key"
+    collectmsg.body = b"body"
     if verbose:
-        cmmsg.dump()
-    cmmsg.send(output)
-    cmmsg.store(kvmap)
+        collectmsg.dump()
+    collectmsg.send(output)
 
-    cmmsg2 = CollectMsg.recv(input)
+    collectmsg2 = CollectMsg.recv(input)
     if verbose:
-        cmmsg2.dump()
-    assert cmmsg2.key == b"key"
-    cmmsg2.store(kvmap)
-
-    assert len(kvmap) == 1 # shouldn't be different
-
-    # test send/recv with properties:
-    cmmsg = CollectMsg(2, key=b"key", body=b"body")
-    cmmsg[b"prop1"] = b"value1"
-    cmmsg[b"prop2"] = b"value2"
-    cmmsg[b"prop3"] = b"value3"
-    assert cmmsg[b"prop1"] == b"value1"
-    if verbose:
-        cmmsg.dump()
-    cmmsg.send(output)
-    cmmsg2 = CollectMsg.recv(input)
-    if verbose:
-        cmmsg2.dump()
-    # ensure properties were preserved
-    assert cmmsg2.key == cmmsg.key
-    assert cmmsg2.body == cmmsg.body
-    assert cmmsg2.properties == cmmsg.properties
-    assert cmmsg2[b"prop2"] == cmmsg[b"prop2"]
+        collectmsg2.dump()
+    assert collectmsg2.key == b"key"
 
     print("OK")
 
 if __name__ == '__main__':
-    test_cmmsg('-v' in sys.argv)
+    test_collectmsg('-v' in sys.argv)

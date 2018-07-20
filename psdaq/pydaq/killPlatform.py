@@ -23,7 +23,7 @@ def main():
     cmd.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
 
     # Initiate partition kill
-    cmd.send(CollectMsg.KILL)
+    CollectMsg(key=CollectMsg.KILL).send(cmd)
 
     try:
         cmmsg = CollectMsg.recv(cmd)

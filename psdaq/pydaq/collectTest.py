@@ -13,7 +13,6 @@ import sys
 import argparse
 import socket
 from os import getpid
-from zmq.utils import jsonapi as json
 import pprint
 
 def main():
@@ -76,8 +75,7 @@ def main():
                 pyinfo['pid'] = getpid()
                 pybody['test'] = {'procInfo': pyinfo}
 
-                jsonbody = json.dumps(pybody)
-                hellomsg = CollectMsg(key=CollectMsg.HELLO, body=jsonbody)
+                hellomsg = CollectMsg(key=CollectMsg.HELLO, body=pybody)
                 try:
                     hellomsg.send(collect_cmd)
                 except Exception as ex:
@@ -110,22 +108,14 @@ def main():
                 pyinfo['test_port'] = { 'adrs': socket.gethostname(), 'port': 55500 + clientId }
                 pybody['test'] = {'connectInfo': pyinfo}
 
-                jsonbody = json.dumps(pybody)
-                connectInfoMsg = CollectMsg(key=CollectMsg.CONNECTINFO, body=jsonbody)
+                connectInfoMsg = CollectMsg(key=CollectMsg.CONNECTINFO, body=pybody)
                 connectInfoMsg.send(collect_cmd)
 
             elif cmmsg.key == CollectMsg.CONNECT:
                 if verbose:
                     print("Received CONNECT")
-                try:
-                    pybody = json.loads(cmmsg.body)
-                except Exception as ex:
-                    print("CONNECT: json.loads() exception: %s" % ex)
-                    print("CONNECT: cmmsg.body = <%s>" % cmmsg.body)
-                    pybody = {}
-                if verbose:
                     print("--------------------------")
-                    pprint.pprint(pybody)
+                    pprint.pprint(cmmsg.body)
                     print("--------------------------")
 
             elif verbose:

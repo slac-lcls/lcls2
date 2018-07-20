@@ -6,7 +6,6 @@ Author: Chris Ford <caf@slac.stanford.edu>
 """
 import time
 import zmq
-import zmq.utils.jsonapi as json
 import pprint
 import argparse
 from CollectMsg import CollectMsg
@@ -15,31 +14,26 @@ from ControlTransition import ControlTransition as Transition
 
 verbose = False
 
-def getControlPorts(body):
+def getControlPorts(nodes):
     global verbose
     host = router_port = pull_port = None
+    foundControl = False
     try:
-        nodes = json.loads(body)
-    except Exception as ex:
-        print('json.loads() failed:', ex)
+        ctrl = nodes['control'][0]
+    except KeyError:
+        ctrl = {}
     else:
-        foundControl = False
-        try:
-            ctrl = nodes['control'][0]
-        except KeyError:
-            ctrl = {}
-        else:
-            foundControl = True
-            if verbose:
-                print('control node in collection:')
-                pprint.pprint(ctrl)
-            
-        if foundControl:
-            host = ctrl['connectInfo']['router_port']['adrs']
-            router_port = ctrl['connectInfo']['router_port']['port']
-            pull_port = ctrl['connectInfo']['pull_port']['port']
-        else:
-            print('No control node found in collection')
+        foundControl = True
+        if verbose:
+            print('control node in collection:')
+            pprint.pprint(ctrl)
+        
+    if foundControl:
+        host = ctrl['connectInfo']['router_port']['adrs']
+        router_port = ctrl['connectInfo']['router_port']['port']
+        pull_port = ctrl['connectInfo']['pull_port']['port']
+    else:
+        print('No control node found in collection')
 
     return host, router_port, pull_port
 
@@ -72,7 +66,7 @@ def main():
     collect_dealer_socket.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
 
     # Send GETSTATE command to collection mgr
-    collect_dealer_socket.send(CollectMsg.GETSTATE)
+    CollectMsg(key=CollectMsg.GETSTATE).send(collect_dealer_socket)
 
     # Receive reply
     host = None
@@ -109,7 +103,7 @@ def main():
         control_dealer_socket.connect("tcp://%s:%d" % (host, router_port))
 
         # Send command
-        control_dealer_socket.send(command_dict[args.command])
+        ControlMsg(key=command_dict[args.command]).send(control_dealer_socket)
 
         # Receive reply
         try:

@@ -10,7 +10,6 @@ import zmq
 import sys
 import time
 import logging
-import zmq.utils.jsonapi as json
 import pprint
 import argparse
 import copy
@@ -55,10 +54,9 @@ class CollectState(object):
                     # should raise error if not found
                 body = copy.copy(self.entries)
                 body['id'] = nodeid
-                allocMsg = CollectMsg(key=CollectMsg.ALLOC, body=json.dumps(body))
-                # perhaps ideally next two lines should be:
-                # cmd.send_multipart([identityKey, CollectMsg.ALLOC, json.dumps(body)])
-                self.cmd.send(identityKey, zmq.SNDMORE)
+                allocMsg = CollectMsg(identity=identityKey,
+                                      key=CollectMsg.ALLOC,
+                                      body=body)
                 allocMsg.send(self.cmd)
                 logging.debug("...sent ALLOC")
         return
@@ -90,9 +88,10 @@ class CollectState(object):
     def connectEnter(self, identity):
         # Send CONNECT individually
         logging.debug("Sending CONNECT individually")
-        connectMsg = CollectMsg(key=CollectMsg.CONNECT, body=json.dumps(self.entries))
-        for key in self.identityDict.keys():
-            self.cmd.send(key, zmq.SNDMORE)
+        for identity in self.identityDict.keys():
+            connectMsg = CollectMsg(identity=identity,
+                                    key=CollectMsg.CONNECT,
+                                    body=self.entries)
             connectMsg.send(self.cmd)
             logging.debug("...sent CONNECT")
         return
@@ -187,9 +186,9 @@ def main():
 
             # Execute state cmd request
             if collectState.cmd in items:
-                msg = collectState.cmd.recv_multipart()
-                identity = msg[0]
-                request = msg[1]
+                collectmsg = CollectMsg.recv(collectState.cmd)
+                identity = collectmsg.identity
+                request = collectmsg.key
                 logging.debug('Received <%s> from cmd' % request.decode())
 
                 collectTrigger = collectState.getTrigger(request.decode())
@@ -206,15 +205,9 @@ def main():
                 if request == CollectMsg.GETSTATE:
                     # Send state reply to client
                     logging.debug("Sending state reply")
-                    collectState.cmd.send(identity, zmq.SNDMORE)
-                    # print('collectState.entries:', collectState.entries)
-                    try:
-                        testbody = json.dumps(collectState.entries)
-                    except Exception as ex:
-                        logging.error(ex)
-                        testbody = ''
-                    logging.debug('GETSTATE: sending body=<%s>' % testbody)
-                    statemsg = CollectMsg(key=collectState.state.encode(), body=testbody)
+                    statemsg = CollectMsg(identity=identity,
+                                          key=collectState.state.encode(),
+                                          body=collectState.entries)
                     statemsg.send(collectState.cmd)
                     continue
 
@@ -226,8 +219,8 @@ def main():
 
                     # Send DIESTARTED reply to client
                     logging.debug("Sending DIESTARTED reply")
-                    collectState.cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CollectMsg(key=CollectMsg.DIESTARTED)
+                    cmmsg = CollectMsg(identity=identity,
+                                       key=CollectMsg.DIESTARTED)
                     cmmsg.send(collectState.cmd)
                     continue
 
@@ -237,17 +230,8 @@ def main():
                                         collectState.state)
                         continue
 
-                    logging.debug("Loading HELLO properties with JSON")
-                    if len(msg) == 3:
-                        try:
-                            hellodict = json.loads(msg[2])
-                        except Exception as ex:
-                            logging.error(ex)
-                            hellodict = {}
-                        logging.debug("HELLO msg[2] = %s" % hellodict)
-                    else:
-                        logging.error("Got HELLO msg of len %d, expected 3" % len(msg))
-                        hellodict = {}
+                    hellodict = collectmsg.body
+                    logging.debug("HELLO body = %s" % hellodict)
 
                     # add new entry
                     #collectState[identity] = hellodict
@@ -262,18 +246,8 @@ def main():
                     continue
 
                 elif request == CollectMsg.CONNECTINFO:
-                    logging.debug("Loading CONNECTINFO with JSON")
-                    if len(msg) == 3:
-                        try:
-                            connectInfo = json.loads(msg[2])
-                        except Exception as ex:
-                            logging.error(ex)
-                            connectInfo = {}
-                        logging.debug("CONNECTINFO msg[2] = %s" % connectInfo)
-                    else:
-                        logging.error("Got CONNECTINFO msg of len %d, expected 3" % len(msg))
-                        connectInfo = {}
-
+                    connectInfo = collectmsg.body
+                    logging.debug("CONNECTINFO body = %s" % connectInfo)
                     try:
                         level, index = collectState.identityDict[identity]
                         collectState.entries[level][index].update(connectInfo[level])
@@ -285,8 +259,8 @@ def main():
                 elif request == CollectMsg.DUMP:
                     # Send reply to client
                     logging.debug("Sending DUMPSTARTED reply")
-                    collectState.cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CollectMsg(key=CollectMsg.DUMPSTARTED)
+                    cmmsg = CollectMsg(identity=identity,
+                                       key=CollectMsg.DUMPSTARTED)
                     cmmsg.send(collectState.cmd)
 
                     # Dump state to console
@@ -300,8 +274,8 @@ def main():
                     logging.warning("Unknown msg <%s>" % request.decode())
                     # Send reply to client
                     logging.debug("Sending <HUH?> reply")
-                    collectState.cmd.send(identity, zmq.SNDMORE)
-                    cmmsg = CollectMsg(key=CollectMsg.HUH)
+                    cmmsg = CollectMsg(identity=identity,
+                                       key=CollectMsg.HUH)
                     cmmsg.send(collectState.cmd)
                     continue
 

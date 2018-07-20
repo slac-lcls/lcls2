@@ -14,35 +14,59 @@ import zmq.utils.jsonapi as json
 
 class JsonMsg(object):
     """
-    Message is formatted on wire as 2 frames:
-    frame 0: key (0MQ string)
-    frame 1: body (blob)
+    Message is formatted on wire as 2 or 3 frames:
+      frame 0: key (0MQ string)
+      frame 1: body (blob)
+    or
+      frame 0: identity
+      frame 1: key (0MQ string)
+      frame 2: body (blob)
     """
+    identity = None
     key = None
-    body = None
+    body = {}
+    json_body = json.dumps({})
 
-    def __init__(self, key=None, body=None):
+    def __init__(self, *, identity=None, key=None, body={}):
+        self.identity = identity
         self.key = key
-        self.body = body
+        if isinstance(body, dict):
+            self.body = body
+            self.json_body = json.dumps(body)
+        else:
+            raise TypeError("message body must be of type dict")
 
     def send(self, socket):
-        """Send key-value message to socket; any empty frames are sent as such."""
+        """Send message to socket."""
         key = b'' if self.key is None else self.key
-        body = b'' if self.body is None else self.body
-        socket.send_multipart([ key, body ])
+        if self.identity is None:
+            socket.send_multipart([ key, self.json_body ])
+        else:
+            socket.send_multipart([ self.identity, key, self.json_body ])
 
     @classmethod
     def recv(cls, socket):
-        """Reads key-value message from socket, returns new kvmsg instance."""
+        """Reads message from socket, returns new jsonmsg instance."""
         return cls.from_msg(socket.recv_multipart())
 
     @classmethod
     def from_msg(cls, msg):
-        """Construct key-value message from a multipart message"""
-        key, body = msg
+        """Construct message from a multipart message"""
+        if len(msg) == 2:
+            identity = None
+            key, json_body = msg
+        elif len(msg) == 3:
+            identity, key, json_body = msg
+        else:
+            raise ValueError("message must have 2 or 3 parts")
         key = key if key else None
-        body = body if body else None
-        return cls(key=key, body=body)
+        try:
+            body = json.loads(json_body)
+        except Exception as ex:
+            print('json.loads(): %s' % ex)
+            body = {}
+        identity = identity if identity else None
+        return cls(identity=identity, key=key, body=body)
     
     def dump(self):
         if self.body is None:
@@ -51,62 +75,40 @@ class JsonMsg(object):
         else:
             size = len(self.body)
             data=repr(self.body)
-        print >> sys.stderr, "[key:{key}][size:{size}] {data}".format(
+        print("[key:{key}][size:{size}] {data}".format(
             key=self.key,
             size=size,
             data=data,
-        )
+        ), file=sys.stderr)
 
 # ---------------------------------------------------------------------
 # Runs self test of class
 
-def test_kvmsg (verbose):
-    print(" * kvmsg: ", end='')
+def test_jsonmsg (verbose):
+    print(" * jsonmsg: ", end='')
 
     # Prepare our context and sockets
     ctx = zmq.Context()
     output = ctx.socket(zmq.DEALER)
-    output.bind("ipc://kvmsg_selftest.ipc")
+    output.bind("ipc://jsonmsg_selftest.ipc")
     input = ctx.socket(zmq.DEALER)
-    input.connect("ipc://kvmsg_selftest.ipc")
+    input.connect("ipc://jsonmsg_selftest.ipc")
 
     kvmap = {}
     # Test send and receive of simple message
-    kvmsg = JsonMsg(1)
-    kvmsg.key = b"key"
-    kvmsg.body = b"body"
+    jsonmsg = JsonMsg()
+    jsonmsg.key = b"key"
+    jsonmsg.body = b"body"
     if verbose:
-        kvmsg.dump()
-    kvmsg.send(output)
-    kvmsg.store(kvmap)
+        jsonmsg.dump()
+    jsonmsg.send(output)
 
-    kvmsg2 = JsonMsg.recv(input)
+    jsonmsg2 = JsonMsg.recv(input)
     if verbose:
-        kvmsg2.dump()
-    assert kvmsg2.key == b"key"
-    kvmsg2.store(kvmap)
-
-    assert len(kvmap) == 1 # shouldn't be different
-
-    # test send/recv with properties:
-    kvmsg = JsonMsg(2, key=b"key", body=b"body")
-    kvmsg[b"prop1"] = b"value1"
-    kvmsg[b"prop2"] = b"value2"
-    kvmsg[b"prop3"] = b"value3"
-    assert kvmsg[b"prop1"] == b"value1"
-    if verbose:
-        kvmsg.dump()
-    kvmsg.send(output)
-    kvmsg2 = JsonMsg.recv(input)
-    if verbose:
-        kvmsg2.dump()
-    # ensure properties were preserved
-    assert kvmsg2.key == kvmsg.key
-    assert kvmsg2.body == kvmsg.body
-    assert kvmsg2.properties == kvmsg.properties
-    assert kvmsg2[b"prop2"] == kvmsg[b"prop2"]
+        jsonmsg2.dump()
+    assert jsonmsg2.key == b"key"
 
     print("OK")
 
 if __name__ == '__main__':
-    test_kvmsg('-v' in sys.argv)
+    test_jsonmsg('-v' in sys.argv)

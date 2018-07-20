@@ -4,7 +4,6 @@ Collection Manager showPlatform command
 """
 import sys
 import zmq
-import zmq.utils.jsonapi as json
 import argparse
 from CollectMsg import CollectMsg
 
@@ -24,30 +23,27 @@ def main():
     cmd.RCVTIMEO = 5000 # in milliseconds
     cmd.connect("tcp://%s:%d" % (args.C, CollectMsg.router_port(args.p)))
 
-    cmd.send(CollectMsg.GETSTATE)
+    CollectMsg(key=CollectMsg.GETSTATE).send(cmd)
     while True:
         try:
             msg = CollectMsg.recv(cmd)
         except Exception as ex:
-            print(ex)
+            print('E: CollectMsg.recv()', ex)
             return
 
         request = msg.key
         if request in [CollectMsg.NOPLAT, CollectMsg.PLAT,
                        CollectMsg.ALLOC, CollectMsg.CONNECT]:
-            # platform FIXME
-            platform = '0'
+            platform = args.p
 
             # partition name FIXME
             partName = '(None)'
 
             # nodes
-            nodes = []
-            try:
-                nodes = json.loads(msg.body)
-            except Exception as ex:
-                print('E: json.loads()', ex)
-                nodes = []
+            if isinstance(msg.body, dict):
+                nodes = msg.body
+            else:
+                raise TypeError("message body must be of type dict")
             displayList = []
 
             for level, nodelist in nodes.items():
