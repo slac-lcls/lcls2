@@ -4,6 +4,8 @@ import numpy as np
 import psana.pyalgos.generic.Graphics as gr
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 
+doPlot = 0
+
 #------------------------------
 
 def plot_image(data) :
@@ -42,12 +44,10 @@ print("Done step3")
 #gr.move(x0=500, y0=0)
 #gr.show('do_not_hold')
 
-
-axim = plot_image(data)
-axim.scatter(cols, rows, s=100, facecolors='none', edgecolors='w')
-gr.show('do not hold')
-
-print("Done plot")
+if doPlot:
+    axim = plot_image(data)
+    axim.scatter(cols, rows, s=100, facecolors='none', edgecolors='w')
+    gr.show('do not hold')
 
 #pk1 = algos.peak_finder_algos(pbits=0)
 #pk1.set_peak_selection_parameters(npix_min=2, npix_max=30, amax_thr=200, atot_thr=600, son_min=7)
@@ -61,10 +61,12 @@ print("Done step3")
 
 #fig, ax = plt.subplots()
 #ax.imshow(data1, interpolation='none')
-axim1 = plot_image(data1)
-axim1.scatter(cols1, rows1, s=100, facecolors='none', edgecolors='w')
-gr.move(x0=0, y0=500)
-gr.show()
+
+if doPlot:
+    axim1 = plot_image(data1)
+    axim1.scatter(cols1, rows1, s=100, facecolors='none', edgecolors='w')
+    gr.move(x0=0, y0=500)
+    gr.show()
 
 print("rows: ", len(rows), rows)
 print("rows1: ", len(rows1), (184-rows1)[-1::-1])
