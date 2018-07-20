@@ -51,7 +51,7 @@ target_link_libraries(datareader
     xtcdata::xtc
 )
 
-add_executable(hsd_valid test/hsd_valid.cc)
+add_executable(hsd_valid tests/hsd_valid.cc)
 target_include_directories(hsd_valid PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 )
@@ -66,7 +66,7 @@ include(CTest) # ctest -T memcheck
 
 # Test 1: AllocArray
 add_executable(test_array
-    test/test_array.cc
+    tests/test_array.cc
 )
 target_link_libraries(test_array
     psalg
@@ -77,7 +77,7 @@ add_test(NAME test_array COMMAND ${CMAKE_BINARY_DIR}/psalg/test_array
 
 # Test 2: Peak finder
 add_executable(test_peakFinder
-    test/peakHeap.cc
+    tests/peakHeap.cc
 )
 target_link_libraries(test_peakFinder
     psalg
@@ -88,7 +88,7 @@ add_test(NAME test_peakFinder COMMAND ${CMAKE_BINARY_DIR}/psalg/test_peakFinder
 
 # Test 3: Hsd
 add_executable(test_hsd
-    test/test_hsd.cc
+    tests/test_hsd.cc
 )
 target_link_libraries(test_hsd
     psalg
@@ -99,7 +99,7 @@ add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
 
 # Test Logger
 add_executable(test_logger
-    test/test_logger.cc
+    tests/test_logger.cc
 )
 target_link_libraries(test_logger
     psalg
