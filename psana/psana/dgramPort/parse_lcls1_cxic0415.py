@@ -7,18 +7,17 @@ import sys, zmq
 
 from psalgos.pypsalgos import PyAlgos
 
-expname = sys.argv[1]
-run     = sys.argv[2]
-detname = sys.argv[3]
-nevents = int(sys.argv[4])
-tag     = sys.argv[5]
-outdir = ''
-if len(sys.argv) < 6:
-    print("Usage: python parse_lcls1_cxic0415.py expname run detname nevents tag (optional)outdir")
-    print("Example: python parse_lcls1_cxic0415.py cxic0415 101 CxiDs1.0:Cspad.0 -1 101 /reg/common/package/temp")
+if len(sys.argv) < 5:
+    print("Usage: python parse_lcls1_cxic0415.py expname detname outdir run")
+    print("Example: bsub -m \"psana1112\" -q psanaq  -o ~/%J.out python parse_lcls1_cxic0415.py cxic0415 DscCsPad /reg/d/psdm/cxi/cxitut13/scratch/yoon82 96")
     exit(0)
-elif len(sys.argv) == 7:
-    outdir  = sys.argv[6]
+
+expname = sys.argv[1]
+detname = sys.argv[2]
+outdir  = sys.argv[3]
+run     = sys.argv[4]
+tag     = str(run)
+nevents = -1 # process all events:-1
 
 minPeaks = 15
 hitParam_alg1_npix_min = 2

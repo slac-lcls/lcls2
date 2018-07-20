@@ -10,12 +10,12 @@ from psana import DataSource
 import sys, os
 
 outdir = sys.argv[1]
-fname  = sys.argv[2]
-detAlias = sys.argv[3]
+detAlias = sys.argv[2]
+fname  = sys.argv[3]
 
 if len(sys.argv) < 3: 
-    print("Usage: python translate_xtc_demo.py paths filename detAlias")
-    print("Example: python translate_xtc_demo.py /reg/common/package/temp crystal_xray DscCsPad")
+    print("Usage: python translate_xtc_demo.py paths detAlias filename ")
+    print("Example: bsub -m \"psana1112\" -q psanaq  -o ~/%J.out python translate_xtc_demo.py /reg/d/psdm/cxi/cxitut13/scratch/yoon82 DscCsPad crystal_96")
 
 context = zmq.Context()
 # receive work
