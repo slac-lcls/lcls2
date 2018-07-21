@@ -211,7 +211,7 @@ def main():
                 msg = control_router_socket.recv_multipart()
                 identity = msg[0]
                 request = msg[1]
-                logging.debug('Received <%s> from control_router_socket' % request.decode())
+                logging.debug('Received <%s> from control_router_socket' % request)
 
                 if request in [ Transition.configure, Transition.beginrun,
                                 Transition.enable, Transition.disable,
@@ -220,7 +220,14 @@ def main():
 
                     if request != ControlMsg.GETSTATE:
                         # translate request to state machine trigger, then call it
-                        controlTrigger = controlState.getTrigger(request.decode())
+                        try:
+                            decoded = request.decode()
+                        except UnicodeDecodeError as ex:
+                            logging.error('decode(): %s' % ex)
+                            controlTrigger = None
+                        else:
+                            controlTrigger = controlState.getTrigger(decoded)
+
                         if controlTrigger:
                             try:
                                 controlTrigger()
@@ -228,7 +235,7 @@ def main():
                                 logging.error('Transition failed: %s' % ex)
                         else:
                             logging.debug('No trigger found for request <%s>' %
-                                          request.decode())
+                                          request)
 
                     # Send reply to client
                     controlmsg = ControlMsg(identity=identity,
@@ -237,7 +244,7 @@ def main():
                     continue
 
                 else:
-                    logging.warning("Unknown msg <%s>" % request.decode())
+                    logging.warning("Unknown msg <%s>" % request)
                     # Send reply to client
                     logging.debug("Sending <HUH?> reply")
                     controlmsg = ControlMsg(identity=identity,

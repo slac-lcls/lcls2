@@ -189,9 +189,16 @@ def main():
                 collectmsg = CollectMsg.recv(collectState.cmd)
                 identity = collectmsg.identity
                 request = collectmsg.key
-                logging.debug('Received <%s> from cmd' % request.decode())
+                logging.debug('Received <%s> from cmd' % request)
 
-                collectTrigger = collectState.getTrigger(request.decode())
+                try:
+                    decoded = request.decode()
+                except UnicodeDecodeError as ex:
+                    logging.error('decode(): %s' % ex)
+                    collectTrigger = None
+                else:
+                    collectTrigger = collectState.getTrigger(decoded)
+
                 if collectTrigger:
                     # Handle state transition by calling trigger
                     try:
@@ -271,7 +278,7 @@ def main():
                     continue
 
                 else:
-                    logging.warning("Unknown msg <%s>" % request.decode())
+                    logging.warning("Unknown msg <%s>" % request)
                     # Send reply to client
                     logging.debug("Sending <HUH?> reply")
                     cmmsg = CollectMsg(identity=identity,
