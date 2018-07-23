@@ -7,6 +7,7 @@ Author: Chris Ford <caf@slac.stanford.edu>
 """
 
 import sys
+import logging
 
 import zmq
 # zmq.jsonapi ensures bytes, instead of unicode:
@@ -63,7 +64,7 @@ class JsonMsg(object):
         try:
             body = json.loads(json_body)
         except Exception as ex:
-            print('json.loads(): %s' % ex)
+            logging.error('json.loads(): %s' % ex)
             body = {}
         identity = identity if identity else None
         return cls(identity=identity, key=key, body=body)
@@ -94,7 +95,6 @@ def test_jsonmsg (verbose):
     input = ctx.socket(zmq.DEALER)
     input.connect("ipc://jsonmsg_selftest.ipc")
 
-    kvmap = {}
     # Test send and receive of simple message
     jsonmsg = JsonMsg()
     jsonmsg.key = b"key"
