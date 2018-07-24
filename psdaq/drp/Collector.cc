@@ -115,8 +115,8 @@ void collector(MemPool& pool, Parameters& para, MyBatchManager& myBatchMan)
         uint64_t* payload = (uint64_t*)dg.xtc.alloc(8);
         *payload = val;
         */
-        myBatchMan.process(&dg);
         pool.output_queue.push(pebble);
+        myBatchMan.process(&dg);
         i++;
     }
 }
