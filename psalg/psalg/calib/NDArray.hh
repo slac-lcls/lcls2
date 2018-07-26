@@ -43,7 +43,8 @@
 #include "xtcdata/xtc/Array.hh" // Array
 #include "psalg/calib/Types.hh"
 #include "psalg/utils/Logger.hh" // for MSG
-#include <typeinfo>       // typeid
+#include <typeinfo> // typeid
+#include <cstring>  // memcpy
 
 using namespace std;
 //using namespace XtcData; // XtcData::Array
@@ -125,9 +126,12 @@ private:
   T* _buf_ext;
   T* _buf_own;
   T* _buf;
+
+
+public:
   /// Copy constructor and assignment are disabled by default
-  NDArray(const NDArray&) ;
-  NDArray& operator = (const NDArray&) ;
+  //NDArray(const NDArray&);
+  //NDArray& operator = (const NDArray&);
 };
 
 } // namespace psalg

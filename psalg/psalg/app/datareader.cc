@@ -25,14 +25,20 @@
 
 #include <dirent.h> // opendir, readdir, closedir, dirent, DIR
 #include "psalg/utils/Utils.hh" // files_in_dir, dir_content
-#include "psalg/utils/Logger.hh" // MSG
+//#include "psalg/utils/Logger.hh" // MSG
 #include "xtcdata/xtc/DescData.hh" // Array
 #include "psalg/calib/ArrayIO.hh" // ArrayIO
 #include "psalg/calib/NDArray.hh" // NDArray
 #include "psalg/utils/DirFileIterator.hh"
+#include "psalg/detector/AreaDetectorStore.hh" // getAreaDetector 
+#include "psalg/detector/DetectorStore.hh" // getDetector 
+//#include "psalg/detector/AreaDetectorTypes.hh"
+//#include "psalg/detector/DetectorTypes.hh"
+//#include "psalg/detector/Detector.hh"
 
 using namespace std;
 using namespace psalg;
+using namespace detector;
 
 //-------------------
 
@@ -48,6 +54,52 @@ void print_hline(const uint nchars, const char c) {
 
 //-------------------
 
+void test_get_detector() {
+  MSG(INFO, "In test_get_detector");
+  AreaDetector* det1 = (AreaDetector*)getDetector("Epix100a");
+  Detector* det2 = getDetector("Epix100a");
+  std::cout << "AreaDetector obj1 " << *det1 << '\n';
+  std::cout << "Detector obj2 " << *det2 << '\n';
+  event_t evt = 123;
+  //const detector::size_t size = det1->size(evt);
+  std::cout << "det1 size: " << det1->size(evt) << '\n';
+ }
+
+//-------------------
+
+void test_detector() {
+  MSG(INFO, "In test_detector");
+  Detector det1("Epix100a.");
+  Detector det2("Cspad.");
+  Detector det3("XCS-YAG-1"); // DDL_DETECTOR
+  //print_map_detname_to_dettype();
+  print_map_area_detname_to_dettype();
+  //print_map_bldinfo_to_dettype();
+  std::cout << "Detector object 1 " << det1 << '\n';
+  std::cout << "Detector object 2 " << det2 << '\n';
+  std::cout << "Detector object 3 " << det3 << '\n';
+ }
+
+//-------------------
+
+void test_area_detector() {
+  MSG(INFO, "In test_area_detector");
+  AreaDetector* det = getAreaDetector("Epix100a.");
+  //detector::AreaDetector* det = detector::getAreaDetector("Epix100a.");
+  event_t evt = 123;
+  //const NDArray<pedestals_t>& peds = modet->pedestals(evt);
+  const detector::size_t size = det->size(evt);
+  std::cout << "size: " << size << '\n';
+  const detector::size_t ndim = det->ndim(evt);
+  std::cout << "ndim: " << ndim << '\n';
+  const detector::shape_t* shape = det->shape(evt);
+  std::cout << "shape[0]: " << shape[0] << '\n';
+
+  NDArray<raw_t> raw = det->raw(evt);
+}
+
+//-------------------
+
 void test_image_loop() {
   MSG(INFO, "In test_image_loop");
 
@@ -57,7 +109,9 @@ void test_image_loop() {
 
   cout << "  found files: \n";
   std::vector<std::string>::iterator it = v.begin();
-  for (; it != v.end(); ++it) {
+
+  unsigned counter=0;
+  for (; it != v.end(), counter<2; ++it, ++counter) {
     cout << "  --==-- " << *it << '\n';
     ArrayIO<float> aio(*it);
     //MSG(INFO, "array status: " << aio.str_status());
@@ -264,6 +318,10 @@ int main(int argc, char **argv) {
 
     test_files_in_dir();    print_hline(80,'_');
     test_image_loop();      print_hline(80,'_');
+
+    test_area_detector();   print_hline(80,'_');
+    test_detector();        print_hline(80,'_');
+    test_get_detector();    print_hline(80,'_');
 
     return EXIT_SUCCESS;
 }

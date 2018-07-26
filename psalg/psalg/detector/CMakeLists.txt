@@ -1,5 +1,11 @@
 add_library(detector SHARED
+    src/DetectorTypes.cc
+    src/Detector.cc
+    src/DetectorStore.cc
+    src/AreaDetectorTypes.cc
     src/AreaDetector.cc
+    src/AreaDetectorEpix100a.cc
+    src/AreaDetectorStore.cc
 )
 
 target_link_libraries(detector
@@ -12,7 +18,13 @@ target_include_directories(detector PUBLIC
 )
 
 install(FILES
-    AreaDetectorBase.hh
+    DetectorTypes.hh
+    Detector.hh
+    DetectorStore.hh
+    AreaDetectorTypes.hh
+    AreaDetector.hh
+    AreaDetectorStore.hh
+    AreaDetectorEpix100a.hh
     DESTINATION include/psalg/detector
 )
 
