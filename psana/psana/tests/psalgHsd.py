@@ -1,6 +1,8 @@
 import hsd as Hsd
 import numpy as np
 import sys
+import os
+cwd = os.path.abspath(os.path.dirname(__file__))
 
 doPlot = int(sys.argv[1])
 if doPlot: import matplotlib.pyplot as plt
@@ -42,7 +44,7 @@ class hsd(OpaqueRawDataBase):
         chan2 = evt.dgrams[0].xpphsd.hsd.chan2
         chan3 = evt.dgrams[0].xpphsd.hsd.chan3
         chans = [chan0, chan1, chan2, chan3]
-        nonOpaqueHsd = Hsd.hsd("1.0.0", chans)  # make an object per event
+        nonOpaqueHsd = Hsd.hsd("1.2.3", chans)  # make an object per event
         return nonOpaqueHsd
 
     class _Factory:
@@ -50,7 +52,7 @@ class hsd(OpaqueRawDataBase):
 
 
 from psana.dgrammanager import DgramManager
-ds = DgramManager('/reg/neh/home/yoon82/Software/lcls2/hsd_052218b.xtc')
+ds = DgramManager(os.path.join(cwd,'hsd_061918_n3.xtc'))
 
 rawData=OpaqueRawData('xpphsd',ds.configs[0])
 
@@ -61,8 +63,9 @@ for i in range(5):
     print("### Event: ",i)
     evt = ds.next()
     myrawhsd = rawData(evt)
-    raw = myrawhsd.raw()
-    listOfPeaks, sPos = myrawhsd.fex(chanNum)
+    print(dir(myrawhsd))
+    raw = myrawhsd.waveform()
+    listOfPeaks, sPos = myrawhsd.peaks(chanNum)
 
     plt.plot(raw[0],'o-')
     plt.title('Event {}, Waveform channel: {}'.format(i,chanNum))
@@ -82,6 +85,7 @@ for i in range(5):
         waveformStack = raw[0]
     else:
         waveformStack.append(raw[0])
+    if i >=1: break
 
 print("waveform: ", waveformStack)
 
