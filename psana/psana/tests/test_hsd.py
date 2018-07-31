@@ -2,6 +2,8 @@
 # nosetests -sv psana/psana/tests
 #
 #------------------------------
+import os
+cwd = os.path.abspath(os.path.dirname(__file__))
 
 doPlot = 0
 
@@ -10,9 +12,9 @@ doPlot = 0
 def test_hsd():
     import psana
     import numpy as np
-    import matplotlib.pyplot as plt
+    if doPlot: import matplotlib.pyplot as plt
 
-    ds = psana.DataSource('/reg/neh/home/yoon82/data/hsd_061918.xtc')
+    ds = psana.DataSource(os.path.join(cwd,'hsd_061918_n3.xtc'))
     det = ds.Detector("xpphsd")
 
     chanNum = 3
@@ -22,10 +24,6 @@ def test_hsd():
         print("waveform: ", waveforms)
         print("list of peaks:", peaks)
         print("list of pos:", startPos)
-
-        #hsd = det(evt)
-        #waveform = hsd.waveform() # FIXME: return dictionary
-        #peaks, startPos = hsd.peaks(chanNum) # TODO: return times instead of sPos. Get sampling rate from hsd configure
 
         if doPlot:
             plt.plot(waveforms[0], 'o-')
