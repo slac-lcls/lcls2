@@ -145,16 +145,15 @@ class DataSourceHelper(object):
                 gain_mask = pickle.load(open(os.path.join(calib_dir,'gain_mask.pickle'), 'r'))
             
             # Find corresponding pedestals
-            if run_no > -1: # Do not fetch pedestals when run_no is not given
-                if os.path.exists(os.path.join(calib_dir,'pedestals.npy')):
-                    pedestals = np.load(os.path.join(calib_dir,'pedestals.npy'))
-                else:
-                    files = glob.glob(os.path.join(calib_dir,"*-end.npy"))
-                    darks = np.sort([int(os.path.basename(file_name).split('-')[0]) for file_name in files])
-                    sel_darks = darks[(darks < run_no)]
-                    if sel_darks.size > 0:
-                        if os.path.exists(os.path.join(calib_dir,'%s-end.npy'%sel_darks[0])):
-                            pedestals = np.load(os.path.join(calib_dir, '%s-end.npy'%sel_darks[0]))
+            if os.path.exists(os.path.join(calib_dir,'pedestals.npy')):
+                pedestals = np.load(os.path.join(calib_dir,'pedestals.npy'))
+            else:
+                files = glob.glob(os.path.join(calib_dir,"*-end.npy"))
+                darks = np.sort([int(os.path.basename(file_name).split('-')[0]) for file_name in files])
+                sel_darks = darks[(darks < run_no)]
+                if sel_darks.size > 0:
+                   if os.path.exists(os.path.join(calib_dir,'%s-end.npy'%sel_darks[0])):
+                        pedestals = np.load(os.path.join(calib_dir, '%s-end.npy'%sel_darks[0]))
             calib = {'gain_mask': gain_mask,
                      'pedestals': pedestals}
         return calib
