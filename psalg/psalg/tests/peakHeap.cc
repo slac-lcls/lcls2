@@ -1,8 +1,3 @@
-//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cc psalg/src/PeakFinderAlgos.cc psalg/src/LocalExtrema.cpp -o peakHeap
-// To turn off debug:
-//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include peakHeap.cc psalg/src/PeakFinderAlgos.cc psalg/src/LocalExtrema.cpp -DNDEBUG -o peakHeap
-//valgrind ./peakHeap
-
 /*
  * Test program for the AllocArray peak finder
  * This code can be used to run with the Heap or the Stack
