@@ -1,6 +1,3 @@
-//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/temp/lcls2/install/include test_array.cpp -o test_array
-//valgrind ./test_array
-
 #include <iostream>
 #include <vector>
 #include <stdlib.h>

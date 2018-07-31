@@ -9,7 +9,7 @@ from psalgos.pypsalgos import PyAlgos
 
 if len(sys.argv) < 5:
     print("Usage: python parse_lcls1_cxic0415.py expname detname outdir run")
-    print("Example: bsub -m \"psana1112\" -q psanaq  -o ~/%J.out python parse_lcls1_cxic0415.py cxic0415 DscCsPad /reg/d/psdm/cxi/cxitut13/scratch 96")
+    print("Example: bsub -m \"psana1112\" -q psanaq  -o ~/%J.out python parse_lcls1_cxic0515.py cxic0515 DsdCsPad /reg/d/psdm/cxi/cxitut13/scratch 96")
     exit(0)
 
 expname = sys.argv[1]
@@ -19,7 +19,7 @@ run     = sys.argv[4]
 tag     = str(run)
 nevents = -1 # process all events:-1
 
-minPeaks = 15
+minPeaks = 10
 hitParam_alg1_npix_min = 2
 hitParam_alg1_npix_max = 10
 hitParam_alg1_amax_thr = 300

@@ -1,6 +1,3 @@
-//g++ -g -Wall -std=c++11 -I /reg/neh/home/yoon82/Software/lcls2/install/include test_hsd.cpp -o test_hsd
-//valgrind ./test_hsd
-
 #include <stdio.h>
 #include <iostream>
 #include <vector>
