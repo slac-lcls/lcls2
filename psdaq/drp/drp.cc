@@ -16,7 +16,7 @@ using namespace XtcData;
 
 void print_usage(){
     printf("Usage: drp -P <EB server IP address> -i <Contributor ID> -o <Output XTC dir> -d <Device id> -l <Lane mask> -D <Detector type>\n");
-    printf("e.g.: sudo psdaq/build/drp/drp -P 172.21.52.128 -i 0 -o /drpffb/yoon82 -d 0x2032 -l 0xf -D Digitizer\n");
+    printf("e.g.: sudo psdaq/build/drp/drp -P 172.21.52.128 -i 0 -o /drpffb/username -d 0x2032 -l 0xf -D Digitizer\n");
 }
 
 int main(int argc, char* argv[])
