@@ -39,9 +39,8 @@ namespace detector {
   typedef float    raw_t;
   typedef float    calib_t;
   typedef float    image_t;
-  typedef float    geometry_t;
 
-
+  typedef float    geometry_t; // ??? TEMPORARY
 
   enum AREADETTYPE {
     UNDEFINED = 0,

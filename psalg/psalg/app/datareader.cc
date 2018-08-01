@@ -35,6 +35,7 @@
 //#include "psalg/detector/AreaDetectorTypes.hh"
 //#include "psalg/detector/DetectorTypes.hh"
 //#include "psalg/detector/Detector.hh"
+#include "psalg/detector/DataSourceSimulator.hh"
 
 using namespace std;
 using namespace psalg;
@@ -53,16 +54,41 @@ void print_hline(const uint nchars, const char c) {
 }
 
 //-------------------
+//-------------------
+//-------------------
+//-------------------
+
+void test_DataSourceSimulator() {
+  MSG(INFO, "In test_DataSourceSimulator");
+
+  DataSourceSimulator ds("/reg/neh/home/dubrovin/LCLS/con-detector/work",
+		         "nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1");
+
+  AreaDetector* det = dynamic_cast<AreaDetector*>(ds.detector("Epix100a"));
+  std::cout << "  Detector from DataSourceSimulator: " << *det << '\n';
+      
+  for(unsigned i=0;i<5;i++) {
+    EventSimulator& evt = ds.events().next();
+    std::cout << i << " ndarray: " << evt.nda() << '\n';
+  }
+}
+
+//-------------------
 
 void test_get_detector() {
   MSG(INFO, "In test_get_detector");
-  AreaDetector* det1 = (AreaDetector*)getDetector("Epix100a");
-  Detector* det2 = getDetector("Epix100a");
-  std::cout << "AreaDetector obj1 " << *det1 << '\n';
-  std::cout << "Detector obj2 " << *det2 << '\n';
+  AreaDetector* det1 = getAreaDetector("Epix100a");
+  Detector*     det2 = (Detector*)getDetector("Epix100a");
+  AreaDetector* det3 = dynamic_cast<AreaDetector*>(getDetector("Epix100a"));
+  std::cout << "AreaDetector obj1: " << *det1 << '\n';
+  std::cout << "Detector     obj2: " << *det2 << '\n';
+  std::cout << "AreaDetector obj3: " << *det3 << '\n';
   event_t evt = 123;
-  //const detector::size_t size = det1->size(evt);
   std::cout << "det1 size: " << det1->size(evt) << '\n';
+  std::cout << "det3 size: " << det3->size(evt) << '\n';
+  det3->pedestals(evt);
+  det3->common_mode(evt);
+  det3->image(evt);
  }
 
 //-------------------
@@ -322,6 +348,8 @@ int main(int argc, char **argv) {
     test_area_detector();   print_hline(80,'_');
     test_detector();        print_hline(80,'_');
     test_get_detector();    print_hline(80,'_');
+
+    test_DataSourceSimulator(); print_hline(80,'_');
 
     return EXIT_SUCCESS;
 }

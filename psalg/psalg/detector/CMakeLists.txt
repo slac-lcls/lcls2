@@ -25,6 +25,7 @@ install(FILES
     AreaDetector.hh
     AreaDetectorStore.hh
     AreaDetectorEpix100a.hh
+    DataSourceSimulator.hh
     DESTINATION include/psalg/detector
 )
 

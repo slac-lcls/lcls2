@@ -1,23 +1,23 @@
 #ifndef PSALG_DETECTOR_H
 #define PSALG_DETECTOR_H
-//-----------------------------
 
-#include "psalg/utils/Logger.hh" // for MSG, MSGSTREAM
+//-------------------
 
 #include <string>
+#include <iostream> //ostream, cout
+#include "psalg/utils/Logger.hh" // for MSG, MSGSTREAM
 #include "psalg/detector/DetectorTypes.hh"
-#include <iostream> //ostream
 
 //using namespace std;
-//using namespace psalg;
+
+//-------------------
 
 namespace detector {
 
-//-----------------------------
 class Detector {
 public:
 
-  Detector(const std::string& detname="NoDevice", const DETTYPE& dettype=NONDEFINED_DETECTOR);
+  Detector(const std::string& detname="NoDevice", const DETTYPE& dettype=UNDEFINED_DETECTOR);
   virtual ~Detector() {}
 
   const std::string& detname() {return _detname;};
@@ -27,12 +27,18 @@ public:
     os << "Detector name=" << o.detname() << " type=" << o.dettype(); return os;
   }
 
+  Detector(const Detector&) = delete;
+  Detector& operator = (const Detector&) = delete;
+  //Detector() {}
+
 private:
     std::string _detname;
     DETTYPE     _dettype;
+
 }; // class
 
 } // namespace detector
 
+//-------------------
+
 #endif // PSALG_DETECTOR_H
-//-----------------------------

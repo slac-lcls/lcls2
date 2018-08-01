@@ -107,10 +107,21 @@ target_link_libraries(test_logger
     xtcdata::xtc
 )
 
+# Test CalibPars
+add_executable(test_CalibPars
+    tests/test_CalibPars.cc
+)
+target_link_libraries(test_CalibPars
+    psalg
+    calib
+    xtcdata::xtc
+)
+
 install(TARGETS psalg
                 test_array
                 test_peakFinder
                 test_hsd
+                test_CalibPars
                 test_logger
                 datareader
     EXPORT psalgTargets

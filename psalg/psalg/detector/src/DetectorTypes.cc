@@ -21,7 +21,7 @@ const DETTYPE find_dettype(const std::string& detname) {
     it!=map_bldinfo_to_dettype.end(); ++it) {
     if(detname.find(it->first) != std::string::npos) return it->second;
   }
-  return NONDEFINED_DETECTOR;
+  return UNDEFINED_DETECTOR;
 }
 
 void print_map_detname_to_dettype() {

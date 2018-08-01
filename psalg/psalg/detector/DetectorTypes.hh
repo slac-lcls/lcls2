@@ -1,6 +1,8 @@
 #ifndef PSALG_DETECTORTYPES_H
 #define PSALG_DETECTORTYPES_H
 
+//-------------------
+
 /** Usage
  *
  * #include "psalg/calib/DetectorTypes.hh"
@@ -13,7 +15,7 @@
 
 namespace detector {
 
-  enum DETTYPE {NONDEFINED_DETECTOR=0,
+  enum DETTYPE {UNDEFINED_DETECTOR=0,
                 AREA_DETECTOR,
                 CONTROL_DATA_DETECTOR,
 		DDL_DETECTOR,
@@ -27,7 +29,7 @@ namespace detector {
                };
 
   static std::map<std::string, DETTYPE> map_detname_to_dettype = {
-    {"NoDevice"    , NONDEFINED_DETECTOR},
+    {"NoDevice"    , UNDEFINED_DETECTOR},
     {"Evr"         , EVR_DETECTOR},
     {"Acqiris"     , WF_DETECTOR},
     {"Opal1000"    , AREA_DETECTOR},
@@ -174,4 +176,3 @@ namespace detector {
 //-------------------
 
 #endif // PSALG_DETECTORTYPES_H
-
