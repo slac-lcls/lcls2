@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
         exit(2);
     }
 
-    int fd = open(xtcname, O_RDONLY | O_LARGEFILE);
+    int fd = open(xtcname, O_RDONLY);
     if (fd < 0) {
         fprintf(stderr, "Unable to open file '%s'\n", xtcname);
         exit(2);

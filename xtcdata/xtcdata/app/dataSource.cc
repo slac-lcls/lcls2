@@ -347,7 +347,7 @@ static PyObject* dataSource_new(PyTypeObject* type, PyObject* args, PyObject* kw
 
 static int dataSource_init(dataSource* self, PyObject* args, PyObject* kwds)
 {
-    self->data = open("data.xtc", O_RDONLY | O_LARGEFILE);
+    self->data = open("data.xtc", O_RDONLY);
     printf("Accessing self.data: %i\n\n", self->data);
 }
 

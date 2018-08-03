@@ -41,7 +41,7 @@ class DgramManager():
         self.fds = []
         for i, xtcdata_filename in enumerate(self.xtc_files):
             self.fds.append(os.open(xtcdata_filename,
-                            os.O_RDONLY|os.O_LARGEFILE))
+                            os.O_RDONLY))
             if not given_configs: 
                 d = dgram.Dgram(file_descriptor=self.fds[-1])
                 self.configs += [d]

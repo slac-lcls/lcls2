@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
   }
 
   // Read input xtc file
-  int fd = open(xtcname, O_RDONLY | O_LARGEFILE);
+  int fd = open(xtcname, O_RDONLY);
   if (fd < 0) {
     fprintf(stderr, "Unable to open file '%s'\n", xtcname);
     exit(2);

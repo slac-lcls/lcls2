@@ -13,7 +13,7 @@ using namespace XtcData;
 
 int main()
 {
-    int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
+    int fd = open("data.xtc", O_RDONLY);
     XtcFileIterator xtciter(fd,BUFSIZE);
 
     NamesIter namesiter;

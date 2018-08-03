@@ -256,7 +256,7 @@ static int dgram_init(DgramObject* self, PyObject* args, PyObject* kwds)
 
     self->dgram = (Dgram*)malloc(BUFSIZE);
 
-    int fd = open("data.xtc", O_RDONLY | O_LARGEFILE);
+    int fd = open("data.xtc", O_RDONLY);
 
     if (::read(fd, self->dgram, sizeof(*self->dgram)) == 0) {
         printf("read was unsuccessful.\n");

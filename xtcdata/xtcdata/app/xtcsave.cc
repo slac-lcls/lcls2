@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 
     FILE* outFile = fopen(outname, "w");
 
-    int fd = open(inname, O_RDONLY | O_LARGEFILE);
+    int fd = open(inname, O_RDONLY);
     if (fd < 0) {
         fprintf(stderr, "Unable to open file '%s'\n", inname);
         exit(2);
