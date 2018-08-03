@@ -1,10 +1,13 @@
 #include <limits.h>
 #include <unistd.h>
-#include <time.h>  
+#include <time.h>
 #include <fstream>
-#include <zmq.h>
-#include "Collector.hh"
+#include <cstddef>
+#include <cstdio>
+#include <sys/types.h>
 #include "drp.hh"
+#include "Collector.hh"
+#include <zmq.h>
 
 MemPool::MemPool(int num_workers, int num_entries) :
     dma(num_entries, RX_BUFFER_SIZE),
@@ -92,7 +95,7 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, MyBatchManager& myBa
         // Inifiband counters are divided by 4 (lanes) https://community.mellanox.com/docs/DOC-2751
         double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / duration;
         double xmit_rate = 4.0*double(port_xmit_data - old_port_xmit_data) / duration;
-        
+
         time_t rawtime;
         tm* timeinfo;
         time (&rawtime);
@@ -102,7 +105,7 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, MyBatchManager& myBa
         strftime(time_buffer, 80, "%Y-%m-%d %H:%M:%S", timeinfo);
 
         int size = snprintf(buffer, 4096,
-                R"({"host": "%s", "x": "%s", "data": {"event_rate": [%f], "data_rate": [%f], "rcv_rate": [%f], "xmit_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "used_batches": [%d]}})", 
+                R"({"host": "%s", "x": "%s", "data": {"event_rate": [%f], "data_rate": [%f], "rcv_rate": [%f], "xmit_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "used_batches": [%d]}})",
                 hostname, time_buffer, event_rate, data_rate, rcv_rate, xmit_rate, buffer_queue_size, output_queue_size, myBatchMan.inflight_count.load(std::memory_order_relaxed));
 
         /*

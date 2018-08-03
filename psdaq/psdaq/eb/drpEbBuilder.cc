@@ -11,6 +11,8 @@
 #include "psdaq/service/GenericPoolW.hh"
 #include "psdaq/service/Histogram.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/Collection.hh"
+
 
 #ifndef _GNU_SOURCE
 #  define _GNU_SOURCE
@@ -27,7 +29,7 @@
 #include <chrono>
 #include <atomic>
 #include <thread>
-
+#include <iostream>
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
@@ -674,6 +676,23 @@ void usage(char *name, char *desc)
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
 }
 
+void join_collection(unsigned cltBase, uint64_t& contributors,  std::vector<std::string>& cltAddr,
+                     std::vector<std::string>& cltPort)
+{
+    Collection collection("drp-tst-acc06", 0, "eb");
+    collection.connect();
+    std::cout<<"cmstate:\n"<<collection.cmstate.dump(4) << std::endl;
+
+    for (auto it : collection.cmstate["drp"].items()) {
+        int contrib_id = it.value()["drp_id"];
+        std::string address = it.value()["connect_info"]["infiniband"];
+        std::cout<<contrib_id<<"  "<<address<<std::endl;
+        contributors |= 1ul << contrib_id;
+        cltAddr.push_back(address);
+        cltPort.push_back(std::string(std::to_string(cltBase + contrib_id)));
+    }
+}  
+
 int main(int argc, char **argv)
 {
   int      op, ret    = 0;
@@ -724,6 +743,10 @@ int main(int argc, char **argv)
   std::vector<std::string> cltAddr;
   std::vector<std::string> cltPort;
   uint64_t contributors = 0;
+
+  join_collection(cltBase, contributors, cltAddr, cltPort);
+
+  /*
   if (optind < argc)
   {
     unsigned srcId = 0;
@@ -753,6 +776,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "Missing required contributor address(es)\n");
     return 1;
   }
+  */
 
   if (maxEntries > duration)
   {

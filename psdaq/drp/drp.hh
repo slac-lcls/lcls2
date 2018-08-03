@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <cstdint>
-
 #include "spscqueue.hh"
 #include "pgpdriver.h"
 
@@ -81,5 +80,6 @@ class MyBatchManager;
 
 void pin_thread(const pthread_t& th, int cpu);
 void monitor_func(std::atomic<Counters*>& p, MemPool& pool, MyBatchManager& myBatchMan);
+
 
 #endif // DRP_H

@@ -1,4 +1,7 @@
 #include <vector>
+#include <iostream>
+#include <iomanip>
+#include <functional>
 #include <cstring>
 #include <cassert>
 #include <unistd.h>
@@ -48,21 +51,22 @@ std::string get_infiniband_address()
             if (s != 0) {
                 printf("getnameinfo() failed: %s\n", gai_strerror(s));
             }
-            // printf("address %s: <%s>\n", ifa->ifa_name, host);
+            printf("address %s: <%s>\n", ifa->ifa_name, host);
         }
     }
     freeifaddrs(ifaddr);
     return std::string(host);
 }
 
-Collection::Collection()
+Collection::Collection(const std::string& manager_hostname, 
+                       int platform, const std::string& level) : m_level(level)
 {
-    const int base_port = 29980;
+    const int base_port = 29980 + platform;
     m_context = zmq_ctx_new();
     char buffer[1024];
-    m_dealer = zmq_socket(m_context, ZMQ_DEALER);
-    snprintf(buffer, 1024, "tcp://%s:%d", "localhost", base_port);
-    if (zmq_connect(m_dealer, buffer) == -1) {
+    m_push = zmq_socket(m_context, ZMQ_PUSH);
+    snprintf(buffer, 1024, "tcp://%s:%d", manager_hostname.c_str(), base_port + platform);
+    if (zmq_connect(m_push, buffer) == -1) {
         perror("zmq_connect");
     }
 
@@ -70,76 +74,96 @@ Collection::Collection()
     if (zmq_setsockopt(m_sub, ZMQ_SUBSCRIBE, "", 0) == -1) {
         perror("zmq_setsockopt(ZMQ_SUBSCRIBE)");
     }
-    sprintf(buffer, "tcp://%s:%d", "localhost", base_port + 10);
+    sprintf(buffer, "tcp://%s:%d", manager_hostname.c_str(), base_port + 10 + platform);
     printf("%s\n", buffer);
     if (zmq_connect(m_sub, buffer) == -1) {
         perror("zmq_connect");
     }
+
+    m_handle_request["plat"] = std::bind(&Collection::handle_plat, this, 
+                                         std::placeholders::_1);
+    m_handle_request["alloc"] = std::bind(&Collection::handle_alloc, this, 
+                                          std::placeholders::_1);
+    m_handle_request["connect"] = std::bind(&Collection::handle_connect, this, 
+                                            std::placeholders::_1);
 }
 
 Collection::~Collection()
 {
-    zmq_close(m_dealer);
+    zmq_close(m_push);
     zmq_close(m_sub);
     zmq_ctx_destroy(m_context);
 }
 
-std::vector<ZmqMessage> Collection::wait_for_msg(const std::string& key)
+void Collection::connect()
 {
-    zmq_pollitem_t items[] = {
-        {m_dealer, 0, ZMQ_POLLIN, 0},
-        {m_sub, 0, ZMQ_POLLIN, 0}};
-
     while (1) {
-        zmq_poll(items, 2, -1);
-        void* socket;
-        // check for event on DEALER socket
-        if (items[0].revents) {
-            socket = m_dealer;
-        }
-        // check for event on SUB socket
-        if (items[1].revents) {
-            socket = m_sub;
-        }
-        auto frames = recv_multipart(socket);
-        std::string msg_key((char*)frames[0].data(), frames[0].size());
-        printf("received key = %s\n", msg_key.c_str());
-        if (msg_key == key) {
-            return frames;
-        }
-        else {
-            printf("Unexpected key %s", msg_key.c_str());
+        json msg = recv_json(m_sub);
+        std::string key = msg["header"]["key"];
+        std::cout << std::setw(4) << msg << "\n\n";
+        printf("received key = %s\n", key.c_str());
+        m_handle_request[key](msg);
+        if (key == "connect") {
+            break;
         }
     }
 }
 
-json Collection::partition_info(const std::string& level)
+void Collection::handle_plat(json& msg)
 {
-    auto frames = wait_for_msg("PLAT");
-
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
     int pid = getpid();
-    json response;
-    response[level] = {{"procInfo", {{"host", hostname}, {"pid", pid}}}};
-    std::string s = response.dump();
-    zmq_send(m_dealer, "HELLO", 5, ZMQ_SNDMORE);
-    zmq_send(m_dealer, s.c_str(), s.length(), 0);
-
-    frames = wait_for_msg("ALLOC");
-    std::string answer((char*)frames[1].data(), frames[1].size());
-    return json::parse(answer);
+    m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
+    json body;
+    body[m_level] = {{"procInfo", {{"host", hostname}, {"pid", pid}}}};
+    json reply = create_msg("plat", msg["header"]["msg_id"], m_id, body); 
+    std::string s = reply.dump();
+    zmq_send(m_push, s.c_str(), s.length(), 0);
 }
 
-json Collection::connection_info(json& msg)
+void Collection::handle_alloc(json& msg)
 {
-    zmq_send(m_dealer, "CONNECTINFO", 11, ZMQ_SNDMORE);
-    std::string s = msg.dump();
-    zmq_send(m_dealer, s.c_str(), s.length(), 0);
+    // partition_info = json::parse(s);
+    std::string infiniband_address = get_infiniband_address();
+    printf("infiniband address %s\n", infiniband_address.c_str());
+    json body = {{m_level, {{"connect_info", {{"infiniband", infiniband_address}}}}}};
+    json reply = create_msg("alloc", msg["header"]["msg_id"], m_id, body);
+    std::string s = reply.dump();
+    zmq_send(m_push, s.c_str(), s.length(), 0);
+    m_state = "alloc";
+}
 
-    auto frames = wait_for_msg("CONNECT");
-    std::string answer((char*)frames[1].data(), frames[1].size());
-    return json::parse(answer);
+void Collection::handle_connect(json& msg)
+{
+    // ignore message if not in alloc state
+    if (m_state == "alloc") {
+        // FIXME actually check that connectionn is successful before sending response
+        cmstate = msg["body"];
+        json body = json({});
+        json reply = create_msg("ok", msg["header"]["msg_id"], m_id, body);
+        std::cout << std::setw(4) << reply << "\n\n";
+        std::string s = reply.dump();
+        zmq_send(m_push, s.c_str(), s.length(), 0);
+        m_state = "connect";
+    }
+}
+
+json create_msg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body)
+{
+    json msg;
+    msg["header"] = { {"key", key}, {"msg_id", msg_id}, {"sender_id", sender_id} };
+    msg["body"] = body;
+    return msg;
+}
+
+json recv_json(void* socket)
+{
+    ZmqMessage frame;
+    int rc = zmq_msg_recv(&frame.msg, socket, 0);
+    assert (rc != -1);
+    return json::parse((char*)frame.data());
+
 }
 
 std::vector<ZmqMessage> recv_multipart(void* socket)

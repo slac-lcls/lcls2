@@ -28,4 +28,5 @@ add_executable(drp
 target_link_libraries(drp
     utils
     pthread
+    collection
 )

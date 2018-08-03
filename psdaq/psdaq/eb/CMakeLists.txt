@@ -104,6 +104,7 @@ target_link_libraries(drpEbBuilder
   eb
   pthread
   rt
+  collection
 )
 
 target_link_libraries(tstMonLfLink

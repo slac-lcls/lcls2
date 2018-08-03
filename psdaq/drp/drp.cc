@@ -1,22 +1,41 @@
 #include <thread>
 #include <cstdio>
-#include <cstring>
 #include <getopt.h>
+#include <unistd.h>
+#include <limits.h>
+#include <sstream>
+#include <iostream>
 #include "PGPReader.hh"
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
 #include "Worker.hh"
 #include "Collector.hh"
+#include "psdaq/service/Collection.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/Sequence.hh"
-#include <sstream>
-#include <iostream>
+#include <zmq.h>
 
 using namespace XtcData;
+using json = nlohmann::json;
 
 void print_usage(){
     printf("Usage: drp -P <EB server IP address> -i <Contributor ID> -o <Output XTC dir> -d <Device id> -l <Lane mask> -D <Detector type>\n");
     printf("e.g.: sudo psdaq/build/drp/drp -P 172.21.52.128 -i 0 -o /drpffb/username -d 0x2032 -l 0xf -D Digitizer\n");
+}
+
+void join_collection(Parameters& para)
+{
+    Collection collection("drp-tst-acc06", 0, "drp");
+    collection.connect();
+    std::cout<<"cmstate:\n"<<collection.cmstate.dump(4) << std::endl;
+    std::string id = std::to_string(collection.id());
+    std::cout<<id<<std::endl;
+    int drp_id = collection.cmstate["drp"][id]["drp_id"];
+    // only works with single eb for now. FIXME for multiple eb servers
+    for (auto it : collection.cmstate["eb"].items()) {
+        para.eb_server_ip = it.value()["connect_info"]["infiniband"];
+    }
+    para.contributor_id = drp_id;
 }
 
 int main(int argc, char* argv[])
@@ -51,6 +70,8 @@ int main(int argc, char* argv[])
                 exit(1);
         }
     }
+
+    join_collection(para);
     printf("eb server ip: %s\n", para.eb_server_ip.c_str());
     printf("contributor id: %u\n", para.contributor_id);
     printf("output dir: %s\n", para.output_dir.c_str());
@@ -75,14 +96,14 @@ int main(int argc, char* argv[])
     ports.push_back("32768");
     Pds::Eb::EbLfClient myEbLfClient(peers, ports);
     MyBatchManager myBatchMan(myEbLfClient, para.contributor_id);
-    unsigned timeout = 10;
+    unsigned timeout = 5;
     int ret = myEbLfClient.connect(para.contributor_id, timeout,
-                                   myBatchMan.batchRegion(), 
+                                   myBatchMan.batchRegion(),
                                    myBatchMan.batchRegionSize());
     if (ret) {
         printf("ERROR in connecting to event builder!!!!\n");
     }
-
+    
     // start performance monitor thread
     std::thread monitor_thread(monitor_func, std::ref(pgp_reader.get_counters()),
                                std::ref(pool), std::ref(myBatchMan));
@@ -101,7 +122,7 @@ int main(int argc, char* argv[])
     for (int i = 0; i < num_workers; i++) {
         worker_threads[i].join();
     }
-
+    
     // shutdown monitor thread
     // counter->total_bytes_received = -1;
     //p.exchange(counter, std::memory_order_release);

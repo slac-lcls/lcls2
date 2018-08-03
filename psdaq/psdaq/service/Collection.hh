@@ -2,6 +2,8 @@
 #define COLLECTION_H
 
 #include <string>
+#include <functional>
+#include <unordered_map>
 #include <zmq.h>
 #include "json.hpp"
 using json = nlohmann::json;
@@ -23,18 +25,27 @@ public:
 class Collection
 {
 public:
-    Collection();
+    Collection(const std::string& manager_hostname, int platform, const std::string& level);
     ~Collection();
-    json partition_info(const std::string& level);
-    json connection_info(json& msg);
-    std::vector<ZmqMessage> wait_for_msg(const std::string& key);
+    virtual void handle_plat(json& msg);
+    virtual void handle_alloc(json& msg);
+    virtual void handle_connect(json& msg);
+    void connect();
+    size_t id() {return m_id;}
+    json cmstate;
 private:
+    std::string m_state;
     void* m_context;
-    void* m_dealer;
+    void* m_push;
     void* m_sub;
+    std::string m_level;
+    size_t m_id;
+    std::unordered_map<std::string, std::function<void(json&)> > m_handle_request;
 };
 
+json create_msg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body);
 std::vector<ZmqMessage> recv_multipart(void* socket);
+json recv_json(void* socket);
 std::string get_infiniband_address();
 
 #endif // COLLECTION_H
