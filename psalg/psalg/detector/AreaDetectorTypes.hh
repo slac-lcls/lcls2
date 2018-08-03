@@ -3,12 +3,16 @@
 
 /** Usage
  *
- * #include "psalg/calib/AreaDetectorTypes.hh"
+ * #include "psalg/detector/AreaDetectorTypes.hh"
  */
+
+#include "psalg/calib/CalibParsTypes.hh"
 #include <string>
 #include <map>
 
 //#include "psalg/utils/Logger.hh" // MSG, LOGGER
+
+using namespace calib;
 
 //-------------------
 
@@ -21,6 +25,8 @@ namespace detector {
 
   typedef uint32_t shape_t;
   typedef uint32_t size_t;
+
+  /*
   typedef float    pixel_rms_t;
   typedef float    pixel_bkgd_t;
   typedef uint16_t pixel_mask_t;
@@ -34,13 +40,13 @@ namespace detector {
   typedef float    pixel_coord_t;
   typedef float    pixel_size_t;
   typedef float    tilt_angle_t;
+  typedef float    geometry_t; // ??? TEMPORARY
+  */
 
-  typedef float    event_t;
+  typedef float    event_t; // query_t
   typedef float    raw_t;
   typedef float    calib_t;
   typedef float    image_t;
-
-  typedef float    geometry_t; // ??? TEMPORARY
 
   enum AREADETTYPE {
     UNDEFINED = 0,

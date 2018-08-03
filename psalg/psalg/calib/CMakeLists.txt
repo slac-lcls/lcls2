@@ -1,6 +1,7 @@
 add_library(calib SHARED
     src/ArrayIO.cc
     src/CalibPars.cc
+    src/CalibParsEpix100a.cc
     src/CalibParsStore.cc
 )
 
@@ -17,8 +18,9 @@ install(FILES
     Types.hh
     NDArray.hh
     ArrayIO.hh
-    CalibPars.hh
     CalibParsTypes.hh
+    CalibPars.hh
+    CalibParsEpix100a.hh
     CalibParsStore.hh
     DESTINATION include/psalg/calib
 )

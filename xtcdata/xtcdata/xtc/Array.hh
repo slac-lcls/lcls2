@@ -46,10 +46,10 @@ public:
         assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
         return _data[(i * _shape[1] + j) * _shape[2] + k];
     }
-    uint32_t rank(){
+    uint32_t rank() const {
         return _rank;
     }
-    uint32_t* shape(){
+    uint32_t* shape() const {
         return _shape;
     }
     T* data(){

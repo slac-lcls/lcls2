@@ -18,7 +18,7 @@ class Detector {
 public:
 
   Detector(const std::string& detname="NoDevice", const DETTYPE& dettype=UNDEFINED_DETECTOR);
-  virtual ~Detector() {}
+  virtual ~Detector();
 
   const std::string& detname() {return _detname;};
   const DETTYPE&     dettype() {return _dettype;};

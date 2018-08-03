@@ -15,8 +15,8 @@ public:
 
   //------------------------------
 
-  AreaDetectorEpix100a(const std::string& detname) : AreaDetector(detname) {}
-  virtual ~AreaDetectorEpix100a() {}
+  AreaDetectorEpix100a(const std::string& detname);
+  virtual ~AreaDetectorEpix100a();
 
   void _class_msg(const std::string& msg=std::string());
 

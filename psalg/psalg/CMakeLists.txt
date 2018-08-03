@@ -113,7 +113,15 @@ add_executable(test_CalibPars
 )
 target_link_libraries(test_CalibPars
     psalg
-    calib
+    xtcdata::xtc
+)
+
+# Test AreaDetector
+add_executable(test_AreaDetector
+    tests/test_AreaDetector.cc
+)
+target_link_libraries(test_AreaDetector
+    psalg
     xtcdata::xtc
 )
 
@@ -122,6 +130,7 @@ install(TARGETS psalg
                 test_peakFinder
                 test_hsd
                 test_CalibPars
+                test_AreaDetector
                 test_logger
                 datareader
     EXPORT psalgTargets

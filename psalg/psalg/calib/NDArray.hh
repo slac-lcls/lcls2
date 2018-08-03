@@ -87,9 +87,9 @@ public:
   inline void reshape(shape_t* shape, const size_t ndim) {set_shape(shape, ndim);}
 
   inline T* data() {return base::data();}
-  inline shape_t* shape() {return base::shape();}
-  inline size_t ndim() {return base::rank();}
-  inline size_t size() {
+  inline shape_t* shape() const {return base::shape();}
+  inline size_t ndim() const {return base::rank();}
+  inline size_t size() const {
     size_t s=1; for(size_t i=0; i<ndim(); i++) s*=shape()[i]; 
     return s;
   }
@@ -108,6 +108,19 @@ public:
 
 
   friend std::ostream& 
+  operator << (std::ostream& os, const NDArray& o) 
+  {
+    size_t nd = o.ndim();
+    if(nd) {
+      shape_t* sh = o.shape(); 
+      os << "typeid=" << typeid(T).name() << " ndim=" << nd << " size=" << o.size() << " shape=(";
+      for(size_t i=0; i<nd; i++) {os << sh[i]; if(i != (nd-1)) os << ",";}
+      os << ")";
+    }
+    return os;
+  }
+  /*
+  friend std::ostream& 
   operator << (std::ostream& os, NDArray& o) 
   {
     size_t nd = o.ndim();
@@ -119,7 +132,7 @@ public:
     }
     return os;
   }
-
+  */
 
 private:
   shape_t _shape[MAXNDIM];

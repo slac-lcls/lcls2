@@ -9,6 +9,14 @@ namespace detector {
 
 //-----------------------------
 
+AreaDetectorEpix100a::AreaDetectorEpix100a(const std::string& detname) : AreaDetector(detname) {
+  MSG(DEBUG, "In c-tor AreaDetectorEpix100a for " << detname);
+}
+
+AreaDetectorEpix100a::~AreaDetectorEpix100a() {
+  MSG(DEBUG, "In d-tor AreaDetectorEpix100a for " << detname());
+}
+
 void AreaDetectorEpix100a::_class_msg(const std::string& msg) {
   MSG(INFO, "In AreaDetectorEpix100a::"<< msg);
 }
