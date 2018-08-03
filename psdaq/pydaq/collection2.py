@@ -110,13 +110,18 @@ class CollectionManager():
 
         # make sure all the clients respond to alloc message with their connection info
         ret, answers = confirm_response(self.pull, 1000, msg['header']['msg_id'], ids)
-
         if ret:
             return create_msg('error', body={'error': '%d client did not respond' % ret})
         for answer in answers:
             id = answer['header']['sender_id']
             for level, item in answer['body'].items():
                 self.cmstate[level][id].update(item)
+
+        # give number to drp nodes for the event builder
+        if 'drp' in self.cmstate:
+            for i, node in enumerate(self.cmstate['drp']):
+                self.cmstate['drp'][node]['drp_id'] = i
+
         print('cmstate after alloc:')
         print(self.cmstate)
         return create_msg('ok')
@@ -189,11 +194,12 @@ if __name__ == '__main__':
 
     procs = [Process(target=manager)]
     for i in range(2):
+        # procs.append(Process(target=client, args=(i,)))
         pass
-        procs.append(Process(target=client, args=(i,)))
 
     for p in procs:
         p.start()
+        pass
 
     # Commands
     platform = 0
