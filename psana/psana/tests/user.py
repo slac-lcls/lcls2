@@ -1,6 +1,6 @@
 # NOTE:
 # To test on 'real' bigdata: 
-# xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona"
+# xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/test"
 # >bsub -n 64 -q psfehq -o log.txt mpirun python user.py
 #
 # Todo
