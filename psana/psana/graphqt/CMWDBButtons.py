@@ -247,10 +247,11 @@ class CMWDBButtons(QWidget) :
 
         self.setContentsMargins(-9,-9,-5,-9)
 
-        size_hint = self.minimumSizeHint()
+        #size_hint = self.minimumSizeHint()
         #self.setMinimumWidth(size_hint.width())
         self.setMinimumWidth(500)
-        self.setFixedHeight(size_hint.height())
+        self.setFixedHeight(50)
+        #self.setFixedHeight(size_hint.height())
         #self.setMinimumSize(433,46)
 
         self.but_tabs .setFixedWidth(55)

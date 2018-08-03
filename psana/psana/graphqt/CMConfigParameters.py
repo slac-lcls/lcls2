@@ -64,8 +64,9 @@ class CMConfigParameters(PSConfigParameters) :
         #nm.set_config_pars(self)
 
         self.list_of_hosts = lshosts(filter='psanaphi') # ('psanaphi105', 'psanaphi106', 'psanaphi107')
+        self.list_of_hosts.append('psdb-dev')
 
-        self.list_of_ports = (27017, 27018, 27019, 27020, 27021)
+        self.list_of_ports = (27017, 27018, 27019, 27020, 27021, 9306, 9307, 9308)
         self.list_of_str_ports = [str(v) for v in self.list_of_ports]
 
         self.list_of_doc_widgets = ('Text','List','Table')

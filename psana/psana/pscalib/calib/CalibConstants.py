@@ -27,10 +27,12 @@ Created on 2018-02-02 by Mikhail Dubrovin
 
 import numpy as np
 
-
-
-HOST = 'psanaphi103'
-PORT = 27017
+#HOST = 'psanaphi103'
+#PORT = 27017
+HOST = 'psdb-dev'
+PORT = 9306
+USERNAME = 'calibuser'
+USERPW   = 'calib'
 TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T08:40:28-0800
 
 # Enumerated and named parameters

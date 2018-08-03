@@ -124,10 +124,17 @@ TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 
 #------------------------------
 
-def connect_to_server(host:str=cc.HOST, port:int=cc.PORT, ctout=5000, stout=30000) :
+def connect_to_server(host:str=cc.HOST, port:int=cc.PORT,\
+                      username:str=cc.USERNAME, userpw:str=cc.USERPW, ctout=5000, stout=30000) :
     """Returns MongoDB client.
     """
-    client = MongoClient(host, port, connect=False, connectTimeoutMS=ctout, socketTimeoutMS=stout)
+
+    #uri = mongodb://[username:password@]host1[:port1]
+    uri = 'mongodb://%s:%s@%s:%d' % (username, userpw, host, port)
+    #print('uri: ', uri)
+
+    client = MongoClient(uri, connect=False, connectTimeoutMS=ctout, socketTimeoutMS=stout)
+    #client = MongoClient(host, port, connect=False, connectTimeoutMS=ctout, socketTimeoutMS=stout)
     try :
         result = client.admin.command("ismaster")
         return client
@@ -291,6 +298,8 @@ def connect(**kwargs) :
     """
     host    = kwargs.get('host', cc.HOST)
     port    = kwargs.get('port', cc.PORT)
+    uname   = kwargs.get('username', cc.USERNAME)
+    upw     = kwargs.get('userpw',   cc.USERPW)
     expname = kwargs.get('experiment', 'cxi12345')
     detname = kwargs.get('detector', 'camera-0-cxids1-0')
     verbose = kwargs.get('verbose', False)
@@ -300,7 +309,7 @@ def connect(**kwargs) :
 
     t0_sec = time()
 
-    client = connect_to_server(host, port)
+    client = connect_to_server(host, port, uname, upw)
     db_exp, fs_exp = db_and_fs(client, dbname=dbname_exp)
     db_det, fs_det = db_and_fs(client, dbname=dbname_det)
     col_det = collection(db_det, cname=detname)
