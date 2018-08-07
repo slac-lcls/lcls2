@@ -76,17 +76,24 @@ class CollectionManager():
         self.handle_request = {
             'plat': self.handle_plat,
             'alloc': self.handle_alloc,
-            'connect': self.handle_connect
+            'connect': self.handle_connect,
+            'getstate': self.handle_getstate
         }
         # start main loop
         self.run()
 
     def run(self):
-        while True:
-            msg = self.rep.recv_json()
-            key = msg['header']['key']
-            answer = self.handle_request[key]()
-            self.rep.send_json(answer)
+        try:
+            while True:
+                try:
+                    msg = self.rep.recv_json()
+                    key = msg['header']['key']
+                    answer = self.handle_request[key]()
+                except KeyError:
+                    answer = create_msg('error')
+                self.rep.send_json(answer)
+        except KeyboardInterrupt:
+            print('(KeyboardInterrupt)')
 
     def handle_plat(self):
         self.cmstate.clear()
@@ -138,6 +145,8 @@ class CollectionManager():
         else:
             return create_msg('ok')
 
+    def handle_getstate(self):
+        return create_msg('ok', body=self.cmstate)
 
 class Client:
     def __init__(self, platform):
@@ -210,15 +219,18 @@ if __name__ == '__main__':
 
     msg = create_msg('plat')
     req.send_json(msg)
-    print('Answer:', req.recv_multipart())
+    print('Answer to plat:', req.recv_multipart())
 
     msg = create_msg('alloc')
     req.send_json(msg)
-    print('Answer:', req.recv_multipart())
+    print('Answer to alloc:', req.recv_multipart())
 
     msg = create_msg('connect')
     req.send_json(msg)
-    print('Answer:', req.recv_multipart())
+    print('Answer to connect:', req.recv_multipart())
 
     for p in procs:
-        p.join()
+        try:
+            p.join()
+        except KeyboardInterrupt:
+            pass
