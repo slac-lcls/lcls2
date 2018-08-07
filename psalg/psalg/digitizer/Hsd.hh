@@ -1,6 +1,29 @@
 #ifndef HSD_EVENTHEADER_HH
 #define HSD_EVENTHEADER_HH
 
+/*
+ * How to handle changing version number:
+ * The factory method can return a completely different object if there is a big change
+ * The algorithm name is some ways corresponds to the major version number
+ * For some small backwardly compatible changes (minor version inc.), consider adding methods using inheritance
+ * We have tried to demonstrate this with HsdEventHeaderV1, where additional virtual methods can be specified
+ * as the objects evolve in time.
+ *
+ * The factory method is for use in python only
+ * In the DRP, hard code version number and create object directly
+ *
+ *
+ *
+ * Hsd object is created per event
+ *
+ * EventHeader is in the env of the dgram and contains information about it containing raw, fex, or both.
+ * Per-channel structure:
+ * streamheader raw
+ * raw data
+ * streamheader fex
+ * fex data
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <cinttypes>
@@ -13,136 +36,96 @@ using namespace psalg;
 
 namespace Pds {
   namespace HSD {
-    class HsdEventHeaderV1 : public XtcData::L1Transition {
+    // V1 corresponds to the major version of the high level alg/version number
+    class HsdEventHeaderV1 {
     public:
-        static HsdEventHeaderV1* Create(Allocator *allocator, const char* version, const unsigned nChan);
+        static HsdEventHeaderV1* Create(Allocator *allocator, const char* version, const unsigned nChan, Dgram* dg);
         virtual ~HsdEventHeaderV1(){}
-        virtual void printVersion() = 0;
+        virtual void printVersion  () = 0;
         virtual unsigned samples   () = 0;
         virtual unsigned streams   () = 0;
         virtual unsigned channels  () = 0;
         virtual unsigned sync      () = 0;
-        virtual void dump          () = 0;
-        virtual int parseChan(const uint8_t* data, const unsigned chanNum) = 0;
+        virtual bool raw           () = 0;
+        virtual bool fex           () = 0;
     protected:
-        uint32_t _syncword;
         std::string version;
     };
 
     class Hsd_v1_2_3 : public HsdEventHeaderV1 {
+    // This uses the high level alg/version number for the detector to reflect changes in the datagram env.
     public:
-        Hsd_v1_2_3(Allocator *allocator, const unsigned nChan);
+        Hsd_v1_2_3(Allocator *allocator, const unsigned nChan, Dgram *dg);
 
-        ~Hsd_v1_2_3(){
-        }
+        ~Hsd_v1_2_3(){}
 
         void printVersion() {
             std::cout << "hsd version " << version << std::endl;
         }
 
-        unsigned samples   ()  { return env[1]&0xfffff; }    // NOTE: These 3 functions assume
-        unsigned streams   ()  { return (env[1]>>20)&0xf; }  // all event headers in each
-        unsigned channels  ()  { return (env[1]>>24)&0xff; } // channel are identical
-        unsigned sync      ()  { return env[2]&0x7; }
+        // TODO: find out how to convert bin number to time (we need the configure transition)
+        unsigned samples   ()  { return m_dg->env[1]&0xfffff; }    // NOTE: These 3 functions assume
+        unsigned streams   ()  { return (m_dg->env[1]>>20)&0xf; }  // all event headers in each
+        unsigned channels  ()  { return (m_dg->env[1]>>24)&0xff; } // channel are identical
+        unsigned sync      ()  { return m_dg->env[2]&0x7; }
 
-        void dump()
-        {
-            uint32_t* word = (uint32_t*) this;
-            for(unsigned i=0; i<8; i++)
-                printf("%08x%c", word[i], i<7 ? '.' : '\n');
+        bool raw() {
+            if (streams() & 1) return true;
+            return false;
         }
 
-        // FIXME: find out what to parse Raw, Fex, or Raw+Fex
-        // TODO: find out how to convert bin number to time
-        int parseChan(const uint8_t* data, const unsigned chanNum) // byte offset to get the next channel
-        {
-            const char* nextx = reinterpret_cast<const char*>(data);
-            const Pds::HSD::StreamHeader* sh_rawx = 0;
-            sh_rawx = reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
-            const uint16_t* rawx = reinterpret_cast<const uint16_t*>(sh_rawx+1);
-            //sh_rawx->dump();
-
-            numPixels.push_back((unsigned) (sh_rawx->samples()-sh_rawx->eoffs()-sh_rawx->boffs()));
-            rawPtr.push_back((uint16_t *) (rawx+sh_rawx->boffs()));
-            numFexPeaks.push_back(0);
-
-            // ------------ FEX --------------
-            nextx = reinterpret_cast<const char*>(&rawx[sh_rawx->samples()]);
-            const Pds::HSD::StreamHeader& sh_fexx = *reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
-            //sh_fexx.dump();
-            const unsigned end = sh_fexx.samples() - sh_fexx.eoffs() - sh_fexx.boffs();
-            const uint16_t* p_thr = &reinterpret_cast<const uint16_t*>(&sh_fexx+1)[sh_fexx.boffs()];
-
-            unsigned i=0, j=0;
-            bool skipped = true;
-            bool in = false;
-            if (p_thr[i] & 0x8000) { // skip to the sample with the trigger
-              i++;
-              j++;
-            }
-            while(i<end) {
-                if (p_thr[i] & 0x8000) {
-                    j += p_thr[i] & 0x7fff;
-                    if (skipped) {
-                        //printf(" consecutive skip\n"); // TODO: remove
-                    } else {
-                        //printf(" SKIP\n");
-                        if (in) {
-                            len(chanNum).push_back(i-fexPos(chanNum)(numFexPeaks(chanNum)));
-                            numFexPeaks(chanNum) = numFexPeaks(chanNum)+1;
-                        }
-                    }
-                    in = false;
-                    skipped = true;
-                } else {
-                    if (skipped) {
-                        //printf(" New beginning\n");
-                        sPos(chanNum).push_back(j);
-                        fexPos(chanNum).push_back(i);
-                        fexPtr(chanNum).push_back((uint16_t *) (p_thr+i));
-
-                        in = true;
-                    }
-                    j++;
-                    skipped = false;
-                }
-                i++;
-            }
-            if (in) {
-                len(chanNum).push_back(i-fexPos(chanNum)(numFexPeaks(chanNum)));
-                numFexPeaks(chanNum) = numFexPeaks(chanNum)+1;
-            }
-            return 0;
+        bool fex() {
+            if (streams() & 2) return true;
+            return false;
         }
+
     public:
-        Allocator *m_allocator;
-        AllocArray1D<unsigned> numPixels;
-        AllocArray1D<AllocArray1D<uint16_t> > sPos; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t> > len; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t> > fexPos; // nChan x maxLength
-        AllocArray1D<AllocArray1D<uint16_t*> > fexPtr; // nChan x maxLength
-        AllocArray1D<unsigned> numFexPeaks; // nChan x 1
-        AllocArray1D<uint16_t*> rawPtr; // nChan x 1
+        Allocator *m_allocator; // python uses this interface to use the heap
+        // TODO: get rid of m_allocator if not needed
+    private:
+        Dgram *m_dg;
     };
 
-    HsdEventHeaderV1* HsdEventHeaderV1::Create(Allocator *allocator, const char* version, const unsigned nChan) {
+    HsdEventHeaderV1* HsdEventHeaderV1::Create(Allocator *allocator, const char* version, const unsigned nChan, Dgram* dg) {
         if ( strcmp(version, "1.2.3") == 0 )
-            return new Hsd_v1_2_3(allocator, nChan);
+            return new Hsd_v1_2_3(allocator, nChan, dg);
         else
             return NULL;
     }
 
-    // Client class
-    class Client {
+    class Channel { // TODO: ideally get a version number from low level alg/version like we do for HsdEventHeaderV1
     public:
-        // Client doesn't explicitly create objects
-        // but passes type to factory method "Create()"
-        Client(Allocator* allocator, const char* version, const unsigned nChan)
-        {
-            // assert version = 2
-            pHsd = HsdEventHeaderV1::Create(allocator, version, nChan);
+        Channel(Allocator *allocator, const uint8_t *data, Hsd_v1_2_3 *vHsd);
+
+        ~Channel(){}
+
+        unsigned npeaks(){
+            return numFexPeaks;
         }
-        ~Client() {
+
+    public:
+        unsigned maxSize = 1600;
+        Allocator *m_allocator;
+        unsigned numPixels;
+        unsigned numFexPeaks;
+        unsigned content;
+        uint16_t* rawPtr; // pointer to raw data
+        AllocArray1D<uint16_t> sPos; // maxLength
+        AllocArray1D<uint16_t> len; // maxLength
+        AllocArray1D<uint16_t> fexPos; // maxLength
+        AllocArray1D<uint16_t*> fexPtr; // maxLength
+    };
+
+    class Factory {
+    public:
+        // Factory doesn't explicitly create objects
+        // but passes type to factory method "Create()"
+        Factory(Allocator* allocator, const char* version, const unsigned nChan, Dgram* dg)
+        {
+            // assert version = v1
+            pHsd = HsdEventHeaderV1::Create(allocator, version, nChan, dg);
+        }
+        ~Factory() {
             if (pHsd) {
                 delete pHsd;
                 pHsd = NULL;

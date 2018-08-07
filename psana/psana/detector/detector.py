@@ -26,7 +26,7 @@ class DetectorBase(object):
         self._calib = calib
 
 
-from psana.detector.DetHSD import HSD
+#from psana.detector.DetHSD import HSD
 from psana.detector.DetEPIX import EPIX
 from psana.detector.DetCSPAD import CSPAD
 

@@ -20,7 +20,7 @@ cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
         unsigned samples()
 
     cdef cppclass Hsd_v1_2_3(HsdEventHeaderV1):
-        int parseChan(const cnp.uint8_t* data, const unsigned chanNum) except +
+        #int parseChan(const cnp.uint8_t* data, const unsigned chanNum) except +
         AllocArray1D[unsigned] numPixels
         AllocArray1D[cnp.uint16_t*] rawPtr
         AllocArray1D[AllocArray1D[cnp.uint16_t]] sPos
@@ -44,7 +44,7 @@ def hsd(version, list data=None):
 cdef class hsd_v1_2_3:
     """ Python wrapper for C++ class.
     """
-    cdef Client* cptr  # holds a C++ pointer to instance
+    cdef Factory* cptr  # holds a C++ pointer to instance
     cdef HsdEventHeaderV1* hptr
     cdef Heap heap
     cdef Heap *ptr
@@ -53,7 +53,9 @@ cdef class hsd_v1_2_3:
 
     def __cinit__(self, version, list chans):
         self.ptr = &self.heap
-        self.cptr = new Client(self.ptr, version.encode("UTF-8"), len(chans))
+        # This code may not be correct. It is using the low level alg/version number to construct the
+        # high level detector object and it should use the high level alg/version.
+        self.cptr = new Factory(self.ptr, version.encode("UTF-8"), len(chans))
         self.hptr = self.cptr.getHsd()
 
     def __dealloc__(self):

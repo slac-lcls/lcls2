@@ -142,6 +142,7 @@ setup(name='eventbuilder',
                     include_dirs=["psana"],
       ), build_dir=CYT_BLD_DIR))
 
+'''
 ext = Extension("hsd",
                 sources=["psana/hsd/hsd.pyx",
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
@@ -159,6 +160,7 @@ ext = Extension("hsd",
 setup(name="hsd",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR),
 )
+'''
 
 '''
 from setuptools.command.build_ext import build_ext

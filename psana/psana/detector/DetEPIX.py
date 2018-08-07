@@ -1,5 +1,4 @@
 from psana.detector.detector import DetectorBase
-import psana.detector.opaque as opaque
 
 class EPIX(DetectorBase):
     def __init__(self, name, config, dgramInd, calib):
