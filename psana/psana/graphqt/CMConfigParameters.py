@@ -105,8 +105,9 @@ class CMConfigParameters(PSConfigParameters) :
         self.main_tab_name   = self.declareParameter(name='MAIN_TAB_NAME', val_def='Configuration', type='str')
 
         self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Configuration File', type='str')
-        self.cdb_host = self.declareParameter(name='CDB_HOST', val_def='psanaphi103', type='str')
+        self.cdb_host = self.declareParameter(name='CDB_HOST', val_def='psdb-dev', type='str')
         self.cdb_port = self.declareParameter(name='CDB_PORT', val_def=27017, type='int')
+        #self.cdb_user = self.declareParameter(name='CDB_USER', val_def='calibuser', type='str')
         self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=250, type='int')
         self.cdb_hsplitter1 = self.declareParameter(name='CDB_HSPLITTER1', val_def=1000, type='int')
         self.cdb_hsplitter2 = self.declareParameter(name='CDB_HSPLITTER2', val_def=0, type='int')

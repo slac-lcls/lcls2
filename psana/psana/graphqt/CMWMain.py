@@ -124,6 +124,8 @@ class CMWMain(QWidget) :
 
         host       = popts.host # self.opts['host']
         port       = popts.port # self.opts['port']
+        cp.user    = popts.username
+        cp.upwd    = popts.password
         exp        = popts.experiment
         det        = popts.detector
         loglevel   = popts.loglevel

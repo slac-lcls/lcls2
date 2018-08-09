@@ -122,6 +122,11 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
 def detname_conversion(detname='XcsEndstation.0:Epix100a.1') :
     """Converts LCLS1 detector name like 'XcsEndstation.0:Epix100a.1' to 'xcsendstation_0_epix100a_1'
     """
+    fields = detname.split(':')
+    if len(fields) == 2 : 
+        dettype = fields[1].split('.')
+        if len(dettype) == 2 :
+            return '%s_detnum1234' % dettype[0].lower() # returns 'epix100a_detnum1234'
     return detname.replace(":","_").replace(".","_").lower()
 
 #------------------------------
@@ -182,6 +187,10 @@ if __name__ == "__main__" :
   def usage() : return 'Use command: python %s <test-number>, where <test-number> = 1,2,...' % sys.argv[0]
 
 #------------------------------
+  def test_detname_conversion(tname) :
+      logger.info('detname_conversion: %s' % detname_conversion('XcsEndstation.0:Epix100a.1'))
+
+#------------------------------
 
   def test_dir_calib(tname) :
       logger.info('dir_calib: %s' % nm.dir_calib('cxi02117'))
@@ -193,6 +202,7 @@ if __name__ == "__main__" :
     if len(sys.argv) != 2 : test_dir_calib(tname)
     elif tname == '1': test_dir_calib(tname)
     elif tname == '2': scan_calib_for_experiment('cxix25615')
+    elif tname == '3': test_detname_conversion(tname)
     else : sys.exit('Test number parameter is not recognized.\n%s' % usage())
 
 #------------------------------

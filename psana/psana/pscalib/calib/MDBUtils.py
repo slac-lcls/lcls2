@@ -81,6 +81,10 @@ Usage ::
     mu.del_collection_data(col, fs)
 
     # Find document in collection
+
+    dbname_det, dbname_exp, colname, query =\
+           mu.dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, tsec=None, vers=None)
+
     doc  = mu.find_doc(col, query={'data_type' : 'xxxx'})
 
     # Get data
@@ -298,18 +302,20 @@ def connect(**kwargs) :
     """
     host    = kwargs.get('host', cc.HOST)
     port    = kwargs.get('port', cc.PORT)
-    uname   = kwargs.get('username', cc.USERNAME)
-    upw     = kwargs.get('userpw',   cc.USERPW)
+    user    = kwargs.get('username', cc.USERNAME)
+    upwd    = kwargs.get('userpw', cc.USERPW)
     expname = kwargs.get('experiment', 'cxi12345')
     detname = kwargs.get('detector', 'camera-0-cxids1-0')
     verbose = kwargs.get('verbose', False)
+    userpwd = kwargs.get('password', '')
+    if userpwd : upwd = userpwd
 
     dbname_exp = db_prefixed_name(expname)
     dbname_det = db_prefixed_name(detname)
 
     t0_sec = time()
 
-    client = connect_to_server(host, port, uname, upw)
+    client = connect_to_server(host, port, user, upwd)
     db_exp, fs_exp = db_and_fs(client, dbname=dbname_exp)
     db_det, fs_det = db_and_fs(client, dbname=dbname_det)
     col_det = collection(db_det, cname=detname)
@@ -698,6 +704,23 @@ def get_data_for_doc(fs, doc) :
         #print_ndarr(nda, 'XXX: nda re-shaped')
         return nda
     return pickle.loads(s)
+
+#------------------------------
+
+def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, tsec=None, vers=None) :
+    """Returns dbnames for detector, experiment, collection name, and query.
+    """
+    cond = (run is not None) or (tsec is not None) or (vers is not None)
+    assert cond, 'Not sufficeint info for query: run, tsec, and vers are None'
+    query={'detector':det, 'ctype':ctype}
+    if run is not None : 
+        query['run']     = {'$lte' : run}
+        #query['run_end'] = {'$gte' : run}
+    if tsec is not None : query['time_sec'] = {'$lte' : tsec}
+    if vers is not None : query['version'] = vers
+    logger.debug('query: %s' % str(query))
+
+    return db_prefixed_name(det), db_prefixed_name(str(exp)), det, query
 
 #------------------------------
 

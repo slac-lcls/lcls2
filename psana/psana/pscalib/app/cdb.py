@@ -19,7 +19,7 @@ def usage():
            '  cdb print\n'\
            '  cdb print -e cxix25615\n'\
            '  cdb print -d camera_0_cxids1_0\n'\
-           '  cdb convert -e xcs01116\n'\
+           '  cdb convert -e xcs01116 -n <username> -w <password>\n'\
            '  cdb add -e cxi12345 -d camera_0_cxids1_0 -c pedestals -r 123 -f my.txt\n'\
            '  cdb get -e cxix25615 -d cxids1_0_cspad_0 -c pedestals -s 1520977960 -p -f peds.txt\n'\
            '  cdb get -e xcsh8215 -d xcsendstation_0_cspad_0 -c pedestals -r 100 -f my.txt\n'\
@@ -70,6 +70,8 @@ def input_option_parser() :
 
     d_host       = cc.HOST
     d_port       = cc.PORT
+    d_username   = cc.USERNAME
+    d_password   = ''
     d_dbname     = None
     d_experiment = None
     d_detector   = None
@@ -87,6 +89,8 @@ def input_option_parser() :
 
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
+    h_username   = 'username to access DB, default = %s' % d_username
+    h_password   = 'password, default = %s' % d_password
     h_dbname     = 'database name, works for mode "print" or "delete", default = %s' % d_dbname
     h_experiment = 'experiment name, default = %s' % d_experiment 
     h_detector   = 'detector name, default = %s' % d_detector
@@ -106,6 +110,8 @@ def input_option_parser() :
 
     parser.add_option('--host',             default=d_host,       action='store', type='string', help=h_host)
     parser.add_option('--port',             default=d_port,       action='store', type='string', help=h_port)
+    parser.add_option('-n', '--username',   default=d_username,   action='store', type='string', help=h_username)
+    parser.add_option('-w', '--password',   default=d_password,   action='store', type='string', help=h_password)
     parser.add_option('--dbname',           default=d_dbname,     action='store', type='string', help=h_dbname)
     parser.add_option('-d', '--detector',   default=d_detector,   action='store', type='string', help=h_detector)
     parser.add_option('-e', '--experiment', default=d_experiment, action='store', type='string', help=h_experiment)

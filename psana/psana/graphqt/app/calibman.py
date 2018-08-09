@@ -50,6 +50,8 @@ def input_option_parser() :
 
     d_host       = cc.HOST
     d_port       = cc.PORT
+    d_username   = cc.USERNAME
+    d_password   = ''
     d_experiment = 'cxi12345'
     d_detector   = 'camera-0-cxids1-0'
     d_loglevel   = 'INFO'
@@ -57,6 +59,8 @@ def input_option_parser() :
 
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
+    h_username   = 'username to access DB, default = %s' % d_username
+    h_password   = 'password, default = %s' % d_password
     h_experiment = 'experiment name, default = %s' % d_experiment
     h_detector   = 'detector name, default = %s' % d_detector
     h_loglevel   = 'logger level (INFO, DEBUG, ERROR,...), default = %s' % d_loglevel
@@ -66,6 +70,8 @@ def input_option_parser() :
 
     parser.add_option('--host',             default=d_host,       action='store', type='string', help=h_host)
     parser.add_option('--port',             default=d_port,       action='store', type='string', help=h_port)
+    parser.add_option('-n', '--username',   default=d_username,   action='store', type='string', help=h_username)
+    parser.add_option('-w', '--password',   default=d_password,   action='store', type='string', help=h_password)
     parser.add_option('-d', '--detector',   default=d_detector,   action='store', type='string', help=h_detector)
     parser.add_option('-e', '--experiment', default=d_experiment, action='store', type='string', help=h_experiment)
     parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
