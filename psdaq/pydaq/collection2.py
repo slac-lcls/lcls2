@@ -4,6 +4,9 @@ import copy
 import socket
 from uuid import uuid4
 import zmq
+from transitions import Machine, MachineError, State
+import argparse
+import logging
 
 PORT_BASE = 29980
 
@@ -74,42 +77,92 @@ class CollectionManager():
         self.cmstate = {}
         self.ids = set()
         self.handle_request = {
-            'plat': self.handle_plat,
-            'alloc': self.handle_alloc,
-            'connect': self.handle_connect,
-            'getstate': self.handle_getstate
+            'getstate': self.handle_getstate,
         }
+        self.triggers = ['plat', 'alloc', 'connect',
+                         'configure', 'unconfigure',
+                         'beginrun', 'endrun',
+                         'enable', 'disable', 'reset']
+        self.states = [
+            'noplat',
+            'plat',
+            'alloc',
+            'connect',
+            'configured',
+            'running',
+            'enabled',
+            'error'
+        ]
+
+        self.transitions = [
+            # trigger       source              dest
+            # ---------     -----------------   --------
+            [ 'reset',      '*',                'noplat']
+        ]
+
+        self.collectMachine = Machine(self, self.states,
+                                      transitions=self.transitions,
+                                      initial='noplat')
+
+        self.collectMachine.add_transition('plat', ['noplat', 'plat'], 'plat',
+                                           conditions='condition_plat')
+        self.collectMachine.add_transition('alloc', 'plat', 'alloc',
+                                           conditions='condition_alloc')
+        self.collectMachine.add_transition('connect', 'alloc', 'connect',
+                                           conditions='condition_connect')
+        self.collectMachine.add_transition('configure', 'connect', 'configured',
+                                           conditions='condition_configure')
+        self.collectMachine.add_transition('beginrun', 'configured', 'running',
+                                           conditions='condition_beginrun')
+        self.collectMachine.add_transition('endrun', 'running', 'configured',
+                                           conditions='condition_endrun')
+        self.collectMachine.add_transition('enable', 'running', 'enabled',
+                                           conditions='condition_enable')
+        self.collectMachine.add_transition('disable', 'enabled', 'running',
+                                           conditions='condition_disable')
+        self.collectMachine.add_transition('unconfigure', 'configured', 'connect',
+                                           conditions='condition_unconfigure')
+
+        logging.info('Initial state = %s' % self.state)
+
         # start main loop
         self.run()
 
     def run(self):
         try:
             while True:
+                answer = None
                 try:
                     msg = self.rep.recv_json()
                     key = msg['header']['key']
-                    answer = self.handle_request[key]()
+                    if key in self.triggers:
+                        answer = self.handle_trigger(key)
+                    else:
+                        answer = self.handle_request[key]()
                 except KeyError:
                     answer = create_msg('error')
-                self.rep.send_json(answer)
+                if answer is not None:
+                    self.rep.send_json(answer)
         except KeyboardInterrupt:
-            print('(KeyboardInterrupt)')
+            logging.info('KeyboardInterrupt')
 
-    def handle_plat(self):
-        self.cmstate.clear()
-        self.ids.clear()
-        msg = create_msg('plat')
-        self.pub.send_json(msg)
-        for answer in wait_for_answers(self.pull, 1000, msg['header']['msg_id']):
-            for level, item in answer['body'].items():
-                if level not in self.cmstate:
-                    self.cmstate[level] = {}
-                id = answer['header']['sender_id']
-                self.cmstate[level][id] = item
-                self.ids.add(id)
-        return create_msg('ok', body=self.cmstate)
+    def handle_trigger(self, key):
+        logging.debug('handle_trigger(\'%s\') in state %s' % (key, self.state))
+        trigError = None
+        try:
+            self.trigger(key)
+        except MachineError as ex:
+            logging.error('MachineError: %s' % ex)
+            trigError = ex
 
-    def handle_alloc(self):
+        if trigError is None:
+            answer = create_msg(self.state, body=self.cmstate)
+        else:
+            answer = create_msg(self.state, body={'error': '%s' % trigError})
+
+        return answer
+
+    def condition_alloc(self):
         # FIXME select all procs for now
         ids = copy.copy(self.ids)
         msg = create_msg('alloc', body={'ids': list(ids)})
@@ -118,7 +171,9 @@ class CollectionManager():
         # make sure all the clients respond to alloc message with their connection info
         ret, answers = confirm_response(self.pull, 1000, msg['header']['msg_id'], ids)
         if ret:
-            return create_msg('error', body={'error': '%d client did not respond' % ret})
+            logging.error('%d client did not respond to alloc' % ret)
+            logging.debug('condition_alloc() returning False')
+            return False
         for answer in answers:
             id = answer['header']['sender_id']
             for level, item in answer['body'].items():
@@ -131,9 +186,11 @@ class CollectionManager():
 
         print('cmstate after alloc:')
         print(self.cmstate)
-        return create_msg('ok')
 
-    def handle_connect(self):
+        logging.debug('condition_alloc() returning True')
+        return True
+
+    def condition_connect(self):
         # FIXME select all procs for now
         ids = copy.copy(self.ids)
         msg = create_msg('connect', body=self.cmstate)
@@ -141,12 +198,60 @@ class CollectionManager():
 
         ret, answers = confirm_response(self.pull, 5000, msg['header']['msg_id'], ids)
         if ret:
-            return create_msg('error', body={'error': '%d client did not respond' % ret})
+            logging.error('%d client did not respond to connect' % ret)
+            logging.debug('condition_connect() returning False')
+            return False
         else:
-            return create_msg('ok')
+            logging.debug('condition_connect() returning True')
+            return True
 
     def handle_getstate(self):
-        return create_msg('ok', body=self.cmstate)
+        return create_msg(self.state, body=self.cmstate)
+
+    def on_enter_noplat(self):
+        self.cmstate.clear()
+        self.ids.clear()
+        return
+
+    def condition_plat(self):
+        self.cmstate.clear()
+        self.ids.clear()
+        msg = create_msg('plat')
+        self.pub.send_json(msg)
+        for answer in wait_for_answers(self.pull, 1000, msg['header']['msg_id']):
+            for level, item in answer['body'].items():
+                if level not in self.cmstate:
+                    self.cmstate[level] = {}
+                id = answer['header']['sender_id']
+                self.cmstate[level][id] = item
+                self.ids.add(id)
+        # should a nonempty platform be required for successful transition?
+        logging.debug('condition_plat() returning True')
+        return True
+
+    def condition_configure(self):
+        logging.debug('condition_configure() returning True')
+        return True
+
+    def condition_unconfigure(self):
+        logging.debug('condition_unconfigure() returning True')
+        return True
+
+    def condition_beginrun(self):
+        logging.debug('condition_beginrun() returning True')
+        return True
+
+    def condition_endrun(self):
+        logging.debug('condition_endrun() returning True')
+        return True
+
+    def condition_enable(self):
+        logging.debug('condition_enable() returning True')
+        return True
+
+    def condition_disable(self):
+        logging.debug('condition_disable() returning True')
+        return True
 
 class Client:
     def __init__(self, platform):
@@ -156,7 +261,6 @@ class Client:
         self.push.connect('tcp://localhost:%d' % pull_port(platform))
         self.sub.connect('tcp://localhost:%d' % pub_port(platform))
         self.sub.setsockopt(zmq.SUBSCRIBE, b'')
-        self.state = ''
         handle_request = {
             'plat': self.handle_plat,
             'alloc': self.handle_alloc,
@@ -170,6 +274,7 @@ class Client:
                 break
 
     def handle_plat(self, msg):
+        logging.debug('Client handle_plat()')
         # time.sleep(1.5)
         hostname = socket.gethostname()
         pid = os.getpid()
@@ -181,12 +286,14 @@ class Client:
         self.push.send_json(reply)
 
     def handle_alloc(self, msg):
+        logging.debug('Client handle_alloc()')
         body = {'drp': {'connect_info': {'infiniband': '123.456.789'}}}
         reply = create_msg('alloc', msg['header']['msg_id'], self.id, body)
         self.push.send_json(reply)
         self.state = 'alloc'
 
     def handle_connect(self, msg):
+        logging.debug('Client handle_connect()')
         if self.state == 'alloc':
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
@@ -194,6 +301,18 @@ class Client:
 
 if __name__ == '__main__':
     from multiprocessing import Process
+
+    # Process arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    parser.add_argument('-a', action='store_true', help='autoconnect')
+    parser.add_argument('-v', action='store_true', help='be verbose')
+    args = parser.parse_args()
+
+    if args.v:
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    else:
+        logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def manager():
         manager = CollectionManager(0)
@@ -210,24 +329,25 @@ if __name__ == '__main__':
         p.start()
         pass
 
-    # Commands
-    platform = 0
-    context = zmq.Context(1)
-    req = context.socket(zmq.REQ)
-    req.connect('tcp://localhost:%d' % rep_port(platform))
-    time.sleep(0.5)
+    if args.a:
+        # Commands
+        platform = args.p
+        context = zmq.Context(1)
+        req = context.socket(zmq.REQ)
+        req.connect('tcp://localhost:%d' % rep_port(platform))
+        time.sleep(0.5)
 
-    msg = create_msg('plat')
-    req.send_json(msg)
-    print('Answer to plat:', req.recv_multipart())
+        msg = create_msg('plat')
+        req.send_json(msg)
+        print('Answer to plat:', req.recv_multipart())
 
-    msg = create_msg('alloc')
-    req.send_json(msg)
-    print('Answer to alloc:', req.recv_multipart())
+        msg = create_msg('alloc')
+        req.send_json(msg)
+        print('Answer to alloc:', req.recv_multipart())
 
-    msg = create_msg('connect')
-    req.send_json(msg)
-    print('Answer to connect:', req.recv_multipart())
+        msg = create_msg('connect')
+        req.send_json(msg)
+        print('Answer to connect:', req.recv_multipart())
 
     for p in procs:
         try:
