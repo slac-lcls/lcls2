@@ -25,13 +25,14 @@ except Exception as ex:
 except KeyboardInterrupt:
     pass
 else:
+    key = 'error'
     try:
         key = reply['header']['key']
     except KeyError:
-        key = ''
+        pass
 
-    if (key != 'ok'):
-        print('Error: reply key=\'%s\'' % key)
+    if (key == 'error'):
+        print('Error')
     else:
         displayList = []
         try:

@@ -1,4 +1,3 @@
-alias collect=./collectCmd.py
-alias control=./controlCmd.py
-alias showPlatform=./showPlatform.py
-alias killPlatform=./killPlatform.py
+alias cmd=./controlCmd2.py
+alias showPlatform=./show2.py
+alias killPlatform='./controlCmd2.py reset'
