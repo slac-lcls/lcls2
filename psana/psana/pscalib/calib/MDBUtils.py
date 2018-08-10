@@ -272,7 +272,7 @@ def db_prefixed_name(name:str, prefix='cdb_') -> str :
     assert isinstance(name,str), 'db_prefixed_name parameter should be str'
     nchars = len(name)
     assert nchars < 128, 'name length should be <128 characters'
-    logger.debug('name %s has %d chars' % (name, nchars))
+    logger.debug('db_prefixed_name %s has %d chars' % (name, nchars))
     return '%s%s' % (prefix, name)
 
 #------------------------------
@@ -707,7 +707,7 @@ def get_data_for_doc(fs, doc) :
 
 #------------------------------
 
-def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None) :
+def dbnames_collection_query(det:str, exp:str=None, ctype:str='pedestals', run:int=None, time_sec:int=None, vers:str=None) :
     """Returns dbnames for detector, experiment, collection name, and query.
     """
     cond = (run is not None) or (time_sec is not None) or (vers is not None)
@@ -720,7 +720,10 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     if vers is not None : query['version'] = vers
     logger.debug('query: %s' % str(query))
 
-    return db_prefixed_name(det), db_prefixed_name(str(exp)), det, query
+    db_det, db_exp = db_prefixed_name(det), db_prefixed_name(str(exp))
+    if 'None' in db_det : db_det = None
+    if 'None' in db_exp : db_exp = None
+    return db_det, db_exp, det, query
 
 #------------------------------
 
