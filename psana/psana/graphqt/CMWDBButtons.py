@@ -672,7 +672,7 @@ class CMWDBButtons(QWidget) :
     def out_fname_prefix(self, d):
         exp = d.get('experiment', 'exp')
         det = d.get('detector', 'det')
-        run = int(d.get('run', '0'))
+        run = int(d.get('run', 0))
         ctype = d.get('ctype', 'ctype')
         return 'doc-%s-%s-r%04d-%s' % (exp, det, run, ctype)
 

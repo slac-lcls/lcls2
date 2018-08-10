@@ -40,7 +40,7 @@ Usage ::
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
         mu.connect(host='psanaphi105', port=27017, experiment='cxi12345', detector='camera-0-cxids1-0', verbose=False) 
 
-    ts    = mu._timestamp(time_sec:str,int,float)
+    ts    = mu._timestamp(time_sec:int,int,float)
     ts    = mu.timestamp_id(id:str)
     ts    = mu.timestamp_doc(doc)
     t, ts = mu.time_and_timestamp(**kwargs)
@@ -65,12 +65,12 @@ Usage ::
     mu.valid_experiment(experiment:str)
     mu.valid_detector(detector:str)
     mu.valid_ctype(ctype:str)
-    mu.valid_run(run:str)
+    mu.valid_run(run:int)
     mu.valid_version(version:str)
     mu.valid_comment(comment:str)
     mu.valid_data(data, detector:str, ctype:str)
 
-    mu.insert_constants(data, experiment:str, detector:str, ctype:str, run:str, time_sec:str, **kwargs)
+    mu.insert_constants(data, experiment:str, detector:str, ctype:str, run:int, time_sec:int, **kwargs)
 
     mu.exec_command(cmd)
     mu.exportdb(host, port, dbname, fname, **kwa) 
@@ -91,7 +91,7 @@ Usage ::
     data = mu.get_data_for_doc(fs, doc)
 
     keys = mu.document_keys(doc)
-    s_vals, s_keys = mu.document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detector','ctype','run','id_data','data_type'), fmt:str='%24s %10s %11s %20s %16s %4s %30s %10s')
+    s_vals, s_keys = mu.document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detector','ctype','run','id_data','data_type'), fmt:str='%24s %10d %11s %20s %16s %4d %30s %10s')
     s = mu.collection_info(client, dbname, cname) 
     s = mu.database_info(client, dbname, level:int=10, gap:str='  ')
     s = mu.database_fs_info(db, gap:str='  ')
@@ -334,7 +334,7 @@ def connect(**kwargs) :
 #------------------------------
 #------------------------------
 
-def _timestamp(time_sec) -> str :
+def _timestamp(time_sec:int) -> str :
     """Converts time_sec in timestamp of adopted format TSFORMAT.
     """
     return gu.str_tstamp(TSFORMAT, int(time_sec))
@@ -367,19 +367,19 @@ def time_and_timestamp(**kwargs) :
     time_stamp = kwargs.get('time_stamp', None)
 
     if time_sec is not None :
-        assert isinstance(time_sec, str) ,    'time_and_timestamp - parameter time_sec should be str'
-        int_time_sec = int(time_sec)
-        assert 0 < int_time_sec < 5000000000, 'time_and_timestamp - parameter time_sec should be in allowed range'
+        assert isinstance(time_sec, int) , 'time_and_timestamp - parameter time_sec should be int'
+        assert 0 < time_sec < 5000000000,  'time_and_timestamp - parameter time_sec should be in allowed range'
 
         if time_stamp is None : 
-            time_stamp = gu.str_tstamp(TSFORMAT, int_time_sec)
+            time_stamp = gu.str_tstamp(TSFORMAT, time_sec)
     else :
         if time_stamp is None : 
-            time_sec, time_stamp = gu.time_and_stamp(TSFORMAT)
+            time_sec_str, time_stamp = gu.time_and_stamp(TSFORMAT)
         else :
-            time_sec = gu.time_sec_from_stamp(TSFORMAT, time_stamp)
+            time_sec_str = gu.time_sec_from_stamp(TSFORMAT, time_stamp)
+        time_sec = int(time_sec_str)
 
-    return str(time_sec), time_stamp
+    return time_sec, time_stamp
 
 #------------------------------
 
@@ -388,7 +388,7 @@ def docdic(data, dataid, **kwargs) :
     """
     doc = {
           'experiment' : kwargs.get('experiment', None),
-          'run'        : kwargs.get('run', '0'),
+          'run'        : kwargs.get('run', 0),
           'run_end'    : kwargs.get('run_end', 'end'),
           'detector'   : kwargs.get('detector', None),
           'ctype'      : kwargs.get('ctype', None),
@@ -549,9 +549,9 @@ def valid_ctype(ctype:str) :
     assert isinstance(ctype,str), _error_msg('type')
     assert 4 < len(ctype) < 32, _error_msg('length')
 
-def valid_run(run:str) :
-    assert isinstance(run,str), _error_msg('type')
-    assert -1 < int(run) < 10000, _error_msg('value')
+def valid_run(run:int) :
+    assert isinstance(run,int), _error_msg('type')
+    assert -1 < run < 10000, _error_msg('value')
 
 def valid_version(version:str) :
     assert isinstance(version,str), _error_msg('type')
@@ -570,7 +570,7 @@ def valid_data(data, detector:str, ctype:str) :
 
 #------------------------------
 
-def insert_constants(data, experiment:str, detector:str, ctype:str, run:str, time_sec:str, **kwargs) :
+def insert_constants(data, experiment:str, detector:str, ctype:str, run:int, time_sec:int, **kwargs) :
     """Checks validity of input parameters and call insert_calib_data.
     """
     _time_sec, _time_stamp = time_and_timestamp(time_sec=time_sec,\
@@ -707,16 +707,16 @@ def get_data_for_doc(fs, doc) :
 
 #------------------------------
 
-def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, tsec=None, vers=None) :
+def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None) :
     """Returns dbnames for detector, experiment, collection name, and query.
     """
-    cond = (run is not None) or (tsec is not None) or (vers is not None)
-    assert cond, 'Not sufficeint info for query: run, tsec, and vers are None'
+    cond = (run is not None) or (time_sec is not None) or (vers is not None)
+    assert cond, 'Not sufficeint info for query: run, time_sec, and vers are None'
     query={'detector':det, 'ctype':ctype}
     if run is not None : 
         query['run']     = {'$lte' : run}
         #query['run_end'] = {'$gte' : run}
-    if tsec is not None : query['time_sec'] = {'$lte' : tsec}
+    if time_sec is not None : query['time_sec'] = {'$lte' : time_sec}
     if vers is not None : query['version'] = vers
     logger.debug('query: %s' % str(query))
 
@@ -966,8 +966,8 @@ if __name__ == "__main__" :
     elif tname == '3' : data = get_test_dic(); logger.debug('dict:', data)
 
     #insert_calib_data(data, host=cc.HOST, port=cc.PORT, experiment='cxi12345', detector='camera-0-cxids1-0',\
-    #                  run='10', ctype='pedestals', time_sec=str(int(time())), verbose=True)
-    insert_constants(data, 'cxi12345', 'camera-0-cxids1-0', 'pedestals', '10', '1600000000', verbose=True,\
+    #                  run=10, ctype='pedestals', time_sec=int(time()), verbose=True)
+    insert_constants(data, 'cxi12345', 'camera-0-cxids1-0', 'pedestals', 10, 1600000000, verbose=True,\
                      time_stamp='2018-01-01T00:00:00-0800', )
     #t0_sec = time()
     #id_data = insert_data(data, fs)
@@ -999,14 +999,14 @@ if __name__ == "__main__" :
 
         t0_sec = time()
         id_data_exp, id_data_det, id_exp, id_det = insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det,\
-             experiment=expname, detector=detname, ctype='pedestals', time_sec=str(int(time())), run='10', verbose=True)
+             experiment=expname, detector=detname, ctype='pedestals', time_sec=int(time()), run=10, verbose=True)
 
         #id_data = insert_data(nda, fs)
         dt_sec = time() - t0_sec
         t_data += dt_sec
         logger.info('Insert data in %s id_data: %s time %.6f sec ' % (fs, id_data, dt_sec))
 
-        #doc = docdic(nda, id_data, experiment=expname, detector=detname, run='10', ctype='pedestals')
+        #doc = docdic(nda, id_data, experiment=expname, detector=detname, run=10, ctype='pedestals')
         #print_doc_keys(doc)
 
         #t0_sec = time()

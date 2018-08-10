@@ -39,6 +39,8 @@ from psana.pscalib.calib.CalibUtils import history_dict_for_file, history_list_o
 
 from psana.pscalib.calib.XtcavConstants import Load #, Save
 
+from psana.pscalib.calib.MDBConversionMap import DETECTOR_NAME_CONVERSION_DICT as dic_det_name_conv
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -50,9 +52,9 @@ def run_begin_end_time(exp:str, runnum:int) :
         resp = requests_get('https://pswww.slac.stanford.edu/prevlgbk/lgbk/%s/ws/runs' % exp).json()
         for d in resp :
             if d['run_num'] == runnum :
-                return str(d['begin_time']), str(d['end_time'])
+                return int(d['begin_time']), int(d['end_time'])
     logger.debug('begin and end time info is not found in mysql for run=%d. Uses default times.' %runnum)
-    return '1000000000', '5000000000'
+    return 1000000000, 5000000000
 
 #------------------------------
 
@@ -80,6 +82,7 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
 
     resp = parse_calib_file_name(fname)
     begin, end, ext = resp if resp is not None else (None, None, None)
+    if begin is not None : begin=int(begin)
 
     if None in (begin, end, ext) : return
 
@@ -122,12 +125,15 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
 def detname_conversion(detname='XcsEndstation.0:Epix100a.1') :
     """Converts LCLS1 detector name like 'XcsEndstation.0:Epix100a.1' to 'xcsendstation_0_epix100a_1'
     """
-    fields = detname.split(':')
-    if len(fields) == 2 : 
-        dettype = fields[1].split('.')
-        if len(dettype) == 2 :
-            return '%s_detnum1234' % dettype[0].lower() # returns 'epix100a_detnum1234'
-    return detname.replace(":","_").replace(".","_").lower()
+    name2 = dic_det_name_conv.get(detname, None)
+    return name2 if name2 is not None else ('%s-unknown-in-dict'%detname.replace(":","_").replace(".","_"))
+
+#    fields = detname.split(':')
+#    if len(fields) == 2 : 
+#        dettype = fields[1].split('.')
+#        if len(dettype) == 2 :
+#            return '%s_detnum1234' % dettype[0].lower() # returns 'epix100a_detnum1234'
+#    return detname.replace(":","_").replace(".","_").lower()
 
 #------------------------------
 

@@ -76,10 +76,10 @@ def input_option_parser() :
     d_experiment = None
     d_detector   = None
     d_ctype      = None # cc.list_calib_names[0], 'pedestals'
-    d_run        = '0'
+    d_run        = 0
     d_run_end    = 'end'
     d_time_stamp = None # '2001-09-08T18:46:40-0700'
-    d_time_sec   = '1000000000'
+    d_time_sec   = 1000000000
     d_version    = 'v0'
     d_verbose    = False
     d_confirm    = False
@@ -95,10 +95,10 @@ def input_option_parser() :
     h_experiment = 'experiment name, default = %s' % d_experiment 
     h_detector   = 'detector name, default = %s' % d_detector
     h_ctype      = 'calibration constant type, default = %s' % d_ctype 
-    h_run        = 'run number (begin), default = %s' % d_run 
+    h_run        = 'run number (begin), default = %s' % str(d_run) 
     h_run_end    = 'run number (end), default = %s' % d_run_end
     h_time_stamp = 'time stamp, default = %s' % d_time_stamp 
-    h_time_sec   = 'time (sec), default = %s' % d_time_sec
+    h_time_sec   = 'time (sec), default = %s' % str(d_time_sec)
     h_version    = 'version of constants, default = %s' % d_version
     h_confirm    = 'confirmation of the action, default = %s' % d_confirm
     h_verbose    = 'verbosity, default = %s' % d_verbose
@@ -116,9 +116,9 @@ def input_option_parser() :
     parser.add_option('-d', '--detector',   default=d_detector,   action='store', type='string', help=h_detector)
     parser.add_option('-e', '--experiment', default=d_experiment, action='store', type='string', help=h_experiment)
     parser.add_option('-t', '--time_stamp', default=d_time_stamp, action='store', type='string', help=h_time_stamp)
-    parser.add_option('-s', '--time_sec',   default=d_time_sec,   action='store', type='string', help=h_time_sec)
+    parser.add_option('-s', '--time_sec',   default=d_time_sec,   action='store', type='int',    help=h_time_sec)
     parser.add_option('-c', '--ctype',      default=d_ctype,      action='store', type='string', help=h_ctype)
-    parser.add_option('-r', '--run',        default=d_run,        action='store', type='string', help=h_run)
+    parser.add_option('-r', '--run',        default=d_run,        action='store', type='int',    help=h_run)
     parser.add_option('-u', '--run_end',    default=d_run_end,    action='store', type='string', help=h_run_end)
     parser.add_option('-v', '--version',    default=d_version,    action='store', type='string', help=h_version)
     parser.add_option('-p', '--verbose',    default=d_verbose,    action='store_true',           help=h_verbose)

@@ -3,17 +3,18 @@ Usage ::
 
     # Import
     import psana.pscalib.calib.MDBWebUtils as wu
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
 
-    requests_get(url, query=None)
-    database_names(url=cc.URL)
-    collection_names(dbname, url=cc.URL)
-    find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL)
-    find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL)
-    get_doc_for_docid(dbname, colname, docid, url=cc.URL)
-    get_data_for_id(dbname, dataid, url=cc.URL)
-    get_data_for_docid(dbname, colname, docid, url=cc.URL)
-    get_data_for_doc(dbname, colname, doc, url=cc.URL)
-    calib_constants(det, exp=None, ctype='pedestals', run=None, tsec=None, vers=None, url=cc.URL)
+    _ = wu.requests_get(url, query=None)
+    _ = wu.database_names(url=cc.URL)
+    _ = wu.collection_names(dbname, url=cc.URL)
+    _ = wu.find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL)
+    _ = wu.find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL)
+    _ = wu.get_doc_for_docid(dbname, colname, docid, url=cc.URL)
+    _ = wu.get_data_for_id(dbname, dataid, url=cc.URL)
+    _ = wu.get_data_for_docid(dbname, colname, docid, url=cc.URL)
+    _ = wu.get_data_for_doc(dbname, colname, doc, url=cc.URL)
+    o = wu.calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL)
 
     test_*()
 """
@@ -57,9 +58,9 @@ def collection_names(dbname, url=cc.URL) :
 #------------------------------
 # curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/test_db/test_coll?query_string=%7B%20%22item%22..."
 def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
-    """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":"80"}}
-       #r = requests_get("https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxid9114/cspad_detnum1234",\
-                         {"query_string": '{"ctype": "pedestals", "run" : { "$gte":  "80"}}'})
+    """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}
+       #r = requests_get("https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxid9114/cspad_0001",\
+                         {"query_string": '{"ctype": "pedestals", "run" : { "$gte": 80}}'})
     """
     str_query=str(query).replace("'",'"')
     logger.debug('find_docs str_query: %s' % str_query)
@@ -81,7 +82,7 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
     vals = [int(d[key_sort]) for d in docs]
     vals.sort(reverse=True)
     logger.debug('find_doc values: %s' % str(vals))
-    val_sel = str(vals[0])
+    val_sel = int(vals[0])
     logger.debug('find_doc select document for %s:%s' % (key_sort,val_sel))
     for d in docs : 
         if d[key_sort]==val_sel : 
@@ -90,7 +91,7 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
 
 #------------------------------
 
-# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_detnum1234/5b6893e81ead141643fe4344"
+# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/5b6893e81ead141643fe4344"
 def get_doc_for_docid(dbname, colname, docid, url=cc.URL) :
     """Returns document for docid.
     """
@@ -117,7 +118,7 @@ def get_data_for_docid(dbname, colname, docid, url=cc.URL) :
 
 #------------------------------
 
-# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_detnum1234/gridfs/5b6893e81ead141643fe4344"
+# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/gridfs/5b6893e81ead141643fe4344"
 def get_data_for_doc(dbname, colname, doc, url=cc.URL) :
     """Returns data from GridFS using doc.
     """
@@ -142,9 +143,9 @@ def get_data_for_doc(dbname, colname, doc, url=cc.URL) :
 
 #------------------------------
 
-def calib_constants(det, exp=None, ctype='pedestals', run=None, tsec=None, vers=None, url=cc.URL) :
+def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL) :
 
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, tsec, vers)
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
     logger.debug('get_constants: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
 
     dbname = db_det if exp is None else db_exp
@@ -168,12 +169,12 @@ def test_database_names() :
 #------------------------------
 
 def test_collection_names() :
-    print('test_collection_names:', collection_names('cdb_cspad_detnum1234'))
+    print('test_collection_names:', collection_names('cdb_cspad_0001'))
 
 #------------------------------
 
 def test_find_docs() :
-    jo = find_docs('cdb_cspad_detnum1234', 'cspad_detnum1234')
+    jo = find_docs('cdb_cspad_0001', 'cspad_0001')
     logger.info('find_docs: number of docs found: %d' % len(jo))
     print('test_find_docs:', type(jo))
     dic0 = jo[0]
@@ -184,38 +185,41 @@ def test_find_docs() :
 #------------------------------
 
 def test_find_doc() :
-    #doc = find_doc('cdb_cspad_detnum1234', 'cspad_detnum1234', query={'ctype':'pedestals'}) #, 'run':{'$lte':'40'}})
-    doc = find_doc('cdb_cxic0415', 'cspad_detnum1234', query={'ctype':'pedestals'}) #, 'run':{'$lte':'40'}})
+    #doc = find_doc('cdb_cspad_0001', 'cspad_0001', query={'ctype':'pedestals'}) #, 'run':{'$lte':40}})
+    #doc = find_doc('cdb_cxic0415', 'cspad_0001', query={'ctype':'pedestals'}) #, 'run':{'$lte':40}})
+    #doc = find_doc('cdb_cxic0415', 'cspad_0001', query={'ctype':'pedestals'}) #, 'run':{'$lte':40}})
+    doc = find_doc('cdb_cxic0415', 'cspad_0001', query={'ctype':'pedestals', 'run':{'$lte':40}})
     logger.info('test_find_doc: %s' % str(doc))
 
 #------------------------------
 
 # curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/gridfs/5b6893d91ead141643fe3f6a" 
 def test_get_data_for_id() :
-    o = get_data_for_id('cdb_cxic0415', '5b6893d91ead141643fe3f6a')
+    o = get_data_for_id('cdb_cxid9114', '5b6cdde71ead144f11531974')
     print('test_get_data_for_id: r.content:', o)
 
 #------------------------------
 
-# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_detnum1234/gridfs/5b6893e81ead141643fe4344"
+# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/gridfs/5b6893e81ead141643fe4344"
 def test_get_data_for_docid() :
-    #o = get_data_for_docid('cdb_cspad_detnum1234', 'cspad_detnum1234', '5b6896fc1ead142459f10138')
-    #o = get_data_for_docid('cdb_cxic0415', 'cspad_detnum1234', '5b6893e81ead141643fe4344')
-    o = get_data_for_docid('cdb_cxic0415', 'cspad_detnum1234', '5b6893e91ead141643fe4390')
+    #o = get_data_for_docid('cdb_cspad_0001', 'cspad_0001', '5b6896fc1ead142459f10138')
+    #o = get_data_for_docid('cdb_cxic0415', 'cspad_0001', '5b6893e81ead141643fe4344')
+    o = get_data_for_docid('cdb_cxid9114', 'cspad_0001', '5b6cdde71ead144f115319be')
     print('test_get_data_for_docid: o:', o)
 
 #------------------------------
 
 def test_dbnames_collection_query() :
-    det='cspad_detnum1234'
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp=None, ctype='pedestals', run="50", tsec=None, vers=None)
+    det='cspad_0001'
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None)
     print('test_dbnames_collection_query:', db_det, db_exp, colname, query)
 
 #------------------------------
 
 def test_calib_constants() :
-    det = 'cspad_detnum1234'
-    o = calib_constants(det, exp=None, ctype='pedestals', run="50", tsec=None, vers=None, url=cc.URL)
+    det = 'cspad_0001'
+    #o = calib_constants(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None, url=cc.URL)
+    o = calib_constants('cspad_0001', exp='cxic0415', ctype='pedestals', run=50, time_sec=None, vers=None) #, url=cc.URL)
     #print('test_calib_constants: o:', o)
     print_ndarr(o, 'test_calib_constants', first=0, last=5)
 
@@ -226,6 +230,7 @@ if __name__ == "__main__" :
     from psana.pyalgos.generic.NDArrUtils import print_ndarr # info_ndarr, print_ndarr
     global print_ndarr
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+    #logging.basicConfig(format='%(message)s', level=logging.INFO)
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.info('%s\nTest %s:' % (50*'_',tname))
