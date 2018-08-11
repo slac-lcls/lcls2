@@ -94,16 +94,10 @@ class CollectionManager():
             'error'
         ]
 
-        self.transitions = [
-            # trigger       source              dest
-            # ---------     -----------------   --------
-            [ 'reset',      '*',                'noplat']
-        ]
+        self.collectMachine = Machine(self, self.states, initial='noplat')
 
-        self.collectMachine = Machine(self, self.states,
-                                      transitions=self.transitions,
-                                      initial='noplat')
-
+        self.collectMachine.add_transition('reset', '*', 'noplat',
+                                           conditions='condition_reset')
         self.collectMachine.add_transition('plat', ['noplat', 'plat'], 'plat',
                                            conditions='condition_plat')
         self.collectMachine.add_transition('alloc', 'plat', 'alloc',
@@ -230,27 +224,45 @@ class CollectionManager():
         return True
 
     def condition_configure(self):
+        msg = create_msg('configure')
+        self.pub.send_json(msg)
         logging.debug('condition_configure() returning True')
         return True
 
     def condition_unconfigure(self):
+        msg = create_msg('unconfigure')
+        self.pub.send_json(msg)
         logging.debug('condition_unconfigure() returning True')
         return True
 
     def condition_beginrun(self):
+        msg = create_msg('beginrun')
+        self.pub.send_json(msg)
         logging.debug('condition_beginrun() returning True')
         return True
 
     def condition_endrun(self):
+        msg = create_msg('endrun')
+        self.pub.send_json(msg)
         logging.debug('condition_endrun() returning True')
         return True
 
     def condition_enable(self):
+        msg = create_msg('enable')
+        self.pub.send_json(msg)
         logging.debug('condition_enable() returning True')
         return True
 
     def condition_disable(self):
+        msg = create_msg('disable')
+        self.pub.send_json(msg)
         logging.debug('condition_disable() returning True')
+        return True
+
+    def condition_reset(self):
+        msg = create_msg('reset')
+        self.pub.send_json(msg)
+        logging.debug('condition_reset() returning True')
         return True
 
 class Client:
@@ -267,9 +279,13 @@ class Client:
             'connect': self.handle_connect
         }
         while True:
-            msg = self.sub.recv_json()
-            key = msg['header']['key']
-            handle_request[key](msg)
+            try:
+                msg = self.sub.recv_json()
+                key = msg['header']['key']
+                handle_request[key](msg)
+            except KeyError as ex:
+                logging.debug('KeyError: %s' % ex)
+
             if key == 'connect':
                 break
 
