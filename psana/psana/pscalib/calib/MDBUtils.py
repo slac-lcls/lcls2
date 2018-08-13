@@ -128,8 +128,10 @@ TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 
 #------------------------------
 
-def connect_to_server(host:str=cc.HOST, port:int=cc.PORT,\
-                      username:str=cc.USERNAME, userpw:str=cc.USERPW, ctout=5000, stout=30000) :
+#def connect_to_server(host:str=cc.HOST, port:int=cc.PORT,\
+#                      username:str=cc.USERNAME, userpw:str=cc.USERPW, ctout=5000, stout=30000) :
+def connect_to_server(host=cc.HOST, port=cc.PORT,\
+                      username=cc.USERNAME, userpw=cc.USERPW, ctout=5000, stout=30000) :
     """Returns MongoDB client.
     """
 
@@ -153,14 +155,14 @@ def connect_to_server(host:str=cc.HOST, port:int=cc.PORT,\
 
 #------------------------------
 
-def database(client, dbname:str) :
+def database(client, dbname) :
     """Returns db for client and (str) dbname, e.g. dbname='cdb-cspad-0-cxids1-0'
     """
     return client[dbname]
 
 #------------------------------
 
-def db_and_fs(client, dbname:str) :
+def db_and_fs(client, dbname) :
     """Returns db and fs for client and (str) dbname, e.g. dbname='cdb-cxi12345'.
     """
     db = client[dbname]
@@ -169,14 +171,14 @@ def db_and_fs(client, dbname:str) :
 
 #------------------------------
 
-def collection(db, cname:str) :
+def collection(db, cname) :
     """Returns collection for db and (str) cname, e.g. cname='camera-0-cxids1-0'.
     """
     return db[cname]
 
 #------------------------------
 
-def client_host(client) -> str :
+def client_host(client) :
     """Returns client host.
        ??? returns localhost in stead of psanaphi105 ???
     """
@@ -185,7 +187,7 @@ def client_host(client) -> str :
 
 #------------------------------
 
-def client_port(client) -> int :
+def client_port(client) :
     """Returns client port.
     """
     return client.PORT
@@ -206,21 +208,21 @@ def collection_names(db, include_system_collections=False) :
 
 #------------------------------
 
-def database_exists(client, dbname:str) :
+def database_exists(client, dbname) :
     """Returns True if (str) dbname in the list of databases and False otherwise.
     """
     return dbname in database_names(client)
 
 #------------------------------
 
-def collection_exists(db, cname:str) :
+def collection_exists(db, cname) :
     """Returns True if (str) cname in the list of collections and False otherwise.
     """
     return cname in collection_names(db)
 
 #------------------------------
 
-def delete_database(client, dbname:str) :
+def delete_database(client, dbname) :
     """Deletes database for client and (str) dbname, e.g. dbname='cdb-cspad-0-cxids1-0'.
     """
     client.drop_database(dbname)
@@ -234,7 +236,7 @@ def delete_database_obj(odb) :
 
 #------------------------------
 
-def delete_databases(client, dbnames:list) :
+def delete_databases(client, dbnames) :
     """Deletes databases for client and (list of str) dbnames,
        e.g. dbnames=['cdb-cspad-0-cxids1-0','cdb-cspad-0-cxids2-0'].
     """
@@ -242,7 +244,7 @@ def delete_databases(client, dbnames:list) :
 
 #------------------------------
 
-def delete_collection(db, cname:str) :
+def delete_collection(db, cname) :
     """Deletes db collection for database and (str) cname, e.g. cname='camera-0-cxids1-0'.
     """
     db.drop_collection(cname)
@@ -254,19 +256,19 @@ def delete_collection_obj(ocol) :
 
 #------------------------------
 
-def delete_collections(db, cnames:list) :
+def delete_collections(db, cnames) :
     """Deletes list of collections from database db, e.g. cname='camera-0-cxids1-0'.
     """
     for cname in cnames : db.drop_collection(cname)
 
 #------------------------------
 
-def delete_document_from_collection(col, id:str) :
+def delete_document_from_collection(col, id) :
     col.remove({'_id':id})
 
 #------------------------------
 
-def db_prefixed_name(name:str, prefix='cdb_') -> str :
+def db_prefixed_name(name, prefix='cdb_') :
     """Returns database name with prefix, e.g. name='cxi12345' -> 'cdb-cxi12345'.
     """
     assert isinstance(name,str), 'db_prefixed_name parameter should be str'
@@ -334,13 +336,13 @@ def connect(**kwargs) :
 #------------------------------
 #------------------------------
 
-def _timestamp(time_sec:int) -> str :
+def _timestamp(time_sec) :
     """Converts time_sec in timestamp of adopted format TSFORMAT.
     """
     return gu.str_tstamp(TSFORMAT, int(time_sec))
 
 
-def timestamp_id(id:str) -> str :
+def timestamp_id(id) :
     """Converts MongoDB (str) id to (str) timestamp of adopted format.
     """
     str_ts = str(ObjectId(id).generation_time) # '2018-03-14 21:59:37+00:00'
@@ -351,7 +353,7 @@ def timestamp_id(id:str) -> str :
     return str_tsf
 
 
-def timestamp_doc(doc) -> str :
+def timestamp_doc(doc) :
     """Returns document creation (str) timestamp from its id.
     """
     timestamp_id(doc['_id'])
@@ -532,45 +534,45 @@ def insert_calib_data(data, **kwargs) :
 
 #------------------------------
 
-def _error_msg(msg:str) :
+def _error_msg(msg) :
     return 'wrong parameter %s' % msg
 
 #------------------------------
 
-def valid_experiment(experiment:str) :
+def valid_experiment(experiment) :
     assert isinstance(experiment,str), _error_msg('type')
     assert 7 < len(experiment) < 10, _error_msg('length')
 
-def valid_detector(detector:str) :
+def valid_detector(detector) :
     assert isinstance(detector,str), _error_msg('type')
     assert 1 < len(detector) < 65, _error_msg('length')
 
-def valid_ctype(ctype:str) :
+def valid_ctype(ctype) :
     assert isinstance(ctype,str), _error_msg('type')
     assert 4 < len(ctype) < 32, _error_msg('length')
 
-def valid_run(run:int) :
+def valid_run(run) :
     assert isinstance(run,int), _error_msg('type')
     assert -1 < run < 10000, _error_msg('value')
 
-def valid_version(version:str) :
+def valid_version(version) :
     assert isinstance(version,str), _error_msg('type')
     assert 1 < len(version) < 32, _error_msg('length')
 
-def valid_version(version:str) :
+def valid_version(version) :
     assert isinstance(version,str), _error_msg('type')
     assert len(version) < 128, _error_msg('length')
 
-def valid_comment(comment:str) :
+def valid_comment(comment) :
     assert isinstance(comment,str), _error_msg('type')
     assert len(comment) < 1000000, _error_msg('length')
 
-def valid_data(data, detector:str, ctype:str) :
+def valid_data(data, detector, ctype) :
     pass
 
 #------------------------------
 
-def insert_constants(data, experiment:str, detector:str, ctype:str, run:int, time_sec:int, **kwargs) :
+def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwargs) :
     """Checks validity of input parameters and call insert_calib_data.
     """
     _time_sec, _time_stamp = time_and_timestamp(time_sec=time_sec,\
@@ -707,7 +709,7 @@ def get_data_for_doc(fs, doc) :
 
 #------------------------------
 
-def dbnames_collection_query(det:str, exp:str=None, ctype:str='pedestals', run:int=None, time_sec:int=None, vers:str=None) :
+def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None) :
     """Returns dbnames for detector, experiment, collection name, and query.
     """
     cond = (run is not None) or (time_sec is not None) or (vers is not None)
@@ -770,7 +772,7 @@ def find_doc(col, query={'ctype':'pedestals'}) :
 
 #------------------------------
 
-def document_keys(doc) -> str :
+def document_keys(doc) :
     """Returns formatted strings of document keys. 
     """
     keys = sorted(doc.keys())
@@ -783,9 +785,9 @@ def document_keys(doc) -> str :
 
 #------------------------------
 
-def document_info(doc, keys:tuple=('time_sec','time_stamp','experiment',\
+def document_info(doc, keys=('time_sec','time_stamp','experiment',\
                   'detector','ctype','run','ts_data','data_type','data_dtype'),\
-                  fmt:str='%10s %24s %11s %24s %16s %4s %30s %10s %10s') :
+                  fmt='%10s %24s %11s %24s %16s %4s %30s %10s %10s') :
     """Returns (str, str) for formatted document values and title made of keys. 
     """
     doc_keys = sorted(doc.keys())
@@ -801,7 +803,7 @@ def document_info(doc, keys:tuple=('time_sec','time_stamp','experiment',\
 
 #------------------------------
 
-def collection_info(client, dbname, cname) -> str :
+def collection_info(client, dbname, cname) :
     """Returns (str) info regarding collection documents. 
     """
     s = 'DB %s collection %s' % (dbname, cname)
@@ -839,7 +841,7 @@ def collection_info(client, dbname, cname) -> str :
 
 #------------------------------
 
-def database_info(client, dbname, level:int=10, gap:str='  ') -> str :
+def database_info(client, dbname, level=10, gap='  ') :
     """Returns (str) info about database
     """
     #dbname = db_prefixed_name(name)
@@ -883,7 +885,7 @@ def database_info(client, dbname, level:int=10, gap:str='  ') -> str :
 
 #------------------------------
 
-def database_fs_info(db, gap:str='  ') -> str :
+def database_fs_info(db, gap='  ') :
     """Returns (str) info about database fs collections 
     """
     s = '%sDB "%s" data collections:' % (gap, db.name)
@@ -895,7 +897,7 @@ def database_fs_info(db, gap:str='  ') -> str :
 
 #------------------------------
 
-def client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, gap:str='  ') -> str :
+def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  ') :
     """Returns (str) with generic information about MongoDB client (or host:port) 
     """
     _client = client if client is not None else connect_to_server(host, port)

@@ -81,8 +81,13 @@ import getpass
 import socket
 from time import localtime, strftime, time, strptime, mktime
 import numpy as np
-#import subprocess
-from subprocess import call, getoutput
+#import subprocessif 
+    
+from subprocess import call
+if sys.version_info.major == 2:
+    from commands import getoutput
+else:
+    from subprocess import getoutput
 
 #------------------------------
 
