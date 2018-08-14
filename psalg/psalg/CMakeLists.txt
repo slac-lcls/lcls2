@@ -125,12 +125,22 @@ target_link_libraries(test_AreaDetector
     xtcdata::xtc
 )
 
+# Test curl
+add_executable(test_curl
+    tests/test_curl.cc
+)
+target_link_libraries(test_curl
+    psalg
+    xtcdata::xtc
+)
+
 install(TARGETS psalg
                 test_array
                 test_peakFinder
                 test_hsd
                 test_CalibPars
                 test_AreaDetector
+                test_curl
                 test_logger
                 datareader
     EXPORT psalgTargets
