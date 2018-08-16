@@ -3,15 +3,20 @@ add_library(calib SHARED
     src/CalibPars.cc
     src/CalibParsEpix100a.cc
     src/CalibParsStore.cc
-)
-
-target_link_libraries(calib
-    xtcdata::xtc
+    src/MDBWebUtils.cc
 )
 
 target_include_directories(calib PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:$ENV{CONDA_PREFIX}/include> # for expernal libs
+)
+
+find_library(CURL_LIBRARY curl PATH $ENV{CONDA_PREFIX}/lib)
+
+target_link_libraries(calib
+    xtcdata::xtc
+    ${CURL_LIBRARY}
 )
 
 install(FILES
@@ -22,6 +27,7 @@ install(FILES
     CalibPars.hh
     CalibParsEpix100a.hh
     CalibParsStore.hh
+    MDBWebUtils.hh
     DESTINATION include/psalg/calib
 )
 

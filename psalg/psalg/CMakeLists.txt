@@ -30,7 +30,15 @@ target_include_directories(psalg PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/../install/include>
     $<INSTALL_INTERFACE:../install/include>
+    $<BUILD_INTERFACE:$ENV{CONDA_PREFIX}/include>
 )
+
+find_library(CURL_LIBRARY curl PATH $ENV{CONDA_PREFIX}/lib)
+
+message(STATUS "XXXXXX: CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
+message(STATUS "XXXXXX: CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
+message(STATUS "XXXXXX: CURL_LIBRARY=${CURL_LIBRARY}")
+message(STATUS "XXXXXX: CONDA_PREFIX=$ENV{CONDA_PREFIX}")
 
 # this is necessary only on RHEL6 where we need to pick up clock_gettime
 target_link_libraries(psalg
@@ -132,6 +140,7 @@ add_executable(test_curl
 target_link_libraries(test_curl
     psalg
     xtcdata::xtc
+    ${CURL_LIBRARY}
 )
 
 install(TARGETS psalg
