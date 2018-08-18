@@ -26,10 +26,13 @@
  *
  */
 
-//#include <iostream> //ostream
 #include <string>
 #include <vector>
-#include <sstream>
+//#include <sstream>
+#include <stdint.h> // size_t;
+
+#include <rapidjson/document.h>
+
 
 namespace psalg {
 
@@ -37,9 +40,23 @@ namespace psalg {
 
 //-------------------
 
-  const std::string request_url_query(const char* url=URL, const char* query="");
-  const std::vector<char*> database_names(const char* url=URL);
-  const std::vector<char*> collection_names(const char* dbname, const char* url=URL);
+  void print_json_value(const rapidjson::Value &value);
+  void print_json_doc(const rapidjson::Value &doc, const std::string& offset=" ");
+  void print_vector_of_strings(const std::vector<std::string>& v);
+
+  std::string json_doc_to_string(const rapidjson::Document &doc);
+  rapidjson::Document chars_to_json_doc(const char* s);
+  const std::vector<std::string>& json_doc_to_vector_of_strings(const rapidjson::Document &doc);
+
+  size_t string_callback(char* buf, size_t size, size_t nmemb, void* up);
+  size_t json_callback(char* buf, size_t size, size_t nmemb, void* up);
+
+  const std::string& string_response();
+  const rapidjson::Document & json_doc_response();
+
+  void request(const char* url=URL, const char* query="");
+  const std::vector<std::string>& database_names(const char* url=URL);
+  const std::vector<std::string>& collection_names(const char* dbname, const char* url=URL);
 
 //-------------------
 
