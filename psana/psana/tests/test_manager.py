@@ -8,6 +8,7 @@ from test_dgraminit import run as run_test_dgraminit
 
 import hashlib
 from psana.dgrammanager import DgramManager
+from psana import DataSource
 import dgramCreate as dc
 
 
@@ -58,6 +59,13 @@ class Test:
         parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
         subprocess.call(['mpirun','-n','3','python',parallel])
     
+    def test_ds_pickle(self):
+        import pickle
+        xtc_dir = os.path.join(os.getcwd(),'.tmp')
+        ds = DataSource('exp=xpptut13:dir=%s'%(xtc_dir), filter=filter)
+        ds_new = pickle.loads(pickle.dumps(ds))
+        assert ds == ds_new
+
     def test_det(self):
         det()
 

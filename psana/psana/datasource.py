@@ -41,3 +41,6 @@ class DataSource(object):
 
     def analyze(self, **kwargs):
         analyze(self, **kwargs)
+
+    def __reduce__(self):
+        return (DataSourceHelper.from_id, (self.id,))

@@ -4,6 +4,7 @@ from psana.dgrammanager import DgramManager
 from psana import dgram
 from mpi4py import MPI
 import pickle
+import weakref
 
 PERCENT_SMD = .25
 
@@ -17,7 +18,19 @@ class InputError(Error):
 
 class DataSourceHelper(object):
     """ initializes datasource"""
+
+    # Every DataSource is assigned an ID. This permits DataSource to be
+    # pickled and sent across the network, as long as every node has the same
+    # DataSource under the same ID. (This should be true as long as the client
+    # code initializes DataSources in a deterministic order.)
+    next_ds_id = 0
+    ds_by_id = weakref.WeakValueDictionary()
+
     def __init__(self, expstr, ds):
+        ds.id = self.next_ds_id
+        self.next_ds_id += 1
+        self.ds_by_id[ds.id] = ds
+
         ds.nodetype = 'bd'
         ds.run = -1
         rank = ds.mpi.rank
@@ -157,6 +170,9 @@ class DataSourceHelper(object):
                      'pedestals': pedestals}
         return calib
 
+    @staticmethod
+    def from_id(ds_id):
+        return DataSourceHelper.ds_by_id[ds_id]
 
 class MpiComm(object):
     rank = 0
