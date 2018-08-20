@@ -195,3 +195,14 @@ class BigDataNode(Node):
                         for d in evt])
                 bd_evt = self.dm.next(offsets=ofsz[:,0], sizes=ofsz[:,1], read_chunk=False)
                 yield bd_evt
+
+def analyze(ds, event_fn=None, start_run_fn=None):
+    if mode != 'legion':
+        for run in ds.runs():
+            if start_run_fn is not None:
+                start_run_fn(run)
+            for event in ds.events():
+                if event_fn is not None:
+                    event_fn(event)
+    else:
+        assert False

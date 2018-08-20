@@ -34,3 +34,8 @@ for run in ds.runs():
     for configUpdate in run.configUpdates():
         for config in configUpdate.events():
             pass
+
+# Usecase#4: analyze with callbacks
+def event_fn(event):
+    pass
+ds.analyze(event_fn=event_fn)
