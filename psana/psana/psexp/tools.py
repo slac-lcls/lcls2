@@ -72,8 +72,7 @@ class DataSourceHelper(object):
             elif rank < ds.nsmds + 1:
                 ds.nodetype = 'smd'
 
-            if ds.nodetype == 'bd':
-                ds.dm = DgramManager(xtc_files, configs=ds.configs)
+            ds.dm = DgramManager(xtc_files, configs=ds.configs)
 
     def setup_dgram_manager(self, ds, xtc_files, smd_files):
         if smd_files is not None:
