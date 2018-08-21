@@ -7,9 +7,14 @@ import time
 import zmq
 from collection2 import rep_port, create_msg
 import pprint
+import argparse
 
-# Commands
-platform = 0
+# Process arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+args = parser.parse_args()
+platform = args.p
+
 partName = '(None)'
 try:
     context = zmq.Context(1)

@@ -324,6 +324,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', action='store_true', help='autoconnect')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
+    platform = args.p
 
     if args.v:
         logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -331,10 +332,10 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def manager():
-        manager = CollectionManager(0)
+        manager = CollectionManager(platform)
 
     def client(i):
-        c = Client(0)
+        c = Client(platform)
 
     procs = [Process(target=manager)]
     for i in range(2):
@@ -347,7 +348,6 @@ if __name__ == '__main__':
 
     if args.a:
         # Commands
-        platform = args.p
         context = zmq.Context(1)
         req = context.socket(zmq.REQ)
         req.connect('tcp://localhost:%d' % rep_port(platform))
