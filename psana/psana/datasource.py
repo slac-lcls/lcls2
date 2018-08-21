@@ -25,7 +25,7 @@ class DataSource(object):
         if self.nodetype == 'bd':
             self.Detector = Detector(self.configs, calib=self.calib) 
 
-    def runs(self): 
+    def runs(self):
         nruns = 1
         for run_no in range(nruns):
             yield Run(self)
