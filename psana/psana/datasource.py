@@ -2,7 +2,7 @@ import sys, os, glob
 from psana.detector.detector import Detector
 from psana.psexp.run import Run
 from psana.psexp.node import analyze
-from psana.psexp.tools import MpiComm, DataSourceHelper
+from psana.psexp.tools import MpiComm, DataSourceHelper, datasource_from_id
 
 class DataSource(object):
     """ Read XTC files  """ 
@@ -43,4 +43,4 @@ class DataSource(object):
         analyze(self, **kwargs)
 
     def __reduce__(self):
-        return (DataSourceHelper.from_id, (self.id,))
+        return (datasource_from_id, (self.id,))

@@ -176,9 +176,8 @@ class DataSourceHelper(object):
                      'pedestals': pedestals}
         return calib
 
-    @staticmethod
-    def from_id(ds_id):
-        return DataSourceHelper.ds_by_id[ds_id]
+def datasource_from_id(ds_id):
+    return DataSourceHelper.ds_by_id[ds_id]
 
 class MpiComm(object):
     rank = 0
