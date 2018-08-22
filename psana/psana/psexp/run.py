@@ -12,9 +12,9 @@ def read_event(ds, event_type=None):
     rank = ds.mpi.rank
     size = ds.mpi.size
     if size == 1:
-        for evt in ds.dm: yield evt       # safe for python2
+        return ds.dm       # safe for python2
     else:
-        for evt in run_node(ds): yield evt
+        return run_node(ds)
 
 class ConfigUpdate(object):
     """ ConfigUpdate generator """
