@@ -205,12 +205,12 @@ def run_node(ds):
         if ds.nodetype == 'smd0':
             Smd0(ds.mpi, ds.smd_dm.fds, ds.nsmds, max_events=ds.max_events)
         elif ds.nodetype == 'smd':
-            bd_node_ids = (np.arange(size)[ds.nsmds+1:] % ds.nsmds) + 1
-            smd_node = SmdNode(ds.mpi, ds.smd_configs, len(bd_node_ids[bd_node_ids==rank]), \
+            bd_node_ids = (np.arange(ds.mpi.size)[ds.nsmds+1:] % ds.nsmds) + 1
+            smd_node = SmdNode(ds.mpi, ds.smd_configs, len(bd_node_ids[bd_node_ids==ds.mpi.rank]), \
                                batch_size=ds.batch_size, filter=ds.filter)
             smd_node.run_mpi()
         elif ds.nodetype == 'bd':
-            smd_node_id = (rank % ds.nsmds) + 1
+            smd_node_id = (ds.mpi.rank % ds.nsmds) + 1
             bd_node = BigDataNode(ds.mpi, ds.smd_configs, ds.dm, smd_node_id)
             for evt in bd_node.run_mpi():
                 yield evt

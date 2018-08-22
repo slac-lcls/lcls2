@@ -14,7 +14,7 @@ def read_event(ds, event_type=None):
     if size == 1:
         for evt in ds.dm: yield evt       # safe for python2
     else:
-        run_node(ds)
+        for evt in run_node(ds): yield evt
 
 class ConfigUpdate(object):
     """ ConfigUpdate generator """
