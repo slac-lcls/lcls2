@@ -62,7 +62,6 @@ class Test:
         parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
         subprocess.check_call(['mpirun','-n','3','python',parallel])
     
-    """
     def test_legion(self):
         self.setup_input_files()
 
@@ -73,7 +72,6 @@ class Test:
             ('PS_PARALLEL', 'legion'),
         ])
         subprocess.check_call(['legion_python', 'user', '-ll:py', '1'], env=env)
-    """
 
     def test_ds_pickle(self):
         import pickle
