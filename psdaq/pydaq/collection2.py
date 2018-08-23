@@ -84,7 +84,7 @@ class CollectionManager():
                          'beginrun', 'endrun',
                          'enable', 'disable', 'reset']
         self.states = [
-            'noplat',
+            'reset',
             'plat',
             'alloc',
             'connect',
@@ -94,11 +94,11 @@ class CollectionManager():
             'error'
         ]
 
-        self.collectMachine = Machine(self, self.states, initial='noplat')
+        self.collectMachine = Machine(self, self.states, initial='reset')
 
-        self.collectMachine.add_transition('reset', '*', 'noplat',
+        self.collectMachine.add_transition('reset', '*', 'reset',
                                            conditions='condition_reset')
-        self.collectMachine.add_transition('plat', ['noplat', 'plat'], 'plat',
+        self.collectMachine.add_transition('plat', ['reset', 'plat'], 'plat',
                                            conditions='condition_plat')
         self.collectMachine.add_transition('alloc', 'plat', 'alloc',
                                            conditions='condition_alloc')
@@ -142,17 +142,31 @@ class CollectionManager():
 
     def handle_trigger(self, key):
         logging.debug('handle_trigger(\'%s\') in state %s' % (key, self.state))
+        stateBefore = self.state
         trigError = None
         try:
             self.trigger(key)
         except MachineError as ex:
-            logging.error('MachineError: %s' % ex)
-            trigError = ex
+            logging.debug('MachineError: %s' % ex)
+            trigError = str(ex)
+        else:
+            # check for error: trigger failed to change the state
+            if (self.state == stateBefore):
+                # two exceptions OK: reset->reset and plat->plat
+                if ((self.state == key == 'reset') or
+                    (self.state == key == 'plat')):
+                    pass
+                else:
+                    # enter the error state
+                    self.to_error()
+                    trigError = '%s failed, entered error state' % key
 
         if trigError is None:
             answer = create_msg(self.state, body=self.cmstate)
         else:
-            answer = create_msg(self.state, body={'error': '%s' % trigError})
+            errMsg = trigError.replace("\"", "")
+            logging.error(errMsg)
+            answer = create_msg(self.state, body={'error': errMsg})
 
         return answer
 
@@ -202,7 +216,7 @@ class CollectionManager():
     def handle_getstate(self):
         return create_msg(self.state, body=self.cmstate)
 
-    def on_enter_noplat(self):
+    def on_enter_reset(self):
         self.cmstate.clear()
         self.ids.clear()
         return
@@ -223,43 +237,51 @@ class CollectionManager():
         logging.debug('condition_plat() returning True')
         return True
 
-    def condition_configure(self):
-        msg = create_msg('configure')
+    def condition_common(self, transition, timeout):
+        ids = copy.copy(self.ids)
+        msg = create_msg(transition)
         self.pub.send_json(msg)
-        logging.debug('condition_configure() returning True')
-        return True
+
+        # make sure all the clients respond to transition before timeout
+        ret, answers = confirm_response(self.pull, timeout, msg['header']['msg_id'], ids)
+        if ret:
+            logging.error('%d client did not respond to %s' % (ret, transition))
+            return False
+        else:
+            return True
+
+    def condition_configure(self):
+        retval = self.condition_common('configure', 1000)
+        logging.debug('condition_configure() returning %s' % retval)
+        return retval
 
     def condition_unconfigure(self):
-        msg = create_msg('unconfigure')
-        self.pub.send_json(msg)
-        logging.debug('condition_unconfigure() returning True')
-        return True
+        retval = self.condition_common('unconfigure', 1000)
+        logging.debug('condition_unconfigure() returning %s' % retval)
+        return retval
 
     def condition_beginrun(self):
-        msg = create_msg('beginrun')
-        self.pub.send_json(msg)
-        logging.debug('condition_beginrun() returning True')
-        return True
+        retval = self.condition_common('beginrun', 1000)
+        logging.debug('condition_beginrun() returning %s' % retval)
+        return retval
 
     def condition_endrun(self):
-        msg = create_msg('endrun')
-        self.pub.send_json(msg)
-        logging.debug('condition_endrun() returning True')
-        return True
+        retval = self.condition_common('endrun', 1000)
+        logging.debug('condition_endrun() returning %s' % retval)
+        return retval
 
     def condition_enable(self):
-        msg = create_msg('enable')
-        self.pub.send_json(msg)
-        logging.debug('condition_enable() returning True')
-        return True
+        retval = self.condition_common('enable', 1000)
+        logging.debug('condition_enable() returning %s' % retval)
+        return retval
 
     def condition_disable(self):
-        msg = create_msg('disable')
-        self.pub.send_json(msg)
-        logging.debug('condition_disable() returning True')
-        return True
+        retval = self.condition_common('disable', 1000)
+        logging.debug('condition_disable() returning %s' % retval)
+        return retval
 
     def condition_reset(self):
+        # is a reply to reset necessary?
         msg = create_msg('reset')
         self.pub.send_json(msg)
         logging.debug('condition_reset() returning True')

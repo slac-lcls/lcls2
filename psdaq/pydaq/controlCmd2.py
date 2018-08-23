@@ -10,7 +10,7 @@ from collection2 import rep_port, create_msg
 def main():
 
     # Define commands
-    command_dict = {'reset':        'noplat',
+    command_dict = {'reset':        'reset',
                     'plat':         'plat',
                     'alloc':        'alloc',
                     'connect':      'connect',

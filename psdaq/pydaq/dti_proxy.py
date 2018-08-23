@@ -21,6 +21,9 @@ class Client:
 
     def __init__(self, platform, pv_base):
 
+        # initialize state
+        self.state = 'reset'
+
         # establish id
         self.hostname = socket.gethostname()
         self.pid = os.getpid()
@@ -105,43 +108,76 @@ class Client:
     def handle_connect(self, msg):
         logging.debug('Client handle_connect()')
         if self.state == 'alloc':
+            self.state = 'connect'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
     def handle_configure(self, msg):
         logging.debug('Client handle_configure()')
-        self.pv_put(self.pvMsgConfig, 0)
-        self.pv_put(self.pvMsgConfig, 1)
-        self.pv_put(self.pvMsgConfig, 0)
+        if self.state == 'connect':
+            # TODO check for errors
+            self.pv_put(self.pvMsgConfig, 0)
+            self.pv_put(self.pvMsgConfig, 1)
+            self.pv_put(self.pvMsgConfig, 0)
+            self.state = 'configured'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
 
     def handle_unconfigure(self, msg):
         logging.debug('Client handle_unconfigure()')
-        self.pv_put(self.pvMsgUnconfig, 0)
-        self.pv_put(self.pvMsgUnconfig, 1)
-        self.pv_put(self.pvMsgUnconfig, 0)
+        if self.state == 'configured':
+            # TODO check for errors
+            self.pv_put(self.pvMsgUnconfig, 0)
+            self.pv_put(self.pvMsgUnconfig, 1)
+            self.pv_put(self.pvMsgUnconfig, 0)
+            self.state = 'connect'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
 
     def handle_beginrun(self, msg):
         logging.debug('Client handle_beginrun()')
-        self.pv_put(self.pvRun, 1)
+        if self.state == 'configured':
+            # TODO check for errors
+            self.pv_put(self.pvRun, 1)
+            self.state = 'running'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
 
     def handle_endrun(self, msg):
         logging.debug('Client handle_endrun()')
-        self.pv_put(self.pvRun, 0)
+        if self.state == 'running':
+            # TODO check for errors
+            self.pv_put(self.pvRun, 0)
+            self.state = 'configured'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
 
     def handle_enable(self, msg):
         logging.debug('Client handle_enable()')
-        self.pv_put(self.pvMsgEnable, 0)
-        self.pv_put(self.pvMsgEnable, 1)
-        self.pv_put(self.pvMsgEnable, 0)
+        if self.state == 'running':
+            # TODO check for errors
+            self.pv_put(self.pvMsgEnable, 0)
+            self.pv_put(self.pvMsgEnable, 1)
+            self.pv_put(self.pvMsgEnable, 0)
+            self.state = 'enabled'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
 
     def handle_disable(self, msg):
         logging.debug('Client handle_disable()')
-        self.pv_put(self.pvMsgDisable, 0)
-        self.pv_put(self.pvMsgDisable, 1)
-        self.pv_put(self.pvMsgDisable, 0)
+        if self.state == 'enabled':
+            # TODO check for errors
+            self.pv_put(self.pvMsgDisable, 0)
+            self.pv_put(self.pvMsgDisable, 1)
+            self.pv_put(self.pvMsgDisable, 0)
+            self.state = 'running'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
 
     def handle_reset(self, msg):
         logging.debug('Client handle_reset()')
+        self.state = 'reset'
+        # is a reply to reset necessary?
 
 
 if __name__ == '__main__':
