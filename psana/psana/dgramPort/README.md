@@ -1,4 +1,4 @@
-# Eliseo notes for how this software works
+# Eliseo Notes: How XTC to XTC2 Translation Scripts Work
 
 Run "parse_lcls1_data.py" from the old psana. It will parse LCLS-I xtc files from four different
 example experiments (including the crystallography data) and write out json files. "translate_xtc_demo.py"
