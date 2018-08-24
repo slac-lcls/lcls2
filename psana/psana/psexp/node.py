@@ -39,6 +39,7 @@ class Smd0(Node):
 
         self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 100))
         self.max_events = max_events
+        self.processed_events = 0
         if self.max_events:
             if self.max_events < self.n_events:
                 self.n_events = self.max_events
@@ -67,12 +68,11 @@ class Smd0(Node):
             SmdNode.run_legion_task(chunk, ds)
 
     def chunks(self):
-        processed_events = 0
         got_events = -1
         while got_events != 0:
             self.smdr.get(self.n_events)
             got_events = self.smdr.got_events
-            processed_events += got_events
+            self.processed_events += got_events
             views = bytearray()
             for i in range(len(self.fds)):
                 view = self.smdr.view(i)
@@ -84,7 +84,7 @@ class Smd0(Node):
                 yield views
 
             if self.max_events:
-                if processed_events == self.max_events:
+                if self.processed_events >= self.max_events:
                     break
 
 class SmdNode(Node):
