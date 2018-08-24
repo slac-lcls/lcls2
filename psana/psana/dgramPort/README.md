@@ -1,8 +1,7 @@
 # Eliseo Notes: How XTC to XTC2 Translation Scripts Work
 
-Run "parse_lcls1_data.py" from the old psana. It will parse LCLS-I xtc files from four different
-example experiments (including the crystallography data) and write out json files. "translate_xtc_demo.py"
-will read in the json files and write them to XTC2 files. 
+Run "parse_lcls1_data.py" from the LCLS-I psana. It will parse LCLS-I xtc files from four different
+example experiments (including the crystallography data) and write out json files. Using LCLS-II psana "translate_xtc_demo.py" will read in the json files and write them to XTC2 files. 
 
 Serialization using json is usually much faster than pickle, but it can't handle numpy
 arrays. The first script converts the arrays to lists of [bytes, shape, type], which are
