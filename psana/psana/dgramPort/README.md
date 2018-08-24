@@ -30,3 +30,7 @@ This writes a pseudo-configure file in crystal_dark_configure.xtc and the events
 
 The examples required some amount of hard-coding values, so I'd be surprised if the translation
 works for an arbitrary LCLS1 xtc file.
+
+## Additions From Chuck
+
+Eliseo's approach doesn't work with bulk data because the json files becomes too large.  Chuck has modified versions (parse_lcls1_cxic0415.py, parse_lcls1_cxic0515.py) that don't save json to disk, instead transmitting the json data over ZMQ to translate_xtc_demo.py.
