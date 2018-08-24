@@ -7,7 +7,7 @@ Serialization using json is usually much faster than pickle, but it can't handle
 arrays. The first script converts the arrays to lists of [bytes, shape, type], which are
 then reconstituted. 
 
-And from a second email message from Eliseo:
+## A Second Email Message From Eliseo:
 
 here's parsing an LCLS1 xtc file
 
