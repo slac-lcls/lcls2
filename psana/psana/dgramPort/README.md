@@ -33,7 +33,7 @@ f.write(json.dumps(cfgd.events))
 
 To save in the xtc format, I reference the experiment by the name of the json file. 
 
-```translate_xtc_demo('crystal_dark', 2)```
+```translate_xtc_json('crystal_dark', 2)```
 
 This writes a pseudo-configure file in crystal_dark_configure.xtc and the events data in crystal_dark_evts.xtc. 
 
