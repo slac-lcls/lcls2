@@ -50,8 +50,8 @@ def wait_for_answers(socket, wait_time, msg_id):
         if msg['header']['msg_id'] == msg_id:
             yield msg
         else:
-            print('unexpected msg_id: got %s but expected %s' %
-                  (msg['header']['msg_id'], msg_id))
+            logging.error('unexpected msg_id: got %s but expected %s' %
+                          (msg['header']['msg_id'], msg_id))
         remaining = max(0, int(wait_time - 1000*(time.time() - start)))
 
 
@@ -192,9 +192,7 @@ class CollectionManager():
             for i, node in enumerate(self.cmstate['drp']):
                 self.cmstate['drp'][node]['drp_id'] = i
 
-        print('cmstate after alloc:')
-        print(self.cmstate)
-
+        logging.debug('cmstate after alloc:\n%s' % self.cmstate)
         logging.debug('condition_alloc() returning True')
         return True
 
@@ -238,6 +236,7 @@ class CollectionManager():
         return True
 
     def condition_common(self, transition, timeout):
+        retval = True
         ids = copy.copy(self.ids)
         msg = create_msg(transition)
         self.pub.send_json(msg)
@@ -245,10 +244,20 @@ class CollectionManager():
         # make sure all the clients respond to transition before timeout
         ret, answers = confirm_response(self.pull, timeout, msg['header']['msg_id'], ids)
         if ret:
+            # Error
+            retval = False
             logging.error('%d client did not respond to %s' % (ret, transition))
-            return False
         else:
-            return True
+            retval = True
+            for answer in answers:
+                try:
+                    for node, err_msg in answer['body']['err_info'].items():
+                        # Error
+                        retval = False
+                        logging.error('%s: %s' % (node, err_msg))
+                except KeyError:
+                    pass
+            return retval
 
     def condition_configure(self):
         retval = self.condition_common('configure', 1000)

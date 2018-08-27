@@ -115,64 +115,129 @@ class Client:
     def handle_configure(self, msg):
         logging.debug('Client handle_configure()')
         if self.state == 'connect':
-            # TODO check for errors
-            self.pv_put(self.pvMsgConfig, 0)
-            self.pv_put(self.pvMsgConfig, 1)
-            self.pv_put(self.pvMsgConfig, 0)
-            self.state = 'configured'
-            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            # check for errors
+            if (self.pv_put(self.pvMsgConfig, 0) and
+                self.pv_put(self.pvMsgConfig, 1) and 
+                self.pv_put(self.pvMsgConfig, 0)):
+                # success: change state and reply 'ok'
+                self.state = 'configured'
+                reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            else:
+                # failure: reply 'error'
+                err_msg = "PV put failed: %s" % self.pvMsgConfig.name
+                logging.error(err_msg)
+                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                body = {'err_info': { node : err_msg}}
+                reply = create_msg('error', msg['header']['msg_id'], self.id,
+                                   body=body)
             self.push.send_json(reply)
+        else:
+            logging.error('handle_configure() invalid state: %s' % self.state)
 
     def handle_unconfigure(self, msg):
-        logging.debug('Client handle_unconfigure()')
         if self.state == 'configured':
-            # TODO check for errors
-            self.pv_put(self.pvMsgUnconfig, 0)
-            self.pv_put(self.pvMsgUnconfig, 1)
-            self.pv_put(self.pvMsgUnconfig, 0)
-            self.state = 'connect'
-            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            # check for errors
+            if (self.pv_put(self.pvMsgUnconfig, 0) and
+                self.pv_put(self.pvMsgUnconfig, 1) and 
+                self.pv_put(self.pvMsgUnconfig, 0)):
+                # success: change state and reply 'ok'
+                self.state = 'connect'
+                reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            else:
+                # failure: reply 'error'
+                err_msg = "PV put failed: %s" % self.pvMsgUnconfig.name
+                logging.error(err_msg)
+                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                body = {'err_info': { node : err_msg}}
+                reply = create_msg('error', msg['header']['msg_id'], self.id,
+                                   body=body)
             self.push.send_json(reply)
+        else:
+            logging.error('handle_unconfigure() invalid state: %s' % self.state)
 
     def handle_beginrun(self, msg):
         logging.debug('Client handle_beginrun()')
         if self.state == 'configured':
-            # TODO check for errors
-            self.pv_put(self.pvRun, 1)
-            self.state = 'running'
-            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            # check for errors
+            if (self.pv_put(self.pvRun, 1)):
+                # success: change state and reply 'ok'
+                self.state = 'running'
+                reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            else:
+                # failure: reply 'error'
+                err_msg = "PV put failed: %s" % self.pvRun.name
+                logging.error(err_msg)
+                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                body = {'err_info': { node : err_msg}}
+                reply = create_msg('error', msg['header']['msg_id'], self.id,
+                                   body=body)
             self.push.send_json(reply)
+        else:
+            logging.error('handle_beginrun() invalid state: %s' % self.state)
 
     def handle_endrun(self, msg):
         logging.debug('Client handle_endrun()')
         if self.state == 'running':
-            # TODO check for errors
-            self.pv_put(self.pvRun, 0)
-            self.state = 'configured'
-            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            # check for errors
+            if (self.pv_put(self.pvRun, 0)):
+                # success: change state and reply 'ok'
+                self.state = 'configured'
+                reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            else:
+                # failure: reply 'error'
+                err_msg = "PV put failed: %s" % self.pvRun.name
+                logging.error(err_msg)
+                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                body = {'err_info': { node : err_msg}}
+                reply = create_msg('error', msg['header']['msg_id'], self.id,
+                                   body=body)
             self.push.send_json(reply)
+        else:
+            logging.error('handle_endrun() invalid state: %s' % self.state)
 
     def handle_enable(self, msg):
         logging.debug('Client handle_enable()')
         if self.state == 'running':
-            # TODO check for errors
-            self.pv_put(self.pvMsgEnable, 0)
-            self.pv_put(self.pvMsgEnable, 1)
-            self.pv_put(self.pvMsgEnable, 0)
-            self.state = 'enabled'
-            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            # check for errors
+            if (self.pv_put(self.pvMsgEnable, 0) and
+                self.pv_put(self.pvMsgEnable, 1) and
+                self.pv_put(self.pvMsgEnable, 0)):
+                # success: change state and reply 'ok'
+                self.state = 'enabled'
+                reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            else:
+                # failure: reply 'error'
+                err_msg = "PV put failed: %s" % self.pvMsgEnable.name
+                logging.error(err_msg)
+                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                body = {'err_info': { node : err_msg}}
+                reply = create_msg('error', msg['header']['msg_id'], self.id,
+                                   body=body)
             self.push.send_json(reply)
+        else:
+            logging.error('handle_enable() invalid state: %s' % self.state)
 
     def handle_disable(self, msg):
         logging.debug('Client handle_disable()')
         if self.state == 'enabled':
-            # TODO check for errors
-            self.pv_put(self.pvMsgDisable, 0)
-            self.pv_put(self.pvMsgDisable, 1)
-            self.pv_put(self.pvMsgDisable, 0)
-            self.state = 'running'
-            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            # check for errors
+            if (self.pv_put(self.pvMsgDisable, 0) and
+                self.pv_put(self.pvMsgDisable, 1) and
+                self.pv_put(self.pvMsgDisable, 0)):
+                # success: change state and reply 'ok'
+                self.state = 'running'
+                reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            else:
+                # failure: reply 'error'
+                err_msg = "PV put failed: %s" % self.pvMsgDisable.name
+                logging.error(err_msg)
+                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                body = {'err_info': { node : err_msg}}
+                reply = create_msg('error', msg['header']['msg_id'], self.id,
+                                   body=body)
             self.push.send_json(reply)
+        else:
+            logging.error('handle_disable() invalid state: %s' % self.state)
 
     def handle_reset(self, msg):
         logging.debug('Client handle_reset()')
