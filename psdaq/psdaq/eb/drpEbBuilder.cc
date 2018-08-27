@@ -679,7 +679,7 @@ void usage(char *name, char *desc)
 void join_collection(unsigned cltBase, uint64_t& contributors,  std::vector<std::string>& cltAddr,
                      std::vector<std::string>& cltPort)
 {
-    Collection collection("drp-tst-acc06", 0, "eb");
+    Collection collection("drp-tst-acc06", 1, "eb");
     collection.connect();
     std::cout<<"cmstate:\n"<<collection.cmstate.dump(4) << std::endl;
 

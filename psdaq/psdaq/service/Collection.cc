@@ -61,7 +61,7 @@ std::string get_infiniband_address()
 Collection::Collection(const std::string& manager_hostname, 
                        int platform, const std::string& level) : m_level(level)
 {
-    const int base_port = 29980 + platform;
+    const int base_port = 29980;
     m_context = zmq_ctx_new();
     char buffer[1024];
     m_push = zmq_socket(m_context, ZMQ_PUSH);
@@ -116,7 +116,7 @@ void Collection::handle_plat(json& msg)
     int pid = getpid();
     m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
     json body;
-    body[m_level] = {{"procInfo", {{"host", hostname}, {"pid", pid}}}};
+    body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}}}};
     json reply = create_msg("plat", msg["header"]["msg_id"], m_id, body); 
     std::string s = reply.dump();
     zmq_send(m_push, s.c_str(), s.length(), 0);

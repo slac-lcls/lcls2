@@ -25,7 +25,7 @@ void print_usage(){
 
 void join_collection(Parameters& para)
 {
-    Collection collection("drp-tst-acc06", 0, "drp");
+    Collection collection("drp-tst-acc06", 1, "drp");
     collection.connect();
     std::cout<<"cmstate:\n"<<collection.cmstate.dump(4) << std::endl;
     std::string id = std::to_string(collection.id());
