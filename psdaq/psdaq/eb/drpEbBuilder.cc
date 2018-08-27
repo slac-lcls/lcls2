@@ -676,10 +676,10 @@ void usage(char *name, char *desc)
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
 }
 
-void join_collection(unsigned cltBase, uint64_t& contributors,  std::vector<std::string>& cltAddr,
-                     std::vector<std::string>& cltPort)
+void join_collection(int partition, unsigned cltBase, uint64_t& contributors,  
+        std::vector<std::string>& cltAddr, std::vector<std::string>& cltPort)
 {
-    Collection collection("drp-tst-acc06", 1, "eb");
+    Collection collection("drp-tst-acc06", partition, "eb");
     collection.connect();
     std::cout<<"cmstate:\n"<<collection.cmstate.dump(4) << std::endl;
 
@@ -704,8 +704,9 @@ int main(int argc, char **argv)
   unsigned maxBatches = max_batches;
   unsigned maxEntries = max_entries;
   unsigned monPeriod  = mon_period;
+  int partition;
 
-  while ((op = getopt(argc, argv, "h?vA:S:C:P:i:D:B:E:M:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vA:S:C:P:i:D:B:E:M:1:2:p:")) != -1)
   {
     switch (op)
     {
@@ -719,6 +720,7 @@ int main(int argc, char **argv)
       case 'M':  monPeriod  = atoi(optarg);   break;
       case '1':  lcore1     = atoi(optarg);   break;
       case '2':  lcore2     = atoi(optarg);   break;
+      case 'p':  partition = std::stoi(optarg); break;
       case 'v':  ++lverbose;                  break;
       case '?':
       case 'h':
@@ -744,7 +746,7 @@ int main(int argc, char **argv)
   std::vector<std::string> cltPort;
   uint64_t contributors = 0;
 
-  join_collection(cltBase, contributors, cltAddr, cltPort);
+  join_collection(partition, cltBase, contributors, cltAddr, cltPort);
 
   /*
   if (optind < argc)

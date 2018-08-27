@@ -19,13 +19,13 @@ using namespace XtcData;
 using json = nlohmann::json;
 
 void print_usage(){
-    printf("Usage: drp -P <EB server IP address> -i <Contributor ID> -o <Output XTC dir> -d <Device id> -l <Lane mask> -D <Detector type>\n");
-    printf("e.g.: sudo psdaq/build/drp/drp -P 172.21.52.128 -i 0 -o /drpffb/username -d 0x2032 -l 0xf -D Digitizer\n");
+    printf("Usage: drp -p <partition>  -o <Output XTC dir> -d <Device id> -l <Lane mask> -D <Detector type>\n");
+    printf("e.g.: sudo psdaq/build/drp/drp -p 1 -o /drpffb/username -d 0x2032 -l 0xf -D Digitizer\n");
 }
 
 void join_collection(Parameters& para)
 {
-    Collection collection("drp-tst-acc06", 1, "drp");
+    Collection collection("drp-tst-acc06", para.partition, "drp");
     collection.connect();
     std::cout<<"cmstate:\n"<<collection.cmstate.dump(4) << std::endl;
     std::string id = std::to_string(collection.id());
@@ -45,13 +45,10 @@ int main(int argc, char* argv[])
     int lane_mask = 0xf;
     std::string detector_type;
     int c;
-    while((c = getopt(argc, argv, "P:i:o:d:l:D:")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:d:l:D:")) != EOF) {
         switch(c) {
-            case 'P':
-                para.eb_server_ip = optarg;
-                break;
-            case 'i':
-                para.contributor_id = atoi(optarg);
+            case 'p':
+                para.partition = std::stoi(optarg);
                 break;
             case 'o':
                 para.output_dir = optarg;
