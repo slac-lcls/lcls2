@@ -1,5 +1,7 @@
-bin_path  = '/reg/neh/home/weaver/lcls2/psdaq/build/'
-bins_path = '/reg/neh/home/weaver/lcls2/psdaq/psdaq/scripts/'
+#bin_path  = '/reg/neh/home/weaver/lcls2/psdaq/build/'
+#bins_path = '/reg/neh/home/weaver/lcls2/psdaq/psdaq/scripts/'
+bin_path  = '/reg/neh/home/cpo/git/lcls2/psdaq/build/'
+bins_path = '/reg/neh/home/cpo/git/lcls2/psdaq/psdaq/scripts/'
 
 platform = '0'
 username = 'lcls2'
@@ -40,10 +42,11 @@ procmgr_config = [
  {                       id:'hsdca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/hsdca.py DAQ:LAB2:HSD:DEV02'},
 # { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -r -F /tmp/hsd.evt' },
 # { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -c 8 -o 32 -r -v 0x1ffffffe' },
- { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -c 8 -o 32 -r -v 0x2' },
+# { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -c 8 -o 32 -r -v 0x2' },
+ { host: 'drp-tst-acc02', id:'EvtBuild' ,flags:'sxp', cmd:bin_path+'psdaq/eb/drpEbBuilder -1 8 -2 8' },
+ { host: 'drp-tst-acc06', id:'Collection' ,flags:'sxp', cmd:bins_path+'/launch_py '+bin_path+'/../pydaq/collection2.py -v' },
 # { host: 'daq-tst-dev02', id:'qRead' ,flags:'sx', cmd:bin_path+'psdaq/pgp/pgpGen4Daq/app/qRead -c 0 -L 0xf -P 8' },
 
 ## procstat
  {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
   ]
-
