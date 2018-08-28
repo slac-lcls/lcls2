@@ -148,18 +148,22 @@ if __name__ == '__main__':
                                       'value' : 0 }
     pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int',
 #                                       'value' : 2050 } 
-                                       'value' : 1600 }
+#                                       'value' : 1600 }
+                                       'value' : 5270-175 }
     pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
 #                                       'value' : 2400 }
-                                       'value' : 1950 }
+#                                       'value' : 1950 }
+                                       'value' : 5270+175 }
     pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
                                       'value' : 0 }
     pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
 #                                       'value' : 11800 }
-                                       'value' : 11400 }
+#                                       'value' : 11400 }
+                                       'value' : 15000-175 }
     pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
 #                                       'value': 12200 }
-                                       'value' : 11750 }
+#                                       'value' : 11750 }
+                                       'value' : 15000+175 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
                                       'count' : 4,
                                       'value' : [0]*4 }
