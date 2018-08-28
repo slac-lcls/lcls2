@@ -8,6 +8,7 @@ from test_dgraminit import run as run_test_dgraminit
 
 import hashlib
 from psana.dgrammanager import DgramManager
+from psana import DataSource
 import dgramCreate as dc
 
 
@@ -40,7 +41,7 @@ class Test:
     def test_xtc(self):
         xtc('data.xtc')
 
-    def test_parallel(self):
+    def setup_input_files(self):
         subprocess.call(['xtcwriter','-f','data-ts.xtc', '-t']) # Mona FIXME: writing seq in xtcwriter broke dgramCreate
         subprocess.call(['smdwriter','-f','data-ts.xtc'])
         tmp_dir = os.path.join('.tmp','smalldata')
@@ -55,9 +56,30 @@ class Test:
         shutil.copy('smd.xtc', os.path.join(tmp_dir, 'data.smd.xtc')) # FIXME: chuck's hack to fix nosetests
         shutil.copy('smd.xtc',os.path.join(tmp_dir,'data_1.smd.xtc')) # FIXME: chuck's hack to fix nosetests
 
+    def test_mpi(self):
+        self.setup_input_files()
+
         parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
-        subprocess.call(['mpirun','-n','3','python',parallel])
+        subprocess.check_call(['mpirun','-n','3','python',parallel])
     
+    def test_legion(self):
+        self.setup_input_files()
+
+        python_path = os.environ.get('PYTHONPATH', '').split(':')
+        python_path.append(os.path.dirname(os.path.realpath(__file__)))
+        env = dict(list(os.environ.items()) + [
+            ('PYTHONPATH', ':'.join(python_path)),
+            ('PS_PARALLEL', 'legion'),
+        ])
+        subprocess.check_call(['legion_python', 'user', '-ll:py', '1'], env=env)
+
+    def test_ds_pickle(self):
+        import pickle
+        xtc_dir = os.path.join(os.getcwd(),'.tmp')
+        ds = DataSource('exp=xpptut13:dir=%s'%(xtc_dir), filter=filter)
+        ds_new = pickle.loads(pickle.dumps(ds))
+        assert ds == ds_new
+
     def test_det(self):
         det()
 

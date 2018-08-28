@@ -2,8 +2,13 @@ import numpy as np
 import glob, os
 from psana.dgrammanager import DgramManager
 from psana import dgram
-from mpi4py import MPI
 import pickle
+import weakref
+
+from psana.psexp.node import mode
+MPI = None
+if mode == 'mpi':
+    from mpi4py import MPI
 
 PERCENT_SMD = .25
 
@@ -17,14 +22,26 @@ class InputError(Error):
 
 class DataSourceHelper(object):
     """ initializes datasource"""
+
+    # Every DataSource is assigned an ID. This permits DataSource to be
+    # pickled and sent across the network, as long as every node has the same
+    # DataSource under the same ID. (This should be true as long as the client
+    # code initializes DataSources in a deterministic order.)
+    next_ds_id = 0
+    ds_by_id = weakref.WeakValueDictionary()
+
     def __init__(self, expstr, ds):
+        ds.id = self.next_ds_id
+        self.next_ds_id += 1
+        self.ds_by_id[ds.id] = ds
+
         ds.nodetype = 'bd'
         ds.run = -1
         rank = ds.mpi.rank
         size = ds.mpi.size
         comm = ds.mpi.comm
 
-        if rank == 0:
+        if rank == 0 or mode == 'legion':
             xtc_files, smd_files, run = self.parse_expstr(expstr)
             if run is not None:
                 ds.run = run
@@ -32,7 +49,7 @@ class DataSourceHelper(object):
             xtc_files, smd_files = None, None
 
         # Setup DgramManager, Configs, and Calib
-        if size == 1:
+        if size == 1 and mode != 'legion':
             # This is one-core read.
             self.setup_dgram_manager(ds, xtc_files, smd_files)
         else:
@@ -41,7 +58,7 @@ class DataSourceHelper(object):
             smd_files = comm.bcast(smd_files, root=0)
 
             # Send configs
-            if rank == 0:
+            if rank == 0 or mode == 'legion':
                 self.setup_dgram_manager(ds, xtc_files, smd_files)
                 smd_nbytes = np.array([memoryview(config).shape[0] for config in ds.smd_configs], \
                             dtype='i')
@@ -56,15 +73,17 @@ class DataSourceHelper(object):
                 nbytes = np.empty(len(xtc_files), dtype='i')
                 ds.calib = None
 
-            comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich
-            for i in range(len(smd_files)):
-                comm.Bcast([ds.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
-            comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
-            for i in range(len(xtc_files)):
-                comm.Bcast([ds.configs[i], nbytes[i], MPI.BYTE], root=0)
-                
-            # Send calib
-            ds.calib = comm.bcast(ds.calib, root=0)
+            if mode != 'legion':
+                comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich
+                for i in range(len(smd_files)):
+                    comm.Bcast([ds.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
+                comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
+                for i in range(len(xtc_files)):
+                    comm.Bcast([ds.configs[i], nbytes[i], MPI.BYTE], root=0)
+
+                # Send calib
+                ds.calib = comm.bcast(ds.calib, root=0)
+
             # Assign node types
             ds.nsmds = int(os.environ.get('PS_SMD_NODES', np.ceil((size-1)*PERCENT_SMD)))
             if rank == 0:
@@ -72,8 +91,7 @@ class DataSourceHelper(object):
             elif rank < ds.nsmds + 1:
                 ds.nodetype = 'smd'
 
-            if ds.nodetype == 'bd':
-                ds.dm = DgramManager(xtc_files, configs=ds.configs)
+            ds.dm = DgramManager(xtc_files, configs=ds.configs)
 
     def setup_dgram_manager(self, ds, xtc_files, smd_files):
         if smd_files is not None:
@@ -158,6 +176,8 @@ class DataSourceHelper(object):
                      'pedestals': pedestals}
         return calib
 
+def datasource_from_id(ds_id):
+    return DataSourceHelper.ds_by_id[ds_id]
 
 class MpiComm(object):
     rank = 0

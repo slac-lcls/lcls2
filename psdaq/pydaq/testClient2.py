@@ -10,13 +10,15 @@ import copy
 import socket
 from uuid import uuid4
 import zmq
-from collection2 import pull_port, pub_port, create_msg
-from transitions import Machine, MachineError, State
+from collection import pull_port, pub_port, create_msg
 import argparse
 import logging
 
 class Client:
     def __init__(self, platform):
+
+        # initialize state
+        self.state = 'reset'
 
         # establish id
         self.hostname = socket.gethostname()
@@ -33,9 +35,16 @@ class Client:
 
         # define commands
         handle_request = {
+            'reset': self.handle_reset,
             'plat': self.handle_plat,
             'alloc': self.handle_alloc,
-            'connect': self.handle_connect
+            'connect': self.handle_connect,
+            'configure': self.handle_configure,
+            'beginrun': self.handle_beginrun,
+            'enable': self.handle_enable,
+            'disable': self.handle_disable,
+            'endrun': self.handle_endrun,
+            'unconfigure': self.handle_unconfigure
         }
 
         # process messages
@@ -43,8 +52,6 @@ class Client:
             msg = self.sub.recv_json()
             key = msg['header']['key']
             handle_request[key](msg)
-            if key == 'connect':
-                break
 
     def handle_plat(self, msg):
         logging.debug('Client handle_plat()')
@@ -65,9 +72,56 @@ class Client:
     def handle_connect(self, msg):
         logging.debug('Client handle_connect()')
         if self.state == 'alloc':
+            self.state = 'connect'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
+    def handle_configure(self, msg):
+        logging.debug('Client handle_configure()')
+        if self.state == 'connect':
+            self.state = 'configured'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_unconfigure(self, msg):
+        logging.debug('Client handle_unconfigure()')
+        if self.state == 'configured':
+            self.state = 'connect'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_beginrun(self, msg):
+        logging.debug('Client handle_beginrun()')
+        if self.state == 'configured':
+            self.state = 'running'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_endrun(self, msg):
+        logging.debug('Client handle_endrun()')
+        if self.state == 'running':
+            self.state = 'configured'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_enable(self, msg):
+        logging.debug('Client handle_enable()')
+        if self.state == 'running':
+            self.state = 'enabled'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_disable(self, msg):
+        logging.debug('Client handle_disable()')
+        if self.state == 'enabled':
+            self.state = 'running'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_reset(self, msg):
+        logging.debug('Client handle_reset()')
+        self.state = 'reset'
+        # is a reply to reset necessary?
 
 if __name__ == '__main__':
 

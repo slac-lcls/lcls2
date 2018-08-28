@@ -21,7 +21,7 @@ for run in ds.runs():
     for evt in run.events():
         #eventCode
         for d in evt:
-            pass
+            assert d.xppcspad.raw.arrayRaw.shape == (18,)
     #endRunCode
 #endJobCode
 
@@ -34,3 +34,8 @@ for run in ds.runs():
     for configUpdate in run.configUpdates():
         for config in configUpdate.events():
             pass
+
+# Usecase#4: analyze with callbacks
+def event_fn(event):
+    pass
+ds.analyze(event_fn=event_fn)

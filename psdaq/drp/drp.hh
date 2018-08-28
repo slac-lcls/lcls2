@@ -27,6 +27,7 @@ struct PGPData
 
 struct Parameters
 {
+    int partition;
     std::string eb_server_ip;
     unsigned contributor_id;
     std::string output_dir;

@@ -134,10 +134,10 @@ target_link_libraries(test_AreaDetector
 )
 
 # Test curl
-add_executable(test_curl
-    tests/test_curl.cc
+add_executable(test_MDBWebUtils
+    tests/test_MDBWebUtils.cc
 )
-target_link_libraries(test_curl
+target_link_libraries(test_MDBWebUtils
     psalg
     xtcdata::xtc
     ${CURL_LIBRARY}
@@ -149,7 +149,7 @@ install(TARGETS psalg
                 test_hsd
                 test_CalibPars
                 test_AreaDetector
-                test_curl
+                test_MDBWebUtils
                 test_logger
                 datareader
     EXPORT psalgTargets

@@ -1,7 +1,8 @@
 import sys, os, glob
 from psana.detector.detector import Detector
 from psana.psexp.run import Run
-from psana.psexp.tools import MpiComm, DataSourceHelper
+from psana.psexp.node import analyze
+from psana.psexp.tools import MpiComm, DataSourceHelper, datasource_from_id
 
 class DataSource(object):
     """ Read XTC files  """ 
@@ -24,7 +25,7 @@ class DataSource(object):
         if self.nodetype == 'bd':
             self.Detector = Detector(self.configs, calib=self.calib) 
 
-    def runs(self): 
+    def runs(self):
         nruns = 1
         for run_no in range(nruns):
             yield Run(self)
@@ -32,9 +33,14 @@ class DataSource(object):
     def events(self): 
         for run in self.runs():
             for evt in run.events(): yield evt
-    
+
     @property
     def _configs(self):
         assert len(self.configs) > 0
         return self.configs
-    
+
+    def analyze(self, **kwargs):
+        analyze(self, **kwargs)
+
+    def __reduce__(self):
+        return (datasource_from_id, (self.id,))

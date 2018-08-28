@@ -17,10 +17,6 @@
 #include <structmember.h>
 #include <assert.h>
 
-#ifdef PSANA_USE_LEGION
-#include "legion_helper.hh"
-#endif
-
 using namespace XtcData;
 #define BUFSIZE 0x4000000
 #define TMPSTRINGSIZE 256
@@ -44,30 +40,13 @@ struct PyDgramObject {
     PyObject* dict;
     PyObject* pyseq;
     bool is_pyseq_valid;
-// Please do not access the dgram field directly. Instead use dgram()
     PyObject* dgrambytes;
-    Dgram* dgram_;
-    Dgram*& dgram();
-#ifdef PSANA_USE_LEGION
-    bool is_dgram_valid;
-    LegionArray array;
-#endif
+    Dgram* dgram;
     int file_descriptor;
     ssize_t offset;
     Py_buffer buf;
     ContainerInfo contInfo;
 };
-
-Dgram*& PyDgramObject::dgram()
-{
-#ifdef PSANA_USE_LEGION
-    if (array && !is_dgram_valid) {
-        dgram_ = (Dgram*)array.get_pointer();
-        is_dgram_valid = true;
-    }
-#endif
-  return dgram_;
-}
 
 static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
     char namecopy[TMPSTRINGSIZE];
@@ -346,12 +325,12 @@ void AssignDict(PyDgramObject* self, PyObject* configDgram) {
     
     if (isConfig) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
     
-    NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram()->xtc);
+    NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
     namesIter.iterate();
     
     if (isConfig) DictAssignAlg((PyDgramObject*)configDgram, namesIter.namesVec());
     
-    PyConvertIter iter(&self->dgram()->xtc, self, namesIter.namesVec());
+    PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
     iter.iterate();
 }
 
@@ -361,17 +340,12 @@ static void dgram_dealloc(PyDgramObject* self)
     // we creating dgrams with a NULL value for pyseq?
     Py_XDECREF(self->pyseq);
     Py_XDECREF(self->dict);
-#ifndef PSANA_USE_LEGION
     if (self->buf.buf == NULL) {
         // can be NULL if we had a problem early in dgram_init
         Py_XDECREF(self->dgrambytes);
     } else {
         PyBuffer_Release(&(self->buf));
     }
-#else
-    // In-place destructor is necessary because the dgram is deallocated with free below.
-    self->array.~LegionArray();
-#endif
     // can be NULL if we had a problem early in dgram_init
     Py_XDECREF(self->contInfo.containermod);
     Py_XDECREF(self->contInfo.pycontainertype);
@@ -387,61 +361,30 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-#ifdef PSANA_USE_LEGION
-class LegionDgramRead : public LegionTask<LegionDgramRead, int, ssize_t, off_t> {
-public:
-    LegionDgramRead() {}
-
-    LegionDgramRead(int fd, LegionArray &array, ssize_t dgram_size, off_t offset)
-      : LegionTask(fd, dgram_size, offset)
-    {
-        add_array(array);
-    }
-
-    void run(int fd, ssize_t dgram_size, off_t offset)
-    {
-        Dgram *dgram = (Dgram *)arrays[0].get_pointer();
-        int readSuccess = pread(fd, dgram, dgram_size, offset);
-        if (readSuccess <= 0) {
-            abort(); // Elliott: need better error handling for asynchronous case
-        }
-    }
-
-    static Legion::TaskID task_id;
-};
-
-Legion::TaskID LegionDgramRead::task_id = LegionDgramRead::register_task("dgram_read");
-#endif
-
 static int dgram_read(PyDgramObject* self, ssize_t dgram_size, int sequential)
 {
     ssize_t readSuccess=0;
     if (sequential) {
-        readSuccess = read(self->file_descriptor, self->dgram(), sizeof(Dgram));
+        readSuccess = read(self->file_descriptor, self->dgram, sizeof(Dgram));
         if (readSuccess <= 0) {
-            PyErr_SetString(PyExc_StopIteration, "loading self->dgram() was unsuccessful");
+            PyErr_SetString(PyExc_StopIteration, "loading self->dgram was unsuccessful");
             return -1;
         }
-        readSuccess = read(self->file_descriptor, self->dgram() + 1, self->dgram()->xtc.sizeofPayload());
+        readSuccess = read(self->file_descriptor, self->dgram + 1, self->dgram->xtc.sizeofPayload());
         if (readSuccess <= 0) {
-            PyErr_SetString(PyExc_StopIteration, "loading self->dgram() was unsuccessful");
+            PyErr_SetString(PyExc_StopIteration, "loading self->dgram was unsuccessful");
             return -1;
         }
 
     } else {
         off_t fOffset = (off_t)self->offset;
-#ifndef PSANA_USE_LEGION
-        readSuccess = pread(self->file_descriptor, self->dgram(), dgram_size, fOffset); // for read with offset
+        readSuccess = pread(self->file_descriptor, self->dgram, dgram_size, fOffset); // for read with offset
         if (readSuccess <= 0) {
             char s[TMPSTRINGSIZE];
-            snprintf(s, TMPSTRINGSIZE, "loading self->dgram() was unsuccessful -- %s", strerror(errno));
+            snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
             return -1;
         }
-#else
-        LegionDgramRead task(self->file_descriptor, self->array, dgram_size, fOffset);
-        task.launch();
-#endif
     }
     return 0;
 }
@@ -484,32 +427,24 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->contInfo.pycontainertype = PyObject_GetAttrString(self->contInfo.containermod,"Container");
 
     if (!isView) {
-#ifndef PSANA_USE_LEGION
         PyObject* arglist = Py_BuildValue("(i)",BUFSIZE);
         // I believe this memsets the buffer to 0, which we don't need.
         // Perhaps ideally we would write a custom object to avoid this. - cpo
         self->dgrambytes = PyObject_CallObject((PyObject*)&PyByteArray_Type, arglist);
         Py_DECREF(arglist);
-        self->dgram() = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
-#else
-        self->array = LegionArray(BUFSIZE);
-        self->is_dgram_valid = false;
-#endif
+        self->dgram = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
     } else {
         if (PyObject_GetBuffer(view, &(self->buf), PyBUF_SIMPLE) == -1) {
             PyErr_SetString(PyExc_MemoryError, "unable to create dgram with the given view");
             return -1;
         }
-        self->dgram() = (Dgram*)(((char *)self->buf.buf) + self->offset);
+        self->dgram = (Dgram*)(((char *)self->buf.buf) + self->offset);
     }
 
-    // Avoid blocking to check the pointer in the Legion case
-#ifndef PSANA_USE_LEGION
-    if (self->dgram() == NULL) {
+    if (self->dgram == NULL) {
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
         return -1;
     }
-#endif
 
     // The pyseq fields are initialized in dgram_get_*
     self->is_pyseq_valid = false;
@@ -517,7 +452,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     // Read the data if this dgram is not a view
     if (!isView) {
         if (fd==-1 && configDgram==0) {
-            self->dgram()->xtc.extent = 0; // for empty dgram
+            self->dgram->xtc.extent = 0; // for empty dgram
         } else {
             if (fd==-1) {
                 self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
@@ -541,11 +476,11 @@ static Py_ssize_t PyDgramObject_getsegcount(PyDgramObject *self, Py_ssize_t *len
 }
 
 static Py_ssize_t PyDgramObject_getreadbuf(PyDgramObject *self, Py_ssize_t segment, void **ptrptr) {
-    *ptrptr = (void*)self->dgram();
-    if (self->dgram()->xtc.extent == 0) {
+    *ptrptr = (void*)self->dgram;
+    if (self->dgram->xtc.extent == 0) {
         return BUFSIZE;
     } else {
-        return sizeof(*self->dgram()) + self->dgram()->xtc.sizeofPayload();
+        return sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
     }
 }
 
@@ -567,11 +502,11 @@ static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
 
     PyDgramObject* self = (PyDgramObject*)obj;
     view->obj = (PyObject*)self;
-    view->buf = (void*)self->dgram();
-    if (self->dgram()->xtc.extent == 0) {
+    view->buf = (void*)self->dgram;
+    if (self->dgram->xtc.extent == 0) {
         view->len = BUFSIZE; // share max size for empty dgram 
     } else {
-        view->len = sizeof(*self->dgram()) + self->dgram()->xtc.sizeofPayload();
+        view->len = sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
     }
     view->readonly = 1;
     view->itemsize = 1;
@@ -591,7 +526,7 @@ static PyObject* dgram_get_seq(PyDgramObject* self, void *closure) {
         //cpo: wasteful to do the Import here every time?
         PyObject* seqmod = PyImport_ImportModule("psana.seq");
         PyObject* pyseqtype = PyObject_GetAttrString(seqmod,"Seq");
-        PyObject* capsule = PyCapsule_New((void*)&(self->dgram()->seq), NULL, NULL);
+        PyObject* capsule = PyCapsule_New((void*)&(self->dgram->seq), NULL, NULL);
         PyObject* arglist = Py_BuildValue("(O)", capsule);
         Py_DECREF(capsule); // now owned by the arglist
         Py_DECREF(seqmod);
