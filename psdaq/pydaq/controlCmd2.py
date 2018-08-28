@@ -5,7 +5,7 @@ control command
 import os
 import argparse
 import zmq
-from collection2 import rep_port, create_msg
+from collection import rep_port, create_msg
 
 def main():
 

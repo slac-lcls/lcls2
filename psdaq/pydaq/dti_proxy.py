@@ -10,8 +10,7 @@ import copy
 import socket
 from uuid import uuid4
 import zmq
-from collection2 import pull_port, pub_port, create_msg
-from transitions import Machine, MachineError, State
+from collection import pull_port, pub_port, create_msg
 import argparse
 import logging
 from psp import PV

@@ -5,7 +5,7 @@ showPlatform command
 import os
 import time
 import zmq
-from collection2 import rep_port, create_msg
+from collection import rep_port, create_msg
 import pprint
 import argparse
 
