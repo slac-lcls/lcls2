@@ -7,18 +7,23 @@ add_library(utils SHARED
     utils.cc
 )
 
+find_package(PythonLibs 3.6 REQUIRED)
+
 target_link_libraries(utils
     xtcdata::xtc
     pgpdriver
     #pshdf5
     eb
     zmq
+    ${PYTHON_LIBRARIES}
 )
 
 target_include_directories(utils PUBLIC
     ../psdaq/pgp/user-driver
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${PYTHON_INCLUDE_DIRS}
+    $ENV{CONDA_PREFIX}/include
 )
 
 add_executable(drp

@@ -89,7 +89,7 @@ if __name__ == '__main__':
     # Specific PVs
     pvdb[stationstr+'ENABLE'   ] = {'type' : 'int', 
                                     'count': 4,
-                                    'value' : [0]*4 }
+                                    'value' : [1]*4 }
     pvdb[stationstr+'RAW_START' ] = {'type' : 'int', 
                                      'count': 4,
                                      'value' : [4]*4 }

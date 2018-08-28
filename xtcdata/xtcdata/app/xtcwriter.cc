@@ -27,7 +27,7 @@
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/VarDef.hh"
-
+#include "rapidjson/document.h"
 
 #include <vector>
 #include <stdio.h>
@@ -37,8 +37,12 @@
 #include <type_traits>
 #include <cstring>
 #include <sys/time.h>
+#include <Python.h>
+#include <stdint.h>
 
 using namespace XtcData;
+using namespace rapidjson;
+
 #define BUFSIZE 0x4000000
 #define NEVENT 2
 
@@ -317,9 +321,9 @@ public:
     uint8_t array[18];
 };
 
-void pgpExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
+void pgpExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId)
 {
-    DescribedData frontEnd(parent, NamesVec, nameId);
+    DescribedData frontEnd(parent, namesVec, nameId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -336,9 +340,9 @@ void pgpExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
     frontEnd.set_array_shape(PgpDef::array1Pgp, shape);
 }
 
-void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
+void fexExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId)
 { 
-    CreateData fex(parent, NamesVec, nameId);
+    CreateData fex(parent, namesVec, nameId);
     fex.set_value(FexDef::floatFex, (double)41.0);
 
     unsigned shape[MaxRank] = {2,3};
@@ -353,9 +357,9 @@ void fexExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
 }
    
 
-void padExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
+void padExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId)
 { 
-    DescribedData pad(parent, NamesVec, nameId);
+    DescribedData pad(parent, namesVec, nameId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -370,22 +374,22 @@ void padExample(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned nameId)
     pad.set_array_shape(PadDef::arrayRaw, shape);
 }
 
-void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) {
+void add_names(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     Alg hsdRawAlg("raw",0,0,0);
-    Names& frontEndNames = *new(parent) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234");
-    frontEndNames.add(parent,PgpDef);
+    Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234");
+    frontEndNames.add(xtc,PgpDef);
     namesVec.push_back(NameIndex(frontEndNames));
 
     Alg hsdFexAlg("fex",4,5,6);
-    Names& fexNames = *new(parent) Names("xpphsd", hsdFexAlg, "hsd","detnum1234");
-    fexNames.add(parent, FexDef);
+    Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234");
+    fexNames.add(xtc, FexDef);
     namesVec.push_back(NameIndex(fexNames));
 
     unsigned segment = 0;
     Alg cspadRawAlg("raw",2,3,42);
-    Names& padNames = *new(parent) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
+    Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
     Alg segmentAlg("cspadseg",2,3,42);
-    padNames.add(parent, PadDef);
+    padNames.add(xtc, PadDef);
     namesVec.push_back(NameIndex(padNames));
 }
 
@@ -397,6 +401,72 @@ void addData(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     fexExample(xtc, namesVec, nameId);
     nameId++;
     padExample(xtc, namesVec, nameId);
+}
+
+class HsdConfigDef:public VarDef
+{
+public:
+  enum index
+    {
+      enable,
+      raw_prescale
+    };
+
+  HsdConfigDef()
+   {
+       NameVec.push_back({"enable",Name::UINT64,1});
+       NameVec.push_back({"raw_prescale",Name::UINT64,1});
+   }
+} HsdConfigDef;
+
+void addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
+
+    FILE* file;
+    Py_Initialize();
+    PyObject* main_module = PyImport_AddModule("__main__");
+    PyObject* main_dict = PyModule_GetDict(main_module);
+    file = fopen("hsdConfig.py","r");
+    PyObject* a = PyRun_File(file, "hsdConfig.py",Py_file_input,main_dict,main_dict);
+    printf("PyRun: %p \n", a);
+    printf("size %d\n",PyDict_Size(main_dict));
+    PyObject* mybytes = PyDict_GetItemString(main_dict,"dgram");
+    printf("%p\n",mybytes);
+    char* json = (char*)PyBytes_AsString(mybytes);
+    printf("%p\n",mybytes);
+    printf("%s\n",json);
+    Py_Finalize();
+    printf("Done\n");
+
+    Document d;
+    d.Parse(json);
+
+    Value& software = d["alg"]["software"];
+    Value& version = d["alg"]["version"];
+    for (SizeType i = 0; i < version.Size(); i++) // Uses SizeType instead of size_t
+        printf("version[%d] = %d\n", i, version[i].GetInt());
+
+    Alg hsdConfigAlg(software.GetString(),version[0].GetInt(),version[1].GetInt(),version[2].GetInt());
+    Names& configNames = *new(xtc) Names("xpphsd", hsdConfigAlg, "hsd", "detnum1235");
+    configNames.add(xtc, HsdConfigDef);
+    namesVec.push_back(NameIndex(configNames));
+
+    CreateData fex(xtc, namesVec, 3); //FIXME: avoid hardwiring nameId
+
+    // TODO: dynamically discover
+
+    Value& enable = d["xtc"]["ENABLE"];
+    unsigned shape[MaxRank] = {enable.Size()};
+    Array<uint64_t> arrayT = fex.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
+    for(unsigned i=0; i<shape[0]; i++){
+        arrayT(i) = (uint64_t) enable[i].GetInt();
+    };
+
+    Value& raw_prescale = d["xtc"]["RAW_PS"];
+    shape[MaxRank] = {raw_prescale.Size()};
+    Array<uint64_t> arrayT1 = fex.allocate<uint64_t>(HsdConfigDef::raw_prescale,shape); //FIXME: figure out avoiding hardwired zero
+    for(unsigned i=0; i<shape[0]; i++){
+        arrayT1(i) = (uint64_t) raw_prescale[i].GetInt();
+    };
 }
 
 void usage(char* progname)
@@ -446,8 +516,12 @@ int main(int argc, char* argv[])
     add_names(config.xtc, namesVec);
     addData(config.xtc,namesVec);
 
+    addJson(config.xtc,namesVec);
+    std::cout << "Done addJson" << std::endl;
+
     DebugIter iter(&config.xtc, namesVec);
     iter.iterate();
+    std::cout << "Done iter" << std::endl;
 
     if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
         printf("Error writing configure to output xtc file.\n");
