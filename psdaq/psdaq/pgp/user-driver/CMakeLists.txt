@@ -23,17 +23,13 @@ target_link_libraries(status
     pgpdriver
 )
 
-add_executable(read
-    read.cc
+add_executable(pgpread
+    pgpread.cc
 )
-target_include_directories(read PRIVATE
-    $ENV{CONDA_PREFIX}/include
-)
-target_link_libraries(read
-    pthread
+
+target_link_libraries(pgpread
     pgpdriver
-    $ENV{CONDA_PREFIX}/lib/libzmq.so
-    $ENV{CONDA_PREFIX}/lib/libstdc++.so.6
+    xtcdata::xtc
 )
 
 add_executable(looptest
