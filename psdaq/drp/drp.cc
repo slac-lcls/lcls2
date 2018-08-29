@@ -41,6 +41,7 @@ void join_collection(Parameters& para)
 int main(int argc, char* argv[])
 {
     Parameters para;
+    para.partition = 0;
     int device_id = 0x2031;
     int lane_mask = 0xf;
     std::string detector_type;
