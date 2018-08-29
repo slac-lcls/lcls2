@@ -5,7 +5,7 @@ Usage ::
     import psana.pscalib.calib.MDBWebUtils as wu
     from psana.pscalib.calib.MDBWebUtils import calib_constants
 
-    _ = wu.requests_get(url, query=None)
+    _ = wu.request(url, query=None)
     _ = wu.database_names(url=cc.URL)
     _ = wu.collection_names(dbname, url=cc.URL)
     _ = wu.find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL)
@@ -32,13 +32,14 @@ from numpy import fromstring
 from psana.pscalib.calib.MDBUtils import dbnames_collection_query
 
 #------------------------------
+#------------------------------
 
-def requests_get(url, query=None) :
+def request(url, query=None) :
     #logger.debug('==== query: %s' % str(query))
     t0_sec = time()
     r = get(url, query)
     dt = time()-t0_sec
-    logger.debug('CONSUMED TIME requests_get %.6f sec' % dt)
+    logger.debug('CONSUMED TIME request %.6f sec' % dt)
     return r
 
 #------------------------------
@@ -47,7 +48,7 @@ def requests_get(url, query=None) :
 def database_names(url=cc.URL) :
     """Returns list of database names for url.
     """
-    r = requests_get(url)
+    r = request(url)
     return r.json()
 
 #------------------------------
@@ -56,7 +57,7 @@ def database_names(url=cc.URL) :
 def collection_names(dbname, url=cc.URL) :
     """Returns list of collection names for dbname and url.
     """
-    r = requests_get('%s/%s'%(url,dbname))
+    r = request('%s/%s'%(url,dbname))
     return r.json()
 
 #------------------------------
@@ -66,7 +67,7 @@ def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
     """
     query_string=str(query).replace("'",'"')
     logger.debug('find_docs query: %s' % query_string)
-    r = requests_get('%s/%s/%s'%(url,dbname,colname),{"query_string": query_string})
+    r = request('%s/%s/%s'%(url,dbname,colname),{"query_string": query_string})
     return r.json()
 
 #------------------------------
@@ -105,7 +106,7 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
 def get_doc_for_docid(dbname, colname, docid, url=cc.URL) :
     """Returns document for docid.
     """
-    r = requests_get('%s/%s/%s/%s'%(url,dbname,colname,docid))
+    r = request('%s/%s/%s/%s'%(url,dbname,colname,docid))
     return r.json()
 
 #------------------------------
@@ -114,7 +115,10 @@ def get_doc_for_docid(dbname, colname, docid, url=cc.URL) :
 def get_data_for_id(dbname, dataid, url=cc.URL) :
     """Returns raw data from GridFS, at this level there is no info for parsing.
     """
-    r = requests_get('%s/%s/gridfs/%s'%(url,dbname,dataid))
+    r = request('%s/%s/gridfs/%s'%(url,dbname,dataid))
+    logger.debug('get_data_for_docid:'\
+                +'\n  r.status_code: %s\n  r.headers: %s\n  r.encoding: %s\n  r.content: %s...\n' % 
+                 (str(r.status_code),  str(r.headers),  str(r.encoding),  str(r.content[:50])))
     return r.content
 
 #------------------------------
@@ -123,7 +127,7 @@ def get_data_for_docid(dbname, colname, docid, url=cc.URL) :
     """Returns data from GridFS using docid.
     """
     doc = get_doc_for_docid(dbname, colname, docid, url)
-    logger.debug('get_data_for_docid: %s', str(doc))
+    logger.debug('get_data_for_docid: %s' % str(doc))
     return get_data_for_doc(dbname, colname, doc, url)
 
 #------------------------------
@@ -138,7 +142,7 @@ def get_data_for_doc(dbname, colname, doc, url=cc.URL) :
         logger.debug("get_data_for_doc: key 'id_data' is missing in selected document...")
         return None
 
-    r2 = requests_get('%s/%s/gridfs/%s'%(url,dbname,idd))
+    r2 = request('%s/%s/gridfs/%s'%(url,dbname,idd))
     s = r2.content
     data_type = doc['data_type']
     if data_type == 'str' : return s.decode()
@@ -213,14 +217,15 @@ if __name__ == "__main__" :
 #------------------------------
 
   def test_get_data_for_id() :
-    o = get_data_for_id('cdb_cxid9114', '5b6cdde71ead144f11531974')
+    o = get_data_for_id('cdb_cspad_0001', '5b6cdde71ead144f11531999')
+    #o = get_data_for_id('cdb_cxid9114', '5b6cdde71ead144f11531974')
     print('test_get_data_for_id: r.content raw data: %s ...' % str(o[:500]))
 
 #------------------------------
 
   def test_get_data_for_docid() :
     o = get_data_for_docid('cdb_cxid9114', 'cspad_0001', '5b6cdde71ead144f115319be')
-    print_ndarr(o, 'test_get_data_for_docid o:', first=0, last=5)
+    print_ndarr(o, 'test_get_data_for_docid o:', first=0, last=10)
 
 #------------------------------
 
@@ -246,11 +251,18 @@ if __name__ == "__main__" :
 #------------------------------
 
 if __name__ == "__main__" :
+  def usage() : return 'Use command: python %s <test-number>, where <test-number> = 0,1,2,...,8' % sys.argv[0]
+
+#------------------------------
+
+if __name__ == "__main__" :
+    import os
     import sys
     from psana.pyalgos.generic.NDArrUtils import print_ndarr # info_ndarr, print_ndarr
     global print_ndarr
     logging.basicConfig(format='%(message)s', level=logging.DEBUG) # logging.INFO
 
+    logger.info('\n%s\n' % usage())
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.info('%s\nTest %s:' % (50*'_',tname))
     if   tname == '0' : test_database_names();

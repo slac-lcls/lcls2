@@ -5,7 +5,6 @@
 #include "psalg/calib/ArrayIO.hh"
 
 #include <iostream>  // cout, puts
-#include <sstream>   // stringstream
 #include <stdlib.h>  // atoi
 #include <cstring>   // memcpy
 #include <sstream>   // stringstream, streambuf
