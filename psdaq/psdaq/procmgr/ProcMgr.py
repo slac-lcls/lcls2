@@ -1024,7 +1024,7 @@ class ProcMgr:
                     waitflag = ''
 
                 if ('>' in value[self.DICT_CMD]) or (logpathbase == None) or (logpathbase == "/dev/null"):
-                    redirect_string = ''
+                    logFlag = ''
                 else:
                     #
                     # Construct path similar to:
@@ -1037,7 +1037,7 @@ class ProcMgr:
                     except:
                       # mkdir
                       print('ERR: mkdir <%s> failed' % logpath)
-                      redirect_string = ''
+                      logFlag = ''
                     else:
                       time_string = time.strftime('%d_%H:%M:%S')
                       loghost = key2host(key)
@@ -1049,19 +1049,14 @@ class ProcMgr:
                       logfile = '%s/%s_%s.log' % (logpath, time_string, logkey)
                       if verbose:
                           print('log file: <%s>' % logfile)
-                      if localFlag:
-                          # local: bash shell
-                          redirect_string = '>> \"%s\" 2>&1' % logfile
-                      else:
-                          # remote: tcsh shell
-                          redirect_string = '>>& \"%s\"' % logfile
+                      logFlag = '-L \"%s\"' % logfile
 
                     pbits = (stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
                     try:
                         statmode = os.stat(logpath).st_mode
                     except:
                         print('ERR: stat %s failed' % logpath)
-                        redirect_string = ''
+                        logFlag = ''
                     else:
                         if (statmode & pbits) != pbits:
                           try:
@@ -1069,10 +1064,10 @@ class ProcMgr:
                             os.chmod(logpath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
                           except:
                             print('ERR: chmod %s failed' % logpath)
-                            redirect_string = ''
+                            logFlag = ''
 
                 # encode logfile path as part of procServ name
-                if (len(redirect_string) > 1):
+                if (len(logFlag) > 1):
                   name = logfile.replace(logpathbase+'/', '', 1)
                   if not os.path.exists(logfile):
                     try:
@@ -1095,14 +1090,22 @@ class ProcMgr:
                 else:
                   name = key2uniqueid(key)
 
-                startcmd = \
-                        '/reg/common/package/procServ/2.6.0-SLAC/x86_64-rhel6-gcc44-opt/bin/procServ --noautorestart --name %s %s --allow --coresize %d %s %s %s' % \
+                # need full path of procServ for executing on remote shell
+                try:
+                    procServCmd = os.path.join(os.environ["CONDA_PREFIX"], "bin/procServ")
+                except KeyError:
+                    print('ERR: CONDA_PREFIX not found in environment')
+                    procServCmd = "/dev/null"
+                else:
+                    if not os.path.isfile(procServCmd):
+                        print('ERR: file %s not found' % procServCmd)
+                startcmd = procServCmd+' --noautorestart --name %s %s %s --allow --coresize %d %s %s' % \
                        (name, \
                         waitflag, \
+                        logFlag, \
                         coresize, \
                         value[self.DICT_CTRL], \
-                        value[self.DICT_CMD],
-                        redirect_string)
+                        value[self.DICT_CMD])
                 # is this host already in the dictionary?
                 if starthost in startdict:
                     # yes: add to set of start commands
