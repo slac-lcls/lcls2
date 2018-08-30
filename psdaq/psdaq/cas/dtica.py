@@ -1,8 +1,8 @@
 import sys
 import argparse
-from psp import Pv
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
+from p4p.client.thread import Context
 
 NUsLinks = 7
 NDsLinks = 7
@@ -30,7 +30,7 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
         self.clicked.connect(self.buttonClicked)
 
-        self.pv = Pv.Pv(pvname)
+        self.pv = Pv(pvname)
 
     def buttonClicked(self):
         self.pv.put(1)          # Value is immaterial
@@ -58,7 +58,7 @@ class PvEditCheckList:
         self.pv.put(value)
 
     def update(self, err):
-        q = self.pv.value+1
+        q = self.pv.get()+1
         if err is None:
             try:
                 self.boxes.button(int(q)).setChecked(True)
@@ -91,7 +91,7 @@ class DtiAllocation(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
         super(DtiAllocation, self).__init__()
-        
+
         glo = QtWidgets.QGridLayout()
 
         row = 0
@@ -100,10 +100,10 @@ class DtiAllocation(QtWidgets.QWidget):
         glo.addWidget( QtWidgets.QLabel('US'), row, 0,
                        QtCore.Qt.AlignHCenter )
         glo.addItem  ( QtWidgets.QSpacerItem( 15, 5 ), row, colp-1 )
-        glo.addWidget( QtWidgets.QLabel('Partition'), row, colp, 1, 9, 
+        glo.addWidget( QtWidgets.QLabel('Partition'), row, colp, 1, 9,
                        QtCore.Qt.AlignHCenter )
         glo.addItem  ( QtWidgets.QSpacerItem( 15, 5 ), row, cold-1 )
-        glo.addWidget( QtWidgets.QLabel('DS Links') , row, cold, 1, NDsLinks, 
+        glo.addWidget( QtWidgets.QLabel('DS Links') , row, cold, 1, NDsLinks,
                        QtCore.Qt.AlignHCenter )
         row += 1
         glo.addWidget( QtWidgets.QLabel('None'), row, colp,
@@ -134,17 +134,17 @@ class DtiAllocation(QtWidgets.QWidget):
         self.mon = []
         for i in range(NUsLinks):
             self.mon.append(DtiAllocMon(self,pvbase+'UsLinkFwdMask%d'%i))
-        
+
         self.setLayout(glo)
 
     def updateTable(self,err):
         usmask = [0]*len(self.mon)
         for i,mon in enumerate(self.mon):
-            usmask[i] = mon.pv.value
+            usmask[i] = mon.pv.get()
             for j in range(NDsLinks):
                 if ((usmask[i] & (1<<j))!=0):
                     self.groups[j].button(i).setChecked(True)
-        
+
     def update(self):
         usmask = [0]*NUsLinks
         for j in range(NDsLinks):
@@ -153,12 +153,12 @@ class DtiAllocation(QtWidgets.QWidget):
                 usmask[i] = usmask[i] | (1<<j)
         for i in range(NUsLinks):
             self.mon[i].pv.put(usmask[i])
-        
+
 class DtiStatistics(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
         super(DtiStatistics, self).__init__()
-        
+
         lor = QtWidgets.QVBoxLayout()
         if True:
             hbox = QtWidgets.QHBoxLayout()
@@ -167,14 +167,14 @@ class DtiStatistics(QtWidgets.QWidget):
             hbox.addLayout( LblMask(pvbase, 'DsLinkUp', NDsLinks) )
             lor.addLayout(hbox)
 
-        lor.addWidget( PvPushButton(pvbase, "CountClear") )
+        lor.addWidget( PvPushButton(pvbase + "CountClear", "CountClear") )
 
-        lor.addWidget(PvIntTable('Upstream Link Stats', pvbase, 
+        lor.addWidget(PvIntTable('Upstream Link Stats', pvbase,
                                  ['UsWrFifoD','UsRdFifoD','dUsIbEvt','UsObSent','UsObRecv','dUsRxFull','dUsRxInh','dUsRxErrs'],
                                  ['FifoWr'   ,'FifoRd'   ,'IbEvt'   ,'CtlOut'  ,'CtlIn'   ,'Full'     ,'InhEvts' ,'RxErrs'],
                                  NUsLinks))
 
-        lor.addWidget(PvIntTable('Downstream Link Stats', pvbase, 
+        lor.addWidget(PvIntTable('Downstream Link Stats', pvbase,
                                  ['dDsRxErrs','dDsRxFull','dDsObSent'],
                                  ['RxErrs'   ,'Full' ,'MBytes'],
                                  NDsLinks))
@@ -221,7 +221,11 @@ def main():
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
     parser.add_argument("base", help="pv base to monitor", default="DAQ:LAB2:DTI")
+    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
+
     args = parser.parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

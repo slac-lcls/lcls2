@@ -1,6 +1,7 @@
 import sys
+import logging
 
-from pcaspy import SimpleServer, Driver
+from psdaq.epicstools.PVAServer import PVAServer
 import time
 from datetime import datetime
 import argparse
@@ -11,11 +12,6 @@ import pdb
 NLanes = 4
 NApps = 4
 WfLen = 1024
-
-class myDriver(Driver):
-    def __init__(self):
-        super(myDriver, self).__init__()
-
 
 def printDb():
     global pvdb
@@ -39,132 +35,133 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    myDriver.verbose = args.verbose
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     stationstr = ''
     prefix = args.P+':'
 
     # Base PVs
     #  Range of trigger delay setting capability
-    pvdb[stationstr+'BASE:INTTRIGRANGE' ] = {'type' : 'int', 
-                                             'count' : 2, 
+    pvdb[stationstr+'BASE:INTTRIGRANGE' ] = {'type' : 'int',
+                                             'count' : 2,
                                              'value' : [0,0x0fffffff] }
     #  Clock Freq [MHz] of trigger delay setting
-    pvdb[stationstr+'BASE:INTTRIGCLK'   ] = {'type' : 'float', 
+    pvdb[stationstr+'BASE:INTTRIGCLK'   ] = {'type' : 'float',
                                              'value' : 156.25 }
     #  Trigger delay setting (determined by XPM)
-    pvdb[stationstr+'BASE:INTTRIGVAL'   ] = {'type' : 'int', 
+    pvdb[stationstr+'BASE:INTTRIGVAL'   ] = {'type' : 'int',
                                              'value' : 0 }
     #  Trigger delay target (tuned to sync with beam)
-    pvdb[stationstr+'BASE:ABSTRIGTARGET'] = {'type' : 'float', 
+    pvdb[stationstr+'BASE:ABSTRIGTARGET'] = {'type' : 'float',
                                              'value' : 95 }
     #  Internal event pipeline depth
-    pvdb[stationstr+'BASE:INTPIPEDEPTH' ] = {'type' : 'int', 
+    pvdb[stationstr+'BASE:INTPIPEDEPTH' ] = {'type' : 'int',
                                              'value' : 0 }
     #  Internal event pipeline almost full value
-    pvdb[stationstr+'BASE:INTAFULLVAL'  ] = {'type' : 'int', 
+    pvdb[stationstr+'BASE:INTAFULLVAL'  ] = {'type' : 'int',
                                              'value' : 0 }
     #  Minimum L0 trigger spacing requirement
-    pvdb[stationstr+'BASE:MINL0INTERVAL'] = {'type' : 'float', 
+    pvdb[stationstr+'BASE:MINL0INTERVAL'] = {'type' : 'float',
                                              'value' : 4.2 }
     #  Upstream round trip time (XPM generates L0 -> XPM receives almost full from device)
-    pvdb[stationstr+'BASE:UPSTREAMRTT'  ] = {'type' : 'float', 
+    pvdb[stationstr+'BASE:UPSTREAMRTT'  ] = {'type' : 'float',
                                              'value' : 0.8 }
     #  Upstream round trip time (XPM generates L0 -> XPM receives almost full from DRP)
-    pvdb[stationstr+'BASE:DNSTREAMRTT'  ] = {'type' : 'float', 
+    pvdb[stationstr+'BASE:DNSTREAMRTT'  ] = {'type' : 'float',
                                              'value' : 1.2 }
     #  Upstream round trip time (XPM generates L0 -> XPM receives almost full from DRP)
-    pvdb[stationstr+'BASE:PARTITION'    ] = {'type' : 'int', 
+    pvdb[stationstr+'BASE:PARTITION'    ] = {'type' : 'int',
                                              'value' : 0 }
     #  This PV triggers execution of all configuration parameters
-    pvdb[stationstr+'BASE:APPLYCONFIG'  ] = {'type' : 'int', 
+    pvdb[stationstr+'BASE:APPLYCONFIG'  ] = {'type' : 'int',
                                              'value' : 0 }
-    pvdb[stationstr+'BASE:UNDOCONFIG'   ] = {'type' : 'int', 
+    pvdb[stationstr+'BASE:UNDOCONFIG'   ] = {'type' : 'int',
                                              'value' : 0 }
-    pvdb[stationstr+'BASE:ENABLETR'     ] = {'type' : 'int', 
+    pvdb[stationstr+'BASE:ENABLETR'     ] = {'type' : 'int',
                                              'value' : 0 }
-    pvdb[stationstr+'BASE:DISABLETR'    ] = {'type' : 'int', 
+    pvdb[stationstr+'BASE:DISABLETR'    ] = {'type' : 'int',
                                              'value' : 0 }
 
     # Specific PVs
-    pvdb[stationstr+'ENABLE'   ] = {'type' : 'int', 
+    pvdb[stationstr+'ENABLE'   ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [1]*4 }
-    pvdb[stationstr+'RAW_START' ] = {'type' : 'int', 
+    pvdb[stationstr+'RAW_START' ] = {'type' : 'int',
                                      'count': 4,
                                      'value' : [4]*4 }
-    pvdb[stationstr+'RAW_GATE' ] = {'type' : 'int', 
+    pvdb[stationstr+'RAW_GATE' ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [200]*4 }
-    pvdb[stationstr+'RAW_PS'   ] = {'type' : 'int', 
+    pvdb[stationstr+'RAW_PS'   ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [1]*4 }
-    pvdb[stationstr+'FEX_START' ] = {'type' : 'int', 
+    pvdb[stationstr+'FEX_START' ] = {'type' : 'int',
                                      'count': 4,
                                      'value' : [4]*4 }
-    pvdb[stationstr+'FEX_GATE' ] = {'type' : 'int', 
+    pvdb[stationstr+'FEX_GATE' ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [200]*4 }
-    pvdb[stationstr+'FEX_PS'   ] = {'type' : 'int', 
+    pvdb[stationstr+'FEX_PS'   ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [1]*4 }
-    pvdb[stationstr+'FEX_YMIN' ] = {'type' : 'int', 
+    pvdb[stationstr+'FEX_YMIN' ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [508]*4 }
-    pvdb[stationstr+'FEX_YMAX' ] = {'type' : 'int', 
+    pvdb[stationstr+'FEX_YMAX' ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [516]*4 }
-    pvdb[stationstr+'FEX_XPRE' ] = {'type' : 'int', 
+    pvdb[stationstr+'FEX_XPRE' ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [2]*4 }
-    pvdb[stationstr+'FEX_XPOST'] = {'type' : 'int', 
+    pvdb[stationstr+'FEX_XPOST'] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [3]*4 }
-    pvdb[stationstr+'NAT_START' ] = {'type' : 'int', 
+    pvdb[stationstr+'NAT_START' ] = {'type' : 'int',
                                      'count': 4,
                                      'value' : [4]*4 }
-    pvdb[stationstr+'NAT_GATE' ] = {'type' : 'int', 
+    pvdb[stationstr+'NAT_GATE' ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [200]*4 }
-    pvdb[stationstr+'NAT_PS'   ] = {'type' : 'int', 
+    pvdb[stationstr+'NAT_PS'   ] = {'type' : 'int',
                                     'count': 4,
                                     'value' : [0]*4 }
 
-    pvdb[stationstr+'RESET'  ] = {'type' : 'int', 
+    pvdb[stationstr+'RESET'  ] = {'type' : 'int',
                                   'value' : 0 }
-    pvdb[stationstr+'PGPLOOPBACK'  ] = {'type' : 'int', 
+    pvdb[stationstr+'PGPLOOPBACK'  ] = {'type' : 'int',
                                         'value' : 0 }
-    pvdb[stationstr+'PGPSKPINTVL'  ] = {'type' : 'int', 
+    pvdb[stationstr+'PGPSKPINTVL'  ] = {'type' : 'int',
                                         'value' : 0xfff0 }
-    pvdb[stationstr+'FULLEVT'      ] = {'type' : 'int', 
+    pvdb[stationstr+'FULLEVT'      ] = {'type' : 'int',
                                         'value' : 4 }
-    pvdb[stationstr+'FULLSIZE'     ] = {'type' : 'int', 
+    pvdb[stationstr+'FULLSIZE'     ] = {'type' : 'int',
                                         'value' : 3072 }
-    pvdb[stationstr+'TESTPATTERN'  ] = {'type' : 'int', 
+    pvdb[stationstr+'TESTPATTERN'  ] = {'type' : 'int',
                                         'value' : 0 } # -1: off 1: rect, 2: sawtooth
-    pvdb[stationstr+'TRIGSHIFT'  ] = {'type' : 'int', 
+    pvdb[stationstr+'TRIGSHIFT'  ] = {'type' : 'int',
                                       'value' : 0 }
-    pvdb[stationstr+'SYNCE'       ] = {'type' : 'int', 
+    pvdb[stationstr+'SYNCE'       ] = {'type' : 'int',
                                       'value' : 0 }
     pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int',
-#                                       'value' : 2050 } 
+#                                       'value' : 2050 }
 #                                       'value' : 1600 }
                                        'value' : 5500-175 }
-    pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
+    pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int',
 #                                       'value' : 2400 }
 #                                       'value' : 1950 }
                                        'value' : 5500+175 }
-    pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
+    pvdb[stationstr+'SYNCO'       ] = {'type' : 'int',
                                       'value' : 0 }
-    pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
+    pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int',
 #                                       'value' : 11800 }
 #                                       'value' : 11400 }
                                        'value' : 15200-175 }
-    pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
+    pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int',
 #                                       'value': 12200 }
 #                                       'value' : 11750 }
                                        'value' : 15200+175 }
-    pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
+    pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int',
                                       'count' : 4,
                                       'value' : [0]*4 }
     pvdb[stationstr+'RDFIFOCNT'  ] = {'type' : 'int',
@@ -174,37 +171,37 @@ def main():
     # Status Monitoring
 
     # Timing link frames
-    pvdb[stationstr+'TIMFRAMECNT'  ] = {'type' : 'int', 
+    pvdb[stationstr+'TIMFRAMECNT'  ] = {'type' : 'int',
                                         'value' : 0 }
     # Timing link cycles paused (deadtime)
-    pvdb[stationstr+'TIMPAUSECNT'  ] = {'type' : 'int', 
+    pvdb[stationstr+'TIMPAUSECNT'  ] = {'type' : 'int',
                                         'value' : 0 }
     # Trigger counts (rate)
-    pvdb[stationstr+'TRIGCNT'      ] = {'type' : 'int', 
+    pvdb[stationstr+'TRIGCNT'      ] = {'type' : 'int',
                                         'value' : 0 }
     # Trigger counts (total)
-    pvdb[stationstr+'TRIGCNTSUM'   ] = {'type' : 'int', 
+    pvdb[stationstr+'TRIGCNTSUM'   ] = {'type' : 'int',
                                         'value' : 0 }
     # Header read counts (total)
-    pvdb[stationstr+'READCNTSUM'   ] = {'type' : 'int', 
+    pvdb[stationstr+'READCNTSUM'   ] = {'type' : 'int',
                                         'value' : 0 }
     # Start counts (total)
-    pvdb[stationstr+'STARTCNTSUM'   ] = {'type' : 'int', 
+    pvdb[stationstr+'STARTCNTSUM'   ] = {'type' : 'int',
                                         'value' : 0 }
     # Queue counts (total)
-    pvdb[stationstr+'QUEUECNTSUM'   ] = {'type' : 'int', 
+    pvdb[stationstr+'QUEUECNTSUM'   ] = {'type' : 'int',
                                         'value' : 0 }
     # Msg Delay
-    pvdb[stationstr+'MSGDELAYSET'   ] = {'type' : 'int', 
+    pvdb[stationstr+'MSGDELAYSET'   ] = {'type' : 'int',
                                         'value' : 0 }
     # Msg Delay
-    pvdb[stationstr+'MSGDELAYGET'   ] = {'type' : 'int', 
+    pvdb[stationstr+'MSGDELAYGET'   ] = {'type' : 'int',
                                         'value' : 0 }
     # Header Count
-    pvdb[stationstr+'HEADERCNTL0'   ] = {'type' : 'int', 
+    pvdb[stationstr+'HEADERCNTL0'   ] = {'type' : 'int',
                                          'value' : 0 }
     # Header Count
-    pvdb[stationstr+'HEADERCNTOF'   ] = {'type' : 'int', 
+    pvdb[stationstr+'HEADERCNTOF'   ] = {'type' : 'int',
                                          'value' : 0 }
     # PGP link status
     pvdb[stationstr+'PGPLOCLINKRDY'] = {'type' : 'int',
@@ -305,10 +302,8 @@ def main():
     # printDb(pvdb, prefix)
     printDb()
 
-    server = SimpleServer()
-
+    server = PVAServer(__name__)
     server.createPV(prefix, pvdb)
-    driver = myDriver()
 
     # Save PVs to config dbase
     from pymongo import MongoClient, errors, ASCENDING, DESCENDING
@@ -335,9 +330,8 @@ def main():
         print("ID already exists. Exit without writing to database.")
 
     try:
-        # process CA transactions
-        while True:
-            server.process(0.1)
+        # process PVA transactions
+        server.forever()
     except KeyboardInterrupt:
         print('\nInterrupted')
 

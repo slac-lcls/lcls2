@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 
-using Pds_Epics::EpicsCA;
+using Pds_Epics::EpicsPVA;
 using Pds_Epics::PVMonitorCb;
 
 namespace Pds {
@@ -14,29 +14,27 @@ namespace Pds {
 #define Q(a,b)      a ## b
 #define PV(name)    Q(name, PV)
 
-#define TOU(value)  *reinterpret_cast<unsigned*>(value)
-#define TOB(value)  *reinterpret_cast<bool*>(value)
-#define PRT(value)  printf("%60.60s: %32.32s: 0x%02x\n", __PRETTY_FUNCTION__, _channel.epicsName(), value)
+#define PRT(value)  printf("%60.60s: %32.32s: 0x%02x\n", __PRETTY_FUNCTION__, name().c_str(), value)
 
-#define PVG(i)      PRT(TOU(data()));    _ctrl.module().i;
-#define PVP(i)      PRT( ( TOU(data()) = _ctrl.module().i ) );  put();
+#define PVG(i)      PRT(getScalarAs<unsigned>()); _ctrl.module().i;
+#define PVP(i)      PRT( _ctrl.module().i );  putFrom<unsigned>(_ctrl.module().i);
 
 #define CPV(name, updatedBody, connectedBody)                           \
                                                                         \
-    class PV(name) : public EpicsCA,                                    \
+    class PV(name) : public EpicsPVA,                                   \
                      public PVMonitorCb                                 \
     {                                                                   \
     public:                                                             \
       PV(name)(PVCtrls& ctrl, const char* pvName, unsigned idx = 0) :   \
-        EpicsCA(pvName, this),                                          \
+        EpicsPVA(pvName, this),                                          \
         _ctrl(ctrl),                                                    \
         _idx(idx) {}                                                    \
       virtual ~PV(name)() {}                                            \
     public:                                                             \
       void updated();                                                   \
-      void connected(bool);                                             \
+      void onConnect();                                             \
     public:                                                             \
-      void put() { if (this->EpicsCA::connected())  _channel.put(); }   \
+      void put() { if (this->EpicsPVA::connected())  _channel.put(); }   \
     private:                                                            \
       PVCtrls& _ctrl;                                                   \
       unsigned _idx;                                                    \
@@ -45,22 +43,21 @@ namespace Pds {
     {                                                                   \
       updatedBody                                                       \
     }                                                                   \
-    void PV(name)::connected(bool c)                                    \
+    void PV(name)::onConnect()                                          \
     {                                                                   \
-      this->EpicsCA::connected(c);                                      \
       connectedBody                                                     \
     }
 
     CPV(ModuleInit,     { PVG(init());        }, { })
     CPV(CountClear,     { PVG(clearCounters()); }, { })
 
-    CPV(UsLinkTrigDelay,  { PVG(usLinkTrigDelay(_idx, TOU(data())));    },
+    CPV(UsLinkTrigDelay,  { PVG(usLinkTrigDelay(_idx, getScalarAs<unsigned>()));    },
                           { PVP(usLinkTrigDelay(_idx));                 })
 
-    CPV(UsLinkFwdMask,  { PVG(usLinkFwdMask(_idx, TOU(data())));    },
+    CPV(UsLinkFwdMask,  { PVG(usLinkFwdMask(_idx, getScalarAs<unsigned>()));    },
                         { PVP(usLinkFwdMask(_idx));                 })
 
-    CPV(UsLinkPartition,  { PVG(usLinkPartition(_idx, TOU(data())));    },
+    CPV(UsLinkPartition,  { PVG(usLinkPartition(_idx, getScalarAs<unsigned>()));    },
                           { PVP(usLinkPartition(_idx));                 })
 
     PVCtrls::PVCtrls(Module& m) : _pv(0), _m(m) {}
@@ -68,12 +65,6 @@ namespace Pds {
 
     void PVCtrls::allocate(const std::string& title)
     {
-      if (ca_current_context() == NULL) {
-        printf("Initializing context\n");
-        SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
-                 "Calling ca_context_create" );
-      }
-
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
       _pv.resize(0);
@@ -95,8 +86,6 @@ namespace Pds {
       NPVN( UsLinkFwdMask,      Module::NUsLinks    );
       NPVN( UsLinkPartition,    Module::NUsLinks    );
 
-      // Wait for monitors to be established
-      ca_pend_io(0);
     }
 
     Module& PVCtrls::module() { return _m; }

@@ -12,7 +12,7 @@ epics_host = 'daq-tst-dev02'
 os.environ['TESTRELDIR'] = '/reg/neh/home/cpo/git/lcls2/install'
 
 conda_env = getRelEnvString()
-epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067 EPICS_CA_AUTO_ADDR_LIST=NO '+conda_env
+epics_env = 'EPICS_PVA_ADDR_LIST=10.0.3.255 EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067 EPICS_CA_AUTO_ADDR_LIST=NO '+conda_env
 pcas_env = 'EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067 EPICS_CAS_INTF_ADDR_LIST=10.0.0.2 '+conda_env
 shelf = '2'
 ip_addr = '10.0.'+shelf

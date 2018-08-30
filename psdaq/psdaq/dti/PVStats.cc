@@ -1,8 +1,7 @@
 #include "psdaq/dti/PVStats.hh"
 #include "psdaq/dti/Module.hh"
 
-#include "psdaq/epicstools/PVWriter.hh"
-using Pds_Epics::PVWriter;
+#include "psdaq/epicstools/EpicsPVA.hh"
 
 #include <sstream>
 #include <string>
@@ -10,7 +9,7 @@ using Pds_Epics::PVWriter;
 
 #include <stdio.h>
 
-using Pds_Epics::PVWriter;
+using Pds_Epics::EpicsPVA;
 
 enum { _TimLinkUp,
        _TimRefClk,
@@ -66,12 +65,6 @@ namespace Pds {
     PVStats::~PVStats() {}
 
     void PVStats::allocate(const std::string& title) {
-      if (ca_current_context() == NULL) {
-        printf("Initializing context\n");
-        SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
-                 "Calling ca_context_create" );
-      }
-
       for(unsigned i=0; i<_NumberOf; i++)
         if (_pv[i]) {
           delete _pv[i];
@@ -82,8 +75,8 @@ namespace Pds {
       o << title << ":";
       std::string pvbase = o.str();
 
-#define PV_ADD(name  ) { _pv[_##name] = new PVWriter((pvbase + #name).c_str()); }
-#define PV_ADDV(name,n) { _pv[_##name] = new PVWriter((pvbase + #name).c_str(), n); }
+#define PV_ADD(name  ) { _pv[_##name] = new EpicsPVA((pvbase + #name).c_str()); }
+#define PV_ADDV(name,n) { _pv[_##name] = new EpicsPVA((pvbase + #name).c_str(), n); }
 
       PV_ADD (TimLinkUp);
       PV_ADD (TimRefClk);
@@ -119,7 +112,7 @@ namespace Pds {
       PV_ADDV(dDsRxFull ,Module::NDsLinks);
       PV_ADDV(DsObSent  ,Module::NDsLinks);
       PV_ADDV(dDsObSent ,Module::NDsLinks);
-      
+
       PV_ADD (QpllLock);
       PV_ADDV(MonClkRate,4);
 
@@ -140,15 +133,15 @@ namespace Pds {
 
     void PVStats::update(const Stats& ns, const Stats& os, double dt)
     {
-#define PVPUTU(i,v)    { *reinterpret_cast<unsigned*>(_pv[i]->data())    = unsigned(v+0.5); _pv[i]->put(); }
-#define PVPUTD(i,v)    { *reinterpret_cast<double  *>(_pv[i]->data())    = double  (v); _pv[i]->put(); }
-#define PVPUTAU(p,m,v) { for (unsigned i = 0; i < m; ++i)                                \
-                           reinterpret_cast<unsigned*>(_pv[p]->data())[i] = unsigned(v+0.5); \
-                         _pv[p]->put();                                                  \
+#define PVPUTU(i,v)    { _pv[i]->putFrom<unsigned>(unsigned(v+0.5)); }
+#define PVPUTD(i,v)    { _pv[i]->putFrom<double>(double(v)); }
+#define PVPUTAU(p,m,v) { pvd::shared_vector<unsigned> vec(m);                                    \
+                         for (unsigned i = 0; i < m; ++i) vec[i] = unsigned(v+0.5);           \
+                         _pv[p]->putFromVector<unsigned>(freeze(vec));                                      \
                        }
-#define PVPUTAD(p,m,v) { for (unsigned i = 0; i < m; ++i)                                \
-                           reinterpret_cast<double  *>(_pv[p]->data())[i] = double  (v); \
-                         _pv[p]->put();                                                  \
+#define PVPUTAD(p,m,v) { pvd::shared_vector<double> vec(m);                                    \
+                         for (unsigned i = 0; i < m; ++i) vec[i] = double  (v);             \
+                         _pv[p]->putFromVector<double>(freeze(vec));                                      \
                        }
 
       PVPUTU ( _TimLinkUp, ns.timLinkUp);
@@ -159,25 +152,26 @@ namespace Pds {
       PVPUTU ( _BpLinkUp, ns.bpLinkUp);
       PVPUTU ( _DsLinkUp, ns.dsLinkUp);
 
-#define PVPUT_ABS( idx, elm ) {                                         \
-        for(unsigned i=0; i<Module::NUsLinks; i++)                      \
-          reinterpret_cast<unsigned*>(_pv[idx]->data())[i] = ns.us[i].elm; \
-        _pv[idx]->put(); }
-      
-#define PVPUT_DEL( idx, elm ) {                                         \
-        for(unsigned i=0; i<Module::NUsLinks; i++)                      \
-          reinterpret_cast<unsigned*>(_pv[idx]->data())[i] = ns.us[i].elm-os.us[i].elm; \
-        _pv[idx]->put(); }
+#define PVPUT_ABS( idx, elm ) {                                                     \
+        pvd::shared_vector<unsigned> vec(Module::NUsLinks);                         \
+        for(unsigned i=0; i<Module::NUsLinks; i++) vec[i] = ns.us[i].elm;           \
+        _pv[idx]->putFromVector<unsigned>(freeze(vec));   }
 
-      
+#define PVPUT_DEL( idx, elm ) {                                                        \
+        pvd::shared_vector<unsigned> vec(Module::NUsLinks);                            \
+        for(unsigned i=0; i<Module::NUsLinks; i++) vec[i] = ns.us[i].elm-os.us[i].elm; \
+        _pv[idx]->putFromVector<unsigned>(freeze(vec));   }
+
+
       PVPUT_ABS( _UsRxErrs , rxErrs);
       PVPUT_DEL( _dUsRxErrs, rxErrs);
       PVPUT_ABS( _UsRxFull , rxFull);
       //      PVPUT_DEL( _dUsRxFull, rxFull);
-      { for(unsigned i=0; i<Module::NUsLinks; i++)
-          reinterpret_cast<double*>(_pv[_dUsRxFull]->data())[i] = 
-            (ns.us[i].rxFull-os.us[i].rxFull)/156.25e6;
-        _pv[_dUsRxFull]->put(); }
+      {
+          pvd::shared_vector<double> vec(Module::NUsLinks);
+          for(unsigned i=0; i<Module::NUsLinks; i++) vec[i] = (ns.us[i].rxFull-os.us[i].rxFull)/156.25e6;
+         _pv[_dDsRxFull]->putFromVector<double>(freeze(vec));
+      }
       //      PVPUTAU( 7, Module::NUsLinks,        ns.us[i].ibRecv);
       //      PVPUTAD( 8, Module::NUsLinks, double(ns.us[i].ibRecv - os.us[i].ibRecv) / dt);
       PVPUT_ABS( _UsRxInh  , rxInh);
@@ -209,42 +203,52 @@ namespace Pds {
 #undef PVPUT_ABS
 #undef PVPUT_DEL
 
-#define PVPUT_ABS( idx, elm ) {                                         \
-        for(unsigned i=0; i<Module::NDsLinks; i++)                      \
-          reinterpret_cast<unsigned*>(_pv[idx]->data())[i] = ns.ds[i].elm; \
-        _pv[idx]->put(); }
-      
+#define PVPUT_ABS( idx, elm ) {                                                    \
+        pvd::shared_vector<unsigned> vec(Module::NDsLinks);                                          \
+        for(unsigned i=0; i<Module::NDsLinks; i++) vec[i] = ns.ds[i].elm;         \
+        _pv[idx]->putFromVector<unsigned>(freeze(vec));                                            \
+    }
+
 #define PVPUT_DEL( idx, elm ) {                                         \
-        for(unsigned i=0; i<Module::NDsLinks; i++)                      \
-          reinterpret_cast<unsigned*>(_pv[idx]->data())[i] = ns.ds[i].elm-os.ds[i].elm; \
-        _pv[idx]->put(); }
+        pvd::shared_vector<unsigned> vec(Module::NDsLinks);                                          \
+        for(unsigned i=0; i<Module::NDsLinks; i++) vec[i] = ns.ds[i].elm-os.ds[i].elm; \
+        _pv[idx]->putFromVector<unsigned>(freeze(vec));                                            \
+    }
 
       PVPUT_ABS( _DsRxErrs , rxErrs);
       PVPUT_DEL( _dDsRxErrs, rxErrs);
       PVPUT_ABS( _DsRxFull , rxFull);
       //      PVPUT_DEL( _dDsRxFull, rxFull);
-      { for(unsigned i=0; i<Module::NDsLinks; i++)
-          reinterpret_cast<double*>(_pv[_dDsRxFull]->data())[i] = 
-            (ns.ds[i].rxFull-os.ds[i].rxFull)/156.25e6;
-        _pv[_dDsRxFull]->put(); }
+      {
+          pvd::shared_vector<double> vec(Module::NDsLinks);
+          for(unsigned i=0; i<Module::NDsLinks; i++)
+            vec[i] = (ns.ds[i].rxFull-os.ds[i].rxFull)/156.25e6;
+          _pv[_dDsRxFull]->putFromVector<double>(freeze(vec));
+      }
       PVPUT_ABS( _DsObSent , obSent);
       //      PVPUT_DEL( _dDsObSent, obSent);
-      { for(unsigned i=0; i<Module::NDsLinks; i++)
-          reinterpret_cast<double*>(_pv[_dDsObSent]->data())[i] = 
-            double(ns.ds[i].obSent-os.ds[i].obSent)*8.e-6;
-        _pv[_dDsObSent]->put(); }
+      {
+          pvd::shared_vector<double> vec(Module::NDsLinks);
+          for(unsigned i=0; i<Module::NDsLinks; i++)
+            vec[i] = double(ns.ds[i].obSent-os.ds[i].obSent)*8.e-6;
+          _pv[_dDsObSent]->putFromVector<double>(freeze(vec));
+      }
 
       PVPUTU ( _QpllLock , ns.qpllLock);
 
       PVPUTAU( _MonClkRate, 4,  ns.monClk[i].rate);
 
-      for(unsigned i=0; i<Module::NUsLinks; i++)
-        reinterpret_cast<unsigned*>(_pv[_UsLinkMsgDelay]->data())[i] = ns.usLinkMsgDelay[i];
-      _pv[_UsLinkMsgDelay]->put();
+      {
+          pvd::shared_vector<unsigned> vec(Module::NUsLinks);
+          for(unsigned i=0; i<Module::NUsLinks; i++) vec[i] = ns.usLinkMsgDelay[i];
+          _pv[_UsLinkMsgDelay]->putFromVector<unsigned>(freeze(vec));
+      }
 
-      for(unsigned i=0; i<8; i++)
-        reinterpret_cast<unsigned*>(_pv[_PartMsgDelay]->data())[i] = ns.partMsgDelay[i];
-      _pv[_PartMsgDelay]->put();
+      {
+          pvd::shared_vector<unsigned> vec(8);
+          for(unsigned i=0; i<8; i++) vec[i] = ns.partMsgDelay[i];
+          _pv[_PartMsgDelay]->putFromVector<unsigned>(freeze(vec));
+      }
 
 #undef PVPUT_ABS
 #undef PVPUT_DEL
@@ -253,7 +257,6 @@ namespace Pds {
 #undef PVPUTAU
 #undef PVPUTAD
 
-      ca_flush_io();
     }
   };
 };
