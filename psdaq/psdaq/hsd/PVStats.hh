@@ -5,7 +5,7 @@
 #include <vector>
 
 namespace Pds_Epics {
-  class PVWriter;
+  class EpicsPVA;
 };
 
 namespace Pds {
@@ -23,7 +23,7 @@ namespace Pds {
     private:
       Module& _m;
       std::vector<Pgp*> _pgp;
-      std::vector<Pds_Epics::PVWriter*> _pv;
+      std::vector<Pds_Epics::EpicsPVA*> _pv;
       class PVCache {
       public:
         unsigned value[4];
