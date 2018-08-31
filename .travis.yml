@@ -37,7 +37,7 @@ install:
 
   # Build external packages.
   - git clone https://github.com/slac-lcls/relmanage.git
-  - conda build relmanage/recipes/legion/ --output-folder channels/external/
+  - conda build relmanage/recipes/legion/ --output-folder channels/external/ --python=$PYVER
 
   # Create Conda environment.
   - conda create -y -p $REL_DIR python=$PYVER cmake h5py ipython numpy
