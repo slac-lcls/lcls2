@@ -43,6 +43,7 @@ install:
 # Build and test.
 script:
   - ./build_travis.sh -p install
+  - export PYTHONPATH=$PWD/install/lib/python$PYVER/site-packages
   - |
     if [[ $PYVER == 2.7 ]]; then
       nosetests psana/psana/tests
