@@ -136,34 +136,59 @@ void test_get_doc_for_docid() {
 //-------------------
 
 void test_get_data_for_id() {
-
-  float v;
-
   const char* dbname1 = "cdb_cxid9114";
-  const char* dataid1 = "5b6cdde71ead144f11531974";
+  const char* dataid1 = "5b6cdde71ead144f11531974"; // for PEDESTALS
   std::cout << "In test_get_data_for_id PEDESTALS for " << dbname1 << " and " << dataid1 << ":\n";  
-  std::string sresp;
-  string_data_for_id(sresp, dbname1, dataid1);
-  print_string_data_as_array<float>(sresp, v);
+  std::string sresp1;
+  get_data_for_id(sresp1, dbname1, dataid1);
+  print_byte_string_as_float(sresp1, 100);
 
   print_hline(80,'_');
   const char* dbname2 = "cdb_cspad_0001";
-  const char* dataid2 = "5b6cdde71ead144f11531999";
+  const char* dataid2 = "5b6cdde71ead144f11531999"; // for PEDESTALS
   std::cout << "In test_get_data_for_id PEDESTALS for " << dbname2 << " and " << dataid2 << ":\n";  
-  string_data_for_id(sresp, dbname2, dataid2);
-  print_string_data_as_array<float>(sresp, v);
+  std::string sresp2;
+  get_data_for_id(sresp2, dbname2, dataid2);
+  print_byte_string_as_float(sresp2, 100);
 
   print_hline(80,'_');
   const char* dbname3 = "cdb_cspad_0001";
-  const char* dataid3 = "5b6cdef31ead1451fc5f0a2e"; // for geometry
+  const char* dataid3 = "5b6cdef31ead1451fc5f0a2e"; // for GEOMETRY
   std::cout << "In test_get_data_for_id GEOMETRY for " << dbname3 << " and " << dataid3 << ":\n";  
-  string_data_for_id(sresp, dbname3, dataid3);
-  std::cout << sresp << '\n';
+  std::string sresp3;
+  get_data_for_id(sresp3, dbname3, dataid3);
+  std::cout << sresp3 << '\n';
+}
 
-  //std::string s = json_doc_to_string(jdoc);
-  //std::cout << "XXX string content of found data: " << s.substr(0,100) << '\n';
-  //print_json_doc(jdoc);
-  //std::cout << "XXX test_get_data_for_id: " << json_value_type(jdoc) << '\n';
+//-------------------
+
+void test_get_data_for_docid() {
+  const char* dbname  = "cdb_cspad_0001";
+  const char* colname = "cspad_0001"; 
+  const char* docid = "5b6cdde71ead144f115319be"; // docid for PEDESTALS
+  std::cout << "In test_get_data_for_docid PEDESTALS for " << dbname << " and " << colname << ":\n";  
+  std::string sresp;
+  get_data_for_docid(sresp, dbname, colname, docid);
+  //std::cout << sresp << '\n';
+  print_byte_string_as_float(sresp, 20);
+}
+
+//-------------------
+
+void test_get_data_for_doc() {
+  printf("In test_get_data_for_doc\n");  
+  const char* dbname  = "cdb_cspad_0001";
+  const char* colname = "cspad_0001"; 
+  //const char* query   =  "{\"ctype\":\"pedestals\", \"run\":{\"$gte\": 87}}"; // 2 db docs
+  //const char* query   =  "{\"ctype\":\"pedestals\", \"run\":78}";           // 1 db doc
+  //const char* query   =  "{\"ctype\":\"pedestals\", \"run\":1234}";         // 0 db docs
+  //const char* query   =  "{\"ctype\":\"pedestals\"}";                       // many db docs
+  const char* query   =  "{\"ctype\":\"geometry\"}";                       // many db docs
+  rapidjson::Document jdoc;
+  const rapidjson::Value& jvalue = find_doc(jdoc, dbname, colname, query);
+  std::string sresp;
+  get_data_for_doc(sresp, dbname, colname, jvalue);
+  std::cout << sresp << '\n';
 }
 
 //-------------------
@@ -185,6 +210,8 @@ int main(void)
 
   test_get_doc_for_docid(); print_hline(80,'_');
   test_get_data_for_id(); print_hline(80,'_');
+  test_get_data_for_docid(); print_hline(80,'_');
+  test_get_data_for_doc(); print_hline(80,'_');
 }
 
 //-------------------

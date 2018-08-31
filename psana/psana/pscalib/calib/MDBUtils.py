@@ -366,6 +366,9 @@ def time_and_timestamp(**kwargs) :
        If both missing - current time is used.
     """
     time_sec   = kwargs.get('time_sec', None)
+
+    print('XXXXXXXXXXXXXXX time_sec', kwargs)
+
     time_stamp = kwargs.get('time_stamp', None)
 
     if time_sec is not None :

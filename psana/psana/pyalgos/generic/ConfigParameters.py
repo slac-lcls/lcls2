@@ -6,7 +6,6 @@
 
 Usage ::
 
-   from psana.pyalgos.generic.Logger import logger
    from psana.pyalgos.generic.ConfigParameters import ConfigParameters
 
    class PSConfigParameters(ConfigParameters) :
@@ -32,7 +31,6 @@ Usage ::
         cpb.saveParametersInFile()
 
 See:
-    - :py:class:`Logger`
     - :py:class:`ConfigParameters`
     - `matplotlib <https://matplotlib.org/contents.html>`_.
 
@@ -46,7 +44,6 @@ Adopted for LCLS2 on 2018-02-12
 #--------------------------------
 
 import os
-#from psana.pyalgos.generic.Logger import logger
 import logging
 logger = logging.getLogger(__name__)
 
