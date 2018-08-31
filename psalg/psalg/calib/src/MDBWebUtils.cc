@@ -110,7 +110,7 @@ void print_vector_of_strings(const std::vector<std::string>& v, const char* gap)
 }
 
 //-------------------
-
+/// Parses char* to Document& doc.
 void chars_to_json_doc(const char* s, rapidjson::Document& jdoc) {
     rapidjson::ParseResult ok = jdoc.Parse(s);
     if (!ok) MSG(ERROR, "JSON parse error: " << ok.Code() << " " << ok.Offset());
@@ -118,51 +118,20 @@ void chars_to_json_doc(const char* s, rapidjson::Document& jdoc) {
 
 //-------------------
 
-//rapidjson::Document chars_to_json_doc(const char* s) {
-//    rapidjson::Document document;
-//    rapidjson::ParseResult ok = document.Parse(s);
-//    if (!ok) MSG(ERROR, "JSON parse error: " << ok.Code() << " " << ok.Offset());
-//    return std::move(document);
-//}
-
-//-------------------
-
-void json_doc_to_vector_of_strings(const rapidjson::Value& doc, std::vector<std::string>& vout) {
-  vout.clear();
-  if(! doc.IsArray() || doc.Size()<1) return;
-  vout.resize(doc.Size());
-  vout.clear();
-  for (rapidjson::Value::ConstValueIterator itr = doc.Begin(); itr != doc.End(); ++itr) {
-    vout.push_back(itr->GetString());
-    std::cout <<  itr->GetString();
-  }
-  std::cout << '\n';
+void response_to_json_doc(const std::string& sresp, rapidjson::Document& jdoc) { 
+  chars_to_json_doc(sresp.c_str(), jdoc);
 }
 
 //-------------------
 
-/// Returns reference to the static STR_RESP filled out in responce
-//const std::string& string_response() { 
-  //s = json_doc_to_string(JSON_DOC);
-  //  return STR_RESP;
-  //}
-
-//-------------------
-
-/// Returns reference to the static JSON_DOC
-//const rapidjson::Document& json_doc_response() { 
-//  rapidjson::ParseResult ok = JSON_DOC.Parse(STR_RESP.c_str());
-//  if (!ok) MSG(ERROR, "JSON parse error: " << ok.Code() << " " << ok.Offset());
-//  return JSON_DOC;
-//}
-
-//-------------------
-
-/// Parses STR_RESP to the externally defined Document& doc.
-void response_to_json_doc(const std::string& sresp, rapidjson::Document& doc) { 
-  rapidjson::ParseResult ok = doc.Parse(sresp.c_str());
-  // rapidjson::GetParseError_En(ok.Code())
-  if (!ok) MSG(ERROR, "JSON parse error: " << ok.Code() << " " << ok.Offset());
+void json_doc_to_vector_of_strings(const rapidjson::Value& jdoc, std::vector<std::string>& vout) {
+  vout.clear();
+  if(! jdoc.IsArray() || jdoc.Size()<1) return;
+  vout.resize(jdoc.Size());
+  vout.clear();
+  for (rapidjson::Value::ConstValueIterator itr = jdoc.Begin(); itr != jdoc.End(); ++itr) {
+    vout.push_back(itr->GetString());
+  }
 }
 
 //-------------------
@@ -187,30 +156,20 @@ void string_url_with_query(std::string& url, const char* dbname, const char* col
 //-------------------
 
 size_t _callback(char* buf, size_t size, size_t nmemb, void* pout) {
-
-  //static unsigned counter=0; counter++;
-
-  //callback must have this declaration
-  //buf is a pointer to the data that curl has for us
-  //MSG(DEBUG, "In _callback size: " << size << " nmemb:" << nmemb);
-  //std::cout << "_callback size: " << size << " nmemb:" << nmemb << " buf:" << buf << '\n';
-  //std::cout << "_callback call:" << counter << " size: " << size << " nmemb:" << nmemb << " buf:" << std::string(buf).substr(0,20) << "...\n";
   size_t nbytes = size*nmemb; // size of the buffer
   //*((std::string*)pout) += buf;
   ((std::string*)pout)->append((char*)buf, nbytes);
-  return nbytes; // STR_RESP.size();
+  return nbytes;
 }
 
 //-------------------
 
 // curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
 
-// perform request with specified url and saves response in static std::string STR_RESP through _callback.
+// perform request with specified url and saves response in std::string& sresp through _callback.
 
 void request(std::string& sresp, const char* url) {
   MSG(DEBUG, "In request url:" << url);
-
-  std::string& _str = sresp; // STR_RESP;
 
   CURL *curl = curl_easy_init();
 
@@ -218,13 +177,13 @@ void request(std::string& sresp, const char* url) {
     //if (LOGGER.logging(LL::DEBUG)) curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     //curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 240000L); // sets CURL_MAX_READ_SIZE up to max (512kB) = 524288L ?
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &_callback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &_str);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &sresp);
     curl_easy_setopt(curl, CURLOPT_URL, url);
     //curl_easy_setopt(curl, CURLOPT_TRANSFERTEXT, 1L);
 
-    _str.clear();
+    sresp.clear();
     CURLcode res = curl_easy_perform(curl);
-    // MSG(DEBUG, "In request _str:" << _str.substr(0,200) << "...\n");
+    // MSG(DEBUG, "In request sresp:" << sresp.substr(0,200) << "...\n");
 
     if(CURLE_OK == res) { // ask for the content-type
       char *ct;
@@ -243,10 +202,9 @@ void request(std::string& sresp, const char* url) {
 void database_names(std::vector<std::string>& dbnames, const char* urlws) {
   std::string sresp;
   request(sresp, urlws);
-  rapidjson::Document doc;
-  response_to_json_doc(sresp, doc);
-  //print_json_doc_as_string(doc); 
-  json_doc_to_vector_of_strings(doc, dbnames);
+  rapidjson::Document jdoc;
+  response_to_json_doc(sresp, jdoc);
+  json_doc_to_vector_of_strings(jdoc, dbnames);
 }
 
 //-------------------
@@ -255,14 +213,14 @@ void collection_names(std::vector<std::string>& colnames, const char* dbname, co
   std::string url(urlws); url += '/'; url += dbname;
   std::string sresp;
   request(sresp, url.c_str());
-  rapidjson::Document doc;
-  response_to_json_doc(sresp, doc);
-  json_doc_to_vector_of_strings(doc, colnames);
+  rapidjson::Document jdoc;
+  response_to_json_doc(sresp, jdoc);
+  json_doc_to_vector_of_strings(jdoc, colnames);
 }
 
 //-------------------
 
-/// Performs request for url+query and saves responce in static std::string STR_RESP
+/// Performs request for url+query and saves responce in std::string& sresp
 void find_docs(std::string& sresp, const char* dbname, const char* colname, const char* query, const char* urlws) {
   std::string url;
   string_url_with_query(url, dbname, colname, query, urlws);
@@ -349,7 +307,7 @@ void get_doc_for_docid(rapidjson::Document& jdoc, const char* dbname, const char
 //-------------------
 
 // curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/gridfs/5b6cdde71ead144f11531999" 
-void string_data_for_id(std::string& sresp, const char* dbname, const char* dataid, const char* urlws) {
+void get_data_for_id(std::string& sresp, const char* dbname, const char* dataid, const char* urlws) {
   std::string url(urlws); url += '/'; url += dbname; url += "/gridfs/"; url += dataid;
   MSG(DEBUG, "get_doc_for_docid url: \"" << url << "\"\n");
   request(sresp, url.c_str());
@@ -358,23 +316,51 @@ void string_data_for_id(std::string& sresp, const char* dbname, const char* data
 
 //-------------------
 
+void get_data_for_docid(std::string& sresp, const char* dbname, const char* colname, const char* docid, const char* urlws) {
+  rapidjson::Document jdoc;
+  get_doc_for_docid(jdoc, dbname, colname, docid, urlws);
+  const char* dataid = jdoc["id_data"].GetString();
+  MSG(DEBUG, "get_data_for_doc docid: " << docid << " -> dataid: " << dataid);
+  get_data_for_id(sresp, dbname, dataid, urlws);
+}
+
+//-------------------
+
+void get_data_for_doc(std::string& sresp, const char* dbname, const char* colname, const rapidjson::Value& jdoc, const char* urlws) {
+  const char* docid = jdoc["_id"].GetString();
+  MSG(DEBUG, "get_data_for_doc docid: \"" << docid << "\"\n");
+  get_data_for_docid(sresp, dbname, colname, docid, urlws);
+}
+
+//-------------------
+
 template<typename TDATA>
-void print_string_data_as_array(const std::string& sresp, TDATA& o) { //, const std::string& s) {
+void response_string_to_data_array(const std::string& sresp, const TDATA*& pout, size_t& size) {
   const char* cstr = sresp.c_str();
-  const TDATA* arr = reinterpret_cast<const TDATA*>(cstr);
-  //size_t size_arr =  sresp.size()/sizeof(TDATA);
-  for(const TDATA* p=arr; p<&arr[100]; p++) {
-    std::cout << *p << "  ";
-  } std::cout << '\n';
+  pout = reinterpret_cast<const TDATA*>(cstr);
+  size = sresp.size()/sizeof(TDATA);
+  //std::cout << "==== XXX In response_string_to_data_array data size: " << size << '\n';
+  //for(const TDATA* p=pout; p<&pout[100]; p++) {std::cout << *p << "  ";} std::cout << "\n====\n";
+}
+
+//-------------------
+
+void print_byte_string_as_float(std::string s, const size_t nvals) {
+  typedef float T;
+  const T* pout;
+  size_t size;
+  response_string_to_data_array<T>(s, pout, size);
+  std::cout << "data size: " << size << '\n';
+  for(const float* p=pout; p<&pout[nvals]; p++) {std::cout << *p << "  ";} std::cout << '\n';
 }
 
 //-------------------
 
 //template class psalg::int_string_data_as_array<float>; 
 
-template void print_string_data_as_array<int>(const std::string&, int&); 
-template void print_string_data_as_array<float>(const std::string&, float&); 
-template void print_string_data_as_array<double>(const std::string&, double&); 
+  template void response_string_to_data_array<int>   (const std::string&, const int*&,    size_t&); 
+  template void response_string_to_data_array<float> (const std::string&, const float*&,  size_t&); 
+  template void response_string_to_data_array<double>(const std::string&, const double*&, size_t&); 
 
 //-------------------
 
