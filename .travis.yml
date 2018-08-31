@@ -43,4 +43,9 @@ install:
 # Build and test.
 script:
   - ./build_travis.sh
-  - pytest
+  - |
+    if [[ $PYVER == 2.7 ]]; then
+      nosetests psana/psana/tests
+    elif [[ $PYVER == 3.* ]]; then
+      pytest psana/psana/tests
+    fi
