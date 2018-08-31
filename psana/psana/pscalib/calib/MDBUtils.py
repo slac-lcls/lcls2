@@ -958,7 +958,8 @@ if __name__ == "__main__" :
     """Connect to host, port get db handls.
     """
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
-        connect(host=cc.HOST, port=cc.PORT, experiment='cxi12345', detector='camera-0-cxids1-0', verbose=True) 
+        connect(host=cc.HOST, port=cc.PORT, experiment='cxid9114', detector='cspad_0001', verbose=True) 
+        #connect(host=cc.HOST, port=cc.PORT, detector='cspad_0001', verbose=True) 
 
 #------------------------------
 
@@ -1047,6 +1048,28 @@ if __name__ == "__main__" :
 
 #------------------------------
 
+  def test_get_data_for_id(tname, det='cspad_0001', data_id='5b6cdde71ead144f11531999') :
+    """Get doc and data
+    """
+    kwa = {'detector':det}
+    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(verbose=True, **kwa)
+    print('XXX expname', expname)
+    print('XXX expname', expname)
+    print('XXX data_id', data_id)
+
+    out = fs_det.get(ObjectId(data_id))
+    print('XXX out: ', out)
+
+    s = out.read()
+    
+    print('XXX type(out.read()): ', type(s))
+    print('XXX out.read(): ', s[:200])
+
+    nda = np.fromstring(s, dtype=np.float32)
+    print_ndarr(nda, 'XXX: nda: ', first=0, last=10)
+
+#------------------------------
+
   def test_database_content(tname, level=3) :
     """Insert many documents in loop
     """
@@ -1061,6 +1084,9 @@ if __name__ == "__main__" :
         db = database(client, dbname) # client[dbname]
         cnames = collection_names(db)
         logger.info('==== DB %2d: %12s # cols :%2d' % (idb, dbname, len(cnames)))
+        if dbname[:3] != db_prefixed_name('') : 
+            logger.info('     skip non-calib dbname: %s' % dbname)
+            continue
         if level==1 : continue
         for icol, cname in enumerate(cnames) :
             col = collection(db, cname) # or db[cname]
@@ -1079,13 +1105,14 @@ if __name__ == "__main__" :
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
     #                    datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO) # WARNING
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
-    tname = sys.argv[1] if len(sys.argv) > 1 else '1'
+    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.info('%s\nTest %s:' % (50*'_',tname))
-    if   tname == '0' : test_connect(tname);
-    elif tname in ('1','2','3') : test_insert_one(tname);
+    if   tname == '0' : test_connect(tname)
+    elif tname in ('1','2','3') : test_insert_one(tname)
     elif tname == '4' : test_insert_many(tname)
     elif tname == '5' : test_database_content(tname)
     elif tname in ('11','12','13') : test_get_data(tname)
+    elif tname == '15' : test_get_data_for_id(tname)
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 

@@ -704,7 +704,7 @@ int main(int argc, char **argv)
   unsigned maxBatches = max_batches;
   unsigned maxEntries = max_entries;
   unsigned monPeriod  = mon_period;
-  int partition;
+  int partition       = 0;
 
   while ((op = getopt(argc, argv, "h?vA:S:C:P:i:D:B:E:M:1:2:p:")) != -1)
   {
