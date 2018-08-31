@@ -15,7 +15,7 @@ import argparse
 import logging
 
 class Client:
-    def __init__(self, platform):
+    def __init__(self, platform, collectHost):
 
         # initialize state
         self.state = 'reset'
@@ -29,8 +29,8 @@ class Client:
         self.context = zmq.Context(1)
         self.push = self.context.socket(zmq.PUSH)
         self.sub = self.context.socket(zmq.SUB)
-        self.push.connect('tcp://localhost:%d' % pull_port(platform))
-        self.sub.connect('tcp://localhost:%d' % pub_port(platform))
+        self.push.connect('tcp://%s:%d' % (collectHost, pull_port(platform)))
+        self.sub.connect('tcp://%s:%d' % (collectHost, pub_port(platform)))
         self.sub.setsockopt(zmq.SUBSCRIBE, b'')
 
         # define commands
@@ -129,6 +129,7 @@ if __name__ == '__main__':
         # process arguments
         parser = argparse.ArgumentParser()
         parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+        parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host')
         parser.add_argument('-v', action='store_true', help='be verbose')
         args = parser.parse_args()
 
@@ -139,7 +140,7 @@ if __name__ == '__main__':
             logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
         # start client
-        client = Client(args.p)
+        client = Client(args.p, args.C)
 
     except KeyboardInterrupt:
         logging.info('KeyboardInterrupt')

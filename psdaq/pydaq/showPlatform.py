@@ -12,6 +12,7 @@ import argparse
 # Process arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host')
 args = parser.parse_args()
 platform = args.p
 
@@ -21,7 +22,7 @@ try:
     req = context.socket(zmq.REQ)
     req.linger = 0
     req.RCVTIMEO = 5000 # in milliseconds
-    req.connect('tcp://localhost:%d' % rep_port(platform))
+    req.connect('tcp://%s:%d' % (args.C, rep_port(platform)))
     msg = create_msg('getstate')
     req.send_json(msg)
     reply = req.recv_json()

@@ -36,7 +36,7 @@ def main():
         req = context.socket(zmq.REQ)
         req.linger = 0
         req.RCVTIMEO = 6000 # in milliseconds
-        req.connect('tcp://localhost:%d' % rep_port(args.p))
+        req.connect('tcp://%s:%d' % (args.C, rep_port(args.p)))
         msg = create_msg(args.command)
         req.send_json(msg)
         reply = req.recv_json()
