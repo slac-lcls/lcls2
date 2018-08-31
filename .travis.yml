@@ -4,11 +4,6 @@ dist: trusty
 compiler:
   - gcc
 
-env:
-  matrix:
-    - USE_LEGION=0
-    - USE_LEGION=1
-
 # Install system dependencies.
 before_install:
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
