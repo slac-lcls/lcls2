@@ -4,6 +4,11 @@ dist: trusty
 compiler:
   - gcc
 
+env:
+  matrix:
+    - PYVER=2.7
+    - PYVER=3.6
+
 # Install system dependencies.
 before_install:
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
@@ -20,8 +25,8 @@ before_install:
   - sudo make install
   - cd ..
 
-# Install Conda environment.
 install:
+  # Install Conda.
   - export CONDA_PREFIX=$PWD/conda
   - export REL_DIR=$CONDA_PREFIX/myrel
   - export PATH=$REL_DIR/bin:$CONDA_PREFIX/bin:$PATH
@@ -29,24 +34,19 @@ install:
   - bash Miniconda3-latest-Linux-x86_64.sh -b -p $CONDA_PREFIX
   - conda update -y conda
   - conda install -y conda-build
-  - conda create -y -p $REL_DIR python=3.5 cmake h5py ipython numpy
+
+  # Build external packages.
+  - git clone https://github.com/slac-lcls/relmanage.git
+  - conda build relmanage/recipes/legion/ --output-folder channels/external/
+
+  # Create Conda environment.
+  - conda create -y -p $REL_DIR python=$PYVER cmake h5py ipython numpy
   - source activate $REL_DIR
   - conda install -y --channel lcls-rhel7 cpsw yaml-cpp
   - conda install -y --channel lightsource2-tag epics-base
-
-# Build and install external Conda packages.
-before_script:
-  - |
-    if [[ $USE_LEGION -eq 1 ]]; then
-      git clone https://github.com/slac-lcls/relmanage.git
-      conda build relmanage/recipes/legion/ --output-folder channels/external/
-      conda install -y legion -c file://`pwd`/channels/external --override-channels
-    fi
+  - conda install -y legion -c file://`pwd`/channels/external # --override-channels
 
 # Build and test.
 script:
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make -j2
-  - make test
+  - ./build_all.sh
+  - pytest
