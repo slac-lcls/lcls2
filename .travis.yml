@@ -42,7 +42,7 @@ install:
 
 # Build and test.
 script:
-  - ./build_travis.sh
+  - ./build_travis.sh -p install
   - |
     if [[ $PYVER == 2.7 ]]; then
       nosetests psana/psana/tests
