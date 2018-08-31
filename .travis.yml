@@ -16,19 +16,10 @@ before_install:
   - sudo apt-get install -qq g++-7 libibverbs-dev librdmacm-dev
   - export CXX=g++-7 CC=gcc-7
 
-# Install libfabric.
-  - wget https://github.com/ofiwg/libfabric/releases/download/v1.5.2/libfabric-1.5.2.tar.bz2
-  - tar xfj libfabric-1.5.2.tar.bz2
-  - cd libfabric-1.5.2
-  - ./configure --enable-verbs
-  - make -j2
-  - sudo make install
-  - cd ..
-
 install:
   # Install Conda.
   - export CONDA_PREFIX=$PWD/conda
-  - export REL_DIR=$CONDA_PREFIX/myrel
+  - export CONDA_ENV=myrel
   - export PATH=$REL_DIR/bin:$CONDA_PREFIX/bin:$PATH
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
   - bash Miniconda3-latest-Linux-x86_64.sh -b -p $CONDA_PREFIX
@@ -37,14 +28,17 @@ install:
 
   # Build external packages.
   - git clone https://github.com/slac-lcls/relmanage.git
-  - conda build relmanage/recipes/legion/ --output-folder channels/external/ --python=$PYVER
+  # - conda build relmanage/recipes/legion/ --output-folder channels/external/ --python=$PYVER
 
   # Create Conda environment.
-  - conda create -y -p $REL_DIR python=$PYVER cmake h5py ipython numpy
-  - source activate $REL_DIR
-  - conda install -y --channel lcls-rhel7 cpsw yaml-cpp
-  - conda install -y --channel lightsource2-tag epics-base
-  - conda install -y legion -c file://`pwd`/channels/external # --override-channels
+  - |
+    if [[ $PYVER == 2.7 ]]; then
+      conda env create -n $CONDA_ENV -f relmanage/env_create_py2.yaml
+    elif [[ $PYVER == 3.* ]]; then
+      conda env create -n $CONDA_ENV -f relmanage/env_create.yaml
+    fi
+  - source activate $CONDA_ENV
+  # - conda install -y legion -c file://`pwd`/channels/external # --override-channels
 
 # Build and test.
 script:
