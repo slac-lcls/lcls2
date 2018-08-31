@@ -58,14 +58,16 @@ void addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     Py_Initialize();
     PyObject* main_module = PyImport_AddModule("__main__");
     PyObject* main_dict = PyModule_GetDict(main_module);
-    file = fopen("hsdConfig.py","r");
-    PyObject* pyrunfileptr = PyRun_File(file, "hsdConfig.py",Py_file_input,main_dict,main_dict);
+    file = fopen("hsdconfig.py","r");
+    printf("##### Opened hsdconfig.py %p\n",file);
+    PyObject* pyrunfileptr = PyRun_File(file, "hsdconfig.py", Py_file_input, main_dict, main_dict);
     assert(pyrunfileptr!=NULL);
-    PyObject* mybytes = PyDict_GetItemString(main_dict,"dgram");
-    printf("%p\n",mybytes);
-    char* json = (char*)PyBytes_AsString(mybytes);
-    printf("%p\n",mybytes);
-    printf("%s\n",json);
+    PyObject* mybytes = PyDict_GetItemString(main_dict,"config");
+    printf("mybytes: %p\n",mybytes); // FIXME: what's going on here?
+    PyObject * temp_bytes = PyUnicode_AsEncodedString(mybytes, "UTF-8", "strict");
+    char* json = (char*)PyBytes_AsString(temp_bytes);
+
+    printf("myjson: %s\n",json);
     Py_Finalize();
     printf("Done\n");
 
@@ -82,7 +84,7 @@ void addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     configNames.add(xtc, myHsdConfigDef);
     namesVec.push_back(NameIndex(configNames));
 
-    CreateData fex(xtc, namesVec, 3); //FIXME: avoid hardwiring nameId
+    CreateData fex(xtc, namesVec, 1); //FIXME: avoid hardwiring nameId
 
     // TODO: dynamically discover
 
@@ -128,16 +130,17 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     memcpy(&dgram, event_header, sizeof(Transition));
     CreateData hsd(dgram.xtc, m_namesVec, nameId);
     printf("*** evt count %d isevt %d control %x\n",event_header->evtCounter,dgram.seq.isEvent(),dgram.seq.pulseId().control());
-    
+
     unsigned data_size;
     unsigned shape[MaxRank];
-    for (int l=0; l<8; l++) {
+    for (int l=0; l<8; l++) { // TODO: print npeaks using psalg/Hsd.hh
         if (pgp_data->buffer_mask & (1 << l)) {
             // size without Event header
             data_size = pgp_data->buffers[l]->size - sizeof(Transition);
             shape[0] = data_size;
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l, shape);
             memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l]->virt + sizeof(Transition), data_size);
+            // TODO: make channels
          }
     }
 }

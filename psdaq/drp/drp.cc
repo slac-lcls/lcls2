@@ -67,7 +67,6 @@ int main(int argc, char* argv[])
                 exit(1);
         }
     }
-
     join_collection(para);
     printf("eb server ip: %s\n", para.eb_server_ip.c_str());
     printf("contributor id: %u\n", para.contributor_id);
@@ -100,7 +99,7 @@ int main(int argc, char* argv[])
     if (ret) {
         printf("ERROR in connecting to event builder!!!!\n");
     }
-    
+
     // start performance monitor thread
     std::thread monitor_thread(monitor_func, std::ref(pgp_reader.get_counters()),
                                std::ref(pool), std::ref(myBatchMan));
@@ -119,7 +118,6 @@ int main(int argc, char* argv[])
     for (int i = 0; i < num_workers; i++) {
         worker_threads[i].join();
     }
-    
     // shutdown monitor thread
     // counter->total_bytes_received = -1;
     //p.exchange(counter, std::memory_order_release);
