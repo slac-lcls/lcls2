@@ -48,5 +48,5 @@ install:
 
 # Build and test.
 script:
-  - ./build_all.sh
+  - ./build_travis.sh
   - pytest
