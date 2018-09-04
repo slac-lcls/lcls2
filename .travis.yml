@@ -1,52 +1,26 @@
-language: cpp
+language: minimal
 sudo: required
-dist: trusty
-compiler:
-  - gcc
+
+services:
+  - docker
 
 env:
+  global:
+    - CONDA_ENV: myrel
   matrix:
-    - PYVER=2.7
-    - PYVER=3.6
+    - OS=ubuntu16.04 PYVER=2.7
+    - OS=ubuntu16.04 PYVER=3.6
+    - OS=centos6     PYVER=2.7
+    - OS=centos6     PYVER=3.6
 
-# Install system dependencies.
-before_install:
-  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq g++-7 libibverbs-dev librdmacm-dev
-  - export CXX=g++-7 CC=gcc-7
-
-install:
-  # Install Conda.
-  - export CONDA_PREFIX=$PWD/conda
-  - export CONDA_ENV=myrel
-  - export PATH=$REL_DIR/bin:$CONDA_PREFIX/bin:$PATH
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-  - bash Miniconda3-latest-Linux-x86_64.sh -b -p $CONDA_PREFIX
-  - conda update -y conda
-  - conda install -y conda-build
-
-  # Build external packages.
-  - git clone https://github.com/slac-lcls/relmanage.git
-  # - conda build relmanage/recipes/legion/ --output-folder channels/external/ --python=$PYVER
-
-  # Create Conda environment.
-  - |
-    if [[ $PYVER == 2.7 ]]; then
-      conda env create -n $CONDA_ENV -f relmanage/env_create_py2.yaml
-    elif [[ $PYVER == 3.* ]]; then
-      conda env create -n $CONDA_ENV -f relmanage/env_create.yaml
-    fi
-  - source activate $CONDA_ENV
-  # - conda install -y legion -c file://`pwd`/channels/external # --override-channels
-
-# Build and test.
 script:
-  - ./build_travis.sh -p install
-  - export PYTHONPATH=$PWD/install/lib/python$PYVER/site-packages
+  - export IMAGE=slaclcls/travis:$OS-py$PYVER
   - |
-    if [[ $PYVER == 2.7 ]]; then
-      nosetests psana/psana/tests
-    elif [[ $PYVER == 3.* ]]; then
-      pytest psana/psana/tests
+    if [[ $OS == ubuntu16.04 ]]; then
+      export CC=gcc-7
+      export CXX=g++-7
+    else
+      export CC=gcc
+      export CXX=g++
     fi
+  - docker run -v $PWD:/build -e CONDA_ENV -e CC -e CXX -ti $IMAGE bash -l /build/run_travis.sh
