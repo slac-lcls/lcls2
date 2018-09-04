@@ -7,11 +7,16 @@
 
 namespace XtcData
 {
+    // NB: the other control bits are defined in the .cc file
+    enum { v_batch = 7, k_batch = 1 };
+    enum { m_batch = ((1 << k_batch) - 1), s_batch = (m_batch << v_batch) };
+
 class Sequence
 {
 public:
     enum Type { Event = 0, Occurrence = 1, Marker = 2 };
     enum { NumberOfTypes = 3 };
+    enum Batch { IsBatch = s_batch };
 
 public:
     Sequence()
@@ -24,8 +29,12 @@ public:
 public:
     Type type() const;
     TransitionId::Value service() const;
-    bool isExtended() const;
+    bool isBatch() const;
     bool isEvent() const;
+
+public:
+    bool isFirst() const;
+    void first();
 
 public:
     const TimeStamp& stamp() const

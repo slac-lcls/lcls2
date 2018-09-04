@@ -12,12 +12,12 @@ namespace XtcData
 enum { v_cntrl = 0, k_cntrl = 8 };
 enum { v_service = 0, k_service = 4 };
 enum { v_seqtype = 4, k_seqtype = 2 };
-enum { v_extend = 7, k_extend = 1 };
+enum { v_first = 7, k_first = 1 };      // Reuse 'batch' bit
 
 enum { m_cntrl = ((1 << k_cntrl) - 1), s_cntrl = (m_cntrl << v_cntrl) };
 enum { m_service = ((1 << k_service) - 1), s_service = (m_service << v_service) };
 enum { m_seqtype = ((1 << k_seqtype) - 1), s_seqtype = (m_seqtype << v_seqtype) };
-enum { m_extend = ((1 << k_extend) - 1), s_extend = (m_extend << v_extend) };
+enum { m_first = ((1 << k_first) - 1), s_first = (m_first << v_first) };
 }
 
 XtcData::Sequence::Sequence(const XtcData::Sequence& input)
@@ -45,9 +45,19 @@ XtcData::TransitionId::Value XtcData::Sequence::service() const
     return TransitionId::Value((_pulseId.control() >> v_service) & m_service);
 }
 
-bool XtcData::Sequence::isExtended() const
+bool XtcData::Sequence::isBatch() const
 {
-    return _pulseId.control() & s_extend;
+    return _pulseId.control() & s_batch;
+}
+
+bool XtcData::Sequence::isFirst() const
+{
+    return _pulseId.control() & s_first;
+}
+
+void XtcData::Sequence::first()
+{
+  _pulseId = PulseId(_pulseId, _pulseId.control() | s_first);
 }
 
 bool XtcData::Sequence::isEvent() const

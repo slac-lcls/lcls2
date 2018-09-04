@@ -10,6 +10,7 @@ add_library(detector SHARED
 
 target_link_libraries(detector
     xtcdata::xtc
+    calib
 )
 
 target_include_directories(detector PUBLIC

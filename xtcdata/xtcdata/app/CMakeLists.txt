@@ -10,6 +10,10 @@ target_include_directories(app PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+target_link_libraries(app
+    xtc
+)
+
 add_executable(xtcreader
     xtcreader.cc
 )
