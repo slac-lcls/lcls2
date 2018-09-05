@@ -45,6 +45,9 @@ if __name__ == '__main__':
     prefix = args.P+':'
 
     # Base PVs
+    # Temporary hack for adding link_mask
+    pvdb[stationstr+'LANE_MASK' ] = {'type' : 'int',
+                                             'value' : 0xf }
     #  Range of trigger delay setting capability
     pvdb[stationstr+'BASE:INTTRIGRANGE' ] = {'type' : 'int', 
                                              'count' : 2, 

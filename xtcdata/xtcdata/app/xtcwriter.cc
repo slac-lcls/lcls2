@@ -431,7 +431,7 @@ void addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     printf("size %d\n",PyDict_Size(main_dict));
     PyObject* mybytes = PyDict_GetItemString(main_dict,"dgram");
     printf("%p\n",mybytes);
-    char* json = (char*)PyBytes_AsString(mybytes);
+    char* json = (char*)PyBytes_AsString(mybytes); // TODO: Add PyUnicode_AsEncodedString()?
     printf("%p\n",mybytes);
     printf("%s\n",json);
     Py_Finalize();
