@@ -16,7 +16,22 @@ def plot_image(data) :
 
 #------------------------------
 
-calib = np.load('/reg/g/psdm/detector/data_test/arrays/cxitut13_r10_32_cspad.npy')
+calib_url = 'https://github.com/slac-lcls/lcls2-test-data/raw/master/detector/data_test/arrays/cxitut13_r10_32_cspad.npy'
+try:
+    # Python 2.x
+    import urllib2
+    response = urllib2.urlopen(calib_url)
+except ImportError:
+    # Python 3.x
+    import urllib
+    response = urllib.request.urlopen(calib_url)
+import tempfile
+with tempfile.NamedTemporaryFile() as f:
+    f.write(response.read())
+    f.flush()
+    calib = np.load(f.name)
+
+# calib = np.load('/reg/g/psdm/detector/data_test/arrays/cxitut13_r10_32_cspad.npy')
 print_ndarr(calib, 'calib')
 data = calib[0]
 print_ndarr(data, 'data')
