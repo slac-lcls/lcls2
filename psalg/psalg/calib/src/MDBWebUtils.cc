@@ -28,22 +28,14 @@ namespace psalg {
 //-------------------
 
   //static std::string STR_RESP; // holds responce
-  static rapidjson::Value EMPTY_VALUE;
   //static rapidjson::Document JSON_DOC;
 
-/*
-union Float {
-    const float m_float;
-    const char  m_bytes[sizeof(float)];
-  //uint8_t  m_bytes[sizeof(float)];
-};
-*/
-
 //-------------------
 //-------------------
 //-------------------
 //-------------------
 //-------------------
+/// Converts rapidjson Document or Value object in string.
 
 std::string json_doc_to_string(const rapidjson::Value& v) {
   rapidjson::StringBuffer sb;
@@ -53,6 +45,7 @@ std::string json_doc_to_string(const rapidjson::Value& v) {
 }
 
 //-------------------
+/// Prints rapidjson Document or Value.
 
 void print_json_doc_as_string(const rapidjson::Value& v) {
   std::string s = json_doc_to_string(v);
@@ -60,6 +53,7 @@ void print_json_doc_as_string(const rapidjson::Value& v) {
 }
 
 //-------------------
+/// Returns string with rapidjson value type name.
 
 std::string json_value_type(const rapidjson::Value& v) {
     if     (v.IsString()) return std::string("string");
@@ -74,6 +68,7 @@ std::string json_value_type(const rapidjson::Value& v) {
 }
 
 //-------------------
+/// Recursively prints content of the rapidjson Document or Value.
 
 void print_json_doc(const rapidjson::Value& doc, const std::string& offset) {
   // std::cout << "XXX In print_json_doc: isArray: " << doc.IsArray() << '\n';
@@ -102,6 +97,7 @@ void print_json_doc(const rapidjson::Value& doc, const std::string& offset) {
 }
 
 //-------------------
+/// Prints vector of strings.
 
 void print_vector_of_strings(const std::vector<std::string>& v, const char* gap) {
   std::cout << "In print_vector_of_strings\n";
@@ -110,19 +106,34 @@ void print_vector_of_strings(const std::vector<std::string>& v, const char* gap)
 }
 
 //-------------------
+/// Prints float array of values from input byte-string.
+
+void print_byte_string_as_float(const std::string& s, const size_t nvals) {
+  typedef float T;
+  const T* pout;
+  size_t size;
+  response_string_to_data_array<T>(s, pout, size);
+  std::cout << "data size: " << size << '\n';
+  for(const float* p=pout; p<&pout[nvals]; p++) {std::cout << *p << "  ";} std::cout << '\n';
+}
+
+//-------------------
 /// Parses char* to Document& doc.
+
 void chars_to_json_doc(const char* s, rapidjson::Document& jdoc) {
     rapidjson::ParseResult ok = jdoc.Parse(s);
     if (!ok) MSG(ERROR, "JSON parse error: " << ok.Code() << " " << ok.Offset());
 }
 
 //-------------------
+/// Converts response byte-string to rapidjson::Document.
 
 void response_to_json_doc(const std::string& sresp, rapidjson::Document& jdoc) { 
   chars_to_json_doc(sresp.c_str(), jdoc);
 }
 
 //-------------------
+/// Converts rapidjson::Value (for IsArray()) to the std::vector of string names.
 
 void json_doc_to_vector_of_strings(const rapidjson::Value& jdoc, std::vector<std::string>& vout) {
   vout.clear();
@@ -133,10 +144,20 @@ void json_doc_to_vector_of_strings(const rapidjson::Value& jdoc, std::vector<std
     vout.push_back(itr->GetString());
   }
 }
+//-------------------
+/// Returns pointer TDATA* to array of values and its size associated with byte-string.
+
+template<typename TDATA>
+void response_string_to_data_array(const std::string& sresp, const TDATA*& pout, size_t& size) {
+  const char* cstr = sresp.c_str();
+  pout = reinterpret_cast<const TDATA*>(cstr);
+  size = sresp.size()/sizeof(TDATA);
+  //std::cout << "==== XXX In response_string_to_data_array data size: " << size << '\n';
+  //for(const TDATA* p=pout; p<&pout[100]; p++) {std::cout << *p << "  ";} std::cout << "\n====\n";
+}
 
 //-------------------
-
-//Returns string like "https://pswww-dev.slac.stanford.edu//calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
+///Returns string URL like "https://pswww-dev.slac.stanford.edu//calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
 
 void string_url_with_query(std::string& url, const char* dbname, const char* colname, const char* query, const char* urlws) {
   url = urlws;
@@ -154,6 +175,7 @@ void string_url_with_query(std::string& url, const char* dbname, const char* col
 }
 
 //-------------------
+/// callback for curl_easy.
 
 size_t _callback(char* buf, size_t size, size_t nmemb, void* pout) {
   size_t nbytes = size*nmemb; // size of the buffer
@@ -163,10 +185,8 @@ size_t _callback(char* buf, size_t size, size_t nmemb, void* pout) {
 }
 
 //-------------------
-
-// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
-
-// perform request with specified url and saves response in std::string& sresp through _callback.
+/// perform request with specified url and saves response in std::string& sresp through _callback. Analog of
+/// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
 
 void request(std::string& sresp, const char* url) {
   MSG(DEBUG, "In request url:" << url);
@@ -198,6 +218,7 @@ void request(std::string& sresp, const char* url) {
 }
 
 //-------------------
+/// Returns database names for default or specified mongod server.
 
 void database_names(std::vector<std::string>& dbnames, const char* urlws) {
   std::string sresp;
@@ -208,6 +229,7 @@ void database_names(std::vector<std::string>& dbnames, const char* urlws) {
 }
 
 //-------------------
+/// Returns collection names for default or specified database on mongod server.
 
 void collection_names(std::vector<std::string>& colnames, const char* dbname, const char* urlws) {
   std::string url(urlws); url += '/'; url += dbname;
@@ -219,8 +241,8 @@ void collection_names(std::vector<std::string>& colnames, const char* dbname, co
 }
 
 //-------------------
-
 /// Performs request for url+query and saves responce in std::string& sresp
+
 void find_docs(std::string& sresp, const char* dbname, const char* colname, const char* query, const char* urlws) {
   std::string url;
   string_url_with_query(url, dbname, colname, query, urlws);
@@ -228,14 +250,15 @@ void find_docs(std::string& sresp, const char* dbname, const char* colname, cons
 }
 
 //-------------------
-
 /// Protected return of doc[name] or EMPTY_VALUE if doc[name] is not found.
+
 const rapidjson::Value& value_from_json_doc(const rapidjson::Value& doc, const char* name) {
   rapidjson::Value::ConstMemberIterator itr = doc.FindMember(name);
   return (itr != doc.MemberEnd()) ? itr->value : EMPTY_VALUE;
 }
 
 //-------------------
+/// Returns a single document "best-latest-matched" to specified in query conditions.
 
 const rapidjson::Value& find_doc(rapidjson::Document& jdoc, const char* dbname, const char* colname, const char* query, const char* urlws) {
   std::string sresp;
@@ -293,8 +316,9 @@ const rapidjson::Value& find_doc(rapidjson::Document& jdoc, const char* dbname, 
 }
 
 //-------------------
+/// Returns document for specified document id from database collection. Analog of
+/// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001/5b6cdde71ead144f115319be"
 
-// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001/5b6cdde71ead144f115319be"
 void get_doc_for_docid(rapidjson::Document& jdoc, const char* dbname, const char* colname, const char* docid, const char* urlws) {
   std::string url(urlws);
   url += '/'; url += dbname; url += '/'; url += colname; url += '/'; url += docid;
@@ -305,8 +329,9 @@ void get_doc_for_docid(rapidjson::Document& jdoc, const char* dbname, const char
 }
 
 //-------------------
+/// Returns byte-string data for specified dataid from database GridFS. Analog of
+/// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/gridfs/5b6cdde71ead144f11531999" 
 
-// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/gridfs/5b6cdde71ead144f11531999" 
 void get_data_for_id(std::string& sresp, const char* dbname, const char* dataid, const char* urlws) {
   std::string url(urlws); url += '/'; url += dbname; url += "/gridfs/"; url += dataid;
   MSG(DEBUG, "get_doc_for_docid url: \"" << url << "\"\n");
@@ -315,6 +340,7 @@ void get_data_for_id(std::string& sresp, const char* dbname, const char* dataid,
 }
 
 //-------------------
+/// Returns byte-string data for specified document id from database collection.
 
 void get_data_for_docid(std::string& sresp, const char* dbname, const char* colname, const char* docid, const char* urlws) {
   rapidjson::Document jdoc;
@@ -325,6 +351,7 @@ void get_data_for_docid(std::string& sresp, const char* dbname, const char* coln
 }
 
 //-------------------
+/// Returns byte-string data for specified document from database collection.
 
 void get_data_for_doc(std::string& sresp, const char* dbname, const char* colname, const rapidjson::Value& jdoc, const char* urlws) {
   const char* docid = jdoc["_id"].GetString();
@@ -333,34 +360,20 @@ void get_data_for_doc(std::string& sresp, const char* dbname, const char* colnam
 }
 
 //-------------------
+/// Returns byte-string data for specified parameters. 
+/// Then byte-string data can be decoded to expected formats.
 
-template<typename TDATA>
-void response_string_to_data_array(const std::string& sresp, const TDATA*& pout, size_t& size) {
-  const char* cstr = sresp.c_str();
-  pout = reinterpret_cast<const TDATA*>(cstr);
-  size = sresp.size()/sizeof(TDATA);
-  //std::cout << "==== XXX In response_string_to_data_array data size: " << size << '\n';
-  //for(const TDATA* p=pout; p<&pout[100]; p++) {std::cout << *p << "  ";} std::cout << "\n====\n";
+void calib_constants(std::string& sresp, const char* det, const char* exp, const char* ctype, const unsigned run, const unsigned time_sec, const char* version, const char* urlws) {
+  MSG(DEBUG, "calib_constants for det: " << det << '\n');
 }
 
 //-------------------
-
-void print_byte_string_as_float(std::string s, const size_t nvals) {
-  typedef float T;
-  const T* pout;
-  size_t size;
-  response_string_to_data_array<T>(s, pout, size);
-  std::cout << "data size: " << size << '\n';
-  for(const float* p=pout; p<&pout[nvals]; p++) {std::cout << *p << "  ";} std::cout << '\n';
-}
-
-//-------------------
-
-//template class psalg::int_string_data_as_array<float>; 
 
   template void response_string_to_data_array<int>   (const std::string&, const int*&,    size_t&); 
   template void response_string_to_data_array<float> (const std::string&, const float*&,  size_t&); 
   template void response_string_to_data_array<double>(const std::string&, const double*&, size_t&); 
+
+//template class psalg::int_string_data_as_array<float>; 
 
 //-------------------
 

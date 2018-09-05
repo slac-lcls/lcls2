@@ -1,8 +1,9 @@
+
+#   src/AreaDetectorTypes.cc - moved to calib for correct dependences
 add_library(detector SHARED
     src/DetectorTypes.cc
     src/Detector.cc
     src/DetectorStore.cc
-    src/AreaDetectorTypes.cc
     src/AreaDetector.cc
     src/AreaDetectorEpix100a.cc
     src/AreaDetectorStore.cc
@@ -18,11 +19,11 @@ target_include_directories(detector PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+#   AreaDetectorTypes.hh - moved to calib for correct dependences
 install(FILES
     DetectorTypes.hh
     Detector.hh
     DetectorStore.hh
-    AreaDetectorTypes.hh
     AreaDetector.hh
     AreaDetectorStore.hh
     AreaDetectorEpix100a.hh
