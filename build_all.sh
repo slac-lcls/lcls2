@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-source setup_env.sh
 
 # choose local directory where packages will be installed
 export INSTDIR=`pwd`/install

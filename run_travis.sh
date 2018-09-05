@@ -17,6 +17,6 @@ if [[ $PYVER == 2.7 ]]; then
     ./build_python2_psana.sh
     nosetests psana/psana/tests
 elif [[ $PYVER == 3.* ]]; then
-    ./build_travis.sh -p install
+    ./build_all.sh -p install
     pytest psana/psana/tests
 fi
