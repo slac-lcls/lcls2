@@ -94,7 +94,7 @@ class DataSourceHelper(object):
             ds.dm = DgramManager(xtc_files, configs=ds.configs)
 
     def setup_dgram_manager(self, ds, xtc_files, smd_files):
-        if smd_files is not None and len(smd_files) > 0:
+        if smd_files is not None:
             ds.smd_dm = DgramManager(smd_files)
             ds.smd_configs = ds.smd_dm.configs # FIXME: there should only be one type of config
 
