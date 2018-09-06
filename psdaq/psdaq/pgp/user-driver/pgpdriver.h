@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <errno.h>
+#include <string>
 #include <vector>
 #include "spscqueue.hh"
 
@@ -78,8 +79,11 @@ public:
     void status();
     void setup_lanes(int lane_mask);
     void loop_test(int lane_mask, int loopb, int size, int op_code, int fifolo);
+    std::string buildStamp();
     DmaBuffer* read();
+    void read_done(DmaBuffer*);
     void write();
+    uint8_t* reg();
 private:
     void print_dma_lane(const char* name, int addr, int offset, int mask);
     void print_pgp_lane(const char* name, int addr, int offset, int mask);

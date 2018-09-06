@@ -3,7 +3,7 @@
 
 int main(int argc, char* argv[])
 {
-    int device_id = 2031;
+    int device_id = 0x2031;
     int c;
     while((c = getopt(argc, argv, "d:")) != EOF) {
         switch(c) {

@@ -14,6 +14,7 @@
 #include <fstream>
 
 #include "pgpdriver.h"
+//#include "fpga.h"
 
 // translate a virtual address to a physical address
 uintptr_t virt_to_phys(void* virt)
@@ -106,7 +107,7 @@ std::string get_pgp_bus_id(int device_id)
     while (dirent* child = readdir(parent)) {
         long vendor =  get_id(base_dir + child->d_name + "/vendor");
         long device =  get_id(base_dir + child->d_name + "/device");
-        if ((vendor == PGP_VENDOR) & (device == device_id)) {
+        if ((vendor == PGP_VENDOR) && (device == device_id)) {
              printf("Found PGP card at: %s\n", child->d_name);
              return std::string(child->d_name);
         }
@@ -258,6 +259,14 @@ void AxisG2Device::loop_test(int lane_mask, int loopb, int size, int op_code, in
 
 }
 
+std::string AxisG2Device::buildStamp()
+{
+  uint32_t tmp[64];
+  for(unsigned i=0; i<64; i++)
+    tmp[i] = get_reg32(pci_resource, 0x800+4*i);
+  return std::string(reinterpret_cast<const char*>(tmp));
+}
+
 DmaBuffer* AxisG2Device::read()
 {
     volatile uint64_t dma_data;
@@ -283,4 +292,26 @@ DmaBuffer* AxisG2Device::read()
     
     return buffer;
 }
+
+void AxisG2Device::read_done(DmaBuffer* buffer)
+{
+  pool->buffer_queue.push(buffer);
+}
+
+uint8_t* AxisG2Device::reg() { return pci_resource; }
+
+// void AxisG2Device::load_prom(const std::vector<std::string>& mcs_files)
+// {
+//   for(unsigned i=0; i<mcs_files.size(); i++) {
+//     struct stat stat;
+//     check_error (stat(mcs_files[i].c_str(), &stat), "stat mcs file");
+//   }
+
+//   for(unsigned i=0; i<mcs_files.size(); i++) {
+//     FpgaProm prom(pci_resource,i);
+//     prom.erase ();
+//     prom.write ( mcs_files[i] );
+//     prom.verify( mcs_files[i] );
+//   }
+// }
 
