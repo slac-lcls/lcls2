@@ -12,7 +12,7 @@ export PYTHONPATH="$PWD/install/lib/python$PYVER/site-packages"
 
 if [[ $PYVER == 2.7 ]]; then
     ./build_python2_psana.sh
-    nosetests psana/psana/tests
+    pytest psana/psana/tests
 elif [[ $PYVER == 3.* ]]; then
     ./build_all.sh -p install
     pytest psana/psana/tests
