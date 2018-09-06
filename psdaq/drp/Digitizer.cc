@@ -72,7 +72,7 @@ public:
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             unsigned namesId = shapesdata.shapes().namesId();
-            printf("namesId: %u\n", namesId);
+            printf("###### namesId: %u\n", namesId);
             DescData descdata(shapesdata, _namesVec[namesId]);
             Names& names = descdata.nameindex().names();
 
@@ -145,7 +145,8 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     namesVec.push_back(NameIndex(configNames));
     printf("Done configNames\n");
 
-    CreateData fex(xtc, namesVec, 0); //FIXME: avoid hardwiring nameId
+    unsigned namesId = 0;
+    CreateData fex(xtc, namesVec, namesId); //FIXME: avoid hardwiring nameId
 
     // TODO: dynamically discover
 
@@ -153,8 +154,11 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     unsigned shape[MaxRank] = {enable.Size()};
     printf("enable: %d\n", shape[0]);
     Array<uint64_t> arrayT = fex.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
+    unsigned lane_mask;
     for(unsigned i=0; i<shape[0]; i++){
         arrayT(i) = (uint64_t) enable[i].GetInt();
+        printf("##### i, val: %u %u %u\n", i, enable[i].GetInt(), enable[i].GetInt() << (shape[0]-(i+1)));
+        lane_mask += enable[i].GetInt() << (shape[0]-i+1); // convert enable to unsigned using bitshift
         printf("enable: %lu\n", arrayT(i));
     };
 
@@ -167,9 +171,7 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
         printf("raw_ps: %lu\n", arrayT1(i));
     };
 
-    Value& lane_mask = d["xtc"]["LANE_MASK"];
-
-    return lane_mask.GetInt();
+    return lane_mask;
 }
 
 void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
@@ -181,7 +183,7 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
 
     unsigned lane_mask;
     lane_mask = addJson(dgram.xtc, m_namesVec);
-    printf("config lane_mask: %u\n", lane_mask);
+    printf("####### config lane_mask: %u\n", lane_mask);
 
     Alg hsdAlg("hsd", 1, 2, 3); // TODO: shouldn't this be configured by hsdconfig.py?
     unsigned segment = 0;
@@ -202,10 +204,10 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
 {
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    unsigned nameId=0;
+    unsigned namesId=1;
     Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
     memcpy(&dgram, event_header, sizeof(Transition));
-    CreateData hsd(dgram.xtc, m_namesVec, nameId);
+    CreateData hsd(dgram.xtc, m_namesVec, namesId);
     printf("*** evt count %d isevt %d control %x\n",event_header->evtCounter,dgram.seq.isEvent(),dgram.seq.pulseId().control());
 
     unsigned data_size;
