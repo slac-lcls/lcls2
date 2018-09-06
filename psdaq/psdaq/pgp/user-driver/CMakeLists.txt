@@ -30,12 +30,21 @@ add_executable(pgpread
 target_link_libraries(pgpread
     pgpdriver
     xtcdata::xtc
+    pthread
+    rt
 )
 
 add_executable(looptest
     looptest.cc
 )
 target_link_libraries(looptest
+    pgpdriver
+)
+
+add_executable(tdetsim
+    tdetsim.cc
+)
+target_link_libraries(tdetsim
     pgpdriver
 )
 

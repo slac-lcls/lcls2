@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include <new>
+#include <vector>
 
 using namespace Pds::Cphw;
 
@@ -17,14 +18,18 @@ void usage(const char* p) {
   printf("         -r <source> Reset timing to (0=RTM0, 1=FPGA, 2=BP, 3=RTM1)\n");
   printf("         -t Align target\n");
   printf("         -x Value to override XBar output mapping with\n");
+  printf("         -X <out,inp> individual XBar channel mapping\n");
   printf("         -m Measure and dump clocks\n");
   printf("         -c Clear counters\n");
+  printf("         -d dump timing\n");
+  printf("         -D dump timing sparse\n");
 }
 
 int main(int argc, char* argv[])
 {
   extern char* optarg;
   char c;
+  char* endptr;
 
   const char* ip = "192.168.2.10";
   unsigned short port = 8192;
@@ -35,11 +40,11 @@ int main(int argc, char* argv[])
   bool measureClks = false;
   bool lClear = false;
   int alignTarget = -1;
-  bool lXbar = false;
-  unsigned vXbar = 0;
+  std::vector<unsigned> ovXbar;
+  std::vector<unsigned> ivXbar;
   bool lDump0=false, lDump1=false;
 
-  while ( (c=getopt( argc, argv, "a:x:2dDimcr:t:h")) != EOF ) {
+  while ( (c=getopt( argc, argv, "a:x:X:2dDimcr:t:h")) != EOF ) {
     switch(c) {
     case 'a':
       ip = optarg;
@@ -64,8 +69,15 @@ int main(int argc, char* argv[])
       alignTarget = strtoul(optarg,NULL,0);
       break;
     case 'x':
-      lXbar = true;
-      vXbar = strtoul(optarg,NULL,0);
+      { unsigned iv = strtoul(optarg,NULL,0);
+        for(unsigned i=0; i<4; i++) {
+          ovXbar.push_back(i);
+          ivXbar.push_back(iv);
+        }
+      } break;
+    case 'X':
+      ovXbar.push_back(strtoul(optarg,&endptr,0));
+      ivXbar.push_back(strtoul(endptr+1,NULL,0));
       break;
     case 'd':
       lDump0 = true;
@@ -120,12 +132,8 @@ int main(int argc, char* argv[])
     usleep(1000);
   }
 
-  if (lXbar) {
-    t->xbar.outMap[0]=vXbar;
-    t->xbar.outMap[1]=vXbar;
-    t->xbar.outMap[2]=vXbar;
-    t->xbar.outMap[3]=vXbar;
-  }
+  for(unsigned i=0; i<ovXbar.size(); i++) 
+    t->xbar.outMap[ovXbar[i]]=ivXbar[i];
 
   t->xbar.dump();
 

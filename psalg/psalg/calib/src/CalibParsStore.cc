@@ -1,6 +1,6 @@
 //-------------------
 
-#include "psalg/detector/AreaDetectorTypes.hh"
+#include "psalg/calib/AreaDetectorTypes.hh"
 #include "psalg/calib/CalibParsStore.hh"
 
 #include "psalg/calib/CalibParsEpix100a.hh"

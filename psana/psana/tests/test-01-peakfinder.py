@@ -1,9 +1,10 @@
 import peakFinder as algos
 import numpy as np
-
+import os
 import psana.pyalgos.generic.Graphics as gr
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 
+cwd = os.path.abspath(os.path.dirname(__file__))
 doPlot = 0
 
 #------------------------------
@@ -16,9 +17,7 @@ def plot_image(data) :
 
 #------------------------------
 
-calib = np.load('/reg/g/psdm/detector/data_test/arrays/cxitut13_r10_32_cspad.npy')
-print_ndarr(calib, 'calib')
-data = calib[0]
+data = np.load(os.path.join(cwd,'cxitut13_r10_32_cspadAsic.npy'))
 print_ndarr(data, 'data')
 
 mask = np.ones_like(data, dtype=np.uint16)

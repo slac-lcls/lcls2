@@ -1,0 +1,2 @@
+To properly setup the SYS-1029U-TN10RT nodes for two PCIe x8 interfaces,
+Set BIOS for Advanced -> Chipset -> CPU2 -> NorthBridge -> Port 1 -> x8x8

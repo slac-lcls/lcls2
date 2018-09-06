@@ -193,6 +193,20 @@ void test_get_data_for_doc() {
 
 //-------------------
 
+void test_calib_constants() {
+  printf("In test_calib_constants\n");  
+  const char* det = "cspad_0001"; 
+  const char* exp = "cspad_0001"; 
+  const char* ctype = "pedestals";
+  const unsigned run = 10;
+  const unsigned time_sec = 1234567890;
+  const char* vers = NULL;
+  std::string sresp;
+  calib_constants(sresp, det, exp, ctype, run, time_sec, vers);
+}
+
+//-------------------
+
 int main(void)
 {
   //MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
@@ -212,6 +226,7 @@ int main(void)
   test_get_data_for_id(); print_hline(80,'_');
   test_get_data_for_docid(); print_hline(80,'_');
   test_get_data_for_doc(); print_hline(80,'_');
+  test_calib_constants(); print_hline(80,'_');
 }
 
 //-------------------

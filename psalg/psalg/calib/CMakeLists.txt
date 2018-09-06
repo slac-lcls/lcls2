@@ -1,5 +1,6 @@
 add_library(calib SHARED
     src/ArrayIO.cc
+    src/AreaDetectorTypes.cc
     src/CalibPars.cc
     src/CalibParsEpix100a.cc
     src/CalibParsStore.cc
@@ -21,6 +22,7 @@ target_link_libraries(calib
 
 install(FILES
     Types.hh
+    AreaDetectorTypes.hh
     NDArray.hh
     ArrayIO.hh
     CalibParsTypes.hh

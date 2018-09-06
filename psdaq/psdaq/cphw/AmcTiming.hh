@@ -3,6 +3,7 @@
 
 #include "psdaq/cphw/Reg.hh"
 #include "psdaq/cphw/AxiVersion.hh"
+#include "psdaq/cphw/GthEyeScan.hh"
 #include "psdaq/cphw/RingBuffer.hh"
 #include "psdaq/cphw/XBar.hh"
 
@@ -48,7 +49,10 @@ namespace Pds {
       RingBuffer ring1;
       uint32_t rsvd_ring1[(0x10000-sizeof(RingBuffer))>>2];
       //  TPGMini    @ 0x08030000
-      uint32_t rsvd_xx[(0x800000-0x30000)>>2];
+      uint32_t rsvd_xx[(0x400000-0x30000)>>2];
+      //  GthEyeScan (DRP) @ 0x08400000
+      GthEyeScan drp;
+      uint32_t rsvd_08800000[(0x00400000-sizeof(GthEyeScan))>>2];
       //  GthRxAlign @ 0x08800000
       Reg gthAlign[64];
       Reg gthAlignTarget;

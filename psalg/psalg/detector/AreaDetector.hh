@@ -5,8 +5,8 @@
 #include <string>
 #include "psalg/calib/CalibParsStore.hh" // CalibPars, getCalibPars
 #include "psalg/calib/NDArray.hh" // NDArray
+#include "psalg/calib/AreaDetectorTypes.hh"
 #include "psalg/detector/Detector.hh"
-#include "psalg/detector/AreaDetectorTypes.hh"
 
 using namespace std;
 using namespace psalg;

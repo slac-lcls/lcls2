@@ -1,0 +1,7 @@
+Steps for connecting to XVC
+
+vivado &
+-> Open Hardware Manager
+
+tcl > connect_hw_server
+tcl > open_hw_target -xvc_url <IP addr>:2542
