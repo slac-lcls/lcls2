@@ -64,7 +64,7 @@ EbLfBase::EbLfBase(unsigned nPeers) :
   _mr(nPeers),
   _ra(nPeers),
   _txcq(nPeers),
-  _rxcq(0),
+  _rxcq(nullptr),
   _rxDepth(0),
   _rOuts(nPeers),
   _id(nPeers),
@@ -225,7 +225,6 @@ int EbLfBase::postCompRecv(unsigned dst, void* ctx)
 int EbLfBase::_postCompRecv(Endpoint* ep, unsigned count, void* ctx)
 {
   unsigned i;
-  unsigned posted=0;
 
   for (i = 0; i < count; ++i)
   {
@@ -235,12 +234,10 @@ int EbLfBase::_postCompRecv(Endpoint* ep, unsigned count, void* ctx)
       if (rc != -FI_EAGAIN)
         fprintf(stderr, "Failed to post a CQ buffer: %s\n", ep->error());
       break;
-    } else {
-      posted++;
     }
   }
 
-  return posted;
+  return i;
 }
 
 int EbLfBase::_tryCq(fi_cq_data_entry* cqEntry)
@@ -324,18 +321,17 @@ int EbLfBase::post(unsigned    dst,
   uint64_t repostCnt = 0;
   ++_stats._postCnt;
 
-  ssize_t          rc;
-  unsigned         idx = _mappedId[dst];
+  unsigned idx = _mappedId[dst];
   if (idx == -1u)
   {
-    fprintf(stderr, "%s: Invalid ID: %d\n", __PRETTY_FUNCTION__, dst);
+    fprintf(stderr, "%s: Invalid destination ID: %d\n", __PRETTY_FUNCTION__, dst);
     return -FI_EINVAL;
   }
 
-  Endpoint*        ep  = _ep[idx];
-  RemoteAddress    ra   (_ra[idx].rkey, _ra[idx].addr + offset, len);
-  MemoryRegion*    mr  = _mr[idx];
-  CompletionQueue* cq  = ep->txcq();    // Same as _txcq[idx]
+  RemoteAddress ra   (_ra[idx].rkey, _ra[idx].addr + offset, len);
+  MemoryRegion* mr  = _mr[idx];
+  Endpoint*     ep  = _ep[idx];
+  ssize_t       rc;
 
   while ((rc = ep->write_data(buf, len, &ra, ctx, immData, mr)) < 0)
   {
@@ -348,6 +344,7 @@ int EbLfBase::post(unsigned    dst,
 
     fi_cq_data_entry cqEntry;
     const ssize_t    maxCnt = 1;
+    CompletionQueue* cq     = ep->txcq();     // Same as _txcq[idx]
     rc = cq->comp(&cqEntry, maxCnt);
     if ((rc != -FI_EAGAIN) && (rc != maxCnt)) // EAGAIN means no completions available
     {
