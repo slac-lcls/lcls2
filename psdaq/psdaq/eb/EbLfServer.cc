@@ -1,26 +1,29 @@
 #include "EbLfServer.hh"
 
+#include "EbLfLink.hh"
 #include "Endpoint.hh"
 
 #include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
+#include <errno.h>
+#include <chrono>
 
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
+using ms_t = std::chrono::milliseconds;
 
-EbLfServer::EbLfServer(const char*  addr,
-                       std::string& port,
-                       unsigned     nClients) :
-  EbLfBase(nClients),
-  _addr(addr),
-  _port(port),
-  _pep(nullptr)
+
+EbLfServer::EbLfServer(const char* addr,
+                       const char* port,
+                       int         rxDepth) :
+  _pep(nullptr),
+  _rxDepth(rxDepth)
 {
+  _status = _initialize(addr, port);
 }
 
 EbLfServer::~EbLfServer()
@@ -29,174 +32,200 @@ EbLfServer::~EbLfServer()
   if (_pep)   delete _pep;
 }
 
-int EbLfServer::connect(unsigned    id,
-                        void*       region,
-                        size_t      size,
-                        PeerSharing shared,
-                        void*       ctx)
+int EbLfServer::_initialize(const char* addr,
+                            const char* port)
 {
-  int ret = _connect(id);
-  if (ret)  return ret;
-
-  for (unsigned i = 0; i < _ep.size(); ++i)
-  {
-    int ret = _setupMr(_ep[i], region, size, _mr[i]);
-    if (ret)  return ret;
-
-    if (shared == PER_PEER_BUFFERS)  region = (char*)region + size;
-
-    ret = _exchangeIds(_ep[i], _mr[i], id, _id[i]);
-    if (ret)  return ret;
-
-    ret = _syncLclMr(_ep[i], _mr[i], _ra[i]);
-    if (ret)  return ret;
-
-    _rOuts[i] = _postCompRecv(_ep[i], _rxDepth, ctx);
-    if (_rOuts[i] < _rxDepth)
-    {
-      fprintf(stderr, "Posted only %d of %d CQ buffers at index %d(%d)\n",
-              _rOuts[i], _rxDepth, i, _id[i]);
-    }
-
-    printf("Client[%d] %d connected\n", i, _id[i]);
-  }
-
-  _mapIds(_ep.size());
-
-  return 0;
-}
-
-int EbLfServer::_connect(unsigned id)
-{
-  _pep = new PassiveEndpoint(_addr, _port.c_str());
+  _pep = new PassiveEndpoint(addr, port);
   if (!_pep || (_pep->state() != EP_UP))
   {
-    fprintf(stderr, "Failed to create Passive Endpoint: %s\n",
-            _pep ? _pep->error() : "No memory");
+    fprintf(stderr, "%s: Failed to create Passive Endpoint: %s\n",
+            __PRETTY_FUNCTION__, _pep ? _pep->error() : "No memory");
     return _pep ? _pep->error_num(): -FI_ENOMEM;
   }
 
   Fabric* fab = _pep->fabric();
 
-  printf("Server is using '%s' provider\n", fab->provider());
+  //void* data = fab;                     // Something since data can't be NULL
+  //printf("EbLfServer is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
+  //       fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
 
-  struct fi_cq_attr cq_attr = {
-    .size             = 0,
-    .flags            = 0,
-    .format           = FI_CQ_FORMAT_DATA,
-    .wait_obj         = FI_WAIT_UNSPEC,
-    .signaling_vector = 0,
-    .wait_cond        = FI_CQ_COND_NONE,
-    .wait_set         = NULL,
-  };
-
-  _rxDepth     = fab->info()->rx_attr->size;
-  cq_attr.size = (_rxDepth * 3 / 2) + 1; //over provision the cq size compared to the rxDepth
-  _rxcq = new CompletionQueue(fab, &cq_attr, NULL);
+  if (_rxDepth == 0)  _rxDepth = fab->info()->rx_attr->size;
+  _rxcq = new CompletionQueue(fab);
   if (!_rxcq)
   {
-    fprintf(stderr, "Failed to create RX completion queue: %s\n",
-            "No memory");
+    fprintf(stderr, "%s: Failed to create RX completion queue: %s\n",
+            __PRETTY_FUNCTION__, "No memory");
     return -FI_ENOMEM;
   }
 
   if(!_pep->listen())
   {
-    fprintf(stderr, "Failed to set passive endpoint to listening state: %s\n",
-            _pep->error());
+    fprintf(stderr, "%s: Failed to set passive endpoint to listening state: %s\n",
+            __PRETTY_FUNCTION__, _pep->error());
     return _pep->error_num();
   }
-  printf("Listening for client(s) on port %s\n", _port.c_str());
+  printf("Listening for EbLfClient(s) on port %s\n", port);
 
-  for (unsigned i = 0; i < _ep.size(); ++i)
+  return 0;
+}
+
+int EbLfServer::connect(EbLfLink** link, int tmo)
+{
+  if (_status != 0)
   {
-    int tmo = -1;
-    _ep[i] = _pep->accept(tmo, nullptr, 0, _rxcq, FI_RECV);
-    if (!_ep[i])
+    fprintf(stderr, "%s: Failed to initialize Server\n", __PRETTY_FUNCTION__);
+    return _status;
+  }
+
+  Endpoint* ep = _pep->accept(tmo, nullptr, 0, _rxcq, FI_RECV);
+  if (!ep)
+  {
+    fprintf(stderr, "%s: Failed to accept connection: %s\n",
+            __PRETTY_FUNCTION__, _pep->error());
+    return _pep->error_num();
+  }
+
+  *link = new EbLfLink(ep, _rxDepth);
+  if (!*link)
+  {
+    fprintf(stderr, "%s: Failed to find memory for link\n", __PRETTY_FUNCTION__);
+    return ENOMEM;
+  }
+
+  return 0;
+}
+
+int EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
+{
+  const int maxCnt = 1;
+  //const int tmo    = 5000;              // milliseconds
+  //ssize_t rc = _rxcq->comp_wait(cqEntry, maxCnt, tmo); // Waiting favors throughput
+  ssize_t rc = _rxcq->comp(cqEntry, maxCnt);           // Polling favors latency
+  if (rc == maxCnt)
+  {
+    if ((cqEntry->flags & flags) == flags)
     {
-      fprintf(stderr, "Failed to accept connection for Endpoint[%d]: %s\n",
-              i, _pep->error());
-      return _pep->error_num();
+      //fprintf(stderr, "%s: Expected   CQ entry:\n"
+      //                "  count %zd, got flags %016lx vs %016lx, data = %08lx\n"
+      //                "  ctx   %p, len %zd, buf %p\n",
+      //        __PRETTY_FUNCTION__, rc, cqEntry->flags, flags, cqEntry->data,
+      //        cqEntry->op_context, cqEntry->len, cqEntry->buf);
+
+      return 0;
+    }
+
+    fprintf(stderr, "%s: Unexpected CQ entry:\n"
+                    "  count %zd, got flags %016lx vs %016lx\n"
+                    "  ctx   %p, len %zd, buf %p\n",
+            __PRETTY_FUNCTION__, rc, cqEntry->flags, flags,
+            cqEntry->op_context, cqEntry->len, cqEntry->buf);
+
+    return -FI_EAGAIN;
+  }
+
+  // Man page suggests rc == 0 cannot occur
+  if (rc != -FI_EAGAIN)
+  {
+    static int _errno = maxCnt;
+    if (rc != _errno)
+    {
+      fprintf(stderr, "%s: Error reading RX completion queue: %s\n",
+              __PRETTY_FUNCTION__, _rxcq->error());
+      _errno = rc;
     }
   }
 
-  return 0;
+  return rc;
 }
 
-int EbLfServer::_exchangeIds(Endpoint*     ep,
-                             MemoryRegion* mr,
-                             unsigned      myId,
-                             unsigned&     id)
+int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 {
-  ssize_t  rc;
-  unsigned idx = &ep - &_ep[0];
-  void*    buf = mr->start();
+  auto t0(std::chrono::steady_clock::now());
+  int  rc;
 
-  if ((rc = ep->recv_sync(buf, sizeof(id), mr)) < 0)
+  const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
+  while ((rc = _poll(cqEntry, flags)) == -FI_EAGAIN)
   {
-    fprintf(stderr, "Failed receiving peer[%d]'s ID: %s\n",
-            idx, ep->error());
-    return rc;
-  }
-  id = *(unsigned*)buf;
+    auto t1(std::chrono::steady_clock::now());
 
-  LocalAddress adx(buf, sizeof(myId), mr);
-  LocalIOVec   iov(&adx, 1);
-  Message      msg(&iov, 0, NULL, 0);
-
-  *(unsigned*)buf = myId;
-  if ((rc = ep->sendmsg_sync(&msg, FI_TRANSMIT_COMPLETE | FI_COMPLETION)) < 0)
-  {
-    fprintf(stderr, "Failed sending peer[%d] our ID: %s\n",
-            idx, ep->error());
-    return rc;
-  }
-
-  return 0;
-}
-
-int EbLfServer::shutdown()
-{
-  int ret = FI_SUCCESS;
-
-  for (unsigned i = 0; i < _ep.size(); ++i)
-  {
-    if (!_ep[i])  continue;
-
-    bool cm_entry;
-    struct fi_eq_cm_entry entry;
-    uint32_t event;
-    const int tmo = 1000;               // mS
-    if (_ep[i]->event_wait(&event, &entry, &cm_entry, tmo))
+    //const int tmo = 5000;               // milliseconds
+    if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
     {
-      if (cm_entry && (event == FI_SHUTDOWN))
-      {
-        _pep->close(_ep[i]);
-        printf("Client %d disconnected\n", i);
-      }
-      else
-      {
-        fprintf(stderr, "Unexpected event %u - expected FI_SHUTDOWN (%u)\n",
-                event, FI_SHUTDOWN);
-        ret = _ep[i]->error_num();
-        _pep->close(_ep[i]);
-        break;
-      }
+      return -FI_ETIMEDOUT;
+    }
+  }
+
+  return rc;
+}
+
+int EbLfServer::pend(void** ctx, int msTmo)
+{
+  fi_cq_data_entry cqEntry;
+
+  int rc = pend(&cqEntry, msTmo);
+  if (!rc)  *ctx = cqEntry.op_context;
+
+  return rc;
+}
+
+int EbLfServer::pend(uint64_t* data, int msTmo)
+{
+  fi_cq_data_entry cqEntry;
+
+  int rc = pend(&cqEntry, msTmo);
+  if (!rc)  *data = cqEntry.data;
+
+  return rc;
+}
+
+int EbLfServer::poll(uint64_t* data)
+{
+  const uint64_t   flags = FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA;
+  fi_cq_data_entry cqEntry;
+
+  int rc = _poll(&cqEntry, flags);
+  if (!rc)  *data = cqEntry.data;
+
+  return rc;
+}
+
+int EbLfServer::shutdown(EbLfLink* link)
+{
+  int rc = FI_SUCCESS;
+
+  Endpoint* ep = link->endpoint();
+  if (!ep)  return -1;
+
+  bool cm_entry;
+  struct fi_eq_cm_entry entry;
+  uint32_t event;
+  const int tmo = 1000;               // mS
+  if (ep->event_wait(&event, &entry, &cm_entry, tmo))
+  {
+    if (cm_entry && (event == FI_SHUTDOWN))
+    {
+      printf("EbLfClient %d disconnected\n", link->id());
     }
     else
     {
-      if (_ep[i]->error_num() != -FI_EAGAIN)
-      {
-        fprintf(stderr, "Waiting for event failed: %s\n", _ep[i]->error());
-        ret = _ep[i]->error_num();
-        _pep->close(_ep[i]);
-        break;
-      }
+      fprintf(stderr, "%s: Unexpected event %u - expected FI_SHUTDOWN (%u)\n",
+              __PRETTY_FUNCTION__, event, FI_SHUTDOWN);
+      rc = ep->error_num();
+    }
+  }
+  else
+  {
+    if (ep->error_num() != -FI_EAGAIN)
+    {
+      fprintf(stderr, "%s: Waiting for event failed: %s\n",
+              __PRETTY_FUNCTION__, ep->error());
+      rc = ep->error_num();
     }
   }
 
-  printf("\nEbLfServer dump:\n");
-  _stats.dump();
+  _pep->close(ep);
 
-  return ret;
+  if (link)  delete link;
+
+  return rc;
 }

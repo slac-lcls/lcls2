@@ -1,15 +1,19 @@
 add_library(eb SHARED
+  utilities.cc
   Endpoint.cc
   Batch.cc
   BatchManager.cc
   EventBuilder.cc
   EbEpoch.cc
   EbEvent.cc
-  EbLfBase.cc
+  EbLfLink.cc
   EbLfServer.cc
   EbLfClient.cc
-  MonLfServer.cc
-  MonLfClient.cc
+  EbContributor.cc
+  EbCtrbInBase.cc
+  EbAppBase.cc
+  MonContributor.cc
+  StatsMonitor.cc
 )
 
 target_include_directories(eb PUBLIC
@@ -22,6 +26,7 @@ target_link_libraries(eb
   xtcdata::xtc
   service
   fabric
+  zmq
 )
 
 add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
@@ -37,15 +42,27 @@ add_executable(ft_writemsg_server ft_writemsg_server.cc)
 
 add_executable(eblf_pingpong    eblf_pingpong.cc)
 
+add_executable(tstEbLfLink      tstEbLfLink.cc)
+
+add_executable(ibMon            ibMon.cc)
+
 add_executable(tstEbContributor tstEbContributor.cc)
+#add_executable(drpEbContributor drpEbContributor.cc)
 add_executable(tstEbBuilder     tstEbBuilder.cc)
 add_executable(drpEbBuilder     drpEbBuilder.cc)
 
-add_executable(tstMonLfLink     tstMonLfLink.cc)
+add_executable(tstNthSet        tstNthSet.cc)
+target_compile_options(tstNthSet        PRIVATE -mbmi2)
 
 #target_compile_options(eb               PRIVATE -pg)
 #target_compile_options(tstEbContributor PRIVATE -pg)
 #target_compile_options(tstEbBuilder     PRIVATE -pg)
+
+target_include_directories(ibMon PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+  $ENV{CONDA_PREFIX}/include
+)
 
 target_link_libraries(ft_pingpong
   eb
@@ -88,11 +105,29 @@ target_link_libraries(eblf_pingpong
   eb
 )
 
+target_link_libraries(tstEbLfLink
+  eb
+  pthread
+  rt
+)
+
+target_link_libraries(ibMon
+  zmq
+  pthread
+  rt
+)
+
 target_link_libraries(tstEbContributor
   eb
   pthread
   rt
 )
+
+#target_link_libraries(drpEbContributor
+#  eb
+#  pthread
+#  rt
+#)
 
 target_link_libraries(tstEbBuilder
   eb
@@ -102,13 +137,7 @@ target_link_libraries(tstEbBuilder
 
 target_link_libraries(drpEbBuilder
   eb
-  pthread
-  rt
   collection
-)
-
-target_link_libraries(tstMonLfLink
-  eb
   pthread
   rt
 )

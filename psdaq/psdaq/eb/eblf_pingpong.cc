@@ -1,7 +1,7 @@
 #include "EbLfServer.hh"
 #include "EbLfClient.hh"
 
-#include "Endpoint.hh"
+#include "EbLfLink.hh"
 
 #ifndef _GNU_SOURCE
 #  define _GNU_SOURCE
@@ -63,7 +63,7 @@ void usage(char *name, char *desc)
 
 int main(int argc, char **argv)
 {
-  int      op, ret  = 0;
+  int      op, rc   = 0;
   char*    ifAddr   = nullptr;
   unsigned portBase = port_base;
   unsigned size     = default_size;
@@ -97,8 +97,8 @@ int main(int argc, char **argv)
   }
   std::string srvPort(std::to_string(srvBase));
 
-  std::vector<std::string> cltAddr;
-  std::vector<std::string> cltPort;
+  std::string cltAddr;
+  std::string cltPort;
   if (optind < argc)
   {
     char*    peer    = argv[optind];
@@ -109,8 +109,8 @@ int main(int argc, char **argv)
               USHRT_MAX, cltBase);
       return 1;
     }
-    cltAddr.push_back(std::string(peer));
-    cltPort.push_back(std::string(std::to_string(cltBase)));
+    cltAddr = std::string(peer);
+    cltPort = std::string(std::to_string(cltBase));
   }
   else
   {
@@ -121,52 +121,87 @@ int main(int argc, char **argv)
   size_t alignment = sysconf(_SC_PAGESIZE);
   size             = alignment * ((size + alignment - 1) / alignment);
   void*  srcBuf    = nullptr;
-  ret              = posix_memalign(&srcBuf, alignment, size);
-  if (ret)  perror("posix_memalign: source buffer");
-  assert(srcBuf != nullptr);
-
+  rc               = posix_memalign(&srcBuf, alignment, size);
+  if (rc)
+  {
+    fprintf(stderr, "posix_memalign failed for source buffer: %s", strerror(rc));
+    return rc;
+  }
   void*  snkBuf    = nullptr;
-  ret              = posix_memalign(&snkBuf, alignment, size);
-  if (ret)  perror("posix_memalign: sink buffer");
-  assert(snkBuf != nullptr);
+  rc               = posix_memalign(&snkBuf, alignment, size);
+  if (rc)
+  {
+    fprintf(stderr, "posix_memalign failed for sink buffer: %s", strerror(rc));
+    return rc;
+  }
 
-  unsigned    id     = 0;
-  unsigned    nPeers = 1;
-  EbLfServer* pender = nullptr;
-  EbLfClient* poster = nullptr;
+  unsigned    verbose = 1;
+  unsigned    id      = 0;
+  EbLfServer* svr     = nullptr;
+  EbLfClient* clt     = nullptr;
+  EbLfLink*   svrLink;
+  EbLfLink*   cltLink;
   if (!start)
   {
-    pender = new EbLfServer(ifAddr, srvPort, nPeers);
-    if ( (ret = pender->connect(id,
-                                snkBuf,
-                                size,
-                                EbLfBase::PEERS_SHARE_BUFFERS)) )  return ret;
+    svr = new EbLfServer(ifAddr, srvPort.c_str());
+    if ( (rc = svr->connect(&svrLink)) )
+    {
+      fprintf(stderr, "Error connecting to client\n");
+      return rc;
+    }
+    if ( (rc = svrLink->preparePender(snkBuf, size, 0, id, verbose)) < 0 )
+    {
+      fprintf(stderr, "Failed to prepare server's link\n");
+      return rc;
+    }
+    printf("EbLf client (ID %d) connected\n", svrLink->id());
+
     const unsigned tmo(120);
-    poster = new EbLfClient(cltAddr, cltPort);
-    if ( (ret = poster->connect(id,
-                                tmo,
-                                srcBuf,
-                                size,
-                                EbLfBase::PEERS_SHARE_BUFFERS)) )  return ret;
+    clt = new EbLfClient();
+    if ( (rc = clt->connect(cltAddr.c_str(), cltPort.c_str(), tmo, &cltLink)) )
+    {
+      fprintf(stderr, "Error connecting to server\n");
+      return rc;
+    }
+    if ( (rc = cltLink->preparePoster(srcBuf, size, 0, id, verbose)) < 0)
+    {
+      fprintf(stderr, "Failed to prepare client's link\n");
+      return rc;
+    }
+    printf("EbLf server (ID %d) connected\n", cltLink->id());
   }
   else
   {
     const unsigned tmo(120);
-    poster = new EbLfClient(cltAddr, cltPort);
-    if ( (ret = poster->connect(id,
-                                tmo,
-                                srcBuf,
-                                size,
-                                EbLfBase::PEERS_SHARE_BUFFERS)) )  return ret;
-    pender = new EbLfServer(ifAddr, srvPort, nPeers);
-    if ( (ret = pender->connect(id,
-                                snkBuf,
-                                size,
-                                EbLfBase::PEERS_SHARE_BUFFERS)) )  return ret;
-
-    if (poster->post(id, srcBuf, size, 0, 0))
+    clt = new EbLfClient();
+    if ( (rc = clt->connect(cltAddr.c_str(), cltPort.c_str(), tmo, &cltLink)) )
     {
-      fprintf(stderr, "Poster: failed to post a buffer\n");
+      fprintf(stderr, "Error connecting to server\n");
+      return rc;
+    }
+    if ( (rc = cltLink->preparePoster(srcBuf, size, 0, id, verbose)) < 0)
+    {
+      fprintf(stderr, "Failed to prepare client's link\n");
+      return rc;
+    }
+    printf("EbLf server (ID %d) connected\n", cltLink->id());
+
+    svr = new EbLfServer(ifAddr, srvPort.c_str());
+    if ( (rc = svr->connect(&svrLink)) )
+    {
+      fprintf(stderr, "Error connecting to client\n");
+      return rc;
+    }
+    if ( (rc = svrLink->preparePender(snkBuf, size, 0, id, verbose)) < 0)
+    {
+      fprintf(stderr, "Failed to prepare server's link\n");
+      return rc;
+    }
+    printf("EbLf client (ID %d) connected\n", svrLink->id());
+
+    if (cltLink->post(srcBuf, size, 0, 0))
+    {
+      fprintf(stderr, "Clt: failed to post a buffer\n");
       return 1;
     }
   }
@@ -177,22 +212,23 @@ int main(int argc, char **argv)
   while (rcnt < iters || scnt < iters)
   {
     fi_cq_data_entry wc;
-    if ( (ret = pender->pend(&wc)) )
+    const int tmo = 5000;               // milliseconds
+    if ( (rc = svr->pend(&wc, tmo)) < 0 )
     {
       fprintf(stderr, "Failed pending for a buffer: %s(%d)\n",
-              fi_strerror(-ret), ret);
+              fi_strerror(-rc), rc);
       break;
     }
     ++rcnt;
 
-    pender->postCompRecv(id);
+    svrLink->postCompRecv();
 
     if (scnt < iters)
     {
-      if (poster->post(id, srcBuf, size, 0, 0))
+      if (cltLink->post(srcBuf, size, 0, 0))
       {
         fprintf(stderr, "Failed to post a buffer\n");
-        ret = 1;
+        rc = 1;
         break;
       }
       ++scnt;
@@ -200,7 +236,7 @@ int main(int argc, char **argv)
   }
   auto tEnd = std::chrono::steady_clock::now();
 
-  if (ret == 0)
+  if (rc == 0)
   {
     double   usecs = std::chrono::duration_cast<us_t>(tEnd - tStart).count();
     uint64_t bytes = (uint64_t)size * iters * 2;
@@ -210,16 +246,18 @@ int main(int argc, char **argv)
            iters, usecs / 1000000., usecs / iters);
   }
 
-  if (pender)
+  if (svr)
   {
-    pender->shutdown();
-    delete pender;
+    svr->shutdown(svrLink);
+    delete svr;
   }
-  if (poster)
+  if (clt)
   {
-    poster->shutdown();
-    delete poster;
+    clt->shutdown(cltLink);
+    delete clt;
   }
+  free(snkBuf);
+  free(srcBuf);
 
-  return ret;
+  return rc;
 }

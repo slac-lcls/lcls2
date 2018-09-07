@@ -15,6 +15,13 @@
 #include "xtcdata/xtc/Sequence.hh"
 #include <zmq.h>
 
+// these parameters must agree with the server side
+unsigned maxBatches = 8192; // size of the pool of batches
+unsigned maxEntries = 64 ; // maximum number of events in a batch
+unsigned BatchSizeInPulseIds = 64; // age of the batch. should never exceed maxEntries above, must be a power of 2
+unsigned EbId = 0; // from 0-63, maximum number of event builders
+size_t maxSize = sizeof(MyDgram);
+
 using namespace XtcData;
 using json = nlohmann::json;
 
@@ -45,8 +52,9 @@ int main(int argc, char* argv[])
     int device_id = 0x2031;
     int lane_mask = 0xf;
     std::string detector_type;
+    bool run_mon = false;
     int c;
-    while((c = getopt(argc, argv, "p:o:d:l:D:")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:d:l:D:M")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -62,6 +70,9 @@ int main(int argc, char* argv[])
                 break;
             case 'D':
                 detector_type = optarg;
+                break;
+            case 'M':
+                run_mon = true;
                 break;
             default:
                 print_usage();
@@ -88,23 +99,43 @@ int main(int argc, char* argv[])
     pin_thread(pgp_thread.native_handle(), 1);
 
     // event builder
-    Pds::StringList peers;
-    peers.push_back(para.eb_server_ip);
-    Pds::StringList ports;
-    ports.push_back("32768");
-    Pds::Eb::EbLfClient myEbLfClient(peers, ports);
-    MyBatchManager myBatchMan(myEbLfClient, para.contributor_id);
-    unsigned timeout = 5;
-    int ret = myEbLfClient.connect(para.contributor_id, timeout,
-                                   myBatchMan.batchRegion(),
-                                   myBatchMan.batchRegionSize());
-    if (ret) {
-        printf("ERROR in connecting to event builder!!!!\n");
+    Pds::Eb::EbCtrbParams ecPrms{ /* .addrs         = */ { },
+                                  /* .ports         = */ { },
+                                  /* .ifAddr        = */ nullptr,
+                                  /* .port          = */ "32832",
+                                  /* .id            = */ para.contributor_id,
+                                  /* .builders      = */ 1ul << EbId,
+                                  /* .duration      = */ BatchSizeInPulseIds,
+                                  /* .maxBatches    = */ maxBatches,
+                                  /* .maxEntries    = */ maxEntries,
+                                  /* .maxInputSize  = */ maxSize,
+                                  /* .maxResultSize = */ maxSize,
+                                  /* .core          = */ { 11 + 0,
+                                                           11 + 12 },
+                                  /* .verbose       = */ 0 };
+    ecPrms.addrs.push_back(para.eb_server_ip);
+    ecPrms.ports.push_back("32768");
+
+    Pds::Eb::EbContributor ebCtrb(ecPrms);
+
+    Pds::Eb::MonCtrbParams mPrms { /* .addrs         = */ { },
+                                   /* .ports         = */ { },
+                                   /* .id            = */ para.contributor_id,
+                                   /* .maxEvents     = */ 8,    //mon_buf_cnt,
+                                   /* .maxEvSize     = */ 1024, //mon_buf_size,
+                                   /* .maxTrSize     = */ 1024, //mon_trSize,
+                                   /* .verbose       = */ 0 };
+    mPrms.addrs.push_back("172.21.52.121");
+    mPrms.ports.push_back("32960");
+
+    Pds::Eb::MonContributor* meb = nullptr;
+    if (run_mon) {
+        meb = new Pds::Eb::MonContributor(mPrms);
     }
-    
+
     // start performance monitor thread
     std::thread monitor_thread(monitor_func, std::ref(pgp_reader.get_counters()),
-                               std::ref(pool), std::ref(myBatchMan));
+                               std::ref(pool), std::ref(ebCtrb));
 
     // start worker threads
     std::vector<std::thread> worker_threads;
@@ -114,13 +145,13 @@ int main(int argc, char* argv[])
         pin_thread(worker_threads[i].native_handle(), 2 + i);
     }
 
-    collector(pool, para, myBatchMan);
+    collector(pool, para, ecPrms, ebCtrb, meb);
 
     pgp_thread.join();
     for (int i = 0; i < num_workers; i++) {
         worker_threads[i].join();
     }
-    
+
     // shutdown monitor thread
     // counter->total_bytes_received = -1;
     //p.exchange(counter, std::memory_order_release);
