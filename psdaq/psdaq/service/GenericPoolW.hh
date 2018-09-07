@@ -12,10 +12,13 @@ namespace Pds {
   public:
     GenericPoolW(size_t sizeofObject, int numberofObjects);
     virtual ~GenericPoolW();
+  public:
+    void stop();
   protected:
     virtual void* deque();
     virtual void  enque(PoolEntry*);
   private:
+    bool                    _stopping;
     mutable std::mutex      _mutex;
     std::condition_variable _condVar;
   };
@@ -26,9 +29,13 @@ namespace Pds {
 inline void* Pds::GenericPoolW::deque()
 {
   std::unique_lock<std::mutex> lk(_mutex);
-  _condVar.wait(lk, [this]{ return atHead() != empty(); });
-  Pds::PoolEntry* entry = removeNL();
-  return (void*)&entry[1];
+  _condVar.wait(lk, [&](){ return (atHead() != empty()) || _stopping; });
+  if (!_stopping)
+  {
+    Pds::PoolEntry* entry = removeNL();
+    return (void*)&entry[1];
+  }
+  return nullptr;
 }
 
 inline void Pds::GenericPoolW::enque(PoolEntry* entry)

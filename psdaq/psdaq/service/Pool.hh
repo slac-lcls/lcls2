@@ -23,9 +23,10 @@
 
 #include "PoolEntry.hh"
 
-#define PoolDeclare \
-    void* operator new   (size_t size, Pool* pool) { return pool->alloc(size); } \
-    void  operator delete(void* buffer) { Pool::free(buffer); }
+#define PoolDeclare                                                     \
+  void* operator new   (size_t size,                                    \
+                        Pool*  pool)   { return pool->alloc(size); }    \
+  void  operator delete(void*  buffer) { Pool::free(buffer); }
 
 
 namespace Pds {
@@ -48,9 +49,9 @@ class Pool
     static int    numberOfFreeObjects(void* buffer);
   protected:
     size_t        sizeofAllocate()  const;
-    virtual void* deque()                  = 0;
+    virtual void* deque()               = 0;
     virtual void  enque(PoolEntry*)     = 0;
-    virtual void* allocate(size_t size)    = 0;
+    virtual void* allocate(size_t size) = 0;
     void          populate();
   private:
     size_t        _sizeofObject;
