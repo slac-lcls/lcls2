@@ -10,9 +10,5 @@ export PATH="$PWD/install/bin:$PATH"
 PYVER=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 export PYTHONPATH="$PWD/install/lib/python$PYVER/site-packages"
 
-if [[ $PYVER == 2.7 ]]; then
-    ./build_python2_psana.sh
-elif [[ $PYVER == 3.* ]]; then
-    ./build_all.sh -p install
-fi
+./build_all.sh -p install
 pytest psana/psana/tests
