@@ -9,10 +9,13 @@ cmake_option="Debug"
 pyInstallStyle="develop"
 psana_setup_args=""
 force_clean=0
+no_daq=0
 
-while getopts ":c:p:s:f" opt; do
+while getopts ":c:p:s:f:d" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
+    ;;
+    d) no_daq=1
     ;;
     p) pyInstallStyle="$OPTARG"
     ;;
@@ -55,7 +58,9 @@ function cmake_build() {
 
 cmake_build xtcdata
 cmake_build psalg
-cmake_build psdaq
+if [ $no_daq == 0 ]; then
+    cmake_build psdaq
+fi
 
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 # "python setup.py develop" seems to not create this for you
