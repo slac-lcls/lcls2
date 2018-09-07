@@ -98,7 +98,7 @@ target_link_libraries(regtest
     dl
     pthread
     cphwr
-    rt
+    -pthread
 )
 
 
