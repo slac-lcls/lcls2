@@ -621,7 +621,7 @@ void ErrorHandler::set_custom_error(const char* fmt, ...)
 }
 
 
-Fabric::Fabric(const char* node, const char* service, uint64_t flags,  size_t tx_size, size_t rx_size) :
+Fabric::Fabric(const char* node, const char* service, uint64_t flags, size_t tx_size, size_t rx_size) :
   _up(false),
   _hints(0),
   _info(0),
@@ -1835,6 +1835,20 @@ CompletionQueue::~CompletionQueue()
 
 struct fid_cq* CompletionQueue::cq() const { return _cq; }
 
+ssize_t CompletionQueue::comp_error(struct fi_cq_err_entry* comp_err)
+{
+  ssize_t rret = fi_cq_readerr(_cq, comp_err, 0);
+  if (rret < 0) {
+    set_error("fi_cq_readerr");
+  } else if (rret == 0) {
+    set_custom_error("fi_cq_readerr: no errors to be read");
+    rret = FI_SUCCESS;
+  }
+  _errno = (int) rret;
+
+  return rret;
+}
+
 ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, const char* cmd)
 {
   struct fi_cq_err_entry comp_err;
@@ -1862,20 +1876,6 @@ ssize_t CompletionQueue::comp_wait(struct fi_cq_data_entry* comp, ssize_t max_co
   return handle_comp(fi_cq_sread(_cq, comp, max_count, NULL, timeout), comp, "fi_cq_sread");
 }
 
-ssize_t CompletionQueue::comp_error(struct fi_cq_err_entry* comp_err)
-{
-  ssize_t rret = fi_cq_readerr(_cq, comp_err, 0);
-  if (rret < 0) {
-    set_error("fi_cq_readerr");
-  } else if (rret == 0) {
-    set_custom_error("fi_cq_readerr: no errors to be read");
-    rret = FI_SUCCESS;
-  }
-  _errno = (int) rret;
-
-  return rret;
-}
-
 ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t* data)
 {
   struct fi_cq_data_entry comp;
@@ -1883,10 +1883,16 @@ ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t*
   ssize_t rret = comp_wait(&comp, 1);
   if (rret == 1) {
     if ((comp.flags & flags) == flags) {
-      if (*((int*) comp.op_context) == context) {
-        if (data)
-          *data = comp.data;
-        return FI_SUCCESS;
+      if (comp.op_context) {
+        if (*((int*) comp.op_context) == context) {
+          if (data)
+            *data = comp.data;
+          return FI_SUCCESS;
+        }
+      } else {
+        set_error("nullptr provided for comp.op_context");
+        dump_cq_data_entry(comp);
+        return -EFAULT;
       }
     }
   }
@@ -1908,6 +1914,18 @@ ssize_t CompletionQueue::check_completion_noctx(unsigned flags, uint64_t* data)
   }
 
   return rret ? rret : -FI_EAGAIN;     // Revisit case when comp_wait returns 0
+}
+
+void CompletionQueue::dump_cq_data_entry(struct fi_cq_data_entry& comp)
+{
+  printf("op_context: %p",       comp.op_context);
+  if (comp.op_context)
+    printf(" -> 0x%08x",  *(int*)comp.op_context);
+  printf("\n");
+  printf("flags:      %016lx\n", comp.flags);
+  printf("len:        %zd\n",    comp.len);
+  printf("buf:        %p\n",     comp.buf);
+  printf("data:       %016lx\n", comp.data);
 }
 
 bool CompletionQueue::up() const { return _up; }
