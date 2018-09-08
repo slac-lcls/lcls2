@@ -114,9 +114,9 @@ int MonContributor::post(const Dgram* ddg, uint32_t destination)
   {
     uint64_t pid    = ddg->seq.pulseId().value();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
-    printf("MonCtrb posts %6ld   monEvt[%4d]    @ "
-           "%16p, pid %014lx, sz %4zd to   Mon %d @ %16p, data %08x, phy %08x, dest %08x\n",
-           _eventCount, idx, ddg, pid, sz, link->id(), rmtAdx, data, ddg->xtc.src.phy(), destination);
+    printf("MonCtrb posts %6ld       monEvt [%4d]  @ "
+           "%16p, pid %014lx, sz %4zd to   Meb %2d @ %16p, data %08x\n",
+           _eventCount, idx, ddg, pid, sz, link->id(), rmtAdx, data);
   }
 
   if (int rc = link->post(ddg, sz, offset, data) < 0)  return rc;
@@ -149,9 +149,9 @@ int MonContributor::post(const Dgram* ddg)
     {
       uint64_t pid    = ddg->seq.pulseId().value();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
-      printf("MonCtrb posts %6ld     trId[%4d]    @ "
-             "%16p, pid %014lx, sz %4zd to   Mon %d @ %16p, data %08x, phy %08x\n",
-             _eventCount, service, ddg, pid, sz, link->id(), rmtAdx, data, ddg->xtc.src.phy());
+      printf("MonCtrb posts %6ld         trId [%4d]  @ "
+             "%16p, pid %014lx, sz %4zd to   Meb %2d @ %16p, data %08x\n",
+             _eventCount, service, ddg, pid, sz, link->id(), rmtAdx, data);
     }
 
     if (int rc = link->post(ddg, sz, offset, data) < 0)  return rc;

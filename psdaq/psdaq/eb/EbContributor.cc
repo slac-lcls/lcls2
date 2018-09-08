@@ -152,7 +152,7 @@ void EbContributor::post(const Batch* batch)
     uint64_t pid    = bdg->seq.pulseId().value();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
     printf("CtrbOut posts %6ld       batch[%4d]    @ "
-           "%16p, pid %014lx, sz %4zd to   EB %2d @ %16p (%d entries)\n",
+           "%16p, pid %014lx, sz %4zd to   Teb %2d @ %16p (%d entries)\n",
            _batchCount, idx, bdg, pid, extent, link->id(), rmtAdx, batch->entries());
   }
 
@@ -185,7 +185,7 @@ void EbContributor::post(const Dgram* nonEvent)
       if (_prms.verbose)
       {
         printf("CtrbOut posts          non-event          @ "
-               "%16p, pid %014lx, sz %4zd to   EB %2d @ %16p (svc %15s)\n",
+               "%16p, pid %014lx, sz %4zd to   Teb %2d @ %16p (svc %15s)\n",
                nonEvent, nonEvent->seq.pulseId().value(), size, lnk->id(),
                (void*)lnk->rmtAdx(offset), TransitionId::name(nonEvent->seq.service()));
       }

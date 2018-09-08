@@ -51,7 +51,7 @@ EbAppBase::EbAppBase(const char*        ifAddr,
                      size_t             maxTrDgSize,
                      size_t             hdrSize,
                      uint64_t           contributors) :
-  EventBuilder (maxBuffers, maxEntries, std::bitset<64>(contributors).count(), duration),
+  EventBuilder (TransitionId::NumberOf + maxBuffers, maxEntries, std::bitset<64>(contributors).count(), duration),
   _maxBufSize  (roundUpSize(hdrSize + maxEntries * maxInpDgSize)),
   _region      (allocRegion(std::bitset<64>(contributors).count() *
                             (maxBuffers * _maxBufSize +

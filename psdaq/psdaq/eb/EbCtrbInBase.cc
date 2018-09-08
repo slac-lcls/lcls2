@@ -120,7 +120,7 @@ int EbCtrbInBase::process(BatchManager& batMan)
     uint64_t        pid    = bdg->seq.pulseId().value();
     size_t          extent = sizeof(*bdg) + bdg->xtc.sizeofPayload();
     printf("CtrbIn  rcvd        %6d result  [%4d] @ "
-           "%16p, pid %014lx, sz %4zd from EB %2d\n",
+           "%16p, pid %014lx, sz %4zd from Teb %2d\n",
            cnt++, idx, bdg, pid, extent, lnk->id());
   }
 

@@ -302,9 +302,9 @@ namespace Pds {
       if (lverbose > 2)
       {
         printf("monReqServer processed     event[%4ld]    @ "
-               "%16p, pid %014lx, sz %4zd, phy = %08x, N = %d\n",
+               "%16p, pid %014lx, sz %4zd, buf # %2d\n",
                _eventCount, dg, dg->seq.pulseId().value(),
-               sizeof(*dg) + dg->xtc.sizeofPayload(), dg->xtc.src.phy(),
+               sizeof(*dg) + dg->xtc.sizeofPayload(),
                bufferIdx(event->creator()));
       }
 
