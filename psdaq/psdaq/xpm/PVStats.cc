@@ -55,6 +55,7 @@ namespace Pds {
         PVPUSH(LinkRxRcv);
         PVPUSH(LinkRxErr);
         PVPUSH(LinkIsXpm);
+	PVPUSH(RemoteLinkId);
       }
 #undef PVPUSH
       _pv.push_back( new PVWriter((pvbase+"BpClk").c_str()) );
@@ -90,6 +91,7 @@ namespace Pds {
         PVPUTI( (nl[i].rxRcvs - ol[i].rxRcvs) );
         PVPUTI( (nl[i].rxErrs - ol[i].rxErrs) );
         PVPUTI( nl[i].isXpm );
+	PVPUTI( nl[i].remoteLinkId );
       }
       PVPUT(double(bpClk)*1.e-6);
       //      ca_flush_io();  // Let timer do it
