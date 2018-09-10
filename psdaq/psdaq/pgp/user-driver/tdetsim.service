@@ -1,0 +1,17 @@
+[Unit]
+Description=SimCam Device Manager
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/tdetsim -d 0x2031
+ExecStartPost=
+ExecStop=
+KillMode=process
+IgnoreSIGPIPE=no
+StandardOutput=syslog
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

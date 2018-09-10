@@ -1,5 +1,8 @@
 #include <getopt.h>
 #include <unistd.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <string.h>
 #include "pgpdriver.h"
 
 static uint8_t* pci_resource;
@@ -113,42 +116,48 @@ static void set_si570(double f)
   si570[135] = v;
 }
 
+static void measure_clks(double& txrefclk, double& rxrefclk)
+{
+  unsigned tv = get_reg32(pci_resource,0x00c00028);
+  unsigned rv = get_reg32(pci_resource,0x00c00010);
+  usleep(1000000);
+  unsigned tw = get_reg32(pci_resource,0x00c00028);
+  unsigned rw = get_reg32(pci_resource,0x00c00010);
+  txrefclk = double(tw-tv)*16.e-6;
+  printf("TxRefClk: %f MHz\n", txrefclk);
+  rxrefclk = double(rw-rv)*16.e-6;
+  printf("RxRecClk: %f MHz\n", rxrefclk);
+}
+
 static void usage(const char* p)
 {
   printf("Usage: %s [options]\n",p);
   printf("Options: -d <device_id>  [default: 0x2031]\n");
   printf("         -c              [setup clock synthesizer]\n");
-  printf("         -r              [reset clock synthesizer]\n");
   printf("         -s              [dump status]\n");
   printf("         -t              [reset timing counters]\n");
   printf("         -T              [reset timing PLL]\n");
-  printf("         -m              [measure clock freq]\n");
   printf("         -C partition[,length[,links]] [configure simcam]\n");
-  printf("         -I id           [set base link ID]\n");
 }
 
 int main(int argc, char* argv[])
 {
     int device_id  = 0x2031;
-    bool reset_clk = false;
     bool setup_clk = false;
     bool status    = false;
     bool timingRst = false;
     bool tcountRst = false;
-    bool measure   = false;
-    int id         = 0;
+    bool updateId  = true;
     int partition  = -1;
     int length     = 320;
     int links      = 0xff;
     char* endptr;
 
     int c;
-    while((c = getopt(argc, argv, "cd:mrstTC:I:")) != EOF) {
+    while((c = getopt(argc, argv, "cd:stTC:")) != EOF) {
       switch(c) {
       case 'd': device_id = strtol(optarg, NULL, 0); break;
-      case 'c': setup_clk = true; break;
-      case 'm': measure   = true; break;
-      case 'r': reset_clk = true; break;
+      case 'c': setup_clk = true; updateId = true; break;
       case 's': status    = true; break;
       case 't': tcountRst = true; break;
       case 'T': timingRst = true; break;
@@ -159,7 +168,6 @@ int main(int argc, char* argv[])
             links = strtoul(endptr+1,NULL,0);
         }
         break;
-      case 'I': id = strtoul(optarg, NULL, 0); break;
       default: usage(argv[0]); return 0;
       }
     }
@@ -182,6 +190,55 @@ int main(int argc, char* argv[])
     printf("  uptime count      :  %d\n", uptime_count);
     printf("  build string      :  %s\n", build_string);
 
+    //
+    //  Update ID advertised on timing link
+    //
+    if (updateId && device_id==0x2031) {
+      struct addrinfo hints;
+      struct addrinfo* result;
+
+      memset(&hints, 0, sizeof(struct addrinfo));
+      hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
+      hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+      hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+
+      char hname[64];
+      gethostname(hname,64);
+      int s = getaddrinfo(hname, NULL, &hints, &result);
+      if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+      }
+
+      sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+
+      unsigned id = 0xfc000000 | 
+        (ntohl(saddr->sin_addr.s_addr)&0xffff);
+      set_reg32(pci_resource, 0x00a00004, id);
+    }
+
+    //
+    //  Measure si570 clock output
+    //
+    if (device_id == 0x2031) {
+      double txrefclk, rxrefclk;
+      measure_clks(txrefclk,rxrefclk);
+      setup_clk = ( txrefclk < 185 || txrefclk > 186 );
+    }
+
+    if (setup_clk && device_id == 0x2031) {
+      select_si570();
+      reset_si570();
+
+      double f = read_si570();
+      set_si570(f);
+      read_si570();
+
+      double txrefclk, rxrefclk;
+      measure_clks(txrefclk,rxrefclk);
+    }
+
+    timingRst |= setup_clk;
     if (timingRst && device_id == 0x2031) {
       printf("Reset timing PLL\n");
       unsigned v = get_reg32(pci_resource, 0x00c00020);
@@ -199,6 +256,7 @@ int main(int argc, char* argv[])
       usleep(100000);
     }
 
+    tcountRst |= timingRst;
     if (tcountRst) {
       printf("Reset timing counters\n");
       unsigned v = get_reg32(pci_resource, 0x00c00020) | 1;
@@ -233,7 +291,8 @@ int main(int argc, char* argv[])
       print_field("partition", 0x00a00000,  0, 0xf);
       print_field("length"   , 0x00a00000,  4, 0xffffff);
       print_field("enable"   , 0x00a00000, 31, 1);
-      print_field("id"       , 0x00a00004,  0, 0xffffffff);
+      print_field("localid"  , 0x00a00004,  0, 0xffffffff);
+      print_field("remoteid" , 0x00a00008,  0, 0xffffffff);
 
       print_dti_lane("cntL0", 0x00a00010, 0, 0xffffff);
       print_dti_lane("cntOF", 0x00a00010, 24, 0xff);
@@ -263,33 +322,6 @@ int main(int argc, char* argv[])
         print_word("BuffByCnts", 0x00c0002c);
       }
     }
-
-    if (reset_clk && device_id == 0x2031) {
-      select_si570();
-      reset_si570();
-    }
-
-    if (setup_clk && device_id == 0x2031) {
-      select_si570();
-      reset_si570();
-
-      double f = read_si570();
-      set_si570(f);
-      read_si570();
-    }
-
-    if (measure) {
-      unsigned tv = get_reg32(pci_resource,0x00c00028);
-      unsigned rv = get_reg32(pci_resource,0x00c00010);
-      usleep(1000000);
-      unsigned tw = get_reg32(pci_resource,0x00c00028);
-      unsigned rw = get_reg32(pci_resource,0x00c00010);
-      printf("TxRefClk: %f MHz\n", double(tw-tv)*16.e-6);
-      printf("RxRecClk: %f MHz\n", double(rw-rv)*16.e-6);
-    }
-
-    if (id)
-      set_reg32(pci_resource, 0x00a00004, id);
 
     if (partition >= 0) {
       unsigned v = ((partition&0xf)<<0) |
