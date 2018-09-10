@@ -85,7 +85,9 @@ if __name__ == '__main__':
 
     for i in range(16,21):
         pvdb[':LinkLabel'    +'%d'%i] = {'type' : 'string', 'value' : 'BP-%d'%(i-13)}
-        
+
+    pvdb[':LinkId'] = {'type' : 'int', 'count' : 22}
+
     for i in range(NAmcs):
         pvdb[':PLL_LOS'       +'%d'%i] = {'type' : 'int'}
         pvdb[':PLL_LOL'       +'%d'%i] = {'type' : 'int'}

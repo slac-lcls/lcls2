@@ -85,10 +85,10 @@ class Ui_MainWindow(object):
 if __name__ == '__main__':
     print(QtCore.PYQT_VERSION_STR)
 
-    parser = argparse.ArgumentParser(description='simple pv monitor gui')
-    parser.add_argument("pv", help="pv to monitor")
+#    parser = argparse.ArgumentParser(description='simple pv monitor gui')
+#    parser.add_argument("pv", help="pv to monitor")
 #    parser.add_argument("shelf", help="shelf")
-    args = parser.parse_args()
+#    args = parser.parse_args()
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

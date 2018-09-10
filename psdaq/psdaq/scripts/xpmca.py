@@ -31,27 +31,29 @@ class PvCString:
         layout.addWidget(label)
         #layout.addStretch()
         self.__display = PvDisplay()
+        self.__display.setWordWrap(True)
         self.__display.connect_signal()
         layout.addWidget(self.__display)
         parent.addLayout(layout)
 
         pvname = pvbase+name
-        print(pvname)
-        self.pv = Pv.Pv(pvname)
-        self.pv.monitor_start()
-        self.pv.add_monitor_callback(self.update)
+        initPvMon(self,pvname)
+#        print(pvname)
+#        self.pv = Pv.Pv(pvname)
+#        self.pv.monitor_start()
+#        self.pv.add_monitor_callback(self.update)
 
     def update(self, err):
         q = self.pv.value
         if err is None:
             s = QString()
             slen = len(q)
-            if slen > 64:
-                slen = 64
+#            if slen > 64:
+#                slen = 64
             for i in range(slen):
                 if q[i]==0:
                     break
-                s.append(QChar(q[i]))
+                s += QChar(q[i])
             self.__display.valueSet.emit(s)
         else:
             print(err)

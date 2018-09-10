@@ -41,6 +41,8 @@ procmgr_config = [
  {                       id:'hsdca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/hsdca.py DAQ:LAB2:HSD:DEV02'},
  { host: 'drp-tst-acc03', id:'eb' ,flags:'sx', cmd:user_path+'psdaq/eb/drpEbBuilder -i 0 0:172.21.52.122 -1 8 -2 8' },
 # { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -c 8 -o 32 -r -v 0x1ffffffe' },
+# { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -r -F /tmp/hsd.evt' },
+# { host: 'daq-tst-dev02', id:'hsdRead' ,flags:'sx', env:epics_env, cmd:bin_path+'psdaq/hsd/hsdRead -L 0xf -c 8 -o 32 -r -v 0x1ffffffe' },
 # { host: 'daq-tst-dev02', id:'qRead' ,flags:'sx', cmd:bin_path+'psdaq/pgp/pgpGen4Daq/app/qRead -c 0 -L 0xf -P 8' },
 
 ## procstat

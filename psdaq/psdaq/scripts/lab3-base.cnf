@@ -38,6 +38,8 @@ procmgr_config = [
  { host: epics_host,  id:'dtiioc-106' ,port:'29457', flags:'s', env:epics_env, cmd:bin_path+'psdaq/dti/dtiPVs -a '+ip_addr+'.106 -P DAQ:LAB2:DTI:'+shelf+':6' },
  { host: epics_host,  id:'hsdcas-dev02' ,port:'29458', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/hsdcas.py -P DAQ:LAB2:HSD:DEV02'},
  { host: epics_host,  id:'hsdcas-dev06' ,port:'29459', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/hsdcas.py -P DAQ:LAB2:HSD:DEV06'},
+ { host: epics_host,  id:'modcas-1' ,port:'29460', flags:'s', env:pcas_env, cmd:bins_path+'/launch_pcaspy '+bins_path+'/modcas.py -P DAQ:LAB2:XPM:1'},
+ { host: epics_host,  id:'xpmioc-1' ,port:'29461', flags:'s', env:epics_env, cmd:bin_path+'psdaq/xpm/xpmPVs -a 10.0.1.103 -P DAQ:LAB2'},
 
 ## procstat
  {                       id:'procstat',    flags:'s',  cmd:bins_path+'../procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
