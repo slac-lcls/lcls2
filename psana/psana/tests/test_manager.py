@@ -74,6 +74,8 @@ class Test:
         subprocess.check_call(['legion_python', 'user', '-ll:py', '1'], env=env)
 
     def test_ds_pickle(self):
+        self.setup_input_files()
+
         import pickle
         xtc_dir = os.path.join(os.getcwd(),'.tmp')
         ds = DataSource('exp=xpptut13:dir=%s'%(xtc_dir), filter=filter)

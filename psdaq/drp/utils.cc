@@ -51,7 +51,7 @@ long read_infiniband_counter(const char* counter)
     return stol(line);
 }
 
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, MyBatchManager& myBatchMan)
+void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContributor& ebCtrb)
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUB);
@@ -90,7 +90,7 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, MyBatchManager& myBa
         printf("Event rate:      %.2f kHz  Data rate  %.2f MB/s\nCollector queue:  %u  Used batches    %d\n",
                 event_rate, data_rate,
                 pool.collector_queue.guess_size(),
-                myBatchMan.inflight_count.load(std::memory_order_relaxed));
+                ebCtrb.inFlightCnt());
 
         // Inifiband counters are divided by 4 (lanes) https://community.mellanox.com/docs/DOC-2751
         double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / duration;
@@ -106,7 +106,7 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, MyBatchManager& myBa
 
         int size = snprintf(buffer, 4096,
                 R"({"host": "%s", "x": "%s", "data": {"event_rate": [%f], "data_rate": [%f], "rcv_rate": [%f], "xmit_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "used_batches": [%d]}})",
-                hostname, time_buffer, event_rate, data_rate, rcv_rate, xmit_rate, buffer_queue_size, output_queue_size, myBatchMan.inflight_count.load(std::memory_order_relaxed));
+                            hostname, time_buffer, event_rate, data_rate, rcv_rate, xmit_rate, buffer_queue_size, output_queue_size, ebCtrb.inFlightCnt());
 
         /*
  "event_rate": [%f], "data_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "rcv_rate": [%f], "xmit_rate": [%f]}])",

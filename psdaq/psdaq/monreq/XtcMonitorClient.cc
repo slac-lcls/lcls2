@@ -50,121 +50,124 @@ static mqd_t _openQueue(const char* name, unsigned flags, unsigned perms,
   return queue;
 }
 
-namespace XtcData {
-  class DgramHandler {
-  public:
-    DgramHandler(XtcMonitorClient& client,
-		 int trfd, mqd_t evqin, mqd_t* evqout, unsigned ev_index,
-	      const char* tag, char* myShm) :
-      _client(client),
-      _trfd(trfd), _evqin(evqin), _evqout(evqout), _ev_index(ev_index),
-      _tag(tag), _shm(myShm), _last(TransitionId::Reset)
-    {
-      _tmo.tv_sec = _tmo.tv_nsec = 0;
-    }
-    ~DgramHandler() {}
-  public:
-    enum Request { Continue, Reconnect, Return };
-    Request transition() {
-      XtcMonitorMsg myMsg;
-      int nb = ::recv(_trfd, (char*)&myMsg, sizeof(myMsg), 0);
-      if (nb < 0) {
-	perror("transition receive");
-	return Continue;
+namespace Pds {
+  namespace MonReq {
+    class DgramHandler {
+    public:
+      DgramHandler(XtcMonitorClient& client,
+                   int trfd, mqd_t evqin, mqd_t* evqout, unsigned ev_index,
+                   const char* tag, char* myShm) :
+        _client(client),
+        _trfd(trfd), _evqin(evqin), _evqout(evqout), _ev_index(ev_index),
+        _tag(tag), _shm(myShm), _last(XtcData::TransitionId::Reset)
+      {
+        _tmo.tv_sec = _tmo.tv_nsec = 0;
       }
-      if (nb == 0) {
+      ~DgramHandler() {}
+    public:
+      enum Request { Continue, Reconnect, Return };
+      Request transition() {
+        XtcMonitorMsg myMsg;
+        int nb = ::recv(_trfd, (char*)&myMsg, sizeof(myMsg), 0);
+        if (nb < 0) {
+          perror("transition receive");
+          return Continue;
+        }
+        if (nb == 0) {
 #ifdef DBUG
-	printf("Received tr disconnect [%d]\n",_trfd);
+          printf("Received tr disconnect [%d]\n",_trfd);
 #endif
-	return Reconnect;
-      }
-      int i = myMsg.bufferIndex();
+          return Reconnect;
+        }
+        int i = myMsg.bufferIndex();
 #ifdef DBUG
-      printf("Received tr buffer %d [%d]\n",i,_trfd);
+        printf("Received tr buffer %d [%d]\n",i,_trfd);
 #endif
-      if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
-	Dgram* dg = (Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
-	_last = dg->seq.service();
-	if (_client.processDgram(dg))
-	  return Return;
+        if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
+          XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
+          _last = dg->seq.service();
+          if (_client.processDgram(dg))
+            return Return;
 #ifdef DBUG
-	printf("Returning tr buffer %d [%d]\n",i,_trfd);
+          printf("Returning tr buffer %d [%d]\n",i,_trfd);
 #endif
-	if (::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
-	  perror("transition send");
-	  return Return;
-	}
-      }
-      else {
-	fprintf(stderr, "ILLEGAL BUFFER INDEX %d\n", i);
-        uint32_t* p = reinterpret_cast<uint32_t*>(&myMsg);
-        fprintf(stderr, "XtcMonitorMsg: %x/%x/%x/%x [%d]\n",p[0],p[1],p[2],p[3],nb);
-	return Return;
-      }
-      return Continue;
-    }
-    Request event     () {
-      mqd_t  iq = _evqin;
-      mqd_t* oq = _evqout;
-      unsigned ioq = _ev_index;
-
-      XtcMonitorMsg myMsg;
-      unsigned priority(0);
-      int nb;
-      if ((nb=mq_receive(iq, (char*)&myMsg, sizeof(myMsg), &priority)) < 0) {
-	perror("mq_receive buffer");
-	return Return;
-      }
-      else {
-	int i = myMsg.bufferIndex();
-#ifdef DBUG
-	printf("Received ev buffer %d [%d]\n",i,iq);
-#endif
-	if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
-	  Dgram* dg = (Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
-	  if (_last==TransitionId::Enable &&
-	      _client.processDgram(dg))
-	    return Return;
-	  if (oq==NULL)
-	    ;
-	  else if (myMsg.serial()) {
-	    while (mq_timedsend(oq[ioq], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo)) {
-	      if (oq[++ioq]==-1) {
-		char qname[128];
-		XtcMonitorMsg::eventOutputQueue(_tag, ioq, qname);
-		oq[ioq] = _openQueue(qname, O_WRONLY, PERMS_OUT, false);
-	      }
-	    }
-	  }
-	  else {
-	    if (mq_timedsend(oq[0], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo)) {
-	      ;
-	    }
-	  }
-	}
-	else {
-	  fprintf(stderr, "ILLEGAL BUFFER INDEX %d\n", i);
+          if (::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
+            perror("transition send");
+            return Return;
+          }
+        }
+        else {
+          fprintf(stderr, "ILLEGAL BUFFER INDEX %d\n", i);
           uint32_t* p = reinterpret_cast<uint32_t*>(&myMsg);
           fprintf(stderr, "XtcMonitorMsg: %x/%x/%x/%x [%d]\n",p[0],p[1],p[2],p[3],nb);
-	  return Return;
-	}
+          return Return;
+        }
+        return Continue;
       }
-      return Continue;
-    }
-  private:
-    XtcMonitorClient& _client;
-    int               _trfd;
-    mqd_t             _evqin;
-    mqd_t*            _evqout;
-    unsigned          _ev_index;
-    const char*       _tag;
-    char*             _shm;
-    timespec          _tmo;
-    TransitionId::Value _last;
+      Request event     () {
+        mqd_t  iq = _evqin;
+        mqd_t* oq = _evqout;
+        unsigned ioq = _ev_index;
+
+        XtcMonitorMsg myMsg;
+        unsigned priority(0);
+        int nb;
+        if ((nb=mq_receive(iq, (char*)&myMsg, sizeof(myMsg), &priority)) < 0) {
+          perror("mq_receive buffer");
+          return Return;
+        }
+        else {
+          int i = myMsg.bufferIndex();
+#ifdef DBUG
+          printf("Received ev buffer %d [%d]\n",i,iq);
+#endif
+          if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
+            XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
+            if (_last==XtcData::TransitionId::Enable &&
+                _client.processDgram(dg))
+              return Return;
+            if (oq==NULL)
+              ;
+            else if (myMsg.serial()) {
+              while (mq_timedsend(oq[ioq], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo)) {
+                if (oq[++ioq]==-1) {
+                  char qname[128];
+                  XtcMonitorMsg::eventOutputQueue(_tag, ioq, qname);
+                  oq[ioq] = _openQueue(qname, O_WRONLY, PERMS_OUT, false);
+                }
+              }
+            }
+            else {
+              if (mq_timedsend(oq[0], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo)) {
+                ;
+              }
+            }
+          }
+          else {
+            fprintf(stderr, "ILLEGAL BUFFER INDEX %d\n", i);
+            uint32_t* p = reinterpret_cast<uint32_t*>(&myMsg);
+            fprintf(stderr, "XtcMonitorMsg: %x/%x/%x/%x [%d]\n",p[0],p[1],p[2],p[3],nb);
+            return Return;
+          }
+        }
+        return Continue;
+      }
+    private:
+      XtcMonitorClient&            _client;
+      int                          _trfd;
+      mqd_t                        _evqin;
+      mqd_t*                       _evqout;
+      unsigned                     _ev_index;
+      const char*                  _tag;
+      char*                        _shm;
+      timespec                     _tmo;
+      XtcData::TransitionId::Value _last;
+    };
   };
 };
 
 using namespace XtcData;
+using namespace Pds::MonReq;
 
 int XtcMonitorClient::processDgram(Dgram* dg) {
   printf("%-15s transition: time 0x%014lx, payloadSize 0x%x\n",

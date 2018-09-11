@@ -1,6 +1,6 @@
-#include "xtcdata/app/XtcMonitorServer.hh"
+#include "XtcMonitorServer.hh"
+#include "TransitionCache.hh"
 
-#include "xtcdata/app/TransitionCache.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <unistd.h>
@@ -41,23 +41,28 @@ static const unsigned TMO_SEC = 10;
 #define PERMS_IN (S_IRUSR|S_IRGRP|S_IROTH)
 #define OFLAGS (O_CREAT|O_RDWR)
 
-namespace XtcData {
-  class ShMsg {
-  public:
-    ShMsg() {}
-    ShMsg(const XtcMonitorMsg&  m,
-          Dgram* dg) : _m(m), _dg(dg) {}
-    ~ShMsg() {}
-  public:
-    const XtcMonitorMsg&  msg() const { return _m; }
-    Dgram* dg () const { return _dg; }
-  private:
-    XtcMonitorMsg _m;
-    Dgram*        _dg;
+namespace Pds {
+  namespace MonReq {
+    class ShMsg {
+    public:
+      ShMsg() {}
+      ShMsg(const XtcMonitorMsg&  m,
+            XtcData::Dgram* dg) : _m(m), _dg(dg) {}
+      ~ShMsg() {}
+    public:
+      const XtcMonitorMsg&  msg() const { return _m; }
+      XtcData::Dgram* dg () const { return _dg; }
+    private:
+      XtcMonitorMsg   _m;
+      XtcData::Dgram* _dg;
+    };
   };
 };
 
-static XtcData::XtcMonitorServer* apps;
+using namespace XtcData;
+using namespace Pds::MonReq;
+
+static XtcMonitorServer* apps;
 
 static struct sigaction old_actions[64];
 
@@ -80,7 +85,6 @@ void sigfunc(int sig_no) {
   }
 }
 
-using namespace XtcData;
 
 XtcMonitorServer::XtcMonitorServer(const char* tag,
                                    unsigned sizeofBuffers,

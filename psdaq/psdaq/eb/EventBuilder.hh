@@ -38,10 +38,11 @@ namespace Pds {
       virtual unsigned   duration()   const;
       virtual unsigned   repetitive() const;
     public:
-      void               process    (const XtcData::Dgram*);
-      void               processBulk(const XtcData::Dgram*);
+      void               process(const XtcData::Dgram*);
     public:
-      void               dump(unsigned detail);
+      void               dump(unsigned detail) const;
+      int                freeEpochCount() const;
+      int                freeEventCount() const;
     private:
       EbEpoch*          _match(uint64_t key);
       EbEpoch*          _epoch(uint64_t key, EbEpoch* after);
@@ -53,6 +54,7 @@ namespace Pds {
       void              _retire(EbEvent*);
       EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*);
       EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*, EbEvent*);
+      void              _processBulk(const XtcData::Dgram*);
     private:
       friend class EbEvent;
     private:
@@ -65,5 +67,15 @@ namespace Pds {
     };
   };
 };
+
+inline int Pds::Eb::EventBuilder::freeEpochCount() const
+{
+  return _epochFreelist.numberOfFreeObjects();
+}
+
+inline int Pds::Eb::EventBuilder::freeEventCount() const
+{
+  return _eventFreelist.numberOfFreeObjects();
+}
 
 #endif

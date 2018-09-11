@@ -1,48 +1,47 @@
 #ifndef Pds_Eb_EbLfServer_hh
 #define Pds_Eb_EbLfServer_hh
 
-#include "EbLfBase.hh"
+#include "EbLfLink.hh"
 
 #include <stdint.h>
 #include <cstddef>
-#include <string>
-#include <vector>
+
+
+struct fi_cq_data_entry;
 
 namespace Pds {
+
   namespace Fabrics {
-
     class PassiveEndpoint;
-    class Endpoint;
-
+    class CompletionQueue;
   };
 
   namespace Eb {
 
-    class EbLfServer : public EbLfBase
+    class EbLfServer
     {
     public:
-      EbLfServer(const char*  addr,
-                 std::string& port,
-                 unsigned     nClients);
-      virtual ~EbLfServer();
+      EbLfServer(const char* addr,
+                 const char* port,
+                 int         rxDepth = 0);
+      ~EbLfServer();
     public:
-      int connect(unsigned    id,
-                  void*       region,
-                  size_t      size,
-                  PeerSharing shared = EbLfBase::PEERS_SHARE_BUFFERS,
-                  void*       ctx    = nullptr);
+      int connect(EbLfLink**, int msTmo = -1);
+      int pend(fi_cq_data_entry*, int msTmo);
+      int pend(void** context, int msTmo);
+      int pend(uint64_t* data, int msTmo);
+      int poll(uint64_t* data);
     public:
-      virtual int shutdown();
+      int shutdown(EbLfLink*);
     private:
-      int _connect(unsigned id);
-      int _exchangeIds(Fabrics::Endpoint*     ep,
-                       Fabrics::MemoryRegion* mr,
-                       unsigned               myId,
-                       unsigned&              id);
+      int _initialize(const char* addr, const char* port);
+      int _poll(fi_cq_data_entry*, uint64_t flags);
     private:
-      const char*               _addr; // The interface address to use
-      std::string&              _port; // The port to listen on
+      int                       _status;
       Fabrics::PassiveEndpoint* _pep;  // Endpoint for establishing connections
+      Fabrics::CompletionQueue* _rxcq;
+      int                       _rxDepth;
+      size_t                    _bufSize;
     };
   };
 };

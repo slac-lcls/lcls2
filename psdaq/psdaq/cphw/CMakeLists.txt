@@ -89,6 +89,19 @@ target_link_libraries(hsrCfg
     rt
 )
 
+#
+#  regtest
+#
+add_executable(regtest regtest.cc)
+
+target_link_libraries(regtest
+    dl
+    pthread
+    cphwr
+    -pthread
+)
+
+
 install(TARGETS cphw
                 amc_timing
                 amc_timing_udp

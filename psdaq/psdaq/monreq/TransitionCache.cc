@@ -1,7 +1,8 @@
-#include "xtcdata/app/TransitionCache.hh"
+#include "TransitionCache.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 using namespace XtcData;
+using namespace Pds::MonReq;
 
 TransitionCache::TransitionCache(char* p, size_t sz, unsigned nbuff) :
   _pShm(p),

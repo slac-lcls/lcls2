@@ -56,6 +56,8 @@ if __name__ == '__main__':
       pvdb[p2+'TimRefClk'] = {'type' : 'float'}
       pvdb[p2+'TimFrRate'] = {'type' : 'float'}
 
+      pvdb[p2+'LinkId'] = {'type' : 'int', 'count' : 14}
+
       for i in range (numUsLinks):
 #        pvdb[p2+'UsLinkEn'        +'%d'%i] = {'type' : 'int'}
         pvdb[p2+'UsLinkTagEn'     +'%d'%i] = {'type' : 'int'}

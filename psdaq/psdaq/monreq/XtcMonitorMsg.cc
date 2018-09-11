@@ -1,8 +1,8 @@
-#include "xtcdata/app/XtcMonitorMsg.hh"
+#include "XtcMonitorMsg.hh"
 
 #include <stdio.h>
 
-using namespace XtcData;
+using namespace Pds::MonReq;
 
 void XtcMonitorMsg::sharedMemoryName     (const char* tag, char* buffer)
 {
@@ -24,12 +24,12 @@ void XtcMonitorMsg::transitionInputQueue (const char* tag, unsigned client, char
   sprintf(buffer,"/PdsToMonitorTrQueue_%s_%d",tag,client);
 }
 
-void XtcMonitorMsg::discoveryQueue (const char* tag, char* buffer)
+void XtcMonitorMsg::discoveryQueue       (const char* tag, char* buffer)
 {
   sprintf(buffer,"/PdsFromMonitorDiscovery_%s",tag);
 }
 
-void XtcMonitorMsg::registerQueue  (const char* tag, char* buffer, int id)
+void XtcMonitorMsg::registerQueue        (const char* tag, char* buffer, int id)
 {
   sprintf(buffer,"/PdsToMonitorDiscovery_%s_%d",tag,id);
 }

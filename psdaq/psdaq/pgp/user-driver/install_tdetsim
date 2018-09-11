@@ -1,0 +1,4 @@
+cp ../../../build/psdaq/pgp/user-driver/tdetsim /usr/local/sbin
+cp tdetsim.service /lib/systemd/system/
+systemctl enable tdetsim.service
+systemctl start tdetsim.service

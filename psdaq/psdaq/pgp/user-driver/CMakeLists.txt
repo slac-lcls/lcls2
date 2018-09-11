@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(pgpdriver SHARED
     pgpdriver.cc
+    aximicronn25q.cc
+    mcsfile.cc
 )
 
 target_include_directories(pgpdriver PUBLIC
@@ -43,10 +45,28 @@ target_link_libraries(looptest
 
 add_executable(tdetsim
     tdetsim.cc
+    pgpdriver.cc
 )
-target_link_libraries(tdetsim
+target_include_directories(tdetsim PUBLIC
+    ../../../drp
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+add_executable(promload
+    promload.cc
+)
+target_link_libraries(promload
     pgpdriver
 )
+
+add_executable(mcstest
+    mcstest.cc
+)
+target_link_libraries(mcstest
+    pgpdriver
+)
+
 
 install(FILES
     pgpdriver.h

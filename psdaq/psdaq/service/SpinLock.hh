@@ -2,25 +2,28 @@
 #define PDS_SPINLOCK_HH
 
 #include <atomic>
+#include <thread>
 
-namespace Pds {
+namespace Pds
+{
+  class SpinLock
+  {
+  public:
+    SpinLock();
+    ~SpinLock() = default;
 
-class SpinLock {
-public:
-  SpinLock();
-  ~SpinLock() = default;
+    SpinLock(const SpinLock&) = delete;
+    SpinLock& operator=(const SpinLock&) = delete;
 
-  SpinLock(const SpinLock&) = delete;
-  SpinLock& operator=(const SpinLock&) = delete;
+  public:
+    void lock();
+    void unlock();
 
-public:
-  void lock();
-  void unlock();
-
-private:
-  void _pause();
-private:
-  std::atomic_flag _lock;
+  private:
+    void _pause();
+  private:
+    std::atomic_flag _lock;
+  };
 };
 
 
@@ -32,6 +35,7 @@ inline Pds::SpinLock::SpinLock() : _lock(ATOMIC_FLAG_INIT)
 inline void Pds::SpinLock::_pause()
 {
   asm volatile("pause\n": : :"memory");
+  std::this_thread::yield();
 }
 
 inline void Pds::SpinLock::lock()
@@ -42,8 +46,6 @@ inline void Pds::SpinLock::lock()
 inline void Pds::SpinLock::unlock()
 {
   _lock.clear(std::memory_order_release);
-}
-
 }
 
 #endif

@@ -344,6 +344,8 @@ namespace Pds {
       bool up() const;
       bool bind(Endpoint* ep, uint64_t flags);
       void shutdown();
+    public:
+      static void dump_cq_data_entry(struct fi_cq_data_entry& comp);
     private:
       bool initialize(struct fi_cq_attr* cq_attr, void* context);
     private:

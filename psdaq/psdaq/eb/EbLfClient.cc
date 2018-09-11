@@ -1,190 +1,119 @@
 #include "EbLfClient.hh"
 
+#include "EbLfLink.hh"
 #include "Endpoint.hh"
-
-#include <rdma/fi_rma.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>                     // For sleep()...
 #include <assert.h>
+#include <chrono>
 
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
+using ms_t = std::chrono::milliseconds;
 
-EbLfClient::EbLfClient(StringList& peers,
-                       StringList& ports) :
-  EbLfBase(peers.size()),
-  _peers(peers),
-  _ports(ports)
+
+EbLfClient::EbLfClient()
 {
 }
 
 EbLfClient::~EbLfClient()
 {
-  unsigned nEp = _ep.size();
-  for (unsigned i = 0; i < nEp; ++i)
-  {
-    if (_ep[i]->fabric())  delete _ep[i]->fabric();
-    if (_ep[i])            delete _ep[i];
-  }
-
-  for (unsigned i = 0; i < nEp; ++i)
-  {
-    if (_txcq[i])  delete _txcq[i];
-  }
 }
 
-int EbLfClient::connect(unsigned    id,
+int EbLfClient::connect(const char* peer,
+                        const char* port,
                         unsigned    tmo,
-                        void*       region,
-                        size_t      size,
-                        PeerSharing shared,
-                        void*       ctx)
+                        EbLfLink**  link)
 {
-  for (unsigned i = 0; i < _peers.size(); ++i)
-  {
-    int ret = _connect(_peers[i], _ports[i], tmo, _ep[i], _txcq[i]);
-    if (ret)  return ret;
-
-    ret = _setupMr(_ep[i], region, size, _mr[i]);
-    if (ret)  return ret;
-
-    if (shared == PER_PEER_BUFFERS)  region = (char*)region + size;
-
-    ret = _exchangeIds(_ep[i], _mr[i], id, _id[i]);
-    if (ret)  return ret;
-
-    ret = _syncRmtMr(_ep[i], _mr[i], _ra[i], size);
-    if (ret)  return ret;
-
-    _rOuts[i] = _postCompRecv(_ep[i], _rxDepth, ctx);
-    if (_rOuts[i] < _rxDepth)
-    {
-      fprintf(stderr, "Posted only %d of %d CQ buffers at index %d(%d)\n",
-              _rOuts[i], _rxDepth, i, _id[i]);
-    }
-
-    printf("Server[%d] %d connected\n", i, _id[i]);
-  }
-
-  _mapIds(_peers.size());
-
-  return 0;
-}
-
-int EbLfClient::_connect(std::string&      peer,
-                         std::string&      port,
-                         unsigned          tmo,
-                         Endpoint*&        ep,
-                         CompletionQueue*& txcq)
-{
-  unsigned idx = &peer - &_peers[0];
-
-  Fabric* fab = new Fabric(peer.c_str(), port.c_str());
+  Fabric* fab = new Fabric(peer, port);
   if (!fab || !fab->up())
   {
-    fprintf(stderr, "Failed to create Fabric[%d]: %s\n",
-            idx, fab ? fab->error() : "No memory");
+    fprintf(stderr, "%s: Failed to create Fabric for %s:%s: %s\n",
+            __PRETTY_FUNCTION__, peer, port, fab ? fab->error() : "No memory");
     return fab ? fab->error_num() : -FI_ENOMEM;
   }
 
-  printf("Client[%d] is using '%s' provider\n", idx, fab->provider());
+  //void* data = fab;                     // Something since data can't be NULL
+  //printf("EbLfClient is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
+  //       fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
 
-  struct fi_cq_attr cq_attr = {
-    .size             = 0,
-    .flags            = 0,
-    .format           = FI_CQ_FORMAT_DATA,
-    .wait_obj         = FI_WAIT_UNSPEC,
-    .signaling_vector = 0,
-    .wait_cond        = FI_CQ_COND_NONE,
-    .wait_set         = NULL,
-  };
-
-  cq_attr.size = fab->info()->tx_attr->size + 1;
-  txcq = new CompletionQueue(fab, &cq_attr, NULL);
+  CompletionQueue* txcq = new CompletionQueue(fab);
   if (!txcq)
   {
-    fprintf(stderr, "Failed to create TX completion queue[%d]: %s\n",
-            idx, "No memory");
+    fprintf(stderr, "%s: Failed to create TX completion queue: %s\n",
+            __PRETTY_FUNCTION__, "No memory");
     return -FI_ENOMEM;
   }
 
-  printf("Waiting for server %s:%s\n", peer.c_str(), port.c_str());
+  printf("Waiting for EbLfServer %s:%s\n", peer, port);
 
-  bool tmoEnabled = tmo != 0;
-  int  timeout    = tmoEnabled ? 1000 * tmo : -1; // mS
-  tmo *= 10;
-  do
+  Endpoint* ep         = nullptr;
+  bool      tmoEnabled = tmo != 0;
+  int       timeout    = tmoEnabled ? tmo : -1; // mS
+  auto      t0(std::chrono::steady_clock::now());
+  auto      t1(t0);
+  uint64_t  dT = 0;
+  while (true)
   {
     ep = new Endpoint(fab, txcq, nullptr);
     if (!ep || (ep->state() != EP_UP))
     {
-      fprintf(stderr, "Failed to initialize Endpoint[%d]: %s\n",
-              idx, ep ? ep->error() : "No memory");
+      fprintf(stderr, "%s: Failed to initialize Endpoint: %s\n",
+              __PRETTY_FUNCTION__, ep ? ep->error() : "No memory");
       return ep ? ep->error_num() : -FI_ENOMEM;
     }
 
     if (ep->connect(timeout, FI_TRANSMIT | FI_SELECTIVE_COMPLETION, 0))  break;
     if (ep->error_num() == -FI_ENODATA)  break; // connect() timed out
 
+    t1 = std::chrono::steady_clock::now();
+    dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+    if (tmoEnabled && (dT > tmo))  break;
+
     delete ep;                      // Can't try to connect on an EP a 2nd time
 
     usleep(100000);
   }
-  while (tmoEnabled && --tmo);
-  if ((ep->error_num() != FI_SUCCESS) || (tmoEnabled && (tmo == 0)))
+  if ((ep->error_num() != FI_SUCCESS) || (tmoEnabled && (dT > tmo)))
   {
-    const char* msg = tmoEnabled ? "Timed out connecting" : "Failed to connect";
-    fprintf(stderr, "%s to %s:%s: %s\n", msg,
-            peer.c_str(), port.c_str(), ep->error());
-    return ep->error_num();
+    int rc = ep->error_num();
+    fprintf(stderr, "%s: Error connecting to %s:%s: %s\n",
+            __PRETTY_FUNCTION__, peer, port,
+            (rc == FI_SUCCESS) ? ep->error() : "Timed out");
+    delete ep;
+    return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
+  }
+
+  *link = new EbLfLink(ep);
+  if (!*link)
+  {
+    fprintf(stderr, "%s: Failed to find memory for link\n", __PRETTY_FUNCTION__);
+    return ENOMEM;
   }
 
   return 0;
 }
 
-int EbLfClient::_exchangeIds(Endpoint*     ep,
-                             MemoryRegion* mr,
-                             unsigned      myId,
-                             unsigned&     id)
+int EbLfClient::shutdown(EbLfLink* link)
 {
-  ssize_t      rc;
-  unsigned     idx = &ep - &_ep[0];
-  void*        buf = mr->start();
-
-  LocalAddress adx(buf, sizeof(myId), mr);
-  LocalIOVec   iov(&adx, 1);
-  Message      msg(&iov, 0, NULL, 0);
-
-  *(unsigned*)buf = myId;
-  if ((rc = ep->sendmsg_sync(&msg, FI_TRANSMIT_COMPLETE | FI_COMPLETION)) < 0)
+  if (link)
   {
-      fprintf(stderr, "Failed sending peer[%d] our ID: %s\n",
-              idx, ep->error());
-    return rc;
+    Endpoint* ep = link->endpoint();
+    delete link;
+    if (ep)
+    {
+      CompletionQueue* txcq = ep->txcq();
+      Fabric*          fab  = ep->fabric();
+      delete ep;
+      if (txcq)  delete txcq;
+      if (fab)   delete fab;
+    }
   }
-
-  if ((rc = ep->recv_sync(buf, sizeof(id), mr)) < 0)
-  {
-    fprintf(stderr, "Failed receiving peer[%d]'s ID: %s\n",
-            idx, ep->error());
-    return rc;
-  }
-  id = *(unsigned*)buf;
 
   return 0;
-}
-
-int EbLfClient::shutdown()
-{
-  int ret = FI_SUCCESS;
-
-  printf("\nEbLfClient dump:\n");
-  _stats.dump();
-
-  return ret;
 }

@@ -7,6 +7,7 @@
 #include "XtcMonitorClient.hh"
 
 using namespace XtcData;
+using namespace Pds::MonReq;
 
 class MyMonitorClient : public XtcMonitorClient {
 public:

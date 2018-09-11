@@ -77,10 +77,14 @@ struct Counters
     Counters() : total_bytes_received(0), event_count(0) {}
 };
 
-class MyBatchManager;
+namespace Pds {
+    namespace Eb {
+        class EbContributor;
+    };
+};
 
 void pin_thread(const pthread_t& th, int cpu);
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, MyBatchManager& myBatchMan);
+void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContributor&);
 
 
 #endif // DRP_H

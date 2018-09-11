@@ -4,9 +4,9 @@
 #include "drp.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/Dgram.hh"
-#include "psdaq/eb/BatchManager.hh"
-#include "psdaq/eb/EbLfClient.hh"
-#include "psdaq/eb/EbLfServer.hh"
+#include "psdaq/eb/EbContributor.hh"
+#include "psdaq/eb/EbCtrbInBase.hh"
+#include "psdaq/eb/MonContributor.hh"
 
 class TheSrc : public XtcData::Src
 {
@@ -27,18 +27,24 @@ private:
 };
 #pragma pack(pop)
 
-class MyBatchManager : public Pds::Eb::BatchManager
+class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
-    MyBatchManager(Pds::Eb::EbLfClient& ebFtClient, unsigned contributor_id);
-    void post(const Pds::Eb::Batch* batch);
-    std::atomic<int> inflight_count;
+  EbReceiver(const Parameters&            para,
+             const Pds::Eb::EbCtrbParams& ecPrms,
+             MemPool&                     pool,
+             Pds::Eb::MonContributor*     mon);
+  virtual ~EbReceiver() {};
+public:                             // For EbCtrbInBase
+  virtual void process(const XtcData::Dgram* result, const void* input);
 private:
-    Pds::Eb::EbLfClient& _ebLfClient;
-    unsigned _contributor_id;
+    MemPool&                 _pool;
+    FILE*                    _xtcFile;
+    Pds::Eb::MonContributor* _mon;
+private:
+    unsigned nreceive;
 };
 
-void collector(MemPool& pool, Parameters& para, MyBatchManager& myBatchMan);
-void eb_receiver(MyBatchManager& myBatchMan, MemPool& pool, Parameters& para);
+void collector(MemPool& pool, Parameters& para, const Pds::Eb::EbCtrbParams&, Pds::Eb::EbContributor&, Pds::Eb::MonContributor*);
 
 #endif // COLLECTOR_H

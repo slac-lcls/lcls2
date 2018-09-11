@@ -9,6 +9,7 @@
 #include "xtcdata/xtc/TransitionId.hh"
 
 using namespace XtcData;
+using namespace Pds::MonReq;
 
 class MyMonitorClient : public XtcMonitorClient {
 public:

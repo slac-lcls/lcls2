@@ -2,80 +2,93 @@
 #define Pds_Eb_Batch_hh
 
 #include "xtcdata/xtc/Dgram.hh"
-#include "psdaq/service/Pool.hh"
 
+#include <assert.h>
 #include <stdint.h>
 #include <cstddef>
+#include <atomic>
 
 
 namespace Pds {
-
-  class GenericPoolW;
-
   namespace Eb {
 
-    class Batch1;
+    class BatchManager;
 
     class Batch
     {
     public:
-      enum IsLastFlag { IsLast };
-    public:
-      Batch(IsLastFlag);
-      Batch(const XtcData::Dgram&, uint64_t pid);
+      explicit Batch();
       ~Batch();
     public:
-      static size_t size();
-      static void   init(GenericPoolW&          pool,
-                         char*                  buffer,
-                         unsigned               depth,
-                         size_t                 maxSize,
-                         const XtcData::Dgram** datagrams,
-                         unsigned               maxEntries,
-                         Batch**                batches);
+      void            initialize(const XtcData::Dgram* contrib);
     public:
-      PoolDeclare;
-    public:
-      void*                 allocate(size_t);
-      void                  store(const XtcData::Dgram*);
-      uint64_t              id() const;
-      void                  id(uint64_t pid);
-      bool                  expired(uint64_t pid) const;
-      unsigned              index() const;
-      size_t                extent() const;
-      void*                 buffer() const;
-      XtcData::Dgram*       datagram() const;
-      void                  parameter(void*);
-      void*                 parameter() const;
-      bool                  isLast() const;
-      const XtcData::Dgram* datagram(unsigned i) const;
+      void*           allocate(size_t);
+      void*           allocate(size_t, const void* appPrm);
+      void            store(const XtcData::Dgram*);
+      unsigned        entries() const;
+      uint64_t        id() const;
+      bool            expired(uint64_t pid, uint64_t mask) const;
+      unsigned        index() const;
+      size_t          extent() const;
+      XtcData::Dgram* datagram() const;
+      const void*     appParm(unsigned idx) const;
     private:
-      Batch1* _batch1() const;
+      friend BatchManager;
+      void           _fixup(unsigned index, void* buffer, std::atomic<uintptr_t>* appPrms);
     private:
-      void*   _parameter;
+      unsigned const          _index;
+      void*    const          _buffer;
+      unsigned                _entries;
+      std::atomic<uintptr_t>* _appPrms;
     };
   };
 };
 
 
+inline Pds::Eb::Batch::~Batch()
+{
+}
+
+inline unsigned Pds::Eb::Batch::index() const
+{
+  return _index;
+}
+
 inline XtcData::Dgram* Pds::Eb::Batch::datagram() const
 {
-  return (XtcData::Dgram*)buffer();
+  return (XtcData::Dgram*)_buffer;
 }
 
-inline void Pds::Eb::Batch::parameter(void* parameter)
+inline const void* Pds::Eb::Batch::appParm(unsigned idx) const
 {
-  _parameter = parameter;
+  assert(idx < _entries);
+
+  return (const void*)(uintptr_t)_appPrms[idx];
 }
 
-inline void* Pds::Eb::Batch::parameter() const
+inline void* Pds::Eb::Batch::allocate(size_t size)
 {
-  return _parameter;
+  ++_entries;
+
+  return datagram()->xtc.alloc(size);
 }
 
-inline bool Pds::Eb::Batch::isLast() const
+inline void* Pds::Eb::Batch::allocate(size_t size, const void* appPrm)
 {
-  return _parameter == this;
+  _appPrms[_entries++] = (uintptr_t)appPrm;
+
+  return datagram()->xtc.alloc(size);
+}
+
+inline size_t Pds::Eb::Batch::extent() const
+{
+  const XtcData::Dgram* dg = datagram();
+  return sizeof(*dg) + dg->xtc.sizeofPayload();
+}
+
+inline unsigned Pds::Eb::Batch::entries() const
+{
+  return _entries;
 }
 
 inline uint64_t Pds::Eb::Batch::id() const
@@ -83,16 +96,9 @@ inline uint64_t Pds::Eb::Batch::id() const
   return datagram()->seq.pulseId().value();
 }
 
-inline void Pds::Eb::Batch::id(uint64_t pid)
+inline bool Pds::Eb::Batch::expired(uint64_t pid, uint64_t mask) const
 {
-  XtcData::Dgram*  dg = datagram();
-  XtcData::PulseId pulseId(pid, dg->seq.pulseId().control());
-  dg->seq = XtcData::Sequence(dg->seq.stamp(), pulseId);
-}
-
-inline bool Pds::Eb::Batch::expired(uint64_t pid) const
-{
-  return id() != pid;
+  return ((id() ^ pid) & mask) != 0;
 }
 
 #endif

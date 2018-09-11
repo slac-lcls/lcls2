@@ -205,7 +205,7 @@ void StatsTimer::expired()
 #if 1
   if (_fwBuildPV && _fwBuildPV->connected()) {
     std::string bld = _dev._timing.version.buildStamp();
-    strncpy(reinterpret_cast<char*>(_fwBuildPV->data()), bld.c_str(), 80);
+    strncpy(reinterpret_cast<char*>(_fwBuildPV->data()), bld.c_str(), 256);
     printf("fwBuild: %s\n",bld.c_str());
     _fwBuildPV->put();
     _fwBuildPV = 0;
