@@ -1,16 +1,18 @@
-#!/bin/bash
-#export PSPKG_ROOT=/reg/g/pcds/pkg_mgr
-#export PSPKG_RELEASE=controls-basic-0.0.2
-#export PSPKG_RELEASE=controls-0.0.8
-#source $PSPKG_ROOT/etc/set_env.sh
-source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh
+#!/bin/bash                                                                     
+#export PSPKG_ROOT=/reg/g/pcds/pkg_mgr                                          
+#export PSPKG_RELEASE=controls-basic-0.0.2                                      
+#export PSPKG_RELEASE=controls-0.0.8                                            
+#source $PSPKG_ROOT/etc/set_env.sh                                              
+# psconda.sh takes arguments to optionally select a py2 environment             
+# we want py3 here, so we pass ""                                               
+source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh ""
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export PATH=$SCRIPTDIR/../../../install/bin:${PATH}
-#source $PSPKG_ROOT/etc/env_add_pkg.sh pyqtgraph/0.9.10
-#source $PSPKG_ROOT/etc/env_add_pkg.sh
+#source $PSPKG_ROOT/etc/env_add_pkg.sh pyqtgraph/0.9.10                         
+#source $PSPKG_ROOT/etc/env_add_pkg.sh                                          
 export EPICS_CA_SERVER_PORT=5066
 export EPICS_CA_REPEATER_PORT=5067
 export EPICS_CA_ADDR_LIST=10.0.3.255
-#export EPICS_CA_ADDR_LIST=172.21.42.255
+#export EPICS_CA_ADDR_LIST=172.21.42.255                                        
 export EPICS_CA_AUTO_ADDR_LIST=NO
 python "$@"
