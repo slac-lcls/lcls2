@@ -379,7 +379,7 @@ class ProcMgr:
     STATION = 0
     CURRENTEXPCMD = ''
     
-    valid_flag_list = ['X', 'x', 'k', 's', 'u', 'p'] 
+    valid_flag_list = ['X', 'x', 'k', 's', 'u', 'p', 'r']
     valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET']
 
     def __init__(self, configfilename, platform, Xterm_list=[], xterm_list=[], procmgr_macro={}, baseport=29000):
@@ -1099,13 +1099,18 @@ class ProcMgr:
                 else:
                     if not os.path.isfile(procServCmd):
                         print('ERR: file %s not found' % procServCmd)
-                startcmd = procServCmd+' --noautorestart --name %s %s %s --allow --coresize %d %s %s' % \
+
+                if 'r' not in value[self.DICT_FLAGS]:
+                    procServCmd += ' --noautorestart'
+
+                startcmd = procServCmd+'  --name %s %s %s --allow --coresize %d %s %s' % \
                        (name, \
                         waitflag, \
                         logFlag, \
                         coresize, \
                         value[self.DICT_CTRL], \
                         value[self.DICT_CMD])
+
                 # is this host already in the dictionary?
                 if starthost in startdict:
                     # yes: add to set of start commands
