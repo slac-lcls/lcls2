@@ -1,4 +1,5 @@
 import sys
+import socket
 import argparse
 from psp import Pv
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -22,6 +23,12 @@ NPartitions = 16
 
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
+
+linkType = []
+for x in range(0xfc):
+    linkType.append('-')
+linkType.append('TDetSim')
+linkType.append('-')
 
 class PvCString:
     def __init__(self, parent, pvbase, name, dName=None):
@@ -64,7 +71,7 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
     def __init__(self, pvname, label):
         super(PvPushButtonX, self).__init__(label)
-        self.setMaximumWidth(25) # Revisit
+        self.setMaximumWidth(70)
 
         self.clicked.connect(self.buttonClicked)
 
@@ -92,6 +99,35 @@ def LblPushButtonX(parent, pvbase, name, count=1, start=0, istart=0):
 def LblEditIntX(parent, pvbase, name, count=1, start=0, istart=0, enable=True):
     return PvInput(PvEditIntX, parent, pvbase, name, count, start, istart, enable)
 
+class PvLinkId(QtWidgets.QWidget):
+
+    def __init__(self,pvname,idx):
+        super(PvLinkId, self).__init__()
+        layout = QtWidgets.QVBoxLayout()
+
+        self.linkType = QtWidgets.QLabel('-')
+        self.linkType.setMaximumWidth(70)
+        layout.addWidget(self.linkType)
+
+        self.linkSrc  = QtWidgets.QLabel('-')
+        self.linkSrc.setMaximumWidth(70)
+        layout.addWidget(self.linkSrc)
+        self.setLayout(layout)
+
+        initPvMon(self,pvname)
+
+    def update(self, err):
+        value = self.pv.value
+        itype = (int(value)>>24)&0xff
+        self.linkType.setText(linkType[itype])
+        if itype == 0xfc:
+            ip_addr = '172.21'+'.%u'%((int(value)>>8)&0xff)+'.%u'%((int(value)>>0)&0xff)
+            host = socket.gethostbyaddr(ip_addr)[0].split('.')[0].split('-')[-1]
+            self.linkSrc.setText(host)
+        else:
+            self.linkSrc.setText('-')
+
+
 def FrontPanelAMC(pvbase,iamc):
         dshbox = QtWidgets.QHBoxLayout()
         dsbox = QtWidgets.QGroupBox("Front Panel Links (AMC%d)"%iamc)
@@ -99,6 +135,7 @@ def FrontPanelAMC(pvbase,iamc):
 #        LblEditIntX   (lol, pvbase, "LinkTxDelay",    NAmcs * NDsLinks)
 #        LblEditIntX   (lol, pvbase, "LinkPartition",  NAmcs * NDsLinks)
 #        LblEditIntX   (lol, pvbase, "LinkTrgSrc",     NAmcs * NDsLinks)
+        PvInput(PvLinkId, dslo, pvbase, "RemoteLinkId", NDsLinks, start=iamc*NDsLinks)
         LblPushButtonX(dslo, pvbase, "TxLinkReset",    NDsLinks, start=iamc*NDsLinks)
         LblPushButtonX(dslo, pvbase, "RxLinkReset",    NDsLinks, start=iamc*NDsLinks)
         LblPushButtonX(dslo, pvbase, "RxLinkDump" ,    NDsLinks, start=iamc*NDsLinks)
@@ -127,18 +164,55 @@ class Ui_MainWindow(object):
         lol = QtWidgets.QVBoxLayout()
         lor = QtWidgets.QVBoxLayout()
 
-#        PvLabel  (lol, pvbase, "PARTITIONS"  )
-        PvLabel  (lol, pvbase, "PAddr"       , isInt=True)
-        PvCString(lol, pvbase, "FwBuild"     )
+        if True:
+            vl  = QtWidgets.QHBoxLayout()
+            tb  = QtWidgets.QGroupBox('Global')
+            hl  = QtWidgets.QVBoxLayout()
+            #        PvLabel  (hl, pvbase, "PARTITIONS"  )
+            PvLabel  (hl, pvbase, "PAddr"       , isInt=True)
+            PvCString(hl, pvbase, "FwBuild"     )
 
-        LblPushButtonX(lol, pvbase, "ModuleInit"      )
-        LblPushButtonX(lol, pvbase, "DumpPll",        NAmcs)
-        LblPushButtonX(lol, pvbase, "DumpTiming",     2)
+            LblPushButtonX(hl, pvbase, "ModuleInit"      )
+            LblPushButtonX(hl, pvbase, "DumpPll",        NAmcs)
+            LblPushButtonX(hl, pvbase, "DumpTiming",     2)
 
-        LblPushButtonX(lol, pvbase, "ClearLinks"      )
+            LblPushButtonX(hl, pvbase, "ClearLinks"      )
 
-        LblPushButtonX(lol, pvbase, "Inhibit"         )
-        LblPushButtonX(lol, pvbase, "TagStream"       )
+            LblPushButtonX(hl, pvbase, "Inhibit"         )
+            LblPushButtonX(hl, pvbase, "TagStream"       )
+            tb.setLayout(hl)
+            vl.addWidget(tb)
+
+            sb = QtWidgets.QGroupBox('Timing')
+            lor = QtWidgets.QVBoxLayout()
+            if False:
+                PvLabel(lor, pvbase, "L0InpRate"  )
+                PvLabel(lor, pvbase, "L0AccRate"  )
+                PvLabel(lor, pvbase, "L1Rate"     )
+                PvLabel(lor, pvbase, "NumL0Inp"   )
+                PvLabel(lor, pvbase, "NumL0Acc", None, True)
+                PvLabel(lor, pvbase, "NumL1"      )
+                PvLabel(lor, pvbase, "DeadFrac"   )
+                PvLabel(lor, pvbase, "DeadTime"   )
+                PvLabel(lor, pvbase, "DeadFLnk"   )
+
+            PvLabel(lor, pvbase, "RxClks"     )
+            PvLabel(lor, pvbase, "TxClks"     )
+            PvLabel(lor, pvbase, "RxRsts"     )
+            PvLabel(lor, pvbase, "CrcErrs"    )
+            PvLabel(lor, pvbase, "RxDecErrs"  )
+            PvLabel(lor, pvbase, "RxDspErrs"  )
+            PvLabel(lor, pvbase, "BypassRsts" )
+            PvLabel(lor, pvbase, "BypassDones")
+            PvLabel(lor, pvbase, "RxLinkUp"   )
+            PvLabel(lor, pvbase, "FIDs"       )
+            PvLabel(lor, pvbase, "SOFs"       )
+            PvLabel(lor, pvbase, "EOFs"       )
+            PvLabel(lor, pvbase, "BpClk"      )
+            
+            sb.setLayout(lor)
+            vl.addWidget(sb)
+            lol.addLayout(vl)
 
         lol.addLayout(FrontPanelAMC(pvbase,0))
         lol.addLayout(FrontPanelAMC(pvbase,1))
@@ -216,56 +290,19 @@ class Ui_MainWindow(object):
 
             #lol.addStretch()
 
-            PvLabel(lor, pvbase, "L0InpRate"  )
-            PvLabel(lor, pvbase, "L0AccRate"  )
-            PvLabel(lor, pvbase, "L1Rate"     )
-            PvLabel(lor, pvbase, "NumL0Inp"   )
-            PvLabel(lor, pvbase, "NumL0Acc", None, True)
-            PvLabel(lor, pvbase, "NumL1"      )
-            PvLabel(lor, pvbase, "DeadFrac"   )
-            PvLabel(lor, pvbase, "DeadTime"   )
-            PvLabel(lor, pvbase, "DeadFLnk"   )
-
-        PvLabel(lor, pvbase, "RxClks"     )
-        PvLabel(lor, pvbase, "TxClks"     )
-        PvLabel(lor, pvbase, "RxRsts"     )
-        PvLabel(lor, pvbase, "CrcErrs"    )
-        PvLabel(lor, pvbase, "RxDecErrs"  )
-        PvLabel(lor, pvbase, "RxDspErrs"  )
-        PvLabel(lor, pvbase, "BypassRsts" )
-        PvLabel(lor, pvbase, "BypassDones")
-        PvLabel(lor, pvbase, "RxLinkUp"   )
-        PvLabel(lor, pvbase, "FIDs"       )
-        PvLabel(lor, pvbase, "SOFs"       )
-        PvLabel(lor, pvbase, "EOFs"       )
-
-        lor.addStretch()
-
-        PvLabel(lor, pvbase, "BpClk"      )
-        
-        #lor.addStretch()
-
         ltable = QtWidgets.QWidget()
         ltable.setLayout(lol)
-        rtable = QtWidgets.QWidget()
-        rtable.setLayout(lor)
 
         lscroll = QtWidgets.QScrollArea()
         lscroll.setWidget(ltable)
-        rscroll = QtWidgets.QScrollArea()
-        rscroll.setWidget(rtable)
-
-        splitter = QtWidgets.QSplitter()
-        splitter.addWidget(lscroll)
-        splitter.addWidget(rscroll)
 
         layout = QtWidgets.QHBoxLayout()
-        layout.addWidget(splitter)
+        layout.addWidget(lscroll)
 
         self.centralWidget.setLayout(layout)
-        self.centralWidget.resize(940,840)
+        self.centralWidget.resize(700,800)
 
-        MainWindow.resize(940,840)
+        MainWindow.resize(700,800)
         MainWindow.setWindowTitle(title)
         MainWindow.setCentralWidget(self.centralWidget)
 
