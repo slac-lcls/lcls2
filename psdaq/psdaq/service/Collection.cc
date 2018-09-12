@@ -58,8 +58,9 @@ std::string get_infiniband_address()
     return std::string(host);
 }
 
-Collection::Collection(const std::string& manager_hostname, 
-                       int platform, const std::string& level) : m_level(level)
+Collection::Collection(const std::string& manager_hostname,
+                       int platform, const std::string& level) : m_state("reset"),
+                                                                 m_level(level)
 {
     const int base_port = 29980;
     m_context = zmq_ctx_new();
@@ -80,12 +81,14 @@ Collection::Collection(const std::string& manager_hostname,
         perror("zmq_connect");
     }
 
-    m_handle_request["plat"] = std::bind(&Collection::handle_plat, this, 
+    m_handle_request["plat"] = std::bind(&Collection::handle_plat, this,
                                          std::placeholders::_1);
-    m_handle_request["alloc"] = std::bind(&Collection::handle_alloc, this, 
+    m_handle_request["alloc"] = std::bind(&Collection::handle_alloc, this,
                                           std::placeholders::_1);
-    m_handle_request["connect"] = std::bind(&Collection::handle_connect, this, 
+    m_handle_request["connect"] = std::bind(&Collection::handle_connect, this,
                                             std::placeholders::_1);
+    m_handle_request["reset"] = std::bind(&Collection::handle_reset, this,
+                                          std::placeholders::_1);
 }
 
 Collection::~Collection()
@@ -111,27 +114,34 @@ void Collection::connect()
 
 void Collection::handle_plat(json& msg)
 {
-    char hostname[HOST_NAME_MAX];
-    gethostname(hostname, HOST_NAME_MAX);
-    int pid = getpid();
-    m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
-    json body;
-    body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}}}};
-    json reply = create_msg("plat", msg["header"]["msg_id"], m_id, body); 
-    std::string s = reply.dump();
-    zmq_send(m_push, s.c_str(), s.length(), 0);
+    // ignore message if not in reset or plat states
+  if ((m_state == "reset") || (m_state == "plat")) {
+        char hostname[HOST_NAME_MAX];
+        gethostname(hostname, HOST_NAME_MAX);
+        int pid = getpid();
+        m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
+        json body;
+        body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}}}};
+        json reply = create_msg("plat", msg["header"]["msg_id"], m_id, body);
+        std::string s = reply.dump();
+        zmq_send(m_push, s.c_str(), s.length(), 0);
+        m_state = "plat";
+    }
 }
 
 void Collection::handle_alloc(json& msg)
 {
-    // partition_info = json::parse(s);
-    std::string infiniband_address = get_infiniband_address();
-    printf("infiniband address %s\n", infiniband_address.c_str());
-    json body = {{m_level, {{"connect_info", {{"infiniband", infiniband_address}}}}}};
-    json reply = create_msg("alloc", msg["header"]["msg_id"], m_id, body);
-    std::string s = reply.dump();
-    zmq_send(m_push, s.c_str(), s.length(), 0);
-    m_state = "alloc";
+    // ignore message if not in plat state
+    if (m_state == "plat") {
+        // partition_info = json::parse(s);
+        std::string infiniband_address = get_infiniband_address();
+        printf("infiniband address %s\n", infiniband_address.c_str());
+        json body = {{m_level, {{"connect_info", {{"infiniband", infiniband_address}}}}}};
+        json reply = create_msg("alloc", msg["header"]["msg_id"], m_id, body);
+        std::string s = reply.dump();
+        zmq_send(m_push, s.c_str(), s.length(), 0);
+        m_state = "alloc";
+    }
 }
 
 void Collection::handle_connect(json& msg)
@@ -149,6 +159,11 @@ void Collection::handle_connect(json& msg)
     }
 }
 
+void Collection::handle_reset(json& msg)
+{
+    m_state = "reset";
+}
+
 json create_msg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body)
 {
     json msg;
@@ -162,7 +177,9 @@ json recv_json(void* socket)
     ZmqMessage frame;
     int rc = zmq_msg_recv(&frame.msg, socket, 0);
     assert (rc != -1);
-    return json::parse((char*)frame.data());
+    char* begin = (char*)frame.data();
+    char* end   = begin + frame.size();
+    return json::parse(begin, end);
 
 }
 
