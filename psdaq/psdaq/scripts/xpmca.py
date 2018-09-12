@@ -26,9 +26,11 @@ toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
 linkType = []
 for x in range(0xfc):
-    linkType.append('-')
+    linkType.append('0x%x'%x)
 linkType.append('TDetSim')
-linkType.append('-')
+linkType.append('DRP')
+linkType.append('DTI')
+linkType.append('XPM')
 
 class PvCString:
     def __init__(self, parent, pvbase, name, dName=None):
@@ -125,8 +127,13 @@ class PvLinkId(QtWidgets.QWidget):
             host = socket.gethostbyaddr(ip_addr)[0].split('.')[0].split('-')[-1]
             self.linkSrc.setText(host)
         else:
-            self.linkSrc.setText('-')
-
+            if itype > 0xfc:
+                ip_addr = '10.0'+'.%u'%((int(value)>>8)&0xff)+'.%u'%((int(value)>>0)&0xff)
+                self.linkSrc.setText(ip_addr)
+            else:
+                self.linkSrc.setText('0x%x'%(value&0xffffff))
+                
+                
 
 def FrontPanelAMC(pvbase,iamc):
         dshbox = QtWidgets.QHBoxLayout()
