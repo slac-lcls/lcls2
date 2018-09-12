@@ -10,6 +10,7 @@
 #include "psdaq/eb/StatsMonitor.hh"
 
 #include "psdaq/service/Histogram.hh"
+#include "psdaq/service/Collection.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <signal.h>
@@ -23,6 +24,7 @@
 #include <vector>
 #include <unordered_map>
 #include <cassert>
+#include <iostream>
 
 
 using namespace XtcData;
@@ -37,10 +39,10 @@ static const unsigned max_ctrbs        = 64;         // Maximum possible number 
 static const unsigned max_ebs          = 64;         // Maximum possible number of Builders
 static const unsigned max_mons         = 64;         // Maximum possible number of Monitors
                                                      // Base ports for:
-static const unsigned l3i_port_base    = 32768;                    // L3  EB to receive L3 contributions
-static const unsigned l3r_port_base    = l3i_port_base + max_ebs;  // L3  EB to send    results
-static const unsigned mrq_port_base    = l3r_port_base + max_ebs;  // L3  EB to receive monitor requests
-static const unsigned meb_port_base    = mrq_port_base + max_mons; // Mon EB to receive data contributions
+static const unsigned l3i_port_base    = 32768;                    // Trigger EB to receive L3 contributions
+static const unsigned l3r_port_base    = l3i_port_base + max_ebs;  // Trigger EB to send    results
+static const unsigned mrq_port_base    = l3r_port_base + max_ebs;  // Trigger EB to receive monitor requests
+static const unsigned meb_port_base    = mrq_port_base + max_mons; // Monitor EB to receive data contributions
 static const unsigned max_batches      = 8192;       // Maximum number of batches in circulation
 static const unsigned max_entries      = 64;        // < or = to batch_duration
 static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
@@ -51,6 +53,7 @@ static const size_t   max_contrib_size = header_size + input_extent  * sizeof(ui
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const char*    dflt_partition   = "Test";
 static const char*    dflt_rtMon_addr  = "tcp://psdev7b:55561";
+static const char*    dflt_coll_addr   = "drp-tst-acc06";
 
 static       unsigned lverbose         = 0;
 static       int      lcore1           = core_base + core_offset + 0;
@@ -190,19 +193,19 @@ L3EbApp::L3EbApp(const char*                     ifAddr,
     const unsigned tmo(120000);         // Milliseconds
     if (_l3Transport->connect(addr, port, tmo, &link))
     {
-      fprintf(stderr, "%s: Error connecting to L3 EbLfServer at %s:%s\n",
+      fprintf(stderr, "%s: Error connecting to Trigger EbLfServer at %s:%s\n",
               __func__, addr, port);
       abort();
     }
     if (link->preparePoster(batchRegion(), batchRegionSize(), i, id, lverbose))
     {
-      fprintf(stderr, "%s: Failed to prepare L3 link to %s:%s\n",
+      fprintf(stderr, "%s: Failed to prepare Trigger link to %s:%s\n",
               __func__, addr, port);
       abort();
     }
     _l3Links[link->id()] = link;
 
-    printf("L3 EbLfServer ID %d connected\n", link->id());
+    printf("Trigger EbLfServer ID %d connected\n", link->id());
   }
 
   for (unsigned i = 0; i < numMrqs; ++i)
@@ -225,12 +228,12 @@ L3EbApp::L3EbApp(const char*                     ifAddr,
     printf("Mon EbLfClient ID %d connected\n", link->id());
   }
 
-  smon.registerIt("L3EB.EvtRt",  _eventCount,   StatsMonitor::RATE);
-  smon.registerIt("L3EB.EvtCt",  _eventCount,   StatsMonitor::SCALAR);
-  smon.registerIt("L3EB.BatCt",  _batchCount,   StatsMonitor::SCALAR);
-  smon.registerIt("L3EB.FrBtCt", _freeBatchCnt, StatsMonitor::SCALAR);
-  smon.registerIt("L3EB.FrEpCt", _freeEpochCnt, StatsMonitor::SCALAR);
-  smon.registerIt("L3EB.FrEvCt", _freeEventCnt, StatsMonitor::SCALAR);
+  smon.registerIt("TEB.EvtRt",  _eventCount,   StatsMonitor::RATE);
+  smon.registerIt("TEB.EvtCt",  _eventCount,   StatsMonitor::SCALAR);
+  smon.registerIt("TEB.BatCt",  _batchCount,   StatsMonitor::SCALAR);
+  smon.registerIt("TEB.FrBtCt", _freeBatchCnt, StatsMonitor::SCALAR);
+  smon.registerIt("TEB.FrEpCt", _freeEpochCnt, StatsMonitor::SCALAR);
+  smon.registerIt("TEB.FrEvCt", _freeEventCnt, StatsMonitor::SCALAR);
 }
 
 L3EbApp::~L3EbApp()
@@ -252,9 +255,6 @@ void L3EbApp::process()
   //start();                              // Start the event timeout timer
 
   pinThread(pthread_self(),                lcore1);
-
-  // Wait a bit to allow other components of the system to establish connections
-  sleep(1);
 
   while (_running)
   {
@@ -511,7 +511,7 @@ static void usage(char *name, char *desc)
   fprintf(stderr, "\n<contributor_spec> has the form '<id>:<addr>:<port>'\n");
   fprintf(stderr, "<id> must be in the range 0 - %d.\n", max_ebs - 1);
   fprintf(stderr, "Low numbered <port> values are treated as offsets into the following range:\n");
-  fprintf(stderr, "  L3 result: %d - %d\n", l3r_port_base, l3r_port_base + max_ebs - 1);
+  fprintf(stderr, "  Trigger result: %d - %d\n", l3r_port_base, l3r_port_base + max_ebs - 1);
 
   fprintf(stderr, "\nOptions:\n");
 
@@ -536,8 +536,12 @@ static void usage(char *name, char *desc)
           "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
           "Run-time monitoring ZMQ server address",   dflt_rtMon_addr);
-  fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition>",
+  fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
           "Partition tag",                            dflt_partition);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
+          "Partition number",                         0);
+  fprintf(stderr, " %-20s %s (default: %s)\n",        "-C <address>",
+          "Collection server",                        dflt_coll_addr);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    lcore1);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
@@ -545,6 +549,44 @@ static void usage(char *name, char *desc)
 
   fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output (repeat for increased detail)");
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
+}
+
+static
+void joinCollection(std::string&              server,
+                    unsigned                  partition,
+                    unsigned                  portBase,
+                    uint64_t&                 contributors,
+                    std::vector<std::string>& addrs,
+                    std::vector<std::string>& ports,
+                    unsigned&                 tebId,
+                    unsigned&                 numMrqs)
+{
+  Collection collection(server, partition, "teb");
+  collection.connect();
+  std::cout << "cmstate:\n" << collection.cmstate.dump(4) << std::endl;
+
+  std::string id = std::to_string(collection.id());
+  std::cout << "TEB: " << id << std::endl;
+  tebId = collection.cmstate["teb"][id]["teb_id"];
+
+  for (auto it : collection.cmstate["drp"].items())
+  {
+    unsigned    ctrbId  = it.value()["drp_id"];
+    std::string address = it.value()["connect_info"]["infiniband"];
+    std::cout << ctrbId << "  " << address << std::endl;
+    contributors |= 1ul << ctrbId;
+    addrs.push_back(address);
+    ports.push_back(std::string(std::to_string(portBase + ctrbId)));
+  }
+
+  numMrqs = 0;
+  if (collection.cmstate.find("meb") != collection.cmstate.end())
+  {
+    for (auto it : collection.cmstate["meb"].items())
+    {
+      ++numMrqs;
+    }
+  }
 }
 
 int main(int argc, char **argv)
@@ -561,39 +603,37 @@ int main(int argc, char **argv)
   unsigned    rtMonVerbose = 0;
   const char* rtMonAddr    = dflt_rtMon_addr;
   std::string partitionTag  (dflt_partition);
+  unsigned    partition    = 0;
   unsigned    numMrqs      = 0;
+  std::string collSrv      = dflt_coll_addr;
 
-  while ((op = getopt(argc, argv, "h?vVA:L:M:i:d:b:e:r:m:Z:P:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vVA:L:M:i:d:b:e:r:m:Z:P:p:C:1:2:")) != -1)
   {
     switch (op)
     {
-      case 'A':  ifAddr       = optarg;               break;
-      case 'L':  l3iPortNo    = atoi(optarg);         break;
-      case 'M':  mrqPortNo    = atoi(optarg);         break;
-      case 'i':  id           = atoi(optarg);         break;
-      case 'd':  duration     = atoll(optarg);        break;
-      case 'b':  maxBatches   = atoi(optarg);         break;
-      case 'e':  maxEntries   = atoi(optarg);         break;
-      case 'r':  numMrqs      = atoi(optarg);         break;
-      case 'm':  rtMonPeriod  = atoi(optarg);         break;
-      case 'Z':  rtMonAddr    = optarg;               break;
-      case 'P':  partitionTag = std::string(optarg);  break;
-      case '1':  lcore1       = atoi(optarg);         break;
-      case '2':  lcore2       = atoi(optarg);         break;
-      case 'v':  ++lverbose;                          break;
-      case 'V':  ++rtMonVerbose;                      break;
+      case 'A':  ifAddr       = optarg;             break;
+      case 'L':  l3iPortNo    = atoi(optarg);       break;
+      case 'M':  mrqPortNo    = atoi(optarg);       break;
+      case 'i':  id           = atoi(optarg);       break;
+      case 'd':  duration     = atoll(optarg);      break;
+      case 'b':  maxBatches   = atoi(optarg);       break;
+      case 'e':  maxEntries   = atoi(optarg);       break;
+      case 'r':  numMrqs      = atoi(optarg);       break;
+      case 'm':  rtMonPeriod  = atoi(optarg);       break;
+      case 'Z':  rtMonAddr    = optarg;             break;
+      case 'P':  partitionTag = optarg;             break;
+      case 'p':  partition    = std::stoi(optarg);  break;
+      case 'C':  collSrv      = optarg;             break;
+      case '1':  lcore1       = atoi(optarg);       break;
+      case '2':  lcore2       = atoi(optarg);       break;
+      case 'v':  ++lverbose;                        break;
+      case 'V':  ++rtMonVerbose;                    break;
       case '?':
       case 'h':
       default:
-        usage(argv[0], (char*)"L3 event builder application");
+        usage(argv[0], (char*)"Trigger Event Builder application");
         return 1;
     }
-  }
-
-  if (id >= max_ebs)
-  {
-    fprintf(stderr, "Builder ID is out of range 0 - %d: %d\n", max_ebs - 1, id);
-    return 1;
   }
 
   if ((l3iPortNo < l3i_port_base) || (l3iPortNo >= l3i_port_base + max_mons))
@@ -641,7 +681,16 @@ int main(int argc, char **argv)
   }
   else
   {
+    joinCollection(collSrv, partition, l3r_port_base, contributors, l3rAddrs, l3rPorts, id, numMrqs);
+  }
+  if ((contributors == 0) || (l3rAddrs.size() == 0) || (l3rPorts.size() == 0))
+  {
     fprintf(stderr, "Contributor address(es) is required\n");
+    return 1;
+  }
+  if (id >= max_ebs)
+  {
+    fprintf(stderr, "Builder ID is out of range 0 - %d: %d\n", max_ebs - 1, id);
     return 1;
   }
 
@@ -667,7 +716,7 @@ int main(int argc, char **argv)
 
   printf("\nParameters of Builder ID %d:\n",                id);
   printf("  Thread core numbers:        %d, %d\n",          lcore1, lcore2);
-  printf("  Partition tag:             '%s'\n",             partitionTag.c_str());
+  printf("  Partition:                  %d: '%s'\n",        partition, partitionTag.c_str());
   printf("  Run-time monitoring period: %d\n",              rtMonPeriod);
   printf("  Run-time monitoring server: %s\n",              rtMonAddr);
   printf("  Number of Mon EBs:          %d\n",              numMrqs);
@@ -716,6 +765,9 @@ int main(int argc, char **argv)
 
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
+
+  // Wait a bit to allow other components of the system to establish connections
+  sleep(1);
 
   app->process();
 

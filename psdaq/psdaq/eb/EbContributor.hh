@@ -1,11 +1,12 @@
 #ifndef Pds_Eb_EbContributor_hh
 #define Pds_Eb_EbContributor_hh
 
+#include "psdaq/eb/eb.hh"
+
 #include "psdaq/eb/BatchManager.hh"
 
 #include "psdaq/service/Histogram.hh"
 
-#include <cstdint>
 #include <cstdint>
 #include <vector>
 #include <unordered_map>
@@ -35,23 +36,6 @@ namespace Pds {
     class StatsMonitor;
 
     using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
-
-    struct EbCtrbParams
-    {
-      std::vector<std::string> addrs;
-      std::vector<std::string> ports;
-      char*                    ifAddr;
-      std::string              port;
-      unsigned                 id;
-      uint64_t                 builders;
-      uint64_t                 duration;
-      unsigned                 maxBatches;
-      unsigned                 maxEntries;
-      size_t                   maxInputSize;
-      size_t                   maxResultSize;
-      int                      core[2];
-      unsigned                 verbose;
-    };
 
     class EbContributor : public BatchManager
     {

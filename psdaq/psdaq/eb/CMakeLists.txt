@@ -47,7 +47,6 @@ add_executable(tstEbLfLink      tstEbLfLink.cc)
 add_executable(ibMon            ibMon.cc)
 
 add_executable(tstEbContributor tstEbContributor.cc)
-#add_executable(drpEbContributor drpEbContributor.cc)
 add_executable(tstEbBuilder     tstEbBuilder.cc)
 add_executable(drpEbBuilder     drpEbBuilder.cc)
 
@@ -119,18 +118,14 @@ target_link_libraries(ibMon
 
 target_link_libraries(tstEbContributor
   eb
+  collection
   pthread
   rt
 )
 
-#target_link_libraries(drpEbContributor
-#  eb
-#  pthread
-#  rt
-#)
-
 target_link_libraries(tstEbBuilder
   eb
+  collection
   pthread
   rt
 )

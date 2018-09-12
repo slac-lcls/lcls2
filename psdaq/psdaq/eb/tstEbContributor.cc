@@ -8,6 +8,7 @@
 #include "psdaq/eb/utilities.hh"
 
 #include "psdaq/service/GenericPoolW.hh"
+#include "psdaq/service/Collection.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <fcntl.h>
@@ -23,6 +24,7 @@
 #include <unordered_map>
 #include <atomic>
 #include <thread>
+#include <iostream>
 
 //#define SINGLE_EVENTS                   // Define to take one event at a time by hitting <CR>
 
@@ -30,7 +32,7 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 
-static const int      core_base        = 6;          // devXX, 8: accXX
+static const int      core_base        = 6;          // devXX: 6, accXX: 8
 static const int      core_offset      = 2;          // Allows Ctrb and EB to run on the same machine
 static const unsigned rtMon_period     = 1;          // Seconds
 static const unsigned default_id       = 0;          // Contributor's ID (< 64)
@@ -38,10 +40,10 @@ static const unsigned max_ctrbs        = 64;         // Maximum possible number 
 static const unsigned max_ebs          = 64;         // Maximum possible number of Event Builders
 static const unsigned max_mons         = 64;         // Maximum possible number of Monitors
                                                      // Base ports for:
-static const unsigned l3i_port_base    = 32768;                    // L3  EB to receive L3 contributions
-static const unsigned l3r_port_base    = l3i_port_base + max_ebs;  // L3  EB to send    results
-static const unsigned mrq_port_base    = l3r_port_base + max_ebs;  // L3  EB to receive monitor requests
-static const unsigned meb_port_base    = mrq_port_base + max_mons; // Mon EB to receive data contributions
+static const unsigned l3i_port_base    = 32768;                    // TEB to receive L3 contributions
+static const unsigned l3r_port_base    = l3i_port_base + max_ebs;  // TEB to send    results
+static const unsigned mrq_port_base    = l3r_port_base + max_ebs;  // TEB to receive monitor requests
+static const unsigned meb_port_base    = mrq_port_base + max_mons; // MEB to receive data contributions
 static const unsigned max_batches      = 8192;       // Maximum number of batches in circulation
 static const unsigned max_entries      = 64;          // < or = to batch_duration
 static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
@@ -52,6 +54,7 @@ static const size_t   max_contrib_size = header_size + input_extent  * sizeof(ui
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const char*    dflt_partition   = "Test";
 static const char*    dflt_rtMon_addr  = "tcp://psdev7b:55561";
+static const char*    dflt_coll_addr   = "drp-tst-acc06";
 static const unsigned mon_epochs       = 1;    // Revisit: Corresponds to monReqServer::numberof_epochs
 static const unsigned mon_transitions  = 18;   // Revisit: Corresponds to monReqServer::numberof_trBuffers
 static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReqServer:numberofEvBuffers
@@ -328,9 +331,6 @@ void EbCtrbApp::shutdown()
 
 void EbCtrbApp::process(EbCtrbIn& in)
 {
-  // Wait a bit to allow other components of the system to establish connections
-  sleep(1);
-
   EbContributor::startup(in);
 
   pinThread(pthread_self(), _prms.core[0]);
@@ -392,6 +392,7 @@ void sigHandler(int signal)
   }
 }
 
+static
 void usage(char *name, char *desc, EbCtrbParams& prms)
 {
   fprintf(stderr, "Usage:\n");
@@ -403,20 +404,20 @@ void usage(char *name, char *desc, EbCtrbParams& prms)
   fprintf(stderr, "\n<spec>, below, has the form '<id>:<addr>:<port>', with\n");
   fprintf(stderr, "<id> typically in the range 0 - 63.\n");
   fprintf(stderr, "Low numbered <port> values are treated as offsets into the corresponding ranges:\n");
-  fprintf(stderr, "  L3  EB:     %d - %d\n", l3i_port_base, l3i_port_base + max_ebs - 1);
-  fprintf(stderr, "  L3  result: %d - %d\n", l3r_port_base, l3r_port_base + max_ebs - 1);
-  fprintf(stderr, "  Mon EB:     %d - %d\n", meb_port_base, meb_port_base + max_ebs - 1);
+  fprintf(stderr, "  Trigger EB:     %d - %d\n", l3i_port_base, l3i_port_base + max_ebs - 1);
+  fprintf(stderr, "  Trigger result: %d - %d\n", l3r_port_base, l3r_port_base + max_ebs - 1);
+  fprintf(stderr, "  Monitor EB:     %d - %d\n", meb_port_base, meb_port_base + max_ebs - 1);
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s (default: %s)\n",          "-A <interface_addr>",
-          "IP address of the interface to use",         "libfabric's 'best' choice");
-  fprintf(stderr, " %-20s %s (default: %s)\n",          "-L \"<spec>[, <spec>[, ...]]\"",
-          "Event Builder to send L3 contributions to",  "None, required");
-  fprintf(stderr, " %-20s %s (default: %s)\n",          "-S <port>",
-          "Base port for receiving results",            prms.port.c_str());
-  fprintf(stderr, " %-20s %s (default: %s)\n",          "-M \"<spec>[, <spec>[, ...]]\"",
-          "Event Builder to send Mon contributions to", "None, required");
+  fprintf(stderr, " %-20s %s (default: %s)\n",              "-A <interface_addr>",
+          "IP address of the interface to use",             "libfabric's 'best' choice");
+  fprintf(stderr, " %-20s %s (default: %s)\n",              "-L \"<spec>[, <spec>[, ...]]\"",
+          "Trigger Event Builder to send contributions to", "None, required");
+  fprintf(stderr, " %-20s %s (default: %s)\n",              "-R <port>",
+          "Base port for receiving results",                prms.port.c_str());
+  fprintf(stderr, " %-20s %s (default: %s)\n",              "-M \"<spec>[, <spec>[, ...]]\"",
+          "Monitor Event Builder to send contributions to", "None, required");
 
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-o <output dir>",
           "Output directory for data-<ID>.xtc files", "None");
@@ -436,8 +437,12 @@ void usage(char *name, char *desc, EbCtrbParams& prms)
           "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
           "Run-time monitoring ZMQ server address",   dflt_rtMon_addr);
-  fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition>",
+  fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
           "Partition tag",                            dflt_partition);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
+          "Partition number",                         0);
+  fprintf(stderr, " %-20s %s (default: %s)\n",        "-C <address>",
+          "Collection server",                        dflt_coll_addr);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    prms.core[0]);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
@@ -447,14 +452,15 @@ void usage(char *name, char *desc, EbCtrbParams& prms)
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
 }
 
-static int parseSpec(const char*               who,
-                     char*                     spec,
-                     unsigned                  maxId,
-                     unsigned                  portMin,
-                     unsigned                  portMax,
-                     std::vector<std::string>& addrs,
-                     std::vector<std::string>& ports,
-                     uint64_t*                 bits)
+static
+int parseSpec(const char*               who,
+              char*                     spec,
+              unsigned                  maxId,
+              unsigned                  portMin,
+              unsigned                  portMax,
+              std::vector<std::string>& addrs,
+              std::vector<std::string>& ports,
+              uint64_t*                 bits)
 {
   do
   {
@@ -491,21 +497,64 @@ static int parseSpec(const char*               who,
   return 0;
 }
 
+static
+void joinCollection(std::string&   server,
+                    unsigned       partition,
+                    unsigned       tebPortBase,
+                    unsigned       mebPortBase,
+                    EbCtrbParams&  tPrms,
+                    MonCtrbParams& mPrms)
+{
+  Collection collection(server, partition, "drp");
+  collection.connect();
+  std::cout << "cmstate:\n" << collection.cmstate.dump(4) << std::endl;
+
+  std::string id = std::to_string(collection.id());
+  std::cout << "DRP: " << id << std::endl;
+  tPrms.id = collection.cmstate["drp"][id]["drp_id"];
+
+  uint64_t builders = 0;
+  for (auto it : collection.cmstate["teb"].items())
+  {
+    unsigned    tebId   = it.value()["teb_id"];
+    std::string address = it.value()["connect_info"]["infiniband"];
+    std::cout << "TEB: " << tebId << "  " << address << std::endl;
+    builders |= 1ul << tebId;
+    tPrms.addrs.push_back(address);
+    tPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
+  }
+  tPrms.builders = builders;
+
+  if (collection.cmstate.find("meb") != collection.cmstate.end())
+  {
+    for (auto it : collection.cmstate["meb"].items())
+    {
+      unsigned    mebId   = it.value()["meb_id"];
+      std::string address = it.value()["connect_info"]["infiniband"];
+      std::cout << "MEB: " << mebId << "  " << address << std::endl;
+      mPrms.addrs.push_back(address);
+      mPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
+    }
+  }
+}
+
 int main(int argc, char **argv)
 {
   // Gather the list of EBs from an argument
   // - Somehow ensure this list is the same for all instances of the client
-  // - Maybe pingpong this list around to see whether anyone disagrees with it?
+  // - Maybe circulate this list around to see whether anyone disagrees with it?
 
   int           op, ret      = 0;
   const char*   rtMonAddr    = dflt_rtMon_addr;
   unsigned      rtMonPeriod  = rtMon_period;
   unsigned      rtMonVerbose = 0;
-  unsigned      l3rPortNo    = l3r_port_base;  // Port served to L3  EBs
+  unsigned      l3rPortNo    = l3r_port_base;  // Port served to TEBs
   char*         l3iSpec      = nullptr;
   char*         mebSpec      = nullptr;
   char*         outDir       = nullptr;
   std::string   partitionTag  (dflt_partition);
+  unsigned      partition    = 0;
+  std::string   collSrv      = dflt_coll_addr;
   EbCtrbParams  tPrms { /* .addrs         = */ { },
                         /* .ports         = */ { },
                         /* .ifAddr        = */ nullptr,
@@ -528,30 +577,32 @@ int main(int argc, char **argv)
                         /* .maxTrSize     = */ mon_trSize,
                         /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "h?vVA:L:R:M:o:i:d:b:e:m:Z:P:n:s:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vVA:L:R:M:o:i:d:b:e:m:Z:P:p:n:s:C:1:2:")) != -1)
   {
     switch (op)
     {
-      case 'A':  tPrms.ifAddr     = optarg;               break;
-      case 'L':  l3iSpec          = optarg;               break;
-      case 'R':  l3rPortNo        = atoi(optarg);         break;
-      case 'M':  mebSpec          = optarg;               break;
-      case 'o':  outDir           = optarg;               break;
+      case 'A':  tPrms.ifAddr     = optarg;             break;
+      case 'L':  l3iSpec          = optarg;             break;
+      case 'R':  l3rPortNo        = atoi(optarg);       break;
+      case 'M':  mebSpec          = optarg;             break;
+      case 'o':  outDir           = optarg;             break;
       case 'i':  tPrms.id         = atoi(optarg);
-                 mPrms.id         = tPrms.id;             break;
-      case 'd':  tPrms.duration   = atoll(optarg);        break;
-      case 'b':  tPrms.maxBatches = atoi(optarg);         break;
-      case 'e':  tPrms.maxEntries = atoi(optarg);         break;
-      case 'm':  rtMonPeriod      = atoi(optarg);         break;
-      case 'Z':  rtMonAddr        = optarg;               break;
-      case 'P':  partitionTag     = std::string(optarg);  break;
-      case 'n':  mPrms.maxEvents  = atoi(optarg);         break;
-      case 's':  mPrms.maxEvSize  = atoi(optarg);         break;
-      case '1':  tPrms.core[0]    = atoi(optarg);         break;
-      case '2':  tPrms.core[1]    = atoi(optarg);         break;
+                 mPrms.id         = tPrms.id;           break;
+      case 'd':  tPrms.duration   = atoll(optarg);      break;
+      case 'b':  tPrms.maxBatches = atoi(optarg);       break;
+      case 'e':  tPrms.maxEntries = atoi(optarg);       break;
+      case 'm':  rtMonPeriod      = atoi(optarg);       break;
+      case 'Z':  rtMonAddr        = optarg;             break;
+      case 'P':  partitionTag     = optarg;             break;
+      case 'p':  partition        = std::stoi(optarg);  break;
+      case 'n':  mPrms.maxEvents  = atoi(optarg);       break;
+      case 's':  mPrms.maxEvSize  = atoi(optarg);       break;
+      case 'C':  collSrv          = optarg;             break;
+      case '1':  tPrms.core[0]    = atoi(optarg);       break;
+      case '2':  tPrms.core[1]    = atoi(optarg);       break;
       case 'v':  ++tPrms.verbose;
-                 ++mPrms.verbose;                         break;
-      case 'V':  ++rtMonVerbose;                          break;
+                 ++mPrms.verbose;                       break;
+      case 'V':  ++rtMonVerbose;                        break;
       case '?':
       case 'h':
         usage(argv[0], (char*)"Test DRP event contributor", tPrms);
@@ -586,11 +637,6 @@ int main(int argc, char **argv)
                        &tPrms.builders);
     if (rc)  return rc;
   }
-  else
-  {
-    fprintf(stderr, "Missing required L3 EB address(es)\n");
-    return 1;
-  }
 
   std::vector<std::string> mebAddrs;
   std::vector<std::string> mebPorts;
@@ -606,6 +652,20 @@ int main(int argc, char **argv)
                        mPrms.ports,
                        &unused);
     if (rc)  return rc;
+  }
+
+  if (!l3iSpec && !mebSpec)
+  {
+    joinCollection(collSrv, partition, l3i_port_base, meb_port_base, tPrms, mPrms);
+  }
+  if ((tPrms.addrs.size() == 0) || (tPrms.ports.size() == 0))
+  {
+    fprintf(stderr, "Missing required Trigger EB address(es)\n");
+    return 1;
+  }
+  if ((mPrms.addrs.size() == 0) || (mPrms.ports.size() == 0))
+  {
+    fprintf(stderr, "Monitoring EB(s) is disconfigured\n");
   }
 
   if (tPrms.maxEntries > tPrms.duration)
@@ -634,7 +694,7 @@ int main(int argc, char **argv)
 
   pinThread(pthread_self(), tPrms.core[0]);
   EbCtrbApp*      app = new EbCtrbApp(tPrms, *smon);
-  MonContributor* meb = mebSpec ? new MonContributor(mPrms) : nullptr;
+  MonContributor* meb = (mPrms.addrs.size() != 0) ? new MonContributor(mPrms) : nullptr;
   EbCtrbIn*       in  = new EbCtrbIn (tPrms, meb, *smon, outDir);
   lApp = app;
 
@@ -650,6 +710,9 @@ int main(int argc, char **argv)
   printf("  Max result       size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
          tPrms.maxResultSize, in->maxBatchSize(),  mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
   printf("\n");
+
+  // Wait a bit to allow other components of the system to establish connections
+  sleep(1);
 
   app->process(*in);
 

@@ -30,10 +30,9 @@ private:
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
-  EbReceiver(const Parameters&            para,
-             const Pds::Eb::EbCtrbParams& ecPrms,
-             MemPool&                     pool,
-             Pds::Eb::MonContributor*     mon);
+  EbReceiver(const Parameters&        para,
+             MemPool&                 pool,
+             Pds::Eb::MonContributor* mon);
   virtual ~EbReceiver() {};
 public:                             // For EbCtrbInBase
   virtual void process(const XtcData::Dgram* result, const void* input);
@@ -45,6 +44,6 @@ private:
     unsigned nreceive;
 };
 
-void collector(MemPool& pool, Parameters& para, const Pds::Eb::EbCtrbParams&, Pds::Eb::EbContributor&, Pds::Eb::MonContributor*);
+void collector(MemPool& pool, Parameters& para, Pds::Eb::EbContributor&, Pds::Eb::MonContributor*);
 
 #endif // COLLECTOR_H

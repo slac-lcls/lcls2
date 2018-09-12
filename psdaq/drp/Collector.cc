@@ -19,18 +19,17 @@ MyDgram::MyDgram(Sequence& sequence, uint64_t val, unsigned contributor_id)
 }
 
 
-EbReceiver::EbReceiver(const Parameters&   para,
-                       const EbCtrbParams& ecPrms,
-                       MemPool&            pool,
-                       MonContributor*     mon) :
-  EbCtrbInBase(ecPrms),
+EbReceiver::EbReceiver(const Parameters& para,
+                       MemPool&          pool,
+                       MonContributor*   mon) :
+  EbCtrbInBase(para.tPrms),
       _pool(pool),
       _xtcFile(nullptr),
       _mon(mon),
       nreceive(0)
 {
     char file_name[PATH_MAX];
-    snprintf(file_name, PATH_MAX, "%s/data-%02d.xtc", para.output_dir.c_str(), para.contributor_id);
+    snprintf(file_name, PATH_MAX, "%s/data-%02d.xtc", para.output_dir.c_str(), para.tPrms.id);
     FILE* xtcFile = fopen(file_name, "w");
     if (!xtcFile) {
         printf("Error opening output xtc file.\n");
@@ -86,14 +85,14 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
 }
 
 // collects events from the workers and sends them to the event builder
-void collector(MemPool& pool, Parameters& para, const EbCtrbParams& ecPrms, EbContributor& ebCtrb, MonContributor* meb)
+void collector(MemPool& pool, Parameters& para, EbContributor& ebCtrb, MonContributor* meb)
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUSH);
     zmq_connect(socket, "tcp://localhost:5559");
 
     printf("*** myEb %p %zd\n",ebCtrb.batchRegion(), ebCtrb.batchRegionSize());
-    EbReceiver eb_rcvr(para, ecPrms, pool, meb);
+    EbReceiver eb_rcvr(para, pool, meb);
 
     // Wait a bit to allow other components of the system to establish connections
     // Revisit: This should be replaced with some sort of gate that guards
@@ -135,7 +134,7 @@ void collector(MemPool& pool, Parameters& para, const EbCtrbParams& ecPrms, EbCo
         } else {
             val = 0xabadcafe;
         }
-        MyDgram dg(dgram.seq, val, para.contributor_id);
+        MyDgram dg(dgram.seq, val, para.tPrms.id);
         /*
         Dgram dg(dgram);
         dg.xtc.src = TheSrc(Level::Segment, para.contributor_id);

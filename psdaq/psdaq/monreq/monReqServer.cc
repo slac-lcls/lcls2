@@ -9,6 +9,7 @@
 #include "psdaq/eb/StatsMonitor.hh"
 
 #include "psdaq/service/Fifo.hh"
+#include "psdaq/service/Collection.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <errno.h>
@@ -16,6 +17,7 @@
 #include <string.h>
 #include <vector>
 #include <bitset>
+#include <iostream>
 
 static const unsigned default_id           = 0;          // Builder's ID (< 64)
 static const unsigned max_ctrbs            = 64;         // Maximum possible number of Contributors
@@ -34,6 +36,7 @@ static const unsigned sizeof_tr_buffers    = 1024; // Revisit
 static const char*    dflt_partition       = "Test";
 static const char*    dflt_rtMon_addr      = "tcp://psdev7b:55561";
 static const unsigned rtMon_period         = 1;  // Seconds
+static const char*    dflt_coll_addr       = "drp-tst-acc06";
 
 static       unsigned lverbose             = 0;
 
@@ -89,17 +92,18 @@ namespace Pds {
       for (unsigned i = 0; i < numberofEvBuffers; ++i)
         if (!_bufFreeList.push(i))
           fprintf(stderr, "_bufFreeList.push(%d) failed\n", i);
-
-      // Wait a bit to allow other components of the system to establish connections
-      sleep(1);
-
-      _init();
     }
     virtual ~MyXtcMonitorServer()
     {
       if (_mrqTransport)  delete _mrqTransport;
     }
   public:
+    void startup(bool dist)
+    {
+      distribute(dist);
+
+      _init();
+    }
     void shutdown()
     {
       if (_mrqTransport)
@@ -351,6 +355,40 @@ void usage(char* progname)
                   "<L3_EB_spec> [L3_EB_spec [...]]\n", progname);
 }
 
+static
+void joinCollection(std::string&              server,
+                    unsigned                  partition,
+                    unsigned                  portBase,
+                    uint64_t&                 contributors,
+                    std::vector<std::string>& addrs,
+                    std::vector<std::string>& ports,
+                    unsigned&                 mebId)
+{
+  Collection collection(server, partition, "meb");
+  collection.connect();
+  std::cout << "cmstate:\n" << collection.cmstate.dump(4) << std::endl;
+
+  std::string id = std::to_string(collection.id());
+  mebId = collection.cmstate["meb"][id]["meb_id"];
+  std::cout << "MEB: " << mebId << std::endl;
+
+  for (auto it : collection.cmstate["drp"].items())
+  {
+    unsigned ctrbId = it.value()["drp_id"];
+    std::cout << "DRP: " << ctrbId << std::endl;
+    contributors |= 1ul << ctrbId;
+  }
+
+  for (auto it : collection.cmstate["teb"].items())
+  {
+    unsigned    ctrbId  = it.value()["teb_id"];
+    std::string address = it.value()["connect_info"]["infiniband"];
+    std::cout << "TEB: " << ctrbId << "  " << address << std::endl;
+    addrs.push_back(address);
+    ports.push_back(std::string(std::to_string(portBase + ctrbId)));
+  }
+}
+
 int main(int argc, char** argv) {
 
   const unsigned NO_PLATFORM     = unsigned(-1UL);
@@ -369,9 +407,10 @@ int main(int argc, char** argv) {
   const char*    rtMonAddr       = dflt_rtMon_addr;
   unsigned       rtMonPeriod     = rtMon_period;
   unsigned       rtMonVerbose    = 0;
+  std::string    collSvr         = dflt_coll_addr;
 
   int c;
-  while ((c = getopt(argc, argv, "p:n:P:s:q:t:dA:E:i:c:Z:m:Vvh")) != -1)
+  while ((c = getopt(argc, argv, "p:n:P:s:q:t:dA:E:i:c:Z:m:C:Vvh")) != -1)
   {
     errno = 0;
     char* endPtr;
@@ -404,6 +443,7 @@ int main(int argc, char** argv) {
       case 'c':  contributors = strtoul(optarg, nullptr, 0);  break;
       case 'Z':  rtMonAddr    = optarg;                       break;
       case 'm':  rtMonPeriod  = atoi(optarg);                 break;
+      case 'C':  collSvr      = optarg;                       break;
       case 'V':  ++rtMonVerbose;                              break;
       case 'v':  ++lverbose;                                  break;
       case 'h':                         // help
@@ -417,23 +457,11 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (!numberofBuffers || !sizeofEvBuffers || platform == NO_PLATFORM || !contributors) {
-    fprintf(stderr, "Missing parameters!\n");
-    usage(argv[0]);
-    return 1;
-  }
-
   if (numberofBuffers < numberof_xferBuffers) numberofBuffers = numberof_xferBuffers;
 
   if (!tag) tag=partition.c_str();
 
   printf("Partition Tag: '%s'\n", tag);
-
-  if (id >= max_mons)
-  {
-    fprintf(stderr, "Monitor ID %d is out of range 0 - %d\n", id, max_mons - 1);
-    return 1;
-  }
 
   if ((mebPortNo < meb_port_base) || (mebPortNo >= meb_port_base + max_mons))
   {
@@ -445,7 +473,6 @@ int main(int argc, char** argv) {
 
   std::vector<std::string> mrqAddrs;
   std::vector<std::string> mrqPorts;
-  uint64_t ebs = 0;
   if (optind < argc)
   {
     do
@@ -472,7 +499,6 @@ int main(int argc, char** argv) {
                 port, mrq_port_base, mrq_port_base + max_ebs);
         return 1;
       }
-      ebs |= 1ul << cid;
       mrqAddrs.push_back(std::string(&colon1[1]).substr(0, colon2 - &colon1[1]));
       mrqPorts.push_back(std::string(std::to_string(port)));
     }
@@ -480,7 +506,22 @@ int main(int argc, char** argv) {
   }
   else
   {
+    joinCollection(collSvr, platform, mrq_port_base, contributors, mrqAddrs, mrqPorts, id);
+  }
+  if ((mrqAddrs.size() == 0) || (mrqPorts.size() == 0))
+  {
     fprintf(stderr, "L3 EB request address(es) is required\n");
+    return 1;
+  }
+  if (id >= max_mons)
+  {
+    fprintf(stderr, "Monitor ID %d is out of range 0 - %d\n", id, max_mons - 1);
+    return 1;
+  }
+
+  if (!numberofBuffers || !sizeofEvBuffers || platform == NO_PLATFORM || !contributors) {
+    fprintf(stderr, "Missing parameters!\n");
+    usage(argv[0]);
     return 1;
   }
 
@@ -506,7 +547,10 @@ int main(int argc, char** argv) {
                                                     mrqAddrs, mrqPorts,
                                                     id);
 
-  apps->distribute(ldist);
+  // Wait a bit to allow other components of the system to establish connections
+  sleep(1);
+
+  apps->startup(ldist);
 
   meb->process(apps, ldist);
 
