@@ -19,23 +19,15 @@
 #include <bitset>
 #include <iostream>
 
-static const unsigned default_id           = 0;          // Builder's ID (< 64)
-static const unsigned max_ctrbs            = 64;         // Maximum possible number of Contributors
-static const unsigned max_ebs              = 64;         // Maximum possible number of Builders
-static const unsigned max_mons             = 64;         // Maximum possible number of Monitors
-                                                         // Base ports for:
-static const unsigned l3i_port_base        = 32768;                    // L3  EB to receive L3 contributions
-static const unsigned l3r_port_base        = l3i_port_base + max_ebs;  // L3  EB to send    results
-static const unsigned mrq_port_base        = l3r_port_base + max_ebs;  // L3  EB to receive monitor requests
-static const unsigned meb_port_base        = mrq_port_base + max_mons; // Mon EB to receive data contributions
+static const unsigned rtMon_period         = 1;  // Seconds
+static const unsigned default_id           = 0;  // Builder's ID (< 64)
 static const unsigned epoch_duration       = 1;  // All timestamps in 1 epoch
 static const unsigned numberof_epochs      = 1;  // All timestamps in 1 epoch => 1
 static const unsigned numberof_trBuffers   = 18; // From XtcMonitorServer
 static const unsigned numberof_xferBuffers =  8; // Revisit: Value; corresponds to drpEbContributor:maxEvents
-static const unsigned sizeof_tr_buffers    = 1024; // Revisit
+static const unsigned sizeof_buffers       = 1024; // Revisit
 static const char*    dflt_partition       = "Test";
 static const char*    dflt_rtMon_addr      = "tcp://psdev7b:55561";
-static const unsigned rtMon_period         = 1;  // Seconds
 static const char*    dflt_coll_addr       = "drp-tst-acc06";
 
 static       unsigned lverbose             = 0;
@@ -60,7 +52,7 @@ namespace Pds {
                        numberofEvBuffers,
                        numberofEvQueues),
       _sizeofBuffers(sizeofBuffers),
-      _iL3Eb(0),
+      _iTeb(0),
       _mrqTransport(new EbLfClient()),
       _mrqLinks(addrs.size()),
       _bufFreeList(numberofEvBuffers),
@@ -177,32 +169,32 @@ namespace Pds {
       int rc = -1;
       for (unsigned i = 0; i < _mrqLinks.size(); ++i)
       {
-        // Round robin through L3 Event Builders
-        unsigned iL3Eb = _iL3Eb++;
-        if (_iL3Eb == _mrqLinks.size())  _iL3Eb = 0;
+        // Round robin through Trigger Event Builders
+        unsigned iTeb = _iTeb++;
+        if (_iTeb == _mrqLinks.size())  _iTeb = 0;
 
-        EbLfLink* link = _mrqLinks[iL3Eb];
+        EbLfLink* link = _mrqLinks[iTeb];
 
         data = ImmData::buffer(_id /*link->index()*/, data);
 
         rc = link->post(nullptr, 0, data);
 
-        //printf("_requestDatagram: Post %d EB[iL3Eb = %d], value = %08x, rc = %d\n",
-        //       i, iL3Eb, data, rc);
+        //printf("_requestDatagram: Post %d EB[iTeb = %d], value = %08x, rc = %d\n",
+        //       i, iTeb, data, rc);
 
         if (rc == 0)  break;            // Break if message was delivered
       }
       if (rc)
       {
-        fprintf(stderr, "%s:Unable to post request to any L3 EB\n", __PRETTY_FUNCTION__);
+        fprintf(stderr, "%s:Unable to post request to any TEB\n", __PRETTY_FUNCTION__);
         // Revisit: Is this fatal or ignorable?
       }
     }
 
   private:
     unsigned               _sizeofBuffers;
-    unsigned               _nL3Eb;
-    unsigned               _iL3Eb;
+    unsigned               _nTeb;
+    unsigned               _iTeb;
     EbLfClient*            _mrqTransport;
     std::vector<EbLfLink*> _mrqLinks;
     Fifo<unsigned>         _bufFreeList;
@@ -235,7 +227,7 @@ namespace Pds {
                 _calcBufSize(sizeofEvBuffers, contributors), // Size per dg
                 sizeofTrBuffers,        // Size per non-event
                 0,                      // No add'l contribution header size
-                contributors),          // Same value as L3 EBs
+                contributors),          // Same value as TEB's
       _eventCount  (0),
       _freeEpochCnt(freeEpochCount()),
       _freeEventCnt(freeEventCount()),
@@ -243,10 +235,10 @@ namespace Pds {
       _pool        (sizeof(Dgram) + std::bitset<64>(contributors).count() * sizeof(Dgram*),
                     numberof_xferBuffers) // Revisit: numberof_xferBuffers
     {
-      smon.registerIt("MnEB.EvtRt",  _eventCount,   StatsMonitor::RATE);
-      smon.registerIt("MnEB.EvtCt",  _eventCount,   StatsMonitor::SCALAR);
-      smon.registerIt("MnEB.FrEpCt", _freeEpochCnt, StatsMonitor::SCALAR);
-      smon.registerIt("MnEB.FrEvCt", _freeEventCnt, StatsMonitor::SCALAR);
+      smon.registerIt("MEB.EvtRt",  _eventCount,   StatsMonitor::RATE);
+      smon.registerIt("MEB.EvtCt",  _eventCount,   StatsMonitor::SCALAR);
+      smon.registerIt("MEB.FrEpCt", _freeEpochCnt, StatsMonitor::SCALAR);
+      smon.registerIt("MEB.FrEvCt", _freeEventCnt, StatsMonitor::SCALAR);
     }
     virtual ~MonEbApp()
     {
@@ -331,12 +323,13 @@ using namespace Pds;
 
 void usage(char* progname)
 {
-  printf("\n<L3_EB_spec> has the form '<id>:<addr>:<port>'\n");
-  printf("<id> must be in the range 0 - %d.\n", max_ebs - 1);
+  printf("\n<MRQ_spec> has the form '<id>:<addr>:<port>'\n");
+  printf("<id> must be in the range 0 - %d.\n", MAX_TEBS - 1);
   printf("Low numbered <port> values are treated as offsets into the following range:\n");
-  printf("  Mon requests: %d - %d\n", mrq_port_base, mrq_port_base + max_mons - 1);
+  printf("  Mon requests: %d - %d\n", MRQ_PORT_BASE, MRQ_PORT_BASE + MAX_MEBS - 1);
 
-  printf("Usage: %s -p <platform> "
+  printf("Usage: %s -C <collection server>"
+                   "-p <platform> "
                    "[-P <partition>] "
                    "-n <numb shm buffers> "
                    "-s <shm buffer size> "
@@ -344,15 +337,15 @@ void usage(char* progname)
                   "[-t <tag name>] "
                   "[-d] "
                   "[-A <interface addr>] "
-                  "[-E <EB port>] "
+                  "[-E <MEB port>] "
                   "[-i <ID>] "
-                   "-c <EB contributors> "
+                   "-c <Contributors (DRPs)> "
                   "[-Z <Run-time mon addr>] "
                   "[-m <Run-time mon publishing period>] "
                   "[-V] " // Run-time mon verbosity
                   "[-v] "
                   "[-h] "
-                  "<L3_EB_spec> [L3_EB_spec [...]]\n", progname);
+                  "<MRQ_spec> [MRQ_spec [...]]\n", progname);
 }
 
 static
@@ -381,27 +374,28 @@ void joinCollection(std::string&              server,
 
   for (auto it : collection.cmstate["teb"].items())
   {
-    unsigned    ctrbId  = it.value()["teb_id"];
+    unsigned    tebId  = it.value()["teb_id"];
     std::string address = it.value()["connect_info"]["infiniband"];
-    std::cout << "TEB: " << ctrbId << "  " << address << std::endl;
+    std::cout << "TEB: " << tebId << "  " << address << std::endl;
     addrs.push_back(address);
-    ports.push_back(std::string(std::to_string(portBase + ctrbId)));
+    ports.push_back(std::string(std::to_string(portBase + tebId)));
+    printf("MRQ Clt[%d] port = %d\n", tebId, portBase + tebId);
   }
 }
 
-int main(int argc, char** argv) {
-
+int main(int argc, char** argv)
+{
   const unsigned NO_PLATFORM     = unsigned(-1UL);
   unsigned       platform        = NO_PLATFORM;
   const char*    tag             = 0;
-  unsigned       numberofBuffers = 0;
-  unsigned       sizeofEvBuffers = 0;
-  unsigned       sizeofTrBuffers = sizeof_tr_buffers;
+  unsigned       numberofBuffers = numberof_xferBuffers;
+  unsigned       sizeofEvBuffers = sizeof_buffers;
+  unsigned       sizeofTrBuffers = sizeof_buffers;
   unsigned       nevqueues       = 1;
   bool           ldist           = false;
   unsigned       id              = default_id;
   char*          ifAddr          = nullptr;
-  unsigned       mebPortNo       = meb_port_base; // Port served to contributors
+  unsigned       mebPortNo       = MEB_PORT_BASE; // Port served to contributors
   uint64_t       contributors    = 0;
   std::string    partition        (dflt_partition);
   const char*    rtMonAddr       = dflt_rtMon_addr;
@@ -460,16 +454,7 @@ int main(int argc, char** argv) {
   if (numberofBuffers < numberof_xferBuffers) numberofBuffers = numberof_xferBuffers;
 
   if (!tag) tag=partition.c_str();
-
   printf("Partition Tag: '%s'\n", tag);
-
-  if ((mebPortNo < meb_port_base) || (mebPortNo >= meb_port_base + max_mons))
-  {
-    fprintf(stderr, "Server port %d is out of range %d - %d\n",
-            mebPortNo, meb_port_base, meb_port_base + max_mons);
-    return 1;
-  }
-  std::string mebPort(std::to_string(mebPortNo));
 
   std::vector<std::string> mrqAddrs;
   std::vector<std::string> mrqPorts;
@@ -482,21 +467,15 @@ int main(int argc, char** argv) {
       char* colon2      = strrchr(contributor, ':');
       if (!colon1 || (colon1 == colon2))
       {
-        fprintf(stderr, "Input '%s' is not of the form <ID>:<IP>:<port>\n", contributor);
+        fprintf(stderr, "MRQ input '%s' is not of the form <ID>:<IP>:<port>\n", contributor);
         return 1;
       }
-      unsigned cid  = atoi(contributor);
       unsigned port = atoi(&colon2[1]);
-      if (cid >= max_ctrbs)
+      if (port < MAX_TEBS)  port += MRQ_PORT_BASE;
+      if ((port < MRQ_PORT_BASE) || (port >= MRQ_PORT_BASE + MAX_TEBS))
       {
-        fprintf(stderr, "Contributor ID %d is out of the range 0 - %d\n", cid, max_ebs - 1);
-        return 1;
-      }
-      if (port < max_ebs)  port += mrq_port_base;
-      if ((port < mrq_port_base) || (port >= mrq_port_base + max_ebs))
-      {
-        fprintf(stderr, "Client port %d is out of range %d - %d\n",
-                port, mrq_port_base, mrq_port_base + max_ebs);
+        fprintf(stderr, "MRQ client port %d is out of range %d - %d\n",
+                port, MRQ_PORT_BASE, MRQ_PORT_BASE + MAX_TEBS);
         return 1;
       }
       mrqAddrs.push_back(std::string(&colon1[1]).substr(0, colon2 - &colon1[1]));
@@ -506,18 +485,27 @@ int main(int argc, char** argv) {
   }
   else
   {
-    joinCollection(collSvr, platform, mrq_port_base, contributors, mrqAddrs, mrqPorts, id);
+    joinCollection(collSvr, platform, MRQ_PORT_BASE, contributors, mrqAddrs, mrqPorts, id);
+  }
+  if (id >= MAX_MEBS)
+  {
+    fprintf(stderr, "MEB ID %d is out of range 0 - %d\n", id, MAX_MEBS - 1);
+    return 1;
   }
   if ((mrqAddrs.size() == 0) || (mrqPorts.size() == 0))
   {
-    fprintf(stderr, "L3 EB request address(es) is required\n");
+    fprintf(stderr, "Missing required TEB request address(es)\n");
     return 1;
   }
-  if (id >= max_mons)
+
+  if ((mebPortNo < MEB_PORT_BASE) || (mebPortNo >= MEB_PORT_BASE + MAX_MEBS))
   {
-    fprintf(stderr, "Monitor ID %d is out of range 0 - %d\n", id, max_mons - 1);
+    fprintf(stderr, "MEB Server port %d is out of range %d - %d\n",
+            mebPortNo, MEB_PORT_BASE, MEB_PORT_BASE + MAX_MEBS);
     return 1;
   }
+  std::string mebPort(std::to_string(mebPortNo + id));
+  printf("MEB Srv port = %s\n", mebPort.c_str());
 
   if (!numberofBuffers || !sizeofEvBuffers || platform == NO_PLATFORM || !contributors) {
     fprintf(stderr, "Missing parameters!\n");

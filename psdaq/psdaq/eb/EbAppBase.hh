@@ -1,6 +1,7 @@
 #ifndef Pds_Eb_EbAppBase_hh
 #define Pds_Eb_EbAppBase_hh
 
+#include "psdaq/eb/eb.hh"
 #include "psdaq/eb/EventBuilder.hh"
 #include "psdaq/service/Histogram.hh"
 

@@ -37,6 +37,8 @@ void join_collection(Parameters& para)
     std::cout << "DRP: " << id << std::endl;
     para.tPrms.id = collection.cmstate["drp"][id]["drp_id"];
 
+    para.tPrms.port = std::to_string(DRP_PORT_BASE + para.tPrms.id);
+
     uint64_t builders = 0;
     for (auto it : collection.cmstate["teb"].items()) {
         unsigned    tebId   = it.value()["teb_id"];
@@ -44,7 +46,7 @@ void join_collection(Parameters& para)
         std::cout << "TEB: " << tebId << "  " << address << std::endl;
         builders |= 1ul << tebId;
         para.tPrms.addrs.push_back(address);
-        para.tPrms.ports.push_back(std::string(std::to_string(L3I_PORT_BASE + tebId)));
+        para.tPrms.ports.push_back(std::string(std::to_string(TEB_PORT_BASE + tebId)));
     }
     para.tPrms.builders = builders;
 
@@ -94,7 +96,7 @@ int main(int argc, char* argv[])
     para.tPrms = { /* .addrs         = */ { },
                    /* .ports         = */ { },
                    /* .ifAddr        = */ nullptr,
-                   /* .port          = */ "32832",
+                   /* .port          = */ { },
                    /* .id            = */ 0,
                    /* .builders      = */ 0,
                    /* .duration      = */ BATCH_DURATION,
