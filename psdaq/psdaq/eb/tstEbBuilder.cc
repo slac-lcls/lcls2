@@ -556,17 +556,17 @@ void joinCollection(std::string&              server,
 
   std::string id = std::to_string(collection.id());
   tebId = collection.cmstate["teb"][id]["teb_id"];
-  std::cout << "TEB: " << tebId << std::endl;
+  //std::cout << "TEB: ID " << tebId << std::endl;
 
   for (auto it : collection.cmstate["drp"].items())
   {
     unsigned    ctrbId  = it.value()["drp_id"];
     std::string address = it.value()["connect_info"]["infiniband"];
-    std::cout << "DRP: " << ctrbId << "  " << address << std::endl;
+    //std::cout << "DRP: ID " << ctrbId << "  " << address << std::endl;
     contributors |= 1ul << ctrbId;
     addrs.push_back(address);
     ports.push_back(std::string(std::to_string(portBase + ctrbId)));
-    printf("DRP Clt[%d] port = %d\n", ctrbId, portBase + ctrbId);
+    //printf("DRP Clt[%d] port = %d\n", ctrbId, portBase + ctrbId);
   }
 
   numMrqs = 0;
@@ -690,7 +690,7 @@ int main(int argc, char **argv)
     return 1;
   }
   std::string tebPort(std::to_string(tebPortNo + id));
-  printf("TEB Srv port = %s\n", tebPort.c_str());
+  //printf("TEB Srv port = %s\n", tebPort.c_str());
 
   if ((mrqPortNo < MRQ_PORT_BASE) || (mrqPortNo >= MRQ_PORT_BASE + MAX_TEBS))
   {
@@ -699,7 +699,7 @@ int main(int argc, char **argv)
     return 1;
   }
   std::string mrqPort(std::to_string(mrqPortNo + id));
-  printf("MRQ Srv port = %s\n", mrqPort.c_str());
+  //printf("MRQ Srv port = %s\n", mrqPort.c_str());
 
   if (maxEntries > duration)
   {

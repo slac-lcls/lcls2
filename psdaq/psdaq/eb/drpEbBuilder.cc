@@ -35,17 +35,6 @@ static const int      core_base        = 8; // 6: devXX, 8: accXX
 static const int      core_offset      = 1; // Allows Ctrb and EB to run on the same machine
 static const unsigned rtMon_period     = 1;          // Seconds
 static const unsigned default_id       = 0;          // Builder's ID (< 64)
-static const unsigned max_ctrbs        = 64;         // Maximum possible number of Contributors
-static const unsigned max_ebs          = 64;         // Maximum possible number of Builders
-static const unsigned max_mons         = 64;         // Maximum possible number of Monitors
-                                                     // Base ports for:
-static const unsigned l3i_port_base    = 32768;                    // L3  EB to receive L3 contributions
-static const unsigned l3r_port_base    = l3i_port_base + max_ebs;  // L3  EB to send    results
-static const unsigned mrq_port_base    = l3r_port_base + max_ebs;  // L3  EB to receive monitor requests
-static const unsigned meb_port_base    = mrq_port_base + max_mons; // Mon EB to receive data contributions
-static const unsigned max_batches      = 8192;       // Maximum number of batches in circulation
-static const unsigned max_entries      = 64;         // < or = to batch_duration
-static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
@@ -567,17 +556,17 @@ void joinCollection(std::string&              server,
 
   std::string id = std::to_string(collection.id());
   tebId = collection.cmstate["teb"][id]["teb_id"];
-  std::cout << "TEB: " << tebId << std::endl;
+  //std::cout << "TEB: ID " << tebId << std::endl;
 
   for (auto it : collection.cmstate["drp"].items())
   {
     unsigned    ctrbId  = it.value()["drp_id"];
     std::string address = it.value()["connect_info"]["infiniband"];
-    std::cout << "DRP: " << ctrbId << "  " << address << std::endl;
+    //std::cout << "DRP: ID " << ctrbId << "  " << address << std::endl;
     contributors |= 1ul << ctrbId;
     addrs.push_back(address);
     ports.push_back(std::string(std::to_string(portBase + ctrbId)));
-    printf("DRP Clt[%d] port = %d\n", ctrbId, portBase + ctrbId);
+    //printf("DRP Clt[%d] port = %d\n", ctrbId, portBase + ctrbId);
   }
 
   numMrqs = 0;
@@ -701,7 +690,7 @@ int main(int argc, char **argv)
     return 1;
   }
   std::string tebPort(std::to_string(tebPortNo + id));
-  printf("TEB Srv port = %s\n", tebPort.c_str());
+  //printf("TEB Srv port = %s\n", tebPort.c_str());
 
   if ((mrqPortNo < MRQ_PORT_BASE) || (mrqPortNo >= MRQ_PORT_BASE + MAX_TEBS))
   {
@@ -710,7 +699,7 @@ int main(int argc, char **argv)
     return 1;
   }
   std::string mrqPort(std::to_string(mrqPortNo + id));
-  printf("MRQ Srv port = %s\n", mrqPort.c_str());
+  //printf("MRQ Srv port = %s\n", mrqPort.c_str());
 
   if (maxEntries > duration)
   {

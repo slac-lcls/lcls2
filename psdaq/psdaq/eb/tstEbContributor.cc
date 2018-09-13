@@ -501,18 +501,18 @@ void joinCollection(std::string&   server,
 
   std::string id = std::to_string(collection.id());
   tebPrms.id = collection.cmstate["drp"][id]["drp_id"];
-  std::cout << "DRP: " << tebPrms.id << std::endl;
+  //std::cout << "DRP: ID " << tebPrms.id << std::endl;
 
   uint64_t builders = 0;
   for (auto it : collection.cmstate["teb"].items())
   {
     unsigned    tebId   = it.value()["teb_id"];
     std::string address = it.value()["connect_info"]["infiniband"];
-    std::cout << "TEB: " << tebId << "  " << address << std::endl;
+    //std::cout << "TEB: ID " << tebId << "  " << address << std::endl;
     builders |= 1ul << tebId;
     tebPrms.addrs.push_back(address);
     tebPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
-    printf("TEB Clt[%d] port = %d\n", tebId, tebPortBase + tebId);
+    //printf("TEB Clt[%d] port = %d\n", tebId, tebPortBase + tebId);
   }
   tebPrms.builders = builders;
 
@@ -522,10 +522,10 @@ void joinCollection(std::string&   server,
     {
       unsigned    mebId   = it.value()["meb_id"];
       std::string address = it.value()["connect_info"]["infiniband"];
-      std::cout << "MEB: " << mebId << "  " << address << std::endl;
+      //std::cout << "MEB: ID " << mebId << "  " << address << std::endl;
       mebPrms.addrs.push_back(address);
       mebPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
-      printf("MEB Clt[%d] port = %d\n", mebId, mebPortBase + mebId);
+      //printf("MEB Clt[%d] port = %d\n", mebId, mebPortBase + mebId);
     }
   }
 }
@@ -659,7 +659,7 @@ int main(int argc, char **argv)
     return 1;
   }
   tebPrms.port = std::to_string(drpPortNo + tebPrms.id);
-  printf("DRP Srv port = %s\n", tebPrms.port.c_str());
+  //printf("DRP Srv port = %s\n", tebPrms.port.c_str());
 
 
   if (tebPrms.maxEntries > tebPrms.duration)

@@ -363,12 +363,12 @@ void joinCollection(std::string&              server,
 
   std::string id = std::to_string(collection.id());
   mebId = collection.cmstate["meb"][id]["meb_id"];
-  std::cout << "MEB: " << mebId << std::endl;
+  //std::cout << "MEB: ID " << mebId << std::endl;
 
   for (auto it : collection.cmstate["drp"].items())
   {
     unsigned ctrbId = it.value()["drp_id"];
-    std::cout << "DRP: " << ctrbId << std::endl;
+    //std::cout << "DRP: ID " << ctrbId << std::endl;
     contributors |= 1ul << ctrbId;
   }
 
@@ -376,10 +376,10 @@ void joinCollection(std::string&              server,
   {
     unsigned    tebId  = it.value()["teb_id"];
     std::string address = it.value()["connect_info"]["infiniband"];
-    std::cout << "TEB: " << tebId << "  " << address << std::endl;
+    //std::cout << "TEB: ID " << tebId << "  " << address << std::endl;
     addrs.push_back(address);
     ports.push_back(std::string(std::to_string(portBase + tebId)));
-    printf("MRQ Clt[%d] port = %d\n", tebId, portBase + tebId);
+    //printf("MRQ Clt[%d] port = %d\n", tebId, portBase + tebId);
   }
 }
 
@@ -505,7 +505,7 @@ int main(int argc, char** argv)
     return 1;
   }
   std::string mebPort(std::to_string(mebPortNo + id));
-  printf("MEB Srv port = %s\n", mebPort.c_str());
+  //printf("MEB Srv port = %s\n", mebPort.c_str());
 
   if (!numberofBuffers || !sizeofEvBuffers || platform == NO_PLATFORM || !contributors) {
     fprintf(stderr, "Missing parameters!\n");
