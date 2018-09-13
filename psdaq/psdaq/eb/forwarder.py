@@ -5,11 +5,14 @@ port = 55559                    # Default value
 
 parser = argparse.ArgumentParser(description='ZMQ port forwarder')
 
-parser.add_argument('port', type=int, nargs='?', help='Port number [%d]' % port)
+parser.add_argument('-P', '--port',     type=int, help='Port number [%d]' % port)
+parser.add_argument('-p', '--platform', type=int, choices=range(0, 8), default=0, help='Platform number')
 
 args = parser.parse_args()
 
-if args.port is not None:
+if args.port is None:
+    port += 2 * args.platform
+else:
     port = args.port
 
 context = zmq.Context(1)
@@ -28,4 +31,3 @@ try:
     zmq.device(zmq.FORWARDER, frontend, backend)
 except KeyboardInterrupt:
     print()
-

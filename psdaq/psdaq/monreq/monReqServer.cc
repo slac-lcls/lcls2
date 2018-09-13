@@ -27,8 +27,8 @@ static const unsigned numberof_trBuffers   = 18; // From XtcMonitorServer
 static const unsigned numberof_xferBuffers =  8; // Revisit: Value; corresponds to drpEbContributor:maxEvents
 static const unsigned sizeof_buffers       = 1024; // Revisit
 static const char*    dflt_partition       = "Test";
-static const char*    dflt_rtMon_addr      = "tcp://psdev7b:55561";
-static const char*    dflt_coll_addr       = "drp-tst-acc06";
+static const char*    dflt_rtMon_host      = "psdev7b";
+static const char*    dflt_coll_host       = "drp-tst-acc06";
 
 static       unsigned lverbose             = 0;
 
@@ -398,10 +398,10 @@ int main(int argc, char** argv)
   unsigned       mebPortNo       = MEB_PORT_BASE; // Port served to contributors
   uint64_t       contributors    = 0;
   std::string    partition        (dflt_partition);
-  const char*    rtMonAddr       = dflt_rtMon_addr;
+  const char*    rtMonHost       = dflt_rtMon_host;
   unsigned       rtMonPeriod     = rtMon_period;
   unsigned       rtMonVerbose    = 0;
-  std::string    collSvr         = dflt_coll_addr;
+  std::string    collSvr         = dflt_coll_host;
 
   int c;
   while ((c = getopt(argc, argv, "p:n:P:s:q:t:dA:E:i:c:Z:m:C:Vvh")) != -1)
@@ -435,7 +435,7 @@ int main(int argc, char** argv)
       case 'E':  mebPortNo    = atoi(optarg);                 break;
       case 'i':  id           = atoi(optarg);                 break;
       case 'c':  contributors = strtoul(optarg, nullptr, 0);  break;
-      case 'Z':  rtMonAddr    = optarg;                       break;
+      case 'Z':  rtMonHost    = optarg;                       break;
       case 'm':  rtMonPeriod  = atoi(optarg);                 break;
       case 'C':  collSvr      = optarg;                       break;
       case 'V':  ++rtMonVerbose;                              break;
@@ -515,7 +515,8 @@ int main(int argc, char** argv)
 
   EbAppBase::lverbose = lverbose;
 
-  StatsMonitor*       smon = new StatsMonitor(rtMonAddr,
+  StatsMonitor*       smon = new StatsMonitor(rtMonHost,
+                                              platform,
                                               partition,
                                               rtMonPeriod,
                                               rtMonVerbose);

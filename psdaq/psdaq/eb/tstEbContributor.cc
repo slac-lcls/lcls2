@@ -42,8 +42,8 @@ static const size_t   result_extent    = 2;    // Revisit: Number of "L3" result
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const char*    dflt_partition   = "Test";
-static const char*    dflt_rtMon_addr  = "tcp://psdev7b:55561";
-static const char*    dflt_coll_addr   = "drp-tst-acc06";
+static const char*    dflt_rtMon_host  = "psdev7b";
+static const char*    dflt_coll_host   = "drp-tst-acc06";
 static const unsigned mon_epochs       = 1;    // Revisit: Corresponds to monReqServer::numberof_epochs
 static const unsigned mon_transitions  = 18;   // Revisit: Corresponds to monReqServer::numberof_trBuffers
 static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReqServer:numberofEvBuffers
@@ -425,13 +425,13 @@ void usage(char *name, char *desc, EbCtrbParams& prms)
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-m <seconds>",
           "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
-          "Run-time monitoring ZMQ server address",   dflt_rtMon_addr);
+          "Run-time monitoring ZMQ server host",      dflt_rtMon_host);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
           "Partition tag",                            dflt_partition);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
           "Partition number",                         0);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-C <address>",
-          "Collection server",                        dflt_coll_addr);
+          "Collection server",                        dflt_coll_host);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    prms.core[0]);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
@@ -540,14 +540,14 @@ int main(int argc, char **argv)
   int            op, ret      = 0;
   unsigned       partition    = NO_PARTITION;
   std::string    partitionTag  (dflt_partition);
-  const char*    rtMonAddr    = dflt_rtMon_addr;
+  const char*    rtMonHost    = dflt_rtMon_host;
   unsigned       rtMonPeriod  = rtMon_period;
   unsigned       rtMonVerbose = 0;
   unsigned       drpPortNo    = DRP_PORT_BASE;  // Port served to TEBs
   char*          tebSpec      = nullptr;
   char*          mebSpec      = nullptr;
   char*          outDir       = nullptr;
-  std::string    collSrv      = dflt_coll_addr;
+  std::string    collSrv      = dflt_coll_host;
   EbCtrbParams   tebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
                            /* .ifAddr        = */ nullptr,
@@ -585,7 +585,7 @@ int main(int argc, char **argv)
       case 'b':  tebPrms.maxBatches = atoi(optarg);       break;
       case 'e':  tebPrms.maxEntries = atoi(optarg);       break;
       case 'm':  rtMonPeriod        = atoi(optarg);       break;
-      case 'Z':  rtMonAddr          = optarg;             break;
+      case 'Z':  rtMonHost          = optarg;             break;
       case 'P':  partitionTag       = optarg;             break;
       case 'p':  partition          = std::stoi(optarg);  break;
       case 'n':  mebPrms.maxEvents  = atoi(optarg);       break;
@@ -676,7 +676,7 @@ int main(int argc, char **argv)
   printf("  Thread core numbers:        %d, %d\n",          tebPrms.core[0], tebPrms.core[1]);
   printf("  Partition:                  %d: '%s'\n",        partition, partitionTag.c_str());
   printf("  Run-time monitoring period: %d\n",              rtMonPeriod);
-  printf("  Run-time monitoring server: %s\n",              rtMonAddr);
+  printf("  Run-time monitoring host:   %s\n",              rtMonHost);
   printf("  Number of Monitor EBs:      %zd\n",             mebPrms.addrs.size());
   printf("  Batch duration:             %014lx = %ld uS\n", tebPrms.duration, tebPrms.duration);
   printf("  Batch pool depth:           %d\n",              tebPrms.maxBatches);
@@ -684,7 +684,7 @@ int main(int argc, char **argv)
   printf("\n");
 
   pinThread(pthread_self(), tebPrms.core[1]);
-  StatsMonitor* smon = new StatsMonitor(rtMonAddr, partitionTag, rtMonPeriod, rtMonVerbose);
+  StatsMonitor* smon = new StatsMonitor(rtMonHost, partition, partitionTag, rtMonPeriod, rtMonVerbose);
   lstatsMon = smon;
 
   pinThread(pthread_self(), tebPrms.core[0]);

@@ -1,7 +1,5 @@
 #include "psdaq/eb/StatsMonitor.hh"
 
-#include "psdaq/eb/utilities.hh"
-
 #include <zmq.h>
 
 #include <unistd.h>                     // gethostname()
@@ -13,17 +11,21 @@ using namespace Pds::Eb;
 typedef std::chrono::microseconds us_t;
 
 
-StatsMonitor::StatsMonitor(const std::string& addr,
+StatsMonitor::StatsMonitor(const char*        hostname,
+                           unsigned           platform,
                            const std::string& partition,
                            unsigned           period,
                            unsigned           verbose) :
-  _addr     (addr),
   _partition(partition),
   _period   (period),
   _verbose  (verbose),
   _running  (true),
   _task     (new std::thread([&] { routine(); }))
 {
+  const unsigned base_port = 55559;
+  unsigned       port      = base_port + 2 * platform; // *2: 1 for forwarder.py
+  snprintf(_addr, sizeof(_addr), "tcp://%s:%u", hostname, port);
+  printf("Publishing statistics to %s\n", _addr);
 }
 
 StatsMonitor::~StatsMonitor()
@@ -51,11 +53,9 @@ void StatsMonitor::registerIt(const std::string& name,
 
 void StatsMonitor::routine()
 {
-  pinThread(pthread_self(), 1); //lcore2);
-
   void* context = zmq_ctx_new();
   void* socket  = zmq_socket(context, ZMQ_PUB);
-  zmq_connect(socket, _addr.c_str());
+  zmq_connect(socket, _addr);
 
   char buffer[4096];
   char hostname[HOST_NAME_MAX];

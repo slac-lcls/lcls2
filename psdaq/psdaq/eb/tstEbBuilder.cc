@@ -41,8 +41,8 @@ static const size_t   result_extent    = 2; // Revisit: Number of "L3" result da
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const char*    dflt_partition   = "Test";
-static const char*    dflt_rtMon_addr  = "tcp://psdev7b:55561";
-static const char*    dflt_coll_addr   = "drp-tst-acc06";
+static const char*    dflt_rtMon_host  = "psdev7b";
+static const char*    dflt_coll_host   = "drp-tst-acc06";
 
 static       unsigned lverbose         = 0;
 static       int      lcore1           = core_base + core_offset + 0;
@@ -524,13 +524,13 @@ static void usage(char *name, char *desc)
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-m <seconds>",
           "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
-          "Run-time monitoring ZMQ server address",   dflt_rtMon_addr);
+          "Run-time monitoring ZMQ server host",      dflt_rtMon_host);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
           "Partition tag",                            dflt_partition);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
           "Partition number",                         0);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-C <address>",
-          "Collection server",                        dflt_coll_addr);
+          "Collection server",                        dflt_coll_host);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    lcore1);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
@@ -594,9 +594,9 @@ int main(int argc, char **argv)
   unsigned       maxEntries   = MAX_ENTRIES;
   unsigned       rtMonPeriod  = rtMon_period;
   unsigned       rtMonVerbose = 0;
-  const char*    rtMonAddr    = dflt_rtMon_addr;
+  const char*    rtMonHost    = dflt_rtMon_host;
   unsigned       numMrqs      = 0;
-  std::string    collSrv      = dflt_coll_addr;
+  std::string    collSrv      = dflt_coll_host;
 
   while ((op = getopt(argc, argv, "h?vVA:T:M:i:d:b:e:r:m:Z:P:p:C:1:2:")) != -1)
   {
@@ -611,7 +611,7 @@ int main(int argc, char **argv)
       case 'e':  maxEntries   = atoi(optarg);       break;
       case 'r':  numMrqs      = atoi(optarg);       break;
       case 'm':  rtMonPeriod  = atoi(optarg);       break;
-      case 'Z':  rtMonAddr    = optarg;             break;
+      case 'Z':  rtMonHost    = optarg;             break;
       case 'P':  partitionTag = optarg;             break;
       case 'p':  partition    = std::stoi(optarg);  break;
       case 'C':  collSrv      = optarg;             break;
@@ -717,7 +717,7 @@ int main(int argc, char **argv)
   printf("  Thread core numbers:        %d, %d\n",          lcore1, lcore2);
   printf("  Partition:                  %d: '%s'\n",        partition, partitionTag.c_str());
   printf("  Run-time monitoring period: %d\n",              rtMonPeriod);
-  printf("  Run-time monitoring server: %s\n",              rtMonAddr);
+  printf("  Run-time monitoring host:   %s\n",              rtMonHost);
   printf("  Number of Monitor EBs:      %d\n",              numMrqs);
   printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);
   printf("  Batch pool depth:           %d\n",              maxBatches);
@@ -725,7 +725,8 @@ int main(int argc, char **argv)
   printf("\n");
 
   pinThread(pthread_self(), lcore2);
-  StatsMonitor* smon = new StatsMonitor(rtMonAddr,
+  StatsMonitor* smon = new StatsMonitor(rtMonHost,
+                                        partition,
                                         partitionTag,
                                         rtMonPeriod,
                                         rtMonVerbose);
