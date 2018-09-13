@@ -355,6 +355,7 @@ LinkStatus Module::linkStatus(unsigned link) const
   s.isXpm   = getf(dsLinkStatus,1,20);
   s.rxErrs  = getf(_dsLinkStatus,16,0);
   s.rxRcvs  = _dsLinkRcvs;
+  s.remoteLinkId = _remoteLinkId;
   if (link == 16) {
     s.rxRcvs  = -1;
     s.rxErrs  = -1;

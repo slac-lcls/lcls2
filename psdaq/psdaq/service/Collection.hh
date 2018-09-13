@@ -27,9 +27,10 @@ class Collection
 public:
     Collection(const std::string& manager_hostname, int platform, const std::string& level);
     ~Collection();
-    virtual void handle_plat(json& msg);
-    virtual void handle_alloc(json& msg);
-    virtual void handle_connect(json& msg);
+    void handle_plat(json& msg);
+    void handle_alloc(json& msg);
+    void handle_connect(json& msg);
+    void handle_reset(json& msg);
     void connect();
     size_t id() {return m_id;}
     json cmstate;

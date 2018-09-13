@@ -1,31 +1,7 @@
 #!/bin/bash
 
-# OS Requirement: RHEL6 or RHEL7
-# Python Requirement: version 2.7
-
-###################################################################################
-# Set up environment in bash
-###################################################################################
-
-#RELEASE_FILE="/etc/redhat-release"
-#PCASV="0.4.1b-python2.7"
-#PCASV="0.6.0-python2.7"
-
-#if grep --quiet 'release 6' $RELEASE_FILE; then
-  # RHEL6
-#  export PATH=/reg/common/package/python/2.7.5/x86_64-rhel6-gcc44-opt/bin:$PATH
-#  export PYTHONPATH=/reg/common/package/pcaspy/$PCASV/x86_64-rhel6-gcc44-opt/lib/python2.7/site-packages
-#elif grep --quiet 'release 7' $RELEASE_FILE; then
-  # RHEL7
-#  export PATH=/reg/common/package/python/2.7.5/x86_64-rhel7-gcc48-opt/bin:$PATH
-#  export PYTHONPATH=/reg/common/package/pcaspy/$PCASV/x86_64-rhel7-gcc48-opt/lib/python2.7/site-packages
-#else
-#  export PATH=/reg/common/package/python/2.7.5/x86_64-rhel5-gcc41-opt/bin:$PATH
-#  export PYTHONPATH=/reg/common/package/pcaspy/$PCASV/x86_64-rhel5-gcc41-opt/lib/python2.7/site-packages
-#fi
-
 #source /reg/g/pcds/setup/epicsenv-3.14.12.sh
-source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh
+source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh ""
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export PATH=$SCRIPTDIR/../../../install/bin:${PATH}
 #export EPICS_CAS_INTF_ADDR_LIST=$(/bin/hostname -i)

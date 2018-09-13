@@ -192,6 +192,16 @@ class CollectionManager():
             for i, node in enumerate(self.cmstate['drp']):
                 self.cmstate['drp'][node]['drp_id'] = i
 
+        # give number to teb nodes for the event builder
+        if 'teb' in self.cmstate:
+            for i, node in enumerate(self.cmstate['teb']):
+                self.cmstate['teb'][node]['teb_id'] = i
+
+        # give number to meb nodes for the event builder
+        if 'meb' in self.cmstate:
+            for i, node in enumerate(self.cmstate['meb']):
+                self.cmstate['meb'][node]['meb_id'] = i
+
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
         logging.debug('condition_alloc() returning True')
         return True

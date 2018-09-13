@@ -1,6 +1,8 @@
 #ifndef Pds_Eb_MonContributor_hh
 #define Pds_Eb_MonContributor_hh
 
+#include "psdaq/eb/eb.hh"
+
 #include <cstdint>
 #include <cstdint>
 #include <vector>
@@ -21,17 +23,6 @@ namespace Pds {
     class EbLfClient;
 
     using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
-
-    struct MonCtrbParams
-    {
-      std::vector<std::string> addrs;
-      std::vector<std::string> ports;
-      unsigned                 id;
-      unsigned                 maxEvents;
-      size_t                   maxEvSize;
-      size_t                   maxTrSize;
-      unsigned                 verbose;
-    };
 
     class MonContributor
     {

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include "spscqueue.hh"
 #include "pgpdriver.h"
+#include "psdaq/eb/eb.hh"
 
 struct EventHeader {
     uint64_t pulseId;
@@ -28,9 +29,9 @@ struct PGPData
 struct Parameters
 {
     int partition;
-    std::string eb_server_ip;
-    unsigned contributor_id;
     std::string output_dir;
+    Pds::Eb::EbCtrbParams tPrms;
+    Pds::Eb::MonCtrbParams mPrms;
 };
 
 // Per-Event-Buffer-with-Boundaries-Listed-Explicitly

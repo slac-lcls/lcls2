@@ -79,6 +79,7 @@ if __name__ == '__main__':
         pvdb[':LinkRxRcv'    +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkRxErr'    +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkIsXpm'    +'%d'%i] = {'type' : 'int'}
+        pvdb[':RemoteLinkId'  +'%d'%i] = {'type' : 'int'}
 
     for i in range(14):
         pvdb[':LinkLabel'    +'%d'%i] = {'type' : 'string', 'value' : 'FP-%d'%i}

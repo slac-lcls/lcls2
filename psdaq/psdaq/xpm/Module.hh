@@ -55,6 +55,7 @@ namespace Pds {
       bool     isXpm;
       uint32_t rxRcvs;
       uint16_t rxErrs;
+      uint32_t remoteLinkId;
     };
 
     class XpmSequenceEngine;
@@ -276,8 +277,10 @@ namespace Pds {
       Cphw::Reg   _message;
       //  0x0074 - RW: Message payload for partition[index]
       Cphw::Reg   _messagePayload;
+      //  0x0078 - RO: Remote Link ID
+      Cphw::Reg   _remoteLinkId;
     private:
-      uint32_t    _reserved_120[2];
+      uint32_t    _reserved_120[1];
     public:
       //  0x0080 - RW: Inhibit configurations for partition[index]
       //  [11:0]  interval      interval (929kHz ticks)

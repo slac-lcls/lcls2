@@ -38,6 +38,7 @@ add_executable(monReqServer
 target_link_libraries(monReqServer
   xtcdata::xtc
   service
+  collection
   eb
   monreq
   pthread

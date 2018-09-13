@@ -16,14 +16,11 @@
 #include <zmq.h>
 
 // these parameters must agree with the server side
-unsigned maxBatches = 8192; // size of the pool of batches
-unsigned maxEntries = 64 ; // maximum number of events in a batch
-unsigned BatchSizeInPulseIds = 64; // age of the batch. should never exceed maxEntries above, must be a power of 2
-unsigned EbId = 0; // from 0-63, maximum number of event builders
 size_t maxSize = sizeof(MyDgram);
 
 using namespace XtcData;
 using json = nlohmann::json;
+using namespace Pds::Eb;
 
 void print_usage(){
     printf("Usage: drp -p <partition>  -o <Output XTC dir> -d <Device id> -l <Lane mask> -D <Detector type>\n");
@@ -34,15 +31,34 @@ void join_collection(Parameters& para)
 {
     Collection collection("drp-tst-acc06", para.partition, "drp");
     collection.connect();
-    std::cout<<"cmstate:\n"<<collection.cmstate.dump(4) << std::endl;
+    std::cout << "cmstate:\n" << collection.cmstate.dump(4) << std::endl;
+
     std::string id = std::to_string(collection.id());
-    std::cout<<id<<std::endl;
-    int drp_id = collection.cmstate["drp"][id]["drp_id"];
-    // only works with single eb for now. FIXME for multiple eb servers
-    for (auto it : collection.cmstate["eb"].items()) {
-        para.eb_server_ip = it.value()["connect_info"]["infiniband"];
+    std::cout << "DRP: " << id << std::endl;
+    para.tPrms.id = collection.cmstate["drp"][id]["drp_id"];
+
+    para.tPrms.port = std::to_string(DRP_PORT_BASE + para.tPrms.id);
+
+    uint64_t builders = 0;
+    for (auto it : collection.cmstate["teb"].items()) {
+        unsigned    tebId   = it.value()["teb_id"];
+        std::string address = it.value()["connect_info"]["infiniband"];
+        std::cout << "TEB: " << tebId << "  " << address << std::endl;
+        builders |= 1ul << tebId;
+        para.tPrms.addrs.push_back(address);
+        para.tPrms.ports.push_back(std::string(std::to_string(TEB_PORT_BASE + tebId)));
     }
-    para.contributor_id = drp_id;
+    para.tPrms.builders = builders;
+
+    if (collection.cmstate.find("meb") != collection.cmstate.end()) {
+        for (auto it : collection.cmstate["meb"].items()) {
+            unsigned    mebId   = it.value()["meb_id"];
+            std::string address = it.value()["connect_info"]["infiniband"];
+            std::cout << "MEB: " << mebId << "  " << address << std::endl;
+            para.mPrms.addrs.push_back(address);
+            para.mPrms.ports.push_back(std::string(std::to_string(MEB_PORT_BASE + mebId)));
+        }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -52,9 +68,8 @@ int main(int argc, char* argv[])
     int device_id = 0x2031;
     int lane_mask = 0xf;
     std::string detector_type;
-    bool run_mon = false;
     int c;
-    while((c = getopt(argc, argv, "p:o:d:l:D:M")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:d:l:D:")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -71,17 +86,37 @@ int main(int argc, char* argv[])
             case 'D':
                 detector_type = optarg;
                 break;
-            case 'M':
-                run_mon = true;
-                break;
             default:
                 print_usage();
                 exit(1);
         }
     }
+
+    // event builder
+    para.tPrms = { /* .addrs         = */ { },
+                   /* .ports         = */ { },
+                   /* .ifAddr        = */ nullptr,
+                   /* .port          = */ { },
+                   /* .id            = */ 0,
+                   /* .builders      = */ 0,
+                   /* .duration      = */ BATCH_DURATION,
+                   /* .maxBatches    = */ MAX_BATCHES,
+                   /* .maxEntries    = */ MAX_ENTRIES,
+                   /* .maxInputSize  = */ maxSize,
+                   /* .maxResultSize = */ maxSize,
+                   /* .core          = */ { 11 + 0,
+                                            11 + 12 },
+                   /* .verbose       = */ 0 };
+
+    para.mPrms = { /* .addrs         = */ { },
+                   /* .ports         = */ { },
+                   /* .id            = */ 0,
+                   /* .maxEvents     = */ 8,    //mon_buf_cnt,
+                   /* .maxEvSize     = */ 1024, //mon_buf_size,
+                   /* .maxTrSize     = */ 1024, //mon_trSize,
+                   /* .verbose       = */ 0 };
+
     join_collection(para);
-    printf("eb server ip: %s\n", para.eb_server_ip.c_str());
-    printf("contributor id: %u\n", para.contributor_id);
     printf("output dir: %s\n", para.output_dir.c_str());
 
     Factory<Detector> f;
@@ -98,39 +133,10 @@ int main(int argc, char* argv[])
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
     pin_thread(pgp_thread.native_handle(), 1);
 
-    // event builder
-    Pds::Eb::EbCtrbParams ecPrms{ /* .addrs         = */ { },
-                                  /* .ports         = */ { },
-                                  /* .ifAddr        = */ nullptr,
-                                  /* .port          = */ "32832",
-                                  /* .id            = */ para.contributor_id,
-                                  /* .builders      = */ 1ul << EbId,
-                                  /* .duration      = */ BatchSizeInPulseIds,
-                                  /* .maxBatches    = */ maxBatches,
-                                  /* .maxEntries    = */ maxEntries,
-                                  /* .maxInputSize  = */ maxSize,
-                                  /* .maxResultSize = */ maxSize,
-                                  /* .core          = */ { 11 + 0,
-                                                           11 + 12 },
-                                  /* .verbose       = */ 0 };
-    ecPrms.addrs.push_back(para.eb_server_ip);
-    ecPrms.ports.push_back("32768");
-
-    Pds::Eb::EbContributor ebCtrb(ecPrms);
-
-    Pds::Eb::MonCtrbParams mPrms { /* .addrs         = */ { },
-                                   /* .ports         = */ { },
-                                   /* .id            = */ para.contributor_id,
-                                   /* .maxEvents     = */ 8,    //mon_buf_cnt,
-                                   /* .maxEvSize     = */ 1024, //mon_buf_size,
-                                   /* .maxTrSize     = */ 1024, //mon_trSize,
-                                   /* .verbose       = */ 0 };
-    mPrms.addrs.push_back("172.21.52.121");
-    mPrms.ports.push_back("32960");
-
+    Pds::Eb::EbContributor ebCtrb(para.tPrms);
     Pds::Eb::MonContributor* meb = nullptr;
-    if (run_mon) {
-        meb = new Pds::Eb::MonContributor(mPrms);
+    if (para.mPrms.addrs.size() != 0) {
+        meb = new Pds::Eb::MonContributor(para.mPrms);
     }
 
     // start performance monitor thread
@@ -145,7 +151,7 @@ int main(int argc, char* argv[])
         pin_thread(worker_threads[i].native_handle(), 2 + i);
     }
 
-    collector(pool, para, ecPrms, ebCtrb, meb);
+    collector(pool, para, ebCtrb, meb);
 
     pgp_thread.join();
     for (int i = 0; i < num_workers; i++) {

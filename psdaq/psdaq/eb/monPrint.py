@@ -27,8 +27,8 @@ print('Listening to: %s:%d' % (zmqSrv, port))
 
 try:
     while True:
-        #print (socket.recv_json())
         hostname, metrics = socket.recv_json()
+        #print(hostname, metrics)
 
         # shift timestamp from UTC to current timezone and convert to milliseconds
         ##metrics['time'] = [(t - time.altzone)*1000 for t in metrics['time']]

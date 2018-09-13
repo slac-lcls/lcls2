@@ -32,8 +32,6 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
-static const unsigned max_ctrbs        = 64;         // Maximum possible number of Contributors
-
 using Duration_t = std::chrono::steady_clock::duration;
 using us_t       = std::chrono::microseconds;
 using ns_t       = std::chrono::nanoseconds;
@@ -243,7 +241,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 
 bool EbAppBase::inTrSpace(const Dgram* dg)
 {
-  unsigned        src = dg->xtc.src.log() & (max_ctrbs - 1);
+  unsigned        src = dg->xtc.src.log() & (MAX_DRPS - 1);
   //unsigned        idx = _id2Idx[src];
   const EbLfLink* lnk = _links[src]; //idx];
   const Dgram*    tr = (Dgram*)lnk->lclAdx(_trOffset[0]);
@@ -254,7 +252,7 @@ bool EbAppBase::inTrSpace(const Dgram* dg)
 
 int EbAppBase::bufferIdx(const Dgram* dg)
 {
-  unsigned src = dg->xtc.src.log() & (max_ctrbs - 1);
+  unsigned src = dg->xtc.src.log() & (MAX_DRPS - 1);
   //return ((char*)dg - (char*)_links[_id2Idx[src]]->lclAdx(0)) / _maxBufSize;
   return ((char*)dg - (char*)_links[src]->lclAdx(0)) / _maxBufSize;
 }
