@@ -2,6 +2,8 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from posix.unistd cimport read
 
+cimport cython
+
 cdef struct Xtc:
     int junks[4]
     unsigned extent
@@ -34,7 +36,7 @@ cdef class SmdReader:
     cdef unsigned got_events
     
     def __init__(self, fds):
-        self.chunksize = 0x1000000
+        self.chunksize = 0x100000
         self.maxretries = 5
         self.nfiles = len(fds)
         self.fds = <int *>malloc(sizeof(int) * self.nfiles)
@@ -58,8 +60,8 @@ cdef class SmdReader:
             self.bufs[i].timestamp = 0
             self.bufs[i].block_offset = 0
             self.bufs[i].block_size = 0
-           
-    def _read_with_retries(self, int buf_id, size_t displacement, size_t count):
+    
+    cdef inline size_t _read_with_retries(self, int buf_id, size_t displacement, size_t count):
         cdef char* chunk = self.bufs[buf_id].chunk + displacement
         cdef size_t requested = count
         cdef size_t got = 0
@@ -71,8 +73,8 @@ cdef class SmdReader:
                 chunk += got
                 count -= got
         return requested - count
-
-    def _read_partial(self, int buf_id, size_t block_offset, size_t dgram_offset):
+    
+    cdef inline void _read_partial(self, int buf_id, size_t block_offset, size_t dgram_offset):
         """ Reads partial chunk
         First copy what remains in the chunk to the begining of 
         the chunk then re-read to fill in the chunk.
@@ -134,7 +136,7 @@ cdef class SmdReader:
 
                 self.bufs[i].block_size = self.bufs[i].offset - self.bufs[i].block_offset
             
-            for i in range(self.nfiles):
+            #for i in range(self.nfiles):
                 if self.bufs[i].timestamp > limit_ts:
                     limit_ts = self.bufs[i].timestamp + 1 
                     winner = i
