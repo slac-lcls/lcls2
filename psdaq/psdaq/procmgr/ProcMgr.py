@@ -379,7 +379,7 @@ class ProcMgr:
     STATION = 0
     CURRENTEXPCMD = ''
     
-    valid_flag_list = ['X', 'x', 'k', 's', 'u', 'p', 'r']
+    valid_flag_list = ['X', 'x', 'k', 's', 'u', 'p'] 
     valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET']
 
     def __init__(self, configfilename, platform, Xterm_list=[], xterm_list=[], procmgr_macro={}, baseport=29000):
@@ -1024,7 +1024,7 @@ class ProcMgr:
                     waitflag = ''
 
                 if ('>' in value[self.DICT_CMD]) or (logpathbase == None) or (logpathbase == "/dev/null"):
-                    logFlag = ''
+                    redirect_string = ''
                 else:
                     #
                     # Construct path similar to:
@@ -1037,7 +1037,7 @@ class ProcMgr:
                     except:
                       # mkdir
                       print('ERR: mkdir <%s> failed' % logpath)
-                      logFlag = ''
+                      redirect_string = ''
                     else:
                       time_string = time.strftime('%d_%H:%M:%S')
                       loghost = key2host(key)
@@ -1049,14 +1049,19 @@ class ProcMgr:
                       logfile = '%s/%s_%s.log' % (logpath, time_string, logkey)
                       if verbose:
                           print('log file: <%s>' % logfile)
-                      logFlag = '-L \"%s\"' % logfile
+                      if localFlag:
+                          # local: bash shell
+                          redirect_string = '>> \"%s\" 2>&1' % logfile
+                      else:
+                          # remote: tcsh shell
+                          redirect_string = '>>& \"%s\"' % logfile
 
                     pbits = (stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
                     try:
                         statmode = os.stat(logpath).st_mode
                     except:
                         print('ERR: stat %s failed' % logpath)
-                        logFlag = ''
+                        redirect_string = ''
                     else:
                         if (statmode & pbits) != pbits:
                           try:
@@ -1064,10 +1069,10 @@ class ProcMgr:
                             os.chmod(logpath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
                           except:
                             print('ERR: chmod %s failed' % logpath)
-                            logFlag = ''
+                            redirect_string = ''
 
                 # encode logfile path as part of procServ name
-                if (len(logFlag) > 1):
+                if (len(redirect_string) > 1):
                   name = logfile.replace(logpathbase+'/', '', 1)
                   if not os.path.exists(logfile):
                     try:
@@ -1090,27 +1095,14 @@ class ProcMgr:
                 else:
                   name = key2uniqueid(key)
 
-                # need full path of procServ for executing on remote shell
-                try:
-                    procServCmd = os.path.join(os.environ["CONDA_PREFIX"], "bin/procServ")
-                except KeyError:
-                    print('ERR: CONDA_PREFIX not found in environment')
-                    procServCmd = "/dev/null"
-                else:
-                    if not os.path.isfile(procServCmd):
-                        print('ERR: file %s not found' % procServCmd)
-
-                if 'r' not in value[self.DICT_FLAGS]:
-                    procServCmd += ' --noautorestart'
-
-                startcmd = procServCmd+'  --name %s %s %s --allow --coresize %d %s %s' % \
+                startcmd = \
+                        '/reg/common/package/procServ/2.6.0-SLAC/x86_64-rhel6-gcc44-opt/bin/procServ --noautorestart --name %s %s --allow --coresize %d %s %s %s' % \
                        (name, \
                         waitflag, \
-                        logFlag, \
                         coresize, \
                         value[self.DICT_CTRL], \
-                        value[self.DICT_CMD])
-
+                        value[self.DICT_CMD],
+                        redirect_string)
                 # is this host already in the dictionary?
                 if starthost in startdict:
                     # yes: add to set of start commands
