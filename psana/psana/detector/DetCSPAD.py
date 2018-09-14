@@ -25,8 +25,22 @@ class CSPAD(DetectorBase):
         quad2 = eval('evt.dgrams[self.ind].'+self.name).raw.quads2_data
         quad3 = eval('evt.dgrams[self.ind].'+self.name).raw.quads3_data
         return np.concatenate((quad0, quad1, quad2, quad3), axis=0)
+
+    def raw_data(self, evt):
+        # compatible with current cctbx code
+        return self.raw(evt)
     
-    def calib(self, data, verbose=0): print("cspad.calib")
+    def calib(self, evt, verbose=0): 
+        fake_run = -1 # FIXME: in current psana2 RunHelper, calib constants are setup according to that run.
+        data = self.raw(evt)
+        data = data.astype(np.float64) # convert raw photon counts to float for other math operations.
+        data -= self.pedestals(fake_run)
+        self.common_mode_apply(fake_run, data, None)
+        gain_mask = self.gain_mask(fake_run)
+        if gain_mask is not None:
+            data *= gain_mask
+        data *= self.gain(fake_run)
+        return data
 
     def image(self, data, verbose=0): print("cspad.image")
 
@@ -42,4 +56,12 @@ class CSPAD(DetectorBase):
 
     def gain_mask(self, run, gain=0):
         return self._fetch('gain_mask')
+
+    def common_mode_apply(self, run, data, common_mode):
+        # FIXME: apply common_mode
+        return data
+
+    def gain(self, run):
+        # default gain is set to 1.0 (FIXME)
+        return 1.0
 

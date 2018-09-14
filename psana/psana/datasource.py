@@ -6,29 +6,36 @@ from psana.psexp.tools import MpiComm, DataSourceHelper, datasource_from_id
 
 class DataSource(object):
     """ Read XTC files  """ 
-    def __init__(self, expstr, filter=0, batch_size=1, max_events=0):
+    def __init__(self, expstr, **kwargs):
         """Initializes datasource.
         
         Keyword arguments:
-        expstr     -- experiment string (eg. exp=xpptut13:run=1) or 
-                      a file or list of files (eg. 'data.xtc' or ['data0.xtc','dataN.xtc'])
-        batch_size -- length of batched offsets
-        max_events -- no. of maximum events
+        expstr      -- experiment string (eg. exp=xpptut13:run=1) or 
+                       a file or list of files (eg. 'data.xtc' or ['data0.xtc','dataN.xtc'])
+        filter      -- filtering callback that handles Event object.
+        batch_size  -- length of batched offsets
+        max_events  -- no. of maximum events
+        det_name    -- detector name used to identify dettype and detid in config
+        sel_det_ids -- user-selected detector IDs.
         """
-        self.filter = filter
-        assert batch_size > 0
-        self.batch_size = batch_size
-        self.max_events = max_events
+        self.filter = 0
+        self.batch_size = 1
+        self.max_events = 0
+        self.sel_det_ids = []
+        self.det_name = None
+        if kwargs is not None: 
+            keywords = ('filter', 'batch_size', 'max_events', 'det_name', 'sel_det_ids')
+            for k in keywords:
+                if k in kwargs:
+                    setattr(self, k, kwargs[k])
+        assert self.batch_size > 0
         
         self.mpi = MpiComm()
-        DataSourceHelper(expstr, self) # setup dgrammanger, configs, & calib.
-        if self.nodetype == 'bd':
-            self.Detector = Detector(self.configs, calib=self.calib) 
+        DataSourceHelper(expstr, self) # setup exp, run_dict, nodetype
 
     def runs(self):
-        nruns = 1
-        for run_no in range(nruns):
-            yield Run(self)
+        for run_no in self.run_dict:
+            yield Run(self, run_no)
 
     def events(self): 
         for run in self.runs():
@@ -38,6 +45,15 @@ class DataSource(object):
     def _configs(self):
         assert len(self.configs) > 0
         return self.configs
+
+    @property
+    def Detector(self):
+        """Creates a detector (must be done inside runs())
+        Since configs and calib constants depend on each run, 
+        the detector object has to wait until ds is set with
+        these two parameters."""
+        det = Detector(self.configs, calib=self.calib) 
+        return det
 
     def analyze(self, **kwargs):
         analyze(self, **kwargs)
