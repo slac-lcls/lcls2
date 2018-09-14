@@ -21,8 +21,7 @@ for run in ds.runs():
     for evt in run.events():
         #eventCode
         for d in evt:
-            print(d.xppcspad.raw.arrayRaw.shape)
-            #assert d.xppcspad.raw.arrayRaw.shape == (18,)
+            assert d.xppcspad.raw.arrayRaw.shape == (18,)
     #endRunCode
 #endJobCode
 
