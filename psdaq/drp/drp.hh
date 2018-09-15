@@ -7,16 +7,6 @@
 #include "pgpdriver.h"
 #include "psdaq/eb/eb.hh"
 
-struct EventHeader {
-    uint64_t pulseId;
-    uint64_t timeStamp;
-    uint32_t l1Count;
-    uint32_t version;
-    unsigned rawSamples:24;
-    unsigned channelMask:8;
-    uint32_t reserved;
-};
-
 struct PGPData
 {
     uint64_t pulse_id;
@@ -65,7 +55,7 @@ struct MemPool
     std::vector<PebbleQueue> worker_input_queues;
     std::vector<PebbleQueue> worker_output_queues;
     SPSCQueue<int> collector_queue;
-    PebbleQueue output_queue;
+    // PebbleQueue output_queue;
     int num_entries;
 private:
     std::vector<Pebble> pebble;
