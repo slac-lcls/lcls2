@@ -2,6 +2,7 @@
 
 ## Build instructions:
 ### Note: build on psbuild-rhel6 where redhat gcc6 compilers are installed
+# to get the LCLS conda environment:  "source /reg/g/psdm/sw/conda2/manage/bin/psconda.sh"
 ```bash
 
 # repository consists of seperate packages: xtcdata, psdaq, drp and psana
