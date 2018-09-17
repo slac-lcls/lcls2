@@ -1,5 +1,4 @@
 add_library(xtc SHARED
-    src/BldInfo.cc
     src/Sequence.cc
     src/TransitionId.cc
     src/XtcIterator.cc
@@ -7,8 +6,6 @@ add_library(xtc SHARED
     src/Level.cc
     src/Src.cc
     src/TypeId.cc
-    src/DetInfo.cc
-    src/ProcInfo.cc
     src/PulseId.cc
     src/XtcFileIterator.cc
     src/ShapesData.cc
@@ -21,7 +18,6 @@ target_include_directories(xtc PUBLIC
 )
 
 install(FILES
-    BldInfo.hh
     Level.hh
     ShapesData.hh
     BlockDgram.hh
@@ -32,10 +28,8 @@ install(FILES
     Src.hh
     Xtc.hh
     DescData.hh
-    ProcInfo.hh
     TimeStamp.hh
     XtcIterator.hh
-    DetInfo.hh
     PulseId.hh
     TransitionId.hh
     Dgram.hh

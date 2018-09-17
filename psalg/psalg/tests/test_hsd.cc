@@ -17,8 +17,6 @@
 #include "psalg/alloc/Allocator.hh"
 #include "psalg/digitizer/Hsd.hh"
 
-#include "xtcdata/xtc/DetInfo.hh"
-#include "xtcdata/xtc/ProcInfo.hh"
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/ShapesData.hh"
