@@ -1572,10 +1572,11 @@ void PassiveEndpoint::shutdown()
   EndpointBase::shutdown();
 }
 
-bool PassiveEndpoint::listen()
+bool PassiveEndpoint::listen(int backlog)
 {
   CHECK_ERR(fi_passive_ep(_fabric->fabric(), _fabric->info(), &_pep, NULL), "fi_passive_ep");
   CHECK_ERR(fi_pep_bind(_pep, &_eq->fid, 0), "fi_pep_bind(eq)");
+  CHECK_ERR(fi_control(&_pep->fid, FI_BACKLOG, &backlog), "fi_control(FI_BACKLOG)");
   CHECK_ERR(fi_listen(_pep), "fi_listen");
 
   _state = EP_LISTEN;
