@@ -10,7 +10,6 @@ MPI = None
 if mode == 'mpi':
     from mpi4py import MPI
 
-PERCENT_SMD = .25
 
 class Error(Exception):
     pass
@@ -54,8 +53,8 @@ class DataSourceHelper(object):
         ds.exp = exp
         ds.run_dict = run_dict
 
-        # Determine if this rank is smd0 or just smd node
-        ds.nsmds = int(os.environ.get('PS_SMD_NODES', np.ceil((size-1)*PERCENT_SMD)))
+        # No. of smd nodes (default is 1)
+        ds.nsmds = int(os.environ.get('PS_SMD_NODES', 1))
         if rank == 0:
             ds.nodetype = 'smd0'
         elif rank < ds.nsmds + 1:
@@ -200,19 +199,23 @@ class RunHelper(object):
 
             from psana.pscalib.calib.MDBWebUtils import calib_constants
             det = eval('ds._configs[0].software.%s'%(ds.det_name))
+            
             # calib_constants takes det string (e.g. cspad_0001) with requested calib type.
             # as a hack (until detid in xtc files have been changed
-            detid = '0001'
-            if ds.det_name == 'DsdCsPad':
-                detid = '0002'
-            det_str = det.dettype + '_' + detid
+            det_str = det.dettype + '_' + det.detid
             pedestals = calib_constants(det_str, exp=ds.exp, ctype='pedestals', run=run_no)
             geometry_string = calib_constants(det_str, exp=ds.exp, ctype='geometry', run=run_no)
+            
+            # python2 sees geometry_string as unicode (use str to check for compatibility py2/py3)
+            # - convert to str accordingly
+            if not isinstance(geometry_string, str) and geometry_string is not None:
+                import unicodedata
+                geometry_string = unicodedata.normalize('NFKD', geometry_string).encode('ascii','ignore')
             common_mode = calib_constants(det_str, exp=ds.exp, ctype='common_mode', run=run_no)
         
         calib = {'gain_mask': gain_mask,
                  'pedestals': pedestals,
-                 'geometry_sring': geometry_string,
+                 'geometry_string': geometry_string,
                  'common_mode': common_mode}
         ds.calib = calib
 

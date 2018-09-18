@@ -64,5 +64,6 @@ class Event():
         _low = self.dgrams[0].seq.timestamp() & 0xffffffff
         return _low
 
-
+    def run(self):
+        return 0 # for psana1-cctbx compatibility
 

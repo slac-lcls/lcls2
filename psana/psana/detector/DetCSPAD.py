@@ -1,6 +1,7 @@
 from psana.detector.detector import DetectorBase
 import numpy as np
 import os
+from psana.pscalib.geometry.GeometryAccess import GeometryAccess
 
 class CSPAD(DetectorBase):
 
@@ -64,4 +65,12 @@ class CSPAD(DetectorBase):
     def gain(self, run):
         # default gain is set to 1.0 (FIXME)
         return 1.0
+
+    def geometry(self, run):
+        geometry_string = self._fetch('geometry_string')
+        geometry_access = None
+        if geometry_string is not None:
+            geometry_access = GeometryAccess()
+            geometry_access.load_pars_from_str(geometry_string)
+        return geometry_access
 
