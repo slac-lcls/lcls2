@@ -20,6 +20,13 @@
     return false;                 \
   }
 
+#define CHECK_ERR_EX(function, msg, exclude)            \
+  _errno = function;                                    \
+  if ((_errno != FI_SUCCESS) && (_errno != -exclude)) { \
+    set_error(msg);                                     \
+    return false;                                       \
+  }
+
 #define CHECK(function)     \
   if (!function)            \
     return false;
@@ -1576,10 +1583,12 @@ bool PassiveEndpoint::listen(int backlog)
 {
   CHECK_ERR(fi_passive_ep(_fabric->fabric(), _fabric->info(), &_pep, NULL), "fi_passive_ep");
   CHECK_ERR(fi_pep_bind(_pep, &_eq->fid, 0), "fi_pep_bind(eq)");
-  CHECK_ERR(fi_control(&_pep->fid, FI_BACKLOG, &backlog), "fi_control(FI_BACKLOG)");
+  // Attempt to set the backlog parameter of the pep and ignore the failure if the provider doesn't support it.
+  CHECK_ERR_EX(fi_control(&_pep->fid, FI_BACKLOG, &backlog), "fi_control(FI_BACKLOG)", FI_ENOSYS);
   CHECK_ERR(fi_listen(_pep), "fi_listen");
 
   _state = EP_LISTEN;
+
 
   return true;
 }
@@ -1967,6 +1976,7 @@ void CompletionQueue::shutdown()
 #undef ERR_MSG_LEN
 #undef ANY_ADDR
 #undef CHECK_ERR
+#undef CHECK_ERR_EX
 #undef CHECK
 #undef CHECK_MR
 #undef CHECK_MR_IOVEC
