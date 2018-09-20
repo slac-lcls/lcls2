@@ -55,7 +55,6 @@ struct MemPool
     std::vector<PebbleQueue> worker_input_queues;
     std::vector<PebbleQueue> worker_output_queues;
     SPSCQueue<int> collector_queue;
-    // PebbleQueue output_queue;
     int num_entries;
 private:
     std::vector<Pebble> pebble;

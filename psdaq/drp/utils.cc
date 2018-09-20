@@ -43,11 +43,16 @@ void pin_thread(const pthread_t& th, int cpu)
 long read_infiniband_counter(const char* counter)
 {
     char path[PATH_MAX];
-    snprintf(path, PATH_MAX, "/sys/class/infiniband/mlx4_0/ports/1/counters/%s", counter);
+    snprintf(path, PATH_MAX, "/sys/class/infiniband/mlx5_0/ports/1/counters/%s", counter);
     std::ifstream in(path);
-    std::string line;
-    std::getline(in, line);
-    return stol(line);
+    if (in.is_open()) {
+        std::string line;
+        std::getline(in, line);
+        return stol(line);
+    }
+    else {
+        return 0;
+    }
 }
 
 void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContributor& ebCtrb)
