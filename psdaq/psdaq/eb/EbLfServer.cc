@@ -18,10 +18,8 @@ using ms_t = std::chrono::milliseconds;
 
 
 EbLfServer::EbLfServer(const char* addr,
-                       const char* port,
-                       int         rxDepth) :
-  _pep(nullptr),
-  _rxDepth(rxDepth)
+                       const char* port) :
+  _pep(nullptr)
 {
   _status = _initialize(addr, port);
 }
@@ -35,7 +33,10 @@ EbLfServer::~EbLfServer()
 int EbLfServer::_initialize(const char* addr,
                             const char* port)
 {
-  _pep = new PassiveEndpoint(addr, port);
+  const uint64_t flags  = 0;
+  const size_t   txSize = 0;
+  const size_t   rxSize = 300;
+  _pep = new PassiveEndpoint(addr, port, flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
     fprintf(stderr, "%s: Failed to create Passive Endpoint: %s\n",
@@ -49,7 +50,6 @@ int EbLfServer::_initialize(const char* addr,
   //printf("EbLfServer is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
   //       fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
 
-  if (_rxDepth == 0)  _rxDepth = fab->info()->rx_attr->size;
   _rxcq = new CompletionQueue(fab);
   if (!_rxcq)
   {
@@ -58,7 +58,8 @@ int EbLfServer::_initialize(const char* addr,
     return -FI_ENOMEM;
   }
 
-  if(!_pep->listen())
+  const int backlog = 64;
+  if(!_pep->listen(backlog))
   {
     fprintf(stderr, "%s: Failed to set passive endpoint to listening state: %s\n",
             __PRETTY_FUNCTION__, _pep->error());
@@ -77,7 +78,9 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
     return _status;
   }
 
-  Endpoint* ep = _pep->accept(tmo, nullptr, 0, _rxcq, FI_RECV);
+  CompletionQueue* txcq    = nullptr;
+  uint64_t         txFlags = 0;
+  Endpoint* ep = _pep->accept(tmo, txcq, txFlags, _rxcq, FI_RECV);
   if (!ep)
   {
     fprintf(stderr, "%s: Failed to accept connection: %s\n",
@@ -85,7 +88,9 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
     return _pep->error_num();
   }
 
-  *link = new EbLfLink(ep, _rxDepth);
+  int rxDepth = _pep->fabric()->info()->rx_attr->size;
+  printf("rxDepth = %d\n", rxDepth);
+  *link = new EbLfLink(ep, rxDepth);
   if (!*link)
   {
     fprintf(stderr, "%s: Failed to find memory for link\n", __PRETTY_FUNCTION__);

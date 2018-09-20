@@ -22,8 +22,7 @@ namespace Pds {
     {
     public:
       EbLfServer(const char* addr,
-                 const char* port,
-                 int         rxDepth = 0);
+                 const char* port);
       ~EbLfServer();
     public:
       int connect(EbLfLink**, int msTmo = -1);
@@ -40,7 +39,6 @@ namespace Pds {
       int                       _status;
       Fabrics::PassiveEndpoint* _pep;  // Endpoint for establishing connections
       Fabrics::CompletionQueue* _rxcq;
-      int                       _rxDepth;
       size_t                    _bufSize;
     };
   };
