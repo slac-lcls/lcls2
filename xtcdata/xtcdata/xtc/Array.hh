@@ -55,6 +55,9 @@ public:
     T* data(){
         return _data;
     }
+    const T* const_data() const {
+        return _data;
+    }
     uint64_t num_elem(){
         uint64_t _num_elem = _shape[0];
         for(uint32_t i=1; i<_rank;i++){_num_elem*=_shape[i];};

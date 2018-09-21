@@ -9,10 +9,6 @@
  *
  *  #include "psalg/calib/MDBWebUtils.hh"
  *
- *
- *
- *
- *
  *   _ = wu.requests_get(url, query=None)
  *   _ = wu.database_names(urlws=cc.URLWS)
  *   _ = wu.collection_names(dbname, urlws=cc.URLWS)
@@ -26,13 +22,14 @@
  *
  */
 
+#include <map>
 #include <string>
 #include <vector>
 //#include <sstream>
 #include <stdint.h> // size_t;
 
 #include <rapidjson/document.h>
-
+#include "psalg/calib/NDArray.hh"
 
 namespace psalg {
 
@@ -66,7 +63,20 @@ namespace psalg {
   void get_data_for_docid(std::string& sresp, const char* dbname, const char* colname, const char* docid, const char* urlws=URLWS);
   void get_data_for_doc(std::string& sresp, const char* dbname, const char* colname, const rapidjson::Value& jdoc, const char* urlws=URLWS);
 
-  void calib_constants(std::string& sresp, const char* detector, const char* experiment=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL, const char* urlws=URLWS);
+
+  const std::string db_prefixed_name(const char* name, const char* prefix="cdb_");
+
+//void
+//  std::map<std::string, std::string>
+//  dbnames_collection_query(const char* det, const char* exp=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL);
+  void
+  dbnames_collection_query(std::map<std::string, std::string>& omap, const char* det, const char* exp=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL);
+
+  void calib_constants(std::string& sresp, rapidjson::Document& doc, const char* detector, const char* experiment=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL, const char* urlws=URLWS);
+
+
+template<typename T> 
+void calib_constants_nda(NDArray<T>& nda, rapidjson::Document& doc, const char* detector, const char* experiment=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL, const char* urlws=URLWS);
 
 //-------------------
 
