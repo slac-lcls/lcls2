@@ -2,18 +2,25 @@ import os
 import time
 import copy
 import socket
-from uuid import uuid4
+from datetime import datetime, timezone
 import zmq
 from transitions import Machine, MachineError, State
 import argparse
 import logging
 
 PORT_BASE = 29980
+POSIX_TIME_AT_EPICS_EPOCH = 631152000
 
+
+def timestampStr():
+    current = datetime.now(timezone.utc)
+    nsec = 1000 * current.microsecond
+    sec = int(current.timestamp()) - POSIX_TIME_AT_EPICS_EPOCH
+    return '%010d-%09d' % (sec, nsec)
 
 def create_msg(key, msg_id=None, sender_id=None, body={}):
     if msg_id is None:
-        msg_id = str(uuid4())
+        msg_id = timestampStr()
     msg = {'header': {
                'key': key,
                'msg_id': msg_id,

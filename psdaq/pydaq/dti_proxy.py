@@ -8,7 +8,6 @@ import os
 import time
 import copy
 import socket
-from uuid import uuid4
 import zmq
 from collection import pull_port, pub_port, create_msg
 import argparse
