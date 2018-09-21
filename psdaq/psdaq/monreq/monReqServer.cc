@@ -324,7 +324,7 @@ using namespace Pds;
 void usage(char* progname)
 {
   printf("\n<MRQ_spec> has the form '<id>:<addr>:<port>'\n");
-  printf("<id> must be in the range 0 - %d.\n", MAX_TEBS - 1);
+  printf("<id> must be in the range 0 - %d.\n", MAX_MEBS - 1);
   printf("Low numbered <port> values are treated as offsets into the following range:\n");
   printf("  Mon requests: %d - %d\n", MRQ_PORT_BASE, MRQ_PORT_BASE + MAX_MEBS - 1);
 
@@ -395,7 +395,7 @@ int main(int argc, char** argv)
   bool           ldist           = false;
   unsigned       id              = default_id;
   char*          ifAddr          = nullptr;
-  unsigned       mebPortNo       = MEB_PORT_BASE; // Port served to contributors
+  unsigned       mebPortNo       = 0;   // Port served to contributors
   uint64_t       contributors    = 0;
   std::string    partition        (dflt_partition);
   const char*    rtMonHost       = dflt_rtMon_host;
@@ -456,6 +456,10 @@ int main(int argc, char** argv)
   if (!tag) tag=partition.c_str();
   printf("Partition Tag: '%s'\n", tag);
 
+  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
+  const unsigned mrqPortBase = MRQ_PORT_BASE + numPorts * platform;
+  const unsigned mebPortBase = MEB_PORT_BASE + numPorts * platform;
+
   std::vector<std::string> mrqAddrs;
   std::vector<std::string> mrqPorts;
   if (optind < argc)
@@ -471,11 +475,11 @@ int main(int argc, char** argv)
         return 1;
       }
       unsigned port = atoi(&colon2[1]);
-      if (port < MAX_TEBS)  port += MRQ_PORT_BASE;
-      if ((port < MRQ_PORT_BASE) || (port >= MRQ_PORT_BASE + MAX_TEBS))
+      if (port < MAX_MEBS)  port += mrqPortBase;
+      if ((port < mrqPortBase) || (port >= mrqPortBase + MAX_MEBS))
       {
         fprintf(stderr, "MRQ client port %d is out of range %d - %d\n",
-                port, MRQ_PORT_BASE, MRQ_PORT_BASE + MAX_TEBS);
+                port, mrqPortBase, mrqPortBase + MAX_MEBS);
         return 1;
       }
       mrqAddrs.push_back(std::string(&colon1[1]).substr(0, colon2 - &colon1[1]));
@@ -485,7 +489,7 @@ int main(int argc, char** argv)
   }
   else
   {
-    joinCollection(collSvr, platform, MRQ_PORT_BASE, contributors, mrqAddrs, mrqPorts, id);
+    joinCollection(collSvr, platform, mrqPortBase, contributors, mrqAddrs, mrqPorts, id);
   }
   if (id >= MAX_MEBS)
   {
@@ -498,10 +502,11 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  if ((mebPortNo < MEB_PORT_BASE) || (mebPortNo >= MEB_PORT_BASE + MAX_MEBS))
+  if  (mebPortNo < MAX_MEBS)  mebPortNo += mebPortBase;
+  if ((mebPortNo < mebPortBase) || (mebPortNo >= mebPortBase + MAX_MEBS))
   {
     fprintf(stderr, "MEB Server port %d is out of range %d - %d\n",
-            mebPortNo, MEB_PORT_BASE, MEB_PORT_BASE + MAX_MEBS);
+            mebPortNo, mebPortBase, mebPortBase + MAX_MEBS);
     return 1;
   }
   std::string mebPort(std::to_string(mebPortNo + id));

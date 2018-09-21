@@ -499,8 +499,10 @@ static void usage(char *name, char *desc)
 
   fprintf(stderr, "\n<contributor_spec> has the form '<id>:<addr>:<port>'\n");
   fprintf(stderr, "<id> must be in the range 0 - %d.\n", MAX_TEBS - 1);
-  fprintf(stderr, "Low numbered <port> values are treated as offsets into the following range:\n");
-  fprintf(stderr, "  Trigger result: %d - %d\n", DRP_PORT_BASE, DRP_PORT_BASE + MAX_DRPS - 1);
+  fprintf(stderr, "Low numbered <port> values are treated as offsets into the corresponding ranges:\n");
+  fprintf(stderr, "  Trigger EB:       %d - %d\n", TEB_PORT_BASE, TEB_PORT_BASE + MAX_TEBS - 1);
+  fprintf(stderr, "  Trigger result:   %d - %d\n", DRP_PORT_BASE, DRP_PORT_BASE + MAX_DRPS - 1);
+  fprintf(stderr, "  Monitor requests: %d - %d\n", MRQ_PORT_BASE, MRQ_PORT_BASE + MAX_MEBS - 1);
 
   fprintf(stderr, "\nOptions:\n");
 
@@ -587,8 +589,8 @@ int main(int argc, char **argv)
   std::string    partitionTag  (dflt_partition);
   unsigned       id           = default_id;
   char*          ifAddr       = nullptr;
-  unsigned       tebPortNo    = TEB_PORT_BASE;  // Port served to contributors
-  unsigned       mrqPortNo    = MRQ_PORT_BASE;  // Port served to monitors
+  unsigned       tebPortNo    = 0;      // Port served to contributors
+  unsigned       mrqPortNo    = 0;      // Port served to monitors
   uint64_t       duration     = BATCH_DURATION;
   unsigned       maxBatches   = MAX_BATCHES;
   unsigned       maxEntries   = MAX_ENTRIES;
@@ -633,6 +635,11 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
+  const unsigned tebPortBase = TEB_PORT_BASE + numPorts * partition;
+  const unsigned drpPortBase = DRP_PORT_BASE + numPorts * partition;
+  const unsigned mrqPortBase = MRQ_PORT_BASE + numPorts * partition;
+
   std::vector<std::string> drpAddrs;
   std::vector<std::string> drpPorts;
   uint64_t contributors = 0;
@@ -655,11 +662,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", cid, MAX_DRPS - 1);
         return 1;
       }
-      if (port < MAX_DRPS)  port += DRP_PORT_BASE;
-      if ((port < DRP_PORT_BASE) || (port >= DRP_PORT_BASE + MAX_DRPS))
+      if (port < MAX_DRPS)  port += drpPortBase;
+      if ((port < drpPortBase) || (port >= drpPortBase + MAX_DRPS))
       {
         fprintf(stderr, "DRP client port %d is out of range %d - %d\n",
-                DRP_PORT_BASE, DRP_PORT_BASE + MAX_DRPS, port);
+                drpPortBase, drpPortBase + MAX_DRPS, port);
         return 1;
       }
       contributors |= 1ul << cid;
@@ -670,7 +677,7 @@ int main(int argc, char **argv)
   }
   else
   {
-    joinCollection(collSrv, partition, DRP_PORT_BASE, contributors, drpAddrs, drpPorts, id, numMrqs);
+    joinCollection(collSrv, partition, drpPortBase, contributors, drpAddrs, drpPorts, id, numMrqs);
   }
   if (id >= MAX_TEBS)
   {
@@ -683,19 +690,21 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  if ((tebPortNo < TEB_PORT_BASE) || (tebPortNo >= TEB_PORT_BASE + MAX_TEBS))
+  if  (tebPortNo < MAX_TEBS)  tebPortNo += tebPortBase;
+  if ((tebPortNo < tebPortBase) || (tebPortNo >= tebPortBase + MAX_TEBS))
   {
     fprintf(stderr, "TEB Server port %d is out of range %d - %d\n",
-            tebPortNo, TEB_PORT_BASE, TEB_PORT_BASE + MAX_TEBS);
+            tebPortNo, tebPortBase, tebPortBase + MAX_TEBS);
     return 1;
   }
   std::string tebPort(std::to_string(tebPortNo + id));
   //printf("TEB Srv port = %s\n", tebPort.c_str());
 
-  if ((mrqPortNo < MRQ_PORT_BASE) || (mrqPortNo >= MRQ_PORT_BASE + MAX_TEBS))
+  if  (mrqPortNo < MAX_MEBS)  mrqPortNo += mrqPortBase;
+  if ((mrqPortNo < mrqPortBase) || (mrqPortNo >= mrqPortBase + MAX_TEBS))
   {
     fprintf(stderr, "MRQ Server port %d is out of range %d - %d\n",
-            mrqPortNo, MRQ_PORT_BASE, MRQ_PORT_BASE + MAX_TEBS);
+            mrqPortNo, mrqPortBase, mrqPortBase + MAX_TEBS);
     return 1;
   }
   std::string mrqPort(std::to_string(mrqPortNo + id));

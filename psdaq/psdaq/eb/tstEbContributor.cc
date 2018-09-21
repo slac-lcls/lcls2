@@ -543,7 +543,7 @@ int main(int argc, char **argv)
   const char*    rtMonHost    = dflt_rtMon_host;
   unsigned       rtMonPeriod  = rtMon_period;
   unsigned       rtMonVerbose = 0;
-  unsigned       drpPortNo    = DRP_PORT_BASE;  // Port served to TEBs
+  unsigned       drpPortNo    = 0;      // Port served to TEBs
   char*          tebSpec      = nullptr;
   char*          mebSpec      = nullptr;
   char*          outDir       = nullptr;
@@ -609,12 +609,17 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
+  const unsigned tebPortBase = TEB_PORT_BASE + numPorts * partition;
+  const unsigned drpPortBase = DRP_PORT_BASE + numPorts * partition;
+  const unsigned mebPortBase = MEB_PORT_BASE + numPorts * partition;
+
   if (tebSpec)
   {
     int rc = parseSpec("TEB",
                        tebSpec,
                        MAX_TEBS - 1,
-                       TEB_PORT_BASE,
+                       tebPortBase,
                        tebPrms.addrs,
                        tebPrms.ports,
                        &tebPrms.builders);
@@ -629,7 +634,7 @@ int main(int argc, char **argv)
     int rc = parseSpec("MEB",
                        mebSpec,
                        MAX_MEBS - 1,
-                       MEB_PORT_BASE,
+                       mebPortBase,
                        mebPrms.addrs,
                        mebPrms.ports,
                        &unused);
@@ -638,7 +643,7 @@ int main(int argc, char **argv)
 
   if (!tebSpec && !mebSpec)
   {
-    joinCollection(collSrv, partition, TEB_PORT_BASE, MEB_PORT_BASE, tebPrms, mebPrms);
+    joinCollection(collSrv, partition, tebPortBase, mebPortBase, tebPrms, mebPrms);
   }
   if (tebPrms.id >= MAX_DRPS)
   {
@@ -652,10 +657,11 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  if ((drpPortNo < DRP_PORT_BASE) || (drpPortNo >= DRP_PORT_BASE + MAX_DRPS))
+  if  (drpPortNo < MAX_DRPS)  drpPortNo += drpPortBase;
+  if ((drpPortNo < drpPortBase) || (drpPortNo >= drpPortBase + MAX_DRPS))
   {
     fprintf(stderr, "DRP Server port %d is out of range %d - %d\n",
-            drpPortNo, DRP_PORT_BASE, DRP_PORT_BASE + MAX_DRPS);
+            drpPortNo, drpPortBase, drpPortBase + MAX_DRPS);
     return 1;
   }
   tebPrms.port = std::to_string(drpPortNo + tebPrms.id);
