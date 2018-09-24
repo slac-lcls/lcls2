@@ -213,10 +213,11 @@ void test_dbnames_collection_query() {
   std::map<std::string, std::string> omap;
   dbnames_collection_query(omap, det, exp, ctype, run, time_sec, vers);
 
-  MSG(DEBUG, "db_exp = " << omap["db_exp"]);
-  MSG(DEBUG, "db_det = " << omap["db_det"]);
-  MSG(DEBUG, "colname= " << omap["colname"]);
-  MSG(DEBUG, "query  = " << omap["query"]);
+  std::cout << "  db_exp = " << omap["db_exp"]
+  	    << "\ndb_det = " << omap["db_det"]
+  	    << "\ncolname= " << omap["colname"]
+  	    << "\nquery  = " << omap["query"]
+  	    << '\n';
 }
 
 //-------------------
@@ -238,6 +239,7 @@ void test_calib_constants() {
   //std::cout << "TODO convert and show \"sresp\"\n";
   print_byte_string_as_float(sresp, 20);
 }
+
 //-------------------
 
 void test_calib_constants_nda() {
@@ -251,7 +253,40 @@ void test_calib_constants_nda() {
   typedef float pedestals_t;
   NDArray<pedestals_t> nda;
   rapidjson::Document doc;
+
+  MSG(INFO, "XXXX: Begin calib_constants_nda");
   calib_constants_nda<pedestals_t>(nda, doc, det, exp, ctype, run, time_sec, vers);
+  MSG(INFO, "XXXX: Done");
+
+  std::cout << "doc: " << json_doc_to_string(doc)
+	    << "\nSome matadata from doc:" 
+	    << " shape: " << doc["data_shape"].GetString()
+	    << " type: "  << doc["data_type"] .GetString()
+	    << " dtype: " << doc["data_dtype"].GetString()
+	    << " size: "  << doc["data_size"] .GetString()
+	    << " ndim: "  << doc["data_ndim"] .GetString()
+	    << "\nnda: "  << nda << '\n';
+}
+
+//-------------------
+
+void test_calib_constants_doc() {
+  printf("In test_calib_constants_doc\n");  
+  const char* det = "cspad_0001";  // XrayTransportDiagnostic.0:Opal1000.0
+  const char* exp = "cxid9114";    // amox23616
+  const char* ctype = "pedestals"; // lasingoffreference
+  const unsigned run = 150;        // 56 
+  const unsigned time_sec = 1534567890;
+  const char* vers = NULL;
+  rapidjson::Document docdata;
+  rapidjson::Document docmeta;
+
+  MSG(INFO, "XXXX: Begin calib_constants_doc");
+  calib_constants_doc(docdata, docmeta, det, exp, ctype, run, time_sec, vers);
+  MSG(INFO, "XXXX: Done");
+
+  std::cout << "docmeta: " << json_doc_to_string(docmeta);
+  //std::cout << "docdata: " << json_doc_to_string(docdata);
 }
 
 //-------------------
@@ -260,6 +295,7 @@ int main(void)
 {
   //MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
   LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
+  //LOGGER.setLogger(LL::INFO, "%H:%M:%S.%f");           // set level and time format
   printf("In test_MDBWebUtils\n");
   print_hline(80,'_');
   //test_request(); print_hline(80,'_');
@@ -278,7 +314,8 @@ int main(void)
   //test_db_prefixed_name(); print_hline(80,'_');
   //test_dbnames_collection_query(); print_hline(80,'_');
   //test_calib_constants(); print_hline(80,'_');
-  test_calib_constants_nda(); print_hline(80,'_');
+  //test_calib_constants_nda(); print_hline(80,'_');
+  test_calib_constants_doc(); print_hline(80,'_');
 }
 
 //-------------------

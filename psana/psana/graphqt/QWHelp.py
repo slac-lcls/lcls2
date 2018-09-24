@@ -85,6 +85,7 @@ class QWHelp(Frame) :
         self.but_close .setStyleSheet(style.styleButton)
         self.box_txt   .setReadOnly  (True)
         self.box_txt   .setStyleSheet(style.styleWhiteFixed) 
+        self.layout().setContentsMargins(0,0,0,0)
 
 
     def setParent(self,parent) :

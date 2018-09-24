@@ -184,25 +184,10 @@ class QWTree(QTreeView) :
     def set_style(self):
         #from psana.graphqt.Styles import style
         self.setWindowIcon(icon.icon_monitor)
-        self.setContentsMargins(-9,-9,-9,-9) # QMargins(-5,-5,-5,-5)
+        self.setContentsMargins(0,0,0,0)
 
         self.setStyleSheet("QTreeView::item:hover{background-color:#00FFAA;}")
 
-        #self.palette = QPalette()
-        #self.resetColorIsSet = False
-        #self.butELog    .setIcon(icon.icon_mail_forward)
-        #self.butFile    .setIcon(icon.icon_save)  
-        #self.setMinimumHeight(250)
-        #self.setMinimumWidth(550)
-        #self.setContentsMargins(-5,-5,-5,-5) # QMargins(-5,-5,-5,-5)
-        #self.adjustSize()
-        #self.        setStyleSheet(style.styleBkgd)
-        #self.butSave.setStyleSheet(style.styleButton)
-        #self.butFBrowser.setVisible(False)
-        #self.butExit.setText('')
-        #self.butExit.setFlat(True)
-        #self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
- 
 
     #def resizeEvent(self, e):
         #pass

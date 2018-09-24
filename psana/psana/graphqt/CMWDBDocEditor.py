@@ -56,7 +56,8 @@ class CMWDBDocEditorItem(QWidget) :
     def set_style(self):
         self.but.setFixedWidth(60)
         self.but.setFixedHeight(26)
-        self.setContentsMargins(-9,-9,-9,-9)
+        self.layout().setContentsMargins(0,0,0,0)
+
         #self.           setStyleSheet(style.styleBkgd)
         #self.lab.setStyleSheet(style.styleTitle)
         #self.but.setStyleSheet(style.styleButton)

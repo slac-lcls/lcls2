@@ -73,6 +73,7 @@ class PSConfigParameters(ConfigParameters) :
         self.nevents_update  = self.declareParameter(name='EVENTS_UPDATE',   val_def=100,           type='int')
         self.log_level       = self.declareParameter(name='LOG_LEVEL_OF_MSGS',val_def='DEBUG',       type='str' ) 
         self.log_file        = self.declareParameter(name='LOG_FILE_FOR_LEVEL', val_def='./log_for_level.txt', type='str' )
+        self.log_prefix      = self.declareParameter(name='LOG_FILE_PREFIX', val_def='/reg/g/psdm/logs/calibman/lcls2', type='str')
         self.save_cp_at_exit = self.declareParameter(name='SAVE_CONFIG_AT_EXIT', val_def=True, type='bool')
 
 #------------------------------

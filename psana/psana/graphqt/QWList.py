@@ -137,7 +137,7 @@ class QWList(QListView) :
     def set_style(self):
         #from psana.graphqt.Styles import style
         self.setWindowIcon(icon.icon_monitor)
-        self.setContentsMargins(-9,-9,-9,-9) # QMargins(-5,-5,-5,-5)
+        #self.layout().setContentsMargins(0,0,0,0)
 
         self.setStyleSheet("QListView::item:hover{background-color:#00FFAA;}")
 
@@ -147,7 +147,6 @@ class QWList(QListView) :
         #self.butFile    .setIcon(icon.icon_save)  
         #self.setMinimumHeight(250)
         #self.setMinimumWidth(550)
-        #self.setContentsMargins(-5,-5,-5,-5) # QMargins(-5,-5,-5,-5)
         #self.adjustSize()
         #self.        setStyleSheet(style.styleBkgd)
         #self.butSave.setStyleSheet(style.styleButton)

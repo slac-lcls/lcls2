@@ -59,6 +59,7 @@ public:
         return _data;
     }
     uint64_t num_elem(){
+      if(!_shape) return 0;
         uint64_t _num_elem = _shape[0];
         for(uint32_t i=1; i<_rank;i++){_num_elem*=_shape[i];};
         return _num_elem;
@@ -77,7 +78,7 @@ protected:
     uint32_t *_shape;
     T        *_data;
     uint32_t  _rank;
-    Array(){}
+    Array() : _shape(0), _data(0), _rank(0) {}
 };
 
 }; // namespace XtcData

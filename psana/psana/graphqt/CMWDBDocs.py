@@ -93,7 +93,7 @@ class CMWDBDocs(QWidget) :
         self.setStyleSheet(style.styleBkgd)
         #self.but_close.setStyleSheet(style.styleButton)
         #self.setMinimumSize(600,360)
-        self.setContentsMargins(-9,-9,-9,-9)
+        self.layout().setContentsMargins(0,0,0,0)
 
 
     def set_docs_widget(self, docw=None):

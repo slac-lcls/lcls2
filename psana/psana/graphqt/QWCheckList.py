@@ -72,7 +72,7 @@ class QWCheckList(QtWidgets.QListView):
         self.setMinimumWidth(150)
         self.setMaximumWidth(500)
         self.setMinimumHeight(200)
-        self.setContentsMargins(QMargins(-9,-9,-9,-9))
+        self.setContentsMargins(0,0,0,0)
 
 
     def set_test_model(self) :

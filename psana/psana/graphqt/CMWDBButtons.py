@@ -54,7 +54,6 @@ class CMWDBButtons(QWidget) :
 
         self.lab_host = QLabel('Host:')
         self.lab_port = QLabel('Port:')
-        #self.lab_db_filter = QLabel('DB filter:')
         self.lab_docs = QLabel('Docs:')
 
         self.cmb_host = QComboBox(self)        
@@ -82,7 +81,6 @@ class CMWDBButtons(QWidget) :
         self.but_save     = QPushButton('Save')
         self.but_docs     = QPushButton('%s %s' % (cp.cdb_docw.value(), cp.char_expand))
         self.but_selm     = QPushButton('Selection %s' % cp.char_expand)
-        #self.but_level    = QPushButton('Add')
 
         self.list_of_buts = (
              self.but_exp_col,
@@ -95,51 +93,11 @@ class CMWDBButtons(QWidget) :
              self.but_selm,
              self.but_test
         )
-#             self.but_level,
 
         self.edi_db_filter = QLineEdit(cp.cdb_filter.value()) 
         self.edi_db_filter.setPlaceholderText('DB filter')       
-        #self.edi_db_filter.setReadOnly(True)  
-
-#        #self.tit_dir_work = QtGui.QLabel('Parameters:')
-#
-#        self.edi_dir_work = QLineEdit(cp.dir_work.value())        
-#        self.but_dir_work = QPushButton('Dir work:')
-#        self.edi_dir_work.setReadOnly(True)  
-#
-#        self.edi_dir_results = QLineEdit(cp.dir_results.value())        
-#        self.but_dir_results = PushButton('Dir results:')
-#        self.edi_dir_results.setReadOnly( True )  
-#
-#        self.lab_fname_prefix = QLabel('File prefix:')
-#        self.edi_fname_prefix = QLineEdit(cp.fname_prefix.value())        
-#
-#        self.lab_bat_queue  = QLabel('Queue:') 
-#        self.box_bat_queue  = QComboBox(self) 
-#        self.box_bat_queue.addItems(cp.list_of_queues)
-#        self.box_bat_queue.setCurrentIndex(cp.list_of_queues.index(cp.bat_queue.value()))
-#
-#        self.lab_dark_start = QLabel('Event start:') 
-
-#        self.but_show_vers  = QPushButton('Soft Vers')
-#        self.edi_dark_start = QLineEdit(str(cp.bat_dark_start.value()))#
-
-#        self.edi_dark_start .setValidator(QIntValidator(0,9999999,self))
-#        self.edi_rms_thr_min.setValidator(QDoubleValidator(0,65000,3,self))
-#        #self.edi_events.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp("[0-9]\\d{0,3}|end$"),self))
-#
-#        self.cbx_deploy_hotpix = QCheckBox('Deploy pixel_status')
-#        self.cbx_deploy_hotpix.setChecked(cp.dark_deploy_hotpix.value())
-
-#        self.grid = QGridLayout()
-#        self.grid.addWidget(self.lab_host, 0, 0)
-#        self.grid.addWidget(self.cmb_host, 0, 1, 1, 1)
-#        self.grid.addWidget(self.lab_port, 2, 0)
-#        self.grid.addWidget(self.cmb_port, 2, 1, 1, 1)
-#        self.setLayout(self.grid)
 
         self.hbox = QHBoxLayout() 
-        #self.hbox.addWidget(self.lab_db_filter)
         self.hbox.addWidget(self.edi_db_filter)
         self.hbox.addWidget(self.but_exp_col)
         self.hbox.addWidget(self.but_selm)
@@ -182,7 +140,6 @@ class CMWDBButtons(QWidget) :
         self.but_save   .clicked.connect(self.on_but_clicked)
         self.but_docs   .clicked.connect(self.on_but_clicked)
         self.but_selm   .clicked.connect(self.on_but_clicked)
-        #self.but_level  .clicked.connect(self.on_but_clicked)
  
         self.but_test.clicked .connect(self.on_but_clicked)
         self.but_test.released.connect(self.on_but_released)
@@ -245,14 +202,20 @@ class CMWDBButtons(QWidget) :
         #self.but_test.setFixedHeight(100) 
         #self.but_test.setIconSize(QSize(96,96)) 
 
-        self.setContentsMargins(-9,-9,-5,-9)
-
-        #size_hint = self.minimumSizeHint()
-        #self.setMinimumWidth(size_hint.width())
+        self.layout().setContentsMargins(0,0,0,0) # L,U,R,D
         self.setMinimumWidth(500)
-        self.setFixedHeight(50)
-        #self.setFixedHeight(size_hint.height())
-        #self.setMinimumSize(433,46)
+        self.setFixedHeight(30)
+
+        #buthi = 30
+        #self.but_tabs .setFixedHeight(buthi)
+        #self.but_buts .setFixedHeight(buthi)
+        #self.but_add  .setFixedHeight(buthi)
+        #self.but_del  .setFixedHeight(buthi)
+        #self.but_save .setFixedHeight(buthi)
+        #self.but_docs .setFixedHeight(buthi)
+        #self.but_selm .setFixedHeight(buthi)
+        #self.cmb_docw .setFixedHeight(buthi)
+        #self.cmb_level.setFixedHeight(buthi)
 
         self.but_tabs .setFixedWidth(55)
         self.but_buts .setFixedWidth(55)
@@ -265,18 +228,6 @@ class CMWDBButtons(QWidget) :
         self.cmb_level.setFixedWidth(80)
 
         self.edi_db_filter.setFixedWidth(80)
-
-#        self.tit_dir_work     .setStyleSheet(style.styleTitle)
-#        self.edi_dir_work     .setStyleSheet(style.styleEditInfo)       
-#        self.lab_fname_prefix .setStyleSheet(style.styleLabel)
-#        self.edi_fname_prefix .setStyleSheet(style.styleEdit)
-#        self.lab_pix_status   .setStyleSheet(style.styleTitleBold)
-#
-#        self.edi_dir_work    .setAlignment(QtCore.Qt.AlignRight)
-#        self.lab_pix_status  .setAlignment(QtCore.Qt.AlignLeft)
-#
-#    def set_parent(self,parent) :
-#        self.parent = parent
 
     #def resizeEvent(self, e):
     #    logger.debug('resizeEvent size: %s' % str(e.size())) 

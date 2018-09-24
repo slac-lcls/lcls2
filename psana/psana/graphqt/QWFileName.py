@@ -87,8 +87,9 @@ class QWFileName(QWidget) :
         self.setWindowTitle('File name selection widget')
         self.setMinimumWidth(300)
         self.edi.setMinimumWidth(210)
-        self.setFixedHeight(50 if self.show_frame else 34)
-        if not self.show_frame : self.setContentsMargins(-9,-9,-9,-9)
+        self.setFixedHeight(34) # 50 if self.show_frame else 34)
+        #if not self.show_frame : 
+        self.layout().setContentsMargins(0,0,0,0)
 
         #style = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
         #style = "background-color: rgb(100, 240, 200); color: rgb(0, 0, 0);" # Greenish

@@ -78,6 +78,9 @@ namespace psalg {
 template<typename T> 
 void calib_constants_nda(NDArray<T>& nda, rapidjson::Document& doc, const char* detector, const char* experiment=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL, const char* urlws=URLWS);
 
+
+void calib_constants_doc(rapidjson::Document& docdata, rapidjson::Document& docmeta, const char* detector, const char* experiment=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL, const char* urlws=URLWS);
+
 //-------------------
 
 template<typename TDATA> void response_string_to_data_array(const std::string& s, const TDATA*& pout, size_t& size);

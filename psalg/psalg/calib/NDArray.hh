@@ -86,18 +86,18 @@ public:
 
 //-------------------
 
-  inline void set_shape(shape_t* shape, const size_t ndim) {
+  inline void set_shape(shape_t* shape=NULL, const size_t ndim=0) {
     MSG(TRACE, "set_shape for ndim="<<ndim);
     assert(ndim<MAXNDIM);
     base::_rank=ndim;
-    std::memcpy(_shape, shape, sizeof(shape_t)*ndim);
     base::_shape = shape;
+    if(shape) std::memcpy(_shape, shape, sizeof(shape_t)*ndim);
   }
 
 //-------------------
 /// Converts string like "(5920, 388)" to array for _shape[]={5920, 388}
 
-  inline void set_shape(const std::string& str) {
+  inline void set_shape_string(const std::string& str) {
     MSG(DEBUG, "set_shape for " << str);
 
     std::string s(str.substr(1, str.size()-2)); // remove '(' and ')'
@@ -168,6 +168,19 @@ public:
   }
 
 //-------------------
+/// Reserves internal data buffer for array of requested size.
+/// For externally defined data buffer do not do anything,
+/// othervise reserves memory on heap.
+/// size is a number of values
+
+  inline void reserve_data_buffer(const size_t& size) {
+    MSG(TRACE, "In get_data_buffer size=" << size);
+    if(_buf_ext) return;
+    if(_buf_own) delete _buf_own;  
+    _buf_own = base::_data = new T[size];
+  }
+
+//-------------------
 
   friend std::ostream& 
   operator << (std::ostream& os, const NDArray& o) 
@@ -191,8 +204,6 @@ private:
   shape_t _shape[MAXNDIM];
   T* _buf_ext;
   T* _buf_own;
-  //T* _buf;
-
 
 public:
   /// Copy constructor and assignment are disabled by default

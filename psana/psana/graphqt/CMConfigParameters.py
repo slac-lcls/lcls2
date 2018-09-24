@@ -129,9 +129,14 @@ class CMConfigParameters(PSConfigParameters) :
 
 cp = CMConfigParameters()
 
+import psana.pscalib.calib.CalibConstants as cc
+cp.user = cc.USERNAME
+cp.upwd = cc.USERPW
+
 #------------------------------
 
 def test_CMConfigParameters() :
+    #import psana.pscalib.calib.CalibConstants as cc
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 

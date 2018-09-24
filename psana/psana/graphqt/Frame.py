@@ -43,7 +43,7 @@ class Frame(QtWidgets.QFrame):
         self.setMidLineWidth(mlw)
         self.setBoarderVisible(vis) 
         #self.setGeometry(self.parent.rect())
-        #self.setContentsMargins(QtCore.QMargins(-10,-10,-10,-10))
+        #self.setContentsMargins(0,0,0,0)
 
     def setBoarderVisible(self, vis=True) :
         if vis : self.setFrameShape(QtWidgets.QFrame.Box)

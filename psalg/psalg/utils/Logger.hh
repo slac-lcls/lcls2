@@ -305,7 +305,8 @@ public:
 #undef MSGSTREAM
 #endif
 #define MSGSTREAM(sev,strm) \
-    for(Logger::LogStream strm(std::string(),LL::sev,__MACROPARS); strm.ok(); strm.finish())
+    if (LOGGER.logging(LL::sev)) \
+      for(Logger::LogStream strm(std::string(),LL::sev,__MACROPARS); strm.ok(); strm.finish())
 
 //-------------------
 

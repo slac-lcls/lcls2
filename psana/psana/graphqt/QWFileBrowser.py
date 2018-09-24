@@ -105,8 +105,7 @@ class QWFileBrowser(QWidget) :
         self.but_close .setStyleSheet(style.styleButton)
         self.box_txt   .setReadOnly  (not self.is_editable)
         self.box_txt   .setStyleSheet(style.styleWhiteFixed) 
-        self.setContentsMargins(-9,-9,-9,-9)
-        #self.setContentsMargins(QMargins(-9,-9,-9,-9))
+        self.layout().setContentsMargins(0,0,0,0)
 
 
     def setListOfFiles(self, list):
