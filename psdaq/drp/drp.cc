@@ -34,10 +34,15 @@ void join_collection(Parameters& para)
     std::cout << "cmstate:\n" << collection.cmstate.dump(4) << std::endl;
 
     std::string id = std::to_string(collection.id());
-    std::cout << "DRP: " << id << std::endl;
+    // std::cout << "DRP: " << id << std::endl;
     para.tPrms.id = collection.cmstate["drp"][id]["drp_id"];
+    
+    const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
+    const unsigned tebPortBase = TEB_PORT_BASE + numPorts * para.partition;
+    const unsigned drpPortBase = DRP_PORT_BASE + numPorts * para.partition;
+    const unsigned mebPortBase = MEB_PORT_BASE + numPorts * para.partition;
 
-    para.tPrms.port = std::to_string(DRP_PORT_BASE + para.tPrms.id);
+    para.tPrms.port = std::to_string(drpPortBase + para.tPrms.id);
 
     uint64_t builders = 0;
     for (auto it : collection.cmstate["teb"].items()) {
@@ -46,7 +51,7 @@ void join_collection(Parameters& para)
         std::cout << "TEB: " << tebId << "  " << address << std::endl;
         builders |= 1ul << tebId;
         para.tPrms.addrs.push_back(address);
-        para.tPrms.ports.push_back(std::string(std::to_string(TEB_PORT_BASE + tebId)));
+        para.tPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
     }
     para.tPrms.builders = builders;
 
@@ -56,7 +61,7 @@ void join_collection(Parameters& para)
             std::string address = it.value()["connect_info"]["infiniband"];
             std::cout << "MEB: " << mebId << "  " << address << std::endl;
             para.mPrms.addrs.push_back(address);
-            para.mPrms.ports.push_back(std::string(std::to_string(MEB_PORT_BASE + mebId)));
+            para.mPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
         }
     }
 }
