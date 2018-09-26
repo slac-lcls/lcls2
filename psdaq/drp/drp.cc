@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
                    /* .maxInputSize  = */ maxSize,
                    /* .maxResultSize = */ maxSize,
                    /* .core          = */ { 11 + 0,
-                                            11 + 12 },
+                                            12 },
                    /* .verbose       = */ 0 };
 
     para.mPrms = { /* .addrs         = */ { },
