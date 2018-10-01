@@ -114,6 +114,8 @@ setup(name='smdreader',
                     "psana.smdreader",
                     sources=["psana/smdreader.pyx"],
                     include_dirs=["psana"],
+                    extra_compile_args=['-fopenmp'],
+                    extra_link_args=['-fopenmp'],
       ), build_dir=CYT_BLD_DIR))
 
 setup(name='eventbuilder', 

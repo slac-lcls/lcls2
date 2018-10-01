@@ -1,6 +1,8 @@
-from libc.stdlib cimport malloc, free
+from libc.stdlib cimport abort, malloc, free
 from libc.string cimport memcpy
 from posix.unistd cimport read
+from cython.parallel import parallel, prange
+import numpy as np
 
 cimport cython
 
@@ -22,6 +24,7 @@ cdef struct Buffer:
     char* chunk
     size_t got
     size_t offset
+    size_t prev_offset
     unsigned nevents
     unsigned long timestamp
     size_t block_offset
@@ -34,6 +37,9 @@ cdef class SmdReader:
     cdef Buffer *bufs
     cdef int nfiles
     cdef unsigned got_events
+    cdef unsigned long limit_ts
+    cdef size_t dgram_size
+    cdef size_t xtc_size
     
     def __init__(self, fds):
         self.chunksize = 0x100000
@@ -44,27 +50,40 @@ cdef class SmdReader:
             self.fds[i] = fds[i]
         self.bufs = NULL
         self.got_events = 0
+        self.limit_ts = 1
+        self.dgram_size = sizeof(Dgram)
+        self.xtc_size = sizeof(Xtc)
 
     def __dealloc__(self):
         # FIXME with cppclass?
         if self.bufs:
             for i in range(self.nfiles):
                 free(self.bufs[i].chunk)
+            free(self.bufs)
 
-    def _init_buffers(self):
-        for i in range(self.nfiles):
+    cdef inline void _init_buffers(self):
+        cdef int i
+        for i in prange(self.nfiles, nogil=True):
             self.bufs[i].chunk = <char *>malloc(self.chunksize)
             self.bufs[i].got = self._read_with_retries(i, 0, self.chunksize)
             self.bufs[i].offset = 0
+            self.bufs[i].prev_offset = 0
             self.bufs[i].nevents = 0
             self.bufs[i].timestamp = 0
             self.bufs[i].block_offset = 0
             self.bufs[i].block_size = 0
+
+    cdef inline void _reset_buffers(self):
+        for i in range(self.nfiles):
+            self.bufs[i].nevents = 0
+            self.bufs[i].block_size = 0
+            self.bufs[i].block_offset = self.bufs[i].offset
     
-    cdef inline size_t _read_with_retries(self, int buf_id, size_t displacement, size_t count):
+    cdef inline size_t _read_with_retries(self, int buf_id, size_t displacement, size_t count) nogil:
         cdef char* chunk = self.bufs[buf_id].chunk + displacement
         cdef size_t requested = count
         cdef size_t got = 0
+        cdef int attempt
         for attempt in range(self.maxretries):
             got = read(self.fds[buf_id], chunk, count);
             if got == count:
@@ -74,7 +93,7 @@ cdef class SmdReader:
                 count -= got
         return requested - count
     
-    cdef inline void _read_partial(self, int buf_id, size_t block_offset, size_t dgram_offset):
+    cdef inline void _read_partial(self, int buf_id, size_t block_offset, size_t dgram_offset) nogil:
         """ Reads partial chunk
         First copy what remains in the chunk to the begining of 
         the chunk then re-read to fill in the chunk.
@@ -91,34 +110,43 @@ cdef class SmdReader:
             self.bufs[buf_id].got = remaining + new_got
         self.bufs[buf_id].offset = dgram_offset - block_offset
 
-    def get(self, unsigned n_events = 1, unsigned long limit_ts = 1):
+    cdef inline void _reread(self) nogil:
+        cdef int idx = 0
+        for idx in prange(self.nfiles, nogil=True):
+            self._read_partial(idx, self.bufs[idx].block_offset, self.bufs[idx].prev_offset)
+            self.bufs[idx].block_offset = 0
+
+    def get(self, unsigned n_events = 1):
         if not self.bufs:
             self.bufs = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
             self._init_buffers()
         
         self.got_events = 0
-        for i in range(self.nfiles):
-            self.bufs[i].nevents = 0
-            self.bufs[i].block_size = 0
-            self.bufs[i].block_offset = self.bufs[i].offset 
-
+        self._reset_buffers()
+        
         cdef Dgram* d
         cdef size_t payload = 0
         cdef size_t remaining = 0
         cdef size_t dgram_offset = 0
         cdef int winner = 0 
+        cdef int needs_reread = 0
+        cdef int i_st = 0
+        cdef unsigned long current_max_ts = 0
+        cdef int current_winner = 0
+        cdef unsigned current_got_events = 0
 
         while self.got_events < n_events and self.bufs[winner].got > 0:
-            for i in range(self.nfiles):
+            for i in range(i_st, self.nfiles):
                 # read this file until hit limit timestamp
-                while self.bufs[i].timestamp < limit_ts and self.bufs[i].got > 0:
-                    dgram_offset = self.bufs[i].offset
+                while self.bufs[i].timestamp < self.limit_ts and self.bufs[i].got > 0:
+                    # remember previous offsets in case reread is needed
+                    self.bufs[i].prev_offset = self.bufs[i].offset
                     remaining = self.bufs[i].got - self.bufs[i].offset
-                    if sizeof(Dgram) <= remaining:
+                    if self.dgram_size <= remaining:
                         # get payload
                         d = <Dgram *>(self.bufs[i].chunk + self.bufs[i].offset)
-                        payload = d.xtc.extent - sizeof(Xtc)
-                        self.bufs[i].offset += sizeof(Dgram)
+                        payload = d.xtc.extent - self.xtc_size
+                        self.bufs[i].offset += self.dgram_size
                         remaining = self.bufs[i].got - self.bufs[i].offset
                         if payload <= remaining:
                             # got dgram
@@ -126,22 +154,35 @@ cdef class SmdReader:
                             self.bufs[i].nevents += 1
                             self.bufs[i].timestamp = <unsigned long>d.seq.high << 32 | d.seq.low
                         else:
-                            # not enough for the whole block, shift and reread
-                            self._read_partial(i, self.bufs[i].block_offset, dgram_offset)
-                            self.bufs[i].block_offset = 0
+                            needs_reread = 1 # not enough for the whole block, shift and reread all files
+                            break
                     else:
-                        # not enough for the whole block, shift and reread
-                        self._read_partial(i, self.bufs[i].block_offset, dgram_offset)
-                        self.bufs[i].block_offset = 0
+                        needs_reread = 1
+                        break
+                
+                if needs_reread:
+                    i_st = i # start with the current buffer
+                    break
+                
+                if self.bufs[i].timestamp > current_max_ts:
+                    current_max_ts = self.bufs[i].timestamp
+                    current_winner = i
+
+                if self.bufs[i].nevents > current_got_events:
+                    current_got_events = self.bufs[i].nevents
 
                 self.bufs[i].block_size = self.bufs[i].offset - self.bufs[i].block_offset
-            
-            #for i in range(self.nfiles):
-                if self.bufs[i].timestamp > limit_ts:
-                    limit_ts = self.bufs[i].timestamp + 1 
-                    winner = i
-                if self.bufs[i].nevents > self.got_events:
-                    self.got_events = self.bufs[i].nevents
+                
+            # shift and reread in parallel
+            if needs_reread:
+                self._reread()
+                needs_reread = 0
+            else:
+                i_st = 0 # make sure that unless reread, always start with buffer 0
+                winner = current_winner
+                self.limit_ts = current_max_ts + 1
+                self.got_events = current_got_events
+                current_got_events = 0
 
     def view(self, int buf_id):
         assert buf_id < self.nfiles
