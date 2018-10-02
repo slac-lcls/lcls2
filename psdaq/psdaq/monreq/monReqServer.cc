@@ -27,8 +27,8 @@ static const unsigned numberof_trBuffers   = 18; // From XtcMonitorServer
 static const unsigned numberof_xferBuffers =  8; // Revisit: Value; corresponds to drpEbContributor:maxEvents
 static const unsigned sizeof_buffers       = 1024; // Revisit
 static const char*    dflt_partition       = "Test";
-static const char*    dflt_rtMon_addr      = "tcp://psdev7b:55561";
-static const char*    dflt_coll_addr       = "drp-tst-acc06";
+static const char*    dflt_rtMon_host      = "psdev7b";
+static const char*    dflt_coll_host       = "drp-tst-acc06";
 
 static       unsigned lverbose             = 0;
 
@@ -324,7 +324,7 @@ using namespace Pds;
 void usage(char* progname)
 {
   printf("\n<MRQ_spec> has the form '<id>:<addr>:<port>'\n");
-  printf("<id> must be in the range 0 - %d.\n", MAX_TEBS - 1);
+  printf("<id> must be in the range 0 - %d.\n", MAX_MEBS - 1);
   printf("Low numbered <port> values are treated as offsets into the following range:\n");
   printf("  Mon requests: %d - %d\n", MRQ_PORT_BASE, MRQ_PORT_BASE + MAX_MEBS - 1);
 
@@ -363,12 +363,12 @@ void joinCollection(std::string&              server,
 
   std::string id = std::to_string(collection.id());
   mebId = collection.cmstate["meb"][id]["meb_id"];
-  std::cout << "MEB: " << mebId << std::endl;
+  //std::cout << "MEB: ID " << mebId << std::endl;
 
   for (auto it : collection.cmstate["drp"].items())
   {
     unsigned ctrbId = it.value()["drp_id"];
-    std::cout << "DRP: " << ctrbId << std::endl;
+    //std::cout << "DRP: ID " << ctrbId << std::endl;
     contributors |= 1ul << ctrbId;
   }
 
@@ -376,10 +376,10 @@ void joinCollection(std::string&              server,
   {
     unsigned    tebId  = it.value()["teb_id"];
     std::string address = it.value()["connect_info"]["infiniband"];
-    std::cout << "TEB: " << tebId << "  " << address << std::endl;
+    //std::cout << "TEB: ID " << tebId << "  " << address << std::endl;
     addrs.push_back(address);
     ports.push_back(std::string(std::to_string(portBase + tebId)));
-    printf("MRQ Clt[%d] port = %d\n", tebId, portBase + tebId);
+    //printf("MRQ Clt[%d] port = %d\n", tebId, portBase + tebId);
   }
 }
 
@@ -395,13 +395,13 @@ int main(int argc, char** argv)
   bool           ldist           = false;
   unsigned       id              = default_id;
   char*          ifAddr          = nullptr;
-  unsigned       mebPortNo       = MEB_PORT_BASE; // Port served to contributors
+  unsigned       mebPortNo       = 0;   // Port served to contributors
   uint64_t       contributors    = 0;
   std::string    partition        (dflt_partition);
-  const char*    rtMonAddr       = dflt_rtMon_addr;
+  const char*    rtMonHost       = dflt_rtMon_host;
   unsigned       rtMonPeriod     = rtMon_period;
   unsigned       rtMonVerbose    = 0;
-  std::string    collSvr         = dflt_coll_addr;
+  std::string    collSvr         = dflt_coll_host;
 
   int c;
   while ((c = getopt(argc, argv, "p:n:P:s:q:t:dA:E:i:c:Z:m:C:Vvh")) != -1)
@@ -435,7 +435,7 @@ int main(int argc, char** argv)
       case 'E':  mebPortNo    = atoi(optarg);                 break;
       case 'i':  id           = atoi(optarg);                 break;
       case 'c':  contributors = strtoul(optarg, nullptr, 0);  break;
-      case 'Z':  rtMonAddr    = optarg;                       break;
+      case 'Z':  rtMonHost    = optarg;                       break;
       case 'm':  rtMonPeriod  = atoi(optarg);                 break;
       case 'C':  collSvr      = optarg;                       break;
       case 'V':  ++rtMonVerbose;                              break;
@@ -456,6 +456,10 @@ int main(int argc, char** argv)
   if (!tag) tag=partition.c_str();
   printf("Partition Tag: '%s'\n", tag);
 
+  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
+  const unsigned mrqPortBase = MRQ_PORT_BASE + numPorts * platform;
+  const unsigned mebPortBase = MEB_PORT_BASE + numPorts * platform;
+
   std::vector<std::string> mrqAddrs;
   std::vector<std::string> mrqPorts;
   if (optind < argc)
@@ -471,11 +475,11 @@ int main(int argc, char** argv)
         return 1;
       }
       unsigned port = atoi(&colon2[1]);
-      if (port < MAX_TEBS)  port += MRQ_PORT_BASE;
-      if ((port < MRQ_PORT_BASE) || (port >= MRQ_PORT_BASE + MAX_TEBS))
+      if (port < MAX_MEBS)  port += mrqPortBase;
+      if ((port < mrqPortBase) || (port >= mrqPortBase + MAX_MEBS))
       {
         fprintf(stderr, "MRQ client port %d is out of range %d - %d\n",
-                port, MRQ_PORT_BASE, MRQ_PORT_BASE + MAX_TEBS);
+                port, mrqPortBase, mrqPortBase + MAX_MEBS);
         return 1;
       }
       mrqAddrs.push_back(std::string(&colon1[1]).substr(0, colon2 - &colon1[1]));
@@ -485,7 +489,7 @@ int main(int argc, char** argv)
   }
   else
   {
-    joinCollection(collSvr, platform, MRQ_PORT_BASE, contributors, mrqAddrs, mrqPorts, id);
+    joinCollection(collSvr, platform, mrqPortBase, contributors, mrqAddrs, mrqPorts, id);
   }
   if (id >= MAX_MEBS)
   {
@@ -498,14 +502,15 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  if ((mebPortNo < MEB_PORT_BASE) || (mebPortNo >= MEB_PORT_BASE + MAX_MEBS))
+  if  (mebPortNo < MAX_MEBS)  mebPortNo += mebPortBase;
+  if ((mebPortNo < mebPortBase) || (mebPortNo >= mebPortBase + MAX_MEBS))
   {
     fprintf(stderr, "MEB Server port %d is out of range %d - %d\n",
-            mebPortNo, MEB_PORT_BASE, MEB_PORT_BASE + MAX_MEBS);
+            mebPortNo, mebPortBase, mebPortBase + MAX_MEBS);
     return 1;
   }
   std::string mebPort(std::to_string(mebPortNo + id));
-  printf("MEB Srv port = %s\n", mebPort.c_str());
+  //printf("MEB Srv port = %s\n", mebPort.c_str());
 
   if (!numberofBuffers || !sizeofEvBuffers || platform == NO_PLATFORM || !contributors) {
     fprintf(stderr, "Missing parameters!\n");
@@ -515,7 +520,8 @@ int main(int argc, char** argv)
 
   EbAppBase::lverbose = lverbose;
 
-  StatsMonitor*       smon = new StatsMonitor(rtMonAddr,
+  StatsMonitor*       smon = new StatsMonitor(rtMonHost,
+                                              platform,
                                               partition,
                                               rtMonPeriod,
                                               rtMonVerbose);

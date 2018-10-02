@@ -239,7 +239,8 @@ class QWLoggerStd(QWidget) :
         self.but_rand  .setVisible(self.show_buttons)
         self.but_close .setVisible(self.show_buttons)
 
-        if not self.show_buttons : self.setContentsMargins(-9,-9,-9,-9)
+        #if not self.show_buttons : 
+        self.layout().setContentsMargins(0,0,0,0)
         #self.setMinimumSize(300,50)
         #self.setBaseSize(500,200)
 

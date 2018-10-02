@@ -16,7 +16,8 @@ namespace Pds {
     public:
       enum Mode { SCALAR, RATE, CHANGE };
     public:
-      StatsMonitor(const std::string& addr,
+      StatsMonitor(const char*        hostname,
+                   unsigned           platform,
                    const std::string& partition,
                    unsigned           period,
                    unsigned           verbose);
@@ -34,7 +35,7 @@ namespace Pds {
       std::vector<std::string> _names;
       std::vector<Mode>        _modes;
     private:
-      const std::string        _addr;
+      char                     _addr[128];
       const std::string        _partition;
       const unsigned           _period;
       const unsigned           _verbose;

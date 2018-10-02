@@ -115,7 +115,8 @@ class QWLogger(QWidget) :
         self.but_save  .setVisible(self.show_buttons)
         self.but_close .setVisible(self.show_buttons)
 
-        if not self.show_buttons : self.setContentsMargins(-9,-9,-9,-9)
+        #if not self.show_buttons : 
+        self.layout().setContentsMargins(0,0,0,0)
         self.setMinimumHeight(50)
         self.setMinimumSize(300,50)
         #self.setBaseSize(500,200)
@@ -245,7 +246,7 @@ class QWLogger(QWidget) :
 if __name__ == "__main__" :
     import sys
     from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
-    from psana.pyalgos.generic.Logger import logger as log
+    from psana.pyalgos.generic.LoggerLight import logger as log
     from PyQt5.QtWidgets import QApplication
 
     cp = PSConfigParameters()

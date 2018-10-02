@@ -1,5 +1,5 @@
 //-------------------
-#include <algorithm>    // std::sort, reverse
+#include <algorithm>    // std::sort, reverse, replace
 #include <iostream> //ostream
 #include <array> //array
 
@@ -20,7 +20,6 @@
 //using namespace rapidjson;
 
 #include <sstream> // std::stringstream
-
 //using namespace psalg;
 
 namespace psalg {
@@ -157,7 +156,8 @@ void response_string_to_data_array(const std::string& sresp, const TDATA*& pout,
 }
 
 //-------------------
-///Returns string URL like "https://pswww-dev.slac.stanford.edu//calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
+/// Combines urlws, dbname, colname, and query in an output string url.
+/// Return e.g. "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
 
 void string_url_with_query(std::string& url, const char* dbname, const char* colname, const char* query, const char* urlws) {
   url = urlws;
@@ -281,32 +281,36 @@ const rapidjson::Value& find_doc(rapidjson::Document& jdoc, const char* dbname, 
 
   std::string squery(query);
   const char* key_sort = (squery.find("time_sec") == std::string::npos) ? "run" : "time_sec";
-  MSG(DEBUG, "find_doc: key_sort:" << key_sort << '\n');
+  MSG(DEBUG, "find_doc: key_sort:" << key_sort);
 
   std::vector<int> values;
-  MSGSTREAM(INFO, out) {
+  for(rapidjson::Value::ConstValueIterator itr = v.Begin(); itr != v.End(); ++itr) {
+     values.push_back((*itr)[key_sort].GetInt());
+  }
+
+  MSGSTREAM(DEBUG, out) {
     for(rapidjson::Value::ConstValueIterator itr = v.Begin(); itr != v.End(); ++itr) {
       const rapidjson::Value& d = *itr;
       out << "\n  doc for"  
           << " run: " << std::setw(4) << d["run"].GetInt() 
           << " time_sec: " << d["time_sec"].GetInt() 
           << " time_stamp: " << d["time_stamp"].GetString();
-      values.push_back(d[key_sort].GetInt());
     }
   }
 
-  MSGSTREAM(INFO, out) {
+  MSGSTREAM(DEBUG, out) {
+    out << "unsorted:";
     for(std::vector<int>::iterator it=values.begin(); it!=values.end(); ++it) out << ' ' << *it;
   }
 
   // sort std::vector values
   std::sort(values.begin(), values.end(), [](const int a, const int b){return a > b;});
 
-  MSGSTREAM(INFO, out) {
+  MSGSTREAM(DEBUG, out) {
+    out << "  sorted:";
     for(std::vector<int>::iterator it=values.begin(); it!=values.end(); ++it) out << ' ' << *it;
+    out << "\n find_doc: key_sort:" << key_sort << " value selected:" << values[0];
   }
-  
-  MSG(DEBUG, "find_doc: key_sort:" << key_sort << " value selected:" << values[0] << '\n');
   
   for(rapidjson::Value::ConstValueIterator itr = v.Begin(); itr != v.End(); ++itr) {
     const rapidjson::Value& d = *itr;
@@ -322,7 +326,7 @@ const rapidjson::Value& find_doc(rapidjson::Document& jdoc, const char* dbname, 
 void get_doc_for_docid(rapidjson::Document& jdoc, const char* dbname, const char* colname, const char* docid, const char* urlws) {
   std::string url(urlws);
   url += '/'; url += dbname; url += '/'; url += colname; url += '/'; url += docid;
-  MSG(DEBUG, "get_doc_for_docid url: \"" << url << "\"\n");
+  MSG(DEBUG, "get_doc_for_docid url: \"" << url << "\"");
   std::string sresp;
   request(sresp, url.c_str());
   response_to_json_doc(sresp, jdoc);
@@ -334,7 +338,7 @@ void get_doc_for_docid(rapidjson::Document& jdoc, const char* dbname, const char
 
 void get_data_for_id(std::string& sresp, const char* dbname, const char* dataid, const char* urlws) {
   std::string url(urlws); url += '/'; url += dbname; url += "/gridfs/"; url += dataid;
-  MSG(DEBUG, "get_doc_for_docid url: \"" << url << "\"\n");
+  MSG(DEBUG, "get_doc_for_docid url: \"" << url << "\"");
   request(sresp, url.c_str());
   //MSG(DEBUG, "XXX RAW data string:\n\n" << sresp.substr(0,200));
 }
@@ -355,23 +359,219 @@ void get_data_for_docid(std::string& sresp, const char* dbname, const char* coln
 
 void get_data_for_doc(std::string& sresp, const char* dbname, const char* colname, const rapidjson::Value& jdoc, const char* urlws) {
   const char* docid = jdoc["_id"].GetString();
-  MSG(DEBUG, "get_data_for_doc docid: \"" << docid << "\"\n");
+  MSG(DEBUG, "get_data_for_doc docid: \"" << docid << "\"");
   get_data_for_docid(sresp, dbname, colname, docid, urlws);
 }
 
 //-------------------
-/// Returns byte-string data for specified parameters. 
-/// Then byte-string data can be decoded to expected formats.
+/// Returns database name with prefix, e.g. returns "cdb_cxi12345" for name="cxi12345".
+  const std::string db_prefixed_name(const char* name, const char* prefix) {
+    std::string s(prefix);
+    s += name;
+    MSG(DEBUG, "db_prefixed_name " << s << " size " << s.size());
+    assert(s.size()< 128); 
+    return s;
+  }
 
-void calib_constants(std::string& sresp, const char* det, const char* exp, const char* ctype, const unsigned run, const unsigned time_sec, const char* version, const char* urlws) {
-  MSG(DEBUG, "calib_constants for det: " << det << '\n');
+//-------------------
+/// Returns db_det, db_exp, det, query combined form input parameters.
+/// e.g. const char* query = "{\"ctype\":\"pedestals\", \"run\":{\"$gte\": 87}}";
+/// e.g. {"detector":"cspad_0001", "ctype":"pedestals", "run":{"$lte":10}, "time_sec":{"$lte":1234567890}}
+
+//std::map<std::string, std::string>
+//dbnames_collection_query(const char* det, const char* exp, const char* ctype, const unsigned run, const unsigned time_sec, const char* vers) {
+
+void
+dbnames_collection_query(std::map<std::string, std::string>& omap, const char* det, const char* exp, const char* ctype, const unsigned run, const unsigned time_sec, const char* vers) {
+  MSG(DEBUG, "dbnames_collection_query for det: " << det);
+
+  bool cond = (run>0) || (time_sec>0) || vers;
+  assert(cond);
+
+  const std::string db_det = (det) ? db_prefixed_name(det) : "";
+  const std::string db_exp = (exp) ? db_prefixed_name(exp) : "";  
+
+  omap["db_det"] = db_det;
+  omap["db_exp"] = db_exp;
+  omap["colname"] = (det) ? det : "";
+
+  std::stringstream qss; 
+  qss << "{|detector|:|" << det << '|'; 
+  qss << ", |ctype|:|" << ctype << '|'; 
+  if(run) qss << ", |run|:{|$lte|:" << run << '}'; 
+  if(time_sec) qss << ", |time_sec|:{|$lte|:" << time_sec << '}';  
+  if(vers) qss << ", |version|:|" << vers << '|';
+  qss << '}';  
+  std::string qs = qss.str();
+  std::replace(qs.begin(), qs.end(), '|', '"');
+  omap["query"] = qs;
+  // MSG(DEBUG, "query  = " << qs);
 }
 
 //-------------------
+/// Returns byte-string data and rapidjson::Document for specified parameters. 
+/// Then byte-string data can be decoded to format defined in the document.
 
-  template void response_string_to_data_array<int>   (const std::string&, const int*&,    size_t&); 
-  template void response_string_to_data_array<float> (const std::string&, const float*&,  size_t&); 
-  template void response_string_to_data_array<double>(const std::string&, const double*&, size_t&); 
+void calib_constants(std::string& sresp, rapidjson::Document& doc,
+                     const char* det, const char* exp, const char* ctype, 
+                     const unsigned run, const unsigned time_sec, const char* vers, const char* urlws) {
+  MSG(DEBUG, "In calib_constants for det: " << det << " ctype: " << ctype);
+ 
+  //assert(det);
+  if(! det) {
+    MSG(WARNING, "Collection/detector name is not defined");
+    sresp.clear();
+    return;
+  }
+
+  std::map<std::string, std::string> omap;
+  dbnames_collection_query(omap, det, exp, ctype, run, time_sec, vers);
+
+  const std::string& query   = omap["query"]; // "{\"ctype\":\"pedestals\", \"run\":{\"$lte\": 87}}";
+  const std::string& db_det  = omap["db_det"];
+  const std::string& db_exp  = omap["db_exp"];
+  const std::string& colname = omap["colname"];
+
+  MSG(DEBUG, "calib_constants:"
+      << "\ncolname: " << colname
+      << "\ndb_det : " << db_det
+      << "\ndb_exp : " << db_exp
+      << "\nquery  : " << query);
+
+  // Use preferably experimental DB and the detector DB othervise
+  const std::string& dbname = (exp) ? db_exp : db_det;
+
+  rapidjson::Document outdocs;
+  const rapidjson::Value& jdoc = find_doc(outdocs, dbname.c_str(), colname.c_str(), query.c_str(), urlws);
+
+  //assert(! jdoc.IsNull());
+  if(jdoc.IsNull()) {
+    MSG(WARNING, "DOCUMENT IS NOT FOUND FOR QUERY = " << query);
+    sresp.clear();
+    return;
+  }
+
+  // Deep copy of found Value to output Document
+  std::string sdoc = json_doc_to_string(jdoc);
+  response_to_json_doc(sdoc, doc);
+  //MSG(DEBUG, "doc : " << sdoc);
+
+  get_data_for_doc(sresp, dbname.c_str(), colname.c_str(), doc, urlws);
+}
+
+//-------------------
+// Returns NDArray of constants and Document with metadata
+
+template<typename T> 
+void calib_constants_nda(NDArray<T>& nda, rapidjson::Document& doc, const char* det, const char* exp, const char* ctype,
+                         const unsigned run, const unsigned time_sec, const char* vers, const char* urlws) {
+  MSG(TRACE, "In calib_constants_nda<T> for det: " << det << " ctype: " << ctype);
+
+  std::string sresp;
+  calib_constants(sresp, doc, det, exp, ctype, run, time_sec, vers, urlws);
+  MSG(DEBUG, "doc: " << json_doc_to_string(doc));
+
+  const std::string sshape = doc["data_shape"].GetString();
+  nda.set_shape_string(sshape);
+  nda.set_data_copy(sresp.data()); // deep copy string/byte array to nda data buffer
+
+  MSG(DEBUG, "nda: " << nda);
+} 
+
+//-------------------
+// Returns rapidjson::Document of constants and rapidjson::Document with metadata
+
+void calib_constants_doc(rapidjson::Document& docdata, rapidjson::Document& doc, const char* det, const char* exp, const char* ctype,
+                         const unsigned run, const unsigned time_sec, const char* vers, const char* urlws) {
+  MSG(TRACE, "In calib_constants_doc for det: " << det << " ctype: " << ctype);
+
+  std::string sresp;
+  calib_constants(sresp, doc, det, exp, ctype, run, time_sec, vers, urlws);
+  MSG(DEBUG, "metadata doc: " << json_doc_to_string(doc));
+
+  response_to_json_doc(sresp, docdata); // converts sresp -> rapidjson::Document
+
+  MSG(DEBUG, "data doc: " << json_doc_to_string(docdata));
+} 
+
+//-------------------
+
+// string is used as a container for byte-string, but...
+// PROBLEM: there is no way to pass external buffer to string witout copy,
+// PROBLEM: string constructor always copies buffer in its own memory...
+
+/*
+template<typename T> 
+void calib_constants_nda_unusable(NDArray<T>& nda, rapidjson::Document& doc, const char* det, const char* exp, const char* ctype,
+                                  const unsigned run, const unsigned time_sec, const char* vers, const char* urlws) {
+  MSG(TRACE, "In calib_constants_nda<T> for det: " << det << " ctype: " << ctype);
+
+  //assert(det);
+  if(! det) {
+    MSG(WARNING, "Collection/detector name is not defined");
+    nda.set_shape();
+    return;
+  }
+
+  std::map<std::string, std::string> omap;
+  dbnames_collection_query(omap, det, exp, ctype, run, time_sec, vers);
+
+  const std::string& query   = omap["query"]; // "{\"ctype\":\"pedestals\", \"run\":{\"$lte\": 87}}";
+  const std::string& db_det  = omap["db_det"];
+  const std::string& db_exp  = omap["db_exp"];
+  const std::string& colname = omap["colname"];
+
+  MSG(DEBUG, "calib_constants:"
+      << "\ncolname: " << colname
+      << "\ndb_det : " << db_det
+      << "\ndb_exp : " << db_exp
+      << "\nquery  : " << query);
+
+  // Use preferably experimental DB and the detector DB othervise
+  const std::string& dbname = (exp) ? db_exp : db_det;
+
+  rapidjson::Document outdocs;
+  const rapidjson::Value& jdoc = find_doc(outdocs, dbname.c_str(), colname.c_str(), query.c_str(), urlws);
+
+  //assert(! jdoc.IsNull());
+  if(jdoc.IsNull()) {
+    MSG(WARNING, "DOCUMENT IS NOT FOUND FOR QUERY = " << query);
+    nda.set_shape();
+    return;
+  }
+
+  // Deep copy of found Value to output Document
+  std::string sdoc = json_doc_to_string(jdoc);
+  response_to_json_doc(sdoc, doc);
+  //MSG(DEBUG, "doc : " << sdoc);
+
+  const std::string sshape = doc["data_shape"].GetString();
+  nda.set_shape_string(sshape);
+  size_t size = nda.size();
+  nda.reserve_data_buffer(size);
+
+  //=============================================================
+  // s.data() buffer is not the same as nda.data() !!!!!!
+  std::string s(reinterpret_cast<char const*>(nda.data()), size);
+  //=============================================================
+
+  get_data_for_doc(s, dbname.c_str(), colname.c_str(), doc, urlws);
+
+  MSG(DEBUG, "nda: " << nda);
+} 
+*/
+
+//-------------------
+
+template void calib_constants_nda<int>(NDArray<int>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
+template void calib_constants_nda<float>(NDArray<float>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
+template void calib_constants_nda<double>(NDArray<double>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
+
+//-------------------
+
+template void response_string_to_data_array<int>   (const std::string&, const int*&,    size_t&); 
+template void response_string_to_data_array<float> (const std::string&, const float*&,  size_t&); 
+template void response_string_to_data_array<double>(const std::string&, const double*&, size_t&); 
 
 //template class psalg::int_string_data_as_array<float>; 
 

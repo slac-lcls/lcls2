@@ -193,7 +193,7 @@ class CMWDBMain(QWidget) :
         #                 self.main_win_height.value())
         #w = self.main_win_width.value()
 
-        self.setContentsMargins(-9,-9,-9,-9)
+        self.layout().setContentsMargins(0,0,0,0)
 
         self.wtree.setMinimumWidth(100)
         self.wtree.setMaximumWidth(600)
@@ -205,7 +205,6 @@ class CMWDBMain(QWidget) :
         #logger.debug('saveState: %s' % self.hspl.saveState())
         #self.hspl.restoreState(state)
 
-        #self.wrig.setContentsMargins(-9,-9,-9,-9)
         #self.wrig.setMinimumWidth(350)
         #self.wrig.setMaximumWidth(450)
         #self.setFixedSize(800,500)

@@ -91,7 +91,7 @@ class QWPopupSelectItem(QtWidgets.QDialog) :
         #self.setMaximumWidth(600)
         #self.setStyleSheet(cp.styleBkgd)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-        self.setContentsMargins(QMargins(-9,-9,-9,-9))
+        self.layout().setContentsMargins(0,0,0,0)
         #self.setStyleSheet(cp.styleBkgd)
         #self.but_cancel.setStyleSheet(cp.styleButton)
         #self.but_apply.setStyleSheet(cp.styleButton)

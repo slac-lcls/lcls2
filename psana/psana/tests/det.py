@@ -4,7 +4,8 @@ import numpy as np
 
 def det():
     ds = DataSource('data.xtc')
-    det = ds.Detector('xppcspad')
+    for run in ds.runs(): # Detector is created based on per-run config. 
+        det = ds.Detector('xppcspad')
 
 '''
     for evt in ds.events():

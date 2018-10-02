@@ -42,8 +42,8 @@ static const size_t   result_extent    = 2;    // Revisit: Number of "L3" result
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const char*    dflt_partition   = "Test";
-static const char*    dflt_rtMon_addr  = "tcp://psdev7b:55561";
-static const char*    dflt_coll_addr   = "drp-tst-acc06";
+static const char*    dflt_rtMon_host  = "psdev7b";
+static const char*    dflt_coll_host   = "drp-tst-acc06";
 static const unsigned mon_epochs       = 1;    // Revisit: Corresponds to monReqServer::numberof_epochs
 static const unsigned mon_transitions  = 18;   // Revisit: Corresponds to monReqServer::numberof_trBuffers
 static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReqServer:numberofEvBuffers
@@ -425,13 +425,13 @@ void usage(char *name, char *desc, EbCtrbParams& prms)
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-m <seconds>",
           "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
-          "Run-time monitoring ZMQ server address",   dflt_rtMon_addr);
+          "Run-time monitoring ZMQ server host",      dflt_rtMon_host);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
           "Partition tag",                            dflt_partition);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
           "Partition number",                         0);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-C <address>",
-          "Collection server",                        dflt_coll_addr);
+          "Collection server",                        dflt_coll_host);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    prms.core[0]);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
@@ -501,18 +501,18 @@ void joinCollection(std::string&   server,
 
   std::string id = std::to_string(collection.id());
   tebPrms.id = collection.cmstate["drp"][id]["drp_id"];
-  std::cout << "DRP: " << tebPrms.id << std::endl;
+  //std::cout << "DRP: ID " << tebPrms.id << std::endl;
 
   uint64_t builders = 0;
   for (auto it : collection.cmstate["teb"].items())
   {
     unsigned    tebId   = it.value()["teb_id"];
     std::string address = it.value()["connect_info"]["infiniband"];
-    std::cout << "TEB: " << tebId << "  " << address << std::endl;
+    //std::cout << "TEB: ID " << tebId << "  " << address << std::endl;
     builders |= 1ul << tebId;
     tebPrms.addrs.push_back(address);
     tebPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
-    printf("TEB Clt[%d] port = %d\n", tebId, tebPortBase + tebId);
+    //printf("TEB Clt[%d] port = %d\n", tebId, tebPortBase + tebId);
   }
   tebPrms.builders = builders;
 
@@ -522,10 +522,10 @@ void joinCollection(std::string&   server,
     {
       unsigned    mebId   = it.value()["meb_id"];
       std::string address = it.value()["connect_info"]["infiniband"];
-      std::cout << "MEB: " << mebId << "  " << address << std::endl;
+      //std::cout << "MEB: ID " << mebId << "  " << address << std::endl;
       mebPrms.addrs.push_back(address);
       mebPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
-      printf("MEB Clt[%d] port = %d\n", mebId, mebPortBase + mebId);
+      //printf("MEB Clt[%d] port = %d\n", mebId, mebPortBase + mebId);
     }
   }
 }
@@ -540,14 +540,14 @@ int main(int argc, char **argv)
   int            op, ret      = 0;
   unsigned       partition    = NO_PARTITION;
   std::string    partitionTag  (dflt_partition);
-  const char*    rtMonAddr    = dflt_rtMon_addr;
+  const char*    rtMonHost    = dflt_rtMon_host;
   unsigned       rtMonPeriod  = rtMon_period;
   unsigned       rtMonVerbose = 0;
-  unsigned       drpPortNo    = DRP_PORT_BASE;  // Port served to TEBs
+  unsigned       drpPortNo    = 0;      // Port served to TEBs
   char*          tebSpec      = nullptr;
   char*          mebSpec      = nullptr;
   char*          outDir       = nullptr;
-  std::string    collSrv      = dflt_coll_addr;
+  std::string    collSrv      = dflt_coll_host;
   EbCtrbParams   tebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
                            /* .ifAddr        = */ nullptr,
@@ -585,7 +585,7 @@ int main(int argc, char **argv)
       case 'b':  tebPrms.maxBatches = atoi(optarg);       break;
       case 'e':  tebPrms.maxEntries = atoi(optarg);       break;
       case 'm':  rtMonPeriod        = atoi(optarg);       break;
-      case 'Z':  rtMonAddr          = optarg;             break;
+      case 'Z':  rtMonHost          = optarg;             break;
       case 'P':  partitionTag       = optarg;             break;
       case 'p':  partition          = std::stoi(optarg);  break;
       case 'n':  mebPrms.maxEvents  = atoi(optarg);       break;
@@ -609,12 +609,17 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
+  const unsigned tebPortBase = TEB_PORT_BASE + numPorts * partition;
+  const unsigned drpPortBase = DRP_PORT_BASE + numPorts * partition;
+  const unsigned mebPortBase = MEB_PORT_BASE + numPorts * partition;
+
   if (tebSpec)
   {
     int rc = parseSpec("TEB",
                        tebSpec,
                        MAX_TEBS - 1,
-                       TEB_PORT_BASE,
+                       tebPortBase,
                        tebPrms.addrs,
                        tebPrms.ports,
                        &tebPrms.builders);
@@ -629,7 +634,7 @@ int main(int argc, char **argv)
     int rc = parseSpec("MEB",
                        mebSpec,
                        MAX_MEBS - 1,
-                       MEB_PORT_BASE,
+                       mebPortBase,
                        mebPrms.addrs,
                        mebPrms.ports,
                        &unused);
@@ -638,7 +643,7 @@ int main(int argc, char **argv)
 
   if (!tebSpec && !mebSpec)
   {
-    joinCollection(collSrv, partition, TEB_PORT_BASE, MEB_PORT_BASE, tebPrms, mebPrms);
+    joinCollection(collSrv, partition, tebPortBase, mebPortBase, tebPrms, mebPrms);
   }
   if (tebPrms.id >= MAX_DRPS)
   {
@@ -652,14 +657,15 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  if ((drpPortNo < DRP_PORT_BASE) || (drpPortNo >= DRP_PORT_BASE + MAX_DRPS))
+  if  (drpPortNo < MAX_DRPS)  drpPortNo += drpPortBase;
+  if ((drpPortNo < drpPortBase) || (drpPortNo >= drpPortBase + MAX_DRPS))
   {
     fprintf(stderr, "DRP Server port %d is out of range %d - %d\n",
-            drpPortNo, DRP_PORT_BASE, DRP_PORT_BASE + MAX_DRPS);
+            drpPortNo, drpPortBase, drpPortBase + MAX_DRPS);
     return 1;
   }
   tebPrms.port = std::to_string(drpPortNo + tebPrms.id);
-  printf("DRP Srv port = %s\n", tebPrms.port.c_str());
+  //printf("DRP Srv port = %s\n", tebPrms.port.c_str());
 
 
   if (tebPrms.maxEntries > tebPrms.duration)
@@ -676,7 +682,7 @@ int main(int argc, char **argv)
   printf("  Thread core numbers:        %d, %d\n",          tebPrms.core[0], tebPrms.core[1]);
   printf("  Partition:                  %d: '%s'\n",        partition, partitionTag.c_str());
   printf("  Run-time monitoring period: %d\n",              rtMonPeriod);
-  printf("  Run-time monitoring server: %s\n",              rtMonAddr);
+  printf("  Run-time monitoring host:   %s\n",              rtMonHost);
   printf("  Number of Monitor EBs:      %zd\n",             mebPrms.addrs.size());
   printf("  Batch duration:             %014lx = %ld uS\n", tebPrms.duration, tebPrms.duration);
   printf("  Batch pool depth:           %d\n",              tebPrms.maxBatches);
@@ -684,7 +690,7 @@ int main(int argc, char **argv)
   printf("\n");
 
   pinThread(pthread_self(), tebPrms.core[1]);
-  StatsMonitor* smon = new StatsMonitor(rtMonAddr, partitionTag, rtMonPeriod, rtMonVerbose);
+  StatsMonitor* smon = new StatsMonitor(rtMonHost, partition, partitionTag, rtMonPeriod, rtMonVerbose);
   lstatsMon = smon;
 
   pinThread(pthread_self(), tebPrms.core[0]);

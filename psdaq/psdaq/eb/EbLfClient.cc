@@ -30,7 +30,10 @@ int EbLfClient::connect(const char* peer,
                         unsigned    tmo,
                         EbLfLink**  link)
 {
-  Fabric* fab = new Fabric(peer, port);
+  const uint64_t flags  = 0;
+  const size_t   txSize = 0;
+  const size_t   rxSize = 0;
+  Fabric* fab = new Fabric(peer, port, flags, txSize, rxSize);
   if (!fab || !fab->up())
   {
     fprintf(stderr, "%s: Failed to create Fabric for %s:%s: %s\n",
@@ -60,7 +63,8 @@ int EbLfClient::connect(const char* peer,
   uint64_t  dT = 0;
   while (true)
   {
-    ep = new Endpoint(fab, txcq, nullptr);
+    CompletionQueue* rxcq = nullptr;
+    ep = new Endpoint(fab, txcq, rxcq);
     if (!ep || (ep->state() != EP_UP))
     {
       fprintf(stderr, "%s: Failed to initialize Endpoint: %s\n",
@@ -89,6 +93,7 @@ int EbLfClient::connect(const char* peer,
     return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
   }
 
+  printf("txDepth = %zd\n", fab->info()->tx_attr->size);
   *link = new EbLfLink(ep);
   if (!*link)
   {

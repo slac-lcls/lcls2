@@ -10,7 +10,6 @@ MPI = None
 if mode == 'mpi':
     from mpi4py import MPI
 
-PERCENT_SMD = .25
 
 class Error(Exception):
     pass
@@ -36,30 +35,116 @@ class DataSourceHelper(object):
         self.ds_by_id[ds.id] = ds
 
         ds.nodetype = 'bd'
-        ds.run = -1
         rank = ds.mpi.rank
         size = ds.mpi.size
         comm = ds.mpi.comm
 
         if rank == 0 or mode == 'legion':
-            xtc_files, smd_files, run = self.parse_expstr(expstr)
-            if run is not None:
-                ds.run = run
+            exp, run_dict = self.parse_expstr(expstr)
         else:
-            xtc_files, smd_files = None, None
+            exp, run_dict = None, None
 
-        # Setup DgramManager, Configs, and Calib
+        if size == 1 and mode != 'legion':
+            pass
+        else:
+            exp = comm.bcast(exp, root=0)
+            run_dict = comm.bcast(run_dict, root=0)
+
+        ds.exp = exp
+        ds.run_dict = run_dict
+
+        # No. of smd nodes (default is 1)
+        ds.nsmds = int(os.environ.get('PS_SMD_NODES', 1))
+        if rank == 0:
+            ds.nodetype = 'smd0'
+        elif rank < ds.nsmds + 1:
+            ds.nodetype = 'smd'
+
+    def parse_expstr(self, expstr):
+        exp = None
+        run_dict = {} # stores list of runs with corresponding xtc_files and smd_files
+
+        # Check if we are reading file(s) or an experiment
+        read_exp = False
+        if isinstance(expstr, (str)):
+            if expstr.find("exp") == -1:
+                xtc_files = [expstr]
+                smd_files = None
+                run_dict[-1] = (xtc_files, smd_files)
+            else:
+                read_exp = True
+        elif isinstance(expstr, (list, np.ndarray)):
+            xtc_files = expstr
+            smd_files = None
+            run_dict[-1] = (xtc_files, smd_files)
+
+        # Reads list of xtc files from experiment folder
+        if read_exp:
+            opts = expstr.split(':')
+            exp_dict = {}
+            for opt in opts:
+                items = opt.split('=')
+                assert len(items) == 2
+                exp_dict[items[0]] = items[1]
+
+            assert 'exp' in exp_dict
+            exp = exp_dict['exp']
+
+            if 'dir' in exp_dict:
+                xtc_path = exp_dict['dir']
+            else:
+                xtc_dir = os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm')
+                xtc_path = os.path.join(xtc_dir, exp_dict['exp'][:3], exp_dict['exp'], 'xtc')
+            
+            run_num = -1
+            if 'run' in exp_dict:
+                run_num = int(exp_dict['run'])
+            
+            # get a list of runs (or just one run if user specifies it) then
+            # setup corresponding xtc_files and smd_files for each run in run_dict
+            run_list = []
+            if run_num > -1:
+                run_list = [run_num]
+            else:
+                run_list = [int(os.path.splitext(os.path.basename(_dummy))[0].split('-r')[1].split('-')[0]) \
+                        for _dummy in glob.glob(os.path.join(xtc_path, '*-r*.xtc'))]
+                run_list.sort()
+
+            smd_dir = os.path.join(xtc_path, 'smalldata')
+            for r in run_list:
+                xtc_files = glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(str(r).zfill(4))))
+                smd_files = [os.path.join(smd_dir,
+                             os.path.splitext(os.path.basename(xtc_file))[0] + '.smd.xtc')
+                             for xtc_file in xtc_files]
+                run_dict[r] = (xtc_files, smd_files)
+
+        return exp, run_dict
+
+
+class RunHelper(object):
+    def __init__(self, ds, run_no):
+        """Setups per-run required objects
+        Creates per-run dgrammanager and calib then send them
+        to all client ranks."""
+        self.ds = ds
+        self.run_no = run_no
+        xtc_files, smd_files = self.ds.run_dict[run_no]
+        size = ds.mpi.size
+        rank = ds.mpi.rank
+        comm = ds.mpi.comm
+
         if size == 1 and mode != 'legion':
             # This is one-core read.
-            self.setup_dgram_manager(ds, xtc_files, smd_files)
+            self._setup_dgrammanager()
+            self._setup_calib()
         else:
             # This is parallel read.
-            xtc_files = comm.bcast(xtc_files, root=0)
-            smd_files = comm.bcast(smd_files, root=0)
-
-            # Send configs
+            # Rank 0 creates dgrammanager (+configs) and calib dict.
+            # then sends them to all other ranks. Note that only rank0
+            # owns smd dgrammanger (see Smd0 and Smd implementations in node.py)
             if rank == 0 or mode == 'legion':
-                self.setup_dgram_manager(ds, xtc_files, smd_files)
+                self._setup_dgrammanager()
+                self._setup_calib()
                 smd_nbytes = np.array([memoryview(config).shape[0] for config in ds.smd_configs], \
                             dtype='i')
                 nbytes = np.array([memoryview(config).shape[0] for config in ds.configs], \
@@ -81,101 +166,60 @@ class DataSourceHelper(object):
                 for i in range(len(xtc_files)):
                     comm.Bcast([ds.configs[i], nbytes[i], MPI.BYTE], root=0)
 
-                # Send calib
                 ds.calib = comm.bcast(ds.calib, root=0)
 
-            # Assign node types
-            ds.nsmds = int(os.environ.get('PS_SMD_NODES', np.ceil((size-1)*PERCENT_SMD)))
-            if rank == 0:
-                ds.nodetype = 'smd0'
-            elif rank < ds.nsmds + 1:
-                ds.nodetype = 'smd'
-
+            # This creates dgrammanager without reading config from disk 
             ds.dm = DgramManager(xtc_files, configs=ds.configs)
 
-    def setup_dgram_manager(self, ds, xtc_files, smd_files):
+    def _setup_dgrammanager(self):
+        """Uses run_no to access xtc_files, smd_files, and configs
+        """
+        ds, run_no = self.ds, self.run_no
+        xtc_files, smd_files = ds.run_dict[run_no]
         if smd_files is not None:
             ds.smd_dm = DgramManager(smd_files)
             ds.smd_configs = ds.smd_dm.configs # FIXME: there should only be one type of config
-
+        
+        # This creates a dgrammanager while reading the config from disk
         ds.dm = DgramManager(xtc_files)
         ds.configs = ds.dm.configs
 
-        ds.calib = self.get_calib_dict(run_no=ds.run)
+    def _setup_calib(self):
+        """ Creates dictionary object that stores per-run calibration constants.
+        Retrieves calibration constants from webapi and store them
+        in dictionary object. Note that calibration constants can only be retrieved
+        when expid and det_name are given."""
+        ds, run_no = self.ds, self.run_no
+        gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
+        if ds.exp and ds.det_name:
+            calib_dir = os.environ.get('PS_CALIB_DIR')
+            if calib_dir:
+                if os.path.exists(os.path.join(calib_dir,'gain_mask.pickle')):
+                    gain_mask = pickle.load(open(os.path.join(calib_dir,'gain_mask.pickle'), 'r'))
 
-    def parse_expstr(self, expstr):
-        run = None
-
-        # Check if we are reading file(s) or an experiment
-        read_exp = False
-        if isinstance(expstr, (str)):
-            if expstr.find("exp") == -1:
-                xtc_files = [expstr]
-                smd_files = None
-            else:
-                read_exp = True
-        elif isinstance(expstr, (list, np.ndarray)):
-            xtc_files = expstr
-            smd_files = None
-
-        # Reads list of xtc files from experiment folder
-        if read_exp:
-            opts = expstr.split(':')
-            exp = {}
-            for opt in opts:
-                items = opt.split('=')
-                assert len(items) == 2
-                exp[items[0]] = items[1]
-
-            run = -1
-            if 'dir' in exp:
-                xtc_path = exp['dir']
-            else:
-                xtc_dir = os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm')
-                xtc_path = os.path.join(xtc_dir, exp['exp'][:3], exp['exp'], 'xtc')
-
-            if 'run' in exp:
-                run = int(exp['run'])
-
-            if run > -1:
-                xtc_files = glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(str(run).zfill(4))))
-            else:
-                xtc_files = glob.glob(os.path.join(xtc_path, '*.xtc'))
-
-            xtc_files.sort()
-
-            smd_dir = os.path.join(xtc_path, 'smalldata')
-            smd_files = [os.path.join(smd_dir,
-                                      os.path.splitext(os.path.basename(xtc_file))[0] + '.smd.xtc')
-                         for xtc_file in xtc_files]
-
-        return xtc_files, smd_files, run
-
-    def get_calib_dict(self, run_no=-1):
-        """ Creates dictionary object that stores calibration constants.
-        This routine will be replaced with calibration reading (psana2 style)"""
-        calib_dir = os.environ.get('PS_CALIB_DIR')
-        calib = None
-        if calib_dir:
-            gain_mask = None
-            pedestals = None
-            if os.path.exists(os.path.join(calib_dir,'gain_mask.pickle')):
-                gain_mask = pickle.load(open(os.path.join(calib_dir,'gain_mask.pickle'), 'r'))
+            from psana.pscalib.calib.MDBWebUtils import calib_constants
+            det = eval('ds._configs[0].software.%s'%(ds.det_name))
             
-            # Find corresponding pedestals
-            if os.path.exists(os.path.join(calib_dir,'pedestals.npy')):
-                pedestals = np.load(os.path.join(calib_dir,'pedestals.npy'))
-            else:
-                files = glob.glob(os.path.join(calib_dir,"*-end.npy"))
-                darks = np.sort([int(os.path.basename(file_name).split('-')[0]) for file_name in files])
-                sel_darks = darks[(darks < run_no)]
-                if sel_darks.size > 0:
-                   if os.path.exists(os.path.join(calib_dir,'%s-end.npy'%sel_darks[0])):
-                        pedestals = np.load(os.path.join(calib_dir, '%s-end.npy'%sel_darks[0]))
-            calib = {'gain_mask': gain_mask,
-                     'pedestals': pedestals}
-        return calib
+            # calib_constants takes det string (e.g. cspad_0001) with requested calib type.
+            # as a hack (until detid in xtc files have been changed
+            det_str = det.dettype + '_' + det.detid
+            pedestals = calib_constants(det_str, exp=ds.exp, ctype='pedestals', run=run_no)
+            geometry_string = calib_constants(det_str, exp=ds.exp, ctype='geometry', run=run_no)
+            
+            # python2 sees geometry_string as unicode (use str to check for compatibility py2/py3)
+            # - convert to str accordingly
+            if not isinstance(geometry_string, str) and geometry_string is not None:
+                import unicodedata
+                geometry_string = unicodedata.normalize('NFKD', geometry_string).encode('ascii','ignore')
+            common_mode = calib_constants(det_str, exp=ds.exp, ctype='common_mode', run=run_no)
+        
+        calib = {'gain_mask': gain_mask,
+                 'pedestals': pedestals,
+                 'geometry_string': geometry_string,
+                 'common_mode': common_mode}
+        ds.calib = calib
 
+    
 def datasource_from_id(ds_id):
     return DataSourceHelper.ds_by_id[ds_id]
 

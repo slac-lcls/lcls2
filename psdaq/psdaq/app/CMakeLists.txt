@@ -5,17 +5,6 @@ add_library(app SHARED
 #
 #
 #
-add_executable(h5writer
-    h5writer.cc
-)
-target_link_libraries(h5writer
-    pshdf5
-    xtcdata::xtc
-)
-
-#
-#
-#
 add_executable(hpsBldServer hpsBldServer.cc)
 
 target_include_directories(hpsBldServer PUBLIC
@@ -137,7 +126,6 @@ target_link_libraries(pgpca
 )
 
 install(TARGETS app
-		h5writer
 		hpsBldServer
 		hpsBldClient
 		tprca

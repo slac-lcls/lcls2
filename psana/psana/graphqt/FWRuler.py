@@ -250,7 +250,7 @@ if __name__ == "__main__" :
     ruler4 = FWRuler(v, 'R')
 
     v.setWindowTitle("My window")
-    v.setContentsMargins(-9,-9,-9,-9)
+    v.setContentsMargins(0,0,0,0)
     v.show()
     app.exec_()
 

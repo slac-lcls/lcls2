@@ -300,7 +300,7 @@ namespace Pds {
       ~PassiveEndpoint();
     public:
       void shutdown();
-      bool listen();
+      bool listen(int backlog=0);
       Endpoint* accept(int timeout=-1, CompletionQueue* txcq=0, uint64_t txFlags=0, CompletionQueue* rxcq=0, uint64_t rxFlags=0);
       bool reject(int timeout=-1);
       bool close(Endpoint* endpoint);

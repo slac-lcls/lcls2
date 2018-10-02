@@ -8,7 +8,6 @@ import os
 import time
 import copy
 import socket
-from uuid import uuid4
 import zmq
 from collection import pull_port, pub_port, create_msg
 import argparse
@@ -99,7 +98,26 @@ class Client:
 
     def handle_alloc(self, msg):
         logging.debug('Client handle_alloc()')
-        body = {'dti': {'connect_info': {'infiniband': '123.456.789'}}}
+        body = {'dti': {'connect_info': {
+                        'shelf': 0,
+                        'slot': 0,
+                        'paddr': 0,
+                        'dsRemLinkId': [
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0}],
+                        'usRemLinkId': [
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0},
+                            {'devType': 0, 'serialNum': 0}]}}}
         reply = create_msg('alloc', msg['header']['msg_id'], self.id, body)
         self.push.send_json(reply)
         self.state = 'alloc'

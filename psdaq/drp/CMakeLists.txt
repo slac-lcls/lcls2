@@ -12,7 +12,6 @@ find_package(PythonLibs 3.6 REQUIRED)
 target_link_libraries(utils
     xtcdata::xtc
     pgpdriver
-    #pshdf5
     eb
     zmq
     ${PYTHON_LIBRARIES}

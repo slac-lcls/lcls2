@@ -127,7 +127,6 @@ class QWPopupSelectColorBar(QDialog) :
            lab = QLabel(parent=None)
            lab.setPixmap(ct.get_pixmap(i, size=(200,30)))
            #lab.setText('%02d'%i) # set text !!!OR!!! pixmam
-           #lab.setContentsMargins(QMargins(-5,-5,-5,-5))
            #lab.setFixedSize(200,10)
            lab._coltab_index = i
            vbox.addWidget(lab)
@@ -150,7 +149,7 @@ class QWPopupSelectColorBar(QDialog) :
         #self.setMaximumWidth(600)
         #self.setStyleSheet(style.styleBkgd)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-        self.setContentsMargins(-9,-9,-9,-9)
+        self.layout().setContentsMargins(0,0,0,0)
         #self.setStyleSheet(style.styleBkgd)
         #self.but_create.setStyleSheet(style.styleButton)
         #self.but_apply.setStyleSheet(style.styleButton)

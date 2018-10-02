@@ -80,11 +80,11 @@ class CMWMainTabs(QWidget) :
         from psana.graphqt.QWIcons import icon
         icon.set_icons()
 
-        #self.tab_bar.setContentsMargins(-9,-9,-9,-9) # QMargins(-5,-5,-5,-5)
+        #self.tab_bar.setContentsMargins(0,0,0,0)
 
         self.setWindowIcon(icon.icon_monitor)
         self.setStyleSheet(style.styleBkgd)
-        self.setContentsMargins(-9,-9,-9,-9) # QMargins(-5,-5,-5,-5)
+        self.layout().setContentsMargins(0,0,0,0)
 
         #self.palette = QPalette()
         #self.resetColorIsSet = False

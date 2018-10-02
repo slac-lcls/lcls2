@@ -52,7 +52,7 @@ from time import localtime, strftime
 class Logger :
     """Logbook for messages.
     """
-    levels = ['debug','info','warning','error','critical']
+    levels = ['debug','info','warning','error','critical','DEBUG','INFO','WARNING','ERROR','CRITICAL']
 
     def __init__ ( self, fname=None, level='info', print_bits=0 ) :
         """Constructor.

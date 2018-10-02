@@ -198,12 +198,11 @@ class CMWMain(QWidget) :
 
         w = self.main_win_width.value()
 
-        self.setContentsMargins(-9,-9,-9,-9)
+        self.layout().setContentsMargins(0,0,0,0)
 
         spl_pos = cp.main_vsplitter.value()
         self.vspl.setSizes((spl_pos,w_height-spl_pos,))
 
-        #self.wrig.setContentsMargins(-9,-9,-9,-9)
         #self.wrig.setMinimumWidth(350)
         #self.wrig.setMaximumWidth(450)
 

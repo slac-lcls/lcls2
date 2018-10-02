@@ -91,7 +91,7 @@ class FWViewImage(FWView) :
         FWView.set_style(self)
         self.setWindowTitle('FWViewImage%s' %(30*' '))
         self.setAttribute(Qt.WA_TranslucentBackground)
-        #self.setContentsMargins(-9,-9,-9,-9)
+        #self.setContentsMargins(0,0,0,0)
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
 
 

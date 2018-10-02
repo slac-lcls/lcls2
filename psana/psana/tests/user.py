@@ -13,10 +13,10 @@ def filter(evt):
 
 # Usecase#1 : two iterators
 xtc_dir = os.path.join(os.getcwd(),'.tmp')
-ds = DataSource('exp=xpptut13:dir=%s'%(xtc_dir), filter=filter)
-
+ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter, max_events=10, det_name='xppcspad')
 #beginJobCode
 for run in ds.runs():
+    det = ds.Detector(ds.det_name)
     #beginRunCode
     for evt in run.events():
         #eventCode

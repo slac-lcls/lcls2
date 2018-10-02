@@ -48,10 +48,10 @@ class Test:
         if os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir)
         os.makedirs(tmp_dir)
-        shutil.copy('data-ts.xtc',os.path.join('.tmp','data-0.xtc'))
-        shutil.copy('data-ts.xtc',os.path.join('.tmp','data-1.xtc'))
-        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-0.smd.xtc'))
-        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-1.smd.xtc'))
+        shutil.copy('data-ts.xtc',os.path.join('.tmp','data-r0001-s00.xtc')) # Ex. of run 1 with two detectors s00 and s01
+        shutil.copy('data-ts.xtc',os.path.join('.tmp','data-r0001-s01.xtc'))
+        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-r0001-s00.smd.xtc'))
+        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-r0001-s01.smd.xtc'))
 
         shutil.copy('smd.xtc', os.path.join(tmp_dir, 'data.smd.xtc')) # FIXME: chuck's hack to fix nosetests
         shutil.copy('smd.xtc',os.path.join(tmp_dir,'data_1.smd.xtc')) # FIXME: chuck's hack to fix nosetests
@@ -87,4 +87,3 @@ class Test:
 
     def test_dgram(self):
         run_test_dgraminit()
-

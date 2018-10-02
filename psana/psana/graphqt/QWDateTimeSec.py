@@ -138,7 +138,7 @@ class QWDateTimeSec(QWidget) : # Frame
 
     def set_style(self) :
         self.setMinimumSize(300,40)
-        #self.setContentsMargins(-9,-9,-9,-9)
+        self.layout().setContentsMargins(0,0,0,0)
         #self.but_year  .setStyleSheet(style.styleButton)
         w2d = 30
         self.but_year  .setFixedWidth(50)

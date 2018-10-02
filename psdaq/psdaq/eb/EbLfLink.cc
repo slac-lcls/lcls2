@@ -70,7 +70,9 @@ int EbLfLink::preparePender(unsigned idx,
 
   if ( (rc = syncLclMr()) )            return rc;
 
-  return postCompRecv(ctx);
+  postCompRecv(ctx);
+
+  return rc;
 }
 
 int EbLfLink::preparePender(void*    region,
@@ -91,7 +93,9 @@ int EbLfLink::preparePender(void*    region,
 
   if ( (rc = syncLclMr()) )            return rc;
 
-  return postCompRecv(ctx);
+  postCompRecv(ctx);
+
+  return rc;
 }
 
 int EbLfLink::preparePoster(unsigned idx,

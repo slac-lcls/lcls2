@@ -14,7 +14,6 @@ MemPool::MemPool(int num_workers, int num_entries) :
     pgp_data(num_entries),
     pebble_queue(num_entries),
     collector_queue(num_entries),
-    output_queue(num_entries),
     num_entries(num_entries),
     pebble(num_entries)
 {
@@ -44,11 +43,16 @@ void pin_thread(const pthread_t& th, int cpu)
 long read_infiniband_counter(const char* counter)
 {
     char path[PATH_MAX];
-    snprintf(path, PATH_MAX, "/sys/class/infiniband/mlx4_0/ports/1/counters/%s", counter);
+    snprintf(path, PATH_MAX, "/sys/class/infiniband/mlx5_0/ports/1/counters/%s", counter);
     std::ifstream in(path);
-    std::string line;
-    std::getline(in, line);
-    return stol(line);
+    if (in.is_open()) {
+        std::string line;
+        std::getline(in, line);
+        return stol(line);
+    }
+    else {
+        return 0;
+    }
 }
 
 void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContributor& ebCtrb)
@@ -80,7 +84,6 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContribut
         }
         int64_t new_count = c->event_count;
         int buffer_queue_size = pool.dma.buffer_queue.guess_size();
-        int output_queue_size = pool.output_queue.guess_size();
         long port_rcv_data = read_infiniband_counter("port_rcv_data");
         long port_xmit_data = read_infiniband_counter("port_xmit_data");
 
@@ -105,8 +108,8 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContribut
         strftime(time_buffer, 80, "%Y-%m-%d %H:%M:%S", timeinfo);
 
         int size = snprintf(buffer, 4096,
-                R"({"host": "%s", "x": "%s", "data": {"event_rate": [%f], "data_rate": [%f], "rcv_rate": [%f], "xmit_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "used_batches": [%d]}})",
-                            hostname, time_buffer, event_rate, data_rate, rcv_rate, xmit_rate, buffer_queue_size, output_queue_size, ebCtrb.inFlightCnt());
+                R"({"host": "%s", "x": "%s", "data": {"event_rate": [%f], "data_rate": [%f], "rcv_rate": [%f], "xmit_rate": [%f], "buffer_queue": [%d], "used_batches": [%d]}})",
+                            hostname, time_buffer, event_rate, data_rate, rcv_rate, xmit_rate, buffer_queue_size, ebCtrb.inFlightCnt());
 
         /*
  "event_rate": [%f], "data_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "rcv_rate": [%f], "xmit_rate": [%f]}])",

@@ -4,16 +4,19 @@ import time
 
 
 port   = 55560                  # Default value
-zmqSrv = 'tcp://psdev7b'
+zmqSrv = 'psdev7b'
 
 parser = argparse.ArgumentParser(description='Monitor data printer')
 
-parser.add_argument('port', type=int, nargs='?', help='Port number [%d]' % port)
-parser.add_argument('-Z',   '--zmqSrv',          help='ZMQ server  [%s]' % zmqSrv)
+parser.add_argument('-P', '--port',     type=int, help='Port number [%d]' % port)
+parser.add_argument('-p', '--platform', type=int, choices=range(0, 8), default=0, help='Platform number')
+parser.add_argument('-Z', '--zmqSrv',   help='ZMQ server [%s]' % zmqSrv)
 
 args = parser.parse_args()
 
-if args.port is not None:
+if args.port is None:
+    port += 2 * args.platform
+else:
     port = args.port
 
 if args.zmqSrv is not None:
@@ -21,7 +24,7 @@ if args.zmqSrv is not None:
 
 context = zmq.Context()
 socket = context.socket(zmq.SUB)
-socket.connect('%s:%d' % (zmqSrv, port))
+socket.connect('tcp://%s:%d' % (zmqSrv, port))
 socket.setsockopt(zmq.SUBSCRIBE, b'')
 print('Listening to: %s:%d' % (zmqSrv, port))
 

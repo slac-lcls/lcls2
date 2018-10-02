@@ -1,0 +1,91 @@
+# -*-Mode: python;-*-
+
+repo_path = '/reg/neh/home/claus/lclsii/daq/lcls2'
+bin_path  = repo_path + '/psdaq/build/psdaq'
+mgr_path  = repo_path + '/psdaq/psdaq/procmgr'
+
+platform  = '3'
+partition = 'Test'
+username  = 'claus'
+expname   = 'expname'
+expnum    = 'expnum'
+coll_node = 'drp-tst-acc01'
+headless  = False
+if headless:
+  node_flags = 's'
+else:
+  node_flags = 'sx'
+
+skipNodes = [11, 12, 13]
+nodes     = []
+nNodes    = 10 #24
+for i in range(nNodes, 0, -1):
+  if i not in skipNodes:
+    nodes.append("drp-tst-dev%03d" % i)
+    #nodes.append("daq-tst-dev%02d" % i)
+
+num_seg = 2
+num_evt = 1
+num_mon = 0
+
+if 'NUM_SEG' in procmgr_macro.keys():  num_seg = int(procmgr_macro['NUM_SEG'])
+if 'NUM_EVT' in procmgr_macro.keys():  num_evt = int(procmgr_macro['NUM_EVT'])
+if 'NUM_MON' in procmgr_macro.keys():  num_mon = int(procmgr_macro['NUM_MON'])
+
+evt_nodes = nodes[:num_evt]
+seg_nodes = nodes[num_evt:][:num_seg]
+mon_nodes = nodes[num_seg + num_evt:][:num_mon]
+
+#evt_cores = ''
+#seg_cores = ''
+evt_cores = ' -1 10 -2 10'
+seg_cores = ' -1 11 -2 12'
+
+
+cannot_run = False
+if len(seg_nodes) is 0:
+  print('Error: No nodes found for the segment level')
+  cannot_run = True
+if len(evt_nodes) is 0:
+  print('Error: No nodes found for the event level')
+  cannot_run = True
+if num_mon and len(mon_nodes) is 0:
+  print('Error: No nodes found for the monitoring level')
+  cannot_run = True
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+mgr_cmd = mgr_path+'/procstat.py -t '+username+' -e0 -n none -p '+platform + ' p'+platform+'.cnf.last'
+mon_cmd = bin_path+'/monreq/monReqServer -C '+coll_node + ' -p '+platform + ' -P '+partition
+seg_cmd = bin_path+'/eb/tstEbContributor -C '+coll_node + ' -p '+platform + seg_cores
+evt_cmd = bin_path+'/eb/tstEbBuilder -C '    +coll_node + ' -p '+platform + evt_cores
+
+procmgr_config = []
+
+if not cannot_run:
+  ## procstat
+  if not headless:
+    procmgr_config.append({id:'procstat', flags:'s', cmd:mgr_cmd})
+
+  for i in range(len(mon_nodes)):
+    procmgr_config.append({host:mon_nodes[i], id:'mon%d'%i, flags:node_flags, cmd:mon_cmd})
+
+  for i in range(len(seg_nodes)):
+    procmgr_config.append({host:seg_nodes[i], id:'seg%d'%i, flags:node_flags, cmd:seg_cmd})
+
+  for i in range(len(evt_nodes)):
+    procmgr_config.append({host:evt_nodes[i], id:'evt%d'%i, flags:node_flags, cmd:evt_cmd})
+
+#print(procmgr_config)

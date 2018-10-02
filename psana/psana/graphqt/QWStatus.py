@@ -63,9 +63,7 @@ class QWStatus(QGroupBox) :
         #self.box_txt   .setStyleSheet (style.styleBkgd)
         self.box_txt   .setStyleSheet (style.styleWhiteFixed)
 
-        #self.setContentsMargins(0,8,0,0)
-        self.setContentsMargins(-9, 3,-9,-9)
-        #self.setContentsMargins(-5,8,-5,-5)
+        self.layout().setContentsMargins(0,0,0,0)
  
         #self.setMinimumHeight(60)
         self.setMinimumSize(300,60)

@@ -35,25 +35,14 @@ static const int      core_base        = 8; // 6: devXX, 8: accXX
 static const int      core_offset      = 1; // Allows Ctrb and EB to run on the same machine
 static const unsigned rtMon_period     = 1;          // Seconds
 static const unsigned default_id       = 0;          // Builder's ID (< 64)
-static const unsigned max_ctrbs        = 64;         // Maximum possible number of Contributors
-static const unsigned max_ebs          = 64;         // Maximum possible number of Builders
-static const unsigned max_mons         = 64;         // Maximum possible number of Monitors
-                                                     // Base ports for:
-static const unsigned l3i_port_base    = 32768;                    // L3  EB to receive L3 contributions
-static const unsigned l3r_port_base    = l3i_port_base + max_ebs;  // L3  EB to send    results
-static const unsigned mrq_port_base    = l3r_port_base + max_ebs;  // L3  EB to receive monitor requests
-static const unsigned meb_port_base    = mrq_port_base + max_mons; // Mon EB to receive data contributions
-static const unsigned max_batches      = 8192;       // Maximum number of batches in circulation
-static const unsigned max_entries      = 64;         // < or = to batch_duration
-static const uint64_t batch_duration   = max_entries;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const char*    dflt_partition   = "Test";
-static const char*    dflt_rtMon_addr  = "tcp://psdev7b:55561";
-static const char*    dflt_coll_addr   = "drp-tst-acc06";
+static const char*    dflt_rtMon_host  = "psdev7b";
+static const char*    dflt_coll_host   = "drp-tst-acc06";
 
 static       unsigned lverbose         = 0;
 static       int      lcore1           = core_base + core_offset + 0;
@@ -535,13 +524,13 @@ static void usage(char *name, char *desc)
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-m <seconds>",
           "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
-          "Run-time monitoring ZMQ server address",   dflt_rtMon_addr);
+          "Run-time monitoring ZMQ server host",      dflt_rtMon_host);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
           "Partition tag",                            dflt_partition);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
           "Partition number",                         0);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-C <address>",
-          "Collection server",                        dflt_coll_addr);
+          "Collection server",                        dflt_coll_host);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    lcore1);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
@@ -567,17 +556,17 @@ void joinCollection(std::string&              server,
 
   std::string id = std::to_string(collection.id());
   tebId = collection.cmstate["teb"][id]["teb_id"];
-  std::cout << "TEB: " << tebId << std::endl;
+  //std::cout << "TEB: ID " << tebId << std::endl;
 
   for (auto it : collection.cmstate["drp"].items())
   {
     unsigned    ctrbId  = it.value()["drp_id"];
     std::string address = it.value()["connect_info"]["infiniband"];
-    std::cout << "DRP: " << ctrbId << "  " << address << std::endl;
+    //std::cout << "DRP: ID " << ctrbId << "  " << address << std::endl;
     contributors |= 1ul << ctrbId;
     addrs.push_back(address);
     ports.push_back(std::string(std::to_string(portBase + ctrbId)));
-    printf("DRP Clt[%d] port = %d\n", ctrbId, portBase + ctrbId);
+    //printf("DRP Clt[%d] port = %d\n", ctrbId, portBase + ctrbId);
   }
 
   numMrqs = 0;
@@ -605,9 +594,9 @@ int main(int argc, char **argv)
   unsigned       maxEntries   = MAX_ENTRIES;
   unsigned       rtMonPeriod  = rtMon_period;
   unsigned       rtMonVerbose = 0;
-  const char*    rtMonAddr    = dflt_rtMon_addr;
+  const char*    rtMonHost    = dflt_rtMon_host;
   unsigned       numMrqs      = 0;
-  std::string    collSrv      = dflt_coll_addr;
+  std::string    collSrv      = dflt_coll_host;
 
   while ((op = getopt(argc, argv, "h?vVA:T:M:i:d:b:e:r:m:Z:P:p:C:1:2:")) != -1)
   {
@@ -622,7 +611,7 @@ int main(int argc, char **argv)
       case 'e':  maxEntries   = atoi(optarg);       break;
       case 'r':  numMrqs      = atoi(optarg);       break;
       case 'm':  rtMonPeriod  = atoi(optarg);       break;
-      case 'Z':  rtMonAddr    = optarg;             break;
+      case 'Z':  rtMonHost    = optarg;             break;
       case 'P':  partitionTag = optarg;             break;
       case 'p':  partition    = std::stoi(optarg);  break;
       case 'C':  collSrv      = optarg;             break;
@@ -701,7 +690,7 @@ int main(int argc, char **argv)
     return 1;
   }
   std::string tebPort(std::to_string(tebPortNo + id));
-  printf("TEB Srv port = %s\n", tebPort.c_str());
+  //printf("TEB Srv port = %s\n", tebPort.c_str());
 
   if ((mrqPortNo < MRQ_PORT_BASE) || (mrqPortNo >= MRQ_PORT_BASE + MAX_TEBS))
   {
@@ -710,7 +699,7 @@ int main(int argc, char **argv)
     return 1;
   }
   std::string mrqPort(std::to_string(mrqPortNo + id));
-  printf("MRQ Srv port = %s\n", mrqPort.c_str());
+  //printf("MRQ Srv port = %s\n", mrqPort.c_str());
 
   if (maxEntries > duration)
   {
@@ -728,7 +717,7 @@ int main(int argc, char **argv)
   printf("  Thread core numbers:        %d, %d\n",          lcore1, lcore2);
   printf("  Partition:                  %d: '%s'\n",        partition, partitionTag.c_str());
   printf("  Run-time monitoring period: %d\n",              rtMonPeriod);
-  printf("  Run-time monitoring server: %s\n",              rtMonAddr);
+  printf("  Run-time monitoring host:   %s\n",              rtMonHost);
   printf("  Number of Monitor EBs:      %d\n",              numMrqs);
   printf("  Batch duration:             %014lx = %ld uS\n", duration, duration);
   printf("  Batch pool depth:           %d\n",              maxBatches);
@@ -736,7 +725,8 @@ int main(int argc, char **argv)
   printf("\n");
 
   pinThread(pthread_self(), lcore2);
-  StatsMonitor* smon = new StatsMonitor(rtMonAddr,
+  StatsMonitor* smon = new StatsMonitor(rtMonHost,
+                                        partition,
                                         partitionTag,
                                         rtMonPeriod,
                                         rtMonVerbose);

@@ -81,7 +81,7 @@ class QWRange(QWidget) :
             self.setMinimumSize(100,32)
 
         #self.setFixedHeight(40)
-        self.setContentsMargins (QMargins(-9,-9,-9,-9))
+        self.layout().setContentsMargins(0,0,0,0)
 
         self.edi_from.setFixedWidth(40)
         self.edi_to  .setFixedWidth(40)

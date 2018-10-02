@@ -207,7 +207,7 @@ class FWView(QGraphicsView) :
         self.setGeometry(20, 20, 600, 600)
         self.setWindowTitle("FWView")
         self.setStyleSheet(self.bkgd)
-        #self.setContentsMargins(-9,-9,-9,-9)
+        #self.setContentsMargins(0,0,0,0)
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         #self.setAttribute(Qt.WA_TranslucentBackground)
         #self.setInteractive(True)
