@@ -363,7 +363,7 @@ class Client:
             self.push.send_json(reply)
 
 
-if __name__ == '__main__':
+def main():
     from multiprocessing import Process
 
     # Process arguments
@@ -418,3 +418,6 @@ if __name__ == '__main__':
             p.join()
         except KeyboardInterrupt:
             pass
+
+if __name__ == '__main__':
+    main()

@@ -56,16 +56,19 @@ function cmake_build() {
     cd ../..
 }
 
-cmake_build xtcdata
-cmake_build psalg
-if [ $no_daq == 0 ]; then
-    cmake_build psdaq
-fi
-
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 # "python setup.py develop" seems to not create this for you
 # (although "install" does)
 mkdir -p $INSTDIR/lib/python$pyver/site-packages/
+
+cmake_build xtcdata
+cmake_build psalg
+if [ $no_daq == 0 ]; then
+    cmake_build psdaq
+    cd psdaq
+    python setup.py $pyInstallStyle --prefix=$INSTDIR
+    cd ..
+fi
 
 # to build psana with setuptools
 cd psana
@@ -74,7 +77,3 @@ cd psana
 # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
 python setup.py build_ext --xtcdata=$INSTDIR -f --inplace
 python setup.py $pyInstallStyle $psana_setup_args --xtcdata=$INSTDIR --prefix=$INSTDIR
-cd ..
-# build ami
-# cd ami
-# python setup.py $pyInstallStyle --prefix=$INSTDIR

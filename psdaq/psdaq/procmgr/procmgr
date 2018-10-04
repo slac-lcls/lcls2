@@ -8,7 +8,7 @@ import sys
 if sys.version_info[0] == 2:
     raise Exception("Python 2 not supported")
 
-from ProcMgr import ProcMgr, deduce_platform2, getConfigFileNames, add_macro_config, getUser, ConfigFileError
+from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform2, getConfigFileNames, add_macro_config, getUser, ConfigFileError
 from optparse import OptionParser
 import os.path
 from os import remove, symlink

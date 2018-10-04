@@ -548,7 +548,7 @@ class Ui_MainWindow(object):
         MainWindow.resize(240,340)
         MainWindow.setCentralWidget(self.centralWidget)
 
-if __name__ == '__main__':
+def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
@@ -565,3 +565,6 @@ if __name__ == '__main__':
 
     MainWindow.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()

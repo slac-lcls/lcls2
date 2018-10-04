@@ -1569,3 +1569,23 @@ if __name__ == '__main__':
     procMgr.show(0)
 
     print('-------- done')
+
+# get string suitable for use by procmgr to set environment for a
+# test release, if a test release exists
+def getRelEnvString():
+    import platform
+    import os
+    #if 'RELDIR' not in os.environ:
+    #    raise Exception('Environment variable RELDIR must be defined')
+    #reldir = os.environ['RELDIR']
+    #if 'TESTRELDIR' not in os.environ:
+    #    return ' PATH='+os.path.join(reldir,'bin')+' '
+
+    testreldir = os.environ['TESTRELDIR']
+    #relEnvString = ' PATH='+os.path.join(testreldir,'bin')+':'+os.path.join(reldir,'bin')+' '
+    relEnvString = ' PATH='+os.path.join(testreldir,'bin')
+    relEnvString += ' LD_LIBRARY_PATH='+os.path.join(testreldir,'lib')+' '
+    pythonver = platform.python_version().split('.')
+    relEnvString += 'PYTHONPATH='+os.path.join(testreldir,'lib/python'+pythonver[0]+'.'+pythonver[1]+'/site-packages'+' ')
+
+    return relEnvString

@@ -1,7 +1,7 @@
 import sys
 import argparse
 from PyQt5 import QtCore, QtGui, QtWidgets
-from pvedit import *
+from psdaq.cas.pvedit import *
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, base):
@@ -109,7 +109,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(base)
         MainWindow.setCentralWidget(self.centralWidget)
 
-if __name__ == '__main__':
+def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
@@ -124,3 +124,6 @@ if __name__ == '__main__':
 
     MainWindow.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
