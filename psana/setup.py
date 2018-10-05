@@ -80,8 +80,7 @@ ext = Extension("peakFinder",
                          "../psalg/psalg/peaks/src/LocalExtrema.cc"],
                 language="c++",
                 extra_compile_args=['-std=c++11'],
-                include_dirs=[np.get_include(),
-                              "../install/include"],
+                include_dirs=[np.get_include(), os.path.join(xtcdata, 'include')],
 )
 
 setup(name="peakFinder",
