@@ -25,6 +25,4 @@ link_directories($ENV{CONDA_PREFIX}/lib)
 
 add_subdirectory(psdaq)
 add_subdirectory(drp)
-#add_subdirectory(drp_olddriver)
-add_subdirectory(pydaq)
 

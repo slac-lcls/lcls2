@@ -26,7 +26,7 @@ def printDb():
     print('=========================================')
     return
 
-if __name__ == '__main__':
+def main():
     global pvdb
     pvdb = {}     # start with empty dictionary
     global prefix
@@ -178,3 +178,6 @@ if __name__ == '__main__':
             server.process(0.1)
     except KeyboardInterrupt:
         print('\nInterrupted')
+
+if __name__ == '__main__':
+    main()

@@ -157,6 +157,7 @@ install(TARGETS hsd
 		hsd_pgp
 		hsd_test
  		hsdRead
+ 		hsdPVs
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

@@ -27,7 +27,7 @@ def printDb():
     print('=========================================')
     return
 
-if __name__ == '__main__':
+def main():
     global pvdb
     pvdb = {}     # start with empty dictionary
     global prefix
@@ -149,21 +149,21 @@ if __name__ == '__main__':
     pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int',
 #                                       'value' : 2050 } 
 #                                       'value' : 1600 }
-                                       'value' : 5270-175 }
+                                       'value' : 5000-175 }
     pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
 #                                       'value' : 2400 }
 #                                       'value' : 1950 }
-                                       'value' : 5270+175 }
+                                       'value' : 5000+175 }
     pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
                                       'value' : 0 }
     pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
 #                                       'value' : 11800 }
 #                                       'value' : 11400 }
-                                       'value' : 15000-175 }
+                                       'value' : 14700-175 }
     pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
 #                                       'value': 12200 }
 #                                       'value' : 11750 }
-                                       'value' : 15000+175 }
+                                       'value' : 14700+175 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
                                       'count' : 4,
                                       'value' : [0]*4 }
@@ -316,3 +316,6 @@ if __name__ == '__main__':
             server.process(0.1)
     except KeyboardInterrupt:
         print('\nInterrupted')
+
+if __name__ == '__main__':
+    main()

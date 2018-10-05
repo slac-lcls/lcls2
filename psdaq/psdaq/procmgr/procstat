@@ -12,8 +12,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QVariant, QObject, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QCursor, QBrush, QColor
 from PyQt5.QtWidgets import QApplication, QMessageBox, QTableWidgetItem
-from ProcMgr import ProcMgr, deduce_platform
-import ui_procStat
+from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform
+from psdaq.procmgr import ui_procStat
 import subprocess
 
 __version__ = "0.5"

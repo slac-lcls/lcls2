@@ -10,6 +10,7 @@ import socket
 import io
 from platform import node
 from getpass import getuser
+import shutil
 
 uniqueid_maxlen = 30;
 
@@ -322,6 +323,23 @@ def add_macro_config(procmgr_macro, oldfilename, newfilename):
   return
 
 #
+# findOnPath - find executable on PATH environment variable
+# 
+def findOnPath(cmd, env):
+  retval = cmd
+  if env is not None:
+    path = None
+    for entry in env.split():
+      if entry.startswith('PATH='):
+        path = entry.split('=')[1]
+        break
+    if path is not None:
+      found = shutil.which(cmd, path=path)
+      if found is not None:
+        retval = found
+  return retval
+
+#
 # ConfigFileError - this exception is raised to report configuration file errors
 # 
 class ConfigFileError(Exception):
@@ -514,14 +532,17 @@ class ProcMgr:
             # use os.path.realpath() to resolve any symbolic links
             cmdSplit = entry['cmd'].split(None, 1)
             cmdZero = os.path.expanduser(cmdSplit[0])
-            if (os.path.isfile(cmdZero)):
+            if (not os.path.isabs(cmdZero)) and (self.env is None):
+                print('ERR: \'%s\' has relative path and env is not set' % cmdZero)
+            cmdZero = findOnPath(cmdZero, self.env)
+            if shutil.which(cmdZero) is not None:
               if (len(cmdSplit) > 1):
                 entry['cmd'] = os.path.realpath(cmdZero) + ' ' + cmdSplit[1]
               else:
                 entry['cmd'] = os.path.realpath(cmdZero)
             else:
-              print('ERR: %s not found' % cmdZero)
-              entry['cmd'] = '/bin/echo \"File not found: ' + cmdZero + '"'
+              print('ERR: Executable \'%s\' not found' % cmdZero)
+              entry['cmd'] = '/bin/echo \"Executable not found: ' + cmdZero + '"'
 
             # if rtprio is set, prefix with /usr/bin/chrt
             if (self.rtprio):
@@ -1548,3 +1569,23 @@ if __name__ == '__main__':
     procMgr.show(0)
 
     print('-------- done')
+
+# get string suitable for use by procmgr to set environment for a
+# test release, if a test release exists
+def getRelEnvString():
+    import platform
+    import os
+    #if 'RELDIR' not in os.environ:
+    #    raise Exception('Environment variable RELDIR must be defined')
+    #reldir = os.environ['RELDIR']
+    #if 'TESTRELDIR' not in os.environ:
+    #    return ' PATH='+os.path.join(reldir,'bin')+' '
+
+    testreldir = os.environ['TESTRELDIR']
+    #relEnvString = ' PATH='+os.path.join(testreldir,'bin')+':'+os.path.join(reldir,'bin')+' '
+    relEnvString = ' PATH='+os.path.join(testreldir,'bin')
+    relEnvString += ' LD_LIBRARY_PATH='+os.path.join(testreldir,'lib')+' '
+    pythonver = platform.python_version().split('.')
+    relEnvString += 'PYTHONPATH='+os.path.join(testreldir,'lib/python'+pythonver[0]+'.'+pythonver[1]+'/site-packages'+' ')
+
+    return relEnvString
