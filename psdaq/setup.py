@@ -14,7 +14,7 @@ setup(
 
        entry_points={
             'console_scripts': [
-                'collection = psdaq.pydaq.collection:main',
+                'collection = psdaq.control.collection:main',
                 'partca = psdaq.cas.partca:main',
                 'partcas = psdaq.cas.partcas:main',
                 'modcas = psdaq.cas.modcas:main',
