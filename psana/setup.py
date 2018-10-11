@@ -113,8 +113,10 @@ setup(name='smdreader',
                     "psana.smdreader",
                     sources=["psana/smdreader.pyx"],
                     include_dirs=["psana"],
-                    extra_compile_args=['-fopenmp'],
-                    extra_link_args=['-fopenmp'],
+                    #extra_compile_args=['-fopenmp'], # This picks up system compiler and could potentially be
+                    #extra_link_args=['-fopenmp'],    # bad when sys. comp. is linked with extra stuffs.
+                    libraries = ['gomp'],             # Instead, tells compiler to use libgomp from conda directly.
+                    library_dirs = [os.path.join(os.environ['CONDA_PREFIX'],'lib')],
       ), build_dir=CYT_BLD_DIR))
 
 setup(name='eventbuilder', 
