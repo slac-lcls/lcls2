@@ -8,12 +8,12 @@ Usage ::
     import psana.pscalib.calib.MDBUtils as mu
 
     # Connect client to server
-    client = mu.connect_to_server(host=cc.HOST, port=cc.PORT, )
+    client = mu.connect_to_server(host=cc.HOST, port=cc.PORT, user=...)
 
     # Access databases, fs, collections
-    db = mu.database(client, dbname='cdb-cspad-0-cxids1-0')
-    db, fs = mu.db_and_fs(client, dbname='cdb-cxi12345')
-    col = mu.collection(db, cname='camera-0-cxids1-0')
+    db = mu.database(client, dbname)
+    db, fs = mu.db_and_fs(client, 'cdb_cxi12345')
+    col = mu.collection(db, cname)
 
     # Get host and port
     host = mu.client_host(client)
@@ -27,7 +27,7 @@ Usage ::
     status = mu.collection_exists(db, cname)
 
     # Delete methods
-    mu.delete_database(client, dbname:str='cdb-cspad-0-cxids1-0')
+    mu.delete_database(client, dbname='cdb_cspad-0-cxids1-0')
     mu.delete_database_obj(odb)
     mu.delete_collection(db, cname:str)
     mu.delete_collection_obj(col)
@@ -97,6 +97,8 @@ Usage ::
     s = mu.database_fs_info(db, gap:str='  ')
     s = mu.client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, gap:str='  ')
 
+    data, doc = mu.calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, **kwa)
+
     mu.request_confirmation()
 
     # Test methods
@@ -128,30 +130,53 @@ TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 
 #------------------------------
 
-#def connect_to_server(host:str=cc.HOST, port:int=cc.PORT,\
-#                      username:str=cc.USERNAME, userpw:str=cc.USERPW, ctout=5000, stout=30000) :
 def connect_to_server(host=cc.HOST, port=cc.PORT,\
-                      username=cc.USERNAME, userpw=cc.USERPW, ctout=5000, stout=30000) :
+                      user=cc.USERNAME, upwd=cc.USERPW, ctout=5000, stout=30000) :
     """Returns MongoDB client.
     """
-
-    #uri = mongodb://[username:password@]host1[:port1]
-    uri = 'mongodb://%s:%s@%s:%d' % (username, userpw, host, port)
-    #print('uri: ', uri)
-
+    uri = _uri(host, port, user, upwd)
     client = MongoClient(uri, connect=False, connectTimeoutMS=ctout, socketTimeoutMS=stout)
     #client = MongoClient(host, port, connect=False, connectTimeoutMS=ctout, socketTimeoutMS=stout)
     try :
         result = client.admin.command("ismaster")
         return client
 
-    except errors.ConnectionFailure:
-        #msg = 'Server not available for port:%s host: %d' % (host, port)
-        #print(msg)
-        #logger.debug(msg)
-        #logger.exception(err)
-        #sys.exit("ERROR can't connect to port:%s host: %d" % (host, port))
-        return None
+    except errors.ConnectionFailure as err :
+        msg = 'ConnectionFailure: Server is not available for port:%s host:%s' % (host, str(port))
+        logger.warning(msg)
+        sys.exit(msg)
+
+    except errors.OperationFailure as err :
+        msg = 'OperationFailure: Authentication failed for user:%s pwd:%s' % (user, 'you know that password...')
+        logger.warning(msg)
+        #logger.exception(err) 
+        sys.exit(msg)
+
+    except :
+        msg = 'Unexpected error in connect_to_server(%s)' % str(locals())
+        logger.exception(msg) 
+        sys.exit()
+
+#------------------------------
+
+def _uri(host, port, user, upwd) :
+    """ Returns (str) uri like 'mongodb://[username:password@]host1[:port1]'
+    """
+    rhs = '%s:%s' % (host, str(port))
+
+    # for Calibration DB client
+    if host==cc.HOST and port==cc.PORT :
+        rhs = '%s:%s@%s' % (user, cc.USERPW if upwd in ('', None) else upwd, rhs)
+
+    # for all other mongod clients
+    else :
+        if not (upwd in ('', None)) : 
+            rhs = '%s:%s@%s' % (user, upwd, rhs)
+
+    uri = 'mongodb://%s' % rhs
+    #uri = 'mongodb://psanagpu115:27017' # FOR TEST
+    logger.debug('MDBUtils uri: %s' % uri)
+    return uri
 
 #------------------------------
 
@@ -180,7 +205,7 @@ def collection(db, cname) :
 
 def client_host(client) :
     """Returns client host.
-       ??? returns localhost in stead of psanaphi105 ???
+       ??? returns localhost in stead of real DB host name ???
     """
     return client.HOST
     #return client.server_info()
@@ -223,7 +248,7 @@ def collection_exists(db, cname) :
 #------------------------------
 
 def delete_database(client, dbname) :
-    """Deletes database for client and (str) dbname, e.g. dbname='cdb-cspad-0-cxids1-0'.
+    """Deletes database for client and (str) dbname, e.g. dbname='cdb_cspad_0001'.
     """
     client.drop_database(dbname)
 
@@ -238,14 +263,14 @@ def delete_database_obj(odb) :
 
 def delete_databases(client, dbnames) :
     """Deletes databases for client and (list of str) dbnames,
-       e.g. dbnames=['cdb-cspad-0-cxids1-0','cdb-cspad-0-cxids2-0'].
+       e.g. dbnames=['cdb_amox23616', 'cdb_cspad_0001', 'cdb_cspad_0002'].
     """
     for name in dbnames : client.drop_database(name)
 
 #------------------------------
 
 def delete_collection(db, cname) :
-    """Deletes db collection for database and (str) cname, e.g. cname='camera-0-cxids1-0'.
+    """Deletes db collection for database and (str) cname, e.g. cname='cspad_0001'.
     """
     db.drop_collection(cname)
 
@@ -257,7 +282,7 @@ def delete_collection_obj(ocol) :
 #------------------------------
 
 def delete_collections(db, cnames) :
-    """Deletes list of collections from database db, e.g. cname='camera-0-cxids1-0'.
+    """Deletes list of collections from database db, e.g. cname='cspad_0001'.
     """
     for cname in cnames : db.drop_collection(cname)
 
@@ -304,13 +329,11 @@ def connect(**kwargs) :
     """
     host    = kwargs.get('host', cc.HOST)
     port    = kwargs.get('port', cc.PORT)
-    user    = kwargs.get('username', cc.USERNAME)
-    upwd    = kwargs.get('userpw', cc.USERPW)
+    user    = kwargs.get('user', cc.USERNAME)
+    upwd    = kwargs.get('upwd', cc.USERPW)
     expname = kwargs.get('experiment', 'cxi12345')
     detname = kwargs.get('detector', 'camera-0-cxids1-0')
     verbose = kwargs.get('verbose', False)
-    userpwd = kwargs.get('password', '')
-    if userpwd : upwd = userpwd
 
     dbname_exp = db_prefixed_name(expname)
     dbname_det = db_prefixed_name(detname)
@@ -318,10 +341,10 @@ def connect(**kwargs) :
     t0_sec = time()
 
     client = connect_to_server(host, port, user, upwd)
-    db_exp, fs_exp = db_and_fs(client, dbname=dbname_exp)
-    db_det, fs_det = db_and_fs(client, dbname=dbname_det)
-    col_det = collection(db_det, cname=detname)
-    col_exp = collection(db_exp, cname=detname) 
+    db_exp, fs_exp = db_and_fs(client, dbname_exp)
+    db_det, fs_det = db_and_fs(client, dbname_det)
+    col_det = collection(db_det, detname)
+    col_exp = collection(db_exp, detname) 
 
     logger.debug('client  : %s' % client.name)
     logger.debug('db_exp  : %s' % db_exp.name)
@@ -342,9 +365,15 @@ def _timestamp(time_sec) :
     return gu.str_tstamp(TSFORMAT, int(time_sec))
 
 
-def timestamp_id(id) :
+def timestamp_id(id) : # e.g. id=5b6cde201ead14514d1301f1
     """Converts MongoDB (str) id to (str) timestamp of adopted format.
     """
+    #print('XXXXXXX MDBUtils type(id)', type(id))
+
+    if not isinstance(id,str) : return str(id) # protection aginst non-valid id
+    if len(id) != 24 :  return str(id) # protection aginst non-valid id
+
+    oid = ObjectId(id)
     str_ts = str(ObjectId(id).generation_time) # '2018-03-14 21:59:37+00:00'
     tobj = Time.parse(str_ts)                  # Time object from parsed string
     tsec = int(tobj.sec())                     # 1521064777
@@ -366,12 +395,13 @@ def time_and_timestamp(**kwargs) :
        If both missing - current time is used.
     """
     time_sec   = kwargs.get('time_sec', None)
-
-    print('XXXXXXXXXXXXXXX time_sec', kwargs)
-
     time_stamp = kwargs.get('time_stamp', None)
 
     if time_sec is not None :
+
+        print('XXXXXXXXXXXX time_sec:', time_sec)
+        print('XXXXXXXXXXXX kwargs:', kwargs)
+
         assert isinstance(time_sec, int) , 'time_and_timestamp - parameter time_sec should be int'
         assert 0 < time_sec < 5000000000,  'time_and_timestamp - parameter time_sec should be in allowed range'
 
@@ -470,7 +500,10 @@ def insert_data(data, fs) :
     else :                            s = pickle.dumps(data)
         
     try :
-        return fs.put(s)
+        r = fs.put(s)
+        logger.debug('data has been added to fs in db: %s' % fs._GridFS__database.name)        
+        #print('XXX dir(fs):', dir(fs._GridFS__database))
+        return r
 
     except errors.ServerSelectionTimeoutError as err: 
         logger.exception(err)
@@ -505,9 +538,10 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     id_data_exp = insert_data(data, fs_exp)
     id_data_det = insert_data(data, fs_det)
 
-    logger.debug('Insert data time %.6f sec' % (time()-t0_sec))
-    logger.debug('  - in fs_exp %s id_data_exp: %s' % (fs_exp, id_data_exp))
-    logger.debug('  - in fs_det %s id_data_det: %s' % (fs_det, id_data_det))
+    msg = 'Insert data time %.6f sec' % (time()-t0_sec)\
+        + '\n  - in fs_exp %s id_data_exp: %s' % (fs_exp, id_data_exp)\
+        + '\n  - in fs_det %s id_data_det: %s' % (fs_det, id_data_det)
+    logger.debug(msg)
 
     doc = docdic(data, id_data_exp, **kwargs)
     if verbose :
@@ -520,9 +554,10 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     doc['id_exp']  = id_exp      # add
     id_det = insert_document(doc, col_det)
 
-    logger.debug('Insert 2 docs time %.6f sec' % (time()-t0_sec))
-    logger.debug('  - in collection %20s id_exp : %s' % (col_exp.name, id_exp))
-    logger.debug('  - in collection %20s id_det : %s' % (col_det.name, id_det))
+    msg = 'Insert 2 docs time %.6f sec' % (time()-t0_sec)\
+        + '\n  - in collection %20s id_exp : %s' % (col_exp.name, id_exp)\
+        + '\n  - in collection %20s id_det : %s' % (col_det.name, id_det)
+    logger.debug(msg)
 
     return id_data_exp, id_data_det, id_exp, id_det
 
@@ -603,6 +638,8 @@ def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwargs)
           'comment'    : _comment,
           'host'       : kwargs.get('host', cc.HOST),
           'port'       : kwargs.get('port', cc.PORT),
+          'user'       : kwargs.get('user', cc.USERNAME),
+          'upwd'       : kwargs.get('upwd', cc.USERPW),
           'verbose'    : kwargs.get('verbose', False),
           'extpars'    : kwargs.get('extpars', None),
           }
@@ -691,7 +728,11 @@ def get_data_for_doc(fs, doc) :
     #    sys.exit(msg)
 
     s = out.read()
-    data_type = doc['data_type']
+    data_type = doc.get('data_type', None)
+    if data_type is None : 
+        logger.warning('get_data_for_doc: data_type is None in the doc: %s' % str(doc))
+        return None
+
     logger.debug('get_data_for_doc data_type: %s' % data_type)
     
     if data_type == 'str'     : return s.decode()
@@ -721,9 +762,9 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     if run is not None : 
         query['run']     = {'$lte' : run}
         #query['run_end'] = {'$gte' : run}
-    if time_sec is not None : query['time_sec'] = {'$lte' : time_sec}
+    if time_sec is not None : query['time_sec'] = {'$lte' : int(time_sec)}
     if vers is not None : query['version'] = vers
-    logger.debug('query: %s' % str(query))
+    logger.info('query: %s' % str(query))
 
     db_det, db_exp = db_prefixed_name(det), db_prefixed_name(str(exp))
     if 'None' in db_det : db_det = None
@@ -789,7 +830,7 @@ def document_keys(doc) :
 #------------------------------
 
 def document_info(doc, keys=('time_sec','time_stamp','experiment',\
-                  'detector','ctype','run','ts_data','data_type','data_dtype'),\
+                  'detector','ctype','run','id_data','data_type','data_dtype'),\
                   fmt='%10s %24s %11s %24s %16s %4s %30s %10s %10s') :
     """Returns (str, str) for formatted document values and title made of keys. 
     """
@@ -857,7 +898,7 @@ def database_info(client, dbname, level=10, gap='  ') :
     s = '%s\ndbnames %s' % (gap, str(dbnames))
     db = database(client, dbname)
     cnames = collection_names(db)
-    s += '\n%sDB %s contains %d collections: %s' % (gap, dbname.ljust(12), len(cnames), str(cnames))
+    s += '\n%sDB %s contains %d collections: %s' % (gap, dbname.ljust(24), len(cnames), str(cnames))
     if level==1 : return s
 
     for cname in cnames :
@@ -906,12 +947,12 @@ def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  ') :
     _client = client if client is not None else connect_to_server(host, port)
     #s = '\nMongoDB client host:%s port:%d' % (client_host(_client), client_port(_client))
     dbnames = database_names(_client)
-    s = '\n%sClient contains %d databases: %s' % (gap, len(dbnames), ', '.join(dbnames))
+    s = '\n%sClient contains %d databases:' % (gap, len(dbnames)) #, ', '.join(dbnames))
     if level==1 : return s
     for idb, dbname in enumerate(dbnames) :
         db = database(_client, dbname) # client[dbname]
         cnames = collection_names(db)
-        s += '\n%sDB %s has %2d collections: %s' % (gap, dbname.ljust(12), len(cnames), str(cnames))
+        s += '\n%sDB %s has %2d collections: %s' % (gap, dbname.ljust(20), len(cnames), str(cnames))
         if level==2 : continue
         for icol, cname in enumerate(cnames) :
             col = collection(db, cname) # or db[cname]
@@ -924,6 +965,43 @@ def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  ') :
                 #logger.debug('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
             if level==3 : continue
     return s
+
+#------------------------------
+
+def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, **kwa) :
+    """Returns calibration constants for specified parameters. 
+       To get meaningful constants, at least a few parameters must be specified, e.g.:
+       - det, ctype, time_sec
+       - det, ctype, version
+       - det, exp, ctype, run
+       - det, exp, ctype, time_sec
+       - det, exp, ctype, run, version
+       etc...
+    """
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+    logger.debug('get_constants: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
+    dbname = db_det if exp is None else db_exp
+
+    client = connect_to_server(**kwa) # host=cc.HOST, port=cc.PORT, user=cc.USERNAME, upwd=...
+    dbnames = database_names(client)
+    if not(dbname in dbnames) :
+        logger.warning('DB name %s is not found among available: %s' % (dbname,str(dbnames)))
+        return None, None
+
+    db, fs = db_and_fs(client, dbname)
+
+    if not collection_exists(db, colname) :
+        logger.warning('Collection %s is not found in db: %s' % (colname, dbname))
+        return None, None
+
+    col = collection(db, colname)
+
+    doc = find_doc(col, query)
+    if doc is None :
+        logger.warning('document is not available for query: %s' % str(query))
+        return None, None
+
+    return get_data_for_doc(fs, doc), doc
 
 #------------------------------
 
@@ -948,7 +1026,7 @@ if __name__ == "__main__" :
     """
     arr = np.array(range(12))
     arr.shape = (3,4)
-    return {'1':1, 5:'super', 'a':arr}
+    return {'1':1, '5':'super', 'a':arr, 'd':{'c':'name'}}
 
   def get_test_txt() :
     """Returns text for test purpose.
@@ -970,36 +1048,33 @@ if __name__ == "__main__" :
     """Insert one calibration data in data base.
     """
     data = None 
-    if   tname == '1' : data = get_test_txt(); logger.debug('txt:', data)
-    elif tname == '2' : data = get_test_nda(); logger.debug(info_ndarr(data, 'nda'))
-    elif tname == '3' : data = get_test_dic(); logger.debug('dict:', data)
+    if   tname == '1' : data, ctype = get_test_txt(), 'testtext'; logger.debug('txt: %s' % str(data))
+    elif tname == '2' : data, ctype = get_test_nda(), 'testnda';  logger.debug(info_ndarr(data, 'nda'))
+    elif tname == '3' : data, ctype = get_test_dic(), 'testdict'; logger.debug('dict: %s' % str(data))
 
-    #insert_calib_data(data, host=cc.HOST, port=cc.PORT, experiment='cxi12345', detector='camera-0-cxids1-0',\
-    #                  run=10, ctype='pedestals', time_sec=int(time()), verbose=True)
-    insert_constants(data, 'cxi12345', 'camera-0-cxids1-0', 'pedestals', 10, 1600000000, verbose=True,\
-                     time_stamp='2018-01-01T00:00:00-0800', )
-    #t0_sec = time()
-    #id_data = insert_data(data, fs)
-    #logger.debug('Insert data in %s id_data: %s time %.6f sec' % (fs, id_data, time()-t0_sec))
-
-    #doc = docdic(data, id_data, experiment=expname, detector=detname)
-    #print_doc(doc)
-
-    #t0_sec = time()
-    #insert_document(doc, col_exp)
-    #insert_document(doc, col_det)
-    #logger.debug('Insert 2 docs time %.6f sec' % (time()-t0_sec))
+    kwa = {'user' : gu.get_login()}
+    insert_constants(data, 'exp12345', 'detector_1234', ctype, 10, 1500000000, verbose=True,\
+                     time_stamp='2018-01-01T00:00:00-0800', **kwa)
 
 #------------------------------
 
   def test_insert_many(tname) :
     """Insert many documents in loop
     """
+    user = gu.get_login()
+    kwa = {'user' : user}
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
-        connect(host=cc.HOST, port=cc.PORT, experiment='cxi12345', detector='camera-0-cxids1-0', verbose=True)
+        connect(host=cc.HOST, port=cc.PORT, experiment='exp12345', detector='detector_1234', verbose=True, **kwa)
 
     t_data = 0
-    nloops = 10
+    nloops = 3
+    kwa = {'user'      : user,
+           'experiment': expname,
+           'detecto'   : detname,
+           'ctype'     : 'testnda',
+           'time_sec'  : int(time()),
+           'run'       : 10,
+           'verbose'   : True}
 
     for i in range(nloops) :
         logger.info('%s\nEntry: %4d' % (50*'_', i))
@@ -1007,23 +1082,12 @@ if __name__ == "__main__" :
         print_ndarr(data, 'data nda') 
 
         t0_sec = time()
-        id_data_exp, id_data_det, id_exp, id_det = insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det,\
-             experiment=expname, detector=detname, ctype='pedestals', time_sec=int(time()), run=10, verbose=True)
+        id_data_exp, id_data_det, id_exp, id_det = insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwa)
 
-        #id_data = insert_data(nda, fs)
         dt_sec = time() - t0_sec
         t_data += dt_sec
-        logger.info('Insert data in %s id_data: %s time %.6f sec ' % (fs, id_data, dt_sec))
-
-        #doc = docdic(nda, id_data, experiment=expname, detector=detname, run=10, ctype='pedestals')
-        #print_doc_keys(doc)
-
-        #t0_sec = time()
-        #idd_exp = insert_document(doc, col_exp)
-        #idd_det = insert_document(doc, col_det)
-        #dt_sec = time() - t0_sec
-        #t_doc += dt_sec
-        #logger.info('Insert 2 docs %s, %s time %.6f sec' % (idd_exp, idd_det, dt_sec))
+        logger.info('Insert data in fs of dbs: %s and %s, time %.6f sec '%\
+                     (fs_exp._GridFS__database.name, fs_det._GridFS__database.name, dt_sec))
 
     logger.info('Average time to insert data and two docs: %.6f sec' % (t_data/nloops))
 
@@ -1051,12 +1115,12 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_get_data_for_id(tname, det='cspad_0001', data_id='5b6cdde71ead144f11531999') :
-    """Get doc and data
+  def test_get_data_for_id(tname, det='cspad_0001', data_id='5bbbc6de41ce5546e8959bcf') :
+    """Get data from GridFS using its id
     """
-    kwa = {'detector':det}
-    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(verbose=True, **kwa)
-    print('XXX expname', expname)
+    kwa = {'detector': det,
+           'verbose' : True}
+    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(**kwa)
     print('XXX expname', expname)
     print('XXX data_id', data_id)
 
@@ -1074,12 +1138,12 @@ if __name__ == "__main__" :
 #------------------------------
 
   def test_database_content(tname, level=3) :
-    """Insert many documents in loop
+    """Print in loop database content
     """
     #client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
     #    connect(host=cc.HOST, port=cc.PORT)
 
-    client = connect_to_server(host=cc.HOST, port=cc.PORT)
+    client = connect_to_server(host=cc.HOST, port=cc.PORT) # , user=cc.USERNAME, upwd=cc.USERPW)
     logger.info('host:%s port:%d' % (client_host(client), client_port(client)))
     dbnames = database_names(client)
     logger.info('databases: %s' % str(dbnames))
@@ -1104,6 +1168,44 @@ if __name__ == "__main__" :
 
 #------------------------------
 
+  def test_dbnames_colnames() :
+    """Prints the list of DBs and in loop list of collections for each DB.
+    """
+    client = connect_to_server()
+    dbnames = database_names(client)
+    #print('==== client DBs: %s...' % str(dbnames[:5]))
+
+    for dbname in dbnames :
+        db = database(client, dbname)
+        cnames = collection_names(db)
+        print('==== collections of %s: %s' % (dbname.ljust(20),cnames))
+
+#------------------------------
+
+  def test_calib_constants() :
+    det = 'cspad_0001'
+    data, doc = calib_constants('cspad_0001', exp='cxic0415', ctype='pedestals', run=50, time_sec=None, vers=None)
+    print_ndarr(data, '==== test_calib_constants data', first=0, last=5)
+    print('==== doc: %s' % str(doc))
+
+#------------------------------
+
+  def test_calib_constants_text() :
+    det = 'cspad_0001'
+    data, doc = calib_constants(det, exp='cxic0415', ctype='geometry', run=50, time_sec=None, vers=None)
+    print('==== test_calib_constants_text data:', data)
+    print('==== doc: %s' % str(doc))
+
+#------------------------------
+
+  def test_calib_constants_dict() :
+    det = 'opal1000_0059'
+    data, doc = calib_constants(det, exp=None, ctype='lasingoffreference', run=60, time_sec=None, vers=None)
+    print('==== test_calib_constants_dict data:', data)
+    print('==== doc: %s' % str(doc))
+
+#------------------------------
+
 if __name__ == "__main__" :
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
     #                    datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO) # WARNING
@@ -1114,8 +1216,12 @@ if __name__ == "__main__" :
     elif tname in ('1','2','3') : test_insert_one(tname)
     elif tname == '4' : test_insert_many(tname)
     elif tname == '5' : test_database_content(tname)
+    elif tname == '6' : test_dbnames_colnames()
+    elif tname == '7' : test_calib_constants()
+    elif tname == '8' : test_calib_constants_text()
+    elif tname == '9' : test_calib_constants_dict()
     elif tname in ('11','12','13') : test_get_data(tname)
-    elif tname == '15' : test_get_data_for_id(tname)
+    elif tname == '14' : test_get_data_for_id(tname)
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 

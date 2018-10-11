@@ -44,7 +44,6 @@ class MDB_CLI :
         """
         (popts, pargs) = parser.parse_args()
         #args = pargs
-        #opts = vars(popts)
         #defs = vars(parser.get_default_values())
         #host = kwargs.get('host', None),
 
@@ -53,26 +52,37 @@ class MDB_CLI :
         kwargs = vars(popts)
 
         time_sec, time_stamp = dbu.time_and_timestamp(**kwargs)
-        kwargs['time_sec'] = str(time_sec)
+        kwargs['time_sec']   = int(time_sec)
         kwargs['time_stamp'] = time_stamp
 
         self.kwargs = kwargs
         self.defs = vars(parser.get_default_values())
 
-        print_parser(parser)
-        print_kwargs(kwargs)
+        level = kwargs.get('loglevel','DEBUG').upper()
 
-        level = kwargs.get('loglevel','DEBUG')
-        config_logger(loglevel=level)
+        fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
+        config_logger(loglevel=level, fmt=fmt)
+
+        if level == 'DEBUG' :
+            from psana.pyalgos.generic.Utils import print_kwargs, print_parser
+            print(40*'_')
+            print_parser(parser)
+            print_kwargs(kwargs)
+            fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
 
 
     def client(self) :
         kwargs = self.kwargs
-        host = kwargs.get('host', None)
-        port = kwargs.get('port', None)
-        msg = 'MongoDB client host:%s port:%d' % (host, port)
-        logger.info(msg)
-        return dbu.connect_to_server(host, port)
+        host  = kwargs.get('host', None)
+        port  = kwargs.get('port', None)
+        user  = kwargs.get('user', None)
+        upwd  = kwargs.get('upwd', None)
+        ctout = kwargs.get('ctout', 5000)
+        stout = kwargs.get('stout', 30000)
+
+        #msg = 'MongoDB client host:%s port:%s u:%s p:%s' % (host, str(port), user, upwd)
+        #logger.info(msg)
+        return dbu.connect_to_server(host, port, user, upwd, ctout, stout)
 
 
     def check_database(self, client, dbname) :
@@ -206,6 +216,10 @@ class MDB_CLI :
         if vers  != defs['version']  :   query['version']    = vers
         logger.info('query: %s' % str(query))
 
+        #db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, tsec, vers)
+        #logger.debug('get_constants: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
+        #dbname = db_det if exp is None else db_exp
+
         docs = dbu.find_docs(col, query)
         if docs is None or docs.count()==0 :
             logger.warning('Can not find document for query: %s' % str(query))
@@ -256,23 +270,29 @@ class MDB_CLI :
         tstamp = kwargs.get('time_stamp', None)
         vers   = kwargs.get('version', None)
         fname  = kwargs.get('iofname', None)
+        verb   = kwargs.get('verbose', False)
 
-        query={'detector':det, 'ctype':ctype}
-        if run != defs['run'] : 
-            query['run']     = {'$lte' : run}
-            query['run_end'] = {'$gte' : run}
-        if tsec != defs['time_sec'] : query['time_sec'] = {'$lte' : tsec}
-        if vers != defs['version'] : query['version'] = vers
-        #logger.debug('query: %s' % str(query))
+        #query={'detector':det, 'ctype':ctype}
+        #if run != defs['run'] : 
+        #    query['run']     = {'$lte' : run}
+        #    query['run_end'] = {'$gte' : run}
+        #if tsec != defs['time_sec'] : query['time_sec'] = {'$lte' : tsec}
+        #if vers != defs['version'] : query['version'] = vers
+        ##logger.debug('query: %s' % str(query))
 
-        dbname  = dbu.get_dbname(**kwargs)
+        db_det, db_exp, colname, query = dbu.dbnames_collection_query(det, exp, ctype, run, tsec, vers)
+        logger.debug('get: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
+        dbname = db_det if exp is None else db_exp
+        #dbname  = dbu.get_dbname(**kwargs)
+
         client = self.client()
         if not self.check_database(client, dbname) : return
 
-        detname = kwargs.get('detector', None)
-        if detname is None :
-            logger.warning('%s needs in the collection name. Please specify the detector name.'%(mode))
-        colname = detname
+        #detname = kwargs.get('detector', None)
+        #if detname is None :
+        #    logger.warning('%s needs in the collection name. Please specify the detector name.'%(mode))
+        #colname = detname
+
         db, fs = dbu.db_and_fs(client, dbname)
         colnames = dbu.collection_names(db)
 
@@ -282,7 +302,7 @@ class MDB_CLI :
             
         col = dbu.collection(db,colname)
 
-        logger.info('Search document in db "%s" collection "%s"' % (dbname,colname))
+        logger.debug('Search document in db "%s" collection "%s"' % (dbname,colname))
 
         #client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
         #    dbu.connect(host=host, port=port, experiment=exp, detector=det, verbose=verb)
@@ -298,22 +318,33 @@ class MDB_CLI :
         if doc is None :
             logger.warning('Can not find document for query: %s' % str(query))
             return
+            
+        logger.debug('get doc:', doc)
 
         data = dbu.get_data_for_doc(fs, doc)
         if data is None :
-                logger.warning('Can not load data for doc: %s' % str(doc))
-                return
+            logger.warning('Can not load data for doc: %s' % str(doc))
+            return
 
         if fname is None : fname='clb-%s-%s-%s.npy' % (expname, det, ctype)
 
+        data_type = doc.get('data_type', None)
+
         if ctype == 'geometry' : 
             gu.save_textfile(data, fname, mode='w', verb=verb)
-        elif os.path.splitext(fname)[1] == '.npy' : 
-            np.save(fname, data, allow_pickle=False)
-        else : 
-            save_txt(fname, data, fmt='%.2f')
+        elif data_type == 'ndarray' :
+            if verb : logger.info(info_ndarr(data, 'nda', first=0, last=3))
+            if os.path.splitext(fname)[1] == '.npy' : 
+                np.save(fname, data, allow_pickle=False)
+            else :
+                save_txt(fname, data, fmt='%.3f')
 
-        if verb : logger.info(info_ndarr(data, 'nda', first=0, last=3))
+        elif data_type == 'any' :
+            gu.save_textfile(str(data), fname, mode='w', verb=verb)
+        else :
+            logger.warning('Unknown data type for doc: %s' % str(doc))
+            return
+
         logger.info('Save constants in file: %s' % fname)
 
 
@@ -359,7 +390,7 @@ class MDB_CLI :
 
     def dispatcher(self) :
         mode = self.mode
-        #logger.info('Mode: %s' % mode)
+        logger.debug('Mode: %s' % mode)
         if   'print'     in mode : self.print_content()
         elif 'convert'   in mode : self.convert()
         elif 'deldoc'    in mode : self.deldoc()
@@ -371,7 +402,6 @@ class MDB_CLI :
         elif 'export'    in mode : self.exportdb()
         elif 'import'    in mode : self.importdb()
         elif 'test'      in mode : self.test()
-        #elif 'get'      in mode : self._warning()
         else : logger.warning('Non-implemented command mode "%s"' % mode)
 
 #------------------------------

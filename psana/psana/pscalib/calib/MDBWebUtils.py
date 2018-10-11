@@ -14,7 +14,7 @@ Usage ::
     _ = wu.get_data_for_id(dbname, dataid, url=cc.URL)
     _ = wu.get_data_for_docid(dbname, colname, docid, url=cc.URL)
     _ = wu.get_data_for_doc(dbname, colname, doc, url=cc.URL)
-    _ = wu.calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL)
+    data,doc = wu.calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL)
 
     test_*()
 """
@@ -27,7 +27,6 @@ import psana.pscalib.calib.CalibConstants as cc
 from requests import get
 #import json
 from time import time
-import pickle
 from numpy import fromstring
 from psana.pscalib.calib.MDBUtils import dbnames_collection_query
 
@@ -39,7 +38,7 @@ def request(url, query=None) :
     t0_sec = time()
     r = get(url, query)
     dt = time()-t0_sec
-    logger.debug('CONSUMED TIME request %.6f sec' % dt)
+    logger.debug('CONSUMED TIME by request %.6f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
     return r
 
 #------------------------------
@@ -151,6 +150,8 @@ def get_data_for_doc(dbname, colname, doc, url=cc.URL) :
         nda = fromstring(s, dtype=str_dtype)
         nda.shape = eval(doc['data_shape']) # eval converts string shape to tuple
         return nda
+
+    import pickle
     return pickle.loads(s)
 
 #------------------------------
@@ -171,16 +172,14 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
     doc = find_doc(dbname, colname, query, url)
     if doc is None :
         logger.warning('document is not available for query: %s' % str(query))
-        return None
-    return get_data_for_doc(dbname, colname, doc, url)
+        return None, None
+    return get_data_for_doc(dbname, colname, doc, url), doc
 
 #------------------------------
+#---------  TESTS  ------------
 #------------------------------
 
 if __name__ == "__main__" :
-
-#------------------------------
-#------------------------------
 
   def test_database_names() :
     print('test_database_names:', database_names())
@@ -217,8 +216,7 @@ if __name__ == "__main__" :
 #------------------------------
 
   def test_get_data_for_id() :
-    o = get_data_for_id('cdb_cspad_0001', '5b6cdde71ead144f11531999')
-    #o = get_data_for_id('cdb_cxid9114', '5b6cdde71ead144f11531974')
+    o = get_data_for_id('cdb_cxic0415', '5bbbc6ce41ce5546e8959736')
     print('test_get_data_for_id: r.content raw data: %s ...' % str(o[:500]))
 
 #------------------------------
@@ -238,20 +236,42 @@ if __name__ == "__main__" :
 
   def test_calib_constants() :
     det = 'cspad_0001'
-    o = calib_constants('cspad_0001', exp='cxic0415', ctype='pedestals', run=50, time_sec=None, vers=None) #, url=cc.URL)
-    print_ndarr(o, 'test_calib_constants', first=0, last=5)
+    data, doc = calib_constants('cspad_0001', exp='cxic0415', ctype='pedestals', run=50, time_sec=None, vers=None) #, url=cc.URL)
+    print_ndarr(data, '==== test_calib_constants', first=0, last=5)
+    print('==== doc: %s' % str(doc))
 
 #------------------------------
 
   def test_calib_constants_text() :
     det = 'cspad_0001'
-    o = calib_constants(det, exp='cxic0415', ctype='geometry', run=50, time_sec=None, vers=None) #, url=cc.URL)
-    print('test_calib_constants_text o:', o)
+    data, doc = calib_constants(det, exp='cxic0415', ctype='geometry', run=50, time_sec=None, vers=None) #, url=cc.URL)
+    print('==== test_calib_constants_text data:', data)
+    print('==== doc: %s' % str(doc))
+
+#------------------------------
+
+  def test_calib_constants_dict() :
+    det = 'opal1000_0059'
+    #data, doc = calib_constants(det, exp='amox23616', ctype='lasingoffreference', run=60, time_sec=None, vers=None)
+    data, doc = calib_constants(det, exp=None, ctype='lasingoffreference', run=60, time_sec=None, vers=None)
+    print('==== test_calib_constants_dict data:', data)
+    print('==== doc: %s' % str(doc))
 
 #------------------------------
 
 if __name__ == "__main__" :
-  def usage() : return 'Use command: python %s <test-number>, where <test-number> = 0,1,2,...,8' % sys.argv[0]
+  def usage() : 
+      return 'Use command: python %s <test-number>, where <test-number> = 0,1,2,...,9' % sys.argv[0]\
+           + '\n  0: test_database_names'\
+           + '\n  1: test_collection_names'\
+           + '\n  2: test_find_docs'\
+           + '\n  3: test_find_doc'\
+           + '\n  4: test_get_data_for_id'\
+           + '\n  5: test_get_data_for_docid'\
+           + '\n  6: test_dbnames_collection_query'\
+           + '\n  7: test_calib_constants'\
+           + '\n  8: test_calib_constants_text'\
+           + '\n  9: test_calib_constants_dict'
 
 #------------------------------
 
@@ -274,6 +294,7 @@ if __name__ == "__main__" :
     elif tname == '6' : test_dbnames_collection_query();
     elif tname == '7' : test_calib_constants();
     elif tname == '8' : test_calib_constants_text();
+    elif tname == '9' : test_calib_constants_dict();
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 

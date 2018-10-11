@@ -38,8 +38,7 @@ from PyQt5.QtCore import Qt, QPoint
 
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWLoggerStd import QWLoggerStd#, QWFilter
-
-from psana.graphqt.CMWMainTabs import CMWMainTabs
+from psana.pyalgos.generic.Utils import print_kwargs, print_parser, is_in_command_line
 
 #from psana.graphqt.QWUtils import selectFromListInPopupMenu
 
@@ -62,13 +61,15 @@ class CMWMain(QWidget) :
         cp.cmwmain = self
 
         self.proc_parser(parser)
-            
+
         self.main_win_width  = cp.main_win_width 
         self.main_win_height = cp.main_win_height
         self.main_win_pos_x  = cp.main_win_pos_x 
         self.main_win_pos_y  = cp.main_win_pos_y  
 
         #icon.set_icons()
+
+        from psana.graphqt.CMWMainTabs import CMWMainTabs
 
         self.wtab = CMWMainTabs()
         #self.wlog = QWLogger(log, cp, show_buttons=False)
@@ -124,60 +125,31 @@ class CMWMain(QWidget) :
 
         host       = popts.host # self.opts['host']
         port       = popts.port # self.opts['port']
-        cp.user    = popts.username
-        cp.upwd    = popts.password
+        cp.user    = popts.user
+        cp.upwd    = popts.upwd
         exp        = popts.experiment
         det        = popts.detector
-        loglevel   = popts.loglevel
+        loglevel   = popts.loglevel.upper()
         logdir     = popts.logdir
 
-        if host     != self.defs['host']       : cp.cdb_host.setValue(host)
-        if port     != self.defs['port']       : cp.cdb_port.setValue(port)
-        if exp      != self.defs['experiment'] : cp.exp_name.setValue(exp)
-        if det      != self.defs['detector']   : cp.data_source.setValue(det)
-        if loglevel != self.defs['loglevel']   : cp.log_level.setValue(loglevel)
-        if logdir   != self.defs['logdir']     : cp.log_prefix.setValue(logdir)
+        #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
+        #if port     != self.defs['port']       : cp.cdb_port.setValue(port)
+        #if exp      != self.defs['experiment'] : cp.exp_name.setValue(exp)
+        #if det      != self.defs['detector']   : cp.data_source.setValue(det)
+        #if loglevel != self.defs['loglevel']   : cp.log_level.setValue(loglevel)
+        #if logdir   != self.defs['logdir']     : cp.log_prefix.setValue(logdir)
 
-#------------------------------
+        if is_in_command_line(None, '--host')       : cp.cdb_host.setValue(host)
+        if is_in_command_line(None, '--port')       : cp.cdb_port.setValue(port)
+        if is_in_command_line('-e', '--experiment') : cp.exp_name.setValue(exp)
+        if is_in_command_line('-d', '--detector')   : cp.data_source.setValue(det)
+        if is_in_command_line('-l', '--loglevel')   : cp.log_level.setValue(loglevel)
+        if is_in_command_line('-L', '--logdir')     : cp.log_prefix.setValue(logdir)
 
-    def proc_parser_v0(self, parser=None) :
-        self.parser=parser
-
-        if parser is None :
-            return
-
-        (popts, pargs) = parser.parse_args()
-        self.args = pargs
-        self.opts = vars(popts)
-        self.defs = vars(parser.get_default_values())
-
-        nargs =len(self.args)
-
-        exp = popts.exp # self.opts['exp']
-        run = popts.run # self.opts['run']
-        nev = popts.nev
-        clb = popts.clb
-        ifn = popts.ifn
-        vrb = popts.vrb
-
-        #cp.instr_dir .setValue() # val_def='/reg/d/psdm'
-        if exp != self.defs['exp'] : cp.instr_name.setValue(exp[:3].upper())
-        if exp != self.defs['exp'] : cp.exp_name  .setValue(exp)
-        if run != self.defs['run'] : cp.str_runnum.setValue('%d'%run)
-        if clb != self.defs['clb'] : cp.calib_dir .setValue(clb)
-
-        self.verbos = vrb
- 
-        ifname = ifn          if ifn != self.defs['ifn'] else\
-                 self.args[0] if nargs > 0 else\
-                 None
-        
-        if ifname is not None :
-            logger.info('Input image file name: %s' % ifname)
-            cp.fname_img.setValue(ifname)
-            cp.current_tab.setValue('File')
-        #else :
-        #    cp.current_tab.setValue('Data')
+        if loglevel == 'DEBUG' :
+            print(40*'_')
+            print_parser(parser)
+            print_kwargs(self.opts)
 
 #------------------------------
 

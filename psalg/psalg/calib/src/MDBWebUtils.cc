@@ -208,7 +208,7 @@ void request(std::string& sresp, const char* url) {
     if(CURLE_OK == res) { // ask for the content-type
       char *ct;
       res = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
-      if((CURLE_OK == res) && ct) {MSG(DEBUG, "Received Content-Type: " << ct);}
+      if((CURLE_OK == res) && ct) {MSG(DEBUG, "Received Content-Type: " << ct << " sresp.size=" << sresp.size());}
       else                         MSG(WARNING, "RESPONSE IS NOT RECEIVED");
     }
 
@@ -487,11 +487,11 @@ void calib_constants_doc(rapidjson::Document& docdata, rapidjson::Document& doc,
 
   std::string sresp;
   calib_constants(sresp, doc, det, exp, ctype, run, time_sec, vers, urlws);
-  MSG(DEBUG, "metadata doc: " << json_doc_to_string(doc));
+  MSG(DEBUG, "calib_constants_doc:metadata doc: " << json_doc_to_string(doc));
 
+  MSG(DEBUG, "calib_constants_doc:data: " << sresp);
   response_to_json_doc(sresp, docdata); // converts sresp -> rapidjson::Document
-
-  MSG(DEBUG, "data doc: " << json_doc_to_string(docdata));
+  MSG(DEBUG, "calib_constants_doc:data doc: " << json_doc_to_string(docdata));
 } 
 
 //-------------------

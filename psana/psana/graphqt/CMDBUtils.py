@@ -51,12 +51,12 @@ from psana.graphqt.CMConfigParameters import cp
 
 #------------------------------
 
-def connect_client(host=None, port=None, user=None) :
+def connect_client(host=None, port=None, user=cp.user, upwd=cp.upwd) : # user=dbu.cc.USERNAME
     _host = cp.cdb_host.value() if host is None else host
     _port = cp.cdb_port.value() if port is None else port
-    logger.debug('Connect client to host: %s port: %d user: %s upwd: %s' % (_host, _port, cp.user, cp.upwd))
-    return dbu.connect_to_server(_host, _port, cp.user, cp.upwd) if cp.upwd else\
-           dbu.connect_to_server(_host, _port, cp.user)
+    #logger.debug('CMDBBUtils: Connect client to host: %s port: %d user: %s upwd: %s' % (_host, _port, user, upwd))
+    return dbu.connect_to_server(_host, _port, user, upwd)
+           # if cp.upwd else dbu.connect_to_server(_host, _port, cp.user)
 
 #------------------------------
 

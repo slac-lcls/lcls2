@@ -202,6 +202,7 @@ DETECTOR_NAME_CONVERSION_DICT = {\
         'XppEndstation.0:Opal1000.0': 'opal1000_0056',\
         'XppEndstation.0:Opal1000.1': 'opal1000_0057',\
         'XppEndstation.0:Opal1000.2': 'opal1000_0058',\
+'XrayTransportDiagnostic.0:Opal1000.0': 'opal1000_0059',\
 #== type 0014 rayonix
          'CxiEndstation.0:Rayonix.0': 'rayonix_0000',\
          'MfxEndstation.0:Rayonix.0': 'rayonix_0001',\

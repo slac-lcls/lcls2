@@ -3,7 +3,8 @@ Comparison of original xtcav calibration constants
 with the same constants saved and retrieved in CDB.
 """
 import sys
-from psana.pscalib.calib.XtcavConstants import Load, dict_from_xtcav_calib_object, compare_dicts
+#from psana.pscalib.calib.XtcavConstants import Load, dict_from_xtcav_calib_object, compare_dicts
+from psana.pscalib.calib.XtcavUtils import Load, dict_from_xtcav_calib_object, compare_dicts
 import psana.pscalib.calib.MDBUtils as dbu
 from psana.pscalib.calib.CalibUtils import parse_calib_file_name #history_dict_for_file, history_list_of_dicts
 from psana.pscalib.calib.MDBConvertLCLS1 import detname_conversion
@@ -19,7 +20,8 @@ def usage(fname) :
 #------------------------------
 
 def test_xtcav_calib_constants(fname=
-    '/reg/d/psdm/XPP/xpptut15/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/101-102.data') :
+                               '/reg/d/psdm/XPP/xpptut15/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/101-102.data',\
+                               add_constants_to_db=False) :
 
     _, exp, _, cvers, detname, ctype, cfname = fname.rsplit('/',6) 
     resp = parse_calib_file_name(cfname)
@@ -38,6 +40,8 @@ def test_xtcav_calib_constants(fname=
     d1 = dict_from_xtcav_calib_object(o1)
     print('Xtcav calibration constants as dict:\n', d1)
 
+    if not add_constants_to_db : return
+    #==================================
 
     #---- Delete databases for experiment and detector
 

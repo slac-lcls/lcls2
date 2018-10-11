@@ -24,12 +24,13 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2018-02-02 by Mikhail Dubrovin
 """
 #------------------------------
-
 import numpy as np
+import os
 
-URL = 'https://pswww-dev.slac.stanford.edu/calib_ws'
+URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
+URL = 'https://pswww-dev.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
 HOST = 'psdb-dev' # 'psanaphi103'
-PORT = 9306 # 27017
+PORT = 9306       # 27017
 USERNAME = 'calibuser'
 USERPW   = USERNAME[:5]
 
@@ -148,6 +149,17 @@ dic_det_name_to_type = dict(zip(list_det_names, list_det_types))
 #------------------------------
 
 if __name__ == "__main__" :
+  def test_constants() :
+    print('URL_ENV  : %s' % str(URL_ENV ))
+    print('URL      : %s' % str(URL     ))
+    print('HOST     : %s' % str(HOST    ))
+    print('PORT     : %s' % str(PORT    ))
+    print('USERNAME : %s' % str(USERNAME))
+    print('USERPW   : %s' % str(USERPW  ))
+
+#------------------------------
+
+if __name__ == "__main__" :
 
     print('%s\ndic_calib_type_to_name:'%(50*'_'))
     for k,v in dic_calib_type_to_name.items() : print('%16s : %s' % (str(k), str(v)))
@@ -160,5 +172,8 @@ if __name__ == "__main__" :
 
     print('%s\ndic_det_name_to_type:'%(50*'_'))
     for k,v in dic_det_name_to_type.items() : print('%16s : %s' % (str(k), str(v)))
+
+    print('%s\n'%(50*'_'))
+    test_constants()
 
 #------------------------------
