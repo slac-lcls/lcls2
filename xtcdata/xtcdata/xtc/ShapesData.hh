@@ -108,7 +108,6 @@ public:
             size *= _shape[i];
         }
         unsigned totSize = size*Name::get_element_size(name.type());
-        assert(totSize);
         return totSize;
     }
     uint32_t* shape() {return _shape;}
