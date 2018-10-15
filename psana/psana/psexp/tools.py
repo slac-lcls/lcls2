@@ -203,15 +203,15 @@ class RunHelper(object):
             # calib_constants takes det string (e.g. cspad_0001) with requested calib type.
             # as a hack (until detid in xtc files have been changed
             det_str = det.dettype + '_' + det.detid
-            pedestals = calib_constants(det_str, exp=ds.exp, ctype='pedestals', run=run_no)
-            geometry_string = calib_constants(det_str, exp=ds.exp, ctype='geometry', run=run_no)
+            pedestals, _ = calib_constants(det_str, exp=ds.exp, ctype='pedestals', run=run_no)
+            geometry_string, _ = calib_constants(det_str, exp=ds.exp, ctype='geometry', run=run_no)
             
             # python2 sees geometry_string as unicode (use str to check for compatibility py2/py3)
             # - convert to str accordingly
             if not isinstance(geometry_string, str) and geometry_string is not None:
                 import unicodedata
                 geometry_string = unicodedata.normalize('NFKD', geometry_string).encode('ascii','ignore')
-            common_mode = calib_constants(det_str, exp=ds.exp, ctype='common_mode', run=run_no)
+            common_mode, _ = calib_constants(det_str, exp=ds.exp, ctype='common_mode', run=run_no)
         
         calib = {'gain_mask': gain_mask,
                  'pedestals': pedestals,

@@ -57,14 +57,12 @@ class Test:
         shutil.copy('smd.xtc',os.path.join(tmp_dir,'data_1.smd.xtc')) # FIXME: chuck's hack to fix nosetests
 
     def test_mpi(self):
-        return # cpo: temporarily disable hanging test 10/12/18
         self.setup_input_files()
 
         parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
         subprocess.check_call(['mpirun','-n','3','python',parallel])
     
     def test_legion(self):
-        return # cpo: temporarily disable failing test 10/12/18
         self.setup_input_files()
 
         python_path = os.environ.get('PYTHONPATH', '').split(':')
