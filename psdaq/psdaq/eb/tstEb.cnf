@@ -1,14 +1,23 @@
 # -*-Mode: python;-*-
 
+import os
+from psdaq.procmgr.ProcMgr import getRelEnvString
+
+platform  = '3'
+username  = 'claus'
+expname   = 'expname'
+expnum    = 'expnum'
+
 repo_path = '/reg/neh/home/claus/lclsii/daq/lcls2'
 bin_path  = repo_path + '/psdaq/build/psdaq'
 mgr_path  = repo_path + '/psdaq/psdaq/procmgr'
 
-platform  = '3'
+# can also set this environment in the shell.
+os.environ['TESTRELDIR'] = repo_path + '/install'
+
+conda_env = getRelEnvString()
+
 partition = 'Test'
-username  = 'claus'
-expname   = 'expname'
-expnum    = 'expnum'
 coll_node = 'drp-tst-acc01'
 headless  = False
 if headless:
@@ -16,42 +25,41 @@ if headless:
 else:
   node_flags = 'sx'
 
-skipNodes = [11, 12, 13]
+skipNodes = [] #[12, 1, 5]
 nodes     = []
-nNodes    = 10 #24
+nNodes    = 24
 for i in range(nNodes, 0, -1):
   if i not in skipNodes:
-    nodes.append("drp-tst-dev%03d" % i)
-    #nodes.append("daq-tst-dev%02d" % i)
+    nodes.append(i)
+numNodes = len(nodes)
 
-num_seg = 2
 num_evt = 1
+num_seg = 2
 num_mon = 0
 
-if 'NUM_SEG' in procmgr_macro.keys():  num_seg = int(procmgr_macro['NUM_SEG'])
 if 'NUM_EVT' in procmgr_macro.keys():  num_evt = int(procmgr_macro['NUM_EVT'])
+if 'NUM_SEG' in procmgr_macro.keys():  num_seg = int(procmgr_macro['NUM_SEG'])
 if 'NUM_MON' in procmgr_macro.keys():  num_mon = int(procmgr_macro['NUM_MON'])
+
+num_all = num_evt + num_seg + num_mon
+
+cnt   = int((num_all + len(nodes) - 1) / len(nodes))
+nodes = cnt * nodes
 
 evt_nodes = nodes[:num_evt]
 seg_nodes = nodes[num_evt:][:num_seg]
 mon_nodes = nodes[num_seg + num_evt:][:num_mon]
 
-#evt_cores = ''
-#seg_cores = ''
-evt_cores = ' -1 10 -2 10'
-seg_cores = ' -1 11 -2 12'
-
-
-cannot_run = False
+can_run = True
 if len(seg_nodes) is 0:
   print('Error: No nodes found for the segment level')
-  cannot_run = True
+  can_run = False
 if len(evt_nodes) is 0:
   print('Error: No nodes found for the event level')
-  cannot_run = True
+  can_run = False
 if num_mon and len(mon_nodes) is 0:
   print('Error: No nodes found for the monitoring level')
-  cannot_run = True
+  can_run = False
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -67,25 +75,49 @@ if num_mon and len(mon_nodes) is 0:
 #        's'         -> stop: sends ctrl-c to process
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
-mgr_cmd = mgr_path+'/procstat.py -t '+username+' -e0 -n none -p '+platform + ' p'+platform+'.cnf.last'
-mon_cmd = bin_path+'/monreq/monReqServer -C '+coll_node + ' -p '+platform + ' -P '+partition
-seg_cmd = bin_path+'/eb/tstEbContributor -C '+coll_node + ' -p '+platform + seg_cores
-evt_cmd = bin_path+'/eb/tstEbBuilder -C '    +coll_node + ' -p '+platform + evt_cores
+mgr_cmd = 'procstat -t '+username+' -e0 -n none -p '+platform + ' p'+platform+'.cnf.last'
+mon_cmd = 'monReqServer' +' -C '+coll_node + ' -p '+platform + ' -P '+partition
+seg_cmd = 'tstEbContributor -C '+coll_node + ' -p '+platform
+evt_cmd = 'tstEbBuilder' +' -C '+coll_node + ' -p '+platform
 
 procmgr_config = []
 
-if not cannot_run:
-  ## procstat
+if can_run:
+  # procstat
   if not headless:
-    procmgr_config.append({id:'procstat', flags:'s', cmd:mgr_cmd})
+    procmgr_config.append({id:    'procstat',
+                           flags: 's',
+                           env:   conda_env,
+                           cmd:   mgr_cmd})
 
   for i in range(len(mon_nodes)):
-    procmgr_config.append({host:mon_nodes[i], id:'mon%d'%i, flags:node_flags, cmd:mon_cmd})
+    procmgr_config.append({host:  mon_nodes[i],
+                           id:    'mon%d'%i,
+                           env:   conda_env,
+                           flags: node_flags,
+                           cmd:   mon_cmd})
 
-  for i in range(len(seg_nodes)):
-    procmgr_config.append({host:seg_nodes[i], id:'seg%d'%i, flags:node_flags, cmd:seg_cmd})
+  core = 10
+  cnt  = 0
+  for i in evt_nodes:
+    n = int(cnt / numNodes)
+    cnt += 1
+    cores = " -1 %d -2 %d" % (core + 2 * n, core + 1 + 2 * n)
+    procmgr_config.append({host:  "drp-tst-dev%03d" % i,
+                           id:    'evt%d'%cnt,
+                           env:   conda_env,
+                           flags: node_flags,
+                           cmd:   evt_cmd+cores})
 
-  for i in range(len(evt_nodes)):
-    procmgr_config.append({host:evt_nodes[i], id:'evt%d'%i, flags:node_flags, cmd:evt_cmd})
+  core += 2 * n
+  for i in seg_nodes:
+    n = int(cnt / numNodes)
+    cnt += 1
+    cores = " -1 %d -2 %d" % (core + 2 * n, core + 1 + 2 * n)
+    procmgr_config.append({host:  "drp-tst-dev%03d" % i,
+                           id:    'seg%d'%cnt,
+                           env:   conda_env,
+                           flags: node_flags,
+                           cmd:   seg_cmd+cores})
 
 #print(procmgr_config)
