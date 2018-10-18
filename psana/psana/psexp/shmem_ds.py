@@ -5,7 +5,7 @@ class ShmemDataSource(DataSourceBase):
 
     def __init__(self, *args, **kwargs):
         expstr = args[0]
-        super().__init__(**kwargs)
+        super(ShmemDataSource, self).__init__(**kwargs)
         self.run_dict[-1] = ([expstr], None)
 
     class Factory:

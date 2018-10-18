@@ -5,7 +5,7 @@ class SerialDataSource(DataSourceBase):
 
     def __init__(self, *args, **kwargs):
         expstr = args[0]
-        super().__init__(**kwargs)
+        super(SerialDataSource, self).__init__(**kwargs)
         self.exp, self.run_dict = self.parse_expstr(expstr)
 
     class Factory:

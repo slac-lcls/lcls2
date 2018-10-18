@@ -13,10 +13,10 @@ class MPIDataSource(DataSourceBase):
 
     def __init__(self, *args, **kwargs):
         expstr = args[0]
-        super().__init__(**kwargs)
+        super(MPIDataSource, self).__init__(**kwargs)
 
         if rank == 0:
-            exp, run_dict = super().parse_expstr(expstr)
+            exp, run_dict = super(MPIDataSource, self).parse_expstr(expstr)
         else:
             exp, run_dict = None, None
 

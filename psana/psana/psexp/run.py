@@ -76,7 +76,7 @@ class Run(object):
 class RunSerial(Run):
 
     def __init__(self, exp, run_no, xtc_files, max_events, filter_callback):
-        super().__init__(exp, run_no, max_events=max_events, filter_callback=filter_callback)
+        super(RunSerial, self).__init__(exp, run_no, max_events=max_events, filter_callback=filter_callback)
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
 
@@ -91,7 +91,7 @@ class RunParallel(Run):
             max_events, batch_size, filter_callback):
         """ Parallel read requires that rank 0 does the file system works.
         Configs and calib constants are sent to other ranks by MPI."""
-        super().__init__(exp, run_no, max_events=max_events, \
+        super(RunParallel, self).__init__(exp, run_no, max_events=max_events, \
                 batch_size=batch_size, filter_callback=filter_callback)
         self.nodetype = nodetype
         self.nsmds = nsmds
@@ -131,7 +131,7 @@ class RunParallel(Run):
 
     def Detector(self, det_name):
         if rank == 0:
-            calib = super()._get_calib(det_name)
+            calib = super(RunParallel, self)._get_calib(det_name)
         else:
             calib = None
         calib = comm.bcast(calib, root=0)
@@ -143,7 +143,7 @@ class RunLegion(Run):
             max_events, batch_size, filter_callback):
         """ Parallel read requires that rank 0 does the file system works.
         Configs and calib constants are sent to other ranks by MPI."""
-        super().__init__(exp, run_no, max_events=max_events, \
+        super(RunLegion, self).__init__(exp, run_no, max_events=max_events, \
                 batch_size=batch_size, filter_callback=filter_callback)
         
         self.dm = DgramManager(xtc_files)
@@ -153,7 +153,7 @@ class RunLegion(Run):
         RunHelper(self) # assigns a unique id to the run
         
     def Detector(self, det_name):
-        calib = super()._get_calib(det_name)
+        calib = super(RunLegion, self)._get_calib(det_name)
 
     def analyze(self, **kwargs):
         analyze(self, **kwargs)

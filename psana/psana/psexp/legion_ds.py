@@ -4,8 +4,8 @@ from psana.psexp.run import RunLegion
 class LegionDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
         expstr = args[0]
-        super().__init__(**kwargs)
-        self.exp, self.run_dict = super().parse_expstr(expstr)
+        super(LegionDataSource, self).__init__(**kwargs)
+        self.exp, self.run_dict = super(LegionDataSource, self).parse_expstr(expstr)
 
     class Factory:
         def create(self, *args, **kwargs): return LegionDataSource(*args, **kwargs)
