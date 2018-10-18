@@ -4,55 +4,33 @@ from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
 from psana.event import Event
 
-mode = os.environ.get('PS_PARALLEL', 'mpi')
-MPI = None
-legion = None
-if mode == 'mpi':
-    from mpi4py import MPI
-    # Nop when not using Legion
-    def task(fn=None, **kwargs):
-        if fn is None:
-            return lambda fn: fn
-        return fn
-elif mode == 'legion':
-    import legion
-    from legion import task
-else:
-    raise Exception('Unrecognized value of PS_PARALLEL %s' % mode)
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
 
-class Node(object):
-    def __init__(self, mpi=None):
-        self.mpi = mpi
-
-class Smd0(Node):
+class Smd0(object):
     """ Sends blocks of smds to smd_node
     Identifies limit timestamp of the slowest detector then
     sends all smds within that timestamp to an smd_node.
     """
-    def __init__(self, mpi, fds, n_smd_nodes, max_events=0):
-        Node.__init__(self, mpi)
+    def __init__(self, fds, n_smd_nodes, max_events=0):
         self.fds = fds
         assert len(self.fds) > 0
         self.smdr = SmdReader(fds)
 
         self.n_smd_nodes = n_smd_nodes
 
-        self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 100))
+        self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 1000))
         self.max_events = max_events
         self.processed_events = 0
         if self.max_events:
             if self.max_events < self.n_events:
                 self.n_events = self.max_events
 
-        if mode == 'mpi':
-            self.run_mpi()
-        elif mode == 'legion':
-            pass # Legion is a nop here, actual analysis runs later
+        self.run_mpi()
 
     def run_mpi(self):
-        rank = self.mpi.rank
-        comm = self.mpi.comm
-
         rankreq = np.empty(1, dtype='i')
 
         for chunk in self.chunks():
@@ -62,10 +40,6 @@ class Smd0(Node):
         for i in range(self.n_smd_nodes):
             comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             comm.Send(bytearray(b'eof'), dest=rankreq[0], tag=12)
-
-    def run_legion(self, ds):
-        for chunk in self.chunks():
-            SmdNode.run_legion_task(chunk, ds)
 
     def chunks(self):
         got_events = -1
@@ -87,21 +61,18 @@ class Smd0(Node):
                 if self.processed_events >= self.max_events:
                     break
 
-class SmdNode(Node):
+class SmdNode(object):
     """Handles both smd_0 and bd_nodes
     Receives blocks of smds from smd_0 then assembles
     offsets and dgramsizes into a numpy array. Sends
     this np array to bd_nodes that are registered to it."""
-    def __init__(self, mpi, configs, n_bd_nodes=1, batch_size=1, filter=0):
-        Node.__init__(self, mpi)
+    def __init__(self, configs, n_bd_nodes=1, batch_size=1, filter=0):
         self.configs = configs
         self.n_bd_nodes = n_bd_nodes
         self.batch_size = batch_size
         self.filter = filter
 
     def run_mpi(self):
-        rank = self.mpi.rank
-        comm = self.mpi.comm
         rankreq = np.empty(1, dtype='i')
         view = 0
         while True:
@@ -132,21 +103,6 @@ class SmdNode(Node):
             comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
             comm.Send(bytearray(b'eof'), dest=rankreq[0])
 
-    def run_legion(self, view, ds):
-        views = self.split_chunk(view)
-
-        n_views = len(views)
-        assert n_views == len(self.configs)
-
-        # build batch of events
-        for batch in self.batches(views):
-            BigDataNode.run_legion_task(batch, ds)
-
-    @task
-    def run_legion_task(chunk, ds):
-        smd = SmdNode(None, ds.configs, batch_size=ds.batch_size, filter=ds.filter)
-        smd.run_legion(chunk, ds)
-
     def split_chunk(self, chunk):
         return chunk.split(b'endofstream')
 
@@ -157,16 +113,13 @@ class SmdNode(Node):
             yield batch
             batch = eb.build(batch_size=self.batch_size, filter=self.filter)
 
-class BigDataNode(Node):
-    def __init__(self, mpi, smd_configs, dm, smd_node_id=None):
-        Node.__init__(self, mpi)
+class BigDataNode(object):
+    def __init__(self, smd_configs, dm, smd_node_id=None):
         self.smd_configs = smd_configs
         self.dm = dm
         self.smd_node_id = smd_node_id
 
     def run_mpi(self):
-        rank = self.mpi.rank
-        comm = self.mpi.comm
         while True:
             comm.Send(np.array([rank], dtype='i'), dest=self.smd_node_id, tag=13)
             info = MPI.Status()
@@ -180,15 +133,6 @@ class BigDataNode(Node):
             for event in self.events(view):
                 yield event
 
-    def run_legion(self, batch, event_fn):
-        for event in self.events(batch):
-            event_fn(event)
-
-    @task
-    def run_legion_task(batch, ds):
-        bd = BigDataNode(ds.mpi, ds.smd_configs, ds.dm)
-        bd.run_legion(batch, ds.event_fn)
-
     def events(self, view):
         views = view.split(b'endofevt')
         for event_bytes in views:
@@ -197,41 +141,19 @@ class BigDataNode(Node):
                 # get big data
                 ofsz = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] \
                         for d in evt])
-                bd_evt = self.dm.next(offsets=ofsz[:,0], sizes=ofsz[:,1], read_chunk=False)
+                bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
                 yield bd_evt
 
-def run_node(ds):
-    if mode == 'mpi':
-        if ds.nodetype == 'smd0':
-            Smd0(ds.mpi, ds.smd_dm.fds, ds.nsmds, max_events=ds.max_events)
-        elif ds.nodetype == 'smd':
-            bd_node_ids = (np.arange(ds.mpi.size)[ds.nsmds+1:] % ds.nsmds) + 1
-            smd_node = SmdNode(ds.mpi, ds.smd_configs, len(bd_node_ids[bd_node_ids==ds.mpi.rank]), \
-                               batch_size=ds.batch_size, filter=ds.filter)
-            smd_node.run_mpi()
-        elif ds.nodetype == 'bd':
-            smd_node_id = (ds.mpi.rank % ds.nsmds) + 1
-            bd_node = BigDataNode(ds.mpi, ds.smd_configs, ds.dm, smd_node_id)
-            for evt in bd_node.run_mpi():
-                yield evt
-    elif mode == 'legion':
-        pass # Legion is a nop here, actual analysis occurs later
-
-ds_to_process = []
-def analyze(ds, event_fn=None, start_run_fn=None):
-    if mode != 'legion':
-        for run in ds.runs():
-            if start_run_fn is not None:
-                start_run_fn(run)
-            for event in ds.events():
-                if event_fn is not None:
-                    event_fn(event)
-    else:
-        ds.event_fn = event_fn
-        ds.start_run_fn = start_run_fn
-        ds_to_process.append(ds)
-
-@task(top_level=True)
-def legion_main():
-    for ds in ds_to_process:
-        Smd0(ds.mpi, ds.smd_dm.fds, ds.nsmds, max_events=ds.max_events).run_legion(ds)
+def run_node(run, nodetype, nsmds, max_events, batch_size, filter_callback):
+    if nodetype == 'smd0':
+        Smd0(run.smd_dm.fds, nsmds, max_events=max_events)
+    elif nodetype == 'smd':
+        bd_node_ids = (np.arange(size)[nsmds+1:] % nsmds) + 1
+        smd_node = SmdNode(run.smd_configs, len(bd_node_ids[bd_node_ids==rank]), \
+                           batch_size=batch_size, filter=filter_callback)
+        smd_node.run_mpi()
+    elif nodetype == 'bd':
+        smd_node_id = (rank % nsmds) + 1
+        bd_node = BigDataNode(run.smd_configs, run.dm, smd_node_id)
+        for evt in bd_node.run_mpi():
+            yield evt
