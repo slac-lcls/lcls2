@@ -12,10 +12,10 @@ os.environ['PS_CALIB_DIR'] = "/reg/d/psdm/cxi/cxid9114/scratch/mona/l2/psana-ner
 os.environ['PS_SMD_NODES'] = '1'
 os.environ['PS_SMD_N_EVENTS'] = '100'
 xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/cxic0415"
-ds = DataSource('exp=cxic0415:run=24:dir=%s'%(xtc_dir), filter=filter, max_events=10, det_name="DscCsPad")
+ds = DataSource('exp=cxic0415:run=24:dir=%s'%(xtc_dir), filter=filter, max_events=10)
 
 for run in ds.runs():
-    det = run.Detector(ds.det_name)
+    det = run.Detector('DscCsPad')
     for evt in run.events():
         raw = det.raw(evt)
         ped = det.pedestals(run)

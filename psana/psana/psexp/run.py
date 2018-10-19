@@ -5,7 +5,7 @@ from psana import dgram
 from psana.detector.detector import Detector
 from psana.psexp.legion_node import analyze
 from psana.psexp.tools import run_from_id, RunHelper
-import os
+import os, pickle
 
 from psana.psexp.tools import mode
 MPI = None
@@ -40,7 +40,8 @@ class Run(object):
 
     def Detector(self, det_name):
         calib = self._get_calib(det_name)
-        self.Detector = Detector(self.configs, calib=calib)
+        det = Detector(self.configs, calib=calib)
+        return det.__call__(det_name)
 
     def _get_calib(self, det_name):
         gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
@@ -135,7 +136,8 @@ class RunParallel(Run):
         else:
             calib = None
         calib = comm.bcast(calib, root=0)
-        self.Detector = Detector(self.configs, calib=calib)
+        det = Detector(self.configs, calib=calib)
+        return det.__call__(det_name)
 
 class RunLegion(Run):
 
@@ -152,9 +154,6 @@ class RunLegion(Run):
         self.smd_configs = self.smd_dm.configs
         RunHelper(self) # assigns a unique id to the run
         
-    def Detector(self, det_name):
-        calib = super(RunLegion, self)._get_calib(det_name)
-
     def analyze(self, **kwargs):
         analyze(self, **kwargs)
 
