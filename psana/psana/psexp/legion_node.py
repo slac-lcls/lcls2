@@ -51,10 +51,7 @@ def run_smd0(run):
                 break
 
 @task
-def run_smd_task(views, run): 
-    run_smd(views, run)
-
-def run_smd(view, run):
+def run_smd_task(view, run):
     views = view.split(b'endofstream')
     eb = EventBuilder(views, run.smd_configs)
     batch = eb.build(batch_size=run.batch_size, filter=run.filter_callback)
@@ -64,9 +61,6 @@ def run_smd(view, run):
 
 @task
 def run_bigdata_task(batch, run):
-    run_bigdata(batch, run)
-
-def run_bigdata(batch, run):
     evt_byte_arr = batch.split(b'endofevt')
     for i, evt_byte in enumerate(evt_byte_arr):
         if evt_byte:
