@@ -5,7 +5,6 @@
 ===================================================================
 
 Usage ::
-
     # python lcls2/psana/pscalib/calib/CalibUtils.py
 
     from psana.pscalib.calib.MDBConvertLCLS1 import *
@@ -26,22 +25,19 @@ import os
 import sys
 import numpy as np
 from requests import get as requests_get
-#from psana.pyalgos.generic.PSConstants import INSTRUMENTS, DIR_INS, DIR_FFB # , DIR_LOG
-from psana.pyalgos.generic.PSNameManager import nm
+import json
+
 import psana.pyalgos.generic.Utils as gu
-import psana.pscalib.calib.CalibConstants as cc # list_calib_names
-
-from psana.pscalib.calib.NDArrIO import load_txt
 import psana.pyalgos.generic.NDArrUtils as ndu
+from   psana.pyalgos.generic.PSNameManager import nm
 
+import psana.pscalib.calib.CalibConstants as cc # list_calib_names
 import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestamp
-
-from psana.pscalib.calib.CalibUtils import history_dict_for_file, history_list_of_dicts, parse_calib_file_name
-
-#from psana.pscalib.calib.XtcavConstants import Load, Empty #, Save
-from psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file, jasonify_dict, info_dict, print_dict
-
-from psana.pscalib.calib.MDBConversionMap import DETECTOR_NAME_CONVERSION_DICT as dic_det_name_conv
+from   psana.pscalib.calib.NDArrIO import load_txt
+from   psana.pscalib.calib.CalibUtils import history_dict_for_file, history_list_of_dicts, parse_calib_file_name
+from   psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
+from   psana.pscalib.calib.MDBConvertUtils import jasonify_dict, info_dict, print_dict
+from   psana.pscalib.calib.MDBConversionMap import DETECTOR_NAME_CONVERSION_DICT as dic_det_name_conv
 
 import logging
 logger = logging.getLogger(__name__)
@@ -98,15 +94,7 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
         jasonify_dict(data)
         logger.debug(info_dict(data))
         #print_dict(data)
-        import json
         data = json.dumps(data)
-
-    #####################
-    #print('ZZZZZZ data:', data)
-    #print('ZZZZZZ type(data):', type(data))
-    #print('ZZZZZZ: CONTINUE LOOP, DO NOT ADD CONSTANTS FOR THIS TEST'); return
-    #sys.exit('TEST EXIT')
-    #####################
 
     if isinstance(data, np.ndarray) : 
         check_data_shape(data, detname, cftype)
@@ -166,7 +154,7 @@ def scan_calib_for_experiment(exp='cxix25615', **kwargs) :
     if dbu.database_exists(client, dbname) :
         msg = 'Experiment %s already has a database. Consider to delete it from the list:\n%s'%\
               (exp, str(dbu.database_names(client)))+\
-              '\nBefore adding consider to delete existing DB using command: cdb deldb --dbname %s -C' % dbname
+              '\nBefore adding consider to delete existing DB using command: cdb deldb --dbname %s -C -u <username> -p <password>' % dbname
         logger.warning(msg)
         return
 
@@ -211,8 +199,11 @@ if __name__ == "__main__" :
   def usage() : return 'Use command: python %s <test-number>, where <test-number> = 1,2,...' % sys.argv[0]
 
 #------------------------------
+
   def test_detname_conversion(tname) :
-      logger.info('detname_conversion: %s' % detname_conversion('XcsEndstation.0:Epix100a.1'))
+      detnames = ('XcsEndstation.0:Epix100a.1', 'FeeHxSpectrometer.0:Opal1000.1', 'MfxEndstation.0:Rayonix.0')
+      for detname in detnames :
+          print('detname_conversion(%s) --> %s' % (detname, detname_conversion(detname)))
 
 #------------------------------
 
@@ -223,11 +214,14 @@ if __name__ == "__main__" :
 
   def test_all(tname) :
     logger.info('\n%s\n' % usage())
+    kwa = {'host':cc.HOST,\
+           'port':cc.PORT,\
+           'user':gu.get_login()}
     if len(sys.argv) != 2 : test_dir_calib(tname)
     elif tname == '1': test_dir_calib(tname)
-    elif tname == '2': scan_calib_for_experiment('cxix25615')
+    elif tname == '2': scan_calib_for_experiment('cxix25615', **kwa)
     elif tname == '3': test_detname_conversion(tname)
-    elif tname == '4': scan_calib_for_experiment('amox23616') 
+    elif tname == '4': scan_calib_for_experiment('amox23616', **kwa) 
     # /reg/d/psdm/AMO/amox23616/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/104-end.data
     else : sys.exit('Test number parameter is not recognized.\n%s' % usage())
 

@@ -50,7 +50,7 @@ LEVEL_NAMES = list(logging._levelToName.values())
 #------------------------------
 
 def config_logger(loglevel='DEBUG',\
-                  fmt='%(asctime)s %(name)s %(levelname)s: %(message)s',\
+                  fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s',\
                   datefmt='%Y-%m-%dT%H:%M:%S',\
                   filename='',\
                   filemode='w') :

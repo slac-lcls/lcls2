@@ -1,6 +1,6 @@
 """
 1. Start server
-2. Use this API test: python lcls2/psana/pscalib/calib/MDBUtils.py 1 ... 12
+2. Use this API test: python lcls2/psana/psana/pscalib/calib/MDBUtils.py 0...14
 
 Usage ::
 
@@ -8,7 +8,7 @@ Usage ::
     import psana.pscalib.calib.MDBUtils as mu
 
     # Connect client to server
-    client = mu.connect_to_server(host=cc.HOST, port=cc.PORT, user=...)
+    client = mu.connect_to_server(host=cc.HOST, port=cc.PORT, user=..., upwd=...)
 
     # Access databases, fs, collections
     db = mu.database(client, dbname)
@@ -29,19 +29,19 @@ Usage ::
     # Delete methods
     mu.delete_database(client, dbname='cdb_cspad-0-cxids1-0')
     mu.delete_database_obj(odb)
-    mu.delete_collection(db, cname:str)
+    mu.delete_collection(db, cname)
     mu.delete_collection_obj(col)
     mu.delete_document_from_collection(col, id)
 
-    dbname = mu.db_prefixed_name(name:str)
+    dbname = mu.db_prefixed_name(name)
     dbname = mu.get_dbname(**kwargs)
 
     # All connect methods in one call
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
-        mu.connect(host='psanaphi105', port=27017, experiment='cxi12345', detector='camera-0-cxids1-0', verbose=False) 
+        mu.connect(host='psanaphi105', port=27017, experiment='cxi12345', detector='camera-0-cxids1-0') 
 
     ts    = mu._timestamp(time_sec:int,int,float)
-    ts    = mu.timestamp_id(id:str)
+    ts    = mu.timestamp_id(id)
     ts    = mu.timestamp_doc(doc)
     t, ts = mu.time_and_timestamp(**kwargs)
 
@@ -112,6 +112,9 @@ logger = logging.getLogger(__name__)
 import pickle
 import gridfs
 from pymongo import MongoClient, errors, ASCENDING, DESCENDING
+from pymongo.database import Database
+from pymongo.collection import Collection
+from collections.abc import Iterable
 #from pymongo.errors import ConnectionFailure
 #import pymongo
 
@@ -131,10 +134,17 @@ TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 #------------------------------
 
 def connect_to_server(host=cc.HOST, port=cc.PORT,\
-                      user=cc.USERNAME, upwd=cc.USERPW, ctout=5000, stout=30000) :
+                      user=cc.USERNAME, upwd=cc.USERPW,\
+                      ctout=5000, stout=30000) :
     """Returns MongoDB client.
     """
     uri = _uri(host, port, user, upwd)
+
+    if not is_valid_uri(uri) :
+        msg = 'connect_to_server: INVALID uri: %s' % str(uri)
+        logger.warning(msg)
+        sys.exit(msg)
+
     client = MongoClient(uri, connect=False, connectTimeoutMS=ctout, socketTimeoutMS=stout)
     #client = MongoClient(host, port, connect=False, connectTimeoutMS=ctout, socketTimeoutMS=stout)
     try :
@@ -162,6 +172,9 @@ def connect_to_server(host=cc.HOST, port=cc.PORT,\
 def _uri(host, port, user, upwd) :
     """ Returns (str) uri like 'mongodb://[username:password@]host1[:port1]'
     """
+    if not is_valid_host(host) : return None
+    if not is_valid_port(port) : return None
+
     rhs = '%s:%s' % (host, str(port))
 
     # for Calibration DB client
@@ -173,16 +186,94 @@ def _uri(host, port, user, upwd) :
         if not (upwd in ('', None)) : 
             rhs = '%s:%s@%s' % (user, upwd, rhs)
 
-    uri = 'mongodb://%s' % rhs
-    #uri = 'mongodb://psanagpu115:27017' # FOR TEST
+    uri = 'mongodb://%s' % rhs # 'mongodb://psanagpu115:27017' # FOR TEST
     logger.debug('MDBUtils uri: %s' % uri)
     return uri
+
+#------------------------------
+
+def is_valid_type(pname, o, otype) :
+    if isinstance(o, otype) : return True
+    logger.warning('parameter "%s" type "%s" IS NOT %s' % (pname, str(o), str(otype)))
+    return False
+
+#------------------------------
+
+def is_valid_port(port) :
+    """Port must be an integer between 0 and 65535"""
+    #return is_valid_type('port', port, int)
+    iport = port if isinstance(port, int) else\
+            int(port) if (isinstance(port, str) and port.isdigit()) else None
+    if iport is None :
+        logger.warning('parameter port "%s" does not represent integer value' % str(port))
+        return False
+    elif iport<0 or iport>65535 : 
+        logger.warning('parameter port "%d" must be an integer between 0 and 65535' % iport)
+        return False
+    return True
+
+#------------------------------
+
+def is_valid_host(host) :
+    return is_valid_type('host', host, str)
+
+#------------------------------
+
+def is_valid_uri(uri) :
+    return is_valid_type('uri', uri, str) and 'mongodb://' in uri
+
+#------------------------------
+
+def is_valid_client(client) :
+    return is_valid_type('client', client, MongoClient)
+
+#------------------------------
+
+def is_valid_dbname(dbname) :
+    return is_valid_type('dbname', dbname, str)
+
+#------------------------------
+
+def is_valid_cname(cname) :
+    return is_valid_type('cname', cname, str)
+
+#------------------------------
+
+def is_valid_database(db) :
+    return is_valid_type('db', db, Database)
+
+#------------------------------
+
+def is_valid_collection(col) :
+    return is_valid_type('col', col, Collection)
+
+#------------------------------
+
+def is_valid_objectid(id) :
+    return is_valid_type('id', id, ObjectId)
+
+#------------------------------
+
+def is_valid_iterable(itr, pname='iterable') :
+    return is_valid_type(pname, itr, Iterable)
+
+#------------------------------
+
+def is_valid_fs(fs) :
+    return is_valid_type('fs', fs, gridfs.GridFS)
+
+#------------------------------
+
+def is_valid_time_sec(time_sec) :
+    return is_valid_type('time_sec', time_sec, int)
 
 #------------------------------
 
 def database(client, dbname) :
     """Returns db for client and (str) dbname, e.g. dbname='cdb-cspad-0-cxids1-0'
     """
+    if not is_valid_client(client) : return None, None
+    if not is_valid_dbname(dbname) : return None, None
     return client[dbname]
 
 #------------------------------
@@ -190,6 +281,8 @@ def database(client, dbname) :
 def db_and_fs(client, dbname) :
     """Returns db and fs for client and (str) dbname, e.g. dbname='cdb-cxi12345'.
     """
+    if not is_valid_client(client)\
+    or not is_valid_dbname(dbname) : return None, None
     db = client[dbname]
     fs = gridfs.GridFS(db)
     return db, fs
@@ -199,22 +292,24 @@ def db_and_fs(client, dbname) :
 def collection(db, cname) :
     """Returns collection for db and (str) cname, e.g. cname='camera-0-cxids1-0'.
     """
+    if not is_valid_database(db)\
+    or not is_valid_cname(cname) : return None
     return db[cname]
 
 #------------------------------
 
 def client_host(client) :
-    """Returns client host.
-       ??? returns localhost in stead of real DB host name ???
+    """Returns default host: localhost
     """
+    if not is_valid_client(client) : return None
     return client.HOST
-    #return client.server_info()
 
 #------------------------------
 
 def client_port(client) :
-    """Returns client port.
+    """Returns default port: 27017
     """
+    if not is_valid_client(client) : return None
     return client.PORT
 
 #------------------------------
@@ -222,6 +317,7 @@ def client_port(client) :
 def database_names(client) :
     """Returns list of database names for client.
     """
+    if not is_valid_client(client) : return None
     return client.database_names()
 
 #------------------------------
@@ -229,6 +325,7 @@ def database_names(client) :
 def collection_names(db, include_system_collections=False) :
     """Returns list of collection names.
     """
+    if not is_valid_database(db) : return []
     return db.collection_names(include_system_collections)
 
 #------------------------------
@@ -236,6 +333,8 @@ def collection_names(db, include_system_collections=False) :
 def database_exists(client, dbname) :
     """Returns True if (str) dbname in the list of databases and False otherwise.
     """
+    if not is_valid_client(client)\
+    or not is_valid_dbname(dbname) : return False
     return dbname in database_names(client)
 
 #------------------------------
@@ -243,6 +342,8 @@ def database_exists(client, dbname) :
 def collection_exists(db, cname) :
     """Returns True if (str) cname in the list of collections and False otherwise.
     """
+    if not is_valid_database(db)\
+    or not is_valid_cname(cname) : return False
     return cname in collection_names(db)
 
 #------------------------------
@@ -250,14 +351,44 @@ def collection_exists(db, cname) :
 def delete_database(client, dbname) :
     """Deletes database for client and (str) dbname, e.g. dbname='cdb_cspad_0001'.
     """
-    client.drop_database(dbname)
+    if not is_valid_client(client)\
+    or not is_valid_dbname(dbname) :
+        logger.warning('Database "%s" IS NOT DELETED' % str(dbname))
+        return
+
+    try :
+        client.drop_database(dbname)
+
+    except errors.OperationFailure as err : 
+        #logger.exception(err)
+        logger.warning('ERROR at attempt to delete document database. '\
+                       'Check authorization: calibman -u <username> -p <password>.')
+        return
+    except : 
+        logger.warning('delete_database unexpected ERROR')
+        return
 
 #------------------------------
 
 def delete_database_obj(odb) :
     """Deletes database for database object.
     """
-    odb.dropDatabase()
+    if not is_valid_database(odb) :
+        logger.warning('Database object "%s" IS NOT DELETED' % str(odb))
+        return
+
+    try :
+        odb.dropDatabase()
+
+    except errors.OperationFailure as err : 
+        #logger.exception(err)
+        logger.warning('ERROR at attempt to delete database. '\
+                       'Check authorization: -u <username> -p <password>.')
+        return
+
+    except : 
+        logger.warning('delete_database_obj "%s" unexpected ERROR' % str(odb))
+        #sys.exit(msg)
 
 #------------------------------
 
@@ -265,18 +396,43 @@ def delete_databases(client, dbnames) :
     """Deletes databases for client and (list of str) dbnames,
        e.g. dbnames=['cdb_amox23616', 'cdb_cspad_0001', 'cdb_cspad_0002'].
     """
-    for name in dbnames : client.drop_database(name)
+    if not is_valid_client(client)\
+    or not is_valid_iterable(dbnames, 'dbnames') :
+        logger.warning('Databases "%s" ARE NOT DELETED' % str(dbname))
+        return
+    for name in dbnames : 
+        try :
+            client.drop_database(name)
+        except errors.OperationFailure as err :
+            #logger.exception(err)
+            logger.warning('ERROR at attempt to delete database. '\
+                       'Check authorization: calibman -u <username> -p <password>.')
+            return
 
+        except : 
+            logger.warning('delete_database_obj "%s" unexpected ERROR' % str(odb))
+            #sys.exit(msg)
+            
 #------------------------------
 
 def delete_collection(db, cname) :
     """Deletes db collection for database and (str) cname, e.g. cname='cspad_0001'.
     """
-    db.drop_collection(cname)
+    if not is_valid_database(db)\
+    or not is_valid_cname(cname) : 
+        logger.warning('Collection "%s" IS NOT DELETED drom db %s' % (str(cname), str(db)))
+        return
+    try :
+        db.drop_collection(cname)
+    except : 
+        logger.warning('delete_collection "%s" unexpected ERROR' % str(cname))
 
 #------------------------------
 
 def delete_collection_obj(ocol) :
+    if not is_valid_collection(ocol) :
+        logger.warning('Collection object "%s" IS NOT DELETED' % str(ocol))
+        return
     ocol.drop()
 
 #------------------------------
@@ -284,18 +440,44 @@ def delete_collection_obj(ocol) :
 def delete_collections(db, cnames) :
     """Deletes list of collections from database db, e.g. cname='cspad_0001'.
     """
+    if not is_valid_database(db)\
+    or not is_valid_iterable(cnames, 'cnames') :
+        logger.warning('Collections "%s" ARE NOT DELETED from db %s' % (str(cnames), str(db)))
+        return
     for cname in cnames : db.drop_collection(cname)
 
 #------------------------------
 
-def delete_document_from_collection(col, id) :
-    col.remove({'_id':id})
+def delete_document_from_collection(col, oid) :
+    if not is_valid_collection(col)\
+    or not is_valid_objectid(oid) :
+        logger.warning('Document with id "%s" IS NOT DELETED from collection %s' % (str(oid), str(col)))
+        return
+
+    try :
+        col.remove({'_id':oid})
+
+    except errors.OperationFailure as err: 
+        #logger.exception(err)
+        logger.warning('ERROR at attempt to delete document from collection. '\
+                       'Check authorization: calibman -u <username> -p <password>.')
+        return
+
+    except errors.InvalidDocument as err: 
+        logger.warning('ERROR InvalidDocument: %s' % str(err))
+        return
+
+    except : 
+        logger.warning('delete_document_from_collection unexpected ERROR' % str(err))
+        #sys.exit(msg)
+        return
 
 #------------------------------
 
 def db_prefixed_name(name, prefix='cdb_') :
     """Returns database name with prefix, e.g. name='cxi12345' -> 'cdb-cxi12345'.
     """
+    if name is None : return None
     assert isinstance(name,str), 'db_prefixed_name parameter should be str'
     nchars = len(name)
     assert nchars < 128, 'name length should be <128 characters'
@@ -313,11 +495,13 @@ def get_dbname(**kwargs) :
     exp    = kwargs.get('experiment', None)
     det    = kwargs.get('detector', None)
     dbname = kwargs.get('dbname', None)
+    mode   = kwargs.get('cli_mode', None)
 
     if dbname is None :
         name = exp if not (exp is None) else det
         if name is None :
-            logger.warning('dbname, experiment, or detector name must to be specified.')
+            if mode != 'print' :
+                logger.warning('dbname, experiment, and detector name are NOT SPECIFIED')
             return None
         dbname = db_prefixed_name(name)
     return dbname
@@ -325,7 +509,8 @@ def get_dbname(**kwargs) :
 #------------------------------
 
 def connect(**kwargs) :
-    """Connect to host, port get db handls.
+    """Connects to host, port with authorization.
+       Returns client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det
     """
     host    = kwargs.get('host', cc.HOST)
     port    = kwargs.get('port', cc.PORT)
@@ -333,7 +518,6 @@ def connect(**kwargs) :
     upwd    = kwargs.get('upwd', cc.USERPW)
     expname = kwargs.get('experiment', 'cxi12345')
     detname = kwargs.get('detector', 'camera-0-cxids1-0')
-    verbose = kwargs.get('verbose', False)
 
     dbname_exp = db_prefixed_name(expname)
     dbname_det = db_prefixed_name(detname)
@@ -346,12 +530,14 @@ def connect(**kwargs) :
     col_det = collection(db_det, detname)
     col_exp = collection(db_exp, detname) 
 
-    logger.debug('client  : %s' % client.name)
-    logger.debug('db_exp  : %s' % db_exp.name)
-    logger.debug('col_exp : %s' % col_exp.name)
-    logger.debug('db_det  : %s' % db_det.name)
-    logger.debug('col_det : %s' % col_det.name)
-    logger.debug('==== Connect to host: %s port: %d connection time %.6f sec' % (host, port, time()-t0_sec))
+    msg = '==== Connect to host: %s port: %d connection time %.6f sec' % (host, port, time()-t0_sec)
+    msg += '\n  client  : %s' % client.name
+
+    if db_exp  is not None : msg += '\n  db_exp  : %s' % db_exp.name
+    if col_exp is not None : msg += '\n  col_exp : %s' % col_exp.name
+    if db_det  is not None : msg += '\n  db_det  : %s' % db_det.name
+    if col_det is not None : msg += '\n  col_det : %s' % col_det.name
+    logger.debug(msg)
 
     return client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det
 
@@ -362,30 +548,32 @@ def connect(**kwargs) :
 def _timestamp(time_sec) :
     """Converts time_sec in timestamp of adopted format TSFORMAT.
     """
+    if not is_valid_time_sec(time_sec) : return None
     return gu.str_tstamp(TSFORMAT, int(time_sec))
 
 
-def timestamp_id(id) : # e.g. id=5b6cde201ead14514d1301f1
+def timestamp_id(id) : # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
     """Converts MongoDB (str) id to (str) timestamp of adopted format.
-    """
-    #print('XXXXXXX MDBUtils type(id)', type(id))
+    """    
+    oid = id
+    if isinstance(id, str) :
+        if len(id) != 24 : return str(id) # protection aginst non-valid id
+        oid = ObjectId(id)
 
-    if not isinstance(id,str) : return str(id) # protection aginst non-valid id
-    if len(id) != 24 :  return str(id) # protection aginst non-valid id
+    if isinstance(oid, ObjectId) :
+        str_ts = str(oid.generation_time) # '2018-03-14 21:59:37+00:00'
+        tobj = Time.parse(str_ts)         # Time object from parsed string
+        tsec = int(tobj.sec())            # 1521064777
+        str_tsf = _timestamp(tsec)        # re-formatted time stamp
+        return str_tsf
 
-    oid = ObjectId(id)
-    str_ts = str(ObjectId(id).generation_time) # '2018-03-14 21:59:37+00:00'
-    tobj = Time.parse(str_ts)                  # Time object from parsed string
-    tsec = int(tobj.sec())                     # 1521064777
-    str_tsf = _timestamp(tsec)                 # re-formatted time stamp
-    #logger.debug('XXX: str_ts', str_ts, tsec, tsf)
-    return str_tsf
+    return str(id) # protection aginst non-valid id
 
 
 def timestamp_doc(doc) :
     """Returns document creation (str) timestamp from its id.
     """
-    timestamp_id(doc['_id'])
+    return timestamp_id(doc['_id'])
 
 #------------------------------
 
@@ -398,10 +586,7 @@ def time_and_timestamp(**kwargs) :
     time_stamp = kwargs.get('time_stamp', None)
 
     if time_sec is not None :
-
-        print('XXXXXXXXXXXX time_sec:', time_sec)
-        print('XXXXXXXXXXXX kwargs:', kwargs)
-
+        time_sec = int(time_sec)
         assert isinstance(time_sec, int) , 'time_and_timestamp - parameter time_sec should be int'
         assert 0 < time_sec < 5000000000,  'time_and_timestamp - parameter time_sec should be in allowed range'
 
@@ -421,6 +606,9 @@ def time_and_timestamp(**kwargs) :
 def docdic(data, dataid, **kwargs) :
     """Returns dictionary for db document in style of JSON object.
     """
+    if not is_valid_objectid(dataid) :
+        logger.warning('Data id "%s" IS NOT VALID %s' % str(dataid))
+
     doc = {
           'experiment' : kwargs.get('experiment', None),
           'run'        : kwargs.get('run', 0),
@@ -458,30 +646,47 @@ def docdic(data, dataid, **kwargs) :
 
 #------------------------------
 
+def doc_add_id_ts(doc) :
+    """add items with timestamp for id-s as '_id_ts', 'id_data_ts', 'id_exp_ts'
+    """
+    for k in ('_id', 'id_data', 'id_exp') :
+        v = doc.get(k, None)
+        if v is not None : doc['%s_ts'%k] = timestamp_id(v)
+
+#------------------------------
+
+def doc_info(doc) :
+    s = 'Data document attributes'
+    if doc is None : return '%s\n   doc_info: Data document is None...' % s
+    for k,v in doc.items() : s += '%16s : %s' % (k,v)
+    return s
+
+#------------------------------
+
+def doc_keys_info(doc, keys=('run', 'time_stamp', 'data_size', 'id_data', 'extpars')) :
+    s = ''
+    for k in keys : s += '  %s : %s' % (k, doc.get(k,'N/A'))
+    return s
+
+#------------------------------
+
 def print_doc(doc) :
-    logger.info('Data document attributes')
-    if doc is None :
-        logger.info('print_doc: Data document is None...')
-        return
-        
-    msg = ''
-    for k,v in doc.items() : 
-        msg += '%16s : %s' % (k,v)
-    logger.info(msg)
+    print(doc_info(doc))
 
 #------------------------------
 
 def print_doc_keys(doc, keys=('run', 'time_stamp', 'data_size', 'id_data', 'extpars')) :
-    msg = ''
-    for k in keys :
-        msg += '  %s : %s' % (k, doc.get(k,'N/A'))
-    logger.info(msg)
+    print(doc_keys_info(doc, keys))
 
 #------------------------------
 
 def insert_document(doc, col) :
     """Returns inserted document id.
     """
+    if not is_valid_collection(col) :
+        logger.warning('collection doc %s IS NOT INSERTED in the collection %s' % (str(doc), str(col)))
+        return None
+
     try :
         return col.insert_one(doc).inserted_id
 
@@ -489,15 +694,24 @@ def insert_document(doc, col) :
         logger.exception(err)
         sys.exit('ERROR at attempt to insert document in database. Check server.')
 
+    except : 
+        msg = 'insert_document unexpected ERROR'
+        logger.exception(msg)
+        sys.exit(msg)
+
 #------------------------------
 
 def insert_data(data, fs) :
     """Returns inserted data id.
     """
+    if not is_valid_fs(fs) :
+        logger.warning('data %s IS NOT INSERTED in the fs %s' % (str(data), str(fs)))
+        return None
+
     s = None # should be replaced by serrialized data
-    if isinstance(data, np.ndarray) : s = data.tobytes()
-    elif isinstance(data, str) :      s = str.encode(data)
-    else :                            s = pickle.dumps(data)
+    if   isinstance(data, np.ndarray) : s = data.tobytes()
+    elif isinstance(data, str) :        s = str.encode(data)
+    else :                              s = pickle.dumps(data)
         
     try :
         r = fs.put(s)
@@ -506,12 +720,13 @@ def insert_data(data, fs) :
         return r
 
     except errors.ServerSelectionTimeoutError as err: 
-        logger.exception(err)
-        sys.exit('ERROR at attempt to insert data in database. Check server.')
+        #logger.exception(err)
+        logger.warning('ERROR at attempt to insert data in fs. Check server.')
+        return None
+
     except:
-        msg = 'Unexpected ERROR: %s' % sys.exc_info()[0]
-        logger.exception(msg)
-        sys.exit(msg)
+        logger.exception('Unexpected ERROR: %s' % sys.exc_info()[0])
+        return None
 
 #------------------------------
 
@@ -519,6 +734,12 @@ def insert_data_and_doc(data, fs, col, **kwargs) :
     """For open collection col and GridFS fs inserts calib data and document.
        Returns inserted id_data in fs and id_doc in col.
     """
+    if not is_valid_fs(fs)\
+    or not is_valid_collection(col) :
+        logger.warning('data %s IS NOT INSERTED in the\n  ==> fs %s\n  ==> collection %s'%\
+                       (str(data), str(fs), str(col)))
+        return None, None
+
     id_data = insert_data(data, fs)
     logger.debug('  - in fs %s id_data: %s' % (fs, id_data))
     doc = docdic(data, id_data, **kwargs)
@@ -532,8 +753,6 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     """For open connection inserts calib data and two documents.
        Returns inserted id_data, id_exp, id_det.
     """
-    verbose = kwargs.get('verbose', False)
-
     t0_sec = time()
     id_data_exp = insert_data(data, fs_exp)
     id_data_det = insert_data(data, fs_det)
@@ -544,9 +763,7 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     logger.debug(msg)
 
     doc = docdic(data, id_data_exp, **kwargs)
-    if verbose :
-        print_doc(doc)
-        #logger.debug('XXX: inset data_type: "%s"' % doc['data_type'])
+    logger.debug(doc_info(doc))
 
     t0_sec = time()
     id_exp = insert_document(doc, col_exp)
@@ -554,9 +771,9 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
     doc['id_exp']  = id_exp      # add
     id_det = insert_document(doc, col_det)
 
-    msg = 'Insert 2 docs time %.6f sec' % (time()-t0_sec)\
-        + '\n  - in collection %20s id_exp : %s' % (col_exp.name, id_exp)\
-        + '\n  - in collection %20s id_det : %s' % (col_det.name, id_det)
+    msg = 'Insert 2 docs time %.6f sec' % (time()-t0_sec)
+    if col_exp is not None : msg += '\n  - in collection %20s id_exp : %s' % (col_exp.name, id_exp)
+    if col_det is not None : msg += '\n  - in collection %20s id_det : %s' % (col_det.name, id_det)
     logger.debug(msg)
 
     return id_data_exp, id_data_det, id_exp, id_det
@@ -640,7 +857,6 @@ def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwargs)
           'port'       : kwargs.get('port', cc.PORT),
           'user'       : kwargs.get('user', cc.USERNAME),
           'upwd'       : kwargs.get('upwd', cc.USERPW),
-          'verbose'    : kwargs.get('verbose', False),
           'extpars'    : kwargs.get('extpars', None),
           }
 
@@ -651,15 +867,29 @@ def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwargs)
 def del_document_data(doc, fs) :
     """From fs removes data associated with a single document.
     """
+    if not is_valid_fs(fs) :
+        logger.warning('Document %s\nIS NOT REMOVED from fs %s' % (str(doc), str(fs)))
+        return
     oid = doc.get('id_data', None)
     if oid is None : return
-    fs.delete(oid)
+
+    try :
+        fs.delete(oid)
+
+    except errors.OperationFailure as err :
+        logger.warning('ERROR OperationFailure... Check authorization: calibman -u <username> -p <password>')
+        return
 
 #------------------------------
 
 def del_collection_data(col, fs) :
-    """From fs removes data associated with multiple documents in colllection col.
+    """From fs removes data associated with multiple documents in collection col.
     """
+    if not is_valid_fs(fs)\
+    or not is_valid_collection(col) :
+        logger.warning('collection %s\nDATA IS NOT REMOVED from fs %s' % (str(col), str(fs)))
+        return
+
     for doc in col.find() :
         del_document_data(doc, fs)
         #oid = doc.get('id_data', None)
@@ -712,6 +942,10 @@ def importdb(host, port, dbname, fname, **kwa) :
 def get_data_for_doc(fs, doc) :
     """Returns data referred by the document.
     """
+    if not is_valid_fs(fs) :
+        logger.warning('Document %s\n  associated DATA IS NOT AVAILABLE in fs %s' % (str(doc), str(fs)))
+        return None
+
     if doc is None :
         logger.warning('get_data_for_doc: Data document is None...')
         return None
@@ -720,12 +954,12 @@ def get_data_for_doc(fs, doc) :
     if idd is None :
         logger.debug("get_data_for_doc: key 'id_data' is missing in selected document...")
         return None
-    out = fs.get(idd)
 
-    #except:
-    #    msg = 'Unexpected ERROR: %s' % sys.exc_info()[0]
-    #    logger.exception(msg)
-    #    sys.exit(msg)
+    if not fs.exists(idd) : 
+        logger.debug("get_data_for_doc: NON EXISTENT fs data for data_id %s" % str(idd))
+        return None
+
+    out = fs.get(idd)
 
     s = out.read()
     data_type = doc.get('data_type', None)
@@ -735,21 +969,21 @@ def get_data_for_doc(fs, doc) :
 
     logger.debug('get_data_for_doc data_type: %s' % data_type)
     
-    if data_type == 'str'     : return s.decode()
-    if data_type == 'ndarray' : 
-        str_dtype = doc['data_dtype']
-        #logger.debug('XXX str_dtype:', str_dtype)
-        #dtype = np.dtype(eval(str_dtype))
-        #logger.debug('XXX  np.dtype:', dtype)
-        nda = np.fromstring(s, dtype=str_dtype)
-        nda.shape = eval(doc['data_shape']) # eval converts string shape to tuple
-        #logger.debug('XXX nda.shape =', nda.shape)
+    if data_type == 'str' :
+        return s.decode()
 
-        #str_sh = doc['data_shape'] #.lstrip('(').rstrip(')')
-        #nda.shape = tuple(np.fromstring(str_sh, dtype=int, sep=','))
-        #print_ndarr(nda, 'XXX: nda re-shaped')
+    elif data_type == 'ndarray' : 
+        str_dtype = doc.get('data_dtype', None)
+        nda = np.fromstring(s, dtype=str_dtype)
+        nda.shape = eval(doc.get('data_shape', None)) # eval converts string shape to tuple
         return nda
-    return pickle.loads(s)
+
+    elif data_type == 'any' : 
+        return pickle.loads(s.decode())
+
+    else :
+        logger.warning('get_data_for_doc: UNEXPECTED data_type: %s' % data_type)
+        return None
 
 #------------------------------
 
@@ -764,7 +998,7 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
         #query['run_end'] = {'$gte' : run}
     if time_sec is not None : query['time_sec'] = {'$lte' : int(time_sec)}
     if vers is not None : query['version'] = vers
-    logger.info('query: %s' % str(query))
+    logger.debug('query: %s' % str(query))
 
     db_det, db_exp = db_prefixed_name(det), db_prefixed_name(str(exp))
     if 'None' in db_det : db_det = None
@@ -776,32 +1010,31 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
 def find_docs(col, query={'ctype':'pedestals'}) :
     """Returns list of documents for query.
     """
+    if not is_valid_collection(col) :
+        logger.warning('Not available collection %s' % str(col))
+        return None
+
     docs = col.find(query)
     if docs.count() == 0 :
         logger.warning('col: %s query: %s is not consistent with any document...' % (col.name, query))
         return None
     else : return docs
 
-    #try :
-    #    return col.find(query)
-    #except errors.ServerSelectionTimeoutError as err: 
-    #    logger.exception(err)
-    #    sys.exit('ERROR at attempt to find data in database. Check server.')
-    #except errors.TypeError as err: 
-    #    logger.exception(err)
-    #    sys.exit('ERROR in arguments passed to find.')
-
 #------------------------------
 
 def find_doc(col, query={'ctype':'pedestals'}) :
     """Returns the document with latest time_sec or run number for specified query.
     """
+    if not is_valid_collection(col) :
+        logger.warning('Not available collection %s' % str(col))
+        return None
+
     docs = find_docs(col, query)
-    #logger.debug('XXX Number of documents found:', docs.count())
 
     if (docs is None)\
     or (docs.count()==0) :
-        logger.warning('DB %s collection %s does not have document for query %s' % (col.database.name, col.name, str(query)))
+        logger.warning('DB %s collection %s does not have document for query %s'%\
+                       (col.database.name, col.name, str(query)))
         return None
 
     qkeys = query.keys()
@@ -830,10 +1063,14 @@ def document_keys(doc) :
 #------------------------------
 
 def document_info(doc, keys=('time_sec','time_stamp','experiment',\
-                  'detector','ctype','run','id_data','data_type','data_dtype'),\
-                  fmt='%10s %24s %11s %24s %16s %4s %30s %10s %10s') :
+                  'detector','ctype','run','id_data','id_data_ts', 'data_type','data_dtype','version'),\
+                  fmt='%10s %24s %11s %16s %12s %4s %24s %24s %10s %10s %7s') :
     """Returns (str, str) for formatted document values and title made of keys. 
     """
+    #if not ('id_data_ts' in doc.keys()) : 
+    id_data = str(doc.get('id_data',None))
+    doc['id_data_ts'] = timestamp_id(id_data)
+
     doc_keys = sorted(doc.keys())
     if 'experiment' in doc_keys : # CDDB type of document
         vals = tuple([str(doc.get(k,None)) for k in keys])
@@ -851,6 +1088,12 @@ def collection_info(client, dbname, cname) :
     """Returns (str) info regarding collection documents. 
     """
     s = 'DB %s collection %s' % (dbname, cname)
+
+    if not is_valid_client(client)\
+    or not is_valid_dbname(dbname)\
+    or not is_valid_cname(cname) :
+        return '%s\n    collection_info IS NOT AVAILABLE for client %s' % (s, str(client))
+
     db = database(client, dbname)
     col = collection(db, cname) # or db[cname]
     docs = col.find().sort('_id', DESCENDING)
@@ -877,7 +1120,7 @@ def collection_info(client, dbname, cname) :
     
     for idoc, doc in enumerate(docs) :
         #id_data = doc.get('id_data', None)
-        #if id_data is not None : doc['ts_data'] = timestamp_id(id_data)
+        #if id_data is not None : doc['id_data_ts'] = timestamp_id(id_data)
         vals,_ = document_info(doc)
         s += '\n  %4d %s' % (idoc, vals)
 
@@ -888,8 +1131,11 @@ def collection_info(client, dbname, cname) :
 def database_info(client, dbname, level=10, gap='  ') :
     """Returns (str) info about database
     """
-    #dbname = db_prefixed_name(name)
+    if not is_valid_client(client)\
+    or not is_valid_dbname(dbname) :
+        return 'database_info IS NOT AVAILABLE for client %s\ndbname "%s"' % (str(client), str(dbname))
 
+    #dbname = db_prefixed_name(name)
     dbnames = database_names(client)
     #assert dbname in dbnames, 'dbname: %s is not found in the %s' % (dbname, str(dbnames))
     if not(dbname in dbnames) :
@@ -922,7 +1168,7 @@ def database_info(client, dbname, level=10, gap='  ') :
         s += '\n%s%s%s %s' % (gap, gap, 'doc#', title)
         for idoc, doc in enumerate(docs) :
             id_data = doc.get('id_data', None)
-            if id_data is not None : doc['ts_data'] = timestamp_id(id_data)
+            if id_data is not None : doc['id_data_ts'] = timestamp_id(id_data)
             vals,_ = document_info(doc)
             s += '\n%s%s%4d %s' % (gap, gap, idoc, vals)
     return s
@@ -932,6 +1178,9 @@ def database_info(client, dbname, level=10, gap='  ') :
 def database_fs_info(db, gap='  ') :
     """Returns (str) info about database fs collections 
     """
+    if not is_valid_database(db) :
+        return 'database_fs_info IS NOT AVAILABLE for database "%s"' % str(db)
+
     s = '%sDB "%s" data collections:' % (gap, db.name)
     for cname in collection_names(db) :
        if cname in ('fs.chunks', 'fs.files') :
@@ -945,13 +1194,17 @@ def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  ') :
     """Returns (str) with generic information about MongoDB client (or host:port) 
     """
     _client = client if client is not None else connect_to_server(host, port)
+
+    if not is_valid_client(_client) :
+        return 'client_info IS NOT AVAILABLE for "%s"' % str(_client)
+
     #s = '\nMongoDB client host:%s port:%d' % (client_host(_client), client_port(_client))
     dbnames = database_names(_client)
     s = '\n%sClient contains %d databases:' % (gap, len(dbnames)) #, ', '.join(dbnames))
     if level==1 : return s
     for idb, dbname in enumerate(dbnames) :
         db = database(_client, dbname) # client[dbname]
-        cnames = collection_names(db)
+        cnames = sorted(collection_names(db))
         s += '\n%sDB %s has %2d collections: %s' % (gap, dbname.ljust(20), len(cnames), str(cnames))
         if level==2 : continue
         for icol, cname in enumerate(cnames) :
@@ -1039,8 +1292,8 @@ if __name__ == "__main__" :
     """Connect to host, port get db handls.
     """
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
-        connect(host=cc.HOST, port=cc.PORT, experiment='cxid9114', detector='cspad_0001', verbose=True) 
-        #connect(host=cc.HOST, port=cc.PORT, detector='cspad_0001', verbose=True) 
+        connect(host=cc.HOST, port=cc.PORT, experiment='cxid9114', detector='cspad_0001') 
+        #connect(host=cc.HOST, port=cc.PORT, detector='cspad_0001') 
 
 #------------------------------
 
@@ -1053,7 +1306,8 @@ if __name__ == "__main__" :
     elif tname == '3' : data, ctype = get_test_dic(), 'testdict'; logger.debug('dict: %s' % str(data))
 
     kwa = {'user' : gu.get_login()}
-    insert_constants(data, 'exp12345', 'detector_1234', ctype, 10, 1500000000, verbose=True,\
+    t0_sec = time()
+    insert_constants(data, 'exp12345', 'detector_1234', ctype, 20+int(tname), int(t0_sec),\
                      time_stamp='2018-01-01T00:00:00-0800', **kwa)
 
 #------------------------------
@@ -1064,24 +1318,24 @@ if __name__ == "__main__" :
     user = gu.get_login()
     kwa = {'user' : user}
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
-        connect(host=cc.HOST, port=cc.PORT, experiment='exp12345', detector='detector_1234', verbose=True, **kwa)
+        connect(host=cc.HOST, port=cc.PORT, experiment='exp12345', detector='detector_1234', **kwa)
 
     t_data = 0
     nloops = 3
     kwa = {'user'      : user,
            'experiment': expname,
-           'detecto'   : detname,
-           'ctype'     : 'testnda',
-           'time_sec'  : int(time()),
-           'run'       : 10,
-           'verbose'   : True}
+           'detector'  : detname,
+           'ctype'     : 'testnda'}
 
     for i in range(nloops) :
         logger.info('%s\nEntry: %4d' % (50*'_', i))
         data = get_test_nda()
         print_ndarr(data, 'data nda') 
-
         t0_sec = time()
+        t0_int = int(t0_sec)
+        kwa['run'] = 10 + i
+        kwa['time_sec'] = t0_int
+        kwa['time_stamp'] = _timestamp(t0_int)
         id_data_exp, id_data_det, id_exp, id_det = insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwa)
 
         dt_sec = time() - t0_sec
@@ -1096,7 +1350,8 @@ if __name__ == "__main__" :
   def test_get_data(tname) :
     """Get doc and data
     """
-    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(verbose=True)
+    kwa = {'detector': 'cspad_0001'}
+    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(**kwa)
 
     t0_sec = time()
     data_type='any' 
@@ -1109,7 +1364,7 @@ if __name__ == "__main__" :
     print_doc(doc)
 
     t0_sec = time()
-    data = get_data_for_doc(fs, doc)
+    data = get_data_for_doc(fs_det, doc)
     logger.info('get data time %.6f sec' % (time()-t0_sec))
     logger.info('data:\n%s' % str(data))
 
@@ -1118,8 +1373,7 @@ if __name__ == "__main__" :
   def test_get_data_for_id(tname, det='cspad_0001', data_id='5bbbc6de41ce5546e8959bcf') :
     """Get data from GridFS using its id
     """
-    kwa = {'detector': det,
-           'verbose' : True}
+    kwa = {'detector': det}
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(**kwa)
     print('XXX expname', expname)
     print('XXX data_id', data_id)
@@ -1144,7 +1398,10 @@ if __name__ == "__main__" :
     #    connect(host=cc.HOST, port=cc.PORT)
 
     client = connect_to_server(host=cc.HOST, port=cc.PORT) # , user=cc.USERNAME, upwd=cc.USERPW)
-    logger.info('host:%s port:%d' % (client_host(client), client_port(client)))
+
+    print('type(client):', type(client))
+    print('dir(client):', dir(client))
+    logger.info('host:%s\nport:%d' % (client_host(client), client_port(client)))
     dbnames = database_names(client)
     logger.info('databases: %s' % str(dbnames))
     for idb, dbname in enumerate(dbnames) :
@@ -1206,12 +1463,41 @@ if __name__ == "__main__" :
 
 #------------------------------
 
+  def dict_usage(tname=None) :
+      d = {'0' : 'test_connect',
+           '1' : 'test_insert_one txt',
+           '2' : 'test_insert_one nda',
+           '3' : 'test_insert_one dic',
+           '4' : 'test_insert_many',
+           '5' : 'test_database_content',
+           '6' : 'test_dbnames_colnames',
+           '7' : 'test_calib_constants',
+           '8' : 'test_calib_constants_text',
+           '9' : 'test_calib_constants_dict',
+           '11': 'test_get_data txt',
+           '12': 'test_get_data nda',
+           '13': 'test_get_data dic',
+           '14': 'test_get_data_for_id',
+          }
+      if tname is None : return d
+      return d.get(tname, 'NON IMPEMENTED TEST')
+
+#------------------------------
+
+  def usage(tname=None) :
+    s = '%s\nUsage:' % (50*'_')
+    for k,v in dict_usage().items() : s += '\n  %2s : %s' % (k,v)
+    print('%s\n%s'%(s,50*'_'))
+
+#------------------------------
+
 if __name__ == "__main__" :
-    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
-    #                    datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO) # WARNING
+    #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
+    #logging.basicConfig(format=fmt', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    logger.info('%s\nTest %s:' % (50*'_',tname))
+    if len(sys.argv) < 2 : usage()
+    logger.info('%s\nTest %s: %s' % (50*'_', tname, dict_usage(tname)))
     if   tname == '0' : test_connect(tname)
     elif tname in ('1','2','3') : test_insert_one(tname)
     elif tname == '4' : test_insert_many(tname)
@@ -1221,7 +1507,7 @@ if __name__ == "__main__" :
     elif tname == '8' : test_calib_constants_text()
     elif tname == '9' : test_calib_constants_dict()
     elif tname in ('11','12','13') : test_get_data(tname)
-    elif tname == '14' : test_get_data_for_id(tname)
+    elif tname =='14' : test_get_data_for_id(tname)
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 

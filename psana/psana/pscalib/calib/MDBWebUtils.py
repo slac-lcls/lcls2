@@ -206,23 +206,43 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_find_doc() :
-    doc = find_doc('cdb_cxic0415', 'cspad_0001', query={'ctype':'pedestals', 'run':{'$lte':40}})
-    print('====> test_find_doc for run: %s' % str(doc))
+  def test_get_random_doc_and_data_ids(det='cspad_0001') :
+    from psana.pscalib.calib.MDBUtils import db_prefixed_name
+    dbname = db_prefixed_name(det)
+    colname = det
+    doc = find_doc(dbname, colname, query={'ctype':'pedestals'})
+    print('Pick up any doc for dbname:%s colname:%s pedestals: ' % (dbname,colname))
+    print('Document: %s' % str(doc))
+    id_doc  = doc.get('_id', None)
+    id_data = doc.get('id_data', None)
+    print('_id : %s   id_data : %s' % (id_doc, id_data))
+    return id_doc, id_data, dbname, colname
 
-    doc = find_doc('cdb_cxid9114', 'cspad_0001', query={'ctype':'pedestals', 'time_sec':{'$lte':1402851400}})
-    print('====> test_find_doc for time_sec: %s' % str(doc))
+#------------------------------
+
+  def test_find_doc() :
+    #doc = find_doc('cdb_cxic0415', 'cspad_0001', query={'ctype':'pedestals', 'run':{'$lte':40}})
+    #print('====> test_find_doc for run: %s' % str(doc))
+
+    #doc = find_doc('cdb_cxid9114', 'cspad_0001', query={'ctype':'pedestals', 'time_sec':{'$lte':1402851400}})
+    #print('====> test_find_doc for time_sec: %s' % str(doc))
+
+    _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0001') 
+    _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0002') 
 
 #------------------------------
 
   def test_get_data_for_id() :
-    o = get_data_for_id('cdb_cxic0415', '5bbbc6ce41ce5546e8959736')
+    id_doc, id_data, dbname, colname = test_get_random_doc_and_data_ids(det='cspad_0001')
+    o = get_data_for_id(dbname, id_data)
     print('test_get_data_for_id: r.content raw data: %s ...' % str(o[:500]))
 
 #------------------------------
 
   def test_get_data_for_docid() :
-    o = get_data_for_docid('cdb_cxid9114', 'cspad_0001', '5b6cdde71ead144f115319be')
+    id_doc, id_data, dbname, colname = test_get_random_doc_and_data_ids(det='cspad_0001')
+    o = get_data_for_docid(dbname, colname, id_doc)
+    #o = get_data_for_docid('cdb_cxid9114', 'cspad_0001', '5b6cdde71ead144f115319be')
     print_ndarr(o, 'test_get_data_for_docid o:', first=0, last=10)
 
 #------------------------------
