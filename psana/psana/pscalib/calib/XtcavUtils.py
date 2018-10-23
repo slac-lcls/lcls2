@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 from psana.pscalib.calib.XtcavConstants import Empty, Load, Save, ConstTest
-from psana.pscalib.calib.MDBConvertUtils import jasonify_dict
+from psana.pscalib.calib.MDBConvertUtils import serialize_dict
 
 #--------------------
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
 #--------------------
 
-  def test_jasonify_xtcav_dict():
+  def test_serialize_xtcav_dict():
       from psana.pscalib.calib.MDBConvertUtils import print_dict
       #fname = '/reg/d/psdm/AMO/amox23616/calib/'\
       #        'Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/lasingoffreference/56-end.data'
@@ -80,7 +80,7 @@ if __name__ == "__main__":
               'Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/104-end.data'
       o = Load(fname)
       dico = dict_from_xtcav_calib_object(o)
-      jasonify_dict(dico)
+      serialize_dict(dico)
       #print('dico: %s' % dico)
       print(80*'_')
       print_dict(dico)
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     logger.info('%s\nTest %s:' % (50*'_',tname))
     if   tname == '0' : test_const()
-    elif tname == '1' : test_jasonify_xtcav_dict()
+    elif tname == '1' : test_serialize_xtcav_dict()
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 

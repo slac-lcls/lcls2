@@ -114,7 +114,7 @@ import gridfs
 from pymongo import MongoClient, errors, ASCENDING, DESCENDING
 from pymongo.database import Database
 from pymongo.collection import Collection
-from collections.abc import Iterable
+from collections import Iterable
 #from pymongo.errors import ConnectionFailure
 #import pymongo
 
@@ -972,7 +972,7 @@ def get_data_for_doc(fs, doc) :
     if data_type == 'str' :
         return s.decode()
 
-    elif data_type == 'ndarray' : 
+    elif data_type == 'ndarray' :
         str_dtype = doc.get('data_dtype', None)
         nda = np.fromstring(s, dtype=str_dtype)
         nda.shape = eval(doc.get('data_shape', None)) # eval converts string shape to tuple

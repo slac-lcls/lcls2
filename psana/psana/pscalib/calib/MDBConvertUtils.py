@@ -1,7 +1,7 @@
 """
     Usage ::
     from psana.pscalib.calib.MDBConvertUtils import numpy_scalar_types, compare_dicts,\
-                                                    jasonify_numpy, jasonify_dict, info_dict, print_dict
+                                                    serialize_numpy, serialize_dict, info_dict, print_dict
 """
 
 import logging
@@ -43,32 +43,55 @@ def compare_dicts(d1, d2, gap='  '):
 
 #--------------------
 
-def jasonify_numpy(nda):
-    """ Returns dict of numpy adday data and metadata.
+def serialize_numpy(nda):
+    """ Returns dict of numpy array data and metadata.
     """
     return {'type' :'nd',
             'shape':str(nda.shape),
-            'size' :str(nda.size),
             'dtype':nda.dtype.str,
             'data' :str(nda.tobytes()) #.replace("'", '"')
            }
 
-    #        'data' :str(nda.tobytes().replace("'", '"')
-    #        'data' :(nda.tobytes()).decode('ascii') # 'utf-8')
-    #        'data' :''.join(chr(b) for b in nda.tobytes())
+#--------------------
+
+def is_none(v,msg):
+    if v is None : 
+        logger.debug('deserialize_numpy: paremeter "%s" is None' % msg)
+        return True
 
 #--------------------
 
-def jasonify_dict(d, offset='  '):
+def deserialize_numpy(d):
+    """ Returns numpy array from serialized in dict numpy array.
+    """
+    t = d.get('type', None)
+    if t != 'nd' :
+        logger.debug('deserialize_numpy: wrong type "%s"' % str(t))
+        return None
+
+    data = d.get('data', None)
+    if is_none(data, 'data') return None 
+
+    dtype = d.get('dtype', None)
+    if is_none(dtype, 'dtype') return None
+
+    shape = d.get('shape', None)
+    if is_none(shape, 'shape') return None
+
+    nda = np.fromstring(data, dtype=dtype)
+    nda.shape = eval(shape)
+    return nda
+
+#--------------------
+
+def serialize_dict(d, offset='  '):
     """ Returns dict of strings for k, v, saves data and data types for scalars.
     """
-    logger.debug('%sXtcavUtils.jasonify_dict:' % offset)
+    logger.debug('%sserialize_dict:' % offset)
     for k,v in d.items() :
         logger.debug('%sk:%s  type(v):%s' % (offset, k.ljust(16), type(v)))
-        if   isinstance(v,dict) : jasonify_dict(v, offset = offset+'  ')
-        elif isinstance(v, np.ndarray) : d[k] = jasonify_numpy(v)
-        #elif isinstance(v, bytes)      : d[k] = str(v)
-        #elif isinstance(v, bytes)      : d[k] = ''.join(chr(b) for b in v)
+        if   isinstance(v,dict) : serialize_dict(v, offset = offset+'  ')
+        elif isinstance(v, np.ndarray) : d[k] = serialize_numpy(v)
         elif isinstance(v, bytes)      : d[k] = str(v) #.replace("'", '"')
         elif isinstance(v, NUMPY_SCALAR_TYPES) : d[k] = {'type' :'sc', 'dtype':v.dtype.str, 'data':str(v)} 
         elif not isinstance(v, str) : d[k] = str(v)
@@ -104,25 +127,25 @@ if __name__ == "__main__":
 #--------------------
   from psana.pyalgos.generic.NDArrGenerators import np, aranged_array, random_standard
 
-  def test_jasonify_numpy():
+  def test_serialize_numpy():
     from psana.pyalgos.generic.NDArrUtils import print_ndarr # info_ndarr
     #nda = random_standard(shape=(4,6), mu=100, sigma=10, dtype=np.float)
     nda = aranged_array(shape=(2,3), dtype=np.float) # uint32)
     print_ndarr(nda, 'nda', first=0, last=12)
-    d = jasonify_numpy(nda)
-    print('jasonify_numpy: %s' % d)
+    d = serialize_numpy(nda)
+    print('serialize_numpy: %s' % d)
 
 #--------------------
 
-  def test_jasonify_dict():
+  def test_serialize_dict():
       dico = {'val':123,
               'nda1': aranged_array(shape=(3,4), dtype=np.int),
               'nda2': random_standard(shape=(2,3), mu=100, sigma=10, dtype=np.float)
              }
-      jasonify_dict(dico)
+      serialize_dict(dico)
       #print('dico: %s' % dico)
       print(80*'_')
-      print('jasonify_dict:')
+      print('serialize_dict:')
       print_dict(dico)
       print(80*'_')
 
@@ -135,8 +158,8 @@ if __name__ == "__main__":
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.info('%s\nTest %s:' % (50*'_',tname))
-    if   tname == '0' : test_jasonify_numpy()
-    elif tname == '1' : test_jasonify_dict()
+    if   tname == '0' : test_serialize_numpy()
+    elif tname == '1' : test_serialize_dict()
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 
