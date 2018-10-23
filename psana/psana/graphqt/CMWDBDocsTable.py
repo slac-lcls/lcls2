@@ -19,7 +19,8 @@ Created on 2017-04-20 by Mikhail Dubrovin
 from psana.graphqt.CMWDBDocsBase import *
 from psana.graphqt.QWTable import QWTable, QStandardItem, icon
 
-from psana.pscalib.calib.MDBUtils import ObjectId
+#from psana.pscalib.calib.MDBUtils import ObjectId
+from psana.graphqt.CMDBUtils import ObjectId, doc_add_id_ts
 
 #from psana.graphqt.CMDBUtils import timestamp_id # use dbu
 logger = logging.getLogger(__name__)
@@ -70,6 +71,8 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
             #    if col==3 : item.setText('Some text')
             #    #self.model.appendRow(item)
         else :
+            for doc in docs : doc_add_id_ts(doc) # add timestamps for all ids
+
             keys = sorted(docs[0].keys())
             #self.model.setVerticalHeaderLabels(keys) 
             self.model.setHorizontalHeaderLabels(keys) 
@@ -80,11 +83,6 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
                      #s = v if (isinstance(v,str) and len(v)<128) else 'str longer 128 chars'
                      cond = any([isinstance(v,o) for o in (str,dict,ObjectId)])
                      s = str(v) if (cond and len(str(v))<512) else 'str longer 512 chars'
-
-                     if key in ('_id', 'id_data') : 
-                         s = dbu.timestamp_id(v)
-                         #msg = '%s = %s converted to %s' % (('doc["%s"]'%key).ljust(16), v, s)
-                         #logger.debug(msg)
                      item = QStandardItem(s)
                      item.setEditable(False)
                      self.model.setItem(r,c,item)

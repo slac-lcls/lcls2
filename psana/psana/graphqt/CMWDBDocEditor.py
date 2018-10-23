@@ -24,14 +24,14 @@ logger = logging.getLogger(__name__)
 from psana.graphqt.CMConfigParameters import cp
 
 from psana.graphqt.QWTable import QWTable, QStandardItem, icon
-import psana.graphqt.CMDBUtils as dbu
+from psana.graphqt.CMDBUtils import ObjectId, get_data_for_doc, doc_add_id_ts, time_and_timestamp #, timestamp_id
+#from psana.pscalib.calib.MDBUtils import ObjectId
+
 from psana.graphqt.QWUtils import get_open_fname_through_dialog_box
 
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 import psana.pyalgos.generic.Utils as gu
 from psana.pscalib.calib.NDArrIO import load_txt#, save_txt
-
-from psana.pscalib.calib.MDBUtils import ObjectId
 
 from PyQt5.QtWidgets import QHeaderView
 from PyQt5.QtGui import QBrush
@@ -97,7 +97,7 @@ class CMWDBDocEditor(QWTable) :
         #for doc in docs : print(doc)
         self.fill_table_model(doc)
 
-        self.data_nda = dbu.get_data_for_doc(dbname, doc)
+        self.data_nda = get_data_for_doc(dbname, doc)
         logger.debug(info_ndarr(self.data_nda, 'array from DB linked to the document'))
 
 #------------------------------
@@ -118,25 +118,11 @@ class CMWDBDocEditor(QWTable) :
 
         if doc is None :
             self.model.setVerticalHeaderLabels(['Select document']) 
-            #self.model.setHorizontalHeaderLabels(['col0', 'col1', 'col2']) 
-            #for row in range(0, 3):
-            #  for col in range(0, 6):
-            #    item = QStandardItem("itemA %d %d"%(row,col))
-            #    item.setIcon(icon.icon_table)
-            #    item.setCheckable(True) 
-            #    self.model.setItem(row,col,item)
-            #    if col==2 : item.setIcon(icon.icon_folder_closed)
-            #    if col==3 : item.setText('Some text')
-            #    #self.model.appendRow(item)
         else :
-
             self.model.setHorizontalHeaderLabels(('key', 'value')) 
             self.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
 
-            # add items with timestamp for id-s as '_id_ts', 'id_data_ts', 'id_exp_ts'
-            for k in ('_id', 'id_data', 'id_exp') :
-                v = doc.get(k, None)
-                if v is not None : doc['%s_ts'%k] = dbu.timestamp_id(v)
+            doc_add_id_ts(doc) # adds time stamps for all id-s
 
             for r,k in enumerate(sorted(doc.keys())):
                 v = doc[k]
@@ -148,12 +134,8 @@ class CMWDBDocEditor(QWTable) :
                 self.model.setItem(r,0,item)
 
                 # set value item
-                cond = any([isinstance(v,o) for o in (str,dict,ObjectId)])
+                cond = any([isinstance(v,o) for o in (int,str,dict,ObjectId)])
                 s = str(v) if (cond and len(str(v))<512) else 'str longer 512 chars'
-                #if k in ('_id', 'id_data') : 
-                #    s = dbu.timestamp_id(v)
-                #    msg = '%s = %s converted to %s' % (('doc["%s"]'%k).ljust(16), v, s)
-                #    logger.debug(msg)
                 item = QStandardItem(s)
 
                 editable = self.item_is_editable_for_key(k) # and k!=self.data_fname
@@ -268,7 +250,7 @@ class CMWDBDocEditor(QWTable) :
         m = self.model
         d = dict([(m.item(r, 0).text(), m.item(r, 1).text()) for r in range(m.rowCount())])
         if d[self.data_fname] == self.data_fname_value : d[self.data_fname] = None
-        d['time_sec'] = dbu.time_and_timestamp(**d)[0] # 'time_stamp' is used to fill 'time_sec'
+        d['time_sec'] = time_and_timestamp(**d)[0] # 'time_stamp' is used to fill 'time_sec'
 
         # remove info items added for display purpose
         if discard_id_ts :

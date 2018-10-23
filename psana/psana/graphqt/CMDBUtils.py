@@ -34,6 +34,7 @@ database          = dbu.database
 collection_names  = dbu.collection_names   
 collection        = dbu.collection
 timestamp_id      = dbu.timestamp_id
+doc_add_id_ts     = dbu.doc_add_id_ts
 db_prefixed_name  = dbu.db_prefixed_name
 time_and_timestamp= dbu.time_and_timestamp
 exportdb          = dbu.exportdb
@@ -140,7 +141,7 @@ def list_of_documents(dbname, colname) :
 #------------------------------
 
 def document_info(doc, keys:tuple=('time_sec','time_stamp','experiment',\
-                  'detector','ctype','run','ts_data','data_type','data_dtype', '_id'),\
+                  'detector','ctype','run','id_data_ts','data_type','data_dtype', '_id'),\
                   fmt:str='%10s %24s %11s %24s %16s %4s %30s %10s %10s %24s') :
     """The same as dbu.document_info, but with different default parameters (added _id).
     """
