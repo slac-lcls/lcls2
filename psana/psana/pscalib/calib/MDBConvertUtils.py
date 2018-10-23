@@ -70,13 +70,16 @@ def deserialize_numpy(d):
         return None
 
     data = d.get('data', None)
-    if is_none(data, 'data') return None 
+    if is_none(data, 'data'):
+        return None 
 
     dtype = d.get('dtype', None)
-    if is_none(dtype, 'dtype') return None
+    if is_none(dtype, 'dtype'):
+        return None
 
     shape = d.get('shape', None)
-    if is_none(shape, 'shape') return None
+    if is_none(shape, 'shape'):
+        return None
 
     nda = np.fromstring(data, dtype=dtype)
     nda.shape = eval(shape)
