@@ -71,16 +71,19 @@ class Test:
             ('PYTHONPATH', ':'.join(python_path)),
             ('PS_PARALLEL', 'legion'),
         ])
-        subprocess.check_call(['legion_python', 'user', '-ll:py', '1'], env=env)
+        subprocess.check_call(['legion_python', 'user_legion', '-ll:py', '1'], env=env)
 
-    def test_ds_pickle(self):
+    def test_legion_run_pickle(self):
+        """ Test that run is pickleable for legion """
         self.setup_input_files()
-
-        import pickle
-        xtc_dir = os.path.join(os.getcwd(),'.tmp')
-        ds = DataSource('exp=xpptut13:dir=%s'%(xtc_dir), filter=filter)
-        ds_new = pickle.loads(pickle.dumps(ds))
-        assert ds == ds_new
+        
+        python_path = os.environ.get('PYTHONPATH', '').split(':')
+        python_path.append(os.path.dirname(os.path.realpath(__file__)))
+        env = dict(list(os.environ.items()) + [
+            ('PYTHONPATH', ':'.join(python_path)),
+            ('PS_PARALLEL', 'legion'),
+        ])
+        subprocess.check_call(['legion_python', 'run_pickle', '-ll:py', '1'], env=env)
 
     def test_det(self):
         det()

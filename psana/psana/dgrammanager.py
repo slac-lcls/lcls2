@@ -22,8 +22,9 @@ def dumpDgram(d):
 FN_L = 200
 
 class DgramManager():
-    """Stores variables and arrays loaded from an XTC source.\n"""
+    
     def __init__(self, xtc_files, configs=[]):
+        """ Opens xtc_files and stores configs."""
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
         elif isinstance(xtc_files, (list, np.ndarray)):
@@ -47,11 +48,7 @@ class DgramManager():
                 self.configs += [d]
 
         self.offsets = [_config._offset for _config in self.configs]
-
-    def __del__(self):
-        for fd in self.fds:
-            os.close(fd)
-
+   
     def __iter__(self):
         return self
 
@@ -76,6 +73,20 @@ class DgramManager():
         evt = Event(dgrams=dgrams)
         self.offsets = evt.offsets
         return evt
+
+    def jump(self, offsets, sizes):
+        """ Jumps to the offset and reads out dgram on each xtc file.
+        This is used in normal mode (multiple detectors with MPI).
+        """
+        assert len(offsets) > 0 and len(sizes) > 0
+        dgrams = []
+        for fd, config, offset, size in zip(self.fds, self.configs, offsets, sizes):
+            d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
+        dgrams += [d]
+        
+        evt = Event(dgrams=dgrams)
+        return evt
+
     
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
