@@ -40,7 +40,9 @@ class MPIDataSource(DataSourceBase):
 
     def runs(self):
         for run_no in self.run_dict:
-             yield RunParallel(self.exp, run_no, self.run_dict[run_no][0], \
+            run = RunParallel(self.exp, run_no, self.run_dict[run_no][0], \
                         self.run_dict[run_no][1], self.nodetype, self.nsmds, \
                         self.max_events, self.batch_size, self.filter)
+            self.run = run # FIXME: provide support for cctbx code (ds.Detector). will be removed in next cctbx update.
+            yield run
 

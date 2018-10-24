@@ -19,18 +19,19 @@ class DataSourceBase(object):
         sel_det_ids -- user-selected detector IDs.
         """
         if kwargs is not None:
-            keywords = ('filter', 'batch_size', 'max_events', 'sel_det_ids')
+            keywords = ('filter', 'batch_size', 'max_events', 'sel_det_ids', 'det_name')
             for k in keywords:
                 if k in kwargs:
                     setattr(self, k, kwargs[k])
         assert self.batch_size > 0
     
-    def runs(self):
-        pass
-
     def events(self):
         for run in self.runs():
             for evt in run.events(): yield evt
+
+    # FIXME: this supports cctbx code and will be removed in next update
+    def Detector(self, det_name):
+        return self.run.Detector(det_name)
     
     def parse_expstr(self, expstr):
         exp = None

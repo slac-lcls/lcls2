@@ -15,6 +15,15 @@ if mode == 'mpi':
     size = comm.Get_size()
     rank = comm.Get_rank()
 
+# FIXME: to support run.ds.Detector in cctbx. to be removed.
+class DsContainer(object):
+
+    def __init__(self, run):
+        self.run = run
+
+    def Detector(self, dummy):
+        return self.run._det # return pre-created detector
+
 class Run(object):
     exp = None
     run_no = None
@@ -32,6 +41,7 @@ class Run(object):
         self.max_events = max_events
         self.batch_size = batch_size
         self.filter_callback = filter_callback
+        self.ds = DsContainer(self) # FIXME: to support run.ds.Detector in cctbx. to be removed.
 
     def run(self):
         """ Returns integer representaion of run no.
@@ -129,7 +139,7 @@ class RunParallel(Run):
         for evt in run_node(self, self.nodetype, self.nsmds, self.max_events, \
                 self.batch_size, self.filter_callback):
             yield evt
-
+    
     def Detector(self, det_name):
         if rank == 0:
             calib = super(RunParallel, self)._get_calib(det_name)
@@ -137,7 +147,8 @@ class RunParallel(Run):
             calib = None
         calib = comm.bcast(calib, root=0)
         det = Detector(self.configs, calib=calib)
-        return det.__call__(det_name)
+        self._det = det.__call__(det_name)
+        return self._det
 
 class RunLegion(Run):
 
