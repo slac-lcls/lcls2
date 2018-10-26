@@ -27,7 +27,7 @@ from re import match, search
 usage = "usage: %prog configfile [OPTION]..."
 
 required_keys = ['id', 'cmd']
-optional_keys = ['host', 'flags', 'port', 'rtprio', 'env', 'evr']
+optional_keys = ['host', 'flags', 'port', 'rtprio', 'env', 'evr', 'conda']
 known_keys = required_keys + optional_keys
 
 valid_flags = ['X', 'x', 's', 'k', 'u', 'p']
@@ -115,11 +115,11 @@ if os.path.isfile(configfile) != 1:
 #  - procmgr_config = None
 #  - procmgr_macro = empty dictionary
 #  - instrument = None
-#  - id, cmd, flags, port, host, rtprio, env, evr = keyword strings
+#  - id, cmd, flags, port, host, rtprio, env, evr, conda = keyword strings
 #
 config = {'platform': options.platform, 'procmgr_config': None, 'instrument': None,
           'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
-          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'procmgr_macro': dict()}
+          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': dict()}
 
 try:
   exec(compile(open(configfile).read(), configfile, 'exec'), {}, config)

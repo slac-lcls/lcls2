@@ -18,6 +18,8 @@
 #   5: invalid arguments
 #   6: conda activate failed
 #   7: command not found on PATH
+#   8: conda.sh not found
+#   9: procServ not found
 #   other: procServ error
 
 if [ "$#" -lt 8 ]; then
@@ -27,8 +29,6 @@ fi
 
 # start with minimal PATH
 export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
-
-source /reg/g/psdm/sw/conda2/inst/etc/profile.d/conda.sh
 
 condaEnv="$1"
 name="$2"
@@ -47,9 +47,17 @@ fi
 
 if [ -z $condaEnv ]; then
     echo "no conda environment specified"
-elif ! conda activate "$condaEnv"; then
-    echo "error: conda activate $condaEnv"
-    exit 6
+else
+    if [ -f /reg/g/psdm/sw/conda2/inst/etc/profile.d/conda.sh ]; then
+        source /reg/g/psdm/sw/conda2/inst/etc/profile.d/conda.sh
+    else
+        echo "error: conda.sh not found"
+        exit 8
+    fi
+    if ! conda activate "$condaEnv"; then
+        echo "error: conda activate $condaEnv"
+        exit 6
+    fi
 fi
 
 # if TESTRELDIR has been set, update paths
@@ -85,9 +93,14 @@ if [ -z $waitFlag ]; then
     waitFlag=""
 fi
 
-/reg/common/package/procServ/2.6.0-SLAC/x86_64-rhel6-gcc44-opt/bin/procServ \
-    --noautorestart --name $name $waitFlag $logFlag --allow \
-    --coresize $coreSize $ctrlPort $cmd $args
+if [ -f /reg/common/package/procServ/2.6.0-SLAC/x86_64-rhel6-gcc44-opt/bin/procServ ]; then
+    /reg/common/package/procServ/2.6.0-SLAC/x86_64-rhel6-gcc44-opt/bin/procServ \
+        --noautorestart --name $name $waitFlag $logFlag --allow \
+        --coresize $coreSize $ctrlPort $cmd $args
+else
+    echo "error: procServ not found"
+    exit 9
+fi
 
 rv=$?
 

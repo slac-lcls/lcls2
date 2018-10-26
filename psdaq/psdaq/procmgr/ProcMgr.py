@@ -8,11 +8,30 @@ import re
 from time import sleep, strftime
 import socket
 import io
-from platform import node
+from platform import node, python_version
 from getpass import getuser
 import shutil
 
 uniqueid_maxlen = 30;
+
+#
+# printError
+#
+def printError(errorCode, args):
+    if (errorCode == 5):
+        print("ERR: failed to run '%s' (invalid arguments)" % args)
+    elif (errorCode == 6):
+        print("ERR: failed to run '%s' (conda activate failed)" % args)
+    elif (errorCode == 7):
+        print("ERR: failed to run '%s' (command not found on PATH)" % args)
+    elif (errorCode == 8):
+        print("ERR: failed to run '%s' (conda.sh not found)" % args)
+    elif (errorCode == 9):
+        print("ERR: failed to run '%s' (procServ not found)" % args)
+    elif (errorCode != 0):
+        print("ERR: failed to run '%s' (procServ returned %d)" % \
+            (args, errorCode))
+    return
 
 #
 # getConfigFileNames
@@ -174,9 +193,9 @@ def idFoundInList(id, substrings):
 #
 def deduce_platform(configfilename):
     rv = -1   # return -1 on error
-    cc = {'platform': None, 'procmgr_config': None,
+    cc = {'platform': None, 'procmgr_config': None, 'TESTRELDIR': None,
           'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
-          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'procmgr_macro': {}}
+          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}}
     try:
       exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, cc)
       if type(cc['platform']) == type('') and cc['platform'].isdigit():
@@ -187,16 +206,17 @@ def deduce_platform(configfilename):
     return rv
 
 #
-# deduce_platform2 - deduce platform (-p) and macros
+# deduce_platform2 - deduce platform (-p) and macros and TESTRELDIR
 #
-# RETURNS: Two values: platform number (or -1 on error), and macros
+# RETURNS: Three values: platform number (or -1 on error), macros, and TESTRELDIR
 #
 def deduce_platform2(configfilename):
     platform_rv = -1   # return -1 on error
     macro_rv = {}
-    cc = {'platform': None, 'procmgr_config': None,
+    testreldir_rv = ''
+    cc = {'platform': None, 'procmgr_config': None, 'TESTRELDIR': '',
           'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
-          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'procmgr_macro': {}}
+          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}}
     try:
       exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, cc)
       macro_rv = cc['procmgr_macro']
@@ -205,7 +225,14 @@ def deduce_platform2(configfilename):
     except:
       print('deduce_platform2 Error:', sys.exc_info()[1])
 
-    return platform_rv, macro_rv
+    # TESTRELDIR can be defined in cnf file and in environment.
+    # The environment setting takes precedence.
+    if 'TESTRELDIR' in os.environ:
+      testreldir_rv = os.environ['TESTRELDIR']
+    elif 'TESTRELDIR' in cc and len(cc['TESTRELDIR']) > 0:
+      testreldir_rv = cc['TESTRELDIR']
+
+    return platform_rv, macro_rv, testreldir_rv
 
 
 #
@@ -222,9 +249,9 @@ def deduce_instrument(configfilename):
     instr_name = ''
     currentexpcmd = ''
     station_number = 0
-    cc = {'instrument': None, 'platform': None, 'procmgr_config': None,
+    cc = {'instrument': None, 'platform': None, 'procmgr_config': None, 'TESTRELDIR': None,
           'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
-          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'procmgr_macro': {}, 'currentexpcmd': None}
+          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}, 'currentexpcmd': None}
 
     try:
       exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, cc)
@@ -361,6 +388,7 @@ class ProcMgr:
     DICT_PPID = 4
     DICT_FLAGS = 5
     DICT_GETID = 6
+    DICT_CONDA = 7
 
     # a managed executable can be in the following states
     STATUS_NOCONNECT = "NOCONNECT"
@@ -468,9 +496,9 @@ class ProcMgr:
 
         configlist = []         # start out with empty list
 
-        config = {'platform': repr(self.PLATFORM), 'procmgr_config': None,
+        config = {'platform': repr(self.PLATFORM), 'procmgr_config': None, 'TESTRELDIR': None,
                   'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
-                  'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'procmgr_macro': procmgr_macro}
+                  'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': procmgr_macro}
         try:
           exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, config)
         except:
@@ -526,23 +554,19 @@ class ProcMgr:
             else:
               raise ConfigFileError("evr value does not match '<digit>,<digit>[<digit>]': %s" % entry)
 
+          # --- conda (optional) ---
+          if 'conda' in entry:
+            self.conda = entry['conda']
+          else:
+            # empty quotes
+            self.conda = "''"
+
           # --- cmd (required) ---
           if 'cmd' in entry:
 
             # use os.path.realpath() to resolve any symbolic links
             cmdSplit = entry['cmd'].split(None, 1)
             cmdZero = os.path.expanduser(cmdSplit[0])
-            if (not os.path.isabs(cmdZero)) and (self.env is None):
-                print('ERR: \'%s\' has relative path and env is not set' % cmdZero)
-            cmdZero = findOnPath(cmdZero, self.env)
-            if shutil.which(cmdZero) is not None:
-              if (len(cmdSplit) > 1):
-                entry['cmd'] = os.path.realpath(cmdZero) + ' ' + cmdSplit[1]
-              else:
-                entry['cmd'] = os.path.realpath(cmdZero)
-            else:
-              print('ERR: Executable \'%s\' not found' % cmdZero)
-              entry['cmd'] = '/bin/echo \"Executable not found: ' + cmdZero + '"'
 
             # if rtprio is set, prefix with /usr/bin/chrt
             if (self.rtprio):
@@ -699,8 +723,8 @@ class ProcMgr:
               # add an entry to the dictionary
               key = makekey(self.host, self.uniqueid)
               self.d[key] = \
-                [ self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid]
-                # DICT_STATUS  DICT_PID  DICT_CMD  DICT_CTRL      DICT_PPID  DICT_FLAGS  DICT_GETID
+                [ self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid, self.conda]
+                # DICT_STATUS  DICT_PID  DICT_CMD  DICT_CTRL      DICT_PPID  DICT_FLAGS  DICT_GETID DICT_CONDA
 
     def spawnXterm(self, name, host, port, large=False):
         if large:
@@ -1033,6 +1057,7 @@ class ProcMgr:
                     value[self.DICT_STATUS] = self.STATUS_NOCONNECT
 
             if value[self.DICT_STATUS] == self.STATUS_NOCONNECT:
+                logfile = ''
                 starthost = key2host(key)
                 # order matters: X flag takes priority over x flag
                 if 'X' in value[self.DICT_FLAGS]:
@@ -1042,11 +1067,10 @@ class ProcMgr:
                     xlist.append([key, value])
                     waitflag = '--wait'
                 else:
-                    waitflag = ''
+                    # empty quotes
+                    waitflag = "''"
 
-                if ('>' in value[self.DICT_CMD]) or (logpathbase == None) or (logpathbase == "/dev/null"):
-                    redirect_string = ''
-                else:
+                if (logpathbase is not None) and (logpathbase != "/dev/null"):
                     #
                     # Construct path similar to:
                     #
@@ -1058,7 +1082,6 @@ class ProcMgr:
                     except:
                       # mkdir
                       print('ERR: mkdir <%s> failed' % logpath)
-                      redirect_string = ''
                     else:
                       time_string = time.strftime('%d_%H:%M:%S')
                       loghost = key2host(key)
@@ -1070,19 +1093,13 @@ class ProcMgr:
                       logfile = '%s/%s_%s.log' % (logpath, time_string, logkey)
                       if verbose:
                           print('log file: <%s>' % logfile)
-                      if localFlag:
-                          # local: bash shell
-                          redirect_string = '>> \"%s\" 2>&1' % logfile
-                      else:
-                          # remote: tcsh shell
-                          redirect_string = '>>& \"%s\"' % logfile
 
                     pbits = (stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
                     try:
                         statmode = os.stat(logpath).st_mode
                     except:
                         print('ERR: stat %s failed' % logpath)
-                        redirect_string = ''
+                        logfile = ''
                     else:
                         if (statmode & pbits) != pbits:
                           try:
@@ -1090,10 +1107,10 @@ class ProcMgr:
                             os.chmod(logpath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
                           except:
                             print('ERR: chmod %s failed' % logpath)
-                            redirect_string = ''
+                            logfile = ''
 
                 # encode logfile path as part of procServ name
-                if (len(redirect_string) > 1):
+                if (len(logfile) > 1):
                   name = logfile.replace(logpathbase+'/', '', 1)
                   if not os.path.exists(logfile):
                     try:
@@ -1102,6 +1119,8 @@ class ProcMgr:
                       outfile.write("# PLATFORM:%s\n" % self.PLATFORM)
                       outfile.write("# HOST:    %s\n" % loghost)
                       outfile.write("# CMDLINE: %s\n" % value[self.DICT_CMD])
+                      if 'TESTRELDIR' in os.environ:
+                        outfile.write("# TESTRELDIR:%s\n" % os.environ['TESTRELDIR'])
                       outfile.close()
                     except:
                       print("ERR: writing log file '%s' failed" % logfile)
@@ -1116,14 +1135,17 @@ class ProcMgr:
                 else:
                   name = key2uniqueid(key)
 
-                startcmd = \
-                        '/reg/common/package/procServ/2.6.0-SLAC/x86_64-rhel6-gcc44-opt/bin/procServ --noautorestart --name %s %s --allow --coresize %d %s %s %s' % \
-                       (name, \
+                # look for condaProcServ.sh in the same directory as this file
+                prefix = os.path.dirname(os.path.realpath(__file__))
+                startcmd = prefix + '/condaProcServ.sh %s %s %s %s %d %s %s %s' % \
+                       (value[self.DICT_CONDA], \
+                        name, \
                         waitflag, \
+                        logfile, \
                         coresize, \
                         value[self.DICT_CTRL], \
-                        value[self.DICT_CMD],
-                        redirect_string)
+                        python_version(), \
+                        value[self.DICT_CMD])
                 # is this host already in the dictionary?
                 if starthost in startdict:
                     # yes: add to set of start commands
@@ -1152,8 +1174,7 @@ class ProcMgr:
                     yy = subprocess.Popen(args, stdout=nullOut, stderr=nullOut, shell=True)
                     yy.wait()
                     if (yy.returncode != 0):
-                        print("ERR: failed to run '%s' (procServ returned %d)" % \
-                            (args, yy.returncode))
+                        printError(yy.returncode, args)
                     else:
                         self.setStatus([key], self.STATUS_RUNNING)
                         started_count += 1
@@ -1182,14 +1203,26 @@ class ProcMgr:
                     while len(value) > 0:
 
                         nextcmd, nextkey = value.pop()
+                        args = nextcmd
 
                         if verbose:
                             print('Run on %s: %s' % (host, nextcmd))
+
+                        if 'TESTRELDIR' in os.environ:
+                          # set env var on remote host using subshell
+                          nextcmd = '(setenv TESTRELDIR %s; %s; echo "[return=$?]")' % (os.environ['TESTRELDIR'], nextcmd)
+                        else:
+                          nextcmd = '%s; echo "[return=$?]"' % nextcmd
 
                         # send command
                         self.telnet.write(bytes('%s\n' % nextcmd, 'utf-8'))
                         # wait for prompt
                         response = self.telnet.read_until(self.MSG_PROMPT, 2)
+                        # search for error code after "return="
+                        m = re.search(b'(?<=return=)\d+', response)
+                        if m is not None:
+                            printError(int(m.group(0)), args)
+
                         if not response.count(self.MSG_PROMPT):
                             print('ERR: no prompt at %s port %s' % \
                                 (host, self.EXECMGRCTRL))
