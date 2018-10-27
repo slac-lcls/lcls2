@@ -434,6 +434,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         Py_DECREF(arglist);
         self->dgram = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
     } else {
+        // this next line is needed because arrays will increase the reference count
+        // of the view (actually a PyByteArray) in DictAssign.  This is the mechanism we
+        // use so we don't have to copy the array data.
+        self->dgrambytes = view;
         if (PyObject_GetBuffer(view, &(self->buf), PyBUF_SIMPLE) == -1) {
             PyErr_SetString(PyExc_MemoryError, "unable to create dgram with the given view");
             return -1;
