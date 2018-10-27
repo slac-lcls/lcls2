@@ -364,15 +364,18 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 static int dgram_read(PyDgramObject* self, ssize_t dgram_size, int sequential)
 {
     ssize_t readSuccess=0;
+    char s[TMPSTRINGSIZE];
     if (sequential) {
         readSuccess = read(self->file_descriptor, self->dgram, sizeof(Dgram));
         if (readSuccess <= 0) {
-            PyErr_SetString(PyExc_StopIteration, "loading self->dgram was unsuccessful");
+            snprintf(s, TMPSTRINGSIZE, "loading dgram header was unsuccessful -- %s", strerror(errno));
+            PyErr_SetString(PyExc_StopIteration, s);
             return -1;
         }
         readSuccess = read(self->file_descriptor, self->dgram + 1, self->dgram->xtc.sizeofPayload());
         if (readSuccess <= 0) {
-            PyErr_SetString(PyExc_StopIteration, "loading self->dgram was unsuccessful");
+            snprintf(s, TMPSTRINGSIZE, "loading dgram payload was unsuccessful -- %s", strerror(errno));
+            PyErr_SetString(PyExc_StopIteration, s);
             return -1;
         }
 
@@ -380,8 +383,7 @@ static int dgram_read(PyDgramObject* self, ssize_t dgram_size, int sequential)
         off_t fOffset = (off_t)self->offset;
         readSuccess = pread(self->file_descriptor, self->dgram, dgram_size, fOffset); // for read with offset
         if (readSuccess <= 0) {
-            char s[TMPSTRINGSIZE];
-            snprintf(s, TMPSTRINGSIZE, "loading self->dgram was unsuccessful -- %s", strerror(errno));
+            snprintf(s, TMPSTRINGSIZE, "loading dgram with offset was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
             return -1;
         }
