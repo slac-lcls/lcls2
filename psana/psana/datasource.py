@@ -1,62 +1,38 @@
-import sys, os, glob
-from psana.detector.detector import Detector
-from psana.psexp.run import Run
-from psana.psexp.node import analyze
-from psana.psexp.tools import MpiComm, DataSourceHelper, datasource_from_id
+import os
+from psana.psexp.tools import mode
+size = 1
+if mode == 'mpi':
+    from mpi4py import MPI
+    size = MPI.COMM_WORLD.Get_size()
 
-class DataSource(object):
-    """ Read XTC files  """ 
-    def __init__(self, expstr, **kwargs):
-        """Initializes datasource.
-        
-        Keyword arguments:
-        expstr      -- experiment string (eg. exp=xpptut13:run=1) or 
-                       a file or list of files (eg. 'data.xtc' or ['data0.xtc','dataN.xtc'])
-        filter      -- filtering callback that handles Event object.
-        batch_size  -- length of batched offsets
-        max_events  -- no. of maximum events
-        det_name    -- detector name used to identify dettype and detid in config
-        sel_det_ids -- user-selected detector IDs.
-        """
-        self.filter = 0
-        self.batch_size = 1
-        self.max_events = 0
-        self.sel_det_ids = []
-        self.det_name = None
-        if kwargs is not None: 
-            keywords = ('filter', 'batch_size', 'max_events', 'det_name', 'sel_det_ids')
-            for k in keywords:
-                if k in kwargs:
-                    setattr(self, k, kwargs[k])
-        assert self.batch_size > 0
-        
-        self.mpi = MpiComm()
-        DataSourceHelper(expstr, self) # setup exp, run_dict, nodetype
+from psana.psexp.serial_ds import SerialDataSource
+from psana.psexp.mpi_ds import MPIDataSource
+from psana.psexp.shmem_ds import ShmemDataSource
+from psana.psexp.legion_ds import LegionDataSource
 
-    def runs(self):
-        for run_no in self.run_dict:
-            yield Run(self, run_no)
+class DataSourceFactory:
+    factories = {}
+    
+    @staticmethod
+    def createDataSource(id, *args, **kwargs):
+        if id not in DataSourceFactory.factories:
+            DataSourceFactory.factories[id] = eval(id + '.Factory()')
+        return DataSourceFactory.factories[id].create(*args, **kwargs)
 
-    def events(self): 
-        for run in self.runs():
-            for evt in run.events(): yield evt
-
-    @property
-    def _configs(self):
-        assert len(self.configs) > 0
-        return self.configs
-
-    @property
-    def Detector(self):
-        """Creates a detector (must be done inside runs())
-        Since configs and calib constants depend on each run, 
-        the detector object has to wait until ds is set with
-        these two parameters."""
-        det = Detector(self.configs, calib=self.calib) 
-        return det
-
-    def analyze(self, **kwargs):
-        analyze(self, **kwargs)
-
-    def __reduce__(self):
-        return (datasource_from_id, (self.id,))
+def DataSource(*args, **kwargs):
+    
+    assert len(args) > 0
+    if os.path.exists(args[0]): # single file
+        return DataSourceFactory.createDataSource('ShmemDataSource', *args, **kwargs)
+    elif isinstance(args[0], (str)): # experiment string - assumed multiple files
+        if mode == 'mpi':
+            if size == 1:
+                return DataSourceFactory.createDataSource('SerialDataSource', *args, **kwargs)
+            else:
+                return DataSourceFactory.createDataSource('MPIDataSource', *args, **kwargs)
+        elif mode == 'legion':
+            return DataSourceFactory.createDataSource('LegionDataSource', *args, **kwargs)
+        else:
+            raise("Invalid datasource")
+    else:
+        raise("Invalid datasource")

@@ -272,10 +272,10 @@ void test_calib_constants_nda() {
 
 void test_calib_constants_doc() {
   printf("In test_calib_constants_doc\n");  
-  const char* det = "cspad_0001";  // XrayTransportDiagnostic.0:Opal1000.0
-  const char* exp = "cxid9114";    // amox23616
-  const char* ctype = "pedestals"; // lasingoffreference
-  const unsigned run = 150;        // 56 
+  const char* det = "opal1000_0059";  // XrayTransportDiagnostic.0:Opal1000.0
+  const char* exp = "amox23616";    // amox23616
+  const char* ctype = "lasingoffreference"; // lasingoffreference
+  const unsigned run = 60;        // 56 
   const unsigned time_sec = 1534567890;
   const char* vers = NULL;
   rapidjson::Document docdata;
@@ -285,9 +285,12 @@ void test_calib_constants_doc() {
   calib_constants_doc(docdata, docmeta, det, exp, ctype, run, time_sec, vers);
   MSG(INFO, "XXXX: Done");
 
-  std::cout << "docmeta: " << json_doc_to_string(docmeta);
-  //std::cout << "docdata: " << json_doc_to_string(docdata);
-}
+  std::cout << "==== docmeta: " << json_doc_to_string(docmeta) << '\n';
+  std::cout << "==== docdata: " << json_doc_to_string(docdata) << '\n';
+  //    det = 'opal1000_0059'
+  //    #data, doc = calib_constants(det, exp='amox23616', ctype='lasingoffreference', run=60, time_sec=None, vers=None)
+  //    data, doc = calib_constants(det, exp=None, ctype='lasingoffreference', run=60, time_sec=None, vers=None)
+ }
 
 //-------------------
 

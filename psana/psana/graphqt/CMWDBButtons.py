@@ -690,7 +690,9 @@ class CMWDBButtons(QWidget) :
         dicdoc = wdoce.get_model_dicdoc(discard_id_ts=False)
         nda = wdoce.get_data_nda()
 
-        msg = '\n '.join(['%12s : %s' % (k,dicdoc[k]) for k in sorted(dicdoc.keys())])
+        data_type = dicdoc.get('data_type', None)
+
+        msg = '\n'.join(['%12s : %s' % (k,dicdoc[k]) for k in sorted(dicdoc.keys())])
         logger.info('Save array and document metadata in files\n%s  \n%s' % (msg, info_ndarr(nda, 'data n-d array ')))
         prefix = self.out_fname_prefix(dicdoc)
 
@@ -704,7 +706,9 @@ class CMWDBButtons(QWidget) :
                 if d[k] :
                     fname = '%s.%s' % (prefix, k)
                     logger.debug('save_doc %s in file %s' % (k, fname))
-                    if k == 'data' : save_txt(fname, nda, cmts=(), fmt='%.1f')
+                    if k == 'data' :
+                        if data_type=='ndarray': save_txt(fname, nda, cmts=(), fmt='%.1f')
+                        else : save_textfile(str(nda), fname, mode='w')
                     if k == 'meta' : save_textfile(msg, fname, mode='w')
         else : 
             logger.warning('Command "Save" is cancelled')

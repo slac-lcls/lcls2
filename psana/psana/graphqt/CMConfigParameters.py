@@ -10,7 +10,7 @@ Usage ::
 
     cp.readParametersFromFile()
     cp.printParameters()
-    cp.log_level.setValue('debug')
+    cp.log_level.setValue('DEBUG')
     cp.saveParametersInFile()
 
 See:
@@ -29,9 +29,9 @@ logger = logging.getLogger(__name__)
 #------------------------------
 
 from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
-
 #from expmon.PSNameManager import nm # It is here for initialization
 from psana.pyalgos.generic.Utils import list_of_hosts as lshosts
+import psana.pscalib.calib.CalibConstants as cc
 
 #------------------------------
 
@@ -64,6 +64,7 @@ class CMConfigParameters(PSConfigParameters) :
         #nm.set_config_pars(self)
 
         self.list_of_hosts = lshosts(filter='psanaphi') # ('psanaphi105', 'psanaphi106', 'psanaphi107')
+        self.list_of_hosts += lshosts(filter='psanagpu')
         self.list_of_hosts.append('psdb-dev')
 
         self.list_of_ports = (27017, 27018, 27019, 27020, 27021, 9306, 9307, 9308)
@@ -102,11 +103,13 @@ class CMConfigParameters(PSConfigParameters) :
         self.main_win_height = self.declareParameter(name='MAIN_WIN_HEIGHT', val_def=700,  type='int')
 
         self.main_vsplitter  = self.declareParameter(name='MAIN_VSPLITTER', val_def=600, type='int')
-        self.main_tab_name   = self.declareParameter(name='MAIN_TAB_NAME', val_def='Configuration', type='str')
+        #self.main_tab_name   = self.declareParameter(name='MAIN_TAB_NAME', val_def='Configuration', type='str')
+        self.main_tab_name   = self.declareParameter(name='MAIN_TAB_NAME', val_def='CDB', type='str')
 
-        self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Configuration File', type='str')
-        self.cdb_host = self.declareParameter(name='CDB_HOST', val_def='psdb-dev', type='str')
-        self.cdb_port = self.declareParameter(name='CDB_PORT', val_def=9306, type='int')
+        self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Parameters', type='str')
+        #self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Configuration File', type='str')
+        self.cdb_host = self.declareParameter(name='CDB_HOST', val_def=cc.HOST, type='str')
+        self.cdb_port = self.declareParameter(name='CDB_PORT', val_def=cc.PORT, type='int')
         #self.cdb_user = self.declareParameter(name='CDB_USER', val_def='calibuser', type='str')
         self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=250, type='int')
         self.cdb_hsplitter1 = self.declareParameter(name='CDB_HSPLITTER1', val_def=1000, type='int')
@@ -129,20 +132,20 @@ class CMConfigParameters(PSConfigParameters) :
 
 cp = CMConfigParameters()
 
-import psana.pscalib.calib.CalibConstants as cc
-cp.user = cc.USERNAME
-cp.upwd = cc.USERPW
+#import psana.pscalib.calib.CalibConstants as cc
+#cp.user = None #cc.USERNAME
+#cp.upwd = ''   #cc.USERPW
+#print('XXXX CMConfigParameters set cp.user: %s p: %s' % (cp.user, cp.upwd))
 
 #------------------------------
 
 def test_CMConfigParameters() :
-    #import psana.pscalib.calib.CalibConstants as cc
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 
     cp.readParametersFromFile()
     cp.printParameters()
-    cp.log_level.setValue('debug')
+    cp.log_level.setValue('DEBUG')
     cp.saveParametersInFile()
 
 #------------------------------

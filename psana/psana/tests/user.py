@@ -8,15 +8,16 @@
 import os
 from psana import DataSource
 
-def filter(evt):
+def filter_fn(evt):
     return True
 
-# Usecase#1 : two iterators
 xtc_dir = os.path.join(os.getcwd(),'.tmp')
-ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter, max_events=10, det_name='xppcspad')
+ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
+
+# Usecase#1 : two iterators
 #beginJobCode
 for run in ds.runs():
-    det = ds.Detector(ds.det_name)
+    det = run.Detector('xppcspad')
     #beginRunCode
     for evt in run.events():
         #eventCode
@@ -29,13 +30,8 @@ for run in ds.runs():
 for evt in ds.events():
     pass
 
+# Todo: MONA add back configUpdates()
 # Usecase#3: looping through configs
-for run in ds.runs():
-    for configUpdate in run.configUpdates():
-        for config in configUpdate.events():
-            pass
-
-# Usecase#4: analyze with callbacks
-def event_fn(event):
-    pass
-ds.analyze(event_fn=event_fn)
+#for run in ds.runs():
+#    for configUpdate in run.configUpdates():
+#        for config in configUpdate.events():

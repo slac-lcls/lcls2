@@ -5,9 +5,10 @@ Created on 2018-02-23 by Mikhail Dubrovin
 #------------------------------
 
 import os
-from psana.pyalgos.generic.Utils import print_kwargs, print_parser
+from psana.pyalgos.generic.Utils import print_kwargs, print_parser, is_in_command_line
+
 import psana.pyalgos.generic.Utils as gu
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
+from psana.pyalgos.generic.NDArrUtils import info_ndarr #, print_ndarr
 from psana.pscalib.calib.NDArrIO import load_txt, save_txt
 
 import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestamp
@@ -16,6 +17,8 @@ import numpy as np
 from psana.pyalgos.generic.logger import logging, config_logger
 #import logging
 logger = logging.getLogger(__name__)
+
+MODES = ('print', 'convert', 'deldoc', 'delcol', 'deldb', 'delall', 'add', 'get', 'export', 'import', 'test')
 
 #------------------------------
 
@@ -44,35 +47,42 @@ class MDB_CLI :
         """
         (popts, pargs) = parser.parse_args()
         #args = pargs
-        #opts = vars(popts)
         #defs = vars(parser.get_default_values())
-        #host = kwargs.get('host', None),
 
         self.mode = mode = pargs[0] if len(pargs)>0 else 'print'
 
         kwargs = vars(popts)
 
         time_sec, time_stamp = dbu.time_and_timestamp(**kwargs)
-        kwargs['time_sec'] = str(time_sec)
+        kwargs['time_sec']   = int(time_sec)
         kwargs['time_stamp'] = time_stamp
+        kwargs['cli_mode']   = mode
 
         self.kwargs = kwargs
         self.defs = vars(parser.get_default_values())
 
-        print_parser(parser)
-        print_kwargs(kwargs)
+        self.loglevel = kwargs.get('loglevel','DEBUG').upper()
 
-        level = kwargs.get('loglevel','DEBUG')
-        config_logger(loglevel=level)
+        fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
+        config_logger(loglevel=self.loglevel, fmt=fmt)
+
+        if self.loglevel == 'DEBUG' :
+            from psana.pyalgos.generic.Utils import print_kwargs, print_parser
+            print(40*'_')
+            print_parser(parser)
+            print_kwargs(kwargs)
+            fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
 
 
     def client(self) :
         kwargs = self.kwargs
-        host = kwargs.get('host', None)
-        port = kwargs.get('port', None)
-        msg = 'MongoDB client host:%s port:%d' % (host, port)
-        logger.info(msg)
-        return dbu.connect_to_server(host, port)
+        host  = kwargs.get('host',  None)
+        port  = kwargs.get('port',  None)
+        user  = kwargs.get('user',  None)
+        upwd  = kwargs.get('upwd',  None)
+        ctout = kwargs.get('ctout', 5000)
+        stout = kwargs.get('stout', 30000)
+        return dbu.connect_to_server(host, port, user, upwd, ctout, stout)
 
 
     def check_database(self, client, dbname) :
@@ -85,12 +95,12 @@ class MDB_CLI :
     def print_content(self) :
         dbname = dbu.get_dbname(**self.kwargs)
         client = self.client()
-        if dbname is not None : logger.info(dbu.database_info(client, dbname, level=3))
-        else                  : logger.info(dbu.client_info(client, level=2))
+        logger.info(dbu.client_info(client, level=2) if dbname is None else
+                    dbu.database_info(client, dbname, level=3))
 
 
     def convert(self) :
-        """Converts LCLS1 experiment calib directory to calibration database.
+        """Converts LCLS experiment calib directory to LCLS2 calibration database.
         """
         import psana.pscalib.calib.MDBConvertLCLS1 as cu
         kwargs = self.kwargs
@@ -99,7 +109,7 @@ class MDB_CLI :
 
 
     def delall(self) :
-        """USED FOR DEVELOPMENT: Deletes all databases with prefix in the name.
+        """FOR DEVELOPMENT: Deletes all databases with prefix in the name.
         """
         mode, kwargs = self.mode, self.kwargs
         client = self.client()
@@ -193,17 +203,21 @@ class MDB_CLI :
         logger.info('command mode: "%s" db: "%s" collection: "%s"'% (mode, db.name, str(colname)))
 
         defs   = self.defs
-        ctype  = kwargs.get('ctype', None)
-        run    = kwargs.get('run', None)
-        tsec   = kwargs.get('time_sec', None)
-        vers   = kwargs.get('version', None)
-        confirm= kwargs.get('confirm', False)
+        ctype  = kwargs.get('ctype',      None)
+        run    = kwargs.get('run',        None)
+        tsec   = kwargs.get('time_sec',   None)
+        tstamp = kwargs.get('time_stamp', None)
+        vers   = kwargs.get('version',    None)
+        confirm= kwargs.get('confirm',    False)
 
         query={'detector':detname}
-        if ctype != defs['ctype'] :      query['ctype']      = ctype
-        if run   != defs['run'] :        query['run']        = run
-        if tsec  != defs['time_sec'] :   query['time_sec']   = tsec
-        if vers  != defs['version']  :   query['version']    = vers
+        if ctype != defs['ctype']    : query['ctype']    = ctype
+        if run   != defs['run']      : query['run']      = run
+        if vers  != defs['version']  : query['version']  = vers
+        #if tsec  != defs['time_sec'] : query['time_sec'] = tsec
+        if is_in_command_line('-s', '--time_sec')   : query['time_sec'] = tsec 
+        if is_in_command_line('-t', '--time_stamp') : query['time_stamp'] = tstamp 
+
         logger.info('query: %s' % str(query))
 
         docs = dbu.find_docs(col, query)
@@ -212,7 +226,8 @@ class MDB_CLI :
             return
 
         for i,doc in enumerate(docs) :
-            msg = '  deldoc %2d:'%i + doc['time_stamp'] + doc['time_sec'] + '%s'%doc['ctype'].ljust(16) + '%4s'%doc['run'] + doc['id_data']
+            msg = '  deldoc %2d:'%i + doc['time_stamp'] + ' ' + str(doc['time_sec'])\
+                + ' %s'%doc['ctype'].ljust(16) + ' %4d'%doc['run'] + ' ' + str(doc['id_data'])
             logger.info(msg)
             if confirm : 
                 dbu.delete_document_from_collection(col, doc['_id'])
@@ -227,21 +242,19 @@ class MDB_CLI :
         kwargs = self.kwargs
         fname = kwargs.get('iofname', 'None')
         ctype = kwargs.get('ctype', 'None')
+        verb  = self.loglevel == 'DEBUG'
         assert os.path.exists(fname), 'File "%s" DOES NOT EXIST' % fname
 
         ext = os.path.splitext(fname)[-1]
-
-        data = gu.load_textfile(fname, verb=False) if ctype == 'geometry' else\
+        data = gu.load_textfile(fname, verb=verb) if ctype == 'geometry' else\
                np.load(fname) if ext == '.npy' else\
                load_txt(fname)
 
         dbu.insert_calib_data(data, **kwargs)
-        #dbu.insert_constants(data, d['experiment'], d['detector'], d['ctype'], d['run'],\
-        #                     d['time_sec_or_stamp'], d['version'], **kwargs) :
 
 
     def get(self) :
-        """Saves in file calibration constants from database.
+        """Gets constans from DB and saves them in file.
         """
         mode, kwargs = self.mode, self.kwargs
         defs   = self.defs
@@ -252,27 +265,20 @@ class MDB_CLI :
         ctype  = kwargs.get('ctype', None)
         run    = kwargs.get('run', None)
         run_end= kwargs.get('run_end', None)
-        tsec   = kwargs.get('time_sec', None)
-        tstamp = kwargs.get('time_stamp', None)
+        tsec   = kwargs.get('time_sec', None)   if is_in_command_line('-s', '--time_sec')   else None
+        tstamp = kwargs.get('time_stamp', None) if is_in_command_line('-t', '--time_stamp') else None
         vers   = kwargs.get('version', None)
         fname  = kwargs.get('iofname', None)
+        #verb   = True # kwargs.get('verbose', False)
+        verb  = self.loglevel == 'DEBUG'
 
-        query={'detector':det, 'ctype':ctype}
-        if run != defs['run'] : 
-            query['run']     = {'$lte' : run}
-            query['run_end'] = {'$gte' : run}
-        if tsec != defs['time_sec'] : query['time_sec'] = {'$lte' : tsec}
-        if vers != defs['version'] : query['version'] = vers
-        #logger.debug('query: %s' % str(query))
+        db_det, db_exp, colname, query = dbu.dbnames_collection_query(det, exp, ctype, run, tsec, vers)
+        logger.debug('get: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
+        dbname = db_det if exp is None else db_exp
 
-        dbname  = dbu.get_dbname(**kwargs)
         client = self.client()
         if not self.check_database(client, dbname) : return
 
-        detname = kwargs.get('detector', None)
-        if detname is None :
-            logger.warning('%s needs in the collection name. Please specify the detector name.'%(mode))
-        colname = detname
         db, fs = dbu.db_and_fs(client, dbname)
         colnames = dbu.collection_names(db)
 
@@ -282,38 +288,39 @@ class MDB_CLI :
             
         col = dbu.collection(db,colname)
 
-        logger.info('Search document in db "%s" collection "%s"' % (dbname,colname))
-
-        #client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
-        #    dbu.connect(host=host, port=port, experiment=exp, detector=det, verbose=verb)
-
-        #fs, doc = fs_exp, dbu.find_doc(col, query)
-        #if doc is None :
-        #    fs, doc = fs_det, dbu.find_doc(col_det, query)
-        #    if doc is None :
-        #        logger.warning('Can not find document for query: %s' % str(query))
-        #        return
+        logger.debug('Search document in db "%s" collection "%s"' % (dbname,colname))
 
         doc = dbu.find_doc(col, query)
         if doc is None :
             logger.warning('Can not find document for query: %s' % str(query))
             return
+            
+        logger.debug('get doc:', doc)
 
         data = dbu.get_data_for_doc(fs, doc)
         if data is None :
-                logger.warning('Can not load data for doc: %s' % str(doc))
-                return
+            logger.warning('Can not load data for doc: %s' % str(doc))
+            return
 
         if fname is None : fname='clb-%s-%s-%s.npy' % (expname, det, ctype)
 
+        data_type = doc.get('data_type', None)
+
         if ctype == 'geometry' : 
             gu.save_textfile(data, fname, mode='w', verb=verb)
-        elif os.path.splitext(fname)[1] == '.npy' : 
-            np.save(fname, data, allow_pickle=False)
-        else : 
-            save_txt(fname, data, fmt='%.2f')
+        elif data_type == 'ndarray' :
+            logger.debug(info_ndarr(data, 'nda', first=0, last=3))
+            if os.path.splitext(fname)[1] == '.npy' : 
+                np.save(fname, data, allow_pickle=False)
+            else :
+                save_txt(fname, data, fmt='%.3f')
 
-        if verb : logger.info(info_ndarr(data, 'nda', first=0, last=3))
+        elif data_type == 'any' :
+            gu.save_textfile(str(data), fname, mode='w', verb=verb)
+        else :
+            logger.warning('Unknown data type for doc: %s' % str(doc))
+            return
+
         logger.info('Save constants in file: %s' % fname)
 
 
@@ -350,7 +357,7 @@ class MDB_CLI :
     def test(self) :
         host, port, dbname, fname = self.host_port_dbname_fname()
         dbnames = dbu.database_names(self.client())
-        logger.info('XXX : dbnames:' % dbnames)
+        logger.info('dbnames: %s' % ', '.join(dbnames))
 
 
     def _warning(self) :
@@ -359,20 +366,19 @@ class MDB_CLI :
 
     def dispatcher(self) :
         mode = self.mode
-        #logger.info('Mode: %s' % mode)
-        if   'print'     in mode : self.print_content()
-        elif 'convert'   in mode : self.convert()
-        elif 'deldoc'    in mode : self.deldoc()
-        elif 'delcol'    in mode : self.delcol()
-        elif 'deldb'     in mode : self.deldb()
-        elif 'delall'    in mode : self.delall()
-        elif 'add'       in mode : self.add()
-        elif 'get'       in mode : self.get()
-        elif 'export'    in mode : self.exportdb()
-        elif 'import'    in mode : self.importdb()
-        elif 'test'      in mode : self.test()
-        #elif 'get'      in mode : self._warning()
-        else : logger.warning('Non-implemented command mode "%s"' % mode)
+        logger.debug('Mode: %s' % mode)
+        if   mode == 'print'  : self.print_content()
+        elif mode == 'convert': self.convert()
+        elif mode == 'deldoc' : self.deldoc()
+        elif mode == 'delcol' : self.delcol()
+        elif mode == 'deldb'  : self.deldb()
+        elif mode == 'delall' : self.delall()
+        elif mode == 'add'    : self.add()
+        elif mode == 'get'    : self.get()
+        elif mode == 'export' : self.exportdb()
+        elif mode == 'import' : self.importdb()
+        elif mode == 'test'   : self.test()
+        else : logger.warning('Non-implemented command mode "%s"\n  Known modes: %s' % (mode,', '.join(MODES)))
 
 #------------------------------
 

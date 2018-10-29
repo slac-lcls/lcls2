@@ -1,10 +1,11 @@
+
+# Copy of
+# https://github.com/lcls-psana/xtcav/blob/master/src/Constants.py
+
 import h5py
 import numpy
 import logging
-"""
-    Usage ::
-    from psana.pscalib.calib.XtcavConstants import Load, Save
-"""
+
 class Empty(object):
     pass
 
@@ -108,46 +109,6 @@ def Save(obj,file):
     
     c = ConstantsStore(obj,file)
 
-def dict_from_xtcav_calib_object(o):
-    '''xtcav calibration object (a python object) has a list of attributes. 
-    Each attribute may be simple or compaund type. 
-    This method wraps all attributes except "__*" in the dictionary of pairs
-    {<attr_name> : <attr_value>} and returns this dict.
-    '''
-    return dict([(name, getattr(o, name, None)) for name in dir(o) if name[:2] != '__'])
-
-
-def xtcav_calib_object_from_dict(d):
-    '''Converts input dictionary in xtcav calibration object and returns this object.
-    Top level of dict (k,v) pairs is converted in the empty object attributes using setattr(o,str(k),v)    
-    '''
-    o = Empty()
-    #assert isinstance(d, dict), 'Input parameter is not a python dict: %s' % str(d)
-    if not isinstance(d, dict) :
-        raise TypeError('Input parameter is not a python dict: %s' % str(d))
-        #logging.warning('Input parameter is not a python dict: %s' % str(d))
-        #return o
-    for k,v in d.items() :
-        setattr(o,str(k),v)
-    return o
-
-
-def compare_dicts(d1, d2, gap='  '):
-    print('%sCompare two dictionaries:'%gap)
-    allowed = [dict, int, float, str, bytes, numpy.ndarray, numpy.int64, numpy.float64]
-    for k1,v1 in d1.items() :
-        s_type = '"%s"' % str(type(v1)).split("'")[1]
-        s_key = '%skey: %s values of type %s' % (gap, k1.ljust(20), s_type.ljust(16))
-        if not (type(v1) in allowed) :
-            logging.warning('%s of type %s are not compared' % (s_key, str(type(v1))))
-        v2 = d2.get(k1, None)
-        if isinstance(v1, dict) : 
-            print(s_key)
-            compare_dicts(v1,v2,gap='%s  '%gap)
-        elif isinstance(v1, numpy.ndarray) : print('%s are equal: %s' % (s_key, numpy.array_equal(v1, v2)))
-        else : print('%s are equal: %s' % (s_key, v1 == v2))
-
-
 class ConstTest(object):
     def __init__(self):
         self.parameters= {
@@ -156,9 +117,13 @@ class ConstTest(object):
             'nb':12,
             'subdict':{'first' : 1, 'second' : 'two','three' : 'bahahah'}
             }
-        
+
+#--------------------
+
 if __name__ == "__main__":
     ct = ConstTest()
     Save(ct,'ConstTest.h5')
     data = Load('ConstTest.h5')
     print('***',dir(data),data.parameters)
+
+#--------------------

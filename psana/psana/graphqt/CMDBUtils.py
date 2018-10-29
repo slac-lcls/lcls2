@@ -34,6 +34,7 @@ database          = dbu.database
 collection_names  = dbu.collection_names   
 collection        = dbu.collection
 timestamp_id      = dbu.timestamp_id
+doc_add_id_ts     = dbu.doc_add_id_ts
 db_prefixed_name  = dbu.db_prefixed_name
 time_and_timestamp= dbu.time_and_timestamp
 exportdb          = dbu.exportdb
@@ -51,12 +52,12 @@ from psana.graphqt.CMConfigParameters import cp
 
 #------------------------------
 
-def connect_client(host=None, port=None, user=None) :
+def connect_client(host=None, port=None, user=cp.user, upwd=cp.upwd) : # user=dbu.cc.USERNAME
     _host = cp.cdb_host.value() if host is None else host
     _port = cp.cdb_port.value() if port is None else port
-    logger.debug('Connect client to host: %s port: %d user: %s upwd: %s' % (_host, _port, cp.user, cp.upwd))
-    return dbu.connect_to_server(_host, _port, cp.user, cp.upwd) if cp.upwd else\
-           dbu.connect_to_server(_host, _port, cp.user)
+    #logger.debug('CMDBBUtils: Connect client to host: %s port: %d user: %s upwd: %s' % (_host, _port, user, upwd))
+    return dbu.connect_to_server(_host, _port, user, upwd)
+           # if cp.upwd else dbu.connect_to_server(_host, _port, cp.user)
 
 #------------------------------
 
@@ -140,7 +141,7 @@ def list_of_documents(dbname, colname) :
 #------------------------------
 
 def document_info(doc, keys:tuple=('time_sec','time_stamp','experiment',\
-                  'detector','ctype','run','ts_data','data_type','data_dtype', '_id'),\
+                  'detector','ctype','run','id_data_ts','data_type','data_dtype', '_id'),\
                   fmt:str='%10s %24s %11s %24s %16s %4s %30s %10s %10s %24s') :
     """The same as dbu.document_info, but with different default parameters (added _id).
     """

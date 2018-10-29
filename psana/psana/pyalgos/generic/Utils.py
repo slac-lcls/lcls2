@@ -134,7 +134,7 @@ def time_sec_from_stamp(fmt='%Y-%m-%dT%H:%M:%S%z', time_stamp='1970-01-01T00:00:
 def get_enviroment(env='USER') :
     """Returns the value of specified by string name environment variable
     """
-    return os.environ[env]
+    return os.environ.get(env, None)
 
 #------------------------------
 
@@ -488,6 +488,19 @@ def print_parser(parser) :
           '<key>      <value>          <default>')
     for k,v in opts.items() :
         print('%s %s %s' % (k.ljust(10), str(v).ljust(16), str(defs[k]).ljust(16)))
+#------------------------------
+
+def is_in_command_line(ptrn1=None, ptrn2=None) :
+    """Returns True (False) if parameter is (not) specified in the command line"""
+    if len(sys.argv) < 2 : return False
+    for p in sys.argv[1:] :
+        if ptrn1 is not None and (ptrn1 in p[:2]) :
+            #logger.debug('option "%s" is found in CL' % ptrn1)
+            return True
+        if ptrn2 is not None and (ptrn2 in p) : 
+            #logger.debug('option "%s" is found in CL' % ptrn2)
+            return True
+    return False
 
 #------------------------------
 

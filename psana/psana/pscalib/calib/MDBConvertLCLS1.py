@@ -5,7 +5,6 @@
 ===================================================================
 
 Usage ::
-
     # python lcls2/psana/pscalib/calib/CalibUtils.py
 
     from psana.pscalib.calib.MDBConvertLCLS1 import *
@@ -23,23 +22,22 @@ Created on 2018-03-05 by Mikhail Dubrovin
 """
 #------------------------------
 import os
-#import numpy as np
+import sys
+import numpy as np
 from requests import get as requests_get
-#from psana.pyalgos.generic.PSConstants import INSTRUMENTS, DIR_INS, DIR_FFB # , DIR_LOG
-from psana.pyalgos.generic.PSNameManager import nm
+import json
+
 import psana.pyalgos.generic.Utils as gu
-import psana.pscalib.calib.CalibConstants as cc # list_calib_names
-
-from psana.pscalib.calib.NDArrIO import load_txt
 import psana.pyalgos.generic.NDArrUtils as ndu
+from   psana.pyalgos.generic.PSNameManager import nm
 
+import psana.pscalib.calib.CalibConstants as cc # list_calib_names
 import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestamp
-
-from psana.pscalib.calib.CalibUtils import history_dict_for_file, history_list_of_dicts, parse_calib_file_name
-
-from psana.pscalib.calib.XtcavConstants import Load #, Save
-
-from psana.pscalib.calib.MDBConversionMap import DETECTOR_NAME_CONVERSION_DICT as dic_det_name_conv
+from   psana.pscalib.calib.NDArrIO import load_txt
+from   psana.pscalib.calib.CalibUtils import history_dict_for_file, history_list_of_dicts, parse_calib_file_name
+from   psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
+from   psana.pscalib.calib.MDBConvertUtils import jasonify_dict, info_dict, print_dict
+from   psana.pscalib.calib.MDBConversionMap import DETECTOR_NAME_CONVERSION_DICT as dic_det_name_conv
 
 import logging
 logger = logging.getLogger(__name__)
@@ -58,20 +56,18 @@ def run_begin_end_time(exp:str, runnum:int) :
 
 #------------------------------
 
-def load_xtcav_calib_file(fpath) :
-    """Returns object retrieved from hdf5 file by XtcavConstants.Load method.
-
-       Xtcav constants are wrapped in python object and accessible through attributes with arbitrary names.
-       list of attribute names can be retrieved as dir(o) 
-       and filtred from system names like '__*__' by the comprehension list [p for p in dir(o) if p[:2] != '__']
-       access to attributes can be done through the python built-in method getattr(o, name, None), etc...
-    """
-    logger.info('Load xtcav calib object from file: %s'%fpath)
-    return Load(fpath)
-
-
 def is_xtcav(calibvers, cftype) : 
     return ('Xtcav' in calibvers) and (cftype in ('lasingoffreference', 'pedestals'))
+
+#------------------------------
+
+def check_data_shape(data, detname, ctype) :
+    """Re-shape data if necessary
+    """
+    if 'cspad' in detname :
+        if data.size==32*185*388 and data.shape!=(32,185,388) :
+            logger.info('Reshape data for det: %s ctype: %s' % (detname, ctype))
+            data.shape = (32,185,388)
 
 #------------------------------
 
@@ -93,6 +89,15 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
     data = gu.load_textfile(fpath, verbose) if cftype in ('geometry','code_geometry') else\
            load_xtcav_calib_file(fpath) if is_xtcav(calibvers, cftype) else\
            load_txt(fpath) # using NDArrIO
+
+    if isinstance(data, dict) :
+        jasonify_dict(data)
+        logger.debug(info_dict(data))
+        #print_dict(data)
+        data = json.dumps(data)
+
+    if isinstance(data, np.ndarray) : 
+        check_data_shape(data, detname, cftype)
 
     begin_time, end_time = run_begin_end_time(exp, int(begin))
 
@@ -118,7 +123,6 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
     #kwargs['comment']    = 'HISTORY: %s' % d.get('comment', '')
 
     dbu.insert_calib_data(data, **kwargs)
-    #dbu.insert_constants(data, d['experiment'], d['detector'], d['ctype'], d['run'], d['time_sec'], d['version'], **kwargs)
 
 #------------------------------
 
@@ -141,14 +145,16 @@ def scan_calib_for_experiment(exp='cxix25615', **kwargs) :
 
     host    = kwargs.get('host', None)
     port    = kwargs.get('port', None)
+    user    = kwargs.get('user', None)
+    upwd    = kwargs.get('upwd', None)
     verbose = kwargs.get('verbose', False)
 
-    client = dbu.connect_to_server(host, port)
+    client = dbu.connect_to_server(host, port, user, upwd)
     dbname = dbu.db_prefixed_name(exp)
     if dbu.database_exists(client, dbname) :
         msg = 'Experiment %s already has a database. Consider to delete it from the list:\n%s'%\
               (exp, str(dbu.database_names(client)))+\
-              '\nBefore adding consider to delete existing DB using command: cdb deldb --dbname %s -C' % dbname
+              '\nBefore adding consider to delete existing DB using command: cdb deldb --dbname %s -C -u <username> -p <password>' % dbname
         logger.warning(msg)
         return
 
@@ -181,7 +187,7 @@ def scan_calib_for_experiment(exp='cxix25615', **kwargs) :
                     logger.debug('        %s' % fname)
                     if fname == 'HISTORY' : continue
                     if os.path.splitext(fname)[1] != '.data' : continue
-                    #logger.debug('  XXX begin adding: %s %s %s %s' % (dircalib, detname_m, cftype, fname))
+                    logger.debug('  XXX begin adding: %s %s %s %s' % (dircalib, detname_m, cftype, fname))
                     add_calib_file_to_cdb(exp, dircalib, calibvers, detname_m, cftype, fname, cfdir, listdicts, **kwargs)
                     count += 1
 
@@ -193,8 +199,11 @@ if __name__ == "__main__" :
   def usage() : return 'Use command: python %s <test-number>, where <test-number> = 1,2,...' % sys.argv[0]
 
 #------------------------------
+
   def test_detname_conversion(tname) :
-      logger.info('detname_conversion: %s' % detname_conversion('XcsEndstation.0:Epix100a.1'))
+      detnames = ('XcsEndstation.0:Epix100a.1', 'FeeHxSpectrometer.0:Opal1000.1', 'MfxEndstation.0:Rayonix.0')
+      for detname in detnames :
+          print('detname_conversion(%s) --> %s' % (detname, detname_conversion(detname)))
 
 #------------------------------
 
@@ -205,10 +214,15 @@ if __name__ == "__main__" :
 
   def test_all(tname) :
     logger.info('\n%s\n' % usage())
+    kwa = {'host':cc.HOST,\
+           'port':cc.PORT,\
+           'user':gu.get_login()}
     if len(sys.argv) != 2 : test_dir_calib(tname)
     elif tname == '1': test_dir_calib(tname)
-    elif tname == '2': scan_calib_for_experiment('cxix25615')
+    elif tname == '2': scan_calib_for_experiment('cxix25615', **kwa)
     elif tname == '3': test_detname_conversion(tname)
+    elif tname == '4': scan_calib_for_experiment('amox23616', **kwa) 
+    # /reg/d/psdm/AMO/amox23616/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/104-end.data
     else : sys.exit('Test number parameter is not recognized.\n%s' % usage())
 
 #------------------------------

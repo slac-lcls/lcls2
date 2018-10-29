@@ -11,7 +11,7 @@ if sys.version_info[0] == 2:
 from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform2, getConfigFileNames, add_macro_config, getUser, ConfigFileError
 from optparse import OptionParser
 import os.path
-from os import remove, symlink
+from os import remove, symlink, environ
 import shutil
 import filecmp
 import stat
@@ -228,12 +228,17 @@ if os.path.isfile(configfile) != 1:
     parser.error ("file not found: %s" % configfile)
 
 try:
-    tmpplatform, config_macros = deduce_platform2(configfile)
+    tmpplatform, config_macros, testreldir = deduce_platform2(configfile)
     macro_count = len(config_macros)
 except IOError:
     print('I/O error while reading file', configfile)
     tmpplatform = -1
     macro_count = 0
+    testreldir = ''
+
+if len(testreldir) > 0 and 'TESTRELDIR' not in os.environ:
+    # set environment variable
+    environ['TESTRELDIR'] = testreldir
 
 if (options.platform < 0):
     if (tmpplatform < 0):
@@ -255,7 +260,7 @@ if os.path.isfile(runconfig) and ((command == 'start') or (command == 'restart')
         print('%s: Error determining HOST and USER' % sys.argv[0])
         sys.exit(1)
     try:
-        ignore, run_macros = deduce_platform2(runconfig)
+        ignore, run_macros, ignore2 = deduce_platform2(runconfig)
         macrohost = run_macros.get('HOST', None)
         macrouser = run_macros.get('USER', None)
     except:
