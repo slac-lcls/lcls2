@@ -1,4 +1,5 @@
 from psana import dgram
+from psana.psexp.packet_footer import PacketFooter
 
 class Event():
     """
@@ -34,22 +35,23 @@ class Event():
 
     def to_bytes(self):
         event_bytes = bytearray()
+        pf = PacketFooter(self.size)
         for i, d in enumerate(self.dgrams):
             event_bytes.extend(bytearray(d))
-            if i < self.size - 1:
-                event_bytes.extend(b'eod')
+            pf.set_size(i, memoryview(bytearray(d)).shape[0])
 
         if event_bytes:
-            event_bytes.extend(b'endofevt')
+            event_bytes.extend(pf.footer)
 
         return event_bytes
 
     def from_bytes(self, configs, event_bytes):
         dgrams = []
         if event_bytes:
-            dgrams_bytes = event_bytes.split(b'eod')
-            assert len(configs) == len(dgrams_bytes)
-            dgrams = [dgram.Dgram(config=configs[i], view=dgrams_bytes[i]) \
+            pf = PacketFooter(view=event_bytes)
+            views = pf.split_packets()
+            assert len(configs) == len(views)
+            dgrams = [dgram.Dgram(config=configs[i], view=views[i]) \
                     for i in range(len(configs))]
         evt = Event(dgrams=dgrams)
         return evt
