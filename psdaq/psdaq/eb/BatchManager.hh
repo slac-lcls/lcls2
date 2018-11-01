@@ -2,14 +2,10 @@
 #define Pds_Eb_BatchManager_hh
 
 #include "Batch.hh"
+#include "IndexPool.hh"
 
-#include "psdaq/service/Fifo.hh"
-
-#include <stdlib.h>
-#include <stdint.h>
-#include <cstddef>
-#include <string>
-#include <vector>
+#include <cstddef>                      // For size_t
+#include <cstdint>                      // For uint64_t
 #include <atomic>
 
 namespace XtcData {
@@ -19,8 +15,8 @@ namespace XtcData {
 namespace Pds {
   namespace Eb {
 
-    using BatchFifoW  = FifoW<Batch*>;
-    using BatchVector = std::vector<Batch>;
+    using BatchList = IndexPoolW<Batch>;
+    using AppPrm    = std::atomic<uintptr_t>;
 
     class BatchManager
     {
@@ -31,8 +27,7 @@ namespace Pds {
                    size_t       maxSize);
       virtual ~BatchManager();
     public:
-      virtual void post(const Batch*)          = 0;
-      virtual void post(const XtcData::Dgram*) = 0;
+      virtual void post(const Batch*) = 0;
     public:
       void*        batchRegion() const;
       size_t       batchRegionSize() const;
@@ -51,15 +46,13 @@ namespace Pds {
       uint64_t     _startId(uint64_t id) const;
     private:
       uint64_t     _duration;           // The lifetime of a batch (power of 2)
-      uint64_t     _durationShift;      // Shift away insignificant bits
       uint64_t     _durationMask;       // Mask  off  insignificant bits
       unsigned     _batchDepth;         // Depth of the batch pool
       unsigned     _maxEntries;         // Max number of entries per batch
       size_t       _maxBatchSize;       // Max batch size rounded up to page boundary
       char*        _batchBuffer;        // RDMA buffers for batches
-      BatchFifoW   _batchFreeList;      // Free list of Batch objects
-      BatchVector  _batches;            // Lookup array of batches
-      std::atomic<uintptr_t>* _appPrms; // Lookup array of application free parameters
+      BatchList    _batchFreelist;      // Free list of Batch objects
+      AppPrm*      _appPrms;            // Lookup array of application free parameters
     private:
       Batch*       _batch;              // Batch currently being accumulated
     };
@@ -82,7 +75,7 @@ size_t Pds::Eb::BatchManager::batchRegionSize() const
 inline
 const Pds::Eb::Batch* Pds::Eb::BatchManager::batch(unsigned index) const
 {
-  return (index < _batchDepth) ? &_batches[index] : nullptr;
+  return &_batchFreelist[index];
 }
 
 inline
@@ -97,23 +90,11 @@ void Pds::Eb::BatchManager::flush()
   _batch = nullptr;                     // Force a new batch to be started
 }
 
-//inline
-//uint64_t Pds::Eb::BatchManager::batchId(uint64_t id) const
-//{
-//  return id / _duration;         // Batch number
-//}
-
 inline
 uint64_t Pds::Eb::BatchManager::batchId(uint64_t id) const
 {
-  return id >> _durationShift;          // Batch number
+  return id >> __builtin_ctzl(_duration); // Batch number
 }
-
-//inline
-//uint64_t Pds::Eb::BatchManager::_startId(uint64_t id) const
-//{
-//  return batchId(id) * _duration;     // Current batch ID
-//}
 
 inline
 uint64_t Pds::Eb::BatchManager::_startId(uint64_t id) const
@@ -124,13 +105,13 @@ uint64_t Pds::Eb::BatchManager::_startId(uint64_t id) const
 inline
 void Pds::Eb::BatchManager::deallocate(const Pds::Eb::Batch* batch)
 {
-  _batchFreeList.push(const_cast<Batch*>(batch));
+  _batchFreelist.free(const_cast<Batch*>(batch));
 }
 
 inline
 int Pds::Eb::BatchManager::freeBatchCount() const
 {
-  return _batchFreeList.count();
+  return _batchFreelist.numberOfFreeObjects();
 }
 
 #endif

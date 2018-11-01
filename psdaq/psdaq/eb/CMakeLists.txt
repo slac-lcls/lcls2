@@ -1,6 +1,7 @@
 add_library(eb SHARED
   utilities.cc
   Endpoint.cc
+  IndexPool.cc
   Batch.cc
   BatchManager.cc
   EventBuilder.cc
@@ -138,20 +139,21 @@ target_link_libraries(drpEbBuilder
 )
 
 install(TARGETS eb
-  ft_pingpong
-  ft_publish
-  ft_sub
-  ft_push
-  ft_request
-  ft_client
-  ft_server
-  ft_writemsg_client
-	ft_writemsg_server
-  eblf_pingpong
   tstEbContributor
 	tstEbBuilder
 	drpEbBuilder
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
+)
+
+add_executable(tstIndexPool    tstIndexPool.cc IndexPool.cc)
+
+target_include_directories(tstIndexPool PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+  $ENV{CONDA_PREFIX}/include
+)
+
+target_link_libraries(tstIndexPool
 )

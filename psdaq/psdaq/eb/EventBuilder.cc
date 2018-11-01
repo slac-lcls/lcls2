@@ -19,8 +19,8 @@ EventBuilder::EventBuilder(unsigned epochs,
                            uint64_t duration) :
   Timer(),
   _mask(~(duration - 1) & ((1UL << PulseId::NumPulseIdBits) - 1)),
-  _epochFreelist(sizeof(EbEpoch), epochs),
-  _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries),
+  _epochFreelist(epochs),
+  _eventFreelist(epochs * entries, sources * sizeof(Dgram*)),
   _timerTask(new Task(TaskObject("tEB_Timeout"))),
   _duration(100)                        // Timeout rate in ms
 {
@@ -34,13 +34,19 @@ EventBuilder::EventBuilder(unsigned epochs,
 
 EventBuilder::~EventBuilder()
 {
+  printf("EbEpoch freelist:\n");
+  _epochFreelist.dump();
+
+  printf("EbEvent freelist:\n");
+  _eventFreelist.dump();
+
   _timerTask->destroy();
 }
 
 EbEpoch* EventBuilder::_discard(EbEpoch* epoch)
 {
   EbEpoch* next = epoch->reverse();
-  delete epoch;
+  _epochFreelist.free(epoch->disconnect());
   return next;
 }
 
@@ -59,11 +65,11 @@ void EventBuilder::_flushBefore(EbEpoch* entry)
 
 EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 {
-  void* buffer = _epochFreelist.alloc(sizeof(EbEpoch));
+  void* buffer = _epochFreelist.allocate(key);
   if (buffer)  return ::new(buffer) EbEpoch(key, after);
 
-  printf("%s: Unable to allocate epoch: key %016lx", __PRETTY_FUNCTION__,
-         key);
+  fprintf(stderr, "%s: Unable to allocate epoch: key %016lx", __PRETTY_FUNCTION__,
+          key);
   printf(" epochFreelist:\n");
   _epochFreelist.dump();
   abort();
@@ -71,16 +77,25 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 
 EbEpoch* EventBuilder::_match(uint64_t inKey)
 {
+  const uint64_t key = (inKey & _mask) >> __builtin_ctzl(_mask);
+
+  if (_epochFreelist.isAllocated(key))
+  {
+    EbEpoch* epoch = &_epochFreelist[key];
+    if (epoch->key == key)  return epoch;
+
+    fprintf(stderr, "%s: Epoch has unexpected sequence number 0x%014lx: expected 0x%014lx\n",
+            __PRETTY_FUNCTION__, epoch->key, key);
+    _epochFreelist.dump();
+    abort();
+  }
+
   const EbEpoch* const empty = _pending.empty();
   EbEpoch*             epoch = _pending.reverse();
-  const uint64_t       key   = inKey & _mask;
 
   while (epoch != empty)
   {
-    uint64_t epochKey = epoch->key;
-
-    if (epochKey == key) return epoch;
-    if (epochKey <  key) break;
+    if (epoch->key < key) break;
     epoch = epoch->reverse();
   }
 
@@ -91,14 +106,13 @@ EbEpoch* EventBuilder::_match(uint64_t inKey)
 EbEvent* EventBuilder::_event(const Dgram* ctrb,
                               EbEvent*     after)
 {
-  void* buffer = _eventFreelist.alloc(sizeof(EbEvent));
+  void* buffer = _eventFreelist.allocate(ctrb->seq.pulseId().value());
   if (buffer)  return ::new(buffer) EbEvent(contract(ctrb),
                                             this,
                                             after,
-                                            ctrb,
-                                            _mask);
+                                            ctrb);
 
-  printf("%s: Unable to allocate event\n", __PRETTY_FUNCTION__);
+  fprintf(stderr, "%s: Unable to allocate event\n", __PRETTY_FUNCTION__);
   printf("  eventFreelist:\n");
   _eventFreelist.dump();
   abort();
@@ -107,17 +121,23 @@ EbEvent* EventBuilder::_event(const Dgram* ctrb,
 EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
                                const Dgram* ctrb)
 {
-  const EbEvent* const  empty = epoch->pending.empty();
-  EbEvent*              event = epoch->pending.reverse();
-  const uint64_t        key   = ctrb->seq.pulseId().value();
+  const uint64_t key = ctrb->seq.pulseId().value();
+  if (_eventFreelist.isAllocated(key))
+  {
+    EbEvent* event = &_eventFreelist[key];
+    if (event->sequence() == key)  return event->_add(ctrb);
 
+    fprintf(stderr, "%s: Attempt to add contribution with seq 0x%014lx to event 0x%014lx\n",
+            __PRETTY_FUNCTION__, key, event->sequence());
+    abort();
+  }
+
+  const EbEvent* const empty = epoch->pending.empty();
+  EbEvent*             event = epoch->pending.reverse();
 
   while (event != empty)
   {
-    const uint64_t eventKey = event->sequence();
-
-    if (eventKey == key) return event->_add(ctrb);
-    if (eventKey <  key) break;
+    if (event->sequence() < key) break;
     event = event->reverse();
   }
 
@@ -128,17 +148,26 @@ EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
                                const Dgram* ctrb,
                                EbEvent*     event)
 {
+  const uint64_t key = ctrb->seq.pulseId().value();
+
+  if (_eventFreelist.isAllocated(key))
+  {
+    EbEvent& event = _eventFreelist[key];
+    if (event.sequence() == key)  return event._add(ctrb);
+
+    fprintf(stderr, "%s: Attempt to add contribution with seq 0x%014lx to event 0x%014lx\n",
+            __PRETTY_FUNCTION__, key, event.sequence());
+    _eventFreelist.dump();
+    abort();
+  }
+
   const EbEvent* const empty    = epoch->pending.empty();
   EbEvent*             after    = event;
-  const uint64_t       key      = ctrb->seq.pulseId().value();
   bool                 reversed = false;
 
   while (event != empty)
   {
-    const uint64_t eventKey = event->sequence();
-
-    if (key == eventKey) return event->_add(ctrb);
-    if (key >  eventKey)
+    if (key > event->sequence())
     {
       if (reversed)  break;
       after    = event;
@@ -176,7 +205,7 @@ void EventBuilder::_retire(EbEvent* event)
 
   process(event);
 
-  delete event;
+  _eventFreelist.free(event);
 }
 
 void EventBuilder::_flush(EbEvent* due)
@@ -292,6 +321,14 @@ void EventBuilder::process(const Dgram* ctrb)
   else
   {
     EbEpoch* epoch = _match(ctrb->seq.pulseId().value());
+
+    //if (lverbose > 1)                 // Revisit: lverbose is not defined
+    //{
+    //  unsigned from = ctrb->xtc.src.log() & 0xff;
+    //  printf("EventBuilder found          a  ctrb          @ %16p, pid %014lx, sz %4zd from Ctrb %d\n",
+    //         ctrb, ctrb->seq.pulseId().value(), sizeof(*ctrb) + ctrb->xtc.sizeofPayload(), from);
+    //}
+
     EbEvent* event = _insert(epoch, ctrb);
     if (!event->_remaining)  _flush(event);
   }

@@ -1,23 +1,3 @@
-/*
-** ++
-**  Package:
-**      Eb
-**
-**  Abstract:
-**      Non-inline functions for class "EbEvent.hh"
-**
-**  Author:
-**      Michael Huffer, SLAC, (650) 926-4269
-**
-**  Creation Date:
-**	000 - June 1,1998
-**
-**  Revision History:
-**	None.
-**
-** --
-*/
-
 #include "EbEvent.hh"
 #include "EbContribution.hh"
 #include "EventBuilder.hh"
@@ -53,13 +33,9 @@ static const int MaxTimeouts = 10; //0x100;      // Revisit: Was 0xffff
 EbEvent::EbEvent(uint64_t      contract,
                  EventBuilder* eb,
                  EbEvent*      after,
-                 const Dgram*  cdg,
-                 uint64_t      mask) :
-  _sequence(cdg->seq.pulseId().value()),
+                 const Dgram*  cdg) :
   _contract(contract),
-  _eb      (eb),
   _living  (MaxTimeouts),
-  _key     (_sequence & mask),
   _last    (_contributions)
 {
   const EbContribution* contribution = (EbContribution*)cdg;
@@ -144,7 +120,7 @@ EbEvent* EbEvent::_add(const Dgram* cdg)
 void EbEvent::dump(int number)
 {
   printf("   Event #%d @ address %p has sequence %016lX\n",
-         number, this, _sequence);
+         number, this, sequence());
   printf("    Forward link -> %p, Backward link -> %p\n",
          forward(), reverse());
   printf("    Contributors remaining/requested = %08lX/%08lX\n",
