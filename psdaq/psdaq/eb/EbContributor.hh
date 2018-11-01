@@ -15,6 +15,10 @@
 #include <atomic>
 
 
+namespace std {
+  class thread;
+};
+
 namespace XtcData {
   class Dgram;
   class TimeStmp;
@@ -47,9 +51,9 @@ namespace Pds {
       void     shutdown();
     public:
       bool     process(const XtcData::Dgram* datagram, const void* appPrm);
+      void     post(const XtcData::Dgram* nonEvent);
     public:                             // For BatchManager
       virtual void post(const Batch* input);
-      virtual void post(const XtcData::Dgram* nonEvent);
     public:
       const uint64_t& batchCount()  const { return _batchCount;  }
       unsigned        inFlightCnt() const { return _inFlightOcc; }
@@ -60,7 +64,6 @@ namespace Pds {
                            const XtcData::TimeStamp& stamp);
     private:
       EbLfClient*            _transport;
-      //std::vector<EbLfLink*> _links;
       EbLfLinkMap            _links;
       unsigned*              _idx2Id;
       const unsigned         _id;

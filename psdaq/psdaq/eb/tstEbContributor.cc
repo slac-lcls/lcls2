@@ -334,6 +334,7 @@ void EbCtrbApp::process(EbCtrbIn& in)
     std::string blank;
     std::getline(std::cin, blank);
 #endif
+    //usleep(100000);
 
     const Dgram* input = _drpSim.genInput();
     if (!input)  break;

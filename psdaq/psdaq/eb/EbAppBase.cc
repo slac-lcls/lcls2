@@ -1,11 +1,11 @@
-#include "psdaq/eb/EbAppBase.hh"
+#include "EbAppBase.hh"
 
-#include "psdaq/eb/Endpoint.hh"
-#include "psdaq/eb/EbEvent.hh"
+#include "Endpoint.hh"
+#include "EbEvent.hh"
 
-#include "psdaq/eb/EbLfServer.hh"
+#include "EbLfServer.hh"
 
-#include "psdaq/eb/utilities.hh"
+#include "utilities.hh"
 
 #include "psdaq/service/Histogram.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -49,14 +49,14 @@ EbAppBase::EbAppBase(const char*        ifAddr,
                      size_t             maxTrDgSize,
                      size_t             hdrSize,
                      uint64_t           contributors) :
-  EventBuilder (TransitionId::NumberOf + maxBuffers, maxEntries, std::bitset<64>(contributors).count(), duration),
+  //EventBuilder (TransitionId::NumberOf + maxBuffers, maxEntries, std::bitset<64>(contributors).count(), duration),
+  EventBuilder (maxBuffers, maxEntries, std::bitset<64>(contributors).count(), duration),
   _maxBufSize  (roundUpSize(hdrSize + maxEntries * maxInpDgSize)),
   _region      (allocRegion(std::bitset<64>(contributors).count() *
                             (maxBuffers * _maxBufSize +
                              roundUpSize(TransitionId::NumberOf * maxTrDgSize)))),
   _transport   (new EbLfServer(ifAddr, port.c_str())),
-  _links       (), //std::bitset<64>(contributors).count()),
-  //_id2Idx      (std::bitset<64>(contributors).count()),
+  _links       (),
   _id          (id),
   _contract    (contributors),
   _trOffset    (TransitionId::NumberOf),
@@ -100,7 +100,6 @@ EbAppBase::EbAppBase(const char*        ifAddr,
       abort();
     }
     _links[link->id()] = link;
-    //_id2Idx[_links[i]->id()] = i;
 
     printf("EbLfClient ID %d connected\n", link->id());
 
@@ -147,7 +146,7 @@ void EbAppBase::shutdown()
 void EbAppBase::process()
 {
   // Pend for an input datagram and pass it to the event builder
-  uint64_t data;
+  uint64_t  data;
   const int tmo = 5000;                 // milliseconds
   auto t0(std::chrono::steady_clock::now());
   if (_transport->pend(&data, tmo))  return;
@@ -242,8 +241,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 bool EbAppBase::inTrSpace(const Dgram* dg)
 {
   unsigned        src = dg->xtc.src.log() & (MAX_DRPS - 1);
-  //unsigned        idx = _id2Idx[src];
-  const EbLfLink* lnk = _links[src]; //idx];
+  const EbLfLink* lnk = _links[src];
   const Dgram*    tr = (Dgram*)lnk->lclAdx(_trOffset[0]);
   //printf("src %d, idx %d, dg(%p)(%2d), tr(%p), &tr[TransitionId::NumberOf](%p)\n",
   //       src, idx, dg, dg->seq.service(), tr, &tr[TransitionId::NumberOf]);
@@ -253,6 +251,5 @@ bool EbAppBase::inTrSpace(const Dgram* dg)
 int EbAppBase::bufferIdx(const Dgram* dg)
 {
   unsigned src = dg->xtc.src.log() & (MAX_DRPS - 1);
-  //return ((char*)dg - (char*)_links[_id2Idx[src]]->lclAdx(0)) / _maxBufSize;
   return ((char*)dg - (char*)_links[src]->lclAdx(0)) / _maxBufSize;
 }

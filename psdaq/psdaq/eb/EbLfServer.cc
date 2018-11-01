@@ -35,7 +35,7 @@ int EbLfServer::_initialize(const char* addr,
 {
   const uint64_t flags  = 0;
   const size_t   txSize = 0;
-  const size_t   rxSize = 300;
+  const size_t   rxSize = 0; //300;
   _pep = new PassiveEndpoint(addr, port, flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
@@ -89,7 +89,6 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
   }
 
   int rxDepth = _pep->fabric()->info()->rx_attr->size;
-  printf("rxDepth = %d\n", rxDepth);
   *link = new EbLfLink(ep, rxDepth);
   if (!*link)
   {

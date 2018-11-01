@@ -124,7 +124,7 @@ int EbCtrbInBase::process(BatchManager& batMan)
            cnt++, idx, bdg, pid, extent, lnk->id());
   }
 
-  // Should be done only when this executes on the machine that timestamped the batch
+  // Makes sense only when t1 and bdg->seq.stamp() have a common clock
   _updateHists(t0, t1, bdg->seq.stamp());
   _ebCntHist.bump(lnk->id());
 

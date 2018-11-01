@@ -1,8 +1,8 @@
 #ifndef Pds_Eb_EbAppBase_hh
 #define Pds_Eb_EbAppBase_hh
 
-#include "psdaq/eb/eb.hh"
-#include "psdaq/eb/EventBuilder.hh"
+#include "eb.hh"
+#include "EventBuilder.hh"
 #include "psdaq/service/Histogram.hh"
 
 #include <stdint.h>
@@ -59,24 +59,22 @@ namespace Pds {
                            TimePoint_t               t1,
                            const XtcData::TimeStamp& stamp);
     private:
-      const size_t                           _maxBufSize;
-      void*                                  _region;
-      Pds::Eb::EbLfServer*                   _transport;
-      //std::vector<Pds::Eb::EbLfLink*>        _links;
-      //std::unordered_map<unsigned, unsigned> _id2Idx;
-      EbLfLinkMap                            _links;
-      const unsigned                         _id;
-      const uint64_t                         _contract;
-      std::vector<size_t>                    _trOffset;
-      //EbDummyTC                              _dummy;   // Template for TC of dummy contributions  // Revisit: ???
+      const size_t         _maxBufSize;
+      void*                _region;
+      Pds::Eb::EbLfServer* _transport;
+      EbLfLinkMap          _links;
+      const unsigned       _id;
+      const uint64_t       _contract;
+      std::vector<size_t>  _trOffset;
+      //EbDummyTC            _dummy;   // Template for TC of dummy contributions  // Revisit: ???
     private:
-      Pds::Histogram                         _ctrbCntHist;
-      Pds::Histogram                         _arrTimeHist;
-      Pds::Histogram                         _pendTimeHist;
-      Pds::Histogram                         _pendCallHist;
-      TimePoint_t                            _pendPrevTime;
+      Pds::Histogram       _ctrbCntHist;
+      Pds::Histogram       _arrTimeHist;
+      Pds::Histogram       _pendTimeHist;
+      Pds::Histogram       _pendCallHist;
+      TimePoint_t          _pendPrevTime;
     public:
-      static unsigned                        lverbose;
+      static unsigned      lverbose;
     };
   };
 };

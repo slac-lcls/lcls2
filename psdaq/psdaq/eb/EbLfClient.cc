@@ -93,7 +93,6 @@ int EbLfClient::connect(const char* peer,
     return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
   }
 
-  printf("txDepth = %zd\n", fab->info()->tx_attr->size);
   *link = new EbLfLink(ep);
   if (!*link)
   {

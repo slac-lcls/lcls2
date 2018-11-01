@@ -1,5 +1,5 @@
-#ifndef Pds_PinThread_hh
-#define Pds_PinThread_hh
+#ifndef Pds_Eb_Utilities_hh
+#define Pds_Eb_Utilities_hh
 
 #ifndef _GNU_SOURCE
 #  define _GNU_SOURCE

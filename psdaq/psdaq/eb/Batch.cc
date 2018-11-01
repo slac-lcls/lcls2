@@ -10,13 +10,13 @@ using namespace Pds::Eb;
 
 Batch::Batch() :
   _index(0),
-  _buffer(nullptr),
   _entries(0),
+  _buffer(nullptr),
   _appPrms(nullptr)
 {
 }
 
-void Batch::_fixup(unsigned index, void* buffer, std::atomic<uintptr_t>* appPrms)
+void Batch::_fixup(unsigned index, void* buffer, AppPrm* appPrms)
 {
   *const_cast<unsigned*>(&_index)  = index;
   *const_cast<void**>   (&_buffer) = buffer;

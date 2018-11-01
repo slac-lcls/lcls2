@@ -4,13 +4,15 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <assert.h>
-#include <stdint.h>
-#include <cstddef>
+#include <cstdint>                      // For uint64_t
+#include <cstddef>                      // for size_t
 #include <atomic>
 
 
 namespace Pds {
   namespace Eb {
+
+    using AppPrm = std::atomic<uintptr_t>;
 
     class BatchManager;
 
@@ -34,12 +36,12 @@ namespace Pds {
       const void*     appParm(unsigned idx) const;
     private:
       friend BatchManager;
-      void           _fixup(unsigned index, void* buffer, std::atomic<uintptr_t>* appPrms);
+      void           _fixup(unsigned index, void* buffer, AppPrm* appPrms);
     private:
-      unsigned const          _index;
-      void*    const          _buffer;
-      unsigned                _entries;
-      std::atomic<uintptr_t>* _appPrms;
+      unsigned const _index;
+      unsigned       _entries;
+      void*    const _buffer;
+      AppPrm*        _appPrms;
     };
   };
 };

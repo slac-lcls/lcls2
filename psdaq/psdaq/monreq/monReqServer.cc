@@ -9,6 +9,7 @@
 #include "psdaq/eb/StatsMonitor.hh"
 
 #include "psdaq/service/Fifo.hh"
+#include "psdaq/service/GenericPool.hh"
 #include "psdaq/service/Collection.hh"
 #include "xtcdata/xtc/Dgram.hh"
 

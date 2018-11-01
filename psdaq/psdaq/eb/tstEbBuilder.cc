@@ -16,7 +16,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>                     // getopt()
+#include <unistd.h>                     // For getopt()
 #include <climits>
 #include <bitset>
 #include <chrono>
@@ -31,10 +31,10 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 
-static const int      core_base        = 6; // devXX, 8: accXX
+static const int      core_base        = 6; // 6 devXX, 8: accXX
 static const int      core_offset      = 1; // Allows Ctrb and EB to run on the same machine
-static const unsigned rtMon_period     = 1;          // Seconds
-static const unsigned default_id       = 0;          // Builder's ID (< 64)
+static const unsigned rtMon_period     = 1; // Seconds
+static const unsigned default_id       = 0; // Builder's ID (< 64)
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
@@ -46,16 +46,18 @@ static const char*    dflt_coll_host   = "drp-tst-acc06";
 
 static       unsigned lverbose         = 0;
 static       int      lcore1           = core_base + core_offset + 0;
-static       int      lcore2           = core_base + core_offset + 12; // devXX, 0 for accXX
+static       int      lcore2           = core_base + core_offset + 12; // 12: devXX, 0 for accXX
 
-typedef std::chrono::steady_clock::time_point TimePoint_t;
-typedef std::chrono::steady_clock::duration   Duration_t;
-typedef std::chrono::microseconds             us_t;
-typedef std::chrono::nanoseconds              ns_t;
+using TimePoint_t = std::chrono::steady_clock::time_point;
+using Duration_t  = std::chrono::steady_clock::duration;
+using us_t        = std::chrono::microseconds;
+using ns_t        = std::chrono::nanoseconds;
 
 
 namespace Pds {
   namespace Eb {
+
+    using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
     class TheSrc : public Src
     {
@@ -109,11 +111,8 @@ namespace Pds {
                                const TimeStamp& stamp);
     private:
       EbLfClient*            _l3Transport;
-      //std::vector<EbLfLink*> _l3Links;
-      std::unordered_map<unsigned,
-                         EbLfLink*> _l3Links;
+      EbLfLinkMap            _l3Links;
       EbLfServer*            _mrqTransport;
-      //std::vector<EbLfLink*> _mrqLinks;
       EbLfLinkMap            _mrqLinks;
       const unsigned         _id;
       const Xtc              _xtc;
@@ -157,9 +156,9 @@ L3EbApp::L3EbApp(const char*                     ifAddr,
                 maxInputSize, sizeof(Dgram), contributors),
   BatchManager (duration, maxBatches, maxEntries, maxResultSize),
   _l3Transport (new EbLfClient()),
-  _l3Links     (), //addrs.size()),
+  _l3Links     (),
   _mrqTransport(new EbLfServer(ifAddr, mrqPort.c_str())),
-  _mrqLinks    (), //numMrqs),
+  _mrqLinks    (),
   _id          (id),
   _xtc         (TypeId(TypeId::Data, 0), TheSrc(Level::Event, id)), //_l3SummaryType
   _dstList     (std::bitset<64>(contributors).count()),
@@ -408,7 +407,7 @@ void L3EbApp::post(const Batch* batch)
     unsigned  idx    = ImmData::idx(*it);
     unsigned  offset = idx * maxBatchSize();
     EbLfLink* link   = _l3Links[dst];
-    uint64_t  data   = ImmData::buffer(_id, idx); //link->index(), idx);
+    uint64_t  data   = ImmData::buffer(_id, idx);
 
     if (lverbose)
     {
