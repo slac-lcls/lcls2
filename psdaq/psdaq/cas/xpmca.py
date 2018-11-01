@@ -25,9 +25,10 @@ frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
 linkType = []
-for x in range(0xfc):
+for x in range(0xfb):
     linkType.append('0x%x'%x)
 linkType.append('TDetSim')
+linkType.append('HSD')
 linkType.append('DRP')
 linkType.append('DTI')
 linkType.append('XPM')
@@ -123,7 +124,7 @@ class PvLinkId(QtWidgets.QWidget):
         print ('LinkId 0x%x'%value)
         itype = (int(value)>>24)&0xff
         self.linkType.setText(linkType[itype])
-        if itype == 0xfc and (value&0xffff)!=0:
+        if itype == 0xfb and (value&0xffff)!=0:
             ip_addr = '172.21'+'.%u'%((int(value)>>8)&0xff)+'.%u'%((int(value)>>0)&0xff)
             host = socket.gethostbyaddr(ip_addr)[0].split('.')[0].split('-')[-1]
             self.linkSrc.setText(host)

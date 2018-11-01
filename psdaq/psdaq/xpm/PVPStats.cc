@@ -17,7 +17,8 @@ namespace Pds {
       _dev(dev), _partition(partition), _pv(0) {}
     PVPStats::~PVPStats() {}
 
-    void PVPStats::allocate(const std::string& title) {
+    void PVPStats::allocate(const std::string& title,
+                            const std::string& dttitle) {
       if (ca_current_context() == NULL) {
         printf("Initializing context\n");
         SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
@@ -29,6 +30,7 @@ namespace Pds {
       _pv.resize(0);
 
       std::string pvbase = title + ":";
+      std::string dtbase = dttitle + ":";
 
       _pv.push_back( new PVWriter((pvbase+"L0InpRate").c_str()) );
       _pv.push_back( new PVWriter((pvbase+"L0AccRate").c_str()) );
@@ -38,7 +40,7 @@ namespace Pds {
       _pv.push_back( new PVWriter((pvbase+"NumL1"    ).c_str()) );
       _pv.push_back( new PVWriter((pvbase+"DeadFrac" ).c_str()) );
       _pv.push_back( new PVWriter((pvbase+"DeadTime" ).c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"DeadFLnk" ).c_str(),32) );
+      _pv.push_back( new PVWriter((dtbase+"DeadFLnk" ).c_str(),32) );
       _pv.push_back( new PVWriter((pvbase+"RunTime"  ).c_str()) );
       _pv.push_back( new PVWriter((pvbase+"MsgDelay" ).c_str()) );
 

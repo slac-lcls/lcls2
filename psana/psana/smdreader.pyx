@@ -28,7 +28,6 @@ cdef struct Buffer:
     unsigned nevents
     unsigned long timestamp
     size_t block_offset
-    size_t block_size
 
 cdef class SmdReader:
     cdef int* fds
@@ -71,12 +70,10 @@ cdef class SmdReader:
             self.bufs[i].nevents = 0
             self.bufs[i].timestamp = 0
             self.bufs[i].block_offset = 0
-            self.bufs[i].block_size = 0
 
     cdef inline void _reset_buffers(self):
         for i in range(self.nfiles):
             self.bufs[i].nevents = 0
-            self.bufs[i].block_size = 0
             self.bufs[i].block_offset = self.bufs[i].offset
     
     cdef inline size_t _read_with_retries(self, int buf_id, size_t displacement, size_t count) nogil:
@@ -93,28 +90,28 @@ cdef class SmdReader:
                 count -= got
         return requested - count
     
-    cdef inline void _read_partial(self, int buf_id, size_t block_offset, size_t dgram_offset) nogil:
+    cdef inline void _read_partial(self, int buf_id) nogil:
         """ Reads partial chunk
         First copy what remains in the chunk to the begining of 
         the chunk then re-read to fill in the chunk.
         """
         cdef char* chunk = self.bufs[buf_id].chunk
-        cdef size_t remaining = self.chunksize - block_offset
+        cdef size_t remaining = self.chunksize - self.bufs[buf_id].block_offset
         if remaining > 0:
-            memcpy(chunk, chunk + block_offset, remaining)
+            memcpy(chunk, chunk + self.bufs[buf_id].block_offset, remaining)
         cdef size_t new_got = self._read_with_retries(buf_id, \
                 remaining, self.chunksize - remaining)
         if new_got == 0:
             self.bufs[buf_id].got = 0 # nothing more to read
         else:
             self.bufs[buf_id].got = remaining + new_got
-        self.bufs[buf_id].offset = dgram_offset - block_offset
+        self.bufs[buf_id].offset = self.bufs[buf_id].prev_offset - self.bufs[buf_id].block_offset
+        self.bufs[buf_id].block_offset = 0
 
     cdef inline void _reread(self) nogil:
         cdef int idx = 0
         for idx in prange(self.nfiles, nogil=True):
-            self._read_partial(idx, self.bufs[idx].block_offset, self.bufs[idx].prev_offset)
-            self.bufs[idx].block_offset = 0
+            self._read_partial(idx)
 
     def get(self, unsigned n_events = 1):
         if not self.bufs:
@@ -139,8 +136,6 @@ cdef class SmdReader:
             for i in range(i_st, self.nfiles):
                 # read this file until hit limit timestamp
                 while self.bufs[i].timestamp < self.limit_ts and self.bufs[i].got > 0:
-                    # remember previous offsets in case reread is needed
-                    self.bufs[i].prev_offset = self.bufs[i].offset
                     remaining = self.bufs[i].got - self.bufs[i].offset
                     if self.dgram_size <= remaining:
                         # get payload
@@ -164,6 +159,10 @@ cdef class SmdReader:
                     i_st = i # start with the current buffer
                     break
                 
+
+                # remember previous offsets in case reread is needed
+                self.bufs[i].prev_offset = self.bufs[i].offset
+                
                 if self.bufs[i].timestamp > current_max_ts:
                     current_max_ts = self.bufs[i].timestamp
                     current_winner = i
@@ -171,7 +170,6 @@ cdef class SmdReader:
                 if self.bufs[i].nevents > current_got_events:
                     current_got_events = self.bufs[i].nevents
 
-                self.bufs[i].block_size = self.bufs[i].offset - self.bufs[i].block_offset
                 
             # shift and reread in parallel
             if needs_reread:
@@ -185,10 +183,11 @@ cdef class SmdReader:
                 current_got_events = 0
 
     def view(self, int buf_id):
+        cdef size_t block_size = self.bufs[buf_id].offset - self.bufs[buf_id].block_offset
         assert buf_id < self.nfiles
         if self.bufs[buf_id].nevents == 0:
             return 0
-        cdef char [:] view = <char [:self.bufs[buf_id].block_size]> (self.bufs[buf_id].chunk + self.bufs[buf_id].block_offset)
+        cdef char [:] view = <char [:block_size]> (self.bufs[buf_id].chunk + self.bufs[buf_id].block_offset)
         return view
 
     @property

@@ -94,7 +94,6 @@ def main():
         pvdb[stationstr+':%d:NumL1'    %i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:DeadFrac' %i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:DeadTime' %i] = {'type' : 'float', 'value': 0}
-        pvdb[stationstr+':%d:DeadFLnk' %i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
 
     # printDb(pvdb, prefix)
     printDb()

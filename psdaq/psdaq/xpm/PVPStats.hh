@@ -17,7 +17,8 @@ namespace Pds {
       PVPStats(Module&, unsigned partition);
       ~PVPStats();
     public:
-      void allocate(const std::string& base);
+      void allocate(const std::string& title,
+                    const std::string& dttitle);
       void update();
     private:
       Module&                           _dev;

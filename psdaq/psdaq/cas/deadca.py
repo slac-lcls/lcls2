@@ -508,8 +508,7 @@ class Ui_MainWindow(object):
         self.centralWidget.setObjectName("centralWidget")
 
         pvbase = base+':XPM:'+shelf+':'
-        #ppvbase = pvbase+partn+':'
-        ppvbase = base+':PART:'+partn+':'
+        ppvbase = pvbase+'PART:'+partn+':'
         print('pvbase : '+pvbase)
         print('ppvbase: '+ppvbase)
 

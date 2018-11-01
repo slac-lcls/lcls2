@@ -20,7 +20,7 @@ class Ui_MainWindow(object):
         trglo = QtWidgets.QVBoxLayout()
         LblEditEvt   (trglo, pvbase, "L0Select"        )
         LblEditInt   (trglo, pvbase, "L0Delay"         )
-#        LblEditDst   (trglo, pvbase, "DstSelect"       )
+        LblEditDst   (trglo, pvbase, "DstSelect"       )
         LblCheckBox  (trglo, pvbase, "Run"             )
         trgbox.setLayout(trglo)
         lol.addWidget(trgbox)
