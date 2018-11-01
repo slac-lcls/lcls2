@@ -129,10 +129,11 @@ void StatsTimer::_allocate()
   _pvc.allocate(_module_prefix);
 
   for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
-    std::stringstream ostr;
-    ostr << _partition_prefix << ":" << i;
+    std::stringstream ostr,dtstr;
+    ostr  << _partition_prefix << ":" << i;
+    dtstr << _module_prefix << ":PART:" << i;
     _pvps[i] = new PVPStats(_dev,i);
-    _pvps[i]->allocate(ostr.str());
+    _pvps[i]->allocate(ostr.str(),dtstr.str());
     _pvpc[i] = new PVPCtrls(_dev,_sem,*_pvps[i],_shelf,i);
     _pvpc[i]->allocate(ostr.str());
   }
@@ -281,19 +282,21 @@ int main(int argc, char** argv)
   //
   XpmSequenceEngine& engine = m->sequenceEngine();
   engine.verbosity(2);
-  // Setup a 45 pulse sequence to repeat 20000 times each second
+  // Setup a 22 pulse sequence to repeat 40000 times each second
+  const unsigned NP = 22;
   std::vector<TPGen::Instruction*> seq;
   seq.push_back(new TPGen::FixedRateSync(6,1));  // sync start to 1Hz
-  for(unsigned i=0; i<45; i++) {
+  for(unsigned i=0; i<NP; i++) {
     unsigned bits=0;
     for(unsigned j=0; j<16; j++)
-      if ((i*(j+1))%45 < (j+1))
+      if ((i*(j+1))%NP < (j+1))
         bits |= (1<<j);
     seq.push_back(new TPGen::ExptRequest(bits));
     seq.push_back(new TPGen::FixedRateSync(0,1)); // next pulse
   }
   seq.push_back(new TPGen::Branch(1, TPGen::ctrA,199));
-  seq.push_back(new TPGen::Branch(1, TPGen::ctrB, 99));
+  //  seq.push_back(new TPGen::Branch(1, TPGen::ctrB, 99));
+  seq.push_back(new TPGen::Branch(1, TPGen::ctrB,199));
   seq.push_back(new TPGen::Branch(0));
   int rval = engine.insertSequence(seq);
   if (rval < 0)
