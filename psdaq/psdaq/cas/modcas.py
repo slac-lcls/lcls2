@@ -119,6 +119,9 @@ def main():
     for i in range(8):
         pvdb[':PART:%d:DeadFLnk' %i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
 
+    for i in range(8):
+        pvdb[':PART:%d:DeadFLnk' %i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
+
     # printDb(pvdb, prefix)
     printDb()
 
