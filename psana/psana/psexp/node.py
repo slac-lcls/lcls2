@@ -1,8 +1,10 @@
 import os
+from sys import byteorder
 import numpy as np
 from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
 from psana.event import Event
+from psana.psexp.packet_footer import PacketFooter
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -16,6 +18,7 @@ class Smd0(object):
     """
     def __init__(self, fds, n_smd_nodes, max_events=0):
         self.fds = fds
+        self.n_files = len(fds)
         assert len(self.fds) > 0
         self.smdr = SmdReader(fds)
 
@@ -47,15 +50,16 @@ class Smd0(object):
             self.smdr.get(self.n_events)
             got_events = self.smdr.got_events
             self.processed_events += got_events
-            views = bytearray()
-            for i in range(len(self.fds)):
-                view = self.smdr.view(i)
-                if view != 0:
-                    views.extend(view)
-                    if i < len(self.fds) - 1:
-                        views.extend(b'endofstream')
-            if views:
-                yield views
+            view = bytearray()
+            pf = PacketFooter(n_packets=self.n_files)
+            for i in range(self.n_files):
+                if self.smdr.view(i) != 0:
+                    view.extend(self.smdr.view(i))
+                    pf.set_size(i, memoryview(self.smdr.view(i)).shape[0])
+
+            if view:
+                view.extend(pf.footer) # attach footer 
+                yield view
 
             if self.max_events:
                 if self.processed_events >= self.max_events:
@@ -86,11 +90,8 @@ class SmdNode(object):
             if view.startswith(b'eof'):
                 break
 
-            # send offset/size(s) to bd_node
-            views = self.split_chunk(view)
-
-            n_views = len(views)
-            assert n_views == len(self.configs)
+            pf = PacketFooter(view=view)
+            views = pf.split_packets()
 
             # build batch of events
             for batch in self.batches(views):
@@ -102,9 +103,6 @@ class SmdNode(object):
         for i in range(self.n_bd_nodes):
             comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
             comm.Send(bytearray(b'eof'), dest=rankreq[0])
-
-    def split_chunk(self, chunk):
-        return chunk.split(b'endofstream')
 
     def batches(self, chunk):
         eb = EventBuilder(chunk, self.configs)
