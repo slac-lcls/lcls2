@@ -43,6 +43,8 @@ class Run(object):
         self.filter_callback = filter_callback
         self.ds = DsContainer(self) # FIXME: to support run.ds.Detector in cctbx. to be removed.
 
+        RunHelper(self)
+
     def run(self):
         """ Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
@@ -83,6 +85,8 @@ class Run(object):
                  'common_mode': common_mode}
         return calib
 
+    def __reduce__(self):
+        return (run_from_id, (self.id,))
 
 class RunSerial(Run):
 
@@ -163,10 +167,6 @@ class RunLegion(Run):
         self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
         self.smd_configs = self.smd_dm.configs
-        RunHelper(self) # assigns a unique id to the run
         
     def analyze(self, **kwargs):
         analyze(self, **kwargs)
-
-    def __reduce__(self):
-        return (run_from_id, (self.id,))
