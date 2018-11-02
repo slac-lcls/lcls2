@@ -36,7 +36,7 @@ import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestam
 from   psana.pscalib.calib.NDArrIO import load_txt
 from   psana.pscalib.calib.CalibUtils import history_dict_for_file, history_list_of_dicts, parse_calib_file_name
 from   psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
-from   psana.pscalib.calib.MDBConvertUtils import jasonify_dict, info_dict, print_dict
+from   psana.pscalib.calib.MDBConvertUtils import serialize_dict, info_dict, print_dict
 from   psana.pscalib.calib.MDBConversionMap import DETECTOR_NAME_CONVERSION_DICT as dic_det_name_conv
 
 import logging
@@ -91,10 +91,11 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
            load_txt(fpath) # using NDArrIO
 
     if isinstance(data, dict) :
-        jasonify_dict(data)
+        serialize_dict(data)
         logger.debug(info_dict(data))
         #print_dict(data)
-        data = json.dumps(data)
+        #data = json.dumps(data) # (data,ensure_ascii=True) json.dumps converts dict -> str # .replace("'", '"') for json
+        data = str(data)
 
     if isinstance(data, np.ndarray) : 
         check_data_shape(data, detname, cftype)
@@ -119,7 +120,7 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
     kwargs['time_sec']   = begin_time
     kwargs['end_time']   = end_time
     kwargs['time_stamp'] = dbu._timestamp(begin_time)
-    kwargs['extpars']    = d # just in case save entire history dict
+    kwargs['extpars']    = d if d is not None else {} # just in case save entire history dict
     #kwargs['comment']    = 'HISTORY: %s' % d.get('comment', '')
 
     dbu.insert_calib_data(data, **kwargs)

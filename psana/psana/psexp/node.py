@@ -1,10 +1,9 @@
 import os
 from sys import byteorder
 import numpy as np
-from psana.smdreader import SmdReader
-from psana.eventbuilder import EventBuilder
-from psana.event import Event
-from psana.psexp.packet_footer import PacketFooter
+from psana.psexp.smdreader_manager import SmdReaderManager
+from psana.psexp.eventbuilder_manager import EventBuilderManager
+from psana.psexp.event_manager import EventManager
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -17,53 +16,21 @@ class Smd0(object):
     sends all smds within that timestamp to an smd_node.
     """
     def __init__(self, fds, n_smd_nodes, max_events=0):
-        self.fds = fds
-        self.n_files = len(fds)
-        assert len(self.fds) > 0
-        self.smdr = SmdReader(fds)
-
+        self.smdr_man = SmdReaderManager(fds, max_events)
         self.n_smd_nodes = n_smd_nodes
-
-        self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 1000))
-        self.max_events = max_events
-        self.processed_events = 0
-        if self.max_events:
-            if self.max_events < self.n_events:
-                self.n_events = self.max_events
 
         self.run_mpi()
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
 
-        for chunk in self.chunks():
+        for chunk in self.smdr_man.chunks():
             comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             comm.Send(chunk, dest=rankreq[0], tag=12)
 
         for i in range(self.n_smd_nodes):
             comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            comm.Send(bytearray(b'eof'), dest=rankreq[0], tag=12)
-
-    def chunks(self):
-        got_events = -1
-        while got_events != 0:
-            self.smdr.get(self.n_events)
-            got_events = self.smdr.got_events
-            self.processed_events += got_events
-            view = bytearray()
-            pf = PacketFooter(n_packets=self.n_files)
-            for i in range(self.n_files):
-                if self.smdr.view(i) != 0:
-                    view.extend(self.smdr.view(i))
-                    pf.set_size(i, memoryview(self.smdr.view(i)).shape[0])
-
-            if view:
-                view.extend(pf.footer) # attach footer 
-                yield view
-
-            if self.max_events:
-                if self.processed_events >= self.max_events:
-                    break
+            comm.Send(bytearray(), dest=rankreq[0], tag=12)
 
 class SmdNode(object):
     """Handles both smd_0 and bd_nodes
@@ -71,10 +38,8 @@ class SmdNode(object):
     offsets and dgramsizes into a numpy array. Sends
     this np array to bd_nodes that are registered to it."""
     def __init__(self, configs, n_bd_nodes=1, batch_size=1, filter=0):
-        self.configs = configs
+        self.eb_man = EventBuilderManager(configs, batch_size, filter)
         self.n_bd_nodes = n_bd_nodes
-        self.batch_size = batch_size
-        self.filter = filter
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -87,14 +52,11 @@ class SmdNode(object):
             count = info.Get_elements(MPI.BYTE)
             view = bytearray(count)
             comm.Recv(view, source=0, tag=12)
-            if view.startswith(b'eof'):
+            if count == 0:
                 break
 
-            pf = PacketFooter(view=view)
-            views = pf.split_packets()
-
             # build batch of events
-            for batch in self.batches(views):
+            for batch in self.eb_man.batches(view):
                 comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
                 comm.Send(batch, dest=rankreq[0])
 
@@ -102,19 +64,11 @@ class SmdNode(object):
 
         for i in range(self.n_bd_nodes):
             comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
-            comm.Send(bytearray(b'eof'), dest=rankreq[0])
-
-    def batches(self, chunk):
-        eb = EventBuilder(chunk, self.configs)
-        batch = eb.build(batch_size=self.batch_size, filter=self.filter)
-        while eb.nevents:
-            yield batch
-            batch = eb.build(batch_size=self.batch_size, filter=self.filter)
+            comm.Send(bytearray(), dest=rankreq[0])
 
 class BigDataNode(object):
     def __init__(self, smd_configs, dm, smd_node_id=None):
-        self.smd_configs = smd_configs
-        self.dm = dm
+        self.evt_man = EventManager(smd_configs, dm)
         self.smd_node_id = smd_node_id
 
     def run_mpi(self):
@@ -125,22 +79,11 @@ class BigDataNode(object):
             count = info.Get_elements(MPI.BYTE)
             view = bytearray(count)
             comm.Recv(view, source=self.smd_node_id)
-            if view.startswith(b'eof'):
+            if count == 0:
                 break
 
-            for event in self.events(view):
+            for event in self.evt_man.events(view):
                 yield event
-
-    def events(self, view):
-        views = view.split(b'endofevt')
-        for event_bytes in views:
-            if event_bytes:
-                evt = Event().from_bytes(self.smd_configs, event_bytes)
-                # get big data
-                ofsz = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] \
-                        for d in evt])
-                bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
-                yield bd_evt
 
 def run_node(run, nodetype, nsmds, max_events, batch_size, filter_callback):
     if nodetype == 'smd0':

@@ -25,8 +25,11 @@ class hsd_hsd_1_2_3(Detector):
         pass
         #print('*** in hsd_hsd_1_2_3 calib method')
 
-class hsd_hsdConfig_1_2_4(Detector):
+
+class cspad_raw_2_3_42(Detector):
+    def calib(self):
+        pass
+class cspad_raw_2_3_43(cspad_raw_2_3_42):
     def calib(self):
             pass
-                    #print('*** in hsd_hsd_1_2_3 calib method')
 

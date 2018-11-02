@@ -5,6 +5,7 @@ import pprint
 
 from psana import dgram
 from psana.event import Event
+from psana.detector import detectors
 import numpy as np
 
 def dumpDict(dict,indent):
@@ -48,6 +49,7 @@ class DgramManager():
                 self.configs += [d]
 
         self.offsets = [_config._offset for _config in self.configs]
+        self.det_class_table = self.get_det_class_table()
    
     def __iter__(self):
         return self
@@ -70,8 +72,8 @@ class DgramManager():
                 d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             dgrams += [d]
         
-        evt = Event(dgrams=dgrams)
-        self.offsets = evt.offsets
+        evt = Event(dgrams, self.det_class_table)
+        self.offsets = evt._offsets
         return evt
 
     def jump(self, offsets, sizes):
@@ -84,8 +86,44 @@ class DgramManager():
             d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
         dgrams += [d]
         
-        evt = Event(dgrams=dgrams)
+        evt = Event(dgrams, self.det_class_table)
         return evt
+
+    def get_det_class_table(self):
+        """
+        this function gets the version number for a (det, drp_class) combo
+        maps (dettype,software,version) to associated python class
+        """
+
+        det_class_table = {}
+
+        # loop over the dgrams in the configuration
+        # if a detector/drp_class combo exists in two cfg dgrams
+        # it will be OK... they should give the same final Detector class
+        for cfg_dgram in self.configs:
+            for det_name, det in cfg_dgram.software.__dict__.items():
+                for drp_class_name, drp_class in det.__dict__.items():
+
+                    # FIXME: we want to skip '_'-prefixed drp_classes
+                    #        but this needs to be fixed upstream
+                    if drp_class_name in ['dettype', 'detid']:
+                    #if drp_class_name.startswith('_'):
+                        continue
+
+                    # use this info to look up the desired Detector class
+                    versionstring = [str(v) for v in drp_class.version]
+                    class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
+                    if hasattr(detectors, class_name):
+                        DetectorClass = getattr(detectors, class_name) # return the class object
+                        # TODO: implement policy for picking up correct det implementation
+                        #       given the version number
+                        det_class_table[(det_name, drp_class_name)] = DetectorClass
+                    else:
+                        #raise NotImplementedError(class_name)
+                        #print('no implemented detector interface for: %s' % class_name)
+                        pass
+
+        return det_class_table
 
     
 def parse_command_line():

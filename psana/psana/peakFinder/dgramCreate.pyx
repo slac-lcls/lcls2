@@ -95,7 +95,7 @@ class parse_xtc():
             for iterd in value:
                 self.iterd = iterd
                 try:
-                    dgram = vars(vars(evt.dgrams[0])[key])
+                    dgram = vars(vars(evt._dgrams[0])[key])
                 except KeyError:
                     continue
                 event_data = copy.deepcopy(vars(dgram[iterd['base_alg_name']]))

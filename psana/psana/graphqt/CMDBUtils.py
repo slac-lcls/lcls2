@@ -39,6 +39,8 @@ db_prefixed_name  = dbu.db_prefixed_name
 time_and_timestamp= dbu.time_and_timestamp
 exportdb          = dbu.exportdb
 importdb          = dbu.importdb
+out_fname_prefix  = dbu.out_fname_prefix
+save_doc_and_data_in_file = dbu.save_doc_and_data_in_file
 
 #insert_data_and_doc = dbu.insert_data_and_doc
 #document_info     = dbu.document_info

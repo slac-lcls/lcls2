@@ -62,6 +62,7 @@ class Test:
         parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
         subprocess.check_call(['mpirun','-n','3','python',parallel])
     
+    """
     def test_legion(self):
         self.setup_input_files()
 
@@ -74,7 +75,7 @@ class Test:
         subprocess.check_call(['legion_python', 'user_legion', '-ll:py', '1'], env=env)
 
     def test_legion_run_pickle(self):
-        """ Test that run is pickleable for legion """
+        # Test that run is pickleable for legion 
         self.setup_input_files()
         
         python_path = os.environ.get('PYTHONPATH', '').split(':')
@@ -84,7 +85,7 @@ class Test:
             ('PS_PARALLEL', 'legion'),
         ])
         subprocess.check_call(['legion_python', 'run_pickle', '-ll:py', '1'], env=env)
-
+    """
     def test_det(self):
         det()
 

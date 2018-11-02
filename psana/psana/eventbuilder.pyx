@@ -2,6 +2,7 @@ from cpython cimport array
 import array
 from psana.dgram import Dgram
 from psana.event import Event
+from psana.psexp.packet_footer import PacketFooter
 import numpy as np
 
 cdef class EventBuilder:
@@ -41,8 +42,16 @@ cdef class EventBuilder:
                 return True
         return False
 
+    def _add_event(self, batch, evt, got, event_sizes):
+        event_bytes = evt._to_bytes()
+        batch.extend(event_bytes)
+        got += 1
+        event_sizes.append(memoryview(event_bytes).shape[0])
+
+
     def build(self, unsigned batch_size=1, filter=0):
         cdef unsigned got = 0
+        cdef int add_ok = 0
         batch = bytearray()
         while got < batch_size and self._has_more():
             array.zero(self.timestamps)
@@ -56,15 +65,17 @@ cdef class EventBuilder:
                     self.dgram_sizes[i] = memoryview(d).shape[0]
 
             sorted_smd_id = np.argsort(self.timestamps)
+            event_sizes = [] 
             for smd_id in sorted_smd_id:
                 if self.timestamps[smd_id] == 0:
                     continue
 
-                evt = Event(size=self.nsmds)
+                evt = Event([], {}, size=self.nsmds)
+                add_ok = 0
                 array.zero(self.event_timestamps)
                 self.event_timestamps[smd_id] = self.timestamps[smd_id]
                 self.offsets[smd_id] += self.dgram_sizes[smd_id]
-                evt.replace(smd_id, dgrams[smd_id])
+                evt._replace(smd_id, dgrams[smd_id])
                 for i, view in enumerate(self.views):
                     if i == smd_id or self.offsets[i] >= self.sizes[i]:
                         continue
@@ -74,7 +85,7 @@ cdef class EventBuilder:
                         if d.seq.timestamp() == self.event_timestamps[smd_id]:
                             self.event_timestamps[i] = d.seq.timestamp()
                             self.timestamps[i] = 0
-                            evt.replace(i, d)
+                            evt._replace(i, d)
 
                         self.offsets[i] += memoryview(d).shape[0]
 
@@ -85,17 +96,29 @@ cdef class EventBuilder:
                 
                 if filter:
                     if filter(evt):
-                        batch.extend(evt.to_bytes())
-                        got += 1
+                        add_ok = 1
                 else:
-                    batch.extend(evt.to_bytes())
+                    add_ok = 1
+
+                if add_ok:
+                    event_bytes = evt._to_bytes()
+                    batch.extend(event_bytes)
                     got += 1
+                    event_sizes.append(memoryview(event_bytes).shape[0])
+
                 
                 if got == batch_size:
                     break
                 
         
         self.nevents = got
+
+        if self.nevents > 0:
+            pf = PacketFooter(self.nevents)
+            for i in range(self.nevents):
+                pf.set_size(i, event_sizes[i])
+            batch.extend(pf.footer)
+
         return batch
 
     @property

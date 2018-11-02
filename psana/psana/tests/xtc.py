@@ -7,9 +7,9 @@ def myroutine(fname):
   ds = DataSource(fname)  
   for nevent,evt in enumerate(ds.events()):
       if nevent==0:
-        dgrambytes_event0=evt.dgrams[0]._dgrambytes
+        dgrambytes_event0=evt._dgrams[0]._dgrambytes
       elif nevent==1:
-        dgram_event1 = evt.dgrams[0]
+        dgram_event1 = evt._dgrams[0]
 
   # be sure you know what you are doing before you change
   # these reference count numbers. - cpo
