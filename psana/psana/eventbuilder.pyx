@@ -70,7 +70,7 @@ cdef class EventBuilder:
                 if self.timestamps[smd_id] == 0:
                     continue
 
-                evt = Event(size=self.nsmds)
+                evt = Event([], {}, size=self.nsmds)
                 add_ok = 0
                 array.zero(self.event_timestamps)
                 self.event_timestamps[smd_id] = self.timestamps[smd_id]

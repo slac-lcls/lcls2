@@ -1,11 +1,25 @@
+
+#import detectors
+
 from psana import dgram
 from psana.psexp.packet_footer import PacketFooter
+
+
+# TO DO
+# 1) remove comments
+# 2) pass detector class table from run > dgrammgr > event
+# 3) hook up the detector class table
+
+
+class DrpClassContainer(object):
+    def __init__(self):
+            pass
 
 class Event():
     """
     Event holds list of dgrams
     """
-    def __init__(self, dgrams=[], size=0):
+    def __init__(self, dgrams, det_class_table, size=0):
         if size:
             self._dgrams = [0] * size
             self._offsets = [0] * size
@@ -15,6 +29,7 @@ class Event():
             self._offsets = [_d._offset for _d in self._dgrams]
             self._size = len(dgrams)
         self._position = 0
+        #self.add_det_xface(det_class_table) # GET THE TABLE 
 
     def __iter__(self):
         return self
@@ -45,7 +60,8 @@ class Event():
 
         return event_bytes
 
-    def _from_bytes(self, configs, event_bytes):
+    @classmethod
+    def _from_bytes(cls, configs, event_bytes):
         dgrams = []
         if event_bytes:
             pf = PacketFooter(view=event_bytes)
@@ -53,7 +69,7 @@ class Event():
             assert len(configs) == len(views)
             dgrams = [dgram.Dgram(config=configs[i], view=views[i]) \
                     for i in range(len(configs))]
-        evt = Event(dgrams=dgrams)
+        evt = cls(dgrams, {})
         return evt
     
     @property
@@ -68,4 +84,41 @@ class Event():
 
     def _run(self):
         return 0 # for psana1-cctbx compatibility
+
+    def add_det_xface(self, det_class_table):
+        """
+        """
+
+        for evt_dgram in self._dgrams:
+            for det_name, det in evt_dgram.__dict__.items():
+
+                # this gives us the intermediate "det" level
+                # in the detector interface
+                if hasattr(evt, det_name):
+                    det_xface_obj = getattr(evt, det_name)
+                else:
+                    det_xface_obj = DrpClassContainer()
+                    setattr(evt, det_name, det_xface_obj)                
+
+                # now the final "drp_class" level
+                for drp_class_name, drp_class in det.__dict__.items():
+
+                    # IF the final level detector interface object is NOT instantiated
+                    # THEN create the instance first
+                    if not hasattr(det_xface_obj, drp_class_name):
+                        if (det_name, drp_class_name) in det_class_table.keys():
+                            DetectorClass = det_class_table[(det_name, drp_class_name)]
+                            detector_instance = DetectorClass()
+                            setattr(det_xface_obj, drp_class_name, detector_instance)
+                        else:
+                            # detector interface implementation not found
+                            pass
+                    else:
+                        detector_instance = getattr(det_xface_obj, drp_class_name)
+
+                    # and add dgram data
+                    detector_instance._append_dgram(drp_class)
+
+        return
+
 

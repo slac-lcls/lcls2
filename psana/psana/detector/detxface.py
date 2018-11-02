@@ -1,7 +1,6 @@
 
-from psana import DataSource
-import detectors
 
+"""
 # this routine looks in the event dgram to see what detector
 # names (e.g. 'xppcspad') are present on this event, and what data
 # names are present (e.g. 'raw', 'fex').  It then looks in the
@@ -11,10 +10,6 @@ import detectors
 # map so that we can append more dgrams to list of a particular
 # detector as they are discovered in the raw data.
 
-# FIXME: since this routine runs every event, performance is a concern
-# TODO:  add configs & calibs
-# TODO:  detectors.py : should it be heirarchical and how?
-# TODO:  doc strings
 
 # WE WANT:
 # evt.xppcspad.{raw, fex, ...}
@@ -28,6 +23,18 @@ import detectors
 # run._configs[i].software.xppcspad.{raw, fex, ...}.   (software for interpretation)
 
 
+# TODO:  add configs & calibs
+# TODO:  detectors.py : should it be heirarchical and how?
+# TODO:  doc strings
+
+# ideas:
+# -- policy for picking up detector implementation using data version number
+"""
+
+from psana import DataSource
+import detectors
+
+
 class DrpClassContainer(object):
     def __init__(self):
         pass
@@ -37,7 +44,7 @@ def add_det_xface(event, det_class_table):
     """
     """
 
-    for evt_dgram in event.dgrams:
+    for evt_dgram in event._dgrams:
         for det_name, det in evt_dgram.__dict__.items():
 
             # this gives us the intermediate "det" level
@@ -54,9 +61,13 @@ def add_det_xface(event, det_class_table):
                 # IF the final level detector interface object is NOT instantiated
                 # THEN create the instance first
                 if not hasattr(det_xface_obj, drp_class_name):
-                    DetectorClass = det_class_table[(det_name, drp_class_name)]
-                    detector_instance = DetectorClass()
-                    setattr(det_xface_obj, drp_class_name, detector_instance)
+                    if (det_name, drp_class_name) in det_class_table.keys():
+                        DetectorClass = det_class_table[(det_name, drp_class_name)]
+                        detector_instance = DetectorClass()
+                        setattr(det_xface_obj, drp_class_name, detector_instance)
+                    else:
+                        # detector interface implementation not found
+                        pass
                 else:
                     detector_instance = getattr(det_xface_obj, drp_class_name)
 
@@ -68,12 +79,11 @@ def add_det_xface(event, det_class_table):
 
 
 
-# TJ says: this function just gets the version number for a (det, drp_class) combo
-# maps (dettype,software,version) to associated python class
 def get_det_class_table(cfgs):
-    #print( ds._configs[0].software.xppcspad.dettype )      # cspad
-    #print( ds._configs[0].software.xppcspad.raw.software ) # raw, fex, ...
-    #print( ds._configs[0].software.xppcspad.raw.version )  # 3.2.1
+    """
+    this function gets the version number for a (det, drp_class) combo
+    maps (dettype,software,version) to associated python class
+    """
 
     det_class_table = {} 
 
@@ -95,18 +105,22 @@ def get_det_class_table(cfgs):
                 class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
                 if hasattr(detectors, class_name):
                     DetectorClass = getattr(detectors, class_name) # return the class object
+                    # TODO: implement policy for picking up correct det implementation
+                    #       given the version number
+                    det_class_table[(det_name, drp_class_name)] = DetectorClass
                 else:
-                    raise NotImplementedError(class_name)
+                    #raise NotImplementedError(class_name)
+                    #DetectorClass = DrpClassContainer
+                    print('sad day for: %s' % class_name)
 
-                det_class_table[(det_name, drp_class_name)] = DetectorClass
 
     return det_class_table
 
 
 if __name__ == '__main__':
 
-    #ds = DataSource('data.xtc')
-    ds = DataSource('/reg/neh/home/cpo/git/lcls2/hsd_oct22_tp2.xtc')
+    ds = DataSource('data.xtc')
+    #ds = DataSource('/reg/neh/home/cpo/git/lcls2/hsd_oct22_tp2.xtc')
     firstTime = True
 
     import time
@@ -116,14 +130,9 @@ if __name__ == '__main__':
         if firstTime:
             firstTime=False
             det_class_table = get_det_class_table(ds._configs)
+            print(det_class_table)
             tstart = time.time()
         
-        # we can discover what detector to use from dettype & raw.software
-        #print( ds._configs[0].software.xppcspad.detid )        # crazy serial #
-        #print( ds._configs[0].software.xppcspad.dettype )      # cspad
-        #print( ds._configs[0].software.xppcspad.raw.software ) # raw, fex, ...
-        #print( ds._configs[0].software.xppcspad.raw.version )  # 3.2.1
-
         add_det_xface(evt, det_class_table)
 
     print((nevt)/(time.time()-tstart))
