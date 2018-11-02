@@ -39,10 +39,10 @@ class hsd(OpaqueRawDataBase):
 
     def __call__(self, evt):
         # FIXME: discover how many channels there are
-        chan0 = evt.dgrams[0].xpphsd.hsd.chan0
-        chan1 = evt.dgrams[0].xpphsd.hsd.chan1
-        chan2 = evt.dgrams[0].xpphsd.hsd.chan2
-        chan3 = evt.dgrams[0].xpphsd.hsd.chan3
+        chan0 = evt._dgrams[0].xpphsd.hsd.chan0
+        chan1 = evt._dgrams[0].xpphsd.hsd.chan1
+        chan2 = evt._dgrams[0].xpphsd.hsd.chan2
+        chan3 = evt._dgrams[0].xpphsd.hsd.chan3
         chans = [chan0, chan1, chan2, chan3]
         nonOpaqueHsd = Hsd.hsd("1.2.3", chans)  # make an object per event
         return nonOpaqueHsd

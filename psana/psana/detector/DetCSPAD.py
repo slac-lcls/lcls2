@@ -18,13 +18,13 @@ class CSPAD(DetectorBase):
             return CSPAD(name, config, dgramInd, calib)
 
     def photonEnergy(self, evt):
-        return eval('evt.dgrams[self.ind].' + self.name + '.raw.photonEnergy')
+        return eval('evt._dgrams[self.ind].' + self.name + '.raw.photonEnergy')
 
     def raw(self, evt, verbose=0):
-        quad0 = eval('evt.dgrams[self.ind].'+self.name).raw.quads0_data
-        quad1 = eval('evt.dgrams[self.ind].'+self.name).raw.quads1_data
-        quad2 = eval('evt.dgrams[self.ind].'+self.name).raw.quads2_data
-        quad3 = eval('evt.dgrams[self.ind].'+self.name).raw.quads3_data
+        quad0 = eval('evt._dgrams[self.ind].'+self.name).raw.quads0_data
+        quad1 = eval('evt._dgrams[self.ind].'+self.name).raw.quads1_data
+        quad2 = eval('evt._dgrams[self.ind].'+self.name).raw.quads2_data
+        quad3 = eval('evt._dgrams[self.ind].'+self.name).raw.quads3_data
         return np.concatenate((quad0, quad1, quad2, quad3), axis=0)
 
     def raw_data(self, evt):

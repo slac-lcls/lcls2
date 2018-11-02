@@ -71,7 +71,7 @@ class DgramManager():
             dgrams += [d]
         
         evt = Event(dgrams=dgrams)
-        self.offsets = evt.offsets
+        self.offsets = evt._offsets
         return evt
 
     def jump(self, offsets, sizes):

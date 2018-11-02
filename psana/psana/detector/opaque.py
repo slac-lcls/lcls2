@@ -31,7 +31,7 @@ class hsd(OpaqueRawDataBase):
     def __call__(self, evt):
         chans = []
         for i in range(self.nchan):
-            chans.append( eval('evt.dgrams[0].xpphsd.hsd.chan'+str(i)) ) # FIXME: find out 0 in dgrams[0]
+            chans.append( eval('evt._dgrams[0].xpphsd.hsd.chan'+str(i)) ) # FIXME: find out 0 in dgrams[0]
         nonOpaqueHsd = Hsd.hsd(version2str(self.version), chans)  # make an object per event, calls hsd.pyx def hsd()
         return nonOpaqueHsd
 

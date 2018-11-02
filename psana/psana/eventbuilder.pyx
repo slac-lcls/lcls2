@@ -43,7 +43,7 @@ cdef class EventBuilder:
         return False
 
     def _add_event(self, batch, evt, got, event_sizes):
-        event_bytes = evt.to_bytes()
+        event_bytes = evt._to_bytes()
         batch.extend(event_bytes)
         got += 1
         event_sizes.append(memoryview(event_bytes).shape[0])
@@ -75,7 +75,7 @@ cdef class EventBuilder:
                 array.zero(self.event_timestamps)
                 self.event_timestamps[smd_id] = self.timestamps[smd_id]
                 self.offsets[smd_id] += self.dgram_sizes[smd_id]
-                evt.replace(smd_id, dgrams[smd_id])
+                evt._replace(smd_id, dgrams[smd_id])
                 for i, view in enumerate(self.views):
                     if i == smd_id or self.offsets[i] >= self.sizes[i]:
                         continue
@@ -85,7 +85,7 @@ cdef class EventBuilder:
                         if d.seq.timestamp() == self.event_timestamps[smd_id]:
                             self.event_timestamps[i] = d.seq.timestamp()
                             self.timestamps[i] = 0
-                            evt.replace(i, d)
+                            evt._replace(i, d)
 
                         self.offsets[i] += memoryview(d).shape[0]
 
@@ -101,7 +101,7 @@ cdef class EventBuilder:
                     add_ok = 1
 
                 if add_ok:
-                    event_bytes = evt.to_bytes()
+                    event_bytes = evt._to_bytes()
                     batch.extend(event_bytes)
                     got += 1
                     event_sizes.append(memoryview(event_bytes).shape[0])

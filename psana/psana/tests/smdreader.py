@@ -100,7 +100,7 @@ def bd_node(configs, smd_node_id):
         
         views = view.split(b'endofevt')
         #for i in range(len(views)-1):
-        #    evt = Event.from_bytes(configs, views[i])
+        #    evt = Event._from_bytes(configs, views[i])
         cn_events += len(views) - 1
 
     print('bd_node', rank, 'received', cn_events, 'events')
