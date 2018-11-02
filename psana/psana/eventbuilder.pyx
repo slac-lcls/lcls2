@@ -102,6 +102,7 @@ cdef class EventBuilder:
 
                 if add_ok:
                     event_bytes = evt._to_bytes()
+                    evt._complete()
                     batch.extend(event_bytes)
                     got += 1
                     event_sizes.append(memoryview(event_bytes).shape[0])
