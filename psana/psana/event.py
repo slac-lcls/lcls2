@@ -38,6 +38,7 @@ class Event():
     def __next__(self):
         return self.next()
 
+    # we believe this can be hidden with underscores when we eliminate py2 support
     def next(self):
         if self._position >= len(self._dgrams):
             raise StopIteration
