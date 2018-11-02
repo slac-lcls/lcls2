@@ -3,7 +3,7 @@ import numpy as np
 from psana.dgrammanager import DgramManager
 from psana import dgram
 from psana.detector.detector import Detector
-from psana.psexp.legion_node import analyze
+import psana.psexp.legion_node
 from psana.psexp.tools import run_from_id, RunHelper
 import os, pickle
 
@@ -84,6 +84,11 @@ class Run(object):
                  'geometry_string': geometry_string,
                  'common_mode': common_mode}
         return calib
+
+    def analyze(self, event_fn=None, det=None):
+        for event in self.events():
+            if event_fn is not None:
+                event_fn(event, det)
 
     def __reduce__(self):
         return (run_from_id, (self.id,))
@@ -169,4 +174,4 @@ class RunLegion(Run):
         self.smd_configs = self.smd_dm.configs
         
     def analyze(self, **kwargs):
-        analyze(self, **kwargs)
+        legion_node.analyze(self, **kwargs)

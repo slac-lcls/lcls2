@@ -56,12 +56,24 @@ class Test:
         shutil.copy('smd.xtc', os.path.join(tmp_dir, 'data.smd.xtc')) # FIXME: chuck's hack to fix nosetests
         shutil.copy('smd.xtc',os.path.join(tmp_dir,'data_1.smd.xtc')) # FIXME: chuck's hack to fix nosetests
 
+    def test_serial(self):
+        self.setup_input_files()
+
+        loop_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_loops.py')
+        subprocess.check_call(['python',loop_based])
+
+        callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
+        subprocess.check_call(['python',callback_based])
+
     def test_mpi(self):
         self.setup_input_files()
 
-        parallel = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user.py')
-        subprocess.check_call(['mpirun','-n','3','python',parallel])
-    
+        loop_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_loops.py')
+        subprocess.check_call(['mpirun','-n','3','python',loop_based])
+
+        callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
+        subprocess.check_call(['mpirun','-n','3','python',callback_based])
+
     def test_legion(self):
         self.setup_input_files()
 
@@ -71,7 +83,7 @@ class Test:
             ('PYTHONPATH', ':'.join(python_path)),
             ('PS_PARALLEL', 'legion'),
         ])
-        subprocess.check_call(['legion_python', 'user_legion', '-ll:py', '1'], env=env)
+        subprocess.check_call(['legion_python', 'user_callbacks', '-ll:py', '1'], env=env)
 
     def test_run_pickle(self):
         # Test that run is pickleable
