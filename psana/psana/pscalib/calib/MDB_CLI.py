@@ -268,9 +268,8 @@ class MDB_CLI :
         tsec   = kwargs.get('time_sec', None)   if is_in_command_line('-s', '--time_sec')   else None
         tstamp = kwargs.get('time_stamp', None) if is_in_command_line('-t', '--time_stamp') else None
         vers   = kwargs.get('version', None)
-        fname  = kwargs.get('iofname', None)
-        #verb   = True # kwargs.get('verbose', False)
-        verb  = self.loglevel == 'DEBUG'
+        prefix = kwargs.get('iofname', None)
+        verb   = self.loglevel == 'DEBUG'
 
         db_det, db_exp, colname, query = dbu.dbnames_collection_query(det, exp, ctype, run, tsec, vers)
         logger.debug('get: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
@@ -302,26 +301,9 @@ class MDB_CLI :
             logger.warning('Can not load data for doc: %s' % str(doc))
             return
 
-        if fname is None : fname='clb-%s-%s-%s.npy' % (expname, det, ctype)
+        if prefix is None : prefix = dbu.out_fname_prefix(**doc)
 
-        data_type = doc.get('data_type', None)
-
-        if ctype == 'geometry' : 
-            gu.save_textfile(data, fname, mode='w', verb=verb)
-        elif data_type == 'ndarray' :
-            logger.debug(info_ndarr(data, 'nda', first=0, last=3))
-            if os.path.splitext(fname)[1] == '.npy' : 
-                np.save(fname, data, allow_pickle=False)
-            else :
-                save_txt(fname, data, fmt='%.3f')
-
-        elif data_type == 'any' :
-            gu.save_textfile(str(data), fname, mode='w', verb=verb)
-        else :
-            logger.warning('Unknown data type for doc: %s' % str(doc))
-            return
-
-        logger.info('Save constants in file: %s' % fname)
+        dbu.save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' : True})
 
 
     def host_port_dbname_fname(self) :

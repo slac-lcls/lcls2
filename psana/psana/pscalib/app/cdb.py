@@ -27,12 +27,12 @@ def usage():
            '  cdb print --dbname cdb_detector_1234\n'\
            '  cdb convert -e cxif5315 -u dubrovin -p <password>\n'\
            '  cdb convert -e amox23616 -u dubrovin -p <password>\n'\
-           '  cdb get -e exp12345 -d detector_1234 -c testdict -r 23 -f mydict.txt\n'\
-           '  cdb get -e cxic0415 -d cspad_0001 -c pedestals -s 1520977960 -f mypeds.txt\n'\
-           '  cdb get -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo.txt\n'\
-           '  cdb get -d cspad_0001 -c pedestals -r 100 -f mypeds.txt\n'\
-           '  cdb add -e exp12345 -d detector_1234 -c pedestals -r 123 -f mypeds.txt -u dubrovin\n'\
-           '  cdb add -e new55555 -d detnew_5555   -c pedestals -r 123 -f mypeds.txt -u dubrovin\n'\
+           '  cdb get -e exp12345 -d detector_1234 -c testdict -r 23 -f mydict\n'\
+           '  cdb get -e cxic0415 -d cspad_0001 -c pedestals -s 1520977960 -f mypeds\n'\
+           '  cdb get -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo\n'\
+           '  cdb get -d cspad_0001 -c pedestals -r 100 -f mypeds\n'\
+           '  cdb add -e exp12345 -d detector_1234 -c pedestals -r 123 -f mypeds.data -u dubrovin\n'\
+           '  cdb add -e new55555 -d detnew_5555   -c pedestals -r 123 -f mypeds.data -u dubrovin\n'\
            '  cdb deldoc -e exp12345 -d detector_1234 -c pedestals -r 123 -v 05 -u <username> -p <password> -C\n'\
            '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -r 125 -u <username> -p <password> -C\n'\
            '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -s 1520977960 -u <username> -p <password> -C\n'\
@@ -44,7 +44,7 @@ def usage():
            '  cdb delall\n'\
            '  cdb export --dbname cdb_exp12345\n'\
            '  cdb import --dbname cdb_exp12345 --iofname cdb-...arc\n'\
-           '  cdb print --host=psanagpu115 --port=27017'
+           '  cdb print --host=psanagpu115 --port=27017 --stout=1000'
 
 #------------------------------
 
@@ -99,8 +99,8 @@ def input_option_parser() :
     h_port       = 'DB port, default = %s' % d_port
     h_user       = 'username to access DB, default = %s' % d_user
     h_upwd       = 'password, default = %s' % d_upwd
-    h_ctout      = 'connect timeout, default = %d' % d_ctout
-    h_stout      = 'timeout, default = %d' % d_stout
+    h_ctout      = 'connect timeout connectTimeoutMS, default = %d' % d_ctout
+    h_stout      = 'socket timeout serverSelectionTimeoutMS, default = %d' % d_stout
     h_dbname     = 'database name, works for mode "print" or "delete", default = %s' % d_dbname
     h_experiment = 'experiment name, default = %s' % d_experiment 
     h_detector   = 'detector name, default = %s' % d_detector

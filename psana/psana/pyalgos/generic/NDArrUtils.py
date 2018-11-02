@@ -84,13 +84,14 @@ logger = logging.getLogger('NDArrUtils')
 
 def info_ndarr(nda, name='', first=0, last=5) :
     s = ''
-    if nda is None : s = '%s: %s' % (name, nda)
+    gap = '\n' if last>10 else ' '
+    if nda is None : s = '%s None' % name
     elif isinstance(nda, tuple) : s += info_ndarr(np.array(nda), 'ndarray from tuple: %s' % name)
     elif isinstance(nda, list)  : s += info_ndarr(np.array(nda), 'ndarray from list: %s' % name)
     elif not isinstance(nda, np.ndarray) :
-                     s = '%s: %s' % (name, type(nda))
-    else : s = '%s:  shape:%s  size:%d  dtype:%s %s...'%\
-               (name, str(nda.shape), nda.size, nda.dtype, nda.flatten()[first:last])
+                     s = '%s %s' % (name, type(nda))
+    else : s = '%s shape:%s  size:%d  dtype:%s%s%s...'%\
+               (name, str(nda.shape), nda.size, nda.dtype, gap, nda.flatten()[first:last])
     return s
 
 #------------------------------

@@ -28,7 +28,7 @@ from requests import get
 #import json
 from time import time
 from numpy import fromstring
-from psana.pscalib.calib.MDBUtils import dbnames_collection_query
+from psana.pscalib.calib.MDBUtils import dbnames_collection_query, object_from_data_string
 
 #------------------------------
 #------------------------------
@@ -143,21 +143,13 @@ def get_data_for_doc(dbname, colname, doc, url=cc.URL) :
 
     r2 = request('%s/%s/gridfs/%s'%(url,dbname,idd))
     s = r2.content
-    data_type = doc['data_type']
-    if data_type == 'str' : return s.decode()
-    if data_type == 'ndarray' : 
-        str_dtype = doc['data_dtype']
-        nda = fromstring(s, dtype=str_dtype)
-        nda.shape = eval(doc['data_shape']) # eval converts string shape to tuple
-        return nda
 
-    import pickle
-    return pickle.loads(s)
+    return object_from_data_string(s, doc)
 
 #------------------------------
 
 def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL) :
-    """Returns calibration constants for specified parameters. 
+    """Returns calibration constants and document with metadata for specified parameters. 
        To get meaningful constants, at least a few parameters must be specified, e.g.:
        - det, ctype, time_sec
        - det, ctype, version
@@ -172,8 +164,8 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
     doc = find_doc(dbname, colname, query, url)
     if doc is None :
         logger.warning('document is not available for query: %s' % str(query))
-        return None, None
-    return get_data_for_doc(dbname, colname, doc, url), doc
+        return (None, None)
+    return (get_data_for_doc(dbname, colname, doc, url), doc)
 
 #------------------------------
 #---------  TESTS  ------------
@@ -275,7 +267,9 @@ if __name__ == "__main__" :
     #data, doc = calib_constants(det, exp='amox23616', ctype='lasingoffreference', run=60, time_sec=None, vers=None)
     data, doc = calib_constants(det, exp=None, ctype='lasingoffreference', run=60, time_sec=None, vers=None)
     print('==== test_calib_constants_dict data:', data)
-    print('==== doc: %s' % str(doc))
+    print('XXXX ==== type(data)', type(data))
+    print('XXXX ==== type(doc) ', type(doc))
+    print('==== doc: %s' % doc)
 
 #------------------------------
 
