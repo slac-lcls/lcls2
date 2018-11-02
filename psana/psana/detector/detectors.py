@@ -31,5 +31,4 @@ class cspad_raw_2_3_42(Detector):
         pass
 class cspad_raw_2_3_43(cspad_raw_2_3_42):
     def calib(self):
-            pass
-
+        pass

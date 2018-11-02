@@ -20,6 +20,7 @@ class Event():
     Event holds list of dgrams
     """
     def __init__(self, dgrams, det_class_table, size=0):
+        self._det_class_table = det_class_table
         if size:
             self._dgrams = [0] * size
             self._offsets = [0] * size
@@ -28,8 +29,8 @@ class Event():
             self._dgrams = dgrams
             self._offsets = [_d._offset for _d in self._dgrams]
             self._size = len(dgrams)
+            self._complete()
         self._position = 0
-        #self.add_det_xface(det_class_table) # GET THE TABLE 
 
     def __iter__(self):
         return self
@@ -37,6 +38,7 @@ class Event():
     def __next__(self):
         return self.next()
 
+    # we believe this can be hidden with underscores when we eliminate py2 support
     def next(self):
         if self._position >= len(self._dgrams):
             raise StopIteration
@@ -85,7 +87,7 @@ class Event():
     def _run(self):
         return 0 # for psana1-cctbx compatibility
 
-    def add_det_xface(self, det_class_table):
+    def _add_det_xface(self, det_class_table):
         """
         """
 
@@ -94,11 +96,11 @@ class Event():
 
                 # this gives us the intermediate "det" level
                 # in the detector interface
-                if hasattr(evt, det_name):
-                    det_xface_obj = getattr(evt, det_name)
+                if hasattr(self, det_name):
+                    det_xface_obj = getattr(self, det_name)
                 else:
                     det_xface_obj = DrpClassContainer()
-                    setattr(evt, det_name, det_xface_obj)                
+                    setattr(self, det_name, det_xface_obj)                
 
                 # now the final "drp_class" level
                 for drp_class_name, drp_class in det.__dict__.items():
@@ -110,15 +112,19 @@ class Event():
                             DetectorClass = det_class_table[(det_name, drp_class_name)]
                             detector_instance = DetectorClass()
                             setattr(det_xface_obj, drp_class_name, detector_instance)
+                            detector_instance._append_dgram(drp_class)
                         else:
                             # detector interface implementation not found
                             pass
                     else:
                         detector_instance = getattr(det_xface_obj, drp_class_name)
+                        detector_instance._append_dgram(drp_class)
 
                     # and add dgram data
-                    detector_instance._append_dgram(drp_class)
 
         return
 
-
+    # this routine is called when all the dgrams have been inserted into
+    # the event (e.g. by the eventbuilder calling _replace())
+    def _complete(self):
+        self._add_det_xface(self._det_class_table)
