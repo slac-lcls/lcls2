@@ -87,10 +87,18 @@ class Event():
     def _run(self):
         return 0 # for psana1-cctbx compatibility
 
-    def _add_det_xface(self, det_class_table):
+    def _instantiate_det_xface(self,to_instantiate):
+        for class_identifier,(det_xface_obj,dgrams) in to_instantiate.items():
+            DetectorClass = self._det_class_table[class_identifier]
+            detector_instance = DetectorClass(dgrams)
+            drp_class_name = class_identifier[1]
+            setattr(det_xface_obj, drp_class_name, detector_instance)
+
+    def _add_det_xface(self):
         """
         """
 
+        to_instantiate = {}
         for evt_dgram in self._dgrams:
             for det_name, det in evt_dgram.__dict__.items():
 
@@ -102,29 +110,25 @@ class Event():
                     det_xface_obj = DrpClassContainer()
                     setattr(self, det_name, det_xface_obj)                
 
-                # now the final "drp_class" level
-                for drp_class_name, drp_class in det.__dict__.items():
-
+                # now the final "dgram" level
+                for drp_class_name, dgram in det.__dict__.items():
+                    class_identifier = (det_name,drp_class_name)
                     # IF the final level detector interface object is NOT instantiated
-                    # THEN create the instance first
-                    if not hasattr(det_xface_obj, drp_class_name):
-                        if (det_name, drp_class_name) in det_class_table.keys():
-                            DetectorClass = det_class_table[(det_name, drp_class_name)]
-                            detector_instance = DetectorClass()
-                            setattr(det_xface_obj, drp_class_name, detector_instance)
-                            detector_instance._append_dgram(drp_class)
+                    # THEN create the dictionary entry
+                    if class_identifier not in to_instantiate.keys():
+                        if class_identifier in self._det_class_table.keys():
+                            to_instantiate[class_identifier] = (det_xface_obj,[dgram])
                         else:
                             # detector interface implementation not found
                             pass
                     else:
-                        detector_instance = getattr(det_xface_obj, drp_class_name)
-                        detector_instance._append_dgram(drp_class)
+                        to_instantiate[class_identifier][1].append(dgram)
 
-                    # and add dgram data
-
+        # now that all the dgram lists are complete, instantiate
+        self._instantiate_det_xface(to_instantiate)
         return
 
     # this routine is called when all the dgrams have been inserted into
     # the event (e.g. by the eventbuilder calling _replace())
     def _complete(self):
-        self._add_det_xface(self._det_class_table)
+        self._add_det_xface()
