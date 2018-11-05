@@ -25,27 +25,6 @@ target_include_directories(utils PUBLIC
     $ENV{CONDA_PREFIX}/include
 )
 
-add_executable(debugHSD
-    debugHSD.cc
-)
-
-target_link_libraries(debugHSD
-    xtcdata::xtc
-    pgpdriver
-    #pshdf5
-    eb
-    zmq
-    ${PYTHON_LIBRARIES}
-)
-
-target_include_directories(debugHSD PUBLIC
-    ../psdaq/pgp/user-driver
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-    ${PYTHON_INCLUDE_DIRS}
-    $ENV{CONDA_PREFIX}/include
-)
-
 add_executable(drp
     drp.cc
 )
