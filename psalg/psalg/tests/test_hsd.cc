@@ -119,7 +119,10 @@ int main (int argc, char* argv[]) {
     NamesIter namesIter(&dg->xtc);
     namesIter.iterate();
 
+    unsigned counter = 0;
     while ((dg = iter.next())) {
+        printf("####################################################\n");
+        printf("Event: %u\n", counter++);
 
         printf("%s transition: time %d.%09d, pulseId 0x%x, env 0x%x, 0x%x, "
                "payloadSize %d\n",
@@ -137,17 +140,19 @@ int main (int argc, char* argv[]) {
 
         // Test DRP situation
         unsigned nChan = hsdIter.chans.size();
+        printf("nChan: %d\n", nChan);
         /*
         // Create Hsd using the factory
         Pds::HSD::Factory *pFactory = new Pds::HSD::Factory(&heap, "1.2.3", nChan);
         Pds::HSD::HsdEventHeaderV1 *pHsd = pFactory->getHsd();
         Pds::HSD::Hsd_v1_2_3 *vHsd = (Pds::HSD::Hsd_v1_2_3*) pHsd;
         */
-        Pds::HSD::Hsd_v1_2_3 *vHsd = new Pds::HSD::Hsd_v1_2_3(&stack, nChan, dg);
+        Pds::HSD::Hsd_v1_2_3 *vHsd = new Pds::HSD::Hsd_v1_2_3(&stack, dg, nChan);
+        printf("####### hsd: %u %u %u %u\n", vHsd->samples(), vHsd->streams(), vHsd->channels(), vHsd->sync());
         // iterate over all available channels
         for (std::map<std::string, uint8_t*>::iterator it=hsdIter.chans.begin(); it!=hsdIter.chans.end(); ++it){
             std::cout << "Channel name: " << it->first << std::endl;
-            Pds::HSD::Channel mychan = Pds::HSD::Channel(&stack, (const uint8_t*)hsdIter.chans[it->first], vHsd);
+            Pds::HSD::Channel mychan = Pds::HSD::Channel(&stack, vHsd, (const uint8_t*)hsdIter.chans[it->first]);
             printf("npeaks: %d\n", mychan.npeaks());
         }
         //delete pFactory;

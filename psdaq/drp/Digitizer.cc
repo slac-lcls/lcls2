@@ -2,7 +2,6 @@
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "rapidjson/document.h"
-
 #include "xtcdata/xtc/XtcIterator.hh"
 
 #include <Python.h>
@@ -21,8 +20,10 @@ public:
         Alg alg("fpga", 1, 2, 3);
         const unsigned nameLen = 7;
         char chanName[nameLen];
+        NameVec.push_back({"env", Name::UINT32, 1});
         for (unsigned i = 0; i < sizeof(lane_mask)*sizeof(uint8_t); i++){
             if (!((1<<i)&lane_mask)) continue;
+            printf("HsdDef lane_mask: %u\n", i);
             snprintf(chanName, nameLen, "chan%2.2d", i);
             NameVec.push_back({chanName, alg});
         }
@@ -154,17 +155,17 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
     unsigned shape[MaxRank] = {enable.Size()};
     printf("enable: %d\n", shape[0]);
     Array<uint64_t> arrayT = fex.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
-    unsigned lane_mask;
+    unsigned lane_mask = 0;
     for(unsigned i=0; i<shape[0]; i++){
         arrayT(i) = (uint64_t) enable[i].GetInt();
         printf("##### i, val: %u %u %u\n", i, enable[i].GetInt(), enable[i].GetInt() << (shape[0]-(i+1)));
-        lane_mask += enable[i].GetInt() << (shape[0]-i+1); // convert enable to unsigned using bitshift
+        lane_mask += enable[i].GetInt() << (shape[0]-(i+1)); // convert enable to unsigned using bitshift
         printf("enable: %lu\n", arrayT(i));
     };
 
     Value& raw_prescale = d["xtc"]["RAW_PS"];
     shape[MaxRank] = {raw_prescale.Size()};
-    printf("raw_ps: %d\n", shape[0]);
+    printf("raw_ps shape: %d\n", shape[0]);
     Array<uint64_t> arrayT1 = fex.allocate<uint64_t>(HsdConfigDef::raw_prescale,shape); //FIXME: figure out avoiding hardwired zero
     for(unsigned i=0; i<shape[0]; i++){
         arrayT1(i) = (uint64_t) raw_prescale[i].GetInt();
@@ -206,20 +207,30 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
     unsigned namesId=1;
     Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
+
     memcpy(&dgram, event_header, sizeof(Transition));
     CreateData hsd(dgram.xtc, m_namesVec, namesId);
     printf("*** evt count %d isevt %d control %x\n",event_header->evtCounter,dgram.seq.isEvent(),dgram.seq.pulseId().control());
 
     unsigned data_size;
     unsigned shape[MaxRank];
+    shape[0] = 2;
+    Array<uint32_t> arrayH = hsd.allocate<uint32_t>(0, shape);
+    arrayH(0) = dgram.env[1];
+    arrayH(1) = dgram.env[2];
     for (int l=0; l<8; l++) { // TODO: print npeaks using psalg/Hsd.hh
         if (pgp_data->buffer_mask & (1 << l)) {
             // size without Event header
             data_size = pgp_data->buffers[l]->size - sizeof(Transition);
             shape[0] = data_size;
-            Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l, shape);
+            Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l+1, shape);
             memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l]->virt + sizeof(Transition), data_size);
             // TODO: make channels
+
+            Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[l]->virt);
+            printf("%%%%%%%%%%%%%%%%%%%%%%%\n");
+            printf("%d %d %llx %x %x %x\n", l, event_header->evtCounter, event_header->seq.stamp().value(), event_header->env[0], event_header->env[1], event_header->env[2]);
+            printf("%u %u\n", (event_header->env[0]>>20)&0xf, (event_header->env[1]>>20)&0xf);
          }
     }
 }

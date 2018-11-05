@@ -107,7 +107,7 @@ def main():
                                     'value' : [200]*4 }
     pvdb[stationstr+'FEX_PS'   ] = {'type' : 'int', 
                                     'count': 4,
-                                    'value' : [0]*4 }
+                                    'value' : [1]*4 }
     pvdb[stationstr+'FEX_YMIN' ] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [508]*4 }
@@ -141,7 +141,7 @@ def main():
     pvdb[stationstr+'FULLSIZE'     ] = {'type' : 'int', 
                                         'value' : 3072 }
     pvdb[stationstr+'TESTPATTERN'  ] = {'type' : 'int', 
-                                        'value' : -1 }
+                                        'value' : 0 } # -1: off 1: rect, 2: sawtooth
     pvdb[stationstr+'TRIGSHIFT'  ] = {'type' : 'int', 
                                       'value' : 0 }
     pvdb[stationstr+'SYNCE'       ] = {'type' : 'int', 
@@ -149,21 +149,21 @@ def main():
     pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int',
 #                                       'value' : 2050 } 
 #                                       'value' : 1600 }
-                                       'value' : 5000-175 }
+                                       'value' : 5500-175 }
     pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
 #                                       'value' : 2400 }
 #                                       'value' : 1950 }
-                                       'value' : 5000+175 }
+                                       'value' : 5500+175 }
     pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
                                       'value' : 0 }
     pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
 #                                       'value' : 11800 }
 #                                       'value' : 11400 }
-                                       'value' : 14700-175 }
+                                       'value' : 15200-175 }
     pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
 #                                       'value': 12200 }
 #                                       'value' : 11750 }
-                                       'value' : 14700+175 }
+                                       'value' : 15200+175 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
                                       'count' : 4,
                                       'value' : [0]*4 }

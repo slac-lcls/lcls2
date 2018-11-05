@@ -17,11 +17,15 @@
  * Hsd object is created per event
  *
  * EventHeader is in the env of the dgram and contains information about it containing raw, fex, or both.
+ * (1/Nov/18: Currently, we can only determine whether the dgram contains raw, fex, or both by checking the size
+ * of the payload. This makes the fex results ambiguous when empty. Matt will look into fixing this.)
  * Per-channel structure:
  * streamheader raw
  * raw data
  * streamheader fex
  * fex data
+ *
+ *
  */
 
 #include <stdint.h>
@@ -39,7 +43,7 @@ namespace Pds {
     // V1 corresponds to the major version of the high level alg/version number
     class HsdEventHeaderV1 {
     public:
-        static HsdEventHeaderV1* Create(Allocator *allocator, const char* version, const unsigned nChan, Dgram* dg);
+        static HsdEventHeaderV1* Create(Allocator *allocator, Dgram* dg, const char* version, const unsigned nChan);
         virtual ~HsdEventHeaderV1(){}
         virtual void printVersion  () = 0;
         virtual unsigned samples   () = 0;
@@ -55,19 +59,25 @@ namespace Pds {
     class Hsd_v1_2_3 : public HsdEventHeaderV1 {
     // This uses the high level alg/version number for the detector to reflect changes in the datagram env.
     public:
-        Hsd_v1_2_3(Allocator *allocator, const unsigned nChan, Dgram *dg);
+        Hsd_v1_2_3(Allocator *allocator);
+
+        Hsd_v1_2_3(Allocator *allocator, Dgram *dg, const unsigned nChan);
 
         ~Hsd_v1_2_3(){}
+
+        void setEnv(uint32_t *e) {
+            env = e;
+        }
 
         void printVersion() {
             std::cout << "hsd version " << version << std::endl;
         }
 
         // TODO: find out how to convert bin number to time (we need the configure transition)
-        unsigned samples   ()  { return m_dg->env[1]&0xfffff; }    // NOTE: These 3 functions assume
-        unsigned streams   ()  { return (m_dg->env[1]>>20)&0xf; }  // all event headers in each
-        unsigned channels  ()  { return (m_dg->env[1]>>24)&0xff; } // channel are identical
-        unsigned sync      ()  { return m_dg->env[2]&0x7; }
+        unsigned samples   ()  { return env[1]&0xfffff; }    // NOTE: These 3 functions assume
+        unsigned streams   ()  { return (env[1]>>20)&0xf; }  // all event headers in each
+        unsigned channels  ()  { return (env[1]>>24)&0xff; } // channel are identical
+        unsigned sync      ()  { return env[2]&0x7; }
 
         bool raw() {
             if (streams() & 1) return true;
@@ -84,18 +94,19 @@ namespace Pds {
         // TODO: get rid of m_allocator if not needed
     private:
         Dgram *m_dg;
+        uint32_t *env;//[3];
     };
 
-    HsdEventHeaderV1* HsdEventHeaderV1::Create(Allocator *allocator, const char* version, const unsigned nChan, Dgram* dg) {
+    HsdEventHeaderV1* HsdEventHeaderV1::Create(Allocator *allocator, Dgram* dg, const char* version, const unsigned nChan) {
         if ( strcmp(version, "1.2.3") == 0 )
-            return new Hsd_v1_2_3(allocator, nChan, dg);
+            return new Hsd_v1_2_3(allocator, dg, nChan);
         else
             return NULL;
     }
 
     class Channel { // TODO: ideally get a version number from low level alg/version like we do for HsdEventHeaderV1
     public:
-        Channel(Allocator *allocator, const uint8_t *data, Hsd_v1_2_3 *vHsd);
+        Channel(Allocator *allocator, Hsd_v1_2_3 *vHsd, const uint8_t *data);
 
         ~Channel(){}
 
@@ -104,12 +115,14 @@ namespace Pds {
         }
 
     public:
-        unsigned maxSize = 1600;
+        unsigned maxSize = 10000;
         Allocator *m_allocator;
         unsigned numPixels;
         unsigned numFexPeaks;
         unsigned content;
         uint16_t* rawPtr; // pointer to raw data
+
+        AllocArray1D<uint16_t> waveform;
         AllocArray1D<uint16_t> sPos; // maxLength
         AllocArray1D<uint16_t> len; // maxLength
         AllocArray1D<uint16_t> fexPos; // maxLength
@@ -123,7 +136,7 @@ namespace Pds {
         Factory(Allocator* allocator, const char* version, const unsigned nChan, Dgram* dg)
         {
             // assert version = v1
-            pHsd = HsdEventHeaderV1::Create(allocator, version, nChan, dg);
+            pHsd = HsdEventHeaderV1::Create(allocator, dg, version, nChan);
         }
         ~Factory() {
             if (pHsd) {
