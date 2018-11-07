@@ -37,7 +37,7 @@
 #include <type_traits>
 #include <cstring>
 #include <sys/time.h>
-#include <Python.h>
+// #include <Python.h>
 #include <stdint.h>
 
 using namespace XtcData;
@@ -419,55 +419,55 @@ public:
    }
 } HsdConfigDef;
 
-void addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
+// void addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
 
-    FILE* file;
-    Py_Initialize();
-    PyObject* main_module = PyImport_AddModule("__main__");
-    PyObject* main_dict = PyModule_GetDict(main_module);
-    file = fopen("hsdConfig.py","r");
-    PyObject* a = PyRun_File(file, "hsdConfig.py",Py_file_input,main_dict,main_dict);
-    printf("PyRun: %p \n", a);
-    printf("size %d\n",PyDict_Size(main_dict));
-    PyObject* mybytes = PyDict_GetItemString(main_dict,"dgram");
-    printf("%p\n",mybytes);
-    char* json = (char*)PyBytes_AsString(mybytes); // TODO: Add PyUnicode_AsEncodedString()?
-    printf("%p\n",mybytes);
-    printf("%s\n",json);
-    Py_Finalize();
-    printf("Done\n");
+//     FILE* file;
+//     Py_Initialize();
+//     PyObject* main_module = PyImport_AddModule("__main__");
+//     PyObject* main_dict = PyModule_GetDict(main_module);
+//     file = fopen("hsdConfig.py","r");
+//     PyObject* a = PyRun_File(file, "hsdConfig.py",Py_file_input,main_dict,main_dict);
+//     printf("PyRun: %p \n", a);
+//     printf("size %d\n",PyDict_Size(main_dict));
+//     PyObject* mybytes = PyDict_GetItemString(main_dict,"dgram");
+//     printf("%p\n",mybytes);
+//     char* json = (char*)PyBytes_AsString(mybytes); // TODO: Add PyUnicode_AsEncodedString()?
+//     printf("%p\n",mybytes);
+//     printf("%s\n",json);
+//     Py_Finalize();
+//     printf("Done\n");
 
-    Document d;
-    d.Parse(json);
+//     Document d;
+//     d.Parse(json);
 
-    Value& software = d["alg"]["software"];
-    Value& version = d["alg"]["version"];
-    for (SizeType i = 0; i < version.Size(); i++) // Uses SizeType instead of size_t
-        printf("version[%d] = %d\n", i, version[i].GetInt());
+//     Value& software = d["alg"]["software"];
+//     Value& version = d["alg"]["version"];
+//     for (SizeType i = 0; i < version.Size(); i++) // Uses SizeType instead of size_t
+//         printf("version[%d] = %d\n", i, version[i].GetInt());
 
-    Alg hsdConfigAlg(software.GetString(),version[0].GetInt(),version[1].GetInt(),version[2].GetInt());
-    Names& configNames = *new(xtc) Names("xpphsd", hsdConfigAlg, "hsd", "detnum1235");
-    configNames.add(xtc, HsdConfigDef);
-    namesVec.push_back(NameIndex(configNames));
+//     Alg hsdConfigAlg(software.GetString(),version[0].GetInt(),version[1].GetInt(),version[2].GetInt());
+//     Names& configNames = *new(xtc) Names("xpphsd", hsdConfigAlg, "hsd", "detnum1235");
+//     configNames.add(xtc, HsdConfigDef);
+//     namesVec.push_back(NameIndex(configNames));
 
-    CreateData fex(xtc, namesVec, 3); //FIXME: avoid hardwiring nameId
+//     CreateData fex(xtc, namesVec, 3); //FIXME: avoid hardwiring nameId
 
-    // TODO: dynamically discover
+//     // TODO: dynamically discover
 
-    Value& enable = d["xtc"]["ENABLE"];
-    unsigned shape[MaxRank] = {enable.Size()};
-    Array<uint64_t> arrayT = fex.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
-    for(unsigned i=0; i<shape[0]; i++){
-        arrayT(i) = (uint64_t) enable[i].GetInt();
-    };
+//     Value& enable = d["xtc"]["ENABLE"];
+//     unsigned shape[MaxRank] = {enable.Size()};
+//     Array<uint64_t> arrayT = fex.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
+//     for(unsigned i=0; i<shape[0]; i++){
+//         arrayT(i) = (uint64_t) enable[i].GetInt();
+//     };
 
-    Value& raw_prescale = d["xtc"]["RAW_PS"];
-    shape[MaxRank] = {raw_prescale.Size()};
-    Array<uint64_t> arrayT1 = fex.allocate<uint64_t>(HsdConfigDef::raw_prescale,shape); //FIXME: figure out avoiding hardwired zero
-    for(unsigned i=0; i<shape[0]; i++){
-        arrayT1(i) = (uint64_t) raw_prescale[i].GetInt();
-    };
-}
+//     Value& raw_prescale = d["xtc"]["RAW_PS"];
+//     shape[MaxRank] = {raw_prescale.Size()};
+//     Array<uint64_t> arrayT1 = fex.allocate<uint64_t>(HsdConfigDef::raw_prescale,shape); //FIXME: figure out avoiding hardwired zero
+//     for(unsigned i=0; i<shape[0]; i++){
+//         arrayT1(i) = (uint64_t) raw_prescale[i].GetInt();
+//     };
+// }
 
 void usage(char* progname)
 {

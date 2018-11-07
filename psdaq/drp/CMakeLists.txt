@@ -7,7 +7,7 @@ add_library(utils SHARED
     utils.cc
 )
 
-find_package(PythonLibs 3.6 REQUIRED)
+find_package(PythonLibs REQUIRED)
 
 target_link_libraries(utils
     xtcdata::xtc
