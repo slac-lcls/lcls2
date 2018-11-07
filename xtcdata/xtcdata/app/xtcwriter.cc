@@ -516,8 +516,8 @@ int main(int argc, char* argv[])
     add_names(config.xtc, namesVec);
     addData(config.xtc,namesVec);
 
-    addJson(config.xtc,namesVec);
-    std::cout << "Done addJson" << std::endl;
+    //addJson(config.xtc,namesVec);
+    //std::cout << "Done addJson" << std::endl;
 
     DebugIter iter(&config.xtc, namesVec);
     iter.iterate();
