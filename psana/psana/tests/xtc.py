@@ -27,6 +27,7 @@ class DgramTester:
     self.testvals=testvals
   def iter(self,parent):
     for attrname,attr in parent.__dict__.items():
+      if attrname.startswith('_'): continue
       if hasattr(attr,'__dict__'):
         self.iter(attr)
       else:

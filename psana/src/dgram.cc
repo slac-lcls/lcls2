@@ -94,6 +94,22 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     assert(Py_GETREF(software)==1);
 }
 
+static void setDataInfo(PyDgramObject* pyDgram, const char* baseName, Name& name) {
+    unsigned type = name.type();
+    unsigned rank = name.rank();
+    char keyName[TMPSTRINGSIZE];
+
+    PyObject* py_type = Py_BuildValue("i", type);
+    PyObject* py_rank = Py_BuildValue("i", rank);
+
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_type",
+             PyNameDelim,baseName,PyNameDelim);
+    addObj(pyDgram, keyName, py_type);
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_rank",
+             PyNameDelim,baseName,PyNameDelim);
+    addObj(pyDgram, keyName, py_rank);
+}
+
 static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     char keyName[TMPSTRINGSIZE];
     PyObject* detType = Py_BuildValue("s", names.detType());
@@ -106,12 +122,17 @@ static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
              PyNameDelim,names.detName(),PyNameDelim);
     addObj(pyDgram, keyName, detId);
 
+    PyObject* segment = Py_BuildValue("i", names.segment());
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_segment",
+             PyNameDelim,names.detName(),PyNameDelim);
+    addObj(pyDgram, keyName, segment);
+
     assert(Py_GETREF(detType)==1);
 }
 
 void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
 {
-    // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
+    // This function gets called at configure: add attributes "software" and "version" to pyDgram and return
     char baseName[TMPSTRINGSIZE];
 
     for (unsigned i = 0; i < namesVec.size(); i++) {
@@ -129,6 +150,7 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
                      names.detName(),PyNameDelim,names.alg().name(),
                      PyNameDelim,name.name());
             setAlg(pyDgram,baseName,alg);
+            setDataInfo(pyDgram,baseName,name);
         }
     }
 }

@@ -106,9 +106,8 @@ class DgramManager():
 
                     # FIXME: we want to skip '_'-prefixed drp_classes
                     #        but this needs to be fixed upstream
-                    if drp_class_name in ['dettype', 'detid']:
-                    #if drp_class_name.startswith('_'):
-                        continue
+                    if drp_class_name in ['dettype', 'detid']: continue
+                    if drp_class_name.startswith('_'): continue
 
                     # use this info to look up the desired Detector class
                     versionstring = [str(v) for v in drp_class.version]
@@ -119,13 +118,11 @@ class DgramManager():
                         #       given the version number
                         det_class_table[(det_name, drp_class_name)] = DetectorClass
                     else:
-                        #raise NotImplementedError(class_name)
-                        #print('no implemented detector interface for: %s' % class_name)
                         pass
 
         return det_class_table
 
-    
+
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
     xtcdata_filename="data.xtc"

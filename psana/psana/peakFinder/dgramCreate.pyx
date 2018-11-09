@@ -50,7 +50,6 @@ class parse_xtc():
     def parse_configure(self):
         config = vars(self.datasource.configs[0])
         sw_config = vars(config['software'])
-        # det_names = [x for x in config.keys() if x not in ('software')]
         det_names = list(sw_config.keys())
         det_dict = {}
         namesid = 0
@@ -62,7 +61,8 @@ class parse_xtc():
                 det_config = {}
 
 
-            alg_types = [x for x in det_sw_config.keys() if x not in ('detid', 'dettype')]
+            # this should be changed to reject everything that starts with '_'
+            alg_types = [x for x in det_sw_config.keys() if x not in ('detid', 'dettype', '_segment')]
             det_entries = []
             for algt in alg_types:
                 ninfo = nameinfo(detector, det_sw_config['dettype'], \
