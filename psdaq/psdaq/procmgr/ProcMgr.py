@@ -550,7 +550,7 @@ class ProcMgr:
           self.env = "''"
           if 'env' in entry:
             if '=' in entry['env']:
-              self.env = entry['env']
+              self.env = "'%s'" % entry['env']
             else:
               raise ConfigFileError("env value is missing '=': %s" % entry)
 

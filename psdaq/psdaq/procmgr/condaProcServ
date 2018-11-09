@@ -28,8 +28,8 @@
 #   12: PROCSERVBIN not defined in rcfile
 #   other: procServ error
 
-if [ "$#" -lt 11 ]; then
-    echo "usage: $0 <rcFile> <condaEnv> <env> <rtprio> <name> <waitFlag> <logFile> <coreSize> <ctrlPort> <pythonVer> <cmd> [<arg1> ...]"
+if (( "$#" < 11 )); then
+    echo "usage: ${0} <rcFile> <condaEnv> <env> <rtprio> <name> <waitFlag> <logFile> <coreSize> <ctrlPort> <pythonVer> <cmd> [<arg1> ...]"
     exit 5
 fi
 
@@ -37,14 +37,14 @@ fi
 export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
 rcFile="${1}"
-condaEnv="$2"
-env="$3"
-rtprio="$4"
-name="$5"
-waitFlag="$6"
-logFile="$7"
-coreSize="$8"
-ctrlPort="$9"
+condaEnv="${2}"
+env="${3}"
+rtprio="${4}"
+name="${5}"
+waitFlag="${6}"
+logFile="${7}"
+coreSize="${8}"
+ctrlPort="${9}"
 # remove .* suffix from ${10}, shortening xx.yy.zz to xx.yy
 pythonVer="${10%.*}"
 cmd="${11}"
@@ -80,13 +80,13 @@ else
     . $rcFile
 fi
 
-if [ -z $PROCSERVBIN ]; then
+if [[ -z $PROCSERVBIN ]]; then
     echo "error: PROCSERVBIN not defined in $rcFile"
     exit 12
 fi
 
-if [ ! -z $condaEnv ]; then
-    if [ -z $CONDABASE ]; then
+if [[ ! -z $condaEnv ]]; then
+    if [[ -z $CONDABASE ]]; then
         echo "error: CONDABASE not defined in $rcFile"
         exit 11
     fi
@@ -119,7 +119,7 @@ fi
 
 # expand command to absolute path
 fullpath=`type -P "$cmd"`
-if [ -z $fullpath ]; then
+if [[ -z $fullpath ]]; then
     echo "error: not found on PATH: '$cmd'"
     exit 7
 else
@@ -127,24 +127,24 @@ else
 fi
 
 # add rtprio and env after expanding cmd
-if [ ! -z $rtprio ]; then
+if [[ ! -z $rtprio ]]; then
     cmd="/usr/bin/chrt -f $rtprio $cmd"
 fi
-if [ ! -z $env ]; then
+if [[ ! -z $env ]]; then
     cmd="/bin/env $env $cmd"
 fi
 
-if [ -z $logFile ]; then
+if [[ -z $logFile ]]; then
     logFlag=""
 else
     logFlag="-L $logFile"
 fi
 
-if [ -z $waitFlag ]; then
+if [[ -z $waitFlag ]]; then
     waitFlag=""
 fi
 
-if [ -f $PROCSERVBIN ]; then
+if [[ -f $PROCSERVBIN ]]; then
     $PROCSERVBIN \
         --noautorestart --name $name $waitFlag $logFlag --allow \
         --coresize $coreSize $ctrlPort $cmd $args
@@ -155,7 +155,7 @@ fi
 
 rv=$?
 
-if [ "$rv" -ne 0 ]; then
+if [[ "$rv" -ne 0 ]]; then
     echo "error: procServ returned $rv"
 fi
 
