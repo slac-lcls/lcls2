@@ -12,7 +12,8 @@ from platform import node, python_version
 from getpass import getuser
 import shutil
 
-uniqueid_maxlen = 30;
+uniqueid_maxlen = 30
+rcFile = '/etc/procmgrd.conf'
 
 #
 # printError
@@ -28,6 +29,12 @@ def printError(errorCode, args):
         print("ERR: failed to run '%s' (conda.sh not found)" % args)
     elif (errorCode == 9):
         print("ERR: failed to run '%s' (procServ not found)" % args)
+    elif (errorCode == 10):
+        print("ERR: failed to run '%s' (rcfile not found)" % args)
+    elif (errorCode == 11):
+        print("ERR: failed to run '%s' (CONDABASE not defined in rcfile)" % args)
+    elif (errorCode == 12):
+        print("ERR: failed to run '%s' (PROCSERVBIN not defined in rcfile)" % args)
     elif (errorCode != 0):
         print("ERR: failed to run '%s' (procServ returned %d)" % \
             (args, errorCode))
@@ -226,11 +233,11 @@ def deduce_platform2(configfilename):
       print('deduce_platform2 Error:', sys.exc_info()[1])
 
     # TESTRELDIR can be defined in cnf file and in environment.
-    # The environment setting takes precedence.
-    if 'TESTRELDIR' in os.environ:
-      testreldir_rv = os.environ['TESTRELDIR']
-    elif 'TESTRELDIR' in cc and len(cc['TESTRELDIR']) > 0:
+    # The cnf file setting takes precedence.
+    if 'TESTRELDIR' in cc and len(cc['TESTRELDIR']) > 0:
       testreldir_rv = cc['TESTRELDIR']
+    elif 'TESTRELDIR' in os.environ:
+      testreldir_rv = os.environ['TESTRELDIR']
 
     return platform_rv, macro_rv, testreldir_rv
 
@@ -389,6 +396,8 @@ class ProcMgr:
     DICT_FLAGS = 5
     DICT_GETID = 6
     DICT_CONDA = 7
+    DICT_ENV = 8
+    DICT_RTPRIO = 9
 
     # a managed executable can be in the following states
     STATUS_NOCONNECT = "NOCONNECT"
@@ -523,7 +532,7 @@ class ProcMgr:
           # ...process the fields
 
           # --- real-time priority (optional) ---
-          self.rtprio = None
+          self.rtprio = "''"
           tmpsum = 0
           if 'rtprio' in entry:
             try:
@@ -538,7 +547,7 @@ class ProcMgr:
                 self.rtprio = tmpsum
 
           # --- environment (optional) ---
-          self.env = None
+          self.env = "''"
           if 'env' in entry:
             if '=' in entry['env']:
               self.env = entry['env']
@@ -567,14 +576,6 @@ class ProcMgr:
             # use os.path.realpath() to resolve any symbolic links
             cmdSplit = entry['cmd'].split(None, 1)
             cmdZero = os.path.expanduser(cmdSplit[0])
-
-            # if rtprio is set, prefix with /usr/bin/chrt
-            if (self.rtprio):
-              entry['cmd'] = '/usr/bin/chrt -f %d %s' % (self.rtprio, entry['cmd'])
-
-            # if env is specified, prefix the command with /bin/env
-            if (self.env):
-              entry['cmd'] = '/bin/env %s %s' % (self.env, entry['cmd'])
 
             if self.CURRENTEXPCMD != '':
               # Do something special if -E, -e, or -f appear in cmd string
@@ -723,8 +724,8 @@ class ProcMgr:
               # add an entry to the dictionary
               key = makekey(self.host, self.uniqueid)
               self.d[key] = \
-                [ self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid, self.conda]
-                # DICT_STATUS  DICT_PID  DICT_CMD  DICT_CTRL      DICT_PPID  DICT_FLAGS  DICT_GETID DICT_CONDA
+                [ self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid, self.conda, self.env, self.rtprio]
+                # DICT_STATUS  DICT_PID  DICT_CMD  DICT_CTRL      DICT_PPID  DICT_FLAGS  DICT_GETID DICT_CONDA DICT_ENV DICT_RTPRIO
 
     def spawnXterm(self, name, host, port, large=False):
         if large:
@@ -1135,10 +1136,17 @@ class ProcMgr:
                 else:
                   name = key2uniqueid(key)
 
-                # look for condaProcServ.sh in the same directory as this file
+                # look for condaProcServ in the same directory as this file
                 prefix = os.path.dirname(os.path.realpath(__file__))
-                startcmd = prefix + '/condaProcServ.sh %s %s %s %s %d %s %s %s' % \
-                       (value[self.DICT_CONDA], \
+                if not os.path.exists(prefix+'/condaProcServ'):
+                  print('ERR: %s/condaProcServ not found' % prefix)
+                  continue
+
+                startcmd = prefix + '/condaProcServ %s %s %s %s %s %s %s %d %s %s %s' % \
+                       (rcFile, \
+                        value[self.DICT_CONDA], \
+                        value[self.DICT_ENV], \
+                        value[self.DICT_RTPRIO], \
                         name, \
                         waitflag, \
                         logfile, \

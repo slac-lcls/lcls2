@@ -1,0 +1,162 @@
+#!/usr/bin/bash
+
+# condaProcServ
+#
+# arguments:
+#   1:   rcFile
+#   2:   condaEnv
+#   3:   env
+#   4:   rtprio
+#   5:   name
+#   6:   waitFlag
+#   7:   logFile
+#   8:   coreSize
+#   9:   ctrlPort
+#   10:  pythonVer
+#   11:  cmd
+#   12+: optional arguments to cmd
+#
+# return values:
+#   0: success
+#   5: invalid arguments
+#   6: conda activate failed
+#   7: command not found on PATH
+#   8: conda.sh not found
+#   9: procServ not found
+#   10: rcfile not found
+#   11: CONDABASE not defined in rcfile
+#   12: PROCSERVBIN not defined in rcfile
+#   other: procServ error
+
+if [ "$#" -lt 11 ]; then
+    echo "usage: $0 <rcFile> <condaEnv> <env> <rtprio> <name> <waitFlag> <logFile> <coreSize> <ctrlPort> <pythonVer> <cmd> [<arg1> ...]"
+    exit 5
+fi
+
+# start with minimal PATH
+export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+
+rcFile="${1}"
+condaEnv="$2"
+env="$3"
+rtprio="$4"
+name="$5"
+waitFlag="$6"
+logFile="$7"
+coreSize="$8"
+ctrlPort="$9"
+# remove .* suffix from ${10}, shortening xx.yy.zz to xx.yy
+pythonVer="${10%.*}"
+cmd="${11}"
+args=""
+if (( "$#" > 11 )); then
+    shift 11
+    args="$@"
+fi
+
+echo "rcFile: '$rcFile'"
+echo "condaEnv: '$condaEnv'"
+echo "env: '$env'"
+echo "rtprio: '$rtprio'"
+echo "name: '$name'"
+echo "waitFlag: '$waitFlag'"
+echo "logFile: '$logFile'"
+echo "coreSize: '$coreSize'"
+echo "ctrlPort: '$ctrlPort'"
+echo "pythonVer: '$pythonVer'"
+echo "cmd: '$cmd'"
+echo "args: '$args'"
+
+if [[ -z $rcFile ]]; then
+    echo "error: no rcfile specified"
+    exit 5
+fi
+
+# read rcfile
+if [[ ! -f $rcFile ]]; then
+    echo "error: $rcFile not found"
+    exit 10
+else
+    . $rcFile
+fi
+
+if [ -z $PROCSERVBIN ]; then
+    echo "error: PROCSERVBIN not defined in $rcFile"
+    exit 12
+fi
+
+if [ ! -z $condaEnv ]; then
+    if [ -z $CONDABASE ]; then
+        echo "error: CONDABASE not defined in $rcFile"
+        exit 11
+    fi
+    if [ -f $CONDABASE/etc/profile.d/conda.sh ]; then
+        source $CONDABASE/etc/profile.d/conda.sh
+    else
+        echo "error: conda.sh not found"
+        exit 8
+    fi
+    if ! conda activate "$condaEnv"; then
+        echo "error: conda activate $condaEnv"
+        exit 6
+    fi
+fi
+
+# if TESTRELDIR has been set, update paths
+if [[ -v TESTRELDIR ]]; then
+    echo "TESTRELDIR=${TESTRELDIR}"
+    # TESTRELDIR before condaEnv in PATH
+    export PATH="${TESTRELDIR}/bin:${PATH}"
+    # SET LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH="${TESTRELDIR}/lib"
+    if [ ! -z $pythonVer ]; then
+        # SET PYTHONPATH
+        export PYTHONPATH="${TESTRELDIR}/lib/python${pythonVer}/site-packages"
+    fi
+else
+    echo "TESTRELDIR has not been set"
+fi
+
+# expand command to absolute path
+fullpath=`type -P "$cmd"`
+if [ -z $fullpath ]; then
+    echo "error: not found on PATH: '$cmd'"
+    exit 7
+else
+    cmd=$fullpath
+fi
+
+# add rtprio and env after expanding cmd
+if [ ! -z $rtprio ]; then
+    cmd="/usr/bin/chrt -f $rtprio $cmd"
+fi
+if [ ! -z $env ]; then
+    cmd="/bin/env $env $cmd"
+fi
+
+if [ -z $logFile ]; then
+    logFlag=""
+else
+    logFlag="-L $logFile"
+fi
+
+if [ -z $waitFlag ]; then
+    waitFlag=""
+fi
+
+if [ -f $PROCSERVBIN ]; then
+    $PROCSERVBIN \
+        --noautorestart --name $name $waitFlag $logFlag --allow \
+        --coresize $coreSize $ctrlPort $cmd $args
+else
+    echo "error: procServ not found"
+    exit 9
+fi
+
+rv=$?
+
+if [ "$rv" -ne 0 ]; then
+    echo "error: procServ returned $rv"
+fi
+
+exit $rv

@@ -10,7 +10,7 @@ setup(
        cmdclass=versioneer.get_cmdclass(),
        packages = find_packages(),
 
-       scripts = ['psdaq/procmgr/procmgr','psdaq/procmgr/procstat'],
+       scripts = ['psdaq/procmgr/procmgr','psdaq/procmgr/procstat','psdaq/procmgr/condaProcServ'],
 
        entry_points={
             'console_scripts': [

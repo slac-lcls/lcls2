@@ -236,7 +236,7 @@ except IOError:
     macro_count = 0
     testreldir = ''
 
-if len(testreldir) > 0 and 'TESTRELDIR' not in os.environ:
+if len(testreldir) > 0:
     # set environment variable
     environ['TESTRELDIR'] = testreldir
 
