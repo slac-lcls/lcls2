@@ -11,7 +11,7 @@
 class AreaDetector : public Detector
 {
 public:
-    AreaDetector();
+    AreaDetector(unsigned src);
     virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data);
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
 private:

@@ -4,12 +4,16 @@
 #include <string>
 #include <unordered_map>
 #include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/Src.hh"
 
 class Detector
 {
 public:
     virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
+    Detector(unsigned src) {_src.phy(src);}
+protected:
+    XtcData::Src _src;
 };
 
 template <typename T>
@@ -37,7 +41,7 @@ private:
     template <typename TDerived>
     static T* createFunc()
     {
-        return new TDerived();
+        return new TDerived(0); // FIXME: kludged zero for the Src - cpo
     }
 
     typedef T* (*PCreateFunc)();

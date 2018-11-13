@@ -1,26 +1,3 @@
-// to do:
-// - * add set_array()
-// - * figure out how to associate nameindex with correct xtc's
-// - X put names in real configure transition
-// - create new autoalloc that also allocs xtc header size
-// - X faster version of routines that takes index vs. string
-// - X* better namespacing (ShapesData, DescData)
-// - X minimize number of name lookups
-// - X provide both "safe" name-lookup xface and "performant" index xface
-// - X automated testing in cmake (and jenkins/continuous integration?)
-// - Array should support slicing
-// - maybe put non-vlen array shapes in configure (use this to distinguish
-//   vlen/non-vlen?).  but this may make things too complex. could use name instead.
-// - * fix wasted space in CreateData ctor. CPO to think about the DescribedData ctor
-// - protection:
-//   o pass in full list of names (ensures we get early error if the
-//     nameindex number is incorrect, but breaks object-oriented encapsulation)
-//   o X error when name not in map
-//   o X make sure things go in name order (not a problem if we do string lookup)
-//     (are offsets messed up if user leaves a "gap" with set_array/set_array_shape?)
-//   o X* check maxrank limit
-//   o X* check maxnamesize limit
-
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -321,9 +298,9 @@ public:
     uint8_t array[18];
 };
 
-void pgpExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId)
+void pgpExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId, Src& src)
 {
-    DescribedData frontEnd(parent, namesVec, nameId);
+    DescribedData frontEnd(parent, namesVec, nameId, src);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -340,9 +317,9 @@ void pgpExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId)
     frontEnd.set_array_shape(PgpDef::array1Pgp, shape);
 }
 
-void fexExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId)
+void fexExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId, Src& src)
 { 
-    CreateData fex(parent, namesVec, nameId);
+    CreateData fex(parent, namesVec, nameId, src);
     fex.set_value(FexDef::floatFex, (double)41.0);
 
     unsigned shape[MaxRank] = {2,3};
@@ -357,9 +334,9 @@ void fexExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId)
 }
    
 
-void padExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId)
+void padExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId, Src& src)
 { 
-    DescribedData pad(parent, namesVec, nameId);
+    DescribedData pad(parent, namesVec, nameId, src);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -374,33 +351,33 @@ void padExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId)
     pad.set_array_shape(PadDef::arrayRaw, shape);
 }
 
-void add_names(Xtc& xtc, std::vector<NameIndex>& namesVec) {
+void addNames(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
     Alg hsdRawAlg("raw",0,0,0);
-    Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234");
+    Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", src);
     frontEndNames.add(xtc,PgpDef);
     namesVec.push_back(NameIndex(frontEndNames));
 
     Alg hsdFexAlg("fex",4,5,6);
-    Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234");
+    Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", src);
     fexNames.add(xtc, FexDef);
     namesVec.push_back(NameIndex(fexNames));
 
     unsigned segment = 0;
     Alg cspadRawAlg("raw",2,3,42);
-    Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
+    Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", src, segment);
     Alg segmentAlg("cspadseg",2,3,42);
     padNames.add(xtc, PadDef);
     namesVec.push_back(NameIndex(padNames));
 }
 
-void addData(Xtc& xtc, std::vector<NameIndex>& namesVec) {
+void addData(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
     // need to protect against putting in the wrong nameId here
     unsigned nameId = 0;
-    pgpExample(xtc, namesVec, nameId);
+    pgpExample(xtc, namesVec, nameId, src);
     nameId++;
-    fexExample(xtc, namesVec, nameId);
+    fexExample(xtc, namesVec, nameId, src);
     nameId++;
-    padExample(xtc, namesVec, nameId);
+    padExample(xtc, namesVec, nameId, src);
 }
 
 class HsdConfigDef:public VarDef
@@ -512,14 +489,22 @@ int main(int argc, char* argv[])
     config.xtc.contains = tid;
     config.xtc.damage = 0;
     config.xtc.extent = sizeof(Xtc);
-    std::vector<NameIndex> namesVec;
-    add_names(config.xtc, namesVec);
-    addData(config.xtc,namesVec);
+
+    Src src1;
+    src1.phy(1);
+    Src src2;
+    src2.phy(2);
+    std::vector<NameIndex> namesVec1;
+    // std::vector<NameIndex> namesVec2;
+    addNames(config.xtc, namesVec1, src1);
+    // addNames(config.xtc, namesVec2, src2);
+    // addData(config.xtc, namesVec2, src2);
+    addData(config.xtc, namesVec1, src1);
 
     //addJson(config.xtc,namesVec);
     //std::cout << "Done addJson" << std::endl;
 
-    DebugIter iter(&config.xtc, namesVec);
+    DebugIter iter(&config.xtc, namesVec1);
     iter.iterate();
     std::cout << "Done iter" << std::endl;
 
@@ -549,7 +534,8 @@ int main(int argc, char* argv[])
             dgram.seq = Sequence(TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
         }
 
-        addData(dgram.xtc,namesVec);
+        addData(dgram.xtc, namesVec1, src1);
+        // addData(dgram.xtc, namesVec2, src2);
 
         printf("*** event %d ***\n",i);
 
@@ -557,7 +543,7 @@ int main(int argc, char* argv[])
             std::cout << "timestamp: " << dgram.seq.stamp().value() << std::endl;
         }
 
-        DebugIter iter(&dgram.xtc, namesVec);
+        DebugIter iter(&dgram.xtc, namesVec1);
         iter.iterate();
 
         if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, xtcFile) != 1) {

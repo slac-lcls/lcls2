@@ -178,8 +178,8 @@ public:
 
 protected:
     // creating a new ShapesData to be filled in
-    DescData(NameIndex& nameindex, Xtc& parent) :
-        _shapesdata(*new (parent) ShapesData()),
+    DescData(NameIndex& nameindex, Xtc& parent, Src& src) :
+        _shapesdata(*new (parent) ShapesData(src)),
         _nameindex(nameindex),
         _numarrays(0)
     {
@@ -190,8 +190,8 @@ protected:
         _numentries=0;
     }
 
-    DescData(NameIndex& nameindex, Xtc& parent, VarDef& V) :
-        _shapesdata(*new (parent) ShapesData()),
+    DescData(NameIndex& nameindex, Xtc& parent, VarDef& V, Src& src) :
+        _shapesdata(*new (parent) ShapesData(src)),
         _nameindex(nameindex),
         _numarrays(0)
     {
@@ -226,14 +226,14 @@ protected:
 
     class DescribedData : public DescData {
     public:
-        DescribedData(Xtc& parent, NameIndex& nameindex, unsigned namesId) :
-            DescData(nameindex, parent), _parent(parent), _namesId(namesId)
+        DescribedData(Xtc& parent, NameIndex& nameindex, unsigned namesId, Src& src) :
+            DescData(nameindex, parent, src), _parent(parent), _namesId(namesId)
         {
             new (&_shapesdata) Data(_parent);
         }
 
-        DescribedData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId) :
-            DescData(NamesVec[namesId], parent), _parent(parent), _namesId(namesId)
+        DescribedData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId, Src& src) :
+            DescData(NamesVec[namesId], parent, src), _parent(parent), _namesId(namesId)
         {
             new (&_shapesdata) Data(_parent);
         }
@@ -263,9 +263,9 @@ protected:
     class CreateData : public DescData {     
     public:
 
-        CreateData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId) :
+        CreateData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId, Src& src) :
             //replaced namesindex with namesvec[namesId]
-            DescData(NamesVec[namesId], parent), _parent(parent)
+            DescData(NamesVec[namesId], parent, src), _parent(parent)
         {
             Shapes& shapes = *new (&_shapesdata) Shapes(_parent, namesId);
             Names& names = _nameindex.names();
@@ -273,9 +273,9 @@ protected:
             new (&_shapesdata) Data(_parent);
         }
 
-        CreateData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId, VarDef& V) :
+        CreateData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId, VarDef& V, Src& src) :
             //replaced namesindex with namesvec[namesId]
-            DescData(NamesVec[namesId], parent, V), _parent(parent)
+            DescData(NamesVec[namesId], parent, V, src), _parent(parent)
         {
             Shapes& shapes = *new (&_shapesdata) Shapes(_parent, namesId);
             Names& names = _nameindex.names();

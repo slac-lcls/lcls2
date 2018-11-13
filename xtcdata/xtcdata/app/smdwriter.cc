@@ -100,27 +100,10 @@ public:
    }
 } SmdDef;
 
-void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) 
+void addNames(Xtc& parent, std::vector<NameIndex>& namesVec, Src& src) 
 {
-    Alg hsdRawAlg("raw",0,0,0);
-    Names& frontEndNames = *new(parent) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234");
-    frontEndNames.add(parent,PgpDef);
-    namesVec.push_back(NameIndex(frontEndNames));
-
-    Alg hsdFexAlg("fex",4,5,6);
-    Names& fexNames = *new(parent) Names("xpphsd", hsdFexAlg, "hsd","detnum1234");
-    fexNames.add(parent, FexDef);
-    namesVec.push_back(NameIndex(fexNames));
-
-    unsigned segment = 0;
-    Alg cspadRawAlg("raw",2,3,42);
-    Names& padNames = *new(parent) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
-    Alg segmentAlg("cspadseg",2,3,42);
-    padNames.add(parent, PadDef);
-    namesVec.push_back(NameIndex(padNames)); 
-
     Alg alg("offsetAlg",0,0,0);
-    Names& offsetNames = *new(parent) Names("info", alg, "offset", "");
+    Names& offsetNames = *new(parent) Names("info", alg, "offset", "", src);
     offsetNames.add(parent,SmdDef);
     namesVec.push_back(NameIndex(offsetNames));
 }
@@ -209,7 +192,9 @@ int main(int argc, char* argv[])
   config.xtc.damage = 0;
   config.xtc.extent = sizeof(Xtc);
   std::vector<NameIndex> namesVec;
-  add_names(config.xtc, namesVec);
+  Src src;
+  src.phy(0);
+  addNames(config.xtc, namesVec, src);
   if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
     printf("Error writing configure to output xtc file.\n");
     return -1;
@@ -243,8 +228,8 @@ int main(int argc, char* argv[])
         dgOut.seq = dgIn->seq;
     }
 
-    unsigned nameId = 3; 
-    CreateData smd(dgOut.xtc, namesVec, nameId);
+    unsigned nameId = 0;
+    CreateData smd(dgOut.xtc, namesVec, nameId, src);
     smd.set_value(SmdDef::intOffset, nowOffset);
     nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     smd.set_value(SmdDef::intDgramSize, nowDgramSize);

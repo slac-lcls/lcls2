@@ -103,9 +103,10 @@ public:
     std::map <std::string, uint8_t*> chans;
 };
 
-Digitizer::Digitizer() : m_evtcount(0) {}
+Digitizer::Digitizer(unsigned src) : Detector(src), m_evtcount(0) {
+}
 
-unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
+unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
 
     FILE* file;
     Py_Initialize();
@@ -141,13 +142,13 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
 
     Alg hsdConfigAlg(software.GetString(),version[0].GetInt(),version[1].GetInt(),version[2].GetInt());
     Names& configNames = *new(xtc) Names(ninfo_software.GetString(), hsdConfigAlg,
-                                         ninfo_detector.GetString(), ninfo_serialNum.GetString());
+                                         ninfo_detector.GetString(), ninfo_serialNum.GetString(), src);
     configNames.add(xtc, myHsdConfigDef);
     namesVec.push_back(NameIndex(configNames));
     printf("Done configNames\n");
 
     unsigned namesId = 0;
-    CreateData fex(xtc, namesVec, namesId); //FIXME: avoid hardwiring nameId
+    CreateData fex(xtc, namesVec, namesId, src); //FIXME: avoid hardwiring nameId
 
     // TODO: dynamically discover
 
@@ -183,12 +184,12 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
     memcpy(&dgram, event_header, sizeof(Transition));
 
     unsigned lane_mask;
-    lane_mask = addJson(dgram.xtc, m_namesVec);
+    lane_mask = addJson(dgram.xtc, m_namesVec, _src);
     printf("####### config lane_mask: %u\n", lane_mask);
 
     Alg hsdAlg("hsd", 1, 2, 3); // TODO: shouldn't this be configured by hsdconfig.py?
     unsigned segment = 0;
-    Names& dataNames = *new(dgram.xtc) Names("xpphsd", hsdAlg, "hsd", "detnum1235", segment);
+    Names& dataNames = *new(dgram.xtc) Names("xpphsd", hsdAlg, "hsd", "detnum1235", _src, segment);
     HsdDef myHsdDef(lane_mask);
     dataNames.add(dgram.xtc, myHsdDef);
     m_namesVec.push_back(NameIndex(dataNames));
@@ -209,7 +210,7 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
 
     memcpy(&dgram, event_header, sizeof(Transition));
-    CreateData hsd(dgram.xtc, m_namesVec, namesId);
+    CreateData hsd(dgram.xtc, m_namesVec, namesId, _src);
     printf("*** evt count %d isevt %d control %x\n",event_header->evtCounter,dgram.seq.isEvent(),dgram.seq.pulseId().control());
 
     unsigned data_size;

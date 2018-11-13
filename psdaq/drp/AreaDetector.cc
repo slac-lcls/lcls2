@@ -48,17 +48,17 @@ void AreaDetector::configure(Dgram& dgram, PGPData* pgp_data)
 
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;
-    Names& fexNames = *new(dgram.xtc) Names("xppcspad", cspadFexAlg, "cspad", "detnum1234", segment);
+    Names& fexNames = *new(dgram.xtc) Names("xppcspad", cspadFexAlg, "cspad", "detnum1234", _src, segment);
     fexNames.add(dgram.xtc, myFexDef);
     m_namesVec.push_back(NameIndex(fexNames));
 
     Alg cspadRawAlg("cspadRawAlg", 1, 2, 3);
-    Names& rawNames = *new(dgram.xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
+    Names& rawNames = *new(dgram.xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", _src, segment);
     rawNames.add(dgram.xtc, myRawDef);
     m_namesVec.push_back(NameIndex(rawNames));
 }
 
-AreaDetector::AreaDetector() : m_evtcount(0) {}
+AreaDetector::AreaDetector(unsigned src) : Detector(src), m_evtcount(0) {}
 
 void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
 {
@@ -67,7 +67,7 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
     Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
 
     unsigned nameId=0;
-    CreateData fex(dgram.xtc, m_namesVec, nameId);
+    CreateData fex(dgram.xtc, m_namesVec, nameId, _src);
     unsigned shape[MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
     uint16_t* rawdata = (uint16_t*)(event_header+1);
@@ -80,7 +80,7 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
     // raw data
     memcpy(&dgram, event_header, 32);
     nameId = 1;
-    DescribedData raw(dgram.xtc, m_namesVec, nameId);
+    DescribedData raw(dgram.xtc, m_namesVec, nameId, _src);
     unsigned size = 0;
     unsigned nlanes = 0;
     for (int l=0; l<8; l++) {
