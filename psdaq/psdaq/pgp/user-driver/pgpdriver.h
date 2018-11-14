@@ -44,7 +44,8 @@
 #define MAX_LANES 4
 #define MON_BUFFER_SIZE 0x10000
 #define RX_BUFFER_SIZE (256*1024)
-#define RX_DESC_SIZE 0x1000
+//#define RX_DESC_SIZE 0x1000
+#define RX_DESC_SIZE 0x200
 
 #define SPAD_WRITE 0x55441122
 
@@ -75,7 +76,11 @@ class AxisG2Device
 {
 public:
     AxisG2Device(int device_id);
+    AxisG2Device(const char*);
     void init(DmaBufferPool* pool);
+    void* initmon();
+    void  exitmon();
+    void version(unsigned =0);
     void status();
     void setup_lanes(int lane_mask);
     void loop_test(int lane_mask, int loopb, int size, int op_code, int fifolo);

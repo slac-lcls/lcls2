@@ -55,9 +55,9 @@ static void* diagnostics(void*)
     double dt = double(ttv.tv_sec - tv.tv_sec) + 1.e-9*(double(ttv.tv_nsec)-double(tv.tv_nsec));
     double revents = double(nev-nevents)/dt;
     double rbytes  = double(nby -nbytes)/dt;
-    printrate("\t ", "Hz", revents);
+    printrate("\n ", "Hz", revents);
     printrate("\t ", "B/s", rbytes);
-    printf("\t lanes %x\n", lanes);
+    printf("\t lanes %x", lanes);
     nevents=nev;
     nbytes =nby;
     tv     =ttv;
@@ -70,15 +70,11 @@ int main(int argc, char* argv[])
     
     int c;
     int device_id;
-    int wait_us = 0;
     bool lverbose = false;
-    while((c = getopt(argc, argv, "d:w:v")) != EOF) {
+    while((c = getopt(argc, argv, "d:v")) != EOF) {
         switch(c) {
         case 'd':
           device_id = std::stoi(optarg, nullptr, 16);
-          break;
-        case 'w':
-          wait_us =  std::stoi(optarg, nullptr, 16);
           break;
         case 'v':
           lverbose = true;
@@ -103,7 +99,6 @@ int main(int argc, char* argv[])
     AxisG2Device dev(device_id);
     dev.init(&pool);       
     dev.setup_lanes(0xF);
-    unsigned _seconds = 0;
 
     while (true) {    
         DmaBuffer* buffer = dev.read();
@@ -115,10 +110,6 @@ int main(int argc, char* argv[])
         if (lverbose) {
           printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u\n",
                  buffer->size, buffer->dest, transition_id, event_header->seq.pulseId().value(), event_header->evtCounter); 
-        }
-        if (wait_us && event_header->seq.stamp().seconds()>_seconds) {
-          usleep(wait_us);
-          _seconds = event_header->seq.stamp().seconds();
         }
         dev.read_done(buffer);
     }                                

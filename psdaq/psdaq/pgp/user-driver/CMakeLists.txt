@@ -36,6 +36,16 @@ target_link_libraries(pgpread
     rt
 )
 
+add_executable(pgpmon
+    pgpmon.cc
+)
+
+target_link_libraries(pgpmon
+    pgpdriver
+    pthread
+    rt
+)
+
 add_executable(looptest
     looptest.cc
 )

@@ -5,6 +5,58 @@
 #include <string.h>
 #include "pgpdriver.h"
 
+//  DrpTDet register map
+//    Master (device = 0x2030)
+//      0x00800000 MigToPciDma
+//      0x00A00000 TDetSemi
+//      0x00C00000 TDetTiming
+//      0x00E00000 I2C Devices
+//    Slave (device = 0x2030)
+//      0x00800000 MigToPciDma
+//      0x00A00000 TDetSemi
+//
+//  MigToPciDma
+//    0x00.1  monEnable
+//    0x80-0x9c[Lane 0], 0xa0-0xbc [Lane 1], 0xc0-0xdc [Lane 2], 0xe0-0xfc [Lane 3]
+//      0x84.8  blocksPause
+//      0x88.0  blocksFree
+//      0x88.12 blocksQueued
+//      0x8C.0  writeQueCnt
+//      0x90.0  wrIndex
+//      0x94.0  wcIndex
+//      0x98.0  rdIndex
+//      ..
+//      0x100    monClkRate|Slow|Fast|Lock
+//      0x104    monClkRate|Slow|Fast|Lock
+//      0x108    monClkRate|Slow|Fast|Lock
+//      0x10C    monClkRate|Slow|Fast|Lock
+//
+//  TDetSemi
+//    0x00.0  partition
+//    0x00.3  clear
+//    0x00.4  length
+//    0x00.28 enable
+//    0x04.0  id
+//    0x08.0  partitionAddr
+//    0x0c.0  modPrsL
+//    0x10-0x1c [Lane 0], ...
+//      0x10.0  cntL0
+//      0x10.24 cntOflow
+//      0x14.0  cntL1A
+//      0x18.0  cntL1R
+//      0x1c.0  cntWrFifo
+//      0x1c.0  cntRdFifo
+//      0x1c.16 msgDelay
+//
+//  TimingCore
+//
+//  I2C Devices
+//    0x000-0x3FC I2C Mux
+//    0x400-0x7FC QSFP1, QSFP0, EEPROM { I2C Mux = 1,4,5 }
+//    0x800-0xBFC Si570                { I2C Mux = 2 }
+//    0xC00-0xFFC Fan                  { I2C Mux = 3 }
+//
+
 static uint8_t* pci_resource;
 
 static void print_dma_lane(const char* name, int addr, int offset, int mask)
@@ -14,6 +66,29 @@ static void print_dma_lane(const char* name, int addr, int offset, int mask)
         uint32_t reg = get_reg32(pci_resource, DMA_LANES(i) + addr);
         printf(" %8x", (reg >> offset) & mask);
     }
+    printf("\n");
+}
+
+static void print_mig_lane(const char* name, int addr, int offset, int mask)
+{
+    const unsigned MIG_LANES = 0x00800080;
+    printf("%20.20s", name);
+    for(int i=0; i<4; i++) {
+        uint32_t reg = get_reg32(pci_resource, MIG_LANES + i*32 + addr);
+        printf(" %8x", (reg >> offset) & mask);
+    }
+    printf("\n");
+}
+
+static void print_clk_rate(const char* name, int addr) 
+{
+    const unsigned CLK_BASE = 0x00800100;
+    printf("%20.20s", name);
+    uint32_t reg = get_reg32(pci_resource, CLK_BASE + addr);
+    printf(" %f MHz", double(reg&0x1fffffff)*1.e-6);
+    if ((reg>>29)&1) printf(" [slow]");
+    if ((reg>>30)&1) printf(" [fast]");
+    if ((reg>>31)&1) printf(" [locked]");
     printf("\n");
 }
 
@@ -132,17 +207,18 @@ static void measure_clks(double& txrefclk, double& rxrefclk)
 static void usage(const char* p)
 {
   printf("Usage: %s [options]\n",p);
-  printf("Options: -d <device_id>  [default: 0x2031]\n");
+  printf("Options: -d <device_id>  [e.g. 0x2030]\n");
+  printf("         -b <bus_id>     [e.g. 0000:af:00.0]\n");
   printf("         -c              [setup clock synthesizer]\n");
   printf("         -s              [dump status]\n");
   printf("         -t              [reset timing counters]\n");
   printf("         -T              [reset timing PLL]\n");
   printf("         -C partition[,length[,links]] [configure simcam]\n");
+  printf("Requires -b or -d\n");
 }
 
 int main(int argc, char* argv[])
 {
-    int device_id  = 0x2031;
     bool setup_clk = false;
     bool status    = false;
     bool timingRst = false;
@@ -153,10 +229,13 @@ int main(int argc, char* argv[])
     int links      = 0xff;
     char* endptr;
 
+    AxisG2Device* pdev = 0;
+
     int c;
-    while((c = getopt(argc, argv, "cd:stTC:")) != EOF) {
+    while((c = getopt(argc, argv, "b:cd:stTC:")) != EOF) {
       switch(c) {
-      case 'd': device_id = strtol(optarg, NULL, 0); break;
+      case 'b': pdev = new AxisG2Device(optarg); break;
+      case 'd': pdev = new AxisG2Device(strtol(optarg, NULL, 0)); break;
       case 'c': setup_clk = true; updateId = true; break;
       case 's': status    = true; break;
       case 't': tcountRst = true; break;
@@ -171,29 +250,45 @@ int main(int argc, char* argv[])
       default: usage(argv[0]); return 0;
       }
     }
+    
+    if (!pdev) {
+      usage(argv[0]);
+      return 0;
+    }
 
-    AxisG2Device dev(device_id);
+    AxisG2Device& dev = *pdev;
     pci_resource = dev.reg();
 
-    uint32_t version = get_reg32(pci_resource, VERSION);
-    uint32_t scratch = get_reg32(pci_resource, SCRATCH);
-    uint32_t uptime_count = get_reg32(pci_resource, UP_TIME_CNT);
-    uint32_t lanes = get_reg32(pci_resource, RESOURCES) & 0xf;
-    char build_string[256];
-    for (int i=0; i<64; i++) {
-        reinterpret_cast<uint32_t*>(build_string)[i] = get_reg32(pci_resource, 0x0800 + i*4);
-    }  
+    bool core_pcie = false;
 
-    printf("-- Core Axi Version --\n");
-    printf("  firmware version  :  %x\n", version);
-    printf("  scratch           :  %x\n", scratch);
-    printf("  uptime count      :  %d\n", uptime_count);
-    printf("  build string      :  %s\n", build_string);
+    { 
+      uint8_t* pci_status = pci_resource + 0x20000;
+      uint32_t version = get_reg32(pci_status, VERSION);
+      uint32_t scratch = get_reg32(pci_status, SCRATCH);
+      uint32_t uptime_count = get_reg32(pci_status, UP_TIME_CNT);
+      char build_string[256];
+      for (int i=0; i<64; i++) {
+        reinterpret_cast<uint32_t*>(build_string)[i] = get_reg32(pci_status, 0x0800 + i*4);
+      }  
+
+      printf("-- Core Axi Version --\n");
+      printf("  firmware version  :  %x\n", version);
+      printf("  scratch           :  %x\n", scratch);
+      printf("  uptime count      :  %d\n", uptime_count);
+      printf("  build string      :  %s\n", build_string);
+
+      for(unsigned i=0; i<64; i++) {
+        uint32_t userValue = get_reg32(pci_status, 0x400+4*i);
+        printf("%08x%c", userValue, (i&7)==7 ? '\n':' ');
+      }
+
+      core_pcie = (get_reg32(pci_status, 0x400+4*(63-2)) == 0);
+    }
 
     //
     //  Update ID advertised on timing link
     //
-    if (updateId && device_id==0x2031) {
+    if (updateId && core_pcie) {
       struct addrinfo hints;
       struct addrinfo* result;
 
@@ -212,7 +307,7 @@ int main(int argc, char* argv[])
 
       sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
 
-      unsigned id = 0xfc000000 | 
+      unsigned id = 0xfb000000 | 
         (ntohl(saddr->sin_addr.s_addr)&0xffff);
       set_reg32(pci_resource, 0x00a00004, id);
     }
@@ -220,89 +315,90 @@ int main(int argc, char* argv[])
     //
     //  Measure si570 clock output
     //
-    if (device_id == 0x2031) {
+    if (core_pcie) {
       double txrefclk, rxrefclk;
       measure_clks(txrefclk,rxrefclk);
       setup_clk = ( txrefclk < 185 || txrefclk > 186 );
-    }
 
-    if (setup_clk && device_id == 0x2031) {
-      select_si570();
-      reset_si570();
+      if (setup_clk) {
+        select_si570();
+        reset_si570();
+        
+        double f = read_si570();
+        set_si570(f);
+        read_si570();
+        
+        double txrefclk, rxrefclk;
+        measure_clks(txrefclk,rxrefclk);
+      }
 
-      double f = read_si570();
-      set_si570(f);
-      read_si570();
-
-      double txrefclk, rxrefclk;
-      measure_clks(txrefclk,rxrefclk);
-    }
-
-    timingRst |= setup_clk;
-    if (timingRst && device_id == 0x2031) {
-      printf("Reset timing PLL\n");
-      unsigned v = get_reg32(pci_resource, 0x00c00020);
-      v |= 0x80;
-      set_reg32(pci_resource, 0x00c00020, v);
-      usleep(10);
-      v &= ~0x80;
-      set_reg32(pci_resource, 0x00c00020, v);
-      usleep(100);
-      v |= 0x8;
-      set_reg32(pci_resource, 0x00c00020, v);
-      usleep(10);
-      v &= ~0x8;
-      set_reg32(pci_resource, 0x00c00020, v);
-      usleep(100000);
-    }
-
-    tcountRst |= timingRst;
-    if (tcountRst) {
-      printf("Reset timing counters\n");
-      unsigned v = get_reg32(pci_resource, 0x00c00020) | 1;
-      set_reg32(pci_resource, 0x00c00020, v);
-      usleep(10);
-      v &= ~0x1;
-      set_reg32(pci_resource, 0x00c00020, v);
+      timingRst |= setup_clk;
+      if (timingRst) {
+        printf("Reset timing PLL\n");
+        unsigned v = get_reg32(pci_resource, 0x00c00020);
+        v |= 0x80;
+        set_reg32(pci_resource, 0x00c00020, v);
+        usleep(10);
+        v &= ~0x80;
+        set_reg32(pci_resource, 0x00c00020, v);
+        usleep(100);
+        v |= 0x8;
+        set_reg32(pci_resource, 0x00c00020, v);
+        usleep(10);
+        v &= ~0x8;
+        set_reg32(pci_resource, 0x00c00020, v);
+        usleep(100000);
+      }
+      
+      tcountRst |= timingRst;
+      if (tcountRst) {
+        printf("Reset timing counters\n");
+        unsigned v = get_reg32(pci_resource, 0x00c00020) | 1;
+        set_reg32(pci_resource, 0x00c00020, v);
+        usleep(10);
+        v &= ~0x1;
+        set_reg32(pci_resource, 0x00c00020, v);
+      }
     }
 
     if (status) {
+      //      uint32_t lanes = get_reg32(pci_resource, RESOURCES);
+      uint32_t lanes = 4;
       printf("  lanes             :  %u\n", lanes);
-      uint32_t fifo_depth = get_reg32(pci_resource, CLIENTS(0) + FIFO_DEPTH);
-      printf("dcountRamAddr  [%u] : 0x%x\n", 0, fifo_depth & 0xffff);
-      printf("dcountWriteDesc[%u] : 0x%x\n", 0, fifo_depth >> 16);
-      
-      printf("\n-- dmaLane Registers --\n");
-      print_dma_lane("client", CLIENT, 0, 0xf);
-      print_dma_lane("blockSize", BLOCK_SIZE, 0, 0xf);
-      print_dma_lane("dcountTransfer", FIFO_DEPTH, 0, 0xffff);
-      print_dma_lane("blocksFree", MEM_STATUS, 0, 0x3ff);
 
-      print_dma_lane("blocksQueued", MEM_STATUS, 12, 0x3ff);
-      print_dma_lane("tready", MEM_STATUS, 25, 1);
-      print_dma_lane("wbusy", MEM_STATUS, 26, 1);
-      print_dma_lane("wSlaveBusy", MEM_STATUS, 27, 1);
-      print_dma_lane("rMasterBusy", MEM_STATUS, 28, 1);
-      print_dma_lane("mm2s_err", MEM_STATUS, 29, 1);
-      print_dma_lane("s2mm_err", MEM_STATUS,30, 1);
-      print_dma_lane("memReady", MEM_STATUS, 31, 1);
+      printf("  monEnable         :  %u\n", get_reg32(pci_resource, 0x00800000)&1);
+
+      printf("\n-- migLane Registers --\n");
+      print_mig_lane("blockSize  ", 0, 0, 0x1f);
+      print_mig_lane("blocksPause", 4, 8, 0x3ff);
+      print_mig_lane("blocksFree ", 8, 0, 0x1ff);
+      print_mig_lane("blocksQued ", 8,12, 0x1ff);
+      print_mig_lane("writeQueCnt",12, 0, 0xff);
+      print_mig_lane("wrIndex    ",16, 0, 0x1ff);
+      print_mig_lane("wcIndex    ",20, 0, 0x1ff);
+      print_mig_lane("rdIndex    ",24, 0, 0x1ff);
+
+      print_clk_rate("axilOther  ",0);
+      print_clk_rate("timingRef  ",4);
+      print_clk_rate("migA       ",8);
+      print_clk_rate("migB       ",12);
 
       // TDetSemi
       print_field("partition", 0x00a00000,  0, 0xf);
       print_field("length"   , 0x00a00000,  4, 0xffffff);
-      print_field("enable"   , 0x00a00000, 31, 1);
+      print_field("enable"   , 0x00a00000, 28, 0xf);
       print_field("localid"  , 0x00a00004,  0, 0xffffffff);
       print_field("remoteid" , 0x00a00008,  0, 0xffffffff);
 
-      print_dti_lane("cntL0", 0x00a00010, 0, 0xffffff);
-      print_dti_lane("cntOF", 0x00a00010, 24, 0xff);
-      print_dti_lane("cntL1A", 0x00a00014, 0, 0xffffff);
-      print_dti_lane("cntL1R", 0x00a00018, 0, 0xffffff);
-      print_dti_lane("cntWrFifo", 0x00a01c, 0, 0xff);
-      print_dti_lane("cntRdFifo", 0x00a01c, 8, 0xff);
-      print_dti_lane("cntMsgDelay", 0x00a01c, 16, 0xffff);
+      print_dti_lane("cntL0"      , 0x00a00010,  0, 0xffffff);
+      print_dti_lane("cntOF"      , 0x00a00010, 24, 0xff);
+      print_dti_lane("cntL1A"     , 0x00a00014,  0, 0xffffff);
+      print_dti_lane("cntL1R"     , 0x00a00018,  0, 0xffffff);
+      print_dti_lane("cntWrFifo"  , 0x00a0001c,  0, 0xff);
+      print_dti_lane("cntRdFifo"  , 0x00a0001c,  8, 0xff);
+      print_dti_lane("cntMsgDelay", 0x00a0001c, 16, 0xffff);
 
-      if (device_id == 0x2031) {
+      if (core_pcie) {
         // TDetTiming
         print_word("SOFcounts" , 0x00c00000);
         print_word("EOFcounts" , 0x00c00004);
@@ -326,8 +422,14 @@ int main(int argc, char* argv[])
     if (partition >= 0) {
       unsigned v = ((partition&0xf)<<0) |
         ((length&0xffffff)<<4) |
-        (links ? (1<<31):0);
+        (links<<28);
       set_reg32(pci_resource, 0x00a00000, v);
+      unsigned w = get_reg32(pci_resource, 0x00a00000);
+      printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",
+             partition, length, links, v, w);
+      for(unsigned i=0; i<4; i++)
+        if (links&(1<<i))
+          set_reg32(pci_resource, 0x00800084+32*i, 0x1f00);
     }
 
     return 0;
