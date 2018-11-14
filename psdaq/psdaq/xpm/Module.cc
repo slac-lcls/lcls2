@@ -421,6 +421,13 @@ bool Module::getL0Enabled() const
   return getf(_l0Control,1,16) ? 1 : 0;
 }
 
+#if 0
+void Module::groupL0Reset  (unsigned m) { _groupL0Reset   = m; }
+void Module::groupL0Enable (unsigned m) { _groupL0Enable  = m; }
+void Module::groupL0Disable(unsigned m) { _groupL0Disable = m; }
+void Module::groupMsgInsert(unsigned m) { _groupMsgInsert = m; }
+#endif
+
 void Module::setL0Select_FixedRate(unsigned rate)
 {
   unsigned rateSel = (0<<14) | (rate&0xf);
