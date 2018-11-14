@@ -130,7 +130,7 @@ class PvLinkId(QtWidgets.QWidget):
             self.linkSrc.setText(host)
         else:
             if itype > 0xfc:
-                ip_addr = '10.0'+'.%u'%((int(value)>>8)&0xff)+'.%u'%((int(value)>>0)&0xff)
+                ip_addr = '10.%u'%((int(value)>>16)&0xff)+'.%u'%((int(value)>>8)&0xff)+'.%u'%((int(value)>>0)&0xff)
                 self.linkSrc.setText(ip_addr)
             else:
                 self.linkSrc.setText('0x%x'%(value&0xffffff))
