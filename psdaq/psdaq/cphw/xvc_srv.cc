@@ -9,6 +9,7 @@
 #include <signal.h>
 
 #include "psdaq/cphw/Reg.hh"
+#include "psdaq/cphw/Xvc.hh"
 
 extern int optind;
 
@@ -27,12 +28,12 @@ int main(int argc, char** argv)
 
   const char* ip = "10.0.2.102";
   unsigned short port = 8193;
-  unsigned addr = 0x0c000000;
+  uint64_t addr = 0x0c000000;
 
   while ( (c=getopt( argc, argv, "a:p:A:h")) != EOF ) {
     switch(c) {
     case 'A':
-      addr = strtoul(optarg,NULL,0);
+      addr = strtoull(optarg,NULL,0);
       break;
     case 'a':
       ip = optarg;
@@ -59,7 +60,7 @@ int main(int argc, char** argv)
 
   Pds::Cphw::Reg::set(ip, port, 0);
 
-  Pds::Xvc::launch( (Pds::Jtag*)addr );
+  Pds::Cphw::Xvc::launch( (Pds::Cphw::Jtag*)addr );
 
   while(1)
     sleep(1);                    // Seems to help prevent a crash in cpsw on exit
