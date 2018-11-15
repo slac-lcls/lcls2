@@ -1818,7 +1818,7 @@ CompletionQueue::CompletionQueue(Fabric* fabric) :
   _cq(nullptr)
 {
   struct fi_cq_attr cq_attr = {
-    .size = 0,
+    .size = 128*1024,
     .flags = 0,
     .format = FI_CQ_FORMAT_DATA,
     .wait_obj = FI_WAIT_UNSPEC,
