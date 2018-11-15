@@ -15,6 +15,7 @@ setup(
        entry_points={
             'console_scripts': [
                 'collection = psdaq.control.collection:main',
+                'dti_proxy = psdaq.control.dti_proxy:main',
                 'partca = psdaq.cas.partca:main',
                 'partcas = psdaq.cas.partcas:main',
                 'modcas = psdaq.cas.modcas:main',

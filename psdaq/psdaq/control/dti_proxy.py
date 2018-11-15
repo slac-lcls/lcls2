@@ -9,7 +9,7 @@ import time
 import copy
 import socket
 import zmq
-from collection import pull_port, pub_port, create_msg
+from psdaq.control.collection import pull_port, pub_port, create_msg
 import argparse
 import logging
 from psp import PV
@@ -262,7 +262,7 @@ class Client:
         # is a reply to reset necessary?
 
 
-if __name__ == '__main__':
+def main():
 
     try:
         # process arguments
@@ -284,3 +284,6 @@ if __name__ == '__main__':
 
     except KeyboardInterrupt:
         logging.info('KeyboardInterrupt')
+
+if __name__ == '__main__':
+    main()
