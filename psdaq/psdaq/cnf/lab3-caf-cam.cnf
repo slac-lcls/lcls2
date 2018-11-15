@@ -3,9 +3,6 @@ username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
 
-# can also set this environment in the shell.
-TESTRELDIR = '/reg/neh/home/caf/daq/conda/lcls2/install'
-
 epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067 EPICS_CA_AUTO_ADDR_LIST=NO'
 conda_rel = 'ps-0.1.2'
 
