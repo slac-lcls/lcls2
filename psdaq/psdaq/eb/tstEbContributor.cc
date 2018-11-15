@@ -501,6 +501,7 @@ void joinCollection(std::string&   server,
 
   std::string id = std::to_string(collection.id());
   tebPrms.id = collection.cmstate["drp"][id]["drp_id"];
+  mebPrms.id = tebPrms.id;
   //std::cout << "DRP: ID " << tebPrms.id << std::endl;
 
   uint64_t builders = 0;
