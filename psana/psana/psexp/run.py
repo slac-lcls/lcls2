@@ -55,6 +55,21 @@ class Run(object):
         det = Detector(self.configs, calib=calib)
         return det.__call__(det_name)
 
+    @property
+    def detnames(self):
+        return set([x[0] for x in self.dm.det_class_table.keys()])
+
+    @property
+    def detinfo(self):
+        detinfo = {}
+        for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
+            # filter returns an iterator
+            det_xface_attrs = list(filter( lambda t : not t.startswith('_'), dir(det_xface_class)))
+            if detname not in detinfo.keys():
+                detinfo[detname] = []
+            detinfo[detname].append({det_xface_name : det_xface_attrs})
+        return detinfo
+
     def _get_calib(self, det_name):
         gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
         if self.exp and det_name:
