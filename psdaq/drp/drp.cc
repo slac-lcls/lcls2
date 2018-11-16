@@ -36,7 +36,7 @@ void join_collection(Parameters& para)
     std::string id = std::to_string(collection.id());
     // std::cout << "DRP: " << id << std::endl;
     para.tPrms.id = collection.cmstate["drp"][id]["drp_id"];
-    
+
     const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
     const unsigned tebPortBase = TEB_PORT_BASE + numPorts * para.partition;
     const unsigned drpPortBase = DRP_PORT_BASE + numPorts * para.partition;
@@ -70,20 +70,16 @@ int main(int argc, char* argv[])
 {
     Parameters para;
     para.partition = 0;
-    int device_id = 0x2031;
     int lane_mask = 0xf;
     std::string detector_type;
     int c;
-    while((c = getopt(argc, argv, "p:o:d:l:D:")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
                 break;
             case 'o':
                 para.output_dir = optarg;
-                break;
-            case 'd':
-                device_id = std::stoul(optarg, nullptr, 16);
                 break;
             case 'l':
                 lane_mask = std::stoul(optarg, nullptr, 16);
@@ -130,11 +126,10 @@ int main(int argc, char* argv[])
     Detector* d = f.create(detector_type.c_str());
 
     int num_workers = 2;
-    // int num_entries = 131072;
     int num_entries = 8192;
     MemPool pool(num_workers, num_entries);
     // TODO: This should be moved to configure when the lane_mask is known.
-    PGPReader pgp_reader(pool, device_id, lane_mask, num_workers);
+    PGPReader pgp_reader(pool, lane_mask, num_workers);
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
     pin_thread(pgp_thread.native_handle(), 1);
 

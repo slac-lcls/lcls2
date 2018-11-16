@@ -43,7 +43,7 @@ void AreaDetector::configure(Dgram& dgram, PGPData* pgp_data)
     // copy Event header into beginning of Datagram
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
     printf("index %d\n", index);
-    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
+    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
     memcpy(&dgram, event_header, 32);
 
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
@@ -64,7 +64,7 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
 {
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
+    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
 
     unsigned nameId=0;
     CreateData fex(dgram.xtc, m_namesVec, nameId, _src);
@@ -86,8 +86,8 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
     for (int l=0; l<8; l++) {
         if (pgp_data->buffer_mask & (1 << l)) {
             // size without Event header
-            int data_size = pgp_data->buffers[l]->size - 32;
-            memcpy((uint8_t*)raw.data() + size, (uint8_t*)pgp_data->buffers[l]->virt + 32, data_size);
+            int data_size = pgp_data->buffers[l].size - 32;
+            memcpy((uint8_t*)raw.data() + size, (uint8_t*)pgp_data->buffers[l].data + 32, data_size);
             size += data_size;
             nlanes++;
          }

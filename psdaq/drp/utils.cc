@@ -1,16 +1,17 @@
 #include <limits.h>
 #include <unistd.h>
 #include <time.h>
+#include <fcntl.h>
 #include <fstream>
 #include <cstddef>
 #include <cstdio>
 #include <sys/types.h>
+#include "AxisDriver.h"
 #include "drp.hh"
 #include "Collector.hh"
 #include <zmq.h>
 
 MemPool::MemPool(int num_workers, int num_entries) :
-    dma(num_entries, RX_BUFFER_SIZE),
     pgp_data(num_entries),
     pebble_queue(num_entries),
     collector_queue(num_entries),
@@ -27,6 +28,13 @@ MemPool::MemPool(int num_workers, int num_entries) :
         pgp_data[i].buffer_mask = 0;
         pebble_queue.push(&pebble[i]);
     }
+
+    fd = open("/dev/datadev_1", O_RDWR);
+    if (fd < 0) {
+        printf("Error opening /dev/datadev_1\n");
+    }
+    uint32_t dmaCount, dmaSize;
+    dmaBuffers = dmaMapDma(fd, &dmaCount, &dmaSize);
 }
 
 void pin_thread(const pthread_t& th, int cpu)
@@ -83,7 +91,6 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContribut
             break;
         }
         int64_t new_count = c->event_count;
-        int buffer_queue_size = pool.dma.buffer_queue.guess_size();
         long port_rcv_data = read_infiniband_counter("port_rcv_data");
         long port_xmit_data = read_infiniband_counter("port_xmit_data");
 
@@ -108,8 +115,8 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContribut
         strftime(time_buffer, 80, "%Y-%m-%d %H:%M:%S", timeinfo);
 
         int size = snprintf(buffer, 4096,
-                R"({"host": "%s", "x": "%s", "data": {"event_rate": [%f], "data_rate": [%f], "rcv_rate": [%f], "xmit_rate": [%f], "buffer_queue": [%d], "used_batches": [%d]}})",
-                            hostname, time_buffer, event_rate, data_rate, rcv_rate, xmit_rate, buffer_queue_size, ebCtrb.inFlightCnt());
+                R"({"host": "%s", "x": "%s", "data": {"event_rate": [%f], "data_rate": [%f], "rcv_rate": [%f], "xmit_rate": [%f], "used_batches": [%d]}})",
+                            hostname, time_buffer, event_rate, data_rate, rcv_rate, xmit_rate, ebCtrb.inFlightCnt());
 
         /*
  "event_rate": [%f], "data_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "rcv_rate": [%f], "xmit_rate": [%f]}])",

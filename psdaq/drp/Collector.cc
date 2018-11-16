@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <zmq.h>
+#include "AxisDriver.h"
 #include "Collector.hh"
 #include "psdaq/eb/utilities.hh"
 #include "psdaq/eb/EbContributor.hh"
@@ -46,7 +47,7 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
     Pebble* pebble = (Pebble*)appPrm;
 
     int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
-    Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index]->virt);
+    Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index].data);
     TransitionId::Value transition_id = event_header->seq.service();
 
     if (event_header->seq.pulseId().value() != result->seq.pulseId().value()) {
@@ -76,7 +77,7 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
     // return buffer to memory pool
     for (int l=0; l<8; l++) {
         if (pebble->pgp_data->buffer_mask & (1 << l)) {
-            _pool.dma.buffer_queue.push(pebble->pgp_data->buffers[l]);
+            dmaRetIndex(_pool.fd, pebble->pgp_data->buffers[l].dmaIndex);
         }
     }
     pebble->pgp_data->counter = 0;
@@ -111,7 +112,7 @@ void collector(MemPool& pool, Parameters& para, EbContributor& ebCtrb, MonContri
         pool.worker_output_queues[worker].pop(pebble);
 
         int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
-        Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index]->virt);
+        Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index].data);
         TransitionId::Value transition_id = event_header->seq.service();
          if (transition_id == 2) {
             printf("Collector saw configure transition\n");

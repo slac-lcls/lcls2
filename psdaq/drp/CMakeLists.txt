@@ -18,7 +18,7 @@ target_link_libraries(utils
 )
 
 target_include_directories(utils PUBLIC
-    ../psdaq/pgp/user-driver
+    ../../../aes-stream-drivers/include
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
@@ -34,3 +34,15 @@ target_link_libraries(drp
     pthread
     collection
 )
+
+#add_executable(pgpread2
+#    pgpread.cc
+#)
+
+#target_include_directories(pgpread2 PUBLIC
+#    ../../../aes-stream-drivers/include
+#)
+
+#target_link_libraries(pgpread2
+#    xtcdata::xtc
+#)

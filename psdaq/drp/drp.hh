@@ -4,8 +4,14 @@
 #include <vector>
 #include <cstdint>
 #include "spscqueue.hh"
-#include "pgpdriver.h"
 #include "psdaq/eb/eb.hh"
+
+struct DmaBuffer
+{
+    uint32_t dmaIndex;
+    int32_t size;
+    void* data;
+};
 
 struct PGPData
 {
@@ -13,7 +19,7 @@ struct PGPData
     uint8_t buffer_mask;
     unsigned damaged : 1;
     unsigned counter : 7;
-    DmaBuffer* buffers[8];
+    DmaBuffer buffers[8];
 };
 
 struct Parameters
@@ -49,15 +55,18 @@ using PebbleQueue = SPSCQueue<Pebble*>;
 struct MemPool
 {
     MemPool(int num_workers, int num_entries);
-    DmaBufferPool dma;
+    void** dmaBuffers;
     std::vector<PGPData> pgp_data;
     PebbleQueue pebble_queue;
     std::vector<PebbleQueue> worker_input_queues;
     std::vector<PebbleQueue> worker_output_queues;
     SPSCQueue<int> collector_queue;
     int num_entries;
+    // File descriptor for pgp card
+    int fd;
 private:
     std::vector<Pebble> pebble;
+
 };
 
 struct Counters

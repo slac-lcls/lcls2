@@ -180,7 +180,7 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
 {
     // copy Event header into beginning of Datagram
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
+    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
     memcpy(&dgram, event_header, sizeof(Transition));
 
     unsigned lane_mask;
@@ -207,7 +207,7 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
     unsigned namesId=1;
-    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index]->virt);
+    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
 
     memcpy(&dgram, event_header, sizeof(Transition));
     CreateData hsd(dgram.xtc, m_namesVec, namesId, _src);
@@ -222,13 +222,13 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     for (int l=0; l<8; l++) { // TODO: print npeaks using psalg/Hsd.hh
         if (pgp_data->buffer_mask & (1 << l)) {
             // size without Event header
-            data_size = pgp_data->buffers[l]->size - sizeof(Transition);
+            data_size = pgp_data->buffers[l].size - sizeof(Transition);
             shape[0] = data_size;
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l+1, shape);
-            memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l]->virt + sizeof(Transition), data_size);
+            memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l].data + sizeof(Transition), data_size);
             // TODO: make channels
 
-            Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[l]->virt);
+            Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[l].data);
             printf("%%%%%%%%%%%%%%%%%%%%%%%\n");
             printf("%d %d %llx %x %x %x\n", l, event_header->evtCounter, event_header->seq.stamp().value(), event_header->env[0], event_header->env[1], event_header->env[2]);
             printf("%u %u\n", (event_header->env[0]>>20)&0xf, (event_header->env[1]>>20)&0xf);
