@@ -8,6 +8,7 @@ conda_rel = 'ps-0.1.2'
 
 shelf = '2'
 ip_addr = '10.0.'+shelf
+collect_host = 'drp-tst-acc06'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -27,7 +28,8 @@ procmgr_config = [
  {                        id:'modca', flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmca DAQ:LAB2:XPM:'+shelf},
  {                        id:'deadca-'+platform, flags:'s', conda:conda_rel, env:epics_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
  {                        id:'dtica', flags:'s', conda:conda_rel, env:epics_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
- { host: 'drp-tst-acc06', id:'collection', flags:'sxp', conda:conda_rel, cmd:'collection -v' },
+ { host: collect_host,    id:'collection', flags:'sxp', conda:conda_rel, cmd:'collection -v'},
+ { host: 'daq-tst-dev02', id:'dti_proxy', flags:'sp', conda:conda_rel, env:epics_env, cmd:'dti_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
  # trigger event builder
- { host: 'drp-tst-acc02', id:'teb1', flags:'sp', conda:conda_rel, cmd:'tstEbBuilder -C drp-tst-acc06'}
+ { host: 'drp-tst-acc02', id:'teb1', flags:'sp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host}
 ]
