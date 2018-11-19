@@ -4,7 +4,7 @@ import json
 
 pvNames = {
            'DAQ:LAB2:HSD:DEV02:ENABLE': (1,1,1,1),
-           'DAQ:LAB2:HSD:DEV02:RAW_PS': (10000,10000,10000,10000),
+           'DAQ:LAB2:HSD:DEV02:RAW_PS': (3,3,3,3),
            'DAQ:LAB2:HSD:DEV02:TESTPATTERN': 2,
            'DAQ:LAB2:HSD:DEV02:FEX_YMIN': (5,5,5,5),
            'DAQ:LAB2:HSD:DEV02:FEX_YMAX': (2040,2040,2040,2040),
@@ -71,5 +71,11 @@ config = json.dumps(config)
 
 print("config: ", config)
 
+# Apply the new configuration changes
+_pv = Pv('DAQ:LAB2:HSD:DEV02:BASE:APPLYCONFIG')
+_pv.connect(1.0)
+_pv.put(1)
+
+print("Done hsdconfig.py")
 #with open('xtc.json', 'w') as f:
 #    json.dump(config, f)
