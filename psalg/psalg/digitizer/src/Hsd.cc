@@ -20,7 +20,7 @@ Channel::Channel(Allocator *allocator, Pds::HSD::Hsd_v1_2_3 *vHsd, const uint8_t
     if (vHsd->raw()) {
         const Pds::HSD::StreamHeader* sh_rawx = 0;
         sh_rawx = reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
-        printf("raw samples: %u %u %u %u\n", sh_rawx->samples(), sh_rawx->eoffs(), sh_rawx->boffs(), sh_rawx->samples()-sh_rawx->eoffs()-sh_rawx->boffs());
+        //printf("raw samples: %u %u %u %u\n", sh_rawx->samples(), sh_rawx->eoffs(), sh_rawx->boffs(), sh_rawx->samples()-sh_rawx->eoffs()-sh_rawx->boffs());
         const uint16_t* rawx = reinterpret_cast<const uint16_t*>(sh_rawx+1);
         if (sh_rawx->samples() > 0 && sh_rawx->samples() <= 6456) {
 
@@ -41,7 +41,7 @@ Channel::Channel(Allocator *allocator, Pds::HSD::Hsd_v1_2_3 *vHsd, const uint8_t
         // ------------ FEX --------------
         const Pds::HSD::StreamHeader& sh_fex = *reinterpret_cast<const Pds::HSD::StreamHeader*>(nextx);
         const unsigned end = sh_fex.samples() - sh_fex.eoffs() - sh_fex.boffs();
-        printf("fex samples: %u %u %u\n", sh_fex.samples(), sh_fex.eoffs(), sh_fex.boffs());
+        //printf("fex samples: %u %u %u\n", sh_fex.samples(), sh_fex.eoffs(), sh_fex.boffs());
         if (sh_fex.samples() > 0 && sh_fex.samples() <= 6456) {
             const uint16_t* p_thr = &reinterpret_cast<const uint16_t*>(&sh_fex+1)[sh_fex.boffs()];
 
