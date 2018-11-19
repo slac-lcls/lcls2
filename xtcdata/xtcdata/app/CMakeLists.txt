@@ -23,6 +23,13 @@ target_link_libraries(xtcsave
     xtc
 )
 
+add_executable(hsdduplicate
+    hsdduplicate.cc
+)
+target_link_libraries(hsdduplicate
+    xtc
+)
+
 add_executable(smdwriter
     smdwriter.cc
 )
