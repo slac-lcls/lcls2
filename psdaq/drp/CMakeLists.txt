@@ -35,7 +35,7 @@ target_link_libraries(drp
     collection
 )
 
-install(TARGETS drp
+install(TARGETS utils drp
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
