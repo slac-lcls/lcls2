@@ -35,6 +35,12 @@ target_link_libraries(drp
     collection
 )
 
+install(TARGETS drp
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
 #add_executable(pgpread2
 #    pgpread.cc
 #)
