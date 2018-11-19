@@ -39,7 +39,7 @@ cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
 
     cdef cppclass Hsd_v1_2_3(HsdEventHeaderV1):
         Hsd_v1_2_3(Allocator *allocator)
-        void setEnv(env_t *e)
+        void init(env_t *e)
         void printVersion()
 
     cdef cppclass Channel:
@@ -95,7 +95,7 @@ cdef class cyhsd_hsd_1_2_3:
             del self.chptr[x]
 
     def _setEnv(self, cnp.ndarray[env_t, ndim=1, mode="c"] env):
-        self.cptr.setEnv(&env[0])
+        self.cptr.init(&env[0])
 
     def _setChan(self, chanName, cnp.ndarray[chan_t, ndim=1, mode="c"] chan):
         self.chptr[self.chanCounter] = new Channel(self.ptr, self.cptr, &chan[0])

@@ -4,7 +4,7 @@ import json
 
 pvNames = {
            'DAQ:LAB2:HSD:DEV02:ENABLE': (1,1,1,1),
-           'DAQ:LAB2:HSD:DEV02:RAW_PS': (2,2,2,2),
+           'DAQ:LAB2:HSD:DEV02:RAW_PS': (10000,10000,10000,10000),
            'DAQ:LAB2:HSD:DEV02:TESTPATTERN': 2,
            'DAQ:LAB2:HSD:DEV02:FEX_YMIN': (5,5,5,5),
            'DAQ:LAB2:HSD:DEV02:FEX_YMAX': (2040,2040,2040,2040),

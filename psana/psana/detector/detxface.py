@@ -2,9 +2,9 @@ from psana import DataSource
 import matplotlib.pyplot as plt
 import time
 
-doPlot = 0
+doPlot = 1
 
-ds = DataSource('/reg/neh/home/yoon82/hsd_nov02.xtc') # TODO: add an example xtc file to git
+ds = DataSource('/reg/neh/home/yoon82/hsd_nov06_ps3.xtc') # TODO: add an example xtc file to git
 
 tstart = time.time()
 for nevt,evt in enumerate(ds.events()):
@@ -28,5 +28,5 @@ for nevt,evt in enumerate(ds.events()):
         plt.plot(pks['chan00'][1][0], 'x-')
         plt.title("chan00 fex: " + str(nevt))
         plt.show()
-
+    if nevt == 1: break
 print((nevt)/(time.time()-tstart))

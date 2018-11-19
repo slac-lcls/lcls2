@@ -19,6 +19,7 @@
  * EventHeader is in the env of the dgram and contains information about it containing raw, fex, or both.
  * (1/Nov/18: Currently, we can only determine whether the dgram contains raw, fex, or both by checking the size
  * of the payload. This makes the fex results ambiguous when empty. Matt will look into fixing this.)
+ * Both streamheaders for raw and fex exist, even if prescale is not set to 1.
  * Per-channel structure:
  * streamheader raw
  * raw data
@@ -61,11 +62,9 @@ namespace Pds {
     public:
         Hsd_v1_2_3(Allocator *allocator);
 
-        Hsd_v1_2_3(Allocator *allocator, Dgram *dg, const unsigned nChan);
-
         ~Hsd_v1_2_3(){}
 
-        void setEnv(uint32_t *e) {
+        void init(uint32_t *e) {
             env = e;
         }
 
@@ -93,13 +92,12 @@ namespace Pds {
         Allocator *m_allocator; // python uses this interface to use the heap
         // TODO: get rid of m_allocator if not needed
     private:
-        Dgram *m_dg;
-        uint32_t *env;//[3];
+        uint32_t *env;
     };
 
     HsdEventHeaderV1* HsdEventHeaderV1::Create(Allocator *allocator, Dgram* dg, const char* version, const unsigned nChan) {
         if ( strcmp(version, "1.2.3") == 0 )
-            return new Hsd_v1_2_3(allocator, dg, nChan);
+            return new Hsd_v1_2_3(allocator); //, dg, nChan);
         else
             return NULL;
     }

@@ -113,11 +113,14 @@ int main (int argc, char* argv[]) {
 
     XtcFileIterator iter(fd, 0x4000000);
     Dgram* dg;
-    Stack stack;
+    //Stack stack;
+    Heap stack;
 
     dg = iter.next();
     NamesIter namesIter(&dg->xtc);
     namesIter.iterate();
+
+
 
     unsigned counter = 0;
     while ((dg = iter.next())) {
@@ -147,7 +150,8 @@ int main (int argc, char* argv[]) {
         Pds::HSD::HsdEventHeaderV1 *pHsd = pFactory->getHsd();
         Pds::HSD::Hsd_v1_2_3 *vHsd = (Pds::HSD::Hsd_v1_2_3*) pHsd;
         */
-        Pds::HSD::Hsd_v1_2_3 *vHsd = new Pds::HSD::Hsd_v1_2_3(&stack, dg, nChan);
+        Pds::HSD::Hsd_v1_2_3 *vHsd = new Pds::HSD::Hsd_v1_2_3(&stack); //, dg, nChan);
+        vHsd->init(dg->env);
         printf("####### hsd: %u %u %u %u\n", vHsd->samples(), vHsd->streams(), vHsd->channels(), vHsd->sync());
         // iterate over all available channels
         for (std::map<std::string, uint8_t*>::iterator it=hsdIter.chans.begin(); it!=hsdIter.chans.end(); ++it){
@@ -156,6 +160,7 @@ int main (int argc, char* argv[]) {
             printf("npeaks: %d\n", mychan.npeaks());
         }
         //delete pFactory;
+        delete vHsd;
     }
 
     ::close(fd);

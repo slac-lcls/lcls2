@@ -232,6 +232,7 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
             printf("%%%%%%%%%%%%%%%%%%%%%%%\n");
             printf("%d %d %llx %x %x %x\n", l, event_header->evtCounter, event_header->seq.stamp().value(), event_header->env[0], event_header->env[1], event_header->env[2]);
             printf("%u %u\n", (event_header->env[0]>>20)&0xf, (event_header->env[1]>>20)&0xf);
+            printf("datasize: %u\n", data_size);
          }
     }
 }
