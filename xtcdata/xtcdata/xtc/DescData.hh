@@ -5,9 +5,10 @@
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/VarDef.hh"
+#include "xtcdata/xtc/NamesVec.hh"
+#include "xtcdata/xtc/NameIndex.hh"
 
 #include <string>
-#include <map>
 #include <type_traits>
 
 #define _unused(x) ((void)(x))
@@ -16,43 +17,6 @@ namespace XtcData
 {
 
 class VarDef;
-
-typedef std::map<std::string, unsigned> IndexMap;
-
-class NameIndex {
-public:
-    NameIndex(Names& names) {
-        _init_names(names); 
-        unsigned iarray = 0;
-        for (unsigned i=0; i<_names->num(); i++) {
-            Name& name = _names->get(i);
-            _nameMap[std::string(name.name())]=i;
-            if (name.rank()>0) {
-                _shapeMap[std::string(name.name())]=iarray;
-                iarray++;
-            }
-        }
-    }
-    NameIndex(const NameIndex& old) {
-        _init_names(*old._names);
-        _shapeMap = old._shapeMap;
-        _nameMap = old._nameMap;
-    }
-    NameIndex& operator=(const NameIndex& rhs) = delete;
-    ~NameIndex() {free(_names);}
-    IndexMap& shapeMap() {return _shapeMap;}
-    IndexMap& nameMap()  {return _nameMap;}
-    Names& names() {return *_names;}
-private:
-    void _init_names(Names& names) {
-        _names = (Names*)malloc(names.extent);
-        std::memcpy(_names, &names, names.extent);
-    }
-    Names*   _names;
-    IndexMap _shapeMap;
-    IndexMap _nameMap;
-};
-
 
 // this "described data" class glues together the ShapesData
 // with the names (including shapes) to compute offsets.
@@ -178,8 +142,8 @@ public:
 
 protected:
     // creating a new ShapesData to be filled in
-    DescData(NameIndex& nameindex, Xtc& parent, Src& src) :
-        _shapesdata(*new (parent) ShapesData(src)),
+    DescData(NameIndex& nameindex, Xtc& parent, NamesId& namesId) :
+        _shapesdata(*new (parent) ShapesData(namesId)),
         _nameindex(nameindex),
         _numarrays(0)
     {
@@ -190,8 +154,8 @@ protected:
         _numentries=0;
     }
 
-    DescData(NameIndex& nameindex, Xtc& parent, VarDef& V, Src& src) :
-        _shapesdata(*new (parent) ShapesData(src)),
+    DescData(NameIndex& nameindex, Xtc& parent, VarDef& V, NamesId& namesId) :
+        _shapesdata(*new (parent) ShapesData(namesId)),
         _nameindex(nameindex),
         _numarrays(0)
     {
@@ -226,14 +190,14 @@ protected:
 
     class DescribedData : public DescData {
     public:
-        DescribedData(Xtc& parent, NameIndex& nameindex, unsigned namesId, Src& src) :
-            DescData(nameindex, parent, src), _parent(parent), _namesId(namesId)
+        DescribedData(Xtc& parent, NameIndex& nameindex, NamesId& namesId) :
+            DescData(nameindex, parent, namesId), _parent(parent)
         {
             new (&_shapesdata) Data(_parent);
         }
 
-        DescribedData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId, Src& src) :
-            DescData(NamesVec[namesId], parent, src), _parent(parent), _namesId(namesId)
+        DescribedData(Xtc& parent, NamesVec& NamesVec, NamesId& namesId) :
+            DescData(NamesVec[namesId.value()], parent, namesId), _parent(parent)
         {
             new (&_shapesdata) Data(_parent);
         }
@@ -248,7 +212,7 @@ protected:
         void set_array_shape(unsigned index, unsigned shape[MaxRank]) {
             if (_numarrays==0) {
                 // add the xtc that will hold the shapes of arrays
-                Shapes& shapes = *new (&_shapesdata) Shapes(_parent, _namesId);
+                Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
                 shapes.alloc(_nameindex.shapeMap().size()*sizeof(Shape),
                              _shapesdata, _parent);
             }
@@ -257,27 +221,24 @@ protected:
         }
     private:
         Xtc& _parent;
-        unsigned      _namesId;
     };
 
     class CreateData : public DescData {     
     public:
 
-        CreateData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId, Src& src) :
-            //replaced namesindex with namesvec[namesId]
-            DescData(NamesVec[namesId], parent, src), _parent(parent)
+        CreateData(Xtc& parent, NamesVec& NamesVec, NamesId& namesId) :
+            DescData(NamesVec[namesId.value()], parent, namesId), _parent(parent)
         {
-            Shapes& shapes = *new (&_shapesdata) Shapes(_parent, namesId);
+            Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
             Names& names = _nameindex.names();
             shapes.alloc(names.numArrays()*sizeof(Shape), _shapesdata, _parent);
             new (&_shapesdata) Data(_parent);
         }
 
-        CreateData(Xtc& parent, std::vector<NameIndex>& NamesVec, unsigned namesId, VarDef& V, Src& src) :
-            //replaced namesindex with namesvec[namesId]
-            DescData(NamesVec[namesId], parent, V, src), _parent(parent)
+        CreateData(Xtc& parent, NamesVec& NamesVec, VarDef& V, NamesId& namesId) :
+            DescData(NamesVec[namesId.value()], parent, V, namesId), _parent(parent)
         {
-            Shapes& shapes = *new (&_shapesdata) Shapes(_parent, namesId);
+            Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
             Names& names = _nameindex.names();
             shapes.alloc(names.numArrays()*sizeof(Shape), _shapesdata, _parent);
             new (&_shapesdata) Data(_parent);

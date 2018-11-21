@@ -12,10 +12,12 @@ class Src
 {
 public:
     Src();
+    Src(uint32_t value) : _value(value) {}
     Src(Level::Type level);
 
     uint32_t log() const;
     uint32_t phy() const;
+    uint32_t nodeId() const {return _value;}
 
     Level::Type level() const;
     uint32_t    value() const;
@@ -25,11 +27,11 @@ public:
 
     static uint32_t _sizeof();
 
-    void phy(uint32_t value);
+    void phy(uint32_t value) { _value = value; }
 
   protected:
-    uint32_t _log; // logical  identifier
-    uint32_t _phy; // physical identifier
+    uint32_t _log;   // cpo: eliminate this when we change xtc format
+    uint32_t _value;
 };
 
 inline

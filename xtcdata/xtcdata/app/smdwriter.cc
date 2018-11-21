@@ -100,12 +100,13 @@ public:
    }
 } SmdDef;
 
-void addNames(Xtc& parent, std::vector<NameIndex>& namesVec, Src& src) 
+void addNames(Xtc& parent, NamesVec& namesVec, unsigned nodeId)
 {
     Alg alg("offsetAlg",0,0,0);
-    Names& offsetNames = *new(parent) Names("info", alg, "offset", "", src);
+    NamesId namesId(nodeId,0);
+    Names& offsetNames = *new(parent) Names("info", alg, "offset", "", namesId);
     offsetNames.add(parent,SmdDef);
-    namesVec.push_back(NameIndex(offsetNames));
+    namesVec[namesId.value()] = NameIndex(offsetNames);
 }
 
 void usage(char* progname)
@@ -195,10 +196,9 @@ int main(int argc, char* argv[])
   config.xtc.contains = tid;
   config.xtc.damage = 0;
   config.xtc.extent = sizeof(Xtc);
-  std::vector<NameIndex> namesVec;
-  Src src;
-  src.phy(0);
-  addNames(config.xtc, namesVec, src);
+  NamesVec namesVec;
+  unsigned nodeId=0;
+  addNames(config.xtc, namesVec, nodeId);
   if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
     printf("Error writing configure to output xtc file.\n");
     return -1;
@@ -235,8 +235,8 @@ int main(int argc, char* argv[])
         dgOut.seq = dgIn->seq;
     }
 
-    unsigned nameId = 0;
-    CreateData smd(dgOut.xtc, namesVec, nameId, src);
+    NamesId namesId(nodeId,0);
+    CreateData smd(dgOut.xtc, namesVec, namesId);
     smd.set_value(SmdDef::intOffset, nowOffset);
     nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     smd.set_value(SmdDef::intDgramSize, nowDgramSize);

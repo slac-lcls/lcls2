@@ -130,12 +130,13 @@ static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     assert(Py_GETREF(detType)==1);
 }
 
-void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
+void DictAssignAlg(PyDgramObject* pyDgram, NamesVec& namesVec)
 {
     // This function gets called at configure: add attributes "software" and "version" to pyDgram and return
     char baseName[TMPSTRINGSIZE];
 
     for (unsigned i = 0; i < namesVec.size(); i++) {
+        if (!namesVec[i].exists()) continue;
         Names& names = namesVec[i].names();
         Alg& detAlg = names.alg();
         snprintf(baseName,TMPSTRINGSIZE,"%s%s%s",
@@ -306,7 +307,7 @@ class PyConvertIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec) :
+    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, NamesVec& namesVec) :
         XtcIterator(xtc), _pyDgram(pyDgram), _namesVec(namesVec)
     {
     }
@@ -321,7 +322,7 @@ public:
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
-            unsigned namesId = shapesdata.shapes().namesId();
+            unsigned namesId = shapesdata.namesId().value();
             // protect against the fact that this datagram
             // may not have a _namesVec
             if (namesId<_namesVec.size()) {
@@ -337,8 +338,8 @@ public:
     }
 
 private:
-    PyDgramObject*          _pyDgram;
-    std::vector<NameIndex>& _namesVec; // need one of these for each source
+    PyDgramObject* _pyDgram;
+    NamesVec&      _namesVec;
 };
 
 void AssignDict(PyDgramObject* self, PyObject* configDgram) {

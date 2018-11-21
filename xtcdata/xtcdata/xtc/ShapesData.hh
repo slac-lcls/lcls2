@@ -11,6 +11,7 @@
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/NamesId.hh"
 
 namespace XtcData {
 
@@ -123,7 +124,7 @@ class AutoParentAlloc : public Xtc
 {
 public:
     AutoParentAlloc(TypeId typeId) : Xtc(typeId) {}
-    AutoParentAlloc(TypeId typeId, Src& src) : Xtc(typeId,src) {}
+    AutoParentAlloc(TypeId typeId, NamesId& namesId) : Xtc(typeId,namesId) {}
     void* alloc(uint32_t size, Xtc& parent) {
         parent.alloc(size);
         return Xtc::alloc(size);
@@ -174,14 +175,16 @@ class Names : public AutoParentAlloc
 public:
 
 
-    Names(const char* detName, Alg& alg, const char* detType, const char* detId, Src& src, unsigned segment=0) :
-        AutoParentAlloc(TypeId(TypeId::Names,0),src),
+    Names(const char* detName, Alg& alg, const char* detType, const char* detId, NamesId& namesId, unsigned segment=0) :
+        AutoParentAlloc(TypeId(TypeId::Names,0),namesId),
         _NameInfo(detName, alg, detType, detId, segment)
     {
 
         // allocate space for our private data
         Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
+
+    NamesId& namesId() {return (NamesId&)src;}
 
     uint32_t numArrays(){return _NameInfo.numArrays;}; 
     const char* detName() {return _NameInfo.detName;}
@@ -234,9 +237,8 @@ public:
 class Shapes : public AutoParentAlloc
 {
 public:
-    Shapes(Xtc& superparent, uint32_t namesId) :
-        AutoParentAlloc(TypeId(TypeId::Shapes,0)),
-        _namesId(namesId)
+    Shapes(Xtc& superparent) :
+        AutoParentAlloc(TypeId(TypeId::Shapes,0))
     {
         // allocate space for our private data
         Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
@@ -249,16 +251,17 @@ public:
         Shape& shape = ((Shape*)(this + 1))[index];
         return shape;
     }
-    uint32_t namesId() {return _namesId;}
 private:
-    // associated numerical index of the Names object in the configure transition
-    uint32_t _namesId;
+    // cpo: remove this when we change the xtc format.
+    uint32_t _unused;
 };
 
 class ShapesData : public Xtc
 {
 public:
-    ShapesData(Src& src) : Xtc(TypeId(TypeId::ShapesData,0),src) {}
+    ShapesData(NamesId& namesId) : Xtc(TypeId(TypeId::ShapesData,0),namesId) {}
+
+    NamesId& namesId() {return (NamesId&)src;}
 
     Data& data()
     {

@@ -11,7 +11,9 @@ int NamesIter::process(Xtc* xtc)
         break;
     }
     case (TypeId::Names): {
-        _namesVec.push_back(NameIndex(*(Names*)xtc));
+        Names& names = *(Names*)xtc;
+        unsigned namesId = names.namesId().value();
+        _namesVec[namesId] = NameIndex(names);
         break;
     }
     default:

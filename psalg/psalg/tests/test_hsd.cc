@@ -20,6 +20,7 @@
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/NamesVec.hh"
 
 #include "xtcdata/xtc/NamesIter.hh"
 
@@ -38,7 +39,7 @@ class HsdIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    HsdIter(Xtc* xtc, std::vector<NameIndex>& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
+    HsdIter(Xtc* xtc, NamesVec& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
     {
     }
 
@@ -53,7 +54,7 @@ public:
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
-            unsigned namesId = shapesdata.shapes().namesId();
+            unsigned namesId = shapesdata.namesId().value();
             DescData descdata(shapesdata, _namesVec[namesId]);
             Names& names = descdata.nameindex().names();
 
@@ -74,7 +75,7 @@ public:
         }
         return Continue;
     }
-    std::vector<NameIndex>& _namesVec;
+    NamesVec& _namesVec;
 
 
 public:
