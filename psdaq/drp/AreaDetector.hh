@@ -1,21 +1,20 @@
 #ifndef AREA_DETECTOR_H
 #define AREA_DETECTOR_H
 
-#include <vector>
 #include "drp.hh"
 #include "Detector.hh"
 #include "xtcdata/xtc/Xtc.hh"
-#include "xtcdata/xtc/ShapesData.hh"
-#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/NamesVec.hh"
 
 class AreaDetector : public Detector
 {
 public:
-    AreaDetector(unsigned src);
+    AreaDetector(unsigned nodeId);
     virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data);
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
 private:
-    std::vector<XtcData::NameIndex> m_namesVec;
+    enum {RawNamesIndex, FexNamesIndex};
+    XtcData::NamesVec m_namesVec;
     unsigned m_evtcount;
 };
 

@@ -1,19 +1,24 @@
 #ifndef DETECTORS_H
 #define DETECTORS_H
 
-#include <string>
-#include <unordered_map>
 #include "xtcdata/xtc/Dgram.hh"
-#include "xtcdata/xtc/Src.hh"
+#include "xtcdata/xtc/NamesId.hh"
+#include "xtcdata/xtc/NamesVec.hh"
+
+#include <string>
+#include <vector>
+#include <unordered_map>
 
 class Detector
 {
 public:
     virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
-    Detector(unsigned src) {_src.phy(src);}
+    Detector(unsigned nodeId) : m_nodeId(nodeId) {}
 protected:
-    XtcData::Src _src;
+    std::vector<XtcData::NamesId> m_namesId;
+    XtcData::NamesVec             m_namesVec;
+    unsigned                      m_nodeId;
 };
 
 template <typename T>
@@ -41,7 +46,7 @@ private:
     template <typename TDerived>
     static T* createFunc()
     {
-        return new TDerived(0); // FIXME: kludged zero for the Src - cpo
+        return new TDerived(0); // FIXME: kludged zero for the nodeId - cpo
     }
 
     typedef T* (*PCreateFunc)();

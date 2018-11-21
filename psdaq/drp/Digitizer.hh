@@ -5,18 +5,18 @@
 #include "drp.hh"
 #include "Detector.hh"
 #include "xtcdata/xtc/Xtc.hh"
-#include "xtcdata/xtc/ShapesData.hh"
-#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/NamesId.hh"
 
 class Digitizer : public Detector
 {
 public:
-    Digitizer(unsigned src);
+    Digitizer(unsigned nodeId);
     virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data);
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
 private:
-    std::vector<XtcData::NameIndex> m_namesVec;
-    unsigned m_evtcount;
+    enum {ConfigNamesIndex, EventNamesIndex};
+    unsigned          m_evtcount;
+    XtcData::NamesId  m_evtNamesId;
 };
 
 #endif // DIGITIZER_H

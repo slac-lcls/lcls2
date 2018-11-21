@@ -46,6 +46,7 @@ public:
         }
         _shapeMap = rhs._shapeMap;
         _nameMap = rhs._nameMap;
+        return *this;
     }
     ~NameIndex() {if (_names) free(_names);}
     IndexMap& shapeMap() {return _shapeMap;}

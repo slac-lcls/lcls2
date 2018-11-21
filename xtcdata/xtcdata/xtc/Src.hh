@@ -27,7 +27,7 @@ public:
 
     static uint32_t _sizeof();
 
-    void phy(uint32_t value) { _value = value; }
+    void phy(uint32_t value);
 
   protected:
     uint32_t _log;   // cpo: eliminate this when we change xtc format
@@ -36,7 +36,7 @@ public:
 
 inline
 XtcData::Src::Src() : _log(std::numeric_limits<uint32_t>::max()),
-                      _phy(std::numeric_limits<uint32_t>::max())
+                      _value(std::numeric_limits<uint32_t>::max())
 {
 }
 inline
@@ -54,12 +54,12 @@ uint32_t XtcData::Src::log() const
 inline
 uint32_t XtcData::Src::phy() const
 {
-    return _phy;
+    return _value;
 }
 inline
 void XtcData::Src::phy(uint32_t value)
 {
-    _phy = value;
+    _value = value;
 }
 inline
 XtcData::Level::Type XtcData::Src::level() const
@@ -75,12 +75,12 @@ uint32_t XtcData::Src::value() const
 inline
 bool XtcData::Src::operator==(const XtcData::Src& s) const
 {
-    return _phy == s._phy && _log == s._log;
+    return _value == s._value && _log == s._log;
 }
 inline
 bool XtcData::Src::operator<(const XtcData::Src& s) const
 {
-    return (_phy < s._phy) || ((_phy == s._phy) && (_log < s._log));
+    return (_value < s._value) || ((_value == s._value) && (_log < s._log));
 }
 
 inline

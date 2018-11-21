@@ -106,7 +106,7 @@ void addNames(Xtc& parent, NamesVec& namesVec, unsigned nodeId)
     NamesId namesId(nodeId,0);
     Names& offsetNames = *new(parent) Names("info", alg, "offset", "", namesId);
     offsetNames.add(parent,SmdDef);
-    namesVec[namesId.value()] = NameIndex(offsetNames);
+    namesVec[namesId] = NameIndex(offsetNames);
 }
 
 void usage(char* progname)

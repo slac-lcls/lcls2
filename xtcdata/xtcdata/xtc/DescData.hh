@@ -197,7 +197,7 @@ protected:
         }
 
         DescribedData(Xtc& parent, NamesVec& NamesVec, NamesId& namesId) :
-            DescData(NamesVec[namesId.value()], parent, namesId), _parent(parent)
+            DescData(NamesVec[namesId], parent, namesId), _parent(parent)
         {
             new (&_shapesdata) Data(_parent);
         }
@@ -227,7 +227,7 @@ protected:
     public:
 
         CreateData(Xtc& parent, NamesVec& NamesVec, NamesId& namesId) :
-            DescData(NamesVec[namesId.value()], parent, namesId), _parent(parent)
+            DescData(NamesVec[namesId], parent, namesId), _parent(parent)
         {
             Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
             Names& names = _nameindex.names();
@@ -236,7 +236,7 @@ protected:
         }
 
         CreateData(Xtc& parent, NamesVec& NamesVec, VarDef& V, NamesId& namesId) :
-            DescData(NamesVec[namesId.value()], parent, V, namesId), _parent(parent)
+            DescData(NamesVec[namesId], parent, V, namesId), _parent(parent)
         {
             Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
             Names& names = _nameindex.names();

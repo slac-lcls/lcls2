@@ -12,7 +12,11 @@ class NamesVec
 {
 public:
     NamesVec() : _namesVec(NamesId::NumberOf) {}
-    NameIndex& operator[] (int i) {
+    NameIndex& operator[] (NamesId namesId) {
+        assert (namesId.value()<_namesVec.size());
+        return _namesVec[namesId.value()];
+    }
+    NameIndex& operator[] (unsigned i) {
         assert (i<_namesVec.size());
         return _namesVec[i];
     }

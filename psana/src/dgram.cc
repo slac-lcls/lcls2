@@ -322,7 +322,7 @@ public:
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
-            unsigned namesId = shapesdata.namesId().value();
+            NamesId namesId = shapesdata.namesId();
             // protect against the fact that this datagram
             // may not have a _namesVec
             if (namesId<_namesVec.size()) {

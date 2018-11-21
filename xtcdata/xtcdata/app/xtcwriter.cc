@@ -224,7 +224,7 @@ public:
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
-            unsigned namesId = shapesdata.namesId().value();
+            NamesId& namesId = shapesdata.namesId();
             DescData descdata(shapesdata, _namesVec[namesId]);
             Names& names = descdata.nameindex().names();
 	    //   printf("Found %d names\n",names.num());
@@ -355,13 +355,13 @@ void addNames(Xtc& xtc, NamesVec& namesVec, unsigned& nodeId) {
     NamesId namesId0(nodeId,0);
     Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", namesId0);
     frontEndNames.add(xtc,PgpDef);
-    namesVec[namesId0.value()] = NameIndex(frontEndNames);
+    namesVec[namesId0] = NameIndex(frontEndNames);
 
     Alg hsdFexAlg("fex",4,5,6);
     NamesId namesId1(nodeId,1);
     Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", namesId1);
     fexNames.add(xtc, FexDef);
-    namesVec[namesId1.value()] = NameIndex(fexNames);
+    namesVec[namesId1] = NameIndex(fexNames);
 
     unsigned segment = 0;
     Alg cspadRawAlg("raw",2,3,42);
@@ -369,7 +369,7 @@ void addNames(Xtc& xtc, NamesVec& namesVec, unsigned& nodeId) {
     Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", namesId2, segment);
     Alg segmentAlg("cspadseg",2,3,42);
     padNames.add(xtc, PadDef);
-    namesVec[namesId2.value()] = NameIndex(padNames);
+    namesVec[namesId2] = NameIndex(padNames);
 }
 
 void addData(Xtc& xtc, NamesVec& namesVec, unsigned nodeId) {

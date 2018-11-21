@@ -1,6 +1,7 @@
 #include "Digitizer.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/NamesVec.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
 
@@ -53,7 +54,7 @@ class HsdIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    HsdIter(Xtc* xtc, std::vector<NameIndex>& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
+    HsdIter(Xtc* xtc, NamesVec& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
     {
     }
 
@@ -68,7 +69,7 @@ public:
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
-            unsigned namesId = shapesdata.shapes().namesId();
+            NamesId& namesId = shapesdata.namesId();
             DescData descdata(shapesdata, _namesVec[namesId]);
             Names& names = descdata.nameindex().names();
 
@@ -89,17 +90,17 @@ public:
         }
         return Continue;
     }
-    std::vector<NameIndex>& _namesVec;
+    NamesVec& _namesVec;
 
 
 public:
     std::map <std::string, uint8_t*> chans;
 };
 
-Digitizer::Digitizer(unsigned src) : Detector(src), m_evtcount(0) {
+Digitizer::Digitizer(unsigned nodeId) : Detector(nodeId), m_evtcount(0), m_evtNamesId(nodeId, EventNamesIndex) {
 }
 
-unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
+unsigned addJson(Xtc& xtc, NamesVec& namesVec, NamesId& configNamesId) {
 
     FILE* file;
     Py_Initialize();
@@ -129,18 +130,19 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
 
     Alg hsdConfigAlg(software.GetString(),version[0].GetInt(),version[1].GetInt(),version[2].GetInt());
     Names& configNames = *new(xtc) Names(ninfo_software.GetString(), hsdConfigAlg,
-                                         ninfo_detector.GetString(), ninfo_serialNum.GetString(), src);
+                                         ninfo_detector.GetString(), ninfo_serialNum.GetString(), configNamesId);
     configNames.add(xtc, myHsdConfigDef);
-    namesVec.push_back(NameIndex(configNames));
+    namesVec[configNamesId] = NameIndex(configNames);
+    printf("Done configNames\n");
 
-    unsigned namesId = 0;
-    CreateData fex(xtc, namesVec, namesId, src); //FIXME: avoid hardwiring nameId
+    CreateData config(xtc, namesVec, configNamesId);
 
     // TODO: dynamically discover
 
     Value& enable = d["xtc"]["ENABLE"];
     unsigned shape[MaxRank] = {enable.Size()};
-    Array<uint64_t> arrayT = fex.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
+    printf("enable: %d\n", shape[0]);
+    Array<uint64_t> arrayT = config.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
     unsigned lane_mask = 0;
     for(unsigned i=0; i<shape[0]; i++){
         arrayT(i) = (uint64_t) enable[i].GetInt();
@@ -149,7 +151,8 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
 
     Value& raw_prescale = d["xtc"]["RAW_PS"];
     shape[MaxRank] = {raw_prescale.Size()};
-    Array<uint64_t> arrayT1 = fex.allocate<uint64_t>(HsdConfigDef::raw_prescale,shape); //FIXME: figure out avoiding hardwired zero
+    printf("raw_ps shape: %d\n", shape[0]);
+    Array<uint64_t> arrayT1 = config.allocate<uint64_t>(HsdConfigDef::raw_prescale,shape); //FIXME: figure out avoiding hardwired zero
     for(unsigned i=0; i<shape[0]; i++){
         arrayT1(i) = (uint64_t) raw_prescale[i].GetInt();
     };
@@ -165,14 +168,15 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
     memcpy(&dgram, event_header, sizeof(Transition));
 
     unsigned lane_mask;
-    lane_mask = addJson(dgram.xtc, m_namesVec, _src);
+    NamesId configNamesId(m_nodeId,ConfigNamesIndex);
+    lane_mask = addJson(dgram.xtc, m_namesVec, configNamesId);
 
     Alg hsdAlg("hsd", 1, 2, 3); // TODO: shouldn't this be configured by hsdconfig.py?
     unsigned segment = 0;
-    Names& dataNames = *new(dgram.xtc) Names("xpphsd", hsdAlg, "hsd", "detnum1235", _src, segment);
+    Names& eventNames = *new(dgram.xtc) Names("xpphsd", hsdAlg, "hsd", "detnum1235", m_evtNamesId, segment);
     HsdDef myHsdDef(lane_mask);
-    dataNames.add(dgram.xtc, myHsdDef);
-    m_namesVec.push_back(NameIndex(dataNames));
+    eventNames.add(dgram.xtc, myHsdDef);
+    m_namesVec[m_evtNamesId] = NameIndex(eventNames);
 
     HsdIter hsdIter(&dgram.xtc, m_namesVec);
     hsdIter.iterate();
@@ -183,11 +187,10 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
 {
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    unsigned namesId=1;
     Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
 
     memcpy(&dgram, event_header, sizeof(Transition));
-    CreateData hsd(dgram.xtc, m_namesVec, namesId, _src);
+    CreateData hsd(dgram.xtc, m_namesVec, m_evtNamesId);
 
     unsigned data_size;
     unsigned shape[MaxRank];
