@@ -18,7 +18,7 @@ target_link_libraries(utils
 )
 
 target_include_directories(utils PUBLIC
-    ../../../aes-stream-drivers/include
+    ../psdaq/pgp/aes-stream-drivers/include
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
