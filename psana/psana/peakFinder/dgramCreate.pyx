@@ -184,7 +184,7 @@ cdef class PyBlockDgram:
     def addNamesBlock(self, PyNameBlock pyn, nodeId, namesId):
         self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct, nodeId, namesId)
 
-    def addShapesDataBlock(self, PyShapeBlock pys, PyDataBlock pyd, nodeId, namesId):
+    def addShapesDataBlock(self, PyShapesBlock pys, PyDataBlock pyd, nodeId, namesId):
         if pys.ct>0:
             self.cptr.addShapesDataBlock(pys.cptr_start, pyd.cptr_start, pyd.get_bytes(), pys.ct, nodeId, namesId)
         else:
@@ -261,15 +261,16 @@ cdef class PyNameBlock:
         free(self.cptr_start)
 
 
-cdef class PyShapeBlock:
+cdef class PyShapesBlock:
     cdef cnp.uint8_t* cptr
     cdef cnp.uint8_t* cptr_start
     cdef ct
 
-    def __cinit__(self, cnp.uint32_t namesId, int num_elems):
+    def __cinit__(self, int num_elems):
+        # cpo need to eliminate the cnp.uint32_t when we get rid of it
+        # in class Shapes
         self.cptr = <cnp.uint8_t*> malloc(sizeof(cnp.uint32_t)+num_elems*sizeof(Shape))
         self.cptr_start = self.cptr
-        memcpy(self.cptr, &namesId, sizeof(cnp.uint32_t))
         self.cptr += sizeof(cnp.uint32_t)
         self.ct = 0
     def addShape(self,  cnp.ndarray[cnp.uint32_t, ndim=1, mode="c"] shape):
@@ -320,7 +321,7 @@ class CyDgram():
         if num_elem == 0:
             return False, "No elements added"
 
-        py_shape = PyShapeBlock(nameinfo.namesId, num_elem)
+        py_shapes = PyShapesBlock(num_elem)
         py_name = PyNameBlock(num_elem)
         py_data = PyDataBlock()
 
@@ -352,12 +353,12 @@ class CyDgram():
             # Copy the shape to the block
             if array_rank > 0:
                 num_arrays += 1
-                py_shape.addShape(array_size_pad)
+                py_shapes.addShape(array_size_pad)
             py_data.addData(arr)
 
         py_nameinfo = PyNameInfo(nameinfo.detName, basealg, nameinfo.detType, nameinfo.detId, num_arrays)
         py_name.addNameInfo(py_nameinfo)
-        self.config_block.append([py_name, py_shape, py_data, nameinfo.namesId])
+        self.config_block.append([py_name, py_shapes, py_data, nameinfo.namesId])
 
     # the user calls this via get() which constructs the datagram header
     # with the specified timestamp, pulseId and transitionId.
