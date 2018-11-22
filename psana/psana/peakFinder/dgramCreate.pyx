@@ -128,9 +128,9 @@ cdef extern from 'xtcdata/xtc/BlockDgram.hh' namespace "XtcData":
     cdef cppclass BlockDgram:
         BlockDgram(void* buffdgram, cnp.uint64_t tstamp, cnp.uint64_t pulseId, unsigned transitionId)
 
-        void addNamesBlock(cnp.uint8_t* name_block, size_t block_elems)
+        void addNamesBlock(cnp.uint8_t* name_block, size_t block_elems, unsigned nodeId, unsigned namesId)
         void addShapesDataBlock(cnp.uint8_t* shape_block, cnp.uint8_t* data_block,\
-                           size_t sizeofdata, size_t block_elems)
+                           size_t sizeofdata, size_t block_elems, unsigned nodeId, unsigned namesId)
 
         void addDataBlock(cnp.uint8_t* data_block,size_t sizeofdata)
 
@@ -181,12 +181,12 @@ cdef class PyBlockDgram:
         self.buffer  = <cnp.uint8_t*> malloc(self.buffer_size)
         self.cptr = new BlockDgram(self.buffer, tstamp, pulseId, transitionId)
 
-    def addNamesBlock(self, PyNameBlock pyn):
-        self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct)
+    def addNamesBlock(self, PyNameBlock pyn, nodeId, namesId):
+        self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct, nodeId, namesId)
 
-    def addShapesDataBlock(self, PyShapeBlock pys, PyDataBlock pyd):
+    def addShapesDataBlock(self, PyShapeBlock pys, PyDataBlock pyd, nodeId, namesId):
         if pys.ct>0:
-            self.cptr.addShapesDataBlock(pys.cptr_start, pyd.cptr_start, pyd.get_bytes(), pys.ct)
+            self.cptr.addShapesDataBlock(pys.cptr_start, pyd.cptr_start, pyd.get_bytes(), pys.ct, nodeId, namesId)
         else:
             self.cptr.addDataBlock(pyd.cptr_start, pyd.get_bytes())
 
@@ -357,7 +357,7 @@ class CyDgram():
 
         py_nameinfo = PyNameInfo(nameinfo.detName, basealg, nameinfo.detType, nameinfo.detId, num_arrays)
         py_name.addNameInfo(py_nameinfo)
-        self.config_block.append([py_name, py_shape, py_data])
+        self.config_block.append([py_name, py_shape, py_data, nameinfo.namesId])
 
     # the user calls this via get() which constructs the datagram header
     # with the specified timestamp, pulseId and transitionId.
@@ -366,13 +366,18 @@ class CyDgram():
     def constructBlock(self, tstamp, pulseId, transitionId):
         self.pydgram = PyBlockDgram(tstamp, pulseId, transitionId)
 
+        # this line restricts us to writing out files that do not
+        # have event-built datagrams (where the nodeId's must
+        # be different - cpo
+        nodeId = 0
+
         if self.write_configure:
-            for name, _, _ in self.config_block:
-                self.pydgram.addNamesBlock(name)
+            for name, _, _, namesId in self.config_block:
+                self.pydgram.addNamesBlock(name, nodeId, namesId)
             self.write_configure = False
 
-        for _, shape, data in self.config_block:
-            self.pydgram.addShapesDataBlock(shape, data)
+        for _, shape, data, namesId in self.config_block:
+            self.pydgram.addShapesDataBlock(shape, data, nodeId, namesId)
      # def writeToFile(self):
      #    if self.config_block:
      #        self.constructBlock()
