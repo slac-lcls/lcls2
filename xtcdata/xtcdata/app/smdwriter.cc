@@ -125,8 +125,9 @@ int main(int argc, char* argv[])
   char* tsname = 0;
   char* xtcname = 0;
   int parseErr = 0;
+  size_t n_events = 0;
 
-  while ((c = getopt(argc, argv, "ht:f:")) != -1) {
+  while ((c = getopt(argc, argv, "htn:f:")) != -1) {
     switch (c) {
       case 'h':
         usage(argv[0]);
@@ -134,6 +135,9 @@ int main(int argc, char* argv[])
       case 't':
         writeTs = 1;
         tsname = optarg;
+        break;
+      case 'n':
+        n_events = stoi(optarg);
         break;
       case 'f':
         xtcname = optarg;
@@ -209,6 +213,9 @@ int main(int argc, char* argv[])
   uint64_t pulseId = 0;
 
   printf("\nStart writing offsets.\n"); 
+  if (n_events > 0) {
+  }
+
   while ((dgIn = iter.next())) {
     Dgram& dgOut = *(Dgram*)buf;
     TypeId tid(TypeId::Parent, 0);
@@ -252,8 +259,17 @@ int main(int argc, char* argv[])
     // Update the offset
     nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     eventId++;
-  }
-  printf("Finished writing smd for %u events\n", eventId);
+
+    if (n_events > 0) {
+        if (eventId - 1 >= n_events) {
+            cout << "Stop writing. The option -n (no. of events) was set to " << n_events << endl;
+            break;
+        }
+    }
+
+  }// end while((dgIn...
+
+  cout << "Finished writing smd for " << eventId - 1 << " events. Big data file size (B): " << nowOffset << endl;
   fclose(xtcFile);
   ::close(fd);
   
