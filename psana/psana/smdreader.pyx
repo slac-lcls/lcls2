@@ -3,6 +3,7 @@ from libc.string cimport memcpy
 from posix.unistd cimport read
 from cython.parallel import parallel, prange
 import numpy as np
+import time
 
 cimport cython
 
@@ -39,6 +40,7 @@ cdef class SmdReader:
     cdef unsigned long limit_ts
     cdef size_t dgram_size
     cdef size_t xtc_size
+    cdef double dt_get_init, dt_get_dgram, dt_reread, dt_sub_reread
     
     def __init__(self, fds):
         self.chunksize = 0x100000
@@ -52,6 +54,10 @@ cdef class SmdReader:
         self.limit_ts = 1
         self.dgram_size = sizeof(Dgram)
         self.xtc_size = sizeof(Xtc)
+        self.dt_get_init = 0
+        self.dt_get_dgram = 0
+        self.dt_reread = 0
+        self.dt_sub_reread = 0
 
     def __dealloc__(self):
         # FIXME with cppclass?
@@ -108,12 +114,11 @@ cdef class SmdReader:
         self.bufs[buf_id].offset = self.bufs[buf_id].prev_offset - self.bufs[buf_id].block_offset
         self.bufs[buf_id].block_offset = 0
 
-    cdef inline void _reread(self) nogil:
-        cdef int idx = 0
-        for idx in prange(self.nfiles, nogil=True):
-            self._read_partial(idx)
-
     def get(self, unsigned n_events = 1):
+        cdef double st_init, en_init, st_get_dgram, en_get_dgram, st_reread, en_reread, st_sub_reread, en_sub_reread
+
+        st_init = time.time()
+
         if not self.bufs:
             self.bufs = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
             self._init_buffers()
@@ -131,6 +136,10 @@ cdef class SmdReader:
         cdef unsigned long current_max_ts = 0
         cdef int current_winner = 0
         cdef unsigned current_got_events = 0
+        cdef int idx = 0
+        
+        en_init = time.time()
+        self.dt_get_init += en_init - st_init
 
         while self.got_events < n_events and self.bufs[winner].got > 0:
             for i in range(i_st, self.nfiles):
@@ -158,7 +167,6 @@ cdef class SmdReader:
                 if needs_reread:
                     i_st = i # start with the current buffer
                     break
-                
 
                 # remember previous offsets in case reread is needed
                 self.bufs[i].prev_offset = self.bufs[i].offset
@@ -170,10 +178,15 @@ cdef class SmdReader:
                 if self.bufs[i].nevents > current_got_events:
                     current_got_events = self.bufs[i].nevents
 
-                
+            
+            st_reread = time.time()
             # shift and reread in parallel
             if needs_reread:
-                self._reread()
+                st_sub_reread = time.time()
+                for idx in prange(self.nfiles, nogil=True):
+                    self._read_partial(idx)
+                en_sub_reread = time.time()
+                self.dt_sub_reread += en_sub_reread - st_sub_reread
                 needs_reread = 0
             else:
                 i_st = 0 # make sure that unless reread, always start with buffer 0
@@ -181,6 +194,8 @@ cdef class SmdReader:
                 self.limit_ts = current_max_ts + 1
                 self.got_events = current_got_events
                 current_got_events = 0
+            en_reread = time.time()
+            self.dt_reread += en_reread - st_reread
 
     def view(self, int buf_id):
         cdef size_t block_size = self.bufs[buf_id].offset - self.bufs[buf_id].block_offset
@@ -193,3 +208,19 @@ cdef class SmdReader:
     @property
     def got_events(self):
         return self.got_events
+
+    @property
+    def dt_get_init(self):
+        return self.dt_get_init
+
+    @property
+    def dt_get_dgram(self):
+        return self.dt_get_dgram
+
+    @property
+    def dt_reread(self):
+        return self.dt_reread
+
+    @property
+    def dt_sub_reread(self):
+        return self.dt_sub_reread
