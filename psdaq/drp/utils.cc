@@ -63,11 +63,34 @@ long read_infiniband_counter(const char* counter)
     }
 }
 
+class Rate
+{
+public:
+    Rate()
+    {
+        value = 0.0;
+        time = std::chrono::steady_clock::now();
+    }
+
+    double operator() (double new_value)
+    {
+        auto new_time = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(new_time - time).count();
+        double rate = (new_value - value) / duration * 1.0e6;
+        value = new_value;
+        time = new_time;
+        return rate;
+    }
+private:
+    double value;
+    std::chrono::time_point<std::chrono::steady_clock> time;
+};
+
 void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContributor& ebCtrb)
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUB);
-    zmq_connect(socket, "tcp://psdev7b:5559");
+    zmq_connect(socket, "tcp://psmetric04:5559");
     char buffer[4096];
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
@@ -91,39 +114,35 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContribut
             break;
         }
         int64_t new_count = c->event_count;
+        // int buffer_queue_size = pool.dma.buffer_queue.guess_size();
         long port_rcv_data = read_infiniband_counter("port_rcv_data");
         long port_xmit_data = read_infiniband_counter("port_xmit_data");
 
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t - oldt).count();
-        double data_rate = double(new_bytes - old_bytes) / duration;
-        double event_rate = double(new_count - old_count) / duration * 1.0e3;
-        printf("Event rate:      %.2f kHz  Data rate  %.2f MB/s\nCollector queue:  %u  Used batches    %d\n",
-                event_rate, data_rate,
-                pool.collector_queue.guess_size(),
-                ebCtrb.inFlightCnt());
-
+        double seconds = duration / 1.0e6;
+        double data_rate = double(new_bytes - old_bytes) / seconds;
+        double event_rate = double(new_count - old_count) / seconds;
         // Inifiband counters are divided by 4 (lanes) https://community.mellanox.com/docs/DOC-2751
-        double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / duration;
-        double xmit_rate = 4.0*double(port_xmit_data - old_port_xmit_data) / duration;
+        double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / seconds;
+        double xmit_rate = 4.0*double(port_xmit_data - old_port_xmit_data) / seconds;
 
-        time_t rawtime;
-        tm* timeinfo;
-        time (&rawtime);
-        timeinfo = localtime(&rawtime);
-
-        char time_buffer[80];
-        strftime(time_buffer, 80, "%Y-%m-%d %H:%M:%S", timeinfo);
-
-        int size = snprintf(buffer, 4096,
-                R"({"host": "%s", "x": "%s", "data": {"event_rate": [%f], "data_rate": [%f], "rcv_rate": [%f], "xmit_rate": [%f], "used_batches": [%d]}})",
-                            hostname, time_buffer, event_rate, data_rate, rcv_rate, xmit_rate, ebCtrb.inFlightCnt());
-
-        /*
- "event_rate": [%f], "data_rate": [%f], "buffer_queue": [%d], "output_queue": [%d], "rcv_rate": [%f], "xmit_rate": [%f]}])",
-                hostname, epoch, event_rate, data_rate, buffer_queue_size, output_queue_size, rcv_rate, xmit_rate);
-                */
+        int partition = 2; // FIXME
+        int size = snprintf(buffer, 4096, "drp_event_rate,host=%s,partition=%d %f",
+                            hostname, partition, event_rate);
         zmq_send(socket, buffer, size, 0);
-        // printf("%s\n", buffer);
+
+        size = snprintf(buffer, 4096, "drp_data_rate,host=%s,partition=%d %f",
+                        hostname, partition, data_rate);
+        zmq_send(socket, buffer, size, 0);
+
+        size = snprintf(buffer, 4096, "drp_xmit_rate,host=%s,partition=%d %f",
+                        hostname, partition, xmit_rate);
+        zmq_send(socket, buffer, size, 0);
+
+        size = snprintf(buffer, 4096, "drp_rcv_rate,host=%s,partition=%d %f",
+                        hostname, partition, rcv_rate);
+        zmq_send(socket, buffer, size, 0);
+
         old_bytes = new_bytes;
         old_count = new_count;
         old_port_rcv_data = port_rcv_data;
