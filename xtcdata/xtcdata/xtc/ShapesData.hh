@@ -241,6 +241,7 @@ public:
         AutoParentAlloc(TypeId(TypeId::Shapes,0))
     {
         // allocate space for our private data
+        // not strictly necessary since we currently have no private data.
         Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
         // go two levels up to "auto-alloc" Shapes size
         superparent.alloc(sizeof(*this));
@@ -251,9 +252,6 @@ public:
         Shape& shape = ((Shape*)(this + 1))[index];
         return shape;
     }
-private:
-    // cpo: remove this when we change the xtc format.
-    uint32_t _unused;
 };
 
 class ShapesData : public Xtc

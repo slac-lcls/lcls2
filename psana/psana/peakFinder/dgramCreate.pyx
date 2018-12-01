@@ -267,11 +267,8 @@ cdef class PyShapesBlock:
     cdef ct
 
     def __cinit__(self, int num_elems):
-        # cpo need to eliminate the cnp.uint32_t when we get rid of it
-        # in class Shapes
-        self.cptr = <cnp.uint8_t*> malloc(sizeof(cnp.uint32_t)+num_elems*sizeof(Shape))
+        self.cptr = <cnp.uint8_t*> malloc(num_elems*sizeof(Shape))
         self.cptr_start = self.cptr
-        self.cptr += sizeof(cnp.uint32_t)
         self.ct = 0
     def addShape(self,  cnp.ndarray[cnp.uint32_t, ndim=1, mode="c"] shape):
         newShape = new Shape(<cnp.uint32_t*>shape.data)
