@@ -451,11 +451,17 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->contInfo.pycontainertype = PyObject_GetAttrString(self->contInfo.containermod,"Container");
 
     if (!isView) {
-        PyObject* arglist = Py_BuildValue("(i)",BUFSIZE);
+        //PyObject* arglist = Py_BuildValue("(i)",BUFSIZE);
         // I believe this memsets the buffer to 0, which we don't need.
         // Perhaps ideally we would write a custom object to avoid this. - cpo
-        self->dgrambytes = PyObject_CallObject((PyObject*)&PyByteArray_Type, arglist);
-        Py_DECREF(arglist);
+        //self->dgrambytes = PyObject_CallObject((PyObject*)&PyByteArray_Type, arglist);
+        //Py_DECREF(arglist);
+
+        // Use c-level api to create PyByteArray to avoid memset - mona
+        self->dgrambytes = PyByteArray_FromStringAndSize(NULL, BUFSIZE);
+        if (self->dgrambytes == NULL) {
+            return -1;
+        }
         self->dgram = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
     } else {
         // this next line is needed because arrays will increase the reference count
