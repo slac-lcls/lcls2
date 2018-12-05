@@ -53,6 +53,7 @@ cdef class EventBuilder:
         cdef unsigned got = 0
         cdef int add_ok = 0
         batch = bytearray()
+        event_sizes = [] 
         while got < batch_size and self._has_more():
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
@@ -65,7 +66,6 @@ cdef class EventBuilder:
                     self.dgram_sizes[i] = memoryview(d).shape[0]
 
             sorted_smd_id = np.argsort(self.timestamps)
-            event_sizes = [] 
             for smd_id in sorted_smd_id:
                 if self.timestamps[smd_id] == 0:
                     continue
@@ -113,7 +113,6 @@ cdef class EventBuilder:
                 
         
         self.nevents = got
-
         if self.nevents > 0:
             pf = PacketFooter(self.nevents)
             for i in range(self.nevents):
