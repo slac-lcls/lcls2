@@ -58,6 +58,39 @@ class hsd_hsd_1_2_3(cyhsd_hsd_1_2_3, Detector):
         Detector.__init__(self, dgramlist)
         cyhsd_hsd_1_2_3.__init__(self)
 
+class waveform:
+    """
+    This is a waveform object.
+
+    Possible attributes (if the data exists in the event):
+    ch0:    waveform intensity from channel 0
+    ch1:    waveform intensity from channel 1
+    ...
+    ch16:   waveform intensity from channel 16
+    times:  time axis (s)
+    """
+
+    def __init__(self):
+        pass
+
+class peaks:
+    """
+    This is a peaks object.
+
+    Possible attributes (if the data exists in the event):
+    ch0:    tuple of beginning of peak and array of peak intensities from channel 0
+    ch1:    tuple of beginning of peak and array of peak intensities from channel 1
+    ...
+    ch16:   tuple of beginning of peak and array of peak intensities from channel 16
+    assemble0:  peak intensities assembled into a waveform from channel 0
+    assemble1:  peak intensities assembled into a waveform from channel 1
+    ...
+    assemble16: peak intensities assembled into a waveform from channel 16
+    """
+
+    def __init__(self):
+        pass
+
 cdef class cyhsd_hsd_1_2_3:
     cdef HsdEventHeaderV1* hptr
     cdef Hsd_v1_2_3* cptr
@@ -83,11 +116,15 @@ cdef class cyhsd_hsd_1_2_3:
 
         self._setEnv(self._dgramlist[-1].env)
         for chanNum in xrange(16): # Maximum channels: 16
-            chanName = 'chan'+'{num:02d}'.format(num=chanNum)
+            chanName = 'chan'+'{num:02d}'.format(num=chanNum) # chan00
             if hasattr(self._dgramlist[-1], chanName):
                 chan = eval('self._dgramlist[-1].'+chanName)
                 if chan.size > 0:
+                    chanName = 'ch'+str(chanNum) # ch0
                     self._setChan(chanName, chan)
+
+        self._genWaveformAttr()
+        self._genPeaksAttr()
 
     def __dealloc__(self):
         del self.cptr
@@ -120,24 +157,29 @@ cdef class cyhsd_hsd_1_2_3:
     def _fex(self):
         return self.cptr.fex()
 
-    def waveforms(self):
+    def _genWaveformAttr(self):
         """Return a dictionary of available waveforms in the event."""
         cdef cnp.ndarray wv # TODO: make readonly
 
-        if not self.wvDict:
-            for i, chanName in enumerate(self.chanList):
+        for i, chanName in enumerate(self.chanList):
+            if self.chptr[i].numPixels:
                 arr0 = PyAllocArray1D()
                 wv = arr0.init(&self.chptr[i].waveform, self.chptr[i].numPixels, cnp.NPY_UINT16)
                 wv.base = <PyObject*> arr0
-                self.wvDict[chanName] = wv
+                # export waveform.chX
+                if not hasattr(self, 'waveform'):
+                    setattr(self, 'waveform', waveform()) #setattr(self, 'waveform', types.SimpleNamespace())
+                    setattr(self.waveform, 'times', np.arange(10)) # FIXME: placeholder for times
+                setattr(self.waveform, chanName, wv)
 
-        return self.wvDict
-
-    def peaks(self):
+    def _genPeaksAttr(self):
         for chanName in self.chanList:
             self.fexDict[chanName] = self._channelPeaks(chanName)
-
-        return self.fexDict
+            if len(self._channelPeaks(chanName)[0]):
+                if not hasattr(self, 'peaks'):
+                    setattr(self, 'peaks', peaks())
+                setattr(self.peaks, chanName, self._channelPeaks(chanName))
+                setattr(self.peaks, 'assemble'+chanName, np.arange(10)) # FIXME: placeholder for assembled waveform
 
     def _channelPeaks(self, chanName):
         cdef list listOfPeaks, listOfPos # TODO: check whether this helps with speed
@@ -160,3 +202,23 @@ cdef class cyhsd_hsd_1_2_3:
             listOfPeaks = None
             listOfPos = None
         return (listOfPos, listOfPeaks)
+
+"""
+    def _waveforms(self):
+        cdef cnp.ndarray wv
+
+        if not self.wvDict:
+            for i, chanName in enumerate(self.chanList):
+                arr0 = PyAllocArray1D()
+                wv = arr0.init(&self.chptr[i].waveform, self.chptr[i].numPixels, cnp.NPY_UINT16)
+                wv.base = <PyObject*> arr0
+                self.wvDict[chanName] = wv
+
+        return self.wvDict
+
+    def _peaks(self):
+        for chanName in self.chanList:
+            self.fexDict[chanName] = self._channelPeaks(chanName)
+
+        return self.fexDict
+"""

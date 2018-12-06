@@ -310,12 +310,30 @@ def main():
     server.createPV(prefix, pvdb)
     driver = myDriver()
 
+    # Save PVs to config dbase
+    from pymongo import MongoClient, errors
+    username = 'yoon82'
+    host = 'psdb-dev'
+    port = 9306
+    instrument = 'amo'
+    client = MongoClient('mongodb://%s:%s@%s:%s' % (username, username, host, port))
+    db = client['config_db']
+    collection = db[instrument]
+    _pvdb = pvdb
+    _pvdb['_id'] = 234 # this may be detector serial number
+    try:
+        collection.insert(_pvdb)
+    except errors.DuplicateKeyError:
+        print("ID already exists. Exit without writing to database.")
+
     try:
         # process CA transactions
         while True:
             server.process(0.1)
     except KeyboardInterrupt:
         print('\nInterrupted')
+
+
 
 if __name__ == '__main__':
     main()
