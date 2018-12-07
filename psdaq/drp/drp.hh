@@ -19,6 +19,7 @@ struct PGPData
 struct Parameters
 {
     int partition;
+    std::string collect_host;
     std::string output_dir;
     Pds::Eb::EbCtrbParams tPrms;
     Pds::Eb::MonCtrbParams mPrms;

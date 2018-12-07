@@ -11,7 +11,6 @@ import logging
 PORT_BASE = 29980
 POSIX_TIME_AT_EPICS_EPOCH = 631152000
 
-
 def timestampStr():
     current = datetime.now(timezone.utc)
     nsec = 1000 * current.microsecond
@@ -53,7 +52,19 @@ def wait_for_answers(socket, wait_time, msg_id):
     remaining = wait_time
     start = time.time()
     while socket.poll(remaining) == zmq.POLLIN:
-        msg = socket.recv_json()
+        try:
+            msg = socket.recv_json()
+        except Exception as ex:
+            logging.error('recv_json(): %s' % ex)
+            continue
+        else:
+            logging.debug('recv_json(): %s' % msg)
+
+        if msg['header']['key'] == 'drp-transition':
+            logging.debug('accepting drp-transition with msg_id: %s ' %
+                          (msg['header']['msg_id']))
+            yield msg
+
         if msg['header']['msg_id'] == msg_id:
             yield msg
         else:
@@ -69,6 +80,8 @@ def confirm_response(socket, wait_time, msg_id, ids):
         ids.remove(msg['header']['sender_id'])
         if len(ids) == 0:
             break
+    for ii in ids:
+        logging.debug('id %s did not respond' % ii)
     return len(ids), msgs
 
 
@@ -252,11 +265,24 @@ class CollectionManager():
         logging.debug('condition_plat() returning True')
         return True
 
+    def filter_level(self, prefix, ids):
+        matches = set()
+        for level, item in self.cmstate.items():
+            if level.startswith(prefix):
+                for ii in ids:
+                    if ii in item:
+                        matches.add(ii)
+                        break
+        return matches
+
     def condition_common(self, transition, timeout):
         retval = True
         ids = copy.copy(self.ids)
         msg = create_msg(transition)
         self.pub.send_json(msg)
+
+        # only drp group (aka level) responds to configure and above
+        ids = self.filter_level('drp', ids)
 
         # make sure all the clients respond to transition before timeout
         ret, answers = confirm_response(self.pull, timeout, msg['header']['msg_id'], ids)

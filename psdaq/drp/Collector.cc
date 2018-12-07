@@ -1,12 +1,18 @@
 #include <linux/limits.h>
 #include <thread>
 #include <unistd.h>
+#include <limits.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <zmq.h>
+#include "json.hpp"
+using json = nlohmann::json;
 #include "Collector.hh"
 #include "psdaq/eb/utilities.hh"
 #include "psdaq/eb/EbContributor.hh"
+#include "psdaq/service/Collection.hh"
 using namespace XtcData;
 using namespace Pds::Eb;
 
@@ -87,9 +93,22 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
 // collects events from the workers and sends them to the event builder
 void collector(MemPool& pool, Parameters& para, EbContributor& ebCtrb, MonContributor* meb)
 {
+    enum { PORT_BASE = 29980 };         // TODO move to header file
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUSH);
-    zmq_connect(socket, "tcp://localhost:5559");
+    char socket_name[PATH_MAX];
+    snprintf(socket_name, PATH_MAX, "tcp://%s:%d", para.collect_host.c_str(), PORT_BASE + para.partition);
+    if (zmq_connect(socket, socket_name) == -1) {
+        perror("ZMQ_PUSH: zmq_connect");
+    } else {
+        printf("ZMQ_PUSH: zmq_connect(\"%s\")\n", socket_name);
+    }
+
+    // generate sender_id
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    int pid = getpid();
+    size_t sender_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
 
     printf("*** myEb %p %zd\n",ebCtrb.batchRegion(), ebCtrb.batchRegionSize());
     EbReceiver eb_rcvr(para, pool, meb);
@@ -115,12 +134,22 @@ void collector(MemPool& pool, Parameters& para, EbContributor& ebCtrb, MonContri
         TransitionId::Value transition_id = event_header->seq.service();
          if (transition_id == 2) {
             printf("Collector saw configure transition\n");
+        } else if (transition_id != 0) {
+            printf("Collector saw transition ID %d\n", (int)transition_id);
         }
         // pass non L1 accepts to control level
         if (transition_id != 0) {
-            Dgram* dgram = (Dgram*)pebble->fex_data();
-            zmq_send(socket, dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 0);
-            printf("Send transition over zeromq socket\n");
+            char msg_id_buf[32];
+            sprintf(msg_id_buf, "%010u-%09u", event_header->seq.stamp().seconds(),
+                    event_header->seq.stamp().nanoseconds());
+            json body = json({});
+            json reply = create_msg("drp-transition", msg_id_buf, sender_id, body);
+            std::string s = reply.dump();
+            if (zmq_send(socket, s.c_str(), s.length(), 0) == -1) {
+                perror("zmq_send");
+            } else {
+                printf("Send JSON transition over zeromq socket\n");
+            }
         }
 
         // printf("Collector:  Transition id %d pulse id %lu event counter %u \n",
