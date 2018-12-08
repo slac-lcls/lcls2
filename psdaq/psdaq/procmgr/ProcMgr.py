@@ -1,8 +1,8 @@
 #!/bin/env python
 # ProcMgr.py - configure (start, stop, status) the DAQ processes
-# $Id$
 
-import os, sys, string, telnetlib, subprocess
+import os, sys, string, telnetlib
+from subprocess import Popen, PIPE, DEVNULL
 import stat, errno, time
 import re
 from time import sleep, strftime
@@ -80,13 +80,13 @@ def getCurrentExperiment(exp, cmd, station):
     if (cmd):
       returnCode = 0
       fullCommand = '%s %s:%u' % (cmd, exp.upper(), station)
-      p = subprocess.Popen([fullCommand],
+      p = Popen([fullCommand],
                            shell = True,
-                           stdin = subprocess.PIPE,
-                           stdout = subprocess.PIPE,
-                           stderr = subprocess.PIPE,
+                           stdin = PIPE,
+                           stdout = PIPE,
+                           stderr = PIPE,
                            close_fds = True)
-      out, err = subprocess.Popen.communicate(p)
+      out, err = Popen.communicate(p)
       if (p.returncode):
         returnCode = p.returncode
      
@@ -733,7 +733,7 @@ class ProcMgr:
                     "-e", self.PATH_TELNET, host, port]
         else:
             args = [self.PATH_XTERM, "-T", name, "-fn", "fixed", "-e", self.PATH_TELNET, host, port]
-        subprocess.Popen(args)
+        Popen(args)
         return
 
     def spawnConsole(self, uniqueid, large=False):
@@ -760,7 +760,7 @@ class ProcMgr:
                             "-e", cmd]
                 else:
                     args = [self.PATH_XTERM, "-T", name, "-e", cmd]
-                subprocess.Popen(args)
+                Popen(args)
             except:
                 print('spawnConsole failed for process \'%s\'' % uniqueid)
             else:
@@ -792,7 +792,7 @@ class ProcMgr:
                            "-e", self.PATH_LESS, "+F", logfile]
                 else:
                     args = [self.PATH_XTERM, "-T", name, "-e", self.PATH_LESS, "+F", logfile]
-                subprocess.Popen(args)
+                Popen(args)
             except:
                 print('spawnLogfile failed for process \'%s\'' % uniqueid)
             else:
@@ -1040,8 +1040,10 @@ class ProcMgr:
             print('platform %d not in range 0-9' % self.PLATFORM)
             return 1
 
-        # for redirecting to /dev/null
-        nullOut = open(os.devnull, 'w')
+        if (logpathbase is not None) and (logpathbase != "/dev/null"):
+            # for log file names
+            logpath = '%s/%s' % (logpathbase, time.strftime('%Y/%m'))
+            time_string = time.strftime('%d_%H:%M:%S')
 
         # create a dictionary mapping hosts to a set of start commands
         startdict = dict()
@@ -1077,14 +1079,12 @@ class ProcMgr:
                     #
                     #  <logpath>/2009/08/21_10:35_atca01:opal1k.log
                     #
-                    logpath = '%s/%s' % (logpathbase, time.strftime('%Y/%m'))
                     try:
                       mkdir_p(logpath)
                     except:
                       # mkdir
                       print('ERR: mkdir <%s> failed' % logpath)
                     else:
-                      time_string = time.strftime('%d_%H:%M:%S')
                       loghost = key2host(key)
                       localFlag = False
                       if loghost == 'localhost':
@@ -1179,7 +1179,7 @@ class ProcMgr:
                     if verbose:
                         print('Run locally: %s' % args)
 
-                    yy = subprocess.Popen(args, stdout=nullOut, stderr=nullOut, shell=True)
+                    yy = Popen(args, stdout=DEVNULL, stderr=DEVNULL, shell=True)
                     yy.wait()
                     if (yy.returncode != 0):
                         printError(yy.returncode, args)
@@ -1271,7 +1271,6 @@ class ProcMgr:
                         
         # done
         # cleanup
-        nullOut.close()
 
         if started_count > 0:
             rv = 0
