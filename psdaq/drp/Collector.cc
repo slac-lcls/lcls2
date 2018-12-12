@@ -11,7 +11,8 @@
 using json = nlohmann::json;
 #include "Collector.hh"
 #include "psdaq/eb/utilities.hh"
-#include "psdaq/eb/EbContributor.hh"
+#include "psdaq/eb/TebContributor.hh"
+#include "psdaq/eb/MebContributor.hh"
 #include "psdaq/service/Collection.hh"
 using namespace XtcData;
 using namespace Pds::Eb;
@@ -27,7 +28,7 @@ MyDgram::MyDgram(Sequence& sequence, uint64_t val, unsigned contributor_id)
 
 EbReceiver::EbReceiver(const Parameters& para,
                        MemPool&          pool,
-                       MonContributor*   mon) :
+                       MebContributor*   mon) :
   EbCtrbInBase(para.tPrms),
       _pool(pool),
       _xtcFile(nullptr),
@@ -91,7 +92,7 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
 }
 
 // collects events from the workers and sends them to the event builder
-void collector(MemPool& pool, Parameters& para, EbContributor& ebCtrb, MonContributor* meb)
+void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContributor* meb)
 {
     enum { PORT_BASE = 29980 };         // TODO move to header file
     void* context = zmq_ctx_new();

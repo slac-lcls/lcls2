@@ -3,7 +3,7 @@
 #include "psdaq/eb/Endpoint.hh"
 #include "psdaq/eb/EbLfServer.hh"
 #include "psdaq/eb/Batch.hh"
-#include "psdaq/eb/EbContributor.hh"
+#include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/utilities.hh"
 
 #include "xtcdata/xtc/Dgram.hh"

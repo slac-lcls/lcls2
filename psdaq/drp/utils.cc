@@ -55,7 +55,7 @@ long read_infiniband_counter(const char* counter)
     }
 }
 
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContributor& ebCtrb)
+void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContributor& ebCtrb)
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUB);

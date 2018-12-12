@@ -4,9 +4,9 @@
 #include "drp.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/Dgram.hh"
-#include "psdaq/eb/EbContributor.hh"
+#include "psdaq/eb/TebContributor.hh"
+#include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
-#include "psdaq/eb/MonContributor.hh"
 
 class TheSrc : public XtcData::Src
 {
@@ -32,18 +32,18 @@ class EbReceiver : public Pds::Eb::EbCtrbInBase
 public:
   EbReceiver(const Parameters&        para,
              MemPool&                 pool,
-             Pds::Eb::MonContributor* mon);
+             Pds::Eb::MebContributor* mon);
   virtual ~EbReceiver() {};
 public:                             // For EbCtrbInBase
   virtual void process(const XtcData::Dgram* result, const void* input);
 private:
     MemPool&                 _pool;
     FILE*                    _xtcFile;
-    Pds::Eb::MonContributor* _mon;
+    Pds::Eb::MebContributor* _mon;
 private:
     unsigned nreceive;
 };
 
-void collector(MemPool& pool, Parameters& para, Pds::Eb::EbContributor&, Pds::Eb::MonContributor*);
+void collector(MemPool& pool, Parameters& para, Pds::Eb::TebContributor&, Pds::Eb::MebContributor*);
 
 #endif // COLLECTOR_H

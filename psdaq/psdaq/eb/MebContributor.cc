@@ -1,4 +1,4 @@
-#include "psdaq/eb/MonContributor.hh"
+#include "psdaq/eb/MebContributor.hh"
 
 #include "psdaq/eb/Endpoint.hh"
 #include "psdaq/eb/EbLfClient.hh"

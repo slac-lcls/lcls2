@@ -36,7 +36,7 @@ void join_collection(Parameters& para)
     std::string id = std::to_string(collection.id());
     // std::cout << "DRP: " << id << std::endl;
     para.tPrms.id = collection.cmstate["drp"][id]["drp_id"];
-    
+
     const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
     const unsigned tebPortBase = TEB_PORT_BASE + numPorts * para.partition;
     const unsigned drpPortBase = DRP_PORT_BASE + numPorts * para.partition;
@@ -142,10 +142,10 @@ int main(int argc, char* argv[])
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
     pin_thread(pgp_thread.native_handle(), 1);
 
-    Pds::Eb::EbContributor ebCtrb(para.tPrms);
-    Pds::Eb::MonContributor* meb = nullptr;
+    Pds::Eb::TebContributor ebCtrb(para.tPrms);
+    Pds::Eb::MebContributor* meb = nullptr;
     if (para.mPrms.addrs.size() != 0) {
-        meb = new Pds::Eb::MonContributor(para.mPrms);
+        meb = new Pds::Eb::MebContributor(para.mPrms);
     }
 
     // start performance monitor thread

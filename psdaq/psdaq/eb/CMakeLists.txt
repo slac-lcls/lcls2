@@ -10,10 +10,10 @@ add_library(eb SHARED
   EbLfLink.cc
   EbLfServer.cc
   EbLfClient.cc
-  EbContributor.cc
+  TebContributor.cc
   EbCtrbInBase.cc
   EbAppBase.cc
-  MonContributor.cc
+  MebContributor.cc
   StatsMonitor.cc
 )
 
@@ -168,10 +168,10 @@ target_link_libraries(tstIndexPool
 #  EbLfLink.cc
 #  EbLfServer.cc
 #  EbLfClient.cc
-#  EbContributor.cc
+#  TebContributor.cc
 #  EbCtrbInBase.cc
 #  EbAppBase.cc
-#  MonContributor.cc
+#  MebContributor.cc
 #  StatsMonitor.cc
 #)
 #
@@ -187,10 +187,10 @@ target_link_libraries(tstIndexPool
 #  EbLfLink.cc
 #  EbLfServer.cc
 #  EbLfClient.cc
-#  EbContributor.cc
+#  TebContributor.cc
 #  EbCtrbInBase.cc
 #  EbAppBase.cc
-#  MonContributor.cc
+#  MebContributor.cc
 #  StatsMonitor.cc
 #)
 #

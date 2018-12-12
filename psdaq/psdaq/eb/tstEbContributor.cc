@@ -1,5 +1,5 @@
-#include "psdaq/eb/MonContributor.hh"
-#include "psdaq/eb/EbContributor.hh"
+#include "psdaq/eb/MebContributor.hh"
+#include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
 
 #include "psdaq/eb/utilities.hh"
