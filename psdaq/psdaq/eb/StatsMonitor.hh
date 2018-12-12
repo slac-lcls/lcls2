@@ -17,6 +17,7 @@ namespace Pds {
       enum Mode { SCALAR, RATE, CHANGE };
     public:
       StatsMonitor(const char*        hostname,
+                   unsigned           basePort,
                    unsigned           platform,
                    const std::string& partition,
                    unsigned           period,
