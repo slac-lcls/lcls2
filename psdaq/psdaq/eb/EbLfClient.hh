@@ -17,9 +17,19 @@ namespace Pds {
                   unsigned    tmo,
                   EbLfLink**  link);
     public:
+      const uint64_t& pending() const;
+    public:
       int shutdown(EbLfLink*);
+    private:
+      uint64_t _pending;
     };
   };
 };
+
+inline
+const uint64_t& Pds::Eb::EbLfClient::pending() const
+{
+  return _pending;
+}
 
 #endif

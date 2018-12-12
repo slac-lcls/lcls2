@@ -31,6 +31,8 @@ namespace Pds {
       int pend(uint64_t* data, int msTmo);
       int poll(uint64_t* data);
     public:
+      const uint64_t& pending() const;
+    public:
       int shutdown(EbLfLink*);
     private:
       int _initialize(const char* addr, const char* port);
@@ -40,8 +42,18 @@ namespace Pds {
       Fabrics::PassiveEndpoint* _pep;  // Endpoint for establishing connections
       Fabrics::CompletionQueue* _rxcq;
       size_t                    _bufSize;
+    private:
+      uint64_t                  _pending;
+      uint64_t                  _unused;
     };
   };
 };
+
+
+inline
+const uint64_t& Pds::Eb::EbLfServer::pending() const
+{
+  return _pending;
+}
 
 #endif

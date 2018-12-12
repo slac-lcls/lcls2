@@ -14,8 +14,8 @@ namespace Pds {
     class EbLfLink
     {
     public:
-      EbLfLink(Fabrics::Endpoint*);
-      EbLfLink(Fabrics::Endpoint*, int rxDepth);
+      EbLfLink(Fabrics::Endpoint*, uint64_t& pending);
+      EbLfLink(Fabrics::Endpoint*, int rxDepth, uint64_t& unused);
       ~EbLfLink();
     public:
       int       preparePender(unsigned idx,
@@ -55,6 +55,9 @@ namespace Pds {
                      size_t      len,
                      uint64_t    immData);
     public:
+      const uint64_t& beforePostCnt() const;
+      const uint64_t& afterPostCnt()  const;
+    public:
       Fabrics::Endpoint* endpoint() const { return _ep;  }
       unsigned           index()    const { return _idx; }
       unsigned           id()       const { return _id;  }
@@ -71,6 +74,8 @@ namespace Pds {
       unsigned                _id;      // ID     of peer on the remote side
       char*                   _region;  // Used when App doesn't provide an MR
       unsigned                _verbose; // Print some stuff if set
+    private:
+      uint64_t&               _pending;
     };
   };
 };
@@ -78,7 +83,7 @@ namespace Pds {
 inline
 void* Pds::Eb::EbLfLink::lclAdx(size_t offset) const
 {
-  return (char*)_mr->start() + offset;
+  return static_cast<char*>(_mr->start()) + offset;
 }
 
 inline
