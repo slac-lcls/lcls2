@@ -1,4 +1,4 @@
-add_library(utils SHARED
+add_library(drputils SHARED
     Digitizer.cc
     AreaDetector.cc
     Worker.cc
@@ -9,7 +9,7 @@ add_library(utils SHARED
 
 find_package(PythonLibs REQUIRED)
 
-target_link_libraries(utils
+target_link_libraries(drputils
     xtcdata::xtc
     pgpdriver
     eb
@@ -17,7 +17,7 @@ target_link_libraries(utils
     ${PYTHON_LIBRARIES}
 )
 
-target_include_directories(utils PUBLIC
+target_include_directories(drputils PUBLIC
     ../psdaq/pgp/aes-stream-drivers/include
     ../psdaq/service
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -31,12 +31,12 @@ add_executable(drp
 )
 
 target_link_libraries(drp
-    utils
+    drputils
     pthread
     collection
 )
 
-install(TARGETS utils drp
+install(TARGETS drputils drp
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
