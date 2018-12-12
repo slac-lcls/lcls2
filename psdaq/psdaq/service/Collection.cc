@@ -67,6 +67,7 @@ Collection::Collection(const std::string& manager_hostname,
     char buffer[1024];
     m_push = zmq_socket(m_context, ZMQ_PUSH);
     snprintf(buffer, 1024, "tcp://%s:%d", manager_hostname.c_str(), base_port + platform);
+    printf("ZMQ_PUSH: %s\n", buffer);
     if (zmq_connect(m_push, buffer) == -1) {
         perror("zmq_connect");
     }
@@ -76,7 +77,7 @@ Collection::Collection(const std::string& manager_hostname,
         perror("zmq_setsockopt(ZMQ_SUBSCRIBE)");
     }
     sprintf(buffer, "tcp://%s:%d", manager_hostname.c_str(), base_port + 10 + platform);
-    printf("%s\n", buffer);
+    printf("ZMQ_SUB: %s\n", buffer);
     if (zmq_connect(m_sub, buffer) == -1) {
         perror("zmq_connect");
     }

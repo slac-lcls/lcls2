@@ -27,12 +27,12 @@ namespace Pds {
       PoolDeclare;
     public:
       EbEvent(uint64_t              contract,
-              EventBuilder*         eb,
               EbEvent*              after,
-              const XtcData::Dgram* contrib,
-              uint64_t              mask);
+              const XtcData::Dgram* ctrb,
+              unsigned              prm);
       virtual ~EbEvent();
     public:
+      unsigned parameter() const;
       uint64_t sequence()  const;
       size_t   size()      const;
       uint64_t remaining() const;
@@ -50,18 +50,29 @@ namespace Pds {
       void     _insert(const XtcData::Dgram*);
       bool     _alive();
     private:
-      uint64_t               _sequence;        // Event's sequence identifier
       size_t                 _size;            // Total contribution size (in bytes)
       uint64_t               _remaining;       // List of clients which have contributed
-      uint64_t               _contract;        // -> potential list of contributors
-      EventBuilder*          _eb;              // -> Back-end processing object
+      const uint64_t         _contract;        // -> potential list of contributors
       int                    _living;          // Aging counter
-      uint64_t               _key;             // Masked epoch
+      unsigned               _prm;             // An application level free parameter
       const EbContribution** _last;            // Pointer into the contributions array
       const EbContribution*  _contributions[]; // Array of contributions
     };
   };
 };
+
+/*
+** ++
+**
+**    Give EventBuilder user interface access to the free parameter.
+**
+** --
+*/
+
+inline unsigned Pds::Eb::EbEvent::parameter() const
+{
+  return _prm;
+}
 
 /*
 ** ++
@@ -73,7 +84,7 @@ namespace Pds {
 
 inline uint64_t Pds::Eb::EbEvent::sequence() const
 {
-  return _sequence;
+  return creator()->seq.pulseId().value();
 }
 
 /*

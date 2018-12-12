@@ -23,7 +23,6 @@ public:
         NameVec.push_back({"env", Name::UINT32, 1});
         for (unsigned i = 0; i < sizeof(lane_mask)*sizeof(uint8_t); i++){
             if (!((1<<i)&lane_mask)) continue;
-            printf("HsdDef lane_mask: %u\n", i);
             snprintf(chanName, nameLen, "chan%2.2d", i);
             NameVec.push_back({chanName, alg});
         }
@@ -60,27 +59,21 @@ public:
 
     int process(Xtc* xtc)
     {
-        printf("process\n");
         switch (xtc->contains.id()) {
 
         case (TypeId::Parent): {
-            printf("Parent\n");
             iterate(xtc);
             break;
         }
         case (TypeId::ShapesData): {
-            printf("ShapesData\n");
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             unsigned namesId = shapesdata.shapes().namesId();
-            printf("###### namesId: %u\n", namesId);
             DescData descdata(shapesdata, _namesVec[namesId]);
             Names& names = descdata.nameindex().names();
 
-            printf("hsdIter num: %d\n", names.num());
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
-                printf("hsdIter: %s, %s, 0x%x\n", name.name(), name.alg().name(), name.alg().version());
                 // Here we check algorithm and version can be analyzed
                 if (strcmp(name.alg().name(), "fpga") == 0) {
                     if (name.alg().version() == 0x010203) {
@@ -113,23 +106,18 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
     PyObject* main_module = PyImport_AddModule("__main__");
     PyObject* main_dict = PyModule_GetDict(main_module);
     file = fopen("hsdconfig.py","r");
-    printf("##### Opened hsdconfig.py %p\n",file);
     PyObject* pyrunfileptr = PyRun_File(file, "hsdconfig.py", Py_file_input, main_dict, main_dict);
     assert(pyrunfileptr!=NULL);
     PyObject* mybytes = PyDict_GetItemString(main_dict,"config");
-    printf("mybytes: %p\n",mybytes);
     PyObject * temp_bytes = PyUnicode_AsEncodedString(mybytes, "UTF-8", "strict");
     char* json = (char*)PyBytes_AsString(temp_bytes);
-    printf("myjson: %s\n",json);
     Py_Finalize();
-    printf("Done\n");
 
     Document d;
     d.Parse(json);
 
     Value& software = d["alg"]["software"];
     Value& version = d["alg"]["version"];
-    printf("alg: %s\n", software.GetString());
     for (SizeType i = 0; i < version.Size(); i++) // Uses SizeType instead of size_t
         printf("version[%d] = %d\n", i, version[i].GetInt());
 
@@ -138,14 +126,12 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
     Value& ninfo_detector = d["ninfo"]["detector"];
     Value& ninfo_serialNum = d["ninfo"]["serialNum"];
     Value& ninfo_seg = d["ninfo"]["seg"];
-    printf("ninfo: %s, %s, %s, %d\n", ninfo_software.GetString(), ninfo_detector.GetString(), ninfo_serialNum.GetString(), ninfo_seg.GetInt());
 
     Alg hsdConfigAlg(software.GetString(),version[0].GetInt(),version[1].GetInt(),version[2].GetInt());
     Names& configNames = *new(xtc) Names(ninfo_software.GetString(), hsdConfigAlg,
                                          ninfo_detector.GetString(), ninfo_serialNum.GetString(), src);
     configNames.add(xtc, myHsdConfigDef);
     namesVec.push_back(NameIndex(configNames));
-    printf("Done configNames\n");
 
     unsigned namesId = 0;
     CreateData fex(xtc, namesVec, namesId, src); //FIXME: avoid hardwiring nameId
@@ -154,23 +140,18 @@ unsigned addJson(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
 
     Value& enable = d["xtc"]["ENABLE"];
     unsigned shape[MaxRank] = {enable.Size()};
-    printf("enable: %d\n", shape[0]);
     Array<uint64_t> arrayT = fex.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
     unsigned lane_mask = 0;
     for(unsigned i=0; i<shape[0]; i++){
         arrayT(i) = (uint64_t) enable[i].GetInt();
-        printf("##### i, val: %u %u %u\n", i, enable[i].GetInt(), enable[i].GetInt() << (shape[0]-(i+1)));
         lane_mask += enable[i].GetInt() << (shape[0]-(i+1)); // convert enable to unsigned using bitshift
-        printf("enable: %lu\n", arrayT(i));
     };
 
     Value& raw_prescale = d["xtc"]["RAW_PS"];
     shape[MaxRank] = {raw_prescale.Size()};
-    printf("raw_ps shape: %d\n", shape[0]);
     Array<uint64_t> arrayT1 = fex.allocate<uint64_t>(HsdConfigDef::raw_prescale,shape); //FIXME: figure out avoiding hardwired zero
     for(unsigned i=0; i<shape[0]; i++){
         arrayT1(i) = (uint64_t) raw_prescale[i].GetInt();
-        printf("raw_ps: %lu\n", arrayT1(i));
     };
 
     return lane_mask;
@@ -185,7 +166,6 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
 
     unsigned lane_mask;
     lane_mask = addJson(dgram.xtc, m_namesVec, _src);
-    printf("####### config lane_mask: %u\n", lane_mask);
 
     Alg hsdAlg("hsd", 1, 2, 3); // TODO: shouldn't this be configured by hsdconfig.py?
     unsigned segment = 0;
@@ -194,12 +174,9 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
     dataNames.add(dgram.xtc, myHsdDef);
     m_namesVec.push_back(NameIndex(dataNames));
 
-    printf("Digitizer configure\n");
     HsdIter hsdIter(&dgram.xtc, m_namesVec);
     hsdIter.iterate();
     unsigned nChan = hsdIter.chans.size();
-    printf("nChan: %u\n", nChan);
-    //Pds::HSD::Hsd_v1_2_3 *vHsd = new Pds::HSD::Hsd_v1_2_3(&stack, nChan, dg);
 }
 
 void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
@@ -211,7 +188,6 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
 
     memcpy(&dgram, event_header, sizeof(Transition));
     CreateData hsd(dgram.xtc, m_namesVec, namesId, _src);
-    printf("*** evt count %d isevt %d control %x\n",event_header->evtCounter,dgram.seq.isEvent(),dgram.seq.pulseId().control());
 
     unsigned data_size;
     unsigned shape[MaxRank];
@@ -226,13 +202,7 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
             shape[0] = data_size;
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l+1, shape);
             memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l].data + sizeof(Transition), data_size);
-            // TODO: make channels
-
             Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[l].data);
-            printf("%%%%%%%%%%%%%%%%%%%%%%%\n");
-            printf("%d %d %llx %x %x %x\n", l, event_header->evtCounter, event_header->seq.stamp().value(), event_header->env[0], event_header->env[1], event_header->env[2]);
-            printf("%u %u\n", (event_header->env[0]>>20)&0xf, (event_header->env[1]>>20)&0xf);
-            printf("datasize: %u\n", data_size);
          }
     }
 }

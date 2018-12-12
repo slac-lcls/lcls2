@@ -17,7 +17,8 @@ using namespace Pds::Eb;
 using ms_t = std::chrono::milliseconds;
 
 
-EbLfClient::EbLfClient()
+EbLfClient::EbLfClient() :
+  _pending(0)
 {
 }
 
@@ -36,7 +37,7 @@ int EbLfClient::connect(const char* peer,
   Fabric* fab = new Fabric(peer, port, flags, txSize, rxSize);
   if (!fab || !fab->up())
   {
-    fprintf(stderr, "%s: Failed to create Fabric for %s:%s: %s\n",
+    fprintf(stderr, "%s:\n  Failed to create Fabric for %s:%s: %s\n",
             __PRETTY_FUNCTION__, peer, port, fab ? fab->error() : "No memory");
     return fab ? fab->error_num() : -FI_ENOMEM;
   }
@@ -48,7 +49,7 @@ int EbLfClient::connect(const char* peer,
   CompletionQueue* txcq = new CompletionQueue(fab);
   if (!txcq)
   {
-    fprintf(stderr, "%s: Failed to create TX completion queue: %s\n",
+    fprintf(stderr, "%s:\n  Failed to create TX completion queue: %s\n",
             __PRETTY_FUNCTION__, "No memory");
     return -FI_ENOMEM;
   }
@@ -67,7 +68,7 @@ int EbLfClient::connect(const char* peer,
     ep = new Endpoint(fab, txcq, rxcq);
     if (!ep || (ep->state() != EP_UP))
     {
-      fprintf(stderr, "%s: Failed to initialize Endpoint: %s\n",
+      fprintf(stderr, "%s:\n  Failed to initialize Endpoint: %s\n",
               __PRETTY_FUNCTION__, ep ? ep->error() : "No memory");
       return ep ? ep->error_num() : -FI_ENOMEM;
     }
@@ -86,18 +87,17 @@ int EbLfClient::connect(const char* peer,
   if ((ep->error_num() != FI_SUCCESS) || (tmoEnabled && (dT > tmo)))
   {
     int rc = ep->error_num();
-    fprintf(stderr, "%s: Error connecting to %s:%s: %s\n",
+    fprintf(stderr, "%s:\n  Error connecting to %s:%s: %s\n",
             __PRETTY_FUNCTION__, peer, port,
             (rc == FI_SUCCESS) ? ep->error() : "Timed out");
     delete ep;
     return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
   }
 
-  printf("txDepth = %zd\n", fab->info()->tx_attr->size);
-  *link = new EbLfLink(ep);
+  *link = new EbLfLink(ep, _pending);
   if (!*link)
   {
-    fprintf(stderr, "%s: Failed to find memory for link\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
     return ENOMEM;
   }
 

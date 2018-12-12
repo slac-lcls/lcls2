@@ -26,6 +26,10 @@ Level::Type Src::level() const
 {
     return (Level::Type)((_log >> 24) & 0xff);
 }
+uint32_t Src::value() const
+{
+  return _log & ((1 << 24) - 1);
+}
 
 bool Src::operator==(const Src& s) const
 {

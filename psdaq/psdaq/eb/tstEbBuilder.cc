@@ -16,7 +16,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>                     // getopt()
+#include <unistd.h>                     // For getopt()
 #include <climits>
 #include <bitset>
 #include <chrono>
@@ -31,31 +31,30 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 
-static const int      core_base        = 6; // devXX, 8: accXX
+static const int      core_base        = 6; // 6 devXX, 8: accXX
 static const int      core_offset      = 1; // Allows Ctrb and EB to run on the same machine
-static const unsigned rtMon_period     = 1;          // Seconds
-static const unsigned default_id       = 0;          // Builder's ID (< 64)
+static const unsigned rtMon_period     = 1; // Seconds
+static const unsigned default_id       = 0; // Builder's ID (< 64)
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
-static const char*    dflt_partition   = "Test";
-static const char*    dflt_rtMon_host  = "psdev7b";
-static const char*    dflt_coll_host   = "drp-tst-acc06";
 
 static       unsigned lverbose         = 0;
 static       int      lcore1           = core_base + core_offset + 0;
-static       int      lcore2           = core_base + core_offset + 12; // devXX, 0 for accXX
+static       int      lcore2           = core_base + core_offset + 12; // 12: devXX, 0 for accXX
 
-typedef std::chrono::steady_clock::time_point TimePoint_t;
-typedef std::chrono::steady_clock::duration   Duration_t;
-typedef std::chrono::microseconds             us_t;
-typedef std::chrono::nanoseconds              ns_t;
+using TimePoint_t = std::chrono::steady_clock::time_point;
+using Duration_t  = std::chrono::steady_clock::duration;
+using us_t        = std::chrono::microseconds;
+using ns_t        = std::chrono::nanoseconds;
 
 
 namespace Pds {
   namespace Eb {
+
+    using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
     class TheSrc : public Src
     {
@@ -67,25 +66,40 @@ namespace Pds {
       }
     };
 
-    class L3EbApp : public EbAppBase,
-                    public BatchManager
+    class ResultDgram : public Dgram
     {
     public:
-      L3EbApp(const char*                     ifAddr,
-              const std::string&              port,
-              const std::vector<std::string>& addrs,
-              const std::vector<std::string>& ports,
-              const std::string&              mrqPort,
-              unsigned                        id,
-              uint64_t                        duration,
-              unsigned                        maxBatches,
-              unsigned                        maxEntries,
-              size_t                          maxInputSize,
-              size_t                          maxResultSize,
-              uint64_t                        contributors,
-              unsigned                        numMrqs,
-              StatsMonitor&                   statsMon);
-      virtual ~L3EbApp();
+      ResultDgram(const Transition& transition_, const Xtc& xtc_) :
+        Dgram(transition_, xtc_)
+      {
+        xtc.alloc(sizeof(_data));
+
+        for (unsigned i = 0; i < result_extent; ++i)
+          _data[i] = 0;
+      }
+    private:
+      uint32_t _data[result_extent];
+    };
+
+    class TebApp : public EbAppBase,
+                   public BatchManager
+    {
+    public:
+      TebApp(const char*                     ifAddr,
+             const std::string&              port,
+             const std::vector<std::string>& addrs,
+             const std::vector<std::string>& ports,
+             const std::string&              mrqPort,
+             unsigned                        id,
+             uint64_t                        duration,
+             unsigned                        maxBatches,
+             unsigned                        maxEntries,
+             size_t                          maxInputSize,
+             size_t                          maxResultSize,
+             uint64_t                        contributors,
+             unsigned                        numMrqs,
+             StatsMonitor&                   statsMon);
+      virtual ~TebApp();
     public:
       void         shutdown();
     public:
@@ -102,29 +116,23 @@ namespace Pds {
       virtual
       void         process(EbEvent* event);
     public:                             // Ultimately loaded from a shareable
-      void         handle(const Dgram* ctrb, uint32_t* result, unsigned length);
+      uint32_t     handle(const Dgram* ctrb, uint32_t* result, size_t sizeofPayload);
     private:
       void        _updateHists(TimePoint_t      t0,
                                TimePoint_t      t1,
                                const TimeStamp& stamp);
     private:
       EbLfClient*            _l3Transport;
-      //std::vector<EbLfLink*> _l3Links;
-      std::unordered_map<unsigned,
-                         EbLfLink*> _l3Links;
+      EbLfLinkMap            _l3Links;
       EbLfServer*            _mrqTransport;
-      //std::vector<EbLfLink*> _mrqLinks;
       EbLfLinkMap            _mrqLinks;
       const unsigned         _id;
       const Xtc              _xtc;
     private:
-      std::vector<uint32_t>  _dstList;
+      uint64_t               _dstList;
     private:
       uint64_t               _eventCount;
       uint64_t               _batchCount;
-      uint64_t               _freeBatchCnt;
-      uint64_t               _freeEpochCnt;
-      uint64_t               _freeEventCnt;
     private:
       Histogram              _depTimeHist;
       Histogram              _postTimeHist;
@@ -139,35 +147,32 @@ namespace Pds {
 
 using namespace Pds::Eb;
 
-L3EbApp::L3EbApp(const char*                     ifAddr,
-                 const std::string&              port,
-                 const std::vector<std::string>& addrs,
-                 const std::vector<std::string>& ports,
-                 const std::string&              mrqPort,
-                 unsigned                        id,
-                 uint64_t                        duration,
-                 unsigned                        maxBatches,
-                 unsigned                        maxEntries,
-                 size_t                          maxInputSize,
-                 size_t                          maxResultSize,
-                 uint64_t                        contributors,
-                 unsigned                        numMrqs,
-                 StatsMonitor&                   smon) :
-  EbAppBase    (ifAddr, port, id, duration, maxBatches, maxEntries, maxInputSize,
-                maxInputSize, sizeof(Dgram), contributors),
+TebApp::TebApp(const char*                     ifAddr,
+               const std::string&              port,
+               const std::vector<std::string>& addrs,
+               const std::vector<std::string>& ports,
+               const std::string&              mrqPort,
+               unsigned                        id,
+               uint64_t                        duration,
+               unsigned                        maxBatches,
+               unsigned                        maxEntries,
+               size_t                          maxInputSize,
+               size_t                          maxResultSize,
+               uint64_t                        contributors,
+               unsigned                        numMrqs,
+               StatsMonitor&                   smon) :
+  EbAppBase    (ifAddr, port, id, duration, maxBatches, maxEntries,
+                maxInputSize, maxInputSize, contributors),
   BatchManager (duration, maxBatches, maxEntries, maxResultSize),
   _l3Transport (new EbLfClient()),
-  _l3Links     (), //addrs.size()),
+  _l3Links     (),
   _mrqTransport(new EbLfServer(ifAddr, mrqPort.c_str())),
-  _mrqLinks    (), //numMrqs),
+  _mrqLinks    (),
   _id          (id),
   _xtc         (TypeId(TypeId::Data, 0), TheSrc(Level::Event, id)), //_l3SummaryType
-  _dstList     (std::bitset<64>(contributors).count()),
+  _dstList     (0),
   _eventCount  (0),
   _batchCount  (0),
-  _freeBatchCnt(freeBatchCount()),
-  _freeEpochCnt(freeEpochCount()),
-  _freeEventCnt(freeEventCount()),
   _depTimeHist (12, double(1 << 16)/1000.),
   _postTimeHist(12, 1.0),
   _postCallHist(12, 1.0),
@@ -217,26 +222,32 @@ L3EbApp::L3EbApp(const char*                     ifAddr,
     printf("Mon EbLfClient ID %d connected\n", link->id());
   }
 
-  smon.registerIt("TEB.EvtRt",  _eventCount,   StatsMonitor::RATE);
-  smon.registerIt("TEB.EvtCt",  _eventCount,   StatsMonitor::SCALAR);
-  smon.registerIt("TEB.BatCt",  _batchCount,   StatsMonitor::SCALAR);
-  smon.registerIt("TEB.FrBtCt", _freeBatchCnt, StatsMonitor::SCALAR);
-  smon.registerIt("TEB.FrEpCt", _freeEpochCnt, StatsMonitor::SCALAR);
-  smon.registerIt("TEB.FrEvCt", _freeEventCnt, StatsMonitor::SCALAR);
+  smon.registerIt("TEB.EvtRt",  _eventCount,             StatsMonitor::RATE);
+  smon.registerIt("TEB.EvtCt",  _eventCount,             StatsMonitor::SCALAR);
+  smon.registerIt("TEB.BatCt",  _batchCount,             StatsMonitor::SCALAR);
+  smon.registerIt("TEB.BtAlCt",  batchAllocCnt(),        StatsMonitor::SCALAR);
+  smon.registerIt("TEB.BtFrCt",  batchFreeCnt(),         StatsMonitor::SCALAR);
+  smon.registerIt("TEB.BtWtg",   batchWaiting(),         StatsMonitor::SCALAR);
+  smon.registerIt("TEB.EpAlCt",  epochAllocCnt(),        StatsMonitor::SCALAR);
+  smon.registerIt("TEB.EpFrCt",  epochFreeCnt(),         StatsMonitor::SCALAR);
+  smon.registerIt("TEB.EvAlCt",  eventAllocCnt(),        StatsMonitor::SCALAR);
+  smon.registerIt("TEB.EvFrCt",  eventFreeCnt(),         StatsMonitor::SCALAR);
+  smon.registerIt("TEB.TxPdg",  _l3Transport->pending(), StatsMonitor::SCALAR);
+  smon.registerIt("TEB.RxPdg",   rxPending(),            StatsMonitor::SCALAR);
 }
 
-L3EbApp::~L3EbApp()
+TebApp::~TebApp()
 {
   if (_mrqTransport)  delete _mrqTransport;
   if (_l3Transport)   delete _l3Transport;
 }
 
-void L3EbApp::shutdown()
+void TebApp::shutdown()
 {
   _running = false;
 }
 
-void L3EbApp::process()
+void TebApp::process()
 {
   //pinThread(task()->parameters().taskID(), lcore2);
   //pinThread(pthread_self(),                lcore2);
@@ -248,10 +259,6 @@ void L3EbApp::process()
   while (_running)
   {
     EbAppBase::process();
-
-    _freeBatchCnt = freeBatchCount();
-    _freeEpochCnt = freeEpochCount();
-    _freeEventCnt = freeEventCount();
   }
 
   //cancel();                             // Stop the event timeout timer
@@ -293,7 +300,7 @@ void L3EbApp::process()
   _postCallHist.dump(fs);
 }
 
-void L3EbApp::process(EbEvent* event)
+void TebApp::process(EbEvent* event)
 {
   // Accumulate output datagrams (result) from the event builder into a batch
   // datagram.  When the batch completes, post it to the contributors.
@@ -301,40 +308,29 @@ void L3EbApp::process(EbEvent* event)
   if (lverbose > 3)
   {
     static unsigned cnt = 0;
-    printf("L3EbApp::process event dump:\n");
+    printf("TebApp::process event dump:\n");
     event->dump(++cnt);
   }
   ++_eventCount;
 
-  const Dgram* dg = event->creator();
-  if (dg->seq.isEvent() || !inTrSpace(dg))
+  if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
-    Dgram     cdg(*dg);
-    cdg.xtc = _xtc;
-    Batch*    batch  = allocate(&cdg);    // This may post a batch
-    assert(batch);
-    size_t    pSize  = result_extent * sizeof(uint32_t);
-    Dgram*    rdg    = new(batch->allocate(sizeof(*rdg) + pSize)) Dgram(cdg);
-    uint32_t* result = reinterpret_cast<uint32_t*>(rdg->xtc.alloc(pSize));
+    const Dgram* dg     = event->creator();
+    Batch*       batch  = locate(dg->seq.pulseId().value());  assert(batch); // This may post a batch
+    Dgram*       rdg    = new(batch->buffer()) ResultDgram(*dg, _xtc);
+    uint32_t*    result = (uint32_t*)rdg->xtc.payload();
+
+    _dstList |= event->contract();      // Accumulate the list of ctrbs to this batch
+                                        // Cleared after posting, below
 
     // Iterate over the event and build a result datagram
-    const EbContribution** const  last    = event->end();
-    const EbContribution*  const* ctrb    = event->begin();
-    uint32_t*                     dstList = _dstList.data();
+    const EbContribution** const  last = event->end();
+    const EbContribution*  const* ctrb = event->begin();
     do
     {
-      // Due to the possibility of multiple readout groups, a contribution being
-      // the first one in its batch doesn't necessarily imply that the other
-      // contributions of the event are also first in their corresponding batches
-      if ((*ctrb)->seq.isFirst())        // For the 1st ctrb in the batch...
-      {
-        // Revisit: Commented out alternate method, EbAppBase::process(), EbCtrbBase::post()
-        const Dgram* bdg = (*ctrb) - 1;  // ... find the Input batch datagram
-        *dstList++ = bdg->xtc.src.phy(); // ... and save the return address info
-        //*dstList++ = (*ctrb)->xtc.src.phy(); // ... save the return address info
-      }
+      /*uint32_t damage =*/ handle(*ctrb, result, rdg->xtc.sizeofPayload());
 
-      handle(*ctrb, result, result_extent);
+      // Revisit: rdg->xtc.damage.increase((*ctrb)->xtc.damage.value() | damage);
     }
     while (++ctrb != last);
 
@@ -356,10 +352,11 @@ void L3EbApp::process(EbEvent* event)
 
     if ((lverbose > 2)) // || result[1])
     {
-      printf("Processed                  result  [%4d] @ "
-             "%16p, pid %014lx, sz %4zd: [0] = %08x, [1] = %08x\n",
+      printf("TEB processed              result  [%4d] @ "
+             "%16p, pid %014lx, sz %4zd, src %2d, [0] = %08x, [1] = %08x\n",
              batch->index(), rdg, rdg->seq.pulseId().value(),
-             sizeof(*rdg) + rdg->xtc.sizeofPayload(), result[0], result[1]);
+             sizeof(*rdg) + rdg->xtc.sizeofPayload(),
+             rdg->xtc.src.value(), result[0], result[1]);
     }
   }
   else
@@ -375,17 +372,19 @@ void L3EbApp::process(EbEvent* event)
 
     if (lverbose > 2)
     {
-      printf("Processed               non-event         @ "
-             "%16p, pid %014lx, sz %4zd, src %08x, %08x\n",
-             dg, dg->seq.pulseId().value(), sizeof(*dg) + dg->xtc.sizeofPayload(),
-             dg->xtc.src.log(), dg->xtc.src.phy());
+      const Dgram* dg = event->creator();
+      printf("TEB processed           non-event         @ "
+             "%16p, pid %014lx, sz %4zd, src %02d\n",
+             dg, dg->seq.pulseId().value(),
+             sizeof(*dg) + dg->xtc.sizeofPayload(),
+             dg->xtc.src.value());
     }
   }
 }
 
 // Ultimately, this method is provided by the users and is loaded from a
 // sharable library loaded during a configure transition.
-void L3EbApp::handle(const Dgram* ctrb, uint32_t* result, unsigned length)
+uint32_t TebApp::handle(const Dgram* ctrb, uint32_t* result, size_t sizeofPayload)
 {
   if (result)
   {
@@ -393,45 +392,44 @@ void L3EbApp::handle(const Dgram* ctrb, uint32_t* result, unsigned length)
     result[0] |= input[0] == 0xdeadbeef ? 1 : 0;
     result[1] |= input[1] == 0x12345678 ? 1 : 0;
   }
+  return 0;
 }
 
-void L3EbApp::post(const Batch* batch)
+void TebApp::post(const Batch* batch)
 {
-  const Dgram* bdg    = batch->datagram();
-  size_t       extent = batch->extent();
+  uint32_t    idx    = batch->index();
+  uint64_t    data   = ImmData::value(ImmData::Buffer, _id, idx);
+  size_t      extent = batch->extent();
+  unsigned    offset = idx * maxBatchSize();
+  const void* buffer = batch->batch();
+  uint64_t    mask   = _dstList;
 
   auto t0(std::chrono::steady_clock::now());
-  for (std::vector<unsigned>::iterator it  = _dstList.begin();
-                                       it != _dstList.end(); ++it)
+  while (mask)
   {
-    unsigned  dst    = ImmData::src(*it);
-    unsigned  idx    = ImmData::idx(*it);
-    unsigned  offset = idx * maxBatchSize();
-    EbLfLink* link   = _l3Links[dst];
-    uint64_t  data   = ImmData::buffer(_id, idx); //link->index(), idx);
+    unsigned  dst  = __builtin_ffsl(mask) - 1;
+    EbLfLink* link = _l3Links[dst];
+
+    mask &= ~(1 << dst);
 
     if (lverbose)
     {
-      uint64_t pid    = bdg->seq.pulseId().value();
-      void*    rmtAdx = (void*)link->rmtAdx(idx * maxBatchSize());
-      printf("L3EbApp posts       %6ld result  [%4d] @ "
+      uint64_t pid    = batch->id();
+      void*    rmtAdx = (void*)link->rmtAdx(offset);
+      printf("TEB posts           %6ld result  [%4d] @ "
              "%16p, pid %014lx, sz %4zd to   Ctrb %2d @ %16p\n",
-             _batchCount, idx, bdg, pid, extent, link->id(), rmtAdx);
+             _batchCount, idx, buffer, pid, extent, link->id(), rmtAdx);
     }
 
-    //Dgram const* result = (Dgram const*)bdg->xtc.payload();
-    //const Batch* inputs = batch;
-    //printf("        data %08lx           idx %4d rPid %014lx iPid %014lx          dst %2d id %2d svc %d\n",
-    //       data, idx, result->seq.pulseId().value(), inputs->datagram()->seq.pulseId().value(),
-    //       dst, link->id(), result->seq.service());
-
-    if (link->post(bdg, extent, offset, data) < 0)  break;
+    if (link->post(buffer, extent, offset, data) < 0)  break;
   }
   auto t1(std::chrono::steady_clock::now());
 
+  _dstList = 0;                         // Clear to start a new accumulation
+
   ++_batchCount;
 
-  _updateHists(t0, t1, bdg->seq.stamp());
+  _updateHists(t0, t1, batch->id());
 
   // Revisit: The following deallocation constitutes a race with the posts to
   // the transport above as the batch's memory cannot be allowed to be reused
@@ -440,17 +438,17 @@ void L3EbApp::post(const Batch* batch)
   // and only one is active at a time, a previous batch will have completed
   // transmitting before the next one starts (or the subsequent transmit won't
   // start), thus making it safe to "pre-delete" it here.
-  deallocate(batch);
+  release(batch);
 }
 
-void L3EbApp::post(const Dgram* nonEvent)
+void TebApp::post(const Dgram* nonEvent)
 {
   assert(false);                        // Unused virtual method
 }
 
-void L3EbApp::_updateHists(TimePoint_t      t0,
-                           TimePoint_t      t1,
-                           const TimeStamp& stamp)
+void TebApp::_updateHists(TimePoint_t      t0,
+                          TimePoint_t      t1,
+                          const TimeStamp& stamp)
 {
   auto        d  = std::chrono::seconds     { stamp.seconds()     } +
                    std::chrono::nanoseconds { stamp.nanoseconds() };
@@ -468,7 +466,7 @@ void L3EbApp::_updateHists(TimePoint_t      t0,
 
 
 static StatsMonitor* lstatsMon(nullptr);
-static L3EbApp*      lApp     (nullptr);
+static TebApp*      lApp     (nullptr);
 
 void sigHandler( int signal )
 {
@@ -479,7 +477,7 @@ void sigHandler( int signal )
     printf("\nShutting down StatsMonitor...\n");
     if (lstatsMon)  lstatsMon->shutdown();
 
-    if (lApp)  lApp->L3EbApp::shutdown();
+    if (lApp)  lApp->TebApp::shutdown();
   }
 
   if (callCount++)
@@ -526,13 +524,15 @@ static void usage(char *name, char *desc)
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-m <seconds>",
           "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
-          "Run-time monitoring ZMQ server host",      dflt_rtMon_host);
+          "Run-time monitoring ZMQ server host",      RTMON_HOST);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-R <port>",
+          "Run-time monitoring ZMQ server port",      RTMON_PORT_BASE);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
-          "Partition tag",                            dflt_partition);
+          "Partition tag",                            PARTITION);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
           "Partition number",                         0);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-C <address>",
-          "Collection server",                        dflt_coll_host);
+          "Collection server",                        COLL_HOST);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    lcore1);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
@@ -586,7 +586,7 @@ int main(int argc, char **argv)
   const unsigned NO_PARTITION = unsigned(-1UL);
   int            op, ret      = 0;
   unsigned       partition    = NO_PARTITION;
-  std::string    partitionTag  (dflt_partition);
+  std::string    partitionTag  (PARTITION);
   unsigned       id           = default_id;
   char*          ifAddr       = nullptr;
   unsigned       tebPortNo    = 0;      // Port served to contributors
@@ -596,11 +596,12 @@ int main(int argc, char **argv)
   unsigned       maxEntries   = MAX_ENTRIES;
   unsigned       rtMonPeriod  = rtMon_period;
   unsigned       rtMonVerbose = 0;
-  const char*    rtMonHost    = dflt_rtMon_host;
+  const char*    rtMonHost    = RTMON_HOST;
+  unsigned       rtMonPort    = RTMON_PORT_BASE;
   unsigned       numMrqs      = 0;
-  std::string    collSrv      = dflt_coll_host;
+  std::string    collSrv       (COLL_HOST);
 
-  while ((op = getopt(argc, argv, "h?vVA:T:M:i:d:b:e:r:m:Z:P:p:C:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vVA:T:M:i:d:b:e:r:m:Z:R:P:p:C:1:2:")) != -1)
   {
     switch (op)
     {
@@ -614,6 +615,7 @@ int main(int argc, char **argv)
       case 'r':  numMrqs      = atoi(optarg);       break;
       case 'm':  rtMonPeriod  = atoi(optarg);       break;
       case 'Z':  rtMonHost    = optarg;             break;
+      case 'R':  rtMonPort    = atoi(optarg);       break;
       case 'P':  partitionTag = optarg;             break;
       case 'p':  partition    = std::stoi(optarg);  break;
       case 'C':  collSrv      = optarg;             break;
@@ -701,26 +703,36 @@ int main(int argc, char **argv)
   //printf("TEB Srv port = %s\n", tebPort.c_str());
 
   if  (mrqPortNo < MAX_MEBS)  mrqPortNo += mrqPortBase;
-  if ((mrqPortNo < mrqPortBase) || (mrqPortNo >= mrqPortBase + MAX_TEBS))
+  if ((mrqPortNo < mrqPortBase) || (mrqPortNo >= mrqPortBase + MAX_MEBS))
   {
     fprintf(stderr, "MRQ Server port %d is out of range %d - %d\n",
-            mrqPortNo, mrqPortBase, mrqPortBase + MAX_TEBS);
+            mrqPortNo, mrqPortBase, mrqPortBase + MAX_MEBS);
     return 1;
   }
   std::string mrqPort(std::to_string(mrqPortNo + id));
   //printf("MRQ Srv port = %s\n", mrqPort.c_str());
 
+  // Revisit: Fix maxBatches to what will fit in the ImmData idx field?
+  if (maxBatches - 1 > ImmData::MaxIdx)
+  {
+    fprintf(stderr, "Batch index ([0, %d]) can exceed available range ([0, %d])\n",
+            maxBatches - 1, ImmData::MaxIdx);
+    abort();
+  }
+
+  // Revisit: Fix maxEntries to equal duration?
   if (maxEntries > duration)
   {
-    fprintf(stderr, "Warning: More batch entries (%u) requested than definable "
-            "in the batch duration (%lu); reducing to avoid wasting memory\n",
+    fprintf(stderr, "More batch entries (%u) requested than definable "
+            "in the batch duration (%lu)\n",
             maxEntries, duration);
-    maxEntries = duration;
+    abort();
   }
 
   ::signal( SIGINT, sigHandler );
 
   EbAppBase::lverbose = lverbose;
+  EventBuilder::lverbose = lverbose;
 
   printf("\nParameters of Trigger Event Builder ID %d:\n",  id);
   printf("  Thread core numbers:        %d, %d\n",          lcore1, lcore2);
@@ -732,9 +744,14 @@ int main(int argc, char **argv)
   printf("  Batch pool depth:           %d\n",              maxBatches);
   printf("  Max # of entries per batch: %d\n",              maxEntries);
   printf("\n");
+  printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS);
+  printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS);
+  printf("  MRQ port range: %d - %d\n", mrqPortBase, mrqPortBase + MAX_MEBS);
+  printf("\n");
 
   pinThread(pthread_self(), lcore2);
   StatsMonitor* smon = new StatsMonitor(rtMonHost,
+                                        rtMonPort,
                                         partition,
                                         partitionTag,
                                         rtMonPeriod,
@@ -742,30 +759,34 @@ int main(int argc, char **argv)
   lstatsMon = smon;
 
   pinThread(pthread_self(), lcore1);
-  L3EbApp* app = new L3EbApp(ifAddr,   tebPort,
-                             drpAddrs, drpPorts,
-                             mrqPort,
-                             id,
-                             duration,
-                             maxBatches,
-                             maxEntries,
-                             max_contrib_size,
-                             max_result_size,
-                             contributors,
-                             numMrqs,
-                             *smon);
+  TebApp* app = new TebApp(ifAddr,   tebPort,
+                           drpAddrs, drpPorts,
+                           mrqPort,
+                           id,
+                           duration,
+                           maxBatches,
+                           maxEntries,
+                           max_contrib_size,
+                           max_result_size,
+                           contributors,
+                           numMrqs,
+                           *smon);
   lApp = app;
 
   const unsigned ibMtu = 4096;
-  unsigned mtuCnt = (sizeof(Dgram) + maxEntries * max_contrib_size + ibMtu - 1) / ibMtu;
-  unsigned mtuRem = (sizeof(Dgram) + maxEntries * max_contrib_size) % ibMtu;
+  unsigned mtuCnt = (maxEntries * max_contrib_size + ibMtu - 1) / ibMtu;
+  unsigned mtuRem = (maxEntries * max_contrib_size) % ibMtu;
   printf("\n");
-  printf("  Max contribution size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
-         max_contrib_size, app->maxInputSize(), mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
-  mtuCnt = (sizeof(Dgram) + maxEntries * max_result_size + ibMtu - 1) / ibMtu;
-  mtuRem = (sizeof(Dgram) + maxEntries * max_result_size) % ibMtu;
-  printf("  Max result       size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
-         max_result_size,  app->maxBatchSize(),  mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
+  printf("  Max contribution size:      "
+         "%zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
+         max_contrib_size, app->maxInputSize(), mtuCnt, mtuRem,
+         ibMtu, 100. * double(mtuRem) / double(ibMtu));
+  mtuCnt = (maxEntries * max_result_size + ibMtu - 1) / ibMtu;
+  mtuRem = (maxEntries * max_result_size) % ibMtu;
+  printf("  Max result       size:      "
+         "%zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
+         max_result_size,  app->maxBatchSize(),  mtuCnt, mtuRem,
+         ibMtu, 100. * double(mtuRem) / double(ibMtu));
   printf("\n");
 
   // Event builder sorts contributions into a time ordered list
@@ -780,7 +801,7 @@ int main(int argc, char **argv)
 
   app->process();
 
-  printf("\nL3EbApp was shut down.\n");
+  printf("\nTEB was shut down.\n");
 
   delete smon;
   delete app;

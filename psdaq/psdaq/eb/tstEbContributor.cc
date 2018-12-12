@@ -1,5 +1,5 @@
-#include "psdaq/eb/MonContributor.hh"
-#include "psdaq/eb/EbContributor.hh"
+#include "psdaq/eb/MebContributor.hh"
+#include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
 
 #include "psdaq/eb/utilities.hh"
@@ -41,12 +41,7 @@ static const size_t   input_extent     = 2;    // Revisit: Number of "L3" input 
 static const size_t   result_extent    = 2;    // Revisit: Number of "L3" result data words
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
-static const char*    dflt_partition   = "Test";
-static const char*    dflt_rtMon_host  = "psdev7b";
-static const char*    dflt_coll_host   = "drp-tst-acc06";
-static const unsigned mon_epochs       = 1;    // Revisit: Corresponds to monReqServer::numberof_epochs
-static const unsigned mon_transitions  = 18;   // Revisit: Corresponds to monReqServer::numberof_trBuffers
-static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReqServer:numberofEvBuffers
+static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReqServer::numberofEvBuffers
 static const size_t   mon_buf_size     = 1024; // Revisit: Corresponds to monReqServer:sizeofBuffers option
 static const size_t   mon_trSize       = 1024; // Revisit: Corresponds to monReqServer:??? option
 
@@ -92,6 +87,8 @@ namespace Pds {
       void         shutdown();
     public:
       const Dgram* genInput();
+    public:
+      const uint64_t& allocPending() const { return _allocPending; }
     private:
       const unsigned _maxBatches;
       const unsigned _maxEntries;
@@ -102,44 +99,45 @@ namespace Pds {
       GenericPoolW   _pool;
     private:
       TransitionId::Value _trId;
+    private:
+      uint64_t       _allocPending;
     };
 
     class EbCtrbIn : public EbCtrbInBase
     {
     public:
-      EbCtrbIn(const EbCtrbParams& prms,
-               MonContributor*     mon,
-               StatsMonitor&       smon,
-               const char*         outDir);
+      EbCtrbIn(const TebCtrbParams& prms,
+               MebContributor*      mon,
+               StatsMonitor&        smon,
+               const char*          outDir);
       virtual ~EbCtrbIn();
     public:                             // For EbCtrbInBase
       virtual void process(const Dgram* result, const void* input);
     private:
-      MonContributor* _mon;
+      MebContributor* _mon;
       FILE*           _xtcFile;
     private:
       uint64_t        _eventCount;
     };
 
-    class EbCtrbApp : public EbContributor
+    class EbCtrbApp : public TebContributor
     {
     public:
-      EbCtrbApp(const EbCtrbParams& prms,
-                StatsMonitor&       smon);
+      EbCtrbApp(const TebCtrbParams& prms,
+                StatsMonitor&        smon);
       virtual ~EbCtrbApp();
     public:
       void     shutdown();
       void     process(EbCtrbIn&);
     private:
-      DrpSim              _drpSim;
-      const EbCtrbParams& _prms;
+      DrpSim               _drpSim;
+      const TebCtrbParams& _prms;
     private:
-      uint64_t            _eventCount;
-      uint64_t            _freeBatchCnt;
-      uint64_t            _inFlightCnt;
+      uint64_t             _eventCount;
+      uint64_t             _inFlightCnt;
     private:
-      std::atomic<bool>   _running;
-      std::thread*        _outThread;
+      std::atomic<bool>    _running;
+      std::thread*         _outThread;
     };
   };
 };
@@ -151,14 +149,15 @@ DrpSim::DrpSim(unsigned maxBatches,
                unsigned maxEntries,
                size_t   maxEvtSize,
                unsigned id) :
-  _maxBatches(maxBatches),
-  _maxEntries(maxEntries),
-  _maxEvtSz  (maxEvtSize),
-  _id        (id),
-  _xtc       (TypeId(TypeId::Data, 0), TheSrc(Level::Segment, id)),
-  _pid       (0x01000000000003ul),  // Something non-zero and not on a batch boundary
-  _pool      (sizeof(Entry) + maxEvtSize, maxBatches * maxEntries),
-  _trId      (TransitionId::Unknown)
+  _maxBatches  (maxBatches),
+  _maxEntries  (maxEntries),
+  _maxEvtSz    (maxEvtSize),
+  _id          (id),
+  _xtc         (TypeId(TypeId::Data, 0), TheSrc(Level::Segment, id)),
+  _pid         (0x01000000000003ul),  // Something non-zero and not on a batch boundary
+  _pool        (sizeof(Entry) + maxEvtSize, maxBatches * maxEntries),
+  _trId        (TransitionId::Unknown),
+  _allocPending(0)
 {
 }
 
@@ -187,7 +186,9 @@ const Dgram* DrpSim::genInput()
   clock_gettime(CLOCK_MONOTONIC, &ts);
   const Sequence seq(Sequence::Event, _trId, TimeStamp(ts), PulseId(_pid));
 
+  ++_allocPending;
   void* buffer = _pool.alloc(sizeof(Input));
+  --_allocPending;
   if (!buffer)  return (Dgram*)buffer;
   Input* idg = ::new(buffer) Input(seq, _xtc);
 
@@ -212,10 +213,10 @@ const Dgram* DrpSim::genInput()
 }
 
 
-EbCtrbIn::EbCtrbIn(const EbCtrbParams& prms,
-                   MonContributor*     mon,
-                   StatsMonitor&       smon,
-                   const char*         outDir) :
+EbCtrbIn::EbCtrbIn(const TebCtrbParams& prms,
+                   MebContributor*      mon,
+                   StatsMonitor&        smon,
+                   const char*          outDir) :
   EbCtrbInBase(prms),
   _mon        (mon),
   _xtcFile    (nullptr),
@@ -235,7 +236,8 @@ EbCtrbIn::EbCtrbIn(const EbCtrbParams& prms,
     _xtcFile = xtcFile;
   }
 
-  smon.registerIt("CtbI.EvtCt",  _eventCount,        StatsMonitor::SCALAR);
+  smon.registerIt("CtbI.EvtCt",  _eventCount,  StatsMonitor::SCALAR);
+  smon.registerIt("CtbI.RxPdg",   rxPending(), StatsMonitor::SCALAR);
   if (_mon)
     smon.registerIt("MCtbO.EvtCt", _mon->eventCount(), StatsMonitor::SCALAR);
 }
@@ -251,7 +253,7 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 
   if (pid != input->seq.pulseId().value())
   {
-    fprintf(stderr, "Result pulse ID doesn't match Input datagram's: %014lx, %014lx\n",
+    fprintf(stderr, "Result, Input pulse ID mismatch - got: %014lx, expected: %014lx\n",
            pid, input->seq.pulseId().value());
     abort();
   }
@@ -260,7 +262,7 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
   {
     uint32_t* response = (uint32_t*)result->xtc.payload();
 
-    if (response[0] && _xtcFile)         // Persist the data
+    if (response[0] && _xtcFile)        // Persist the data
     {
       if (fwrite(input, sizeof(*input) + input->xtc.sizeofPayload(), 1, _xtcFile) != 1)
         fprintf(stderr, "Error writing to output xtc file.\n");
@@ -283,22 +285,25 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 }
 
 
-EbCtrbApp::EbCtrbApp(const EbCtrbParams& prms,
-                     StatsMonitor&       smon) :
-  EbContributor(prms),
+EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
+                     StatsMonitor&        smon) :
+  TebContributor(prms),
   _drpSim      (prms.maxBatches, prms.maxEntries, prms.maxInputSize, prms.id),
   _prms        (prms),
   _eventCount  (0),
-  _freeBatchCnt(freeBatchCount()),
   _inFlightCnt (0),
   _running     (true),
   _outThread   (nullptr)
 {
-  smon.registerIt("CtbO.EvtRt",  _eventCount,   StatsMonitor::RATE);
-  smon.registerIt("CtbO.EvtCt",  _eventCount,   StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.BatCt",   batchCount(), StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.FrBtCt", _freeBatchCnt, StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.InFlt",  _inFlightCnt,  StatsMonitor::SCALAR);
+  smon.registerIt("CtbO.EvtRt",  _eventCount,            StatsMonitor::RATE);
+  smon.registerIt("CtbO.EvtCt",  _eventCount,            StatsMonitor::SCALAR);
+  smon.registerIt("CtbO.BatCt",   batchCount(),          StatsMonitor::SCALAR);
+  smon.registerIt("CtbO.BtAlCt",  batchAllocCnt(),       StatsMonitor::SCALAR);
+  smon.registerIt("CtbO.BtFrCt",  batchFreeCnt(),        StatsMonitor::SCALAR);
+  smon.registerIt("CtbO.BtWtg",   batchWaiting(),        StatsMonitor::SCALAR);
+  smon.registerIt("CtbO.AlPdg",  _drpSim.allocPending(), StatsMonitor::SCALAR);
+  smon.registerIt("CtbO.TxPdg",   txPending(),           StatsMonitor::SCALAR);
+  smon.registerIt("CtbO.InFlt",  _inFlightCnt,           StatsMonitor::SCALAR);
 }
 
 EbCtrbApp::~EbCtrbApp()
@@ -320,7 +325,7 @@ void EbCtrbApp::shutdown()
 
 void EbCtrbApp::process(EbCtrbIn& in)
 {
-  EbContributor::startup(in);
+  TebContributor::startup(in);
 
   pinThread(pthread_self(), _prms.core[0]);
 
@@ -334,6 +339,7 @@ void EbCtrbApp::process(EbCtrbIn& in)
     std::string blank;
     std::getline(std::cin, blank);
 #endif
+    //usleep(100000);
 
     const Dgram* input = _drpSim.genInput();
     if (!input)  break;
@@ -341,21 +347,21 @@ void EbCtrbApp::process(EbCtrbIn& in)
     if (_prms.verbose > 1)
     {
       const char* svc = TransitionId::name(input->seq.service());
+      uint32_t*   inp = (uint32_t*)input->xtc.payload();
       printf("Batching  %15s  dg             @ "
-             "%16p, pid %014lx, sz %4zd, src %2d\n",
+             "%16p, pid %014lx, sz %4zd, src %2d, [0] = %08x, [1] = %08x\n",
              svc, input, input->seq.pulseId().value(),
              sizeof(*input) + input->xtc.sizeofPayload(),
-             input->xtc.src.log() & 0xff);
+             input->xtc.src.value(), inp[0], inp[1]);
     }
 
-    if (EbContributor::process(input, (const void*)input)) // 2nd arg is returned with the result
+    if (TebContributor::process(input, (const void*)input)) // 2nd arg is returned with the result
       ++_eventCount;
 
-    _freeBatchCnt = freeBatchCount();
     _inFlightCnt  = inFlightCnt();
   }
 
-  EbContributor::shutdown();
+  TebContributor::shutdown();
 }
 
 
@@ -382,7 +388,7 @@ void sigHandler(int signal)
 }
 
 static
-void usage(char *name, char *desc, EbCtrbParams& prms)
+void usage(char *name, char *desc, TebCtrbParams& prms)
 {
   fprintf(stderr, "Usage:\n");
   fprintf(stderr, "  %s [OPTIONS]\n", name);
@@ -425,13 +431,15 @@ void usage(char *name, char *desc, EbCtrbParams& prms)
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-m <seconds>",
           "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
-          "Run-time monitoring ZMQ server host",      dflt_rtMon_host);
+          "Run-time monitoring ZMQ server host",      RTMON_HOST);
+  fprintf(stderr, " %-20s %s (default: %d)\n",        "-R <port>",
+          "Run-time monitoring ZMQ server port",      RTMON_PORT_BASE);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
-          "Partition tag",                            dflt_partition);
+          "Partition tag",                            PARTITION);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
           "Partition number",                         0);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-C <address>",
-          "Collection server",                        dflt_coll_host);
+          "Collection server",                        COLL_HOST);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    prms.core[0]);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
@@ -492,8 +500,8 @@ void joinCollection(std::string&   server,
                     unsigned       partition,
                     unsigned       tebPortBase,
                     unsigned       mebPortBase,
-                    EbCtrbParams&  tebPrms,
-                    MonCtrbParams& mebPrms)
+                    TebCtrbParams& tebPrms,
+                    MebCtrbParams& mebPrms)
 {
   Collection collection(server, partition, "drp");
   collection.connect();
@@ -540,16 +548,17 @@ int main(int argc, char **argv)
   const unsigned NO_PARTITION = unsigned(-1UL);
   int            op, ret      = 0;
   unsigned       partition    = NO_PARTITION;
-  std::string    partitionTag  (dflt_partition);
-  const char*    rtMonHost    = dflt_rtMon_host;
+  std::string    partitionTag  (PARTITION);
+  const char*    rtMonHost    = RTMON_HOST;
+  unsigned       rtMonPort    = RTMON_PORT_BASE;
   unsigned       rtMonPeriod  = rtMon_period;
   unsigned       rtMonVerbose = 0;
   unsigned       drpPortNo    = 0;      // Port served to TEBs
   char*          tebSpec      = nullptr;
   char*          mebSpec      = nullptr;
   char*          outDir       = nullptr;
-  std::string    collSrv      = dflt_coll_host;
-  EbCtrbParams   tebPrms { /* .addrs         = */ { },
+  std::string    collSrv        (COLL_HOST);
+  TebCtrbParams  tebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
                            /* .ifAddr        = */ nullptr,
                            /* .port          = */ std::to_string(drpPortNo),
@@ -563,7 +572,7 @@ int main(int argc, char **argv)
                            /* .core          = */ { core_base + core_offset + 0,
                                                     core_base + core_offset + 12 },
                            /* .verbose       = */ 0 };
-  MonCtrbParams  mebPrms { /* .addrs         = */ { },
+  MebCtrbParams  mebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
                            /* .id            = */ default_id,
                            /* .maxEvents     = */ mon_buf_cnt,
@@ -571,7 +580,7 @@ int main(int argc, char **argv)
                            /* .maxTrSize     = */ mon_trSize,
                            /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "h?vVA:T:D:M:o:i:d:b:e:m:Z:P:p:n:s:C:1:2:")) != -1)
+  while ((op = getopt(argc, argv, "h?vVA:T:D:M:o:i:d:b:e:m:Z:R:P:p:n:s:C:1:2:")) != -1)
   {
     switch (op)
     {
@@ -587,6 +596,7 @@ int main(int argc, char **argv)
       case 'e':  tebPrms.maxEntries = atoi(optarg);       break;
       case 'm':  rtMonPeriod        = atoi(optarg);       break;
       case 'Z':  rtMonHost          = optarg;             break;
+      case 'R':  rtMonPort          = atoi(optarg);       break;
       case 'P':  partitionTag       = optarg;             break;
       case 'p':  partition          = std::stoi(optarg);  break;
       case 'n':  mebPrms.maxEvents  = atoi(optarg);       break;
@@ -668,13 +678,21 @@ int main(int argc, char **argv)
   tebPrms.port = std::to_string(drpPortNo + tebPrms.id);
   //printf("DRP Srv port = %s\n", tebPrms.port.c_str());
 
+  // Revisit: Fix maxBatches to what will fit in the ImmData idx field?
+  if (tebPrms.maxBatches - 1 > ImmData::MaxIdx)
+  {
+    fprintf(stderr, "Batch index ([0, %d]) can exceed available range ([0, %d])\n",
+            tebPrms.maxBatches - 1, ImmData::MaxIdx);
+    abort();
+  }
 
+  // Revisit: Fix maxEntries to equal duration?
   if (tebPrms.maxEntries > tebPrms.duration)
   {
-    fprintf(stderr, "More batch entries (%u) requested than definable in the "
-            "batch duration (%lu); reducing to avoid wasting memory\n",
+    fprintf(stderr, "More batch entries (%u) requested than definable "
+            "in the batch duration (%lu)\n",
             tebPrms.maxEntries, tebPrms.duration);
-    tebPrms.maxEntries = tebPrms.duration;
+    abort();
   }
 
   ::signal( SIGINT, sigHandler );
@@ -689,32 +707,41 @@ int main(int argc, char **argv)
   printf("  Batch pool depth:           %d\n",              tebPrms.maxBatches);
   printf("  Max # of entries per batch: %d\n",              tebPrms.maxEntries);
   printf("\n");
+  printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS);
+  printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS);
+  printf("  MEB port range: %d - %d\n", mebPortBase, mebPortBase + MAX_MEBS);
+  printf("\n");
 
   pinThread(pthread_self(), tebPrms.core[1]);
-  StatsMonitor* smon = new StatsMonitor(rtMonHost, partition, partitionTag, rtMonPeriod, rtMonVerbose);
+  StatsMonitor* smon = new StatsMonitor(rtMonHost,
+                                        rtMonPort,
+                                        partition,
+                                        partitionTag,
+                                        rtMonPeriod,
+                                        rtMonVerbose);
   lstatsMon = smon;
 
   pinThread(pthread_self(), tebPrms.core[0]);
   EbCtrbApp*      app = new EbCtrbApp(tebPrms, *smon);
-  MonContributor* meb = (mebPrms.addrs.size() != 0) ? new MonContributor(mebPrms) : nullptr;
+  MebContributor* meb = (mebPrms.addrs.size() != 0) ? new MebContributor(mebPrms) : nullptr;
   EbCtrbIn*       in  = new EbCtrbIn (tebPrms, meb, *smon, outDir);
   lApp = app;
 
   const unsigned ibMtu = 4096;
-  unsigned mtuCnt = (sizeof(Dgram) + tebPrms.maxEntries * tebPrms.maxInputSize  + ibMtu - 1) / ibMtu;
-  unsigned mtuRem = (sizeof(Dgram) + tebPrms.maxEntries * tebPrms.maxInputSize) % ibMtu;
+  unsigned mtuCnt = (tebPrms.maxEntries * tebPrms.maxInputSize  + ibMtu - 1) / ibMtu;
+  unsigned mtuRem = (tebPrms.maxEntries * tebPrms.maxInputSize) % ibMtu;
   printf("\n");
   printf("  sizeof(Dgram):              %zd\n", sizeof(Dgram));
   printf("  Max contribution size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
          tebPrms.maxInputSize,  app->maxBatchSize(), mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
-  mtuCnt = (sizeof(Dgram) + tebPrms.maxEntries * tebPrms.maxResultSize  + ibMtu - 1) / ibMtu;
-  mtuRem = (sizeof(Dgram) + tebPrms.maxEntries * tebPrms.maxResultSize) % ibMtu;
+  mtuCnt = (tebPrms.maxEntries * tebPrms.maxResultSize  + ibMtu - 1) / ibMtu;
+  mtuRem = (tebPrms.maxEntries * tebPrms.maxResultSize) % ibMtu;
   printf("  Max result       size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
          tebPrms.maxResultSize, in->maxBatchSize(),  mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
   printf("\n");
 
   // Wait a bit to allow other components of the system to establish connections
-  sleep(1);
+  sleep(1);                             // Revisit: Should be coordinated with the rest of the system
 
   app->process(*in);
 

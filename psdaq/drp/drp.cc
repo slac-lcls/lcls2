@@ -23,13 +23,13 @@ using json = nlohmann::json;
 using namespace Pds::Eb;
 
 void print_usage(){
-    printf("Usage: drp -p <partition>  -o <Output XTC dir> -d <Device id> -l <Lane mask> -D <Detector type>\n");
-    printf("e.g.: sudo psdaq/build/drp/drp -p 1 -o /drpffb/username -d 0x2032 -l 0xf -D Digitizer\n");
+    printf("Usage: drp -p <partition>  -o <Output XTC dir> -d <Device id> -l <Lane mask> -D <Detector type> -C <Collection host>\n");
+    printf("e.g.: sudo psdaq/build/drp/drp -p 1 -o /drpffb/username -d 0x2032 -l 0xf -D Digitizer -C drp-tst-acc06\n");
 }
 
 void join_collection(Parameters& para)
 {
-    Collection collection("drp-tst-acc06", para.partition, "drp");
+    Collection collection(para.collect_host, para.partition, "drp");
     collection.connect();
     std::cout << "cmstate:\n" << collection.cmstate.dump(4) << std::endl;
 
@@ -70,10 +70,12 @@ int main(int argc, char* argv[])
 {
     Parameters para;
     para.partition = 0;
+    para.collect_host = "drp-tst-acc06";
+    int device_id = 0x2031;
     int lane_mask = 0xf;
     std::string detector_type;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:D:")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:d:l:D:C:")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -86,6 +88,9 @@ int main(int argc, char* argv[])
                 break;
             case 'D':
                 detector_type = optarg;
+                break;
+            case 'C':
+                para.collect_host = optarg;
                 break;
             default:
                 print_usage();
@@ -133,10 +138,10 @@ int main(int argc, char* argv[])
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
     pin_thread(pgp_thread.native_handle(), 1);
 
-    Pds::Eb::EbContributor ebCtrb(para.tPrms);
-    Pds::Eb::MonContributor* meb = nullptr;
+    Pds::Eb::TebContributor ebCtrb(para.tPrms);
+    Pds::Eb::MebContributor* meb = nullptr;
     if (para.mPrms.addrs.size() != 0) {
-        meb = new Pds::Eb::MonContributor(para.mPrms);
+        meb = new Pds::Eb::MebContributor(para.mPrms);
     }
 
     // start performance monitor thread

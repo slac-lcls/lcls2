@@ -1,9 +1,10 @@
 #include "BatchManager.hh"
 
-#include "psdaq/eb/utilities.hh"
+#include "utilities.hh"
 
 #include "xtcdata/xtc/Dgram.hh"
 
+#include <new>
 #include <memory>
 #include <stdlib.h>
 #include <unistd.h>
@@ -17,21 +18,25 @@ BatchManager::BatchManager(uint64_t duration,
                            unsigned maxEntries,
                            size_t   maxSize) :
   _duration     (duration),
-  _durationShift(__builtin_ctzl(duration)),
-  _durationMask (~(duration - 1) & ((1UL << PulseId::NumPulseIdBits) - 1)),
   _batchDepth   (batchDepth),
   _maxEntries   (maxEntries),
-  _maxBatchSize (roundUpSize(sizeof(Dgram) + maxEntries * maxSize)),
+  _maxSize       (maxSize),
+  _maxBatchSize (roundUpSize(maxEntries * maxSize)),
   _batchBuffer  ((char*)allocRegion(batchDepth * _maxBatchSize)),
-  _batchFreeList(batchDepth, nullptr),
-  _batches      (batchDepth),
-  _appPrms      (new std::atomic<uintptr_t>[batchDepth * maxEntries]),
+  _batchFreelist(batchDepth),
+  _appPrms      (new AppPrm[batchDepth * maxEntries]),
   _batch        (nullptr)
 {
   if (duration & (duration - 1))
   {
-    fprintf(stderr, "%s: Batch duration (%016lx) must be a power of 2\n",
+    fprintf(stderr, "%s: Batch duration (0x%016lx) must be a power of 2\n",
             __func__, duration);
+    abort();
+  }
+  if (batchDepth & (batchDepth - 1))
+  {
+    fprintf(stderr, "%s: Batch depth (0x%08x) must be a power of 2\n",
+            __func__, batchDepth);
     abort();
   }
   if (maxEntries < duration)
@@ -54,12 +59,11 @@ BatchManager::BatchManager(uint64_t duration,
     abort();
   }
 
-  char*                   buffer  = _batchBuffer;
-  std::atomic<uintptr_t>* appPrms = _appPrms;
+  char*   buffer  = _batchBuffer;
+  AppPrm* appPrms = _appPrms;
   for (unsigned i = 0; i < batchDepth; ++i)
   {
-    _batches[i]._fixup(i, buffer, appPrms);
-    _batchFreeList.push(&_batches[i]);
+    new(_batchFreelist[i]) Batch(i, buffer, appPrms);
     buffer  += _maxBatchSize;
     appPrms += maxEntries;
   }
@@ -71,18 +75,17 @@ BatchManager::~BatchManager()
   free(_batchBuffer);
 }
 
-Batch* BatchManager::allocate(const Dgram* idg)
+Batch* BatchManager::locate(uint64_t pid)
 {
-  Batch* batch = _batch;
+  Batch*   batch = _batch;
 
-  if (!batch || batch->expired(idg->seq.pulseId().value(), _durationMask))
+  if (!batch || batch->expired(pid, ~(_duration - 1)))
   {
     if (batch)  post(batch);
 
     const auto tmo(std::chrono::milliseconds(5000));
-    batch  = _batchFreeList.pop(tmo);   // Waits when pool is empty
-    if (batch)  batch->initialize(idg);
-    else printf("Batch pop timeout\n");
+    uint64_t   key(batchId(pid));
+    batch  = _batchFreelist.allocate(key, tmo);
     _batch = batch;
   }
 
@@ -91,6 +94,6 @@ Batch* BatchManager::allocate(const Dgram* idg)
 
 void BatchManager::dump() const
 {
-  printf("\nBatchManager batch free list count: %zd / %zd\n\n",
-         _batchFreeList.count(), _batchFreeList.size());
+  printf("\nBatchManager batch freelist:\n");
+  _batchFreelist.dump();
 }

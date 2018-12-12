@@ -25,9 +25,10 @@ struct PGPData
 struct Parameters
 {
     int partition;
+    std::string collect_host;
     std::string output_dir;
-    Pds::Eb::EbCtrbParams tPrms;
-    Pds::Eb::MonCtrbParams mPrms;
+    Pds::Eb::TebCtrbParams tPrms;
+    Pds::Eb::MebCtrbParams mPrms;
 };
 
 // Per-Event-Buffer-with-Boundaries-Listed-Explicitly
@@ -78,12 +79,12 @@ struct Counters
 
 namespace Pds {
     namespace Eb {
-        class EbContributor;
+        class TebContributor;
     };
 };
 
 void pin_thread(const pthread_t& th, int cpu);
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContributor&);
+void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContributor&);
 
 
 #endif // DRP_H

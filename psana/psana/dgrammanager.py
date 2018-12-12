@@ -84,7 +84,7 @@ class DgramManager():
         dgrams = []
         for fd, config, offset, size in zip(self.fds, self.configs, offsets, sizes):
             d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
-        dgrams += [d]
+            dgrams += [d]
         
         evt = Event(dgrams, self.det_class_table)
         return evt

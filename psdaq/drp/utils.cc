@@ -63,30 +63,7 @@ long read_infiniband_counter(const char* counter)
     }
 }
 
-class Rate
-{
-public:
-    Rate()
-    {
-        value = 0.0;
-        time = std::chrono::steady_clock::now();
-    }
-
-    double operator() (double new_value)
-    {
-        auto new_time = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(new_time - time).count();
-        double rate = (new_value - value) / duration * 1.0e6;
-        value = new_value;
-        time = new_time;
-        return rate;
-    }
-private:
-    double value;
-    std::chrono::time_point<std::chrono::steady_clock> time;
-};
-
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContributor& ebCtrb)
+void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContributor& ebCtrb)
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUB);

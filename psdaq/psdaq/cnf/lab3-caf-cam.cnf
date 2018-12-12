@@ -23,11 +23,11 @@ collect_host = 'drp-tst-acc06'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                        id:'partca-'+platform ,flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
- {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- {                        id:'modca', flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmca DAQ:LAB2:XPM:'+shelf},
- {                        id:'deadca-'+platform, flags:'s', conda:conda_rel, env:epics_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
- {                        id:'dtica', flags:'s', conda:conda_rel, env:epics_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
+ {                        id:'partca-'+platform, conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'modca', conda:conda_rel, env:epics_env, cmd:'xpmca DAQ:LAB2:XPM:'+shelf},
+ {                        id:'deadca-'+platform, conda:conda_rel, env:epics_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
+ {                        id:'dtica', conda:conda_rel, env:epics_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
  { host: collect_host,    id:'collection', flags:'sxp', conda:conda_rel, cmd:'collection -v'},
  { host: 'daq-tst-dev02', id:'dti_proxy', flags:'sp', conda:conda_rel, env:epics_env, cmd:'dti_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
  # trigger event builder

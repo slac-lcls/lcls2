@@ -18,15 +18,19 @@ public:
     uint32_t env[3];
 };
 
-class L1Transition : public Transition {
+class Dgram : public Transition {
+public:
+  Dgram() {}
+  Dgram(const Transition& transition_, const Xtc& xtc_) :
+    Transition(transition_), xtc(xtc_)  { }
+public:
+    Xtc xtc;
+};
+
+class L1Dgram : public Dgram {
 public:
     uint16_t trigLines()     const { return (env[0]>>16)&0xffff; }
     uint16_t readoutGroups() const { return (env[0])&0xffff; }
-};
-
-class Dgram : public Transition {
-public:
-    Xtc xtc;
 };
 
 }

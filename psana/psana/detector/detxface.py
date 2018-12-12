@@ -4,7 +4,7 @@ import time
 
 doPlot = 1
 
-ds = DataSource('/reg/neh/home/yoon82/hsd_nov19_ps3.xtc') # TODO: add an example xtc file to git
+ds = DataSource('/reg/neh/home/yoon82/hsd_nov30_ps2_db.xtc') # TODO: add an example xtc file to git
 
 tstart = time.time()
 for nevt,evt in enumerate(ds.events()):

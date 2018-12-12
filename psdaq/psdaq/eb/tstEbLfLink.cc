@@ -97,16 +97,19 @@ int server(const char*        ifAddr,
     const int tmo = 5000;               // milliseconds
     if (svr->pend(&data, tmo) < 0)  continue;
 
-    unsigned spc = ImmData::spc(data);
-    unsigned src = ImmData::src(data);
-    unsigned idx = ImmData::idx(data);
-    void*    buf = links[src]->lclAdx(spc ? trOffset[idx] : idx * bufSize);
+    unsigned  flg = ImmData::flg(data);
+    unsigned  src = ImmData::src(data);
+    unsigned  idx = ImmData::idx(data);
+    EbLfLink* lnk = links[src];
+    size_t    ofs = (ImmData::buf(flg) == ImmData::Buffer) ? idx * bufSize
+                                                           : trOffset[idx];
+    void*     buf = lnk->lclAdx(ofs);
 
     links[src]->postCompRecv();
 
     uint64_t* b = (uint64_t*)buf;
     printf("Rcvd buf %p [%2d %2d %2d]: %2ld %2ld %2ld\n",
-           buf, spc, src, idx, b[0], b[1], b[2]);
+           buf, flg, src, idx, b[0], b[1], b[2]);
   }
 
   for (unsigned i = 0; i < links.size(); ++i)
@@ -172,7 +175,7 @@ int client(std::vector<std::string>& svrAddrs,
 
       for (unsigned dst = 0; dst < links.size(); ++dst)
       {
-        unsigned data = ImmData::transition(links[dst]->index(), tr);
+        uint32_t data = ImmData::value(ImmData::Transition | ImmData::NoResponse, id, tr);
 
         printf("Post %p, sz %zd to 0x%lx\n", buf, size, links[dst]->rmtAdx(offset));
 
@@ -196,7 +199,7 @@ int client(std::vector<std::string>& svrAddrs,
       for (unsigned dst = 0; dst < links.size(); ++dst)
       {
         int      rc;
-        uint64_t data = ImmData::buffer(links[dst]->index(), idx);
+        uint32_t data = ImmData::value(ImmData::Buffer | ImmData::Response, id, idx);
 
         printf("Post %p, sz %zd to 0x%lx\n", buf, size, links[dst]->rmtAdx(offset));
 
@@ -230,7 +233,7 @@ int client(std::vector<std::string>& svrAddrs,
 
       for (unsigned dst = 0; dst < links.size(); ++dst)
       {
-        unsigned data = ImmData::transition(links[dst]->index(), tr);
+        uint32_t data = ImmData::value(ImmData::Transition | ImmData::NoResponse, id, tr);
 
         printf("Post %p, sz %zd to 0x%lx\n", buf, size, links[dst]->rmtAdx(offset));
 

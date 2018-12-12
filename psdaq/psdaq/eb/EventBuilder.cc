@@ -13,34 +13,77 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
+unsigned EventBuilder::lverbose = 0;
+
+
 EventBuilder::EventBuilder(unsigned epochs,
                            unsigned entries,
                            unsigned sources,
                            uint64_t duration) :
   Timer(),
-  _mask(~(duration - 1) & ((1UL << PulseId::NumPulseIdBits) - 1)),
+  _mask(PulseId(~(duration - 1), 0).value()),
   _epochFreelist(sizeof(EbEpoch), epochs),
+  _epochLut(epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries),
+  _eventLut(epochs * entries),
   _timerTask(new Task(TaskObject("tEB_Timeout"))),
   _duration(100)                        // Timeout rate in ms
 {
   if (duration & (duration - 1))
   {
-    fprintf(stderr, "%s: Batch duration (%016lx) must be a power of 2\n",
+    fprintf(stderr, "%s: Epoch duration (%016lx) must be a power of 2\n",
             __func__, duration);
     abort();
   }
+  // Revisit: For now we punt on the power-of-2 requirement in order to
+  //          accomodate transitions, especially in the MEB case
+  //if (epochs & (epochs - 1))
+  //{
+  //  fprintf(stderr, "%s: Number of epochs (%08x) must be a power of 2\n",
+  //          __func__, epochs);
+  //  abort();
+  //}
+  //if (entries & (entries - 1))
+  //{
+  //  fprintf(stderr, "%s: Number of entries per epoch (%08x) must be a power of 2\n",
+  //          __func__, entries);
+  //  abort();
+  //}
 }
 
 EventBuilder::~EventBuilder()
 {
+  printf("EbEpoch freelist:\n");
+  _epochFreelist.dump();
+
+  printf("EbEvent freelist:\n");
+  _eventFreelist.dump();
+
   _timerTask->destroy();
+}
+
+unsigned EventBuilder::_epIndex(uint64_t key) const
+{
+  //return (key >> __builtin_ctzl(_mask)) & (_epochLut.size() - 1);
+  return (key >> __builtin_ctzl(_mask)) % _epochLut.size();
+}
+
+unsigned EventBuilder::_evIndex(uint64_t key) const
+{
+  //return key & (_eventLut.size() - 1);
+  return key % _eventLut.size();
 }
 
 EbEpoch* EventBuilder::_discard(EbEpoch* epoch)
 {
   EbEpoch* next = epoch->reverse();
+
+  const uint64_t key   = epoch->key;
+  EbEpoch*&      entry = _epochLut[_epIndex(key)];
+  if (entry && (entry->key == key))  entry = nullptr;
+
   delete epoch;
+
   return next;
 }
 
@@ -60,10 +103,22 @@ void EventBuilder::_flushBefore(EbEpoch* entry)
 EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 {
   void* buffer = _epochFreelist.alloc(sizeof(EbEpoch));
-  if (buffer)  return ::new(buffer) EbEpoch(key, after);
+  if (buffer)
+  {
+    EbEpoch*  epoch = ::new(buffer) EbEpoch(key, after);
+    unsigned  index = _epIndex(key);
+    EbEpoch*& entry = _epochLut[index];
+    if (!entry)  entry = epoch;
+    //else { printf("Epoch list entry %p is already allocated with key %014lx\n", entry, entry->key);
+    //  printf("New epoch %p pid %014lx, index %d, shift %zd\n",
+    //         epoch, epoch->key, index, _epochLut.size());
+    //  entry->dump(0);
+    //}
+    return epoch;
+  }
 
-  printf("%s: Unable to allocate epoch: key %016lx", __PRETTY_FUNCTION__,
-         key);
+  fprintf(stderr, "%s:\n  Unable to allocate epoch: key %014lx\n",
+          __PRETTY_FUNCTION__, key);
   printf(" epochFreelist:\n");
   _epochFreelist.dump();
   abort();
@@ -71,9 +126,13 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 
 EbEpoch* EventBuilder::_match(uint64_t inKey)
 {
+  const uint64_t key = inKey & _mask;
+
+  EbEpoch* epoch = _epochLut[_epIndex(key)];
+  if (epoch && (epoch->key == key))  return epoch;
+
   const EbEpoch* const empty = _pending.empty();
-  EbEpoch*             epoch = _pending.reverse();
-  const uint64_t       key   = inKey & _mask;
+  epoch                      = _pending.reverse();
 
   while (epoch != empty)
   {
@@ -89,28 +148,44 @@ EbEpoch* EventBuilder::_match(uint64_t inKey)
 }
 
 EbEvent* EventBuilder::_event(const Dgram* ctrb,
-                              EbEvent*     after)
+                              EbEvent*     after,
+                              unsigned     prm)
 {
   void* buffer = _eventFreelist.alloc(sizeof(EbEvent));
-  if (buffer)  return ::new(buffer) EbEvent(contract(ctrb),
-                                            this,
+  if (buffer)
+  {
+    EbEvent*  event = ::new(buffer) EbEvent(contract(ctrb),
                                             after,
                                             ctrb,
-                                            _mask);
+                                            prm);
+    unsigned  index = _evIndex(ctrb->seq.pulseId().value());
+    EbEvent*& entry = _eventLut[index];
+    if (!entry)  entry = event;
+    //else { printf("Event list entry %p is already allocated with key %014lx\n", entry, entry->sequence());
+    //  printf("New event %p pid %014lx, index %d, mask %08lx, shift %zd\n",
+    //         event, event->sequence(), index, _mask, _eventLut.size());
+    //  entry->dump(0);
+    //}
+    return event;
+  }
 
-  printf("%s: Unable to allocate event\n", __PRETTY_FUNCTION__);
+  fprintf(stderr, "%s:\n  Unable to allocate event\n", __PRETTY_FUNCTION__);
   printf("  eventFreelist:\n");
   _eventFreelist.dump();
   abort();
 }
 
 EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
-                               const Dgram* ctrb)
+                               const Dgram* ctrb,
+                               unsigned     prm)
 {
-  const EbEvent* const  empty = epoch->pending.empty();
-  EbEvent*              event = epoch->pending.reverse();
-  const uint64_t        key   = ctrb->seq.pulseId().value();
+  const uint64_t key = ctrb->seq.pulseId().value();
 
+  EbEvent* event = _eventLut[_evIndex(key)];
+  if (event && (event->sequence() == key))  return event->_add(ctrb);
+
+  const EbEvent* const empty = epoch->pending.empty();
+  event                      = epoch->pending.reverse();
 
   while (event != empty)
   {
@@ -121,17 +196,22 @@ EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
     event = event->reverse();
   }
 
-  return _event(ctrb, event);
+  return _event(ctrb, event, prm);
 }
 
 EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
                                const Dgram* ctrb,
-                               EbEvent*     event)
+                               EbEvent*     after,
+                               unsigned     prm)
 {
-  const EbEvent* const empty    = epoch->pending.empty();
-  EbEvent*             after    = event;
-  const uint64_t       key      = ctrb->seq.pulseId().value();
+  const uint64_t key = ctrb->seq.pulseId().value();
+
+  EbEvent* event = _eventLut[_evIndex(key)];
+  if (event && (event->sequence() == key))  return event->_add(ctrb);
+
   bool                 reversed = false;
+  const EbEvent* const empty    = epoch->pending.empty();
+  event                         = after;
 
   while (event != empty)
   {
@@ -152,7 +232,7 @@ EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
     }
   }
 
-  return _event(ctrb, after);
+  return _event(ctrb, after, prm);
 }
 
 void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
@@ -175,6 +255,10 @@ void EventBuilder::_retire(EbEvent* event)
   event->disconnect();
 
   process(event);
+
+  const uint64_t key   = event->sequence();
+  EbEvent*&      entry = _eventLut[_evIndex(key)];
+  if (entry && (entry->sequence() == key))  entry = nullptr;
 
   delete event;
 }
@@ -283,39 +367,47 @@ unsigned EventBuilder::repetitive() const
 ** --
 */
 
-void EventBuilder::process(const Dgram* ctrb)
+void EventBuilder::process(const Dgram* ctrb, unsigned prm)
 {
   if (ctrb->seq.isBatch())
   {
-    _processBulk(ctrb);
+    _processBulk(ctrb, prm);
   }
   else
   {
     EbEpoch* epoch = _match(ctrb->seq.pulseId().value());
-    EbEvent* event = _insert(epoch, ctrb);
+
+    if (lverbose > 1)
+    {
+      unsigned from = ctrb->xtc.src.value();
+      printf("EB found          a  ctrb                 @ %16p, pid %014lx, sz %4zd from Ctrb %2d\n",
+             ctrb, ctrb->seq.pulseId().value(), sizeof(*ctrb) + ctrb->xtc.sizeofPayload(), from);
+    }
+
+    EbEvent* event = _insert(epoch, ctrb, prm);
     if (!event->_remaining)  _flush(event);
   }
 }
 
-void EventBuilder::_processBulk(const Dgram* ctrb)
+void EventBuilder::_processBulk(const Dgram* ctrb, unsigned prm)
 {
   EbEpoch* epoch = _match(ctrb->seq.pulseId().value());
   EbEvent* event = epoch->pending.forward();
 
-  const Dgram* next = (Dgram*)ctrb->xtc.payload();
-  const Dgram* last = (Dgram*)ctrb->xtc.next();
-  while (next != last)
+  while (true)
   {
-    //if (lverbose > 1)                 // Revisit: lverbose is not defined
-    //{
-    //  unsigned from = next->xtc.src.log() & 0xff;
-    //  printf("EventBuilder found          a  ctrb          @ %16p, pid %014lx, sz %4zd from Ctrb %d\n",
-    //         next, next->seq.pulseId().value(), sizeof(*next) + next->xtc.sizeofPayload(), from);
-    //}
+    if (lverbose > 1)
+    {
+      unsigned from = ctrb->xtc.src.value();
+      printf("EB found          a  ctrb                 @ %16p, pid %014lx, sz %4zd from Ctrb %2d\n",
+             ctrb, ctrb->seq.pulseId().value(), sizeof(*ctrb) + ctrb->xtc.sizeofPayload(), from);
+    }
 
-    event = _insert(epoch, next, event);
+    event = _insert(epoch, ctrb, event, prm);
 
-    next = (Dgram*)next->xtc.next();
+    if (!ctrb->seq.isBatch())  break;
+
+    ctrb = reinterpret_cast<const Dgram*>(ctrb->xtc.next());
   }
 
   if (!event->_remaining)  _flush(event);

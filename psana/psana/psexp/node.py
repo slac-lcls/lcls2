@@ -85,16 +85,16 @@ class BigDataNode(object):
             for event in self.evt_man.events(view):
                 yield event
 
-def run_node(run, nodetype, nsmds, max_events, batch_size, filter_callback):
+def run_node(run, nodetype, nsmds, smd0_threads, max_events, batch_size, filter_callback):
     if nodetype == 'smd0':
         Smd0(run.smd_dm.fds, nsmds, max_events=max_events)
     elif nodetype == 'smd':
-        bd_node_ids = (np.arange(size)[nsmds+1:] % nsmds) + 1
+        bd_node_ids = (np.arange(size)[nsmds+smd0_threads:] % nsmds) + smd0_threads
         smd_node = SmdNode(run.smd_configs, len(bd_node_ids[bd_node_ids==rank]), \
                            batch_size=batch_size, filter=filter_callback)
         smd_node.run_mpi()
     elif nodetype == 'bd':
-        smd_node_id = (rank % nsmds) + 1
+        smd_node_id = (rank % nsmds) + smd0_threads
         bd_node = BigDataNode(run.smd_configs, run.dm, smd_node_id)
         for evt in bd_node.run_mpi():
             yield evt

@@ -70,7 +70,7 @@ inline unsigned Pds::Eb::EbContribution::payloadSize() const
 
 inline unsigned Pds::Eb::EbContribution::number() const
 {
-  return xtc.src.log() & 0x00ffffff; // Revisit: Shouldn't need to mask here
+  return xtc.src.value();
 }
 
 /*

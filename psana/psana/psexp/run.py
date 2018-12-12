@@ -121,8 +121,9 @@ class RunSerial(Run):
 class RunParallel(Run):
     nodetype = None
     nsmds = None
+    smd0_threads = None
 
-    def __init__(self, exp, run_no, xtc_files, smd_files, nodetype, nsmds,
+    def __init__(self, exp, run_no, xtc_files, smd_files, nodetype, nsmds, smd0_threads, 
             max_events, batch_size, filter_callback):
         """ Parallel read requires that rank 0 does the file system works.
         Configs and calib constants are sent to other ranks by MPI."""
@@ -130,6 +131,7 @@ class RunParallel(Run):
                 batch_size=batch_size, filter_callback=filter_callback)
         self.nodetype = nodetype
         self.nsmds = nsmds
+        self.smd0_threads = smd0_threads
         
         if rank == 0:
             self.dm = DgramManager(xtc_files)
@@ -160,7 +162,7 @@ class RunParallel(Run):
 
     
     def events(self):
-        for evt in run_node(self, self.nodetype, self.nsmds, self.max_events, \
+        for evt in run_node(self, self.nodetype, self.nsmds, self.smd0_threads, self.max_events, \
                 self.batch_size, self.filter_callback):
             yield evt
     

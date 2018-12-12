@@ -12,6 +12,7 @@ typedef std::chrono::microseconds us_t;
 
 
 StatsMonitor::StatsMonitor(const char*        hostname,
+                           unsigned           basePort,
                            unsigned           platform,
                            const std::string& partition,
                            unsigned           period,
@@ -22,8 +23,7 @@ StatsMonitor::StatsMonitor(const char*        hostname,
   _running  (true),
   _task     (new std::thread([&] { routine(); }))
 {
-  const unsigned base_port = 55559;
-  unsigned       port      = base_port + 2 * platform; // *2: 1 for forwarder.py
+  unsigned port = basePort + 2 * platform; // *2: 1 for forwarder.py
   snprintf(_addr, sizeof(_addr), "tcp://%s:%u", hostname, port);
   printf("Publishing statistics to %s\n", _addr);
 }

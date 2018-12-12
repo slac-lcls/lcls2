@@ -1,22 +1,3 @@
-/*
-** ++
-**  Package:
-**
-**  Abstract:
-**
-**
-**  Author:
-**      Michael Huffer, SLAC, (415) 926-4269
-**
-**  Creation Date:
-**	000 - June 1,1998
-**
-**  Revision History:
-**	None.
-**
-** --
-*/
-
 #include "EbEpoch.hh"
 
 using namespace Pds::Eb;
@@ -33,7 +14,7 @@ using namespace Pds::Eb;
 
 void EbEpoch::dump(int number)
 {
-  printf("  Epoch #%d @ address %p is tagged as %016lX\n",
+  printf("  Epoch #%d @ address %p is tagged as %014lX\n",
          number, this, key);
   printf("   Forward link -> %p, Backward link -> %p\n",
          forward(), reverse());

@@ -1,4 +1,4 @@
-#include "psdaq/eb/EbContributor.hh"
+#include "psdaq/eb/TebContributor.hh"
 
 #include "psdaq/eb/Endpoint.hh"
 #include "psdaq/eb/EbLfClient.hh"
@@ -16,15 +16,16 @@
 #include <chrono>
 #include <string>
 #include <unordered_map>
+#include <thread>
 
 using namespace XtcData;
 using namespace Pds::Eb;
 
 
-EbContributor::EbContributor(const EbCtrbParams& prms) :
+TebContributor::TebContributor(const TebCtrbParams& prms) :
   BatchManager (prms.duration, prms.maxBatches, prms.maxEntries, prms.maxInputSize),
   _transport   (new EbLfClient()),
-  _links       (), //prms.addrs.size()),
+  _links       (),
   _idx2Id      (new unsigned[prms.addrs.size()]),
   _id          (prms.id),
   _numEbs      (std::bitset<64>(prms.builders).count()),
@@ -39,8 +40,8 @@ EbContributor::EbContributor(const EbCtrbParams& prms) :
   _rcvrThread  (nullptr),
   _prms        (prms)
 {
-  size_t size   = batchRegionSize();
-  void*  region = batchRegion();
+  size_t size   = batchRegionSize();    // No need to add Tr space size here
+  void*  region = batchRegion();        // Local space for Trs is in the batch region
 
   for (unsigned i = 0; i < prms.addrs.size(); ++i)
   {
@@ -67,18 +68,18 @@ EbContributor::EbContributor(const EbCtrbParams& prms) :
   }
 }
 
-EbContributor::~EbContributor()
+TebContributor::~TebContributor()
 {
   if (_idx2Id)     delete [] _idx2Id;
   if (_transport)  delete _transport;
 }
 
-void EbContributor::startup(EbCtrbInBase& in)
+void TebContributor::startup(EbCtrbInBase& in)
 {
   _rcvrThread = new std::thread([&] { _receiver(in); });
 }
 
-void EbContributor::shutdown()
+void TebContributor::shutdown()
 {
   _running = false;
 
@@ -111,93 +112,90 @@ void EbContributor::shutdown()
   _links.clear();
 }
 
-bool EbContributor::process(const Dgram* datagram, const void* appPrm)
+bool TebContributor::process(const Dgram* datagram, const void* appPrm)
 {
-  Batch* batch = allocate(datagram);    // Might call post(batch), below
+  Batch* batch = locate(datagram->seq.pulseId().value()); // Might call post(batch), below
   if (batch)                            // Timed out if nullptr
   {
-    size_t size   = sizeof(*datagram) + datagram->xtc.sizeofPayload();
-    void*  buffer = batch->allocate(size, appPrm);
+    Dgram* bdg = batch->buffer(appPrm);
 
-    memcpy(buffer, datagram, size);
+    // Copy entire datagram into the batch (copy ctor doesn't copy payload)
+    memcpy(bdg, datagram, sizeof(*datagram) + datagram->xtc.sizeofPayload());
 
     if (!datagram->seq.isEvent())
     {
       post(batch);
-      post((const Dgram*)buffer);
+      post(bdg);
       flush();
     }
   }
   return batch;
 }
 
-void EbContributor::post(const Batch* batch)
+void TebContributor::post(const Batch* batch)
 {
-  unsigned     dst    = _idx2Id[batchId(batch->id()) % _numEbs];
-  EbLfLink*    link   = _links[dst];
-  uint32_t     idx    = batch->index();
-  uint32_t     data   = ImmData::buffer(_id /*link->index()*/, idx);
-  size_t       extent = batch->extent();
-  unsigned     offset = idx * maxBatchSize();
-  const Dgram* bdg    = batch->datagram();
-
-  // Revisit: Commented out alternate method, EbAppBase::process(), L3EbApp::process(event)
-  // Revisit: This doesn't work.  If fdg is the nonEvent, the first flag will make appear to be a batch
-  //const Dgram* fdg = (Dgram*)bdg->xtc.payload(); // First Dgram in batch
-  //const_cast<Dgram*>(fdg)->seq.first();          // Tag to indicate src.phy is valid
-  //const_cast<Dgram*>(fdg)->xtc.src.phy(data);    // Store the return address info
+  uint32_t    idx    = batch->index();
+  unsigned    dst    = _idx2Id[idx % _numEbs];
+  EbLfLink*   link   = _links[dst];
+  uint32_t    data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
+  size_t      extent = batch->extent();
+  unsigned    offset = idx * maxBatchSize();
+  const void* buffer = batch->batch();
 
   if (_prms.verbose)
   {
-    uint64_t pid    = bdg->seq.pulseId().value();
+    uint64_t pid    = batch->id();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
-    printf("CtrbOut posts %6ld       batch[%4d]    @ "
-           "%16p, pid %014lx, sz %4zd to   Teb %2d @ %16p (%d entries)\n",
-           _batchCount, idx, bdg, pid, extent, link->id(), rmtAdx, batch->entries());
+    printf("CtrbOut posts %9ld    batch[%4d]    @ "
+           "%16p, pid %014lx, sz %4zd to   Teb %2d @ %16p, data %08x (%2d entries)\n",
+           _batchCount, idx, buffer, pid, extent, link->id(), rmtAdx, data, batch->entries());
   }
 
   auto t0(std::chrono::steady_clock::now());
-  if (link->post(bdg, extent, offset, data) < 0)  return;
+  if (link->post(buffer, extent, offset, data) < 0)  return;
   auto t1(std::chrono::steady_clock::now());
 
   ++_batchCount;
 
-  _updateHists(t0, t1, bdg->seq.stamp());
+  _updateHists(t0, t1, static_cast<const Dgram*>(buffer)->seq.stamp());
 
   _inFlightOcc += 1;
   _inFlightHist.bump(_inFlightOcc);
 }
 
-void EbContributor::post(const Dgram* nonEvent)
+void TebContributor::post(const Dgram* nonEvent)
 {
   // Non-events are sent to all EBs, except the one that got the batch
   // containing it.  These don't receive responses
-  unsigned dst    = _idx2Id[batchId(nonEvent->seq.pulseId().value()) % _numEbs];
+  uint64_t pid    = nonEvent->seq.pulseId().value();
+  uint32_t idx    = batchId(pid) & (_prms.maxBatches - 1);
+  unsigned dst    = _idx2Id[idx % _numEbs];
   unsigned tr     = nonEvent->seq.service();
-  size_t   size   = sizeof(*nonEvent) + nonEvent->xtc.sizeofPayload();
+  uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);
+  size_t   extent = sizeof(*nonEvent) + nonEvent->xtc.sizeofPayload();
   unsigned offset = batchRegionSize() + tr * _prms.maxInputSize;
+
   for (EbLfLinkMap::iterator it  = _links.begin();
                              it != _links.end(); ++it)
   {
-    EbLfLink* lnk = it->second;
-    if (lnk->id() != dst)         // Batch posted above included this non-event
+    EbLfLink* link = it->second;
+    if (link->id() != dst)        // Batch posted above included this non-event
     {
       if (_prms.verbose)
       {
+        void* rmtAdx = (void*)link->rmtAdx(offset);
         printf("CtrbOut posts          non-event          @ "
-               "%16p, pid %014lx, sz %4zd to   Teb %2d @ %16p (svc %15s)\n",
-               nonEvent, nonEvent->seq.pulseId().value(), size, lnk->id(),
-               (void*)lnk->rmtAdx(offset), TransitionId::name(nonEvent->seq.service()));
+               "%16p, pid %014lx, sz %4zd to   Teb %2d @ %16p, data %08x (svc %15s)\n",
+               nonEvent, pid, extent, link->id(), rmtAdx, data,
+               TransitionId::name(nonEvent->seq.service()));
       }
 
-      uint32_t data = ImmData::transition(_id /*lnk->index()*/, tr);
-
-      lnk->post(nonEvent, size, offset, data); // Not a batch
+      link->post(nonEvent, extent, offset, data); // Not a batch
     }
   }
 }
 
-void EbContributor::_updateHists(TimePoint_t      t0,
+void TebContributor::_updateHists(TimePoint_t      t0,
                                  TimePoint_t      t1,
                                  const TimeStamp& stamp)
 {
@@ -214,7 +212,7 @@ void EbContributor::_updateHists(TimePoint_t      t0,
   _postPrevTime = t0;
 }
 
-void EbContributor::_receiver(EbCtrbInBase& in)
+void TebContributor::_receiver(EbCtrbInBase& in)
 {
   pinThread(pthread_self(), _prms.core[1]);
 

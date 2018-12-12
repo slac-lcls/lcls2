@@ -90,7 +90,7 @@ class Client:
     def handle_plat(self, msg):
         logging.debug('Client handle_plat()')
         # time.sleep(1.5)
-        body = {'dti': {'proc_info': {
+        body = {'drp-no-teb': {'proc_info': {
                         'host': self.hostname,
                         'pid': self.pid}}}
         reply = create_msg('plat', msg['header']['msg_id'], self.id, body=body)
@@ -98,26 +98,9 @@ class Client:
 
     def handle_alloc(self, msg):
         logging.debug('Client handle_alloc()')
-        body = {'dti': {'connect_info': {
-                        'shelf': 0,
-                        'slot': 0,
-                        'paddr': 0,
-                        'dsRemLinkId': [
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0}],
-                        'usRemLinkId': [
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0}]}}}
+        body = {'drp-no-teb': {'connect_info': {
+                           'infiniband': '172.21.52.122'
+                       }}}
         reply = create_msg('alloc', msg['header']['msg_id'], self.id, body)
         self.push.send_json(reply)
         self.state = 'alloc'
@@ -143,7 +126,7 @@ class Client:
                 # failure: reply 'error'
                 err_msg = "PV put failed: %s" % self.pvMsgConfig.name
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -164,7 +147,7 @@ class Client:
                 # failure: reply 'error'
                 err_msg = "PV put failed: %s" % self.pvMsgUnconfig.name
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -184,7 +167,7 @@ class Client:
                 # failure: reply 'error'
                 err_msg = "PV put failed: %s" % self.pvRun.name
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -204,7 +187,7 @@ class Client:
                 # failure: reply 'error'
                 err_msg = "PV put failed: %s" % self.pvRun.name
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -226,7 +209,7 @@ class Client:
                 # failure: reply 'error'
                 err_msg = "PV put failed: %s" % self.pvMsgEnable.name
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -248,7 +231,7 @@ class Client:
                 # failure: reply 'error'
                 err_msg = "PV put failed: %s" % self.pvMsgDisable.name
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)

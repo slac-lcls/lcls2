@@ -19,6 +19,7 @@ public:
     uint32_t phy() const;
 
     Level::Type level() const;
+    uint32_t    value() const;
 
     bool operator==(const Src& s) const;
     bool operator<(const Src& s) const;

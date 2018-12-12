@@ -23,6 +23,8 @@
 
 #include "PoolEntry.hh"
 
+#include <cstdint>
+
 #define PoolDeclare                                                     \
   void* operator new   (size_t size,                                    \
                         Pool*  pool)   { return pool->alloc(size); }    \
@@ -36,30 +38,30 @@ class Pool
     virtual ~Pool();
     Pool(size_t sizeofObject, int numberofOfObjects);
     Pool(size_t sizeofObject, int numberofOfObjects, unsigned alignBoundary);
-    void*         alloc(size_t size);
-    virtual void  free(PoolEntry*);
-    size_t        sizeofObject()              const;
-    int           numberofObjects()           const;
-    int           numberofAllocs()            const;
-    int           numberofFrees()             const;
-    int           numberOfAllocatedObjects()  const;
-    int           numberOfFreeObjects()       const;
+    void*           alloc(size_t size);
+    virtual void    free(PoolEntry*);
+    size_t          sizeofObject()              const;
+    int             numberofObjects()           const;
+    const uint64_t& numberofAllocs()            const;
+    const uint64_t& numberofFrees()             const;
+    int             numberOfAllocatedObjects()  const;
+    int             numberOfFreeObjects()       const;
   public:
-    static void   free(void* buffer);
-    static int    numberOfFreeObjects(void* buffer);
+    static void     free(void* buffer);
+    static int      numberOfFreeObjects(void* buffer);
   protected:
-    size_t        sizeofAllocate()  const;
-    virtual void* deque()               = 0;
-    virtual void  enque(PoolEntry*)     = 0;
-    virtual void* allocate(size_t size) = 0;
-    void          populate();
+    size_t          sizeofAllocate()  const;
+    virtual void*   deque()               = 0;
+    virtual void    enque(PoolEntry*)     = 0;
+    virtual void*   allocate(size_t size) = 0;
+    void            populate();
   private:
-    size_t        _sizeofObject;
-    int           _numberofObjects;
-    int           _numberofAllocs;
-    int           _numberofFrees;
-    int           _remaining;
-    size_t        _quanta;
+    int             _numberofObjects;
+    int             _remaining;
+    size_t          _sizeofObject;
+    size_t          _quanta;
+    uint64_t        _numberofAllocs;
+    uint64_t        _numberofFrees;
   };
 }
 /*
@@ -151,7 +153,7 @@ inline int Pds::Pool::numberofObjects() const
 ** --
 */
 
-inline int Pds::Pool::numberofAllocs() const
+inline const uint64_t& Pds::Pool::numberofAllocs() const
   {
   return _numberofAllocs;
   }
@@ -163,7 +165,7 @@ inline int Pds::Pool::numberofAllocs() const
 ** --
 */
 
-inline int Pds::Pool::numberofFrees() const
+inline const uint64_t& Pds::Pool::numberofFrees() const
   {
   return _numberofFrees;
   }
