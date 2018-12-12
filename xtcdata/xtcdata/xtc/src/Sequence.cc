@@ -50,6 +50,11 @@ bool XtcData::Sequence::isBatch() const
     return _pulseId.control() & s_batch;
 }
 
+void XtcData::Sequence::markBatch()
+{
+    _pulseId = PulseId(_pulseId, _pulseId.control() | s_batch);
+}
+
 bool XtcData::Sequence::isFirst() const
 {
     return _pulseId.control() & s_first;
@@ -57,7 +62,7 @@ bool XtcData::Sequence::isFirst() const
 
 void XtcData::Sequence::first()
 {
-  _pulseId = PulseId(_pulseId, _pulseId.control() | s_first);
+    _pulseId = PulseId(_pulseId, _pulseId.control() | s_first);
 }
 
 bool XtcData::Sequence::isEvent() const

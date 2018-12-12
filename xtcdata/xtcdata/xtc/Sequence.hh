@@ -30,6 +30,7 @@ public:
     Type type() const;
     TransitionId::Value service() const;
     bool isBatch() const;
+    void markBatch();
     bool isEvent() const;
 
 public:
