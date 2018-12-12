@@ -1,9 +1,10 @@
-#ifndef Pds_Eb_EbContributor_hh
-#define Pds_Eb_EbContributor_hh
+#ifndef Pds_Eb_TebContributor_hh
+#define Pds_Eb_TebContributor_hh
 
-#include "psdaq/eb/eb.hh"
+#include "eb.hh"
 
-#include "psdaq/eb/BatchManager.hh"
+#include "BatchManager.hh"
+#include "EbLfClient.hh"
 
 #include "psdaq/service/Histogram.hh"
 
@@ -34,18 +35,17 @@ namespace Pds {
     using ns_t        = std::chrono::nanoseconds;
 
     class EbLfLink;
-    class EbLfClient;
     class EbCtrbInBase;
     class Batch;
     class StatsMonitor;
 
     using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
-    class EbContributor : public BatchManager
+    class TebContributor : public BatchManager
     {
     public:
-      EbContributor(const EbCtrbParams&);
-      virtual ~EbContributor();
+      TebContributor(const TebCtrbParams&);
+      virtual ~TebContributor();
     public:
       void     startup(EbCtrbInBase&);
       void     shutdown();
@@ -55,8 +55,9 @@ namespace Pds {
     public:                             // For BatchManager
       virtual void post(const Batch* input);
     public:
-      const uint64_t& batchCount()  const { return _batchCount;  }
-      unsigned        inFlightCnt() const { return _inFlightOcc; }
+      const uint64_t& batchCount()   const { return _batchCount;  }
+      const uint64_t& txPending()    const { return _transport->pending(); }
+      unsigned        inFlightCnt()  const { return _inFlightOcc; }
     private:
       void    _receiver(EbCtrbInBase&);
       void    _updateHists(TimePoint_t               t0,
@@ -81,7 +82,7 @@ namespace Pds {
       std::atomic<bool>      _running;
       std::thread*           _rcvrThread;
     protected:
-      const EbCtrbParams&    _prms;
+      const TebCtrbParams&   _prms;
     };
   };
 };

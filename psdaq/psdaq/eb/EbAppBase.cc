@@ -45,20 +45,19 @@ EbAppBase::EbAppBase(const char*        ifAddr,
                      uint64_t           duration,
                      unsigned           maxBuffers,
                      unsigned           maxEntries,
-                     size_t             maxInpDgSize,
+                     size_t             maxInDgSize,
                      size_t             maxTrDgSize,
-                     size_t             hdrSize,
                      uint64_t           contributors) :
-  //EventBuilder (TransitionId::NumberOf + maxBuffers, maxEntries, std::bitset<64>(contributors).count(), duration),
-  EventBuilder (maxBuffers, maxEntries, std::bitset<64>(contributors).count(), duration),
-  _maxBufSize  (roundUpSize(hdrSize + maxEntries * maxInpDgSize)),
+  EventBuilder (maxBuffers + TransitionId::NumberOf, maxEntries, std::bitset<64>(contributors).count(), duration),
+  _maxBufSize  (roundUpSize(maxEntries * maxInDgSize)),
   _region      (allocRegion(std::bitset<64>(contributors).count() *
                             (maxBuffers * _maxBufSize +
                              roundUpSize(TransitionId::NumberOf * maxTrDgSize)))),
   _transport   (new EbLfServer(ifAddr, port.c_str())),
   _links       (),
   _id          (id),
-  _contract    (contributors),
+  _defContract (contributors),
+  _contract    ( { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ),
   _trOffset    (TransitionId::NumberOf),
   //_dummy       (Level::Fragment),
   _ctrbCntHist (6, 1.0),                // Up to 64 Ctrbs
@@ -68,7 +67,7 @@ EbAppBase::EbAppBase(const char*        ifAddr,
   _pendPrevTime(std::chrono::steady_clock::now())
 {
   size_t   size   = maxBuffers * _maxBufSize + roundUpSize(TransitionId::NumberOf * maxTrDgSize);
-  unsigned nCtrbs = std::bitset<64>(_contract).count();
+  unsigned nCtrbs = std::bitset<64>(contributors).count();
 
   if (_region == nullptr)
   {
@@ -78,13 +77,12 @@ EbAppBase::EbAppBase(const char*        ifAddr,
   }
 
   size_t offset = maxBuffers * _maxBufSize;
-  for (unsigned i = 0; i < _trOffset.size(); ++i)
+  for (unsigned tr = 0; tr < _trOffset.size(); ++tr)
   {
-    _trOffset[i] = offset;
-    offset += maxTrDgSize;
+    _trOffset[tr] = offset + tr * maxTrDgSize;
   }
 
-  char* region = (char*)_region;
+  char* region = static_cast<char*>(_region);
   for (unsigned i = 0; i < nCtrbs; ++i)
   {
     EbLfLink*      link;
@@ -152,38 +150,29 @@ void EbAppBase::process()
   if (_transport->pend(&data, tmo))  return;
   auto t1(std::chrono::steady_clock::now());
 
-  unsigned     spc = ImmData::spc(data);
+  unsigned     flg = ImmData::flg(data);
   unsigned     src = ImmData::src(data);
   unsigned     idx = ImmData::idx(data);
   EbLfLink*    lnk = _links[src];
-  const Dgram* idg = (Dgram*)lnk->lclAdx(spc == ImmData::Buffer ? idx * _maxBufSize
-                                                                : _trOffset[idx]);
+  size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer) ? idx * _maxBufSize
+                                                            : _trOffset[idx];
+  const Dgram* idg = static_cast<Dgram*>(lnk->lclAdx(ofs));
   lnk->postCompRecv();
-
-  // Revisit: Commented out alternate method, L3EbApp::process(event), EbCtrbBase::post()
-  if (idg->seq.isBatch())
-  {
-    const Dgram* fdg = (Dgram*)idg->xtc.payload(); // First Dgram in batch
-    const_cast<Dgram*>(fdg)->seq.first();          // Tag to help find the Batch DG later
-    const_cast<Dgram*>(idg)->xtc.src.phy(data);    // Save the return address info
-    //const_cast<Dgram*>(fdg)->xtc.src.phy(data);    // Save the return address info
-  }
 
   if (lverbose)
   {
     static unsigned cnt = 0;
     uint64_t        pid = idg->seq.pulseId().value();
-    size_t          sz  = sizeof(*idg) + idg->xtc.sizeofPayload();
-    printf("EbApp   rcvd  %6d      %6s[%4d]    @ "
-           "%16p, pid %014lx, sz %4zd from Ctrb %2d\n",
-           cnt++, spc == ImmData::Buffer ? "buffer" : "trId",
-           idx, idg, pid, sz, lnk->id());
+    printf("EbAp rcvd %6d %15s[%4d]    @ "
+           "%16p, pid %014lx, sz   ?? from Ctrb %2d, data %08lx\n",
+           cnt++, (ImmData::buf(flg) == ImmData::Buffer) ? "buffer" : TransitionId::name(idg->seq.service()),
+           idx, idg, pid, lnk->id(), data);
   }
 
   _updateHists(t0, t1, idg->seq.stamp());
   _ctrbCntHist.bump(lnk->id());
 
-  EventBuilder::process(idg);         // Comment out for open-loop running
+  EventBuilder::process(idg, data);     // Comment out for open-loop running
 }
 
 void EbAppBase::_updateHists(TimePoint_t      t0,
@@ -213,7 +202,22 @@ uint64_t EbAppBase::contract(const Dgram* ctrb) const
   // them together to provide the overall contract.  The list of contributors
   // participating in each readout group is provided at configuration time.
 
-  return _contract;
+  if (ctrb->seq.isEvent())
+  {
+    uint64_t contract = 0;
+    unsigned groups   = static_cast<const L1Dgram*>(ctrb)->readoutGroups();
+
+    while (groups)
+    {
+      unsigned group = __builtin_ffs(groups) - 1;
+      groups &= ~(1 << group);
+
+      contract |= _contract[group];
+    }
+
+    if (contract)  return contract;
+  }
+  return _defContract;
 }
 
 void EbAppBase::fixup(EbEvent* event, unsigned srcId)
@@ -223,7 +227,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 
   if (lverbose)
   {
-    fprintf(stderr, "%s: Fixup event %014lx, size %zu, for source %d\n",
+    fprintf(stderr, "%s:\n  Fixup event %014lx, size %zu, for source %d\n",
             __PRETTY_FUNCTION__, event->sequence(), event->size(), srcId);
   }
 
@@ -236,20 +240,4 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
   //datagram->xtc.damage.increase(Damage::DroppedContribution);
   //
   //new(&datagram->xtc.tag) Xtc(_dummy, source, dropped); // Revisit: No tag, no TC
-}
-
-bool EbAppBase::inTrSpace(const Dgram* dg)
-{
-  unsigned        src = dg->xtc.src.log() & (MAX_DRPS - 1);
-  const EbLfLink* lnk = _links[src];
-  const Dgram*    tr = (Dgram*)lnk->lclAdx(_trOffset[0]);
-  //printf("src %d, idx %d, dg(%p)(%2d), tr(%p), &tr[TransitionId::NumberOf](%p)\n",
-  //       src, idx, dg, dg->seq.service(), tr, &tr[TransitionId::NumberOf]);
-  return (tr <= dg) && (dg <= &tr[TransitionId::NumberOf]);
-}
-
-int EbAppBase::bufferIdx(const Dgram* dg)
-{
-  unsigned src = dg->xtc.src.log() & (MAX_DRPS - 1);
-  return ((char*)dg - (char*)_links[src]->lclAdx(0)) / _maxBufSize;
 }

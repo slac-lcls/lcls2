@@ -25,12 +25,15 @@
 #include "EbEvent.hh"
 
 #include "psdaq/service/LinkedList.hh"
+#include "psdaq/service/Pool.hh"
 
 namespace Pds {
   namespace Eb {
 
     class EbEpoch : public Pds::LinkedList<EbEpoch>
     {
+    public:
+      PoolDeclare;
     public:
       EbEpoch(uint64_t key, EbEpoch* after);
       ~EbEpoch();

@@ -31,14 +31,15 @@ static const int MaxTimeouts = 10; //0x100;      // Revisit: Was 0xffff
 */
 
 EbEvent::EbEvent(uint64_t      contract,
-                 EventBuilder* eb,
                  EbEvent*      after,
-                 const Dgram*  cdg) :
+                 const Dgram*  cdg,
+                 unsigned      prm) :
   _contract(contract),
   _living  (MaxTimeouts),
+  _prm     (prm),
   _last    (_contributions)
 {
-  const EbContribution* contribution = (EbContribution*)cdg;
+  const EbContribution* contribution = static_cast<const EbContribution*>(cdg);
 
   *_last++   = contribution;
 
@@ -75,7 +76,7 @@ Pds::Eb::EbEvent::~EbEvent()
 
 void EbEvent::_insert(const Dgram* dummy)
 {
-  *_last++ = (EbContribution*)dummy;
+  *_last++ = static_cast<const EbContribution*>(dummy);
 }
 
 /*
@@ -100,6 +101,19 @@ EbEvent* EbEvent::_add(const Dgram* cdg)
 
   _size      += contribution->payloadSize();
 
+  // Revisit: Turn these into asserts?
+  //if ((_remaining & ~contribution->retire()) == 0)
+  //{
+  //  printf("pid = %014lx, remaining = %08lx, mask = %08lx\n",
+  //         cdg->seq.pulseId().value(), _remaining, contribution->retire());
+  //}
+
+  //int n = _last - _contributions;
+  //if (n > 2)
+  //{
+  //  printf("pid = %014lx, num ctrbs = %d\n", cdg->seq.pulseId().value(), n);
+  //}
+
   _remaining &= contribution->retire();
 
   _living     = MaxTimeouts;
@@ -119,11 +133,11 @@ EbEvent* EbEvent::_add(const Dgram* cdg)
 
 void EbEvent::dump(int number)
 {
-  printf("   Event #%d @ address %p has sequence %016lX\n",
+  printf("   Event #%d @ address %p has sequence %014lX\n",
          number, this, sequence());
   printf("    Forward link -> %p, Backward link -> %p\n",
          forward(), reverse());
-  printf("    Contributors remaining/requested = %08lX/%08lX\n",
+  printf("    Contributors remaining/requested = %016lX/%016lX\n",
          _remaining, _contract);
   printf("    Total size (in bytes) = %zd\n", _size);
 
@@ -131,7 +145,7 @@ void EbEvent::dump(int number)
   const EbContribution*  const* current = begin();
   const EbContribution*         contrib = *current;
 
-  printf("    Creator (%p) was @ source %d with an environment of 0x%ux\n",
+  printf("    Creator (%p) was @ source %02x with an environment of 0x%08x\n",
          contrib,
          contrib->number(),
          contrib->env[0]);
@@ -140,7 +154,8 @@ void EbEvent::dump(int number)
   while(++current != last)
   {
     contrib = *current;
-    printf("     src %02x seq %016lx size %08x env 0x%ux\n",
+    printf("     %p: src %02x seq %014lx size %08x env 0x%08x\n",
+           contrib,
            contrib->number(),
            contrib->seq.pulseId().value(),
            contrib->payloadSize(),

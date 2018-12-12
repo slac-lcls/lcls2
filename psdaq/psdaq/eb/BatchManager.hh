@@ -31,24 +31,26 @@ namespace Pds {
     public:
       void*        batchRegion() const;
       size_t       batchRegionSize() const;
-      Batch*       allocate(const XtcData::Dgram*);
-      void         deallocate(const Batch*);
+      Batch*       locate(uint64_t pid);
+      void         release(const Batch*);
       void         process(const XtcData::Dgram*, void* prm);
       void         flush();
       const Batch* batch(unsigned index) const;
       void         shutdown();
       uint64_t     batchId(uint64_t id) const;
+      size_t       maxSize() const;
       size_t       maxBatchSize() const;
     public:
-      void         dump() const;
-      int          freeBatchCount() const;
-    private:
-      uint64_t     _startId(uint64_t id) const;
+      void            dump() const;
+      int64_t         freeBatchCnt()  const;
+      const uint64_t& batchAllocCnt() const;
+      const uint64_t& batchFreeCnt()  const;
+      const uint64_t& batchWaiting()  const;
     private:
       uint64_t     _duration;           // The lifetime of a batch (power of 2)
-      uint64_t     _durationMask;       // Mask  off  insignificant bits
       unsigned     _batchDepth;         // Depth of the batch pool
       unsigned     _maxEntries;         // Max number of entries per batch
+      size_t       _maxSize;            // Max size of the Dgrams to be batched
       size_t       _maxBatchSize;       // Max batch size rounded up to page boundary
       char*        _batchBuffer;        // RDMA buffers for batches
       BatchList    _batchFreelist;      // Free list of Batch objects
@@ -79,6 +81,12 @@ const Pds::Eb::Batch* Pds::Eb::BatchManager::batch(unsigned index) const
 }
 
 inline
+size_t Pds::Eb::BatchManager::maxSize() const
+{
+  return _maxSize;
+}
+
+inline
 size_t Pds::Eb::BatchManager::maxBatchSize() const
 {
   return _maxBatchSize;
@@ -97,21 +105,34 @@ uint64_t Pds::Eb::BatchManager::batchId(uint64_t id) const
 }
 
 inline
-uint64_t Pds::Eb::BatchManager::_startId(uint64_t id) const
+void Pds::Eb::BatchManager::release(const Pds::Eb::Batch* batch)
 {
-  return id & _durationMask;
+  const_cast<Pds::Eb::Batch*>(batch)->release();
+  _batchFreelist.free(batch->index());
 }
 
 inline
-void Pds::Eb::BatchManager::deallocate(const Pds::Eb::Batch* batch)
+int64_t Pds::Eb::BatchManager::freeBatchCnt() const
 {
-  _batchFreelist.free(const_cast<Batch*>(batch));
+  return _batchFreelist.numberofFreeObjects();
 }
 
 inline
-int Pds::Eb::BatchManager::freeBatchCount() const
+const uint64_t& Pds::Eb::BatchManager::batchAllocCnt() const
 {
-  return _batchFreelist.numberOfFreeObjects();
+  return _batchFreelist.numberofAllocs();
+}
+
+inline
+const uint64_t& Pds::Eb::BatchManager::batchFreeCnt() const
+{
+  return _batchFreelist.numberofFrees();
+}
+
+inline
+const uint64_t& Pds::Eb::BatchManager::batchWaiting() const
+{
+  return _batchFreelist.waiting();
 }
 
 #endif

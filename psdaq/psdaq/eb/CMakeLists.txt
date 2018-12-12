@@ -54,10 +54,6 @@ add_executable(drpEbBuilder     drpEbBuilder.cc)
 add_executable(tstNthSet        tstNthSet.cc)
 target_compile_options(tstNthSet        PRIVATE -mbmi2)
 
-#target_compile_options(eb               PRIVATE -pg)
-#target_compile_options(tstEbContributor PRIVATE -pg)
-#target_compile_options(tstEbBuilder     PRIVATE -pg)
-
 target_include_directories(ibMon PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
@@ -140,8 +136,8 @@ target_link_libraries(drpEbBuilder
 
 install(TARGETS eb
   tstEbContributor
-	tstEbBuilder
-	drpEbBuilder
+  tstEbBuilder
+  drpEbBuilder
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -157,3 +153,77 @@ target_include_directories(tstIndexPool PUBLIC
 
 target_link_libraries(tstIndexPool
 )
+
+
+# The following builds for use with gprof
+#add_executable(tstEbContributor tstEbContributor.cc
+#  utilities.cc
+#  Endpoint.cc
+#  IndexPool.cc
+#  Batch.cc
+#  BatchManager.cc
+#  EventBuilder.cc
+#  EbEpoch.cc
+#  EbEvent.cc
+#  EbLfLink.cc
+#  EbLfServer.cc
+#  EbLfClient.cc
+#  EbContributor.cc
+#  EbCtrbInBase.cc
+#  EbAppBase.cc
+#  MonContributor.cc
+#  StatsMonitor.cc
+#)
+#
+#add_executable(tstEbBuilder     tstEbBuilder.cc
+#  utilities.cc
+#  Endpoint.cc
+#  IndexPool.cc
+#  Batch.cc
+#  BatchManager.cc
+#  EventBuilder.cc
+#  EbEpoch.cc
+#  EbEvent.cc
+#  EbLfLink.cc
+#  EbLfServer.cc
+#  EbLfClient.cc
+#  EbContributor.cc
+#  EbCtrbInBase.cc
+#  EbAppBase.cc
+#  MonContributor.cc
+#  StatsMonitor.cc
+#)
+#
+#target_compile_options(tstEbContributor PRIVATE -pg)
+#target_compile_options(tstEbBuilder     PRIVATE -pg)
+#
+#target_link_libraries(tstEbContributor
+#  xtcdata::xtc
+#  service
+#  collection
+#  fabric
+#  zmq
+#  pthread
+#  rt
+#  -pg
+#)
+#
+#target_link_libraries(tstEbBuilder
+#  xtcdata::xtc
+#  service
+#  collection
+#  fabric
+#  zmq
+#  pthread
+#  rt
+#  -pg
+#)
+#
+#install(TARGETS eb
+#  tstEbContributor
+#  tstEbBuilder
+#  #drpEbBuilder
+#  ARCHIVE DESTINATION lib
+#  LIBRARY DESTINATION lib
+#  RUNTIME DESTINATION bin
+#)

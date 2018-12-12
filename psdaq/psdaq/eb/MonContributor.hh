@@ -1,5 +1,5 @@
-#ifndef Pds_Eb_MonContributor_hh
-#define Pds_Eb_MonContributor_hh
+#ifndef Pds_Eb_MebContributor_hh
+#define Pds_Eb_MebContributor_hh
 
 #include "psdaq/eb/eb.hh"
 
@@ -24,11 +24,11 @@ namespace Pds {
 
     using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
-    class MonContributor
+    class MebContributor
     {
     public:
-      MonContributor(const MonCtrbParams& prms);
-      ~MonContributor();
+      MebContributor(const MebCtrbParams& prms);
+      ~MebContributor();
     public:
       int      post(const XtcData::Dgram* dataDatagram); // Transitions
       int      post(const XtcData::Dgram* dataDatagram,

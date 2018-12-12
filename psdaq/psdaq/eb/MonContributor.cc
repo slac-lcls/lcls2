@@ -16,7 +16,7 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-MonContributor::MonContributor(const MonCtrbParams& prms) :
+MebContributor::MebContributor(const MebCtrbParams& prms) :
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
   _trOffset  (TransitionId::NumberOf),
@@ -48,7 +48,7 @@ MonContributor::MonContributor(const MonCtrbParams& prms) :
   _initialize(__func__, prms.addrs, prms.ports, prms.id, regionSize);
 }
 
-MonContributor::~MonContributor()
+MebContributor::~MebContributor()
 {
   if (_transport)
   {
@@ -63,7 +63,7 @@ MonContributor::~MonContributor()
   if (_region)  free(_region);
 }
 
-void MonContributor::_initialize(const char*                     who,
+void MebContributor::_initialize(const char*                     who,
                                  const std::vector<std::string>& addrs,
                                  const std::vector<std::string>& ports,
                                  unsigned                        id,
@@ -94,18 +94,18 @@ void MonContributor::_initialize(const char*                     who,
   }
 }
 
-int MonContributor::post(const Dgram* ddg, uint32_t destination)
+int MebContributor::post(const Dgram* ddg, uint32_t destination)
 {
   unsigned  dst    = ImmData::src(destination); //_id2Idx[ImmData::src(destination)];
   uint32_t  idx    = ImmData::idx(destination);
   size_t    sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
   unsigned  offset = idx * _maxEvSize;
   EbLfLink* link   = _links[dst];
-  uint32_t  data   = ImmData::buffer(_id /*link->index()*/, idx);
+  uint32_t  data   = ImmData::value(ImmData::Buffer, _id /*link->index()*/, idx);
 
   if (sz > _maxEvSize)
   {
-    fprintf(stderr, "%s: L1Accept of size %zd is too big for target buffer of size %zd\n",
+    fprintf(stderr, "%s:\n  L1Accept of size %zd is too big for target buffer of size %zd\n",
             __PRETTY_FUNCTION__, sz, _maxEvSize);
     return -1;
   }
@@ -114,7 +114,7 @@ int MonContributor::post(const Dgram* ddg, uint32_t destination)
   {
     uint64_t pid    = ddg->seq.pulseId().value();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
-    printf("MonCtrb posts %6ld       monEvt [%4d]  @ "
+    printf("MebCtrb posts %6ld       monEvt [%4d]  @ "
            "%16p, pid %014lx, sz %4zd to   Meb %2d @ %16p, data %08x\n",
            _eventCount, idx, ddg, pid, sz, link->id(), rmtAdx, data);
   }
@@ -126,16 +126,16 @@ int MonContributor::post(const Dgram* ddg, uint32_t destination)
   return 0;
 }
 
-int MonContributor::post(const Dgram* ddg)
+int MebContributor::post(const Dgram* ddg)
 {
-  size_t   sz      = sizeof(*ddg) + ddg->xtc.sizeofPayload();
-  unsigned service = ddg->seq.service();
-  uint64_t offset  = _trOffset[service];
+  size_t              sz      = sizeof(*ddg) + ddg->xtc.sizeofPayload();
+  TransitionId::Value service = ddg->seq.service();
+  uint64_t            offset  = _trOffset[service];
 
   if (sz > _maxTrSize)
   {
-    fprintf(stderr, "%s: %s transition of size %zd is too big for target buffer of size %zd\n",
-            __PRETTY_FUNCTION__, TransitionId::name(ddg->seq.service()), sz, _maxTrSize);
+    fprintf(stderr, "%s:\n  %s transition of size %zd is too big for target buffer of size %zd\n",
+            __PRETTY_FUNCTION__, TransitionId::name(service), sz, _maxTrSize);
     return -1;
   }
 
@@ -143,13 +143,13 @@ int MonContributor::post(const Dgram* ddg)
                              it != _links.end(); ++it)
   {
     EbLfLink* link = it->second;
-    uint32_t  data = ImmData::transition(_id /*link->index()*/, service);
+    uint32_t  data = ImmData::value(ImmData::Transition, _id /*link->index()*/, service);
 
     if (_verbose)
     {
       uint64_t pid    = ddg->seq.pulseId().value();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
-      printf("MonCtrb posts %6ld         trId [%4d]  @ "
+      printf("MebCtrb posts %6ld         trId [%4d]  @ "
              "%16p, pid %014lx, sz %4zd to   Meb %2d @ %16p, data %08x\n",
              _eventCount, service, ddg, pid, sz, link->id(), rmtAdx, data);
     }
