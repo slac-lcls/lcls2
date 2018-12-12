@@ -9,7 +9,7 @@
 namespace Pds {
   namespace HSD {
 
-  class EventHeader : public XtcData::L1Transition {
+  class EventHeader : public XtcData::L1Dgram {
     public:
       EventHeader() {}
     public:
@@ -80,11 +80,11 @@ namespace Pds {
       unsigned _baddr;
       unsigned _eaddr;
   };
-    
+
 
     //
     //  Validate threshold stream : ramp signal repeats 0..0xfe
-    //      phyclk period is 0.8 ns 
+    //      phyclk period is 0.8 ns
     //      recTimingClk period is 5.384 ns
     //        => 1346 phyclks per beam period
     //
