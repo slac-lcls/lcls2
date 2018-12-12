@@ -40,7 +40,12 @@ namespace Pds
     }
 
     inline pointer allocate (size_type n) {
-      return (pointer)aligned_alloc(N, n*sizeof(value_type));
+      // Revisit: Apparently RHEL6 compiler doesn't have aligned_alloc()
+      //return (pointer)aligned_alloc(N, n*sizeof(value_type));
+
+      void* ptr;
+      int rc = posix_memalign(&ptr, N, n*sizeof(value_type));
+      return (pointer)(rc == 0 ? ptr : nullptr);
     }
 
     inline void deallocate (pointer p, size_type) {
