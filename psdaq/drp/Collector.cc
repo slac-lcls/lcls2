@@ -14,6 +14,7 @@ using json = nlohmann::json;
 #include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/service/Collection.hh"
+#include "xtcdata/xtc/TransitionId.hh"
 using namespace XtcData;
 using namespace Pds::Eb;
 
@@ -133,13 +134,30 @@ void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContr
         int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
         Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index]->virt);
         TransitionId::Value transition_id = event_header->seq.service();
-         if (transition_id == 2) {
-            printf("Collector saw configure transition\n");
-        } else if (transition_id != 0) {
-            printf("Collector saw transition ID %d\n", (int)transition_id);
+        switch (transition_id) {
+            case TransitionId::Configure:
+                printf("Collector saw Configure transition\n");
+                break;
+            case TransitionId::Unconfigure:
+                printf("Collector saw Unconfigure transition\n");
+                break;
+            case TransitionId::BeginRun:
+                printf("Collector saw BeginRun transition\n");
+                break;
+            case TransitionId::EndRun:
+                printf("Collector saw EndRun transition\n");
+                break;
+            case TransitionId::Enable:
+                printf("Collector saw Enable transition\n");
+                break;
+            case TransitionId::Disable:
+                printf("Collector saw Disable transition\n");
+                break;
+            default:
+                break;
         }
         // pass non L1 accepts to control level
-        if (transition_id != 0) {
+        if ((transition_id != TransitionId::Unknown) && (transition_id != TransitionId::L1Accept)) {
             char msg_id_buf[32];
             sprintf(msg_id_buf, "%010u-%09u", event_header->seq.stamp().seconds(),
                     event_header->seq.stamp().nanoseconds());
