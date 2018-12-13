@@ -58,9 +58,7 @@ namespace Pds {
       EbEvent*          _event(const XtcData::Dgram*, EbEvent* after, unsigned prm);
       void              _flush(EbEvent*);
       void              _retire(EbEvent*);
-      EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*, unsigned prm);
       EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*, EbEvent*, unsigned prm);
-      void              _processBulk(const XtcData::Dgram*, unsigned prm);
     private:
       friend class EbEvent;
     private:

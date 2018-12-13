@@ -21,7 +21,7 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
   _maxBatchSize(roundUpSize(prms.maxEntries * prms.maxResultSize)),
   _region      (allocRegion(prms.maxBatches * _maxBatchSize)),
   _transport   (new EbLfServer(prms.ifAddr, prms.port.c_str())),
-  _links       (), //_numEbs),
+  _links       (),
   _ebCntHist   ( 6, 1.0),               // Up to 64 possible EBs
   _rttHist     (12, 1.0),
   _pendTimeHist(12, 1.0),

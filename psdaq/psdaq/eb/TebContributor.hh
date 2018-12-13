@@ -9,7 +9,6 @@
 #include "psdaq/service/Histogram.hh"
 
 #include <cstdint>
-#include <vector>
 #include <unordered_map>
 #include <string>
 #include <chrono>
@@ -64,25 +63,25 @@ namespace Pds {
                            TimePoint_t               t1,
                            const XtcData::TimeStamp& stamp);
     private:
-      EbLfClient*            _transport;
-      EbLfLinkMap            _links;
-      unsigned*              _idx2Id;
-      const unsigned         _id;
-      const unsigned         _numEbs;
+      EbLfClient*           _transport;
+      EbLfLinkMap           _links;
+      unsigned*             _idx2Id;
+      const unsigned        _id;
+      const unsigned        _numEbs;
     private:
-      uint64_t               _batchCount;
+      uint64_t              _batchCount;
     private:
-      std::atomic<unsigned>  _inFlightOcc;
-      Histogram              _inFlightHist;
-      Histogram              _depTimeHist;
-      Histogram              _postTimeHist;
-      Histogram              _postCallHist;
-      TimePoint_t            _postPrevTime;
+      std::atomic<unsigned> _inFlightOcc;
+      Histogram             _inFlightHist;
+      Histogram             _depTimeHist;
+      Histogram             _postTimeHist;
+      Histogram             _postCallHist;
+      TimePoint_t           _postPrevTime;
     private:
-      std::atomic<bool>      _running;
-      std::thread*           _rcvrThread;
+      std::atomic<bool>     _running;
+      std::thread*          _rcvrThread;
     protected:
-      const TebCtrbParams&   _prms;
+      const TebCtrbParams&  _prms;
     };
   };
 };

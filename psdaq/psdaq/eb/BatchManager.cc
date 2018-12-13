@@ -77,7 +77,7 @@ BatchManager::~BatchManager()
 
 Batch* BatchManager::locate(uint64_t pid)
 {
-  Batch*   batch = _batch;
+  Batch* batch = _batch;
 
   if (!batch || batch->expired(pid, ~(_duration - 1)))
   {

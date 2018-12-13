@@ -42,18 +42,16 @@ namespace Pds {
                           unsigned                        id,
                           size_t                          regionSize);
     private:
-      size_t                                 _maxEvSize;
-      size_t                                 _maxTrSize;
-      std::vector<size_t>                    _trOffset;
-      void*                                  _region;
-      Pds::Eb::EbLfClient*                   _transport;
-      //std::vector<Pds::Eb::EbLfLink*>      _links;
-      //std::unordered_map<unsigned, unsigned> _id2Idx;
-      EbLfLinkMap                            _links;
-      const unsigned                         _id;
-      bool                                   _verbose;
+      size_t               _maxEvSize;
+      size_t               _maxTrSize;
+      std::vector<size_t>  _trOffset;
+      void*                _region;
+      Pds::Eb::EbLfClient* _transport;
+      EbLfLinkMap          _links;
+      const unsigned       _id;
+      bool                 _verbose;
     private:
-      uint64_t                               _eventCount;
+      uint64_t             _eventCount;
     };
   };
 };

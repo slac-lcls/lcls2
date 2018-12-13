@@ -177,30 +177,6 @@ EbEvent* EventBuilder::_event(const Dgram* ctrb,
 
 EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
                                const Dgram* ctrb,
-                               unsigned     prm)
-{
-  const uint64_t key = ctrb->seq.pulseId().value();
-
-  EbEvent* event = _eventLut[_evIndex(key)];
-  if (event && (event->sequence() == key))  return event->_add(ctrb);
-
-  const EbEvent* const empty = epoch->pending.empty();
-  event                      = epoch->pending.reverse();
-
-  while (event != empty)
-  {
-    const uint64_t eventKey = event->sequence();
-
-    if (eventKey == key) return event->_add(ctrb);
-    if (eventKey <  key) break;
-    event = event->reverse();
-  }
-
-  return _event(ctrb, event, prm);
-}
-
-EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
-                               const Dgram* ctrb,
                                EbEvent*     after,
                                unsigned     prm)
 {
@@ -369,30 +345,9 @@ unsigned EventBuilder::repetitive() const
 
 void EventBuilder::process(const Dgram* ctrb, unsigned prm)
 {
-  if (ctrb->seq.isBatch())
-  {
-    _processBulk(ctrb, prm);
-  }
-  else
-  {
-    EbEpoch* epoch = _match(ctrb->seq.pulseId().value());
-
-    if (lverbose > 1)
-    {
-      unsigned from = ctrb->xtc.src.value();
-      printf("EB found          a  ctrb                 @ %16p, pid %014lx, sz %4zd from Ctrb %2d\n",
-             ctrb, ctrb->seq.pulseId().value(), sizeof(*ctrb) + ctrb->xtc.sizeofPayload(), from);
-    }
-
-    EbEvent* event = _insert(epoch, ctrb, prm);
-    if (!event->_remaining)  _flush(event);
-  }
-}
-
-void EventBuilder::_processBulk(const Dgram* ctrb, unsigned prm)
-{
   EbEpoch* epoch = _match(ctrb->seq.pulseId().value());
   EbEvent* event = epoch->pending.forward();
+  EbEvent* due   = nullptr;
 
   while (true)
   {
@@ -404,13 +359,14 @@ void EventBuilder::_processBulk(const Dgram* ctrb, unsigned prm)
     }
 
     event = _insert(epoch, ctrb, event, prm);
+    if (!event->_remaining)  due = event;
 
     if (!ctrb->seq.isBatch())  break;
 
     ctrb = reinterpret_cast<const Dgram*>(ctrb->xtc.next());
   }
 
-  if (!event->_remaining)  _flush(event);
+  if (due)  _flush(due);
 }
 
 /*

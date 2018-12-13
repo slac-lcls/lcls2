@@ -15,7 +15,6 @@
 #include <bitset>
 #include <chrono>
 #include <string>
-#include <unordered_map>
 #include <thread>
 
 using namespace XtcData;

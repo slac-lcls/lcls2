@@ -10,7 +10,6 @@
 #include <string.h>
 #include <cstdint>
 #include <string>
-#include <unordered_map>
 
 using namespace XtcData;
 using namespace Pds::Eb;
@@ -88,7 +87,6 @@ void MebContributor::_initialize(const char*                     who,
       abort();
     }
     _links[link->id()] = link;
-    //_id2Idx[_links[i]->id()] = i;
 
     printf("%s: EbLfServer ID %d connected\n", who, link->id());
   }
@@ -96,12 +94,12 @@ void MebContributor::_initialize(const char*                     who,
 
 int MebContributor::post(const Dgram* ddg, uint32_t destination)
 {
-  unsigned  dst    = ImmData::src(destination); //_id2Idx[ImmData::src(destination)];
+  unsigned  dst    = ImmData::src(destination);
   uint32_t  idx    = ImmData::idx(destination);
   size_t    sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
   unsigned  offset = idx * _maxEvSize;
   EbLfLink* link   = _links[dst];
-  uint32_t  data   = ImmData::value(ImmData::Buffer, _id /*link->index()*/, idx);
+  uint32_t  data   = ImmData::value(ImmData::Buffer, _id, idx);
 
   if (sz > _maxEvSize)
   {
@@ -143,7 +141,7 @@ int MebContributor::post(const Dgram* ddg)
                              it != _links.end(); ++it)
   {
     EbLfLink* link = it->second;
-    uint32_t  data = ImmData::value(ImmData::Transition, _id /*link->index()*/, service);
+    uint32_t  data = ImmData::value(ImmData::Transition, _id, service);
 
     if (_verbose)
     {
