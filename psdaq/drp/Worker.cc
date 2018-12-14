@@ -2,6 +2,7 @@
 #include "Worker.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/Sequence.hh"
+#include "xtcdata/xtc/TransitionId.hh"
 
 using namespace XtcData;
 
@@ -37,7 +38,7 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
         int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
         Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index]->virt);
         TransitionId::Value transition_id = event_header->seq.service();
-        if (transition_id == 2) {
+        if (transition_id == XtcData::TransitionId::Configure) {
             printf("Worker %d saw configure transition\n", rank);
         }
 
@@ -52,11 +53,11 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
         dgram.xtc.damage = 0;
         dgram.xtc.extent = sizeof(Xtc);
         // Event
-        if (transition_id == 0) {
+        if (transition_id == XtcData::TransitionId::L1Accept) {
             det->event(dgram, pebble->pgp_data);
         }
         // Configure
-        else if (transition_id == 2) {
+        else if (transition_id == XtcData::TransitionId::Configure) {
             det->configure(dgram, pebble->pgp_data);
         }
 

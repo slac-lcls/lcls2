@@ -8,17 +8,19 @@
 #include <sstream>
 
 #include <stdio.h>
+#include "xtcdata/xtc/TransitionId.hh"
 
 //#define DBUG
 
 using Pds_Epics::PVBase;
+using namespace XtcData;
 
 //  XPM Message Enum
 enum { MsgClear =0,
        MsgDelay =1,
-       MsgConfig=2,
-       MsgEnable=3,
-       MsgDisable=4, };
+       MsgConfig=TransitionId::Configure,
+       MsgEnable=TransitionId::Enable,
+       MsgDisable=TransitionId::Disable, };
 
 namespace Pds {
   namespace Xpm {
@@ -316,7 +318,7 @@ namespace Pds {
       printf("msg_config [%x]\n",_cfgKey);
       _sem.take();
       _m.messagePayload(_partition, _cfgKey);
-      _m.messageHdr    (_partition, MsgConfig);
+      _m.messageHdr    (_partition, TransitionId::Configure);
       _sem.give();
     }
 
@@ -324,7 +326,7 @@ namespace Pds {
     {
       printf("msg_enable\n");
       _sem.take();
-      _m.messageHdr    (_partition, MsgEnable);
+      _m.messageHdr    (_partition, TransitionId::Enable);
       _sem.give();
     }
 
@@ -332,7 +334,7 @@ namespace Pds {
     {
       printf("msg_disable\n");
       _sem.take();
-      _m.messageHdr    (_partition, MsgDisable);
+      _m.messageHdr    (_partition, TransitionId::Disable);
       _sem.give();
     }
 

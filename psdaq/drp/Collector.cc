@@ -157,7 +157,7 @@ void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContr
                 break;
         }
         // pass non L1 accepts to control level
-        if ((transition_id != TransitionId::Unknown) && (transition_id != TransitionId::L1Accept)) {
+        if (transition_id != TransitionId::L1Accept) {
             char msg_id_buf[32];
             sprintf(msg_id_buf, "%010u-%09u", event_header->seq.stamp().seconds(),
                     event_header->seq.stamp().nanoseconds());
