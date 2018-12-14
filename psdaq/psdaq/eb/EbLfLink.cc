@@ -315,11 +315,11 @@ int EbLfLink::post(const void* buf,
       break;
     }
 
-    fi_cq_data_entry cqEntry;
-    const ssize_t    maxCnt = 1;
+    const ssize_t    maxCnt = 8;
+    fi_cq_data_entry cqEntry[maxCnt];
     CompletionQueue* cq     = _ep->txcq();
-    rc = cq->comp(&cqEntry, maxCnt);
-    if ((rc != -FI_EAGAIN) && (rc != maxCnt)) // EAGAIN means no completions available
+    rc = cq->comp(cqEntry, maxCnt);
+    if ((rc != -FI_EAGAIN) && (rc < 0)) // EAGAIN means no completions available
     {
       fprintf(stderr, "%s:\n  Error reading TX CQ: %s\n",
               __PRETTY_FUNCTION__, cq->error());

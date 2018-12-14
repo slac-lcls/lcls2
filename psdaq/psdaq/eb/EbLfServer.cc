@@ -16,10 +16,13 @@ using namespace Pds::Eb;
 
 using ms_t = std::chrono::milliseconds;
 
+static const int COMP_TMO = 5000;       // ms; Completion read timeout
+
 
 EbLfServer::EbLfServer(const char* addr,
                        const char* port) :
-  _pep(nullptr),
+  _pep    (nullptr),
+  _tmo    (0),                          // Start by polling
   _pending(0)
 {
   _status = _initialize(addr, port);
@@ -36,7 +39,7 @@ int EbLfServer::_initialize(const char* addr,
 {
   const uint64_t flags  = 0;
   const size_t   txSize = 0;
-  const size_t   rxSize = 0; //300;
+  const size_t   rxSize = 0;
   _pep = new PassiveEndpoint(addr, port, flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
@@ -102,12 +105,13 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
 
 int EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
 {
+  // Polling favors latency, waiting favors throughput
   const int maxCnt = 1;
-  //const int tmo    = 5000;              // milliseconds
-  //ssize_t rc = _rxcq->comp_wait(cqEntry, maxCnt, tmo); // Waiting favors throughput
-  ssize_t rc = _rxcq->comp(cqEntry, maxCnt);           // Polling favors latency
+  ssize_t   rc     = _rxcq->comp_wait(cqEntry, maxCnt, _tmo);
   if (rc == maxCnt)
   {
+    _tmo = 0;                 // Switch to polling after successfull completion
+
     if ((cqEntry->flags & flags) == flags)
     {
       //fprintf(stderr, "%s:\n  Expected   CQ entry:\n"
@@ -134,7 +138,7 @@ int EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
     static int _errno = maxCnt;
     if (rc != _errno)
     {
-      fprintf(stderr, "%s:\n  Error reading RX completion queue: %s\n",
+      fprintf(stderr, "%s:\n  Error reading RX CQ: %s\n",
               __PRETTY_FUNCTION__, _rxcq->error());
       _errno = rc;
     }
@@ -157,7 +161,8 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 
     if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
     {
-      rc = -FI_ETIMEDOUT;
+      _tmo = COMP_TMO;                  // Switch to waiting after a timeout
+      rc   = -FI_ETIMEDOUT;
       break;
     }
   }

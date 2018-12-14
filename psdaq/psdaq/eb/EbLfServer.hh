@@ -42,6 +42,7 @@ namespace Pds {
       Fabrics::PassiveEndpoint* _pep;  // Endpoint for establishing connections
       Fabrics::CompletionQueue* _rxcq;
       size_t                    _bufSize;
+      int                       _tmo;
     private:
       uint64_t                  _pending;
       uint64_t                  _unused;
