@@ -70,12 +70,16 @@ int main(int argc, char* argv[])
     
     int c;
     int device_id;
+    const char* ofile = 0;
     int wait_us = 0;
     bool lverbose = false;
-    while((c = getopt(argc, argv, "d:w:v")) != EOF) {
+    while((c = getopt(argc, argv, "d:f:w:v")) != EOF) {
         switch(c) {
         case 'd':
           device_id = std::stoi(optarg, nullptr, 16);
+          break;
+        case 'f':
+          ofile = optarg;
           break;
         case 'w':
           wait_us =  std::stoi(optarg, nullptr, 16);
@@ -96,6 +100,15 @@ int main(int argc, char* argv[])
     if (pthread_create(&thr, &tattr, &diagnostics, 0)) {
       perror("Error creating stat thread");
       return -1;
+    }
+
+    FILE* f = 0;
+    if (ofile) {
+      f = fopen(ofile,"w");
+      if (!f) {
+        perror("Opening output file");
+        exit(1);
+      }
     }
 
     int num_entries = 8192;
@@ -120,6 +133,9 @@ int main(int argc, char* argv[])
           usleep(wait_us);
           _seconds = event_header->seq.stamp().seconds();
         }
+        if (f)
+          fwrite(buffer->virt, buffer->size, 1, f);
+
         dev.read_done(buffer);
     }                                
 

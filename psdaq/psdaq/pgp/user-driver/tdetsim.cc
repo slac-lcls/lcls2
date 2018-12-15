@@ -74,8 +74,8 @@ static void print_mig_lane(const char* name, int addr, int offset, int mask)
     const unsigned MIG_LANES = 0x00800080;
     printf("%20.20s", name);
     for(int i=0; i<4; i++) {
-        uint32_t reg = get_reg32(pci_resource, MIG_LANES + i*32 + addr);
-        printf(" %8x", (reg >> offset) & mask);
+      uint32_t reg = get_reg32(pci_resource, MIG_LANES + i*32 + addr);
+      printf(" %8x", (reg >> offset) & mask);
     }
     printf("\n");
 }
@@ -204,6 +204,45 @@ static void measure_clks(double& txrefclk, double& rxrefclk)
   printf("RxRecClk: %f MHz\n", rxrefclk);
 }
 
+static void dump_ring()
+{
+  unsigned base = 0x00c10000;
+  // clear
+  unsigned csr = get_reg32(pci_resource,base);
+  csr |= (1<<30);
+  set_reg32(pci_resource,base,csr);
+  usleep(1);
+  csr &= ~(1<<30);
+  set_reg32(pci_resource,base,csr);
+  // enable
+  csr |= (1<<31);
+  set_reg32(pci_resource,base,csr);
+  printf("csr %08x\n",csr);
+  usleep(100);
+  // disable
+  csr &= ~(1<<31);
+  set_reg32(pci_resource,base,csr);
+  // dump
+  unsigned dataWidth = 20;
+  unsigned mask = dataWidth < 32 ? (1<<dataWidth)-1 : 0xffffffff;
+  unsigned cmask = (dataWidth+3)/4;
+  //  csr = get_reg32(pci_resource,base);
+  unsigned len = csr & 0xfffff;
+  if (len > 512) len=256;
+  if (len == 0)  len=64;
+
+  uint32_t* buff = new uint32_t[len];
+  for(unsigned i=0; i<len; i++)
+    buff[i] = get_reg32(pci_resource,base+4*i)&mask;
+
+  printf("csr %08x  mask 0x%x  cmask %u  dataWidth %u\n", 
+         csr, mask, cmask, dataWidth);
+  for(unsigned i=0; i<len; i++)
+    printf("%0*x%c", cmask, buff[i], (i&0x7)==0x7 ? '\n':' ');
+
+  delete[] buff;
+}
+
 static void usage(const char* p)
 {
   printf("Usage: %s [options]\n",p);
@@ -211,8 +250,12 @@ static void usage(const char* p)
   printf("         -b <bus_id>     [e.g. 0000:af:00.0]\n");
   printf("         -c              [setup clock synthesizer]\n");
   printf("         -s              [dump status]\n");
+  printf("         -S              [dump status ring buffers]\n");
+  printf("         -m              [disable DRAM monitoring]\n");
+  printf("         -M              [enable DRAM monitoring]\n");
   printf("         -t              [reset timing counters]\n");
   printf("         -T              [reset timing PLL]\n");
+  printf("         -F              [reset frame counters]\n");
   printf("         -C partition[,length[,links]] [configure simcam]\n");
   printf("Requires -b or -d\n");
 }
@@ -221,8 +264,12 @@ int main(int argc, char* argv[])
 {
     bool setup_clk = false;
     bool status    = false;
+    bool ringb     = false;
     bool timingRst = false;
     bool tcountRst = false;
+    bool frameRst  = false;
+    int dramMon    = -1;
+    int delayVal   = -1;
     bool updateId  = true;
     int partition  = -1;
     int length     = 320;
@@ -232,14 +279,19 @@ int main(int argc, char* argv[])
     AxisG2Device* pdev = 0;
 
     int c;
-    while((c = getopt(argc, argv, "b:cd:stTC:")) != EOF) {
+    while((c = getopt(argc, argv, "b:cd:sStTmMFD:C:")) != EOF) {
       switch(c) {
       case 'b': pdev = new AxisG2Device(optarg); break;
       case 'd': pdev = new AxisG2Device(strtol(optarg, NULL, 0)); break;
       case 'c': setup_clk = true; updateId = true; break;
       case 's': status    = true; break;
+      case 'S': ringb     = true; break;
       case 't': tcountRst = true; break;
       case 'T': timingRst = true; break;
+      case 'm': dramMon   = 0;    break;
+      case 'M': dramMon   = 1;    break;
+      case 'F': frameRst  = true; break;
+      case 'D': delayVal  = strtoul(optarg,&endptr,0); break;
       case 'C': partition = strtoul(optarg,&endptr,0);
         if (*endptr==',') {
           length = strtoul(endptr+1,&endptr,0);
@@ -361,6 +413,26 @@ int main(int argc, char* argv[])
       }
     }
 
+    if (dramMon==1) {
+      unsigned v = get_reg32(pci_resource, 0x00800000);
+      v |= 1;
+      set_reg32(pci_resource, 0x00800000,v);
+    }
+    else if (dramMon==0) {
+      unsigned v = get_reg32(pci_resource, 0x00800000);
+      v &= ~1;
+      set_reg32(pci_resource, 0x00800000,v);
+    }
+
+    //  set new defaults for pause threshold
+    const unsigned MIG_LANES = 0x00800080;
+    for(int i=0; i<4; i++) {
+        unsigned v = get_reg32(pci_resource, MIG_LANES + i*32 + 4);
+        v &= ~(0x3ff<<8);
+        v |= (0x3f<<8);
+        set_reg32(pci_resource, MIG_LANES + i*32+4, v);
+    }
+
     if (status) {
       //      uint32_t lanes = get_reg32(pci_resource, RESOURCES);
       uint32_t lanes = 4;
@@ -417,6 +489,30 @@ int main(int argc, char* argv[])
         print_word("TxRefClks" , 0x00c00028);
         print_word("BuffByCnts", 0x00c0002c);
       }
+    }
+
+    if (ringb) {
+      dump_ring();
+    }
+
+    if (delayVal>=0) {
+      unsigned v = get_reg32(pci_resource,0x00c00024);
+      v |= (1<<31);
+      set_reg32(pci_resource,0x00c00024,v);
+      usleep(1);
+      set_reg32(pci_resource,0x00c00024,delayVal);
+    }
+
+    if (frameRst) {
+      unsigned v = get_reg32(pci_resource, 0x00a00000);
+      unsigned w = v;
+      w &= ~(0xf<<28);    // disable and drain
+      set_reg32(pci_resource, 0x00a00000,w);
+      usleep(1000);
+      w |=  (1<<3);       // reset
+      set_reg32(pci_resource, 0x00a00000,w);
+      usleep(1);         
+      set_reg32(pci_resource, 0x00a00000,v);
     }
 
     if (partition >= 0) {
