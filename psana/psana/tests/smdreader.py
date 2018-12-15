@@ -1,8 +1,8 @@
 from psana import dgram
-from psana.smdreader import SmdReader
-from psana.event import Event
-from psana.eventbuilder import EventBuilder
-import os, time
+from psana.psexp.smdreader_manager import SmdReaderManager
+from psana.psexp.eventbuilder_manager import EventBuilderManager
+from psana.psexp.packet_footer import PacketFooter
+import os, time, glob, sys
 import numpy as np
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -10,114 +10,66 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 assert size > 1
 
-n_events = 10000
-FN_L = 100
+max_events = 10000000
 
 def filter(evt):
     return True
 
 def smd_0(fds, n_smd_nodes):
-    """ Sends blocks of smds to smd_node
-    Identifies limit timestamp of the slowest detector then
-    sends all smds within that timestamp to an smd_node.
-    """
     assert len(fds) > 0
-    
-    smdr = SmdReader(fds)
-    got_events = -1
+    smdr_man = SmdReaderManager(fds, max_events)
     rankreq = np.empty(1, dtype='i')
-    while got_events != 0:
-        smdr.get(n_events)
-        got_events = smdr.got_events
-        views = bytearray()
-        for i in range(len(fds)):
-            view = smdr.view(i)
-            if view != 0:
-                views.extend(view)
-            if i < len(fds) - 1:
-                views.extend(b'endofstream')
 
-        if views:
-            comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            comm.Send(views, dest=rankreq[0], tag=12)
-    
+    for chunk in smdr_man.chunks():
+        comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+        comm.Send(chunk, dest=rankreq[0], tag=12)
+
     for i in range(n_smd_nodes):
         comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-        comm.Send(bytearray(b'eof'), dest=rankreq[0], tag=12)
+        comm.Send(bytearray(), dest=rankreq[0], tag=12)    
+    
 
-def smd_node(configs, n_bd_nodes, batch_size=1):
-    """Handles both smd_0 and bd_nodes
-    Receives blocks of smds from smd_0 then assembles
-    offsets and dgramsizes into a numpy array. Sends
-    this np array to bd_nodes that are registered to it."""
+def smd_node(configs, batch_size=1, filter=0):
+    eb_man = EventBuilderManager(configs, batch_size, filter)
     rankreq = np.empty(1, dtype='i')
     view = 0
     while True:
-        if not view:
-            # handles requests from smd_0
-            comm.Send(np.array([rank], dtype='i'), dest=0)
-            info = MPI.Status()
-            comm.Probe(source=0, tag=12, status=info)
-            count = info.Get_elements(MPI.BYTE)
-            view = bytearray(count)
-            comm.Recv(view, source=0, tag=12)
-            if view.startswith(b'eof'):
-                break
-        
-        else:
-            # send offset/size(s) to bd_node
-            views = view.split(b'endofstream')
-            n_views = len(views)
-            assert n_views == len(configs)
-            
-            # build batch of events
-            eb = EventBuilder(views, configs)
-            batch = eb.build(batch_size=batch_size, filter=filter)
-            while eb.nevents:
-                comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
-                comm.Send(batch, dest=rankreq[0])
-                batch = eb.build(batch_size=batch_size, filter=filter)
-
-            view = 0
-
-    for i in range(n_bd_nodes):
-        comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
-        comm.Send(bytearray(b'eof'), dest=rankreq[0])
-
-
-def bd_node(configs, smd_node_id):
-    cn_events = 0
-    while True:
-        comm.Send(np.array([rank], dtype='i'), dest=smd_node_id, tag=13)
+        # handles requests from smd_0
+        comm.Send(np.array([rank], dtype='i'), dest=0)
         info = MPI.Status()
-        comm.Probe(source=smd_node_id, tag=MPI.ANY_TAG, status=info)
+        comm.Probe(source=0, tag=12, status=info)
         count = info.Get_elements(MPI.BYTE)
         view = bytearray(count)
-        comm.Recv(view, source=smd_node_id)
-        if view.startswith(b'eof'):
+        comm.Recv(view, source=0, tag=12)
+        if count == 0:
             break
-        
-        
-        views = view.split(b'endofevt')
-        #for i in range(len(views)-1):
-        #    evt = Event._from_bytes(configs, views[i])
-        cn_events += len(views) - 1
 
-    print('bd_node', rank, 'received', cn_events, 'events')
+        # build batch of events
+        cn_batch = 0
+        for batch in eb_man.batches(view):
+            cn_batch += 1
+            #d = dgram.Dgram(view=batch, config=configs[0], offset=0)
+            #pf = PacketFooter(view=batch)
+            #print(pf.n_packets)
+            pass
         
+        view = 0  
 
 
 if __name__ == "__main__":
     comm.Barrier()
     ts0 = MPI.Wtime()
-    nfiles = 2 
+    nfiles = 16
+    if len(sys.argv) > 1:
+        nfiles = int(sys.argv[1])
+    batch_size = 1
     
     # broadcast smd files
     if rank == 0:
-        smd_files = np.array(['/reg/d/psdm/xpp/xpptut15/scratch/mona/smd-00.xtc', '/reg/d/psdm/xpp/xpptut15/scratch/mona/smd-01.xtc'], dtype='U%s'%FN_L)
+        smd_files = np.asarray(glob.glob('/ffb01/monarin/hsd/smalldata/*.smd.xtc'))[:nfiles]
     else:
-        smd_files = np.empty(nfiles, dtype='U%s'%FN_L)
-    comm.Bcast([smd_files, MPI.CHAR], root=0)
+        smd_files = None
+    smd_files = comm.bcast(smd_files, root=0)
 
     # broadcast configs
     if rank == 0:
@@ -135,18 +87,13 @@ if __name__ == "__main__":
     ts1 = MPI.Wtime()
     
     # start smd-bd nodes
-    n_smd_nodes = int(round((size - 1) * .25))
-    n_bd_nodes = size - 1 - n_smd_nodes
+    n_smd_nodes = size - 1
     if rank == 0:
         smd_0(fds, n_smd_nodes)
-    elif rank < n_smd_nodes + 1:
-        bd_nodes = (np.arange(size)[n_smd_nodes+1:] % n_smd_nodes) + 1
-        smd_node(configs, len(bd_nodes[bd_nodes==rank]), batch_size=100)
     else:
-        smd_node_id = (rank % n_smd_nodes) + 1
-        bd_node(configs, smd_node_id)
+        smd_node(configs, batch_size=batch_size, filter=filter)
     
     comm.Barrier()
     ts2 = MPI.Wtime()
     if rank == 0:
-        print("Total: %6.2f s Bcast: %6.2f s Rate: %6.2f MHz"%(ts2-ts0, ts1-ts0, 14.7/(ts2-ts0)))
+        print("#Nfiles: %d Total: %6.2f s Bcast: %6.2f s Rate: %6.2f MHz"%(nfiles, ts2-ts0, ts1-ts0, max_events/((ts2-ts0)*1e6)))
