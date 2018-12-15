@@ -1,8 +1,18 @@
+// This program was a test for the EbLfServer, Client and Link classes.
+// It was also used to explore the idea of having two RDMA spaces, one for
+// batch data and one for transitions.
+
+// The program is working properly when the output on the Server and the Client
+// match.  The sequence goes through the transitions from Unknown to Enabled,
+// then <numEvents> L1As, then the transitions from Diabled to to Reset.  This
+// repeates <iters' times.
+
 #include "EbLfServer.hh"
 #include "EbLfClient.hh"
 
 #include "utilities.hh"
 
+#include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
 #include <signal.h>
@@ -33,27 +43,12 @@ static std::atomic<bool> running(true);
 
 static size_t* _trSpace(size_t& size)
 {
-  const  size_t dgSz       = 52;
-  static size_t trOffset[] =
-    { [TransitionId::Unknown        ] = dgSz +  0, // Revisit sizes
-      [TransitionId::Reset          ] = dgSz +  1 * sizeof(uint64_t),
-      [TransitionId::Map            ] = dgSz +  2 * sizeof(uint64_t),
-      [TransitionId::Unmap          ] = dgSz +  3 * sizeof(uint64_t),
-      [TransitionId::Configure      ] = dgSz +  4 * sizeof(uint64_t),
-      [TransitionId::Unconfigure    ] = dgSz +  5 * sizeof(uint64_t),
-      [TransitionId::BeginRun       ] = dgSz +  6 * sizeof(uint64_t),
-      [TransitionId::EndRun         ] = dgSz +  7 * sizeof(uint64_t),
-      [TransitionId::BeginCalibCycle] = dgSz +  8 * sizeof(uint64_t),
-      [TransitionId::EndCalibCycle  ] = dgSz +  9 * sizeof(uint64_t),
-      [TransitionId::Enable         ] = dgSz + 10 * sizeof(uint64_t),
-      [TransitionId::Disable        ] = dgSz + 11 * sizeof(uint64_t),
-      [TransitionId::L1Accept       ] = dgSz +  0 };
+  static size_t trOffset[TransitionId::NumberOf];
 
   for (unsigned tr = 0; tr < TransitionId::NumberOf; ++tr)
   {
-    size_t offset = trOffset[tr];
     trOffset[tr] = size;
-    size += offset;
+    size += sizeof(Dgram) + (3 + tr) * sizeof(uint64_t); // 3 = min payload size
   }
 
   return trOffset;
@@ -107,9 +102,10 @@ int server(const char*        ifAddr,
 
     links[src]->postCompRecv();
 
-    uint64_t* b = (uint64_t*)buf;
-    printf("Rcvd buf %p [%2d %2d %2d]: %2ld %2ld %2ld\n",
-           buf, flg, src, idx, b[0], b[1], b[2]);
+    uint64_t*   b = (uint64_t*)buf;
+    const char* k = (ImmData::buf(flg) == ImmData::Buffer) ? "l1a" : "tr";
+    printf("Rcvd buf %p, data %08lx [%2d %2d %2d]: cnt %2ld %3s %2ld c %2ld\n",
+           buf, data, flg, src, idx, b[0], k, b[1], b[2]);
   }
 
   for (unsigned i = 0; i < links.size(); ++i)
@@ -130,6 +126,15 @@ int client(std::vector<std::string>& svrAddrs,
            unsigned                  iters,
            unsigned                  numEvents)
 {
+  static const int trId[TransitionId::NumberOf] =
+    { TransitionId::Unknown,
+      TransitionId::Reset,
+      TransitionId::Map,             TransitionId::Unmap,
+      TransitionId::Configure,       TransitionId::Unconfigure,
+      TransitionId::BeginRun,        TransitionId::EndRun,
+      TransitionId::BeginCalibCycle, TransitionId::EndCalibCycle,
+      TransitionId::Enable,          TransitionId::Disable,
+      TransitionId::L1Accept };
   size_t         size     = roundUpSize(numBuffers * bufSize);
   size_t*        trOffset = _trSpace(size); // NB size is updated by this call
   void*          region   = allocRegion(size);
@@ -163,8 +168,9 @@ int client(std::vector<std::string>& svrAddrs,
   while (cnt++ < iters)
   {
     void* buf;
-    for (int tr = TransitionId::Unknown; tr < TransitionId::L1Accept; tr += 2)
+    for (int i = 0; i < TransitionId::NumberOf - 1; i += 2)
     {
+      int    tr     = trId[i];
       size_t offset = trOffset[tr];
       buf = (char*)region + offset;
       uint64_t* b = (uint64_t*)buf;
@@ -175,9 +181,13 @@ int client(std::vector<std::string>& svrAddrs,
 
       for (unsigned dst = 0; dst < links.size(); ++dst)
       {
-        uint32_t data = ImmData::value(ImmData::Transition | ImmData::NoResponse, id, tr);
+        uint64_t data = ImmData::value(ImmData::Transition | ImmData::Response, id, tr);
+        unsigned flg =  ImmData::flg(data);
+        unsigned src  = ImmData::src(data);
+        unsigned idx  = ImmData::idx(data);
 
-        printf("Post %p, sz %zd to 0x%lx\n", buf, size, links[dst]->rmtAdx(offset));
+        printf("Post buf %p, data %08lx [%2d %2d %2d]: cnt %2d tr  %2d c %2d - sz %zd to 0x%lx\n",
+               buf, data, flg, src, idx, cnt, tr, c - 1, size, links[dst]->rmtAdx(offset));
 
         if ((rc = links[dst]->post(buf, size, offset, data)))
           fprintf(stderr, "Error %d posting transition %d to %d (ID %d)\n",
@@ -199,9 +209,13 @@ int client(std::vector<std::string>& svrAddrs,
       for (unsigned dst = 0; dst < links.size(); ++dst)
       {
         int      rc;
-        uint32_t data = ImmData::value(ImmData::Buffer | ImmData::Response, id, idx);
+        uint64_t data = ImmData::value(ImmData::Buffer | ImmData::Response, id, idx);
+        unsigned flg =  ImmData::flg(data);
+        unsigned src  = ImmData::src(data);
+        unsigned idx  = ImmData::idx(data);
 
-        printf("Post %p, sz %zd to 0x%lx\n", buf, size, links[dst]->rmtAdx(offset));
+        printf("Post buf %p, data %08lx [%2d %2d %2d]: cnt %2d l1a %2d c %2d - sz %zd to 0x%lx\n",
+               buf, data, flg, src, idx, cnt, l1a, c - 1, size, links[dst]->rmtAdx(offset));
 
         if ((rc = links[dst]->post(buf, size, offset, data)))
           fprintf(stderr, "Error %d posting L1Accept to %d (ID %d)\n",
@@ -221,8 +235,9 @@ int client(std::vector<std::string>& svrAddrs,
       }
     }
 
-    for (int tr = TransitionId::Disable; tr >= TransitionId::Reset; tr -= 2)
+    for (int i = TransitionId::NumberOf - 2; i >= 0; i -= 2)
     {
+      int    tr     = trId[i];
       size_t offset = trOffset[tr];
       buf = (char*)region + offset;
       uint64_t* b = (uint64_t*)buf;
@@ -233,15 +248,22 @@ int client(std::vector<std::string>& svrAddrs,
 
       for (unsigned dst = 0; dst < links.size(); ++dst)
       {
-        uint32_t data = ImmData::value(ImmData::Transition | ImmData::NoResponse, id, tr);
+        uint64_t data = ImmData::value(ImmData::Transition | ImmData::Response, id, tr);
+        unsigned flg  = ImmData::flg(data);
+        unsigned src  = ImmData::src(data);
+        unsigned idx  = ImmData::idx(data);
 
-        printf("Post %p, sz %zd to 0x%lx\n", buf, size, links[dst]->rmtAdx(offset));
+        printf("Post buf %p, data %08lx [%2d %2d %2d]: cnt %2d tr  %2d c %2d - sz %zd to 0x%lx\n",
+               buf, data, flg, src, idx, cnt, tr, c - 1, size, links[dst]->rmtAdx(offset));
 
         if ((rc = links[dst]->post(buf, size, offset, data)))
           fprintf(stderr, "Error %d posting transition %d to %d (ID %d)\n",
                   rc, tr, dst, links[dst]->id());
       }
     }
+    // Need a handshake with the other side here to avoid stepping on data that
+    // hasn't been handled yet, but for this purpose we kludge it with a sleep
+    usleep(500);                    // May need adjustment for other conditions
   }
 
   for (unsigned dst = 0; dst < links.size(); ++dst)

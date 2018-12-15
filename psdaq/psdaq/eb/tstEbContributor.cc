@@ -97,7 +97,15 @@ namespace Pds {
       uint64_t       _pid;
       GenericPoolW   _pool;
     private:
-      TransitionId::Value _trId;
+      enum { TrUnknown,
+             TrReset,
+             TrMap,             TrUnmap,
+             TrConfigure,       TrUnconfigure,
+             TrBeginRun,        TrEndRun,
+             TrBeginCalibCycle, TrEndCalibCycle,
+             TrEnable,          TrDisable,
+             TrL1Accept };
+      int            _trId;
     private:
       uint64_t       _allocPending;
     };
@@ -155,7 +163,7 @@ DrpSim::DrpSim(unsigned maxBatches,
   _xtc         (TypeId(TypeId::Data, 0), TheSrc(Level::Segment, id)),
   _pid         (0x01000000000003ul),  // Something non-zero and not on a batch boundary
   _pool        (sizeof(Entry) + maxEvtSize, maxBatches * maxEntries),
-  _trId        (TransitionId::Unknown),
+  _trId        (TrUnknown),
   _allocPending(0)
 {
 }
@@ -173,17 +181,26 @@ void DrpSim::shutdown()
 
 const Dgram* DrpSim::genInput()
 {
+  static const TransitionId::Value trId[TransitionId::NumberOf] =
+    { TransitionId::Unknown,
+      TransitionId::Reset,
+      TransitionId::Map,             TransitionId::Unmap,
+      TransitionId::Configure,       TransitionId::Unconfigure,
+      TransitionId::BeginRun,        TransitionId::EndRun,
+      TransitionId::BeginCalibCycle, TransitionId::EndCalibCycle,
+      TransitionId::Enable,          TransitionId::Disable,
+      TransitionId::L1Accept };
   const uint32_t bounceRate = 16 * 1024 * 1024 - 1;
+  const uint64_t bounceRem  = 0x01000000000003ul % bounceRate;
 
-  if       (_trId == TransitionId::Disable)   _trId = TransitionId::Enable;
-  else if  (_trId != TransitionId::L1Accept)  _trId = (TransitionId::Value)(_trId + 2);
-  else if ((_pid % bounceRate) == (0x01000000000003ul % bounceRate))
-                                              _trId =  TransitionId::Disable;
+  if       (_trId == TrDisable)               _trId  = TrEnable;
+  else if  (_trId != TrL1Accept)              _trId += 2;
+  else if ((_pid % bounceRate) == bounceRem)  _trId  = TrDisable;
 
   // Fake datagram header
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  const Sequence seq(Sequence::Event, _trId, TimeStamp(ts), PulseId(_pid));
+  const Sequence seq(Sequence::Event, trId[_trId], TimeStamp(ts), PulseId(_pid));
 
   ++_allocPending;
   void* buffer = _pool.alloc(sizeof(Input));
