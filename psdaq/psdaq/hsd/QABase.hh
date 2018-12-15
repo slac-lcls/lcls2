@@ -24,6 +24,7 @@ namespace Pds {
       void resetDma   ();
       void resetFb    ();
       void resetFbPLL ();
+      void setLocalId (unsigned v);
       void dump() const;
     public:
       uint32_t irqEnable;
@@ -82,6 +83,12 @@ namespace Pds {
 
       uint32_t msgDelay;
       uint32_t headerCnt;
+
+      uint32_t rsvd_84[5];
+
+      uint32_t localId;
+      uint32_t upstreamId;
+      uint32_t dnstreamId[4];
       //
       //      uint32_t status;
       //      uint32_t statusCount[32];

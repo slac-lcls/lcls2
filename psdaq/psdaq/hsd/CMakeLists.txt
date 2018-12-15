@@ -19,6 +19,11 @@ add_library(hsd SHARED
   QABase.cc
   TprCore.cc
   Tps2481.cc
+
+  Hsd3200.cc
+  Fmc134Ctrl.cc
+  Fmc134Cpld.cc
+  Ad7291.cc
 )
 
 target_include_directories(hsd PUBLIC
@@ -61,6 +66,30 @@ target_link_libraries(hsd_init
     pthread
     hsd
     mmhw
+    rt
+)
+
+add_executable(hsd_3200 hsd_3200.cc)
+
+target_include_directories(hsd_3200 PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(hsd_3200
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
+add_executable(hsd_3200_reg hsd_3200_reg.cc)
+
+target_include_directories(hsd_3200_reg PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(hsd_3200_reg
+    pthread
     rt
 )
 
