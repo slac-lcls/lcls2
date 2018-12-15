@@ -34,7 +34,7 @@ struct AxiVersion {
    uint32_t firmwareVersion;
    uint32_t scratchPad;
    uint32_t upTimeCount;
-   uint64_t fdValue;
+   uint8_t  fdValue[8];
    uint32_t userValues[64];
    uint32_t deviceId;
    uint8_t  gitHash[160];

@@ -30,6 +30,10 @@
 #ifndef DMA_IN_KERNEL
 
 // Set flags
+//static constexpr inline uint32_t axisSetFlags(uint32_t fuser, uint32_t luser, uint32_t cont) {
+//   return ( ((cont & 0x1) << 16)  | ((luser & 0xFF) << 8) | ((fuser & 0xFF) << 0) );
+//}
+
 static inline uint32_t axisSetFlags(uint32_t fuser, uint32_t luser, uint32_t cont) {
    uint32_t flags;
 
