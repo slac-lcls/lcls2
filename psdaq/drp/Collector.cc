@@ -62,7 +62,7 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
     }
 
     // write event to file if it passes event builder or is a configure transition
-    if (eb_decision == 1 || (transition_id == 2)) {
+    if (eb_decision == 1 || (transition_id == TransitionId::Configure)) {
         Dgram* dgram = (Dgram*)pebble->fex_data();
         if (fwrite(dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 1, _xtcFile) != 1) {
             printf("Error writing to output xtc file.\n");
