@@ -8,7 +8,7 @@ class TransitionId
 {
 public:
     enum Value {
-        L1Accept,
+        Placeholder,
         Reset,
         Map,
         Unmap,
@@ -20,6 +20,7 @@ public:
         EndCalibCycle,
         Enable,
         Disable,
+        L1Accept,
         Unknown,
         NumberOf
     };

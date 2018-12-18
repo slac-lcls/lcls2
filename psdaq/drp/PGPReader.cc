@@ -19,6 +19,11 @@ int MovingAverage::add_value(int value)
     return sum;
 }
 
+unsigned dmaDest(unsigned lane, unsigned vc)
+{   
+    return (lane<<8) | vc;
+}
+
 PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
     m_pool(pool),
     m_avg_queue_size(nworkers),
@@ -36,7 +41,9 @@ PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
     // FIXME and make mask from lane_mask
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
-    memset(mask, 0xFF, DMA_MASK_SIZE);
+    for (unsigned i=0; i<4; i++) {
+        dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
+    }
     dmaSetMaskBytes(pool.fd, mask);
 }
 
