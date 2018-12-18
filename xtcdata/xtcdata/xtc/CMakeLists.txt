@@ -1,12 +1,9 @@
 add_library(xtc SHARED
-    src/Sequence.cc
     src/TransitionId.cc
     src/XtcIterator.cc
     src/TimeStamp.cc
     src/Level.cc
-    src/Src.cc
     src/TypeId.cc
-    src/PulseId.cc
     src/XtcFileIterator.cc
     src/ShapesData.cc
     src/NamesIter.cc

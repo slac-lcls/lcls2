@@ -54,13 +54,10 @@ target_link_libraries(looptest
 )
 
 add_executable(tdetsim
-    tdetsim.cc
-    pgpdriver.cc
-)
-target_include_directories(tdetsim PUBLIC
-    ../../../drp
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
+    tdetsim.cc)
+
+target_link_libraries(tdetsim
+    pgpdriver
 )
 
 add_executable(promload

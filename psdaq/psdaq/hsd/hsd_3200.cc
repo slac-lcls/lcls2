@@ -12,7 +12,7 @@
 #include <signal.h>
 #include <new>
 
-#include "psdaq/hsd/Module.hh"
+#include "psdaq/hsd/Hsd3200.hh"
 #include "psdaq/hsd/Globals.hh"
 #include "psdaq/hsd/TprCore.hh"
 #include "psdaq/hsd/QABase.hh"
@@ -26,17 +26,6 @@ extern int optind;
 
 using namespace Pds::HSD;
 
-static double calc_phase(unsigned even,
-                         unsigned odd)
-{
-  const double periodr = 1000./156.25;
-  const double periodt = 7000./1300.;
-  if (even)
-    return double(even)/double(0x80000)*periodt;
-  else
-    return double(odd )/double(0x80000)*periodt + 0.5*periodr;
-}
-
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -d <dev id>\n");
@@ -49,15 +38,8 @@ void usage(const char* p) {
   printf("\t-Y <reset gtx timing transmitter>\n");
   printf("\t-Z <reset 625M PLL>\n");
   printf("\t-P <reverse gtx rx polarity>\n");
-  printf("\t-T <train i/o delays>\n");
-  printf("\t-W filename <write new PROM>\n");
   printf("\t-0 <dump raw timing receive buffer>\n");
   printf("\t-1 <dump timing message buffer>\n");
-  printf("\t-2 <configure for LCLSII>\n");
-  printf("\t-3 <configure for EXTERNAL>\n");
-  printf("\t-4 <configure for K929>\n");
-  printf("\t-5 <configure for M3_7>\n");
-  printf("\t-6 <configure for M7_4>\n");
   //  printf("Options: -a <IP addr (dotted notation)> : Use network <IP>\n");
 }
 
@@ -68,7 +50,7 @@ int main(int argc, char** argv) {
   extern char* optarg;
   char* endptr;
 
-  const char* devName = "/dev/qadca";
+  char qadc='a';
   int c;
   bool lUsage = false;
   bool lSetupClkSynth = false;
@@ -78,21 +60,16 @@ int main(int argc, char** argv) {
   bool lPolarity = false;
   bool lRing0 = false;
   bool lRing1 = false;
-  bool lTrain = false;
-  bool lTrainNoReset = false;
   bool lClkSync = false;
   bool lAdcSync = false;
   bool lAdcSyncRst = false;
-  TimingType timing=LCLS;
 
-  const char* fWrite=0;
 #if 0
   bool lSetPhase = false;
   unsigned delay_int=0, delay_frac=0;
 #endif
-  unsigned trainRefDelay = 0;
 
-  while ( (c=getopt( argc, argv, "CDRXYP0123456d:htST:UW:Z")) != EOF ) {
+  while ( (c=getopt( argc, argv, "CDRXYP01d:hSUZ")) != EOF ) {
     switch(c) {
     case 'C':
       lSetupClkSynth = true;
@@ -123,36 +100,11 @@ int main(int argc, char** argv) {
     case '1':
       lRing1 = true;
       break;
-    case '2':
-      timing = LCLSII;
-      break;
-    case '3':
-      timing = EXTERNAL;
-      break;
-    case '4':
-      timing = K929;
-      break;
-    case '5':
-      timing = M3_7;
-      break;
-    case '6':
-      timing = M7_4;
-      break;
     case 'd':
-      devName = optarg;
-      break;
-    case 't':
-      lTrainNoReset = true;
-      break;
-    case 'T':
-      lTrain = true;
-      trainRefDelay = strtoul(optarg,&endptr,0);
+      qadc = optarg[0];
       break;
     case 'U':
       lClkSync = true;
-      break;
-    case 'W':
-      fWrite = optarg;
       break;
     case 'S':
       lAdcSync = true;
@@ -172,36 +124,27 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  int fd = open(devName, O_RDWR);
+  char devname[16];
+  sprintf(devname,"/dev/qadc%c",qadc);
+  int fd = open(devname, O_RDWR);
   if (fd<0) {
     perror("Open device failed");
     return -1;
   }
 
-  Module* p = Module::create(fd);
+  Hsd3200* p = Hsd3200::create(fd);
 
   p->dumpMap();
 
   p->board_status();
 
-  p->fmc_dump();
+  printf("TPR [%p]\n", &(p->tpr()));
+  p->tpr().dump();
 
-  { unsigned trg_even = p->trgPhase()[0];
-    unsigned trg_odd  = p->trgPhase()[1];
-    unsigned clkt_even = p->trgPhase()[2];
-    unsigned clkt_odd  = p->trgPhase()[3];
-    double trg_ph  = calc_phase(trg_even,trg_odd);
-    double clkt_ph = calc_phase(clkt_even,clkt_odd);
-    printf("Trigger Phase: %x/%x %x/%x [%f %f]\n",
-           trg_even, trg_odd,
-           clkt_even, clkt_odd,
-           trg_ph, clkt_ph);
-  }
+  //  p->fmc_init();
 
-  if (lSetupClkSynth) {
-    p->fmc_clksynth_setup(timing);
-  }
-
+  p->setup_timing(LCLSII);
+  
   if (lPolarity) {
     p->tpr().rxPolarity(!p->tpr().rxPolarity());
   }
@@ -210,17 +153,7 @@ int main(int argc, char** argv) {
     if (lSetupClkSynth)
       sleep(1);
 
-    switch(timing) {
-    case LCLS:
-      p->tpr().setLCLS();
-      break;
-    case LCLSII:
-      p->tpr().setLCLSII();
-      break;
-    default:
-      return 0;
-      break;
-    }
+    p->tpr().setLCLSII();
     p->tpr().resetRxPll();
     usleep(1000000);
     //    p->tpr().resetRx();
@@ -235,6 +168,7 @@ int main(int argc, char** argv) {
   }
 
   if (lClkSync) {
+    p->fmc_init();
     p->clocktree_sync();
   }
 
@@ -246,6 +180,8 @@ int main(int argc, char** argv) {
     QABase& base = *reinterpret_cast<QABase*>((char*)p->reg()+0x80000);
     base.resetClock(true);
   }
+
+  p->fmc_dump();
 
   if (lReset)
     p->tpr().resetCounts();
@@ -283,25 +219,6 @@ int main(int argc, char** argv) {
     printf("RxRecClk rate = %f MHz\n", 16.e-6*double(vve-vvb)/dt);
   }
 
-  if (lTrain) {
-    if (lResetRx)
-      sleep(1);
-    p->fmc_init(timing);
-    p->train_io(trainRefDelay);
-  }
-
-  if (lTrainNoReset) {
-    p->train_io(trainRefDelay);
-  }
-
-  if (fWrite) {
-    FILE* f = fopen(fWrite,"r");
-    if (f)
-      p->flash_write(f);
-    else 
-      perror("Failed opening prom file\n");
-  }
-
   if (lRing0 || lRing1) {
     RingBuffer& b = *new((char*)p->reg()+(lRing0 ? 0x50000 : 0x60000)) RingBuffer;
     b.clear ();
@@ -310,6 +227,8 @@ int main(int argc, char** argv) {
     b.enable(false);
     b.dump();
   }
+
+  //  p->dumpPgp();
 
   return 0;
 }

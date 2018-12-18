@@ -1,3 +1,4 @@
+#if 0
 #include "xtcdata/xtc/PulseId.hh"
 
 /* bit field access enums
@@ -81,3 +82,4 @@ bool XtcData::PulseId::operator<(const XtcData::PulseId& ref) const
 {
     return value() < ref.value();
 }
+#endif

@@ -1,3 +1,4 @@
+#if 0
 #include "xtcdata/xtc/Sequence.hh"
 
 /* bit field access enums
@@ -76,3 +77,4 @@ XtcData::Sequence& XtcData::Sequence::operator=(const XtcData::Sequence& input)
     _pulseId = input._pulseId;
     return *this;
 }
+#endif

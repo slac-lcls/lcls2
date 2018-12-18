@@ -46,20 +46,6 @@ int main (int argc, char **argv) {
     }
   }
 
-  { AxiVersion vsn;
-    dmaReadRegister(fd, 0x008a0000, &vsn.firmwareVersion);
-    dmaReadRegister(fd, 0x008a0008, &vsn.upTimeCount);
-    dmaReadRegister(fd, 0x008a0500, &vsn.deviceId);
-    for(unsigned i=0; i<64; i++)
-      dmaReadRegister(fd, 0x008a0800+4*i, reinterpret_cast<uint32_t*>(&vsn.buildString[i*4]));
-
-    printf("-- Appl Axi Version --\n");
-    printf("firmwareVersion : %x\n", vsn.firmwareVersion);
-    printf("upTimeCount     : %u\n", vsn.upTimeCount);
-    printf("deviceId        : %x\n", vsn.deviceId);
-    printf("buildString     : %s\n", vsn.buildString); 
-  }
-
 #define READREG(name,addr)                   \
     if (dmaReadRegister(fd, addr, &reg)<0) { \
       perror(#name);                         \
@@ -80,13 +66,13 @@ int main (int argc, char **argv) {
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \
     for(unsigned i=0; i<8; i++) {                               \
-      dmaReadRegister(fd, addr+0x00808000+i*0x10000, &reg);     \
+      dmaReadRegister(fd, addr+base+i*0x10000, &reg);     \
       printf(" %8.3f", float(reg)*1.e-6);                       \
     }                                                           \
     printf("\n"); }
 
   printf("-- PgpAxiL Registers --\n");
-  base = 0x00808000;
+  base = 0x00a08000;
   PRINTFIELD(loopback , 0x08, 0, 0x7);
   PRINTBIT(phyRxActive, 0x10, 0);
   PRINTBIT(locLinkRdy , 0x10, 1);
@@ -119,13 +105,13 @@ int main (int argc, char **argv) {
   base = 0x00900000;
 
   { uint32_t reg;
-    READREG(control ,0x00900100);
+    READREG(control ,0x00b00100);
     printf("%20.20s : %8x\n","control",reg);
 
-    READREG(size    ,0x00900104);
+    READREG(size    ,0x00b00104);
     printf("%20.20s : %8x\n","size",reg);
     
-    READREG(overflow,0x00900000);
+    READREG(overflow,0x00b00000);
     printf("%20.20s :","overflow");
     for(unsigned i=0; i<8; i++)
       printf(" %8x", (reg>>(4*i))&0xf);

@@ -1,5 +1,5 @@
-#ifndef HSD_Module_hh
-#define HSD_Module_hh
+#ifndef HSD_Hsd3200_hh
+#define HSD_Hsd3200_hh
 
 #include "psdaq/hsd/EnvMon.hh"
 #include "psdaq/hsd/Globals.hh"
@@ -19,23 +19,19 @@ namespace Pds {
     class PhaseMsmt;
     class Pgp;
 
-    class Module {
+    class Hsd3200 {
     public:
       //
       //  High level API
       //
-      static Module* create(int fd);
-      static Module* create(int fd, TimingType);
+      static Hsd3200* create(int fd);
 
-      ~Module();
+      ~Hsd3200();
 
       uint64_t device_dna() const;
 
+      void setup_timing(TimingType);
       void board_status();
-
-      void set_local_id(unsigned bus);
-
-      void flash_write(FILE*);
 
       //  Initialize busses
       void init();
@@ -45,8 +41,6 @@ namespace Pds {
       void fmc_clksynth_setup(TimingType =LCLS);
       void fmc_dump();
       void fmc_modify(int,int,int,int,int,int);
-
-      int  train_io(unsigned);
 
       enum TestPattern { Ramp=0, Flash11=1, Flash12=3, Flash16=5, DMA=8 };
       void enable_test_pattern(TestPattern);
@@ -108,7 +102,7 @@ namespace Pds {
       EnvMon mon() const;
       
     private:
-      Module() {}
+      Hsd3200() {}
 
       class PrivateData;
       PrivateData* p;

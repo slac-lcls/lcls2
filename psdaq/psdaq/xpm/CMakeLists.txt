@@ -12,6 +12,9 @@ add_library(xpm SHARED
 
 target_include_directories(xpm PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    # cpo/weninc: should be using find_package for xtcdata
+    ${CMAKE_INSTALL_PREFIX}/include
     $ENV{CONDA_PREFIX}/epics/include
     $ENV{CONDA_PREFIX}/epics/include/os/Linux
 )

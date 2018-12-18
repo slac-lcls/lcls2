@@ -146,6 +146,9 @@ void QABase::dump() const
 {
 #define PR(r) printf("%9.9s: %08x\n",#r, r)
 
+  PR(localId);
+  PR(upstreamId);
+  PR(dnstreamId[0]);
   PR(irqEnable);
   PR(irqStatus);
   PR(partitionAddr);

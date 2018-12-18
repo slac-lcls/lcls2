@@ -1,4 +1,3 @@
-
 #include "xtcdata/xtc/Src.hh"
 #include <limits>
 #include <stdint.h>
