@@ -115,7 +115,7 @@ void PGPReader::run()
 
         for (int b=0; b < ret; b++) {
             total_bytes_received += m_dmaRet[b];
-            uint32_t dest = m_dmaDest[b] >> 5;
+            uint32_t dest = m_dmaDest[b] >> 8;
             PGPData* pgp = process_lane(dest, m_dmaIndex[b], m_dmaRet[b]);
             if (pgp) {
                 // get first set bit to find index of the first lane
