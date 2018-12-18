@@ -8,16 +8,6 @@
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
 
-class TheSrc : public XtcData::Src
-{
-public:
-    TheSrc(XtcData::Level::Type level, unsigned id) :
-        XtcData::Src(level)
-    {
-        _log |= id;
-    }
-};
-
 #pragma pack(push,4)
 class MyDgram : public XtcData::Dgram {
 public:

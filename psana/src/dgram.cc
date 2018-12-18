@@ -325,7 +325,7 @@ public:
             NamesId namesId = shapesdata.namesId();
             // protect against the fact that this datagram
             // may not have a _namesVec
-            if (namesId<_namesVec.size()) {
+            if (namesId.value()<_namesVec.size()) {
                 DescData descdata(shapesdata, _namesVec[namesId]);
                 DictAssign(_pyDgram, descdata);
             }

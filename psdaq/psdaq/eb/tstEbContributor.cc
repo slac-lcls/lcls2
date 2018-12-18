@@ -48,16 +48,6 @@ static const size_t   mon_trSize       = 1024; // Revisit: Corresponds to monReq
 namespace Pds {
   namespace Eb {
 
-    class TheSrc : public Src
-    {
-    public:
-      TheSrc(Level::Type level, unsigned id) :
-        Src(level)
-      {
-        _log |= id;
-      }
-    };
-
     class Input : public Dgram
     {
     public:
@@ -160,7 +150,7 @@ DrpSim::DrpSim(unsigned maxBatches,
   _maxEntries  (maxEntries),
   _maxEvtSz    (maxEvtSize),
   _id          (id),
-  _xtc         (TypeId(TypeId::Data, 0), TheSrc(Level::Segment, id)),
+  _xtc         (TypeId(TypeId::Data, 0), Src(id)),
   _pid         (0x01000000000003ul),  // Something non-zero and not on a batch boundary
   _pool        (sizeof(Entry) + maxEvtSize, maxBatches * maxEntries),
   _trId        (TrUnknown),

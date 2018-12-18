@@ -23,7 +23,7 @@ using namespace Pds::Eb;
 MyDgram::MyDgram(Sequence& sequence, uint64_t val, unsigned contributor_id)
 {
     seq = sequence;
-    xtc = Xtc(TypeId(TypeId::Data, 0), TheSrc(Level::Segment, contributor_id));
+    xtc = Xtc(TypeId(TypeId::Data, 0), Src(contributor_id));
     _data = val;
     xtc.alloc(sizeof(_data));
 }

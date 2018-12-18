@@ -56,16 +56,6 @@ namespace Pds {
 
     using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
-    class TheSrc : public Src
-    {
-    public:
-      TheSrc(Level::Type level, unsigned id) :
-        Src(level)
-      {
-        _log |= id;
-      }
-    };
-
     class ResultDgram : public Dgram
     {
     public:
@@ -169,7 +159,7 @@ TebApp::TebApp(const char*                     ifAddr,
   _mrqTransport(new EbLfServer(ifAddr, mrqPort.c_str())),
   _mrqLinks    (),
   _id          (id),
-  _xtc         (TypeId(TypeId::Data, 0), TheSrc(Level::Event, id)), //_l3SummaryType
+  _xtc         (TypeId(TypeId::Data, 0), Src(id)), //_l3SummaryType
   _dstList     (0),
   _eventCount  (0),
   _batchCount  (0),
