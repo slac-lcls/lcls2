@@ -39,7 +39,7 @@ class HsdIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    HsdIter(Xtc* xtc, NamesVec& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
+    HsdIter(Xtc* xtc, NamesVec& namesVec) : XtcIterator(xtc), _namesVec(namesVec), env(0)
     {
     }
 
@@ -60,6 +60,10 @@ public:
 
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
+                if (strcmp(name.name(), "env") == 0) {
+                    auto env_array = descdata.get_array<uint32_t>(i);
+                    env = env_array.data();
+                }
                 // Here we check algorithm and version can be analyzed
                 if (strcmp(name.alg().name(), "fpga") == 0) {
                     if (name.alg().version() == 0x010203) {
@@ -80,6 +84,7 @@ public:
 
 public:
     std::map <std::string, uint8_t*> chans;
+    uint32_t* env; // the "event header" words for the HSD
 };
 
 int main (int argc, char* argv[]) {
@@ -128,11 +133,11 @@ int main (int argc, char* argv[]) {
         printf("####################################################\n");
         printf("Event: %u\n", counter++);
 
-        printf("%s transition: time %d.%09d, pulseId 0x%x, env 0x%x, 0x%x, "
+        printf("%s transition: time %d.%09d, pulseId 0x%x, env 0x%x"
                "payloadSize %d\n",
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
-               dg->env[1], dg->env[2], dg->xtc.sizeofPayload());
+               dg->env, dg->xtc.sizeofPayload());
         printf("*** dg xtc extent %d\n",dg->xtc.extent);
 
         if (dg->seq.isEvent()) { // FIXME: this is always false
@@ -152,7 +157,9 @@ int main (int argc, char* argv[]) {
         Pds::HSD::Hsd_v1_2_3 *vHsd = (Pds::HSD::Hsd_v1_2_3*) pHsd;
         */
         Pds::HSD::Hsd_v1_2_3 *vHsd = new Pds::HSD::Hsd_v1_2_3(&stack); //, dg, nChan);
-        vHsd->init(dg->env);
+
+        assert(hsdIter.env);
+        vHsd->init(hsdIter.env);
         printf("####### hsd: %u %u %u %u\n", vHsd->samples(), vHsd->streams(), vHsd->channels(), vHsd->sync());
         // iterate over all available channels
         for (std::map<std::string, uint8_t*>::iterator it=hsdIter.chans.begin(); it!=hsdIter.chans.end(); ++it){

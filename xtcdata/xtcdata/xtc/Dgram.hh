@@ -15,7 +15,7 @@ public:
     Sequence seq;
     unsigned evtCounter:24;
     unsigned version:8;
-    uint32_t env[3];
+    uint32_t env;
 };
 
 class Dgram : public Transition {
@@ -29,8 +29,8 @@ public:
 
 class L1Dgram : public Dgram {
 public:
-    uint16_t trigLines()     const { return (env[0]>>16)&0xffff; }
-    uint16_t readoutGroups() const { return (env[0])&0xffff; }
+    uint16_t trigLines()     const { return (env>>16)&0xffff; }
+    uint16_t readoutGroups() const { return (env)&0xffff; }
 };
 
 }

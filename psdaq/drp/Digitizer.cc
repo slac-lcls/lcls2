@@ -4,6 +4,7 @@
 #include "xtcdata/xtc/NamesVec.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
+#include "psalg/digitizer/Stream.hh"
 
 #include <Python.h>
 #include <stdint.h>
@@ -187,17 +188,19 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
 {
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
+    Transition* transition = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
 
-    memcpy(&dgram, event_header, sizeof(Transition));
+    memcpy(&dgram, transition, sizeof(Transition));
     CreateData hsd(dgram.xtc, m_namesVec, m_evtNamesId);
 
+    // hsd data includes two uint32_t words with extra information
     unsigned data_size;
     unsigned shape[MaxRank];
+    uint32_t* env = (uint32_t*)(transition+1);
     shape[0] = 2;
     Array<uint32_t> arrayH = hsd.allocate<uint32_t>(0, shape);
-    arrayH(0) = dgram.env[1];
-    arrayH(1) = dgram.env[2];
+    arrayH(0) = env[0];
+    arrayH(1) = env[1];
     for (int l=0; l<8; l++) { // TODO: print npeaks using psalg/Hsd.hh
         if (pgp_data->buffer_mask & (1 << l)) {
             // size without Event header
@@ -205,7 +208,7 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
             shape[0] = data_size;
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l+1, shape);
             memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l].data + sizeof(Transition), data_size);
-            Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[l].data);
+            Transition* transition = reinterpret_cast<Transition*>(pgp_data->buffers[l].data);
          }
     }
 }
