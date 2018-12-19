@@ -16,7 +16,7 @@ def timestampStr():
 def create_msg(key, msg_id=None, sender_id=None, body={}):
     if msg_id is None:
         msg_id = timestampStr()
-    msg = {'header': {
+        msg = {'header': {
                'key': key,
                'msg_id': msg_id,
                'sender_id': sender_id},
@@ -86,6 +86,9 @@ class CollectionWidget(QtWidgets.QWidget):
         self.socket.send_json(msg)
         reply = self.socket.recv_json()
         for group in reply['body']:
+            if group not in self.listWidgets:
+                print('unknown group:', group)
+                continue
             w = self.listWidgets[group]
             w.clear()
             for k, v in reply['body'][group].items():

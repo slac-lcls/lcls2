@@ -1,4 +1,4 @@
-platform = '1'
+platform = '2'
 username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
@@ -23,13 +23,15 @@ collect_host = 'drp-tst-acc06'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                        id:'partca-'+platform, conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
+ {                        flags:'x', id:'partca-'+platform, conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
  {                        id:'modca', conda:conda_rel, env:epics_env, cmd:'xpmca DAQ:LAB2:XPM:'+shelf},
  {                        id:'deadca-'+platform, conda:conda_rel, env:epics_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
- {                        id:'dtica', conda:conda_rel, env:epics_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
+ #{                        id:'dtica', conda:conda_rel, env:epics_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
  { host: collect_host,    id:'collection', flags:'sxp', conda:conda_rel, cmd:'collection -v'},
- { host: 'daq-tst-dev02', id:'dti_proxy', flags:'sp', conda:conda_rel, env:epics_env, cmd:'dti_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
+ # comment out until procmgr issue on dev02 is resolved by caf
+ #{ host: 'daq-tst-dev02', id:'dti_proxy', flags:'sp', conda:conda_rel, env:epics_env, cmd:'dti_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
  # trigger event builder
- { host: 'drp-tst-acc02', id:'teb1', flags:'sp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host}
+ { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host},
+ { host: 'drp-tst-dev002', id:'drp1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -o /tmp -C '+collect_host}
 ]
