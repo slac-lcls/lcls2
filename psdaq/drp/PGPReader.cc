@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <chrono>
 #include <bitset>
-#include "pgpdriver.h"
+#include "AxisDriver.h"
 #include "PGPReader.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/Sequence.hh"
@@ -19,8 +19,12 @@ int MovingAverage::add_value(int value)
     return sum;
 }
 
-PGPReader::PGPReader(MemPool& pool, int device_id, int lane_mask, int nworkers) :
-    m_dev(device_id),
+unsigned dmaDest(unsigned lane, unsigned vc)
+{   
+    return (lane<<8) | vc;
+}
+
+PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
     m_pool(pool),
     m_avg_queue_size(nworkers),
     m_pcounter(&m_c1)
@@ -33,19 +37,26 @@ PGPReader::PGPReader(MemPool& pool, int device_id, int lane_mask, int nworkers) 
     m_nworkers = nworkers;
 
     m_buffer_mask = m_pool.num_entries - 1;
-    m_dev.init(&m_pool.dma);
-    m_dev.setup_lanes(lane_mask);
+
+    // FIXME and make mask from lane_mask
+    uint8_t mask[DMA_MASK_SIZE];
+    dmaInitMaskBytes(mask);
+    for (unsigned i=0; i<4; i++) {
+        dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
+    }
+    dmaSetMaskBytes(pool.fd, mask);
 }
 
-PGPData* PGPReader::process_lane(DmaBuffer* buffer)
+PGPData* PGPReader::process_lane(uint32_t lane, uint32_t index, int32_t size)
 {
-    Transition* event_header = reinterpret_cast<Transition*>(buffer->virt);
+    Transition* event_header = reinterpret_cast<Transition*>(m_pool.dmaBuffers[index]);
     int j = event_header->evtCounter & m_buffer_mask;
     PGPData* p = &m_pool.pgp_data[j];
-    p->buffers[buffer->dest] = buffer;
-
+    p->buffers[lane].dmaIndex = index;
+    p->buffers[lane].size = size;
+    p->buffers[lane].data = m_pool.dmaBuffers[index];
     // set bit in lane mask for lane
-    p->buffer_mask |= (1 << buffer->dest);
+    p->buffer_mask |= (1 << lane);
     p->counter++;
     if (p->counter == m_nlanes) {
         if (event_header->evtCounter != (m_last_complete + 1)) {
@@ -96,47 +107,33 @@ void PGPReader::run()
     int64_t event_count = 0;
     int64_t total_bytes_received = 0;
     while (true) {
-        DmaBuffer* buffer = m_dev.read();
-        if (buffer->size > RX_BUFFER_SIZE) {
-            printf("ERROR: Buffer overflow, pgp message %d kB is bigger than RX_BUFFER_SIZE %d kB\n",
-                    buffer->size/1024, RX_BUFFER_SIZE/1024);
+        int32_t ret;
+        do {
+            ret = dmaReadBulkIndex(m_pool.fd, MAX_RET_CNT_C, m_dmaRet, m_dmaIndex, NULL, NULL, m_dmaDest);
         }
-        total_bytes_received += buffer->size;
-        PGPData* pgp = process_lane(buffer);
-        if (pgp) {
-            // get first set bit to find index of the first lane
-            int index = __builtin_ffs(pgp->buffer_mask) - 1;
-            Transition* event_header = reinterpret_cast<Transition*>(pgp->buffers[index]->virt);
-            TransitionId::Value transition_id = event_header->seq.service();
-            //printf("Complete evevent:  Transition id %d pulse id %lu  event counter %u\n",
-            //        transition_id, event_header->seq.pulseId().value(), event_header->evtCounter);
-            Pebble* pebble;
-            m_pool.pebble_queue.pop(pebble);
-            pebble->pgp_data = pgp;
+        while (ret == 0);
 
-            send_to_worker(pebble);
+        for (int b=0; b < ret; b++) {
+            total_bytes_received += m_dmaRet[b];
+            uint32_t dest = m_dmaDest[b] >> 8;
+            PGPData* pgp = process_lane(dest, m_dmaIndex[b], m_dmaRet[b]);
+            if (pgp) {
+                // get first set bit to find index of the first lane
+                int index = __builtin_ffs(pgp->buffer_mask) - 1;
+                Transition* event_header = reinterpret_cast<Transition*>(pgp->buffers[index].data);
+                TransitionId::Value transition_id = event_header->seq.service();
+                //printf("Complete evevent:  Transition id %d pulse id %lu  event counter %u\n",
+                //        transition_id, event_header->seq.pulseId().value(), event_header->evtCounter);
+                Pebble* pebble;
+                m_pool.pebble_queue.pop(pebble);
+                pebble->pgp_data = pgp;
 
-            /*
-            switch (transition_id) {
-                case 0:
-                    send_to_worker(pebble);
-                    break;
-
-                case 2:
-                    // FIXME
-                    // send_all_workers(pebble);
-                    send_to_worker(pebble);
-                    break;
-                default:
-                    printf("Unknown transition %d\n", transition_id);
-                    break;
+                send_to_worker(pebble);
+                event_count += 1;
+                counter->event_count = event_count;
+                counter->total_bytes_received = total_bytes_received;
+                counter = m_pcounter.exchange(counter, std::memory_order_release);
             }
-            */
-            event_count += 1;
-
-            counter->event_count = event_count;
-            counter->total_bytes_received = total_bytes_received;
-            counter = m_pcounter.exchange(counter, std::memory_order_release);
         }
     }
 }

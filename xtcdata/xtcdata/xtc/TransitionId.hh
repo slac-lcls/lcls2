@@ -8,7 +8,7 @@ class TransitionId
 {
 public:
     enum Value {
-        L1Accept,
+        Unknown,
         Reset,
         Map,
         Unmap,
@@ -20,7 +20,7 @@ public:
         EndCalibCycle,
         Enable,
         Disable,
-        Unknown,
+        L1Accept,
         NumberOf
     };
     static const char* name(TransitionId::Value id);

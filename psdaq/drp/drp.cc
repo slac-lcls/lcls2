@@ -83,9 +83,6 @@ int main(int argc, char* argv[])
             case 'o':
                 para.output_dir = optarg;
                 break;
-            case 'd':
-                device_id = std::stoul(optarg, nullptr, 16);
-                break;
             case 'l':
                 lane_mask = std::stoul(optarg, nullptr, 16);
                 break;
@@ -134,11 +131,10 @@ int main(int argc, char* argv[])
     Detector* d = f.create(detector_type.c_str());
 
     int num_workers = 2;
-    // int num_entries = 131072;
     int num_entries = 8192;
     MemPool pool(num_workers, num_entries);
     // TODO: This should be moved to configure when the lane_mask is known.
-    PGPReader pgp_reader(pool, device_id, lane_mask, num_workers);
+    PGPReader pgp_reader(pool, lane_mask, num_workers);
     std::thread pgp_thread(&PGPReader::run, std::ref(pgp_reader));
     pin_thread(pgp_thread.native_handle(), 1);
 
