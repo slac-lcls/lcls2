@@ -113,6 +113,19 @@ void TebContributor::shutdown()
 
 bool TebContributor::process(const Dgram* datagram, const void* appPrm)
 {
+  if (_prms.verbose > 1)
+  {
+    const char* svc = TransitionId::name(datagram->seq.service());
+    unsigned    ctl = datagram->seq.pulseId().control();
+    uint64_t    pid = datagram->seq.pulseId().value();
+    size_t      sz  = sizeof(*datagram) + datagram->xtc.sizeofPayload();
+    unsigned    src = datagram->xtc.src.value();
+    uint32_t*   inp = (uint32_t*)datagram->xtc.payload();
+    printf("Batching  %15s  dg             @ "
+           "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, inp [%08x, %08x], appPrm %p\n",
+           svc, datagram, ctl, pid, sz, src, inp[0], inp[1], appPrm);
+  }
+
   Batch* batch = locate(datagram->seq.pulseId().value()); // Might call post(batch), below
   if (batch)                            // Timed out if nullptr
   {
@@ -146,7 +159,7 @@ void TebContributor::post(const Batch* batch)
     uint64_t pid    = batch->id();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
     printf("CtrbOut posts %9ld    batch[%4d]    @ "
-           "%16p, pid %014lx, sz %4zd to   Teb %2d @ %16p, data %08x (%2d entries)\n",
+           "%16p,         pid %014lx, sz %4zd, TEB %2d @ %16p, data %08x (%2d entries)\n",
            _batchCount, idx, buffer, pid, extent, link->id(), rmtAdx, data, batch->entries());
   }
 
@@ -182,10 +195,11 @@ void TebContributor::post(const Dgram* nonEvent)
     {
       if (_prms.verbose)
       {
-        void* rmtAdx = (void*)link->rmtAdx(offset);
+        unsigned ctl    = nonEvent->seq.pulseId().control();
+        void*    rmtAdx = (void*)link->rmtAdx(offset);
         printf("CtrbOut posts          non-event          @ "
-               "%16p, pid %014lx, sz %4zd to   Teb %2d @ %16p, data %08x (svc %15s)\n",
-               nonEvent, pid, extent, link->id(), rmtAdx, data,
+               "%16p, ctl %02x, pid %014lx, sz %4zd, TEB %2d @ %16p, data %08x (svc %15s)\n",
+               nonEvent, ctl, pid, extent, link->id(), rmtAdx, data,
                TransitionId::name(nonEvent->seq.service()));
       }
 

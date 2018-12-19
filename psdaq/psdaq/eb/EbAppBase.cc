@@ -163,10 +163,13 @@ void EbAppBase::process()
   {
     static unsigned cnt = 0;
     uint64_t        pid = idg->seq.pulseId().value();
+    unsigned        ctl = idg->seq.pulseId().control();
+    const char*     knd = (ImmData::buf(flg) == ImmData::Buffer)
+                        ? "buffer"
+                        : TransitionId::name(idg->seq.service());
     printf("EbAp rcvd %6d %15s[%4d]    @ "
-           "%16p, pid %014lx, sz   ?? from Ctrb %2d, data %08lx\n",
-           cnt++, (ImmData::buf(flg) == ImmData::Buffer) ? "buffer" : TransitionId::name(idg->seq.service()),
-           idx, idg, pid, lnk->id(), data);
+           "%16p, ctl %02x, pid %014lx,          src %2d, data %08lx\n",
+           cnt++, knd, idx, idg, ctl, pid, lnk->id(), data);
   }
 
   _updateHists(t0, t1, idg->seq.stamp());

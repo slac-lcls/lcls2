@@ -360,17 +360,6 @@ void EbCtrbApp::process(EbCtrbIn& in)
     const Dgram* input = _drpSim.genInput();
     if (!input)  break;
 
-    if (_prms.verbose > 1)
-    {
-      const char* svc = TransitionId::name(input->seq.service());
-      uint32_t*   inp = (uint32_t*)input->xtc.payload();
-      printf("Batching  %15s  dg             @ "
-             "%16p, pid %014lx, sz %4zd, src %2d, [0] = %08x, [1] = %08x\n",
-             svc, input, input->seq.pulseId().value(),
-             sizeof(*input) + input->xtc.sizeofPayload(),
-             input->xtc.src.value(), inp[0], inp[1]);
-    }
-
     if (TebContributor::process(input, (const void*)input)) // 2nd arg is returned with the result
       ++_eventCount;
 

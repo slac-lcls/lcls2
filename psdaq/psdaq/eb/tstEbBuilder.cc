@@ -352,11 +352,14 @@ void TebApp::process(EbEvent* event)
 
     if ((lverbose > 2)) // || result[1])
     {
+      unsigned idx = batch->index();
+      uint64_t pid = rdg->seq.pulseId().value();
+      unsigned ctl = rdg->seq.pulseId().control();
+      size_t   sz  = sizeof(*rdg) + rdg->xtc.sizeofPayload();
+      unsigned src = rdg->xtc.src.value();
       printf("TEB processed              result  [%4d] @ "
-             "%16p, pid %014lx, sz %4zd, src %2d, [0] = %08x, [1] = %08x\n",
-             batch->index(), rdg, rdg->seq.pulseId().value(),
-             sizeof(*rdg) + rdg->xtc.sizeofPayload(),
-             rdg->xtc.src.value(), result[0], result[1]);
+             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, res [%08x, %08x]\n",
+             idx, rdg, ctl, pid, sz, src, result[0], result[1]);
     }
   }
   else
@@ -373,11 +376,13 @@ void TebApp::process(EbEvent* event)
     if (lverbose > 2)
     {
       const Dgram* dg = event->creator();
+      uint64_t pid = dg->seq.pulseId().value();
+      unsigned ctl = dg->seq.pulseId().control();
+      size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
+      unsigned src = dg->xtc.src.value();
       printf("TEB processed           non-event         @ "
-             "%16p, pid %014lx, sz %4zd, src %02d\n",
-             dg, dg->seq.pulseId().value(),
-             sizeof(*dg) + dg->xtc.sizeofPayload(),
-             dg->xtc.src.value());
+             "%16p, ctl %02x, pid %014lx, sz %4zd, src %02d\n",
+             dg, ctl, pid, sz, src);
     }
   }
 }
@@ -417,7 +422,7 @@ void TebApp::post(const Batch* batch)
       uint64_t pid    = batch->id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("TEB posts           %6ld result  [%4d] @ "
-             "%16p, pid %014lx, sz %4zd to   Ctrb %2d @ %16p\n",
+             "%16p,         pid %014lx, sz %4zd, dst %2d @ %16p\n",
              _batchCount, idx, buffer, pid, extent, link->id(), rmtAdx);
     }
 

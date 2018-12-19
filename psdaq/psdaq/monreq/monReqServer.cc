@@ -291,10 +291,13 @@ namespace Pds {
 
       if (lverbose > 2)
       {
+        uint64_t pid = dg->seq.pulseId().value();
+        unsigned ctl = dg->seq.pulseId().control();
+        size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
+        unsigned src = dg->xtc.src.value();
         printf("MEB processed              event[%4ld]    @ "
-               "%16p, pid %014lx, sz %4zd, buf # %2d\n",
-               _eventCount, dg, dg->seq.pulseId().value(),
-               sizeof(*dg) + dg->xtc.sizeofPayload(), idx);
+               "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, buf # %2d\n",
+               _eventCount, dg, ctl, pid, sz, src, idx);
       }
 
       if (_apps->events(dg) == XtcMonitorServer::Handled)

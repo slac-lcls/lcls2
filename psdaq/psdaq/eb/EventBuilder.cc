@@ -353,9 +353,13 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
   {
     if (lverbose > 1)
     {
-      unsigned from = ctrb->xtc.src.value();
-      printf("EB found          a  ctrb                 @ %16p, pid %014lx, sz %4zd from Ctrb %2d\n",
-             ctrb, ctrb->seq.pulseId().value(), sizeof(*ctrb) + ctrb->xtc.sizeofPayload(), from);
+      uint64_t pid = ctrb->seq.pulseId().value();
+      unsigned ctl = ctrb->seq.pulseId().control();
+      size_t   sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
+      unsigned src = ctrb->xtc.src.value();
+      printf("EB found          a  ctrb                 @ "
+             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, parm %08x\n",
+             ctrb, ctl, pid, sz, src, prm);
     }
 
     event = _insert(epoch, ctrb, event, prm);

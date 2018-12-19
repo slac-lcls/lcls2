@@ -111,10 +111,11 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
   if (_verbose)
   {
     uint64_t pid    = ddg->seq.pulseId().value();
+    unsigned ctl    = ddg->seq.pulseId().control();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
     printf("MebCtrb posts %6ld       monEvt [%4d]  @ "
-           "%16p, pid %014lx, sz %4zd to   Meb %2d @ %16p, data %08x\n",
-           _eventCount, idx, ddg, pid, sz, link->id(), rmtAdx, data);
+           "%16p, ctl, %02d, pid %014lx, sz %4zd, MEB %2d @ %16p, data %08x\n",
+           _eventCount, idx, ddg, ctl, pid, sz, link->id(), rmtAdx, data);
   }
 
   if (int rc = link->post(ddg, sz, offset, data) < 0)  return rc;
@@ -146,10 +147,11 @@ int MebContributor::post(const Dgram* ddg)
     if (_verbose)
     {
       uint64_t pid    = ddg->seq.pulseId().value();
+      unsigned ctl    = ddg->seq.pulseId().control();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("MebCtrb posts %6ld         trId [%4d]  @ "
-             "%16p, pid %014lx, sz %4zd to   Meb %2d @ %16p, data %08x\n",
-             _eventCount, service, ddg, pid, sz, link->id(), rmtAdx, data);
+             "%16p, ctl %02x, pid %014lx, sz %4zd, MEB %2d @ %16p, data %08x\n",
+             _eventCount, service, ddg, ctl, pid, sz, link->id(), rmtAdx, data);
     }
 
     if (int rc = link->post(ddg, sz, offset, data) < 0)  return rc;
