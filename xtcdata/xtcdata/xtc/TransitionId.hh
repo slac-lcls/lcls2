@@ -8,7 +8,7 @@ class TransitionId
 {
 public:
     enum Value {
-        Placeholder,
+        Unknown,
         Reset,
         Map,
         Unmap,
@@ -21,7 +21,6 @@ public:
         Enable,
         Disable,
         L1Accept,
-        Unknown,
         NumberOf
     };
     static const char* name(TransitionId::Value id);
