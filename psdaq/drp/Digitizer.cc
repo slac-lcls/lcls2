@@ -165,8 +165,8 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
 {
     // copy Event header into beginning of Datagram
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
-    memcpy(&dgram, event_header, sizeof(Transition));
+    Transition* transition = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
+    memcpy(&dgram, transition, sizeof(Transition));
 
     unsigned lane_mask;
     NamesId configNamesId(m_nodeId,ConfigNamesIndex);
@@ -189,16 +189,16 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
     Transition* transition = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
-
     memcpy(&dgram, transition, sizeof(Transition));
+
     CreateData hsd(dgram.xtc, m_namesVec, m_evtNamesId);
 
-    // hsd data includes two uint32_t words with extra information
+    // HSD data includes two uint32_t "event header" words
     unsigned data_size;
     unsigned shape[MaxRank];
-    uint32_t* env = (uint32_t*)(transition+1);
     shape[0] = 2;
     Array<uint32_t> arrayH = hsd.allocate<uint32_t>(0, shape);
+    uint32_t* env = (uint32_t*)(transition+1);
     arrayH(0) = env[0];
     arrayH(1) = env[1];
     for (int l=0; l<8; l++) { // TODO: print npeaks using psalg/Hsd.hh
@@ -208,7 +208,6 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
             shape[0] = data_size;
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l+1, shape);
             memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l].data + sizeof(Transition), data_size);
-            Transition* transition = reinterpret_cast<Transition*>(pgp_data->buffers[l].data);
          }
     }
 }
