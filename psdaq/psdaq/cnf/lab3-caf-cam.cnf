@@ -29,7 +29,6 @@ procmgr_config = [
  {                        id:'deadca-'+platform, conda:conda_rel, env:epics_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
  #{                        id:'dtica', conda:conda_rel, env:epics_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
  { host: collect_host,    id:'collection', flags:'sxp', conda:conda_rel, cmd:'collection -v'},
- # comment out until procmgr issue on dev02 is resolved by caf
  { host: 'daq-tst-dev02', id:'dti_proxy', flags:'sp', conda:conda_rel, env:epics_env, cmd:'dti_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
  # trigger event builder
  { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host},
