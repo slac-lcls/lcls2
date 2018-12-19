@@ -106,6 +106,7 @@ class Client:
     def handle_connect(self, msg):
         logging.debug('Client handle_connect()')
         if self.state == 'alloc':
+            self.pv_put(self.pvRun, 0)  # clear Run PV before configure
             self.state = 'connect'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
@@ -159,7 +160,6 @@ class Client:
         else:
             logging.error('handle_unconfigure() invalid state: %s' % self.state)
 
-#   TODO self.pv_put(self.pvRun, 1)
     def handle_beginrun(self, msg):
         logging.debug('Client handle_beginrun()')
         if self.state == 'configured':
@@ -167,7 +167,8 @@ class Client:
             if (self.pv_put(self.pvMsgHeader, 6) and
                 self.pv_put(self.pvMsgInsert, 0) and
                 self.pv_put(self.pvMsgInsert, 1) and 
-                self.pv_put(self.pvMsgInsert, 0)):
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvRun, 1)):
                 # success: change state and reply 'ok'
                 self.state = 'running'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
@@ -191,7 +192,8 @@ class Client:
             if (self.pv_put(self.pvMsgHeader, 7) and
                 self.pv_put(self.pvMsgInsert, 0) and
                 self.pv_put(self.pvMsgInsert, 1) and 
-                self.pv_put(self.pvMsgInsert, 0)):
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvRun, 0)):
                 # success: change state and reply 'ok'
                 self.state = 'configured'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
