@@ -1,11 +1,16 @@
-from psana.psexp.node import run_node
+
+
+import os
+import pickle
 import numpy as np
-from psana.dgrammanager import DgramManager
+from copy import copy
+
 from psana import dgram
+from psana.psexp.node import run_node
+from psana.dgrammanager import DgramManager
 from psana.detector.detector import Detector
-import psana.psexp.legion_node
 from psana.psexp.tools import run_from_id, RunHelper
-import os, pickle
+import psana.psexp.legion_node
 
 from psana.psexp.tools import mode
 MPI = None
@@ -14,6 +19,37 @@ if mode == 'mpi':
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
+
+
+def _enumerate_attrs(obj):
+
+    state = []
+    found = []
+
+    def mygetattr(obj):
+        children = list(filter( lambda t : not t.startswith('_'), dir(obj)))
+        #print(dir(obj))
+        #print(children)
+
+        for child in children:
+            childobj = getattr(obj,child)
+
+            # IF WE ARE AT BOTTOM
+            if len(list(filter( lambda t : not t.startswith('_'), dir(childobj)))) == 0:
+                #print('NO KIDS', child)
+                found.append( '.'.join(state + [child]) )
+            elif type(childobj) == property:
+                #print('PROPERTY', child)
+                found.append( '.'.join(state + [child]) )
+            else:
+                state.append(child)
+                mygetattr(childobj)
+                state.pop()
+
+
+    mygetattr(obj)
+    return found
+
 
 # FIXME: to support run.ds.Detector in cctbx. to be removed.
 class DsContainer(object):
@@ -43,8 +79,6 @@ class Run(object):
         self.filter_callback = filter_callback
         self.ds = DsContainer(self) # FIXME: to support run.ds.Detector in cctbx. to be removed.
 
-        RunHelper(self)
-
     def run(self):
         """ Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
@@ -61,14 +95,21 @@ class Run(object):
 
     @property
     def detinfo(self):
-        detinfo = {}
+        info = {}
         for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
-            # filter returns an iterator
-            det_xface_attrs = list(filter( lambda t : not t.startswith('_'), dir(det_xface_class)))
-            if detname not in detinfo.keys():
-                detinfo[detname] = []
-            detinfo[detname].append({det_xface_name : det_xface_attrs})
-        return detinfo
+            #print(detname,det_xface_name,det_xface_class)
+            #print('***',_enumerate_attrs(det_xface_class))
+            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
+        return info
+        #detinfo = {}
+        #for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
+        #    # filter returns an iterator
+        #    det_xface_attrs = list(filter( lambda t : not t.startswith('_'), dir(det_xface_class)))
+        #    if detname not in detinfo.keys():
+        #        detinfo[detname] = []
+        #    detinfo[detname].append({det_xface_name : det_xface_attrs})
+        #return detinfo
+
 
     def _get_calib(self, det_name):
         gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
