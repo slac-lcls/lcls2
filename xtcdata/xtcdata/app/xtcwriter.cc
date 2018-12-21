@@ -21,8 +21,6 @@ using namespace XtcData;
 using namespace rapidjson;
 
 #define BUFSIZE 0x4000000
-#define NEVENT 2
-
 
 class FexDef:public VarDef
 {
@@ -458,16 +456,20 @@ int main(int argc, char* argv[])
     int c;
     int writeTs = 0;
     int parseErr = 0;
+    unsigned nevents = 2;
     char xtcname[MAX_FNAME_LEN];
     strncpy(xtcname, "data.xtc", MAX_FNAME_LEN);
 
-    while ((c = getopt(argc, argv, "htf:")) != -1) {
+    while ((c = getopt(argc, argv, "htf:n:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
                 exit(0);
             case 't':
                 writeTs = 1;
+                break;
+            case 'n':
+                nevents = atoi(optarg);
                 break;
             case 'f':
                 strncpy(xtcname, optarg, MAX_FNAME_LEN);
@@ -522,7 +524,7 @@ int main(int argc, char* argv[])
     struct timeval tv;
     uint64_t pulseId = 0;
  
-    for (int i = 0; i < NEVENT; i++) {
+    for (int i = 0; i < nevents; i++) {
         Dgram& dgram = *(Dgram*)buf;
         TypeId tid(TypeId::Parent, 0);
         dgram.xtc.contains = tid;
