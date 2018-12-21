@@ -20,36 +20,27 @@ if mode == 'mpi':
     size = comm.Get_size()
     rank = comm.Get_rank()
 
+# def _enumerate_attrs(obj):
+#     state = []
+#     found = []
 
-def _enumerate_attrs(obj):
+#     def mygetattr(obj):
+#         children = [attr for attr in dir(obj) if not attr.startswith('_')]
 
-    state = []
-    found = []
+#         for child in children:
+#             childobj = getattr(obj,child)
 
-    def mygetattr(obj):
-        children = list(filter( lambda t : not t.startswith('_'), dir(obj)))
-        #print(dir(obj))
-        #print(children)
+#             if len([attr for attr in dir(childobj) if not attr.startswith('_')]) == 0:
+#                 found.append( '.'.join(state + [child]) )
+#             elif type(childobj) == property:
+#                 found.append( '.'.join(state + [child]) )
+#             else:
+#                 state.append(child)
+#                 mygetattr(childobj)
+#                 state.pop()
 
-        for child in children:
-            childobj = getattr(obj,child)
-
-            # IF WE ARE AT BOTTOM
-            if len(list(filter( lambda t : not t.startswith('_'), dir(childobj)))) == 0:
-                #print('NO KIDS', child)
-                found.append( '.'.join(state + [child]) )
-            elif type(childobj) == property:
-                #print('PROPERTY', child)
-                found.append( '.'.join(state + [child]) )
-            else:
-                state.append(child)
-                mygetattr(childobj)
-                state.pop()
-
-
-    mygetattr(obj)
-    return found
-
+#     mygetattr(obj)
+#     return found
 
 # FIXME: to support run.ds.Detector in cctbx. to be removed.
 class DsContainer(object):
@@ -79,6 +70,8 @@ class Run(object):
         self.filter_callback = filter_callback
         self.ds = DsContainer(self) # FIXME: to support run.ds.Detector in cctbx. to be removed.
 
+        RunHelper(self)
+
     def run(self):
         """ Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
@@ -96,20 +89,9 @@ class Run(object):
     @property
     def detinfo(self):
         info = {}
-        for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
-            #print(detname,det_xface_name,det_xface_class)
-            #print('***',_enumerate_attrs(det_xface_class))
-            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
+        # for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
+        #     info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
         return info
-        #detinfo = {}
-        #for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
-        #    # filter returns an iterator
-        #    det_xface_attrs = list(filter( lambda t : not t.startswith('_'), dir(det_xface_class)))
-        #    if detname not in detinfo.keys():
-        #        detinfo[detname] = []
-        #    detinfo[detname].append({det_xface_name : det_xface_attrs})
-        #return detinfo
-
 
     def _get_calib(self, det_name):
         gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
