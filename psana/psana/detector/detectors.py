@@ -4,13 +4,13 @@ import numpy as np
 class hsd_raw_0_0_0(Detector):
     @property
     def calib(self):
-        return np.empty((5))
+        return np.zeros((5))
         #print('hsd raw:',[data.array0Pgp for data in self._dgramlist])
 
 class hsd_fex_4_5_6(Detector):
     @property
     def calib(self):
-        return np.empty((5))
+        return np.zeros((5))
         #pass
 
 class cspad_raw_2_3_42(Detector):
