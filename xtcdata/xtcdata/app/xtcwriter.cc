@@ -446,7 +446,7 @@ public:
 
 void usage(char* progname)
 {
-    fprintf(stderr, "Usage: %s [-f <filename> -t -h]\n", progname);
+    fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -h]\n", progname);
 }
 
 #define MAX_FNAME_LEN 256
