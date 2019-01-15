@@ -1,5 +1,6 @@
 # Import the Python-level symbols of numpy
 import numpy as np
+from psana.detector.detectors import DetectorImpl
 
 # Import the C-level symbols of numpy
 cimport numpy as cnp
@@ -7,13 +8,6 @@ cimport numpy as cnp
 import sys # ref count
 
 include "../peakFinder/peakFinder.pyx"  # defines Allocator, PyAlloArray1D
-
-class Detector(object): # TODO: move Detector class to a separate file
-
-    # FIXME need to pass in calibs & configs
-    def __init__(self, dgramlist):
-        self._dgramlist = dgramlist
-        return
 
 ################# High Speed Digitizer #################
 
@@ -52,10 +46,10 @@ cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
         AllocArray1D[arrp] fexPtr
 
 
-class hsd_hsd_1_2_3(cyhsd_hsd_1_2_3, Detector):
+class hsd_hsd_1_2_3(cyhsd_hsd_1_2_3, DetectorImpl):
 
-    def __init__(self, dgramlist):
-        Detector.__init__(self, dgramlist)
+    def __init__(self, dgramlist, configs, calibs):
+        DetectorImpl.__init__(self, dgramlist, configs, calibs)
         cyhsd_hsd_1_2_3.__init__(self)
 
 class waveform:

@@ -7,7 +7,6 @@ from det import det
 from test_dgraminit import run as run_test_dgraminit
 
 import hashlib
-from psana.dgrammanager import DgramManager
 from psana import DataSource
 import dgramCreate as dc
 
@@ -25,11 +24,11 @@ class Test:
             pass
 
         # read in an old xtc file
-        ds = DgramManager('data.xtc')
-        pyxtc = dc.parse_xtc(ds)
-
-        for evt in ds:
-            pyxtc.parse_event(evt)
+        ds = DataSource('data.xtc')
+        for run in ds.runs():
+            pyxtc = dc.parse_xtc(run.configs[0])
+            for evt in run.events():
+                pyxtc.parse_event(evt)
 
         # put the dictionaries in a new xtc file
         cydgram = dc.CyDgram()

@@ -20,27 +20,27 @@ if mode == 'mpi':
     size = comm.Get_size()
     rank = comm.Get_rank()
 
-# def _enumerate_attrs(obj):
-#     state = []
-#     found = []
+def _enumerate_attrs(obj):
+    state = []
+    found = []
 
-#     def mygetattr(obj):
-#         children = [attr for attr in dir(obj) if not attr.startswith('_')]
+    def mygetattr(obj):
+        children = [attr for attr in dir(obj) if not attr.startswith('_')]
 
-#         for child in children:
-#             childobj = getattr(obj,child)
+        for child in children:
+            childobj = getattr(obj,child)
 
-#             if len([attr for attr in dir(childobj) if not attr.startswith('_')]) == 0:
-#                 found.append( '.'.join(state + [child]) )
-#             elif type(childobj) == property:
-#                 found.append( '.'.join(state + [child]) )
-#             else:
-#                 state.append(child)
-#                 mygetattr(childobj)
-#                 state.pop()
+            if len([attr for attr in dir(childobj) if not attr.startswith('_')]) == 0:
+                found.append( '.'.join(state + [child]) )
+            elif type(childobj) == property:
+                found.append( '.'.join(state + [child]) )
+            else:
+                state.append(child)
+                mygetattr(childobj)
+                state.pop()
 
-#     mygetattr(obj)
-#     return found
+    mygetattr(obj)
+    return found
 
 # FIXME: to support run.ds.Detector in cctbx. to be removed.
 class DsContainer(object):
@@ -77,11 +77,6 @@ class Run(object):
         default: (when no run is given) is set to -1"""
         return self.run_no
 
-    def Detector(self, det_name):
-        calib = self._get_calib(det_name)
-        det = Detector(self.configs, calib=calib)
-        return det.__call__(det_name)
-
     @property
     def detnames(self):
         return set([x[0] for x in self.dm.det_class_table.keys()])
@@ -89,11 +84,12 @@ class Run(object):
     @property
     def detinfo(self):
         info = {}
-        # for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
-        #     info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
+        for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
+            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
         return info
 
     def _get_calib(self, det_name):
+        return {} # temporary cpo hack while database is down
         gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
         if self.exp and det_name:
             calib_dir = os.environ.get('PS_CALIB_DIR')
@@ -137,6 +133,10 @@ class RunSerial(Run):
         super(RunSerial, self).__init__(exp, run_no, max_events=max_events, filter_callback=filter_callback)
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
+        self.calibs = {}
+        for det_name in self.detnames:
+            self.calibs[det_name] = self._get_calib(det_name)
+        self.dm.calibs = self.calibs
 
     def events(self):
         for evt in self.dm: yield evt
@@ -165,8 +165,12 @@ class RunParallel(Run):
                             dtype='i')
             smd_nbytes = np.array([memoryview(config).shape[0] for config in self.smd_configs], \
                             dtype='i')
+            self.calibs = {}
+            for det_name in self.detnames:
+                self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
         else:
             self.dm = None
+            self.calibs = None
             self.configs = [dgram.Dgram() for i in range(len(xtc_files))]
             self.smd_dm = None
             self.smd_configs = [dgram.Dgram() for i in range(len(smd_files))]
@@ -180,25 +184,17 @@ class RunParallel(Run):
         for i in range(len(xtc_files)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
         
+        self.calibs = comm.bcast(self.calibs, root=0)
+
         # This creates dgrammanager without reading config from disk
         self.dm = DgramManager(xtc_files, configs=self.configs)
-
+        self.dm.calibs = self.calibs
     
     def events(self):
         for evt in run_node(self, self.nodetype, self.nsmds, self.smd0_threads, self.max_events, \
                 self.batch_size, self.filter_callback):
             yield evt
     
-    def Detector(self, det_name):
-        if rank == 0:
-            calib = super(RunParallel, self)._get_calib(det_name)
-        else:
-            calib = None
-        calib = comm.bcast(calib, root=0)
-        det = Detector(self.configs, calib=calib)
-        self._det = det.__call__(det_name)
-        return self._det
-
 class RunLegion(Run):
 
     def __init__(self, exp, run_no, xtc_files, smd_files, 

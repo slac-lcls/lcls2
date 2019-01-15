@@ -1,4 +1,5 @@
 from .datasource import DataSource
+from .detector.detector import Detector
 
 from ._version import get_versions
 __version__ = get_versions()['version']

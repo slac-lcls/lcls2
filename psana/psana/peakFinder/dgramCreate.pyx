@@ -41,14 +41,14 @@ class nameinfo:
 
 # I believe this method is only used for testing
 class parse_xtc():
-    def __init__(self, datasource):
-        self.datasource = datasource
+    def __init__(self, config):
+        self.config = config
         self.events_dict = []
         self.config_dict = {}
         self.parse_configure()
 
     def parse_configure(self):
-        config = vars(self.datasource.configs[0])
+        config = vars(self.config)
         sw_config = vars(config['software'])
         det_names = list(sw_config.keys())
         det_dict = {}

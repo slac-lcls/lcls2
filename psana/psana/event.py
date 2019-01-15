@@ -19,8 +19,10 @@ class Event():
     """
     Event holds list of dgrams
     """
-    def __init__(self, dgrams, det_class_table, size=0):
+    def __init__(self, dgrams, configs, calibs, det_class_table, size=0):
         self._det_class_table = det_class_table
+        self._configs = configs
+        self._calibs = calibs
         if size:
             self._dgrams = [0] * size
             self._offsets = [0] * size
@@ -63,7 +65,7 @@ class Event():
         return event_bytes
 
     @classmethod
-    def _from_bytes(cls, configs, event_bytes):
+    def _from_bytes(cls, configs, calibs, det_class_table, event_bytes):
         dgrams = []
         if event_bytes:
             pf = PacketFooter(view=event_bytes)
@@ -71,7 +73,7 @@ class Event():
             assert len(configs) == len(views)
             dgrams = [dgram.Dgram(config=configs[i], view=views[i]) \
                     for i in range(len(configs))]
-        evt = cls(dgrams, {})
+        evt = cls(dgrams, configs, calibs, det_class_table)
         return evt
     
     @property
@@ -90,7 +92,11 @@ class Event():
     def _instantiate_det_xface(self,to_instantiate):
         for class_identifier,(det_xface_obj,dgrams) in to_instantiate.items():
             DetectorClass = self._det_class_table[class_identifier]
-            detector_instance = DetectorClass(dgrams)
+            # at the moment we're passing in all the configs/calibs to
+            # each detector, as a placeholder.  we should change this
+            # to only pass in the config/calib specific for the particular
+            # detector.
+            detector_instance = DetectorClass(dgrams,self._configs,self._calibs)
             drp_class_name = class_identifier[1]
             setattr(det_xface_obj, drp_class_name, detector_instance)
 

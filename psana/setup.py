@@ -18,7 +18,7 @@ dgram_module = Extension('psana.dgram',
                          libraries = ['xtc'],
                          include_dirs = ['src', np.get_include(), os.path.join(xtcdata, 'include')],
                          library_dirs = [os.path.join(xtcdata, 'lib')],
-                         extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                         extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
                          extra_compile_args=['-std=c++11'])
 
 seq_module = Extension('psana.seq',
@@ -26,7 +26,7 @@ seq_module = Extension('psana.seq',
                          libraries = ['xtc'],
                          include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
                          library_dirs = [os.path.join(xtcdata, 'lib')],
-                         extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                         extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
                          extra_compile_args=['-std=c++11'])
 
 container_module = Extension('psana.container',
@@ -34,7 +34,7 @@ container_module = Extension('psana.container',
                          libraries = ['xtc'],
                          include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
                          library_dirs = [os.path.join(xtcdata, 'lib')],
-                         extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                         extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
                          extra_compile_args=['-std=c++11'])
 
 setup(
@@ -94,7 +94,7 @@ ext = Extension('dgramCreate',
                 library_dirs = [os.path.join(xtcdata, 'lib')],
                 language="c++",
                 extra_compile_args=['-std=c++11'],
-                extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
                 # include_dirs=[np.get_include(),
                               # "../install/include"]
 )
@@ -137,7 +137,7 @@ ext = Extension("hsd",
                               "../install/include",
                               os.path.join(xtcdata, 'include')],
                 library_dirs = [os.path.join(xtcdata, 'lib')],
-                extra_link_args = ['-Wl,-rpath='+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
 )
 
 setup(name="hsd",
@@ -160,7 +160,7 @@ class dgram_build_ext(build_ext):
             for ext in self.extensions:
                 ext.library_dirs.append(os.path.join(self.xtcdata, 'lib'))
                 ext.include_dirs.append(os.path.join(self.xtcdata, 'include'))
-                ext.extra_link_args.append('-Wl,-rpath='+ os.path.join(self.xtcdata, 'lib'))
+                ext.extra_link_args.append('-Wl,-rpath,'+ os.path.join(self.xtcdata, 'lib'))
         else:
             print('missing')
             #raise Exception("Parameter --xtcdata is missing")

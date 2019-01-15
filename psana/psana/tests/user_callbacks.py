@@ -1,5 +1,6 @@
 import os
 from psana import DataSource
+from psana import Detector
 
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
@@ -13,7 +14,7 @@ def global_except_hook(exctype, value, traceback):
     import mpi4py.MPI
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
-sys.excepthook = global_except_hook
+#sys.excepthook = global_except_hook
 
 def filter_fn(evt):
     return True
@@ -21,9 +22,8 @@ def filter_fn(evt):
 xtc_dir = os.path.join(os.getcwd(),'.tmp')
 ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
 def event_fn(event, det):
-    for d in event:
-        assert d.xppcspad.raw.arrayRaw.shape == (18,)
+    assert det(event).raw.raw.shape == (18,)
 
 for run in ds.runs():
-    det = run.Detector('xppcspad')
+    det = Detector('xppcspad')
     run.analyze(event_fn=event_fn, det=det)
