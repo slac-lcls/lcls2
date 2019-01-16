@@ -364,7 +364,12 @@ static void dgram_dealloc(PyDgramObject* self)
     Py_XDECREF(self->dict);
     if (self->buf.buf == NULL) {
         // can be NULL if we had a problem early in dgram_init
-        Py_XDECREF(self->dgrambytes);
+        //Py_XDECREF(self->dgrambytes);
+
+        // mona: still not sure why this prevents crashing.
+        // https://docs.python.org/2/c-api/refcounting.html says that the difference is
+        // the object is set to NULL prior to decrementing its reference count.
+        Py_CLEAR(self->dgrambytes);
     } else {
         PyBuffer_Release(&(self->buf));
     }

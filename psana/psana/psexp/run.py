@@ -192,8 +192,9 @@ class RunParallel(Run):
         
         self.calibs = comm.bcast(self.calibs, root=0)
 
-        # This creates dgrammanager without reading config from disk
-        self.dm = DgramManager(xtc_files, configs=self.configs)
+        if rank > 0:
+            # This creates dgrammanager without reading config from disk
+            self.dm = DgramManager(xtc_files, configs=self.configs)
         self.dm.calibs = self.calibs
     
     def events(self):
