@@ -8,7 +8,6 @@ from copy import copy
 from psana import dgram
 from psana.psexp.node import run_node
 from psana.dgrammanager import DgramManager
-from psana.detector.detector import Detector
 from psana.psexp.tools import run_from_id, RunHelper
 import psana.psexp.legion_node
 
@@ -76,6 +75,13 @@ class Run(object):
         """ Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
         return self.run_no
+
+    class Detector:
+        def __init__(self, name):
+            self._name  = name
+
+        def __call__(self, evt):
+            return getattr(evt, self._name)
 
     @property
     def detnames(self):

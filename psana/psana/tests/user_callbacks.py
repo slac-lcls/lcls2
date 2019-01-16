@@ -1,6 +1,5 @@
 import os
 from psana import DataSource
-from psana import Detector
 
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
@@ -25,5 +24,5 @@ def event_fn(event, det):
     assert det(event).raw.raw.shape == (18,)
 
 for run in ds.runs():
-    det = Detector('xppcspad')
+    det = run.Detector('xppcspad')
     run.analyze(event_fn=event_fn, det=det)

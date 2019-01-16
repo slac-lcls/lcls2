@@ -22,7 +22,6 @@ sys.excepthook = global_except_hook
 
 import os
 from psana import DataSource
-from psana import Detector
 
 def filter_fn(evt):
     return True
@@ -33,7 +32,7 @@ ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
 # Usecase#1 : two iterators
 #beginJobCode
 for run in ds.runs():
-    det = Detector('xppcspad')
+    det = run.Detector('xppcspad')
     #beginRunCode
     for evt in run.events():
         assert det(evt).raw.raw.shape == (18,)

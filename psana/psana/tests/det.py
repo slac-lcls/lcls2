@@ -1,13 +1,12 @@
 import sys
 from psana import DataSource
-from psana import Detector
 import numpy as np
 
 def det():
     ds = DataSource('data.xtc')
     for run in ds.runs(): # Detector is created based on per-run config. 
-        hsd = Detector('xpphsd')
-        cspad = Detector('xppcspad')
+        hsd = run.Detector('xpphsd')
+        cspad = run.Detector('xppcspad')
         for evt in run.events():
             assert(hsd(evt).raw.calib.shape==(5,))
             assert(hsd(evt).fex.calib.shape==(6,))
