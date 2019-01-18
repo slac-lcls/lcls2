@@ -8,7 +8,7 @@ import sys
 if sys.version_info[0] == 2:
     raise Exception("Python 2 not supported")
 
-from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform2, getConfigFileNames, add_macro_config, getUser, ConfigFileError
+from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform2, getConfigFileNames, add_macro_config, getUser, ConfigFileError, rcFileDefault
 from optparse import OptionParser
 import os.path
 from os import remove, symlink, environ
@@ -79,7 +79,7 @@ def _start(argv0, args, runconfig, lastconfig, configfile, options, procmgr_macr
         try:
             print("%s: using config file '%s' to start" % (argv0, configfile))
             handle = ProcMgr(configfile, options.platform, options.Xterm_list, options.xterm_list, procmgr_macro)
-            _start_rv = handle.start(args, options.verbose, options.logpath, options.coresize)
+            _start_rv = handle.start(args, options.verbose, options.logpath, options.coresize, options.rcfile)
             staticCount, dynamicCount = handle.getProcessCounts()
         except IOError:
             print("%s: i/o error" % argv0)
@@ -161,7 +161,7 @@ logpath_max = 50
 
 command_list = [ 'start', 'stop', 'restart', 'status' ]
 
-usage = "usage: %prog { start | stop | restart | status } configfile [-h] [-v] [-p <platform>] [-c <coresize>] [-t <secs>] [-o <logpath>] [-x <substring>] [-X <substring>] [-D <macro=value>] [UniqueID]..."
+usage = "usage: %prog { start | stop | restart | status } configfile [-h] [-v] [-p <platform>] [-c <coresize>] [-t <secs>] [-o <logpath>] [-x <substring>] [-X <substring>] [-D <macro=value>] [-r <rcfile>] [UniqueID]..."
 
 parser = OptionParser(usage=usage)
 
@@ -186,6 +186,10 @@ homedir = os.path.expanduser('~')
 parser.add_option("-o", type="string", dest="logpath", metavar="<logpath>",
                   default=homedir,
                   help="output dir (default=%s) (max %d chars)" % (homedir, logpath_max))
+
+parser.add_option("-r", type="string", dest="rcfile", metavar="<rcfile>",
+                  default=rcFileDefault,
+                  help="run control file (default=%s)" % rcFileDefault)
 
 parser.add_option('-X', action="append", dest='Xterm_list', default=[], metavar="<substring>",
                   help="start/restart/status: large xterm for UniqueID w/substring")
