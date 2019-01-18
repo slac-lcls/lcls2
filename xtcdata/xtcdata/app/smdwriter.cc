@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
   /*
    * The smdwriter reads an xtc file, extracts
    * payload size for each event datagram,
-   * then writes out (fseek) offset in smd.xtc file.
+   * then writes out (fseek) offset in smd.xtc2 file.
    */ 
   int c;
   int writeTs = 0;
@@ -163,8 +163,8 @@ int main(int argc, char* argv[])
   XtcFileIterator iter(fd, BUFSIZE);
   Dgram* dgIn;
 
-  // Prepare output smd.xtc file
-  FILE* xtcFile = fopen("smd.xtc", "w");
+  // Prepare output smd.xtc2 file
+  FILE* xtcFile = fopen("smd.xtc2", "w");
   if (!xtcFile) {
     printf("Error opening output xtc file.\n");
     return -1;

@@ -52,7 +52,7 @@ class hsd(OpaqueRawDataBase):
 
 
 from psana.dgrammanager import DgramManager
-ds = DgramManager(os.path.join(cwd,'hsd_061918_n3.xtc'))
+ds = DgramManager(os.path.join(cwd,'hsd_061918_n3.xtc2'))
 
 rawData=OpaqueRawData('xpphsd',ds.configs[0])
 

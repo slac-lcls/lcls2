@@ -10,51 +10,49 @@ class Damage
 {
 public:
     enum Value {
-        DroppedContribution = 1,
-        Uninitialized = 11,
-        OutOfOrder = 12,
-        OutOfSynch = 13,
-        UserDefined = 14,
-        IncompleteContribution = 15,
-        ContainsIncomplete = 16
+        OutOfOrder =  1,
+        OutOfSynch =  2,
+        Corrupted  =  3,
+        UserDefined = 12
     };
     // reserve the top byte to augment user defined errors
-    enum { NotUserBitsMask = 0x00FFFFFF, UserBitsShift = 24 };
+    enum { UserBitMask  = 0xf000, UserBitShift = 12 };
+    enum { ValueBitMask = 0x0fff };
 
     Damage()
     {
     }
-    Damage(uint32_t v) : _damage(v)
+    Damage(uint16_t v) : _damage(v)
     {
     }
-    uint32_t value() const
+    uint16_t value() const
     {
         return _damage;
     }
     void increase(Damage::Value v)
     {
-        _damage |= ((1 << v) & NotUserBitsMask);
+        _damage |= ((1 << v) & ValueBitMask);
     }
-    void increase(uint32_t v)
+    void increase(uint16_t v)
     {
-        _damage |= v & NotUserBitsMask;
+        _damage |= v & ValueBitMask;
     }
-    uint32_t bits() const
+    uint16_t bits() const
     {
-        return _damage & NotUserBitsMask;
+        return _damage & ValueBitMask;
     }
-    uint32_t userBits() const
+    uint16_t userBits() const
     {
-        return _damage >> UserBitsShift;
+        return _damage >> UserBitShift;
     }
-    void userBits(uint32_t v)
+    void userBits(uint16_t v)
     {
-        _damage &= NotUserBitsMask;
-        _damage |= (v << UserBitsShift);
+        _damage &= ValueBitMask;
+        _damage |= (v << UserBitShift);
     }
 
 private:
-    uint32_t _damage;
+    uint16_t _damage;
 };
 }
 

@@ -10,11 +10,18 @@ namespace XtcData
 
 class Src
 {
-public:
-    Src() : _value(std::numeric_limits<uint32_t>::max()) {}
-    Src(unsigned value) : _value(value) {}
+private:
+    enum { LevelBitMask = 0xf0000000, LevelBitShift = 28 };
+    enum { ValueBitMask = 0x0fffffff };
 
-    unsigned             value() const {return _value&0xffffff;}
+public:
+    Src(Level::Type level=Level::Segment) :
+        _value(level<<LevelBitShift) {}
+    Src(unsigned value, Level::Type level=Level::Segment) :
+        _value((value&ValueBitMask)|((level<<LevelBitShift)&LevelBitMask)) {}
+
+    Level::Type level() const {return (Level::Type)((_value&LevelBitMask)>>LevelBitShift);}
+    unsigned    value() const {return _value&ValueBitMask;}
 
   protected:
     uint32_t _value;

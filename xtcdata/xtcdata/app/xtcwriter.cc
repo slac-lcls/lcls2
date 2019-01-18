@@ -461,7 +461,7 @@ int main(int argc, char* argv[])
     int parseErr = 0;
     unsigned nevents = 2;
     char xtcname[MAX_FNAME_LEN];
-    strncpy(xtcname, "data.xtc", MAX_FNAME_LEN);
+    strncpy(xtcname, "data.xtc2", MAX_FNAME_LEN);
 
     while ((c = getopt(argc, argv, "htf:n:")) != -1) {
         switch (c) {

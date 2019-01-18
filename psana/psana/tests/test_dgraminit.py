@@ -22,7 +22,7 @@ class TestDgramInit:
         
         """ FIXME: prevent reading data dgram without config
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        full_path = os.path.join(dir_path, "smd.xtc")
+        full_path = os.path.join(dir_path, "smd.xtc2")
         if os.path.isfile(full_path):
             print(full_path)
             fd = os.open(full_path, os.O_RDONLY)

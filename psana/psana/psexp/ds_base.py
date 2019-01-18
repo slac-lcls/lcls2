@@ -80,14 +80,14 @@ class DataSourceBase(object):
                 run_list = [run_num]
             else:
                 run_list = [int(os.path.splitext(os.path.basename(_dummy))[0].split('-r')[1].split('-')[0]) \
-                        for _dummy in glob.glob(os.path.join(xtc_path, '*-r*.xtc'))]
+                        for _dummy in glob.glob(os.path.join(xtc_path, '*-r*.xtc2'))]
                 run_list.sort()
 
             smd_dir = os.path.join(xtc_path, 'smalldata')
             for r in run_list:
-                xtc_files = glob.glob(os.path.join(xtc_path, '*r%s*.xtc'%(str(r).zfill(4))))
+                xtc_files = glob.glob(os.path.join(xtc_path, '*r%s*.xtc2'%(str(r).zfill(4))))
                 smd_files = [os.path.join(smd_dir,
-                             os.path.splitext(os.path.basename(xtc_file))[0] + '.smd.xtc')
+                             os.path.splitext(os.path.basename(xtc_file))[0] + '.smd.xtc2')
                              for xtc_file in xtc_files]
                 run_dict[r] = (xtc_files, smd_files)
 

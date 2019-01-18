@@ -18,7 +18,7 @@ namespace XtcData
 class NamesId: public Src
 {
 public:
-    // must be consistent with the total number of bits used
+    // must be consistent with the total number of bits used below.
     // this will determine the size of the Names lookup array,
     // so we try not to make it too large
     enum {NumberOf=1<<20};

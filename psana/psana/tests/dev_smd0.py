@@ -5,9 +5,9 @@ pyximport.install()
 from psana.smdreader import SmdReader
 
 def run_smd0():
-    #filenames = glob.glob('/reg/d/psdm/xpp/xpptut15/scratch/mona/test/smalldata/*.smd.xtc')
-    #filenames = glob.glob('/u1/mona/smalldata/*.smd.xtc')
-    filenames = glob.glob('.tmp/smalldata/*r0001*.xtc')
+    #filenames = glob.glob('/reg/d/psdm/xpp/xpptut15/scratch/mona/test/smalldata/*.smd.xtc2')
+    #filenames = glob.glob('/u1/mona/smalldata/*.smd.xtc2')
+    filenames = glob.glob('.tmp/smalldata/*r0001*.xtc2')
     fds = [os.open(filename, os.O_RDONLY) for filename in filenames]
     limit = int(sys.argv[1])
     st = time.time()
