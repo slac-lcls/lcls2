@@ -24,7 +24,7 @@ class Test:
             pass
 
         # read in an old xtc file
-        ds = DataSource('data.xtc')
+        ds = DataSource('data.xtc2')
         for run in ds.runs():
             pyxtc = dc.parse_xtc(run.configs[0])
             for evt in run.events():
