@@ -3,7 +3,7 @@ from psana import DataSource
 import numpy as np
 
 def det():
-    ds = DataSource('data.xtc')
+    ds = DataSource('data.xtc2')
     for run in ds.runs(): # Detector is created based on per-run config. 
         hsd = run.Detector('xpphsd')
         cspad = run.Detector('xppcspad')
