@@ -1,4 +1,5 @@
 #include "Digitizer.hh"
+#include "TimingHeader.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesVec.hh"
@@ -127,7 +128,7 @@ unsigned addJson(Xtc& xtc, NamesVec& namesVec, NamesId& configNamesId) {
     Value& ninfo_software = d["ninfo"]["software"];
     Value& ninfo_detector = d["ninfo"]["detector"];
     Value& ninfo_serialNum = d["ninfo"]["serialNum"];
-    Value& ninfo_seg = d["ninfo"]["seg"];
+    // Value& ninfo_seg = d["ninfo"]["seg"];
 
     Alg hsdConfigAlg(software.GetString(),version[0].GetInt(),version[1].GetInt(),version[2].GetInt());
     Names& configNames = *new(xtc) Names(ninfo_software.GetString(), hsdConfigAlg,
@@ -165,8 +166,9 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
 {
     // copy Event header into beginning of Datagram
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Transition* transition = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
-    memcpy(&dgram, transition, sizeof(Transition));
+    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
+    dgram.seq = timing_header->seq;
+    dgram.env = timing_header->env;
 
     unsigned lane_mask;
     NamesId configNamesId(m_nodeId,ConfigNamesIndex);
@@ -181,15 +183,16 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
 
     HsdIter hsdIter(&dgram.xtc, m_namesVec);
     hsdIter.iterate();
-    unsigned nChan = hsdIter.chans.size();
+    // unsigned nChan = hsdIter.chans.size();
 }
 
 void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
 {
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Transition* transition = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
-    memcpy(&dgram, transition, sizeof(Transition));
+    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
+    dgram.seq = timing_header->seq;
+    dgram.env = timing_header->env;
 
     CreateData hsd(dgram.xtc, m_namesVec, m_evtNamesId);
 
@@ -198,16 +201,17 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     unsigned shape[MaxRank];
     shape[0] = 2;
     Array<uint32_t> arrayH = hsd.allocate<uint32_t>(0, shape);
-    uint32_t* env = (uint32_t*)(transition+1);
-    arrayH(0) = env[0];
-    arrayH(1) = env[1];
+    // FIXME: check that Matt is sending this extra HSD info in the
+    // timing header
+    arrayH(0) = timing_header->_opaque[0];
+    arrayH(1) = timing_header->_opaque[1];
     for (int l=0; l<8; l++) { // TODO: print npeaks using psalg/Hsd.hh
         if (pgp_data->buffer_mask & (1 << l)) {
             // size without Event header
-            data_size = pgp_data->buffers[l].size - sizeof(Transition);
+            data_size = pgp_data->buffers[l].size - sizeof(Pds::TimingHeader);
             shape[0] = data_size;
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l+1, shape);
-            memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l].data + sizeof(Transition), data_size);
+            memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l].data + sizeof(Pds::TimingHeader), data_size);
          }
     }
 }

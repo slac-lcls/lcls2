@@ -1,5 +1,6 @@
 
 #include "AreaDetector.hh"
+#include "TimingHeader.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 
@@ -44,8 +45,9 @@ void AreaDetector::configure(Dgram& dgram, PGPData* pgp_data)
     // copy Event header into beginning of Datagram
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
     printf("index %d\n", index);
-    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
-    memcpy(&dgram, event_header, 32);
+    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
+    dgram.seq = timing_header->seq;
+    dgram.env = timing_header->env;
 
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;
@@ -67,14 +69,17 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
 {
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[index].data);
 
-    unsigned nameId=0;
+    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
+    dgram.seq = timing_header->seq;
+    dgram.env = timing_header->env;
+
+    // fex data
     NamesId fexNamesId(m_nodeId,FexNamesIndex);
     CreateData fex(dgram.xtc, m_namesVec, fexNamesId);
     unsigned shape[MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
-    uint16_t* rawdata = (uint16_t*)(event_header+1);
+    uint16_t* rawdata = (uint16_t*)(timing_header+1);
     for(unsigned i=0; i<shape[0]; i++){
         for (unsigned j=0; j<shape[1]; j++) {
             arrayT(i,j) = i+j;
@@ -82,8 +87,6 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
     }
     
     // raw data
-    memcpy(&dgram, event_header, 32);
-    nameId = 1;
     NamesId rawNamesId(m_nodeId,RawNamesIndex);
     DescribedData raw(dgram.xtc, m_namesVec, rawNamesId);
     unsigned size = 0;
@@ -92,7 +95,7 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
         if (pgp_data->buffer_mask & (1 << l)) {
             // size without Event header
             int data_size = pgp_data->buffers[l].size - 32;
-            memcpy((uint8_t*)raw.data() + size, (uint8_t*)pgp_data->buffers[l].data + 32, data_size);
+            memcpy((uint8_t*)raw.data() + size, (uint8_t*)rawdata, data_size);
             size += data_size;
             nlanes++;
          }
