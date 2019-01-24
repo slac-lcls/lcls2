@@ -55,12 +55,13 @@ target_link_libraries(pgpread2
 )
 
 # TEST
-add_executable(drp2 Test.cc Test.hh Collection.cc Collection.hh)
+add_executable(drp2 Test.cc Test.hh)
 target_include_directories(drp2 PUBLIC
     $ENV{CONDA_PREFIX}/include)
 
 target_link_libraries(drp2
     pthread
     drputils
+    collection
     eb
     zmq)

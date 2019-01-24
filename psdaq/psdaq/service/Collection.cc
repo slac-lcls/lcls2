@@ -1,9 +1,6 @@
-#include <vector>
+#include <memory>
 #include <iostream>
 #include <iomanip>
-#include <functional>
-#include <cstring>
-#include <cassert>
 #include <unistd.h>
 #include <limits.h>
 #include <ifaddrs.h>
@@ -12,14 +9,23 @@
 #include <netdb.h>
 #include "Collection.hh"
 
-std::string get_infiniband_address()
+json createMsg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body)
+{
+    json msg;
+    msg["header"] = { {"key", key}, {"msg_id", msg_id}, {"sender_id", sender_id} };
+    msg["body"] = body;
+    return msg;
+}
+
+std::string getNicIp()
 {
     struct ifaddrs* ifaddr;
     getifaddrs(&ifaddr);
 
     char host[NI_MAXHOST];
-    char* infiniband_name = nullptr;
-    // find name of first infiniband device
+    char* interface_name = nullptr;
+    char* ethernet_name  = nullptr;
+    // find name of first infiniband, otherwise fall back ethernet
     for (struct ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
         if (ifa->ifa_addr == NULL) {
             continue;
@@ -28,14 +34,21 @@ std::string get_infiniband_address()
         if (family == AF_PACKET) {
             struct sockaddr_ll* s = (struct sockaddr_ll*)ifa->ifa_addr;
             if (s->sll_hatype == ARPHRD_INFINIBAND) {
-                infiniband_name = ifa->ifa_name;
-                break;
+                if (!interface_name) interface_name = ifa->ifa_name;
+            }
+            else if (s->sll_hatype == ARPHRD_ETHER) {
+                if (!ethernet_name) ethernet_name  = ifa->ifa_name;
             }
         }
     }
-    if (infiniband_name == nullptr) {
-        printf("Warning: No infiniband device found!\n");
-        return std::string();
+    if (interface_name == nullptr) {
+        printf("Warning: No infiniband device found!");
+        if (ethernet_name == nullptr) {
+            printf("  And no ethernet either!\n");
+            return std::string();
+        }
+        printf("  Falling back to ethernet.\n");
+        interface_name = ethernet_name;
     }
 
     // get address of the first infiniband device found above
@@ -45,7 +58,7 @@ std::string get_infiniband_address()
         }
         int family = ifa->ifa_addr->sa_family;
 
-        if ((family == AF_INET) && (strcmp(ifa->ifa_name, infiniband_name)==0)) {
+        if ((family == AF_INET) && (strcmp(ifa->ifa_name, interface_name)==0)) {
             int s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in),
                                  host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
             if (s != 0) {
@@ -58,122 +71,30 @@ std::string get_infiniband_address()
     return std::string(host);
 }
 
-Collection::Collection(const std::string& manager_hostname,
-                       int platform, const std::string& level) : m_state("reset"),
-                                                                 m_level(level)
+ZmqSocket::ZmqSocket(std::shared_ptr<ZmqContext> context, int type)
 {
-    const int base_port = 29980;
-    m_context = zmq_ctx_new();
-    char buffer[1024];
-    m_push = zmq_socket(m_context, ZMQ_PUSH);
-    snprintf(buffer, 1024, "tcp://%s:%d", manager_hostname.c_str(), base_port + platform);
-    printf("ZMQ_PUSH: %s\n", buffer);
-    if (zmq_connect(m_push, buffer) == -1) {
-        perror("zmq_connect");
-    }
-
-    m_sub = zmq_socket(m_context, ZMQ_SUB);
-    if (zmq_setsockopt(m_sub, ZMQ_SUBSCRIBE, "", 0) == -1) {
-        perror("zmq_setsockopt(ZMQ_SUBSCRIBE)");
-    }
-    sprintf(buffer, "tcp://%s:%d", manager_hostname.c_str(), base_port + 10 + platform);
-    printf("ZMQ_SUB: %s\n", buffer);
-    if (zmq_connect(m_sub, buffer) == -1) {
-        perror("zmq_connect");
-    }
-
-    m_handle_request["plat"] = std::bind(&Collection::handle_plat, this,
-                                         std::placeholders::_1);
-    m_handle_request["alloc"] = std::bind(&Collection::handle_alloc, this,
-                                          std::placeholders::_1);
-    m_handle_request["connect"] = std::bind(&Collection::handle_connect, this,
-                                            std::placeholders::_1);
-    m_handle_request["reset"] = std::bind(&Collection::handle_reset, this,
-                                          std::placeholders::_1);
+    this->context = std::move(context);
+    socket = zmq_socket(this->context->context, type);
 }
 
-Collection::~Collection()
+void ZmqSocket::connect(const std::string& host)
 {
-    zmq_close(m_push);
-    zmq_close(m_sub);
-    zmq_ctx_destroy(m_context);
-}
-
-void Collection::connect()
-{
-    while (1) {
-        json msg = recv_json(m_sub);
-        std::string key = msg["header"]["key"];
-        std::cout << std::setw(4) << msg << "\n\n";
-        printf("received key = %s\n", key.c_str());
-        m_handle_request[key](msg);
-        if (key == "connect") {
-            break;
-        }
+    int rc = zmq_connect(socket, host.c_str());
+    if (rc != 0) {
+        throw std::runtime_error{"zmq_connect failed with error " + std::to_string(rc)};
     }
 }
 
-void Collection::handle_plat(json& msg)
+void ZmqSocket::setsockopt(int option, const void* optval, size_t optvallen)
 {
-    // ignore message if not in reset or plat states
-  if ((m_state == "reset") || (m_state == "plat")) {
-        char hostname[HOST_NAME_MAX];
-        gethostname(hostname, HOST_NAME_MAX);
-        int pid = getpid();
-        m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
-        json body;
-        body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}}}};
-        json reply = create_msg("plat", msg["header"]["msg_id"], m_id, body);
-        std::string s = reply.dump();
-        zmq_send(m_push, s.c_str(), s.length(), 0);
-        m_state = "plat";
+    int rc = zmq_setsockopt(socket, option, optval, optvallen);
+    if (rc != 0) {
+        throw std::runtime_error{"zmq_setsockopt failed with error " + std::to_string(rc)};
     }
 }
 
-void Collection::handle_alloc(json& msg)
-{
-    // ignore message if not in plat state
-    if (m_state == "plat") {
-        // partition_info = json::parse(s);
-        std::string infiniband_address = get_infiniband_address();
-        printf("infiniband address %s\n", infiniband_address.c_str());
-        json body = {{m_level, {{"connect_info", {{"infiniband", infiniband_address}}}}}};
-        json reply = create_msg("alloc", msg["header"]["msg_id"], m_id, body);
-        std::string s = reply.dump();
-        zmq_send(m_push, s.c_str(), s.length(), 0);
-        m_state = "alloc";
-    }
-}
 
-void Collection::handle_connect(json& msg)
-{
-    // ignore message if not in alloc state
-    if (m_state == "alloc") {
-        // FIXME actually check that connectionn is successful before sending response
-        cmstate = msg["body"];
-        json body = json({});
-        json reply = create_msg("ok", msg["header"]["msg_id"], m_id, body);
-        std::cout << std::setw(4) << reply << "\n\n";
-        std::string s = reply.dump();
-        zmq_send(m_push, s.c_str(), s.length(), 0);
-        m_state = "connect";
-    }
-}
-
-void Collection::handle_reset(json& msg)
-{
-    m_state = "reset";
-}
-
-json create_msg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body)
-{
-    json msg;
-    msg["header"] = { {"key", key}, {"msg_id", msg_id}, {"sender_id", sender_id} };
-    msg["body"] = body;
-    return msg;
-}
-
-json recv_json(void* socket)
+json ZmqSocket::recvJson()
 {
     ZmqMessage frame;
     int rc = zmq_msg_recv(&frame.msg, socket, 0);
@@ -181,21 +102,96 @@ json recv_json(void* socket)
     char* begin = (char*)frame.data();
     char* end   = begin + frame.size();
     return json::parse(begin, end);
-
 }
 
-std::vector<ZmqMessage> recv_multipart(void* socket)
+std::vector<ZmqMessage> ZmqSocket::recvMultipart()
 {
-    std::vector<ZmqMessage> msgs;
+    std::vector<ZmqMessage> frames;
     int more;
     size_t more_size = sizeof(more);
     do {
-        ZmqMessage part;
-        int rc = zmq_msg_recv(&part.msg, socket, 0);
+        ZmqMessage frame;
+        int rc = zmq_msg_recv(&frame.msg, socket, 0);
         assert (rc != -1);
-        msgs.emplace_back(std::move(part));
+        frames.emplace_back(std::move(frame));
         rc = zmq_getsockopt(socket, ZMQ_RCVMORE, &more, &more_size);
         assert(rc == 0);
     } while (more);
-    return msgs;
+    return frames;
+}
+
+void ZmqSocket::send(const std::string& msg)
+{
+    zmq_send(socket, msg.c_str(), msg.length(), 0);
+}
+
+
+
+
+CollectionApp::CollectionApp(const std::string &managerHostname,
+                             int platform,
+                             const std::string &level) :
+    m_state(State::reset), m_level(level)
+{
+    const int base_port = 29980;
+    auto context = std::make_shared<ZmqContext>();
+
+    m_pushSocket = std::make_unique<ZmqSocket>(context, ZMQ_PUSH);
+    m_pushSocket->connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + platform)});
+
+    m_subSocket = std::make_unique<ZmqSocket>(context, ZMQ_SUB);
+    m_subSocket->connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)});
+    m_subSocket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
+    std::cout<<std::string{"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)}<<std::endl;
+
+    // register callbacks
+    m_handleMap["plat"] = std::bind(&CollectionApp::handlePlat, this, std::placeholders::_1);
+    m_handleMap["alloc"] = std::bind(&CollectionApp::handleAlloc, this, std::placeholders::_1);
+    m_handleMap["connect"] = std::bind(&CollectionApp::handleConnect, this, std::placeholders::_1);
+    m_handleMap["reset"] = std::bind(&CollectionApp::handleReset, this, std::placeholders::_1);
+}
+
+void CollectionApp::handlePlat(const json &msg)
+{
+    // ignore message if not in reset or plat states
+    if ((m_state == State::reset) || (m_state == State::plat)) {
+        char hostname[HOST_NAME_MAX];
+        gethostname(hostname, HOST_NAME_MAX);
+        int pid = getpid();
+        m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
+        json body;
+        body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}}}};
+        json answer = createMsg("plat", msg["header"]["msg_id"], m_id, body);
+        reply(answer);
+        setState(State::plat);
+    }
+}
+
+void CollectionApp::handleAlloc(const json &msg)
+{
+    // ignore message if not in plat state
+    if (m_state == State::plat) {
+        std::string nicIp = getNicIp();
+        std::cout<<"nic ip  "<<nicIp<<'\n';
+        json body = {{m_level, {{"connect_info", {{"nic_ip", nicIp}}}}}};
+        json answer = createMsg("alloc", msg["header"]["msg_id"], m_id, body);
+        reply(answer);
+        setState(State::alloc);
+    }
+}
+
+void CollectionApp::reply(const json& msg)
+{
+    m_pushSocket->send(msg.dump());
+}
+
+void CollectionApp::run()
+{
+    while (1) {
+        json msg = m_subSocket->recvJson();
+        std::string key = msg["header"]["key"];
+        std::cout<<"received key = "<<key<<'\n';
+        std::cout << std::setw(4) << msg << "\n\n";
+        m_handleMap[key](msg);
+    }
 }
