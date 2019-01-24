@@ -27,6 +27,7 @@ struct Parameters
     int partition;
     std::string collect_host;
     std::string output_dir;
+    std::string detectorType;
     Pds::Eb::TebCtrbParams tPrms;
     Pds::Eb::MebCtrbParams mPrms;
 };

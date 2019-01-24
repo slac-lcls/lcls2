@@ -42,14 +42,25 @@ install(TARGETS drputils drp
   RUNTIME DESTINATION bin
 )
 
-#add_executable(pgpread2
-#    pgpread.cc
-#)
+add_executable(pgpread2
+    pgpread.cc
+)
 
-#target_include_directories(pgpread2 PUBLIC
-#    ../../../aes-stream-drivers/include
-#)
+target_include_directories(pgpread2 PUBLIC
+    ../../../aes-stream-drivers/include
+)
 
-#target_link_libraries(pgpread2
-#    xtcdata::xtc
-#)
+target_link_libraries(pgpread2
+    xtcdata::xtc
+)
+
+# TEST
+add_executable(drp2 Test.cc Test.hh Collection.cc Collection.hh)
+target_include_directories(drp2 PUBLIC
+    $ENV{CONDA_PREFIX}/include)
+
+target_link_libraries(drp2
+    pthread
+    drputils
+    eb
+    zmq)

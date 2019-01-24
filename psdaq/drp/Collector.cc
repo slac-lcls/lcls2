@@ -164,13 +164,16 @@ void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContr
             sprintf(msg_id_buf, "%010u-%09u", event_header->seq.stamp().seconds(),
                     event_header->seq.stamp().nanoseconds());
             json body = json({});
-            json reply = create_msg("drp-transition", msg_id_buf, sender_id, body);
+            // FIXME
+            /*
+            json reply = createMsg("drp-transition", msg_id_buf, sender_id, body);
             std::string s = reply.dump();
             if (zmq_send(socket, s.c_str(), s.length(), 0) == -1) {
                 perror("zmq_send");
             } else {
                 printf("Send JSON transition over zeromq socket\n");
             }
+            */
         }
 
         // printf("Collector:  Transition id %d pulse id %lu event counter %u \n",
