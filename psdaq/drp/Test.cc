@@ -19,7 +19,7 @@ void DrpApp::handleConnect(const json &msg)
     int numWorkers = 2;
     int numEntries = 8192;
     int laneMask = 0xf;
-    parseConnectionParams(msg);
+    parseConnectionParams(msg["body"]);
 
     // should move into constructor
     Factory<Detector> f;
@@ -64,11 +64,10 @@ void DrpApp::handleReset(const json &msg)
     setState(State::reset);
 }
 
-void DrpApp::parseConnectionParams(const json& msg)
+void DrpApp::parseConnectionParams(const json& body)
 {
     std::string id = std::to_string(getId());
-    m_para->tPrms.id = msg["drp"][id]["drp_id"];
-
+    m_para->tPrms.id = body["drp"][id]["drp_id"];
     const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
     const unsigned tebPortBase = TEB_PORT_BASE + numPorts * m_para->partition;
     const unsigned drpPortBase = DRP_PORT_BASE + numPorts * m_para->partition;
@@ -77,8 +76,9 @@ void DrpApp::parseConnectionParams(const json& msg)
     m_para->tPrms.port = std::to_string(drpPortBase + m_para->tPrms.id);
 
     uint64_t builders = 0;
-    for (auto it : msg["teb"].items()) {
+    for (auto it : body["teb"].items()) {
         unsigned tebId = it.value()["teb_id"];
+        // FIXME infiniband -> nic_ip
         std::string address = it.value()["connect_info"]["nic_ip"];
         std::cout << "TEB: " << tebId << "  " << address << '\n';
         builders |= 1ul << tebId;
@@ -87,10 +87,10 @@ void DrpApp::parseConnectionParams(const json& msg)
     }
     m_para->tPrms.builders = builders;
 
-    if (msg.find("meb") != msg.end()) {
-        for (auto it : msg["meb"].items()) {
+    if (body.find("meb") != body.end()) {
+        for (auto it : body["meb"].items()) {
             unsigned mebId = it.value()["meb_id"];
-            std::string address = it.value()["connect_info"]["nip_ip"];
+            std::string address = it.value()["connect_info"]["nic_ip"];
             std::cout << "MEB: " << mebId << "  " << address << '\n';
             m_para->mPrms.addrs.push_back(address);
             m_para->mPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
