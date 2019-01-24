@@ -8,9 +8,9 @@ def det():
         hsd = run.Detector('xpphsd')
         cspad = run.Detector('xppcspad')
         for evt in run.events():
-            assert(hsd(evt).raw.calib.shape==(5,))
-            assert(hsd(evt).fex.calib.shape==(6,))
-            assert(cspad(evt).raw.raw.shape==(18,))
+            assert(hsd.raw.calib(evt).shape==(5,))
+            assert(hsd.fex.calib(evt).shape==(6,))
+            assert(cspad.raw.raw(evt).shape==(18,))
 
 def calib():
     # Test calib_constants here prior to user.py, which uses mpi

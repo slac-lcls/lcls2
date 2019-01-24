@@ -1,5 +1,3 @@
-
-
 import os
 import pickle
 import numpy as np
@@ -76,12 +74,18 @@ class Run(object):
         default: (when no run is given) is set to -1"""
         return self.run_no
 
-    class Detector:
-        def __init__(self, name):
-            self._name  = name
-
-        def __call__(self, evt):
-            return getattr(evt, self._name)
+    def Detector(self,name):
+        class Container:
+            def __init__(self):
+                pass
+        det = Container
+        # instantiate the detector xface for this detector/drp_class
+        # (e.g. (xppcspad,raw) or (xppcspad,fex)
+        # make them attributes of the container
+        for (det_name,drp_class_name),drp_class in self.dm.det_class_table.items():
+            if det_name == name:
+                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibs))
+        return det
 
     @property
     def detnames(self):
@@ -142,7 +146,6 @@ class RunSerial(Run):
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
-        self.dm.calibs = self.calibs
 
     def events(self):
         for evt in self.dm: yield evt
@@ -195,7 +198,6 @@ class RunParallel(Run):
         if rank > 0:
             # This creates dgrammanager without reading config from disk
             self.dm = DgramManager(xtc_files, configs=self.configs)
-        self.dm.calibs = self.calibs
     
     def events(self):
         for evt in run_node(self, self.nodetype, self.nsmds, self.smd0_threads, self.max_events, \

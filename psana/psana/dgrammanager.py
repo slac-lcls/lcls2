@@ -77,7 +77,7 @@ class DgramManager():
                 d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             dgrams += [d]
         
-        evt = Event(dgrams, self.configs, self.calibs, self.det_class_table)
+        evt = Event(dgrams)
         self.offsets = evt._offsets
         return evt
 
@@ -91,7 +91,7 @@ class DgramManager():
             d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             dgrams += [d]
         
-        evt = Event(dgrams, self.configs, self.calibs, self.det_class_table)
+        evt = Event(dgrams)
         return evt
 
     def get_det_class_table(self):
