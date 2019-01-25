@@ -15,6 +15,10 @@ target_include_directories(kcu PUBLIC
 #
 add_executable(kcuStatus xStatus.cpp)
 
+add_executable(kcuHist xHist.cpp)
+
+add_executable(kcuSimValid xSimValid.cpp)
+
 add_executable(kcuLoopTest xLoopTest.cpp)
 
 add_executable(kcuRead xRead.cpp)

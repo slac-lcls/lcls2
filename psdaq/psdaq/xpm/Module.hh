@@ -107,6 +107,12 @@ namespace Pds {
       //      void setL0Select_EventCode(unsigned code);
       void lockL0Stats (bool);
       //    private:
+#if 0
+      void groupL0Reset  (unsigned);
+      void groupL0Enable (unsigned);
+      void groupL0Disable(unsigned);
+      void groupMsgInsert(unsigned);
+#endif
     public:
       void setRingBChan(unsigned);
     public:
@@ -296,8 +302,23 @@ namespace Pds {
       //  [30]     Fast
       //  [31]     Lock
       Cphw::Reg _monClk[4];
+#if 0
+    public:
+      uint32_t     _reserved_288[56];
+      //  0x0200 - WO: L0Reset
+      Cphw::Reg    _groupL0Reset;
+      //  0x0204 - WO: L0Enable
+      Cphw::Reg    _groupL0Enable;
+      //  0x0208 - WO: L0Disable
+      Cphw::Reg    _groupL0Disable;
+      //  0x020c - WO: MsgInsert
+      Cphw::Reg    _groupMsgInsert;
+    private:
+      uint32_t    _reserved_304[(0x10000-304)>>2];
+#else
     private:
       uint32_t    _reserved_288[(0x10000-288)>>2];
+#endif
       //
       Cphw::RingBuffer _rxRing;  // 0x80010000
       uint32_t    _reserved_80020000[(0x10000-sizeof(_rxRing))>>2];

@@ -8,14 +8,25 @@ target_link_libraries(xtcreader
 add_executable(xtcwriter
     xtcwriter.cc
 )
+
 target_link_libraries(xtcwriter
     xtc
+)
+target_include_directories(xtcwriter PUBLIC
+    $ENV{CONDA_PREFIX}/include
 )
 
 add_executable(xtcsave
     xtcsave.cc
 )
 target_link_libraries(xtcsave
+    xtc
+)
+
+add_executable(hsdduplicate
+    hsdduplicate.cc
+)
+target_link_libraries(hsdduplicate
     xtc
 )
 

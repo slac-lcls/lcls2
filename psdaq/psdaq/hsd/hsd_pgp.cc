@@ -19,6 +19,7 @@
 #include "psdaq/hsd/TprCore.hh"
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/Pgp2bAxi.hh"
+#include "psdaq/hsd/Pgp.hh"
 
 #include <string>
 #include <vector>
@@ -205,7 +206,7 @@ int main(int argc, char** argv) {
   extern char* optarg;
   char* endptr;
 
-  char qadc='a';
+  const char* devName = "/dev/qadca";
   int c;
   bool lUsage = false;
   bool lReset = false;
@@ -230,7 +231,7 @@ int main(int argc, char** argv) {
       streamMask = strtoul(optarg,&endptr,0);
       break;
     case 'd':
-      qadc = optarg[0];
+      devName = optarg;
       break;
     case 'r':
       rate = atoi(optarg);
@@ -273,9 +274,7 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  char devname[16];
-  sprintf(devname,"/dev/qadc%c",qadc);
-  int fd = open(devname, O_RDWR);
+  int fd = open(devName, O_RDWR);
   if (fd<0) {
     perror("Open device failed");
     return -1;
@@ -294,15 +293,10 @@ int main(int argc, char** argv) {
   }
 
   if (lLoopback) {
-    Pgp2bAxi* pgp = reinterpret_cast<Pgp2bAxi*>((char*)p->reg()+0x90000);
-    for(unsigned i=0; i<4; i++)
-      pgp[i]._loopback ^= 2;
-    for(unsigned i=0; i<4; i++)
-      pgp[i]._rxReset = 1;
-    usleep(10);
-    for(unsigned i=0; i<4; i++)
-      pgp[i]._rxReset = 0;
-    usleep(100);
+    for(unsigned i=0; i<4; i++) {
+      Pgp* pgp = p->pgp()[i];
+      pgp->loopback( !pgp->loopback());
+    }
   }
 
   p->dumpPgp();

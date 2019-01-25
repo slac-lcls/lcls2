@@ -4,7 +4,7 @@
 #include <fstream>
 #include <pthread.h>
 #include "pgpdriver.h"
-#include "xtcdata/xtc/Dgram.hh"
+#include "TimingHeader.hh"
 
 static unsigned _nevents=0;
 static uint64_t _nbytes =0;
@@ -55,9 +55,9 @@ static void* diagnostics(void*)
     double dt = double(ttv.tv_sec - tv.tv_sec) + 1.e-9*(double(ttv.tv_nsec)-double(tv.tv_nsec));
     double revents = double(nev-nevents)/dt;
     double rbytes  = double(nby -nbytes)/dt;
-    printrate("\n ", "Hz", revents);
+    printrate("\t ", "Hz", revents);
     printrate("\t ", "B/s", rbytes);
-    printf("\t lanes %x", lanes);
+    printf("\t lanes %x\n", lanes);
     nevents=nev;
     nbytes =nby;
     tv     =ttv;
@@ -70,11 +70,19 @@ int main(int argc, char* argv[])
     
     int c;
     int device_id;
+    const char* ofile = 0;
+    int wait_us = 0;
     bool lverbose = false;
-    while((c = getopt(argc, argv, "d:v")) != EOF) {
+    while((c = getopt(argc, argv, "d:f:w:v")) != EOF) {
         switch(c) {
         case 'd':
           device_id = std::stoi(optarg, nullptr, 16);
+          break;
+        case 'f':
+          ofile = optarg;
+          break;
+        case 'w':
+          wait_us =  std::stoi(optarg, nullptr, 16);
           break;
         case 'v':
           lverbose = true;
@@ -94,23 +102,40 @@ int main(int argc, char* argv[])
       return -1;
     }
 
+    FILE* f = 0;
+    if (ofile) {
+      f = fopen(ofile,"w");
+      if (!f) {
+        perror("Opening output file");
+        exit(1);
+      }
+    }
+
     int num_entries = 8192;
     DmaBufferPool pool(num_entries, RX_BUFFER_SIZE);
     AxisG2Device dev(device_id);
     dev.init(&pool);       
     dev.setup_lanes(0xF);
+    unsigned _seconds = 0;
 
     while (true) {    
         DmaBuffer* buffer = dev.read();
-        XtcData::Transition* event_header = reinterpret_cast<XtcData::Transition*>(buffer->virt);
+        Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(buffer->virt);
         XtcData::TransitionId::Value transition_id = event_header->seq.service();
         _nevents++;
         _nbytes += buffer->size;
         _lanes  |= 1<<buffer->dest;
         if (lverbose) {
-          printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u\n",
+          printf("Size %u B | Dest %u | TimingHeader id %d | pulse id %lu | event counter %u\n",
                  buffer->size, buffer->dest, transition_id, event_header->seq.pulseId().value(), event_header->evtCounter); 
         }
+        if (wait_us && event_header->seq.stamp().seconds()>_seconds) {
+          usleep(wait_us);
+          _seconds = event_header->seq.stamp().seconds();
+        }
+        if (f)
+          fwrite(buffer->virt, buffer->size, 1, f);
+
         dev.read_done(buffer);
     }                                
 

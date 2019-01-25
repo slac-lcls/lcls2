@@ -94,6 +94,22 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     assert(Py_GETREF(software)==1);
 }
 
+static void setDataInfo(PyDgramObject* pyDgram, const char* baseName, Name& name) {
+    unsigned type = name.type();
+    unsigned rank = name.rank();
+    char keyName[TMPSTRINGSIZE];
+
+    PyObject* py_type = Py_BuildValue("i", type);
+    PyObject* py_rank = Py_BuildValue("i", rank);
+
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_type",
+             PyNameDelim,baseName,PyNameDelim);
+    addObj(pyDgram, keyName, py_type);
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_rank",
+             PyNameDelim,baseName,PyNameDelim);
+    addObj(pyDgram, keyName, py_rank);
+}
+
 static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     char keyName[TMPSTRINGSIZE];
     PyObject* detType = Py_BuildValue("s", names.detType());
@@ -106,15 +122,21 @@ static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
              PyNameDelim,names.detName(),PyNameDelim);
     addObj(pyDgram, keyName, detId);
 
+    PyObject* segment = Py_BuildValue("i", names.segment());
+    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_segment",
+             PyNameDelim,names.detName(),PyNameDelim);
+    addObj(pyDgram, keyName, segment);
+
     assert(Py_GETREF(detType)==1);
 }
 
-void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
+void DictAssignAlg(PyDgramObject* pyDgram, NamesVec& namesVec)
 {
-    // This function gets called at configure: add attribute "software" and "version" to pyDgram and return
+    // This function gets called at configure: add attributes "software" and "version" to pyDgram and return
     char baseName[TMPSTRINGSIZE];
 
     for (unsigned i = 0; i < namesVec.size(); i++) {
+        if (!namesVec[i].exists()) continue;
         Names& names = namesVec[i].names();
         Alg& detAlg = names.alg();
         snprintf(baseName,TMPSTRINGSIZE,"%s%s%s",
@@ -129,6 +151,7 @@ void DictAssignAlg(PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec)
                      names.detName(),PyNameDelim,names.alg().name(),
                      PyNameDelim,name.name());
             setAlg(pyDgram,baseName,alg);
+            setDataInfo(pyDgram,baseName,name);
         }
     }
 }
@@ -284,7 +307,7 @@ class PyConvertIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, std::vector<NameIndex>& namesVec) :
+    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, NamesVec& namesVec) :
         XtcIterator(xtc), _pyDgram(pyDgram), _namesVec(namesVec)
     {
     }
@@ -299,10 +322,10 @@ public:
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
-            unsigned namesId = shapesdata.shapes().namesId();
+            NamesId namesId = shapesdata.namesId();
             // protect against the fact that this datagram
             // may not have a _namesVec
-            if (namesId<_namesVec.size()) {
+            if (namesId.value()<_namesVec.size()) {
                 DescData descdata(shapesdata, _namesVec[namesId]);
                 DictAssign(_pyDgram, descdata);
             }
@@ -315,8 +338,8 @@ public:
     }
 
 private:
-    PyDgramObject*          _pyDgram;
-    std::vector<NameIndex>& _namesVec; // need one of these for each source
+    PyDgramObject* _pyDgram;
+    NamesVec&      _namesVec;
 };
 
 void AssignDict(PyDgramObject* self, PyObject* configDgram) {
@@ -342,7 +365,12 @@ static void dgram_dealloc(PyDgramObject* self)
     Py_XDECREF(self->dict);
     if (self->buf.buf == NULL) {
         // can be NULL if we had a problem early in dgram_init
-        Py_XDECREF(self->dgrambytes);
+        //Py_XDECREF(self->dgrambytes);
+
+        // mona: still not sure why this prevents crashing.
+        // https://docs.python.org/2/c-api/refcounting.html says that the difference is
+        // the object is set to NULL prior to decrementing its reference count.
+        Py_CLEAR(self->dgrambytes);
     } else {
         PyBuffer_Release(&(self->buf));
     }
@@ -429,11 +457,17 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->contInfo.pycontainertype = PyObject_GetAttrString(self->contInfo.containermod,"Container");
 
     if (!isView) {
-        PyObject* arglist = Py_BuildValue("(i)",BUFSIZE);
+        //PyObject* arglist = Py_BuildValue("(i)",BUFSIZE);
         // I believe this memsets the buffer to 0, which we don't need.
         // Perhaps ideally we would write a custom object to avoid this. - cpo
-        self->dgrambytes = PyObject_CallObject((PyObject*)&PyByteArray_Type, arglist);
-        Py_DECREF(arglist);
+        //self->dgrambytes = PyObject_CallObject((PyObject*)&PyByteArray_Type, arglist);
+        //Py_DECREF(arglist);
+
+        // Use c-level api to create PyByteArray to avoid memset - mona
+        self->dgrambytes = PyByteArray_FromStringAndSize(NULL, BUFSIZE);
+        if (self->dgrambytes == NULL) {
+            return -1;
+        }
         self->dgram = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
     } else {
         // this next line is needed because arrays will increase the reference count

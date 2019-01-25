@@ -168,6 +168,8 @@ int main(int argc, char** argv)
 
   Module* m = Module::create(fd, M3_7);
 
+  m->set_local_id(strtoul(dev+strlen(dev)-2,NULL,16));
+
   std::string buildStamp = m->version().buildStamp();
   printf("BuildStamp: %s\n",buildStamp.c_str());
 

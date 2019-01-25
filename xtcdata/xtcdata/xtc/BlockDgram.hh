@@ -5,6 +5,7 @@
 // the three block types being Shapes, Data, and ShapesData
 
 #include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/NamesId.hh"
 
 namespace XtcData {
 
@@ -24,8 +25,9 @@ public:
         _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
     };
 
-    void addNamesBlock(uint8_t* name_block, size_t block_elems){
-        Xtc& namesxtc = *new((char*)_dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Names, 0));
+    void addNamesBlock(uint8_t* name_block, size_t block_elems,
+                       unsigned nodeId, unsigned namesId){
+        Xtc& namesxtc = *new((char*)_dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Names, 0), NamesId(nodeId,namesId));
         size_t nameblock_size = sizeof(NameInfo) + block_elems*sizeof(Name);
         memcpy(namesxtc.payload(), name_block, nameblock_size);
         namesxtc.alloc(nameblock_size);
@@ -34,10 +36,12 @@ public:
         _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
     }
 
-    void addShapesDataBlock(uint8_t* shape_block, uint8_t* data_block, size_t sizeofdata, size_t block_elems){
-        Xtc& shapesdata = *new((char*)_dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::ShapesData, 0));
+    void addShapesDataBlock(uint8_t* shape_block, uint8_t* data_block, size_t sizeofdata, size_t block_elems, unsigned nodeId, unsigned namesId){
+        Xtc& shapesdata = *new((char*)_dgram.xtc.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::ShapesData, 0), NamesId(nodeId,namesId));
 
         Xtc& shapes = *new((char*)shapesdata.alloc(sizeof(Xtc))) Xtc(TypeId(TypeId::Shapes, 0));
+        // cpo: need to take away this uint32_t when we eliminate
+        // it from the Shapes class
         size_t shapeblock_size = sizeof(uint32_t) + block_elems*sizeof(Shape);
         memcpy(shapes.payload(), shape_block, shapeblock_size);
         shapes.alloc(shapeblock_size);

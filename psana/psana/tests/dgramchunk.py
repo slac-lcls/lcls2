@@ -46,7 +46,7 @@ if __name__ == "__main__":
     comm.Barrier()
     ts0 = MPI.Wtime()
     if rank == 0:
-        fd = os.open('/reg/d/psdm/xpp/xpptut15/scratch/mona/smd.xtc', os.O_RDONLY)
+        fd = os.open('/reg/d/psdm/xpp/xpptut15/scratch/mona/smd.xtc2', os.O_RDONLY)
         config = dgram.Dgram(file_descriptor=fd)
         config_size = np.array([memoryview(config).shape[0]], dtype='i')
     else:

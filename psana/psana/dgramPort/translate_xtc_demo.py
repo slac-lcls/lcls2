@@ -11,11 +11,12 @@ import sys, os
 
 outdir = sys.argv[1]
 detAlias = sys.argv[2]
-fname  = sys.argv[3]
+detID = sys.argv[3]
+fname = sys.argv[4]
 
-if len(sys.argv) < 3: 
+if len(sys.argv) < 4:
     print("Usage: python translate_xtc_demo.py paths detAlias filename ")
-    print("Example: bsub -m \"psana1112\" -q psanaq  -o ~/%J.out python translate_xtc_demo.py /reg/d/psdm/cxi/cxitut13/scratch DscCsPad crystal_96")
+    print("Example: bsub -m \"psana1112\" -q psanaq  -o ~/%J.out python translate_xtc_demo.py /reg/d/psdm/cxi/cxitut13/scratch DscCsPad 0001 crystal_96")
 
 context = zmq.Context()
 # receive work
@@ -38,7 +39,7 @@ def munge_json(event):
 def translate_xtc_demo(job_type):
     event_file = '%s_evts.xtc' % job_type
 
-    ninfo = dc.nameinfo(detAlias, 'cspad', 'detnum1234', 0)
+    ninfo = dc.nameinfo(detAlias, 'cspad', detID, 0)
     alg = dc.alg('raw', [1, 2, 3])
 
     cydgram = dc.CyDgram()

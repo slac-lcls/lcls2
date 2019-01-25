@@ -19,22 +19,51 @@ public:
     {
     }
     TypeId(const TypeId& v);
-    TypeId(Type type, uint32_t version);
+    TypeId(Type type, unsigned version);
     TypeId(const char*);
 
     Type id() const;
-    uint32_t version() const;
-    uint32_t value() const;
+    unsigned version() const;
+    unsigned value() const;
 
     static const char* name(Type type);
-    static uint32_t _sizeof()
-    {
-        return sizeof(TypeId);
-    }
 
 private:
-    uint32_t _value;
+    enum { TypeBitMask    = 0x0fff };
+    enum { VersionBitMask = 0xf000, VersionBitShift = 12 };
+    uint16_t _value;
 };
+
+
+inline
+XtcData::TypeId::TypeId(Type type, unsigned version)
+    : _value(((version << VersionBitShift) & VersionBitMask) | type)
+{
+}
+
+inline
+XtcData::TypeId::TypeId(const TypeId& v) : _value(v._value)
+{
+}
+
+inline
+unsigned XtcData::TypeId::value() const
+{
+    return _value;
+}
+
+inline
+unsigned XtcData::TypeId::version() const
+{
+    return (_value & VersionBitMask) >> VersionBitShift;
+}
+
+inline
+XtcData::TypeId::Type XtcData::TypeId::id() const
+{
+    return (XtcData::TypeId::Type)(_value & TypeBitMask);
+}
+
 }
 
 #endif

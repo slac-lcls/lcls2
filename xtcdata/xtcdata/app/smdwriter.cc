@@ -100,29 +100,13 @@ public:
    }
 } SmdDef;
 
-void add_names(Xtc& parent, std::vector<NameIndex>& namesVec) 
+void addNames(Xtc& parent, NamesVec& namesVec, unsigned nodeId)
 {
-    Alg hsdRawAlg("raw",0,0,0);
-    Names& frontEndNames = *new(parent) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234");
-    frontEndNames.add(parent,PgpDef);
-    namesVec.push_back(NameIndex(frontEndNames));
-
-    Alg hsdFexAlg("fex",4,5,6);
-    Names& fexNames = *new(parent) Names("xpphsd", hsdFexAlg, "hsd","detnum1234");
-    fexNames.add(parent, FexDef);
-    namesVec.push_back(NameIndex(fexNames));
-
-    unsigned segment = 0;
-    Alg cspadRawAlg("raw",2,3,42);
-    Names& padNames = *new(parent) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", segment);
-    Alg segmentAlg("cspadseg",2,3,42);
-    padNames.add(parent, PadDef);
-    namesVec.push_back(NameIndex(padNames)); 
-
     Alg alg("offsetAlg",0,0,0);
-    Names& offsetNames = *new(parent) Names("info", alg, "offset", "");
+    NamesId namesId(nodeId,0);
+    Names& offsetNames = *new(parent) Names("info", alg, "offset", "", namesId);
     offsetNames.add(parent,SmdDef);
-    namesVec.push_back(NameIndex(offsetNames));
+    namesVec[namesId] = NameIndex(offsetNames);
 }
 
 void usage(char* progname)
@@ -135,15 +119,16 @@ int main(int argc, char* argv[])
   /*
    * The smdwriter reads an xtc file, extracts
    * payload size for each event datagram,
-   * then writes out (fseek) offset in smd.xtc file.
+   * then writes out (fseek) offset in smd.xtc2 file.
    */ 
   int c;
   int writeTs = 0;
   char* tsname = 0;
   char* xtcname = 0;
   int parseErr = 0;
+  size_t n_events = 0;
 
-  while ((c = getopt(argc, argv, "ht:f:")) != -1) {
+  while ((c = getopt(argc, argv, "htn:f:")) != -1) {
     switch (c) {
       case 'h':
         usage(argv[0]);
@@ -151,6 +136,9 @@ int main(int argc, char* argv[])
       case 't':
         writeTs = 1;
         tsname = optarg;
+        break;
+      case 'n':
+        n_events = stoi(optarg);
         break;
       case 'f':
         xtcname = optarg;
@@ -175,8 +163,8 @@ int main(int argc, char* argv[])
   XtcFileIterator iter(fd, BUFSIZE);
   Dgram* dgIn;
 
-  // Prepare output smd.xtc file
-  FILE* xtcFile = fopen("smd.xtc", "w");
+  // Prepare output smd.xtc2 file
+  FILE* xtcFile = fopen("smd.xtc2", "w");
   if (!xtcFile) {
     printf("Error opening output xtc file.\n");
     return -1;
@@ -208,8 +196,9 @@ int main(int argc, char* argv[])
   config.xtc.contains = tid;
   config.xtc.damage = 0;
   config.xtc.extent = sizeof(Xtc);
-  std::vector<NameIndex> namesVec;
-  add_names(config.xtc, namesVec);
+  NamesVec namesVec;
+  unsigned nodeId=0;
+  addNames(config.xtc, namesVec, nodeId);
   if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
     printf("Error writing configure to output xtc file.\n");
     return -1;
@@ -224,6 +213,9 @@ int main(int argc, char* argv[])
   uint64_t pulseId = 0;
 
   printf("\nStart writing offsets.\n"); 
+  if (n_events > 0) {
+  }
+
   while ((dgIn = iter.next())) {
     Dgram& dgOut = *(Dgram*)buf;
     TypeId tid(TypeId::Parent, 0);
@@ -243,8 +235,8 @@ int main(int argc, char* argv[])
         dgOut.seq = dgIn->seq;
     }
 
-    unsigned nameId = 3; 
-    CreateData smd(dgOut.xtc, namesVec, nameId);
+    NamesId namesId(nodeId,0);
+    CreateData smd(dgOut.xtc, namesVec, namesId);
     smd.set_value(SmdDef::intOffset, nowOffset);
     nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     smd.set_value(SmdDef::intDgramSize, nowDgramSize);
@@ -267,8 +259,17 @@ int main(int argc, char* argv[])
     // Update the offset
     nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
     eventId++;
-  }
-  printf("Finished writing smd for %u events\n", eventId);
+
+    if (n_events > 0) {
+        if (eventId - 1 >= n_events) {
+            cout << "Stop writing. The option -n (no. of events) was set to " << n_events << endl;
+            break;
+        }
+    }
+
+  }// end while((dgIn...
+
+  cout << "Finished writing smd for " << eventId - 1 << " events. Big data file size (B): " << nowOffset << endl;
   fclose(xtcFile);
   ::close(fd);
   

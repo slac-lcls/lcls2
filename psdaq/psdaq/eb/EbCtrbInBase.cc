@@ -3,7 +3,7 @@
 #include "psdaq/eb/Endpoint.hh"
 #include "psdaq/eb/EbLfServer.hh"
 #include "psdaq/eb/Batch.hh"
-#include "psdaq/eb/EbContributor.hh"    // For EbCtrbParams
+#include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/utilities.hh"
 
 #include "xtcdata/xtc/Dgram.hh"
@@ -16,12 +16,12 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-EbCtrbInBase::EbCtrbInBase(const EbCtrbParams& prms) :
+EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
   _numEbs      (std::bitset<64>(prms.builders).count()),
-  _maxBatchSize(roundUpSize(sizeof(Dgram) + prms.maxEntries * prms.maxInputSize)),
+  _maxBatchSize(roundUpSize(prms.maxEntries * prms.maxResultSize)),
   _region      (allocRegion(prms.maxBatches * _maxBatchSize)),
   _transport   (new EbLfServer(prms.ifAddr, prms.port.c_str())),
-  _links       (), //_numEbs),
+  _links       (),
   _ebCntHist   ( 6, 1.0),               // Up to 64 possible EBs
   _rttHist     (12, 1.0),
   _pendTimeHist(12, 1.0),
@@ -111,38 +111,39 @@ int EbCtrbInBase::process(BatchManager& batMan)
   unsigned     idx = ImmData::idx(data);
   EbLfLink*    lnk = _links[src];
   const Dgram* bdg = (const Dgram*)(lnk->lclAdx(idx * _maxBatchSize));
-
   lnk->postCompRecv();
 
   if (_prms.verbose)
   {
-    static unsigned cnt    = 0;
-    uint64_t        pid    = bdg->seq.pulseId().value();
-    size_t          extent = sizeof(*bdg) + bdg->xtc.sizeofPayload();
+    static unsigned cnt = 0;
+    uint64_t        pid = bdg->seq.pulseId().value();
+    unsigned        ctl = bdg->seq.pulseId().control();
+    size_t          sz  = sizeof(*bdg) + bdg->xtc.sizeofPayload();
     printf("CtrbIn  rcvd        %6d result  [%4d] @ "
-           "%16p, pid %014lx, sz %4zd from Teb %2d\n",
-           cnt++, idx, bdg, pid, extent, lnk->id());
+           "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d\n",
+           cnt++, idx, bdg, ctl, pid, sz, lnk->id());
   }
 
-  // Should be done only when this executes on the machine that timestamped the batch
+  // Makes sense only when t1 and bdg->seq.stamp() have a common clock
   _updateHists(t0, t1, bdg->seq.stamp());
   _ebCntHist.bump(lnk->id());
 
-  Dgram const*       result = (Dgram const*)bdg->xtc.payload();
-  Dgram const* const last   = (Dgram const*)bdg->xtc.next();
-  const Batch*       inputs = batMan.batch(idx);
+  Dgram const* result = bdg;
+  const Batch* inputs = batMan.batch(idx);
   //printf("        data %08lx           idx %4d rPid %014lx iPid %014lx               id %2d svc %d\n",
   //       data, idx, result->seq.pulseId().value(), inputs->datagram()->seq.pulseId().value(),
   //       lnk->id(), result->seq.service());
   unsigned i = 0;
-  while (result != last)
+  while (true)
   {
     process(result, inputs->appParm(i++));
 
-    result = (Dgram const*)result->xtc.next();
+    if (!result->seq.isBatch())  break; // Last event in batch does not have Batch bit set
+
+    result = reinterpret_cast<const Dgram*>(result->xtc.next());
   }
 
-  batMan.deallocate(inputs);
+  batMan.release(inputs);
 
   return 0;
 }

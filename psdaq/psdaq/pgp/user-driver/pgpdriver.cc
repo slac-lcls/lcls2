@@ -122,6 +122,11 @@ AxisG2Device::AxisG2Device(int device_id)
     pci_resource = map_pci_resource(bus_id.c_str());
 }
 
+AxisG2Device::AxisG2Device(const char* bus_id)
+{
+    pci_resource = map_pci_resource(bus_id);
+}
+
 void AxisG2Device::init(DmaBufferPool* pool)
 {
     this->pool = pool;
@@ -131,18 +136,11 @@ void AxisG2Device::init(DmaBufferPool* pool)
     set_reg32(pci_resource, COUNT_RESET, 1);
     set_reg32(pci_resource, SCRATCH, SPAD_WRITE);
 
-    // allocate mon buffer and enable monitoring
-    void* mon_addr = memory_allocate_dma(MON_BUFFER_SIZE, "/mnt/huge/pgp_mon");
-    uintptr_t phys = virt_to_phys(mon_addr);
-    set_reg32(pci_resource, MON_HIST_ADDR_LO, phys & 0xFFFFFFFF);
-    set_reg32(pci_resource, MON_HIST_ADDR_HI, (phys >> 32) & 0x000000FF);
-    set_reg32(pci_resource, MON_ENABLE, 1);
-
     uint32_t client_base = CLIENTS(0);
     // allocate receive descriptors that are written to by the hardware
     rx_desc = memory_allocate_dma(RX_DESC_SIZE*8, "/mnt/huge/pgp_rx_desc");
     memset(rx_desc, 0, RX_DESC_SIZE*8);
-    phys = virt_to_phys(rx_desc);
+    uintptr_t phys = virt_to_phys(rx_desc);
     set_reg32(pci_resource, client_base + DESC_ADDR_LO, phys & 0xFFFFFFFF);
     set_reg32(pci_resource, client_base + DESC_ADDR_HI, (phys >> 32) & 0x000000FF);
     read_index = 0;
@@ -154,6 +152,22 @@ void AxisG2Device::init(DmaBufferPool* pool)
         set_reg32(pci_resource, client_base + DESC_FIFO_LO, fifo[i]->phys & 0xFFFFFFFF);
         set_reg32(pci_resource, client_base + DESC_FIFO_HI, (i << 8) | ((fifo[i]->phys >> 32) & 0x000000FF));
     }
+}
+
+void* AxisG2Device::initmon()
+{
+    // allocate mon buffer and enable monitoring
+    void* mon_addr = memory_allocate_dma(MON_BUFFER_SIZE, "/mnt/huge/pgp_mon");
+    uintptr_t phys = virt_to_phys(mon_addr);
+    set_reg32(pci_resource, MON_HIST_ADDR_LO, phys & 0xFFFFFFFF);
+    set_reg32(pci_resource, MON_HIST_ADDR_HI, (phys >> 32) & 0x000000FF);
+    set_reg32(pci_resource, MON_ENABLE, 1);
+    return mon_addr;
+}
+
+void AxisG2Device::exitmon()
+{
+    set_reg32(pci_resource, MON_ENABLE, 0);
 }
 
 void AxisG2Device::print_dma_lane(const char* name, int addr, int offset, int mask)
@@ -176,12 +190,14 @@ void AxisG2Device::print_pgp_lane(const char* name, int addr, int offset, int ma
     printf("\n");
 }
 
-void AxisG2Device::status()
+void AxisG2Device::version(unsigned offset)
 {
+    uint8_t* _pci_resource = pci_resource;
+    pci_resource += offset;
+
     uint32_t version = get_reg32(pci_resource, VERSION);
     uint32_t scratch = get_reg32(pci_resource, SCRATCH);
     uint32_t uptime_count = get_reg32(pci_resource, UP_TIME_CNT);
-    uint32_t lanes = get_reg32(pci_resource, RESOURCES) & 0xf;
     char build_string[256];
     for (int i=0; i<64; i++) {
         reinterpret_cast<uint32_t*>(build_string)[i] = get_reg32(pci_resource, 0x0800 + i*4);
@@ -192,7 +208,14 @@ void AxisG2Device::status()
     printf("  scratch           :  %x\n", scratch);
     printf("  uptime count      :  %d\n", uptime_count);
     printf("  build string      :  %s\n", build_string);
-    
+
+    pci_resource = _pci_resource;
+}
+
+void AxisG2Device::status()
+{
+    version(0);
+    uint32_t lanes = get_reg32(pci_resource, RESOURCES) & 0xf;
     printf("  lanes             :  %u\n", lanes);
     uint32_t fifo_depth = get_reg32(pci_resource, CLIENTS(0) + FIFO_DEPTH);
     printf("dcountRamAddr  [%u] : 0x%x\n", 0, fifo_depth & 0xffff);

@@ -107,7 +107,7 @@ def main():
                                     'value' : [200]*4 }
     pvdb[stationstr+'FEX_PS'   ] = {'type' : 'int', 
                                     'count': 4,
-                                    'value' : [0]*4 }
+                                    'value' : [1]*4 }
     pvdb[stationstr+'FEX_YMIN' ] = {'type' : 'int', 
                                     'count': 4,
                                     'value' : [508]*4 }
@@ -141,7 +141,7 @@ def main():
     pvdb[stationstr+'FULLSIZE'     ] = {'type' : 'int', 
                                         'value' : 3072 }
     pvdb[stationstr+'TESTPATTERN'  ] = {'type' : 'int', 
-                                        'value' : -1 }
+                                        'value' : 0 } # -1: off 1: rect, 2: sawtooth
     pvdb[stationstr+'TRIGSHIFT'  ] = {'type' : 'int', 
                                       'value' : 0 }
     pvdb[stationstr+'SYNCE'       ] = {'type' : 'int', 
@@ -149,21 +149,21 @@ def main():
     pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int',
 #                                       'value' : 2050 } 
 #                                       'value' : 1600 }
-                                       'value' : 5000-175 }
+                                       'value' : 5500-175 }
     pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
 #                                       'value' : 2400 }
 #                                       'value' : 1950 }
-                                       'value' : 5000+175 }
+                                       'value' : 5500+175 }
     pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
                                       'value' : 0 }
     pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
 #                                       'value' : 11800 }
 #                                       'value' : 11400 }
-                                       'value' : 14700-175 }
+                                       'value' : 15200-175 }
     pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
 #                                       'value': 12200 }
 #                                       'value' : 11750 }
-                                       'value' : 14700+175 }
+                                       'value' : 15200+175 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
                                       'count' : 4,
                                       'value' : [0]*4 }
@@ -310,12 +310,38 @@ def main():
     server.createPV(prefix, pvdb)
     driver = myDriver()
 
+    # Save PVs to config dbase
+    from pymongo import MongoClient, errors, ASCENDING, DESCENDING
+    username = 'yoon82'
+    host = 'psdb-dev'
+    port = 9306
+    daq_id = 'lcls2-tmo'
+    dettype = 'hsd_cfg_2_4_3'
+    client = MongoClient('mongodb://%s:%s@%s:%s' % (username, username, host, port))
+    db = client[daq_id]
+    collection = db[dettype]
+    max_id = -1
+    if daq_id not in client.database_names():
+        print("Creating unique index")
+        collection.create_index([('cfg_id', ASCENDING)], unique=True)
+    else:
+        max_id = collection.find_one(sort=[("cfg_id", DESCENDING)])["cfg_id"]
+    _pvdb = pvdb
+    _pvdb['cfg_id'] = max_id + 1 # this may be detector serial number
+    print("#### cfg_id: ", max_id + 1)
+    try:
+        collection.insert(_pvdb)
+    except errors.DuplicateKeyError:
+        print("ID already exists. Exit without writing to database.")
+
     try:
         # process CA transactions
         while True:
             server.process(0.1)
     except KeyboardInterrupt:
         print('\nInterrupted')
+
+
 
 if __name__ == '__main__':
     main()

@@ -11,9 +11,9 @@ class EventBuilderManager(object):
     def batches(self, view):
         pf = PacketFooter(view=view)
         views = pf.split_packets()
-        eb = EventBuilder(views, self.configs)
-        batch = eb.build(batch_size=self.batch_size, filter=self.filter_fn)
+        eb = EventBuilder(views)
+        batch = eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn)
         while eb.nevents:
             yield batch
-            batch = eb.build(batch_size=self.batch_size, filter=self.filter_fn)
+            batch = eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn)
 

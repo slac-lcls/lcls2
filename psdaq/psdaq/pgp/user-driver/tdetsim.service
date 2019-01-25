@@ -5,8 +5,8 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/tdetsim -d 0x2031
-ExecStartPost=
+ExecStart=/usr/local/sbin/tdetsim -b 0000:b0:00.0
+ExecStartPost=/sbin/insmod /usr/local/sbin/datadev.ko cfgTxCount=4 cfgRxCount=256
 ExecStop=
 KillMode=process
 IgnoreSIGPIPE=no

@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <cstdlib>
 
-#pragma pack(push,4)
+#pragma pack(push,2)
 
 namespace XtcData
 {
@@ -20,22 +20,22 @@ class Xtc
 public:
     Xtc() : damage(0), extent(0){};
     Xtc(const Xtc& xtc)
-    : damage(xtc.damage), src(xtc.src), contains(xtc.contains), extent(sizeof(Xtc))
+    : src(xtc.src), damage(xtc.damage), contains(xtc.contains), extent(sizeof(Xtc))
     {
     }
     Xtc(const TypeId& type) : damage(0), contains(type), extent(sizeof(Xtc))
     {
     }
     Xtc(const TypeId& type, const Src& _src)
-    : damage(0), src(_src), contains(type), extent(sizeof(Xtc))
+    : src(_src), damage(0), contains(type), extent(sizeof(Xtc))
     {
     }
     Xtc(const TypeId& _tag, const Src& _src, unsigned _damage)
-    : damage(_damage), src(_src), contains(_tag), extent(sizeof(Xtc))
+    : src(_src), damage(_damage), contains(_tag), extent(sizeof(Xtc))
     {
     }
     Xtc(const TypeId& _tag, const Src& _src, const Damage& _damage)
-    : damage(_damage), src(_src), contains(_tag), extent(sizeof(Xtc))
+    : src(_src), damage(_damage), contains(_tag), extent(sizeof(Xtc))
     {
     }
     void* operator new(size_t size)
@@ -79,8 +79,8 @@ public:
         return buffer;
     }
 
-    Damage   damage;
     Src      src;
+    Damage   damage;
     TypeId   contains;
     uint32_t extent;
 };

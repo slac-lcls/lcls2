@@ -29,9 +29,25 @@ add_executable(pgpread
     pgpread.cc
 )
 
+target_include_directories(pgpread PUBLIC
+    ../../../drp
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
 target_link_libraries(pgpread
     pgpdriver
     xtcdata::xtc
+    pthread
+    rt
+)
+
+add_executable(pgpmon
+    pgpmon.cc
+)
+
+target_link_libraries(pgpmon
+    pgpdriver
     pthread
     rt
 )
@@ -44,13 +60,10 @@ target_link_libraries(looptest
 )
 
 add_executable(tdetsim
-    tdetsim.cc
-    pgpdriver.cc
-)
-target_include_directories(tdetsim PUBLIC
-    ../../../drp
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
+    tdetsim.cc)
+
+target_link_libraries(tdetsim
+    pgpdriver
 )
 
 add_executable(promload

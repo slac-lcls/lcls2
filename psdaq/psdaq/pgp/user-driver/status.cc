@@ -3,15 +3,18 @@
 
 int main(int argc, char* argv[])
 {
-    int device_id = 0x2031;
+    AxisG2Device* dev = 0;
     int c;
-    while((c = getopt(argc, argv, "d:")) != EOF) {
+    while((c = getopt(argc, argv, "d:b:v:")) != EOF) {
         switch(c) {
-            case 'd': device_id = strtol(optarg, NULL, 0); break;
+            case 'b': dev = new AxisG2Device(optarg); break;
+            case 'd': dev = new AxisG2Device(strtol(optarg, NULL, 0)); break;
+            case 'v': dev->version(strtoul(optarg, NULL, 0)); return 0;
+            default:  return -1;
         }
     }
 
-    AxisG2Device dev(device_id);
-    dev.status();
+    if (dev)
+      dev->status();
 }
 

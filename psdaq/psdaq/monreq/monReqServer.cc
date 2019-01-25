@@ -1,5 +1,6 @@
 #include "psdaq/monreq/XtcMonitorServer.hh"
 
+#include "psdaq/eb/eb.hh"
 #include "psdaq/eb/EbAppBase.hh"
 #include "psdaq/eb/EbEvent.hh"
 
@@ -9,6 +10,7 @@
 #include "psdaq/eb/StatsMonitor.hh"
 
 #include "psdaq/service/Fifo.hh"
+#include "psdaq/service/GenericPool.hh"
 #include "psdaq/service/Collection.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
@@ -21,14 +23,9 @@
 
 static const unsigned rtMon_period         = 1;  // Seconds
 static const unsigned default_id           = 0;  // Builder's ID (< 64)
-static const unsigned epoch_duration       = 1;  // All timestamps in 1 epoch
-static const unsigned numberof_epochs      = 1;  // All timestamps in 1 epoch => 1
-static const unsigned numberof_trBuffers   = 18; // From XtcMonitorServer
-static const unsigned numberof_xferBuffers =  8; // Revisit: Value; corresponds to drpEbContributor:maxEvents
+static const unsigned epoch_duration       = 8;  // Revisit: 1 per xferBuffer
+static const unsigned numberof_xferBuffers = 8;  // Revisit: Value; corresponds to tstEbContributor:maxEvents
 static const unsigned sizeof_buffers       = 1024; // Revisit
-static const char*    dflt_partition       = "Test";
-static const char*    dflt_rtMon_host      = "psdev7b";
-static const char*    dflt_coll_host       = "drp-tst-acc06";
 
 static       unsigned lverbose             = 0;
 
@@ -66,13 +63,13 @@ namespace Pds {
         const unsigned tmo(120000);     // Milliseconds
         if (_mrqTransport->connect(addr, port, tmo, &link))
         {
-          fprintf(stderr, "%s: Error connecting to Mon EbLfServer at %s:%s\n",
+          fprintf(stderr, "%s:\n  Error connecting to Mon EbLfServer at %s:%s\n",
                   __func__, addr, port);
           abort();
         }
         if (link->preparePoster(i, id, lverbose))
         {
-          fprintf(stderr, "%s: Failed to prepare Mon link to %s:%s\n",
+          fprintf(stderr, "%s:\n  Failed to prepare Mon link to %s:%s\n",
                   __func__, addr, port);
           abort();
         }
@@ -83,7 +80,7 @@ namespace Pds {
 
       for (unsigned i = 0; i < numberofEvBuffers; ++i)
         if (!_bufFreeList.push(i))
-          fprintf(stderr, "_bufFreeList.push(%d) failed\n", i);
+          fprintf(stderr, "%s:\n  _bufFreeList.push(%d) failed\n", __func__, i);
     }
     virtual ~MyXtcMonitorServer()
     {
@@ -130,8 +127,8 @@ namespace Pds {
 
         if (sizeof(*odg) + odg->xtc.sizeofPayload() > _sizeofBuffers)
         {
-          fprintf(stderr, "Datagram is too large (%zd) for buffer of size %d\n",
-                  sizeof(*odg) + odg->xtc.sizeofPayload(), _sizeofBuffers);
+          fprintf(stderr, "%s:\n  Datagram is too large (%zd) for buffer of size %d\n",
+                  __PRETTY_FUNCTION__, sizeof(*odg) + odg->xtc.sizeofPayload(), _sizeofBuffers);
           abort();            // The memcpy would blow by the buffer size limit
         }
 
@@ -144,11 +141,11 @@ namespace Pds {
     {
       //printf("_deleteDatagram @ %p\n", dg);
 
-      unsigned idx = ImmData::idx(dg->xtc.src.phy());
+      unsigned idx = *(unsigned*)dg->xtc.next();
       if (!_bufFreeList.push(idx))
         printf("_bufFreeList.push(%d) failed, count = %zd\n", idx, _bufFreeList.count());
       //printf("_deleteDatagram: _bufFreeList.push(%d), count = %zd, log = %08x, phy = %08x\n",
-      //       idx, _bufFreeList.count(), dg->xtc.src.log(), dg->xtc.src.phy());
+      //       idx, _bufFreeList.count(), dg->xtc.src.value(), dg->xtc.src.phy());
 
       Pool::free((void*)dg);
     }
@@ -159,7 +156,7 @@ namespace Pds {
 
       if (_bufFreeList.empty())
       {
-        fprintf(stderr, "%s: No free buffers available\n", __PRETTY_FUNCTION__);
+        fprintf(stderr, "%s:\n  No free buffers available\n", __PRETTY_FUNCTION__);
         return;
       }
 
@@ -175,7 +172,7 @@ namespace Pds {
 
         EbLfLink* link = _mrqLinks[iTeb];
 
-        data = ImmData::buffer(_id /*link->index()*/, data);
+        data = ImmData::value(ImmData::Buffer, _id /*link->index()*/, data);
 
         rc = link->post(nullptr, 0, data);
 
@@ -186,7 +183,7 @@ namespace Pds {
       }
       if (rc)
       {
-        fprintf(stderr, "%s:Unable to post request to any TEB\n", __PRETTY_FUNCTION__);
+        fprintf(stderr, "%s:\n  Unable to post request to any TEB\n", __PRETTY_FUNCTION__);
         // Revisit: Is this fatal or ignorable?
       }
     }
@@ -208,39 +205,41 @@ namespace Pds {
     return sz;
   }
 
-  class MonEbApp : public EbAppBase
+  class MebApp : public EbAppBase
   {
   public:
-    MonEbApp(const char*        ifAddr,
-             const std::string& port,
-             unsigned           id,
-             unsigned           sizeofEvBuffers,
-             unsigned           sizeofTrBuffers,
-             unsigned           numberofEvBuffers,
-             uint64_t           contributors,
-             StatsMonitor&      smon) :
+    MebApp(const char*        ifAddr,
+           const std::string& port,
+           unsigned           id,
+           unsigned           sizeofEvBuffers,
+           unsigned           sizeofTrBuffers,
+           unsigned           numberofEvBuffers,
+           uint64_t           contributors,
+           StatsMonitor&      smon) :
       EbAppBase(ifAddr, port,           // EbLfServer params to Contributor link
                 id,                     // This monitor's ID
                 epoch_duration,         // Time duration of a buffer
-                numberofEvBuffers,      // Max # of buffers
+                numberofEvBuffers,      // Max # of Event buffers
                 1,                      // # of dgs per buffer
                 _calcBufSize(sizeofEvBuffers, contributors), // Size per dg
                 sizeofTrBuffers,        // Size per non-event
-                0,                      // No add'l contribution header size
                 contributors),          // Same value as TEB's
-      _eventCount  (0),
-      _freeEpochCnt(freeEpochCount()),
-      _freeEventCnt(freeEventCount()),
-      _apps        (nullptr),
-      _pool        (sizeof(Dgram) + std::bitset<64>(contributors).count() * sizeof(Dgram*),
-                    numberof_xferBuffers) // Revisit: numberof_xferBuffers
+      _eventCount(0),
+      _apps      (nullptr),
+      _pool      (sizeof(Dgram)                                          +
+                  std::bitset<64>(contributors).count() * sizeof(Dgram*) +
+                  sizeof(unsigned),
+                  numberof_xferBuffers) // Revisit: numberof_xferBuffers
     {
-      smon.registerIt("MEB.EvtRt",  _eventCount,   StatsMonitor::RATE);
-      smon.registerIt("MEB.EvtCt",  _eventCount,   StatsMonitor::SCALAR);
-      smon.registerIt("MEB.FrEpCt", _freeEpochCnt, StatsMonitor::SCALAR);
-      smon.registerIt("MEB.FrEvCt", _freeEventCnt, StatsMonitor::SCALAR);
+      smon.registerIt("MEB.EvtRt",  _eventCount,      StatsMonitor::RATE);
+      smon.registerIt("MEB.EvtCt",  _eventCount,      StatsMonitor::SCALAR);
+      smon.registerIt("MEB.EpAlCt",  epochAllocCnt(), StatsMonitor::SCALAR);
+      smon.registerIt("MEB.EpFrCt",  epochFreeCnt(),  StatsMonitor::SCALAR);
+      smon.registerIt("MEB.EvAlCt",  eventAllocCnt(), StatsMonitor::SCALAR);
+      smon.registerIt("MEB.EvFrCt",  eventFreeCnt(),  StatsMonitor::SCALAR);
+      smon.registerIt("MEB.RxPdg",   rxPending(),     StatsMonitor::SCALAR);
     }
-    virtual ~MonEbApp()
+    virtual ~MebApp()
     {
     }
   public:
@@ -258,9 +257,6 @@ namespace Pds {
       while (true)
       {
         EbAppBase::process();
-
-        _freeEpochCnt = freeEpochCount();
-        _freeEventCnt = freeEventCount();
       }
 
       //cancel();                         // Stop the event timeout timer
@@ -272,36 +268,36 @@ namespace Pds {
       if (lverbose > 3)
       {
         static unsigned cnt = 0;
-        printf("monReqServer::process event dump:\n");
+        printf("MebApp::process event dump:\n");
         event->dump(++cnt);
       }
       ++_eventCount;
 
-      _freeEpochCnt = freeEpochCount();
-      _freeEventCnt = freeEventCount();
-
-      // Create a Dgram whose payload is a directory of contributions (Dgrams)
-      // to the event-built event
-      size_t sz     = (event->end() - event->begin()) * sizeof(*(event->begin()));
-      void*  buffer = _pool.alloc(sizeof(Dgram) + sz);
+      // Create a Dgram with a payload that is a directory of contribution
+      // Dgrams to the built event.  Reserve space at end for the buffer's index
+      size_t   sz     = (event->end() - event->begin()) * sizeof(*(event->begin()));
+      unsigned idx    = ImmData::idx(event->parameter());
+      void*    buffer = _pool.alloc(sizeof(Dgram) + sz + sizeof(idx));
       if (!buffer)
       {
-        fprintf(stderr, "%s: Dgram pool allocation failed:\n", __PRETTY_FUNCTION__);
+        fprintf(stderr, "%s:\n  Dgram pool allocation failed:\n", __PRETTY_FUNCTION__);
         _pool.dump();
         abort();
       }
       Dgram*  dg  = new(buffer) Dgram(*(event->creator()));
       Dgram** buf = (Dgram**)dg->xtc.alloc(sz);
       memcpy(buf, event->begin(), sz);
-      dg->xtc.src.phy(bufferIdx(event->creator()));
+      *(unsigned*)dg->xtc.next() = idx; // Pass buffer's index to _deleteDatagram()
 
       if (lverbose > 2)
       {
-        printf("monReqServer processed     event[%4ld]    @ "
-               "%16p, pid %014lx, sz %4zd, buf # %2d\n",
-               _eventCount, dg, dg->seq.pulseId().value(),
-               sizeof(*dg) + dg->xtc.sizeofPayload(),
-               bufferIdx(event->creator()));
+        uint64_t pid = dg->seq.pulseId().value();
+        unsigned ctl = dg->seq.pulseId().control();
+        size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
+        unsigned src = dg->xtc.src.value();
+        printf("MEB processed              event[%4ld]    @ "
+               "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, buf # %2d\n",
+               _eventCount, dg, ctl, pid, sz, src, idx);
       }
 
       if (_apps->events(dg) == XtcMonitorServer::Handled)
@@ -311,8 +307,6 @@ namespace Pds {
     }
   private:
     uint64_t          _eventCount;
-    uint64_t          _freeEpochCnt;
-    uint64_t          _freeEventCnt;
     XtcMonitorServer* _apps;
     GenericPool       _pool;
   };
@@ -340,7 +334,8 @@ void usage(char* progname)
                   "[-E <MEB port>] "
                   "[-i <ID>] "
                    "-c <Contributors (DRPs)> "
-                  "[-Z <Run-time mon addr>] "
+                  "[-Z <Run-time mon host>] "
+                  "[-R <Run-time mon port>] "
                   "[-m <Run-time mon publishing period>] "
                   "[-V] " // Run-time mon verbosity
                   "[-v] "
@@ -397,14 +392,15 @@ int main(int argc, char** argv)
   char*          ifAddr          = nullptr;
   unsigned       mebPortNo       = 0;   // Port served to contributors
   uint64_t       contributors    = 0;
-  std::string    partition        (dflt_partition);
-  const char*    rtMonHost       = dflt_rtMon_host;
+  std::string    partition        (PARTITION);
+  const char*    rtMonHost       = RTMON_HOST;
+  unsigned       rtMonPort       = RTMON_PORT_BASE;
   unsigned       rtMonPeriod     = rtMon_period;
   unsigned       rtMonVerbose    = 0;
-  std::string    collSvr         = dflt_coll_host;
+  std::string    collSvr          (COLL_HOST);
 
   int c;
-  while ((c = getopt(argc, argv, "p:n:P:s:q:t:dA:E:i:c:Z:m:C:Vvh")) != -1)
+  while ((c = getopt(argc, argv, "p:n:P:s:q:t:dA:E:i:c:Z:R:m:C:Vvh")) != -1)
   {
     errno = 0;
     char* endPtr;
@@ -436,6 +432,7 @@ int main(int argc, char** argv)
       case 'i':  id           = atoi(optarg);                 break;
       case 'c':  contributors = strtoul(optarg, nullptr, 0);  break;
       case 'Z':  rtMonHost    = optarg;                       break;
+      case 'R':  rtMonPort    = atoi(optarg);                 break;
       case 'm':  rtMonPeriod  = atoi(optarg);                 break;
       case 'C':  collSvr      = optarg;                       break;
       case 'V':  ++rtMonVerbose;                              break;
@@ -519,20 +516,22 @@ int main(int argc, char** argv)
   }
 
   EbAppBase::lverbose = lverbose;
+  EventBuilder::lverbose = lverbose;
 
   StatsMonitor*       smon = new StatsMonitor(rtMonHost,
+                                              rtMonPort,
                                               platform,
                                               partition,
                                               rtMonPeriod,
                                               rtMonVerbose);
 
-  MonEbApp*           meb  = new MonEbApp(ifAddr, mebPort,
-                                          id,
-                                          sizeofEvBuffers,
-                                          sizeofTrBuffers,
-                                          numberofBuffers,
-                                          contributors,
-                                          *smon);
+  MebApp*             meb  = new MebApp(ifAddr, mebPort,
+                                        id,
+                                        sizeofEvBuffers,
+                                        sizeofTrBuffers,
+                                        numberofBuffers,
+                                        contributors,
+                                        *smon);
 
   MyXtcMonitorServer* apps = new MyXtcMonitorServer(tag,
                                                     sizeofEvBuffers,

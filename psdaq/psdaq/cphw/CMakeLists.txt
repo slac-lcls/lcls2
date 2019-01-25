@@ -102,6 +102,19 @@ target_link_libraries(regtest
 )
 
 
+#
+#  regtest
+#
+add_executable(xvc_srv xvc_srv.cc)
+
+target_link_libraries(xvc_srv
+    dl
+    pthread
+    cphwr
+    -pthread
+)
+
+
 install(TARGETS cphw
                 amc_timing
                 amc_timing_udp

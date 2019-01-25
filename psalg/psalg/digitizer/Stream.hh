@@ -9,18 +9,17 @@
 namespace Pds {
   namespace HSD {
 
-  class EventHeader : public XtcData::L1Transition {
+  class EventHeader : public XtcData::L1Dgram {
     public:
       EventHeader() {}
     public:
       uint64_t pulseId   () const { return seq.pulseId().value(); }
       unsigned eventType () const { return seq.pulseId().control(); }
       uint64_t timeStamp () const { return seq.stamp().value(); }//nanoseconds() | (uint64_t)(seq.stamp().seconds())<<32; }
-      uint32_t eventCount() const { return evtCounter; }
-      unsigned samples   () const { return env[1]&0xfffff; }
-      unsigned streams   () const { return (env[1]>>20)&0xf; }
-      unsigned channels  () const { return (env[1]>>24)&0xff; }
-      unsigned sync      () const { return env[2]&0x7; }
+      unsigned samples   () const { return _info[0]&0xfffff; }
+      unsigned streams   () const { return (_info[0]>>20)&0xf; }
+      unsigned channels  () const { return (_info[0]>>24)&0xff; }
+      unsigned sync      () const { return _info[1]&0x7; }
 
       void dump() const
       {
@@ -28,11 +27,13 @@ namespace Pds {
         uint32_t* word = (uint32_t*) this;
         for(unsigned i=0; i<8; i++)
           printf("[%d] %08x ", i, word[i]);//, i<7 ? '.' : '\n');
-        printf("pID [%016lu]  time [%u.%09u]  trig [%04x]  event [%u]  sync [%u]\n",
+        printf("pID [%016lu]  time [%u.%09u]  trig [%04x]  sync [%u]\n",
                pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
-               readoutGroups(), eventCount(), sync());
-        printf("####@ 0x%x 0x%x 0x%x %u %u %u %lu\n", env[0], env[1], env[2], samples(), streams(), channels(), timeStamp());
+               readoutGroups(), sync());
+        printf("####@ 0x%x 0x%x 0x%x %u %u %u %lu\n", env, _info[0], _info[1], samples(), streams(), channels(), timeStamp());
       }
+  private:
+      uint32_t _info[2];
   };
 
   class StreamHeader {
@@ -80,11 +81,11 @@ namespace Pds {
       unsigned _baddr;
       unsigned _eaddr;
   };
-    
+
 
     //
     //  Validate threshold stream : ramp signal repeats 0..0xfe
-    //      phyclk period is 0.8 ns 
+    //      phyclk period is 0.8 ns
     //      recTimingClk period is 5.384 ns
     //        => 1346 phyclks per beam period
     //

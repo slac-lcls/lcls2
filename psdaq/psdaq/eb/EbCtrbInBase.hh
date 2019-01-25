@@ -2,6 +2,7 @@
 #define Pds_Eb_EbCtrbInBase_hh
 
 #include "psdaq/service/Histogram.hh"
+#include "psdaq/eb/EbLfServer.hh"
 
 #include <chrono>
 #include <unordered_map>
@@ -20,17 +21,20 @@ namespace Pds
   {
     using TimePoint_t = std::chrono::steady_clock::time_point;
 
-    class EbCtrbParams;
+    class TebCtrbParams;
     class EbLfLink;
-    class EbLfServer;
     class Batch;
     class BatchManager;
+
+    using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
     class EbCtrbInBase
     {
     public:
-      EbCtrbInBase(const EbCtrbParams&);
+      EbCtrbInBase(const TebCtrbParams&);
       virtual ~EbCtrbInBase();
+    public:
+      const uint64_t& rxPending() const { return _transport->pending(); }
     public:
       void     shutdown();
       int      process(BatchManager& batMan);
@@ -44,21 +48,19 @@ namespace Pds
                            TimePoint_t               t1,
                            const XtcData::TimeStamp& stamp);
     private:
-      const unsigned         _numEbs;
-      const size_t           _maxBatchSize;
-      void*                  _region;
-      EbLfServer*            _transport;
-      //std::vector<EbLfLink*> _links;
-      std::unordered_map<unsigned,
-                         Pds::Eb::EbLfLink*> _links;
+      const unsigned       _numEbs;
+      const size_t         _maxBatchSize;
+      void*                _region;
+      EbLfServer*          _transport;
+      EbLfLinkMap          _links;
     private:
-      Histogram              _ebCntHist;
-      Histogram              _rttHist;
-      Histogram              _pendTimeHist;
-      Histogram              _pendCallHist;
-      TimePoint_t            _pendPrevTime;
+      Histogram            _ebCntHist;
+      Histogram            _rttHist;
+      Histogram            _pendTimeHist;
+      Histogram            _pendCallHist;
+      TimePoint_t          _pendPrevTime;
     protected:
-      const EbCtrbParams&    _prms;
+      const TebCtrbParams& _prms;
     };
   };
 };

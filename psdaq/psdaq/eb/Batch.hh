@@ -4,42 +4,43 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <assert.h>
-#include <stdint.h>
-#include <cstddef>
+#include <cstdint>                      // For uint64_t
+#include <cstddef>                      // for size_t
 #include <atomic>
 
 
 namespace Pds {
   namespace Eb {
 
+    using AppPrm = std::atomic<uintptr_t>;
+
     class BatchManager;
 
     class Batch
     {
     public:
-      explicit Batch();
+      Batch();
+      Batch(unsigned index, void* buffer, AppPrm* appPrms);
       ~Batch();
     public:
-      void            initialize(const XtcData::Dgram* contrib);
+      void*           operator new(size_t, Pds::Eb::Batch&);
     public:
-      void*           allocate(size_t);
-      void*           allocate(size_t, const void* appPrm);
-      void            store(const XtcData::Dgram*);
+      XtcData::Dgram* buffer();
+      XtcData::Dgram* buffer(const void* appPrm);
+      void            release();
       unsigned        entries() const;
       uint64_t        id() const;
       bool            expired(uint64_t pid, uint64_t mask) const;
       unsigned        index() const;
       size_t          extent() const;
-      XtcData::Dgram* datagram() const;
+      const void*     batch() const;
       const void*     appParm(unsigned idx) const;
     private:
-      friend BatchManager;
-      void           _fixup(unsigned index, void* buffer, std::atomic<uintptr_t>* appPrms);
-    private:
-      unsigned const          _index;
-      void*    const          _buffer;
-      unsigned                _entries;
-      std::atomic<uintptr_t>* _appPrms;
+      XtcData::Dgram* const _buffer;
+      unsigned const        _index;
+      unsigned              _entries;
+      XtcData::Dgram*       _dg;
+      AppPrm*               _appPrms;
     };
   };
 };
@@ -49,41 +50,67 @@ inline Pds::Eb::Batch::~Batch()
 {
 }
 
+inline void* Pds::Eb::Batch::operator new(size_t, Pds::Eb::Batch& batch)
+{
+  return &batch;
+}
+
 inline unsigned Pds::Eb::Batch::index() const
 {
   return _index;
 }
 
-inline XtcData::Dgram* Pds::Eb::Batch::datagram() const
+inline const void* Pds::Eb::Batch::batch() const
 {
-  return (XtcData::Dgram*)_buffer;
+  return _buffer;
 }
 
 inline const void* Pds::Eb::Batch::appParm(unsigned idx) const
 {
   assert(idx < _entries);
 
-  return (const void*)(uintptr_t)_appPrms[idx];
+  return reinterpret_cast<void*>((uintptr_t)_appPrms[idx]);
 }
 
-inline void* Pds::Eb::Batch::allocate(size_t size)
+inline XtcData::Dgram* Pds::Eb::Batch::buffer()
 {
+  XtcData::Dgram* dg = _dg;
+
+  if (dg)
+  {
+    dg->seq.markBatch();
+
+    dg = reinterpret_cast<XtcData::Dgram*>(dg->xtc.next());
+  }
+  else
+  {
+    dg = _buffer;
+  }
+
+  _dg = dg;
+
   ++_entries;
 
-  return datagram()->xtc.alloc(size);
+  return dg;
 }
 
-inline void* Pds::Eb::Batch::allocate(size_t size, const void* appPrm)
+inline XtcData::Dgram* Pds::Eb::Batch::buffer(const void* appPrm)
 {
-  _appPrms[_entries++] = (uintptr_t)appPrm;
+  _appPrms[_entries] = (uintptr_t)appPrm;
 
-  return datagram()->xtc.alloc(size);
+  return buffer();
+}
+
+inline void Pds::Eb::Batch::release()
+{
+  _entries = 0;
+  _dg      = nullptr;
 }
 
 inline size_t Pds::Eb::Batch::extent() const
 {
-  const XtcData::Dgram* dg = datagram();
-  return sizeof(*dg) + dg->xtc.sizeofPayload();
+  return (reinterpret_cast<char*>(_dg->xtc.next()) -
+          reinterpret_cast<char*>(_buffer));
 }
 
 inline unsigned Pds::Eb::Batch::entries() const
@@ -93,7 +120,7 @@ inline unsigned Pds::Eb::Batch::entries() const
 
 inline uint64_t Pds::Eb::Batch::id() const
 {
-  return datagram()->seq.pulseId().value();
+  return _buffer->seq.pulseId().value();
 }
 
 inline bool Pds::Eb::Batch::expired(uint64_t pid, uint64_t mask) const

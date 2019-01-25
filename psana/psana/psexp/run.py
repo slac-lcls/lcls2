@@ -1,11 +1,13 @@
-from psana.psexp.node import run_node
+import os
+import pickle
 import numpy as np
-from psana.dgrammanager import DgramManager
+from copy import copy
+
 from psana import dgram
-from psana.detector.detector import Detector
-from psana.psexp.legion_node import analyze
+from psana.psexp.node import run_node
+from psana.dgrammanager import DgramManager
 from psana.psexp.tools import run_from_id, RunHelper
-import os, pickle
+import psana.psexp.legion_node
 
 from psana.psexp.tools import mode
 MPI = None
@@ -14,6 +16,28 @@ if mode == 'mpi':
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
+
+def _enumerate_attrs(obj):
+    state = []
+    found = []
+
+    def mygetattr(obj):
+        children = [attr for attr in dir(obj) if not attr.startswith('_')]
+
+        for child in children:
+            childobj = getattr(obj,child)
+
+            if len([attr for attr in dir(childobj) if not attr.startswith('_')]) == 0:
+                found.append( '.'.join(state + [child]) )
+            elif type(childobj) == property:
+                found.append( '.'.join(state + [child]) )
+            else:
+                state.append(child)
+                mygetattr(childobj)
+                state.pop()
+
+    mygetattr(obj)
+    return found
 
 # FIXME: to support run.ds.Detector in cctbx. to be removed.
 class DsContainer(object):
@@ -43,17 +67,39 @@ class Run(object):
         self.filter_callback = filter_callback
         self.ds = DsContainer(self) # FIXME: to support run.ds.Detector in cctbx. to be removed.
 
+        RunHelper(self)
+
     def run(self):
         """ Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
         return self.run_no
 
-    def Detector(self, det_name):
-        calib = self._get_calib(det_name)
-        det = Detector(self.configs, calib=calib)
-        return det.__call__(det_name)
+    def Detector(self,name):
+        class Container:
+            def __init__(self):
+                pass
+        det = Container
+        # instantiate the detector xface for this detector/drp_class
+        # (e.g. (xppcspad,raw) or (xppcspad,fex)
+        # make them attributes of the container
+        for (det_name,drp_class_name),drp_class in self.dm.det_class_table.items():
+            if det_name == name:
+                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibs))
+        return det
+
+    @property
+    def detnames(self):
+        return set([x[0] for x in self.dm.det_class_table.keys()])
+
+    @property
+    def detinfo(self):
+        info = {}
+        for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
+            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
+        return info
 
     def _get_calib(self, det_name):
+        return {} # temporary cpo hack while database is down
         gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
         if self.exp and det_name:
             calib_dir = os.environ.get('PS_CALIB_DIR')
@@ -83,6 +129,13 @@ class Run(object):
                  'common_mode': common_mode}
         return calib
 
+    def analyze(self, event_fn=None, det=None):
+        for event in self.events():
+            if event_fn is not None:
+                event_fn(event, det)
+
+    def __reduce__(self):
+        return (run_from_id, (self.id,))
 
 class RunSerial(Run):
 
@@ -90,6 +143,9 @@ class RunSerial(Run):
         super(RunSerial, self).__init__(exp, run_no, max_events=max_events, filter_callback=filter_callback)
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
+        self.calibs = {}
+        for det_name in self.detnames:
+            self.calibs[det_name] = self._get_calib(det_name)
 
     def events(self):
         for evt in self.dm: yield evt
@@ -97,8 +153,9 @@ class RunSerial(Run):
 class RunParallel(Run):
     nodetype = None
     nsmds = None
+    smd0_threads = None
 
-    def __init__(self, exp, run_no, xtc_files, smd_files, nodetype, nsmds,
+    def __init__(self, exp, run_no, xtc_files, smd_files, nodetype, nsmds, smd0_threads, 
             max_events, batch_size, filter_callback):
         """ Parallel read requires that rank 0 does the file system works.
         Configs and calib constants are sent to other ranks by MPI."""
@@ -106,6 +163,7 @@ class RunParallel(Run):
                 batch_size=batch_size, filter_callback=filter_callback)
         self.nodetype = nodetype
         self.nsmds = nsmds
+        self.smd0_threads = smd0_threads
         
         if rank == 0:
             self.dm = DgramManager(xtc_files)
@@ -116,8 +174,12 @@ class RunParallel(Run):
                             dtype='i')
             smd_nbytes = np.array([memoryview(config).shape[0] for config in self.smd_configs], \
                             dtype='i')
+            self.calibs = {}
+            for det_name in self.detnames:
+                self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
         else:
             self.dm = None
+            self.calibs = None
             self.configs = [dgram.Dgram() for i in range(len(xtc_files))]
             self.smd_dm = None
             self.smd_configs = [dgram.Dgram() for i in range(len(smd_files))]
@@ -131,25 +193,17 @@ class RunParallel(Run):
         for i in range(len(xtc_files)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
         
-        # This creates dgrammanager without reading config from disk
-        self.dm = DgramManager(xtc_files, configs=self.configs)
+        self.calibs = comm.bcast(self.calibs, root=0)
 
+        if rank > 0:
+            # This creates dgrammanager without reading config from disk
+            self.dm = DgramManager(xtc_files, configs=self.configs)
     
     def events(self):
-        for evt in run_node(self, self.nodetype, self.nsmds, self.max_events, \
+        for evt in run_node(self, self.nodetype, self.nsmds, self.smd0_threads, self.max_events, \
                 self.batch_size, self.filter_callback):
             yield evt
     
-    def Detector(self, det_name):
-        if rank == 0:
-            calib = super(RunParallel, self)._get_calib(det_name)
-        else:
-            calib = None
-        calib = comm.bcast(calib, root=0)
-        det = Detector(self.configs, calib=calib)
-        self._det = det.__call__(det_name)
-        return self._det
-
 class RunLegion(Run):
 
     def __init__(self, exp, run_no, xtc_files, smd_files, 
@@ -163,10 +217,6 @@ class RunLegion(Run):
         self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
         self.smd_configs = self.smd_dm.configs
-        RunHelper(self) # assigns a unique id to the run
         
     def analyze(self, **kwargs):
-        analyze(self, **kwargs)
-
-    def __reduce__(self):
-        return (run_from_id, (self.id,))
+        legion_node.analyze(self, **kwargs)

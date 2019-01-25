@@ -41,16 +41,15 @@ class nameinfo:
 
 # I believe this method is only used for testing
 class parse_xtc():
-    def __init__(self, datasource):
-        self.datasource = datasource
+    def __init__(self, config):
+        self.config = config
         self.events_dict = []
         self.config_dict = {}
         self.parse_configure()
 
     def parse_configure(self):
-        config = vars(self.datasource.configs[0])
+        config = vars(self.config)
         sw_config = vars(config['software'])
-        # det_names = [x for x in config.keys() if x not in ('software')]
         det_names = list(sw_config.keys())
         det_dict = {}
         namesid = 0
@@ -62,7 +61,8 @@ class parse_xtc():
                 det_config = {}
 
 
-            alg_types = [x for x in det_sw_config.keys() if x not in ('detid', 'dettype')]
+            # this should be changed to reject everything that starts with '_'
+            alg_types = [x for x in det_sw_config.keys() if x not in ('detid', 'dettype', '_segment')]
             det_entries = []
             for algt in alg_types:
                 ninfo = nameinfo(detector, det_sw_config['dettype'], \
@@ -128,9 +128,9 @@ cdef extern from 'xtcdata/xtc/BlockDgram.hh' namespace "XtcData":
     cdef cppclass BlockDgram:
         BlockDgram(void* buffdgram, cnp.uint64_t tstamp, cnp.uint64_t pulseId, unsigned transitionId)
 
-        void addNamesBlock(cnp.uint8_t* name_block, size_t block_elems)
+        void addNamesBlock(cnp.uint8_t* name_block, size_t block_elems, unsigned nodeId, unsigned namesId)
         void addShapesDataBlock(cnp.uint8_t* shape_block, cnp.uint8_t* data_block,\
-                           size_t sizeofdata, size_t block_elems)
+                           size_t sizeofdata, size_t block_elems, unsigned nodeId, unsigned namesId)
 
         void addDataBlock(cnp.uint8_t* data_block,size_t sizeofdata)
 
@@ -181,12 +181,12 @@ cdef class PyBlockDgram:
         self.buffer  = <cnp.uint8_t*> malloc(self.buffer_size)
         self.cptr = new BlockDgram(self.buffer, tstamp, pulseId, transitionId)
 
-    def addNamesBlock(self, PyNameBlock pyn):
-        self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct)
+    def addNamesBlock(self, PyNameBlock pyn, nodeId, namesId):
+        self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct, nodeId, namesId)
 
-    def addShapesDataBlock(self, PyShapeBlock pys, PyDataBlock pyd):
+    def addShapesDataBlock(self, PyShapesBlock pys, PyDataBlock pyd, nodeId, namesId):
         if pys.ct>0:
-            self.cptr.addShapesDataBlock(pys.cptr_start, pyd.cptr_start, pyd.get_bytes(), pys.ct)
+            self.cptr.addShapesDataBlock(pys.cptr_start, pyd.cptr_start, pyd.get_bytes(), pys.ct, nodeId, namesId)
         else:
             self.cptr.addDataBlock(pyd.cptr_start, pyd.get_bytes())
 
@@ -261,16 +261,14 @@ cdef class PyNameBlock:
         free(self.cptr_start)
 
 
-cdef class PyShapeBlock:
+cdef class PyShapesBlock:
     cdef cnp.uint8_t* cptr
     cdef cnp.uint8_t* cptr_start
     cdef ct
 
-    def __cinit__(self, cnp.uint32_t namesId, int num_elems):
-        self.cptr = <cnp.uint8_t*> malloc(sizeof(cnp.uint32_t)+num_elems*sizeof(Shape))
+    def __cinit__(self, int num_elems):
+        self.cptr = <cnp.uint8_t*> malloc(num_elems*sizeof(Shape))
         self.cptr_start = self.cptr
-        memcpy(self.cptr, &namesId, sizeof(cnp.uint32_t))
-        self.cptr += sizeof(cnp.uint32_t)
         self.ct = 0
     def addShape(self,  cnp.ndarray[cnp.uint32_t, ndim=1, mode="c"] shape):
         newShape = new Shape(<cnp.uint32_t*>shape.data)
@@ -320,7 +318,7 @@ class CyDgram():
         if num_elem == 0:
             return False, "No elements added"
 
-        py_shape = PyShapeBlock(nameinfo.namesId, num_elem)
+        py_shapes = PyShapesBlock(num_elem)
         py_name = PyNameBlock(num_elem)
         py_data = PyDataBlock()
 
@@ -352,12 +350,12 @@ class CyDgram():
             # Copy the shape to the block
             if array_rank > 0:
                 num_arrays += 1
-                py_shape.addShape(array_size_pad)
+                py_shapes.addShape(array_size_pad)
             py_data.addData(arr)
 
         py_nameinfo = PyNameInfo(nameinfo.detName, basealg, nameinfo.detType, nameinfo.detId, num_arrays)
         py_name.addNameInfo(py_nameinfo)
-        self.config_block.append([py_name, py_shape, py_data])
+        self.config_block.append([py_name, py_shapes, py_data, nameinfo.namesId])
 
     # the user calls this via get() which constructs the datagram header
     # with the specified timestamp, pulseId and transitionId.
@@ -366,13 +364,18 @@ class CyDgram():
     def constructBlock(self, tstamp, pulseId, transitionId):
         self.pydgram = PyBlockDgram(tstamp, pulseId, transitionId)
 
+        # this line restricts us to writing out files that do not
+        # have event-built datagrams (where the nodeId's must
+        # be different - cpo
+        nodeId = 0
+
         if self.write_configure:
-            for name, _, _ in self.config_block:
-                self.pydgram.addNamesBlock(name)
+            for name, _, _, namesId in self.config_block:
+                self.pydgram.addNamesBlock(name, nodeId, namesId)
             self.write_configure = False
 
-        for _, shape, data in self.config_block:
-            self.pydgram.addShapesDataBlock(shape, data)
+        for _, shape, data, namesId in self.config_block:
+            self.pydgram.addShapesDataBlock(shape, data, nodeId, namesId)
      # def writeToFile(self):
      #    if self.config_block:
      #        self.constructBlock()

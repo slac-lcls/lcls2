@@ -1,4 +1,3 @@
-import pickle
 import weakref
 import os
 mode = os.environ.get('PS_PARALLEL', 'mpi')

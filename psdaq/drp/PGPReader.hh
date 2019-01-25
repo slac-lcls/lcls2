@@ -4,6 +4,8 @@
 #include <vector>
 #include "drp.hh"
 
+#define MAX_RET_CNT_C 100
+
 class MovingAverage
 {
 public:
@@ -19,14 +21,13 @@ private:
 class PGPReader
 {
 public:
-    PGPReader(MemPool& pool, int device_id, int lanes_mask, int nworkers);
-    PGPData* process_lane(DmaBuffer* buffer);
+    PGPReader(MemPool& pool, int lanes_mask, int nworkers);
+    PGPData* process_lane(uint32_t lane, uint32_t index, int32_t size);
     void send_to_worker(Pebble* pebble_data);
     void send_all_workers(Pebble* pebble);
     void run();
     std::atomic<Counters*>& get_counters() {return m_pcounter;};
 private:
-    AxisG2Device m_dev;
     MemPool& m_pool;
     int m_nlanes;
     int m_buffer_mask;
@@ -36,6 +37,9 @@ private:
     MovingAverage m_avg_queue_size;
     Counters m_c1, m_c2;
     std::atomic<Counters*> m_pcounter;
+    uint32_t m_dmaIndex[MAX_RET_CNT_C];
+    uint32_t m_dmaDest[MAX_RET_CNT_C];
+    int32_t m_dmaRet[MAX_RET_CNT_C];
 };
 
 #endif // PGPREADER_H

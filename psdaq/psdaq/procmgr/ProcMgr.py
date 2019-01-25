@@ -1,8 +1,8 @@
 #!/bin/env python
 # ProcMgr.py - configure (start, stop, status) the DAQ processes
-# $Id$
 
-import os, sys, string, telnetlib, subprocess
+import os, sys, string, telnetlib
+from subprocess import Popen, PIPE, DEVNULL
 import stat, errno, time
 import re
 from time import sleep, strftime
@@ -12,7 +12,8 @@ from platform import node, python_version
 from getpass import getuser
 import shutil
 
-uniqueid_maxlen = 30;
+uniqueid_maxlen = 30
+rcFileDefault = '/etc/procmgrd.conf'
 
 #
 # printError
@@ -28,6 +29,12 @@ def printError(errorCode, args):
         print("ERR: failed to run '%s' (conda.sh not found)" % args)
     elif (errorCode == 9):
         print("ERR: failed to run '%s' (procServ not found)" % args)
+    elif (errorCode == 10):
+        print("ERR: failed to run '%s' (rcfile not found)" % args)
+    elif (errorCode == 11):
+        print("ERR: failed to run '%s' (CONDABASE not defined in rcfile)" % args)
+    elif (errorCode == 12):
+        print("ERR: failed to run '%s' (PROCSERVBIN not defined in rcfile)" % args)
     elif (errorCode != 0):
         print("ERR: failed to run '%s' (procServ returned %d)" % \
             (args, errorCode))
@@ -73,13 +80,13 @@ def getCurrentExperiment(exp, cmd, station):
     if (cmd):
       returnCode = 0
       fullCommand = '%s %s:%u' % (cmd, exp.upper(), station)
-      p = subprocess.Popen([fullCommand],
+      p = Popen([fullCommand],
                            shell = True,
-                           stdin = subprocess.PIPE,
-                           stdout = subprocess.PIPE,
-                           stderr = subprocess.PIPE,
+                           stdin = PIPE,
+                           stdout = PIPE,
+                           stderr = PIPE,
                            close_fds = True)
-      out, err = subprocess.Popen.communicate(p)
+      out, err = Popen.communicate(p)
       if (p.returncode):
         returnCode = p.returncode
      
@@ -226,11 +233,11 @@ def deduce_platform2(configfilename):
       print('deduce_platform2 Error:', sys.exc_info()[1])
 
     # TESTRELDIR can be defined in cnf file and in environment.
-    # The environment setting takes precedence.
-    if 'TESTRELDIR' in os.environ:
-      testreldir_rv = os.environ['TESTRELDIR']
-    elif 'TESTRELDIR' in cc and len(cc['TESTRELDIR']) > 0:
+    # The cnf file setting takes precedence.
+    if 'TESTRELDIR' in cc and len(cc['TESTRELDIR']) > 0:
       testreldir_rv = cc['TESTRELDIR']
+    elif 'TESTRELDIR' in os.environ:
+      testreldir_rv = os.environ['TESTRELDIR']
 
     return platform_rv, macro_rv, testreldir_rv
 
@@ -389,6 +396,8 @@ class ProcMgr:
     DICT_FLAGS = 5
     DICT_GETID = 6
     DICT_CONDA = 7
+    DICT_ENV = 8
+    DICT_RTPRIO = 9
 
     # a managed executable can be in the following states
     STATUS_NOCONNECT = "NOCONNECT"
@@ -523,7 +532,7 @@ class ProcMgr:
           # ...process the fields
 
           # --- real-time priority (optional) ---
-          self.rtprio = None
+          self.rtprio = "''"
           tmpsum = 0
           if 'rtprio' in entry:
             try:
@@ -538,10 +547,10 @@ class ProcMgr:
                 self.rtprio = tmpsum
 
           # --- environment (optional) ---
-          self.env = None
+          self.env = "''"
           if 'env' in entry:
             if '=' in entry['env']:
-              self.env = entry['env']
+              self.env = "'%s'" % entry['env']
             else:
               raise ConfigFileError("env value is missing '=': %s" % entry)
 
@@ -567,14 +576,6 @@ class ProcMgr:
             # use os.path.realpath() to resolve any symbolic links
             cmdSplit = entry['cmd'].split(None, 1)
             cmdZero = os.path.expanduser(cmdSplit[0])
-
-            # if rtprio is set, prefix with /usr/bin/chrt
-            if (self.rtprio):
-              entry['cmd'] = '/usr/bin/chrt -f %d %s' % (self.rtprio, entry['cmd'])
-
-            # if env is specified, prefix the command with /bin/env
-            if (self.env):
-              entry['cmd'] = '/bin/env %s %s' % (self.env, entry['cmd'])
 
             if self.CURRENTEXPCMD != '':
               # Do something special if -E, -e, or -f appear in cmd string
@@ -723,8 +724,8 @@ class ProcMgr:
               # add an entry to the dictionary
               key = makekey(self.host, self.uniqueid)
               self.d[key] = \
-                [ self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid, self.conda]
-                # DICT_STATUS  DICT_PID  DICT_CMD  DICT_CTRL      DICT_PPID  DICT_FLAGS  DICT_GETID DICT_CONDA
+                [ self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid, self.conda, self.env, self.rtprio]
+                # DICT_STATUS  DICT_PID  DICT_CMD  DICT_CTRL      DICT_PPID  DICT_FLAGS  DICT_GETID DICT_CONDA DICT_ENV DICT_RTPRIO
 
     def spawnXterm(self, name, host, port, large=False):
         if large:
@@ -732,7 +733,7 @@ class ProcMgr:
                     "-e", self.PATH_TELNET, host, port]
         else:
             args = [self.PATH_XTERM, "-T", name, "-fn", "fixed", "-e", self.PATH_TELNET, host, port]
-        subprocess.Popen(args)
+        Popen(args)
         return
 
     def spawnConsole(self, uniqueid, large=False):
@@ -759,7 +760,7 @@ class ProcMgr:
                             "-e", cmd]
                 else:
                     args = [self.PATH_XTERM, "-T", name, "-e", cmd]
-                subprocess.Popen(args)
+                Popen(args)
             except:
                 print('spawnConsole failed for process \'%s\'' % uniqueid)
             else:
@@ -791,7 +792,7 @@ class ProcMgr:
                            "-e", self.PATH_LESS, "+F", logfile]
                 else:
                     args = [self.PATH_XTERM, "-T", name, "-e", self.PATH_LESS, "+F", logfile]
-                subprocess.Popen(args)
+                Popen(args)
             except:
                 print('spawnLogfile failed for process \'%s\'' % uniqueid)
             else:
@@ -1012,15 +1013,15 @@ class ProcMgr:
     #
     # startAll - call start() with an empty id_list
     #
-    def startAll(self, verbose=0, logpathbase=None, coresize=0):
-        return self.start([], verbose, logpathbase, coresize)
+    def startAll(self, verbose=0, logpathbase=None, coresize=0, rcFile=rcFileDefault):
+        return self.start([], verbose, logpathbase, coresize, rcFile)
 
     #
     # start
     #
     # RETURNS: 0 if any processes were started, otherwise 1.
     #
-    def start(self, id_list, verbose=0, logpathbase=None, coresize=0):
+    def start(self, id_list, verbose=0, logpathbase=None, coresize=0, rcFile=rcFileDefault):
 
         rv = 1                  # return value
         started_count = 0       # count successful start commands
@@ -1039,8 +1040,10 @@ class ProcMgr:
             print('platform %d not in range 0-9' % self.PLATFORM)
             return 1
 
-        # for redirecting to /dev/null
-        nullOut = open(os.devnull, 'w')
+        if (logpathbase is not None) and (logpathbase != "/dev/null"):
+            # for log file names
+            logpath = '%s/%s' % (logpathbase, time.strftime('%Y/%m'))
+            time_string = time.strftime('%d_%H:%M:%S')
 
         # create a dictionary mapping hosts to a set of start commands
         startdict = dict()
@@ -1076,14 +1079,12 @@ class ProcMgr:
                     #
                     #  <logpath>/2009/08/21_10:35_atca01:opal1k.log
                     #
-                    logpath = '%s/%s' % (logpathbase, time.strftime('%Y/%m'))
                     try:
                       mkdir_p(logpath)
                     except:
                       # mkdir
                       print('ERR: mkdir <%s> failed' % logpath)
                     else:
-                      time_string = time.strftime('%d_%H:%M:%S')
                       loghost = key2host(key)
                       localFlag = False
                       if loghost == 'localhost':
@@ -1135,10 +1136,17 @@ class ProcMgr:
                 else:
                   name = key2uniqueid(key)
 
-                # look for condaProcServ.sh in the same directory as this file
+                # look for condaProcServ in the same directory as this file
                 prefix = os.path.dirname(os.path.realpath(__file__))
-                startcmd = prefix + '/condaProcServ.sh %s %s %s %s %d %s %s %s' % \
-                       (value[self.DICT_CONDA], \
+                if not os.path.exists(prefix+'/condaProcServ'):
+                  print('ERR: %s/condaProcServ not found' % prefix)
+                  continue
+
+                startcmd = prefix + '/condaProcServ %s %s %s %s %s %s %s %d %s %s %s' % \
+                       (rcFile, \
+                        value[self.DICT_CONDA], \
+                        value[self.DICT_ENV], \
+                        value[self.DICT_RTPRIO], \
                         name, \
                         waitflag, \
                         logfile, \
@@ -1171,7 +1179,7 @@ class ProcMgr:
                     if verbose:
                         print('Run locally: %s' % args)
 
-                    yy = subprocess.Popen(args, stdout=nullOut, stderr=nullOut, shell=True)
+                    yy = Popen(args, stdout=DEVNULL, stderr=DEVNULL, shell=True)
                     yy.wait()
                     if (yy.returncode != 0):
                         printError(yy.returncode, args)
@@ -1263,7 +1271,6 @@ class ProcMgr:
                         
         # done
         # cleanup
-        nullOut.close()
 
         if started_count > 0:
             rv = 0

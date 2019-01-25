@@ -9,7 +9,7 @@ import time
 import copy
 import socket
 import zmq
-from collection import pull_port, pub_port, create_msg
+from psdaq.control.collection import pull_port, pub_port, create_msg
 import argparse
 import logging
 from psp import PV
@@ -36,14 +36,12 @@ class Client:
         self.sub.setsockopt(zmq.SUBSCRIBE, b'')
 
         # initialize PVs
-        self.pvMsgEnable = PV(pv_base+':MsgEnable', initialize=True)
-        logging.debug("Create PV: %s" % self.pvMsgEnable.name)
-        self.pvMsgDisable = PV(pv_base+':MsgDisable', initialize=True)
-        logging.debug("Create PV: %s" % self.pvMsgDisable.name)
-        self.pvMsgConfig = PV(pv_base+':MsgConfig', initialize=True)
-        logging.debug("Create PV: %s" % self.pvMsgConfig.name)
-        self.pvMsgUnconfig = PV(pv_base+':MsgUnconfig', initialize=True)
-        logging.debug("Create PV: %s" % self.pvMsgUnconfig.name)
+        self.pvMsgClear = PV(pv_base+':MsgClear', initialize=True)
+        logging.debug("Create PV: %s" % self.pvMsgClear.name)
+        self.pvMsgHeader = PV(pv_base+':MsgHeader', initialize=True)
+        logging.debug("Create PV: %s" % self.pvMsgHeader.name)
+        self.pvMsgInsert = PV(pv_base+':MsgInsert', initialize=True)
+        logging.debug("Create PV: %s" % self.pvMsgInsert.name)
         self.pvRun = PV(pv_base+':Run', initialize=True)
         logging.debug("Create PV: %s" % self.pvRun.name)
 
@@ -90,7 +88,7 @@ class Client:
     def handle_plat(self, msg):
         logging.debug('Client handle_plat()')
         # time.sleep(1.5)
-        body = {'dti': {'proc_info': {
+        body = {'drp-no-teb': {'proc_info': {
                         'host': self.hostname,
                         'pid': self.pid}}}
         reply = create_msg('plat', msg['header']['msg_id'], self.id, body=body)
@@ -98,26 +96,9 @@ class Client:
 
     def handle_alloc(self, msg):
         logging.debug('Client handle_alloc()')
-        body = {'dti': {'connect_info': {
-                        'shelf': 0,
-                        'slot': 0,
-                        'paddr': 0,
-                        'dsRemLinkId': [
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0}],
-                        'usRemLinkId': [
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0},
-                            {'devType': 0, 'serialNum': 0}]}}}
+        body = {'drp-no-teb': {'connect_info': {
+                           'infiniband': '172.21.52.122'
+                       }}}
         reply = create_msg('alloc', msg['header']['msg_id'], self.id, body)
         self.push.send_json(reply)
         self.state = 'alloc'
@@ -125,6 +106,7 @@ class Client:
     def handle_connect(self, msg):
         logging.debug('Client handle_connect()')
         if self.state == 'alloc':
+            self.pv_put(self.pvRun, 0)  # clear Run PV before configure
             self.state = 'connect'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
@@ -133,17 +115,21 @@ class Client:
         logging.debug('Client handle_configure()')
         if self.state == 'connect':
             # check for errors
-            if (self.pv_put(self.pvMsgConfig, 0) and
-                self.pv_put(self.pvMsgConfig, 1) and 
-                self.pv_put(self.pvMsgConfig, 0)):
+            if (self.pv_put(self.pvMsgClear, 0) and
+                self.pv_put(self.pvMsgClear, 1) and 
+                self.pv_put(self.pvMsgClear, 0) and
+                self.pv_put(self.pvMsgHeader, 4) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and 
+                self.pv_put(self.pvMsgInsert, 0)):
                 # success: change state and reply 'ok'
                 self.state = 'configured'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
-                err_msg = "PV put failed: %s" % self.pvMsgConfig.name
+                err_msg = "configure: PV put failed"
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -152,19 +138,21 @@ class Client:
             logging.error('handle_configure() invalid state: %s' % self.state)
 
     def handle_unconfigure(self, msg):
+        logging.debug('Client handle_unconfigure()')
         if self.state == 'configured':
             # check for errors
-            if (self.pv_put(self.pvMsgUnconfig, 0) and
-                self.pv_put(self.pvMsgUnconfig, 1) and 
-                self.pv_put(self.pvMsgUnconfig, 0)):
+            if (self.pv_put(self.pvMsgHeader, 5) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and 
+                self.pv_put(self.pvMsgInsert, 0)):
                 # success: change state and reply 'ok'
                 self.state = 'connect'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
-                err_msg = "PV put failed: %s" % self.pvMsgUnconfig.name
+                err_msg = "unconfigure: PV put failed"
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -176,15 +164,19 @@ class Client:
         logging.debug('Client handle_beginrun()')
         if self.state == 'configured':
             # check for errors
-            if (self.pv_put(self.pvRun, 1)):
+            if (self.pv_put(self.pvMsgHeader, 6) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and 
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvRun, 1)):
                 # success: change state and reply 'ok'
                 self.state = 'running'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
-                err_msg = "PV put failed: %s" % self.pvRun.name
+                err_msg = "beginrun: PV put failed"
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -192,19 +184,24 @@ class Client:
         else:
             logging.error('handle_beginrun() invalid state: %s' % self.state)
 
+#   TODO self.pv_put(self.pvRun, 0)
     def handle_endrun(self, msg):
         logging.debug('Client handle_endrun()')
         if self.state == 'running':
             # check for errors
-            if (self.pv_put(self.pvRun, 0)):
+            if (self.pv_put(self.pvMsgHeader, 7) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and 
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvRun, 0)):
                 # success: change state and reply 'ok'
                 self.state = 'configured'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
-                err_msg = "PV put failed: %s" % self.pvRun.name
+                err_msg = "endrun: PV put failed"
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -216,17 +213,18 @@ class Client:
         logging.debug('Client handle_enable()')
         if self.state == 'running':
             # check for errors
-            if (self.pv_put(self.pvMsgEnable, 0) and
-                self.pv_put(self.pvMsgEnable, 1) and
-                self.pv_put(self.pvMsgEnable, 0)):
+            if (self.pv_put(self.pvMsgHeader, 10) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and 
+                self.pv_put(self.pvMsgInsert, 0)):
                 # success: change state and reply 'ok'
                 self.state = 'enabled'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
-                err_msg = "PV put failed: %s" % self.pvMsgEnable.name
+                err_msg = "enable: PV put failed"
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -238,17 +236,18 @@ class Client:
         logging.debug('Client handle_disable()')
         if self.state == 'enabled':
             # check for errors
-            if (self.pv_put(self.pvMsgDisable, 0) and
-                self.pv_put(self.pvMsgDisable, 1) and
-                self.pv_put(self.pvMsgDisable, 0)):
+            if (self.pv_put(self.pvMsgHeader, 11) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and 
+                self.pv_put(self.pvMsgInsert, 0)):
                 # success: change state and reply 'ok'
                 self.state = 'running'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
-                err_msg = "PV put failed: %s" % self.pvMsgDisable.name
+                err_msg = "disable: PV put failed"
                 logging.error(err_msg)
-                node = 'dti/%s/%s' % (self.pid, self.hostname)
+                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
                 body = {'err_info': { node : err_msg}}
                 reply = create_msg('error', msg['header']['msg_id'], self.id,
                                    body=body)
@@ -262,7 +261,7 @@ class Client:
         # is a reply to reset necessary?
 
 
-if __name__ == '__main__':
+def main():
 
     try:
         # process arguments
@@ -284,3 +283,6 @@ if __name__ == '__main__':
 
     except KeyboardInterrupt:
         logging.info('KeyboardInterrupt')
+
+if __name__ == '__main__':
+    main()

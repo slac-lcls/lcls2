@@ -2,6 +2,7 @@ import sys
 import argparse
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
+from psdaq.cas.collection_widget import CollectionWidget
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, base):
@@ -71,7 +72,7 @@ class Ui_MainWindow(object):
         #lol.addStretch()
 
         lor = QtWidgets.QVBoxLayout()
-        
+
         b=PvPushButton(pvbase+'ResetL0', "Clear")
         b.setMaximumWidth(45)
         lor.addWidget(b)
@@ -90,6 +91,10 @@ class Ui_MainWindow(object):
         rtable = QtWidgets.QWidget()
         rtable.setLayout(lor)
 
+        partition = int(base.split(':')[-1])
+        print('partition', partition)
+        collectionWidget = CollectionWidget(partition)
+
         lscroll = QtWidgets.QScrollArea()
         lscroll.setWidget(ltable)
         rscroll = QtWidgets.QScrollArea()
@@ -98,14 +103,15 @@ class Ui_MainWindow(object):
         splitter = QtWidgets.QSplitter()
         splitter.addWidget(lscroll)
         splitter.addWidget(rscroll)
+        splitter.addWidget(collectionWidget)
 
         layout = QtWidgets.QHBoxLayout()
         layout.addWidget(splitter)
 
         self.centralWidget.setLayout(layout)
-        self.centralWidget.resize(640,340)
-            
-        MainWindow.resize(640,340)
+        self.centralWidget.resize(740, 340)
+
+        MainWindow.resize(740, 340)
         MainWindow.setWindowTitle(base)
         MainWindow.setCentralWidget(self.centralWidget)
 

@@ -37,7 +37,7 @@ using namespace XtcData;
 
 void XtcIterator::iterate(Xtc* root)
 {
-    if (root->damage.value() & (1 << Damage::IncompleteContribution)) return;
+    if (root->damage.value() & (1 << Damage::Corrupted)) return;
 
     Xtc* xtc = (Xtc*)root->payload();
     int remaining = root->sizeofPayload();

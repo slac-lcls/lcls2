@@ -68,7 +68,7 @@ def list_of_files_in_dir(dirname) :
 
 #------------------------------
 
-def list_of_files_in_dir_for_ext(dir, ext='.xtc') :
+def list_of_files_in_dir_for_ext(dir, ext='.xtc2') :
     """Returns the list of files in the directory for specified extension or None if directory is None."""
     if dir is None : return []
     if not os.path.exists(dir) : return [] 
@@ -76,7 +76,7 @@ def list_of_files_in_dir_for_ext(dir, ext='.xtc') :
     
 #------------------------------
 
-def list_of_pathes_in_dir_for_ext(dir, ext='.xtc') :
+def list_of_pathes_in_dir_for_ext(dir, ext='.xtc2') :
     """Returns the list of pathes in the directory for specified extension or None if directory is None."""
     return [os.path.join(dir,f) for f in list_of_files_in_dir_for_ext(dir, ext)]
     
@@ -107,7 +107,7 @@ def list_of_str_from_list_of_int(list_in, fmt='%04d') :
 def list_of_runs_in_xtc_dir(dirxtc) :  # e.g. '/reg/d/psdm/XPP/xpptut13/xtc'
     #dir = nm.dir_xtc() if dirxtc is None else dirxtc
     dir = dirxtc
-    xtcfiles = list_of_files_in_dir_for_ext(dir, ext='.xtc')
+    xtcfiles = list_of_files_in_dir_for_ext(dir, ext='.xtc2')
     runs = [f.split('-')[1].lstrip('r') for f in xtcfiles]
     return set(runs)
 
@@ -283,7 +283,7 @@ if __name__ == "__main__" :
 
   def test_list_of_files_in_dir_for_ext() :
     print('%s:' % sys._getframe().f_code.co_name)
-    lfiles = list_of_files_in_dir_for_ext('/reg/d/psdm/sxr/sxrtut13/xtc/', ext='.xtc')
+    lfiles = list_of_files_in_dir_for_ext('/reg/d/psdm/sxr/sxrtut13/xtc/', ext='.xtc2')
     for fname in lfiles : print(fname)
 
 #------------------------------

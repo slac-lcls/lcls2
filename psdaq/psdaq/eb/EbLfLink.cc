@@ -18,7 +18,7 @@ using namespace Pds::Eb;
 static const unsigned MaxLinks = 64;    // Maximum supported
 
 
-EbLfLink::EbLfLink(Endpoint* ep) :
+EbLfLink::EbLfLink(Endpoint* ep, uint64_t& pending) :
   _ep(ep),
   _mr(nullptr),
   _ra(),
@@ -27,11 +27,12 @@ EbLfLink::EbLfLink(Endpoint* ep) :
   _idx(-1),
   _id(-1),
   _region(nullptr),
-  _verbose(0)
+  _verbose(0),
+  _pending(pending)
 {
 }
 
-EbLfLink::EbLfLink(Endpoint* ep, int rxDepth) :
+EbLfLink::EbLfLink(Endpoint* ep, int rxDepth, uint64_t& unused) :
   _ep(ep),
   _mr(nullptr),
   _ra(),
@@ -40,7 +41,8 @@ EbLfLink::EbLfLink(Endpoint* ep, int rxDepth) :
   _idx(-1),
   _id(-1),
   _region(nullptr),
-  _verbose(0)
+  _verbose(0),
+  _pending(unused)
 {
 }
 
@@ -149,7 +151,7 @@ int EbLfLink::setupMr(void*  region,
   _mr = fab->register_memory(region, size);
   if (!_mr)
   {
-    fprintf(stderr, "%s: Failed to register memory region @ %p, size %zu: %s\n",
+    fprintf(stderr, "%s:\n  Failed to register memory region @ %p, size %zu: %s\n",
             __PRETTY_FUNCTION__, region, size, fab->error());
     return fab->error_num();
   }
@@ -170,7 +172,7 @@ int EbLfLink::recvId()
 
   if ((rc = _ep->recv_sync(buf, sizeof(unsigned), _mr)) < 0)
   {
-    fprintf(stderr, "%s: Failed receiving ID from peer: %s\n",
+    fprintf(stderr, "%s:\n  Failed receiving ID from peer: %s\n",
             __PRETTY_FUNCTION__, _ep->error());
     return rc;
   }
@@ -193,7 +195,7 @@ int EbLfLink::sendId(unsigned idx,
   *(unsigned*)buf = (id << 8) | idx;
   if ((rc = _ep->sendmsg_sync(&msg, FI_TRANSMIT_COMPLETE | FI_COMPLETION)) < 0)
   {
-    fprintf(stderr, "%s: Failed sending our ID to peer: %s\n",
+    fprintf(stderr, "%s:\n  Failed sending our ID to peer: %s\n",
             __PRETTY_FUNCTION__, _ep->error());
     return rc;
   }
@@ -215,7 +217,7 @@ int EbLfLink::syncLclMr()
   memcpy(buf, &_ra, sizeof(_ra));
   if ((rc = _ep->sendmsg_sync(&msg, FI_COMPLETION)) < 0)
   {
-    fprintf(stderr, "%s: Failed sending local memory specs to ID %d: %s\n",
+    fprintf(stderr, "%s:\n  Failed sending local memory specs to ID %d: %s\n",
             __PRETTY_FUNCTION__, _id, _ep->error());
     return rc;
   }
@@ -234,7 +236,7 @@ int EbLfLink::syncRmtMr(size_t size)
   ssize_t  rc;
   if ((rc = _ep->recv_sync(_mr->start(), sizeof(_ra), _mr)) < 0)
   {
-    fprintf(stderr, "%s: Failed receiving remote region specs from ID %d: %s\n",
+    fprintf(stderr, "%s:\n  Failed receiving remote region specs from ID %d: %s\n",
             __PRETTY_FUNCTION__, _id, _ep->error());
     return rc;
   }
@@ -243,7 +245,7 @@ int EbLfLink::syncRmtMr(size_t size)
 
   if (size > _ra.extent)
   {
-    fprintf(stderr, "%s: Remote region size (%lu) is less than required (%lu)\n",
+    fprintf(stderr, "%s:\n  Remote region size (%lu) is less than required (%lu)\n",
             __PRETTY_FUNCTION__, _ra.extent, size);
     return -1;
   }
@@ -265,7 +267,7 @@ int EbLfLink::postCompRecv(void* ctx)
     _rOuts += _postCompRecv(count, ctx);
     if (_rOuts < _rxDepth)
     {
-      fprintf(stderr, "%s: Failed to post CQ buffers: %d of %d available\n",
+      fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d of %d available\n",
               __PRETTY_FUNCTION__, _rOuts, _rxDepth);
       return _rxDepth - _rOuts;
     }
@@ -284,7 +286,7 @@ int EbLfLink::_postCompRecv(unsigned count, void* ctx)
     if ((rc = _ep->recv_comp_data(ctx)) < 0)
     {
       if (rc != -FI_EAGAIN)
-        fprintf(stderr, "%s: Failed to post a CQ buffer: %s\n",
+        fprintf(stderr, "%s:\n  Failed to post a CQ buffer: %s\n",
                 __PRETTY_FUNCTION__, _ep->error());
       break;
     }
@@ -302,26 +304,30 @@ int EbLfLink::post(const void* buf,
   RemoteAddress ra(_ra.rkey, _ra.addr + offset, len);
   ssize_t       rc;
 
+  _pending |= 1 << _id;
+
   while ((rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr)) < 0)
   {
     if (rc != -FI_EAGAIN)
     {
-      fprintf(stderr, "%s: write_data to ID %d failed: %s\n",
+      fprintf(stderr, "%s:\n  write_data to ID %d failed: %s\n",
               __PRETTY_FUNCTION__, _id, _ep->error());
       break;
     }
 
-    fi_cq_data_entry cqEntry;
-    const ssize_t    maxCnt = 1;
+    const ssize_t    maxCnt = 8;
+    fi_cq_data_entry cqEntry[maxCnt];
     CompletionQueue* cq     = _ep->txcq();
-    rc = cq->comp(&cqEntry, maxCnt);
-    if ((rc != -FI_EAGAIN) && (rc != maxCnt)) // EAGAIN means no completions available
+    rc = cq->comp(cqEntry, maxCnt);
+    if ((rc != -FI_EAGAIN) && (rc < 0)) // EAGAIN means no completions available
     {
-      fprintf(stderr, "%s: Error reading TX CQ: %s\n",
+      fprintf(stderr, "%s:\n  Error reading TX CQ: %s\n",
               __PRETTY_FUNCTION__, cq->error());
       break;
     }
   }
+
+  _pending &= ~(1 << _id);
 
   return rc;
 }
@@ -332,7 +338,7 @@ int EbLfLink::post(const void* buf,
 {
   if (ssize_t rc = _ep->inject_data(buf, len, immData) < 0)
   {
-    fprintf(stderr, "%s: inject_data failed: %s\n",
+    fprintf(stderr, "%s:\n  inject_data failed: %s\n",
             __PRETTY_FUNCTION__, _ep->error());
     return rc;
   }

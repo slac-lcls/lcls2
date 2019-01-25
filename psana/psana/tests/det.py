@@ -3,22 +3,14 @@ from psana import DataSource
 import numpy as np
 
 def det():
-    ds = DataSource('data.xtc')
+    ds = DataSource('data.xtc2')
     for run in ds.runs(): # Detector is created based on per-run config. 
-        det = run.Detector('xppcspad')
-
-'''
-    for evt in ds.events():
-        raw = det.raw(evt.__next__())
-        break
-
-    print('Raw values and shape:' )
-    print(raw, raw.shape)
-    assert(np.sum(raw)==9*17)
-    assert(raw.shape==(2,3,3))
-    assert(ds._configs[0].software.xppcspad.dettype == 'cspad')
-    assert(ds._configs[0].software.xppcspad.detid == 'detnum1234')
-'''
+        hsd = run.Detector('xpphsd')
+        cspad = run.Detector('xppcspad')
+        for evt in run.events():
+            assert(hsd.raw.calib(evt).shape==(5,))
+            assert(hsd.fex.calib(evt).shape==(6,))
+            assert(cspad.raw.raw(evt).shape==(18,))
 
 def calib():
     # Test calib_constants here prior to user.py, which uses mpi

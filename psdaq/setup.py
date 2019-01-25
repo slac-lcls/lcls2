@@ -10,11 +10,13 @@ setup(
        cmdclass=versioneer.get_cmdclass(),
        packages = find_packages(),
 
-       scripts = ['psdaq/procmgr/procmgr','psdaq/procmgr/procstat'],
+       scripts = ['psdaq/procmgr/procmgr','psdaq/procmgr/procstat','psdaq/procmgr/condaProcServ'],
 
        entry_points={
             'console_scripts': [
                 'collection = psdaq.control.collection:main',
+                'dti_proxy = psdaq.control.dti_proxy:main',
+                'showPlatform = psdaq.control.showPlatform:main',
                 'partca = psdaq.cas.partca:main',
                 'partcas = psdaq.cas.partcas:main',
                 'modcas = psdaq.cas.modcas:main',

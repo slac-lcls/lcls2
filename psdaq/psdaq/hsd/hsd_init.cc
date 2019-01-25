@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
   extern char* optarg;
   char* endptr;
 
-  char qadc='a';
+  const char* devName = "/dev/qadca";
   int c;
   bool lUsage = false;
   bool lSetupClkSynth = false;
@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
       timing = M7_4;
       break;
     case 'd':
-      qadc = optarg[0];
+      devName = optarg;
       break;
     case 't':
       lTrainNoReset = true;
@@ -172,9 +172,7 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  char devname[16];
-  sprintf(devname,"/dev/qadc%c",qadc);
-  int fd = open(devname, O_RDWR);
+  int fd = open(devName, O_RDWR);
   if (fd<0) {
     perror("Open device failed");
     return -1;

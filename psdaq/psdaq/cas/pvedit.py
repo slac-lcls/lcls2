@@ -20,7 +20,7 @@ seqBits     = ['b%u'%i for i in range(16)]
 seqIdxs     = ['s%u'%i for i in range(18)]
 seqBursts   = ['%u x %.2fus'%(2<<(i%4),float(int(i/4+1))*interval) for i in range(16)]
 seqRates    = ['%u0kHz'%(i+1) for i in range(16)]
-seqLocal    = ['%u0kHz'%(2*i+2) for i in range(16)]
+seqLocal    = ['%u0kHz'%(4*i+4) for i in range(16)]
 
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }

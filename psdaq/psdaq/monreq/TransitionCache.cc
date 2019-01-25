@@ -19,9 +19,7 @@ TransitionCache::TransitionCache(char* p, size_t sz, unsigned nbuff) :
     dg->seq = Sequence(Sequence::Event, TransitionId::Reset,
                        TimeStamp(0,0),
                        PulseId(0));
-    dg->env[0] = 0;
-    dg->env[1] = 0;
-    dg->env[2] = 0;
+    dg->env = 0;
     _freeTr.push_back(i);
   }
 }

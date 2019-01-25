@@ -1,6 +1,6 @@
 # -*-Mode: python;-*-
 
-import os
+import os, inspect
 from psdaq.procmgr.ProcMgr import getRelEnvString
 
 platform  = '3'
@@ -8,24 +8,27 @@ username  = 'claus'
 expname   = 'expname'
 expnum    = 'expnum'
 
-repo_path = '/reg/neh/home/claus/lclsii/daq/lcls2'
-bin_path  = repo_path + '/psdaq/build/psdaq'
-mgr_path  = repo_path + '/psdaq/psdaq/procmgr'
+cnf_file  = inspect.getfile(inspect.currentframe())
+abs_path  = os.path.abspath(cnf_file)
+dir_path  = os.path.dirname(abs_path)
+repo_path = os.path.abspath(dir_path + '/../../..')
+inst_path = repo_path + '/install'
+print('Executing from', inst_path)
 
 # can also set this environment in the shell.
-os.environ['TESTRELDIR'] = repo_path + '/install'
+os.environ['TESTRELDIR'] = inst_path
 
 conda_env = getRelEnvString()
 
 partition = 'Test'
-coll_node = 'drp-tst-acc01'
+col_node  = 'drp-tst-acc06'
 headless  = False
 if headless:
-  node_flags = 's'
+  node_flags = 'sp'
 else:
-  node_flags = 'sx'
+  node_flags = 'sxp'
 
-skipNodes = [] #[12, 1, 5]
+skipNodes = [12, 10]
 nodes     = []
 nNodes    = 24
 for i in range(nNodes, 0, -1):
@@ -46,9 +49,9 @@ num_all = num_evt + num_seg + num_mon
 cnt   = int((num_all + len(nodes) - 1) / len(nodes))
 nodes = cnt * nodes
 
-evt_nodes = nodes[:num_evt]
-seg_nodes = nodes[num_evt:][:num_seg]
-mon_nodes = nodes[num_seg + num_evt:][:num_mon]
+mon_nodes = nodes[:num_mon]
+evt_nodes = nodes[num_mon:][:num_evt]
+seg_nodes = nodes[num_mon + num_evt:][:num_seg]
 
 can_run = True
 if len(seg_nodes) is 0:
@@ -73,12 +76,14 @@ if num_mon and len(mon_nodes) is 0:
 #     flags:
 #        'x' or 'X'  -> xterm: open small or large xterm for process console
 #        's'         -> stop: sends ctrl-c to process
+#        'p'         -> platform: add '-p <platform>[,<mod>,<chan>]' to command line arguments
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
-mgr_cmd = 'procstat -t '+username+' -e0 -n none -p '+platform + ' p'+platform+'.cnf.last'
-mon_cmd = 'monReqServer' +' -C '+coll_node + ' -p '+platform + ' -P '+partition
-seg_cmd = 'tstEbContributor -C '+coll_node + ' -p '+platform
-evt_cmd = 'tstEbBuilder' +' -C '+coll_node + ' -p '+platform
+mgr_cmd = 'procstat -t ' + username + ' -e0 -n none p' + platform+'.cnf.last'
+col_cmd = 'collection -v'
+mon_cmd = 'monReqServer' +' -C ' + col_node + ' -P ' + partition
+seg_cmd = 'tstEbContributor -C ' + col_node
+evt_cmd = 'tstEbBuilder' +' -C ' + col_node
 
 procmgr_config = []
 
@@ -86,25 +91,33 @@ if can_run:
   # procstat
   if not headless:
     procmgr_config.append({id:    'procstat',
-                           flags: 's',
+                           flags: 'p',
                            env:   conda_env,
                            cmd:   mgr_cmd})
 
-  for i in range(len(mon_nodes)):
-    procmgr_config.append({host:  mon_nodes[i],
-                           id:    'mon%d'%i,
+  procmgr_config.append({host:  col_node,
+                         id:    'collection',
+                         flags: 'sxp',
+                         env:   conda_env,
+                         cmd:   col_cmd})
+
+  cnt  = 0
+  for i in mon_nodes:
+    n = int(cnt / numNodes)
+    cnt += 1
+    procmgr_config.append({host:  "drp-tst-dev%03d" % i,
+                           id:    'mon%d' % cnt,
                            env:   conda_env,
                            flags: node_flags,
                            cmd:   mon_cmd})
 
   core = 10
-  cnt  = 0
   for i in evt_nodes:
     n = int(cnt / numNodes)
     cnt += 1
     cores = " -1 %d -2 %d" % (core + 2 * n, core + 1 + 2 * n)
     procmgr_config.append({host:  "drp-tst-dev%03d" % i,
-                           id:    'evt%d'%cnt,
+                           id:    'evt%d' % cnt,
                            env:   conda_env,
                            flags: node_flags,
                            cmd:   evt_cmd+cores})
@@ -115,7 +128,7 @@ if can_run:
     cnt += 1
     cores = " -1 %d -2 %d" % (core + 2 * n, core + 1 + 2 * n)
     procmgr_config.append({host:  "drp-tst-dev%03d" % i,
-                           id:    'seg%d'%cnt,
+                           id:    'seg%d' % cnt,
                            env:   conda_env,
                            flags: node_flags,
                            cmd:   seg_cmd+cores})

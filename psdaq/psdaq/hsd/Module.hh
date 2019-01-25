@@ -1,6 +1,7 @@
 #ifndef HSD_Module_hh
 #define HSD_Module_hh
 
+#include "psdaq/hsd/EnvMon.hh"
 #include "psdaq/hsd/Globals.hh"
 #include <stdint.h>
 #include <stdio.h>
@@ -18,20 +19,6 @@ namespace Pds {
     class PhaseMsmt;
     class Pgp;
 
-    class EnvMon {
-    public:
-      double local12v;
-      double edge12v;
-      double aux12v;
-      double fmc12v;
-      double local3_3v;
-      double local2_5v;
-      double local1_8v;
-      double totalPower;
-      double fmcPower;
-      double boardTemp;
-    };
-
     class Module {
     public:
       //
@@ -45,6 +32,8 @@ namespace Pds {
       uint64_t device_dna() const;
 
       void board_status();
+
+      void set_local_id(unsigned bus);
 
       void flash_write(FILE*);
 

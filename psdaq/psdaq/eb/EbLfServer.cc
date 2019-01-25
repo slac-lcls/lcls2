@@ -16,10 +16,14 @@ using namespace Pds::Eb;
 
 using ms_t = std::chrono::milliseconds;
 
+static const int COMP_TMO = 5000;       // ms; Completion read timeout
+
 
 EbLfServer::EbLfServer(const char* addr,
                        const char* port) :
-  _pep(nullptr)
+  _pep    (nullptr),
+  _tmo    (0),                          // Start by polling
+  _pending(0)
 {
   _status = _initialize(addr, port);
 }
@@ -35,11 +39,11 @@ int EbLfServer::_initialize(const char* addr,
 {
   const uint64_t flags  = 0;
   const size_t   txSize = 0;
-  const size_t   rxSize = 300;
+  const size_t   rxSize = 0;
   _pep = new PassiveEndpoint(addr, port, flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
-    fprintf(stderr, "%s: Failed to create Passive Endpoint: %s\n",
+    fprintf(stderr, "%s:\n  Failed to create Passive Endpoint: %s\n",
             __PRETTY_FUNCTION__, _pep ? _pep->error() : "No memory");
     return _pep ? _pep->error_num(): -FI_ENOMEM;
   }
@@ -53,7 +57,7 @@ int EbLfServer::_initialize(const char* addr,
   _rxcq = new CompletionQueue(fab);
   if (!_rxcq)
   {
-    fprintf(stderr, "%s: Failed to create RX completion queue: %s\n",
+    fprintf(stderr, "%s:\n  Failed to create RX completion queue: %s\n",
             __PRETTY_FUNCTION__, "No memory");
     return -FI_ENOMEM;
   }
@@ -61,7 +65,7 @@ int EbLfServer::_initialize(const char* addr,
   const int backlog = 64;
   if(!_pep->listen(backlog))
   {
-    fprintf(stderr, "%s: Failed to set passive endpoint to listening state: %s\n",
+    fprintf(stderr, "%s:\n  Failed to set passive endpoint to listening state: %s\n",
             __PRETTY_FUNCTION__, _pep->error());
     return _pep->error_num();
   }
@@ -74,7 +78,7 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
 {
   if (_status != 0)
   {
-    fprintf(stderr, "%s: Failed to initialize Server\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s:\n  Failed to initialize Server\n", __PRETTY_FUNCTION__);
     return _status;
   }
 
@@ -83,17 +87,16 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
   Endpoint* ep = _pep->accept(tmo, txcq, txFlags, _rxcq, FI_RECV);
   if (!ep)
   {
-    fprintf(stderr, "%s: Failed to accept connection: %s\n",
+    fprintf(stderr, "%s:\n  Failed to accept connection: %s\n",
             __PRETTY_FUNCTION__, _pep->error());
     return _pep->error_num();
   }
 
   int rxDepth = _pep->fabric()->info()->rx_attr->size;
-  printf("rxDepth = %d\n", rxDepth);
-  *link = new EbLfLink(ep, rxDepth);
+  *link = new EbLfLink(ep, rxDepth, _unused);
   if (!*link)
   {
-    fprintf(stderr, "%s: Failed to find memory for link\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
     return ENOMEM;
   }
 
@@ -102,15 +105,16 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
 
 int EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
 {
+  // Polling favors latency, waiting favors throughput
   const int maxCnt = 1;
-  //const int tmo    = 5000;              // milliseconds
-  //ssize_t rc = _rxcq->comp_wait(cqEntry, maxCnt, tmo); // Waiting favors throughput
-  ssize_t rc = _rxcq->comp(cqEntry, maxCnt);           // Polling favors latency
+  ssize_t   rc     = _rxcq->comp_wait(cqEntry, maxCnt, _tmo);
   if (rc == maxCnt)
   {
+    _tmo = 0;                 // Switch to polling after successfull completion
+
     if ((cqEntry->flags & flags) == flags)
     {
-      //fprintf(stderr, "%s: Expected   CQ entry:\n"
+      //fprintf(stderr, "%s:\n  Expected   CQ entry:\n"
       //                "  count %zd, got flags %016lx vs %016lx, data = %08lx\n"
       //                "  ctx   %p, len %zd, buf %p\n",
       //        __PRETTY_FUNCTION__, rc, cqEntry->flags, flags, cqEntry->data,
@@ -119,7 +123,7 @@ int EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
       return 0;
     }
 
-    fprintf(stderr, "%s: Unexpected CQ entry:\n"
+    fprintf(stderr, "%s:\n  Unexpected CQ entry:\n"
                     "  count %zd, got flags %016lx vs %016lx\n"
                     "  ctx   %p, len %zd, buf %p\n",
             __PRETTY_FUNCTION__, rc, cqEntry->flags, flags,
@@ -134,7 +138,7 @@ int EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
     static int _errno = maxCnt;
     if (rc != _errno)
     {
-      fprintf(stderr, "%s: Error reading RX completion queue: %s\n",
+      fprintf(stderr, "%s:\n  Error reading RX CQ: %s\n",
               __PRETTY_FUNCTION__, _rxcq->error());
       _errno = rc;
     }
@@ -148,17 +152,22 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
   auto t0(std::chrono::steady_clock::now());
   int  rc;
 
+  ++_pending;
+
   const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
   while ((rc = _poll(cqEntry, flags)) == -FI_EAGAIN)
   {
     auto t1(std::chrono::steady_clock::now());
 
-    //const int tmo = 5000;               // milliseconds
     if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
     {
-      return -FI_ETIMEDOUT;
+      _tmo = COMP_TMO;                  // Switch to waiting after a timeout
+      rc   = -FI_ETIMEDOUT;
+      break;
     }
   }
+
+  --_pending;
 
   return rc;
 }
@@ -213,7 +222,7 @@ int EbLfServer::shutdown(EbLfLink* link)
     }
     else
     {
-      fprintf(stderr, "%s: Unexpected event %u - expected FI_SHUTDOWN (%u)\n",
+      fprintf(stderr, "%s:\n  Unexpected event %u - expected FI_SHUTDOWN (%u)\n",
               __PRETTY_FUNCTION__, event, FI_SHUTDOWN);
       rc = ep->error_num();
     }
@@ -222,7 +231,7 @@ int EbLfServer::shutdown(EbLfLink* link)
   {
     if (ep->error_num() != -FI_EAGAIN)
     {
-      fprintf(stderr, "%s: Waiting for event failed: %s\n",
+      fprintf(stderr, "%s:\n  Waiting for event failed: %s\n",
               __PRETTY_FUNCTION__, ep->error());
       rc = ep->error_num();
     }

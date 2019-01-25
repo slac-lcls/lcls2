@@ -29,8 +29,8 @@ using namespace Pds;
 */
 
 Pool::Pool(size_t sizeofObject, int numberofObjects) :
-  _sizeofObject(sizeofObject),
   _numberofObjects(numberofObjects),
+  _sizeofObject(sizeofObject),
   _numberofAllocs(0),
   _numberofFrees(0)
   {
@@ -44,8 +44,8 @@ Pool::Pool(size_t sizeofObject, int numberofObjects) :
   }
 
 Pool::Pool(size_t sizeofObject, int numberofObjects, unsigned alignBoundary) :
-  _sizeofObject(sizeofObject),
   _numberofObjects(numberofObjects),
+  _sizeofObject(sizeofObject),
   _numberofAllocs(0),
   _numberofFrees(0)
   {

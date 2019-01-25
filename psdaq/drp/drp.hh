@@ -4,8 +4,14 @@
 #include <vector>
 #include <cstdint>
 #include "spscqueue.hh"
-#include "pgpdriver.h"
 #include "psdaq/eb/eb.hh"
+
+struct DmaBuffer
+{
+    uint32_t dmaIndex;
+    int32_t size;
+    void* data;
+};
 
 struct PGPData
 {
@@ -13,15 +19,16 @@ struct PGPData
     uint8_t buffer_mask;
     unsigned damaged : 1;
     unsigned counter : 7;
-    DmaBuffer* buffers[8];
+    DmaBuffer buffers[8];
 };
 
 struct Parameters
 {
     int partition;
+    std::string collect_host;
     std::string output_dir;
-    Pds::Eb::EbCtrbParams tPrms;
-    Pds::Eb::MonCtrbParams mPrms;
+    Pds::Eb::TebCtrbParams tPrms;
+    Pds::Eb::MebCtrbParams mPrms;
 };
 
 // Per-Event-Buffer-with-Boundaries-Listed-Explicitly
@@ -49,15 +56,18 @@ using PebbleQueue = SPSCQueue<Pebble*>;
 struct MemPool
 {
     MemPool(int num_workers, int num_entries);
-    DmaBufferPool dma;
+    void** dmaBuffers;
     std::vector<PGPData> pgp_data;
     PebbleQueue pebble_queue;
     std::vector<PebbleQueue> worker_input_queues;
     std::vector<PebbleQueue> worker_output_queues;
     SPSCQueue<int> collector_queue;
     int num_entries;
+    // File descriptor for pgp card
+    int fd;
 private:
     std::vector<Pebble> pebble;
+
 };
 
 struct Counters
@@ -69,12 +79,12 @@ struct Counters
 
 namespace Pds {
     namespace Eb {
-        class EbContributor;
+        class TebContributor;
     };
 };
 
 void pin_thread(const pthread_t& th, int cpu);
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::EbContributor&);
+void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContributor&);
 
 
 #endif // DRP_H

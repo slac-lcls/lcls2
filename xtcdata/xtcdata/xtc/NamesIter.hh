@@ -1,5 +1,6 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/NamesVec.hh"
 
 namespace XtcData{
 class NamesIter : public XtcData::XtcIterator
@@ -9,8 +10,8 @@ public:
     NamesIter(XtcData::Xtc* xtc) : XtcData::XtcIterator(xtc) {}
     NamesIter() : XtcData::XtcIterator() {}
     int process(XtcData::Xtc* xtc);
-    std::vector<NameIndex>& namesVec() {return _namesVec;}
+    NamesVec& namesVec() {return _namesVec;}
 private:
-    std::vector<NameIndex> _namesVec;
+    NamesVec _namesVec;
 };
 };

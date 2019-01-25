@@ -3,11 +3,11 @@ import dgramCreate as dc
 import os, subprocess
 
 try:
-    os.remove('data.xtc')
+    os.remove('data.xtc2')
 except:
     pass
 
-FILE_NAME = 'data.xtc'
+FILE_NAME = 'data.xtc2'
 NUM_ELEM = 1
 
 def generate_event(num_elem, zero):

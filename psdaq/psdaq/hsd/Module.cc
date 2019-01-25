@@ -22,6 +22,7 @@
 #include "psdaq/hsd/AdcCore.hh"
 #include "psdaq/hsd/AdcSync.hh"
 #include "psdaq/hsd/FmcCore.hh"
+#include "psdaq/hsd/FmcCoreVoid.hh"
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/HdrFifo.hh"
 #include "psdaq/hsd/PhaseMsmt.hh"
@@ -36,8 +37,11 @@ using Pds::Mmhw::RingBuffer;
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include <sys/mman.h>
 #include <poll.h>
+#include <string.h>
 
 using std::string;
 
@@ -84,7 +88,8 @@ namespace Pds {
       Tps2481   imonb;           // 0x11C00
       Adt7411   vtmona;          // 0x12000
       FmcSpi    fmc_spi;         // 0x12400
-      uint32_t rsvd_to_0x20000[(0x10000-12*0x400)/4];
+      uint32_t  eeprom[0x100];   // 0x12800
+      uint32_t rsvd_to_0x20000[(0x10000-13*0x400)/4];
 
       // DMA
       DmaCore           dma_core; // 0x20000
@@ -123,7 +128,8 @@ namespace Pds {
       Mmcm     mmcm;             // 0x80800
       FmcCore  fmca_core;        // 0x81000
       AdcCore  adca_core;        // 0x81400
-      FmcCore  fmcb_core;        // 0x81800
+      //      FmcCore  fmcb_core;        // 0x81800
+      FmcCoreVoid  fmcb_core;        // 0x81800
       AdcCore  adcb_core;        // 0x81C00
       AdcSync  adc_sync;         // 0x82000
       HdrFifo  hdr_fifo[4];      // 0x82800
@@ -138,6 +144,8 @@ namespace Pds {
       //      uint32_t pgp_fmc1;
       //      uint32_t pgp_fmc2;
       uint32_t pgp_reg[0x4000>>2];
+      uint32_t auxStatus;
+      uint32_t auxControl;
     };
   };
 };
@@ -185,6 +193,7 @@ Module* Module::create(int fd, TimingType timing)
     static const double TXCLKR_MAX[] = { 120., 187., 1000., 187., 187., 187. };
     if (txclkr < TXCLKR_MIN[timing] ||
         txclkr > TXCLKR_MAX[timing]) {
+
       m->fmc_clksynth_setup(timing);
 
       usleep(100000);
@@ -575,7 +584,19 @@ void Module::PrivateData::dumpPgp     () const
     LPRINT("lastRxOp"       ,rxOpCodeLast);
     LPRINT("nTxOps"         ,txOpCodeCnt);
     LPRINT("nRxOps"         ,rxOpCodeCnt);
+    LPRINT("txCntrl"        ,cntrl);
+    LPRINT("txStatus"       ,txStatus);
+    LPRINT("locStatus"      ,locStatus);
   }
+
+  { printf(" prsnt1L %x\n", (auxStatus>>0)&1);
+    printf(" pwrgd1  %x\n", (auxStatus>>1)&1);
+    printf(" qsfpPrsN %x\n", (auxStatus>>2)&3);
+    printf(" qsfpIntN %x\n", (auxStatus>>4)&3);
+    printf(" oe_osc   %x\n", (auxControl>>0)&1);
+    printf(" qsfpRstN %x\n", (auxControl>>3)&1);
+  }
+
 }
 
 #undef LPRINT
@@ -675,6 +696,35 @@ uint64_t Module::device_dna() const
   return v;
 }
 
+
+// Update ID advertised on timing link
+
+void Module::set_local_id(unsigned bus)
+{
+  struct addrinfo hints;
+  struct addrinfo* result;
+
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
+  hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+  hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+
+  char hname[64];
+  gethostname(hname,64);
+  int s = getaddrinfo(hname, NULL, &hints, &result);
+  if (s != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+    exit(EXIT_FAILURE);
+  }
+
+  sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+
+  unsigned id = 0xfc000000 | (bus<<16) |
+    (ntohl(saddr->sin_addr.s_addr)&0xffff);
+
+  p->base.localId = id;
+}
+
 void Module::board_status()
 {
   printf("Axi Version [%p]: BuildStamp[%p]: %s\n", 
@@ -692,6 +742,15 @@ void Module::board_status()
   printf("Local CPLD revision: 0x%x\n", p->local_cpld.revision());
   printf("Local CPLD GAaddr  : 0x%x\n", p->local_cpld.GAaddr  ());
   p->local_cpld.GAaddr(0);
+
+  { unsigned v;
+    printf("EEPROM:");
+    for(unsigned i=0; i<32; i++) {
+      v = p->eeprom[i];
+      printf(" %02x", v&0xff);
+    }
+    printf("\n");
+  }
 
   printf("vtmon1 mfg:dev %x:%x\n", p->vtmon1.manufacturerId(), p->vtmon1.deviceId());
   printf("vtmon2 mfg:dev %x:%x\n", p->vtmon2.manufacturerId(), p->vtmon2.deviceId());

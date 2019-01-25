@@ -24,9 +24,8 @@
 #include "FpgaProm.h"
 #include "AxiVersion.h"
 
-inline uint32_t dmaDest(uint32_t lane, uint32_t vc) 
-{
-  return lane*32 + vc;
-}
+static unsigned dmaDest(unsigned lane, unsigned vc)
+{ return (lane<<8) | vc; }
+
 #endif
 
