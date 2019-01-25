@@ -29,15 +29,17 @@ from pymongo import MongoClient, errors, DESCENDING
 username = 'yoon82'
 host = 'psdb-dev'
 port = 9306
+daq_id = 'lcls2-tmo'
+dettype = 'hsd_cfg_2_4_3'
 prefix = "DAQ:LAB2:HSD:DEV02"
 client = MongoClient('mongodb://%s:%s@%s:%s'%(username,username,host,port))
-db = client['config_db']
-collection = db['amo']
+db = client[daq_id]
+collection = db[dettype]
 pvdb = {}
-for post in collection.find({"_id":234}): # FIXME: find the latest document, i.e. collection.find_one(sort=[("_id", DESCENDING)])
+for post in collection.find_one(sort=[("cfg_id", DESCENDING)]): # get the latest
     for key,val in post.items():
         if key in pvNames: # override pv value
-            if "_id" in key:
+            if "cfg_id" in key:
                 pvdb[key] = val+1
             else:
                 pvdb[key] = pvNames[key]
@@ -46,7 +48,7 @@ for post in collection.find({"_id":234}): # FIXME: find the latest document, i.e
             pvdb[key] = val
 
 for key, val in pvdb.items():
-    if "_id" not in key:
+    if "cfg_id" not in key:
         _pv = Pv(prefix+':'+key)
         _pv.connect(1.0)
         if type(val['value']) == list:
@@ -58,7 +60,7 @@ pyca.flush_io()
 
 # TODO: avoid creating Pv multiple times and avoid multiple connects
 for key, val in pvdb.items():
-    if "_id" not in key:
+    if "cfg_id" not in key:
         _pv = Pv(prefix+':'+key)
         _pv.connect(1.0)
         _pv.get(False, 1.0)
@@ -102,6 +104,7 @@ config = json.dumps(config)
 print("config: ", config)
 
 # Apply the new configuration changes
+print("###### Applying configuration changes")
 _pv = Pv('DAQ:LAB2:HSD:DEV02:BASE:APPLYCONFIG')
 _pv.connect(1.0)
 _pv.put(1)

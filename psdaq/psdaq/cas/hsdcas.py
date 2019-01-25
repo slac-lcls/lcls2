@@ -311,16 +311,24 @@ def main():
     driver = myDriver()
 
     # Save PVs to config dbase
-    from pymongo import MongoClient, errors
+    from pymongo import MongoClient, errors, ASCENDING, DESCENDING
     username = 'yoon82'
     host = 'psdb-dev'
     port = 9306
-    instrument = 'amo'
+    daq_id = 'lcls2-tmo'
+    dettype = 'hsd_cfg_2_4_3'
     client = MongoClient('mongodb://%s:%s@%s:%s' % (username, username, host, port))
-    db = client['config_db']
-    collection = db[instrument]
+    db = client[daq_id]
+    collection = db[dettype]
+    max_id = -1
+    if daq_id not in client.database_names():
+        print("Creating unique index")
+        collection.create_index([('cfg_id', ASCENDING)], unique=True)
+    else:
+        max_id = collection.find_one(sort=[("cfg_id", DESCENDING)])["cfg_id"]
     _pvdb = pvdb
-    _pvdb['_id'] = 234 # this may be detector serial number
+    _pvdb['cfg_id'] = max_id + 1 # this may be detector serial number
+    print("#### cfg_id: ", max_id + 1)
     try:
         collection.insert(_pvdb)
     except errors.DuplicateKeyError:
