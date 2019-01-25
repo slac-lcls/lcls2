@@ -110,14 +110,36 @@ void test_getAreaDetector() {
 
 //-------------------
 
+std::string usage(const std::string& tname="")
+{
+  std::stringstream ss;
+  if (tname == "") ss << "Usage command> test_AreaDetector <test-number>\n  where test-number";
+  if (tname == "" || tname=="0"	) ss << "\n  0  - test_AreaDetector()";
+  if (tname == "" || tname=="1"	) ss << "\n  1  - test_getAreaDetector()";
+  ss << '\n';
+  return ss.str();
+}
+
+//-------------------
+
 int main(int argc, char **argv) {
 
-  MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
+  print_hline(80,'_');
+  //MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
   LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
+  MSG(INFO, "In test_AreaDetector");
+
+  cout << usage(); 
+  print_hline(80,'_');
+  if (argc==1) {return 0;}
+  std::string tname(argv[1]);
+  cout << usage(tname); 
+
+  if      (tname=="0") test_AreaDetector();
+  else if (tname=="1") test_getAreaDetector();
+  else MSG(WARNING, "Undefined test name: " << tname);
 
   print_hline(80,'_');
-  test_AreaDetector();    print_hline(80,'_');
-  test_getAreaDetector(); print_hline(80,'_');
   return EXIT_SUCCESS;
 }
 

@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <sstream>
 
 //#define CURL_STATICLIB
 #include <curl/curl.h>
@@ -281,12 +282,12 @@ void test_calib_constants_doc() {
   rapidjson::Document docdata;
   rapidjson::Document docmeta;
 
-  MSG(INFO, "XXXX: Begin calib_constants_doc");
+  MSG(INFO, "== Begin calib_constants_doc");
   calib_constants_doc(docdata, docmeta, det, exp, ctype, run, time_sec, vers);
-  MSG(INFO, "XXXX: Done");
+  MSG(INFO, "== Done");
 
-  std::cout << "==== docmeta: " << json_doc_to_string(docmeta) << '\n';
-  std::cout << "==== docdata: " << json_doc_to_string(docdata) << '\n';
+  std::cout << "== docmeta: " << json_doc_to_string(docmeta) << '\n';
+  std::cout << "== docdata: " << json_doc_to_string(docdata) << '\n';
   //    det = 'opal1000_0059'
   //    #data, doc = calib_constants(det, exp='amox23616', ctype='lasingoffreference', run=60, time_sec=None, vers=None)
   //    data, doc = calib_constants(det, exp=None, ctype='lasingoffreference', run=60, time_sec=None, vers=None)
@@ -294,31 +295,65 @@ void test_calib_constants_doc() {
 
 //-------------------
 
-int main(void)
+std::string usage(const std::string& tname="")
 {
+  std::stringstream ss;
+  if (tname == "") ss << "Usage command> test_MDBWebUtils <test-number>\n  where test-number";
+  if (tname == "" || tname=="0"	) ss << "\n  0  - test_request()";
+  if (tname == "" || tname=="1"	) ss << "\n  1  - test_database_names()";
+  if (tname == "" || tname=="2"	) ss << "\n  2  - test_collection_names()";
+  if (tname == "" || tname=="3"	) ss << "\n  3  - std::string url = test_string_url_with_query()";
+  if (tname == "" || tname=="4"	) ss << "\n  4  - test_request_with_query()";
+  if (tname == "" || tname=="5"	) ss << "\n  5  - test_find_docs()";
+  if (tname == "" || tname=="6"	) ss << "\n  6  - test_find_doc()";
+  if (tname == "" || tname=="7"	) ss << "\n  7  - test_get_doc_for_docid()";
+  if (tname == "" || tname=="8"	) ss << "\n  8  - test_get_data_for_id()";
+  if (tname == "" || tname=="9"	) ss << "\n  9  - test_get_data_for_docid()";
+  if (tname == "" || tname=="10") ss << "\n  10 - test_get_data_for_doc()";
+  if (tname == "" || tname=="11") ss << "\n  11 - test_db_prefixed_name()";
+  if (tname == "" || tname=="12") ss << "\n  12 - test_dbnames_collection_query()";
+  if (tname == "" || tname=="13") ss << "\n  13 - test_calib_constants()";
+  if (tname == "" || tname=="14") ss << "\n  14 - test_calib_constants_nda()";
+  if (tname == "" || tname=="15") ss << "\n  15 - test_calib_constants_doc()";
+  ss << '\n';
+  return ss.str();
+}
+
+//-------------------
+
+int main(int argc, char* argv[])
+{
+  print_hline(80,'_');
   //MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
   LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
-  //LOGGER.setLogger(LL::INFO, "%H:%M:%S.%f");           // set level and time format
-  printf("In test_MDBWebUtils\n");
-  print_hline(80,'_');
-  //test_request(); print_hline(80,'_');
-  //test_database_names(); print_hline(80,'_');
-  //test_collection_names(); print_hline(80,'_');
-  //std::string url =
-  //test_string_url_with_query(); print_hline(80,'_');
-  //test_request_with_query(); print_hline(80,'_');
-  //test_find_docs(); print_hline(80,'_');
-  //test_find_doc(); print_hline(80,'_');
+  MSG(INFO, "In test_MDBWebUtils");
 
-  //test_get_doc_for_docid(); print_hline(80,'_');
-  //test_get_data_for_id(); print_hline(80,'_');
-  //test_get_data_for_docid(); print_hline(80,'_');
-  //test_get_data_for_doc(); print_hline(80,'_');
-  //test_db_prefixed_name(); print_hline(80,'_');
-  //test_dbnames_collection_query(); print_hline(80,'_');
-  //test_calib_constants(); print_hline(80,'_');
-  //test_calib_constants_nda(); print_hline(80,'_');
-  test_calib_constants_doc(); print_hline(80,'_');
+  cout << usage(); 
+  print_hline(80,'_');
+  if (argc==1) {return 0;}
+  std::string tname(argv[1]);
+  cout << usage(tname); 
+
+  if      (tname=="0")  test_request();
+  else if (tname=="1")  test_database_names();
+  else if (tname=="2")  test_collection_names();
+  else if (tname=="3")  std::string url = test_string_url_with_query();
+  else if (tname=="4")  test_request_with_query();
+  else if (tname=="5")  test_find_docs();
+  else if (tname=="6")  test_find_doc();
+  else if (tname=="7")  test_get_doc_for_docid();
+  else if (tname=="8")  test_get_data_for_id();
+  else if (tname=="9")  test_get_data_for_docid();
+  else if (tname=="10") test_get_data_for_doc();
+  else if (tname=="11") test_db_prefixed_name();
+  else if (tname=="12") test_dbnames_collection_query();
+  else if (tname=="13") test_calib_constants();
+  else if (tname=="14") test_calib_constants_nda();
+  else if (tname=="15") test_calib_constants_doc();
+  else MSG(WARNING, "Undefined test name \"" << tname << '\"');
+ 
+  print_hline(80,'_');
+  return EXIT_SUCCESS;
 }
 
 //-------------------
