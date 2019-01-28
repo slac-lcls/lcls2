@@ -43,7 +43,6 @@ class SmdNode(object):
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
-        view = 0
         while True:
             # handles requests from smd_0
             comm.Send(np.array([rank], dtype='i'), dest=0)
@@ -59,8 +58,6 @@ class SmdNode(object):
             for batch in self.eb_man.batches(view):
                 comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
                 comm.Send(batch, dest=rankreq[0])
-
-            view = 0
 
         for i in range(self.n_bd_nodes):
             comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)

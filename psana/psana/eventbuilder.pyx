@@ -130,6 +130,8 @@ cdef class EventBuilder:
                         d = <Dgram *>(cview)
                         ts = <unsigned long>d.seq.high << 32 | d.seq.low
                         payload = d.xtc.extent - self.xtc_size
+                    
+                    PyBuffer_Release(&buf)
                 
                 # Extend batch bytearray to include this event and collect
                 # the size of this event for batch footer.
