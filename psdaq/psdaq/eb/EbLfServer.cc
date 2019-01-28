@@ -19,13 +19,15 @@ using ms_t = std::chrono::milliseconds;
 static const int COMP_TMO = 5000;       // ms; Completion read timeout
 
 
-EbLfServer::EbLfServer(const char* addr,
-                       const char* port) :
+EbLfServer::EbLfServer(const std::string& addr,
+                       const std::string& port,
+                       unsigned           verbose) :
   _pep    (nullptr),
+  _verbose(verbose),
   _tmo    (0),                          // Start by polling
   _pending(0)
 {
-  _status = _initialize(addr, port);
+  _status = _initialize(addr.c_str(), port.c_str());
 }
 
 EbLfServer::~EbLfServer()
@@ -50,9 +52,12 @@ int EbLfServer::_initialize(const char* addr,
 
   Fabric* fab = _pep->fabric();
 
-  //void* data = fab;                     // Something since data can't be NULL
-  //printf("EbLfServer is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
-  //       fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
+  if (_verbose)
+  {
+    void* data = fab;                   // Something since data can't be NULL
+    printf("EbLfServer is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
+           fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
+  }
 
   _rxcq = new CompletionQueue(fab);
   if (!_rxcq)
@@ -69,7 +74,7 @@ int EbLfServer::_initialize(const char* addr,
             __PRETTY_FUNCTION__, _pep->error());
     return _pep->error_num();
   }
-  printf("Listening for EbLfClient(s) on port %s\n", port);
+  printf("EbLfServer is listening for client(s) on port %s\n", port);
 
   return 0;
 }
@@ -93,7 +98,7 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
   }
 
   int rxDepth = _pep->fabric()->info()->rx_attr->size;
-  *link = new EbLfLink(ep, rxDepth, _unused);
+  *link = new EbLfLink(ep, rxDepth, _verbose, _unused);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
@@ -177,7 +182,7 @@ int EbLfServer::pend(void** ctx, int msTmo)
   fi_cq_data_entry cqEntry;
 
   int rc = pend(&cqEntry, msTmo);
-  if (!rc)  *ctx = cqEntry.op_context;
+  *ctx = cqEntry.op_context;
 
   return rc;
 }
@@ -187,7 +192,7 @@ int EbLfServer::pend(uint64_t* data, int msTmo)
   fi_cq_data_entry cqEntry;
 
   int rc = pend(&cqEntry, msTmo);
-  if (!rc)  *data = cqEntry.data;
+  *data = cqEntry.data;
 
   return rc;
 }

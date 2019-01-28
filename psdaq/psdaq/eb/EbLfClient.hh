@@ -9,7 +9,7 @@ namespace Pds {
     class EbLfClient
     {
     public:
-      EbLfClient();
+      EbLfClient(unsigned verbose);
       ~EbLfClient();
     public:
       int connect(const char* peer,
@@ -20,6 +20,8 @@ namespace Pds {
       const uint64_t& pending() const;
     public:
       int shutdown(EbLfLink*);
+    private:
+      unsigned _verbose;
     private:
       uint64_t _pending;
     };

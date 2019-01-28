@@ -27,7 +27,8 @@ namespace Pds {
       EventBuilder(unsigned epochs,
                    unsigned entries,
                    unsigned sources,
-                   uint64_t mask);
+                   uint64_t mask,
+                   unsigned verbose);
       virtual ~EventBuilder();
     public:
       virtual void       fixup(EbEvent*, unsigned srcId)       = 0;
@@ -70,8 +71,7 @@ namespace Pds {
       std::vector<EbEvent*> _eventLut;      // LUT of allocated events
       Task*                 _timerTask;     // For Timer
       unsigned              _duration;      // Timer expiration rate
-    public:
-      static unsigned       lverbose;
+      const unsigned        _verbose;       // Print progress info
     };
   };
 };

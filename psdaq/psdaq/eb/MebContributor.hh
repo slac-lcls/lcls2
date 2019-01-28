@@ -22,7 +22,7 @@ namespace Pds {
     class EbLfLink;
     class EbLfClient;
 
-    using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
+    using UmapEbLfLink = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
     class MebContributor
     {
@@ -44,12 +44,11 @@ namespace Pds {
     private:
       size_t               _maxEvSize;
       size_t               _maxTrSize;
-      std::vector<size_t>  _trOffset;
-      void*                _region;
+      size_t               _trSize;
       Pds::Eb::EbLfClient* _transport;
-      EbLfLinkMap          _links;
+      UmapEbLfLink         _links;
       const unsigned       _id;
-      bool                 _verbose;
+      unsigned             _verbose;
     private:
       uint64_t             _eventCount;
     };

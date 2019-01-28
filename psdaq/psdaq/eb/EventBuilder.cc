@@ -13,13 +13,12 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-unsigned EventBuilder::lverbose = 0;
-
 
 EventBuilder::EventBuilder(unsigned epochs,
                            unsigned entries,
                            unsigned sources,
-                           uint64_t duration) :
+                           uint64_t duration,
+                           unsigned verbose) :
   Timer(),
   _mask(PulseId(~(duration - 1), 0).value()),
   _epochFreelist(sizeof(EbEpoch), epochs),
@@ -27,7 +26,8 @@ EventBuilder::EventBuilder(unsigned epochs,
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries),
   _eventLut(epochs * entries),
   _timerTask(new Task(TaskObject("tEB_Timeout"))),
-  _duration(100)                        // Timeout rate in ms
+  _duration(100),                       // Timeout rate in ms
+  _verbose(verbose)
 {
   if (duration & (duration - 1))
   {
@@ -53,12 +53,6 @@ EventBuilder::EventBuilder(unsigned epochs,
 
 EventBuilder::~EventBuilder()
 {
-  printf("EbEpoch freelist:\n");
-  _epochFreelist.dump();
-
-  printf("EbEvent freelist:\n");
-  _eventFreelist.dump();
-
   _timerTask->destroy();
 }
 
@@ -351,7 +345,7 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
 
   while (true)
   {
-    if (lverbose > 1)
+    if (_verbose > 1)
     {
       uint64_t pid = ctrb->seq.pulseId().value();
       unsigned ctl = ctrb->seq.pulseId().control();
@@ -382,6 +376,8 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
 
 void EventBuilder::dump(unsigned detail) const
 {
+  printf("\nEvent builder dump:\n");
+
   if (detail)
   {
     const EbEpoch* const last  = _pending.empty();
@@ -396,9 +392,9 @@ void EventBuilder::dump(unsigned detail) const
       printf(" Event Builder has no pending events...\n");
   }
 
-  printf("\nEvent Builder epoch pool:\n");
+  printf("Event Builder epoch pool:\n");
   _epochFreelist.dump();
 
-  printf("\nEvent Builder event pool:\n");
+  printf("Event Builder event pool:\n");
   _eventFreelist.dump();
 }
