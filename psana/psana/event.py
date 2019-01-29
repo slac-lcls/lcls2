@@ -70,9 +70,15 @@ class Event():
         if event_bytes:
             pf = PacketFooter(view=event_bytes)
             views = pf.split_packets()
-            assert len(configs) == len(views)
-            dgrams = [dgram.Dgram(config=configs[i], view=views[i]) \
-                    for i in range(len(configs))]
+            
+            assert len(configs) == pf.n_packets
+            
+            dgrams = [None]*pf.n_packets # make sure that dgrams are arranged 
+                                         # according to the smd files.
+            for i in range(pf.n_packets):
+                if views[i].shape[0] > 0: # do not include any missing dgram
+                    dgrams[i] = dgram.Dgram(config=configs[i], view=views[i])
+
         evt = cls(dgrams, configs, calibs, det_class_table)
         return evt
     
