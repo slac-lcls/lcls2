@@ -23,11 +23,13 @@ using namespace Pds::Eb;
 
 TebContributor::TebContributor(const TebCtrbParams& prms) :
   BatchManager (prms.duration, prms.maxBatches, prms.maxEntries, prms.maxInputSize),
-  _transport   (new EbLfClient()),
+  _prms        (prms),
+  _transport   (new EbLfClient(prms.verbose)),
   _links       (),
   _idx2Id      (new unsigned[prms.addrs.size()]),
   _id          (prms.id),
   _numEbs      (std::bitset<64>(prms.builders).count()),
+  _batchBase   (roundUpSize(TransitionId::NumberOf * prms.maxInputSize)),
   _batchCount  (0),
   _inFlightOcc (0),
   _inFlightHist(__builtin_ctz(prms.maxBatches), 1.0),
@@ -36,8 +38,7 @@ TebContributor::TebContributor(const TebCtrbParams& prms) :
   _postCallHist(12, 1.0),
   _postPrevTime(std::chrono::steady_clock::now()),
   _running     (true),
-  _rcvrThread  (nullptr),
-  _prms        (prms)
+  _rcvrThread  (nullptr)
 {
   size_t size   = batchRegionSize();    // No need to add Tr space size here
   void*  region = batchRegion();        // Local space for Trs is in the batch region
@@ -54,7 +55,7 @@ TebContributor::TebContributor(const TebCtrbParams& prms) :
               __func__, addr, port);
       abort();
     }
-    if (link->preparePoster(region, size, i, prms.id, prms.verbose))
+    if (link->preparePoster(prms.id, region, size))
     {
       fprintf(stderr, "%s: Failed to prepare link to %s:%s\n",
               __func__, addr, port);
@@ -103,8 +104,7 @@ void TebContributor::shutdown()
   printf("Dumped post call rate histogram to ./%s\n", fs);
   _postCallHist.dump(fs);
 
-  for (EbLfLinkMap::iterator it  = _links.begin();
-                             it != _links.end(); ++it)
+  for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     _transport->shutdown(it->second);
   }
@@ -151,7 +151,7 @@ void TebContributor::post(const Batch* batch)
   EbLfLink*   link   = _links[dst];
   uint32_t    data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
   size_t      extent = batch->extent();
-  unsigned    offset = idx * maxBatchSize();
+  unsigned    offset = _batchBase + idx * maxBatchSize();
   const void* buffer = batch->batch();
 
   if (_prms.verbose)
@@ -185,10 +185,9 @@ void TebContributor::post(const Dgram* nonEvent)
   unsigned tr     = nonEvent->seq.service();
   uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);
   size_t   extent = sizeof(*nonEvent) + nonEvent->xtc.sizeofPayload();
-  unsigned offset = batchRegionSize() + tr * _prms.maxInputSize;
+  unsigned offset = tr * _prms.maxInputSize;
 
-  for (EbLfLinkMap::iterator it  = _links.begin();
-                             it != _links.end(); ++it)
+  for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     EbLfLink* link = it->second;
     if (link->id() != dst)        // Batch posted above included this non-event
@@ -209,8 +208,8 @@ void TebContributor::post(const Dgram* nonEvent)
 }
 
 void TebContributor::_updateHists(TimePoint_t      t0,
-                                 TimePoint_t      t1,
-                                 const TimeStamp& stamp)
+                                  TimePoint_t      t1,
+                                  const TimeStamp& stamp)
 {
   auto        d  = std::chrono::seconds     { stamp.seconds()     } +
                    std::chrono::nanoseconds { stamp.nanoseconds() };
@@ -236,7 +235,6 @@ void TebContributor::_receiver(EbCtrbInBase& in)
     _inFlightOcc -= 1;
   }
 
-  printf("\nShutting down the inbound side...\n");
   in.shutdown();
 }
 

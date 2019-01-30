@@ -1,6 +1,7 @@
 import sys
+import logging
 
-from pcaspy import SimpleServer, Driver
+from psdaq.epicstools.PVAServer import PVAServer
 import time
 from datetime import datetime
 #import thread
@@ -9,11 +10,6 @@ import argparse
 #import socket
 #import json
 import pdb
-
-class myDriver(Driver):
-    def __init__(self):
-        super(myDriver, self).__init__()
-
 
 def printDb(prefix):
     global pvdb
@@ -36,10 +32,11 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    myDriver.verbose = args.verbose
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     #
-    # Parse the PARTITION argument for the instrument name and station #. 
+    # Parse the PARTITION argument for the instrument name and station #.
     # If the partition name includes a colon, PV names will include station # even if 0.
     # If no colon is present, station # defaults to 0 and is not included in PV names.
     # Partition names 'AMO' and 'AMO:0' thus lead to different PV names.
@@ -94,15 +91,6 @@ if __name__ == '__main__':
 
     printDb(args.P)
 
-    server = SimpleServer()
-
+    server = PVAServer(__name__)
     server.createPV(args.P, pvdb)
-        
-    driver = myDriver()
-
-    try:
-        # process CA transactions
-        while True:
-            server.process(0.1)
-    except KeyboardInterrupt:
-        print('\nInterrupted')
+    server.forever()

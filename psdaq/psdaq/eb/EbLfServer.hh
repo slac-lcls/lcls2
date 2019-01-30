@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <cstddef>
+#include <string>
 
 
 struct fi_cq_data_entry;
@@ -21,8 +22,9 @@ namespace Pds {
     class EbLfServer
     {
     public:
-      EbLfServer(const char* addr,
-                 const char* port);
+      EbLfServer(const std::string& addr,
+                 const std::string& port,
+                 unsigned           verbose);
       ~EbLfServer();
     public:
       int connect(EbLfLink**, int msTmo = -1);
@@ -40,6 +42,7 @@ namespace Pds {
     private:
       int                       _status;
       Fabrics::PassiveEndpoint* _pep;  // Endpoint for establishing connections
+      unsigned                  _verbose;
       Fabrics::CompletionQueue* _rxcq;
       size_t                    _bufSize;
       int                       _tmo;

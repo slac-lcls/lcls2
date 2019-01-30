@@ -38,7 +38,7 @@ namespace Pds {
     class Batch;
     class StatsMonitor;
 
-    using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
+    using UmapEbLfLink = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
     class TebContributor : public BatchManager
     {
@@ -62,12 +62,15 @@ namespace Pds {
       void    _updateHists(TimePoint_t               t0,
                            TimePoint_t               t1,
                            const XtcData::TimeStamp& stamp);
+    protected:
+      const TebCtrbParams&  _prms;
     private:
       EbLfClient*           _transport;
-      EbLfLinkMap           _links;
+      UmapEbLfLink          _links;
       unsigned*             _idx2Id;
       const unsigned        _id;
       const unsigned        _numEbs;
+      size_t                _batchBase;
     private:
       uint64_t              _batchCount;
     private:
@@ -80,8 +83,6 @@ namespace Pds {
     private:
       std::atomic<bool>     _running;
       std::thread*          _rcvrThread;
-    protected:
-      const TebCtrbParams&  _prms;
     };
   };
 };

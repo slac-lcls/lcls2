@@ -29,30 +29,48 @@ namespace Pds {
 
     struct TebCtrbParams
     {
-      std::vector<std::string> addrs;
-      std::vector<std::string> ports;
-      char*                    ifAddr;
-      std::string              port;
-      unsigned                 id;
-      uint64_t                 builders;
-      uint64_t                 duration;
-      unsigned                 maxBatches;
-      unsigned                 maxEntries;
-      size_t                   maxInputSize;
-      size_t                   maxResultSize;
-      int                      core[2];
-      unsigned                 verbose;
+      std::string              ifAddr;        // Network interface to use
+      std::string              port;          // Served port to receive results
+      unsigned                 id;            // Contributor instance identifier
+      uint64_t                 builders;      // ID bit list of EBs
+      std::vector<std::string> addrs;         // TEB addresses
+      std::vector<std::string> ports;         // TEB ports
+      uint64_t                 duration;      // Max time duration of batches
+      unsigned                 maxBatches;    // Max # of batches to provide for
+      unsigned                 maxEntries;    // Max # of entries per batch
+      size_t                   maxInputSize;  // Max size of contribution
+      int                      core[2];       // Cores to pin threads to
+      unsigned                 verbose;       // Level of detail to print
     };
 
     struct MebCtrbParams
     {
-      std::vector<std::string> addrs;
-      std::vector<std::string> ports;
-      unsigned                 id;
-      unsigned                 maxEvents;
-      size_t                   maxEvSize;
-      size_t                   maxTrSize;
-      unsigned                 verbose;
+      std::vector<std::string> addrs;         // MEB addresses
+      std::vector<std::string> ports;         // MEB ports
+      unsigned                 id;            // Contributor instance identifier
+      unsigned                 maxEvents;     // Junk?
+      size_t                   maxEvSize;     // Max event size
+      size_t                   maxTrSize;     // Max non-event size
+      unsigned                 verbose;       // Level of detail to print
+    };
+
+    struct EbParams                           // Used with both TEBs and MEBs
+    {
+      std::string              ifAddr;        // Network interface to use
+      std::string              ebPort;        // EB port to serve
+      std::string              mrqPort;       // Mon request port to receive on
+      unsigned                 id;            // EB instance identifier
+      uint64_t                 contributors;  // ID bit list of contributors
+      std::vector<std::string> addrs;         // Contributor addresses
+      std::vector<std::string> ports;         // Contributor ports
+      uint64_t                 duration;      // Max time duration of buffers
+      unsigned                 maxBuffers;    // Max # of buffers to provide for
+      unsigned                 maxEntries;    // Max # of entries per buffer
+      unsigned                 numMrqs;       // Number of Mon request servers
+      size_t                   maxTrSize;     // Max non-event Dgram size
+      size_t                   maxResultSize; // Max result Dgram size
+      int                      core[2];       // Cores to pin threads to
+      unsigned                 verbose;       // Level of detail to print
     };
   };
 };

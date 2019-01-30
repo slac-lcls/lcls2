@@ -17,17 +17,17 @@ using namespace Pds::Eb;
 
 
 EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
+  _prms        (prms),
   _numEbs      (std::bitset<64>(prms.builders).count()),
-  _maxBatchSize(roundUpSize(prms.maxEntries * prms.maxResultSize)),
-  _region      (allocRegion(prms.maxBatches * _maxBatchSize)),
-  _transport   (new EbLfServer(prms.ifAddr, prms.port.c_str())),
+  _maxBatchSize(0),
+  _regions     (_numEbs),
+  _transport   (new EbLfServer(prms.ifAddr, prms.port, prms.verbose)),
   _links       (),
   _ebCntHist   ( 6, 1.0),               // Up to 64 possible EBs
   _rttHist     (12, 1.0),
   _pendTimeHist(12, 1.0),
   _pendCallHist(12, 1.0),
-  _pendPrevTime(std::chrono::steady_clock::now()),
-  _prms        (prms)
+  _pendPrevTime(std::chrono::steady_clock::now())
 {
   _initialize(__func__);
 }
@@ -36,27 +36,21 @@ EbCtrbInBase::~EbCtrbInBase()
 {
   if (_transport)
   {
-    for (EbLfLinkMap::iterator it  = _links.begin();
-                               it != _links.end(); ++it)
+    for (auto it = _links.begin(); it != _links.end(); ++it)
     {
       _transport->shutdown(it->second);
     }
     _links.clear();
     delete _transport;
   }
+  for (unsigned i = 0; i < _regions.size(); ++i)
+  {
+    if (_regions[i])  free(_regions[i]);
+  }
 }
 
 void EbCtrbInBase::_initialize(const char* who)
 {
-  size_t size = _prms.maxBatches * _maxBatchSize;
-
-  if (_region == nullptr)
-  {
-    fprintf(stderr, "%s: No memory found for a result region of size %zd\n",
-            who, size);
-    abort();
-  }
-
   // Since each EB handles a specific batch, one region can be shared by all
   for (unsigned i = 0; i < _numEbs; ++i)
   {
@@ -67,12 +61,36 @@ void EbCtrbInBase::_initialize(const char* who)
       fprintf(stderr, "%s: Error connecting to EbLfClient[%d]\n", who, i);
       abort();
     }
-    if (link->preparePender((char*)_region, size, i, _prms.id, _prms.verbose))
+    size_t regSize;
+    if (link->preparePender(_prms.id, &regSize))
     {
       fprintf(stderr, "%s: Failed to prepare link[%d]\n", who, i);
       abort();
     }
     _links[link->id()] = link;
+
+    _regions[i] = allocRegion(regSize);
+    if (!_regions[i])
+    {
+      fprintf(stderr, "%s: No memory found for region %d of size %zd\n",
+              who, i, regSize);
+      abort();
+    }
+    if (link->setupMr(_regions[i], regSize))
+    {
+      fprintf(stderr, "%s: Failed to set up MemoryRegion %d\n", who, i);
+      abort();
+    }
+    link->postCompRecv();
+
+    size_t maxBatchSize = regSize / _prms.maxBatches;
+    if      (_maxBatchSize == 0)  _maxBatchSize = maxBatchSize;
+    else if (_maxBatchSize != maxBatchSize)
+    {
+      fprintf(stderr, "%s: MaxBatchSize (%zd) can't differ between EBs (%zd from Id %d)\n",
+              who, _maxBatchSize, maxBatchSize, link->id());
+      abort();
+    }
 
     printf("%s: EbLfClient ID %d connected\n", who, link->id());
   }

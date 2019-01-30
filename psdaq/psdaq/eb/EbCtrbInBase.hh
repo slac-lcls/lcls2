@@ -5,6 +5,7 @@
 #include "psdaq/eb/EbLfServer.hh"
 
 #include <chrono>
+#include <vector>
 #include <unordered_map>
 #include <string>
 
@@ -26,7 +27,7 @@ namespace Pds
     class Batch;
     class BatchManager;
 
-    using EbLfLinkMap = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
+    using UmapEbLfLink = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
     class EbCtrbInBase
     {
@@ -47,20 +48,20 @@ namespace Pds
       void    _updateHists(TimePoint_t               t0,
                            TimePoint_t               t1,
                            const XtcData::TimeStamp& stamp);
+    protected:
+      const TebCtrbParams& _prms;
     private:
       const unsigned       _numEbs;
-      const size_t         _maxBatchSize;
-      void*                _region;
+      size_t               _maxBatchSize;
+      std::vector<void*>   _regions;
       EbLfServer*          _transport;
-      EbLfLinkMap          _links;
+      UmapEbLfLink         _links;
     private:
       Histogram            _ebCntHist;
       Histogram            _rttHist;
       Histogram            _pendTimeHist;
       Histogram            _pendCallHist;
       TimePoint_t          _pendPrevTime;
-    protected:
-      const TebCtrbParams& _prms;
     };
   };
 };

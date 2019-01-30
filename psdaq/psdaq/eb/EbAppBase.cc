@@ -36,53 +36,37 @@ using Duration_t = std::chrono::steady_clock::duration;
 using us_t       = std::chrono::microseconds;
 using ns_t       = std::chrono::nanoseconds;
 
-unsigned EbAppBase::lverbose = 0;
 
-
-EbAppBase::EbAppBase(const char*        ifAddr,
-                     const std::string& port,
-                     unsigned           id,
-                     uint64_t           duration,
-                     unsigned           maxBuffers,
-                     unsigned           maxEntries,
-                     size_t             maxInDgSize,
-                     size_t             maxTrDgSize,
-                     uint64_t           contributors) :
-  EventBuilder (maxBuffers + TransitionId::NumberOf, maxEntries, std::bitset<64>(contributors).count(), duration),
-  _maxBufSize  (roundUpSize(maxEntries * maxInDgSize)),
-  _region      (allocRegion(std::bitset<64>(contributors).count() *
-                            (maxBuffers * _maxBufSize +
-                             roundUpSize(TransitionId::NumberOf * maxTrDgSize)))),
-  _transport   (new EbLfServer(ifAddr, port.c_str())),
-  _links       (),
-  _id          (id),
-  _defContract (contributors),
-  _contract    ( { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ),
+EbAppBase::EbAppBase(const EbParams& prms) :
+  EventBuilder (prms.maxBuffers + TransitionId::NumberOf,
+                prms.maxEntries,
+                std::bitset<64>(prms.contributors).count(),
+                prms.duration,
+                prms.verbose),
+  _regions     (std::bitset<64>(prms.contributors).count()),
+  _maxBufSize  (std::bitset<64>(prms.contributors).count()),
   _trOffset    (TransitionId::NumberOf),
+  _trSize      (roundUpSize(TransitionId::NumberOf * prms.maxTrSize)),
+  _transport   (new EbLfServer(prms.ifAddr, prms.ebPort, prms.verbose)),
+  _links       (),
+  _id          (prms.id),
+  _defContract (prms.contributors),
+  _contract    ( { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ),
   //_dummy       (Level::Fragment),
+  _verbose     (prms.verbose),
   _ctrbCntHist (6, 1.0),                // Up to 64 Ctrbs
   _arrTimeHist (12, double(1 << 16)/1000.),
   _pendTimeHist(12, double(1 <<  8)/1000.),
   _pendCallHist(12, 1.0),
   _pendPrevTime(std::chrono::steady_clock::now())
 {
-  size_t   size   = maxBuffers * _maxBufSize + roundUpSize(TransitionId::NumberOf * maxTrDgSize);
-  unsigned nCtrbs = std::bitset<64>(contributors).count();
+  unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
-  if (_region == nullptr)
-  {
-    fprintf(stderr, "%s: No memory found for a input region of size %zd\n",
-            __func__, nCtrbs * size);
-    abort();
-  }
-
-  size_t offset = maxBuffers * _maxBufSize;
   for (unsigned tr = 0; tr < _trOffset.size(); ++tr)
   {
-    _trOffset[tr] = offset + tr * maxTrDgSize;
+    _trOffset[tr] = tr * prms.maxTrSize;
   }
 
-  char* region = static_cast<char*>(_region);
   for (unsigned i = 0; i < nCtrbs; ++i)
   {
     EbLfLink*      link;
@@ -92,28 +76,45 @@ EbAppBase::EbAppBase(const char*        ifAddr,
       fprintf(stderr, "%s: Error connecting to EbLfClient[%d]\n", __func__, i);
       abort();
     }
-    if (link->preparePender(region, size, i, id, lverbose))
+    size_t regSize;
+    if (link->preparePender(prms.id, &regSize))
     {
       fprintf(stderr, "%s: Failed to prepare link[%d]\n", __func__, i);
       abort();
     }
-    _links[link->id()] = link;
+    _links[link->id()]      = link;
+    _maxBufSize[link->id()] = regSize / prms.maxBuffers;
+
+    regSize += _trSize;                 // Ctrbs don't have a transition space
+    _regions[i]  = allocRegion(regSize);
+    if (!_regions[i])
+    {
+      fprintf(stderr, "%s: No memory found for region %d of size %zd\n",
+              __func__, i, regSize);
+      abort();
+    }
+    if (link->setupMr(_regions[i], regSize))
+    {
+      fprintf(stderr, "%s: Failed to set up MemoryRegion %d\n", __func__, i);
+      abort();
+    }
+    link->postCompRecv();
 
     printf("EbLfClient ID %d connected\n", link->id());
-
-    region += size;
   }
 }
 
 EbAppBase::~EbAppBase()
 {
   if (_transport)  delete _transport;
-  if (_region)     free  (_region);
+  for (unsigned i = 0; i < _regions.size(); ++i)
+  {
+    if (_regions[i])  free(_regions[i]);
+  }
 }
 
 void EbAppBase::shutdown()
 {
-  printf("\nEvent builder dump:\n");
   EventBuilder::dump(0);
 
   char fs[80];
@@ -133,33 +134,34 @@ void EbAppBase::shutdown()
   printf("Dumped pend call rate histogram to ./%s\n", fs);
   _pendCallHist.dump(fs);
 
-  for (EbLfLinkMap::iterator it  = _links.begin();
-                             it != _links.end(); ++it)
+  for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     _transport->shutdown(it->second);
   }
   _links.clear();
 }
 
-void EbAppBase::process()
+int EbAppBase::process()
 {
   // Pend for an input datagram and pass it to the event builder
   uint64_t  data;
+  int       rc;
   const int tmo = 5000;                 // milliseconds
   auto t0(std::chrono::steady_clock::now());
-  if (_transport->pend(&data, tmo))  return;
+  if ( (rc = _transport->pend(&data, tmo)) )  return rc;
   auto t1(std::chrono::steady_clock::now());
 
   unsigned     flg = ImmData::flg(data);
   unsigned     src = ImmData::src(data);
   unsigned     idx = ImmData::idx(data);
   EbLfLink*    lnk = _links[src];
-  size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer) ? idx * _maxBufSize
-                                                            : _trOffset[idx];
+  size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
+                   ? _trSize + idx * _maxBufSize[src]
+                   : _trOffset[idx];
   const Dgram* idg = static_cast<Dgram*>(lnk->lclAdx(ofs));
   lnk->postCompRecv();
 
-  if (lverbose)
+  if (_verbose)
   {
     static unsigned cnt = 0;
     uint64_t        pid = idg->seq.pulseId().value();
@@ -176,6 +178,8 @@ void EbAppBase::process()
   _ctrbCntHist.bump(lnk->id());
 
   EventBuilder::process(idg, data);     // Comment out for open-loop running
+
+  return 0;
 }
 
 void EbAppBase::_updateHists(TimePoint_t      t0,
@@ -228,7 +232,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
   // Revisit: Nothing can usefully be done here since there is no way to
   //          know the buffer index to be used for the result, I think
 
-  if (lverbose)
+  if (_verbose)
   {
     fprintf(stderr, "%s:\n  Fixup event %014lx, size %zu, for source %d\n",
             __PRETTY_FUNCTION__, event->sequence(), event->size(), srcId);
