@@ -55,7 +55,7 @@ target_link_libraries(pgpread2
 )
 
 # TEST
-add_executable(drp2 Test.cc Test.hh)
+add_executable(drp2 DrpApp.cc DrpApp.hh main.cc)
 target_include_directories(drp2 PUBLIC
     $ENV{CONDA_PREFIX}/include)
 

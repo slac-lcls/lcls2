@@ -3,7 +3,7 @@
 #include "Collector.hh"
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
-#include "Test.hh"
+#include "DrpApp.hh"
 
 using namespace Pds::Eb;
 
@@ -19,6 +19,32 @@ void DrpApp::handleConnect(const json &msg)
     int numWorkers = 2;
     int numEntries = 8192;
     int laneMask = 0xf;
+
+    // these parameters must agree with the server side
+    size_t maxSize = sizeof(MyDgram);
+    m_para->tPrms = { /* .addrs         = */ { },
+                     /* .ports         = */ { },
+                     /* .ifAddr        = */ nullptr,
+                     /* .port          = */ { },
+                     /* .id            = */ 0,
+                     /* .builders      = */ 0,
+                     /* .duration      = */ BATCH_DURATION,
+                     /* .maxBatches    = */ MAX_BATCHES,
+                     /* .maxEntries    = */ MAX_ENTRIES,
+                     /* .maxInputSize  = */ maxSize,
+                     /* .maxResultSize = */ maxSize,
+                     /* .core          = */ { 11 + 0,
+                                            12 },
+                     /* .verbose       = */ 0 };
+
+    m_para->mPrms = { /* .addrs         = */ { },
+                     /* .ports         = */ { },
+                     /* .id            = */ 0,
+                     /* .maxEvents     = */ 8,    //mon_buf_cnt,
+                     /* .maxEvSize     = */ 1024, //mon_buf_size,
+                     /* .maxTrSize     = */ 1024, //mon_trSize,
+                     /* .verbose       = */ 0 };
+
     parseConnectionParams(msg["body"]);
 
     // should move into constructor
@@ -26,6 +52,9 @@ void DrpApp::handleConnect(const json &msg)
     f.register_type<Digitizer>("Digitizer");
     f.register_type<AreaDetector>("AreaDetector");
     Detector* det = f.create(m_para->detectorType);
+    if (det == nullptr) {
+        std::cout<< "Error !! Could not create Detector object\n";
+    }
 
     MemPool pool(numWorkers, numEntries);
     PGPReader pgpReader(pool, det, laneMask, numWorkers);
@@ -36,27 +65,20 @@ void DrpApp::handleConnect(const json &msg)
         meb = new Pds::Eb::MebContributor(m_para->mPrms);
     }
 
+    // start performance monitor thread
+    std::thread monitor_thread(monitor_func, std::ref(pgpReader.get_counters()),
+                               std::ref(pool), std::ref(ebCtrb));
+
     // reply to collection with connect status
     json body = json({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
     setState(State::connect);
 
-    // collector(pool, m_para.get(), ebCtrb, meb);
-    pgpThread.join();
-
-    /*
-    // make connections and reply
-    MemPool pool(num_workers, num_entries);
-    // TODO: This should be moved to configure when the lane_mask is known.
-    PGPReader pgp_reader(pool, lane_mask, num_workers);
-
     // spend all time here blocking listening to PGP
-    collector(pool, para, ebCtrb, meb);
-    pgp_thread.join();
-    for (int i = 0; i < num_workers; i++) {
-        worker_threads[i].join();
-    */
+    collector(pool, *m_para, ebCtrb, meb);
+
+    pgpThread.join();
 }
 
 void DrpApp::handleReset(const json &msg)
@@ -79,7 +101,7 @@ void DrpApp::parseConnectionParams(const json& body)
     for (auto it : body["teb"].items()) {
         unsigned tebId = it.value()["teb_id"];
         // FIXME infiniband -> nic_ip
-        std::string address = it.value()["connect_info"]["nic_ip"];
+        std::string address = it.value()["connect_info"]["infiniband"];
         std::cout << "TEB: " << tebId << "  " << address << '\n';
         builders |= 1ul << tebId;
         m_para->tPrms.addrs.push_back(address);
@@ -96,32 +118,4 @@ void DrpApp::parseConnectionParams(const json& body)
             m_para->mPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
         }
     }
-}
-
-#include <getopt.h>
-
-int main(int argc, char* argv[])
-{
-    Parameters para;
-    int c;
-    while((c = getopt(argc, argv, "p:o:D:C:")) != EOF) {
-        switch(c) {
-            case 'p':
-                para.partition = std::stoi(optarg);
-                break;
-            case 'o':
-                para.output_dir = optarg;
-                break;
-            case 'D':
-                para.detectorType = optarg;
-                break;
-            case 'C':
-                para.collect_host = optarg;
-                break;
-            default:
-                exit(1);
-        }
-    }
-    DrpApp app(&para);
-    app.run();
 }

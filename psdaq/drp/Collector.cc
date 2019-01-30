@@ -64,6 +64,7 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
     }
 
     // write event to file if it passes event builder or is a configure transition
+    /* FIXME disable writing for now
     if (eb_decision == 1 || (transition_id == TransitionId::Configure)) {
         Dgram* dgram = (Dgram*)pebble->fex_data();
         if (fwrite(dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 1, _xtcFile) != 1) {
@@ -71,7 +72,7 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
             return;
         }
     }
-
+    */
     if (_mon) {
         Dgram* dgram = (Dgram*)pebble->fex_data();
         if (result->seq.isEvent()) {    // L1Accept

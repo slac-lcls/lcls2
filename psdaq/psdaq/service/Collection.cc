@@ -173,7 +173,8 @@ void CollectionApp::handleAlloc(const json &msg)
     if (m_state == State::plat) {
         std::string nicIp = getNicIp();
         std::cout<<"nic ip  "<<nicIp<<'\n';
-        json body = {{m_level, {{"connect_info", {{"nic_ip", nicIp}}}}}};
+        // FIXME replace infiniband with nic_ip
+        json body = {{m_level, {{"connect_info", {{"infiniband", nicIp}}}}}};
         json answer = createMsg("alloc", msg["header"]["msg_id"], m_id, body);
         reply(answer);
         setState(State::alloc);
