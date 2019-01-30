@@ -79,9 +79,9 @@ def main():
       pvdb[p2+'UsRxFull'       ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'dUsRxFull'      ] = {'type' : 'float', 'count' : numUsLinks }
       pvdb[p2+'UsObSent'       ] = {'type' : 'int', 'count' : numUsLinks }
-      pvdb[p2+'dUsObSent'      ] = {'type' : 'float', 'count' : numUsLinks }
+#      pvdb[p2+'dUsObSent'      ] = {'type' : 'float', 'count' : numUsLinks }
       pvdb[p2+'UsObRecv'       ] = {'type' : 'int', 'count' : numUsLinks }
-      pvdb[p2+'dUsObRecv'      ] = {'type' : 'float', 'count' : numUsLinks }
+#      pvdb[p2+'dUsObRecv'      ] = {'type' : 'float', 'count' : numUsLinks }
       pvdb[p2+'UsRxInh'        ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'dUsRxInh'       ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'UsWrFifoD'      ] = {'type' : 'int', 'count' : numUsLinks }

@@ -279,6 +279,10 @@ namespace Pds {
             fex._base[2].setGate(4,_pv[Nat_Gate]->getVectorElemAt<unsigned>(i));
             fex._base[2].setFull(0xc00,4);
             fex._base[2]._prescale=_pv[Nat_PS]->getVectorElemAt<unsigned>(i)-1;
+            fex._stream[2].parms[0].v=_pv[Fex_Ymin ]->getVectorElemAt<unsigned>(i);
+            fex._stream[2].parms[1].v=_pv[Fex_Ymax ]->getVectorElemAt<unsigned>(i);
+            fex._stream[2].parms[2].v=_pv[Fex_Xpre ]->getVectorElemAt<unsigned>(i);
+            fex._stream[2].parms[3].v=_pv[Fex_Xpost]->getVectorElemAt<unsigned>(i);
           }
           fex._streams= streamMask;
         }

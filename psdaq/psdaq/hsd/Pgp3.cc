@@ -16,5 +16,6 @@ unsigned Pgp3::txCount      () const { return _axi.txFrameCnt; }
 unsigned Pgp3::txErrCount   () const { return _axi.txFrameErrCnt; }
 unsigned Pgp3::rxOpCodeCount() const { return _axi.rxOpCodeCnt; }
 unsigned Pgp3::rxOpCodeLast () const { return _axi.rxOpCodeLast; }
+unsigned Pgp3::remPause     () const { return _axi.remRxOflow; }
 bool     Pgp3::loopback     () const { return _axi.loopback; }
 

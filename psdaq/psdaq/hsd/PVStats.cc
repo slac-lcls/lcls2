@@ -17,6 +17,10 @@ using Pds_Epics::EpicsPVA;
 #include <unistd.h>
 #include <stdio.h>
 
+#define LANES 4
+#define CHANS 1
+#define FIFOS CHANS
+
 static std::string STOU(std::string s) {
   std::transform(s.begin(), s.end(), s.begin(),
                  [](unsigned char c){ return std::toupper(c); }
@@ -35,9 +39,10 @@ namespace Pds {
            _MsgDelaySet, _MsgDelayGet, _HeaderCntL0, _HeaderCntOF,
            _PgpLocLinkRdy, _PgpRemLinkRdy,
            _PgpTxClkFreq, _PgpRxClkFreq,
-           _PgpTxCnt, _PgpTxCntSum, _PgpTxErrCnt, _PgpRxCnt, _PgpRxLast,
+           _PgpTxCnt, _PgpTxCntSum, _PgpTxErrCnt, _PgpRxCnt, _PgpRxLast, _PgpRemPause,
            _Raw_FreeBufSz, _Raw_FreeBufEvt,
            _Fex_FreeBufSz, _Fex_FreeBufEvt,
+           _Nat_FreeBufSz, _Nat_FreeBufEvt,
            _Raw_BufState, _Raw_TrgState, _Raw_BufBeg, _Raw_BufEnd,
            _Local12V, _Edge12V, _Aux12V,
            _Fmc12V, _BoardTemp,
@@ -75,15 +80,15 @@ namespace Pds {
       PV_ADD (MsgDelayGet);
       PV_ADD (HeaderCntL0);
       PV_ADD (HeaderCntOF);
-      PV_ADDV(PgpLocLinkRdy,4);
-      PV_ADDV(PgpRemLinkRdy,4);
-      PV_ADDV(PgpTxClkFreq ,4);
-      PV_ADDV(PgpRxClkFreq ,4);
-      PV_ADDV(PgpTxCnt     ,4);
-      PV_ADDV(PgpTxCntSum  ,4);
-      PV_ADDV(PgpTxErrCnt  ,4);
-      PV_ADDV(PgpRxCnt     ,4);
-      PV_ADDV(PgpRxLast    ,4);
+      PV_ADDV(PgpLocLinkRdy,LANES);
+      PV_ADDV(PgpRemLinkRdy,LANES);
+      PV_ADDV(PgpTxClkFreq ,LANES);
+      PV_ADDV(PgpRxClkFreq ,LANES);
+      PV_ADDV(PgpTxCnt     ,LANES);
+      PV_ADDV(PgpTxCntSum  ,LANES);
+      PV_ADDV(PgpTxErrCnt  ,LANES);
+      PV_ADDV(PgpRxCnt     ,LANES);
+      PV_ADDV(PgpRxLast    ,LANES);
       PV_ADDV(Raw_FreeBufSz  ,16);
       PV_ADDV(Raw_FreeBufEvt ,16);
       PV_ADDV(Fex_FreeBufSz  ,16);
@@ -105,8 +110,8 @@ namespace Pds {
       PV_ADD(TotalPower);
       PV_ADD(FmcPower);
 
-      PV_ADDV(WrFifoCnt      ,4);
-      PV_ADDV(RdFifoCnt      ,4);
+      PV_ADDV(WrFifoCnt      ,FIFOS);
+      PV_ADDV(RdFifoCnt      ,FIFOS);
 
       PV_ADD(SyncE);
       PV_ADD(SyncO);
@@ -164,22 +169,25 @@ namespace Pds {
       PVPUTU  ( HeaderCntL0, (base.headerCnt&0xfffff) );
       PVPUTU  ( HeaderCntOF, ((base.headerCnt>>24)&0xff) );
 
-      PVPUTAU  ( PgpLocLinkRdy, 4, _pgp[i]->localLinkReady ()?1:0);
-      PVPUTAU  ( PgpRemLinkRdy, 4, _pgp[i]->remoteLinkReady()?1:0);
-      PVPUTAU  ( PgpTxClkFreq , 4, _pgp[i]->txClkFreqMHz());
-      PVPUTAU  ( PgpRxClkFreq , 4, _pgp[i]->rxClkFreqMHz());
-      PVPUTAU  ( PgpTxCntSum  , 4, _pgp[i]->txCount     () );
-      PVPUTDAU ( PgpTxCnt     , 4, _pgp[i]->txCount     () );
-      PVPUTDAU ( PgpTxErrCnt  , 4, _pgp[i]->txErrCount  () );
-      PVPUTDAU ( PgpRxCnt     , 4, _pgp[i]->rxOpCodeCount() );
-      PVPUTAU  ( PgpRxLast    , 4, _pgp[i]->rxOpCodeLast () );
+      PVPUTAU  ( PgpLocLinkRdy, LANES, _pgp[i]->localLinkReady ()?1:0);
+      PVPUTAU  ( PgpRemLinkRdy, LANES, _pgp[i]->remoteLinkReady()?1:0);
+      PVPUTAU  ( PgpTxClkFreq , LANES, _pgp[i]->txClkFreqMHz());
+      PVPUTAU  ( PgpRxClkFreq , LANES, _pgp[i]->rxClkFreqMHz());
+      PVPUTAU  ( PgpTxCntSum  , LANES, _pgp[i]->txCount     () );
+      PVPUTDAU ( PgpTxCnt     , LANES, _pgp[i]->txCount     () );
+      PVPUTDAU ( PgpTxErrCnt  , LANES, _pgp[i]->txErrCount  () );
+      PVPUTDAU ( PgpRxCnt     , LANES, _pgp[i]->rxOpCodeCount() );
+      PVPUTAU  ( PgpRxLast    , LANES, _pgp[i]->rxOpCodeLast () );
+      PVPUTAU  ( PgpRxLast    , LANES, _pgp[i]->remPause     () );
 
       if ((base.csr&0x10)==0) {
         FexCfg* fex = _m.fex();
-        PVPUTAU ( Raw_FreeBufSz  , 4, ((fex[i]._base[0]._free>> 0)&0xffff) );
-        PVPUTAU ( Raw_FreeBufEvt , 4, ((fex[i]._base[0]._free>>16)&0x1f) );
-        PVPUTAU ( Fex_FreeBufSz  , 4, ((fex[i]._base[1]._free>> 0)&0xffff) );
-        PVPUTAU ( Fex_FreeBufEvt , 4, ((fex[i]._base[1]._free>>16)&0x1f) );
+        PVPUTAU ( Raw_FreeBufSz  , CHANS, ((fex[i]._base[0]._free>> 0)&0xffff) );
+        PVPUTAU ( Raw_FreeBufEvt , CHANS, ((fex[i]._base[0]._free>>16)&0x1f) );
+        PVPUTAU ( Fex_FreeBufSz  , CHANS, ((fex[i]._base[1]._free>> 0)&0xffff) );
+        PVPUTAU ( Fex_FreeBufEvt , CHANS, ((fex[i]._base[1]._free>>16)&0x1f) );
+        PVPUTAU ( Nat_FreeBufSz  , CHANS, ((fex[i]._base[2]._free>> 0)&0xffff) );
+        PVPUTAU ( Nat_FreeBufEvt , CHANS, ((fex[i]._base[2]._free>>16)&0x1f) );
       }
 
       unsigned state[16], addr[16];

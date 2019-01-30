@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <signal.h>
 
+#include <cpsw_error.h>
+
 #include "psdaq/cphw/Reg.hh"
 
 #include "psdaq/xpm/Module.hh"
@@ -153,7 +155,8 @@ void StatsTimer::start()
 {
   //theTimer = this;
 
-  _dev._timing.resetStats();
+  _dev._usTiming.resetStats();
+  _dev._cuTiming.resetStats();
 
   //  _pvs.begin();
   Timer::start();
@@ -170,27 +173,36 @@ void StatsTimer::cancel()
 //
 void StatsTimer::expired()
 {
-  timespec t; clock_gettime(CLOCK_REALTIME,&t);
-  CoreCounts c = _dev.counts();
-  LinkStatus links[32];
-  _dev.linkStatus(links);
-  unsigned bpClk = _dev._monClk[0]&0x1fffffff;
-  double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
-  _sem.take();
-  _pvs.update(c,_c,links,_links,bpClk,dt);
-  _sem.give();
-  _c=c;
-  std::copy(links,links+32,_links);
-  _t=t;
+  try {
+    timespec t; clock_gettime(CLOCK_REALTIME,&t);
+    CoreCounts c = _dev.counts();
+    LinkStatus links[32];
+    _dev.linkStatus(links);
+    unsigned bpClk  = _dev._monClk[0]&0x1fffffff;
+    unsigned fbClk  = _dev._monClk[1]&0x1fffffff;
+    unsigned recClk = _dev._monClk[2]&0x1fffffff;
+    double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
+    _sem.take();
+    try {
+      _pvs.update(c,_c,links,_links,recClk,fbClk,bpClk,dt);
+    } catch (CPSWError&) {}
+    _sem.give();
+    _c=c;
+    std::copy(links,links+32,_links);
+    _t=t;
 
-  for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
-    if (_pvpc[i]->enabled()) {
-      _sem.take();
-      _dev.setPartition(i);
-      _pvps[i]->update();
-      _sem.give();
+    for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
+      if (_pvpc[i]->enabled()) {
+        _sem.take();
+        try {
+          _dev.setPartition(i);
+          _pvps[i]->update();
+        } catch (CPSWError&) {}
+        _sem.give();
+      }
     }
-  }
+  } catch (CPSWError&) {}
+
   _pvc.dump();
 
   if (_paddrPV->connected()) {
@@ -201,7 +213,7 @@ void StatsTimer::expired()
 
 #if 1
   if (_fwBuildPV && _fwBuildPV->connected()) {
-    std::string bld = _dev._timing.version.buildStamp();
+    std::string bld = _dev._version.buildStamp();
     printf("fwBuild: %s\n",bld.c_str());
     _fwBuildPV->putFrom<std::string>(bld.c_str());
     _fwBuildPV = 0;

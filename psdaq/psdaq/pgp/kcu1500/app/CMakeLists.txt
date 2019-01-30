@@ -17,9 +17,13 @@ add_executable(kcuStatus xStatus.cpp)
 
 add_executable(kcuHist xHist.cpp)
 
+add_executable(kcuSim xSim.cpp)
+
 add_executable(kcuSimValid xSimValid.cpp)
 
 add_executable(kcuLoopTest xLoopTest.cpp)
+
+add_executable(kcuReg xReg.cpp)
 
 add_executable(kcuRead xRead.cpp)
 

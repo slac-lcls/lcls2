@@ -68,9 +68,10 @@ int main (int argc, char **argv) {
 
    dmaSetMaskBytes(s,mask);
 
-   unsigned prescale=0;
    unsigned* last = new unsigned[64];
    unsigned* hist = new unsigned[64];
+   unsigned* last_hwf = new unsigned[64];
+   unsigned* hist_hwf = new unsigned[64];
 
    while(1) {
 
@@ -78,10 +79,6 @@ int main (int argc, char **argv) {
      do {
        ret = dmaRead(s,buf,buf_size,&rxFlags,NULL,&dmaDest);
      } while(ret == 0);
-     if (++prescale < 100) 
-       continue;
-
-     prescale = 0;
 
      unsigned m=0;
      for(unsigned i=0; i<32; i++) {
@@ -98,6 +95,15 @@ int main (int argc, char **argv) {
        hist[m++]=v;
      }
 
+     m = 0;
+     for(unsigned i=0; i<256;) {
+       unsigned v=0;
+       for(unsigned j=0; j<4; j++,i++)
+         for(unsigned k=4; k<8; k++)
+           v += buf[i+k*257];
+       hist_hwf[m++]=v;
+     }
+
      for(unsigned i=0; i<60; i++)
        printf("%04x%c",hist[i],(i&0xf)==0xf?'\n':' ');
      printf("\n  -\n");
@@ -106,9 +112,21 @@ int main (int argc, char **argv) {
        printf("%04x%c",hist[i]-last[i],(i&0xf)==0xf?'\n':' ');
      printf("\n--\n");
 
+     for(unsigned i=0; i<64; i++)
+       printf("%04x%c",hist_hwf[i],(i&0xf)==0xf?'\n':' ');
+     printf("\n  -\n");
+
+     for(unsigned i=0; i<64; i++)
+       printf("%04x%c",hist_hwf[i]-last_hwf[i],(i&0xf)==0xf?'\n':' ');
+     printf("\n----\n");
+
      unsigned* p = hist;
      hist = last;
      last = p;
+
+     p = hist_hwf;
+     hist_hwf = last_hwf;
+     last_hwf = p;
    }
 
    return(0);

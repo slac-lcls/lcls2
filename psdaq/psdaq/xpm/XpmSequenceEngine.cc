@@ -9,13 +9,15 @@
 
 using TPGen::InstructionCache;
 using TPGen::Instruction;
-using TPGen::Checkpoint;
 using TPGen::FixedRateSync;
 using TPGen::ACRateSync;
 using TPGen::Branch;
 using TPGen::BeamRequest;
 using TPGen::ControlRequest;
 using TPGen::ExptRequest;
+#ifndef EXCLUDE_CHECKPOINT
+using TPGen::Checkpoint;
+#endif
 
 namespace Pds {
   namespace Xpm {
@@ -107,10 +109,12 @@ static inline uint32_t _word(const Branch& i, unsigned a)
     ((unsigned(i.counter)&0x3)<<27) | (1<<24) | ((i.test&0xff)<<16) | (a&0x3ff);
 }
 
+#ifndef EXCLUDE_CHECKPOINT
 static inline uint32_t _word(const Checkpoint& i)
 {
   return 1<<29;
 }
+#endif
 
 static inline uint32_t _word(const ControlRequest& i)
 {
@@ -283,11 +287,13 @@ int  XpmSequenceEngine::insertSequence(std::vector<Instruction*>& seq)
       case Instruction::AC:
 	_private->_ram[addr++] = _word(*static_cast<const ACRateSync*>(seq[i]));
 	break;
+#ifndef EXCLUDE_CHECKPOINT
       case Instruction::Check:
 	{ const Checkpoint& instr = 
 	    *static_cast<const Checkpoint*>(seq[i]);
 	  _private->_ram[addr++] = _word(instr); }
 	break;
+#endif
       case Instruction::Request:
 	_private->_ram[addr++] =
 	  _word(*static_cast<const ControlRequest*>(seq[i]));
@@ -381,6 +387,14 @@ void XpmSequenceEngine::handle(unsigned addr)
 
 void XpmSequenceEngine::dump() const
 {
+  //  Dump state
+  unsigned id = _private->_id;
+  printf("Req [%08x]  Inv [%08x]  Addr [%08x]  Cond [%08x]\n",
+         unsigned(_private->_regs->seqState[id].countRequests),
+         unsigned(_private->_regs->seqState[id].countInvalid),
+         unsigned(_private->_regs->seqState[id].address),
+         unsigned(_private->_regs->seqState[id].condcnt));
+
   for(unsigned i=0; i<64; i++)
     if ((_private->_indices&(1ULL<<i))!=0) {
       printf("Sequence %d\n",i);

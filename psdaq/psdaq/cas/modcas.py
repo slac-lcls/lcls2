@@ -23,6 +23,20 @@ def printDb():
     print('=========================================')
     return
 
+def addTiming(sec):
+    pvdb[sec+':RxClks'     ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':TxClks'     ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':RxRsts'     ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':CrcErrs'    ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':RxDecErrs'  ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':RxDspErrs'  ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':BypassRsts' ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':BypassDones'] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':RxLinkUp'   ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':FIDs'       ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':SOFs'       ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':EOFs'       ] = {'type' : 'float', 'value': 0}
+
 def main():
     global pvdb
     pvdb = {}     # start with empty dictionary
@@ -99,19 +113,11 @@ def main():
         pvdb[':PLL_Reset'     +'%d'%i] = {'type' : 'int'}
         pvdb[':PLL_Skew'      +'%d'%i] = {'type' : 'int'}
 
-    pvdb[':RxClks'     ] = {'type' : 'float', 'value': 0}
-    pvdb[':TxClks'     ] = {'type' : 'float', 'value': 0}
-    pvdb[':RxRsts'     ] = {'type' : 'float', 'value': 0}
-    pvdb[':CrcErrs'    ] = {'type' : 'float', 'value': 0}
-    pvdb[':RxDecErrs'  ] = {'type' : 'float', 'value': 0}
-    pvdb[':RxDspErrs'  ] = {'type' : 'float', 'value': 0}
-    pvdb[':BypassRsts' ] = {'type' : 'float', 'value': 0}
-    pvdb[':BypassDones'] = {'type' : 'float', 'value': 0}
-    pvdb[':RxLinkUp'   ] = {'type' : 'float', 'value': 0}
-    pvdb[':FIDs'       ] = {'type' : 'float', 'value': 0}
-    pvdb[':SOFs'       ] = {'type' : 'float', 'value': 0}
-    pvdb[':EOFs'       ] = {'type' : 'float', 'value': 0}
+    addTiming(':Us')
+    addTiming(':Cu')
 
+    pvdb[':RecClk      ] = {'type' : 'float', 'value': 0}
+    pvdb[':FbClk'      ] = {'type' : 'float', 'value': 0}
     pvdb[':BpClk'      ] = {'type' : 'float', 'value': 0}
     for i in range(8):
         pvdb[':PART:%d:DeadFLnk' %i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }

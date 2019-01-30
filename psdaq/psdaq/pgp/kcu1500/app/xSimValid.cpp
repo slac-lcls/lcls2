@@ -33,6 +33,7 @@ static void usage(const char* p) {
   printf("\t-f <dump filename>   (default: none)\n");
   printf("\t-c <update interval> (default: 1000000)\n");
   printf("\t-v <test mask>       (default: 0)\n");
+  printf("\t-C partition[,length[,links]] [configure simcam]\n");
 }
 
 #define HISTORY 256
@@ -313,14 +314,27 @@ int main (int argc, char **argv) {
    unsigned count = 1000000;
    const char* dev  = 0;
    const char* dump = 0;
+   int partition  = -1;
+   int length     = 320;
+   int links      = 0xff;
+   bool frameRst  = false;
    extern char* optarg;
+   char* endptr;
    int c;
-   while((c=getopt(argc,argv,"d:f:c:v:"))!=EOF) {
+   while((c=getopt(argc,argv,"d:f:Fc:C:v:"))!=EOF) {
      switch(c) {
      case 'd': dev     = optarg; break;
      case 'f': dump    = optarg; break;
+     case 'F': frameRst = true; break;
      case 'c': count   = strtoul(optarg,NULL,0); break;
      case 'v': verbose = strtoul(optarg,NULL,0); break;
+     case 'C': partition = strtoul(optarg,&endptr,0);
+       if (*endptr==',') {
+         length = strtoul(endptr+1,&endptr,0);
+         if (*endptr==',')
+           links = strtoul(endptr+1,NULL,0);
+       }
+       break;
      default: usage(argv[0]); return 1;
      }
    }
@@ -350,6 +364,34 @@ int main (int argc, char **argv) {
 #endif
 
    dmaSetMaskBytes(s,mask);
+
+   //  Configure the simulated camera
+    if (frameRst) {
+      unsigned v; dmaReadRegister(s,0x00a00000,&v);
+      unsigned w = v;
+      w &= ~(0xf<<28);    // disable and drain
+      dmaWriteRegister(s,0x00a00000,w);
+      usleep(1000);
+      w |=  (1<<3);       // reset
+      dmaWriteRegister(s, 0x00a00000,w);
+      usleep(1);         
+      dmaWriteRegister(s, 0x00a00000,v);
+    }
+
+   if (partition >= 0) {
+     unsigned v = ((partition&0xf)<<0) |
+       ((length&0xffffff)<<4) |
+       (links<<28);
+     dmaWriteRegister(s,0x00a00000, v);
+     unsigned w;
+     dmaReadRegister(s,0x00a00000,&w);
+     printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",
+            partition, length, links, v, w);
+     for(unsigned i=0; i<4; i++)
+       if (links&(1<<i))
+         dmaWriteRegister(s,0x00800084+32*i, 0x1f00);
+   }
+
 
    while(1) {
 
@@ -387,7 +429,7 @@ int main (int argc, char **argv) {
                //  Print out pulseId/timeStamp to check synchronization across nodes
                if ((b[4]&0xfffff)==0) {
                  printf("event[%06x]:",b[4]);
-                 for(unsigned i=0; i<6; i++)
+                 for(unsigned i=0; i<9; i++)
                    printf(" %08x",b[i]);
                  printf("\n");
                }

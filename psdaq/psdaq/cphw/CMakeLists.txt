@@ -7,6 +7,7 @@ add_library(cphw SHARED
     GthEyeScan.cc
     HsRepeater.cc
     RingBuffer.cc
+    TimingRx.cc
     XBar.cc
     BldControl.cc
     Xvc.cc
@@ -20,6 +21,7 @@ add_library(cphwr SHARED
     GthEyeScan.cc
     HsRepeater.cc
     RingBuffer.cc
+    TimingRx.cc
     XBar.cc
     BldControl.cc
     Xvc.cc

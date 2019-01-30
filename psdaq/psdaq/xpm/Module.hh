@@ -8,11 +8,15 @@
 #include "psdaq/cphw/HsRepeater.hh"
 #include "psdaq/cphw/RingBuffer.hh"
 #include "psdaq/cphw/Xvc.hh"
+#include "psdaq/xpm/MmcmPhaseLock.hh"
 
 namespace Pds {
   namespace Xpm {
 
-    class CoreCounts {
+    class TimingCounts {
+    public:
+      TimingCounts() {}
+      TimingCounts(const Cphw::TimingRx&);
     public:
       void dump() const;
     public:
@@ -28,6 +32,12 @@ namespace Pds {
       uint64_t fidCount;
       uint64_t sofCount;
       uint64_t eofCount;
+    };
+
+    class CoreCounts {
+    public:
+      TimingCounts us;
+      TimingCounts cu;
     };
 
     class L0Stats {
@@ -70,16 +80,37 @@ namespace Pds {
     public:
       Module();
       void init();
-    public:
-      Pds::Cphw::AmcTiming  _timing;
+    public: //  AxiVersion @ 0
+      Cphw::AxiVersion _version;
     private:
-      uint32_t _reserved_AT[(0x09000000-sizeof(Module::_timing))>>2];
-    public:
-      Pds::Cphw::HsRepeater _hsRepeater[6];
+      uint32_t rsvd_version[(0x03000000-sizeof(_version))>>2];
+    public: //  AxiSy56040 @ 0x03000000
+      Cphw::XBar       _xbar;
+    private:
+      uint32_t rsvd_xbar[(0x05000000-sizeof(_xbar))>>2];
+    public: //  TimingRx   @ 0x08000000
+      Cphw::TimingRx  _usTiming;
+    private:
+      uint32_t rsvd_us[(0x00400000-sizeof(_usTiming))>>2];
+    public: //  TimingRx   @ 0x08400000
+      Cphw::TimingRx  _cuTiming;
+    private:
+      uint32_t rsvd_cu[(0x00400000-sizeof(_cuTiming))>>2];
+    public: //  Generator  @ 0x08800000
+      Cphw::Reg64 _genTimestamp;
+      Cphw::Reg64 _genPulseId;
+    private:
+      uint32_t rsvd_gen[(0x00100000-16)>>2];
+    public: //  MmcmPhaseLock
+      MmcmPhaseLock _mmcm[3];
+    private:
+      uint32_t _reserved_AT[(0x00400000)>>2];
+    public: // HsRepeater  @ 0x09000000
+      Cphw::HsRepeater _hsRepeater[6];
     private:
       uint32_t _reserved_HR[(0x03000000-sizeof(Module::_hsRepeater))>>2];
     public:
-      Pds::Cphw::Jtag       _jtag;
+      Cphw::Jtag       _jtag;
     private:
       uint32_t _reserved_JT[(0x74000000-sizeof(Module::_jtag))>>2];
     public:
@@ -98,6 +129,8 @@ namespace Pds {
       void resetL0     (bool);
       void resetL0     ();
       bool l0Reset     () const;
+      void master      (bool);
+      bool master      () const;
       void setL0Enabled(bool);
       bool getL0Enabled() const;
       void setL0Select_FixedRate(unsigned rate);
@@ -118,6 +151,7 @@ namespace Pds {
     public:
       void dumpPll     (unsigned) const;
       void dumpTiming  (unsigned) const;
+      void setVerbose  (unsigned);
       void pllBwSel    (unsigned, int);
       void pllFrqTbl   (unsigned, int);
       void pllFrqSel   (unsigned, int);
@@ -203,6 +237,8 @@ namespace Pds {
       //  [16]    amc           AMC selection
       //  [21:20] inhibit       Inhibit index
       //  [24]    tagStream     Enable tag FIFO streaming input
+      //  [25]    usRxEnable
+      //  [26]    cuRxEnable
       Cphw::Reg   _index;
       //  0x0008 - RW: ds link configuration for link[index]
       //  [17:0]  txDelay       Transmit delay
@@ -230,6 +266,7 @@ namespace Pds {
       //  0x0018 - RW: L0 selection control for partition[index]
       //  [0]     reset
       //  [16]    enable
+      //  [30]    master
       //  [31]    enable counter update
       Cphw::Reg   _l0Control;
       //  0x001c - RW: L0 selection criteria for partition[index]

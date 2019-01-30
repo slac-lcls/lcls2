@@ -5,22 +5,23 @@
 #include "psdaq/cphw/AxiVersion.hh"
 #include "psdaq/cphw/GthEyeScan.hh"
 #include "psdaq/cphw/RingBuffer.hh"
+#include "psdaq/cphw/TimingRx.hh"
 #include "psdaq/cphw/XBar.hh"
 
 namespace Pds {
   namespace Cphw {
     class AmcTiming {
     public:
-      void setPolarity     (bool);
-      void setLCLS         ();
-      void setLCLSII       ();
-      void resetStats      ();
-      void bbReset         ();
-      void dumpStats       () const;
+      void setPolarity     (bool v) { rx.setPolarity(v); }
+      void setLCLS         ()       { rx.setLCLS    (); }
+      void setLCLSII       ()       { rx.setLCLSII  (); }
+      void resetStats      ()       { rx.resetStats (); }
+      void bbReset         ()       { rx.bbReset    (); }
+      void dumpStats       () const { rx.dumpStats  (); }
       void setRxAlignTarget(unsigned);
       void setRxResetLength(unsigned);
       void dumpRxAlign     () const;
-      bool linkUp          () const;
+      bool linkUp          () const { return rx.linkUp(); }
     public:
       //  AxiVersion @ 0
       AxiVersion version;
@@ -29,19 +30,7 @@ namespace Pds {
       XBar       xbar;
       uint32_t rsvd_xbar[(0x05000000-sizeof(XBar))>>2];
       //  TimingRx   @ 0x08000000
-      Reg SOFcounts;
-      Reg EOFcounts;
-      Reg Msgcounts;
-      Reg CRCerrors;
-      Reg RxRecClks;
-      Reg RxRstDone;
-      Reg RxDecErrs;
-      Reg RxDspErrs;
-      Reg CSR;
-      Reg MsgDelay;
-      Reg TxRefClks;
-      Reg BuffByCnts;
-      uint32_t rsvd14[(0x10000>>2)-12];
+      TimingRx   rx;
       //  RingBuffer @ 0x08010000
       RingBuffer ring0;
       uint32_t rsvd_ring0[(0x10000-sizeof(RingBuffer))>>2];

@@ -18,6 +18,7 @@ target_include_directories(xpm PUBLIC
     $ENV{CONDA_PREFIX}/epics/include
     $ENV{CONDA_PREFIX}/epics/include/os/Linux
     $ENV{CONDA_PREFIX}/epics/include/compiler/gcc
+    $ENV{CONDA_PREFIX}/include
 )
 
 find_library(YAML_CPP_LIB yaml-cpp PATH $ENV{CONDA_PREFIX}/lib)

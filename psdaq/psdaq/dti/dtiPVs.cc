@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <signal.h>
 
+#include <cpsw_error.h>  // To catch CPSW exceptions
+
 #include "psdaq/cphw/Reg.hh"
 
 #include "psdaq/dti/Module.hh"
@@ -115,12 +117,16 @@ void StatsTimer::cancel()
 //
 void StatsTimer::expired()
 {
-  timespec t; clock_gettime(CLOCK_REALTIME,&t);
-  Stats    s = _dev.stats();
-  double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
-  _pvs.update(s,_s,dt);
-  _s=s;
-  _t=t;
+  try {
+    timespec t; clock_gettime(CLOCK_REALTIME,&t);
+    Stats    s = _dev.stats();
+    double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
+    _pvs.update(s,_s,dt);
+    _s=s;
+    _t=t;
+  } catch (CPSWError& e) {
+    printf("Caught exception %s\n",e.what());
+  }
 }
 
 void usage(const char* p) {

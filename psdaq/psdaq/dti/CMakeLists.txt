@@ -10,6 +10,7 @@ target_include_directories(dti PUBLIC
     $ENV{CONDA_PREFIX}/epics/include
     $ENV{CONDA_PREFIX}/epics/include/os/Linux
     $ENV{CONDA_PREFIX}/epics/include/compiler/gcc
+    $ENV{CONDA_PREFIX}/include
 )
 
 find_library(YAML_CPP_LIB yaml-cpp $ENV{CONDA_PREFIX}/lib)
