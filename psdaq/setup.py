@@ -26,6 +26,7 @@ setup(
                 'dticas = psdaq.cas.dticas:main',
                 'hsdca = psdaq.cas.hsdca:main',
                 'hsdcas = psdaq.cas.hsdcas:main',
-             ]
+                'control_gui = psdaq.control_gui.app.control_gui:control_gui',
+              ]
        },
 )
