@@ -13,7 +13,8 @@ comm.Barrier()
 st = MPI.Wtime()
 max_events = 1000
 #xtc_dir = "/ffb01/monarin/hsd"
-xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/hsd"
+#xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/hsd"
+xtc_dir = os.path.join(os.getcwd(),'.tmp')
 ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=0, max_events=max_events)
 
 sendbuf = np.zeros(1, dtype='i') 

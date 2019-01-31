@@ -72,6 +72,10 @@ class Test:
 
         callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
         subprocess.check_call(['mpirun','-n','3','python',callback_based])
+        
+        loop_exhaustive_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
+        subprocess.check_call(['mpirun','-n','3','python',loop_exhaustive_based])
+
 
     def test_legion(self):
         self.setup_input_files()

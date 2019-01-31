@@ -62,6 +62,6 @@ class EventManager(object):
                         dgrams[j] = dgram.Dgram(view=views[j], config=self.dm.configs[j], offset=offsets[j])
                         offsets[j] += size
                 
-                bd_evt = Event(dgrams, self.dm.configs, self.dm.calibs, self.dm.det_class_table)
+                bd_evt = Event(dgrams)
                 yield bd_evt
 

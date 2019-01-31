@@ -1,7 +1,5 @@
-# NOTE:
-# To test on 'real' bigdata: 
-# xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/test"
-# >bsub -n 64 -q psfehq -o log.txt mpirun python user_loops.py
+# Test datasource class
+# More exhaustive than user_loops.py or user_callback.py
 
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
@@ -19,6 +17,11 @@ sys.excepthook = global_except_hook
 
 import os
 from psana import DataSource
+import numpy as np
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
 
 def filter_fn(evt):
     return True
@@ -27,28 +30,53 @@ xtc_dir = os.path.join(os.getcwd(),'.tmp')
 
 # Usecase 1a : two iterators with filter function
 ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
-#beginJobCode
+
+sendbuf = np.zeros(1, dtype='i')
+recvbuf = None
+if rank == 0:
+    recvbuf = np.empty([size, 1], dtype='i')
+
 for run in ds.runs():
     det = run.Detector('xppcspad')
-    #beginRunCode
     for evt in run.events():
+        sendbuf += 1
         assert det.raw.raw(evt).shape == (18,)
-    #endRunCode
-#endJobCode
+
+comm.Gather(sendbuf, recvbuf, root=0)
+if rank == 0:
+    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
 
 # Usecase 1b : two iterators without filter function
 ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir))
+
+sendbuf = np.zeros(1, dtype='i')
+recvbuf = None
+if rank == 0:
+    recvbuf = np.empty([size, 1], dtype='i')
+
 for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
+        sendbuf += 1
         assert det.raw.raw(evt).shape == (18,)
 
-# Usecase 2: one iterator 
-for evt in ds.events():
-    pass
+comm.Gather(sendbuf, recvbuf, root=0)
+if rank == 0:
+    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
 
-# Todo: MONA add back configUpdates()
-# Usecase#3: looping through configs
-#for run in ds.runs():
-#    for configUpdate in run.configUpdates():
-#        for config in configUpdate.events():
+# Usecase 2: one iterator 
+sendbuf = np.zeros(1, dtype='i')
+recvbuf = None
+if rank == 0:
+    recvbuf = np.empty([size, 1], dtype='i')
+
+for evt in ds.events():
+    sendbuf += 1
+    assert det.raw.raw(evt).shape == (18,)
+
+comm.Gather(sendbuf, recvbuf, root=0)
+if rank == 0:
+    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
+
+
+
