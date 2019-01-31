@@ -1,10 +1,7 @@
 # NOTE:
 # To test on 'real' bigdata: 
 # xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/test"
-# >bsub -n 64 -q psfehq -o log.txt mpirun python user.py
-#
-# Todo
-# - Use detector interface in eventCode
+# >bsub -n 64 -q psfehq -o log.txt mpirun python user_loops.py
 
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
@@ -27,9 +24,9 @@ def filter_fn(evt):
     return True
 
 xtc_dir = os.path.join(os.getcwd(),'.tmp')
-ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
 
-# Usecase#1 : two iterators
+# Usecase 1a : two iterators with filter function
+ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
 #beginJobCode
 for run in ds.runs():
     det = run.Detector('xppcspad')
@@ -39,7 +36,14 @@ for run in ds.runs():
     #endRunCode
 #endJobCode
 
-# Usecase#2: one iterator
+# Usecase 1b : two iterators without filter function
+ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir))
+for run in ds.runs():
+    det = run.Detector('xppcspad')
+    for evt in run.events():
+        assert det(evt).raw.raw.shape == (18,)
+
+# Usecase 2: one iterator 
 for evt in ds.events():
     pass
 

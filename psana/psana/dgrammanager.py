@@ -50,6 +50,7 @@ class DgramManager():
 
         self.offsets = [_config._offset for _config in self.configs]
         self.det_class_table = self.get_det_class_table()
+        self.calibs = {} # initialize to empty dict - will be populated by run class
    
     def __del__(self):
         if self.fds:

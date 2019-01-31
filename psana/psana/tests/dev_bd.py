@@ -11,10 +11,10 @@ def filter_fn(evt):
 
 comm.Barrier()
 st = MPI.Wtime()
-max_events = 1000000
+max_events = 1000
 #xtc_dir = "/ffb01/monarin/hsd"
 xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/hsd"
-ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn, max_events=max_events)
+ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=0, max_events=max_events)
 
 sendbuf = np.zeros(1, dtype='i') 
 recvbuf = None
