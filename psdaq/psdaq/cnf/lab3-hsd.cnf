@@ -9,7 +9,7 @@ expnum   = 'expnum'
 # can also set this environment in the shell.
 os.environ['TESTRELDIR'] = '/reg/neh/home/yoon82/Software/lcls2/install'
 
-epics_env = 'EPICS_PVA_ADDR_LIST=10.0.3.255 EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067 EPICS_CA_AUTO_ADDR_LIST=NO'
+epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067 EPICS_CA_AUTO_ADDR_LIST=NO'
 conda_env = getRelEnvString()
 total_env = epics_env+conda_env
 

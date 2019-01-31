@@ -1,7 +1,8 @@
 #include "psdaq/xpm/PVStats.hh"
 #include "psdaq/xpm/Module.hh"
 
-#include "psdaq/epicstools/EpicsPVA.hh"
+#include "psdaq/epicstools/PVWriter.hh"
+using Pds_Epics::PVWriter;
 
 #include <sstream>
 #include <string>
@@ -9,7 +10,7 @@
 
 #include <stdio.h>
 
-using Pds_Epics::EpicsPVA;
+using Pds_Epics::PVWriter;
 
 namespace Pds {
   namespace Xpm {
@@ -18,6 +19,12 @@ namespace Pds {
     PVStats::~PVStats() {}
 
     void PVStats::allocate(const std::string& title) {
+      if (ca_current_context() == NULL) {
+        printf("Initializing context\n");
+        SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
+                 "Calling ca_context_create" );
+      }
+
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
       _pv.resize(0);
@@ -26,20 +33,20 @@ namespace Pds {
       o << title << ":";
       std::string pvbase = o.str();
 
-      _pv.push_back( new EpicsPVA((pvbase+"RxClks").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"TxClks").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"RxRsts").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"CrcErrs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"RxDecErrs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"RxDspErrs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"BypassRsts").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"BypassDones").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"RxLinkUp").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"FIDs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"SOFs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"EOFs").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"RxClks").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"TxClks").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"RxRsts").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"CrcErrs").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"RxDecErrs").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"RxDspErrs").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"BypassRsts").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"BypassDones").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"RxLinkUp").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"FIDs").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"SOFs").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"EOFs").c_str()) );
 #define PVPUSH(s) { std::ostringstream o; o << pvbase << #s << i; \
-          _pv.push_back(new EpicsPVA(o.str().c_str())); }
+          _pv.push_back(new PVWriter(o.str().c_str())); }
       for(unsigned i=0; i<32; i++) {
         PVPUSH(LinkTxReady);
         PVPUSH(LinkRxReady);
@@ -51,19 +58,19 @@ namespace Pds {
 	PVPUSH(RemoteLinkId);
       }
 #undef PVPUSH
-      _pv.push_back( new EpicsPVA((pvbase+"BpClk").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"BpClk").c_str()) );
       printf("PVs allocated\n");
     }
 
-#define PVPUT(v)    if ((*it)->connected()) { (*it)->putFrom<double>(double(v)); it++; }
-#define PVPUTI(v)   if ((*it)->connected()) { (*it)->putFrom<int>(int(v)); it++; }
+#define PVPUT(v)    if ((*it)->connected()) { *reinterpret_cast<double*>((*it)->data()) = double(v); (*it)->put(); it++; }
+#define PVPUTI(v)   if ((*it)->connected()) { *reinterpret_cast<int   *>((*it)->data()) = int   (v); (*it)->put(); it++; }
 
-    void PVStats::update(const CoreCounts& nc, const CoreCounts& oc,
+    void PVStats::update(const CoreCounts& nc, const CoreCounts& oc, 
                          const LinkStatus* nl, const LinkStatus* ol,
                          unsigned bpClk,
                          double dt)
     {
-      std::vector<EpicsPVA*>::iterator it = _pv.begin();
+      std::vector<PVWriter*>::iterator it = _pv.begin();
       PVPUT(double(nc.rxClkCount       - oc.rxClkCount      ) / dt * 16e-6);
       PVPUT(double(nc.txClkCount       - oc.txClkCount      ) / dt * 16e-6);
       PVPUT(double(nc.rxRstCount       - oc.rxRstCount      ) / dt);

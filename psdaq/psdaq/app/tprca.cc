@@ -9,7 +9,8 @@
 #include <time.h>
 #include <semaphore.h>
 
-#include "psdaq/epicstools/EpicsPVA.hh"
+#include "psdaq/epicstools/EpicsCA.hh"
+#include "psdaq/epicstools/PVWriter.hh"
 
 #include <string>
 #include <vector>
@@ -18,7 +19,8 @@
 static const double CLK_FREQ = 1300e6/7.;
 static bool _dump=false;
 
-using Pds_Epics::EpicsPVA;
+using Pds_Epics::EpicsCA;
+using Pds_Epics::PVWriter;
 
 namespace Pds {
   namespace Tpr {
@@ -27,7 +29,7 @@ namespace Pds {
       RxDesc(uint32_t* d, unsigned sz) : maxSize(sz), data(d) {}
     public:
       uint32_t  maxSize;
-      uint32_t* data;
+      uint32_t* data; 
     };
   };
 };
@@ -40,17 +42,17 @@ namespace Pds {
     public:
     std::string buildStamp() const;
     public:
-    volatile uint32_t FpgaVersion;
-    volatile uint32_t ScratchPad;
-    volatile uint32_t DeviceDnaHigh;
-    volatile uint32_t DeviceDnaLow;
-    volatile uint32_t FdSerialHigh;
-    volatile uint32_t FdSerialLow;
-    volatile uint32_t MasterReset;
-    volatile uint32_t FpgaReload;
-    volatile uint32_t FpgaReloadAddress;
-    volatile uint32_t Counter;
-    volatile uint32_t FpgaReloadHalt;
+    volatile uint32_t FpgaVersion; 
+    volatile uint32_t ScratchPad; 
+    volatile uint32_t DeviceDnaHigh; 
+    volatile uint32_t DeviceDnaLow; 
+    volatile uint32_t FdSerialHigh; 
+    volatile uint32_t FdSerialLow; 
+    volatile uint32_t MasterReset; 
+    volatile uint32_t FpgaReload; 
+    volatile uint32_t FpgaReloadAddress; 
+    volatile uint32_t Counter; 
+    volatile uint32_t FpgaReloadHalt; 
     volatile uint32_t reserved_11[0x100-11];
     volatile uint32_t UserConstants[64];
     volatile uint32_t reserved_0x140[0x200-0x140];
@@ -290,7 +292,7 @@ namespace Pds {
 
     void TprBase::setupDaq    (unsigned i,
     unsigned partition) {
-    channel[i].evtSel   = (1<<30) | (3<<14) | partition; //
+    channel[i].evtSel   = (1<<30) | (3<<14) | partition; // 
     channel[i].control = 5;
     }
 
@@ -411,7 +413,7 @@ namespace Pds {
     printf("RxRstDone: %08x\n", RxRstDone);
     printf("RxDecErrs: %08x\n", RxDecErrs);
     printf("RxDspErrs: %08x\n", RxDspErrs);
-    printf("CSR      : %08x\n", CSR);
+    printf("CSR      : %08x\n", CSR); 
     printf("TxRefClks: %08x\n", TxRefClks);
     printf("BypDone  : %04x\n", (BypassCnts>> 0)&0xffff);
     printf("BypResets: %04x\n", (BypassCnts>>16)&0xffff);
@@ -569,7 +571,7 @@ static std::string to_name(const char* base,
 namespace Pds {
   class ChannelControl : public Pds_Epics::PVMonitorCb {
   public:
-    ChannelControl(Tpr::TprBase& base,
+    ChannelControl(Tpr::TprBase& base, 
                    std::string   name,
                    unsigned      chan) :
       _base      (base),
@@ -593,13 +595,13 @@ namespace Pds {
       _rate      (to_name(name,"RATE"))
     {}
   public:
-#define TOU(p)    p.getScalarAs<unsigned>()
-#define TOI(p)    p.getScalarAs<int>()
-#define STOU(p,s) unsigned(p.getScalarAs<double>()*s)
+#define TOU(p)    *reinterpret_cast<unsigned*>(p.data())
+#define TOI(p)    *reinterpret_cast<int     *>(p.data())
+#define STOU(p,s) unsigned(*reinterpret_cast<double*>(p.data())*s)
     void updated() {
       unsigned umode     = TOU(_mode);
       unsigned upolarity = TOU(_polarity);
-      double   ddelay    = (_delay.getScalarAs<double>())*CLK_FREQ;
+      double   ddelay    = *reinterpret_cast<double*>(_delay.data())*CLK_FREQ;
       unsigned udelay    = unsigned(ddelay);
       unsigned udelayTap = unsigned((ddelay-double(udelay))*63.);
       unsigned uwidth    = STOU(_width,CLK_FREQ);
@@ -624,10 +626,10 @@ namespace Pds {
       unsigned urate;
 
       switch(usel) {
-      case 0:
+      case 0: 
         urate  = ufr&0xf;
         break;
-      case 1:
+      case 1: 
         urate  = (1<<11) | ((uac&0x7)<<0) | ((uts&0x3f)<<3);
         break;
       case 2:
@@ -694,47 +696,50 @@ namespace Pds {
       printf("Chan %u [%p]:  control %x [%x]  evtsel %x [%x]\n",
              _channel, &_base.channel[_channel],
              u, _base.channel[_channel].control,
-             _base.channel[_channel].evtSel,
+             _base.channel[_channel].evtSel, 
              (destsel<<13) | (urate<<0) );
     }
     void report(double dt) {
       unsigned events = _base.channel[_channel].evtCount;
       double rate = double(events-_events)/dt;
-      _rate.putFrom<double>(rate);
+      *reinterpret_cast<double*>(_rate.data())=rate;
+      _rate.put();
       _events=events;
     }
   private:
     Tpr::TprBase& _base;
     unsigned      _channel;
     unsigned      _events;
-    EpicsPVA       _mode;
-    EpicsPVA       _delay;
-    EpicsPVA       _width;
-    EpicsPVA       _polarity;
-    EpicsPVA       _dstsel;
-    EpicsPVA       _destns;
-    EpicsPVA       _rateSel;
-    EpicsPVA       _fixedRate;
-    EpicsPVA       _acRate;
-    EpicsPVA       _acTimeslot;
-    EpicsPVA       _seqIdx;
-    EpicsPVA       _seqBit;
-    EpicsPVA       _xPart;
-    EpicsPVA       _bsaStart;
-    EpicsPVA       _bsaWidth;
-    EpicsPVA      _rate;
+    EpicsCA       _mode;
+    EpicsCA       _delay;
+    EpicsCA       _width;
+    EpicsCA       _polarity;
+    EpicsCA       _dstsel;
+    EpicsCA       _destns;
+    EpicsCA       _rateSel;
+    EpicsCA       _fixedRate;
+    EpicsCA       _acRate;
+    EpicsCA       _acTimeslot;
+    EpicsCA       _seqIdx;
+    EpicsCA       _seqBit;
+    EpicsCA       _xPart;
+    EpicsCA       _bsaStart;
+    EpicsCA       _bsaWidth;
+    PVWriter      _rate;
   };
-
+  
 #define PVPUT( pv, value ) {                            \
-    pv.putFrom<unsigned>(value);                        \
+    *reinterpret_cast<unsigned*>(pv.data())=value;      \
+    pv.put();                                           \
   }
 #define PVPUTD( vreg, ovalue, pv ) {                    \
     unsigned nvalue = vreg;                             \
     double value = double(nvalue-ovalue)/dt;            \
-    pv.putFrom<double>(value);                          \
+    *reinterpret_cast<double*>(pv.data())=value;        \
+    pv.put();                                           \
     ovalue = nvalue;                                    \
   }
-
+  
   class TprControl : public Pds_Epics::PVMonitorCb {
   public:
     TprControl(TprReg* p, const char* name) :
@@ -757,7 +762,7 @@ namespace Pds {
     {
       printf("FpgaVersion: %08x\n", p->version.FpgaVersion);
       printf("BuildStamp: %s\n", p->version.buildStamp().c_str());
-
+      
       p->xbar.dump();
       p->tpr.dump();
       p->base.dump();
@@ -782,6 +787,8 @@ namespace Pds {
         for(unsigned i=0; i<TprBase::NCHANNELS; i++)
           _channels[i]->report(dt);
 
+        ca_flush_io();
+ 
         if (_dump) {
           _dev->ring1.enable(false);
           _dev->ring1.dump();
@@ -819,11 +826,13 @@ namespace Pds {
 
       { unsigned v = _dev->tpr.RxRecClks;
         double value = 16.e-6*double(v-_rxClks)/dt;
-        _rxClkRate.putFrom<double>(value);
+        *reinterpret_cast<double*>(_rxClkRate.data())=value;
+        _rxClkRate.put();
         _rxClks = v; }
       { unsigned v = _dev->tpr.TxRefClks;
         double value = 16.e-6*double(v-_txClks)/dt;
-        _txClkRate.putFrom<double>(value);
+        *reinterpret_cast<double*>(_txClkRate.data())=value;
+        _txClkRate.put();
         _txClks = v; }
     }
   private:
@@ -832,21 +841,21 @@ namespace Pds {
     unsigned _frames;
     unsigned _rxClks;
     unsigned _txClks;
-    EpicsPVA  _accSelect;
-    EpicsPVA _linkState;
-    EpicsPVA _linkLatch;
-    EpicsPVA _rxErrs;
-    EpicsPVA  _rxErrsRst;
-    EpicsPVA _vsnErr;
-    EpicsPVA _frameRate;
-    EpicsPVA _rxClkRate;
-    EpicsPVA _txClkRate;
-    EpicsPVA _frameVsn;
-    EpicsPVA  _rxPolarity;
+    EpicsCA  _accSelect;
+    PVWriter _linkState;
+    PVWriter _linkLatch;
+    PVWriter _rxErrs;
+    EpicsCA  _rxErrsRst;
+    PVWriter _vsnErr;
+    PVWriter _frameRate;
+    PVWriter _rxClkRate;
+    PVWriter _txClkRate;
+    PVWriter _frameVsn;
+    EpicsCA  _rxPolarity;
     std::vector<ChannelControl*> _channels;
   };
 };
-
+    
 
 
 int main(int argc, char** argv) {
@@ -936,6 +945,10 @@ int main(int argc, char** argv) {
       ring.enable(false);
       ring.dump(); }
 
+    //  EPICS thread initialization
+    SEVCHK ( ca_context_create(ca_enable_preemptive_callback ), 
+             "tprca calling ca_context_create" );
+
     Pds::TprControl* tpr = new Pds::TprControl(reinterpret_cast<TprReg*>(ptr),
                                                name);
     delete tpr;
@@ -943,3 +956,4 @@ int main(int argc, char** argv) {
 
   return 0;
 }
+

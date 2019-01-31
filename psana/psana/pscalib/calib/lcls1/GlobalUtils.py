@@ -154,7 +154,7 @@ PIMAX       = 24
 ANDOR3D     = 25
 JUNGFRAU    = 26
 ZYLA        = 27
-EpicsPVAM    = 28
+EPICSCAM    = 28
 EPIX10KA    = 29
 
 #XAMPS    # N/A data
@@ -168,7 +168,7 @@ EPIX10KA    = 29
 list_of_det_type = (UNDEFINED, CSPAD, CSPAD2X2, PRINCETON, PNCCD, TM6740, \
                     OPAL1000, OPAL2000, OPAL4000, OPAL8000, \
                     ORCAFL40, EPIX, EPIX10K, EPIX100A, FCCD960, ANDOR, ACQIRIS, IMP, QUARTZ4A150, RAYONIX,
-                    EVR, FCCD, TIMEPIX, FLI, PIMAX, ANDOR3D, JUNGFRAU, ZYLA, EpicsPVAM, EPIX10KA)
+                    EVR, FCCD, TIMEPIX, FLI, PIMAX, ANDOR3D, JUNGFRAU, ZYLA, EPICSCAM, EPIX10KA)
 """ List of enumetated detector types"""
 
 list_of_det_names = ('UNDEFINED', 'Cspad', 'Cspad2x2', 'Princeton', 'pnCCD', 'Tm6740', \
@@ -315,7 +315,7 @@ def det_type_from_source(source) :
     elif ':DualAndor.'      in str_src : return ANDOR3D
     elif ':Jungfrau.'       in str_src : return JUNGFRAU
     elif ':Zyla.'           in str_src : return ZYLA
-    elif ':ControlsCamera.' in str_src : return EpicsPVAM
+    elif ':ControlsCamera.' in str_src : return EPICSCAM
     elif ':Epix10ka.'       in str_src : return EPIX10KA
     else                               : return UNDEFINED
 

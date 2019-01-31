@@ -1,6 +1,7 @@
 import sys
 import socket
 import argparse
+from psp import Pv
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
 
@@ -53,7 +54,7 @@ class PvCString:
 #        self.pv.add_monitor_callback(self.update)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.value
         if err is None:
             s = QString()
             slen = len(q)
@@ -77,7 +78,7 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
         self.clicked.connect(self.buttonClicked)
 
-        self.pv = Pv(pvname)
+        self.pv = Pv.Pv(pvname)
 
     def buttonClicked(self):
         self.pv.put(1)
@@ -119,7 +120,7 @@ class PvLinkId(QtWidgets.QWidget):
         initPvMon(self,pvname)
 
     def update(self, err):
-        value = self.pv.get()
+        value = self.pv.value
         print ('LinkId 0x%x'%value)
         itype = (int(value)>>24)&0xff
         self.linkType.setText(linkType[itype])
@@ -259,7 +260,7 @@ class Ui_MainWindow(object):
 
         pllhbox = QtWidgets.QHBoxLayout()
         pllbox  = QtWidgets.QGroupBox("PLLs")
-        pllvbox = QtWidgets.QVBoxLayout()
+        pllvbox = QtWidgets.QVBoxLayout() 
         LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
         LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
         LblEditHML   (pllvbox, pvbase, "PLL_BW_Select",  NAmcs)
@@ -320,11 +321,8 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
-    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument("pv", help="pv to monitor")
     args = parser.parse_args()
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

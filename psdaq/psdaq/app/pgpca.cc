@@ -18,9 +18,9 @@
 #include <sstream>
 
 #include "psdaq/pgp/pgpGen4Daq/app/PgpDaq.hh"
-#include "psdaq/epicstools/EpicsPVA.hh"
+#include "psdaq/epicstools/PVWriter.hh"
 
-using Pds_Epics::EpicsPVA;
+using Pds_Epics::PVWriter;
 using namespace std;
 
 // RX Structure
@@ -38,7 +38,7 @@ struct DmaReadData {
 class AxisHistogram {
 public:
   AxisHistogram(const char* pvname) :
-    _pv   (new EpicsPVA(pvname))
+    _pv   (new PVWriter(pvname))
   {
   }
 public:
@@ -50,21 +50,19 @@ public:
     unsigned sz = 1<<(p[0]&0x1f);
     if (_pv->connected()) {
       unsigned csz = sz*sizeof(uint32_t);
-      printf("AxisHistogram: The following lines have been commented out; we need some refactoring here for PVAccess\n");
-      // TODO mshankar
-      //if (_pv->data_size() != csz) {
-        //printf("AxisHistogram: size disagrees [0x%zx:0x%x]\n", _pv->data_size(), csz);
-      // }
-      // else {
-        // memcpy( _pv->data(), &p[1], csz);
-        // _pv->put();
-      // }
-      // End of commented code
+      if (_pv->data_size() != csz) {
+        printf("AxisHistogram: size disagrees [0x%zx:0x%x]\n",
+               _pv->data_size(), csz);
+      }
+      else {
+        memcpy( _pv->data(), &p[1], csz);
+        _pv->put();
+      }
     }
     return p + sz + 1;
   }
 private:
-  EpicsPVA* _pv;
+  PVWriter* _pv;
 };
 
 static void usage(const char* p)
@@ -105,7 +103,7 @@ int main (int argc, char **argv) {
     return(1);
   }
 
-  PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)mmap(NULL, 0x01000000, (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0);
+  PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)mmap(NULL, 0x01000000, (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0);   
 
   if (lDisable) {
     p->monEnable = 0;
@@ -131,6 +129,7 @@ int main (int argc, char **argv) {
       LANE_HIST(i,"BLKSFREE");
     for(unsigned i=0; i<NAPPS; i++)
       LANE_HIST(i,"DESCFREE");
+    ca_pend_io(0);
 
     struct DmaReadData rd;
     rd.data  = reinterpret_cast<uintptr_t>(new char[0x200000]);
@@ -145,6 +144,7 @@ int main (int argc, char **argv) {
       const uint32_t* q = reinterpret_cast<const uint32_t*>(rd.data);
       for(std::list<AxisHistogram*>::iterator it = hist.begin(); it!=hist.end() && q!=0; it++)
         q = (*it)->update(q);
+      ca_flush_io();
     }
   }
 

@@ -5,7 +5,7 @@
 #include <vector>
 
 namespace Pds_Epics {
-  class EpicsPVA;
+  class PVWriter;
 };
 
 namespace Pds {
@@ -21,7 +21,7 @@ namespace Pds {
       void allocate(const std::string& title);
       void update(const Stats& ni, const Stats& oi, double dt);
     private:
-      std::vector<Pds_Epics::EpicsPVA*> _pv;
+      std::vector<Pds_Epics::PVWriter*> _pv;
     };
   };
 };
