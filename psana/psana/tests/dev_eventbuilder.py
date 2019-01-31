@@ -66,7 +66,7 @@ if __name__ == "__main__":
     
     # broadcast smd files
     if rank == 0:
-        smd_files = np.asarray(glob.glob('/ffb01/monarin/hsd/smalldata/*.smd.xtc'))[:nfiles]
+        smd_files = np.asarray(glob.glob('/ffb01/monarin/hsd/smalldata/*.smd.xtc2'))[:nfiles]
     else:
         smd_files = None
     smd_files = comm.bcast(smd_files, root=0)

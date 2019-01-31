@@ -9,10 +9,10 @@ target_include_directories(dti PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $ENV{CONDA_PREFIX}/epics/include
     $ENV{CONDA_PREFIX}/epics/include/os/Linux
+    $ENV{CONDA_PREFIX}/epics/include/compiler/gcc
 )
 
 find_library(YAML_CPP_LIB yaml-cpp $ENV{CONDA_PREFIX}/lib)
-find_library(EPICS_CA_LIB ca $ENV{CONDA_PREFIX}/lib)
 find_library(CPSW_LIB cpsw $ENV{CONDA_PREFIX}/lib)
 
 #
@@ -56,6 +56,9 @@ target_link_libraries(dtiPVs
    dti
    epicstools
    ${EPICS_CA_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVACLIENT_LIB}
    ${CPSW_LIB}
    ${YAML_CPP_LIB}
    dl
@@ -74,6 +77,9 @@ target_link_libraries(dtiPVr
    dti
    epicstools
    ${EPICS_CA_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVACLIENT_LIB}
    ${CPSW_LIB}
    ${YAML_CPP_LIB}
    dl
@@ -106,6 +112,9 @@ target_link_libraries(dtiHsrCfg
    cphw
    dti
    ${EPICS_CA_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVACLIENT_LIB}
    epicstools
    ${CPSW_LIB}
    ${YAML_CPP_LIB}

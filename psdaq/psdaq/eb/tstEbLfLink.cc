@@ -41,15 +41,17 @@ static const unsigned default_buf_size = 4096;
 static std::atomic<bool> running(true);
 
 
-static size_t* _trSpace(size_t& size)
+static size_t* _trSpace(size_t* size)
 {
   static size_t trOffset[TransitionId::NumberOf];
 
+  size_t sz = 0;
   for (unsigned tr = 0; tr < TransitionId::NumberOf; ++tr)
   {
-    trOffset[tr] = size;
-    size += sizeof(Dgram) + (3 + tr) * sizeof(uint64_t); // 3 = min payload size
+    trOffset[tr] = sz;
+    sz += sizeof(Dgram) + (3 + tr) * sizeof(uint64_t); // 3 = min payload size
   }
+  *size = roundUpSize(sz);
 
   return trOffset;
 }
@@ -58,17 +60,17 @@ int server(const char*        ifAddr,
            const std::string& srvPort,
            unsigned           id,
            unsigned           numClients,
-           unsigned           numBuffers,
-           size_t             bufSize)
+           unsigned           numBuffers)
 {
-  size_t      size     = roundUpSize(numBuffers * bufSize);
-  size_t*     trOffset = _trSpace(size); // NB size is updated by this call
-  void*       region   = allocRegion(numClients * size);
-  EbLfServer* svr      = new EbLfServer(ifAddr, srvPort.c_str());
   const unsigned verbose(1);
-  int         rc;
+  size_t         trSize;
+  size_t*        trOffset = _trSpace(&trSize);
+  EbLfServer*    svr      = new EbLfServer(ifAddr, srvPort.c_str(), verbose);
+  int            rc;
 
   std::vector<EbLfLink*> links(numClients);
+  std::vector<void*>     regions(numClients);
+  std::vector<size_t>    bufSize(numClients);
   for (unsigned i = 0; i < links.size(); ++i)
   {
     const unsigned tmo(120000);
@@ -77,18 +79,35 @@ int server(const char*        ifAddr,
       fprintf(stderr, "Error connecting to EbLfClient[%d]\n", i);
       return rc;
     }
-    if ( (rc = links[i]->preparePender((char*)region + i * size, size, i, id, verbose)) < 0)
+    size_t regSize;
+    if ( (rc = links[i]->preparePender(id, &regSize)) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;
     }
+    regions[i]  = allocRegion(regSize);
+    if (!regions[i])
+    {
+      fprintf(stderr, "No memory found for region %d of size %zd\n",
+              i, regSize);
+      return -1;
+    }
+    if ( (rc = links[i]->setupMr(regions[i], regSize)) )
+    {
+      fprintf(stderr, "Failed to set up MemoryRegion %d\n", i);
+      return rc;
+    }
+    links[i]->postCompRecv();
 
-    printf("EbLfClient[%d] (ID %d) connected\n", i, links[i]->id());
+    bufSize[i] = (regSize - trSize) / numBuffers;
+
+    printf("EbLfClient[%d] (ID %d) connected with buffer size %zd\n",
+           i, links[i]->id(), bufSize[i]);
   }
 
   while (running)
   {
-    uint64_t data;
+    uint64_t  data;
     const int tmo = 5000;               // milliseconds
     if (svr->pend(&data, tmo) < 0)  continue;
 
@@ -96,24 +115,24 @@ int server(const char*        ifAddr,
     unsigned  src = ImmData::src(data);
     unsigned  idx = ImmData::idx(data);
     EbLfLink* lnk = links[src];
-    size_t    ofs = (ImmData::buf(flg) == ImmData::Buffer) ? idx * bufSize
-                                                           : trOffset[idx];
-    void*     buf = lnk->lclAdx(ofs);
-
+    size_t    ofs = (ImmData::buf(flg) == ImmData::Buffer)
+                  ? trSize + idx * bufSize[src]
+                  : trOffset[idx];
     links[src]->postCompRecv();
 
-    uint64_t*   b = (uint64_t*)buf;
-    const char* k = (ImmData::buf(flg) == ImmData::Buffer) ? "l1a" : "tr";
+    void*       buf = lnk->lclAdx(ofs);
+    uint64_t*   b   = (uint64_t*)buf;
+    const char* k   = (ImmData::buf(flg) == ImmData::Buffer) ? "l1a" : "tr";
     printf("Rcvd buf %p, data %08lx [%2d %2d %2d]: cnt %2ld %3s %2ld c %2ld\n",
            buf, data, flg, src, idx, b[0], k, b[1], b[2]);
   }
 
   for (unsigned i = 0; i < links.size(); ++i)
   {
+    free(regions[i]);
     svr->shutdown(links[i]);
   }
   delete svr;
-  free(region);
 
   return 0;
 }
@@ -135,13 +154,17 @@ int client(std::vector<std::string>& svrAddrs,
       TransitionId::BeginCalibCycle, TransitionId::EndCalibCycle,
       TransitionId::Enable,          TransitionId::Disable,
       TransitionId::L1Accept };
-  size_t         size     = roundUpSize(numBuffers * bufSize);
-  size_t*        trOffset = _trSpace(size); // NB size is updated by this call
-  void*          region   = allocRegion(size);
-  EbLfClient*    clt      = new EbLfClient();
-  const unsigned tmo(120000);
   const unsigned verbose(1);
+  size_t         trSize;
+  size_t*        trOffset = _trSpace(&trSize);
+  size_t         regSize  = trSize + roundUpSize(numBuffers * bufSize);
+  void*          region   = allocRegion(regSize);
+  EbLfClient*    clt      = new EbLfClient(verbose);
+  const unsigned tmo(120000);
   int            rc;
+
+  // Adjust for the region size round up
+  bufSize = (regSize - trSize) / numBuffers;
 
   std::vector<EbLfLink*> links(svrAddrs.size());
   for (unsigned i = 0; i < links.size(); ++i)
@@ -154,13 +177,14 @@ int client(std::vector<std::string>& svrAddrs,
       fprintf(stderr, "Error connecting to EbLfServer[%d]\n", i);
       return rc;
     }
-    if ( (rc = links[i]->preparePoster(region, size, i, id, verbose)) < 0)
+    if ( (rc = links[i]->preparePoster(id, region, regSize)) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;
     }
 
-    printf("EbLfServer[%d] (ID %d) connected\n", i, links[i]->id());
+    printf("EbLfServer[%d] (ID %d) connected for buffer size %zd\n",
+           i, links[i]->id(), bufSize);
   }
 
   unsigned cnt = 0;
@@ -195,8 +219,8 @@ int client(std::vector<std::string>& svrAddrs,
       }
     }
 
-    buf = region;
-    unsigned offset = 0;
+    size_t   offset = trSize;
+    buf = (char*)region + offset;
     unsigned idx    = 0;
     for (unsigned l1a = 0; l1a < numEvents; ++l1a)
     {
@@ -224,13 +248,13 @@ int client(std::vector<std::string>& svrAddrs,
 
       if (++idx < numBuffers)
       {
-        buf     = (char*)buf + bufSize;
         offset += bufSize;
+        buf     = (char*)buf + bufSize;
       }
       else
       {
-        buf    = region;
-        offset = 0;
+        offset = trSize;
+        buf    = (char*)region + offset;
         idx    = 0;
       }
     }
@@ -324,7 +348,7 @@ static void usage(char *name, char *desc)
   fprintf(stderr, " %-20s %s (default: %d)\n",      "-b <buffers>",
           "Number of buffers",                      default_buf_cnt);
   fprintf(stderr, " %-20s %s (default: %d)\n",      "-s <buffer size>",
-          "Max buffer size",                        default_buf_size);
+          "Max buffer size (ignored by server)",    default_buf_size);
 
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
 }
@@ -381,7 +405,7 @@ int main(int argc, char **argv)
   unsigned nEvents  = default_num_evts;
   unsigned nClients = 0;
   unsigned nBuffers = default_buf_cnt;
-  unsigned bufSize  = default_buf_size;
+  size_t   bufSize  = default_buf_size;
   char*    spec     = nullptr;
 
   while ((op = getopt(argc, argv, "h?A:S:P:i:n:N:c:b:s:")) != -1)
@@ -444,7 +468,7 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    rc = server(ifAddr, srvPort, id, nClients, nBuffers, bufSize);
+    rc = server(ifAddr, srvPort, id, nClients, nBuffers);
   }
   else
   {

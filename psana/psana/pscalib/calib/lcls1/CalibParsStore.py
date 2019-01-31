@@ -144,7 +144,7 @@ class CalibParsStore() :
                          gu.TIMEPIX,\
                          gu.FLI,\
                          gu.ZYLA,\
-                         gu.EPICSCAM,\
+                         gu.EpicsPVAM,\
                          gu.PIMAX) : cbase = CalibParsBaseCameraV1()
 
         else :

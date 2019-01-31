@@ -1329,6 +1329,7 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' 
 
     data_type = doc.get('data_type', None)
     ctype     = doc.get('ctype', None)
+    verb      = doc.get('vebous', False)
 
     logger.debug('Save in file(s) "%s" data and document metadata:\n%s' % (prefix, msg))
     #logger.debug(info_ndarr(data, 'data', first=0, last=100))
@@ -1345,24 +1346,27 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' 
             logger.info('saved file: %s' % fname)
 
         elif ctype == 'geometry' : 
-            gu.save_textfile(data, fname, mode='w', verb=True)
+            gu.save_textfile(data, fname, mode='w', verb=verb)
 
         elif data_type=='str' and (ctype in ('lasingoffreference', 'pedestals')) : 
             logger.info('save_doc XTCAV IS RECOGNIZED ctype "%s"' % ctype)
             from psana.pscalib.calib.MDBConvertUtils import serialize_dict
             s = dict(data)
             serialize_dict(s)
-            gu.save_textfile(str(s), fname, mode='w', verb=True)
+            gu.save_textfile(str(s), fname, mode='w', verb=verb)
+            logger.info('saved file: %s' % fname)
 
         elif data_type == 'any' :
-            gu.save_textfile(str(data), fname, mode='w', verb=True)
+            gu.save_textfile(str(data), fname, mode='w', verb=verb)
+            logger.info('saved file: %s' % fname)
 
         else :
-            gu.save_textfile(str(data), fname, mode='w', verb=True)
+            gu.save_textfile(str(data), fname, mode='w', verb=verb)
+            logger.info('saved file: %s' % fname)
 
     if control['meta'] : 
         fname = '%s.meta' % prefix
-        gu.save_textfile(msg, fname, mode='w', verb=False)
+        gu.save_textfile(msg, fname, mode='w', verb=verb)
         logger.info('saved file: %s' % fname)
 
 #------------------------------

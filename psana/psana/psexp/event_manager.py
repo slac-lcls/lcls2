@@ -21,7 +21,9 @@ class EventManager(object):
         ofsz_batch = np.zeros((pf.n_packets, self.n_smd_files, 2), dtype='i')
         for i, event_bytes in enumerate(views):
             if event_bytes:
-                evt = Event._from_bytes(self.smd_configs, self.dm.calibs, self.dm.det_class_table, event_bytes)
+                evt = Event._from_bytes(self.smd_configs, event_bytes)
+                
+                # get big data
                 ofsz = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] \
                         for d in evt])
                 ofsz_batch[i,:,:] = ofsz

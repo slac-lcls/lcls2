@@ -4,6 +4,7 @@
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/VarDef.hh"
+#include "xtcdata/xtc/NamesVec.hh"
 #include "rapidjson/document.h"
 
 #include <vector>
@@ -84,7 +85,7 @@ class DebugIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    DebugIter(Xtc* xtc, std::vector<NameIndex>& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
+    DebugIter(Xtc* xtc, NamesVec& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
     {
     }
 
@@ -223,7 +224,7 @@ public:
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
-            unsigned namesId = shapesdata.shapes().namesId();
+            NamesId& namesId = shapesdata.namesId();
             DescData descdata(shapesdata, _namesVec[namesId]);
             Names& names = descdata.nameindex().names();
 	    //   printf("Found %d names\n",names.num());
@@ -240,7 +241,7 @@ public:
         }
         return Continue;
     }
-    std::vector<NameIndex>& _namesVec;
+    NamesVec& _namesVec;
     void printOffset(const char* str, void* base, void* ptr) {
         printf("***%s at offset %li addr %p\n",str,(char*)ptr-(char*)base,ptr);
     }
@@ -296,9 +297,9 @@ public:
     uint8_t array[18];
 };
 
-void pgpExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId, Src& src)
+void pgpExample(Xtc& parent, NamesVec& namesVec, NamesId& namesId)
 {
-    DescribedData frontEnd(parent, namesVec, nameId, src);
+    DescribedData frontEnd(parent, namesVec, namesId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -315,9 +316,9 @@ void pgpExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId, 
     frontEnd.set_array_shape(PgpDef::array1Pgp, shape);
 }
 
-void fexExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId, Src& src)
+void fexExample(Xtc& parent, NamesVec& namesVec, NamesId& namesId)
 { 
-    CreateData fex(parent, namesVec, nameId, src);
+    CreateData fex(parent, namesVec, namesId);
     fex.set_value(FexDef::floatFex, (double)41.0);
 
     unsigned shape[MaxRank] = {2,3};
@@ -332,9 +333,9 @@ void fexExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId, 
 }
    
 
-void padExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId, Src& src)
+void padExample(Xtc& parent, NamesVec& namesVec, NamesId& namesId)
 { 
-    DescribedData pad(parent, namesVec, nameId, src);
+    DescribedData pad(parent, namesVec, namesId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -349,33 +350,35 @@ void padExample(Xtc& parent, std::vector<NameIndex>& namesVec, unsigned nameId, 
     pad.set_array_shape(PadDef::arrayRaw, shape);
 }
 
-void addNames(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
+void addNames(Xtc& xtc, NamesVec& namesVec, unsigned& nodeId) {
     Alg hsdRawAlg("raw",0,0,0);
-    Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", src);
+    NamesId namesId0(nodeId,0);
+    Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", namesId0);
     frontEndNames.add(xtc,PgpDef);
-    namesVec.push_back(NameIndex(frontEndNames));
+    namesVec[namesId0] = NameIndex(frontEndNames);
 
     Alg hsdFexAlg("fex",4,5,6);
-    Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", src);
+    NamesId namesId1(nodeId,1);
+    Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", namesId1);
     fexNames.add(xtc, FexDef);
-    namesVec.push_back(NameIndex(fexNames));
+    namesVec[namesId1] = NameIndex(fexNames);
 
     unsigned segment = 0;
     Alg cspadRawAlg("raw",2,3,42);
-    Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", src, segment);
+    NamesId namesId2(nodeId,2);
+    Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", namesId2, segment);
     Alg segmentAlg("cspadseg",2,3,42);
     padNames.add(xtc, PadDef);
-    namesVec.push_back(NameIndex(padNames));
+    namesVec[namesId2] = NameIndex(padNames);
 }
 
-void addData(Xtc& xtc, std::vector<NameIndex>& namesVec, Src& src) {
-    // need to protect against putting in the wrong nameId here
-    unsigned nameId = 0;
-    pgpExample(xtc, namesVec, nameId, src);
-    nameId++;
-    fexExample(xtc, namesVec, nameId, src);
-    nameId++;
-    padExample(xtc, namesVec, nameId, src);
+void addData(Xtc& xtc, NamesVec& namesVec, unsigned nodeId) {
+    NamesId namesId0(nodeId,0);
+    pgpExample(xtc, namesVec, namesId0);
+    NamesId namesId1(nodeId,1);
+    fexExample(xtc, namesVec, namesId1);
+    NamesId namesId2(nodeId,2);
+    padExample(xtc, namesVec, namesId2);
 }
 
 class HsdConfigDef:public VarDef
@@ -394,7 +397,7 @@ public:
    }
 } HsdConfigDef;
 
-// void addJson(Xtc& xtc, std::vector<NameIndex>& namesVec) {
+// void addJson(Xtc& xtc, NamesVec& namesVec) {
 
 //     FILE* file;
 //     Py_Initialize();
@@ -425,7 +428,7 @@ public:
 //     configNames.add(xtc, HsdConfigDef);
 //     namesVec.push_back(NameIndex(configNames));
 
-//     CreateData fex(xtc, namesVec, 3); //FIXME: avoid hardwiring nameId
+//     CreateData fex(xtc, namesVec, 3); //FIXME: avoid hardwiring namesId
 
 //     // TODO: dynamically discover
 
@@ -458,7 +461,7 @@ int main(int argc, char* argv[])
     int parseErr = 0;
     unsigned nevents = 2;
     char xtcname[MAX_FNAME_LEN];
-    strncpy(xtcname, "data.xtc", MAX_FNAME_LEN);
+    strncpy(xtcname, "data.xtc2", MAX_FNAME_LEN);
 
     while ((c = getopt(argc, argv, "htf:n:")) != -1) {
         switch (c) {
@@ -492,16 +495,14 @@ int main(int argc, char* argv[])
     config.xtc.damage = 0;
     config.xtc.extent = sizeof(Xtc);
 
-    Src src1;
-    src1.phy(1);
-    Src src2;
-    src2.phy(2);
-    std::vector<NameIndex> namesVec1;
-    // std::vector<NameIndex> namesVec2;
-    addNames(config.xtc, namesVec1, src1);
-    // addNames(config.xtc, namesVec2, src2);
-    // addData(config.xtc, namesVec2, src2);
-    addData(config.xtc, namesVec1, src1);
+    unsigned nodeid1 = 1;
+    unsigned nodeid2 = 2;
+    NamesVec namesVec1;
+    // NamesVec namesVec2;
+    addNames(config.xtc, namesVec1, nodeid1);
+    // addNames(config.xtc, namesVec2, nodeid2);
+    // addData(config.xtc, namesVec2, nodeid2);
+    addData(config.xtc, namesVec1, nodeid1);
 
     //addJson(config.xtc,namesVec);
     //std::cout << "Done addJson" << std::endl;
@@ -536,8 +537,8 @@ int main(int argc, char* argv[])
             dgram.seq = Sequence(TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
         }
 
-        addData(dgram.xtc, namesVec1, src1);
-        // addData(dgram.xtc, namesVec2, src2);
+        addData(dgram.xtc, namesVec1, nodeid1);
+        // addData(dgram.xtc, namesVec2, nodeid2);
 
         printf("*** event %d ***\n",i);
 

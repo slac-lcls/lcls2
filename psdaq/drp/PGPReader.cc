@@ -4,8 +4,7 @@
 #include <bitset>
 #include "AxisDriver.h"
 #include "PGPReader.hh"
-#include "xtcdata/xtc/Dgram.hh"
-#include "xtcdata/xtc/Sequence.hh"
+#include "TimingHeader.hh"
 
 using namespace XtcData;
 
@@ -49,7 +48,7 @@ PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
 
 PGPData* PGPReader::process_lane(uint32_t lane, uint32_t index, int32_t size)
 {
-    Transition* event_header = reinterpret_cast<Transition*>(m_pool.dmaBuffers[index]);
+    Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(m_pool.dmaBuffers[index]);
     int j = event_header->evtCounter & m_buffer_mask;
     PGPData* p = &m_pool.pgp_data[j];
     p->buffers[lane].dmaIndex = index;
@@ -120,8 +119,8 @@ void PGPReader::run()
             if (pgp) {
                 // get first set bit to find index of the first lane
                 int index = __builtin_ffs(pgp->buffer_mask) - 1;
-                Transition* event_header = reinterpret_cast<Transition*>(pgp->buffers[index].data);
-                TransitionId::Value transition_id = event_header->seq.service();
+                Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(pgp->buffers[index].data);
+                XtcData::TransitionId::Value transition_id = event_header->seq.service();
                 //printf("Complete evevent:  Transition id %d pulse id %lu  event counter %u\n",
                 //        transition_id, event_header->seq.pulseId().value(), event_header->evtCounter);
                 Pebble* pebble;

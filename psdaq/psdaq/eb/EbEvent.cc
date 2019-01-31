@@ -148,7 +148,7 @@ void EbEvent::dump(int number)
   printf("    Creator (%p) was @ source %02x with an environment of 0x%08x\n",
          contrib,
          contrib->number(),
-         contrib->env[0]);
+         contrib->env);
 
   printf("    Contributors to this event:\n");
   while(++current != last)
@@ -159,6 +159,6 @@ void EbEvent::dump(int number)
            contrib->number(),
            contrib->seq.pulseId().value(),
            contrib->payloadSize(),
-           contrib->env[0]);
+           contrib->env);
   }
 }

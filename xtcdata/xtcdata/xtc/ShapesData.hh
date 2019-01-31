@@ -11,12 +11,14 @@
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/NamesId.hh"
 
 namespace XtcData {
 
 class VarDef;
 
-static const int maxNameSize = 256;
+static const int MaxNameSize = 256;
+static const int MaxDocSize  = 2048;
 
 class AlgVersion {
 public:
@@ -35,7 +37,8 @@ class Alg {
 public:
     Alg(const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
         _version(major,minor,micro) {
-        strncpy(_alg, alg, maxNameSize);
+        strncpy(_alg, alg, MaxNameSize);
+        _doc[0]='\0'; // initialize docstring to empty
     }
 
     uint32_t version() {
@@ -45,7 +48,8 @@ public:
     const char* name() {return _alg;}
 
 private:
-    char _alg[maxNameSize];
+    char _alg[MaxNameSize];
+    char _doc[MaxDocSize];
     AlgVersion _version;
 };
 
@@ -61,22 +65,25 @@ public:
         // (apart from arrays)
         // assert(rank != 0 && (type=INT64 || type = DOUBLE));
 
-        assert(rank < MaxRank);assert(strlen(name) < maxNameSize);
-        strncpy(_name, name, maxNameSize);
+        assert(rank < MaxRank);assert(strlen(name) < MaxNameSize);
+        strncpy(_name, name, MaxNameSize);
+        _doc[0]='\0'; // initialize docstring to empty
         _type = type;
         _rank = rank;
     }
   
     Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
-        assert(rank < MaxRank);assert(sizeof(name) < maxNameSize);      
-        strncpy(_name, name, maxNameSize);
+        assert(rank < MaxRank);assert(sizeof(name) < MaxNameSize);
+        strncpy(_name, name, MaxNameSize);
+        _doc[0]='\0'; // initialize docstring to empty
         _type = type;
         _rank = rank;
     } 
 
     Name(const char* name, Alg& alg) : _alg(alg) {
-	assert(sizeof(name) < maxNameSize);
-        strncpy(_name, name, maxNameSize);
+        assert(sizeof(name) < MaxNameSize);
+        strncpy(_name, name, MaxNameSize);
+        _doc[0]='\0'; // initialize docstring to empty
         _type = Name::UINT8;
         _rank = 1;
     }
@@ -88,7 +95,8 @@ public:
   
 private:
     Alg      _alg;
-    char     _name[maxNameSize];
+    char     _doc[MaxDocSize];
+    char     _name[MaxNameSize];
     DataType _type;
     uint32_t _rank;
 };
@@ -123,7 +131,7 @@ class AutoParentAlloc : public Xtc
 {
 public:
     AutoParentAlloc(TypeId typeId) : Xtc(typeId) {}
-    AutoParentAlloc(TypeId typeId, Src& src) : Xtc(typeId,src) {}
+    AutoParentAlloc(TypeId typeId, NamesId& namesId) : Xtc(typeId,namesId) {}
     void* alloc(uint32_t size, Xtc& parent) {
         parent.alloc(size);
         return Xtc::alloc(size);
@@ -152,19 +160,20 @@ class NameInfo
 {
 public:
     uint32_t numArrays;
-    char     detType[maxNameSize];
-    char     detName[maxNameSize];
-    char     detId[maxNameSize];
+    char     detType[MaxNameSize];
+    char     detName[MaxNameSize];
+    char     detId[MaxNameSize];
+    char     doc[MaxDocSize];
     Alg      alg;
     uint32_t segment;
 
     NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, uint32_t segment0, uint32_t numarr=0):alg(alg0), segment(segment0){
         numArrays = numarr;
-        strncpy(detName, detname, maxNameSize);
-        strncpy(detType, dettype, maxNameSize);
-        strncpy(detId,   detid,   maxNameSize);
+        strncpy(detName, detname, MaxNameSize);
+        strncpy(detType, dettype, MaxNameSize);
+        strncpy(detId,   detid,   MaxNameSize);
+        doc[0]='\0'; // initialize docstring to empty
     }
-
 
 };
 
@@ -174,14 +183,16 @@ class Names : public AutoParentAlloc
 public:
 
 
-    Names(const char* detName, Alg& alg, const char* detType, const char* detId, Src& src, unsigned segment=0) :
-        AutoParentAlloc(TypeId(TypeId::Names,0),src),
+    Names(const char* detName, Alg& alg, const char* detType, const char* detId, NamesId& namesId, unsigned segment=0) :
+        AutoParentAlloc(TypeId(TypeId::Names,0),namesId),
         _NameInfo(detName, alg, detType, detId, segment)
     {
 
         // allocate space for our private data
         Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
     }
+
+    NamesId& namesId() {return (NamesId&)src;}
 
     uint32_t numArrays(){return _NameInfo.numArrays;}; 
     const char* detName() {return _NameInfo.detName;}
@@ -207,13 +218,12 @@ public:
     void add(Xtc& parent, VarDef& V)
     {
       for(auto const & elem: V.NameVec)
-      	{
-      	  void* ptr = alloc(sizeof(Name), parent);
-      	  new (ptr) Name(elem);
+          {
+              void* ptr = alloc(sizeof(Name), parent);
+              new (ptr) Name(elem);
 
-	  if(Name(elem).rank() > 0){_NameInfo.numArrays++;};
-      	};
-
+              if(Name(elem).rank() > 0){_NameInfo.numArrays++;};
+          };
     }
 private:
     NameInfo _NameInfo;
@@ -234,11 +244,11 @@ public:
 class Shapes : public AutoParentAlloc
 {
 public:
-    Shapes(Xtc& superparent, uint32_t namesId) :
-        AutoParentAlloc(TypeId(TypeId::Shapes,0)),
-        _namesId(namesId)
+    Shapes(Xtc& superparent) :
+        AutoParentAlloc(TypeId(TypeId::Shapes,0))
     {
         // allocate space for our private data
+        // not strictly necessary since we currently have no private data.
         Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
         // go two levels up to "auto-alloc" Shapes size
         superparent.alloc(sizeof(*this));
@@ -249,16 +259,14 @@ public:
         Shape& shape = ((Shape*)(this + 1))[index];
         return shape;
     }
-    uint32_t namesId() {return _namesId;}
-private:
-    // associated numerical index of the Names object in the configure transition
-    uint32_t _namesId;
 };
 
 class ShapesData : public Xtc
 {
 public:
-    ShapesData(Src& src) : Xtc(TypeId(TypeId::ShapesData,0),src) {}
+    ShapesData(NamesId& namesId) : Xtc(TypeId(TypeId::ShapesData,0),namesId) {}
+
+    NamesId& namesId() {return (NamesId&)src;}
 
     Data& data()
     {

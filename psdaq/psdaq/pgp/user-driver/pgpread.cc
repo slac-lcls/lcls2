@@ -4,7 +4,7 @@
 #include <fstream>
 #include <pthread.h>
 #include "pgpdriver.h"
-#include "xtcdata/xtc/Dgram.hh"
+#include "TimingHeader.hh"
 
 static unsigned _nevents=0;
 static uint64_t _nbytes =0;
@@ -120,13 +120,13 @@ int main(int argc, char* argv[])
 
     while (true) {    
         DmaBuffer* buffer = dev.read();
-        XtcData::Transition* event_header = reinterpret_cast<XtcData::Transition*>(buffer->virt);
+        Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(buffer->virt);
         XtcData::TransitionId::Value transition_id = event_header->seq.service();
         _nevents++;
         _nbytes += buffer->size;
         _lanes  |= 1<<buffer->dest;
         if (lverbose) {
-          printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u\n",
+          printf("Size %u B | Dest %u | TimingHeader id %d | pulse id %lu | event counter %u\n",
                  buffer->size, buffer->dest, transition_id, event_header->seq.pulseId().value(), event_header->evtCounter); 
         }
         if (wait_us && event_header->seq.stamp().seconds()>_seconds) {

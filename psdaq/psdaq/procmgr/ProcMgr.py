@@ -13,7 +13,7 @@ from getpass import getuser
 import shutil
 
 uniqueid_maxlen = 30
-rcFile = '/etc/procmgrd.conf'
+rcFileDefault = '/etc/procmgrd.conf'
 
 #
 # printError
@@ -1013,15 +1013,15 @@ class ProcMgr:
     #
     # startAll - call start() with an empty id_list
     #
-    def startAll(self, verbose=0, logpathbase=None, coresize=0):
-        return self.start([], verbose, logpathbase, coresize)
+    def startAll(self, verbose=0, logpathbase=None, coresize=0, rcFile=rcFileDefault):
+        return self.start([], verbose, logpathbase, coresize, rcFile)
 
     #
     # start
     #
     # RETURNS: 0 if any processes were started, otherwise 1.
     #
-    def start(self, id_list, verbose=0, logpathbase=None, coresize=0):
+    def start(self, id_list, verbose=0, logpathbase=None, coresize=0, rcFile=rcFileDefault):
 
         rv = 1                  # return value
         started_count = 0       # count successful start commands
@@ -1483,6 +1483,16 @@ class ProcMgr:
 
         # done
         return rv
+
+    #
+    # getIdList
+    #
+    def getIdList(self):
+        idList = []
+        for key, value in self.d.items():
+            idList.append(key2uniqueid(key))
+
+        return idList
 
     #
     # getProcessCounts

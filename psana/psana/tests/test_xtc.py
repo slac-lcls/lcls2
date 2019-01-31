@@ -17,14 +17,14 @@ class Test:
         subprocess.call(['xtcwriter'])
 
     def test_cydgram(self):
-        fname = 'data_cydgram.xtc'
+        fname = 'data_cydgram.xtc2'
         try:
             os.remove(fname)
         except:
             pass
 
         # read in an old xtc file
-        ds = DataSource('data.xtc')
+        ds = DataSource('data.xtc2')
         for run in ds.runs():
             pyxtc = dc.parse_xtc(run.configs[0])
             for evt in run.events():
@@ -38,22 +38,22 @@ class Test:
         xtc(fname)
 
     def test_xtc(self):
-        xtc('data.xtc')
+        xtc('data.xtc2')
 
     def setup_input_files(self):
-        subprocess.call(['xtcwriter','-f','data-ts.xtc', '-t']) # Mona FIXME: writing seq in xtcwriter broke dgramCreate
-        subprocess.call(['smdwriter','-f','data-ts.xtc'])
+        subprocess.call(['xtcwriter','-f','data-ts.xtc2', '-t']) # Mona FIXME: writing seq in xtcwriter broke dgramCreate
+        subprocess.call(['smdwriter','-f','data-ts.xtc2'])
         tmp_dir = os.path.join('.tmp','smalldata')
         if os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir)
         os.makedirs(tmp_dir)
-        shutil.copy('data-ts.xtc',os.path.join('.tmp','data-r0001-s00.xtc')) # Ex. of run 1 with two detectors s00 and s01
-        shutil.copy('data-ts.xtc',os.path.join('.tmp','data-r0001-s01.xtc'))
-        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-r0001-s00.smd.xtc'))
-        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data-r0001-s01.smd.xtc'))
+        shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s00.xtc2')) # Ex. of run 1 with two detectors s00 and s01
+        shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s01.xtc2'))
+        shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s00.smd.xtc2'))
+        shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s01.smd.xtc2'))
 
-        shutil.copy('smd.xtc', os.path.join(tmp_dir, 'data.smd.xtc')) # FIXME: chuck's hack to fix nosetests
-        shutil.copy('smd.xtc',os.path.join(tmp_dir,'data_1.smd.xtc')) # FIXME: chuck's hack to fix nosetests
+        shutil.copy('smd.xtc2', os.path.join(tmp_dir, 'data.smd.xtc2')) # FIXME: chuck's hack to fix nosetests
+        shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data_1.smd.xtc2')) # FIXME: chuck's hack to fix nosetests
 
     def test_serial(self):
         self.setup_input_files()

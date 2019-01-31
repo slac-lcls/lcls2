@@ -1,60 +1,60 @@
 import numpy as np
 
 class DetectorImpl(object):
-    def __init__(self, dgramlist, configs, calibs):
-        self._dgramlist = dgramlist
-        self._configs   = configs
-        self._calibs    = calibs
+    def __init__(self, det_name, drp_class_name, configs, calibs):
+        self._name           = det_name
+        self._drp_class_name = drp_class_name
+        self._configs        = configs
+        self._calibs         = calibs
         return
+    def dgrams(self,evt):
+        """
+        Look in the event to find all the dgrams for our detect/drp_class
+        e.g. (xppcspad,raw) or (xppcspad,fex)
+        """
+        return evt._det_dgrams[(self._name,self._drp_class_name)]
 
 class hsd_raw_0_0_0(DetectorImpl):
-    def __init__(self, dgramlist, configs, calibs):
-        super(hsd_raw_0_0_0, self).__init__(dgramlist, configs, calibs)
-    @property
-    def calib(self):
+    def __init__(self, *args):
+        super(hsd_raw_0_0_0, self).__init__(*args)
+    def calib(self, evt):
         return np.zeros((5))
 
 class hsd_fex_4_5_6(DetectorImpl):
-    def __init__(self, dgramlist, configs, calibs):
-        super(hsd_fex_4_5_6, self).__init__(dgramlist, configs, calibs)
-    @property
-    def calib(self):
+    def __init__(self, *args):
+        super(hsd_fex_4_5_6, self).__init__(*args)
+    def calib(self, evt):
         return np.zeros((6))
 
 class cspad_raw_2_3_42(DetectorImpl):
-    def __init__(self, dgramlist, configs, calibs):
-        super(cspad_raw_2_3_42, self).__init__(dgramlist, configs, calibs)
-    @property
-    def raw(self):
-        return self._dgramlist[0].arrayRaw
-    @property
-    def mysum(self):
-        return self._dgramlist[0].arrayRaw.sum()
+    def __init__(self, *args):
+        super(cspad_raw_2_3_42, self).__init__(*args)
+    def raw(self, evt):
+        return self.dgrams(evt)[0].arrayRaw
+    def mysum(self, evt):
+        return self.dgrams(evt)[0].arrayRaw.sum()
 
 class cspad_raw_2_3_43(cspad_raw_2_3_42):
-    def __init__(self, dgramlist, configs, calibs):
-        super(cspad_raw_2_3_43, self).__init__(dgramlist, configs, calibs)
-    @property
-    def raw(self):
+    def __init__(self, *args):
+        super(cspad_raw_2_3_43, self).__init__(*args)
+    def raw(self, evt):
         raise NotImplementedError()
 
 # for early cctbx/psana2 development
 class cspad_raw_1_2_3(DetectorImpl):
-    def __init__(self, dgramlist, configs, calibs):
-        super(cspad_raw_1_2_3, self).__init__(dgramlist, configs, calibs)
-    @property
-    def raw(self):
-        quad0 = self._dgramlist[0].quads0_data
-        quad1 = self._dgramlist[0].quads1_data
-        quad2 = self._dgramlist[0].quads2_data
-        quad3 = self._dgramlist[0].quads3_data
+    def __init__(self, *args):
+        super(cspad_raw_1_2_3, self).__init__(*args)
+    def raw(self, evt):
+        quad0 = self.dgrams(evt)[0].quads0_data
+        quad1 = self.dgrams(evt)[0].quads1_data
+        quad2 = self.dgrams(evt)[0].quads2_data
+        quad3 = self.dgrams(evt)[0].quads3_data
         return np.concatenate((quad0, quad1, quad2, quad3), axis=0)
 
-    @property
-    def photonEnergy(self):
-        return self._dgramlist[0].photonEnergy
+    def photonEnergy(self, evt):
+        return self.dgrams(evt)[0].photonEnergy
 
-    def calib(self, evt, verbose=0): 
+    def calib(self, evt):
         fake_run = -1 # FIXME: in current psana2 RunHelper, calib constants are setup according to that run.
         data = self.raw(evt)
         data = data.astype(np.float64) # convert raw photon counts to float for other math operations.

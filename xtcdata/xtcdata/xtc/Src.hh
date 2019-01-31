@@ -1,90 +1,32 @@
 #ifndef XtcData_Src_hh
 #define XtcData_Src_hh
 
-#include "xtcdata/xtc/Level.hh"
 #include <limits>
 #include <stdint.h>
+#include "xtcdata/xtc/Level.hh"
 
 namespace XtcData
 {
 
 class Src
 {
+private:
+    enum { LevelBitMask = 0xf0000000, LevelBitShift = 28 };
+    enum { ValueBitMask = 0x0fffffff };
+
 public:
-    Src();
-    Src(Level::Type level);
+    Src(Level::Type level=Level::Segment) :
+        _value(level<<LevelBitShift) {}
+    Src(unsigned value, Level::Type level=Level::Segment) :
+        _value((value&ValueBitMask)|((level<<LevelBitShift)&LevelBitMask)) {}
 
-    uint32_t log() const;
-    uint32_t phy() const;
-
-    Level::Type level() const;
-    uint32_t    value() const;
-
-    bool operator==(const Src& s) const;
-    bool operator<(const Src& s) const;
-
-    static uint32_t _sizeof();
-
-    void phy(uint32_t value);
+    Level::Type level() const {return (Level::Type)((_value&LevelBitMask)>>LevelBitShift);}
+    unsigned    value() const {return _value&ValueBitMask;}
 
   protected:
-    uint32_t _log; // logical  identifier
-    uint32_t _phy; // physical identifier
+    uint32_t _value;
 };
 
-inline
-XtcData::Src::Src() : _log(std::numeric_limits<uint32_t>::max()),
-                      _phy(std::numeric_limits<uint32_t>::max())
-{
-}
-inline
-XtcData::Src::Src(XtcData::Level::Type level)
-{
-    uint32_t temp = (uint32_t)level;
-    _log = (temp & 0xff) << 24;
 }
 
-inline
-uint32_t XtcData::Src::log() const
-{
-    return _log;
-}
-inline
-uint32_t XtcData::Src::phy() const
-{
-    return _phy;
-}
-inline
-void XtcData::Src::phy(uint32_t value)
-{
-    _phy = value;
-}
-inline
-XtcData::Level::Type XtcData::Src::level() const
-{
-    return (XtcData::Level::Type)((_log >> 24) & 0xff);
-}
-inline
-uint32_t XtcData::Src::value() const
-{
-  return _log & ((1 << 24) - 1);
-}
-
-inline
-bool XtcData::Src::operator==(const XtcData::Src& s) const
-{
-    return _phy == s._phy && _log == s._log;
-}
-inline
-bool XtcData::Src::operator<(const XtcData::Src& s) const
-{
-    return (_phy < s._phy) || ((_phy == s._phy) && (_log < s._log));
-}
-
-inline
-uint32_t XtcData::Src::_sizeof()
-{
-    return sizeof(XtcData::Src);
-}
-}
 #endif

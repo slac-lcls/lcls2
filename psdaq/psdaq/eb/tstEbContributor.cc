@@ -44,19 +44,29 @@ static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReq
 static const size_t   mon_buf_size     = 1024; // Revisit: Corresponds to monReqServer:sizeofBuffers option
 static const size_t   mon_trSize       = 1024; // Revisit: Corresponds to monReqServer:??? option
 
+static volatile sig_atomic_t lRunning = 1;
+
+void sigHandler( int signal )
+{
+  static unsigned callCount(0);
+
+  if (callCount == 0)
+  {
+    printf("\nShutting down\n");
+
+    lRunning = 0;
+  }
+
+  if (callCount++)
+  {
+    fprintf(stderr, "Aborting on 2nd ^C...\n");
+    ::abort();
+  }
+}
+
 
 namespace Pds {
   namespace Eb {
-
-    class TheSrc : public Src
-    {
-    public:
-      TheSrc(Level::Type level, unsigned id) :
-        Src(level)
-      {
-        _log |= id;
-      }
-    };
 
     class Input : public Dgram
     {
@@ -83,9 +93,9 @@ namespace Pds {
              unsigned id);
       ~DrpSim();
     public:
-      void         shutdown();
+      void            shutdown();
     public:
-      const Dgram* genInput();
+      const Dgram*    genInput();
     public:
       const uint64_t& allocPending() const { return _allocPending; }
     private:
@@ -134,7 +144,6 @@ namespace Pds {
                 StatsMonitor&        smon);
       virtual ~EbCtrbApp();
     public:
-      void     shutdown();
       void     process(EbCtrbIn&);
     private:
       DrpSim               _drpSim;
@@ -142,9 +151,6 @@ namespace Pds {
     private:
       uint64_t             _eventCount;
       uint64_t             _inFlightCnt;
-    private:
-      std::atomic<bool>    _running;
-      std::thread*         _outThread;
     };
   };
 };
@@ -160,7 +166,7 @@ DrpSim::DrpSim(unsigned maxBatches,
   _maxEntries  (maxEntries),
   _maxEvtSz    (maxEvtSize),
   _id          (id),
-  _xtc         (TypeId(TypeId::Data, 0), TheSrc(Level::Segment, id)),
+  _xtc         (TypeId(TypeId::Data, 0), Src(id)),
   _pid         (0x01000000000003ul),  // Something non-zero and not on a batch boundary
   _pool        (sizeof(Entry) + maxEvtSize, maxBatches * maxEntries),
   _trId        (TrUnknown),
@@ -304,12 +310,10 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
                      StatsMonitor&        smon) :
   TebContributor(prms),
-  _drpSim      (prms.maxBatches, prms.maxEntries, prms.maxInputSize, prms.id),
-  _prms        (prms),
-  _eventCount  (0),
-  _inFlightCnt (0),
-  _running     (true),
-  _outThread   (nullptr)
+  _drpSim       (prms.maxBatches, prms.maxEntries, prms.maxInputSize, prms.id),
+  _prms         (prms),
+  _eventCount   (0),
+  _inFlightCnt  (0)
 {
   smon.registerIt("CtbO.EvtRt",  _eventCount,            StatsMonitor::RATE);
   smon.registerIt("CtbO.EvtCt",  _eventCount,            StatsMonitor::SCALAR);
@@ -326,15 +330,6 @@ EbCtrbApp::~EbCtrbApp()
 {
 }
 
-void EbCtrbApp::shutdown()
-{
-  _running = false;
-
-  _drpSim.shutdown();
-
-  if (_outThread)  _outThread->join();
-}
-
 #ifdef SINGLE_EVENTS
 #  include <iostream>                   // std::cin, std::cout
 #endif
@@ -349,7 +344,7 @@ void EbCtrbApp::process(EbCtrbIn& in)
   printf("Hit <return> for an event\n");
 #endif
 
-  while (_running)
+  while (lRunning)
   {
 #ifdef SINGLE_EVENTS
     std::string blank;
@@ -366,34 +361,14 @@ void EbCtrbApp::process(EbCtrbIn& in)
     _inFlightCnt  = inFlightCnt();
   }
 
+  _drpSim.shutdown();
+
   TebContributor::shutdown();
 }
 
 
-static StatsMonitor* lstatsMon(nullptr);
-static EbCtrbApp*    lApp     (nullptr);
-
-void sigHandler(int signal)
-{
-  static std::atomic<unsigned> callCount(0);
-
-  if (callCount == 0)
-  {
-    printf("\nShutting down StatsMonitor...\n");
-    if (lstatsMon)  lstatsMon->shutdown();
-
-    if (lApp)  lApp->EbCtrbApp::shutdown();
-  }
-
-  if (callCount++)
-  {
-    fprintf(stderr, "Aborting on 2nd ^C...\n");
-    ::abort();
-  }
-}
-
 static
-void usage(char *name, char *desc, TebCtrbParams& prms)
+void usage(char *name, char *desc, const TebCtrbParams& prms)
 {
   fprintf(stderr, "Usage:\n");
   fprintf(stderr, "  %s [OPTIONS]\n", name);
@@ -401,12 +376,9 @@ void usage(char *name, char *desc, TebCtrbParams& prms)
   if (desc)
     fprintf(stderr, "\n%s\n", desc);
 
-  fprintf(stderr, "\n<spec>, below, has the form '<id>:<addr>:<port>', with\n");
+  fprintf(stderr, "\n<spec> (-T below), has the form '<id>:<addr>:<port>', with\n");
   fprintf(stderr, "<id> typically in the range 0 - 63.\n");
-  fprintf(stderr, "Low numbered <port> values are treated as offsets into the corresponding ranges:\n");
-  fprintf(stderr, "  Trigger EB:     %d - %d\n", TEB_PORT_BASE, TEB_PORT_BASE + MAX_TEBS - 1);
-  fprintf(stderr, "  Trigger result: %d - %d\n", DRP_PORT_BASE, DRP_PORT_BASE + MAX_DRPS - 1);
-  fprintf(stderr, "  Monitor EB:     %d - %d\n", MEB_PORT_BASE, MEB_PORT_BASE + MAX_MEBS - 1);
+  fprintf(stderr, "Low numbered <port> values are treated as offsets into their corresponding ranges\n");
 
   fprintf(stderr, "\nOptions:\n");
 
@@ -430,9 +402,9 @@ void usage(char *name, char *desc, TebCtrbParams& prms)
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-e <max entries>",
           "Maximum number of entries per batch",      prms.maxEntries);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-n <num buffers>",
-          "Number of Mon buffers",                    mon_buf_cnt);
+          "Number of Monitor buffers",                mon_buf_cnt);
   fprintf(stderr, " %-20s %s (default: %zd)\n",       "-s <size>",
-          "Mon buffer size",                          mon_buf_size);
+          "Monitor buffer size",                      mon_buf_size);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-m <seconds>",
           "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
@@ -501,34 +473,32 @@ int parseSpec(const char*               who,
 }
 
 static
-void joinCollection(std::string&   server,
-                    unsigned       partition,
-                    unsigned       tebPortBase,
-                    unsigned       mebPortBase,
-                    TebCtrbParams& tebPrms,
-                    MebCtrbParams& mebPrms)
+void joinCollection(const std::string& server,
+                    unsigned           partition,
+                    const std::string& ifAddr,
+                    unsigned           tebPortBase,
+                    unsigned           mebPortBase,
+                    TebCtrbParams&     tebPrms,
+                    MebCtrbParams&     mebPrms)
 {
   Collection collection(server, partition, "drp");
   collection.connect();
   std::cout << "cmstate:\n" << collection.cmstate.dump(4) << std::endl;
 
   std::string id = std::to_string(collection.id());
-  tebPrms.id = collection.cmstate["drp"][id]["drp_id"];
-  mebPrms.id = tebPrms.id;
-  //std::cout << "DRP: ID " << tebPrms.id << std::endl;
+  tebPrms.id     = collection.cmstate["drp"][id]["drp_id"];
+  mebPrms.id     = tebPrms.id;
+  tebPrms.ifAddr = collection.cmstate["drp"][id]["connect_info"]["infiniband"];
 
-  uint64_t builders = 0;
+  tebPrms.builders = 0;
   for (auto it : collection.cmstate["teb"].items())
   {
     unsigned    tebId   = it.value()["teb_id"];
     std::string address = it.value()["connect_info"]["infiniband"];
-    //std::cout << "TEB: ID " << tebId << "  " << address << std::endl;
-    builders |= 1ul << tebId;
+    tebPrms.builders |= 1ul << tebId;
     tebPrms.addrs.push_back(address);
     tebPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
-    //printf("TEB Clt[%d] port = %d\n", tebId, tebPortBase + tebId);
   }
-  tebPrms.builders = builders;
 
   if (collection.cmstate.find("meb") != collection.cmstate.end())
   {
@@ -536,10 +506,8 @@ void joinCollection(std::string&   server,
     {
       unsigned    mebId   = it.value()["meb_id"];
       std::string address = it.value()["connect_info"]["infiniband"];
-      //std::cout << "MEB: ID " << mebId << "  " << address << std::endl;
       mebPrms.addrs.push_back(address);
       mebPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
-      //printf("MEB Clt[%d] port = %d\n", mebId, mebPortBase + mebId);
     }
   }
 }
@@ -563,17 +531,16 @@ int main(int argc, char **argv)
   char*          mebSpec      = nullptr;
   char*          outDir       = nullptr;
   std::string    collSrv        (COLL_HOST);
-  TebCtrbParams  tebPrms { /* .addrs         = */ { },
-                           /* .ports         = */ { },
-                           /* .ifAddr        = */ nullptr,
+  TebCtrbParams  tebPrms { /* .ifAddr        = */ { },
                            /* .port          = */ std::to_string(drpPortNo),
                            /* .id            = */ default_id,
                            /* .builders      = */ 0,
+                           /* .addrs         = */ { },
+                           /* .ports         = */ { },
                            /* .duration      = */ BATCH_DURATION,
                            /* .maxBatches    = */ MAX_BATCHES,
                            /* .maxEntries    = */ MAX_ENTRIES,
                            /* .maxInputSize  = */ max_contrib_size,
-                           /* .maxResultSize = */ max_result_size,
                            /* .core          = */ { core_base + core_offset + 0,
                                                     core_base + core_offset + 12 },
                            /* .verbose       = */ 0 };
@@ -657,9 +624,9 @@ int main(int argc, char **argv)
     if (rc)  return rc;
   }
 
-  if (!tebSpec && !mebSpec)
+  if (!tebSpec)
   {
-    joinCollection(collSrv, partition, tebPortBase, mebPortBase, tebPrms, mebPrms);
+    joinCollection(collSrv, partition, tebPrms.ifAddr, tebPortBase, mebPortBase, tebPrms, mebPrms);
   }
   if (tebPrms.id >= MAX_DRPS)
   {
@@ -712,9 +679,9 @@ int main(int argc, char **argv)
   printf("  Batch pool depth:           %d\n",              tebPrms.maxBatches);
   printf("  Max # of entries per batch: %d\n",              tebPrms.maxEntries);
   printf("\n");
-  printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS);
-  printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS);
-  printf("  MEB port range: %d - %d\n", mebPortBase, mebPortBase + MAX_MEBS);
+  printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
+  printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
+  printf("  MEB port range: %d - %d\n", mebPortBase, mebPortBase + MAX_MEBS - 1);
   printf("\n");
 
   pinThread(pthread_self(), tebPrms.core[1]);
@@ -724,25 +691,21 @@ int main(int argc, char **argv)
                                         partitionTag,
                                         rtMonPeriod,
                                         rtMonVerbose);
-  lstatsMon = smon;
-
   pinThread(pthread_self(), tebPrms.core[0]);
   EbCtrbApp*      app = new EbCtrbApp(tebPrms, *smon);
-  MebContributor* meb = (mebPrms.addrs.size() != 0) ? new MebContributor(mebPrms) : nullptr;
+  MebContributor* meb = (mebPrms.addrs.size() != 0)
+                      ? new MebContributor(mebPrms)
+                      : nullptr;
   EbCtrbIn*       in  = new EbCtrbIn (tebPrms, meb, *smon, outDir);
-  lApp = app;
 
   const unsigned ibMtu = 4096;
   unsigned mtuCnt = (tebPrms.maxEntries * tebPrms.maxInputSize  + ibMtu - 1) / ibMtu;
   unsigned mtuRem = (tebPrms.maxEntries * tebPrms.maxInputSize) % ibMtu;
   printf("\n");
-  printf("  sizeof(Dgram):              %zd\n", sizeof(Dgram));
-  printf("  Max contribution size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
-         tebPrms.maxInputSize,  app->maxBatchSize(), mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
-  mtuCnt = (tebPrms.maxEntries * tebPrms.maxResultSize  + ibMtu - 1) / ibMtu;
-  mtuRem = (tebPrms.maxEntries * tebPrms.maxResultSize) % ibMtu;
-  printf("  Max result       size:      %zd, batch size: %zd, # MTUs: %d, last: %d / %d (%f%%)\n",
-         tebPrms.maxResultSize, in->maxBatchSize(),  mtuCnt, mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
+  printf("  Max contribution size:      %zd, batch size: %zd, # MTUs: %d, "
+         "last: %d / %d (%f%%)\n",
+         tebPrms.maxInputSize, app->maxBatchSize(), mtuCnt,
+         mtuRem, ibMtu, 100. * double(mtuRem) / double(ibMtu));
   printf("\n");
 
   // Wait a bit to allow other components of the system to establish connections
@@ -750,7 +713,7 @@ int main(int argc, char **argv)
 
   app->process(*in);
 
-  printf("\nEbCtrbApp was shut down.\n");
+  smon->shutdown();
 
   if (in)    delete in;
   if (meb)   delete meb;

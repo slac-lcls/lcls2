@@ -17,7 +17,8 @@ using namespace Pds::Eb;
 using ms_t = std::chrono::milliseconds;
 
 
-EbLfClient::EbLfClient() :
+EbLfClient::EbLfClient(unsigned verbose) :
+  _verbose(verbose),
   _pending(0)
 {
 }
@@ -42,9 +43,12 @@ int EbLfClient::connect(const char* peer,
     return fab ? fab->error_num() : -FI_ENOMEM;
   }
 
-  //void* data = fab;                     // Something since data can't be NULL
-  //printf("EbLfClient is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
-  //       fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
+  if (_verbose)
+  {
+    void* data = fab;                   // Something since data can't be NULL
+    printf("EbLfClient is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
+           fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
+  }
 
   CompletionQueue* txcq = new CompletionQueue(fab);
   if (!txcq)
@@ -54,7 +58,7 @@ int EbLfClient::connect(const char* peer,
     return -FI_ENOMEM;
   }
 
-  printf("Waiting for EbLfServer %s:%s\n", peer, port);
+  printf("EbLfClient is waiting for server %s:%s\n", peer, port);
 
   Endpoint* ep         = nullptr;
   bool      tmoEnabled = tmo != 0;
@@ -94,7 +98,7 @@ int EbLfClient::connect(const char* peer,
     return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
   }
 
-  *link = new EbLfLink(ep, _pending);
+  *link = new EbLfLink(ep, _verbose, _pending);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);

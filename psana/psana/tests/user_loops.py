@@ -32,7 +32,7 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     #beginRunCode
     for evt in run.events():
-        assert det(evt).raw.raw.shape == (18,)
+        assert det.raw.raw(evt).shape == (18,)
     #endRunCode
 #endJobCode
 
