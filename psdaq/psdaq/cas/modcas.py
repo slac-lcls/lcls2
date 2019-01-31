@@ -57,7 +57,8 @@ def main():
     # PVs
 #    pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 255}
     pvdb[':PAddr'              ] = {'type' : 'int'}
-    pvdb[':FwBuild'            ] = {'type' : 'char', 'count':256}
+#    pvdb[':FwBuild'            ] = {'type' : 'char', 'count':256}
+    pvdb[':FwBuild'            ] = {'type' : 'string', 'value':'None' }
     pvdb[':ModuleInit'         ] = {'type' : 'int'}
     for i in range(NAmcs):
         pvdb[':DumpPll' + '%d'%i] = {'type' : 'int'}
@@ -67,6 +68,8 @@ def main():
 
     pvdb[':Inhibit'            ] = {'type' : 'int'}
     pvdb[':TagStream'          ] = {'type' : 'int'}
+    pvdb[':DumpSeq'            ] = {'type' : 'int'}
+    pvdb[':SetVerbose'         ] = {'type' : 'int'}
 
     LinkEnable = [0]*32
     LinkEnable[17:19] = [1]*3  # DTIs in slots 3-5
@@ -113,10 +116,11 @@ def main():
         pvdb[':PLL_Reset'     +'%d'%i] = {'type' : 'int'}
         pvdb[':PLL_Skew'      +'%d'%i] = {'type' : 'int'}
 
+    addTiming('')   # For old XPM firmware
     addTiming(':Us')
     addTiming(':Cu')
 
-    pvdb[':RecClk      ] = {'type' : 'float', 'value': 0}
+    pvdb[':RecClk'     ] = {'type' : 'float', 'value': 0}
     pvdb[':FbClk'      ] = {'type' : 'float', 'value': 0}
     pvdb[':BpClk'      ] = {'type' : 'float', 'value': 0}
     for i in range(8):

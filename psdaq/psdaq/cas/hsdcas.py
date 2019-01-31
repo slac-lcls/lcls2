@@ -206,41 +206,41 @@ def main():
                                          'value' : 0 }
     # PGP link status
     pvdb[stationstr+'PGPLOCLINKRDY'] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
     pvdb[stationstr+'PGPREMLINKRDY'] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
     # PGP reference clocks
     pvdb[stationstr+'PGPTXCLKFREQ' ] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
     pvdb[stationstr+'PGPRXCLKFREQ' ] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
     # PGP frames transmitted
     pvdb[stationstr+'PGPTXCNT'     ] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
     pvdb[stationstr+'PGPTXCNTSUM'  ] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
     # PGP frames error in transmission
     pvdb[stationstr+'PGPTXERRCNT'  ] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
     # PGP frames received (deadtime link)
     pvdb[stationstr+'PGPRXCNT'     ] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
     # Last PGP opcode received
     pvdb[stationstr+'PGPRXLAST'    ] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
     # Last PGP opcode received
     pvdb[stationstr+'PGPREMPAUSE'  ] = {'type' : 'int',
-                                        'count': Lanes,
-                                        'value' : [0]*Lanes }
+                                        'count': NLanes,
+                                        'value' : [0]*NLanes }
 
     # Bytes(?) free in buffer pool
     pvdb[stationstr+'RAW_FREEBUFSZ'] = {'type' : 'int',

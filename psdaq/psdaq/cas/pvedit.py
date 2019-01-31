@@ -29,6 +29,8 @@ frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 pvactx      = Context('pva')
 
+nogui       = False
+
 class Pv:
     def __init__(self, pvname, callback=None):
         self.pvname = pvname
@@ -37,7 +39,10 @@ class Pv:
             def monitor_cb(newval):
                 logger.info("Received monitor event for PV %s, received %s", self.pvname, newval.raw.value)
                 self.__value__ = newval.raw.value
-                callback(err=None)
+                try:
+                    callback(err=None)
+                except Exception as e:
+                    logger.error("Exception in callback")
             try:
                 self.subscription = pvactx.monitor(self.pvname, monitor_cb)
                 self.__value__ = None
@@ -45,15 +50,16 @@ class Pv:
                 logger.error("Timeout expection connecting to PV %s", pvname)
         else:
             try:
-                self.__value__ = pvactx.get(self.pvname)
+                self.__value__ = pvactx.get(self.pvname).raw.value
                 self.subscription = None
             except TimeoutError as e:
                 logger.error("Timeout expection connecting to PV %s", pvname)
 
     def get(self, useCached=True):
-        if useCached and self.__value__:
-            return self.__value__
-        self.__value__ = pvactx.get(self.pvname)
+#        if useCached and self.__value__:
+#        if useCached:
+#            return self.__value__
+        self.__value__ = pvactx.get(self.pvname).raw.value
         logger.info("Current value of PV %s Value %s", self.pvname, self.__value__)
         return self.__value__
 
@@ -76,6 +82,8 @@ class Pv:
 def initPvMon(mon, pvname):
     logger.info("Monitoring PV %s", pvname)
     mon.pv = Pv(pvname, mon.update)
+    mon.pv.get()
+#    mon.update(None)
 
 class PvDisplay(QtWidgets.QLabel):
 
@@ -141,6 +149,7 @@ class PvLabel:
                     if self.units is not None:
                         s = s + self.units
             except:
+#                logger.error('Exception in pvLable')
                 v = ''
                 for i in range(len(q)):
                     #v = v + ' %f'%q[i]
@@ -156,7 +165,10 @@ class PvLabel:
                     v = v + self.units
                 s = QString(v)
 
-            self.__display.valueSet.emit(s)
+            if nogui:
+                print(self.pv.pvname,str(s))
+            else:
+                self.__display.valueSet.emit(s)
         else:
             print(err)
 
@@ -210,7 +222,10 @@ class PvCheckBox(CheckBox):
         #print ("PvCheckBox.update:  pv %s, i %s, v %x, err %s" % (self.pv.name, self.text(), self.pv.get(), err))
         q = self.pv.get() != 0
         if err is None:
-            if q != self.isChecked():  self.valueSet.emit(q)
+            if nogui:
+                print(self.pv.pvname,q)
+            else:
+                if q != self.isChecked():  self.valueSet.emit(q)
         else:
             print(err)
 
@@ -278,7 +293,10 @@ class PvEditInt(PvEditTxt):
                     v = v + ' %f'%q[i]
                 s = QString(v)
 
-            self.valueSet.emit(s)
+            if nogui:
+                print(self.pv.pvname,str(s))
+            else:
+                self.valueSet.emit(s)
         else:
             print(err)
 
@@ -317,7 +335,10 @@ class PvEditHML(PvEditTxt):
                 q >>= 2
             s = QString(v)
 
-            self.valueSet.emit(s)
+            if nogui:
+                print(self.pv.pvname,str(s))
+            else:
+                self.valueSet.emit(s)
         else:
             print(err)
 
@@ -348,7 +369,10 @@ class PvEditDbl(PvEditTxt):
                     v = v + ' %f'%q[i]
                 s = QString(v)
 
-            self.valueSet.emit(s)
+            if nogui:
+                print(self.pv.pvname,str(s))
+            else:
+                self.valueSet.emit(s)
         else:
             print(err)
 
@@ -382,7 +406,10 @@ class PvDblArray:
         q = self.pv.get()
         if err is None:
             for i in range(len(q)):
-                self.widgets[i].valueSet.emit(QString(format(q[i], '.4f')))
+                if nogui==False:
+                    self.widgets[i].valueSet.emit(QString(format(q[i], '.4f')))
+            if nogui:
+                print(self.pv.pvname,q)
         else:
             print(err)
 
@@ -405,8 +432,11 @@ class PvEditCmb(PvComboDisplay):
     def update(self, err):
         q = self.pv.get()
         if err is None:
-            self.setCurrentIndex(q)
-            self.valueSet.emit(q)
+            if nogui:
+                print(self.pv.pvname,q)
+            else:
+                self.setCurrentIndex(q)
+                self.valueSet.emit(q)
         else:
             print(err)
 
@@ -529,8 +559,11 @@ class PvDefSeq(QtWidgets.QWidget):
         q = self.pv.get()
         if err is None:
             if q >= 15:
-                self.seqsel.setCurrentIndex(q-15)
-                self.valueSet.emit(q-15)
+                if nogui:
+                    print(self.pv.pvname,q)
+                else:
+                    self.seqsel.setCurrentIndex(q-15)
+                    self.valueSet.emit(q-15)
         else:
             print(err)
 
