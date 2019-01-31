@@ -110,6 +110,7 @@ class Ui_MainWindow(object):
 
         self.centralWidget.setLayout(layout)
         self.centralWidget.resize(740, 340)
+
         MainWindow.resize(740, 340)
         MainWindow.setWindowTitle(base)
         MainWindow.setCentralWidget(self.centralWidget)
@@ -118,12 +119,8 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
-    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument("pv", help="pv to monitor")
-
     args = parser.parse_args()
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

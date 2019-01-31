@@ -1,10 +1,9 @@
 import sys
 import argparse
-import logging
 import numpy
+from psp import Pv
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
-from p4p.client.thread import Context
 
 NChannels = 4
 NBuffers = 16
@@ -25,9 +24,7 @@ class PvArray(object):
     def __init__( self, pvname, Editable=True):
         self._display = []
         initPvMon(self,pvname)
-
-    def __initUI__( self, pvname, Editable=True):
-        for i,v in enumerate(self.pv.get()):
+        for i,v in enumerate(self.pv.value):
             lbl = QtWidgets.QLineEdit(str(v))
             lbl.setEnabled(Editable)
             lbl.editingFinished.connect(self.setPv)
@@ -35,15 +32,15 @@ class PvArray(object):
 
     def setPv(self):
         try:
-            newval = []
+            value = numpy.arange(len(self._display))
             for i in range(len(self._display)):
-                newval.append(int(self._display[i].text()))
-            self.pv.put(newval)
+                value[i] = int(self._display[i].text())
+            self.pv.put(value)
         except:
             pass
 
     def update(self,err):
-        q = list(self.pv.get())
+        q = list(self.pv.value)
         if err is None:
             try:
                 for i in range(len(q)):
@@ -55,22 +52,18 @@ class PvRow(PvArray):
     def __init__( self, grid, row, pvname, label, Editable=True):
         super(PvRow, self).__init__( pvname, Editable)
 
-    def __initUI__(self, grid, row, pvname, label, Editable=True):
-        super(PvRow, self).__initUI__(pvname, Editable)
         grid.addWidget( QtWidgets.QLabel(label), row, 0, QtCore.Qt.AlignHCenter )
-        for i in range(len(self.pv.get())):
+        for i in range(len(self.pv.value)):
             grid.addWidget( self._display[i], row, i+1, QtCore.Qt.AlignHCenter )
-
+        
 class PvCol(PvArray):
     def __init__( self, grid, col, pvname, label, Editable=True):
         super(PvCol, self).__init__( pvname, Editable)
 
-    def __initUI__( self, grid, col, pvname, label, Editable=True):
-        super(PvCol, self).__initUI__(pvname, Editable)
         grid.addWidget( QtWidgets.QLabel(label), 0, col, QtCore.Qt.AlignHCenter )
-        for i in range(len(self.pv.get())):
+        for i in range(len(self.pv.value)):
             grid.addWidget( self._display[i], i+1, col, QtCore.Qt.AlignHCenter )
-
+        
 class HsdConfig(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
@@ -99,11 +92,8 @@ class HsdConfig(QtWidgets.QWidget):
                    ('Native Start'   ,'NAT_START'),
                    ('Native Gate'    ,'NAT_GATE'),
                    ('Native Prescale','NAT_PS')]
-        pvRows = []
         for i,elem in enumerate(pvtable):
-            pvRows.append(PvRow( glo, i+1, pvbase+':'+elem[1], elem[0] ))
-        for i,elem in enumerate(pvtable):
-            pvRows[i].__initUI__(glo, i+1, pvbase+':'+elem[1], elem[0] )
+            PvRow( glo, i+1, pvbase+':'+elem[1], elem[0] )
         lo.addLayout(glo)
 
         pvtable = [('Test Pattern (None=-1)','TESTPATTERN')]
@@ -120,7 +110,7 @@ class HsdConfig(QtWidgets.QWidget):
         lo.addWidget(PvPushButton( pvbase+':BASE:DISABLETR'  , 'Disable'))
 
         lo.addStretch(1)
-
+        
         self.setLayout(lo)
 
 class HsdStatus(QtWidgets.QWidget):
@@ -151,28 +141,21 @@ class HsdStatus(QtWidgets.QWidget):
             glo.addWidget( QtWidgets.QLabel('%d'%i), 0, i+1,
                            QtCore.Qt.AlignHCenter )
         # Table data
-        pvtable = [  ('PgpLocalRdy',         'PGPLOCLINKRDY'),
-                    ('PgpRemoteRdy',        'PGPREMLINKRDY'),
-                    ('PgpTx clk freq',      'PGPTXCLKFREQ'),
-                    ('PgpRx clk freq',      'PGPRXCLKFREQ'),
-                    ('PgpTx frame rate',    'PGPTXCNT'),
-                    ('PgpTx frame count',   'PGPTXCNTSUM'),
-                    ('PgpTx error count',   'PGPTXERRCNT'),
-                    ('PgpRx opcode count',  'PGPRXCNT'),
-                    ('PgpRx last opcode',   'PGPRXLAST'),
-                    ('Raw Free Bytes',      'RAW_FREEBUFSZ'),
-                    ('Raw Free Events',     'RAW_FREEBUFEVT'),
-                    ('Fex Free Bytes',      'FEX_FREEBUFSZ'),
-                    ('Fex Free Events',     'FEX_FREEBUFEVT'),
-                    ('Write FIFO Count',    'WRFIFOCNT'),
-                    ('Read FIFO Count',     'RDFIFOCNT')
-                    ]
-
-        pvRows = []
-        for i,elem in enumerate(pvtable):
-            pvRows.append(PvRow( glo, i+1, pvbase+':'+elem[1], elem[0], False ))
-        for i,elem in enumerate(pvtable):
-            pvRows[i].__initUI__(glo, i+1, pvbase+':'+elem[1], elem[0], False )
+        PvRow( glo, 1, pvbase+':PGPLOCLINKRDY', 'PgpLocalRdy' , False)
+        PvRow( glo, 2, pvbase+':PGPREMLINKRDY', 'PgpRemoteRdy' , False)
+        PvRow( glo, 3, pvbase+':PGPTXCLKFREQ' , 'PgpTx clk freq' , False)
+        PvRow( glo, 4, pvbase+':PGPRXCLKFREQ' , 'PgpRx clk freq' , False)
+        PvRow( glo, 5, pvbase+':PGPTXCNT'   , 'PgpTx frame rate' , False)
+        PvRow( glo, 6, pvbase+':PGPTXCNTSUM', 'PgpTx frame count' , False)
+        PvRow( glo, 7, pvbase+':PGPTXERRCNT', 'PgpTx error count' , False)
+        PvRow( glo, 8, pvbase+':PGPRXCNT'   , 'PgpRx opcode count', False)
+        PvRow( glo, 9, pvbase+':PGPRXLAST'  , 'PgpRx last opcode' , False)
+        PvRow( glo,10, pvbase+':RAW_FREEBUFSZ'  , 'Raw Free Bytes' , False)
+        PvRow( glo,11, pvbase+':RAW_FREEBUFEVT' , 'Raw Free Events', False)
+        PvRow( glo,12, pvbase+':FEX_FREEBUFSZ'  , 'Fex Free Bytes' , False)
+        PvRow( glo,13, pvbase+':FEX_FREEBUFEVT' , 'Fex Free Events', False)
+        PvRow( glo,14, pvbase+':WRFIFOCNT' , 'Write FIFO Count', False)
+        PvRow( glo,15, pvbase+':RDFIFOCNT' , 'Read FIFO Count', False)
 
         lo.addLayout(glo)
         lo.addStretch(1)
@@ -195,16 +178,10 @@ class HsdDetail(QtWidgets.QWidget):
             glo.addWidget( QtWidgets.QLabel('%d'%i), i+1, 0,
                            QtCore.Qt.AlignHCenter )
         # Table data
-        pvtable = [ ('Buffer State', 'RAW_BUFSTATE'),
-                    ('Trigger State', 'RAW_TRGSTATE'),
-                    ('Begin Address', 'RAW_BUFBEG'),
-                    ('End Address', 'RAW_BUFEND') ]
-        pvCols = []
-        for i,elem in enumerate(pvtable):
-            pvCols.append(PvCol( glo, i+1, pvbase+':'+elem[1], elem[0], False ))
-        for i,elem in enumerate(pvtable):
-            pvCols[i].__initUI__(glo, i+1, pvbase+':'+elem[1], elem[0], False )
-
+        PvCol( glo, 1, pvbase+':RAW_BUFSTATE'   , 'Buffer State', False)
+        PvCol( glo, 2, pvbase+':RAW_TRGSTATE'   , 'Trigger State', False)
+        PvCol( glo, 3, pvbase+':RAW_BUFBEG'     , 'Begin Address', False)
+        PvCol( glo, 4, pvbase+':RAW_BUFEND'     , 'End Address'  , False)
         lo.addLayout(glo)
         lo.addStretch(1)
 
@@ -222,7 +199,7 @@ class HsdExpert(QtWidgets.QWidget):
         prefix = pvbase+':'
 
         lo = QtWidgets.QVBoxLayout()
-
+        
         lo.addWidget(PvPushButton( pvbase+':RESET', 'Reset'))
         lo.addWidget(PvCheckBox( pvbase+':PGPLOOPBACK', 'Loopback'))
 
@@ -264,13 +241,13 @@ class DetBase(QtWidgets.QWidget):
         prefix = pvbase+':BASE:'
         lo = QtWidgets.QVBoxLayout()
 
-        v = Pv(prefix+'INTTRIGRANGE').get()
+        v = Pv.Pv(prefix+'INTTRIGRANGE').get()
         lo.addWidget(QtWidgets.QLabel('Internal Trigger Range: %u - %u clks'%(v[0],v[1])))
 
-        v = Pv(prefix+'INTTRIGCLK').get()
+        v = Pv.Pv(prefix+'INTTRIGCLK').get()
         lo.addWidget(QtWidgets.QLabel('Internal Trigger Clock: %f MHz (%f ns)'%(v,1.e3/v)))
 
-        v = Pv(prefix+'INTTRIGVAL').get()
+        v = Pv.Pv(prefix+'INTTRIGVAL').get()
         lo.addWidget(QtWidgets.QLabel('Internal Trigger Value: %u clks'%v))
 
         if True:
@@ -280,19 +257,19 @@ class DetBase(QtWidgets.QWidget):
             hlo.addStretch(1)
             lo.addLayout(hlo)
 
-        v = Pv(prefix+'INTPIPEDEPTH').get()
+        v = Pv.Pv(prefix+'INTPIPEDEPTH').get()
         lo.addWidget(QtWidgets.QLabel('Internal Pipeline Depth: %u'%v))
 
-        v = Pv(prefix+'INTAFULLVAL').get()
+        v = Pv.Pv(prefix+'INTAFULLVAL').get()
         lo.addWidget(QtWidgets.QLabel('Internal Almost Full Threshold: %u'%v))
 
-        v = Pv(prefix+'MINL0INTERVAL').get()
+        v = Pv.Pv(prefix+'MINL0INTERVAL').get()
         lo.addWidget(QtWidgets.QLabel('Minimum Trigger Spacing (usecs): %f'%v))
 
-        v = Pv(prefix+'UPSTREAMRTT').get()
+        v = Pv.Pv(prefix+'UPSTREAMRTT').get()
         lo.addWidget(QtWidgets.QLabel('Upstream round trip time (usecs): %f'%v))
 
-        v = Pv(prefix+'DNSTREAMRTT').get()
+        v = Pv.Pv(prefix+'DNSTREAMRTT').get()
         lo.addWidget(QtWidgets.QLabel('Downstream round trip time (usecs)): %f'%v))
 
         if True:
@@ -333,12 +310,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
     parser.add_argument("base", help="pv base to monitor", default="DAQ:LAB2:HSD")
-    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     args = parser.parse_args()
-
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

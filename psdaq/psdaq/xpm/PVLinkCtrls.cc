@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 
-using Pds_Epics::EpicsPVA;
+using Pds_Epics::EpicsCA;
 using Pds_Epics::PVMonitorCb;
 
 namespace Pds {

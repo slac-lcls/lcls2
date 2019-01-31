@@ -35,16 +35,16 @@ namespace Pds {
 #define PVG(i) {                                \
       _ctrl.sem().take();                       \
       _ctrl.setPartition();                     \
-      PRT(getScalarAs<unsigned>());    _ctrl.module().i;    \
+      PRT(TOU(data()));    _ctrl.module().i;    \
       _ctrl.sem().give(); }
 #define PVP(i) {                                        \
       _ctrl.sem().take();                               \
       _ctrl.setPartition();                             \
-      putFrom<unsigned>(_ctrl.module().i);              \
+      TOU(data()) = _ctrl.module().i;                   \
       _ctrl.sem().give();                               \
-      PRT( ( getScalarAs<unsigned>() ) );                           \
+      PRT( ( TOU(data()) ) );                           \
       put(); }
-
+    
 #define CPV(name, updatedBody, connectedBody)                           \
                                                                         \
     class PV(name) : public PVBase                                      \
@@ -59,9 +59,9 @@ namespace Pds {
       virtual ~PV(name)() {}                                            \
     public:                                                             \
       void updated();                                                   \
-      void onConnect();                                                 \
+      void connected(bool);                                             \
     public:                                                             \
-      void put() { if (this->EpicsPVA::connected())  _channel.put(); }  \
+      void put() { if (this->EpicsCA::connected())  _channel.put(); }   \
     private:                                                            \
       PVPCtrls& _ctrl;                                                  \
       unsigned  _idx;                                                   \
@@ -71,105 +71,112 @@ namespace Pds {
       if (_ctrl.enabled())                                              \
         updatedBody                                                     \
     }                                                                   \
-    void PV(name)::onConnect()                                          \
+    void PV(name)::connected(bool c)                                    \
     {                                                                   \
+      this->EpicsCA::connected(c);                                      \
       connectedBody                                                     \
     }
 
-    //    CPV(Inhibit,        { PVG(setInhibit  (getScalarAs<unsigned>()));             },
+    //    CPV(Inhibit,        { PVG(setInhibit  (TOU(data())));             },
     //                        { PVP(getInhibit  ());                        })
-    CPV(XPM,                 {} _ctrl.enable(getScalarAs<unsigned>());,
+    CPV(XPM,                 {} _ctrl.enable(TOU(data()));,
                              {                                           })
-    CPV(TagStream,      { PVG(setTagStream(getScalarAs<unsigned>()));             },
+    CPV(TagStream,      { PVG(setTagStream(TOU(data())));             },
                         { PVP(getTagStream());                        })
 
-    CPV(L0Select,            { _ctrl.l0Select(getScalarAs<unsigned>());
+    CPV(L0Select,            { _ctrl.l0Select(TOU(data()));
                                _ctrl.setL0Select();           },
                              {                                })
-    CPV(L0Select_FixedRate,  { _ctrl.fixedRate(getScalarAs<unsigned>());
+    CPV(L0Select_FixedRate,  { _ctrl.fixedRate(TOU(data()));
                                _ctrl.setL0Select();           },
                              {                                })
-    CPV(L0Select_ACRate,     { _ctrl.acRate(getScalarAs<unsigned>());
+    CPV(L0Select_ACRate,     { _ctrl.acRate(TOU(data()));
                                _ctrl.setL0Select();           },
                              {                                })
-    CPV(L0Select_ACTimeslot, { _ctrl.acTimeslot(getScalarAs<unsigned>());
+    CPV(L0Select_ACTimeslot, { _ctrl.acTimeslot(TOU(data()));
                                _ctrl.setL0Select();           },
                              {                                })
-    CPV(L0Select_Sequence,   { _ctrl.seqIdx(getScalarAs<unsigned>());
+    CPV(L0Select_Sequence,   { _ctrl.seqIdx(TOU(data()));
                                _ctrl.setL0Select();           },
                              {                                })
-    CPV(L0Select_SeqBit,     { _ctrl.seqBit(getScalarAs<unsigned>());
+    CPV(L0Select_SeqBit,     { _ctrl.seqBit(TOU(data()));
                                _ctrl.setL0Select();           },
                              {                                })
-    CPV(DstSelect,           { _ctrl.dstSelect(getScalarAs<unsigned>());
+    CPV(DstSelect,           { _ctrl.dstSelect(TOU(data()));
                                _ctrl.setL0Select();           },
                              {                                })
-    CPV(DstSelect_Mask,      { _ctrl.dstMask(getScalarAs<unsigned>());
+    CPV(DstSelect_Mask,      { _ctrl.dstMask(TOU(data()));
                                _ctrl.setL0Select();           },
                              {                                })
 
     CPV(ResetL0     ,   { PVG(resetL0());                         },
                         { PVP(l0Reset ());                        })
-    CPV(Run,            { PVG(setL0Enabled (getScalarAs<unsigned>() != 0));   },
+    CPV(Run,            { PVG(setL0Enabled (TOU(data()) != 0));   },
                         { PVP(getL0Enabled ());                   })
 
-    CPV(L0Delay,        { PVG(setL0Delay(getScalarAs<unsigned>()));           },
+    CPV(L0Delay,        { PVG(setL0Delay(TOU(data())));           },
                         { PVP(getL0Delay());                      })
-    CPV(L1TrgClear,     { PVG(setL1TrgClr  (getScalarAs<unsigned>()));        },
+    CPV(L1TrgClear,     { PVG(setL1TrgClr  (TOU(data())));        },
                         { PVP(getL1TrgClr  ());                   })
-    CPV(L1TrgEnable,    { PVG(setL1TrgEnb  (getScalarAs<unsigned>()));        },
+    CPV(L1TrgEnable,    { PVG(setL1TrgEnb  (TOU(data())));        },
                         { PVP(getL1TrgEnb  ());                   })
-    CPV(L1TrgSource,    { PVG(setL1TrgSrc  (getScalarAs<unsigned>()));        },
+    CPV(L1TrgSource,    { PVG(setL1TrgSrc  (TOU(data())));        },
                         { PVP(getL1TrgSrc  ());                   })
-    CPV(L1TrgWord,      { PVG(setL1TrgWord (getScalarAs<unsigned>()));        },
+    CPV(L1TrgWord,      { PVG(setL1TrgWord (TOU(data())));        },
                         { PVP(getL1TrgWord ());                   })
-    CPV(L1TrgWrite,     { PVG(setL1TrgWrite(getScalarAs<unsigned>()));        },
+    CPV(L1TrgWrite,     { PVG(setL1TrgWrite(TOU(data())));        },
                         { PVP(getL1TrgWrite());                   })
 
-    CPV(AnaTagReset,    { PVG(_analysisRst = getScalarAs<unsigned>());        },
+    CPV(AnaTagReset,    { PVG(_analysisRst = TOU(data()));        },
                         { PVP(_analysisRst);                      })
-    CPV(AnaTag,         { PVG(_analysisTag = getScalarAs<unsigned>());        },
+    CPV(AnaTag,         { PVG(_analysisTag = TOU(data()));        },
                         { PVP(_analysisTag);                      })
-    CPV(AnaTagPush,     { PVG(_analysisPush = getScalarAs<unsigned>());       },
+    CPV(AnaTagPush,     { PVG(_analysisPush = TOU(data()));       },
                         { PVP(_analysisPush);                     })
 
-    CPV(PipelineDepth,  { PVG(_pipelineDepth = getScalarAs<unsigned>());      },
+    CPV(PipelineDepth,  { PVG(_pipelineDepth = TOU(data()));      },
                         { PVP(_pipelineDepth);                    })
 
-    CPV(MsgHeader,      { _ctrl.msgHeader(getScalarAs<unsigned>());           },
-                        { _ctrl.msgHeader(getScalarAs<unsigned>());           })
-    CPV(MsgInsert,      { if (getScalarAs<unsigned>()!=0) _ctrl.msgInsert();  },
+    CPV(MsgHeader,      { _ctrl.msgHeader(TOU(data()));           },
+                        { _ctrl.msgHeader(TOU(data()));           })
+    CPV(MsgInsert,      { if (TOU(data())!=0) _ctrl.msgInsert();  },
                         {                                         })
-    CPV(MsgPayload,     { _ctrl.msgPayload(getScalarAs<unsigned>());          },
-                        { _ctrl.msgPayload(getScalarAs<unsigned>());          })
-    CPV(MsgConfigKey,   { _ctrl.configKey     (getScalarAs<unsigned>());      },
-                        { _ctrl.configKey     (getScalarAs<unsigned>());      })
-    CPV(MsgConfig,      { if (getScalarAs<unsigned>()!=0) _ctrl.msg_config(); },
+    CPV(MsgPayload,     { _ctrl.msgPayload(TOU(data()));          },
+                        { _ctrl.msgPayload(TOU(data()));          })
+    CPV(MsgConfigKey,   { _ctrl.configKey     (TOU(data()));      },
+                        { _ctrl.configKey     (TOU(data()));      })
+    CPV(MsgConfig,      { if (TOU(data())!=0) _ctrl.msg_config(); },
                         {                                         })
-    CPV(MsgEnable,      { if (getScalarAs<unsigned>()!=0) _ctrl.msg_enable(); },
+    CPV(MsgEnable,      { if (TOU(data())!=0) _ctrl.msg_enable(); },
                         {                                         })
-    CPV(MsgDisable,     { if (getScalarAs<unsigned>()!=0) _ctrl.msg_disable();},
+    CPV(MsgDisable,     { if (TOU(data())!=0) _ctrl.msg_disable();},
                         {                                         })
-    CPV(MsgClear,       { if (getScalarAs<unsigned>()!=0) _ctrl.msg_clear();  },
+    CPV(MsgClear,       { if (TOU(data())!=0) _ctrl.msg_clear();  },
                         {                                         })
-    CPV(InhInterval,    { PVG(inhibitInt(_idx, getScalarAs<unsigned>()));     },
+    CPV(InhInterval,    { PVG(inhibitInt(_idx, TOU(data())));     },
                         { PVP(inhibitInt(_idx));                  })
-    CPV(InhLimit,       { PVG(inhibitLim(_idx, getScalarAs<unsigned>()));     },
+    CPV(InhLimit,       { PVG(inhibitLim(_idx, TOU(data())));     },
                         { PVP(inhibitLim(_idx));                  })
-    CPV(InhEnable,      { PVG(inhibitEnb(_idx, getScalarAs<unsigned>()));     },
+    CPV(InhEnable,      { PVG(inhibitEnb(_idx, TOU(data())));     },
                         { PVP(inhibitEnb(_idx));                  })
 
     PVPCtrls::PVPCtrls(Module&  m,
                        Semaphore& sem,
                        PVPStats&  stats,
                        unsigned shelf,
-                       unsigned partition) :
+                       unsigned partition) : 
     _pv(0), _m(m), _sem(sem), _stats(stats),
       _shelf(shelf), _partition(partition), _enabled(false) {}
     PVPCtrls::~PVPCtrls() {}
 
     void PVPCtrls::allocate(const std::string& title)
     {
+      if (ca_current_context() == NULL) {
+        printf("Initializing context\n");
+        SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
+                 "Calling ca_context_create" );
+      }
+
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
       _pv.resize(0);
@@ -219,6 +226,9 @@ namespace Pds {
       NPVN( InhInterval         ,4);
       NPVN( InhLimit            ,4);
       NPVN( InhEnable           ,4);
+
+      // Wait for monitors to be established
+      ca_pend_io(0);
     }
 
     void PVPCtrls::enable(unsigned shelf)
@@ -343,7 +353,7 @@ namespace Pds {
       printf("partn: %u  l0Select %x\n"
              "\tfR %x  acR %x  acTS %x  seqIdx %x  seqB %x\n"
              "\tdstSel %x  dstMask %x\n",
-             _partition, _l0Select,
+             _partition, _l0Select, 
              _fixedRate, _acRate, _acTimeslot, _seqIdx, _seqBit,
              _dstSelect, _dstMask);
 #endif

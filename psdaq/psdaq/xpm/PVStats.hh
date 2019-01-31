@@ -7,7 +7,7 @@
 #include "psdaq/xpm/Module.hh"
 
 namespace Pds_Epics {
-  class EpicsPVA;
+  class PVWriter;
 };
 
 namespace Pds {
@@ -19,12 +19,12 @@ namespace Pds {
       ~PVStats();
     public:
       void allocate(const std::string& title);
-      void update(const CoreCounts& nc, const CoreCounts& oc,
+      void update(const CoreCounts& nc, const CoreCounts& oc, 
                   const LinkStatus* nl, const LinkStatus* ol,
                   unsigned bpClk,
                   double dt);
     private:
-      std::vector<Pds_Epics::EpicsPVA*> _pv;
+      std::vector<Pds_Epics::PVWriter*> _pv;
       L0Stats _begin;
     };
   };

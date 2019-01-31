@@ -1,10 +1,7 @@
 import sys
 import argparse
-import logging
-from psdaq.cas.pvedit import *
+from pvedit import *
 import time
-
-logger = logging.getLogger(__name__)
 
 NParts = 8
 
@@ -47,12 +44,12 @@ class Ui_MainWindow(object):
             xbase = base+':XPM:'+shelf+':'
             grid = QtWidgets.QGridLayout()
             for j in range(14):
-                pv = Pv(xbase+'LinkLabel%d'%j)
+                pv = Pv.Pv(xbase+'LinkLabel%d'%j)
                 grid.addWidget( QtWidgets.QLabel(pv.get()), j, 0 )
                 grid.addWidget( textWidgets[i*32+j], j, 1 )
 
             for j in range(16,21):
-                pv = Pv(xbase+'LinkLabel%d'%j)
+                pv = Pv.Pv(xbase+'LinkLabel%d'%j)
                 grid.addWidget( QtWidgets.QLabel(pv.get()), j, 0 )
                 grid.addWidget( textWidgets[i*32+j], j, 1 )
 
@@ -80,7 +77,7 @@ class Ui_MainWindow(object):
 
         self.centralWidget.setLayout(layout)
         self.centralWidget.resize(640,340)
-
+            
         MainWindow.resize(640,340)
         MainWindow.setWindowTitle(base)
         MainWindow.setCentralWidget(self.centralWidget)

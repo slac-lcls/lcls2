@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace Pds_Epics { class EpicsPVA; };
+namespace Pds_Epics { class EpicsCA; };
 
 namespace Pds {
   class Task;
@@ -34,7 +34,7 @@ namespace Pds {
     public:
       static void interleave(bool);
     private:
-      std::vector<Pds_Epics::EpicsPVA*> _pv;
+      std::vector<Pds_Epics::EpicsCA*> _pv;
       Module& _m;
       Pds::Task& _task;
     };

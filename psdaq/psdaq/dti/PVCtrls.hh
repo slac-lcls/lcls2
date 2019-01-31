@@ -1,7 +1,7 @@
 #ifndef Dti_PVCtrls_hh
 #define Dti_PVCtrls_hh
 
-#include "psdaq/epicstools/EpicsPVA.hh"
+#include "psdaq/epicstools/EpicsCA.hh"
 
 #include <string>
 #include <vector>
@@ -22,7 +22,7 @@ namespace Pds {
     public:
       Module& module();
     private:
-      std::vector<Pds_Epics::EpicsPVA*> _pv;
+      std::vector<Pds_Epics::EpicsCA*> _pv;
       Module& _m;
     };
   };

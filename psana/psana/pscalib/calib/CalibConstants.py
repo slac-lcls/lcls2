@@ -104,7 +104,7 @@ PIMAX       = 24
 ANDOR3D     = 25
 JUNGFRAU    = 26
 ZYLA        = 27
-EpicsPVAM    = 28
+EPICSCAM    = 28
 EPIX10KA    = 29
 
 det_tuple = (
@@ -136,7 +136,7 @@ det_tuple = (
     (ANDOR3D     , 'Andor3d'), 
     (JUNGFRAU    , 'Jungfrau'), 
     (ZYLA        , 'Zyla'), 
-    (EpicsPVAM    , 'ControlsCamera'), 
+    (EPICSCAM    , 'ControlsCamera'), 
     (EPIX10KA    , 'Epix10ka')
 )
 

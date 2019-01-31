@@ -37,6 +37,8 @@ target_link_libraries(hsd
     rt
 )
 
+
+
 add_executable(mempeek mempeek.cc)
 
 target_link_libraries(mempeek
@@ -140,9 +142,6 @@ target_link_libraries(hsdPVs
     service
     epicstools
     ${EPICS_CA_LIB}
-    ${EPICS_PVDATA_LIB}
-    ${EPICS_PVACCESS_LIB}
-    ${EPICS_PVACLIENT_LIB}
     pthread
     hsd
     mmhw
@@ -163,7 +162,6 @@ target_link_libraries(hsd_test
     rt
 )
 
-
 add_executable(hsdRead hsdRead.cc ../../../psalg/psalg/digitizer/src/Stream.cc)
 
 target_include_directories(hsdRead PUBLIC
@@ -177,9 +175,6 @@ target_link_libraries(hsdRead
    xtcdata::xtc
    epicstools
    ${EPICS_CA_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVACLIENT_LIB}
    pthread
    rt
 )

@@ -1,7 +1,7 @@
 #ifndef Xpm_PVCtrls_hh
 #define Xpm_PVCtrls_hh
 
-#include "psdaq/epicstools/EpicsPVA.hh"
+#include "psdaq/epicstools/EpicsCA.hh"
 
 #include <string>
 #include <vector>
@@ -27,7 +27,7 @@ namespace Pds {
       Module& module();
       Semaphore& sem();
     private:
-      std::vector<Pds_Epics::EpicsPVA*> _pv;
+      std::vector<Pds_Epics::EpicsCA*> _pv;
       Module&  _m;
       Semaphore& _sem;
     };

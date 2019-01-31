@@ -1,5 +1,5 @@
-#include "psdaq/epicstools/EpicsPVA.hh"
-using Pds_Epics::EpicsPVA;
+#include "psdaq/epicstools/PVWriter.hh"
+using Pds_Epics::PVWriter;
 
 #include "psalg/digitizer/Stream.hh"
 
@@ -33,6 +33,7 @@ void sigHandler( int signal ) {
 #include "psdaq/pgp/pgpGen4Daq/include/DmaDriver.h"
 #include "psdaq/pgp/pgpGen4Daq/app/PgpDaq.hh"
 
+using namespace std;
 using Pds::HSD::EventHeader;
 using Pds::HSD::StreamHeader;
 using Pds::HSD::RawStream;
@@ -107,7 +108,7 @@ int main (int argc, char **argv) {
   bool          print = false;
   const char*         dev = "/dev/pgpdaq0";
   unsigned            client              = 0;
-  unsigned            maxPrint            = 1024;
+  int                 maxPrint            = 1024;
   unsigned            debug               = 0;
   unsigned            nevents             = unsigned(-1);
   unsigned            delay               = 0;
@@ -185,7 +186,7 @@ int main (int argc, char **argv) {
   char cdev[64];
   sprintf(cdev,"%s_%u",dev,client);
   if ( (fd = open(cdev, O_RDWR)) <= 0 ) {
-    std::cout << "Error opening " << cdev << std::endl;
+    cout << "Error opening " << cdev << endl;
     return(1);
   }
 
@@ -193,7 +194,7 @@ int main (int argc, char **argv) {
   //  Map the lanes to this reader
   //
   {
-    PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)mmap(NULL, sizeof(PgpDaq::PgpCard), (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0);
+    PgpDaq::PgpCard* p = (PgpDaq::PgpCard*)mmap(NULL, sizeof(PgpDaq::PgpCard), (PROT_READ|PROT_WRITE), (MAP_SHARED|MAP_LOCKED), fd, 0);   
     uint32_t MAX_LANES = p->nlanes();
     for(unsigned i=0; i<MAX_LANES; i++)
       if (lanem & (1<<i)) {
@@ -204,12 +205,17 @@ int main (int argc, char **argv) {
   }
 
 
-  EpicsPVA* pvraw=0;
-  EpicsPVA* pvfex=0;
+  PVWriter* pvraw=0;
+  PVWriter* pvfex=0;
   if (pv) {
+    printf("Initializing context\n");
+    SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
+             "Calling ca_context_create" );
+
     std::string pvbase(pv);
-    pvraw = new EpicsPVA((pvbase+":RAWDATA").c_str());
-    pvfex = new EpicsPVA((pvbase+":FEXDATA").c_str());
+    pvraw = new PVWriter((pvbase+":RAWDATA").c_str());
+    pvfex = new PVWriter((pvbase+":FEXDATA").c_str());
+    ca_pend_io(0);
   }
 
   // Allocate a buffer
@@ -287,9 +293,9 @@ int main (int argc, char **argv) {
         uint64_t pulseId = (uint64_t(data[1])<<32) | data[0];
         if (ppulseId) {
           if (dpulseId > 100 && pulseId != (ppulseId+dpulseId))
-            printf("\tPulseId = %016llx [%016llx, %016llx]\n",
-                   (unsigned long long)pulseId,
-                   (unsigned long long)(pulseId+dpulseId),
+            printf("\tPulseId = %016llx [%016llx, %016llx]\n", 
+                   (unsigned long long)pulseId, 
+                   (unsigned long long)(pulseId+dpulseId), 
                    (unsigned long long)(pulseId-ppulseId));
           dpulseId = pulseId - ppulseId;
         }
@@ -302,7 +308,7 @@ int main (int argc, char **argv) {
         if (nextCount[lane] && (count != nextCount[lane])) {
           lerr = true;
           if (errs < 100)
-            printf("\tanalysisCount = %08x [%08x] lane %u  delta %d\n",
+            printf("\tanalysisCount = %08x [%08x] lane %u  delta %d\n", 
                    count, nextCount[lane], lane, count-nextCount[lane]);
         }
         nextCount[lane] = (count+1)&0x00ffffff;
@@ -314,7 +320,7 @@ int main (int argc, char **argv) {
           //  Check that the raw payload for the test pattern is in lock step
           if (!raw)
             raw = new RawStream(*event, rhdr);
-          else
+          else 
             lerr |= !raw->validate(*event, rhdr);
         }
         if (rhdr.strmtype()==0 && (lvalidate&8)) {
@@ -363,17 +369,14 @@ int main (int argc, char **argv) {
     if (pv && tsec != data[3] && lane==0) {
       tsec = data[3];
 
-      Pds::HSD::EventHeader& evhdr = *reinterpret_cast<Pds::HSD::EventHeader*>(data);
+      Pds::HSD::EventHeader& evhdr = *reinterpret_cast<Pds::HSD::EventHeader*>(data); 
 
       Pds::HSD::StreamHeader& rawhdr = *new(&evhdr+1) Pds::HSD::StreamHeader;
 
       const uint16_t* raw = reinterpret_cast<const uint16_t*>(&rawhdr+1) + rawhdr.boffs();
-      pvd::shared_vector<const unsigned> pvrawvecin;
-      pvraw->getVectorAs(pvrawvecin);
-      pvd::shared_vector<unsigned> pvrawvecout(thaw(pvrawvecin));
       for(unsigned i=0; i<rawhdr.samples() && i<pvraw->nelem(); i++)
-        pvrawvecout[i] = raw[i];
-      pvraw->putFromVector(freeze(pvrawvecout));
+        reinterpret_cast<unsigned*>(pvraw->data())[i] = raw[i];
+      pvraw->put();
 
       void* next = const_cast<uint16_t*>(&raw[rawhdr.samples()]);
 
@@ -381,24 +384,23 @@ int main (int argc, char **argv) {
 
       const uint16_t* fex = reinterpret_cast<const uint16_t*>(&fexhdr+1) + fexhdr.boffs();
       int nskip=0;
-      pvd::shared_vector<const unsigned> pvfexvecin;
-      pvfex->getVectorAs(pvfexvecin);
-      pvd::shared_vector<unsigned> pvfexvecout(thaw(pvfexvecin));
       for(unsigned i=0; i<fexhdr.samples() && i<pvfex->nelem(); i++) {
         if (nskip) {
-          pvfexvecout[i] = 0x200;
+          reinterpret_cast<unsigned*>(pvfex->data())[i] = 0x200;
           nskip--;
         }
         else {
           if (fex[i]&0x8000) {
             nskip = fex[i]&0x7fff;
-            pvfexvecout[i] = 0x200;
+            reinterpret_cast<unsigned*>(pvfex->data())[i] = 0x200;
           }
           else
-            pvfexvecout[i] = fex[i];
+            reinterpret_cast<unsigned*>(pvfex->data())[i] = fex[i];
         }
       }
-      pvfex->putFromVector(freeze(pvfexvecout));
+      pvfex->put();
+
+      ca_flush_io();
     }
 
     if (delay) {
@@ -437,11 +439,11 @@ void* countThread(void* args)
     double rate   = double(ncount-ocount)/dt;
     double dbytes = double(nbytes-obytes)/dt;
     unsigned dbsc = 0, rsc=0, prsc=0;
-
+    
     if (count < 0) break;
 
     static const char scchar[] = { ' ', 'k', 'M' };
-
+    
     if (prate > 1.e6) {
       prsc     = 2;
       prate   *= 1.e-6;
@@ -468,9 +470,9 @@ void* countThread(void* args)
       dbsc    = 1;
       dbytes *= 1.e-3;
     }
-
-    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B]  lanes %02x  buffs %04x  errs %04x : polls %7.2f %cHz\n",
-           rate  , scchar[rsc ], ncount,
+    
+    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B]  lanes %02x  buffs %04x  errs %04x : polls %7.2f %cHz\n", 
+           rate  , scchar[rsc ], ncount, 
            dbytes, scchar[dbsc], (long long)nbytes, lanes, buffs, errs,
            prate , scchar[prsc]);
     lanes = 0;
