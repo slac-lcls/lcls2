@@ -20,6 +20,7 @@ setup(
                 'partca = psdaq.cas.partca:main',
                 'partcas = psdaq.cas.partcas:main',
                 'modcas = psdaq.cas.modcas:main',
+                'modca = psdaq.cas.modca:main',
                 'xpmca = psdaq.cas.xpmca:main',
                 'deadca = psdaq.cas.deadca:main',
                 'dtica = psdaq.cas.dtica:main',
