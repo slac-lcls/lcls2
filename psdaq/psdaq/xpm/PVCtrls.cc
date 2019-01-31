@@ -22,20 +22,20 @@ namespace Pds {
 
 #define PVG(i) {                                                \
       try { _ctrl.module().i; }                                 \
-      catch (CPSWError&) {} }
+      catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); } }
 #define GPVG(i)   {                                             \
       _ctrl.sem().take();                                       \
       try { _ctrl.module().i; }                                 \
-      catch (CPSWError&) {}                                     \
+      catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); } \
       _ctrl.sem().give(); }
 #define PVP(i) {                                                        \
     try { putFrom<unsigned>(_ctrl.module().i); }                        \
-    catch (CPSWError&) {} }
+    catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); } }
 #define GPVP(i) {                                               \
     _ctrl.sem().take();                                         \
     try { unsigned v = _ctrl.module().i;                        \
       putFrom<unsigned>(v); }                                   \
-    catch (CPSWError&) {}                                       \
+    catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); } \
     _ctrl.sem().give(); }
 
 #define CPV(name, updatedBody, connectedBody)                           \

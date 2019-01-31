@@ -185,7 +185,7 @@ void StatsTimer::expired()
     _sem.take();
     try {
       _pvs.update(c,_c,links,_links,recClk,fbClk,bpClk,dt);
-    } catch (CPSWError&) {}
+    } catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); }
     _sem.give();
     _c=c;
     std::copy(links,links+32,_links);
@@ -197,11 +197,11 @@ void StatsTimer::expired()
         try {
           _dev.setPartition(i);
           _pvps[i]->update();
-        } catch (CPSWError&) {}
+        } catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); }
         _sem.give();
       }
     }
-  } catch (CPSWError&) {}
+  } catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); }
 
   _pvc.dump();
 

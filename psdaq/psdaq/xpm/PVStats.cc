@@ -17,8 +17,8 @@ namespace Pds {
     PVStats::PVStats() : _pv(0) {}
     PVStats::~PVStats() {}
 
-#define PVPUT(v)    if ((*it)->connected()) { (*it)->putFrom<double>(double(v)); it++; }
-#define PVPUTI(v)   if ((*it)->connected()) { (*it)->putFrom<int>(int(v)); it++; }
+#define PVPUT(v)    if ((*it)->connected()) { (*it)->putFrom<double>(double(v)); } it++;
+#define PVPUTI(v)   if ((*it)->connected()) { (*it)->putFrom<int>(int(v)); } it++;
 
     void PVStats::_allocTiming(const std::string& title,
                                const char* sec) {
@@ -70,18 +70,6 @@ namespace Pds {
       o << title << ":";
       std::string pvbase = o.str();
 
-      _pv.push_back( new EpicsPVA((pvbase+"RxClks").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"TxClks").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"RxRsts").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"CrcErrs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"RxDecErrs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"RxDspErrs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"BypassRsts").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"BypassDones").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"RxLinkUp").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"FIDs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"SOFs").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"EOFs").c_str()) );
 #define PVPUSH(s) { std::ostringstream o; o << pvbase << #s << i; \
           _pv.push_back(new EpicsPVA(o.str().c_str())); }
       for(unsigned i=0; i<32; i++) {
@@ -98,7 +86,7 @@ namespace Pds {
       _pv.push_back( new EpicsPVA((pvbase+"RecClk").c_str()) );
       _pv.push_back( new EpicsPVA((pvbase+"FbClk").c_str()) );
       _pv.push_back( new EpicsPVA((pvbase+"BpClk").c_str()) );
-      printf("PVs allocated\n");
+      printf("PVs allocated %u\n", _pv.size());
     }
 
     void PVStats::update(const CoreCounts& nc, const CoreCounts& oc,
