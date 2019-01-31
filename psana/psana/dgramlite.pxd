@@ -1,5 +1,5 @@
 cdef struct Xtc:
-    int junks[4]
+    int junks[2]
     unsigned extent
 
 cdef struct Sequence:
@@ -9,6 +9,6 @@ cdef struct Sequence:
 
 cdef struct Dgram:
     Sequence seq
-    int junks[4]
+    unsigned env
     Xtc xtc
 

@@ -43,7 +43,6 @@ class SmdNode(object):
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
-        view = 0
         while True:
             # handles requests from smd_0
             comm.Send(np.array([rank], dtype='i'), dest=0)
@@ -60,15 +59,13 @@ class SmdNode(object):
                 comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
                 comm.Send(batch, dest=rankreq[0])
 
-            view = 0
-
         for i in range(self.n_bd_nodes):
             comm.Recv(rankreq, source=MPI.ANY_SOURCE, tag=13)
             comm.Send(bytearray(), dest=rankreq[0])
 
 class BigDataNode(object):
-    def __init__(self, smd_configs, dm, smd_node_id=None):
-        self.evt_man = EventManager(smd_configs, dm)
+    def __init__(self, smd_configs, dm, filter_callback, smd_node_id=None):
+        self.evt_man = EventManager(smd_configs, dm, filter_callback)
         self.smd_node_id = smd_node_id
 
     def run_mpi(self):
@@ -95,6 +92,6 @@ def run_node(run, nodetype, nsmds, smd0_threads, max_events, batch_size, filter_
         smd_node.run_mpi()
     elif nodetype == 'bd':
         smd_node_id = (rank % nsmds) + smd0_threads
-        bd_node = BigDataNode(run.smd_configs, run.dm, smd_node_id)
+        bd_node = BigDataNode(run.smd_configs, run.dm, filter_callback, smd_node_id)
         for evt in bd_node.run_mpi():
             yield evt

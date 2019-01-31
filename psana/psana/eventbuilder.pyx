@@ -14,8 +14,12 @@ cdef class EventBuilder:
     dgrams as an event. Returns list of events (size=batch_size)
     as another memoryslice 'batch'.
     
-    views: each smd file is seperated by b'endofstream'
-    batch: each dgram and event is seperated by b'eod' and b'eoe'."""
+    views: EventBuilder receives a views from SmdCore. Each views consists
+    of 1 or more chunks of small data.
+    batch: The output of build function. A batch stores 1 or more events.
+    
+    Note that reading chunks inside a views or events inside a batch can be done
+    using PacketFooter class."""
     cdef short nsmds
     cdef array.array offsets 
     cdef array.array sizes
@@ -130,6 +134,8 @@ cdef class EventBuilder:
                         d = <Dgram *>(cview)
                         ts = <unsigned long>d.seq.high << 32 | d.seq.low
                         payload = d.xtc.extent - self.xtc_size
+                    
+                    PyBuffer_Release(&buf)
                 
                 # Extend batch bytearray to include this event and collect
                 # the size of this event for batch footer.
