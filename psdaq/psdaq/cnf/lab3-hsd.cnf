@@ -34,7 +34,7 @@ procmgr_config = [
  { host: 'daq-tst-dev02', id:'hsdioc-dev02', flags:'sx', env:total_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV02 -I'},
  {                        id:'partca-'+platform ,flags:'s', env:total_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'sp', env:conda_env, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- {                        id:'modca'  ,flags:'s', env:total_env, cmd:'xpmca DAQ:LAB2:XPM:'+shelf},
+ {                        id:'modca'  ,flags:'s', env:total_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
  {                        id:'deadca-'+platform, flags:'s', env:total_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
  {                        id:'dtica', flags:'s', env:total_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
  {                        id:'hsdca', flags:'s', env:total_env, cmd:'hsdca DAQ:LAB2:HSD:DEV02'},
