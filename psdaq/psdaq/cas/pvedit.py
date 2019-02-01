@@ -83,7 +83,7 @@ def initPvMon(mon, pvname):
     logger.info("Monitoring PV %s", pvname)
     mon.pv = Pv(pvname, mon.update)
     mon.pv.get()
-#    mon.update(None)
+    mon.update(None)
 
 class PvDisplay(QtWidgets.QLabel):
 

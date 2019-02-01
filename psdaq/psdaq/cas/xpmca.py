@@ -55,14 +55,7 @@ class PvCString:
     def update(self, err):
         q = self.pv.get()
         if err is None:
-            s = QString()
-            slen = len(q)
-#            if slen > 64:
-#                slen = 64
-            for i in range(slen):
-                if q[i]==0:
-                    break
-                s += QChar(q[i])
+            s = QString(q)
             self.__display.valueSet.emit(s)
         else:
             print(err)
