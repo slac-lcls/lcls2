@@ -322,8 +322,8 @@ Stats Module::stats() const
   // Revisit: Useful?  s.l1Enabled  = l1Enabled();
 
   s.timLinkUp   = _timing.linkUp() ? 1:0;
-  s.timRefCount = _timing.TxRefClks;
-  s.timFrCount  = _timing.SOFcounts;
+  s.timRefCount = _timing.rx.TxRefClks;
+  s.timFrCount  = _timing.rx.SOFcounts;
 
   s.usLinkUp = usLinkUp();
   s.bpLinkUp = bpLinkUp();
