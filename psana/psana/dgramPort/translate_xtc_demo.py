@@ -37,7 +37,7 @@ def munge_json(event):
         return event_dict, timestamp
 
 def translate_xtc_demo(job_type):
-    event_file = '%s_evts.xtc' % job_type
+    event_file = '%s_evts.xtc2' % job_type
 
     ninfo = dc.nameinfo(detAlias, 'cspad', detID, 0)
     alg = dc.alg('raw', [1, 2, 3])

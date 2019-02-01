@@ -24,7 +24,7 @@ def load_json(filename):
 
 
 def translate_xtc_demo(det_type, offset=1):
-    xtcfile = '%s.xtc' % det_type
+    xtcfile = '%s.xtc2' % det_type
 
     try:
         os.remove(xtcfile)
