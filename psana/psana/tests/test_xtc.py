@@ -10,10 +10,6 @@ import hashlib
 from psana import DataSource
 import dgramCreate as dc
 
-try:
-    from pathlib import Path
-except:
-    from pathlib2 import Path # python 2 backport
 
 class Test:
     @classmethod
@@ -40,7 +36,7 @@ class Test:
 
         # test that the values in the new file are correct
         xtc(fname)
- 
+
     def test_xtc(self):
         xtc('data.xtc2')
 
@@ -48,9 +44,9 @@ class Test:
         subprocess.call(['xtcwriter','-f','data-ts.xtc2', '-t']) # Mona FIXME: writing seq in xtcwriter broke dgramCreate
         subprocess.call(['smdwriter','-f','data-ts.xtc2'])
         tmp_dir = os.path.join('.tmp','smalldata')
-        
-        Path(tmp_dir).mkdir(exist_ok=True) # prevents race condition (python 2 compatible).
-
+        if os.path.exists(tmp_dir):
+            shutil.rmtree(tmp_dir)
+        os.makedirs(tmp_dir)
         shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s00.xtc2')) # Ex. of run 1 with two detectors s00 and s01
         shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s01.xtc2'))
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s00.smd.xtc2'))
@@ -67,9 +63,6 @@ class Test:
 
         callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
         subprocess.check_call(['python',callback_based])
-        
-        loop_exhaustive_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
-        subprocess.check_call(['python',loop_exhaustive_based])
 
     def test_mpi(self):
         self.setup_input_files()
