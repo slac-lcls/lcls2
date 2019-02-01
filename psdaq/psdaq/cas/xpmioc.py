@@ -42,7 +42,7 @@ class PVStats:
                 lpv.append(Pv(pvbase+':'+s['name']+'%d'%i))
             self.lpvs.append(lpv)
 
-    def update(self):
+    def expired(self):
         for i,s in enumerate(stats):
             self.pvs[i].put(s['value']+s['delta']*self.ncall)
         for i in range(len(self.lpvs)):
@@ -57,15 +57,59 @@ class PVCtrls:
     def __init__(self,pvbase):
         pass
 
-    def update(self):
-        pass
+fixedRate = [1.3e6/1.4, 1.e6/14., 1.e6/98., 1.e6/980., 1.e6/9800, 1.e6/98000, 1.e6/980000]
 
 class PVP:
-    def __init__(self,pvbase,i):
-        pass
-        
-    def update(self):
-        pass
+    def __init__(self,pvbase):
+        self.l0Select  = Pv(pvbase+'L0Select'          ,self.update)
+        self.l0SelectF = Pv(pvbase+'L0Select_FixedRate',self.update)
+        self.resetL0   = Pv(pvbase+'ResetL0'           ,self.update)
+        self.run       = Pv(pvbase+'Run'               ,self.update)
+        self.msgConfig = Pv(pvbase+'MsgConfig'         ,self.update)
+
+        self.l0InpRate = Pv(pvbase+'L0InpRate')
+        self.l0AccRate = Pv(pvbase+'L0AccRate')
+        self.l1Rate    = Pv(pvbase+'L1Rate')
+        self.runTime   = Pv(pvbase+'RunTime')
+        self.numL0Inp  = Pv(pvbase+'NumL0Inp')
+        self.numL0Acc  = Pv(pvbase+'NumL0Acc')
+        self.numL1     = Pv(pvbase+'NumL1')
+        self.deadFrac  = Pv(pvbase+'DeadFrac')
+        self.deadTime  = Pv(pvbase+'DeadTime')
+
+        self.enabled    = False
+        self.reset()
+
+    def reset (self):
+        self.runTimeSec = 0
+        self.numL0InpN  = 0
+        self.numL0AccN  = 0
+        self.numL1N     = 0
+
+    def update(self,err=None):
+        if self.resetL0.__value__:
+            self.reset()
+
+    def expired(self):
+        r = 0
+        if self.run.get():
+            self.runTimeSec += 1
+            if self.l0Select.get()==0:
+                r = fixedRate[self.l0SelectF.get()]
+
+        self.numL0InpN += r
+        self.numL0AccN += r
+
+        self.runTime  .put(self.runTimeSec)
+        self.l0InpRate.put(r)
+        self.l0AccRate.put(r)
+        self.numL0Inp.put(self.numL0InpN)
+        self.numL0Acc.put(self.numL0AccN)
+        self.l1Rate  .put(0)
+        self.numL1   .put(self.numL1N)
+        self.deadFrac.put(0)
+        self.deadTime.put(0)
+
 
 def main():
 
@@ -90,13 +134,13 @@ def main():
 
     pvp = []
     for i in range(NPartitions):
-        pvp.append(PVP(ppvbase,i))
+        pvp.append(PVP(ppvbase+':PART:%d:'%i))
     
     while True:
         time.sleep(1)
 
-        pvs.update()
+        pvs.expired()
         
         for i in range(NPartitions):
-            pvp[i].update()
+            pvp[i].expired()
     
