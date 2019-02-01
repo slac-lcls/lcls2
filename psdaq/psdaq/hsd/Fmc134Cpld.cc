@@ -4,8 +4,9 @@
 
 using namespace Pds::HSD;
 
-enum { C0_EXT = 4, C0_LMK = 8, C0_SYNC_0 = 0x10, C0_SYNC_1 = 0x20, 
+enum { C0_EXT = 4, C0_LMK = 8, 
        C0_ADC_0 = 0x40, C0_ADC_1 = 0x80 };
+enum { C0_SYNC_EXT = 0, C0_SYNC_FPGA = 0x10, C0_SYNC_0 = 0x20, C0_SYNC_1 = 0x30 };
 
 enum { C1_OSC = 1, C1_REF = 2, C1_AD = 4, C1_LMX = 8, C1_FF_CS = 0x10,
        C1_FF_RST = 0x20, C1_LED = 0x40, C1_EEPROM = 0x80 };
@@ -16,30 +17,27 @@ void Fmc134Cpld::initialize(bool lDualChannel,
   unsigned v;
 
   if (lInternalRef) {
-    v = C1_OSC | C1_REF | C1_LMX | C1_EEPROM;
+    v = C1_FF_CS | C1_FF_RST |  // firefly intf active low 
+      C1_AD | C1_OSC | C1_REF | C1_LMX | 
+      C1_EEPROM;  // bit 7 reserved
     _control1 = v;
 
-    v = _control0;
-    v |= 1;  // enable oscillator
-    //    v &= ~C0_EXT;
-    v |= C0_EXT;
+    v = C0_SYNC_FPGA;
     _control0 = v; 
   }
   else {
     // turn off 0sc, point at ext ref enable LMX bits 3, 1, and 0
-    v = C1_LMX | C1_LED | C1_EEPROM;
+    v = C1_AD | C1_LMX | C1_LED | C1_EEPROM;
     _control1 = v;
     
-    v = _control0;
-    v &= ~1; // disable oscillator
-    v |= C0_EXT;
+    v = C0_SYNC_FPGA | C0_EXT;
     _control0 = v;
   }
 
   usleep(100000);
 
   _lmx_init(lInternalRef);
-  _lmx_dump();
+  lmx_dump();
 
   _hmc_init();
 
@@ -52,9 +50,11 @@ void Fmc134Cpld::initialize(bool lDualChannel,
   _lmk_init();
 
   //  Reset ADCs
-  v = _control0;
-  v &= ~0x03;
-  _control0 = v;
+  v = _control1;
+  v &= ~C1_AD;
+  _control1 = v;
+  v |= C1_AD;
+  _control1 = v;
   usleep(2000);
 
   _adc_init(0, lDualChannel);
@@ -124,7 +124,7 @@ void Fmc134Cpld::_lmx_init(bool lInternalRef)
     v = (0<<27) | (3<<25) | (256<<12); // ID=0, Frac_dither=Disabled, N=256
   }
 
-  _lmx_dump();
+  lmx_dump();
   WRREG(  0, v );
   // wait 300 ms
   usleep(300000);
@@ -240,7 +240,7 @@ void Fmc134Cpld::_lmk_init()
   WRREG(0x142, 0x00);  // 
   WRREG(0x143, 0x70);  // (Enable SYNC, edge-sensitive - revisit)
   WRREG(0x144, 0xff);
-  WRREG(0x145, 0);
+  WRREG(0x145, 0x0);
   WRREG(0x146, 0);
 
   WRREG(0x147, 0x10);  // internal ref only
@@ -297,13 +297,14 @@ void Fmc134Cpld::_lmk_init()
   WRREG(0x183,1);
   WRREG(0x183,0);
 
+#if 1
         // try to sync all the output dividers
         // SYNC_MODE enable to SYNC event
         // SYSREF_CLR = 1
         // SYNC_1SHOT_EN = 1
         // SYNC_POL = 0 (Normal)
         // SYNC_EN = 1
-        // SYNC_MODE = 1 (sync_event_generatedfrom SYNC pin)
+        // SYNC_MODE = 1 (sync_event_generated from SYNC pin)
   WRREG(0x143,0xD1);
         // change SYSREF_MUX to normal SYNC (0)
   WRREG(0x139,0x00);
@@ -321,6 +322,9 @@ void Fmc134Cpld::_lmk_init()
   WRREG(0x139,0x03);
         // restore SYNC_MODE & remove SYSREF_CLR
   WRREG(0x143,0x50);
+#else
+  
+#endif
 
 #undef RDREG
 #undef WRREG
@@ -357,6 +361,7 @@ void Fmc134Cpld::_adc_init(unsigned a, bool ldualch)
   RDREG(0xd);
 
   WRREG(0x00,0xB0);  // reset
+  usleep(10);
 
         // Set the D Clock  and SYSREF input pins to LVPECL
   WRREG(0x2A,0x06);
@@ -382,7 +387,7 @@ void Fmc134Cpld::_adc_init(unsigned a, bool ldualch)
         // Enable SYSREF Calibration while background calibration is disabled
         // Set 256 averages with 256 cycles per accumulation
   WRREG(0x2B1,0x0F);
-        // Start SYSREF Calibration
+        // Start SYSREF Calibration (~0.1 sec)
   WRREG(0x2B0, 0x01);
   usleep(500000);
 
@@ -419,11 +424,12 @@ void Fmc134Cpld::_adc_init(unsigned a, bool ldualch)
   unsigned adc_txemphasis = 0;
         // Configure the transceiver pre-emphasis setting (0 to 0xF)
   WRREG(0x048, adc_txemphasis);
-        // Disable SYSREF Processor in ADC before turning off SYSREF outputs
-  WRREG(0x029, 0x00);
 
+  // Disable SYSREF Processor in ADC before turning off SYSREF outputs
+  WRREG(0x029, 0x00);
   // Disable SYSREF to ADC
   writeRegister(LMK, (a==0) ? 0x12F:0x117, 0x00);
+  // ( Alternately, keep SYSREF running and track with Tad )
 
   v = readRegister(dev,0x208);  // JESD Status [7:0]=[RSVD,LINKUP,SYNC,REALIGN,ALIGNED,LOCKD,RSVD,RSVD]
   printf("JESD STATUS:");
@@ -484,7 +490,8 @@ void Fmc134Cpld::dump() const
   printf("GA_MOD              %u\n", ((q>>6)&3));
 }
 
-void Fmc134Cpld::_lmx_dump() {
+void Fmc134Cpld::lmx_dump() 
+{
   unsigned v = const_cast<Fmc134Cpld*>(this)->readRegister(LMX,6);
   printf("LMX Status:\n");
   printf("  BUFEN     %u\n",(v>>0)&1);
@@ -501,6 +508,77 @@ void Fmc134Cpld::_lmx_dump() {
   printf("  OSC_DET   %u\n",(v>>16)&1);
   printf("  FIN_DET   %u\n",(v>>17)&1);
   printf("  VCO_SEL   %u\n",(v>>18)&3);
+}
+
+void Fmc134Cpld::lmk_dump() 
+{
+#define RDSTAT(reg,ttl,dfl) {                   \
+    unsigned v = readRegister(LMK,reg);         \
+    printf("%9.9s: 0x%x [%x]\n",v,dfl); }
+
+#define RDSTAT2(reg,ttl,dfl) {                   \
+    unsigned v = readRegister(LMK,reg);          \
+    v |= (readRegister(LMK,reg+1)<<8);           \
+    printf("%9.9s: 0x%x [%x]\n",v,dfl); }
+
+  DevSel dev = LMK;
+
+  printf("--LMK--\n");
+  RDSTAT (3,DevType,0);
+  RDSTAT2(4,Prod   ,0);
+  RDSTAT (6,Rev    ,0);
+  RDSTAT2(12,Vendor,0);
+
+#undef RDSTAT  
+#undef RDSTAT2
+}
+
+void Fmc134Cpld::adc_dump(unsigned a)
+{
+  DevSel dev = (a==0) ? ADC0 : ADC1;
+  printf("--ADC%u--\n",a);
+  
+#define RDSTAT(reg,ttl,dfl) {                   \
+    unsigned v = readRegister(dev,reg);         \
+    printf("%9.9s: 0x%x [%x]\n",#ttl,v,dfl); }
+
+#define RDSTAT2(reg,ttl,dfl) {                  \
+    unsigned v = readRegister(dev,reg);         \
+    v |= (readRegister(dev,reg+1)<<8);          \
+    printf("%9.9s: 0x%x [%x]\n",#ttl,v,dfl); }
+
+#define RDSTAT3(reg,ttl,dfl) {                  \
+    unsigned v = readRegister(dev,reg);         \
+    v |= (readRegister(dev,reg+1)<<8);          \
+    v |= (readRegister(dev,reg+2)<<16);         \
+    printf("%9.9s: 0x%x [%x]\n",#ttl,v,dfl); }
+  
+  RDSTAT ( 3,ChipType,0x03);
+  RDSTAT2( 4,ChipID  ,0x20);
+  RDSTAT ( 6,ChipVsn ,0x0a);
+  RDSTAT2(12,VendorId,0x451);
+
+  RDSTAT (0x200,JESDEn ,0);
+  RDSTAT (0x201,JMode  ,0);
+  RDSTAT (0x202,K      ,0);
+  {
+    unsigned v = readRegister(dev,0x208);
+    printf("JESD STATUS:");
+    printf(" %s", v&(1<<6) ? "LinkUp":"LinkDn");
+    printf(" %s", v&(1<<5) ? "Sync":"nSync");
+    if (v&(1<<4)) printf(" Realign");
+    if (v&(1<<3)) printf(" Align");
+    printf(" %s\n", v&(1<<2) ? "Locked":"notLocked");
+  }
+
+  RDSTAT3(0x2b2,SysRefSt,0);
+  RDSTAT3(0x2b5,SysRefTad,0);
+
+  RDSTAT3(0x2c,SysRefPos,0);
+
+#undef RDSTAT  
+#undef RDSTAT2
+#undef RDSTAT3
 }
 
 void Fmc134Cpld::writeRegister(DevSel   dev,
