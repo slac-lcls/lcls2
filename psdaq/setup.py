@@ -9,6 +9,7 @@ setup(
        version=versioneer.get_version(),
        cmdclass=versioneer.get_cmdclass(),
        packages = find_packages(),
+       package_data={'control_gui': ['data/icons/*.png','data/icons/*.gif'],},
 
        scripts = ['psdaq/procmgr/procmgr','psdaq/procmgr/procstat','psdaq/procmgr/condaProcServ'],
 

@@ -33,4 +33,7 @@ echo find . -name "*~" -delete
 echo find . -name "*.pyc" -delete
      find . -name "*.pyc" -delete
 
+echo find . -name __pycache__ -type d -exec rm -rf {} +
+     find . -name __pycache__ -type d -exec rm -rf {} +
+
 echo "Cleaning is done"

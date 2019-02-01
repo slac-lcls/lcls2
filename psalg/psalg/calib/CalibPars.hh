@@ -21,6 +21,8 @@ public:
   void _default_msg(const std::string& msg=std::string()) const;
   const std::string& detname() {return _detname;}
 
+  //void calib_constants(Response&, const Query&);
+
   /// access to calibration constants
   virtual const NDArray<common_mode_t>&   common_mode      (const query_t&);
   virtual const NDArray<pedestals_t>&     pedestals        (const query_t&);

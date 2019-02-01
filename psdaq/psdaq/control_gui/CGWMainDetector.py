@@ -21,11 +21,14 @@ Created on 2019-01-28 by Mikhail Dubrovin
 """
 #--------------------
 
+from time import time
+import psdaq.control_gui.Utils as gu
+
 import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QGroupBox, QLabel, QPushButton, QVBoxLayout # , QWidget,  QLabel, QLineEdit, QFileDialog
-#from PyQt5.QtCore import pyqtSignal #, Qt, QRectF, QPointF, QTimer
+from PyQt5.QtCore import QTimer # pyqtSignal, Qt, QRectF, QPointF
 
 #--------------------
 
@@ -49,6 +52,10 @@ class CGWMainDetector(QGroupBox) :
         self.set_style()
 
         self.but_state.clicked.connect(self.on_but_state)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.on_timeout)
+        self.timer.start(1000)
 
 #--------------------
 
@@ -85,6 +92,21 @@ class CGWMainDetector(QGroupBox) :
  
     def on_but_state(self):
         logger.debug('on_but_state')
+
+#--------------------
+ 
+    def on_timeout(self) :
+        self.timer.start(1000)
+        #logger.debug('CGWMainDetector Timeout %.3f sec' % time())
+        ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
+        self.lab_state.setText('Control state on %s' % ts)
+
+#--------------------
+
+    def closeEvent(self, e) :
+        logger.debug('closeEvent', __name__)
+        self.timer.stop()
+        self.timer.timeout.disconnect(self.on_timeout)
 
 #--------------------
 

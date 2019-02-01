@@ -88,7 +88,10 @@ class Styles() :
         #self.colorEdit         = QtGui.QColor('white')
         #self.colorTabItem      = QtGui.QColor('white')
 
-        self.qgrbox_title = "QGroupBox::title {left:10px; top:12px;}"
+        self.qgrbox_title  = "QGroupBox::title {left:10px; top:12px;};"
+
+        #self.style_cbx_off = "QCheckBox::indicator {left:10px;};"
+        self.style_cbx_off = self.styleYellowBkg # + "QCheckBox::indicator{width:50px; height:25px};" #{padding-left: 30px;};"
 
 #------------------------------
 style = Styles()

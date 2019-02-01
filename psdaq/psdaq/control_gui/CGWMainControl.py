@@ -98,9 +98,11 @@ class CGWMainControl(QGroupBox) :
         self.setStyleSheet(style.qgrbox_title)
         #self.but_disable.setFixedWidth(60)
         #self.but_enable.setFixedWidth(60)
-        self.but_enable.setStyleSheet(style.styleButtonGood)
-        self.cbx_runc.setStyleSheet(style.styleYellowBkg)
+        #self.but_enable.setStyleSheet(style.styleButtonGood)
+
         self.cbx_runc.setFixedSize(100,40)
+        #self.cbx_runc.setStyleSheet(style.styleYellowBkg)
+        self.cbx_runc.setStyleSheet(style.style_cbx_off)
 
         #self.setMinimumWidth(350)
         #self.setWindowTitle('File name selection widget')
