@@ -11,6 +11,115 @@ import logging
 PORT_BASE = 29980
 POSIX_TIME_AT_EPICS_EPOCH = 631152000
 
+class DaqControl:
+    'Base class for controlling data acquisition'
+
+    triggers = ['plat', 'alloc', 'dealloc',
+                'connect', 'disconnect',
+                'configure', 'unconfigure',
+                'beginrecord', 'endrecord',
+                'enable', 'disable',
+                'configupdate', 'reset']
+
+    states = [
+        'reset',
+        'unallocated',
+        'allocated',
+        'connected',
+        'paused',
+        'running'
+    ]
+
+    def __init__(self, *, host, platform, timeout):
+        self.host = host
+        self.platform = platform
+        self.timeout = timeout
+
+        # initialize zmq socket
+        self.context = zmq.Context(1)
+        self.req = self.context.socket(zmq.REQ)
+        self.req.linger = 0
+        self.req.RCVTIMEO = timeout # in milliseconds
+        self.req.connect('tcp://%s:%d' % (host, rep_port(platform)))
+
+    #
+    # DaqControl.getstate - get current state
+    #
+    def getstate(self):
+        retval = 'error'
+        try:
+            msg = create_msg('getstate')
+            self.req.send_json(msg)
+            reply = self.req.recv_json()
+        except Exception as ex:
+            print('Exception: %s' % ex)
+        except KeyboardInterrupt:
+            print('KeyboardInterrupt')
+        else:
+            try:
+                retval = reply['header']['key']
+            except KeyError:
+                pass
+
+        return retval
+
+    #
+    # DaqControl.setstate - change the state
+    #
+    def setstate(self, state):
+        errorMessage = None
+        try:
+            msg = create_msg('setstate.' + state)
+            self.req.send_json(msg)
+            reply = self.req.recv_json()
+        except Exception as ex:
+            errorMessage = 'setstate() Exception: %s' % ex
+        else:
+            try:
+                errorMessage = reply['body']['error']
+            except KeyError:
+                pass
+
+        return errorMessage
+
+next_dict = {
+    'reset' :       { 'unallocated' : 'plat',
+                      'allocated' :   'plat',
+                      'connected' :   'plat',
+                      'paused' :      'plat',
+                      'running' :     'plat' },
+
+    'unallocated' : { 'reset' :       'reset',
+                      'allocated' :   'alloc',
+                      'connected' :   'alloc',
+                      'paused' :      'alloc',
+                      'running' :     'alloc' },
+
+    'allocated' :   { 'reset' :       'dealloc',
+                      'unallocated' : 'dealloc',
+                      'connected' :   'connect',
+                      'paused' :      'connect',
+                      'running' :     'connect' },
+
+    'connected' :   { 'reset' :       'disconnect',
+                      'unallocated' : 'disconnect',
+                      'allocated' :   'disconnect',
+                      'paused' :      'configure',
+                      'running' :     'configure' },
+
+    'paused' :      { 'reset' :       'unconfigure',
+                      'unallocated' : 'unconfigure',
+                      'allocated' :   'unconfigure',
+                      'connected' :   'unconfigure',
+                      'running' :     'enable' },
+
+    'running' :     { 'reset' :       'disable',
+                      'unallocated' : 'disable',
+                      'allocated' :   'disable',
+                      'connected' :   'disable',
+                      'paused' :      'disable' }
+}
+
 def timestampStr():
     current = datetime.now(timezone.utc)
     nsec = 1000 * current.microsecond
@@ -99,43 +208,35 @@ class CollectionManager():
         self.handle_request = {
             'getstate': self.handle_getstate,
         }
-        self.triggers = ['plat', 'alloc', 'connect',
-                         'configure', 'unconfigure',
-                         'beginrun', 'endrun',
-                         'enable', 'disable', 'reset']
-        self.states = [
-            'reset',
-            'plat',
-            'alloc',
-            'connect',
-            'configured',
-            'running',
-            'enabled',
-            'error'
-        ]
 
-        self.collectMachine = Machine(self, self.states, initial='reset')
+        self.collectMachine = Machine(self, DaqControl.states, initial='reset')
 
         self.collectMachine.add_transition('reset', '*', 'reset',
                                            conditions='condition_reset')
-        self.collectMachine.add_transition('plat', ['reset', 'plat'], 'plat',
+        self.collectMachine.add_transition('plat', ['reset', 'unallocated'], 'unallocated',
                                            conditions='condition_plat')
-        self.collectMachine.add_transition('alloc', 'plat', 'alloc',
+        self.collectMachine.add_transition('alloc', 'unallocated', 'allocated',
                                            conditions='condition_alloc')
-        self.collectMachine.add_transition('connect', 'alloc', 'connect',
+        self.collectMachine.add_transition('dealloc', 'allocated', 'unallocated',
+                                           conditions='condition_dealloc')
+        self.collectMachine.add_transition('connect', 'allocated', 'connected',
                                            conditions='condition_connect')
-        self.collectMachine.add_transition('configure', 'connect', 'configured',
+        self.collectMachine.add_transition('disconnect', 'connected', 'allocated',
+                                           conditions='condition_disconnect')
+        self.collectMachine.add_transition('configure', 'connected', 'paused',
                                            conditions='condition_configure')
-        self.collectMachine.add_transition('beginrun', 'configured', 'running',
-                                           conditions='condition_beginrun')
-        self.collectMachine.add_transition('endrun', 'running', 'configured',
-                                           conditions='condition_endrun')
-        self.collectMachine.add_transition('enable', 'running', 'enabled',
-                                           conditions='condition_enable')
-        self.collectMachine.add_transition('disable', 'enabled', 'running',
-                                           conditions='condition_disable')
-        self.collectMachine.add_transition('unconfigure', 'configured', 'connect',
+        self.collectMachine.add_transition('unconfigure', 'paused', 'connected',
                                            conditions='condition_unconfigure')
+        self.collectMachine.add_transition('beginrecord', 'running', 'running',
+                                           conditions='condition_beginrecord')
+        self.collectMachine.add_transition('endrecord', 'running', 'running',
+                                           conditions='condition_endrecord')
+        self.collectMachine.add_transition('enable', 'paused', 'running',
+                                           conditions='condition_enable')
+        self.collectMachine.add_transition('disable', 'running', 'paused',
+                                           conditions='condition_disable')
+        self.collectMachine.add_transition('configupdate', 'paused', 'paused',
+                                           conditions='condition_configupdate')
 
         logging.info('Initial state = %s' % self.state)
 
@@ -149,8 +250,10 @@ class CollectionManager():
                 try:
                     msg = self.rep.recv_json()
                     key = msg['header']['key']
-                    if key in self.triggers:
-                        answer = self.handle_trigger(key)
+                    if key.startswith('setstate.'):
+                        answer = self.handle_setstate(key[9:])
+                    elif key in DaqControl.triggers:
+                        answer = self.handle_trigger(key, stateChange=False)
                     else:
                         answer = self.handle_request[key]()
                 except KeyError:
@@ -160,8 +263,8 @@ class CollectionManager():
         except KeyboardInterrupt:
             logging.info('KeyboardInterrupt')
 
-    def handle_trigger(self, key):
-        logging.debug('handle_trigger(\'%s\') in state %s' % (key, self.state))
+    def handle_trigger(self, key, *, stateChange=True):
+        logging.debug('handle_trigger(\'%s\', stateChange=\'%s\') in state \'%s\'' % (key, stateChange, self.state))
         stateBefore = self.state
         trigError = None
         try:
@@ -171,20 +274,51 @@ class CollectionManager():
             trigError = str(ex)
         else:
             # check for error: trigger failed to change the state
-            if (self.state == stateBefore):
-                # two exceptions OK: reset->reset and plat->plat
-                if ((self.state == key == 'reset') or
-                    (self.state == key == 'plat')):
-                    pass
-                else:
-                    # enter the error state
-                    self.to_error()
-                    trigError = '%s failed, entered error state' % key
+            if stateChange and (self.state == stateBefore):
+                trigError = '%s failed to change state' % key
 
         if trigError is None:
             answer = create_msg(self.state, body=self.cmstate)
         else:
             errMsg = trigError.replace("\"", "")
+            logging.error(errMsg)
+            answer = create_msg(self.state, body={'error': errMsg})
+
+        return answer
+
+    def next_transition(self, oldstate, newstate):
+        try:
+            retval = next_dict[oldstate][newstate]
+        except Exception as ex:
+            logging.error('next_transition(\'%s\', \'%s\'): %s' % (oldstate, newstate, ex))
+            retval = 'error'
+
+        logging.debug('next_transition(\'%s\', \'%s\') returning \'%s\'' % (oldstate, newstate, retval))
+        return retval
+
+    def handle_setstate(self, newstate):
+        logging.debug('handle_setstate(\'%s\') in state %s' % (newstate, self.state))
+        stateBefore = self.state
+        stateError = None
+
+        if newstate not in DaqControl.states:
+            stateError = 'state \'%s\' not recognized'
+        else:
+            while self.state != newstate:
+                nextT = self.next_transition(self.state, newstate)
+                if nextT == 'error':
+                    break
+                else:
+                    answer = self.handle_trigger(nextT, stateChange=True)
+#                   print('handle_trigger(): answer[\'body\'] = %s' % answer['body'])
+                    if 'error' in answer['body']:
+                        stateError = answer['body']['error']
+                        break
+
+        if stateError is None:
+            answer = create_msg(self.state, body=self.cmstate)
+        else:
+            errMsg = stateError.replace("\"", "")
             logging.error(errMsg)
             answer = create_msg(self.state, body={'error': errMsg})
 
@@ -226,6 +360,11 @@ class CollectionManager():
         logging.debug('condition_alloc() returning True')
         return True
 
+    def condition_dealloc(self):
+        # TODO
+        logging.debug('condition_dealloc() returning True')
+        return True
+
     def condition_connect(self):
         # FIXME select all procs for now
         ids = copy.copy(self.ids)
@@ -240,6 +379,11 @@ class CollectionManager():
         else:
             logging.debug('condition_connect() returning True')
             return True
+
+    def condition_disconnect(self):
+        # TODO
+        logging.debug('condition_disconnect() returning True')
+        return True
 
     def handle_getstate(self):
         return create_msg(self.state, body=self.cmstate)
@@ -281,8 +425,10 @@ class CollectionManager():
         msg = create_msg(transition)
         self.pub.send_json(msg)
 
+#       logging.debug('ids before filter_level(): %s' % ids)
         # only drp group (aka level) responds to configure and above
         ids = self.filter_level('drp', ids)
+#       logging.debug('ids after filter_level(): %s' % ids)
 
         # make sure all the clients respond to transition before timeout
         ret, answers = confirm_response(self.pull, timeout, msg['header']['msg_id'], ids)
@@ -312,14 +458,14 @@ class CollectionManager():
         logging.debug('condition_unconfigure() returning %s' % retval)
         return retval
 
-    def condition_beginrun(self):
-        retval = self.condition_common('beginrun', 1000)
-        logging.debug('condition_beginrun() returning %s' % retval)
+    def condition_beginrecord(self):
+        retval = self.condition_common('beginrecord', 1000)
+        logging.debug('condition_beginecord() returning %s' % retval)
         return retval
 
-    def condition_endrun(self):
-        retval = self.condition_common('endrun', 1000)
-        logging.debug('condition_endrun() returning %s' % retval)
+    def condition_endrecord(self):
+        retval = self.condition_common('endrecord', 1000)
+        logging.debug('condition_endrecord() returning %s' % retval)
         return retval
 
     def condition_enable(self):
