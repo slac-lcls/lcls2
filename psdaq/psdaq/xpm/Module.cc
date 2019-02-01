@@ -13,6 +13,8 @@ using Pds::Cphw::Reg;
 enum { MSG_CLEAR_FIFO =0, 
        MSG_DELAY_PWORD=1 };
 
+static unsigned _verbose = 0;
+
 L0Stats::L0Stats() {
   l0Enabled=0; 
   l0Inhibited=0; 
@@ -33,7 +35,7 @@ LinkStatus::LinkStatus() {
   rxErrs  = 0;
 }
 
-void CoreCounts::dump() const
+void TimingCounts::dump() const
 {
 #define PU64(title,stat) printf("%9.9s: %lx\n",#title,stat)
   PU64(rxClkCnt,  rxClkCount);
@@ -51,23 +53,27 @@ void CoreCounts::dump() const
 #undef PU64
 }
 
+TimingCounts::TimingCounts(const Cphw::TimingRx& timing)
+{
+  rxClkCount       = timing.RxRecClks;
+  txClkCount       = timing.TxRefClks;
+  rxRstCount       = timing.RxRstDone;
+  crcErrCount      = timing.CRCerrors;
+  rxDecErrCount    = timing.RxDecErrs;
+  rxDspErrCount    = timing.RxDspErrs;
+  bypassResetCount = (timing.BuffByCnts >> 16) & 0xffff;
+  bypassDoneCount  = (timing.BuffByCnts >>  0) & 0xffff;
+  rxLinkUp         = (timing.CSR >> 1) & 0x01;
+  fidCount         = timing.Msgcounts;
+  sofCount         = timing.SOFcounts;
+  eofCount         = timing.EOFcounts;
+}
 
 CoreCounts Module::counts() const
 {
   CoreCounts c;
-  c.rxClkCount       = _timing.RxRecClks;
-  c.txClkCount       = _timing.TxRefClks;
-  c.rxRstCount       = _timing.RxRstDone;
-  c.crcErrCount      = _timing.CRCerrors;
-  c.rxDecErrCount    = _timing.RxDecErrs;
-  c.rxDspErrCount    = _timing.RxDspErrs;
-  c.bypassResetCount = (_timing.BuffByCnts >> 16) & 0xffff;
-  c.bypassDoneCount  = (_timing.BuffByCnts >>  0) & 0xffff;
-  c.rxLinkUp         = (_timing.CSR >> 1) & 0x01;
-  c.fidCount         = _timing.Msgcounts;
-  c.sofCount         = _timing.SOFcounts;
-  c.eofCount         = _timing.EOFcounts;
-
+  c.us = TimingCounts(_usTiming);
+  c.cu = TimingCounts(_cuTiming);
   return c;
 }
 
@@ -97,7 +103,7 @@ Module::Module()
 
 void Module::init()
 {
-  printf("Module:    paddr %x\n", unsigned(_paddr));
+  printf("Module:    paddr %x @ %p\n", unsigned(_paddr), &_paddr);
 
   printf("Index:     partition %u  link %u  linkDebug %u  amc %u  inhibit %u  tagStream %u\n",
          getf(_index,4,0),
@@ -143,9 +149,9 @@ void Module::init()
   setLink(il);
 
   //  Set the timing crossbar
-  _timing.xbar.setOut( Pds::Cphw::XBar::BP  , Pds::Cphw::XBar::FPGA );
-  _timing.xbar.setOut( Pds::Cphw::XBar::RTM0, Pds::Cphw::XBar::FPGA );
-  _timing.xbar.setOut( Pds::Cphw::XBar::RTM1, Pds::Cphw::XBar::FPGA );
+  _xbar.setOut( Pds::Cphw::XBar::BP  , Pds::Cphw::XBar::FPGA );
+  _xbar.setOut( Pds::Cphw::XBar::RTM0, Pds::Cphw::XBar::FPGA );
+  _xbar.setOut( Pds::Cphw::XBar::RTM1, Pds::Cphw::XBar::FPGA );
 
   _hsRepeater[0].init();
   _hsRepeater[1].init();
@@ -339,6 +345,9 @@ L0Stats Module::l0Stats() const
 
   s.rx0Errs = rxLinkErrs(0);
 
+  if (_verbose > 1)
+    s.dump();
+
   return s;
 }
 
@@ -410,15 +419,27 @@ bool Module::l0Reset() const
   return getf(_l0Control,1,0);
 }
 
+void Module::master      (bool v)
+{
+  setf(_l0Control,v?1:0,1,30);
+}
+
+bool Module::master      () const
+{
+  return getf(_l0Control,1,30)!=0;
+}
+
 void Module::setL0Enabled(bool v)
 {
-  //  printf("L0Select: %08x\n", unsigned(_l0Select));
+  if (_verbose>0) 
+    printf("setL0Enabled: L0Select: %08x\n", unsigned(_l0Select));
+
   setf(_l0Control,v?1:0,1,16);
 }
 
 bool Module::getL0Enabled() const
 {
-  return getf(_l0Control,1,16) ? 1 : 0;
+  return getf(_l0Control,1,16)!=0;
 }
 
 #if 0
@@ -527,15 +548,12 @@ void Module::dumpPll(unsigned idx) const
 
 void Module::dumpTiming(unsigned b) const
 {
-  Module& cthis = *const_cast<Module*>(this);
-  Pds::Cphw::RingBuffer& ring = b==0 ? cthis._timing.ring0 : cthis._timing.ring1;
-  unsigned dataWidth = b==0 ? 18 : 32;
+  printf("dumpTiming deprecated\n");
+}
 
-  ring.clear();
-  ring.enable(true);
-  usleep(100);
-  ring.enable(false);
-  ring.dump(dataWidth);
+void Module::setVerbose(unsigned v) 
+{
+  _verbose = v;
 }
 
 void     Module::setPartition(unsigned v) const
@@ -564,17 +582,21 @@ unsigned Module::getTagStream() const     { return getf(_index,  1,24); }
 
 void Module::setL0Delay(unsigned v)
 {
+  unsigned r = v*200;
+  r &= 0xffff;
+  r |= v<<16;
   //  Update pipeline depth
-  setf(_pipelineDepth, v*200, 32, 0);
+  setf(_pipelineDepth, r, 32, 0);
   //  Insert message to communicate downstream
-  setf(_messagePayload, v, 32, 0);
-  v = MSG_DELAY_PWORD | (1<<15);
-  setf(_message, v, 16, 0);
+  // setf(_messagePayload, v, 32, 0);
+  // v = MSG_DELAY_PWORD | (1<<15);
+  // setf(_message, v, 16, 0);
 }
 
 unsigned Module::getL0Delay() const
 {
-  return _pipelineDepth/200;
+  unsigned r = _pipelineDepth;
+  return r>>16;
 }
 
 void Module::setL1TrgClr(unsigned v)

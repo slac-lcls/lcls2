@@ -11,8 +11,9 @@ namespace Pds {
   class Semaphore;
 
   namespace Xpm {
-
+    
     class Module;
+    class XpmSequenceEngine;
 
     class PVCtrls
     {
@@ -26,10 +27,12 @@ namespace Pds {
     public:
       Module& module();
       Semaphore& sem();
+      XpmSequenceEngine& seq();
     private:
       std::vector<Pds_Epics::EpicsCA*> _pv;
-      Module&  _m;
-      Semaphore& _sem;
+      Module&            _m;
+      Semaphore&         _sem;
+      XpmSequenceEngine& _seq;
     };
   };
 };

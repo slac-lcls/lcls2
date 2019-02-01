@@ -4,6 +4,8 @@
 #include "psdaq/epicstools/PVBase.hh"
 #include "psdaq/service/Semaphore.hh"
 
+#include <cpsw_error.h>  // To catch a CPSW exception and continue
+
 #include <string>
 #include <sstream>
 
@@ -32,17 +34,19 @@ namespace Pds {
     //#define PRT(value)  printf("%60.60s: %32.32s: 0x%02x\n", __PRETTY_FUNCTION__, _channel.epicsName(), value)
 #define PRT(value)  {}
 
-#define PVG(i) {                                \
-      _ctrl.sem().take();                       \
-      _ctrl.setPartition();                     \
-      PRT(TOU(data()));    _ctrl.module().i;    \
+#define PVG(i) {                                        \
+      _ctrl.sem().take();                               \
+      try { _ctrl.setPartition();                       \
+        PRT(TOU(data()));    _ctrl.module().i; }        \
+      catch (CPSWError&) {}                             \
       _ctrl.sem().give(); }
 #define PVP(i) {                                        \
       _ctrl.sem().take();                               \
-      _ctrl.setPartition();                             \
-      TOU(data()) = _ctrl.module().i;                   \
+      try {                                             \
+        _ctrl.setPartition();                           \
+        TOU(data()) = _ctrl.module().i; }               \
+      catch (CPSWError&) {}                             \
       _ctrl.sem().give();                               \
-      PRT( ( TOU(data()) ) );                           \
       put(); }
     
 #define CPV(name, updatedBody, connectedBody)                           \
@@ -166,7 +170,8 @@ namespace Pds {
                        unsigned shelf,
                        unsigned partition) : 
     _pv(0), _m(m), _sem(sem), _stats(stats),
-      _shelf(shelf), _partition(partition), _enabled(false) {}
+      _shelf(shelf), _partition(partition), _enabled(false),
+      _l0Select(0), _dstSelect(0), _dstMask(0), _msgHdr(-1), _msgPayload(-1), _cfgKey(-1) {}
     PVPCtrls::~PVPCtrls() {}
 
     void PVPCtrls::allocate(const std::string& title)
@@ -237,12 +242,17 @@ namespace Pds {
       bool v = (shelf==_shelf);
       _enabled = v;
 
-      if (v) {
-        sem().take();
+      sem().take();
+      try {
         setPartition();
         _m.resetL0();
-        sem().give();
+        _m.master(v);
+        if (!v)
+          _m.setL0Enabled(false);
+      } catch (CPSWError&) {}
+      sem().give();
 
+      if (v) {
         //  Must not update "XPM" else we call ourselves recursively
         for(unsigned i=1; i<_pv.size(); i++)
           _pv[i]->updated();
@@ -257,8 +267,6 @@ namespace Pds {
         PrV(_seqBit);
 #undef PrV
       }
-      if (!v)
-        _m.setL0Enabled(false);
     }
 
     bool PVPCtrls::enabled() const { return _enabled; }
@@ -283,23 +291,25 @@ namespace Pds {
     void PVPCtrls::setL0Select()
     {
       _sem.take();
-      setPartition();
-      switch(_l0Select)
-      {
-        case FixedRate:
-          _m.setL0Select_FixedRate(_fixedRate);
-          break;
-        case ACRate:
-          _m.setL0Select_ACRate(_acRate, _acTimeslot);
-          break;
-        case Sequence:
-          _m.setL0Select_Sequence(_seqIdx, _seqBit);
-          break;
-        default:
-          printf("%s: Invalid L0Select value: %d\n", __func__, _l0Select);
-          break;
-      }
-      _m.setL0Select_Destn(_dstSelect,_dstMask);
+      try {
+        setPartition();
+        switch(_l0Select)
+          {
+          case FixedRate:
+            _m.setL0Select_FixedRate(_fixedRate);
+            break;
+          case ACRate:
+            _m.setL0Select_ACRate(_acRate, _acTimeslot);
+            break;
+          case Sequence:
+            _m.setL0Select_Sequence(_seqIdx, _seqBit);
+            break;
+          default:
+            printf("%s: Invalid L0Select value: %d\n", __func__, _l0Select);
+            break;
+          }
+        _m.setL0Select_Destn(_dstSelect,_dstMask);
+      } catch (CPSWError&) {}
       _sem.give();
       dump();
     }
@@ -308,8 +318,10 @@ namespace Pds {
     {
       printf("msg_insert [%x]\n", _msgHdr);
       _sem.take();
-      _m.messagePayload(_partition, _msgPayload);
-      _m.messageHdr    (_partition, _msgHdr);
+      try {
+        _m.messagePayload(_partition, _msgPayload);
+        _m.messageHdr    (_partition, _msgHdr);
+      } catch (CPSWError&) {}
       _sem.give();
     }
 
@@ -317,8 +329,10 @@ namespace Pds {
     {
       printf("msg_config [%x]\n",_cfgKey);
       _sem.take();
-      _m.messagePayload(_partition, _cfgKey);
-      _m.messageHdr    (_partition, TransitionId::Configure);
+      try {
+        _m.messagePayload(_partition, _cfgKey);
+        _m.messageHdr    (_partition, TransitionId::Configure);
+      } catch (CPSWError&) {}
       _sem.give();
     }
 
@@ -326,7 +340,9 @@ namespace Pds {
     {
       printf("msg_enable\n");
       _sem.take();
-      _m.messageHdr    (_partition, TransitionId::Enable);
+      try {
+        _m.messageHdr    (_partition, TransitionId::Enable);
+      } catch (CPSWError&) {}
       _sem.give();
     }
 
@@ -334,7 +350,9 @@ namespace Pds {
     {
       printf("msg_disable\n");
       _sem.take();
-      _m.messageHdr    (_partition, TransitionId::Disable);
+      try {
+        _m.messageHdr    (_partition, TransitionId::Disable);
+      } catch (CPSWError&) {}
       _sem.give();
     }
 
@@ -342,8 +360,10 @@ namespace Pds {
     {
       printf("msg_clear\n");
       _sem.take();
-      _m.messagePayload(_partition, 0);
-      _m.messageHdr    (_partition, MsgClear);
+      try {
+        _m.messagePayload(_partition, 0);
+        _m.messageHdr    (_partition, MsgClear);
+      } catch (CPSWError&) {}
       _sem.give();
     }
 
