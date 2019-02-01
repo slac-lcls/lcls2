@@ -4,7 +4,7 @@
 #include <fstream>
 #include <pthread.h>
 #include "pgpdriver.h"
-#include "TimingHeader.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 static unsigned _nevents=0;
 static uint64_t _nbytes =0;
@@ -65,6 +65,15 @@ static void* diagnostics(void*)
   return 0;
 }
 
+static void usage(const char* p)
+{
+  printf("Usage: %p [options]\n",p);
+  printf("Options: -d <device>\n");
+  printf("         -f <output file>\n");
+  printf("         -w <wait_us>\n");
+  printf("         -v (verbose)\n");
+}
+
 int main(int argc, char* argv[])
 {
     
@@ -87,6 +96,9 @@ int main(int argc, char* argv[])
         case 'v':
           lverbose = true;
           break;
+        default:
+          usage(argv[0]);
+          return 1;
         }
     }
 
@@ -120,14 +132,14 @@ int main(int argc, char* argv[])
 
     while (true) {    
         DmaBuffer* buffer = dev.read();
-        Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(buffer->virt);
+        XtcData::Transition* event_header = reinterpret_cast<XtcData::Transition*>(buffer->virt);
         XtcData::TransitionId::Value transition_id = event_header->seq.service();
         _nevents++;
         _nbytes += buffer->size;
         _lanes  |= 1<<buffer->dest;
         if (lverbose) {
-          printf("Size %u B | Dest %u | TimingHeader id %d | pulse id %lu | event counter %u\n",
-                 buffer->size, buffer->dest, transition_id, event_header->seq.pulseId().value(), event_header->evtCounter); 
+          printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u\n",
+                 buffer->size, buffer->dest, transition_id, event_header->seq.pulseId().value(), *reinterpret_cast<uint32_t*>(event_header+1));
         }
         if (wait_us && event_header->seq.stamp().seconds()>_seconds) {
           usleep(wait_us);
