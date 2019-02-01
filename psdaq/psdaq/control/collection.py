@@ -14,12 +14,12 @@ POSIX_TIME_AT_EPICS_EPOCH = 631152000
 class DaqControl:
     'Base class for controlling data acquisition'
 
-    triggers = ['plat', 'alloc', 'dealloc',
-                'connect', 'disconnect',
-                'configure', 'unconfigure',
-                'beginrecord', 'endrecord',
-                'enable', 'disable',
-                'configupdate', 'reset']
+    transitions = ['plat', 'alloc', 'dealloc',
+                   'connect', 'disconnect',
+                   'configure', 'unconfigure',
+                   'beginrecord', 'endrecord',
+                   'enable', 'disable',
+                   'configupdate', 'reset']
 
     states = [
         'reset',
@@ -43,16 +43,16 @@ class DaqControl:
         self.req.connect('tcp://%s:%d' % (host, rep_port(platform)))
 
     #
-    # DaqControl.getstate - get current state
+    # DaqControl.getState - get current state
     #
-    def getstate(self):
+    def getState(self):
         retval = 'error'
         try:
             msg = create_msg('getstate')
             self.req.send_json(msg)
             reply = self.req.recv_json()
         except Exception as ex:
-            print('Exception: %s' % ex)
+            print('getState() Exception: %s' % ex)
         except KeyboardInterrupt:
             print('KeyboardInterrupt')
         else:
@@ -64,16 +64,35 @@ class DaqControl:
         return retval
 
     #
-    # DaqControl.setstate - change the state
+    # DaqControl.setState - change the state
     #
-    def setstate(self, state):
+    def setState(self, state):
         errorMessage = None
         try:
             msg = create_msg('setstate.' + state)
             self.req.send_json(msg)
             reply = self.req.recv_json()
         except Exception as ex:
-            errorMessage = 'setstate() Exception: %s' % ex
+            errorMessage = 'setState() Exception: %s' % ex
+        else:
+            try:
+                errorMessage = reply['body']['error']
+            except KeyError:
+                pass
+
+        return errorMessage
+
+    #
+    # DaqControl.setTransition - trigger a transition
+    #
+    def setTransition(self, transition):
+        errorMessage = None
+        try:
+            msg = create_msg(transition)
+            self.req.send_json(msg)
+            reply = self.req.recv_json()
+        except Exception as ex:
+            errorMessage = 'setTransition() Exception: %s' % ex
         else:
             try:
                 errorMessage = reply['body']['error']
@@ -252,7 +271,7 @@ class CollectionManager():
                     key = msg['header']['key']
                     if key.startswith('setstate.'):
                         answer = self.handle_setstate(key[9:])
-                    elif key in DaqControl.triggers:
+                    elif key in DaqControl.transitions:
                         answer = self.handle_trigger(key, stateChange=False)
                     else:
                         answer = self.handle_request[key]()
