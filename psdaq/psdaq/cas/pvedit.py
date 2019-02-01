@@ -48,9 +48,11 @@ class PvDisplay(QtWidgets.QLabel):
     def setValue(self,value):
         self.setText(value)
 
-class PvLabel:
+class PvLabel(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name, dName=None, isInt=False, scale=None, units=None):
+        super(PvLabel,self).__init__()
         layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0,0,0,0)
         label  = QtWidgets.QLabel(name)
         label.setMinimumWidth(100)
         layout.addWidget(label)
@@ -58,7 +60,8 @@ class PvLabel:
         self.__display = PvDisplay()
         self.__display.connect_signal()
         layout.addWidget(self.__display)
-        parent.addLayout(layout)
+        self.setLayout(layout)
+        parent.addWidget(self)
 
         pvname = pvbase+name
         print(pvname)
