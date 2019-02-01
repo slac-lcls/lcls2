@@ -45,8 +45,9 @@ class Test:
         subprocess.call(['smdwriter','-f','data-ts.xtc2'])
         tmp_dir = os.path.join('.tmp','smalldata')
         if os.path.exists(tmp_dir):
-            shutil.rmtree(tmp_dir)
-        os.makedirs(tmp_dir)
+            shutil.rmtree(tmp_dir,ignore_errors=True)
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
         shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s00.xtc2')) # Ex. of run 1 with two detectors s00 and s01
         shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s01.xtc2'))
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s00.smd.xtc2'))
