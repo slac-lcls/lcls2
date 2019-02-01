@@ -14,12 +14,15 @@ namespace Pds {
                       bool lInternalRef=false);
       void enable_adc_prbs(bool);
       void enable_mon     (bool);
+    public:
+      void lmk_dump();
+      void lmx_dump();
+      void adc_dump(unsigned);
     private:
       void _hmc_init();
       void _lmk_init();
       void _lmx_init(bool);
       void _adc_init(unsigned,bool);
-      void _lmx_dump();
     public:
       enum DevSel { ADC0, ADC1, LMX, LMK, HMC };
       void     writeRegister( DevSel   dev,

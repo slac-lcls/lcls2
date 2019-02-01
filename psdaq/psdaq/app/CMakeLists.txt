@@ -14,16 +14,13 @@ target_include_directories(hpsBldServer PUBLIC
 
 find_library(YAML_CPP_LIB yaml-cpp $ENV{CONDA_PREFIX}/lib)
 find_library(CPSW_LIB cpsw $ENV{CONDA_PREFIX}/lib)
+find_library(EPICS_CA_LIB cpsw PATH $ENV{CONDA_PREFIX}/lib)
 
 target_link_libraries(hpsBldServer
    cphw
    bld
    ${CPSW_LIB}
    ${YAML_CPP_LIB}
-   ${EPICS_CA_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVACLIENT_LIB}
    dl
    pthread
    rt
@@ -61,10 +58,9 @@ target_include_directories(tprca PUBLIC
 
 target_link_libraries(tprca
    epicstools
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACLIENT_LIB}
    ${EPICS_CA_LIB}
+#   ${CPSW_LIB}
+#   ${YAML_CPP_LIB}
    tpr
    app
    dl
@@ -84,9 +80,6 @@ target_include_directories(tprsh PUBLIC
 
 target_link_libraries(tprsh
    epicstools
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACLIENT_LIB}
    ${EPICS_CA_LIB}
 #   ${CPSW_LIB}
 #   ${YAML_CPP_LIB}
@@ -127,9 +120,6 @@ target_link_libraries(pgpca
    service
    epicstools
    ${EPICS_CA_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVACLIENT_LIB}
    dl
    pthread
    rt
@@ -141,7 +131,7 @@ install(TARGETS app
 		tprca
 		tprsh
 		tprutil
-        pgpca
+                pgpca
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

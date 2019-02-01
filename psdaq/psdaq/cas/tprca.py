@@ -1,10 +1,7 @@
 import sys
-import logging
 import argparse
+from psp import Pv
 from PyQt5 import QtCore, QtGui, QtWidgets
-from psdaq.cas.pvedit import Pv
-
-logger = logging.getLogger(__name__)
 
 NReadoutChannels = 14
 NTriggerChannels = 12
@@ -33,14 +30,14 @@ class PvTextDisplay(QtWidgets.QLineEdit):
     def __init__(self):
         super(PvTextDisplay, self).__init__("0")
         self.setMinimumWidth(60)
-
+        
     def connect_signal(self):
         self.valueSet.connect(self.setValue)
 
     def setValue(self,value):
         self.setText(value)
 
-
+        
 class PvComboDisplay(QtWidgets.QComboBox):
 
     valueSet = QtCore.pyqtSignal('QString',name='valueSet')
@@ -48,7 +45,7 @@ class PvComboDisplay(QtWidgets.QComboBox):
     def __init__(self, choices):
         super(PvComboDisplay, self).__init__()
         self.addItems(choices)
-
+        
     def connect_signal(self):
         self.valueSet.connect(self.setValue)
 
@@ -61,9 +58,10 @@ class PvEditTxt(PvTextDisplay):
         super(PvEditTxt, self).__init__()
         self.connect_signal()
         self.editingFinished.connect(self.setPv)
-
-        self.pv = Pv(pv)
-        self.pv.monitor(self.update)
+        
+        self.pv = Pv.Pv(pv)
+        self.pv.monitor_start()
+        self.pv.add_monitor_callback(self.update)
 
 class PvEditInt(PvEditTxt):
 
@@ -75,7 +73,7 @@ class PvEditInt(PvEditTxt):
         self.pv.put(value)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.value
         if err is None:
             s = 'fail'
             try:
@@ -109,13 +107,12 @@ class PvEditDbl(PvEditTxt):
         self.pv.put(value)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.value
         if err is None:
             s = 'fail'
             try:
                 s = self.fmt.format(q)
             except:
-                logger.exception("Excetion in pv edit double")
                 v = ''
                 for i in range(len(q)):
                     v = v + ' ' + self.fmt.format(q[i])
@@ -138,19 +135,17 @@ class PvEditCmb(PvComboDisplay):
         super(PvEditCmb, self).__init__(choices)
         self.connect_signal()
         self.currentIndexChanged.connect(self.setValue)
-
-        self.pv = Pv(pvname)
-        self.pv.monitor(self.update)
+        
+        self.pv = Pv.Pv(pvname)
+        self.pv.monitor_start()
+        self.pv.add_monitor_callback(self.update)
 
     def setValue(self):
         value = self.currentIndex()
-        if self.pv.get() != value:
-            self.pv.put(value)
-        else:
-            logger.debug("Skipping updating PV for edit combobox as the value of the pv %s is the same as the current value", self.pv.pvname)
+        self.pv.put(value)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.value
         if err is None:
             self.setCurrentIndex(q)
             self.valueSet.emit(str(q))
@@ -166,7 +161,7 @@ class PvCmb(PvEditCmb):
 
 
 class PvEvtTab(QtWidgets.QStackedWidget):
-
+    
     def __init__(self, pvname, evtcmb):
         super(PvEvtTab,self).__init__()
 
@@ -178,7 +173,7 @@ class PvEvtTab(QtWidgets.QStackedWidget):
         acl.addWidget(PvEditCmb(pvname+'ATS'  ,acTS))
         acw.setLayout(acl)
         self.addWidget(acw)
-
+        
         sqw = QtWidgets.QWidget()
         sql = QtWidgets.QVBoxLayout()
         sql.addWidget(PvEditCmb(pvname+'SEQIDX',seqIdxs))
@@ -189,9 +184,9 @@ class PvEvtTab(QtWidgets.QStackedWidget):
         self.addWidget(PvEditCmb(pvname+'XPART',partitions))
 
         evtcmb.currentIndexChanged.connect(self.setCurrentIndex)
-
+                 
 class PvEditEvt(QtWidgets.QWidget):
-
+    
     def __init__(self, pvname):
         super(PvEditEvt, self).__init__()
         vbox = QtWidgets.QVBoxLayout()
@@ -201,11 +196,11 @@ class PvEditEvt(QtWidgets.QWidget):
         self.setLayout(vbox)
 
 class PvDstTab(QtWidgets.QWidget):
-
+    
     def __init__(self, pvname):
         super(PvDstTab,self).__init__()
 
-        self.pv = Pv(pvname)
+        self.pv = Pv.Pv(pvname)
 
         self.chkBox = []
         layout = QtWidgets.QGridLayout()
@@ -225,18 +220,18 @@ class PvDstTab(QtWidgets.QWidget):
         self.pv.put(v)
 
 class PvEditDst(QtWidgets.QWidget):
-
+    
     def __init__(self, pvname):
         super(PvEditDst, self).__init__()
         vbox = QtWidgets.QVBoxLayout()
         selcmb = PvEditCmb(pvname+'DSTSEL',dstsel)
-
+        
         vbox.addWidget(selcmb)
         vbox.addWidget(PvDstTab(pvname+'DESTNS'))
         self.setLayout(vbox)
 
 class PvRowDbl():
-    def __init__(self, row, layout, prefix, pv, label, ncols=NReadoutChannels, fmt='{}'):
+    def __init__(self, row, layout, prefix, pv, label, ncols=NReadoutChannels, fmt='{:'):
         qlabel = QtWidgets.QLabel(label)
         qlabel.setMinimumWidth(RowHdrLen)
         layout.addWidget(qlabel,row,0)
@@ -310,7 +305,7 @@ class Ui_MainWindow(object):
         layout = QtWidgets.QGridLayout()
 
         row = 0
-
+        
         layout.addWidget( QtWidgets.QLabel('ACCSEL'), row, 0 )
         layout.addWidget( PvEditCmb(pvname+':ACCSEL', accSel), row, 1 )
         row += 1
@@ -356,29 +351,25 @@ class Ui_MainWindow(object):
         self.centralWidget.setLayout(lo)
         self.centralWidget.resize(1000,600)
         MainWindow.resize(1000,600)
-
+            
 
 if __name__ == '__main__':
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
-    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument("pv", help="pv to monitor")
     args = parser.parse_args()
-
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
 
     app = QtWidgets.QApplication([])
     #  Make disabled widgets just as visible as enabled widgets
     palette = QtGui.QPalette()
-    palette.setColor(QtGui.QPalette.Disabled,
-                     QtGui.QPalette.WindowText,
-                     palette.color(QtGui.QPalette.Active,
+    palette.setColor(QtGui.QPalette.Disabled, 
+                     QtGui.QPalette.WindowText, 
+                     palette.color(QtGui.QPalette.Active, 
                                    QtGui.QPalette.WindowText))
-    palette.setBrush(QtGui.QPalette.Disabled,
-                     QtGui.QPalette.WindowText,
-                     palette.brush(QtGui.QPalette.Active,
+    palette.setBrush(QtGui.QPalette.Disabled, 
+                     QtGui.QPalette.WindowText, 
+                     palette.brush(QtGui.QPalette.Active, 
                                    QtGui.QPalette.WindowText))
     app.setPalette(palette)
     MainWindow = QtWidgets.QMainWindow()

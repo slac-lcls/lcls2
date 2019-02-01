@@ -10,7 +10,7 @@ expnum   = 'expnum'
 # can also set this environment in the shell.
 os.environ['TESTRELDIR'] = '/reg/neh/home4/weninc/lcls2/install'
 
-epics_env = 'EPICS_PVA_ADDR_LIST=10.0.3.255 EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067 EPICS_CA_AUTO_ADDR_LIST=NO'
+epics_env = 'EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067 EPICS_CA_AUTO_ADDR_LIST=NO'
 conda_env = getRelEnvString()
 total_env = epics_env+conda_env
 
@@ -34,7 +34,7 @@ ip_addr = '10.0.'+shelf
 procmgr_config = [
  {                        id:'partca-'+platform ,flags:'s', env:total_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'sp', env:conda_env, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- {                        id:'modca'  ,flags:'s', env:total_env, cmd:'xpmca DAQ:LAB2:XPM:'+shelf},
+ {                        id:'modca'  ,flags:'s', env:total_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
  {                        id:'deadca-'+platform, flags:'s', env:total_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
  {                        id:'dtica', flags:'s', env:total_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
  { host: 'drp-tst-dev002', id:'teb1', flags:'sxp', env:total_env, cmd:'tstEbBuilder' },

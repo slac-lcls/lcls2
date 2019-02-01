@@ -1,7 +1,6 @@
 import sys
-import logging
 
-from psdaq.epicstools.PVAServer import PVAServer
+from pcaspy import SimpleServer, Driver
 import time
 from datetime import datetime
 import argparse
@@ -13,6 +12,11 @@ NDsLinks    = 7
 NAmcs       = 2
 NPartitions = 16
 
+class myDriver(Driver):
+    def __init__(self):
+        super(myDriver, self).__init__()
+
+
 def printDb():
     global pvdb
     global prefix
@@ -23,6 +27,20 @@ def printDb():
     print('=========================================')
     return
 
+def addTiming(sec):
+    pvdb[sec+':RxClks'     ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':TxClks'     ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':RxRsts'     ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':CrcErrs'    ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':RxDecErrs'  ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':RxDspErrs'  ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':BypassRsts' ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':BypassDones'] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':RxLinkUp'   ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':FIDs'       ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':SOFs'       ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':EOFs'       ] = {'type' : 'float', 'value': 0}
+    
 def main():
     global pvdb
     pvdb = {}     # start with empty dictionary
@@ -35,11 +53,10 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+    myDriver.verbose = args.verbose
 
     prefix = args.P
-
+    
     # PVs
 #    pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 255}
     pvdb[':PAddr'              ] = {'type' : 'int'}
@@ -51,6 +68,8 @@ def main():
     for i in range(2):
         pvdb[':DumpTiming%d'%i ] = {'type' : 'int'}
 
+    pvdb[':DumpSeq'            ] = {'type' : 'int'}
+    pvdb[':SetVerbose'         ] = {'type' : 'int'}
     pvdb[':Inhibit'            ] = {'type' : 'int'}
     pvdb[':TagStream'          ] = {'type' : 'int'}
 
@@ -99,19 +118,11 @@ def main():
         pvdb[':PLL_Reset'     +'%d'%i] = {'type' : 'int'}
         pvdb[':PLL_Skew'      +'%d'%i] = {'type' : 'int'}
 
-    pvdb[':RxClks'     ] = {'type' : 'float', 'value': 0}
-    pvdb[':TxClks'     ] = {'type' : 'float', 'value': 0}
-    pvdb[':RxRsts'     ] = {'type' : 'float', 'value': 0}
-    pvdb[':CrcErrs'    ] = {'type' : 'float', 'value': 0}
-    pvdb[':RxDecErrs'  ] = {'type' : 'float', 'value': 0}
-    pvdb[':RxDspErrs'  ] = {'type' : 'float', 'value': 0}
-    pvdb[':BypassRsts' ] = {'type' : 'float', 'value': 0}
-    pvdb[':BypassDones'] = {'type' : 'float', 'value': 0}
-    pvdb[':RxLinkUp'   ] = {'type' : 'float', 'value': 0}
-    pvdb[':FIDs'       ] = {'type' : 'float', 'value': 0}
-    pvdb[':SOFs'       ] = {'type' : 'float', 'value': 0}
-    pvdb[':EOFs'       ] = {'type' : 'float', 'value': 0}
+    addTiming(':Us')
+    addTiming(':Cu')
 
+    pvdb[':RecClk'     ] = {'type' : 'float', 'value': 0}
+    pvdb[':FbClk'      ] = {'type' : 'float', 'value': 0}
     pvdb[':BpClk'      ] = {'type' : 'float', 'value': 0}
     for i in range(8):
         pvdb[':PART:%d:DeadFLnk' %i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
@@ -122,12 +133,15 @@ def main():
     # printDb(pvdb, prefix)
     printDb()
 
-    server = PVAServer(__name__)
+    server = SimpleServer()
+
     server.createPV(prefix, pvdb)
+    driver = myDriver()
 
     try:
-        # process PVA transactions
-        server.forever()
+        # process CA transactions
+        while True:
+            server.process(0.1)
     except KeyboardInterrupt:
         print('\nInterrupted')
 

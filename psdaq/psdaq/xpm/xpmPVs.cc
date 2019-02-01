@@ -17,7 +17,8 @@
 #include "psdaq/xpm/PVPCtrls.hh"
 #include "psdaq/xpm/XpmSequenceEngine.hh"
 
-#include "psdaq/epicstools/EpicsPVA.hh"
+#include "psdaq/epicstools/EpicsCA.hh"
+#include "psdaq/epicstools/PVWriter.hh"
 #include "psdaq/epicstools/PVMonitorCb.hh"
 
 #include "psdaq/service/Routine.hh"
@@ -25,7 +26,10 @@
 #include "psdaq/service/Task.hh"
 #include "psdaq/service/Timer.hh"
 
-using Pds_Epics::EpicsPVA;
+#include <cpsw_error.h>  // To catch a CPSW exception and continue
+
+using Pds_Epics::EpicsCA;
+using Pds_Epics::PVWriter;
 using Pds_Epics::PVMonitorCb;
 using Pds::Xpm::CoreCounts;
 using Pds::Xpm::L0Stats;
@@ -73,9 +77,9 @@ namespace Pds {
       string     _module_prefix;
       string     _partition_prefix;
       unsigned   _shelf;
-      EpicsPVA*   _partPV;
-      EpicsPVA*    _paddrPV;
-      EpicsPVA*    _fwBuildPV;
+      EpicsCA*   _partPV;
+      PVWriter*    _paddrPV;
+      PVWriter*    _fwBuildPV;
       timespec   _t;
       CoreCounts _c;
       LinkStatus _links[32];
@@ -138,22 +142,24 @@ void StatsTimer::_allocate()
 
   { std::stringstream ostr;
     ostr << _module_prefix << ":PAddr";
-    _paddrPV = new EpicsPVA(ostr.str().c_str()); }
+    _paddrPV = new PVWriter(ostr.str().c_str()); }
 
 #if 1
   { std::stringstream ostr;
     ostr << _module_prefix << ":FwBuild";
     printf("fwbuildpv: %s\n", ostr.str().c_str());
-    _fwBuildPV = new EpicsPVA(ostr.str().c_str(),256);  }
+    _fwBuildPV = new PVWriter(ostr.str().c_str(),256);  }
 #endif
 
+  ca_pend_io(0);
 }
 
 void StatsTimer::start()
 {
   //theTimer = this;
 
-  _dev._timing.resetStats();
+  _dev._usTiming.resetStats();
+  _dev._cuTiming.resetStats();
 
   //  _pvs.begin();
   Timer::start();
@@ -170,43 +176,61 @@ void StatsTimer::cancel()
 //
 void StatsTimer::expired()
 {
-  timespec t; clock_gettime(CLOCK_REALTIME,&t);
-  CoreCounts c = _dev.counts();
-  LinkStatus links[32];
-  _dev.linkStatus(links);
-  unsigned bpClk = _dev._monClk[0]&0x1fffffff;
-  double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
-  _sem.take();
-  _pvs.update(c,_c,links,_links,bpClk,dt);
-  _sem.give();
-  _c=c;
-  std::copy(links,links+32,_links);
-  _t=t;
-
-  for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
-    if (_pvpc[i]->enabled()) {
-      _sem.take();
-      _dev.setPartition(i);
-      _pvps[i]->update();
-      _sem.give();
+  try {
+    timespec t; clock_gettime(CLOCK_REALTIME,&t);
+    CoreCounts c = _dev.counts();
+    LinkStatus links[32];
+    _dev.linkStatus(links);
+    unsigned bpClk  = _dev._monClk[0]&0x1fffffff;
+    unsigned fbClk  = _dev._monClk[1]&0x1fffffff;
+    unsigned recClk = _dev._monClk[2]&0x1fffffff;
+    double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
+    _sem.take();
+    try {
+      _pvs.update(c,_c,links,_links,recClk,fbClk,bpClk,dt);
+    } catch (CPSWError& e) {
+      printf("Caught exception %s\n", e.what());
     }
-  }
-  _pvc.dump();
+    _sem.give();
+    _c=c;
+    std::copy(links,links+32,_links);
+    _t=t;
 
-  if (_paddrPV->connected()) {
-    _paddrPV->putFrom<unsigned>(_dev._paddr);
-  }
-  else
-    printf("paddrpv not connected\n");
+    for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
+      if (_pvpc[i]->enabled()) {
+        _sem.take();
+        try {
+          _dev.setPartition(i);
+          _pvps[i]->update();
+        } catch (CPSWError& e) {
+          printf("Caught exception %s\n", e.what());
+        }
+        _sem.give();
+      }
+    }
+    _pvc.dump();
+
+    if (_paddrPV->connected()) {
+      *reinterpret_cast<unsigned*>(_paddrPV->data()) = _dev._paddr; 
+      _paddrPV->put();
+    }
+    else
+      printf("paddrpv not connected\n");
 
 #if 1
-  if (_fwBuildPV && _fwBuildPV->connected()) {
-    std::string bld = _dev._timing.version.buildStamp();
-    printf("fwBuild: %s\n",bld.c_str());
-    _fwBuildPV->putFrom<std::string>(bld.c_str());
-    _fwBuildPV = 0;
-  }
+    if (_fwBuildPV && _fwBuildPV->connected()) {
+      std::string bld = _dev._version.buildStamp();
+      strncpy(reinterpret_cast<char*>(_fwBuildPV->data()), bld.c_str(), 256);
+      printf("fwBuild: %s\n",bld.c_str());
+      _fwBuildPV->put();
+      _fwBuildPV = 0;
+    }
 #endif
+
+    ca_flush_io();
+  } catch(CPSWError& e) {
+    printf("Caught exception %s\n", e.what());
+  }
 }
 
 
@@ -270,6 +294,7 @@ int main(int argc, char** argv)
   Module* m = Module::locate();
   m->init();
 
+#if 0
   //
   // Program sequencer
   //
@@ -298,6 +323,7 @@ int main(int argc, char** argv)
   engine.enable(true);
   engine.setAddress(rval,0,0);
   engine.reset ();
+#endif
 
   StatsTimer* timer = new StatsTimer(*m);
 

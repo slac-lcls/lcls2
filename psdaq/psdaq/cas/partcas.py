@@ -1,7 +1,6 @@
 import sys
-import logging
 
-from psdaq.epicstools.PVAServer import PVAServer
+from pcaspy import SimpleServer, Driver
 import time
 from datetime import datetime
 import argparse
@@ -10,6 +9,11 @@ import argparse
 import pdb
 
 NPartitions = 8
+
+class myDriver(Driver):
+    def __init__(self):
+        super(myDriver, self).__init__()
+
 
 def printDb():
     global pvdb
@@ -33,8 +37,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+    myDriver.verbose = args.verbose
 
     stationstr = 'PART'
     prefix = args.P+':'
@@ -51,7 +54,7 @@ def main():
         pvdb[stationstr+':%d:L0Select_SeqBit'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:DstSelect'          %i] = {'type' : 'int', 'value': 1}
         pvdb[stationstr+':%d:DstSelect_Mask'     %i] = {'type' : 'int'}
-        pvdb[stationstr+':%d:L0Delay'            %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:L0Delay'            %i] = {'type' : 'int', 'value': 99}
         pvdb[stationstr+':%d:ResetL0'            %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:Run'                %i] = {'type' : 'int'}
 
@@ -67,7 +70,7 @@ def main():
         pvdb[stationstr+':%d:PipelineDepth'%i] = {'type' : 'int'}
         #  Generic message interface
         pvdb[stationstr+':%d:MsgHeader'    %i] = {'type' : 'int'}
-        pvdb[stationstr+':%d:MsgInsert'    %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:MsgInsert'    %i] = {'type' : 'int', 'value': 0}
         pvdb[stationstr+':%d:MsgPayload'   %i] = {'type' : 'int'}
         #  Specific messages
         pvdb[stationstr+':%d:MsgConfig'    %i] = {'type' : 'int'}
@@ -83,7 +86,7 @@ def main():
 
         pvdb[stationstr+':%d:RunTime'  %i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:MsgDelay' %i] = {'type' : 'float', 'value': 0}
-        pvdb[stationstr+':%d:L0InpRate'%i] = {'type' : 'float', 'value': 0, 'extra': [('MDEL', 'float', 0.1)]}
+        pvdb[stationstr+':%d:L0InpRate'%i] = {'type' : 'float', 'value': 0, 'mdel' : 0}
         pvdb[stationstr+':%d:L0AccRate'%i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:L1Rate'   %i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:NumL0Inp' %i] = {'type' : 'float', 'value': 0}
@@ -95,12 +98,15 @@ def main():
     # printDb(pvdb, prefix)
     printDb()
 
-    server = PVAServer(__name__)
+    server = SimpleServer()
+
     server.createPV(prefix, pvdb)
+    driver = myDriver()
 
     try:
-        # process PVA transactions
-        server.forever()
+        # process CA transactions
+        while True:
+            server.process(0.1)
     except KeyboardInterrupt:
         print('\nInterrupted')
 

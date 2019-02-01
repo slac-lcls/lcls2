@@ -79,9 +79,9 @@ int main(int argc, char** argv) {
     gth->enable(true);
     // reset rx
     AmcTiming& amc = *new(0) AmcTiming;
-    unsigned csr = amc.CSR;
+    unsigned csr = amc.rx.CSR;
     csr |= (1<<3);
-    amc.CSR = csr;
+    amc.rx.CSR = csr;
     sleep(1);
   }
   gth->scan(outfile,prescale,1,lsparse);

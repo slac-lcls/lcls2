@@ -1,7 +1,6 @@
 import sys
-import logging
 
-from psdaq.epicstools.PVAServer import PVAServer
+from pcaspy import SimpleServer, Driver
 import time
 from datetime import datetime
 import argparse
@@ -10,6 +9,12 @@ import pdb
 # yaml metadata
 numUsLinks = 7
 numPartitions = 8
+
+
+class myDriver(Driver):
+    def __init__(self):
+        super(myDriver, self).__init__()
+
 
 def printDb():
     global pvdb
@@ -33,8 +38,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+    myDriver.verbose = args.verbose
 
     prefix = args.P+':'
 
@@ -79,9 +83,9 @@ def main():
       pvdb[p2+'UsRxFull'       ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'dUsRxFull'      ] = {'type' : 'float', 'count' : numUsLinks }
       pvdb[p2+'UsObSent'       ] = {'type' : 'int', 'count' : numUsLinks }
-      pvdb[p2+'dUsObSent'      ] = {'type' : 'float', 'count' : numUsLinks }
+#      pvdb[p2+'dUsObSent'      ] = {'type' : 'float', 'count' : numUsLinks }
       pvdb[p2+'UsObRecv'       ] = {'type' : 'int', 'count' : numUsLinks }
-      pvdb[p2+'dUsObRecv'      ] = {'type' : 'float', 'count' : numUsLinks }
+#      pvdb[p2+'dUsObRecv'      ] = {'type' : 'float', 'count' : numUsLinks }
       pvdb[p2+'UsRxInh'        ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'dUsRxInh'       ] = {'type' : 'int', 'count' : numUsLinks }
       pvdb[p2+'UsWrFifoD'      ] = {'type' : 'int', 'count' : numUsLinks }
@@ -163,12 +167,15 @@ def main():
     # printDb(pvdb, prefix)
     printDb()
 
-    server = PVAServer(__name__)
+    server = SimpleServer()
+
     server.createPV(prefix, pvdb)
+    driver = myDriver()
 
     try:
-        # process PVA transactions
-        server.forever()
+        # process CA transactions
+        while True:
+            server.process(0.1)
     except KeyboardInterrupt:
         print('\nInterrupted')
 

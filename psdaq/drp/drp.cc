@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
     }
 
     // event builder
-    para.tPrms = { /* .ifAddr        = */ nullptr,
+    para.tPrms = { /* .ifAddr        = */ { },
                    /* .port          = */ { },
                    /* .id            = */ 0,
                    /* .builders      = */ 0,

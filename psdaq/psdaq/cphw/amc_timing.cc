@@ -141,11 +141,11 @@ int main(int argc, char* argv[])
 
   if (measureClks)
   {
-    unsigned rxT0 = unsigned(t->RxRecClks);
-    unsigned txT0 = unsigned(t->TxRefClks);
+    unsigned rxT0 = unsigned(t->rx.RxRecClks);
+    unsigned txT0 = unsigned(t->rx.TxRefClks);
     usleep(1000000);
-    unsigned rxT1 = unsigned(t->RxRecClks);
-    unsigned txT1 = unsigned(t->TxRefClks);
+    unsigned rxT1 = unsigned(t->rx.RxRecClks);
+    unsigned txT1 = unsigned(t->rx.TxRefClks);
     unsigned dRxT = (rxT1 - rxT0) << 4;
     unsigned dTxT = (txT1 - txT0) << 4;
     printf("\n");
