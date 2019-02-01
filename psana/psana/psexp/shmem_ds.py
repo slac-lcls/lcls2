@@ -1,5 +1,5 @@
 from .ds_base import DataSourceBase
-from .run import RunSerial
+from .run import RunShmem
 
 class ShmemDataSource(DataSourceBase):
 
@@ -13,8 +13,8 @@ class ShmemDataSource(DataSourceBase):
 
     def runs(self):
         for run_no in self.run_dict:
-            run = RunSerial(self.exp, run_no, self.run_dict[run_no][0], \
-                        self.max_events, self.filter)
+            run = RunShmem(self.exp, run_no, self.run_dict[run_no][0], \
+                        self.max_events, self.batch_size, self.filter)
             self._configs = run.configs # short cut to config
             yield run
 

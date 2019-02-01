@@ -13,7 +13,7 @@ def global_except_hook(exctype, value, traceback):
     import mpi4py.MPI
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
-sys.excepthook = global_except_hook
+#sys.excepthook = global_except_hook
 
 import os
 from psana import DataSource
@@ -41,6 +41,7 @@ for run in ds.runs():
     for evt in run.events():
         sendbuf += 1
         assert det.raw.raw(evt).shape == (18,)
+        assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
@@ -59,6 +60,7 @@ for run in ds.runs():
     for evt in run.events():
         sendbuf += 1
         assert det.raw.raw(evt).shape == (18,)
+        assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
@@ -73,6 +75,7 @@ if rank == 0:
 for evt in ds.events():
     sendbuf += 1
     assert det.raw.raw(evt).shape == (18,)
+    assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
