@@ -12,7 +12,7 @@ def main():
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
                         help='platform (default 0)')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
-                        help='collection host (default localhosot)')
+                        help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
     group = parser.add_mutually_exclusive_group()
