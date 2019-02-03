@@ -19,7 +19,7 @@
 
 using namespace XtcData;
 #define BUFSIZE 0x4000000
-#define TMPSTRINGSIZE 256
+#define TMPSTRINGSIZE 1024
 #define CHUNKSIZE 1<<20
 #define MAXRETRIES 5
 
@@ -46,6 +46,7 @@ struct PyDgramObject {
     ssize_t offset;
     Py_buffer buf;
     ContainerInfo contInfo;
+    NamesIter* namesIter; // only nonzero in the config dgram
 };
 
 static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
@@ -342,18 +343,26 @@ private:
     NamesVec&      _namesVec;
 };
 
-void AssignDict(PyDgramObject* self, PyObject* configDgram) {
+void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
     bool isConfig;
     isConfig = (configDgram == 0) ? true : false;
     
-    if (isConfig) configDgram = (PyObject*)self; // we weren't passed a config, so we must be config
+    if (isConfig) {
+        configDgram = self; // we weren't passed a config, so we must be config
+
+        configDgram->namesIter = new NamesIter(&(configDgram->dgram->xtc));
+        configDgram->namesIter->iterate();
     
-    NamesIter namesIter(&((PyDgramObject*)configDgram)->dgram->xtc);
-    namesIter.iterate();
+        DictAssignAlg(configDgram, configDgram->namesIter->namesVec());
+    } else {
+        self->namesIter = 0; // in case dgram was not created via dgram_init
+    }
     
-    if (isConfig) DictAssignAlg((PyDgramObject*)configDgram, namesIter.namesVec());
-    
-    PyConvertIter iter(&self->dgram->xtc, self, namesIter.namesVec());
+    // FIXME cpo: don't understand why we have to iterate over this
+    // every dgram to avoid segfault. might be a sign of a deeper problem.
+    configDgram->namesIter->iterate();
+
+    PyConvertIter iter(&self->dgram->xtc, self, configDgram->namesIter->namesVec());
     iter.iterate();
 }
 
@@ -363,6 +372,7 @@ static void dgram_dealloc(PyDgramObject* self)
     // we creating dgrams with a NULL value for pyseq?
     Py_XDECREF(self->pyseq);
     Py_XDECREF(self->dict);
+    if (self->namesIter) delete self->namesIter; // for config dgram only
     if (self->buf.buf == NULL) {
         // can be NULL if we had a problem early in dgram_init
         //Py_XDECREF(self->dgrambytes);
@@ -428,6 +438,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"view",
                              NULL};
 
+    self->namesIter = 0;
     int fd=-1;
     PyObject* configDgram=0;
     self->offset=0;
@@ -505,7 +516,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             if (err) return err;
         }
     }
-    AssignDict(self, configDgram);
+    AssignDict(self, (PyDgramObject*)configDgram);
 
     return 0;
 }
