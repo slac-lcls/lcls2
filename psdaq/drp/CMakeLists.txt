@@ -47,7 +47,7 @@ add_executable(pgpread
 )
 
 target_include_directories(pgpread PUBLIC
-    ../../../aes-stream-drivers/include
+    ../psdaq/pgp/aes-stream-drivers/include
 )
 
 target_link_libraries(pgpread
