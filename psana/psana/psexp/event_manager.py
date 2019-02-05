@@ -18,7 +18,7 @@ class EventManager(object):
         
         # Keeps offsets and sizes for all events in the batch
         # for batch reading (if filter_fn is not given).
-        ofsz_batch = np.zeros((pf.n_packets, self.n_smd_files, 2), dtype='i')
+        ofsz_batch = np.zeros((pf.n_packets, self.n_smd_files, 2), dtype=np.intp)
         for i, event_bytes in enumerate(views):
             if event_bytes:
                 evt = Event._from_bytes(self.smd_configs, event_bytes)
@@ -45,7 +45,7 @@ class EventManager(object):
                 offset = ofsz_batch[0, i, 0]
                 size = np.sum(ofsz_batch[:, i, 1])
                 view_sizes[i] = size
-
+                
                 os.lseek(self.dm.fds[i], offset, 0)
                 views[i] = os.read(self.dm.fds[i], size)
             
