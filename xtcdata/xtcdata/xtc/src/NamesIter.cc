@@ -4,7 +4,6 @@ using namespace XtcData;
 
 int NamesIter::process(Xtc* xtc)
 {
-    // printf("found typeid %s\n",XtcData::TypeId::name(xtc->contains.id()));
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
         iterate(xtc); // look inside anything that is a Parent

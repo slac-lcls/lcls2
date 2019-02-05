@@ -271,8 +271,8 @@ class Ui_MainWindow(object):
             tb.setLayout(hl)
             tw.addTab(tb,"Global")
 
-#            addTiming(tw, pvbase+'Us:',"UsTiming")
-#            addTiming(tw, pvbase+'Cu:',"CuTiming")
+            addTiming(tw, pvbase+'Us:',"UsTiming")
+            addTiming(tw, pvbase+'Cu:',"CuTiming")
 
         tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
         tw.addTab(FrontPanelAMC(pvbase,1),"AMC1")

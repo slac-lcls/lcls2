@@ -164,6 +164,16 @@ target_link_libraries(hsd_test
 )
 
 
+add_executable(hsd_validate hsd_validate.cc)
+
+target_link_libraries(hsd_validate
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
+
 add_executable(hsdRead hsdRead.cc ../../../psalg/psalg/digitizer/src/Stream.cc)
 
 target_include_directories(hsdRead PUBLIC

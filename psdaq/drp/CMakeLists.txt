@@ -42,14 +42,14 @@ install(TARGETS drputils drp
   RUNTIME DESTINATION bin
 )
 
-#add_executable(pgpread2
-#    pgpread.cc
-#)
+add_executable(pgpread
+    pgpread.cc
+)
 
-#target_include_directories(pgpread2 PUBLIC
-#    ../../../aes-stream-drivers/include
-#)
+target_include_directories(pgpread PUBLIC
+    ../psdaq/pgp/aes-stream-drivers/include
+)
 
-#target_link_libraries(pgpread2
-#    xtcdata::xtc
-#)
+target_link_libraries(pgpread
+    xtcdata::xtc
+)

@@ -25,16 +25,16 @@ target_link_libraries(status
     pgpdriver
 )
 
-add_executable(pgpread
-    pgpread.cc
-)
+#add_executable(pgpread
+#    pgpread.cc
+#)
 
-target_link_libraries(pgpread
-    pgpdriver
-    xtcdata::xtc
-    pthread
-    rt
-)
+#target_link_libraries(pgpread
+#    pgpdriver
+#    xtcdata::xtc
+#    pthread
+#    rt
+#)
 
 add_executable(pgpmon
     pgpmon.cc

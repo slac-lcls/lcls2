@@ -23,7 +23,6 @@ public:
 
     int process(Xtc* xtc)
     {
-        printf("found typeid %s extent %d\n",XtcData::TypeId::name(xtc->contains.id()),xtc->extent);
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
             iterate(xtc);
@@ -31,16 +30,19 @@ public:
         }
         case (TypeId::Names): {
             Names& names = *(Names*)xtc;
-	    printf("Found %d names\n",names.num());
+            Alg& alg = names.alg();
+	    printf("*** DetName: %s, DetType: %s, Alg: %s, Version: 0x%6.6x, Names:\n",
+                   names.detName(), names.detType(),
+                   alg.name(), alg.version());
+
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
-                printf("name %s\n",name.name());
+                printf("Name: %s Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
             }
             break;
         }
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
-            printf("found shapesdata\n");
             iterate(xtc);
             // lookup the index of the names we are supposed to use
             // unsigned namesId = shapesdata.shapes().namesId();
@@ -67,14 +69,18 @@ int main(int argc, char* argv[])
     int c;
     char* xtcname = 0;
     int parseErr = 0;
+    unsigned neventreq = 0xffffffff;
 
-    while ((c = getopt(argc, argv, "hf:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
             exit(0);
         case 'f':
             xtcname = optarg;
+            break;
+        case 'n':
+            neventreq = atoi(optarg);
             break;
         default:
             parseErr++;
@@ -94,13 +100,15 @@ int main(int argc, char* argv[])
 
     XtcFileIterator iter(fd, 0x4000000);
     Dgram* dg;
+    unsigned nevent=0;
     while ((dg = iter.next())) {
+        if (nevent>=neventreq) break;
+        nevent++;
         printf("%s transition: time %d.%09d, pulseId 0x%lux, env 0x%lux, "
-               "payloadSize %d\n",
+               "payloadSize %d extent %d\n",
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
-               dg->env, dg->xtc.sizeofPayload());
-        printf("*** dg xtc extent %d\n",dg->xtc.extent);
+               dg->env, dg->xtc.sizeofPayload(),dg->xtc.extent);
         DebugIter iter(&(dg->xtc));
         iter.iterate();
     }

@@ -43,7 +43,7 @@ int main (int argc, char **argv) {
 
   if ( (fd[1] = open("/dev/datadev_1", O_RDWR)) <= 0 ) {
     cout << "Error opening /dev/datadev_1" << endl;
-    return(1);
+    //    return(1);
   }
 
   { AxiVersion vsn;
@@ -53,6 +53,9 @@ int main (int argc, char **argv) {
       printf("upTimeCount     : %u\n", vsn.upTimeCount);
       printf("deviceId        : %x\n", vsn.deviceId);
       printf("buildString     : %s\n", vsn.buildString); 
+      printf("corePcie[0:3]   : %c\n", (vsn.userValues[61] == 0) ? 'T':'F');
+      if (fd[1]>=0 && axiVersionGet(fd[1], &vsn)>=0)
+        printf("corePcie[4:7]   : %c\n", (vsn.userValues[61] == 0) ? 'T':'F');
     }
   }
 
@@ -66,20 +69,24 @@ int main (int argc, char **argv) {
     printf("%20.20s :", #name);                                 \
     for(unsigned i=0; i<8; i++) {                               \
       int ifd = fd[i>>2];                                       \
-      READREG(name,addr+base+(i&3)*0x10000);                    \
-      printf(" %8x", (reg>>offset)&mask);                       \
+      if (ifd>=0) {                                             \
+        READREG(name,addr+base+(i&3)*0x10000);                  \
+        printf(" %8x", (reg>>offset)&mask);                     \
+      }                                                         \
     }                                                           \
     printf("\n"); }
 #define PRINTBIT(name, addr, bit)  PRINTFIELD(name, addr, bit, 1)
 #define PRINTREG(name, addr)       PRINTFIELD(name, addr,   0, 0xffffffff)
 #define PRINTERR(name, addr)       PRINTFIELD(name, addr,   0, 0xf)
-#define PRINTFRQ(name, addr) {                                  \
-    uint32_t reg;                                               \
-    printf("%20.20s :", #name);                                 \
-    for(unsigned i=0; i<8; i++) {                               \
-      dmaReadRegister(fd[i>>2], addr+base+(i&3)*0x10000, &reg); \
-      printf(" %8.3f", float(reg)*1.e-6);                       \
-    }                                                           \
+#define PRINTFRQ(name, addr) {                                          \
+    uint32_t reg;                                                       \
+    printf("%20.20s :", #name);                                         \
+    for(unsigned i=0; i<8; i++) {                                       \
+      if (fd[i>>2]>=0) {                                                \
+        dmaReadRegister(fd[i>>2], addr+base+(i&3)*0x10000, &reg);       \
+        printf(" %8.3f", float(reg)*1.e-6);                             \
+      }                                                                 \
+    }                                                                   \
     printf("\n"); }
 
   base = 0x00a08000;
@@ -88,12 +95,14 @@ int main (int argc, char **argv) {
     unsigned reg;
     for(unsigned i=0; i<8; i++) {
       int ifd = fd[i>>2];
-      unsigned a = 0x08+base+(i&3)*0x10000;
-      READREG(loopback, a);
-      reg &= ~0x7;
-      if (lbmask & (1<<i))
-        reg |= 0x2;
-      dmaWriteRegister(ifd,a,reg);
+      if (ifd >= 0) {
+        unsigned a = 0x08+base+(i&3)*0x10000;
+        READREG(loopback, a);
+        reg &= ~0x7;
+        if (lbmask & (1<<i))
+          reg |= 0x2;
+        dmaWriteRegister(ifd,a,reg);
+      }
     }
   }
 

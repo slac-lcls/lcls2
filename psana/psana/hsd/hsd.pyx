@@ -1,6 +1,6 @@
 # Import the Python-level symbols of numpy
 import numpy as np
-from psana.detector.detectors import DetectorImpl
+from psana.detector.detector_impl import DetectorImpl
 
 # Import the C-level symbols of numpy
 cimport numpy as cnp
