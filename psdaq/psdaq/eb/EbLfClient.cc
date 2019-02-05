@@ -18,12 +18,8 @@ using ms_t = std::chrono::milliseconds;
 
 
 EbLfClient::EbLfClient(unsigned verbose) :
-  _verbose(verbose),
-  _pending(0)
-{
-}
-
-EbLfClient::~EbLfClient()
+  _pending(0),
+  _verbose(verbose)
 {
 }
 

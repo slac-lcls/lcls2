@@ -24,11 +24,11 @@ using namespace Pds::Eb;
 TebContributor::TebContributor(const TebCtrbParams& prms) :
   BatchManager (prms.duration, prms.maxBatches, prms.maxEntries, prms.maxInputSize),
   _prms        (prms),
-  _transport   (new EbLfClient(prms.verbose)),
+  _transport   (prms.verbose),
   _links       (),
-  _idx2Id      (new unsigned[prms.addrs.size()]),
-  _id          (prms.id),
-  _numEbs      (std::bitset<64>(prms.builders).count()),
+  _idx2Id      (),
+  _id          (-1),
+  _numEbs      (0),
   _batchBase   (roundUpSize(TransitionId::NumberOf * prms.maxInputSize)),
   _batchCount  (0),
   _inFlightOcc (0),
@@ -40,8 +40,18 @@ TebContributor::TebContributor(const TebCtrbParams& prms) :
   _running     (true),
   _rcvrThread  (nullptr)
 {
-  size_t size   = batchRegionSize();    // No need to add Tr space size here
-  void*  region = batchRegion();        // Local space for Trs is in the batch region
+}
+
+int TebContributor::connect(const TebCtrbParams& prms)
+{
+  _id = prms.id;
+  _numEbs = std::bitset<64>(prms.builders).count();
+  _links.reserve(prms.addrs.size());
+  _idx2Id.reserve(prms.addrs.size());
+
+  int    rc;
+  void*  region  = batchRegion();     // Local space for Trs is in the batch region
+  size_t regSize = batchRegionSize(); // No need to add Tr space size here
 
   for (unsigned i = 0; i < prms.addrs.size(); ++i)
   {
@@ -49,29 +59,25 @@ TebContributor::TebContributor(const TebCtrbParams& prms) :
     const char*    port = prms.ports[i].c_str();
     EbLfLink*      link;
     const unsigned tmo(120000);         // Milliseconds
-    if (_transport->connect(addr, port, tmo, &link))
+    if ( (rc = _transport.connect(addr, port, tmo, &link)) )
     {
       fprintf(stderr, "%s: Error connecting to EbLfServer at %s:%s\n",
-              __func__, addr, port);
-      abort();
+              __PRETTY_FUNCTION__, addr, port);
+      return rc;
     }
-    if (link->preparePoster(prms.id, region, size))
+    if ( (rc = link->preparePoster(prms.id, region, regSize)) )
     {
       fprintf(stderr, "%s: Failed to prepare link to %s:%s\n",
-              __func__, addr, port);
-      abort();
+              __PRETTY_FUNCTION__, addr, port);
+      return rc;
     }
     _links[link->id()] = link;
     _idx2Id[i] = link->id();
 
-    printf("%s: EbLfServer ID %d connected\n", __func__, link->id());
+    printf("%s: EbLfServer ID %d connected\n", __PRETTY_FUNCTION__, link->id());
   }
-}
 
-TebContributor::~TebContributor()
-{
-  if (_idx2Id)     delete [] _idx2Id;
-  if (_transport)  delete _transport;
+  return 0;
 }
 
 void TebContributor::startup(EbCtrbInBase& in)
@@ -106,7 +112,7 @@ void TebContributor::shutdown()
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
-    _transport->shutdown(it->second);
+    _transport.shutdown(*it);
   }
   _links.clear();
 }
@@ -189,7 +195,7 @@ void TebContributor::post(const Dgram* nonEvent)
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
-    EbLfLink* link = it->second;
+    EbLfLink* link = *it;
     if (link->id() != dst)        // Batch posted above included this non-event
     {
       if (_prms.verbose)
@@ -237,4 +243,3 @@ void TebContributor::_receiver(EbCtrbInBase& in)
 
   in.shutdown();
 }
-

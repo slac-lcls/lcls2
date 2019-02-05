@@ -47,6 +47,8 @@ private:
 
 enum class State {reset, plat, alloc, connect};
 
+std::string getNicIp();
+
 class CollectionApp
 {
 public:
@@ -59,6 +61,8 @@ protected:
     virtual void handleReset(const json& msg) = 0;
     void reply(const json& msg);
     size_t getId() const {return m_id;}
+    const std::string& getLevel() const {return m_level;}
+    State getState() const {return m_state;}
     void setState(State state) {m_state = state;}
 private:
     State m_state;

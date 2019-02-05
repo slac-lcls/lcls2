@@ -6,8 +6,6 @@
 
 #include <chrono>
 #include <vector>
-#include <unordered_map>
-#include <string>
 
 
 namespace XtcData
@@ -27,18 +25,17 @@ namespace Pds
     class Batch;
     class BatchManager;
 
-    using UmapEbLfLink = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
-
     class EbCtrbInBase
     {
     public:
       EbCtrbInBase(const TebCtrbParams&);
-      virtual ~EbCtrbInBase();
+      virtual ~EbCtrbInBase() {}
     public:
-      const uint64_t& rxPending() const { return _transport->pending(); }
+      const uint64_t& rxPending() const { return _transport.pending(); }
     public:
-      void     shutdown();
+      int      connect(const TebCtrbParams&);
       int      process(BatchManager& batMan);
+      void     shutdown();
     public:
       size_t   maxBatchSize() const { return _maxBatchSize; }
     public:
@@ -48,20 +45,20 @@ namespace Pds
       void    _updateHists(TimePoint_t               t0,
                            TimePoint_t               t1,
                            const XtcData::TimeStamp& stamp);
+    private:
+      EbLfServer             _transport;
+      std::vector<EbLfLink*> _links;
+      size_t                 _maxBatchSize;
+    private:
+      Histogram              _ebCntHist;
+      Histogram              _rttHist;
+      Histogram              _pendTimeHist;
+      Histogram              _pendCallHist;
+      TimePoint_t            _pendPrevTime;
     protected:
-      const TebCtrbParams& _prms;
+      const TebCtrbParams&   _prms;
     private:
-      const unsigned       _numEbs;
-      size_t               _maxBatchSize;
-      std::vector<void*>   _regions;
-      EbLfServer*          _transport;
-      UmapEbLfLink         _links;
-    private:
-      Histogram            _ebCntHist;
-      Histogram            _rttHist;
-      Histogram            _pendTimeHist;
-      Histogram            _pendCallHist;
-      TimePoint_t          _pendPrevTime;
+      std::vector<void*>     _regions;
     };
   };
 };

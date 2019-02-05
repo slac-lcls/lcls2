@@ -19,15 +19,12 @@ using ms_t = std::chrono::milliseconds;
 static const int COMP_TMO = 5000;       // ms; Completion read timeout
 
 
-EbLfServer::EbLfServer(const std::string& addr,
-                       const std::string& port,
-                       unsigned           verbose) :
-  _pep    (nullptr),
-  _verbose(verbose),
+EbLfServer::EbLfServer(unsigned verbose) :
   _tmo    (0),                          // Start by polling
-  _pending(0)
+  _verbose(verbose),
+  _pending(0),
+  _pep    (nullptr)
 {
-  _status = _initialize(addr.c_str(), port.c_str());
 }
 
 EbLfServer::~EbLfServer()
@@ -36,13 +33,13 @@ EbLfServer::~EbLfServer()
   if (_pep)   delete _pep;
 }
 
-int EbLfServer::_initialize(const char* addr,
-                            const char* port)
+int EbLfServer::initialize(const std::string& addr,
+                           const std::string& port)
 {
   const uint64_t flags  = 0;
   const size_t   txSize = 0;
   const size_t   rxSize = 0;
-  _pep = new PassiveEndpoint(addr, port, flags, txSize, rxSize);
+  _pep = new PassiveEndpoint(addr.c_str(), port.c_str(), flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
     fprintf(stderr, "%s:\n  Failed to create Passive Endpoint: %s\n",
@@ -74,19 +71,13 @@ int EbLfServer::_initialize(const char* addr,
             __PRETTY_FUNCTION__, _pep->error());
     return _pep->error_num();
   }
-  printf("EbLfServer is listening for client(s) on port %s\n", port);
+  printf("EbLfServer is listening for client(s) on port %s\n", port.c_str());
 
   return 0;
 }
 
 int EbLfServer::connect(EbLfLink** link, int tmo)
 {
-  if (_status != 0)
-  {
-    fprintf(stderr, "%s:\n  Failed to initialize Server\n", __PRETTY_FUNCTION__);
-    return _status;
-  }
-
   CompletionQueue* txcq    = nullptr;
   uint64_t         txFlags = 0;
   Endpoint* ep = _pep->accept(tmo, txcq, txFlags, _rxcq, FI_RECV);
@@ -115,7 +106,7 @@ int EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
   ssize_t   rc     = _rxcq->comp_wait(cqEntry, maxCnt, _tmo);
   if (rc == maxCnt)
   {
-    _tmo = 0;                 // Switch to polling after successfull completion
+    _tmo = 0;                 // Switch to polling after successful completion
 
     if ((cqEntry->flags & flags) == flags)
     {

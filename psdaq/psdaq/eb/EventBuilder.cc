@@ -25,9 +25,9 @@ EventBuilder::EventBuilder(unsigned epochs,
   _epochLut(epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries),
   _eventLut(epochs * entries),
-  _timerTask(new Task(TaskObject("tEB_Timeout"))),
+  _verbose(verbose),
   _duration(100),                       // Timeout rate in ms
-  _verbose(verbose)
+  _timerTask(new Task(TaskObject("tEB_Timeout")))
 {
   if (duration & (duration - 1))
   {

@@ -19,58 +19,54 @@ MebContributor::MebContributor(const MebCtrbParams& prms) :
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
   _trSize    (roundUpSize(TransitionId::NumberOf * _maxTrSize)),
-  _transport (new EbLfClient(prms.verbose)),
+  _transport (prms.verbose),
   _links     (),
-  _id        (prms.id),
+  _id        (-1),
   _verbose   (prms.verbose),
   _eventCount(0)
 {
+}
+
+int MebContributor::connect(const MebCtrbParams& prms)
+{
+  int    rc;
   size_t regionSize = prms.maxEvents * _maxEvSize;
 
-  _initialize(__func__, prms.addrs, prms.ports, prms.id, regionSize);
-}
+  _id = prms.id;
 
-MebContributor::~MebContributor()
-{
-  if (_transport)
+  for (unsigned i = 0; i < prms.addrs.size(); ++i)
   {
-    for (auto it = _links.begin(); it != _links.end(); ++it)
-    {
-      _transport->shutdown(it->second);
-    }
-    _links.clear();
-    delete _transport;
-  }
-}
-
-void MebContributor::_initialize(const char*                     who,
-                                 const std::vector<std::string>& addrs,
-                                 const std::vector<std::string>& ports,
-                                 unsigned                        id,
-                                 size_t                          rmtRegSize)
-{
-  for (unsigned i = 0; i < addrs.size(); ++i)
-  {
-    const char*    addr = addrs[i].c_str();
-    const char*    port = ports[i].c_str();
+    const char*    addr = prms.addrs[i].c_str();
+    const char*    port = prms.ports[i].c_str();
     EbLfLink*      link;
     const unsigned tmo(120000);         // Milliseconds
-    if (_transport->connect(addr, port, tmo, &link))
+    if ( (rc = _transport.connect(addr, port, tmo, &link)) )
     {
       fprintf(stderr, "%s: Error connecting to EbLfServer at %s:%s\n",
-              who, addr, port);
-      abort();
+              __PRETTY_FUNCTION__, addr, port);
+      return rc;
     }
-    if (link->preparePoster(id, rmtRegSize))
+    if ( (rc = link->preparePoster(prms.id, regionSize)) )
     {
       fprintf(stderr, "%s: Failed to prepare link to %s:%s\n",
-              who, addr, port);
-      abort();
+              __PRETTY_FUNCTION__, addr, port);
+      return rc;
     }
     _links[link->id()] = link;
 
-    printf("%s: EbLfServer ID %d connected\n", who, link->id());
+    printf("%s: EbLfServer ID %d connected\n", __PRETTY_FUNCTION__, link->id());
   }
+
+  return 0;
+}
+
+void MebContributor::shutdown()
+{
+  for (auto it = _links.begin(); it != _links.end(); ++it)
+  {
+    _transport.shutdown(*it);
+  }
+  _links.clear();
 }
 
 int MebContributor::post(const Dgram* ddg, uint32_t destination)
@@ -121,7 +117,7 @@ int MebContributor::post(const Dgram* ddg)
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
-    EbLfLink* link = it->second;
+    EbLfLink* link = *it;
     uint32_t  data = ImmData::value(ImmData::Transition, _id, tr);
 
     if (_verbose)

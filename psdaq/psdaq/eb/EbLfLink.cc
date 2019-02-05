@@ -15,8 +15,6 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
-static const unsigned MaxLinks = 64;    // Maximum supported
-
 
 EbLfLink::EbLfLink(Endpoint* ep,
                    unsigned  verbose,
@@ -26,26 +24,26 @@ EbLfLink::EbLfLink(Endpoint* ep,
   _ra(),
   _rxDepth(0),
   _rOuts(0),
+  _pending(pending),
   _id(-1),
-  _region(new char[sizeof(RemoteAddress)]),
   _verbose(verbose),
-  _pending(pending)
+  _region(new char[sizeof(RemoteAddress)])
 {
 }
 
 EbLfLink::EbLfLink(Endpoint* ep,
                    int       rxDepth,
                    unsigned  verbose,
-                   uint64_t& unused) :
+                   uint64_t& pending) :
   _ep(ep),
   _mr(nullptr),
   _ra(),
   _rxDepth(rxDepth),
   _rOuts(0),
+  _pending(pending),
   _id(-1),
-  _region(new char[sizeof(RemoteAddress)]),
   _verbose(verbose),
-  _pending(unused)
+  _region(new char[sizeof(RemoteAddress)])
 {
 }
 
@@ -56,11 +54,20 @@ EbLfLink::~EbLfLink()
 
 int EbLfLink::preparePender(unsigned id)
 {
-  int    rc;
-  size_t sz;
-  if ( (rc = preparePender(id, &sz)) )  return rc;
-  if (sz != sizeof(RemoteAddress))      return -1;
-  if ( (rc = sendMr(_mr)) )             return rc;
+  int           rc;
+  uint32_t      sz;
+  char          buf[sizeof(RemoteAddress)];
+  MemoryRegion* mr;
+
+  if ( (rc = setupMr(buf, sizeof(buf), &mr)) )   return rc;
+
+  if ( (rc = recvU32(mr, &_id, "ID")) )          return rc;
+  if ( (rc = sendU32(mr,   id, "ID")) )          return rc;
+
+  if ( (rc = recvU32(mr, &sz, "region size")) )  return rc;
+  if (sz != sizeof(RemoteAddress))               return -1;
+
+  if ( (rc = sendMr(mr)) )                       return rc;
 
   return 0;
 }
@@ -68,37 +75,47 @@ int EbLfLink::preparePender(unsigned id)
 int EbLfLink::preparePender(unsigned id,
                             size_t*  size)
 {
-  int    rc;
-  size_t sz = sizeof(RemoteAddress);
-  if (!_region)  return ENOMEM;
+  int           rc;
+  char          buf[sizeof(RemoteAddress)];
+  MemoryRegion* mr;
 
-  if ( (rc = setupMr(_region, sz, &_mr)) )        return rc;
+  if ( (rc = setupMr(buf, sizeof(buf), &mr)) )   return rc;
 
-  if ( (rc = recvU32(_mr, &_id, "ID")) )          return rc;
-  if ( (rc = sendU32(_mr,   id, "ID")) )          return rc;
+  if ( (rc = recvU32(mr, &_id, "ID")) )          return rc;
+  if ( (rc = sendU32(mr,   id, "ID")) )          return rc;
 
   uint32_t rs;
-  if ( (rc = recvU32(_mr, &rs, "region size")) )  return rc;
+  if ( (rc = recvU32(mr, &rs, "region size")) )  return rc;
   *size = rs;
 
-  return rc;
+  // This method requires a call to setupMr(region, size) below
+  // to complete the protocol, which involves a call to sendMr()
+
+  return 0;
 }
 
+// A small memory region is needed in order to use the post(buf, len, immData)
+// method, below.
 int EbLfLink::preparePoster(unsigned id)
 {
   return preparePoster(id, nullptr, sizeof(RemoteAddress));
 }
 
-int EbLfLink::preparePoster(unsigned id, size_t size)
+// A small memory region is needed in order to use the post(buf, len, immData)
+// method, below.
+int EbLfLink::preparePoster(unsigned id,
+                            size_t   size)
 {
   return preparePoster(id, nullptr, size);
 }
 
+// Buffers to be posted using the post(buf, len, offset, immData, ctx) method,
+// below, must be covered by a memory region set up using this method.
 int EbLfLink::preparePoster(unsigned id,
                             void*    region,
                             size_t   size)
 {
-  int    rc;
+  int rc;
   if (!region)
   {
     size_t sz = sizeof(RemoteAddress);
@@ -106,7 +123,7 @@ int EbLfLink::preparePoster(unsigned id,
 
     if ( (rc = setupMr(_region, sz, &_mr)) )       return rc;
   }
-  else // Revisit: Posters shouldn't need anything but the default region?
+  else
   {
     if ( (rc = setupMr(region, size, &_mr)) )      return rc;
   }
@@ -284,6 +301,8 @@ int EbLfLink::_postCompRecv(unsigned count, void* ctx)
   return i;
 }
 
+// This method requires that the buffers to be posted are covered by a memory
+// region set up using the preparePoster(id, region, size) method above.
 int EbLfLink::post(const void* buf,
                    size_t      len,
                    uint64_t    offset,
@@ -320,6 +339,8 @@ int EbLfLink::post(const void* buf,
   return rc;
 }
 
+// This method requires that at least a small memory region has been registered.
+// This can be done using the preparePoster(id, size) method above.
 int EbLfLink::post(const void* buf,
                    size_t      len,
                    uint64_t    immData)
