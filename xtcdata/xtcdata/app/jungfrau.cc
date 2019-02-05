@@ -115,7 +115,6 @@ int main(int argc, char* argv[])
     MyXtcIter cfgiter(&(cfg->xtc));
     cfgiter.iterate();
     NamesId& namesId = cfgiter.config().namesId();
-    printf("**** namesid %d\n",namesId.namesId());
     DescData descdata(cfgiter.config(), namesVec[namesId]);
     Names& names = descdata.nameindex().names();
     dump("Configure",names,descdata);
@@ -128,7 +127,6 @@ int main(int argc, char* argv[])
         MyXtcIter iter(&(dg->xtc));
         iter.iterate();
         NamesId& namesId = iter.event().namesId();
-        printf("*** namesid %d\n",namesId.namesId());
         DescData descdata(iter.event(), namesVec[namesId]);
         Names& names = descdata.nameindex().names();
         dump("Event",names,descdata);
