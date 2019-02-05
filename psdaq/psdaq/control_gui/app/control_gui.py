@@ -47,34 +47,30 @@ def input_option_parser() :
 
     from optparse import OptionParser
 
-    #d_host       = None
-    #d_port       = None
-    #d_user       = None
-    #d_upwd       = ''
-    #d_experiment = 'exp12345'
-    #d_detector   = 'detector_1234'
+    d_platform   = 6 # [0-7]
+    d_host       = 'localhost'
+    d_timeout    = 10000 # ms
     d_loglevel   = 'DEBUG'
     d_logdir     = './cm-logger'
 
-    #h_host       = 'DB host, default = %s' % d_host
-    #h_port       = 'DB port, default = %s' % d_port
-    #h_user   = 'username to access DB, default = %s' % d_user
-    #h_upwd   = 'password, default = %s' % d_upwd
-    #h_experiment = 'experiment name, default = %s' % d_experiment
-    #h_detector   = 'detector name, default = %s' % d_detector
+    h_platform   = 'platform in range [0,7], default = %s' % d_platform
+    h_host       = 'control host, default = %s' % d_host
+    h_timeout    = 'timeout [ms], default = %s' % d_timeout
     h_loglevel   = 'logging level from list (%s), default = %s' % (LEVEL_NAMES, d_loglevel)
     h_logdir     = 'logger directory, default = %s' % d_logdir
 
     parser = OptionParser(description='DAQ Control GUI', usage=usage())
 
-    #parser.add_option('--host',             default=d_host,       action='store', type='string', help=h_host)
+    parser.add_option('-p', '--platform',   default=d_platform,   action='store', type='int',    help=h_platform)
+    parser.add_option('-H', '--host',       default=d_host,       action='store', type='string', help=h_host)
+    parser.add_option('-t', '--timeout',    default=d_timeout,    action='store', type='int',    help=h_timeout)
+    parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
+    parser.add_option('-L', '--logdir',     default=d_logdir,     action='store', type='string', help=h_logdir)
     #parser.add_option('--port',             default=d_port,       action='store', type='string', help=h_port)
     #parser.add_option('-u', '--user',       default=d_user,       action='store', type='string', help=h_user)
     #parser.add_option('-p', '--upwd',       default=d_upwd,       action='store', type='string', help=h_upwd)
     #parser.add_option('-d', '--detector',   default=d_detector,   action='store', type='string', help=h_detector)
     #parser.add_option('-e', '--experiment', default=d_experiment, action='store', type='string', help=h_experiment)
-    parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
-    parser.add_option('-L', '--logdir',     default=d_logdir,     action='store', type='string', help=h_logdir)
     #parser.add_option('-v', '--verbose',    default=d_verbose,    action='store_false',          help=h_verbose)
 
     return parser

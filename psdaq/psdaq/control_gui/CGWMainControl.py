@@ -24,11 +24,15 @@ Created on 2019-01-25 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox, QHBoxLayout, QVBoxLayout, QComboBox
      #QGridLayout, QLineEdit, QFileDialog, QWidget
 from PyQt5.QtCore import Qt # pyqtSignal, QRectF, QPointF, QTimer
 
 from psdaq.control_gui.Styles import style
+
+from psdaq.control_gui.CGDaqControl import daq_control, DaqControl, worker_set_state
+from psdaq.control_gui.DoWorkInThread import DoWorkInThread
+from psdaq.control_gui.CGParameters import cp
 
 #--------------------
 
@@ -46,9 +50,12 @@ class CGWMainControl(QGroupBox) :
         #self.box_type.addItems(self.LIST_OF_CONFIG_OPTIONS)
         #self.box_type.setCurrentIndex(1)
 
-        self.cbx_runc    = QCheckBox('Record Run')
-        self.but_disable = QPushButton('DISABLE')
-        self.but_enable  = QPushButton('Enable')
+        self.cbx_runc       = QCheckBox('Record Run')
+        self.box_state      = QComboBox()
+        self.but_transition = QPushButton('Enable')
+
+        self.states = [s.upper() for s in DaqControl.states]
+        self.box_state.addItems(self.states)
 
         #self.edi = QLineEdit(path)
         #self.edi.setReadOnly(True) 
@@ -59,9 +66,9 @@ class CGWMainControl(QGroupBox) :
         self.hbox1.addWidget(self.lab_trans)
 
         self.hbox2 = QHBoxLayout() 
-        self.hbox2.addWidget(self.but_disable, 0, Qt.AlignCenter)
+        self.hbox2.addWidget(self.box_state, 0, Qt.AlignCenter)
         self.hbox2.addStretch(1)
-        self.hbox2.addWidget(self.but_enable, 0, Qt.AlignCenter)
+        self.hbox2.addWidget(self.but_transition, 0, Qt.AlignCenter)
         #self.hbox2.addStretch(1)
 
         self.vbox = QVBoxLayout() 
@@ -72,23 +79,23 @@ class CGWMainControl(QGroupBox) :
         #self.grid = QGridLayout()
         #self.grid.addWidget(self.lab_state,       0, 0, 1, 1)
         #self.grid.addWidget(self.but_type,       0, 2, 1, 1)
-        #self.grid.addWidget(self.but_disable,       1, 1, 1, 1)
-        #self.grid.addWidget(self.but_enable,       2, 1, 1, 1)
+        #self.grid.addWidget(self.box_state,       1, 1, 1, 1)
+        #self.grid.addWidget(self.but_transition,       2, 1, 1, 1)
 
         self.setLayout(self.vbox)
 
         self.set_tool_tips()
         self.set_style()
 
-        self.but_disable.clicked.connect(self.on_but_disable)
-        self.but_enable.clicked.connect(self.on_but_enable)
+        self.box_state.currentIndexChanged[int].connect(self.on_box_state)
+        self.but_transition.clicked.connect(self.on_but_transition)
         #self.box_type.currentIndexChanged[int].connect(self.on_box_type)
         self.cbx_runc.stateChanged[int].connect(self.on_cbx_runc)
  
 #--------------------
 
     def set_tool_tips(self) :
-        #self.but_disable.setToolTip('Select input file.')
+        #self.box_state.setToolTip('Select input file.')
         self.setToolTip('Configuration') 
         #self.box_type.setToolTip('Click and select.') 
 
@@ -96,9 +103,9 @@ class CGWMainControl(QGroupBox) :
 
     def set_style(self) :
         self.setStyleSheet(style.qgrbox_title)
-        #self.but_disable.setFixedWidth(60)
-        #self.but_enable.setFixedWidth(60)
-        #self.but_enable.setStyleSheet(style.styleButtonGood)
+        #self.box_state.setFixedWidth(60)
+        #self.but_transition.setFixedWidth(60)
+        #self.but_transition.setStyleSheet(style.styleButtonGood)
 
         self.cbx_runc.setFixedSize(100,40)
         #self.cbx_runc.setStyleSheet(style.styleYellowBkg)
@@ -123,13 +130,20 @@ class CGWMainControl(QGroupBox) :
 
 #--------------------
  
-    def on_but_disable(self):
-        logger.debug('on_but_disable')
+    def on_box_state(self, ind):
+        state = self.states[ind]
+        logger.info('Selected state %s' % state)
+        if cp.thread_set_state is not None :
+            logger.warning('thread_set_state is already working. Wait for completion.')
+            #del cp.thread_set_state
+            # Thread is deleted in check by timer in CGWMainDetector module.
+        else :
+            cp.thread_set_state = DoWorkInThread(worker_set_state, dicio={'state_in':state.lower()})
 
 #--------------------
  
-    def on_but_enable(self):
-        logger.debug('on_but_enable')
+    def on_but_transition(self):
+        logger.debug('on_but_transition')
 
 #--------------------
  

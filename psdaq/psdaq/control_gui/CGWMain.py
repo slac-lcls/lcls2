@@ -42,6 +42,7 @@ from psdaq.control_gui.CGWMainControl       import CGWMainControl
 from psdaq.control_gui.CGWMainDetector      import CGWMainDetector
 from psdaq.control_gui.CGWMainRunStatistics import CGWMainRunStatistics
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
+from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
 
 #------------------------------
 
@@ -128,15 +129,18 @@ class CGWMain(QWidget) :
         self.opts = vars(popts)
         self.defs = vars(parser.get_default_values())
 
-        #host       = popts.host # self.opts['host']
+        #host       = popts.host     # self.opts['host']
         #port       = popts.port # self.opts['port']
         #cp.user    = popts.user
         #cp.upwd    = popts.upwd
         #exp        = popts.experiment
         #det        = popts.detector
-        logdir     = popts.logdir
+        logdir        = popts.logdir
         self.loglevel = popts.loglevel.upper()
 
+        daq_control.set_daq_control(DaqControl(host=popts.host, platform=popts.platform, timeout=popts.timeout))
+
+        #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
         #if port     != self.defs['port']       : cp.cdb_port.setValue(port)
         #if exp      != self.defs['experiment'] : cp.exp_name.setValue(exp)
@@ -294,9 +298,9 @@ def proc_control_gui(parser=None) :
 
     w = CGWMain(parser)
 
-    print('In CGWMain:proc_control_gui A')
+    #print('In CGWMain:proc_control_gui A')
     w.show()
-    print('In CGWMain:proc_control_gui B')
+    print('In CGWMain:proc_control_gui after w.show() - KNOWN ISSUE')
 
     app.exec_()
     del w

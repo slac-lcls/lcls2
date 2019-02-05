@@ -30,6 +30,11 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtWidgets import QGroupBox, QLabel, QPushButton, QVBoxLayout # , QWidget,  QLabel, QLineEdit, QFileDialog
 from PyQt5.QtCore import QTimer # pyqtSignal, Qt, QRectF, QPointF
 
+
+from psdaq.control_gui.CGDaqControl import daq_control, DaqControl, worker_get_state
+from psdaq.control_gui.DoWorkInThread import DoWorkInThread
+from psdaq.control_gui.CGParameters import cp
+
 #--------------------
 
 class CGWMainDetector(QGroupBox) :
@@ -100,6 +105,32 @@ class CGWMainDetector(QGroupBox) :
         #logger.debug('CGWMainDetector Timeout %.3f sec' % time())
         ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
         self.lab_state.setText('Control state on %s' % ts)
+        self.check_state()
+
+#--------------------
+
+    def check_state(self) :
+        logger.debug('CGWMainDetector.check_state')
+
+        if cp.thread_set_state is None :
+            logger.debug('CGWMainDetector.check_state thread_set_state is not active')
+
+        else :
+            if cp.thread_get_state is None :
+                cp.thread_get_state = DoWorkInThread(worker_get_state, dicio={'state_out':None})
+
+            elif cp.thread_get_state.is_running() :
+                return
+
+            else :
+                state = cp.thread_get_state.dict_io()['state_out']
+                print('CGWMainDetector.state:', state)
+
+                del cp.thread_get_state
+                cp.thread_get_state = None
+
+                del cp.thread_set_state
+                cp.thread_set_state = None
 
 #--------------------
 

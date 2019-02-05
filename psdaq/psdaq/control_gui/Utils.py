@@ -505,6 +505,25 @@ def is_in_command_line(ptrn1=None, ptrn2=None) :
 
 #------------------------------
 
+def call(command_seq, shell=False) :
+    import subprocess # for subprocess.Popen
+    subprocess.call(command_seq, shell=shell) # , stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+
+#------------------------------
+
+def subproc(command_seq, env=None, shell=False) : # for example, command_seq=['bsub', '-q', cp.batch_queue, '-o', 'log-ls.txt', 'ls -l']
+    from subprocess import Popen
+    p = Popen(command_seq, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, shell=shell) #, stdin=subprocess.STDIN
+    p.wait()
+    out = p.stdout.read() # reads entire file
+    err = p.stderr.read() # reads entire file
+    return out, err
+
+#------------------------------
+#------------------------------
+#------------------------------
+#------------------------------
+
 #def get_grpnames(user='root') :
 #    """Returns tuple of group names"""
 #    from grp import getgrnam
