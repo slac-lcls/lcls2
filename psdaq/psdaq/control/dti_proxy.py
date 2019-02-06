@@ -49,6 +49,7 @@ class Client:
         # define commands
         handle_request = {
             'reset': self.handle_reset,
+            'status': self.handle_status,
             'plat': self.handle_plat,
             'alloc': self.handle_alloc,
             'connect': self.handle_connect,
@@ -83,6 +84,10 @@ class Client:
                 retval = True
                 logging.debug("PV put(%d): %s" % (val, pv.name))
         return retval
+
+    def handle_status(self, msg):
+        logging.debug('Client handle_status()')
+        # no reply needed
 
     def handle_plat(self, msg):
         logging.debug('Client handle_plat()')
