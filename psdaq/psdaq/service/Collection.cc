@@ -106,6 +106,10 @@ void Collection::connect()
         std::string key = msg["header"]["key"];
         std::cout << std::setw(4) << msg << "\n\n";
         printf("received key = %s\n", key.c_str());
+        if (key == "status") {
+            printf("(%s ignored)\n\n", key.c_str());
+            continue;
+        }
         m_handle_request[key](msg);
         if (key == "connect") {
             break;
