@@ -50,8 +50,6 @@ int TebContributor::connect(const TebCtrbParams& prms)
   _links.resize(prms.addrs.size());
   _idx2Id.resize(prms.addrs.size());
 
-  printf("%s: _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
-
   int    rc;
   void*  region  = batchRegion();     // Local space for Trs is in the batch region
   size_t regSize = batchRegionSize(); // No need to add Tr space size here
@@ -80,8 +78,6 @@ int TebContributor::connect(const TebCtrbParams& prms)
     printf("EbLfServer ID %d connected\n", link->id());
   }
 
-  printf("%s: _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
-
   return 0;
 }
 
@@ -106,13 +102,9 @@ void TebContributor::_receiver(EbCtrbInBase& in)
 
 void TebContributor::shutdown()
 {
-  printf("%s: 1 _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
-
   _running = false;
 
   if (_rcvrThread)  _rcvrThread->join();
-
-  printf("%s: 2 _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
 
   BatchManager::dump();
 
@@ -133,16 +125,11 @@ void TebContributor::shutdown()
   printf("Dumped post call rate histogram to ./%s\n", fs);
   _postCallHist.dump(fs);
 
-  printf("%s: 3 _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
-  printf("%s: 1\n", __PRETTY_FUNCTION__);
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     _transport.shutdown(*it);
-    printf("%s: 2, %p\n", __PRETTY_FUNCTION__, *it);
   }
-  printf("%s: 3\n", __PRETTY_FUNCTION__);
   _links.clear();
-  printf("%s: 4\n", __PRETTY_FUNCTION__);
 }
 
 bool TebContributor::process(const Dgram* datagram, const void* appPrm)
