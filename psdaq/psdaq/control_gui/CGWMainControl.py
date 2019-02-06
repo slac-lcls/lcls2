@@ -30,9 +30,9 @@ from PyQt5.QtCore import Qt # pyqtSignal, QRectF, QPointF, QTimer
 
 from psdaq.control_gui.Styles import style
 
-from psdaq.control_gui.CGDaqControl import daq_control, DaqControl, worker_set_state
-from psdaq.control_gui.DoWorkInThread import DoWorkInThread
-from psdaq.control_gui.CGParameters import cp
+from psdaq.control_gui.CGDaqControl import daq_control, DaqControl #, worker_set_state
+#from psdaq.control_gui.DoWorkInThread import DoWorkInThread
+#from psdaq.control_gui.CGParameters import cp
 
 #--------------------
 
@@ -54,7 +54,7 @@ class CGWMainControl(QGroupBox) :
         self.box_state      = QComboBox()
         self.but_transition = QPushButton('Enable')
 
-        self.states = [s.upper() for s in DaqControl.states]
+        self.states = ['Select',] + [s.upper() for s in DaqControl.states]
         self.box_state.addItems(self.states)
 
         #self.edi = QLineEdit(path)
@@ -131,14 +131,11 @@ class CGWMainControl(QGroupBox) :
 #--------------------
  
     def on_box_state(self, ind):
+        if not ind : return
         state = self.states[ind]
-        logger.info('Selected state %s' % state)
-        if cp.thread_set_state is not None :
-            logger.warning('thread_set_state is already working. Wait for completion.')
-            #del cp.thread_set_state
-            # Thread is deleted in check by timer in CGWMainDetector module.
-        else :
-            cp.thread_set_state = DoWorkInThread(worker_set_state, dicio={'state_in':state.lower()})
+        logger.info('CGWMainDetector.on_box_state -> daq_control().setState %s' % state)
+        daq_control().setState(state.lower())
+        logger.debug('command daq_control().setState is committed...')
 
 #--------------------
  
