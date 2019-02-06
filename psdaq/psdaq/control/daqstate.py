@@ -18,6 +18,7 @@ def main():
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--state', choices=DaqControl.states)
     group.add_argument('--transition', choices=DaqControl.transitions)
+    group.add_argument('--monitor', action="store_true")
     args = parser.parse_args()
 
     # instantiate DaqControl object
@@ -35,8 +36,15 @@ def main():
         if rv is not None:
             print('Error: %s' % rv)
 
-    # print current state
-    print(control.getState())
+    elif args.monitor:
+        # monitor the status
+        rv = control.monitorStatus()
+        if rv is not None:
+            print('Error: %s' % rv)
+
+    if not args.monitor:
+        # print current state
+        print(control.getState())
 
 if __name__ == '__main__':
     main()

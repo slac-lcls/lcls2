@@ -57,6 +57,9 @@ class DaqControl:
 
         # initialize zmq socket
         self.context = zmq.Context(1)
+        self.sub = self.context.socket(zmq.SUB)
+        self.sub.connect('tcp://%s:%d' % (host, pub_port(platform)))
+        self.sub.setsockopt(zmq.SUBSCRIBE, b'')
         self.req = self.context.socket(zmq.REQ)
         self.req.linger = 0
         self.req.RCVTIMEO = timeout # in milliseconds
@@ -80,6 +83,30 @@ class DaqControl:
                 retval = reply['header']['key']
             except KeyError:
                 pass
+
+        return retval
+
+    #
+    # DaqControl.monitorStatus - monitor the status
+    #
+    def monitorStatus(self):
+        retval = None
+
+        # process messages
+        while True:
+            try:
+                msg = self.sub.recv_json()
+                if msg['header']['key'] == 'status':
+                    print('transition: %-10s  state: %s' %
+                          (msg['body']['transition'], msg['body']['state']))
+
+            except KeyboardInterrupt:
+                break
+
+            except KeyError as ex:
+                logging.error('KeyError: %s' % ex)
+                retval = 'invalid message received'
+                break
 
         return retval
 
@@ -247,8 +274,9 @@ class CollectionManager():
         self.handle_request = {
             'getstate': self.handle_getstate,
         }
+        self.lastTransition = 'reset'
 
-        self.collectMachine = Machine(self, DaqControl.states, initial='reset')
+        self.collectMachine = Machine(self, DaqControl.states, initial='reset', after_state_change='report_status')
 
         self.collectMachine.add_transition('reset', '*', 'reset',
                                            conditions='condition_reset')
@@ -363,6 +391,14 @@ class CollectionManager():
 
         return answer
 
+    def status_msg(self):
+        body = {'state': self.state, 'transition': self.lastTransition}
+        return create_msg('status', body=body)
+
+    def report_status(self):
+        logging.debug('status: state=%s transition=%s' % (self.state, self.lastTransition))
+        self.pub.send_json(self.status_msg())
+
     def condition_alloc(self):
         # FIXME select all procs for now
         ids = copy.copy(self.ids)
@@ -396,11 +432,13 @@ class CollectionManager():
                 self.cmstate['meb'][node]['meb_id'] = i
 
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
+        self.lastTransition = 'alloc'
         logging.debug('condition_alloc() returning True')
         return True
 
     def condition_dealloc(self):
         # TODO
+        self.lastTransition = 'dealloc'
         logging.debug('condition_dealloc() returning True')
         return True
 
@@ -416,11 +454,13 @@ class CollectionManager():
             logging.debug('condition_connect() returning False')
             return False
         else:
+            self.lastTransition = 'connect'
             logging.debug('condition_connect() returning True')
             return True
 
     def condition_disconnect(self):
         # TODO
+        self.lastTransition = 'disconnect'
         logging.debug('condition_disconnect() returning True')
         return True
 
@@ -444,6 +484,7 @@ class CollectionManager():
                 id = answer['header']['sender_id']
                 self.cmstate[level][id] = item
                 self.ids.add(id)
+        self.lastTransition = 'plat'
         # should a nonempty platform be required for successful transition?
         logging.debug('condition_plat() returning True')
         return True
@@ -489,31 +530,43 @@ class CollectionManager():
 
     def condition_configure(self):
         retval = self.condition_common('configure', 1000)
+        if retval:
+            self.lastTransition = 'configure'
         logging.debug('condition_configure() returning %s' % retval)
         return retval
 
     def condition_unconfigure(self):
         retval = self.condition_common('unconfigure', 1000)
+        if retval:
+            self.lastTransition = 'unconfigure'
         logging.debug('condition_unconfigure() returning %s' % retval)
         return retval
 
     def condition_beginrecord(self):
         retval = self.condition_common('beginrecord', 1000)
+        if retval:
+            self.lastTransition = 'beginrecord'
         logging.debug('condition_beginecord() returning %s' % retval)
         return retval
 
     def condition_endrecord(self):
         retval = self.condition_common('endrecord', 1000)
+        if retval:
+            self.lastTransition = 'endrecord'
         logging.debug('condition_endrecord() returning %s' % retval)
         return retval
 
     def condition_enable(self):
         retval = self.condition_common('enable', 1000)
+        if retval:
+            self.lastTransition = 'enable'
         logging.debug('condition_enable() returning %s' % retval)
         return retval
 
     def condition_disable(self):
         retval = self.condition_common('disable', 1000)
+        if retval:
+            self.lastTransition = 'disable'
         logging.debug('condition_disable() returning %s' % retval)
         return retval
 
@@ -521,6 +574,7 @@ class CollectionManager():
         # is a reply to reset necessary?
         msg = create_msg('reset')
         self.pub.send_json(msg)
+        self.lastTransition = 'reset'
         logging.debug('condition_reset() returning True')
         return True
 
