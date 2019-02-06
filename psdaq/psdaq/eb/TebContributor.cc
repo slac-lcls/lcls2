@@ -44,10 +44,13 @@ TebContributor::TebContributor(const TebCtrbParams& prms) :
 
 int TebContributor::connect(const TebCtrbParams& prms)
 {
-  _id = prms.id;
-  _numEbs = std::bitset<64>(prms.builders).count();
-  _links.reserve(prms.addrs.size());
-  _idx2Id.reserve(prms.addrs.size());
+  _running = true;
+  _id      = prms.id;
+  _numEbs  = std::bitset<64>(prms.builders).count();
+  _links.resize(prms.addrs.size());
+  _idx2Id.resize(prms.addrs.size());
+
+  printf("%s: _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
 
   int    rc;
   void*  region  = batchRegion();     // Local space for Trs is in the batch region
@@ -74,8 +77,10 @@ int TebContributor::connect(const TebCtrbParams& prms)
     _links[link->id()] = link;
     _idx2Id[i] = link->id();
 
-    printf("%s: EbLfServer ID %d connected\n", __PRETTY_FUNCTION__, link->id());
+    printf("EbLfServer ID %d connected\n", link->id());
   }
+
+  printf("%s: _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
 
   return 0;
 }
@@ -85,11 +90,29 @@ void TebContributor::startup(EbCtrbInBase& in)
   _rcvrThread = new std::thread([&] { _receiver(in); });
 }
 
+void TebContributor::_receiver(EbCtrbInBase& in)
+{
+  pinThread(pthread_self(), _prms.core[1]);
+
+  while (_running)
+  {
+    if (in.process(*this) < 0)  continue;
+
+    _inFlightOcc -= 1;
+  }
+
+  in.shutdown();
+}
+
 void TebContributor::shutdown()
 {
+  printf("%s: 1 _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
+
   _running = false;
 
   if (_rcvrThread)  _rcvrThread->join();
+
+  printf("%s: 2 _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
 
   BatchManager::dump();
 
@@ -110,11 +133,16 @@ void TebContributor::shutdown()
   printf("Dumped post call rate histogram to ./%s\n", fs);
   _postCallHist.dump(fs);
 
+  printf("%s: 3 _links.size() = %zd\n", __PRETTY_FUNCTION__, _links.size());
+  printf("%s: 1\n", __PRETTY_FUNCTION__);
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     _transport.shutdown(*it);
+    printf("%s: 2, %p\n", __PRETTY_FUNCTION__, *it);
   }
+  printf("%s: 3\n", __PRETTY_FUNCTION__);
   _links.clear();
+  printf("%s: 4\n", __PRETTY_FUNCTION__);
 }
 
 bool TebContributor::process(const Dgram* datagram, const void* appPrm)
@@ -228,18 +256,4 @@ void TebContributor::_updateHists(TimePoint_t      t0,
   _postTimeHist.bump(dT);
   _postCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _postPrevTime).count());
   _postPrevTime = t0;
-}
-
-void TebContributor::_receiver(EbCtrbInBase& in)
-{
-  pinThread(pthread_self(), _prms.core[1]);
-
-  while (_running)
-  {
-    if (in.process(*this) < 0)  continue;
-
-    _inFlightOcc -= 1;
-  }
-
-  in.shutdown();
 }

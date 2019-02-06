@@ -359,7 +359,7 @@ private:
   MebContributor* _mebCtrb;
   EbCtrbIn*       _inbound;
   StatsMonitor&   _smon;
-  std::thread*    _ctrbThread;
+  std::thread*    _appThread;
 };
 
 CtrbApp::CtrbApp(const std::string& collSrv,
@@ -373,7 +373,7 @@ CtrbApp::CtrbApp(const std::string& collSrv,
   _mebCtrb(nullptr),
   _inbound(nullptr),
   _smon(smon),
-  _ctrbThread(nullptr)
+  _appThread(nullptr)
 {
 }
 
@@ -425,9 +425,11 @@ void CtrbApp::handleConnect(const json &msg)
     return;
   }
 
+  _smon.enable();
+
   lRunning = 1;
 
-  _ctrbThread = new std::thread(&EbCtrbApp::run, std::ref(_tebCtrb), std::ref(*_inbound));
+  _appThread = new std::thread(&EbCtrbApp::run, std::ref(_tebCtrb), std::ref(*_inbound));
 
   // Reply to collection with connect status
   json body   = json({});
@@ -440,12 +442,14 @@ void CtrbApp::_shutdown()
 {
   lRunning = 0;
 
-  if (_ctrbThread)
+  if (_appThread)
   {
-    _ctrbThread->join();
-    delete _ctrbThread;
+    _appThread->join();
+    delete _appThread;
+    _appThread = nullptr;
 
-    _tebCtrb.shutdown();
+    _smon.disable();
+
     if (_inbound)  delete _inbound;
     if (_mebCtrb)  delete _mebCtrb;
   }
@@ -500,6 +504,9 @@ int CtrbApp::_parseConnectionParams(const json& body)
   _tebPrms.builders = 0;
   if (body.find("teb") != body.end())
   {
+    _tebPrms.addrs.clear();
+    _tebPrms.ports.clear();
+
     for (auto it : body["teb"].items())
     {
       unsigned    tebId   = it.value()["teb_id"];
@@ -522,6 +529,9 @@ int CtrbApp::_parseConnectionParams(const json& body)
 
   if (body.find("meb") != body.end())
   {
+    _mebPrms.addrs.clear();
+    _mebPrms.ports.clear();
+
     for (auto it : body["meb"].items())
     {
       unsigned    mebId   = it.value()["meb_id"];

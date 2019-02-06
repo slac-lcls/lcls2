@@ -23,7 +23,6 @@ namespace Pds {
     {
     public:
       EbLfServer(unsigned verbose);
-      ~EbLfServer();
     public:
       int initialize(const std::string& addr, const std::string& port);
       int connect(EbLfLink**, int msTmo = -1);

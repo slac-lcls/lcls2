@@ -186,7 +186,7 @@ int Teb::connect(const EbParams& prms)
     return rc;
 
   _id = prms.id;
-  _l3Links.reserve(prms.addrs.size());
+  _l3Links.resize(prms.addrs.size());
 
   void*  region  = _batchManager.batchRegion();
   size_t regSize = _batchManager.batchRegionSize();
@@ -223,7 +223,7 @@ int Teb::connect(const EbParams& prms)
       return rc;
     }
 
-    _l3Links.reserve(prms.numMrqs);
+    _l3Links.resize(prms.numMrqs);
   }
 
   for (unsigned i = 0; i < prms.numMrqs; ++i)
@@ -269,6 +269,8 @@ void Teb::run()
       if (rc != -FI_ETIMEDOUT )  break;
     }
   }
+
+  shutdown();
 }
 
 void Teb::shutdown()
@@ -494,9 +496,10 @@ private:
   int  _parseConnectionParams(const json& msg);
   void _shutdown();
 private:
-  EbParams&    _prms;
-  Teb          _teb;
-  std::thread* _tebThread;
+  EbParams&     _prms;
+  Teb           _teb;
+  StatsMonitor& _smon;
+  std::thread*  _appThread;
 };
 
 TebApp::TebApp(const std::string& collSrv,
@@ -505,7 +508,8 @@ TebApp::TebApp(const std::string& collSrv,
   CollectionApp(collSrv, prms.partition, "teb"),
   _prms(prms),
   _teb(prms, smon),
-  _tebThread(nullptr)
+  _smon(smon),
+  _appThread(nullptr)
 {
 }
 
@@ -540,9 +544,11 @@ void TebApp::handleConnect(const json &msg)
     return;
   }
 
+  _smon.enable();
+
   lRunning = 1;
 
-  _tebThread = new std::thread(&Teb::run, std::ref(_teb));
+  _appThread = new std::thread(&Teb::run, std::ref(_teb));
 
   // Reply to collection with connect status
   json body   = json({});
@@ -555,12 +561,13 @@ void TebApp::_shutdown()
 {
   lRunning = 0;
 
-  if (_tebThread)
+  if (_appThread)
   {
-    _tebThread->join();
-    delete _tebThread;
+    _appThread->join();
+    delete _appThread;
+    _appThread = nullptr;
 
-    _teb.shutdown();
+    _smon.disable();
   }
 }
 
@@ -620,6 +627,9 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.contributors = 0;
   if (body.find("drp") != body.end())
   {
+    _prms.addrs.clear();
+    _prms.ports.clear();
+
     for (auto it : body["drp"].items())
     {
       unsigned    ctrbId  = it.value()["drp_id"];

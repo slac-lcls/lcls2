@@ -20,17 +20,12 @@ static const int COMP_TMO = 5000;       // ms; Completion read timeout
 
 
 EbLfServer::EbLfServer(unsigned verbose) :
+  _rxcq   (nullptr),
   _tmo    (0),                          // Start by polling
   _verbose(verbose),
   _pending(0),
   _pep    (nullptr)
 {
-}
-
-EbLfServer::~EbLfServer()
-{
-  if (_rxcq)  delete _rxcq;
-  if (_pep)   delete _pep;
 }
 
 int EbLfServer::initialize(const std::string& addr,
@@ -44,7 +39,7 @@ int EbLfServer::initialize(const std::string& addr,
   {
     fprintf(stderr, "%s:\n  Failed to create Passive Endpoint: %s\n",
             __PRETTY_FUNCTION__, _pep ? _pep->error() : "No memory");
-    return _pep ? _pep->error_num(): -FI_ENOMEM;
+    return _pep ? _pep->error_num(): ENOMEM;
   }
 
   Fabric* fab = _pep->fabric();
@@ -61,7 +56,7 @@ int EbLfServer::initialize(const std::string& addr,
   {
     fprintf(stderr, "%s:\n  Failed to create RX completion queue: %s\n",
             __PRETTY_FUNCTION__, "No memory");
-    return -FI_ENOMEM;
+    return ENOMEM;
   }
 
   const int backlog = 64;
@@ -193,10 +188,14 @@ int EbLfServer::poll(uint64_t* data)
   const uint64_t   flags = FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA;
   fi_cq_data_entry cqEntry;
 
-  int rc = _poll(&cqEntry, flags);
-  if (!rc)  *data = cqEntry.data;
+  if (_rxcq)
+  {
+    int rc = _poll(&cqEntry, flags);
+    *data = cqEntry.data;
 
-  return rc;
+    return rc;
+  }
+  return -1;
 }
 
 int EbLfServer::shutdown(EbLfLink* link)
@@ -235,7 +234,11 @@ int EbLfServer::shutdown(EbLfLink* link)
 
   _pep->close(ep);
 
-  if (link)  delete link;
+  if (link)   delete link;
+  if (_rxcq)  delete _rxcq;
+  if (_pep)   delete _pep;
+  _rxcq = nullptr;
+  _pep  = nullptr;
 
   return rc;
 }

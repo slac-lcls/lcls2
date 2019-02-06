@@ -310,12 +310,26 @@ int EbLfLink::post(const void* buf,
                    void*       ctx)
 {
   RemoteAddress ra(_ra.rkey, _ra.addr + offset, len);
+  auto          t0(std::chrono::steady_clock::now());
   ssize_t       rc;
 
   _pending |= 1 << _id;
 
   while ((rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr)) == -FI_EAGAIN)
   {
+    auto t1(std::chrono::steady_clock::now());
+
+    const int msTmo = 5000;
+    if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
+    {
+      printf("%s: Timed out\n", __PRETTY_FUNCTION__);
+
+      rc = -FI_ETIMEDOUT;
+      break;
+    }
+
+    if (rc)  printf("%s: rc = %zd\n", __PRETTY_FUNCTION__, rc);
+
     const ssize_t    maxCnt = 8;
     fi_cq_data_entry cqEntry[maxCnt];
     CompletionQueue* cq     = _ep->txcq();

@@ -35,8 +35,8 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
   int rc;
 
   unsigned numEbs = std::bitset<64>(prms.builders).count();
-  _links.reserve(numEbs);
-  _regions.reserve(numEbs);
+  _links.resize(numEbs);
+  _regions.resize(numEbs);
 
   if ( (rc = _transport.initialize(prms.ifAddr, prms.port)) )
   {

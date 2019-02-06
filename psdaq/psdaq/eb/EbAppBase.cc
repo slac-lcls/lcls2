@@ -67,9 +67,9 @@ int EbAppBase::connect(const EbParams& prms)
   int rc;
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
-  _links.reserve(nCtrbs);
-  _maxBufSize.reserve(nCtrbs);
-  _regions.reserve(nCtrbs);
+  _links.resize(nCtrbs);
+  _maxBufSize.resize(nCtrbs);
+  _regions.resize(nCtrbs);
   _defContract = prms.contributors;
   _id          = prms.id;
 

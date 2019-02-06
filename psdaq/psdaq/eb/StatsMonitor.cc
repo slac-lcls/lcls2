@@ -20,6 +20,7 @@ StatsMonitor::StatsMonitor(const char*        hostname,
   _partition(partition),
   _period   (period),
   _verbose  (verbose),
+  _enabled  (false),
   _running  (true),
   _task     (new std::thread([&] { routine(); }))
 {
@@ -117,7 +118,7 @@ void StatsMonitor::routine()
 
       if (_verbose)  printf("%s\n", buffer);
 
-      zmq_send(socket, buffer, size, 0);
+      if (_enabled)  zmq_send(socket, buffer, size, 0);
     }
   }
 

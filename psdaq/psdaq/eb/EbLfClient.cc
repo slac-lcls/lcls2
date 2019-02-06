@@ -108,17 +108,22 @@ int EbLfClient::shutdown(EbLfLink* link)
 {
   if (link)
   {
+  printf("%s: 1\n", __PRETTY_FUNCTION__);
     Endpoint* ep = link->endpoint();
+    printf("%s: 2, %p\n", __PRETTY_FUNCTION__, ep);
     delete link;
     if (ep)
     {
       CompletionQueue* txcq = ep->txcq();
+      printf("%s: 3, %p\n", __PRETTY_FUNCTION__, txcq);
       Fabric*          fab  = ep->fabric();
+      printf("%s: 4, %p\n", __PRETTY_FUNCTION__, fab);
       delete ep;
       if (txcq)  delete txcq;
       if (fab)   delete fab;
     }
   }
+  printf("%s: 5\n", __PRETTY_FUNCTION__);
 
   return 0;
 }
