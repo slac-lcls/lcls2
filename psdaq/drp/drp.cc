@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
                    /* .maxInputSize  = */ maxSize,
                    /* .core          = */ { 11 + 0,
                                             12 },
-                   /* .verbose       = */ 1 };
+                   /* .verbose       = */ 0 };
 
     para.mPrms = { /* .addrs         = */ { },
                    /* .ports         = */ { },
