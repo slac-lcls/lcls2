@@ -14,6 +14,26 @@ POSIX_TIME_AT_EPICS_EPOCH = 631152000
 class DaqControl:
     'Base class for controlling data acquisition'
 
+    # transitionId is a subset of the TransitionId.hh enum
+    transitionId = {
+        'Unknown'           : 0,
+        'Reset'             : 1,
+#       'Map'               : 2,
+#       'Unmap'             : 3,
+        'Configure'         : 4,
+        'Unconfigure'       : 5,
+        'BeginRun'          : 6,
+        'EndRun'            : 7,
+#       'BeginCalibycle'    : 8,
+#       'EndCalibCycle'     : 9,
+        'Enable'            : 10,
+        'Disable'           : 11,
+        'L1Accept'          : 12,
+        'ConfigUpdate'      : 13,
+        'BeginRecord'       : 14,
+        'EndRecord'         : 15
+    }
+
     transitions = ['plat', 'alloc', 'dealloc',
                    'connect', 'disconnect',
                    'configure', 'unconfigure',
