@@ -10,6 +10,7 @@
 #include "pv/ntscalar.h"
 #include "pv/pvIntrospect.h"
 #include "pv/pvData.h"
+#include "pv/createRequest.h"
 
 #include "psdaq/epicstools/PVMonitorCb.hh"
 
@@ -25,6 +26,81 @@ namespace nt  = epics::nt;
 
 
 namespace Pds_Epics {
+    // Both the PutTracker's are copied over from the V4 example code.
+    template<typename T> struct PutTracker : public pvac::ClientChannel::PutCallback {
+        POINTER_DEFINITIONS(PutTracker);
+        pvac::Operation op;
+        const T value;
+        PutTracker(pvac::ClientChannel& channel, const pvd::PVStructure::const_shared_pointer& pvReq, const T& val)
+            :op(channel.put(this, pvReq)) ,value(val) {
+
+            }
+
+        virtual ~PutTracker() { op.cancel(); }
+
+        virtual void putBuild(const epics::pvData::StructureConstPtr &build, pvac::ClientChannel::PutCallback::Args& args) {
+            pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
+            pvd::PVScalarPtr valfld(root->getSubFieldT<pvd::PVScalar>("value"));
+            valfld->putFrom(value);
+            args.root = root;
+            args.tosend.set(valfld->getFieldOffset());
+            std::cerr << "Putting to PV " << op.name() << " " << valfld << std::endl;
+        }
+        virtual void putDone(const pvac::PutEvent &evt) OVERRIDE FINAL
+        {
+            switch(evt.event) {
+            case pvac::PutEvent::Fail:
+                std::cerr<<op.name()<<" Error: "<<evt.message<<"\n";
+                break;
+            case pvac::PutEvent::Cancel:
+                std::cerr<<op.name()<<" Cancelled\n";
+                break;
+            case pvac::PutEvent::Success:
+                // std::cout<<op.name()<<" Done\n";
+                break;
+            }
+
+            delete this;
+        }
+    };
+
+    template<typename T> struct VectorPutTracker : public pvac::ClientChannel::PutCallback {
+        POINTER_DEFINITIONS(VectorPutTracker);
+        pvac::Operation op;
+        const pvd::shared_vector<const T> value;
+        VectorPutTracker(pvac::ClientChannel& channel, const pvd::PVStructure::const_shared_pointer& pvReq, const pvd::shared_vector<const T>& val)
+            :op(channel.put(this, pvReq)) ,value(val) {
+
+            }
+
+        virtual ~VectorPutTracker() { op.cancel(); }
+
+        virtual void putBuild(const epics::pvData::StructureConstPtr &build, pvac::ClientChannel::PutCallback::Args& args) {
+            pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
+            pvd::PVScalarArrayPtr valfld(root->getSubFieldT<pvd::PVScalarArray>("value"));
+            valfld->putFrom(value);
+            args.root = root;
+            args.tosend.set(valfld->getFieldOffset());
+            std::cerr << "Putting to PV " << op.name() << " " << valfld << std::endl;
+        }
+        virtual void putDone(const pvac::PutEvent &evt) OVERRIDE FINAL
+        {
+            switch(evt.event) {
+            case pvac::PutEvent::Fail:
+                std::cerr<<op.name()<<" Error: "<<evt.message<<"\n";
+                break;
+            case pvac::PutEvent::Cancel:
+                std::cerr<<op.name()<<" Cancelled\n";
+                break;
+            case pvac::PutEvent::Success:
+                // std::cout<<op.name()<<" Done\n";
+                break;
+            }
+
+            delete this;
+        }
+    };
+
   class EpicsPVA :public pvac::ClientChannel::ConnectCallback, pvac::ClientChannel::GetCallback, pvac::ClientChannel::MonitorCallback {
   public:
     EpicsPVA(const char *channelName, const int maxElements=0);
@@ -59,7 +135,8 @@ namespace Pds_Epics {
 
     template<typename T> void putFrom(T val) {
         try {
-            _channel.put().set("value", val).exec();
+            new PutTracker<T>(_channel, pvd::CreateRequest::create()->createRequest("field()"), val);
+            // _channel.put().set("value", val).exec();
         } catch(const pvac::Timeout& t) {
             std::cout << "Timeout when putting to pv " << name() << std::endl;
         } catch(std::runtime_error r) {
@@ -69,7 +146,8 @@ namespace Pds_Epics {
 
     template<typename T> void putFromVector(const pvd::shared_vector<const T>& val) {
         try {
-            _channel.put().set("value", val).exec();
+            new VectorPutTracker<T>(_channel, pvd::CreateRequest::create()->createRequest("field()"), val);
+            // _channel.put().set("value", val).exec();
         } catch(const pvac::Timeout& t) {
             std::cout << "Timeout when putting a vector of size " << val.size() << " to pv " << name() << std::endl;
         }
