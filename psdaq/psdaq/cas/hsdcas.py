@@ -8,9 +8,10 @@ import argparse
 #import json
 import pdb
 
-NLanes = 4
+Lanes = 4
 NApps = 4
 WfLen = 1024
+NChans = 4
 
 class myDriver(Driver):
     def __init__(self):
@@ -36,6 +37,7 @@ def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for PGP')
 
     parser.add_argument('-P', required=True, help='DAQ:SIM', metavar='PREFIX')
+    parser.add_argument('-D', '--use_db' , action='store_true', help='use mongodb')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
@@ -88,47 +90,47 @@ def main():
 
     # Specific PVs
     pvdb[stationstr+'ENABLE'   ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [1]*4 }
+                                    'count': NChans,
+                                    'value' : [1]*NChans }
     pvdb[stationstr+'RAW_START' ] = {'type' : 'int', 
-                                     'count': 4,
-                                     'value' : [4]*4 }
+                                     'count': NChans,
+                                     'value' : [4]*NChans }
     pvdb[stationstr+'RAW_GATE' ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [200]*4 }
+                                    'count': NChans,
+                                    'value' : [200]*NChans }
     pvdb[stationstr+'RAW_PS'   ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [1]*4 }
+                                    'count': NChans,
+                                    'value' : [1]*NChans }
     pvdb[stationstr+'FEX_START' ] = {'type' : 'int', 
-                                     'count': 4,
-                                     'value' : [4]*4 }
+                                     'count': NChans,
+                                     'value' : [4]*NChans }
     pvdb[stationstr+'FEX_GATE' ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [200]*4 }
+                                    'count': NChans,
+                                    'value' : [200]*NChans }
     pvdb[stationstr+'FEX_PS'   ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [1]*4 }
+                                    'count': NChans,
+                                    'value' : [1]*NChans }
     pvdb[stationstr+'FEX_YMIN' ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [508]*4 }
+                                    'count': NChans,
+                                    'value' : [508]*NChans }
     pvdb[stationstr+'FEX_YMAX' ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [516]*4 }
+                                    'count': NChans,
+                                    'value' : [516]*NChans }
     pvdb[stationstr+'FEX_XPRE' ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [2]*4 }
+                                    'count': NChans,
+                                    'value' : [2]*NChans }
     pvdb[stationstr+'FEX_XPOST'] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [3]*4 }
+                                    'count': NChans,
+                                    'value' : [3]*NChans }
     pvdb[stationstr+'NAT_START' ] = {'type' : 'int', 
-                                     'count': 4,
-                                     'value' : [4]*4 }
+                                     'count': NChans,
+                                     'value' : [4]*NChans }
     pvdb[stationstr+'NAT_GATE' ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [200]*4 }
+                                    'count': NChans,
+                                    'value' : [200]*NChans }
     pvdb[stationstr+'NAT_PS'   ] = {'type' : 'int', 
-                                    'count': 4,
-                                    'value' : [0]*4 }
+                                    'count': NChans,
+                                    'value' : [0]*NChans }
 
     pvdb[stationstr+'RESET'  ] = {'type' : 'int', 
                                   'value' : 0 }
@@ -165,11 +167,11 @@ def main():
 #                                       'value' : 11750 }
                                        'value' : 15200+175 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
-                                      'count' : 4,
-                                      'value' : [0]*4 }
+                                      'count' : NChans,
+                                      'value' : [0]*NChans }
     pvdb[stationstr+'RDFIFOCNT'  ] = {'type' : 'int',
-                                      'count' : 4,
-                                      'value' : [0]*4 }
+                                      'count' : NChans,
+                                      'value' : [0]*NChans }
 
     # Status Monitoring
 
@@ -208,45 +210,50 @@ def main():
                                          'value' : 0 }
     # PGP link status
     pvdb[stationstr+'PGPLOCLINKRDY'] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
     pvdb[stationstr+'PGPREMLINKRDY'] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
     # PGP reference clocks
     pvdb[stationstr+'PGPTXCLKFREQ' ] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
     pvdb[stationstr+'PGPRXCLKFREQ' ] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
     # PGP frames transmitted
     pvdb[stationstr+'PGPTXCNT'     ] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
     pvdb[stationstr+'PGPTXCNTSUM'  ] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
     # PGP frames error in transmission
     pvdb[stationstr+'PGPTXERRCNT'  ] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
     # PGP frames received (deadtime link)
     pvdb[stationstr+'PGPRXCNT'     ] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
     # Last PGP opcode received
     pvdb[stationstr+'PGPRXLAST'    ] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
+    # Last PGP opcode received
+    pvdb[stationstr+'PGPREMPAUSE'  ] = {'type' : 'int',
+                                        'count': Lanes,
+                                        'value' : [0]*Lanes }
+
     # Bytes(?) free in buffer pool
     pvdb[stationstr+'RAW_FREEBUFSZ'] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': NChans,
+                                        'value' : [0]*NChans }
     # Events free in buffer pool
     pvdb[stationstr+'RAW_FREEBUFEVT'] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': NChans,
+                                        'value' : [0]*NChans }
     # Acquisition state of buffers
     pvdb[stationstr+'RAW_BUFSTATE'     ] = {'type' : 'int',
                                         'count': 16,
@@ -265,12 +272,20 @@ def main():
                                         'value' : [0]*16 }
     # Bytes(?) free in buffer pool
     pvdb[stationstr+'FEX_FREEBUFSZ'] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': NChans,
+                                        'value' : [0]*NChans }
     # Events free in buffer pool
     pvdb[stationstr+'FEX_FREEBUFEVT'] = {'type' : 'int',
-                                        'count': 4,
-                                        'value' : [0]*4 }
+                                        'count': NChans,
+                                        'value' : [0]*NChans }
+    # Bytes(?) free in buffer pool
+    pvdb[stationstr+'NAT_FREEBUFSZ'] = {'type' : 'int',
+                                        'count': NChans,
+                                        'value' : [0]*NChans }
+    # Events free in buffer pool
+    pvdb[stationstr+'NAT_FREEBUFEVT'] = {'type' : 'int',
+                                        'count': NChans,
+                                        'value' : [0]*NChans }
 
     # Data monitoring
     pvdb[stationstr+'RAWDATA'] = {'type' : 'int',
@@ -310,21 +325,22 @@ def main():
     server.createPV(prefix, pvdb)
     driver = myDriver()
 
-    # Save PVs to config dbase
-    from pymongo import MongoClient, errors
-    username = 'yoon82'
-    host = 'psdb-dev'
-    port = 9306
-    instrument = 'amo'
-    client = MongoClient('mongodb://%s:%s@%s:%s' % (username, username, host, port))
-    db = client['config_db']
-    collection = db[instrument]
-    _pvdb = pvdb
-    _pvdb['_id'] = 234 # this may be detector serial number
-    try:
-        collection.insert(_pvdb)
-    except errors.DuplicateKeyError:
-        print("ID already exists. Exit without writing to database.")
+    if args.use_db:
+        # Save PVs to config dbase
+        from pymongo import MongoClient, errors
+        username = 'yoon82'
+        host = 'psdb-dev'
+        port = 9306
+        instrument = 'amo'
+        client = MongoClient('mongodb://%s:%s@%s:%s' % (username, username, host, port))
+        db = client['config_db']
+        collection = db[instrument]
+        _pvdb = pvdb
+        _pvdb['_id'] = 234 # this may be detector serial number
+        try:
+            collection.insert(_pvdb)
+        except errors.DuplicateKeyError:
+            print("ID already exists. Exit without writing to database.")
 
     try:
         # process CA transactions

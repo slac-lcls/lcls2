@@ -9,6 +9,7 @@ setup(
        version=versioneer.get_version(),
        cmdclass=versioneer.get_cmdclass(),
        packages = find_packages(),
+       package_data={'control_gui': ['data/icons/*.png','data/icons/*.gif'],},
 
        scripts = ['psdaq/procmgr/procmgr','psdaq/procmgr/procstat','psdaq/procmgr/condaProcServ'],
 
@@ -17,15 +18,18 @@ setup(
                 'collection = psdaq.control.collection:main',
                 'dti_proxy = psdaq.control.dti_proxy:main',
                 'showPlatform = psdaq.control.showPlatform:main',
+                'daqstate = psdaq.control.daqstate:main',
                 'partca = psdaq.cas.partca:main',
                 'partcas = psdaq.cas.partcas:main',
                 'modcas = psdaq.cas.modcas:main',
+                'modca = psdaq.cas.modca:main',
                 'xpmca = psdaq.cas.xpmca:main',
                 'deadca = psdaq.cas.deadca:main',
                 'dtica = psdaq.cas.dtica:main',
                 'dticas = psdaq.cas.dticas:main',
                 'hsdca = psdaq.cas.hsdca:main',
                 'hsdcas = psdaq.cas.hsdcas:main',
-             ]
+                'control_gui = psdaq.control_gui.app.control_gui:control_gui',
+              ]
        },
 )

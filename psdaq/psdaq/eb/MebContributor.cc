@@ -18,31 +18,14 @@ using namespace Pds::Eb;
 MebContributor::MebContributor(const MebCtrbParams& prms) :
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
-  _trOffset  (TransitionId::NumberOf),
-  _region    (allocRegion(prms.maxEvents * _maxEvSize +
-                          roundUpSize(TransitionId::NumberOf * prms.maxTrSize))),
-  _transport (new EbLfClient()),
+  _trSize    (roundUpSize(TransitionId::NumberOf * _maxTrSize)),
+  _transport (new EbLfClient(prms.verbose)),
   _links     (),
   _id        (prms.id),
   _verbose   (prms.verbose),
   _eventCount(0)
 {
-  size_t regionSize = prms.maxEvents * _maxEvSize +
-                      roundUpSize(TransitionId::NumberOf * prms.maxTrSize);
-
-  if (_region == nullptr)
-  {
-    fprintf(stderr, "%s: No memory found for a input region of size %zd\n",
-            __func__, regionSize);
-    abort();
-  }
-
-  size_t offset = prms.maxEvents * _maxEvSize;
-  for (unsigned i = 0; i < _trOffset.size(); ++i)
-  {
-    _trOffset[i] = offset;
-    offset += _maxTrSize;
-  }
+  size_t regionSize = prms.maxEvents * _maxEvSize;
 
   _initialize(__func__, prms.addrs, prms.ports, prms.id, regionSize);
 }
@@ -51,22 +34,20 @@ MebContributor::~MebContributor()
 {
   if (_transport)
   {
-    for (EbLfLinkMap::iterator it  = _links.begin();
-                               it != _links.end(); ++it)
+    for (auto it = _links.begin(); it != _links.end(); ++it)
     {
       _transport->shutdown(it->second);
     }
     _links.clear();
     delete _transport;
   }
-  if (_region)  free(_region);
 }
 
 void MebContributor::_initialize(const char*                     who,
                                  const std::vector<std::string>& addrs,
                                  const std::vector<std::string>& ports,
                                  unsigned                        id,
-                                 size_t                          regionSize)
+                                 size_t                          rmtRegSize)
 {
   for (unsigned i = 0; i < addrs.size(); ++i)
   {
@@ -80,7 +61,7 @@ void MebContributor::_initialize(const char*                     who,
               who, addr, port);
       abort();
     }
-    if (link->preparePoster(_region, regionSize, i, id, _verbose))
+    if (link->preparePoster(id, rmtRegSize))
     {
       fprintf(stderr, "%s: Failed to prepare link to %s:%s\n",
               who, addr, port);
@@ -97,7 +78,7 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
   unsigned  dst    = ImmData::src(destination);
   uint32_t  idx    = ImmData::idx(destination);
   size_t    sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
-  unsigned  offset = idx * _maxEvSize;
+  unsigned  offset = _trSize + idx * _maxEvSize;
   EbLfLink* link   = _links[dst];
   uint32_t  data   = ImmData::value(ImmData::Buffer, _id, idx);
 
@@ -127,34 +108,33 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
 
 int MebContributor::post(const Dgram* ddg)
 {
-  size_t              sz      = sizeof(*ddg) + ddg->xtc.sizeofPayload();
-  TransitionId::Value service = ddg->seq.service();
-  uint64_t            offset  = _trOffset[service];
+  size_t              sz  = sizeof(*ddg) + ddg->xtc.sizeofPayload();
+  TransitionId::Value tr  = ddg->seq.service();
+  uint64_t            ofs = tr * _maxTrSize;
 
   if (sz > _maxTrSize)
   {
     fprintf(stderr, "%s:\n  %s transition of size %zd is too big for target buffer of size %zd\n",
-            __PRETTY_FUNCTION__, TransitionId::name(service), sz, _maxTrSize);
+            __PRETTY_FUNCTION__, TransitionId::name(tr), sz, _maxTrSize);
     return -1;
   }
 
-  for (EbLfLinkMap::iterator it  = _links.begin();
-                             it != _links.end(); ++it)
+  for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     EbLfLink* link = it->second;
-    uint32_t  data = ImmData::value(ImmData::Transition, _id, service);
+    uint32_t  data = ImmData::value(ImmData::Transition, _id, tr);
 
     if (_verbose)
     {
       uint64_t pid    = ddg->seq.pulseId().value();
       unsigned ctl    = ddg->seq.pulseId().control();
-      void*    rmtAdx = (void*)link->rmtAdx(offset);
+      void*    rmtAdx = (void*)link->rmtAdx(ofs);
       printf("MebCtrb posts %6ld         trId [%4d]  @ "
              "%16p, ctl %02x, pid %014lx, sz %4zd, MEB %2d @ %16p, data %08x\n",
-             _eventCount, service, ddg, ctl, pid, sz, link->id(), rmtAdx, data);
+             _eventCount, tr, ddg, ctl, pid, sz, link->id(), rmtAdx, data);
     }
 
-    if (int rc = link->post(ddg, sz, offset, data) < 0)  return rc;
+    if (int rc = link->post(ddg, sz, ofs, data) < 0)  return rc;
   }
 
   return 0;

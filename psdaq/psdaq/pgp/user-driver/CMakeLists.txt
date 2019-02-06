@@ -25,22 +25,16 @@ target_link_libraries(status
     pgpdriver
 )
 
-add_executable(pgpread
-    pgpread.cc
-)
+#add_executable(pgpread
+#    pgpread.cc
+#)
 
-target_include_directories(pgpread PUBLIC
-    ../../../drp
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-)
-
-target_link_libraries(pgpread
-    pgpdriver
-    xtcdata::xtc
-    pthread
-    rt
-)
+#target_link_libraries(pgpread
+#    pgpdriver
+#    xtcdata::xtc
+#    pthread
+#    rt
+#)
 
 add_executable(pgpmon
     pgpmon.cc

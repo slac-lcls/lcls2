@@ -280,7 +280,7 @@ namespace Pds {
           if (TON(_pv[Fex_PS]->data(),i)) {
             streamMask |= (1<<1);
             fex._base[1].setGate(4,TON(_pv[Fex_Gate]->data(),i));
-            fex._base[1].setFull(0xc00,4);
+            fex._base[1].setFull(fullSize,fullEvt);
             fex._base[1]._prescale=TON(_pv[Fex_PS]->data(),i)-1;
             fex._stream[1].parms[0].v=TON(_pv[Fex_Ymin]->data(),i);
             fex._stream[1].parms[1].v=TON(_pv[Fex_Ymax]->data(),i);
@@ -290,8 +290,12 @@ namespace Pds {
           if (TON(_pv[Nat_PS]->data(),i)) {
             streamMask |= (1<<2);
             fex._base[2].setGate(4,TON(_pv[Nat_Gate]->data(),i));
-            fex._base[2].setFull(0xc00,4);
+            fex._base[2].setFull(fullSize,fullEvt);
             fex._base[2]._prescale=TON(_pv[Nat_PS]->data(),i)-1;
+            fex._stream[2].parms[0].v=TON(_pv[Fex_Ymin]->data(),i);
+            fex._stream[2].parms[1].v=TON(_pv[Fex_Ymax]->data(),i);
+            fex._stream[2].parms[2].v=TON(_pv[Fex_Xpre]->data(),i);
+            fex._stream[2].parms[3].v=TON(_pv[Fex_Xpost]->data(),i);
           }
           fex._streams= streamMask;
         }

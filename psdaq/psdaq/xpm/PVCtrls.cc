@@ -1,6 +1,9 @@
 #include "psdaq/xpm/PVCtrls.hh"
 #include "psdaq/xpm/Module.hh"
+#include "psdaq/xpm/XpmSequenceEngine.hh"
 #include "psdaq/service/Semaphore.hh"
+
+#include <cpsw_error.h>  // To catch a CPSW exception and continue
 
 #include <sstream>
 
@@ -21,18 +24,25 @@ namespace Pds {
     //#define PRT(value)  printf("%60.60s: %32.32s: 0x%02x\n", __PRETTY_FUNCTION__, _channel.epicsName(), value)
 #define PRT(value)  {}
 
-#define PVG(i)      PRT(TOU(data()));    _ctrl.module().i;
-#define GPVG(i)   {                                        \
-      _ctrl.sem().take();                                  \
-      PRT(TOU(data()));    _ctrl.module().i;               \
-      _ctrl.sem().give(); }
-#define PVP(i)      PRT( ( TOU(data()) = _ctrl.module().i ) );  put();
-#define GPVP(i) {                                               \
-    _ctrl.sem().take();                                         \
-    TOU(data()) = _ctrl.module().i ;                            \
-    _ctrl.sem().give();                                         \
-    put();                                                      \
-    PRT( ( _ctrl.module().i ) ); }
+#define PVG(i) {                                        \
+      try { PRT(TOU(data()));    _ctrl.module().i; }    \
+      catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); } }
+#define GPVG(i)   {                                                     \
+    _ctrl.sem().take();                                                 \
+    try { PRT(TOU(data()));    _ctrl.module().i; }                      \
+    catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); }    \
+    _ctrl.sem().give(); }
+#define PVP(i) {                                                        \
+    try { PRT( ( TOU(data()) = _ctrl.module().i ) );  put(); }          \
+    catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); } }
+#define GPVP(i) {                                                       \
+    _ctrl.sem().take();                                                 \
+    try { TOU(data()) = _ctrl.module().i ; }                            \
+    catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); }    \
+    _ctrl.sem().give();                                                 \
+    put();                                                              \
+    try { PRT( ( _ctrl.module().i ) ); }                                \
+    catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); } }
 
 #define CPV(name, updatedBody, connectedBody)                           \
                                                                         \
@@ -122,11 +132,13 @@ namespace Pds {
     CPV(PLL_LOL,        {                                              },
                         { GPVP(pllStatus1(_idx));                      })
 
-    CPV(ModuleInit,     { GPVG(init     ());     }, { })
+    //    CPV(ModuleInit,     { GPVG(init     ());     }, { })
     CPV(DumpPll,        { GPVG(dumpPll  (_idx)); }, { })
     CPV(DumpTiming,     { PVG(dumpTiming(_idx)); }, { })
+    CPV(DumpSeq,        { if (TOU(data())!=0) _ctrl.seq().dump();}, {})
+    CPV(SetVerbose,     { GPVG(setVerbose(TOU(data()))); }, { })
 
-    PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem) {}
+    PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem), _seq(m.sequenceEngine()) {}
     PVCtrls::~PVCtrls() {}
 
     void PVCtrls::allocate(const std::string& title)
@@ -152,9 +164,11 @@ namespace Pds {
         _pv.push_back( new PV(name)(*this, (pvbase+#name+idx).c_str(), i) ); \
       }
 
-      NPV ( ModuleInit                              );
+      //      NPV ( ModuleInit                              );
       NPVN( DumpPll,            Module::NAmcs       );
       NPVN( DumpTiming,         2                   );
+      NPV ( DumpSeq                                 );
+      NPV ( SetVerbose                              );
 
       NPVN( LinkTxDelay,        24    );
       NPVN( LinkPartition,      24    );
@@ -187,6 +201,35 @@ namespace Pds {
 
       // Wait for monitors to be established
       ca_pend_io(0);
+
+      //
+      // Program sequencer
+      //
+      XpmSequenceEngine& engine = _seq;
+      engine.verbosity(2);
+      // Setup a 22 pulse sequence to repeat 40000 times each second
+      const unsigned NP = 22;
+      std::vector<TPGen::Instruction*> seq;
+      seq.push_back(new TPGen::FixedRateSync(6,1));  // sync start to 1Hz
+      for(unsigned i=0; i<NP; i++) {
+        unsigned bits=0;
+        for(unsigned j=0; j<16; j++)
+          if ((i*(j+1))%NP < (j+1))
+            bits |= (1<<j);
+        seq.push_back(new TPGen::ExptRequest(bits));
+        seq.push_back(new TPGen::FixedRateSync(0,1)); // next pulse
+      }
+      seq.push_back(new TPGen::Branch(1, TPGen::ctrA,199));
+      //  seq.push_back(new TPGen::Branch(1, TPGen::ctrB, 99));
+      seq.push_back(new TPGen::Branch(1, TPGen::ctrB,199));
+      seq.push_back(new TPGen::Branch(0));
+      int rval = engine.insertSequence(seq);
+      if (rval < 0)
+        printf("Insert sequence failed [%d]\n", rval);
+      engine.dump  ();
+      engine.enable(true);
+      engine.setAddress(rval,0,0);
+      engine.reset ();
     }
 
     void PVCtrls::dump() const
@@ -201,6 +244,7 @@ namespace Pds {
 
     Module& PVCtrls::module() { return _m; }
     Semaphore& PVCtrls::sem() { return _sem; }
-
+    XpmSequenceEngine& PVCtrls::seq() { return _seq; }
+    
   };
 };

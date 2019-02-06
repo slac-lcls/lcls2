@@ -19,11 +19,13 @@ ControlRequest::Type ExptRequest::request() const
 unsigned ExptRequest::value() const
 { return word; }
 
+#ifndef EXCLUDE_CHECKPOINT
 Checkpoint::Checkpoint(Callback* cb) : _callback(cb) {}
 Checkpoint::~Checkpoint() { delete _callback; }
 Callback* Checkpoint::callback() const { return _callback; }
 Instruction::Type Checkpoint::instr() const
 { return Instruction::Check; }
+#endif
 
 FixedRateSync::FixedRateSync(unsigned        m,
 			     unsigned        o) :

@@ -14,34 +14,26 @@ namespace Pds {
     class EbLfLink
     {
     public:
-      EbLfLink(Fabrics::Endpoint*, uint64_t& pending);
-      EbLfLink(Fabrics::Endpoint*, int rxDepth, uint64_t& unused);
+      EbLfLink(Fabrics::Endpoint*, unsigned verbose, uint64_t& pending);
+      EbLfLink(Fabrics::Endpoint*, int rxDepth, unsigned verbose, uint64_t& unused);
       ~EbLfLink();
     public:
-      int       preparePender(unsigned idx,
-                              unsigned id,
-                              unsigned verbose,
-                              void*    ctx = nullptr);
-      int       preparePender(void*    region,
-                              size_t   size,
-                              unsigned idx,
-                              unsigned id,
-                              unsigned verbose,
-                              void*    ctx = nullptr);
-      int       preparePoster(unsigned idx,
-                              unsigned id,
-                              unsigned verbose);
-      int       preparePoster(void*    region,
-                              size_t   size,
-                              unsigned idx,
-                              unsigned id,
-                              unsigned verbose);
+      int       preparePender(unsigned id);
+      int       preparePender(unsigned id,
+                              size_t*  size);
+      int       preparePoster(unsigned id);
+      int       preparePoster(unsigned id,
+                              size_t   size);
+      int       preparePoster(unsigned id,
+                              void*    region,
+                              size_t   size);
     public:
       int       setupMr(void* region, size_t size);
-      int       recvId();
-      int       sendId(unsigned idx, unsigned id);
-      int       syncLclMr();
-      int       syncRmtMr(size_t size);
+      int       setupMr(void* region, size_t size, Fabrics::MemoryRegion**);
+      int       recvU32(Fabrics::MemoryRegion*, uint32_t* u32, const char* name);
+      int       sendU32(Fabrics::MemoryRegion*, uint32_t  u32, const char* name);
+      int       sendMr(Fabrics::MemoryRegion*);
+      int       recvMr(Fabrics::MemoryRegion*);
     public:
       void*     lclAdx(size_t offset) const;
       uintptr_t rmtAdx(size_t offset) const;
@@ -59,7 +51,6 @@ namespace Pds {
       const uint64_t& afterPostCnt()  const;
     public:
       Fabrics::Endpoint* endpoint() const { return _ep;  }
-      unsigned           index()    const { return _idx; }
       unsigned           id()       const { return _id;  }
     private:
       int       _postCompRecv(unsigned count, void* ctx = NULL);
@@ -70,7 +61,6 @@ namespace Pds {
       Fabrics::RemoteAddress  _ra;      // Remote address descriptor
       int                     _rxDepth; // Depth  of the Rx Completion Queue
       int                     _rOuts;   // Number of completion buffers remaining
-      unsigned                _idx;     // Index  of peer on the remote side
       unsigned                _id;      // ID     of peer on the remote side
       char*                   _region;  // Used when App doesn't provide an MR
       unsigned                _verbose; // Print some stuff if set

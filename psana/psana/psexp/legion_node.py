@@ -33,7 +33,7 @@ def run_smd_task(view, run):
 
 @task
 def run_bigdata_task(batch, run):
-    evt_man = EventManager(run.smd_configs, run.dm)
+    evt_man = EventManager(run.smd_configs, run.dm, run.filter_callback)
     for event in evt_man.events(batch):
         yield event
 

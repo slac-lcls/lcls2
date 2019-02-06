@@ -36,9 +36,9 @@ Usage ::
     w.set_scale_control(scale_ctl='HV') # sets attribute _scale_ctl = 0/+1/+2
     sctrl = w.scale_control()
     w.set_style()
-    w.set_signs_of_transform()
+    w._set_signs_of_transform()
     w.set_background_style(bkgd="background-color:black; border: 0px solid green")
-    w.set_scene_item_rect_zvalue(sc_zvalue=20)
+    w._set_scene_item_rect_zvalue(sc_zvalue=20)
 
     # Re-calls
     #---------    
@@ -100,13 +100,16 @@ Adopted for LCLS2 on 2018-02-16
 """
 #------------------------------
 
+import logging
+logger = logging.getLogger(__name__)
+
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QApplication
-from PyQt5.QtGui import QBrush, QPen, QCursor
+from PyQt5.QtGui import QBrush, QPen, QCursor, QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
 
-#from time import time        
+#from time import time, sleep       
 #t0_sec = time()
-#print('time = %.6f' % (time() - t0_sec))
+#logger.debug('time = %.6f' % (time() - t0_sec))
 
 #------------------------------
 
@@ -127,23 +130,24 @@ class FWView(QGraphicsView) :
         - rscene (QRectF) - default rect on scaene
         - origin (str) - location of origin U(T)=Upper(Top), L=Left, other letters are not used but mean Down(Bottom), Right
         - scale_ctl (str) - scale control at mouse move, scroll, H=Horizontal, V=Vertical
-        - show_mode (int) - 0(def) - draw nothing, +1 - field of scene rect, +2 - ofigin
+        - show_mode (int) - 0(def) - draw nothing, +1 - field of scene rect, +2 - origin
         """
+
+        sc = QGraphicsScene()
+        QGraphicsView.__init__(self, sc, parent)
+
         self._name = self.__class__.__name__
 
         self.rs = rscene         # default rect on scene, restored at reset_original_size
         self.rs_old = self.rs    # rs_old - is used to check if scene rect changed
         self.rs_item = None      # item on scene to change cursor style at howering
+
         self.pos_click = None    # QPoint at mousePress
-        self.set_background_style()       # sets self.sc_zvalue
-        self.set_scene_item_rect_zvalue() # sets self.bkgd
+        self._set_scene_item_rect_zvalue()
         self.set_origin(origin)           # sets self._origin_...
         self.set_scale_control(scale_ctl) # sets self._scale_ctl
+        self._set_signs_of_transform()        
 
-        sc = QGraphicsScene()
-        QGraphicsView.__init__(self, sc, parent)
-
-        self.set_signs_of_transform()        
         self.set_style()
         self.set_view()
         self.add_test_items_to_scene(show_mode)
@@ -154,7 +158,7 @@ class FWView(QGraphicsView) :
 
 
     def __del__(self) :
-        pass # self.close()
+        pass
 
 
     def set_origin(self, origin='UL') :
@@ -198,15 +202,9 @@ class FWView(QGraphicsView) :
         return self._origin
 
 
-    def set_background_style(self, bkgd="background-color:black; border: 0px solid green") :
-        """Sets self.bkgd (str) - background style"""
-        self.bkgd = bkgd
-
-
     def set_style(self) :
         self.setGeometry(20, 20, 600, 600)
         self.setWindowTitle("FWView")
-        self.setStyleSheet(self.bkgd)
         #self.setContentsMargins(0,0,0,0)
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         #self.setAttribute(Qt.WA_TranslucentBackground)
@@ -219,17 +217,28 @@ class FWView(QGraphicsView) :
         self.pendf.setStyle(Qt.NoPen)
         self.penbx = QPen(Qt.black, 6, Qt.SolidLine)
 
+        self.set_background_style()
 
-    def set_signs_of_transform(self) :
+        #self.setViewportUpdateMode(QGraphicsView.SmartViewportUpdate)
+
+
+    def set_background_style(self, bkgd_color = QColor(50,5,50)) :
+        """Sets self.bkgd (str) - background style"""
+        # it seems like in pyqt5 setStyleSheet is not enough to re-paint bkgd at drug, zoom etc.
+        #bkgd_style="background-color:black; border: 0px solid green",
+        #self.setStyleSheet(bkgd_style)
+        self.setBackgroundBrush(QBrush(bkgd_color, Qt.SolidPattern))
+
+
+    def _set_signs_of_transform(self) :
         if not self._origin_ul :
-            t = self.transform()
             sx = 1 if self._origin_l else -1
             sy = 1 if self._origin_u else -1
-            t2 = t.scale(sx, sy)
-            self.setTransform(t2)
+            ts = self.transform().scale(sx, sy)
+            self.setTransform(ts)
 
 
-    def set_scene_item_rect_zvalue(self, sc_zvalue=20) :
+    def _set_scene_item_rect_zvalue(self, sc_zvalue=20) :
         """Sets self.sc_zvalue (float) - scene rect item z value for cursor behavir"""
         self.sc_zvalue = sc_zvalue
 
@@ -246,7 +255,7 @@ class FWView(QGraphicsView) :
         Parameters
 
         - curs_hover (QCursor) - cursor type at mouse hovering on scene rect
-        - curs_grab (QCursor) - cursor type at mouse click on scene rect
+        - curs_grab  (QCursor) - cursor type at mouse click on scene rect
         """
         sc = self.scene()
         rs = sc.sceneRect()
@@ -258,7 +267,7 @@ class FWView(QGraphicsView) :
 
 
     def set_view(self, rs=None) :
-        """rs - rect on scene to view, by default self.rs is used
+        """Sets rs - rect on scene to view in viewport, by default self.rs is used
         """
         r = self.rs if rs is None else rs
         self.scene().setSceneRect(r)
@@ -284,10 +293,10 @@ class FWView(QGraphicsView) :
     def mouseReleaseEvent(self, e):
         QApplication.restoreOverrideCursor()
         QGraphicsView.mouseReleaseEvent(self, e)
-        #print('FWView.mouseReleaseEvent, at point: ', e.pos(), ' diff:', e.pos() - self.pos_click)
+        #logger.debug('FWView.mouseReleaseEvent, at point: ', e.pos(), ' diff:', e.pos() - self.pos_click)
         #self.pos_click = e.pos()
         self.pos_click = None
-        self.set_cursor_type_on_scene_rect()
+        ### self.set_cursor_type_on_scene_rect()
 
         self.emit_signal_if_scene_rect_changed()
         #self.update_my_scene()
@@ -295,11 +304,11 @@ class FWView(QGraphicsView) :
 
 #    def mouseDoubleCkickEvent(self, e):
 #        QGraphicsView.mouseDoubleCkickEvent(self, e)
-#        print('mouseDoubleCkickEvent')
+#        logger.debug('mouseDoubleCkickEvent')
 
 
     def mousePressEvent(self, e):
-        #print('FWView.mousePressEvent, at point: ', e.pos() #e.globalX(), e.globalY())
+        #logger.debug('FWView.mousePressEvent, at point: ', e.pos() #e.globalX(), e.globalY())
         #QApplication.setOverrideCursor(QCursor(Qt.ClosedHandCursor)) #Qt.SizeAllCursor))# ClosedHandCursor
         #self.emit(QtCore.SIGNAL('mouse_press_event(QMouseEvent)'), e)
         self.mouse_press_event.emit(e)
@@ -314,7 +323,7 @@ class FWView(QGraphicsView) :
 
     def mouseMoveEvent(self, e):
         QGraphicsView.mouseMoveEvent(self, e)
-        #print('FWView.mouseMoveEvent, at point: ', e.pos())
+        #logger.debug('FWView.mouseMoveEvent, at point: ', e.pos())
         #self.emit(QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), e)
         self.mouse_move_event.emit(e)
 
@@ -339,18 +348,18 @@ class FWView(QGraphicsView) :
 
         if self._scale_ctl==0 : return
 
-        #print('wheelEvent: ', e.angleDelta())
+        #logger.debug('wheelEvent: ', e.angleDelta())
         f = 1 + 0.4 * (1 if e.angleDelta().y()>0 else -1)
-        #print('Scale factor =', f)
+        #logger.debug('Scale factor =', f)
 
         p = self.mapToScene(e.pos())
         px, py = p.x(), p.y() 
-        #print('wheel x,y = ', e.x(), e.y(), ' on scene x,y =', p.x(), p.y())
+        #logger.debug('wheel x,y = ', e.x(), e.y(), ' on scene x,y =', p.x(), p.y())
 
         sc = self.scene()
         rs = sc.sceneRect()
         x,y,w,h = rs.x(), rs.y(), rs.width(), rs.height()
-        #print('Scene x,y,w,h:', x,y,w,h)
+        #logger.debug('Scene x,y,w,h:', x,y,w,h)
 
         # zoom relative to mouse position
         dxc = (f-1)*(px-x)
@@ -368,7 +377,7 @@ class FWView(QGraphicsView) :
     def on_timeout(self) :
         """Is activated by timer when wheel is stopped and interval is expired.
         """
-        #print('on_timeout')
+        #logger.debug('on_timeout')
         self.timer.stop()
         self.emit_signal_if_scene_rect_changed()
         #self.emit(QtCore.SIGNAL('wheel_is_stopped()'))
@@ -382,7 +391,7 @@ class FWView(QGraphicsView) :
 #        self.disconnect(self, QtCore.SIGNAL('wheel_is_stopped()'), recip)
 
 #    def test_wheel_is_stopped_reception(self) :
-#        print('GUView.test_wheel_is_stopped_reception')
+#        logger.debug('GUView.test_wheel_is_stopped_reception')
 
 #------------------------------
 
@@ -390,7 +399,7 @@ class FWView(QGraphicsView) :
         """Checks if scene rect have changed and submits signal with new rect.
         """
         rs = self.scene().sceneRect()
-        #print('XXX FWView.emit_signal_if_scene_rect_changed old, new:', self.rs_old, rs)
+        #logger.debug('XXX FWView.emit_signal_if_scene_rect_changed old, new:', self.rs_old, rs)
 
         #if not equal_rects(rs, self.rs_old) :
         if rs != self.rs_old :
@@ -410,36 +419,36 @@ class FWView(QGraphicsView) :
 
     def test_scene_rect_changed_reception(self, rs) :
         from psana.graphqt.QWUtils import print_rect
-        #print('GUView.test_scene_rect_changed_reception:', rs)
+        #logger.debug('GUView.test_scene_rect_changed_reception:', rs)
         print_rect(rs, cmt='FWView.test_scene_rect_changed_reception')
 
 #------------------------------
 
     def enterEvent(self, e) :
-    #    print('enterEvent')
+    #    logger.debug('enterEvent')
         QGraphicsView.enterEvent(self, e)
         #QApplication.setOverrideCursor(QCursor(Qt.CrossCursor))
         
 
     def leaveEvent(self, e) :
-    #    print('leaveEvent')
+    #    logger.debug('leaveEvent')
         QGraphicsView.leaveEvent(self, e)
         #QApplication.restoreOverrideCursor()
 
 
     def closeEvent(self, e) :
-        #print('XXX FWView.closeEvent')
+        #logger.debug('XXX FWView.closeEvent')
         sc = self.scene()
         for item in sc.items() : 
-            #print('XXX removeItem:', item)
+            #logger.debug('XXX removeItem:', item)
             sc.removeItem(item)
         QGraphicsView.closeEvent(self, e)
-        #print('XXX closeEvent is over')
+        #logger.debug('XXX closeEvent is over')
 
 
     #def moveEvent(self, e) :
-    #    print('moveEvent')
-    #    print('Geometry rect:', self.geometry())
+    #    logger.debug('moveEvent')
+    #    logger.debug('Geometry rect:', self.geometry())
 
 
     def resizeEvent(self, e) :
@@ -448,8 +457,9 @@ class FWView(QGraphicsView) :
         self.set_view(rs)
 
 
-    #def paintEvent(e):
-    #    pass
+    #def paintEvent(self, e):
+    #    logger.debug('paintEvent')  
+    #    QGraphicsView.paintEvent(self, e)
 
 
     def key_usage(self) :
@@ -462,7 +472,7 @@ class FWView(QGraphicsView) :
 
 
     def keyPressEvent(self, e) :
-        #print('keyPressEvent, key=', e.key())       
+        #logger.debug('keyPressEvent, key=', e.key())       
         if   e.key() == Qt.Key_Escape :
             self.close()
 
@@ -490,9 +500,9 @@ class FWView(QGraphicsView) :
 
 
     def add_rect_to_scene(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)) :
-        """Adds rect to scene, returns GUQGraphicsRectItem - for interactive stuff"""
+        """Adds rect to scene, returns QWGraphicsRectItem - for interactive stuff"""
 
-        #print('XXX:QWGraphicsRectItem TBD')
+        #logger.debug('XXX:QWGraphicsRectItem TBD')
 
         from psana.graphqt.QWGraphicsRectItem import QWGraphicsRectItem
         pen.setCosmetic(True)
@@ -510,7 +520,7 @@ class FWView(QGraphicsView) :
             self.rsi = self.add_rect_to_scene_v1(self.rs, pen=QPen(Qt.NoPen), brush=QBrush(colfld))
         if show_mode & 2 :
             ror=QRectF(-1, -1, 2, 2)
-            self.rori = self.add_rect_to_scene(ror, pen=QPen(colori, 0, Qt.SolidLine), brush=QBrush(colori))
+            self.rori = self.add_rect_to_scene_v1(ror, pen=QPen(colori, 0, Qt.SolidLine), brush=QBrush(colori))
 
 
 #------------------------------
@@ -527,7 +537,7 @@ class FWView(QGraphicsView) :
 #-----------------------------
 
     def test_mouse_move_event_reception(self, e) :
-        #print('mouseMoveEvent, current point: ', e.x(), e.y(), ' on scene: %.1f  %.1f' % (p.x(), p.y()))
+        #logger.debug('mouseMoveEvent, current point: ', e.x(), e.y(), ' on scene: %.1f  %.1f' % (p.x(), p.y()))
         p = self.mapToScene(e.pos())
         self.setWindowTitle('FWView: x=%.1f y=%.1f %s' % (p.x(), p.y(), 25*' '))
 
@@ -540,6 +550,10 @@ class FWView(QGraphicsView) :
         self.mouse_move_event['QMouseEvent'].disconnect(recip)
 
 #-----------------------------
+
+    #def drawBackground(self, painter, rect):
+        #painter.fillRect(rect, QBrush(QColor(0,0,0), Qt.SolidPattern))
+
 #-----------------------------
 #-----------------------------
 #-----------------------------
@@ -557,7 +571,7 @@ if __name__ == "__main__" :
     elif tname == '5': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='H')
     elif tname == '6': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='V')
     elif tname == '7': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=1, scale_ctl='HV')
-    elif tname == '8': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV', bkgd=b)
+    elif tname == '8': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
     else :
         print('test %s is not implemented' % tname)
         return

@@ -35,6 +35,8 @@ StatsMonitor::~StatsMonitor()
 
 void StatsMonitor::shutdown()
 {
+  printf("\nShutting down StatsMonitor...\n");
+
   _running = false;
 
   if (_task)  _task->join();

@@ -1,6 +1,8 @@
 #include "psdaq/dti/PVCtrls.hh"
 #include "psdaq/dti/Module.hh"
 
+#include <cpsw_error.h>  // To catch a CPSW exception and continue
+
 #include <sstream>
 
 #include <stdio.h>
@@ -43,7 +45,8 @@ namespace Pds {
     };                                                                  \
     void PV(name)::updated()                                            \
     {                                                                   \
-      updatedBody                                                       \
+      try { updatedBody }                                               \
+      catch(CPSWError& e) {}                                            \
     }                                                                   \
     void PV(name)::connected(bool c)                                    \
     {                                                                   \

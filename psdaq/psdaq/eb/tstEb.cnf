@@ -21,7 +21,8 @@ os.environ['TESTRELDIR'] = inst_path
 conda_env = getRelEnvString()
 
 partition = 'Test'
-col_node  = 'drp-tst-acc06'
+col_node  = 'psdev01'  #'drp-tst-acc06'
+rtm_node  = 'psdev01'  #'psdev7b'
 headless  = False
 if headless:
   node_flags = 'sp'
@@ -81,9 +82,9 @@ if num_mon and len(mon_nodes) is 0:
 
 mgr_cmd = 'procstat -t ' + username + ' -e0 -n none p' + platform+'.cnf.last'
 col_cmd = 'collection -v'
-mon_cmd = 'monReqServer' +' -C ' + col_node + ' -P ' + partition
-seg_cmd = 'tstEbContributor -C ' + col_node
-evt_cmd = 'tstEbBuilder' +' -C ' + col_node
+mon_cmd = 'monReqServer' +' -C ' + col_node + ' -Z ' + rtm_node + ' -P ' + partition
+seg_cmd = 'tstEbContributor -C ' + col_node + ' -Z ' + rtm_node
+evt_cmd = 'tstEbBuilder' +' -C ' + col_node + ' -Z ' + rtm_node
 
 procmgr_config = []
 
@@ -95,42 +96,45 @@ if can_run:
                            env:   conda_env,
                            cmd:   mgr_cmd})
 
-  procmgr_config.append({host:  col_node,
-                         id:    'collection',
-                         flags: 'sxp',
-                         env:   conda_env,
-                         cmd:   col_cmd})
+  #procmgr_config.append({host:  col_node,
+  #                       id:    'collection',
+  #                       flags: 'sxp',
+  #                       env:   conda_env,
+  #                       cmd:   col_cmd})
 
+  n    = 0
   cnt  = 0
+  core = 10
   for i in mon_nodes:
-    n = int(cnt / numNodes)
-    cnt += 1
+    n     = int(cnt / numNodes)
+    cnt  += 1
+    cores = " -1 %d -2 %d" % (core + 2 * n, core + 1 + 2 * n)
     procmgr_config.append({host:  "drp-tst-dev%03d" % i,
                            id:    'mon%d' % cnt,
                            env:   conda_env,
                            flags: node_flags,
-                           cmd:   mon_cmd})
+                           cmd:   mon_cmd + cores})
 
-  core = 10
+  core += 2 * n
   for i in evt_nodes:
-    n = int(cnt / numNodes)
-    cnt += 1
+    n     = int(cnt / numNodes)
+    cnt  += 1
     cores = " -1 %d -2 %d" % (core + 2 * n, core + 1 + 2 * n)
     procmgr_config.append({host:  "drp-tst-dev%03d" % i,
                            id:    'evt%d' % cnt,
                            env:   conda_env,
                            flags: node_flags,
-                           cmd:   evt_cmd+cores})
+                           cmd:   evt_cmd + cores})
 
   core += 2 * n
   for i in seg_nodes:
-    n = int(cnt / numNodes)
-    cnt += 1
+    n     = int(cnt / numNodes)
+    cnt  += 1
     cores = " -1 %d -2 %d" % (core + 2 * n, core + 1 + 2 * n)
     procmgr_config.append({host:  "drp-tst-dev%03d" % i,
                            id:    'seg%d' % cnt,
                            env:   conda_env,
                            flags: node_flags,
-                           cmd:   seg_cmd+cores})
+                           cmd:   seg_cmd + cores})
 
 #print(procmgr_config)

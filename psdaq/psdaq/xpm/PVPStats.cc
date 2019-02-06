@@ -4,6 +4,8 @@
 #include "psdaq/epicstools/PVWriter.hh"
 using Pds_Epics::PVWriter;
 
+#include <cpsw_error.h>  // To catch a CPSW exception and continue
+
 #include <sstream>
 #include <string>
 #include <vector>
@@ -55,26 +57,31 @@ namespace Pds {
 
     void PVPStats::update()
     {
-      _dev.setPartition(_partition);
-      const L0Stats& os = _last;
-      L0Stats ns(_dev.l0Stats());
-      PVPUT(9, double(ns.l0Enabled)*14.e-6/13.);
-      PVPUT(10, double(_dev.getL0Delay()));
-      unsigned l0Enabled = ns.l0Enabled - os.l0Enabled;
-      double dt = double(l0Enabled)*14.e-6/13.;
-      unsigned numl0     = ns.numl0    - os.numl0;
-      PVPUT(0, l0Enabled ? double(numl0)/dt :0);
-      unsigned numl0Acc  = ns.numl0Acc - os.numl0Acc;
-      PVPUT(1, l0Enabled ? double(numl0Acc)/dt:0);
-      PVPUT(3, ns.numl0    - _begin.numl0);
-      PVPUT(4, ns.numl0Acc - _begin.numl0Acc);
-      PVPUT(6, numl0 ? double(ns.numl0Inh - os.numl0Inh) / double(numl0) : 0);
-      if (l0Enabled) {
-        PVPUT (7,     double(ns.l0Inhibited - os.l0Inhibited) / double(l0Enabled));
-        PVPUTA(8, 32, double(ns.linkInh[i]  - os.linkInh[i])  / double(numl0));
+      try {
+        _dev.setPartition(_partition);
+        const L0Stats& os = _last;
+        L0Stats ns(_dev.l0Stats());
+        PVPUT(9, double(ns.l0Enabled)*14.e-6/13.);
+        PVPUT(10, double(_dev.getL0Delay()));
+        uint64_t l0Enabled = ns.l0Enabled - os.l0Enabled;
+        double dt = double(l0Enabled)*14.e-6/13.;
+        uint64_t numl0     = ns.numl0    - os.numl0;
+        PVPUT(0, l0Enabled ? double(numl0)/dt :0);
+        unsigned numl0Acc  = ns.numl0Acc - os.numl0Acc;
+        PVPUT(1, l0Enabled ? double(numl0Acc)/dt:0);
+        PVPUT(3, ns.numl0    - _begin.numl0);
+        PVPUT(4, ns.numl0Acc - _begin.numl0Acc);
+        PVPUT(6, numl0 ? double(ns.numl0Inh - os.numl0Inh) / double(numl0) : 0);
+        if (l0Enabled) {
+          PVPUT (7,     double(ns.l0Inhibited - os.l0Inhibited) / double(l0Enabled));
+          PVPUTA(8, 32, double(ns.linkInh[i]  - os.linkInh[i])  / double(numl0));
+        }
+        ca_flush_io();
+        _last = ns;
+      } 
+      catch(CPSWError& e) {
+        printf("Caught exception %s\n",e.what());
       }
-      ca_flush_io();
-      _last = ns;
     }
   };
 };

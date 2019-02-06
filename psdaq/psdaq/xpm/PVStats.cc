@@ -12,25 +12,22 @@ using Pds_Epics::PVWriter;
 
 using Pds_Epics::PVWriter;
 
+#define PVPUSH(s) { std::ostringstream o; o << pvbase << #s << i; \
+          _pv.push_back(new PVWriter(o.str().c_str())); }
+#define PVPUT(v)    if ((*it)->connected()) { *reinterpret_cast<double*>((*it)->data()) = double(v); (*it)->put(); it++; }
+#define PVPUTI(v)   if ((*it)->connected()) { *reinterpret_cast<int   *>((*it)->data()) = int   (v); (*it)->put(); it++; }
+
+
 namespace Pds {
   namespace Xpm {
 
     PVStats::PVStats() : _pv(0) {}
     PVStats::~PVStats() {}
 
-    void PVStats::allocate(const std::string& title) {
-      if (ca_current_context() == NULL) {
-        printf("Initializing context\n");
-        SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
-                 "Calling ca_context_create" );
-      }
-
-      for(unsigned i=0; i<_pv.size(); i++)
-        delete _pv[i];
-      _pv.resize(0);
-
+    void PVStats::_allocTiming(const std::string& title,
+                               const char* sec) {
       std::ostringstream o;
-      o << title << ":";
+      o << title << ":" << sec << ":";
       std::string pvbase = o.str();
 
       _pv.push_back( new PVWriter((pvbase+"RxClks").c_str()) );
@@ -45,32 +42,12 @@ namespace Pds {
       _pv.push_back( new PVWriter((pvbase+"FIDs").c_str()) );
       _pv.push_back( new PVWriter((pvbase+"SOFs").c_str()) );
       _pv.push_back( new PVWriter((pvbase+"EOFs").c_str()) );
-#define PVPUSH(s) { std::ostringstream o; o << pvbase << #s << i; \
-          _pv.push_back(new PVWriter(o.str().c_str())); }
-      for(unsigned i=0; i<32; i++) {
-        PVPUSH(LinkTxReady);
-        PVPUSH(LinkRxReady);
-        PVPUSH(LinkTxResetDone);
-        PVPUSH(LinkRxResetDone);
-        PVPUSH(LinkRxRcv);
-        PVPUSH(LinkRxErr);
-        PVPUSH(LinkIsXpm);
-	PVPUSH(RemoteLinkId);
-      }
-#undef PVPUSH
-      _pv.push_back( new PVWriter((pvbase+"BpClk").c_str()) );
-      printf("PVs allocated\n");
     }
 
-#define PVPUT(v)    if ((*it)->connected()) { *reinterpret_cast<double*>((*it)->data()) = double(v); (*it)->put(); it++; }
-#define PVPUTI(v)   if ((*it)->connected()) { *reinterpret_cast<int   *>((*it)->data()) = int   (v); (*it)->put(); it++; }
-
-    void PVStats::update(const CoreCounts& nc, const CoreCounts& oc, 
-                         const LinkStatus* nl, const LinkStatus* ol,
-                         unsigned bpClk,
-                         double dt)
-    {
-      std::vector<PVWriter*>::iterator it = _pv.begin();
+    void PVStats::_updateTiming(const TimingCounts& nc,
+                                const TimingCounts& oc,
+                                double dt,
+                                std::vector<PVWriter*>::iterator& it) {
       PVPUT(double(nc.rxClkCount       - oc.rxClkCount      ) / dt * 16e-6);
       PVPUT(double(nc.txClkCount       - oc.txClkCount      ) / dt * 16e-6);
       PVPUT(double(nc.rxRstCount       - oc.rxRstCount      ) / dt);
@@ -83,6 +60,52 @@ namespace Pds {
       PVPUT(double(nc.fidCount         - oc.fidCount        ) / dt);
       PVPUT(double(nc.sofCount         - oc.sofCount        ) / dt);
       PVPUT(double(nc.eofCount         - oc.eofCount        ) / dt);
+    }
+
+    void PVStats::allocate(const std::string& title) {
+      if (ca_current_context() == NULL) {
+        printf("Initializing context\n");
+        SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
+                 "Calling ca_context_create" );
+      }
+
+      for(unsigned i=0; i<_pv.size(); i++)
+        delete _pv[i];
+      _pv.resize(0);
+
+      _allocTiming(title,"Us");
+      _allocTiming(title,"Cu");
+
+      std::ostringstream o;
+      o << title << ":";
+      std::string pvbase = o.str();
+
+      for(unsigned i=0; i<32; i++) {
+        PVPUSH(LinkTxReady);
+        PVPUSH(LinkRxReady);
+        PVPUSH(LinkTxResetDone);
+        PVPUSH(LinkRxResetDone);
+        PVPUSH(LinkRxRcv);
+        PVPUSH(LinkRxErr);
+        PVPUSH(LinkIsXpm);
+	PVPUSH(RemoteLinkId);
+      }
+      _pv.push_back( new PVWriter((pvbase+"RecClk").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"FbClk").c_str()) );
+      _pv.push_back( new PVWriter((pvbase+"BpClk").c_str()) );
+      printf("PVs allocated\n");
+    }
+
+    void PVStats::update(const CoreCounts& nc, const CoreCounts& oc, 
+                         const LinkStatus* nl, const LinkStatus* ol,
+                         unsigned recClk,
+                         unsigned fbClk,
+                         unsigned bpClk,
+                         double dt)
+    {
+      std::vector<PVWriter*>::iterator it = _pv.begin();
+      _updateTiming(nc.us,oc.us,dt,it);
+      _updateTiming(nc.cu,oc.cu,dt,it);
       for(unsigned i=0; i<32; i++) {
         PVPUTI( nl[i].txReady );
         PVPUTI( nl[i].rxReady );
@@ -93,7 +116,9 @@ namespace Pds {
         PVPUTI( nl[i].isXpm );
 	PVPUTI( nl[i].remoteLinkId );
       }
-      PVPUT(double(bpClk)*1.e-6);
+      PVPUT(double(recClk)*1.e-6);
+      PVPUT(double(fbClk )*1.e-6);
+      PVPUT(double(bpClk )*1.e-6);
       //      ca_flush_io();  // Let timer do it
     }
   };

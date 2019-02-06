@@ -22,6 +22,7 @@ namespace Pds {
       virtual unsigned txErrCount   () const;
       virtual unsigned rxOpCodeCount() const;
       virtual unsigned rxOpCodeLast () const;
+      virtual unsigned remPause     () const;
       virtual bool     loopback     () const;
     private:
       Mmhw::Pgp3Axil& _axi;

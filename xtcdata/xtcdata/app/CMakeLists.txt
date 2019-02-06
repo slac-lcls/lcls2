@@ -5,6 +5,13 @@ target_link_libraries(xtcreader
     xtc
 )
 
+add_executable(jungfrau
+    jungfrau.cc
+)
+target_link_libraries(jungfrau
+    xtc
+)
+
 add_executable(xtcwriter
     xtcwriter.cc
 )

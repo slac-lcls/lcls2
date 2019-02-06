@@ -1485,6 +1485,16 @@ class ProcMgr:
         return rv
 
     #
+    # getIdList
+    #
+    def getIdList(self):
+        idList = []
+        for key, value in self.d.items():
+            idList.append(key2uniqueid(key))
+
+        return idList
+
+    #
     # getProcessCounts
     #
     # RETURNS: Two values: static process count, dynamic process count

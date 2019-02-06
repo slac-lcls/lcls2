@@ -19,10 +19,7 @@ class Event():
     """
     Event holds list of dgrams
     """
-    def __init__(self, dgrams, configs, calibs, det_class_table, size=0):
-        self._det_class_table = det_class_table
-        self._configs = configs
-        self._calibs = calibs
+    def __init__(self, dgrams, size=0):
         if size:
             self._dgrams = [0] * size
             self._offsets = [0] * size
@@ -65,15 +62,21 @@ class Event():
         return event_bytes
 
     @classmethod
-    def _from_bytes(cls, configs, calibs, det_class_table, event_bytes):
+    def _from_bytes(cls, configs, event_bytes):
         dgrams = []
         if event_bytes:
             pf = PacketFooter(view=event_bytes)
             views = pf.split_packets()
-            assert len(configs) == len(views)
-            dgrams = [dgram.Dgram(config=configs[i], view=views[i]) \
-                    for i in range(len(configs))]
-        evt = cls(dgrams, configs, calibs, det_class_table)
+            
+            assert len(configs) == pf.n_packets
+            
+            dgrams = [None]*pf.n_packets # make sure that dgrams are arranged 
+                                         # according to the smd files.
+            for i in range(pf.n_packets):
+                if views[i].shape[0] > 0: # do not include any missing dgram
+                    dgrams[i] = dgram.Dgram(config=configs[i], view=views[i])
+
+        evt = cls(dgrams)
         return evt
     
     @property
@@ -89,52 +92,27 @@ class Event():
     def _run(self):
         return 0 # for psana1-cctbx compatibility
 
-    def _instantiate_det_xface(self,to_instantiate):
-        for class_identifier,(det_xface_obj,dgrams) in to_instantiate.items():
-            DetectorClass = self._det_class_table[class_identifier]
-            # at the moment we're passing in all the configs/calibs to
-            # each detector, as a placeholder.  we should change this
-            # to only pass in the config/calib specific for the particular
-            # detector.
-            detector_instance = DetectorClass(dgrams,self._configs,self._calibs)
-            drp_class_name = class_identifier[1]
-            setattr(det_xface_obj, drp_class_name, detector_instance)
-
-    def _add_det_xface(self):
+    def _assign_det_dgrams(self):
         """
         """
 
-        to_instantiate = {}
+        self._det_dgrams = {}
         for evt_dgram in self._dgrams:
+            # detector name (e.g. "xppcspad")
             for det_name, det in evt_dgram.__dict__.items():
 
-                # this gives us the intermediate "det" level
-                # in the detector interface
-                if hasattr(self, det_name):
-                    det_xface_obj = getattr(self, det_name)
-                else:
-                    det_xface_obj = DrpClassContainer()
-                    setattr(self, det_name, det_xface_obj)                
-
-                # now the final "dgram" level
+                # drp class name (e.g. "raw", "fex")
                 for drp_class_name, dgram in det.__dict__.items():
                     class_identifier = (det_name,drp_class_name)
-                    # IF the final level detector interface object is NOT instantiated
-                    # THEN create the dictionary entry
-                    if class_identifier not in to_instantiate.keys():
-                        if class_identifier in self._det_class_table.keys():
-                            to_instantiate[class_identifier] = (det_xface_obj,[dgram])
-                        else:
-                            # detector interface implementation not found
-                            pass
+                    
+                    if class_identifier not in self._det_dgrams.keys():
+                        self._det_dgrams[class_identifier] = [dgram]
                     else:
-                        to_instantiate[class_identifier][1].append(dgram)
+                        self._det_dgrams[class_identifier].append(dgram)
 
-        # now that all the dgram lists are complete, instantiate
-        self._instantiate_det_xface(to_instantiate)
         return
 
     # this routine is called when all the dgrams have been inserted into
     # the event (e.g. by the eventbuilder calling _replace())
     def _complete(self):
-        self._add_det_xface()
+        self._assign_det_dgrams()

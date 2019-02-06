@@ -143,6 +143,17 @@ target_link_libraries(test_MDBWebUtils
     ${CURL_LIBRARY}
 )
 
+# Test access to xtc data
+add_executable(test_xtc_data
+    tests/test_xtc_data.cc
+)
+target_link_libraries(test_xtc_data
+    psalg
+    xtcdata::xtc
+)
+add_test(NAME test_xtc_data COMMAND ${CMAKE_BINARY_DIR}/psalg/test_xtc_data
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
 install(TARGETS psalg
                 test_array
                 test_peakFinder
@@ -151,6 +162,7 @@ install(TARGETS psalg
                 test_AreaDetector
                 test_MDBWebUtils
                 test_logger
+                test_xtc_data
                 datareader
     EXPORT psalgTargets
     ARCHIVE DESTINATION lib

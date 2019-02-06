@@ -38,7 +38,7 @@ public:
     Alg(const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
         _version(major,minor,micro) {
         strncpy(_alg, alg, MaxNameSize);
-        _doc[0]='\n'; // initialize docstring to empty
+        _doc[0]='\0'; // initialize docstring to empty
     }
 
     uint32_t version() {
@@ -67,7 +67,7 @@ public:
 
         assert(rank < MaxRank);assert(strlen(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize);
-        _doc[0]='\n'; // initialize docstring to empty
+        _doc[0]='\0'; // initialize docstring to empty
         _type = type;
         _rank = rank;
     }
@@ -75,7 +75,7 @@ public:
     Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
         assert(rank < MaxRank);assert(sizeof(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize);
-        _doc[0]='\n'; // initialize docstring to empty
+        _doc[0]='\0'; // initialize docstring to empty
         _type = type;
         _rank = rank;
     } 
@@ -83,7 +83,7 @@ public:
     Name(const char* name, Alg& alg) : _alg(alg) {
         assert(sizeof(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize);
-        _doc[0]='\n'; // initialize docstring to empty
+        _doc[0]='\0'; // initialize docstring to empty
         _type = Name::UINT8;
         _rank = 1;
     }
@@ -172,7 +172,7 @@ public:
         strncpy(detName, detname, MaxNameSize);
         strncpy(detType, dettype, MaxNameSize);
         strncpy(detId,   detid,   MaxNameSize);
-        doc[0]='\n'; // initialize docstring to empty
+        doc[0]='\0'; // initialize docstring to empty
     }
 
 };

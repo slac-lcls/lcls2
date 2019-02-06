@@ -1,6 +1,6 @@
 # Import the Python-level symbols of numpy
 import numpy as np
-from psana.detector.detectors import DetectorImpl
+from psana.detector.detector_impl import DetectorImpl
 
 # Import the C-level symbols of numpy
 cimport numpy as cnp
@@ -163,17 +163,17 @@ cdef class cyhsd_hsd_1_2_3:
                 # export waveform.chX
                 if not hasattr(self, 'waveform'):
                     setattr(self, 'waveform', waveform()) #setattr(self, 'waveform', types.SimpleNamespace())
-                    setattr(self.waveform, 'times', np.arange(10)) # FIXME: placeholder for times
+                    setattr(self.waveform, 'times', np.arange(self.chptr[i].numPixels)) # FIXME: placeholder for times
                 setattr(self.waveform, chanName, wv)
 
     def _genPeaksAttr(self):
-        for chanName in self.chanList:
+        for i, chanName in enumerate(self.chanList):
             self.fexDict[chanName] = self._channelPeaks(chanName)
             if len(self._channelPeaks(chanName)[0]):
                 if not hasattr(self, 'peaks'):
                     setattr(self, 'peaks', peaks())
                 setattr(self.peaks, chanName, self._channelPeaks(chanName))
-                setattr(self.peaks, 'assemble'+chanName, np.arange(10)) # FIXME: placeholder for assembled waveform
+                setattr(self.peaks, 'assemble'+chanName, np.arange(self.chptr[i].numPixels)) # FIXME: placeholder for assembled waveform
 
     def _channelPeaks(self, chanName):
         cdef list listOfPeaks, listOfPos # TODO: check whether this helps with speed

@@ -19,6 +19,7 @@ namespace Pds {
       virtual unsigned txErrCount   () const = 0;
       virtual unsigned rxOpCodeCount() const = 0;
       virtual unsigned rxOpCodeLast () const = 0;
+      virtual unsigned remPause     () const = 0;
       virtual bool     loopback     () const = 0;
     };
   };

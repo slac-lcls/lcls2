@@ -18,30 +18,33 @@ using namespace Pds::Eb;
 static const unsigned MaxLinks = 64;    // Maximum supported
 
 
-EbLfLink::EbLfLink(Endpoint* ep, uint64_t& pending) :
+EbLfLink::EbLfLink(Endpoint* ep,
+                   unsigned  verbose,
+                   uint64_t& pending) :
   _ep(ep),
   _mr(nullptr),
   _ra(),
   _rxDepth(0),
   _rOuts(0),
-  _idx(-1),
   _id(-1),
-  _region(nullptr),
-  _verbose(0),
+  _region(new char[sizeof(RemoteAddress)]),
+  _verbose(verbose),
   _pending(pending)
 {
 }
 
-EbLfLink::EbLfLink(Endpoint* ep, int rxDepth, uint64_t& unused) :
+EbLfLink::EbLfLink(Endpoint* ep,
+                   int       rxDepth,
+                   unsigned  verbose,
+                   uint64_t& unused) :
   _ep(ep),
   _mr(nullptr),
   _ra(),
   _rxDepth(rxDepth),
   _rOuts(0),
-  _idx(-1),
   _id(-1),
-  _region(nullptr),
-  _verbose(0),
+  _region(new char[sizeof(RemoteAddress)]),
+  _verbose(verbose),
   _pending(unused)
 {
 }
@@ -51,94 +54,68 @@ EbLfLink::~EbLfLink()
   if (_region)  delete [] _region;
 }
 
-int EbLfLink::preparePender(unsigned idx,
-                            unsigned id,
-                            unsigned verbose,
-                            void*    ctx)
+int EbLfLink::preparePender(unsigned id)
 {
   int    rc;
-  size_t size = sizeof(RemoteAddress);
-
-  _verbose = verbose;
-
-  if (!_region)  _region = new char[size];
-  else           return -1;
-  if (!_region)  return ENOMEM;
-
-  if ( (rc = setupMr(_region, size)) ) return rc;
-
-  if ( (rc = recvId()  ) )             return rc;
-  if ( (rc = sendId(idx, id)) )        return rc;
-
-  if ( (rc = syncLclMr()) )            return rc;
-
-  postCompRecv(ctx);
-
-  return rc;
-}
-
-int EbLfLink::preparePender(void*    region,
-                            size_t   size,
-                            unsigned idx,
-                            unsigned id,
-                            unsigned verbose,
-                            void*    ctx)
-{
-  int rc;
-
-  _verbose = verbose;
-
-  if ( (rc = setupMr(region, size)) )  return rc;
-
-  if ( (rc = recvId()  ) )             return rc;
-  if ( (rc = sendId(idx, id)) )        return rc;
-
-  if ( (rc = syncLclMr()) )            return rc;
-
-  postCompRecv(ctx);
-
-  return rc;
-}
-
-int EbLfLink::preparePoster(unsigned idx,
-                            unsigned id,
-                            unsigned verbose)
-{
-  int    rc;
-  size_t size = sizeof(RemoteAddress);
-
-  _verbose = verbose;
-
-  if (!_region)  _region = new char[size];
-  else           return -1;
-  if (!_region)  return ENOMEM;
-
-  if ( (rc = setupMr(_region, size)) ) return rc;
-
-  if ( (rc = sendId(idx, id)) )        return rc;
-  if ( (rc = recvId()  ) )             return rc;
-
-  if ( (rc = syncRmtMr(size)) )        return rc;
+  size_t sz;
+  if ( (rc = preparePender(id, &sz)) )  return rc;
+  if (sz != sizeof(RemoteAddress))      return -1;
+  if ( (rc = sendMr(_mr)) )             return rc;
 
   return 0;
 }
 
-int EbLfLink::preparePoster(void*    region,
-                            size_t   size,
-                            unsigned idx,
-                            unsigned id,
-                            unsigned verbose)
+int EbLfLink::preparePender(unsigned id,
+                            size_t*  size)
 {
-  int rc;
+  int    rc;
+  size_t sz = sizeof(RemoteAddress);
+  if (!_region)  return ENOMEM;
 
-  _verbose = verbose;
+  if ( (rc = setupMr(_region, sz, &_mr)) )        return rc;
 
-  if ( (rc = setupMr(region, size)) )  return rc;
+  if ( (rc = recvU32(_mr, &_id, "ID")) )          return rc;
+  if ( (rc = sendU32(_mr,   id, "ID")) )          return rc;
 
-  if ( (rc = sendId(idx, id)) )        return rc;
-  if ( (rc = recvId()  ) )             return rc;
+  uint32_t rs;
+  if ( (rc = recvU32(_mr, &rs, "region size")) )  return rc;
+  *size = rs;
 
-  if ( (rc = syncRmtMr(size)) )        return rc;
+  return rc;
+}
+
+int EbLfLink::preparePoster(unsigned id)
+{
+  return preparePoster(id, nullptr, sizeof(RemoteAddress));
+}
+
+int EbLfLink::preparePoster(unsigned id, size_t size)
+{
+  return preparePoster(id, nullptr, size);
+}
+
+int EbLfLink::preparePoster(unsigned id,
+                            void*    region,
+                            size_t   size)
+{
+  int    rc;
+  if (!region)
+  {
+    size_t sz = sizeof(RemoteAddress);
+    if (!_region)  return ENOMEM;
+
+    if ( (rc = setupMr(_region, sz, &_mr)) )       return rc;
+  }
+  else // Revisit: Posters shouldn't need anything but the default region?
+  {
+    if ( (rc = setupMr(region, size, &_mr)) )      return rc;
+  }
+
+  if ( (rc = sendU32(_mr,   id, "ID")) )           return rc;
+  if ( (rc = recvU32(_mr, &_id, "ID")) )           return rc;
+
+  if ( (rc = sendU32(_mr, size, "region size")) )  return rc;
+  if ( (rc = recvMr(_mr)) )                        return rc;
 
   return 0;
 }
@@ -146,10 +123,22 @@ int EbLfLink::preparePoster(void*    region,
 int EbLfLink::setupMr(void*  region,
                       size_t size)
 {
+  int rc;
+
+  if ( (rc = setupMr(region, size, &_mr)) )  return rc;
+  if ( (rc = sendMr(_mr)) )                  return rc;
+
+  return rc;
+}
+
+int EbLfLink::setupMr(void*          region,
+                      size_t         size,
+                      MemoryRegion** mr)
+{
   Fabric* fab = _ep->fabric();
 
-  _mr = fab->register_memory(region, size);
-  if (!_mr)
+  *mr = fab->register_memory(region, size);
+  if (!*mr)
   {
     fprintf(stderr, "%s:\n  Failed to register memory region @ %p, size %zu: %s\n",
             __PRETTY_FUNCTION__, region, size, fab->error());
@@ -165,59 +154,66 @@ int EbLfLink::setupMr(void*  region,
   return 0;
 }
 
-int EbLfLink::recvId()
+int EbLfLink::recvU32(MemoryRegion* mr,
+                      uint32_t*     u32,
+                      const char*   name)
 {
   ssize_t rc;
-  void*   buf = _mr->start();
+  void*   buf = mr->start();
 
-  if ((rc = _ep->recv_sync(buf, sizeof(unsigned), _mr)) < 0)
+  if ((rc = _ep->recv_sync(buf, sizeof(u32), mr)) < 0)
   {
-    fprintf(stderr, "%s:\n  Failed receiving ID from peer: %s\n",
-            __PRETTY_FUNCTION__, _ep->error());
+    fprintf(stderr, "%s:\n  Failed to receive %s from peer: %s\n",
+            __PRETTY_FUNCTION__, name, _ep->error());
     return rc;
   }
-  _id  = (*(unsigned*)buf) >> 8;
-  _idx = (*(unsigned*)buf) & (MaxLinks - 1);
+  *u32 = *(uint32_t*)buf;
+
+  if (_verbose)  printf("Received peer's %s: %d\n", name, *u32);
 
   return 0;
 }
 
-int EbLfLink::sendId(unsigned idx,
-                     unsigned id)
+int EbLfLink::sendU32(MemoryRegion* mr,
+                      uint32_t      u32,
+                      const char*   name)
 {
   ssize_t      rc;
-  void*        buf = _mr->start();
+  void*        buf = mr->start();
 
-  LocalAddress adx(buf, sizeof(unsigned), _mr);
+  LocalAddress adx(buf, sizeof(u32), mr);
   LocalIOVec   iov(&adx, 1);
   Message      msg(&iov, 0, NULL, 0);
 
-  *(unsigned*)buf = (id << 8) | idx;
+  *(uint32_t*)buf = u32;
   if ((rc = _ep->sendmsg_sync(&msg, FI_TRANSMIT_COMPLETE | FI_COMPLETION)) < 0)
   {
-    fprintf(stderr, "%s:\n  Failed sending our ID to peer: %s\n",
-            __PRETTY_FUNCTION__, _ep->error());
+    fprintf(stderr, "%s:\n  Failed to send %s to peer: %s\n",
+            __PRETTY_FUNCTION__, name, _ep->error());
     return rc;
   }
+
+  if (_verbose)  printf("Sent     peer   %s  %d\n", name, u32);
 
   return 0;
 }
 
-int EbLfLink::syncLclMr()
+int EbLfLink::sendMr(MemoryRegion* mr)
 {
-  void*  buf = _mr->start();
-  size_t len = _mr->length();
-  _ra = RemoteAddress(_mr->rkey(), (uint64_t)buf, len);
+  void*        buf = mr->start();
+  size_t       len = mr->length();
 
-  LocalAddress adx(buf, sizeof(_ra), _mr);
+  LocalAddress adx(buf, sizeof(_ra), mr);
   LocalIOVec   iov(&adx, 1);
   Message      msg(&iov, 0, NULL, 0);
   ssize_t      rc;
 
+  _ra = RemoteAddress(mr->rkey(), (uint64_t)buf, len);
   memcpy(buf, &_ra, sizeof(_ra));
+
   if ((rc = _ep->sendmsg_sync(&msg, FI_COMPLETION)) < 0)
   {
-    fprintf(stderr, "%s:\n  Failed sending local memory specs to ID %d: %s\n",
+    fprintf(stderr, "%s:\n  Failed to send local memory specs to ID %d: %s\n",
             __PRETTY_FUNCTION__, _id, _ep->error());
     return rc;
   }
@@ -231,24 +227,17 @@ int EbLfLink::syncLclMr()
   return 0;
 }
 
-int EbLfLink::syncRmtMr(size_t size)
+int EbLfLink::recvMr(MemoryRegion* mr)
 {
   ssize_t  rc;
-  if ((rc = _ep->recv_sync(_mr->start(), sizeof(_ra), _mr)) < 0)
+  if ((rc = _ep->recv_sync(mr->start(), sizeof(_ra), mr)) < 0)
   {
-    fprintf(stderr, "%s:\n  Failed receiving remote region specs from ID %d: %s\n",
+    fprintf(stderr, "%s:\n  Failed to receive remote region specs from ID %d: %s\n",
             __PRETTY_FUNCTION__, _id, _ep->error());
     return rc;
   }
 
-  memcpy(&_ra, _mr->start(), sizeof(_ra));
-
-  if (size > _ra.extent)
-  {
-    fprintf(stderr, "%s:\n  Remote region size (%lu) is less than required (%lu)\n",
-            __PRETTY_FUNCTION__, _ra.extent, size);
-    return -1;
-  }
+  memcpy(&_ra, mr->start(), sizeof(_ra));
 
   if (_verbose)
   {
@@ -306,15 +295,8 @@ int EbLfLink::post(const void* buf,
 
   _pending |= 1 << _id;
 
-  while ((rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr)) < 0)
+  while ((rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr)) == -FI_EAGAIN)
   {
-    if (rc != -FI_EAGAIN)
-    {
-      fprintf(stderr, "%s:\n  write_data to ID %d failed: %s\n",
-              __PRETTY_FUNCTION__, _id, _ep->error());
-      break;
-    }
-
     const ssize_t    maxCnt = 8;
     fi_cq_data_entry cqEntry[maxCnt];
     CompletionQueue* cq     = _ep->txcq();
@@ -325,6 +307,12 @@ int EbLfLink::post(const void* buf,
               __PRETTY_FUNCTION__, cq->error());
       break;
     }
+  }
+
+  if (rc)
+  {
+    fprintf(stderr, "%s:\n  write_data to ID %d failed: %s\n",
+            __PRETTY_FUNCTION__, _id, _ep->error());
   }
 
   _pending &= ~(1 << _id);

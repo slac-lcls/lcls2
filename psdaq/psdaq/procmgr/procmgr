@@ -20,13 +20,14 @@ from time import sleep
 #
 # _stop
 #
-def _stop(argv0, args, runconfig, lastconfig, configfile, options):
+def _stop(argv0, args, runconfig, lastconfig, configfile, options, *, allFlag=False):
     _stop_rv = 1    # return value
     try:
         if os.path.isfile(runconfig):
-            # stop dynamic processes
             print(("%s: using config file '%s' to stop" % (argv0, runconfig)))
             handle = ProcMgr(runconfig, options.platform)
+            if allFlag:
+                args = handle.getIdList()
             _stop_rv = handle.stop(args, verbose=options.verbose, sigdelay=options.sigint_delay, only_static=0)
             staticCount, dynamicCount = handle.getProcessCounts()
             if dynamicCount == 0:
@@ -38,24 +39,27 @@ def _stop(argv0, args, runconfig, lastconfig, configfile, options):
                 else:
                     print(("%s: removed '%s'" % (argv0, runconfig)))
         elif os.path.isfile(lastconfig):
-            # stop dynamic processes
             print("%s: using config file '%s' to stop" % (argv0, lastconfig))
             handle = ProcMgr(lastconfig, options.platform)
+            if allFlag:
+                args = handle.getIdList()
             _stop_rv = handle.stop(args, verbose=options.verbose, sigdelay=options.sigint_delay, only_static=0)
         elif os.path.isfile(configfile):
-            # stop dynamic processes
             print("%s: using config file '%s' to stop" % (argv0, configfile))
             handle = ProcMgr(configfile, options.platform)
+            if allFlag:
+                args = handle.getIdList()
             _stop_rv = handle.stop(args, verbose=options.verbose, sigdelay=options.sigint_delay, only_static=0)
         elif len(args) == 0:
             # nothing to stop
             print("%s: no dynamic processes running ('%s' not found)" % (argv0, runconfig))
             _stop_rv = 0
         else:
-            # stop static processes listed on command line
             print("%s: using config file '%s' to stop" % (argv0, configfile))
-            _stop_rv = ProcMgr(configfile, options.platform).stop(args, options.verbose,
-                    options.sigint_delay, only_static=1)
+            handle = ProcMgr(configfile, options.platform)
+            if allFlag:
+                args = handle.getIdList()
+            _stop_rv = handle.stop(args, verbose=options.verbose, sigdelay=options.sigint_delay, only_static=1)
     except IOError:
         print("%s: i/o error" % argv0)
         _stop_rv = 1
@@ -159,9 +163,9 @@ def _parse_macro(macro_list):
 rv = 1      # return value
 logpath_max = 50
 
-command_list = [ 'start', 'stop', 'restart', 'status' ]
+command_list = [ 'start', 'stop', 'stopall', 'restart', 'status' ]
 
-usage = "usage: %prog { start | stop | restart | status } configfile [-h] [-v] [-p <platform>] [-c <coresize>] [-t <secs>] [-o <logpath>] [-x <substring>] [-X <substring>] [-D <macro=value>] [-r <rcfile>] [UniqueID]..."
+usage = "usage: %prog { start | stop | stopall | restart | status } configfile [-h] [-v] [-p <platform>] [-c <coresize>] [-t <secs>] [-o <logpath>] [-x <substring>] [-X <substring>] [-D <macro=value>] [-r <rcfile>] [UniqueID]..."
 
 parser = OptionParser(usage=usage)
 
@@ -288,7 +292,11 @@ elif command == 'status':
 
 elif command == 'stop':
     # stop
-    rv = _stop(sys.argv[0], args, runconfig, lastconfig, configfile, options)
+    rv = _stop(sys.argv[0], args, runconfig, lastconfig, configfile, options, allFlag=False)
+
+elif command == 'stopall':
+    # stop all
+    rv = _stop(sys.argv[0], args, runconfig, lastconfig, configfile, options, allFlag=True)
 
 elif command == 'restart':
     if macro_count > 0:

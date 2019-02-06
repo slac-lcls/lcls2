@@ -3,6 +3,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <fstream>
+#include <iostream>
 #include <cstddef>
 #include <cstdio>
 #include <sys/types.h>
@@ -35,6 +36,9 @@ MemPool::MemPool(int num_workers, int num_entries) :
     }
     uint32_t dmaCount, dmaSize;
     dmaBuffers = dmaMapDma(fd, &dmaCount, &dmaSize);
+    if (dmaBuffers == nullptr) {
+        std::cout<<"Error calling dmaMapDma!!\n";
+    }
 }
 
 void pin_thread(const pthread_t& th, int cpu)

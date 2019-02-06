@@ -18,5 +18,6 @@ unsigned Pgp2b::txCount      () const { return _axi._txFrames; }
 unsigned Pgp2b::txErrCount   () const { return _axi._txFrameErrs; }
 unsigned Pgp2b::rxOpCodeCount() const { return _axi._rxOpcodes; }
 unsigned Pgp2b::rxOpCodeLast () const { return _axi._lastRxOpcode; }
+unsigned Pgp2b::remPause     () const { return _axi._remoteOvfVc0; }
 bool     Pgp2b::loopback     () const { return _axi._loopback; }
 

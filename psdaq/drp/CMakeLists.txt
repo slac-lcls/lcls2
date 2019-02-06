@@ -42,18 +42,6 @@ install(TARGETS drputils drp
   RUNTIME DESTINATION bin
 )
 
-add_executable(pgpread2
-    pgpread.cc
-)
-
-target_include_directories(pgpread2 PUBLIC
-    ../../../aes-stream-drivers/include
-)
-
-target_link_libraries(pgpread2
-    xtcdata::xtc
-)
-
 # TEST
 add_executable(drp2 DrpApp.cc DrpApp.hh main.cc)
 target_include_directories(drp2 PUBLIC
@@ -65,3 +53,15 @@ target_link_libraries(drp2
     collection
     eb
     zmq)
+
+add_executable(pgpread
+    pgpread.cc
+)
+
+target_include_directories(pgpread PUBLIC
+    ../psdaq/pgp/aes-stream-drivers/include
+)
+
+target_link_libraries(pgpread
+    xtcdata::xtc
+)

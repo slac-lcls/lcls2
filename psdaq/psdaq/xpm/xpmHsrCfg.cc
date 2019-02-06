@@ -135,11 +135,11 @@ int main(int argc, char** argv)
 
   Xpm::Module* xpm = Xpm::Module::locate();
 
-  Pds::Cphw::AmcTiming* t = &xpm->_timing;
-  printf("buildStamp %s\n",t->version.buildStamp().c_str());
-  if ( !strcasestr(t->version.buildStamp().c_str(), "XPM"))
+  printf("buildStamp %s\n",xpm->_version.buildStamp().c_str());
+  if ( !strcasestr(xpm->_version.buildStamp().c_str(), "XPM"))
     printf("*** WARNING *** Module does not appear to be an XPM!\n");
 
+  Pds::Cphw::TimingRx* t = &xpm->_usTiming;
   t->resetStats();
   usleep(1000);
   unsigned rxDecErrs = (unsigned)t->RxDecErrs;

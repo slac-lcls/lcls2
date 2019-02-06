@@ -21,6 +21,9 @@ public:
         Enable,
         Disable,
         L1Accept,
+        ConfigUpdate,
+        BeginRecord,
+        EndRecord,
         NumberOf
     };
     static const char* name(TransitionId::Value id);

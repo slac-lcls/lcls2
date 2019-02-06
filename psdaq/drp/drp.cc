@@ -36,6 +36,8 @@ void join_collection(Parameters& para)
     std::string id = std::to_string(collection.id());
     // std::cout << "DRP: " << id << std::endl;
     para.tPrms.id = collection.cmstate["drp"][id]["drp_id"];
+    para.mPrms.id = para.tPrms.id;
+    para.tPrms.ifAddr = collection.cmstate["drp"][id]["connect_info"]["infiniband"];
 
     const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
     const unsigned tebPortBase = TEB_PORT_BASE + numPorts * para.partition;
@@ -99,17 +101,16 @@ int main(int argc, char* argv[])
     }
 
     // event builder
-    para.tPrms = { /* .addrs         = */ { },
-                   /* .ports         = */ { },
-                   /* .ifAddr        = */ nullptr,
+    para.tPrms = { /* .ifAddr        = */ { },
                    /* .port          = */ { },
                    /* .id            = */ 0,
                    /* .builders      = */ 0,
+                   /* .addrs         = */ { },
+                   /* .ports         = */ { },
                    /* .duration      = */ BATCH_DURATION,
                    /* .maxBatches    = */ MAX_BATCHES,
                    /* .maxEntries    = */ MAX_ENTRIES,
                    /* .maxInputSize  = */ maxSize,
-                   /* .maxResultSize = */ maxSize,
                    /* .core          = */ { 11 + 0,
                                             12 },
                    /* .verbose       = */ 0 };

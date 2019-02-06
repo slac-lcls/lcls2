@@ -54,7 +54,7 @@ def main():
         pvdb[stationstr+':%d:L0Select_SeqBit'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:DstSelect'          %i] = {'type' : 'int', 'value': 1}
         pvdb[stationstr+':%d:DstSelect_Mask'     %i] = {'type' : 'int'}
-        pvdb[stationstr+':%d:L0Delay'            %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:L0Delay'            %i] = {'type' : 'int', 'value': 99}
         pvdb[stationstr+':%d:ResetL0'            %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:Run'                %i] = {'type' : 'int'}
 
@@ -70,7 +70,7 @@ def main():
         pvdb[stationstr+':%d:PipelineDepth'%i] = {'type' : 'int'}
         #  Generic message interface
         pvdb[stationstr+':%d:MsgHeader'    %i] = {'type' : 'int'}
-        pvdb[stationstr+':%d:MsgInsert'    %i] = {'type' : 'int'}
+        pvdb[stationstr+':%d:MsgInsert'    %i] = {'type' : 'int', 'value': 0}
         pvdb[stationstr+':%d:MsgPayload'   %i] = {'type' : 'int'}
         #  Specific messages
         pvdb[stationstr+':%d:MsgConfig'    %i] = {'type' : 'int'}

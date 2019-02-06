@@ -1,11 +1,11 @@
 #ifndef TPG_UserSequence_hh
 #define TPG_UserSequence_hh
 
+#define EXCLUDE_CHECKPOINT
+
 #include <stdint.h>
 
 namespace TPGen {
-  class Callback;
-
   //
   //  Generic instruction for sequence engine
   //
@@ -16,6 +16,9 @@ namespace TPGen {
   public:
     virtual Instruction::Type instr() const = 0;
   };
+
+#ifndef EXCLUDE_CHECKPOINT
+  class Callback;
 
   //
   //  Checkpoint instruction to notify software 
@@ -30,6 +33,7 @@ namespace TPGen {
   private:
     Callback* _callback;
   };
+#endif
 
   //
   //  Sync to n-th occurrence of fixed rate marker 

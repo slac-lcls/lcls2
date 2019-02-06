@@ -50,6 +50,7 @@ class DgramManager():
 
         self.offsets = [_config._offset for _config in self.configs]
         self.det_class_table = self.get_det_class_table()
+        self.calibs = {} # initialize to empty dict - will be populated by run class
    
     def __del__(self):
         if self.fds:
@@ -77,7 +78,7 @@ class DgramManager():
                 d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             dgrams += [d]
         
-        evt = Event(dgrams, self.configs, self.calibs, self.det_class_table)
+        evt = Event(dgrams)
         self.offsets = evt._offsets
         return evt
 
@@ -91,7 +92,7 @@ class DgramManager():
             d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             dgrams += [d]
         
-        evt = Event(dgrams, self.configs, self.calibs, self.det_class_table)
+        evt = Event(dgrams)
         return evt
 
     def get_det_class_table(self):

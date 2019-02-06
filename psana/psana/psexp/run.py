@@ -1,5 +1,3 @@
-
-
 import os
 import pickle
 import numpy as np
@@ -10,6 +8,10 @@ from psana.psexp.node import run_node
 from psana.dgrammanager import DgramManager
 from psana.psexp.tools import run_from_id, RunHelper
 import psana.psexp.legion_node
+from psana.psexp.smdreader_manager import SmdReaderManager
+from psana.psexp.eventbuilder_manager import EventBuilderManager
+from psana.psexp.event_manager import EventManager
+
 
 from psana.psexp.tools import mode
 MPI = None
@@ -76,12 +78,18 @@ class Run(object):
         default: (when no run is given) is set to -1"""
         return self.run_no
 
-    class Detector:
-        def __init__(self, name):
-            self._name  = name
-
-        def __call__(self, evt):
-            return getattr(evt, self._name)
+    def Detector(self,name):
+        class Container:
+            def __init__(self):
+                pass
+        det = Container
+        # instantiate the detector xface for this detector/drp_class
+        # (e.g. (xppcspad,raw) or (xppcspad,fex)
+        # make them attributes of the container
+        for (det_name,drp_class_name),drp_class in self.dm.det_class_table.items():
+            if det_name == name:
+                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibs))
+        return det
 
     @property
     def detnames(self):
@@ -133,21 +141,49 @@ class Run(object):
     def __reduce__(self):
         return (run_from_id, (self.id,))
 
-class RunSerial(Run):
 
-    def __init__(self, exp, run_no, xtc_files, max_events, filter_callback):
-        super(RunSerial, self).__init__(exp, run_no, max_events=max_events, filter_callback=filter_callback)
+class RunShmem(Run):
+    """ Yields list of events from a single bigdata file or shared memory (no event building routine). """
+    
+    def __init__(self, exp, run_no, xtc_files, max_events, batch_size, filter_callback):
+        super(RunShmem, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
-        self.dm.calibs = self.calibs
 
     def events(self):
         for evt in self.dm: yield evt
 
+
+class RunSerial(Run):
+    """ Yields list of events from multiple smd/bigdata files using single core."""
+
+    def __init__(self, exp, run_no, xtc_files, smd_files, max_events, batch_size, filter_callback):
+        super(RunSerial, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
+        self.dm = DgramManager(xtc_files)
+        self.smd_dm = DgramManager(smd_files)
+        self.calibs = {}
+        for det_name in self.detnames:
+            self.calibs[det_name] = self._get_calib(det_name)
+
+    def events(self):
+        smd_configs = self.smd_dm.configs
+        ev_man = EventManager(smd_configs, self.dm, filter_fn=self.filter_callback)
+
+        #get smd chunks
+        smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
+        eb_man = EventBuilderManager(smd_configs, self.batch_size, self.filter_callback)
+        for chunk in smdr_man.chunks():
+            for batch in eb_man.batches(chunk):
+                for evt in ev_man.events(batch):
+                    yield evt
+
+
 class RunParallel(Run):
+    """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
+    
     nodetype = None
     nsmds = None
     smd0_threads = None
@@ -195,7 +231,6 @@ class RunParallel(Run):
         if rank > 0:
             # This creates dgrammanager without reading config from disk
             self.dm = DgramManager(xtc_files, configs=self.configs)
-        self.dm.calibs = self.calibs
     
     def events(self):
         for evt in run_node(self, self.nodetype, self.nsmds, self.smd0_threads, self.max_events, \

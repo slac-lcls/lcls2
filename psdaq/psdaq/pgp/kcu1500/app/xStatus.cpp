@@ -17,37 +17,50 @@
 
 using namespace std;
 
+static void usage(const char* p) {
+  printf("Usage: %s [options]\n",p);
+  printf("Options: -l <mask>\n");
+}
+
 int main (int argc, char **argv) {
 
-  int          fd;
-  const char*  dev = "/dev/datadev_0";
+  int          fd  [2];
   unsigned     base;
+  int          lbmask = -1;
+  int          c;
 
-  if (argc>2 || 
-      (argc==2 && argv[1][0]=='-')) {
-    printf("Usage: %s [<device>]\n", argv[0]);
-    return(0);
+  while((c=getopt(argc,argv,"l:"))!=-1) {
+    switch(c) {
+    case 'l': lbmask = strtoul(optarg,NULL,0); break;
+    default:  usage(argv[0]); return 1;
+    }
   }
-  else if (argc==2)
-    dev = argv[1];
 
-  if ( (fd = open(dev, O_RDWR)) <= 0 ) {
-    cout << "Error opening " << dev << endl;
+  if ( (fd[0] = open("/dev/datadev_0", O_RDWR)) <= 0 ) {
+    cout << "Error opening /dev/datadev_0" << endl;
     return(1);
   }
 
+  if ( (fd[1] = open("/dev/datadev_1", O_RDWR)) <= 0 ) {
+    cout << "Error opening /dev/datadev_1" << endl;
+    //    return(1);
+  }
+
   { AxiVersion vsn;
-    if (axiVersionGet(fd, &vsn)>=0) {
+    if (axiVersionGet(fd[0], &vsn)>=0) {
       printf("-- Core Axi Version --\n");
       printf("firmwareVersion : %x\n", vsn.firmwareVersion);
       printf("upTimeCount     : %u\n", vsn.upTimeCount);
       printf("deviceId        : %x\n", vsn.deviceId);
       printf("buildString     : %s\n", vsn.buildString); 
+      printf("corePcie[0:3]   : %c\n", (vsn.userValues[61] == 0) ? 'T':'F');
+      if (fd[1]>=0 && axiVersionGet(fd[1], &vsn)>=0)
+        printf("corePcie[4:7]   : %c\n", (vsn.userValues[61] == 0) ? 'T':'F');
     }
   }
 
 #define READREG(name,addr)                   \
-    if (dmaReadRegister(fd, addr, &reg)<0) { \
+    if (dmaReadRegister(ifd, addr, &reg)<0) { \
       perror(#name);                         \
       return -1;                             \
     }
@@ -55,24 +68,45 @@ int main (int argc, char **argv) {
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \
     for(unsigned i=0; i<8; i++) {                               \
-      READREG(name,addr+base+i*0x10000);                        \
-      printf(" %8x", (reg>>offset)&mask);                       \
+      int ifd = fd[i>>2];                                       \
+      if (ifd>=0) {                                             \
+        READREG(name,addr+base+(i&3)*0x10000);                  \
+        printf(" %8x", (reg>>offset)&mask);                     \
+      }                                                         \
     }                                                           \
     printf("\n"); }
 #define PRINTBIT(name, addr, bit)  PRINTFIELD(name, addr, bit, 1)
 #define PRINTREG(name, addr)       PRINTFIELD(name, addr,   0, 0xffffffff)
 #define PRINTERR(name, addr)       PRINTFIELD(name, addr,   0, 0xf)
-#define PRINTFRQ(name, addr) {                                  \
-    uint32_t reg;                                               \
-    printf("%20.20s :", #name);                                 \
-    for(unsigned i=0; i<8; i++) {                               \
-      dmaReadRegister(fd, addr+base+i*0x10000, &reg);     \
-      printf(" %8.3f", float(reg)*1.e-6);                       \
-    }                                                           \
+#define PRINTFRQ(name, addr) {                                          \
+    uint32_t reg;                                                       \
+    printf("%20.20s :", #name);                                         \
+    for(unsigned i=0; i<8; i++) {                                       \
+      if (fd[i>>2]>=0) {                                                \
+        dmaReadRegister(fd[i>>2], addr+base+(i&3)*0x10000, &reg);       \
+        printf(" %8.3f", float(reg)*1.e-6);                             \
+      }                                                                 \
+    }                                                                   \
     printf("\n"); }
 
-  printf("-- PgpAxiL Registers --\n");
   base = 0x00a08000;
+
+  if (lbmask != -1) {
+    unsigned reg;
+    for(unsigned i=0; i<8; i++) {
+      int ifd = fd[i>>2];
+      if (ifd >= 0) {
+        unsigned a = 0x08+base+(i&3)*0x10000;
+        READREG(loopback, a);
+        reg &= ~0x7;
+        if (lbmask & (1<<i))
+          reg |= 0x2;
+        dmaWriteRegister(ifd,a,reg);
+      }
+    }
+  }
+
+  printf("-- PgpAxiL Registers --\n");
   PRINTFIELD(loopback , 0x08, 0, 0x7);
   PRINTBIT(phyRxActive, 0x10, 0);
   PRINTBIT(locLinkRdy , 0x10, 1);
@@ -101,22 +135,6 @@ int main (int argc, char **argv) {
   PRINTERR(txOpCodeCnt, 0xa0);
   PRINTREG(txOpCodeLst, 0xa4);
 
-  printf("-- AppTxSim Registers --\n");
-  base = 0x00900000;
-
-  { uint32_t reg;
-    READREG(control ,0x00b00100);
-    printf("%20.20s : %8x\n","control",reg);
-
-    READREG(size    ,0x00b00104);
-    printf("%20.20s : %8x\n","size",reg);
-    
-    READREG(overflow,0x00b00000);
-    printf("%20.20s :","overflow");
-    for(unsigned i=0; i<8; i++)
-      printf(" %8x", (reg>>(4*i))&0xf);
-    printf("\n");
-  }
-
-  close(fd);
+  close(fd[0]);
+  close(fd[1]);
 }
