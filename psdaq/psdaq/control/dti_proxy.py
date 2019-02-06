@@ -10,6 +10,7 @@ import copy
 import socket
 import zmq
 from psdaq.control.collection import pull_port, pub_port, create_msg
+from psdaq.control.collection import DaqControl
 import argparse
 import logging
 from psp import PV
@@ -52,10 +53,8 @@ class Client:
             'alloc': self.handle_alloc,
             'connect': self.handle_connect,
             'configure': self.handle_configure,
-            'beginrun': self.handle_beginrun,
             'enable': self.handle_enable,
             'disable': self.handle_disable,
-            'endrun': self.handle_endrun,
             'unconfigure': self.handle_unconfigure
         }
 
@@ -101,29 +100,29 @@ class Client:
                        }}}
         reply = create_msg('alloc', msg['header']['msg_id'], self.id, body)
         self.push.send_json(reply)
-        self.state = 'alloc'
+        self.state = 'allocated'
 
     def handle_connect(self, msg):
         logging.debug('Client handle_connect()')
-        if self.state == 'alloc':
+        if self.state == 'allocated':
             self.pv_put(self.pvRun, 0)  # clear Run PV before configure
-            self.state = 'connect'
+            self.state = 'connected'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
     def handle_configure(self, msg):
         logging.debug('Client handle_configure()')
-        if self.state == 'connect':
+        if self.state == 'connected':
             # check for errors
             if (self.pv_put(self.pvMsgClear, 0) and
                 self.pv_put(self.pvMsgClear, 1) and 
                 self.pv_put(self.pvMsgClear, 0) and
-                self.pv_put(self.pvMsgHeader, 4) and
+                self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Configure']) and
                 self.pv_put(self.pvMsgInsert, 0) and
                 self.pv_put(self.pvMsgInsert, 1) and 
                 self.pv_put(self.pvMsgInsert, 0)):
                 # success: change state and reply 'ok'
-                self.state = 'configured'
+                self.state = 'paused'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
@@ -139,14 +138,14 @@ class Client:
 
     def handle_unconfigure(self, msg):
         logging.debug('Client handle_unconfigure()')
-        if self.state == 'configured':
+        if self.state == 'paused':
             # check for errors
-            if (self.pv_put(self.pvMsgHeader, 5) and
+            if (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Unconfigure']) and
                 self.pv_put(self.pvMsgInsert, 0) and
                 self.pv_put(self.pvMsgInsert, 1) and 
                 self.pv_put(self.pvMsgInsert, 0)):
                 # success: change state and reply 'ok'
-                self.state = 'connect'
+                self.state = 'connected'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
@@ -160,65 +159,17 @@ class Client:
         else:
             logging.error('handle_unconfigure() invalid state: %s' % self.state)
 
-    def handle_beginrun(self, msg):
-        logging.debug('Client handle_beginrun()')
-        if self.state == 'configured':
+    def handle_enable(self, msg):
+        logging.debug('Client handle_enable()')
+        if self.state == 'paused':
             # check for errors
-            if (self.pv_put(self.pvMsgHeader, 6) and
+            if (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Enable']) and
                 self.pv_put(self.pvMsgInsert, 0) and
                 self.pv_put(self.pvMsgInsert, 1) and 
                 self.pv_put(self.pvMsgInsert, 0) and
                 self.pv_put(self.pvRun, 1)):
                 # success: change state and reply 'ok'
                 self.state = 'running'
-                reply = create_msg('ok', msg['header']['msg_id'], self.id)
-            else:
-                # failure: reply 'error'
-                err_msg = "beginrun: PV put failed"
-                logging.error(err_msg)
-                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
-                body = {'err_info': { node : err_msg}}
-                reply = create_msg('error', msg['header']['msg_id'], self.id,
-                                   body=body)
-            self.push.send_json(reply)
-        else:
-            logging.error('handle_beginrun() invalid state: %s' % self.state)
-
-#   TODO self.pv_put(self.pvRun, 0)
-    def handle_endrun(self, msg):
-        logging.debug('Client handle_endrun()')
-        if self.state == 'running':
-            # check for errors
-            if (self.pv_put(self.pvMsgHeader, 7) and
-                self.pv_put(self.pvMsgInsert, 0) and
-                self.pv_put(self.pvMsgInsert, 1) and 
-                self.pv_put(self.pvMsgInsert, 0) and
-                self.pv_put(self.pvRun, 0)):
-                # success: change state and reply 'ok'
-                self.state = 'configured'
-                reply = create_msg('ok', msg['header']['msg_id'], self.id)
-            else:
-                # failure: reply 'error'
-                err_msg = "endrun: PV put failed"
-                logging.error(err_msg)
-                node = 'drp-no-teb/%s/%s' % (self.pid, self.hostname)
-                body = {'err_info': { node : err_msg}}
-                reply = create_msg('error', msg['header']['msg_id'], self.id,
-                                   body=body)
-            self.push.send_json(reply)
-        else:
-            logging.error('handle_endrun() invalid state: %s' % self.state)
-
-    def handle_enable(self, msg):
-        logging.debug('Client handle_enable()')
-        if self.state == 'running':
-            # check for errors
-            if (self.pv_put(self.pvMsgHeader, 10) and
-                self.pv_put(self.pvMsgInsert, 0) and
-                self.pv_put(self.pvMsgInsert, 1) and 
-                self.pv_put(self.pvMsgInsert, 0)):
-                # success: change state and reply 'ok'
-                self.state = 'enabled'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
@@ -234,14 +185,15 @@ class Client:
 
     def handle_disable(self, msg):
         logging.debug('Client handle_disable()')
-        if self.state == 'enabled':
+        if self.state == 'running':
             # check for errors
-            if (self.pv_put(self.pvMsgHeader, 11) and
+            if (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Disable']) and
                 self.pv_put(self.pvMsgInsert, 0) and
                 self.pv_put(self.pvMsgInsert, 1) and 
-                self.pv_put(self.pvMsgInsert, 0)):
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvRun, 0)):
                 # success: change state and reply 'ok'
-                self.state = 'running'
+                self.state = 'paused'
                 reply = create_msg('ok', msg['header']['msg_id'], self.id)
             else:
                 # failure: reply 'error'
