@@ -38,9 +38,11 @@ def main():
 
     elif args.monitor:
         # monitor the status
-        rv = control.monitorStatus()
-        if rv is not None:
-            print('Error: %s' % rv)
+        while True:
+            transition, state = control.monitorStatus()
+            if transition is None:
+                break
+            print('transition: %-10s  state: %s' % (transition, state))
 
     if not args.monitor:
         # print current state

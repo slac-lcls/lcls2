@@ -90,25 +90,23 @@ class DaqControl:
     # DaqControl.monitorStatus - monitor the status
     #
     def monitorStatus(self):
-        retval = None
 
         # process messages
         while True:
             try:
                 msg = self.sub.recv_json()
                 if msg['header']['key'] == 'status':
-                    print('transition: %-10s  state: %s' %
-                          (msg['body']['transition'], msg['body']['state']))
+                    # return transition, state
+                    return msg['body']['transition'], msg['body']['state']
 
             except KeyboardInterrupt:
                 break
 
             except KeyError as ex:
                 logging.error('KeyError: %s' % ex)
-                retval = 'invalid message received'
                 break
 
-        return retval
+        return None, None
 
     #
     # DaqControl.setState - change the state
