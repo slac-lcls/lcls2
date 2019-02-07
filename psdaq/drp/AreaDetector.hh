@@ -4,7 +4,7 @@
 #include "drp.hh"
 #include "Detector.hh"
 #include "xtcdata/xtc/Xtc.hh"
-#include "xtcdata/xtc/NamesVec.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 class AreaDetector : public Detector
 {
@@ -14,7 +14,7 @@ public:
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
 private:
     enum {RawNamesIndex, FexNamesIndex};
-    XtcData::NamesVec m_namesVec;
+    XtcData::NamesLookup m_namesLookup;
     unsigned m_evtcount;
 };
 

@@ -131,14 +131,15 @@ static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     assert(Py_GETREF(detType)==1);
 }
 
-void DictAssignAlg(PyDgramObject* pyDgram, NamesVec& namesVec)
+void DictAssignAlg(PyDgramObject* pyDgram, NamesLookup& namesLookup)
 {
     // This function gets called at configure: add attributes "software" and "version" to pyDgram and return
     char baseName[TMPSTRINGSIZE];
 
-    for (unsigned i = 0; i < namesVec.size(); i++) {
-        if (!namesVec[i].exists()) continue;
-        Names& names = namesVec[i].names();
+    for (auto & namesPair : namesLookup) {
+        NameIndex& nameIndex = namesPair.second;
+        if (!nameIndex.exists()) continue;
+        Names& names = nameIndex.names();
         Alg& detAlg = names.alg();
         snprintf(baseName,TMPSTRINGSIZE,"%s%s%s",
                  names.detName(),PyNameDelim,names.alg().name());
@@ -308,8 +309,8 @@ class PyConvertIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, NamesVec& namesVec) :
-        XtcIterator(xtc), _pyDgram(pyDgram), _namesVec(namesVec)
+    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, NamesLookup& namesLookup) :
+        XtcIterator(xtc), _pyDgram(pyDgram), _namesLookup(namesLookup)
     {
     }
 
@@ -325,9 +326,9 @@ public:
             // lookup the index of the names we are supposed to use
             NamesId namesId = shapesdata.namesId();
             // protect against the fact that this datagram
-            // may not have a _namesVec
-            if (namesId.value()<_namesVec.size()) {
-                DescData descdata(shapesdata, _namesVec[namesId]);
+            // may not have a _namesLookup
+            if (_namesLookup.count(namesId)>0) {
+                DescData descdata(shapesdata, _namesLookup[namesId]);
                 DictAssign(_pyDgram, descdata);
             }
             break;
@@ -340,7 +341,7 @@ public:
 
 private:
     PyDgramObject* _pyDgram;
-    NamesVec&      _namesVec;
+    NamesLookup&      _namesLookup;
 };
 
 void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
@@ -353,7 +354,7 @@ void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
         configDgram->namesIter = new NamesIter(&(configDgram->dgram->xtc));
         configDgram->namesIter->iterate();
     
-        DictAssignAlg(configDgram, configDgram->namesIter->namesVec());
+        DictAssignAlg(configDgram, configDgram->namesIter->namesLookup());
     } else {
         self->namesIter = 0; // in case dgram was not created via dgram_init
     }
@@ -362,7 +363,7 @@ void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
     // every dgram to avoid segfault. might be a sign of a deeper problem.
     configDgram->namesIter->iterate();
 
-    PyConvertIter iter(&self->dgram->xtc, self, configDgram->namesIter->namesVec());
+    PyConvertIter iter(&self->dgram->xtc, self, configDgram->namesIter->namesLookup());
     iter.iterate();
 }
 

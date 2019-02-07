@@ -12,7 +12,7 @@ int NamesIter::process(Xtc* xtc)
     case (TypeId::Names): {
         Names& names = *(Names*)xtc;
         NamesId& namesId = names.namesId();
-        _namesVec[namesId] = NameIndex(names);
+        _namesLookup[namesId] = NameIndex(names);
         break;
     }
     default:

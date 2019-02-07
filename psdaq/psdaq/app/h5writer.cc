@@ -17,7 +17,7 @@ int main()
     XtcFileIterator xtciter(fd,BUFSIZE);
 
     NamesIter namesiter;
-    HDF5File h5file("data.h5", namesiter.namesVec());
+    HDF5File h5file("data.h5", namesiter.namesLookup());
     bool firstTime=true;
     Dgram* dgram;
     while ((dgram = xtciter.next())) {

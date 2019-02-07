@@ -2,7 +2,7 @@
 #include "TimingHeader.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
-#include "xtcdata/xtc/NamesVec.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/digitizer/Stream.hh"
@@ -56,7 +56,7 @@ class HsdIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    HsdIter(Xtc* xtc, NamesVec& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
+    HsdIter(Xtc* xtc, NamesLookup& namesLookup) : XtcIterator(xtc), _namesLookup(namesLookup)
     {
     }
 
@@ -72,7 +72,7 @@ public:
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             NamesId& namesId = shapesdata.namesId();
-            DescData descdata(shapesdata, _namesVec[namesId]);
+            DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
 
             for (unsigned i = 0; i < names.num(); i++) {
@@ -92,7 +92,7 @@ public:
         }
         return Continue;
     }
-    NamesVec& _namesVec;
+    NamesLookup& _namesLookup;
 
 
 public:
@@ -102,7 +102,7 @@ public:
 Digitizer::Digitizer(unsigned nodeId) : Detector(nodeId), m_evtcount(0), m_evtNamesId(nodeId, EventNamesIndex) {
 }
 
-unsigned addJson(Xtc& xtc, NamesVec& namesVec, NamesId& configNamesId) {
+unsigned addJson(Xtc& xtc, NamesLookup& namesLookup, NamesId& configNamesId) {
 
     FILE* file;
     Py_Initialize();
@@ -134,10 +134,10 @@ unsigned addJson(Xtc& xtc, NamesVec& namesVec, NamesId& configNamesId) {
     Names& configNames = *new(xtc) Names(ninfo_software.GetString(), hsdConfigAlg,
                                          ninfo_detector.GetString(), ninfo_serialNum.GetString(), configNamesId);
     configNames.add(xtc, myHsdConfigDef);
-    namesVec[configNamesId] = NameIndex(configNames);
+    namesLookup[configNamesId] = NameIndex(configNames);
     printf("Done configNames\n");
 
-    CreateData config(xtc, namesVec, configNamesId);
+    CreateData config(xtc, namesLookup, configNamesId);
 
     // TODO: dynamically discover
 
@@ -172,16 +172,16 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
 
     unsigned lane_mask;
     NamesId configNamesId(m_nodeId,ConfigNamesIndex);
-    lane_mask = addJson(dgram.xtc, m_namesVec, configNamesId);
+    lane_mask = addJson(dgram.xtc, m_namesLookup, configNamesId);
 
     Alg hsdAlg("hsd", 1, 2, 3); // TODO: shouldn't this be configured by hsdconfig.py?
     unsigned segment = 0;
     Names& eventNames = *new(dgram.xtc) Names("xpphsd", hsdAlg, "hsd", "detnum1235", m_evtNamesId, segment);
     HsdDef myHsdDef(lane_mask);
     eventNames.add(dgram.xtc, myHsdDef);
-    m_namesVec[m_evtNamesId] = NameIndex(eventNames);
+    m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
 
-    HsdIter hsdIter(&dgram.xtc, m_namesVec);
+    HsdIter hsdIter(&dgram.xtc, m_namesLookup);
     hsdIter.iterate();
     // unsigned nChan = hsdIter.chans.size();
 }
@@ -194,7 +194,7 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     dgram.seq = timing_header->seq;
     dgram.env = timing_header->env;
 
-    CreateData hsd(dgram.xtc, m_namesVec, m_evtNamesId);
+    CreateData hsd(dgram.xtc, m_namesLookup, m_evtNamesId);
 
     // HSD data includes two uint32_t "event header" words
     unsigned data_size;

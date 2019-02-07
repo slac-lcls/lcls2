@@ -1,6 +1,6 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/DescData.hh"
-#include "xtcdata/xtc/NamesVec.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 namespace XtcData{
 class NamesIter : public XtcData::XtcIterator
@@ -10,8 +10,8 @@ public:
     NamesIter(XtcData::Xtc* xtc) : XtcData::XtcIterator(xtc) {}
     NamesIter() : XtcData::XtcIterator() {}
     int process(XtcData::Xtc* xtc);
-    NamesVec& namesVec() {return _namesVec;}
+    NamesLookup& namesLookup() {return _namesLookup;}
 private:
-    NamesVec _namesVec;
+    NamesLookup _namesLookup;
 };
 };

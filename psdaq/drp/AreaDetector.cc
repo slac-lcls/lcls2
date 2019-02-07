@@ -54,13 +54,13 @@ void AreaDetector::configure(Dgram& dgram, PGPData* pgp_data)
     NamesId fexNamesId(m_nodeId,FexNamesIndex);
     Names& fexNames = *new(dgram.xtc) Names("xppcspad", cspadFexAlg, "cspad", "detnum1234", fexNamesId, segment);
     fexNames.add(dgram.xtc, myFexDef);
-    m_namesVec[fexNamesId] = NameIndex(fexNames);
+    m_namesLookup[fexNamesId] = NameIndex(fexNames);
 
     Alg cspadRawAlg("cspadRawAlg", 1, 2, 3);
     NamesId rawNamesId(m_nodeId,RawNamesIndex);
     Names& rawNames = *new(dgram.xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", rawNamesId, segment);
     rawNames.add(dgram.xtc, myRawDef);
-    m_namesVec[rawNamesId] = NameIndex(rawNames);
+    m_namesLookup[rawNamesId] = NameIndex(rawNames);
 }
 
 AreaDetector::AreaDetector(unsigned nodeId) : Detector(nodeId), m_evtcount(0) {}
@@ -76,7 +76,7 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
 
     // fex data
     NamesId fexNamesId(m_nodeId,FexNamesIndex);
-    CreateData fex(dgram.xtc, m_namesVec, fexNamesId);
+    CreateData fex(dgram.xtc, m_namesLookup, fexNamesId);
     unsigned shape[MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
     uint16_t* rawdata = (uint16_t*)(timing_header+1);
@@ -88,7 +88,7 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
     
     // raw data
     NamesId rawNamesId(m_nodeId,RawNamesIndex);
-    DescribedData raw(dgram.xtc, m_namesVec, rawNamesId);
+    DescribedData raw(dgram.xtc, m_namesLookup, rawNamesId);
     unsigned size = 0;
     unsigned nlanes = 0;
     for (int l=0; l<8; l++) {

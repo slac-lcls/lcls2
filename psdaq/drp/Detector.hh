@@ -3,7 +3,7 @@
 
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/NamesId.hh"
-#include "xtcdata/xtc/NamesVec.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 #include <string>
 #include <vector>
@@ -17,7 +17,7 @@ public:
     Detector(unsigned nodeId) : m_nodeId(nodeId) {}
 protected:
     std::vector<XtcData::NamesId> m_namesId;
-    XtcData::NamesVec             m_namesVec;
+    XtcData::NamesLookup          m_namesLookup;
     unsigned                      m_nodeId;
 };
 

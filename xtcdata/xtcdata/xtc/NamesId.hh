@@ -28,6 +28,8 @@ public:
         assert ((namesId&0xff)  == namesId);
     }
 
+    operator unsigned() const {return value();}
+
     unsigned nodeId()  {return (_value>>8)&0xfff;}
     unsigned namesId() {return _value&0xff;}
 

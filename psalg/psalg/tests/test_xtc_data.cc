@@ -57,6 +57,7 @@ public:
             // unsigned namesId = shapesdata.shapes().namesId();
             // DescData descdata(shapesdata, _namesVec[namesId]);
             // Names& names = descdata.nameindex().names();
+            //iterate(xtc);
             break;
         }
         case (TypeId::Parent): {break;}
@@ -68,7 +69,6 @@ public:
 	iterate(xtc); 
         return Continue;
     }
-    // std::vector<NameIndex>& _namesVec;
 };
 
 
