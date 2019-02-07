@@ -33,7 +33,6 @@ using namespace Pds;
 static const int      core_0           = 10;   // devXXX: 10, devXX:  7, accXX:  9
 static const int      core_1           = 11;   // devXXX: 11, devXX: 19, accXX: 21
 static const unsigned rtMon_period     = 1;    // Seconds
-static const unsigned default_id       = 0;    // Contributor's ID (< 64)
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2;    // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2;    // Revisit: Number of "L3" result data words
@@ -104,7 +103,7 @@ namespace Pds {
       const size_t   _maxEvtSz;
       const Xtc      _xtc;
       uint64_t       _pid;
-      GenericPoolW   _pool;
+      GenericPoolW*  _pool;
     private:
       enum { TrUnknown,
              TrReset,
@@ -163,7 +162,7 @@ DrpSim::DrpSim(unsigned maxBatches,
   _maxEvtSz    (maxEvtSize),
   _xtc         (),
   _pid         (0x01000000000003ul),  // Something non-zero and not on a batch boundary
-  _pool        (sizeof(Entry) + maxEvtSize, maxBatches * maxEntries),
+  _pool        (nullptr),
   _trId        (TrUnknown),
   _allocPending(0)
 {
@@ -171,18 +170,24 @@ DrpSim::DrpSim(unsigned maxBatches,
 
 DrpSim::~DrpSim()
 {
-  printf("\nDrpSim Input data pool:\n");
-  _pool.dump();
 }
 
 void DrpSim::startup(unsigned id)
 {
+  _pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries);
+
   const_cast<Xtc&>(_xtc) = Xtc(TypeId(TypeId::Data, 0), Src(id));
 }
 
 void DrpSim::shutdown()
 {
-  _pool.stop();
+  _pool->stop();
+
+  printf("\nDrpSim Input data pool:\n");
+  _pool->dump();
+
+  delete _pool;
+  _pool = nullptr;
 }
 
 const Dgram* DrpSim::genInput()
@@ -209,7 +214,7 @@ const Dgram* DrpSim::genInput()
   const Sequence seq(Sequence::Event, trId[_trId], TimeStamp(ts), PulseId(_pid));
 
   ++_allocPending;
-  void* buffer = _pool.alloc(sizeof(Input));
+  void* buffer = _pool->alloc(sizeof(Input));
   --_allocPending;
   if (!buffer)  return (Dgram*)buffer;
   Input* idg = ::new(buffer) Input(seq, _xtc);
@@ -475,45 +480,36 @@ void CtrbApp::handleReset(const json &msg)
 
 int CtrbApp::_parseConnectionParams(const json& body)
 {
-  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
+  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_TEBS + MAX_MEBS;
   const unsigned tebPortBase = TEB_PORT_BASE + numPorts * _tebPrms.partition;
   const unsigned drpPortBase = DRP_PORT_BASE + numPorts * _tebPrms.partition;
   const unsigned mebPortBase = MEB_PORT_BASE + numPorts * _tebPrms.partition;
 
   std::string id = std::to_string(getId());
-  _tebPrms.id     = body["drp"][id]["drp_id"];
-  _mebPrms.id     = _tebPrms.id;
+  _tebPrms.id    = body["drp"][id]["drp_id"];
+  _mebPrms.id    = _tebPrms.id;
   if (_tebPrms.id >= MAX_DRPS)
   {
-    fprintf(stderr, "DRP ID %d is out of range 0 - %d\n",
-            _tebPrms.id, MAX_DRPS - 1);
+    fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", _tebPrms.id, MAX_DRPS - 1);
     return 1;
   }
 
   _tebPrms.ifAddr = body["drp"][id]["connect_info"]["nic_ip"];
-
-  unsigned drpPort = drpPortBase + _tebPrms.id;
-  if ((drpPort < drpPortBase) || (drpPort >= drpPortBase + MAX_DRPS))
-  {
-    fprintf(stderr, "DRP Server port %d is out of range %d - %d\n",
-            drpPort, drpPortBase, drpPortBase + MAX_DRPS);
-    return 1;
-  }
-  _tebPrms.port = std::to_string(drpPort);
+  _tebPrms.port   = std::to_string(drpPortBase + _tebPrms.id);
 
   _tebPrms.builders = 0;
+  _tebPrms.addrs.clear();
+  _tebPrms.ports.clear();
+
   if (body.find("teb") != body.end())
   {
-    _tebPrms.addrs.clear();
-    _tebPrms.ports.clear();
-
     for (auto it : body["teb"].items())
     {
       unsigned    tebId   = it.value()["teb_id"];
       std::string address = it.value()["connect_info"]["nic_ip"];
       if (tebId > MAX_TEBS - 1)
       {
-        fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", _tebPrms.id, MAX_TEBS - 1);
+        fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", tebId, MAX_TEBS - 1);
         return 1;
       }
       _tebPrms.builders |= 1ul << tebId;
@@ -527,18 +523,18 @@ int CtrbApp::_parseConnectionParams(const json& body)
     return 1;
   }
 
+  _mebPrms.addrs.clear();
+  _mebPrms.ports.clear();
+
   if (body.find("meb") != body.end())
   {
-    _mebPrms.addrs.clear();
-    _mebPrms.ports.clear();
-
     for (auto it : body["meb"].items())
     {
       unsigned    mebId   = it.value()["meb_id"];
       std::string address = it.value()["connect_info"]["nic_ip"];
       if (mebId > MAX_MEBS - 1)
       {
-        fprintf(stderr, "MEB ID %d is out of range 0 - %d\n", _tebPrms.id, MAX_MEBS - 1);
+        fprintf(stderr, "MEB ID %d is out of range 0 - %d\n", mebId, MAX_MEBS - 1);
         return 1;
       }
       _mebPrms.addrs.push_back(address);
@@ -601,7 +597,7 @@ void usage(char *name, char *desc, const TebCtrbParams& prms)
 
 int main(int argc, char **argv)
 {
-  const unsigned NO_PARTITION = unsigned(-1UL);
+  const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
   std::string    collSrv        (COLL_HOST);
   std::string    partitionTag  (PARTITION);

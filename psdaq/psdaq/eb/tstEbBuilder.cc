@@ -107,7 +107,6 @@ namespace Pds {
     public:
       int      connect(const EbParams&);
       void     run();
-      void     shutdown();
     public:
       void     post(const Batch*);
       void     post(const Dgram*);
@@ -211,20 +210,17 @@ int Teb::connect(const EbParams& prms)
     }
     _l3Links[link->id()] = link;
 
-    printf("Trigger EbLfServer ID %d connected\n", link->id());
+    printf("Outbound link with Ctrb ID %d connected\n", link->id());
   }
 
-  if (prms.numMrqs > 0)
+  if ( (rc = _mrqTransport.initialize(prms.ifAddr, prms.mrqPort)) )
   {
-    if ( (rc = _mrqTransport.initialize(prms.ifAddr, prms.mrqPort)) )
-    {
-      fprintf(stderr, "%s:\n  Failed to initialize MonReq EbLfServer\n",
-              __PRETTY_FUNCTION__);
-      return rc;
-    }
-
-    _l3Links.resize(prms.numMrqs);
+    fprintf(stderr, "%s:\n  Failed to initialize MonReq EbLfServer\n",
+            __PRETTY_FUNCTION__);
+    return rc;
   }
+
+  _mrqLinks.resize(prms.numMrqs);
 
   for (unsigned i = 0; i < prms.numMrqs; ++i)
   {
@@ -246,7 +242,7 @@ int Teb::connect(const EbParams& prms)
     _mrqLinks[link->id()] = link;
     link->postCompRecv();
 
-    printf("MonReq EbLfClient ID %d connected\n", link->id());
+    printf("Inbound link with MonReq ID %d connected\n", link->id());
   }
 
   return 0;
@@ -270,11 +266,6 @@ void Teb::run()
     }
   }
 
-  shutdown();
-}
-
-void Teb::shutdown()
-{
   //cancel();                             // Stop the event timeout timer
 
   for (auto it = _mrqLinks.begin(); it != _mrqLinks.end(); ++it)
@@ -591,52 +582,41 @@ void TebApp::handleReset(const json &msg)
 
 int TebApp::_parseConnectionParams(const json& body)
 {
-  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_MEBS + MAX_MEBS;
+  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_TEBS + MAX_MEBS;
   const unsigned tebPortBase = TEB_PORT_BASE + numPorts * _prms.partition;
   const unsigned drpPortBase = DRP_PORT_BASE + numPorts * _prms.partition;
   const unsigned mrqPortBase = MRQ_PORT_BASE + numPorts * _prms.partition;
 
   std::string id = std::to_string(getId());
-  _prms.id     = body["teb"][id]["teb_id"];
+  _prms.id       = body["teb"][id]["teb_id"];
   if (_prms.id >= MAX_TEBS)
   {
     fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", _prms.id, MAX_TEBS - 1);
     return 1;
   }
 
-  _prms.ifAddr = body["teb"][id]["connect_info"]["nic_ip"];
-
-  unsigned ebPort = tebPortBase + _prms.id;
-  if ((ebPort < tebPortBase) || (ebPort >= tebPortBase + MAX_TEBS))
-  {
-    fprintf(stderr, "TEB Server port %d is out of range %d - %d\n",
-            ebPort, tebPortBase, tebPortBase + MAX_TEBS);
-    return 1;
-  }
-  _prms.ebPort = std::to_string(ebPort);
-
-  unsigned mrqPort = mrqPortBase + _prms.id;
-  if ((mrqPort < mrqPortBase) || (mrqPort >= mrqPortBase + MAX_MEBS))
-  {
-    fprintf(stderr, "MRQ Server port %d is out of range %d - %d\n",
-            mrqPort, mrqPortBase, mrqPortBase + MAX_MEBS);
-    return 1;
-  }
-  _prms.mrqPort = std::to_string(mrqPort);
+  _prms.ifAddr  = body["teb"][id]["connect_info"]["nic_ip"];
+  _prms.ebPort  = std::to_string(tebPortBase + _prms.id);
+  _prms.mrqPort = std::to_string(mrqPortBase + _prms.id);
 
   _prms.contributors = 0;
+  _prms.addrs.clear();
+  _prms.ports.clear();
+
   if (body.find("drp") != body.end())
   {
-    _prms.addrs.clear();
-    _prms.ports.clear();
-
     for (auto it : body["drp"].items())
     {
-      unsigned    ctrbId  = it.value()["drp_id"];
+      unsigned    drpId   = it.value()["drp_id"];
       std::string address = it.value()["connect_info"]["nic_ip"];
-      _prms.contributors |= 1ul << ctrbId;
+      if (drpId > MAX_DRPS - 1)
+      {
+        fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", drpId, MAX_DRPS - 1);
+        return 1;
+      }
+      _prms.contributors |= 1ul << drpId;
       _prms.addrs.push_back(address);
-      _prms.ports.push_back(std::string(std::to_string(drpPortBase + ctrbId)));
+      _prms.ports.push_back(std::string(std::to_string(drpPortBase + drpId)));
     }
   }
   if (_prms.addrs.size() == 0)

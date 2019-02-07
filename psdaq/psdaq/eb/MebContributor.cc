@@ -33,6 +33,7 @@ int MebContributor::connect(const MebCtrbParams& prms)
   size_t regionSize = prms.maxEvents * _maxEvSize;
 
   _id = prms.id;
+  _links.resize(prms.addrs.size());
 
   for (unsigned i = 0; i < prms.addrs.size(); ++i)
   {
@@ -54,7 +55,7 @@ int MebContributor::connect(const MebCtrbParams& prms)
     }
     _links[link->id()] = link;
 
-    printf("%s: EbLfServer ID %d connected\n", __PRETTY_FUNCTION__, link->id());
+    printf("Outbound link with MEB ID %d connected\n", link->id());
   }
 
   return 0;

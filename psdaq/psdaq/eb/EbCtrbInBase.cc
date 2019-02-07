@@ -89,7 +89,7 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
       return -1;
     }
 
-    printf("EbLfClient ID %d connected\n", link->id());
+    printf("Inbound link with TEB ID %d connected\n", link->id());
   }
 
   return 0;

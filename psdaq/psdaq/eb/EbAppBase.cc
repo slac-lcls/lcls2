@@ -113,7 +113,7 @@ int EbAppBase::connect(const EbParams& prms)
     }
     link->postCompRecv();
 
-    printf("EbLfClient ID %d connected\n", link->id());
+    printf("Inbound link with Ctrb ID %d connected\n", link->id());
   }
 
   return 0;

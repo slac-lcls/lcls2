@@ -75,7 +75,7 @@ int TebContributor::connect(const TebCtrbParams& prms)
     _links[link->id()] = link;
     _idx2Id[i] = link->id();
 
-    printf("EbLfServer ID %d connected\n", link->id());
+    printf("Outbound link with TEB ID %d connected\n", link->id());
   }
 
   return 0;

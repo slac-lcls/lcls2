@@ -1,5 +1,4 @@
 add_library(monreq SHARED
-    XtcMonitorServer.cc
     XtcMonitorClient.cc
     XtcMonitorMsg.cc
     TransitionCache.cc
@@ -34,22 +33,21 @@ target_link_libraries(xtcMonWriter
 
 add_executable(monReqServer
     monReqServer.cc
+    XtcMonitorServer.cc
 )
 target_link_libraries(monReqServer
-  xtcdata::xtc
-  service
-  collection
-  eb
-  monreq
-  pthread
-  rt
+    monreq
+    eb
+    collection
+    pthread
+    rt
 )
 
 install(TARGETS monreq
-  xtcMonClient
-  xtcMonWriter
-  monReqServer
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
+    xtcMonClient
+    xtcMonWriter
+    monReqServer
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
 )
