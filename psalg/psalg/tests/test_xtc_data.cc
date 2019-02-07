@@ -54,10 +54,6 @@ public:
         case (TypeId::ShapesData): {
 	    //ShapesData& shapesdata = *(ShapesData*)xtc;
             iterate(xtc);
-            // lookup the index of the names we are supposed to use
-            // unsigned namesId = shapesdata.shapes().namesId();
-            // DescData descdata(shapesdata, _namesVec[namesId]);
-            // Names& names = descdata.nameindex().names();
             break;
         }
         default:
@@ -65,7 +61,6 @@ public:
         }
         return Continue;
     }
-    // std::vector<NameIndex>& _namesVec;
 };
 
 

@@ -109,13 +109,13 @@ int main(int argc, char* argv[])
     Dgram* cfg = iter.next();
     NamesIter& namesIter = *new NamesIter(&(cfg->xtc));
     namesIter.iterate();
-    NamesVec& namesVec = namesIter.namesVec();
+    NamesLookup& namesLookup = namesIter.namesLookup();
 
     // get data out of the configure transition
     MyXtcIter cfgiter(&(cfg->xtc));
     cfgiter.iterate();
     NamesId& namesId = cfgiter.config().namesId();
-    DescData descdata(cfgiter.config(), namesVec[namesId]);
+    DescData descdata(cfgiter.config(), namesLookup[namesId]);
     Names& names = descdata.nameindex().names();
     dump("Configure",names,descdata);
 
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
         MyXtcIter iter(&(dg->xtc));
         iter.iterate();
         NamesId& namesId = iter.event().namesId();
-        DescData descdata(iter.event(), namesVec[namesId]);
+        DescData descdata(iter.event(), namesLookup[namesId]);
         Names& names = descdata.nameindex().names();
         dump("Event",names,descdata);
     }

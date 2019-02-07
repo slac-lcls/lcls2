@@ -73,7 +73,6 @@ int main(int argc, char* argv[])
     Parameters para;
     para.partition = 0;
     para.collect_host = "drp-tst-acc06";
-    int device_id = 0x2031;
     int lane_mask = 0xf;
     std::string detector_type;
     int c;

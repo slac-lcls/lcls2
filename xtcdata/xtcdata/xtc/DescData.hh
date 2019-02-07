@@ -5,7 +5,7 @@
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/VarDef.hh"
-#include "xtcdata/xtc/NamesVec.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 #include "xtcdata/xtc/NameIndex.hh"
 
 #include <string>
@@ -196,8 +196,8 @@ protected:
             new (&_shapesdata) Data(_parent);
         }
 
-        DescribedData(Xtc& parent, NamesVec& NamesVec, NamesId& namesId) :
-            DescData(NamesVec[namesId], parent, namesId), _parent(parent)
+        DescribedData(Xtc& parent, NamesLookup& NamesLookup, NamesId& namesId) :
+            DescData(NamesLookup[namesId], parent, namesId), _parent(parent)
         {
             new (&_shapesdata) Data(_parent);
         }
@@ -226,8 +226,8 @@ protected:
     class CreateData : public DescData {     
     public:
 
-        CreateData(Xtc& parent, NamesVec& NamesVec, NamesId& namesId) :
-            DescData(NamesVec[namesId], parent, namesId), _parent(parent)
+        CreateData(Xtc& parent, NamesLookup& NamesLookup, NamesId& namesId) :
+            DescData(NamesLookup[namesId], parent, namesId), _parent(parent)
         {
             Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
             Names& names = _nameindex.names();
@@ -235,8 +235,8 @@ protected:
             new (&_shapesdata) Data(_parent);
         }
 
-        CreateData(Xtc& parent, NamesVec& NamesVec, VarDef& V, NamesId& namesId) :
-            DescData(NamesVec[namesId], parent, V, namesId), _parent(parent)
+        CreateData(Xtc& parent, NamesLookup& NamesLookup, VarDef& V, NamesId& namesId) :
+            DescData(NamesLookup[namesId], parent, V, namesId), _parent(parent)
         {
             Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
             Names& names = _nameindex.names();
