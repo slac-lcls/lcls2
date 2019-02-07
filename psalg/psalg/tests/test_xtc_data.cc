@@ -23,46 +23,49 @@ using namespace XtcData;
 //using std::string;
 
 
-class DebugIter : public XtcIterator
+class MyXtcIterator : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    DebugIter(Xtc* xtc) : XtcIterator(xtc)
+    MyXtcIterator(Xtc* xtc) : XtcIterator(xtc)
     {
     }
 
     int process(Xtc* xtc)
     {
-        switch (xtc->contains.id()) {
-        case (TypeId::Parent): {
-            iterate(xtc);
-            break;
-        }
+        TypeId::Type type = xtc->contains.id();
+	cout << "YYYY TypeId::" << TypeId::name(type) << '\n';
+
+        switch (type) {
         case (TypeId::Names): {
             Names& names = *(Names*)xtc;
             Alg& alg = names.alg();
 	    printf("*** DetName: %s, DetType: %s, Alg: %s, Version: 0x%6.6x, Names:\n",
-                   names.detName(), names.detType(),
-                   alg.name(), alg.version());
+                   names.detName(), names.detType(), alg.name(), alg.version());
+
+	    cout << "number of names: " << names.num() << '\n';
 
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
-                printf("Name: %s Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
+                printf("%2d Name: %s Type: %d Rank: %d\n", i, name.name(), name.type(), name.rank());
             }
             break;
         }
         case (TypeId::ShapesData): {
 	    //ShapesData& shapesdata = *(ShapesData*)xtc;
-            iterate(xtc);
             // lookup the index of the names we are supposed to use
             // unsigned namesId = shapesdata.shapes().namesId();
             // DescData descdata(shapesdata, _namesVec[namesId]);
             // Names& names = descdata.nameindex().names();
             break;
         }
-        default:
-            break;
+        case (TypeId::Parent): {break;}
+        case (TypeId::Shapes): {break;}
+        case (TypeId::Data):   {break;}
+        default:{cout << "YYYY TypeId::default ????? type = " << type << " \n"; break; }
         }
+
+	iterate(xtc); 
         return Continue;
     }
     // std::vector<NameIndex>& _namesVec;
@@ -82,18 +85,18 @@ int main (int argc, char* argv[]) {
         exit(2);
     }
 
-    XtcFileIterator iter(fd, 0x4000000);
+    XtcFileIterator itdg(fd, 0x4000000);
     Dgram* dg;
     unsigned nevent=0;
-    while ((dg = iter.next())) {
+    while ((dg = itdg.next())) {
         if (nevent>=neventreq) break;
         nevent++;
-        printf("%s transition: time %d.%09d, pulseId 0x%lux, env 0x%ux, "
-               "payloadSize %d extent %d\n",
+        printf("evt:%04d ==== %s transition: time %d.%09d, pulseId 0x%lux, env 0x%ux, "
+               "payloadSize %d extent %d\n", nevent,
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
                dg->env, dg->xtc.sizeofPayload(),dg->xtc.extent);
-        DebugIter iter(&(dg->xtc));
+        MyXtcIterator iter(&(dg->xtc));
         iter.iterate();
     }
 
