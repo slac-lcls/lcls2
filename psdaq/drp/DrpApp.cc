@@ -22,20 +22,19 @@ void DrpApp::handleConnect(const json &msg)
 
     // these parameters must agree with the server side
     size_t maxSize = sizeof(MyDgram);
-    m_para->tPrms = { /* .addrs         = */ { },
-                     /* .ports         = */ { },
-                     /* .ifAddr        = */ nullptr,
-                     /* .port          = */ { },
-                     /* .id            = */ 0,
-                     /* .builders      = */ 0,
-                     /* .duration      = */ BATCH_DURATION,
-                     /* .maxBatches    = */ MAX_BATCHES,
-                     /* .maxEntries    = */ MAX_ENTRIES,
-                     /* .maxInputSize  = */ maxSize,
-                     /* .maxResultSize = */ maxSize,
-                     /* .core          = */ { 11 + 0,
-                                            12 },
-                     /* .verbose       = */ 0 };
+    m_para->tPrms = { /* .ifAddr        = */ { }, // Network interface to use
+                      /* .port          = */ { }, // Port served to TEBs
+                      /* .partition     = */ m_para->partition,
+                      /* .id            = */ 0,
+                      /* .builders      = */ 0,   // TEBs
+                      /* .addrs         = */ { },
+                      /* .ports         = */ { },
+                      /* .duration      = */ BATCH_DURATION,
+                      /* .maxBatches    = */ MAX_BATCHES,
+                      /* .maxEntries    = */ MAX_ENTRIES,
+                      /* .maxInputSize  = */ maxSize,
+                      /* .core          = */ { 11, 12 },
+                      /* .verbose       = */ 1 };
 
     m_para->mPrms = { /* .addrs         = */ { },
                      /* .ports         = */ { },
@@ -44,7 +43,6 @@ void DrpApp::handleConnect(const json &msg)
                      /* .maxEvSize     = */ 1024, //mon_buf_size,
                      /* .maxTrSize     = */ 1024, //mon_trSize,
                      /* .verbose       = */ 0 };
-
     parseConnectionParams(msg["body"]);
 
     // should move into constructor
@@ -60,9 +58,18 @@ void DrpApp::handleConnect(const json &msg)
     PGPReader pgpReader(pool, det, laneMask, numWorkers);
     std::thread pgpThread(&PGPReader::run, std::ref(pgpReader));
     Pds::Eb::TebContributor ebCtrb(m_para->tPrms);
+    int rc = ebCtrb.connect(m_para->tPrms);
+    if (rc) {
+        std::cout<<"Something bad happened\n";
+    }
+
     Pds::Eb::MebContributor* meb = nullptr;
     if (m_para->mPrms.addrs.size() != 0) {
         meb = new Pds::Eb::MebContributor(m_para->mPrms);
+        rc = meb->connect(m_para->mPrms);
+        if (rc) {
+            std::cout<<"Something bad happened\n";
+        }
     }
 
     // start performance monitor thread
@@ -96,12 +103,13 @@ void DrpApp::parseConnectionParams(const json& body)
     const unsigned mebPortBase = MEB_PORT_BASE + numPorts * m_para->partition;
 
     m_para->tPrms.port = std::to_string(drpPortBase + m_para->tPrms.id);
+    m_para->mPrms.id = m_para->tPrms.id;
+    m_para->tPrms.ifAddr = body["drp"][id]["connect_info"]["nic_ip"];
 
     uint64_t builders = 0;
     for (auto it : body["teb"].items()) {
         unsigned tebId = it.value()["teb_id"];
-        // FIXME infiniband -> nic_ip
-        std::string address = it.value()["connect_info"]["infiniband"];
+        std::string address = it.value()["connect_info"]["nic_ip"];
         std::cout << "TEB: " << tebId << "  " << address << '\n';
         builders |= 1ul << tebId;
         m_para->tPrms.addrs.push_back(address);

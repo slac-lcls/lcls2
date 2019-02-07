@@ -12,7 +12,7 @@ find_package(PythonLibs REQUIRED)
 target_link_libraries(drputils
     xtcdata::xtc
     pgpdriver
-    eb
+    ctrb
     zmq
     ${PYTHON_LIBRARIES}
 )
@@ -27,32 +27,21 @@ target_include_directories(drputils PUBLIC
 )
 
 add_executable(drp
-    drp.cc
+    DrpApp.cc
+    DrpApp.hh
+    main.cc
 )
 
-target_link_libraries(drp
-    drputils
-    pthread
-    collection
-)
-
-install(TARGETS drputils drp
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
-)
-
-# TEST
-add_executable(drp2 DrpApp.cc DrpApp.hh main.cc)
-target_include_directories(drp2 PUBLIC
+target_include_directories(drp PUBLIC
     $ENV{CONDA_PREFIX}/include)
 
-target_link_libraries(drp2
+target_link_libraries(drp
     pthread
     drputils
     collection
-    eb
-    zmq)
+    ctrb
+    zmq
+)
 
 add_executable(pgpread
     pgpread.cc
@@ -64,4 +53,10 @@ target_include_directories(pgpread PUBLIC
 
 target_link_libraries(pgpread
     xtcdata::xtc
+)
+
+install(TARGETS drputils drp
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )

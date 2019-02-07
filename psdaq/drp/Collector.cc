@@ -116,7 +116,14 @@ void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContr
     size_t sender_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
 
     printf("*** myEb %p %zd\n",ebCtrb.batchRegion(), ebCtrb.batchRegionSize());
+    // FIXME move into handleConnect
+    std::cout<<"EbReceiver\n";
+    std::cout<<"tPrms.builders  "<<para.tPrms.builders<<'\n';
     EbReceiver eb_rcvr(para, pool, meb);
+    int rc = eb_rcvr.connect(para.tPrms);
+    if (rc) {
+        std::cout<<"Something bad happened\n";
+    }
 
     // Wait a bit to allow other components of the system to establish connections
     // Revisit: This should be replaced with some sort of gate that guards
