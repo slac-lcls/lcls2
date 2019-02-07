@@ -64,6 +64,7 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
     }
 
     // write event to file if it passes event builder or is a configure transition
+    /* FIXME disable writing for now
     if (eb_decision == 1 || (transition_id == TransitionId::Configure)) {
         Dgram* dgram = (Dgram*)pebble->fex_data();
         if (fwrite(dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 1, _xtcFile) != 1) {
@@ -71,7 +72,7 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
             return;
         }
     }
-
+    */
     if (_mon) {
         Dgram* dgram = (Dgram*)pebble->fex_data();
         if (result->seq.isEvent()) {    // L1Accept
@@ -115,7 +116,14 @@ void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContr
     size_t sender_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
 
     printf("*** myEb %p %zd\n",ebCtrb.batchRegion(), ebCtrb.batchRegionSize());
+    // FIXME move into handleConnect
+    std::cout<<"EbReceiver\n";
+    std::cout<<"tPrms.builders  "<<para.tPrms.builders<<'\n';
     EbReceiver eb_rcvr(para, pool, meb);
+    int rc = eb_rcvr.connect(para.tPrms);
+    if (rc) {
+        std::cout<<"Something bad happened\n";
+    }
 
     // Wait a bit to allow other components of the system to establish connections
     // Revisit: This should be replaced with some sort of gate that guards
@@ -164,13 +172,16 @@ void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContr
             sprintf(msg_id_buf, "%010u-%09u", event_header->seq.stamp().seconds(),
                     event_header->seq.stamp().nanoseconds());
             json body = json({});
-            json reply = create_msg("drp-transition", msg_id_buf, sender_id, body);
+            // FIXME
+            /*
+            json reply = createMsg("drp-transition", msg_id_buf, sender_id, body);
             std::string s = reply.dump();
             if (zmq_send(socket, s.c_str(), s.length(), 0) == -1) {
                 perror("zmq_send");
             } else {
                 printf("Send JSON transition over zeromq socket\n");
             }
+            */
         }
 
         // printf("Collector:  Transition id %d pulse id %lu event counter %u \n",

@@ -9,8 +9,7 @@
 #include "psdaq/service/Histogram.hh"
 
 #include <cstdint>
-#include <unordered_map>
-#include <string>
+#include <vector>
 #include <chrono>
 #include <atomic>
 
@@ -33,19 +32,16 @@ namespace Pds {
     using us_t        = std::chrono::microseconds;
     using ns_t        = std::chrono::nanoseconds;
 
-    class EbLfLink;
     class EbCtrbInBase;
     class Batch;
-    class StatsMonitor;
-
-    using UmapEbLfLink = std::unordered_map<unsigned, Pds::Eb::EbLfLink*>;
 
     class TebContributor : public BatchManager
     {
     public:
       TebContributor(const TebCtrbParams&);
-      virtual ~TebContributor();
+      virtual ~TebContributor() {}
     public:
+      int      connect(const TebCtrbParams&);
       void     startup(EbCtrbInBase&);
       void     shutdown();
     public:
@@ -55,7 +51,7 @@ namespace Pds {
       virtual void post(const Batch* input);
     public:
       const uint64_t& batchCount()   const { return _batchCount;  }
-      const uint64_t& txPending()    const { return _transport->pending(); }
+      const uint64_t& txPending()    const { return _transport.pending(); }
       unsigned        inFlightCnt()  const { return _inFlightOcc; }
     private:
       void    _receiver(EbCtrbInBase&);
@@ -63,26 +59,26 @@ namespace Pds {
                            TimePoint_t               t1,
                            const XtcData::TimeStamp& stamp);
     protected:
-      const TebCtrbParams&  _prms;
+      const TebCtrbParams&   _prms;
     private:
-      EbLfClient*           _transport;
-      UmapEbLfLink          _links;
-      unsigned*             _idx2Id;
-      const unsigned        _id;
-      const unsigned        _numEbs;
-      size_t                _batchBase;
+      EbLfClient             _transport;
+      std::vector<EbLfLink*> _links;
+      std::vector<unsigned>  _idx2Id;
+      unsigned               _id;
+      unsigned               _numEbs;
+      size_t                 _batchBase;
     private:
-      uint64_t              _batchCount;
+      uint64_t               _batchCount;
     private:
-      std::atomic<unsigned> _inFlightOcc;
-      Histogram             _inFlightHist;
-      Histogram             _depTimeHist;
-      Histogram             _postTimeHist;
-      Histogram             _postCallHist;
-      TimePoint_t           _postPrevTime;
+      std::atomic<unsigned>  _inFlightOcc;
+      Histogram              _inFlightHist;
+      Histogram              _depTimeHist;
+      Histogram              _postTimeHist;
+      Histogram              _postCallHist;
+      TimePoint_t            _postPrevTime;
     private:
-      std::atomic<bool>     _running;
-      std::thread*          _rcvrThread;
+      std::atomic<bool>      _running;
+      std::thread*           _rcvrThread;
     };
   };
 };

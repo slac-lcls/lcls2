@@ -3,9 +3,9 @@
 #include <chrono>
 #include <bitset>
 #include "AxisDriver.h"
-#include "PGPReader.hh"
+#include "Worker.hh"
 #include "TimingHeader.hh"
-
+#include "PGPReader.hh"
 using namespace XtcData;
 
 MovingAverage::MovingAverage(int n) : index(0), sum(0), N(n), values(N, 0) {}
@@ -19,11 +19,11 @@ int MovingAverage::add_value(int value)
 }
 
 unsigned dmaDest(unsigned lane, unsigned vc)
-{   
+{
     return (lane<<8) | vc;
 }
 
-PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
+PGPReader::PGPReader(MemPool& pool, Detector* det, int lane_mask, int nworkers) :
     m_pool(pool),
     m_avg_queue_size(nworkers),
     m_pcounter(&m_c1)
@@ -44,6 +44,12 @@ PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
         dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
     }
     dmaSetMaskBytes(pool.fd, mask);
+
+    // start worker threads
+    for (int i = 0; i < nworkers; i++) {
+        m_workerThreads.emplace_back(worker, det, std::ref(pool.worker_input_queues[i]),
+                                    std::ref(pool.worker_output_queues[i]), i);
+    }
 }
 
 PGPData* PGPReader::process_lane(uint32_t lane, uint32_t index, int32_t size)

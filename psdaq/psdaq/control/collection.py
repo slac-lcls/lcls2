@@ -274,7 +274,7 @@ class CollectionManager():
         }
         self.lastTransition = 'reset'
 
-        self.collectMachine = Machine(self, DaqControl.states, initial='reset', after_state_change='report_status')
+        self.collectMachine = Machine(self, DaqControl.states, initial='reset')
 
         self.collectMachine.add_transition('reset', '*', 'reset',
                                            conditions='condition_reset')

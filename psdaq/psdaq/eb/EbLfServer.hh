@@ -22,42 +22,31 @@ namespace Pds {
     class EbLfServer
     {
     public:
-      EbLfServer(const std::string& addr,
-                 const std::string& port,
-                 unsigned           verbose);
-      ~EbLfServer();
+      EbLfServer(unsigned verbose);
     public:
+      int initialize(const std::string& addr, const std::string& port);
       int connect(EbLfLink**, int msTmo = -1);
       int pend(fi_cq_data_entry*, int msTmo);
       int pend(void** context, int msTmo);
       int pend(uint64_t* data, int msTmo);
       int poll(uint64_t* data);
     public:
-      const uint64_t& pending() const;
+      const uint64_t& pending() const { return _pending; }
     public:
       int shutdown(EbLfLink*);
     private:
-      int _initialize(const char* addr, const char* port);
       int _poll(fi_cq_data_entry*, uint64_t flags);
+    private:                            // Arranged in order of access frequency
+      Fabrics::CompletionQueue* _rxcq;    // Receive completion queue
+      int                       _tmo;     // Timeout for polling or waiting
+      unsigned                  _verbose; // Print some stuff if set
     private:
-      int                       _status;
-      Fabrics::PassiveEndpoint* _pep;  // Endpoint for establishing connections
-      unsigned                  _verbose;
-      Fabrics::CompletionQueue* _rxcq;
-      size_t                    _bufSize;
-      int                       _tmo;
+      uint64_t                  _pending; // Flag set when currently pending
+      uint64_t                  _unused;  // Bit list of IDs currently posting
     private:
-      uint64_t                  _pending;
-      uint64_t                  _unused;
+      Fabrics::PassiveEndpoint* _pep;   // Endpoint for establishing connections
     };
   };
 };
-
-
-inline
-const uint64_t& Pds::Eb::EbLfServer::pending() const
-{
-  return _pending;
-}
 
 #endif

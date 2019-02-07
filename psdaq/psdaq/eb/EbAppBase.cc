@@ -40,47 +40,60 @@ using ns_t       = std::chrono::nanoseconds;
 EbAppBase::EbAppBase(const EbParams& prms) :
   EventBuilder (prms.maxBuffers + TransitionId::NumberOf,
                 prms.maxEntries,
-                std::bitset<64>(prms.contributors).count(),
+                64, //std::bitset<64>(prms.contributors).count(),
                 prms.duration,
                 prms.verbose),
-  _regions     (std::bitset<64>(prms.contributors).count()),
-  _maxBufSize  (std::bitset<64>(prms.contributors).count()),
-  _trOffset    (TransitionId::NumberOf),
-  _trSize      (roundUpSize(TransitionId::NumberOf * prms.maxTrSize)),
-  _transport   (new EbLfServer(prms.ifAddr, prms.ebPort, prms.verbose)),
-  _links       (),
-  _id          (prms.id),
-  _defContract (prms.contributors),
+  _defContract (0),
   _contract    ( { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ),
+  _transport   (prms.verbose),
+  _links       (),
+  _trSize      (roundUpSize(TransitionId::NumberOf * prms.maxTrSize)),
+  _maxTrSize   (prms.maxTrSize),
+  _maxBufSize  (),
   //_dummy       (Level::Fragment),
   _verbose     (prms.verbose),
   _ctrbCntHist (6, 1.0),                // Up to 64 Ctrbs
   _arrTimeHist (12, double(1 << 16)/1000.),
   _pendTimeHist(12, double(1 <<  8)/1000.),
   _pendCallHist(12, 1.0),
-  _pendPrevTime(std::chrono::steady_clock::now())
+  _pendPrevTime(std::chrono::steady_clock::now()),
+  _regions     (),
+  _id          (-1)
 {
+}
+
+int EbAppBase::connect(const EbParams& prms)
+{
+  int rc;
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
-  for (unsigned tr = 0; tr < _trOffset.size(); ++tr)
+  _links.resize(nCtrbs);
+  _maxBufSize.resize(nCtrbs);
+  _regions.resize(nCtrbs);
+  _defContract = prms.contributors;
+  _id          = prms.id;
+
+  if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort)) )
   {
-    _trOffset[tr] = tr * prms.maxTrSize;
+    fprintf(stderr, "%s:\n  Failed to initialize EbLfServer\n",
+            __PRETTY_FUNCTION__);
+    return rc;
   }
 
   for (unsigned i = 0; i < nCtrbs; ++i)
   {
     EbLfLink*      link;
     const unsigned tmo(120000);         // Milliseconds
-    if (_transport->connect(&link, tmo))
+    if ( (rc = _transport.connect(&link, tmo)) )
     {
       fprintf(stderr, "%s: Error connecting to EbLfClient[%d]\n", __func__, i);
-      abort();
+      return rc;
     }
     size_t regSize;
-    if (link->preparePender(prms.id, &regSize))
+    if ( (rc = link->preparePender(prms.id, &regSize)) )
     {
       fprintf(stderr, "%s: Failed to prepare link[%d]\n", __func__, i);
-      abort();
+      return rc;
     }
     _links[link->id()]      = link;
     _maxBufSize[link->id()] = regSize / prms.maxBuffers;
@@ -91,26 +104,19 @@ EbAppBase::EbAppBase(const EbParams& prms) :
     {
       fprintf(stderr, "%s: No memory found for region %d of size %zd\n",
               __func__, i, regSize);
-      abort();
+      return ENOMEM;
     }
-    if (link->setupMr(_regions[i], regSize))
+    if ( (rc = link->setupMr(_regions[i], regSize)) )
     {
       fprintf(stderr, "%s: Failed to set up MemoryRegion %d\n", __func__, i);
-      abort();
+      return rc;
     }
     link->postCompRecv();
 
-    printf("EbLfClient ID %d connected\n", link->id());
+    printf("Inbound link with Ctrb ID %d connected\n", link->id());
   }
-}
 
-EbAppBase::~EbAppBase()
-{
-  if (_transport)  delete _transport;
-  for (unsigned i = 0; i < _regions.size(); ++i)
-  {
-    if (_regions[i])  free(_regions[i]);
-  }
+  return 0;
 }
 
 void EbAppBase::shutdown()
@@ -136,9 +142,17 @@ void EbAppBase::shutdown()
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
-    _transport->shutdown(it->second);
+    _transport.shutdown(*it);
+  }
+  for (unsigned i = 0; i < _regions.size(); ++i)
+  {
+    if (_regions[i])  free(_regions[i]);
   }
   _links.clear();
+  _maxBufSize.clear();
+  _regions.clear();
+  _defContract = 0;
+  _id          = -1;
 }
 
 int EbAppBase::process()
@@ -148,7 +162,7 @@ int EbAppBase::process()
   int       rc;
   const int tmo = 5000;                 // milliseconds
   auto t0(std::chrono::steady_clock::now());
-  if ( (rc = _transport->pend(&data, tmo)) )  return rc;
+  if ( (rc = _transport.pend(&data, tmo)) )  return rc;
   auto t1(std::chrono::steady_clock::now());
 
   unsigned     flg = ImmData::flg(data);
@@ -156,8 +170,8 @@ int EbAppBase::process()
   unsigned     idx = ImmData::idx(data);
   EbLfLink*    lnk = _links[src];
   size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
-                   ? _trSize + idx * _maxBufSize[src]
-                   : _trOffset[idx];
+                   ? (_trSize + idx * _maxBufSize[src])
+                   : (idx * _maxTrSize);
   const Dgram* idg = static_cast<Dgram*>(lnk->lclAdx(ofs));
   lnk->postCompRecv();
 
@@ -177,7 +191,7 @@ int EbAppBase::process()
   _updateHists(t0, t1, idg->seq.stamp());
   _ctrbCntHist.bump(lnk->id());
 
-  EventBuilder::process(idg, data);     // Comment out for open-loop running
+  EventBuilder::process(idg, data);
 
   return 0;
 }

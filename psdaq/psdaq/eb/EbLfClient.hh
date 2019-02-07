@@ -10,28 +10,20 @@ namespace Pds {
     {
     public:
       EbLfClient(unsigned verbose);
-      ~EbLfClient();
     public:
       int connect(const char* peer,
                   const char* port,
                   unsigned    tmo,
                   EbLfLink**  link);
     public:
-      const uint64_t& pending() const;
+      const uint64_t& pending() const  { return _pending; }
     public:
       int shutdown(EbLfLink*);
     private:
-      unsigned _verbose;
-    private:
-      uint64_t _pending;
+      uint64_t _pending;                // Bit list of IDs currently posting
+      unsigned _verbose;                // Print some stuff if set
     };
   };
 };
-
-inline
-const uint64_t& Pds::Eb::EbLfClient::pending() const
-{
-  return _pending;
-}
 
 #endif

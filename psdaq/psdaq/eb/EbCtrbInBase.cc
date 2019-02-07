@@ -17,55 +17,51 @@ using namespace Pds::Eb;
 
 
 EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
-  _prms        (prms),
-  _numEbs      (std::bitset<64>(prms.builders).count()),
-  _maxBatchSize(0),
-  _regions     (_numEbs),
-  _transport   (new EbLfServer(prms.ifAddr, prms.port, prms.verbose)),
+  _transport   (prms.verbose),
   _links       (),
+  _maxBatchSize(0),
   _ebCntHist   ( 6, 1.0),               // Up to 64 possible EBs
   _rttHist     (12, 1.0),
   _pendTimeHist(12, 1.0),
   _pendCallHist(12, 1.0),
-  _pendPrevTime(std::chrono::steady_clock::now())
+  _pendPrevTime(std::chrono::steady_clock::now()),
+  _prms        (prms),
+  _regions     ()
 {
-  _initialize(__func__);
 }
 
-EbCtrbInBase::~EbCtrbInBase()
+int EbCtrbInBase::connect(const TebCtrbParams& prms)
 {
-  if (_transport)
-  {
-    for (auto it = _links.begin(); it != _links.end(); ++it)
-    {
-      _transport->shutdown(it->second);
-    }
-    _links.clear();
-    delete _transport;
-  }
-  for (unsigned i = 0; i < _regions.size(); ++i)
-  {
-    if (_regions[i])  free(_regions[i]);
-  }
-}
+  int rc;
 
-void EbCtrbInBase::_initialize(const char* who)
-{
+  unsigned numEbs = std::bitset<64>(prms.builders).count();
+  _links.resize(numEbs);
+  _regions.resize(numEbs);
+
+  if ( (rc = _transport.initialize(prms.ifAddr, prms.port)) )
+  {
+    fprintf(stderr, "%s:\n  Failed to initialize EbLfServer\n",
+            __PRETTY_FUNCTION__);
+    return rc;
+  }
+
   // Since each EB handles a specific batch, one region can be shared by all
-  for (unsigned i = 0; i < _numEbs; ++i)
+  for (unsigned i = 0; i < numEbs; ++i)
   {
     EbLfLink*      link;
     const unsigned tmo(120000);         // Milliseconds
-    if (_transport->connect(&link, tmo))
+    if ( (rc = _transport.connect(&link, tmo)) )
     {
-      fprintf(stderr, "%s: Error connecting to EbLfClient[%d]\n", who, i);
-      abort();
+      fprintf(stderr, "%s: Error connecting to EbLfClient[%d]\n",
+              __PRETTY_FUNCTION__, i);
+      return rc;
     }
     size_t regSize;
-    if (link->preparePender(_prms.id, &regSize))
+    if ( (rc = link->preparePender(prms.id, &regSize)) )
     {
-      fprintf(stderr, "%s: Failed to prepare link[%d]\n", who, i);
-      abort();
+      fprintf(stderr, "%s: Failed to prepare link[%d]\n",
+              __PRETTY_FUNCTION__, i);
+      return rc;
     }
     _links[link->id()] = link;
 
@@ -73,27 +69,30 @@ void EbCtrbInBase::_initialize(const char* who)
     if (!_regions[i])
     {
       fprintf(stderr, "%s: No memory found for region %d of size %zd\n",
-              who, i, regSize);
-      abort();
+              __PRETTY_FUNCTION__, i, regSize);
+      return ENOMEM;
     }
-    if (link->setupMr(_regions[i], regSize))
+    if ( (rc = link->setupMr(_regions[i], regSize)) )
     {
-      fprintf(stderr, "%s: Failed to set up MemoryRegion %d\n", who, i);
-      abort();
+      fprintf(stderr, "%s: Failed to set up MemoryRegion %d\n",
+              __PRETTY_FUNCTION__, i);
+      return rc;
     }
     link->postCompRecv();
 
-    size_t maxBatchSize = regSize / _prms.maxBatches;
+    size_t maxBatchSize = regSize / prms.maxBatches;
     if      (_maxBatchSize == 0)  _maxBatchSize = maxBatchSize;
     else if (_maxBatchSize != maxBatchSize)
     {
       fprintf(stderr, "%s: MaxBatchSize (%zd) can't differ between EBs (%zd from Id %d)\n",
-              who, _maxBatchSize, maxBatchSize, link->id());
-      abort();
+              __PRETTY_FUNCTION__, _maxBatchSize, maxBatchSize, link->id());
+      return -1;
     }
 
-    printf("%s: EbLfClient ID %d connected\n", who, link->id());
+    printf("Inbound link with TEB ID %d connected\n", link->id());
   }
+
+  return 0;
 }
 
 void EbCtrbInBase::shutdown()
@@ -114,6 +113,16 @@ void EbCtrbInBase::shutdown()
   sprintf(fs, "pendCallRate_%d.hist", _prms.id);
   printf("Dumped pend call rate histogram to ./%s\n", fs);
   _pendCallHist.dump(fs);
+
+  for (auto it = _links.begin(); it != _links.end(); ++it)
+  {
+    _transport.shutdown(*it);
+  }
+  _links.clear();
+  for (unsigned i = 0; i < _regions.size(); ++i)
+  {
+    if (_regions[i])  free(_regions[i]);
+  }
 }
 
 int EbCtrbInBase::process(BatchManager& batMan)
@@ -122,7 +131,7 @@ int EbCtrbInBase::process(BatchManager& batMan)
   uint64_t data;
   const int tmo = 5000;                 // milliseconds
   auto t0(std::chrono::steady_clock::now());
-  if (_transport->pend(&data, tmo))  return -1;
+  if (_transport.pend(&data, tmo))  return -1;
   auto t1(std::chrono::steady_clock::now());
 
   unsigned     src = ImmData::src(data);

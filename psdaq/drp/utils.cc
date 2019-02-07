@@ -71,7 +71,8 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContribu
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUB);
-    zmq_connect(socket, "tcp://psmetric04:5559");
+    // zmq_connect(socket, "tcp://psmetric04:5559");
+    zmq_connect(socket, "tcp://psmetric01:5559");
     char buffer[4096];
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);

@@ -31,6 +31,7 @@ namespace Pds {
     {
       std::string              ifAddr;        // Network interface to use
       std::string              port;          // Served port to receive results
+      unsigned                 partition;     // The chosen system
       unsigned                 id;            // Contributor instance identifier
       uint64_t                 builders;      // ID bit list of EBs
       std::vector<std::string> addrs;         // TEB addresses
@@ -59,6 +60,7 @@ namespace Pds {
       std::string              ifAddr;        // Network interface to use
       std::string              ebPort;        // EB port to serve
       std::string              mrqPort;       // Mon request port to receive on
+      unsigned                 partition;     // The chosen system
       unsigned                 id;            // EB instance identifier
       uint64_t                 contributors;  // ID bit list of contributors
       std::vector<std::string> addrs;         // Contributor addresses
