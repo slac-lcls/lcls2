@@ -168,10 +168,12 @@ target_link_libraries(tstEbBuilder
 #  rt
 #)
 
-install(TARGETS utilities
+install(TARGETS
+  utilities
+  ctrb
+  eb
   tstEbContributor
   tstEbBuilder
-  eb
   #drpEbBuilder
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
