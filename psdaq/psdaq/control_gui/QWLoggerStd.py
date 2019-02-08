@@ -76,17 +76,18 @@ class QWLoggerStd(QWidget) :
 
     _name = 'QWLoggerStd'
 
-    def __init__(self, show_buttons=True, log_level='DEBUG') :
+    def __init__(self, show_buttons=True, log_level='DEBUG', log_prefix='.') :
 
         QWidget.__init__(self, parent=None)
 
         self.log_level  = log_level # cp.log_level
-        self.log_prefix = '.' # cp.log_prefix
-        self.log_fname  = log_file_name(self.log_prefix)
+        self.log_prefix = log_prefix
+        self.log_fname  = log_file_name(log_prefix) if log_prefix is not None else None
 
-        depth = 6 if self.log_fname[0]=='/' else 1
-        gu.create_path(self.log_fname, depth, mode=0o0777)
-        #print('Log file: %s' % log_fname)
+        if self.log_fname is not None :
+            depth = 6 if self.log_fname[0]=='/' else 1
+            gu.create_path(self.log_fname, depth, mode=0o0777)
+            #print('Log file: %s' % log_fname)
 
         self.show_buttons = show_buttons
         #cp.qwloggerstd = self

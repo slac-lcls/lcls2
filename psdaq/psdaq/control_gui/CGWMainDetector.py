@@ -116,6 +116,7 @@ class CGWMainDetector(QGroupBox) :
     def check_state(self) :
         #logger.debug('CGWMainDetector.check_state -> daq_control().getState()')
         state = daq_control().getState()
+        if state is None : return
         if state == self.state : return
         self.state = state
         #logger.debug('daq_control().getState() response %s' % state)

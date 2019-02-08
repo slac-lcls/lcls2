@@ -23,10 +23,11 @@ Created on 2019-01-25 by Mikhail Dubrovin
 
 import logging
 logger = logging.getLogger(__name__)
+import psdaq.control_gui.Utils as gu
 
 from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox, QHBoxLayout, QVBoxLayout, QComboBox
      #QGridLayout, QLineEdit, QFileDialog, QWidget
-from PyQt5.QtCore import Qt # pyqtSignal, QRectF, QPointF, QTimer
+from PyQt5.QtCore import Qt, QTimer # pyqtSignal, QRectF, QPointF
 
 from psdaq.control_gui.Styles import style
 
@@ -91,7 +92,14 @@ class CGWMainControl(QGroupBox) :
         self.but_transition.clicked.connect(self.on_but_transition)
         #self.box_type.currentIndexChanged[int].connect(self.on_box_type)
         self.cbx_runc.stateChanged[int].connect(self.on_cbx_runc)
- 
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.on_timeout)
+        self.timer.start(1000)
+
+        self.transition = 'undefined'
+        self.ts = 'N/A'
+
 #--------------------
 
     def set_tool_tips(self) :
@@ -152,6 +160,31 @@ class CGWMainControl(QGroupBox) :
         msg = 'Check box "%s" is set to %s' % (tit, cbx.isChecked())
         logger.info(msg)
 
+#--------------------
+ 
+    def on_timeout(self) :
+        #logger.debug('CGWMainDetector Timeout %.3f sec' % time())
+        self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
+        #self.lab_state.setText('Control state on %s' % self.ts)
+        self.check_transition()
+        self.timer.start(1000)
+
+#--------------------
+
+    def check_transition(self) :
+        #logger.debug('CGWMainDetector.check_state -> daq_control().getState()')
+        print('Just before daq_control().monitorStatus()')
+        transition, state = 'N/A', daq_control().getState()
+        #transition, state = daq_control().monitorStatus()
+        print('-after transition, state =', transition, state)
+        if transition is None : return
+        if transition == self.transition : return
+        self.transition = transition
+        #logger.debug('daq_control().getState() response %s' % state)
+        #self.but_state.setText(state.upper() + ' since %s' % self.ts)
+        self.but_transition.setText(transition.upper() + ' since %s' % self.ts)
+
+#--------------------
 #--------------------
  
 if __name__ == "__main__" :
