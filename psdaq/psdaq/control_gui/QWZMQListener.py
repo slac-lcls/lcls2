@@ -3,12 +3,14 @@
 :py:class:`QWZMQListener` - widget for integration of zmq messages in qt event loop
 ===================================================================================
 Test::
-    python test_QWZMQListener.py # submits messages
-    python QWZMQListener.py      # receives messages
+    python psdaq/psdaq/control_gui/test_QWZMQListener.py # launch process submitting zmq messages
+    python psdaq/psdaq/control_gui/QWZMQListener.py      # launch process receiving messages
 
 Usage::
     # Import
     from psdaq.control_gui.QWZMQListener import QWZMQListener
+    class MyWidget(QWZMQListener):
+    # re-implement on_zmq_poll
 
 See:
     - test below
@@ -22,55 +24,66 @@ Created on 2019-02-07 by Mikhail Dubrovin
 """
 #----------
 
+import logging
+logger = logging.getLogger(__name__)
+
 import zmq
 from PyQt5.QtCore import QSocketNotifier
 from PyQt5.QtWidgets import QWidget
+from psdaq.control.collection import front_pub_port
 
 class QWZMQListener(QWidget):
     def __init__(self, **kwargs):
         QWidget.__init__(self)
 
         _on_poll     = kwargs.get('on_poll', self.on_zmq_poll)
-        _port        = kwargs.get('port', 'tcp://localhost:5556')
-        _topicfilter = kwargs.get('topicfilter', b'10001')
+        _host        = kwargs.get('host', 'localhost')
+        _platform    = kwargs.get('platform', 6)
+        _topicfilter = kwargs.get('topicfilter', b'') # b'10001'
+        self.timeout = kwargs.get('timeout', 1000)
+        #_uri        = kwargs.get('uri', 'tcp://localhost:5556')
+        #_topicfilter = kwargs.get('topicfilter', b'10001')
+        _uri         = 'tcp://%s:%d' % (_host, front_pub_port(_platform))
+        self.init_connect_zmq(_on_poll, _uri, _topicfilter)
 
-        self.init_connect_zmq(_on_poll, _port, _topicfilter)
 
+    def init_connect_zmq(self, on_poll, uri, topicfilter):
 
-    def init_connect_zmq(self, on_poll, port, topicfilter):
-        self._zmq_context = zmq.Context()
-        self._zmq_socket = self._zmq_context.socket(zmq.SUB)
-        self._zmq_socket.connect(port)
-        self._zmq_socket.setsockopt(zmq.SUBSCRIBE, topicfilter) # topicfilter = b"10001"
+        logger.debug('QWZMQListener.init_connect_zmq uri=%s' % uri)
 
-        self._notifier = QSocketNotifier(self._zmq_socket.getsockopt(zmq.FD), QSocketNotifier.Read, self)
-        self._notifier.activated.connect(on_poll)
+        self.zmq_context = zmq.Context(1)
+        self.zmq_socket = self.zmq_context.socket(zmq.SUB)
+        self.zmq_socket.connect(uri)
+        self.zmq_socket.setsockopt(zmq.SUBSCRIBE, topicfilter) # topicfilter = b"10001"
+
+        self.zmq_notifier = QSocketNotifier(self.zmq_socket.getsockopt(zmq.FD), QSocketNotifier.Read, self)
+        self.zmq_notifier.activated.connect(on_poll)
 
 
     def on_zmq_poll(self):
         """Needs to be re-implemented to do real work with messages from zmq.
         """
-        self._notifier.setEnabled(False)
-        flags = self._zmq_socket.getsockopt(zmq.EVENTS)
-
-        #print('in on_read_msg flags', flags)
+        self.zmq_notifier.setEnabled(False)
+        flags = self.zmq_socket.getsockopt(zmq.EVENTS)
+        flag = 'UNKNOWN'
+        msg = ''
         if flags & zmq.POLLIN :
-            #print("flag zmq.POLLOUT")
-            msg = self._zmq_socket.recv_multipart()
-            print('flag zmq.POLLIN %d received msg: %s' % (flags,msg))
+            msg = self.zmq_socket.recv_multipart()
             self.setWindowTitle(str(msg))
-        elif flags & zmq.POLLOUT :
-            print("flag zmq.POLLOUT", flags)
-        elif flags & zmq.POLLERR :
-            print("flag zmq.POLLERR", flags)
-        else : print("flag is UNKNOWN", flags)
+        elif flags & zmq.POLLOUT : flag = 'POLLOUT'
+        elif flags & zmq.POLLERR : flag = 'POLLERR'
+        else : pass
+        print("Flag zmq.%s in %d msg: %s" % (flag, flags, msg))
 
-        self._notifier.setEnabled(True)
-        _ = self._zmq_socket.getsockopt(zmq.EVENTS) # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
+        self.zmq_notifier.setEnabled(True)
+        _ = self.zmq_socket.getsockopt(zmq.EVENTS) # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
 
 #----------
 
 if __name__ == '__main__':
+
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
+ 
     from PyQt5.QtWidgets import QApplication
     app = QApplication([])
     win = QWZMQListener()
