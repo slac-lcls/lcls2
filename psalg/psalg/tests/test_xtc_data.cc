@@ -14,6 +14,8 @@
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/NamesIter.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 //using namespace psalgos;
 //using namespace psalg;
@@ -37,6 +39,10 @@ public:
 	cout << "YYYY TypeId::" << TypeId::name(type) << '\n';
 
         switch (type) {
+        case (TypeId::Parent): {
+	    iterate(xtc); 
+            break;
+        }
         case (TypeId::Names): {
             Names& names = *(Names*)xtc;
             Alg& alg = names.alg();
@@ -52,21 +58,31 @@ public:
             break;
         }
         case (TypeId::ShapesData): {
-	    //ShapesData& shapesdata = *(ShapesData*)xtc;
+	    ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
-            // unsigned namesId = shapesdata.shapes().namesId();
-            // DescData descdata(shapesdata, _namesVec[namesId]);
-            // Names& names = descdata.nameindex().names();
-            //iterate(xtc);
+            NamesId  namesId = shapesdata.namesId();
+	    cout << "namesId.value:" << namesId.value() 
+                 << "        level:" << namesId.level()  << '\n';
+            NamesIter namesIter(xtc);
+            //namesIter.iterate();
+            //NamesLookup& namesLookup = namesIter.namesLookup();
+            //DescData descdata(shapesdata, namesLookup[namesId]);
+            //Names& names = descdata.nameindex().names();
+
+            //for (unsigned i = 0; i < names.num(); i++) {
+            //    Name& name = names.get(i);
+            //    cout << " " << name.name();
+	    //}
+            //cout << '\n';
+
             break;
         }
-        case (TypeId::Parent): {break;}
         case (TypeId::Shapes): {break;}
         case (TypeId::Data):   {break;}
         default:{cout << "YYYY TypeId::default ????? type = " << type << " \n"; break; }
         }
 
-	iterate(xtc); 
+	//cout << "XXXX In MyXtcIterator just before exit\n";
         return Continue;
     }
 };
