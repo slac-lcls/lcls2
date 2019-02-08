@@ -96,7 +96,9 @@ void EbReceiver::process(const Dgram* result, const void* appPrm)
 }
 
 // collects events from the workers and sends them to the event builder
-void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContributor* meb)
+void collector(MemPool& pool, Parameters& para,
+               Pds::Eb::TebContributor& ebCtrb, Pds::Eb::MebContributor* meb,
+               EbReceiver& ebRecv)
 {
     enum { PORT_BASE = 29980 };         // TODO move to header file
     void* context = zmq_ctx_new();
@@ -116,14 +118,6 @@ void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContr
     size_t sender_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
 
     printf("*** myEb %p %zd\n",ebCtrb.batchRegion(), ebCtrb.batchRegionSize());
-    // FIXME move into handleConnect
-    std::cout<<"EbReceiver\n";
-    std::cout<<"tPrms.builders  "<<para.tPrms.builders<<'\n';
-    EbReceiver eb_rcvr(para, pool, meb);
-    int rc = eb_rcvr.connect(para.tPrms);
-    if (rc) {
-        std::cout<<"Something bad happened\n";
-    }
 
     // Wait a bit to allow other components of the system to establish connections
     // Revisit: This should be replaced with some sort of gate that guards
@@ -132,7 +126,7 @@ void collector(MemPool& pool, Parameters& para, TebContributor& ebCtrb, MebContr
     sleep(1);
 
     // start eb receiver thread
-    ebCtrb.startup(eb_rcvr);
+    ebCtrb.startup(ebRecv);
 
     int i = 0;
     while (true) {

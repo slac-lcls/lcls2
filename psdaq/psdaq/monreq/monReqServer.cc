@@ -385,17 +385,12 @@ MebApp::MebApp(const std::string& collSrv,
 
 void MebApp::handleAlloc(const json& msg)
 {
-  // ignore message if not in plat state
-  if (getState() == State::plat)
-  {
-    // Allow the default NIC choice to be overridden
-    std::string nicIp = _prms.ifAddr.empty() ? getNicIp() : _prms.ifAddr;
-    std::cout << "nic ip  " << nicIp << '\n';
-    json body = {{getLevel(), {{"connect_info", {{"nic_ip", nicIp}}}}}};
-    json answer = createMsg("alloc", msg["header"]["msg_id"], getId(), body);
-    reply(answer);
-    setState(State::alloc);
-  }
+  // Allow the default NIC choice to be overridden
+  std::string nicIp = _prms.ifAddr.empty() ? getNicIp() : _prms.ifAddr;
+  std::cout << "nic ip  " << nicIp << '\n';
+  json body = {{getLevel(), {{"connect_info", {{"nic_ip", nicIp}}}}}};
+  json answer = createMsg("alloc", msg["header"]["msg_id"], getId(), body);
+  reply(answer);
 }
 
 void MebApp::handleConnect(const json &msg)
@@ -424,7 +419,6 @@ void MebApp::handleConnect(const json &msg)
   json body   = json({});
   json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
   reply(answer);
-  setState(State::connect);
 }
 
 void MebApp::_shutdown()
@@ -449,14 +443,11 @@ void MebApp::handleDisconnect(const json &msg)
   json body   = json({});
   json answer = createMsg("disconnect", msg["header"]["msg_id"], getId(), body);
   reply(answer);
-  setState(State::alloc);
 }
 
 void MebApp::handleReset(const json &msg)
 {
   _shutdown();
-
-  setState(State::reset);
 }
 
 int MebApp::_parseConnectionParams(const json& body)

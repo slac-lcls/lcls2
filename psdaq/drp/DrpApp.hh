@@ -3,7 +3,6 @@
 #include "psdaq/service/Collection.hh"
 
 struct Parameters;
-class Detector;
 
 class DrpApp : public CollectionApp
 {

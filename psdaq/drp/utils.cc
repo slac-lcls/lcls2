@@ -67,12 +67,12 @@ long read_infiniband_counter(const char* counter)
     }
 }
 
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContributor& ebCtrb)
+void monitor_func(const Parameters& para, std::atomic<Counters*>& p,
+                  MemPool& pool, Pds::Eb::TebContributor& ebCtrb)
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUB);
-    // zmq_connect(socket, "tcp://psmetric04:5559");
-    zmq_connect(socket, "tcp://psmetric01:5559");
+    zmq_connect(socket, "tcp://psmetric04:5559");
     char buffer[4096];
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
@@ -108,21 +108,20 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContribu
         double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / seconds;
         double xmit_rate = 4.0*double(port_xmit_data - old_port_xmit_data) / seconds;
 
-        int partition = 2; // FIXME
         int size = snprintf(buffer, 4096, "drp_event_rate,host=%s,partition=%d %f",
-                            hostname, partition, event_rate);
+                            hostname, para.partition, event_rate);
         zmq_send(socket, buffer, size, 0);
 
         size = snprintf(buffer, 4096, "drp_data_rate,host=%s,partition=%d %f",
-                        hostname, partition, data_rate);
+                        hostname, para.partition, data_rate);
         zmq_send(socket, buffer, size, 0);
 
         size = snprintf(buffer, 4096, "drp_xmit_rate,host=%s,partition=%d %f",
-                        hostname, partition, xmit_rate);
+                        hostname, para.partition, xmit_rate);
         zmq_send(socket, buffer, size, 0);
 
         size = snprintf(buffer, 4096, "drp_rcv_rate,host=%s,partition=%d %f",
-                        hostname, partition, rcv_rate);
+                        hostname, para.partition, rcv_rate);
         zmq_send(socket, buffer, size, 0);
 
         old_bytes = new_bytes;

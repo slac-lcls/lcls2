@@ -384,17 +384,12 @@ CtrbApp::CtrbApp(const std::string& collSrv,
 
 void CtrbApp::handleAlloc(const json& msg)
 {
-  // ignore message if not in plat state
-  if (getState() == State::plat)
-  {
-    // Allow the default NIC choice to be overridden
-    std::string nicIp = _tebPrms.ifAddr.empty() ? getNicIp() : _tebPrms.ifAddr;
-    std::cout << "nic ip  " << nicIp << '\n';
-    json body = {{getLevel(), {{"connect_info", {{"nic_ip", nicIp}}}}}};
-    json answer = createMsg("alloc", msg["header"]["msg_id"], getId(), body);
-    reply(answer);
-    setState(State::alloc);
-  }
+  // Allow the default NIC choice to be overridden
+  std::string nicIp = _tebPrms.ifAddr.empty() ? getNicIp() : _tebPrms.ifAddr;
+  std::cout << "nic ip  " << nicIp << '\n';
+  json body = {{getLevel(), {{"connect_info", {{"nic_ip", nicIp}}}}}};
+  json answer = createMsg("alloc", msg["header"]["msg_id"], getId(), body);
+  reply(answer);
 }
 
 void CtrbApp::handleConnect(const json &msg)
@@ -440,7 +435,6 @@ void CtrbApp::handleConnect(const json &msg)
   json body   = json({});
   json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
   reply(answer);
-  setState(State::connect);
 }
 
 void CtrbApp::_shutdown()
@@ -468,14 +462,11 @@ void CtrbApp::handleDisconnect(const json &msg)
   json body   = json({});
   json answer = createMsg("disconnect", msg["header"]["msg_id"], getId(), body);
   reply(answer);
-  setState(State::alloc);
 }
 
 void CtrbApp::handleReset(const json &msg)
 {
   _shutdown();
-
-  setState(State::reset);
 }
 
 int CtrbApp::_parseConnectionParams(const json& body)

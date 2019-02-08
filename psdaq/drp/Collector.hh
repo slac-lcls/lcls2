@@ -30,6 +30,8 @@ private:
     unsigned nreceive;
 };
 
-void collector(MemPool& pool, Parameters& para, Pds::Eb::TebContributor&, Pds::Eb::MebContributor*);
+void collector(MemPool& pool, Parameters& para,
+               Pds::Eb::TebContributor& ebCtrb, Pds::Eb::MebContributor* meb,
+               EbReceiver& ebRecv);
 
 #endif // COLLECTOR_H
