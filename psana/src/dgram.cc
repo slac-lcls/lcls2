@@ -18,10 +18,7 @@
 #include <assert.h>
 
 using namespace XtcData;
-#define BUFSIZE 0x4000000
 #define TMPSTRINGSIZE 1024
-#define CHUNKSIZE 1<<20
-#define MAXRETRIES 5
 
 static const char* PyNameDelim=".";
 
@@ -47,6 +44,7 @@ struct PyDgramObject {
     Py_buffer buf;
     ContainerInfo contInfo;
     NamesIter* namesIter; // only nonzero in the config dgram
+    size_t size; // size of dgram - for allocating dgram of any size
 };
 
 static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
@@ -400,27 +398,23 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-static int dgram_read(PyDgramObject* self, ssize_t dgram_size, int sequential)
+static int dgram_read(PyDgramObject* self, int sequential)
 {
     ssize_t readSuccess=0;
     char s[TMPSTRINGSIZE];
     if (sequential) {
-        readSuccess = read(self->file_descriptor, self->dgram, sizeof(Dgram));
+        // When read sequentially, self->dgram already has header data
+        // - only reads the payload content.
+        readSuccess = read(self->file_descriptor, self->dgram->xtc.payload(), self->dgram->xtc.sizeofPayload());
         if (readSuccess <= 0) {
-            snprintf(s, TMPSTRINGSIZE, "loading dgram header was unsuccessful -- %s", strerror(errno));
-            PyErr_SetString(PyExc_StopIteration, s);
-            return -1;
-        }
-        readSuccess = read(self->file_descriptor, self->dgram + 1, self->dgram->xtc.sizeofPayload());
-        if (readSuccess <= 0) {
-            snprintf(s, TMPSTRINGSIZE, "loading dgram payload was unsuccessful -- %s", strerror(errno));
+            snprintf(s, TMPSTRINGSIZE, "loading dgram was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
             return -1;
         }
 
     } else {
         off_t fOffset = (off_t)self->offset;
-        readSuccess = pread(self->file_descriptor, self->dgram, dgram_size, fOffset); // for read with offset
+        readSuccess = pread(self->file_descriptor, self->dgram, self->size, fOffset); // for read with offset
         if (readSuccess <= 0) {
             snprintf(s, TMPSTRINGSIZE, "loading dgram with offset was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
@@ -443,7 +437,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     int fd=-1;
     PyObject* configDgram=0;
     self->offset=0;
-    ssize_t dgram_size=0;
+    self->size=0;
     bool isView=0;
     PyObject* view=0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
@@ -451,7 +445,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                                      &fd,
                                      &configDgram,
                                      &self->offset,
-                                     &dgram_size,
+                                     &self->size,
                                      &view)) {
         return -1;
     }
@@ -467,21 +461,73 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 
     self->contInfo.containermod = PyImport_ImportModule("psana.container");
     self->contInfo.pycontainertype = PyObject_GetAttrString(self->contInfo.containermod,"Container");
-
+    
+    // Retrieve size and file_descriptor
+    Dgram dgram_header; // For case (1) and (2) below to store the header for later
     if (!isView) {
-        //PyObject* arglist = Py_BuildValue("(i)",BUFSIZE);
+        // If view is not given, we assume dgram is to be created as one of these:
+        // 1. Dgram(file_descriptor=fd) --> create config dgram by read
+        // 2. Dgram(config=config)          create data dgram by read
+        // 3. Dgram(file_descriptor=fd, config=config, offset=int, size=int)
+        //                                  create data dgram by pread
+        // 4. Dgram(size=nbytes)            create an empty dgram of a specified size.
+
+        if (fd==-1 && configDgram==0) {
+            // For (4)
+            if (self->size == 0){
+                PyErr_SetString(PyExc_RuntimeError, "Can't create empty dgram of size=0.");
+                return -1;    
+            }
+
+            if (self->size <= sizeof(Dgram)) {
+                PyErr_SetString(PyExc_RuntimeError, "Can't create empty dgram with size <= sizeof(Dgram).");
+                return -1;    
+            }
+        } else {
+            if (fd==-1) {
+                // For (2)
+                self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
+            } else {
+                // For (1) and (3)
+                self->file_descriptor=fd;
+            }
+            
+            // For (3), size is already given.
+            if (self->size == 0) {
+                // For (1) and (2), obtain dgram_header from fd then extract size
+                int readSuccess = read(self->file_descriptor, &dgram_header, sizeof(Dgram));
+                if (readSuccess <= 0) {
+                    PyErr_SetString(PyExc_StopIteration, "Can't retrieve dgram size. Problem reading dgram header.");
+                    return -1;
+                }
+                
+                self->size = sizeof(Dgram) + dgram_header.xtc.sizeofPayload();
+            }
+        }
+
+        if (self->size == 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Can't retrieve dgram size. Either size is not given when creating empty/read-by-offset dgram or there's a problem reading dgram header.");
+            return -1;
+        }
+
+        //PyObject* arglist = Py_BuildValue("(i)",self->size);
         // I believe this memsets the buffer to 0, which we don't need.
         // Perhaps ideally we would write a custom object to avoid this. - cpo
         //self->dgrambytes = PyObject_CallObject((PyObject*)&PyByteArray_Type, arglist);
         //Py_DECREF(arglist);
 
         // Use c-level api to create PyByteArray to avoid memset - mona
-        self->dgrambytes = PyByteArray_FromStringAndSize(NULL, BUFSIZE);
+        self->dgrambytes = PyByteArray_FromStringAndSize(NULL, self->size);
         if (self->dgrambytes == NULL) {
             return -1;
         }
         self->dgram = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
+
     } else {
+        // If view is not given, we assume dgram is to be created as one of these:
+        // 5. Dgram(view=view, offset=int) --> create a config dgram from the view
+        // 6. Dgram(view=view, config=config, offset=int) --> create a data dgram using the config and view
+
         // this next line is needed because arrays will increase the reference count
         // of the view (actually a PyByteArray) in DictAssign.  This is the mechanism we
         // use so we don't have to copy the array data.
@@ -491,6 +537,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             return -1;
         }
         self->dgram = (Dgram*)(((char *)self->buf.buf) + self->offset);
+        self->size = sizeof(Dgram) + self->dgram->xtc.sizeofPayload();
     }
 
     if (self->dgram == NULL) {
@@ -506,14 +553,12 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         if (fd==-1 && configDgram==0) {
             self->dgram->xtc.extent = 0; // for empty dgram
         } else {
-            if (fd==-1) {
-                self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
-            } else {
-                self->file_descriptor=fd;
+            bool sequential = (fd==-1) != (configDgram==0);
+            if (sequential) {
+                memcpy(self->dgram, &dgram_header, sizeof(dgram_header));
             }
 
-            bool sequential = (fd==-1) != (configDgram==0);
-            int err = dgram_read(self, dgram_size, sequential);
+            int err = dgram_read(self, sequential);
             if (err) return err;
         }
     }
@@ -529,11 +574,7 @@ static Py_ssize_t PyDgramObject_getsegcount(PyDgramObject *self, Py_ssize_t *len
 
 static Py_ssize_t PyDgramObject_getreadbuf(PyDgramObject *self, Py_ssize_t segment, void **ptrptr) {
     *ptrptr = (void*)self->dgram;
-    if (self->dgram->xtc.extent == 0) {
-        return BUFSIZE;
-    } else {
-        return sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
-    }
+    return self->size;
 }
 
 static Py_ssize_t PyDgramObject_getwritebuf(PyDgramObject *self, Py_ssize_t segment, void **ptrptr) {
@@ -555,11 +596,7 @@ static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
     PyDgramObject* self = (PyDgramObject*)obj;
     view->obj = (PyObject*)self;
     view->buf = (void*)self->dgram;
-    if (self->dgram->xtc.extent == 0) {
-        view->len = BUFSIZE; // share max size for empty dgram 
-    } else {
-        view->len = sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
-    }
+    view->len = self->size;
     view->readonly = 1;
     view->itemsize = 1;
     view->format = (char *)"s";

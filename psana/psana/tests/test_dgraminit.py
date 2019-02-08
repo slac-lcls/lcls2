@@ -2,10 +2,10 @@ from psana import dgram
 import os
 
 class TestDgramInit:
-    emptyResults = (0, 0, 0x4000000)
+    emptyResults = (0, 0, 42)
 
     def testCreateEmptyDgram(self):
-        d = dgram.Dgram()
+        d = dgram.Dgram(size=42)
         results = (d._offset, d._file_descriptor, memoryview(d).shape[0])
         assert self.emptyResults == results
 

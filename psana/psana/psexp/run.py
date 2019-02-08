@@ -213,16 +213,21 @@ class RunParallel(Run):
         else:
             self.dm = None
             self.calibs = None
-            self.configs = [dgram.Dgram() for i in range(len(xtc_files))]
             self.smd_dm = None
-            self.smd_configs = [dgram.Dgram() for i in range(len(smd_files))]
             nbytes = np.empty(len(xtc_files), dtype='i')
             smd_nbytes = np.empty(len(smd_files), dtype='i')
         
-        comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich
+        comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich and creating empty dgram
+        comm.Bcast(nbytes, root=0) 
+        
+        # create empty dgrams of known size
+        if rank > 0:
+            self.smd_configs = [dgram.Dgram(size=smd_nbyte) for smd_nbyte in smd_nbytes]
+            self.configs = [dgram.Dgram(size=nbyte) for nbyte in nbytes]
+        
         for i in range(len(smd_files)):
             comm.Bcast([self.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
-        comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
+
         for i in range(len(xtc_files)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
         
