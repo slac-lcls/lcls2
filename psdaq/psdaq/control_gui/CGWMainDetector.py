@@ -58,9 +58,9 @@ class CGWMainDetector(QGroupBox) :
 
         self.but_state.clicked.connect(self.on_but_state)
 
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.on_timeout)
-        self.timer.start(1000)
+        #self.timer = QTimer()
+        #self.timer.timeout.connect(self.on_timeout)
+        #self.timer.start(1000)
 
         self.state = 'undefined'
         self.ts = 'N/A'
@@ -104,23 +104,29 @@ class CGWMainDetector(QGroupBox) :
 
 #--------------------
  
-    def on_timeout(self) :
-        #logger.debug('CGWMainDetector Timeout %.3f sec' % time())
-        self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
-        self.lab_state.setText('Control state on %s' % self.ts)
-        self.check_state()
-        self.timer.start(1000)
+#    def on_timeout(self) :
+#        #logger.debug('CGWMainDetector Timeout %.3f sec' % time())
+#        self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
+#        self.lab_state.setText('Control state on %s' % self.ts)
+#        self.check_state()
+#        self.timer.start(1000)
 
 #--------------------
 
-    def check_state(self) :
-        #logger.debug('CGWMainDetector.check_state -> daq_control().getState()')
-        state = daq_control().getState()
-        if state is None : return
-        if state == self.state : return
-        self.state = state
-        #logger.debug('daq_control().getState() response %s' % state)
-        self.but_state.setText(state.upper() + ' since %s' % self.ts)
+#    def check_state(self) :
+#        #logger.debug('CGWMainDetector.check_state -> daq_control().getState()')
+#        state = daq_control().getState()
+#        if state is None : return
+#        if state == self.state : return
+#        self.state = state
+#        #logger.debug('daq_control().getState() response %s' % state)
+#        self.but_state.setText(state.upper() + ' since %s' % self.ts)
+
+#--------------------
+
+    def set_state(self, s) :
+        ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
+        self.but_state.setText('%s since %s' % (s.upper(), ts))
 
 #--------------------
 

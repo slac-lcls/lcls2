@@ -34,27 +34,25 @@ from psdaq.control.collection import front_pub_port
 
 class QWZMQListener(QWidget):
     def __init__(self, **kwargs):
-        QWidget.__init__(self)
-
+        QWidget.__init__(self, parent=None)
+        self.timeout = kwargs.get('timeout', 1000)
         _on_poll     = kwargs.get('on_poll', self.on_zmq_poll)
         _host        = kwargs.get('host', 'localhost')
         _platform    = kwargs.get('platform', 6)
         _topicfilter = kwargs.get('topicfilter', b'') # b'10001'
-        self.timeout = kwargs.get('timeout', 1000)
-        #_uri        = kwargs.get('uri', 'tcp://localhost:5556')
-        #_topicfilter = kwargs.get('topicfilter', b'10001')
-        _uri         = 'tcp://%s:%d' % (_host, front_pub_port(_platform))
+        _uri         = 'tcp://%s:%d' % (_host, front_pub_port(_platform)) # 'tcp://localhost:30016'
         self.init_connect_zmq(_on_poll, _uri, _topicfilter)
 
 
     def init_connect_zmq(self, on_poll, uri, topicfilter):
 
+        print('QWZMQListener.init_connect_zmq uri=%s' % uri)
         logger.debug('QWZMQListener.init_connect_zmq uri=%s' % uri)
 
         self.zmq_context = zmq.Context(1)
         self.zmq_socket = self.zmq_context.socket(zmq.SUB)
         self.zmq_socket.connect(uri)
-        self.zmq_socket.setsockopt(zmq.SUBSCRIBE, topicfilter) # topicfilter = b"10001"
+        self.zmq_socket.setsockopt(zmq.SUBSCRIBE, topicfilter)
 
         self.zmq_notifier = QSocketNotifier(self.zmq_socket.getsockopt(zmq.FD), QSocketNotifier.Read, self)
         self.zmq_notifier.activated.connect(on_poll)
@@ -68,6 +66,7 @@ class QWZMQListener(QWidget):
         flag = 'UNKNOWN'
         msg = ''
         if flags & zmq.POLLIN :
+            flag = 'POLLIN'
             msg = self.zmq_socket.recv_multipart()
             self.setWindowTitle(str(msg))
         elif flags & zmq.POLLOUT : flag = 'POLLOUT'
