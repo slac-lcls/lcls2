@@ -57,13 +57,13 @@ class DaqControl:
 
         # initialize zmq socket
         self.context = zmq.Context(1)
-        self.sub = self.context.socket(zmq.SUB)
-        self.sub.connect('tcp://%s:%d' % (host, pub_port(platform)))
-        self.sub.setsockopt(zmq.SUBSCRIBE, b'')
-        self.req = self.context.socket(zmq.REQ)
-        self.req.linger = 0
-        self.req.RCVTIMEO = timeout # in milliseconds
-        self.req.connect('tcp://%s:%d' % (host, rep_port(platform)))
+        self.front_sub = self.context.socket(zmq.SUB)
+        self.front_sub.connect('tcp://%s:%d' % (host, front_pub_port(platform)))
+        self.front_sub.setsockopt(zmq.SUBSCRIBE, b'')
+        self.front_req = self.context.socket(zmq.REQ)
+        self.front_req.linger = 0
+        self.front_req.RCVTIMEO = timeout # in milliseconds
+        self.front_req.connect('tcp://%s:%d' % (host, front_rep_port(platform)))
 
     #
     # DaqControl.getState - get current state
@@ -72,8 +72,8 @@ class DaqControl:
         retval = 'error'
         try:
             msg = create_msg('getstate')
-            self.req.send_json(msg)
-            reply = self.req.recv_json()
+            self.front_req.send_json(msg)
+            reply = self.front_req.recv_json()
         except Exception as ex:
             print('getState() Exception: %s' % ex)
         except KeyboardInterrupt:
@@ -94,7 +94,7 @@ class DaqControl:
         # process messages
         while True:
             try:
-                msg = self.sub.recv_json()
+                msg = self.front_sub.recv_json()
                 if msg['header']['key'] == 'status':
                     # return transition, state
                     return msg['body']['transition'], msg['body']['state']
@@ -115,8 +115,8 @@ class DaqControl:
         errorMessage = None
         try:
             msg = create_msg('setstate.' + state)
-            self.req.send_json(msg)
-            reply = self.req.recv_json()
+            self.front_req.send_json(msg)
+            reply = self.front_req.recv_json()
         except Exception as ex:
             errorMessage = 'setState() Exception: %s' % ex
         else:
@@ -134,8 +134,8 @@ class DaqControl:
         errorMessage = None
         try:
             msg = create_msg(transition)
-            self.req.send_json(msg)
-            reply = self.req.recv_json()
+            self.front_req.send_json(msg)
+            reply = self.front_req.recv_json()
         except Exception as ex:
             errorMessage = 'setTransition() Exception: %s' % ex
         else:
@@ -201,16 +201,17 @@ def create_msg(key, msg_id=None, sender_id=None, body={}):
     return msg
 
 
-def pull_port(platform):
+def back_pull_port(platform):
     return PORT_BASE + platform
 
-
-def pub_port(platform):
+def back_pub_port(platform):
     return PORT_BASE + platform + 10
 
-
-def rep_port(platform):
+def front_rep_port(platform):
     return PORT_BASE + platform + 20
+
+def front_pub_port(platform):
+    return PORT_BASE + platform + 30
 
 
 def wait_for_answers(socket, wait_time, msg_id):
@@ -261,12 +262,14 @@ def confirm_response(socket, wait_time, msg_id, ids):
 class CollectionManager():
     def __init__(self, platform):
         self.context = zmq.Context(1)
-        self.pull = self.context.socket(zmq.PULL)
-        self.pub = self.context.socket(zmq.PUB)
-        self.rep = self.context.socket(zmq.REP)
-        self.pull.bind('tcp://*:%d' % pull_port(platform))
-        self.pub.bind('tcp://*:%d' % pub_port(platform))
-        self.rep.bind('tcp://*:%d' % rep_port(platform))
+        self.back_pull = self.context.socket(zmq.PULL)
+        self.back_pub = self.context.socket(zmq.PUB)
+        self.front_rep = self.context.socket(zmq.REP)
+        self.front_pub = self.context.socket(zmq.PUB)
+        self.back_pull.bind('tcp://*:%d' % back_pull_port(platform))
+        self.back_pub.bind('tcp://*:%d' % back_pub_port(platform))
+        self.front_rep.bind('tcp://*:%d' % front_rep_port(platform))
+        self.front_pub.bind('tcp://*:%d' % front_pub_port(platform))
         self.cmstate = {}
         self.ids = set()
         self.handle_request = {
@@ -313,7 +316,7 @@ class CollectionManager():
             while True:
                 answer = None
                 try:
-                    msg = self.rep.recv_json()
+                    msg = self.front_rep.recv_json()
                     key = msg['header']['key']
                     if key.startswith('setstate.'):
                         answer = self.handle_setstate(key[9:])
@@ -324,7 +327,7 @@ class CollectionManager():
                 except KeyError:
                     answer = create_msg('error')
                 if answer is not None:
-                    self.rep.send_json(answer)
+                    self.front_rep.send_json(answer)
         except KeyboardInterrupt:
             logging.info('KeyboardInterrupt')
 
@@ -395,16 +398,16 @@ class CollectionManager():
 
     def report_status(self):
         logging.debug('status: state=%s transition=%s' % (self.state, self.lastTransition))
-        self.pub.send_json(self.status_msg())
+        self.front_pub.send_json(self.status_msg())
 
     def condition_alloc(self):
         # FIXME select all procs for now
         ids = copy.copy(self.ids)
         msg = create_msg('alloc', body={'ids': list(ids)})
-        self.pub.send_json(msg)
+        self.back_pub.send_json(msg)
 
         # make sure all the clients respond to alloc message with their connection info
-        ret, answers = confirm_response(self.pull, 1000, msg['header']['msg_id'], ids)
+        ret, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
         if ret:
             logging.error('%d client did not respond to alloc' % ret)
             logging.debug('condition_alloc() returning False')
@@ -444,9 +447,9 @@ class CollectionManager():
         # FIXME select all procs for now
         ids = copy.copy(self.ids)
         msg = create_msg('connect', body=self.cmstate)
-        self.pub.send_json(msg)
+        self.back_pub.send_json(msg)
 
-        ret, answers = confirm_response(self.pull, 5000, msg['header']['msg_id'], ids)
+        ret, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
         if ret:
             logging.error('%d client did not respond to connect' % ret)
             logging.debug('condition_connect() returning False')
@@ -474,8 +477,8 @@ class CollectionManager():
         self.cmstate.clear()
         self.ids.clear()
         msg = create_msg('plat')
-        self.pub.send_json(msg)
-        for answer in wait_for_answers(self.pull, 1000, msg['header']['msg_id']):
+        self.back_pub.send_json(msg)
+        for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id']):
             for level, item in answer['body'].items():
                 if level not in self.cmstate:
                     self.cmstate[level] = {}
@@ -501,7 +504,7 @@ class CollectionManager():
         retval = True
         ids = copy.copy(self.ids)
         msg = create_msg(transition)
-        self.pub.send_json(msg)
+        self.back_pub.send_json(msg)
 
 #       logging.debug('ids before filter_level(): %s' % ids)
         # only drp group (aka level) responds to configure and above
@@ -509,7 +512,7 @@ class CollectionManager():
 #       logging.debug('ids after filter_level(): %s' % ids)
 
         # make sure all the clients respond to transition before timeout
-        ret, answers = confirm_response(self.pull, timeout, msg['header']['msg_id'], ids)
+        ret, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
         if ret:
             # Error
             retval = False
@@ -571,7 +574,7 @@ class CollectionManager():
     def condition_reset(self):
         # is a reply to reset necessary?
         msg = create_msg('reset')
-        self.pub.send_json(msg)
+        self.back_pub.send_json(msg)
         self.lastTransition = 'reset'
         logging.debug('condition_reset() returning True')
         return True
@@ -579,11 +582,11 @@ class CollectionManager():
 class Client:
     def __init__(self, platform):
         self.context = zmq.Context(1)
-        self.push = self.context.socket(zmq.PUSH)
-        self.sub = self.context.socket(zmq.SUB)
-        self.push.connect('tcp://localhost:%d' % pull_port(platform))
-        self.sub.connect('tcp://localhost:%d' % pub_port(platform))
-        self.sub.setsockopt(zmq.SUBSCRIBE, b'')
+        self.back_push = self.context.socket(zmq.PUSH)
+        self.back_sub = self.context.socket(zmq.SUB)
+        self.back_push.connect('tcp://localhost:%d' % back_pull_port(platform))
+        self.back_sub.connect('tcp://localhost:%d' % back_pub_port(platform))
+        self.back_sub.setsockopt(zmq.SUBSCRIBE, b'')
         handle_request = {
             'plat': self.handle_plat,
             'alloc': self.handle_alloc,
@@ -591,7 +594,7 @@ class Client:
         }
         while True:
             try:
-                msg = self.sub.recv_json()
+                msg = self.back_sub.recv_json()
                 key = msg['header']['key']
                 handle_request[key](msg)
             except KeyError as ex:
@@ -610,20 +613,20 @@ class Client:
                         'host': hostname,
                         'pid': pid}}}
         reply = create_msg('plat', msg['header']['msg_id'], self.id, body=body)
-        self.push.send_json(reply)
+        self.back_push.send_json(reply)
 
     def handle_alloc(self, msg):
         logging.debug('Client handle_alloc()')
         body = {'drp': {'connect_info': {'infiniband': '123.456.789'}}}
         reply = create_msg('alloc', msg['header']['msg_id'], self.id, body)
-        self.push.send_json(reply)
+        self.back_push.send_json(reply)
         self.state = 'alloc'
 
     def handle_connect(self, msg):
         logging.debug('Client handle_connect()')
         if self.state == 'alloc':
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
-            self.push.send_json(reply)
+            self.back_push.send_json(reply)
 
 
 def main():
@@ -660,21 +663,21 @@ def main():
     if args.a:
         # Commands
         context = zmq.Context(1)
-        req = context.socket(zmq.REQ)
-        req.connect('tcp://localhost:%d' % rep_port(platform))
+        front_req = context.socket(zmq.REQ)
+        front_req.connect('tcp://localhost:%d' % front_rep_port(platform))
         time.sleep(0.5)
 
         msg = create_msg('plat')
-        req.send_json(msg)
-        print('Answer to plat:', req.recv_multipart())
+        front_req.send_json(msg)
+        print('Answer to plat:', front_req.recv_multipart())
 
         msg = create_msg('alloc')
-        req.send_json(msg)
-        print('Answer to alloc:', req.recv_multipart())
+        front_req.send_json(msg)
+        print('Answer to alloc:', front_req.recv_multipart())
 
         msg = create_msg('connect')
-        req.send_json(msg)
-        print('Answer to connect:', req.recv_multipart())
+        front_req.send_json(msg)
+        print('Answer to connect:', front_req.recv_multipart())
 
     for p in procs:
         try:
