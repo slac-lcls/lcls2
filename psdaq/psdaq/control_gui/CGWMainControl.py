@@ -40,10 +40,11 @@ from psdaq.control_gui.CGDaqControl import daq_control, DaqControl #, worker_set
 class CGWMainControl(QGroupBox) :
     """
     """
-
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, parent_ctrl=None):
 
         QGroupBox.__init__(self, 'Control', parent)
+
+        self.parent_ctrl = parent_ctrl
 
         self.lab_state = QLabel('Target State')
         self.lab_trans = QLabel('Last Transition')
@@ -142,6 +143,7 @@ class CGWMainControl(QGroupBox) :
         if not ind : return
         state = self.states[ind]
         logger.info('CGWMainDetector.on_box_state -> daq_control().setState %s' % state)
+        #self.parent_ctrl.kick_zmq()
         daq_control().setState(state.lower())
         logger.debug('command daq_control().setState is committed...')
 

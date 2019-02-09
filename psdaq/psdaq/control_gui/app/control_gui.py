@@ -51,7 +51,7 @@ def input_option_parser() :
     d_host       = 'localhost'
     d_timeout    = 10000 # ms
     d_loglevel   = 'DEBUG'
-    d_logdir     = './cm-logger'
+    d_logdir     = None # '.' or './cm-logger' etc.
 
     h_platform   = 'platform in range [0,7], default = %s' % d_platform
     h_host       = 'control host, default = %s' % d_host

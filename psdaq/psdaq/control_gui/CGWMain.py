@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 #------------------------------
 import json
+from time import time
 
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt#, QPoint
@@ -56,6 +57,12 @@ class CGWMain(QWZMQListener) :
     def __init__(self, parser=None) : # **dict_opts) :
 
         self.proc_parser(parser)
+        daq_control.set_daq_control(DaqControl(host=self.host, platform=self.platform, timeout=self.timeout))
+
+        self.wlogr = QWLoggerStd(log_level=self.loglevel, show_buttons=False, log_prefix=self.logdir)
+
+        QWZMQListener.__init__(self, host=self.host, platform=self.platform, timeout=self.timeout)
+ 
 
         #QWidget.__init__(self, parent=None)
         #self._name = self.__class__.__name__
@@ -76,14 +83,11 @@ class CGWMain(QWZMQListener) :
         #self.wlog = QWLoggerStd(cp, show_buttons=False)
         self.wconf = CGWMainConfiguration()
         self.wpart = CGWMainPartition()
-        self.wctrl = CGWMainControl()
+        self.wctrl = CGWMainControl(parent_ctrl=self)
         self.wdetr = CGWMainDetector()
         self.wrsta = CGWMainRunStatistics()
-        self.wlogr = QWLoggerStd(log_level=self.loglevel, show_buttons=False)
         #self.wlogr = QTextEdit('my logger')
 
-        QWZMQListener.__init__(self, host=self.host, platform=self.platform, timeout=self.timeout)
- 
         #self.vbox = QVBoxLayout() 
         #self.vbox.addWidget(self.wtab) 
         #self.vbox.addStretch(1)
@@ -140,13 +144,11 @@ class CGWMain(QWZMQListener) :
         #cp.upwd    = popts.upwd
         #exp        = popts.experiment
         #det        = popts.detector
-        logdir        = popts.logdir
+        self.logdir   = popts.logdir
         self.loglevel = popts.loglevel.upper()
         self.host     = popts.host
         self.platform = popts.platform
         self.timeout  = popts.timeout
-
-        daq_control.set_daq_control(DaqControl(host=self.host, platform=self.platform, timeout=self.timeout))
 
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
@@ -285,8 +287,12 @@ class CGWMain(QWZMQListener) :
     def on_zmq_poll(self):
         """Re-implementation of the superclass QWZMQListener method for zmq message processing.
         """
+        t0_sec = time()
+
         self.zmq_notifier.setEnabled(False)
+
         flags = self.zmq_socket.getsockopt(zmq.EVENTS)
+
         flag = 'UNKNOWN'
         msg = ''
         if flags & zmq.POLLIN :
@@ -297,10 +303,11 @@ class CGWMain(QWZMQListener) :
         elif flags & zmq.POLLOUT : flag = 'POLLOUT'
         elif flags & zmq.POLLERR : flag = 'POLLERR'
         else : pass
-        logger.debug("CGWMain.on_zmq_poll Flag zmq.%s in %d msg: %s" % (flag, flags, msg))
 
         self.zmq_notifier.setEnabled(True)
         _ = self.zmq_socket.getsockopt(zmq.EVENTS) # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
+        logger.debug('CGWMain.on_zmq_poll Flag zmq.%s in %d msg: %s' % (flag, flags, msg)\
+                   + '\n    poll processing time = %.6f sec' % (time()-t0_sec))
 
 
     def process_zmq_message(self, msg):

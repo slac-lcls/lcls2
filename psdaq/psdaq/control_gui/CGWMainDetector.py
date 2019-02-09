@@ -113,20 +113,21 @@ class CGWMainDetector(QGroupBox) :
 
 #--------------------
 
-#    def check_state(self) :
-#        #logger.debug('CGWMainDetector.check_state -> daq_control().getState()')
-#        state = daq_control().getState()
-#        if state is None : return
-#        if state == self.state : return
-#        self.state = state
-#        #logger.debug('daq_control().getState() response %s' % state)
-#        self.but_state.setText(state.upper() + ' since %s' % self.ts)
+    def check_state(self) :
+        #logger.debug('CGWMainDetector.check_state -> daq_control().getState()')
+        state = daq_control().getState()
+        if state is None : return
+        if state == self.state : return
+        self.state = state
+        #logger.debug('daq_control().getState() response %s' % state)
+        self.but_state.setText(state.upper() + ' since %s' % self.ts)
 
 #--------------------
 
     def set_state(self, s) :
-        ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
-        self.but_state.setText('%s since %s' % (s.upper(), ts))
+        self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
+        self.state = s 
+        self.but_state.setText('%s since %s' % (s.upper(), self.ts))
 
 #--------------------
 

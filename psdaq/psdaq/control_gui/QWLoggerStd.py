@@ -40,6 +40,8 @@ import psdaq.control_gui.Utils as gu
 def log_file_name(lfpath='.') :
     """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/2018/20180518T122407-dubrovin.txt
     """
+    if lfpath in (None,'') : return None
+
     from time import time, strftime, localtime
     from getpass import getuser
     t0_sec = time()
@@ -81,8 +83,10 @@ class QWLoggerStd(QWidget) :
         QWidget.__init__(self, parent=None)
 
         self.log_level  = log_level # cp.log_level
-        self.log_prefix = log_prefix
-        self.log_fname  = log_file_name(log_prefix) if log_prefix is not None else None
+        self.log_fname  = log_file_name(log_prefix)
+
+        if log_level=='DEBUG' :
+            print('%s.__init__ log_fname: %s' % (self._name, self.log_fname))
 
         if self.log_fname is not None :
             depth = 6 if self.log_fname[0]=='/' else 1
@@ -176,10 +180,12 @@ class QWLoggerStd(QWidget) :
 
         self.formatter = logging.Formatter(fmt, datefmt=tsfmt)
         #logger.addFilter(QWFilter(self)) # register self for callback from filter
-
         # TRICK: add filter to handler to intercept ALL messages
         #self.handler = logging.StreamHandler()
-        self.handler = logging.FileHandler(log_fname, 'w')
+        
+        fname = log_fname if log_fname is not None else '/var/tmp/control_gui.log'
+        self.handler = logging.FileHandler(fname, 'w')
+
         self.handler.addFilter(QWFilter(self))
         #self.handler.setLevel(logging.NOTSET) # level
         self.handler.setFormatter(self.formatter)
@@ -192,7 +198,7 @@ class QWLoggerStd(QWidget) :
     def set_level(self, level_name='DEBUG') :
         #self.append_qwlogger('Set logger layer: %s' % level_name)
         #logger.setLevel(level_name) # {0: 'NOTSET'}
-        level = self.dict_name_to_level[level_name]
+        level = self.dict_name_to_level.get(level_name, logging.DEBUG)
         logger.setLevel(level)
         #msg = 'Set logger level %s of the list: %s' % (level_name, ', '.join(self.level_names))
         #logger.debug(msg)

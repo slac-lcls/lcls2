@@ -35,6 +35,8 @@ from psdaq.control.collection import front_pub_port
 class QWZMQListener(QWidget):
     def __init__(self, **kwargs):
         QWidget.__init__(self, parent=None)
+        #logger.debug('In QWZMQListener.__init__')
+
         self.timeout = kwargs.get('timeout', 1000)
         _on_poll     = kwargs.get('on_poll', self.on_zmq_poll)
         _host        = kwargs.get('host', 'localhost')
@@ -45,10 +47,7 @@ class QWZMQListener(QWidget):
 
 
     def init_connect_zmq(self, on_poll, uri, topicfilter):
-
-        print('QWZMQListener.init_connect_zmq uri=%s' % uri)
         logger.debug('QWZMQListener.init_connect_zmq uri=%s' % uri)
-
         self.zmq_context = zmq.Context(1)
         self.zmq_socket = self.zmq_context.socket(zmq.SUB)
         self.zmq_socket.connect(uri)
@@ -75,7 +74,13 @@ class QWZMQListener(QWidget):
         print("Flag zmq.%s in %d msg: %s" % (flag, flags, msg))
 
         self.zmq_notifier.setEnabled(True)
-        _ = self.zmq_socket.getsockopt(zmq.EVENTS) # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
+        self.kick_zmq() # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
+
+
+    def kick_zmq(self):
+        """ WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
+        """
+        _flags = self.zmq_socket.getsockopt(zmq.EVENTS)
 
 #----------
 
