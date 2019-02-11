@@ -296,6 +296,7 @@ class CGWMain(QWZMQListener) :
         flag = 'UNKNOWN'
         msg = ''
         if flags & zmq.POLLIN :
+          while self.zmq_socket.getsockopt(zmq.EVENTS) & zmq.POLLIN :
             flag = 'POLLIN'
             msg = self.zmq_socket.recv_multipart()
             self.process_zmq_message(msg)
