@@ -85,7 +85,7 @@ namespace Pds {
 };
 
 void pin_thread(const pthread_t& th, int cpu);
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContributor&);
-
+void monitor_func(const Parameters& para, std::atomic<Counters*>& p,
+                  MemPool& pool, Pds::Eb::TebContributor& ebCtrb);
 
 #endif // DRP_H

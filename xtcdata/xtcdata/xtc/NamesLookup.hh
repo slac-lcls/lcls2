@@ -4,7 +4,7 @@
 #include "xtcdata/xtc/NameIndex.hh"
 #include "xtcdata/xtc/NamesId.hh"
 
-#include <map>
+#include <unordered_map>
 
 namespace XtcData{
 
@@ -17,7 +17,7 @@ namespace XtcData{
 // implementation was done with std::vector, to avoid the map key
 // search, but used alot of memory (see NamesId::NumberOf)
 
-typedef std::map<unsigned,NameIndex> NamesLookup;
+typedef std::unordered_map<unsigned,NameIndex> NamesLookup;
 
 };
 

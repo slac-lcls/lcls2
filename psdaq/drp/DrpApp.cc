@@ -3,6 +3,7 @@
 #include "Collector.hh"
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
+#include "Collector.hh"
 #include "DrpApp.hh"
 
 using namespace Pds::Eb;
@@ -57,6 +58,8 @@ void DrpApp::handleConnect(const json &msg)
     MemPool pool(numWorkers, numEntries);
     PGPReader pgpReader(pool, det, laneMask, numWorkers);
     std::thread pgpThread(&PGPReader::run, std::ref(pgpReader));
+
+    // Create all the eb things and do the connections
     Pds::Eb::TebContributor ebCtrb(m_para->tPrms);
     int rc = ebCtrb.connect(m_para->tPrms);
     if (rc) {
@@ -72,25 +75,32 @@ void DrpApp::handleConnect(const json &msg)
         }
     }
 
+    EbReceiver ebRecv(*m_para, pool, meb);
+    rc = ebRecv.connect(m_para->tPrms);
+    if (rc) {
+        std::cout<<"Something bad happened\n";
+    }
+
     // start performance monitor thread
-    std::thread monitor_thread(monitor_func, std::ref(pgpReader.get_counters()),
-                               std::ref(pool), std::ref(ebCtrb));
+    std::thread monitor_thread(monitor_func,
+                               std::ref(*m_para),
+                               std::ref(pgpReader.get_counters()),
+                               std::ref(pool),
+                               std::ref(ebCtrb));
 
     // reply to collection with connect status
     json body = json({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
-    setState(State::connect);
 
     // spend all time here blocking listening to PGP
-    collector(pool, *m_para, ebCtrb, meb);
+    collector(pool, *m_para, ebCtrb, meb, ebRecv);
 
     pgpThread.join();
 }
 
 void DrpApp::handleReset(const json &msg)
 {
-    setState(State::reset);
 }
 
 void DrpApp::parseConnectionParams(const json& body)

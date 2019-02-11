@@ -131,7 +131,7 @@ void ZmqSocket::send(const std::string& msg)
 CollectionApp::CollectionApp(const std::string &managerHostname,
                              int platform,
                              const std::string &level) :
-    m_state(State::reset), m_level(level)
+    m_level(level)
 {
     const int base_port = 29980;
     auto context = std::make_shared<ZmqContext>();
@@ -153,31 +153,23 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
 
 void CollectionApp::handlePlat(const json &msg)
 {
-    // ignore message if not in reset or plat states
-    if ((m_state == State::reset) || (m_state == State::plat)) {
-        char hostname[HOST_NAME_MAX];
-        gethostname(hostname, HOST_NAME_MAX);
-        int pid = getpid();
-        m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
-        json body;
-        body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}}}};
-        json answer = createMsg("plat", msg["header"]["msg_id"], m_id, body);
-        reply(answer);
-        setState(State::plat);
-    }
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    int pid = getpid();
+    m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
+    json body;
+    body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}}}};
+    json answer = createMsg("plat", msg["header"]["msg_id"], m_id, body);
+    reply(answer);
 }
 
 void CollectionApp::handleAlloc(const json &msg)
 {
-    // ignore message if not in plat state
-    if (m_state == State::plat) {
-        std::string nicIp = getNicIp();
-        std::cout<<"nic ip  "<<nicIp<<'\n';
-        json body = {{m_level, {{"connect_info", {{"nic_ip", nicIp}}}}}};
-        json answer = createMsg("alloc", msg["header"]["msg_id"], m_id, body);
-        reply(answer);
-        setState(State::alloc);
-    }
+    std::string nicIp = getNicIp();
+    std::cout<<"nic ip  "<<nicIp<<'\n';
+    json body = {{m_level, {{"connect_info", {{"nic_ip", nicIp}}}}}};
+    json answer = createMsg("alloc", msg["header"]["msg_id"], m_id, body);
+    reply(answer);
 }
 
 void CollectionApp::reply(const json& msg)

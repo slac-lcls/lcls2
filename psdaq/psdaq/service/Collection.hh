@@ -45,8 +45,6 @@ private:
     std::shared_ptr<ZmqContext> context;
 };
 
-enum class State {reset, plat, alloc, connect};
-
 std::string getNicIp();
 
 class CollectionApp
@@ -62,10 +60,7 @@ protected:
     void reply(const json& msg);
     size_t getId() const {return m_id;}
     const std::string& getLevel() const {return m_level;}
-    State getState() const {return m_state;}
-    void setState(State state) {m_state = state;}
 private:
-    State m_state;
     std::string m_level;
     std::unique_ptr<ZmqSocket> m_pushSocket;
     std::unique_ptr<ZmqSocket> m_subSocket;
