@@ -1,4 +1,4 @@
-#include "psdaq/monreq/XtcMonitorServer.hh"
+#include "psalg/shmem/XtcMonitorServer.hh"
 
 #include "psdaq/eb/eb.hh"
 #include "psdaq/eb/EbAppBase.hh"
@@ -32,7 +32,7 @@ static const unsigned sizeof_buffers       = 1024; // Revisit
 
 using namespace XtcData;
 using namespace Pds::Eb;
-using namespace Pds::MonReq;
+using namespace psalg::shmem;
 using namespace Pds;
 
 static struct sigaction      lIntAction;

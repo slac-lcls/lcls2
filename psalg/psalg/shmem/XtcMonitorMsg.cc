@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-using namespace Pds::MonReq;
+using namespace psalg::shmem;
 
 void XtcMonitorMsg::sharedMemoryName     (const char* tag, char* buffer)
 {

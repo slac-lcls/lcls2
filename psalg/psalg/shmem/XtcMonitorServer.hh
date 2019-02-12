@@ -59,8 +59,8 @@ namespace XtcData {
   class Dgram;
 };
 
-namespace Pds {
-  namespace MonReq {
+namespace psalg {
+  namespace shmem {
 
     class TransitionCache;
 
@@ -74,6 +74,7 @@ namespace Pds {
     public:
       enum Result { Handled, Deferred };
       Result events   (XtcData::Dgram* dg);
+      void wait       ();
       void discover   ();
       void routine    ();
       void unlink     ();
@@ -102,11 +103,11 @@ namespace Pds {
       char*           _myShm;             // the pointer to start of shared memory
       XtcMonitorMsg   _myMsg;             // template for messages
       mqd_t           _discoveryQueue;    // message queue for clients to get
-                                          // the TCP port for initiating connections
+      // the TCP port for initiating connections
       mqd_t           _myInputEvQueue;    // message queue for returned events
       mqd_t*          _myOutputEvQueue;   // message queues[nclients] for distributing events
       std::vector<int> _myTrFd;           // TCP sockets to clients for distributing
-                                          // transitions and detecting disconnects.
+      // transitions and detecting disconnects.
       std::vector<int> _msgDest;          // last client to which the buffer was sent
       TransitionCache* _transitionCache;
       int             _initFd;

@@ -17,6 +17,10 @@
 #include <structmember.h>
 #include <assert.h>
 
+// for shmem client
+#include "psalg/shmem/ShmemClient.hh"
+using namespace psalg::shmem;
+
 using namespace XtcData;
 #define TMPSTRINGSIZE 1024
 
@@ -45,6 +49,9 @@ struct PyDgramObject {
     ContainerInfo contInfo;
     NamesIter* namesIter; // only nonzero in the config dgram
     size_t size; // size of dgram - for allocating dgram of any size
+    int shmem_size; // size of shmem buffer
+    int shmem_index; // index of shmem buffer
+    ShmemClient* shmem_cli; // shmem client for buffer return
 };
 
 static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
@@ -367,6 +374,10 @@ void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
 
 static void dgram_dealloc(PyDgramObject* self)
 {
+    // shmem client must notify server to release buffer
+    if(self->shmem_cli)
+        self->shmem_cli->free(self->shmem_index,self->shmem_size);
+
     // cpo: this should not need to be XDECREF for pyseq.  how are
     // we creating dgrams with a NULL value for pyseq?
     Py_XDECREF(self->pyseq);
@@ -431,6 +442,9 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"offset",
                              (char*)"size",
                              (char*)"view",
+                             (char*)"shmem_index",
+                             (char*)"shmem_size",
+                             (char*)"shmem_cli",
                              NULL};
 
     self->namesIter = 0;
@@ -440,13 +454,20 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->size=0;
     bool isView=0;
     PyObject* view=0;
+    self->shmem_index=-1;
+    self->shmem_size=0;
+    self->shmem_cli=0;
+    PyObject* shmem_cli=0;    
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iOllO", kwlist,
+                                     "|iOllOiiO", kwlist,
                                      &fd,
                                      &configDgram,
                                      &self->offset,
                                      &self->size,
-                                     &view)) {
+                                     &view,
+                                     &self->shmem_index,
+                                     &self->shmem_size,
+                                     &shmem_cli)) {
         return -1;
     }
     
@@ -538,6 +559,19 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         }
         self->dgram = (Dgram*)(((char *)self->buf.buf) + self->offset);
         self->size = sizeof(Dgram) + self->dgram->xtc.sizeofPayload();
+        
+        // the presence of shmem_cli kwarg denotes shmem datagram view
+        if (shmem_cli) {    
+            // convert the shmem client view object to a real pointer
+            // there must be a more straight forward way to simply pass in a void* 
+            // from cython and cast to C++ struct* here
+            Py_buffer buf;
+            if (PyObject_GetBuffer(shmem_cli, &(buf), PyBUF_SIMPLE) == -1) {
+                PyErr_SetString(PyExc_MemoryError, "unable to create shmem cli with the given view");
+            }
+            else
+                self->shmem_cli = (ShmemClient*)(((char *)buf.buf));
+        }
     }
 
     if (self->dgram == NULL) {
@@ -657,6 +691,14 @@ static PyMemberDef dgram_members[] = {
       T_OBJECT_EX, offsetof(PyDgramObject, dgrambytes),
       0,
       (char*)"attribute offset" },
+    { (char*)"_shmem_index",
+      T_INT, offsetof(PyDgramObject, shmem_index),
+      0,
+      (char*)"attribute shmem_index" },
+    { (char*)"_shmem_size",
+      T_INT, offsetof(PyDgramObject, shmem_size),
+      0,
+      (char*)"attribute shmem_size" },
     { NULL }
 };
 

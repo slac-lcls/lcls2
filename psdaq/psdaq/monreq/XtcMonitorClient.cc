@@ -17,9 +17,11 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "XtcMonitorClient.hh"
-#include "XtcMonitorMsg.hh"
+#include "psalg/shmem/XtcMonitorMsg.hh"
 
 #include <poll.h>
+
+using namespace psalg::shmem;
 
 //#define DBUG
 

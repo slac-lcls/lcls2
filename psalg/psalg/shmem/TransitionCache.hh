@@ -1,5 +1,5 @@
-#ifndef Pds_MonReq_TransitionCache_hh
-#define Pds_MonReq_TransitionCache_hh
+#ifndef PsAlg_ShMem_TransitionCache_hh
+#define PsAlg_ShMem_TransitionCache_hh
 
 //
 //  TransitionCache class - the purpose of this class is to cache transitions for
@@ -16,8 +16,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-namespace Pds {
-  namespace MonReq {
+namespace psalg {
+  namespace shmem {
     class TransitionCache {
     public:
       TransitionCache(char* p, size_t sz, unsigned);

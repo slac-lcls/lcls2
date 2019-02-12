@@ -1,10 +1,10 @@
-#ifndef Pds_MonReq_XtcMonitorMsg_hh
-#define Pds_MonReq_XtcMonitorMsg_hh
+#ifndef PsAlg_ShMem_XtcMonitorMsg_hh
+#define PsAlg_ShMem_XtcMonitorMsg_hh
 
 #include <stdint.h>
 
-namespace Pds {
-  namespace MonReq {
+namespace psalg {
+  namespace shmem {
     class XtcMonitorMsg {
       enum { SizeMask   = 0x0fffffff };
       enum { SerialShift = 28 };

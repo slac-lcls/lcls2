@@ -141,12 +141,26 @@ class Run(object):
     def __reduce__(self):
         return (run_from_id, (self.id,))
 
-
 class RunShmem(Run):
-    """ Yields list of events from a single bigdata file or shared memory (no event building routine). """
+    """ Yields list of events from a shared memory client (no event building routine). """
+    
+    def __init__(self, exp, run_no, xtc_files, max_events, batch_size, filter_callback, tag):
+        super(RunShmem, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
+        self.dm = DgramManager(xtc_files,tag=tag)
+        self.configs = self.dm.configs
+        self.calibs = {}
+        for det_name in self.detnames:
+            self.calibs[det_name] = self._get_calib(det_name)
+        self.dm.calibs = self.calibs
+
+    def events(self):
+        for evt in self.dm: yield evt
+
+class RunSingleFile(Run):
+    """ Yields list of events from a single bigdata file. """
     
     def __init__(self, exp, run_no, xtc_files, max_events, batch_size, filter_callback):
-        super(RunShmem, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
+        super(RunSingleFile, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         self.calibs = {}
