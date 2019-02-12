@@ -220,7 +220,6 @@ XtcMonitorServer::Result XtcMonitorServer::events(Dgram* dg)
 
   if (trid == TransitionId::L1Accept) {
     _send(dg);
-    sleep(1);
     return Deferred;
   }
   else {
