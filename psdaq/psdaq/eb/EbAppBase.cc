@@ -153,6 +153,8 @@ void EbAppBase::shutdown()
   _regions.clear();
   _defContract = 0;
   _id          = -1;
+
+  EventBuilder::clear();
 }
 
 int EbAppBase::process()

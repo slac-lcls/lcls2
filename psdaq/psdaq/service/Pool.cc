@@ -89,3 +89,8 @@ void Pds::Pool::free(PoolEntry* entry)
   enque(entry);
 }
 
+void Pds::Pool::clearCounters()
+{
+  _numberofAllocs = 0;
+  _numberofFrees  = 0;
+}

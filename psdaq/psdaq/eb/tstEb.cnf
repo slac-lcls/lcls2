@@ -21,8 +21,8 @@ os.environ['TESTRELDIR'] = inst_path
 conda_env = getRelEnvString()
 
 partition = 'Test'
-col_node  = 'psdev01'  #'drp-tst-acc06'
-rtm_node  = 'psdev01'  #'psdev7b'
+col_node  = 'drp-tst-acc06'
+rtm_node  = 'psmetric04'
 headless  = False
 if headless:
   node_flags = 'sp'

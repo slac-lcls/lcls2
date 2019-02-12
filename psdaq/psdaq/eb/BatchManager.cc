@@ -75,6 +75,16 @@ BatchManager::~BatchManager()
   free(_batchBuffer);
 }
 
+void BatchManager::shutdown()
+{
+  for (unsigned i = 0; i < _batchDepth; ++i)
+  {
+    _batchFreelist[i].release();
+  }
+  _batchFreelist.clear();
+  _batch = nullptr;
+}
+
 Batch* BatchManager::locate(uint64_t pid)
 {
   Batch* batch = _batch;

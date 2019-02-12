@@ -56,6 +56,35 @@ EventBuilder::~EventBuilder()
   _timerTask->destroy();
 }
 
+void EventBuilder::clear()
+{
+  const EbEpoch* const lastEpoch = _pending.empty();
+  EbEpoch*             epoch     = _pending.forward();
+
+  do
+  {
+    const EbEvent* const lastEvent = epoch->pending.empty();
+    EbEvent*             event     = epoch->pending.forward();
+
+    while (event != lastEvent)
+    {
+      EbEvent* next = event->forward();
+
+      event->disconnect();
+
+      delete event;
+
+      event = next;
+    }
+  }
+  while (epoch = epoch->forward(), epoch != lastEpoch);
+
+  _flushBefore(_pending.reverse());
+
+  _eventFreelist.clearCounters();
+  _epochFreelist.clearCounters();
+}
+
 unsigned EventBuilder::_epIndex(uint64_t key) const
 {
   //return (key >> __builtin_ctzl(_mask)) & (_epochLut.size() - 1);
@@ -152,9 +181,10 @@ EbEvent* EventBuilder::_event(const Dgram* ctrb,
                                             after,
                                             ctrb,
                                             prm);
-    unsigned  index = _evIndex(ctrb->seq.pulseId().value());
-    EbEvent*& entry = _eventLut[index];
-    if (!entry)  entry = event;
+    unsigned  index  = _evIndex(ctrb->seq.pulseId().value());
+    _eventLut[index] = event;
+    //EbEvent*& entry = _eventLut[index];
+    //if (!entry)  entry = event;
     //else { printf("Event list entry %p is already allocated with key %014lx\n", entry, entry->sequence());
     //  printf("New event %p pid %014lx, index %d, mask %08lx, shift %zd\n",
     //         event, event->sequence(), index, _mask, _eventLut.size());
