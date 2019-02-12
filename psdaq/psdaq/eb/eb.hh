@@ -10,8 +10,8 @@ namespace Pds {
   namespace Eb {
 
     const char* const PARTITION       = "Test";
-    const char* const RTMON_HOST      = "psdev7b";
-    const unsigned    RTMON_PORT_BASE = 55559;
+    const char* const RTMON_HOST      = "psmetric04";
+    const unsigned    RTMON_PORT_BASE = 5559;
     const char* const COLL_HOST       = "drp-tst-acc06";
 
     const unsigned MAX_DRPS        = 64;         // Maximum possible number of Contributors

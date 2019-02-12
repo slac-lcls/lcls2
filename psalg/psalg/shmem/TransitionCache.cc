@@ -2,7 +2,7 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 using namespace XtcData;
-using namespace Pds::MonReq;
+using namespace psalg::shmem;
 
 TransitionCache::TransitionCache(char* p, size_t sz, unsigned nbuff) :
   _pShm(p),

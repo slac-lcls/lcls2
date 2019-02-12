@@ -41,8 +41,8 @@ static const unsigned TMO_SEC = 10;
 #define PERMS_IN (S_IRUSR|S_IRGRP|S_IROTH)
 #define OFLAGS (O_CREAT|O_RDWR)
 
-namespace Pds {
-  namespace MonReq {
+namespace psalg {
+  namespace shmem {
     class ShMsg {
     public:
       ShMsg() {}
@@ -60,7 +60,7 @@ namespace Pds {
 };
 
 using namespace XtcData;
-using namespace Pds::MonReq;
+using namespace psalg::shmem;
 
 static XtcMonitorServer* apps;
 
@@ -156,7 +156,6 @@ void XtcMonitorServer::distribute(bool l)
   _flushQueue(_requestQueue);
   for(unsigned i=0; i<_numberOfEvBuffers; i++) {
     _myMsg.bufferIndex(i);
-    //printf("dist: queuing idx %d\n", i);
     if (mq_timedsend(_myInputEvQueue, (const char*)&_myMsg, sizeof(_myMsg), 0, &_tmo)<0)
       perror("XtcMonitorServer distribute failed to queue buffers to input");
   }
@@ -263,6 +262,16 @@ XtcMonitorServer::Result XtcMonitorServer::events(Dgram* dg)
   return Handled;
 }
 
+void XtcMonitorServer::wait()
+{
+  //
+  //  Wait for clients
+  //
+  while(! _myTrFd.size())
+    sleep(1);
+
+}
+
 void XtcMonitorServer::discover()
 {
   int fd;
@@ -349,12 +358,10 @@ void XtcMonitorServer::routine()
         XtcMonitorMsg msg;
         const timespec no_wait={0,0};
         while(mq_timedreceive(_myInputEvQueue, (char*)&msg, sizeof(msg), NULL, &no_wait) > 0) {
-          //printf("routine: Received idx %d\n", msg.bufferIndex());
           if (mq_timedsend(_requestQueue, (const char*)&msg, sizeof(msg), 0, &_tmo))
             perror("Writing to requestQ");
-          else {
-            //printf("routine: Requesting idx %d\n", msg.bufferIndex());
-            _requestDatagram(); }
+          else
+            _requestDatagram();
         }
       }
 
@@ -400,7 +407,6 @@ void XtcMonitorServer::routine()
           if (!lsent) {
             if (mq_timedsend(_myInputEvQueue, (const char*)&m.msg(), sizeof(m.msg()), 0, &_tmo))
               perror("Unable to distribute or reclaim event");
-            //printf("routine: Queued idx %d\n", m.msg().bufferIndex());
           }
         }
       }
@@ -537,7 +543,6 @@ int XtcMonitorServer::_init()
   for(unsigned i=0; i<_numberOfEvBuffers; i++) {
     _myMsg.bufferIndex(i);
     _msgDest[i]=-1;
-    //printf("_init: Queuing idx %d\n", i);
     if (mq_timedsend(_myInputEvQueue, (const char*)&_myMsg, sizeof(_myMsg), 0, &_tmo)<0)
       perror("Failed to queue buffer to input queue (initialize)");
   }
@@ -636,7 +641,7 @@ void XtcMonitorServer::_initialize_client()
   _nfd++;
 
   _myTrFd[iclient] = s;
-  printf("Initialized client %d [%d]\n",iclient,s);
+  printf("Initialized client %d [socket %d]\n",iclient,s);
 
   _myMsg.bufferIndex(iclient);
 

@@ -83,6 +83,9 @@ int TebContributor::connect(const TebCtrbParams& prms)
 
 void TebContributor::startup(EbCtrbInBase& in)
 {
+  _inFlightOcc = 0;
+  _batchCount  = 0;
+
   _rcvrThread = new std::thread([&] { _receiver(in); });
 }
 
@@ -130,6 +133,8 @@ void TebContributor::shutdown()
     _transport.shutdown(*it);
   }
   _links.clear();
+
+  BatchManager::shutdown();
 }
 
 bool TebContributor::process(const Dgram* datagram, const void* appPrm)

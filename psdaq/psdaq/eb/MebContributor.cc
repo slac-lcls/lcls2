@@ -32,7 +32,8 @@ int MebContributor::connect(const MebCtrbParams& prms)
   int    rc;
   size_t regionSize = prms.maxEvents * _maxEvSize;
 
-  _id = prms.id;
+  _id         = prms.id;
+  _eventCount = 0;
   _links.resize(prms.addrs.size());
 
   for (unsigned i = 0; i < prms.addrs.size(); ++i)

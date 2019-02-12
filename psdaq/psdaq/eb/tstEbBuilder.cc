@@ -164,18 +164,18 @@ Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
   _prms        (prms),
   _l3Transport (prms.verbose)
 {
-  smon.registerIt("TEB.EvtRt",  _eventCount,                   StatsMonitor::RATE);
-  smon.registerIt("TEB.EvtCt",  _eventCount,                   StatsMonitor::SCALAR);
-  smon.registerIt("TEB.BatCt",  _batchCount,                   StatsMonitor::SCALAR);
-  smon.registerIt("TEB.BtAlCt", _batchManager.batchAllocCnt(), StatsMonitor::SCALAR);
-  smon.registerIt("TEB.BtFrCt", _batchManager.batchFreeCnt(),  StatsMonitor::SCALAR);
-  smon.registerIt("TEB.BtWtg",  _batchManager.batchWaiting(),  StatsMonitor::SCALAR);
-  smon.registerIt("TEB.EpAlCt",  epochAllocCnt(),              StatsMonitor::SCALAR);
-  smon.registerIt("TEB.EpFrCt",  epochFreeCnt(),               StatsMonitor::SCALAR);
-  smon.registerIt("TEB.EvAlCt",  eventAllocCnt(),              StatsMonitor::SCALAR);
-  smon.registerIt("TEB.EvFrCt",  eventFreeCnt(),               StatsMonitor::SCALAR);
-  smon.registerIt("TEB.TxPdg",  _l3Transport.pending(),        StatsMonitor::SCALAR);
-  smon.registerIt("TEB.RxPdg",   rxPending(),                  StatsMonitor::SCALAR);
+  smon.registerIt("TEB_EvtRt",  _eventCount,                   StatsMonitor::RATE);
+  smon.registerIt("TEB_EvtCt",  _eventCount,                   StatsMonitor::SCALAR);
+  smon.registerIt("TEB_BatCt",  _batchCount,                   StatsMonitor::SCALAR);
+  smon.registerIt("TEB_BtAlCt", _batchManager.batchAllocCnt(), StatsMonitor::SCALAR);
+  smon.registerIt("TEB_BtFrCt", _batchManager.batchFreeCnt(),  StatsMonitor::SCALAR);
+  smon.registerIt("TEB_BtWtg",  _batchManager.batchWaiting(),  StatsMonitor::SCALAR);
+  smon.registerIt("TEB_EpAlCt",  epochAllocCnt(),              StatsMonitor::SCALAR);
+  smon.registerIt("TEB_EpFrCt",  epochFreeCnt(),               StatsMonitor::SCALAR);
+  smon.registerIt("TEB_EvAlCt",  eventAllocCnt(),              StatsMonitor::SCALAR);
+  smon.registerIt("TEB_EvFrCt",  eventFreeCnt(),               StatsMonitor::SCALAR);
+  smon.registerIt("TEB_TxPdg",  _l3Transport.pending(),        StatsMonitor::SCALAR);
+  smon.registerIt("TEB_RxPdg",   rxPending(),                  StatsMonitor::SCALAR);
 }
 
 int Teb::connect(const EbParams& prms)
@@ -257,6 +257,9 @@ void Teb::run()
 
   pinThread(pthread_self(),                _prms.core[0]);
 
+  _eventCount = 0;
+  _batchCount = 0;
+
   while (lRunning)
   {
     int rc;
@@ -295,6 +298,8 @@ void Teb::run()
   sprintf(fs, "postCallRate_%d.hist", _id);
   printf("Dumped post call rate histogram to ./%s\n", fs);
   _postCallHist.dump(fs);
+
+  _batchManager.shutdown();
 }
 
 void Teb::process(EbEvent* event)
@@ -659,8 +664,6 @@ static void usage(char *name, char *desc, const EbParams& prms)
           "Collection server",                        COLL_HOST);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
           "Partition number",                         0);
-  fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
-          "Partition tag",                            PARTITION);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
           "Run-time monitoring ZMQ server host",      RTMON_HOST);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-R <port>",
@@ -682,7 +685,6 @@ int main(int argc, char **argv)
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
   std::string    collSrv       (COLL_HOST);
-  std::string    partitionTag  (PARTITION);
   const char*    rtMonHost    = RTMON_HOST;
   unsigned       rtMonPort    = RTMON_PORT_BASE;
   unsigned       rtMonPeriod  = rtMon_period;
@@ -704,13 +706,12 @@ int main(int argc, char **argv)
                         /* .core          = */ { core_0, core_1 },
                         /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:P:A:Z:R:1:2:h?vV")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:Z:R:1:2:h?vV")) != -1)
   {
     switch (op)
     {
       case 'C':  collSrv         = optarg;             break;
       case 'p':  prms.partition  = std::stoi(optarg);  break;
-      case 'P':  partitionTag    = optarg;             break;
       case 'A':  prms.ifAddr     = optarg;             break;
       case 'Z':  rtMonHost       = optarg;             break;
       case 'R':  rtMonPort       = atoi(optarg);       break;
@@ -751,7 +752,6 @@ int main(int argc, char **argv)
   StatsMonitor smon(rtMonHost,
                     rtMonPort,
                     prms.partition,
-                    partitionTag,
                     rtMonPeriod,
                     rtMonVerbose);
 

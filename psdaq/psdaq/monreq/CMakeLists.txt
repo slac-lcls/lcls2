@@ -1,7 +1,5 @@
 add_library(monreq SHARED
     XtcMonitorClient.cc
-    XtcMonitorMsg.cc
-    TransitionCache.cc
 )
 
 target_include_directories(monreq PUBLIC
@@ -11,6 +9,7 @@ target_include_directories(monreq PUBLIC
 
 target_link_libraries(monreq
     xtcdata::xtc
+    psalg::shmemcli
 )
 
 add_executable(xtcMonClient
@@ -33,10 +32,9 @@ target_link_libraries(xtcMonWriter
 
 add_executable(monReqServer
     monReqServer.cc
-    XtcMonitorServer.cc
 )
 target_link_libraries(monReqServer
-    monreq
+    psalg::shmemsrv
     eb
     collection
     pthread

@@ -7,6 +7,7 @@ if mode == 'mpi':
 
 from psana.psexp.serial_ds import SerialDataSource
 from psana.psexp.mpi_ds import MPIDataSource
+from psana.psexp.singlefile_ds import SingleFileDataSource
 from psana.psexp.shmem_ds import ShmemDataSource
 from psana.psexp.legion_ds import LegionDataSource
 
@@ -22,8 +23,10 @@ class DataSourceFactory:
 def DataSource(*args, **kwargs):
     
     assert len(args) > 0
-    if os.path.exists(args[0]): # single file
-        return DataSourceFactory.createDataSource('ShmemDataSource', *args, **kwargs)
+    if args[0] == 'shmem': # shared memory client
+        return DataSourceFactory.createDataSource('ShmemDataSource', *args, **kwargs)    
+    elif os.path.exists(args[0]): # single file
+        return DataSourceFactory.createDataSource('SingleFileDataSource', *args, **kwargs)
     elif isinstance(args[0], (str)): # experiment string - assumed multiple files
         if mode == 'mpi':
             if size == 1:
