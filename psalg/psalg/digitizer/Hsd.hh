@@ -26,6 +26,17 @@
  * streamheader fex
  * fex data
  *
+ * (7/Feb/19): HSD Header
+ * 128b sequence
+ * 32b  env
+ * 24b  event counter
+ * 8b   version
+ * --
+ * 20b  unused
+ * 4b   stream mask
+ * 8b   x"01"
+ * 16b  trigger phase on the sample clock
+ * 16b  trigger waveform on the sample clock
  *
  */
 
@@ -104,7 +115,7 @@ namespace Pds {
 
     class Channel { // TODO: ideally get a version number from low level alg/version like we do for HsdEventHeaderV1
     public:
-        Channel(Allocator *allocator, Hsd_v1_2_3 *vHsd, const uint8_t *data);
+        Channel(Allocator *allocator, Hsd_v1_2_3 *vHsd, const uint32_t *evtheader, const uint8_t *data);
 
         ~Channel(){}
 
@@ -125,6 +136,58 @@ namespace Pds {
         AllocArray1D<uint16_t> len; // maxLength
         AllocArray1D<uint16_t> fexPos; // maxLength
         AllocArray1D<uint16_t*> fexPtr; // maxLength
+
+    private:
+        void _parse_waveform(const StreamHeader& s) {
+              const uint16_t* q = reinterpret_cast<const uint16_t*>(&s+1);
+              numPixels = s.num_samples();
+              for(unsigned i=0; i<numPixels; i++) {
+                  waveform.push_back(q[i]);
+              }
+        }
+
+        void _parse_peaks(const StreamHeader& s) {
+            const Pds::HSD::StreamHeader& sh_fex = *reinterpret_cast<const Pds::HSD::StreamHeader*>(&s);
+            const uint16_t* p_thr = reinterpret_cast<const uint16_t*>(&sh_fex+1);
+            const unsigned end = s.num_samples();
+
+            unsigned i=0, j=0;
+            bool skipped = true;
+            bool in = false;
+            if (p_thr[i] & 0x8000) { // skip to the sample with the trigger
+                i++;
+                j++;
+            }
+
+            while(i<end) {
+                if (p_thr[i] & 0x8000) {
+                    j += p_thr[i] & 0x7fff;
+                    if (skipped) {
+                        printf(" consecutive skip\n"); // TODO: remove
+                    } else {
+                        printf(" SKIP\n");
+                        if (in) {
+                            len.push_back(i-fexPos(numFexPeaks));
+                            numFexPeaks++;
+                        }
+                    }
+                    in = false;
+                    skipped = true;
+                } else {
+                    sPos.push_back(j);
+                    fexPos.push_back(i);
+                    fexPtr.push_back((uint16_t *) (p_thr+i));
+                    in = true;
+                    j++;
+                    skipped = false;
+                }
+                i++;
+            }
+            if (in) {
+                len.push_back(i-fexPos(numFexPeaks));
+                numFexPeaks++;
+            }
+        }
     };
 
     class Factory {
@@ -134,6 +197,7 @@ namespace Pds {
         Factory(Allocator* allocator, const char* version, const unsigned nChan, Dgram* dg)
         {
             // assert version = v1
+            printf("@@@@ Hsd Factory Create\n");
             pHsd = HsdEventHeaderV1::Create(allocator, dg, version, nChan);
         }
         ~Factory() {

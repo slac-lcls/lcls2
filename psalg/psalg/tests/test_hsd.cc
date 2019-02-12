@@ -164,8 +164,8 @@ int main (int argc, char* argv[]) {
         // iterate over all available channels
         for (std::map<std::string, uint8_t*>::iterator it=hsdIter.chans.begin(); it!=hsdIter.chans.end(); ++it){
             std::cout << "Channel name: " << it->first << std::endl;
-            Pds::HSD::Channel mychan = Pds::HSD::Channel(&stack, vHsd, (const uint8_t*)hsdIter.chans[it->first]);
-            printf("npeaks: %d\n", mychan.npeaks());
+            //Pds::HSD::Channel mychan = Pds::HSD::Channel(&stack, vHsd, (const uint8_t*)hsdIter.chans[it->first]);
+            //printf("npeaks: %d\n", mychan.npeaks());
         }
         //delete pFactory;
         delete vHsd;
