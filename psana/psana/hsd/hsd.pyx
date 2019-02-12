@@ -143,7 +143,6 @@ cdef class cyhsd_base_1_2_3:
         # TODO: compare self.evt and evt
         cdef cnp.ndarray wv # TODO: make readonly
         if self._isNewEvt(evt):
-            print("New event")
             self._parseEvt(evt)
             for i, chanName in enumerate(self._chanList):
                 if self.chptr[i].numPixels:
@@ -185,7 +184,6 @@ cdef class cyhsd_base_1_2_3:
         """
         # TODO: compare self.evt and evt
         if self._isNewEvt(evt):
-            print("New event")
             self._parseEvt(evt)
             for i, chanName in enumerate(self._chanList):
                 self._peaksDict[chanName] = self._channelPeaks(chanName)
