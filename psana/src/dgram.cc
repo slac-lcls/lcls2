@@ -364,10 +364,6 @@ void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
         self->namesIter = 0; // in case dgram was not created via dgram_init
     }
     
-    // FIXME cpo: don't understand why we have to iterate over this
-    // every dgram to avoid segfault. might be a sign of a deeper problem.
-    configDgram->namesIter->iterate();
-
     PyConvertIter iter(&self->dgram->xtc, self, configDgram->namesIter->namesLookup());
     iter.iterate();
 }
@@ -596,7 +592,11 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             if (err) return err;
         }
     }
-    AssignDict(self, (PyDgramObject*)configDgram);
+    // some config pydgrams are created before an xtc payload
+    // is present ("two-phase" creation in psana run.py). AssignDict
+    // will be called manually by higher level code in that case
+    // when the cfg is complete - cpo
+    if (self->dgram->xtc.extent) AssignDict(self, (PyDgramObject*)configDgram);
 
     return 0;
 }
@@ -712,7 +712,7 @@ static PyGetSetDef dgram_getset[] = {
 };
 
 static PyObject* dgram_assign_dict(PyDgramObject* self) {
-    AssignDict(self, 0); // Todo: may need to be fixed for other non-config dgrams
+    AssignDict(self, 0); // second argument assumes this is only called for cfg
     Py_RETURN_NONE;
 }
 

@@ -237,9 +237,13 @@ class RunParallel(Run):
         
         for i in range(len(smd_files)):
             comm.Bcast([self.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
+            # cfg dgram is complete, call assign_dict by hand.
+            self.smd_configs[i]._assign_dict()
 
         for i in range(len(xtc_files)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
+            # cfg dgram is complete, call assign_dict by hand.
+            self.configs[i]._assign_dict()
         
         self.calibs = comm.bcast(self.calibs, root=0)
 
