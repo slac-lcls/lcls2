@@ -40,6 +40,7 @@ class Pool
     Pool(size_t sizeofObject, int numberofOfObjects, unsigned alignBoundary);
     void*           alloc(size_t size);
     virtual void    free(PoolEntry*);
+    void            clearCounters();
     size_t          sizeofObject()              const;
     int             numberofObjects()           const;
     const uint64_t& numberofAllocs()            const;

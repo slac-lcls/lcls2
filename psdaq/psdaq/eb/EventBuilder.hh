@@ -42,6 +42,7 @@ namespace Pds {
     public:
       void               process(const XtcData::Dgram*, unsigned prm);
     public:
+      void               clear();
       void               dump(unsigned detail) const;
       const uint64_t&    epochAllocCnt() const;
       const uint64_t&    epochFreeCnt()  const;

@@ -31,6 +31,8 @@ EbLfServer::EbLfServer(unsigned verbose) :
 int EbLfServer::initialize(const std::string& addr,
                            const std::string& port)
 {
+  _pending = 0;
+
   const uint64_t flags  = 0;
   const size_t   txSize = 0;
   const size_t   rxSize = 0;

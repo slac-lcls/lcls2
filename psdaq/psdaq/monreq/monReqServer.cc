@@ -236,13 +236,13 @@ namespace Pds {
     {
       _apps.distribute(dist);
 
-      smon.registerIt("MEB.EvtRt",  _eventCount,      StatsMonitor::RATE);
-      smon.registerIt("MEB.EvtCt",  _eventCount,      StatsMonitor::SCALAR);
-      smon.registerIt("MEB.EpAlCt",  epochAllocCnt(), StatsMonitor::SCALAR);
-      smon.registerIt("MEB.EpFrCt",  epochFreeCnt(),  StatsMonitor::SCALAR);
-      smon.registerIt("MEB.EvAlCt",  eventAllocCnt(), StatsMonitor::SCALAR);
-      smon.registerIt("MEB.EvFrCt",  eventFreeCnt(),  StatsMonitor::SCALAR);
-      smon.registerIt("MEB.RxPdg",   rxPending(),     StatsMonitor::SCALAR);
+      smon.registerIt("MEB_EvtRt",  _eventCount,      StatsMonitor::RATE);
+      smon.registerIt("MEB_EvtCt",  _eventCount,      StatsMonitor::SCALAR);
+      smon.registerIt("MEB_EpAlCt",  epochAllocCnt(), StatsMonitor::SCALAR);
+      smon.registerIt("MEB_EpFrCt",  epochFreeCnt(),  StatsMonitor::SCALAR);
+      smon.registerIt("MEB_EvAlCt",  eventAllocCnt(), StatsMonitor::SCALAR);
+      smon.registerIt("MEB_EvFrCt",  eventFreeCnt(),  StatsMonitor::SCALAR);
+      smon.registerIt("MEB_RxPdg",   rxPending(),     StatsMonitor::SCALAR);
     }
     virtual ~Meb()
     {
@@ -271,6 +271,8 @@ namespace Pds {
       //start();                              // Start the event timeout timer
 
       //pinThread(pthread_self(),                _prms.core[0]);
+
+      _eventCount = 0;
 
       int rc;
       while (lRunning)
@@ -657,7 +659,6 @@ int main(int argc, char** argv)
   StatsMonitor smon(rtMonHost,
                     rtMonPort,
                     prms.partition,
-                    partitionTag,
                     rtMonPeriod,
                     rtMonVerbose);
 

@@ -28,6 +28,8 @@ int EbLfClient::connect(const char* peer,
                         unsigned    tmo,
                         EbLfLink**  link)
 {
+  _pending = 0;
+
   const uint64_t flags  = 0;
   const size_t   txSize = 0;
   const size_t   rxSize = 0;

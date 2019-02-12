@@ -18,8 +18,7 @@ namespace Pds {
     public:
       StatsMonitor(const char*        hostname,
                    unsigned           basePort,
-                   unsigned           platform,
-                   const std::string& partition,
+                   unsigned           partition,
                    unsigned           period,
                    unsigned           verbose);
       ~StatsMonitor();
@@ -39,7 +38,7 @@ namespace Pds {
       std::vector<Mode>        _modes;
     private:
       char                     _addr[128];
-      const std::string        _partition;
+      const unsigned           _partition;
       const unsigned           _period;
       const unsigned           _verbose;
       std::atomic<bool>        _enabled;

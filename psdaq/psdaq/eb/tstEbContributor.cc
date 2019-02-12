@@ -122,9 +122,10 @@ namespace Pds {
     {
     public:
       EbCtrbIn(const TebCtrbParams& prms,
-               MebContributor*      mon,
                StatsMonitor&        smon);
       virtual ~EbCtrbIn() {}
+    public:
+      int      connect(const TebCtrbParams&, MebContributor*);
     public:                             // For EbCtrbInBase
       virtual void process(const Dgram* result, const void* input);
     private:
@@ -174,6 +175,8 @@ DrpSim::~DrpSim()
 
 void DrpSim::startup(unsigned id)
 {
+  _allocPending = 0;
+
   _pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries);
 
   const_cast<Xtc&>(_xtc) = Xtc(TypeId(TypeId::Data, 0), Src(id));
@@ -241,16 +244,24 @@ const Dgram* DrpSim::genInput()
 
 
 EbCtrbIn::EbCtrbIn(const TebCtrbParams& prms,
-                   MebContributor*      mon,
                    StatsMonitor&        smon) :
   EbCtrbInBase(prms),
-  _mon        (mon),
+  _mon        (nullptr),
   _eventCount (0)
 {
-  smon.registerIt("CtbI.EvtCt",  _eventCount,  StatsMonitor::SCALAR);
-  smon.registerIt("CtbI.RxPdg",   rxPending(), StatsMonitor::SCALAR);
+  smon.registerIt("CtbI_EvtCt",  _eventCount,  StatsMonitor::SCALAR);
+  smon.registerIt("CtbI_RxPdg",   rxPending(), StatsMonitor::SCALAR);
   if (_mon)
-    smon.registerIt("MCtbO.EvtCt", _mon->eventCount(), StatsMonitor::SCALAR);
+    smon.registerIt("MCtbO_EvtCt", _mon->eventCount(), StatsMonitor::SCALAR);
+}
+
+int  EbCtrbIn::connect(const TebCtrbParams& prms, MebContributor* mon)
+{
+  _mon = mon;
+
+  _eventCount  = 0;
+
+  return EbCtrbInBase::connect(prms);
 }
 
 void EbCtrbIn::process(const Dgram* result, const void* appPrm)
@@ -295,15 +306,15 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
   _eventCount   (0),
   _inFlightCnt  (0)
 {
-  smon.registerIt("CtbO.EvtRt",  _eventCount,            StatsMonitor::RATE);
-  smon.registerIt("CtbO.EvtCt",  _eventCount,            StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.BatCt",   batchCount(),          StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.BtAlCt",  batchAllocCnt(),       StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.BtFrCt",  batchFreeCnt(),        StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.BtWtg",   batchWaiting(),        StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.AlPdg",  _drpSim.allocPending(), StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.TxPdg",   txPending(),           StatsMonitor::SCALAR);
-  smon.registerIt("CtbO.InFlt",  _inFlightCnt,           StatsMonitor::SCALAR);
+  smon.registerIt("CtbO_EvtRt",  _eventCount,            StatsMonitor::RATE);
+  smon.registerIt("CtbO_EvtCt",  _eventCount,            StatsMonitor::SCALAR);
+  smon.registerIt("CtbO_BatCt",   batchCount(),          StatsMonitor::SCALAR);
+  smon.registerIt("CtbO_BtAlCt",  batchAllocCnt(),       StatsMonitor::SCALAR);
+  smon.registerIt("CtbO_BtFrCt",  batchFreeCnt(),        StatsMonitor::SCALAR);
+  smon.registerIt("CtbO_BtWtg",   batchWaiting(),        StatsMonitor::SCALAR);
+  smon.registerIt("CtbO_AlPdg",  _drpSim.allocPending(), StatsMonitor::SCALAR);
+  smon.registerIt("CtbO_TxPdg",   txPending(),           StatsMonitor::SCALAR);
+  smon.registerIt("CtbO_InFlt",  _inFlightCnt,           StatsMonitor::SCALAR);
 }
 
 #ifdef SINGLE_EVENTS
@@ -312,6 +323,9 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
 
 void EbCtrbApp::run(EbCtrbIn& in)
 {
+  _eventCount  = 0;
+  _inFlightCnt = 0;
+
   TebContributor::startup(in);
 
   pinThread(pthread_self(), _prms.core[0]);
@@ -362,7 +376,7 @@ private:
   MebCtrbParams&  _mebPrms;
   EbCtrbApp       _tebCtrb;
   MebContributor* _mebCtrb;
-  EbCtrbIn*       _inbound;
+  EbCtrbIn        _inbound;
   StatsMonitor&   _smon;
   std::thread*    _appThread;
 };
@@ -376,7 +390,7 @@ CtrbApp::CtrbApp(const std::string& collSrv,
   _mebPrms(mebPrms),
   _tebCtrb(tebPrms, smon),
   _mebCtrb(nullptr),
-  _inbound(nullptr),
+  _inbound(tebPrms, smon),
   _smon(smon),
   _appThread(nullptr)
 {
@@ -401,8 +415,7 @@ void CtrbApp::handleConnect(const json &msg)
     return;
   }
 
-  rc = _tebCtrb.connect(_tebPrms);
-  if (rc)
+  if ( (rc= _tebCtrb.connect(_tebPrms)) )
   {
     // Reply to collection with a failure message
     return;
@@ -418,8 +431,7 @@ void CtrbApp::handleConnect(const json &msg)
     }
   }
 
-  _inbound = new EbCtrbIn(_tebPrms, _mebCtrb, _smon);
-  if ( (rc = _inbound->connect(_tebPrms)) )
+  if ( (rc = _inbound.connect(_tebPrms, _mebCtrb)) )
   {
     // Reply to collection with a failure message
     return;
@@ -429,7 +441,7 @@ void CtrbApp::handleConnect(const json &msg)
 
   lRunning = 1;
 
-  _appThread = new std::thread(&EbCtrbApp::run, std::ref(_tebCtrb), std::ref(*_inbound));
+  _appThread = new std::thread(&EbCtrbApp::run, std::ref(_tebCtrb), std::ref(_inbound));
 
   // Reply to collection with connect status
   json body   = json({});
@@ -449,7 +461,6 @@ void CtrbApp::_shutdown()
 
     _smon.disable();
 
-    if (_inbound)  delete _inbound;
     if (_mebCtrb)  delete _mebCtrb;
   }
 }
@@ -568,8 +579,6 @@ void usage(char *name, char *desc, const TebCtrbParams& prms)
           "Collection server",                        COLL_HOST);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
           "Partition number",                         0);
-  fprintf(stderr, " %-20s %s (default: %s)\n",        "-P <partition name>",
-          "Partition tag",                            PARTITION);
   fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
           "Run-time monitoring ZMQ server host",      RTMON_HOST);
   fprintf(stderr, " %-20s %s (default: %d)\n",        "-R <port>",
@@ -591,7 +600,6 @@ int main(int argc, char **argv)
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
   std::string    collSrv        (COLL_HOST);
-  std::string    partitionTag  (PARTITION);
   const char*    rtMonHost    = RTMON_HOST;
   unsigned       rtMonPort    = RTMON_PORT_BASE;
   unsigned       rtMonPeriod  = rtMon_period;
@@ -617,13 +625,12 @@ int main(int argc, char **argv)
                            /* .maxTrSize     = */ mon_trSize,
                            /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:P:A:Z:R:o:1:2:h?vV")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:Z:R:o:1:2:h?vV")) != -1)
   {
     switch (op)
     {
       case 'C':  collSrv            = optarg;             break;
       case 'p':  tebPrms.partition  = std::stoi(optarg);  break;
-      case 'P':  partitionTag       = optarg;             break;
       case 'A':  tebPrms.ifAddr     = optarg;             break;
       case 'Z':  rtMonHost          = optarg;             break;
       case 'R':  rtMonPort          = atoi(optarg);       break;
@@ -674,7 +681,6 @@ int main(int argc, char **argv)
   StatsMonitor smon(rtMonHost,
                     rtMonPort,
                     tebPrms.partition,
-                    partitionTag,
                     rtMonPeriod,
                     rtMonVerbose);
 

@@ -4,7 +4,6 @@ import numpy as np
 from copy import copy
 
 from psana import dgram
-from psana.psexp.node import run_node
 from psana.dgrammanager import DgramManager
 from psana.psexp.tools import run_from_id, RunHelper
 import psana.psexp.legion_node
@@ -20,6 +19,10 @@ if mode == 'mpi':
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
+    
+    if size > 1:
+        from psana.psexp.node import run_node # only import node when running in parallel
+        
 
 def _enumerate_attrs(obj):
     state = []
@@ -197,20 +200,13 @@ class RunSerial(Run):
 
 class RunParallel(Run):
     """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
-    
-    nodetype = None
-    nsmds = None
-    smd0_threads = None
 
-    def __init__(self, exp, run_no, xtc_files, smd_files, nodetype, nsmds, smd0_threads, 
+    def __init__(self, exp, run_no, xtc_files, smd_files,  
             max_events, batch_size, filter_callback):
         """ Parallel read requires that rank 0 does the file system works.
         Configs and calib constants are sent to other ranks by MPI."""
         super(RunParallel, self).__init__(exp, run_no, max_events=max_events, \
                 batch_size=batch_size, filter_callback=filter_callback)
-        self.nodetype = nodetype
-        self.nsmds = nsmds
-        self.smd0_threads = smd0_threads
         
         if rank == 0:
             self.dm = DgramManager(xtc_files)
@@ -252,8 +248,7 @@ class RunParallel(Run):
             self.dm = DgramManager(xtc_files, configs=self.configs)
     
     def events(self):
-        for evt in run_node(self, self.nodetype, self.nsmds, self.smd0_threads, self.max_events, \
-                self.batch_size, self.filter_callback):
+        for evt in run_node(self, self.max_events, self.batch_size, self.filter_callback):
             yield evt
     
 class RunLegion(Run):

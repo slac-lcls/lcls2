@@ -43,6 +43,7 @@ namespace Pds
       int64_t         numberofAllocatedObjects()  const;
       int64_t         numberofFreeObjects()       const;
     public:
+      void            clear();
       void            dump() const;
     protected:
       unsigned                                         _mask;
