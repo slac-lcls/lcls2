@@ -44,7 +44,7 @@ def main():
                 break
             print('transition: %-10s  state: %s' % (transition, state))
 
-    if not args.monitor:
+    else:
         # print current state
         print(control.getState())
 

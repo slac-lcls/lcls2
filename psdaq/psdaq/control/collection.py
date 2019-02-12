@@ -319,9 +319,17 @@ class CollectionManager():
                     msg = self.front_rep.recv_json()
                     key = msg['header']['key']
                     if key.startswith('setstate.'):
-                        answer = self.handle_setstate(key[9:])
+                        # handle_setstate() sends reply internally
+                        self.handle_setstate(key[9:])
+                        answer = None
                     elif key in DaqControl.transitions:
-                        answer = self.handle_trigger(key, stateChange=False)
+                        # send 'ok' reply before calling handle_trigger()
+                        self.front_rep.send_json(create_msg('ok'))
+                        retval = self.handle_trigger(key, stateChange=False)
+                        answer = None
+                        if 'error' in retval['body']:
+                            logging.error(retval['body']['error'])
+                            break
                     else:
                         answer = self.handle_request[key]()
                 except KeyError:
@@ -367,28 +375,30 @@ class CollectionManager():
     def handle_setstate(self, newstate):
         logging.debug('handle_setstate(\'%s\') in state %s' % (newstate, self.state))
         stateBefore = self.state
-        stateError = None
 
         if newstate not in DaqControl.states:
-            stateError = 'state \'%s\' not recognized'
+            stateError = 'state \'%s\' not recognized' % newstate
+            errMsg = stateError.replace("\"", "")
+            logging.error(errMsg)
+            answer = create_msg('error', body={'error': errMsg})
+            # reply 'error'
+            self.front_rep.send_json(answer)
         else:
+            answer = create_msg('ok')
+            # reply 'ok'
+            self.front_rep.send_json(answer)
             while self.state != newstate:
                 nextT = self.next_transition(self.state, newstate)
                 if nextT == 'error':
+                    errMsg = 'next_transition() error'
+                    logging.error(errMsg)
+                    answer = create_msg('error', body={'error': errMsg})
                     break
                 else:
                     answer = self.handle_trigger(nextT, stateChange=True)
-#                   print('handle_trigger(): answer[\'body\'] = %s' % answer['body'])
                     if 'error' in answer['body']:
-                        stateError = answer['body']['error']
+                        logging.error(answer['body']['error'])
                         break
-
-        if stateError is None:
-            answer = create_msg(self.state, body=self.cmstate)
-        else:
-            errMsg = stateError.replace("\"", "")
-            logging.error(errMsg)
-            answer = create_msg(self.state, body={'error': errMsg})
 
         return answer
 
