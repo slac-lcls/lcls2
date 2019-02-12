@@ -9,6 +9,7 @@ target_include_directories(monreq PUBLIC
 
 target_link_libraries(monreq
     xtcdata::xtc
+    psalg::shmemcli
 )
 
 add_executable(xtcMonClient
@@ -16,7 +17,6 @@ add_executable(xtcMonClient
 )
 target_link_libraries(xtcMonClient
     xtcdata::xtc
-    psalg::shmemcli
     monreq
     rt
 )
@@ -26,7 +26,6 @@ add_executable(xtcMonWriter
 )
 target_link_libraries(xtcMonWriter
     xtcdata::xtc
-    psalg::shmemcli
     monreq
     rt
 )
