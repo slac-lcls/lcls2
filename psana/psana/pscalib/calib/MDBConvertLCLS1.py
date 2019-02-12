@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 #------------------------------
 
-def run_begin_end_time(exp:str, runnum:int) :
+def run_begin_end_time(exp, runnum) :
     # returns a list of dicts per run with 'begin_time', 'end_time', 'run_num', 'run_type'
     if runnum>0 :
         resp = requests_get('https://pswww.slac.stanford.edu/prevlgbk/lgbk/%s/ws/runs' % exp).json()

@@ -142,9 +142,9 @@ def list_of_documents(dbname, colname) :
 
 #------------------------------
 
-def document_info(doc, keys:tuple=('time_sec','time_stamp','experiment',\
+def document_info(doc, keys=('time_sec','time_stamp','experiment',\
                   'detector','ctype','run','id_data_ts','data_type','data_dtype', '_id'),\
-                  fmt:str='%10s %24s %11s %24s %16s %4s %30s %10s %10s %24s') :
+                  fmt='%10s %24s %11s %24s %16s %4s %30s %10s %10s %24s') :
     """The same as dbu.document_info, but with different default parameters (added _id).
     """
     return dbu.document_info(doc, keys, fmt)
