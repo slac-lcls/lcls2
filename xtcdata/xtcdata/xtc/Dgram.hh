@@ -18,9 +18,9 @@ public:
 
 class Dgram : public Transition {
 public:
-  Dgram() {}
-  Dgram(const Transition& transition_, const Xtc& xtc_) :
-    Transition(transition_), xtc(xtc_)  { }
+    Dgram() {}
+    Dgram(const Transition& transition_, const Xtc& xtc_) :
+        Transition(transition_), xtc(xtc_)  { }
 public:
     Xtc xtc;
 };
