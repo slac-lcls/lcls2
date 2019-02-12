@@ -24,6 +24,7 @@ target_include_directories(shmemsrv PUBLIC
 
 target_link_libraries(shmemcli
     xtcdata::xtc
+    rt
 )
 
 target_link_libraries(shmemsrv
