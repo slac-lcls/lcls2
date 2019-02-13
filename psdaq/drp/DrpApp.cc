@@ -177,17 +177,20 @@ void DrpApp::collector()
             case XtcData::TransitionId::Unconfigure:
                 printf("Collector saw Unconfigure transition\n");
                 break;
-            case XtcData::TransitionId::BeginRun:
-                printf("Collector saw BeginRun transition\n");
-                break;
-            case XtcData::TransitionId::EndRun:
-                printf("Collector saw EndRun transition\n");
-                break;
             case XtcData::TransitionId::Enable:
                 printf("Collector saw Enable transition\n");
                 break;
             case XtcData::TransitionId::Disable:
                 printf("Collector saw Disable transition\n");
+                break;
+            case XtcData::TransitionId::ConfigUpdate:
+                printf("Collector saw ConfigUpdate transition\n");
+                break;
+            case XtcData::TransitionId::BeginRecord:
+                printf("Collector saw BeginRecord transition\n");
+                break;
+            case XtcData::TransitionId::EndRecord:
+                printf("Collector saw EndRecord transition\n");
                 break;
             default:
                 break;
