@@ -38,6 +38,8 @@ procmgr_config = [
 # {                        id:'deadca-'+platform, flags:'s', env:total_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
 # {                        id:'dtica', flags:'s', env:total_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
  {                        id:'hsdca', flags:'s', env:total_env, cmd:'hsdca DAQ:LAB2:HSD:DEV01'},
- { host: 'drp-tst-acc02', id:'EvtBuild', flags:'sxp', env:conda_env, cmd:'drpEbBuilder -1 8 -2 8' },
+# { host: 'drp-tst-acc02', id:'EvtBuild', flags:'sxp', env:conda_env, cmd:'drpEbBuilder -1 8 -2 8' },
+ { host: 'drp-tst-dev002', id:'teb1', flags:'sxp', env:total_env, cmd:'tstEbBuilder' },
+# { host: 'drp-tst-dev019', id:'hsddrp', flags:'sxp', env:conda_env, cmd:'psdaq/build/drp/drp -o /tmp -l 0x1 -D Digitizer'},
  { host: 'drp-tst-acc06', id:'Collection', flags:'sxp', env:total_env, cmd:'collection -v' },
 ]

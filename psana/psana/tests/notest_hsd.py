@@ -19,11 +19,10 @@ def test_hsd():
 
     chanNum = 3
     for i, evt in enumerate(ds.events()):
-        waveforms = det.waveforms(evt)
-        peaks, startPos = det.peaks(evt, chanNum)
-        print("waveform: ", waveforms)
+        raw = det.raw(evt)
+        peaks = det.peaks(evt)
+        print("raw waveforms: ", raw)
         print("list of peaks:", peaks)
-        print("list of pos:", startPos)
 
         if doPlot:
             plt.plot(waveforms[0], 'o-')

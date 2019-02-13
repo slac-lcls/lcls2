@@ -171,8 +171,8 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
     dgram.env = timing_header->env;
 
     unsigned lane_mask;
-    NamesId configNamesId(m_nodeId,ConfigNamesIndex);
-    lane_mask = addJson(dgram.xtc, m_namesLookup, configNamesId);
+    //NamesId configNamesId(m_nodeId,ConfigNamesIndex);
+    //lane_mask = addJson(dgram.xtc, m_namesVec, configNamesId);
 
     Alg hsdAlg("hsd", 1, 2, 3); // TODO: shouldn't this be configured by hsdconfig.py?
     unsigned segment = 0;
