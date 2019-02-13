@@ -25,6 +25,7 @@ class PGPReader
 {
 public:
     PGPReader(MemPool& pool, Detector* det, int lane_mask, int nworkers);
+    ~PGPReader() {}
     PGPData* process_lane(uint32_t lane, uint32_t index, int32_t size);
     void send_to_worker(Pebble* pebble_data);
     void send_all_workers(Pebble* pebble);

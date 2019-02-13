@@ -28,6 +28,8 @@ struct Parameters
     std::string collect_host;
     std::string output_dir;
     std::string detectorType;
+    int numWorkers;
+    int numEntries;
     Pds::Eb::TebCtrbParams tPrms;
     Pds::Eb::MebCtrbParams mPrms;
 };

@@ -8,11 +8,11 @@ using json = nlohmann::json;
 class ZmqContext
 {
 public:
-    ZmqContext() {context = zmq_ctx_new();}
-    ~ZmqContext() {zmq_ctx_destroy(context);}
+    ZmqContext() {m_context = zmq_ctx_new();}
+    void* operator() () {return m_context;};
+    ~ZmqContext() {zmq_ctx_destroy(m_context);}
 private:
-    void* context;
-    friend class ZmqSocket;
+    void* m_context;
 };
 
 class ZmqMessage
@@ -33,16 +33,18 @@ private:
 class ZmqSocket
 {
 public:
-    ZmqSocket(std::shared_ptr<ZmqContext> context, int type);
+    ZmqSocket(ZmqContext* context, int type);
     ~ZmqSocket() {zmq_close(socket);}
     void connect(const std::string& host);
+    void bind(const std::string& host);
     void setsockopt(int option, const void* optval, size_t optvallen);
     json recvJson();
     std::vector<ZmqMessage> recvMultipart();
     void send(const std::string& msg);
+    int poll(short events, long timeout);
 private:
     void* socket;
-    std::shared_ptr<ZmqContext> context;
+    ZmqContext* m_context;
 };
 
 std::string getNicIp();
@@ -56,14 +58,16 @@ protected:
     virtual void handlePlat(const json& msg);
     virtual void handleAlloc(const json& msg);
     virtual void handleConnect(const json& msg) = 0;
+    // virtual void handleConfigure(const json& msg) = 0;
     virtual void handleReset(const json& msg) = 0;
     void reply(const json& msg);
     size_t getId() const {return m_id;}
     const std::string& getLevel() const {return m_level;}
 private:
     std::string m_level;
-    std::unique_ptr<ZmqSocket> m_pushSocket;
-    std::unique_ptr<ZmqSocket> m_subSocket;
+    ZmqContext m_context;
+    ZmqSocket m_pushSocket;
+    ZmqSocket m_subSocket;
     size_t m_id;
     std::unordered_map<std::string, std::function<void(json&)> > m_handleMap;
 };

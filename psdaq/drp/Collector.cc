@@ -190,13 +190,6 @@ void collector(MemPool& pool, Parameters& para,
             val = 0xabadcafe;
         }
         MyDgram dg(dgram.seq, val, para.tPrms.id);
-        /*
-        Dgram dg(dgram);
-        dg.xtc.src = TheSrc(Level::Segment, para.contributor_id);
-        dg.xtc.extent = sizeof(dg.xtc);
-        uint64_t* payload = (uint64_t*)dg.xtc.alloc(8);
-        *payload = val;
-        */
         ebCtrb.process(&dg, (const void*)pebble);
         i++;
     }
