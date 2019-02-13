@@ -9,7 +9,6 @@
 #include <sys/types.h>
 #include "AxisDriver.h"
 #include "drp.hh"
-#include "Collector.hh"
 #include <zmq.h>
 
 MemPool::MemPool(int num_workers, int num_entries) :
