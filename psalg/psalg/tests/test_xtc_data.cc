@@ -59,29 +59,45 @@ public:
             break;
         }
         case (TypeId::ShapesData): {
-	  //ShapesData& shapesdata = *(ShapesData*)xtc;
-	  //_shapesData = (ShapesData*)xtc;
  
-            ShapesData* tmp = (ShapesData*)xtc;
-            _shapesData[tmp->namesId().namesId()] = tmp;
+	    ShapesData* pshapesdata = (ShapesData*)xtc;
+            _shapesData[pshapesdata->namesId().namesId()] = pshapesdata;
  
-            // lookup the index of the names we are supposed to use
-            NamesId  namesId = tmp->namesId();
+            NamesId  namesId = pshapesdata->namesId();
 	    cout << "YYYYYYYYYY namesId."
                  << "  level:"   << namesId.level()
                  << "  value:"   << namesId.value()
                  << "  namesId:" << namesId.namesId() << '\n';
-            NamesIter namesIter(xtc);
-            //namesIter.iterate();
-            //NamesLookup& namesLookup = namesIter.namesLookup();
-            //DescData descdata(shapesdata, namesLookup[namesId]);
-            //Names& names = descdata.nameindex().names();
 
-            //for (unsigned i = 0; i < names.num(); i++) {
-            //    Name& name = names.get(i);
-            //    cout << " " << name.name();
-	    //}
-            //cout << '\n';
+            // lookup the index of the names we are supposed to use
+	    /*
+            NamesIter& namesIter = *new NamesIter(xtc);
+            namesIter.iterate();
+            NamesLookup& namesLookup = namesIter.namesLookup();
+
+            ShapesData& shapesdata = *pshapesdata;
+            NamesId namesId = shapesdata.namesId();
+            DescData descdata(shapesdata, namesLookup[namesId]);
+            Names& names = descdata.nameindex().names();
+
+            for (unsigned i = 0; i < names.num(); i++) {
+                Name& name = names.get(i);
+
+		cout << i << " YYYYYYYYYY name: " << name.name() << '\n';
+
+                //if (strcmp(name.name(), "env") == 0) {
+                //    auto env_array = descdata.get_array<uint32_t>(i);
+                //    env = env_array.data();
+                //}
+                // Here we check algorithm and version can be analyzed
+                //if (strcmp(name.alg().name(), "fpga") == 0) {
+                //    if (name.alg().version() == 0x010203) {
+                //        auto array = descdata.get_array<uint8_t>(i);
+                //        chans[std::string(name.name())] = array.data();
+                //    }
+                //}
+            }
+	    */
 
             break;
         }
@@ -94,11 +110,14 @@ public:
         return Continue;
     }
 
+
     ShapesData& config() {return *_shapesData[0];}
     ShapesData& event()  {return *_shapesData[1];}
 
+
 private:
     ShapesData* _shapesData[2];
+
 };
 
 //-----------------------------
@@ -121,7 +140,7 @@ void dump(const char* transition, Names& names, DescData& descdata) {
 
 //-----------------------------
 
-int main (int argc, char* argv[]) {
+int main_v0 (int argc, char* argv[]) {
 
     const char* fname = "/reg/neh/home/cpo/git/lcls2/psana/psana/dgramPort/jungfrau.xtc2";
     std::cout << "xtc file name: " << fname << '\n';
@@ -136,7 +155,7 @@ int main (int argc, char* argv[]) {
 
     XtcFileIterator itdg(fd, 0x4000000);
 
-    Dgram* dg = itdg.next();
+    Dgram* dg = itdg .next();
 
     NamesIter& namesIter = *new NamesIter(&(dg->xtc));
     namesIter.iterate();
@@ -166,7 +185,73 @@ int main (int argc, char* argv[]) {
                "payloadSize %d extent %d\n", nevent,
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
-               dg->env, dg->xtc.sizeofPayload(),dg->xtc.extent);
+               dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
+
+        NamesId& namesId = iter.event().namesId();
+        DescData descdata(iter.event(), namesLookup[namesId]);
+        Names& names = descdata.nameindex().names();
+        dump("Event",names,descdata);
+    }
+
+    ::close(fd);
+    return 0;
+}
+
+//-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
+
+int main (int argc, char* argv[]) {
+
+    const char* fname = "/reg/neh/home/cpo/git/lcls2/psana/psana/dgramPort/jungfrau.xtc2";
+    std::cout << "xtc file name: " << fname << '\n';
+
+    unsigned neventreq=3;
+
+    int fd = open(fname, O_RDONLY);
+    if (fd < 0) {
+        fprintf(stderr, "Unable to open file '%s'\n", fname);
+        exit(2);
+    }
+
+    XtcFileIterator itdg(fd, 0x4000000);
+
+    Dgram* dg = itdg .next();
+
+    NamesIter& namesIter = *new NamesIter(&(dg->xtc));
+    namesIter.iterate();
+    NamesLookup& namesLookup = namesIter.namesLookup();
+    
+    // get data out of the configure transition
+    MyXtcIterator dgiter(&(dg->xtc));
+    dgiter.iterate();
+    NamesId& namesId = dgiter.config().namesId();
+    DescData descdata(dgiter.config(), namesLookup[namesId]);
+    Names& names = descdata.nameindex().names();
+
+    cout << "ZZZZ the 1st dg - Configure\n";
+    dump("Configure", names, descdata);
+
+    unsigned nevent=0;
+    while ((dg = itdg.next())) {
+        if (nevent>=neventreq) break;
+        nevent++;
+
+        MyXtcIterator iter(&(dg->xtc));
+        iter.iterate();
+ 
+	cout << "XXXXXXXXXXX dg->seq.isEvent(): " << dg->seq.isEvent() << '\n';
+
+        printf("evt:%04d ==== %s transition: time %d.%09d, pulseId %lux, env %ux, "
+               "payloadSize %d extent %d\n", nevent,
+               TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
+               dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
+               dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
 
         NamesId& namesId = iter.event().namesId();
         DescData descdata(iter.event(), namesLookup[namesId]);

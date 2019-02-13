@@ -18,6 +18,8 @@ Created on 2016-10-10 by Mikhail Dubrovin
 
 #import os
 #import math
+import logging
+logger = logging.getLogger(__name__)
 
 import psana.graphqt.ColorTable as ct
 from psana.graphqt.FWViewImage import *
@@ -55,8 +57,9 @@ class FWViewImageShapes(FWViewImage) :
 
     def mousePressEvent(self, e):
         sp = self.mapToScene(e.pos())
-        #print('%s.mousePressEvent' % self.__class__.__name__, e.pos(),\
-        #      ' scene x=%.1f y=%.1f' % (sp.x(), sp.y()), ' button:', e.button())
+        logger.debug('%s.mousePressEvent but=%d %s scene x=%.1f y=%.1f' % 
+                     (self.__class__.__name__, e.button(), str(e.pos()), sp.x(), sp.y()))
+
         FWViewImage.mousePressEvent(self, e) # to select/deselect items
 
         if self.add_request is not None :
@@ -165,6 +168,9 @@ class FWViewImageShapes(FWViewImage) :
 #------------------------------
 
 if __name__ == "__main__" :
+
+    logging.basicConfig(format='%(levelname)s: %(name)s %(lineno)d %(message)s', level=logging.DEBUG)
+
     from PyQt5.QtWidgets import QApplication
     import sys
     import numpy as np; global np
