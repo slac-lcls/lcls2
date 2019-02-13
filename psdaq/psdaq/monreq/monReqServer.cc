@@ -232,10 +232,9 @@ namespace Pds {
       _pool      (nullptr),
       _eventCount(0),
       _verbose   (prms.verbose),
-      _prms      (prms)
+      _prms      (prms),
+      _dist      (dist)
     {
-      _apps.distribute(dist);
-
       smon.registerIt("MEB_EvtRt",  _eventCount,      StatsMonitor::RATE);
       smon.registerIt("MEB_EvtCt",  _eventCount,      StatsMonitor::SCALAR);
       smon.registerIt("MEB_EpAlCt",  epochAllocCnt(), StatsMonitor::SCALAR);
@@ -260,6 +259,8 @@ namespace Pds {
 
       if ( (rc = _apps.connect(prms)) )
         return rc;
+
+      _apps.distribute(_dist);
 
       return 0;
     }
@@ -341,6 +342,7 @@ namespace Pds {
     uint64_t           _eventCount;
     const unsigned     _verbose;
     const EbParams&    _prms;
+    const bool         _dist;
   };
 };
 
