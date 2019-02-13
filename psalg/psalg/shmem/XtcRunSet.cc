@@ -43,8 +43,8 @@ private:
 
 public:
   MyMonitorServer(const char* tag,
-                  unsigned sizeofBuffers, 
-                  unsigned numberofEvBuffers, 
+                  unsigned sizeofBuffers,
+                  unsigned numberofEvBuffers,
                   unsigned numberofClients) :
     XtcMonitorServer(tag,
                      sizeofBuffers,
@@ -52,7 +52,7 @@ public:
                      numberofClients) {
     _init();
 
-    // Only need these buffers for inserted transitions { Map, Unconfigure, Unmap }
+    // Only need these buffers for inserted transitions { Unconfigure }
 
     unsigned depth = 4;
     for(unsigned i=0; i<depth; i++)
@@ -75,8 +75,8 @@ public:
 
   // Insert a simulated transition
   void insert(TransitionId::Value tr) {
-    Dgram* dg = _pool.front(); 
-    _pool.pop(); 
+    Dgram* dg = _pool.front();
+    _pool.pop();
     new((void*)&dg->seq) Sequence(Sequence::Event, tr, TimeStamp(0,0), PulseId(0) );
     new((char*)&dg->xtc) Xtc(TypeId(TypeId::Data,0),ProcInfo(Level::Event,0,0));
     ::printTransition(dg);
@@ -228,8 +228,8 @@ void XtcRunSet::connect(char* partitionTag, unsigned sizeOfBuffers, int numberOf
     struct timespec start, now;
     clock_gettime(CLOCK, &start);
     _server = new MyMonitorServer(partitionTag,
-                                  sizeOfBuffers, 
-                                  numberOfBuffers, 
+                                  sizeOfBuffers,
+                                  numberOfBuffers,
                                   nclients);
     clock_gettime(CLOCK, &now);
     printf("Opening shared memory took %.3f msec.\n", timeDiff(&now, &start) / 1e6);
@@ -237,7 +237,7 @@ void XtcRunSet::connect(char* partitionTag, unsigned sizeOfBuffers, int numberOf
 }
 
 void XtcRunSet::run() {
-  _server->insert(TransitionId::Map);
+  _server->insert(TransitionId::Configure);
 
   Dgram* dg;
   timespec loopStart;
@@ -282,8 +282,7 @@ void XtcRunSet::run() {
   //  XtcRun sinks EndRun
   //  _server->insert(TransitionId::EndRun);
 
-  //_server->insert(TransitionId::Unconfigure);
-  _server->insert(TransitionId::Unmap);
+  _server->insert(TransitionId::Unconfigure);
 }
 
 void XtcRunSet::wait() {
