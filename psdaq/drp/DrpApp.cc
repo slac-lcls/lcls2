@@ -1,27 +1,20 @@
 #include <iostream>
-#include "PGPReader.hh"
-#include "Collector.hh"
+#include <limits.h>
 #include "AreaDetector.hh"
+#include "TimingHeader.hh"
 #include "Digitizer.hh"
-#include "Collector.hh"
 #include "DrpApp.hh"
+#include "AxisDriver.h"
+#include "xtcdata/xtc/TransitionId.hh"
 
 using namespace Pds::Eb;
 
 DrpApp::DrpApp(Parameters* para) :
-    CollectionApp(para->collect_host, para->partition, "drp")
+    CollectionApp(para->collect_host, para->partition, "drp"),
+    m_para(para),
+    m_inprocRecv(&m_context, ZMQ_PAIR),
+    m_pool(para->numWorkers, para->numEntries)
 {
-    m_para = para;
-    std::cout<<"Constructor"<<std::endl;
-}
-
-void DrpApp::handleConnect(const json &msg)
-{
-    int numWorkers = 2;
-    int numEntries = 8192;
-    int laneMask = 0xf;
-
-    // these parameters must agree with the server side
     size_t maxSize = sizeof(MyDgram);
     m_para->tPrms = { /* .ifAddr        = */ { }, // Network interface to use
                       /* .port          = */ { }, // Port served to TEBs
@@ -38,12 +31,21 @@ void DrpApp::handleConnect(const json &msg)
                       /* .verbose       = */ 0 };
 
     m_para->mPrms = { /* .addrs         = */ { },
-                     /* .ports         = */ { },
-                     /* .id            = */ 0,
-                     /* .maxEvents     = */ 8,    //mon_buf_cnt,
-                     /* .maxEvSize     = */ 1024, //mon_buf_size,
-                     /* .maxTrSize     = */ 1024, //mon_trSize,
-                     /* .verbose       = */ 0 };
+                      /* .ports         = */ { },
+                      /* .id            = */ 0,
+                      /* .maxEvents     = */ 8,    //mon_buf_cnt,
+                      /* .maxEvSize     = */ 1024, //mon_buf_size,
+                      /* .maxTrSize     = */ 1024, //mon_trSize,
+                      /* .verbose       = */ 0 };
+
+    m_ebContributor = std::make_unique<Pds::Eb::TebContributor>(m_para->tPrms);
+
+    m_inprocRecv.bind("inproc://drp");
+    std::cout<<"Constructor"<<std::endl;
+}
+
+void DrpApp::handleConnect(const json &msg)
+{
     parseConnectionParams(msg["body"]);
 
     // should move into constructor
@@ -55,15 +57,17 @@ void DrpApp::handleConnect(const json &msg)
         std::cout<< "Error !! Could not create Detector object\n";
     }
 
-    MemPool pool(numWorkers, numEntries);
-    PGPReader pgpReader(pool, det, laneMask, numWorkers);
-    std::thread pgpThread(&PGPReader::run, std::ref(pgpReader));
+    int laneMask = 0xf;
+    m_pgpReader = std::make_unique<PGPReader>(m_pool, det, laneMask, m_para->numWorkers);
+    m_pgpThread = std::thread{&PGPReader::run, std::ref(*m_pgpReader)};
 
     // Create all the eb things and do the connections
-    Pds::Eb::TebContributor ebCtrb(m_para->tPrms);
-    int rc = ebCtrb.connect(m_para->tPrms);
+    bool connected = true;
+    // Pds::Eb::TebContributor ebCtrb(m_para->tPrms);
+    int rc = m_ebContributor->connect(m_para->tPrms);
     if (rc) {
-        std::cout<<"Something bad happened\n";
+        connected = false;
+        std::cout<<"TebContributor connect failed\n";
     }
 
     Pds::Eb::MebContributor* meb = nullptr;
@@ -71,32 +75,39 @@ void DrpApp::handleConnect(const json &msg)
         meb = new Pds::Eb::MebContributor(m_para->mPrms);
         rc = meb->connect(m_para->mPrms);
         if (rc) {
-            std::cout<<"Something bad happened\n";
+            connected = false;
+            std::cout<<"MebContributor connect failed\n";
         }
     }
 
-    EbReceiver ebRecv(*m_para, pool, meb);
-    rc = ebRecv.connect(m_para->tPrms);
+    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_pool, meb);
+    rc = m_ebRecv->connect(m_para->tPrms);
     if (rc) {
-        std::cout<<"Something bad happened\n";
+        connected = false;
+        std::cout<<"EbReceiver connect failed\n";
     }
 
     // start performance monitor thread
-    std::thread monitor_thread(monitor_func,
+    m_monitorThread =std::thread(monitor_func,
                                std::ref(*m_para),
-                               std::ref(pgpReader.get_counters()),
-                               std::ref(pool),
-                               std::ref(ebCtrb));
+                               std::ref(m_pgpReader->get_counters()),
+                               std::ref(m_pool),
+                               std::ref(*m_ebContributor));
+
+    m_collectorThread = std::thread(&DrpApp::collector, std::ref(*this));
 
     // reply to collection with connect status
     json body = json({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
-    reply(answer);
+    if (connected) {
+        reply(answer);
+    }
+}
 
-    // spend all time here blocking listening to PGP
-    collector(pool, *m_para, ebCtrb, meb, ebRecv);
-
-    pgpThread.join();
+void DrpApp::handleConfigure(const json &msg)
+{
+    int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
+    //m_recv.recv
 }
 
 void DrpApp::handleReset(const json &msg)
@@ -136,4 +147,145 @@ void DrpApp::parseConnectionParams(const json& body)
             m_para->mPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
         }
     }
+}
+
+// collects events from the workers and sends them to the event builder
+void DrpApp::collector()
+{
+    printf("*** myEb %p %zd\n", m_ebContributor->batchRegion(), m_ebContributor->batchRegionSize());
+
+    ZmqSocket inprocSend = ZmqSocket(&m_context, ZMQ_PAIR);
+    inprocSend.connect("inproc://drp");
+
+    // start eb receiver thread
+    m_ebContributor->startup(*m_ebRecv);
+
+    int i = 0;
+    while (true) {
+        int worker;
+        m_pool.collector_queue.pop(worker);
+        Pebble* pebble;
+        m_pool.worker_output_queues[worker].pop(pebble);
+
+        int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
+        Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
+        XtcData::TransitionId::Value transition_id = event_header->seq.service();
+        switch (transition_id) {
+            case XtcData::TransitionId::Configure:
+                printf("Collector saw Configure transition\n");
+                break;
+            case XtcData::TransitionId::Unconfigure:
+                printf("Collector saw Unconfigure transition\n");
+                break;
+            case XtcData::TransitionId::Enable:
+                printf("Collector saw Enable transition\n");
+                break;
+            case XtcData::TransitionId::Disable:
+                printf("Collector saw Disable transition\n");
+                break;
+            case XtcData::TransitionId::ConfigUpdate:
+                printf("Collector saw ConfigUpdate transition\n");
+                break;
+            case XtcData::TransitionId::BeginRecord:
+                printf("Collector saw BeginRecord transition\n");
+                break;
+            case XtcData::TransitionId::EndRecord:
+                printf("Collector saw EndRecord transition\n");
+                break;
+            default:
+                break;
+        }
+        // pass non L1 accepts to control level
+        if (transition_id != XtcData::TransitionId::L1Accept) {
+            inprocSend.send("{}");
+        }
+
+        XtcData::Dgram& dgram = *reinterpret_cast<XtcData::Dgram*>(pebble->fex_data());
+        uint64_t val;
+        if (i%5 == 0) {
+            val = 0xdeadbeef;
+        } else {
+            val = 0xabadcafe;
+        }
+        MyDgram dg(dgram.seq, val, m_para->tPrms.id);
+        m_ebContributor->process(&dg, (const void*)pebble);
+        i++;
+    }
+
+    m_ebContributor->shutdown();
+}
+
+MyDgram::MyDgram(XtcData::Sequence& sequence, uint64_t val, unsigned contributor_id)
+{
+    seq = sequence;
+    xtc = XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0), XtcData::Src(contributor_id));
+    _data = val;
+    xtc.alloc(sizeof(_data));
+}
+
+
+EbReceiver::EbReceiver(const Parameters& para,
+                       MemPool&          pool,
+                       MebContributor*   mon) :
+  EbCtrbInBase(para.tPrms),
+      _pool(pool),
+      _xtcFile(nullptr),
+      _mon(mon),
+      nreceive(0)
+{
+    char file_name[PATH_MAX];
+    snprintf(file_name, PATH_MAX, "%s/data-%02d.xtc", para.output_dir.c_str(), para.tPrms.id);
+    FILE* xtcFile = fopen(file_name, "w");
+    if (!xtcFile) {
+        printf("Error opening output xtc file.\n");
+        return;
+    }
+    _xtcFile = xtcFile;
+}
+
+void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
+{
+    nreceive++;
+    uint64_t eb_decision = *(uint64_t*)(result->xtc.payload());
+    // printf("eb decision %lu\n", eb_decision);
+    Pebble* pebble = (Pebble*)appPrm;
+
+    int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
+    Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
+    XtcData::TransitionId::Value transition_id = event_header->seq.service();
+
+    if (event_header->seq.pulseId().value() != result->seq.pulseId().value()) {
+        printf("crap timestamps dont match\n");
+    }
+
+    // write event to file if it passes event builder or is a configure transition
+    /* FIXME disable writing for now
+    if (eb_decision == 1 || (transition_id == TransitionId::Configure)) {
+        Dgram* dgram = (Dgram*)pebble->fex_data();
+        if (fwrite(dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 1, _xtcFile) != 1) {
+            printf("Error writing to output xtc file.\n");
+            return;
+        }
+    }
+    */
+    if (_mon) {
+        XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
+        if (result->seq.isEvent()) {    // L1Accept
+            uint32_t* response = (uint32_t*)result->xtc.payload();
+
+            if (response[1])  _mon->post(dgram, response[1]);
+        } else {                        // Other Transition
+            _mon->post(dgram);
+        }
+    }
+
+    // return buffer to memory pool
+    for (int l=0; l<8; l++) {
+        if (pebble->pgp_data->buffer_mask & (1 << l)) {
+            dmaRetIndex(_pool.fd, pebble->pgp_data->buffers[l].dmaIndex);
+        }
+    }
+    pebble->pgp_data->counter = 0;
+    pebble->pgp_data->buffer_mask = 0;
+    _pool.pebble_queue.push(pebble);
 }

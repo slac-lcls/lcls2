@@ -233,11 +233,6 @@ def wait_for_answers(socket, wait_time, msg_id):
         else:
             logging.debug('recv_json(): %s' % msg)
 
-        if msg['header']['key'] == 'drp-transition':
-            logging.debug('accepting drp-transition with msg_id: %s ' %
-                          (msg['header']['msg_id']))
-            yield msg
-
         if msg['header']['msg_id'] == msg_id:
             yield msg
         else:

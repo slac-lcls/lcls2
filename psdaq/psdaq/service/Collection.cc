@@ -1,4 +1,3 @@
-#include <memory>
 #include <iostream>
 #include <iomanip>
 #include <unistd.h>
@@ -71,10 +70,9 @@ std::string getNicIp()
     return std::string(host);
 }
 
-ZmqSocket::ZmqSocket(std::shared_ptr<ZmqContext> context, int type)
+ZmqSocket::ZmqSocket(ZmqContext* context, int type) : m_context(context)
 {
-    this->context = std::move(context);
-    socket = zmq_socket(this->context->context, type);
+    socket = zmq_socket((*m_context)(), type);
 }
 
 void ZmqSocket::connect(const std::string& host)
@@ -82,6 +80,14 @@ void ZmqSocket::connect(const std::string& host)
     int rc = zmq_connect(socket, host.c_str());
     if (rc != 0) {
         throw std::runtime_error{"zmq_connect failed with error " + std::to_string(rc)};
+    }
+}
+
+void ZmqSocket::bind(const std::string& host)
+{
+    int rc = zmq_bind(socket, host.c_str());
+    if (rc != 0) {
+        throw std::runtime_error{"zmq_bind failed with error " + std::to_string(rc)};
     }
 }
 
@@ -125,29 +131,35 @@ void ZmqSocket::send(const std::string& msg)
     zmq_send(socket, msg.c_str(), msg.length(), 0);
 }
 
-
+int ZmqSocket::poll(short events, long timeout)
+{
+    zmq_pollitem_t item;
+    item.socket = socket;
+    item.events = events;
+    return zmq_poll(&item, 1, timeout);
+}
 
 
 CollectionApp::CollectionApp(const std::string &managerHostname,
                              int platform,
                              const std::string &level) :
-    m_level(level)
+    m_level(level),
+    m_pushSocket{&m_context, ZMQ_PUSH},
+    m_subSocket{&m_context, ZMQ_SUB}
 {
     const int base_port = 29980;
-    auto context = std::make_shared<ZmqContext>();
 
-    m_pushSocket = std::make_unique<ZmqSocket>(context, ZMQ_PUSH);
-    m_pushSocket->connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + platform)});
+    m_pushSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + platform)});
 
-    m_subSocket = std::make_unique<ZmqSocket>(context, ZMQ_SUB);
-    m_subSocket->connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)});
-    m_subSocket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
+    m_subSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)});
+    m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
     std::cout<<std::string{"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)}<<std::endl;
 
     // register callbacks
     m_handleMap["plat"] = std::bind(&CollectionApp::handlePlat, this, std::placeholders::_1);
     m_handleMap["alloc"] = std::bind(&CollectionApp::handleAlloc, this, std::placeholders::_1);
     m_handleMap["connect"] = std::bind(&CollectionApp::handleConnect, this, std::placeholders::_1);
+    // m_handleMap["configure"] = std::bind(&CollectionApp::handleConfigure, this, std::placeholders::_1);
     m_handleMap["reset"] = std::bind(&CollectionApp::handleReset, this, std::placeholders::_1);
 }
 
@@ -174,13 +186,13 @@ void CollectionApp::handleAlloc(const json &msg)
 
 void CollectionApp::reply(const json& msg)
 {
-    m_pushSocket->send(msg.dump());
+    m_pushSocket.send(msg.dump());
 }
 
 void CollectionApp::run()
 {
     while (1) {
-        json msg = m_subSocket->recvJson();
+        json msg = m_subSocket.recvJson();
         std::string key = msg["header"]["key"];
         std::cout<<"received key = "<<key<<'\n';
         std::cout << std::setw(4) << msg << "\n\n";

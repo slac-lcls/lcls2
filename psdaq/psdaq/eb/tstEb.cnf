@@ -82,7 +82,7 @@ if num_mon and len(mon_nodes) is 0:
 
 mgr_cmd = 'procstat -t ' + username + ' -e0 -n none p' + platform+'.cnf.last'
 col_cmd = 'collection -v'
-mon_cmd = 'monReqServer' +' -C ' + col_node + ' -Z ' + rtm_node + ' -P ' + partition
+mon_cmd = 'monReqServer' +' -C ' + col_node + ' -Z ' + rtm_node + ' -P ' + partition + ' -d -q 8'
 seg_cmd = 'tstEbContributor -C ' + col_node + ' -Z ' + rtm_node
 evt_cmd = 'tstEbBuilder' +' -C ' + col_node + ' -Z ' + rtm_node
 

@@ -107,10 +107,7 @@ namespace Pds {
     private:
       enum { TrUnknown,
              TrReset,
-             TrMap,             TrUnmap,
              TrConfigure,       TrUnconfigure,
-             TrBeginRun,        TrEndRun,
-             TrBeginCalibCycle, TrEndCalibCycle,
              TrEnable,          TrDisable,
              TrL1Accept };
       int            _trId;
@@ -175,6 +172,7 @@ DrpSim::~DrpSim()
 
 void DrpSim::startup(unsigned id)
 {
+  _trId         = TrUnknown;
   _allocPending = 0;
 
   _pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries);
@@ -198,10 +196,7 @@ const Dgram* DrpSim::genInput()
   static const TransitionId::Value trId[TransitionId::NumberOf] =
     { TransitionId::Unknown,
       TransitionId::Reset,
-      TransitionId::Map,             TransitionId::Unmap,
       TransitionId::Configure,       TransitionId::Unconfigure,
-      TransitionId::BeginRun,        TransitionId::EndRun,
-      TransitionId::BeginCalibCycle, TransitionId::EndCalibCycle,
       TransitionId::Enable,          TransitionId::Disable,
       TransitionId::L1Accept };
   const uint32_t bounceRate = 16 * 1024 * 1024 - 1;

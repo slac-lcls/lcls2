@@ -10,20 +10,17 @@ public:
     enum Value {
         Unknown,
         Reset,
-        Map,
-        Unmap,
         Configure,
         Unconfigure,
-        BeginRun,
-        EndRun,
-        BeginCalibCycle,
-        EndCalibCycle,
         Enable,
         Disable,
-        L1Accept,
         ConfigUpdate,
         BeginRecord,
         EndRecord,
+        Unused_09,
+        Unused_10,
+        Unused_11,
+        L1Accept = 12,                  // Must be 12
         NumberOf
     };
     static const char* name(TransitionId::Value id);

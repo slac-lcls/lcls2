@@ -487,19 +487,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         // 2. Dgram(config=config)          create data dgram by read
         // 3. Dgram(file_descriptor=fd, config=config, offset=int, size=int)
         //                                  create data dgram by pread
-        // 4. Dgram(size=nbytes)            create an empty dgram of a specified size.
 
         if (fd==-1 && configDgram==0) {
-            // For (4)
-            if (self->size == 0){
-                PyErr_SetString(PyExc_RuntimeError, "Can't create empty dgram of size=0.");
-                return -1;    
-            }
-
-            if (self->size <= sizeof(Dgram)) {
-                PyErr_SetString(PyExc_RuntimeError, "Can't create empty dgram with size <= sizeof(Dgram).");
-                return -1;    
-            }
+            PyErr_SetString(PyExc_RuntimeError, "Creating empty dgram is no longer supported.");
+            return -1;    
         } else {
             if (fd==-1) {
                 // For (2)
@@ -523,7 +514,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         }
 
         if (self->size == 0) {
-            PyErr_SetString(PyExc_RuntimeError, "Can't retrieve dgram size. Either size is not given when creating empty/read-by-offset dgram or there's a problem reading dgram header.");
+            PyErr_SetString(PyExc_RuntimeError, "Can't retrieve dgram size. Either size is not given when creating read-by-offset dgram or there's a problem reading dgram header.");
             return -1;
         }
 
@@ -541,9 +532,9 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         self->dgram = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
 
     } else {
-        // If view is not given, we assume dgram is to be created as one of these:
-        // 5. Dgram(view=view, offset=int) --> create a config dgram from the view
-        // 6. Dgram(view=view, config=config, offset=int) --> create a data dgram using the config and view
+        // Creating a dgram from view (any objects with a buffer interface) can be done by:
+        // 4. Dgram(view=view, offset=int) --> create a config dgram from the view
+        // 5. Dgram(view=view, config=config, offset=int) --> create a data dgram using the config and view
 
         // this next line is needed because arrays will increase the reference count
         // of the view (actually a PyByteArray) in DictAssign.  This is the mechanism we
@@ -580,23 +571,16 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 
     // Read the data if this dgram is not a view
     if (!isView) {
-        if (fd==-1 && configDgram==0) {
-            self->dgram->xtc.extent = 0; // for empty dgram
-        } else {
-            bool sequential = (fd==-1) != (configDgram==0);
-            if (sequential) {
-                memcpy(self->dgram, &dgram_header, sizeof(dgram_header));
-            }
-
-            int err = dgram_read(self, sequential);
-            if (err) return err;
+        bool sequential = (fd==-1) != (configDgram==0);
+        if (sequential) {
+            memcpy(self->dgram, &dgram_header, sizeof(dgram_header));
         }
+
+        int err = dgram_read(self, sequential);
+        if (err) return err;
     }
-    // some config pydgrams are created before an xtc payload
-    // is present ("two-phase" creation in psana run.py). AssignDict
-    // will be called manually by higher level code in that case
-    // when the cfg is complete - cpo
-    if (self->dgram->xtc.extent) AssignDict(self, (PyDgramObject*)configDgram);
+    
+    AssignDict(self, (PyDgramObject*)configDgram);
 
     return 0;
 }
@@ -711,15 +695,7 @@ static PyGetSetDef dgram_getset[] = {
     { NULL }
 };
 
-static PyObject* dgram_assign_dict(PyDgramObject* self) {
-    AssignDict(self, 0); // second argument assumes this is only called for cfg
-    Py_RETURN_NONE;
-}
-
 static PyMethodDef dgram_methods[] = {
-    {"_assign_dict", (PyCFunction)dgram_assign_dict, METH_NOARGS,
-     "Assign dictionary to the dgram"
-    },
     {NULL}  /* Sentinel */
 };
 

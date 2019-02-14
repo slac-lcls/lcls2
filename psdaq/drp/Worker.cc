@@ -1,6 +1,7 @@
 
 #include "Worker.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "TimingHeader.hh"
 #include "xtcdata/xtc/Sequence.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
@@ -36,7 +37,7 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
         }
         // get first set bit to find index of the first lane
         int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
-        Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index].data);
+        Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
         TransitionId::Value transition_id = event_header->seq.service();
         if (transition_id == XtcData::TransitionId::Configure) {
             printf("Worker %d saw configure transition\n", rank);

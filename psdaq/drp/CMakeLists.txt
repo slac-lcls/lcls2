@@ -2,7 +2,6 @@ add_library(drputils SHARED
     Digitizer.cc
     AreaDetector.cc
     Worker.cc
-    Collector.cc
     PGPReader.cc
     utils.cc
 )

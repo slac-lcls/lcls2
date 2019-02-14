@@ -66,7 +66,7 @@ static mqd_t _openQueue(const char* name, unsigned flags, unsigned perms,
 namespace psalg {
   namespace shmem {
     class DgramHandler {
-    
+
     private:
       ShmemClient&            _client;
       XtcMonitorMsg                _myMsg;
@@ -97,7 +97,7 @@ namespace psalg {
       {
         _tmo.tv_sec = _tmo.tv_nsec = 0;
       }
-      
+
 
       /*
       ** ++
@@ -116,21 +116,12 @@ namespace psalg {
 
       if(dg->seq.service()==XtcData::TransitionId::L1Accept) {
 #ifdef DBUG
-        printf("ShmemClient DgramHandler free dgram index %d size %d\n",index,size);        
-#endif        
+        printf("ShmemClient DgramHandler free dgram index %d size %d\n",index,size);
+#endif
         mq_timedsend(oq[ioq], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo);
-      }
-      else {
-#ifdef DBUG        
-        printf("ShmemClient DgramHandler free dgram tr_index %d buf_size %d\n",ev_index,buf_size);        
-#endif         
-        if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
-          perror("transition send");
-          return;
-          }
         }
       }
-      
+
 
       /*
       ** ++
@@ -138,7 +129,7 @@ namespace psalg {
       **
       ** --
       */
-      
+
       XtcData::Dgram* transition(int &index, int &size) {
         XtcMonitorMsg myMsg;
         int nb = ::recv(_trfd, (char*)&myMsg, sizeof(myMsg), 0);
@@ -160,6 +151,11 @@ namespace psalg {
           XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
           index = i;
           size = myMsg.sizeOfBuffers();
+          
+          if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
+            perror("transition send");
+            return NULL;
+            }
           return dg;
         }
         else {
@@ -170,7 +166,7 @@ namespace psalg {
         }
         return NULL;
       }
-      
+
 
       /*
       ** ++
@@ -178,7 +174,7 @@ namespace psalg {
       **
       ** --
       */
-      
+
       XtcData::Dgram* event(int &index, int &size) {
         mqd_t  iq = _evqin;
 
@@ -322,7 +318,7 @@ printf("Connected to %08x.%d [%d] from %08x.%d\n",
 
   if (::read(_myTrFd,&myMsg,sizeof(myMsg))!=sizeof(myMsg)) {
     printf("Connection rejected by shmem server [too many clients]\n");
-    return 1;
+    return ++error;
     }
 
   //
@@ -374,33 +370,6 @@ printf("Connected to %08x.%d [%d] from %08x.%d\n",
   }
 
   //
-  //  Seek the Map transition
-  //
-  do {
-    if (::recv(_myTrFd, (char*)&myMsg, sizeof(myMsg), MSG_WAITALL) < 0) {
-      perror("mq_receive buffer");
-      return ++error;
-      }
-    else {
-      int i = myMsg.bufferIndex();
-      if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
-	    Dgram* dg = (Dgram*) (myShm + (myMsg.sizeOfBuffers() * i));
-	    if (dg->seq.service()==TransitionId::Map) {
-	      if (::send(_myTrFd,(char*)&myMsg,sizeof(myMsg),0)<0) {
-	        perror("transition send");
-	        return false;
-	        }
-	      break;
-          }
-        else
-          printf("Unexpected transition %s != Map\n",TransitionId::name(dg->seq.service()));
-      }
-      else
-        printf("Illegal transition buffer index %d\n",i);
-    }
-  } while(1);
-
-  //
   //  Handle all transitions first, then events
   //
   _pfd[0].fd      = _myTrFd;
@@ -419,5 +388,5 @@ printf("Connected to %08x.%d [%d] from %08x.%d\n",
 		   myInputEvQueue,myOutputEvQueues,ev_index,
 		   tag,myShm);
 
-  return 0;  
+  return 0;
 }
