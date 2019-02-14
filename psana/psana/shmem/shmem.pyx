@@ -19,7 +19,9 @@ cdef class PyShmemClient:
         del self.client
 
     def connect(self, tag, tr_index):
-        return self.client.connect(tag.encode(),tr_index)
+        cdef int status = -1
+        status = self.client.connect(tag.encode(),tr_index)
+        return status
     
     def get(self,args):
         cdef char* buf
