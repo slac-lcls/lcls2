@@ -460,7 +460,6 @@ int main(int argc, char* argv[])
     void* buf = malloc(BUFSIZE);
  
     for (int i = 0; i < nevents; i++) {
-        TypeId tid(TypeId::Parent, 0);
         gettimeofday(&tv, NULL);
         Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
         Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
