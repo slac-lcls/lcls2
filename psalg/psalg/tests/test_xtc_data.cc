@@ -27,21 +27,108 @@ using namespace XtcData;
 
 //-----------------------------
 
-class MyXtcIterator : public XtcIterator
+
+class TestXtcIterator : public XtcData::XtcIterator
 {
 public:
     enum { Stop, Continue };
+    TestXtcIterator(XtcData::Xtc* xtc) : XtcData::XtcIterator(xtc) {} // {iterate();}
+    TestXtcIterator() : XtcData::XtcIterator() {}
+
+    int process(XtcData::Xtc* xtc) {
+        TypeId::Type type = xtc->contains.id(); 
+	printf("    TestXtcIterator TypeId::%-12s id: %-4d Xtc* pointer: %p\n", TypeId::name(type), type, xtc);
+
+	switch (xtc->contains.id()) {
+	case (TypeId::Parent): {break;}
+	case (TypeId::Names): {break;}
+        case (TypeId::ShapesData): {break;}
+        case (TypeId::Data): {break;}
+        case (TypeId::Shapes): {break;}
+	default: {
+	    printf("    WARNING: UNKNOWN DATA TYPE !!! \n");
+	    break;
+	    }
+	}
+
+        //==============
+	  iterate(xtc);
+        //==============
+
+        return Continue;
+    }
+};
+
+//-----------------------------
+
+class ConfigInfo : public XtcData::NamesIter
+{
+public:
+    ConfigInfo(XtcData::Xtc* xtc) : XtcData::NamesIter(xtc) { iterate(); }
+    ConfigInfo() : XtcData::NamesIter() {}
+
+    int process(XtcData::Xtc* xtc)
+    {
+        TypeId::Type type = xtc->contains.id(); 
+	printf("ConfigInfo TypeId::%-20s Xtc* pointer: %p\n", TypeId::name(type), (void *) &xtc);
+
+	switch (xtc->contains.id()) {
+	case (TypeId::Parent): {
+	  //printf("ConfigInfo case TypeId::Parent - keep iterating\n");
+	    iterate(xtc); // look inside anything that is a Parent
+	    break;
+	}
+	case (TypeId::Names): {
+	  //printf("ConfigInfo case TypeId::Names - grab names in namesLookup\n");
+	    Names& names = *(Names*)xtc;
+	    NamesId& namesId = names.namesId();
+            NamesLookup& _namesLookup = namesLookup();
+	    _namesLookup[namesId] = NameIndex(names);
+	    printf("   add number of names: %d namesId: %d\n", names.num(), namesId.namesId());
+	    break;
+	}
+        case (TypeId::ShapesData): {
+	    ShapesData* pshapesdata = (ShapesData*)xtc;
+            NamesId namesId = pshapesdata->namesId();
+            _shapesData[namesId.namesId()] = pshapesdata;
+	    printf("ConfigInfo case TypeId::ShapesData): namesId.level: %d value: %d namesId: %d\n",
+	    	   namesId.level(), namesId.value(), namesId.namesId());
+            break;
+        }
+	default:
+	    break;
+	}
+	return Continue;
+    }
+
+    ShapesData& shape() {return *_shapesData[0];}
+    ShapesData& value() {return *_shapesData[1];}
+    //NamesLookup& namesLookup() {return _namesLookup;} // defined in super-class NamesIter
+    //void iterate();                                   // defined in super-super-class XtcIterator
+
+private:
+    ShapesData* _shapesData[2];
+};
+
+//-----------------------------
+
+class MyXtcIterator : public XtcIterator
+{
+public:
+    enum {Stop, Continue};
     MyXtcIterator(Xtc* xtc) : XtcIterator(xtc)
     {
     }
 
     int process(Xtc* xtc)
     {
-        TypeId::Type type = xtc->contains.id();
-	cout << "YYYY TypeId::" << TypeId::name(type) << '\n';
+        // enum Type {Parent, ShapesData, Shapes, Data, Names, NumberOf};
+        TypeId::Type type = xtc->contains.id(); 
+	cout << "YYYY TypeId:: " << TypeId::name(type) << " Xtc pointer: " << xtc << '\n';
 
         switch (type) {
         case (TypeId::Parent): {
+            printf("YYYY In MyXtcIterator TypeId::Parent - keep iterating\n");
 	    iterate(xtc); 
             break;
         }
@@ -51,54 +138,21 @@ public:
 	    printf("*** DetName: %s, DetType: %s, Alg: %s, Version: 0x%6.6x, Names:\n",
                    names.detName(), names.detType(), alg.name(), alg.version());
 
-	    cout << "number of names: " << names.num() << '\n';
+	    printf("number of names:  %d\n", names.num());
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
-                printf("%2d Name: %s Type: %d Rank: %d\n", i, name.name(), name.type(), name.rank());
+                printf("%02d XX Name %-32s rank %d type %d\n", i, name.name(), name.rank(), name.type());
             }
             break;
         }
         case (TypeId::ShapesData): {
  
 	    ShapesData* pshapesdata = (ShapesData*)xtc;
-            _shapesData[pshapesdata->namesId().namesId()] = pshapesdata;
+            NamesId namesId = pshapesdata->namesId();
+            _shapesData[namesId.namesId()] = pshapesdata;
  
-            NamesId  namesId = pshapesdata->namesId();
-	    cout << "YYYYYYYYYY namesId."
-                 << "  level:"   << namesId.level()
-                 << "  value:"   << namesId.value()
-                 << "  namesId:" << namesId.namesId() << '\n';
-
-            // lookup the index of the names we are supposed to use
-	    /*
-            NamesIter& namesIter = *new NamesIter(xtc);
-            namesIter.iterate();
-            NamesLookup& namesLookup = namesIter.namesLookup();
-
-            ShapesData& shapesdata = *pshapesdata;
-            NamesId namesId = shapesdata.namesId();
-            DescData descdata(shapesdata, namesLookup[namesId]);
-            Names& names = descdata.nameindex().names();
-
-            for (unsigned i = 0; i < names.num(); i++) {
-                Name& name = names.get(i);
-
-		cout << i << " YYYYYYYYYY name: " << name.name() << '\n';
-
-                //if (strcmp(name.name(), "env") == 0) {
-                //    auto env_array = descdata.get_array<uint32_t>(i);
-                //    env = env_array.data();
-                //}
-                // Here we check algorithm and version can be analyzed
-                //if (strcmp(name.alg().name(), "fpga") == 0) {
-                //    if (name.alg().version() == 0x010203) {
-                //        auto array = descdata.get_array<uint8_t>(i);
-                //        chans[std::string(name.name())] = array.data();
-                //    }
-                //}
-            }
-	    */
-
+	    printf("YYYY  case TypeId::ShapesData): namesId.level: %d value: %d namesId: %d\n",
+		   namesId.level(), namesId.value(), namesId.namesId());
             break;
         }
         case (TypeId::Shapes): {break;}
@@ -110,76 +164,117 @@ public:
         return Continue;
     }
 
-
     ShapesData& config() {return *_shapesData[0];}
     ShapesData& event()  {return *_shapesData[1];}
 
-
 private:
     ShapesData* _shapesData[2];
-
 };
 
 //-----------------------------
 
-void dump(const char* transition, Names& names, DescData& descdata) {
-    printf("------ Names for %s transition ---------\n",transition);
+// void dump(const char* transition, Names& names, DescData& descdata) {
+void dump(const char* transition, DescData& descdata) {
+ 
+   Names& names = descdata.nameindex().names();
+
+    printf("------ %d Names for transition %s ---------\n", names.num(), transition);
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
-        printf("rank %d type %d name %s\n", name.rank(), name.type(), name.name());
+        printf("%02d name %-32s rank %d type %d\n", i, name.name(), name.rank(), name.type());
     }
-    printf("------ Values for %s transition ---------\n",transition);
+    printf("------ Values for transition %s ---------\n",transition);
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         if (name.type()==Name::INT64 and name.rank()==0) {
-            printf("Name %s has value %ld\n", name.name(), descdata.get_value<int64_t>(name.name()));
+	  printf("%02d name %-32s value %ld\n", i, name.name(), descdata.get_value<int64_t>(name.name()));
         }
     }
-    printf("\n\n");
+
+    printf("============= THE END OF DUMP FOR TRANSITION %s =============\n\n", transition);
 }
 
 //-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
+//-----------------------------
 
-int main_v0 (int argc, char* argv[]) {
+
+//-----------------------------
+
+int file_descriptor(int argc, char* argv[]) {
 
     const char* fname = "/reg/neh/home/cpo/git/lcls2/psana/psana/dgramPort/jungfrau.xtc2";
     std::cout << "xtc file name: " << fname << '\n';
-
-    unsigned neventreq=3;
 
     int fd = open(fname, O_RDONLY);
     if (fd < 0) {
         fprintf(stderr, "Unable to open file '%s'\n", fname);
         exit(2);
     }
-
-    XtcFileIterator itdg(fd, 0x4000000);
-
-    Dgram* dg = itdg .next();
-
-    NamesIter& namesIter = *new NamesIter(&(dg->xtc));
-    namesIter.iterate();
-    NamesLookup& namesLookup = namesIter.namesLookup();
     
-    // get data out of the configure transition
-    MyXtcIterator dgiter(&(dg->xtc));
-    dgiter.iterate();
-    NamesId& namesId = dgiter.config().namesId();
-    DescData descdata(dgiter.config(), namesLookup[namesId]);
-    Names& names = descdata.nameindex().names();
+    return fd;
+}
 
-    cout << "ZZZZ the 1st dg - Configure\n";
-    dump("Configure", names, descdata);
+//-----------------------------
 
+int test_xtc_content(int argc, char* argv[]) {
+
+    int fd = file_descriptor(argc, argv);
+    XtcFileIterator it_fdg(fd, 0x4000000);
+    //Dgram* dg = it_fdg.next();
+    Dgram* dg;
+
+    unsigned ndgreq=1000000;
+    unsigned ndg=0;
+    while ((dg = it_fdg.next())) {
+        ndg++;
+	printf("%04d ---- datagram ----\n", ndg);
+        if (ndg>=ndgreq) break;
+        TestXtcIterator iter(&(dg->xtc));
+        iter.iterate();
+    }
+    return 0;
+}
+
+//-----------------------------
+
+int test_all(int argc, char* argv[]) {
+
+    int fd = file_descriptor(argc, argv);
+    XtcFileIterator it_fdg(fd, 0x4000000);
+
+    Dgram* dg = it_fdg.next();
+
+    // get data out of the 1-st datagram configure transition
+
+    ConfigInfo configo(&(dg->xtc));
+    NamesLookup& names_map = configo.namesLookup();
+
+    NamesId& names_id_cfg = configo.shape().namesId();
+    DescData desc_cfg_shapes(configo.shape(), names_map[names_id_cfg]);
+    dump("Configure", desc_cfg_shapes);
+
+    NamesId& names_id_data = configo.value().namesId();
+    DescData desc_cfg_values(configo.value(), names_map[names_id_data]);
+    dump("Configure data", desc_cfg_values);
+
+    return 0;
+
+    unsigned neventreq=3;
     unsigned nevent=0;
-    while ((dg = itdg.next())) {
+    while ((dg = it_fdg.next())) {
         if (nevent>=neventreq) break;
         nevent++;
 
         MyXtcIterator iter(&(dg->xtc));
         iter.iterate();
  
-	cout << "XXXXXXXXXXX dg->seq.isEvent(): " << dg->seq.isEvent() << '\n';
+	cout << "XXXXXXXXXXX dg->seq.type(): " << dg->seq.type() << '\n';
 
         printf("evt:%04d ==== %s transition: time %d.%09d, pulseId %lux, env %ux, "
                "payloadSize %d extent %d\n", nevent,
@@ -188,79 +283,20 @@ int main_v0 (int argc, char* argv[]) {
                dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
 
         NamesId& namesId = iter.event().namesId();
-        DescData descdata(iter.event(), namesLookup[namesId]);
-        Names& names = descdata.nameindex().names();
-        dump("Event",names,descdata);
+        DescData descdata(iter.event(), names_map[namesId]);
+        //Names& names = descdata.nameindex().names();
+        dump("Event", descdata);
     }
 
     ::close(fd);
     return 0;
 }
 
-//-----------------------------
-//-----------------------------
-//-----------------------------
-//-----------------------------
-//-----------------------------
-//-----------------------------
-//-----------------------------
 //-----------------------------
 
 int main (int argc, char* argv[]) {
-
-    const char* fname = "/reg/neh/home/cpo/git/lcls2/psana/psana/dgramPort/jungfrau.xtc2";
-    std::cout << "xtc file name: " << fname << '\n';
-
-    unsigned neventreq=3;
-
-    int fd = open(fname, O_RDONLY);
-    if (fd < 0) {
-        fprintf(stderr, "Unable to open file '%s'\n", fname);
-        exit(2);
-    }
-
-    XtcFileIterator itdg(fd, 0x4000000);
-
-    Dgram* dg = itdg .next();
-
-    NamesIter& namesIter = *new NamesIter(&(dg->xtc));
-    namesIter.iterate();
-    NamesLookup& namesLookup = namesIter.namesLookup();
-    
-    // get data out of the configure transition
-    MyXtcIterator dgiter(&(dg->xtc));
-    dgiter.iterate();
-    NamesId& namesId = dgiter.config().namesId();
-    DescData descdata(dgiter.config(), namesLookup[namesId]);
-    Names& names = descdata.nameindex().names();
-
-    cout << "ZZZZ the 1st dg - Configure\n";
-    dump("Configure", names, descdata);
-
-    unsigned nevent=0;
-    while ((dg = itdg.next())) {
-        if (nevent>=neventreq) break;
-        nevent++;
-
-        MyXtcIterator iter(&(dg->xtc));
-        iter.iterate();
- 
-	cout << "XXXXXXXXXXX dg->seq.isEvent(): " << dg->seq.isEvent() << '\n';
-
-        printf("evt:%04d ==== %s transition: time %d.%09d, pulseId %lux, env %ux, "
-               "payloadSize %d extent %d\n", nevent,
-               TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
-               dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
-               dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
-
-        NamesId& namesId = iter.event().namesId();
-        DescData descdata(iter.event(), namesLookup[namesId]);
-        Names& names = descdata.nameindex().names();
-        dump("Event",names,descdata);
-    }
-
-    ::close(fd);
-    return 0;
+  return test_xtc_content(argc, argv);
+  //return test_all(argc, argv);
 }
 
 //-----------------------------

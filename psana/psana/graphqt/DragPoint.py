@@ -6,9 +6,11 @@ Created on 2016-10-11 by Mikhail Dubrovin
 """
 #-----------------------------
 
-from psana.graphqt.DragBase import * #  Qt, QPen, QBrush, QCursor
+from PyQt5.QtGui import QBrush, QPen, QPainterPath#, QCursor
+from PyQt5.QtCore import Qt, QPointF #, QPoint, QRect, QRectF
 from PyQt5.QtWidgets import QGraphicsPathItem # QApplication
-from PyQt5.QtGui import QPainterPath
+
+from psana.graphqt.DragBase import DragBase, FROZEN, ADD, MOVE, EDIT, DELETE #, dic_mode_type_to_name
 
 #-----------------------------
 
@@ -126,14 +128,15 @@ class DragPoint(QGraphicsPathItem, DragBase) :
 
 
 #    def mouseMoveEvent(self, e) :
-#        print('DragPoint:mouseMoveEvent')
+#        print('DragPoint:mouseMoveEvent', e.pos())
 #        #print('DragPoint.mouseMoveEvent, at point: ', e.pos(), ' scenePos: ', e.scenePos())
 #        dp = e.scenePos() - e.lastScenePos() + self.p0
 #        self.moveBy(dp.x(), dp.y())
-#        #QGraphicsPathItem.mouseMoveEvent(self, e)
+#        QGraphicsPathItem.mouseMoveEvent(self, e)
 
 
     def mouseReleaseEvent(self, e) :
+        print('DragPoint:mouseReleaseEvent', e.pos())
         QGraphicsPathItem.mouseReleaseEvent(self, e)
         if self._mode == ADD :
             self.set_mode()

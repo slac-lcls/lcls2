@@ -155,6 +155,19 @@ target_link_libraries(test_xtc_data
 add_test(NAME test_xtc_data COMMAND ${CMAKE_BINARY_DIR}/psalg/test_xtc_data
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
+
+# Demo of the problem in XtcIterator TypeId
+add_executable(test_xtc_iterator_bug
+    tests/test_xtc_iterator_bug.cc
+)
+target_link_libraries(test_xtc_iterator_bug
+    psalg
+    xtcdata::xtc
+)
+add_test(NAME test_xtc_iterator_bug COMMAND ${CMAKE_BINARY_DIR}/psalg/test_xtc_iterator_bug
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+
 install(TARGETS psalg
                 test_array
                 test_peakFinder
@@ -164,6 +177,7 @@ install(TARGETS psalg
                 test_MDBWebUtils
                 test_logger
                 test_xtc_data
+                test_xtc_iterator_bug
                 datareader
     EXPORT psalgTargets
     ARCHIVE DESTINATION lib

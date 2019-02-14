@@ -6,6 +6,8 @@ Created on 2016-10-10 by Mikhail Dubrovin
 """
 #-----------------------------
 
+from PyQt5.QtCore import QRectF #Qt, QPointF#, QRect, QRectF
+from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE
 from psana.graphqt.DragPoint import * # DragPoint, DragBase, Qt, QPen, QBrush, QCursor
 from PyQt5.QtWidgets import QGraphicsRectItem
 
@@ -116,7 +118,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mousePressEvent(self, e) :
-        #print('%s.mousePressEvent, at point: ' % self.__class__.__name__, e.pos(), e.scenePos())
+        print('%s.mousePressEvent, at point: ' % self.__class__.__name__, e.pos(), e.scenePos())
         QGraphicsRectItem.mousePressEvent(self, e) # points would not show up w/o this line
 
         ps = e.scenePos()
@@ -146,7 +148,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
     def mouseMoveEvent(self, e) :
         QGraphicsPathItem.mouseMoveEvent(self, e)
-        #print('%s.mouseMoveEvent' % self.__class__.__name__)
+        print('%s.mouseMoveEvent' % self.__class__.__name__)
         #print('%s.mouseMoveEvent, at point: ' % self.__class__.__name__, e.pos(), ' scenePos: ', e.scenePos())
 
         dp = e.scenePos() - e.lastScenePos() 
@@ -180,6 +182,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mouseReleaseEvent(self, e):
+        print('%s.mouseReleaseEvent' % self.__class__.__name__)
         #QGraphicsPathItem.mouseReleaseEvent(self, e)
 
         if self._mode == ADD :
