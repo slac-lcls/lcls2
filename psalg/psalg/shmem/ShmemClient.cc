@@ -119,15 +119,6 @@ namespace psalg {
         printf("ShmemClient DgramHandler free dgram index %d size %d\n",index,size);
 #endif
         mq_timedsend(oq[ioq], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo);
-      }
-      else {
-#ifdef DBUG
-        printf("ShmemClient DgramHandler free dgram tr_index %d buf_size %d\n",ev_index,buf_size);
-#endif
-        if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
-          perror("transition send");
-          return;
-          }
         }
       }
 
@@ -160,6 +151,11 @@ namespace psalg {
           XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
           index = i;
           size = myMsg.sizeOfBuffers();
+          
+          if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
+            perror("transition send");
+            return NULL;
+            }
           return dg;
         }
         else {
@@ -322,7 +318,7 @@ printf("Connected to %08x.%d [%d] from %08x.%d\n",
 
   if (::read(_myTrFd,&myMsg,sizeof(myMsg))!=sizeof(myMsg)) {
     printf("Connection rejected by shmem server [too many clients]\n");
-    return 1;
+    return ++error;
     }
 
   //
@@ -372,33 +368,6 @@ printf("Connected to %08x.%d [%d] from %08x.%d\n",
     fprintf(stderr, "tag %s, tr_index %d, ev_index %d\n",tag,tr_index,ev_index);
     return error;
   }
-
-  //
-  //  Seek the Configure transition
-  //
-  do {
-    if (::recv(_myTrFd, (char*)&myMsg, sizeof(myMsg), MSG_WAITALL) < 0) {
-      perror("mq_receive buffer");
-      return ++error;
-      }
-    else {
-      int i = myMsg.bufferIndex();
-      if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
-	    Dgram* dg = (Dgram*) (myShm + (myMsg.sizeOfBuffers() * i));
-	    if (dg->seq.service()==TransitionId::Configure) {
-	      if (::send(_myTrFd,(char*)&myMsg,sizeof(myMsg),0)<0) {
-	        perror("transition send");
-	        return false;
-	        }
-	      break;
-          }
-        else
-          printf("Unexpected transition %s != Configure\n",TransitionId::name(dg->seq.service()));
-      }
-      else
-        printf("Illegal transition buffer index %d\n",i);
-    }
-  } while(1);
 
   //
   //  Handle all transitions first, then events

@@ -1,7 +1,7 @@
 
 cdef extern from "psalg/shmem/ShmemClient.hh" namespace "psalg::shmem":
     cdef cppclass ShmemClient:
-        void connect(const char* tag, int tr_index)
+        int connect(const char* tag, int tr_index)
         void *get(int& ev_index, int& buf_size)
         void free(int ev_index, int buf_size)
 
@@ -19,7 +19,7 @@ cdef class PyShmemClient:
         del self.client
 
     def connect(self, tag, tr_index):
-        self.client.connect(tag.encode(),tr_index)
+        return self.client.connect(tag.encode(),tr_index)
     
     def get(self,args):
         cdef char* buf
@@ -32,9 +32,9 @@ cdef class PyShmemClient:
           return
 
         #this needs to be done with kwargs
-        args[0] = ev_index
-        args[1] = buf_size
-        args[2] = self.pclient
+        args['index'] = ev_index
+        args['size'] = buf_size
+        args['cli'] = self.pclient
 
         cview = <char[:buf_size]>buf
         

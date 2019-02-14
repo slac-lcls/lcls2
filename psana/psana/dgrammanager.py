@@ -29,7 +29,9 @@ class DgramManager():
         """ Opens xtc_files and stores configs."""
         self.xtc_files = []
         self.shmem = None
+        self.shmem_kwargs = {'index':-1,'size':0,'cli':None}
         self.configs = []
+        self.fds = []
 
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
@@ -38,12 +40,15 @@ class DgramManager():
             if xtc_files[0] == 'shmem':
                 self.shmem = PyShmemClient()
                 #establish connection to available server - blocking
-                self.shmem.connect(tag,0)
+                status = int(self.shmem.connect(tag,0))
+                assert not status,'shmem connect failure %d' % status
                 #wait for first configure datagram - blocking
-                args = [0,0,None]
-                view = self.shmem.get(args)
+                view = self.shmem.get(self.shmem_kwargs)
                 assert view
-                d = dgram.Dgram(view=view,shmem_index=args[0],shmem_size=args[1],shmem_cli=args[2])
+                d = dgram.Dgram(view=view, \
+                                shmem_index=self.shmem_kwargs['index'], \
+                                shmem_size=self.shmem_kwargs['size'], \
+                                shmem_cli=self.shmem_kwargs['cli'])
                 self.configs += [d]
             else:    
                 self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
@@ -54,7 +59,6 @@ class DgramManager():
         if given_configs: 
             self.configs = configs
         
-        self.fds = []
         for i, xtcdata_filename in enumerate(self.xtc_files):
             self.fds.append(os.open(xtcdata_filename,
                             os.O_RDONLY))
@@ -84,12 +88,14 @@ class DgramManager():
         """ only support sequential read - no event building"""
         if (read_shmem):
             dgrams = []
-            args = [0,0,None]
-            view = self.shmem.get(args)
+            view = self.shmem.get(self.shmem_kwargs)
             if view:
                 # use the most recent configure datagram
                 config = self.configs[len(self.configs)-1]
-                d = dgram.Dgram(config=config,view=view,shmem_index=args[0],shmem_size=args[1],shmem_cli=args[2])
+                d = dgram.Dgram(config=config,view=view, \
+                                shmem_index=self.shmem_kwargs['index'], \
+                                shmem_size=self.shmem_kwargs['size'], \
+                                shmem_cli=self.shmem_kwargs['cli'])
                 dgrams += [d]
             else:
                 raise StopIteration
