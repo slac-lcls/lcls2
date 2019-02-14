@@ -230,24 +230,23 @@ class RunParallel(Run):
         comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich and creating empty dgram
         comm.Bcast(nbytes, root=0) 
         
-        # create empty dgrams of known size
+        # create empty views of known size
         if rank > 0:
-            self.smd_configs = [dgram.Dgram(size=smd_nbyte) for smd_nbyte in smd_nbytes]
-            self.configs = [dgram.Dgram(size=nbyte) for nbyte in nbytes]
+            self.smd_configs = [np.empty(smd_nbyte, dtype='b') for smd_nbyte in smd_nbytes]
+            self.configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
         
         for i in range(len(smd_files)):
             comm.Bcast([self.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
-            # cfg dgram is complete, call assign_dict by hand.
-            self.smd_configs[i]._assign_dict()
 
         for i in range(len(xtc_files)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
-            # cfg dgram is complete, call assign_dict by hand.
-            self.configs[i]._assign_dict()
         
         self.calibs = comm.bcast(self.calibs, root=0)
 
         if rank > 0:
+            # create config dgrams from views for non-0 ranks
+            self.smd_configs = [dgram.Dgram(view=smd_config, offset=0) for smd_config in self.smd_configs]
+            self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             # This creates dgrammanager without reading config from disk
             self.dm = DgramManager(xtc_files, configs=self.configs)
     

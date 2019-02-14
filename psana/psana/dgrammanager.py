@@ -25,7 +25,7 @@ FN_L = 200
 
 class DgramManager():
     
-    def __init__(self, xtc_files, configs=[],tag=None):
+    def __init__(self, xtc_files, configs=[], tag=None):
         """ Opens xtc_files and stores configs."""
         self.xtc_files = []
         self.shmem = None
@@ -53,8 +53,6 @@ class DgramManager():
         
         if given_configs: 
             self.configs = configs
-            for i in range(len(self.configs)): 
-                self.configs[i]._assign_dict()
         
         self.fds = []
         for i, xtcdata_filename in enumerate(self.xtc_files):
