@@ -15,7 +15,6 @@
 #include <type_traits>
 #include <cstring>
 #include <sys/time.h>
-// #include <Python.h>
 #include <stdint.h>
 
 using namespace XtcData;
@@ -397,56 +396,6 @@ public:
    }
 } HsdConfigDef;
 
-// void addJson(Xtc& xtc, NamesLookup& namesLookup) {
-
-//     FILE* file;
-//     Py_Initialize();
-//     PyObject* main_module = PyImport_AddModule("__main__");
-//     PyObject* main_dict = PyModule_GetDict(main_module);
-//     file = fopen("hsdConfig.py","r");
-//     PyObject* a = PyRun_File(file, "hsdConfig.py",Py_file_input,main_dict,main_dict);
-//     printf("PyRun: %p \n", a);
-//     printf("size %d\n",PyDict_Size(main_dict));
-//     PyObject* mybytes = PyDict_GetItemString(main_dict,"dgram");
-//     printf("%p\n",mybytes);
-//     char* json = (char*)PyBytes_AsString(mybytes); // TODO: Add PyUnicode_AsEncodedString()?
-//     printf("%p\n",mybytes);
-//     printf("%s\n",json);
-//     Py_Finalize();
-//     printf("Done\n");
-
-//     Document d;
-//     d.Parse(json);
-
-//     Value& software = d["alg"]["software"];
-//     Value& version = d["alg"]["version"];
-//     for (SizeType i = 0; i < version.Size(); i++) // Uses SizeType instead of size_t
-//         printf("version[%d] = %d\n", i, version[i].GetInt());
-
-//     Alg hsdConfigAlg(software.GetString(),version[0].GetInt(),version[1].GetInt(),version[2].GetInt());
-//     Names& configNames = *new(xtc) Names("xpphsd", hsdConfigAlg, "hsd", "detnum1235");
-//     configNames.add(xtc, HsdConfigDef);
-//     namesLookup.push_back(NameIndex(configNames));
-
-//     CreateData fex(xtc, namesLookup, 3); //FIXME: avoid hardwiring namesId
-
-//     // TODO: dynamically discover
-
-//     Value& enable = d["xtc"]["ENABLE"];
-//     unsigned shape[MaxRank] = {enable.Size()};
-//     Array<uint64_t> arrayT = fex.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
-//     for(unsigned i=0; i<shape[0]; i++){
-//         arrayT(i) = (uint64_t) enable[i].GetInt();
-//     };
-
-//     Value& raw_prescale = d["xtc"]["RAW_PS"];
-//     shape[MaxRank] = {raw_prescale.Size()};
-//     Array<uint64_t> arrayT1 = fex.allocate<uint64_t>(HsdConfigDef::raw_prescale,shape); //FIXME: figure out avoiding hardwired zero
-//     for(unsigned i=0; i<shape[0]; i++){
-//         arrayT1(i) = (uint64_t) raw_prescale[i].GetInt();
-//     };
-// }
-
 void usage(char* progname)
 {
     fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -h]\n", progname);
@@ -457,7 +406,6 @@ void usage(char* progname)
 int main(int argc, char* argv[])
 {
     int c;
-    int writeTs = 0;
     int parseErr = 0;
     unsigned nevents = 2;
     char xtcname[MAX_FNAME_LEN];
@@ -468,9 +416,6 @@ int main(int argc, char* argv[])
             case 'h':
                 usage(argv[0]);
                 exit(0);
-            case 't':
-                writeTs = 1;
-                break;
             case 'n':
                 nevents = atoi(optarg);
                 break;
@@ -487,25 +432,21 @@ int main(int argc, char* argv[])
         printf("Error opening output xtc file.\n");
         return -1;
     }
+    struct timeval tv;
 
     void* configbuf = malloc(BUFSIZE);
-    Dgram& config = *(Dgram*)configbuf;
     TypeId tid(TypeId::Parent, 0);
-    config.xtc.contains = tid;
-    config.xtc.damage = 0;
-    config.xtc.extent = sizeof(Xtc);
+    uint32_t env = 0;
+    uint64_t pulseId = 0;
+    Sequence seq(Sequence::Event, TransitionId::Configure, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+    Dgram& config = *new(configbuf) Dgram(Transition(seq, env), Xtc(tid));
+    gettimeofday(&tv, NULL);
 
     unsigned nodeid1 = 1;
     unsigned nodeid2 = 2;
     NamesLookup namesLookup1;
-    // NamesLookup namesLookup2;
     addNames(config.xtc, namesLookup1, nodeid1);
-    // addNames(config.xtc, namesLookup2, nodeid2);
-    // addData(config.xtc, namesLookup2, nodeid2);
     addData(config.xtc, namesLookup1, nodeid1);
-
-    //addJson(config.xtc,namesLookup);
-    //std::cout << "Done addJson" << std::endl;
 
     DebugIter iter(&config.xtc, namesLookup1);
     iter.iterate();
@@ -516,35 +457,17 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-     // for(auto const& value: namesLookup[0].nameMap()){
-     //     std::cout<<value.first<<std::endl;
-     // }
-
-
     void* buf = malloc(BUFSIZE);
-    struct timeval tv;
-    uint64_t pulseId = 0;
  
     for (int i = 0; i < nevents; i++) {
-        Dgram& dgram = *(Dgram*)buf;
         TypeId tid(TypeId::Parent, 0);
-        dgram.xtc.contains = tid;
-        dgram.xtc.damage = 0;
-        dgram.xtc.extent = sizeof(Xtc);
-        
-        if (writeTs != 0) {
-            gettimeofday(&tv, NULL);
-            dgram.seq = Sequence(TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
-        }
+        gettimeofday(&tv, NULL);
+        Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+        Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
         addData(dgram.xtc, namesLookup1, nodeid1);
-        // addData(dgram.xtc, namesLookup2, nodeid2);
 
         printf("*** event %d ***\n",i);
-
-        if (writeTs != 0) {
-            std::cout << "timestamp: " << dgram.seq.stamp().value() << std::endl;
-        }
 
         DebugIter iter(&dgram.xtc, namesLookup1);
         iter.iterate();
