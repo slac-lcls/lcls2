@@ -68,7 +68,7 @@ struct MemPool
     int num_entries;
     // File descriptor for pgp card
     int fd;
-private:
+// private: FIXME
     std::vector<Pebble> pebble;
 
 };

@@ -34,8 +34,8 @@ DrpApp::DrpApp(Parameters* para) :
                       /* .ports         = */ { },
                       /* .id            = */ 0,
                       /* .maxEvents     = */ 8,    //mon_buf_cnt,
-                      /* .maxEvSize     = */ 1024, //mon_buf_size,
-                      /* .maxTrSize     = */ 1024, //mon_trSize,
+                      /* .maxEvSize     = */ 65536, //mon_buf_size,
+                      /* .maxTrSize     = */ 65536, //mon_trSize,
                       /* .verbose       = */ 0 };
 
     m_ebContributor = std::make_unique<Pds::Eb::TebContributor>(m_para->tPrms);
@@ -73,7 +73,9 @@ void DrpApp::handleConnect(const json &msg)
     Pds::Eb::MebContributor* meb = nullptr;
     if (m_para->mPrms.addrs.size() != 0) {
         meb = new Pds::Eb::MebContributor(m_para->mPrms);
-        rc = meb->connect(m_para->mPrms);
+        void* poolBase = (void*)m_pool.pebble.data();
+        size_t poolSize = m_pool.pebble.size() * sizeof(Pebble);
+        rc = meb->connect(m_para->mPrms, poolBase, poolSize);
         if (rc) {
             connected = false;
             std::cout<<"MebContributor connect failed\n";
@@ -88,7 +90,7 @@ void DrpApp::handleConnect(const json &msg)
     }
 
     // start performance monitor thread
-    m_monitorThread =std::thread(monitor_func,
+    m_monitorThread = std::thread(monitor_func,
                                std::ref(*m_para),
                                std::ref(m_pgpReader->get_counters()),
                                std::ref(m_pool),
@@ -207,6 +209,8 @@ void DrpApp::collector()
         } else {
             val = 0xabadcafe;
         }
+        // always monitor every event
+        val |= 0x1234567800000000ul;
         MyDgram dg(dgram.seq, val, m_para->tPrms.id);
         m_ebContributor->process(&dg, (const void*)pebble);
         i++;
@@ -270,11 +274,14 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     */
     if (_mon) {
         XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
-        if (result->seq.isEvent()) {    // L1Accept
+        // L1Accept
+        if (result->seq.isEvent()) {
             uint32_t* response = (uint32_t*)result->xtc.payload();
 
             if (response[1])  _mon->post(dgram, response[1]);
-        } else {                        // Other Transition
+        }
+        // Other Transition
+        else {
             _mon->post(dgram);
         }
     }
