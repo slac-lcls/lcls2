@@ -8,6 +8,7 @@ class TransitionId
 {
 public:
     enum Value {
+        // Must keep in synch with strings in src/TransitionId.cc
         Unknown,
         Reset,
         Configure,
