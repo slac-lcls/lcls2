@@ -52,8 +52,6 @@ public:
                      numberofClients) {
     _init();
 
-    // Only need these buffers for inserted transitions { Unconfigure }
-
     unsigned depth = 4;
     for(unsigned i=0; i<depth; i++)
       _pool.push(reinterpret_cast<Dgram*>(new char[sizeofBuffers]));
@@ -237,8 +235,6 @@ void XtcRunSet::connect(char* partitionTag, unsigned sizeOfBuffers, int numberOf
 }
 
 void XtcRunSet::run() {
-  _server->insert(TransitionId::Configure);
-
   Dgram* dg;
   timespec loopStart;
   clock_gettime(CLOCK, &loopStart);
@@ -249,7 +245,6 @@ void XtcRunSet::run() {
     clock_gettime(CLOCK, &dgStart);
     dgCount++;
     _server->events(dg);
-    //      _server->routine();
     if (dg->seq.service() != TransitionId::L1Accept) {
       printTransition(dg);
       clock_gettime(CLOCK, &loopStart);
@@ -279,10 +274,6 @@ void XtcRunSet::run() {
       }
     }
   }
-  //  XtcRun sinks EndRun
-  //  _server->insert(TransitionId::EndRun);
-
-  _server->insert(TransitionId::Unconfigure);
 }
 
 void XtcRunSet::wait() {

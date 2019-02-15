@@ -132,5 +132,5 @@ int main(int argc, char* argv[]) {
     }
     runSet.run();
   } while (loop);
-  sleep(20);
+  sleep(2); // allow time for clients to process/return datagram before disconnecting
 }

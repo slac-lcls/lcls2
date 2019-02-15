@@ -43,8 +43,8 @@ static mqd_t _openQueue(const char* name, unsigned flags, unsigned perms,
     queue = mq_open(name, flags, perms, &mymq_attr);
     if (queue == (mqd_t)-1) {
       char b[128];
-      sprintf(b,"mq_open %s",name);
-      perror(b);
+      sprintf(b,"mq_open %s\n",name);
+      printf(b);
       sleep(1);
       if (!lwait) break;
     }
