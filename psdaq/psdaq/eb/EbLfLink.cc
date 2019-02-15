@@ -98,7 +98,7 @@ int EbLfLink::preparePender(unsigned id,
 // method, below.
 int EbLfLink::preparePoster(unsigned id)
 {
-  return preparePoster(id, nullptr, sizeof(RemoteAddress));
+  return preparePoster(id, nullptr, 0, sizeof(RemoteAddress));
 }
 
 // A small memory region is needed in order to use the post(buf, len, immData)
@@ -106,33 +106,41 @@ int EbLfLink::preparePoster(unsigned id)
 int EbLfLink::preparePoster(unsigned id,
                             size_t   size)
 {
-  return preparePoster(id, nullptr, size);
+  return preparePoster(id, nullptr, 0, size);
+}
+
+int EbLfLink::preparePoster(unsigned id,
+                            void*    region,
+                            size_t   size)
+{
+  return preparePoster(id, region, size, size);
 }
 
 // Buffers to be posted using the post(buf, len, offset, immData, ctx) method,
 // below, must be covered by a memory region set up using this method.
 int EbLfLink::preparePoster(unsigned id,
                             void*    region,
-                            size_t   size)
+                            size_t   lclSize,
+                            size_t   rmtSize)
 {
-  int rc;
-  if (!region)
+  int    rc;
+  size_t sz = sizeof(RemoteAddress);
+  if (!_region)  return ENOMEM;
+
+  if ( (rc = setupMr(_region, sz, &_mr)) )           return rc;
+
+  if ( (rc = sendU32(_mr,   id, "ID")) )             return rc;
+  if ( (rc = recvU32(_mr, &_id, "ID")) )             return rc;
+
+  if ( (rc = sendU32(_mr, rmtSize, "region size")) ) return rc;
+  if ( (rc = recvMr(_mr)) )                          return rc;
+
+  // Region may already have stuff in it, so can't write on it above
+  // Revisit: Would like to make it const, but has issues for Endpoint
+  if (region)
   {
-    size_t sz = sizeof(RemoteAddress);
-    if (!_region)  return ENOMEM;
-
-    if ( (rc = setupMr(_region, sz, &_mr)) )       return rc;
+    if ( (rc = setupMr(region, lclSize, &_mr)) )     return rc;
   }
-  else
-  {
-    if ( (rc = setupMr(region, size, &_mr)) )      return rc;
-  }
-
-  if ( (rc = sendU32(_mr,   id, "ID")) )           return rc;
-  if ( (rc = recvU32(_mr, &_id, "ID")) )           return rc;
-
-  if ( (rc = sendU32(_mr, size, "region size")) )  return rc;
-  if ( (rc = recvMr(_mr)) )                        return rc;
 
   return 0;
 }

@@ -186,8 +186,8 @@ int EbAppBase::process()
                         ? "buffer"
                         : TransitionId::name(idg->seq.service());
     printf("EbAp rcvd %6d %15s[%4d]    @ "
-           "%16p, ctl %02x, pid %014lx,          src %2d, data %08lx\n",
-           cnt++, knd, idx, idg, ctl, pid, lnk->id(), data);
+           "%16p, ctl %02x, pid %014lx,          src %2d, data %08lx, ext %4d\n",
+           cnt++, knd, idx, idg, ctl, pid, lnk->id(), data, idg->xtc.extent);
   }
 
   _updateHists(t0, t1, idg->seq.stamp());

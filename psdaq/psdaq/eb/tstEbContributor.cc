@@ -39,8 +39,8 @@ static const size_t   result_extent    = 2;    // Revisit: Number of "L3" result
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReqServer::numberofEvBuffers
-static const size_t   mon_buf_size     = 1024; // Revisit: Corresponds to monReqServer:sizeofBuffers option
-static const size_t   mon_trSize       = 1024; // Revisit: Corresponds to monReqServer:??? option
+static const size_t   mon_buf_size     = 64 * 1024; // Revisit: Corresponds to monReqServer:sizeofBuffers option
+static const size_t   mon_trSize       = 64 * 1024; // Revisit: Corresponds to monReqServer:??? option
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -91,6 +91,9 @@ namespace Pds {
              size_t   maxEvtSize);
       ~DrpSim();
     public:
+      void*           base() const { return _pool->buffer(); }
+      size_t          size() const { return _pool->size();   }
+    public:
       void            startup(unsigned id);
       void            shutdown();
     public:
@@ -138,6 +141,8 @@ namespace Pds {
                 StatsMonitor&        smon);
       virtual ~EbCtrbApp() {}
     public:
+      const DrpSim& drpSim() const { return _drpSim; }
+    public:
       void     run(EbCtrbIn&);
     private:
       DrpSim               _drpSim;
@@ -160,7 +165,7 @@ DrpSim::DrpSim(unsigned maxBatches,
   _maxEvtSz    (maxEvtSize),
   _xtc         (),
   _pid         (0x01000000000003ul),  // Something non-zero and not on a batch boundary
-  _pool        (nullptr),
+  _pool        (new GenericPoolW(sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries)),
   _trId        (TrUnknown),
   _allocPending(0)
 {
@@ -168,14 +173,13 @@ DrpSim::DrpSim(unsigned maxBatches,
 
 DrpSim::~DrpSim()
 {
+  if (_pool)  delete _pool;
 }
 
 void DrpSim::startup(unsigned id)
 {
   _trId         = TrUnknown;
   _allocPending = 0;
-
-  _pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries);
 
   const_cast<Xtc&>(_xtc) = Xtc(TypeId(TypeId::Data, 0), Src(id));
 }
@@ -187,13 +191,12 @@ void DrpSim::shutdown()
   printf("\nDrpSim Input data pool:\n");
   _pool->dump();
 
-  delete _pool;
-  _pool = nullptr;
+  // Revisit: Need to deallocate whatever is still allocated in the _pool
 }
 
 const Dgram* DrpSim::genInput()
 {
-  static const TransitionId::Value trId[TransitionId::NumberOf] =
+  static const TransitionId::Value trId[] =
     { TransitionId::Unknown,
       TransitionId::Reset,
       TransitionId::Configure,       TransitionId::Unconfigure,
@@ -271,19 +274,21 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
     abort();
   }
 
-  if (result->seq.isEvent())            // L1Accept
+  if (_mon)
   {
-    uint32_t* response = (uint32_t*)result->xtc.payload();
+    if (result->seq.isEvent())            // L1Accept
+    {
+      uint32_t* response = (uint32_t*)result->xtc.payload();
 
-    if (response[1] && _mon)  _mon->post(input, response[1]);
+      if (response[1])  _mon->post(input, response[1]);
+    }
+    else                                  // Other Transition
+    {
+      //printf("Non-event rcvd: pid = %014lx, service = %d\n", pid, result->seq.service());
+
+      _mon->post(input);
+    }
   }
-  else                                  // Other Transition
-  {
-    //printf("Non-event rcvd: pid = %014lx, service = %d\n", pid, result->seq.service());
-
-    if (_mon)  _mon->post(input);
-  }
-
   // Revisit: Race condition
   // There's a race when the input datagram is posted to the monitoring node(s).
   // It is nominally safe to delete the DG only when the post has completed.
@@ -410,7 +415,7 @@ void CtrbApp::handleConnect(const json &msg)
     return;
   }
 
-  if ( (rc= _tebCtrb.connect(_tebPrms)) )
+  if ( (rc = _tebCtrb.connect(_tebPrms)) )
   {
     // Reply to collection with a failure message
     return;
@@ -418,8 +423,10 @@ void CtrbApp::handleConnect(const json &msg)
 
   if (_mebPrms.addrs.size() != 0)
   {
+    const DrpSim& drpSim = _tebCtrb.drpSim();
+
     _mebCtrb = new MebContributor(_mebPrms);
-    if ( (rc = _mebCtrb->connect(_mebPrms)) )
+    if ( (rc = _mebCtrb->connect(_mebPrms, drpSim.base(), drpSim.size())) )
     {
       // Reply to collection with a failure message
       return;

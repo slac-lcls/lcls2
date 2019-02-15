@@ -22,7 +22,7 @@ namespace Pds {
     public:
       MebContributor(const MebCtrbParams&);
     public:
-      int     connect(const MebCtrbParams&);
+      int     connect(const MebCtrbParams&, void* region, size_t size);
       void    shutdown();
     public:
       int      post(const XtcData::Dgram* dataDatagram); // Transitions

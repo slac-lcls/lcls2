@@ -26,6 +26,10 @@ namespace Pds {
                               size_t   size);
       int       preparePoster(unsigned id,
                               void*    region,
+                              size_t   lclSize,
+                              size_t   rmtSize);
+      int       preparePoster(unsigned id,
+                              void*    region,
                               size_t   size);
     public:
       int       setupMr(void* region, size_t size);

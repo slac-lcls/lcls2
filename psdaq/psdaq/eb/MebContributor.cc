@@ -27,7 +27,9 @@ MebContributor::MebContributor(const MebCtrbParams& prms) :
 {
 }
 
-int MebContributor::connect(const MebCtrbParams& prms)
+int MebContributor::connect(const MebCtrbParams& prms,
+                            void*                region,
+                            size_t               size)
 {
   int    rc;
   size_t regionSize = prms.maxEvents * _maxEvSize;
@@ -48,7 +50,7 @@ int MebContributor::connect(const MebCtrbParams& prms)
               __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
-    if ( (rc = link->preparePoster(prms.id, regionSize)) )
+    if ( (rc = link->preparePoster(prms.id, region, size, regionSize)) )
     {
       fprintf(stderr, "%s: Failed to prepare link to %s:%s\n",
               __PRETTY_FUNCTION__, addr, port);
@@ -93,7 +95,7 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
     unsigned ctl    = ddg->seq.pulseId().control();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
     printf("MebCtrb posts %6ld       monEvt [%4d]  @ "
-           "%16p, ctl, %02d, pid %014lx, sz %4zd, MEB %2d @ %16p, data %08x\n",
+           "%16p, ctl %02d, pid %014lx, sz %4zd, MEB %2d @ %16p, data %08x\n",
            _eventCount, idx, ddg, ctl, pid, sz, link->id(), rmtAdx, data);
   }
 

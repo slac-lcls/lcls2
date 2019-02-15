@@ -28,7 +28,7 @@ static const int      core_1               = 11; // devXXX: 11, devXX: 19, accXX
 static const unsigned rtMon_period         = 1;  // Seconds
 static const unsigned epoch_duration       = 8;  // Revisit: 1 per xferBuffer
 static const unsigned numberof_xferBuffers = 8;  // Revisit: Value; corresponds to tstEbContributor:maxEvents
-static const unsigned sizeof_buffers       = 1024; // Revisit
+static const unsigned sizeof_buffers       = 64 * 1024; // Revisit
 
 using namespace XtcData;
 using namespace Pds::Eb;
@@ -75,6 +75,9 @@ namespace Pds {
       _bufFreeList(prms.maxBuffers),
       _id(-1u)
     {
+      printf("  Tag:                        %s\n", tag);
+      printf("  Max event buffer size:      %d\n", sizeofBuffers);
+      printf("  Number of Event queues:     %d\n", numberofEvQueues);
     }
     int connect(const EbParams& prms)
     {
@@ -235,6 +238,8 @@ namespace Pds {
       _prms      (prms),
       _dist      (dist)
     {
+      printf("  Distribute:                 %s\n", dist ? "yes" : "no");
+
       smon.registerIt("MEB_EvtRt",  _eventCount,      StatsMonitor::RATE);
       smon.registerIt("MEB_EvtCt",  _eventCount,      StatsMonitor::SCALAR);
       smon.registerIt("MEB_EpAlCt",  epochAllocCnt(), StatsMonitor::SCALAR);
@@ -513,9 +518,10 @@ int MebApp::_parseConnectionParams(const json& body)
   printf("\nParameters of Monitor Event Builder ID %d:\n",  _prms.id);
   printf("  Thread core numbers:        %d, %d\n",          _prms.core[0], _prms.core[1]);
   printf("  Partition:                  %d\n",              _prms.partition);
+  printf("  Bit list of contributors:   %016lx\n",          _prms.contributors);
   printf("  Buffer duration:            %014lx\n",          _prms.duration);
-  printf("  Batch pool depth:           %d\n",              _prms.maxBuffers);
-  printf("  Max # of entries per batch: %d\n",              _prms.maxEntries);
+  printf("  Buffer pool depth:          %d\n",              _prms.maxBuffers);
+  printf("  Max transition size:        %zd\n",             _prms.maxTrSize);
   printf("\n");
   printf("  MRQ port range: %d - %d\n", mrqPortBase, mrqPortBase + MAX_MEBS - 1);
   printf("  MEB port range: %d - %d\n", mebPortBase, mebPortBase + MAX_MEBS - 1);
