@@ -10,8 +10,8 @@ namespace Pds {
 class TimingHeader {
 public:
     XtcData::Sequence seq;
-    uint32_t evtCounter;
     uint32_t env;
+    uint32_t evtCounter;
     uint32_t _opaque[2];
 };
 
