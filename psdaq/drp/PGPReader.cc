@@ -38,11 +38,13 @@ PGPReader::PGPReader(MemPool& pool, Parameters& para,
 
     m_buffer_mask = m_pool.num_entries - 1;
 
-    // FIXME and make mask from lane_mask
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
-    for (unsigned i=0; i<4; i++) {
-        dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
+    for (int i=0; i<4; i++) {
+        if (lane_mask & (1<<i)) {
+            std::cout<<"setting lane  "<<i<<'\n';
+            dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
+        }
     }
     dmaSetMaskBytes(pool.fd, mask);
 

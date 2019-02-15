@@ -58,8 +58,7 @@ void DrpApp::handleConnect(const json &msg)
         std::cout<< "Error !! Could not create Detector object\n";
     }
 
-    int laneMask = 0xf;
-    m_pgpReader = std::make_unique<PGPReader>(m_pool, *m_para, det, laneMask);
+    m_pgpReader = std::make_unique<PGPReader>(m_pool, *m_para, det, m_para->laneMask);
     m_pgpThread = std::thread{&PGPReader::run, std::ref(*m_pgpReader)};
 
     // Create all the eb things and do the connections

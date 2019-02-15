@@ -30,6 +30,7 @@ struct Parameters
     std::string detectorType;
     int numWorkers;
     int numEntries;
+    int laneMask;
     Pds::Eb::TebCtrbParams tPrms;
     Pds::Eb::MebCtrbParams mPrms;
 };
