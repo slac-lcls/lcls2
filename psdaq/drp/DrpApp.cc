@@ -52,18 +52,17 @@ void DrpApp::handleConnect(const json &msg)
     Factory<Detector> f;
     f.register_type<Digitizer>("Digitizer");
     f.register_type<AreaDetector>("AreaDetector");
-    Detector* det = f.create(m_para->detectorType);
+    std::cout<<"nodeId  "<<m_para->tPrms.id<<'\n';
+    Detector* det = f.create(m_para->detectorType, m_para->tPrms.id);
     if (det == nullptr) {
         std::cout<< "Error !! Could not create Detector object\n";
     }
 
-    int laneMask = 0xf;
-    m_pgpReader = std::make_unique<PGPReader>(m_pool, det, laneMask, m_para->numWorkers);
+    m_pgpReader = std::make_unique<PGPReader>(m_pool, *m_para, det, m_para->laneMask);
     m_pgpThread = std::thread{&PGPReader::run, std::ref(*m_pgpReader)};
 
     // Create all the eb things and do the connections
     bool connected = true;
-    // Pds::Eb::TebContributor ebCtrb(m_para->tPrms);
     int rc = m_ebContributor->connect(m_para->tPrms);
     if (rc) {
         connected = false;
@@ -264,9 +263,9 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
 
     // write event to file if it passes event builder or is a configure transition
     /* FIXME disable writing for now
-    if (eb_decision == 1 || (transition_id == TransitionId::Configure)) {
-        Dgram* dgram = (Dgram*)pebble->fex_data();
-        if (fwrite(dgram, sizeof(Dgram) + dgram->xtc.sizeofPayload(), 1, _xtcFile) != 1) {
+    if (eb_decision == 1 || (transition_id == XtcData::TransitionId::Configure)) {
+        XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
+        if (fwrite(dgram, sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload(), 1, _xtcFile) != 1) {
             printf("Error writing to output xtc file.\n");
             return;
         }

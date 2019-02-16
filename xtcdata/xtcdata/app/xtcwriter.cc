@@ -401,6 +401,23 @@ void usage(char* progname)
     fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -h]\n", progname);
 }
 
+Dgram& createTransition(TransitionId::Value transId) {
+    TypeId tid(TypeId::Parent, 0);
+    uint64_t pulseId = 0;
+    uint32_t env = 0;
+    struct timeval tv;
+    void* buf = malloc(BUFSIZE);
+    gettimeofday(&tv, NULL);
+    Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+    return *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+}
+
+void save(Dgram& dg, FILE* xtcFile) {
+    if (fwrite(&dg, sizeof(dg) + dg.xtc.sizeofPayload(), 1, xtcFile) != 1) {
+        printf("Error writing to output xtc file.\n");
+    }
+}
+
 #define MAX_FNAME_LEN 256
 
 int main(int argc, char* argv[])
@@ -432,15 +449,13 @@ int main(int argc, char* argv[])
         printf("Error opening output xtc file.\n");
         return -1;
     }
-    struct timeval tv;
 
-    void* configbuf = malloc(BUFSIZE);
+    struct timeval tv;
     TypeId tid(TypeId::Parent, 0);
     uint32_t env = 0;
     uint64_t pulseId = 0;
-    Sequence seq(Sequence::Event, TransitionId::Configure, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
-    Dgram& config = *new(configbuf) Dgram(Transition(seq, env), Xtc(tid));
-    gettimeofday(&tv, NULL);
+
+    Dgram& config = createTransition(TransitionId::Configure);
 
     unsigned nodeid1 = 1;
     unsigned nodeid2 = 2;
@@ -448,17 +463,16 @@ int main(int argc, char* argv[])
     addNames(config.xtc, namesLookup1, nodeid1);
     addData(config.xtc, namesLookup1, nodeid1);
 
+    save(config,xtcFile);
+
+    // Dgram& enable = createTransition(TransitionId::Enable);
+    // save(enable,xtcFile);
+
     DebugIter iter(&config.xtc, namesLookup1);
     iter.iterate();
     std::cout << "Done iter" << std::endl;
 
-    if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
-        printf("Error writing configure to output xtc file.\n");
-        return -1;
-    }
-
     void* buf = malloc(BUFSIZE);
- 
     for (int i = 0; i < nevents; i++) {
         gettimeofday(&tv, NULL);
         Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
@@ -471,11 +485,14 @@ int main(int argc, char* argv[])
         DebugIter iter(&dgram.xtc, namesLookup1);
         iter.iterate();
 
-        if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, xtcFile) != 1) {
-            printf("Error writing to output xtc file.\n");
-            return -1;
-        }
+        save(dgram,xtcFile);
      }
+
+    // Dgram& disable = createTransition(TransitionId::Disable);
+    // save(disable,xtcFile);
+    // Dgram& unconfig = createTransition(TransitionId::Unconfigure);
+    // save(unconfig,xtcFile);
+
     fclose(xtcFile);
 
     return 0;

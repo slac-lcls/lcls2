@@ -10,8 +10,9 @@ class AreaDetector : public Detector
 {
 public:
     AreaDetector(unsigned nodeId);
-    virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data);
-    virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
+    void connect() override;
+    void configure(XtcData::Dgram& dgram, PGPData* pgp_data) override;
+    void event(XtcData::Dgram& dgram, PGPData* pgp_data) override;
 private:
     enum {RawNamesIndex, FexNamesIndex};
     XtcData::NamesLookup m_namesLookup;

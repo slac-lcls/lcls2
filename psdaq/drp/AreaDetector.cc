@@ -38,6 +38,11 @@ public:
 };
 static RawDef myRawDef;
 
+void AreaDetector::connect()
+{
+    
+}
+
 void AreaDetector::configure(Dgram& dgram, PGPData* pgp_data)
 {
     printf("AreaDetector configure\n");
@@ -69,7 +74,6 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
 {
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-
     Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
     dgram.seq = timing_header->seq;
     dgram.env = timing_header->env;
@@ -85,7 +89,7 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
             arrayT(i,j) = i+j;
         }
     }
-    
+
     // raw data
     NamesId rawNamesId(m_nodeId,RawNamesIndex);
     DescribedData raw(dgram.xtc, m_namesLookup, rawNamesId);
