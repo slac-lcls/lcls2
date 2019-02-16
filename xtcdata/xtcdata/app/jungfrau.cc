@@ -33,7 +33,6 @@ public:
         case (TypeId::ShapesData): {
             ShapesData* tmp = (ShapesData*)xtc;
             _shapesData[tmp->namesId().namesId()] = tmp;
-            iterate(xtc);
             break;
         }
         default:
@@ -42,8 +41,8 @@ public:
         return Continue;
     }
 
-    ShapesData& config() {return *_shapesData[0];}
-    ShapesData& event()  {return *_shapesData[1];}
+    ShapesData& shape() {return *_shapesData[0];}
+    ShapesData& value() {return *_shapesData[1];}
 
 private:
     ShapesData* _shapesData[2];
@@ -55,8 +54,10 @@ void usage(char* progname)
     fprintf(stderr, "Usage: %s -f <filename> [-h]\n", progname);
 }
 
-void dump(const char* transition, Names& names, DescData& descdata) {
+void dump(const char* transition, DescData& descdata) {
     printf("------ Names for %s transition ---------\n",transition);
+
+    Names& names = descdata.nameindex().names();
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         printf("rank %d type %d name %s\n",name.rank(),name.type(),name.name());
@@ -105,8 +106,9 @@ int main(int argc, char* argv[])
         exit(2);
     }
 
-    XtcFileIterator iter(fd, 0x4000000);
-    Dgram* cfg = iter.next();
+    XtcFileIterator iter_fdg(fd, 0x4000000);
+    Dgram* cfg = iter_fdg.next();
+
     NamesIter& namesIter = *new NamesIter(&(cfg->xtc));
     namesIter.iterate();
     NamesLookup& namesLookup = namesIter.namesLookup();
@@ -114,22 +116,20 @@ int main(int argc, char* argv[])
     // get data out of the configure transition
     MyXtcIter cfgiter(&(cfg->xtc));
     cfgiter.iterate();
-    NamesId& namesId = cfgiter.config().namesId();
-    DescData descdata(cfgiter.config(), namesLookup[namesId]);
-    Names& names = descdata.nameindex().names();
-    dump("Configure",names,descdata);
+    NamesId& namesId = cfgiter.shape().namesId();
+    DescData descdata(cfgiter.shape(), namesLookup[namesId]);
+    dump("Configure",descdata);
 
     Dgram* dg;
     unsigned nevent=0;
-    while ((dg = iter.next())) {
+    while ((dg = iter_fdg.next())) {
         if (nevent>=neventreq) break;
         nevent++;
         MyXtcIter iter(&(dg->xtc));
         iter.iterate();
-        NamesId& namesId = iter.event().namesId();
-        DescData descdata(iter.event(), namesLookup[namesId]);
-        Names& names = descdata.nameindex().names();
-        dump("Event",names,descdata);
+        NamesId& namesId = iter.value().namesId();
+        DescData descdata(iter.value(), namesLookup[namesId]);
+        dump("Event",descdata);
     }
 
     ::close(fd);

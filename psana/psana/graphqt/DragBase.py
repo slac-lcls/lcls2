@@ -5,6 +5,8 @@ Class :py:class:`DragBase` is a base class for draggable objects
 Created on 2016-09-14 by Mikhail Dubrovin
 """
 #-----------------------------
+import logging
+logger = logging.getLogger(__name__)
 
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF
 from PyQt5.QtGui import QPen, QBrush, QCursor

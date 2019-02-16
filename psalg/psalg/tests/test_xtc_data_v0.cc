@@ -15,9 +15,7 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/DescData.hh"
-//#include "xtcdata/xtc/NamesIter.hh"
-#include "xtcdata/xtc/ConfigIter.hh"
-#include "xtcdata/xtc/DataIter.hh"
+#include "xtcdata/xtc/NamesIter.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 
 //using namespace psalgos;
@@ -58,6 +56,119 @@ public:
 
         return Continue;
     }
+};
+
+//-----------------------------
+
+class ConfigIter : public XtcData::NamesIter
+{
+public:
+    ConfigIter(XtcData::Xtc* xtc) : XtcData::NamesIter(xtc) { iterate(); }
+    ConfigIter() : XtcData::NamesIter() {}
+    // ~ConfigIter() { delete _p; }
+
+    int process(XtcData::Xtc* xtc)
+    {
+        TypeId::Type type = xtc->contains.id(); 
+	printf("ConfigIter TypeId::%-20s Xtc*: %p\n", TypeId::name(type), &xtc);
+
+	switch (xtc->contains.id()) {
+	case (TypeId::Parent): {
+	  //printf("ConfigIter case TypeId::Parent - keep iterating\n");
+	    iterate(xtc); // look inside anything that is a Parent
+	    break;
+	}
+	case (TypeId::Names): {
+	  //printf("ConfigIter case TypeId::Names - grab names in namesLookup\n");
+	    Names& names = *(Names*)xtc;
+	    NamesId& namesId = names.namesId();
+            NamesLookup& _namesLookup = namesLookup();
+	    _namesLookup[namesId] = NameIndex(names);
+	    //printf("ConfigIter case TypeId::Names add number of names: %d namesId: %d\n", names.num(), namesId.namesId());
+	    break;
+	}
+        case (TypeId::ShapesData): {
+	    ShapesData* pshapesdata = (ShapesData*)xtc;
+            NamesId namesId = pshapesdata->namesId();
+            _shapesData[namesId.namesId()] = pshapesdata;
+	    //printf("ConfigIter case TypeId::ShapesData): namesId.level: %d value: %d namesId: %d\n",
+	    //	   namesId.level(), namesId.value(), namesId.namesId());
+            break;
+        }
+	default:
+	    break;
+	}
+	return Continue;
+    }
+
+    ShapesData& shape() {return *_shapesData[0];}
+    ShapesData& value() {return *_shapesData[1];}
+    //NamesLookup& namesLookup() {return _namesLookup;} // defined in super-class NamesIter
+    //void iterate();                                   // defined in super-super-class XtcIterator
+    DescData* desc_shape() {return new DescData(shape(), namesLookup()[shape().namesId()]);}
+    DescData* desc_value() {return new DescData(value(), namesLookup()[value().namesId()]);}
+
+private:
+    ShapesData* _shapesData[2];
+};
+
+//-----------------------------
+
+class DataIter : public XtcIterator
+{
+public:
+    enum {Stop, Continue};
+    DataIter(Xtc* xtc) : XtcIterator(xtc) { iterate(); }
+
+    int process(Xtc* xtc)
+    {
+        // enum Type {Parent, ShapesData, Shapes, Data, Names, NumberOf};
+        TypeId::Type type = xtc->contains.id(); 
+	printf("DataIter TypeId::%-20s Xtc*: %p\n", TypeId::name(type), &xtc);
+
+        switch (type) {
+        case (TypeId::Parent): {
+	  //printf("YYYY In DataIter TypeId::Parent - keep iterating\n");
+	    iterate(xtc); 
+            break;
+        }
+        case (TypeId::Names): {
+	  //Names& names = *(Names*)xtc;
+	  //Alg& alg = names.alg();
+	  //printf("*** DetName: %s, DetType: %s, Alg: %s, Version: 0x%6.6x, Names:\n",
+	  //       names.detName(), names.detType(), alg.name(), alg.version());
+
+	  //printf("number of names:  %d\n", names.num());
+	  //for (unsigned i = 0; i < names.num(); i++) {
+	  //    Name& name = names.get(i);
+	  //    printf("%02d XX Name %-32s rank %d type %d\n", i, name.name(), name.rank(), name.type());
+	  //}
+            break;
+        }
+        case (TypeId::ShapesData): {
+ 
+	    ShapesData* pshapesdata = (ShapesData*)xtc;
+            NamesId namesId = pshapesdata->namesId();
+            _shapesData[namesId.namesId()] = pshapesdata;
+ 
+	    //printf("YYYY  case TypeId::ShapesData): namesId.level: %d value: %d namesId: %d\n",
+	    //	   namesId.level(), namesId.value(), namesId.namesId());
+            break;
+        }
+        case (TypeId::Shapes): {break;}
+        case (TypeId::Data):   {break;}
+        default:{cout << "YYYY TypeId::default ????? type = " << type << " \n"; break;}
+        }
+
+	//cout << "XXXX In DataIter just before exit\n";
+        return Continue;
+    }
+
+    ShapesData& shape() {return *_shapesData[0];}
+    ShapesData& value() {return *_shapesData[1];}
+
+private:
+    ShapesData* _shapesData[2];
 };
 
 //-----------------------------
@@ -130,6 +241,11 @@ int test_xtc_content(int argc, char* argv[]) {
 
 //-----------------------------
 
+#define DESC_FOR_METHOD(oDescData, itero, names_map, method) \
+        XtcData::DescData oDescData(itero.method(), names_map[itero.method().namesId()])
+#define DESC_SHAPE(oDescData, itero, names_map) DESC_FOR_METHOD(oDescData, itero, names_map, shape)
+#define DESC_VALUE(oDescData, itero, names_map) DESC_FOR_METHOD(oDescData, itero, names_map, value)
+
 int test_all(int argc, char* argv[]) {
 
     int fd = file_descriptor(argc, argv);
@@ -149,8 +265,7 @@ int test_all(int argc, char* argv[]) {
     //DescData* p_desc_shape = configo.desc_shape();
     //dump("Configure shapes", *p_desc_shape);
 
-    //DESC_SHAPE(desc_shape, configo, names_map);
-    DescData& desc_shape = configo.desc_shape();
+    DESC_SHAPE(desc_shape, configo, names_map);
     dump("Config shapes", desc_shape);
 
     //NamesId& names_id_value = configo.value().namesId();
@@ -160,13 +275,12 @@ int test_all(int argc, char* argv[]) {
     //DescData* p_desc_value = configo.desc_value();
     //dump("Configure values", *p_desc_value);
 
-    //DESC_VALUE(desc_value, configo, names_map);
-    DescData& desc_value = configo.desc_value();
+    DESC_VALUE(desc_value, configo, names_map);
     dump("Config values", desc_value);
 
     //return 0;
 
-    unsigned neventreq=4;
+    unsigned neventreq=3;
     unsigned nevent=0;
     while ((dg = xfi.next())) {
         if (nevent>=neventreq) break;
@@ -185,8 +299,7 @@ int test_all(int argc, char* argv[]) {
         //Names& names = descdata.nameindex().names();
         //dump("Value", desc_data);
 
-        //DESC_VALUE(desc_data, datao, names_map);
-        DescData& desc_data = datao.desc_value(names_map);
+        DESC_VALUE(desc_data, datao, names_map);
         dump("Data values", desc_data);
     }
 

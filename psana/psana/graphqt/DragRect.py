@@ -6,6 +6,9 @@ Created on 2016-10-10 by Mikhail Dubrovin
 """
 #-----------------------------
 
+import logging
+logger = logging.getLogger(__name__)
+
 from PyQt5.QtCore import QRectF #Qt, QPointF#, QRect, QRectF
 from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE
 from psana.graphqt.DragPoint import * # DragPoint, DragBase, Qt, QPen, QBrush, QCursor
@@ -26,6 +29,8 @@ class DragRect(QGraphicsRectItem, DragBase) :
               obj is QRectF - it will be drawn as is
         """
         DragBase.__init__(self, parent, brush, pen)
+
+        logger.debug('In DragRect')
 
         rect = None
         if isinstance(obj, QPointF) :
@@ -118,7 +123,8 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mousePressEvent(self, e) :
-        print('%s.mousePressEvent, at point: ' % self.__class__.__name__, e.pos(), e.scenePos())
+        logger.debug('%s.mousePressEvent, at point: %s on scene: %s '%\
+                     (self.__class__.__name__, str(e.pos()), str(e.scenePos())))
         QGraphicsRectItem.mousePressEvent(self, e) # points would not show up w/o this line
 
         ps = e.scenePos()
@@ -127,6 +133,10 @@ class DragRect(QGraphicsRectItem, DragBase) :
         t = self.scene().views()[0].transform()
         item_sel = self.scene().itemAt(ps.x(), ps.y(), t)
         #item_sel = self.scene().itemAt(ps)
+
+        if self.lst_ctl_points is None : 
+            logger.warning('DragRect.lst_ctl_points is None')
+            return
 
         if item_sel in self.lst_ctl_points :
             #print('set mode EDIT')
@@ -148,7 +158,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
     def mouseMoveEvent(self, e) :
         QGraphicsPathItem.mouseMoveEvent(self, e)
-        print('%s.mouseMoveEvent' % self.__class__.__name__)
+        logger.debug('%s.mouseMoveEvent' % self.__class__.__name__)
         #print('%s.mouseMoveEvent, at point: ' % self.__class__.__name__, e.pos(), ' scenePos: ', e.scenePos())
 
         dp = e.scenePos() - e.lastScenePos() 

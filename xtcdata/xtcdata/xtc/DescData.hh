@@ -13,6 +13,11 @@
 
 #define _unused(x) ((void)(x))
  
+#define DESC_FOR_METHOD(oDescData, itero, names_map, method) \
+        XtcData::DescData oDescData(itero.method(), names_map[itero.method().namesId()])
+#define DESC_SHAPE(oDescData, itero, names_map) DESC_FOR_METHOD(oDescData, itero, names_map, shape)
+#define DESC_VALUE(oDescData, itero, names_map) DESC_FOR_METHOD(oDescData, itero, names_map, value)
+
 namespace XtcData
 {
 

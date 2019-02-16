@@ -7,6 +7,8 @@ add_library(xtc SHARED
     src/XtcFileIterator.cc
     src/ShapesData.cc
     src/NamesIter.cc
+    src/ConfigIter.cc
+    src/DataIter.cc
 )
 
 target_include_directories(xtc PUBLIC
@@ -25,6 +27,8 @@ install(FILES
     XtcFileIterator.hh
     Damage.hh
     NamesIter.hh
+    ConfigIter.hh
+    DataIter.hh
     Src.hh
     Xtc.hh
     DescData.hh
