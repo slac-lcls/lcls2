@@ -22,7 +22,7 @@ class Test:
             # check for L1 accept transition ID 12
             if evt._dgrams[0].seq.service() == 12:
                 dg_count += 1
-        if (sys.version_info.major>2): assert dg_count == 4,"invalid dgram count"
+        assert dg_count == 4,"invalid dgram count"
                 
     def setup_input_files(self):
         tmp_dir = os.path.join('.tmp','shmem')

@@ -651,6 +651,7 @@ void XtcMonitorServer::_initialize_client()
   }
 
   _transitionCache->deallocate(iclient);
+  _update(iclient,TransitionId::Reset);
 }
 
 //

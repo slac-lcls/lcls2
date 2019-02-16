@@ -79,15 +79,11 @@ class DgramManager():
         return self
 
     def __next__(self):
-        if(self.shmem):
-            return self.next(read_shmem=True)
-        else:
-            return self.next()
+        return self.next()
     
-    def next(self,read_shmem=False):
+    def next(self):
         """ only support sequential read - no event building"""
-        if (read_shmem):
-            dgrams = []
+        if self.shmem:
             view = self.shmem.get(self.shmem_kwargs)
             if view:
                 # use the most recent configure datagram
@@ -96,7 +92,7 @@ class DgramManager():
                                 shmem_index=self.shmem_kwargs['index'], \
                                 shmem_size=self.shmem_kwargs['size'], \
                                 shmem_cli=self.shmem_kwargs['cli'])
-                dgrams += [d]
+                dgrams = [d]
             else:
                 raise StopIteration
         else:
