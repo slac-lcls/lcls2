@@ -8,6 +8,12 @@ GenericPoolW::GenericPoolW(size_t sizeofObject, int numberofObjects) :
 {
 }
 
+Pds::GenericPoolW::GenericPoolW(size_t sizeofObject, int numberofObjects, unsigned alignBoundary) :
+  GenericPool(sizeofObject, numberofObjects, alignBoundary),
+  _stopping(false)
+{
+}
+
 GenericPoolW::~GenericPoolW()
 {
 }

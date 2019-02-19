@@ -11,6 +11,7 @@ namespace Pds {
   class GenericPoolW : public GenericPool {
   public:
     GenericPoolW(size_t sizeofObject, int numberofObjects);
+    GenericPoolW(size_t sizeofObject, int numberofObjects, unsigned alignBoundary);
     virtual ~GenericPoolW();
   public:
     void stop();
