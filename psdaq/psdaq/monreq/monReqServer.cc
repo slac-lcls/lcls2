@@ -515,13 +515,14 @@ int MebApp::_parseConnectionParams(const json& body)
     return 1;
   }
 
-  printf("\nParameters of Monitor Event Builder ID %d:\n",  _prms.id);
-  printf("  Thread core numbers:        %d, %d\n",          _prms.core[0], _prms.core[1]);
-  printf("  Partition:                  %d\n",              _prms.partition);
-  printf("  Bit list of contributors:   %016lx\n",          _prms.contributors);
-  printf("  Buffer duration:            %014lx\n",          _prms.duration);
-  printf("  Buffer pool depth:          %d\n",              _prms.maxBuffers);
-  printf("  Max transition size:        %zd\n",             _prms.maxTrSize);
+  printf("\nParameters of Monitor Event Builder ID %d:\n",   _prms.id);
+  printf("  Thread core numbers:        %d, %d\n",           _prms.core[0], _prms.core[1]);
+  printf("  Partition:                  %d\n",               _prms.partition);
+  printf("  Bit list of contributors:   %016lx, cnt: %zd\n", _prms.contributors,
+                                                             std::bitset<64>(_prms.contributors).count());
+  printf("  Buffer duration:            %014lx\n",           _prms.duration);
+  printf("  Buffer pool depth:          %d\n",               _prms.maxBuffers);
+  printf("  Max transition size:        %zd\n",              _prms.maxTrSize);
   printf("\n");
   printf("  MRQ port range: %d - %d\n", mrqPortBase, mrqPortBase + MAX_MEBS - 1);
   printf("  MEB port range: %d - %d\n", mebPortBase, mebPortBase + MAX_MEBS - 1);

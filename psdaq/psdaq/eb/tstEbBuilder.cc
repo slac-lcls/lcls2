@@ -13,16 +13,15 @@
 #include "psdaq/service/Collection.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
-#include <signal.h>
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>                     // For getopt()
+#include <cstring>
 #include <climits>
+#include <csignal>
 #include <bitset>
 #include <chrono>
 #include <atomic>
 #include <vector>
-#include <unordered_map>
 #include <cassert>
 #include <iostream>
 
@@ -630,13 +629,15 @@ int TebApp::_parseConnectionParams(const json& body)
     }
   }
 
-  printf("\nParameters of Trigger Event Builder ID %d:\n",  _prms.id);
-  printf("  Thread core numbers:        %d, %d\n",          _prms.core[0], _prms.core[1]);
-  printf("  Partition:                  %d\n",              _prms.partition);
-  printf("  Number of Monitor EBs:      %d\n",              _prms.numMrqs);
-  printf("  Batch duration:             %014lx = %ld uS\n", _prms.duration, _prms.duration);
-  printf("  Batch pool depth:           %d\n",              _prms.maxBuffers);
-  printf("  Max # of entries per batch: %d\n",              _prms.maxEntries);
+  printf("\nParameters of Trigger Event Builder ID %d:\n",   _prms.id);
+  printf("  Thread core numbers:        %d, %d\n",           _prms.core[0], _prms.core[1]);
+  printf("  Partition:                  %d\n",               _prms.partition);
+  printf("  Bit list of contributors:   %016lx, cnt: %zd\n", _prms.contributors,
+                                                             std::bitset<64>(_prms.contributors).count());
+  printf("  Number of Monitor EBs:      %d\n",               _prms.numMrqs);
+  printf("  Batch duration:             %014lx = %ld uS\n",  _prms.duration, _prms.duration);
+  printf("  Batch pool depth:           %d\n",               _prms.maxBuffers);
+  printf("  Max # of entries per batch: %d\n",               _prms.maxEntries);
   printf("\n");
   printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
   printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);

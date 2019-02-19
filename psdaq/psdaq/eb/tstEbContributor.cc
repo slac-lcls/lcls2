@@ -11,7 +11,6 @@
 #include "psdaq/service/Collection.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
-#include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <climits>
@@ -24,12 +23,14 @@
 #include <atomic>
 #include <thread>
 #include <iostream>
+#include <bitset>
 
 //#define SINGLE_EVENTS                   // Define to take one event at a time by hitting <CR>
 
 using namespace XtcData;
 using namespace Pds;
 
+static const unsigned CLS              = 64;   // Cache Line Size
 static const int      core_0           = 10;   // devXXX: 10, devXX:  7, accXX:  9
 static const int      core_1           = 11;   // devXXX: 11, devXX: 19, accXX: 21
 static const unsigned rtMon_period     = 1;    // Seconds
@@ -91,8 +92,8 @@ namespace Pds {
              size_t   maxEvtSize);
       ~DrpSim();
     public:
-      void*           base() const { return _pool->buffer(); }
-      size_t          size() const { return _pool->size();   }
+      void*           base() const { return _pool.buffer(); }
+      size_t          size() const { return _pool.size();   }
     public:
       void            startup(unsigned id);
       void            shutdown();
@@ -106,7 +107,7 @@ namespace Pds {
       const size_t   _maxEvtSz;
       const Xtc      _xtc;
       uint64_t       _pid;
-      GenericPoolW*  _pool;
+      GenericPoolW   _pool;
     private:
       enum { TrUnknown,
              TrReset,
@@ -165,7 +166,7 @@ DrpSim::DrpSim(unsigned maxBatches,
   _maxEvtSz    (maxEvtSize),
   _xtc         (),
   _pid         (0x01000000000003ul),  // Something non-zero and not on a batch boundary
-  _pool        (new GenericPoolW(sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries)),
+  _pool        (sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries, CLS),
   _trId        (TrUnknown),
   _allocPending(0)
 {
@@ -173,7 +174,6 @@ DrpSim::DrpSim(unsigned maxBatches,
 
 DrpSim::~DrpSim()
 {
-  if (_pool)  delete _pool;
 }
 
 void DrpSim::startup(unsigned id)
@@ -186,10 +186,10 @@ void DrpSim::startup(unsigned id)
 
 void DrpSim::shutdown()
 {
-  _pool->stop();
+  _pool.stop();
 
   printf("\nDrpSim Input data pool:\n");
-  _pool->dump();
+  _pool.dump();
 
   // Revisit: Need to deallocate whatever is still allocated in the _pool
 }
@@ -215,7 +215,7 @@ const Dgram* DrpSim::genInput()
   const Sequence seq(Sequence::Event, trId[_trId], TimeStamp(ts), PulseId(_pid));
 
   ++_allocPending;
-  void* buffer = _pool->alloc(sizeof(Input));
+  void* buffer = _pool.alloc(sizeof(Input));
   --_allocPending;
   if (!buffer)  return (Dgram*)buffer;
   Input* idg = ::new(buffer) Input(seq, _xtc);
@@ -546,13 +546,15 @@ int CtrbApp::_parseConnectionParams(const json& body)
     }
   }
 
-  printf("\nParameters of Contributor ID %d:\n",            _tebPrms.id);
-  printf("  Thread core numbers:        %d, %d\n",          _tebPrms.core[0], _tebPrms.core[1]);
-  printf("  Partition:                  %d\n",              _tebPrms.partition);
-  printf("  Number of Monitor EBs:      %zd\n",             _mebPrms.addrs.size());
-  printf("  Batch duration:             %014lx = %ld uS\n", _tebPrms.duration, _tebPrms.duration);
-  printf("  Batch pool depth:           %d\n",              _tebPrms.maxBatches);
-  printf("  Max # of entries per batch: %d\n",              _tebPrms.maxEntries);
+  printf("\nParameters of Contributor ID %d:\n",             _tebPrms.id);
+  printf("  Thread core numbers:        %d, %d\n",           _tebPrms.core[0], _tebPrms.core[1]);
+  printf("  Partition:                  %d\n",               _tebPrms.partition);
+  printf("  Bit list of TEBs:           %016lx, cnt: %zd\n", _tebPrms.builders,
+                                                             std::bitset<64>(_tebPrms.builders).count());
+  printf("  Number of Monitor EBs:      %zd\n",              _mebPrms.addrs.size());
+  printf("  Batch duration:             %014lx = %ld uS\n",  _tebPrms.duration, _tebPrms.duration);
+  printf("  Batch pool depth:           %d\n",               _tebPrms.maxBatches);
+  printf("  Max # of entries per batch: %d\n",               _tebPrms.maxEntries);
   printf("\n");
   printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
   printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
