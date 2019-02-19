@@ -1,6 +1,7 @@
 import sys
+import logging
 
-from pcaspy import SimpleServer, Driver
+from psdaq.epicstools.PVAServer import PVAServer
 import time
 from datetime import datetime
 import argparse
@@ -11,11 +12,6 @@ import pdb
 NDsLinks    = 7
 NAmcs       = 2
 NPartitions = 16
-
-class myDriver(Driver):
-    def __init__(self):
-        super(myDriver, self).__init__()
-
 
 def printDb():
     global pvdb
@@ -53,14 +49,16 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    myDriver.verbose = args.verbose
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     prefix = args.P
     
     # PVs
 #    pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 255}
     pvdb[':PAddr'              ] = {'type' : 'int'}
-    pvdb[':FwBuild'            ] = {'type' : 'char', 'count':256}
+#    pvdb[':FwBuild'            ] = {'type' : 'char', 'count':256}
+    pvdb[':FwBuild'            ] = {'type' : 'string', 'value':'None' }
     pvdb[':ModuleInit'         ] = {'type' : 'int'}
     for i in range(NAmcs):
         pvdb[':DumpPll' + '%d'%i] = {'type' : 'int'}
@@ -72,6 +70,8 @@ def main():
     pvdb[':SetVerbose'         ] = {'type' : 'int'}
     pvdb[':Inhibit'            ] = {'type' : 'int'}
     pvdb[':TagStream'          ] = {'type' : 'int'}
+    pvdb[':DumpSeq'            ] = {'type' : 'int'}
+    pvdb[':SetVerbose'         ] = {'type' : 'int'}
 
     LinkEnable = [0]*32
     LinkEnable[17:19] = [1]*3  # DTIs in slots 3-5
@@ -118,6 +118,7 @@ def main():
         pvdb[':PLL_Reset'     +'%d'%i] = {'type' : 'int'}
         pvdb[':PLL_Skew'      +'%d'%i] = {'type' : 'int'}
 
+    #addTiming('')   # For old XPM firmware
     addTiming(':Us')
     addTiming(':Cu')
 
@@ -133,15 +134,12 @@ def main():
     # printDb(pvdb, prefix)
     printDb()
 
-    server = SimpleServer()
-
+    server = PVAServer(__name__)
     server.createPV(prefix, pvdb)
-    driver = myDriver()
 
     try:
-        # process CA transactions
-        while True:
-            server.process(0.1)
+        # process PVA transactions
+        server.forever()
     except KeyboardInterrupt:
         print('\nInterrupted')
 

@@ -7,6 +7,12 @@ add_compile_options(-fno-omit-frame-pointer)
 find_package(xtcdata REQUIRED)
 find_package(psalg REQUIRED)
 
+find_library(EPICS_PVACCESS_LIB pvAccess PATH $ENV{CONDA_PREFIX}/lib)
+find_library(EPICS_PVDATA_LIB pvData PATH $ENV{CONDA_PREFIX}/lib)
+find_library(EPICS_PVACLIENT_LIB pvaClient PATH $ENV{CONDA_PREFIX}/lib)
+find_library(EPICS_CA_LIB ca PATH $ENV{CONDA_PREFIX}/lib)
+
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0")
     message(FATAL_ERROR "Insufficient gcc version")

@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <signal.h>
 
+#include <cpsw_error.h>  // To catch CPSW exceptions
+
 #include "psdaq/cphw/Reg.hh"
 
 #include "psdaq/dti/Module.hh"

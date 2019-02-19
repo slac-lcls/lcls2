@@ -2,10 +2,10 @@ import sys
 import argparse
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
-from psdaq.cas.collection_widget import CollectionWidget
+#from psdaq.cas.collection_widget import CollectionWidget
 
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, base):
+    def setupUi(self, MainWindow, base, no_coll):
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
@@ -91,10 +91,6 @@ class Ui_MainWindow(object):
         rtable = QtWidgets.QWidget()
         rtable.setLayout(lor)
 
-        partition = int(base.split(':')[-1])
-        print('partition', partition)
-        collectionWidget = CollectionWidget(partition)
-
         lscroll = QtWidgets.QScrollArea()
         lscroll.setWidget(ltable)
         rscroll = QtWidgets.QScrollArea()
@@ -103,14 +99,18 @@ class Ui_MainWindow(object):
         splitter = QtWidgets.QSplitter()
         splitter.addWidget(lscroll)
         splitter.addWidget(rscroll)
-        splitter.addWidget(collectionWidget)
+
+        if no_coll==False:
+            partition = int(base.split(':')[-1])
+            print('partition', partition)
+            collectionWidget = CollectionWidget(partition)
+            splitter.addWidget(collectionWidget)
 
         layout = QtWidgets.QHBoxLayout()
         layout.addWidget(splitter)
 
         self.centralWidget.setLayout(layout)
         self.centralWidget.resize(740, 340)
-
         MainWindow.resize(740, 340)
         MainWindow.setWindowTitle(base)
         MainWindow.setCentralWidget(self.centralWidget)
@@ -119,13 +119,18 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
+    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
+    parser.add_argument('-n', '--no_collection', action='store_true', help='no collection')
     parser.add_argument("pv", help="pv to monitor")
+
     args = parser.parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.pv)
+    ui.setupUi(MainWindow,args.pv,args.no_collection)
     MainWindow.updateGeometry()
 
     MainWindow.show()

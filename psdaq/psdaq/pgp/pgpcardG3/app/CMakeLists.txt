@@ -11,6 +11,10 @@ add_executable(xRead xRead.cpp)
 target_link_libraries(xRead
    pthread
    rt
+   ${EPICS_CA_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVACLIENT_LIB}
 )
 
 add_executable(xMargin xMargin.cpp)
@@ -24,5 +28,3 @@ add_executable(xError xError.cpp)
 target_link_libraries(xError
    pthread
 )
-
-

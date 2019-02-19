@@ -1,7 +1,6 @@
 import sys
 import socket
 import argparse
-from psp import Pv
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
 
@@ -81,7 +80,7 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
         self.clicked.connect(self.buttonClicked)
 
-        self.pv = Pv.Pv(pvname)
+        self.pv = Pv(pvname)
 
     def buttonClicked(self):
         self.pv.put(1)

@@ -5,8 +5,8 @@
 #include "psdaq/hsd/Pgp.hh"
 #include "psdaq/hsd/QABase.hh"
 
-#include "psdaq/epicstools/PVWriter.hh"
-using Pds_Epics::PVWriter;
+#include "psdaq/epicstools/EpicsPVA.hh"
+using Pds_Epics::EpicsPVA;
 
 #include <algorithm>
 #include <sstream>
@@ -28,7 +28,7 @@ static std::string STOU(std::string s) {
   return s;
 }
 
-using Pds_Epics::PVWriter;
+using Pds_Epics::EpicsPVA;
 
 namespace Pds {
   namespace HSD {
@@ -56,12 +56,6 @@ namespace Pds {
     PVStats::~PVStats() {}
 
     void PVStats::allocate(const std::string& title) {
-      if (ca_current_context() == NULL) {
-        printf("Initializing context\n");
-        SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
-                 "Calling ca_context_create" );
-      }
-
       for(unsigned i=0; i<_NumberOf; i++)
         if (_pv[i]) {
           delete _pv[i];
@@ -72,8 +66,8 @@ namespace Pds {
       o << title << ":";
       std::string pvbase = o.str();
 
-#define PV_ADD(name  ) { _pv[_##name] = new PVWriter(STOU(pvbase + #name).c_str()); }
-#define PV_ADDV(name,n) { _pv[_##name] = new PVWriter(STOU(pvbase + #name).c_str(), n); }
+#define PV_ADD(name  ) { _pv[_##name] = new EpicsPVA(STOU(pvbase + #name).c_str()); }
+#define PV_ADDV(name,n) { _pv[_##name] = new EpicsPVA(STOU(pvbase + #name).c_str(), n); }
 
       PV_ADD (TimFrameCnt);
       PV_ADD (TimPauseCnt);
@@ -127,7 +121,6 @@ namespace Pds {
 #undef PV_ADD
 #undef PV_ADDV
 
-      ca_pend_io(0);
       printf("PVs allocated\n");
 
       _m.mon_start();
@@ -136,36 +129,35 @@ namespace Pds {
     void PVStats::update()
     {
 #define PVPUTD(i,v)    {                                                \
-        Pds_Epics::PVWriter& pv = *_pv[_##i];                           \
+        Pds_Epics::EpicsPVA& pv = *_pv[_##i];                           \
         if (pv.connected()) {                                           \
-          *reinterpret_cast<double*>(pv.data()) = double(v);            \
-          pv.put(); } }
+          pv.putFrom<double>(double(v));                                \
+      } }
 #define PVPUTU(i,v)    {                                                \
-        Pds_Epics::PVWriter& pv = *_pv[_##i];                           \
+        Pds_Epics::EpicsPVA& pv = *_pv[_##i];                           \
         if (pv.connected()) {                                           \
-          *reinterpret_cast<unsigned*>(pv.data()) = unsigned(v);        \
-          pv.put(); } }
+          pv.putFrom<unsigned>(unsigned(v));                            \
+        } }
 #define PVPUTAU(p,m,v) {                                                \
-        Pds_Epics::PVWriter& pv = *_pv[_##p];                           \
+        Pds_Epics::EpicsPVA& pv = *_pv[_##p];                           \
         if (pv.connected()) {                                           \
+          pvd::shared_vector<unsigned> vec;                       \
           for(unsigned i=0; i<m; i++)                                   \
-            reinterpret_cast<unsigned*>(pv.data())[i] = unsigned(v);    \
-          pv.put(); } }
+            vec[i] = unsigned(v);                                       \
+          pv.putFromVector<unsigned>(freeze(vec)); } }
 #define PVPUTDU(i,v)    {                                               \
-        Pds_Epics::PVWriter& pv = *_pv[_##i];                           \
+        Pds_Epics::EpicsPVA& pv = *_pv[_##i];                           \
         if (pv.connected()) {                                           \
-          *reinterpret_cast<unsigned*>(pv.data())    =                  \
-            unsigned(v - _v[_##i].value[0]);                            \
-          pv.put();                                                     \
+          pv.putFrom<unsigned>(unsigned(v - _v[_##i].value[0]));        \
           _v[_##i].value[0] = v; } }
 #define PVPUTDAU(p,m,v) {                                               \
-        Pds_Epics::PVWriter& pv = *_pv[_##p];                           \
+        Pds_Epics::EpicsPVA& pv = *_pv[_##p];                           \
         if (pv.connected()) {                                           \
+          pvd::shared_vector<unsigned> vec;                       \
           for(unsigned i=0; i<m; i++) {                                 \
-            reinterpret_cast<unsigned*>(pv.data())[i] =                 \
-              unsigned(v-_v[_##p].value[i]);                            \
+            vec[i] = unsigned(v-_v[_##p].value[i]);                     \
             _v[_##p].value[i] = v; }                                    \
-          pv.put(); } }
+          pv.putFromVector<unsigned>(freeze(vec)); } }
       
       QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x00080000);
       PVPUTDU ( TimFrameCnt, base.countEnable);
@@ -236,8 +228,6 @@ namespace Pds {
 #undef PVPUTDAU
 #undef PVPUTU
 #undef PVPUTAU
-
-      ca_flush_io();
     }
   };
 };

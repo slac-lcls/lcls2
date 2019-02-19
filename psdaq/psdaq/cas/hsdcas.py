@@ -1,6 +1,7 @@
 import sys
+import logging
 
-from pcaspy import SimpleServer, Driver
+from psdaq.epicstools.PVAServer import PVAServer
 import time
 from datetime import datetime
 import argparse
@@ -12,11 +13,6 @@ Lanes = 4
 NApps = 4
 WfLen = 1024
 NChans = 4
-
-class myDriver(Driver):
-    def __init__(self):
-        super(myDriver, self).__init__()
-
 
 def printDb():
     global pvdb
@@ -41,7 +37,8 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    myDriver.verbose = args.verbose
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     stationstr = ''
     prefix = args.P+':'
@@ -94,7 +91,7 @@ def main():
                                     'value' : [1]*NChans }
     pvdb[stationstr+'RAW_START' ] = {'type' : 'int', 
                                      'count': NChans,
-                                     'value' : [4]*NChans }
+                                     'value' : [NChans]*NChans }
     pvdb[stationstr+'RAW_GATE' ] = {'type' : 'int', 
                                     'count': NChans,
                                     'value' : [200]*NChans }
@@ -103,7 +100,7 @@ def main():
                                     'value' : [1]*NChans }
     pvdb[stationstr+'FEX_START' ] = {'type' : 'int', 
                                      'count': NChans,
-                                     'value' : [4]*NChans }
+                                     'value' : [NChans]*NChans }
     pvdb[stationstr+'FEX_GATE' ] = {'type' : 'int', 
                                     'count': NChans,
                                     'value' : [200]*NChans }
@@ -124,7 +121,7 @@ def main():
                                     'value' : [3]*NChans }
     pvdb[stationstr+'NAT_START' ] = {'type' : 'int', 
                                      'count': NChans,
-                                     'value' : [4]*NChans }
+                                     'value' : [NChans]*NChans }
     pvdb[stationstr+'NAT_GATE' ] = {'type' : 'int', 
                                     'count': NChans,
                                     'value' : [200]*NChans }
@@ -139,7 +136,7 @@ def main():
     pvdb[stationstr+'PGPSKPINTVL'  ] = {'type' : 'int', 
                                         'value' : 0xfff0 }
     pvdb[stationstr+'FULLEVT'      ] = {'type' : 'int', 
-                                        'value' : 4 }
+                                        'value' : NChans }
     pvdb[stationstr+'FULLSIZE'     ] = {'type' : 'int', 
                                         'value' : 3072 }
     pvdb[stationstr+'TESTPATTERN'  ] = {'type' : 'int', 
@@ -153,14 +150,14 @@ def main():
 #                                       'value' : 1600 }
                                        'value' : 5500-175 }
     pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
-#                                       'value' : 2400 }
+#                                       'value' : 2NChans00 }
 #                                       'value' : 1950 }
                                        'value' : 5500+175 }
     pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
                                       'value' : 0 }
     pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
 #                                       'value' : 11800 }
-#                                       'value' : 11400 }
+#                                       'value' : 11NChans00 }
                                        'value' : 15200-175 }
     pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
 #                                       'value': 12200 }
@@ -320,10 +317,8 @@ def main():
     # printDb(pvdb, prefix)
     printDb()
 
-    server = SimpleServer()
-
+    server = PVAServer(__name__)
     server.createPV(prefix, pvdb)
-    driver = myDriver()
 
     if args.use_db:
         # Save PVs to config dbase
@@ -343,9 +338,8 @@ def main():
             print("ID already exists. Exit without writing to database.")
 
     try:
-        # process CA transactions
-        while True:
-            server.process(0.1)
+        # process PVA transactions
+        server.forever()
     except KeyboardInterrupt:
         print('\nInterrupted')
 

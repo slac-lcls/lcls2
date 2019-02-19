@@ -17,12 +17,12 @@ target_include_directories(xpm PUBLIC
     ${CMAKE_INSTALL_PREFIX}/include
     $ENV{CONDA_PREFIX}/epics/include
     $ENV{CONDA_PREFIX}/epics/include/os/Linux
+    $ENV{CONDA_PREFIX}/epics/include/compiler/gcc
     $ENV{CONDA_PREFIX}/include
 )
 
 find_library(YAML_CPP_LIB yaml-cpp PATH $ENV{CONDA_PREFIX}/lib)
 find_library(CPSW_LIB cpsw PATH $ENV{CONDA_PREFIX}/lib)
-find_library(EPICS_CA_LIB cpsw PATH $ENV{CONDA_PREFIX}/lib)
 
 #
 #  xpm_simple
@@ -49,6 +49,9 @@ target_link_libraries(xpmPVs
    cphw
    epicstools
    xpm
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACLIENT_LIB}
    ${EPICS_CA_LIB}
    ${CPSW_LIB}
    ${YAML_CPP_LIB}
@@ -66,6 +69,9 @@ target_link_libraries(xpmPeek
    service
    cphwr
    xpm
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACLIENT_LIB}
    ${EPICS_CA_LIB}
    epicstools
    dl
@@ -82,6 +88,9 @@ target_link_libraries(xpmHsrCfg
    service
    cphwr
    xpm
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACLIENT_LIB}
    ${EPICS_CA_LIB}
    epicstools
    ${CPSW_LIB}

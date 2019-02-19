@@ -1,7 +1,6 @@
 import sys
 import socket
 import argparse
-from psp import Pv
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
 
@@ -33,9 +32,11 @@ linkType.append('DRP')
 linkType.append('DTI')
 linkType.append('XPM')
 
-class PvCString:
+class PvCString(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name, dName=None):
+        super(PvCString,self).__init__()
         layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0,0,0,0)
         label  = QtWidgets.QLabel(name)
         label.setMinimumWidth(100)
         layout.addWidget(label)
@@ -44,7 +45,8 @@ class PvCString:
         self.__display.setWordWrap(True)
         self.__display.connect_signal()
         layout.addWidget(self.__display)
-        parent.addLayout(layout)
+        self.setLayout(layout)
+        parent.addWidget(self)
 
         pvname = pvbase+name
         initPvMon(self,pvname)
@@ -54,16 +56,9 @@ class PvCString:
 #        self.pv.add_monitor_callback(self.update)
 
     def update(self, err):
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
-            s = QString()
-            slen = len(q)
-#            if slen > 64:
-#                slen = 64
-            for i in range(slen):
-                if q[i]==0:
-                    break
-                s += QChar(q[i])
+            s = QString(q)
             self.__display.valueSet.emit(s)
         else:
             print(err)
@@ -78,7 +73,7 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
         self.clicked.connect(self.buttonClicked)
 
-        self.pv = Pv.Pv(pvname)
+        self.pv = Pv(pvname)
 
     def buttonClicked(self):
         self.pv.put(1)
@@ -120,8 +115,7 @@ class PvLinkId(QtWidgets.QWidget):
         initPvMon(self,pvname)
 
     def update(self, err):
-        value = self.pv.value
-        print ('LinkId 0x%x'%value)
+        value = self.pv.get()
         itype = (int(value)>>24)&0xff
         self.linkType.setText(linkType[itype])
         if (itype == 0xfb or itype == 0xfc) and (value&0xffff)!=0:
@@ -187,7 +181,7 @@ class Ui_MainWindow(object):
             LblPushButtonX(hl, pvbase, "DumpPll",        NAmcs)
             LblPushButtonX(hl, pvbase, "DumpTiming",     2)
 
-            LblPushButtonX(hl, pvbase, "ClearLinks"      )
+#            LblPushButtonX(hl, pvbase, "ClearLinks"      )
 
             LblPushButtonX(hl, pvbase, "Inhibit"         )
             LblPushButtonX(hl, pvbase, "TagStream"       )
@@ -260,7 +254,7 @@ class Ui_MainWindow(object):
 
         pllhbox = QtWidgets.QHBoxLayout()
         pllbox  = QtWidgets.QGroupBox("PLLs")
-        pllvbox = QtWidgets.QVBoxLayout() 
+        pllvbox = QtWidgets.QVBoxLayout()
         LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
         LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
         LblEditHML   (pllvbox, pvbase, "PLL_BW_Select",  NAmcs)
@@ -321,8 +315,11 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
+    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument("pv", help="pv to monitor")
     args = parser.parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
