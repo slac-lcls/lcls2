@@ -13,6 +13,8 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
+static const unsigned CLS = 64;         // Cache Line Size
+
 
 EventBuilder::EventBuilder(unsigned epochs,
                            unsigned entries,
@@ -21,9 +23,9 @@ EventBuilder::EventBuilder(unsigned epochs,
                            unsigned verbose) :
   Timer(),
   _mask(PulseId(~(duration - 1), 0).value()),
-  _epochFreelist(sizeof(EbEpoch), epochs),
+  _epochFreelist(sizeof(EbEpoch), epochs, CLS),
   _epochLut(epochs),
-  _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries),
+  _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
   _verbose(verbose),
   _duration(100),                       // Timeout rate in ms
