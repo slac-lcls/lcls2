@@ -101,14 +101,6 @@ int EbLfLink::preparePoster(unsigned id)
   return preparePoster(id, nullptr, 0, sizeof(RemoteAddress));
 }
 
-// A small memory region is needed in order to use the post(buf, len, immData)
-// method, below.
-int EbLfLink::preparePoster(unsigned id,
-                            size_t   size)
-{
-  return preparePoster(id, nullptr, 0, size);
-}
-
 int EbLfLink::preparePoster(unsigned id,
                             void*    region,
                             size_t   size)

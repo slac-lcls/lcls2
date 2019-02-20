@@ -23,8 +23,6 @@ namespace Pds {
                               size_t*  size);
       int       preparePoster(unsigned id);
       int       preparePoster(unsigned id,
-                              size_t   size);
-      int       preparePoster(unsigned id,
                               void*    region,
                               size_t   lclSize,
                               size_t   rmtSize);
