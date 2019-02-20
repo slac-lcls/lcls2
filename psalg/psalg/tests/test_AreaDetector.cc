@@ -29,7 +29,7 @@
 #include "xtcdata/xtc/ConfigIter.hh"
 #include "xtcdata/xtc/DataIter.hh"
 
-/#include "xtcdata/xtc/NamesLookup.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 
 #include "psalg/detector/AreaDetectorStore.hh"
@@ -127,7 +127,7 @@ int file_descriptor(int argc, char* argv[]) {
 
 //-------------------
 
-void test_AreaDetector() {
+void test_AreaDetector(int argc, char* argv[]) {
   MSG(INFO, "In test_AreaDetector");
 
   int fd = file_descriptor(argc, argv);
@@ -143,7 +143,7 @@ void test_AreaDetector() {
   //DescData desc_data(configo.value(), names_map[namesId]);
   //DescData& desc_shape = configo.desc_shape();
 
-  NameIndex& nameindex = namesLookup[namesId];
+  NameIndex& nameindex = names_map[namesId];
   Names& names = nameindex.names();
 
   printf("transition: %d  0/1 = config/data\n", namesId.namesId());
@@ -277,7 +277,7 @@ int main(int argc, char **argv) {
   std::string tname(argv[1]);
   cout << usage(tname); 
 
-  if      (tname=="0") test_AreaDetector();
+  if      (tname=="0") test_AreaDetector(argc, argv);
   else if (tname=="1") test_getAreaDetector();
   else MSG(WARNING, "Undefined test name: " << tname);
 
