@@ -32,6 +32,11 @@ class FuzzyEventStore(object):
         # (use timestamp for matching)
         event_timestamp = np.asarray([evt._timestamp], dtype=np.uint64)
         found_pos = np.searchsorted(self.timestamps, event_timestamp)
-        return Event([self._fuzzy_dgrams[found_pos[0]]])
+        
+        # Returns last fuzzy event for all newer events
+        found_pos[found_pos == self.n_events] = self.n_events - 1
+        fuzzy_evt = Event([self._fuzzy_dgrams[found_pos[0]]]) 
+        
+        return fuzzy_evt
 
 
