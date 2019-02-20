@@ -27,16 +27,23 @@ class FuzzyEventStore(object):
         self.n_events = len(self._fuzzy_dgrams)
         assert len(self.timestamps) == self.n_events
 
-    def generate(self, evt):
-        # Returns the fuzzy event corresponded to the given bigdata event 
-        # (use timestamp for matching)
-        event_timestamp = np.asarray([evt._timestamp], dtype=np.uint64)
-        found_pos = np.searchsorted(self.timestamps, event_timestamp)
+    def _checkout(self, event_timestamps):
+        found_pos = np.searchsorted(self.timestamps, event_timestamps)
         
         # Returns last fuzzy event for all newer events
         found_pos[found_pos == self.n_events] = self.n_events - 1
-        fuzzy_evt = Event([self._fuzzy_dgrams[found_pos[0]]]) 
-        
-        return fuzzy_evt
+
+        fuzzy_events = [ Event( [self._fuzzy_dgrams[pos]] ) for pos in found_pos ] 
+        return fuzzy_events
+
+    def checkout_by_events(self, events):
+        # Returns fuzzy events corresponded to the given bigdata events 
+        # (use timestamp for matching)
+        event_timestamps = np.asarray([evt._timestamp for evt in events], dtype=np.uint64)
+        return self._checkout(event_timestamps)
+
+    def checkout_by_timestamps(self, event_timestamps):
+        return self._checkout(event_timestamps)
+
 
 
