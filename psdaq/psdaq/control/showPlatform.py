@@ -5,7 +5,7 @@ showPlatform command
 import os
 import time
 import zmq
-from psdaq.control.collection import rep_port, create_msg
+from psdaq.control.collection import front_rep_port, create_msg
 import pprint
 import argparse
 
@@ -24,7 +24,7 @@ def main():
         req = context.socket(zmq.REQ)
         req.linger = 0
         req.RCVTIMEO = 5000 # in milliseconds
-        req.connect('tcp://%s:%d' % (args.C, rep_port(platform)))
+        req.connect('tcp://%s:%d' % (args.C, front_rep_port(platform)))
         msg = create_msg('getstate')
         req.send_json(msg)
         reply = req.recv_json()
