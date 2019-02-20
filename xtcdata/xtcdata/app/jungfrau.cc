@@ -54,15 +54,21 @@ void usage(char* progname)
     fprintf(stderr, "Usage: %s -f <filename> [-h]\n", progname);
 }
 
-void dump(const char* transition, DescData& descdata) {
-    printf("------ Names for %s transition ---------\n",transition);
+void dump(const char* comment, DescData& descdata) {
 
     Names& names = descdata.nameindex().names();
+    ShapesData& shapesData = descdata.shapesdata();
+    NamesId& namesId       = shapesData.namesId();
+    printf("========= transition: %d  0/1 = config/data\n", namesId.namesId());
+    printf("Names:: detName: %s  detType: %s  detId: %s  segment: %d alg.name: %s\n",
+	   names.detName(), names.detType(), names.detId(), names.segment(), names.alg().name());
+
+    printf("------ Names for %s ---------\n",comment);
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         printf("rank %d type %d name %s\n",name.rank(),name.type(),name.name());
     }
-    printf("------ Values for %s transition ---------\n",transition);
+    printf("------ Values for %s ---------\n",comment);
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         if (name.type()==Name::INT64 and name.rank()==0) {
@@ -117,6 +123,7 @@ int main(int argc, char* argv[])
     MyXtcIter cfgiter(&(cfg->xtc));
     cfgiter.iterate();
     NamesId& namesId = cfgiter.shape().namesId();
+    printf("*** namesid %d\n",namesId.namesId());
     DescData descdata(cfgiter.shape(), namesLookup[namesId]);
     dump("Configure",descdata);
 
@@ -128,6 +135,7 @@ int main(int argc, char* argv[])
         MyXtcIter iter(&(dg->xtc));
         iter.iterate();
         NamesId& namesId = iter.value().namesId();
+        printf("*** namesid %d\n",namesId.namesId());
         DescData descdata(iter.value(), namesLookup[namesId]);
         dump("Event",descdata);
     }
