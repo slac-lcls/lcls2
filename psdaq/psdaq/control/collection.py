@@ -139,6 +139,7 @@ class DaqControl:
         except Exception as ex:
             errorMessage = 'setTransition() Exception: %s' % ex
         else:
+            print('setTransition(): reply = %s' % reply)
             try:
                 errorMessage = reply['body']['error']
             except KeyError:
@@ -329,7 +330,6 @@ class CollectionManager():
                         answer = None
                         if 'error' in retval['body']:
                             logging.error(retval['body']['error'])
-                            break
                     else:
                         answer = self.handle_request[key]()
                 except KeyError:
