@@ -22,11 +22,9 @@ class Event():
     def __init__(self, dgrams, size=0):
         if size:
             self._dgrams = [0] * size
-            self._offsets = [0] * size
             self._size = size
         else:
             self._dgrams = dgrams
-            self._offsets = [_d._offset for _d in self._dgrams]
             self._size = len(dgrams)
             self._complete()
         self._position = 0
@@ -41,9 +39,9 @@ class Event():
     def next(self):
         if self._position >= len(self._dgrams):
             raise StopIteration
-        event = self._dgrams[self._position]
+        d = self._dgrams[self._position]
         self._position += 1
-        return event
+        return d
 
     def _replace(self, pos, d):
         assert pos < self._size
@@ -88,6 +86,10 @@ class Event():
     def _nanoseconds(self):
         _low = self._dgrams[0].seq.timestamp() & 0xffffffff
         return _low
+
+    @property
+    def _timestamp(self):
+        return self._dgrams[0].seq.timestamp()
 
     def _run(self):
         return 0 # for psana1-cctbx compatibility

@@ -4,7 +4,6 @@ import sys, os
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 from xtc import xtc
 from det import det
-from test_dgraminit import run as run_test_dgraminit
 
 import hashlib
 from psana import DataSource
@@ -52,6 +51,7 @@ class Test:
         shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s01.xtc2'))
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s00.smd.xtc2'))
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s01.smd.xtc2'))
+        shutil.copy('smd.xtc2',os.path.join('.tmp','data-r0001-epc.xtc2'))
 
         shutil.copy('smd.xtc2', os.path.join(tmp_dir, 'data.smd.xtc2')) # FIXME: chuck's hack to fix nosetests
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data_1.smd.xtc2')) # FIXME: chuck's hack to fix nosetests
@@ -111,5 +111,3 @@ class Test:
     def test_det(self):
         det()
 
-    def test_dgram(self):
-        run_test_dgraminit()
