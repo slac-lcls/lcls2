@@ -6,11 +6,12 @@ import os
 
 class EventManager(object):
 
-    def __init__(self, smd_configs, dm, filter_fn=0):
+    def __init__(self, smd_configs, dm, filter_fn=0, fuzzy_es=None):
         self.smd_configs = smd_configs
         self.dm = dm
         self.n_smd_files = len(self.smd_configs)
         self.filter_fn = filter_fn
+        self.fuzzy_es = fuzzy_es
 
     def events(self, view):
         pf = PacketFooter(view=view)
@@ -31,6 +32,8 @@ class EventManager(object):
                 # Only get big data one event at a time when filter is off
                 if self.filter_fn:
                     bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
+                    if self.fuzzy_es:
+                        fuzzy_evt = self.fuzzy_es.generate(bd_evt)
                     yield bd_evt
 
         if self.filter_fn == 0:
@@ -63,5 +66,7 @@ class EventManager(object):
                         offsets[j] += size
                 
                 bd_evt = Event(dgrams)
+                if self.fuzzy_es:
+                    fuzzy_evt = self.fuzzy_es.generate(bd_evt)
                 yield bd_evt
 

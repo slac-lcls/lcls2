@@ -10,6 +10,7 @@ import psana.psexp.legion_node
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
+from psana.psexp.fuzzyevent_store import FuzzyEventStore
 
 
 from psana.psexp.tools import mode
@@ -65,6 +66,7 @@ class Run(object):
     max_events = None
     batch_size = None
     filter_callback = None
+    fuzzy_es = None
     
     def __init__(self, exp, run_no, max_events=0, batch_size=1, filter_callback=0):
         self.exp = exp
@@ -162,8 +164,11 @@ class RunShmem(Run):
 class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """
     
-    def __init__(self, exp, run_no, xtc_files, max_events, batch_size, filter_callback):
-        super(RunSingleFile, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
+    def __init__(self, exp, run_no, run_src, **kwargs):
+        super(RunSingleFile, self).__init__(exp, run_no, \
+                max_events=kwargs['max_events'], batch_size=kwargs['batch_size'], \
+                filter_callback=kwargs['filter_callback'])
+        xtc_files, smd_files, epic_file = run_src
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         self.calibs = {}
@@ -177,17 +182,24 @@ class RunSingleFile(Run):
 class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""
 
-    def __init__(self, exp, run_no, xtc_files, smd_files, max_events, batch_size, filter_callback):
-        super(RunSerial, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
+    def __init__(self, exp, run_no, run_src, **kwargs):
+        super(RunSerial, self).__init__(exp, run_no, \
+                max_events=kwargs['max_events'], batch_size=kwargs['batch_size'], \
+                filter_callback=kwargs['filter_callback'])
+        xtc_files, smd_files, epic_file = run_src
         self.dm = DgramManager(xtc_files)
         self.smd_dm = DgramManager(smd_files)
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
+        
+        if epic_file: 
+            self.fuzzy_es = FuzzyEventStore(epic_file)
 
     def events(self):
         smd_configs = self.smd_dm.configs
-        ev_man = EventManager(smd_configs, self.dm, filter_fn=self.filter_callback)
+        ev_man = EventManager(smd_configs, self.dm, \
+                filter_fn=self.filter_callback, fuzzy_es=self.fuzzy_es)
 
         #get smd chunks
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
@@ -201,13 +213,12 @@ class RunSerial(Run):
 class RunParallel(Run):
     """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
 
-    def __init__(self, exp, run_no, xtc_files, smd_files,  
-            max_events, batch_size, filter_callback):
+    def __init__(self, exp, run_no, run_src, **kwargs):
         """ Parallel read requires that rank 0 does the file system works.
         Configs and calib constants are sent to other ranks by MPI."""
-        super(RunParallel, self).__init__(exp, run_no, max_events=max_events, \
-                batch_size=batch_size, filter_callback=filter_callback)
-        
+        super(RunParallel, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
+                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
+        xtc_files, smd_files, epic_file = run_src
         if rank == 0:
             self.dm = DgramManager(xtc_files)
             self.configs = self.dm.configs
@@ -220,20 +231,30 @@ class RunParallel(Run):
             self.calibs = {}
             for det_name in self.detnames:
                 self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
+            
+            fuzzy_dgrams = []
+            fuzzy_nbytes = []
+            if epic_file:
+                self.fuzzy_es = FuzzyEventStore(fuzzy_file=epic_file)
+                fuzzy_dgrams = self.fuzzy_es._fuzzy_dgrams 
+                fuzzy_nbytes = np.array([memoryview(d).shape[0] for d in fuzzy_dgrams], dtype='i')
         else:
             self.dm = None
             self.calibs = None
             self.smd_dm = None
             nbytes = np.empty(len(xtc_files), dtype='i')
             smd_nbytes = np.empty(len(smd_files), dtype='i')
+            fuzzy_nbytes = None
         
-        comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich and creating empty dgram
+        comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich
         comm.Bcast(nbytes, root=0) 
+        fuzzy_nbytes = comm.bcast(fuzzy_nbytes, root=0) # shortcut - reducing one step for broadcasting no. of fuzzy events
         
         # create empty views of known size
         if rank > 0:
             self.smd_configs = [np.empty(smd_nbyte, dtype='b') for smd_nbyte in smd_nbytes]
             self.configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
+            fuzzy_dgrams = [np.empty(fuzzy_nbyte, dtype='b') for fuzzy_nbyte in fuzzy_nbytes]
         
         for i in range(len(smd_files)):
             comm.Bcast([self.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
@@ -241,28 +262,32 @@ class RunParallel(Run):
         for i in range(len(xtc_files)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
         
+        for i in range(len(fuzzy_dgrams)):
+            comm.Bcast([fuzzy_dgrams[i], fuzzy_nbytes[i], MPI.BYTE], root=0)
+
         self.calibs = comm.bcast(self.calibs, root=0)
 
         if rank > 0:
-            # create config dgrams from views for non-0 ranks
+            # Create dgram objects using views from rank 0 (no disk operation).
             self.smd_configs = [dgram.Dgram(view=smd_config, offset=0) for smd_config in self.smd_configs]
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
-            # This creates dgrammanager without reading config from disk
             self.dm = DgramManager(xtc_files, configs=self.configs)
+            
+            fuzzy_dgrams = [dgram.Dgram(view=fuzzy_dgram, offset=0) for fuzzy_dgram in fuzzy_dgrams]
+            if fuzzy_dgrams:
+                self.fuzzy_es = FuzzyEventStore(fuzzy_dgrams=fuzzy_dgrams)
     
     def events(self):
-        for evt in run_node(self, self.max_events, self.batch_size, self.filter_callback):
+        for evt in run_node(self):
             yield evt
     
 class RunLegion(Run):
 
-    def __init__(self, exp, run_no, xtc_files, smd_files, 
-            max_events, batch_size, filter_callback):
-        """ Parallel read requires that rank 0 does the file system works.
-        Configs and calib constants are sent to other ranks by MPI."""
-        super(RunLegion, self).__init__(exp, run_no, max_events=max_events, \
-                batch_size=batch_size, filter_callback=filter_callback)
-        
+    def __init__(self, exp, run_no, run_src, **kwargs):
+        """ Parallel read using Legion """
+        super(RunLegion, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
+                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
+        xtc_files, smd_files, epic_file = run_src
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
