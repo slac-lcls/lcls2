@@ -65,12 +65,13 @@ namespace Pds {
                         { GPVP(linkTrgSrc   (_idx));                   })
     CPV(LinkLoopback,   { GPVG(linkLoopback (_idx, getScalarAs<unsigned>() != 0))  },
                         { GPVP(linkLoopback (_idx));                   })
-    CPV(TxLinkReset,    { if (getScalarAs<unsigned>()!=0)
-                            GPVG(txLinkReset  (_idx));                 },
+    //CPV(TxLinkReset,    { if (getScalarAs<unsigned>()!=0)
+     //                       GPVG(txLinkReset  (_idx));                 },
+    CPV(TxLinkReset,    {                                              },
                         {                                              })
-    CPV(RxLinkReset,    { if (getScalarAs<unsigned>()!=0)
-                            GPVG(rxLinkReset  (_idx));                 },
-                        {                                              })
+    CPV(RxLinkReset,    { }, { })
+    //CPV(RxLinkReset,    { if (getScalarAs<unsigned>()!=0)
+                            //GPVG(rxLinkReset  (_idx));                 },
     CPV(RxLinkDump ,    { if (getScalarAs<unsigned>()!=0)
                             GPVG(rxLinkDump   (_idx));                 },
                         {                                              })
@@ -96,7 +97,7 @@ namespace Pds {
                         { GPVP(pllBwSel  (_idx));                      })
     CPV(PLL_FreqTable,  { GPVG(pllFrqTbl (_idx, getScalarAs<unsigned>()));         },
                         { GPVP(pllFrqTbl (_idx));                      })
-    CPV(PLL_FreqSelect, { GPVG(pllFrqSel (_idx, getScalarAs<unsigned>()));         },
+    CPV(PLL_FreqSelect, { }, 
                         { GPVP(pllFrqSel (_idx));                      })
     CPV(PLL_Rate,       { GPVG(pllRateSel(_idx, getScalarAs<unsigned>()));         },
                         { GPVP(pllRateSel(_idx));                      })
@@ -179,6 +180,7 @@ namespace Pds {
       //
       // Program sequencer
       //
+#if 0
       XpmSequenceEngine& engine = _seq;
       engine.verbosity(2);
       // Setup a 22 pulse sequence to repeat 40000 times each second
@@ -204,6 +206,7 @@ namespace Pds {
       engine.enable(true);
       engine.setAddress(rval,0,0);
       engine.reset ();
+#endif
     }
 
     void PVCtrls::dump() const

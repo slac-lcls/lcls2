@@ -159,6 +159,8 @@ static int _lookup_address(const std::map<unsigned,SeqCache>& caches,
 XpmSequenceEngine::XpmSequenceEngine(void* p, unsigned id) :
   _private( new XpmSequenceEngine::PrivateData(p, id) )
 {
+
+#if 0
   _private->_indices = 3;
 
   //  Assign a single instruction sequence at first and last address to trap
@@ -177,6 +179,7 @@ XpmSequenceEngine::XpmSequenceEngine(void* p, unsigned id) :
   _private->_caches[a].size  = 1;
   _private->_caches[a].instr = v;
   _private->_ram   [a] = _word(*static_cast<const Branch*>(v[0]),a);
+#endif
 }
 
 XpmSequenceEngine::~XpmSequenceEngine()
