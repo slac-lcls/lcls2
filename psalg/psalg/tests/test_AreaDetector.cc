@@ -137,14 +137,24 @@ void test_AreaDetector(int argc, char* argv[]) {
   Dgram* dg = xfi.next();
   ConfigIter configo(&(dg->xtc));
 
+  //=======
+  // extrack Names from ConfigIter
+  //NamesId& namesId = configo.value().namesId();
+  NamesId& namesId = configo.shape().namesId();
   NamesLookup& names_map = configo.namesLookup();
-  NamesId& namesId = configo.value().namesId();
-
-  //DescData desc_data(configo.value(), names_map[namesId]);
-  //DescData& desc_shape = configo.desc_shape();
-
   NameIndex& nameindex = names_map[namesId];
   Names& names = nameindex.names();
+
+  //=======
+  // extrack Names from DescData
+  ////DescData desc_data(configo.value(), names_map[namesId]);
+  ////DescData& desc_data = configo.desc_value();
+  //DescData& desc_data = configo.desc_shape();
+  //ShapesData& shapesData = desc_data.shapesdata();
+  //NamesId& namesId       = shapesData.namesId();
+  //Names& names           = desc_data.nameindex().names();
+
+  //=======
 
   printf("transition: %d  0/1 = config/data\n", namesId.namesId());
 
