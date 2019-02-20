@@ -56,7 +56,7 @@ class PvCString(QtWidgets.QWidget):
 #        self.pv.add_monitor_callback(self.update)
 
     def update(self, err):
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
             s = QString()
             slen = len(q)
@@ -65,7 +65,7 @@ class PvCString(QtWidgets.QWidget):
             for i in range(slen):
                 if q[i]==0:
                     break
-                s += QChar(q[i])
+                s += QChar(ord(q[i]))
             self.__display.valueSet.emit(s)
         else:
             print(err)
@@ -118,7 +118,7 @@ class PvLinkId:
         initPvMon(self,pvname)
 
     def update(self, err):
-        value = self.pv.value
+        value = self.pv.get()
         print ('LinkId 0x%x'%value)
         itype = (int(value)>>24)&0xff
         self.linkType.setText(linkType[itype])

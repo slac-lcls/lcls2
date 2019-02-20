@@ -171,7 +171,7 @@ class PvLabel(QtWidgets.QWidget):
             if nogui:
                 print(self.pv.pvname,str(s))
             else:
-            self.__display.valueSet.emit(s)
+                self.__display.valueSet.emit(s)
         else:
             print(err)
 
@@ -228,7 +228,7 @@ class PvCheckBox(CheckBox):
             if nogui:
                 print(self.pv.pvname,q)
             else:
-            if q != self.isChecked():  self.valueSet.emit(q)
+                if q != self.isChecked():  self.valueSet.emit(q)
         else:
             print(err)
 
@@ -299,7 +299,7 @@ class PvEditInt(PvEditTxt):
             if nogui:
                 print(self.pv.pvname,str(s))
             else:
-            self.valueSet.emit(s)
+                self.valueSet.emit(s)
         else:
             print(err)
 
@@ -341,7 +341,7 @@ class PvEditHML(PvEditTxt):
             if nogui:
                 print(self.pv.pvname,str(s))
             else:
-            self.valueSet.emit(s)
+                self.valueSet.emit(s)
         else:
             print(err)
 
@@ -375,7 +375,7 @@ class PvEditDbl(PvEditTxt):
             if nogui:
                 print(self.pv.pvname,str(s))
             else:
-            self.valueSet.emit(s)
+                self.valueSet.emit(s)
         else:
             print(err)
 
@@ -410,7 +410,7 @@ class PvDblArray:
         if err is None:
             for i in range(len(q)):
                 if nogui==False:
-                self.widgets[i].valueSet.emit(QString(format(q[i], '.4f')))
+                    self.widgets[i].valueSet.emit(QString(format(q[i], '.4f')))
             if nogui:
                 print(self.pv.pvname,q)
         else:
@@ -428,7 +428,7 @@ class PvEditCmb(PvComboDisplay):
     def setValue(self):
         value = self.currentIndex()
         if self.pv.get() != value:
-        self.pv.put(value)
+            self.pv.put(value)
         else:
             logger.debug("Skipping updating PV for edit combobox as the value of the pv %s is the same as the current value", self.pv.pvname)
 
@@ -438,8 +438,8 @@ class PvEditCmb(PvComboDisplay):
             if nogui:
                 print(self.pv.pvname,q)
             else:
-            self.setCurrentIndex(q)
-            self.valueSet.emit(q)
+                self.setCurrentIndex(q)
+                self.valueSet.emit(q)
         else:
             print(err)
 
@@ -565,8 +565,8 @@ class PvDefSeq(QtWidgets.QWidget):
                 if nogui:
                     print(self.pv.pvname,q)
                 else:
-                self.seqsel.setCurrentIndex(q-15)
-                self.valueSet.emit(q-15)
+                    self.seqsel.setCurrentIndex(q-15)
+                    self.valueSet.emit(q-15)
         else:
             print(err)
 

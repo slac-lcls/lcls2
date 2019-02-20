@@ -2,7 +2,7 @@ import sys
 import argparse
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
-#from psdaq.cas.collection_widget import CollectionWidget
+from psdaq.cas.collection_widget import CollectionWidget
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, base, no_coll):
