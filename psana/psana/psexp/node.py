@@ -68,8 +68,8 @@ class Smd0(object):
     Identifies limit timestamp of the slowest detector then
     sends all smds within that timestamp to an smd_node.
     """
-    def __init__(self, fds, max_events=0):
-        self.smdr_man = SmdReaderManager(fds, max_events)
+    def __init__(self, run):
+        self.smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
         self.run_mpi()
 
     def run_mpi(self):
@@ -88,8 +88,8 @@ class SmdNode(object):
     Receives blocks of smds from smd_0 then assembles
     offsets and dgramsizes into a numpy array. Sends
     this np array to bd_nodes that are registered to it."""
-    def __init__(self, configs, batch_size=1, filter=0):
-        self.eb_man = EventBuilderManager(configs, batch_size, filter)
+    def __init__(self, run):
+        self.eb_man = EventBuilderManager(run.smd_configs, run.batch_size, run.filter_callback)
         self.n_bd_nodes = bd_comm.Get_size() - 1
 
     def run_mpi(self):
@@ -115,8 +115,9 @@ class SmdNode(object):
             bd_comm.Send(bytearray(), dest=rankreq[0])
 
 class BigDataNode(object):
-    def __init__(self, smd_configs, dm, filter_callback):
-        self.evt_man = EventManager(smd_configs, dm, filter_callback)
+    def __init__(self, run):
+        self.evt_man = EventManager(run.smd_configs, run.dm, \
+                filter_fn=run.filter_callback, fuzzy_es=run.fuzzy_es)
 
     def run_mpi(self):
         while True:
@@ -132,13 +133,13 @@ class BigDataNode(object):
             for event in self.evt_man.events(view):
                 yield event
 
-def run_node(run, max_events, batch_size, filter_callback):
+def run_node(run):
     if nodetype == 'smd0':
-        Smd0(run.smd_dm.fds, max_events=max_events)
+        Smd0(run)
     elif nodetype == 'smd':
-        smd_node = SmdNode(run.smd_configs, batch_size=batch_size, filter=filter_callback)
+        smd_node = SmdNode(run)
         smd_node.run_mpi()
     elif nodetype == 'bd':
-        bd_node = BigDataNode(run.smd_configs, run.dm, filter_callback)
+        bd_node = BigDataNode(run)
         for evt in bd_node.run_mpi():
             yield evt

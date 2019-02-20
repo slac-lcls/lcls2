@@ -32,6 +32,7 @@ class DgramManager():
         self.shmem_kwargs = {'index':-1,'size':0,'cli':None}
         self.configs = []
         self.fds = []
+        self._timestamps = [] # built when iterating 
 
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
@@ -97,8 +98,9 @@ class DgramManager():
                 raise StopIteration
         else:
             dgrams = [dgram.Dgram(config=config) for config in self.configs]
-         
+ 
         evt = Event(dgrams)
+        self._timestamps += [evt._timestamp]
         return evt
 
     def jump(self, offsets, sizes):
@@ -146,6 +148,9 @@ class DgramManager():
                         pass
 
         return det_class_table
+
+    def get_timestamps(self):
+        return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later
 
 
 def parse_command_line():

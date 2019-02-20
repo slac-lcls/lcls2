@@ -13,5 +13,6 @@ class SerialDataSource(DataSourceBase):
 
     def runs(self):
         for run_no in self.run_dict:
-            yield RunSerial(self.exp, run_no, self.run_dict[run_no][0], \
-                        self.run_dict[run_no][1], self.max_events, self.batch_size, self.filter)
+            yield RunSerial(self.exp, run_no, self.run_dict[run_no], \
+                        max_events=self.max_events, batch_size=self.batch_size, \
+                        filter_callback=self.filter)
