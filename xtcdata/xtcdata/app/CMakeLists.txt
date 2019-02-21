@@ -15,7 +15,6 @@ target_link_libraries(jungfrau
 add_executable(xtcwriter
     xtcwriter.cc
 )
-
 target_link_libraries(xtcwriter
     xtc
 )
@@ -45,7 +44,15 @@ target_link_libraries(smdwriter
     xtc
 )
 
-install(TARGETS xtcwriter smdwriter xtcreader
+add_executable(json2xtc
+    json2xtc.cc
+)
+
+target_link_libraries(json2xtc
+    j2x xtc
+)
+
+install(TARGETS xtcwriter smdwriter xtcreader json2xtc
     EXPORT xtcdataTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
