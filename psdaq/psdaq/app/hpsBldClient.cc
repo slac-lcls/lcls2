@@ -179,6 +179,7 @@ int main(int argc, char* argv[])
   sigaction(SIGSEGV,&sa,NULL);
 
   tpr->start(partn);
+  //  tpr->start();
 
   char* eventb = new char[ sizeof(XtcData::Dgram)+sizeof(Pds::Bld::TestType) ];
   uint64_t ppulseId=0;

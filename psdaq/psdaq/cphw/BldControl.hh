@@ -19,6 +19,8 @@ namespace Pds {
       unsigned paused     () const;
     public:
       void setMaxSize(unsigned v);
+      void enable (int fd,
+                   const sockaddr_in& sa);
       void enable (const sockaddr_in& sa);
       void disable();
     public:
@@ -38,7 +40,7 @@ namespace Pds {
     private:
       Reg   pktCount_pause;
     private:
-      char  _rsvd_09030024[(0x0a000008-0x09030024)];
+      char  _rsvd_09030024[(0x0a000828-0x09030024)];
       Reg   port;
       Reg   ip;
     protected:

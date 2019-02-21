@@ -61,8 +61,23 @@ void Client::start(unsigned partn)
   printf("TprBase::channel[0] evtsel %08x control %x\n",
          _dev->base.channel[0].evtSel,
          _dev->base.channel[0].control);
-  _dev->base.setupDaq(0,partn);
-  //  _dev->base.setupChannel(0, TprBase::Any, (TprBase::FixedRate)partn, 0, 0, 1);
+  //  _dev->base.setupDaq(0,partn);
+  _dev->base.setupChannel(0, TprBase::Any, (TprBase::FixedRate)partn, 0, 0, 0);
+  printf("TprBase::channel[0] evtsel %08x control %x\n",
+         _dev->base.channel[0].evtSel,
+         _dev->base.channel[0].control);
+  char buff[32];
+  read(_fdsh, &buff, 32 );
+  _rp = _queues->allwp[0];
+}
+
+//  Enable the trigger
+void Client::start()
+{
+  printf("TprBase::channel[0] evtsel %08x control %x\n",
+         _dev->base.channel[0].evtSel,
+         _dev->base.channel[0].control);
+  _dev->base.setupChannel(0, TprBase::Any, TprBase::FixedRate::_1M, 0, 0, 1);
   printf("TprBase::channel[0] evtsel %08x control %x\n",
          _dev->base.channel[0].evtSel,
          _dev->base.channel[0].control);

@@ -44,7 +44,7 @@ namespace Pds_Epics {
             valfld->putFrom(value);
             args.root = root;
             args.tosend.set(valfld->getFieldOffset());
-            std::cerr << "Putting to PV " << op.name() << " " << valfld << std::endl;
+            //            std::cerr << "Putting to PV " << op.name() << " " << valfld << std::endl;
         }
         virtual void putDone(const pvac::PutEvent &evt) OVERRIDE FINAL
         {
@@ -81,7 +81,7 @@ namespace Pds_Epics {
             valfld->putFrom(value);
             args.root = root;
             args.tosend.set(valfld->getFieldOffset());
-            std::cerr << "Putting to PV " << op.name() << " " << valfld << std::endl;
+            //            std::cerr << "Putting to PV " << op.name() << " " << valfld << std::endl;
         }
         virtual void putDone(const pvac::PutEvent &evt) OVERRIDE FINAL
         {

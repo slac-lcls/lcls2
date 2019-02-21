@@ -62,7 +62,7 @@ namespace Pds {
       enum { NCHANNELS=14 };
       enum { NTRIGGERS=12 };
       enum Destination { Any };
-      enum FixedRate { _1M, _500K, _100K, _10K, _1K, _100H, _10H, _1H };
+      enum FixedRate { _1M, _71K, _10K, _1K, _100H, _10H, _1H };
     public:
       void dump() const;
       void setupDaq    (unsigned i,
