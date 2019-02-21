@@ -1,17 +1,10 @@
-import os
-from psdaq.procmgr.ProcMgr import getRelEnvString
-
 platform = '0'
 username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
 
-# can also set this environment in the shell.
-#os.environ['TESTRELDIR'] = '/reg/neh/home/yoon82/Software/lcls2/install'
-
 epics_env = 'EPICS_PVA_ADDR_LIST=10.0.3.255 EPICS_CA_ADDR_LIST=10.0.3.255 EPICS_CA_SERVER_PORT=5066 EPICS_CA_REPEATER_PORT=5067 EPICS_CA_AUTO_ADDR_LIST=NO'
-conda_env = getRelEnvString()
-total_env = epics_env+conda_env
+conda_rel = 'ps-2.0.0'
 
 shelf = '2'
 ip_addr = '10.0.'+shelf
@@ -24,22 +17,22 @@ ip_addr = '10.0.'+shelf
 # HOST       UNIQUEID      FLAGS  COMMAND+ARGS
 # list of processes to run
 #   required fields: id, cmd
-#   optional fields: host, port, flags
+#   optional fields: host, port, flags, conda, env, rtprio
 #     flags:
 #        'x' or 'X'  -> xterm: open small or large xterm for process console
 #        's'         -> stop: sends ctrl-c to process
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: 'daq-tst-dev01', id:'hsdioc-dev01', flags:'sx', env:total_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV01 -I -d /dev/pcie_adc_86'},
- {                        id:'partca-'+platform ,flags:'s', env:total_env, cmd:'partca DAQ:LAB2:PART:'+platform},
- {                        id:'procstat', flags:'sp', env:conda_env, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- {                        id:'modca'  ,flags:'s', env:total_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
-# {                        id:'deadca-'+platform, flags:'s', env:total_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
-# {                        id:'dtica', flags:'s', env:total_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
- {                        id:'hsdca', flags:'s', env:total_env, cmd:'hsdca DAQ:LAB2:HSD:DEV01'},
-# { host: 'drp-tst-acc02', id:'EvtBuild', flags:'sxp', env:conda_env, cmd:'drpEbBuilder -1 8 -2 8' },
- { host: 'drp-tst-dev002', id:'teb1', flags:'sxp', env:total_env, cmd:'tstEbBuilder' },
-# { host: 'drp-tst-dev019', id:'hsddrp', flags:'sxp', env:conda_env, cmd:'psdaq/build/drp/drp -o /tmp -l 0x1 -D Digitizer'},
- { host: 'drp-tst-acc06', id:'Collection', flags:'sxp', env:total_env, cmd:'collection -v' },
+ { host: 'daq-tst-dev01', id:'hsdioc-dev01', flags:'sx', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV01 -I -d /dev/pcie_adc_86'},
+ {                        id:'partca-'+platform ,flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
+ {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'modca'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
+# {                        id:'deadca-'+platform, flags:'s', conda:conda_rel, env:epics_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
+# {                        id:'dtica', flags:'s', conda:conda_rel, env:epics_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
+ {                        id:'hsdca', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV01'},
+# { host: 'drp-tst-acc02', id:'EvtBuild', flags:'sxp', conda:conda_rel, cmd:'drpEbBuilder -1 8 -2 8' },
+ { host: 'drp-tst-dev002', id:'teb1', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'tstEbBuilder' },
+# { host: 'drp-tst-dev019', id:'hsddrp', flags:'sxp', conda:conda_rel, cmd:'psdaq/build/drp/drp -o /tmp -l 0x1 -D Digitizer'},
+ { host: 'drp-tst-acc06', id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v' },
 ]
