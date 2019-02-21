@@ -530,10 +530,8 @@ class CollectionManager():
         msg = create_msg(transition)
         self.back_pub.send_json(msg)
 
-#       logging.debug('ids before filter_level(): %s' % ids)
         # only drp group (aka level) responds to configure and above
         ids = self.filter_level('drp', ids)
-#       logging.debug('ids after filter_level(): %s' % ids)
 
         # make sure all the clients respond to transition before timeout
         ret, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
@@ -550,7 +548,9 @@ class CollectionManager():
                     for node, err_msg in answer['body']['err_info'].items():
                         # Error
                         retval = False
-                        logging.error('%s: %s' % (node, err_msg))
+                        message = '%s: %s' % (node, err_msg)
+                        logging.error(message)
+                        self.front_pub.send_json(self.error_msg(message))
                 except KeyError:
                     pass
             return retval
