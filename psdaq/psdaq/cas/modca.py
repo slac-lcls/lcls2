@@ -32,6 +32,40 @@ linkType.append('DRP')
 linkType.append('DTI')
 linkType.append('XPM')
 
+class PvPAddr(QtWidgets.QWidget):
+    def __init__(self, parent, pvbase, name):
+        super(PvPAddr,self).__init__()
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0,0,0,0)
+        label  = QtWidgets.QLabel(name)
+        label.setMinimumWidth(100)
+        layout.addWidget(label)
+
+        self.__display = PvDisplay()
+        self.__display.connect_signal()
+        layout.addWidget(self.__display)
+        self.setLayout(layout)
+        parent.addWidget(self)
+
+        pvname = pvbase+name
+        initPvMon(self,pvname)
+
+    def update(self, err):
+        q = self.pv.__value__
+        if err is None:
+            qs = ('%x'%q).lstrip('f')
+            if len(qs)==0:
+                s = 'XTPG'
+            else:
+                s = ''
+                for i in range(len(qs)):
+                    cv = int(qs[i],16)
+                    s += 'XTPG:' if i == 0 else ',XPM:'
+                    s += 'AMC%d-%d'%(cv/7,cv%7) if cv < 14 else 'BP'
+                self.__display.valueSet.emit(s)
+        else:
+            print(err)
+
 class PvCString(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name, dName=None):
         super(PvCString,self).__init__()
@@ -251,7 +285,8 @@ class Ui_MainWindow(object):
             tb  = QtWidgets.QWidget()
             hl  = QtWidgets.QVBoxLayout()
             #        PvLabel  (hl, pvbase, "PARTITIONS"  )
-            PvLabel  (hl, pvbase, "PAddr"       , isInt=True)
+            #            PvLabel  (hl, pvbase, "PAddr"       , isInt=True)
+            PvPAddr  (hl, pvbase, "PAddr"       )
             PvCString(hl, pvbase, "FwBuild"     )
 
             LblPushButtonX(hl, pvbase, "ModuleInit"      )
