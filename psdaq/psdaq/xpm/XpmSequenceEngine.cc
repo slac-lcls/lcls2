@@ -161,7 +161,7 @@ XpmSequenceEngine::XpmSequenceEngine(void* p, unsigned id) :
 {
   printf("XpmSequenceEngine @ %p\n", p);
 
-#if 0
+#if 1
   _private->_indices = 3;
 
   //  Assign a single instruction sequence at first and last address to trap

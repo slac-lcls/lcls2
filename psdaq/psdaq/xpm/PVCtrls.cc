@@ -130,7 +130,7 @@ namespace Pds {
       //
       // Program sequencer
       //
-#if 0
+#if 1
       XpmSequenceEngine& engine = _seq;
       engine.verbosity(2);
       // Setup a 22 pulse sequence to repeat 40000 times each second
