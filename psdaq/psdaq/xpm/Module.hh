@@ -34,6 +34,14 @@ namespace Pds {
       uint64_t eofCount;
     };
 
+    class PllStats {
+    public:
+      bool     lol;
+      bool     los;
+      unsigned lolCount;
+      unsigned losCount;
+    };
+      
     class CoreCounts {
     public:
       TimingCounts us;
@@ -97,10 +105,12 @@ namespace Pds {
     private:
       uint32_t rsvd_cu[(0x00400000-sizeof(_cuTiming))>>2];
     public: //  Generator  @ 0x08800000
-      Cphw::Reg64 _genTimestamp;
-      Cphw::Reg64 _genPulseId;
+      Cphw::Reg64 _timestamp;
+      Cphw::Reg64 _pulseId;
+      Cphw::Reg   _cuDelay;    // 185.7 MHz units (default 800*200 clocks)
+      Cphw::Reg   _cuBeamCode; // beam present eventcode (default 140)
     private:
-      uint32_t rsvd_gen[(0x00100000-16)>>2];
+      uint32_t rsvd_gen[(0x00100000-24)>>2];
     public: //  MmcmPhaseLock
       MmcmPhaseLock _mmcm[3];
     private:
@@ -140,18 +150,19 @@ namespace Pds {
       //      void setL0Select_EventCode(unsigned code);
       void lockL0Stats (bool);
       //    private:
-#if 0
       void groupL0Reset  (unsigned);
       void groupL0Enable (unsigned);
       void groupL0Disable(unsigned);
       void groupMsgInsert(unsigned);
-#endif
     public:
       void setRingBChan(unsigned);
     public:
       void dumpPll     (unsigned) const;
       void dumpTiming  (unsigned) const;
       void setVerbose  (unsigned);
+      void setTimeStamp();
+      void setCuDelay  (unsigned);
+      void setCuBeamCode(unsigned);
       void pllBwSel    (unsigned, int);
       void pllFrqTbl   (unsigned, int);
       void pllFrqSel   (unsigned, int);
@@ -170,6 +181,7 @@ namespace Pds {
       int  pllStatus1(unsigned) const;
       int  pllCount1 (unsigned) const;
       void pllSkew       (unsigned, int);
+      PllStats pllStat(unsigned) const;
     public:
       // Indexing
       void setPartition(unsigned) const;
@@ -339,7 +351,6 @@ namespace Pds {
       //  [30]     Fast
       //  [31]     Lock
       Cphw::Reg _monClk[4];
-#if 0
     public:
       uint32_t     _reserved_288[56];
       //  0x0200 - WO: L0Reset
@@ -351,11 +362,7 @@ namespace Pds {
       //  0x020c - WO: MsgInsert
       Cphw::Reg    _groupMsgInsert;
     private:
-      uint32_t    _reserved_304[(0x10000-304)>>2];
-#else
-    private:
-      uint32_t    _reserved_288[(0x10000-288)>>2];
-#endif
+      uint32_t    _reserved_528[(0x10000-0x210)>>2];
       //
       Cphw::RingBuffer _rxRing;  // 0x80010000
       uint32_t    _reserved_80020000[(0x10000-sizeof(_rxRing))>>2];

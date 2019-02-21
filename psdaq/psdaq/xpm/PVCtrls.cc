@@ -9,8 +9,6 @@
 
 #include <stdio.h>
 
-//#define SET_PLL
-
 using Pds_Epics::EpicsPVA;
 using Pds_Epics::PVMonitorCb;
 
@@ -65,62 +63,28 @@ namespace Pds {
                         { GPVP(linkTrgSrc   (_idx));                   })
     CPV(LinkLoopback,   { GPVG(linkLoopback (_idx, getScalarAs<unsigned>() != 0))  },
                         { GPVP(linkLoopback (_idx));                   })
-    //CPV(TxLinkReset,    { if (getScalarAs<unsigned>()!=0)
-     //                       GPVG(txLinkReset  (_idx));                 },
-    CPV(TxLinkReset,    {                                              },
+    CPV(TxLinkReset,    { if (getScalarAs<unsigned>()!=0) GPVG(txLinkReset  (_idx)); },
                         {                                              })
-    CPV(RxLinkReset,    { }, { })
-    //CPV(RxLinkReset,    { if (getScalarAs<unsigned>()!=0)
-                            //GPVG(rxLinkReset  (_idx));                 },
+    CPV(RxLinkReset,    { if (getScalarAs<unsigned>()!=0) GPVG(rxLinkReset  (_idx)); },
+                        {                                              })
     CPV(RxLinkDump ,    { if (getScalarAs<unsigned>()!=0)
                             GPVG(rxLinkDump   (_idx));                 },
                         {                                              })
     CPV(LinkEnable,     { GPVG(linkEnable(_idx, getScalarAs<unsigned>() != 0));    },
                         { GPVP(linkEnable(_idx));                      })
 
-#if 0
-    CPV(LinkRxReady,    { },
-                        { GPVP(linkRxReady(_idx));                     })
-    CPV(LinkTxReady,    { },
-                        { GPVP(linkTxReady(_idx));                     })
-    CPV(LinkRxResetDone,{ },
-                        { GPVP(linkRxResetDone(_idx));                 })
-    CPV(LinkTxResetDone,{ },
-                        { GPVP(linkTxResetDone(_idx));                 })
-    CPV(LinkIsXpm,      { },
-                        { GPVP(linkIsXpm(_idx));                       })
-    CPV(LinkRxErr,      { },
-                        { GPVP(linkRxErr(_idx));                       })
-#endif
-
-    CPV(PLL_BW_Select,  { GPVG(pllBwSel  (_idx, getScalarAs<unsigned>()));         },
-                        { GPVP(pllBwSel  (_idx));                      })
-    CPV(PLL_FreqTable,  { GPVG(pllFrqTbl (_idx, getScalarAs<unsigned>()));         },
-                        { GPVP(pllFrqTbl (_idx));                      })
-    CPV(PLL_FreqSelect, { }, 
-                        { GPVP(pllFrqSel (_idx));                      })
-    CPV(PLL_Rate,       { GPVG(pllRateSel(_idx, getScalarAs<unsigned>()));         },
-                        { GPVP(pllRateSel(_idx));                      })
-    CPV(PLL_PhaseInc,   { GPVG(pllPhsInc (_idx));                      },
-                        {                                              })
-    CPV(PLL_PhaseDec,   { GPVG(pllPhsDec (_idx));                      },
-                        {                                              })
-    CPV(PLL_Bypass,     { GPVG(pllBypass (_idx, getScalarAs<unsigned>()));         },
-                        { GPVP(pllBypass (_idx));                      })
-    CPV(PLL_Reset,      { GPVG(pllReset  (_idx));                      },
-                        {                                              })
-    CPV(PLL_Skew,       { GPVG(pllSkew   (_idx, getScalarAs<unsigned>()));         },
-                        {                                              })
-    CPV(PLL_LOS,        {                                              },
-                        { GPVP(pllStatus0(_idx));                      })
-    CPV(PLL_LOL,        {                                              },
-                        { GPVP(pllStatus1(_idx));                      })
-
     //    CPV(ModuleInit,     { GPVG(init     ());     }, { })
     CPV(DumpPll,        { GPVG(dumpPll  (_idx)); }, { })
     CPV(DumpTiming,     { PVG(dumpTiming(_idx)); }, { })
     CPV(DumpSeq,        { if (getScalarAs<unsigned>()) _ctrl.seq().dump();}, {})
     CPV(SetVerbose,     { GPVG(setVerbose(getScalarAs<unsigned>())); }, {})
+    CPV(TimeStampWr,    { if (getScalarAs<unsigned>()!=0) GPVG(setTimeStamp()); }, {})
+    CPV(CuDelay    ,    { GPVG(setCuDelay   (getScalarAs<unsigned>())); }, {})
+    CPV(CuBeamCode ,    { GPVG(setCuBeamCode(getScalarAs<unsigned>())); }, {})
+    CPV(GroupL0Reset,     { GPVG(groupL0Reset(getScalarAs<unsigned>())); }, { })
+    CPV(GroupL0Enable,    { GPVG(groupL0Enable(getScalarAs<unsigned>())); }, { })
+    CPV(GroupL0Disable,   { GPVG(groupL0Disable(getScalarAs<unsigned>())); }, { })
+    CPV(GroupMsgInsert,   { GPVG(groupMsgInsert(getScalarAs<unsigned>())); }, { })
 
     PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem), _seq(m.sequenceEngine()) {}
     PVCtrls::~PVCtrls() {}
@@ -147,6 +111,7 @@ namespace Pds {
       NPVN( DumpTiming,         2                   );
       NPV ( DumpSeq                                 );
       NPV ( SetVerbose                              );
+      NPV ( TimeStampWr                             );
 
       NPVN( LinkTxDelay,        24    );
       NPVN( LinkPartition,      24    );
@@ -156,26 +121,11 @@ namespace Pds {
       NPVN( RxLinkReset,        24    );
       NPVN( RxLinkDump,         Module::NDSLinks    );
       NPVN( LinkEnable,         24    );
-#if 0
-      NPVN( LinkRxReady,        32);
-      NPVN( LinkTxReady,        32);
-      NPVN( LinkIsXpm,          32);
-      NPVN( LinkRxErr,          32);
-#endif
-      NPVN( PLL_BW_Select,      Module::NAmcs       );
-      NPVN( PLL_FreqTable,      Module::NAmcs       );
-      NPVN( PLL_FreqSelect,     Module::NAmcs       );
-      NPVN( PLL_Rate,           Module::NAmcs       );
-      NPVN( PLL_PhaseInc,       Module::NAmcs       );
-      NPVN( PLL_PhaseDec,       Module::NAmcs       );
-      NPVN( PLL_Bypass,         Module::NAmcs       );
-#ifdef SET_PLL
-      //  This makes the timing disappear
-      NPVN( PLL_Reset,          Module::NAmcs       );
-#endif
-      NPVN( PLL_Skew,           Module::NAmcs       );
-      NPVN( PLL_LOS,            Module::NAmcs       );
-      NPVN( PLL_LOL,            Module::NAmcs       );
+
+      NPV( GroupL0Reset                             );
+      NPV( GroupL0Enable                            );
+      NPV( GroupL0Disable                           );
+      NPV( GroupMsgInsert                           );
 
       //
       // Program sequencer

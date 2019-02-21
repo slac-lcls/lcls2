@@ -180,13 +180,16 @@ void StatsTimer::expired()
     CoreCounts c = _dev.counts();
     LinkStatus links[32];
     _dev.linkStatus(links);
+    PllStats   pll[2];
+    for(unsigned i=0; i<Module::NAmcs; i++)
+      pll[i] = _dev.pllStat(i);
     unsigned bpClk  = _dev._monClk[0]&0x1fffffff;
     unsigned fbClk  = _dev._monClk[1]&0x1fffffff;
     unsigned recClk = _dev._monClk[2]&0x1fffffff;
     double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
     _sem.take();
     try {
-      _pvs.update(c,_c,links,_links,recClk,fbClk,bpClk,dt);
+      _pvs.update(c,_c,links,_links,pll,recClk,fbClk,bpClk,dt);
     } catch (CPSWError& e) {
       printf("Caught exception %s\n", e.what());
     }
@@ -287,37 +290,6 @@ int main(int argc, char** argv)
 
   Module* m = Module::locate();
   m->init();
-
-#if 0
-  //
-  // Program sequencer
-  //
-  XpmSequenceEngine& engine = m->sequenceEngine();
-  engine.verbosity(2);
-  // Setup a 22 pulse sequence to repeat 40000 times each second
-  const unsigned NP = 22;
-  std::vector<TPGen::Instruction*> seq;
-  seq.push_back(new TPGen::FixedRateSync(6,1));  // sync start to 1Hz
-  for(unsigned i=0; i<NP; i++) {
-    unsigned bits=0;
-    for(unsigned j=0; j<16; j++)
-      if ((i*(j+1))%NP < (j+1))
-        bits |= (1<<j);
-    seq.push_back(new TPGen::ExptRequest(bits));
-    seq.push_back(new TPGen::FixedRateSync(0,1)); // next pulse
-  }
-  seq.push_back(new TPGen::Branch(1, TPGen::ctrA,199));
-  //  seq.push_back(new TPGen::Branch(1, TPGen::ctrB, 99));
-  seq.push_back(new TPGen::Branch(1, TPGen::ctrB,199));
-  seq.push_back(new TPGen::Branch(0));
-  int rval = engine.insertSequence(seq);
-  if (rval < 0)
-    printf("Insert sequence failed [%d]\n", rval);
-  engine.dump  ();
-  engine.enable(true);
-  engine.setAddress(rval,0,0);
-  engine.reset ();
-#endif
 
   StatsTimer* timer = new StatsTimer(*m);
 

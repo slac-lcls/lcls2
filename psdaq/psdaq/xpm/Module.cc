@@ -442,12 +442,29 @@ bool Module::getL0Enabled() const
   return getf(_l0Control,1,16)!=0;
 }
 
-#if 0
-void Module::groupL0Reset  (unsigned m) { _groupL0Reset   = m; }
-void Module::groupL0Enable (unsigned m) { _groupL0Enable  = m; }
-void Module::groupL0Disable(unsigned m) { _groupL0Disable = m; }
-void Module::groupMsgInsert(unsigned m) { _groupMsgInsert = m; }
-#endif
+void Module::groupL0Reset  (unsigned m) 
+{
+  setPartition(nlsb(m)); // hack to prevent overwrite
+  _groupL0Reset   = m; 
+}
+
+void Module::groupL0Enable (unsigned m) 
+{
+  setPartition(nlsb(m));
+  _groupL0Enable  = m; 
+}
+
+void Module::groupL0Disable(unsigned m) 
+{
+  setPartition(nlsb(m));
+  _groupL0Disable = m; 
+}
+
+void Module::groupMsgInsert(unsigned m) 
+{
+  setPartition(nlsb(m));
+  _groupMsgInsert = m; 
+}
 
 void Module::setL0Select_FixedRate(unsigned rate)
 {
@@ -539,6 +556,17 @@ bool Module::pllBypass(unsigned idx) const
   return _amcPll.Bypass();
 }
 
+PllStats Module::pllStat(unsigned idx) const
+{
+  setAmc(idx);
+  PllStats s;
+  s.lol      = _amcPll.Status0();
+  s.los      = _amcPll.Status1();
+  s.lolCount = _amcPll.Count0();
+  s.losCount = _amcPll.Count1();
+  return s;
+}
+
 void Module::dumpPll(unsigned idx) const
 {
   setAmc(idx);
@@ -554,6 +582,29 @@ void Module::dumpTiming(unsigned b) const
 void Module::setVerbose(unsigned v) 
 {
   _verbose = v;
+}
+
+void Module::setTimeStamp()
+{
+  struct tm tm_s;
+  tm_s.tm_year = 1995;
+  time_t t0 = mktime(&tm_s);
+  timespec ts;
+  clock_gettime(CLOCK_REALTIME,&ts);
+  uint64_t t = (ts.tv_sec-t0);
+  t <<= 32;
+  t |= ts.tv_nsec;
+  _timestamp = t;
+}
+
+void Module::setCuDelay(unsigned v)
+{
+  _cuDelay = v;
+}
+
+void Module::setCuBeamCode(unsigned v)
+{
+  _cuBeamCode = v;
 }
 
 void     Module::setPartition(unsigned v) const

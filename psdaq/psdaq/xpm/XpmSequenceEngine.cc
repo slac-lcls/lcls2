@@ -159,6 +159,7 @@ static int _lookup_address(const std::map<unsigned,SeqCache>& caches,
 XpmSequenceEngine::XpmSequenceEngine(void* p, unsigned id) :
   _private( new XpmSequenceEngine::PrivateData(p, id) )
 {
+  printf("XpmSequenceEngine @ %p\n", p);
 
 #if 0
   _private->_indices = 3;
