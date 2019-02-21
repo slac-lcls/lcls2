@@ -431,7 +431,9 @@ class CollectionManager():
         # make sure all the clients respond to alloc message with their connection info
         ret, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
         if ret:
-            logging.error('%d client did not respond to alloc' % ret)
+            message = '%d client did not respond to alloc' % ret
+            logging.error(message)
+            self.front_pub.send_json(self.error_msg(message))
             logging.debug('condition_alloc() returning False')
             return False
         for answer in answers:
@@ -538,7 +540,9 @@ class CollectionManager():
         if ret:
             # Error
             retval = False
-            logging.error('%d client did not respond to %s' % (ret, transition))
+            message = '%d client did not respond to %s' % (ret, transition)
+            logging.error(message)
+            self.front_pub.send_json(self.error_msg(message))
         else:
             retval = True
             for answer in answers:
