@@ -164,6 +164,19 @@ target_link_libraries(hsd_test
 )
 
 
+add_executable(hsd_flash hsd_flash.cc)
+
+target_include_directories(hsd_flash PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+target_link_libraries(hsd_flash
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
+
 add_executable(hsd_validate hsd_validate.cc)
 
 target_link_libraries(hsd_validate

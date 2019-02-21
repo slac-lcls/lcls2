@@ -8,7 +8,7 @@ namespace Pds {
     class FexCfg {
     public:
       uint32_t _streams;
-      uint32_t _rsvd;
+      uint32_t _oflow;
       uint32_t _test_pattern_errors;      
       uint32_t _test_pattern_errbits;
 
@@ -21,7 +21,7 @@ namespace Pds {
         void getFree(unsigned& rows, unsigned& events) {
           unsigned v = _free;
           rows   = v&0xffff;
-          events = v>>16;
+          events = (v>>16)&0xff;
         }
       public:
         uint32_t _prescale;

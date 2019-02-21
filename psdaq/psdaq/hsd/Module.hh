@@ -15,6 +15,7 @@ namespace Pds {
   namespace HSD {
     class TprCore;
     class FexCfg;
+    class FlashController;
     class HdrFifo;
     class PhaseMsmt;
     class Pgp;
@@ -35,7 +36,8 @@ namespace Pds {
 
       void set_local_id(unsigned bus);
 
-      void flash_write(FILE*);
+      void flash_write(const char*);
+      FlashController& flash();
 
       //  Initialize busses
       void init();

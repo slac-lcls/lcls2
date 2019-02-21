@@ -16,25 +16,37 @@ static uint64_t _rbytes =0;
 static unsigned _revents=0;
 static uint64_t _fbytes =0;
 static unsigned _fevents=0;
+static unsigned _nrxflags=0;
+static unsigned _overrun=0;
+static unsigned _corrupt=0;
 
 static uint64_t _initial_sample_errors=0;
 static uint64_t _internal_sample_errors=0;
-static unsigned _nprints=10;
+static uint64_t _finitial_sample_errors=0;
+static uint64_t _finternal_sample_errors=0;
+static unsigned _nprints=20;
 
 static FILE* f = 0;
+static FILE* fdump = 0;
 
 static void sigHandler( int signal ) {
   psignal( signal, "Signal received by pgpWidget");
   if (f) fclose(f);
+  if (fdump) fclose(fdump);
 
   printf("==========\n");
   printf("events                : %u\n", _nevents);
   printf("bytes                 : %lu\n", _nbytes);
+  printf("rxflags               : %u\n", _nrxflags);
   printf("--\n");
   printf("raw events            : %u\n", _revents);
   printf("raw bytes             : %lu\n", _rbytes);
   printf("initial sample errors : %lu\n", _initial_sample_errors);
   printf("internal sample errors: %lu\n", _internal_sample_errors);
+  printf("finitial sample error : %lu\n", _finitial_sample_errors);
+  printf("finternal sample error: %lu\n", _finternal_sample_errors);
+  printf("overrun               : %u\n", _overrun);
+  printf("corrupt               : %u\n", _corrupt);
   printf("==========\n");
 
   printf("Signal handler pulling the plug\n");
@@ -111,6 +123,17 @@ static void* diagnostics(void*)
   return 0;
 }
 
+static unsigned ndump=10;
+static void dump(const char* b, int nb)
+{
+  if (ndump) {
+    if (!fdump) 
+      fdump = fopen("/tmp/hsd_validate.dump","w");
+    fwrite(b,1,nb,fdump);
+    ndump--;
+  }
+}
+
 class Configuration {
 public:
 public:
@@ -161,22 +184,42 @@ public:
     if (event_header->seq.isEvent()) {
       unsigned streams(buffer[26]>>4);
       const char* p = buffer+32;
+      bool ldump=false;
       while(streams) {
         const StreamHeader& s = *reinterpret_cast<const StreamHeader*>(p);
+        if (p >= buffer+ret) {
+          _overrun++;
+          if (!ldump)
+            dump(buffer,ret);
+          return;
+        }
+        if ((streams & (1<<s.stream_id()))==0) {
+          _corrupt++;
+          if (!ldump)
+            dump(buffer,ret);
+          return;
+        }
         if (s.stream_id() == 0)
-          _validate_raw(*event_header,s);
+          if (_validate_raw(*event_header,s)) {
+            ldump=true;
+            dump(buffer,ret);
+            p -= 32; // These errors drop 32B, correct for the next stream
+          }
         if (s.stream_id() == 1)
-          _validate_fex(s);
+          if (_validate_fex(s))
+            if (!ldump) {
+              ldump=true;
+              dump(buffer,ret);
+            }
         p += sizeof(StreamHeader)+s.num_samples()*2;
         streams &= ~(1<<s.stream_id());
       }
-
-      _transition = *event_header;
     }
   }
 private:
-  void _validate_raw(const XtcData::Transition& transition,
+  bool _validate_raw(const XtcData::Transition& transition,
                      const StreamHeader&        s) {
+    bool lret=false;
     // Decode stream header
     _revents++;
     _rbytes += s.num_samples()*2;
@@ -191,9 +234,10 @@ private:
 
       if ((sample_value&0x7ff)!=q[0]) {  // initial sample error
         _initial_sample_errors++;
+        lret=true;
         if (_lverbose || _nprints) {
           _nprints--;
-          printf("Expected initial value %04x [%04x]\n", sample_value&0x7ff, q[0]);
+          printf("Expected initial raw value %04x [%04x]\n", sample_value&0x7ff, q[0]);
         }
       }
 
@@ -201,30 +245,82 @@ private:
 
       bool lerr=false;
       for(unsigned i=0; i<s.num_samples(); ) {
-        for(unsigned j=0; j<4; j++,i++)
+        bool verr=false;
+        unsigned j;
+        for(j=0; j<4 && !verr; j++,i++)
           if ((sample_value&0x7ff) != q[i]) { // internal sample error
             if ((_lverbose || _nprints) && !lerr) {
               _nprints--;
-              printf("Expected value %04x :",sample_value&0x7ff);
-              for(unsigned k=0; k<4; k++)
-                printf(" %04x",q[(i&~3)|k]);
+              printf("Expected raw value %04x [%u] :",sample_value&0x7ff, i);
+              for(unsigned k=i>3 ? i-4:0; k<i+4; k++)
+                printf(" %04x",q[k]);
+              printf("\n");
+            }
+            verr=true;
+          }
+        if (verr) {
+          i += 4-j;
+          lerr = true;
+        }
+        sample_value++;
+      }
+
+      if (lerr) {
+        _internal_sample_errors++;
+        lret = true;
+      }
+    }
+
+    _transition = transition;
+    _sample_value = *reinterpret_cast<const uint16_t*>(&s+1);
+    return lret;
+  }
+  bool _validate_fex(const StreamHeader&        s) {
+    bool lret=false;
+    // Decode stream header
+    _fevents++;
+    _fbytes += s.num_samples()*2;
+
+    if (1) {
+      //  calculate expected sample value
+      uint16_t sample_value = _sample_value;
+
+      const uint16_t* q = reinterpret_cast<const uint16_t*>(&s+1);
+
+      if ((sample_value&0x7ff)!=q[0]) {  // initial sample error
+        _finitial_sample_errors++;
+        lret = true;
+        if (_lverbose || _nprints) {
+          _nprints--;
+          printf("Expected initial fex value %04x [%04x]\n", sample_value&0x7ff, q[0]);
+        }
+      }
+
+      sample_value = q[0];
+
+      bool lerr=false;
+      for(unsigned i=0; i<s.num_samples() && !lerr; ) {
+        for(unsigned j=0; j<4 && !lerr; j++,i++)
+          if ((sample_value&0x7ff) != q[i]) { // internal sample error
+            if ((_lverbose || _nprints) && !lerr) {
+              _nprints--;
+              printf("Expected fex value %04x [%u] :",sample_value&0x7ff, i);
+              for(unsigned k=i>3 ? i-4:0; k<i+4; k++)
+                printf(" %04x",q[k]);
               printf("\n");
             }
             lerr=true;
-            break;
           }
         sample_value++;
       }
 
-      if (lerr)
-        _internal_sample_errors++;
+      if (lerr) {
+        _finternal_sample_errors++;
+        lret = true;
+      }
     }
-    _sample_value = *reinterpret_cast<const uint16_t*>(&s+1);
-  }
-  void _validate_fex(const StreamHeader& s) {
-    // Decode stream header
-    _fevents++;
-    _fbytes += s.num_samples()*2;
+
+    return lret;
   }
 private:
   const Configuration& _cfg;
@@ -245,14 +341,18 @@ int main(int argc, char* argv[])
   unsigned raw_start=  4, raw_rows = 20;
   unsigned fex_start=  4, fex_rows = 20;
   unsigned fex_thrlo=508, fex_thrhi=516;
+  unsigned nskip = 0;
 
-  while((c = getopt(argc, argv, "d:f:w:v")) != EOF) {
+  while((c = getopt(argc, argv, "d:f:s:w:v")) != EOF) {
     switch(c) {
     case 'd':
       pgpcard = optarg;
       break;
     case 'f':
       ofile = optarg;
+      break;
+    case 's':
+      nskip = std::stoi(optarg, nullptr, 0);
       break;
     case 'w':
       wait_us =  std::stoi(optarg, nullptr, 16);
@@ -268,6 +368,7 @@ int main(int argc, char* argv[])
                     fex_thrlo, fex_thrhi);
 
   ::signal( SIGINT, sigHandler );
+  ::signal( SIGSEGV, sigHandler );
 
   //
   //  Launch the statistics thread
@@ -307,12 +408,21 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  // Allocate a buffer
-  const unsigned maxSize = 1024*256;
-  char* data = (char*)malloc(maxSize);
-  int ret;
-
   Validator val(cfg);
+
+  const unsigned MAX_CNT = 128;
+  unsigned getCnt = MAX_CNT;
+  int32_t  dmaRet  [MAX_CNT];
+  uint32_t dmaIndex[MAX_CNT];
+  uint32_t rxFlags [MAX_CNT];
+  unsigned dmaCount, dmaSize;
+  void**   dmaBuffers;
+  if ( (dmaBuffers = dmaMapDma(fd,&dmaCount,&dmaSize)) == NULL ) {
+    printf("Failed to map dma buffers\n");
+    return -1;
+  }
+
+  unsigned iskip = nskip;
 
   // DMA Read
   do {
@@ -327,33 +437,47 @@ int main(int argc, char* argv[])
       return -1;
     }
 
-    uint32_t flags=0, err=0, dest=0;
-    int ret = dmaRead(fd,data,maxSize,&flags,&err,&dest);
+    int bret = dmaReadBulkIndex(fd,getCnt,dmaRet,dmaIndex,rxFlags,NULL,NULL);
 
-    XtcData::Transition* event_header = reinterpret_cast<XtcData::Transition*>(data);
-    XtcData::TransitionId::Value transition_id = event_header->seq.service();
+    for(int idg=0; idg<bret; idg++) {
+      
+      int ret = dmaRet[idg];
 
-    if (_lverbose) {
-      const uint32_t* pu32 = reinterpret_cast<const uint32_t*>(data);
-      const uint64_t* pu64 = reinterpret_cast<const uint64_t*>(data);
-      printf("Flags: %x  Err: %x  Dest: %x\n", flags, err, dest);
-      printf("Data: %016lx %016lx %08x %08x %08x %08x\n", pu64[0], pu64[1], pu32[4], pu32[5], pu32[6], pu32[7]);
-      printf("Size %u B | Dest %u | Transition id %d | pulse id %lx | event counter %x\n",
-             ret, dest, transition_id, event_header->seq.pulseId().value(), *reinterpret_cast<uint32_t*>(event_header+1));
+      if (rxFlags[idg])
+        _nrxflags++;
+
+      char* data = (char*)dmaBuffers[dmaIndex[idg]];
+
+      XtcData::Transition* event_header = reinterpret_cast<XtcData::Transition*>(data);
+      XtcData::TransitionId::Value transition_id = event_header->seq.service();
+
+      if (_lverbose) {
+        const uint32_t* pu32 = reinterpret_cast<const uint32_t*>(data);
+        const uint64_t* pu64 = reinterpret_cast<const uint64_t*>(data);
+        printf("Data: %016lx %016lx %08x %08x %08x %08x\n", pu64[0], pu64[1], pu32[4], pu32[5], pu32[6], pu32[7]);
+        printf("Size %u B | Flags %x | Transition id %d | pulse id %lx | event counter %x\n",
+               ret, rxFlags[idg], transition_id, event_header->seq.pulseId().value(), *reinterpret_cast<uint32_t*>(event_header+1));
+      }
+      
+      if (ret>0)
+        if (!iskip--) {
+          val.validate(data,ret);
+          iskip = nskip;
+        }
+      if (wait_us && event_header->seq.stamp().seconds()>_seconds) {
+        usleep(wait_us);
+        _seconds = event_header->seq.stamp().seconds();
+      }
+      if (f)
+        fwrite(data, ret, 1, f);
     }
 
-    if (ret>0)
-      val.validate(data,ret);
-    if (wait_us && event_header->seq.stamp().seconds()>_seconds) {
-      usleep(wait_us);
-      _seconds = event_header->seq.stamp().seconds();
-    }
-    if (f)
-      fwrite(data, ret, 1, f);
+    if (bret>0)
+      dmaRetIndexes(fd,bret,dmaIndex);
 
-  } while (ret>0);
-
+  } while (1);
+  
   pthread_join(thr,NULL);
-  free(data);
+
   return 0;
 } 

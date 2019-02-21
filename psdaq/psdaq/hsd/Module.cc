@@ -786,10 +786,12 @@ void Module::board_status()
   }
 }
 
-void Module::flash_write(FILE* f)
+void Module::flash_write(const char* fname)
 {
-  p->flash.write(f);
+  p->flash.write(fname);
 }
+
+FlashController& Module::flash() { return p->flash; }
 
 int  Module::train_io(unsigned v) { return p->train_io(v); }
 

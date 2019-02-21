@@ -11,6 +11,7 @@ namespace Pds {
   namespace HSD {
 
     class Module;
+    class StatePV;
 
     enum Action { Configure, Unconfigure, EnableTr, DisableTr, Reset };
 
@@ -34,7 +35,10 @@ namespace Pds {
     public:
       static void interleave(bool);
     private:
+      void _setState(Action);
+    private:
       std::vector<Pds_Epics::EpicsPVA*> _pv;
+      StatePV* _state_pv;
       Module& _m;
       Pds::Task& _task;
     };

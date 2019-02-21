@@ -37,9 +37,6 @@ namespace Pds {
       void routine() {
         switch(_a) {
         case Configure  : _pvc.configure(); break;
-        case Unconfigure: _pvc.disable  (); break;
-        case EnableTr   : _pvc.enable   (); break;
-        case DisableTr  : _pvc.disable  (); break;
         case Reset      : _pvc.reset(); break;
         default: break;
         }
@@ -81,9 +78,7 @@ namespace Pds {
     }
     
     CPV(ApplyConfig ,{if (getScalarAs<unsigned>()) _ctrl.call(Configure  );}, {})
-    CPV(EnableTr    ,{if (getScalarAs<unsigned>()) _ctrl.call(EnableTr   );}, {})
-    CPV(DisableTr   ,{if (getScalarAs<unsigned>()) _ctrl.call(DisableTr  );}, {})
-    CPV(UndoConfig  ,{if (getScalarAs<unsigned>()) _ctrl.call(Unconfigure);}, {})
+    CPV(State       ,{}, {})
     CPV(Reset       ,{if (getScalarAs<unsigned>()) _ctrl.call(Reset      );}, {})
     CPV(PgpLoopback ,{_ctrl.loopback (getScalarAs<unsigned>()!=0);   }, {})
 
@@ -116,9 +111,6 @@ namespace Pds {
       NPV1(Fex_Ymax);
       NPV1(Fex_Xpre);
       NPV1(Fex_Xpost);
-      NPV1(Nat_Start);
-      NPV1(Nat_Gate);
-      NPV1(Nat_PS);
       NPV1(FullEvt);
       NPV1(FullSize);
       NPV1(TestPattern);
@@ -133,12 +125,12 @@ namespace Pds {
       _pv.push_back(new PvServer((pvbase+"BASE:PARTITION"  ).c_str()));
       
       NPV(ApplyConfig,"BASE:APPLYCONFIG");
-      NPV(EnableTr   ,"BASE:ENABLETR");
-      NPV(DisableTr  ,"BASE:DISABLETR");
-      NPV(UndoConfig ,"BASE:UNDOCONFIG");
       NPV(Reset      ,"RESET");
       NPV(PgpLoopback,"PGPLOOPBACK");
 
+      _state_pv = new StatePV(*this, (pvbase+"BASE:READY").c_str());
+
+      _setState(Unconfigure);
     }
 
     //  enumeration of PV insert order above
@@ -146,7 +138,6 @@ namespace Pds {
                    Raw_Start, Raw_Gate, Raw_PS, 
                    Fex_Start, Fex_Gate, Fex_PS, 
                    Fex_Ymin, Fex_Ymax, Fex_Xpre, Fex_Xpost,
-                   Nat_Start, Nat_Gate, Nat_PS,
                    FullEvt, FullSize,
                    TestPattern, SyncELo, SyncEHi, SyncOLo, SyncOHi, 
                    TrigShift, PgpSkpIntvl,
@@ -154,13 +145,9 @@ namespace Pds {
 
     Module& PVCtrls::module() { return _m; }
 
-    void PVCtrls::enable() {
-    }
-
-    void PVCtrls::disable() {
-    }
-
     void PVCtrls::configure() {
+      _setState(Unconfigure);
+
       _m.stop();
 
       // Update all necessary PVs
@@ -274,16 +261,6 @@ namespace Pds {
             fex._stream[1].parms[2].v=_pv[Fex_Xpre]->getVectorElemAt<unsigned>(i);
             fex._stream[1].parms[3].v=_pv[Fex_Xpost]->getVectorElemAt<unsigned>(i);
           }
-          if (_pv[Nat_PS]->getVectorElemAt<unsigned>(i)) {
-            streamMask |= (1<<2);
-            fex._base[2].setGate(4,_pv[Nat_Gate]->getVectorElemAt<unsigned>(i));
-            fex._base[2].setFull(0xc00,4);
-            fex._base[2]._prescale=_pv[Nat_PS]->getVectorElemAt<unsigned>(i)-1;
-            fex._stream[2].parms[0].v=_pv[Fex_Ymin ]->getVectorElemAt<unsigned>(i);
-            fex._stream[2].parms[1].v=_pv[Fex_Ymax ]->getVectorElemAt<unsigned>(i);
-            fex._stream[2].parms[2].v=_pv[Fex_Xpre ]->getVectorElemAt<unsigned>(i);
-            fex._stream[2].parms[3].v=_pv[Fex_Xpost]->getVectorElemAt<unsigned>(i);
-          }
           fex._streams= streamMask;
         }
         else
@@ -323,6 +300,7 @@ namespace Pds {
       printf("Configure done\n");
 
       _m.start();
+      _setState(Configure);
     }
 
     void PVCtrls::reset() {
@@ -348,5 +326,10 @@ namespace Pds {
     }
 
     void PVCtrls::interleave(bool v) { _interleave = v; }
+
+    void PVCtrls::_setState(Action a) {
+      unsigned v = (a==Configure) ? 1 : 0;
+      _state_pv->putFrom(v);
+    }
   };
 };

@@ -40,8 +40,9 @@ namespace Pds {
            _PgpLocLinkRdy, _PgpRemLinkRdy,
            _PgpTxClkFreq, _PgpRxClkFreq,
            _PgpTxCnt, _PgpTxCntSum, _PgpTxErrCnt, _PgpRxCnt, _PgpRxLast, _PgpRemPause,
-           _Raw_FreeBufSz, _Raw_FreeBufEvt,
-           _Fex_FreeBufSz, _Fex_FreeBufEvt,
+           _Data_FifoOF,
+           _Raw_FreeBufSz, _Raw_FreeBufEvt, _Raw_FifoOF,
+           _Fex_FreeBufSz, _Fex_FreeBufEvt, _Fex_FifoOF,
            _Nat_FreeBufSz, _Nat_FreeBufEvt,
            _Raw_BufState, _Raw_TrgState, _Raw_BufBeg, _Raw_BufEnd,
            _Local12V, _Edge12V, _Aux12V,
@@ -90,12 +91,13 @@ namespace Pds {
       PV_ADDV(PgpRxCnt     ,LANES);
       PV_ADDV(PgpRxLast    ,LANES);
       PV_ADDV(PgpRemPause  ,LANES);
-      PV_ADDV(Raw_FreeBufSz  ,16);
-      PV_ADDV(Raw_FreeBufEvt ,16);
-      PV_ADDV(Fex_FreeBufSz  ,16);
-      PV_ADDV(Fex_FreeBufEvt ,16);
-      PV_ADDV(Nat_FreeBufSz  ,16);
-      PV_ADDV(Nat_FreeBufEvt ,16);
+      PV_ADDV(Data_FifoOF    ,CHANS);
+      PV_ADDV(Raw_FreeBufSz  ,CHANS);
+      PV_ADDV(Raw_FreeBufEvt ,CHANS);
+      PV_ADDV(Raw_FifoOF     ,CHANS);
+      PV_ADDV(Fex_FreeBufSz  ,CHANS);
+      PV_ADDV(Fex_FreeBufEvt ,CHANS);
+      PV_ADDV(Fex_FifoOF     ,CHANS);
       //  Channel 0 stats only (by firmware)
       PV_ADDV(Raw_BufState   ,16);
       PV_ADDV(Raw_TrgState   ,16);
