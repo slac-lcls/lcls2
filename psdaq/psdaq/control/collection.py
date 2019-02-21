@@ -95,9 +95,14 @@ class DaqControl:
         while True:
             try:
                 msg = self.front_sub.recv_json()
+
                 if msg['header']['key'] == 'status':
                     # return transition, state
                     return msg['body']['transition'], msg['body']['state']
+
+                elif msg['header']['key'] == 'error':
+                    # return 'error', error message
+                    return 'error', msg['body']['error']
 
             except KeyboardInterrupt:
                 break
@@ -139,7 +144,6 @@ class DaqControl:
         except Exception as ex:
             errorMessage = 'setTransition() Exception: %s' % ex
         else:
-            print('setTransition(): reply = %s' % reply)
             try:
                 errorMessage = reply['body']['error']
             except KeyError:
@@ -328,8 +332,12 @@ class CollectionManager():
                         self.front_rep.send_json(create_msg('ok'))
                         retval = self.handle_trigger(key, stateChange=False)
                         answer = None
-                        if 'error' in retval['body']:
-                            logging.error(retval['body']['error'])
+                        try:
+                            # send error message, if any, to front_pub socket
+                            message = retval['body']['error']
+                            self.front_pub.send_json(self.error_msg(message))
+                        except KeyError:
+                            pass
                     else:
                         answer = self.handle_request[key]()
                 except KeyError:
@@ -401,6 +409,10 @@ class CollectionManager():
                         break
 
         return answer
+
+    def error_msg(self, message):
+        body = {'error': message}
+        return create_msg('error', body=body)
 
     def status_msg(self):
         body = {'state': self.state, 'transition': self.lastTransition}
