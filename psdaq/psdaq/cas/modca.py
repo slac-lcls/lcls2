@@ -199,7 +199,7 @@ def DeadTime(pvbase,parent):
     for i in range(16,21):
         k = i-1
         deadgrid.addWidget( QtWidgets.QLabel('BP-slot%d'%(i-13)), k, 0, 1, 2 )
-        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), k, 2 )
+        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%(i+1),None), k, 2 )
         for j in range(7):
             deadgrid.addWidget( textWidgets[j][i], k, j+3 )
     for i in range(28,32):

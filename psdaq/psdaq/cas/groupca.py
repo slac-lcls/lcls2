@@ -130,7 +130,7 @@ class PvGroupStats(QtWidgets.QWidget):
 #        PvLabel(lor, pvbase, "DeadTime", scale=1.0   )
 
 
-def addGroup(tw, base, group):
+def addGroup(tw, base, group, xpm):
     pvbase = base+group+':'
     wlo    = QtWidgets.QVBoxLayout()
 
@@ -155,7 +155,7 @@ def addGroup(tw, base, group):
     tw.addTab(w,'Group '+group)
 
     pvXpm = Pv(pvbase+'XPM')
-    pvXpm.put(1)
+    pvXpm.put(int(xpm))
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, base, xpm, groups):
@@ -169,13 +169,9 @@ class Ui_MainWindow(object):
 
         lol = QtWidgets.QVBoxLayout()
 
-        #  This needs to update XPM ownership of each group element
-        #LblEditInt   (lol, pvbase, 'XPM')
-        #lol.addWidget( PvEditInt(pvbase+'XPM','XPM') );
-
         tw = QtWidgets.QTabWidget()
         for g in groups:
-            addGroup(tw, pvbase, g)
+            addGroup(tw, pvbase, g, xpm)
         tw.addTab(PvStateMachine(base,pvbase,xpm,groups),'Transitions')
         tw.addTab(PvGroupStats  (base,pvbase,xpm,groups),'Events')
         lol.addWidget(tw)
