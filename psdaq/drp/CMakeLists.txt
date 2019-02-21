@@ -28,7 +28,7 @@ target_include_directories(drputils PUBLIC
 add_executable(drp
     DrpApp.cc
     DrpApp.hh
-    main.cc
+    drp.cc
 )
 
 target_include_directories(drp PUBLIC
