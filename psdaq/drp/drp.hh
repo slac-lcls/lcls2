@@ -28,6 +28,7 @@ struct Parameters
     std::string collect_host;
     std::string output_dir;
     std::string detectorType;
+    std::string device;
     int numWorkers;
     int numEntries;
     int laneMask;
@@ -59,7 +60,7 @@ using PebbleQueue = SPSCQueue<Pebble*>;
 
 struct MemPool
 {
-    MemPool(int num_workers, int num_entries);
+    MemPool(const Parameters& para);
     void** dmaBuffers;
     std::vector<PGPData> pgp_data;
     PebbleQueue pebble_queue;

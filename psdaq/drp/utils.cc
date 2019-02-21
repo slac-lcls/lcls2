@@ -11,27 +11,27 @@
 #include "drp.hh"
 #include <zmq.h>
 
-MemPool::MemPool(int num_workers, int num_entries) :
-    pgp_data(num_entries),
-    pebble_queue(num_entries),
-    collector_queue(num_entries),
-    num_entries(num_entries),
-    pebble(num_entries)
+MemPool::MemPool(const Parameters& para) :
+    pgp_data(para.numEntries),
+    pebble_queue(para.numEntries),
+    collector_queue(para.numEntries),
+    num_entries(para.numEntries),
+    pebble(para.numEntries)
 {
-    for (int i = 0; i < num_workers; i++) {
-        worker_input_queues.emplace_back(PebbleQueue(num_entries));
-        worker_output_queues.emplace_back(PebbleQueue(num_entries));
+    for (int i = 0; i < para.numWorkers; i++) {
+        worker_input_queues.emplace_back(PebbleQueue(para.numEntries));
+        worker_output_queues.emplace_back(PebbleQueue(para.numEntries));
     }
 
-    for (int i = 0; i < num_entries; i++) {
+    for (int i = 0; i < para.numEntries; i++) {
         pgp_data[i].counter = 0;
         pgp_data[i].buffer_mask = 0;
         pebble_queue.push(&pebble[i]);
     }
 
-    fd = open("/dev/datadev_1", O_RDWR);
+    fd = open(para.device.c_str(), O_RDWR);
     if (fd < 0) {
-        printf("Error opening /dev/datadev_1\n");
+        std::cout<<"Error opening "<<para.device<<'\n';
     }
     uint32_t dmaCount, dmaSize;
     dmaBuffers = dmaMapDma(fd, &dmaCount, &dmaSize);

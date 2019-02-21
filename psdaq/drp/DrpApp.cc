@@ -13,7 +13,7 @@ DrpApp::DrpApp(Parameters* para) :
     CollectionApp(para->collect_host, para->partition, "drp"),
     m_para(para),
     m_inprocRecv(&m_context, ZMQ_PAIR),
-    m_pool(para->numWorkers, para->numEntries)
+    m_pool(*para)
 {
     size_t maxSize = sizeof(MyDgram);
     m_para->tPrms = { /* .ifAddr        = */ { }, // Network interface to use

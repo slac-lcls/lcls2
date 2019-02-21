@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     Parameters para;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:D:C:")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:C:d:")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -22,6 +22,9 @@ int main(int argc, char* argv[])
                 break;
             case 'C':
                 para.collect_host = optarg;
+                break;
+            case 'd':
+                para.device = optarg;
                 break;
             default:
                 exit(1);
