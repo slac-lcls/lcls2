@@ -38,57 +38,42 @@ int main (int argc, char **argv) {
 #define PRINTFIELD(name, addr, offset, mask) {                  \
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \
-    if (dmaReadRegister(fd, addr, &reg)<0) {                    \
+    if (dmaReadRegister(fd, base+addr, &reg)<0) {               \
       perror(#name);                                            \
       return -1;                                                \
     }                                                           \
-    printf(" %8x\n", (reg>>offset)&mask); }
+    printf(" 0x%8x\n", (reg>>offset)&mask); }
 #define PRINTBIT(name, addr, bit)  PRINTFIELD(name, addr, bit, 1)
 #define PRINTREG(name, addr)       PRINTFIELD(name, addr,   0, 0xffffffff)
+#define PRINTCLK(name, addr) {                                  \
+    uint32_t reg;                                               \
+    printf("%20.20s :", #name);                                 \
+    if (dmaReadRegister(fd, base+addr, &reg)<0) {               \
+      perror(#name);                                            \
+      return -1;                                                \
+    }                                                           \
+    printf(" %5.3f MHz\n", double(reg&0xfffffff)*1.e-6);        \
+}
 #define PRINTERR(name, addr)       PRINTFIELD(name, addr,   0, 0xf)
 
   printf("-- AxiStreamDmaV2Desc Registers --\n");
+  unsigned base = 0x00800000;
   PRINTBIT(enable   , 0x00, 0);
-  PRINTFIELD(version, 0x00, 24, 0xff);
-  PRINTBIT(intEnable, 0x04, 0);
-  PRINTBIT(contEn   , 0x08, 0);
-  PRINTBIT(dropEn   , 0x0c, 0);
-  PRINTREG(wrBaseAddL , 0x10);   // descriptor addresses
-  PRINTREG(wrBaseAddH , 0x14);
-  PRINTREG(rdBaseAddL , 0x18);
-  PRINTREG(rdBaseAddH , 0x1c);
-  PRINTREG(buBaseAddrH, 0x24);
-  PRINTREG(maxSize    , 0x28);
-  PRINTFIELD(online     , 0x2c, 0, 0xff);
-  PRINTFIELD(acknowledge, 0x30, 0, 0xff);
-  PRINTFIELD(chanCount  , 0x34, 0, 0xff);
-  PRINTFIELD(descAWidth , 0x38, 0, 0xff);
-  PRINTFIELD(descCache  , 0x3c, 0, 0xf);
-  PRINTFIELD(buffCache  , 0x3c, 8, 0xf);
-  PRINTREG(fifoDin      , 0x40);  
-  PRINTFIELD(intAckCnt  , 0x4c, 0, 0xffff);
-  PRINTREG(intReqCnt  , 0x50);
-  PRINTREG(wrIndex    , 0x54);   // count of reads (last descriptor)
-  PRINTREG(rdIndex    , 0x58);   // count of writes
-  PRINTREG(wrReqMiss  , 0x5c);
 
-  uint32_t descAWidth;
-  dmaReadRegister(fd, 0x38, &descAWidth);
-  descAWidth &= 0xff;
+  PRINTREG(blockSize   , 0x80);
+  PRINTFIELD(blocksPause, 0x84, 8, 0xff);
+  PRINTFIELD(blocksFree, 0x88, 0, 0xfff);
+  PRINTFIELD(blocksQued, 0x88,12, 0xfff);
+  PRINTREG(writeQueCnt , 0x8c);
+  PRINTREG(wrndex  , 0x90);
+  PRINTREG(wcIndex , 0x94);
+  PRINTREG(rdIndex , 0x98);
+  PRINTREG(fifoOF  , 0x9c);
 
-  { uint32_t index;
-    if (dmaReadRegister(fd, 0x58, &index)<0) {
-      perror("ReadFifoLow");
-      return -1;
-    }
-    index &= (1<<descAWidth)-1;
+  PRINTCLK(axilOther  ,0x100);
+  PRINTCLK(timingRef  ,0x104);
+  PRINTCLK(migA       ,0x108);
+  PRINTCLK(migB       ,0x10c);
 
-    uint32_t addr;
-    if (dmaReadRegister(fd, 0x4000+4*index, &addr)<0) {
-      perror("AddrRam");
-    }
-    printf("DmaAddr[%03x] : %8x\n", index, addr);
-  }
-    
   close(fd);
 }
