@@ -21,8 +21,8 @@ def printDb():
     print('=========== Serving %d PVs ==============' % len(pvdb))
     for key in sorted(pvdb):
         print(prefix+key)
-    print('=========================================')
-    return
+        print('=========================================')
+        return
 
 def main():
     global pvdb
@@ -78,11 +78,7 @@ def main():
     #  This PV triggers execution of all configuration parameters
     pvdb[stationstr+'BASE:APPLYCONFIG'  ] = {'type' : 'int', 
                                              'value' : 0 }
-    pvdb[stationstr+'BASE:UNDOCONFIG'   ] = {'type' : 'int', 
-                                             'value' : 0 }
-    pvdb[stationstr+'BASE:ENABLETR'     ] = {'type' : 'int', 
-                                             'value' : 0 }
-    pvdb[stationstr+'BASE:DISABLETR'    ] = {'type' : 'int', 
+    pvdb[stationstr+'BASE:READY'        ] = {'type' : 'int', 
                                              'value' : 0 }
 
     # Specific PVs
@@ -91,7 +87,7 @@ def main():
                                     'value' : [1]*NChans }
     pvdb[stationstr+'RAW_START' ] = {'type' : 'int', 
                                      'count': NChans,
-                                     'value' : [NChans]*NChans }
+                                     'value' : [4]*NChans }
     pvdb[stationstr+'RAW_GATE' ] = {'type' : 'int', 
                                     'count': NChans,
                                     'value' : [200]*NChans }
@@ -100,7 +96,7 @@ def main():
                                     'value' : [1]*NChans }
     pvdb[stationstr+'FEX_START' ] = {'type' : 'int', 
                                      'count': NChans,
-                                     'value' : [NChans]*NChans }
+                                     'value' : [4]*NChans }
     pvdb[stationstr+'FEX_GATE' ] = {'type' : 'int', 
                                     'count': NChans,
                                     'value' : [200]*NChans }
@@ -119,15 +115,6 @@ def main():
     pvdb[stationstr+'FEX_XPOST'] = {'type' : 'int', 
                                     'count': NChans,
                                     'value' : [3]*NChans }
-    pvdb[stationstr+'NAT_START' ] = {'type' : 'int', 
-                                     'count': NChans,
-                                     'value' : [NChans]*NChans }
-    pvdb[stationstr+'NAT_GATE' ] = {'type' : 'int', 
-                                    'count': NChans,
-                                    'value' : [200]*NChans }
-    pvdb[stationstr+'NAT_PS'   ] = {'type' : 'int', 
-                                    'count': NChans,
-                                    'value' : [0]*NChans }
 
     pvdb[stationstr+'RESET'  ] = {'type' : 'int', 
                                   'value' : 0 }
@@ -144,24 +131,16 @@ def main():
     pvdb[stationstr+'TRIGSHIFT'  ] = {'type' : 'int', 
                                       'value' : 0 }
     pvdb[stationstr+'SYNCE'       ] = {'type' : 'int', 
-                                      'value' : 0 }
+                                       'value' : 0 }
     pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int',
-#                                       'value' : 2050 } 
-#                                       'value' : 1600 }
                                        'value' : 5500-175 }
     pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
-#                                       'value' : 2NChans00 }
-#                                       'value' : 1950 }
                                        'value' : 5500+175 }
     pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
-                                      'value' : 0 }
+                                       'value' : 0 }
     pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
-#                                       'value' : 11800 }
-#                                       'value' : 11NChans00 }
                                        'value' : 15200-175 }
     pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
-#                                       'value': 12200 }
-#                                       'value' : 11750 }
                                        'value' : 15200+175 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
                                       'count' : NChans,
@@ -189,16 +168,16 @@ def main():
                                         'value' : 0 }
     # Start counts (total)
     pvdb[stationstr+'STARTCNTSUM'   ] = {'type' : 'int', 
-                                        'value' : 0 }
+                                         'value' : 0 }
     # Queue counts (total)
     pvdb[stationstr+'QUEUECNTSUM'   ] = {'type' : 'int', 
-                                        'value' : 0 }
+                                         'value' : 0 }
     # Msg Delay
     pvdb[stationstr+'MSGDELAYSET'   ] = {'type' : 'int', 
-                                        'value' : 0 }
+                                         'value' : 0 }
     # Msg Delay
     pvdb[stationstr+'MSGDELAYGET'   ] = {'type' : 'int', 
-                                        'value' : 0 }
+                                         'value' : 0 }
     # Header Count
     pvdb[stationstr+'HEADERCNTL0'   ] = {'type' : 'int', 
                                          'value' : 0 }
@@ -243,46 +222,51 @@ def main():
                                         'count': Lanes,
                                         'value' : [0]*Lanes }
 
+    # FIFO Overflows
+    pvdb[stationstr+'DATA_FIFOOF']   = {'type' : 'int',
+                                        'count': NChans,
+                                        'value' : [0]*NChans }
+
     # Bytes(?) free in buffer pool
     pvdb[stationstr+'RAW_FREEBUFSZ'] = {'type' : 'int',
                                         'count': NChans,
                                         'value' : [0]*NChans }
     # Events free in buffer pool
     pvdb[stationstr+'RAW_FREEBUFEVT'] = {'type' : 'int',
-                                        'count': NChans,
-                                        'value' : [0]*NChans }
+                                         'count': NChans,
+                                         'value' : [0]*NChans }
     # Acquisition state of buffers
     pvdb[stationstr+'RAW_BUFSTATE'     ] = {'type' : 'int',
-                                        'count': 16,
-                                        'value' : [0]*16 }
+                                            'count': 16,
+                                            'value' : [0]*16 }
     # Trigger state of buffers
     pvdb[stationstr+'RAW_TRGSTATE'     ] = {'type' : 'int',
-                                        'count': 16,
-                                        'value' : [0]*16 }
+                                            'count': 16,
+                                            'value' : [0]*16 }
     # Beginning address of buffers
     pvdb[stationstr+'RAW_BUFBEG'       ] = {'type' : 'int',
-                                        'count': 16,
-                                        'value' : [0]*16 }
+                                            'count': 16,
+                                            'value' : [0]*16 }
     # Ending address of buffers
     pvdb[stationstr+'RAW_BUFEND'       ] = {'type' : 'int',
-                                        'count': 16,
-                                        'value' : [0]*16 }
+                                            'count': 16,
+                                            'value' : [0]*16 }
+    # FIFO Overflows
+    pvdb[stationstr+'RAW_FIFOOF']        = {'type' : 'int',
+                                            'count': NChans,
+                                            'value' : [0]*NChans }
     # Bytes(?) free in buffer pool
     pvdb[stationstr+'FEX_FREEBUFSZ'] = {'type' : 'int',
                                         'count': NChans,
                                         'value' : [0]*NChans }
     # Events free in buffer pool
     pvdb[stationstr+'FEX_FREEBUFEVT'] = {'type' : 'int',
-                                        'count': NChans,
-                                        'value' : [0]*NChans }
-    # Bytes(?) free in buffer pool
-    pvdb[stationstr+'NAT_FREEBUFSZ'] = {'type' : 'int',
-                                        'count': NChans,
-                                        'value' : [0]*NChans }
-    # Events free in buffer pool
-    pvdb[stationstr+'NAT_FREEBUFEVT'] = {'type' : 'int',
-                                        'count': NChans,
-                                        'value' : [0]*NChans }
+                                         'count': NChans,
+                                         'value' : [0]*NChans }
+    # FIFO Overflows
+    pvdb[stationstr+'FEX_FIFOOF']        = {'type' : 'int',
+                                            'count': NChans,
+                                            'value' : [0]*NChans }
 
     # Data monitoring
     pvdb[stationstr+'RAWDATA'] = {'type' : 'int',

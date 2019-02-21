@@ -50,10 +50,6 @@ class PvCString(QtWidgets.QWidget):
 
         pvname = pvbase+name
         initPvMon(self,pvname)
-#        print(pvname)
-#        self.pv = Pv.Pv(pvname)
-#        self.pv.monitor_start()
-#        self.pv.add_monitor_callback(self.update)
 
     def update(self, err):
         q = self.pv.get()
@@ -118,8 +114,7 @@ class PvLinkId:
         initPvMon(self,pvname)
 
     def update(self, err):
-        value = self.pv.get()
-        print ('LinkId 0x%x'%value)
+        value = self.pv.__value__
         itype = (int(value)>>24)&0xff
         self.linkType.setText(linkType[itype])
         if (itype == 0xfb or itype == 0xfc) and (value&0xffff)!=0:
@@ -192,23 +187,27 @@ def DeadTime(pvbase,parent):
 
     parent.dtPvId = []
     deadgrid.addWidget( QtWidgets.QLabel('Partition'), 0, 0, 1, 2 )
+    deadgrid.addWidget( QtWidgets.QLabel('En'), 0, 2 )
     for j in range(7):
-        deadgrid.addWidget( QtWidgets.QLabel('%d'%j ), 0, j+2 )
+        deadgrid.addWidget( QtWidgets.QLabel('%d'%j ), 0, j+3 )
     for i in range(14):
         parent.dtPvId.append( PvLinkIdG(pvbase+'RemoteLinkId'+'%d'%i,
                                         deadgrid, i+1, 0) )
+        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), i+1, 2 )
         for j in range(7):
-            deadgrid.addWidget( textWidgets[j][i], i+1, j+2 )
+            deadgrid.addWidget( textWidgets[j][i], i+1, j+3 )
     for i in range(16,21):
         k = i-1
         deadgrid.addWidget( QtWidgets.QLabel('BP-slot%d'%(i-13)), k, 0, 1, 2 )
+        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), k, 2 )
         for j in range(7):
-            deadgrid.addWidget( textWidgets[j][i], k, j+2 )
+            deadgrid.addWidget( textWidgets[j][i], k, j+3 )
     for i in range(28,32):
         k = i-7
         deadgrid.addWidget( QtWidgets.QLabel('INH%d'%(i-28)), k, 0, 1, 2 )
+        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), k, 2 )
         for j in range(7):
-            deadgrid.addWidget( textWidgets[j][i], k, j+2 )
+            deadgrid.addWidget( textWidgets[j][i], k, j+3 )
 
     parent.deadflnk = []
     for j in range(7):
@@ -260,7 +259,6 @@ class Ui_MainWindow(object):
             LblPushButtonX(hl, pvbase, "DumpTiming",     2)
             LblPushButtonX(hl, pvbase, "DumpSeq"         )
 #            LblEditIntX   (hl, pvbase, "SetVerbose"      )
-            LblPushButtonX(hl, pvbase, "ClearLinks"      )
             LblPushButtonX(hl, pvbase, "Inhibit"         )
             LblPushButtonX(hl, pvbase, "TagStream"       )
             PvLabel(hl, pvbase, "RecClk"     )
@@ -300,16 +298,9 @@ class Ui_MainWindow(object):
         pllbox  = QtWidgets.QWidget()
         pllvbox = QtWidgets.QVBoxLayout() 
         LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
+        LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
         LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
-        LblEditHML   (pllvbox, pvbase, "PLL_BW_Select",  NAmcs)
-        LblEditHML   (pllvbox, pvbase, "PLL_FreqTable",  NAmcs)
-        LblEditHML   (pllvbox, pvbase, "PLL_FreqSelect", NAmcs)
-        LblEditHML   (pllvbox, pvbase, "PLL_Rate",       NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_PhaseInc",   NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_PhaseDec",   NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_Bypass",     NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_Reset",      NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_Skew",       NAmcs)
+        LblEditIntX  (pllvbox, pvbase, "PLL_LOLCNT",     NAmcs, enable=False)
         pllvbox.addStretch()
         pllbox.setLayout(pllvbox)
         tw.addTab(pllbox,"PLLs")

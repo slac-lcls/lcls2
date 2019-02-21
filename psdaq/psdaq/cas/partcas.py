@@ -11,6 +11,11 @@ import pdb
 
 NPartitions = 8
 
+Transitions = [('Configure'  ,4),
+               ('Enable'     ,6),
+               ('Disable'    ,7),
+               ('Unconfigure',5)]
+
 def printDb():
     global pvdb
     global prefix
@@ -41,6 +46,10 @@ def main():
 
     # PVs
 
+    # State Machine
+    pvdb[stationstr+':Transition'   ] = {'type' : 'string', 'count' : 4, 'value' : [tr[0] for tr in Transitions]}
+    pvdb[stationstr+':TransitionId' ] = {'type' : 'int'   , 'count' : 4, 'value' : [tr[1] for tr in Transitions]}
+    # Partition
     for i in range(NPartitions):
         pvdb[stationstr+':%d:XPM'                %i] = {'type' : 'int', 'value': 2}
         pvdb[stationstr+':%d:L0Select'           %i] = {'type' : 'int'}

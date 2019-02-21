@@ -128,9 +128,9 @@ class PvLabel(QtWidgets.QWidget):
         initPvMon(self,pvname)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.__value__
         if self.dPv is not None:
-            dq = self.dPv.get()
+            dq = self.dpv.__value__
         else:
             dq = None
         if err is None:
@@ -223,7 +223,7 @@ class PvCheckBox(CheckBox):
 
     def update(self, err):
         #print ("PvCheckBox.update:  pv %s, i %s, v %x, err %s" % (self.pv.name, self.text(), self.pv.get(), err))
-        q = self.pv.get() != 0
+        q = self.pv.__value__ != 0
         if err is None:
             if nogui:
                 print(self.pv.pvname,q)
@@ -285,7 +285,7 @@ class PvEditInt(PvEditTxt):
 
     def update(self, err):
 #        print 'Update '+pv  #  This print is evil.
-        q = self.pv.get()
+        q = self.pv.__value__
         if err is None:
             s = QString('fail')
             try:
@@ -329,7 +329,7 @@ class PvEditHML(PvEditTxt):
             print("Invalid character in string:", value)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.__value__
         if err is None:
             v = toLMH[q & 0x3]
             q >>= 2
@@ -361,15 +361,15 @@ class PvEditDbl(PvEditTxt):
         self.pv.put(value)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.__value__
         if err is None:
             s = QString('fail')
             try:
-                s = QString(q)
+                s = QString('{:.4f}'.format(q))
             except:
                 v = ''
                 for i in range(len(q)):
-                    v = v + ' %f'%q[i]
+                    v = v + ' {:4f}'.format(q[i])
                 s = QString(v)
 
             if nogui:
@@ -406,7 +406,7 @@ class PvDblArray:
         initPvMon(self,pv)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.__value__
         if err is None:
             for i in range(len(q)):
                 if nogui==False:
@@ -427,13 +427,13 @@ class PvEditCmb(PvComboDisplay):
 
     def setValue(self):
         value = self.currentIndex()
-        if self.pv.get() != value:
+        if self.pv.__value__ != value:
             self.pv.put(value)
         else:
             logger.debug("Skipping updating PV for edit combobox as the value of the pv %s is the same as the current value", self.pv.pvname)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.__value__
         if err is None:
             if nogui:
                 print(self.pv.pvname,q)
@@ -461,7 +461,7 @@ class PvIntRow(object):
         initPvMon(self,pvname)
 
     def update(self, err):
-        q = self.pv.get()
+        q = self.pv.__value__
         for i in range(len(q)):
             if type(q[i]) == int:
                 self.cells[i].setText('%d'%q[i])
@@ -492,7 +492,7 @@ class PvMask(object):
         initPvMon(self, pvname)
 
     def update(self, err):
-        v = self.pv.get()
+        v = self.pv.__value__
         for i in range(len(self.chkBox)):
             if v & (1<<i):
                 self.chkBox[i].setChecked(True)
@@ -559,7 +559,7 @@ class PvDefSeq(QtWidgets.QWidget):
         self.pv.put(value+15)  # Defined sequences start at 15
 
     def update(self,err):
-        q = self.pv.get()
+        q = self.pv.__value__
         if err is None:
             if q >= 15:
                 if nogui:
