@@ -84,7 +84,7 @@ class CGWMain(QWZMQListener) :
         self.wconf = CGWMainConfiguration()
         self.wpart = CGWMainPartition()
         self.wctrl = CGWMainControl(parent_ctrl=self)
-        self.wdetr = CGWMainDetector()
+        self.wdetr = CGWMainDetector(parent_ctrl=self)
         self.wrsta = CGWMainRunStatistics()
         #self.wlogr = QTextEdit('my logger')
 
@@ -178,6 +178,9 @@ class CGWMain(QWZMQListener) :
 
 
     def set_style(self) :
+
+        self.setMinimumWidth(350)
+
         #self.setGeometry(50, 50, 500, 600)
         #self.setGeometry(self.main_win_pos_x .value(),\
         #                 self.main_win_pos_y .value(),\
@@ -325,10 +328,13 @@ class CGWMain(QWZMQListener) :
                     s_state = d_body.get('state',None)
                     s_transition = d_body.get('transition',None)
                     
-                    if s_state is not None : self.wdetr.set_state(s_state)
+                    if s_state is not None :
+                        self.wdetr.set_but_state(s_state)
+                        #self.wctrl.set_but_plat(s_state) # moved to widget self.wdetr
                     else : logger.warning('received state is not str object: %s' % s_state)
 
-                    if s_transition is not None : self.wctrl.set_transition(s_transition)
+                    if s_transition is not None : 
+                        self.wctrl.set_transition(s_transition)
                     else : logger.warning('received transition is not str object: %s' % s_transition)
         else :
              logger.warning('CGWMain.process_zmq_message msg is not a list: %s' % str(msg))

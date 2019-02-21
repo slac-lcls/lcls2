@@ -40,9 +40,11 @@ from psdaq.control_gui.CGDaqControl import daq_control # , DaqControl #, worker_
 class CGWMainDetector(QGroupBox) :
     """
     """
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, parent_ctrl=None):
 
         QGroupBox.__init__(self, 'Detector', parent)
+
+        self.parent_ctrl = parent_ctrl
 
         self.lab_state = QLabel('Control state')
         self.but_state = QPushButton('Ready')
@@ -63,7 +65,8 @@ class CGWMainDetector(QGroupBox) :
         #self.timer.start(1000)
 
         self.state = 'undefined'
-        self.ts = 'N/A'
+        self.ts = 'start of GUI'
+        self.check_state()
 
 #--------------------
 
@@ -118,16 +121,15 @@ class CGWMainDetector(QGroupBox) :
         state = daq_control().getState()
         if state is None : return
         if state == self.state : return
-        self.state = state
-        #logger.debug('daq_control().getState() response %s' % state)
-        self.but_state.setText(state.upper() + ' since %s' % self.ts)
+        self.set_but_state(state)
 
 #--------------------
 
-    def set_state(self, s) :
+    def set_but_state(self, s) :
         self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
         self.state = s 
         self.but_state.setText('%s since %s' % (s.upper(), self.ts))
+        self.parent_ctrl.wctrl.set_but_plat(s.upper()) # enable/disable button plat in other widget
 
 #--------------------
 
