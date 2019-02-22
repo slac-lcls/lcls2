@@ -33,7 +33,7 @@ done
 
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 # don't build the daq for python2
-if [ $pyver == 2 ]; then
+if [ $pyver == 2.7 ]; then
     no_daq=1
 fi
 
