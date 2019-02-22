@@ -43,7 +43,6 @@ namespace Pds {
            _Data_FifoOF,
            _Raw_FreeBufSz, _Raw_FreeBufEvt, _Raw_FifoOF,
            _Fex_FreeBufSz, _Fex_FreeBufEvt, _Fex_FifoOF,
-           _Nat_FreeBufSz, _Nat_FreeBufEvt,
            _Raw_BufState, _Raw_TrgState, _Raw_BufBeg, _Raw_BufEnd,
            _Local12V, _Edge12V, _Aux12V,
            _Fmc12V, _BoardTemp,
@@ -143,7 +142,7 @@ namespace Pds {
 #define PVPUTAU(p,m,v) {                                                \
         Pds_Epics::EpicsPVA& pv = *_pv[_##p];                           \
         if (pv.connected()) {                                           \
-          pvd::shared_vector<unsigned> vec;                       \
+          pvd::shared_vector<unsigned> vec(m);                          \
           for(unsigned i=0; i<m; i++)                                   \
             vec[i] = unsigned(v);                                       \
           pv.putFromVector<unsigned>(freeze(vec)); } }
@@ -155,7 +154,7 @@ namespace Pds {
 #define PVPUTDAU(p,m,v) {                                               \
         Pds_Epics::EpicsPVA& pv = *_pv[_##p];                           \
         if (pv.connected()) {                                           \
-          pvd::shared_vector<unsigned> vec;                       \
+          pvd::shared_vector<unsigned> vec(m);                          \
           for(unsigned i=0; i<m; i++) {                                 \
             vec[i] = unsigned(v-_v[_##p].value[i]);                     \
             _v[_##p].value[i] = v; }                                    \
@@ -181,7 +180,7 @@ namespace Pds {
       PVPUTAU  ( PgpTxCntSum  , LANES, _pgp[i]->txCount     () ); 
       PVPUTDAU ( PgpTxCnt     , LANES, _pgp[i]->txCount     () ); 
       PVPUTDAU ( PgpTxErrCnt  , LANES, _pgp[i]->txErrCount  () );
-      PVPUTDAU ( PgpRxCnt     , LANES, _pgp[i]->rxOpCodeCount() );
+      PVPUTAU  ( PgpRxCnt     , LANES, _pgp[i]->rxOpCodeCount() );
       PVPUTAU  ( PgpRxLast    , LANES, _pgp[i]->rxOpCodeLast () );
       PVPUTAU  ( PgpRemPause  , LANES, _pgp[i]->remPause     () );
 
@@ -189,10 +188,10 @@ namespace Pds {
         FexCfg* fex = _m.fex();
         PVPUTAU ( Raw_FreeBufSz  , CHANS, ((fex[i]._base[0]._free>> 0)&0xffff) ); 
         PVPUTAU ( Raw_FreeBufEvt , CHANS, ((fex[i]._base[0]._free>>16)&0x1f) ); 
+        PVPUTAU ( Raw_FifoOF     , CHANS, ((fex[i]._base[0]._free>>24)&0xff) ); 
         PVPUTAU ( Fex_FreeBufSz  , CHANS, ((fex[i]._base[1]._free>> 0)&0xffff) ); 
         PVPUTAU ( Fex_FreeBufEvt , CHANS, ((fex[i]._base[1]._free>>16)&0x1f) ); 
-        PVPUTAU ( Nat_FreeBufSz  , CHANS, ((fex[i]._base[2]._free>> 0)&0xffff) ); 
-        PVPUTAU ( Nat_FreeBufEvt , CHANS, ((fex[i]._base[2]._free>>16)&0x1f) ); 
+        PVPUTAU ( Fex_FifoOF     , CHANS, ((fex[i]._base[1]._free>>24)&0xff) ); 
       }
 
       unsigned state[16], addr[16];

@@ -130,33 +130,36 @@ namespace Pds {
       //
       // Program sequencer
       //
-#if 1
-      XpmSequenceEngine& engine = _seq;
-      engine.verbosity(2);
-      // Setup a 22 pulse sequence to repeat 40000 times each second
-      const unsigned NP = 22;
-      std::vector<TPGen::Instruction*> seq;
-      seq.push_back(new TPGen::FixedRateSync(6,1));  // sync start to 1Hz
-      for(unsigned i=0; i<NP; i++) {
-        unsigned bits=0;
-        for(unsigned j=0; j<16; j++)
-          if ((i*(j+1))%NP < (j+1))
-            bits |= (1<<j);
-        seq.push_back(new TPGen::ExptRequest(bits));
-        seq.push_back(new TPGen::FixedRateSync(0,1)); // next pulse
+      try {
+        XpmSequenceEngine& engine = _seq;
+        engine.verbosity(2);
+        // Setup a 22 pulse sequence to repeat 40000 times each second
+        const unsigned NP = 22;
+        std::vector<TPGen::Instruction*> seq;
+        seq.push_back(new TPGen::FixedRateSync(6,1));  // sync start to 1Hz
+        for(unsigned i=0; i<NP; i++) {
+          unsigned bits=0;
+          for(unsigned j=0; j<16; j++)
+            if ((i*(j+1))%NP < (j+1))
+              bits |= (1<<j);
+          seq.push_back(new TPGen::ExptRequest(bits));
+          seq.push_back(new TPGen::FixedRateSync(0,1)); // next pulse
+        }
+        seq.push_back(new TPGen::Branch(1, TPGen::ctrA,199));
+        //  seq.push_back(new TPGen::Branch(1, TPGen::ctrB, 99));
+        seq.push_back(new TPGen::Branch(1, TPGen::ctrB,199));
+        seq.push_back(new TPGen::Branch(0));
+        int rval = engine.insertSequence(seq);
+        if (rval < 0)
+          printf("Insert sequence failed [%d]\n", rval);
+        engine.dump  ();
+        engine.enable(true);
+        engine.setAddress(rval,0,0);
+        engine.reset ();
+      } catch (CPSWError& e) { 
+        printf("cpsw exception %s\n",e.what()); 
+        printf("Sequencer programming aborted\n");
       }
-      seq.push_back(new TPGen::Branch(1, TPGen::ctrA,199));
-      //  seq.push_back(new TPGen::Branch(1, TPGen::ctrB, 99));
-      seq.push_back(new TPGen::Branch(1, TPGen::ctrB,199));
-      seq.push_back(new TPGen::Branch(0));
-      int rval = engine.insertSequence(seq);
-      if (rval < 0)
-        printf("Insert sequence failed [%d]\n", rval);
-      engine.dump  ();
-      engine.enable(true);
-      engine.setAddress(rval,0,0);
-      engine.reset ();
-#endif
     }
 
     void PVCtrls::dump() const
