@@ -38,23 +38,24 @@ class DgramManager():
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
             assert len(self.xtc_files) > 0
         elif isinstance(xtc_files, (list, np.ndarray)):
-            if xtc_files[0] == 'shmem':
-                self.shmem = PyShmemClient()
-                #establish connection to available server - blocking
-                status = int(self.shmem.connect(tag,0))
-                assert not status,'shmem connect failure %d' % status
-                #wait for first configure datagram - blocking
-                view = self.shmem.get(self.shmem_kwargs)
-                assert view
-                d = dgram.Dgram(view=view, \
-                                shmem_index=self.shmem_kwargs['index'], \
-                                shmem_size=self.shmem_kwargs['size'], \
-                                shmem_cli=self.shmem_kwargs['cli'])
-                self.configs += [d]
-            else:    
-                self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
-                assert len(self.xtc_files) > 0
-        
+            if len(xtc_files) > 0: # handles smalldata-only case
+                if xtc_files[0] == 'shmem':
+                    self.shmem = PyShmemClient()
+                    #establish connection to available server - blocking
+                    status = int(self.shmem.connect(tag,0))
+                    assert not status,'shmem connect failure %d' % status
+                    #wait for first configure datagram - blocking
+                    view = self.shmem.get(self.shmem_kwargs)
+                    assert view
+                    d = dgram.Dgram(view=view, \
+                                    shmem_index=self.shmem_kwargs['index'], \
+                                    shmem_size=self.shmem_kwargs['size'], \
+                                    shmem_cli=self.shmem_kwargs['cli'])
+                    self.configs += [d]
+                else:    
+                    self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
+                    assert len(self.xtc_files) > 0
+            
         given_configs = True if len(configs) > 0 else False
         
         if given_configs: 

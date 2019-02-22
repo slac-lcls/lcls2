@@ -87,10 +87,12 @@ class DataSourceBase(object):
 
             smd_dir = os.path.join(xtc_path, 'smalldata')
             for r in run_list:
-                xtc_files = glob.glob(os.path.join(xtc_path, '*r%s-s*.xtc2'%(str(r).zfill(4))))
-                smd_files = [os.path.join(smd_dir,
-                             os.path.splitext(os.path.basename(xtc_file))[0] + '.smd.xtc2')
-                             for xtc_file in xtc_files]
+                smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(r).zfill(4))))
+                xtc_files = [os.path.join(xtc_path, \
+                             os.path.basename(smd_file).split('.smd')[0] + '.xtc2') \
+                             for smd_file in smd_files \
+                             if os.path.isfile(os.path.join(xtc_path, \
+                             os.path.basename(smd_file).split('.smd')[0] + '.xtc2'))]
                 _epic_file = os.path.join(xtc_path, 'data-r%s-epc.xtc2'%(str(r).zfill(4)))
                 epic_file = _epic_file if os.path.isfile(_epic_file) else None
                 run_dict[r] = (xtc_files, smd_files, epic_file)
