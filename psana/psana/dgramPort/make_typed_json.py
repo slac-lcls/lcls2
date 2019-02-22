@@ -1,5 +1,6 @@
 import numpy as np
 import numbers
+import re
 
 #
 # The goal here is to assist the writing of JSON files from python.  The assumption here is that
@@ -20,7 +21,7 @@ import numbers
 #         - "version" which maps to a list of three integers.
 #
 
-typedict = {
+typerange = {
     "UINT8"  : (0, 2**8 - 1), 
     "UINT16" : (0, 2**16 - 1),
     "UINT32" : (0, 2**32 - 1),
@@ -31,6 +32,19 @@ typedict = {
     "INT64"  : (-2**63, 2**63 - 1), 
     "FLOAT"  : None,
     "DOUBLE" : None
+}
+
+typedict = {
+    "UINT8"  : "uint8", 
+    "UINT16" : "uint16", 
+    "UINT32" : "uint32", 
+    "UINT64" : "uint64", 
+    "INT8"   : "int8", 
+    "INT16"  : "int16", 
+    "INT32"  : "int32", 
+    "INT64"  : "int64", 
+    "FLOAT"  : "float32", 
+    "DOUBLE" : "float64", 
 }
 
 nptypedict = {
@@ -104,9 +118,9 @@ def validate_typed_json(d, top=[]):
         elif isinstance(v, tuple):
             if len(v) != 2:
                 return namify(top + [n]) + " should have len 2"
-            if not v[0] in typedict.keys():
+            if not v[0] in typerange.keys():
                 return namify(top + [n]) + " has invalid type " + str(v[0])
-            vv = typedict[v[0]]
+            vv = typerange[v[0]]
             if vv is None:
                 if not isinstance(v[1], numbers.Number):
                     return namify(top + [n]) + " value is not a number"
@@ -160,7 +174,7 @@ def write_json_dict(f, d, tdict, top=[], indent="    "):
                     f.write(', %d' % v[nn])
                 f.write(']')
         elif isinstance(v, tuple):
-            vv = typedict[v[0]]
+            vv = typerange[v[0]]
             if vv is None:
                 f.write('%s"%s": %g' % (prefix, n, v[1]))
             else:
@@ -180,7 +194,7 @@ def write_json_dict(f, d, tdict, top=[], indent="    "):
             tdict[n] = list((typ[0],) + v.shape)
         prefix = ",\n" + indent
 
-def make_typed_json(filename, d):
+def write_typed_json(filename, d):
     r = validate_typed_json(d)
     if r is not None:
         print(r)
@@ -192,3 +206,214 @@ def make_typed_json(filename, d):
         f.write(',\n    "json_types": {\n')
         write_json_dict(f, tdict, {}, [], "        ")
         f.write('\n    }\n}\n')
+
+#
+# Let's try to make creating valid dictionaries easier.  This heart
+# of this class is the method:
+#     setval(name, value, type="INT32", override=False)
+# Once the type of a name is set, changing it is only possible if
+# override is True.
+#
+# name here is an expanded name (with "_") that will be unpacked to
+# build the hierarchy.  Multiple possibilities for value are supported:
+#     - A numeric value or numpy array will just create/overwrite the 
+#       value.
+#     - A list of numeric values will be converted to a numpy array
+#       of the specified type and stored.
+#     - A cdict will splice in the hierarchy at the specified location.
+#     - A list of cdicts will add the list of dictionaries.
+#
+class cdict(object):
+    def __init__(self):
+        self.dict = {}
+
+    def splitname(self, name):
+        n = name.split("_")
+        r = []
+        for nn in n:
+            m = re.search('^(.*[^0-9])([0-9]+)$', nn)
+            if m is None:
+                if not re.search('^[^0-9]', nn):
+                    return None
+                r.append(nn)
+            else:
+                r.append(m.group(1))
+                r.append(int(m.group(2)))
+        return r
+
+    def get(self, name):
+        if len(name) == 0:
+            return None
+        n = self.splitname(name)
+        if n is None:
+            return None
+        d = self.dict
+        while len(n) != 0:
+            if isinstance(n[0], int):
+                if isinstance(d, list):
+                    try:
+                        d = d[n[0]]
+                        n = n[1:]
+                    except:
+                        return None
+                else:
+                    return None
+            else:
+                if isinstance(d, dict):
+                    try:
+                        d = d[n[0]]
+                        n = n[1:]
+                    except:
+                        return None
+                else:
+                    return None
+        return d
+
+    def checknumlist(self, l):
+        for v in l:
+            if isinstance(v, list):
+                if not self.checknumlist(v):
+                    return False
+            elif not isinstance(v, number.Number):
+                return False
+        return True
+
+    def set(self, name, value, type="INT32", override=False, append=False):
+        if len(name) == 0:
+            return False
+        n = self.splitname(name)
+        if n is None:
+            return False
+        d = self.dict
+        # Check the type of value!
+        if isinstance(value, numbers.Number):
+            if not type in typedict.keys():
+                return False
+            value = (type, value)
+            issimple = True
+        elif isinstance(value, np.ndarray):
+            issimple = True
+        elif isinstance(value, cdict):
+            issimple = False
+        elif isinstance(value, list):
+            if checknumlist(value):
+                value = np.array(value, dtype=type.lower())
+                issimple = True
+            else:
+                # Must be a list of cdicts!
+                for v in value:
+                    if not isinstance(v, cdict):
+                        return False
+                issimple = False
+        else:
+            return False
+        for i in range(len(n)):
+            if isinstance(n[i], int):
+                if d is None:
+                    p[n[i-1]] = []
+                    d = p[n[i-1]]
+                if not isinstance(d, list):
+                    if override:
+                        p[n[i-1]] = []
+                        d = p[n[i-1]]
+                    else:
+                        return False
+                while len(d) < n[i]+1:
+                    d.append({})
+                p = d
+                d = d[n[i]]
+            else:
+                if d is None:
+                    p[n[i-1]] = {}
+                    d = p[n[i-1]]
+                if not isinstance(d, dict):
+                    if override:
+                        p[n[i-1]] = {}
+                        d = p[n[i-1]]
+                    else:
+                        return False
+                try:
+                    p = d
+                    d = d[n[i]]
+                except:
+                    if i+1 == len(n):
+                        if not issimple and append:
+                            p[n[i]] = []
+                        else:
+                            p[n[i]] = None
+                    elif isinstance(n[i+1], int):
+                        p[n[i]] = []
+                    else:
+                        p[n[i]] = {}
+                    d = p[n[i]]
+        # d is current value, if any. p is the last enclosing structure.
+        if issimple:
+            # A number or a numpy array
+            if isinstance(value, np.ndarray):
+                if not override and d is not None:
+                    if not isinstance(d, np.ndarray):
+                        return False
+                    if value.dtype != d.dtype or value.shape != d.shape:
+                        return False
+            else:
+                if not override and d is not None:
+                    if d[0] != "DOUBLE" and d[0] != "FLOAT":
+                        value = (d[0], int(value[1]))
+                    else:
+                        value = (d[0], value[1])
+            p[n[-1]] = value
+            return True
+        else:
+            # A cdict or a list of cdicts
+            if isinstance(value, cdict):
+                if not override and d is not None and not (isinstance(d, dict) or 
+                                                           (isinstance(d, list) and append)):
+                    return False
+                vnew = {}
+                vnew.update(value.dict)
+                if isinstance(d, list):
+                    d.append(vnew)
+                else:
+                    p[n[-1]] = vnew
+            else:
+                if not override and d is not None and not isinstance(d, list):
+                    return False
+                if not append:
+                    p[n[-1]] = []
+                for v in value:
+                    vnew = {}
+                    vnew.update(v)
+                    p[n[-1]].append(vnew)
+            return True
+
+    def setAlg(self, alg, version=[0,0,0], doc=""):
+        if not isinstance(version, list) or len(version) != 3:
+            print("version should be a length 3 list!\n")
+            return
+        if not isinstance(alg, str):
+            print("alg should be a string!")
+            return
+        if not isinstance(doc, str):
+            print("doc should be a string!")
+            return
+        self.dict["alg"] = {
+            "alg": alg,
+            "doc": doc,
+            "version": version
+        }
+
+    def setString(self, name, value):
+        if value is not None:
+            if not isinstance(value, str):
+                print("%s must be a str!" % name)
+            else:
+                self.dict[name] = value
+
+    def setInfo(self, detType=None, detName=None, detId=None, doc=None):
+        self.setString("detType", detType)
+        self.setString("detName", detName)
+        self.setString("detId", detId)
+        self.setString("doc", doc)
+
+    def writeFile(self, file):
+        write_typed_json(file, self.dict)
