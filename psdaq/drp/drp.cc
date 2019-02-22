@@ -30,6 +30,12 @@ int main(int argc, char* argv[])
                 exit(1);
         }
     }
+    // Check required parameters
+    if (para.device.empty()) {
+      printf("-d: device is mandatory!\n");
+      exit(1);
+    }
+
     para.numWorkers = 2;
     para.numEntries = 8192;
     DrpApp app(&para);
