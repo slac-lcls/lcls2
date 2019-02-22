@@ -49,11 +49,7 @@ class Pv:
             except TimeoutError as e:
                 logger.error("Timeout expection connecting to PV %s", pvname)
         else:
-            try:
-                self.__value__ = pvactx.get(self.pvname).raw.value
-                self.subscription = None
-            except TimeoutError as e:
-                logger.error("Timeout expection connecting to PV %s", pvname)
+            logger.debug("PV %s created without a callback", self.pvname) # Call get explictly for an sync get or use for put
 
     def get(self, useCached=True):
 #        if useCached and self.__value__:
@@ -82,8 +78,6 @@ class Pv:
 def initPvMon(mon, pvname):
     logger.info("Monitoring PV %s", pvname)
     mon.pv = Pv(pvname, mon.update)
-    mon.pv.get()
-    mon.update(None)
 
 class PvDisplay(QtWidgets.QLabel):
 

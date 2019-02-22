@@ -62,8 +62,7 @@ class PvEditTxt(PvTextDisplay):
         self.connect_signal()
         self.editingFinished.connect(self.setPv)
 
-        self.pv = Pv(pv)
-        self.pv.monitor(self.update)
+        self.pv = Pv(pv, self.update)
 
 class PvEditInt(PvEditTxt):
 
@@ -139,8 +138,7 @@ class PvEditCmb(PvComboDisplay):
         self.connect_signal()
         self.currentIndexChanged.connect(self.setValue)
 
-        self.pv = Pv(pvname)
-        self.pv.monitor(self.update)
+        self.pv = Pv(pvname, self.update)
 
     def setValue(self):
         value = self.currentIndex()

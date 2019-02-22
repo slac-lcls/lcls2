@@ -53,12 +53,10 @@ class PvLabel:
 
         pvname = pvbase+name
         print(pvname)
-        self.pv = Pv(pvname)
-        self.pv.monitor(self.update)
+        self.pv = Pv(pvname, self.update)
         if dName is not None:
             dPvName = pvbase+dName
-            self.dPv = Pv(dPvName)
-            self.dPv.monitor(self.update)
+            self.dPv = Pv(dPvName, self.update)
         else:
             self.dPv = None
         self.isInt = isInt
@@ -106,7 +104,10 @@ class PvPushButton(QtWidgets.QPushButton):
 
         self.clicked.connect(self.buttonClicked)
 
-        self.pv = Pv(pvname)
+        self.pv = Pv(pvname, self.update)
+
+    def update(self, err):
+        pass
 
     def buttonClicked(self):
         self.pv.put(1)          # Value is immaterial
@@ -182,8 +183,7 @@ class PvTxt(PvTextDisplay):
         super(PvTxt, self).__init__(label)
         self.connect_signal()
 
-        self.pv = Pv(pv)
-        self.pv.monitor(self.update)
+        self.pv = Pv(pv, self.update)
 
     def update(self, err):
         print('Update '+pv)
@@ -204,8 +204,7 @@ class PvEditTxt(PvTextDisplay):
         self.connect_signal()
         self.editingFinished.connect(self.setPv)
 
-        self.pv = Pv(pv)
-        self.pv.monitor(self.update)
+        self.pv = Pv(pv, self.update)
 
     def update(self, err):
         print('Update '+pv)
@@ -341,8 +340,7 @@ class PvDblArray:
 
     def __init__(self, pv, widgets):
         self.widgets = widgets
-        self.pv = Pv(pv)
-        self.pv.monitor(self.update)
+        self.pv = Pv(pv, self.update)
 
     def update(self, err):
         q = self.pv.get()
@@ -359,8 +357,7 @@ class PvEditCmb(PvComboDisplay):
         self.connect_signal()
         self.currentIndexChanged.connect(self.setValue)
 
-        self.pv = Pv(pvname)
-        self.pv.monitor(self.update)
+        self.pv = Pv(pvname, self.update)
 
     def setValue(self):
         value = self.currentIndex()

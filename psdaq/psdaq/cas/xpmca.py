@@ -73,7 +73,10 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
         self.clicked.connect(self.buttonClicked)
 
-        self.pv = Pv(pvname)
+        self.pv = Pv(pvname, self.update)
+
+    def update(self, err):
+        pass
 
     def buttonClicked(self):
         self.pv.put(1)
