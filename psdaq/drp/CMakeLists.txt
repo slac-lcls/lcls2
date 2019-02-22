@@ -54,6 +54,14 @@ target_link_libraries(pgpread
     xtcdata::xtc
 )
 
+#add_executable(tdetsim2
+#    tdetsim.cc
+#)
+
+#target_include_directories(tdetsim2 PUBLIC
+#    ../psdaq/pgp/aes-stream-drivers/include
+#)
+
 install(TARGETS drputils drp
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

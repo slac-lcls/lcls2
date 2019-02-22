@@ -93,13 +93,14 @@ public:
         return Continue;
     }
     NamesLookup& _namesLookup;
-
-
-public:
-    std::map <std::string, uint8_t*> chans;
+    std::map<std::string, uint8_t*> chans;
 };
 
-Digitizer::Digitizer(unsigned nodeId) : Detector(nodeId), m_evtcount(0), m_evtNamesId(nodeId, EventNamesIndex) {
+Digitizer::Digitizer(Parameters* para) :
+    Detector(para),
+    m_evtcount(0),
+    m_evtNamesId(para->tPrms.id, EventNamesIndex)
+{
 }
 
 unsigned addJson(Xtc& xtc, NamesLookup& namesLookup, NamesId& configNamesId) {
