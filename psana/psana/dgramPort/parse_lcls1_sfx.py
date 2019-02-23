@@ -40,7 +40,7 @@ zmq_socket.bind("tcp://127.0.0.1:5557")
 events = []
 for i, evt in enumerate(ds.events()):
     if i == nevents: break
-    print "Event: ", i
+    print("Event: ", i)
     raw = det.raw(evt)
     calib = det.calib(evt)
 

@@ -79,7 +79,7 @@ for i, evt in enumerate(ds.events()):
     timestamp = (sec << 32) | nsec
 
     if raw is not None and npeaks >= minPeaks:
-        print "Event: ", i
+        print("Event: ", i)
         evtDict = {}
         evtDict['timestamp'] = timestamp
         evtDict['data'] = {}

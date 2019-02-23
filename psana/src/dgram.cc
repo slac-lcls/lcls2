@@ -177,17 +177,17 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             switch (name.type()) {
             case Name::UINT8: {
 	            const auto tempVal = descdata.get_value<uint8_t>(tempName);
-                newobj = Py_BuildValue("I", tempVal);
+                newobj = Py_BuildValue("B", tempVal);
                 break;
             }
             case Name::UINT16: {
                 const auto tempVal = descdata.get_value<uint16_t>(tempName);
-                newobj = Py_BuildValue("I", tempVal);
+                newobj = Py_BuildValue("H", tempVal);
                 break;
             }
             case Name::UINT32: {
                 const auto tempVal = descdata.get_value<uint32_t>(tempName);
-                newobj = Py_BuildValue("k", tempVal);
+                newobj = Py_BuildValue("I", tempVal);
                 break;
             }
             case Name::UINT64: {
@@ -197,17 +197,19 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             }
             case Name::INT8: {
                 const auto tempVal = descdata.get_value<int8_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("b", tempVal);
                 break;
             }
             case Name::INT16: {
                 const auto tempVal = descdata.get_value<int16_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("h", tempVal);
                 break;
             }
             case Name::INT32: {
                 const auto tempVal = descdata.get_value<int32_t>(tempName);
-                newobj = Py_BuildValue("l", tempVal);
+                // cpo: thought that "l" (long int) would work here
+                // as well, but empirically it doesn't.
+                newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::INT64: {
