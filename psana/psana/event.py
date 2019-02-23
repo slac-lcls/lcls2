@@ -19,14 +19,10 @@ class Event():
     """
     Event holds list of dgrams
     """
-    def __init__(self, dgrams, size=0):
-        if size:
-            self._dgrams = [0] * size
-            self._size = size
-        else:
-            self._dgrams = dgrams
-            self._size = len(dgrams)
-            self._complete()
+    def __init__(self, dgrams):
+        self._dgrams = dgrams
+        self._size = len(dgrams)
+        self._complete()
         self._position = 0
 
     def __iter__(self):
@@ -118,3 +114,7 @@ class Event():
     # the event (e.g. by the eventbuilder calling _replace())
     def _complete(self):
         self._assign_det_dgrams()
+
+    @property
+    def _has_offset(self):
+        return hasattr(self._dgrams[0], "info")

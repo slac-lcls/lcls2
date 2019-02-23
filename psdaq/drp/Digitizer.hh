@@ -10,7 +10,7 @@
 class Digitizer : public Detector
 {
 public:
-    Digitizer(unsigned nodeId);
+    Digitizer(Parameters* para);
     virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data);
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
 private:

@@ -41,7 +41,6 @@ DrpApp::DrpApp(Parameters* para) :
     m_ebContributor = std::make_unique<Pds::Eb::TebContributor>(m_para->tPrms);
 
     m_inprocRecv.bind("inproc://drp");
-    std::cout<<"Constructor"<<std::endl;
 }
 
 void DrpApp::handleConnect(const json &msg)
@@ -53,10 +52,11 @@ void DrpApp::handleConnect(const json &msg)
     f.register_type<Digitizer>("Digitizer");
     f.register_type<AreaDetector>("AreaDetector");
     std::cout<<"nodeId  "<<m_para->tPrms.id<<'\n';
-    Detector* det = f.create(m_para->detectorType, m_para->tPrms.id);
+    Detector* det = f.create(m_para);
     if (det == nullptr) {
         std::cout<< "Error !! Could not create Detector object\n";
     }
+    det->connect();
 
     m_pgpReader = std::make_unique<PGPReader>(m_pool, *m_para, det, m_para->laneMask);
     m_pgpThread = std::thread{&PGPReader::run, std::ref(*m_pgpReader)};
@@ -69,19 +69,18 @@ void DrpApp::handleConnect(const json &msg)
         std::cout<<"TebContributor connect failed\n";
     }
 
-    Pds::Eb::MebContributor* meb = nullptr;
     if (m_para->mPrms.addrs.size() != 0) {
-        meb = new Pds::Eb::MebContributor(m_para->mPrms);
+        m_meb = std::make_unique<Pds::Eb::MebContributor>(m_para->mPrms);
         void* poolBase = (void*)m_pool.pebble.data();
         size_t poolSize = m_pool.pebble.size() * sizeof(Pebble);
-        rc = meb->connect(m_para->mPrms, poolBase, poolSize);
+        rc = m_meb->connect(m_para->mPrms, poolBase, poolSize);
         if (rc) {
             connected = false;
             std::cout<<"MebContributor connect failed\n";
         }
     }
 
-    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_pool, meb);
+    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_pool, m_meb.get());
     rc = m_ebRecv->connect(m_para->tPrms);
     if (rc) {
         connected = false;
@@ -107,8 +106,20 @@ void DrpApp::handleConnect(const json &msg)
 
 void DrpApp::handleConfigure(const json &msg)
 {
+    // check for message from timing system
     int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
-    //m_recv.recv
+    json answer;
+    if (ret) {
+        json reply = m_inprocRecv.recvJson();
+        std::cout<<"inproc message received\n";
+        json body = json({});
+        answer = createMsg("configure", msg["header"]["msg_id"], getId(), body);
+    }
+    else {
+        json body = json({});
+        answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
+    }
+    reply(answer);
 }
 
 void DrpApp::handleReset(const json &msg)
@@ -205,7 +216,8 @@ void DrpApp::collector()
         uint64_t val;
         if (i%5 == 0) {
             val = 0xdeadbeef;
-        } else {
+        }
+        else {
             val = 0xabadcafe;
         }
         // always monitor every event

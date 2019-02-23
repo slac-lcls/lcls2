@@ -47,11 +47,16 @@ class Test:
             shutil.rmtree(tmp_dir,ignore_errors=True)
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
+        
         shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s00.xtc2')) # Ex. of run 1 with two detectors s00 and s01
         shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s01.xtc2'))
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s00.smd.xtc2'))
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s01.smd.xtc2'))
+        
         shutil.copy('smd.xtc2',os.path.join('.tmp','data-r0001-epc.xtc2'))
+        
+        shutil.copy('data-ts.xtc2',os.path.join(tmp_dir,'data-r0002-s00.smd.xtc2'))
+        shutil.copy('data-ts.xtc2',os.path.join(tmp_dir,'data-r0002-s01.smd.xtc2'))
 
         shutil.copy('smd.xtc2', os.path.join(tmp_dir, 'data.smd.xtc2')) # FIXME: chuck's hack to fix nosetests
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data_1.smd.xtc2')) # FIXME: chuck's hack to fix nosetests

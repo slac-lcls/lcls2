@@ -9,7 +9,7 @@
 class AreaDetector : public Detector
 {
 public:
-    AreaDetector(unsigned nodeId);
+    AreaDetector(Parameters* para);
     void connect() override;
     void configure(XtcData::Dgram& dgram, PGPData* pgp_data) override;
     void event(XtcData::Dgram& dgram, PGPData* pgp_data) override;

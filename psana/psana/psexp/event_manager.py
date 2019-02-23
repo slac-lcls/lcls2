@@ -24,19 +24,23 @@ class EventManager(object):
         for i, event_bytes in enumerate(views):
             if event_bytes:
                 evt = Event._from_bytes(self.smd_configs, event_bytes)
-                ofsz = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] \
-                        for d in evt])
-                ofsz_batch[i,:,:] = ofsz
-                event_timestamps[i] = evt._timestamp
 
-                # Only get big data one event at a time when filter is off
-                if self.filter_fn:
-                    bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
-                    if self.fuzzy_es:
-                        fuzzy_evt = self.fuzzy_es.checkout_by_events([bd_evt])[0]
-                    yield bd_evt
+                if not evt._has_offset:
+                    yield evt # no offset info in the smalldata event
+                else:
+                    ofsz = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] \
+                            for d in evt])
+                    ofsz_batch[i,:,:] = ofsz
+                    event_timestamps[i] = evt._timestamp
 
-        if self.filter_fn == 0:
+                    # Only get big data one event at a time when filter is off
+                    if self.filter_fn:
+                        bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
+                        if self.fuzzy_es:
+                            fuzzy_evt = self.fuzzy_es.checkout_by_events([bd_evt])[0]
+                        yield bd_evt
+
+        if self.filter_fn == 0 and event_timestamps[0]:
             # Read chunks of 'size' bytes and store them in views
             views = [None] * self.n_smd_files
             view_sizes = np.zeros(self.n_smd_files)

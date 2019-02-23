@@ -160,13 +160,20 @@ namespace Pds {
         pv->update();
       }
 
-      for(unsigned i=0; i<LastPv; i++) {
-        printf("pv[%u] :",i);
-        pvd::shared_vector<const unsigned> vec;
-        _pv[i]->getVectorAs<unsigned>(vec);
-        for(unsigned j=0; j<vec.size()/4; j++ )
-          printf(" %u", vec[j]);
-        printf("\n");
+      { unsigned i=0;
+        while(i<FullEvt) {
+          printf("pv[%u] :",i);
+          pvd::shared_vector<const unsigned> vec;
+          _pv[i]->getVectorAs<unsigned>(vec);
+          for(unsigned j=0; j<vec.size(); j++ )
+            printf(" %u", vec[j]);
+          printf("\n");
+          i++;
+        }
+        while(i<LastPv) {
+          printf("pv[%u] : %u\n",i,_pv[i]->getScalarAs<unsigned>());
+          i++;
+        }
       }
 
       { unsigned v = _pv[PgpSkpIntvl]->getScalarAs<unsigned>();

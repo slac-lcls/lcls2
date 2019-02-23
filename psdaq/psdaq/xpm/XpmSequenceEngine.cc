@@ -4,6 +4,8 @@
 #include "psdaq/xpm/SeqMem.hh"
 #include "psdaq/cphw/Reg.hh"
 
+#include <cpsw_error.h>  // To catch a CPSW exception and continue
+
 #include <climits>
 #include <map>
 
@@ -161,26 +163,29 @@ XpmSequenceEngine::XpmSequenceEngine(void* p, unsigned id) :
 {
   printf("XpmSequenceEngine @ %p\n", p);
 
-#if 1
-  _private->_indices = 3;
+  try {
+    _private->_indices = 3;
 
-  //  Assign a single instruction sequence at first and last address to trap
-  std::vector<Instruction*> v(1);
-  v[0] = new Branch(0);
-  unsigned a=0;
-  _private->_caches[a].index = 0;
-  _private->_caches[a].size  = 1;
-  _private->_caches[a].instr = v;
-  _private->_ram   [a] = _word(*static_cast<const Branch*>(v[0]),a);
+    //  Assign a single instruction sequence at first and last address to trap
+    std::vector<Instruction*> v(1);
+    v[0] = new Branch(0);
+    unsigned a=0;
+    _private->_caches[a].index = 0;
+    _private->_caches[a].size  = 1;
+    _private->_caches[a].instr = v;
+    _private->_ram   [a] = _word(*static_cast<const Branch*>(v[0]),a);
 
-  unsigned addrWidth = _private->_regs->SeqAddrLen();
-  v[0] = new Branch(0);
-  a=(1<<addrWidth)-1;
-  _private->_caches[a].index = 1;
-  _private->_caches[a].size  = 1;
-  _private->_caches[a].instr = v;
-  _private->_ram   [a] = _word(*static_cast<const Branch*>(v[0]),a);
-#endif
+    unsigned addrWidth = _private->_regs->SeqAddrLen();
+    v[0] = new Branch(0);
+    a=(1<<addrWidth)-1;
+    _private->_caches[a].index = 1;
+    _private->_caches[a].size  = 1;
+    _private->_caches[a].instr = v;
+    _private->_ram   [a] = _word(*static_cast<const Branch*>(v[0]),a);
+  } catch (CPSWError& e) { 
+    printf("cpsw exception %s\n",e.what()); 
+    printf("Sequencer initialization aborted\n");
+  }
 }
 
 XpmSequenceEngine::~XpmSequenceEngine()

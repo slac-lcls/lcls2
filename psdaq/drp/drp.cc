@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
       exit(1);
     }
 
-    para.numWorkers = 2;
+    para.numWorkers = 10;
     para.numEntries = 8192;
     DrpApp app(&para);
     app.run();

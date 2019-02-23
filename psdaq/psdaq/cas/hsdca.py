@@ -26,7 +26,7 @@ class PvArray(object):
     def __init__( self, pvname, Editable=True, MaxLen=0):
         self._display = []
         initPvMon(self,pvname)
-        dlen = len(self.pv.__value__)
+        dlen = len(self.pv.get())
         if (MaxLen>0 and MaxLen<dlen):
             print('Limiting %s to %d'%(pvname,MaxLen))
             dlen = MaxLen

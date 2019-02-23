@@ -54,4 +54,5 @@ private:
     std::unique_ptr<PGPReader> m_pgpReader;
     std::unique_ptr<Pds::Eb::TebContributor> m_ebContributor;
     std::unique_ptr<EbReceiver> m_ebRecv;
+    std::unique_ptr<Pds::Eb::MebContributor> m_meb;
 };

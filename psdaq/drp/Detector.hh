@@ -9,17 +9,21 @@
 #include <vector>
 #include <unordered_map>
 
+struct Parameters;
+
 class Detector
 {
 public:
-    Detector(unsigned nodeId) : m_nodeId(nodeId) {}
+    Detector(Parameters* para) : m_para(para) {m_nodeId = m_para->tPrms.id;}
     virtual void connect() {};
     virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
 protected:
+    Parameters* m_para;
+    unsigned m_nodeId;
     std::vector<XtcData::NamesId> m_namesId;
-    XtcData::NamesLookup          m_namesLookup;
-    unsigned                      m_nodeId;
+    XtcData::NamesLookup m_namesLookup;
+
 };
 
 template <typename T>
@@ -34,23 +38,24 @@ public:
         m_create_funcs[name] = &createFunc<TDerived>;
     }
 
-    T* create(const std::string& name, int nodeId)
+    T* create(Parameters* para)
     {
+        std::string name = para->detectorType;
         auto it = m_create_funcs.find(name);
         if (it != m_create_funcs.end()) {
-            return it->second(nodeId);
+            return it->second(para);
         }
         return nullptr;
     }
 
 private:
     template <typename TDerived>
-    static T* createFunc(int nodeId)
+    static T* createFunc(Parameters* para)
     {
-        return new TDerived(nodeId);
+        return new TDerived(para);
     }
 
-    typedef T* (*PCreateFunc)(int nodeId);
+    typedef T* (*PCreateFunc)(Parameters* para);
     std::unordered_map<std::string, PCreateFunc> m_create_funcs;
 };
 
