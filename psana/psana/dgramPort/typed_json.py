@@ -20,6 +20,33 @@ import re
 #         - "doc" which is optional, but if present maps to a str.
 #         - "version" which maps to a list of three integers.
 #
+# This file has three external APIs:
+#      validate_typed_json(d) checks if the above rules are followed for dictionary d, and returns True/False.
+#
+#      write_typed_json(filename, d) writes the dictionary d as JSON to the given filename.
+#
+#      class cdict is a helper class for building typed JSON dictionaries.
+#          cdict(old_cdict) - The constructor optionally takes an old cdict to clone.
+#          set(name, value, type="INT32", override=False, append=False)
+#                           - This routine is the heart of the class.  It traverses the name hierarchy
+#                             to set a new value.  The value maybe a numeric value, a list of numeric
+#                             values, a numpy array, a clist, or a list of clists.  For numeric values or
+#                             lists of numeric values, type indicates the desired type of a new attribute.
+#                             For a clist or list of clists, append indicates if the target should be
+#                             overwritten or the new clists appended to an existing list.  In general,
+#                             once a name is typed, setting a new value will not change the type unless
+#                             the override flag is True.  This returns True if the set was successful
+#                             and false otherwise.  The contents of a clist are copied, but any ndarrays
+#                             are not.  (Therefore, modifying a clist after assigning it to a name does
+#                             not change the assigned value, but modifying the contents of an ndarray does.)
+#
+#          setInfo(detType=None, detName=None, detId=None, doc=None)
+#                           - Sets the additional information for a top-level clist.
+#          setAlg(alg, version=[0,0,0], doc="")
+#                           - Set the algorithm information.
+#          writeFile(filename)
+#                           - Write the typed JSON to a file.
+#
 
 typerange = {
     "UINT8"  : (0, 2**8 - 1), 
@@ -206,11 +233,12 @@ def write_typed_json(filename, d):
         f.write(',\n    "json_types": {\n')
         write_json_dict(f, tdict, {}, [], "        ")
         f.write('\n    }\n}\n')
+        return True
 
 #
 # Let's try to make creating valid dictionaries easier.  This heart
 # of this class is the method:
-#     setval(name, value, type="INT32", override=False)
+#     set(name, value, type="INT32", override=False, append=False)
 # Once the type of a name is set, changing it is only possible if
 # override is True.
 #
@@ -224,8 +252,10 @@ def write_typed_json(filename, d):
 #     - A list of cdicts will add the list of dictionaries.
 #
 class cdict(object):
-    def __init__(self):
+    def __init__(self, old=None):
         self.dict = {}
+        if isinstance(old, cdict):
+            self.dict.update(old.dict)
 
     def splitname(self, name):
         n = name.split("_")
@@ -267,14 +297,17 @@ class cdict(object):
                         return None
                 else:
                     return None
-        return d
+        if isinstance(d, tuple):
+            return d[1]
+        else:
+            return d
 
     def checknumlist(self, l):
         for v in l:
             if isinstance(v, list):
                 if not self.checknumlist(v):
                     return False
-            elif not isinstance(v, number.Number):
+            elif not isinstance(v, numbers.Number):
                 return False
         return True
 
@@ -296,7 +329,7 @@ class cdict(object):
         elif isinstance(value, cdict):
             issimple = False
         elif isinstance(value, list):
-            if checknumlist(value):
+            if self.checknumlist(value):
                 value = np.array(value, dtype=type.lower())
                 issimple = True
             else:
@@ -416,4 +449,4 @@ class cdict(object):
         self.setString("doc", doc)
 
     def writeFile(self, file):
-        write_typed_json(file, self.dict)
+        return write_typed_json(file, self.dict)
