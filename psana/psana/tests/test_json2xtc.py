@@ -63,14 +63,20 @@ class Test_JSON2XTC:
                 if isinstance(c.get(n), np.ndarray):
                     if not (dg.test1.raw.__getattribute__(n) == c.get(n)).all():
                         print("Failure on %s" % n)
+                        print(dg.test1.raw.__getattribute__(n))
+                        print(c.get(n))
                         assert False
                 elif isinstance(c.get(n), int):
                     if not dg.test1.raw.__getattribute__(n) == c.get(n):
                         print("Failure on %s" % n)
+                        print(dg.test1.raw.__getattribute__(n))
+                        print(c.get(n))
                         assert False
                 else:
                     if not abs(dg.test1.raw.__getattribute__(n) - c.get(n)) < 0.00001:
                         print("Failure on %s" % n)
+                        print(dg.test1.raw.__getattribute__(n))
+                        print(c.get(n))
                         assert False
 
 def run():
