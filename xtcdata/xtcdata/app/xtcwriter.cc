@@ -96,10 +96,10 @@ public:
         case(0):{
             if(data_rank > 0){
                 Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint8_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<uint8_t>(i));
             }
             break;
         }
@@ -107,10 +107,10 @@ public:
         case(1):{
             if(data_rank > 0){
                 Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint16_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<uint16_t>(i));
             }
             break;
         }
@@ -118,10 +118,10 @@ public:
         case(2):{
             if(data_rank > 0){
                 Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint32_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<uint32_t>(i));
             }
             break;
         }
@@ -129,10 +129,10 @@ public:
         case(3):{
             if(data_rank > 0){
                 Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
             }
             break;
         }
@@ -140,10 +140,10 @@ public:
         case(4):{
             if(data_rank > 0){
                 Array<int8_t> arrT = descdata.get_array<int8_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int8_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<int8_t>(i));
             }
             break;
         }
@@ -151,10 +151,10 @@ public:
         case(5):{
             if(data_rank > 0){
                 Array<int16_t> arrT = descdata.get_array<int16_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int16_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<int16_t>(i));
             }
             break;
         }
@@ -162,10 +162,10 @@ public:
         case(6):{
             if(data_rank > 0){
                 Array<int32_t> arrT = descdata.get_array<int32_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
             }
             break;
         }
@@ -173,10 +173,10 @@ public:
         case(7):{
             if(data_rank > 0){
                 Array<int64_t> arrT = descdata.get_array<int64_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int64_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<int64_t>(i));
             }
             break;
         }
@@ -184,10 +184,10 @@ public:
         case(8):{
             if(data_rank > 0){
                 Array<float> arrT = descdata.get_array<float>(i);
-                printf("%s: %f, %f\n",name.name(),arrT(0),arrT(1));
+                // printf("%s: %f, %f\n",name.name(),arrT(0),arrT(1));
                     }
             else{
-                printf("%s: %f\n",name.name(),descdata.get_value<float>(i));
+                // printf("%s: %f\n",name.name(),descdata.get_value<float>(i));
             }
             break;
         }
@@ -195,10 +195,10 @@ public:
         case(9):{
             if(data_rank > 0){
                 Array<double> arrT = descdata.get_array<double>(i);
-                printf("%s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %f\n",name.name(),descdata.get_value<double>(i));
+                // printf("%s: %f\n",name.name(),descdata.get_value<double>(i));
             }
             break;
         }
@@ -470,7 +470,6 @@ int main(int argc, char* argv[])
 
     DebugIter iter(&config.xtc, namesLookup1);
     iter.iterate();
-    std::cout << "Done iter" << std::endl;
 
     void* buf = malloc(BUFSIZE);
     for (int i = 0; i < nevents; i++) {
@@ -479,8 +478,6 @@ int main(int argc, char* argv[])
         Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
         addData(dgram.xtc, namesLookup1, nodeid1);
-
-        printf("*** event %d ***\n",i);
 
         DebugIter iter(&dgram.xtc, namesLookup1);
         iter.iterate();
