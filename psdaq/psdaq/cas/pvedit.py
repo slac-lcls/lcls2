@@ -34,6 +34,7 @@ nogui       = False
 class Pv:
     def __init__(self, pvname, callback=None):
         self.pvname = pvname
+        self.__value__ = None
         if callback:
             logger.info("Monitoring PV %s", self.pvname)
             def monitor_cb(newval):
@@ -394,7 +395,7 @@ class PvDblArrayW(QtWidgets.QLabel):
         self.setText(value)
 
 class PvDblArray:
-    
+
     def __init__(self, pv, widgets):
         self.widgets = widgets
         initPvMon(self,pv)
@@ -473,7 +474,7 @@ class PvIntTable(QtWidgets.QGroupBox):
 
 
 class PvMask(object):
-    
+
     def __init__(self, parent, pvname, bits):
         super(PvMask,self).__init__()
 
@@ -494,7 +495,7 @@ class PvMask(object):
                 self.chkBox[i].setChecked(False)
 
 class PvMaskTab(QtWidgets.QWidget):
-    
+
     def __init__(self, pvname, names):
         super(PvMaskTab,self).__init__()
 
@@ -545,7 +546,7 @@ class PvDefSeq(QtWidgets.QWidget):
         lo.addWidget(seqstack)
 
         self.setLayout(lo)
-        
+
         initPvMon(self,pvname+'_Sequence')
 
     def setValue(self):
@@ -601,7 +602,7 @@ class PvEditEvt(QtWidgets.QWidget):
         self.setLayout(vbox)
 
 class PvDstTab(QtWidgets.QWidget):
-    
+
     def __init__(self, pvname):
         super(PvDstTab,self).__init__()
 
@@ -625,12 +626,12 @@ class PvDstTab(QtWidgets.QWidget):
         self.pv.put(v)
 
 class PvEditDst(QtWidgets.QWidget):
-    
+
     def __init__(self, pvname, idx):
         super(PvEditDst, self).__init__()
         vbox = QtWidgets.QVBoxLayout()
         selcmb = PvEditCmb(pvname,dstsel)
-        
+
         vbox.addWidget(selcmb)
         vbox.addWidget(PvDstTab(pvname+'_Mask'))
         self.setLayout(vbox)
