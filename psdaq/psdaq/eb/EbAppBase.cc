@@ -73,7 +73,7 @@ int EbAppBase::connect(const EbParams& prms)
   _defContract = prms.contributors;
   _id          = prms.id;
 
-  if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort)) )
+  if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort, nCtrbs)) )
   {
     fprintf(stderr, "%s:\n  Failed to initialize EbLfServer\n",
             __PRETTY_FUNCTION__);
@@ -98,8 +98,8 @@ int EbAppBase::connect(const EbParams& prms)
     _links[link->id()]      = link;
     _maxBufSize[link->id()] = regSize / prms.maxBuffers;
 
-    regSize += _trSize;                 // Ctrbs don't have a transition space
-    _regions[i]  = allocRegion(regSize);
+    regSize    += _trSize;              // Ctrbs don't have a transition space
+    _regions[i] = allocRegion(regSize);
     if (!_regions[i])
     {
       fprintf(stderr, "%s: No memory found for region %d of size %zd\n",
@@ -122,6 +122,7 @@ int EbAppBase::connect(const EbParams& prms)
 void EbAppBase::shutdown()
 {
   EventBuilder::dump(0);
+  EventBuilder::clear();
 
   char fs[80];
   sprintf(fs, "ctrbCntHist_%d.hist", _id);
@@ -153,8 +154,6 @@ void EbAppBase::shutdown()
   _regions.clear();
   _defContract = 0;
   _id          = -1;
-
-  EventBuilder::clear();
 }
 
 int EbAppBase::process()
@@ -164,7 +163,7 @@ int EbAppBase::process()
   int       rc;
   const int tmo = 5000;                 // milliseconds
   auto t0(std::chrono::steady_clock::now());
-  if ( (rc = _transport.pend(&data, tmo)) )  return rc;
+  if ( (rc = _transport.pend(&data, tmo)) < 0)  return rc;
   auto t1(std::chrono::steady_clock::now());
 
   unsigned     flg = ImmData::flg(data);

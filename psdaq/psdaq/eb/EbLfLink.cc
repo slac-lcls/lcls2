@@ -23,7 +23,7 @@ EbLfLink::EbLfLink(Endpoint* ep,
   _mr(nullptr),
   _ra(),
   _rxDepth(0),
-  _rOuts(0),
+  _rOuts(1),
   _pending(pending),
   _id(-1),
   _verbose(verbose),
@@ -39,7 +39,7 @@ EbLfLink::EbLfLink(Endpoint* ep,
   _mr(nullptr),
   _ra(),
   _rxDepth(rxDepth),
-  _rOuts(0),
+  _rOuts(1),
   _pending(pending),
   _id(-1),
   _verbose(verbose),
@@ -267,7 +267,7 @@ int EbLfLink::recvMr(MemoryRegion* mr)
 
 int EbLfLink::postCompRecv(void* ctx)
 {
-  if (--_rOuts <= 1)
+  if (--_rOuts <= 0)
   {
     unsigned count = _rxDepth - _rOuts;
     _rOuts += _postCompRecv(count, ctx);
@@ -315,8 +315,18 @@ int EbLfLink::post(const void* buf,
 
   _pending |= 1 << _id;
 
-  while ((rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr)) == -FI_EAGAIN)
+  while (1)
   {
+    rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr);
+    if (!rc)  break;
+
+    if (rc != -FI_EAGAIN)
+    {
+      fprintf(stderr, "%s:\n  write_data to ID %d failed: %s\n",
+              __PRETTY_FUNCTION__, _id, _ep->error());
+      break;
+    }
+
     //auto t1(std::chrono::steady_clock::now());
     //
     //const int msTmo = 5000;
@@ -328,22 +338,14 @@ int EbLfLink::post(const void* buf,
     //  break;
     //}
 
-    const ssize_t    maxCnt = 8;
-    fi_cq_data_entry cqEntry[maxCnt];
-    CompletionQueue* cq     = _ep->txcq();
-    rc = cq->comp(cqEntry, maxCnt);
-    if ((rc != -FI_EAGAIN) && (rc < 0)) // EAGAIN means no completions available
+    fi_cq_data_entry cqEntry;
+    rc = _ep->txcq()->comp(&cqEntry, 1);
+    if ((rc < 0) && (rc != -FI_EAGAIN)) // EAGAIN means no completions available
     {
       fprintf(stderr, "%s:\n  Error reading TX CQ: %s\n",
-              __PRETTY_FUNCTION__, cq->error());
+              __PRETTY_FUNCTION__, _ep->txcq()->error());
       break;
     }
-  }
-
-  if (rc)
-  {
-    fprintf(stderr, "%s:\n  write_data to ID %d failed: %s\n",
-            __PRETTY_FUNCTION__, _id, _ep->error());
   }
 
   _pending &= ~(1 << _id);

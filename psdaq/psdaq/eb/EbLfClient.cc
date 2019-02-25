@@ -48,7 +48,9 @@ int EbLfClient::connect(const char* peer,
            fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
   }
 
-  CompletionQueue* txcq = new CompletionQueue(fab);
+  struct fi_info*  info   = fab->info();
+  size_t           cqSize = info->tx_attr->size;
+  CompletionQueue* txcq   = new CompletionQueue(fab, cqSize);
   if (!txcq)
   {
     fprintf(stderr, "%s:\n  Failed to create TX completion queue: %s\n",

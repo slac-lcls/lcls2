@@ -38,7 +38,7 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
   _links.resize(numEbs);
   _regions.resize(numEbs);
 
-  if ( (rc = _transport.initialize(prms.ifAddr, prms.port)) )
+  if ( (rc = _transport.initialize(prms.ifAddr, prms.port, numEbs)) )
   {
     fprintf(stderr, "%s:\n  Failed to initialize EbLfServer\n",
             __PRETTY_FUNCTION__);
@@ -128,10 +128,11 @@ void EbCtrbInBase::shutdown()
 int EbCtrbInBase::process(BatchManager& batMan)
 {
   // Pend for a result datagram (batch) and process it.
-  uint64_t data;
+  uint64_t  data;
+  int       rc;
   const int tmo = 5000;                 // milliseconds
   auto t0(std::chrono::steady_clock::now());
-  if (_transport.pend(&data, tmo))  return -1;
+  if ( (rc = _transport.pend(&data, tmo)) < 0)  return rc;
   auto t1(std::chrono::steady_clock::now());
 
   unsigned     src = ImmData::src(data);

@@ -28,8 +28,15 @@ EbLfServer::EbLfServer(unsigned verbose) :
 {
 }
 
+EbLfServer::~EbLfServer()
+{
+  if (_rxcq)  delete _rxcq;
+  if (_pep)   delete _pep;
+}
+
 int EbLfServer::initialize(const std::string& addr,
-                           const std::string& port)
+                           const std::string& port,
+                           unsigned           nLinks)
 {
   _pending = 0;
 
@@ -53,7 +60,9 @@ int EbLfServer::initialize(const std::string& addr,
            fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
   }
 
-  _rxcq = new CompletionQueue(fab);
+  struct fi_info* info   = fab->info();
+  size_t          cqSize = nLinks * info->rx_attr->size;
+  _rxcq = new CompletionQueue(fab, cqSize);
   if (!_rxcq)
   {
     fprintf(stderr, "%s:\n  Failed to create RX completion queue: %s\n",
@@ -61,8 +70,7 @@ int EbLfServer::initialize(const std::string& addr,
     return ENOMEM;
   }
 
-  const int backlog = 64;
-  if(!_pep->listen(backlog))
+  if(!_pep->listen(nLinks))
   {
     fprintf(stderr, "%s:\n  Failed to set passive endpoint to listening state: %s\n",
             __PRETTY_FUNCTION__, _pep->error());
@@ -94,110 +102,6 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
   }
 
   return 0;
-}
-
-int EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
-{
-  // Polling favors latency, waiting favors throughput
-  const int maxCnt = 1;
-  ssize_t   rc     = _rxcq->comp_wait(cqEntry, maxCnt, _tmo);
-  if (rc == maxCnt)
-  {
-    _tmo = 0;                 // Switch to polling after successful completion
-
-    if ((cqEntry->flags & flags) == flags)
-    {
-      //fprintf(stderr, "%s:\n  Expected   CQ entry:\n"
-      //                "  count %zd, got flags %016lx vs %016lx, data = %08lx\n"
-      //                "  ctx   %p, len %zd, buf %p\n",
-      //        __PRETTY_FUNCTION__, rc, cqEntry->flags, flags, cqEntry->data,
-      //        cqEntry->op_context, cqEntry->len, cqEntry->buf);
-
-      return 0;
-    }
-
-    fprintf(stderr, "%s:\n  Unexpected CQ entry:\n"
-                    "  count %zd, got flags %016lx vs %016lx\n"
-                    "  ctx   %p, len %zd, buf %p\n",
-            __PRETTY_FUNCTION__, rc, cqEntry->flags, flags,
-            cqEntry->op_context, cqEntry->len, cqEntry->buf);
-
-    return -FI_EAGAIN;
-  }
-
-  // Man page suggests rc == 0 cannot occur
-  if (rc != -FI_EAGAIN)
-  {
-    static int _errno = maxCnt;
-    if (rc != _errno)
-    {
-      fprintf(stderr, "%s:\n  Error reading RX CQ: %s\n",
-              __PRETTY_FUNCTION__, _rxcq->error());
-      _errno = rc;
-    }
-  }
-
-  return rc;
-}
-
-int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
-{
-  auto t0(std::chrono::steady_clock::now());
-  int  rc;
-
-  ++_pending;
-
-  const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
-  while ((rc = _poll(cqEntry, flags)) == -FI_EAGAIN)
-  {
-    auto t1(std::chrono::steady_clock::now());
-
-    if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
-    {
-      _tmo = COMP_TMO;                  // Switch to waiting after a timeout
-      rc   = -FI_ETIMEDOUT;
-      break;
-    }
-  }
-
-  --_pending;
-
-  return rc;
-}
-
-int EbLfServer::pend(void** ctx, int msTmo)
-{
-  fi_cq_data_entry cqEntry;
-
-  int rc = pend(&cqEntry, msTmo);
-  *ctx = cqEntry.op_context;
-
-  return rc;
-}
-
-int EbLfServer::pend(uint64_t* data, int msTmo)
-{
-  fi_cq_data_entry cqEntry;
-
-  int rc = pend(&cqEntry, msTmo);
-  *data = cqEntry.data;
-
-  return rc;
-}
-
-int EbLfServer::poll(uint64_t* data)
-{
-  const uint64_t   flags = FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA;
-  fi_cq_data_entry cqEntry;
-
-  if (_rxcq)
-  {
-    int rc = _poll(&cqEntry, flags);
-    *data = cqEntry.data;
-
-    return rc;
-  }
-  return -1;
 }
 
 int EbLfServer::shutdown(EbLfLink* link)
@@ -237,10 +141,51 @@ int EbLfServer::shutdown(EbLfLink* link)
   _pep->close(ep);
 
   if (link)   delete link;
-  if (_rxcq)  delete _rxcq;
-  if (_pep)   delete _pep;
-  _rxcq = nullptr;
-  _pep  = nullptr;
+
+  return rc;
+}
+
+int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
+{
+  auto t0(std::chrono::steady_clock::now());
+  int  rc;
+
+  ++_pending;
+
+  while (1)
+  {
+    const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
+
+    rc = _poll(cqEntry, flags);
+    if (rc > 0)
+    {
+      break;
+    }
+    else if ((rc < 0) && (rc != -FI_EAGAIN))
+    {
+      static int _errno = 1;
+      if (rc != _errno)
+      {
+        fprintf(stderr, "%s:\n  Error reading RX CQ: %s\n",
+                __PRETTY_FUNCTION__, _rxcq->error());
+        _errno = rc;
+      }
+      break;
+    }
+    else
+    {
+      auto t1(std::chrono::steady_clock::now());
+
+      if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
+      {
+        _tmo = COMP_TMO;                // Switch to waiting after a timeout
+        rc   = -FI_ETIMEDOUT;
+        break;
+      }
+    }
+  }
+
+  --_pending;
 
   return rc;
 }

@@ -1812,13 +1812,13 @@ void CompletionPoller::shutdown()
   _up = false;
 }
 
-CompletionQueue::CompletionQueue(Fabric* fabric) :
+CompletionQueue::CompletionQueue(Fabric* fabric, size_t size) :
   _up(false),
   _fabric(fabric),
   _cq(nullptr)
 {
   struct fi_cq_attr cq_attr = {
-    .size = 128*1024, // Revisit: What is right value and who should provide it?
+    .size = size,
     .flags = 0,
     .format = FI_CQ_FORMAT_DATA,
     .wait_obj = FI_WAIT_UNSPEC,
