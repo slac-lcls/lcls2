@@ -113,7 +113,7 @@ namespace Pds {
       virtual
       void     process(EbEvent* event);
     public:                         // Ultimately loaded from a shareable
-      uint32_t handle(const Dgram* ctrb, uint32_t* result, size_t sizeofPayload);
+      uint16_t handle(const Dgram* ctrb, uint32_t* result, size_t sizeofPayload);
     private:
       void    _updateHists(TimePoint_t      t0,
                            TimePoint_t      t1,
@@ -212,7 +212,7 @@ int Teb::connect(const EbParams& prms)
     printf("Outbound link with Ctrb ID %d connected\n", link->id());
   }
 
-  if ( (rc = _mrqTransport.initialize(prms.ifAddr, prms.mrqPort)) )
+  if ( (rc = _mrqTransport.initialize(prms.ifAddr, prms.mrqPort, prms.numMrqs)) )
   {
     fprintf(stderr, "%s:\n  Failed to initialize MonReq EbLfServer\n",
             __PRETTY_FUNCTION__);
@@ -264,7 +264,7 @@ void Teb::run()
     int rc;
     if ( (rc = EbAppBase::process()) )
     {
-      if (rc != -FI_ETIMEDOUT )  break;
+      if (rc != -FI_ETIMEDOUT)  break;
     }
   }
 
@@ -329,9 +329,8 @@ void Teb::process(EbEvent* event)
     const EbContribution*  const* ctrb = event->begin();
     do
     {
-      /*uint32_t damage =*/ handle(*ctrb, result, rdg->xtc.sizeofPayload());
-
-      // Revisit: rdg->xtc.damage.increase((*ctrb)->xtc.damage.value() | damage);
+      uint16_t damage = handle(*ctrb, result, rdg->xtc.sizeofPayload());
+      if (damage)  rdg->xtc.damage.increase(damage);
     }
     while (++ctrb != last);
 
@@ -370,9 +369,7 @@ void Teb::process(EbEvent* event)
     const EbContribution*  const* ctrb = event->begin();
     do
     {
-      /*uint32_t damage =*/ handle(*ctrb, nullptr, 0);
-
-      // Revisit: rdg->xtc.damage.increase((*ctrb)->xtc.damage.value() | damage);
+      handle(*ctrb, nullptr, 0);
     }
     while (++ctrb != last);
 
@@ -392,7 +389,7 @@ void Teb::process(EbEvent* event)
 
 // Ultimately, this method is provided by the users and is loaded from a
 // sharable library loaded during a configure transition.
-uint32_t Teb::handle(const Dgram* ctrb, uint32_t* result, size_t sizeofPayload)
+uint16_t Teb::handle(const Dgram* ctrb, uint32_t* result, size_t sizeofPayload)
 {
   if (result)
   {
@@ -629,7 +626,7 @@ int TebApp::_parseConnectionParams(const json& body)
     }
   }
 
-  printf("\nParameters of Trigger Event Builder ID %d:\n",   _prms.id);
+  printf("\nParameters of TEB ID %d:\n",                     _prms.id);
   printf("  Thread core numbers:        %d, %d\n",           _prms.core[0], _prms.core[1]);
   printf("  Partition:                  %d\n",               _prms.partition);
   printf("  Bit list of contributors:   %016lx, cnt: %zd\n", _prms.contributors,
@@ -637,7 +634,9 @@ int TebApp::_parseConnectionParams(const json& body)
   printf("  Number of Monitor EBs:      %d\n",               _prms.numMrqs);
   printf("  Batch duration:             %014lx = %ld uS\n",  _prms.duration, _prms.duration);
   printf("  Batch pool depth:           %d\n",               _prms.maxBuffers);
-  printf("  Max # of entries per batch: %d\n",               _prms.maxEntries);
+  printf("  Max # of entries / batch:   %d\n",               _prms.maxEntries);
+  printf("  Max result     Dgram size:  %zd\n",              _prms.maxResultSize);
+  printf("  Max transition Dgram size:  %zd\n",              _prms.maxTrSize);
   printf("\n");
   printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
   printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
