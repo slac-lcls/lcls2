@@ -2,10 +2,29 @@
 """
 daqstate command
 """
-from psdaq.control.collection import DaqControl
+from psdaq.control.collection import DaqControl, MonitorThread, SignalHandler
 import argparse
+import logging
+import threading
+import signal
+import time
+
+def monitor_callback(msg):
+    logging.debug("entered monitor_callback()")
+
+    try:
+        if msg['header']['key'] == 'status':
+            print('transition: %-10s  state: %s' %
+                (msg['body']['transition'], msg['body']['state']))
+
+        elif msg['header']['key'] == 'error':
+            print('error: %s' % msg['body']['error'])
+
+    except KeyError as ex:
+        logging.error('monitor_callback() KeyError: %s' % ex)
 
 def main():
+    global monitor_callback
 
     # process arguments
     parser = argparse.ArgumentParser()
@@ -15,11 +34,18 @@ def main():
                         help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
+    parser.add_argument('-v', action='store_true', help='be verbose')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--state', choices=DaqControl.states)
     group.add_argument('--transition', choices=DaqControl.transitions)
     group.add_argument('--monitor', action="store_true")
     args = parser.parse_args()
+
+    # configure logging
+    if args.v:
+        logging.basicConfig(level=logging.DEBUG, format='%(threadName)s: %(asctime)s - %(levelname)s - %(message)s')
+    else:
+        logging.basicConfig(level=logging.WARNING, format='%(threadName)s: %(asctime)s - %(levelname)s - %(message)s')
 
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
@@ -37,15 +63,25 @@ def main():
             print('Error: %s' % rv)
 
     elif args.monitor:
-        # monitor the status
-        while True:
-            part1, part2 = control.monitorStatus()
-            if part1 is None:
-                break
-            elif part1 == 'error':
-                print('error: %s' % part2)
-            else:
-                print('transition: %-10s  state: %s' % (part1, part2))
+        # create event for stopping threads
+        stopper = threading.Event()
+
+        # create worker thread for monitoring zmq socket
+        worker = MonitorThread(monitor_callback, stopper, args.C, args.p)
+
+        # create our signal handler and connect it
+        handler = SignalHandler(stopper)
+        signal.signal(signal.SIGINT, handler)
+
+        # start worker thread
+        worker.start()
+
+        # in main thread, just wait for stopper event
+        while not stopper.is_set():
+            time.sleep(0.25)
+
+        # shutting down: join worker thread
+        worker.join()
 
     else:
         # print current state
