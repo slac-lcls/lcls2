@@ -350,7 +350,7 @@ void EbCtrbApp::run(EbCtrbIn& in)
     if (TebContributor::process(input, (const void*)input)) // 2nd arg is returned with the result
       ++_eventCount;
 
-    _inFlightCnt  = inFlightCnt();
+    _inFlightCnt = inFlightCnt();
   }
 
   _drpSim.shutdown();
@@ -554,7 +554,10 @@ int CtrbApp::_parseConnectionParams(const json& body)
   printf("  Number of Monitor EBs:      %zd\n",              _mebPrms.addrs.size());
   printf("  Batch duration:             %014lx = %ld uS\n",  _tebPrms.duration, _tebPrms.duration);
   printf("  Batch pool depth:           %d\n",               _tebPrms.maxBatches);
-  printf("  Max # of entries per batch: %d\n",               _tebPrms.maxEntries);
+  printf("  Max # of entries / batch:   %d\n",               _tebPrms.maxEntries);
+  printf("  Max TEB contribution size:  %zd\n",              _tebPrms.maxInputSize);
+  printf("  Max MEB event        size:  %zd\n",              _mebPrms.maxEvSize);
+  printf("  Max MEB transition   size:  %zd\n",              _mebPrms.maxTrSize);
   printf("\n");
   printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
   printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
