@@ -14,18 +14,19 @@ namespace Pds {
     const unsigned    RTMON_PORT_BASE = 5559;
     const char* const COLL_HOST       = "drp-tst-acc06";
 
-    const unsigned MAX_DRPS        = 64;         // Maximum possible number of Contributors
-    const unsigned MAX_TEBS        = 64;         // Maximum possible number of Event Builders
-    const unsigned MAX_MEBS        = 64;         // Maximum possible number of Monitors
+    const unsigned MAX_DRPS       = 64;         // Maximum possible number of Contributors
+    const unsigned MAX_TEBS       = 64;         // Maximum possible number of Event Builders
+    const unsigned MAX_MEBS       = 64;         // Maximum possible number of Monitors
 
-    const unsigned TEB_PORT_BASE   = 32768;                    // TEB to receive L3 contributions
-    const unsigned DRP_PORT_BASE   = TEB_PORT_BASE + MAX_TEBS; // TEB to send    results
-    const unsigned MRQ_PORT_BASE   = DRP_PORT_BASE + MAX_DRPS; // TEB to receive monitor requests
-    const unsigned MEB_PORT_BASE   = MRQ_PORT_BASE + MAX_MEBS; // MEB to receive data contributions
+    const unsigned TEB_PORT_BASE  = 32768;                     // TEB to receive L3 contributions
+    const unsigned DRP_PORT_BASE  = TEB_PORT_BASE + MAX_TEBS;  // TEB to send    results
+    const unsigned MRQ_PORT_BASE  = DRP_PORT_BASE + MAX_DRPS;  // TEB to receive monitor requests
+    const unsigned MEB_PORT_BASE  = MRQ_PORT_BASE + MAX_MEBS;  // MEB to receive data contributions
 
-    const unsigned MAX_BATCHES     = 8192;       // Maximum number of batches in circulation
-    const unsigned MAX_ENTRIES     = 64;         // < or = to batch_duration
-    const uint64_t BATCH_DURATION  = MAX_ENTRIES;// > or = to max_entries; power of 2; beam pulse ticks (1 uS)
+    const unsigned MAX_ENTRIES    = 64;                        // <= BATCH_DURATION
+    const uint64_t BATCH_DURATION = MAX_ENTRIES;               // >= MAX_ENTRIES; power of 2; beam pulse ticks (1 uS)
+    const unsigned MAX_LATENCY    = 1024 * 1024;               // In beam pulse ticks (1 uS)
+    const unsigned MAX_BATCHES    = MAX_LATENCY / MAX_ENTRIES; // Max # of batches in circulation
 
     struct TebCtrbParams
     {
