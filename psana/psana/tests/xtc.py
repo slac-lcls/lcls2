@@ -3,7 +3,7 @@ from sys import getrefcount as getref
 import numpy as np
 from psana import DataSource
 
-def myroutine(fname):
+def myroutine(fname,nsegments):
   ds = DataSource(fname)  
   for nevent,evt in enumerate(ds.events()):
       if nevent==0:
@@ -14,8 +14,8 @@ def myroutine(fname):
   # be sure you know what you are doing before you change
   # these reference count numbers. - cpo
   dgrambytes_event1 = dgram_event1._dgrambytes
-  # 4 for arrays, 1 for dgram, 1 for getref, 1 for dgrambytes_event1
-  assert getref(dgrambytes_event1)==7
+  # 4 arrays per segment, 1 for dgram, 1 for getref, 1 for dgrambytes_event1
+  assert getref(dgrambytes_event1)==4*nsegments+3
   # event0 dgram is deleted, so only 1 for dgrambytes_event0 and 1 for getref
   assert getref(dgrambytes_event0)==2
 
@@ -30,11 +30,13 @@ class DgramTester:
     for attrname,attr in parent.__dict__.items():
       #print(' '*2*(self.depth),attrname)
       if attrname.startswith('_'): continue
-      # detector name is a dict with segment number as the key
-      # test the values of the first segment
-      segment = 0
-      if type(attr) is dict: attr=attr[segment]
-      if hasattr(attr,'__dict__'):
+      if type(attr) is dict:
+        # detector name is a dict with segment number as the key
+        for _,value in attr.items():
+          self.depth+=1
+          self.iter(value)
+          self.depth-=1
+      elif hasattr(attr,'__dict__'):
         self.depth+=1
         self.iter(attr)
         self.depth-=1
@@ -47,16 +49,16 @@ class DgramTester:
           self.ntested+=1
     return self.ntested
 
-def xtc(fname):
+def xtc(fname, nsegments):
 
   import sys, os
   sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
   from vals import testvals
 
-  dgram, config = myroutine(fname)
+  dgram, config = myroutine(fname,nsegments)
   configtester = DgramTester(testvals)
   ntested = configtester.iter(config)
-  assert(ntested==len(testvals))
+  assert(ntested==len(testvals)*nsegments)
   dgtester = DgramTester(testvals)
   ntested = dgtester.iter(dgram)
-  assert(ntested==len(testvals))
+  assert(ntested==len(testvals)*nsegments)

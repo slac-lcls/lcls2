@@ -34,10 +34,10 @@ class Test:
         pyxtc.write_events(fname, cydgram)
 
         # test that the values in the new file are correct
-        xtc(fname)
+        xtc(fname, nsegments=1)
 
     def test_xtcdata(self):
-        xtc('data.xtc2')
+        xtc('data.xtc2', nsegments=2)
 
     def setup_input_files(self):
         subprocess.call(['xtcwriter','-f','data-ts.xtc2', '-t']) # Mona FIXME: writing seq in xtcwriter broke dgramCreate

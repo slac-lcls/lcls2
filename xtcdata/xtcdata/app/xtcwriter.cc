@@ -349,34 +349,33 @@ void padExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
     pad.set_array_shape(PadDef::arrayRaw, shape);
 }
 
-void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId) {
+void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     Alg hsdRawAlg("raw",0,0,0);
-    NamesId namesId0(nodeId,0);
-    Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", namesId0);
+    NamesId namesId0(nodeId,0+10*segment);
+    Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", namesId0, segment);
     frontEndNames.add(xtc,PgpDef);
     namesLookup[namesId0] = NameIndex(frontEndNames);
 
     Alg hsdFexAlg("fex",4,5,6);
-    NamesId namesId1(nodeId,1);
-    Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", namesId1);
+    NamesId namesId1(nodeId,1+10*segment);
+    Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", namesId1, segment);
     fexNames.add(xtc, FexDef);
     namesLookup[namesId1] = NameIndex(fexNames);
 
-    unsigned segment = 0;
     Alg cspadRawAlg("raw",2,3,42);
-    NamesId namesId2(nodeId,2);
+    NamesId namesId2(nodeId,2+10*segment);
     Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", namesId2, segment);
     Alg segmentAlg("cspadseg",2,3,42);
     padNames.add(xtc, PadDef);
     namesLookup[namesId2] = NameIndex(padNames);
 }
 
-void addData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId) {
-    NamesId namesId0(nodeId,0);
+void addData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
+    NamesId namesId0(nodeId,0+10*segment);
     pgpExample(xtc, namesLookup, namesId0);
-    NamesId namesId1(nodeId,1);
+    NamesId namesId1(nodeId,1+10*segment);
     fexExample(xtc, namesLookup, namesId1);
-    NamesId namesId2(nodeId,2);
+    NamesId namesId2(nodeId,2+10*segment);
     padExample(xtc, namesLookup, namesId2);
 }
 
@@ -460,13 +459,13 @@ int main(int argc, char* argv[])
     unsigned nodeid1 = 1;
     unsigned nodeid2 = 2;
     NamesLookup namesLookup1;
-    addNames(config.xtc, namesLookup1, nodeid1);
-    addData(config.xtc, namesLookup1, nodeid1);
+    unsigned nSegments=2;
+    for (unsigned iseg=0; iseg<nSegments; iseg++) {
+        addNames(config.xtc, namesLookup1, nodeid1, iseg);
+        addData(config.xtc, namesLookup1, nodeid1, iseg);
+    }
 
     save(config,xtcFile);
-
-    // Dgram& enable = createTransition(TransitionId::Enable);
-    // save(enable,xtcFile);
 
     DebugIter iter(&config.xtc, namesLookup1);
     iter.iterate();
@@ -477,18 +476,15 @@ int main(int argc, char* argv[])
         Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
         Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
-        addData(dgram.xtc, namesLookup1, nodeid1);
+        for (unsigned iseg=0; iseg<nSegments; iseg++) {
+            addData(dgram.xtc, namesLookup1, nodeid1, iseg);
+        }
 
         DebugIter iter(&dgram.xtc, namesLookup1);
         iter.iterate();
 
         save(dgram,xtcFile);
      }
-
-    // Dgram& disable = createTransition(TransitionId::Disable);
-    // save(disable,xtcFile);
-    // Dgram& unconfig = createTransition(TransitionId::Unconfigure);
-    // save(unconfig,xtcFile);
 
     fclose(xtcFile);
 
