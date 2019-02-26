@@ -56,7 +56,8 @@ class parse_xtc():
         for detector in det_names:
             det_sw_config = vars(sw_config[detector])
             try:
-                det_config = vars(config[detector])
+                segment = 0
+                det_config = vars(config[detector][segment])
             except KeyError:
                 det_config = {}
 
@@ -95,7 +96,8 @@ class parse_xtc():
             for iterd in value:
                 self.iterd = iterd
                 try:
-                    dgram = vars(vars(evt._dgrams[0])[key])
+                    segment = 0
+                    dgram = vars(vars(evt._dgrams[0])[key][segment])
                 except KeyError:
                     continue
                 event_data = copy.deepcopy(vars(dgram[iterd['base_alg_name']]))

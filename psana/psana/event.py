@@ -97,16 +97,16 @@ class Event():
         self._det_dgrams = {}
         for evt_dgram in self._dgrams:
             # detector name (e.g. "xppcspad")
-            for det_name, det in evt_dgram.__dict__.items():
+            for det_name, segment_dict in evt_dgram.__dict__.items():
 
                 # drp class name (e.g. "raw", "fex")
-                for drp_class_name, dgram in det.__dict__.items():
-                    class_identifier = (det_name,drp_class_name)
+                for segment, det in segment_dict.items():
+                    for drp_class_name, dgram in det.__dict__.items():
+                        class_identifier = (det_name,drp_class_name)
                     
-                    if class_identifier not in self._det_dgrams.keys():
-                        self._det_dgrams[class_identifier] = [dgram]
-                    else:
-                        self._det_dgrams[class_identifier].append(dgram)
+                        if class_identifier not in self._det_dgrams.keys():
+                            self._det_dgrams[class_identifier] = {}
+                        self._det_dgrams[class_identifier][segment] = dgram
 
         return
 

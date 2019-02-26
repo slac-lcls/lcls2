@@ -25,11 +25,19 @@ class DgramTester:
   def __init__(self,testvals):
     self.ntested=0
     self.testvals=testvals
+    self.depth=0
   def iter(self,parent):
     for attrname,attr in parent.__dict__.items():
+      #print(' '*2*(self.depth),attrname)
       if attrname.startswith('_'): continue
+      # detector name is a dict with segment number as the key
+      # test the values of the first segment
+      segment = 0
+      if type(attr) is dict: attr=attr[segment]
       if hasattr(attr,'__dict__'):
+        self.depth+=1
         self.iter(attr)
+        self.depth-=1
       else:
         if type(attr) is np.ndarray:
           assert np.array_equal(attr,self.testvals[attrname])

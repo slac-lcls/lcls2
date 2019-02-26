@@ -1,7 +1,7 @@
 
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/DescData.hh"
-#include "xtcdata/xtc/Dgram.hh"
+
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/NamesIter.hh"
@@ -54,10 +54,9 @@ struct PyDgramObject {
     ShmemClient* shmem_cli; // shmem client for buffer return
 };
 
-static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
+static void addObjToPyObj(PyObject* parent, const char* name, PyObject* obj, PyObject* pycontainertype) {
     char namecopy[TMPSTRINGSIZE];
     strncpy(namecopy,name,TMPSTRINGSIZE);
-    PyObject* parent = (PyObject*)dgram;
     char *key = ::strtok(namecopy,PyNameDelim);
     while(1) {
         char* next = ::strtok(NULL, PyNameDelim);
@@ -65,20 +64,66 @@ static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
         if (last) {
             // add the real object
             int fail = PyObject_SetAttrString(parent, key, obj);
-            if (fail) printf("Dgram: failed to set object attribute\n");
+            if (fail) printf("addObj: failed to set object attribute\n");
             Py_DECREF(obj); // transfer ownership to parent
             break;
         } else {
             if (!PyObject_HasAttrString(parent, key)) {
-                PyObject* container = PyObject_CallObject(dgram->contInfo.pycontainertype, NULL);
+                PyObject* container = PyObject_CallObject(pycontainertype, NULL);
                 int fail = PyObject_SetAttrString(parent, key, container);
-                if (fail) printf("Dgram: failed to set container attribute\n");
+                if (fail) printf("addObj: failed to set container attribute\n");
                 Py_DECREF(container); // transfer ownership to parent
             }
             parent = PyObject_GetAttrString(parent, key);
             Py_DECREF(parent); // we just want the pointer, not a new reference
         }
         key=next;
+    }
+}
+
+static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
+    addObjToPyObj((PyObject*) dgram, name, obj, dgram->contInfo.pycontainertype);
+}
+
+static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
+                       unsigned segment) {
+    char namecopy[TMPSTRINGSIZE];
+    strncpy(namecopy,name,TMPSTRINGSIZE);
+    PyObject* parent = (PyObject*)dgram;
+    char *key = ::strtok(namecopy,PyNameDelim);
+    char* next = ::strtok(NULL, PyNameDelim);
+
+    PyObject* dict;
+    if (!PyObject_HasAttrString(parent, key)) {
+        dict = PyDict_New();
+        int fail = PyObject_SetAttrString(parent, key, dict);
+        if (fail) printf("Dgram: failed to set container attribute\n");
+    } else {
+        dict = PyObject_GetAttrString(parent, key);
+    }
+    // either way we got a new reference to the dict.
+    // keep the dgram parent as the owner.
+    Py_DECREF(dict); // transfer ownership to parent
+
+    bool last = (next == NULL);
+    PyObject* pySeg = Py_BuildValue("i",segment);
+    if (last) {
+        // we're at the lowest level, set the value to be the data object.
+        // this case should happen rarely, if ever, in lcls2.
+        PyDict_SetItem(dict,pySeg,obj);
+    } else {
+        // we're not at the lowest level, get the container object for this segment
+        PyObject* container;
+        if (!(container=PyDict_GetItem(dict,pySeg))) {
+            container = PyObject_CallObject(dgram->contInfo.pycontainertype, NULL);
+            PyDict_SetItem(dict,pySeg,container);
+            Py_DECREF(container); // transfer ownership to parent
+        }
+        // add the rest of the fields to the container.  note
+        // that we compute the offset in the original string,
+        // to exclude the detname that we have processed above,
+        // since strtok has messed with our copy of the original string.
+        addObjToPyObj(container,name+(next-key),obj,dgram->contInfo.pycontainertype);
     }
 }
 
@@ -308,7 +353,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
         snprintf(keyName,TMPSTRINGSIZE,"%s%s%s%s%s",
                  names.detName(),PyNameDelim,names.alg().name(),
                  PyNameDelim,name.name());
-        addObj(pyDgram, keyName, newobj);
+        addDataObj(pyDgram, keyName, newobj, names.segment());
     }
 }
 

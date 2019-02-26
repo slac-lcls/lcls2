@@ -36,7 +36,7 @@ class Test:
         # test that the values in the new file are correct
         xtc(fname)
 
-    def test_xtc(self):
+    def test_xtcdata(self):
         xtc('data.xtc2')
 
     def setup_input_files(self):

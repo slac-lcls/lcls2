@@ -58,24 +58,25 @@ class Test_JSON2XTC:
         dg = myrun.configs[0]
         assert dg.software.test1.detid == c.dict['detId']
         assert dg.software.test1.dettype == c.dict['detType']
-        for n in dir(dg.test1.raw):
+        segment = 0
+        for n in dir(dg.test1[segment].raw):
             if n[0] != '_':
                 if isinstance(c.get(n), np.ndarray):
-                    if not (dg.test1.raw.__getattribute__(n) == c.get(n)).all():
+                    if not (dg.test1[segment].raw.__getattribute__(n) == c.get(n)).all():
                         print("Failure on %s" % n)
-                        print(dg.test1.raw.__getattribute__(n))
+                        print(dg.test1[segment].raw.__getattribute__(n))
                         print(c.get(n))
                         assert False
                 elif isinstance(c.get(n), int):
-                    if not dg.test1.raw.__getattribute__(n) == c.get(n):
+                    if not dg.test1[segment].raw.__getattribute__(n) == c.get(n):
                         print("Failure on %s" % n)
-                        print(dg.test1.raw.__getattribute__(n))
+                        print(dg[0].test1[segment].raw.__getattribute__(n))
                         print(c.get(n))
                         assert False
                 else:
-                    if not abs(dg.test1.raw.__getattribute__(n) - c.get(n)) < 0.00001:
+                    if not abs(dg.test1[segment].raw.__getattribute__(n) - c.get(n)) < 0.00001:
                         print("Failure on %s" % n)
-                        print(dg.test1.raw.__getattribute__(n))
+                        print(dg.test1[segment].raw.__getattribute__(n))
                         print(c.get(n))
                         assert False
 
