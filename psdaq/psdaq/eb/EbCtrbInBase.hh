@@ -58,7 +58,7 @@ namespace Pds
     protected:
       const TebCtrbParams&   _prms;
     private:
-      std::vector<void*>     _regions;
+      void*                  _region;
     };
   };
 };

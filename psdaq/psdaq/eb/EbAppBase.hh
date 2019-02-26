@@ -60,7 +60,7 @@ namespace Pds {
       Pds::Histogram           _pendCallHist;
       TimePoint_t              _pendPrevTime;
     private:
-      std::vector<void*>       _regions;
+      void*                    _region;
       unsigned                 _id;
     };
   };

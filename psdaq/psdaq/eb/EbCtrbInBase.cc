@@ -26,7 +26,7 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
   _pendCallHist(12, 1.0),
   _pendPrevTime(std::chrono::steady_clock::now()),
   _prms        (prms),
-  _regions     ()
+  _region      (nullptr)
 {
 }
 
@@ -36,7 +36,6 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
 
   unsigned numEbs = std::bitset<64>(prms.builders).count();
   _links.resize(numEbs);
-  _regions.resize(numEbs);
 
   if ( (rc = _transport.initialize(prms.ifAddr, prms.port, numEbs)) )
   {
@@ -45,6 +44,8 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
     return rc;
   }
 
+  size_t size = 0;
+
   // Since each EB handles a specific batch, one region can be shared by all
   for (unsigned i = 0; i < numEbs; ++i)
   {
@@ -52,42 +53,48 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, tmo)) )
     {
-      fprintf(stderr, "%s: Error connecting to EbLfClient[%d]\n",
+      fprintf(stderr, "%s:\n  Error connecting to TEB %d\n",
               __PRETTY_FUNCTION__, i);
       return rc;
     }
+
     size_t regSize;
     if ( (rc = link->preparePender(prms.id, &regSize)) )
     {
-      fprintf(stderr, "%s: Failed to prepare link[%d]\n",
+      fprintf(stderr, "%s:\n  Failed to prepare link with TEB %d\n",
               __PRETTY_FUNCTION__, i);
       return rc;
     }
     _links[link->id()] = link;
 
-    _regions[i] = allocRegion(regSize);
-    if (!_regions[i])
+    if (!size)
     {
-      fprintf(stderr, "%s: No memory found for region %d of size %zd\n",
-              __PRETTY_FUNCTION__, i, regSize);
-      return ENOMEM;
+      size          = regSize;
+      _maxBatchSize = regSize / prms.maxBatches;
+
+      _region = allocRegion(regSize);
+      if (_region == nullptr)
+      {
+        fprintf(stderr, "%s:\n  No memory found for a Result MR of size %zd\n",
+                __PRETTY_FUNCTION__, regSize);
+        return ENOMEM;
+      }
     }
-    if ( (rc = link->setupMr(_regions[i], regSize)) )
+    else if (regSize != size)
     {
-      fprintf(stderr, "%s: Failed to set up MemoryRegion %d\n",
-              __PRETTY_FUNCTION__, i);
+      fprintf(stderr, "%s:\n  Error: result MR size (%zd) cannot differ between TEBs "
+              "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, link->id());
+      return -1;
+    }
+
+    if ( (rc = link->setupMr(_region, regSize)) )
+    {
+      char* region = static_cast<char*>(_region);
+      fprintf(stderr, "%s:\n  Failed to set up Result MR for TEB ID %d, %p:%p, size %zd\n",
+              __PRETTY_FUNCTION__, link->id(), region, region + regSize, regSize);
       return rc;
     }
     link->postCompRecv();
-
-    size_t maxBatchSize = regSize / prms.maxBatches;
-    if      (_maxBatchSize == 0)  _maxBatchSize = maxBatchSize;
-    else if (_maxBatchSize != maxBatchSize)
-    {
-      fprintf(stderr, "%s: MaxBatchSize (%zd) can't differ between EBs (%zd from Id %d)\n",
-              __PRETTY_FUNCTION__, _maxBatchSize, maxBatchSize, link->id());
-      return -1;
-    }
 
     printf("Inbound link with TEB ID %d connected\n", link->id());
   }
@@ -119,10 +126,9 @@ void EbCtrbInBase::shutdown()
     _transport.shutdown(*it);
   }
   _links.clear();
-  for (unsigned i = 0; i < _regions.size(); ++i)
-  {
-    if (_regions[i])  free(_regions[i]);
-  }
+
+  if (_region)  free(_region);
+  _region = nullptr;
 }
 
 int EbCtrbInBase::process(BatchManager& batMan)

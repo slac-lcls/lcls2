@@ -57,7 +57,7 @@ EbAppBase::EbAppBase(const EbParams& prms) :
   _pendTimeHist(12, double(1 <<  8)/1000.),
   _pendCallHist(12, 1.0),
   _pendPrevTime(std::chrono::steady_clock::now()),
-  _regions     (),
+  _region      (nullptr),
   _id          (-1)
 {
 }
@@ -69,7 +69,6 @@ int EbAppBase::connect(const EbParams& prms)
 
   _links.resize(nCtrbs);
   _maxBufSize.resize(nCtrbs);
-  _regions.resize(nCtrbs);
   _defContract = prms.contributors;
   _id          = prms.id;
 
@@ -80,40 +79,56 @@ int EbAppBase::connect(const EbParams& prms)
     return rc;
   }
 
+  std::vector<size_t> regSizes(nCtrbs);
+  size_t              sumSize = 0;
+
   for (unsigned i = 0; i < nCtrbs; ++i)
   {
     EbLfLink*      link;
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, tmo)) )
     {
-      fprintf(stderr, "%s: Error connecting to EbLfClient[%d]\n", __func__, i);
+      fprintf(stderr, "%s:\n  Error connecting to Ctrb %d\n",
+              __PRETTY_FUNCTION__, i);
       return rc;
     }
     size_t regSize;
     if ( (rc = link->preparePender(prms.id, &regSize)) )
     {
-      fprintf(stderr, "%s: Failed to prepare link[%d]\n", __func__, i);
+      fprintf(stderr, "%s:\n  Failed to prepare link with Ctrb %d\n",
+              __PRETTY_FUNCTION__, i);
       return rc;
     }
     _links[link->id()]      = link;
     _maxBufSize[link->id()] = regSize / prms.maxBuffers;
+    regSize                += _trSize;  // Ctrbs don't have a transition space
+    regSizes[link->id()]    = regSize;
+    sumSize                += regSize;
+  }
 
-    regSize    += _trSize;              // Ctrbs don't have a transition space
-    _regions[i] = allocRegion(regSize);
-    if (!_regions[i])
+  _region = allocRegion(sumSize);
+  if (!_region)
+  {
+    fprintf(stderr, "%s:\n  No memory found for Input MR of size %zd\n",
+            __PRETTY_FUNCTION__, sumSize);
+    return ENOMEM;
+  }
+
+  char* region = reinterpret_cast<char*>(_region);
+  for (unsigned id = 0; id < nCtrbs; ++id)
+  {
+    if ( (rc = _links[id]->setupMr(region, regSizes[id])) )
     {
-      fprintf(stderr, "%s: No memory found for region %d of size %zd\n",
-              __func__, i, regSize);
-      return ENOMEM;
-    }
-    if ( (rc = link->setupMr(_regions[i], regSize)) )
-    {
-      fprintf(stderr, "%s: Failed to set up MemoryRegion %d\n", __func__, i);
+      fprintf(stderr, "%s:\n  Failed to set up Input MR for Ctrb ID %d, "
+              "%p:%p, size %zd\n", __PRETTY_FUNCTION__,
+              id, region, region + regSizes[id], regSizes[id]);
       return rc;
     }
-    link->postCompRecv();
+    _links[id]->postCompRecv();
 
-    printf("Inbound link with Ctrb ID %d connected\n", link->id());
+    printf("Inbound link with Ctrb ID %d connected\n", id);
+
+    region += regSizes[id];
   }
 
   return 0;
@@ -145,13 +160,12 @@ void EbAppBase::shutdown()
   {
     _transport.shutdown(*it);
   }
-  for (unsigned i = 0; i < _regions.size(); ++i)
-  {
-    if (_regions[i])  free(_regions[i]);
-  }
+
+  if (_region)  free(_region);
+  _region = nullptr;
+
   _links.clear();
   _maxBufSize.clear();
-  _regions.clear();
   _defContract = 0;
   _id          = -1;
 }
