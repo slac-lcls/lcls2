@@ -6,12 +6,12 @@ import os
 
 class EventManager(object):
 
-    def __init__(self, smd_configs, dm, filter_fn=0, fuzzy_es=None):
+    def __init__(self, smd_configs, dm, filter_fn=0, epicsStore=None):
         self.smd_configs = smd_configs
         self.dm = dm
         self.n_smd_files = len(self.smd_configs)
         self.filter_fn = filter_fn
-        self.fuzzy_es = fuzzy_es
+        self.epicsStore = epicsStore
 
     def events(self, view):
         pf = PacketFooter(view=view)
@@ -37,8 +37,8 @@ class EventManager(object):
                     # Only get big data one event at a time when filter is off
                     if self.filter_fn:
                         bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
-                        if self.fuzzy_es:
-                            fuzzy_evt = self.fuzzy_es.checkout_by_events([bd_evt])[0]
+                        if self.epicsStore:
+                            epics_evt = self.epicsStore.checkout_by_events([bd_evt])[0]
                         yield bd_evt
 
         if self.filter_fn == 0 and event_timestamps[0]:
@@ -60,7 +60,7 @@ class EventManager(object):
             # Build each event from these views
             dgrams = [None] * self.n_smd_files
             offsets = [0] * self.n_smd_files
-            fuzzy_events = self.fuzzy_es.checkout_by_timestamps(event_timestamps)
+            epics_events = self.epicsStore.checkout_by_timestamps(event_timestamps)
             for i in range(pf.n_packets):
                 for j in range(self.n_smd_files):
                     if offsets[j] >= view_sizes[j]:
@@ -72,7 +72,7 @@ class EventManager(object):
                         offsets[j] += size
                 
                 bd_evt = Event(dgrams)
-                if self.fuzzy_es:
-                    fuzzy_evt = fuzzy_events[i]
+                if self.epicsStore:
+                    epics_evt = epics_events[i]
                 yield bd_evt
 

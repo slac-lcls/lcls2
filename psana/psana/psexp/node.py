@@ -117,7 +117,7 @@ class SmdNode(object):
 class BigDataNode(object):
     def __init__(self, run):
         self.evt_man = EventManager(run.smd_configs, run.dm, \
-                filter_fn=run.filter_callback, fuzzy_es=run.fuzzy_es)
+                filter_fn=run.filter_callback, epicsStore=run.epicsStore)
 
     def run_mpi(self):
         while True:
