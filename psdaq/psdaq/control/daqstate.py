@@ -77,8 +77,7 @@ def main():
         worker.start()
 
         # in main thread, just wait for stopper event
-        while not stopper.is_set():
-            time.sleep(0.25)
+        stopper.wait()
 
         # shutting down: join worker thread
         worker.join()
