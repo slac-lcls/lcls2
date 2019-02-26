@@ -32,5 +32,5 @@ procmgr_config = [
  { host: 'daq-tst-dev02', id:'dti_proxy', flags:'sp', conda:conda_rel, env:epics_env, cmd:'dti_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
  # trigger event builder
  { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host},
- { host: 'drp-tst-dev008', id:'drp1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -o /tmp -C '+collect_host}
+ { host: 'drp-tst-dev008', id:'drp1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_1 -o /tmp -C '+collect_host}
 ]
