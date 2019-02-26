@@ -17,7 +17,7 @@ class DebugIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    DebugIter(Xtc* xtc) : XtcIterator(xtc), _ni(NULL)
+    DebugIter() : XtcIterator()
     {
     }
 
@@ -150,7 +150,7 @@ public:
         }
         case (TypeId::Names): {
             Names& names = *(Names*)xtc;
-            _ni = new NameIndex(names);
+            _namesLookup[names.namesId()] = NameIndex(names);
             Alg& alg = names.alg();
 	    printf("*** DetName: %s, DetType: %s, Alg: %s, Version: 0x%6.6x, Names:\n",
                    names.detName(), names.detType(),
@@ -165,7 +165,12 @@ public:
         }
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
-            DescData descdata(shapesdata, *_ni);
+            // lookup the index of the names we are supposed to use
+            NamesId namesId = shapesdata.namesId();
+            // protect against the fact that this xtc
+            // may not have a _namesLookup
+            if (_namesLookup.count(namesId)<0) break;
+            DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
             Shapes& shapes = shapesdata.shapes();
             Data& data = shapesdata.data();
@@ -176,7 +181,6 @@ public:
                 Name& name = names.get(i);
                 get_value(i, name, descdata);
             }
-            iterate(xtc);
             break;
         }
         default:
@@ -186,7 +190,7 @@ public:
     }
     
 private:
-    NameIndex *_ni;
+    NamesLookup _namesLookup;
 };
 
 
@@ -232,16 +236,16 @@ int main(int argc, char* argv[])
     XtcFileIterator iter(fd, 0x4000000);
     Dgram* dg;
     unsigned nevent=0;
+    DebugIter dbgiter;
     while ((dg = iter.next())) {
         if (nevent>=neventreq) break;
         nevent++;
-        printf("%s transition: time %d.%09d, pulseId 0x%lux, env 0x%lux, "
+        printf("%s transition: time %d.%09d, pulseId 0x%lu, env 0x%lu, "
                "payloadSize %d extent %d\n",
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
                dg->env, dg->xtc.sizeofPayload(),dg->xtc.extent);
-        DebugIter iter(&(dg->xtc));
-        iter.iterate();
+        dbgiter.iterate(&(dg->xtc));
     }
 
     ::close(fd);
