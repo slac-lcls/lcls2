@@ -17,7 +17,7 @@ def myroutine(fname):
   # 4 for arrays, 1 for dgram, 1 for getref, 1 for dgrambytes_event1
   assert getref(dgrambytes_event1)==7
   # event0 dgram is deleted, so only 1 for dgrambytes_event0 and 1 for getref
-  #assert getref(dgrambytes_event0)==2
+  assert getref(dgrambytes_event0)==2
 
   return dgram_event1, ds._configs[0]
 
@@ -32,7 +32,8 @@ class DgramTester:
       if attrname.startswith('_'): continue
       # detector name is a dict with segment number as the key
       # test the values of the first segment
-      if type(attr) is dict: attr=attr[0]
+      segment = 0
+      if type(attr) is dict: attr=attr[segment]
       if hasattr(attr,'__dict__'):
         self.depth+=1
         self.iter(attr)
@@ -41,11 +42,9 @@ class DgramTester:
         if type(attr) is np.ndarray:
           assert np.array_equal(attr,self.testvals[attrname])
           self.ntested+=1
-          print('*** test',attrname)
         elif type(attr) is not str and type(attr) is not tuple:
           assert attr==self.testvals[attrname]
           self.ntested+=1
-          print('*** test',attrname)
     return self.ntested
 
 def xtc(fname):

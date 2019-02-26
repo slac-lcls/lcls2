@@ -28,7 +28,8 @@ class EventManager(object):
                 if not evt._has_offset:
                     yield evt # no offset info in the smalldata event
                 else:
-                    ofsz = np.asarray([[d.info.offsetAlg.intOffset, d.info.offsetAlg.intDgramSize] \
+                    segment = 0 # "d.info" "detectors" have only one segment
+                    ofsz = np.asarray([[d.info[segment].offsetAlg.intOffset, d.info[segment].offsetAlg.intDgramSize] \
                             for d in evt])
                     ofsz_batch[i,:,:] = ofsz
                     event_timestamps[i] = evt._timestamp

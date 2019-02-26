@@ -98,15 +98,18 @@ static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
         dict = PyDict_New();
         int fail = PyObject_SetAttrString(parent, key, dict);
         if (fail) printf("Dgram: failed to set container attribute\n");
-        Py_DECREF(dict); // transfer ownership to parent
     } else {
         dict = PyObject_GetAttrString(parent, key);
     }
+    // either way we got a new reference to the dict.
+    // keep the dgram parent as the owner.
+    Py_DECREF(dict); // transfer ownership to parent
 
     bool last = (next == NULL);
     PyObject* pySeg = Py_BuildValue("i",segment);
     if (last) {
-        // we're at the lowest level, set the value to be the data object
+        // we're at the lowest level, set the value to be the data object.
+        // this case should happen rarely, if ever, in lcls2.
         PyDict_SetItem(dict,pySeg,obj);
     } else {
         // we're not at the lowest level, get the container object for this segment
@@ -116,9 +119,11 @@ static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
             PyDict_SetItem(dict,pySeg,container);
             Py_DECREF(container); // transfer ownership to parent
         }
-        // add the rest of the fields
-        char* next = ::strtok(NULL, PyNameDelim);
-        addObjToPyObj(container,next,obj,dgram->contInfo.pycontainertype);
+        // add the rest of the fields to the container.  note
+        // that we compute the offset in the original string,
+        // to exclude the detname that we have processed above,
+        // since strtok has messed with our copy of the original string.
+        addObjToPyObj(container,name+(next-key),obj,dgram->contInfo.pycontainertype);
     }
 }
 
