@@ -85,6 +85,12 @@ static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
     addObjToPyObj((PyObject*) dgram, name, obj, dgram->contInfo.pycontainertype);
 }
 
+// this differs from addObj() because it creates a top level dict
+// for the detname, with segment (an integer representing the portion
+// of the detector).  e.g. dgram.xppcspad[segment], then the usual
+// attributes (e.g. "raw", "fex") live under that.  it's possible
+// that we should eliminate addObj() to make everything uniform,
+// but it's not clear to me at the moment - cpo.
 static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
                        unsigned segment) {
     char namecopy[TMPSTRINGSIZE];
