@@ -21,7 +21,7 @@ def filter_fn(evt):
 xtc_dir = os.path.join(os.getcwd(),'.tmp')
 ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
 def event_fn(event, det):
-    assert det.raw.raw(event).shape == (18,)
+    assert det.raw.raw(event).shape == (3,6,)
 
 for run in ds.runs():
     det = run.Detector('xppcspad')

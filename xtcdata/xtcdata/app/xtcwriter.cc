@@ -76,7 +76,7 @@ public:
   PadDef()
    {
      Alg segmentAlg("cspadseg",2,3,42);
-     NameVec.push_back({"arrayRaw", segmentAlg});
+     NameVec.push_back({"arrayRaw", Name::UINT16, 2, segmentAlg});
    }
 } PadDef;
 
@@ -295,7 +295,7 @@ public:
             }
         }
     }
-    uint8_t array[18];
+    uint16_t array[18];
 };
 
 void pgpExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
@@ -352,7 +352,7 @@ void padExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
     // it is required to call this before set_array_shape
     pad.set_data_length(sizeof(PadData));
 
-    unsigned shape[] = { 18 };
+    unsigned shape[MaxRank] = {3,6};
     pad.set_array_shape(PadDef::arrayRaw, shape);
 }
 

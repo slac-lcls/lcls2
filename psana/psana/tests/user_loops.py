@@ -32,7 +32,7 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     #beginRunCode
     for evt in run.events():
-        assert det.raw.raw(evt).shape == (18,)
+        assert det.raw.raw(evt).shape == (3,6,)
     #endRunCode
 #endJobCode
 
@@ -41,7 +41,7 @@ ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir))
 for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
-        assert det.raw.raw(evt).shape == (18,)
+        assert det.raw.raw(evt).shape == (3,6,)
 
 # Usecase 2: one iterator 
 for evt in ds.events():
