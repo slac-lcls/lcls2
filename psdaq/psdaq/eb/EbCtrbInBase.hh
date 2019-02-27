@@ -1,7 +1,6 @@
 #ifndef Pds_Eb_EbCtrbInBase_hh
 #define Pds_Eb_EbCtrbInBase_hh
 
-#include "psdaq/service/Histogram.hh"
 #include "psdaq/eb/EbLfServer.hh"
 
 #include <chrono>
@@ -42,19 +41,10 @@ namespace Pds
       virtual void process(const XtcData::Dgram* result, const void* input) = 0;
     private:
       void    _initialize(const char* who);
-      void    _updateHists(TimePoint_t               t0,
-                           TimePoint_t               t1,
-                           const XtcData::TimeStamp& stamp);
     private:
       EbLfServer             _transport;
       std::vector<EbLfLink*> _links;
       size_t                 _maxBatchSize;
-    private:
-      Histogram              _ebCntHist;
-      Histogram              _rttHist;
-      Histogram              _pendTimeHist;
-      Histogram              _pendCallHist;
-      TimePoint_t            _pendPrevTime;
     protected:
       const TebCtrbParams&   _prms;
     private:

@@ -20,11 +20,6 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
   _transport   (prms.verbose),
   _links       (),
   _maxBatchSize(0),
-  _ebCntHist   ( 6, 1.0),               // Up to 64 possible EBs
-  _rttHist     (12, 1.0),
-  _pendTimeHist(12, 1.0),
-  _pendCallHist(12, 1.0),
-  _pendPrevTime(std::chrono::steady_clock::now()),
   _prms        (prms),
   _region      (nullptr)
 {
@@ -104,23 +99,6 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
 
 void EbCtrbInBase::shutdown()
 {
-  char fs[80];
-  sprintf(fs, "ebCntHist_%d.hist", _prms.id);
-  printf("Dumped EB count histogram to ./%s\n", fs);
-  _ebCntHist.dump(fs);
-
-  sprintf(fs, "rtt_%d.hist", _prms.id);
-  printf("Dumped RTT histogram to ./%s\n", fs);
-  _rttHist.dump(fs);
-
-  sprintf(fs, "pendTime_%d.hist", _prms.id);
-  printf("Dumped pend time histogram to ./%s\n", fs);
-  _pendTimeHist.dump(fs);
-
-  sprintf(fs, "pendCallRate_%d.hist", _prms.id);
-  printf("Dumped pend call rate histogram to ./%s\n", fs);
-  _pendCallHist.dump(fs);
-
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     _transport.shutdown(*it);
@@ -158,10 +136,6 @@ int EbCtrbInBase::process(BatchManager& batMan)
            cnt++, idx, bdg, ctl, pid, sz, lnk->id());
   }
 
-  // Makes sense only when t1 and bdg->seq.stamp() have a common clock
-  _updateHists(t0, t1, bdg->seq.stamp());
-  _ebCntHist.bump(lnk->id());
-
   Dgram const* result = bdg;
   const Batch* inputs = batMan.batch(idx);
   //printf("        data %08lx           idx %4d rPid %014lx iPid %014lx               id %2d svc %d\n",
@@ -180,22 +154,4 @@ int EbCtrbInBase::process(BatchManager& batMan)
   batMan.release(inputs);
 
   return 0;
-}
-
-void EbCtrbInBase::_updateHists(TimePoint_t      t0,
-                                TimePoint_t      t1,
-                                const TimeStamp& stamp)
-{
-  auto        d  = std::chrono::seconds     { stamp.seconds()     } +
-                   std::chrono::nanoseconds { stamp.nanoseconds() };
-  TimePoint_t tp { std::chrono::duration_cast<Duration_t>(d) };
-  int64_t     dT ( std::chrono::duration_cast<us_t>(t1 - tp).count() );
-  _rttHist.bump(dT);
-  //printf("In  Batch %014lx RTT  = %ld S, %ld ns\n", bdg->seq.pulseId().value(), dS, dN);
-
-  dT = std::chrono::duration_cast<us_t>(t1 - t0).count();
-  //if (dT > 4095)  printf("pendTime = %ld us\n", dT);
-  _pendTimeHist.bump(dT);
-  _pendCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _pendPrevTime).count());
-  _pendPrevTime = t0;
 }

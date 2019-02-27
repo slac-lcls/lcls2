@@ -7,7 +7,6 @@
 
 #include "utilities.hh"
 
-#include "psdaq/service/Histogram.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #ifndef _GNU_SOURCE
@@ -52,11 +51,6 @@ EbAppBase::EbAppBase(const EbParams& prms) :
   _maxBufSize  (),
   //_dummy       (Level::Fragment),
   _verbose     (prms.verbose),
-  _ctrbCntHist (6, 1.0),                // Up to 64 Ctrbs
-  _arrTimeHist (12, double(1 << 16)/1000.),
-  _pendTimeHist(12, double(1 <<  8)/1000.),
-  _pendCallHist(12, 1.0),
-  _pendPrevTime(std::chrono::steady_clock::now()),
   _region      (nullptr),
   _id          (-1)
 {
@@ -139,23 +133,6 @@ void EbAppBase::shutdown()
   EventBuilder::dump(0);
   EventBuilder::clear();
 
-  char fs[80];
-  sprintf(fs, "ctrbCntHist_%d.hist", _id);
-  printf("Dumped contributor count histogram to ./%s\n", fs);
-  _ctrbCntHist.dump(fs);
-
-  sprintf(fs, "arrTime_%d.hist", _id);
-  printf("Dumped arrival time histogram to ./%s\n", fs);
-  _arrTimeHist.dump(fs);
-
-  sprintf(fs, "pendTime_%d.hist", _id);
-  printf("Dumped pend time histogram to ./%s\n", fs);
-  _pendTimeHist.dump(fs);
-
-  sprintf(fs, "pendCallRate_%d.hist", _id);
-  printf("Dumped pend call rate histogram to ./%s\n", fs);
-  _pendCallHist.dump(fs);
-
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     _transport.shutdown(*it);
@@ -203,29 +180,9 @@ int EbAppBase::process()
            cnt++, knd, idx, idg, ctl, pid, lnk->id(), data, idg->xtc.extent);
   }
 
-  _updateHists(t0, t1, idg->seq.stamp());
-  _ctrbCntHist.bump(lnk->id());
-
   EventBuilder::process(idg, data);
 
   return 0;
-}
-
-void EbAppBase::_updateHists(TimePoint_t      t0,
-                             TimePoint_t      t1,
-                             const TimeStamp& stamp)
-{
-  auto        d  = std::chrono::seconds     { stamp.seconds()     } +
-                   std::chrono::nanoseconds { stamp.nanoseconds() };
-  TimePoint_t tp { std::chrono::duration_cast<Duration_t>(d) };
-  int64_t     dT ( std::chrono::duration_cast<ns_t>(t1 - tp).count() );
-  _arrTimeHist.bump(dT >> 16);
-
-  dT = std::chrono::duration_cast<us_t>(t1 - t0).count();
-  //if (dT > 4095)  printf("pendTime = %ld ns\n", dT);
-  _pendTimeHist.bump(dT);
-  _pendCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _pendPrevTime).count());
-  _pendPrevTime = t0;
 }
 
 uint64_t EbAppBase::contract(const Dgram* ctrb) const

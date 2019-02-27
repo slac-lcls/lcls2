@@ -31,11 +31,6 @@ TebContributor::TebContributor(const TebCtrbParams& prms) :
   _batchBase   (roundUpSize(TransitionId::NumberOf * prms.maxInputSize)),
   _batchCount  (0),
   _inFlightOcc (0),
-  _inFlightHist(__builtin_ctz(prms.maxBatches), 1.0),
-  _depTimeHist (12, double(1 << 16)/1000.),
-  _postTimeHist(12, 1.0),
-  _postCallHist(12, 1.0),
-  _postPrevTime(std::chrono::steady_clock::now()),
   _running     (true),
   _rcvrThread  (nullptr)
 {
@@ -108,23 +103,6 @@ void TebContributor::shutdown()
 
   BatchManager::dump();
 
-  char fs[80];
-  sprintf(fs, "inFlightOcc_%d.hist", _id);
-  printf("Dumped in-flight occupancy histogram to ./%s\n", fs);
-  _inFlightHist.dump(fs);
-
-  sprintf(fs, "depTime_%d.hist", _id);
-  printf("Dumped departure time histogram to ./%s\n", fs);
-  _depTimeHist.dump(fs);
-
-  sprintf(fs, "postTime_%d.hist", _id);
-  printf("Dumped post time histogram to ./%s\n", fs);
-  _postTimeHist.dump(fs);
-
-  sprintf(fs, "postCallRate_%d.hist", _id);
-  printf("Dumped post call rate histogram to ./%s\n", fs);
-  _postCallHist.dump(fs);
-
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     _transport.shutdown(*it);
@@ -191,11 +169,7 @@ void TebContributor::post(const Batch* batch)
   auto t1(std::chrono::steady_clock::now());
 
   ++_batchCount;
-
-  _updateHists(t0, t1, static_cast<const Dgram*>(buffer)->seq.stamp());
-
   _inFlightOcc += 1;
-  _inFlightHist.bump(_inFlightOcc);
 }
 
 void TebContributor::post(const Dgram* nonEvent)
@@ -228,21 +202,4 @@ void TebContributor::post(const Dgram* nonEvent)
       link->post(nonEvent, extent, offset, data); // Not a batch
     }
   }
-}
-
-void TebContributor::_updateHists(TimePoint_t      t0,
-                                  TimePoint_t      t1,
-                                  const TimeStamp& stamp)
-{
-  auto        d  = std::chrono::seconds     { stamp.seconds()     } +
-                   std::chrono::nanoseconds { stamp.nanoseconds() };
-  TimePoint_t tp { std::chrono::duration_cast<Duration_t>(d) };
-  int64_t     dT ( std::chrono::duration_cast<ns_t>(t0 - tp).count() );
-  _depTimeHist.bump(dT >> 16);
-
-  dT = std::chrono::duration_cast<us_t>(t1 - t0).count();
-  //if (dT > 4095)  printf("postTime = %ld us\n", dT);
-  _postTimeHist.bump(dT);
-  _postCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _postPrevTime).count());
-  _postPrevTime = t0;
 }

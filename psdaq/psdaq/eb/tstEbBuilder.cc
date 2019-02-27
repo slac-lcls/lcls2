@@ -9,7 +9,6 @@
 #include "psdaq/eb/utilities.hh"
 #include "psdaq/eb/StatsMonitor.hh"
 
-#include "psdaq/service/Histogram.hh"
 #include "psdaq/service/Collection.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
@@ -116,10 +115,6 @@ namespace Pds {
     public:                         // Ultimately loaded from a shareable
       uint16_t handle(const Dgram* ctrb, uint32_t* result, size_t sizeofPayload);
     private:
-      void    _updateHists(TimePoint_t      t0,
-                           TimePoint_t      t1,
-                           const TimeStamp& stamp);
-    private:
       std::vector<EbLfLink*> _l3Links;
       EbLfServer             _mrqTransport;
       std::vector<EbLfLink*> _mrqLinks;
@@ -131,11 +126,6 @@ namespace Pds {
     private:
       uint64_t               _eventCount;
       uint64_t               _batchCount;
-    private:
-      Histogram              _depTimeHist;
-      Histogram              _postTimeHist;
-      Histogram              _postCallHist;
-      TimePoint_t            _postPrevTime;
     private:
       const EbParams&        _prms;
       EbLfClient             _l3Transport;
@@ -157,10 +147,6 @@ Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
   _dstList     (0),
   _eventCount  (0),
   _batchCount  (0),
-  _depTimeHist (12, double(1 << 16)/1000.),
-  _postTimeHist(12, 1.0),
-  _postCallHist(12, 1.0),
-  _postPrevTime(std::chrono::steady_clock::now()),
   _prms        (prms),
   _l3Transport (prms.verbose)
 {
@@ -285,20 +271,6 @@ void Teb::run()
   EbAppBase::shutdown();
 
   _batchManager.dump();
-
-  char fs[80];
-  sprintf(fs, "depTime_%d.hist", _id);
-  printf("Dumped departure time histogram to ./%s\n", fs);
-  _depTimeHist.dump(fs);
-
-  sprintf(fs, "postTime_%d.hist", _id);
-  printf("Dumped post time histogram to ./%s\n", fs);
-  _postTimeHist.dump(fs);
-
-  sprintf(fs, "postCallRate_%d.hist", _id);
-  printf("Dumped post call rate histogram to ./%s\n", fs);
-  _postCallHist.dump(fs);
-
   _batchManager.shutdown();
 }
 
@@ -440,8 +412,6 @@ void Teb::post(const Batch* batch)
 
   ++_batchCount;
 
-  _updateHists(t0, t1, batch->id());
-
   // Revisit: The following deallocation constitutes a race with the posts to
   // the transport above as the batch's memory cannot be allowed to be reused
   // for a subsequent batch before the transmit completes.  Waiting for
@@ -455,24 +425,6 @@ void Teb::post(const Batch* batch)
 void Teb::post(const Dgram* nonEvent)
 {
   assert(false);                        // Unused virtual method
-}
-
-void Teb::_updateHists(TimePoint_t      t0,
-                          TimePoint_t      t1,
-                          const TimeStamp& stamp)
-{
-  auto        d  = std::chrono::seconds     { stamp.seconds()     } +
-                   std::chrono::nanoseconds { stamp.nanoseconds() };
-  TimePoint_t tp { std::chrono::duration_cast<Duration_t>(d) };
-  int64_t     dT ( std::chrono::duration_cast<ns_t>(t0 - tp).count() );
-
-  _depTimeHist.bump(dT >> 16);
-
-  dT = std::chrono::duration_cast<us_t>(t1 - t0).count();
-  //if (dT > 4095)  printf("postTime = %ld us\n", dT);
-  _postTimeHist.bump(dT);
-  _postCallHist.bump(std::chrono::duration_cast<us_t>(t0 - _postPrevTime).count());
-  _postPrevTime = t0;
 }
 
 

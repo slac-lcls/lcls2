@@ -4,7 +4,6 @@
 #include "eb.hh"
 #include "EventBuilder.hh"
 #include "EbLfServer.hh"
-#include "psdaq/service/Histogram.hh"
 
 #include <stdint.h>
 #include <cstddef>
@@ -39,10 +38,6 @@ namespace Pds {
     public:                          // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
       virtual uint64_t contract(const XtcData::Dgram* contrib) const;
-    private:
-      void            _updateHists(TimePoint_t               t0,
-                                   TimePoint_t               t1,
-                                   const XtcData::TimeStamp& stamp);
     private:                           // Arranged in order of access frequency
       uint64_t                 _defContract;
       std::array<uint64_t, 16> _contract;
@@ -53,12 +48,6 @@ namespace Pds {
       std::vector<size_t>      _maxBufSize;
       //EbDummyTC                _dummy;   // Template for TC of dummy contributions  // Revisit: ???
       unsigned                 _verbose;
-    private:
-      Pds::Histogram           _ctrbCntHist;
-      Pds::Histogram           _arrTimeHist;
-      Pds::Histogram           _pendTimeHist;
-      Pds::Histogram           _pendCallHist;
-      TimePoint_t              _pendPrevTime;
     private:
       void*                    _region;
       unsigned                 _id;

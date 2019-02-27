@@ -6,8 +6,6 @@
 #include "BatchManager.hh"
 #include "EbLfClient.hh"
 
-#include "psdaq/service/Histogram.hh"
-
 #include <cstdint>
 #include <vector>
 #include <chrono>
@@ -55,9 +53,6 @@ namespace Pds {
       unsigned        inFlightCnt()  const { return _inFlightOcc; }
     private:
       void    _receiver(EbCtrbInBase&);
-      void    _updateHists(TimePoint_t               t0,
-                           TimePoint_t               t1,
-                           const XtcData::TimeStamp& stamp);
     protected:
       const TebCtrbParams&   _prms;
     private:
@@ -68,13 +63,7 @@ namespace Pds {
       size_t                 _batchBase;
     private:
       uint64_t               _batchCount;
-    private:
       std::atomic<unsigned>  _inFlightOcc;
-      Histogram              _inFlightHist;
-      Histogram              _depTimeHist;
-      Histogram              _postTimeHist;
-      Histogram              _postCallHist;
-      TimePoint_t            _postPrevTime;
     private:
       std::atomic<bool>      _running;
       std::thread*           _rcvrThread;
