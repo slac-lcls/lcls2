@@ -40,7 +40,7 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
         sendbuf += 1
-        assert det.raw.raw(evt).shape == (18,)
+        assert det.raw.raw(evt).shape == (3,6,)
         assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
@@ -59,7 +59,7 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
         sendbuf += 1
-        assert det.raw.raw(evt).shape == (18,)
+        assert det.raw.raw(evt).shape == (3,6,)
         assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
@@ -74,7 +74,7 @@ if rank == 0:
 
 for evt in ds.events():
     sendbuf += 1
-    assert det.raw.raw(evt).shape == (18,)
+    assert det.raw.raw(evt).shape == (3,6,)
     assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)

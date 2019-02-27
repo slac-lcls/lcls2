@@ -13,7 +13,7 @@ def global_except_hook(exctype, value, traceback):
     import mpi4py.MPI
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
-#sys.excepthook = global_except_hook
+sys.excepthook = global_except_hook
 
 def filter_fn(evt):
     return True
