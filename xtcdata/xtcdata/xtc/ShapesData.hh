@@ -55,7 +55,8 @@ private:
 
 class Name {
 public:
-  enum DataType { UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE};
+    // if you add types here, you must update the corresponding sizes in xtcdata/src/ShapesData.cc
+    enum DataType { UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, CHARSTR};
 
     static int get_element_size(DataType type);
 

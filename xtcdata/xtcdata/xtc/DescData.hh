@@ -52,17 +52,8 @@ public:
             }
         }
     }
-
-
-
-    // all fundamental types
-    // simplify get_value
-    // split into templated function based on the return type
-
-
-    // add get_array here
-
     
+
     static void checkType(uint8_t val, Name& name) {
 	assert(Name::UINT8==name.type());
     }
@@ -92,6 +83,9 @@ public:
     }
     static void checkType(double val, Name& name) {
 	assert(Name::DOUBLE==name.type());
+    }
+    static void checkType(char val, Name& name) {
+	assert(Name::CHARSTR==name.type());
     }
 
 

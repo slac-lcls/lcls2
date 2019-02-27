@@ -34,7 +34,7 @@ class Test:
         pyxtc.write_events(fname, cydgram)
 
         # test that the values in the new file are correct
-        xtc(fname, nsegments=1)
+        xtc(fname, nsegments=1, cydgram=True)
 
     def test_xtcdata(self):
         xtc('data.xtc2', nsegments=2)

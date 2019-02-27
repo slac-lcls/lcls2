@@ -328,6 +328,7 @@ class CyDgram():
 
         num_arrays = 0
         for name, array in event_dict.items():
+            if name == 'charStrFex': continue  # hack to avoid supporting CHARSTR type
             try:
                 array_alg = bool(type(array[1]) == type(alg))
             except (IndexError,TypeError):

@@ -29,7 +29,8 @@ public:
     {
       floatFex,
       arrayFex,
-      intFex
+      intFex,
+      charStrFex
     };
 
   FexDef()
@@ -37,6 +38,7 @@ public:
        NameVec.push_back({"floatFex",Name::DOUBLE});
        NameVec.push_back({"arrayFex",Name::FLOAT,2});
        NameVec.push_back({"intFex",Name::INT64});
+       NameVec.push_back({"charStrFex",Name::CHARSTR,1});
    }
 } FexDef;
 
@@ -329,6 +331,11 @@ void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
     };
     
     fex.set_value(FexDef::intFex, (int64_t) 42);
+
+    const unsigned strlen = 32;
+    unsigned charStrShape[MaxRank] = {strlen};
+    Array<char> charArray = fex.allocate<char>(FexDef::charStrFex,charStrShape);
+    strncpy(charArray.data(),"Test String",strlen);
 }
    
 

@@ -224,7 +224,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
         const char* tempName = name.name();
         PyObject* newobj=0;
 
-        if (name.rank() == 0) {
+        if (name.rank() == 0 || name.type()==Name::CHARSTR) {
             switch (name.type()) {
             case Name::UINT8: {
 	            const auto tempVal = descdata.get_value<uint8_t>(tempName);
@@ -276,6 +276,14 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             case Name::DOUBLE: {
                 const auto tempVal = descdata.get_value<double>(tempName);
                 newobj = Py_BuildValue("d", tempVal);
+                break;
+            }
+            case Name::CHARSTR: {
+                assert(name.rank()==1); // strings are 1 dimensional
+                auto arr = descdata.get_array<char>(i);
+                uint32_t* shape = descdata.shape(name);
+                assert(strlen(arr.data())<shape(0));
+                newobj = Py_BuildValue("s", arr.data());
                 break;
             }
             }
@@ -344,6 +352,10 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 auto arr = descdata.get_array<double>(i);
                 newobj = PyArray_SimpleNewFromData(name.rank(), dims,
                                                    NPY_DOUBLE, arr.data());
+                break;
+            }
+            case Name::CHARSTR: {
+                assert(0); // should never happen
                 break;
             }
             }

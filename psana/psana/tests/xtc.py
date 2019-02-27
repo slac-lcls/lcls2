@@ -41,15 +41,20 @@ class DgramTester:
         self.iter(attr)
         self.depth-=1
       else:
-        if type(attr) is np.ndarray:
+        if type(attr) is str:
+          # ignore software/dettype/detid
+          if attrname=='charStrFex':
+            assert attr==self.testvals[attrname]
+            self.ntested+=1
+        elif type(attr) is np.ndarray:
           assert np.array_equal(attr,self.testvals[attrname])
           self.ntested+=1
-        elif type(attr) is not str and type(attr) is not tuple:
+        elif type(attr) is not tuple:
           assert attr==self.testvals[attrname]
           self.ntested+=1
     return self.ntested
 
-def xtc(fname, nsegments):
+def xtc(fname, nsegments, cydgram=False):
 
   import sys, os
   sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
@@ -58,7 +63,13 @@ def xtc(fname, nsegments):
   dgram, config = myroutine(fname,nsegments)
   configtester = DgramTester(testvals)
   ntested = configtester.iter(config)
-  assert(ntested==len(testvals)*nsegments)
+  if cydgram:
+    assert(ntested==(len(testvals)-1)*nsegments) # hack, since cydgram doesn't support CHARSTR
+  else:
+    assert(ntested==(len(testvals))*nsegments)
   dgtester = DgramTester(testvals)
   ntested = dgtester.iter(dgram)
-  assert(ntested==len(testvals)*nsegments)
+  if cydgram:
+    assert(ntested==(len(testvals)-1)*nsegments) # hack, since cydgram doesn't support CHARSTR
+  else:
+    assert(ntested==(len(testvals))*nsegments)

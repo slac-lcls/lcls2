@@ -10,5 +10,6 @@ testvals = {
     'arrayFex':np.arange(142,148,dtype=np.float32).reshape([2,3]),
     'intFex':42,
     'floatFex':41.0,
+    'charStrFex':"Test String",
     'arrayRaw':padarray
 }
