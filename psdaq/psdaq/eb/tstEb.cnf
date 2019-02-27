@@ -29,7 +29,7 @@ if headless:
 else:
   node_flags = 'sxp'
 
-skipNodes = [12, 10]
+skipNodes = [6, 12]
 nodes     = []
 nNodes    = 24
 for i in range(nNodes, 0, -1):

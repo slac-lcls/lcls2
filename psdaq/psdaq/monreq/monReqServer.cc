@@ -539,14 +539,14 @@ void usage(char* progname)
 {
   printf("Usage: %s -C <collection server>"
                    "-p <partition> "
-                   "[-P <partition name>] "
+                   "-P <partition name> "
                    "-n <numb shm buffers> "
                    "-s <shm buffer size> "
                   "[-q <# event queues>] "
                   "[-t <tag name>] "
                   "[-d] "
                   "[-A <interface addr>] "
-                  "[-Z <Run-time mon host>] "
+                  "-Z <Run-time mon host> "
                   "[-R <Run-time mon port>] "
                   "[-1 <core to pin App thread to>]"
                   "[-2 <core to pin other threads to>]" // Revisit: None?
@@ -560,9 +560,9 @@ int main(int argc, char** argv)
 {
   const unsigned NO_PARTITION    = unsigned(-1u);
   const char*    tag             = 0;
-  std::string    partitionTag     (PARTITION);
-  std::string    collSrv          (COLL_HOST);
-  const char*    rtMonHost       = RTMON_HOST;
+  std::string    partitionTag;
+  std::string    collSrv;
+  const char*    rtMonHost;
   unsigned       rtMonPort       = RTMON_PORT_BASE;
   unsigned       rtMonPeriod     = rtMon_period;
   unsigned       rtMonVerbose    = 0;
@@ -633,10 +633,35 @@ int main(int argc, char** argv)
     }
   }
 
-  if (!prms.maxBuffers || !sizeofEvBuffers)
+  if (!prms.maxBuffers)
   {
-    fprintf(stderr, "Missing parameters!\n");
-    usage(argv[0]);
+    fprintf(stderr, "Missing '%s' parameter\n", "-n <max buffers>");
+    return 1;
+  }
+  if (!sizeofEvBuffers)
+  {
+    fprintf(stderr, "Missing '%s' parameter\n", "-s <size of event buffers>");
+    return 1;
+  }
+
+  if (prms.partition == NO_PARTITION)
+  {
+    fprintf(stderr, "Missing '%s' parameter\n", "-p <Partition number>");
+    return 1;
+  }
+  if (partitionTag.empty())
+  {
+    fprintf(stderr, "Missing '%s' parameter\n", "-P <Partition name>");
+    return 1;
+  }
+  if (collSrv.empty())
+  {
+    fprintf(stderr, "Missing '%s' parameter\n", "-C <Collection server>");
+    return 1;
+  }
+  if (!rtMonHost)
+  {
+    fprintf(stderr, "Missing '%s' parameter\n", "-Z <Run-Time Monitoring host>");
     return 1;
   }
 
@@ -647,12 +672,6 @@ int main(int argc, char** argv)
 
   if (!tag)  tag = partitionTag.c_str();
   printf("Partition Tag: '%s'\n", tag);
-
-  if (prms.partition == NO_PARTITION)
-  {
-    fprintf(stderr, "Partition number must be specified\n");
-    return 1;
-  }
 
   struct sigaction sigAction;
 

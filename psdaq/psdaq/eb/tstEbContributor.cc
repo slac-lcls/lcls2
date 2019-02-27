@@ -580,26 +580,26 @@ void usage(char *name, char *desc, const TebCtrbParams& prms)
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-20s %s (default: %s)\n",        "-A <interface_addr>",
+  fprintf(stderr, " %-22s %s (default: %s)\n",        "-A <interface_addr>",
           "IP address of the interface to use",       "libfabric's 'best' choice");
 
-  fprintf(stderr, " %-20s %s (default: %s)\n",        "-C <address>",
-          "Collection server",                        COLL_HOST);
-  fprintf(stderr, " %-20s %s (default: %d)\n",        "-p <partition number>",
-          "Partition number",                         0);
-  fprintf(stderr, " %-20s %s (default: %s)\n",        "-Z <address>",
-          "Run-time monitoring ZMQ server host",      RTMON_HOST);
-  fprintf(stderr, " %-20s %s (default: %d)\n",        "-R <port>",
+  fprintf(stderr, " %-22s %s (required)\n",           "-C <address>",
+          "Collection server");
+  fprintf(stderr, " %-22s %s (required)\n",           "-p <partition number>",
+          "Partition number");
+  fprintf(stderr, " %-22s %s (required)\n",           "-Z <address>",
+          "Run-time monitoring ZMQ server host");
+  fprintf(stderr, " %-22s %s (default: %d)\n",        "-R <port>",
           "Run-time monitoring ZMQ server port",      RTMON_PORT_BASE);
-  fprintf(stderr, " %-20s %s (default: %d)\n",        "-m <seconds>",
+  fprintf(stderr, " %-22s %s (default: %d)\n",        "-m <seconds>",
           "Run-time monitoring printout period",      rtMon_period);
-  fprintf(stderr, " %-20s %s (default: %d)\n",        "-1 <core>",
+  fprintf(stderr, " %-22s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    prms.core[0]);
-  fprintf(stderr, " %-20s %s (default: %d)\n",        "-2 <core>",
+  fprintf(stderr, " %-22s %s (default: %d)\n",        "-2 <core>",
           "Core number for pinning other threads to", prms.core[1]);
 
-  fprintf(stderr, " %-20s %s\n", "-v", "enable debugging output (repeat for increased detail)");
-  fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
+  fprintf(stderr, " %-22s %s\n", "-v", "enable debugging output (repeat for increased detail)");
+  fprintf(stderr, " %-22s %s\n", "-h", "display this help output");
 }
 
 
@@ -607,8 +607,8 @@ int main(int argc, char **argv)
 {
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
-  std::string    collSrv        (COLL_HOST);
-  const char*    rtMonHost    = RTMON_HOST;
+  std::string    collSrv;
+  const char*    rtMonHost    = nullptr;
   unsigned       rtMonPort    = RTMON_PORT_BASE;
   unsigned       rtMonPeriod  = rtMon_period;
   unsigned       rtMonVerbose = 0;
@@ -656,7 +656,17 @@ int main(int argc, char **argv)
 
   if (tebPrms.partition == NO_PARTITION)
   {
-    fprintf(stderr, "Partition number must be specified\n");
+    fprintf(stderr, "Missing '%s' parameter\n", "-p <Partition number>");
+    return 1;
+  }
+  if (collSrv.empty())
+  {
+    fprintf(stderr, "Missing '%s' parameter\n", "-C <Collection server>");
+    return 1;
+  }
+  if (!rtMonHost)
+  {
+    fprintf(stderr, "Missing '%s' parameter\n", "-Z <Run-Time Monitoring host>");
     return 1;
   }
 
