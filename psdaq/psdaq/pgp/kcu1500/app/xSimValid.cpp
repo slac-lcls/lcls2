@@ -32,8 +32,16 @@ static void usage(const char* p) {
   printf("\t-d <device file>     (default: /dev/datadev_1)\n");
   printf("\t-f <dump filename>   (default: none)\n");
   printf("\t-c <update interval> (default: 1000000)\n");
-  printf("\t-v <test mask>       (default: 0)\n");
   printf("\t-C partition[,length[,links]] [configure simcam]\n");
+  printf("\t-v <verbose mask>    (default: 0)\n");
+  printf("\t                     (bit 0 : event counter not incr by 1)\n");
+  printf("\t                     (bit 1 : frame counter not incr by 1)\n");
+  printf("\t                     (bit 2 : frame content error)\n");
+  printf("\t                     (bit 3 : frame size error)\n");
+  printf("\t                     (bit 4 : lane contr more than once)\n");
+  printf("\t                     (bit 5 : lane missing)\n");
+  printf("\t                     (bit 6 : pulse ID mismatch)\n");
+  printf("\t                     (bit 7 : frame counter mismatch)\n");
 }
 
 #define HISTORY 256
@@ -121,7 +129,7 @@ public:
       }                                                                 \
       printf("\n");                                                     \
     }
-    unsigned event = p[4]&0xffffff;
+    unsigned event = p[5]&0xffffff;
     unsigned now = event % HISTORY;
     unsigned pre = (event-1) % HISTORY;
     _ncalls++;
@@ -228,7 +236,7 @@ EventValidator eventv(lanev,0xf);
 
 void LaneValidator::validate(const uint32_t* p, unsigned sz) {
   _ncalls++;
-  unsigned event = p[4]&0xffffff;
+  unsigned event = p[5]&0xffffff;
 
   //  validate this event
   unsigned now = event%HISTORY;
@@ -286,33 +294,9 @@ void sigHandler( int signal ) {
 
 
 int main (int argc, char **argv) {
-   uint8_t       mask[DMA_MASK_SIZE];
-   int32_t       ret;
-   int32_t       s;
-   uint32_t      rxFlags[MAX_RET_CNT_C];
-   uint32_t      dest   [MAX_RET_CNT_C];
-   void **       dmaBuffers;
-   uint32_t      dmaSize;
-   uint32_t      dmaCount;
-   uint32_t      dmaIndex[MAX_RET_CNT_C];
-   int32_t       dmaRet[MAX_RET_CNT_C];
-   int32_t       x;
-   float         last;
-   float         rate;
-   float         bw;
-   float         duration;
-   int32_t       max;
-   int32_t       total;
-
-   uint32_t      getCnt = MAX_RET_CNT_C;
-
-   struct timeval sTime;
-   struct timeval eTime;
-   struct timeval dTime;
-   struct timeval pTime[7];
-
    unsigned count = 1000000;
-   const char* dev  = 0;
+   unsigned max_ret_cnt = 1000;
+   const char* dev  = "/dev/datadev_1";
    const char* dump = 0;
    int partition  = -1;
    int length     = 320;
@@ -321,10 +305,11 @@ int main (int argc, char **argv) {
    extern char* optarg;
    char* endptr;
    int c;
-   while((c=getopt(argc,argv,"d:f:Fc:C:v:"))!=EOF) {
+   while((c=getopt(argc,argv,"d:f:Fc:C:m:v:"))!=EOF) {
      switch(c) {
      case 'd': dev     = optarg; break;
      case 'f': dump    = optarg; break;
+     case 'm': max_ret_cnt = strtoul(optarg,NULL,0); break;
      case 'F': frameRst = true; break;
      case 'c': count   = strtoul(optarg,NULL,0); break;
      case 'v': verbose = strtoul(optarg,NULL,0); break;
@@ -338,6 +323,31 @@ int main (int argc, char **argv) {
      default: usage(argv[0]); return 1;
      }
    }
+
+   int32_t       s;
+   int32_t       ret;
+   uint8_t*      mask    = new uint8_t [DMA_MASK_SIZE];
+   uint32_t*     rxFlags = new uint32_t[max_ret_cnt];
+   uint32_t*     dest    = new uint32_t[max_ret_cnt];
+   void **       dmaBuffers;
+   uint32_t      dmaSize;
+   uint32_t      dmaCount;
+   uint32_t*     dmaIndex = new uint32_t[max_ret_cnt];
+   int32_t*      dmaRet   = new int32_t [max_ret_cnt];
+   int32_t       x;
+   float         last;
+   float         rate;
+   float         bw;
+   float         duration;
+   int32_t       max;
+   int32_t       total;
+
+   uint32_t      getCnt = max_ret_cnt;
+
+   struct timeval sTime;
+   struct timeval eTime;
+   struct timeval dTime;
+   struct timeval pTime[7];
 
    ::signal( SIGINT, sigHandler );
 
@@ -416,18 +426,18 @@ int main (int argc, char **argv) {
                const uint32_t* b = reinterpret_cast<const uint32_t*>(dmaBuffers[dmaIndex[x]]);
                unsigned lane = (dest[x]>>8)&7;
                unsigned words = unsigned(last)>>2;
-               if (b[5]>>31) {  // L1Accept
+               if (b[4]>>31) {  // L1Accept
                  lanev[lane].validate(b,words);
                  eventv     .validate(b,words,lane);
                }
                else {           // Other
                  printf("lane%u:",lane);
-                 for(unsigned i=0; i<words; i++)
+                 for(unsigned i=0; i<8; i++)
                    printf(" %08x",b[i]);
                  printf("\n");
                }
                //  Print out pulseId/timeStamp to check synchronization across nodes
-               if ((b[4]&0xfffff)==0) {
+               if ((b[5]&0xfffff)==0) {
                  printf("event[%06x]:",b[4]);
                  for(unsigned i=0; i<9; i++)
                    printf(" %08x",b[i]);
