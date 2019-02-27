@@ -14,7 +14,8 @@ NBeamSeq = 16
 
 interval   = 14./13.
 dstsel     = ['Include','DontCare']
-evtsel      = ['Fixed Rate','AC Rate','Sequence']
+evtselSc   = ['Fixed Rate','AC Rate','Sequence']
+evtselCu   = ['Fixed Rate','AC Rate','EventCodes']
 fixedRates  = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
 acRates     = ['60Hz','30Hz','10Hz','5Hz','1Hz']
 acTS        = ['TS%u'%(i+1) for i in range(6)]
@@ -30,6 +31,12 @@ toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 pvactx      = Context('pva')
 
 nogui       = False
+xtpg        = False
+
+def setCuMode(v):
+    global xtpg
+    print('CuMode',v)
+    xtpg = v
 
 class Pv:
     def __init__(self, pvname, callback=None):
@@ -50,6 +57,7 @@ class Pv:
             except TimeoutError as e:
                 logger.error("Timeout expection connecting to PV %s", pvname)
         else:
+            self.__value__ = None
             logger.debug("PV %s created without a callback", self.pvname) # Call get explictly for an sync get or use for put
 
     def get(self, useCached=True):
@@ -565,6 +573,30 @@ class PvDefSeq(QtWidgets.QWidget):
         else:
             print(err)
 
+class PvDefCuSeq(QtWidgets.QWidget):
+    valueSet = QtCore.pyqtSignal(int,name='valueSet')
+
+    def __init__(self, pvname):
+        super(PvDefCuSeq,self).__init__()
+
+        lo = QtWidgets.QHBoxLayout()
+        lo.addWidget(QtWidgets.QLabel('EventCode'))
+        self.ecsel = QtWidgets.QLineEdit('-')
+        self.ecsel.editingFinished.connect(self.setValue)
+        lo.addWidget(self.ecsel)
+        self.setLayout(lo)
+
+        self.pvseq = Pv(pvname+'_Sequence')
+        self.pvbit = Pv(pvname+'_SeqBit')
+
+    def setValue(self):
+        try:
+            value = int(self.ecsel.text())
+            self.pvseq.put(value/16)
+            self.pvbit.put(value%16)
+        except:
+            pass
+
 class PvEvtTab(QtWidgets.QStackedWidget):
 
     def __init__(self, pvname, evtcmb):
@@ -585,7 +617,7 @@ class PvEvtTab(QtWidgets.QStackedWidget):
 ##        sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqBits))
 #        sql.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqRates))
 #        sqw.setLayout(sql)
-        sqw = PvDefSeq(pvname)
+        sqw = PvDefSeq(pvname) if xtpg==False else PvDefCuSeq(pvname)
         self.addWidget(sqw)
 
         self.setCurrentIndex(evtcmb.currentIndex())
@@ -596,7 +628,8 @@ class PvEditEvt(QtWidgets.QWidget):
     def __init__(self, pvname, idx):
         super(PvEditEvt, self).__init__()
         vbox = QtWidgets.QVBoxLayout()
-        evtcmb = PvEditCmb(pvname,evtsel)
+        print('xtpg',xtpg)
+        evtcmb = PvEditCmb(pvname,evtselSc if xtpg==False else evtselCu)
         vbox.addWidget(evtcmb)
         vbox.addWidget(PvEvtTab(pvname,evtcmb))
         self.setLayout(vbox)

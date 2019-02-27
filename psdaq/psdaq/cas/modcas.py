@@ -68,9 +68,8 @@ def main():
     pvdb[':XTPG:TimeStampWr'   ] = {'type' : 'int', 'value' : 0}
     pvdb[':XTPG:TimeStamp'     ] = {'type' : 'int'}
     pvdb[':XTPG:PulseId'       ] = {'type' : 'int'}
-    pvdb[':XTPG:MMCM0:Delay'   ] = {'type' : 'int'}
-    pvdb[':XTPG:MMCM1:Delay'   ] = {'type' : 'int'}
-    pvdb[':XTPG:MMCM2:Delay'   ] = {'type' : 'int'}
+    for i in range(3):
+        pvdb[':XTPG:MMCM%d'%i      ] = {'type' : 'int', 'count' : 256, 'value':[0]*256 }
     pvdb[':XTPG:cuDelay'       ] = {'type' : 'int', 'value' : 200*800}
     pvdb[':XTPG:cuBeamCode'    ] = {'type' : 'int', 'value' : 140}
 

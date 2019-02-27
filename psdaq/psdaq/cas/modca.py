@@ -255,7 +255,7 @@ def DeadTime(pvbase,parent):
     deadbox.setLayout(deadgrid)
     return deadbox
 
-def addTiming(tw, pvbase, title):
+def addTiming(pvbase):
     lor = QtWidgets.QVBoxLayout()
     PvLabel(lor, pvbase, "RxClks"     )
     PvLabel(lor, pvbase, "TxClks"     )
@@ -272,8 +272,48 @@ def addTiming(tw, pvbase, title):
     lor.addStretch()
     w = QtWidgets.QWidget()
     w.setLayout(lor)
-    tw.addTab(w,title)
+    return w
 
+class PvMmcm(QtWidgets.QWidget):
+    def __init__(self,pvname,title):
+        super(PvMmcm, self).__init__()
+        layout = QtWidgets.QHBoxLayout()
+
+        pv = Pv(pvname)
+        v = pv.get()
+
+        layout.addWidget( QtWidgets.QLabel(title+'\n'+str(v[0])) )
+
+        self.image   = QtGui.QImage(v[0]+1,16,QtGui.QImage.Format_Mono)
+        painter = QtGui.QPainter(self.image)
+        painter.fillRect(0,0,v[0]+1,16,QtGui.QColor(255,255,255))
+        painter.setBrush(QtGui.QColor(0,0,255))
+        for i in range(v[0]+1):
+            painter.drawLine(i,0,i,15-(v[i+1]>>9))
+
+        canvas = QtWidgets.QLabel()
+        canvas.setPixmap(QtGui.QPixmap.fromImage(self.image))
+
+        layout.addWidget( canvas )
+        self.setLayout(layout)
+
+def addCuTab(pvbase):
+    lor = QtWidgets.QVBoxLayout()
+    lor.addWidget( addTiming(pvbase+'Cu:') )
+
+    PvLabel(lor, pvbase+'XTPG:', 'cuBeamCode')
+    PvLabel(lor, pvbase+'XTPG:', 'cuDelay')
+    PvLabel(lor, pvbase+'XTPG:', 'PulseId')
+    PvLabel(lor, pvbase+'XTPG:', 'TimeStamp')
+
+    for i in range(3):
+        lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM%d'%i , 'mmcm%d'%i) )
+
+    lor.addStretch()
+    w = QtWidgets.QWidget()
+    w.setLayout(lor)
+    return w
+    
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, title):
         MainWindow.setObjectName("MainWindow")
@@ -306,8 +346,9 @@ class Ui_MainWindow(object):
             tb.setLayout(hl)
             tw.addTab(tb,"Global")
 
-            addTiming(tw, pvbase+'Us:',"UsTiming")
-            addTiming(tw, pvbase+'Cu:',"CuTiming")
+            tw.addTab( addTiming(pvbase+'Us:'), "UsTiming")
+            if xtpg==True:
+                tw.addTab( addCuTab (pvbase      ), "CuTiming")
 
         tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
         tw.addTab(FrontPanelAMC(pvbase,1),"AMC1")

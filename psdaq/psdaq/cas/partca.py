@@ -121,11 +121,14 @@ def main():
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('-n', '--no_collection', action='store_true', help='no collection')
+    parser.add_argument('-x', '--xtpg_mode', action='store_true', help='xtpg in Cu mode')
     parser.add_argument("pv", help="pv to monitor")
 
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
+
+    setCuMode(args.xtpg_mode)
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

@@ -80,6 +80,7 @@ namespace Pds {
       EpicsPVA*   _partPV;
       EpicsPVA*    _paddrPV;
       EpicsPVA*    _fwBuildPV;
+      EpicsPVA*    _mmcmPV[3];
       timespec   _t;
       CoreCounts _c;
       LinkStatus _links[32];
@@ -144,13 +145,17 @@ void StatsTimer::_allocate()
     ostr << _module_prefix << ":PAddr";
     _paddrPV = new EpicsPVA(ostr.str().c_str()); }
 
-#if 1
   { std::stringstream ostr;
     ostr << _module_prefix << ":FwBuild";
     printf("fwbuildpv: %s\n", ostr.str().c_str());
     _fwBuildPV = new EpicsPVA(ostr.str().c_str(),256);  }
-#endif
 
+  for(unsigned i=0; i<3; i++) {
+    std::stringstream ostr;
+    ostr << _module_prefix << ":XTPG:MMCM" << i;
+    printf("mmcmpv[%d]: %s\n", i, ostr.str().c_str());
+    _mmcmPV[i] = new EpicsPVA(ostr.str().c_str());  
+  }
 }
 
 void StatsTimer::start()
@@ -220,14 +225,26 @@ void StatsTimer::expired()
     else
       printf("paddrpv not connected\n");
 
-#if 1
     if (_fwBuildPV && _fwBuildPV->connected()) {
       std::string bld = _dev._version.buildStamp();
       printf("fwBuild: %s\n",bld.c_str());
-    _fwBuildPV->putFrom<std::string>(bld.c_str());
+      _fwBuildPV->putFrom<std::string>(bld.c_str());
       _fwBuildPV = 0;
     }
-#endif
+
+    for(unsigned i=0; i<3; i++) 
+      if (_mmcmPV[i] && _mmcmPV[i]->connected()) {
+        unsigned n = _dev._mmcm[i].delaySet&0x7ff;
+        pvd::shared_vector<int> vec(n+2);
+        vec[0] = n;
+        for(unsigned j=0; j<=n; j++) {
+          _dev._mmcm[i].ramAddr = j;
+          vec[j+1] = _dev._mmcm[i].ramData;
+        }
+        printf("mmcm%d: %u\n",i,n);
+        _mmcmPV[i]->putFromVector<int>(freeze(vec));
+        _mmcmPV[i] = 0;
+      }
 }
 
 
