@@ -82,7 +82,7 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
     }
     else if (regSize != size)
     {
-      fprintf(stderr, "%s:\n  Error: result MR size (%zd) cannot differ between TEBs "
+      fprintf(stderr, "%s:\n  Error: Result MR size (%zd) cannot differ between TEBs "
               "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, link->id());
       return -1;
     }

@@ -63,7 +63,6 @@ namespace Pds {
     private:
       EbLfClient             _transport;
       std::vector<EbLfLink*> _links;
-      std::vector<unsigned>  _idx2Id;
       unsigned               _id;
       unsigned               _numEbs;
       size_t                 _batchBase;

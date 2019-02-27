@@ -24,6 +24,7 @@
 #include <thread>
 #include <iostream>
 #include <bitset>
+#include <exception>
 
 //#define SINGLE_EVENTS                   // Define to take one event at a time by hitting <CR>
 
@@ -694,7 +695,14 @@ int main(int argc, char **argv)
   pinThread(pthread_self(), tebPrms.core[0]);
   CtrbApp app(collSrv, tebPrms, mebPrms, smon);
 
-  app.run();
+  try
+  {
+    app.run();
+  }
+  catch (std::exception& e)
+  {
+    fprintf(stderr, "%s\n", e.what());
+  }
 
   smon.shutdown();
 

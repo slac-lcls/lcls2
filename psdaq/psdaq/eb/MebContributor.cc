@@ -32,7 +32,7 @@ int MebContributor::connect(const MebCtrbParams& prms,
                             size_t               size)
 {
   int    rc;
-  size_t regionSize = prms.maxEvents * _maxEvSize;
+  size_t regSize = prms.maxEvents * _maxEvSize;
 
   _id         = prms.id;
   _eventCount = 0;
@@ -46,13 +46,13 @@ int MebContributor::connect(const MebCtrbParams& prms,
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(addr, port, tmo, &link)) )
     {
-      fprintf(stderr, "%s: Error connecting to EbLfServer at %s:%s\n",
+      fprintf(stderr, "%s:\n  Error connecting to MEB at %s:%s\n",
               __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
-    if ( (rc = link->preparePoster(prms.id, region, size, regionSize)) )
+    if ( (rc = link->preparePoster(prms.id, region, size, regSize)) )
     {
-      fprintf(stderr, "%s: Failed to prepare link to %s:%s\n",
+      fprintf(stderr, "%s:\n  Failed to prepare link with MEB at %s:%s\n",
               __PRETTY_FUNCTION__, addr, port);
       return rc;
     }

@@ -26,7 +26,6 @@ TebContributor::TebContributor(const TebCtrbParams& prms) :
   _prms        (prms),
   _transport   (prms.verbose),
   _links       (),
-  _idx2Id      (),
   _id          (-1),
   _numEbs      (0),
   _batchBase   (roundUpSize(TransitionId::NumberOf * prms.maxInputSize)),
@@ -48,7 +47,6 @@ int TebContributor::connect(const TebCtrbParams& prms)
   _id      = prms.id;
   _numEbs  = std::bitset<64>(prms.builders).count();
   _links.resize(prms.addrs.size());
-  _idx2Id.resize(prms.addrs.size());
 
   int    rc;
   void*  region  = batchRegion();     // Local space for Trs is in the batch region
@@ -62,18 +60,17 @@ int TebContributor::connect(const TebCtrbParams& prms)
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(addr, port, tmo, &link)) )
     {
-      fprintf(stderr, "%s: Error connecting to EbLfServer at %s:%s\n",
+      fprintf(stderr, "%s:\n  Error connecting to TEB at %s:%s\n",
               __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     if ( (rc = link->preparePoster(prms.id, region, regSize)) )
     {
-      fprintf(stderr, "%s: Failed to prepare link to %s:%s\n",
+      fprintf(stderr, "%s:\n  Failed to prepare link with TEB at %s:%s\n",
               __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     _links[link->id()] = link;
-    _idx2Id[i] = link->id();
 
     printf("Outbound link with TEB ID %d connected\n", link->id());
   }
@@ -173,7 +170,7 @@ bool TebContributor::process(const Dgram* datagram, const void* appPrm)
 void TebContributor::post(const Batch* batch)
 {
   uint32_t    idx    = batch->index();
-  unsigned    dst    = _idx2Id[idx % _numEbs];
+  unsigned    dst    = idx % _numEbs;
   EbLfLink*   link   = _links[dst];
   uint32_t    data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
   size_t      extent = batch->extent();
@@ -207,7 +204,7 @@ void TebContributor::post(const Dgram* nonEvent)
   // containing it.  These don't receive responses
   uint64_t pid    = nonEvent->seq.pulseId().value();
   uint32_t idx    = batchId(pid) & (_prms.maxBatches - 1);
-  unsigned dst    = _idx2Id[idx % _numEbs];
+  unsigned dst    = idx % _numEbs;
   unsigned tr     = nonEvent->seq.service();
   uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);
   size_t   extent = sizeof(*nonEvent) + nonEvent->xtc.sizeofPayload();

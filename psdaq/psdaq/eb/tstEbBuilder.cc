@@ -24,6 +24,7 @@
 #include <vector>
 #include <cassert>
 #include <iostream>
+#include <exception>
 
 
 using namespace XtcData;
@@ -197,14 +198,14 @@ int Teb::connect(const EbParams& prms)
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _l3Transport.connect(addr, port, tmo, &link)) )
     {
-      fprintf(stderr, "%s: Error connecting to Trigger EbLfServer at %s:%s\n",
-              __func__, addr, port);
+      fprintf(stderr, "%s:\n  Error connecting to Ctrb at %s:%s\n",
+              __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     if ( (rc = link->preparePoster(_id, region, regSize)) )
     {
-      fprintf(stderr, "%s: Failed to prepare Trigger EbLfLink to %s:%s\n",
-              __func__, addr, port);
+      fprintf(stderr, "%s:\n  Failed to prepare link with Ctrb at %s:%s\n",
+              __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     _l3Links[link->id()] = link;
@@ -227,15 +228,15 @@ int Teb::connect(const EbParams& prms)
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _mrqTransport.connect(&link, tmo)) )
     {
-      fprintf(stderr, "%s: Error connecting to MonReq EbLfClient[%d]\n",
-              __func__, i);
+      fprintf(stderr, "%s:\n  Error connecting to MonReq %d\n",
+              __PRETTY_FUNCTION__, i);
       return rc;
     }
 
     if ( (rc = link->preparePender(prms.id)) )
     {
-      fprintf(stderr, "%s: Failed to prepare MonReq EbLfLink[%d]\n",
-              __func__, i);
+      fprintf(stderr, "%s:\n  Failed to prepare MonReq %d\n",
+              __PRETTY_FUNCTION__, i);
       return rc;
     }
     _mrqLinks[link->id()] = link;
@@ -758,7 +759,14 @@ int main(int argc, char **argv)
   pinThread(pthread_self(), prms.core[0]);
   TebApp app(collSrv, prms, smon);
 
-  app.run();
+  try
+  {
+    app.run();
+  }
+  catch (std::exception& e)
+  {
+    fprintf(stderr, "%s\n", e.what());
+  }
 
   smon.shutdown();
 

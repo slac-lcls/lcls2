@@ -33,7 +33,7 @@ EventBuilder::EventBuilder(unsigned epochs,
 {
   if (duration & (duration - 1))
   {
-    fprintf(stderr, "%s: Epoch duration (%016lx) must be a power of 2\n",
+    fprintf(stderr, "%s:\n  Epoch duration (%016lx) must be a power of 2\n",
             __func__, duration);
     abort();
   }
@@ -41,13 +41,13 @@ EventBuilder::EventBuilder(unsigned epochs,
   //          accomodate transitions, especially in the MEB case
   //if (epochs & (epochs - 1))
   //{
-  //  fprintf(stderr, "%s: Number of epochs (%08x) must be a power of 2\n",
+  //  fprintf(stderr, "%s:\n  Number of epochs (%08x) must be a power of 2\n",
   //          __func__, epochs);
   //  abort();
   //}
   //if (entries & (entries - 1))
   //{
-  //  fprintf(stderr, "%s: Number of entries per epoch (%08x) must be a power of 2\n",
+  //  fprintf(stderr, "%s:\n  Number of entries per epoch (%08x) must be a power of 2\n",
   //          __func__, entries);
   //  abort();
   //}
