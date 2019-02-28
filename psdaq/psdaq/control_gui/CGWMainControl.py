@@ -55,7 +55,6 @@ class CGWMainControl(QGroupBox) :
         self.cbx_runc       = QCheckBox('Record Run')
         self.box_state      = QComboBox()
         self.but_transition = QPushButton('Unknown')
-        self.but_plat = QPushButton('Plat')
 
         self.states = ['Select',] + [s.upper() for s in DaqControl.states]
         self.box_state.addItems(self.states)
@@ -64,9 +63,9 @@ class CGWMainControl(QGroupBox) :
         #self.edi.setReadOnly(True) 
 
         self.hbox1 = QHBoxLayout() 
+        self.hbox1.addStretch(1)
         self.hbox1.addWidget(self.cbx_runc)
         self.hbox1.addStretch(1)
-        self.hbox1.addWidget(self.but_plat)
 
         self.hbox2 = QHBoxLayout() 
         self.hbox2.addWidget(self.lab_state)
@@ -98,7 +97,6 @@ class CGWMainControl(QGroupBox) :
 
         self.box_state.currentIndexChanged[int].connect(self.on_box_state)
         self.but_transition.clicked.connect(self.on_but_transition)
-        self.but_plat.clicked.connect(self.on_but_plat)
         #self.box_type.currentIndexChanged[int].connect(self.on_box_type)
         self.cbx_runc.stateChanged[int].connect(self.on_cbx_runc)
 
@@ -113,7 +111,6 @@ class CGWMainControl(QGroupBox) :
 
     def set_tool_tips(self) :
         self.setToolTip('Configuration') 
-        self.but_plat.setToolTip('Submits "plat" command.')
         self.cbx_runc.setToolTip('Use checkbox to on/off recording.')
         self.box_state.setToolTip('Select desirable state.')
         self.but_transition.setToolTip('Info about last transition.')
@@ -165,16 +162,6 @@ class CGWMainControl(QGroupBox) :
 
 #--------------------
  
-    def on_but_plat(self) :
-        """Equivalent to CLI: daqstate -p6 --transition plat
-           https://github.com/slac-lcls/lcls2/blob/collection_front/psdaq/psdaq/control/daqstate.py
-        """
-        logger.debug('on_but_plat - command to set transition "plat"')
-        rv = daq_control().setTransition('plat')
-        if rv is not None : logger.error('Error: %s' % rv)
-
-#--------------------
- 
     def on_cbx_runc(self, ind) :
         #if self.cbx.hasFocus() :
         cbx = self.cbx_runc
@@ -197,13 +184,13 @@ class CGWMainControl(QGroupBox) :
     def check_transition(self) :
         """On 2019-02-21 command daq_control().monitorStatus() hangs up...
         """
-        logger.debug('CGWMainDetector.check_transition')
-        print('Just before daq_control().monitorStatus()')
-#       transition, state = 'N/A', daq_control().getState()
-        transition, state = daq_control().monitorStatus()
+        logger.debug('CGWMainDetector.check_transition TBD')
 
-        print('-after transition, state =', transition, state)
+        #print('Just before daq_control().monitorStatus()')
+        #transition, state = 'N/A', daq_control().getState()
+        #transition, state = daq_control().monitorStatus() # DEPRICATED monitorStatus()
 
+#       print('-after transition, state =', transition, state)
 #       if transition is None : return
 #       if transition == self.transition : return
 #       self.transition = transition
@@ -216,12 +203,6 @@ class CGWMainControl(QGroupBox) :
     def set_transition(self, s) :
         ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
         self.but_transition.setText('%s since %s' % (s.upper(), ts))
-
-#--------------------
-
-    def set_but_plat(self, s) :
-        logger.debug('set_but_plat for state %s' % s)
-        self.but_plat.setEnabled(s.upper() in ('RESET', 'UNALLOCATED'))
 
 #--------------------
 #--------------------
