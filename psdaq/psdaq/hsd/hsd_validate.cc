@@ -328,6 +328,16 @@ private:
   unsigned             _sample_value;
 };
 
+static void show_usage(const char* p)
+{
+  printf("Usage: %s [options]\n",p);
+  printf("Options: -d <device>\n");
+  printf("         -f <output file>\n");
+  printf("         -s <nskip> (analyze 1, skip n, ..)\n");
+  printf("         -w <wait us>\n");
+  printf("         -v (verbose)\n");
+}
+
 int main(int argc, char* argv[])
 {
     
@@ -360,6 +370,9 @@ int main(int argc, char* argv[])
     case 'v':
       _lverbose = true;
       break;
+    default:
+      show_usage(argv[0]);
+      return 0;
     }
   }
 
