@@ -216,7 +216,7 @@ namespace Pds {
       while(1) {
         int eph = _m.trgPhase()[0];
         int oph = _m.trgPhase()[1];
-        printf("trig phase %d [%d/%d] %d [%d/%d]\n",
+        printf("trig phase %05d [%05d/%05d] %05d [%05d/%05d]\n",
                eph,ephlo,ephhi,
                oph,ophlo,ophhi);
         if (eph > ephlo && eph < ephhi &&
