@@ -31,14 +31,12 @@ TebContributor::TebContributor(const TebCtrbParams& prms) :
   _batchBase   (roundUpSize(TransitionId::NumberOf * prms.maxInputSize)),
   _batchCount  (0),
   _inFlightOcc (0),
-  _running     (true),
-  _rcvrThread  (nullptr)
+  _running     (true)
 {
 }
 
 int TebContributor::connect(const TebCtrbParams& prms)
 {
-  _running = true;
   _id      = prms.id;
   _numEbs  = std::bitset<64>(prms.builders).count();
   _links.resize(prms.addrs.size());
@@ -75,10 +73,10 @@ int TebContributor::connect(const TebCtrbParams& prms)
 
 void TebContributor::startup(EbCtrbInBase& in)
 {
-  _inFlightOcc = 0;
   _batchCount  = 0;
-
-  _rcvrThread = new std::thread([&] { _receiver(in); });
+  _inFlightOcc = 0;
+  _running     = true;
+  _rcvrThread  = std::thread([&] { _receiver(in); });
 }
 
 void TebContributor::_receiver(EbCtrbInBase& in)
@@ -99,9 +97,7 @@ void TebContributor::shutdown()
 {
   _running = false;
 
-  if (_rcvrThread)  _rcvrThread->join();
-
-  BatchManager::dump();
+  _rcvrThread.join();
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
@@ -109,7 +105,10 @@ void TebContributor::shutdown()
   }
   _links.clear();
 
+  BatchManager::dump();
   BatchManager::shutdown();
+
+  _id = -1;
 }
 
 bool TebContributor::process(const Dgram* datagram, const void* appPrm)

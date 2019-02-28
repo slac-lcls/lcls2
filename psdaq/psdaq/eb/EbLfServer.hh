@@ -23,20 +23,19 @@ namespace Pds {
     {
     public:
       EbLfServer(unsigned verbose);
-      ~EbLfServer();
     public:
-      int initialize(const std::string& addr,    // Interface to use
-                     const std::string& port,    // Port to listen on
-                     unsigned           nLinks); // Number of links to expect
-      int connect(EbLfLink**, int msTmo = -1);
-      int pend(fi_cq_data_entry*, int msTmo);
-      int pend(void** context, int msTmo);
-      int pend(uint64_t* data, int msTmo);
-      int poll(uint64_t* data);
+      int  initialize(const std::string& addr,    // Interface to use
+                      const std::string& port,    // Port to listen on
+                      unsigned           nLinks); // Number of links to expect
+      int  connect(EbLfLink**, int msTmo = -1);
+      int  shutdown(EbLfLink*);
+      void shutdown();
+      int  pend(fi_cq_data_entry*, int msTmo);
+      int  pend(void** context, int msTmo);
+      int  pend(uint64_t* data, int msTmo);
+      int  poll(uint64_t* data);
     public:
       const uint64_t& pending() const { return _pending; }
-    public:
-      int shutdown(EbLfLink*);
     private:
       int _poll(fi_cq_data_entry*, uint64_t flags);
     private:                            // Arranged in order of access frequency

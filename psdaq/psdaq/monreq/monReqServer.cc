@@ -78,7 +78,8 @@ namespace Pds {
     }
     int connect(const EbParams& prms)
     {
-      _id = prms.id;
+      _iTeb = 0;
+      _id   = prms.id;
       _mrqLinks.resize(prms.addrs.size());
 
       for (unsigned i = 0; i < prms.addrs.size(); ++i)
@@ -124,6 +125,9 @@ namespace Pds {
         _mrqTransport.shutdown(*it);
       }
       _mrqLinks.clear();
+
+      _bufFreeList.clear();
+      _id = -1;
     }
 
   private:
@@ -210,7 +214,6 @@ namespace Pds {
 
   private:
     unsigned               _sizeofBuffers;
-    unsigned               _nTeb;
     unsigned               _iTeb;
     EbLfClient             _mrqTransport;
     std::vector<EbLfLink*> _mrqLinks;
@@ -363,13 +366,14 @@ public:                                 // For CollectionApp
   void handleDisconnect(const json& msg); // override;
   void handleReset(const json& msg) override;
 private:
+  int  _handleConnect(const json& msg);
   int  _parseConnectionParams(const json& msg);
   void _shutdown();
 private:
   EbParams&     _prms;
   Meb           _meb;
   StatsMonitor& _smon;
-  std::thread*  _appThread;
+  std::thread   _appThread;
 };
 
 MebApp::MebApp(const std::string& collSrv,
@@ -382,8 +386,7 @@ MebApp::MebApp(const std::string& collSrv,
   CollectionApp(collSrv, prms.partition, "meb"),
   _prms(prms),
   _meb(tag, sizeofEvBuffers, nevqueues, dist, prms, smon),
-  _smon(smon),
-  _appThread(nullptr)
+  _smon(smon)
 {
   printf("  Tag:                        %s\n", tag);
   printf("  Max event buffer size:      %d\n", sizeofEvBuffers);
@@ -401,31 +404,32 @@ void MebApp::handleAlloc(const json& msg)
   reply(answer);
 }
 
-void MebApp::handleConnect(const json &msg)
+int MebApp::_handleConnect(const json &msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
-  if (rc)
-  {
-    // Reply to collection with a failure message
-    return;
-  }
+  if (rc)  return rc;
 
   rc = _meb.connect(_prms);
-  if (rc)
-  {
-    // Reply to collection with a failure message
-    return;
-  }
+  if (rc)  return rc;
 
   _smon.enable();
 
   lRunning = 1;
 
-  _appThread = new std::thread(&Meb::run, std::ref(_meb));
+  _appThread = std::thread(&Meb::run, std::ref(_meb));
+
+  return 0;
+}
+
+void MebApp::handleConnect(const json &msg)
+{
+  int rc = _handleConnect(msg);
 
   // Reply to collection with connect status
   json body   = json({});
-  json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
+  json answer = (rc == 0)
+              ? createMsg("connect", msg["header"]["msg_id"], getId(), body)
+              : createMsg("error",   msg["header"]["msg_id"], getId(), body);
   reply(answer);
 }
 
@@ -433,14 +437,9 @@ void MebApp::_shutdown()
 {
   lRunning = 0;
 
-  if (_appThread)
-  {
-    _appThread->join();
-    delete _appThread;
-    _appThread = nullptr;
+  _appThread.join();
 
-    _smon.disable();
-  }
+  _smon.disable();
 }
 
 void MebApp::handleDisconnect(const json &msg)
@@ -693,7 +692,14 @@ int main(int argc, char** argv)
   //pinThread(pthread_self(), prms.core[0]);
   MebApp app(collSrv, tag, sizeofEvBuffers, nevqueues, ldist, prms, smon);
 
-  app.run();
+  try
+  {
+    app.run();
+  }
+  catch (std::exception& e)
+  {
+    fprintf(stderr, "%s\n", e.what());
+  }
 
   smon.shutdown();
 

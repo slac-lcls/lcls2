@@ -22,12 +22,12 @@ namespace Pds {
     public:
       MebContributor(const MebCtrbParams&);
     public:
-      int     connect(const MebCtrbParams&, void* region, size_t size);
-      void    shutdown();
+      int  connect(const MebCtrbParams&, void* region, size_t size);
+      void shutdown();
     public:
-      int      post(const XtcData::Dgram* dataDatagram); // Transitions
-      int      post(const XtcData::Dgram* dataDatagram,
-                    uint32_t              destination);  // L1Accepts
+      int  post(const XtcData::Dgram* dataDatagram); // Transitions
+      int  post(const XtcData::Dgram* dataDatagram,
+                uint32_t              destination);  // L1Accepts
     public:
       const uint64_t& eventCount() const  { return _eventCount; }
     private:

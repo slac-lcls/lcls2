@@ -243,6 +243,7 @@ void Teb::run()
 
   pinThread(pthread_self(),                _prms.core[0]);
 
+  _dstList    = 0;
   _eventCount = 0;
   _batchCount = 0;
 
@@ -262,6 +263,8 @@ void Teb::run()
     _mrqTransport.shutdown(*it);
   }
   _mrqLinks.clear();
+  _mrqTransport.shutdown();
+
   for (auto it = _l3Links.begin(); it != _l3Links.end(); ++it)
   {
     _l3Transport.shutdown(*it);
@@ -272,6 +275,8 @@ void Teb::run()
 
   _batchManager.dump();
   _batchManager.shutdown();
+
+  _id = -1;
 }
 
 void Teb::process(EbEvent* event)
@@ -438,13 +443,14 @@ public:                                 // For CollectionApp
   void handleDisconnect(const json& msg); // override;
   void handleReset(const json& msg) override;
 private:
+  int  _handleConnect(const json& msg);
   int  _parseConnectionParams(const json& msg);
   void _shutdown();
 private:
   EbParams&     _prms;
   Teb           _teb;
   StatsMonitor& _smon;
-  std::thread*  _appThread;
+  std::thread   _appThread;
 };
 
 TebApp::TebApp(const std::string& collSrv,
@@ -453,8 +459,7 @@ TebApp::TebApp(const std::string& collSrv,
   CollectionApp(collSrv, prms.partition, "teb"),
   _prms(prms),
   _teb(prms, smon),
-  _smon(smon),
-  _appThread(nullptr)
+  _smon(smon)
 {
 }
 
@@ -468,31 +473,32 @@ void TebApp::handleAlloc(const json& msg)
   reply(answer);
 }
 
-void TebApp::handleConnect(const json &msg)
+int TebApp::_handleConnect(const json &msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
-  if (rc)
-  {
-    // Reply to collection with a failure message
-    return;
-  }
+  if (rc)  return rc;
 
   rc = _teb.connect(_prms);
-  if (rc)
-  {
-    // Reply to collection with a failure message
-    return;
-  }
+  if (rc)  return rc;
 
   _smon.enable();
 
   lRunning = 1;
 
-  _appThread = new std::thread(&Teb::run, std::ref(_teb));
+  _appThread = std::thread(&Teb::run, std::ref(_teb));
+
+  return 0;
+}
+
+void TebApp::handleConnect(const json &msg)
+{
+  int rc = _handleConnect(msg);
 
   // Reply to collection with connect status
   json body   = json({});
-  json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
+  json answer = (rc == 0)
+              ? createMsg("connect", msg["header"]["msg_id"], getId(), body)
+              : createMsg("error",   msg["header"]["msg_id"], getId(), body);
   reply(answer);
 }
 
@@ -500,14 +506,9 @@ void TebApp::_shutdown()
 {
   lRunning = 0;
 
-  if (_appThread)
-  {
-    _appThread->join();
-    delete _appThread;
-    _appThread = nullptr;
+  _appThread.join();
 
-    _smon.disable();
-  }
+  _smon.disable();
 }
 
 void TebApp::handleDisconnect(const json &msg)

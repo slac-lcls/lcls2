@@ -21,7 +21,6 @@ namespace Pds {
                    unsigned           partition,
                    unsigned           period,
                    unsigned           verbose);
-      ~StatsMonitor();
     public:
       void enable()   { _enabled = true;  }
       void disable()  { _enabled = false; }
@@ -43,7 +42,7 @@ namespace Pds {
       const unsigned           _verbose;
       std::atomic<bool>        _enabled;
       std::atomic<bool>        _running;
-      std::thread*             _task;
+      std::thread              _task;
     };
   };
 };

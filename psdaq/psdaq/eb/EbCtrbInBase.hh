@@ -45,9 +45,7 @@ namespace Pds
       EbLfServer             _transport;
       std::vector<EbLfLink*> _links;
       size_t                 _maxBatchSize;
-    protected:
       const TebCtrbParams&   _prms;
-    private:
       void*                  _region;
     };
   };

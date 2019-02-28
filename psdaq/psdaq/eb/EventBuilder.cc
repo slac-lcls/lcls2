@@ -74,6 +74,8 @@ void EventBuilder::clear()
 
       event->disconnect();
 
+      _eventLut[_evIndex(event->sequence())] = nullptr;
+
       delete event;
 
       event = next;
@@ -85,6 +87,11 @@ void EventBuilder::clear()
 
   _eventFreelist.clearCounters();
   _epochFreelist.clearCounters();
+
+  for (auto it = _epochLut.begin(); it != _epochLut.end(); ++it)
+    *it = nullptr;
+  for (auto it = _eventLut.begin(); it != _eventLut.end(); ++it)
+    *it = nullptr;
 }
 
 unsigned EventBuilder::_epIndex(uint64_t key) const
@@ -105,7 +112,7 @@ EbEpoch* EventBuilder::_discard(EbEpoch* epoch)
 
   const uint64_t key   = epoch->key;
   EbEpoch*&      entry = _epochLut[_epIndex(key)];
-  if (entry && (entry->key == key))  entry = nullptr;
+  if (entry == epoch)  entry = nullptr;
 
   delete epoch;
 
@@ -260,7 +267,7 @@ void EventBuilder::_retire(EbEvent* event)
 
   const uint64_t key   = event->sequence();
   EbEvent*&      entry = _eventLut[_evIndex(key)];
-  if (entry && (entry->sequence() == key))  entry = nullptr;
+  if (entry == event)  entry = nullptr;
 
   delete event;
 }

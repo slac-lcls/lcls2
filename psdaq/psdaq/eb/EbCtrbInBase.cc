@@ -104,6 +104,7 @@ void EbCtrbInBase::shutdown()
     _transport.shutdown(*it);
   }
   _links.clear();
+  _transport.shutdown();
 
   if (_region)  free(_region);
   _region = nullptr;

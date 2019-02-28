@@ -28,12 +28,6 @@ EbLfServer::EbLfServer(unsigned verbose) :
 {
 }
 
-EbLfServer::~EbLfServer()
-{
-  if (_rxcq)  delete _rxcq;
-  if (_pep)   delete _pep;
-}
-
 int EbLfServer::initialize(const std::string& addr,
                            const std::string& port,
                            unsigned           nLinks)
@@ -143,6 +137,20 @@ int EbLfServer::shutdown(EbLfLink* link)
   if (link)   delete link;
 
   return rc;
+}
+
+void EbLfServer::shutdown()
+{
+  if (_rxcq)
+  {
+    delete _rxcq;
+    _rxcq = nullptr;
+  }
+  if (_pep)
+  {
+    delete _pep;
+    _pep = nullptr;
+  }
 }
 
 int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)

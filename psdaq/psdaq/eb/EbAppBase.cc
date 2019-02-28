@@ -137,13 +137,15 @@ void EbAppBase::shutdown()
   {
     _transport.shutdown(*it);
   }
+  _links.clear();
+  _transport.shutdown();
 
   if (_region)  free(_region);
   _region = nullptr;
 
-  _links.clear();
   _maxBufSize.clear();
   _defContract = 0;
+  _contract.fill(0);
   _id          = -1;
 }
 

@@ -8,6 +8,7 @@
 #include <memory>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>                     // For memset()
 
 using namespace XtcData;
 using namespace Pds;
@@ -83,6 +84,9 @@ void BatchManager::shutdown()
   }
   _batchFreelist.clear();
   _batch = nullptr;
+
+  memset(_batchBuffer, 0, _batchDepth * _maxBatchSize * sizeof(*_batchBuffer));
+  memset(_appPrms,     0, _batchDepth * _maxEntries   * sizeof(*_appPrms));
 }
 
 Batch* BatchManager::locate(uint64_t pid)

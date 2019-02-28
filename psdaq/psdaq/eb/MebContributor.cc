@@ -71,6 +71,8 @@ void MebContributor::shutdown()
     _transport.shutdown(*it);
   }
   _links.clear();
+
+  _id = -1;
 }
 
 int MebContributor::post(const Dgram* ddg, uint32_t destination)

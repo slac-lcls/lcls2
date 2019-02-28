@@ -10,11 +10,8 @@
 #include <vector>
 #include <chrono>
 #include <atomic>
+#include <thread>
 
-
-namespace std {
-  class thread;
-};
 
 namespace XtcData {
   class Dgram;
@@ -66,7 +63,7 @@ namespace Pds {
       std::atomic<unsigned>  _inFlightOcc;
     private:
       std::atomic<bool>      _running;
-      std::thread*           _rcvrThread;
+      std::thread            _rcvrThread;
     };
   };
 };

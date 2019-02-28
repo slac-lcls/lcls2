@@ -22,7 +22,7 @@
 #include <vector>
 #include <atomic>
 #include <thread>
-#include <iostream>
+#include <iostream>                     // std::cin, std::cout
 #include <bitset>
 #include <exception>
 
@@ -91,12 +91,8 @@ namespace Pds {
       DrpSim(unsigned maxBatches,
              unsigned maxEntries,
              size_t   maxEvtSize);
-      ~DrpSim();
     public:
-      void*           base() const { return _pool.buffer(); }
-      size_t          size() const { return _pool.size();   }
-    public:
-      void            startup(unsigned id);
+      void            startup(unsigned id, void** base, size_t* size);
       void            shutdown();
     public:
       const Dgram*    genInput();
@@ -108,7 +104,7 @@ namespace Pds {
       const size_t   _maxEvtSz;
       const Xtc      _xtc;
       uint64_t       _pid;
-      GenericPoolW   _pool;
+      GenericPoolW*  _pool;
     private:
       enum { TrUnknown,
              TrReset,
@@ -118,6 +114,7 @@ namespace Pds {
       int            _trId;
     private:
       uint64_t       _allocPending;
+      uint64_t       _startCnt;
     };
 
     class EbCtrbIn : public EbCtrbInBase
@@ -128,10 +125,11 @@ namespace Pds {
       virtual ~EbCtrbIn() {}
     public:
       int      connect(const TebCtrbParams&, MebContributor*);
+      void     shutdown();
     public:                             // For EbCtrbInBase
       virtual void process(const Dgram* result, const void* input);
     private:
-      MebContributor* _mon;
+      MebContributor* _mebCtrb;
     private:
       uint64_t        _eventCount;
     };
@@ -143,7 +141,7 @@ namespace Pds {
                 StatsMonitor&        smon);
       virtual ~EbCtrbApp() {}
     public:
-      const DrpSim& drpSim() const { return _drpSim; }
+      DrpSim& drpSim() { return _drpSim; }
     public:
       void     run(EbCtrbIn&);
     private:
@@ -166,33 +164,40 @@ DrpSim::DrpSim(unsigned maxBatches,
   _maxEntries  (maxEntries),
   _maxEvtSz    (maxEvtSize),
   _xtc         (),
-  _pid         (0x01000000000003ul),  // Something non-zero and not on a batch boundary
-  _pool        (sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries, CLS),
+  _pid         (0),
+  _pool        (nullptr),
   _trId        (TrUnknown),
   _allocPending(0)
 {
 }
 
-DrpSim::~DrpSim()
+void DrpSim::startup(unsigned id, void** base, size_t* size)
 {
-}
-
-void DrpSim::startup(unsigned id)
-{
+  _pid          = 0x01000000000003ul; // Something non-zero and not on a batch boundary
   _trId         = TrUnknown;
   _allocPending = 0;
 
   const_cast<Xtc&>(_xtc) = Xtc(TypeId(TypeId::Data, 0), Src(id));
+
+  _pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries, CLS);
+  assert(_pool);
+
+  *base = _pool->buffer();
+  *size = _pool->size();
 }
 
 void DrpSim::shutdown()
 {
-  _pool.stop();
+  if (_pool)
+  {
+    _pool->stop();
 
-  printf("\nDrpSim Input data pool:\n");
-  _pool.dump();
+    printf("\nDrpSim Input data pool:\n");
+    _pool->dump();
 
-  // Revisit: Need to deallocate whatever is still allocated in the _pool
+    delete _pool;
+    _pool = nullptr;
+  }
 }
 
 const Dgram* DrpSim::genInput()
@@ -216,7 +221,7 @@ const Dgram* DrpSim::genInput()
   const Sequence seq(Sequence::Event, trId[_trId], TimeStamp(ts), PulseId(_pid));
 
   ++_allocPending;
-  void* buffer = _pool.alloc(sizeof(Input));
+  void* buffer = _pool->alloc(sizeof(Input));
   --_allocPending;
   if (!buffer)  return (Dgram*)buffer;
   Input* idg = ::new(buffer) Input(seq, _xtc);
@@ -245,22 +250,25 @@ const Dgram* DrpSim::genInput()
 EbCtrbIn::EbCtrbIn(const TebCtrbParams& prms,
                    StatsMonitor&        smon) :
   EbCtrbInBase(prms),
-  _mon        (nullptr),
+  _mebCtrb    (nullptr),
   _eventCount (0)
 {
-  smon.registerIt("CtbI_EvtCt",  _eventCount,  StatsMonitor::SCALAR);
-  smon.registerIt("CtbI_RxPdg",   rxPending(), StatsMonitor::SCALAR);
-  if (_mon)
-    smon.registerIt("MCtbO_EvtCt", _mon->eventCount(), StatsMonitor::SCALAR);
+  smon.registerIt("CtbI_EvtCt", _eventCount,  StatsMonitor::SCALAR);
+  smon.registerIt("CtbI_RxPdg",  rxPending(), StatsMonitor::SCALAR);
 }
 
-int  EbCtrbIn::connect(const TebCtrbParams& prms, MebContributor* mon)
+int EbCtrbIn::connect(const TebCtrbParams& tebPrms, MebContributor* mebCtrb)
 {
-  _mon = mon;
+  _eventCount = 0;
 
-  _eventCount  = 0;
+  _mebCtrb = mebCtrb;
 
-  return EbCtrbInBase::connect(prms);
+  return EbCtrbInBase::connect(tebPrms);
+}
+
+void EbCtrbIn::shutdown()
+{
+  if (_mebCtrb)  _mebCtrb->shutdown();
 }
 
 void EbCtrbIn::process(const Dgram* result, const void* appPrm)
@@ -275,21 +283,22 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
     abort();
   }
 
-  if (_mon)
+  if (_mebCtrb)
   {
     if (result->seq.isEvent())            // L1Accept
     {
       uint32_t* response = (uint32_t*)result->xtc.payload();
 
-      if (response[1])  _mon->post(input, response[1]);
+      if (response[1])  _mebCtrb->post(input, response[1]);
     }
     else                                  // Other Transition
     {
       //printf("Non-event rcvd: pid = %014lx, service = %d\n", pid, result->seq.service());
 
-      _mon->post(input);
+      _mebCtrb->post(input);
     }
   }
+
   // Revisit: Race condition
   // There's a race when the input datagram is posted to the monitoring node(s).
   // It is nominally safe to delete the DG only when the post has completed.
@@ -318,10 +327,6 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
   smon.registerIt("CtbO_InFlt",  _inFlightCnt,           StatsMonitor::SCALAR);
 }
 
-#ifdef SINGLE_EVENTS
-#  include <iostream>                   // std::cin, std::cout
-#endif
-
 void EbCtrbApp::run(EbCtrbIn& in)
 {
   _eventCount  = 0;
@@ -335,8 +340,6 @@ void EbCtrbApp::run(EbCtrbIn& in)
   printf("Hit <return> for an event\n");
 #endif
 
-  _drpSim.startup(_prms.id);
-
   while (lRunning)
   {
 #ifdef SINGLE_EVENTS
@@ -346,7 +349,7 @@ void EbCtrbApp::run(EbCtrbIn& in)
     //usleep(100000);
 
     const Dgram* input = _drpSim.genInput();
-    if (!input)  break;
+    if (!input)  continue;
 
     if (TebContributor::process(input, (const void*)input)) // 2nd arg is returned with the result
       ++_eventCount;
@@ -354,9 +357,11 @@ void EbCtrbApp::run(EbCtrbIn& in)
     _inFlightCnt = inFlightCnt();
   }
 
+  TebContributor::shutdown();
+
   _drpSim.shutdown();
 
-  TebContributor::shutdown();
+  in.shutdown();        // Revisit: The 'in' base class is shut down in TebCtrb
 }
 
 
@@ -370,16 +375,17 @@ public:                                 // For CollectionApp
   void handleDisconnect(const json& msg); // override;
   void handleReset(const json& msg) override;
 private:
+  int  _handleConnect(const json& msg);
   int  _parseConnectionParams(const json& msg);
   void _shutdown();
 private:
-  TebCtrbParams&  _tebPrms;
-  MebCtrbParams&  _mebPrms;
-  EbCtrbApp       _tebCtrb;
-  MebContributor* _mebCtrb;
-  EbCtrbIn        _inbound;
-  StatsMonitor&   _smon;
-  std::thread*    _appThread;
+  TebCtrbParams& _tebPrms;
+  MebCtrbParams& _mebPrms;
+  EbCtrbApp      _tebCtrb;
+  MebContributor _mebCtrb;
+  EbCtrbIn       _inbound;
+  StatsMonitor&  _smon;
+  std::thread    _appThread;
 };
 
 CtrbApp::CtrbApp(const std::string& collSrv,
@@ -390,10 +396,9 @@ CtrbApp::CtrbApp(const std::string& collSrv,
   _tebPrms(tebPrms),
   _mebPrms(mebPrms),
   _tebCtrb(tebPrms, smon),
-  _mebCtrb(nullptr),
+  _mebCtrb(mebPrms),
   _inbound(tebPrms, smon),
-  _smon(smon),
-  _appThread(nullptr)
+  _smon(smon)
 {
 }
 
@@ -407,48 +412,50 @@ void CtrbApp::handleAlloc(const json& msg)
   reply(answer);
 }
 
-void CtrbApp::handleConnect(const json &msg)
+int CtrbApp::_handleConnect(const json &msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
-  if (rc)
-  {
-    // Reply to collection with a failure message
-    return;
-  }
+  if (rc)  return rc;
 
-  if ( (rc = _tebCtrb.connect(_tebPrms)) )
-  {
-    // Reply to collection with a failure message
-    return;
-  }
+  rc = _tebCtrb.connect(_tebPrms);
+  if (rc)  return rc;
 
+  void*  base;
+  size_t size;
+  _tebCtrb.drpSim().startup(_tebPrms.id, &base, &size);
+
+  MebContributor* mebCtrb = nullptr;
   if (_mebPrms.addrs.size() != 0)
   {
-    const DrpSim& drpSim = _tebCtrb.drpSim();
+    int rc = _mebCtrb.connect(_mebPrms, base, size);
+    if (rc)  return rc;
 
-    _mebCtrb = new MebContributor(_mebPrms);
-    if ( (rc = _mebCtrb->connect(_mebPrms, drpSim.base(), drpSim.size())) )
-    {
-      // Reply to collection with a failure message
-      return;
-    }
+    mebCtrb = &_mebCtrb;
+
+    _smon.registerIt("MCtbO_EvtCt", _mebCtrb.eventCount(), StatsMonitor::SCALAR);
   }
 
-  if ( (rc = _inbound.connect(_tebPrms, _mebCtrb)) )
-  {
-    // Reply to collection with a failure message
-    return;
-  }
+  rc = _inbound.connect(_tebPrms, mebCtrb);
+  if (rc)  return rc;
 
   _smon.enable();
 
   lRunning = 1;
 
-  _appThread = new std::thread(&EbCtrbApp::run, std::ref(_tebCtrb), std::ref(_inbound));
+  _appThread = std::thread(&EbCtrbApp::run, std::ref(_tebCtrb), std::ref(_inbound));
+
+  return 0;
+}
+
+void CtrbApp::handleConnect(const json &msg)
+{
+  int rc = _handleConnect(msg);
 
   // Reply to collection with connect status
   json body   = json({});
-  json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
+  json answer = (rc == 0)
+              ? createMsg("connect", msg["header"]["msg_id"], getId(), body)
+              : createMsg("error",   msg["header"]["msg_id"], getId(), body);
   reply(answer);
 }
 
@@ -456,16 +463,9 @@ void CtrbApp::_shutdown()
 {
   lRunning = 0;
 
-  if (_appThread)
-  {
-    _appThread->join();
-    delete _appThread;
-    _appThread = nullptr;
+  _appThread.join();
 
-    _smon.disable();
-
-    if (_mebCtrb)  delete _mebCtrb;
-  }
+  _smon.disable();
 }
 
 void CtrbApp::handleDisconnect(const json &msg)
