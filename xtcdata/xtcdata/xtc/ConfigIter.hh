@@ -1,3 +1,6 @@
+#ifndef XTCDATA_CONFIGITER_H
+#define XTCDATA_CONFIGITER_H
+
 /*
  * class ConfigIter provides acess to configuration info from the 1st datagram in xtc2 file.
  *
@@ -8,12 +11,19 @@
 //#include "xtcdata/xtc/NamesLookup.hh"
 
 namespace XtcData{
+
+//class XtcData::NamesIter;
+
 class ConfigIter : public XtcData::NamesIter
 {
 public:
-  //ConfigIter(XtcData::Xtc* xtc) : XtcData::NamesIter(xtc), _desc_shape(NULL), _desc_value(NULL) { iterate(); }
-    ConfigIter(XtcData::Xtc* xtc) : XtcData::NamesIter(xtc) { iterate(); }
-    ConfigIter() : XtcData::NamesIter() {}
+
+    enum CTOR_TYPE {CTOR_DEFAULT, CTOR_REGULAR};
+
+  //ConfigIter(XtcData::Xtc* xtc);
+  //ConfigIter();
+    ConfigIter(XtcData::Xtc* xtc) : XtcData::NamesIter(xtc), _ctor_type(CTOR_REGULAR)  { iterate(); }
+    ConfigIter() : XtcData::NamesIter(), _ctor_type(CTOR_DEFAULT) {}
    ~ConfigIter();
 
     int process(XtcData::Xtc* xtc);
@@ -29,9 +39,16 @@ public:
     ConfigIter(const ConfigIter&) = delete;
     ConfigIter& operator = (const ConfigIter&) = delete;
 
+    bool default_constructor() const {return _ctor_type==CTOR_DEFAULT;}
+    bool regular_constructor() const {return _ctor_type==CTOR_REGULAR;}
+    CTOR_TYPE constructor_type() const {return _ctor_type;}
+
 private:
     ShapesData* _shapesData[2];
     DescData* _desc_shape = NULL;
     DescData* _desc_value = NULL;
+    CTOR_TYPE _ctor_type;
 };
 };
+
+#endif // 

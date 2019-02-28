@@ -41,7 +41,10 @@ class DragBase(object) :
     
     def __init__(self, parent=None,\
                  brush=QBrush(), pen=QPen(Qt.blue, 0, Qt.SolidLine)) :
-        self.set_mode()
+
+        logger.debug('In DragBase')
+
+        self.set_drag_mode()
         self.set_child_item_sel()
         self.set_cursor_hover()
         self.set_cursor_grab()
@@ -57,12 +60,13 @@ class DragBase(object) :
         #self.style_transp  = "background-color: rgb(255,   0,   0, 100);"
 
     
-    def set_mode(self, mode=MOVE) :
-        self._mode = mode
+    def set_drag_mode(self, mode=MOVE) :
+        logger.debug('In DragBase.set_drag_mode %s' % mode_names[mode])
+        self._drag_mode = mode
 
 
     def mode(self) :
-        return self._mode
+        return self._drag_mode
 
 
     def set_child_item_sel(self, item=None) :
@@ -103,7 +107,7 @@ class DragBase(object) :
 
         elif txt == 'Delete' :
             #print('ask parent class:', self._parent, ' to kill self:', self)
-            self.set_mode(DELETE)
+            self.set_drag_mode(DELETE)
             self.setVisible(False)
             #self._parent.delete_item(self)
 

@@ -8,6 +8,15 @@
 #include "psalg/calib/AreaDetectorTypes.hh"
 #include "psalg/detector/Detector.hh"
 
+#include "psalg/detector/UtilsConfig.hh" // configNames
+
+#include "xtcdata/xtc/Array.hh" // Array
+
+#include "xtcdata/xtc/DataIter.hh"
+
+#include "xtcdata/xtc/ConfigIter.hh"
+typedef XtcData::ConfigIter ConfigIter;
+
 using namespace std;
 using namespace psalg;
 
@@ -18,8 +27,16 @@ namespace detector {
 class AreaDetector : public Detector {
 public:
 
+  AreaDetector(const std::string& detname, ConfigIter& config);
+
   AreaDetector(const std::string& detname);
+
+  AreaDetector(); 
+
   virtual ~AreaDetector();
+
+  virtual void process_config();
+  virtual void process_data(XtcData::DataIter& datao);
 
   void _default_msg(const std::string& msg=std::string()) const;
 
@@ -27,6 +44,8 @@ public:
   virtual const shape_t* shape(const event_t&);
   virtual const size_t   ndim (const event_t&);
   virtual const size_t   size (const event_t&);
+  virtual const size_t   ndim ();
+  virtual const size_t   size ();
 
   /// access to calibration constants
   virtual const NDArray<common_mode_t>&   common_mode      (const event_t&);
@@ -68,10 +87,38 @@ public:
 
   AreaDetector(const AreaDetector&) = delete;
   AreaDetector& operator = (const AreaDetector&) = delete;
-  AreaDetector(){}
+
+
+
+
+
+  //---------------------------
+
+  typedef int64_t int64_cfg_t;
+
+  int64_cfg_t maxNumberOfModulesPerDetector;
+  int64_cfg_t numberOfModules;
+  int64_cfg_t numberOfRows;
+  int64_cfg_t numberOfColumns;
+  int64_cfg_t numberOfPixels;
+
+  //int64_cfg_t *shape_cfg;
+  //Array<int64_cfg_t>& shape_config;
+
+  //int64_cfg_t Version;
+  //int64_cfg_t MaxColumnsPerModule;
+  //int64_cfg_t GainMode;
+  //int64_cfg_t TypeId;
+  //int64_cfg_t* moduleConfig_shape;
+  //int64_cfg_t numPixels;
+  //int64_cfg_t numberOfRowsPerModule;
+  //int64_cfg_t numberOfColumnsPerModule;
+  //int64_cfg_t gainMode;
+
 
 protected:
-  shape_t* _shape;
+  shape_t*                _shape;
+  ConfigIter*             _pconfig;
 
 private:
 

@@ -1,6 +1,10 @@
+
 #include "xtcdata/xtc/ConfigIter.hh"
 
 using namespace XtcData;
+
+//ConfigIter::ConfigIter(XtcData::Xtc* xtc) : XtcData::NamesIter(xtc) { iterate(); }
+//ConfigIter::ConfigIter() : XtcData::NamesIter() {}
 
 ConfigIter::~ConfigIter() { 
     if(_desc_shape) delete _desc_shape; 

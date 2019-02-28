@@ -151,13 +151,13 @@ int test_all(int argc, char* argv[]) {
     Dgram* dg = xfi.next();
 
     ConfigIter configo(&(dg->xtc));
-    NamesLookup& names_map = configo.namesLookup();
+    NamesLookup& namesLookup = configo.namesLookup();
 
-    //DESC_SHAPE(desc_shape, configo, names_map);
+    //DESC_SHAPE(desc_shape, configo, namesLookup);
     DescData& desc_shape = configo.desc_shape();
     dump("Config shape", desc_shape);
 
-    //DESC_VALUE(desc_value, configo, names_map);
+    //DESC_VALUE(desc_value, configo, namesLookup);
     DescData& desc_value = configo.desc_value();
     dump("Config values", desc_value);
 
@@ -175,8 +175,8 @@ int test_all(int argc, char* argv[]) {
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
                dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
 
-        //DESC_VALUE(desc_data, datao, names_map);
-        DescData& desc_data = datao.desc_value(names_map);
+        //DESC_VALUE(desc_data, datao, namesLookup);
+        DescData& desc_data = datao.desc_value(namesLookup);
         dump("Data values", desc_data);
     }
 

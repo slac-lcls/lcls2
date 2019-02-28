@@ -116,7 +116,7 @@ namespace detector {
     {"timepix-"       , TIMEPIX},
     {"fli-"           , FLI},
     {"pimax-"         , PIMAX},
-    {"jungfrau-"      , JUNGFRAU},
+    {"jungfrau"      , JUNGFRAU},
     {"zyla-"          , ZYLA},
     {"controlscamera-", EPICSCAM},
     {"pixis-"         , PIXIS},

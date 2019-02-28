@@ -41,7 +41,7 @@ def add_item(type, obj, parent=None, scene=None,\
 
     logger.debug('DragFactory add_item %s' % dic_drag_type_to_name[type])
 
-    if   type == POINT : return DragPoint(obj, parent, scene, brush_w, pen, orient='r', rsize=8)
+    if   type == POINT : return DragPoint(obj, parent, scene, brush_w, pen, pshape='r', rsize=8)
     elif type == RECT  : return DragRect (obj, parent, scene, brush, pen)
     elif type == LINE  : return None # DragLine(view, points)
     elif type == CIRC  : return None # DragCirc(view, points)

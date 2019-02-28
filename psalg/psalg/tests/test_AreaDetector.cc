@@ -23,7 +23,7 @@
 
 #include "xtcdata/xtc/XtcFileIterator.hh"
 //#include "xtcdata/xtc/XtcIterator.hh"
-#include "xtcdata/xtc/ShapesData.hh"
+//#include "xtcdata/xtc/ShapesData.hh"
 //#include "xtcdata/xtc/DescData.hh"
 //#include "xtcdata/xtc/NamesIter.hh"
 #include "xtcdata/xtc/ConfigIter.hh"
@@ -31,9 +31,10 @@
 
 #include "xtcdata/xtc/NamesLookup.hh"
 
-
 #include "psalg/detector/AreaDetectorStore.hh"
-//#include "psalg/detector/AreaDetector.hh"
+#include "psalg/detector/AreaDetector.hh"
+#include "psalg/detector/UtilsConfig.hh" // print_dg_info
+//#include "psalg/detector/AreaDetectorJungfrau.hh"
 
 //using namespace std;
 //using namespace psalg;
@@ -137,36 +138,25 @@ void test_AreaDetector(int argc, char* argv[]) {
   Dgram* dg = xfi.next();
   ConfigIter configo(&(dg->xtc));
 
-  //=======
-  // extrack Names from ConfigIter
-  //NamesId& namesId = configo.value().namesId();
-  NamesId& namesId = configo.shape().namesId();
-  NamesLookup& names_map = configo.namesLookup();
-  NameIndex& nameindex = names_map[namesId];
-  Names& names = nameindex.names();
+  //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", configo);
+  AreaDetector& det = *getAreaDetector("jungfrau", configo);
+  //AreaDetector det("jungfrau", configo);
+
+  //det.AreaDetector::process_config();
+  det.process_config();
+
+  std::cout << "detname: " << det.detname() << '\n';
+  //std::cout << "size: " << det.size() << '\n';
+  //std::cout << "ndim: " << det.ndim() << '\n';
+
+  std::cout << "maxNumberOfModulesPerDetector : " << det.maxNumberOfModulesPerDetector << '\n';
+  std::cout << "numberOfModules               : " << det.numberOfModules << '\n';
+  std::cout << "numPixels                     : " << det.numberOfPixels << '\n';
+  std::cout << "numberOfRows                  : " << det.numberOfRows << '\n';
+  std::cout << "numberOfColumns               : " << det.numberOfColumns << '\n';
+  //std::cout << "    : " << det. << '\n';
 
   //=======
-  // extrack Names from DescData
-  ////DescData desc_data(configo.value(), names_map[namesId]);
-  ////DescData& desc_data = configo.desc_value();
-  //DescData& desc_data = configo.desc_shape();
-  //ShapesData& shapesData = desc_data.shapesdata();
-  //NamesId& namesId       = shapesData.namesId();
-  //Names& names           = desc_data.nameindex().names();
-
-  //=======
-
-  printf("transition: %d  0/1 = config/data\n", namesId.namesId());
-
-  printf("Names:: detName: %s  detType: %s  detId: %s  segment: %d alg.name: %s\n",
-          names.detName(), names.detType(), names.detId(), names.segment(), names.alg().name());
-
-  //=======
-  /*
-
-  AreaDetector* det = new AreaDetector("jungfrau");
-  std::cout << "detname: " << det->detname() << '\n';
-
   //query_t query = 123;
   //const NDArray<pedestals_t>& peds = det->pedestals(query);
   //const NDArray<common_mode_t>& cmod = det->common_mode(query);
@@ -175,92 +165,33 @@ void test_AreaDetector(int argc, char* argv[]) {
   //std::cout << "\n  cmod   : " << cmod;
   //std::cout << "\n  raw    : " << raw;
   //std::cout << '\n';
-
-
-
-  //NamesLookup& names_map = configo.namesLookup();
-
+  //NamesLookup& namesLookup = configo.namesLookup();
+  //=======
 
   unsigned neventreq=2;
   unsigned nevent=0;
   while ((dg = xfi.next())) {
       if (nevent>=neventreq) break;
-      nevent++;
+
+      printf("evt:%04d", nevent);
+      print_dg_info(dg);
 
       DataIter datao(&(dg->xtc));
  
-      printf("evt:%04d ==== transition: %s of type: %d time %d.%09d, pulseId %lux, env %ux, "
-             "payloadSize %d extent %d\n", nevent,
-             TransitionId::name(dg->seq.service()), dg->seq.type(), dg->seq.stamp().seconds(),
-             dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
-             dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
+      //DESC_VALUE(desc_data, datao, namesLookup);
+      //DescData& desc_data = datao.desc_value(namesLookup);
+      //dump("Data values", desc_data);
 
-      //DESC_VALUE(desc_data, datao, names_map);
-      DescData& desc_data = datao.desc_value(names_map);
-      dump("Data values", desc_data);
+      //det.AreaDetector::process_data(datao);
+      det.process_data(datao);
+
+      nevent++;
   }
 
-  //return 0;
-
-
-
-  delete det;
-  */
   ::close(fd);
-
 }
 
 //-------------------
-
-/*
-
-int test_all(int argc, char* argv[]) {
-
-    int fd = file_descriptor(argc, argv);
-    XtcFileIterator xfi(fd, 0x4000000);
-
-    // get data out of the 1-st datagram configure transition
-    Dgram* dg = xfi.next();
-
-    ConfigIter configo(&(dg->xtc));
-    NamesLookup& names_map = configo.namesLookup();
-
-    //DESC_SHAPE(desc_shape, configo, names_map);
-    DescData& desc_shape = configo.desc_shape();
-    dump("Config shape", desc_shape);
-
-    //DESC_VALUE(desc_value, configo, names_map);
-    DescData& desc_value = configo.desc_value();
-    dump("Config values", desc_value);
-
-    unsigned neventreq=2;
-    unsigned nevent=0;
-    while ((dg = xfi.next())) {
-        if (nevent>=neventreq) break;
-        nevent++;
-
-        DataIter datao(&(dg->xtc));
- 
-        printf("evt:%04d ==== transition: %s of type: %d time %d.%09d, pulseId %lux, env %ux, "
-               "payloadSize %d extent %d\n", nevent,
-               TransitionId::name(dg->seq.service()), dg->seq.type(), dg->seq.stamp().seconds(),
-               dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
-               dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
-
-        //DESC_VALUE(desc_data, datao, names_map);
-        DescData& desc_data = datao.desc_value(names_map);
-        dump("Data values", desc_data);
-    }
-
-    ::close(fd);
-    return 0;
-}
-
-*/
-
-//-------------------
-
-
 //-------------------
 
 std::string usage(const std::string& tname="")
@@ -283,8 +214,7 @@ int main(int argc, char **argv) {
 
   cout << usage(); 
   print_hline(80,'_');
-  if (argc==1) {return 0;}
-  std::string tname(argv[1]);
+  std::string tname((argc>1) ? argv[1] : "0");
   cout << usage(tname); 
 
   if      (tname=="0") test_AreaDetector(argc, argv);

@@ -43,6 +43,7 @@ class FWViewImageShapes(FWViewImage) :
         self.lst_drag_items = []
         self.scale_ctl_normal = scale_ctl
 
+
     def setShapesEnabled(self, is_enabled=True):
         for item in self.lst_drag_items : item.setEnabled(is_enabled)
 

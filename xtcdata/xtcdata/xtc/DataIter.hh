@@ -1,3 +1,6 @@
+#ifndef XTCDATA_DATAITER_H
+#define XTCDATA_DATAITER_H
+
 /*
  * class DataIter provides acess to data in datagrams of xtc2 file.
  *
@@ -8,6 +11,7 @@
 #include "xtcdata/xtc/NamesLookup.hh"
 
 namespace XtcData{
+
 class DataIter : public XtcData::XtcIterator
 {
 public:
@@ -35,3 +39,5 @@ private:
     DescData* _desc_value = NULL;
 };
 };
+
+#endif // 
