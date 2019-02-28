@@ -347,7 +347,7 @@ class Ui_MainWindow(object):
             tw.addTab(tb,"Global")
 
             tw.addTab( addTiming(pvbase+'Us:'), "UsTiming")
-            if xtpg==True:
+            if getCuMode()==True:
                 tw.addTab( addCuTab (pvbase      ), "CuTiming")
 
         tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
@@ -408,8 +408,10 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
+    parser.add_argument('-x', '--xtpg_mode', action='store_true', help='xtpg in Cu mode')
     parser.add_argument("pv", help="pv to monitor")
     args = parser.parse_args()
+    setCuMode(args.xtpg_mode)
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

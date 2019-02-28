@@ -38,6 +38,9 @@ def setCuMode(v):
     print('CuMode',v)
     xtpg = v
 
+def getCuMode():
+    return xtpg
+
 class Pv:
     def __init__(self, pvname, callback=None):
         self.pvname = pvname
