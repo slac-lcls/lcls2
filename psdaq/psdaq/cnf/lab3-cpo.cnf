@@ -24,7 +24,7 @@ ip_addr = '10.0.'+shelf
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: 'daq-tst-dev02', id:'hsdioc', flags:'sx', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV02 -I -d /dev/qadca'},
+ { host: 'daq-tst-dev03', id:'hsdioc', flags:'sx', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV02 -I -d /dev/qadca'},
  {                        id:'partca',flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
  {                        id:'modca'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
@@ -33,6 +33,6 @@ procmgr_config = [
  {                        id:'hsdca', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV02'},
 # { host: 'drp-tst-acc02', id:'EvtBuild', flags:'sxp', conda:conda_rel, cmd:'drpEbBuilder -1 8 -2 8' },
 ## { host: 'drp-tst-dev002', id:'teb1', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'tstEbBuilder' },
-# { host: 'drp-tst-dev019', id:'hsddrp', flags:'sxp', conda:conda_rel, cmd:'psdaq/build/drp/drp -o /tmp -l 0x1 -D Digitizer'},
+# { host: 'drp-tst-dev024', id:'hsddrp', flags:'sxp', conda:conda_rel, cmd:'psdaq/build/drp/drp -o /tmp -l 0x1 -D Digitizer'},
 ## { host: 'drp-tst-acc06', id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v' },
 ]
