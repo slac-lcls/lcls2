@@ -149,8 +149,11 @@ void AreaDetectorJungfrau::process_config() {
       //else printf(" value: TBD\n");
 
       if (strcmp(name.name(), "moduleConfig_shape") == 0 and name.rank()==1) {
-          uint32_t *array = desc_shape.get_array<uint32_t>(i).data();
-          cout << " ==> cpo ===> save: " << array[0] << " " << array[1] << " " << array[2] << '\n';
+          auto array = desc_shape.get_array<uint32_t>(i);
+          for (unsigned k=0; k<array.shape()[0]; k++) { // for a rank 1 array
+              cout << " ==> cpo ===> save: element " << k << " has value " << array(k);
+          }
+          cout << "\n";
 
 	  uint32_t *shape_cfg = desc_shape.get_array<uint32_t>(0).data();
           //cout << " ==> save: " << shape_cfg[0] << '\n';
