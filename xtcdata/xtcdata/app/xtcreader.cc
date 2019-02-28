@@ -137,6 +137,17 @@ public:
             break;
         }
 
+        case(10):{
+        }
+            if(data_rank > 0){
+                Array<char> arrT = descdata.get_array<char>(i);
+                printf("%s: \"%s\"\n",name.name(),arrT.data());
+                    }
+            else{
+                printf("%s: string with no rank?!?\n",name.name());
+            }
+            break;
+
         }
 
     }

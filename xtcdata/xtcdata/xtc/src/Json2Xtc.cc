@@ -11,7 +11,8 @@ std::map<std::string, enum Name::DataType> JsonIterator::typeMap = {
     {"INT32",  Name::INT32},
     {"INT64",  Name::INT64},
     {"FLOAT",  Name::FLOAT},
-    {"DOUBLE", Name::DOUBLE}
+    {"DOUBLE", Name::DOUBLE},
+    {"CHARSTR",Name::CHARSTR}
 };
 
 void JsonIterator::iterate(Value &val) {
@@ -36,7 +37,7 @@ void JsonIterator::iterate(Value &val) {
             if (map.IsObject() || map.IsArray())
                 break;
         }
-        if (itr == val.End()) {
+        if (itr == val.End()) {  // Yes, no objects or arrays!
             process(val);
         } else {
             for (cnt = 0, itr = val.Begin(); itr != val.End(); ++cnt, ++itr) {
@@ -87,8 +88,11 @@ public:
                                      typeMap[(*typ)[0].GetString()],
                                      (int)((*typ).Size()) - 1});
         } else {
-            _vars.NameVec.push_back({name.c_str(),
-                                     typeMap[typ->GetString()]});
+            Name::DataType t = typeMap[typ->GetString()];
+            if (t == Name::CHARSTR)
+                _vars.NameVec.push_back({name.c_str(), t, 1});
+            else
+                _vars.NameVec.push_back({name.c_str(), t});
         }
     }
 private:
@@ -123,6 +127,9 @@ public:
             break;
         case Name::DOUBLE:
             return (T) val.GetDouble();
+            break;
+        case Name::CHARSTR:
+            /* Don't support this. */
             break;
         }
     }
@@ -175,6 +182,9 @@ public:
             case Name::DOUBLE:
                 writeArray<double>(val, shape, size, dtyp);
                 break;
+            case Name::CHARSTR:
+                printf("Charstr array?!?\n");
+                break;
             }
         } else {
             switch (typeMap[typ->GetString()]) {
@@ -208,6 +218,13 @@ public:
             case Name::DOUBLE:
                 _cd.set_value(_cnt, val.GetDouble());
                 break;
+            case Name::CHARSTR: {
+                unsigned shape[MaxRank] = { (unsigned) (strlen(val.GetString()) + 1) };
+                Array<char> arrayT = _cd.allocate<char>(_cnt, shape);
+                char *data = arrayT.data();
+                strcpy(data, val.GetString());
+                break;
+            }
             }
         }
         _cnt++;

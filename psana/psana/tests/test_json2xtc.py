@@ -28,11 +28,12 @@ class Test_JSON2XTC:
         assert c.set("ah", 839394939393, "UINT64")
         assert c.set("ai", 52.4, "FLOAT")
         assert c.set("aj", -39.455, "DOUBLE")
+        assert c.set("ak", "A random string!", "CHARSTR")
         # Arrays
-        assert c.set("ak", [1, 3, 7])
-        assert c.set("al", [[4,6,8],[7,8,3]], "INT16")
-        assert c.set("am", np.array([12, 13, 17],dtype='int32'))
-        assert c.set("an", np.array([[6,8,13],[19,238,998]],dtype='uint16'))
+        assert c.set("al", [1, 3, 7])
+        assert c.set("am", [[4,6,8],[7,8,3]], "INT16")
+        assert c.set("an", np.array([12, 13, 17],dtype='int32'))
+        assert c.set("ao", np.array([[6,8,13],[19,238,998]],dtype='uint16'))
         # Submodules
         d = cdict()
         assert d.set("b", 33)
@@ -67,7 +68,7 @@ class Test_JSON2XTC:
                         print(dg.test1[segment].raw.__getattribute__(n))
                         print(c.get(n))
                         assert False
-                elif isinstance(c.get(n), int):
+                elif isinstance(c.get(n), int) or isinstance(c.get(n), str):
                     if not dg.test1[segment].raw.__getattribute__(n) == c.get(n):
                         print("Failure on %s" % n)
                         print(dg[0].test1[segment].raw.__getattribute__(n))

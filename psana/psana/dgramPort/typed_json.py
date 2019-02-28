@@ -58,7 +58,8 @@ typerange = {
     "INT32"  : (-2**31, 2**31 - 1), 
     "INT64"  : (-2**63, 2**63 - 1), 
     "FLOAT"  : None,
-    "DOUBLE" : None
+    "DOUBLE" : None,
+    "CHARSTR": None
 }
 
 typedict = {
@@ -71,7 +72,8 @@ typedict = {
     "INT32"  : "int32", 
     "INT64"  : "int64", 
     "FLOAT"  : "float32", 
-    "DOUBLE" : "float64", 
+    "DOUBLE" : "float64",
+    "CHARSTR": "str"
 }
 
 nptypedict = {
@@ -149,7 +151,7 @@ def validate_typed_json(d, top=[]):
                 return namify(top + [n]) + " has invalid type " + str(v[0])
             vv = typerange[v[0]]
             if vv is None:
-                if not isinstance(v[1], numbers.Number):
+                if v[0] != "CHARSTR" and not isinstance(v[1], numbers.Number):
                     return namify(top + [n]) + " value is not a number"
             else:
                 if not isinstance(v[1], int):
@@ -203,7 +205,10 @@ def write_json_dict(f, d, tdict, top=[], indent="    "):
         elif isinstance(v, tuple):
             vv = typerange[v[0]]
             if vv is None:
-                f.write('%s"%s": %g' % (prefix, n, v[1]))
+                if v[0] == "CHARSTR":
+                    f.write('%s"%s": "%s"' % (prefix, n, v[1]))
+                else:
+                    f.write('%s"%s": %g' % (prefix, n, v[1]))
             else:
                 f.write('%s"%s": %d' % (prefix, n, v[1]))
             tdict[n] = v[0]
@@ -324,6 +329,10 @@ class cdict(object):
                 return False
             value = (type, value)
             issimple = True
+        elif isinstance(value, str):
+            if type != "CHARSTR":
+                return False
+            issimple = True
         elif isinstance(value, np.ndarray):
             issimple = True
         elif isinstance(value, cdict):
@@ -388,6 +397,8 @@ class cdict(object):
                         return False
                     if value.dtype != d.dtype or value.shape != d.shape:
                         return False
+            elif isinstance(value, str):
+                value = ("CHARSTR", value)
             else:
                 if not override and d is not None:
                     if d[0] != "DOUBLE" and d[0] != "FLOAT":
