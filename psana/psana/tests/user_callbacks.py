@@ -1,5 +1,7 @@
 import os
 from psana import DataSource
+import vals
+import numpy as np
 
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
@@ -21,7 +23,8 @@ def filter_fn(evt):
 xtc_dir = os.path.join(os.getcwd(),'.tmp')
 ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
 def event_fn(event, det):
-    assert det.raw.raw(event).shape == (3,6,)
+    padarray = vals.padarray
+    assert(np.array_equal(det.raw.calib(event),np.stack((padarray,padarray))))
 
 for run in ds.runs():
     det = run.Detector('xppcspad')

@@ -1,6 +1,7 @@
 import sys
 from psana import DataSource
 import numpy as np
+import vals
 
 def det():
     ds = DataSource('data.xtc2')
@@ -10,7 +11,9 @@ def det():
         for evt in run.events():
             assert(hsd.raw.calib(evt).shape==(5,))
             assert(hsd.fex.calib(evt).shape==(6,))
-            assert(cspad.raw.raw(evt).shape==(3,6,))
+            padarray = vals.padarray
+            assert(np.array_equal(cspad.raw.calib(evt),np.stack((padarray,padarray))))
+            assert(np.array_equal(cspad.raw.image(evt),np.vstack((padarray,padarray))))
 
 def calib():
     # Test calib_constants here prior to user.py, which uses mpi

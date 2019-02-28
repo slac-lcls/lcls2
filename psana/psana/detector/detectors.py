@@ -18,9 +18,14 @@ class cspad_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(cspad_raw_2_3_42, self).__init__(*args)
     def raw(self, evt):
-        return self.dgrams(evt)[0].arrayRaw
-    def mysum(self, evt):
-        return self.dgrams(evt)[0].arrayRaw.sum()
+        # an example of how to handle multiple segments
+        segs = self.segments(evt)
+        return np.stack([segs[i].arrayRaw for i in range(len(segs))])
+    def calib(self, evt):
+        return self.raw(evt)
+    def image(self, evt):
+        segs = self.segments(evt)
+        return np.vstack([segs[i].arrayRaw for i in range(len(segs))])
 
 class cspad_raw_2_3_43(cspad_raw_2_3_42):
     def __init__(self, *args):
@@ -33,14 +38,14 @@ class cspad_raw_1_2_3(DetectorImpl):
     def __init__(self, *args):
         super(cspad_raw_1_2_3, self).__init__(*args)
     def raw(self, evt):
-        quad0 = self.dgrams(evt)[0].quads0_data
-        quad1 = self.dgrams(evt)[0].quads1_data
-        quad2 = self.dgrams(evt)[0].quads2_data
-        quad3 = self.dgrams(evt)[0].quads3_data
+        quad0 = self.segments(evt)[0].quads0_data
+        quad1 = self.segments(evt)[0].quads1_data
+        quad2 = self.segments(evt)[0].quads2_data
+        quad3 = self.segments(evt)[0].quads3_data
         return np.concatenate((quad0, quad1, quad2, quad3), axis=0)
 
     def photonEnergy(self, evt):
-        return self.dgrams(evt)[0].photonEnergy
+        return self.segments(evt)[0].photonEnergy
 
     def calib(self, evt):
         fake_run = -1 # FIXME: in current psana2 RunHelper, calib constants are setup according to that run.

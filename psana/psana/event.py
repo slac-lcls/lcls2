@@ -90,30 +90,33 @@ class Event():
     def _run(self):
         return 0 # for psana1-cctbx compatibility
 
-    def _assign_det_dgrams(self):
+    def _assign_det_segments(self):
         """
         """
 
-        self._det_dgrams = {}
+        self._det_segments = {}
         for evt_dgram in self._dgrams:
             # detector name (e.g. "xppcspad")
             for det_name, segment_dict in evt_dgram.__dict__.items():
 
                 # drp class name (e.g. "raw", "fex")
                 for segment, det in segment_dict.items():
-                    for drp_class_name, dgram in det.__dict__.items():
+                    for drp_class_name, drp_class in det.__dict__.items():
                         class_identifier = (det_name,drp_class_name)
                     
-                        if class_identifier not in self._det_dgrams.keys():
-                            self._det_dgrams[class_identifier] = {}
-                        self._det_dgrams[class_identifier][segment] = dgram
+                        if class_identifier not in self._det_segments.keys():
+                            self._det_segments[class_identifier] = {}
+                        segs = self._det_segments[class_identifier]
+                        # comment out for performance, but maybe doesn't matter
+                        #assert segment not in segs, 'Found duplicate segment: '+str(segment)
+                        segs[segment] = drp_class
 
         return
 
     # this routine is called when all the dgrams have been inserted into
     # the event (e.g. by the eventbuilder calling _replace())
     def _complete(self):
-        self._assign_det_dgrams()
+        self._assign_det_segments()
 
     @property
     def _has_offset(self):

@@ -18,6 +18,7 @@ sys.excepthook = global_except_hook
 import os
 from psana import DataSource
 import numpy as np
+import vals
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -40,7 +41,8 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
         sendbuf += 1
-        assert det.raw.raw(evt).shape == (3,6,)
+        padarray = vals.padarray
+        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
         assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
@@ -59,7 +61,8 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
         sendbuf += 1
-        assert det.raw.raw(evt).shape == (3,6,)
+        padarray = vals.padarray
+        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
         assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
@@ -74,7 +77,8 @@ if rank == 0:
 
 for evt in ds.events():
     sendbuf += 1
-    assert det.raw.raw(evt).shape == (3,6,)
+    padarray = vals.padarray
+    assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
     assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)

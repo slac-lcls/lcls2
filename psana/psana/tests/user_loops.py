@@ -18,6 +18,8 @@ def global_except_hook(exctype, value, traceback):
 sys.excepthook = global_except_hook
 
 import os
+import vals
+import numpy as np
 from psana import DataSource
 
 def filter_fn(evt):
@@ -32,7 +34,9 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     #beginRunCode
     for evt in run.events():
-        assert det.raw.raw(evt).shape == (3,6,)
+        padarray = vals.padarray
+        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
+
     #endRunCode
 #endJobCode
 
@@ -41,7 +45,8 @@ ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir))
 for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
-        assert det.raw.raw(evt).shape == (3,6,)
+        padarray = vals.padarray
+        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
 
 # Usecase 2: one iterator 
 for evt in ds.events():
