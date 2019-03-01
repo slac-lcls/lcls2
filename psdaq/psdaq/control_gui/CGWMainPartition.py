@@ -41,7 +41,7 @@ class CGWMainPartition(QGroupBox) :
 
         QGroupBox.__init__(self, 'Partition', parent)
 
-        self.but_plat    = QPushButton('Raw call')
+        self.but_plat    = QPushButton('Roll call')
         self.but_select  = QPushButton('Select')
         self.but_display = QPushButton('Display')
 

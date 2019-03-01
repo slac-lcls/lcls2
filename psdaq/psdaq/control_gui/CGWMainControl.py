@@ -86,9 +86,9 @@ class CGWMainControl(QGroupBox) :
 
         #self.grid = QGridLayout()
         #self.grid.addWidget(self.lab_state,       0, 0, 1, 1)
-        #self.grid.addWidget(self.but_type,       0, 2, 1, 1)
+        #self.grid.addWidget(self.but_type,        0, 2, 1, 1)
         #self.grid.addWidget(self.box_state,       1, 1, 1, 1)
-        #self.grid.addWidget(self.but_transition,       2, 1, 1, 1)
+        #self.grid.addWidget(self.but_transition,  2, 1, 1, 1)
 
         self.setLayout(self.vbox)
 
@@ -139,13 +139,6 @@ class CGWMainControl(QGroupBox) :
  
 #--------------------
  
-#    def on_box_type(self, ind) :
-#        selected = str(self.box_type.currentText())
-#        msg = 'selected ind:%d %s' % (ind,selected)
-#        logger.debug(msg)
-
-#--------------------
- 
     def on_box_state(self, ind) :
         if not ind : return
         state = self.states[ind]
@@ -157,8 +150,8 @@ class CGWMainControl(QGroupBox) :
 #--------------------
  
     def on_but_transition(self) :
-        logger.debug('on_but_transition NO ACTION')
-        #self.check_transition()
+        #logger.debug('on_but_transition') # NO ACTION')
+        self.check_transition()
 
 #--------------------
  
@@ -182,20 +175,13 @@ class CGWMainControl(QGroupBox) :
 #--------------------
 
     def check_transition(self) :
-        """On 2019-02-21 command daq_control().monitorStatus() hangs up...
+        """Since 2019-02-28 use daq_control().getStatus()
         """
-        logger.debug('CGWMainDetector.check_transition TBD')
-
-        #print('Just before daq_control().monitorStatus()')
+        logger.debug('CGWMainDetector.check_transition')
         #transition, state = 'N/A', daq_control().getState()
-        #transition, state = daq_control().monitorStatus() # DEPRICATED monitorStatus()
-
-#       print('-after transition, state =', transition, state)
-#       if transition is None : return
-#       if transition == self.transition : return
-#       self.transition = transition
-#       #logger.debug('daq_control().getState() response %s' % state)
-#       #self.but_state.setText(state.upper() + ' since %s' % self.ts)
+        transition, state = daq_control().getStatus() # submits request to check transition and state
+        logger.debug('CGWMainDetector.check_transition transition:%s state:%s' % (str(transition), str(state)))
+#       self.but_state.setText(state.upper() + ' since %s' % self.ts)
 #       self.but_transition.setText(transition.upper() + ' since %s' % self.ts)
 
 #--------------------

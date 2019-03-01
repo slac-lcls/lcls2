@@ -315,30 +315,34 @@ class CGWMain(QWZMQListener) :
 
 
     def process_zmq_message(self, msg):
-        if isinstance(msg, list) :
-            #logger.debug('msg: %s' % msg)
+        #logger.debug('==== msg: %s' % str(msg))
+        try :
             for rec in msg :
                 ucode = rec.decode('utf8').replace("'", '"')
                 jo = json.loads(ucode)
                 sj = json.dumps(jo, indent=2, sort_keys=False)
                 #logger.debug("msg as json:\n%s" % sj)
-                d_header = jo.get('header',None) # {'key': 'status', 'msg_id': '0918505109-317821000', 'sender_id': None}
-                d_body = jo.get('body',None)     # {'state': 'allocated', 'transition': 'alloc'}
-                if d_header.get('key',None) == 'status' :
-                    s_state = d_body.get('state',None)
-                    s_transition = d_body.get('transition',None)
-                    
-                    if s_state is not None :
-                        self.wdetr.set_but_state(s_state)
-                        #self.wctrl.set_but_plat(s_state) # moved to widget self.wdetr
-                    else : logger.warning('received state is not str object: %s' % s_state)
+                #  jo['header'] # {'key': 'status', 'msg_id': '0918505109-317821000', 'sender_id': None}
+                #  jo['body']   # {'state': 'allocated', 'transition': 'alloc'}
 
-                    if s_transition is not None : 
-                        self.wctrl.set_transition(s_transition)
-                    else : logger.warning('received transition is not str object: %s' % s_transition)
-        else :
-             logger.warning('CGWMain.process_zmq_message msg is not a list: %s' % str(msg))
+                if  jo['header']['key'] == 'status' :
+                    s_state      = jo['body']['state']
+                    s_transition = jo['body']['transition']
+                    self.wdetr.set_but_state (s_state)
+                    self.wctrl.set_transition(s_transition)
+                    logging.info('received state msg: %s and transition: %s' % (s_state, s_transition))
 
+                elif jo['header']['key'] == 'error' :
+                    logging.error('received error msg: %s' % jo['body']['error'])
+
+        except KeyError as ex:
+             logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))
+
+        except Exception as ex:
+             logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex.message))
+
+#------------------------------
+#------------------------------
 #------------------------------
 #------------------------------
 
