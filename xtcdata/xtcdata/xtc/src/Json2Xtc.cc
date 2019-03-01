@@ -219,10 +219,7 @@ public:
                 _cd.set_value(_cnt, val.GetDouble());
                 break;
             case Name::CHARSTR: {
-                unsigned shape[MaxRank] = { (unsigned) (strlen(val.GetString()) + 1) };
-                Array<char> arrayT = _cd.allocate<char>(_cnt, shape);
-                char *data = arrayT.data();
-                strcpy(data, val.GetString());
+                _cd.set_string(_cnt, val.GetString());
                 break;
             }
             }

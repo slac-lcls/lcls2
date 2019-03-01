@@ -263,18 +263,21 @@ protected:
 
         void set_string(unsigned index, const char* xtcstring)
         {
-            unsigned bytes = strlen(xtcstring);
+            // include the null character
+            unsigned bytes = strlen(xtcstring)+1;
             // allocate in units of 4 bytes, to do some reasonable alignment
             // although maybe this doesn't make sense since uint8_t arrays
             // can have any length
             bytes = ((bytes-1)/4)*4+4;
-            // protect against being passed a non-terminated string
+            // protect against being passed an un-terminated string
             const unsigned MaxStrLen = 2048;
             if (bytes>MaxStrLen) bytes = MaxStrLen;
             unsigned charStrShape[MaxRank];
             charStrShape[0] = bytes;
             Array<char> charArray = allocate<char>(index,charStrShape);
             strncpy(charArray.data(),xtcstring,MaxStrLen);
+            // make sure we have a null character at the end
+            if (bytes>=MaxStrLen) charArray(MaxStrLen)='\0';
         }
 
         template <typename T>

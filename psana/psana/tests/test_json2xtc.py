@@ -71,7 +71,7 @@ class Test_JSON2XTC:
                 elif isinstance(c.get(n), int) or isinstance(c.get(n), str):
                     if not dg.test1[segment].raw.__getattribute__(n) == c.get(n):
                         print("Failure on %s" % n)
-                        print(dg[0].test1[segment].raw.__getattribute__(n))
+                        print(dg.test1[segment].raw.__getattribute__(n))
                         print(c.get(n))
                         assert False
                 else:
