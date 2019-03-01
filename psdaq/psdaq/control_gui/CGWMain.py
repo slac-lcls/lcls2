@@ -315,10 +315,10 @@ class CGWMain(QWZMQListener) :
 
 
     def process_zmq_message(self, msg):
-        #logger.debug('==== msg: %s' % str(msg))
+        #print('==== msg: %s' % str(msg))
         try :
             for rec in msg :
-                ucode = rec.decode('utf8').replace("'", '"')
+                ucode = rec.decode('utf8').replace("\'t", ' not').replace("'", '"')
                 jo = json.loads(ucode)
                 sj = json.dumps(jo, indent=2, sort_keys=False)
                 #logger.debug("msg as json:\n%s" % sj)

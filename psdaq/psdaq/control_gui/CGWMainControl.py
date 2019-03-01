@@ -175,14 +175,14 @@ class CGWMainControl(QGroupBox) :
 #--------------------
 
     def check_transition(self) :
-        """Since 2019-02-28 use daq_control().getStatus()
+        """Uses getStatus() to get last transition and set the info button status.
         """
         logger.debug('CGWMainDetector.check_transition')
-        #transition, state = 'N/A', daq_control().getState()
         transition, state = daq_control().getStatus() # submits request to check transition and state
         logger.debug('CGWMainDetector.check_transition transition:%s state:%s' % (str(transition), str(state)))
-#       self.but_state.setText(state.upper() + ' since %s' % self.ts)
-#       self.but_transition.setText(transition.upper() + ' since %s' % self.ts)
+        self.but_transition.setText(transition.upper()) # + ' since %s' % self.ts)
+        #state = daq_control().getState()
+        #self.but_state.setText(state.upper() + ' since %s' % self.ts)
 
 #--------------------
 
