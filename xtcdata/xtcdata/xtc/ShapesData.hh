@@ -69,7 +69,7 @@ public:
         assert(rank < MaxRank);assert(strlen(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize);
         _doc[0]='\0'; // initialize docstring to empty
-        _type = type;
+        _type = (uint32_t)type;
         _rank = rank;
     }
   
@@ -77,7 +77,7 @@ public:
         assert(rank < MaxRank);assert(sizeof(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize);
         _doc[0]='\0'; // initialize docstring to empty
-        _type = type;
+        _type = (uint32_t)type;
         _rank = rank;
     } 
 
@@ -85,12 +85,12 @@ public:
         assert(sizeof(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize);
         _doc[0]='\0'; // initialize docstring to empty
-        _type = Name::UINT8;
+        _type = (uint32_t)Name::UINT8;
         _rank = 1;
     }
        
     const char* name() {return _name;}
-    DataType    type() {return _type;}
+    DataType    type() {return (DataType)_type;}
     uint32_t    rank() {return _rank;}
     Alg&        alg()  {return _alg;}
   
@@ -98,7 +98,7 @@ private:
     Alg      _alg;
     char     _doc[MaxDocSize];
     char     _name[MaxNameSize];
-    DataType _type;
+    uint32_t _type;
     uint32_t _rank;
 };
 
