@@ -250,7 +250,6 @@ protected:
             Name& name = _nameindex.names().get(index);
             T val;checkType(val, name);
 
-            Data& data = _shapesdata.data();
             //Create a pointer to the next part of contiguous memory
             void *ptr = reinterpret_cast<void *>(_shapesdata.data().next());
 
@@ -261,6 +260,22 @@ protected:
             // Return the Array struct. Use it to assign values with arrayT(i,j)
             return arrT;
         };
+
+        void set_string(unsigned index, const char* xtcstring)
+        {
+            unsigned bytes = strlen(xtcstring);
+            // allocate in units of 4 bytes, to do some reasonable alignment
+            // although maybe this doesn't make sense since uint8_t arrays
+            // can have any length
+            bytes = ((bytes-1)/4)*4+4;
+            // protect against being passed a non-terminated string
+            const unsigned MaxStrLen = 2048;
+            if (bytes>MaxStrLen) bytes = MaxStrLen;
+            unsigned charStrShape[MaxRank];
+            charStrShape[0] = bytes;
+            Array<char> charArray = allocate<char>(index,charStrShape);
+            strncpy(charArray.data(),xtcstring,MaxStrLen);
+        }
 
         template <typename T>
         void set_value(unsigned index, T val)
@@ -286,7 +301,6 @@ protected:
             _numentries++;
             _offset[_numentries]=_offset[_numentries-1]+Name::get_element_size(name.type());
         }
-
 
         void* get_ptr()
         {

@@ -332,10 +332,7 @@ void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
     
     fex.set_value(FexDef::intFex, (int64_t) 42);
 
-    const unsigned strlen = 32;
-    unsigned charStrShape[MaxRank] = {strlen};
-    Array<char> charArray = fex.allocate<char>(FexDef::charStrFex,charStrShape);
-    strncpy(charArray.data(),"Test String",strlen);
+    fex.set_string(FexDef::charStrFex, "Test String");
 }
    
 
