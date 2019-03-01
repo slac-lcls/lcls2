@@ -118,6 +118,28 @@ class DaqControl:
         return retval
 
     #
+    # DaqControl.getStatus - get status
+    #
+    def getStatus(self):
+        r1 = r2 = 'error'
+        try:
+            msg = create_msg('getstatus')
+            self.front_req.send_json(msg)
+            reply = self.front_req.recv_json()
+        except Exception as ex:
+            print('getStatus() Exception: %s' % ex)
+        except KeyboardInterrupt:
+            print('KeyboardInterrupt')
+        else:
+            try:
+                r1 = reply['body']['transition']
+                r2 = reply['body']['state']
+            except KeyError:
+                pass
+
+        return (r1, r2)
+
+    #
     # DaqControl.setState - change the state
     #
     def setState(self, state):
@@ -283,6 +305,7 @@ class CollectionManager():
         self.ids = set()
         self.handle_request = {
             'getstate': self.handle_getstate,
+            'getstatus': self.handle_getstatus
         }
         self.lastTransition = 'reset'
 
@@ -495,6 +518,10 @@ class CollectionManager():
 
     def handle_getstate(self):
         return create_msg(self.state, body=self.cmstate)
+
+    # returns last transition plus current state 
+    def handle_getstatus(self):
+        return self.status_msg()
 
     def on_enter_reset(self):
         self.cmstate.clear()

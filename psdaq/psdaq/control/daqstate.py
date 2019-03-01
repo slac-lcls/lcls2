@@ -84,7 +84,8 @@ def main():
 
     else:
         # print current state
-        print(control.getState())
+        transition, state = control.getStatus()
+        print('last transition: %s  state: %s' % (transition, state))
 
 if __name__ == '__main__':
     main()
