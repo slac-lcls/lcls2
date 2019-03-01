@@ -163,15 +163,17 @@ public:
           break;
         }
       }
-      unsigned fcnt = _lanev[0]._frameCnt[now];
-      lm  = _lanemask & ~1;
-      for(unsigned i=1; lm; i++) {
-        lm &= ~(1<<i);
-        if (_lanev[i]._frameCnt[now] != fcnt) {
-          _frameCntErr++;
-          if ((verbose & FRAME_COUNT_MISM) && nprint++ < MAX_PRINT)
-            DUMP(frameCnt);
-          break;
+      if (p[4]>>31) { // L1Accept
+        unsigned fcnt = _lanev[0]._frameCnt[now];
+        lm  = _lanemask & ~1;
+        for(unsigned i=1; lm; i++) {
+          lm &= ~(1<<i);
+          if (_lanev[i]._frameCnt[now] != fcnt) {
+            _frameCntErr++;
+            if ((verbose & FRAME_COUNT_MISM) && nprint++ < MAX_PRINT)
+              DUMP(frameCnt);
+            break;
+          }
         }
       }
       _lanes[now] = 0;
@@ -237,6 +239,15 @@ EventValidator eventv(lanev,0xf);
 void LaneValidator::validate(const uint32_t* p, unsigned sz) {
   _ncalls++;
   unsigned event = p[5]&0xffffff;
+
+  if ((p[4]>>31)==0) {  // Transition
+    if ((_current & (1<<31))==0) {
+      unsigned pre = _current%HISTORY;
+      _current = event;                          // account for incrementing event counter
+      _frameCnt[event%HISTORY] = _frameCnt[pre]; // account for non-incrementing frame counter
+    }
+    return;
+  }
 
   //  validate this event
   unsigned now = event%HISTORY;
@@ -426,16 +437,17 @@ int main (int argc, char **argv) {
                const uint32_t* b = reinterpret_cast<const uint32_t*>(dmaBuffers[dmaIndex[x]]);
                unsigned lane = (dest[x]>>8)&7;
                unsigned words = unsigned(last)>>2;
-               if (b[4]>>31) {  // L1Accept
-                 lanev[lane].validate(b,words);
-                 eventv     .validate(b,words,lane);
-               }
-               else {           // Other
+
+               if ((b[4]>>31)==0) { // Print transitions
                  printf("lane%u:",lane);
                  for(unsigned i=0; i<8; i++)
                    printf(" %08x",b[i]);
                  printf("\n");
                }
+
+               lanev[lane].validate(b,words);
+               eventv     .validate(b,words,lane);
+
                //  Print out pulseId/timeStamp to check synchronization across nodes
                if ((b[5]&0xfffff)==0) {
                  printf("event[%06x]:",b[4]);
