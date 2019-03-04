@@ -94,6 +94,7 @@ namespace Pds {
     public:
       void            startup(unsigned id, void** base, size_t* size);
       void            shutdown();
+      void            stop();
     public:
       const Dgram*    genInput();
     public:
@@ -186,12 +187,15 @@ void DrpSim::startup(unsigned id, void** base, size_t* size)
   *size = _pool->size();
 }
 
+void DrpSim::stop()
+{
+  if (_pool)  _pool->stop();
+}
+
 void DrpSim::shutdown()
 {
   if (_pool)
   {
-    _pool->stop();
-
     printf("\nDrpSim Input data pool:\n");
     _pool->dump();
 
@@ -462,6 +466,9 @@ void CtrbApp::handleConnect(const json &msg)
 void CtrbApp::_shutdown()
 {
   lRunning = 0;
+
+  _tebCtrb.drpSim().stop();
+  _tebCtrb.stop();
 
   _appThread.join();
 

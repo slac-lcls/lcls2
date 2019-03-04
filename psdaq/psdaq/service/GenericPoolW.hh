@@ -3,6 +3,7 @@
 
 #include "GenericPool.hh"
 
+#include <atomic>
 #include <mutex>
 #include <condition_variable>
 
@@ -19,7 +20,7 @@ namespace Pds {
     virtual void* deque();
     virtual void  enque(PoolEntry*);
   private:
-    bool                    _stopping;
+    std::atomic<bool>       _stopping;
     mutable std::mutex      _mutex;
     std::condition_variable _condVar;
   };
