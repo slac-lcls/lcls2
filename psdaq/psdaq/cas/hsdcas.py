@@ -133,15 +133,15 @@ def main():
     pvdb[stationstr+'SYNCE'       ] = {'type' : 'int', 
                                        'value' : 0 }
     pvdb[stationstr+'SYNCELO'     ] = {'type' : 'int',
-                                       'value' : 5500-175 }
+                                       'value' : 11250-250 }
     pvdb[stationstr+'SYNCEHI'     ] = {'type' : 'int', 
-                                       'value' : 5500+175 }
+                                       'value' : 11250+250 }
     pvdb[stationstr+'SYNCO'       ] = {'type' : 'int', 
                                        'value' : 0 }
     pvdb[stationstr+'SYNCOLO'     ] = {'type' : 'int', 
-                                       'value' : 15200-175 }
+                                       'value' : 1450-200 }
     pvdb[stationstr+'SYNCOHI'     ] = {'type' : 'int', 
-                                       'value' : 15200+175 }
+                                       'value' : 1450+200 }
     pvdb[stationstr+'WRFIFOCNT'  ] = {'type' : 'int', 
                                       'count' : NChans,
                                       'value' : [0]*NChans }
