@@ -320,8 +320,6 @@ class CGWMain(QWZMQListener) :
             for rec in msg :
                 ucode = rec.decode('utf8').replace("\'t", ' not').replace("'", '"')
                 jo = json.loads(ucode)
-                sj = json.dumps(jo, indent=2, sort_keys=False)
-                #logger.debug("msg as json:\n%s" % sj)
                 #  jo['header'] # {'key': 'status', 'msg_id': '0918505109-317821000', 'sender_id': None}
                 #  jo['body']   # {'state': 'allocated', 'transition': 'alloc'}
 
@@ -334,6 +332,10 @@ class CGWMain(QWZMQListener) :
 
                 elif jo['header']['key'] == 'error' :
                     logging.error('received error msg: %s' % jo['body']['error'])
+
+                else :
+                    sj = json.dumps(jo, indent=2, sort_keys=False)
+                    logging.debug('received jason:\n%s' % sj)
 
         except KeyError as ex:
              logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))

@@ -129,7 +129,7 @@ class CGWMainDetector(QGroupBox) :
         self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
         self.state = s 
         self.but_state.setText('%s since %s' % (s.upper(), self.ts))
-        self.parent_ctrl.wpart.set_but_plat(s.upper()) # enable/disable button plat in other widget
+        self.parent_ctrl.wpart.set_buts_enable(s.upper()) # enable/disable button plat in other widget
 
 #--------------------
 

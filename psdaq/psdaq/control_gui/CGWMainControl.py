@@ -106,6 +106,7 @@ class CGWMainControl(QGroupBox) :
 
         self.transition = 'undefined'
         self.ts = 'N/A'
+        self.check_transition()
 
 #--------------------
 

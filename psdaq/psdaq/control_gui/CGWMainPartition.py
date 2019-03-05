@@ -136,9 +136,12 @@ class CGWMainPartition(QGroupBox) :
 
 #--------------------
 
-    def set_but_plat(self, s) :
-        logger.debug('set_but_plat for state %s' % s)
-        self.but_plat.setEnabled(s.upper() in ('RESET', 'UNALLOCATED'))
+    def set_buts_enable(self, s) :
+        logger.debug('set_buts_enable for state %s' % s)
+        state = s.upper()
+        self.but_plat.setEnabled(state in ('RESET', 'UNALLOCATED'))
+        self.but_select.setEnabled(not(state in ('RESET',)))
+        self.but_display.setEnabled(not(state in ('RESET',)))
 
 #--------------------
 
