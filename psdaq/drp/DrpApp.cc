@@ -214,7 +214,7 @@ void DrpApp::collector()
 
         XtcData::Dgram& dgram = *reinterpret_cast<XtcData::Dgram*>(pebble->fex_data());
         uint64_t val;
-        if (i%5 == 0) {
+        if (i%2 == 0) {
             val = 0xdeadbeef;
         }
         else {
@@ -240,22 +240,20 @@ MyDgram::MyDgram(XtcData::Sequence& sequence, uint64_t val, unsigned contributor
 
 
 EbReceiver::EbReceiver(const Parameters& para,
-                       MemPool&          pool,
-                       MebContributor*   mon) :
+                       MemPool& pool,
+                       MebContributor* mon) :
   EbCtrbInBase(para.tPrms),
-      _pool(pool),
-      _xtcFile(nullptr),
-      _mon(mon),
-      nreceive(0)
+  m_pool(pool),
+  m_mon(mon),
+  nreceive(0)
 {
     char file_name[PATH_MAX];
-    snprintf(file_name, PATH_MAX, "%s/data-%02d.xtc", para.output_dir.c_str(), para.tPrms.id);
-    FILE* xtcFile = fopen(file_name, "w");
-    if (!xtcFile) {
+    std::string fileName = {para.output_dir + "/data-" + std::to_string(para.tPrms.id) + ".xtc2"};
+    m_xtcFile = fopen(fileName.c_str(), "w");
+    if (!m_xtcFile) {
         printf("Error opening output xtc file.\n");
         return;
     }
-    _xtcFile = xtcFile;
 }
 
 void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
@@ -269,12 +267,15 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
     XtcData::TransitionId::Value transition_id = event_header->seq.service();
 
-    if (event_header->seq.pulseId().value() != result->seq.pulseId().value()) {
-        printf("crap timestamps dont match\n");
-    }
 
+    DmaIndexReturner indexReturner(m_pool.fd);
+    if (event_header->seq.pulseId().value() != result->seq.pulseId().value()) {
+        std::cout<<"crap timestamps dont match\n";
+        std::cout<<"pebble pulseId  "<<event_header->seq.pulseId().value()<<
+                 "  result dgram pulseId  "<<result->seq.pulseId().value()<<'\n';
+    }
+    /*
     // write event to file if it passes event builder or is a configure transition
-    /* FIXME disable writing for now
     if (eb_decision == 1 || (transition_id == XtcData::TransitionId::Configure)) {
         XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
         if (fwrite(dgram, sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload(), 1, _xtcFile) != 1) {
@@ -283,27 +284,46 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         }
     }
     */
-    if (_mon) {
+    if (m_mon) {
         XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
         // L1Accept
         if (result->seq.isEvent()) {
             uint32_t* response = (uint32_t*)result->xtc.payload();
 
-            if (response[1])  _mon->post(dgram, response[1]);
+            if (response[1])  m_mon->post(dgram, response[1]);
         }
         // Other Transition
         else {
-            _mon->post(dgram);
+            m_mon->post(dgram);
         }
     }
 
     // return buffer to memory pool
     for (int l=0; l<8; l++) {
         if (pebble->pgp_data->buffer_mask & (1 << l)) {
-            dmaRetIndex(_pool.fd, pebble->pgp_data->buffers[l].dmaIndex);
+            indexReturner.returnIndex(pebble->pgp_data->buffers[l].dmaIndex);
         }
     }
     pebble->pgp_data->counter = 0;
     pebble->pgp_data->buffer_mask = 0;
-    _pool.pebble_queue.push(pebble);
+    m_pool.pebble_queue.push(pebble);
+}
+
+DmaIndexReturner::DmaIndexReturner(int fd) : m_fd(fd), m_counts(0) {}
+
+DmaIndexReturner::~DmaIndexReturner()
+{
+    if (m_counts > 0) {
+        dmaRetIndexes(m_fd, m_counts, m_indices);
+    }
+}
+
+void DmaIndexReturner::returnIndex(uint32_t index)
+{
+    m_indices[m_counts] = index;
+    m_counts++;
+    if (m_counts == BatchSize) {
+        dmaRetIndexes(m_fd, m_counts, m_indices);
+        m_counts = 0;
+    }
 }

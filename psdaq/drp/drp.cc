@@ -32,12 +32,13 @@ int main(int argc, char* argv[])
     }
     // Check required parameters
     if (para.device.empty()) {
-      printf("-d: device is mandatory!\n");
-      exit(1);
+        printf("-d: device is mandatory!\n");
+        exit(1);
     }
 
     para.numWorkers = 10;
-    para.numEntries = 8192;
+    para.numEntries = 32768;
+    printf("%d number of buffers\n", para.numEntries);
     DrpApp app(&para);
     app.run();
 }

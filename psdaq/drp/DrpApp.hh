@@ -17,6 +17,7 @@ private:
 };
 #pragma pack(pop)
 
+
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
@@ -24,10 +25,10 @@ public:
     virtual ~EbReceiver() {};
     void process(const XtcData::Dgram* result, const void* input) override;
 private:
-    MemPool& _pool;
-    FILE* _xtcFile;
-    Pds::Eb::MebContributor* _mon;
+    MemPool& m_pool;
+    Pds::Eb::MebContributor* m_mon;
     unsigned nreceive;
+    FILE* m_xtcFile;
 };
 
 struct Parameters;
@@ -55,4 +56,18 @@ private:
     std::unique_ptr<Pds::Eb::TebContributor> m_ebContributor;
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
+};
+
+// return dma indices in batches for performance
+class DmaIndexReturner
+{
+public:
+    DmaIndexReturner(int fd);
+    ~DmaIndexReturner();
+    void returnIndex(uint32_t index);
+private:
+    static const int BatchSize = 500;
+    int m_fd;
+    int m_counts;
+    uint32_t m_indices[BatchSize];
 };
