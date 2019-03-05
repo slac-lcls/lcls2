@@ -6,6 +6,7 @@
 #include <iostream>
 #include <cstddef>
 #include <cstdio>
+#include <bitset>
 #include <sys/types.h>
 #include "AxisDriver.h"
 #include "drp.hh"
@@ -37,6 +38,15 @@ MemPool::MemPool(const Parameters& para) :
     dmaBuffers = dmaMapDma(fd, &dmaCount, &dmaSize);
     if (dmaBuffers == nullptr) {
         std::cout<<"Error calling dmaMapDma!!\n";
+    }
+    // make sure there are more buffers in the pebble than in the pgp driver
+    // otherwise the pebble buffers will be overwritten by the pgp event builder
+    int nlanes = std::bitset<32>(para.laneMask).count();
+    if ( para.numEntries < (dmaCount / nlanes)) {
+        printf("Not enough buffers in the pebble. Make sure there are more\n");
+        printf("buffers in the drp pebble than in the pgp driver\n");
+        printf("pgp buffers = %u and drp pebble buffers = %d\n", dmaCount, para.numEntries);
+        exit(-1);
     }
 }
 
