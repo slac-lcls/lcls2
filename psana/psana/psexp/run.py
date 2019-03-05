@@ -107,6 +107,10 @@ class Run(object):
             info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
         return info
 
+    @property
+    def xtcinfo(self):
+        return self.dm.xtc_info
+
     def _get_calib(self, det_name):
         return {} # temporary cpo hack while database is down
         gain_mask, pedestals, geometry_string, common_mode = None, None, None, None

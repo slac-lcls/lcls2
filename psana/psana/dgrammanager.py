@@ -69,7 +69,7 @@ class DgramManager():
                 self.configs += [d]
 
         self.offsets = [_config._offset for _config in self.configs]
-        self.det_class_table = self.get_det_class_table()
+        self.det_class_table, self.xtc_info = self.get_det_class_table()
         self.calibs = {} # initialize to empty dict - will be populated by run class
    
     def __del__(self):
@@ -124,6 +124,7 @@ class DgramManager():
         """
 
         det_class_table = {}
+        xtc_info = []
 
         # loop over the dgrams in the configuration
         # if a detector/drp_class combo exists in two cfg dgrams
@@ -140,15 +141,16 @@ class DgramManager():
                     # use this info to look up the desired Detector class
                     versionstring = [str(v) for v in drp_class.version]
                     class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
+                    xtc_entry = (det_name,det.dettype,drp_class_name,'_'.join(versionstring))
+                    if xtc_entry not in xtc_info:
+                        xtc_info.append(xtc_entry)
                     if hasattr(detectors, class_name):
                         DetectorClass = getattr(detectors, class_name) # return the class object
-                        # TODO: implement policy for picking up correct det implementation
-                        #       given the version number
                         det_class_table[(det_name, drp_class_name)] = DetectorClass
                     else:
                         pass
 
-        return det_class_table
+        return det_class_table,xtc_info
 
     def get_timestamps(self):
         return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later

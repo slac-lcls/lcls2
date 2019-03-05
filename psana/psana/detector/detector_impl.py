@@ -10,4 +10,9 @@ class DetectorImpl(object):
         Look in the event to find all the dgrams for our detect/drp_class
         e.g. (xppcspad,raw) or (xppcspad,fex)
         """
-        return evt._det_segments[(self._det_name,self._drp_class_name)]
+        key = (self._det_name,self._drp_class_name)
+        if key in evt._det_segments:
+            return evt._det_segments[key]
+        else:
+            return None
+
