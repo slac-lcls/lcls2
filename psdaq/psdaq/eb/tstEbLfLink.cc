@@ -5,7 +5,7 @@
 // The program is working properly when the output on the Server and the Client
 // match.  The sequence goes through the transitions from Unknown to Enabled,
 // then <numEvents> L1As, then the transitions from Diabled to to Reset.  This
-// repeates <iters' times.
+// repeates <iters> times.
 
 #include "EbLfServer.hh"
 #include "EbLfClient.hh"
@@ -56,7 +56,7 @@ static size_t* _trSpace(size_t* size)
   return trOffset;
 }
 
-int server(const char*        ifAddr,
+int server(const std::string& ifAddr,
            const std::string& srvPort,
            unsigned           id,
            unsigned           numClients,
@@ -65,8 +65,15 @@ int server(const char*        ifAddr,
   const unsigned verbose(1);
   size_t         trSize;
   size_t*        trOffset = _trSpace(&trSize);
-  EbLfServer*    svr      = new EbLfServer(ifAddr, srvPort.c_str(), verbose);
+  EbLfServer*    svr      = new EbLfServer(verbose);
   int            rc;
+
+  if ( (rc = svr->initialize(ifAddr, srvPort.c_str(), numClients)) )
+  {
+    fprintf(stderr, "%s:\n  Failed to initialize EbLfServer\n",
+            __PRETTY_FUNCTION__);
+    return rc;
+  }
 
   std::vector<EbLfLink*> links(numClients);
   std::vector<void*>     regions(numClients);
@@ -85,7 +92,7 @@ int server(const char*        ifAddr,
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;
     }
-    regions[i]  = allocRegion(regSize);
+    regions[i] = allocRegion(regSize);
     if (!regions[i])
     {
       fprintf(stderr, "No memory found for region %d of size %zd\n",
@@ -148,10 +155,7 @@ int client(std::vector<std::string>& svrAddrs,
   static const int trId[TransitionId::NumberOf] =
     { TransitionId::Unknown,
       TransitionId::Reset,
-      TransitionId::Map,             TransitionId::Unmap,
       TransitionId::Configure,       TransitionId::Unconfigure,
-      TransitionId::BeginRun,        TransitionId::EndRun,
-      TransitionId::BeginCalibCycle, TransitionId::EndCalibCycle,
       TransitionId::Enable,          TransitionId::Disable,
       TransitionId::L1Accept };
   const unsigned verbose(1);
@@ -397,16 +401,16 @@ static int parseSpec(char*                     spec,
 
 int main(int argc, char **argv)
 {
-  int      op, rc   = 0;
-  unsigned id       = default_id;
-  char*    ifAddr   = nullptr;
-  unsigned portBase = port_base;
-  unsigned iters    = default_iters;
-  unsigned nEvents  = default_num_evts;
-  unsigned nClients = 0;
-  unsigned nBuffers = default_buf_cnt;
-  size_t   bufSize  = default_buf_size;
-  char*    spec     = nullptr;
+  int         op, rc   = 0;
+  unsigned    id       = default_id;
+  std::string ifAddr   = { };
+  unsigned    portBase = port_base;
+  unsigned    iters    = default_iters;
+  unsigned    nEvents  = default_num_evts;
+  unsigned    nClients = 0;
+  unsigned    nBuffers = default_buf_cnt;
+  size_t      bufSize  = default_buf_size;
+  char*       spec     = nullptr;
 
   while ((op = getopt(argc, argv, "h?A:S:P:i:n:N:c:b:s:")) != -1)
   {

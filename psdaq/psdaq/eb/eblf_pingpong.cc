@@ -57,6 +57,8 @@ void usage(char *name, char *desc)
           "Size of message to exchange",          default_size);
   fprintf(stderr, " %-20s %s (default: %d)\n",    "-n <iters>",
           "Number of exchanges",                  default_iters);
+  fprintf(stderr, " %-20s %s (default: %d)\n",    "-c <core>",
+          "CPU core to run on",                   default_core);
   fprintf(stderr, " %-20s %s\n",                  "-S",
           "Start flag: one side must specify this");
   fprintf(stderr, " %-20s %s\n",                  "-v",
@@ -67,14 +69,14 @@ void usage(char *name, char *desc)
 
 int main(int argc, char **argv)
 {
-  int      op, rc   = 0;
-  char*    ifAddr   = nullptr;
-  unsigned portBase = port_base;
-  size_t   size     = default_size;
-  unsigned iters    = default_iters;
-  unsigned core     = default_core;
-  bool     start    = false;
-  unsigned verbose  = 0;
+  int         op, rc   = 0;
+  std::string ifAddr   = { };
+  unsigned    portBase = port_base;
+  size_t      size     = default_size;
+  unsigned    iters    = default_iters;
+  unsigned    core     = default_core;
+  bool        start    = false;
+  unsigned    verbose  = 0;
 
   while ((op = getopt(argc, argv, "h?A:P:s:r:n:c:Sv")) != -1)
   {
@@ -142,11 +144,17 @@ int main(int argc, char **argv)
   unsigned    id      = 0;
   EbLfServer* svr     = nullptr;
   EbLfClient* clt     = nullptr;
+  unsigned    nLinks  = 1;
   EbLfLink*   svrLink;
   EbLfLink*   cltLink;
   if (!start)
   {
-    svr = new EbLfServer(ifAddr, srvPort.c_str(), verbose);
+    svr = new EbLfServer(verbose);
+    if ( (rc = svr->initialize(ifAddr, srvPort.c_str(), nLinks)) )
+    {
+      fprintf(stderr, "Failed to initialize EbLfServer\n");
+      return rc;
+    }
     if ( (rc = svr->connect(&svrLink)) )
     {
       fprintf(stderr, "Error connecting to client\n");
@@ -202,7 +210,12 @@ int main(int argc, char **argv)
     }
     printf("EbLfServer (ID %d) connected\n", cltLink->id());
 
-    svr = new EbLfServer(ifAddr, srvPort.c_str(), verbose);
+    svr = new EbLfServer(verbose);
+    if ( (rc = svr->initialize(ifAddr, srvPort.c_str(), nLinks)) )
+    {
+      fprintf(stderr, "Failed to initialize EbLfServer\n");
+      return rc;
+    }
     if ( (rc = svr->connect(&svrLink)) )
     {
       fprintf(stderr, "Error connecting to client\n");
@@ -248,16 +261,17 @@ int main(int argc, char **argv)
               fi_strerror(-rc), rc);
       break;
     }
+    rc = 0;
     ++rcnt;
 
     svrLink->postCompRecv();
 
     if (scnt < iters)
     {
-      if (cltLink->post(srcBuf, srcSize, 0, 0))
+      if ( (rc = cltLink->post(srcBuf, srcSize, 0, 0)) )
       {
-        fprintf(stderr, "Failed to post a buffer\n");
-        rc = 1;
+        fprintf(stderr, "Failed to post a buffer: %s(%d)\n",
+                fi_strerror(-rc), rc);
         break;
       }
       ++scnt;
@@ -273,6 +287,10 @@ int main(int argc, char **argv)
            bytes, usecs / 1000000., bytes * 8. / usecs);
     printf("%d iters in %.2f seconds = %.2f usec/iter\n",
            iters, usecs / 1000000., usecs / iters);
+  }
+  else
+  {
+    fprintf(stderr, "Exiting with error %d\n", rc);
   }
 
   if (svr)

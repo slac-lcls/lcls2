@@ -69,12 +69,12 @@ add_executable(ft_client          ft_client.cc)
 add_executable(ft_writemsg_client ft_writemsg_client.cc)
 add_executable(ft_writemsg_server ft_writemsg_server.cc)
 
-#add_executable(eblf_pingpong    eblf_pingpong.cc)
-#
-#add_executable(tstEbLfLink      tstEbLfLink.cc)
-#
+add_executable(eblf_pingpong    eblf_pingpong.cc)
+
+add_executable(tstEbLfLink      tstEbLfLink.cc)
+
 #add_executable(ibMon            ibMon.cc)
-#
+
 add_executable(tstEbContributor
   tstEbContributor.cc
 )
@@ -131,16 +131,16 @@ target_link_libraries(ft_writemsg_server
   utilities
 )
 
-#target_link_libraries(eblf_pingpong
-#  utilities
-#)
-#
-#target_link_libraries(tstEbLfLink
-#  utilities
-#  pthread
-#  rt
-#)
-#
+target_link_libraries(eblf_pingpong
+  utilities
+)
+
+target_link_libraries(tstEbLfLink
+  utilities
+  pthread
+  rt
+)
+
 #target_link_libraries(ibMon
 #  zmq
 #  pthread
