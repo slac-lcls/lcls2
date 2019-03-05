@@ -17,6 +17,7 @@ public:
   //------------------------------
   void process_config();
   void process_data(XtcData::DataIter& datao);
+  void detid(std::ostream& os, const int& ind=-1); //ind for panel, -1-for entire detector 
 
   AreaDetectorJungfrau(const std::string& detname, XtcData::ConfigIter& config);
   AreaDetectorJungfrau(const std::string& detname);
@@ -24,13 +25,12 @@ public:
 
   void _class_msg(const std::string& msg=std::string());
 
+  // implemented in AreaDetector
+  // std::string detid(const int& ind=-1);
   /// shape, size, ndim of data from configuration object
-  const shape_t* shape(const event_t&);
-  //const size_t   ndim (const event_t&);
-  const size_t   size (const event_t&);
-  const shape_t* shape();
-  const size_t   size ();
-
+  //const size_t   ndim (); // defiled in superclass AreaDetector
+  //const size_t   size ();
+  //const shape_t* shape();
 
   /// access to calibration constants
   /*
@@ -73,12 +73,13 @@ public:
 
 private:
 
-  int64_cfg_t moduleVersion[MAX_NUMBER_OF_MODULES];
+  int64_cfg_t moduleVersion  [MAX_NUMBER_OF_MODULES];
   int64_cfg_t firmwareVersion[MAX_NUMBER_OF_MODULES];
-  int64_cfg_t serialNumber[MAX_NUMBER_OF_MODULES];
+  int64_cfg_t serialNumber   [MAX_NUMBER_OF_MODULES];
+
+  void _panel_id(std::ostream& os, const int& ind);
 
   //char* panel_ids[MAX_NUMBER_OF_MODULES];
-
 }; // class
 
 } // namespace detector

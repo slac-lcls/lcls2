@@ -1,5 +1,4 @@
 
-
 #include <stdio.h> // for  sprintf, printf( "%lf\n", accum );
 #include <iostream> // for cout, puts etc.
 
@@ -14,31 +13,24 @@ using namespace psalg;
 namespace detector {
 
 AreaDetector::AreaDetector(const std::string& detname, ConfigIter& config) : 
-  Detector(detname, AREA_DETECTOR), _pconfig(&config), _calib_pars(0) {
+  Detector(detname, AREA_DETECTOR), _shape(0), _pconfig(&config), _calib_pars(0), _ind_data(-1) {
   MSG(DEBUG, "In c-tor AreaDetector(detname, config) for " << detname);
-  _shape = new shape_t[5]; std::fill_n(_shape, 5, 0); _shape[0]=11;
-
-  //if(_pconfig->regular_constructor()) process_config();
-
-
-  //process_config();
 }
 
 AreaDetector::AreaDetector(const std::string& detname) : 
-  Detector(detname, AREA_DETECTOR), _pconfig(NULL), _calib_pars(0) {
+  Detector(detname, AREA_DETECTOR), _shape(0), _pconfig(NULL), _calib_pars(0), _ind_data(-1) {
   MSG(DEBUG, "In c-tor AreaDetector(detname) for " << detname);
-  _shape = new shape_t[5]; std::fill_n(_shape, 5, 0); _shape[0]=11;
 }
 
 AreaDetector::AreaDetector() : 
-  Detector(), _pconfig(NULL), _calib_pars(0) {
+  Detector(), _shape(0), _pconfig(NULL), _calib_pars(0), _ind_data(-1) {
   MSG(DEBUG, "Default c-tor AreaDetector()");
 }
 
 AreaDetector::~AreaDetector() {
   MSG(DEBUG, "In d-tor AreaDetector for " << detname());
   if(_calib_pars) {delete _calib_pars; _calib_pars=0;}
-  delete _shape;
+  if(_shape) delete _shape;
 }
 
 void AreaDetector::_default_msg(const std::string& msg) const {
@@ -110,12 +102,129 @@ void AreaDetector::process_data(XtcData::DataIter& datao) {
 
 //-------------------
 
+void AreaDetector::_set_index_data(XtcData::DescData& ddata, const char* dataname) {
+    Names& names = ddata.nameindex().names();
+    for (unsigned i = 0; i < names.num(); i++) {
+      if(strcmp(names.get(i).name(), dataname) == 0) {
+        _ind_data = (int)i; 
+        MSG(DEBUG, "  ===> dataname: " << dataname << " index: " << _ind_data);
+        break;
+      }
+    }
+}
 
 //-------------------
+
+template<typename T>
+void AreaDetector::raw(XtcData::DescData& ddata, const T* pdata, const char* dataname) {
+    if(_ind_data < 0) _set_index_data(ddata, dataname);
+    pdata = ddata.get_array<T>(_ind_data).data();
+}
+
+//-------------------
+
+template void AreaDetector::raw<uint16_t>(XtcData::DescData&, const uint16_t*, const char*); 
+//template void AreaDetector::raw<int16_t> (XtcData::DescData&, const int16_t*, const char*); 
+//template void AreaDetector::raw<int8_t>  (XtcData::DescData&, const int8_t*, const char*); 
+
+//-------------------
+
+template<typename T>
+void AreaDetector::raw(XtcData::DataIter& datao, const T* pdata, const char* dataname) {
+  //ConfigIter& configo = *_pconfig;
+  //NamesLookup& namesLookup = configo.namesLookup();
+    DescData& ddata = datao.desc_value(_pconfig->namesLookup());
+    raw<T>(ddata, pdata, dataname);
+}
+
+//-------------------
+
+  template void AreaDetector::raw<uint16_t>(XtcData::DataIter&, const uint16_t*, const char*); 
+//template void AreaDetector::raw<int16_t> (XtcData::DataIter&, const int16_t*, const char*); 
+//template void AreaDetector::raw<int8_t>  (XtcData::DataIter&, const int8_t*, const char*); 
+
+//-------------------
+
+template<typename T>
+void AreaDetector::raw(XtcData::DescData& ddata, NDArray<T>& nda, const char* dataname) {
+    if(_ind_data < 0) _set_index_data(ddata, dataname);
+    T* pdata = ddata.get_array<T>(_ind_data).data();
+    nda.set_shape(shape(), ndim());
+    nda.set_data_buffer(pdata);
+}
+
+//-------------------
+
+  template void AreaDetector::raw<uint16_t>(XtcData::DescData&, NDArray<uint16_t>&, const char*); 
+//template void AreaDetector::raw<int16_t> (XtcData::DescData&, NDArray<int16_t>&, const char*); 
+//template void AreaDetector::raw<int8_t>  (XtcData::DescData&, NDArray<int8_t>&, const char*); 
+
+//-------------------
+
+template<typename T>
+void AreaDetector::raw(XtcData::DataIter& datao, NDArray<T>& nda, const char* dataname) {
+    DescData& ddata = datao.desc_value(_pconfig->namesLookup());
+    raw<T>(ddata, nda, dataname);
+}
+
+//-------------------
+
+  template void AreaDetector::raw<uint16_t>(XtcData::DataIter&, NDArray<uint16_t>&, const char*); 
+//template void AreaDetector::raw<int16_t> (XtcData::DataIter&, NDArray<int16_t>&, const char*); 
+//template void AreaDetector::raw<int8_t>  (XtcData::DataIter&, NDArray<int8_t>&, const char*); 
+
+//-------------------
+//-------------------
+//-------------------
+//-------------------
+
+void AreaDetector::detid(std::ostream& os, const int& ind) {
+  //_default_msg("detid(std::ostream& os,...)");
+  os << "default_area_detector_id";
+}
+
+//-------------------
+
+std::string AreaDetector::detid(const int& ind) {
+  //_default_msg("detid(...) returns string");
+  std::stringstream ss;
+  detid(ss, ind);
+  return ss.str();
+}
+
+//-------------------
+
+const size_t AreaDetector::ndim() {
+  //_default_msg("ndim(...)");
+  return (numberOfModules > 1)? 3 : 2;
+}
+
+//-------------------
+
+const size_t AreaDetector::size() {
+  //_default_msg("size(...)");
+  return (size_t)numberOfPixels;
+}
+
+//-------------------
+
+shape_t* AreaDetector::shape() {
+  //_default_msg("shape(...)");
+  if(!_shape) {
+    if (numberOfModules > 1)
+          _shape = new shape_t[3]{(shape_t)numberOfModules, (shape_t)numberOfRows, (shape_t)numberOfColumns};
+    else  _shape = new shape_t[2]{(shape_t)numberOfRows, (shape_t)numberOfColumns};
+    // std::fill_n(_shape, 5, 0); _shape[0]=11;
+  }
+  return &_shape[0];
+  //return _shape;
+}
+
 //-------------------
 
 const shape_t* AreaDetector::shape(const event_t& evt) {
   _default_msg("shape(...)");
+  if(!_shape) _shape=new shape_t[3]{1,2,3};
   return &_shape[0];
 }
 
@@ -126,16 +235,6 @@ const size_t AreaDetector::ndim(const event_t& evt) {
 
 const size_t AreaDetector::size(const event_t& evt) {
   _default_msg("size(...)");
-  return 0;
-}
-
-//=========
-
-const size_t AreaDetector::ndim() {
-  return 0;
-}
-
-const size_t AreaDetector::size() {
   return 0;
 }
 
@@ -306,6 +405,9 @@ calib::CalibPars* AreaDetector::calib_pars_updated() {
   if(_calib_pars) {delete _calib_pars; _calib_pars=0;}
   return calib_pars();
 }
+
+//-------------------
+//-------------------
 
 } // namespace detector
 

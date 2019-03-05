@@ -2,7 +2,10 @@
 #define PSALG_AREADETECTOR_H
 //-----------------------------
 
+#include <iostream>
 #include <string>
+#include <assert.h>
+
 #include "psalg/calib/CalibParsStore.hh" // CalibPars, getCalibPars
 #include "psalg/calib/NDArray.hh" // NDArray
 #include "psalg/calib/AreaDetectorTypes.hh"
@@ -10,7 +13,7 @@
 
 #include "psalg/detector/UtilsConfig.hh" // configNames
 
-#include "xtcdata/xtc/Array.hh" // Array
+//#include "xtcdata/xtc/Array.hh" // Array
 
 #include "xtcdata/xtc/DataIter.hh"
 
@@ -27,10 +30,10 @@ namespace detector {
 class AreaDetector : public Detector {
 public:
 
+  //typedef uint16_t rawu16_t;
+
   AreaDetector(const std::string& detname, ConfigIter& config);
-
   AreaDetector(const std::string& detname);
-
   AreaDetector(); 
 
   virtual ~AreaDetector();
@@ -40,12 +43,31 @@ public:
 
   void _default_msg(const std::string& msg=std::string()) const;
 
+  virtual void detid(std::ostream& os, const int& ind=-1); //ind for panel, -1-for entire detector 
+  virtual std::string detid(const int& ind=-1);
+
   /// shape, size, ndim of data from configuration object
-  virtual const shape_t* shape(const event_t&);
+  virtual const size_t   ndim();
+  virtual const size_t   size();
+  //virtual const shape_t* shape();
+  virtual shape_t* shape();
+
   virtual const size_t   ndim (const event_t&);
   virtual const size_t   size (const event_t&);
-  virtual const size_t   ndim ();
-  virtual const size_t   size ();
+  virtual const shape_t* shape(const event_t&);
+
+
+  template<typename T>
+  void raw(XtcData::DescData& ddata, const T* pdata, const char* dataname="frame");
+
+  template<typename T>
+  void raw(XtcData::DataIter& datao, const T* pdata, const char* dataname="frame");
+
+  template<typename T>
+  void raw(XtcData::DescData& ddata, NDArray<T>& nda, const char* dataname="frame");
+
+  template<typename T>
+  void raw(XtcData::DataIter& datao, NDArray<T>& nda, const char* dataname="frame");
 
   /// access to calibration constants
   virtual const NDArray<common_mode_t>&   common_mode      (const event_t&);
@@ -88,10 +110,6 @@ public:
   AreaDetector(const AreaDetector&) = delete;
   AreaDetector& operator = (const AreaDetector&) = delete;
 
-
-
-
-
   //---------------------------
 
   typedef int64_t int64_cfg_t;
@@ -115,7 +133,6 @@ public:
   //int64_cfg_t numberOfColumnsPerModule;
   //int64_cfg_t gainMode;
 
-
 protected:
   shape_t*                _shape;
   ConfigIter*             _pconfig;
@@ -128,6 +145,12 @@ private:
   NDArray<raw_t>          _raw;
   NDArray<calib_t>        _calib;
   NDArray<image_t>        _image;
+
+  int                     _ind_data;
+  //unsigned              _ind_data;
+
+  void _set_index_data(XtcData::DescData& ddata, const char* dataname);
+
 
   /*
   NDArray<common_mode_t>  _common_mode;
@@ -145,6 +168,7 @@ private:
   NDArray<pixel_coord_t>  _pixel_coord;
   NDArray<pixel_size_t>   _pixel_size;
   */
+
 }; // class
 
 } // namespace detector

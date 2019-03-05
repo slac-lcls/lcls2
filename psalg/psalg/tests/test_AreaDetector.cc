@@ -131,6 +131,8 @@ int file_descriptor(int argc, char* argv[]) {
 void test_AreaDetector(int argc, char* argv[]) {
   MSG(INFO, "In test_AreaDetector");
 
+  //typedef uint16_t raw_t; // in psalg/calib/AreaDetectorTypes.hh
+
   int fd = file_descriptor(argc, argv);
   XtcFileIterator xfi(fd, 0x4000000);
 
@@ -145,15 +147,28 @@ void test_AreaDetector(int argc, char* argv[]) {
   //det.AreaDetector::process_config();
   det.process_config();
 
-  std::cout << "detname: " << det.detname() << '\n';
-  //std::cout << "size: " << det.size() << '\n';
-  //std::cout << "ndim: " << det.ndim() << '\n';
-
+  std::cout << "\n\n==== Attributes of configuration ====\n";
+  std::cout << "detname                       : " << det.detname() << '\n';
+  std::cout << "dettype                       : " << det.dettype() << '\n';
   std::cout << "maxNumberOfModulesPerDetector : " << det.maxNumberOfModulesPerDetector << '\n';
   std::cout << "numberOfModules               : " << det.numberOfModules << '\n';
   std::cout << "numPixels                     : " << det.numberOfPixels << '\n';
   std::cout << "numberOfRows                  : " << det.numberOfRows << '\n';
   std::cout << "numberOfColumns               : " << det.numberOfColumns << '\n';
+
+  std::cout << "==== Derived values ====\n";
+  std::cout << "panel_id 0                    : " << det.detid(0) << '\n' 
+            << "panel_id 1                    : " << det.detid(1) << '\n'
+            << "detid                         : " << det.detid() << '\n';
+  std::cout << "ndim()                        : " << det.ndim() << '\n';
+  std::cout << "size()                        : " << det.size() << '\n';
+
+  const shape_t* pshape = det.shape();
+  std::cout << "shape()                       : (";
+  for(unsigned i=0; i<det.ndim(); i++) {
+    std::cout << pshape[i] << ((i<det.ndim()-1) ? ", " : ")\n");
+  }
+
   //std::cout << "    : " << det. << '\n';
 
   //=======
@@ -184,6 +199,14 @@ void test_AreaDetector(int argc, char* argv[]) {
 
       //det.AreaDetector::process_data(datao);
       det.process_data(datao);
+
+      raw_t* data;
+      det.raw<raw_t>(datao, data, "frame");
+      printf(" == raw data pointer: %d %d %d %d %d\n", data[0],data[1],data[2],data[3],data[4]);
+
+      NDArray<raw_t> nda;
+      det.raw<raw_t>(datao, nda);
+      std::cout << " == raw data nda: " << nda << '\n';
 
       nevent++;
   }

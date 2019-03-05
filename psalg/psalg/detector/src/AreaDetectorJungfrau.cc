@@ -1,6 +1,8 @@
 
-
-#include <string>
+//#include <string>
+//#include <iostream> // for cout, puts
+#include <iomanip>    // for setw, hex, setprecision, right
+#include <sstream>    // for stringstream
 
 #include "psalg/detector/AreaDetectorJungfrau.hh"
 #include "psalg/utils/Logger.hh" // for MSG
@@ -30,37 +32,34 @@ void AreaDetectorJungfrau::_class_msg(const std::string& msg) {
   MSG(INFO, "In AreaDetectorJungfrau::"<< msg);
 }
 
+  /*
 const shape_t* AreaDetectorJungfrau::shape(const event_t&) {
   _class_msg("shape(...)");
   return &AreaDetector::_shape[0];
   //return &_shape[0];
 }
 
-  /*
 const size_t AreaDetectorJungfrau::ndim(const event_t&) {
   _class_msg("ndim(...)");
   return 0;
 }
-  */
-
 
 const size_t AreaDetectorJungfrau::size(const event_t&) {
   _class_msg("size(...)");
   return 123;
 }
 
-
 const shape_t* AreaDetectorJungfrau::shape() {
   _class_msg("shape(...)");
   return &AreaDetector::_shape[0];
 }
 
-
-
 const size_t AreaDetectorJungfrau::size() {
   _class_msg("size(...)");
   return 123;
 }
+  */
+
 
 /// access to calibration constants
 
@@ -151,14 +150,16 @@ void AreaDetectorJungfrau::process_config() {
       if (strcmp(name.name(), "moduleConfig_shape") == 0 and name.rank()==1) {
           auto array = desc_shape.get_array<uint32_t>(i);
           for (unsigned k=0; k<array.shape()[0]; k++) { // for a rank 1 array
-              cout << " ==> cpo ===> save: element " << k << " has value " << array(k);
+              cout << " ===> save: element " << k << " has value " << array(k);
           }
           cout << "\n";
 
+	  /*
 	  uint32_t *shape_cfg = desc_shape.get_array<uint32_t>(0).data();
           //cout << " ==> save: " << shape_cfg[0] << '\n';
 	  for (int k=0; k<120; k++) // cout << "     k: " << k << "  v: " << shape_cfg[k] << '\n';
 	      printf("     k: %03d  v: %d\n", k, shape_cfg[k]);
+	  */
       }
   }
 }
@@ -193,17 +194,15 @@ void AreaDetectorJungfrau::process_data(XtcData::DataIter& datao) {
         }
 	else if (name.type() == 1) {
 	  uint16_t *data = descdata.get_array<uint16_t>(i).data();
-	  printf("  ==> cpo ===> %d %d %d %d %d\n", data[0],data[1],data[2],data[3],data[4]);
+	  printf("  ===> %d %d %d %d %d\n", data[0],data[1],data[2],data[3],data[4]);
 
 	  // cpo - remove comments if needed
 	  //uint16_t *data0 = descdata.get_array<uint16_t>(0).data();
 	  //for (int k=0; k<120; k++) printf("     k: %03d  data_v: %d\n", k, data0[k]);
-
 	}
 	else if (name.rank() == 1 && name.type() == 7) {
 	  int32_t *data = descdata.get_array<int32_t>(i).data();
-	  printf("  ==> cpo ===> %d %d %d %d\n", data[0],data[1],data[2],data[3]);
-
+	  printf("  ===> %d %d %d\n", data[0],data[1],data[2]);
 	  /*
 	  uint32_t *sh = descdata.get_array<uint32_t>(0).data();
           cout << " ==> save: " << sh[0] << '\n';
@@ -215,10 +214,41 @@ void AreaDetectorJungfrau::process_data(XtcData::DataIter& datao) {
           printf("  ==> TBD\n");
 	}
     }
-
 }
 
 //-------------------
+
+void AreaDetectorJungfrau::_panel_id(std::ostream& os, const int& ind) {
+  os << std::hex << moduleVersion[ind] << '-' 
+     << std::hex << firmwareVersion[ind] << '-' 
+     << std::hex << setfill('0')  << serialNumber[ind];
+  // << std::hex << std::setw(10) << std::setprecision(8) << std::right<< setfill('0')
+}
+
+//-------------------
+
+void AreaDetectorJungfrau::detid(std::ostream& os, const int& ind) {
+  //os << "panel index="  << std::setw(2) << ind << " numberOfModules=" << numberOfModules << " == ";
+  assert(ind<MAX_NUMBER_OF_MODULES);
+  assert(numberOfModules>0);
+  assert(numberOfModules<=MAX_NUMBER_OF_MODULES);
+  if(ind > -1) return _panel_id(os, ind);
+  for(int i=0; i<numberOfModules; i++) {
+    if(i) os << '_';
+    _panel_id(os, i);
+  }
+}
+
+//-------------------
+
+/* implemented in AreaDetector
+std::string AreaDetectorJungfrau::detid(const int& ind) {
+  std::stringstream ss;
+  detid(ss, ind);
+  return ss.str();
+}
+*/
+
 //-------------------
 //-------------------
 

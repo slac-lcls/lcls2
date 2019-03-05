@@ -13,14 +13,13 @@
 
 #include "psalg/detector/AreaDetector.hh"
 #include "xtcdata/xtc/ConfigIter.hh"
-typedef XtcData::ConfigIter ConfigIter;
 
 namespace detector {
 
   //class AreaDetector;
 
   // returns pointer to AreaDetector to access raw data and calibration parameters.
-  AreaDetector* getAreaDetector(const std::string& detname, ConfigIter& configo);
+  AreaDetector* getAreaDetector(const std::string& detname, XtcData::ConfigIter& configo);
 
   // returns pointer to AreaDetector to ACCESS CALIBRATION PARS ONLY !
   AreaDetector* getAreaDetector(const std::string& detname);
