@@ -196,6 +196,11 @@ void CollectionApp::run()
         std::string key = msg["header"]["key"];
         std::cout<<"received key = "<<key<<'\n';
         std::cout << std::setw(4) << msg << "\n\n";
-        m_handleMap[key](msg);
+        if (m_handleMap.find(key) == m_handleMap.end()) {
+            std::cout<<"unknown key  "<<key<<'\n';
+        }
+        else {
+            m_handleMap[key](msg);
+        }
     }
 }
