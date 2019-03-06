@@ -112,6 +112,27 @@ class DaqControl:
         return retval
 
     #
+    # DaqControl.getPlatform - get platform
+    #
+    def getPlatform(self):
+        retval = {}
+        try:
+            msg = create_msg('getstate')
+            self.front_req.send_json(msg)
+            reply = self.front_req.recv_json()
+        except Exception as ex:
+            print('getPlatform() Exception: %s' % ex)
+        except KeyboardInterrupt:
+            print('KeyboardInterrupt')
+        else:
+            try:
+                retval = reply['body']
+            except KeyError:
+                pass
+
+        return retval
+
+    #
     # DaqControl.getStatus - get status
     #
     def getStatus(self):
@@ -528,10 +549,12 @@ class CollectionManager():
                     self.cmstate[level] = {}
                 id = answer['header']['sender_id']
                 self.cmstate[level][id] = item
+                self.cmstate[level][id]['active'] = 1   # default to active
                 self.ids.add(id)
         self.lastTransition = 'plat'
         # should a nonempty platform be required for successful transition?
         logging.debug('condition_plat() returning True')
+        logging.debug('cmstate after plat:\n%s' % self.cmstate)
         return True
 
     def filter_level(self, prefix, ids):
