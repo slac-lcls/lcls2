@@ -94,8 +94,8 @@ class Smd0(object):
                     self.smdr_man.min_ts, self.smdr_man.max_ts, to_bytes=True)
 
             pf = PacketFooter(2)
-            pf.set_size(0, memoryview(smd_chunk).nbytes)
-            pf.set_size(1, memoryview(epics_chunk).nbytes)
+            pf.set_size(0, memoryview(smd_chunk).shape[0])
+            pf.set_size(1, memoryview(epics_chunk).shape[0])
             chunk = smd_chunk + epics_chunk + pf.footer
 
             smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
@@ -144,8 +144,8 @@ class SmdNode(object):
                         self.eb_man.min_ts, self.eb_man.max_ts, to_bytes=True)
 
                 pf = PacketFooter(2)
-                pf.set_size(0, memoryview(smd_batch).nbytes)
-                pf.set_size(1, memoryview(epics_batch).nbytes)
+                pf.set_size(0, memoryview(smd_batch).shape[0])
+                pf.set_size(1, memoryview(epics_batch).shape[0])
                 batch = smd_batch + epics_batch + pf.footer
                 
                 bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)

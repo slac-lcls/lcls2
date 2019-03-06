@@ -32,11 +32,11 @@ class EpicsStore(object):
 
         offset = 0
         mmr_view = memoryview(self.buf + view)
-        while offset < mmr_view.nbytes:
+        while offset < mmr_view.shape[0]:
             d = Dgram(view=mmr_view, config=config, offset=offset)
             
             # check if this is a broken dgram (not enough data in buffer)
-            if offset + d._size > mmr_view.nbytes:
+            if offset + d._size > mmr_view.shape[0]:
                 break
             
             self._epics_dgrams.append(d)
@@ -44,7 +44,7 @@ class EpicsStore(object):
 
             offset += d._size
         
-        if offset < mmr_view.nbytes:
+        if offset < mmr_view.shape[0]:
             self.buf = mmr_view[offset:].tobytes() # copy remaining data to the beginning of buffer
         self.n_events = len(self._epics_dgrams)
 
@@ -100,7 +100,7 @@ class EpicsStore(object):
         for i, evt in enumerate(epics_events):
             event_bytes = evt._to_bytes()
             view.extend(event_bytes)
-            pf.set_size(i, memoryview(event_bytes).nbytes)
+            pf.set_size(i, memoryview(event_bytes).shape[0])
 
         view.extend(pf.footer)
         return view

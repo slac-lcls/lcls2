@@ -19,11 +19,13 @@ class EventManager(object):
         # Keeps offset, size, & timestamp for all events in the batch
         # for batch reading (if filter_fn is not given).
         ofsz_batch = np.zeros((pf.n_packets, self.n_smd_files, 2), dtype=np.intp)
+        has_offset = True
         for i, event_bytes in enumerate(views):
             if event_bytes:
                 evt = Event._from_bytes(self.smd_configs, event_bytes)
 
                 if not evt._has_offset:
+                    has_offset = False
                     yield evt # no offset info in the smalldata event
                 else:
                     segment = 0 # "d.info" "detectors" have only one segment
@@ -36,7 +38,7 @@ class EventManager(object):
                         bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
                         yield bd_evt
         
-        if self.filter_fn == 0:
+        if self.filter_fn == 0 and has_offset:
             # Read chunks of 'size' bytes and store them in views
             views = [None] * self.n_smd_files
             view_sizes = np.zeros(self.n_smd_files)

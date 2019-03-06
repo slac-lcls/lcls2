@@ -252,7 +252,7 @@ class RunParallel(Run):
 
             self.epics_reader = EpicsReader(epics_file)
             self.epics_config = self.epics_reader._config
-            epics_nbytes = memoryview(self.epics_config).nbytes 
+            epics_nbytes = memoryview(self.epics_config).shape[0] 
         else:
             self.dm = None
             self.calibs = None
