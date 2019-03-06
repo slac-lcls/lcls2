@@ -31,6 +31,8 @@ cdef class EventBuilder:
     cdef unsigned nevents
     cdef size_t dgram_size
     cdef size_t xtc_size
+    cdef unsigned long min_ts
+    cdef unsigned long max_ts
 
     def __init__(self, views):
         self.nsmds = len(views)
@@ -54,10 +56,11 @@ cdef class EventBuilder:
     def build(self, unsigned batch_size=1, filter_fn=0):
         cdef unsigned got = 0
         batch = bytearray()
+        self.min_ts = 0
+        self.max_ts = 0
 
         cdef Dgram* d
         cdef size_t payload = 0
-        cdef unsigned long ts
         cdef char* cview
         cdef Py_buffer buf
         cdef list raw_dgrams = [0] * self.nsmds
@@ -105,6 +108,9 @@ cdef class EventBuilder:
                 self.event_timestamps[smd_id] = self.timestamps[smd_id]
                 self.offsets[smd_id] += self.dgram_sizes[smd_id]
                 event_dgrams[smd_id] = raw_dgrams[smd_id] # this is the selected dgram
+                
+                if self.min_ts == 0:
+                    self.min_ts = self.event_timestamps[smd_id] # records first timestamp
 
                 # In other smd views, find matching timestamp dgrams
                 for i, view in enumerate(self.views):
@@ -116,11 +122,11 @@ cdef class EventBuilder:
                     cview = <char *>buf.buf
                     cview += self.offsets[i]
                     d = <Dgram *>(cview)
-                    ts = <unsigned long>d.seq.high << 32 | d.seq.low
+                    self.max_ts = <unsigned long>d.seq.high << 32 | d.seq.low
                     payload = d.xtc.extent - self.xtc_size
-                    while ts <= self.event_timestamps[smd_id]:
-                        if ts == self.event_timestamps[smd_id]:
-                            self.event_timestamps[i] = ts
+                    while self.max_ts <= self.event_timestamps[smd_id]:
+                        if self.max_ts == self.event_timestamps[smd_id]:
+                            self.event_timestamps[i] = self.max_ts
                             self.timestamps[i] = 0
                             to_view = <char[:self.dgram_size+payload]>cview
                             event_dgrams[i] = to_view
@@ -132,7 +138,7 @@ cdef class EventBuilder:
 
                         cview += (self.dgram_size + payload)
                         d = <Dgram *>(cview)
-                        ts = <unsigned long>d.seq.high << 32 | d.seq.low
+                        self.max_ts = <unsigned long>d.seq.high << 32 | d.seq.low
                         payload = d.xtc.extent - self.xtc_size
                     
                     PyBuffer_Release(&buf)
@@ -176,3 +182,11 @@ cdef class EventBuilder:
     @property
     def nevents(self):
         return self.nevents
+
+    @property
+    def min_ts(self):
+        return self.min_ts
+
+    @property
+    def max_ts(self):
+        return self.max_ts

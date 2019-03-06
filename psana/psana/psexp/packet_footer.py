@@ -43,3 +43,9 @@ class PacketFooter(object):
         memviews = [memoryview(self.view[offsets[idx]: offsets[idx]+sizes[idx]]) for idx in range(self.n_packets)]
         return memviews
 
+    def add_packet(self, packet_size):
+        """ Appends the packet_size to the footer and upates n_packets."""
+        self.n_packets += 1
+        self.footer[-self.n_bytes:-self.n_bytes] = bytearray(struct.pack("I", packet_size))
+        self.footer[-self.n_bytes:] = struct.pack("I", self.n_packets)
+

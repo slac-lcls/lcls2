@@ -30,6 +30,7 @@ cdef class SmdReader:
     cdef unsigned long limit_ts
     cdef size_t dgram_size
     cdef size_t xtc_size
+    cdef unsigned long min_ts # minimum timestamp of the output chunks
     
     def __init__(self, fds):
         self.chunksize = 0x100000
@@ -41,6 +42,7 @@ cdef class SmdReader:
         self.limit_ts = 1
         self.dgram_size = sizeof(Dgram)
         self.xtc_size = sizeof(Xtc)
+        self.min_ts = 0
 
     def __dealloc__(self):
         # FIXME with cppclass?
@@ -98,14 +100,13 @@ cdef class SmdReader:
         self.bufs[buf_id].block_offset = 0
 
     def get(self, unsigned n_events = 1):
-        cdef double st_init, en_init, st_get_dgram, en_get_dgram, st_reread, en_reread, st_sub_reread, en_sub_reread
-
         if not self.bufs:
             self.bufs = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
             self._init_buffers()
         
         self.got_events = 0
         self._reset_buffers()
+        self.min_ts = 0
         
         cdef Dgram* d
         cdef size_t payload = 0
@@ -151,6 +152,8 @@ cdef class SmdReader:
                 
                 if self.bufs[i].timestamp > current_max_ts:
                     current_max_ts = self.bufs[i].timestamp
+                    if self.min_ts == 0:
+                        self.min_ts = current_max_ts # keep the first timestamp of this chunk
                     current_winner = i
 
                 if self.bufs[i].nevents > current_got_events:
@@ -180,3 +183,10 @@ cdef class SmdReader:
     def got_events(self):
         return self.got_events
 
+    @property
+    def min_ts(self):
+        return self.min_ts
+
+    @property
+    def max_ts(self):
+        return self.limit_ts - 1

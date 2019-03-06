@@ -35,4 +35,11 @@ class SmdReaderManager(object):
             if self.max_events:
                 if self.processed_events >= self.max_events:
                     break
- 
+    
+    @property
+    def min_ts(self):
+        return self.smdr.min_ts
+
+    @property
+    def max_ts(self):
+        return self.smdr.max_ts

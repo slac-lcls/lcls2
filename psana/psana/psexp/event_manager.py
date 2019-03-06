@@ -6,12 +6,11 @@ import os
 
 class EventManager(object):
 
-    def __init__(self, smd_configs, dm, filter_fn=0, epicsStore=None):
+    def __init__(self, smd_configs, dm, filter_fn=0):
         self.smd_configs = smd_configs
         self.dm = dm
         self.n_smd_files = len(self.smd_configs)
         self.filter_fn = filter_fn
-        self.epicsStore = epicsStore
 
     def events(self, view):
         pf = PacketFooter(view=view)
@@ -20,7 +19,6 @@ class EventManager(object):
         # Keeps offset, size, & timestamp for all events in the batch
         # for batch reading (if filter_fn is not given).
         ofsz_batch = np.zeros((pf.n_packets, self.n_smd_files, 2), dtype=np.intp)
-        event_timestamps = np.zeros(pf.n_packets, dtype=np.uint64)
         for i, event_bytes in enumerate(views):
             if event_bytes:
                 evt = Event._from_bytes(self.smd_configs, event_bytes)
@@ -32,16 +30,13 @@ class EventManager(object):
                     ofsz = np.asarray([[d.info[segment].offsetAlg.intOffset, d.info[segment].offsetAlg.intDgramSize] \
                             for d in evt])
                     ofsz_batch[i,:,:] = ofsz
-                    event_timestamps[i] = evt._timestamp
 
                     # Only get big data one event at a time when filter is off
                     if self.filter_fn:
                         bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
-                        if self.epicsStore:
-                            epics_evt = self.epicsStore.checkout_by_events([bd_evt])[0]
                         yield bd_evt
-
-        if self.filter_fn == 0 and event_timestamps[0]:
+        
+        if self.filter_fn == 0:
             # Read chunks of 'size' bytes and store them in views
             views = [None] * self.n_smd_files
             view_sizes = np.zeros(self.n_smd_files)
@@ -60,7 +55,6 @@ class EventManager(object):
             # Build each event from these views
             dgrams = [None] * self.n_smd_files
             offsets = [0] * self.n_smd_files
-            epics_events = self.epicsStore.checkout_by_timestamps(event_timestamps)
             for i in range(pf.n_packets):
                 for j in range(self.n_smd_files):
                     if offsets[j] >= view_sizes[j]:
@@ -72,7 +66,5 @@ class EventManager(object):
                         offsets[j] += size
                 
                 bd_evt = Event(dgrams)
-                if self.epicsStore:
-                    epics_evt = epics_events[i]
                 yield bd_evt
-
+        

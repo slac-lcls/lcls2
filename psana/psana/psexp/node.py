@@ -4,6 +4,9 @@ import numpy as np
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
+from psana.psexp.epicsstore import EpicsStore
+from psana.psexp.packet_footer import PacketFooter
+from psana.event import Event
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -70,12 +73,31 @@ class Smd0(object):
     """
     def __init__(self, run):
         self.smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
+        self.run = run
         self.run_mpi()
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
 
-        for chunk in self.smdr_man.chunks():
+        for smd_chunk in self.smdr_man.chunks():
+            # Creates a chunk from smd and epics data to send to SmdNode
+            # Anatomy of a chunk (pf=packet_footer):
+            # [ [smd0][smd1][smd2][pf] ][ [epics_evt0][epics_evt1][pf] ][ pf ]
+            #   ----- smd_chunk ------     --------- epics_chunk -----
+            # -------------------------- chunk ------------------------------
+            
+            # Update EpicsStore and checkout Epics events
+            # FIXME: mona do bookeeping to avoid sending duplicates.
+            self.run.epics_store.update(self.run.epics_reader.read(), \
+                    self.run.epics_reader._config, min_ts=self.smdr_man.min_ts)
+            epics_chunk = self.run.epics_store.checkout_by_ts_range(\
+                    self.smdr_man.min_ts, self.smdr_man.max_ts, to_bytes=True)
+
+            pf = PacketFooter(2)
+            pf.set_size(0, memoryview(smd_chunk).nbytes)
+            pf.set_size(1, memoryview(epics_chunk).nbytes)
+            chunk = smd_chunk + epics_chunk + pf.footer
+
             smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             smd_comm.Send(chunk, dest=rankreq[0])
 
@@ -91,6 +113,7 @@ class SmdNode(object):
     def __init__(self, run):
         self.eb_man = EventBuilderManager(run.smd_configs, run.batch_size, run.filter_callback)
         self.n_bd_nodes = bd_comm.Get_size() - 1
+        self.run = run
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -100,16 +123,34 @@ class SmdNode(object):
             info = MPI.Status()
             smd_comm.Probe(source=0, status=info)
             count = info.Get_elements(MPI.BYTE)
-            view = bytearray(count)
-            smd_comm.Recv(view, source=0)
+            chunk = bytearray(count)
+            smd_comm.Recv(chunk, source=0)
             if count == 0:
                 break
+           
+            # Unpack the chunk received from Smd0
+            pf = PacketFooter(view=chunk)
+            smd_chunk, epics_chunk = pf.split_packets()
+            
+            # Rebuild epics_store (FIXME: with bookkeeping, this will
+            # just be an update operation (not rebuild)
+            epics_events = self.run.epics_store._from_bytes(self.run.epics_config, epics_chunk)
+            self.run.epics_store.force_update(epics_events)
 
             # build batch of events
-            for batch in self.eb_man.batches(view):
+            for smd_batch in self.eb_man.batches(smd_chunk):
+                
+                epics_batch = self.run.epics_store.checkout_by_ts_range(\
+                        self.eb_man.min_ts, self.eb_man.max_ts, to_bytes=True)
+
+                pf = PacketFooter(2)
+                pf.set_size(0, memoryview(smd_batch).nbytes)
+                pf.set_size(1, memoryview(epics_batch).nbytes)
+                batch = smd_batch + epics_batch + pf.footer
+                
                 bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
                 bd_comm.Send(batch, dest=rankreq[0])
-
+                
         for i in range(self.n_bd_nodes):
             bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             bd_comm.Send(bytearray(), dest=rankreq[0])
@@ -117,7 +158,8 @@ class SmdNode(object):
 class BigDataNode(object):
     def __init__(self, run):
         self.evt_man = EventManager(run.smd_configs, run.dm, \
-                filter_fn=run.filter_callback, epicsStore=run.epicsStore)
+                filter_fn=run.filter_callback)
+        self.run = run
 
     def run_mpi(self):
         while True:
@@ -125,12 +167,18 @@ class BigDataNode(object):
             info = MPI.Status()
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
             count = info.Get_elements(MPI.BYTE)
-            view = bytearray(count)
-            bd_comm.Recv(view, source=0)
+            chunk = bytearray(count)
+            bd_comm.Recv(chunk, source=0)
             if count == 0:
                 break
+            
+            pf = PacketFooter(view=chunk)
+            smd_chunk, epics_chunk = pf.split_packets()
+            
+            epics_events = self.run.epics_store._from_bytes(self.run.epics_config, epics_chunk)
+            self.run.epics_store.force_update(epics_events)
 
-            for event in self.evt_man.events(view):
+            for event in self.evt_man.events(smd_chunk):
                 yield event
 
 def run_node(run):

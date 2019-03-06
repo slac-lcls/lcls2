@@ -14,6 +14,8 @@ class EventBuilderManager(object):
         eb = EventBuilder(views)
         batch = eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn)
         while eb.nevents:
+            self.min_ts = eb.min_ts
+            self.max_ts = eb.max_ts
             yield batch
             batch = eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn)
 
