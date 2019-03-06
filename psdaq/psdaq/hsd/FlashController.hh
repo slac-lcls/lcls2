@@ -3,19 +3,28 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <vector>
 
 namespace Pds {
   namespace HSD {
     class FlashController {
     public:
-      void write(FILE* f);
-      void write(const uint32_t* p, unsigned nwords);
-      int  read (const uint32_t* p, unsigned nwords);
+      void write (const char*);
+      void verify(const char*);
+      std::vector<uint8_t> read(unsigned nwords);
+      static void verbose(bool);
+      static void useFifo(bool);
+    public:
+      void _write (const uint32_t* p, unsigned nwords);
+      void _write (const std::vector<uint8_t>&);
+      int  _verify(const uint32_t* p, unsigned nwords);
+      int  _verify(const std::vector<uint8_t>&);
+      void _read  (std::vector<uint8_t>&, unsigned nwords);
     private:
       uint32_t _reserved0[3];
       uint32_t _destn;  // user=0, safe=0xff
       uint32_t _bytes_to_prog;
-      uint32_t _reserved5;
+      uint32_t _prog_fifo_cnt;
       uint32_t _bytes_to_read;
       uint32_t _reserved7[9];
       uint32_t _command;

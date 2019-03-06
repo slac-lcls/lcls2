@@ -2,7 +2,6 @@ add_library(drputils SHARED
     Digitizer.cc
     AreaDetector.cc
     Worker.cc
-    Collector.cc
     PGPReader.cc
     utils.cc
 )
@@ -12,7 +11,7 @@ find_package(PythonLibs REQUIRED)
 target_link_libraries(drputils
     xtcdata::xtc
     pgpdriver
-    eb
+    ctrb
     zmq
     ${PYTHON_LIBRARIES}
 )
@@ -27,19 +26,20 @@ target_include_directories(drputils PUBLIC
 )
 
 add_executable(drp
+    DrpApp.cc
+    DrpApp.hh
     drp.cc
 )
 
-target_link_libraries(drp
-    drputils
-    pthread
-    collection
-)
+target_include_directories(drp PUBLIC
+    $ENV{CONDA_PREFIX}/include)
 
-install(TARGETS drputils drp
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
+target_link_libraries(drp
+    pthread
+    drputils
+    collection
+    ctrb
+    zmq
 )
 
 add_executable(pgpread
@@ -52,4 +52,18 @@ target_include_directories(pgpread PUBLIC
 
 target_link_libraries(pgpread
     xtcdata::xtc
+)
+
+#add_executable(tdetsim2
+#    tdetsim.cc
+#)
+
+#target_include_directories(tdetsim2 PUBLIC
+#    ../psdaq/pgp/aes-stream-drivers/include
+#)
+
+install(TARGETS drputils drp
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )

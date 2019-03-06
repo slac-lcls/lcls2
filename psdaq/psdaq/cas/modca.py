@@ -1,7 +1,6 @@
 import sys
 import socket
 import argparse
-from psp import Pv
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
 
@@ -33,6 +32,40 @@ linkType.append('DRP')
 linkType.append('DTI')
 linkType.append('XPM')
 
+class PvPAddr(QtWidgets.QWidget):
+    def __init__(self, parent, pvbase, name):
+        super(PvPAddr,self).__init__()
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0,0,0,0)
+        label  = QtWidgets.QLabel(name)
+        label.setMinimumWidth(100)
+        layout.addWidget(label)
+
+        self.__display = PvDisplay()
+        self.__display.connect_signal()
+        layout.addWidget(self.__display)
+        self.setLayout(layout)
+        parent.addWidget(self)
+
+        pvname = pvbase+name
+        initPvMon(self,pvname)
+
+    def update(self, err):
+        q = self.pv.__value__
+        if err is None:
+            qs = ('%x'%q).lstrip('f')
+            if len(qs)==0:
+                s = 'XTPG'
+            else:
+                s = ''
+                for i in range(len(qs)):
+                    cv = int(qs[i],16)
+                    s += 'XTPG:' if i == 0 else ',XPM:'
+                    s += 'AMC%d-%d'%(cv/7,cv%7) if cv < 14 else 'BP'
+                self.__display.valueSet.emit(s)
+        else:
+            print(err)
+
 class PvCString(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name, dName=None):
         super(PvCString,self).__init__()
@@ -51,13 +84,9 @@ class PvCString(QtWidgets.QWidget):
 
         pvname = pvbase+name
         initPvMon(self,pvname)
-#        print(pvname)
-#        self.pv = Pv.Pv(pvname)
-#        self.pv.monitor_start()
-#        self.pv.add_monitor_callback(self.update)
 
     def update(self, err):
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
             s = QString()
             slen = len(q)
@@ -66,7 +95,7 @@ class PvCString(QtWidgets.QWidget):
             for i in range(slen):
                 if q[i]==0:
                     break
-                s += QChar(q[i])
+                s += QChar(ord(q[i]))
             self.__display.valueSet.emit(s)
         else:
             print(err)
@@ -81,7 +110,10 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
         self.clicked.connect(self.buttonClicked)
 
-        self.pv = Pv.Pv(pvname)
+        self.pv = Pv(pvname, self.update)
+
+    def update(self, err):
+        pass
 
     def buttonClicked(self):
         self.pv.put(1)
@@ -119,8 +151,7 @@ class PvLinkId:
         initPvMon(self,pvname)
 
     def update(self, err):
-        value = self.pv.value
-        print ('LinkId 0x%x'%value)
+        value = self.pv.__value__
         itype = (int(value)>>24)&0xff
         self.linkType.setText(linkType[itype])
         if (itype == 0xfb or itype == 0xfc) and (value&0xffff)!=0:
@@ -193,23 +224,27 @@ def DeadTime(pvbase,parent):
 
     parent.dtPvId = []
     deadgrid.addWidget( QtWidgets.QLabel('Partition'), 0, 0, 1, 2 )
+    deadgrid.addWidget( QtWidgets.QLabel('En'), 0, 2 )
     for j in range(7):
-        deadgrid.addWidget( QtWidgets.QLabel('%d'%j ), 0, j+2 )
+        deadgrid.addWidget( QtWidgets.QLabel('%d'%j ), 0, j+3 )
     for i in range(14):
         parent.dtPvId.append( PvLinkIdG(pvbase+'RemoteLinkId'+'%d'%i,
                                         deadgrid, i+1, 0) )
+        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), i+1, 2 )
         for j in range(7):
-            deadgrid.addWidget( textWidgets[j][i], i+1, j+2 )
+            deadgrid.addWidget( textWidgets[j][i], i+1, j+3 )
     for i in range(16,21):
         k = i-1
         deadgrid.addWidget( QtWidgets.QLabel('BP-slot%d'%(i-13)), k, 0, 1, 2 )
+        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%(i+1),None), k, 2 )
         for j in range(7):
-            deadgrid.addWidget( textWidgets[j][i], k, j+2 )
+            deadgrid.addWidget( textWidgets[j][i], k, j+3 )
     for i in range(28,32):
         k = i-7
         deadgrid.addWidget( QtWidgets.QLabel('INH%d'%(i-28)), k, 0, 1, 2 )
+        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), k, 2 )
         for j in range(7):
-            deadgrid.addWidget( textWidgets[j][i], k, j+2 )
+            deadgrid.addWidget( textWidgets[j][i], k, j+3 )
 
     parent.deadflnk = []
     for j in range(7):
@@ -220,7 +255,7 @@ def DeadTime(pvbase,parent):
     deadbox.setLayout(deadgrid)
     return deadbox
 
-def addTiming(tw, pvbase, title):
+def addTiming(pvbase):
     lor = QtWidgets.QVBoxLayout()
     PvLabel(lor, pvbase, "RxClks"     )
     PvLabel(lor, pvbase, "TxClks"     )
@@ -237,8 +272,48 @@ def addTiming(tw, pvbase, title):
     lor.addStretch()
     w = QtWidgets.QWidget()
     w.setLayout(lor)
-    tw.addTab(w,title)
+    return w
 
+class PvMmcm(QtWidgets.QWidget):
+    def __init__(self,pvname,title):
+        super(PvMmcm, self).__init__()
+        layout = QtWidgets.QHBoxLayout()
+
+        pv = Pv(pvname)
+        v = pv.get()
+
+        layout.addWidget( QtWidgets.QLabel(title+'\n'+str(v[0])) )
+
+        self.image   = QtGui.QImage(v[0]+1,16,QtGui.QImage.Format_Mono)
+        painter = QtGui.QPainter(self.image)
+        painter.fillRect(0,0,v[0]+1,16,QtGui.QColor(255,255,255))
+        painter.setBrush(QtGui.QColor(0,0,255))
+        for i in range(v[0]+1):
+            painter.drawLine(i,0,i,15-(v[i+1]>>9))
+
+        canvas = QtWidgets.QLabel()
+        canvas.setPixmap(QtGui.QPixmap.fromImage(self.image))
+
+        layout.addWidget( canvas )
+        self.setLayout(layout)
+
+def addCuTab(pvbase):
+    lor = QtWidgets.QVBoxLayout()
+    lor.addWidget( addTiming(pvbase+'Cu:') )
+
+    PvLabel(lor, pvbase+'XTPG:', 'cuBeamCode')
+    PvLabel(lor, pvbase+'XTPG:', 'cuDelay')
+    PvLabel(lor, pvbase+'XTPG:', 'PulseId')
+    PvLabel(lor, pvbase+'XTPG:', 'TimeStamp')
+
+    for i in range(3):
+        lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM%d'%i , 'mmcm%d'%i) )
+
+    lor.addStretch()
+    w = QtWidgets.QWidget()
+    w.setLayout(lor)
+    return w
+    
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, title):
         MainWindow.setObjectName("MainWindow")
@@ -253,7 +328,8 @@ class Ui_MainWindow(object):
             tb  = QtWidgets.QWidget()
             hl  = QtWidgets.QVBoxLayout()
             #        PvLabel  (hl, pvbase, "PARTITIONS"  )
-            PvLabel  (hl, pvbase, "PAddr"       , isInt=True)
+            #            PvLabel  (hl, pvbase, "PAddr"       , isInt=True)
+            PvPAddr  (hl, pvbase, "PAddr"       )
             PvCString(hl, pvbase, "FwBuild"     )
 
             LblPushButtonX(hl, pvbase, "ModuleInit"      )
@@ -261,7 +337,6 @@ class Ui_MainWindow(object):
             LblPushButtonX(hl, pvbase, "DumpTiming",     2)
             LblPushButtonX(hl, pvbase, "DumpSeq"         )
 #            LblEditIntX   (hl, pvbase, "SetVerbose"      )
-            LblPushButtonX(hl, pvbase, "ClearLinks"      )
             LblPushButtonX(hl, pvbase, "Inhibit"         )
             LblPushButtonX(hl, pvbase, "TagStream"       )
             PvLabel(hl, pvbase, "RecClk"     )
@@ -271,8 +346,9 @@ class Ui_MainWindow(object):
             tb.setLayout(hl)
             tw.addTab(tb,"Global")
 
-            addTiming(tw, pvbase+'Us:',"UsTiming")
-            addTiming(tw, pvbase+'Cu:',"CuTiming")
+            tw.addTab( addTiming(pvbase+'Us:'), "UsTiming")
+            if getCuMode()==True:
+                tw.addTab( addCuTab (pvbase      ), "CuTiming")
 
         tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
         tw.addTab(FrontPanelAMC(pvbase,1),"AMC1")
@@ -301,16 +377,9 @@ class Ui_MainWindow(object):
         pllbox  = QtWidgets.QWidget()
         pllvbox = QtWidgets.QVBoxLayout() 
         LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
+        LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
         LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
-        LblEditHML   (pllvbox, pvbase, "PLL_BW_Select",  NAmcs)
-        LblEditHML   (pllvbox, pvbase, "PLL_FreqTable",  NAmcs)
-        LblEditHML   (pllvbox, pvbase, "PLL_FreqSelect", NAmcs)
-        LblEditHML   (pllvbox, pvbase, "PLL_Rate",       NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_PhaseInc",   NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_PhaseDec",   NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_Bypass",     NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_Reset",      NAmcs)
-        LblPushButtonX(pllvbox, pvbase, "PLL_Skew",       NAmcs)
+        LblEditIntX  (pllvbox, pvbase, "PLL_LOLCNT",     NAmcs, enable=False)
         pllvbox.addStretch()
         pllbox.setLayout(pllvbox)
         tw.addTab(pllbox,"PLLs")
@@ -339,8 +408,10 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
+    parser.add_argument('-x', '--xtpg_mode', action='store_true', help='xtpg in Cu mode')
     parser.add_argument("pv", help="pv to monitor")
     args = parser.parse_args()
+    setCuMode(args.xtpg_mode)
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

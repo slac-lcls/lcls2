@@ -18,9 +18,7 @@ public:
     bool lclose=false;
     bool lerror=false;
     switch(dg->seq.service()) {
-    case TransitionId::Map:
     case TransitionId::Unconfigure:
-    case TransitionId::Unmap:
       break;
     case TransitionId::Configure:  // cache the configuration
       if (_c) delete[] _c;
@@ -28,7 +26,7 @@ public:
       _c = new char[_sizeof_c];
       memcpy(_c,dg,_sizeof_c);
       break;
-    case TransitionId::BeginRun:   // write the configure (and beginrun)
+    case TransitionId::BeginRecord:   // write the configure (and beginrecord)
       _f = fopen(_fname,"w");
       if (!_f) {
         perror("Error opening output xtc file");
@@ -47,7 +45,7 @@ public:
       }
     }
 
-    lclose |= dg->seq.service()==TransitionId::EndRun;
+    lclose |= dg->seq.service()==TransitionId::EndRecord;
 
     if (lclose)
       fclose(_f);

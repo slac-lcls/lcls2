@@ -1,6 +1,7 @@
 import sys
+import logging
 
-from pcaspy import SimpleServer, Driver
+from psdaq.epicstools.PVAServer import PVAServer
 import time
 from datetime import datetime
 import argparse
@@ -10,10 +11,10 @@ import pdb
 
 NPartitions = 8
 
-class myDriver(Driver):
-    def __init__(self):
-        super(myDriver, self).__init__()
-
+Transitions = [('Configure'  ,4),
+               ('Enable'     ,6),
+               ('Disable'    ,7),
+               ('Unconfigure',5)]
 
 def printDb():
     global pvdb
@@ -37,13 +38,18 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    myDriver.verbose = args.verbose
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     stationstr = 'PART'
     prefix = args.P+':'
 
     # PVs
 
+    # State Machine
+    pvdb[stationstr+':Transition'   ] = {'type' : 'string', 'count' : 4, 'value' : [tr[0] for tr in Transitions]}
+    pvdb[stationstr+':TransitionId' ] = {'type' : 'int'   , 'count' : 4, 'value' : [tr[1] for tr in Transitions]}
+    # Partition
     for i in range(NPartitions):
         pvdb[stationstr+':%d:XPM'                %i] = {'type' : 'int', 'value': 2}
         pvdb[stationstr+':%d:L0Select'           %i] = {'type' : 'int'}
@@ -86,7 +92,7 @@ def main():
 
         pvdb[stationstr+':%d:RunTime'  %i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:MsgDelay' %i] = {'type' : 'float', 'value': 0}
-        pvdb[stationstr+':%d:L0InpRate'%i] = {'type' : 'float', 'value': 0, 'mdel' : 0}
+        pvdb[stationstr+':%d:L0InpRate'%i] = {'type' : 'float', 'value': 0, 'extra': [('MDEL', 'float', 0.1)]}
         pvdb[stationstr+':%d:L0AccRate'%i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:L1Rate'   %i] = {'type' : 'float', 'value': 0}
         pvdb[stationstr+':%d:NumL0Inp' %i] = {'type' : 'float', 'value': 0}
@@ -98,15 +104,12 @@ def main():
     # printDb(pvdb, prefix)
     printDb()
 
-    server = SimpleServer()
-
+    server = PVAServer(__name__)
     server.createPV(prefix, pvdb)
-    driver = myDriver()
 
     try:
-        # process CA transactions
-        while True:
-            server.process(0.1)
+        # process PVA transactions
+        server.forever()
     except KeyboardInterrupt:
         print('\nInterrupted')
 

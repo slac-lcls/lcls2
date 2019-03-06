@@ -15,8 +15,6 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
-static const unsigned MaxLinks = 64;    // Maximum supported
-
 
 EbLfLink::EbLfLink(Endpoint* ep,
                    unsigned  verbose,
@@ -25,27 +23,27 @@ EbLfLink::EbLfLink(Endpoint* ep,
   _mr(nullptr),
   _ra(),
   _rxDepth(0),
-  _rOuts(0),
+  _rOuts(1),
+  _pending(pending),
   _id(-1),
-  _region(new char[sizeof(RemoteAddress)]),
   _verbose(verbose),
-  _pending(pending)
+  _region(new char[sizeof(RemoteAddress)])
 {
 }
 
 EbLfLink::EbLfLink(Endpoint* ep,
                    int       rxDepth,
                    unsigned  verbose,
-                   uint64_t& unused) :
+                   uint64_t& pending) :
   _ep(ep),
   _mr(nullptr),
   _ra(),
   _rxDepth(rxDepth),
-  _rOuts(0),
+  _rOuts(1),
+  _pending(pending),
   _id(-1),
-  _region(new char[sizeof(RemoteAddress)]),
   _verbose(verbose),
-  _pending(unused)
+  _region(new char[sizeof(RemoteAddress)])
 {
 }
 
@@ -56,11 +54,20 @@ EbLfLink::~EbLfLink()
 
 int EbLfLink::preparePender(unsigned id)
 {
-  int    rc;
-  size_t sz;
-  if ( (rc = preparePender(id, &sz)) )  return rc;
-  if (sz != sizeof(RemoteAddress))      return -1;
-  if ( (rc = sendMr(_mr)) )             return rc;
+  int           rc;
+  uint32_t      sz;
+  char          buf[sizeof(RemoteAddress)];
+  MemoryRegion* mr;
+
+  if ( (rc = setupMr(buf, sizeof(buf), &mr)) )   return rc;
+
+  if ( (rc = recvU32(mr, &_id, "ID")) )          return rc;
+  if ( (rc = sendU32(mr,   id, "ID")) )          return rc;
+
+  if ( (rc = recvU32(mr, &sz, "region size")) )  return rc;
+  if (sz != sizeof(RemoteAddress))               return -1;
+
+  if ( (rc = sendMr(mr)) )                       return rc;
 
   return 0;
 }
@@ -68,54 +75,64 @@ int EbLfLink::preparePender(unsigned id)
 int EbLfLink::preparePender(unsigned id,
                             size_t*  size)
 {
-  int    rc;
-  size_t sz = sizeof(RemoteAddress);
-  if (!_region)  return ENOMEM;
+  int           rc;
+  char          buf[sizeof(RemoteAddress)];
+  MemoryRegion* mr;
 
-  if ( (rc = setupMr(_region, sz, &_mr)) )        return rc;
+  if ( (rc = setupMr(buf, sizeof(buf), &mr)) )   return rc;
 
-  if ( (rc = recvU32(_mr, &_id, "ID")) )          return rc;
-  if ( (rc = sendU32(_mr,   id, "ID")) )          return rc;
+  if ( (rc = recvU32(mr, &_id, "ID")) )          return rc;
+  if ( (rc = sendU32(mr,   id, "ID")) )          return rc;
 
   uint32_t rs;
-  if ( (rc = recvU32(_mr, &rs, "region size")) )  return rc;
+  if ( (rc = recvU32(mr, &rs, "region size")) )  return rc;
   *size = rs;
 
-  return rc;
+  // This method requires a call to setupMr(region, size) below
+  // to complete the protocol, which involves a call to sendMr()
+
+  return 0;
 }
 
+// A small memory region is needed in order to use the post(buf, len, immData)
+// method, below.
 int EbLfLink::preparePoster(unsigned id)
 {
-  return preparePoster(id, nullptr, sizeof(RemoteAddress));
-}
-
-int EbLfLink::preparePoster(unsigned id, size_t size)
-{
-  return preparePoster(id, nullptr, size);
+  return preparePoster(id, nullptr, 0, sizeof(RemoteAddress));
 }
 
 int EbLfLink::preparePoster(unsigned id,
                             void*    region,
                             size_t   size)
 {
+  return preparePoster(id, region, size, size);
+}
+
+// Buffers to be posted using the post(buf, len, offset, immData, ctx) method,
+// below, must be covered by a memory region set up using this method.
+int EbLfLink::preparePoster(unsigned id,
+                            void*    region,
+                            size_t   lclSize,
+                            size_t   rmtSize)
+{
   int    rc;
-  if (!region)
+  size_t sz = sizeof(RemoteAddress);
+  if (!_region)  return ENOMEM;
+
+  if ( (rc = setupMr(_region, sz, &_mr)) )           return rc;
+
+  if ( (rc = sendU32(_mr,   id, "ID")) )             return rc;
+  if ( (rc = recvU32(_mr, &_id, "ID")) )             return rc;
+
+  if ( (rc = sendU32(_mr, rmtSize, "region size")) ) return rc;
+  if ( (rc = recvMr(_mr)) )                          return rc;
+
+  // Region may already have stuff in it, so can't write on it above
+  // Revisit: Would like to make it const, but has issues for Endpoint
+  if (region)
   {
-    size_t sz = sizeof(RemoteAddress);
-    if (!_region)  return ENOMEM;
-
-    if ( (rc = setupMr(_region, sz, &_mr)) )       return rc;
+    if ( (rc = setupMr(region, lclSize, &_mr)) )     return rc;
   }
-  else // Revisit: Posters shouldn't need anything but the default region?
-  {
-    if ( (rc = setupMr(region, size, &_mr)) )      return rc;
-  }
-
-  if ( (rc = sendU32(_mr,   id, "ID")) )           return rc;
-  if ( (rc = recvU32(_mr, &_id, "ID")) )           return rc;
-
-  if ( (rc = sendU32(_mr, size, "region size")) )  return rc;
-  if ( (rc = recvMr(_mr)) )                        return rc;
 
   return 0;
 }
@@ -250,7 +267,7 @@ int EbLfLink::recvMr(MemoryRegion* mr)
 
 int EbLfLink::postCompRecv(void* ctx)
 {
-  if (--_rOuts <= 1)
+  if (--_rOuts <= 0)
   {
     unsigned count = _rxDepth - _rOuts;
     _rOuts += _postCompRecv(count, ctx);
@@ -284,6 +301,8 @@ int EbLfLink::_postCompRecv(unsigned count, void* ctx)
   return i;
 }
 
+// This method requires that the buffers to be posted are covered by a memory
+// region set up using the preparePoster(id, region, size) method above.
 int EbLfLink::post(const void* buf,
                    size_t      len,
                    uint64_t    offset,
@@ -291,28 +310,42 @@ int EbLfLink::post(const void* buf,
                    void*       ctx)
 {
   RemoteAddress ra(_ra.rkey, _ra.addr + offset, len);
+  //auto          t0(std::chrono::steady_clock::now());
   ssize_t       rc;
 
   _pending |= 1 << _id;
 
-  while ((rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr)) == -FI_EAGAIN)
+  while (1)
   {
-    const ssize_t    maxCnt = 8;
-    fi_cq_data_entry cqEntry[maxCnt];
-    CompletionQueue* cq     = _ep->txcq();
-    rc = cq->comp(cqEntry, maxCnt);
-    if ((rc != -FI_EAGAIN) && (rc < 0)) // EAGAIN means no completions available
+    rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr);
+    if (!rc)  break;
+
+    if (rc != -FI_EAGAIN)
     {
-      fprintf(stderr, "%s:\n  Error reading TX CQ: %s\n",
-              __PRETTY_FUNCTION__, cq->error());
+      fprintf(stderr, "%s:\n  write_data to ID %d failed: %s\n",
+              __PRETTY_FUNCTION__, _id, _ep->error());
       break;
     }
-  }
 
-  if (rc)
-  {
-    fprintf(stderr, "%s:\n  write_data to ID %d failed: %s\n",
-            __PRETTY_FUNCTION__, _id, _ep->error());
+    //auto t1(std::chrono::steady_clock::now());
+    //
+    //const int msTmo = 5000;
+    //if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
+    //{
+    //  printf("%s: Timed out\n", __PRETTY_FUNCTION__);
+    //
+    //  rc = -FI_ETIMEDOUT;
+    //  break;
+    //}
+
+    fi_cq_data_entry cqEntry;
+    rc = _ep->txcq()->comp(&cqEntry, 1);
+    if ((rc < 0) && (rc != -FI_EAGAIN)) // EAGAIN means no completions available
+    {
+      fprintf(stderr, "%s:\n  Error reading TX CQ: %s\n",
+              __PRETTY_FUNCTION__, _ep->txcq()->error());
+      break;
+    }
   }
 
   _pending &= ~(1 << _id);
@@ -320,6 +353,8 @@ int EbLfLink::post(const void* buf,
   return rc;
 }
 
+// This method requires that at least a small memory region has been registered.
+// This can be done using the preparePoster(id, size) method above.
 int EbLfLink::post(const void* buf,
                    size_t      len,
                    uint64_t    immData)

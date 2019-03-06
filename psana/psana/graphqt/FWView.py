@@ -311,6 +311,10 @@ class FWView(QGraphicsView) :
         #logger.debug('FWView.mousePressEvent, at point: ', e.pos() #e.globalX(), e.globalY())
         #QApplication.setOverrideCursor(QCursor(Qt.ClosedHandCursor)) #Qt.SizeAllCursor))# ClosedHandCursor
         #self.emit(QtCore.SIGNAL('mouse_press_event(QMouseEvent)'), e)
+
+        logger.debug('FWView.mousePressEvent but=%d %s scene x=%.1f y=%.1f'%\
+                     (e.button(), str(e.pos()), self.x(), self.y())) # self.__class__.__name__
+
         self.mouse_press_event.emit(e)
 
         QGraphicsView.mousePressEvent(self, e)
@@ -323,7 +327,7 @@ class FWView(QGraphicsView) :
 
     def mouseMoveEvent(self, e):
         QGraphicsView.mouseMoveEvent(self, e)
-        #logger.debug('FWView.mouseMoveEvent, at point: ', e.pos())
+        #logger.debug('FWView.mouseMoveEvent, at point: %s' % str(e.pos()))
         #self.emit(QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), e)
         self.mouse_move_event.emit(e)
 

@@ -18,6 +18,7 @@ namespace Pds
     Fifo(size_t size);
     ~Fifo();
   public:
+    void   clear();
     bool   push(T item);
     T      pop();
     bool   empty() const;
@@ -50,6 +51,16 @@ inline
 Pds::Fifo<T>::~Fifo()
 {
   delete [] _vector;
+}
+
+template <class T>
+inline
+void Pds::Fifo<T>::clear()
+{
+  _head = 0;
+  _tail = 0;
+  for (unsigned i = 0; i < _size; ++i)
+    _vector[i] = 0;
 }
 
 template <class T>

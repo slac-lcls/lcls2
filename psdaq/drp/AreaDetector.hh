@@ -4,17 +4,18 @@
 #include "drp.hh"
 #include "Detector.hh"
 #include "xtcdata/xtc/Xtc.hh"
-#include "xtcdata/xtc/NamesVec.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 class AreaDetector : public Detector
 {
 public:
-    AreaDetector(unsigned nodeId);
-    virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data);
-    virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
+    AreaDetector(Parameters* para);
+    void connect() override;
+    void configure(XtcData::Dgram& dgram, PGPData* pgp_data) override;
+    void event(XtcData::Dgram& dgram, PGPData* pgp_data) override;
 private:
     enum {RawNamesIndex, FexNamesIndex};
-    XtcData::NamesVec m_namesVec;
+    XtcData::NamesLookup m_namesLookup;
     unsigned m_evtcount;
 };
 

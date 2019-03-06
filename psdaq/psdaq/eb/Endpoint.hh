@@ -334,7 +334,7 @@ namespace Pds {
 
     class CompletionQueue : public ErrorHandler {
     public:
-      CompletionQueue(Fabric* fabric);
+      CompletionQueue(Fabric* fabric, size_t size = 0);
       CompletionQueue(Fabric* fabric, struct fi_cq_attr* cq_attr, void* context);
       ~CompletionQueue();
       struct fid_cq* cq() const;

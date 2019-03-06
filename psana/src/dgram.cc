@@ -1,7 +1,7 @@
 
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/DescData.hh"
-#include "xtcdata/xtc/Dgram.hh"
+
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/NamesIter.hh"
@@ -17,11 +17,12 @@
 #include <structmember.h>
 #include <assert.h>
 
+// for shmem client
+#include "psalg/shmem/ShmemClient.hh"
+using namespace psalg::shmem;
+
 using namespace XtcData;
-#define BUFSIZE 0x4000000
 #define TMPSTRINGSIZE 1024
-#define CHUNKSIZE 1<<20
-#define MAXRETRIES 5
 
 static const char* PyNameDelim=".";
 
@@ -47,12 +48,15 @@ struct PyDgramObject {
     Py_buffer buf;
     ContainerInfo contInfo;
     NamesIter* namesIter; // only nonzero in the config dgram
+    size_t size; // size of dgram - for allocating dgram of any size
+    int shmem_size; // size of shmem buffer
+    int shmem_index; // index of shmem buffer
+    ShmemClient* shmem_cli; // shmem client for buffer return
 };
 
-static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
+static void addObjToPyObj(PyObject* parent, const char* name, PyObject* obj, PyObject* pycontainertype) {
     char namecopy[TMPSTRINGSIZE];
     strncpy(namecopy,name,TMPSTRINGSIZE);
-    PyObject* parent = (PyObject*)dgram;
     char *key = ::strtok(namecopy,PyNameDelim);
     while(1) {
         char* next = ::strtok(NULL, PyNameDelim);
@@ -60,20 +64,72 @@ static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
         if (last) {
             // add the real object
             int fail = PyObject_SetAttrString(parent, key, obj);
-            if (fail) printf("Dgram: failed to set object attribute\n");
+            if (fail) printf("addObj: failed to set object attribute\n");
             Py_DECREF(obj); // transfer ownership to parent
             break;
         } else {
             if (!PyObject_HasAttrString(parent, key)) {
-                PyObject* container = PyObject_CallObject(dgram->contInfo.pycontainertype, NULL);
+                PyObject* container = PyObject_CallObject(pycontainertype, NULL);
                 int fail = PyObject_SetAttrString(parent, key, container);
-                if (fail) printf("Dgram: failed to set container attribute\n");
+                if (fail) printf("addObj: failed to set container attribute\n");
                 Py_DECREF(container); // transfer ownership to parent
             }
             parent = PyObject_GetAttrString(parent, key);
             Py_DECREF(parent); // we just want the pointer, not a new reference
         }
         key=next;
+    }
+}
+
+static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
+    addObjToPyObj((PyObject*) dgram, name, obj, dgram->contInfo.pycontainertype);
+}
+
+// this differs from addObj() because it creates a top level dict
+// for the detname, with segment (an integer representing the portion
+// of the detector).  e.g. dgram.xppcspad[segment], then the usual
+// attributes (e.g. "raw", "fex") live under that.  it's possible
+// that we should eliminate addObj() to make everything uniform,
+// but it's not clear to me at the moment - cpo.
+static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
+                       unsigned segment) {
+    char namecopy[TMPSTRINGSIZE];
+    strncpy(namecopy,name,TMPSTRINGSIZE);
+    PyObject* parent = (PyObject*)dgram;
+    char *key = ::strtok(namecopy,PyNameDelim);
+    char* next = ::strtok(NULL, PyNameDelim);
+
+    PyObject* dict;
+    if (!PyObject_HasAttrString(parent, key)) {
+        dict = PyDict_New();
+        int fail = PyObject_SetAttrString(parent, key, dict);
+        if (fail) printf("Dgram: failed to set container attribute\n");
+    } else {
+        dict = PyObject_GetAttrString(parent, key);
+    }
+    // either way we got a new reference to the dict.
+    // keep the dgram parent as the owner.
+    Py_DECREF(dict); // transfer ownership to parent
+
+    bool last = (next == NULL);
+    PyObject* pySeg = Py_BuildValue("i",segment);
+    if (last) {
+        // we're at the lowest level, set the value to be the data object.
+        // this case should happen rarely, if ever, in lcls2.
+        PyDict_SetItem(dict,pySeg,obj);
+    } else {
+        // we're not at the lowest level, get the container object for this segment
+        PyObject* container;
+        if (!(container=PyDict_GetItem(dict,pySeg))) {
+            container = PyObject_CallObject(dgram->contInfo.pycontainertype, NULL);
+            PyDict_SetItem(dict,pySeg,container);
+            Py_DECREF(container); // transfer ownership to parent
+        }
+        // add the rest of the fields to the container.  note
+        // that we compute the offset in the original string,
+        // to exclude the detname that we have processed above,
+        // since strtok has messed with our copy of the original string.
+        addObjToPyObj(container,name+(next-key),obj,dgram->contInfo.pycontainertype);
     }
 }
 
@@ -131,14 +187,15 @@ static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     assert(Py_GETREF(detType)==1);
 }
 
-void DictAssignAlg(PyDgramObject* pyDgram, NamesVec& namesVec)
+void DictAssignAlg(PyDgramObject* pyDgram, NamesLookup& namesLookup)
 {
     // This function gets called at configure: add attributes "software" and "version" to pyDgram and return
     char baseName[TMPSTRINGSIZE];
 
-    for (unsigned i = 0; i < namesVec.size(); i++) {
-        if (!namesVec[i].exists()) continue;
-        Names& names = namesVec[i].names();
+    for (auto & namesPair : namesLookup) {
+        NameIndex& nameIndex = namesPair.second;
+        if (!nameIndex.exists()) continue;
+        Names& names = nameIndex.names();
         Alg& detAlg = names.alg();
         snprintf(baseName,TMPSTRINGSIZE,"%s%s%s",
                  names.detName(),PyNameDelim,names.alg().name());
@@ -167,21 +224,21 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
         const char* tempName = name.name();
         PyObject* newobj=0;
 
-        if (name.rank() == 0) {
+        if (name.rank() == 0 || name.type()==Name::CHARSTR) {
             switch (name.type()) {
             case Name::UINT8: {
 	            const auto tempVal = descdata.get_value<uint8_t>(tempName);
-                newobj = Py_BuildValue("I", tempVal);
+                newobj = Py_BuildValue("B", tempVal);
                 break;
             }
             case Name::UINT16: {
                 const auto tempVal = descdata.get_value<uint16_t>(tempName);
-                newobj = Py_BuildValue("I", tempVal);
+                newobj = Py_BuildValue("H", tempVal);
                 break;
             }
             case Name::UINT32: {
                 const auto tempVal = descdata.get_value<uint32_t>(tempName);
-                newobj = Py_BuildValue("k", tempVal);
+                newobj = Py_BuildValue("I", tempVal);
                 break;
             }
             case Name::UINT64: {
@@ -191,17 +248,19 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             }
             case Name::INT8: {
                 const auto tempVal = descdata.get_value<int8_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("b", tempVal);
                 break;
             }
             case Name::INT16: {
                 const auto tempVal = descdata.get_value<int16_t>(tempName);
-                newobj = Py_BuildValue("i", tempVal);
+                newobj = Py_BuildValue("h", tempVal);
                 break;
             }
             case Name::INT32: {
                 const auto tempVal = descdata.get_value<int32_t>(tempName);
-                newobj = Py_BuildValue("l", tempVal);
+                // cpo: thought that "l" (long int) would work here
+                // as well, but empirically it doesn't.
+                newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::INT64: {
@@ -217,6 +276,14 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             case Name::DOUBLE: {
                 const auto tempVal = descdata.get_value<double>(tempName);
                 newobj = Py_BuildValue("d", tempVal);
+                break;
+            }
+            case Name::CHARSTR: {
+                assert(name.rank()==1); // strings are 1 dimensional
+                auto arr = descdata.get_array<char>(i);
+                uint32_t* shape = descdata.shape(name);
+                assert(strlen(arr.data())<shape(0));
+                newobj = Py_BuildValue("s", arr.data());
                 break;
             }
             }
@@ -287,6 +354,10 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                                                    NPY_DOUBLE, arr.data());
                 break;
             }
+            case Name::CHARSTR: {
+                assert(0); // should never happen
+                break;
+            }
             }
             if (PyArray_SetBaseObject((PyArrayObject*)newobj, pyDgram->dgrambytes) < 0) {
                 printf("Failed to set BaseObject for numpy array.\n");
@@ -300,7 +371,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
         snprintf(keyName,TMPSTRINGSIZE,"%s%s%s%s%s",
                  names.detName(),PyNameDelim,names.alg().name(),
                  PyNameDelim,name.name());
-        addObj(pyDgram, keyName, newobj);
+        addDataObj(pyDgram, keyName, newobj, names.segment());
     }
 }
 
@@ -308,8 +379,8 @@ class PyConvertIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, NamesVec& namesVec) :
-        XtcIterator(xtc), _pyDgram(pyDgram), _namesVec(namesVec)
+    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, NamesLookup& namesLookup) :
+        XtcIterator(xtc), _pyDgram(pyDgram), _namesLookup(namesLookup)
     {
     }
 
@@ -325,9 +396,9 @@ public:
             // lookup the index of the names we are supposed to use
             NamesId namesId = shapesdata.namesId();
             // protect against the fact that this datagram
-            // may not have a _namesVec
-            if (namesId.value()<_namesVec.size()) {
-                DescData descdata(shapesdata, _namesVec[namesId]);
+            // may not have a _namesLookup
+            if (_namesLookup.count(namesId)>0) {
+                DescData descdata(shapesdata, _namesLookup[namesId]);
                 DictAssign(_pyDgram, descdata);
             }
             break;
@@ -340,7 +411,7 @@ public:
 
 private:
     PyDgramObject* _pyDgram;
-    NamesVec&      _namesVec;
+    NamesLookup&      _namesLookup;
 };
 
 void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
@@ -353,21 +424,21 @@ void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
         configDgram->namesIter = new NamesIter(&(configDgram->dgram->xtc));
         configDgram->namesIter->iterate();
     
-        DictAssignAlg(configDgram, configDgram->namesIter->namesVec());
+        DictAssignAlg(configDgram, configDgram->namesIter->namesLookup());
     } else {
         self->namesIter = 0; // in case dgram was not created via dgram_init
     }
     
-    // FIXME cpo: don't understand why we have to iterate over this
-    // every dgram to avoid segfault. might be a sign of a deeper problem.
-    configDgram->namesIter->iterate();
-
-    PyConvertIter iter(&self->dgram->xtc, self, configDgram->namesIter->namesVec());
+    PyConvertIter iter(&self->dgram->xtc, self, configDgram->namesIter->namesLookup());
     iter.iterate();
 }
 
 static void dgram_dealloc(PyDgramObject* self)
 {
+    // shmem client must notify server to release buffer
+    if(self->shmem_cli)
+        self->shmem_cli->free(self->shmem_index,self->shmem_size);
+
     // cpo: this should not need to be XDECREF for pyseq.  how are
     // we creating dgrams with a NULL value for pyseq?
     Py_XDECREF(self->pyseq);
@@ -399,27 +470,23 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-static int dgram_read(PyDgramObject* self, ssize_t dgram_size, int sequential)
+static int dgram_read(PyDgramObject* self, int sequential)
 {
     ssize_t readSuccess=0;
     char s[TMPSTRINGSIZE];
     if (sequential) {
-        readSuccess = read(self->file_descriptor, self->dgram, sizeof(Dgram));
+        // When read sequentially, self->dgram already has header data
+        // - only reads the payload content.
+        readSuccess = read(self->file_descriptor, self->dgram->xtc.payload(), self->dgram->xtc.sizeofPayload());
         if (readSuccess <= 0) {
-            snprintf(s, TMPSTRINGSIZE, "loading dgram header was unsuccessful -- %s", strerror(errno));
-            PyErr_SetString(PyExc_StopIteration, s);
-            return -1;
-        }
-        readSuccess = read(self->file_descriptor, self->dgram + 1, self->dgram->xtc.sizeofPayload());
-        if (readSuccess <= 0) {
-            snprintf(s, TMPSTRINGSIZE, "loading dgram payload was unsuccessful -- %s", strerror(errno));
+            snprintf(s, TMPSTRINGSIZE, "loading dgram was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
             return -1;
         }
 
     } else {
         off_t fOffset = (off_t)self->offset;
-        readSuccess = pread(self->file_descriptor, self->dgram, dgram_size, fOffset); // for read with offset
+        readSuccess = pread(self->file_descriptor, self->dgram, self->size, fOffset); // for read with offset
         if (readSuccess <= 0) {
             snprintf(s, TMPSTRINGSIZE, "loading dgram with offset was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
@@ -436,22 +503,32 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"offset",
                              (char*)"size",
                              (char*)"view",
+                             (char*)"shmem_index",
+                             (char*)"shmem_size",
+                             (char*)"shmem_cli",
                              NULL};
 
     self->namesIter = 0;
     int fd=-1;
     PyObject* configDgram=0;
     self->offset=0;
-    ssize_t dgram_size=0;
+    self->size=0;
     bool isView=0;
     PyObject* view=0;
+    self->shmem_index=-1;
+    self->shmem_size=0;
+    self->shmem_cli=0;
+    PyObject* shmem_cli=0;    
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iOllO", kwlist,
+                                     "|iOllOiiO", kwlist,
                                      &fd,
                                      &configDgram,
                                      &self->offset,
-                                     &dgram_size,
-                                     &view)) {
+                                     &self->size,
+                                     &view,
+                                     &self->shmem_index,
+                                     &self->shmem_size,
+                                     &shmem_cli)) {
         return -1;
     }
     
@@ -466,21 +543,64 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 
     self->contInfo.containermod = PyImport_ImportModule("psana.container");
     self->contInfo.pycontainertype = PyObject_GetAttrString(self->contInfo.containermod,"Container");
-
+    
+    // Retrieve size and file_descriptor
+    Dgram dgram_header; // For case (1) and (2) below to store the header for later
     if (!isView) {
-        //PyObject* arglist = Py_BuildValue("(i)",BUFSIZE);
+        // If view is not given, we assume dgram is to be created as one of these:
+        // 1. Dgram(file_descriptor=fd) --> create config dgram by read
+        // 2. Dgram(config=config)          create data dgram by read
+        // 3. Dgram(file_descriptor=fd, config=config, offset=int, size=int)
+        //                                  create data dgram by pread
+
+        if (fd==-1 && configDgram==0) {
+            PyErr_SetString(PyExc_RuntimeError, "Creating empty dgram is no longer supported.");
+            return -1;    
+        } else {
+            if (fd==-1) {
+                // For (2)
+                self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
+            } else {
+                // For (1) and (3)
+                self->file_descriptor=fd;
+            }
+            
+            // For (3), size is already given.
+            if (self->size == 0) {
+                // For (1) and (2), obtain dgram_header from fd then extract size
+                int readSuccess = read(self->file_descriptor, &dgram_header, sizeof(Dgram));
+                if (readSuccess <= 0) {
+                    PyErr_SetString(PyExc_StopIteration, "Can't retrieve dgram size. Problem reading dgram header.");
+                    return -1;
+                }
+                
+                self->size = sizeof(Dgram) + dgram_header.xtc.sizeofPayload();
+            }
+        }
+
+        if (self->size == 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Can't retrieve dgram size. Either size is not given when creating read-by-offset dgram or there's a problem reading dgram header.");
+            return -1;
+        }
+
+        //PyObject* arglist = Py_BuildValue("(i)",self->size);
         // I believe this memsets the buffer to 0, which we don't need.
         // Perhaps ideally we would write a custom object to avoid this. - cpo
         //self->dgrambytes = PyObject_CallObject((PyObject*)&PyByteArray_Type, arglist);
         //Py_DECREF(arglist);
 
         // Use c-level api to create PyByteArray to avoid memset - mona
-        self->dgrambytes = PyByteArray_FromStringAndSize(NULL, BUFSIZE);
+        self->dgrambytes = PyByteArray_FromStringAndSize(NULL, self->size);
         if (self->dgrambytes == NULL) {
             return -1;
         }
         self->dgram = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
+
     } else {
+        // Creating a dgram from view (any objects with a buffer interface) can be done by:
+        // 4. Dgram(view=view, offset=int) --> create a config dgram from the view
+        // 5. Dgram(view=view, config=config, offset=int) --> create a data dgram using the config and view
+
         // this next line is needed because arrays will increase the reference count
         // of the view (actually a PyByteArray) in DictAssign.  This is the mechanism we
         // use so we don't have to copy the array data.
@@ -490,6 +610,20 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             return -1;
         }
         self->dgram = (Dgram*)(((char *)self->buf.buf) + self->offset);
+        self->size = sizeof(Dgram) + self->dgram->xtc.sizeofPayload();
+        
+        // the presence of shmem_cli kwarg denotes shmem datagram view
+        if (shmem_cli) {    
+            // convert the shmem client view object to a real pointer
+            // there must be a more straight forward way to simply pass in a void* 
+            // from cython and cast to C++ struct* here
+            Py_buffer buf;
+            if (PyObject_GetBuffer(shmem_cli, &(buf), PyBUF_SIMPLE) == -1) {
+                PyErr_SetString(PyExc_MemoryError, "unable to create shmem cli with the given view");
+            }
+            else
+                self->shmem_cli = (ShmemClient*)(((char *)buf.buf));
+        }
     }
 
     if (self->dgram == NULL) {
@@ -502,20 +636,15 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 
     // Read the data if this dgram is not a view
     if (!isView) {
-        if (fd==-1 && configDgram==0) {
-            self->dgram->xtc.extent = 0; // for empty dgram
-        } else {
-            if (fd==-1) {
-                self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
-            } else {
-                self->file_descriptor=fd;
-            }
-
-            bool sequential = (fd==-1) != (configDgram==0);
-            int err = dgram_read(self, dgram_size, sequential);
-            if (err) return err;
+        bool sequential = (fd==-1) != (configDgram==0);
+        if (sequential) {
+            memcpy(self->dgram, &dgram_header, sizeof(dgram_header));
         }
+
+        int err = dgram_read(self, sequential);
+        if (err) return err;
     }
+    
     AssignDict(self, (PyDgramObject*)configDgram);
 
     return 0;
@@ -528,11 +657,7 @@ static Py_ssize_t PyDgramObject_getsegcount(PyDgramObject *self, Py_ssize_t *len
 
 static Py_ssize_t PyDgramObject_getreadbuf(PyDgramObject *self, Py_ssize_t segment, void **ptrptr) {
     *ptrptr = (void*)self->dgram;
-    if (self->dgram->xtc.extent == 0) {
-        return BUFSIZE;
-    } else {
-        return sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
-    }
+    return self->size;
 }
 
 static Py_ssize_t PyDgramObject_getwritebuf(PyDgramObject *self, Py_ssize_t segment, void **ptrptr) {
@@ -554,11 +679,7 @@ static int PyDgramObject_getbuffer(PyObject *obj, Py_buffer *view, int flags)
     PyDgramObject* self = (PyDgramObject*)obj;
     view->obj = (PyObject*)self;
     view->buf = (void*)self->dgram;
-    if (self->dgram->xtc.extent == 0) {
-        view->len = BUFSIZE; // share max size for empty dgram 
-    } else {
-        view->len = sizeof(*self->dgram) + self->dgram->xtc.sizeofPayload();
-    }
+    view->len = self->size;
     view->readonly = 1;
     view->itemsize = 1;
     view->format = (char *)"s";
@@ -619,6 +740,14 @@ static PyMemberDef dgram_members[] = {
       T_OBJECT_EX, offsetof(PyDgramObject, dgrambytes),
       0,
       (char*)"attribute offset" },
+    { (char*)"_shmem_index",
+      T_INT, offsetof(PyDgramObject, shmem_index),
+      0,
+      (char*)"attribute shmem_index" },
+    { (char*)"_shmem_size",
+      T_INT, offsetof(PyDgramObject, shmem_size),
+      0,
+      (char*)"attribute shmem_size" },
     { NULL }
 };
 
@@ -631,15 +760,7 @@ static PyGetSetDef dgram_getset[] = {
     { NULL }
 };
 
-static PyObject* dgram_assign_dict(PyDgramObject* self) {
-    AssignDict(self, 0); // Todo: may need to be fixed for other non-config dgrams
-    Py_RETURN_NONE;
-}
-
 static PyMethodDef dgram_methods[] = {
-    {"_assign_dict", (PyCFunction)dgram_assign_dict, METH_NOARGS,
-     "Assign dictionary to the dgram"
-    },
     {NULL}  /* Sentinel */
 };
 

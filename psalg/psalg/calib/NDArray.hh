@@ -87,7 +87,7 @@ public:
 //-------------------
 
   inline void set_shape(shape_t* shape=NULL, const size_t ndim=0) {
-    MSG(TRACE, "set_shape for ndim="<<ndim);
+    //MSG(TRACE, "set_shape for ndim="<<ndim);
     assert(ndim<MAXNDIM);
     base::_rank=ndim;
     base::_shape = shape;
@@ -98,7 +98,7 @@ public:
 /// Converts string like "(5920, 388)" to array for _shape[]={5920, 388}
 
   inline void set_shape_string(const std::string& str) {
-    MSG(DEBUG, "set_shape for " << str);
+    //MSG(DEBUG, "set_shape for " << str);
 
     std::string s(str.substr(1, str.size()-2)); // remove '(' and ')'
     std::replace(s.begin(), s.end(), ',', ' '); // remove comma ',' separators
@@ -143,7 +143,7 @@ public:
 /// WARNING shape needs to be set first, othervice size() is undefined!
 
   inline void set_data_buffer(void *buf=0) { // base::_data=reinterpret_cast<T*>(buf);}
-    MSG(TRACE, "In set_data_buffer *buf=" << buf);
+    //MSG(TRACE, "In set_data_buffer *buf=" << buf);
     if(_buf_own) delete _buf_own;  
     if(buf) {
       _buf_ext = base::_data = reinterpret_cast<T*>(buf);
@@ -160,7 +160,7 @@ public:
 /// WARNING shape needs to be set first, othervice size() is undefined!
 
   inline void set_data_copy(const void *buf=0) {
-    MSG(TRACE, "In set_data_copy *buf=" << buf);
+    //MSG(TRACE, "In set_data_copy *buf=" << buf);
     if(_buf_own) delete _buf_own;  
     _buf_own = base::_data = new T[size()];
     std::memcpy(base::_data, buf, sizeof(T)*size());
@@ -174,7 +174,7 @@ public:
 /// size is a number of values
 
   inline void reserve_data_buffer(const size_t& size) {
-    MSG(TRACE, "In get_data_buffer size=" << size);
+    //MSG(TRACE, "In get_data_buffer size=" << size);
     if(_buf_ext) return;
     if(_buf_own) delete _buf_own;  
     _buf_own = base::_data = new T[size];

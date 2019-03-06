@@ -1,6 +1,7 @@
 import sys
+import logging
 
-from pcaspy import SimpleServer, Driver
+from psdaq.epicstools.PVAServer import PVAServer
 import time
 from datetime import datetime
 import argparse
@@ -11,11 +12,6 @@ import pdb
 NDsLinks    = 7
 NAmcs       = 2
 NPartitions = 16
-
-class myDriver(Driver):
-    def __init__(self):
-        super(myDriver, self).__init__()
-
 
 def printDb():
     global pvdb
@@ -53,14 +49,15 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    myDriver.verbose = args.verbose
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     prefix = args.P
     
     # PVs
 #    pvdb[':PARTITIONS'         ] = {'type' : 'int', 'value' : 255}
     pvdb[':PAddr'              ] = {'type' : 'int'}
-    pvdb[':FwBuild'            ] = {'type' : 'char', 'count':256}
+    pvdb[':FwBuild'            ] = {'type' : 'string', 'value':'None' }
     pvdb[':ModuleInit'         ] = {'type' : 'int'}
     for i in range(NAmcs):
         pvdb[':DumpPll' + '%d'%i] = {'type' : 'int'}
@@ -68,15 +65,21 @@ def main():
     for i in range(2):
         pvdb[':DumpTiming%d'%i ] = {'type' : 'int'}
 
-    pvdb[':DumpSeq'            ] = {'type' : 'int'}
-    pvdb[':SetVerbose'         ] = {'type' : 'int'}
+    pvdb[':XTPG:TimeStampWr'   ] = {'type' : 'int', 'value' : 0}
+    pvdb[':XTPG:TimeStamp'     ] = {'type' : 'int'}
+    pvdb[':XTPG:PulseId'       ] = {'type' : 'int'}
+    for i in range(3):
+        pvdb[':XTPG:MMCM%d'%i      ] = {'type' : 'int', 'count' : 256, 'value':[0]*256 }
+    pvdb[':XTPG:cuDelay'       ] = {'type' : 'int', 'value' : 200*800}
+    pvdb[':XTPG:cuBeamCode'    ] = {'type' : 'int', 'value' : 140}
+
     pvdb[':Inhibit'            ] = {'type' : 'int'}
     pvdb[':TagStream'          ] = {'type' : 'int'}
+    pvdb[':DumpSeq'            ] = {'type' : 'int'}
+    pvdb[':SetVerbose'         ] = {'type' : 'int'}
 
     LinkEnable = [0]*32
-    LinkEnable[17:19] = [1]*3  # DTIs in slots 3-5
-    LinkEnable[4] = 1   # HSD on dev03
-    LinkEnable[7] = 1   # HSD on dev02
+    LinkEnable[17:18] = [1]*2  # DTIs in slots 3-4
     print(LinkEnable)
 
     for i in range(32):
@@ -107,16 +110,9 @@ def main():
 
     for i in range(NAmcs):
         pvdb[':PLL_LOS'       +'%d'%i] = {'type' : 'int'}
+        pvdb[':PLL_LOSCNT'    +'%d'%i] = {'type' : 'int'}
         pvdb[':PLL_LOL'       +'%d'%i] = {'type' : 'int'}
-        pvdb[':PLL_BW_Select' +'%d'%i] = {'type' : 'int', 'value': 7}
-        pvdb[':PLL_FreqTable' +'%d'%i] = {'type' : 'int', 'value': 2}
-        pvdb[':PLL_FreqSelect'+'%d'%i] = {'type' : 'int', 'value': 89}
-        pvdb[':PLL_Rate'      +'%d'%i] = {'type' : 'int', 'value': 10}
-        pvdb[':PLL_PhaseInc'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':PLL_PhaseDec'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':PLL_Bypass'    +'%d'%i] = {'type' : 'int'}
-        pvdb[':PLL_Reset'     +'%d'%i] = {'type' : 'int'}
-        pvdb[':PLL_Skew'      +'%d'%i] = {'type' : 'int'}
+        pvdb[':PLL_LOLCNT'    +'%d'%i] = {'type' : 'int'}
 
     addTiming(':Us')
     addTiming(':Cu')
@@ -124,6 +120,14 @@ def main():
     pvdb[':RecClk'     ] = {'type' : 'float', 'value': 0}
     pvdb[':FbClk'      ] = {'type' : 'float', 'value': 0}
     pvdb[':BpClk'      ] = {'type' : 'float', 'value': 0}
+
+    pvdb[':GroupL0Reset'         ] = {'type' : 'int', 'value': 0}
+    pvdb[':GroupL0Enable'        ] = {'type' : 'int', 'value': 0}
+    pvdb[':GroupL0Disable'       ] = {'type' : 'int', 'value': 0}
+    pvdb[':GroupMsgInsert'       ] = {'type' : 'int', 'value': 0}
+    pvdb[':GroupMsgHeader'       ] = {'type' : 'int', 'value': 0}
+    pvdb[':GroupMsgPayload'      ] = {'type' : 'int', 'value': 0}
+
     for i in range(8):
         pvdb[':PART:%d:DeadFLnk' %i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
 
@@ -133,15 +137,12 @@ def main():
     # printDb(pvdb, prefix)
     printDb()
 
-    server = SimpleServer()
-
+    server = PVAServer(__name__)
     server.createPV(prefix, pvdb)
-    driver = myDriver()
 
     try:
-        # process CA transactions
-        while True:
-            server.process(0.1)
+        # process PVA transactions
+        server.forever()
     except KeyboardInterrupt:
         print('\nInterrupted')
 

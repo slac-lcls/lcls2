@@ -7,6 +7,8 @@ add_library(xtc SHARED
     src/XtcFileIterator.cc
     src/ShapesData.cc
     src/NamesIter.cc
+    src/ConfigIter.cc
+    src/DataIter.cc
 )
 
 target_include_directories(xtc PUBLIC
@@ -14,10 +16,21 @@ target_include_directories(xtc PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+# Why is this a separate library?  Because of https://bugzilla.redhat.com/show_bug.cgi?id=1519073
+add_library(j2x SHARED
+    src/Json2Xtc.cc
+)
+
+target_include_directories(j2x PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    $ENV{CONDA_PREFIX}/include
+)
+
 install(FILES
     Level.hh
     NamesId.hh
-    NamesVec.hh
+    NamesLookup.hh
     NameIndex.hh
     ShapesData.hh
     BlockDgram.hh
@@ -25,6 +38,8 @@ install(FILES
     XtcFileIterator.hh
     Damage.hh
     NamesIter.hh
+    ConfigIter.hh
+    DataIter.hh
     Src.hh
     Xtc.hh
     DescData.hh
@@ -36,10 +51,11 @@ install(FILES
     Sequence.hh
     TypeId.hh
     VarDef.hh
+    Json2Xtc.hh
     DESTINATION include/xtcdata/xtc
 )
 
-install(TARGETS xtc
+install(TARGETS xtc j2x
     EXPORT xtcdataTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

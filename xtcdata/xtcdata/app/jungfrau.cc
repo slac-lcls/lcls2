@@ -33,7 +33,6 @@ public:
         case (TypeId::ShapesData): {
             ShapesData* tmp = (ShapesData*)xtc;
             _shapesData[tmp->namesId().namesId()] = tmp;
-            iterate(xtc);
             break;
         }
         default:
@@ -42,8 +41,8 @@ public:
         return Continue;
     }
 
-    ShapesData& config() {return *_shapesData[0];}
-    ShapesData& event()  {return *_shapesData[1];}
+    ShapesData& shape() {return *_shapesData[0];}
+    ShapesData& value() {return *_shapesData[1];}
 
 private:
     ShapesData* _shapesData[2];
@@ -55,13 +54,21 @@ void usage(char* progname)
     fprintf(stderr, "Usage: %s -f <filename> [-h]\n", progname);
 }
 
-void dump(const char* transition, Names& names, DescData& descdata) {
-    printf("------ Names for %s transition ---------\n",transition);
+void dump(const char* comment, DescData& descdata) {
+
+    Names& names = descdata.nameindex().names();
+    ShapesData& shapesData = descdata.shapesdata();
+    NamesId& namesId       = shapesData.namesId();
+    printf("========= transition: %d  0/1 = config/data\n", namesId.namesId());
+    printf("Names:: detName: %s  detType: %s  detId: %s  segment: %d alg.name: %s\n",
+	   names.detName(), names.detType(), names.detId(), names.segment(), names.alg().name());
+
+    printf("------ Names for %s ---------\n",comment);
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         printf("rank %d type %d name %s\n",name.rank(),name.type(),name.name());
     }
-    printf("------ Values for %s transition ---------\n",transition);
+    printf("------ Values for %s ---------\n",comment);
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         if (name.type()==Name::INT64 and name.rank()==0) {
@@ -105,31 +112,32 @@ int main(int argc, char* argv[])
         exit(2);
     }
 
-    XtcFileIterator iter(fd, 0x4000000);
-    Dgram* cfg = iter.next();
+    XtcFileIterator iter_fdg(fd, 0x4000000);
+    Dgram* cfg = iter_fdg.next();
+
     NamesIter& namesIter = *new NamesIter(&(cfg->xtc));
     namesIter.iterate();
-    NamesVec& namesVec = namesIter.namesVec();
+    NamesLookup& namesLookup = namesIter.namesLookup();
 
     // get data out of the configure transition
     MyXtcIter cfgiter(&(cfg->xtc));
     cfgiter.iterate();
-    NamesId& namesId = cfgiter.config().namesId();
-    DescData descdata(cfgiter.config(), namesVec[namesId]);
-    Names& names = descdata.nameindex().names();
-    dump("Configure",names,descdata);
+    NamesId& namesId = cfgiter.shape().namesId();
+    printf("*** namesid %d\n",namesId.namesId());
+    DescData descdata(cfgiter.shape(), namesLookup[namesId]);
+    dump("Configure",descdata);
 
     Dgram* dg;
     unsigned nevent=0;
-    while ((dg = iter.next())) {
+    while ((dg = iter_fdg.next())) {
         if (nevent>=neventreq) break;
         nevent++;
         MyXtcIter iter(&(dg->xtc));
         iter.iterate();
-        NamesId& namesId = iter.event().namesId();
-        DescData descdata(iter.event(), namesVec[namesId]);
-        Names& names = descdata.nameindex().names();
-        dump("Event",names,descdata);
+        NamesId& namesId = iter.value().namesId();
+        printf("*** namesid %d\n",namesId.namesId());
+        DescData descdata(iter.value(), namesLookup[namesId]);
+        dump("Event",descdata);
     }
 
     ::close(fd);

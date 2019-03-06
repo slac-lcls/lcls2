@@ -42,6 +42,7 @@ namespace Pds {
     public:
       void               process(const XtcData::Dgram*, unsigned prm);
     public:
+      void               clear();
       void               dump(unsigned detail) const;
       const uint64_t&    epochAllocCnt() const;
       const uint64_t&    epochFreeCnt()  const;
@@ -69,9 +70,9 @@ namespace Pds {
       std::vector<EbEpoch*> _epochLut;      // LUT of allocated epochs
       GenericPool           _eventFreelist; // Freelist for new events
       std::vector<EbEvent*> _eventLut;      // LUT of allocated events
-      Task*                 _timerTask;     // For Timer
+      unsigned              _verbose;       // Print progress info
       unsigned              _duration;      // Timer expiration rate
-      const unsigned        _verbose;       // Print progress info
+      Task*                 _timerTask;     // For Timer
     };
   };
 };

@@ -4,8 +4,10 @@ add_library(detector SHARED
     src/DetectorTypes.cc
     src/Detector.cc
     src/DetectorStore.cc
+    src/UtilsConfig.cc
     src/AreaDetector.cc
     src/AreaDetectorEpix100a.cc
+    src/AreaDetectorJungfrau.cc
     src/AreaDetectorStore.cc
 )
 
@@ -24,9 +26,11 @@ install(FILES
     DetectorTypes.hh
     Detector.hh
     DetectorStore.hh
+    UtilsConfig.hh
     AreaDetector.hh
     AreaDetectorStore.hh
     AreaDetectorEpix100a.hh
+    AreaDetectorJungfrau.hh
     DataSourceSimulator.hh
     DESTINATION include/psalg/detector
 )

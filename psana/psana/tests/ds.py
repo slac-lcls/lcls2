@@ -13,11 +13,12 @@ def global_except_hook(exctype, value, traceback):
     import mpi4py.MPI
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
-#sys.excepthook = global_except_hook
+sys.excepthook = global_except_hook
 
 import os
 from psana import DataSource
 import numpy as np
+import vals
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -40,7 +41,8 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
         sendbuf += 1
-        assert det.raw.raw(evt).shape == (18,)
+        padarray = vals.padarray
+        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
         assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
@@ -59,7 +61,8 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
         sendbuf += 1
-        assert det.raw.raw(evt).shape == (18,)
+        padarray = vals.padarray
+        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
         assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
@@ -74,12 +77,27 @@ if rank == 0:
 
 for evt in ds.events():
     sendbuf += 1
-    assert det.raw.raw(evt).shape == (18,)
+    padarray = vals.padarray
+    assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
     assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
     assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
 
+# Usecase 3: reading smalldata w/o bigdata
+ds = DataSource("exp=xpptut13:run=2:dir=%s"%(xtc_dir))
 
+sendbuf = np.zeros(1, dtype='i')
+recvbuf = None
+if rank == 0:
+    recvbuf = np.empty([size, 1], dtype='i')
 
+for run in ds.runs():
+    for evt in run.events():
+        sendbuf += 1
+        assert evt._size == 2 # check that two dgrams are in there
+
+comm.Gather(sendbuf, recvbuf, root=0)
+if rank == 0:
+    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active

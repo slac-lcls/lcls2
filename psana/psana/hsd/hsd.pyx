@@ -1,5 +1,6 @@
 # Import the Python-level symbols of numpy
 import numpy as np
+np.set_printoptions(threshold=np.inf)
 from psana.detector.detector_impl import DetectorImpl
 
 # Import the C-level symbols of numpy
@@ -37,7 +38,7 @@ cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
         void printVersion()
 
     cdef cppclass Channel:
-        Channel(Allocator *allocator, Hsd_v1_2_3 *vHsd, const si.uint8_t *data)
+        Channel(Allocator *allocator, Hsd_v1_2_3 *vHsd, const env_t *evtheader, const si.uint8_t *data)
         unsigned npeaks()
         unsigned numPixels
         AllocArray1D[cnp.uint16_t] waveform
@@ -45,93 +46,73 @@ cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
         AllocArray1D[cnp.uint16_t] sPos, len, fexPos
         AllocArray1D[arrp] fexPtr
 
+class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
 
-class hsd_hsd_1_2_3(cyhsd_hsd_1_2_3, DetectorImpl):
+    def __init__(self, *args):
+        DetectorImpl.__init__(self, *args)
+        cyhsd_base_1_2_3.__init__(self)
 
-    def __init__(self, dgramlist, configs, calibs):
-        DetectorImpl.__init__(self, dgramlist, configs, calibs)
-        cyhsd_hsd_1_2_3.__init__(self)
-
-class waveform:
-    """
-    This is a waveform object.
-
-    Possible attributes (if the data exists in the event):
-    ch0:    waveform intensity from channel 0
-    ch1:    waveform intensity from channel 1
-    ...
-    ch16:   waveform intensity from channel 16
-    times:  time axis (s)
-    """
-
-    def __init__(self):
-        pass
-
-class peaks:
-    """
-    This is a peaks object.
-
-    Possible attributes (if the data exists in the event):
-    ch0:    tuple of beginning of peak and array of peak intensities from channel 0
-    ch1:    tuple of beginning of peak and array of peak intensities from channel 1
-    ...
-    ch16:   tuple of beginning of peak and array of peak intensities from channel 16
-    assemble0:  peak intensities assembled into a waveform from channel 0
-    assemble1:  peak intensities assembled into a waveform from channel 1
-    ...
-    assemble16: peak intensities assembled into a waveform from channel 16
-    """
-
-    def __init__(self):
-        pass
-
-cdef class cyhsd_hsd_1_2_3:
+cdef class cyhsd_base_1_2_3:
     cdef HsdEventHeaderV1* hptr
     cdef Hsd_v1_2_3* cptr
     cdef Heap heap
     cdef Heap *ptr
     cdef Dgram *dptr
     cdef Channel *chptr[16] # Maximum channels: 16
-    cdef dict wvDict
-    cdef list chanList
-    cdef unsigned chanCounter
-    cdef list fexPeaks
-    cdef dict fexDict
+    cdef dict _wvDict
+    cdef list _chanList
+    cdef unsigned _chanCounter
+    cdef list _fexPeaks
+    cdef dict _peaksDict
 
     def __cinit__(self):
         self.ptr = &self.heap
         self.cptr = new Hsd_v1_2_3(self.ptr)
 
     def __init__(self): # dgramlist: evt_dgram.xpphsd.hsd which has chan00, chan01, chan02, chan03
-        self.wvDict = {}
-        self.chanList = []
-        self.chanCounter = 0
-        self.fexDict = {}
-
-        self._setEnv(self._dgramlist[-1].env)
-        for chanNum in xrange(16): # Maximum channels: 16
-            chanName = 'chan'+'{num:02d}'.format(num=chanNum) # chan00
-            if hasattr(self._dgramlist[-1], chanName):
-                chan = eval('self._dgramlist[-1].'+chanName)
-                if chan.size > 0:
-                    chanName = 'ch'+str(chanNum) # ch0
-                    self._setChan(chanName, chan)
-
-        self._genWaveformAttr()
-        self._genPeaksAttr()
-
-    def __dealloc__(self):
-        del self.cptr
-        for x in xrange(len(self.chanList)):
-            del self.chptr[x]
+        self._wvDict = {}
+        self._chanList = []
+        self._chanCounter = 0
+        self._evt = None
+        self._segments = None
+        self._peaksDict = {}
+        self._fexPeaks = []
 
     def _setEnv(self, cnp.ndarray[env_t, ndim=1, mode="c"] env):
         self.cptr.init(&env[0])
 
-    def _setChan(self, chanName, cnp.ndarray[chan_t, ndim=1, mode="c"] chan):
-        self.chptr[self.chanCounter] = new Channel(self.ptr, self.cptr, &chan[0])
-        self.chanList.append(chanName)
-        self.chanCounter += 1
+    def _setChan(self, chanName, cnp.ndarray[env_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan):
+        self.chptr[self._chanCounter] = new Channel(self.ptr, self.cptr, &evtheader[0], &chan[0])
+        self._chanList.append(chanName)
+        self._chanCounter += 1
+
+    def _isNewEvt(self, evt):
+        if self._evt == None or not (evt._nanoseconds == self._evt._nanoseconds and evt._seconds == self._evt._seconds):
+            return True
+        else:
+            return False
+
+    def _parseEvt(self, evt):
+        self._wvDict = {}
+        self._chanList = []
+        self._chanCounter = 0
+        self._peaksDict = {}
+        self._fexPeaks = []
+        self._segments = self.segments(evt)
+        self._setEnv(self._segments[0].env)
+        for chanNum in xrange(16): # Maximum channels: 16
+            chanName = 'chan'+'{num:02d}'.format(num=chanNum) # e.g. chan16
+            if hasattr(self._segments[0], chanName):
+                chan = eval('self._segments[0].'+chanName)
+                if chan.size > 0:
+                    chanName = str(chanNum) # e.g. 16
+                    self._setChan(chanName, self._segments[0].env, chan)
+        self._evt = evt
+
+    def __dealloc__(self):
+        del self.cptr
+        for x in xrange(len(self._chanList)):
+            del self.chptr[x]
 
     def _samples(self):
         return self.cptr.samples()
@@ -151,29 +132,26 @@ cdef class cyhsd_hsd_1_2_3:
     def _fex(self):
         return self.cptr.fex()
 
-    def _genWaveformAttr(self):
-        """Return a dictionary of available waveforms in the event."""
+    def waveforms(self, evt):
+        """Return a dictionary of available waveforms in the event.
+        0:    raw waveform intensity from channel 0
+        1:    raw waveform intensity from channel 1
+        ...
+        16:   raw waveform intensity from channel 16
+        times:  time axis (s)
+        """
+        # TODO: compare self.evt and evt
         cdef cnp.ndarray wv # TODO: make readonly
-
-        for i, chanName in enumerate(self.chanList):
-            if self.chptr[i].numPixels:
-                arr0 = PyAllocArray1D()
-                wv = arr0.init(&self.chptr[i].waveform, self.chptr[i].numPixels, cnp.NPY_UINT16)
-                wv.base = <PyObject*> arr0
-                # export waveform.chX
-                if not hasattr(self, 'waveform'):
-                    setattr(self, 'waveform', waveform()) #setattr(self, 'waveform', types.SimpleNamespace())
-                    setattr(self.waveform, 'times', np.arange(self.chptr[i].numPixels)) # FIXME: placeholder for times
-                setattr(self.waveform, chanName, wv)
-
-    def _genPeaksAttr(self):
-        for i, chanName in enumerate(self.chanList):
-            self.fexDict[chanName] = self._channelPeaks(chanName)
-            if len(self._channelPeaks(chanName)[0]):
-                if not hasattr(self, 'peaks'):
-                    setattr(self, 'peaks', peaks())
-                setattr(self.peaks, chanName, self._channelPeaks(chanName))
-                setattr(self.peaks, 'assemble'+chanName, np.arange(self.chptr[i].numPixels)) # FIXME: placeholder for assembled waveform
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+            for i, chanName in enumerate(self._chanList):
+                if self.chptr[i].numPixels:
+                    arr0 = PyAllocArray1D()
+                    wv = arr0.init(&self.chptr[i].waveform, self.chptr[i].numPixels, cnp.NPY_UINT16)
+                    wv.base = <PyObject*> arr0
+                    self._wvDict[chanName] = wv
+            self._wvDict["times"] = np.arange(self.chptr[i].numPixels) # FIXME: placeholder for times
+        return self._wvDict
 
     def _channelPeaks(self, chanName):
         cdef list listOfPeaks, listOfPos # TODO: check whether this helps with speed
@@ -182,13 +160,13 @@ cdef class cyhsd_hsd_1_2_3:
         cdef cnp.ndarray peak
         cdef cnp.npy_intp shape[1]
         try:
-            chanNum = self.chanList.index(chanName)
+            chanNum = self._chanList.index(chanName)
             for i in range(self.chptr[chanNum].numFexPeaks): # TODO: disable bounds, wraparound check
                 shape[0] = <cnp.npy_intp> self.chptr[chanNum].len(i) # len
                 peak = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16,
                                    <cnp.uint16_t*>self.chptr[chanNum].fexPtr(i))
-                peak.base = <PyObject*> self.fexPeaks
-                Py_INCREF(self.fexPeaks)
+                peak.base = <PyObject*> self._fexPeaks
+                Py_INCREF(self._fexPeaks)
                 listOfPeaks.append(peak)
                 listOfPos.append(self.chptr[chanNum].sPos(i))
         except ValueError:
@@ -197,22 +175,28 @@ cdef class cyhsd_hsd_1_2_3:
             listOfPos = None
         return (listOfPos, listOfPeaks)
 
-"""
-    def _waveforms(self):
-        cdef cnp.ndarray wv
+    def peaks(self, evt):
+        """Return a dictionary of available peaks found in the event.
+        0:    tuple of beginning of peaks and array of peak intensities from channel 0
+        1:    tuple of beginning of peaks and array of peak intensities from channel 1
+        ...
+        16:   tuple of beginning of peaks and array of peak intensities from channel 16
+        """
+        # TODO: compare self.evt and evt
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+            for i, chanName in enumerate(self._chanList):
+                self._peaksDict[chanName] = self._channelPeaks(chanName)
+        return self._peaksDict
 
-        if not self.wvDict:
-            for i, chanName in enumerate(self.chanList):
-                arr0 = PyAllocArray1D()
-                wv = arr0.init(&self.chptr[i].waveform, self.chptr[i].numPixels, cnp.NPY_UINT16)
-                wv.base = <PyObject*> arr0
-                self.wvDict[chanName] = wv
-
-        return self.wvDict
-
-    def _peaks(self):
-        for chanName in self.chanList:
-            self.fexDict[chanName] = self._channelPeaks(chanName)
-
-        return self.fexDict
-"""
+    def assem(self, evt):
+        """Return a dictionary of available peaks assembled as waveforms.
+        0:  peak intensities assembled into a waveform from channel 0
+        1:  peak intensities assembled into a waveform from channel 1
+        ...
+        16: peak intensities assembled into a waveform from channel 16
+        times:  time axis (s)
+        """
+        # TODO: compare self.evt and evt
+        # TODO: assemble peaks into waveforms
+        return self._assemDict

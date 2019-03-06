@@ -3,9 +3,9 @@
 #include <chrono>
 #include <bitset>
 #include "AxisDriver.h"
-#include "PGPReader.hh"
+#include "Worker.hh"
 #include "TimingHeader.hh"
-
+#include "PGPReader.hh"
 using namespace XtcData;
 
 MovingAverage::MovingAverage(int n) : index(0), sum(0), N(n), values(N, 0) {}
@@ -19,13 +19,14 @@ int MovingAverage::add_value(int value)
 }
 
 unsigned dmaDest(unsigned lane, unsigned vc)
-{   
+{
     return (lane<<8) | vc;
 }
 
-PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
+PGPReader::PGPReader(MemPool& pool, Parameters& para,
+                     Detector* det, int lane_mask) :
     m_pool(pool),
-    m_avg_queue_size(nworkers),
+    m_avg_queue_size(para.numWorkers),
     m_pcounter(&m_c1)
 {
     std::bitset<32> bs(lane_mask);
@@ -33,17 +34,26 @@ PGPReader::PGPReader(MemPool& pool, int lane_mask, int nworkers) :
     m_last_complete = 0;
 
     m_worker = 0;
-    m_nworkers = nworkers;
+    m_nworkers = para.numWorkers;
 
     m_buffer_mask = m_pool.num_entries - 1;
 
-    // FIXME and make mask from lane_mask
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
-    for (unsigned i=0; i<4; i++) {
-        dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
+    for (int i=0; i<4; i++) {
+        if (lane_mask & (1<<i)) {
+            std::cout<<"setting lane  "<<i<<'\n';
+            dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
+        }
     }
     dmaSetMaskBytes(pool.fd, mask);
+
+    // start worker threads
+    for (int i = 0; i < m_nworkers; i++) {
+        m_workerThreads.emplace_back(worker, std::ref(para), det,
+                                     std::ref(pool.worker_input_queues[i]),
+                                     std::ref(pool.worker_output_queues[i]), i);
+    }
 }
 
 PGPData* PGPReader::process_lane(uint32_t lane, uint32_t index, int32_t size)

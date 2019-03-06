@@ -13,8 +13,10 @@ from psdaq.control.collection import back_pull_port, back_pub_port, create_msg
 from psdaq.control.collection import DaqControl
 import argparse
 import logging
-from psp import PV
-import pyca
+from p4p.client.thread import Context
+
+# initialize EPICS context
+ctxt = Context('pva')
 
 class Client:
 
@@ -36,15 +38,11 @@ class Client:
         self.sub.connect('tcp://%s:%d' % (collectHost, back_pub_port(platform)))
         self.sub.setsockopt(zmq.SUBSCRIBE, b'')
 
-        # initialize PVs
-        self.pvMsgClear = PV(pv_base+':MsgClear', initialize=True)
-        logging.debug("Create PV: %s" % self.pvMsgClear.name)
-        self.pvMsgHeader = PV(pv_base+':MsgHeader', initialize=True)
-        logging.debug("Create PV: %s" % self.pvMsgHeader.name)
-        self.pvMsgInsert = PV(pv_base+':MsgInsert', initialize=True)
-        logging.debug("Create PV: %s" % self.pvMsgInsert.name)
-        self.pvRun = PV(pv_base+':Run', initialize=True)
-        logging.debug("Create PV: %s" % self.pvRun.name)
+        # name PVs
+        self.pvMsgClear = pv_base+':MsgClear'
+        self.pvMsgHeader = pv_base+':MsgHeader'
+        self.pvMsgInsert = pv_base+':MsgInsert'
+        self.pvRun = pv_base+':Run'
 
         # define commands
         handle_request = {
@@ -69,20 +67,19 @@ class Client:
                 logging.debug('KeyError: %s' % ex)
 
     @staticmethod
-    def pv_put(pv, val):
+    def pv_put(pvName, val):
+        global ctxt
+
         retval = False
-        if not pv.isinitialized:
-            logging.error("PV not initialized: %s" % pv.name)
-        elif not pv.isconnected:
-            logging.error("PV not connected: %s" % pv.name)
+
+        try:
+            ctxt.put(pvName, val)
+        except Exception as ex:
+            logging.error("ctxt.put('%s', %d) Exception: %s" % (pvName, val, ex))
         else:
-            try:
-                pv.put(val)
-            except pyca.pyexc:
-                logging.error("PV put(%d) timeout: %s" % (val, pv.name))
-            else:
-                retval = True
-                logging.debug("PV put(%d): %s" % (val, pv.name))
+            retval = True
+            logging.debug("ctxt.put('%s', %d)" % (pvName, val))
+
         return retval
 
     def handle_status(self, msg):

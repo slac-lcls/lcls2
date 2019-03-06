@@ -1,8 +1,12 @@
 import sys
 import argparse
-from psp import Pv
+import logging
 from PyQt5 import QtCore, QtGui, QtWidgets
 import time
+from psdaq.cas.pvedit import Pv
+
+logger = logging.getLogger(__name__)
+
 
 try:
     QString = unicode
@@ -20,7 +24,6 @@ acRates     = ['60Hz','30Hz','10Hz','5Hz','1Hz']
 acTS        = ['TS%u'%(i+1) for i in range(6)]
 seqIdxs     = ['s%u'%i for i in range(18)]
 seqBits     = ['b%u'%i for i in range(32)]
-
 
 class PvDisplay(QtWidgets.QLabel):
 
@@ -50,22 +53,18 @@ class PvLabel:
 
         pvname = pvbase+name
         print(pvname)
-        self.pv = Pv.Pv(pvname)
-        self.pv.monitor_start()
-        self.pv.add_monitor_callback(self.update)
+        self.pv = Pv(pvname, self.update)
         if dName is not None:
             dPvName = pvbase+dName
-            self.dPv = Pv.Pv(dPvName)
-            self.dPv.monitor_start()
-            self.dPv.add_monitor_callback(self.update)
+            self.dPv = Pv(dPvName, self.update)
         else:
             self.dPv = None
         self.isInt = isInt
 
     def update(self, err):
-        q = self.pv.value
+        q = self.pv.get()
         if self.dPv is not None:
-            dq = self.dPv.value
+            dq = self.dPv.get()
         else:
             dq = None
         if err is None:
@@ -105,7 +104,10 @@ class PvPushButton(QtWidgets.QPushButton):
 
         self.clicked.connect(self.buttonClicked)
 
-        self.pv = Pv.Pv(pvname)
+        self.pv = Pv(pvname, self.update)
+
+    def update(self, err):
+        pass
 
     def buttonClicked(self):
         self.pv.put(1)          # Value is immaterial
@@ -131,9 +133,8 @@ class PvCheckBox(CheckBox):
         self.connect_signal()
         self.clicked.connect(self.pvClicked)
 
-        self.pv = Pv.Pv(pvname)
-        self.pv.monitor_start()
-        self.pv.add_monitor_callback(self.update)
+        self.pv = Pv(pvname)
+        self.pv.monitor(self.update)
 
     def pvClicked(self):
         q = self.isChecked()
@@ -141,8 +142,8 @@ class PvCheckBox(CheckBox):
         #print "PvCheckBox.clicked: pv %s q %x" % (self.pv.name, q)
 
     def update(self, err):
-        #print "PvCheckBox.update:  pv %s, i %s, v %x, err %s" % (self.pv.name, self.text(), self.pv.value, err)
-        q = self.pv.value != 0
+        #print "PvCheckBox.update:  pv %s, i %s, v %x, err %s" % (self.pv.name, self.text(), self.pv.get(), err)
+        q = self.pv.get() != 0
         if err is None:
             if q != self.isChecked():  self.valueSet.emit(q)
         else:
@@ -182,14 +183,11 @@ class PvTxt(PvTextDisplay):
         super(PvTxt, self).__init__(label)
         self.connect_signal()
 
-        self.pv = Pv.Pv(pv)
-        self.pv.monitor_start()
-        print('Monitor started '+pv)
-        self.pv.add_monitor_callback(self.update)
+        self.pv = Pv(pv, self.update)
 
     def update(self, err):
         print('Update '+pv)
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
             s = QString(q)
             self.valueSet.emit(s)
@@ -206,14 +204,11 @@ class PvEditTxt(PvTextDisplay):
         self.connect_signal()
         self.editingFinished.connect(self.setPv)
 
-        self.pv = Pv.Pv(pv)
-        self.pv.monitor_start()
-        print('Monitor started '+pv)
-        self.pv.add_monitor_callback(self.update)
+        self.pv = Pv(pv, self.update)
 
     def update(self, err):
         print('Update '+pv)
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
             s = QString(q)
             self.valueSet.emit(s)
@@ -239,7 +234,7 @@ class PvEditInt(PvEditTxt):
 
     def update(self, err):
         print('Update '+pv)
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
             s = QString('fail')
             try:
@@ -277,7 +272,7 @@ class PvEditHML(PvEditTxt):
             print("Invalid character in string:", value)
 
     def update(self, err):
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
             v = toLMH[q & 0x3]
             q >>= 2
@@ -306,7 +301,7 @@ class PvEditDbl(PvEditTxt):
         self.pv.put(value)
 
     def update(self, err):
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
             s = QString('fail')
             try:
@@ -342,16 +337,13 @@ class PvDblArrayW(QtWidgets.QLabel):
         self.setText(value)
 
 class PvDblArray:
-    
+
     def __init__(self, pv, widgets):
         self.widgets = widgets
-        self.pv = Pv.Pv(pv)
-        self.pv.monitor_start()
-        print('Monitor started '+pv)
-        self.pv.add_monitor_callback(self.update)
+        self.pv = Pv(pv, self.update)
 
     def update(self, err):
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
             for i in range(len(q)):
                 self.widgets[i].valueSet.emit(QString(format(q[i], '4f')))
@@ -365,16 +357,14 @@ class PvEditCmb(PvComboDisplay):
         self.connect_signal()
         self.currentIndexChanged.connect(self.setValue)
 
-        self.pv = Pv.Pv(pvname)
-        self.pv.monitor_start()
-        self.pv.add_monitor_callback(self.update)
+        self.pv = Pv(pvname, self.update)
 
     def setValue(self):
         value = self.currentIndex()
         self.pv.put(value)
 
     def update(self, err):
-        q = self.pv.value
+        q = self.pv.get()
         if err is None:
             self.setCurrentIndex(q)
             self.valueSet.emit(q)
@@ -423,11 +413,11 @@ class PvEditEvt(QtWidgets.QWidget):
         self.setLayout(vbox)
 
 class PvDstTab(QtWidgets.QWidget):
-    
+
     def __init__(self, pvname):
         super(PvDstTab,self).__init__()
 
-        self.pv = Pv.Pv(pvname)
+        self.pv = Pv(pvname)
 
         self.chkBox = []
         layout = QtWidgets.QGridLayout()
@@ -447,12 +437,12 @@ class PvDstTab(QtWidgets.QWidget):
         self.pv.put(v)
 
 class PvEditDst(QtWidgets.QWidget):
-    
+
     def __init__(self, pvname, idx):
         super(PvEditDst, self).__init__()
         vbox = QtWidgets.QVBoxLayout()
         selcmb = PvEditCmb(pvname,dstsel)
-        
+
         vbox.addWidget(selcmb)
         vbox.addWidget(PvDstTab(pvname+'_Mask'))
         self.setLayout(vbox)
@@ -517,18 +507,18 @@ class Ui_MainWindow(object):
         textWidgets = []
         for i in range(32):
             textWidgets.append( PvDblArrayW() )
-            
+
         # Need to wait for pv.get()
         time.sleep(2)
 
         for i in range(14):
-            pv = Pv.Pv(pvbase+'LinkLabel%d'%i)
+            pv = Pv(pvbase+'LinkLabel%d'%i)
             grid.addWidget( QtWidgets.QLabel(pv.get()), i, 0 )
             grid.addWidget( textWidgets[i], i, 1 )
 
         for j in range(16,21):
             i = j-16
-            pv = Pv.Pv(pvbase+'LinkLabel%d'%j)
+            pv = Pv(pvbase+'LinkLabel%d'%j)
             grid.addWidget( QtWidgets.QLabel(pv.get()), i, 2 )
             grid.addWidget( textWidgets[j], i, 3 )
 
@@ -551,10 +541,14 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
+    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument("base", help="pv base to monitor", default="DAQ:LAB2")
     parser.add_argument("partition", help="partition to monitor")
     parser.add_argument("shelf", help="shelf to monitor")
     args = parser.parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

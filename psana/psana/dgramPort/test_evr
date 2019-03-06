@@ -1,0 +1,6 @@
+#!/bin/sh
+source /reg/g/psdm/sw/conda/manage/bin/psconda.sh
+X="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export PYTHONPATH=${X}:${PYTHONPATH}
+export PATH=${X}/../../../install/bin:${PATH}
+python $X/test_evr.py

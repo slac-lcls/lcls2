@@ -294,13 +294,8 @@ int main(int argc, char** argv) {
     p->train_io(trainRefDelay);
   }
 
-  if (fWrite) {
-    FILE* f = fopen(fWrite,"r");
-    if (f)
-      p->flash_write(f);
-    else 
-      perror("Failed opening prom file\n");
-  }
+  if (fWrite)
+    p->flash_write(fWrite);
 
   if (lRing0 || lRing1) {
     RingBuffer& b = *new((char*)p->reg()+(lRing0 ? 0x50000 : 0x60000)) RingBuffer;

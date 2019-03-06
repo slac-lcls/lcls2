@@ -87,7 +87,6 @@ class QWZMQListener(QWidget):
 if __name__ == '__main__':
 
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
- 
     from PyQt5.QtWidgets import QApplication
     app = QApplication([])
     win = QWZMQListener()

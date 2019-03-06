@@ -12,15 +12,20 @@ namespace XtcData
 
 class Transition {
 public:
+    Transition() {}
+    Transition(const Sequence& seq_, uint32_t env_) {
+        seq = seq_;
+        env = env_;
+    }
     Sequence seq;
     uint32_t env;
 };
 
 class Dgram : public Transition {
 public:
-  Dgram() {}
-  Dgram(const Transition& transition_, const Xtc& xtc_) :
-    Transition(transition_), xtc(xtc_)  { }
+    Dgram() {}
+    Dgram(const Transition& transition_, const Xtc& xtc_) :
+        Transition(transition_), xtc(xtc_)  { }
 public:
     Xtc xtc;
 };

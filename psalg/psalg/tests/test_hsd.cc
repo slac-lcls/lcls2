@@ -20,7 +20,7 @@
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/ShapesData.hh"
-#include "xtcdata/xtc/NamesVec.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 #include "xtcdata/xtc/NamesIter.hh"
 
@@ -39,7 +39,7 @@ class HsdIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    HsdIter(Xtc* xtc, NamesVec& namesVec) : XtcIterator(xtc), _namesVec(namesVec), env(0)
+    HsdIter(Xtc* xtc, NamesLookup& namesLookup) : XtcIterator(xtc), _namesLookup(namesLookup), env(0)
     {
     }
 
@@ -55,7 +55,7 @@ public:
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             NamesId namesId = shapesdata.namesId();
-            DescData descdata(shapesdata, _namesVec[namesId]);
+            DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
 
             for (unsigned i = 0; i < names.num(); i++) {
@@ -79,7 +79,7 @@ public:
         }
         return Continue;
     }
-    NamesVec& _namesVec;
+    NamesLookup& _namesLookup;
 
 
 public:
@@ -144,7 +144,7 @@ int main (int argc, char* argv[]) {
             printf("Found event\n");
         }
 
-        HsdIter hsdIter(&dg->xtc, namesIter.namesVec());
+        HsdIter hsdIter(&dg->xtc, namesIter.namesLookup());
         hsdIter.iterate();
 
         // Test DRP situation
@@ -164,8 +164,8 @@ int main (int argc, char* argv[]) {
         // iterate over all available channels
         for (std::map<std::string, uint8_t*>::iterator it=hsdIter.chans.begin(); it!=hsdIter.chans.end(); ++it){
             std::cout << "Channel name: " << it->first << std::endl;
-            Pds::HSD::Channel mychan = Pds::HSD::Channel(&stack, vHsd, (const uint8_t*)hsdIter.chans[it->first]);
-            printf("npeaks: %d\n", mychan.npeaks());
+            //Pds::HSD::Channel mychan = Pds::HSD::Channel(&stack, vHsd, (const uint8_t*)hsdIter.chans[it->first]);
+            //printf("npeaks: %d\n", mychan.npeaks());
         }
         //delete pFactory;
         delete vHsd;

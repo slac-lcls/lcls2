@@ -8,10 +8,10 @@ env:
   global:
     - CONDA_ENV: myrel
   matrix:
-    - OS=ubuntu16.04 PYVER=2.7
-    - OS=ubuntu16.04 PYVER=3.6
-    - OS=centos6     PYVER=2.7
-    - OS=centos6     PYVER=3.6
+#    - OS=ubuntu16.04 PYVER=2.7
+#    - OS=ubuntu16.04 PYVER=3.6
+    - OS=centos7     PYVER=2.7
+    - OS=centos7     PYVER=3.6
 
 script:
   - export IMAGE=slaclcls/travis:$OS-py$PYVER

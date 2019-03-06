@@ -1,12 +1,19 @@
-#ifndef COLLECTION_H
-#define COLLECTION_H
+#pragma once
 
 #include <string>
-#include <functional>
-#include <unordered_map>
 #include <zmq.h>
 #include "json.hpp"
 using json = nlohmann::json;
+
+class ZmqContext
+{
+public:
+    ZmqContext() {m_context = zmq_ctx_new();}
+    void* operator() () {return m_context;};
+    ~ZmqContext() {zmq_ctx_destroy(m_context);}
+private:
+    void* m_context;
+};
 
 class ZmqMessage
 {
@@ -16,37 +23,53 @@ public:
     ZmqMessage(ZmqMessage&& m) {msg = m.msg; zmq_msg_init(&m.msg);}
     void* data() {return zmq_msg_data(&msg);}
     size_t size() {return zmq_msg_size(&msg);}
-    zmq_msg_t msg;
     ZmqMessage(const ZmqMessage&) = delete;
-    void operator=(const ZmqMessage&) = delete;
-
+    void operator = (const ZmqMessage&) = delete;
+private:
+    zmq_msg_t msg;
+    friend class ZmqSocket;
 };
 
-class Collection
+class ZmqSocket
 {
 public:
-    Collection(const std::string& manager_hostname, int platform, const std::string& level);
-    ~Collection();
-    void handle_plat(json& msg);
-    void handle_alloc(json& msg);
-    void handle_connect(json& msg);
-    void handle_reset(json& msg);
-    void connect();
-    size_t id() {return m_id;}
-    json cmstate;
+    ZmqSocket(ZmqContext* context, int type);
+    ~ZmqSocket() {zmq_close(socket);}
+    void connect(const std::string& host);
+    void bind(const std::string& host);
+    void setsockopt(int option, const void* optval, size_t optvallen);
+    json recvJson();
+    std::vector<ZmqMessage> recvMultipart();
+    void send(const std::string& msg);
+    int poll(short events, long timeout);
 private:
-    std::string m_state;
-    void* m_context;
-    void* m_push;
-    void* m_sub;
-    std::string m_level;
-    size_t m_id;
-    std::unordered_map<std::string, std::function<void(json&)> > m_handle_request;
+    void* socket;
+    ZmqContext* m_context;
 };
 
-json create_msg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body);
-std::vector<ZmqMessage> recv_multipart(void* socket);
-json recv_json(void* socket);
-std::string get_infiniband_address();
+std::string getNicIp();
 
-#endif // COLLECTION_H
+class CollectionApp
+{
+public:
+    CollectionApp(const std::string& managerHostname, int platform, const std::string& level);
+    void run();
+protected:
+    virtual void handlePlat(const json& msg);
+    virtual void handleAlloc(const json& msg);
+    virtual void handleConnect(const json& msg) = 0;
+    // virtual void handleConfigure(const json& msg) = 0;
+    virtual void handleReset(const json& msg) = 0;
+    void reply(const json& msg);
+    size_t getId() const {return m_id;}
+    const std::string& getLevel() const {return m_level;}
+private:
+    std::string m_level;
+    ZmqContext m_context;
+    ZmqSocket m_pushSocket;
+    ZmqSocket m_subSocket;
+    size_t m_id;
+    std::unordered_map<std::string, std::function<void(json&)> > m_handleMap;
+};
+
+json createMsg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body);

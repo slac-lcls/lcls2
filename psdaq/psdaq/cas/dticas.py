@@ -1,6 +1,7 @@
 import sys
+import logging
 
-from pcaspy import SimpleServer, Driver
+from psdaq.epicstools.PVAServer import PVAServer
 import time
 from datetime import datetime
 import argparse
@@ -9,12 +10,6 @@ import pdb
 # yaml metadata
 numUsLinks = 7
 numPartitions = 8
-
-
-class myDriver(Driver):
-    def __init__(self):
-        super(myDriver, self).__init__()
-
 
 def printDb():
     global pvdb
@@ -38,7 +33,8 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    myDriver.verbose = args.verbose
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     prefix = args.P+':'
 
@@ -167,15 +163,12 @@ def main():
     # printDb(pvdb, prefix)
     printDb()
 
-    server = SimpleServer()
-
+    server = PVAServer(__name__)
     server.createPV(prefix, pvdb)
-    driver = myDriver()
 
     try:
-        # process CA transactions
-        while True:
-            server.process(0.1)
+        # process PVA transactions
+        server.forever()
     except KeyboardInterrupt:
         print('\nInterrupted')
 

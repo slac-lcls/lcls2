@@ -1,6 +1,7 @@
 
 #include "Worker.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "TimingHeader.hh"
 #include "xtcdata/xtc/Sequence.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
@@ -27,7 +28,8 @@ bool check_pulse_id(PGPData* pgp_data)
 }
 
 
-void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_output_queue, int rank)
+void worker(Parameters& para, Detector* det, PebbleQueue& worker_input_queue,
+            PebbleQueue& worker_output_queue, int rank)
 {
     while (true) {
         Pebble* pebble;
@@ -36,7 +38,7 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
         }
         // get first set bit to find index of the first lane
         int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
-        Transition* event_header = reinterpret_cast<Transition*>(pebble->pgp_data->buffers[index].data);
+        Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
         TransitionId::Value transition_id = event_header->seq.service();
         if (transition_id == XtcData::TransitionId::Configure) {
             printf("Worker %d saw configure transition\n", rank);
@@ -52,6 +54,8 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
         dgram.xtc.contains = tid;
         dgram.xtc.damage = 0;
         dgram.xtc.extent = sizeof(Xtc);
+        dgram.xtc.src = XtcData::Src(para.tPrms.id);
+
         // Event
         if (transition_id == XtcData::TransitionId::L1Accept) {
             det->event(dgram, pebble->pgp_data);
@@ -59,6 +63,17 @@ void worker(Detector* det, PebbleQueue& worker_input_queue, PebbleQueue& worker_
         // Configure
         else if (transition_id == XtcData::TransitionId::Configure) {
             det->configure(dgram, pebble->pgp_data);
+        }
+
+        // FIXME
+        // make fex Dgram for all other transititons
+        // copy Event header into beginning of Datagram
+        else {
+            std::cout<<"transition_id  "<<transition_id<<"  in worker make dgram\n";
+            int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
+            Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
+            dgram.seq = timing_header->seq;
+            dgram.env = timing_header->env;
         }
 
         worker_output_queue.push(pebble);

@@ -7,7 +7,7 @@
 #include "psdaq/xpm/Module.hh"
 
 namespace Pds_Epics {
-  class PVWriter;
+  class EpicsPVA;
 };
 
 namespace Pds {
@@ -23,7 +23,7 @@ namespace Pds {
     private:
       Module&                           _dev;
       unsigned                          _partition;
-      std::vector<Pds_Epics::PVWriter*> _pv;
+      std::vector<Pds_Epics::EpicsPVA*> _pv;
       L0Stats                           _begin;
       L0Stats                           _last;
     };

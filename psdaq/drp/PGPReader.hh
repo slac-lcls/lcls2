@@ -2,6 +2,7 @@
 #define PGPREADER_H
 
 #include <vector>
+#include <thread>
 #include "drp.hh"
 
 #define MAX_RET_CNT_C 100
@@ -18,10 +19,13 @@ private:
     std::vector<int> values;
 };
 
+class Detector;
+
 class PGPReader
 {
 public:
-    PGPReader(MemPool& pool, int lanes_mask, int nworkers);
+    PGPReader(MemPool& pool, Parameters& para, Detector* det, int lane_mask);
+    ~PGPReader() {}
     PGPData* process_lane(uint32_t lane, uint32_t index, int32_t size);
     void send_to_worker(Pebble* pebble_data);
     void send_all_workers(Pebble* pebble);
@@ -31,7 +35,7 @@ private:
     MemPool& m_pool;
     int m_nlanes;
     int m_buffer_mask;
-    int m_last_complete;
+    uint32_t m_last_complete;
     uint64_t m_worker;
     int m_nworkers;
     MovingAverage m_avg_queue_size;
@@ -40,6 +44,7 @@ private:
     uint32_t m_dmaIndex[MAX_RET_CNT_C];
     uint32_t m_dmaDest[MAX_RET_CNT_C];
     int32_t m_dmaRet[MAX_RET_CNT_C];
+    std::vector<std::thread> m_workerThreads;
 };
 
 #endif // PGPREADER_H

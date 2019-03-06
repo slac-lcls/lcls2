@@ -16,6 +16,8 @@ namespace Pds {
     public:
       //  Enable the trigger
       void start(unsigned partn);
+      //  Enable the trigger (full rate)
+      void start();
       //  Disable the trigger
       void stop();
       //

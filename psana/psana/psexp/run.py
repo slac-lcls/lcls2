@@ -4,13 +4,13 @@ import numpy as np
 from copy import copy
 
 from psana import dgram
-from psana.psexp.node import run_node
 from psana.dgrammanager import DgramManager
 from psana.psexp.tools import run_from_id, RunHelper
 import psana.psexp.legion_node
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
+from psana.psexp.epicsstore import EpicsStore
 
 
 from psana.psexp.tools import mode
@@ -20,6 +20,10 @@ if mode == 'mpi':
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
+    
+    if size > 1:
+        from psana.psexp.node import run_node # only import node when running in parallel
+        
 
 def _enumerate_attrs(obj):
     state = []
@@ -62,6 +66,7 @@ class Run(object):
     max_events = None
     batch_size = None
     filter_callback = None
+    epicsStore = None
     
     def __init__(self, exp, run_no, max_events=0, batch_size=1, filter_callback=0):
         self.exp = exp
@@ -102,6 +107,10 @@ class Run(object):
             info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
         return info
 
+    @property
+    def xtcinfo(self):
+        return self.dm.xtc_info
+
     def _get_calib(self, det_name):
         return {} # temporary cpo hack while database is down
         gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
@@ -141,12 +150,29 @@ class Run(object):
     def __reduce__(self):
         return (run_from_id, (self.id,))
 
-
 class RunShmem(Run):
-    """ Yields list of events from a single bigdata file or shared memory (no event building routine). """
+    """ Yields list of events from a shared memory client (no event building routine). """
     
-    def __init__(self, exp, run_no, xtc_files, max_events, batch_size, filter_callback):
+    def __init__(self, exp, run_no, xtc_files, max_events, batch_size, filter_callback, tag):
         super(RunShmem, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
+        self.dm = DgramManager(xtc_files,tag=tag)
+        self.configs = self.dm.configs
+        self.calibs = {}
+        for det_name in self.detnames:
+            self.calibs[det_name] = self._get_calib(det_name)
+        self.dm.calibs = self.calibs
+
+    def events(self):
+        for evt in self.dm: yield evt
+
+class RunSingleFile(Run):
+    """ Yields list of events from a single bigdata file. """
+    
+    def __init__(self, exp, run_no, run_src, **kwargs):
+        super(RunSingleFile, self).__init__(exp, run_no, \
+                max_events=kwargs['max_events'], batch_size=kwargs['batch_size'], \
+                filter_callback=kwargs['filter_callback'])
+        xtc_files, smd_files, epics_files = run_src
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         self.calibs = {}
@@ -160,17 +186,24 @@ class RunShmem(Run):
 class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""
 
-    def __init__(self, exp, run_no, xtc_files, smd_files, max_events, batch_size, filter_callback):
-        super(RunSerial, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
+    def __init__(self, exp, run_no, run_src, **kwargs):
+        super(RunSerial, self).__init__(exp, run_no, \
+                max_events=kwargs['max_events'], batch_size=kwargs['batch_size'], \
+                filter_callback=kwargs['filter_callback'])
+        xtc_files, smd_files, epics_files = run_src
         self.dm = DgramManager(xtc_files)
         self.smd_dm = DgramManager(smd_files)
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
+        
+        if epics_files: 
+            self.epicsStore = EpicsStore(epics_files)
 
     def events(self):
         smd_configs = self.smd_dm.configs
-        ev_man = EventManager(smd_configs, self.dm, filter_fn=self.filter_callback)
+        ev_man = EventManager(smd_configs, self.dm, \
+                filter_fn=self.filter_callback, epicsStore=self.epicsStore)
 
         #get smd chunks
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
@@ -183,21 +216,13 @@ class RunSerial(Run):
 
 class RunParallel(Run):
     """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
-    
-    nodetype = None
-    nsmds = None
-    smd0_threads = None
 
-    def __init__(self, exp, run_no, xtc_files, smd_files, nodetype, nsmds, smd0_threads, 
-            max_events, batch_size, filter_callback):
+    def __init__(self, exp, run_no, run_src, **kwargs):
         """ Parallel read requires that rank 0 does the file system works.
         Configs and calib constants are sent to other ranks by MPI."""
-        super(RunParallel, self).__init__(exp, run_no, max_events=max_events, \
-                batch_size=batch_size, filter_callback=filter_callback)
-        self.nodetype = nodetype
-        self.nsmds = nsmds
-        self.smd0_threads = smd0_threads
-        
+        super(RunParallel, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
+                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
+        xtc_files, smd_files, epics_files = run_src
         if rank == 0:
             self.dm = DgramManager(xtc_files)
             self.configs = self.dm.configs
@@ -210,42 +235,63 @@ class RunParallel(Run):
             self.calibs = {}
             for det_name in self.detnames:
                 self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
+            
+            epics_dgrams = []
+            epics_nbytes = []
+            if epics_files:
+                self.epicsStore = EpicsStore(epics_file=epics_files)
+                epics_dgrams = self.epicsStore._epics_dgrams 
+                epics_nbytes = np.array([memoryview(d).shape[0] for d in epics_dgrams], dtype='i')
         else:
             self.dm = None
             self.calibs = None
-            self.configs = [dgram.Dgram() for i in range(len(xtc_files))]
             self.smd_dm = None
-            self.smd_configs = [dgram.Dgram() for i in range(len(smd_files))]
             nbytes = np.empty(len(xtc_files), dtype='i')
             smd_nbytes = np.empty(len(smd_files), dtype='i')
+            epics_nbytes = None
         
         comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich
+        comm.Bcast(nbytes, root=0) 
+        epics_nbytes = comm.bcast(epics_nbytes, root=0) # shortcut - reducing one step for broadcasting no. of epics events
+        
+        # create empty views of known size
+        if rank > 0:
+            self.smd_configs = [np.empty(smd_nbyte, dtype='b') for smd_nbyte in smd_nbytes]
+            self.configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
+            epics_dgrams = [np.empty(epics_nbyte, dtype='b') for epics_nbyte in epics_nbytes]
+        
         for i in range(len(smd_files)):
             comm.Bcast([self.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
-        comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
+
         for i in range(len(xtc_files)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
         
+        for i in range(len(epics_dgrams)):
+            comm.Bcast([epics_dgrams[i], epics_nbytes[i], MPI.BYTE], root=0)
+
         self.calibs = comm.bcast(self.calibs, root=0)
 
         if rank > 0:
-            # This creates dgrammanager without reading config from disk
+            # Create dgram objects using views from rank 0 (no disk operation).
+            self.smd_configs = [dgram.Dgram(view=smd_config, offset=0) for smd_config in self.smd_configs]
+            self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs)
+            
+            epics_dgrams = [dgram.Dgram(view=epics_dgram, offset=0) for epics_dgram in epics_dgrams]
+            if epics_dgrams:
+                self.epicsStore = EpicsStore(epics_dgrams=epics_dgrams)
     
     def events(self):
-        for evt in run_node(self, self.nodetype, self.nsmds, self.smd0_threads, self.max_events, \
-                self.batch_size, self.filter_callback):
+        for evt in run_node(self):
             yield evt
     
 class RunLegion(Run):
 
-    def __init__(self, exp, run_no, xtc_files, smd_files, 
-            max_events, batch_size, filter_callback):
-        """ Parallel read requires that rank 0 does the file system works.
-        Configs and calib constants are sent to other ranks by MPI."""
-        super(RunLegion, self).__init__(exp, run_no, max_events=max_events, \
-                batch_size=batch_size, filter_callback=filter_callback)
-        
+    def __init__(self, exp, run_no, run_src, **kwargs):
+        """ Parallel read using Legion """
+        super(RunLegion, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
+                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
+        xtc_files, smd_files, epics_files = run_src
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)

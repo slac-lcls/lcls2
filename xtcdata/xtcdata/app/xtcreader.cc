@@ -8,7 +8,7 @@
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/ShapesData.hh"
-//#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/DescData.hh"
 
 using namespace XtcData;
 using std::string;
@@ -17,8 +17,139 @@ class DebugIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    DebugIter(Xtc* xtc) : XtcIterator(xtc)
+    DebugIter() : XtcIterator()
     {
+    }
+
+    void get_value(int i, Name& name, DescData& descdata){
+        int data_rank = name.rank();
+        int data_type = name.type();
+        printf("%d: %s rank %d, type %d\n", i, name.name(), data_rank, data_type);
+
+        switch(name.type()){
+        case(0):{
+            if(data_rank > 0){
+                Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<uint8_t>(i));
+            }
+            break;
+        }
+
+        case(1):{
+            if(data_rank > 0){
+                Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<uint16_t>(i));
+            }
+            break;
+        }
+
+        case(2):{
+            if(data_rank > 0){
+                Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<uint32_t>(i));
+            }
+            break;
+        }
+
+        case(3):{
+            if(data_rank > 0){
+                Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
+            }
+            break;
+        }
+
+        case(4):{
+            if(data_rank > 0){
+                Array<int8_t> arrT = descdata.get_array<int8_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int8_t>(i));
+            }
+            break;
+        }
+
+        case(5):{
+            if(data_rank > 0){
+                Array<int16_t> arrT = descdata.get_array<int16_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int16_t>(i));
+            }
+            break;
+        }
+
+        case(6):{
+            if(data_rank > 0){
+                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+            }
+            break;
+        }
+
+        case(7):{
+            if(data_rank > 0){
+                Array<int64_t> arrT = descdata.get_array<int64_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int64_t>(i));
+            }
+            break;
+        }
+
+        case(8):{
+            if(data_rank > 0){
+                Array<float> arrT = descdata.get_array<float>(i);
+                printf("%s: %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1]);
+                    }
+            else{
+                printf("%s: %f\n",name.name(),descdata.get_value<float>(i));
+            }
+            break;
+        }
+
+        case(9):{
+            if(data_rank > 0){
+                Array<double> arrT = descdata.get_array<double>(i);
+                printf("%s: %f, %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %f\n",name.name(),descdata.get_value<double>(i));
+            }
+            break;
+        }
+
+        case(10):{
+        }
+            if(data_rank > 0){
+                Array<char> arrT = descdata.get_array<char>(i);
+                printf("%s: \"%s\"\n",name.name(),arrT.data());
+                    }
+            else{
+                printf("%s: string with no rank?!?\n",name.name());
+            }
+            break;
+
+        }
+
     }
 
     int process(Xtc* xtc)
@@ -30,6 +161,7 @@ public:
         }
         case (TypeId::Names): {
             Names& names = *(Names*)xtc;
+            _namesLookup[names.namesId()] = NameIndex(names);
             Alg& alg = names.alg();
 	    printf("*** DetName: %s, DetType: %s, Alg: %s, Version: 0x%6.6x, Names:\n",
                    names.detName(), names.detType(),
@@ -39,15 +171,27 @@ public:
                 Name& name = names.get(i);
                 printf("Name: %s Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
             }
+            
             break;
         }
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
-            iterate(xtc);
             // lookup the index of the names we are supposed to use
-            // unsigned namesId = shapesdata.shapes().namesId();
-            // DescData descdata(shapesdata, _namesVec[namesId]);
-            // Names& names = descdata.nameindex().names();
+            NamesId namesId = shapesdata.namesId();
+            // protect against the fact that this xtc
+            // may not have a _namesLookup
+            if (_namesLookup.count(namesId)<0) break;
+            DescData descdata(shapesdata, _namesLookup[namesId]);
+            Names& names = descdata.nameindex().names();
+            Shapes& shapes = shapesdata.shapes();
+            Data& data = shapesdata.data();
+	    printf("Found %d names\n",names.num());
+            printf("data shapes extents %d %d %d\n", shapesdata.data().extent,
+                   shapesdata.shapes().extent, sizeof(double));
+            for (unsigned i = 0; i < names.num(); i++) {
+                Name& name = names.get(i);
+                get_value(i, name, descdata);
+            }
             break;
         }
         default:
@@ -55,7 +199,9 @@ public:
         }
         return Continue;
     }
-    // std::vector<NameIndex>& _namesVec;
+    
+private:
+    NamesLookup _namesLookup;
 };
 
 
@@ -101,16 +247,16 @@ int main(int argc, char* argv[])
     XtcFileIterator iter(fd, 0x4000000);
     Dgram* dg;
     unsigned nevent=0;
+    DebugIter dbgiter;
     while ((dg = iter.next())) {
         if (nevent>=neventreq) break;
         nevent++;
-        printf("%s transition: time %d.%09d, pulseId 0x%lux, env 0x%lux, "
+        printf("%s transition: time %d.%09d, pulseId 0x%lu, env 0x%lu, "
                "payloadSize %d extent %d\n",
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
                dg->env, dg->xtc.sizeofPayload(),dg->xtc.extent);
-        DebugIter iter(&(dg->xtc));
-        iter.iterate();
+        dbgiter.iterate(&(dg->xtc));
     }
 
     ::close(fd);

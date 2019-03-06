@@ -4,7 +4,6 @@ import sys, os
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 from xtc import xtc
 from det import det
-from test_dgraminit import run as run_test_dgraminit
 
 import hashlib
 from psana import DataSource
@@ -35,10 +34,10 @@ class Test:
         pyxtc.write_events(fname, cydgram)
 
         # test that the values in the new file are correct
-        xtc(fname)
+        xtc(fname, nsegments=1, cydgram=True)
 
-    def test_xtc(self):
-        xtc('data.xtc2')
+    def test_xtcdata(self):
+        xtc('data.xtc2', nsegments=2)
 
     def setup_input_files(self):
         subprocess.call(['xtcwriter','-f','data-ts.xtc2', '-t']) # Mona FIXME: writing seq in xtcwriter broke dgramCreate
@@ -48,10 +47,16 @@ class Test:
             shutil.rmtree(tmp_dir,ignore_errors=True)
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
+        
         shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s00.xtc2')) # Ex. of run 1 with two detectors s00 and s01
         shutil.copy('data-ts.xtc2',os.path.join('.tmp','data-r0001-s01.xtc2'))
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s00.smd.xtc2'))
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data-r0001-s01.smd.xtc2'))
+        
+        shutil.copy('smd.xtc2',os.path.join('.tmp','data-r0001-epc.xtc2'))
+        
+        shutil.copy('data-ts.xtc2',os.path.join(tmp_dir,'data-r0002-s00.smd.xtc2'))
+        shutil.copy('data-ts.xtc2',os.path.join(tmp_dir,'data-r0002-s01.smd.xtc2'))
 
         shutil.copy('smd.xtc2', os.path.join(tmp_dir, 'data.smd.xtc2')) # FIXME: chuck's hack to fix nosetests
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data_1.smd.xtc2')) # FIXME: chuck's hack to fix nosetests
@@ -64,19 +69,6 @@ class Test:
 
         callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
         subprocess.check_call(['python',callback_based])
-
-    def test_mpi(self):
-        self.setup_input_files()
-
-        loop_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_loops.py')
-        subprocess.check_call(['mpirun','-n','3','python',loop_based])
-
-        callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
-        subprocess.check_call(['mpirun','-n','3','python',callback_based])
-        
-        loop_exhaustive_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
-        subprocess.check_call(['mpirun','-n','3','python',loop_exhaustive_based])
-
 
     def test_legion(self):
         self.setup_input_files()
@@ -111,5 +103,3 @@ class Test:
     def test_det(self):
         det()
 
-    def test_dgram(self):
-        run_test_dgraminit()

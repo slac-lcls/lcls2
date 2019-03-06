@@ -4,7 +4,7 @@
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/VarDef.hh"
-#include "xtcdata/xtc/NamesVec.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 #include "rapidjson/document.h"
 
 #include <vector>
@@ -15,7 +15,6 @@
 #include <type_traits>
 #include <cstring>
 #include <sys/time.h>
-// #include <Python.h>
 #include <stdint.h>
 
 using namespace XtcData;
@@ -30,7 +29,8 @@ public:
     {
       floatFex,
       arrayFex,
-      intFex
+      intFex,
+      charStrFex
     };
 
   FexDef()
@@ -38,6 +38,7 @@ public:
        NameVec.push_back({"floatFex",Name::DOUBLE});
        NameVec.push_back({"arrayFex",Name::FLOAT,2});
        NameVec.push_back({"intFex",Name::INT64});
+       NameVec.push_back({"charStrFex",Name::CHARSTR,1});
    }
 } FexDef;
 
@@ -75,7 +76,7 @@ public:
   PadDef()
    {
      Alg segmentAlg("cspadseg",2,3,42);
-     NameVec.push_back({"arrayRaw", segmentAlg});
+     NameVec.push_back({"arrayRaw", Name::UINT16, 2, segmentAlg});
    }
 } PadDef;
 
@@ -85,7 +86,7 @@ class DebugIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    DebugIter(Xtc* xtc, NamesVec& namesVec) : XtcIterator(xtc), _namesVec(namesVec)
+    DebugIter(Xtc* xtc, NamesLookup& namesLookup) : XtcIterator(xtc), _namesLookup(namesLookup)
     {
     }
 
@@ -97,10 +98,10 @@ public:
         case(0):{
             if(data_rank > 0){
                 Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint8_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<uint8_t>(i));
             }
             break;
         }
@@ -108,10 +109,10 @@ public:
         case(1):{
             if(data_rank > 0){
                 Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint16_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<uint16_t>(i));
             }
             break;
         }
@@ -119,10 +120,10 @@ public:
         case(2):{
             if(data_rank > 0){
                 Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint32_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<uint32_t>(i));
             }
             break;
         }
@@ -130,10 +131,10 @@ public:
         case(3):{
             if(data_rank > 0){
                 Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
             }
             break;
         }
@@ -141,10 +142,10 @@ public:
         case(4):{
             if(data_rank > 0){
                 Array<int8_t> arrT = descdata.get_array<int8_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int8_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<int8_t>(i));
             }
             break;
         }
@@ -152,10 +153,10 @@ public:
         case(5):{
             if(data_rank > 0){
                 Array<int16_t> arrT = descdata.get_array<int16_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int16_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<int16_t>(i));
             }
             break;
         }
@@ -163,10 +164,10 @@ public:
         case(6):{
             if(data_rank > 0){
                 Array<int32_t> arrT = descdata.get_array<int32_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
             }
             break;
         }
@@ -174,10 +175,10 @@ public:
         case(7):{
             if(data_rank > 0){
                 Array<int64_t> arrT = descdata.get_array<int64_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int64_t>(i));
+                // printf("%s: %d\n",name.name(),descdata.get_value<int64_t>(i));
             }
             break;
         }
@@ -185,10 +186,10 @@ public:
         case(8):{
             if(data_rank > 0){
                 Array<float> arrT = descdata.get_array<float>(i);
-                printf("%s: %f, %f\n",name.name(),arrT(0),arrT(1));
+                // printf("%s: %f, %f\n",name.name(),arrT(0),arrT(1));
                     }
             else{
-                printf("%s: %f\n",name.name(),descdata.get_value<float>(i));
+                // printf("%s: %f\n",name.name(),descdata.get_value<float>(i));
             }
             break;
         }
@@ -196,10 +197,10 @@ public:
         case(9):{
             if(data_rank > 0){
                 Array<double> arrT = descdata.get_array<double>(i);
-                printf("%s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
+                // printf("%s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
-                printf("%s: %f\n",name.name(),descdata.get_value<double>(i));
+                // printf("%s: %f\n",name.name(),descdata.get_value<double>(i));
             }
             break;
         }
@@ -225,7 +226,7 @@ public:
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             NamesId& namesId = shapesdata.namesId();
-            DescData descdata(shapesdata, _namesVec[namesId]);
+            DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
 	    //   printf("Found %d names\n",names.num());
             // printf("data shapes extents %d %d %d\n", shapesdata.data().extent,
@@ -241,7 +242,7 @@ public:
         }
         return Continue;
     }
-    NamesVec& _namesVec;
+    NamesLookup& _namesLookup;
     void printOffset(const char* str, void* base, void* ptr) {
         printf("***%s at offset %li addr %p\n",str,(char*)ptr-(char*)base,ptr);
     }
@@ -294,12 +295,12 @@ public:
             }
         }
     }
-    uint8_t array[18];
+    uint16_t array[18];
 };
 
-void pgpExample(Xtc& parent, NamesVec& namesVec, NamesId& namesId)
+void pgpExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
 {
-    DescribedData frontEnd(parent, namesVec, namesId);
+    DescribedData frontEnd(parent, namesLookup, namesId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -316,9 +317,9 @@ void pgpExample(Xtc& parent, NamesVec& namesVec, NamesId& namesId)
     frontEnd.set_array_shape(PgpDef::array1Pgp, shape);
 }
 
-void fexExample(Xtc& parent, NamesVec& namesVec, NamesId& namesId)
+void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
 { 
-    CreateData fex(parent, namesVec, namesId);
+    CreateData fex(parent, namesLookup, namesId);
     fex.set_value(FexDef::floatFex, (double)41.0);
 
     unsigned shape[MaxRank] = {2,3};
@@ -330,12 +331,14 @@ void fexExample(Xtc& parent, NamesVec& namesVec, NamesId& namesId)
     };
     
     fex.set_value(FexDef::intFex, (int64_t) 42);
+
+    fex.set_string(FexDef::charStrFex, "Test String");
 }
    
 
-void padExample(Xtc& parent, NamesVec& namesVec, NamesId& namesId)
+void padExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
 { 
-    DescribedData pad(parent, namesVec, namesId);
+    DescribedData pad(parent, namesLookup, namesId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
     // we should perhaps worry about DMA alignment issues if in the future
@@ -346,39 +349,38 @@ void padExample(Xtc& parent, NamesVec& namesVec, NamesId& namesId)
     // it is required to call this before set_array_shape
     pad.set_data_length(sizeof(PadData));
 
-    unsigned shape[] = { 18 };
+    unsigned shape[MaxRank] = {3,6};
     pad.set_array_shape(PadDef::arrayRaw, shape);
 }
 
-void addNames(Xtc& xtc, NamesVec& namesVec, unsigned& nodeId) {
+void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     Alg hsdRawAlg("raw",0,0,0);
-    NamesId namesId0(nodeId,0);
-    Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", namesId0);
+    NamesId namesId0(nodeId,0+10*segment);
+    Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", namesId0, segment);
     frontEndNames.add(xtc,PgpDef);
-    namesVec[namesId0] = NameIndex(frontEndNames);
+    namesLookup[namesId0] = NameIndex(frontEndNames);
 
     Alg hsdFexAlg("fex",4,5,6);
-    NamesId namesId1(nodeId,1);
-    Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", namesId1);
+    NamesId namesId1(nodeId,1+10*segment);
+    Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", namesId1, segment);
     fexNames.add(xtc, FexDef);
-    namesVec[namesId1] = NameIndex(fexNames);
+    namesLookup[namesId1] = NameIndex(fexNames);
 
-    unsigned segment = 0;
     Alg cspadRawAlg("raw",2,3,42);
-    NamesId namesId2(nodeId,2);
+    NamesId namesId2(nodeId,2+10*segment);
     Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", namesId2, segment);
     Alg segmentAlg("cspadseg",2,3,42);
     padNames.add(xtc, PadDef);
-    namesVec[namesId2] = NameIndex(padNames);
+    namesLookup[namesId2] = NameIndex(padNames);
 }
 
-void addData(Xtc& xtc, NamesVec& namesVec, unsigned nodeId) {
-    NamesId namesId0(nodeId,0);
-    pgpExample(xtc, namesVec, namesId0);
-    NamesId namesId1(nodeId,1);
-    fexExample(xtc, namesVec, namesId1);
-    NamesId namesId2(nodeId,2);
-    padExample(xtc, namesVec, namesId2);
+void addData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
+    NamesId namesId0(nodeId,0+10*segment);
+    pgpExample(xtc, namesLookup, namesId0);
+    NamesId namesId1(nodeId,1+10*segment);
+    fexExample(xtc, namesLookup, namesId1);
+    NamesId namesId2(nodeId,2+10*segment);
+    padExample(xtc, namesLookup, namesId2);
 }
 
 class HsdConfigDef:public VarDef
@@ -397,59 +399,26 @@ public:
    }
 } HsdConfigDef;
 
-// void addJson(Xtc& xtc, NamesVec& namesVec) {
-
-//     FILE* file;
-//     Py_Initialize();
-//     PyObject* main_module = PyImport_AddModule("__main__");
-//     PyObject* main_dict = PyModule_GetDict(main_module);
-//     file = fopen("hsdConfig.py","r");
-//     PyObject* a = PyRun_File(file, "hsdConfig.py",Py_file_input,main_dict,main_dict);
-//     printf("PyRun: %p \n", a);
-//     printf("size %d\n",PyDict_Size(main_dict));
-//     PyObject* mybytes = PyDict_GetItemString(main_dict,"dgram");
-//     printf("%p\n",mybytes);
-//     char* json = (char*)PyBytes_AsString(mybytes); // TODO: Add PyUnicode_AsEncodedString()?
-//     printf("%p\n",mybytes);
-//     printf("%s\n",json);
-//     Py_Finalize();
-//     printf("Done\n");
-
-//     Document d;
-//     d.Parse(json);
-
-//     Value& software = d["alg"]["software"];
-//     Value& version = d["alg"]["version"];
-//     for (SizeType i = 0; i < version.Size(); i++) // Uses SizeType instead of size_t
-//         printf("version[%d] = %d\n", i, version[i].GetInt());
-
-//     Alg hsdConfigAlg(software.GetString(),version[0].GetInt(),version[1].GetInt(),version[2].GetInt());
-//     Names& configNames = *new(xtc) Names("xpphsd", hsdConfigAlg, "hsd", "detnum1235");
-//     configNames.add(xtc, HsdConfigDef);
-//     namesVec.push_back(NameIndex(configNames));
-
-//     CreateData fex(xtc, namesVec, 3); //FIXME: avoid hardwiring namesId
-
-//     // TODO: dynamically discover
-
-//     Value& enable = d["xtc"]["ENABLE"];
-//     unsigned shape[MaxRank] = {enable.Size()};
-//     Array<uint64_t> arrayT = fex.allocate<uint64_t>(HsdConfigDef::enable,shape); //FIXME: figure out avoiding hardwired zero
-//     for(unsigned i=0; i<shape[0]; i++){
-//         arrayT(i) = (uint64_t) enable[i].GetInt();
-//     };
-
-//     Value& raw_prescale = d["xtc"]["RAW_PS"];
-//     shape[MaxRank] = {raw_prescale.Size()};
-//     Array<uint64_t> arrayT1 = fex.allocate<uint64_t>(HsdConfigDef::raw_prescale,shape); //FIXME: figure out avoiding hardwired zero
-//     for(unsigned i=0; i<shape[0]; i++){
-//         arrayT1(i) = (uint64_t) raw_prescale[i].GetInt();
-//     };
-// }
-
 void usage(char* progname)
 {
     fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -h]\n", progname);
+}
+
+Dgram& createTransition(TransitionId::Value transId) {
+    TypeId tid(TypeId::Parent, 0);
+    uint64_t pulseId = 0;
+    uint32_t env = 0;
+    struct timeval tv;
+    void* buf = malloc(BUFSIZE);
+    gettimeofday(&tv, NULL);
+    Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+    return *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+}
+
+void save(Dgram& dg, FILE* xtcFile) {
+    if (fwrite(&dg, sizeof(dg) + dg.xtc.sizeofPayload(), 1, xtcFile) != 1) {
+        printf("Error writing to output xtc file.\n");
+    }
 }
 
 #define MAX_FNAME_LEN 256
@@ -457,7 +426,6 @@ void usage(char* progname)
 int main(int argc, char* argv[])
 {
     int c;
-    int writeTs = 0;
     int parseErr = 0;
     unsigned nevents = 2;
     char xtcname[MAX_FNAME_LEN];
@@ -468,9 +436,6 @@ int main(int argc, char* argv[])
             case 'h':
                 usage(argv[0]);
                 exit(0);
-            case 't':
-                writeTs = 1;
-                break;
             case 'n':
                 nevents = atoi(optarg);
                 break;
@@ -488,72 +453,43 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    void* configbuf = malloc(BUFSIZE);
-    Dgram& config = *(Dgram*)configbuf;
+    struct timeval tv;
     TypeId tid(TypeId::Parent, 0);
-    config.xtc.contains = tid;
-    config.xtc.damage = 0;
-    config.xtc.extent = sizeof(Xtc);
+    uint32_t env = 0;
+    uint64_t pulseId = 0;
+
+    Dgram& config = createTransition(TransitionId::Configure);
 
     unsigned nodeid1 = 1;
     unsigned nodeid2 = 2;
-    NamesVec namesVec1;
-    // NamesVec namesVec2;
-    addNames(config.xtc, namesVec1, nodeid1);
-    // addNames(config.xtc, namesVec2, nodeid2);
-    // addData(config.xtc, namesVec2, nodeid2);
-    addData(config.xtc, namesVec1, nodeid1);
-
-    //addJson(config.xtc,namesVec);
-    //std::cout << "Done addJson" << std::endl;
-
-    DebugIter iter(&config.xtc, namesVec1);
-    iter.iterate();
-    std::cout << "Done iter" << std::endl;
-
-    if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
-        printf("Error writing configure to output xtc file.\n");
-        return -1;
+    NamesLookup namesLookup1;
+    unsigned nSegments=2;
+    for (unsigned iseg=0; iseg<nSegments; iseg++) {
+        addNames(config.xtc, namesLookup1, nodeid1, iseg);
+        addData(config.xtc, namesLookup1, nodeid1, iseg);
     }
 
-     // for(auto const& value: namesVec[0].nameMap()){
-     //     std::cout<<value.first<<std::endl;
-     // }
+    save(config,xtcFile);
 
+    DebugIter iter(&config.xtc, namesLookup1);
+    iter.iterate();
 
     void* buf = malloc(BUFSIZE);
-    struct timeval tv;
-    uint64_t pulseId = 0;
- 
     for (int i = 0; i < nevents; i++) {
-        Dgram& dgram = *(Dgram*)buf;
-        TypeId tid(TypeId::Parent, 0);
-        dgram.xtc.contains = tid;
-        dgram.xtc.damage = 0;
-        dgram.xtc.extent = sizeof(Xtc);
-        
-        if (writeTs != 0) {
-            gettimeofday(&tv, NULL);
-            dgram.seq = Sequence(TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+        gettimeofday(&tv, NULL);
+        Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+        Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+
+        for (unsigned iseg=0; iseg<nSegments; iseg++) {
+            addData(dgram.xtc, namesLookup1, nodeid1, iseg);
         }
 
-        addData(dgram.xtc, namesVec1, nodeid1);
-        // addData(dgram.xtc, namesVec2, nodeid2);
-
-        printf("*** event %d ***\n",i);
-
-        if (writeTs != 0) {
-            std::cout << "timestamp: " << dgram.seq.stamp().value() << std::endl;
-        }
-
-        DebugIter iter(&dgram.xtc, namesVec1);
+        DebugIter iter(&dgram.xtc, namesLookup1);
         iter.iterate();
 
-        if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, xtcFile) != 1) {
-            printf("Error writing to output xtc file.\n");
-            return -1;
-        }
+        save(dgram,xtcFile);
      }
+
     fclose(xtcFile);
 
     return 0;

@@ -6,6 +6,11 @@ Created on 2016-10-10 by Mikhail Dubrovin
 """
 #-----------------------------
 
+import logging
+logger = logging.getLogger(__name__)
+
+from PyQt5.QtCore import QRectF #Qt, QPointF#, QRect, QRectF
+from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE
 from psana.graphqt.DragPoint import * # DragPoint, DragBase, Qt, QPen, QBrush, QCursor
 from PyQt5.QtWidgets import QGraphicsRectItem
 
@@ -23,24 +28,31 @@ class DragRect(QGraphicsRectItem, DragBase) :
               obj is QPointF - shape parameters are defined at first mouse click
               obj is QRectF - it will be drawn as is
         """
-        DragBase.__init__(self, parent, brush, pen)
+        logger.debug('In DragRect')
 
-        rect = None
-        if isinstance(obj, QPointF) :
-            rect = QRectF(obj, obj + QPointF(5,5))
-            self._mode = ADD
+        rect = obj if isinstance(obj, QRectF) else\
+               QRectF(obj, obj + QPointF(5,5)) if isinstance(obj, QPointF) else\
+               None
+        if rect is None :
+            logger.warning('DragRect - wrong init object type:', str(obj))
+            return
 
-        elif isinstance(obj, QRectF) :
-            rect = obj
-
-        else : print('DragRect - wrong init object type:', str(obj))
         parent_for_base = None
         QGraphicsRectItem.__init__(self, rect, parent_for_base)
+        #DragBase.__init__(self, parent, brush, pen) # is called inside QGraphicsRectItem
+
+        logger.debug('In DragRect - superclass initialization is done')
+        
+        if isinstance(obj, QPointF) :
+            self._drag_mode = ADD
+            logger.debug('set elf._drag_mode = ADD, ADD:%d  _drag_mode:%d' % (ADD, self._drag_mode))
+
         if scene is not None: scene.addItem(self)
 
-        if self._mode == ADD :
+        if self._drag_mode == ADD :
             self.grabMouse() # makes available mouseMoveEvent 
-        
+            logger.debug('In DragRect mode grabMouse()')
+
         self.setAcceptHoverEvents(True)
         #self.setAcceptTouchEvents(True)
         self.setAcceptedMouseButtons(Qt.LeftButton)
@@ -53,30 +65,33 @@ class DragRect(QGraphicsRectItem, DragBase) :
         self.setFlags(self.ItemIsSelectable)
         #self.setEnabled(False) # is visible, but do not receive events
         #self.setVisible(False) # is not visible, do not receive events
-        #self.setSelected(True)
 
         #self.setHandlesChildEvents(True) # will responsive to child events
         #self.setFiltersChildEvents(True) # replacement?
 
         #self.rotate(10)
 
+        #self.setSelected(True)
+        #self.setEnabled(True)
+
 
     def set_control_points(self) :
-        parent = self # None # 
+        parent = self # None # self # None
         r = self.rect()
-        self.ptr = DragPoint(r.topRight(),    parent, scene=self.scene(), rsize=5, orient='h')
-        self.ptl = DragPoint(r.topLeft(),     parent, scene=self.scene(), rsize=5, orient='h')
-        self.pbr = DragPoint(r.bottomRight(), parent, scene=self.scene(), rsize=5, orient='h')
-        self.pbl = DragPoint(r.bottomLeft(),  parent, scene=self.scene(), rsize=5, orient='h')
+        scene=self.scene()
+        self.ptr = DragPoint(r.topRight(),    parent, scene, rsize=5, pshape='h')
+        self.ptl = DragPoint(r.topLeft(),     parent, scene, rsize=5, pshape='h')
+        self.pbr = DragPoint(r.bottomRight(), parent, scene, rsize=5, pshape='h')
+        self.pbl = DragPoint(r.bottomLeft(),  parent, scene, rsize=5, pshape='h')
 
-        self.pct = DragPoint(0.5*(r.topRight()+r.topLeft()),       parent, scene=self.scene())
-        self.pcl = DragPoint(0.5*(r.topLeft()+r.bottomLeft()),     parent, scene=self.scene())
-        self.pcb = DragPoint(0.5*(r.bottomRight()+r.bottomLeft()), parent, scene=self.scene())
-        self.pcr = DragPoint(0.5*(r.topRight()+r.bottomRight()),   parent, scene=self.scene())
+        self.pct = DragPoint(0.5*(r.topRight()+r.topLeft()),       parent, scene)
+        self.pcl = DragPoint(0.5*(r.topLeft()+r.bottomLeft()),     parent, scene)
+        self.pcb = DragPoint(0.5*(r.bottomRight()+r.bottomLeft()), parent, scene)
+        self.pcr = DragPoint(0.5*(r.topRight()+r.bottomRight()),   parent, scene)
 
-        self.ped = DragPoint(0.7*r.topRight()+0.3*r.topLeft(), parent, scene=self.scene(),\
+        self.ped = DragPoint(0.7*r.topRight()+0.3*r.topLeft(), parent, scene,\
                                pen=QPen(Qt.black, 2, Qt.SolidLine),\
-                               brush=QBrush(Qt.yellow, Qt.SolidPattern), orient='r', rsize=6)
+                               brush=QBrush(Qt.yellow, Qt.SolidPattern), pshape='r', rsize=6)
 
         self.lst_ctl_points = [self.ptr, self.ptl, self.pbr, self.pbl,\
                                self.pct, self.pcl, self.pcb, self.pcr, self.ped]
@@ -111,12 +126,14 @@ class DragRect(QGraphicsRectItem, DragBase) :
         #print('%s.itemChange' % (self.__class__.__name__), ' change: %d, value:' % change, value)
         valnew = QGraphicsRectItem.itemChange(self, change, value)
         if change == self.ItemSelectedHasChanged :
+            #self.set_control_points_visible(visible=True)            
             self.set_control_points_visible(visible=self.isSelected())            
         return valnew
 
 
     def mousePressEvent(self, e) :
-        #print('%s.mousePressEvent, at point: ' % self.__class__.__name__, e.pos(), e.scenePos())
+        logger.debug('DragRect.mousePressEvent, at point: %s on scene: %s '%\
+                     (str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
         QGraphicsRectItem.mousePressEvent(self, e) # points would not show up w/o this line
 
         ps = e.scenePos()
@@ -126,9 +143,13 @@ class DragRect(QGraphicsRectItem, DragBase) :
         item_sel = self.scene().itemAt(ps.x(), ps.y(), t)
         #item_sel = self.scene().itemAt(ps)
 
+        if self.lst_ctl_points is None : 
+            logger.warning('DragRect.lst_ctl_points is None')
+            return
+
         if item_sel in self.lst_ctl_points :
             #print('set mode EDIT')
-            self.set_mode(EDIT)
+            self.set_drag_mode(EDIT)
             self.set_child_item_sel(item_sel)
             self.rect0 = self.rect().normalized()
             self.p0 = self.pos()
@@ -146,21 +167,21 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
     def mouseMoveEvent(self, e) :
         QGraphicsPathItem.mouseMoveEvent(self, e)
-        #print('%s.mouseMoveEvent' % self.__class__.__name__)
+        logger.debug('%s.mouseMoveEvent' % self.__class__.__name__)
         #print('%s.mouseMoveEvent, at point: ' % self.__class__.__name__, e.pos(), ' scenePos: ', e.scenePos())
 
         dp = e.scenePos() - e.lastScenePos() 
 
-        if self._mode == MOVE and self.isSelected() :
+        if self._drag_mode == MOVE and self.isSelected() :
             self.moveBy(dp.x(), dp.y())
 
-        elif self._mode == ADD :
-            print('%s.mouseMoveEvent _mode=ADD' % self.__class__.__name__)
+        elif self._drag_mode == ADD :
+            print('%s.mouseMoveEvent _drag_mode=ADD' % self.__class__.__name__)
             rect = self.rect()
             rect.setBottomRight(rect.bottomRight() + dp)
             self.setRect(rect)
 
-        elif self._mode == EDIT :
+        elif self._drag_mode == EDIT :
             r = self.rect()
             i = self.child_item_sel()
             if   i == self.pbr : r.setBottomRight(r.bottomRight() + dp)
@@ -180,18 +201,19 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mouseReleaseEvent(self, e):
+        print('%s.mouseReleaseEvent' % self.__class__.__name__)
         #QGraphicsPathItem.mouseReleaseEvent(self, e)
 
-        if self._mode == ADD :
+        if self._drag_mode == ADD :
             self.ungrabMouse()
             self.setRect(self.rect().normalized())
             self.set_control_points()
             #self.setSelected(False)
 
-        if self._mode == EDIT :
+        if self._drag_mode == EDIT :
             self.set_child_item_sel(None)
 
-        self.set_mode()
+        self.set_drag_mode()
 
 
 #    def hoverEnterEvent(self, e) :

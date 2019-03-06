@@ -2,7 +2,7 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 using namespace XtcData;
-using namespace Pds::MonReq;
+using namespace psalg::shmem;
 
 TransitionCache::TransitionCache(char* p, size_t sz, unsigned nbuff) :
   _pShm(p),
@@ -91,12 +91,12 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
       //    which may not be listening (yet)
       //
       if ( _cachedTr.empty() ) {
-        if (id==TransitionId::Map) {
+        if (id==TransitionId::Configure) {
           _freeTr.remove(ibuffer);
           _cachedTr.push(ibuffer);
         }
         else {
-          printf("Unexpected state for TransitionCache: _cachedTr empty but tr[%s]!=Map\n",
+          printf("Unexpected state for TransitionCache: _cachedTr empty but tr[%s]!=Configure\n",
                  TransitionId::name(id));
           //dump();
           //abort();

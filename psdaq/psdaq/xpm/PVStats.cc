@@ -1,8 +1,7 @@
 #include "psdaq/xpm/PVStats.hh"
 #include "psdaq/xpm/Module.hh"
 
-#include "psdaq/epicstools/PVWriter.hh"
-using Pds_Epics::PVWriter;
+#include "psdaq/epicstools/EpicsPVA.hh"
 
 #include <sstream>
 #include <string>
@@ -10,13 +9,7 @@ using Pds_Epics::PVWriter;
 
 #include <stdio.h>
 
-using Pds_Epics::PVWriter;
-
-#define PVPUSH(s) { std::ostringstream o; o << pvbase << #s << i; \
-          _pv.push_back(new PVWriter(o.str().c_str())); }
-#define PVPUT(v)    if ((*it)->connected()) { *reinterpret_cast<double*>((*it)->data()) = double(v); (*it)->put(); it++; }
-#define PVPUTI(v)   if ((*it)->connected()) { *reinterpret_cast<int   *>((*it)->data()) = int   (v); (*it)->put(); it++; }
-
+using Pds_Epics::EpicsPVA;
 
 namespace Pds {
   namespace Xpm {
@@ -24,30 +17,34 @@ namespace Pds {
     PVStats::PVStats() : _pv(0) {}
     PVStats::~PVStats() {}
 
+#define PVPUT(v)    if ((*it)->connected()) { (*it)->putFrom<double>(double(v)); } it++;
+#define PVPUTI(v)   if ((*it)->connected()) { (*it)->putFrom<int>(int(v)); } it++;
+
     void PVStats::_allocTiming(const std::string& title,
                                const char* sec) {
+#define PVPUSH(s) _pv.push_back(new EpicsPVA((pvbase+#s).c_str()))
       std::ostringstream o;
       o << title << ":" << sec << ":";
       std::string pvbase = o.str();
-
-      _pv.push_back( new PVWriter((pvbase+"RxClks").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"TxClks").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"RxRsts").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"CrcErrs").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"RxDecErrs").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"RxDspErrs").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"BypassRsts").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"BypassDones").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"RxLinkUp").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"FIDs").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"SOFs").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"EOFs").c_str()) );
+      PVPUSH(RxClks);
+      PVPUSH(TxClks);
+      PVPUSH(RxRsts);
+      PVPUSH(CrcErrs);
+      PVPUSH(RxDecErrs);
+      PVPUSH(RxDspErrs);
+      PVPUSH(BypassRsts);
+      PVPUSH(BypassDones);
+      PVPUSH(RxLinkUp);
+      PVPUSH(FIDs);
+      PVPUSH(SOFs);
+      PVPUSH(EOFs);
+#undef PVPUSH
     }
 
     void PVStats::_updateTiming(const TimingCounts& nc,
                                 const TimingCounts& oc,
                                 double dt,
-                                std::vector<PVWriter*>::iterator& it) {
+                                std::vector<EpicsPVA*>::iterator& it) {
       PVPUT(double(nc.rxClkCount       - oc.rxClkCount      ) / dt * 16e-6);
       PVPUT(double(nc.txClkCount       - oc.txClkCount      ) / dt * 16e-6);
       PVPUT(double(nc.rxRstCount       - oc.rxRstCount      ) / dt);
@@ -62,24 +59,41 @@ namespace Pds {
       PVPUT(double(nc.eofCount         - oc.eofCount        ) / dt);
     }
 
-    void PVStats::allocate(const std::string& title) {
-      if (ca_current_context() == NULL) {
-        printf("Initializing context\n");
-        SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
-                 "Calling ca_context_create" );
-      }
+    void PVStats::_allocPll(const std::string& title,
+                            unsigned amc) {
+#define PVPUSH(s) { std::ostringstream o; o << title << ":" << #s << amc;      \
+        _pv.push_back(new EpicsPVA(o.str().c_str())); }
+      PVPUSH(PLL_LOL);
+      PVPUSH(PLL_LOLCNT);
+      PVPUSH(PLL_LOS);
+      PVPUSH(PLL_LOSCNT);
+#undef PVPUSH
+    }
 
+    void PVStats::_updatePll(const PllStats& s,
+                             std::vector<EpicsPVA*>::iterator& it) {
+      PVPUTI(s.lol);
+      PVPUTI(s.lolCount);
+      PVPUTI(s.los);
+      PVPUTI(s.losCount);
+    }
+
+    void PVStats::allocate(const std::string& title) {
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
       _pv.resize(0);
 
       _allocTiming(title,"Us");
       _allocTiming(title,"Cu");
+      for(unsigned i=0; i<Module::NAmcs; i++)
+        _allocPll   (title,i);
 
       std::ostringstream o;
       o << title << ":";
       std::string pvbase = o.str();
 
+#define PVPUSH(s) { std::ostringstream o; o << pvbase << #s << i; \
+          _pv.push_back(new EpicsPVA(o.str().c_str())); }
       for(unsigned i=0; i<32; i++) {
         PVPUSH(LinkTxReady);
         PVPUSH(LinkRxReady);
@@ -90,22 +104,28 @@ namespace Pds {
         PVPUSH(LinkIsXpm);
 	PVPUSH(RemoteLinkId);
       }
-      _pv.push_back( new PVWriter((pvbase+"RecClk").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"FbClk").c_str()) );
-      _pv.push_back( new PVWriter((pvbase+"BpClk").c_str()) );
-      printf("PVs allocated\n");
+#undef PVPUSH
+      _pv.push_back( new EpicsPVA((pvbase+"RecClk").c_str()) );
+      _pv.push_back( new EpicsPVA((pvbase+"FbClk").c_str()) );
+      _pv.push_back( new EpicsPVA((pvbase+"BpClk").c_str()) );
+
+      printf("PVs allocated %zu\n", _pv.size());
     }
 
-    void PVStats::update(const CoreCounts& nc, const CoreCounts& oc, 
+    void PVStats::update(const CoreCounts& nc, const CoreCounts& oc,
                          const LinkStatus* nl, const LinkStatus* ol,
+                         const PllStats* pll,
                          unsigned recClk,
                          unsigned fbClk,
                          unsigned bpClk,
                          double dt)
     {
-      std::vector<PVWriter*>::iterator it = _pv.begin();
+      std::vector<EpicsPVA*>::iterator it = _pv.begin();
       _updateTiming(nc.us,oc.us,dt,it);
       _updateTiming(nc.cu,oc.cu,dt,it);
+      for(unsigned i=0; i<Module::NAmcs; i++)
+        _updatePll(pll[i],it);
+
       for(unsigned i=0; i<32; i++) {
         PVPUTI( nl[i].txReady );
         PVPUTI( nl[i].rxReady );

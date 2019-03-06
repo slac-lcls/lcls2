@@ -8,6 +8,7 @@
 #include <memory>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>                     // For memset()
 
 using namespace XtcData;
 using namespace Pds;
@@ -73,6 +74,19 @@ BatchManager::~BatchManager()
 {
   if (_appPrms)  delete [] _appPrms;
   free(_batchBuffer);
+}
+
+void BatchManager::shutdown()
+{
+  for (unsigned i = 0; i < _batchDepth; ++i)
+  {
+    _batchFreelist[i].release();
+  }
+  _batchFreelist.clear();
+  _batch = nullptr;
+
+  memset(_batchBuffer, 0, _batchDepth * _maxBatchSize * sizeof(*_batchBuffer));
+  memset(_appPrms,     0, _batchDepth * _maxEntries   * sizeof(*_appPrms));
 }
 
 Batch* BatchManager::locate(uint64_t pid)

@@ -3,7 +3,7 @@
 
 /** Usage
  *
- * #include "psalg/detector/AreaDetectorTypes.hh"
+ * #include "psalg/calib/AreaDetectorTypes.hh"
  */
 
 #include "psalg/calib/CalibParsTypes.hh"
@@ -43,8 +43,8 @@ namespace detector {
   typedef float    geometry_t; // ??? TEMPORARY
   */
 
+  typedef uint16_t raw_t;
   typedef float    event_t; // query_t
-  typedef float    raw_t;
   typedef float    calib_t;
   typedef float    image_t;
 
@@ -116,7 +116,7 @@ namespace detector {
     {"timepix-"       , TIMEPIX},
     {"fli-"           , FLI},
     {"pimax-"         , PIMAX},
-    {"jungfrau-"      , JUNGFRAU},
+    {"jungfrau"      , JUNGFRAU},
     {"zyla-"          , ZYLA},
     {"controlscamera-", EPICSCAM},
     {"pixis-"         , PIXIS},

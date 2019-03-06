@@ -1,10 +1,13 @@
+#include <atomic>
+#include <string>
+#include <iostream>
 #include <signal.h>
 #include <cstdio>
 #include <AxisDriver.h>
 #include "TimingHeader.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include <unistd.h>
-#include <atomic>
+#include <getopt.h>
 
 #define MAX_RET_CNT_C 1000
 static int fd;
@@ -21,21 +24,31 @@ void int_handler(int dummy)
     // dmaUnMapDma();
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    int c;
+    std::string device;
+    while((c = getopt(argc, argv, "d:")) != EOF) {
+        switch(c) {
+            case 'd':
+                device = optarg;
+                break;
+        }
+    }
+
     terminate.store(false, std::memory_order_release);
     signal(SIGINT, int_handler);
 
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
-    // memset(mask, 0xFF, DMA_MASK_SIZE);
     for (unsigned i=0; i<4; i++) {
         dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
     }
 
-    fd = open("/dev/datadev_1", O_RDWR);
+    std::cout<<"device  "<<device<<'\n';
+    fd = open(device.c_str(), O_RDWR);
     if (fd < 0) {
-        printf("Error opening /dev/datadev_0\n");
+        std::cout<<"Error opening "<<device<<'\n';
         return -1;
     }
 

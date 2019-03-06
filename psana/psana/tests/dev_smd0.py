@@ -5,9 +5,9 @@ pyximport.install()
 from psana.smdreader import SmdReader
 
 def run_smd0():
-    #filenames = glob.glob('/reg/d/psdm/xpp/xpptut15/scratch/mona/test/smalldata/*.smd.xtc2')
+    filenames = glob.glob('/reg/d/psdm/xpp/xpptut15/scratch/mona/xtc2/smalldata/*.smd.xtc2')
     #filenames = glob.glob('/u1/mona/smalldata/*.smd.xtc2')
-    filenames = glob.glob('.tmp/smalldata/*r0001*.xtc2')
+    #filenames = glob.glob('.tmp/smalldata/*r0001*.xtc2')
     fds = [os.open(filename, os.O_RDONLY) for filename in filenames]
     limit = int(sys.argv[1])
     st = time.time()
@@ -21,7 +21,7 @@ def run_smd0():
         processed_events += got_events
     #print("processed_events: %d"%processed_events)
     en = time.time()
-    print("Elapsed Time (s): %f Rate: %f"%((en-st), processed_events/((en-st)*1e6)))
+    print("Elapsed Time (s): %f Rate (MHz): %f"%((en-st), processed_events/((en-st)*1e6)))
 
 if __name__ == "__main__":
     run_smd0()

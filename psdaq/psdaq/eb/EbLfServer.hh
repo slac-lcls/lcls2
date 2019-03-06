@@ -22,42 +22,105 @@ namespace Pds {
     class EbLfServer
     {
     public:
-      EbLfServer(const std::string& addr,
-                 const std::string& port,
-                 unsigned           verbose);
-      ~EbLfServer();
+      EbLfServer(unsigned verbose);
     public:
-      int connect(EbLfLink**, int msTmo = -1);
-      int pend(fi_cq_data_entry*, int msTmo);
-      int pend(void** context, int msTmo);
-      int pend(uint64_t* data, int msTmo);
-      int poll(uint64_t* data);
+      int  initialize(const std::string& addr,    // Interface to use
+                      const std::string& port,    // Port to listen on
+                      unsigned           nLinks); // Number of links to expect
+      int  connect(EbLfLink**, int msTmo = -1);
+      int  shutdown(EbLfLink*);
+      void shutdown();
+      int  pend(fi_cq_data_entry*, int msTmo);
+      int  pend(void** context, int msTmo);
+      int  pend(uint64_t* data, int msTmo);
+      int  poll(uint64_t* data);
     public:
-      const uint64_t& pending() const;
-    public:
-      int shutdown(EbLfLink*);
+      const uint64_t& pending() const { return _pending; }
     private:
-      int _initialize(const char* addr, const char* port);
       int _poll(fi_cq_data_entry*, uint64_t flags);
+    private:                            // Arranged in order of access frequency
+      Fabrics::CompletionQueue* _rxcq;    // Receive completion queue
+      int                       _tmo;     // Timeout for polling or waiting
+      unsigned                  _verbose; // Print some stuff if set
     private:
-      int                       _status;
-      Fabrics::PassiveEndpoint* _pep;  // Endpoint for establishing connections
-      unsigned                  _verbose;
-      Fabrics::CompletionQueue* _rxcq;
-      size_t                    _bufSize;
-      int                       _tmo;
+      uint64_t                  _pending; // Flag set when currently pending
+      uint64_t                  _unused;  // Bit list of IDs currently posting
     private:
-      uint64_t                  _pending;
-      uint64_t                  _unused;
+      Fabrics::PassiveEndpoint* _pep;   // Endpoint for establishing connections
     };
   };
 };
 
+inline
+int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
+{
+  ssize_t rc;
+
+  // Polling favors latency, waiting favors throughput
+  if (!_tmo)
+  {
+    rc = _rxcq->comp(cqEntry, 1);
+  }
+  else
+  {
+    rc = _rxcq->comp_wait(cqEntry, 1, _tmo);
+    _tmo = 0;                 // Switch to polling after successful completion
+  }
+
+#ifdef DBG
+  if (rc > 0)
+  {
+    if ((cqEntry->flags & flags) != flags)
+    {
+      fprintf(stderr, "%s:\n  Expected   CQ entry:\n"
+                      "  count %zd, got flags %016lx vs %016lx, data = %08lx\n"
+                      "  ctx   %p, len %zd, buf %p\n",
+              __PRETTY_FUNCTION__, rc, cqEntry->flags, flags, cqEntry->data,
+              cqEntry->op_context, cqEntry->len, cqEntry->buf);
+
+    }
+  }
+#endif
+
+  return rc;
+}
 
 inline
-const uint64_t& Pds::Eb::EbLfServer::pending() const
+int Pds::Eb::EbLfServer::pend(void** ctx, int msTmo)
 {
-  return _pending;
+  fi_cq_data_entry cqEntry;
+
+  int rc = pend(&cqEntry, msTmo);
+  *ctx = cqEntry.op_context;
+
+  return rc;
+}
+
+inline
+int Pds::Eb::EbLfServer::pend(uint64_t* data, int msTmo)
+{
+  fi_cq_data_entry cqEntry;
+
+  int rc = pend(&cqEntry, msTmo);
+  *data = cqEntry.data;
+
+  return rc;
+}
+
+inline
+int Pds::Eb::EbLfServer::poll(uint64_t* data)
+{
+  if (_rxcq)
+  {
+    const uint64_t   flags = FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA;
+    fi_cq_data_entry cqEntry;
+
+    int rc = _poll(&cqEntry, flags);
+    *data = cqEntry.data;
+
+    return rc;
+  }
+  return -1;
 }
 
 #endif

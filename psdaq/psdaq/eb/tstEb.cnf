@@ -21,15 +21,15 @@ os.environ['TESTRELDIR'] = inst_path
 conda_env = getRelEnvString()
 
 partition = 'Test'
-col_node  = 'psdev01'  #'drp-tst-acc06'
-rtm_node  = 'psdev01'  #'psdev7b'
+col_node  = 'drp-tst-acc06'
+rtm_node  = 'psmetric04'
 headless  = False
 if headless:
   node_flags = 'sp'
 else:
   node_flags = 'sxp'
 
-skipNodes = [12, 10]
+skipNodes = [6, 12]
 nodes     = []
 nNodes    = 24
 for i in range(nNodes, 0, -1):
@@ -82,7 +82,7 @@ if num_mon and len(mon_nodes) is 0:
 
 mgr_cmd = 'procstat -t ' + username + ' -e0 -n none p' + platform+'.cnf.last'
 col_cmd = 'collection -v'
-mon_cmd = 'monReqServer' +' -C ' + col_node + ' -Z ' + rtm_node + ' -P ' + partition
+mon_cmd = 'monReqServer' +' -C ' + col_node + ' -Z ' + rtm_node + ' -P ' + partition + ' -d -q 8'
 seg_cmd = 'tstEbContributor -C ' + col_node + ' -Z ' + rtm_node
 evt_cmd = 'tstEbBuilder' +' -C ' + col_node + ' -Z ' + rtm_node
 

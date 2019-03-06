@@ -9,30 +9,29 @@
 #include <sys/types.h>
 #include "AxisDriver.h"
 #include "drp.hh"
-#include "Collector.hh"
 #include <zmq.h>
 
-MemPool::MemPool(int num_workers, int num_entries) :
-    pgp_data(num_entries),
-    pebble_queue(num_entries),
-    collector_queue(num_entries),
-    num_entries(num_entries),
-    pebble(num_entries)
+MemPool::MemPool(const Parameters& para) :
+    pgp_data(para.numEntries),
+    pebble_queue(para.numEntries),
+    collector_queue(para.numEntries),
+    num_entries(para.numEntries),
+    pebble(para.numEntries)
 {
-    for (int i = 0; i < num_workers; i++) {
-        worker_input_queues.emplace_back(PebbleQueue(num_entries));
-        worker_output_queues.emplace_back(PebbleQueue(num_entries));
+    for (int i = 0; i < para.numWorkers; i++) {
+        worker_input_queues.emplace_back(PebbleQueue(para.numEntries));
+        worker_output_queues.emplace_back(PebbleQueue(para.numEntries));
     }
 
-    for (int i = 0; i < num_entries; i++) {
+    for (int i = 0; i < para.numEntries; i++) {
         pgp_data[i].counter = 0;
         pgp_data[i].buffer_mask = 0;
         pebble_queue.push(&pebble[i]);
     }
 
-    fd = open("/dev/datadev_1", O_RDWR);
+    fd = open(para.device.c_str(), O_RDWR);
     if (fd < 0) {
-        printf("Error opening /dev/datadev_1\n");
+        std::cout<<"Error opening "<<para.device<<'\n';
     }
     uint32_t dmaCount, dmaSize;
     dmaBuffers = dmaMapDma(fd, &dmaCount, &dmaSize);
@@ -67,7 +66,8 @@ long read_infiniband_counter(const char* counter)
     }
 }
 
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContributor& ebCtrb)
+void monitor_func(const Parameters& para, std::atomic<Counters*>& p,
+                  MemPool& pool, Pds::Eb::TebContributor& ebCtrb)
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUB);
@@ -107,21 +107,20 @@ void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContribu
         double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / seconds;
         double xmit_rate = 4.0*double(port_xmit_data - old_port_xmit_data) / seconds;
 
-        int partition = 2; // FIXME
         int size = snprintf(buffer, 4096, "drp_event_rate,host=%s,partition=%d %f",
-                            hostname, partition, event_rate);
+                            hostname, para.partition, event_rate);
         zmq_send(socket, buffer, size, 0);
 
         size = snprintf(buffer, 4096, "drp_data_rate,host=%s,partition=%d %f",
-                        hostname, partition, data_rate);
+                        hostname, para.partition, data_rate);
         zmq_send(socket, buffer, size, 0);
 
         size = snprintf(buffer, 4096, "drp_xmit_rate,host=%s,partition=%d %f",
-                        hostname, partition, xmit_rate);
+                        hostname, para.partition, xmit_rate);
         zmq_send(socket, buffer, size, 0);
 
         size = snprintf(buffer, 4096, "drp_rcv_rate,host=%s,partition=%d %f",
-                        hostname, partition, rcv_rate);
+                        hostname, para.partition, rcv_rate);
         zmq_send(socket, buffer, size, 0);
 
         old_bytes = new_bytes;

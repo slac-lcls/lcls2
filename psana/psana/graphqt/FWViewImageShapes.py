@@ -18,10 +18,16 @@ Created on 2016-10-10 by Mikhail Dubrovin
 
 #import os
 #import math
+import logging
+logger = logging.getLogger(__name__)
+
+from PyQt5.QtCore import Qt #, QPointF#, QRect, QRectF
 
 import psana.graphqt.ColorTable as ct
-from psana.graphqt.FWViewImage import *
-from psana.graphqt.DragFactory import * # add_item, POINT, RECT, ..., DELETE from GUDragBase
+from psana.graphqt.FWViewImage import FWViewImage
+from psana.graphqt.DragFactory import add_item, POINT, LINE, RECT, CIRC, POLY, WEDG,\
+                                      dic_drag_type_to_name, dic_drag_name_to_type
+from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE
 
 #------------------------------
 
@@ -36,6 +42,7 @@ class FWViewImageShapes(FWViewImage) :
         self.add_request=None
         self.lst_drag_items = []
         self.scale_ctl_normal = scale_ctl
+
 
     def setShapesEnabled(self, is_enabled=True):
         for item in self.lst_drag_items : item.setEnabled(is_enabled)
@@ -54,17 +61,19 @@ class FWViewImageShapes(FWViewImage) :
 
 
     def mousePressEvent(self, e):
-        sp = self.mapToScene(e.pos())
-        #print('%s.mousePressEvent' % self.__class__.__name__, e.pos(),\
-        #      ' scene x=%.1f y=%.1f' % (sp.x(), sp.y()), ' button:', e.button())
+        scpoint = self.mapToScene(e.pos())
+        logger.debug('FWViewImageShapes.mousePressEvent but=%d %s scene x=%.1f y=%.1f'%\
+                     (e.button(), str(e.pos()), scpoint.x(), scpoint.y())) # self.__class__.__name__
+
         FWViewImage.mousePressEvent(self, e) # to select/deselect items
 
         if self.add_request is not None :
             self.set_scale_control('')
 
-            print('process request to add %s' % dic_drag_type_to_name[self.add_request])
+            logger.debug('process request to add %s' % dic_drag_type_to_name[self.add_request])
             parent = None if self.add_request == POINT else self
-            item = add_item(self.add_request, sp, parent, scene=self.scene())
+            #parent = None if self.add_request == RECT else self
+            item = add_item(self.add_request, scpoint, parent, scene=self.scene())
             item.setZValue(100 if self.add_request == POINT else 30)
             item.setSelected(True)
             self.lst_drag_items.append(item)
@@ -78,19 +87,19 @@ class FWViewImageShapes(FWViewImage) :
 
         if self.selected_item() is None :
             self.set_scale_control(scale_ctl=self.scale_ctl_normal)
-            FWViewImage.mousePressEvent(self, e) # to move pixmap on click
+            #FWViewImage.mousePressEvent(self, e) # to move pixmap on click
         else :
             self.set_scale_control(scale_ctl='')
 
 
 #    def mouseMoveEvent(self, e):
-#        #print('%s.mouseMoveEvent' % self.__class__.__name__, e.pos())
+#        print('%s.mouseMoveEvent' % self.__class__.__name__, e.pos())
 #        FWViewImage.mouseMoveEvent(self, e)
 
 
     def mouseReleaseEvent(self, e):
         FWViewImage.mouseReleaseEvent(self, e)
-        #print('%s.mouseReleaseEvent' % self.__class__.__name__, e.pos())
+        #logger.debug('%s.mouseReleaseEvent pos: %s' % (self.__class__.__name__, str(e.pos())))
 
         if self.add_request is not None :
             self.setShapesEnabled()
@@ -143,15 +152,15 @@ class FWViewImageShapes(FWViewImage) :
         elif e.key() in d.keys() :
             type = d[e.key()]
             self.add_request = type # e.g. RECT
-            print('click-drag-release mouse button on image to add %s' % dic_drag_type_to_name[type])
+            logger.info('click-drag-release mouse button on image to add %s' % dic_drag_type_to_name[type])
             self.setShapesEnabled(False)
 
         elif e.key() == Qt.Key_D : 
-            print('delete selected item')
+            logger.info('delete selected item')
             self.delete_item(self.selected_item())
 
         elif e.key() == Qt.Key_S : 
-            print('switch interactive session between scene and shapes')
+            logger.info('switch interactive session between scene and shapes')
             
             if self.scale_control() :
                 self.set_scale_control(scale_ctl='')
@@ -160,11 +169,14 @@ class FWViewImageShapes(FWViewImage) :
                 self.set_scale_control(scale_ctl='HV')
                 self.setShapesEnabled(False)
         else :
-            print(self.key_usage())
+            logger.info(self.key_usage())
 
 #------------------------------
 
 if __name__ == "__main__" :
+
+    logging.basicConfig(format='%(asctime)s %(levelname)s L:%(lineno)03d %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
+
     from PyQt5.QtWidgets import QApplication
     import sys
     import numpy as np; global np

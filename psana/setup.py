@@ -15,7 +15,7 @@ sys.argv.remove(arg[0])
 
 dgram_module = Extension('psana.dgram',
                          sources = ['src/dgram.cc'],
-                         libraries = ['xtc'],
+                         libraries = ['xtc','shmemcli'],
                          include_dirs = ['src', np.get_include(), os.path.join(xtcdata, 'include')],
                          library_dirs = [os.path.join(xtcdata, 'lib')],
                          extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
@@ -67,6 +67,7 @@ setup(
                 'proc_new_datasets   = psana.pscalib.app.proc_new_datasets:do_main',
                 'timeconverter       = psana.graphqt.app.timeconverter:timeconverter',
                 'calibman            = psana.graphqt.app.calibman:calibman_gui',
+                'detnames            = psana.app.detnames:detnames',
              ]
        },
 )
@@ -74,6 +75,19 @@ setup(
 CYT_BLD_DIR = 'build'
 
 from Cython.Build import cythonize
+ext = Extension('shmem',
+                sources=["psana/shmem/shmem.pyx"],
+                libraries = ['xtc','shmemcli'],
+                include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
+                library_dirs = [os.path.join(xtcdata, 'lib')],
+                language="c++",
+                extra_compile_args=['-std=c++11'],
+                extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+)
+
+setup(name="shmem",
+      ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+
 ext = Extension("peakFinder",
                 sources=["psana/peakFinder/peakFinder.pyx",
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",

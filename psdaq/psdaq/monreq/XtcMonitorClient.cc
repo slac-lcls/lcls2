@@ -17,9 +17,11 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "XtcMonitorClient.hh"
-#include "XtcMonitorMsg.hh"
+#include "psalg/shmem/XtcMonitorMsg.hh"
 
 #include <poll.h>
+
+using namespace psalg::shmem;
 
 //#define DBUG
 
@@ -291,7 +293,7 @@ int XtcMonitorClient::run(const char* tag, int tr_index, int) {
 
 
     //
-    //  Seek the Map transition
+    //  Seek the Configure transition
     //
     do {
       if (::recv(myTrFd, (char*)&myMsg, sizeof(myMsg), MSG_WAITALL) < 0) {
@@ -302,7 +304,7 @@ int XtcMonitorClient::run(const char* tag, int tr_index, int) {
 	int i = myMsg.bufferIndex();
 	if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
 	  Dgram* dg = (Dgram*) (myShm + (myMsg.sizeOfBuffers() * i));
-	  if (dg->seq.service()==TransitionId::Map) {
+	  if (dg->seq.service()==TransitionId::Configure) {
 	    if (!processDgram(dg)) {
 	      if (::send(myTrFd,(char*)&myMsg,sizeof(myMsg),0)<0) {
 		perror("transition send");
@@ -312,7 +314,7 @@ int XtcMonitorClient::run(const char* tag, int tr_index, int) {
 	    }
           }
           else
-            printf("Unexpected transition %s != Map\n",TransitionId::name(dg->seq.service()));
+            printf("Unexpected transition %s != Configure\n",TransitionId::name(dg->seq.service()));
 	}
         else
           printf("Illegal transition buffer index %d\n",i);

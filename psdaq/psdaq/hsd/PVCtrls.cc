@@ -3,7 +3,7 @@
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/QABase.hh"
 #include "psdaq/hsd/Pgp.hh"
-#include "psdaq/epicstools/EpicsCA.hh"
+#include "psdaq/epicstools/EpicsPVA.hh"
 #include "psdaq/epicstools/PvServer.hh"
 #include "psdaq/service/Task.hh"
 #include "psdaq/service/Routine.hh"
@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-using Pds_Epics::EpicsCA;
+using Pds_Epics::EpicsPVA;
 using Pds_Epics::PvServer;
 using Pds_Epics::PVMonitorCb;
 using Pds::Routine;
@@ -37,9 +37,6 @@ namespace Pds {
       void routine() {
         switch(_a) {
         case Configure  : _pvc.configure(); break;
-        case Unconfigure: _pvc.disable  (); break;
-        case EnableTr   : _pvc.enable   (); break;
-        case DisableTr  : _pvc.disable  (); break;
         case Reset      : _pvc.reset(); break;
         default: break;
         }
@@ -53,24 +50,21 @@ namespace Pds {
 #define Q(a,b)      a ## b
 #define PV(name)    Q(name, PV)
 
-#define TOU(value)  *reinterpret_cast<unsigned*>(value)
-#define TON(value,e)  reinterpret_cast<unsigned*>(value)[e]
-
 #define CPV(name, updatedBody, connectedBody)                           \
                                                                         \
-    class PV(name) : public EpicsCA,                                    \
+    class PV(name) : public EpicsPVA,                                    \
                      public PVMonitorCb                                 \
     {                                                                   \
     public:                                                             \
       PV(name)(PVCtrls& ctrl, const char* pvName) :                     \
-        EpicsCA(pvName, this),                                          \
+        EpicsPVA(pvName, this),                                          \
         _ctrl(ctrl) {}                                                  \
       virtual ~PV(name)() {}                                            \
     public:                                                             \
-      void updated();                                                   \
-      void connected(bool);                                             \
+      virtual void updated();                                                   \
+      virtual void onConnect();                                             \
     public:                                                             \
-      void put() { if (this->EpicsCA::connected())  _channel.put(); }   \
+      void put() { if (this->EpicsPVA::connected())  _channel.put(); }   \
     private:                                                            \
       PVCtrls& _ctrl;                                                   \
     };                                                                  \
@@ -78,18 +72,15 @@ namespace Pds {
     {                                                                   \
       updatedBody                                                       \
     }                                                                   \
-    void PV(name)::connected(bool c)                                    \
+    void PV(name)::onConnect()                                          \
     {                                                                   \
-      this->EpicsCA::connected(c);                                      \
       connectedBody                                                     \
     }
     
-    CPV(ApplyConfig ,{if (TOU(data())) _ctrl.call(Configure  );}, {})
-    CPV(EnableTr    ,{if (TOU(data())) _ctrl.call(EnableTr   );}, {})
-    CPV(DisableTr   ,{if (TOU(data())) _ctrl.call(DisableTr  );}, {})
-    CPV(UndoConfig  ,{if (TOU(data())) _ctrl.call(Unconfigure);}, {})
-    CPV(Reset       ,{if (TOU(data())) _ctrl.call(Reset      );}, {})
-    CPV(PgpLoopback ,{_ctrl.loopback (TOU(data())!=0);   }, {})
+    CPV(ApplyConfig ,{if (getScalarAs<unsigned>()) _ctrl.call(Configure  );}, {})
+    CPV(State       ,{}, {})
+    CPV(Reset       ,{if (getScalarAs<unsigned>()) _ctrl.call(Reset      );}, {})
+    CPV(PgpLoopback ,{_ctrl.loopback (getScalarAs<unsigned>()!=0);   }, {})
 
     PVCtrls::PVCtrls(Module& m, Pds::Task& t) : _pv(0), _m(m), _task(t) {}
     PVCtrls::~PVCtrls() {}
@@ -98,12 +89,6 @@ namespace Pds {
 
     void PVCtrls::allocate(const std::string& title)
     {
-      if (ca_current_context() == NULL) {
-        printf("Initializing context\n");
-        SEVCHK ( ca_context_create(ca_enable_preemptive_callback ),
-                 "Calling ca_context_create" );
-      }
-
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
       _pv.resize(0);
@@ -126,9 +111,6 @@ namespace Pds {
       NPV1(Fex_Ymax);
       NPV1(Fex_Xpre);
       NPV1(Fex_Xpost);
-      NPV1(Nat_Start);
-      NPV1(Nat_Gate);
-      NPV1(Nat_PS);
       NPV1(FullEvt);
       NPV1(FullSize);
       NPV1(TestPattern);
@@ -143,14 +125,12 @@ namespace Pds {
       _pv.push_back(new PvServer((pvbase+"BASE:PARTITION"  ).c_str()));
       
       NPV(ApplyConfig,"BASE:APPLYCONFIG");
-      NPV(EnableTr   ,"BASE:ENABLETR");
-      NPV(DisableTr  ,"BASE:DISABLETR");
-      NPV(UndoConfig ,"BASE:UNDOCONFIG");
       NPV(Reset      ,"RESET");
       NPV(PgpLoopback,"PGPLOOPBACK");
 
-      // Wait for monitors to be established
-      ca_pend_io(0);
+      _state_pv = new StatePV(*this, (pvbase+"BASE:READY").c_str());
+
+      _setState(Unconfigure);
     }
 
     //  enumeration of PV insert order above
@@ -158,7 +138,6 @@ namespace Pds {
                    Raw_Start, Raw_Gate, Raw_PS, 
                    Fex_Start, Fex_Gate, Fex_PS, 
                    Fex_Ymin, Fex_Ymax, Fex_Xpre, Fex_Xpost,
-                   Nat_Start, Nat_Gate, Nat_PS,
                    FullEvt, FullSize,
                    TestPattern, SyncELo, SyncEHi, SyncOLo, SyncOHi, 
                    TrigShift, PgpSkpIntvl,
@@ -166,36 +145,38 @@ namespace Pds {
 
     Module& PVCtrls::module() { return _m; }
 
-    void PVCtrls::enable() {
-    }
-
-    void PVCtrls::disable() {
-    }
-
     void PVCtrls::configure() {
+      _setState(Unconfigure);
+
       _m.stop();
 
       // Update all necessary PVs
       for(unsigned i=0; i<LastPv; i++) {
         PvServer* pv = static_cast<PvServer*>(_pv[i]);
-        while (!pv->EpicsCA::connected()) {
+        while (!pv->EpicsPVA::connected()) {
           printf("pv[%u] not connected\n",i);
           usleep(100000);
         }
         pv->update();
       }
-      ca_pend_io(0);
 
-      for(unsigned i=0; i<LastPv; i++) {
-        EpicsCA* pv = _pv[i];
-        printf("pv[%u] :",i);
-        unsigned* q = reinterpret_cast<unsigned*>(_pv[i]->data());
-        for(unsigned j=0; j<pv->data_size()/4; j++ )
-          printf(" %u", q[j]);
-        printf("\n");
+      { unsigned i=0;
+        while(i<FullEvt) {
+          printf("pv[%u] :",i);
+          pvd::shared_vector<const unsigned> vec;
+          _pv[i]->getVectorAs<unsigned>(vec);
+          for(unsigned j=0; j<vec.size(); j++ )
+            printf(" %u", vec[j]);
+          printf("\n");
+          i++;
+        }
+        while(i<LastPv) {
+          printf("pv[%u] : %u\n",i,_pv[i]->getScalarAs<unsigned>());
+          i++;
+        }
       }
 
-      { unsigned v = *reinterpret_cast<unsigned*>(_pv[PgpSkpIntvl]->data());
+      { unsigned v = _pv[PgpSkpIntvl]->getScalarAs<unsigned>();
         std::vector<Pgp*> pgp = _m.pgp();
         for(unsigned i=0; i<4; i++)
           pgp[i]->skip_interval(v);
@@ -204,7 +185,7 @@ namespace Pds {
       _m.dumpPgp();
 
       // set trigger shift
-      int shift = *reinterpret_cast<int*>(_pv[TrigShift]->data());
+      int shift = _pv[TrigShift]->getScalarAs<int>();
       _m.trig_shift(shift);
 
       // don't know how often this is necessary
@@ -212,7 +193,7 @@ namespace Pds {
 
       unsigned channelMask = 0;
       for(unsigned i=0; i<4; i++) {
-        if (TON(_pv[Enable]->data(),i)) {
+        if (_pv[Enable]->getVectorElemAt<unsigned>(i)) {
           channelMask |= (1<<i);
           if (_interleave) break;
         }
@@ -222,20 +203,20 @@ namespace Pds {
       _m.setAdcMux( _interleave, channelMask );
 
       // set testpattern
-      int pattern = *reinterpret_cast<int*>(_pv[TestPattern]->data());
+      int pattern = _pv[TestPattern]->getScalarAs<int>();
       printf("Pattern: %d\n",pattern);
       _m.disable_test_pattern();
       if (pattern>=0)
         _m.enable_test_pattern((Module::TestPattern)pattern);
 
-      int ephlo = *reinterpret_cast<int*>(_pv[SyncELo]->data());
-      int ephhi = *reinterpret_cast<int*>(_pv[SyncEHi]->data());
-      int ophlo = *reinterpret_cast<int*>(_pv[SyncOLo]->data());
-      int ophhi = *reinterpret_cast<int*>(_pv[SyncOHi]->data());
+      int ephlo = _pv[SyncELo]->getScalarAs<int>();
+      int ephhi = _pv[SyncEHi]->getScalarAs<int>();
+      int ophlo = _pv[SyncOLo]->getScalarAs<int>();
+      int ophhi = _pv[SyncOHi]->getScalarAs<int>();
       while(1) {
         int eph = _m.trgPhase()[0];
         int oph = _m.trgPhase()[1];
-        printf("trig phase %d [%d/%d] %d [%d/%d]\n",
+        printf("trig phase %05d [%05d/%05d] %05d [%05d/%05d]\n",
                eph,ephlo,ephhi,
                oph,ophlo,ophhi);
         if (eph > ephlo && eph < ephhi &&
@@ -261,41 +242,31 @@ namespace Pds {
       //      base.samples = ;
       //      base.prescale = ;
 
-      unsigned partition = TOU(_pv[Partition]->data());
+      unsigned partition = _pv[Partition]->getScalarAs<unsigned>();
       _m.trig_daq(partition);
 
       // configure fex's for each channel
-      unsigned fullEvt  = TOU(_pv[FullEvt ]->data());
-      unsigned fullSize = TOU(_pv[FullSize]->data());
+      unsigned fullEvt  = _pv[FullEvt ]->getScalarAs<unsigned>();
+      unsigned fullSize = _pv[FullSize]->getScalarAs<unsigned>();
       for(unsigned i=0; i<4; i++) {
         FexCfg& fex = _m.fex()[i];
         if ((1<<i)&channelMask) {
           unsigned streamMask=0;
-          if (TON(_pv[Raw_PS]->data(),i)) {
+          if (_pv[Raw_PS]->getVectorElemAt<unsigned>(i)) {
             streamMask |= (1<<0);
-            fex._base[0].setGate(4,TON(_pv[Raw_Gate]->data(),i));
+            fex._base[0].setGate(4,_pv[Raw_Gate]->getVectorElemAt<unsigned>(i));
             fex._base[0].setFull(fullSize,fullEvt);
-            fex._base[0]._prescale=TON(_pv[Raw_PS]->data(),i)-1;
+            fex._base[0]._prescale=_pv[Raw_PS]->getVectorElemAt<unsigned>(i)-1;
           }
-          if (TON(_pv[Fex_PS]->data(),i)) {
+          if (_pv[Fex_PS]->getVectorElemAt<unsigned>(i)) {
             streamMask |= (1<<1);
-            fex._base[1].setGate(4,TON(_pv[Fex_Gate]->data(),i));
-            fex._base[1].setFull(fullSize,fullEvt);
-            fex._base[1]._prescale=TON(_pv[Fex_PS]->data(),i)-1;
-            fex._stream[1].parms[0].v=TON(_pv[Fex_Ymin]->data(),i);
-            fex._stream[1].parms[1].v=TON(_pv[Fex_Ymax]->data(),i);
-            fex._stream[1].parms[2].v=TON(_pv[Fex_Xpre]->data(),i);
-            fex._stream[1].parms[3].v=TON(_pv[Fex_Xpost]->data(),i);
-          }
-          if (TON(_pv[Nat_PS]->data(),i)) {
-            streamMask |= (1<<2);
-            fex._base[2].setGate(4,TON(_pv[Nat_Gate]->data(),i));
-            fex._base[2].setFull(fullSize,fullEvt);
-            fex._base[2]._prescale=TON(_pv[Nat_PS]->data(),i)-1;
-            fex._stream[2].parms[0].v=TON(_pv[Fex_Ymin]->data(),i);
-            fex._stream[2].parms[1].v=TON(_pv[Fex_Ymax]->data(),i);
-            fex._stream[2].parms[2].v=TON(_pv[Fex_Xpre]->data(),i);
-            fex._stream[2].parms[3].v=TON(_pv[Fex_Xpost]->data(),i);
+            fex._base[1].setGate(4, _pv[Fex_Gate]->getVectorElemAt<unsigned>(i));
+            fex._base[1].setFull(0xc00,4);
+            fex._base[1]._prescale=_pv[Fex_PS]->getVectorElemAt<unsigned>(i)-1;
+            fex._stream[1].parms[0].v=_pv[Fex_Ymin]->getVectorElemAt<unsigned>(i);
+            fex._stream[1].parms[1].v=_pv[Fex_Ymax]->getVectorElemAt<unsigned>(i);
+            fex._stream[1].parms[2].v=_pv[Fex_Xpre]->getVectorElemAt<unsigned>(i);
+            fex._stream[1].parms[3].v=_pv[Fex_Xpost]->getVectorElemAt<unsigned>(i);
           }
           fex._streams= streamMask;
         }
@@ -336,6 +307,7 @@ namespace Pds {
       printf("Configure done\n");
 
       _m.start();
+      _setState(Configure);
     }
 
     void PVCtrls::reset() {
@@ -361,5 +333,10 @@ namespace Pds {
     }
 
     void PVCtrls::interleave(bool v) { _interleave = v; }
+
+    void PVCtrls::_setState(Action a) {
+      unsigned v = (a==Configure) ? 1 : 0;
+      _state_pv->putFrom(v);
+    }
   };
 };

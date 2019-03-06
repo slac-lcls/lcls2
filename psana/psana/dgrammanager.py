@@ -3,6 +3,7 @@ import time
 import getopt
 import pprint
 
+from shmem import PyShmemClient
 from psana import dgram
 from psana.event import Event
 from psana.detector import detectors
@@ -24,23 +25,42 @@ FN_L = 200
 
 class DgramManager():
     
-    def __init__(self, xtc_files, configs=[]):
+    def __init__(self, xtc_files, configs=[], tag=None):
         """ Opens xtc_files and stores configs."""
+        self.xtc_files = []
+        self.shmem = None
+        self.shmem_kwargs = {'index':-1,'size':0,'cli':None}
+        self.configs = []
+        self.fds = []
+        self._timestamps = [] # built when iterating 
+
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
+            assert len(self.xtc_files) > 0
         elif isinstance(xtc_files, (list, np.ndarray)):
-            self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
-        assert len(self.xtc_files) > 0
-        
+            if len(xtc_files) > 0: # handles smalldata-only case
+                if xtc_files[0] == 'shmem':
+                    self.shmem = PyShmemClient()
+                    #establish connection to available server - blocking
+                    status = int(self.shmem.connect(tag,0))
+                    assert not status,'shmem connect failure %d' % status
+                    #wait for first configure datagram - blocking
+                    view = self.shmem.get(self.shmem_kwargs)
+                    assert view
+                    d = dgram.Dgram(view=view, \
+                                    shmem_index=self.shmem_kwargs['index'], \
+                                    shmem_size=self.shmem_kwargs['size'], \
+                                    shmem_cli=self.shmem_kwargs['cli'])
+                    self.configs += [d]
+                else:    
+                    self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
+                    assert len(self.xtc_files) > 0
+            
         given_configs = True if len(configs) > 0 else False
         
-        self.configs = []
         if given_configs: 
             self.configs = configs
-            for i in range(len(self.configs)): 
-                self.configs[i]._assign_dict()
         
-        self.fds = []
         for i, xtcdata_filename in enumerate(self.xtc_files):
             self.fds.append(os.open(xtcdata_filename,
                             os.O_RDONLY))
@@ -49,7 +69,7 @@ class DgramManager():
                 self.configs += [d]
 
         self.offsets = [_config._offset for _config in self.configs]
-        self.det_class_table = self.get_det_class_table()
+        self.det_class_table, self.xtc_info = self.get_det_class_table()
         self.calibs = {} # initialize to empty dict - will be populated by run class
    
     def __del__(self):
@@ -63,23 +83,25 @@ class DgramManager():
     def __next__(self):
         return self.next()
     
-    def next(self, offsets=[], sizes=[], read_chunk=True):
-        assert len(self.offsets) > 0 or len(offsets) > 0
-        
-        if len(offsets) == 0: offsets = self.offsets
-        if len(sizes) == 0: sizes = [0]*len(offsets)
-
-        dgrams = []
-        for fd, config, offset, size in zip(self.fds, self.configs, offsets, sizes):
-            if (read_chunk) :
-                d = dgram.Dgram(config=config, offset=offset)
+    def next(self):
+        """ only support sequential read - no event building"""
+        if self.shmem:
+            view = self.shmem.get(self.shmem_kwargs)
+            if view:
+                # use the most recent configure datagram
+                config = self.configs[len(self.configs)-1]
+                d = dgram.Dgram(config=config,view=view, \
+                                shmem_index=self.shmem_kwargs['index'], \
+                                shmem_size=self.shmem_kwargs['size'], \
+                                shmem_cli=self.shmem_kwargs['cli'])
+                dgrams = [d]
             else:
-                assert size > 0
-                d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
-            dgrams += [d]
-        
+                raise StopIteration
+        else:
+            dgrams = [dgram.Dgram(config=config) for config in self.configs]
+ 
         evt = Event(dgrams)
-        self.offsets = evt._offsets
+        self._timestamps += [evt._timestamp]
         return evt
 
     def jump(self, offsets, sizes):
@@ -102,6 +124,7 @@ class DgramManager():
         """
 
         det_class_table = {}
+        xtc_info = []
 
         # loop over the dgrams in the configuration
         # if a detector/drp_class combo exists in two cfg dgrams
@@ -118,15 +141,19 @@ class DgramManager():
                     # use this info to look up the desired Detector class
                     versionstring = [str(v) for v in drp_class.version]
                     class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
+                    xtc_entry = (det_name,det.dettype,drp_class_name,'_'.join(versionstring))
+                    if xtc_entry not in xtc_info:
+                        xtc_info.append(xtc_entry)
                     if hasattr(detectors, class_name):
                         DetectorClass = getattr(detectors, class_name) # return the class object
-                        # TODO: implement policy for picking up correct det implementation
-                        #       given the version number
                         det_class_table[(det_name, drp_class_name)] = DetectorClass
                     else:
                         pass
 
-        return det_class_table
+        return det_class_table,xtc_info
+
+    def get_timestamps(self):
+        return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later
 
 
 def parse_command_line():

@@ -19,6 +19,7 @@ setup(
                 'dti_proxy = psdaq.control.dti_proxy:main',
                 'showPlatform = psdaq.control.showPlatform:main',
                 'daqstate = psdaq.control.daqstate:main',
+                'groupca = psdaq.cas.groupca:main',
                 'partca = psdaq.cas.partca:main',
                 'partcas = psdaq.cas.partcas:main',
                 'modcas = psdaq.cas.modcas:main',
@@ -29,6 +30,7 @@ setup(
                 'dticas = psdaq.cas.dticas:main',
                 'hsdca = psdaq.cas.hsdca:main',
                 'hsdcas = psdaq.cas.hsdcas:main',
+                'xpmioc = psdaq.cas.xpmioc:main',
                 'control_gui = psdaq.control_gui.app.control_gui:control_gui',
               ]
        },

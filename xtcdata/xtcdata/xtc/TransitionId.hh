@@ -8,22 +8,23 @@ class TransitionId
 {
 public:
     enum Value {
+        // Must keep in synch with strings in src/TransitionId.cc
+        // There is also math on these transition id numbers
+        // in XtcMonitorServer.cc that assumes they come in pairs.
+        // the ConfigUpdate currently breaks this assumption.
         Unknown,
         Reset,
-        Map,
-        Unmap,
         Configure,
         Unconfigure,
-        BeginRun,
-        EndRun,
-        BeginCalibCycle,
-        EndCalibCycle,
         Enable,
         Disable,
-        L1Accept,
         ConfigUpdate,
         BeginRecord,
         EndRecord,
+        Unused_09,
+        Unused_10,
+        Unused_11,
+        L1Accept = 12,                  // Must be 12
         NumberOf
     };
     static const char* name(TransitionId::Value id);

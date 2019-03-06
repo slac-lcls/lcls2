@@ -40,6 +40,8 @@ namespace Pds {
     public:
       StreamHeader() {}
     public:
+      unsigned num_samples() const { return _word[0]&~(1<<31); }
+      unsigned stream_id  () const { return (_word[1]>>24)&0xff; }
       unsigned samples () const { return _word[0]&0x7fffffff; } // number of samples
       bool     overflow() const { return _word[0]>>31; }        // overflow of memory buffer
       unsigned strmtype() const { return (_word[1]>>24)&0xff; } // type of stream {raw, thr, ...}

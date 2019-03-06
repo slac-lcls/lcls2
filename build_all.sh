@@ -31,6 +31,12 @@ while getopts ":c:p:s:f:da" opt; do
   esac
 done
 
+pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
+# don't build the daq for python2
+if [ $pyver == 2.7 ]; then
+    no_daq=1
+fi
+
 echo "CMAKE_BUILD_TYPE:" $cmake_option
 echo "Python install option:" $pyInstallStyle
 
@@ -59,7 +65,6 @@ function cmake_build() {
     cd ../..
 }
 
-pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 # "python setup.py develop" seems to not create this for you
 # (although "install" does)
 mkdir -p $INSTDIR/lib/python$pyver/site-packages/

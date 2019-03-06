@@ -1,7 +1,7 @@
 #ifndef Pds_Eb_EbLfLink_hh
 #define Pds_Eb_EbLfLink_hh
 
-#include "psdaq/eb/Endpoint.hh"
+#include "Endpoint.hh"
 
 #include <stdint.h>
 #include <cstddef>
@@ -15,7 +15,7 @@ namespace Pds {
     {
     public:
       EbLfLink(Fabrics::Endpoint*, unsigned verbose, uint64_t& pending);
-      EbLfLink(Fabrics::Endpoint*, int rxDepth, unsigned verbose, uint64_t& unused);
+      EbLfLink(Fabrics::Endpoint*, int rxDepth, unsigned verbose, uint64_t& pending);
       ~EbLfLink();
     public:
       int       preparePender(unsigned id);
@@ -23,7 +23,9 @@ namespace Pds {
                               size_t*  size);
       int       preparePoster(unsigned id);
       int       preparePoster(unsigned id,
-                              size_t   size);
+                              void*    region,
+                              size_t   lclSize,
+                              size_t   rmtSize);
       int       preparePoster(unsigned id,
                               void*    region,
                               size_t   size);
@@ -47,25 +49,21 @@ namespace Pds {
                      size_t      len,
                      uint64_t    immData);
     public:
-      const uint64_t& beforePostCnt() const;
-      const uint64_t& afterPostCnt()  const;
-    public:
       Fabrics::Endpoint* endpoint() const { return _ep;  }
       unsigned           id()       const { return _id;  }
     private:
-      int       _postCompRecv(unsigned count, void* ctx = NULL);
-      int       _tryCq(fi_cq_data_entry*);
-    private:
+      int      _postCompRecv(unsigned count, void* ctx = NULL);
+      int      _tryCq(fi_cq_data_entry*);
+    private:                            // Arranged in order of access frequency
       Fabrics::Endpoint*      _ep;      // Endpoint
       Fabrics::MemoryRegion*  _mr;      // Memory Region
       Fabrics::RemoteAddress  _ra;      // Remote address descriptor
       int                     _rxDepth; // Depth  of the Rx Completion Queue
       int                     _rOuts;   // Number of completion buffers remaining
+      uint64_t&               _pending; // Bit list of IDs currently posting
       unsigned                _id;      // ID     of peer on the remote side
-      char*                   _region;  // Used when App doesn't provide an MR
       unsigned                _verbose; // Print some stuff if set
-    private:
-      uint64_t&               _pending;
+      char*                   _region;  // Used when App doesn't provide an MR
     };
   };
 };

@@ -13,6 +13,8 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
+static const unsigned CLS = 64;         // Cache Line Size
+
 
 EventBuilder::EventBuilder(unsigned epochs,
                            unsigned entries,
@@ -21,17 +23,17 @@ EventBuilder::EventBuilder(unsigned epochs,
                            unsigned verbose) :
   Timer(),
   _mask(PulseId(~(duration - 1), 0).value()),
-  _epochFreelist(sizeof(EbEpoch), epochs),
+  _epochFreelist(sizeof(EbEpoch), epochs, CLS),
   _epochLut(epochs),
-  _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries),
+  _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
-  _timerTask(new Task(TaskObject("tEB_Timeout"))),
+  _verbose(verbose),
   _duration(100),                       // Timeout rate in ms
-  _verbose(verbose)
+  _timerTask(new Task(TaskObject("tEB_Timeout")))
 {
   if (duration & (duration - 1))
   {
-    fprintf(stderr, "%s: Epoch duration (%016lx) must be a power of 2\n",
+    fprintf(stderr, "%s:\n  Epoch duration (%016lx) must be a power of 2\n",
             __func__, duration);
     abort();
   }
@@ -39,13 +41,13 @@ EventBuilder::EventBuilder(unsigned epochs,
   //          accomodate transitions, especially in the MEB case
   //if (epochs & (epochs - 1))
   //{
-  //  fprintf(stderr, "%s: Number of epochs (%08x) must be a power of 2\n",
+  //  fprintf(stderr, "%s:\n  Number of epochs (%08x) must be a power of 2\n",
   //          __func__, epochs);
   //  abort();
   //}
   //if (entries & (entries - 1))
   //{
-  //  fprintf(stderr, "%s: Number of entries per epoch (%08x) must be a power of 2\n",
+  //  fprintf(stderr, "%s:\n  Number of entries per epoch (%08x) must be a power of 2\n",
   //          __func__, entries);
   //  abort();
   //}
@@ -54,6 +56,42 @@ EventBuilder::EventBuilder(unsigned epochs,
 EventBuilder::~EventBuilder()
 {
   _timerTask->destroy();
+}
+
+void EventBuilder::clear()
+{
+  const EbEpoch* const lastEpoch = _pending.empty();
+  EbEpoch*             epoch     = _pending.forward();
+
+  do
+  {
+    const EbEvent* const lastEvent = epoch->pending.empty();
+    EbEvent*             event     = epoch->pending.forward();
+
+    while (event != lastEvent)
+    {
+      EbEvent* next = event->forward();
+
+      event->disconnect();
+
+      _eventLut[_evIndex(event->sequence())] = nullptr;
+
+      delete event;
+
+      event = next;
+    }
+  }
+  while (epoch = epoch->forward(), epoch != lastEpoch);
+
+  _flushBefore(_pending.reverse());
+
+  _eventFreelist.clearCounters();
+  _epochFreelist.clearCounters();
+
+  for (auto it = _epochLut.begin(); it != _epochLut.end(); ++it)
+    *it = nullptr;
+  for (auto it = _eventLut.begin(); it != _eventLut.end(); ++it)
+    *it = nullptr;
 }
 
 unsigned EventBuilder::_epIndex(uint64_t key) const
@@ -74,7 +112,7 @@ EbEpoch* EventBuilder::_discard(EbEpoch* epoch)
 
   const uint64_t key   = epoch->key;
   EbEpoch*&      entry = _epochLut[_epIndex(key)];
-  if (entry && (entry->key == key))  entry = nullptr;
+  if (entry == epoch)  entry = nullptr;
 
   delete epoch;
 
@@ -152,9 +190,10 @@ EbEvent* EventBuilder::_event(const Dgram* ctrb,
                                             after,
                                             ctrb,
                                             prm);
-    unsigned  index = _evIndex(ctrb->seq.pulseId().value());
-    EbEvent*& entry = _eventLut[index];
-    if (!entry)  entry = event;
+    unsigned  index  = _evIndex(ctrb->seq.pulseId().value());
+    _eventLut[index] = event;
+    //EbEvent*& entry = _eventLut[index];
+    //if (!entry)  entry = event;
     //else { printf("Event list entry %p is already allocated with key %014lx\n", entry, entry->sequence());
     //  printf("New event %p pid %014lx, index %d, mask %08lx, shift %zd\n",
     //         event, event->sequence(), index, _mask, _eventLut.size());
@@ -228,7 +267,7 @@ void EventBuilder::_retire(EbEvent* event)
 
   const uint64_t key   = event->sequence();
   EbEvent*&      entry = _eventLut[_evIndex(key)];
-  if (entry && (entry->sequence() == key))  entry = nullptr;
+  if (entry == event)  entry = nullptr;
 
   delete event;
 }

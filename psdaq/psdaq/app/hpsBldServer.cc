@@ -109,7 +109,7 @@ void* countThread(void* args)
       tbytes *= 1.e-3;
     }
     
-    printf("Packets %7.2f %cHz:  Size %7.2f %cBps (%7.2f %cB/evt): Events %7.2f %cHz:  valid %02x\n", 
+    printf("Packets %7.2f %cHz:  Size %7.2f %cBps (%7.2f %cB/pkt): Events %7.2f %cHz:  valid %02x\n", 
            rate  , scchar[rsc ],
            dbytes, scchar[dbsc], 
            tbytes, scchar[tbsc], 
@@ -209,7 +209,8 @@ int main(int argc, char* argv[])
 
   printf("WordCount : %u words\n",cntl->wordsLeft());
     
-  cntl->enable(haddr);
+  //  cntl->enable(haddr);
+  cntl->enable(fd, haddr);
 
   int fd_mc;
   {
@@ -247,7 +248,7 @@ int main(int argc, char* argv[])
   }
 
   //  Program the crossbar to pull timing off the backplane
-  cntl->_timing.xbar.setOut( Pds::Cphw::XBar::FPGA, Pds::Cphw::XBar::BP );
+  //  cntl->_timing.xbar.setOut( Pds::Cphw::XBar::FPGA, Pds::Cphw::XBar::BP );
 
   const unsigned buffsize=Pds::Bld::Header::MTU;
   char* buff = new char[buffsize];

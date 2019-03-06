@@ -4,13 +4,14 @@
 #include <string>
 #include <vector>
 
-namespace Pds_Epics { class EpicsCA; };
+namespace Pds_Epics { class EpicsPVA; };
 
 namespace Pds {
   class Task;
   namespace HSD {
 
     class Module;
+    class StatePV;
 
     enum Action { Configure, Unconfigure, EnableTr, DisableTr, Reset };
 
@@ -34,7 +35,10 @@ namespace Pds {
     public:
       static void interleave(bool);
     private:
-      std::vector<Pds_Epics::EpicsCA*> _pv;
+      void _setState(Action);
+    private:
+      std::vector<Pds_Epics::EpicsPVA*> _pv;
+      StatePV* _state_pv;
       Module& _m;
       Pds::Task& _task;
     };

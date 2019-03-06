@@ -18,12 +18,12 @@ namespace Pds {
     public:
       StatsMonitor(const char*        hostname,
                    unsigned           basePort,
-                   unsigned           platform,
-                   const std::string& partition,
+                   unsigned           partition,
                    unsigned           period,
                    unsigned           verbose);
-      ~StatsMonitor();
     public:
+      void enable()   { _enabled = true;  }
+      void disable()  { _enabled = false; }
       void shutdown();
       void registerIt(const std::string& name,
                       const uint64_t&    scalar,
@@ -37,11 +37,12 @@ namespace Pds {
       std::vector<Mode>        _modes;
     private:
       char                     _addr[128];
-      const std::string        _partition;
+      const unsigned           _partition;
       const unsigned           _period;
       const unsigned           _verbose;
+      std::atomic<bool>        _enabled;
       std::atomic<bool>        _running;
-      std::thread*             _task;
+      std::thread              _task;
     };
   };
 };

@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <signal.h>
 
+#include <cpsw_error.h>
+
 #include "psdaq/cphw/Reg.hh"
 
 #include "psdaq/xpm/Module.hh"
@@ -17,8 +19,7 @@
 #include "psdaq/xpm/PVPCtrls.hh"
 #include "psdaq/xpm/XpmSequenceEngine.hh"
 
-#include "psdaq/epicstools/EpicsCA.hh"
-#include "psdaq/epicstools/PVWriter.hh"
+#include "psdaq/epicstools/EpicsPVA.hh"
 #include "psdaq/epicstools/PVMonitorCb.hh"
 
 #include "psdaq/service/Routine.hh"
@@ -28,8 +29,7 @@
 
 #include <cpsw_error.h>  // To catch a CPSW exception and continue
 
-using Pds_Epics::EpicsCA;
-using Pds_Epics::PVWriter;
+using Pds_Epics::EpicsPVA;
 using Pds_Epics::PVMonitorCb;
 using Pds::Xpm::CoreCounts;
 using Pds::Xpm::L0Stats;
@@ -77,9 +77,10 @@ namespace Pds {
       string     _module_prefix;
       string     _partition_prefix;
       unsigned   _shelf;
-      EpicsCA*   _partPV;
-      PVWriter*    _paddrPV;
-      PVWriter*    _fwBuildPV;
+      EpicsPVA*   _partPV;
+      EpicsPVA*    _paddrPV;
+      EpicsPVA*    _fwBuildPV;
+      EpicsPVA*    _mmcmPV[3];
       timespec   _t;
       CoreCounts _c;
       LinkStatus _links[32];
@@ -142,16 +143,19 @@ void StatsTimer::_allocate()
 
   { std::stringstream ostr;
     ostr << _module_prefix << ":PAddr";
-    _paddrPV = new PVWriter(ostr.str().c_str()); }
+    _paddrPV = new EpicsPVA(ostr.str().c_str()); }
 
-#if 1
   { std::stringstream ostr;
     ostr << _module_prefix << ":FwBuild";
     printf("fwbuildpv: %s\n", ostr.str().c_str());
-    _fwBuildPV = new PVWriter(ostr.str().c_str(),256);  }
-#endif
+    _fwBuildPV = new EpicsPVA(ostr.str().c_str(),256);  }
 
-  ca_pend_io(0);
+  for(unsigned i=0; i<3; i++) {
+    std::stringstream ostr;
+    ostr << _module_prefix << ":XTPG:MMCM" << i;
+    printf("mmcmpv[%d]: %s\n", i, ostr.str().c_str());
+    _mmcmPV[i] = new EpicsPVA(ostr.str().c_str());  
+  }
 }
 
 void StatsTimer::start()
@@ -181,13 +185,16 @@ void StatsTimer::expired()
     CoreCounts c = _dev.counts();
     LinkStatus links[32];
     _dev.linkStatus(links);
+    PllStats   pll[2];
+    for(unsigned i=0; i<Module::NAmcs; i++)
+      pll[i] = _dev.pllStat(i);
     unsigned bpClk  = _dev._monClk[0]&0x1fffffff;
     unsigned fbClk  = _dev._monClk[1]&0x1fffffff;
     unsigned recClk = _dev._monClk[2]&0x1fffffff;
     double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
     _sem.take();
     try {
-      _pvs.update(c,_c,links,_links,recClk,fbClk,bpClk,dt);
+      _pvs.update(c,_c,links,_links,pll,recClk,fbClk,bpClk,dt);
     } catch (CPSWError& e) {
       printf("Caught exception %s\n", e.what());
     }
@@ -208,29 +215,36 @@ void StatsTimer::expired()
         _sem.give();
       }
     }
+  } catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); }
+
     _pvc.dump();
 
     if (_paddrPV->connected()) {
-      *reinterpret_cast<unsigned*>(_paddrPV->data()) = _dev._paddr; 
-      _paddrPV->put();
+    _paddrPV->putFrom<unsigned>(_dev._paddr);
     }
     else
       printf("paddrpv not connected\n");
 
-#if 1
     if (_fwBuildPV && _fwBuildPV->connected()) {
       std::string bld = _dev._version.buildStamp();
-      strncpy(reinterpret_cast<char*>(_fwBuildPV->data()), bld.c_str(), 256);
       printf("fwBuild: %s\n",bld.c_str());
-      _fwBuildPV->put();
+      _fwBuildPV->putFrom<std::string>(bld.c_str());
       _fwBuildPV = 0;
     }
-#endif
 
-    ca_flush_io();
-  } catch(CPSWError& e) {
-    printf("Caught exception %s\n", e.what());
-  }
+    for(unsigned i=0; i<3; i++) 
+      if (_mmcmPV[i] && _mmcmPV[i]->connected()) {
+        unsigned n = _dev._mmcm[i].delaySet&0x7ff;
+        pvd::shared_vector<int> vec(n+2);
+        vec[0] = n;
+        for(unsigned j=0; j<=n; j++) {
+          _dev._mmcm[i].ramAddr = j;
+          vec[j+1] = _dev._mmcm[i].ramData;
+        }
+        printf("mmcm%d: %u\n",i,n);
+        _mmcmPV[i]->putFromVector<int>(freeze(vec));
+        _mmcmPV[i] = 0;
+      }
 }
 
 
@@ -293,37 +307,6 @@ int main(int argc, char** argv)
 
   Module* m = Module::locate();
   m->init();
-
-#if 0
-  //
-  // Program sequencer
-  //
-  XpmSequenceEngine& engine = m->sequenceEngine();
-  engine.verbosity(2);
-  // Setup a 22 pulse sequence to repeat 40000 times each second
-  const unsigned NP = 22;
-  std::vector<TPGen::Instruction*> seq;
-  seq.push_back(new TPGen::FixedRateSync(6,1));  // sync start to 1Hz
-  for(unsigned i=0; i<NP; i++) {
-    unsigned bits=0;
-    for(unsigned j=0; j<16; j++)
-      if ((i*(j+1))%NP < (j+1))
-        bits |= (1<<j);
-    seq.push_back(new TPGen::ExptRequest(bits));
-    seq.push_back(new TPGen::FixedRateSync(0,1)); // next pulse
-  }
-  seq.push_back(new TPGen::Branch(1, TPGen::ctrA,199));
-  //  seq.push_back(new TPGen::Branch(1, TPGen::ctrB, 99));
-  seq.push_back(new TPGen::Branch(1, TPGen::ctrB,199));
-  seq.push_back(new TPGen::Branch(0));
-  int rval = engine.insertSequence(seq);
-  if (rval < 0)
-    printf("Insert sequence failed [%d]\n", rval);
-  engine.dump  ();
-  engine.enable(true);
-  engine.setAddress(rval,0,0);
-  engine.reset ();
-#endif
 
   StatsTimer* timer = new StatsTimer(*m);
 

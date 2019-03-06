@@ -19,16 +19,10 @@ class Event():
     """
     Event holds list of dgrams
     """
-    def __init__(self, dgrams, size=0):
-        if size:
-            self._dgrams = [0] * size
-            self._offsets = [0] * size
-            self._size = size
-        else:
-            self._dgrams = dgrams
-            self._offsets = [_d._offset for _d in self._dgrams]
-            self._size = len(dgrams)
-            self._complete()
+    def __init__(self, dgrams):
+        self._dgrams = dgrams
+        self._size = len(dgrams)
+        self._complete()
         self._position = 0
 
     def __iter__(self):
@@ -41,9 +35,9 @@ class Event():
     def next(self):
         if self._position >= len(self._dgrams):
             raise StopIteration
-        event = self._dgrams[self._position]
+        d = self._dgrams[self._position]
         self._position += 1
-        return event
+        return d
 
     def _replace(self, pos, d):
         assert pos < self._size
@@ -89,30 +83,41 @@ class Event():
         _low = self._dgrams[0].seq.timestamp() & 0xffffffff
         return _low
 
+    @property
+    def _timestamp(self):
+        return self._dgrams[0].seq.timestamp()
+
     def _run(self):
         return 0 # for psana1-cctbx compatibility
 
-    def _assign_det_dgrams(self):
+    def _assign_det_segments(self):
         """
         """
 
-        self._det_dgrams = {}
+        self._det_segments = {}
         for evt_dgram in self._dgrams:
             # detector name (e.g. "xppcspad")
-            for det_name, det in evt_dgram.__dict__.items():
+            for det_name, segment_dict in evt_dgram.__dict__.items():
 
                 # drp class name (e.g. "raw", "fex")
-                for drp_class_name, dgram in det.__dict__.items():
-                    class_identifier = (det_name,drp_class_name)
+                for segment, det in segment_dict.items():
+                    for drp_class_name, drp_class in det.__dict__.items():
+                        class_identifier = (det_name,drp_class_name)
                     
-                    if class_identifier not in self._det_dgrams.keys():
-                        self._det_dgrams[class_identifier] = [dgram]
-                    else:
-                        self._det_dgrams[class_identifier].append(dgram)
+                        if class_identifier not in self._det_segments.keys():
+                            self._det_segments[class_identifier] = {}
+                        segs = self._det_segments[class_identifier]
+                        # comment out for performance, but maybe doesn't matter
+                        #assert segment not in segs, 'Found duplicate segment: '+str(segment)
+                        segs[segment] = drp_class
 
         return
 
     # this routine is called when all the dgrams have been inserted into
     # the event (e.g. by the eventbuilder calling _replace())
     def _complete(self):
-        self._assign_det_dgrams()
+        self._assign_det_segments()
+
+    @property
+    def _has_offset(self):
+        return hasattr(self._dgrams[0], "info")

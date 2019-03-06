@@ -27,6 +27,11 @@ struct Parameters
     int partition;
     std::string collect_host;
     std::string output_dir;
+    std::string detectorType;
+    std::string device;
+    int numWorkers;
+    int numEntries;
+    int laneMask;
     Pds::Eb::TebCtrbParams tPrms;
     Pds::Eb::MebCtrbParams mPrms;
 };
@@ -55,7 +60,7 @@ using PebbleQueue = SPSCQueue<Pebble*>;
 
 struct MemPool
 {
-    MemPool(int num_workers, int num_entries);
+    MemPool(const Parameters& para);
     void** dmaBuffers;
     std::vector<PGPData> pgp_data;
     PebbleQueue pebble_queue;
@@ -65,7 +70,7 @@ struct MemPool
     int num_entries;
     // File descriptor for pgp card
     int fd;
-private:
+// private: FIXME
     std::vector<Pebble> pebble;
 
 };
@@ -84,7 +89,7 @@ namespace Pds {
 };
 
 void pin_thread(const pthread_t& th, int cpu);
-void monitor_func(std::atomic<Counters*>& p, MemPool& pool, Pds::Eb::TebContributor&);
-
+void monitor_func(const Parameters& para, std::atomic<Counters*>& p,
+                  MemPool& pool, Pds::Eb::TebContributor& ebCtrb);
 
 #endif // DRP_H
