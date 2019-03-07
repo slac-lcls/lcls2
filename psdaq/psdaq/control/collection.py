@@ -18,20 +18,14 @@ class DaqControl:
     transitionId = {
         'Unknown'           : 0,
         'Reset'             : 1,
-#       'Map'               : 2,
-#       'Unmap'             : 3,
-        'Configure'         : 4,
-        'Unconfigure'       : 5,
-        'BeginRun'          : 6,
-        'EndRun'            : 7,
-#       'BeginCalibycle'    : 8,
-#       'EndCalibCycle'     : 9,
-        'Enable'            : 10,
-        'Disable'           : 11,
+        'Configure'         : 2,
+        'Unconfigure'       : 3,
+        'Enable'            : 4,
+        'Disable'           : 5,
+        'ConfigUpdate'      : 6,
+        'BeginRecord'       : 7,
+        'EndRecord'         : 8,
         'L1Accept'          : 12,
-        'ConfigUpdate'      : 13,
-        'BeginRecord'       : 14,
-        'EndRecord'         : 15
     }
 
     transitions = ['plat', 'alloc', 'dealloc',
