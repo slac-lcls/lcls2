@@ -36,6 +36,7 @@ for run in ds.runs():
     for evt in run.events():
         padarray = vals.padarray
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
+        epics = run.epicsStore(evt) # testing epicsStore
 
     #endRunCode
 #endJobCode

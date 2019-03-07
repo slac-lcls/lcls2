@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
   int parseErr = 0;
   size_t n_events = 0;
 
-  while ((c = getopt(argc, argv, "htn:f:")) != -1) {
+  while ((c = getopt(argc, argv, "ht:n:f:")) != -1) {
     switch (c) {
       case 'h':
         usage(argv[0]);
