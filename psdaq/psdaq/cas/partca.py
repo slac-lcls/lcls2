@@ -9,6 +9,7 @@ class Ui_MainWindow(object):
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
+        self._pvlabels = []
 
         pvbase = base+':'
 
@@ -76,15 +77,15 @@ class Ui_MainWindow(object):
         b=PvPushButton(pvbase+'ResetL0', "Clear")
         b.setMaximumWidth(45)
         lor.addWidget(b)
-        PvLabel(lor, pvbase, "L0InpRate", scale=1.0  )
-        PvLabel(lor, pvbase, "L0AccRate", scale=1.0  )
-        PvLabel(lor, pvbase, "L1Rate"     )
-        PvLabel(lor, pvbase, "RunTime"    )
-        PvLabel(lor, pvbase, "NumL0Inp"   )
-        PvLabel(lor, pvbase, "NumL0Acc", None, True)
-        PvLabel(lor, pvbase, "NumL1"      )
-        PvLabel(lor, pvbase, "DeadFrac", scale=1.0   )
-        PvLabel(lor, pvbase, "DeadTime", scale=1.0   )
+        PvLabel(self, lor, pvbase, "L0InpRate", scale=1.0  )
+        PvLabel(self, lor, pvbase, "L0AccRate", scale=1.0  )
+        PvLabel(self, lor, pvbase, "L1Rate"     )
+        PvLabel(self, lor, pvbase, "RunTime"    )
+        PvLabel(self, lor, pvbase, "NumL0Inp"   )
+        PvLabel(self, lor, pvbase, "NumL0Acc", None, True)
+        PvLabel(self, lor, pvbase, "NumL1"      )
+        PvLabel(self, lor, pvbase, "DeadFrac", scale=1.0   )
+        PvLabel(self, lor, pvbase, "DeadTime", scale=1.0   )
 
         ltable = QtWidgets.QWidget()
         ltable.setLayout(lol)

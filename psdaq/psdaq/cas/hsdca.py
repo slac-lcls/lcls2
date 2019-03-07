@@ -39,12 +39,13 @@ class PvArray(object):
 
     def setPv(self):
         try:
-            value = numpy.arange(len(self.pv.__value__))
+            v = []
             for i in range(len(self._display)):
-                value[i] = int(self._display[i].text())
-            self.pv.put(value)
+                v.append(int(self._display[i].text()))
+                print('PvArray put',v)
+            self.pv.put(v)
         except:
-            pass
+            logger.error('PvArray setPv %',self.pv.name)
 
     def update(self,err):
         if err is None:
@@ -75,6 +76,8 @@ class HsdConfig(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
         super(HsdConfig, self).__init__()
+        self._rows = []
+        self._pvlabels = []
 
         lo = QtWidgets.QVBoxLayout()
         glo = QtWidgets.QGridLayout()
@@ -97,7 +100,7 @@ class HsdConfig(QtWidgets.QWidget):
                    ('Fex Xpre'       ,'FEX_XPRE'),
                    ('Fex Xpost'      ,'FEX_XPOST')]
         for i,elem in enumerate(pvtable):
-            PvRow( glo, i+1, pvbase+':'+elem[1], elem[0], MaxLen=NChannels )
+            self._rows.append(PvRow( glo, i+1, pvbase+':'+elem[1], elem[0], MaxLen=NChannels ))
         lo.addLayout(glo)
 
         pvtable = [('Test Pattern (None=-1)','TESTPATTERN')]
@@ -109,7 +112,7 @@ class HsdConfig(QtWidgets.QWidget):
             lo.addLayout(hlo)
 
         lo.addWidget(PvPushButton ( pvbase+':BASE:APPLYCONFIG', 'Apply'))
-        PvLabel      (lo, pvbase+':BASE:', 'READY'      , isInt=False)
+        PvLabel      (self, lo, pvbase+':BASE:', 'READY'      , isInt=False)
 #        lo.addWidget(PvPushButton( pvbase+':BASE:UNDOCONFIG' , 'Unconfigure'))
 #        lo.addWidget(PvPushButton( pvbase+':BASE:ENABLETR'   , 'Enable'))
 #        lo.addWidget(PvPushButton( pvbase+':BASE:DISABLETR'  , 'Disable'))
@@ -122,21 +125,22 @@ class HsdStatus(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
         super(HsdStatus, self).__init__()
+        self._pvlabels = []
 
         prefix = pvbase+':'
 
         lo = QtWidgets.QVBoxLayout()
 
-        PvLabel( lo, prefix, 'TIMFRAMECNT' )
-        PvLabel( lo, prefix, 'TIMPAUSECNT' )
-        PvLabel( lo, prefix, 'TRIGCNT' )
-        PvLabel( lo, prefix, 'TRIGCNTSUM' )
-#        PvLabel( lo, prefix, 'READCNTSUM' )
-#        PvLabel( lo, prefix, 'STARTCNTSUM' )
-        PvLabel( lo, prefix, 'MSGDELAYSET' )
-        PvLabel( lo, prefix, 'MSGDELAYGET' )
-        PvLabel( lo, prefix, 'HEADERCNTL0' )
-        PvLabel( lo, prefix, 'HEADERCNTOF' )
+        PvLabel( self, lo, prefix, 'TIMFRAMECNT' )
+        PvLabel( self, lo, prefix, 'TIMPAUSECNT' )
+        PvLabel( self, lo, prefix, 'TRIGCNT' )
+        PvLabel( self, lo, prefix, 'TRIGCNTSUM' )
+#        PvLabel( self, lo, prefix, 'READCNTSUM' )
+#        PvLabel( self, lo, prefix, 'STARTCNTSUM' )
+        PvLabel( self, lo, prefix, 'MSGDELAYSET' )
+        PvLabel( self, lo, prefix, 'MSGDELAYGET' )
+        PvLabel( self, lo, prefix, 'HEADERCNTL0' )
+        PvLabel( self, lo, prefix, 'HEADERCNTOF' )
 
         self._rows = []
 
@@ -194,6 +198,7 @@ class HsdDetail(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
         super(HsdDetail, self).__init__()
+        self._pvlabels = []
 
         prefix = pvbase+':'
 
@@ -214,8 +219,8 @@ class HsdDetail(QtWidgets.QWidget):
         lo.addLayout(glo)
         lo.addStretch(1)
 
-        PvLabel( lo, prefix, 'SYNCE' )
-        PvLabel( lo, prefix, 'SYNCO' )
+        PvLabel( self, lo, prefix, 'SYNCE' )
+        PvLabel( self, lo, prefix, 'SYNCO' )
         lo.addStretch(1)
 
         self.setLayout(lo)
@@ -224,6 +229,7 @@ class HsdExpert(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
         super(HsdExpert, self).__init__()
+        self._pvlabels = []
 
         prefix = pvbase+':'
 
@@ -247,16 +253,16 @@ class HsdExpert(QtWidgets.QWidget):
             hlo.addStretch(1)
             lo.addLayout(hlo)
 
-        PvLabel( lo, prefix, 'LOCAL12V'  , scale=1 )
-        PvLabel( lo, prefix, 'EDGE12V'   , scale=1 )
-        PvLabel( lo, prefix, 'AUX12V'    , scale=1 )
-        PvLabel( lo, prefix, 'FMC12V'    , scale=1 )
-        PvLabel( lo, prefix, 'BOARDTEMP' , scale=1 )
-        PvLabel( lo, prefix, 'LOCAL3_3V' , scale=1 )
-        PvLabel( lo, prefix, 'LOCAL2_5V' , scale=1 )
-        PvLabel( lo, prefix, 'LOCAL1_8V' , scale=1 )
-        PvLabel( lo, prefix, 'TOTALPOWER', scale=1 )
-        PvLabel( lo, prefix, 'FMCPOWER'  , scale=1 )
+        PvLabel( self, lo, prefix, 'LOCAL12V'  , scale=1 )
+        PvLabel( self, lo, prefix, 'EDGE12V'   , scale=1 )
+        PvLabel( self, lo, prefix, 'AUX12V'    , scale=1 )
+        PvLabel( self, lo, prefix, 'FMC12V'    , scale=1 )
+        PvLabel( self, lo, prefix, 'BOARDTEMP' , scale=1 )
+        PvLabel( self, lo, prefix, 'LOCAL3_3V' , scale=1 )
+        PvLabel( self, lo, prefix, 'LOCAL2_5V' , scale=1 )
+        PvLabel( self, lo, prefix, 'LOCAL1_8V' , scale=1 )
+        PvLabel( self, lo, prefix, 'TOTALPOWER', scale=1 )
+        PvLabel( self, lo, prefix, 'FMCPOWER'  , scale=1 )
 
         lo.addStretch(1)
 

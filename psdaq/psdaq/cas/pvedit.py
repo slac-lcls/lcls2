@@ -106,7 +106,7 @@ class PvDisplay(QtWidgets.QLabel):
         self.setText(value)
 
 class PvLabel(QtWidgets.QWidget):
-    def __init__(self, parent, pvbase, name, dName=None, isInt=False, scale=None, units=None):
+    def __init__(self, owner, parent, pvbase, name, dName=None, isInt=False, scale=None, units=None):
         super(PvLabel,self).__init__()
         layout = QtWidgets.QHBoxLayout()
         layout.setContentsMargins(0,0,0,0)
@@ -132,6 +132,8 @@ class PvLabel(QtWidgets.QWidget):
         self.scale = scale
         self.units = units
         initPvMon(self,pvname)
+
+        owner._pvlabels.append(self)
 
     def update(self, err):
         q = self.pv.__value__
@@ -677,30 +679,29 @@ class PvEditTS(PvEditCmb):
     def __init__(self, pvname, idx):
         super(PvEditTS, self).__init__(pvname, ['%u'%i for i in range(16)])
 
-class PvInput:
-    def __init__(self, widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True):
-        pvname = pvbase+name
-        print(pvname)
+def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True):
+    pvname = pvbase+name
+    print(pvname)
 
-        if horiz:
-            layout = QtWidgets.QHBoxLayout()
-        else:
-            layout = QtWidgets.QVBoxLayout()
-        label  = QtWidgets.QLabel(name)
-        label.setMinimumWidth(100)
-        layout.addWidget(label)
-        #layout.addStretch
-        if count == 1:
-            w = widget(pvname, '')
+    if horiz:
+        layout = QtWidgets.QHBoxLayout()
+    else:
+        layout = QtWidgets.QVBoxLayout()
+    label  = QtWidgets.QLabel(name)
+    label.setMinimumWidth(100)
+    layout.addWidget(label)
+    #layout.addStretch
+    if count == 1:
+        w = widget(pvname, '')
+        w.setEnabled(enable)
+        layout.addWidget(w)
+    else:
+        for i in range(count):
+            w = widget(pvname+'%d'%(i+start), QString(i+istart))
             w.setEnabled(enable)
             layout.addWidget(w)
-        else:
-            for i in range(count):
-                w = widget(pvname+'%d'%(i+start), QString(i+istart))
-                w.setEnabled(enable)
-                layout.addWidget(w)
-        #layout.addStretch
-        parent.addLayout(layout)
+    #layout.addStretch
+    parent.addLayout(layout)
 
 def LblPushButton(parent, pvbase, name, count=1):
     return PvInput(PvPushButton, parent, pvbase, name, count)

@@ -119,17 +119,6 @@ class PvGroupStats(QtWidgets.QWidget):
             time.sleep(0.1)
             self.pvL0Disable.put(0)
 
-#        PvLabel(lor, pvbase, "L0InpRate", scale=1.0  )
-#        PvLabel(lor, pvbase, "L0AccRate", scale=1.0  )
-#        PvLabel(lor, pvbase, "L1Rate"     )
-#        PvLabel(lor, pvbase, "RunTime"    )
-#        PvLabel(lor, pvbase, "NumL0Inp"   )
-#        PvLabel(lor, pvbase, "NumL0Acc", None, True)
-#        PvLabel(lor, pvbase, "NumL1"      )
-#        PvLabel(lor, pvbase, "DeadFrac", scale=1.0   )
-#        PvLabel(lor, pvbase, "DeadTime", scale=1.0   )
-
-
 def addGroup(tw, base, group, xpm):
     pvbase = base+group+':'
     wlo    = QtWidgets.QVBoxLayout()

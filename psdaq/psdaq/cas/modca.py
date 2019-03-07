@@ -255,20 +255,20 @@ def DeadTime(pvbase,parent):
     deadbox.setLayout(deadgrid)
     return deadbox
 
-def addTiming(pvbase):
+def addTiming(self,pvbase):
     lor = QtWidgets.QVBoxLayout()
-    PvLabel(lor, pvbase, "RxClks"     )
-    PvLabel(lor, pvbase, "TxClks"     )
-    PvLabel(lor, pvbase, "RxRsts"     )
-    PvLabel(lor, pvbase, "CrcErrs"    )
-    PvLabel(lor, pvbase, "RxDecErrs"  )
-    PvLabel(lor, pvbase, "RxDspErrs"  )
-    PvLabel(lor, pvbase, "BypassRsts" )
-    PvLabel(lor, pvbase, "BypassDones")
-    PvLabel(lor, pvbase, "RxLinkUp"   )
-    PvLabel(lor, pvbase, "FIDs"       )
-    PvLabel(lor, pvbase, "SOFs"       )
-    PvLabel(lor, pvbase, "EOFs"       )
+    PvLabel(self,lor, pvbase, "RxClks"     )
+    PvLabel(self,lor, pvbase, "TxClks"     )
+    PvLabel(self,lor, pvbase, "RxRsts"     )
+    PvLabel(self,lor, pvbase, "CrcErrs"    )
+    PvLabel(self,lor, pvbase, "RxDecErrs"  )
+    PvLabel(self,lor, pvbase, "RxDspErrs"  )
+    PvLabel(self,lor, pvbase, "BypassRsts" )
+    PvLabel(self,lor, pvbase, "BypassDones")
+    PvLabel(self,lor, pvbase, "RxLinkUp"   )
+    PvLabel(self,lor, pvbase, "FIDs"       )
+    PvLabel(self,lor, pvbase, "SOFs"       )
+    PvLabel(self,lor, pvbase, "EOFs"       )
     lor.addStretch()
     w = QtWidgets.QWidget()
     w.setLayout(lor)
@@ -297,14 +297,14 @@ class PvMmcm(QtWidgets.QWidget):
         layout.addWidget( canvas )
         self.setLayout(layout)
 
-def addCuTab(pvbase):
+def addCuTab(self,pvbase):
     lor = QtWidgets.QVBoxLayout()
-    lor.addWidget( addTiming(pvbase+'Cu:') )
+    lor.addWidget( addTiming(self,pvbase+'Cu:') )
 
-    PvLabel(lor, pvbase+'XTPG:', 'cuBeamCode')
-    PvLabel(lor, pvbase+'XTPG:', 'cuDelay')
-    PvLabel(lor, pvbase+'XTPG:', 'PulseId')
-    PvLabel(lor, pvbase+'XTPG:', 'TimeStamp')
+    PvLabel(self,lor, pvbase+'XTPG:', 'cuBeamCode')
+    PvLabel(self,lor, pvbase+'XTPG:', 'cuDelay')
+    PvLabel(self,lor, pvbase+'XTPG:', 'PulseId')
+    PvLabel(self,lor, pvbase+'XTPG:', 'TimeStamp')
 
     for i in range(3):
         lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM%d'%i , 'mmcm%d'%i) )
@@ -319,6 +319,7 @@ class Ui_MainWindow(object):
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
+        self._pvlabels = []
 
         pvbase = title + ':'
         lol = QtWidgets.QVBoxLayout()
@@ -339,16 +340,16 @@ class Ui_MainWindow(object):
 #            LblEditIntX   (hl, pvbase, "SetVerbose"      )
             LblPushButtonX(hl, pvbase, "Inhibit"         )
             LblPushButtonX(hl, pvbase, "TagStream"       )
-            PvLabel(hl, pvbase, "RecClk"     )
-            PvLabel(hl, pvbase, "FbClk"      )
-            PvLabel(hl, pvbase, "BpClk"      )
+            PvLabel(self, hl, pvbase, "RecClk"     )
+            PvLabel(self, hl, pvbase, "FbClk"      )
+            PvLabel(self, hl, pvbase, "BpClk"      )
             hl.addStretch()
             tb.setLayout(hl)
             tw.addTab(tb,"Global")
 
-            tw.addTab( addTiming(pvbase+'Us:'), "UsTiming")
+            tw.addTab( addTiming(self,pvbase+'Us:'), "UsTiming")
             if getCuMode()==True:
-                tw.addTab( addCuTab (pvbase      ), "CuTiming")
+                tw.addTab( addCuTab (self,pvbase      ), "CuTiming")
 
         tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
         tw.addTab(FrontPanelAMC(pvbase,1),"AMC1")

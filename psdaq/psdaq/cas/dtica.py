@@ -161,6 +161,7 @@ class DtiStatistics(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
         super(DtiStatistics, self).__init__()
+        self._pvlabels = []
 
         lor = QtWidgets.QVBoxLayout()
         if True:
@@ -182,11 +183,11 @@ class DtiStatistics(QtWidgets.QWidget):
                                  ['RxErrs'   ,'Full' ,'MBytes'],
                                  NDsLinks))
 
-        PvLabel(lor, pvbase, "QpllLock"    )
-        PvLabel(lor, pvbase, "MonClkRate", scale=1.e-6, units='MHz' )
-        PvLabel(lor, pvbase, "TimLinkUp"    )
-        PvLabel(lor, pvbase, "TimRefClk" , scale=1.e-6, units='MHz' )
-        PvLabel(lor, pvbase, "TimFrRate" , scale=1.e-3, units='kHz' )
+        PvLabel(self, lor, pvbase, "QpllLock"    )
+        PvLabel(self, lor, pvbase, "MonClkRate", scale=1.e-6, units='MHz' )
+        PvLabel(self, lor, pvbase, "TimLinkUp"    )
+        PvLabel(self, lor, pvbase, "TimRefClk" , scale=1.e-6, units='MHz' )
+        PvLabel(self, lor, pvbase, "TimFrRate" , scale=1.e-3, units='kHz' )
 
         self.setLayout(lor)
 
