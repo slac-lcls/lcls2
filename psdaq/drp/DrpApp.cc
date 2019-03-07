@@ -80,7 +80,7 @@ void DrpApp::handleConnect(const json &msg)
         }
     }
 
-    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_pool, m_meb.get());
+    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_pool, m_context, m_meb.get());
     rc = m_ebRecv->connect(m_para->tPrms);
     if (rc) {
         connected = false;
@@ -106,6 +106,7 @@ void DrpApp::handleConnect(const json &msg)
 
 void DrpApp::handleConfigure(const json &msg)
 {
+    std::cout<<"handle configure DrpApp\n";
     // check for message from timing system
     int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
     json answer;
@@ -117,6 +118,7 @@ void DrpApp::handleConfigure(const json &msg)
     }
     else {
         json body = json({});
+        std::cout<<"inproc didnt get message\n";
         answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
     }
     reply(answer);
@@ -166,9 +168,6 @@ void DrpApp::collector()
 {
     printf("*** myEb %p %zd\n", m_ebContributor->batchRegion(), m_ebContributor->batchRegionSize());
 
-    ZmqSocket inprocSend = ZmqSocket(&m_context, ZMQ_PAIR);
-    inprocSend.connect("inproc://drp");
-
     // start eb receiver thread
     m_ebContributor->startup(*m_ebRecv);
 
@@ -178,39 +177,6 @@ void DrpApp::collector()
         m_pool.collector_queue.pop(worker);
         Pebble* pebble;
         m_pool.worker_output_queues[worker].pop(pebble);
-
-        int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
-        Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
-        XtcData::TransitionId::Value transition_id = event_header->seq.service();
-        switch (transition_id) {
-            case XtcData::TransitionId::Configure:
-                printf("Collector saw Configure transition\n");
-                break;
-            case XtcData::TransitionId::Unconfigure:
-                printf("Collector saw Unconfigure transition\n");
-                break;
-            case XtcData::TransitionId::Enable:
-                printf("Collector saw Enable transition\n");
-                break;
-            case XtcData::TransitionId::Disable:
-                printf("Collector saw Disable transition\n");
-                break;
-            case XtcData::TransitionId::ConfigUpdate:
-                printf("Collector saw ConfigUpdate transition\n");
-                break;
-            case XtcData::TransitionId::BeginRecord:
-                printf("Collector saw BeginRecord transition\n");
-                break;
-            case XtcData::TransitionId::EndRecord:
-                printf("Collector saw EndRecord transition\n");
-                break;
-            default:
-                break;
-        }
-        // pass non L1 accepts to control level
-        if (transition_id != XtcData::TransitionId::L1Accept) {
-            inprocSend.send("{}");
-        }
 
         XtcData::Dgram& dgram = *reinterpret_cast<XtcData::Dgram*>(pebble->fex_data());
         uint64_t val;
@@ -239,19 +205,21 @@ MyDgram::MyDgram(XtcData::Sequence& sequence, uint64_t val, unsigned contributor
 }
 
 
-EbReceiver::EbReceiver(const Parameters& para,
-                       MemPool& pool,
-                       MebContributor* mon) :
+EbReceiver::EbReceiver(const Parameters& para, MemPool& pool,
+                       ZmqContext& context, Pds::Eb::MebContributor* mon) :
   EbCtrbInBase(para.tPrms),
   m_pool(pool),
   m_mon(mon),
-  nreceive(0)
+  nreceive(0),
+  m_indexReturner(m_pool.fd),
+  m_inprocSend(&context, ZMQ_PAIR)
 {
-    char file_name[PATH_MAX];
+    m_inprocSend.connect("inproc://drp");
+
     std::string fileName = {para.output_dir + "/data-" + std::to_string(para.tPrms.id) + ".xtc2"};
     m_xtcFile = fopen(fileName.c_str(), "w");
     if (!m_xtcFile) {
-        printf("Error opening output xtc file.\n");
+        std::cout<<"Error opening output xtc file  "<<fileName<<'\n';
         return;
     }
 }
@@ -267,8 +235,12 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
     XtcData::TransitionId::Value transition_id = event_header->seq.service();
 
+    // pass non L1 accepts to control level
+    if (transition_id != XtcData::TransitionId::L1Accept) {
+        m_inprocSend.send("{}");
+        printf("EbReceiver saw %s transition\n", XtcData::TransitionId::name(transition_id));
+    }
 
-    DmaIndexReturner indexReturner(m_pool.fd);
     if (event_header->seq.pulseId().value() != result->seq.pulseId().value()) {
         std::cout<<"crap timestamps dont match\n";
         std::cout<<"pebble pulseId  "<<event_header->seq.pulseId().value()<<
@@ -278,7 +250,7 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     // write event to file if it passes event builder or is a configure transition
     if (eb_decision == 1 || (transition_id == XtcData::TransitionId::Configure)) {
         XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
-        if (fwrite(dgram, sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload(), 1, _xtcFile) != 1) {
+        if (fwrite(dgram, sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload(), 1, m_xtcFile) != 1) {
             printf("Error writing to output xtc file.\n");
             return;
         }
@@ -301,7 +273,7 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     // return buffer to memory pool
     for (int l=0; l<8; l++) {
         if (pebble->pgp_data->buffer_mask & (1 << l)) {
-            indexReturner.returnIndex(pebble->pgp_data->buffers[l].dmaIndex);
+            m_indexReturner.returnIndex(pebble->pgp_data->buffers[l].dmaIndex);
         }
     }
     pebble->pgp_data->counter = 0;
@@ -327,3 +299,25 @@ void DmaIndexReturner::returnIndex(uint32_t index)
         m_counts = 0;
     }
 }
+
+class BufferedFileWriter
+{
+public:
+    BufferedFileWriter(std::string& fileName) : position(0), m_buffer(BufferSize)
+    {
+        m_fd = open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+        if (m_fd == -1) {
+            std::cout<<"Error creating file "<<fileName<<'\n';
+        }
+    }
+    void writeEvent(void* data, size_t size)
+    {
+
+    }
+private:
+    int m_fd;
+    int position;
+    std::vector<uint8_t> m_buffer;
+    // 4 MB
+    static const int BufferSize = 4194304;
+};

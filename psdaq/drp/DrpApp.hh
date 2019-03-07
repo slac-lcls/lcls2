@@ -8,7 +8,7 @@
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
 
-#pragma pack(push,4)
+#pragma pack(push, 4)
 class MyDgram : public XtcData::Dgram {
 public:
     MyDgram(XtcData::Sequence& sequence, uint64_t val, unsigned contributor_id);
@@ -17,11 +17,26 @@ private:
 };
 #pragma pack(pop)
 
+// return dma indices in batches for performance
+class DmaIndexReturner
+{
+public:
+    DmaIndexReturner(int fd);
+    ~DmaIndexReturner();
+    void returnIndex(uint32_t index);
+private:
+    static const int BatchSize = 500;
+    int m_fd;
+    int m_counts;
+    uint32_t m_indices[BatchSize];
+};
+
 
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
-    EbReceiver(const Parameters& para, MemPool& pool, Pds::Eb::MebContributor* mon);
+    EbReceiver(const Parameters& para, MemPool& pool,
+               ZmqContext& context, Pds::Eb::MebContributor* mon);
     virtual ~EbReceiver() {};
     void process(const XtcData::Dgram* result, const void* input) override;
 private:
@@ -29,6 +44,8 @@ private:
     Pds::Eb::MebContributor* m_mon;
     unsigned nreceive;
     FILE* m_xtcFile;
+    DmaIndexReturner m_indexReturner;
+    ZmqSocket m_inprocSend;
 };
 
 struct Parameters;
@@ -56,18 +73,4 @@ private:
     std::unique_ptr<Pds::Eb::TebContributor> m_ebContributor;
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
-};
-
-// return dma indices in batches for performance
-class DmaIndexReturner
-{
-public:
-    DmaIndexReturner(int fd);
-    ~DmaIndexReturner();
-    void returnIndex(uint32_t index);
-private:
-    static const int BatchSize = 500;
-    int m_fd;
-    int m_counts;
-    uint32_t m_indices[BatchSize];
 };

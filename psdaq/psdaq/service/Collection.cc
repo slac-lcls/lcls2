@@ -128,7 +128,10 @@ std::vector<ZmqMessage> ZmqSocket::recvMultipart()
 
 void ZmqSocket::send(const std::string& msg)
 {
-    zmq_send(socket, msg.c_str(), msg.length(), 0);
+    int ret = zmq_send(socket, msg.c_str(), msg.length(), 0);
+    if (ret == -1) {
+        std::cout<<"Error sending zmq message:  "<<msg<<'\n';
+    }
 }
 
 int ZmqSocket::poll(short events, long timeout)
@@ -159,7 +162,7 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_handleMap["plat"] = std::bind(&CollectionApp::handlePlat, this, std::placeholders::_1);
     m_handleMap["alloc"] = std::bind(&CollectionApp::handleAlloc, this, std::placeholders::_1);
     m_handleMap["connect"] = std::bind(&CollectionApp::handleConnect, this, std::placeholders::_1);
-    // m_handleMap["configure"] = std::bind(&CollectionApp::handleConfigure, this, std::placeholders::_1);
+    m_handleMap["configure"] = std::bind(&CollectionApp::handleConfigure, this, std::placeholders::_1);
     m_handleMap["reset"] = std::bind(&CollectionApp::handleReset, this, std::placeholders::_1);
 }
 

@@ -50,7 +50,7 @@ void AreaDetector::connect()
 {
     std::cout<<"AreaDetector connect\n";
     // FIXME make configureable
-    int length = 320;
+    int length = 250;
     int links = 0xf;
 
     int fd = open("/dev/datadev_1", O_RDWR);
@@ -115,7 +115,22 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
     unsigned shape[MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
     uint32_t* rawdata = (uint32_t*)(timing_header+1);
-    // printf("raw data %u %u %u %u %u\n", rawdata[0], rawdata[1], rawdata[2], rawdata[3], rawdata[4]);
+
+    /*
+    int nelements = (buffers[l].size - 32) / 4;
+    int64_t sum = 0L;
+    for (int i=1; i<nelements; i++) {
+        sum += rawdata[i];
+    }
+
+    int64_t result = nelements rawdata[1] * (nelements -1) / 2;
+    if (sum != result) {
+        printf("Error in worker calculating sum of the image\n");
+        printf("%l %l\n", sum, result);
+    }
+    printf("raw data %u %u %u %u %u\n", rawdata[0], rawdata[1], rawdata[2], rawdata[3], rawdata[4]);
+    */
+
     for(unsigned i=0; i<shape[0]; i++){
         for (unsigned j=0; j<shape[1]; j++) {
             arrayT(i,j) = i+j;
