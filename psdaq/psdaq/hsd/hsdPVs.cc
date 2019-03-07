@@ -180,9 +180,9 @@ int main(int argc, char** argv)
   timer->allocate(prefix);
   timer->start();
 
-  Pds::Mmhw::Xvc::launch( m->xvc(), false );
-
-  sleep(1);                    // Seems to help prevent a crash in cpsw on exit
+  //  Pds::Mmhw::Xvc::launch( m->xvc(), false );
+  while(1)
+    sleep(1);                    // Seems to help prevent a crash in cpsw on exit
 
   return 0;
 }

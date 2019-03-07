@@ -19,6 +19,7 @@ add_library(hsd SHARED
   QABase.cc
   TprCore.cc
   Tps2481.cc
+  Validator.cc
 
   Hsd3200.cc
   Fmc134Ctrl.cc
@@ -184,6 +185,12 @@ target_link_libraries(hsd_validate
     hsd
     mmhw
     rt
+)
+
+add_executable(hsd_validate_sim hsd_validate_sim.cc)
+
+target_link_libraries(hsd_validate_sim
+    hsd
 )
 
 
