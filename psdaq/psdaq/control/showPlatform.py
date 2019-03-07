@@ -14,6 +14,7 @@ def main():
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=2000,
                         help='timeout msec (default 2000)')
+    parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
     platform = args.p
 
@@ -44,8 +45,11 @@ def main():
                         displayList.append(display)
         except KeyError as ex:
             print('Error: failed to parse reply: %s' % ex)
-            pprint.pprint(reply)
+            pprint.pprint(body)
         else:
+            if args.v:
+                print('getPlatform() reply:')
+                pprint.pprint(body)
             print("Platform | Partition      |    Node")
             print("         | id/name        | level/pid/host (* = active)")
             print("---------+----------------+------------------------------------")
