@@ -112,6 +112,8 @@ namespace Pds {
       NPV ( DumpSeq                                 );
       NPV ( SetVerbose                              );
       NPV ( TimeStampWr                             );
+      NPV ( CuDelay                                 );
+      NPV ( CuBeamCode                              );
 
       NPVN( LinkTxDelay,        24    );
       NPVN( LinkPartition,      24    );

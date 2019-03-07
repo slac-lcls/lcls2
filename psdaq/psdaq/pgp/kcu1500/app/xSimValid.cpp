@@ -25,6 +25,7 @@ using namespace std;
 
 static unsigned verbose = 0;
 static FILE* fdump = 0;
+static bool _validateFrameContent = true;
 
 static void usage(const char* p) {
   printf("Usage: %s [options'\n",p);
@@ -33,6 +34,8 @@ static void usage(const char* p) {
   printf("\t-f <dump filename>   (default: none)\n");
   printf("\t-c <update interval> (default: 1000000)\n");
   printf("\t-C partition[,length[,links]] [configure simcam]\n");
+  printf("\t-F                   [reset frame counters]\n");
+  printf("\t-N                   [dont validate frame contents]\n");
   printf("\t-v <verbose mask>    (default: 0)\n");
   printf("\t                     (bit 0 : event counter not incr by 1)\n");
   printf("\t                     (bit 1 : frame counter not incr by 1)\n");
@@ -44,7 +47,7 @@ static void usage(const char* p) {
   printf("\t                     (bit 7 : frame counter mismatch)\n");
 }
 
-#define HISTORY 256
+#define HISTORY 1024
 #define MAX_PRINT 32
 
 static unsigned nprint = 0;
@@ -253,17 +256,19 @@ void LaneValidator::validate(const uint32_t* p, unsigned sz) {
   unsigned now = event%HISTORY;
   _pulseId [now] = *reinterpret_cast<const uint64_t*>(p);
   _frameCnt[now] = p[8];
-  for(unsigned i=1; i<sz-9; i++)
-    if (p[sz-i]!=i) {
-      _frameContentErr++;
-      if (verbose & FRAME_CONTENT_ERR)
-        printf("\t[%p] [%06x.%ld]: p[%d] %x\n", p, event, this-lanev, i, p[sz-i]);
-      if (fdump) {
-        fwrite(&sz,sizeof(unsigned),1,fdump);
-        fwrite(p  ,sizeof(unsigned),sz,fdump);
+  if (_validateFrameContent) {
+    for(unsigned i=1; i<sz-9; i++)
+      if (p[sz-i]!=i) {
+        _frameContentErr++;
+        if (verbose & FRAME_CONTENT_ERR)
+          printf("\t[%p] [%06x.%ld]: p[%d] %x\n", p, event, this-lanev, i, p[sz-i]);
+        if (fdump) {
+          fwrite(&sz,sizeof(unsigned),1,fdump);
+          fwrite(p  ,sizeof(unsigned),sz,fdump);
+        }
+        break;
       }
-      break;
-    }
+  }
 
   if (_current & (1<<31)) { // first event
     _current = event;
@@ -316,7 +321,7 @@ int main (int argc, char **argv) {
    extern char* optarg;
    char* endptr;
    int c;
-   while((c=getopt(argc,argv,"d:f:Fc:C:m:v:"))!=EOF) {
+   while((c=getopt(argc,argv,"d:f:Fc:C:m:v:N"))!=EOF) {
      switch(c) {
      case 'd': dev     = optarg; break;
      case 'f': dump    = optarg; break;
@@ -324,6 +329,7 @@ int main (int argc, char **argv) {
      case 'F': frameRst = true; break;
      case 'c': count   = strtoul(optarg,NULL,0); break;
      case 'v': verbose = strtoul(optarg,NULL,0); break;
+     case 'N': _validateFrameContent=false; break;
      case 'C': partition = strtoul(optarg,&endptr,0);
        if (*endptr==',') {
          length = strtoul(endptr+1,&endptr,0);
