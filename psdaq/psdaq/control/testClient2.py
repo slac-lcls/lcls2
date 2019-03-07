@@ -9,7 +9,7 @@ import time
 import copy
 import socket
 import zmq
-from collection import pull_port, pub_port, create_msg
+from collection import back_pull_port, back_pub_port, create_msg
 import argparse
 import logging
 
@@ -28,8 +28,8 @@ class Client:
         self.context = zmq.Context(1)
         self.push = self.context.socket(zmq.PUSH)
         self.sub = self.context.socket(zmq.SUB)
-        self.push.connect('tcp://%s:%d' % (collectHost, pull_port(platform)))
-        self.sub.connect('tcp://%s:%d' % (collectHost, pub_port(platform)))
+        self.push.connect('tcp://%s:%d' % (collectHost, back_pull_port(platform)))
+        self.sub.connect('tcp://%s:%d' % (collectHost, back_pub_port(platform)))
         self.sub.setsockopt(zmq.SUBSCRIBE, b'')
 
         # define commands

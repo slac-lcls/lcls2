@@ -29,6 +29,7 @@ from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout # , QWidget,  QL
 
 from psdaq.control_gui.CGWPartitionSelection import CGWPartitionSelection
 from psdaq.control_gui.QWDialog import QDialog, QWDialog
+from psdaq.control_gui.CGDaqControl import daq_control, DaqControl #, worker_set_state
 
 #--------------------
 
@@ -40,10 +41,13 @@ class CGWMainPartition(QGroupBox) :
 
         QGroupBox.__init__(self, 'Partition', parent)
 
+        self.but_plat    = QPushButton('Roll call')
         self.but_select  = QPushButton('Select')
         self.but_display = QPushButton('Display')
 
         self.hbox = QHBoxLayout() 
+        self.hbox.addWidget(self.but_plat)
+        self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_select)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_display)
@@ -52,6 +56,7 @@ class CGWMainPartition(QGroupBox) :
         self.set_tool_tips()
         self.set_style()
 
+        self.but_plat.clicked.connect(self.on_but_plat)
         self.but_select.clicked.connect(self.on_but_select)
         self.but_display.clicked.connect(self.on_but_display)
 
@@ -63,6 +68,7 @@ class CGWMainPartition(QGroupBox) :
     def set_tool_tips(self) :
         self.setToolTip('Partition GUI')
         self.but_select.setToolTip('Click on button.') 
+        self.but_plat.setToolTip('Submits "plat" command.')
 
 #--------------------
 
@@ -117,6 +123,25 @@ class CGWMainPartition(QGroupBox) :
         else :
             self.w_display.close()
             self.w_display = None
+
+#--------------------
+ 
+    def on_but_plat(self) :
+        """Equivalent to CLI: daqstate -p6 --transition plat
+           https://github.com/slac-lcls/lcls2/blob/collection_front/psdaq/psdaq/control/daqstate.py
+        """
+        logger.debug('on_but_plat - command to set transition "plat"')
+        rv = daq_control().setTransition('plat')
+        if rv is not None : logger.error('Error: %s' % rv)
+
+#--------------------
+
+    def set_buts_enable(self, s) :
+        logger.debug('set_buts_enable for state %s' % s)
+        state = s.upper()
+        self.but_plat.setEnabled(state in ('RESET', 'UNALLOCATED'))
+        self.but_select.setEnabled(not(state in ('RESET',)))
+        self.but_display.setEnabled(not(state in ('RESET',)))
 
 #--------------------
 

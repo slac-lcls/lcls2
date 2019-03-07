@@ -29,6 +29,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 #------------------------------
+import json
+from time import time
 
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt#, QPoint
@@ -44,20 +46,28 @@ from psdaq.control_gui.CGWMainRunStatistics import CGWMainRunStatistics
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
 
+from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
+
 #------------------------------
 
-class CGWMain(QWidget) :
+class CGWMain(QWZMQListener) :
 
     _name = 'CGWMain'
 
     def __init__(self, parser=None) : # **dict_opts) :
 
-        QWidget.__init__(self, parent=None)
+        self.proc_parser(parser)
+        daq_control.set_daq_control(DaqControl(host=self.host, platform=self.platform, timeout=self.timeout))
+
+        self.wlogr = QWLoggerStd(log_level=self.loglevel, show_buttons=False, log_prefix=self.logdir)
+
+        QWZMQListener.__init__(self, host=self.host, platform=self.platform, timeout=self.timeout)
+ 
+
+        #QWidget.__init__(self, parent=None)
         #self._name = self.__class__.__name__
 
         #cp.cmwmain = self
-
-        self.proc_parser(parser)
 
         #self.main_win_width  = cp.main_win_width 
         #self.main_win_height = cp.main_win_height
@@ -73,12 +83,11 @@ class CGWMain(QWidget) :
         #self.wlog = QWLoggerStd(cp, show_buttons=False)
         self.wconf = CGWMainConfiguration()
         self.wpart = CGWMainPartition()
-        self.wctrl = CGWMainControl()
-        self.wdetr = CGWMainDetector()
+        self.wctrl = CGWMainControl(parent_ctrl=self)
+        self.wdetr = CGWMainDetector(parent_ctrl=self)
         self.wrsta = CGWMainRunStatistics()
-        self.wlogr = QWLoggerStd(log_level=self.loglevel, show_buttons=False)
         #self.wlogr = QTextEdit('my logger')
- 
+
         #self.vbox = QVBoxLayout() 
         #self.vbox.addWidget(self.wtab) 
         #self.vbox.addStretch(1)
@@ -135,10 +144,11 @@ class CGWMain(QWidget) :
         #cp.upwd    = popts.upwd
         #exp        = popts.experiment
         #det        = popts.detector
-        logdir        = popts.logdir
+        self.logdir   = popts.logdir
         self.loglevel = popts.loglevel.upper()
-
-        daq_control.set_daq_control(DaqControl(host=popts.host, platform=popts.platform, timeout=popts.timeout))
+        self.host     = popts.host
+        self.platform = popts.platform
+        self.timeout  = popts.timeout
 
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
@@ -168,6 +178,9 @@ class CGWMain(QWidget) :
 
 
     def set_style(self) :
+
+        self.setMinimumWidth(350)
+
         #self.setGeometry(50, 50, 500, 600)
         #self.setGeometry(self.main_win_pos_x .value(),\
         #                 self.main_win_pos_y .value(),\
@@ -240,22 +253,7 @@ class CGWMain(QWidget) :
         pass
 
 
-    def key_usage(self) :
-        return 'Keys:'\
-               '\n  V - view/hide tabs'\
-               '\n'
-
-    if __name__ == "__main__" :
-      def keyPressEvent(self, e) :
-        #print('keyPressEvent, key=', e.key())       
-        if   e.key() == Qt.Key_Escape :
-            self.close()
-        elif e.key() == Qt.Key_V : 
-            self.wtab.view_hide_tabs()
-        else :
-            logger.info(self.key_usage())
-
-
+ 
     def on_save(self):
 
         point, size = self.mapToGlobal(QPoint(-5,-22)), self.size() # Offset (-5,-22) for frame size.
@@ -286,6 +284,87 @@ class CGWMain(QWidget) :
             #print('Saved log file: %s' % cp.log_file.value())
             #log.saveLogTotalInFile(fnm.log_file_total())
 
+
+#------------------------------
+
+    def on_zmq_poll(self):
+        """Re-implementation of the superclass QWZMQListener method for zmq message processing.
+        """
+        t0_sec = time()
+
+        self.zmq_notifier.setEnabled(False)
+
+        flags = self.zmq_socket.getsockopt(zmq.EVENTS)
+
+        flag = 'UNKNOWN'
+        msg = ''
+        if flags & zmq.POLLIN :
+          while self.zmq_socket.getsockopt(zmq.EVENTS) & zmq.POLLIN :
+            flag = 'POLLIN'
+            msg = self.zmq_socket.recv_multipart()
+            self.process_zmq_message(msg)
+            #self.setWindowTitle(str(msg))
+        elif flags & zmq.POLLOUT : flag = 'POLLOUT'
+        elif flags & zmq.POLLERR : flag = 'POLLERR'
+        else : pass
+
+        self.zmq_notifier.setEnabled(True)
+        _ = self.zmq_socket.getsockopt(zmq.EVENTS) # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
+        logger.debug('CGWMain.on_zmq_poll Flag zmq.%s in %d msg: %s' % (flag, flags, msg)\
+                   + '\n    poll processing time = %.6f sec' % (time()-t0_sec))
+
+
+    def process_zmq_message(self, msg):
+        #print('==== msg: %s' % str(msg))
+        try :
+            for rec in msg :
+                ucode = rec.decode('utf8').replace("\'t", ' not').replace("'", '"')
+                jo = json.loads(ucode)
+                #  jo['header'] # {'key': 'status', 'msg_id': '0918505109-317821000', 'sender_id': None}
+                #  jo['body']   # {'state': 'allocated', 'transition': 'alloc'}
+
+                if  jo['header']['key'] == 'status' :
+                    s_state      = jo['body']['state']
+                    s_transition = jo['body']['transition']
+                    self.wdetr.set_but_state (s_state)
+                    self.wctrl.set_transition(s_transition)
+                    logging.info('received state msg: %s and transition: %s' % (s_state, s_transition))
+
+                elif jo['header']['key'] == 'error' :
+                    logging.error('received error msg: %s' % jo['body']['error'])
+
+                else :
+                    sj = json.dumps(jo, indent=2, sort_keys=False)
+                    logging.debug('received jason:\n%s' % sj)
+
+        except KeyError as ex:
+             logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))
+
+        except Exception as ex:
+             logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex.message))
+
+#------------------------------
+#------------------------------
+#------------------------------
+#------------------------------
+
+    if __name__ == "__main__" :
+
+      def key_usage(self) :
+        return 'Keys:'\
+               '\n  V - view/hide tabs'\
+               '\n'
+
+      def keyPressEvent(self, e) :
+        #print('keyPressEvent, key=', e.key())       
+        if   e.key() == Qt.Key_Escape :
+            self.close()
+        elif e.key() == Qt.Key_V : 
+            self.wtab.view_hide_tabs()
+        else :
+            logger.info(self.key_usage())
+
+
 #------------------------------
 
 def proc_control_gui(parser=None) :
@@ -300,7 +379,7 @@ def proc_control_gui(parser=None) :
 
     #print('In CGWMain:proc_control_gui A')
     w.show()
-    print('In CGWMain:proc_control_gui after w.show() - KNOWN ISSUE')
+    print('In CGWMain:proc_control_gui after w.show() - ERRORS FROM libGL IS A KNOWN ISSUE')
 
     app.exec_()
     del w

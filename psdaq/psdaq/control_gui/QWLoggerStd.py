@@ -30,16 +30,35 @@ from random import randint
 
 from PyQt5.QtWidgets import QWidget, QTextEdit, QLabel, QPushButton, QComboBox,\
                             QHBoxLayout, QVBoxLayout, QFileDialog
-from PyQt5.QtGui import QTextCursor
+from PyQt5.QtGui import QTextCursor, QColor
+from PyQt5.QtCore import Qt
 from psdaq.control_gui.Styles import style
 
 import psdaq.control_gui.Utils as gu
 
 #------------------------------
 
+MSG_LEVEL_TO_BKGD_COLOR = {'CRITICAL': Qt.black, 
+                           'ERROR'   : Qt.yellow,
+                           'WARNING' : Qt.green,
+                           'INFO'    : Qt.white,
+                           'DEBUG'   : QColor(230, 230, 255),
+                           'NOTSET'  : QColor(255, 0, 255)}
+
+MSG_LEVEL_TO_TEXT_COLOR = {'CRITICAL': Qt.magenta, 
+                           'ERROR'   : Qt.red,
+                           'WARNING' : Qt.yellow,
+                           'INFO'    : Qt.black,
+                           'DEBUG'   : QColor(0, 0, 255),
+                           'NOTSET'  : QColor(255, 0, 255)}
+
+#------------------------------
+
 def log_file_name(lfpath='.') :
     """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/2018/20180518T122407-dubrovin.txt
     """
+    if lfpath in (None,'') : return None
+
     from time import time, strftime, localtime
     from getpass import getuser
     t0_sec = time()
@@ -57,17 +76,18 @@ class QWFilter(logging.Filter) :
 
     def filter(self, rec) :
         msg = self.qwl.formatter.format(rec)
+        self.qwl.set_msg_style(rec.levelname)
         self.qwl.append_qwlogger(msg)
         #self.print_filter_attributes(rec)
         return True
 
 
     def print_filter_attributes(self, rec) :
-        logger.debug('type(rec): %s'%type(rec))
-        logger.debug('dir(rec): %s'%dir(rec))
-        logger.debug('dir(logger): %s'%dir(logger))
-        #logger.debug('dir(syslog): %s'%dir(self.syslog))
-        logger.debug(rec.created, rec.name, rec.levelname, rec.msg)
+        print('type(rec): %s'%type(rec))
+        print('dir(rec): %s'%dir(rec))
+        #print('dir(logger): %s'%dir(logger))
+        #print('dir(syslog): %s'%dir(self.syslog))
+        print(rec.created, rec.name, rec.levelname, rec.msg)
 
 #------------------------------
 #------------------------------
@@ -81,8 +101,10 @@ class QWLoggerStd(QWidget) :
         QWidget.__init__(self, parent=None)
 
         self.log_level  = log_level # cp.log_level
-        self.log_prefix = log_prefix
-        self.log_fname  = log_file_name(log_prefix) if log_prefix is not None else None
+        self.log_fname  = log_file_name(log_prefix)
+
+        if log_level=='DEBUG' :
+            print('%s.__init__ log_fname: %s' % (self._name, self.log_fname))
 
         if self.log_fname is not None :
             depth = 6 if self.log_fname[0]=='/' else 1
@@ -176,10 +198,12 @@ class QWLoggerStd(QWidget) :
 
         self.formatter = logging.Formatter(fmt, datefmt=tsfmt)
         #logger.addFilter(QWFilter(self)) # register self for callback from filter
-
         # TRICK: add filter to handler to intercept ALL messages
         #self.handler = logging.StreamHandler()
-        self.handler = logging.FileHandler(log_fname, 'w')
+        
+        fname = log_fname if log_fname is not None else '/var/tmp/control_gui_%s.log' % gu.get_login()
+        self.handler = logging.FileHandler(fname, 'w')
+
         self.handler.addFilter(QWFilter(self))
         #self.handler.setLevel(logging.NOTSET) # level
         self.handler.setFormatter(self.formatter)
@@ -192,7 +216,7 @@ class QWLoggerStd(QWidget) :
     def set_level(self, level_name='DEBUG') :
         #self.append_qwlogger('Set logger layer: %s' % level_name)
         #logger.setLevel(level_name) # {0: 'NOTSET'}
-        level = self.dict_name_to_level[level_name]
+        level = self.dict_name_to_level.get(level_name, logging.DEBUG)
         logger.setLevel(level)
         #msg = 'Set logger level %s of the list: %s' % (level_name, ', '.join(self.level_names))
         #logger.debug(msg)
@@ -322,6 +346,12 @@ class QWLoggerStd(QWidget) :
     #    logger.info('save_log_total_in_file' + self.fname_log_total, self._name)
     #    logger.save_log_total_in_file(self.fname_log_total)
 
+    def set_msg_style(self, levelname):
+        #print('QWLoggerStd.set_msg_style for level %s' % levelname)
+        textcolor = MSG_LEVEL_TO_TEXT_COLOR.get(levelname, Qt.magenta)
+        self.edi_txt.setTextColor(textcolor)
+        #self.edi_txt.setTextBackgroundColor(bkgdcolor)
+        #bkgdcolor = MSG_LEVEL_TO_BKGD_COLOR.get(levelname, Qt.magenta)
 
     def append_qwlogger(self, msg='...'):
         self.edi_txt.append(msg)
