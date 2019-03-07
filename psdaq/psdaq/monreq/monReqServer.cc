@@ -92,13 +92,13 @@ namespace Pds {
         if ( (rc = _mrqTransport.connect(addr, port, tmo, &link)) )
         {
           fprintf(stderr, "%s:\n  Error connecting to Monitor EbLfServer at %s:%s\n",
-                  __func__, addr, port);
+                  __PRETTY_FUNCTION__, addr, port);
           return rc;
         }
         if ( (rc = link->preparePoster(_id)) )
         {
           fprintf(stderr, "%s:\n  Failed to prepare Monitor link to %s:%s\n",
-                  __func__, addr, port);
+                  __PRETTY_FUNCTION__, addr, port);
           return rc;
         }
         _mrqLinks[link->id()] = link;
@@ -107,8 +107,12 @@ namespace Pds {
       }
 
       for (unsigned i = 0; i < prms.maxBuffers; ++i)
+      {
+        //printf("%s:\n  _bufFreeList.push(%d), count = %zd\n",
+        //       __PRETTY_FUNCTION__, i, _bufFreeList.count());
         if (!_bufFreeList.push(i))
-          fprintf(stderr, "%s:\n  _bufFreeList.push(%d) failed\n", __func__, i);
+          fprintf(stderr, "%s:\n  _bufFreeList.push(%d) failed\n", __PRETTY_FUNCTION__, i);
+      }
 
       _init();
 

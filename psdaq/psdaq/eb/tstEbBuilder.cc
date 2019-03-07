@@ -318,8 +318,8 @@ void Teb::process(EbEvent* event)
       {
         uint64_t data;
         int      rc = _mrqTransport.poll(&data);
-        result[1] = rc ? 0 : data;
-        if (!rc)  _mrqLinks[ImmData::src(data)]->postCompRecv();
+        result[1] = (rc < 0) ? 0 : data;
+        if (rc > 0)  _mrqLinks[ImmData::src(data)]->postCompRecv();
       }
     }
     else                                // Non-event
