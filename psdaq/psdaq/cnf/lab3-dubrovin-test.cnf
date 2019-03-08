@@ -28,6 +28,6 @@ procmgr_config = [
 #{ host: 'daq-tst-dev02', id:'dti_proxy', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'dti_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 # test clients
- {                        flags:'xp', id:'testClient2a', cmd:'testClient2 -v -C '+collect_host},
- {                        flags:'xp', id:'testClient2b', cmd:'testClient2 -v -C '+collect_host}
+ {                        flags:'xp', id:'testClient2a', conda:conda_rel, cmd:'testClient2 -v -C '+collect_host},
+ {                        flags:'xp', id:'testClient2b', conda:conda_rel, cmd:'testClient2 -v -C '+collect_host}
 ]
