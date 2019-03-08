@@ -246,7 +246,6 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         std::cout<<"pebble pulseId  "<<event_header->seq.pulseId().value()<<
                  "  result dgram pulseId  "<<result->seq.pulseId().value()<<'\n';
     }
-    /*
     // write event to file if it passes event builder or is a configure transition
     if (eb_decision == 1 || (transition_id == XtcData::TransitionId::Configure)) {
         XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
@@ -255,7 +254,6 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
             return;
         }
     }
-    */
     if (m_mon) {
         XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
         // L1Accept
