@@ -17,8 +17,10 @@ setup(
             'console_scripts': [
                 'collection = psdaq.control.collection:main',
                 'dti_proxy = psdaq.control.dti_proxy:main',
+#               'selectPlatform = psdaq.control.selectPlatform:main',
                 'showPlatform = psdaq.control.showPlatform:main',
                 'daqstate = psdaq.control.daqstate:main',
+                'testClient2 = psdaq.control.testClient2:main',
                 'groupca = psdaq.cas.groupca:main',
                 'partca = psdaq.cas.partca:main',
                 'partcas = psdaq.cas.partcas:main',
