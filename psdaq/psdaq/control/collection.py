@@ -289,10 +289,15 @@ def wait_for_answers(socket, wait_time, msg_id):
 
 
 def confirm_response(socket, wait_time, msg_id, ids):
+    logging.debug('confirm_response(): ids = %s' % ids)
     msgs = []
     for msg in wait_for_answers(socket, wait_time, msg_id):
-        msgs.append(msg)
-        ids.remove(msg['header']['sender_id'])
+        if msg['header']['sender_id'] in ids:
+            msgs.append(msg)
+            ids.remove(msg['header']['sender_id'])
+            logging.debug('confirm_response(): removed %s from ids' % msg['header']['sender_id'])
+        else:
+            logging.debug('confirm_response(): %s not in ids' % msg['header']['sender_id'])
         if len(ids) == 0:
             break
     for ii in ids:
