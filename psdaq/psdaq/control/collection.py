@@ -576,6 +576,10 @@ class CollectionManager():
         # only drp group (aka level) responds to configure and above
         ids = self.filter_level('drp', ids)
 
+        if len(ids) == 0:
+            logging.debug('condition_common() empty set of ids')
+            return True
+
         # make sure all the clients respond to transition before timeout
         ret, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
         if ret:
@@ -596,7 +600,7 @@ class CollectionManager():
                         self.front_pub.send_json(self.error_msg(message))
                 except KeyError:
                     pass
-            return retval
+        return retval
 
     def condition_configure(self):
         retval = self.condition_common('configure', 1000)
