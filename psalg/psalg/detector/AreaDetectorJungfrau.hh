@@ -10,6 +10,8 @@ using namespace psalg;
 
 namespace detector {
 
+typedef uint16_t rawjf_t; // raw daq rata type of jungfrau
+
 //-----------------------------
 class AreaDetectorJungfrau : public AreaDetector {
 public:
@@ -17,7 +19,9 @@ public:
   //------------------------------
   void process_config();
   void process_data(XtcData::DataIter& datao);
-  void detid(std::ostream& os, const int& ind=-1); //ind for panel, -1-for entire detector 
+  void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
+
+  const void print_config();
 
   AreaDetectorJungfrau(const std::string& detname, XtcData::ConfigIter& config);
   AreaDetectorJungfrau(const std::string& detname);
@@ -25,8 +29,10 @@ public:
 
   void _class_msg(const std::string& msg=std::string());
 
+  NDArray<rawjf_t>& raw(XtcData::DescData& ddata);
+  NDArray<rawjf_t>& raw(XtcData::DataIter& datao);
+
   // implemented in AreaDetector
-  // std::string detid(const int& ind=-1);
   /// shape, size, ndim of data from configuration object
   //const size_t   ndim (); // defiled in superclass AreaDetector
   //const size_t   size ();
@@ -77,7 +83,9 @@ private:
   int64_cfg_t firmwareVersion[MAX_NUMBER_OF_MODULES];
   int64_cfg_t serialNumber   [MAX_NUMBER_OF_MODULES];
 
-  void _panel_id(std::ostream& os, const int& ind);
+  NDArray<rawjf_t> _raw;
+
+  void _panel_id(std::ostream& os, const int ind);
 
   //char* panel_ids[MAX_NUMBER_OF_MODULES];
 }; // class

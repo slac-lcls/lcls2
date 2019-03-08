@@ -43,8 +43,8 @@ public:
 
   void _default_msg(const std::string& msg=std::string()) const;
 
-  virtual void detid(std::ostream& os, const int& ind=-1); //ind for panel, -1-for entire detector 
-  virtual std::string detid(const int& ind=-1);
+  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
+  virtual std::string detid(const int ind=-1);
 
   /// shape, size, ndim of data from configuration object
   virtual const size_t   ndim();
@@ -56,12 +56,13 @@ public:
   virtual const size_t   size (const event_t&);
   virtual const shape_t* shape(const event_t&);
 
+  virtual const void print_config();
 
   template<typename T>
-  void raw(XtcData::DescData& ddata, const T* pdata, const char* dataname="frame");
+  void raw(XtcData::DescData& ddata, T*& pdata, const char* dataname="frame");
 
   template<typename T>
-  void raw(XtcData::DataIter& datao, const T* pdata, const char* dataname="frame");
+  void raw(XtcData::DataIter& datao, T*& pdata, const char* dataname="frame");
 
   template<typename T>
   void raw(XtcData::DescData& ddata, NDArray<T>& nda, const char* dataname="frame");
@@ -114,7 +115,7 @@ public:
 
   typedef int64_t int64_cfg_t;
 
-  int64_cfg_t maxNumberOfModulesPerDetector;
+  int64_cfg_t maxModulesPerDetector;
   int64_cfg_t numberOfModules;
   int64_cfg_t numberOfRows;
   int64_cfg_t numberOfColumns;
@@ -136,6 +137,8 @@ public:
 protected:
   shape_t*                _shape;
   ConfigIter*             _pconfig;
+  int                     _ind_data;
+  void _set_index_data(XtcData::DescData& ddata, const char* dataname);
 
 private:
 
@@ -145,11 +148,6 @@ private:
   NDArray<raw_t>          _raw;
   NDArray<calib_t>        _calib;
   NDArray<image_t>        _image;
-
-  int                     _ind_data;
-  //unsigned              _ind_data;
-
-  void _set_index_data(XtcData::DescData& ddata, const char* dataname);
 
 
   /*

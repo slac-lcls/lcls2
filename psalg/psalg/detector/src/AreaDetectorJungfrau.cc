@@ -17,6 +17,7 @@ namespace detector {
 AreaDetectorJungfrau::AreaDetectorJungfrau(const std::string& detname, XtcData::ConfigIter& configo)
   : AreaDetector(detname, configo) {
   MSG(DEBUG, "In c-tor AreaDetectorJungfrau(detname, configo) for " << detname);
+  process_config();
 }
 
 AreaDetectorJungfrau::AreaDetectorJungfrau(const std::string& detname)
@@ -98,19 +99,17 @@ const NDArray<pixel_coord_t>& coords     (const event_t&, const size_t& axis=0) 
 const NDArray<pixel_size_t>&  pixel_size (const event_t&, const size_t& axis=0) = 0;
 const NDArray<pixel_size_t>&  image_xaxis(const event_t&) = 0;
 const NDArray<pixel_size_t>&  image_yaxis(const event_t&) = 0;
-
 */
+
 //-------------------
 
 void AreaDetectorJungfrau::process_config() {
 
   XtcData::ConfigIter& configo = *_pconfig;
-  XtcData::NamesId& namesId = configo.shape().namesId();
+  //XtcData::NamesId& namesId = configo.shape().namesId();
   XtcData::Names& names = configNames(configo);
 
-  MSG(DEBUG, "In AreaDetectorJungfrau::process_config, transition: " << namesId.namesId() << " (0/1 = config/data)\n");
-  printf("Names:: detName: %s  detType: %s  detId: %s  segment: %d alg.name: %s\n",
-          names.detName(), names.detType(), names.detId(), names.segment(), names.alg().name());
+  MSG(DEBUG, str_config_names(configo));
 
   //DESC_SHAPE(desc_shape, configo, namesLookup);
   XtcData::DescData& desc_shape = configo.desc_shape();
@@ -118,49 +117,67 @@ void AreaDetectorJungfrau::process_config() {
   //DESC_VALUE(desc_value, configo, namesLookup);
   //XtcData::DescData& desc_value = configo.desc_value();
 
-  printf("------ ConfigIter %d names and values for detector %s ---------\n", names.num(), names.detName());
   for (unsigned i = 0; i < names.num(); i++) {
       XtcData::Name& name = names.get(i);
-      XtcData::Name::DataType itype = name.type();
-      printf("%02d name: %-32s rank: %d type: %d el.size %02d",
-             i, name.name(), name.rank(), itype, Name::get_element_size(itype));
+      //XtcData::Name::DataType itype = name.type();
+      const char* cname = name.name();
+      //printf("%02d name: %-32s rank: %d type: %d el.size %02d",
+      //       i, cname, name.rank(), itype, Name::get_element_size(itype));
 
-      if (strcmp(name.name(), "MaxModulesPerDetector") == 0) 
-	                                             {maxNumberOfModulesPerDetector = desc_shape.get_value<int64_t>(name.name()); printf(" ==> save");}
-      if (strcmp(name.name(), "numberOfModules")          == 0) {numberOfModules    = desc_shape.get_value<int64_t>(name.name()); printf(" ==> save");}
-      if (strcmp(name.name(), "MaxRowsPerModule")         == 0) {numberOfRows       = desc_shape.get_value<int64_t>(name.name()); printf(" ==> save");}
-      if (strcmp(name.name(), "numberOfColumnsPerModule") == 0) {numberOfColumns    = desc_shape.get_value<int64_t>(name.name()); printf(" ==> save");}
-      if (strcmp(name.name(), "numPixels")                == 0) {numberOfPixels     = desc_shape.get_value<int64_t>(name.name()); printf(" ==> save");}
+      if (strcmp(cname, "MaxModulesPerDetector")    == 0) {maxModulesPerDetector = desc_shape.get_value<int64_t>(i); continue;}
+      if (strcmp(cname, "numberOfModules")          == 0) {numberOfModules       = desc_shape.get_value<int64_t>(i); continue;}
+      if (strcmp(cname, "MaxRowsPerModule")         == 0) {numberOfRows          = desc_shape.get_value<int64_t>(i); continue;}
+      if (strcmp(cname, "numberOfColumnsPerModule") == 0) {numberOfColumns       = desc_shape.get_value<int64_t>(i); continue;}
+      if (strcmp(cname, "numPixels")                == 0) {numberOfPixels        = desc_shape.get_value<int64_t>(i); continue;}
 
-      int status;
       for (unsigned m=0; m < MAX_NUMBER_OF_MODULES; m++) {
-        char cbuf1[32]; status = sprintf(&cbuf1[0], "moduleConfig%d_firmwareVersion", m);
-        char cbuf2[32]; status = sprintf(&cbuf2[0], "moduleConfig%d_moduleVersion", m);
-        char cbuf3[32]; status = sprintf(&cbuf3[0], "moduleConfig%d_serialNumber", m);
-	if (status<0) continue;
-        if (strcmp(name.name(), cbuf1) == 0) {firmwareVersion[m] = desc_shape.get_value<int64_t>(name.name()); printf(" ==> save"); continue;}
-        if (strcmp(name.name(), cbuf2) == 0) {moduleVersion  [m] = desc_shape.get_value<int64_t>(name.name()); printf(" ==> save"); continue;}
-        if (strcmp(name.name(), cbuf3) == 0) {serialNumber   [m] = desc_shape.get_value<int64_t>(name.name()); printf(" ==> save"); continue;}
+        char cbuf1[32]; sprintf(&cbuf1[0], "moduleConfig%d_firmwareVersion", m);
+        char cbuf2[32]; sprintf(&cbuf2[0], "moduleConfig%d_moduleVersion", m);
+        char cbuf3[32]; sprintf(&cbuf3[0], "moduleConfig%d_serialNumber", m);
+        if (strcmp(cname, cbuf1) == 0) {firmwareVersion[m] = desc_shape.get_value<int64_t>(i); break;}
+        if (strcmp(cname, cbuf2) == 0) {moduleVersion  [m] = desc_shape.get_value<int64_t>(i); break;}
+        if (strcmp(cname, cbuf3) == 0) {serialNumber   [m] = desc_shape.get_value<int64_t>(i); break;}
       }
 
-      if (name.type()==Name::INT64 and name.rank()==0)
-  	   printf(" value: %ld\n", desc_shape.get_value<int64_t>(name.name()));
-      //else printf(" value: TBD\n");
+      /*
+        if (name.type()==Name::INT64 and name.rank()==0)
+  	     printf(" value: %ld\n", desc_shape.get_value<int64_t>(cname));
 
-      if (strcmp(name.name(), "moduleConfig_shape") == 0 and name.rank()==1) {
-          auto array = desc_shape.get_array<uint32_t>(i);
-          for (unsigned k=0; k<array.shape()[0]; k++) { // for a rank 1 array
+        if (strcmp(cname, "moduleConfig_shape") == 0 and name.rank()==1) {
+            auto array = desc_shape.get_array<uint32_t>(i);
+            for (unsigned k=0; k<array.shape()[0]; k++) { // for a rank 1 array
               cout << " ===> save: element " << k << " has value " << array(k);
-          }
-          cout << "\n";
+            }
+            cout << "\n";
+        }
+      */
+  }
+}
 
-	  /*
-	  uint32_t *shape_cfg = desc_shape.get_array<uint32_t>(0).data();
-          //cout << " ==> save: " << shape_cfg[0] << '\n';
-	  for (int k=0; k<120; k++) // cout << "     k: " << k << "  v: " << shape_cfg[k] << '\n';
-	      printf("     k: %03d  v: %d\n", k, shape_cfg[k]);
-	  */
-      }
+//-------------------
+
+const void AreaDetectorJungfrau::print_config() {
+
+  std::cout << "\n\n==== Attributes of configuration ====\n";
+  std::cout << "detname                       : " << this->detname() << '\n';
+  std::cout << "dettype                       : " << this->dettype() << '\n';
+  std::cout << "maxModulesPerDetector         : " << this->maxModulesPerDetector << '\n';
+  std::cout << "numberOfModules               : " << this->numberOfModules << '\n';
+  std::cout << "numPixels                     : " << this->numberOfPixels << '\n';
+  std::cout << "numberOfRows                  : " << this->numberOfRows << '\n';
+  std::cout << "numberOfColumns               : " << this->numberOfColumns << '\n';
+
+  std::cout << "==== Derived values ====\n";
+  std::cout << "panel_id 0                    : " << AreaDetector::detid(0) << '\n' 
+            << "panel_id 1                    : " << AreaDetector::detid(1) << '\n'
+            << "detid                         : " << AreaDetector::detid() << '\n';
+  std::cout << "ndim()                        : " << this->ndim() << '\n';
+  std::cout << "size()                        : " << this->size() << '\n';
+
+  const shape_t* pshape = AreaDetector::shape();
+  std::cout << "shape()                       : (";
+  for(unsigned i=0; i<this->ndim(); i++) {
+    std::cout << pshape[i] << ((i<this->ndim()-1) ? ", " : ")\n");
   }
 }
 
@@ -168,23 +185,12 @@ void AreaDetectorJungfrau::process_config() {
 
 void AreaDetectorJungfrau::process_data(XtcData::DataIter& datao) {
 
-    MSG(DEBUG, "In AreaDetectorJungfrau::process_data");
-
     ConfigIter& configo = *_pconfig;
     NamesLookup& namesLookup = configo.namesLookup();
-
     DescData& descdata = datao.desc_value(namesLookup);
+    Names& names = descdata.nameindex().names();
 
-    //NameIndex& nameIndex   = descdata.nameindex();
-    ShapesData& shapesData = descdata.shapesdata();
-    NamesId& namesId       = shapesData.namesId();
-    Names& names           = descdata.nameindex().names();
-
-    MSG(DEBUG, "In AreaDetectorJungfrau::process_data, transition: " << namesId.namesId() << " (0/1 = config/data)\n");
-    printf("Names:: detName: %s  detType: %s  detId: %s  segment: %d alg.name: %s\n",
-          names.detName(), names.detType(), names.detId(), names.segment(), names.alg().name());
-
-    printf("------ %d Names and values for data ---------\n", names.num());
+    printf("\n------ %d Names and values for data ---------\n", names.num());
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         printf("%02d name: %-32s rank: %d type: %d", i, name.name(), name.rank(), name.type());
@@ -218,7 +224,7 @@ void AreaDetectorJungfrau::process_data(XtcData::DataIter& datao) {
 
 //-------------------
 
-void AreaDetectorJungfrau::_panel_id(std::ostream& os, const int& ind) {
+void AreaDetectorJungfrau::_panel_id(std::ostream& os, const int ind) {
   os << std::hex << moduleVersion[ind] << '-' 
      << std::hex << firmwareVersion[ind] << '-' 
      << std::hex << setfill('0')  << serialNumber[ind];
@@ -227,7 +233,7 @@ void AreaDetectorJungfrau::_panel_id(std::ostream& os, const int& ind) {
 
 //-------------------
 
-void AreaDetectorJungfrau::detid(std::ostream& os, const int& ind) {
+void AreaDetectorJungfrau::detid(std::ostream& os, const int ind) {
   //os << "panel index="  << std::setw(2) << ind << " numberOfModules=" << numberOfModules << " == ";
   assert(ind<MAX_NUMBER_OF_MODULES);
   assert(numberOfModules>0);
@@ -237,6 +243,23 @@ void AreaDetectorJungfrau::detid(std::ostream& os, const int& ind) {
     if(i) os << '_';
     _panel_id(os, i);
   }
+}
+
+//-------------------
+
+NDArray<rawjf_t>& AreaDetectorJungfrau::raw(XtcData::DescData& ddata) {
+    if(_ind_data < 0) _set_index_data(ddata, "frame");
+    rawjf_t* pdata = ddata.get_array<rawjf_t>(_ind_data).data();
+    _raw.set_shape(shape(), ndim());
+    _raw.set_data_buffer(pdata);
+    return _raw;
+}
+
+//-------------------
+
+NDArray<rawjf_t>& AreaDetectorJungfrau::raw(XtcData::DataIter& datao) {
+    DescData&  ddata = datao.desc_value(_pconfig->namesLookup());
+    return raw(ddata);
 }
 
 //-------------------

@@ -19,25 +19,19 @@
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
 
-
-
-#include "xtcdata/xtc/XtcFileIterator.hh"
-//#include "xtcdata/xtc/XtcIterator.hh"
 //#include "xtcdata/xtc/ShapesData.hh"
 //#include "xtcdata/xtc/DescData.hh"
-//#include "xtcdata/xtc/NamesIter.hh"
-#include "xtcdata/xtc/ConfigIter.hh"
-#include "xtcdata/xtc/DataIter.hh"
-
+#include "xtcdata/xtc/XtcFileIterator.hh"
+#include "xtcdata/xtc/ConfigIter.hh" // < NamesIter < XtcIterator
+#include "xtcdata/xtc/DataIter.hh" //  < XtcIterator
 #include "xtcdata/xtc/NamesLookup.hh"
 
-#include "psalg/detector/AreaDetectorStore.hh"
+#include "psalg/detector/AreaDetectorStore.hh" // AreaDetectorJungfrau
 #include "psalg/detector/AreaDetector.hh"
 #include "psalg/detector/UtilsConfig.hh" // print_dg_info
-//#include "psalg/detector/AreaDetectorJungfrau.hh"
 
-//using namespace std;
-//using namespace psalg;
+#include "psalg/detector/AreaDetectorJungfrau.hh"
+
 using namespace calib;
 using namespace detector;
 
@@ -113,30 +107,61 @@ void test_getAreaDetector() {
 //-------------------
 
 int file_descriptor(int argc, char* argv[]) {
-
     const char* fname = "/reg/neh/home/cpo/git/lcls2/psana/psana/dgramPort/jungfrau.xtc2";
     std::cout << "xtc file name: " << fname << '\n';
-
     int fd = open(fname, O_RDONLY);
     if (fd < 0) {
         fprintf(stderr, "Unable to open file '%s'\n", fname);
         exit(2);
     }
-    
     return fd;
 }
 
 //-------------------
 
-void test_AreaDetector(int argc, char* argv[]) {
-  MSG(INFO, "In test_AreaDetector");
-
-  //typedef uint16_t raw_t; // in psalg/calib/AreaDetectorTypes.hh
+void test_AreaDetector_base(int argc, char* argv[]) {
+  MSG(INFO, "In test_AreaDetector_base");
 
   int fd = file_descriptor(argc, argv);
   XtcFileIterator xfi(fd, 0x4000000);
 
-  // get data out of the 1-st datagram configure transition
+  // get configuration out of the 1-st datagram
+  Dgram* dg = xfi.next();
+  ConfigIter configo(&(dg->xtc));
+
+  //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", configo);
+  AreaDetector& det = *getAreaDetector("jungfrau", configo);
+
+  det.AreaDetector::process_config();
+  //det.process_config();
+
+  unsigned neventreq=2;
+  unsigned nevent=0;
+  while ((dg = xfi.next())) {
+      if (nevent>=neventreq) break;
+
+      printf("evt:%04d\n", nevent);
+      print_dg_info(dg);
+
+      DataIter datao(&(dg->xtc));
+ 
+      det.AreaDetector::process_data(datao);
+      //det.process_data(datao);
+
+      nevent++;
+  }
+  ::close(fd);
+}
+
+//-------------------
+//-------------------
+
+void test_AreaDetector_mix(int argc, char* argv[]) {
+  MSG(INFO, "In test_AreaDetector_mix");
+
+  int fd = file_descriptor(argc, argv);
+  XtcFileIterator xfi(fd, 0x4000000);
+
   Dgram* dg = xfi.next();
   ConfigIter configo(&(dg->xtc));
 
@@ -145,31 +170,10 @@ void test_AreaDetector(int argc, char* argv[]) {
   //AreaDetector det("jungfrau", configo);
 
   //det.AreaDetector::process_config();
-  det.process_config();
+  //det.process_config();
 
-  std::cout << "\n\n==== Attributes of configuration ====\n";
-  std::cout << "detname                       : " << det.detname() << '\n';
-  std::cout << "dettype                       : " << det.dettype() << '\n';
-  std::cout << "maxNumberOfModulesPerDetector : " << det.maxNumberOfModulesPerDetector << '\n';
-  std::cout << "numberOfModules               : " << det.numberOfModules << '\n';
-  std::cout << "numPixels                     : " << det.numberOfPixels << '\n';
-  std::cout << "numberOfRows                  : " << det.numberOfRows << '\n';
-  std::cout << "numberOfColumns               : " << det.numberOfColumns << '\n';
-
-  std::cout << "==== Derived values ====\n";
-  std::cout << "panel_id 0                    : " << det.detid(0) << '\n' 
-            << "panel_id 1                    : " << det.detid(1) << '\n'
-            << "detid                         : " << det.detid() << '\n';
-  std::cout << "ndim()                        : " << det.ndim() << '\n';
-  std::cout << "size()                        : " << det.size() << '\n';
-
-  const shape_t* pshape = det.shape();
-  std::cout << "shape()                       : (";
-  for(unsigned i=0; i<det.ndim(); i++) {
-    std::cout << pshape[i] << ((i<det.ndim()-1) ? ", " : ")\n");
-  }
-
-  //std::cout << "    : " << det. << '\n';
+  det.print_config();
+  std::cout << str_config_names(configo) << '\n';
 
   //=======
   //query_t query = 123;
@@ -188,7 +192,7 @@ void test_AreaDetector(int argc, char* argv[]) {
   while ((dg = xfi.next())) {
       if (nevent>=neventreq) break;
 
-      printf("evt:%04d", nevent);
+      printf("evt:%04d\n", nevent);
       print_dg_info(dg);
 
       DataIter datao(&(dg->xtc));
@@ -198,7 +202,7 @@ void test_AreaDetector(int argc, char* argv[]) {
       //dump("Data values", desc_data);
 
       //det.AreaDetector::process_data(datao);
-      det.process_data(datao);
+      det.process_data(datao); // <- prints data details 
 
       raw_t* data;
       det.raw<raw_t>(datao, data, "frame");
@@ -210,10 +214,90 @@ void test_AreaDetector(int argc, char* argv[]) {
 
       nevent++;
   }
-
   ::close(fd);
 }
 
+//-------------------
+
+void test_AreaDetector(int argc, char* argv[]) {
+  MSG(INFO, "In test_AreaDetector");
+
+  int fd = file_descriptor(argc, argv);
+  XtcFileIterator xfi(fd, 0x4000000);
+
+  Dgram* dg = xfi.next();
+  ConfigIter configo(&(dg->xtc));
+
+  //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", configo);
+  AreaDetector& det = *getAreaDetector("jungfrau", configo);
+
+  //det.AreaDetector::process_config();
+  //det.process_config();
+  det.print_config();
+
+  unsigned neventreq=5;
+  unsigned nevent=0;
+  while ((dg = xfi.next())) {
+      if (nevent>=neventreq) break;
+
+      printf("evt:%04d %s", nevent, str_dg_info(dg).c_str());
+
+      DataIter datao(&(dg->xtc));
+
+      raw_t* d;
+      det.raw<raw_t>(datao, d, "frame");
+      printf("\n == raw data pointer: %d %d %d %d %d\n", d[0],d[1],d[2],d[3],d[4]);
+
+      NDArray<raw_t> nda;
+      det.raw<raw_t>(datao, nda);
+      std::cout << " == raw data nda: " << nda << '\n';
+
+      nevent++;
+  }
+  ::close(fd);
+}
+
+//-------------------
+
+void test_AreaDetectorJungfrau(int argc, char* argv[]) {
+  MSG(INFO, "In test_AreaDetectorJungfrau");
+
+  //typedef uint16_t raw_t; // in psalg/calib/AreaDetectorTypes.hh
+
+  int fd = file_descriptor(argc, argv);
+  XtcFileIterator xfi(fd, 0x4000000);
+
+  Dgram* dg = xfi.next();
+  ConfigIter configo(&(dg->xtc));
+
+
+  AreaDetectorJungfrau det("jungfrau", configo);
+  //det.process_config();
+  //std::cout << str_config_names(configo) << '\n';
+  det.print_config();
+
+  unsigned neventreq=5;
+  unsigned nevent=0;
+  while ((dg = xfi.next())) {
+      if (nevent>=neventreq) break;
+
+      printf("evt:%04d\n", nevent);
+      //print_dg_info(dg);
+
+      DataIter datao(&(dg->xtc));
+      NDArray<rawjf_t>& nda1 = det.raw(datao);
+      std::cout << "  == raw data nda for DataIter: " << nda1 << '\n';
+
+      DescData& ddata = datao.desc_value(configo.namesLookup());
+      NDArray<rawjf_t>& nda2 = det.raw(ddata);
+      std::cout << "  == raw data nda for DescData: " << nda2 << '\n';
+
+      nevent++;
+  }
+  ::close(fd);
+}
+
+//-------------------
 //-------------------
 //-------------------
 
@@ -221,8 +305,11 @@ std::string usage(const std::string& tname="")
 {
   std::stringstream ss;
   if (tname == "") ss << "Usage command> test_AreaDetector <test-number>\n  where test-number";
-  if (tname == "" || tname=="0"	) ss << "\n  0  - test_AreaDetector()";
-  if (tname == "" || tname=="1"	) ss << "\n  1  - test_getAreaDetector()";
+  if (tname == "" || tname=="0"	) ss << "\n  0  - test_AreaDetector()      - demo of derived AreaDetectorJungfrau methods";
+  if (tname == "" || tname=="1"	) ss << "\n  1  - test_AreaDetector_base() - demo of generic methods of the base class";
+  if (tname == "" || tname=="2"	) ss << "\n  2  - test_AreaDetector_mix()  - demo of mixed output of different objects";
+  if (tname == "" || tname=="3"	) ss << "\n  3  - test_AreaDetectorJungfrau() - demo of Jungfrau specific methods";
+  if (tname == "" || tname=="9"	) ss << "\n  9  - test_getAreaDetector()";
   ss << '\n';
   return ss.str();
 }
@@ -241,7 +328,10 @@ int main(int argc, char **argv) {
   cout << usage(tname); 
 
   if      (tname=="0") test_AreaDetector(argc, argv);
-  else if (tname=="1") test_getAreaDetector();
+  else if (tname=="1") test_AreaDetector_base(argc, argv);
+  else if (tname=="2") test_AreaDetector_mix(argc, argv);
+  else if (tname=="3") test_AreaDetectorJungfrau(argc, argv);
+  else if (tname=="9") test_getAreaDetector();
   else MSG(WARNING, "Undefined test name: " << tname);
 
   print_hline(80,'_');

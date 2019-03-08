@@ -13,7 +13,7 @@ DataIter::~DataIter() {
 int DataIter::process(Xtc* xtc)
 {
   TypeId::Type type = xtc->contains.id(); 
-  printf("DataIter TypeId::%-20s Xtc*: %p\n", TypeId::name(type), &xtc);
+  //printf("DataIter TypeId::%-20s Xtc*: %p\n", TypeId::name(type), &xtc);
 
   switch (type) {
     case (TypeId::Parent): {

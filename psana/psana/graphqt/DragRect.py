@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtCore import QRectF #Qt, QPointF#, QRect, QRectF
-from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE
+from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE, RECT
 from psana.graphqt.DragPoint import * # DragPoint, DragBase, Qt, QPen, QBrush, QCursor
 from PyQt5.QtWidgets import QGraphicsRectItem
 
@@ -37,6 +37,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
             logger.warning('DragRect - wrong init object type:', str(obj))
             return
 
+        self._dragtype = RECT
         parent_for_base = None
         QGraphicsRectItem.__init__(self, rect, parent_for_base)
         #DragBase.__init__(self, parent, brush, pen) # is called inside QGraphicsRectItem
@@ -167,7 +168,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
     def mouseMoveEvent(self, e) :
         QGraphicsPathItem.mouseMoveEvent(self, e)
-        logger.debug('%s.mouseMoveEvent' % self.__class__.__name__)
+        #logger.debug('%s.mouseMoveEvent' % self.__class__.__name__)
         #print('%s.mouseMoveEvent, at point: ' % self.__class__.__name__, e.pos(), ' scenePos: ', e.scenePos())
 
         dp = e.scenePos() - e.lastScenePos() 
@@ -201,8 +202,8 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mouseReleaseEvent(self, e):
-        print('%s.mouseReleaseEvent' % self.__class__.__name__)
-        #QGraphicsPathItem.mouseReleaseEvent(self, e)
+        print('DragRect.mouseReleaseEvent') # % self.__class__.__name__)
+        QGraphicsPathItem.mouseReleaseEvent(self, e)
 
         if self._drag_mode == ADD :
             self.ungrabMouse()

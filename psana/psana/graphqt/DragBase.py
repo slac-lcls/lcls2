@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF
 from PyQt5.QtGui import QPen, QBrush, QCursor
 
+from psana.graphqt.DragTypes import * #dic_drag_type_to_name, UNDEF #, POINT, LINE, RECT, CIRC, POLY, WEDG
 from psana.graphqt.QWUtils import select_item_from_popup_menu, select_color
 
 #-----------------------------
@@ -42,7 +43,7 @@ class DragBase(object) :
     def __init__(self, parent=None,\
                  brush=QBrush(), pen=QPen(Qt.blue, 0, Qt.SolidLine)) :
 
-        logger.debug('In DragBase')
+        logger.debug('In DragBase create %s' % self.str_dragtype())
 
         self.set_drag_mode()
         self.set_child_item_sel()
@@ -61,7 +62,7 @@ class DragBase(object) :
 
     
     def set_drag_mode(self, mode=MOVE) :
-        logger.debug('In DragBase.set_drag_mode %s' % mode_names[mode])
+        logger.debug('In DragBase.set_drag_mode %s for %s' % (mode_names[mode], self.str_dragtype()))
         self._drag_mode = mode
 
 
@@ -88,6 +89,10 @@ class DragBase(object) :
         #self.ped.setZValue(200)
 
         self.setZValue(40 if visible else 20)
+
+
+    def str_dragtype(self) :
+        return dic_drag_type_to_name[self._dragtype]
 
 
     def set_cursor_hover(self, cursor=Qt.CrossCursor) :

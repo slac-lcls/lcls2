@@ -25,8 +25,9 @@ from PyQt5.QtCore import Qt #, QPointF#, QRect, QRectF
 
 import psana.graphqt.ColorTable as ct
 from psana.graphqt.FWViewImage import FWViewImage
-from psana.graphqt.DragFactory import add_item, POINT, LINE, RECT, CIRC, POLY, WEDG,\
-                                      dic_drag_type_to_name, dic_drag_name_to_type
+from psana.graphqt.DragTypes import POINT, LINE, RECT, CIRC, POLY, WEDG,\
+                                    dic_drag_type_to_name, dic_drag_name_to_type
+from psana.graphqt.DragFactory import add_item
 from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE
 
 #------------------------------
@@ -71,7 +72,7 @@ class FWViewImageShapes(FWViewImage) :
             self.set_scale_control('')
 
             logger.debug('process request to add %s' % dic_drag_type_to_name[self.add_request])
-            parent = None if self.add_request == POINT else self
+            parent = None if self.add_request in (POINT,LINE,CIRC,WEDG,POLY) else self
             #parent = None if self.add_request == RECT else self
             item = add_item(self.add_request, scpoint, parent, scene=self.scene())
             item.setZValue(100 if self.add_request == POINT else 30)
@@ -79,10 +80,10 @@ class FWViewImageShapes(FWViewImage) :
             self.lst_drag_items.append(item)
             return
 
-        item = self.item_marked_to_delete()
-        #print('item_marked_to_delete', item)
-        if item is not None :
-            self.delete_item(item)
+        item_del = self.item_marked_to_delete()
+        #print('item_marked_to_delete', item_del)
+        if item_del is not None :
+            self.delete_item(item_del)
             return
 
         if self.selected_item() is None :
@@ -99,7 +100,7 @@ class FWViewImageShapes(FWViewImage) :
 
     def mouseReleaseEvent(self, e):
         FWViewImage.mouseReleaseEvent(self, e)
-        #logger.debug('%s.mouseReleaseEvent pos: %s' % (self.__class__.__name__, str(e.pos())))
+        logger.debug('%s.mouseReleaseEvent pos: %s' % (self.__class__.__name__, str(e.pos())))
 
         if self.add_request is not None :
             self.setShapesEnabled()

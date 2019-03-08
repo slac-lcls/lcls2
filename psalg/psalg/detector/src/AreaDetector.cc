@@ -1,5 +1,5 @@
 
-#include <stdio.h> // for  sprintf, printf( "%lf\n", accum );
+#include <stdio.h>  // for  sprintf, printf( "%lf\n", accum );
 #include <iostream> // for cout, puts etc.
 
 #include "psalg/detector/AreaDetector.hh"
@@ -13,17 +13,17 @@ using namespace psalg;
 namespace detector {
 
 AreaDetector::AreaDetector(const std::string& detname, ConfigIter& config) : 
-  Detector(detname, AREA_DETECTOR), _shape(0), _pconfig(&config), _calib_pars(0), _ind_data(-1) {
+  Detector(detname, AREA_DETECTOR), _shape(0), _pconfig(&config), _ind_data(-1), _calib_pars(0) {
   MSG(DEBUG, "In c-tor AreaDetector(detname, config) for " << detname);
 }
 
 AreaDetector::AreaDetector(const std::string& detname) : 
-  Detector(detname, AREA_DETECTOR), _shape(0), _pconfig(NULL), _calib_pars(0), _ind_data(-1) {
+  Detector(detname, AREA_DETECTOR), _shape(0), _pconfig(NULL), _ind_data(-1), _calib_pars(0) {
   MSG(DEBUG, "In c-tor AreaDetector(detname) for " << detname);
 }
 
 AreaDetector::AreaDetector() : 
-  Detector(), _shape(0), _pconfig(NULL), _calib_pars(0), _ind_data(-1) {
+  Detector(), _shape(0), _pconfig(NULL), _ind_data(-1), _calib_pars(0) {
   MSG(DEBUG, "Default c-tor AreaDetector()");
 }
 
@@ -62,8 +62,15 @@ void AreaDetector::process_config() {
       printf("%02d name: %-32s rank: %d type: %d el.size %02d",
              i, name.name(), name.rank(), itype, Name::get_element_size(itype));
 
-      if (name.type()==Name::INT64 and name.rank()==0)
+      if (name.rank()==0 and name.type()==Name::INT64) {
   	   printf(" value: %ld\n", desc_shape.get_value<int64_t>(name.name()));
+      }
+      else if (name.rank()>0) {
+          auto array = desc_shape.get_array<uint32_t>(i);
+          for (unsigned k=0; k<array.shape()[0]; k++)
+              cout << " ==> as uint32_t el:" << k << " value:" << array(k);
+	  cout << '\n';
+      }
       else printf(" value: TBD\n");
   }
 }
@@ -81,23 +88,31 @@ void AreaDetector::process_data(XtcData::DataIter& datao) {
     DescData& descdata = datao.desc_value(namesLookup);
 
     //NameIndex& nameIndex   = descdata.nameindex();
-    ShapesData& shapesData = descdata.shapesdata();
-    NamesId& namesId       = shapesData.namesId();
+    //ShapesData& shapesData = descdata.shapesdata();
+    //NamesId& namesId       = shapesData.namesId();
     Names& names           = descdata.nameindex().names();
 
-    MSG(DEBUG, "In AreaDetector::process_data, transition: " << namesId.namesId() << " (0/1 = config/data)\n");
-    printf("Names:: detName: %s  detType: %s  detId: %s  segment: %d alg.name: %s\n",
-          names.detName(), names.detType(), names.detId(), names.segment(), names.alg().name());
+    //MSG(DEBUG, str_config_names(configo).c_str());
 
     printf("------ %d Names and values for data ---------\n", names.num());
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         printf("%02d name: %-32s rank: %d type: %d", i, name.name(), name.rank(), name.type());
-        if (name.type()==Name::INT64 and name.rank()==0) {
+        if (name.rank()==0 and name.type()==Name::INT64) {
 	  printf(" value %ld\n", descdata.get_value<int64_t>(name.name()));
+        }
+        else if (name.rank()>0) {
+	  uint16_t *data = descdata.get_array<uint16_t>(i).data();
+	  printf(" as uint16 ==> %d %d %d %d %d\n", data[0],data[1],data[2],data[3],data[4]);
         }
 	else printf("  ==> TBD\n");
     }
+}
+
+//-------------------
+
+const void AreaDetector::print_config() {
+    _default_msg("print_config");
 }
 
 //-------------------
@@ -107,7 +122,7 @@ void AreaDetector::_set_index_data(XtcData::DescData& ddata, const char* datanam
     for (unsigned i = 0; i < names.num(); i++) {
       if(strcmp(names.get(i).name(), dataname) == 0) {
         _ind_data = (int)i; 
-        MSG(DEBUG, "  ===> dataname: " << dataname << " index: " << _ind_data);
+        //MSG(DEBUG, "  ===> dataname: " << dataname << " index: " << _ind_data);
         break;
       }
     }
@@ -116,21 +131,21 @@ void AreaDetector::_set_index_data(XtcData::DescData& ddata, const char* datanam
 //-------------------
 
 template<typename T>
-void AreaDetector::raw(XtcData::DescData& ddata, const T* pdata, const char* dataname) {
+void AreaDetector::raw(XtcData::DescData& ddata, T*& pdata, const char* dataname) {
     if(_ind_data < 0) _set_index_data(ddata, dataname);
     pdata = ddata.get_array<T>(_ind_data).data();
 }
 
 //-------------------
 
-template void AreaDetector::raw<uint16_t>(XtcData::DescData&, const uint16_t*, const char*); 
-//template void AreaDetector::raw<int16_t> (XtcData::DescData&, const int16_t*, const char*); 
-//template void AreaDetector::raw<int8_t>  (XtcData::DescData&, const int8_t*, const char*); 
+template void AreaDetector::raw<uint16_t>(XtcData::DescData&, uint16_t*&, const char*); 
+//template void AreaDetector::raw<int16_t> (XtcData::DescData&, int16_t*&, const char*); 
+//template void AreaDetector::raw<int8_t>  (XtcData::DescData&, int8_t*&, const char*); 
 
 //-------------------
 
 template<typename T>
-void AreaDetector::raw(XtcData::DataIter& datao, const T* pdata, const char* dataname) {
+void AreaDetector::raw(XtcData::DataIter& datao, T*& pdata, const char* dataname) {
   //ConfigIter& configo = *_pconfig;
   //NamesLookup& namesLookup = configo.namesLookup();
     DescData& ddata = datao.desc_value(_pconfig->namesLookup());
@@ -139,16 +154,18 @@ void AreaDetector::raw(XtcData::DataIter& datao, const T* pdata, const char* dat
 
 //-------------------
 
-  template void AreaDetector::raw<uint16_t>(XtcData::DataIter&, const uint16_t*, const char*); 
-//template void AreaDetector::raw<int16_t> (XtcData::DataIter&, const int16_t*, const char*); 
-//template void AreaDetector::raw<int8_t>  (XtcData::DataIter&, const int8_t*, const char*); 
+  template void AreaDetector::raw<uint16_t>(XtcData::DataIter&, uint16_t*&, const char*); 
+//template void AreaDetector::raw<int16_t> (XtcData::DataIter&, int16_t*&, const char*); 
+//template void AreaDetector::raw<int8_t>  (XtcData::DataIter&, int8_t*&, const char*); 
 
 //-------------------
 
 template<typename T>
 void AreaDetector::raw(XtcData::DescData& ddata, NDArray<T>& nda, const char* dataname) {
-    if(_ind_data < 0) _set_index_data(ddata, dataname);
-    T* pdata = ddata.get_array<T>(_ind_data).data();
+  //if(_ind_data < 0) _set_index_data(ddata, dataname);
+  //T* pdata = ddata.get_array<T>(_ind_data).data();
+    T* pdata = 0;
+    raw<T>(ddata, pdata, dataname);
     nda.set_shape(shape(), ndim());
     nda.set_data_buffer(pdata);
 }
@@ -178,14 +195,14 @@ void AreaDetector::raw(XtcData::DataIter& datao, NDArray<T>& nda, const char* da
 //-------------------
 //-------------------
 
-void AreaDetector::detid(std::ostream& os, const int& ind) {
+void AreaDetector::detid(std::ostream& os, const int ind) {
   //_default_msg("detid(std::ostream& os,...)");
   os << "default_area_detector_id";
 }
 
 //-------------------
 
-std::string AreaDetector::detid(const int& ind) {
+std::string AreaDetector::detid(const int ind) {
   //_default_msg("detid(...) returns string");
   std::stringstream ss;
   detid(ss, ind);
@@ -238,7 +255,8 @@ const size_t AreaDetector::size(const event_t& evt) {
   return 0;
 }
 
-//=========
+//-------------------
+//===================
 
 /// access to calibration constants
 const NDArray<common_mode_t>& AreaDetector::common_mode(const event_t& evt) {
@@ -357,7 +375,6 @@ void AreaDetector::move_geo(const event_t& evt, const pixel_size_t& dx,  const p
 void AreaDetector::tilt_geo(const event_t& evt, const tilt_angle_t& dtx, const tilt_angle_t& dty, const tilt_angle_t& dtz) {
   _default_msg("tilt_geo(...)");
 }
-
 
 /// access to geometry
 const geometry_t& AreaDetector::geometry(const event_t& evt) {
