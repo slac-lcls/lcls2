@@ -289,10 +289,15 @@ def wait_for_answers(socket, wait_time, msg_id):
 
 
 def confirm_response(socket, wait_time, msg_id, ids):
+    logging.debug('confirm_response(): ids = %s' % ids)
     msgs = []
     for msg in wait_for_answers(socket, wait_time, msg_id):
-        msgs.append(msg)
-        ids.remove(msg['header']['sender_id'])
+        if msg['header']['sender_id'] in ids:
+            msgs.append(msg)
+            ids.remove(msg['header']['sender_id'])
+            logging.debug('confirm_response(): removed %s from ids' % msg['header']['sender_id'])
+        else:
+            logging.debug('confirm_response(): %s not in ids' % msg['header']['sender_id'])
         if len(ids) == 0:
             break
     for ii in ids:
@@ -576,6 +581,10 @@ class CollectionManager():
         # only drp group (aka level) responds to configure and above
         ids = self.filter_level('drp', ids)
 
+        if len(ids) == 0:
+            logging.debug('condition_common() empty set of ids')
+            return True
+
         # make sure all the clients respond to transition before timeout
         ret, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
         if ret:
@@ -596,7 +605,7 @@ class CollectionManager():
                         self.front_pub.send_json(self.error_msg(message))
                 except KeyError:
                     pass
-            return retval
+        return retval
 
     def condition_configure(self):
         retval = self.condition_common('configure', 1000)

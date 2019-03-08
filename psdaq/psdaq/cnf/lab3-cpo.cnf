@@ -32,7 +32,7 @@ procmgr_config = [
 # {                        id:'dtica', flags:'s', conda:conda_rel, env:epics_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
  {                        id:'hsdca', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV02'},
 # { host: 'drp-tst-acc02', id:'EvtBuild', flags:'sxp', conda:conda_rel, cmd:'drpEbBuilder -1 8 -2 8' },
-## { host: 'drp-tst-dev002', id:'teb1', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'tstEbBuilder' },
-# { host: 'drp-tst-dev024', id:'hsddrp', flags:'sxp', conda:conda_rel, cmd:'psdaq/build/drp/drp -o /tmp -l 0x1 -D Digitizer'},
-## { host: 'drp-tst-acc06', id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v' },
+ { host: 'drp-tst-dev002', id:'teb1', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'tstEbBuilder -C drp-tst-acc06' },
+# { host: 'drp-tst-dev024', id:'hsddrp', flags:'sxp', conda:conda_rel, cmd:'psdaq/build/drp/drp -o /tmp -l 0x1 -D Digitizer -C drp-tst-acc06 -d /dev/datadev_0'},
+ { host: 'drp-tst-acc06', id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v' },
 ]

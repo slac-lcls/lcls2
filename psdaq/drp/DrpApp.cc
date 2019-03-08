@@ -41,6 +41,8 @@ DrpApp::DrpApp(Parameters* para) :
     m_ebContributor = std::make_unique<Pds::Eb::TebContributor>(m_para->tPrms);
 
     m_inprocRecv.bind("inproc://drp");
+
+    std::cout << "output dir: " << m_para->output_dir << std::endl;
 }
 
 void DrpApp::handleConnect(const json &msg)
@@ -216,11 +218,13 @@ EbReceiver::EbReceiver(const Parameters& para, MemPool& pool,
 {
     m_inprocSend.connect("inproc://drp");
 
-    std::string fileName = {para.output_dir + "/data-" + std::to_string(para.tPrms.id) + ".xtc2"};
-    m_xtcFile = fopen(fileName.c_str(), "w");
-    if (!m_xtcFile) {
-        std::cout<<"Error opening output xtc file  "<<fileName<<'\n';
-        return;
+    if (!para.output_dir.empty()) {
+        std::string fileName = {para.output_dir + "/data-" + std::to_string(para.tPrms.id) + ".xtc2"};
+        m_xtcFile = fopen(fileName.c_str(), "w");
+        if (!m_xtcFile) {
+            std::cout<<"Error opening output xtc file  "<<fileName<<'\n';
+            return;
+        }
     }
 }
 
@@ -246,16 +250,18 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         std::cout<<"pebble pulseId  "<<event_header->seq.pulseId().value()<<
                  "  result dgram pulseId  "<<result->seq.pulseId().value()<<'\n';
     }
-    /*
+
     // write event to file if it passes event builder or is a configure transition
-    if (eb_decision == 1 || (transition_id == XtcData::TransitionId::Configure)) {
-        XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
-        if (fwrite(dgram, sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload(), 1, m_xtcFile) != 1) {
-            printf("Error writing to output xtc file.\n");
-            return;
+    if (m_xtcFile) {
+        if (eb_decision == 1 || (transition_id == XtcData::TransitionId::Configure)) {
+            XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
+            if (fwrite(dgram, sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload(), 1, m_xtcFile) != 1) {
+                printf("Error writing to output xtc file.\n");
+                return;
+            }
         }
     }
-    */
+
     if (m_mon) {
         XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
         // L1Accept

@@ -43,7 +43,7 @@ private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
     unsigned nreceive;
-    FILE* m_xtcFile;
+    FILE* m_xtcFile = NULL;
     DmaIndexReturner m_indexReturner;
     ZmqSocket m_inprocSend;
 };
