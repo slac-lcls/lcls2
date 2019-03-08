@@ -29,7 +29,9 @@ from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout # , QWidget,  QL
 
 from psdaq.control_gui.CGWPartitionSelection import CGWPartitionSelection
 from psdaq.control_gui.QWDialog import QDialog, QWDialog
-from psdaq.control_gui.CGDaqControl import daq_control, DaqControl #, worker_set_state
+from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_set_state
+
+from psdaq.control_gui.CGJsonUtils import get_platform
 
 #--------------------
 
@@ -98,6 +100,14 @@ class CGWMainPartition(QGroupBox) :
     def on_but_select(self):
         logger.debug('on_but_select')
 
+        list_procs = get_platform()
+
+        print('List of processes:')
+        for s in list_procs :
+            print(s)
+
+        #return
+
         #w_select = QLineEdit('Test window')
         w_select = CGWPartitionSelection()
         w_dialog = QWDialog(self.but_select, w_select)
@@ -117,7 +127,7 @@ class CGWMainPartition(QGroupBox) :
  
     def on_but_display(self):
         logger.debug('on_but_display')
-        if self.w_display is None :
+        if  self.w_display is None :
             self.w_display = CGWPartitionSelection(parent=None, parent_ctrl=self)
             self.w_display.show()
         else :

@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox, QHBoxLayout, QVBoxLayout
      #QGridLayout, QLineEdit, QFileDialog, QWidget
-from PyQt5.QtCore import Qt # pyqtSignal, QRectF, QPointF, QTimer
+from PyQt5.QtCore import Qt, QPoint # pyqtSignal, QRectF, QPointF, QTimer
+
+from psdaq.control_gui.CGWConfigEditor import CGWConfigEditor
 
 #--------------------
 
@@ -92,6 +94,8 @@ class CGWMainConfiguration(QGroupBox) :
         self.box_seq.currentIndexChanged[int].connect(self.on_box_seq)
         self.cbx_seq.stateChanged[int].connect(self.on_cbx_seq)
 
+        self.w_edit = None
+
 #--------------------
 
     def set_tool_tips(self) :
@@ -147,11 +151,26 @@ class CGWMainConfiguration(QGroupBox) :
  
     def on_but_edit(self):
         logger.debug('on_but_edit')
+        if self.w_edit is None :
+            self.w_edit = CGWConfigEditor()
+            self.w_edit.move(self.pos() + QPoint(self.width()+30, 0))
+            self.w_edit.show()
+        else :
+           self.w_edit.close()
+           self.w_edit = None
 
 #--------------------
  
     def on_but_scan(self):
         logger.debug('on_but_scan')
+
+#--------------------
+
+    def closeEvent(self, e):
+        print('CGWMainConfiguration.closeEvent')
+        if self.w_edit is not None :
+           self.w_edit.close()
+        QGroupBox.closeEvent(self, e)
 
 #--------------------
  

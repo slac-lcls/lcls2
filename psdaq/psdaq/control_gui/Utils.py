@@ -12,6 +12,7 @@ Usage::
     # Import
     #import psana.pyalgos.generic.Utils as gu
     import psdaq.control_gui.Utils as gu
+    from psana.pyalgos.generic.Utils import load_textfile
 
     # Methods
     #resp = gu.<method(pars)>
@@ -520,6 +521,12 @@ def subproc(command_seq, env=None, shell=False) : # for example, command_seq=['b
     return out, err
 
 #------------------------------
+
+def path_to_test_data() :
+    _ROOT = os.path.abspath(os.path.dirname(__file__))
+    #path = 'psdaq/psdaq/control_gui/data/test'
+    return '%s/data/test' % _ROOT
+
 #------------------------------
 #------------------------------
 #------------------------------

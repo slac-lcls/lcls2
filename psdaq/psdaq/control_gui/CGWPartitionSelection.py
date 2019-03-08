@@ -106,6 +106,7 @@ class CGWPartitionSelection(QWidget) :
     def closeEvent(self, e):
         logger.debug('closeEvent')
         self.parent_ctrl.w_display = None
+        QWidget.closeEvent(self, e)
 
 #--------------------
 

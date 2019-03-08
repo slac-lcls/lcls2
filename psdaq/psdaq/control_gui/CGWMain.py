@@ -180,6 +180,7 @@ class CGWMain(QWZMQListener) :
     def set_style(self) :
 
         self.setMinimumWidth(350)
+        self.wlogr.setMinimumHeight(300)
 
         #self.setGeometry(50, 50, 500, 600)
         #self.setGeometry(self.main_win_pos_x .value(),\
@@ -225,16 +226,23 @@ class CGWMain(QWZMQListener) :
 
 
     def closeEvent(self, e) :
-        logger.debug('%s.closeEvent' % self._name)
-
+        print('%s.closeEvent' % self._name)
+        #logger.debug('%s.closeEvent' % self._name)
         #try : self.wspe.close()
         #except : pass
 
         #self.wtab.close()
-
         #self.on_save()
+        try : 
+          self.wconf.close()
+          #self.wpart.close()
+          #self.wctrl.close()
+          #self.wdetr.close()
+          #self.wrsta.close()
+        except Exception as ex:
+          print('Exception: %s' % ex)
 
-        QWidget.closeEvent(self, e)
+        QWZMQListener.closeEvent(self, e)
 
  
     def resizeEvent(self, e):

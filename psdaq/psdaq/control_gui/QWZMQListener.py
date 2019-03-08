@@ -82,6 +82,12 @@ class QWZMQListener(QWidget):
         """
         _flags = self.zmq_socket.getsockopt(zmq.EVENTS)
 
+
+#    def closeEvent(self, e) :
+#        print('QWZMQListener.closeEvent')
+#        #logger.debug('%s.closeEvent' % self._name)
+#        QWidget.closeEvent(self, e)
+
 #----------
 
 if __name__ == '__main__':
