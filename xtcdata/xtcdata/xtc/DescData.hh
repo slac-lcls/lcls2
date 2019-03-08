@@ -61,7 +61,8 @@ public:
 	assert(Name::UINT16==name.type());
     }
     static void checkType(uint32_t val, Name& name) {
-	assert(Name::UINT32==name.type());
+	assert(Name::UINT32==name.type() || Name::ENUMVAL==name.type() ||
+               Name::ENUMDICT==name.type());
     }
     static void checkType(uint64_t val, Name& name) {
 	assert(Name::UINT64==name.type());

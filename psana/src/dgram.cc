@@ -25,6 +25,7 @@ using namespace XtcData;
 #define TMPSTRINGSIZE 1024
 
 static const char* PyNameDelim=".";
+static const char* EnumDelim=":";
 
 using namespace std;
 
@@ -117,6 +118,7 @@ static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
         // we're at the lowest level, set the value to be the data object.
         // this case should happen rarely, if ever, in lcls2.
         PyDict_SetItem(dict,pySeg,obj);
+        Py_DECREF(obj); // transfer ownership to parent
     } else {
         // we're not at the lowest level, get the container object for this segment
         PyObject* container;
@@ -214,6 +216,55 @@ void DictAssignAlg(PyDgramObject* pyDgram, NamesLookup& namesLookup)
     }
 }
 
+// return an "enum object" (with a value/dict_ that can be added to the pydgram
+PyObject* CreateEnum(const char* enumname, PyDgramObject* pyDgram, DescData& descdata) {
+    Names& names = descdata.nameindex().names(); // event names, chan0, chan1
+
+    // make a container
+    PyObject* parent = PyObject_CallObject(pyDgram->contInfo.pycontainertype, NULL);
+    // add the dict associated with the enum to the container
+    // fill in the dict and the value
+    PyObject* dict = PyDict_New();
+    PyObject_SetAttrString(parent, "names", dict);
+    Py_DECREF(dict); // transfer ownership to parent
+
+    for (unsigned i = 0; i < names.num(); i++) {
+        Name& name = names.get(i);
+        const char* tempName = name.name();
+
+        if (name.type() == Name::ENUMVAL) {
+            if (strlen(enumname)==strlen(tempName) &&
+                strcmp(enumname,tempName)==0) {
+                const auto tempVal = descdata.get_value<uint32_t>(tempName);
+                PyObject* newobj = Py_BuildValue("I", tempVal);
+                PyObject_SetAttrString(parent, "value", newobj);
+            }
+        } else if (name.type() == Name::ENUMDICT) {
+            // check that we are looking at the correct ENUMDICT
+            if (strncmp(enumname,tempName,strlen(enumname))==0) {
+                // check we got the right delimiter
+                assert(tempName[strlen(enumname)]==PyNameDelim[0]);
+                // check that we have a reasonable string to use
+                // as the value
+                assert(strlen(tempName)>strlen(enumname)+1);
+
+                const auto tempVal = descdata.get_value<uint32_t>(tempName);
+                PyObject* pyint = Py_BuildValue("I", tempVal);
+                // iter).  I believe this
+                // will return NULL if the string is invalid
+                PyObject* enumstr = Py_BuildValue("s", tempName+strlen(enumname)+1);
+                if (enumstr) {
+                    PyDict_SetItem(dict,pyint,enumstr);
+                    Py_DECREF(enumstr); // transfer ownership to parent
+                }
+
+            }
+        }
+    }
+
+    return parent;
+}
+
 void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
 {
     Names& names = descdata.nameindex().names(); // event names, chan0, chan1
@@ -222,12 +273,12 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         const char* tempName = name.name();
-        PyObject* newobj=0;
+        PyObject* newobj=0; // some types don't get added here (e.g. enum)
 
         if (name.rank() == 0 || name.type()==Name::CHARSTR) {
             switch (name.type()) {
             case Name::UINT8: {
-	            const auto tempVal = descdata.get_value<uint8_t>(tempName);
+                const auto tempVal = descdata.get_value<uint8_t>(tempName);
                 newobj = Py_BuildValue("B", tempVal);
                 break;
             }
@@ -282,8 +333,15 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 assert(name.rank()==1); // strings are 1 dimensional
                 auto arr = descdata.get_array<char>(i);
                 uint32_t* shape = descdata.shape(name);
-                assert(strlen(arr.data())<shape(0));
+                assert(strlen(arr.data())<shape[0]);
                 newobj = Py_BuildValue("s", arr.data());
+                break;
+            }
+            case Name::ENUMVAL: {
+                newobj = CreateEnum(tempName, pyDgram, descdata);
+                break;
+            }
+            default: {
                 break;
             }
             }
@@ -358,6 +416,9 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 assert(0); // should never happen
                 break;
             }
+            default: {
+                break;
+            }
             }
             if (PyArray_SetBaseObject((PyArrayObject*)newobj, pyDgram->dgrambytes) < 0) {
                 printf("Failed to set BaseObject for numpy array.\n");
@@ -365,13 +426,16 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
             // PyArray_SetBaseObject steals a reference to the dgrambytes
             // but we want the dgram to also keep a reference to it as well.
             Py_INCREF(pyDgram->dgrambytes);
-            //clear NPY_ARRAY_WRITEABLE flag
+
+            // make the raw data arrays read-only
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
-        snprintf(keyName,TMPSTRINGSIZE,"%s%s%s%s%s",
-                 names.detName(),PyNameDelim,names.alg().name(),
-                 PyNameDelim,name.name());
-        addDataObj(pyDgram, keyName, newobj, names.segment());
+        if (newobj) {
+            snprintf(keyName,TMPSTRINGSIZE,"%s%s%s%s%s",
+                     names.detName(),PyNameDelim,names.alg().name(),
+                     PyNameDelim,name.name());
+            addDataObj(pyDgram, keyName, newobj, names.segment());
+        }
     }
 }
 
