@@ -31,8 +31,8 @@ int EbLfClient::connect(const char* peer,
   _pending = 0;
 
   const uint64_t flags  = 0;
-  const size_t   txSize = 0;
-  const size_t   rxSize = 0;
+  const size_t   txSize = 192;
+  const size_t   rxSize = 1;            // Something small to not waste memory
   Fabric* fab = new Fabric(peer, port, flags, txSize, rxSize);
   if (!fab || !fab->up())
   {
@@ -50,6 +50,8 @@ int EbLfClient::connect(const char* peer,
 
   struct fi_info*  info   = fab->info();
   size_t           cqSize = info->tx_attr->size;
+  printf("rx_attr.size = %zd, tx_attr.size = %zd\n",
+         info->rx_attr->size, info->tx_attr->size);
   CompletionQueue* txcq   = new CompletionQueue(fab, cqSize);
   if (!txcq)
   {
