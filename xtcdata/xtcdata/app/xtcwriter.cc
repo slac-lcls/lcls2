@@ -50,6 +50,7 @@ public:
        NameVec.push_back({"enumFex1:MyEnumName",Name::ENUMVAL});
        NameVec.push_back({"HighGain:MyEnumName",Name::ENUMDICT});
        NameVec.push_back({"LowGain:MyEnumName",Name::ENUMDICT});
+       // enumFex2 reuses the same dictionary as enumFex1
        NameVec.push_back({"enumFex2:MyEnumName",Name::ENUMVAL});
        NameVec.push_back({"enumFex3:MyEnumName2",Name::ENUMVAL});
        NameVec.push_back({"On:MyEnumName2",Name::ENUMDICT});
