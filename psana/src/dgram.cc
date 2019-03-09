@@ -25,7 +25,7 @@ using namespace XtcData;
 #define TMPSTRINGSIZE 1024
 
 static const char* PyNameDelim=".";
-static const char* EnumDelim=":";
+static const char EnumDelim=':';
 
 using namespace std;
 
@@ -189,7 +189,7 @@ static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     assert(Py_GETREF(detType)==1);
 }
 
-void DictAssignAlg(PyDgramObject* pyDgram, NamesLookup& namesLookup)
+static void dictAssignAlg(PyDgramObject* pyDgram, NamesLookup& namesLookup)
 {
     // This function gets called at configure: add attributes "software" and "version" to pyDgram and return
     char baseName[TMPSTRINGSIZE];
@@ -216,9 +216,11 @@ void DictAssignAlg(PyDgramObject* pyDgram, NamesLookup& namesLookup)
     }
 }
 
-// return an "enum object" (with a value/dict_ that can be added to the pydgram
-PyObject* CreateEnum(const char* enumname, PyDgramObject* pyDgram, DescData& descdata) {
-    Names& names = descdata.nameindex().names(); // event names, chan0, chan1
+// return an "enum object" (with a value/dict that can be added to the pydgram
+static PyObject* createEnum(const char* enumname, PyDgramObject* pyDgram, DescData& descdata) {
+    char tempName[TMPSTRINGSIZE];
+    const char* enumtype = strchr(enumname,EnumDelim)+1;
+    Names& names = descdata.nameindex().names();
 
     // make a container
     PyObject* parent = PyObject_CallObject(pyDgram->contInfo.pycontainertype, NULL);
@@ -230,34 +232,31 @@ PyObject* CreateEnum(const char* enumname, PyDgramObject* pyDgram, DescData& des
 
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
-        const char* tempName = name.name();
+        const char* varName = name.name();
 
         if (name.type() == Name::ENUMVAL) {
-            if (strlen(enumname)==strlen(tempName) &&
-                strcmp(enumname,tempName)==0) {
-                const auto tempVal = descdata.get_value<uint32_t>(tempName);
+            if (strncmp(enumname,varName,TMPSTRINGSIZE)==0) {
+                const auto tempVal = descdata.get_value<uint32_t>(varName);
                 PyObject* newobj = Py_BuildValue("I", tempVal);
                 PyObject_SetAttrString(parent, "value", newobj);
             }
         } else if (name.type() == Name::ENUMDICT) {
             // check that we are looking at the correct ENUMDICT
-            if (strncmp(enumname,tempName,strlen(enumname))==0) {
-                // check we got the right delimiter
-                assert(tempName[strlen(enumname)]==PyNameDelim[0]);
-                // check that we have a reasonable string to use
-                // as the value
-                assert(strlen(tempName)>strlen(enumname)+1);
+            strncpy(tempName,varName,TMPSTRINGSIZE);
+            char* enumtype_dict = strchr(tempName,EnumDelim)+1;
 
-                const auto tempVal = descdata.get_value<uint32_t>(tempName);
+            if (strncmp(enumtype,enumtype_dict,TMPSTRINGSIZE)==0) {
+                // eliminate the enum type from the name by
+                // inserting the null character
+                enumtype_dict[-1]='\0';
+                const auto tempVal = descdata.get_value<uint32_t>(varName);
                 PyObject* pyint = Py_BuildValue("I", tempVal);
-                // iter).  I believe this
-                // will return NULL if the string is invalid
-                PyObject* enumstr = Py_BuildValue("s", tempName+strlen(enumname)+1);
+                // I believe this will return NULL if the string is invalid
+                PyObject* enumstr = Py_BuildValue("s", tempName);
                 if (enumstr) {
                     PyDict_SetItem(dict,pyint,enumstr);
                     Py_DECREF(enumstr); // transfer ownership to parent
                 }
-
             }
         }
     }
@@ -265,67 +264,68 @@ PyObject* CreateEnum(const char* enumname, PyDgramObject* pyDgram, DescData& des
     return parent;
 }
 
-void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
+static void dictAssign(PyDgramObject* pyDgram, DescData& descdata)
 {
-    Names& names = descdata.nameindex().names(); // event names, chan0, chan1
+    Names& names = descdata.nameindex().names();
 
     char keyName[TMPSTRINGSIZE];
+    char tempName[TMPSTRINGSIZE];
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
-        const char* tempName = name.name();
-        PyObject* newobj=0; // some types don't get added here (e.g. enum)
+        const char* varName = name.name();
+        PyObject* newobj=0; // some types don't get added here (e.g. enumdict)
 
         if (name.rank() == 0 || name.type()==Name::CHARSTR) {
             switch (name.type()) {
             case Name::UINT8: {
-                const auto tempVal = descdata.get_value<uint8_t>(tempName);
+                const auto tempVal = descdata.get_value<uint8_t>(varName);
                 newobj = Py_BuildValue("B", tempVal);
                 break;
             }
             case Name::UINT16: {
-                const auto tempVal = descdata.get_value<uint16_t>(tempName);
+                const auto tempVal = descdata.get_value<uint16_t>(varName);
                 newobj = Py_BuildValue("H", tempVal);
                 break;
             }
             case Name::UINT32: {
-                const auto tempVal = descdata.get_value<uint32_t>(tempName);
+                const auto tempVal = descdata.get_value<uint32_t>(varName);
                 newobj = Py_BuildValue("I", tempVal);
                 break;
             }
             case Name::UINT64: {
-                const auto tempVal = descdata.get_value<uint64_t>(tempName);
+                const auto tempVal = descdata.get_value<uint64_t>(varName);
                 newobj = Py_BuildValue("K", tempVal);
                 break;
             }
             case Name::INT8: {
-                const auto tempVal = descdata.get_value<int8_t>(tempName);
+                const auto tempVal = descdata.get_value<int8_t>(varName);
                 newobj = Py_BuildValue("b", tempVal);
                 break;
             }
             case Name::INT16: {
-                const auto tempVal = descdata.get_value<int16_t>(tempName);
+                const auto tempVal = descdata.get_value<int16_t>(varName);
                 newobj = Py_BuildValue("h", tempVal);
                 break;
             }
             case Name::INT32: {
-                const auto tempVal = descdata.get_value<int32_t>(tempName);
+                const auto tempVal = descdata.get_value<int32_t>(varName);
                 // cpo: thought that "l" (long int) would work here
                 // as well, but empirically it doesn't.
                 newobj = Py_BuildValue("i", tempVal);
                 break;
             }
             case Name::INT64: {
-                const auto tempVal = descdata.get_value<int64_t>(tempName);
+                const auto tempVal = descdata.get_value<int64_t>(varName);
                 newobj = Py_BuildValue("L", tempVal);
                 break;
             }
             case Name::FLOAT: {
-                const auto tempVal = descdata.get_value<float>(tempName);
+                const auto tempVal = descdata.get_value<float>(varName);
                 newobj = Py_BuildValue("f", tempVal);
                 break;
             }
             case Name::DOUBLE: {
-                const auto tempVal = descdata.get_value<double>(tempName);
+                const auto tempVal = descdata.get_value<double>(varName);
                 newobj = Py_BuildValue("d", tempVal);
                 break;
             }
@@ -338,7 +338,17 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 break;
             }
             case Name::ENUMVAL: {
-                newobj = CreateEnum(tempName, pyDgram, descdata);
+                newobj = createEnum(varName, pyDgram, descdata);
+
+                // overwrite the delimiter with the null character
+                // so the value's python name doesn't include the dict
+                // name (which follows the EnumDelim).
+                strncpy(tempName,varName,TMPSTRINGSIZE);
+                char* delim = strchr(tempName,EnumDelim);
+                assert(delim);
+                *delim = '\0';
+                // tell the object adder to use our modified name
+                varName = tempName;
                 break;
             }
             default: {
@@ -433,7 +443,7 @@ void DictAssign(PyDgramObject* pyDgram, DescData& descdata)
         if (newobj) {
             snprintf(keyName,TMPSTRINGSIZE,"%s%s%s%s%s",
                      names.detName(),PyNameDelim,names.alg().name(),
-                     PyNameDelim,name.name());
+                     PyNameDelim,varName);
             addDataObj(pyDgram, keyName, newobj, names.segment());
         }
     }
@@ -463,7 +473,7 @@ public:
             // may not have a _namesLookup
             if (_namesLookup.count(namesId)>0) {
                 DescData descdata(shapesdata, _namesLookup[namesId]);
-                DictAssign(_pyDgram, descdata);
+                dictAssign(_pyDgram, descdata);
             }
             break;
         }
@@ -478,7 +488,7 @@ private:
     NamesLookup&      _namesLookup;
 };
 
-void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
+static void assignDict(PyDgramObject* self, PyDgramObject* configDgram) {
     bool isConfig;
     isConfig = (configDgram == 0) ? true : false;
     
@@ -488,7 +498,7 @@ void AssignDict(PyDgramObject* self, PyDgramObject* configDgram) {
         configDgram->namesIter = new NamesIter(&(configDgram->dgram->xtc));
         configDgram->namesIter->iterate();
     
-        DictAssignAlg(configDgram, configDgram->namesIter->namesLookup());
+        dictAssignAlg(configDgram, configDgram->namesIter->namesLookup());
     } else {
         self->namesIter = 0; // in case dgram was not created via dgram_init
     }
@@ -666,7 +676,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         // 5. Dgram(view=view, config=config, offset=int) --> create a data dgram using the config and view
 
         // this next line is needed because arrays will increase the reference count
-        // of the view (actually a PyByteArray) in DictAssign.  This is the mechanism we
+        // of the view (actually a PyByteArray) in dictAssign.  This is the mechanism we
         // use so we don't have to copy the array data.
         self->dgrambytes = view;
         if (PyObject_GetBuffer(view, &(self->buf), PyBUF_SIMPLE) == -1) {
@@ -709,7 +719,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         if (err) return err;
     }
     
-    AssignDict(self, (PyDgramObject*)configDgram);
+    assignDict(self, (PyDgramObject*)configDgram);
 
     return 0;
 }

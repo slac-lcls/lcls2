@@ -17,8 +17,12 @@ testvals = {
         'names':{2:'HighGain', 5:'LowGain'}
     },
     'enumFex2': {
-        'value':9,
-        'names':{7:'HighGain', 9:'LowGain'}
+        'value':5,
+        'names':{2:'HighGain', 5:'LowGain'}
+    },
+    'enumFex3': {
+        'value':12,
+        'names':{7:'On', 12:'Off'}
     },
 
     'arrayRaw':padarray,

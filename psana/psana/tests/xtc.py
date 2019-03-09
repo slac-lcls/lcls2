@@ -44,6 +44,8 @@ def valtester(dg, nsegments, cydgram):
       assert hsdfex.enumFex1.names == testvals['enumFex1']['names']
       assert hsdfex.enumFex2.value == testvals['enumFex2']['value']
       assert hsdfex.enumFex2.names == testvals['enumFex2']['names']
+      assert hsdfex.enumFex3.value == testvals['enumFex3']['value']
+      assert hsdfex.enumFex3.names == testvals['enumFex3']['names']
 
       assert np.array_equal(cspadraw.arrayRaw,testvals['arrayRaw'])
 

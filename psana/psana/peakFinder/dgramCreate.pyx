@@ -77,6 +77,10 @@ class parse_xtc():
                     data_algs_block = vars(det_sw_config[algt])
                     data = vars(det_config[algt])
                     for data_name in data.keys():
+                        # hack to avoid unsupported types (cpo)
+                        if 'enumFex' in data_name: continue
+                        if 'charStrFex' in data_name: continue
+
                         alg_dict = data_algs_block[data_name]
                         minor_alg = alg(alg_dict.software, alg_dict.version)
                         data_algs[data_name] = [data[data_name], minor_alg]
@@ -328,7 +332,7 @@ class CyDgram():
 
         num_arrays = 0
         for name, array in event_dict.items():
-            if name == 'charStrFex' or 'enumFex' in name: continue  # hack to avoid unsupported types in the tests
+            if name == 'charStrFex' or 'enumFex' in name: continue  # hack to avoid unsupported types in the tests (cpo)
             try:
                 array_alg = bool(type(array[1]) == type(alg))
             except (IndexError,TypeError):

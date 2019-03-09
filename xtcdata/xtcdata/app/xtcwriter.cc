@@ -35,8 +35,9 @@ public:
       enumFex1_HighGain,
       enumFex1_LowGain,
       enumFex2,
-      enumFex2_HighGain,
-      enumFex2_LowGain,
+      enumFex3,
+      enumFex3_On,
+      enumFex3_Off,
     };
 
   FexDef()
@@ -46,12 +47,13 @@ public:
        NameVec.push_back({"intFex",Name::INT64});
        NameVec.push_back({"charStrFex",Name::CHARSTR,1});
        // the enum dict requires ":EnumString" at the end of the name
-       NameVec.push_back({"enumFex1",Name::ENUMVAL});
-       NameVec.push_back({"enumFex1:HighGain",Name::ENUMDICT});
-       NameVec.push_back({"enumFex1:LowGain",Name::ENUMDICT});
-       NameVec.push_back({"enumFex2",Name::ENUMVAL});
-       NameVec.push_back({"enumFex2:HighGain",Name::ENUMDICT});
-       NameVec.push_back({"enumFex2:LowGain",Name::ENUMDICT});
+       NameVec.push_back({"enumFex1:MyEnumName",Name::ENUMVAL});
+       NameVec.push_back({"HighGain:MyEnumName",Name::ENUMDICT});
+       NameVec.push_back({"LowGain:MyEnumName",Name::ENUMDICT});
+       NameVec.push_back({"enumFex2:MyEnumName",Name::ENUMVAL});
+       NameVec.push_back({"enumFex3:MyEnumName2",Name::ENUMVAL});
+       NameVec.push_back({"On:MyEnumName2",Name::ENUMDICT});
+       NameVec.push_back({"Off:MyEnumName2",Name::ENUMDICT});
    }
 } FexDef;
 
@@ -350,9 +352,10 @@ void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
     fex.set_value(FexDef::enumFex1, (uint32_t) 2);
     fex.set_value(FexDef::enumFex1_HighGain, (uint32_t) 2);
     fex.set_value(FexDef::enumFex1_LowGain, (uint32_t) 5);
-    fex.set_value(FexDef::enumFex2, (uint32_t) 9);
-    fex.set_value(FexDef::enumFex2_HighGain, (uint32_t) 7);
-    fex.set_value(FexDef::enumFex2_LowGain, (uint32_t) 9);
+    fex.set_value(FexDef::enumFex2, (uint32_t) 5);
+    fex.set_value(FexDef::enumFex3, (uint32_t) 12);
+    fex.set_value(FexDef::enumFex3_On, (uint32_t) 7);
+    fex.set_value(FexDef::enumFex3_Off, (uint32_t) 12);
 }
    
 
