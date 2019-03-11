@@ -1,5 +1,5 @@
 from psana.dgramPort.typed_json import *
-from psana import DataSource
+from psana import DataSource, container
 import numpy as np
 import subprocess
 import os
@@ -12,6 +12,48 @@ class Test_JSON2XTC:
                 os.remove(f)
             except:
                 pass
+
+    def check(self, co, cl, base=""):
+        result = True
+        for n in dir(co):
+            if n[0] != '_':
+                v = co.__getattribute__(n)
+                if base == "":
+                    bnew = n
+                else:
+                    bnew = base + "." + n
+                print(bnew, v)
+                v2 = cl.get(bnew)
+                if isinstance(v, container.Container):
+                    if isinstance(v2, int):
+                        # bnew must be the name of an enum!
+                        if v.value != v2 or v.names != cl.getenumdict(bnew, reverse=True):
+                            print("Failure on %s" % bnew)
+                            print(v.value)
+                            print(v.names)
+                            print(v2)
+                            result = False
+                    else:
+                        result = self.check(v, cl, bnew) and result
+                elif isinstance(v, np.ndarray):
+                    if not (v == v2).all():
+                        print("Failure on %s" % bnew)
+                        print(v)
+                        print(v2)
+                        result = False
+                elif isinstance(v, int) or isinstance(v, str):
+                    if v != v2:
+                        print("Failure on %s" % bnew)
+                        print(v)
+                        print(v2)
+                        result = False
+                else:
+                    if abs(v - v2) > 0.00001:
+                        print("Failure on %s" % bnew)
+                        print(v)
+                        print(v2)
+                        result = False
+        return result
 
     def test_one(self):
         c = cdict()
@@ -47,8 +89,15 @@ class Test_JSON2XTC:
         assert d.set("d", 15)
         assert c.set("b", d, append=True)
         # Deeper names
-        assert c.set("c_d_e", 42.49, "FLOAT")
-        assert c.set("c_d_f", -30.34, "DOUBLE")
+        assert c.set("c.d.e", 42.49, "FLOAT")
+        assert c.set("c.d.f", -30.34, "DOUBLE")
+        # Enums
+        assert c.define_enum("q", {"Off": 0, "On": 1})
+        assert c.define_enum("r", {"Down": -1, "Up": 1})
+        assert c.set("c.d.g", 0, "q")
+        assert c.set("c.d.h", 1, "q")
+        assert c.set("c.d.k", 1, "r")
+        assert c.set("c.d.l", -1, "r")
         # Write it out!!
         assert c.writeFile("json2xtc_test.json")
         # Convert it to xtc2!
@@ -59,27 +108,7 @@ class Test_JSON2XTC:
         dg = myrun.configs[0]
         assert dg.software.test1.detid == c.dict['detId']
         assert dg.software.test1.dettype == c.dict['detType']
-        segment = 0
-        for n in dir(dg.test1[segment].raw):
-            if n[0] != '_':
-                if isinstance(c.get(n), np.ndarray):
-                    if not (dg.test1[segment].raw.__getattribute__(n) == c.get(n)).all():
-                        print("Failure on %s" % n)
-                        print(dg.test1[segment].raw.__getattribute__(n))
-                        print(c.get(n))
-                        assert False
-                elif isinstance(c.get(n), int) or isinstance(c.get(n), str):
-                    if not dg.test1[segment].raw.__getattribute__(n) == c.get(n):
-                        print("Failure on %s" % n)
-                        print(dg.test1[segment].raw.__getattribute__(n))
-                        print(c.get(n))
-                        assert False
-                else:
-                    if not abs(dg.test1[segment].raw.__getattribute__(n) - c.get(n)) < 0.00001:
-                        print("Failure on %s" % n)
-                        print(dg.test1[segment].raw.__getattribute__(n))
-                        print(c.get(n))
-                        assert False
+        assert self.check(dg.test1[0].raw, c)
 
 def run():
     test = Test_JSON2XTC()

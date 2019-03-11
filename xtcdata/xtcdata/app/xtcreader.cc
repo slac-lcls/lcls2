@@ -27,7 +27,7 @@ public:
         printf("%d: %s rank %d, type %d\n", i, name.name(), data_rank, data_type);
 
         switch(name.type()){
-        case(0):{
+        case(Name::UINT8):{
             if(data_rank > 0){
                 Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
                 printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
@@ -38,7 +38,7 @@ public:
             break;
         }
 
-        case(1):{
+        case(Name::UINT16):{
             if(data_rank > 0){
                 Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
                 printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
@@ -49,7 +49,7 @@ public:
             break;
         }
 
-        case(2):{
+        case(Name::UINT32):{
             if(data_rank > 0){
                 Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
                 printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
@@ -60,7 +60,7 @@ public:
             break;
         }
 
-        case(3):{
+        case(Name::UINT64):{
             if(data_rank > 0){
                 Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
                 printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
@@ -71,7 +71,7 @@ public:
             break;
         }
 
-        case(4):{
+        case(Name::INT8):{
             if(data_rank > 0){
                 Array<int8_t> arrT = descdata.get_array<int8_t>(i);
                 printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
@@ -82,7 +82,7 @@ public:
             break;
         }
 
-        case(5):{
+        case(Name::INT16):{
             if(data_rank > 0){
                 Array<int16_t> arrT = descdata.get_array<int16_t>(i);
                 printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
@@ -93,7 +93,7 @@ public:
             break;
         }
 
-        case(6):{
+        case(Name::INT32):{
             if(data_rank > 0){
                 Array<int32_t> arrT = descdata.get_array<int32_t>(i);
                 printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
@@ -104,7 +104,7 @@ public:
             break;
         }
 
-        case(7):{
+        case(Name::INT64):{
             if(data_rank > 0){
                 Array<int64_t> arrT = descdata.get_array<int64_t>(i);
                 printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
@@ -115,7 +115,7 @@ public:
             break;
         }
 
-        case(8):{
+        case(Name::FLOAT):{
             if(data_rank > 0){
                 Array<float> arrT = descdata.get_array<float>(i);
                 printf("%s: %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1]);
@@ -126,7 +126,7 @@ public:
             break;
         }
 
-        case(9):{
+        case(Name::DOUBLE):{
             if(data_rank > 0){
                 Array<double> arrT = descdata.get_array<double>(i);
                 printf("%s: %f, %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
@@ -137,8 +137,7 @@ public:
             break;
         }
 
-        case(10):{
-        }
+        case(Name::CHARSTR):{
             if(data_rank > 0){
                 Array<char> arrT = descdata.get_array<char>(i);
                 printf("%s: \"%s\"\n",name.name(),arrT.data());
@@ -147,9 +146,28 @@ public:
                 printf("%s: string with no rank?!?\n",name.name());
             }
             break;
-
         }
 
+        case(Name::ENUMVAL):{
+            if(data_rank > 0){
+                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+            }
+            break;
+        }
+
+        case(Name::ENUMDICT):{
+            if(data_rank > 0){
+                printf("%s: enumdict with rank?!?\n", name.name());
+            } else{
+                printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+            }
+            break;
+        }
+        }
     }
 
     int process(Xtc* xtc)

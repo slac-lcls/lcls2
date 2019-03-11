@@ -76,7 +76,7 @@ for (i, ch) in enumerate(iocfg.channels()):
     od.set("connid",  out.conn_id(),    "UINT8") # Deleted "_" in name!!
     od.set("conn",    int(out.conn()),  "UINT8") # 4-bit!
     od.set("source",  int(out.source()),"UINT8") # 4-bit!
-    chd.set("output", od, append=True)           # Deleted "_" in name!!
+    chd.set("output", od)                        # Deleted "_" in name!!
     chd.set("name", ch.name(), "CHARSTR")
     chd.set("ninfo", ch.ninfo())
     for infonum in range(ch.ninfo()):

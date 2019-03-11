@@ -21,7 +21,8 @@ import re
 #         - "version" which maps to a list of three integers.
 #
 # This file has three external APIs:
-#      validate_typed_json(d) checks if the above rules are followed for dictionary d, and returns True/False.
+#      validate_typed_json(d, edef={}) checks if the above rules are followed for dictionary d, with
+#      a dictionary of enum definitions edef and returns True/False.
 #
 #      write_typed_json(filename, d) writes the dictionary d as JSON to the given filename.
 #
@@ -49,31 +50,35 @@ import re
 #
 
 typerange = {
-    "UINT8"  : (0, 2**8 - 1), 
-    "UINT16" : (0, 2**16 - 1),
-    "UINT32" : (0, 2**32 - 1),
-    "UINT64" : (0, 2**64 - 1),
-    "INT8"   : (-2**7, 2**7 - 1), 
-    "INT16"  : (-2**15, 2**15 - 1), 
-    "INT32"  : (-2**31, 2**31 - 1), 
-    "INT64"  : (-2**63, 2**63 - 1), 
-    "FLOAT"  : None,
-    "DOUBLE" : None,
-    "CHARSTR": None
+    "UINT8"   : (0, 2**8 - 1), 
+    "UINT16"  : (0, 2**16 - 1),
+    "UINT32"  : (0, 2**32 - 1),
+    "UINT64"  : (0, 2**64 - 1),
+    "INT8"    : (-2**7, 2**7 - 1), 
+    "INT16"   : (-2**15, 2**15 - 1), 
+    "INT32"   : (-2**31, 2**31 - 1), 
+    "INT64"   : (-2**63, 2**63 - 1), 
+    "FLOAT"   : None,
+    "DOUBLE"  : None,
+    "CHARSTR" : None,
+    "ENUMVAL" : (-2**31, 2**31 - 1),
+    "ENUMDICT": (-2**31, 2**31 - 1),
 }
 
 typedict = {
-    "UINT8"  : "uint8", 
-    "UINT16" : "uint16", 
-    "UINT32" : "uint32", 
-    "UINT64" : "uint64", 
-    "INT8"   : "int8", 
-    "INT16"  : "int16", 
-    "INT32"  : "int32", 
-    "INT64"  : "int64", 
-    "FLOAT"  : "float32", 
-    "DOUBLE" : "float64",
-    "CHARSTR": "str"
+    "UINT8"   : "uint8", 
+    "UINT16"  : "uint16", 
+    "UINT32"  : "uint32", 
+    "UINT64"  : "uint64", 
+    "INT8"    : "int8", 
+    "INT16"   : "int16", 
+    "INT32"   : "int32", 
+    "INT64"   : "int64", 
+    "FLOAT"   : "float32", 
+    "DOUBLE"  : "float64",
+    "CHARSTR" : "str",
+    "ENUMVAL" : "int32", 
+    "ENUMDICT": "int32", 
 }
 
 nptypedict = {
@@ -96,7 +101,7 @@ def namify(l):
             if s == "":
                 s = v
             else:
-                s = s + "_" + v
+                s = s + "." + v
         else:
             s = s + str(v)
     return s
@@ -104,50 +109,53 @@ def namify(l):
 #
 # Return None for a valid dictionary and an error string otherwise.
 #
-def validate_typed_json(d, top=[]):
+def validate_typed_json(d, edef={}, top=[], headers=True):
     if not isinstance(d, dict):
         return "Not a dictionary"
     k = list(d.keys())
     if len(top) == 0:
         for f in ["detType", "detName", "detId"]:
-            if not f in k or not isinstance(d[f], str):
+            if headers and (not f in k or not isinstance(d[f], str)):
                 return "No valid " + f
-            else:
+            if f in k:
                 k.remove(f)
-        if "doc" in k and not isinstance(d["doc"], str):
-            return "No valid doc"
-        else:
+        if "doc" in k:
+            if headers and not isinstance(d["doc"], str):
+                return "No valid doc"
             k.remove("doc")
         if "alg" in k:
-            a = d["alg"]
-            if not isinstance(a, dict):
-                return "alg is not a dictionary"
-            ak = a.keys()
-            if not "alg" in ak or not isinstance(a["alg"], str):
-                return "alg has no valid alg"
-            if "doc" in ak and not isinstance(a["doc"], str):
-                return "alg has no valid doc"
-            if not "version" in ak or not isinstance(a["version"], list) or len(a["version"]) != 3:
-                return "alg has no valid version"
-            # Do we want to check if the three elements are integers?!?
+            if headers:
+                a = d["alg"]
+                if not isinstance(a, dict):
+                    return "alg is not a dictionary"
+                ak = a.keys()
+                if not "alg" in ak or not isinstance(a["alg"], str):
+                    return "alg has no valid alg"
+                if "doc" in ak and not isinstance(a["doc"], str):
+                    return "alg has no valid doc"
+                if not "version" in ak or not isinstance(a["version"], list) or len(a["version"]) != 3:
+                    return "alg has no valid version"
+                # Do we want to check if the three elements are integers?!?
             k.remove("alg")
     for n in k:
         v = d[n]
         if isinstance(v, dict):
-            r = validate_typed_json(v, top + [n])
+            r = validate_typed_json(v, edef, top + [n])
             if r is not None:
                 return r
         elif isinstance(v, list):
             for (nn, dd) in enumerate(v):
                 if not isinstance(dd, dict):
                     return namify(top + [n, nn]) + " is not a dict"
-                r = validate_typed_json(dd, top + [str(nn)])
+                r = validate_typed_json(dd, edef, top + [str(nn)])
                 if r is not None:
                     return r
         elif isinstance(v, tuple):
             if len(v) != 2:
                 return namify(top + [n]) + " should have len 2"
-            if not v[0] in typerange.keys():
+            if v[0] in edef.keys() and (isinstance(v[1], numbers.Number) or isinstance(v[1], np.ndarray)):
+                return None
+            if not v[0] in typerange.keys() and not v[0] in edef.keys():
                 return namify(top + [n]) + " has invalid type " + str(v[0])
             vv = typerange[v[0]]
             if vv is None:
@@ -162,14 +170,25 @@ def validate_typed_json(d, top=[]):
             pass
         else:
             return namify(top + [n]) + " is invalid"
+        return None
 
-def write_json_dict(f, d, tdict, top=[], indent="    "):
+def write_json_dict(f, d, edef, tdict, top=[], indent="    ", **hw):
     prefix = indent
-    for n in d.keys():
+    k = list(d.keys())
+    try:
+        if not hw['headers']:
+            for ff in ["detType", "detName", "detId", "doc", "alg"]:
+                try: 
+                    k.remove(ff)
+                except:
+                    pass
+    except:
+        pass
+    for n in k:
         v = d[n]
         if isinstance(v, str):
             f.write('%s"%s": "%s"' % (prefix, n, v))
-        if isinstance(v, dict):
+        elif isinstance(v, dict):
             if n == "alg":
                 try:
                     doc = v["doc"]
@@ -181,7 +200,7 @@ def write_json_dict(f, d, tdict, top=[], indent="    "):
             else:
                 f.write('%s"%s": {\n' % (prefix, n))
                 tdict0 = {}
-                write_json_dict(f, v, tdict0, top + [n], indent + "    ")
+                write_json_dict(f, v, edef, tdict0, top + [n], indent + "    ")
                 f.write('\n%s}' % indent)
                 tdict[n] = tdict0
         elif isinstance(v, list):
@@ -192,7 +211,7 @@ def write_json_dict(f, d, tdict, top=[], indent="    "):
                     if nn != 0:
                         f.write(',\n')
                     f.write('%s    {\n' % indent)
-                    write_json_dict(f, dd, tdict0, top + [n, nn], indent + "        ")
+                    write_json_dict(f, dd, edef, tdict0, top + [n, nn], indent + "        ")
                     f.write('\n%s    }' % indent)
                 f.write('\n%s]' % indent)
                 tdict[n] = tdict0
@@ -203,14 +222,17 @@ def write_json_dict(f, d, tdict, top=[], indent="    "):
                     f.write(', %d' % v[nn])
                 f.write(']')
         elif isinstance(v, tuple):
-            vv = typerange[v[0]]
-            if vv is None:
-                if v[0] == "CHARSTR":
-                    f.write('%s"%s": "%s"' % (prefix, n, v[1]))
-                else:
-                    f.write('%s"%s": %g' % (prefix, n, v[1]))
-            else:
+            if v[0] in edef.keys():
                 f.write('%s"%s": %d' % (prefix, n, v[1]))
+            else:
+                vv = typerange[v[0]]
+                if vv is None:
+                    if v[0] == "CHARSTR":
+                        f.write('%s"%s": "%s"' % (prefix, n, v[1]))
+                    else:
+                        f.write('%s"%s": %g' % (prefix, n, v[1]))
+                else:
+                    f.write('%s"%s": %d' % (prefix, n, v[1]))
             tdict[n] = v[0]
         elif isinstance(v, np.ndarray):
             typ = nptypedict[v.dtype]
@@ -224,19 +246,25 @@ def write_json_dict(f, d, tdict, top=[], indent="    "):
                 start = ", "
             f.write(']')
             tdict[n] = list((typ[0],) + v.shape)
+        else: # Must be an enum!
+            f.write('%s"%s": %d' % (prefix, n, v))
         prefix = ",\n" + indent
 
-def write_typed_json(filename, d):
-    r = validate_typed_json(d)
+def write_typed_json(filename, d, edef, headers=True):
+    r = validate_typed_json(d, edef, [], headers)
     if r is not None:
         print(r)
         return False
     with open(filename, "w") as f:
         f.write('{\n')
         tdict = {}
-        write_json_dict(f, d, tdict)
+        write_json_dict(f, d, edef, tdict, headers=headers)
         f.write(',\n    "json_types": {\n')
-        write_json_dict(f, tdict, {}, [], "        ")
+        if edef != {}:
+            f.write('        ":enum:": {\n')
+            write_json_dict(f, edef, {}, {}, [], "            ")
+            f.write('\n        },\n')
+        write_json_dict(f, tdict, {}, {}, [], "        ")
         f.write('\n    }\n}\n')
         return True
 
@@ -247,7 +275,7 @@ def write_typed_json(filename, d):
 # Once the type of a name is set, changing it is only possible if
 # override is True.
 #
-# name here is an expanded name (with "_") that will be unpacked to
+# name here is an expanded name (with ".") that will be unpacked to
 # build the hierarchy.  Multiple possibilities for value are supported:
 #     - A numeric value or numpy array will just create/overwrite the 
 #       value.
@@ -259,11 +287,106 @@ def write_typed_json(filename, d):
 class cdict(object):
     def __init__(self, old=None):
         self.dict = {}
+        self.enumdef = {}
         if isinstance(old, cdict):
             self.dict.update(old.dict)
+            self.enumdef.update(old.enumdef)
+        elif isinstance(old, dict) and "json_types" in old.keys():
+            cp = {}
+            cp.update(old)
+            jt = cp['json_types']
+            if ":enum:" in jt.keys():
+                self.enumdef = jt[":enum:"]
+                del jt[":enum:"]
+            del cp['json_types']
+            self.init_from_json(cp, jt)
+
+    def init_from_json(self, old, jt, base=None):
+        if isinstance(old, dict):
+            for k in old.keys():
+                if k in ["detType", "detName", "detId", "doc"]:
+                    self.dict[k] = str(old[k])
+                    continue
+                if k == "alg":
+                    alg = old['alg']
+                    if isinstance(alg, dict) and set([k for k in alg.keys()]) == set(["alg", "doc", "version"]):
+                        self.dict['alg'] = alg
+                    continue
+                v = old[k]
+                t = jt[k]
+                if base is None:
+                    n = k
+                else:
+                    n = base + "." + k
+                if isinstance(v, dict) or (isinstance(v, list) and not self.checknumlist(v)):
+                    self.init_from_json(v, t, n)
+                elif isinstance(v, list) or isinstance(v, np.ndarray):
+                    if isinstance(v, list):
+                        # set v to an np.array of the appropriate type!
+                        v = np.array(v, dtype=typedict[t[0]]).reshape(t[1:])
+                        pass
+                    self.set(n, v)
+                else:
+                    # Scalar!
+                    self.set(n, v, t)
+        elif isinstance(old, list):
+            for (k, v) in enumerate(old):
+                n = base + str(k)
+                self.init_from_json(v, jt, n)
+
+    def typed_json(self):
+        (d, t) = self.create_json(self.dict, True)
+        if self.enumdef != {}:
+            t[":enum:"] = {}
+            t[":enum:"].update(self.enumdef)
+        d['json_types'] = t
+        return d
+
+    # Add all of t2 to t1.  We'd use update, but we want to merge all 
+    # the way down...
+    def merge_dict(self, t1, t2):
+        for k in t2.keys():
+            if k in t1.keys():
+                if isinstance(t1[k], dict):
+                    if isinstance(t2[k], dict):
+                        self.merge_dict(t1[k], t2[k])
+                    # else WTF?
+                # else check if types agree?!?
+            else:
+                t1[k] = t2[k]
+
+    def create_json(self, input, top=False):
+        if isinstance(input, dict):
+            d = {}
+            t = {}
+            for k in input.keys():
+                if top and (k in ["detType", "detName", "detId", "doc", "alg"]):
+                    d[k] = input[k]
+                    continue
+                (d2, t2) = self.create_json(input[k])
+                d[k] = d2
+                t[k] = t2
+        elif isinstance(input, list):
+            d = []
+            t = {}
+            for (k, v) in enumerate(input):
+                (d2, t2) = self.create_json(v)
+                d.append(d2)
+                self.merge_dict(t, t2)
+        elif isinstance(input, np.ndarray):
+            typ = nptypedict[input.dtype]
+            if typ[1]:
+                d = [float(x) for x in input.ravel()]
+            else:
+                d = [int(x) for x in input.ravel()]
+            t = list((typ[0],)+ input.shape)
+        elif isinstance(input, tuple):
+            d = input[1]
+            t = input[0]
+        return (d, t)
 
     def splitname(self, name):
-        n = name.split("_")
+        n = name.split(".")
         r = []
         for nn in n:
             m = re.search('^(.*[^0-9])([0-9]+)$', nn)
@@ -276,7 +399,7 @@ class cdict(object):
                 r.append(int(m.group(2)))
         return r
 
-    def get(self, name):
+    def get(self, name, withtype=False):
         if len(name) == 0:
             return None
         n = self.splitname(name)
@@ -302,10 +425,37 @@ class cdict(object):
                         return None
                 else:
                     return None
-        if isinstance(d, tuple):
+        if isinstance(d, tuple) and not withtype:
             return d[1]
         else:
             return d
+
+    def getenumdict(self, name, reverse=False):
+        r = self.get(name, True)
+        if isinstance(r, tuple):
+            if r[0] in typerange.keys():
+                return None
+            try:
+                if reverse:
+                    return {v: k for k, v in self.enumdef[r[0]].items()}
+                else:
+                    return self.enumdef[r[0]]
+            except:
+                return None
+        else:
+            return None
+
+    def getenum(self, name):
+        r = self.get(name, True)
+        if isinstance(r, tuple):
+            if r[0] in typerange.keys():
+                return r[1]
+            try:
+                return next(key for key, value in self.enumdef[r[0]].items() if value == r[1])
+            except:
+                return r[1]
+        else:
+            return r
 
     def checknumlist(self, l):
         for v in l:
@@ -314,6 +464,11 @@ class cdict(object):
                     return False
             elif not isinstance(v, numbers.Number):
                 return False
+        return True
+
+    def define_enum(self, name, value):
+        # Validate the value dictionary?!?
+        self.enumdef[name] = value
         return True
 
     def set(self, name, value, type="INT32", override=False, append=False):
@@ -325,7 +480,7 @@ class cdict(object):
         d = self.dict
         # Check the type of value!
         if isinstance(value, numbers.Number):
-            if not type in typedict.keys():
+            if not type in typedict.keys() and not type in self.enumdef.keys():
                 return False
             value = (type, value)
             issimple = True
@@ -339,7 +494,10 @@ class cdict(object):
             issimple = False
         elif isinstance(value, list):
             if self.checknumlist(value):
-                value = np.array(value, dtype=type.lower())
+                if type in self.enumdef.keys():
+                    value = np.array(value, dtype='int32')
+                else:
+                    value = np.array(value, dtype=typedict[type])
                 issimple = True
             else:
                 # Must be a list of cdicts!
@@ -397,6 +555,8 @@ class cdict(object):
                         return False
                     if value.dtype != d.dtype or value.shape != d.shape:
                         return False
+                if type in self.enumdef.keys():
+                    value = (type, value)
             elif isinstance(value, str):
                 value = ("CHARSTR", value)
             else:
@@ -459,5 +619,5 @@ class cdict(object):
         self.setString("detId", detId)
         self.setString("doc", doc)
 
-    def writeFile(self, file):
-        return write_typed_json(file, self.dict)
+    def writeFile(self, file, headers=True):
+        return write_typed_json(file, self.dict, self.enumdef, headers)

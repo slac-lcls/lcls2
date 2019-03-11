@@ -2,17 +2,19 @@
 
 namespace XtcData {
 std::map<std::string, enum Name::DataType> JsonIterator::typeMap = {
-    {"UINT8",  Name::UINT8},
-    {"UINT16", Name::UINT16},
-    {"UINT32", Name::UINT32},
-    {"UINT64", Name::UINT64},
-    {"INT8",   Name::INT8},
-    {"INT16",  Name::INT16},
-    {"INT32",  Name::INT32},
-    {"INT64",  Name::INT64},
-    {"FLOAT",  Name::FLOAT},
-    {"DOUBLE", Name::DOUBLE},
-    {"CHARSTR",Name::CHARSTR}
+    {"UINT8",    Name::UINT8},
+    {"UINT16",   Name::UINT16},
+    {"UINT32",   Name::UINT32},
+    {"UINT64",   Name::UINT64},
+    {"INT8",     Name::INT8},
+    {"INT16",    Name::INT16},
+    {"INT32",    Name::INT32},
+    {"INT64",    Name::INT64},
+    {"FLOAT",    Name::FLOAT},
+    {"DOUBLE",   Name::DOUBLE},
+    {"CHARSTR",  Name::CHARSTR},
+    {"ENUMVAL",  Name::ENUMVAL},
+    {"ENUMDICT", Name::ENUMDICT}
 };
 
 void JsonIterator::iterate(Value &val) {
@@ -60,7 +62,7 @@ std::string JsonIterator::curname() {
         if (result == "" || _isnum[i])
             result += _names[i];
         else
-            result += "_" + _names[i];
+            result += "." + _names[i];
     }
     return result;
 }
@@ -74,7 +76,6 @@ Value *JsonIterator::findJsonType() {
     return typ;
 }
 
-
 class JsonFindArrayIterator : public JsonIterator
 {
 public:
@@ -84,15 +85,23 @@ public:
         std::string name = curname();
         Value *typ = findJsonType();
         if (typ->IsArray()) {
-            _vars.NameVec.push_back({name.c_str(),
-                                     typeMap[(*typ)[0].GetString()],
-                                     (int)((*typ).Size()) - 1});
+            std::string s = (*typ)[0].GetString();
+            int cnt = (int)((*typ).Size()) - 1;
+            if (typeMap.find(s) == typeMap.end()) {
+                _vars.NameVec.push_back({(name + ":" + s).c_str(), Name::ENUMVAL, cnt});
+            } else
+                _vars.NameVec.push_back({name.c_str(), typeMap[s], cnt});
         } else {
-            Name::DataType t = typeMap[typ->GetString()];
-            if (t == Name::CHARSTR)
-                _vars.NameVec.push_back({name.c_str(), t, 1});
-            else
-                _vars.NameVec.push_back({name.c_str(), t});
+            std::string s = typ->GetString();
+            if (typeMap.find(s) == typeMap.end()) {
+                _vars.NameVec.push_back({(name + ":" + s).c_str(), Name::ENUMVAL});
+            } else {
+                Name::DataType t = typeMap[s];
+                if (t == Name::CHARSTR)
+                    _vars.NameVec.push_back({name.c_str(), t, 1});
+                else
+                    _vars.NameVec.push_back({name.c_str(), t});
+            }
         }
     }
 private:
@@ -117,6 +126,7 @@ public:
         case Name::INT8:
         case Name::INT16:
         case Name::INT32:
+        case Name::ENUMVAL:
             return (T) val.GetInt();
             break;
         case Name::INT64:
@@ -150,7 +160,8 @@ public:
                 shape[i-1] = dim;
                 size *= dim;
             }
-            Name::DataType dtyp = typeMap[(*typ)[0].GetString()];
+            std::string s = (*typ)[0].GetString();
+            Name::DataType dtyp = (typeMap.find(s) == typeMap.end()) ? Name::ENUMVAL : typeMap[s];
             switch (dtyp) {
             case Name::UINT8:
                 writeArray<uint8_t>(val, shape, size, dtyp);
@@ -185,9 +196,17 @@ public:
             case Name::CHARSTR:
                 printf("Charstr array?!?\n");
                 break;
+            case Name::ENUMVAL:
+                writeArray<int32_t>(val, shape, size, dtyp);
+                break;
+            case Name::ENUMDICT:
+                printf("Enum dictionary?!?\n");
+                break;
             }
         } else {
-            switch (typeMap[typ->GetString()]) {
+            std::string s = typ->GetString();
+            Name::DataType dtyp = (typeMap.find(s) == typeMap.end()) ? Name::ENUMVAL : typeMap[s];
+            switch (dtyp) {
             case Name::UINT8:
                 _cd.set_value(_cnt, (uint8_t) val.GetUint());
                 break;
@@ -218,14 +237,25 @@ public:
             case Name::DOUBLE:
                 _cd.set_value(_cnt, val.GetDouble());
                 break;
-            case Name::CHARSTR: {
+            case Name::CHARSTR:
                 _cd.set_string(_cnt, val.GetString());
                 break;
-            }
+            case Name::ENUMVAL:
+                _cd.set_value(_cnt, (int32_t) val.GetInt());
+                break;
+            case Name::ENUMDICT:
+                printf("Enum dictionary?!?\n");
+                break;
             }
         }
         _cnt++;
     }
+
+    void set_value(int32_t v) {
+        _cd.set_value(_cnt, v);
+        _cnt++;
+    }
+
 private:
     CreateData  &_cd;
     int          _cnt;
@@ -273,6 +303,21 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID)
     d.RemoveMember("json_types");
 
     VarDef vars;
+    if (json.HasMember(":enum:")) {
+        Value &etypes = json[":enum:"];
+        for (Value::MemberIterator itr = etypes.MemberBegin();
+             itr != etypes.MemberEnd();
+             ++itr) {
+            std::string ename = itr->name.GetString();
+            Value &map = etypes[ename.c_str()];
+            for (Value::MemberIterator itr2 = map.MemberBegin();
+                 itr2 != map.MemberEnd();
+                 ++itr2) {
+                std::string name = itr2->name.GetString();
+                vars.NameVec.push_back({(name + ":" + ename).c_str(), Name::ENUMDICT});
+            }
+        }
+    }
     JsonFindArrayIterator fai = JsonFindArrayIterator(d, json, vars);
     fai.iterate();
     names.add(*xtc, vars);
@@ -281,6 +326,20 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID)
 
     CreateData cd(*xtc, nl, namesID);
     JsonCreateDataIterator cdi = JsonCreateDataIterator(d, json, cd);
+    if (json.HasMember(":enum:")) {
+        Value &etypes = json[":enum:"];
+        for (Value::MemberIterator itr = etypes.MemberBegin();
+             itr != etypes.MemberEnd();
+             ++itr) {
+            std::string ename = itr->name.GetString();
+            Value &map = etypes[ename.c_str()];
+            for (Value::MemberIterator itr2 = map.MemberBegin();
+                 itr2 != map.MemberEnd();
+                 ++itr2) {
+                cdi.set_value(itr2->value.GetInt());
+            }
+        }
+    }
     cdi.iterate();
 
     return xtc->extent;
