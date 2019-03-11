@@ -133,6 +133,27 @@ class DaqControl:
         return retval
 
     #
+    # DaqControl.selectPlatform - select platform
+    #
+    def selectPlatform(self, body):
+        retval = {}
+        try:
+            msg = create_msg('selectplatform', body=body)
+            self.front_req.send_json(msg)
+            reply = self.front_req.recv_json()
+        except Exception as ex:
+            print('selectPlatform(): %s' % ex)
+        except KeyboardInterrupt:
+            print('KeyboardInterrupt')
+        else:
+            try:
+                retval = reply['body']
+            except KeyError:
+                pass
+
+        return retval
+
+    #
     # DaqControl.getStatus - get status
     #
     def getStatus(self):
@@ -319,6 +340,7 @@ class CollectionManager():
         self.cmstate = {}
         self.ids = set()
         self.handle_request = {
+            'selectplatform': self.handle_selectplatform,
             'getstate': self.handle_getstate,
             'getstatus': self.handle_getstatus
         }
@@ -365,6 +387,7 @@ class CollectionManager():
                 try:
                     msg = self.front_rep.recv_json()
                     key = msg['header']['key']
+                    body = msg['body']
                     if key.startswith('setstate.'):
                         # handle_setstate() sends reply internally
                         self.handle_setstate(key[9:])
@@ -381,7 +404,7 @@ class CollectionManager():
                         except KeyError:
                             pass
                     else:
-                        answer = self.handle_request[key]()
+                        answer = self.handle_request[key](body)
                 except KeyError:
                     answer = create_msg('error')
                 if answer is not None:
@@ -531,12 +554,28 @@ class CollectionManager():
         logging.debug('condition_disconnect() returning True')
         return True
 
-    def handle_getstate(self):
+    def handle_getstate(self, body):
         return create_msg(self.state, body=self.cmstate)
 
     # returns last transition plus current state 
-    def handle_getstatus(self):
+    def handle_getstatus(self, body):
         return self.status_msg()
+
+    def handle_selectplatform(self, body):
+        if body is None:
+            return self.error_msg('handle_selectplatform(): body is None')
+
+        try:
+            for key1, val1 in body.items():
+                for key2, val2 in val1.items():
+                    self.cmstate[key1][int(key2)]['active'] = body[key1][key2]['active']
+
+        except Exception as ex:
+            msg = 'handle_selectplatform(): %s' % ex
+            logging.error(msg)
+            return self.error_msg(msg)
+
+        return create_msg('ok')
 
     def on_enter_reset(self):
         self.cmstate.clear()
