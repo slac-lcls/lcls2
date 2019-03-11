@@ -15,8 +15,8 @@ static const int element_sizes[] = {
     sizeof(float),    // FLOAT
     sizeof(double),   // DOUBLE
     sizeof(char),     // CHARSTR
-    sizeof(uint32_t), // ENUMVAL
-    sizeof(uint32_t)  // ENUMDICT
+    sizeof(int32_t),  // ENUMVAL
+    sizeof(int32_t)   // ENUMDICT
 };
 
 int Name::get_element_size(Name::DataType type)

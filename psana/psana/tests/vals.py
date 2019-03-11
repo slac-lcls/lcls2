@@ -13,16 +13,16 @@ testvals = {
     'floatFex':41.0,
     'charStrFex':"Test String",
     'enumFex1': {
-        'value':2,
-        'names':{2:'HighGain', 5:'LowGain'}
+        'value':-2,
+        'names':{-2:'HighGain', 5:'LowGain'}
     },
     'enumFex2': {
         'value':5,
-        'names':{2:'HighGain', 5:'LowGain'}
+        'names':{-2:'HighGain', 5:'LowGain'}
     },
     'enumFex3': {
         'value':12,
-        'names':{7:'On', 12:'Off'}
+        'names':{-7:'On', 12:'Off'}
     },
 
     'arrayRaw':padarray,

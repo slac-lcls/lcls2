@@ -350,13 +350,13 @@ void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
 
     fex.set_string(FexDef::charStrFex, "Test String");
 
-    fex.set_value(FexDef::enumFex1, (uint32_t) 2);
-    fex.set_value(FexDef::enumFex1_HighGain, (uint32_t) 2);
-    fex.set_value(FexDef::enumFex1_LowGain, (uint32_t) 5);
-    fex.set_value(FexDef::enumFex2, (uint32_t) 5);
-    fex.set_value(FexDef::enumFex3, (uint32_t) 12);
-    fex.set_value(FexDef::enumFex3_On, (uint32_t) 7);
-    fex.set_value(FexDef::enumFex3_Off, (uint32_t) 12);
+    fex.set_value(FexDef::enumFex1, (int32_t) -2);
+    fex.set_value(FexDef::enumFex1_HighGain, (int32_t) -2);
+    fex.set_value(FexDef::enumFex1_LowGain, (int32_t) 5);
+    fex.set_value(FexDef::enumFex2, (int32_t) 5);
+    fex.set_value(FexDef::enumFex3, (int32_t) 12);
+    fex.set_value(FexDef::enumFex3_On, (int32_t) -7);
+    fex.set_value(FexDef::enumFex3_Off, (int32_t) 12);
 }
    
 

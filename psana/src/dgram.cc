@@ -237,7 +237,7 @@ static PyObject* createEnum(const char* enumname, PyDgramObject* pyDgram, DescDa
         if (name.type() == Name::ENUMVAL) {
             if (strncmp(enumname,varName,TMPSTRINGSIZE)==0) {
                 const auto tempVal = descdata.get_value<uint32_t>(varName);
-                PyObject* newobj = Py_BuildValue("I", tempVal);
+                PyObject* newobj = Py_BuildValue("i", tempVal);
                 PyObject_SetAttrString(parent, "value", newobj);
             }
         } else if (name.type() == Name::ENUMDICT) {
@@ -250,7 +250,7 @@ static PyObject* createEnum(const char* enumname, PyDgramObject* pyDgram, DescDa
                 // inserting the null character
                 enumtype_dict[-1]='\0';
                 const auto tempVal = descdata.get_value<uint32_t>(varName);
-                PyObject* pyint = Py_BuildValue("I", tempVal);
+                PyObject* pyint = Py_BuildValue("i", tempVal);
                 // I believe this will return NULL if the string is invalid
                 PyObject* enumstr = Py_BuildValue("s", tempName);
                 if (enumstr) {
