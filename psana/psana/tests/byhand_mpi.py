@@ -8,10 +8,7 @@ import subprocess
 class Test:
     @classmethod
     def setup_class(cls):
-        subprocess.call(['xtcwriter'])
-
-    def setup_input_files(self):
-        subprocess.call(['xtcwriter','-f','data-ts.xtc2', '-t']) # Mona FIXME: writing seq in xtcwriter broke dgramCreate
+        subprocess.call(['xtcwriter','-f','data-ts.xtc2'])
         subprocess.call(['smdwriter','-f','data-ts.xtc2'])
         tmp_dir = os.path.join('.tmp','smalldata')
         if os.path.exists(tmp_dir):
@@ -31,8 +28,6 @@ class Test:
         shutil.copy('smd.xtc2',os.path.join(tmp_dir,'data_1.smd.xtc2')) # FIXME: chuck's hack to fix nosetests
 
     def test_mpi(self):
-        self.setup_input_files()
-
         loop_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_loops.py')
         subprocess.check_call(['mpirun','-n','3','python',loop_based])
 

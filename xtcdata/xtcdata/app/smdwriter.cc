@@ -14,11 +14,9 @@
 #include <type_traits>
 
 #include "xtcdata/xtc/XtcFileIterator.hh"
-#include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/VarDef.hh"
 
 // additions from xtc writer
-#include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TypeId.hh"
@@ -28,61 +26,6 @@ using std::string;
 using namespace std;
 
 #define BUFSIZE 0x4000000
-
-class FexDef:public VarDef
-{
-public:
-  enum index
-    {
-      floatFex,
-      arrayFex,
-      intFex
-    };
-
-  FexDef()
-   {
-       NameVec.push_back({"floatFex",Name::DOUBLE});
-       NameVec.push_back({"arrayFex",Name::FLOAT,2});
-       NameVec.push_back({"intFex",Name::INT64});
-   }
-} FexDef;
-
-class PgpDef:public VarDef
-{
-public:
-  enum index
-    {
-      floatPgp,
-      array0Pgp,
-      intPgp,
-      array1Pgp
-    };
-
-
-   PgpDef()
-   {
-     NameVec.push_back({"floatPgp",Name::DOUBLE,0});
-     NameVec.push_back({"array0Pgp",Name::FLOAT,2});
-     NameVec.push_back({"intPgp",Name::INT64,0});
-     NameVec.push_back({"array1Pgp",Name::FLOAT,2});
-   }
-} PgpDef;
-
-class PadDef:public VarDef
-{
-public:
-  enum index
-    {
-      arrayRaw
-    };
-
-
-  PadDef()
-   {
-     Alg segmentAlg("cspadseg",2,3,42);
-     NameVec.push_back({"arrayRaw", segmentAlg});
-   }
-} PadDef;
 
 class SmdDef:public VarDef
 {
