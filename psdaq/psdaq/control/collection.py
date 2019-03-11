@@ -555,15 +555,22 @@ class CollectionManager():
         return True
 
     def handle_getstate(self, body):
+        logging.debug('handle_getstate()')
         return create_msg(self.state, body=self.cmstate)
 
     # returns last transition plus current state 
     def handle_getstatus(self, body):
+        logging.debug('handle_getstatus()')
         return self.status_msg()
 
     def handle_selectplatform(self, body):
-        if body is None:
-            return self.error_msg('handle_selectplatform(): body is None')
+        logging.debug('handle_selectplatform()')
+        if self.state != 'unallocated':
+            message = 'selectPlatform only permitted in unallocated state'
+            logging.error(message)
+            msg = self.error_msg(message)
+            self.front_pub.send_json(msg)
+            return msg
 
         try:
             for key1, val1 in body.items():
