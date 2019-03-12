@@ -23,6 +23,9 @@ Created on 2019-01-25 by Mikhail Dubrovin
 
 import logging
 logger = logging.getLogger(__name__)
+
+#from time import time
+
 import psdaq.control_gui.Utils as gu
 
 from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox, QHBoxLayout, QVBoxLayout, QComboBox
@@ -179,6 +182,7 @@ class CGWMainControl(QGroupBox) :
         """Uses getStatus() to get last transition and set the info button status.
         """
         logger.debug('CGWMainDetector.check_transition')
+        #t0_sec = time() # takes 0.001s
         transition, state = daq_control().getStatus() # submits request to check transition and state
         logger.debug('CGWMainDetector.check_transition transition:%s state:%s' % (str(transition), str(state)))
         self.but_transition.setText(transition.upper()) # + ' since %s' % self.ts)

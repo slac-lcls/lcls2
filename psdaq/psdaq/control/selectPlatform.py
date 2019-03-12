@@ -52,11 +52,14 @@ def main():
         else:
             if changed:
                 try:
-                    control.selectPlatform(body)
+                    retval = control.selectPlatform(body)
                 except Exception as ex:
                     print('selectPlatform(): %s' % ex)
                 except KeyboardInterrupt:
                     pass
+                else:
+                    if 'error' in retval:
+                        print('Error: %s' % retval['error'])
 
 if __name__ == '__main__':
     main()
