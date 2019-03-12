@@ -19,9 +19,9 @@ class mongo_configdb(object):
         done = False
         while not done:
             self.port = self.port + 1
+            f = open("/dev/null", "w")
             self.mongod = subprocess.Popen([dir_path + "/mongodrun", str(self.port)],
-                                           stdout=subprocess.DEVNULL,
-                                           stderr=subprocess.DEVNULL)
+                                           stdout=f, stderr=f)
             try:
                 self.mongod.wait(timeout=1)
             except:
