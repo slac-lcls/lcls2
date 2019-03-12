@@ -430,7 +430,6 @@ class CollectionManager():
             answer = create_msg(self.state, body=self.cmstate)
         else:
             errMsg = trigError.replace("\"", "")
-            logging.error(errMsg)
             answer = create_msg(self.state, body={'error': errMsg})
 
         return answer
@@ -470,7 +469,9 @@ class CollectionManager():
                 else:
                     answer = self.handle_trigger(nextT, stateChange=True)
                     if 'error' in answer['body']:
-                        logging.error(answer['body']['error'])
+                        message = answer['body']['error']
+                        logging.error(message)
+                        self.front_pub.send_json(self.error_msg(message))
                         break
 
         return answer
