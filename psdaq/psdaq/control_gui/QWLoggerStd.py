@@ -45,9 +45,9 @@ MSG_LEVEL_TO_BKGD_COLOR = {'CRITICAL': Qt.black,
                            'DEBUG'   : QColor(230, 230, 255),
                            'NOTSET'  : QColor(255, 0, 255)}
 
-MSG_LEVEL_TO_TEXT_COLOR = {'CRITICAL': Qt.magenta, 
+MSG_LEVEL_TO_TEXT_COLOR = {'CRITICAL': Qt.gray, 
                            'ERROR'   : Qt.red,
-                           'WARNING' : Qt.yellow,
+                           'WARNING' : Qt.magenta,
                            'INFO'    : Qt.black,
                            'DEBUG'   : QColor(0, 0, 255),
                            'NOTSET'  : QColor(255, 0, 255)}

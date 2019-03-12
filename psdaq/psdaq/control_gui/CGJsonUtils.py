@@ -33,7 +33,7 @@ from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_s
 def get_platform():
     """returns list of processes after control.getPlatform() request
     """
-    list_procs = []
+    dict_procs = {}
 
     try:
         jo = daq_control().getPlatform()
@@ -54,17 +54,21 @@ def get_platform():
             #print("proc_name: %s" % str(pname))
             for k,v in jo[pname].items() :
                 host = v['proc_info']['host']
-                if v['active'] == 1: host += ' *'
                 pid = v['proc_info']['pid']
                 display = '%s/%s/%-16s' % (pname, pid, host)
-                #print(display)
-                if pname == 'control' : list_procs.insert(0, display) # show control level first
-                else:                   list_procs.append(display)
+                print(display)
+
+                dict_procs[display] = (v['active'] == 1)
+
+                #if v['active'] == 1: host += ' *'
+                #if pname == 'control' : list_procs.insert(0, display) # show control level first
+                #else:                   list_procs.append(display)
+
     except Exception as ex:
         logger.error('Exception: %s' % ex)
         print('failed to parse json after control.getPlatform() request:\n%s' % str(sj))
 
-    return list_procs
+    return dict_procs
 
 #--------------------
 
@@ -73,6 +77,11 @@ def load_json_from_file(fname) :
     s = load_textfile(fname)
     #ucode = s.decode('utf8').replace("\'t", ' not').replace("'", '"')
     #ss = s.replace(' ', '').replace("'", '"')
+    return json.loads(s)
+
+#--------------------
+
+def json_from_str(s) :
     return json.loads(s)
 
 #--------------------

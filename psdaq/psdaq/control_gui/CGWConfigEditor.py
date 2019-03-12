@@ -24,11 +24,16 @@ Created on 2019-03-08 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from psdaq.control_gui.CGJsonUtils import load_json_from_file, str_json
+from psdaq.control_gui.CGJsonUtils import load_json_from_file, str_json, json_from_str
 from psdaq.control_gui.Utils import save_textfile, path_to_test_data
 
 from PyQt5.QtWidgets import QWidget,  QVBoxLayout, QTextEdit, QPushButton, QFileDialog # , QWidget, QLabel, QLineEdit, QGroupBox
 #from PyQt5.QtCore import pyqtSignal #, Qt, QRectF, QPointF, QTimer
+
+#--------------------
+
+def fake_str_json() :
+    return '{"detType": "test","detName": "test1","detId": "serial1234","doc": "No comment","alg": {"alg": "raw", "doc": "", "version": [1, 2, 3] },"aa": -5,"ab": -5192,"ac": -393995,"ad": -51000303030,"ae": 3,"af": 39485,"ak": "A random string!"}'
 
 #--------------------
 
@@ -65,8 +70,11 @@ class CGWConfigEditor(QWidget) :
 #--------------------
 
     def load_text(self, fname) :  
-        print('CGWConfigEditor: load json from %s' % fname)
-        jo = load_json_from_file(fname)
+        #print('CGWConfigEditor: load json from %s' % fname)
+        #jo = load_json_from_file(fname)
+
+        print('CGWConfigEditor: use FAKE json')
+        jo = json_from_str(fake_str_json())
         sj = str_json(jo)
         #print('CGWConfigEditor: str json:\n%s' % sj)
         #self.edi_txt.append(sj)

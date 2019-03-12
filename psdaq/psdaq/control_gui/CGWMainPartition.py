@@ -25,13 +25,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout # , QWidget,  QLabel, QLineEdit, QFileDialog
-#from PyQt5.QtCore import pyqtSignal #, Qt, QRectF, QPointF, QTimer
+from PyQt5.QtCore import QPoint # pyqtSignal, Qt, QRectF, QPointF, QTimer
 
-from psdaq.control_gui.CGWPartitionSelection import CGWPartitionSelection
+#from psdaq.control_gui.CGWPartitionSelection import CGWPartitionSelection
 from psdaq.control_gui.QWDialog import QDialog, QWDialog
 from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_set_state
 
 from psdaq.control_gui.CGJsonUtils import get_platform
+from psdaq.control_gui.QWPopupCheckDict import QWPopupCheckDict
+from psdaq.control_gui.CGWPartitionList import CGWPartitionList
 
 #--------------------
 
@@ -42,6 +44,9 @@ class CGWMainPartition(QGroupBox) :
     def __init__(self, parent=None):
 
         QGroupBox.__init__(self, 'Partition', parent)
+
+        #self.dict_procs = {'string1':True, 'string2':False, 'string3':True, 'string4':False}
+        self.dict_procs = {}
 
         self.but_plat    = QPushButton('Roll call')
         self.but_select  = QPushButton('Select')
@@ -100,35 +105,42 @@ class CGWMainPartition(QGroupBox) :
     def on_but_select(self):
         logger.debug('on_but_select')
 
-        list_procs = get_platform()
+        #dict_io = self.dict_procs
+        dict_io = get_platform()
 
-        print('List of processes:')
-        for s in list_procs :
-            print(s)
+        logger.debug('List of processes:')
+        for name,state in dict_io.items() :
+            logger.debug('%s is %s selected' % (name.ljust(10), {False:'not', True:'   '}[state]))
 
-        #return
+        w = QWPopupCheckDict(None, dict_io)
+        w.move(self.pos()+QPoint(self.width()/2,200))
+        w.setWindowTitle('Select partitions')
+        resp=w.exec_()
 
-        #w_select = QLineEdit('Test window')
-        w_select = CGWPartitionSelection()
-        w_dialog = QWDialog(self.but_select, w_select)
-        w_dialog.setWindowTitle('Partition Selection')
-        #w_dialog.setGeometry(20, 40, 500, 200)
+        logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
 
-        #w.show()
-        resp=w_dialog.exec_()
-        logger.debug('resp=%s' % resp)
-        logger.debug('QtWidgets.QDialog.Rejected: %d' % QDialog.Rejected)
-        logger.debug('QtWidgets.QDialog.Accepted: %d' % QDialog.Accepted)
+        if resp==QDialog.Accepted : 
+            self.dict_procs = dict_io
+            if self.w_display is not None : 
+               self.w_display.fill_list_model(listio=self.list_active_processes())
 
-        del w_dialog
-        del w_select
+#--------------------
+
+    def list_active_processes(self):
+        if len(self.dict_procs) == 0 :
+            logger.warning('list of active processes is empty... Click on "Select" button.')
+        return [k for k,v in self.dict_procs.items() if v]
 
 #--------------------
  
     def on_but_display(self):
         logger.debug('on_but_display')
         if  self.w_display is None :
-            self.w_display = CGWPartitionSelection(parent=None, parent_ctrl=self)
+            listap = self.list_active_processes()
+            self.w_display = CGWPartitionList(parent=None, listio=listap)
+                             #CGWPartitionSelection(parent=None, parent_ctrl=self)
+            self.w_display.move(self.pos() + QPoint(self.width()+30, 0))
+            self.w_display.setWindowTitle('Selected partitions')
             self.w_display.show()
         else :
             self.w_display.close()
