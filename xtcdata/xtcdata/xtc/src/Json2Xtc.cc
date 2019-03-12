@@ -268,7 +268,7 @@ private:
 // This returns the size of what is written into out, or -1 if there
 // is an error.
 //
-int translateJson2Xtc(char *in, char *out, NamesId namesID)
+int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
 {
     TypeId tid(TypeId::Parent, 0);
     Xtc *xtc = new (out) Xtc(tid);
@@ -291,7 +291,7 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID)
     d.RemoveMember("alg");
     Names& names = *new(xtc) Names(d["detName"].GetString(), alg,
                                    d["detType"].GetString(),
-                                   d["detId"].GetString(), namesID);
+                                   d["detId"].GetString(), namesID, segment);
     // Set _NameInfo.doc from d["doc"].GetString()?
     d.RemoveMember("detName");
     d.RemoveMember("detType");

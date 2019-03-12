@@ -32,7 +32,7 @@ namespace XtcData
         std::vector<bool>        _isnum;
     };
 
-    int translateJson2Xtc(char *in, char *out, NamesId namesID);
+    int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment=0);
 
 }; // namespace XtcData
 

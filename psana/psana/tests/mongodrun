@@ -1,0 +1,10 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd $DIR
+pushd ../../..
+source setup_env.sh
+conda activate ps-1.0.4
+popd
+rm -rf temp.db
+mkdir temp.db
+exec mongod --bind_ip_all --dbpath temp.db --port $1 --logpath /dev/null --replSet test
