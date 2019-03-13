@@ -1,7 +1,7 @@
 from pymongo import *
 from psana.dgramPort.typed_json import *
 import psana.dgramPort.configdb as cdb
-import subprocess, os, time
+import subprocess, os, time, sys
 import pytest
 import pprint
 
@@ -22,29 +22,41 @@ class mongo_configdb(object):
             f = open("/dev/null", "w")
             self.mongod = subprocess.Popen([dir_path + "/mongodrun", str(self.port)],
                                            stdout=f, stderr=f)
-            try:
-                self.mongod.wait(timeout=1)
-            except:
-                # It didn't die, we timed out!  Yay team!!
-                done = True
+            # Now, wait for mongod to die or to finish initializing!
+            while True:
+                time.sleep(1)
+                if self.mongod.poll() is not None:  # It's dead, Jim.
+                    break
+                try:
+                    state = subprocess.check_output(["ps", "ho", "state", str(self.mongod.pid)]).strip()
+                    if sys.version_info.major == 3:
+                        state = state.decode()
+                except:
+                    state = "D"  # It's probably dead, so just report a not-done status.
+                if state[0] == 'S':
+                    done = True
+                    break
         self.server = 'localhost:%d' % self.port
-        print("Initializing mongod!")
-        c = MongoClient("mongodb://" + self.server)
-        config = {'_id': 'test', 'members': [{'_id': 0, 'host': self.server}]}
-        c.admin.command("replSetInitiate", config)
-        c.close()
-        time.sleep(5)  # This takes time.  This seems like enough, 1 is too little.
+        print("Initializing mongod, port = %d!" % self.port)
+        try:
+            c = MongoClient("mongodb://" + self.server)
+            config = {'_id': 'test', 'members': [{'_id': 0, 'host': self.server}]}
+            c.admin.command("replSetInitiate", config)
+            c.close()
+            time.sleep(5)  # This takes time.  This seems like enough, 1 is too little.
+        except:
+            self.mongod.kill()
+            self.mongod.wait()
+            raise
         return self
 
     def __exit__(self, type, value, tb):
-        print("Killing mongod!")
         self.mongod.kill()
         self.mongod.wait()
         return False
 
 class Test_CONFIGDB:
     def test_one(self):
-        return True    # I'll fix this tomorrow!
         with mongo_configdb() as mdb:
             c = cdb.configdb(mdb.server, "AMO", True)
             c.add_alias("BEAM")                 # 0
@@ -76,6 +88,8 @@ class Test_CONFIGDB:
             c.modify_device("NOBEAM", "evr0", d) # 3
             ans_key     = {'BEAM': 2, 'NOBEAM': 3}
             ans_evrIO_c = {'BEAM': 93, 'NOBEAM': 103}
+            print("Configs:")
+            c.print_configs()
             for a in c.get_aliases():
                 k = c.get_key(a)
                 assert k == ans_key[a]
@@ -101,6 +115,7 @@ class Test_CONFIGDB:
             cfg =  c.get_configuration("BEAM", "evr0")
             cfg2 = c2.get_configuration("FOO", "evr3")
             assert cfg == cfg2
+            print("Test complete!")
 
 def run():
     test = Test_CONFIGDB()

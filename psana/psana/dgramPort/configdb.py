@@ -1,8 +1,7 @@
 from pymongo import *
 from psana.dgramPort.typed_json import cdict
 import datetime
-import time
-import re
+import time, re, sys
 
 class configdb(object):
     client = None
@@ -34,7 +33,7 @@ class configdb(object):
             hc = self.hutch_coll
         else:
             hc = self.cdb[hutch]
-        if isinstance(alias, str):
+        if isinstance(alias, str) or (sys.version_info.major == 2 and isinstance(alias, unicode)):
             a = {"alias": alias}
             inc = 0
         else:
@@ -147,7 +146,7 @@ class configdb(object):
             hc = self.hutch_coll
         else:
             hc = self.cdb[hutch]
-        if isinstance(key_or_alias, str):
+        if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and isinstance(key_or_alias, unicode)):
             key = self.get_key(key_or_alias, hutch)
             if key is None:
                 return None
