@@ -37,13 +37,14 @@ class QWPopupCheckDict(QDialog) :
     e.g.: {'name1':False, 'name2':True, ..., 'nameN':False}, 
     and modify this dict in popup dialog gui.
     """
-    def __init__(self, parent=None, dict_in_out={}, win_title=None, msg=''):
+    def __init__(self, parent=None, dict_in_out={}, win_title=None, msg='', enblctrl=True):
         QDialog.__init__(self, parent)
  
         #self.setModal(True)
         if win_title is not None : self.setWindowTitle(win_title)
 
         self.dict_in_out = dict_in_out
+        self.enblctrl = enblctrl
 
         self.vbox = QVBoxLayout()
         #self.edi_msg = QTextEdit(msg)
@@ -81,6 +82,7 @@ class QWPopupCheckDict(QDialog) :
             else     : cbx.setCheckState(Qt.Unchecked)
             #self.connect(cbx, QtCore.SIGNAL('stateChanged(int)'), self.onCBox)
             cbx.stateChanged[int].connect(self.onCBox)
+            cbx.setEnabled(self.enblctrl)
             self.vbox.addWidget(cbx)
 
             self.dict_of_items[cbx] = [name,state] 
@@ -88,6 +90,9 @@ class QWPopupCheckDict(QDialog) :
 #-----------------------------  
 
     def showToolTips(self):
+        msg = 'Select processes'
+        if not self.enblctrl : msg += '\nin UNALLOCATED state ONLY!'
+        self.setToolTip(msg)
         self.but_apply.setToolTip('Apply changes to the dict')
         self.but_cancel.setToolTip('Use default dict')
         
@@ -102,6 +107,9 @@ class QWPopupCheckDict(QDialog) :
         self.but_cancel.setStyleSheet(styleGray)
         self.but_apply.setStyleSheet(styleGray)
         self.set_style_msg(styleGray)
+
+        self.but_apply.setEnabled(self.enblctrl)
+        self.but_apply.setFlat(not self.enblctrl)
 
 
     def set_style_msg(self, style_bkgd):

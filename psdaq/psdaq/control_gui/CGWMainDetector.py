@@ -128,15 +128,16 @@ class CGWMainDetector(QGroupBox) :
     def set_but_state(self, s) :
         self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
         self.state = s 
-        self.but_state.setText('%s since %s' % (s.upper(), self.ts))
+        #self.but_state.setText('%s since %s' % (s.upper(), self.ts))
+        self.but_state.setText(s.upper())
         self.parent_ctrl.wpart.set_buts_enable(s.upper()) # enable/disable button plat in other widget
 
 #--------------------
 
-    def closeEvent(self, e) :
-        logger.debug('closeEvent', __name__)
-        self.timer.stop()
-        self.timer.timeout.disconnect(self.on_timeout)
+#    def closeEvent(self, e) :
+#        logger.debug('closeEvent', __name__)
+#        self.timer.stop()
+#        self.timer.timeout.disconnect(self.on_timeout)
 
 #--------------------
 

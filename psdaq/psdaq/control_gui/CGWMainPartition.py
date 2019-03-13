@@ -31,7 +31,7 @@ from PyQt5.QtCore import QPoint # pyqtSignal, Qt, QRectF, QPointF, QTimer
 from psdaq.control_gui.QWDialog import QDialog, QWDialog
 from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_set_state
 
-from psdaq.control_gui.CGJsonUtils import get_platform
+from psdaq.control_gui.CGJsonUtils import get_platform, set_platform
 from psdaq.control_gui.QWPopupCheckDict import QWPopupCheckDict
 from psdaq.control_gui.CGWPartitionList import CGWPartitionList
 
@@ -48,12 +48,12 @@ class CGWMainPartition(QGroupBox) :
         #self.dict_procs = {'string1':True, 'string2':False, 'string3':True, 'string4':False}
         self.dict_procs = {}
 
-        self.but_plat    = QPushButton('Roll call')
-        self.but_select  = QPushButton('Select')
-        self.but_display = QPushButton('Display')
+        self.but_roll_call = QPushButton('Roll call')
+        self.but_select    = QPushButton('Select')
+        self.but_display   = QPushButton('Display')
 
         self.hbox = QHBoxLayout() 
-        self.hbox.addWidget(self.but_plat)
+        self.hbox.addWidget(self.but_roll_call)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_select)
         self.hbox.addStretch(1)
@@ -63,19 +63,20 @@ class CGWMainPartition(QGroupBox) :
         self.set_tool_tips()
         self.set_style()
 
-        self.but_plat.clicked.connect(self.on_but_plat)
+        self.but_roll_call.clicked.connect(self.on_but_roll_call)
         self.but_select.clicked.connect(self.on_but_select)
         self.but_display.clicked.connect(self.on_but_display)
 
         self.w_select = None
         self.w_display = None
+        self.state = None
 
 #--------------------
 
     def set_tool_tips(self) :
         self.setToolTip('Partition GUI')
         self.but_select.setToolTip('Click on button.') 
-        self.but_plat.setToolTip('Submits "plat" command.')
+        self.but_roll_call.setToolTip('Submits "plat" command.')
 
 #--------------------
 
@@ -105,24 +106,27 @@ class CGWMainPartition(QGroupBox) :
     def on_but_select(self):
         logger.debug('on_but_select')
 
-        #dict_io = self.dict_procs
-        dict_io = get_platform()
+        #dict_procs = self.dict_procs
+        dict_platf, dict_procs = get_platform()
 
         logger.debug('List of processes:')
-        for name,state in dict_io.items() :
+        for name,state in dict_procs.items() :
             logger.debug('%s is %s selected' % (name.ljust(10), {False:'not', True:'   '}[state]))
 
-        w = QWPopupCheckDict(None, dict_io)
+        w = QWPopupCheckDict(None, dict_procs, enblctrl=(self.state=='UNALLOCATED'))
         w.move(self.pos()+QPoint(self.width()/2,200))
         w.setWindowTitle('Select partitions')
         resp=w.exec_()
 
         logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
 
-        if resp==QDialog.Accepted : 
-            self.dict_procs = dict_io
-            if self.w_display is not None : 
-               self.w_display.fill_list_model(listio=self.list_active_processes())
+        if resp!=QDialog.Accepted : return
+
+        self.dict_procs = dict_procs
+        if self.w_display is not None : 
+           self.w_display.fill_list_model(listio=self.list_active_processes())
+
+        set_platform(dict_platf, dict_procs)
 
 #--------------------
 
@@ -139,7 +143,7 @@ class CGWMainPartition(QGroupBox) :
             listap = self.list_active_processes()
             self.w_display = CGWPartitionList(parent=None, listio=listap)
                              #CGWPartitionSelection(parent=None, parent_ctrl=self)
-            self.w_display.move(self.pos() + QPoint(self.width()+30, 0))
+            self.w_display.move(self.pos() + QPoint(self.width()+30, 200))
             self.w_display.setWindowTitle('Selected partitions')
             self.w_display.show()
         else :
@@ -148,11 +152,11 @@ class CGWMainPartition(QGroupBox) :
 
 #--------------------
  
-    def on_but_plat(self) :
+    def on_but_roll_call(self) :
         """Equivalent to CLI: daqstate -p6 --transition plat
            https://github.com/slac-lcls/lcls2/blob/collection_front/psdaq/psdaq/control/daqstate.py
         """
-        logger.debug('on_but_plat - command to set transition "plat"')
+        logger.debug('on_but_roll_call - command to set transition "plat"')
         rv = daq_control().setTransition('plat')
         if rv is not None : logger.error('Error: %s' % rv)
 
@@ -160,8 +164,8 @@ class CGWMainPartition(QGroupBox) :
 
     def set_buts_enable(self, s) :
         logger.debug('set_buts_enable for state %s' % s)
-        state = s.upper()
-        self.but_plat.setEnabled(state in ('RESET', 'UNALLOCATED'))
+        self.state = state = s.upper()
+        self.but_roll_call.setEnabled(state in ('RESET', 'UNALLOCATED'))
         self.but_select.setEnabled(not(state in ('RESET',)))
         self.but_display.setEnabled(not(state in ('RESET',)))
 

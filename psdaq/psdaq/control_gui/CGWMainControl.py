@@ -192,8 +192,9 @@ class CGWMainControl(QGroupBox) :
 #--------------------
 
     def set_transition(self, s) :
-        ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
-        self.but_transition.setText('%s since %s' % (s.upper(), ts))
+        #ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
+        #self.but_transition.setText('%s since %s' % (s.upper(), ts))
+        self.but_transition.setText(s.upper())
 
 #--------------------
 #--------------------

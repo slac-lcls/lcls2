@@ -43,7 +43,7 @@ cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
         unsigned numPixels
         AllocArray1D[cnp.uint16_t] waveform
         unsigned numFexPeaks
-        AllocArray1D[cnp.uint16_t] sPos, len, fexPos
+        AllocArray1D[cnp.uint16_t] sPos, len
         AllocArray1D[arrp] fexPtr
 
 class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
@@ -140,17 +140,16 @@ cdef class cyhsd_base_1_2_3:
         16:   raw waveform intensity from channel 16
         times:  time axis (s)
         """
-        # TODO: compare self.evt and evt
         cdef cnp.ndarray wv # TODO: make readonly
         if self._isNewEvt(evt):
             self._parseEvt(evt)
-            for i, chanName in enumerate(self._chanList):
-                if self.chptr[i].numPixels:
-                    arr0 = PyAllocArray1D()
-                    wv = arr0.init(&self.chptr[i].waveform, self.chptr[i].numPixels, cnp.NPY_UINT16)
-                    wv.base = <PyObject*> arr0
-                    self._wvDict[chanName] = wv
-            self._wvDict["times"] = np.arange(self.chptr[i].numPixels) # FIXME: placeholder for times
+        for i, chanName in enumerate(self._chanList):
+            if self.chptr[i].numPixels:
+                arr0 = PyAllocArray1D()
+                wv = arr0.init(&self.chptr[i].waveform, self.chptr[i].numPixels, cnp.NPY_UINT16)
+                wv.base = <PyObject*> arr0
+                self._wvDict[chanName] = wv
+        self._wvDict["times"] = np.arange(self.chptr[i].numPixels) # FIXME: placeholder for times
         return self._wvDict
 
     def _channelPeaks(self, chanName):
@@ -182,11 +181,10 @@ cdef class cyhsd_base_1_2_3:
         ...
         16:   tuple of beginning of peaks and array of peak intensities from channel 16
         """
-        # TODO: compare self.evt and evt
         if self._isNewEvt(evt):
             self._parseEvt(evt)
-            for i, chanName in enumerate(self._chanList):
-                self._peaksDict[chanName] = self._channelPeaks(chanName)
+        for i, chanName in enumerate(self._chanList):
+            self._peaksDict[chanName] = self._channelPeaks(chanName)
         return self._peaksDict
 
     def assem(self, evt):
