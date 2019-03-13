@@ -13,10 +13,9 @@ namespace XtcData
 class Transition {
 public:
     Transition() {}
-    Transition(const Sequence& seq_, uint32_t env_) {
-        seq = seq_;
-        env = env_;
-    }
+    Transition(const Sequence& seq_, uint32_t env_) :
+        seq(seq_), env(env_) { }
+public:
     Sequence seq;
     uint32_t env;
 };
