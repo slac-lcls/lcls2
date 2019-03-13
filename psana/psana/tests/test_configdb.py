@@ -6,65 +6,81 @@ import pytest
 import pprint
 
 class mongo_configdb(object):
-    def __init__(self):
+    def __init__(self, server=None, hutch=None, create=False, root="configDB"):
         self.mongod = None
         self.port = None
-        self.server = None
+        self.server = server
+        self.hutch = hutch
+        self.create = create
+        self.standalone = False
+        self.root = root
+        self.cdb = None
 
     def __enter__(self):
-        print("Starting mongod!")
-        path = os.path.abspath(__file__)
-        dir_path = os.path.dirname(path)
-        self.port = 39999
-        done = False
-        while not done:
-            self.port = self.port + 1
-            f = open("/dev/null", "w")
-            self.mongod = subprocess.Popen([dir_path + "/mongodrun", str(self.port)],
-                                           stdout=f, stderr=f)
-            # Now, wait for mongod to die or to finish initializing!
-            while True:
-                time.sleep(1)
-                if self.mongod.poll() is not None:  # It's dead, Jim.
-                    break
-                try:
-                    state = subprocess.check_output(["ps", "ho", "state", str(self.mongod.pid)]).strip()
-                    if sys.version_info.major == 3:
-                        state = state.decode()
-                except:
-                    state = "D"  # It's probably dead, so just report a not-done status.
-                if state[0] == 'S':
-                    done = True
-                    break
-        self.server = 'localhost:%d' % self.port
-        print("Initializing mongod, port = %d!" % self.port)
-        if False:
-          try:
-            c = MongoClient("mongodb://" + self.server)
-            config = {'_id': 'test', 'members': [{'_id': 0, 'host': self.server}]}
-            c.admin.command("replSetInitiate", config)
-            c.close()
-            time.sleep(5)  # This takes time.  This seems like enough, 1 is too little.
-          except:
-            self.mongod.kill()
-            self.mongod.wait()
-            raise
-        time.sleep(5)
+        if self.server is None:
+            path = os.path.abspath(__file__)
+            dir_path = os.path.dirname(path)
+            self.port = 39999
+            done = False
+            while not done:
+                self.port = self.port + 1
+                f = open("/dev/null", "w")
+                self.mongod = subprocess.Popen([dir_path + "/mongodrun", str(self.port)],
+                                               stdout=f, stderr=f)
+                # Now, wait for mongod to die or to finish initializing!
+                while True:
+                    time.sleep(1)
+                    if self.mongod.poll() is not None:  # It's dead, Jim.
+                        break
+                    try:
+                        state = subprocess.check_output(["ps", "ho", "state",
+                                                         str(self.mongod.pid)]).strip()
+                        if sys.version_info.major == 3:
+                            state = state.decode()
+                    except:
+                        state = "D"  # It's probably dead, so just report a not-done status.
+                    if state[0] == 'S':
+                        done = True
+                        break
+            self.server = 'localhost:%d' % self.port
+            self.standalone = True
+            """
+            # We don't run with replica sets and transactions any more!
+            try:
+                c = MongoClient("mongodb://" + self.server)
+                config = {'_id': 'test', 'members': [{'_id': 0, 'host': self.server}]}
+                c.admin.command("replSetInitiate", config)
+                c.close()
+                time.sleep(5)  # This takes time.  This seems like enough, 1 is too little.
+            except:
+                self.mongod.kill()
+                self.mongod.wait()
+                self.mongod = None
+                raise
+            """
+        else:
+            self.standalone = False
+        if self.hutch is not None:
+            self.cdb = cdb.configdb(self.server, self.hutch, self.create, self.root)
         return self
 
     def __exit__(self, type, value, tb):
-        self.mongod.kill()
-        self.mongod.wait()
+        if self.mongod is not None:
+            self.mongod.kill()
+            self.mongod.wait()
+        if self.cdb is not None and not self.standalone:
+            self.cdb.client.drop_database(self.root)
         return False
 
 class Test_CONFIGDB:
-    def test_one(self):
-        #with mongo_configdb() as mdb:
-            #c = cdb.configdb(mdb.server, "AMO", True)
+    # server is the mongodb server string.  If it is None (which is the default and will
+    # be the value when invoked with pytest), then start a standalone mongod server for the
+    # test.
+    def test_one(self, server=None):
+        print(server)
         dbname = "regress"+str(os.getpid())
-        server = "mcbrowne:psana@psdb-dev:9306"
-        c = cdb.configdb(server, "AMO", create=True, drop=True, root=dbname)
-        try:
+        with mongo_configdb(server, "AMO", create=True, root=dbname) as mdb:
+            c = mdb.cdb
             c.add_alias("BEAM")                 # 0
             c.add_alias("NOBEAM")               # 1
             c.add_device_config("evr")
@@ -111,7 +127,7 @@ class Test_CONFIGDB:
             assert len(h) == 2
             assert [67, 73] == [d['evrIO.d'] for d in h]
             assert [2, 4] == [d['key'] for d in h]
-            c2 = cdb.configdb(server, "SXR", create=True, root=dbname)
+            c2 = cdb.configdb(mdb.server, "SXR", create=True, root=dbname)
             c2.add_alias("FOO")                                       # 0
             c2.transfer_config("AMO", "BEAM", "evr0", "FOO", "evr3")  # 1
             with pytest.raises(Exception):
@@ -122,13 +138,10 @@ class Test_CONFIGDB:
             cfg2 = c2.get_configuration("FOO", "evr3")
             assert cfg == cfg2
             print("Test complete!")
-        except:
-            raise
-        finally:
-            c.client.drop_database(dbname)
-            pass
+
 def run():
     test = Test_CONFIGDB()
+    test.test_one("mcbrowne:psana@psdb-dev:9306")
     test.test_one()
 
 if __name__ == "__main__":
