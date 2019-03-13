@@ -3,19 +3,59 @@ from psana.dgramPort.typed_json import cdict
 import datetime
 import time, re, sys
 
+# Note: This was originally written with mongodb transactions in mind, 
+# which is why we are passing "session" all over the place.  However,
+# these are really only used in three places:
+#     add_alias: When we need to get a new key and then insert a new
+#                record with this key.
+#     modify_device: When we save a bunch of configurations, then
+#                get a new key and insert a new record with this key.
+#     transfer_config: After retrieving the desired configuration, we
+#                get a new key and insert a new record with this key.
+# Now in modify_device, it is annoying but harmless to save configurations
+# and then have other saves or the insert potentially fail, leaving a
+# bunch of unused configurations in the database, but we can live with this.
+# 
+# In these three functions, I have changed:
+#     with self.client.start_session() as session:
+#         with session.start_transaction():
+# to:
+#     if True:
+#             session = None
+# (Yes, the indenting is ugly, but just in case we ever decide to go back.)
+#
+# get_key changes to do the counter magic as well.
+
 class configdb(object):
     client = None
     cdb = None
     cfg_coll = None
 
-    def __init__(self, server, h, create=False):
+    # Parameters:
+    #     server - The MongoDB string: "user:password@host:port" or 
+    #              "host:port" if no authentication.
+    #     h      - The current hutch name.
+    #     root   - The root database name, usually "configDB"
+    #     drop   - If True, the root database will be dropped.
+    #     create - If True, try to create the database and collections
+    #              for the hutch, device configurations, and counters.
+    def __init__(self, server, h, create=False, drop=False, root="configDB"):
         if self.client == None:
             self.client = MongoClient("mongodb://" + server)
-            self.cdb = self.client.get_database("configDB")
+            if drop:
+                try:
+                    self.client.drop_database(root)
+                except:
+                    pass
+            self.cdb = self.client.get_database(root)
             self.cfg_coll = self.cdb.device_configurations
             if create:
                 try:
                     self.cdb.create_collection("device_configurations")
+                except:
+                    pass
+                try:
+                    self.cdb.create_collection("counters")
                 except:
                     pass
             self.hutch = h
@@ -25,27 +65,26 @@ class configdb(object):
                     self.cdb.create_collection(h)
                 except:
                     pass
+                try:
+                    self.cdb.counters.insert_one({'hutch': h, 'seq': -1})
+                except:
+                    pass
 
     # Return the highest key for the specified alias, or highest + 1 for all aliases
     # in the hutch if not specified.
     def get_key(self, alias=None, hutch=None, session=None):
         if hutch is None:
-            hc = self.hutch_coll
-        else:
-            hc = self.cdb[hutch]
-        if isinstance(alias, str) or (sys.version_info.major == 2 and isinstance(alias, unicode)):
-            a = {"alias": alias}
-            inc = 0
-        else:
-            a = {}
-            inc = 1
+            hutch = self.hutch
         try:
-            return hc.find(a, session=session).sort('key', DESCENDING).limit(1)[0]['key'] + inc
-        except:
-            if alias is None:
-                return 0
+            if isinstance(alias, str) or (sys.version_info.major == 2 and isinstance(alias, unicode)):
+                d = self.cdb[hutch].find({'alias' : alias}, session=session).sort('key', DESCENDING).limit(1)[0]
+                return d['key']
             else:
-                return None
+                d = self.cdb.counters.find_one_and_update({'hutch': hutch}, {'$inc': {'seq': 1}}, session=session,
+                                                          return_document=ReturnDocument.AFTER)
+                return d['seq']
+        except:
+            return None
 
     # Return the current entry (with the highest key) for the specified alias.
     def get_current(self, alias, hutch=None, session=None):
@@ -60,8 +99,8 @@ class configdb(object):
 
     # Create a new alias in the hutch, if it doesn't already exist.
     def add_alias(self, alias):
-        with self.client.start_session() as session:
-            with session.start_transaction():
+        if True:
+                session = None
                 if self.hutch_coll.find_one({'alias': alias}, session=session) is None:
                     kn = self.get_key(session=session)
                     self.hutch_coll.insert_one({"date": datetime.datetime.utcnow(),
@@ -113,8 +152,8 @@ class configdb(object):
         if not isinstance(value, dict):
             raise TypeError("modify_device: value is not a dictionary!")
         cfgs = []
-        with self.client.start_session() as session:
-            with session.start_transaction():
+        if True:
+                session = None
                 for k in sorted(value.keys()):
                     v = value[k]
                     if isinstance(v, cdict):
@@ -123,8 +162,6 @@ class configdb(object):
                         cfgs.append({'_id': self.save_device_config(k, v, session), 'collection': k})
                     except:
                         raise
-                kn = self.get_key(session=session, hutch=hutch)
-                c['key'] = kn
                 del c['_id']
                 for l in c['devices']:
                     if l['device'] == device:
@@ -132,6 +169,8 @@ class configdb(object):
                             raise ValueError("modify_device: No change!")
                         c['devices'].remove(l)
                         break
+                kn = self.get_key(session=session, hutch=hutch)
+                c['key'] = kn
                 c['devices'].append({'device': device, 'configs': cfgs})
                 c['devices'].sort(key=lambda x: x['device'])
                 c['date'] = datetime.datetime.utcnow()
@@ -193,8 +232,8 @@ class configdb(object):
         ]
         cfgs = next(self.cdb[oldhutch].aggregate(pipeline))['devices']['configs']
         cnew = self.get_current(newalias)
-        with self.client.start_session() as session:
-            with session.start_transaction():
+        if True:
+                session = None
                 kn = self.get_key(session=session)
                 cnew['key'] = kn
                 del cnew['_id']

@@ -9,4 +9,5 @@ conda activate ps-1.0.4
 popd
 rm -rf temp.db
 mkdir temp.db
-exec mongod --bind_ip_all --dbpath temp.db --port $ARG --logpath /dev/null --replSet test
+#exec mongod --bind_ip_all --dbpath temp.db --port $ARG --logpath /dev/null --replSet test
+exec mongod --bind_ip_all --dbpath temp.db --port $ARG --logpath /dev/null

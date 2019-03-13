@@ -38,16 +38,18 @@ class mongo_configdb(object):
                     break
         self.server = 'localhost:%d' % self.port
         print("Initializing mongod, port = %d!" % self.port)
-        try:
+        if False:
+          try:
             c = MongoClient("mongodb://" + self.server)
             config = {'_id': 'test', 'members': [{'_id': 0, 'host': self.server}]}
             c.admin.command("replSetInitiate", config)
             c.close()
             time.sleep(5)  # This takes time.  This seems like enough, 1 is too little.
-        except:
+          except:
             self.mongod.kill()
             self.mongod.wait()
             raise
+        time.sleep(5)
         return self
 
     def __exit__(self, type, value, tb):
@@ -57,8 +59,12 @@ class mongo_configdb(object):
 
 class Test_CONFIGDB:
     def test_one(self):
-        with mongo_configdb() as mdb:
-            c = cdb.configdb(mdb.server, "AMO", True)
+        #with mongo_configdb() as mdb:
+            #c = cdb.configdb(mdb.server, "AMO", True)
+        dbname = "regress"+str(os.getpid())
+        server = "mcbrowne:psana@psdb-dev:9306"
+        c = cdb.configdb(server, "AMO", create=True, drop=True, root=dbname)
+        try:
             c.add_alias("BEAM")                 # 0
             c.add_alias("NOBEAM")               # 1
             c.add_device_config("evr")
@@ -105,7 +111,7 @@ class Test_CONFIGDB:
             assert len(h) == 2
             assert [67, 73] == [d['evrIO.d'] for d in h]
             assert [2, 4] == [d['key'] for d in h]
-            c2 = cdb.configdb(mdb.server, "SXR", True)
+            c2 = cdb.configdb(server, "SXR", create=True, root=dbname)
             c2.add_alias("FOO")                                       # 0
             c2.transfer_config("AMO", "BEAM", "evr0", "FOO", "evr3")  # 1
             with pytest.raises(Exception):
@@ -116,7 +122,11 @@ class Test_CONFIGDB:
             cfg2 = c2.get_configuration("FOO", "evr3")
             assert cfg == cfg2
             print("Test complete!")
-
+        except:
+            raise
+        finally:
+            c.client.drop_database(dbname)
+            pass
 def run():
     test = Test_CONFIGDB()
     test.test_one()
