@@ -30,13 +30,20 @@ from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_s
 
 #--------------------
 
+def _display_name(pname, v) :
+    host = v['proc_info']['host']
+    pid  = v['proc_info']['pid']
+    return '%s/%s/%-16s' % (pname, pid, host)
+
+#--------------------
+
 def get_platform():
     """returns list of processes after control.getPlatform() request
     """
     dict_procs = {}
 
     try:
-        jo = daq_control().getPlatform()
+        dict_platf = daq_control().getPlatform() # returns dict
 
     except Exception as ex:
         logger.error('Exception: %s' % ex)
@@ -44,31 +51,46 @@ def get_platform():
 
     except KeyboardInterrupt:
         logger.warning('KeyboardInterrupt')            
-        return list_procs
+        return {}, dict_procs
 
-    sj = json.dumps(jo, indent=2, sort_keys=False)
+    sj = json.dumps(dict_platf, indent=2, sort_keys=False)
     logger.debug('control.getPlatform() json:\n%s' % str(sj))
 
     try:
-        for pname in jo:
+        for pname in dict_platf:
             #print("proc_name: %s" % str(pname))
-            for k,v in jo[pname].items() :
-                host = v['proc_info']['host']
-                pid = v['proc_info']['pid']
-                display = '%s/%s/%-16s' % (pname, pid, host)
-                print(display)
-
+            for k,v in dict_platf[pname].items() :
+                display = _display_name(pname, v)
+                #print(display)
                 dict_procs[display] = (v['active'] == 1)
-
-                #if v['active'] == 1: host += ' *'
-                #if pname == 'control' : list_procs.insert(0, display) # show control level first
-                #else:                   list_procs.append(display)
 
     except Exception as ex:
         logger.error('Exception: %s' % ex)
         print('failed to parse json after control.getPlatform() request:\n%s' % str(sj))
 
-    return dict_procs
+    return dict_platf, dict_procs
+
+#--------------------
+
+def set_platform(dict_platf, dict_procs):
+    """ Sets processes active/inactive
+    """
+    try:
+        for pname in dict_platf:
+            #print("proc_name: %s" % str(pname))
+            for k,v in dict_platf[pname].items() :
+                display = _display_name(pname, v)
+                int_active = {True:1, False:0}[dict_procs[display]]
+                #print(display, 'int_active: %d' % int_active)
+                dict_platf[pname][k]['active'] = int_active
+        
+        sj = json.dumps(dict_platf, indent=2, sort_keys=False)
+        logger.debug('control.setPlatform() json:\n%s' % str(sj))
+        
+        daq_control().selectPlatform(dict_platf)
+
+    except Exception as ex:
+        logger.error('Exception: %s' % ex)
 
 #--------------------
 
