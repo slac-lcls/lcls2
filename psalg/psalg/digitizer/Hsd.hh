@@ -134,7 +134,6 @@ namespace Pds {
         AllocArray1D<uint16_t> waveform;
         AllocArray1D<uint16_t> sPos; // maxLength
         AllocArray1D<uint16_t> len; // maxLength
-        AllocArray1D<uint16_t> fexPos; // maxLength
         AllocArray1D<uint16_t*> fexPtr; // maxLength
 
     private:
@@ -148,43 +147,37 @@ namespace Pds {
 
         void _parse_peaks(const StreamHeader& s) {
             const Pds::HSD::StreamHeader& sh_fex = *reinterpret_cast<const Pds::HSD::StreamHeader*>(&s);
-            const uint16_t* p_thr = reinterpret_cast<const uint16_t*>(&sh_fex+1);
-            const unsigned end = s.num_samples();
+            const uint16_t* q = reinterpret_cast<const uint16_t*>(&sh_fex+1);
 
-            unsigned i=0, j=0;
-            bool skipped = true;
+            unsigned ns=0;
             bool in = false;
-            if (p_thr[i] & 0x8000) { // skip to the sample with the trigger
-                i++;
-                j++;
-            }
-
-            while(i<end) {
-                if (p_thr[i] & 0x8000) {
-                    j += p_thr[i] & 0x7fff;
-                    if (skipped) {
-                        printf(" consecutive skip\n"); // TODO: remove
-                    } else {
-                        printf(" SKIP\n");
-                        if (in) {
-                            len.push_back(i-fexPos(numFexPeaks));
-                            numFexPeaks++;
-                        }
+            unsigned width = 0;
+            unsigned totWidth = 0;
+            for(unsigned i=0; i<s.num_samples();) {
+                if (q[i]&0x8000) {
+                    for (unsigned j=0; j<4; j++, i++) {
+                        ns += (q[i]&0x7fff);
                     }
+                    totWidth += width;
+                    if (in) {
+                        len.push_back(width);
+                        numFexPeaks++;
+                    }
+                    width = 0;
                     in = false;
-                    skipped = true;
                 } else {
-                    sPos.push_back(j);
-                    fexPos.push_back(i);
-                    fexPtr.push_back((uint16_t *) (p_thr+i));
+                    if (!in) {
+                        sPos.push_back(ns+totWidth);
+                        fexPtr.push_back((uint16_t *) (q+i));
+                    }
+                    for (unsigned j=0; j<4; j++, i++) {
+                        width++;
+                    }
                     in = true;
-                    j++;
-                    skipped = false;
                 }
-                i++;
             }
             if (in) {
-                len.push_back(i-fexPos(numFexPeaks));
+                len.push_back(width);
                 numFexPeaks++;
             }
         }

@@ -13,10 +13,8 @@ Channel::Channel(Allocator *allocator, Pds::HSD::Hsd_v1_2_3 *vHsd, const uint32_
 , waveform(allocator, maxSize)
 , sPos(allocator, maxSize)
 , len(allocator, maxSize)
-, fexPos(allocator, maxSize)
 , fexPtr(allocator, maxSize)
 {
-    const XtcData::Transition* event_header = reinterpret_cast<const XtcData::Transition*>(evtheader);
     const uint8_t *e = reinterpret_cast<const uint8_t*>(evtheader);
     unsigned streams(e[2]>>4);
     const uint8_t* p = data;
