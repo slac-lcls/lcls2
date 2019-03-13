@@ -62,7 +62,18 @@ target_link_libraries(json2xtc
     j2x xtc
 )
 
-install(TARGETS xtcwriter smdwriter xtcreader json2xtc amiwriter
+add_executable(epicswriter
+    epicswriter.cc
+)
+
+target_link_libraries(epicswriter
+    xtc
+)
+target_include_directories(epicswriter PUBLIC
+    $ENV{CONDA_PREFIX}/include
+)
+
+install(TARGETS xtcwriter smdwriter xtcreader json2xtc amiwriter epicswriter
     EXPORT xtcdataTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

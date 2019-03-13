@@ -140,6 +140,17 @@ setup(name='eventbuilder',
                     include_dirs=["psana"],
       ), build_dir=CYT_BLD_DIR))
 
+setup(name='parallelreader',
+      ext_modules = cythonize(Extension(
+                    "psana.parallelreader",
+                    sources=["psana/parallelreader.pyx"],
+                    include_dirs=["psana"],
+                    #extra_compile_args=['-fopenmp'], # This picks up system compiler and could potentially be
+                    #extra_link_args=['-fopenmp'],    # bad when sys. comp. is linked with extra stuffs.
+                    libraries = ['gomp'],             # Instead, tells compiler to use libgomp from conda directly.
+                    library_dirs = [os.path.join(os.environ['CONDA_PREFIX'],'lib')],
+      ), build_dir=CYT_BLD_DIR))
+
 ext = Extension("hsd",
                 sources=["psana/hsd/hsd.pyx",
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
