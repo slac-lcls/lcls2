@@ -259,11 +259,20 @@ def write_typed_json(filename, d, edef, headers=True):
         f.write('{\n')
         tdict = {}
         write_json_dict(f, d, edef, tdict, headers=headers)
-        f.write(',\n    "json_types": {\n')
+        f.write(',\n    ":types:": {\n')
         if edef != {}:
             f.write('        ":enum:": {\n')
             write_json_dict(f, edef, {}, {}, [], "            ")
             f.write('\n        },\n')
+        f.write('        "detType": "CHARSTR",\n')
+        f.write('        "detName": "CHARSTR",\n')
+        f.write('        "detId": "CHARSTR",\n')
+        f.write('        "doc": "CHARSTR",\n')
+        f.write('        "alg": {\n')
+        f.write('            "alg": "CHARSTR",\n')
+        f.write('            "doc": "CHARSTR",\n')
+        f.write('            "version": ["INT32", 3]\n')
+        f.write('        },\n')
         write_json_dict(f, tdict, {}, {}, [], "        ")
         f.write('\n    }\n}\n')
         return True
@@ -291,14 +300,14 @@ class cdict(object):
         if isinstance(old, cdict):
             self.dict.update(old.dict)
             self.enumdef.update(old.enumdef)
-        elif isinstance(old, dict) and "json_types" in old.keys():
+        elif isinstance(old, dict) and ":types:" in old.keys():
             cp = {}
             cp.update(old)
-            jt = cp['json_types']
+            jt = cp[':types:']
             if ":enum:" in jt.keys():
                 self.enumdef = jt[":enum:"]
                 del jt[":enum:"]
-            del cp['json_types']
+            del cp[':types:']
             self.init_from_json(cp, jt)
 
     def init_from_json(self, old, jt, base=None):
@@ -339,7 +348,7 @@ class cdict(object):
         if self.enumdef != {}:
             t[":enum:"] = {}
             t[":enum:"].update(self.enumdef)
-        d['json_types'] = t
+        d[':types:'] = t
         return d
 
     # Add all of t2 to t1.  We'd use update, but we want to merge all 
@@ -362,6 +371,10 @@ class cdict(object):
             for k in input.keys():
                 if top and (k in ["detType", "detName", "detId", "doc", "alg"]):
                     d[k] = input[k]
+                    if k == 'alg':
+                        t[k] = {'alg' : 'CHARSTR', 'doc': 'CHARSTR', version: ['INT32', 3]}
+                    else:
+                        t[k] = "CHARSTR"
                     continue
                 (d2, t2) = self.create_json(input[k])
                 d[k] = d2

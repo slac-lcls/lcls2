@@ -297,10 +297,10 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
     d.RemoveMember("detType");
     d.RemoveMember("detId");
     d.RemoveMember("doc");
-    Value &jsv = d["json_types"];
+    Value &jsv = d[":types:"];
     Value json;
-    json = jsv;              // This makes d['json_types'] null!!
-    d.RemoveMember("json_types");
+    json = jsv;              // This makes d[':types:'] null!!
+    d.RemoveMember(":types:");
 
     VarDef vars;
     if (json.HasMember(":enum:")) {
