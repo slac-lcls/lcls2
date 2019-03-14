@@ -1,14 +1,14 @@
 #------------------------------
-"""Class :py:class:`CGWPartitionList` is a QWList->QListView->QWidget for list model
+"""Class :py:class:`CGWPartitionDisplay` is a QWList->QListView->QWidget for list model
 ====================================================================================
 
 Usage ::
 
-    # Run test: python lcls2/psdaq/psdaq/control_gui/CGWPartitionList.py
+    # Run test: python lcls2/psdaq/psdaq/control_gui/CGWPartitionDisplay.py
 
-    #from psana.graphqt.CGWPartitionList import CGWPartitionList
-    from psdaq.control_gui.CGWPartitionList import CGWPartitionList
-    w = CGWPartitionList(lst)
+    #from psana.graphqt.CGWPartitionDisplay import CGWPartitionDisplay
+    from psdaq.control_gui.CGWPartitionDisplay import CGWPartitionDisplay
+    w = CGWPartitionDisplay(lst)
 
 Created on 2019-03-11 by Mikhail Dubrovin
 """
@@ -21,7 +21,7 @@ from psdaq.control_gui.QWList import QWList, QStandardItem #icon
 
 #----------
 
-class CGWPartitionList(QWList) :
+class CGWPartitionDisplay(QWList) :
     """Widget for List
     """
 
@@ -47,9 +47,9 @@ if __name__ == "__main__" :
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = CGWPartitionList(listio=['rec1','rec2','rec3'])
+    w = CGWPartitionDisplay(listio=['rec1','rec2','rec3'])
     w.setGeometry(10, 25, 400, 600)
-    w.setWindowTitle('CGWPartitionList')
+    w.setWindowTitle('CGWPartitionDisplay')
     w.move(100,50)
     w.show()
     app.exec_()

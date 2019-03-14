@@ -33,7 +33,7 @@ from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_s
 
 from psdaq.control_gui.CGJsonUtils import get_platform, set_platform
 from psdaq.control_gui.QWPopupCheckDict import QWPopupCheckDict
-from psdaq.control_gui.CGWPartitionList import CGWPartitionList
+from psdaq.control_gui.CGWPartitionDisplay import CGWPartitionDisplay
 
 #--------------------
 
@@ -44,6 +44,8 @@ class CGWMainPartition(QGroupBox) :
     def __init__(self, parent=None):
 
         QGroupBox.__init__(self, 'Partition', parent)
+
+        #self.parent_ctrl = parent_ctrl
 
         #self.dict_procs = {'string1':True, 'string2':False, 'string3':True, 'string4':False}
         self.dict_procs = {}
@@ -128,6 +130,10 @@ class CGWMainPartition(QGroupBox) :
 
         set_platform(dict_platf, dict_procs)
 
+        # 2019-03-13 caf: If Select->Apply is successful, an Allocate transition should be triggered.
+        #self.parent_ctrl....
+        daq_control().setState('allocated')
+
 #--------------------
 
     def list_active_processes(self):
@@ -140,8 +146,10 @@ class CGWMainPartition(QGroupBox) :
     def on_but_display(self):
         logger.debug('on_but_display')
         if  self.w_display is None :
+            _, self.dict_procs = get_platform()
+
             listap = self.list_active_processes()
-            self.w_display = CGWPartitionList(parent=None, listio=listap)
+            self.w_display = CGWPartitionDisplay(parent=None, listio=listap)
                              #CGWPartitionSelection(parent=None, parent_ctrl=self)
             self.w_display.move(self.pos() + QPoint(self.width()+30, 200))
             self.w_display.setWindowTitle('Selected partitions')
@@ -167,7 +175,7 @@ class CGWMainPartition(QGroupBox) :
         self.state = state = s.upper()
         self.but_roll_call.setEnabled(state in ('RESET', 'UNALLOCATED'))
         self.but_select.setEnabled(not(state in ('RESET',)))
-        self.but_display.setEnabled(not(state in ('RESET',)))
+        self.but_display.setEnabled(not(state in ('RESET','UNALLOCATED')))
 
 #--------------------
 

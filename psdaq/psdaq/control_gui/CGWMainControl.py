@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 import psdaq.control_gui.Utils as gu
 
-from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox, QHBoxLayout, QVBoxLayout, QComboBox
+from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox, QGridLayout, QHBoxLayout, QVBoxLayout
      #QGridLayout, QLineEdit, QFileDialog, QWidget
 from PyQt5.QtCore import Qt, QTimer # pyqtSignal, QRectF, QPointF
 
@@ -51,6 +51,7 @@ class CGWMainControl(QGroupBox) :
 
         self.lab_state = QLabel('Target State')
         self.lab_trans = QLabel('Last Transition')
+        self.lab_ctrls = QLabel('Control State')
         #self.box_type = QComboBox(self)
         #self.box_type.addItems(self.LIST_OF_CONFIG_OPTIONS)
         #self.box_type.setCurrentIndex(1)
@@ -58,57 +59,61 @@ class CGWMainControl(QGroupBox) :
         self.cbx_runc       = QCheckBox('Record Run')
         self.box_state      = QComboBox()
         self.but_transition = QPushButton('Unknown')
+        self.but_ctrls      = QPushButton('Ready')
 
         self.states = ['Select',] + [s.upper() for s in DaqControl.states]
         self.box_state.addItems(self.states)
 
-        #self.edi = QLineEdit(path)
-        #self.edi.setReadOnly(True) 
+        if False :
+            self.hbox1 = QHBoxLayout() 
+            self.hbox1.addStretch(1)
+            self.hbox1.addWidget(self.cbx_runc)
+            self.hbox1.addStretch(1)
+        
+            self.hbox2 = QHBoxLayout() 
+            self.hbox2.addWidget(self.lab_state)
+            self.hbox2.addStretch(1)
+            self.hbox2.addWidget(self.lab_trans)
+        
+            self.hbox3 = QHBoxLayout() 
+            self.hbox3.addWidget(self.box_state, 0, Qt.AlignCenter)
+            self.hbox3.addStretch(1)
+            self.hbox3.addWidget(self.but_transition, 0, Qt.AlignCenter)
+        
+            self.vbox = QVBoxLayout() 
+            self.vbox.addLayout(self.hbox1)
+            self.vbox.addLayout(self.hbox2)
+            self.vbox.addLayout(self.hbox3)
+        
+            self.setLayout(self.vbox)
 
-        self.hbox1 = QHBoxLayout() 
-        self.hbox1.addStretch(1)
-        self.hbox1.addWidget(self.cbx_runc)
-        self.hbox1.addStretch(1)
-
-        self.hbox2 = QHBoxLayout() 
-        self.hbox2.addWidget(self.lab_state)
-        self.hbox2.addStretch(1)
-        self.hbox2.addWidget(self.lab_trans)
-
-        self.hbox3 = QHBoxLayout() 
-        self.hbox3.addWidget(self.box_state, 0, Qt.AlignCenter)
-        self.hbox3.addStretch(1)
-        self.hbox3.addWidget(self.but_transition, 0, Qt.AlignCenter)
-        #self.hbox3.addStretch(1)
-
-        self.vbox = QVBoxLayout() 
-        #self.vbox.addWidget(self.cbx_runc, 0, Qt.AlignCenter)
-        self.vbox.addLayout(self.hbox1)
-        self.vbox.addLayout(self.hbox2)
-        self.vbox.addLayout(self.hbox3)
-
-        #self.grid = QGridLayout()
-        #self.grid.addWidget(self.lab_state,       0, 0, 1, 1)
-        #self.grid.addWidget(self.but_type,        0, 2, 1, 1)
-        #self.grid.addWidget(self.box_state,       1, 1, 1, 1)
-        #self.grid.addWidget(self.but_transition,  2, 1, 1, 1)
-
-        self.setLayout(self.vbox)
+        else :
+            self.grid = QGridLayout()
+            self.grid.addWidget(self.cbx_runc,        0, 3, 1, 1)
+            self.grid.addWidget(self.lab_state,       1, 0, 1, 1)
+            self.grid.addWidget(self.lab_trans,       1, 9, 1, 1)
+            self.grid.addWidget(self.box_state,       2, 0, 1, 1)
+            self.grid.addWidget(self.but_transition,  2, 9, 1, 1)
+            self.grid.addWidget(self.lab_ctrls,       3, 0, 1, 1)
+            self.grid.addWidget(self.but_ctrls,       4, 0, 1,10)
+            self.setLayout(self.grid)
 
         self.set_tool_tips()
         self.set_style()
 
         self.box_state.currentIndexChanged[int].connect(self.on_box_state)
         self.but_transition.clicked.connect(self.on_but_transition)
-        #self.box_type.currentIndexChanged[int].connect(self.on_box_type)
         self.cbx_runc.stateChanged[int].connect(self.on_cbx_runc)
+        self.but_ctrls.clicked.connect(self.on_but_ctrls)
 
         #self.timer = QTimer()
         #self.timer.timeout.connect(self.on_timeout)
         #self.timer.start(1000)
 
+        self.state = 'undefined'
         self.transition = 'undefined'
         self.ts = 'N/A'
+        self.check_state()
         self.check_transition()
 
 #--------------------
@@ -117,7 +122,8 @@ class CGWMainControl(QGroupBox) :
         self.setToolTip('Configuration') 
         self.cbx_runc.setToolTip('Use checkbox to on/off recording.')
         self.box_state.setToolTip('Select desirable state.')
-        self.but_transition.setToolTip('Info about last transition.')
+        self.but_transition.setToolTip('Last transition info.')
+        self.but_ctrls.setToolTip('State info.') 
 
 #--------------------
 
@@ -131,6 +137,7 @@ class CGWMainControl(QGroupBox) :
         self.cbx_runc.setFixedSize(100,40)
         #self.cbx_runc.setStyleSheet(style.styleYellowBkg)
         self.cbx_runc.setStyleSheet(style.style_cbx_off)
+        self.but_ctrls.setStyleSheet(style.styleButtonGood)
 
         #self.setWindowTitle('File name selection widget')
         #self.edi.setMinimumWidth(210)
@@ -158,6 +165,12 @@ class CGWMainControl(QGroupBox) :
         self.check_transition()
 
 #--------------------
+
+    def on_but_ctrls(self):
+        logger.debug('on_but_ctrls')
+        self.check_state()
+
+#--------------------
  
     def on_cbx_runc(self, ind) :
         #if self.cbx.hasFocus() :
@@ -166,6 +179,24 @@ class CGWMainControl(QGroupBox) :
         self.cbx_runc.setStyleSheet(style.styleGreenish if cbx.isChecked() else style.styleYellowBkg)
         msg = 'Check box "%s" is set to %s' % (tit, cbx.isChecked())
         logger.info(msg)
+
+#--------------------
+
+    def check_state(self) :
+        #logger.debug('CGWMainDetector.check_state -> daq_control().getState()')
+        state = daq_control().getState()
+        if state is None : return
+        if state == self.state : return
+        self.set_but_ctrls(state)
+
+#--------------------
+
+    def set_but_ctrls(self, s) :
+        self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
+        self.state = s 
+        #self.but_state.setText('%s since %s' % (s.upper(), self.ts))
+        self.but_ctrls.setText(s.upper())
+        self.parent_ctrl.wpart.set_buts_enable(s.upper()) # enable/disable button plat in other widget
 
 #--------------------
  
