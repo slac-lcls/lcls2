@@ -116,9 +116,9 @@ int main(int argc, char* argv[]) {
       printf("shmemClient dgram trId %d index %d size %d\n",dgram->seq.service(),ev_index,buf_size);
     if(!timing)
       myClient.processDgram(dgram);
-    else if(dgram->seq.service() == TransitionId::L1Accept)
+    if(dgram->seq.service() == TransitionId::L1Accept)
       {
-      if(!accept)
+      if(!accept && timing)
         {
         accept = true;
         clock_gettime(CLOCK_REALTIME, &ptv);
