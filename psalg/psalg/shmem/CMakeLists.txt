@@ -40,6 +40,15 @@ target_link_libraries(shmemClient
     rt
 )
 
+add_executable(shmemWriter
+    shmemWriter.cc
+)
+target_link_libraries(shmemWriter
+    xtcdata::xtc
+    shmemcli
+    rt
+)
+
 add_executable(shmemServer
     shmemServer.cc
 )
@@ -62,7 +71,7 @@ install(FILES
 )
 
 install(TARGETS shmemcli
-  shmemClient
+  shmemClient shmemWriter
   EXPORT psalgTargets
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

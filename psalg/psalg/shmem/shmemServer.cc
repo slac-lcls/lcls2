@@ -17,7 +17,7 @@ void usage(char* progname) {
        << " -d <xtc_dir>         : directory containing all xtcs to use" << endl;
   cerr << "other_options:" << endl;
   cerr << " [-r <ratePerSec>] [-c <# clients>]" << endl 
-       << " [-L]                 : (continuous loop)" << endl
+       << " [-L <numberOfLoops] " << endl
        << "[-v] [-V]" << endl;
 }
 
@@ -36,9 +36,9 @@ int main(int argc, char* argv[]) {
   // These are optional
   int rate = 60; // Hz
   unsigned nclients = 1;
+  unsigned loop = 1;
 
   // These are for debugging (also optional)
-  bool loop = false;
   bool verbose = false;
   bool veryverbose = false;
 
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
   //  (void) signal(SIGSEGV, sigfunc);
 
   int c;
-  while ((c = getopt(argc, argv, "f:l:x:d:p:n:s:r:c:LvVh?")) != -1) {
+  while ((c = getopt(argc, argv, "f:l:x:d:p:n:s:r:c:L:vVh?")) != -1) {
     switch (c) {
       case 'f':
         xtcFile = optarg;
@@ -76,8 +76,7 @@ int main(int argc, char* argv[]) {
         nclients = strtoul(optarg, NULL, 0);
         break;
       case 'L':
-        loop = true;
-        printf("Enabling infinite looping\n");
+        loop = strtoul(optarg, NULL, 0);
         break;
       case 'v':
         verbose = true;
@@ -131,6 +130,6 @@ int main(int argc, char* argv[]) {
       runSet.addPathsFromRunPrefix(runPrefix);
     }
     runSet.run();
-  } while (loop);
-  sleep(2); // allow time for clients to process/return datagram before disconnecting
+  } while (--loop);
+  runSet.exit();
 }

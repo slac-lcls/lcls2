@@ -765,7 +765,7 @@ void XtcMonitorServer::_moveQueue(mqd_t iq, mqd_t oq)
 
 void XtcMonitorServer::unlink()
 {
-  printf("Unlinking Message Queues... \n");
+  //printf("Unlinking Message Queues... \n");
   mq_close(_myInputEvQueue);
 
   for(unsigned i=0; i<_numberOfEvQueues; i++) {

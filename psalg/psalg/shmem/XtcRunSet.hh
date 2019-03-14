@@ -37,6 +37,7 @@ public:
   void connect(char* partitionTag, unsigned sizeOfBuffers, int numberOfBuffers, unsigned nclients, int rate, bool verbose = false, bool veryverbose = false);
   void run();
   void wait();
+  void exit();
 };
 
 #endif

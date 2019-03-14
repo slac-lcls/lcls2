@@ -104,8 +104,11 @@ bool XtcRunSet::_skipToNextRun() {
   if (_paths.empty()) {
     return false;
   }
-  cout << endl << "Adding files for new run..." << endl;
-  cout << "Adding " << _paths.front() << endl;
+  if(_verbose)
+    {
+    cout << endl << "Adding files for new run..." << endl;
+    cout << "Adding " << _paths.front() << endl;
+    }
   if(! _openFile(_paths.front())) {
     return false;
   }
@@ -246,7 +249,7 @@ void XtcRunSet::run() {
     dgCount++;
     _server->events(dg);
     if (dg->seq.service() != TransitionId::L1Accept) {
-      printTransition(dg);
+      if(_verbose) printTransition(dg);
       clock_gettime(CLOCK, &loopStart);
       dgCount = 0;
     } else if (_verbose) {
@@ -278,4 +281,9 @@ void XtcRunSet::run() {
 
 void XtcRunSet::wait() {
   _server->wait();
+}
+
+void XtcRunSet::exit() {
+  _server->unlink();
+  printf("Unlinked/exited server\n");
 }

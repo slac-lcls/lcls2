@@ -41,7 +41,7 @@ from PyQt5.QtCore import Qt#, QPoint
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
 from psdaq.control_gui.CGWMainPartition     import CGWMainPartition
 from psdaq.control_gui.CGWMainControl       import CGWMainControl
-from psdaq.control_gui.CGWMainDetector      import CGWMainDetector
+#====from psdaq.control_gui.CGWMainDetector      import CGWMainDetector
 from psdaq.control_gui.CGWMainRunStatistics import CGWMainRunStatistics
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
@@ -84,7 +84,7 @@ class CGWMain(QWZMQListener) :
         self.wconf = CGWMainConfiguration()
         self.wpart = CGWMainPartition()
         self.wctrl = CGWMainControl(parent_ctrl=self)
-        self.wdetr = CGWMainDetector(parent_ctrl=self)
+        #====self.wdetr = CGWMainDetector(parent_ctrl=self)
         self.wrsta = CGWMainRunStatistics()
         #self.wlogr = QTextEdit('my logger')
 
@@ -99,7 +99,7 @@ class CGWMain(QWZMQListener) :
         self.vspl.addWidget(self.wconf) 
         self.vspl.addWidget(self.wpart) 
         self.vspl.addWidget(self.wctrl) 
-        self.vspl.addWidget(self.wdetr) 
+        #====self.vspl.addWidget(self.wdetr) 
         self.vspl.addWidget(self.wrsta) 
         self.vspl.addWidget(self.wlogr) 
 
@@ -334,7 +334,8 @@ class CGWMain(QWZMQListener) :
                 if  jo['header']['key'] == 'status' :
                     s_state      = jo['body']['state']
                     s_transition = jo['body']['transition']
-                    self.wdetr.set_but_state (s_state)
+                    #====self.wdetr.set_but_state (s_state)
+                    self.wctrl.set_but_ctrls (s_state)
                     self.wctrl.set_transition(s_transition)
                     logging.info('received state msg: %s and transition: %s' % (s_state, s_transition))
 

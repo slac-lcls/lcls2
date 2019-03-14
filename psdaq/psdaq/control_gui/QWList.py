@@ -138,8 +138,8 @@ class QWList(QListView) :
         #self.resetColorIsSet = False
         #self.butELog    .setIcon(icon.icon_mail_forward)
         #self.butFile    .setIcon(icon.icon_save)  
-        #self.setMinimumHeight(250)
-        #self.setMinimumWidth(550)
+        self.setMinimumHeight(100)
+        self.setMinimumWidth(100)
         #self.adjustSize()
         #self.        setStyleSheet(style.styleBkgd)
         #self.butSave.setStyleSheet(style.styleButton)
