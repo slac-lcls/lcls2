@@ -29,13 +29,11 @@ using std::string;
 
 #define BUFSIZE 0x4000000
 
-
 class EpicsDef:public VarDef
 {
 public:
   enum index
     {
-#ifndef EPICSSTREAMID_UNITTEST
         HX2_DVD_GCC_01_PMON,
         HX2_DVD_GPI_01_PMON,
         HX2_DVD_PIP_01_VMON,
@@ -364,31 +362,10 @@ public:
         XPP_USR_ao1_7,
         XPP_USR_ao1_8,
         XPP_USR_ao1_9,
-#else // defined(EPICSSTREAMID_UNITTEST)
-        XPP_VARS_FLOAT_02,
-        XPP_VARS_FLOAT_03,
-        XPP_VARS_FLOAT_04,
-        XPP_VARS_FLOAT_05,
-        XPP_VARS_FLOAT_06,
-        XPP_VARS_FLOAT_07,
-        XPP_VARS_FLOAT_08,
-        XPP_VARS_FLOAT_09,
-        XPP_VARS_FLOAT_10,
-        XPP_VARS_STRING_01,
-        XPP_VARS_STRING_02,
-        XPP_VARS_STRING_03,
-        XPP_VARS_STRING_04,
-        XPP_VARS_STRING_05,
-        XPP_VARS_STRING_06,
-        XPP_VARS_STRING_07,
-        XPP_VARS_STRING_08,
-        XPP_VARS_STRING_09,
-#endif
     };
 
   EpicsDef()
    {
-#ifndef EPICSSTREAMID_UNITTEST
         NameVec.push_back({"HX2:DVD:GCC:01:PMON",Name::DOUBLE});
         NameVec.push_back({"HX2:DVD:GPI:01:PMON",Name::DOUBLE});
         NameVec.push_back({"HX2:DVD:PIP:01:VMON",Name::DOUBLE});
@@ -717,7 +694,36 @@ public:
         NameVec.push_back({"XPP:USR:ao1:7",Name::DOUBLE});
         NameVec.push_back({"XPP:USR:ao1:8",Name::DOUBLE});
         NameVec.push_back({"XPP:USR:ao1:9",Name::DOUBLE});
-#else // defined(EPICSSTREAMID_UNITTEST)
+   }
+} EpicsDef;
+
+class EpicsDefS2:public VarDef
+{
+public:
+  enum index
+    {
+        XPP_VARS_FLOAT_02,
+        XPP_VARS_FLOAT_03,
+        XPP_VARS_FLOAT_04,
+        XPP_VARS_FLOAT_05,
+        XPP_VARS_FLOAT_06,
+        XPP_VARS_FLOAT_07,
+        XPP_VARS_FLOAT_08,
+        XPP_VARS_FLOAT_09,
+        XPP_VARS_FLOAT_10,
+        XPP_VARS_STRING_01,
+        XPP_VARS_STRING_02,
+        XPP_VARS_STRING_03,
+        XPP_VARS_STRING_04,
+        XPP_VARS_STRING_05,
+        XPP_VARS_STRING_06,
+        XPP_VARS_STRING_07,
+        XPP_VARS_STRING_08,
+        XPP_VARS_STRING_09,
+    };
+
+  EpicsDefS2()
+   {
         NameVec.push_back({"XPP:VARS:FLOAT:02",Name::DOUBLE});
         NameVec.push_back({"XPP:VARS:FLOAT:03",Name::DOUBLE});
         NameVec.push_back({"XPP:VARS:FLOAT:04",Name::DOUBLE});
@@ -736,9 +742,8 @@ public:
         NameVec.push_back({"XPP:VARS:STRING:07",Name::CHARSTR,1});
         NameVec.push_back({"XPP:VARS:STRING:08",Name::CHARSTR,1});
         NameVec.push_back({"XPP:VARS:STRING:09",Name::CHARSTR,1});
-#endif
    }
-} EpicsDef;
+} EpicsDefS2;
 
 
 class DebugIter : public XtcIterator
@@ -907,375 +912,377 @@ public:
     }
 };
 
-void epicsExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
+void epicsExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId, int streamId)
 { 
     CreateData epics(parent, namesLookup, namesId);
-
-#ifndef EPICSSTREAMID_UNITTEST
-    epics.set_value(EpicsDef::HX2_DVD_GCC_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::HX2_DVD_GPI_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::HX2_DVD_PIP_01_VMON, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
-    epics.set_value(EpicsDef::HX2_SB1_IPM_01_DiodeBias, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_IPM_02_ChargeAmpRangeCH0, (int64_t) 42);
-    epics.set_value(EpicsDef::HX2_SB1_IPM_02_DiodeBias, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_JAWS_ACTUAL_XCENTER, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_JAWS_ACTUAL_XWIDTH, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_JAWS_ACTUAL_YCENTER, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_JAWS_ACTUAL_YWIDTH, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_02_RBV, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_03_RBV, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_04_RBV, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_05_RBV, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_06_RBV, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_06_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_07_RBV, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_07_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_08_RBV, (double)41.0);
-    epics.set_value(EpicsDef::HX2_SB1_MMS_08_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::HX2_UVD_GCC_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::HX2_UVD_GPI_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::HX2_UVD_PIP_01_VMON, (double)41.0);
-    epics.set_value(EpicsDef::HX3_DVD_GPI_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::HX3_DVD_PIP_01_VMON, (double)41.0);
-    epics.set_value(EpicsDef::HX3_MON_GCC_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::HX3_MON_GCC_02_PMON, (double)41.0);
-    epics.set_value(EpicsDef::HX3_MON_GPI_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::HX3_MON_PIP_01_VMON, (double)41.0);
-    epics.set_value(EpicsDef::HX3_MON_PIP_02_VMON, (double)41.0);
-    epics.set_value(EpicsDef::HX3_MON_PIP_03_VMON, (double)41.0);
-    epics.set_value(EpicsDef::LAS_FS3_Angle_Shift_Ramp_Target, (double)41.0);
-    epics.set_value(EpicsDef::LAS_FS3_REG_Angle_Shift_rd, (double)41.0);
-    epics.set_value(EpicsDef::LAS_FS3_REG_kp_vcxo_rd, (int64_t) 42);
-    epics.set_value(EpicsDef::LAS_FS3_VIT_FS_CTR_TIME, (double)41.0);
-    epics.set_value(EpicsDef::LAS_FS3_VIT_FS_TGT_TIME, (double)41.0);
-    epics.set_value(EpicsDef::LAS_FS3_WAVE_Signal_T_AVG, (double)41.0);
-    epics.set_value(EpicsDef::LAS_FS3_alldiff_fs, (double)41.0);
-    epics.set_value(EpicsDef::LAS_FS3_alldiff_fs_RMS, (double)41.0);
-    epics.set_value(EpicsDef::LAS_R54_EVR_27_CTRL_DG0C, (int64_t) 42);
-    epics.set_value(EpicsDef::LAS_R54_EVR_27_CTRL_DG0D, (double)41.0);
-    epics.set_value(EpicsDef::LAS_R54_EVR_27_CTRL_DG1C, (int64_t) 42);
-    epics.set_value(EpicsDef::LAS_R54_EVR_27_CTRL_DG1D, (double)41.0);
-    epics.set_value(EpicsDef::LAS_XPP_DDG_01_aDelayAO, (double)41.0);
-    epics.set_value(EpicsDef::PLC_XPP_LSS_C114I, (int64_t) 42);
-    epics.set_value(EpicsDef::PLC_XPP_LSS_C116I, (int64_t) 42);
-    epics.set_value(EpicsDef::PLC_XPP_LSS_C120I, (int64_t) 42);
-    epics.set_value(EpicsDef::PLC_XPP_LSS_C122I, (int64_t) 42);
-    epics.set_value(EpicsDef::PLC_XPP_LSS_C124I, (int64_t) 42);
-    epics.set_value(EpicsDef::PLC_XPP_LSS_C126I, (int64_t) 42);
-    epics.set_value(EpicsDef::ROOM_BSY0_1_OUTSIDETEMP, (double)41.0);
-    epics.set_value(EpicsDef::STEP_FEE1_441_MOTR_VAL, (double)41.0);
-    epics.set_value(EpicsDef::STEP_FEE1_442_MOTR_VAL, (double)41.0);
-    epics.set_value(EpicsDef::STEP_FEE1_443_MOTR_VAL, (double)41.0);
-    epics.set_value(EpicsDef::STEP_FEE1_444_MOTR_VAL, (double)41.0);
-    epics.set_value(EpicsDef::STEP_FEE1_445_MOTR_VAL, (double)41.0);
-    epics.set_value(EpicsDef::STEP_FEE1_446_MOTR_VAL, (double)41.0);
-    epics.set_value(EpicsDef::STEP_FEE1_447_MOTR_VAL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_ATT_COM_R3_CUR, (double)41.0);
-    epics.set_value(EpicsDef::XPP_ATT_COM_R_CUR, (double)41.0);
-    epics.set_value(EpicsDef::XPP_ATT_COM_T_CALC_VALE, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_01_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_02_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_03_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_04_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_05_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_06_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_07_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_08_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_09_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_10_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_11_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_12_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_13_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_14_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_15_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_GON_MMS_16_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_IPM1_TARGET_Y_STATE, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_IPM2_TARGET_Y_STATE, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_IPM3_TARGET_Y_STATE, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_01_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_02_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_03_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_05_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_06_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_08_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_09_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_10_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_11_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_12_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_13_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_14_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_15_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_LAS_MMN_16_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_04_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_05_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_06_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_07_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_07_VAL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_08_ACCL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_08_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_08_VAL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_08_C1, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_MON_MMS_08_C2, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_MON_MMS_08_EL, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_MON_MMS_09_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_10_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_11_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_12_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_13_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_13_VAL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_14_ACCL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_14_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_14_VAL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_14_C1, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_MON_MMS_14_C2, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_MON_MMS_14_EL, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_MON_MMS_15_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_16_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_17_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_18_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_19_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_20_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_22_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MMS_23_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MPZ_07A_POSITIONGET, (double)41.0);
-    epics.set_value(EpicsDef::XPP_MON_MPZ_08_POSITIONGET, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_GCC_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_GPI_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_IPM_01_DiodeBias, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_01_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_01_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_02_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_02_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_03_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_03_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_05_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_06_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_07_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_08_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_09_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_10_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_11_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_12_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_13_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_14_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_15_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_17_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_17_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_18_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_18_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_19_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_19_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_20_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_20_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_21_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_21_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_22_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_22_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_23_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_23_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_24_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_24_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_25_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_25_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_26_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_26_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_27_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2_MMS_27_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB2H_JAWS_ACTUAL_XCENTER, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2H_JAWS_ACTUAL_XWIDTH, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2H_JAWS_ACTUAL_YCENTER, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2H_JAWS_ACTUAL_YWIDTH, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2L_JAWS_ACTUAL_XCENTER, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2L_JAWS_ACTUAL_XWIDTH, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2L_JAWS_ACTUAL_YCENTER, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB2L_JAWS_ACTUAL_YWIDTH, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_CLF_01_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_CLZ_01_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_GCC_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_GCC_02_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_GPI_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_GPI_02_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB3_IPM_01_DiodeBias, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_JAWS_ACTUAL_XCENTER, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_JAWS_ACTUAL_XWIDTH, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_JAWS_ACTUAL_YCENTER, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_JAWS_ACTUAL_YWIDTH, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_01_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_02_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_03_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_04_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_05_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_06_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_07_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_08_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_09_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_10_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_11_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_11_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_12_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_12_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_13_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_13_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_14_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_14_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_15_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB3_MMS_15_RRBV, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB3_PIP_01_VMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB4_GCC_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB4_GPI_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB4_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB4_IPM_01_ChargeAmpRangeCH1, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB4_IPM_01_ChargeAmpRangeCH2, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB4_IPM_01_ChargeAmpRangeCH3, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SB4_IPM_01_DiodeBias, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB4_USR_MMS_42, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SB4_USR_MMS_43, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SCAN_ISSCAN, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SCAN_ISTEP, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SCAN_MAX00, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SCAN_MAX01, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SCAN_MAX02, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SCAN_MIN00, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SCAN_MIN01, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SCAN_MIN02, (double)41.0);
-    epics.set_value(EpicsDef::XPP_SCAN_NSHOTS, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_SCAN_NSTEPS, (int64_t) 42);
-    epics.set_string(EpicsDef::XPP_SCAN_SCANVAR00, "Test String");
-    epics.set_string(EpicsDef::XPP_SCAN_SCANVAR01, "Test String");
-    epics.set_string(EpicsDef::XPP_SCAN_SCANVAR02, "Test String");
-    epics.set_value(EpicsDef::XPP_TIMETOOL_AMPL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_TIMETOOL_AMPLNXT, (double)41.0);
-    epics.set_value(EpicsDef::XPP_TIMETOOL_FLTPOS, (double)41.0);
-    epics.set_value(EpicsDef::XPP_TIMETOOL_FLTPOSFWHM, (double)41.0);
-    epics.set_value(EpicsDef::XPP_TIMETOOL_FLTPOS_PS, (double)41.0);
-    epics.set_value(EpicsDef::XPP_TIMETOOL_REFAMPL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_CCM_E, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_CCM_Theta0, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_FEEATT_E, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_FEEATT_T, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_FEEATT_T3rd, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_FS3_T0_SHIFTER, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_E0, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_E02, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_EVR0_GATE, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_EVR0_OSC, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_E_LEAK, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_E_LEAK2, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_E_PULSE, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_E_PULSE2, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_FS3_MAX, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_FS3_MIN, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_SDG0, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_T0_MONITOR, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LAS_TIME_DELAY, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LOM_E, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LOM_EC, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LXT, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_LXTTC, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_AZ, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_EL, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_J1, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_J2, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_J3, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_J4, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_J5, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_J6, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_R, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_RX, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_RY, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_RZ, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_X, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_Y, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_ROB_Z, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USER_VIT_TD, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_GCC_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_GCC_02_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_GPI_01_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_GPI_02_PMON, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_USR_IPM_01_ChargeAmpRangeCH1, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_USR_IPM_01_ChargeAmpRangeCH2, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_USR_IPM_01_ChargeAmpRangeCH3, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_USR_IPM_01_DiodeBias, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_LPW_01_DATA_PRI, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_LPW_01_GETAOSCALE, (int64_t) 42);
-    epics.set_value(EpicsDef::XPP_USR_LPW_01_GETGAINFACTOR, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_LPW_01_GETRANGE, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMN_01_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMN_02_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMN_03_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMN_04_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMS_01_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMS_02_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMS_03_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMS_04_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMS_05_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMS_06_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_MMS_17_RBV, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_OXY_01_ANALOGIN, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_OXY_01_OFFSET, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_OXY_01_SCALE, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_SOLL_1, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_TEMP_A, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_TEMP_B, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_TEMP_C, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_TEMP_D, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_TCT_01_PUT_SOLL_1, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_0, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_1, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_10, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_11, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_12, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_13, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_14, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_15, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_2, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_3, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_4, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_5, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_6, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_7, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_8, (double)41.0);
-    epics.set_value(EpicsDef::XPP_USR_ao1_9, (double)41.0);
-#else // defined(EPICSSTREAMID_UNITTEST)
-    epics.set_value(EpicsDef::XPP_VARS_FLOAT_02, (double)41.0);
-    epics.set_value(EpicsDef::XPP_VARS_FLOAT_03, (double)41.0);
-    epics.set_value(EpicsDef::XPP_VARS_FLOAT_04, (double)41.0);
-    epics.set_value(EpicsDef::XPP_VARS_FLOAT_05, (double)41.0);
-    epics.set_value(EpicsDef::XPP_VARS_FLOAT_06, (double)41.0);
-    epics.set_value(EpicsDef::XPP_VARS_FLOAT_07, (double)41.0);
-    epics.set_value(EpicsDef::XPP_VARS_FLOAT_08, (double)41.0);
-    epics.set_value(EpicsDef::XPP_VARS_FLOAT_09, (double)41.0);
-    epics.set_value(EpicsDef::XPP_VARS_FLOAT_10, (double)41.0);
-    epics.set_string(EpicsDef::XPP_VARS_STRING_01, "Test String");
-    epics.set_string(EpicsDef::XPP_VARS_STRING_02, "Test String");
-    epics.set_string(EpicsDef::XPP_VARS_STRING_03, "Test String");
-    epics.set_string(EpicsDef::XPP_VARS_STRING_04, "Test String");
-    epics.set_string(EpicsDef::XPP_VARS_STRING_05, "Test String");
-    epics.set_string(EpicsDef::XPP_VARS_STRING_06, "Test String");
-    epics.set_string(EpicsDef::XPP_VARS_STRING_07, "Test String");
-    epics.set_string(EpicsDef::XPP_VARS_STRING_08, "Test String");
-    epics.set_string(EpicsDef::XPP_VARS_STRING_09, "Test String");
-#endif
-    
+    if (streamId == 1) {
+        epics.set_value(EpicsDef::HX2_DVD_GCC_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::HX2_DVD_GPI_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::HX2_DVD_PIP_01_VMON, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
+        epics.set_value(EpicsDef::HX2_SB1_IPM_01_DiodeBias, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_IPM_02_ChargeAmpRangeCH0, (int64_t) 42);
+        epics.set_value(EpicsDef::HX2_SB1_IPM_02_DiodeBias, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_JAWS_ACTUAL_XCENTER, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_JAWS_ACTUAL_XWIDTH, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_JAWS_ACTUAL_YCENTER, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_JAWS_ACTUAL_YWIDTH, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_02_RBV, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_03_RBV, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_04_RBV, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_05_RBV, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_06_RBV, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_06_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_07_RBV, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_07_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_08_RBV, (double)41.0);
+        epics.set_value(EpicsDef::HX2_SB1_MMS_08_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::HX2_UVD_GCC_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::HX2_UVD_GPI_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::HX2_UVD_PIP_01_VMON, (double)41.0);
+        epics.set_value(EpicsDef::HX3_DVD_GPI_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::HX3_DVD_PIP_01_VMON, (double)41.0);
+        epics.set_value(EpicsDef::HX3_MON_GCC_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::HX3_MON_GCC_02_PMON, (double)41.0);
+        epics.set_value(EpicsDef::HX3_MON_GPI_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::HX3_MON_PIP_01_VMON, (double)41.0);
+        epics.set_value(EpicsDef::HX3_MON_PIP_02_VMON, (double)41.0);
+        epics.set_value(EpicsDef::HX3_MON_PIP_03_VMON, (double)41.0);
+        epics.set_value(EpicsDef::LAS_FS3_Angle_Shift_Ramp_Target, (double)41.0);
+        epics.set_value(EpicsDef::LAS_FS3_REG_Angle_Shift_rd, (double)41.0);
+        epics.set_value(EpicsDef::LAS_FS3_REG_kp_vcxo_rd, (int64_t) 42);
+        epics.set_value(EpicsDef::LAS_FS3_VIT_FS_CTR_TIME, (double)41.0);
+        epics.set_value(EpicsDef::LAS_FS3_VIT_FS_TGT_TIME, (double)41.0);
+        epics.set_value(EpicsDef::LAS_FS3_WAVE_Signal_T_AVG, (double)41.0);
+        epics.set_value(EpicsDef::LAS_FS3_alldiff_fs, (double)41.0);
+        epics.set_value(EpicsDef::LAS_FS3_alldiff_fs_RMS, (double)41.0);
+        epics.set_value(EpicsDef::LAS_R54_EVR_27_CTRL_DG0C, (int64_t) 42);
+        epics.set_value(EpicsDef::LAS_R54_EVR_27_CTRL_DG0D, (double)41.0);
+        epics.set_value(EpicsDef::LAS_R54_EVR_27_CTRL_DG1C, (int64_t) 42);
+        epics.set_value(EpicsDef::LAS_R54_EVR_27_CTRL_DG1D, (double)41.0);
+        epics.set_value(EpicsDef::LAS_XPP_DDG_01_aDelayAO, (double)41.0);
+        epics.set_value(EpicsDef::PLC_XPP_LSS_C114I, (int64_t) 42);
+        epics.set_value(EpicsDef::PLC_XPP_LSS_C116I, (int64_t) 42);
+        epics.set_value(EpicsDef::PLC_XPP_LSS_C120I, (int64_t) 42);
+        epics.set_value(EpicsDef::PLC_XPP_LSS_C122I, (int64_t) 42);
+        epics.set_value(EpicsDef::PLC_XPP_LSS_C124I, (int64_t) 42);
+        epics.set_value(EpicsDef::PLC_XPP_LSS_C126I, (int64_t) 42);
+        epics.set_value(EpicsDef::ROOM_BSY0_1_OUTSIDETEMP, (double)41.0);
+        epics.set_value(EpicsDef::STEP_FEE1_441_MOTR_VAL, (double)41.0);
+        epics.set_value(EpicsDef::STEP_FEE1_442_MOTR_VAL, (double)41.0);
+        epics.set_value(EpicsDef::STEP_FEE1_443_MOTR_VAL, (double)41.0);
+        epics.set_value(EpicsDef::STEP_FEE1_444_MOTR_VAL, (double)41.0);
+        epics.set_value(EpicsDef::STEP_FEE1_445_MOTR_VAL, (double)41.0);
+        epics.set_value(EpicsDef::STEP_FEE1_446_MOTR_VAL, (double)41.0);
+        epics.set_value(EpicsDef::STEP_FEE1_447_MOTR_VAL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_ATT_COM_R3_CUR, (double)41.0);
+        epics.set_value(EpicsDef::XPP_ATT_COM_R_CUR, (double)41.0);
+        epics.set_value(EpicsDef::XPP_ATT_COM_T_CALC_VALE, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_01_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_02_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_03_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_04_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_05_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_06_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_07_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_08_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_09_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_10_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_11_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_12_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_13_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_14_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_15_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_GON_MMS_16_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_IPM1_TARGET_Y_STATE, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_IPM2_TARGET_Y_STATE, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_IPM3_TARGET_Y_STATE, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_01_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_02_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_03_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_05_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_06_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_08_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_09_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_10_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_11_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_12_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_13_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_14_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_15_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_LAS_MMN_16_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_04_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_05_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_06_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_07_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_07_VAL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_08_ACCL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_08_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_08_VAL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_08_C1, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_MON_MMS_08_C2, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_MON_MMS_08_EL, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_MON_MMS_09_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_10_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_11_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_12_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_13_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_13_VAL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_14_ACCL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_14_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_14_VAL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_14_C1, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_MON_MMS_14_C2, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_MON_MMS_14_EL, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_MON_MMS_15_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_16_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_17_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_18_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_19_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_20_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_22_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MMS_23_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MPZ_07A_POSITIONGET, (double)41.0);
+        epics.set_value(EpicsDef::XPP_MON_MPZ_08_POSITIONGET, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_GCC_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_GPI_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_IPM_01_DiodeBias, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_01_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_01_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_02_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_02_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_03_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_03_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_05_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_06_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_07_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_08_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_09_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_10_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_11_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_12_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_13_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_14_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_15_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_17_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_17_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_18_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_18_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_19_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_19_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_20_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_20_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_21_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_21_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_22_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_22_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_23_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_23_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_24_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_24_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_25_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_25_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_26_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_26_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_27_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2_MMS_27_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB2H_JAWS_ACTUAL_XCENTER, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2H_JAWS_ACTUAL_XWIDTH, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2H_JAWS_ACTUAL_YCENTER, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2H_JAWS_ACTUAL_YWIDTH, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2L_JAWS_ACTUAL_XCENTER, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2L_JAWS_ACTUAL_XWIDTH, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2L_JAWS_ACTUAL_YCENTER, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB2L_JAWS_ACTUAL_YWIDTH, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_CLF_01_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_CLZ_01_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_GCC_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_GCC_02_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_GPI_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_GPI_02_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB3_IPM_01_DiodeBias, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_JAWS_ACTUAL_XCENTER, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_JAWS_ACTUAL_XWIDTH, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_JAWS_ACTUAL_YCENTER, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_JAWS_ACTUAL_YWIDTH, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_01_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_02_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_03_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_04_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_05_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_06_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_07_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_08_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_09_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_10_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_11_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_11_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_12_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_12_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_13_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_13_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_14_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_14_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_15_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB3_MMS_15_RRBV, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB3_PIP_01_VMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB4_GCC_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB4_GPI_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB4_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB4_IPM_01_ChargeAmpRangeCH1, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB4_IPM_01_ChargeAmpRangeCH2, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB4_IPM_01_ChargeAmpRangeCH3, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SB4_IPM_01_DiodeBias, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB4_USR_MMS_42, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SB4_USR_MMS_43, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SCAN_ISSCAN, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SCAN_ISTEP, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SCAN_MAX00, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SCAN_MAX01, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SCAN_MAX02, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SCAN_MIN00, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SCAN_MIN01, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SCAN_MIN02, (double)41.0);
+        epics.set_value(EpicsDef::XPP_SCAN_NSHOTS, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_SCAN_NSTEPS, (int64_t) 42);
+        epics.set_string(EpicsDef::XPP_SCAN_SCANVAR00, "Test String");
+        epics.set_string(EpicsDef::XPP_SCAN_SCANVAR01, "Test String");
+        epics.set_string(EpicsDef::XPP_SCAN_SCANVAR02, "Test String");
+        epics.set_value(EpicsDef::XPP_TIMETOOL_AMPL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_TIMETOOL_AMPLNXT, (double)41.0);
+        epics.set_value(EpicsDef::XPP_TIMETOOL_FLTPOS, (double)41.0);
+        epics.set_value(EpicsDef::XPP_TIMETOOL_FLTPOSFWHM, (double)41.0);
+        epics.set_value(EpicsDef::XPP_TIMETOOL_FLTPOS_PS, (double)41.0);
+        epics.set_value(EpicsDef::XPP_TIMETOOL_REFAMPL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_CCM_E, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_CCM_Theta0, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_FEEATT_E, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_FEEATT_T, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_FEEATT_T3rd, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_FS3_T0_SHIFTER, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_E0, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_E02, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_EVR0_GATE, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_EVR0_OSC, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_E_LEAK, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_E_LEAK2, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_E_PULSE, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_E_PULSE2, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_FS3_MAX, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_FS3_MIN, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_SDG0, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_T0_MONITOR, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LAS_TIME_DELAY, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LOM_E, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LOM_EC, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LXT, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_LXTTC, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_AZ, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_EL, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_J1, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_J2, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_J3, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_J4, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_J5, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_J6, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_R, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_RX, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_RY, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_RZ, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_X, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_Y, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_ROB_Z, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USER_VIT_TD, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_GCC_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_GCC_02_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_GPI_01_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_GPI_02_PMON, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_IPM_01_ChargeAmpRangeCH0, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_USR_IPM_01_ChargeAmpRangeCH1, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_USR_IPM_01_ChargeAmpRangeCH2, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_USR_IPM_01_ChargeAmpRangeCH3, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_USR_IPM_01_DiodeBias, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_LPW_01_DATA_PRI, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_LPW_01_GETAOSCALE, (int64_t) 42);
+        epics.set_value(EpicsDef::XPP_USR_LPW_01_GETGAINFACTOR, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_LPW_01_GETRANGE, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMN_01_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMN_02_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMN_03_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMN_04_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMS_01_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMS_02_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMS_03_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMS_04_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMS_05_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMS_06_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_MMS_17_RBV, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_OXY_01_ANALOGIN, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_OXY_01_OFFSET, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_OXY_01_SCALE, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_SOLL_1, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_TEMP_A, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_TEMP_B, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_TEMP_C, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_TCT_01_GET_TEMP_D, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_TCT_01_PUT_SOLL_1, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_0, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_1, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_10, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_11, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_12, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_13, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_14, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_15, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_2, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_3, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_4, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_5, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_6, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_7, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_8, (double)41.0);
+        epics.set_value(EpicsDef::XPP_USR_ao1_9, (double)41.0);
+    } else if (streamId == 2) {
+        epics.set_value(EpicsDefS2::XPP_VARS_FLOAT_02, (double)41.0);
+        epics.set_value(EpicsDefS2::XPP_VARS_FLOAT_03, (double)41.0);
+        epics.set_value(EpicsDefS2::XPP_VARS_FLOAT_04, (double)41.0);
+        epics.set_value(EpicsDefS2::XPP_VARS_FLOAT_05, (double)41.0);
+        epics.set_value(EpicsDefS2::XPP_VARS_FLOAT_06, (double)41.0);
+        epics.set_value(EpicsDefS2::XPP_VARS_FLOAT_07, (double)41.0);
+        epics.set_value(EpicsDefS2::XPP_VARS_FLOAT_08, (double)41.0);
+        epics.set_value(EpicsDefS2::XPP_VARS_FLOAT_09, (double)41.0);
+        epics.set_value(EpicsDefS2::XPP_VARS_FLOAT_10, (double)41.0);
+        epics.set_string(EpicsDefS2::XPP_VARS_STRING_01, "Test String");
+        epics.set_string(EpicsDefS2::XPP_VARS_STRING_02, "Test String");
+        epics.set_string(EpicsDefS2::XPP_VARS_STRING_03, "Test String");
+        epics.set_string(EpicsDefS2::XPP_VARS_STRING_04, "Test String");
+        epics.set_string(EpicsDefS2::XPP_VARS_STRING_05, "Test String");
+        epics.set_string(EpicsDefS2::XPP_VARS_STRING_06, "Test String");
+        epics.set_string(EpicsDefS2::XPP_VARS_STRING_07, "Test String");
+        epics.set_string(EpicsDefS2::XPP_VARS_STRING_08, "Test String");
+        epics.set_string(EpicsDefS2::XPP_VARS_STRING_09, "Test String");
+    } 
 }
    
 
-void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
+void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment, int streamId) {
     Alg xppEpicsAlg("fuzzy",0,0,0);
     NamesId namesId1(nodeId,1+10*segment);
     Names& epicsNames = *new(xtc) Names("xppepics", xppEpicsAlg, "epics","detnum1234", namesId1, segment);
-    epicsNames.add(xtc, EpicsDef);
+    if (streamId == 1) {
+        epicsNames.add(xtc, EpicsDef);
+    } else if (streamId == 2) {
+        epicsNames.add(xtc, EpicsDefS2);
+    }
     namesLookup[namesId1] = NameIndex(epicsNames);
 
 }
 
-void addData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
+void addData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment, int streamId) {
     NamesId namesId1(nodeId,1+10*segment);
-    epicsExample(xtc, namesLookup, namesId1);
+    epicsExample(xtc, namesLookup, namesId1, streamId);
 }
 
 void usage(char* progname)
@@ -1311,8 +1318,9 @@ int main(int argc, char* argv[])
     char* tsname = 0;
     char* bdXtcname = 0; // Bigdata xtc - if specified, timestamps are from this file
     strncpy(xtcname, "epics.xtc2", MAX_FNAME_LEN); // Fixed output filename
+    int streamId = 1;
 
-    while ((c = getopt(argc, argv, "ht:f:n:")) != -1) {
+    while ((c = getopt(argc, argv, "ht:f:n:s:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -1325,6 +1333,9 @@ int main(int argc, char* argv[])
                 break;
             case 'f':
                 bdXtcname = optarg;
+                break;
+            case 's':
+                streamId = atoi(optarg);
                 break;
             default:
                 parseErr++;
@@ -1381,8 +1392,8 @@ int main(int argc, char* argv[])
     NamesLookup namesLookup1;
     unsigned nSegments=1;
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
-        addNames(config.xtc, namesLookup1, nodeid1, iseg);
-        addData(config.xtc, namesLookup1, nodeid1, iseg);
+        addNames(config.xtc, namesLookup1, nodeid1, iseg, streamId);
+        addData(config.xtc, namesLookup1, nodeid1, iseg, streamId);
     }
 
     save(config,xtcFile);
@@ -1409,7 +1420,7 @@ int main(int argc, char* argv[])
         Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
         for (unsigned iseg=0; iseg<nSegments; iseg++) {
-            addData(dgram.xtc, namesLookup1, nodeid1, iseg);
+            addData(dgram.xtc, namesLookup1, nodeid1, iseg, streamId);
         }
 
         DebugIter iter(&dgram.xtc, namesLookup1);
