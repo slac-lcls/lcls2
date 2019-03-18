@@ -491,6 +491,8 @@ class CollectionManager():
     def condition_alloc(self):
         # FIXME select all procs for now
         ids = copy.copy(self.ids)
+        # select procs with active flag set
+#       ids = self.filter_active(self.ids)
         msg = create_msg('alloc', body={'ids': list(ids)})
         self.back_pub.send_json(msg)
 
@@ -536,12 +538,16 @@ class CollectionManager():
     def condition_connect(self):
         # FIXME select all procs for now
         ids = copy.copy(self.ids)
+        # select procs with active flag set
+#       ids = self.filter_active(self.ids)
         msg = create_msg('connect', body=self.cmstate)
         self.back_pub.send_json(msg)
 
         ret, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
         if ret:
-            logging.error('%d client did not respond to connect' % ret)
+            message = '%d client did not respond to connect' % ret
+            logging.error(message)
+            self.front_pub.send_json(self.error_msg(message))
             logging.debug('condition_connect() returning False')
             return False
         else:
@@ -609,15 +615,22 @@ class CollectionManager():
         logging.debug('cmstate after plat:\n%s' % self.cmstate)
         return True
 
+    # filter_active - return subset of ids which have 'active' flag set
+    def filter_active(self, ids):
+        matches = set()
+        for level, item in self.cmstate.items():
+            for xid in item:
+                if item[xid]['active'] == 1:
+                    matches.add(xid)
+        return matches.intersection(ids)
+
+    # filter_level - return subset of ids for which 'level' starts with prefix
     def filter_level(self, prefix, ids):
         matches = set()
         for level, item in self.cmstate.items():
             if level.startswith(prefix):
-                for ii in ids:
-                    if ii in item:
-                        matches.add(ii)
-                        break
-        return matches
+                matches.update(set(item.keys()))
+        return matches.intersection(ids)
 
     def condition_common(self, transition, timeout):
         retval = True
