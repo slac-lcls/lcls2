@@ -1,0 +1,43 @@
+JSON doesn't really contain any type information, but XTC2 does.
+Therefore, in order to translate between the two of these, we invented
+the notion of "typed JSON": a JSON object with a field ":types:" that
+defines the type of each value in the hierarchy.
+
+We're making some assumptions here about the JSON, most notably if we
+have an array of objects somewhere, they are the "same", in that the
+types of their fields are identical.  (We're not insisting that every
+object have the same fields, only that if one object in an array has a
+field that is, say, an INT32, this field will be INT32 in *all* of the
+objects.)
+
+Code should be added to enforce this condition, but right now, it is
+lacking.
+
+In general, the value of ":types:" is an object that follows the
+hierarchy of the JSON, except that arrays of objects do not correspond
+to arrays of types, but only a single type object for the entire
+array.  Scalar values have types that are strings of the
+Name::DataType enum, and arrays of values have types that are a list:
+first the basic type string, and then the shape of the array.  The
+enum values will be kept in a top-level dictionary with a key ":enum:"
+which will map enum names to dictionaries of name/values.  Keys of
+this dictionary are also considered to be valid types.  So, for
+example, we might have JSON such as:
+
+    { "a": 0,
+      "b": { "c": 1 },
+      ":types:": {
+          "a": "d"
+	  "b": {
+	      "c": "d"
+	  }
+	  ":enum:": {
+	      "d": { "Off": 0, "On": 1 }
+          }
+      }
+    }
+
+Both "a" and "b.c" are variables with type enum b { Off=0, On=1 }.
+"a" is d::Off, while "b.c" is d::On.
+
+If we have an array of enums, the type would be ["enumname", shape1,...]
