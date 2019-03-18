@@ -3,46 +3,58 @@ import numbers
 import re
 
 #
-# The goal here is to assist the writing of JSON files from python.  The assumption here is that
-# we pass in a dictionary, the keys being the names, and the values being one of the following:
+# The goal here is to assist the writing of JSON files from python.  The 
+# assumption here is that we pass in a dictionary, the keys being the names,
+# and the values being one of the following:
 #     - A length two tuple, representing a scalar: ("TYPESTRING", VALUE)
 #     - A dictionary, representing a hierarchical name space.
 #     - A numpy array.
 #     - A list of dictionaries.
 #
-# Furthermore, the dictionary must contain a few additional keys with specific value types:
+# Furthermore, the dictionary must contain a few additional keys with specific
+# value types:
 #     - "detType" maps to a str.
 #     - "detName" maps to a str.
 #     - "detId" maps to a str.
 #     - "doc" is optional, but if present maps to a str.
-#     - "alg" is optional, but if present maps to a dictionary.  The keys of this dictionary are:
+#     - "alg" is optional, but if present maps to a dictionary.  The keys of 
+#       this dictionary are:
 #         - "alg" which maps to a str.
 #         - "doc" which is optional, but if present maps to a str.
 #         - "version" which maps to a list of three integers.
 #
 # This file has three external APIs:
-#      validate_typed_json(d, edef={}) checks if the above rules are followed for dictionary d, with
-#      a dictionary of enum definitions edef and returns True/False.
+#      validate_typed_json(d, edef={}) checks if the above rules are followed
+#      for dictionary d, with a dictionary of enum definitions edef and returns
+#      True/False.
 #
-#      write_typed_json(filename, d) writes the dictionary d as JSON to the given filename.
+#      write_typed_json(filename, d) writes the dictionary d as JSON to the
+#      given filename.
 #
 #      class cdict is a helper class for building typed JSON dictionaries.
 #          cdict(old_cdict) - The constructor optionally takes an old cdict to clone.
 #          set(name, value, type="INT32", override=False, append=False)
-#                           - This routine is the heart of the class.  It traverses the name hierarchy
-#                             to set a new value.  The value maybe a numeric value, a list of numeric
-#                             values, a numpy array, a clist, or a list of clists.  For numeric values or
-#                             lists of numeric values, type indicates the desired type of a new attribute.
-#                             For a clist or list of clists, append indicates if the target should be
-#                             overwritten or the new clists appended to an existing list.  In general,
-#                             once a name is typed, setting a new value will not change the type unless
-#                             the override flag is True.  This returns True if the set was successful
-#                             and false otherwise.  The contents of a clist are copied, but any ndarrays
-#                             are not.  (Therefore, modifying a clist after assigning it to a name does
-#                             not change the assigned value, but modifying the contents of an ndarray does.)
+#                           - This routine is the heart of the class.  It 
+#                             traverses the name hierarchy to set a new value.
+#                             The value maybe a numeric value, a list of numeric
+#                             values, a numpy array, a clist, or a list of 
+#                             clists.  For numeric values or lists of numeric 
+#                             values, type indicates the desired type of a new
+#                             attribute.  For a clist or list of clists, append
+#                             indicates if the target should be overwritten or
+#                             the new clists appended to an existing list.  In
+#                             general, once a name is typed, setting a new value
+#                             will not change the type unless the override flag
+#                             is True.  This returns True if the set was
+#                             successful and false otherwise.  The contents of
+#                             a clist are copied, but any ndarrays are not.  
+#                             (Therefore, modifying a clist after assigning it
+#                             to a name does not change the assigned value, but
+#                             modifying the contents of an ndarray does.)
 #
 #          setInfo(detType=None, detName=None, detId=None, doc=None)
-#                           - Sets the additional information for a top-level clist.
+#                           - Sets the additional information for a top-level
+#                             clist.
 #          setAlg(alg, version=[0,0,0], doc="")
 #                           - Set the algorithm information.
 #          writeFile(filename)
@@ -105,6 +117,24 @@ def namify(l):
         else:
             s = s + str(v)
     return s
+
+def splitname(name):
+    n = name.split(".")
+    r = []
+    for nn in n:
+        m = re.search('^(.*[^0-9])([0-9]+)$', nn)
+        if m is None:
+            if nn[0].isdigit():
+                if not re.search('^[0-9]*$', nn):
+                    return None
+                else:
+                    r.append(int(nn))
+            else:
+                r.append(nn)
+        else:
+            r.append(m.group(1))
+            r.append(int(m.group(2)))
+    return r
 
 #
 # Return None for a valid dictionary and an error string otherwise.
@@ -223,7 +253,17 @@ def write_json_dict(f, d, edef, tdict, top=[], indent="    ", **hw):
                 f.write(']')
         elif isinstance(v, tuple):
             if v[0] in edef.keys():
-                f.write('%s"%s": %d' % (prefix, n, v[1]))
+                if isinstance(v[1], numbers.Number):
+                    f.write('%s"%s": %d' % (prefix, n, v[1]))
+                    tdict[n] = v[0]
+                elif isinstance(v[1], np.ndarray):
+                    f.write('%s"%s": [' % (prefix, n))
+                    start = ""
+                    for vv in v[1].ravel():
+                        f.write('%s%d' % (start, vv))
+                        start = ", "
+                    f.write(']')
+                    tdict[n] = list((v[0],) + v[1].shape)
             else:
                 vv = typerange[v[0]]
                 if vv is None:
@@ -233,7 +273,7 @@ def write_json_dict(f, d, edef, tdict, top=[], indent="    ", **hw):
                         f.write('%s"%s": %g' % (prefix, n, v[1]))
                 else:
                     f.write('%s"%s": %d' % (prefix, n, v[1]))
-            tdict[n] = v[0]
+                tdict[n] = v[0]
         elif isinstance(v, np.ndarray):
             typ = nptypedict[v.dtype]
             f.write('%s"%s": [' % (prefix, n))
@@ -398,45 +438,25 @@ class cdict(object):
             t = input[0]
         return (d, t)
 
-    def splitname(self, name):
-        n = name.split(".")
-        r = []
-        for nn in n:
-            m = re.search('^(.*[^0-9])([0-9]+)$', nn)
-            if m is None:
-                if not re.search('^[^0-9]', nn):
-                    return None
-                r.append(nn)
-            else:
-                r.append(m.group(1))
-                r.append(int(m.group(2)))
-        return r
-
     def get(self, name, withtype=False):
         if len(name) == 0:
             return None
-        n = self.splitname(name)
+        n = splitname(name)
         if n is None:
             return None
         d = self.dict
         while len(n) != 0:
-            if isinstance(n[0], int):
-                if isinstance(d, list):
-                    try:
-                        d = d[n[0]]
-                        n = n[1:]
-                    except:
-                        return None
-                else:
+            if isinstance(d, list):
+                try:
+                    d = d[int(n[0])]
+                    n = n[1:]
+                except:
                     return None
-            else:
-                if isinstance(d, dict):
-                    try:
-                        d = d[n[0]]
-                        n = n[1:]
-                    except:
-                        return None
-                else:
+            elif isinstance(d, dict):
+                try:
+                    d = d[n[0]]
+                    n = n[1:]
+                except:
                     return None
         if isinstance(d, tuple) and not withtype:
             return d[1]
@@ -487,7 +507,7 @@ class cdict(object):
     def set(self, name, value, type="INT32", override=False, append=False):
         if len(name) == 0:
             return False
-        n = self.splitname(name)
+        n = splitname(name)
         if n is None:
             return False
         d = self.dict
@@ -634,3 +654,46 @@ class cdict(object):
 
     def writeFile(self, file, headers=True):
         return write_typed_json(file, self.dict, self.enumdef, headers)
+
+#
+# A little helper function to pull out type information from a typed
+# JSON dictionary.  The second argument is either a fully dotted ('b.0.c')
+# or python-style ('b0.c') name.
+#
+# This returns:
+#    A simple type string.
+#    An enum type dictionary.
+#    A list, the first element of which is a simple type string or enum
+#    type dictionary, and the remaining items are the dimensions of the array.
+#
+def getType(typed_json, name):
+    if not isinstance(typed_json, dict) or ':types:' not in typed_json.keys():
+        raise TypeError("getType: First argument should be a typed JSON dictionary!")
+    t = typed_json[':types:']
+    try:
+        e = t[':enum:']
+    except:
+        e = {}
+    v = typed_json
+    n = splitname(name)
+    for i in n:
+        try:
+            v = v[i]
+            if not isinstance(i, numbers.Number):
+                t = t[i]
+        except:
+            return None
+    if isinstance(t, list):
+        if t[0] in typerange.keys():
+            return t
+        if t[0] in e.keys():
+            t = list(t) # Make a copy!
+            t[0] = e[t[0]]
+            return t
+        raise TypeError("getType: Invalid array type %s" % t[0])
+    else:
+        if t in typerange.keys():
+            return t
+        if t in e.keys():
+            return e[t]
+        raise TypeError("getType: Invalid type %s" % t)
