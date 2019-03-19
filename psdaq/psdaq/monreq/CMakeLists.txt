@@ -1,38 +1,7 @@
-add_library(monreq SHARED
-    XtcMonitorClient.cc
-)
-
-target_include_directories(monreq PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-)
-
-target_link_libraries(monreq
-    xtcdata::xtc
-    psalg::shmemcli
-)
-
-add_executable(xtcMonClient
-    xtcMonClient.cc
-)
-target_link_libraries(xtcMonClient
-    xtcdata::xtc
-    monreq
-    rt
-)
-
-add_executable(xtcMonWriter
-    xtcMonWriter.cc
-)
-target_link_libraries(xtcMonWriter
-    xtcdata::xtc
-    monreq
-    rt
-)
-
 add_executable(monReqServer
     monReqServer.cc
 )
+
 target_link_libraries(monReqServer
     psalg::shmemsrv
     eb
@@ -41,9 +10,7 @@ target_link_libraries(monReqServer
     rt
 )
 
-install(TARGETS monreq
-    xtcMonClient
-    xtcMonWriter
+install(TARGETS
     monReqServer
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
