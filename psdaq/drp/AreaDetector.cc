@@ -50,7 +50,7 @@ void AreaDetector::connect()
 {
     std::cout<<"AreaDetector connect\n";
     // FIXME make configureable
-    int length = 250;
+    int length = 500;
     int links = 0xf;
 
     int fd = open("/dev/datadev_1", O_RDWR);

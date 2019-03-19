@@ -220,11 +220,11 @@ EbReceiver::EbReceiver(const Parameters& para, MemPool& pool,
 
     if (!para.output_dir.empty()) {
         std::string fileName = {para.output_dir + "/data-" + std::to_string(para.tPrms.id) + ".xtc2"};
-        m_xtcFile = fopen(fileName.c_str(), "w");
-        if (!m_xtcFile) {
-            std::cout<<"Error opening output xtc file  "<<fileName<<'\n';
-            return;
-        }
+        m_fileWriter.open(fileName);
+        m_writing = true;
+    }
+    else {
+        m_writing = false;
     }
 }
 
@@ -252,13 +252,11 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     }
 
     // write event to file if it passes event builder or is a configure transition
-    if (m_xtcFile) {
+    if (m_writing) {
         if (eb_decision == 1 || (transition_id == XtcData::TransitionId::Configure)) {
             XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
-            if (fwrite(dgram, sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload(), 1, m_xtcFile) != 1) {
-                printf("Error writing to output xtc file.\n");
-                return;
-            }
+            size_t size = sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload();
+            m_fileWriter.writeEvent(dgram, size);
         }
     }
 
@@ -306,24 +304,33 @@ void DmaIndexReturner::returnIndex(uint32_t index)
     }
 }
 
-class BufferedFileWriter
-{
-public:
-    BufferedFileWriter(std::string& fileName) : position(0), m_buffer(BufferSize)
-    {
-        m_fd = open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
-        if (m_fd == -1) {
-            std::cout<<"Error creating file "<<fileName<<'\n';
-        }
-    }
-    void writeEvent(void* data, size_t size)
-    {
 
+BufferedFileWriter::BufferedFileWriter() :
+    m_count(0), m_buffer(BufferSize)
+{
+}
+
+BufferedFileWriter::~BufferedFileWriter()
+{
+    write(m_fd, m_buffer.data(), m_count);
+    m_count = 0;
+}
+
+void BufferedFileWriter::open(std::string& fileName)
+{
+    m_fd = ::open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+    if (m_fd == -1) {
+        std::cout<<"Error creating file "<<fileName<<'\n';
     }
-private:
-    int m_fd;
-    int position;
-    std::vector<uint8_t> m_buffer;
-    // 4 MB
-    static const int BufferSize = 4194304;
-};
+}
+
+void BufferedFileWriter::writeEvent(void* data, size_t size)
+{
+    // doesn't fit into the remaing m_buffer
+    if (size > (BufferSize - m_count)) {
+        write(m_fd, m_buffer.data(), m_count);
+        m_count = 0;
+    }
+    memcpy(m_buffer.data()+m_count, data, size);
+    m_count += size;
+}

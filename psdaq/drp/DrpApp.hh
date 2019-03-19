@@ -31,6 +31,21 @@ private:
     uint32_t m_indices[BatchSize];
 };
 
+class BufferedFileWriter
+{
+public:
+    BufferedFileWriter();
+    ~BufferedFileWriter();
+    void open(std::string& fileName);
+    void writeEvent(void* data, size_t size);
+private:
+    int m_fd;
+    int m_count;
+    std::vector<uint8_t> m_buffer;
+    // 4 MB
+    static const int BufferSize = 4194304;
+};
+
 
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
@@ -43,7 +58,8 @@ private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
     unsigned nreceive;
-    FILE* m_xtcFile = NULL;
+    BufferedFileWriter m_fileWriter;
+    bool m_writing;
     DmaIndexReturner m_indexReturner;
     ZmqSocket m_inprocSend;
 };
@@ -56,7 +72,7 @@ class DrpApp : public CollectionApp
 public:
     DrpApp(Parameters* para);
     void handleConnect(const json& msg) override;
-    void handleConfigure(const json& msg);
+    void handleConfigure(const json& msg) override;
     void handleReset(const json& msg) override;
 private:
     void parseConnectionParams(const json& msg);
