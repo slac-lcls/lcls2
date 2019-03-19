@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-DTI Proxy
+Timing System Proxy
 """
 
 import os
