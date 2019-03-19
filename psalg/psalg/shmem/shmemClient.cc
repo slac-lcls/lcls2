@@ -62,6 +62,18 @@ static void printrate(const char* name,
   printf("%s %7.2f %c%s", name, rate, scchar[rsc], units);
 }
 
+static timespec tsdiff(timespec start, timespec end)
+{
+	timespec temp;
+	if ((end.tv_nsec-start.tv_nsec)<0) {
+		temp.tv_sec = end.tv_sec-start.tv_sec-1;
+		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+	} else {
+		temp.tv_sec = end.tv_sec-start.tv_sec;
+		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+	}
+	return temp;
+}
 
 int main(int argc, char* argv[]) {
   int c;
@@ -136,7 +148,8 @@ int main(int argc, char* argv[]) {
   
   if(timing)
     {
-    double dt = double(tv.tv_sec - ptv.tv_sec) + 1.e-9*(double(tv.tv_nsec)-double(ptv.tv_nsec));
+    timespec df = tsdiff(ptv,tv);
+    double dt = df.tv_sec+(1.e-9*df.tv_nsec);
     double revents = double(events)/dt;
     double rbytes  = double(bytes)/dt;
     printrate(" at:\n ", "Hz", revents);
