@@ -37,5 +37,5 @@ procmgr_config = [
 { host: 'drp-tst-dev024', id:'hsddrp', flags:'sxp', conda:conda_rel, cmd:'drp -o /tmp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host},
  { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v' },
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
- { host: 'daq-tst-dev02', id:'dti_proxy', flags:'sp', conda:conda_rel, env:epics_env, cmd:'dti_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
+ { host: 'daq-tst-dev02', id:'ts_proxy', flags:'sp', conda:conda_rel, env:epics_env, cmd:'ts_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
 ]
