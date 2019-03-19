@@ -15,7 +15,6 @@
 #include <numpy/arrayobject.h>
 #include <numpy/ndarraytypes.h>
 #include <structmember.h>
-#include <assert.h>
 
 // for shmem client
 #include "psalg/shmem/ShmemClient.hh"
@@ -149,8 +148,6 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     snprintf(keyName,TMPSTRINGSIZE,"software%s%s%sversion",
              PyNameDelim,baseName,PyNameDelim);
     addObj(pyDgram, keyName, version);
-
-    assert(Py_GETREF(software)==1);
 }
 
 static void setDataInfo(PyDgramObject* pyDgram, const char* baseName, Name& name) {
@@ -185,8 +182,6 @@ static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
     snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_segment",
              PyNameDelim,names.detName(),PyNameDelim);
     addObj(pyDgram, keyName, segment);
-
-    assert(Py_GETREF(detType)==1);
 }
 
 static void dictAssignAlg(PyDgramObject* pyDgram, NamesLookup& namesLookup)
@@ -330,10 +325,12 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 break;
             }
             case Name::CHARSTR: {
-                assert(name.rank()==1); // strings are 1 dimensional
+                if (name.rank()!=1)
+                    throw std::runtime_error("dgram.cc: string with rank != 1");
                 auto arr = descdata.get_array<char>(i);
                 uint32_t* shape = descdata.shape(name);
-                assert(strlen(arr.data())<shape[0]);
+                if (strlen(arr.data())>shape[0])
+                    throw std::runtime_error("dgram.cc: unterminated string");
                 newobj = Py_BuildValue("s", arr.data());
                 break;
             }
@@ -345,7 +342,8 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata)
                 // name (which follows the EnumDelim).
                 strncpy(tempName,varName,TMPSTRINGSIZE);
                 char* delim = strchr(tempName,EnumDelim);
-                assert(delim);
+                if (!delim) throw std::runtime_error("dgram.cc: failed to find delimitor in enum");
+
                 *delim = '\0';
                 // tell the object adder to use our modified name
                 varName = tempName;
@@ -422,11 +420,8 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata)
                                                    NPY_DOUBLE, arr.data());
                 break;
             }
-            case Name::CHARSTR: {
-                assert(0); // should never happen
-                break;
-            }
             default: {
+                throw std::runtime_error("dgram.cc: Unsupported array type");
                 break;
             }
             }
