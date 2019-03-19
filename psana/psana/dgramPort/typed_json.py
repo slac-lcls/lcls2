@@ -73,8 +73,6 @@ typerange = {
     "FLOAT"   : None,
     "DOUBLE"  : None,
     "CHARSTR" : None,
-    "ENUMVAL" : (-2**31, 2**31 - 1),
-    "ENUMDICT": (-2**31, 2**31 - 1),
 }
 
 typedict = {
@@ -89,8 +87,6 @@ typedict = {
     "FLOAT"   : "float32", 
     "DOUBLE"  : "float64",
     "CHARSTR" : "str",
-    "ENUMVAL" : "int32", 
-    "ENUMDICT": "int32", 
 }
 
 nptypedict = {
@@ -655,7 +651,13 @@ class cdict(object):
     def writeFile(self, file, headers=True):
         return write_typed_json(file, self.dict, self.enumdef, headers)
 
+
+########################################################################
 #
+# The rest of this file is helper functions for typed JSON dictionaries.
+#
+########################################################################
+
 # A little helper function to pull out type information from a typed
 # JSON dictionary.  The second argument is either a fully dotted ('b.0.c')
 # or python-style ('b0.c') name.
@@ -697,3 +699,95 @@ def getType(typed_json, name):
         if t in e.keys():
             return e[t]
         raise TypeError("getType: Invalid type %s" % t)
+
+#
+# Get the value from a typed JSON dictionary.
+#
+def getValue(typed_json, name):
+    if not isinstance(typed_json, dict) or ':types:' not in typed_json.keys():
+        raise TypeError("getType: First argument should be a typed JSON dictionary!")
+    v = typed_json
+    n = splitname(name)
+    for i in n:
+        try:
+            v = v[i]
+        except:
+            return None
+    return v
+
+#
+# Convert a string, v, to a value of the specified simple type, t.  e is an
+# enum dictionary.  Arrays need not apply.
+#
+def simpleConvert(v, t, e):
+    if t in e.keys():
+        if v in e[t].keys():
+            return e[t][v]
+        elif int(v)in e[t].values():
+            return int(v)
+        else:
+            raise TypeError("convertValue: %s is not a valid enum of %s" % (v, t))
+    elif t == 'CHARSTR':
+        return v
+    elif t == 'FLOAT' or t == 'DOUBLE':
+        return float(v)
+    elif t in typedict.keys():
+        v = int(v)
+        if v >= typerange[t][0] and v <= typerange[t][1]:
+            return v
+        else:
+            raise ValueError("convertValue: %s is not in range of %s!" % (v, t))
+    else:
+        raise TypeError("convertValue: %s is not a valid type specifier." % t)
+
+def convertValue(v, t, e={}):
+    if isinstance(t, str):
+        return simpleConvert(v, t, e)
+    elif isinstance(t, list):
+        vs = v.split(' ')
+        l = np.prod(t[1:])
+        if len(vs) != l:
+            raise TypeError("convertValue: value has %d elements, not %d!" % (len(vs), l))
+        return [simpleConvert(vw, t[0], e) for vw in vs]
+    else:
+        raise TypeError("convertValue: type must be a str or list.")
+
+#
+# Store new values into a typed JSON dictionary.  The value here is always
+# a string.  If we have an array value, it will be a space-separated list
+# of values.
+#
+# Returns an integer status:
+#     =0 - ok
+#     =1 - non-existent path
+#     =2 - type conversion failed
+#     =3 - invalid dictionary
+#
+def updateValue(typed_json, name, value):
+    if not isinstance(typed_json, dict) or ':types:' not in typed_json.keys():
+        return 3
+    t = typed_json[':types:']
+    try:
+        e = t[':enum:']
+    except:
+        e = {}
+    v = typed_json
+    n = splitname(name)
+    ln = n[-1]
+    n = n[:-1]
+    for i in n:
+        try:
+            v = v[i]
+            if not isinstance(i, numbers.Number):
+                t = t[i]
+        except:
+            return 1
+    # t and v better be dictionaries with an entry ln!
+    if (not isinstance(v, dict) or not isinstance(t, dict) or 
+        ln not in v.keys() or ln not in t.keys()):
+        return 1
+    try:
+        v[ln] = convertValue(value, t[ln], e)
+        return 0
+    except:
+        return 2
