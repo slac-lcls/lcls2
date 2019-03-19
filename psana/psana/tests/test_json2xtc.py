@@ -98,6 +98,10 @@ class Test_JSON2XTC:
         assert c.set("c.d.h", 1, "q")
         assert c.set("c.d.k", 1, "r")
         assert c.set("c.d.l", -1, "r")
+        # MCB - Right now, psana doesn't support arrays of enums, so comment
+        # this out.  If CPO ever implements this, this test will need to be
+        # revisited.
+        # assert c.set("c.d.m", [0, 1, 0], "q")
         # Write it out!!
         assert c.writeFile("json2xtc_test.json")
         # Convert it to xtc2!
