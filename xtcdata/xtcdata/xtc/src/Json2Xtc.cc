@@ -59,8 +59,10 @@ void JsonIterator::iterate(Value &val) {
 std::string JsonIterator::curname() {
     std::string result = "";
     for (int i = 0; i < _names.size(); i++) {
-        if (result == "" || _isnum[i])
+        if (result == "")
             result += _names[i];
+        else if (_isnum[i])
+            result += "_" + _names[i];
         else
             result += "." + _names[i];
     }

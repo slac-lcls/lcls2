@@ -2,7 +2,7 @@ from psana.dgramPort.typed_json import *
 from psana import DataSource, container
 import numpy as np
 import subprocess
-import os
+import os, re
 
 class Test_JSON2XTC:
     @classmethod
@@ -18,6 +18,10 @@ class Test_JSON2XTC:
         for n in dir(co):
             if n[0] != '_':
                 v = co.__getattribute__(n)
+                # Change xxx_nnn to xxx.nnn
+                m = re.search('^(.*)_([0-9]+)$', n)
+                if m is not None:
+                    n = m.group(1) + "." + m.group(2)
                 if base == "":
                     bnew = n
                 else:
@@ -91,6 +95,7 @@ class Test_JSON2XTC:
         # Deeper names
         assert c.set("c.d.e", 42.49, "FLOAT")
         assert c.set("c.d.f", -30.34, "DOUBLE")
+        assert c.set("b.0.c", 72)
         # Enums
         assert c.define_enum("q", {"Off": 0, "On": 1})
         assert c.define_enum("r", {"Down": -1, "Up": 1})

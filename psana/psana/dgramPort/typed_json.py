@@ -23,7 +23,7 @@ import re
 #         - "doc" which is optional, but if present maps to a str.
 #         - "version" which maps to a list of three integers.
 #
-# This file has three external APIs:
+# This file has several external APIs:
 #      validate_typed_json(d, edef={}) checks if the above rules are followed
 #      for dictionary d, with a dictionary of enum definitions edef and returns
 #      True/False.
@@ -60,6 +60,25 @@ import re
 #          writeFile(filename)
 #                           - Write the typed JSON to a file.
 #
+#      getValue(typed_json, name)
+#          - Given a typed JSON dictionary, retrieve the value of the fully-
+#            dotted name.
+#      getType(typed_json, name)
+#          - Given a typed JSON dictionary, retrieve the type of the fully-
+#            dotted name.  This will be either:
+#                - A string representing a basic type.
+#                - A dictionary representing an enum type.
+#                - A list, the first element of which is one of the two above
+#                  elements and the remainder of which is integer array
+#                  dimensions.
+#      setValue(typed_json, name, string_value)
+#          - Given a typed JSON dictionary, set the element specified by name
+#            to the value in string_value.  Array values will be space-
+#            separated.  This routine returns an integer:
+#                0 if successful.
+#                1 if the path does not exist.
+#                2 if the type conversion failed
+#                3 if typed JSON dictionary is somehow malformed.
 
 typerange = {
     "UINT8"   : (0, 2**8 - 1), 
@@ -111,25 +130,30 @@ def namify(l):
             else:
                 s = s + "." + v
         else:
-            s = s + str(v)
+            s = s + "." + str(v)
     return s
 
 def splitname(name):
     n = name.split(".")
     r = []
     for nn in n:
-        m = re.search('^(.*[^0-9])([0-9]+)$', nn)
-        if m is None:
-            if nn[0].isdigit():
-                if not re.search('^[0-9]*$', nn):
-                    return None
-                else:
-                    r.append(int(nn))
-            else:
-                r.append(nn)
+        if nn[0].isdigit():
+            try:
+                r.append(int(nn))
+            except:
+                return None
         else:
-            r.append(m.group(1))
-            r.append(int(m.group(2)))
+            r.append(nn)
+    return r
+
+def pythonizeName(name):
+    n = splitname(name)
+    r = n[0]
+    for i in n[1:]:
+        if isinstance(i, int):
+            r += "_" + str(i)
+        else:
+            r += "." + i
     return r
 
 #
