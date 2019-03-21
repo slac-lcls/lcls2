@@ -126,6 +126,46 @@ void DrpApp::handleConfigure(const json &msg)
     reply(answer);
 }
 
+void DrpApp::handleEnable(const json &msg)
+{
+    std::cout<<"handle configure DrpApp\n";
+    // check for message from timing system
+    int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
+    json answer;
+    if (ret) {
+        json reply = m_inprocRecv.recvJson();
+        std::cout<<"inproc message received\n";
+        json body = json({});
+        answer = createMsg("enable", msg["header"]["msg_id"], getId(), body);
+    }
+    else {
+        json body = json({});
+        std::cout<<"inproc didnt get message\n";
+        answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
+    }
+    reply(answer);
+}
+
+void DrpApp::handleDisable(const json &msg)
+{
+    std::cout<<"handle configure DrpApp\n";
+    // check for message from timing system
+    int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
+    json answer;
+    if (ret) {
+        json reply = m_inprocRecv.recvJson();
+        std::cout<<"inproc message received\n";
+        json body = json({});
+        answer = createMsg("disable", msg["header"]["msg_id"], getId(), body);
+    }
+    else {
+        json body = json({});
+        std::cout<<"inproc didnt get message\n";
+        answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
+    }
+    reply(answer);
+}
+
 void DrpApp::handleReset(const json &msg)
 {
 }

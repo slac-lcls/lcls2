@@ -73,6 +73,8 @@ public:
     DrpApp(Parameters* para);
     void handleConnect(const json& msg) override;
     void handleConfigure(const json& msg) override;
+    void handleEnable(const json& msg) override;
+    void handleDisable(const json& msg) override;
     void handleReset(const json& msg) override;
 private:
     void parseConnectionParams(const json& msg);

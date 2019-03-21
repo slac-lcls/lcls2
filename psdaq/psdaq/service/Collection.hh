@@ -59,6 +59,8 @@ protected:
     virtual void handleAlloc(const json& msg);
     virtual void handleConnect(const json& msg) = 0;
     virtual void handleConfigure(const json& msg) {};
+    virtual void handleEnable(const json& msg) {};
+    virtual void handleDisable(const json& msg) {};
     virtual void handleReset(const json& msg) = 0;
     void reply(const json& msg);
     size_t getId() const {return m_id;}

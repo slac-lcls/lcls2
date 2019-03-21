@@ -163,6 +163,8 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_handleMap["alloc"] = std::bind(&CollectionApp::handleAlloc, this, std::placeholders::_1);
     m_handleMap["connect"] = std::bind(&CollectionApp::handleConnect, this, std::placeholders::_1);
     m_handleMap["configure"] = std::bind(&CollectionApp::handleConfigure, this, std::placeholders::_1);
+    m_handleMap["enable"] = std::bind(&CollectionApp::handleEnable, this, std::placeholders::_1);
+    m_handleMap["disable"] = std::bind(&CollectionApp::handleDisable, this, std::placeholders::_1);
     m_handleMap["reset"] = std::bind(&CollectionApp::handleReset, this, std::placeholders::_1);
 }
 
