@@ -14,7 +14,7 @@ import argparse
 import logging
 
 class Client:
-    def __init__(self, platform, collectHost):
+    def __init__(self, platform, collectHost, alias):
 
         # initialize state
         self.state = 'reset'
@@ -23,6 +23,7 @@ class Client:
         self.hostname = socket.gethostname()
         self.pid = os.getpid()
         self.id = hash(self.hostname+str(self.pid))
+        self.alias = alias
 
         # configure zmq sockets
         self.context = zmq.Context(1)
@@ -39,10 +40,8 @@ class Client:
             'alloc': self.handle_alloc,
             'connect': self.handle_connect,
             'configure': self.handle_configure,
-            'beginrun': self.handle_beginrun,
             'enable': self.handle_enable,
             'disable': self.handle_disable,
-            'endrun': self.handle_endrun,
             'unconfigure': self.handle_unconfigure
         }
 
@@ -56,6 +55,7 @@ class Client:
         logging.debug('Client handle_plat(msg_id=\'%s\')' % msg['header']['msg_id'])
         # time.sleep(1.5)
         body = {'test': {'proc_info': {
+                        'alias': self.alias,
                         'host': self.hostname,
                         'pid': self.pid}}}
         reply = create_msg('plat', msg['header']['msg_id'], self.id, body=body)
@@ -89,20 +89,6 @@ class Client:
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
-    def handle_beginrun(self, msg):
-        logging.debug('Client handle_beginrun(msg_id=\'%s\')' % msg['header']['msg_id'])
-        if self.state == 'configured':
-            self.state = 'running'
-            reply = create_msg('ok', msg['header']['msg_id'], self.id)
-            self.push.send_json(reply)
-
-    def handle_endrun(self, msg):
-        logging.debug('Client handle_endrun(msg_id=\'%s\')' % msg['header']['msg_id'])
-        if self.state == 'running':
-            self.state = 'configured'
-            reply = create_msg('ok', msg['header']['msg_id'], self.id)
-            self.push.send_json(reply)
-
     def handle_enable(self, msg):
         logging.debug('Client handle_enable(msg_id=\'%s\')' % msg['header']['msg_id'])
         if self.state == 'running':
@@ -128,7 +114,8 @@ def main():
         # process arguments
         parser = argparse.ArgumentParser()
         parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
-        parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host')
+        parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host (default localhost)')
+        parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
         parser.add_argument('-v', action='store_true', help='be verbose')
         args = parser.parse_args()
 
@@ -139,7 +126,7 @@ def main():
             logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
         # start client
-        client = Client(args.p, args.C)
+        client = Client(args.p, args.C, args.u)
 
     except KeyboardInterrupt:
         logging.info('KeyboardInterrupt')

@@ -21,7 +21,6 @@ def main():
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
 
-    partName = '(None)'
     try:
         body = control.getPlatform()
     except Exception as ex:
@@ -36,8 +35,13 @@ def main():
                     host = v['proc_info']['host']
                     if v['active'] == 1:
                         host = host + ' *'
+                    alias = ''
+                    try:
+                        alias = v['proc_info']['alias']
+                    except KeyError:
+                        pass
                     pid = v['proc_info']['pid']
-                    display = "%s/%s/%-16s" % (level, pid, host)
+                    display = "%-16s %s/%s/%-16s" % (alias, level, pid, host)
                     if level == 'control':
                         # show control level first
                         displayList.insert(0, display)
@@ -50,17 +54,17 @@ def main():
             if args.v:
                 print('getPlatform() reply:')
                 pprint.pprint(body)
-            print("Platform | Partition      |    Node")
-            print("         | id/name        | level/pid/host (* = active)")
-            print("---------+----------------+------------------------------------")
-            print("  %3s     %2s/%-12s" % (platform, platform, partName), end='')
+            print("Platform/|         Node")
+            print("Partition| alias            level/pid/host (* = active)")
+            print("---------+-----------------------------------------------------")
+            print("  %3s      " % platform, end='')
             firstLine = True
             for nn in displayList:
                 if firstLine:
-                    print("  ", nn)
+                    print(nn)
                     firstLine = False
                 else:
-                    print("                           ", nn)
+                    print("          ", nn)
             if firstLine:
                 print()
 

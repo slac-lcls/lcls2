@@ -20,7 +20,8 @@ collect_host = 'drp-tst-acc06'
 #     flags:
 #        'x' or 'X'  -> xterm: open small or large xterm for process console
 #        's'         -> stop: sends ctrl-c to process
-#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+#        'p'         -> platform: add '-p <platform>' to arguments
+#        'u'         -> uniqueid: add '-u <id>' to arguments
 
 procmgr_config = [
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
@@ -28,6 +29,6 @@ procmgr_config = [
 #{ host: 'daq-tst-dev02', id:'ts_proxy', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'ts_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 # test clients
- {                        flags:'xp', id:'testClient2a', conda:conda_rel, cmd:'testClient2 -v -C '+collect_host},
- {                        flags:'xp', id:'testClient2b', conda:conda_rel, cmd:'testClient2 -v -C '+collect_host}
+ {                        flags:'xup', id:'testClient2a', conda:conda_rel, cmd:'testClient2 -v -C '+collect_host},
+ {                        flags:'xup', id:'testClient2b', conda:conda_rel, cmd:'testClient2 -v -C '+collect_host}
 ]
