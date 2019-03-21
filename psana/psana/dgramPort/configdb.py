@@ -39,7 +39,7 @@ class configdb(object):
     #     drop   - If True, the root database will be dropped.
     #     create - If True, try to create the database and collections
     #              for the hutch, device configurations, and counters.
-    def __init__(self, server, h, create=False, root="configDB"):
+    def __init__(self, server, h=None, create=False, root="configDB"):
         if self.client == None:
             self.client = MongoClient("mongodb://" + server)
             self.cdb = self.client.get_database(root)
@@ -53,17 +53,25 @@ class configdb(object):
                     self.cdb.create_collection("counters")
                 except:
                     pass
-            self.hutch = h
+            self.set_hutch(h)
+
+    # Change to the specified hutch, creating it if necessary.
+    def set_hutch(self, h, create=False):
+        self.hutch = h
+        if h is None:
+            self.hutch_coll = None
+        else:
             self.hutch_coll = self.cdb[h]
-            if create:
-                try:
-                    self.cdb.create_collection(h)
-                except:
-                    pass
-                try:
+        if create and h is not None:
+            try:
+                self.cdb.create_collection(h)
+            except:
+                pass
+            try:
+                if not self.cdb.counters.find_one({'hutch': h}):
                     self.cdb.counters.insert_one({'hutch': h, 'seq': -1})
-                except:
-                    pass
+            except:
+                pass
 
     # Return the highest key for the specified alias, or highest + 1 for all aliases
     # in the hutch if not specified.
@@ -220,7 +228,7 @@ class configdb(object):
     def get_device_configs(self):
         return [v['collection'] for v in self.cfg_coll.find()]
 
-    # Return a list of all device configurations.
+    # Return a list of all devices in an alias/hutch.
     def get_devices(self, key_or_alias, hutch=None):
         if hutch is None:
             hc = self.hutch_coll
@@ -236,8 +244,12 @@ class configdb(object):
         return [l['device'] for l in c["devices"]]
 
     # Print all of the configurations for the hutch.
-    def print_configs(self):
-        for v in self.hutch_coll.find():
+    def print_configs(self, hutch=None):
+        if hutch is None:
+            hc = self.hutch_coll
+        else:
+            hc = self.cdb[hutch]
+        for v in hc.find():
             print(v)
 
     # Print all of the device configurations, or all of the configurations for a specified device.
