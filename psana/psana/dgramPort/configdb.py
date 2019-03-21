@@ -53,7 +53,7 @@ class configdb(object):
                     self.cdb.create_collection("counters")
                 except:
                     pass
-            self.set_hutch(h)
+            self.set_hutch(h, create=create)
 
     # Change to the specified hutch, creating it if necessary.
     def set_hutch(self, h, create=False):
