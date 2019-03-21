@@ -115,8 +115,8 @@ class configdb(object):
         self.cdb[cfg].insert_one({'config': {}}, session=session)   # Make an empty config!
         self.cfg_coll.insert_one({'collection': cfg}, session=session)
 
-    # Save a device configuration and return an object ID.  Try to find it if it already exists!
-    # Value should be a typed json dictionary.
+    # Save a device configuration and return an object ID.  Try to find it if 
+    # it already exists! Value should be a typed json dictionary.
     def save_device_config(self, cfg, value, session=None):
         if self.cdb[cfg].count_documents({}, session=session) == 0:
             raise NameError("save_device_config: No device configuration %s" % name)
@@ -204,9 +204,36 @@ class configdb(object):
         except:
             return None
 
+    # Return a list of all hutches.
+    def get_hutches(self):
+        return [v['hutch'] for v in self.cdb.counters.find()]
+
     # Return a list of all aliases in the hutch.
-    def get_aliases(self):
-        return [v['_id'] for  v in self.hutch_coll.aggregate([{"$group": {"_id" : "$alias"}}])] 
+    def get_aliases(self, hutch=None):
+        if hutch is None:
+            hc = self.hutch_coll
+        else:
+            hc = self.cdb[hutch]
+        return [v['_id'] for  v in hc.aggregate([{"$group": {"_id" : "$alias"}}])] 
+
+    # Return a list of all device configurations.
+    def get_device_configs(self):
+        return [v['collection'] for v in self.cfg_coll.find()]
+
+    # Return a list of all device configurations.
+    def get_devices(self, key_or_alias, hutch=None):
+        if hutch is None:
+            hc = self.hutch_coll
+        else:
+            hc = self.cdb[hutch]
+        if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and isinstance(key_or_alias, unicode)):
+            key = self.get_key(key_or_alias, hutch)
+            if key is None:
+                return None
+        else:
+            key = key_or_alias
+        c = hc.find_one({"key": key})
+        return [l['device'] for l in c["devices"]]
 
     # Print all of the configurations for the hutch.
     def print_configs(self):
@@ -247,7 +274,11 @@ class configdb(object):
     # Get the history of the device configuration for the variables 
     # in plist.  The variables are dot-separated names with the first
     # component being the the device configuration name.
-    def get_history(self, alias, device, plist):
+    def get_history(self, alias, device, plist, hutch=None):
+        if hutch is None:
+            hc = self.hutch_coll
+        else:
+            hc = self.cdb[hutch]
         pipeline = [
             {"$unwind": "$devices"},
             {"$match": {'alias': alias, 'devices.device': device}},
@@ -262,7 +293,7 @@ class configdb(object):
             else:
                 raise ValueError("%s is not a dot-separated name!" % p)
         dc = set([x[0] for x in pl])
-        for c in list(self.hutch_coll.aggregate(pipeline)):
+        for c in list(hc.aggregate(pipeline)):
             d = {'date': c['date'], 'key': c['key']}
             for o in c['devices']['configs']:
                 cname = o['collection']
