@@ -60,29 +60,32 @@ cdef class ParallelReader:
         
         return requested - count
 
-    def read(self, displacement=0):
+    cdef inline void _read(self, size_t displacement):
         """ Reads data in parallel (self.chunksize bytes) to the beginning
         of each buffer."""
         cdef int i
-        cdef size_t c_disp = displacement
         for i in prange(self.nfiles, nogil=True):
-            self.bufs[i].got = self._read_with_retries(i, c_disp, self.chunksize)
+            self.bufs[i].got = self._read_with_retries(i, displacement, self.chunksize)
 
     def get_block(self):
         """ Packs data in all buffers with footer."""
+        self._read(0)
+
         block = bytearray()
         cdef array.array int_array_template = array.array('I', [])
-        cdef array.array footer = array.clone(int_array_template, self.nfiles + 1, zero=False)
+        cdef array.array footer = array.clone(int_array_template, self.nfiles + 1, zero=True)
         cdef unsigned[:] footer_view = footer
         footer_view[-1] = self.nfiles
         
         cdef char [:] view
         for i in range(self.nfiles):
-            view = <char [:self.bufs[i].got]> (self.bufs[i].chunk + self.bufs[i].block_offset)
-            block.extend(bytearray(view))
-            footer_view[i] = view.shape[0]
-        
-        block.extend(footer_view)
+            if self.bufs[i].got > 0:
+                view = <char [:self.bufs[i].got]> (self.bufs[i].chunk + self.bufs[i].block_offset)
+                block.extend(bytearray(view))
+                footer_view[i] = view.shape[0]
+
+        if block:
+            block.extend(footer_view)
         return block
         
         

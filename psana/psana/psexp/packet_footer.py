@@ -17,10 +17,12 @@ class PacketFooter(object):
             self.n_packets = n_packets
             self.footer = bytearray((n_packets + 1) * self.n_bytes)
             self.footer[-self.n_bytes:] = struct.pack("I", self.n_packets)
-        else:
+        elif view:
             self.n_packets = struct.unpack("I", view[-self.n_bytes:])[0]
             self.footer = view[-(self.n_packets + 1)*self.n_bytes:]
             self.view = view
+        else:
+            self.n_packets = 0
 
     def set_size(self, idx, size):
         """ Set size of the given packet index. """

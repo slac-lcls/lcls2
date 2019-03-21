@@ -93,9 +93,8 @@ class DataSourceBase(object):
                              for smd_file in smd_files \
                              if os.path.isfile(os.path.join(xtc_path, \
                              os.path.basename(smd_file).split('.smd')[0] + '.xtc2'))]
-                _epic_file = os.path.join(xtc_path, 'data-r%s-epc.xtc2'%(str(r).zfill(4)))
-                epic_file = _epic_file if os.path.isfile(_epic_file) else None
-                run_dict[r] = (xtc_files, smd_files, epic_file)
+                epics_files = glob.glob(os.path.join(xtc_path, '*r%s-e0*.xtc2'%(str(r).zfill(4)))) # FIXME:mona replace this with pulseId check
+                run_dict[r] = (xtc_files, smd_files, epics_files)
 
         return exp, run_dict
 

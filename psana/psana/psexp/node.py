@@ -4,7 +4,6 @@ import numpy as np
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
-from psana.psexp.epicsstore import EpicsStore
 from psana.psexp.packet_footer import PacketFooter
 from psana.event import Event
 
@@ -68,22 +67,37 @@ if nodetype is None:
 
 class EpicsManager(object):
     """ Keeps epics data and their send history. """
-    def __init__(self, client_size):
-        self.epics_buf = bytearray()
-        self.epics_send_history = {}
+    def __init__(self, client_size, n_epics):
+        self.n_epics = n_epics
+        self.epics_bufs = [bytearray() for i in range(self.n_epics)]
+        self.epics_send_history = []
         # Initialize no. of sent bytes to 0 for evtbuilder
+        # [[offset_epics0, offset_epics1, ], [offset_epics0, offset_epics1, ], ...]
+        # [ --------evtbuilder0------------, --------evtbuilder1------------ ,
         for i in range(1, client_size):
-            self.epics_send_history[i] = 0
+            self.epics_send_history.append([0]*self.n_epics)
 
-    def extend_buffer(self, view):
-        self.epics_buf.extend(view)
+    def extend_buffers(self, views):
+        for i, view in enumerate(views):
+            self.epics_bufs[i].extend(view)
 
     def get_buffer(self, client_id):
         """ Returns new epics data (if any) for this client
         then updates the sent record."""
         epics_chunk = bytearray()
-        epics_chunk.extend(self.epics_buf[self.epics_send_history[client_id]:])
-        self.epics_send_history[client_id] = memoryview(self.epics_buf).shape[0]
+
+        if self.n_epics: # do nothing if no epics data found
+            indexed_id = client_id - 1 # rank 0 has no send history.
+            pf = PacketFooter(self.n_epics)
+            for i, epics_buf in enumerate(self.epics_bufs):
+                current_buf = self.epics_bufs[i]
+                current_offset = self.epics_send_history[indexed_id][i]
+                current_buf_size = memoryview(current_buf).shape[0]
+                pf.set_size(i, current_buf_size - current_offset)
+                epics_chunk.extend(current_buf[current_offset:])
+                self.epics_send_history[indexed_id][i] = current_buf_size
+            epics_chunk.extend(pf.footer)
+        
         return epics_chunk
         
 
@@ -96,7 +110,7 @@ class Smd0(object):
     def __init__(self, run):
         self.smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
         self.run = run
-        self.epics_man = EpicsManager(smd_size)
+        self.epics_man = EpicsManager(smd_size, self.run.epics_store.n_files)
         self.run_mpi()
 
     def run_mpi(self):
@@ -105,13 +119,13 @@ class Smd0(object):
         for smd_chunk in self.smdr_man.chunks():
             # Creates a chunk from smd and epics data to send to SmdNode
             # Anatomy of a chunk (pf=packet_footer):
-            # [ [smd0][smd1][smd2][pf] ][ epics_chunk ][ pf ]
-            #   ----- smd_chunk ------     
-            # ------------------ chunk ----------------------
+            # [ [smd0][smd1][smd2][pf] ][ [epics0][epics1][epics2][pf] ][ pf ]
+            #   ----- smd_chunk ------    ---------epics_chunk------- 
+            # -------------------------- chunk ------------------------------
             
             # Read new epics data as available in the queue
             # then send only unseen portion of data to the evtbuilder rank.
-            self.epics_man.extend_buffer(self.run.epics_reader.read())
+            self.epics_man.extend_buffers(self.run.epics_reader.read())
             smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             epics_chunk = self.epics_man.get_buffer(rankreq[0])
 
@@ -135,7 +149,7 @@ class SmdNode(object):
         self.eb_man = EventBuilderManager(run.smd_configs, run.batch_size, run.filter_callback)
         self.n_bd_nodes = bd_comm.Get_size() - 1
         self.run = run
-        self.epics_man = EpicsManager(bd_size)
+        self.epics_man = EpicsManager(bd_size, self.run.epics_store.n_files)
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -153,20 +167,22 @@ class SmdNode(object):
             # Unpack the chunk received from Smd0
             pf = PacketFooter(view=chunk)
             smd_chunk, epics_chunk = pf.split_packets()
-
-            # Updates run's epics_store and epics_manager  
-            self.run.epics_store.update(epics_chunk, self.run.epics_config)
-            self.epics_man.extend_buffer(epics_chunk)
+            
+            # Unpack epics chunk and updates run's epics_store and epics_manager  
+            pfe = PacketFooter(view=epics_chunk)
+            epics_views = pfe.split_packets()
+            self.run.epics_store.update(epics_views)
+            self.epics_man.extend_buffers(epics_views)
 
             # build batch of events
             for smd_batch in self.eb_man.batches(smd_chunk):
                 bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
                 epics_batch = self.epics_man.get_buffer(rankreq[0])
 
-                pf = PacketFooter(2)
-                pf.set_size(0, memoryview(smd_batch).shape[0])
-                pf.set_size(1, memoryview(epics_batch).shape[0])
-                batch = smd_batch + epics_batch + pf.footer
+                _pf = PacketFooter(2)
+                _pf.set_size(0, memoryview(smd_batch).shape[0])
+                _pf.set_size(1, memoryview(epics_batch).shape[0])
+                batch = smd_batch + epics_batch + _pf.footer
                 
                 bd_comm.Send(batch, dest=rankreq[0])
                 
@@ -194,7 +210,9 @@ class BigDataNode(object):
             pf = PacketFooter(view=chunk)
             smd_chunk, epics_chunk = pf.split_packets()
             
-            self.run.epics_store.update(epics_chunk, self.run.epics_config)
+            pfe = PacketFooter(view=epics_chunk)
+            epics_views = pfe.split_packets()
+            self.run.epics_store.update(epics_views)
 
             for event in self.evt_man.events(smd_chunk):
                 yield event
