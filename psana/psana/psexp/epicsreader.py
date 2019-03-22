@@ -11,15 +11,11 @@ class EpicsReader(object):
     and consumer returns accumulated blocks of data as presented
     in the queue."""
     
-    def __init__(self, epics_files):
+    def __init__(self, fds):
         """ Stores configs and file descriptors"""
-        if epics_files:
-            self._fds = [os.open(epics_file, os.O_RDONLY | os.O_NONBLOCK) for epics_file in epics_files]
-            self._configs = [dgram.Dgram(file_descriptor=fd) for fd in self._fds]
-            self._prl_reader = ParallelReader(self._fds)
+        if fds:
+            self._prl_reader = ParallelReader(fds)
         else:
-            self._fds = []
-            self._configs = []
             self._prl_reader = None
 
     def read(self):

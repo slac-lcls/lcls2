@@ -91,9 +91,24 @@ class Run(object):
         # instantiate the detector xface for this detector/drp_class
         # (e.g. (xppcspad,raw) or (xppcspad,fex)
         # make them attributes of the container
+        flag_found = False
         for (det_name,drp_class_name),drp_class in self.dm.det_class_table.items():
             if det_name == name:
                 setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibs))
+                flag_found = True
+        
+        # If no detector found, try epics 
+        # Epics det is identified by its keywords (e.g. 'XPP:VARS:FLOAT:02', etc).
+        # Here, epics_store object is passed to drp_class so that the keyword
+        # can be looked-up when evt is given (e.g. det(evt) returns value of
+        # the given epics keyword.
+        if not flag_found:
+            if name in self.epics_store.keys:
+                det_name = 'xppepics'
+                drp_class_name = 'fuzzy'
+                drp_class = self.epics_dm.det_class_table[(det_name, drp_class_name)] # FIXME: mona right now just use fixed det_name and drp_class_name for any fuzzy data
+                det = drp_class(name, drp_class_name, self.configs, self.calibs, self.epics_store)
+
         return det
 
     @property
@@ -193,11 +208,12 @@ class RunSerial(Run):
         xtc_files, smd_files, epics_files = run_src
         self.dm = DgramManager(xtc_files)
         self.smd_dm = DgramManager(smd_files)
+        self.epics_dm = DgramManager(epics_files)
+        self.epics_reader = EpicsReader(self.epics_dm.fds)
+        self.epics_store = EpicsStore(self.epics_dm.configs)
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
-        self.epics_reader = EpicsReader(epics_files) # launch an Epics-reading thread
-        self.epics_store = EpicsStore(self.epics_reader._configs)
         
     def events(self):
         smd_configs = self.smd_dm.configs
@@ -248,14 +264,16 @@ class RunParallel(Run):
             for det_name in self.detnames:
                 self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
             
-            self.epics_reader = EpicsReader(epics_files)
-            self.epics_configs = self.epics_reader._configs
+            self.epics_dm = DgramManager(epics_files)
+            self.epics_reader = EpicsReader(self.epics_dm.fds)
+            self.epics_configs = self.epics_dm.configs
             epics_nbytes = np.array([memoryview(config).shape[0] for config in self.epics_configs], \
                             dtype='i')
         else:
             self.dm = None
             self.calibs = None
             self.smd_dm = None
+            self.epics_dm = None
             nbytes = np.empty(len(xtc_files), dtype='i')
             smd_nbytes = np.empty(len(smd_files), dtype='i')
             epics_nbytes = np.empty(len(epics_files), dtype='i')
@@ -287,6 +305,7 @@ class RunParallel(Run):
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs)
             self.epics_configs = [dgram.Dgram(view=config, offset=0) for config in self.epics_configs]
+            self.epics_dm = DgramManager(epics_files, configs=self.epics_configs)
         self.epics_store = EpicsStore(self.epics_configs)   
     
     def events(self):

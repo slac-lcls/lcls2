@@ -39,12 +39,13 @@ if rank == 0:
 
 for run in ds.runs():
     det = run.Detector('xppcspad')
+    edet = run.Detector('XPP:VARS:FLOAT:02')
     for evt in run.events():
         sendbuf += 1
         padarray = vals.padarray
-        epics = run.epicsStore(evt)
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
         assert evt._size == 2 # check that two dgrams are in there
+        assert edet(evt) == 41.0
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
@@ -63,7 +64,6 @@ for run in ds.runs():
     for evt in run.events():
         sendbuf += 1
         padarray = vals.padarray
-        epics = run.epicsStore(evt)
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
         assert evt._size == 2 # check that two dgrams are in there
 
@@ -80,7 +80,6 @@ if rank == 0:
 for evt in ds.events():
     sendbuf += 1
     padarray = vals.padarray
-    epics = run.epicsStore(evt)
     assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
     assert evt._size == 2 # check that two dgrams are in there
 
@@ -97,9 +96,9 @@ if rank == 0:
     recvbuf = np.empty([size, 1], dtype='i')
 
 for run in ds.runs():
+    # FIXME: mona how to handle epics data for smalldata-only exp?
     for evt in run.events():
         sendbuf += 1
-        epics = run.epicsStore(evt)
         assert evt._size == 2 # check that two dgrams are in there
 
 comm.Gather(sendbuf, recvbuf, root=0)

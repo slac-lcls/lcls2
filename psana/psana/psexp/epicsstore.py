@@ -8,18 +8,17 @@ class Epics(object):
     
     def __init__(self, config):
         self.config = config
-        self._build_keywords()
         self.dgrams = []
         self.timestamps = []
         self.buf = bytearray() # keeps remaining data of each Epics file
         self.offset = 0
         self.n_items = 0
 
-    def _build_keywords(self):
+    def get_keys(self):
         """ From the given config, build a list of keywords from
         config.software.xppepics.fuzzy.[] field."""
         fuzzy = getattr(self.config.software.xppepics, "fuzzy") 
-        self.keys = fuzzy.__dict__.keys()
+        return fuzzy.__dict__.keys()
 
     def add(self, d):
         self.dgrams.append(d)
@@ -32,12 +31,14 @@ class EpicsStore(object):
 
     def __init__(self, configs):
         """ Builds store with the given epics config."""
+        self.n_files = 0
+        self._epics_list = []
+        self.keys = []
         if configs:
             self.n_files = len(configs)
             self._epics_list = [Epics(config) for config in configs]
-        else:
-            self.n_files = 0
-            self._epics_list = []
+            for epics in self._epics_list:
+                self.keys += list(epics.get_keys())
             
     def update(self, views):
         """ Updates the store with new data from list of views. """
