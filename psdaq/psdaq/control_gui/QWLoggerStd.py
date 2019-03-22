@@ -384,7 +384,7 @@ if __name__ == "__main__" :
     w.setWindowTitle(w._name)
     w.setGeometry(200, 400, 600, 300)
 
-    from psana.graphqt.QWIcons import icon # should be imported after QApplication
+    from psdaq.control_gui.QWIcons import icon # should be imported after QApplication
     icon.set_icons()
     w.setWindowIcon(icon.icon_logviewer)
 

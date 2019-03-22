@@ -126,7 +126,8 @@ class QWPopupCheckDict(QDialog) :
 
     def setIcons(self):
         try :
-          from psana.graphqt.QWIcons import icon
+          #from psana.graphqt.QWIcons import icon
+          from psdaq.control_gui.QWIcons import icon
           icon.set_icons()
           self.but_cancel.setIcon(icon.icon_button_cancel)
           self.but_apply .setIcon(icon.icon_button_ok)

@@ -5,11 +5,13 @@
 Usage ::
 
     # Run test: python lcls2/psana/psana/graphqt/QWTree.py
+    # Run test: python lcls2/psana/psana/graphqt/QWTree.py
 
-    from psana.graphqt.QWTree import QWTree
+    #from psana.graphqt.QWTree import QWTree
+    psdaq.control_gui.QWTree import QWTree
     w = QWTree()
 
-Created on 2017-03-23 by Mikhail Dubrovin
+Copied from psana/psana/graphqt/QWTree.py on 2019-03-21 by Mikhail Dubrovin
 """
 #------------------------------
 import logging
@@ -21,7 +23,7 @@ from PyQt5.QtCore import Qt, QModelIndex
 
 #from psana.graphqt.CMConfigParameters import cp
 #from psana.pyalgos.generic.Logger import logger
-from psana.graphqt.QWIcons import icon
+from psdaq.control_gui.QWIcons import icon
 
 #------------------------------
 

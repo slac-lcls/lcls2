@@ -28,12 +28,16 @@ logger = logging.getLogger(__name__)
 import json
 from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_set_state
 
+#from psana.pyalgos.generic.Utils import load_textfile
+from psdaq.control_gui.Utils import load_textfile
+
 #--------------------
 
 def _display_name(pname, v) :
-    host = v['proc_info']['host']
-    pid  = v['proc_info']['pid']
-    return '%s/%s/%-16s' % (pname, pid, host)
+    host  = v['proc_info']['host']
+    pid   = v['proc_info']['pid']
+    alias = v['proc_info'].get('alias','')
+    return '%-16s %s/%s/%-16s' % (alias, pname, pid, host)
 
 #--------------------
 
@@ -95,7 +99,6 @@ def set_platform(dict_platf, dict_procs):
 #--------------------
 
 def load_json_from_file(fname) :
-    from psana.pyalgos.generic.Utils import load_textfile
     s = load_textfile(fname)
     #ucode = s.decode('utf8').replace("\'t", ' not').replace("'", '"')
     #ss = s.replace(' ', '').replace("'", '"')

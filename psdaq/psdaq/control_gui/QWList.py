@@ -6,7 +6,7 @@ Usage ::
 
     # Run test: python lcls2/psdaq/psdaq/control_gui/QWList.py
 
-    from psana.graphqt.QWList import QWList
+    from psdaq.control_gui.QWList import QWList
     w = QWList()
 
 Copy psana.graphqt.QWList on 2019-03-11

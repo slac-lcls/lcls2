@@ -39,10 +39,33 @@
     "c": {
         "d": {
             "e": 42.49,
-            "f": -30.34
+            "f": -30.34,
+            "g": 0,
+            "h": 1,
+            "k": 1,
+            "l": -1
         }
     },
-    "json_types": {
+    ":types:": {
+        ":enum:": {
+            "q": {
+                "Off": 0,
+                "On": 1
+            },
+            "r": {
+                "Down": -1,
+                "Up": 1
+            }
+        },
+        "detType": "CHARSTR",
+        "detName": "CHARSTR",
+        "detId": "CHARSTR",
+        "doc": "CHARSTR",
+        "alg": {
+            "alg": "CHARSTR",
+            "doc": "CHARSTR",
+            "version": ["INT32", 3]
+        },
         "aa": "INT8",
         "ab": "INT16",
         "ac": "INT32",
@@ -58,15 +81,31 @@
         "am": ["INT16", 2, 3],
         "an": ["INT32", 3],
         "ao": ["UINT16", 2, 3],
-        "b": {
-            "b": "INT32",
-            "c": "INT32",
-            "d": "INT32"
-        },
+        "b": [
+               {
+              "b": "INT32",
+              "c": "INT32",
+              "d": "INT32"
+               },
+               {
+              "b": "INT32",
+              "c": "INT32",
+              "d": "INT32"
+               },
+               {
+              "b": "INT32",
+              "c": "INT32",
+              "d": "INT32"
+               }
+             ],
         "c": {
             "d": {
                 "e": "FLOAT",
-                "f": "DOUBLE"
+                "f": "DOUBLE",
+                "g": "q",
+                "h": "q",
+                "k": "r",
+                "l": "r"
             }
         }
     }
