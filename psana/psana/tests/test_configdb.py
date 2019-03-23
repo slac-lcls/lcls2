@@ -1,6 +1,6 @@
 from pymongo import *
-from psana.dgramPort.typed_json import *
-import psana.dgramPort.configdb as cdb
+from psalg.configdb.typed_json import *
+import psalg.configdb.configdb as cdb
 import subprocess, os, time, sys
 import pytest
 import pprint

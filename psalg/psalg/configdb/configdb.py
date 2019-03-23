@@ -1,5 +1,5 @@
 from pymongo import *
-from psana.dgramPort.typed_json import cdict
+from .typed_json import cdict
 import datetime
 import time, re, sys
 

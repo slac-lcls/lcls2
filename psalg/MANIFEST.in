@@ -1,0 +1,2 @@
+include versioneer.py
+include psalg/_version.py

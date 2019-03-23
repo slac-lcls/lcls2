@@ -70,7 +70,12 @@ function cmake_build() {
 mkdir -p $INSTDIR/lib/python$pyver/site-packages/
 
 cmake_build xtcdata
+
 cmake_build psalg
+cd psalg
+python setup.py $pyInstallStyle --prefix=$INSTDIR
+cd ..
+
 if [ $no_daq == 0 ]; then
     cmake_build psdaq
     cd psdaq

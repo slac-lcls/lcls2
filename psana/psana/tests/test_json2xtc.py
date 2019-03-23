@@ -1,4 +1,4 @@
-from psana.dgramPort.typed_json import *
+from psalg.configdb.typed_json import *
 from psana import DataSource, container
 import numpy as np
 import subprocess
