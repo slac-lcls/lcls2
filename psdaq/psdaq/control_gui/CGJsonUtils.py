@@ -34,10 +34,11 @@ from psdaq.control_gui.Utils import load_textfile
 #--------------------
 
 def _display_name(pname, v) :
-    host  = v['proc_info']['host']
-    pid   = v['proc_info']['pid']
-    alias = v['proc_info'].get('alias','')
-    return '%-16s %s/%s/%-16s' % (alias, pname, pid, host)
+    pinfo = v['proc_info']
+    host  = pinfo.get('host', 'non-def')
+    pid   = pinfo.get('pid',  'non-def')
+    alias = pinfo.get('alias','non-def')
+    return '%s/%s/%s %s' % (pname, pid, host, alias)
 
 #--------------------
 

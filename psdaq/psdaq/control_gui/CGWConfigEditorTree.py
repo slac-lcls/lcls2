@@ -31,14 +31,16 @@ from psdaq.control_gui.QWPopupEditText import QWPopupEditText, QDialog
 
 
 updateValue = None
-#from psana.dgramPort.typed_json import updateValue # getType, getValue, 
-try    : from psana.dgramPort.typed_json import updateValue # getType, getValue, 
-except : 
-    msg = "!!!!! WARNING: can't import updateValue because of problem with psana.psana.__init__.py"
-    print(msg)
-    logger.warning(msg)
 
-#from psana.dgramPort.typed_json import getType
+from psalg.configdb.typed_json import updateValue, getType #, getValue, 
+
+#try    : from psalg.configdb.typed_json import updateValue # getType, getValue, 
+#except : 
+#    msg = "!!!!! WARNING: can't import updateValue because of problem with psana.psana.__init__.py"
+#    print(msg)
+#    logger.warning(msg)
+
+#from psalg.configdb.typed_json import getType
 
 #--------------------
 
@@ -100,9 +102,9 @@ class CGWConfigEditorTree(QWTree) :
         if item is None : return None
         path = path_to_item(item)
         if path is None : return None
-        #dtype = getType(self.dictj, path)
+        dtype = getType(self.dictj, path)
         #print('XXXXXX path: %s dtype: %s' % (path, str(dtype)))
-        return 'dtype is N/A'
+        return dtype
 
 #--------------------
 

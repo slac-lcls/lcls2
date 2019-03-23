@@ -38,7 +38,7 @@ class CGWMainRunStatistics(QGroupBox) :
 
         self.lab_duration = QLabel('Duration')
         self.lab_events   = QLabel('Events')
-        self.lab_dameged  = QLabel('Dameged')
+        self.lab_dameged  = QLabel('Damaged')
         self.lab_size     = QLabel('Size')
         self.but_stats = QPushButton('Damage Stats')
 

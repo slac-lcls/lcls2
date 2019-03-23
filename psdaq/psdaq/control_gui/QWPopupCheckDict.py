@@ -27,8 +27,9 @@ Adopted for LCLS2 on 2019-03-08 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QCheckBox, QTextEdit, QFrame, QSizePolicy
+from PyQt5.QtWidgets import QDialog, QGridLayout, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QCheckBox, QTextEdit, QFrame, QSizePolicy
 from PyQt5.QtCore import Qt
+from psdaq.control_gui.Styles import style
 
 #------------------------------
 
@@ -37,7 +38,8 @@ class QWPopupCheckDict(QDialog) :
     e.g.: {'name1':False, 'name2':True, ..., 'nameN':False}, 
     and modify this dict in popup dialog gui.
     """
-    def __init__(self, parent=None, dict_in_out={}, win_title=None, msg='', enblctrl=True):
+    def __init__(self, parent=None, dict_in_out={}, win_title=None, msg='', enblctrl=True,\
+                 coltitles=['proc/pid/host','alias']):
         QDialog.__init__(self, parent)
  
         #self.setModal(True)
@@ -47,6 +49,13 @@ class QWPopupCheckDict(QDialog) :
         self.enblctrl = enblctrl
 
         self.vbox = QVBoxLayout()
+        self.grid = QGridLayout()
+
+        for i,title in enumerate(coltitles) :
+            lab = QLabel(title)
+            lab.setStyleSheet(style.styleTitle)
+            self.grid.addWidget(lab, 0, i)
+
         #self.edi_msg = QTextEdit(msg)
         #self.vbox.addWidget(self.edi_msg)
 
@@ -63,12 +72,13 @@ class QWPopupCheckDict(QDialog) :
         self.hbox.addWidget(self.but_apply)
         self.hbox.addStretch(1)
 
+        self.vbox.addLayout(self.grid)
         self.vbox.addLayout(self.hbox)
         self.setLayout(self.vbox)
 
         self.but_cancel.setFocusPolicy(Qt.NoFocus)
 
-        self.setStyle()
+        self.set_style()
         self.setIcons()
         self.showToolTips()
 
@@ -76,11 +86,30 @@ class QWPopupCheckDict(QDialog) :
 
     def make_gui_checkbox(self) :
         self.dict_of_items = {}
+
+        for i, (name, state) in enumerate(sorted(self.dict_in_out.items())) :
+            names = name.split(' ')
+            cbx = QCheckBox(names[0])
+            cbx.setCheckState(Qt.Checked if state else Qt.Unchecked)
+            cbx.stateChanged[int].connect(self.onCBox)
+            cbx.setEnabled(self.enblctrl)
+            #self.vbox.addWidget(cbx)
+            self.grid.addWidget(cbx, i+1, 0)
+            if len(names)>1 : 
+                lab = QLabel(names[1])
+                lab.setEnabled(self.enblctrl)
+                self.grid.addWidget(lab, i+1, 1)
+
+            self.dict_of_items[cbx] = [name,state] 
+
+#-----------------------------  
+
+    def make_gui_checkbox_v0(self) :
+        self.dict_of_items = {}
         for name,state in sorted(self.dict_in_out.items()) :        
             cbx = QCheckBox(name) 
-            if state : cbx.setCheckState(Qt.Checked)
-            else     : cbx.setCheckState(Qt.Unchecked)
-            #self.connect(cbx, QtCore.SIGNAL('stateChanged(int)'), self.onCBox)
+            cbx.setCheckState(Qt.Checked if state else Qt.Unchecked)
+
             cbx.stateChanged[int].connect(self.onCBox)
             cbx.setEnabled(self.enblctrl)
             self.vbox.addWidget(cbx)
@@ -97,7 +126,7 @@ class QWPopupCheckDict(QDialog) :
         self.but_cancel.setToolTip('Use default dict')
         
 
-    def setStyle(self):
+    def set_style(self):
         #self.setFixedWidth(200)
         self.setMinimumWidth(200)
         styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);" # Gray
@@ -113,6 +142,7 @@ class QWPopupCheckDict(QDialog) :
 
 
     def set_style_msg(self, style_bkgd):
+        pass
         #self.edi_msg.setReadOnly(True)
         #self.edi_msg.setStyleSheet(style_bkgd)
         #self.edi_msg.setFrameStyle(QFrame.NoFrame)
@@ -122,7 +152,6 @@ class QWPopupCheckDict(QDialog) :
         #print('XXX:document().size()', s.width(), s.height())
         #self.edi_msg.setMinimumSize(200,50)
         #self.edi_msg.setFixedSize(180,50)
-        pass
 
     def setIcons(self):
         try :
@@ -184,8 +213,8 @@ if __name__ == "__main__" :
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 
     app = QApplication(sys.argv)
-    dict_in = {'CSPAD1':True, 'CSPAD2x21':False, 'pNCCD1':True, 'Opal1':False, \
-               'CSPAD2':True, 'CSPAD2x22':False, 'pNCCD2':True, 'Opal2':False}
+    dict_in = {'CSPAD1 X':True, 'CSPAD2x21':False, 'pNCCD1':True, 'Opal1':False, \
+               'CSPAD2 YYYY':True, 'CSPAD2x22':False, 'pNCCD2':True, 'Opal2':False}
     for name,state in dict_in.items() : logger.debug('%s checkbox state %s' % (name.ljust(10), state))
     w = QWPopupCheckDict(None, dict_in)
     #w.setGeometry(20, 40, 500, 200)

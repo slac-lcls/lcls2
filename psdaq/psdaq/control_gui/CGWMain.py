@@ -144,11 +144,13 @@ class CGWMain(QWZMQListener) :
         #cp.upwd    = popts.upwd
         #exp        = popts.experiment
         #det        = popts.detector
-        self.logdir   = popts.logdir
-        self.loglevel = popts.loglevel.upper()
-        self.host     = popts.host
-        self.platform = popts.platform
-        self.timeout  = popts.timeout
+        self.logdir     = popts.logdir
+        self.loglevel   = popts.loglevel.upper()
+        self.host       = popts.host
+        self.platform   = popts.platform
+        self.timeout    = popts.timeout
+        self.expname    = popts.expname
+        self.instrument = self.expname[:3].upper()
 
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
