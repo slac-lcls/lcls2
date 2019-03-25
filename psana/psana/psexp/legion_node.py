@@ -1,8 +1,7 @@
 from .tools import mode
-MPI = None
+
 legion = None
 if mode == 'mpi':
-    from mpi4py import MPI
     # Nop when not using Legion
     def task(fn=None, **kwargs):
         if fn is None:
@@ -42,9 +41,13 @@ def analyze(run, event_fn=None, start_run_fn=None, det=None):
     run.event_fn = event_fn
     run.start_run_fn = start_run_fn
     run.det = det
-    run_to_process.append(run)
-
-@task(top_level=True)
-def legion_main():
-    for run in run_to_process:
+    if legion.is_script:
         run_smd0(run)
+    else:
+        run_to_process.append(run)
+
+if legion is not None and not legion.is_script:
+    @task(top_level=True)
+    def legion_main():
+        for run in run_to_process:
+            run_smd0(run)
