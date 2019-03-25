@@ -205,10 +205,10 @@ class RunSerial(Run):
         super(RunSerial, self).__init__(exp, run_no, \
                 max_events=kwargs['max_events'], batch_size=kwargs['batch_size'], \
                 filter_callback=kwargs['filter_callback'])
-        xtc_files, smd_files, epics_files = run_src
+        xtc_files, smd_files, other_files = run_src
         self.dm = DgramManager(xtc_files)
         self.smd_dm = DgramManager(smd_files)
-        self.epics_dm = DgramManager(epics_files)
+        self.epics_dm = DgramManager(other_files, pulse_id=0xffff)
         self.epics_reader = EpicsReader(self.epics_dm.fds)
         self.epics_store = EpicsStore(self.epics_dm.configs)
         self.calibs = {}
@@ -250,7 +250,7 @@ class RunParallel(Run):
         Configs and calib constants are sent to other ranks by MPI."""
         super(RunParallel, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
                 batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
-        xtc_files, smd_files, epics_files = run_src
+        xtc_files, smd_files, other_files = run_src
         if rank == 0:
             self.dm = DgramManager(xtc_files)
             self.configs = self.dm.configs
@@ -264,9 +264,10 @@ class RunParallel(Run):
             for det_name in self.detnames:
                 self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
             
-            self.epics_dm = DgramManager(epics_files)
+            self.epics_dm = DgramManager(other_files, pulse_id=0xffff)
             self.epics_reader = EpicsReader(self.epics_dm.fds)
             self.epics_configs = self.epics_dm.configs
+            epics_files = self.epics_dm.xtc_files
             epics_nbytes = np.array([memoryview(config).shape[0] for config in self.epics_configs], \
                             dtype='i')
         else:
@@ -276,11 +277,13 @@ class RunParallel(Run):
             self.epics_dm = None
             nbytes = np.empty(len(xtc_files), dtype='i')
             smd_nbytes = np.empty(len(smd_files), dtype='i')
-            epics_nbytes = np.empty(len(epics_files), dtype='i')
+            epics_files = None
+            epics_nbytes = None
         
         comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich
         comm.Bcast(nbytes, root=0) 
-        comm.Bcast(epics_nbytes, root=0)
+        epics_files = comm.bcast(epics_files, root=0)
+        epics_nbytes = comm.bcast(epics_nbytes, root=0)
         
         # create empty views of known size
         if rank > 0:
@@ -288,13 +291,13 @@ class RunParallel(Run):
             self.configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
             self.epics_configs = [np.empty(epics_nbyte, dtype='b') for epics_nbyte in epics_nbytes]
         
-        for i in range(len(smd_files)):
+        for i in range(len(self.smd_configs)):
             comm.Bcast([self.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
 
-        for i in range(len(xtc_files)):
+        for i in range(len(self.configs)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
         
-        for i in range(len(epics_files)):
+        for i in range(len(self.epics_configs)):
             comm.Bcast([self.epics_configs[i], epics_nbytes[i], MPI.BYTE], root=0)
 
         self.calibs = comm.bcast(self.calibs, root=0)

@@ -1,6 +1,9 @@
 import weakref
 import os, glob
 
+def identify_fuzzy_files(xtc_dir):
+    pass
+
 class DataSourceBase(object):
     filter = 0
     batch_size = 1
@@ -93,8 +96,9 @@ class DataSourceBase(object):
                              for smd_file in smd_files \
                              if os.path.isfile(os.path.join(xtc_path, \
                              os.path.basename(smd_file).split('.smd')[0] + '.xtc2'))]
-                epics_files = glob.glob(os.path.join(xtc_path, '*r%s-e0*.xtc2'%(str(r).zfill(4)))) # FIXME:mona replace this with pulseId check
-                run_dict[r] = (xtc_files, smd_files, epics_files)
+                all_files = glob.glob(os.path.join(xtc_path, '*r%s-*.xtc2'%(str(r).zfill(4))))
+                other_files = [f for f in all_files if f not in xtc_files]
+                run_dict[r] = (xtc_files, smd_files, other_files)
 
         return exp, run_dict
 
