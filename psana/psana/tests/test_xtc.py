@@ -84,12 +84,19 @@ class Test:
     def test_legion(self):
         self.setup_input_files()
 
-        python_path = os.environ.get('PYTHONPATH', '').split(':')
-        python_path.append(os.path.dirname(os.path.realpath(__file__)))
+        # Legion script mode.
         env = dict(list(os.environ.items()) + [
-            ('PYTHONPATH', ':'.join(python_path)),
             ('PS_PARALLEL', 'legion'),
         ])
+        callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
+        subprocess.check_call(['legion_python', callback_based, '-ll:py', '1'], env=env)
+
+        # Legion module mode.
+        python_path = os.environ.get('PYTHONPATH', '').split(':')
+        python_path.append(os.path.dirname(os.path.realpath(__file__)))
+        env.update({
+            'PYTHONPATH': ':'.join(python_path),
+        })
         subprocess.check_call(['legion_python', 'user_callbacks', '-ll:py', '1'], env=env)
 
     def test_run_pickle(self):
