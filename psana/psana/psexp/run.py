@@ -6,7 +6,7 @@ from copy import copy
 from psana import dgram
 from psana.dgrammanager import DgramManager
 from psana.psexp.tools import run_from_id, RunHelper
-import psana.psexp.legion_node
+from psana.psexp import legion_node
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
@@ -334,6 +334,9 @@ class RunLegion(Run):
         self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
         self.smd_configs = self.smd_dm.configs
-        
+        self.calibs = {}
+        for det_name in self.detnames:
+            self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)
+
     def analyze(self, **kwargs):
         legion_node.analyze(self, **kwargs)

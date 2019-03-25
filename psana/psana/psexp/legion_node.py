@@ -35,7 +35,7 @@ def run_smd_task(view, run):
 def run_bigdata_task(batch, run):
     evt_man = EventManager(run.smd_configs, run.dm, run.filter_callback)
     for event in evt_man.events(batch):
-        yield event
+        run.event_fn(event, run.det)
 
 run_to_process = []
 def analyze(run, event_fn=None, start_run_fn=None, det=None):

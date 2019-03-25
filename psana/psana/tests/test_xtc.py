@@ -99,7 +99,7 @@ class Test:
         import run_pickle
         run_pickle.test_run_pickle()
 
-    def test_legion(self):
+    def test_legion_pickle(self):
         # Again, in Legion
         self.setup_input_files()
 
