@@ -154,6 +154,27 @@ class DaqControl:
         return retval
 
     #
+    # DaqControl.getInstrument - get instrument name
+    #
+    def getInstrument(self):
+        r1 = 'error'
+        try:
+            msg = create_msg('getinstrument')
+            self.front_req.send_json(msg)
+            reply = self.front_req.recv_json()
+        except Exception as ex:
+            print('getInstrument() Exception: %s' % ex)
+        except KeyboardInterrupt:
+            print('KeyboardInterrupt')
+        else:
+            try:
+                r1 = reply['body']['instrument']
+            except KeyError as ex:
+                print('getInstrument() Exception: %s' % ex)
+
+        return r1
+
+    #
     # DaqControl.getStatus - get status
     #
     def getStatus(self):
@@ -327,7 +348,7 @@ def confirm_response(socket, wait_time, msg_id, ids):
 
 
 class CollectionManager():
-    def __init__(self, platform):
+    def __init__(self, platform, instrument):
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
@@ -338,9 +359,11 @@ class CollectionManager():
         self.front_rep.bind('tcp://*:%d' % front_rep_port(platform))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(platform))
         self.cmstate = {}
+        self.instrument = instrument
         self.ids = set()
         self.handle_request = {
             'selectplatform': self.handle_selectplatform,
+            'getinstrument': self.handle_getinstrument,
             'getstate': self.handle_getstate,
             'getstatus': self.handle_getstatus
         }
@@ -570,6 +593,11 @@ class CollectionManager():
         logging.debug('handle_getstatus()')
         return self.status_msg()
 
+    def handle_getinstrument(self, body):
+        logging.debug('handle_getinstrument()')
+        body = {'instrument': self.instrument}
+        return create_msg('instrument', body=body)
+
     def handle_selectplatform(self, body):
         logging.debug('handle_selectplatform()')
         if self.state != 'unallocated':
@@ -773,6 +801,7 @@ def main():
     # Process arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    parser.add_argument('-P', default='TST', help='instrument name (default TST)')
     parser.add_argument('-a', action='store_true', help='autoconnect')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
@@ -784,7 +813,7 @@ def main():
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def manager():
-        manager = CollectionManager(platform)
+        manager = CollectionManager(platform, args.P)
 
     def client(i):
         c = Client(platform)

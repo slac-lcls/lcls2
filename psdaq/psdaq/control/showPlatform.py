@@ -21,10 +21,19 @@ def main():
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
 
+    # get instrument/hutch name
+    instrument = 'ERROR'
+    try:
+        instrument = control.getInstrument()
+    except Exception as ex:
+        print('getInstrument() Exception: %s' % ex)
+    except KeyboardInterrupt:
+        pass
+
     try:
         body = control.getPlatform()
     except Exception as ex:
-        print('Exception: %s' % ex)
+        print('getPlatform() Exception: %s' % ex)
     except KeyboardInterrupt:
         pass
     else:
@@ -54,10 +63,10 @@ def main():
             if args.v:
                 print('getPlatform() reply:')
                 pprint.pprint(body)
-            print("Platform/|         Node")
-            print("Partition| alias            level/pid/host (* = active)")
+            print("Partition|         Node")
+            print("id/name  | alias            level/pid/host (* = active)")
             print("---------+-----------------------------------------------------")
-            print("  %3s      " % platform, end='')
+            print("%s/%-8s " % (platform, instrument), end='')
             firstLine = True
             for nn in displayList:
                 if firstLine:
