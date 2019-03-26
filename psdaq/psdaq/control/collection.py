@@ -157,19 +157,17 @@ class DaqControl:
     # DaqControl.getInstrument - get instrument name
     #
     def getInstrument(self):
-        r1 = 'error'
+        r1 = None
         try:
             msg = create_msg('getinstrument')
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
             print('getInstrument() Exception: %s' % ex)
-        except KeyboardInterrupt:
-            print('KeyboardInterrupt')
         else:
             try:
                 r1 = reply['body']['instrument']
-            except KeyError as ex:
+            except Exception as ex:
                 print('getInstrument() Exception: %s' % ex)
 
         return r1

@@ -22,20 +22,18 @@ def main():
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
 
     # get instrument/hutch name
-    instrument = 'ERROR'
+    instrument = None
     try:
         instrument = control.getInstrument()
     except Exception as ex:
         print('getInstrument() Exception: %s' % ex)
-    except KeyboardInterrupt:
-        pass
+    if instrument is None:
+        return
 
     try:
         body = control.getPlatform()
     except Exception as ex:
         print('getPlatform() Exception: %s' % ex)
-    except KeyboardInterrupt:
-        pass
     else:
         displayList = []
         try:
