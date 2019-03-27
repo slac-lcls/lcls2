@@ -28,8 +28,8 @@ import re
 #      for dictionary d, with a dictionary of enum definitions edef and returns
 #      True/False.
 #
-#      write_typed_json(filename, d) writes the dictionary d as JSON to the
-#      given filename.
+#      write_typed_json(filename_or_fd, d) writes the dictionary d as JSON 
+#      to the given filename (or file descriptor).
 #
 #      class cdict is a helper class for building typed JSON dictionaries.
 #          cdict(old_cdict) - The constructor optionally takes an old cdict to clone.
@@ -60,21 +60,23 @@ import re
 #          writeFile(filename)
 #                           - Write the typed JSON to a file.
 #
-#      getValue(typed_json, name)
-#          - Given a typed JSON dictionary, retrieve the value of the fully-
-#            dotted name.
-#      getType(typed_json, name)
-#          - Given a typed JSON dictionary, retrieve the type of the fully-
-#            dotted name.  This will be either:
+# The following routines work on typed JSON dictionaries, or a dictionary
+# that maps strings to typed JSON dictionaries, such as those returned from
+# configdb.
+#      getValue(dict, name)
+#          - Given a dictionary, retrieve the value of the fully-dotted name.
+#      getType(dict, name)
+#          - Given a dictionary, retrieve the type of the fully-dotted name.
+#            This will be either:
 #                - A string representing a basic type.
 #                - A dictionary representing an enum type.
 #                - A list, the first element of which is one of the two above
 #                  elements and the remainder of which is integer array
 #                  dimensions.
-#      setValue(typed_json, name, string_value)
-#          - Given a typed JSON dictionary, set the element specified by name
-#            to the value in string_value.  Array values will be space-
-#            separated.  This routine returns an integer:
+#      updateValue(dict, name, string_value)
+#          - Given a dictionary, set the element specified by name to the
+#            value in string_value.  Array values will be space-separated.
+#            This routine returns an integer:
 #                0 if successful.
 #                1 if the path does not exist.
 #                2 if the type conversion failed
@@ -310,32 +312,35 @@ def write_json_dict(f, d, edef, tdict, top=[], indent="    ", **hw):
             f.write('%s"%s": %d' % (prefix, n, v))
         prefix = ",\n" + indent
 
-def write_typed_json(filename, d, edef, headers=True):
+def write_typed_json(filename_or_fd, d, edef, headers=True):
     r = validate_typed_json(d, edef, [], headers)
     if r is not None:
         print(r)
         return False
-    with open(filename, "w") as f:
-        f.write('{\n')
-        tdict = {}
-        write_json_dict(f, d, edef, tdict, headers=headers)
-        f.write(',\n    ":types:": {\n')
-        if edef != {}:
-            f.write('        ":enum:": {\n')
-            write_json_dict(f, edef, {}, {}, [], "            ")
-            f.write('\n        },\n')
-        f.write('        "detType": "CHARSTR",\n')
-        f.write('        "detName": "CHARSTR",\n')
-        f.write('        "detId": "CHARSTR",\n')
-        f.write('        "doc": "CHARSTR",\n')
-        f.write('        "alg": {\n')
-        f.write('            "alg": "CHARSTR",\n')
-        f.write('            "doc": "CHARSTR",\n')
-        f.write('            "version": ["INT32", 3]\n')
-        f.write('        },\n')
-        write_json_dict(f, tdict, {}, {}, [], "        ")
-        f.write('\n    }\n}\n')
-        return True
+    if isinstance(filename_or_fd, str):
+        f = open(filename_or_fd, "w")
+    else:
+        f = filename_or_fd
+    f.write('{\n')
+    tdict = {}
+    write_json_dict(f, d, edef, tdict, headers=headers)
+    f.write(',\n    ":types:": {\n')
+    if edef != {}:
+        f.write('        ":enum:": {\n')
+        write_json_dict(f, edef, {}, {}, [], "            ")
+        f.write('\n        },\n')
+    f.write('        "detType": "CHARSTR",\n')
+    f.write('        "detName": "CHARSTR",\n')
+    f.write('        "detId": "CHARSTR",\n')
+    f.write('        "doc": "CHARSTR",\n')
+    f.write('        "alg": {\n')
+    f.write('            "alg": "CHARSTR",\n')
+    f.write('            "doc": "CHARSTR",\n')
+    f.write('            "version": ["INT32", 3]\n')
+    f.write('        },\n')
+    write_json_dict(f, tdict, {}, {}, [], "        ")
+    f.write('\n    }\n}\n')
+    return True
 
 #
 # Let's try to make creating valid dictionaries easier.  This heart
@@ -693,20 +698,33 @@ class cdict(object):
 #    type dictionary, and the remaining items are the dimensions of the array.
 #
 def getType(typed_json, name):
-    if not isinstance(typed_json, dict) or ':types:' not in typed_json.keys():
+    if not isinstance(typed_json, dict):
         raise TypeError("getType: First argument should be a typed JSON dictionary!")
-    t = typed_json[':types:']
     try:
-        e = t[':enum:']
+        t = typed_json[':types:']
+        try:
+            e = t[':enum:']
+        except:
+            e = {}
     except:
-        e = {}
+        t = None
     v = typed_json
     n = splitname(name)
     for i in n:
         try:
             v = v[i]
-            if not isinstance(i, numbers.Number):
+            if t is None:
+                if ':types:' not in v.keys():
+                    raise TypeError("getType: First argument should be a typed JSON dictionary!")
+                t = v[':types:']
+                try:
+                    e = t[':enum:']
+                except:
+                    e = {}
+            elif not isinstance(i, numbers.Number):
                 t = t[i]
+        except TypeError:
+            raise
         except:
             return None
     if isinstance(t, list):
@@ -728,7 +746,7 @@ def getType(typed_json, name):
 # Get the value from a typed JSON dictionary.
 #
 def getValue(typed_json, name):
-    if not isinstance(typed_json, dict) or ':types:' not in typed_json.keys():
+    if not isinstance(typed_json, dict):
         raise TypeError("getType: First argument should be a typed JSON dictionary!")
     v = typed_json
     n = splitname(name)
@@ -788,13 +806,16 @@ def convertValue(v, t, e={}):
 #     =3 - invalid dictionary
 #
 def updateValue(typed_json, name, value):
-    if not isinstance(typed_json, dict) or ':types:' not in typed_json.keys():
+    if not isinstance(typed_json, dict):
         return 3
-    t = typed_json[':types:']
     try:
-        e = t[':enum:']
+        t = typed_json[':types:']
+        try:
+            e = t[':enum:']
+        except:
+            e = {}
     except:
-        e = {}
+        t = None
     v = typed_json
     n = splitname(name)
     ln = n[-1]
@@ -802,7 +823,15 @@ def updateValue(typed_json, name, value):
     for i in n:
         try:
             v = v[i]
-            if not isinstance(i, numbers.Number):
+            if t is None:
+                if ':types:' not in v.keys():
+                    return 3
+                t = v[':types:']
+                try:
+                    e = t[':enum:']
+                except:
+                    e = {}
+            elif not isinstance(i, numbers.Number):
                 t = t[i]
         except:
             return 1
