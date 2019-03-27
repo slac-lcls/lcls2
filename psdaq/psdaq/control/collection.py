@@ -420,8 +420,7 @@ class CollectionManager():
                         answer = None
                         try:
                             # send error message, if any, to front_pub socket
-                            message = retval['body']['error']
-                            self.front_pub.send_json(self.error_msg(message))
+                            self.report_error(retval['body']['error'])
                         except KeyError:
                             pass
                     else:
@@ -490,9 +489,7 @@ class CollectionManager():
                 else:
                     answer = self.handle_trigger(nextT, stateChange=True)
                     if 'error' in answer['body']:
-                        message = answer['body']['error']
-                        logging.error(message)
-                        self.front_pub.send_json(self.error_msg(message))
+                        self.report_error(answer['body']['error'])
                         break
 
         return answer
@@ -520,9 +517,7 @@ class CollectionManager():
         # make sure all the clients respond to alloc message with their connection info
         ret, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
         if ret:
-            message = '%d client did not respond to alloc' % ret
-            logging.error(message)
-            self.front_pub.send_json(self.error_msg(message))
+            self.report_error('%d client did not respond to alloc' % ret)
             logging.debug('condition_alloc() returning False')
             return False
         for answer in answers:
@@ -566,9 +561,7 @@ class CollectionManager():
 
         ret, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
         if ret:
-            message = '%d client did not respond to connect' % ret
-            logging.error(message)
-            self.front_pub.send_json(self.error_msg(message))
+            self.report_error('%d client did not respond to connect' % ret)
             logging.debug('condition_connect() returning False')
             return False
         else:
@@ -599,10 +592,7 @@ class CollectionManager():
     def handle_selectplatform(self, body):
         logging.debug('handle_selectplatform()')
         if self.state != 'unallocated':
-            message = 'selectPlatform only permitted in unallocated state'
-            logging.error(message)
-            msg = self.error_msg(message)
-            self.front_pub.send_json(msg)
+            self.report_error('selectPlatform only permitted in unallocated state')
             return msg
 
         try:
@@ -658,6 +648,22 @@ class CollectionManager():
                 matches.update(set(item.keys()))
         return matches.intersection(ids)
 
+    def get_alias(self, xid):
+        alias = None
+        for level, item in self.cmstate.items():
+            if xid in item.keys():
+                try:
+                    alias = item[xid]['proc_info']['alias']
+                except KeyError:
+                    pass
+                break
+        return alias
+
+    def report_error(self, msg):
+        logging.error(msg)
+        self.front_pub.send_json(self.error_msg(msg))
+        return
+
     def condition_common(self, transition, timeout):
         retval = True
         ids = copy.copy(self.ids)
@@ -676,9 +682,7 @@ class CollectionManager():
         if ret:
             # Error
             retval = False
-            message = '%d client did not respond to %s' % (ret, transition)
-            logging.error(message)
-            self.front_pub.send_json(self.error_msg(message))
+            self.report_error('%d client did not respond to %s' % (ret, transition))
         else:
             retval = True
             for answer in answers:
@@ -686,9 +690,7 @@ class CollectionManager():
                     for node, err_msg in answer['body']['err_info'].items():
                         # Error
                         retval = False
-                        message = '%s: %s' % (node, err_msg)
-                        logging.error(message)
-                        self.front_pub.send_json(self.error_msg(message))
+                        self.report_error('%s: %s' % (node, err_msg))
                 except KeyError:
                     pass
         return retval
