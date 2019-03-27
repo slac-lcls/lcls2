@@ -21,9 +21,14 @@ import os
 
 @task
 def run_smd0_task(run):
+    global_procs = legion.Tunable.select(legion.Tunable.GLOBAL_PYS).get()
+
     smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
-    for chunk in smdr_man.chunks():
-        run_smd_task(chunk, run)
+    for i, chunk in enumerate(smdr_man.chunks()):
+        point = 0
+        if global_procs > 1:
+            point = i % (global_procs - 1) + 1
+        run_smd_task(chunk, run, point=point)
 
 @task
 def run_smd_task(view, run):
@@ -51,4 +56,4 @@ if legion is not None and not legion.is_script:
     @task(top_level=True)
     def legion_main():
         for run in run_to_process:
-            run_smd0_task(run)
+            run_smd0_task(run, point=0)
