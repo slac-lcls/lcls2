@@ -21,7 +21,8 @@ class DataSourceFactory:
         return DataSourceFactory.factories[id].create(*args, **kwargs)
 
 def DataSource(*args, **kwargs):
-    
+    args = map(str, args) # Hack: workaround for unicode and str being different types in Python 2
+
     assert len(args) > 0
     if args[0] == 'shmem': # shared memory client
         return DataSourceFactory.createDataSource('ShmemDataSource', *args, **kwargs)    
