@@ -342,7 +342,7 @@ def confirm_response(socket, wait_time, msg_id, ids):
             break
     for ii in ids:
         logging.debug('id %s did not respond' % ii)
-    return len(ids), msgs
+    return ids, msgs
 
 
 class CollectionManager():
@@ -515,8 +515,13 @@ class CollectionManager():
         self.back_pub.send_json(msg)
 
         # make sure all the clients respond to alloc message with their connection info
-        ret, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
+        ret = len(retlist)
         if ret:
+            for ii in retlist:
+                alias = self.get_alias(ii)
+                if alias is not None:
+                    self.report_error('%s did not respond to alloc' % alias)
             self.report_error('%d client did not respond to alloc' % ret)
             logging.debug('condition_alloc() returning False')
             return False
@@ -559,8 +564,13 @@ class CollectionManager():
         msg = create_msg('connect', body=self.cmstate)
         self.back_pub.send_json(msg)
 
-        ret, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
+        ret = len(retlist)
         if ret:
+            for ii in retlist:
+                alias = self.get_alias(ii)
+                if alias is not None:
+                    self.report_error('%s did not respond to connect' % alias)
             self.report_error('%d client did not respond to connect' % ret)
             logging.debug('condition_connect() returning False')
             return False
@@ -678,10 +688,15 @@ class CollectionManager():
             return True
 
         # make sure all the clients respond to transition before timeout
-        ret, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
+        ret = len(retlist)
         if ret:
             # Error
             retval = False
+            for ii in retlist:
+                alias = self.get_alias(ii)
+                if alias is not None:
+                    self.report_error('%s did not respond to %s' % (alias, transition))
             self.report_error('%d client did not respond to %s' % (ret, transition))
         else:
             retval = True
