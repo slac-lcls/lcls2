@@ -19,7 +19,8 @@ from psana.psexp.event_manager import EventManager
 import numpy as np
 import os
 
-def run_smd0(run):
+@task
+def run_smd0_task(run):
     smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
     for chunk in smdr_man.chunks():
         run_smd_task(chunk, run)
@@ -42,7 +43,7 @@ def analyze(run, event_fn=None, start_run_fn=None, det=None):
     run.start_run_fn = start_run_fn
     run.det = det
     if legion.is_script:
-        run_smd0(run)
+        run_smd0_task(run)
     else:
         run_to_process.append(run)
 
@@ -50,4 +51,4 @@ if legion is not None and not legion.is_script:
     @task(top_level=True)
     def legion_main():
         for run in run_to_process:
-            run_smd0(run)
+            run_smd0_task(run)
