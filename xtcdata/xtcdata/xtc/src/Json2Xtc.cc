@@ -274,35 +274,35 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
 {
     TypeId tid(TypeId::Parent, 0);
     Xtc *xtc = new (out) Xtc(tid);
-    Document d;
-    d.Parse(in);
-    if (d.HasParseError()) {
+    Document *d = new Document();
+    d->Parse(in);
+    if (d->HasParseError()) {
         printf("Parse error: %s, location %d\n",
-               GetParseError_En(d.GetParseError()), d.GetErrorOffset());
+               GetParseError_En(d->GetParseError()), d->GetErrorOffset());
         return -1;
     }
-    if (!d.IsObject()) {
+    if (!d->IsObject()) {
         printf("Document is not an object!\n");
         return -1;
     }
-    const Value& a = d["alg"];
+    const Value& a = (*d)["alg"];
     const Value& v = a["version"];
     Alg alg = Alg(a["alg"].GetString(), v[0].GetInt(), 
                   v[1].GetInt(), v[2].GetInt());
     // Set alg._doc from a["doc"].GetString()?
-    d.RemoveMember("alg");
-    Names& names = *new(xtc) Names(d["detName"].GetString(), alg,
-                                   d["detType"].GetString(),
-                                   d["detId"].GetString(), namesID, segment);
+    d->RemoveMember("alg");
+    Names& names = *new(xtc) Names((*d)["detName"].GetString(), alg,
+                                   (*d)["detType"].GetString(),
+                                   (*d)["detId"].GetString(), namesID, segment);
     // Set _NameInfo.doc from d["doc"].GetString()?
-    d.RemoveMember("detName");
-    d.RemoveMember("detType");
-    d.RemoveMember("detId");
-    d.RemoveMember("doc");
-    Value &jsv = d[":types:"];
+    d->RemoveMember("detName");
+    d->RemoveMember("detType");
+    d->RemoveMember("detId");
+    d->RemoveMember("doc");
+    Value &jsv = (*d)[":types:"];
     Value json;
     json = jsv;              // This makes d[':types:'] null!!
-    d.RemoveMember(":types:");
+    d->RemoveMember(":types:");
 
     VarDef vars;
     if (json.HasMember(":enum:")) {
@@ -320,14 +320,14 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
             }
         }
     }
-    JsonFindArrayIterator fai = JsonFindArrayIterator(d, json, vars);
+    JsonFindArrayIterator fai = JsonFindArrayIterator(*d, json, vars);
     fai.iterate();
     names.add(*xtc, vars);
     NamesLookup nl;
     nl[namesID] = NameIndex(names);
 
     CreateData cd(*xtc, nl, namesID);
-    JsonCreateDataIterator cdi = JsonCreateDataIterator(d, json, cd);
+    JsonCreateDataIterator cdi = JsonCreateDataIterator(*d, json, cd);
     if (json.HasMember(":enum:")) {
         Value &etypes = json[":enum:"];
         for (Value::MemberIterator itr = etypes.MemberBegin();
