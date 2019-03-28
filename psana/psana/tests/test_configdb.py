@@ -83,23 +83,25 @@ class Test_CONFIGDB:
             c = mdb.cdb
             c.add_alias("BEAM")                 # 0
             c.add_alias("NOBEAM")               # 1
-            c.add_device("evr0")
-            c.add_device("jungfrau0")
+            c.add_device_config("evr")
+            c.add_device_config("jungfrau")
             print("Configs:")
             c.print_configs()
             print("\nDevice configs:")
             c.print_device_configs()
-            print("\nevr0:")
-            c.print_device_configs("evr0")
-            print("\njungfrau0:")
-            c.print_device_configs("jungfrau0")
+            print("\nevr:")
+            c.print_device_configs("evr")
+            print("\njungfrau:")
+            c.print_device_configs("jungfrau")
             e = cdict()
             e.set("a", 32)
             e.set("b", 74)
+            e.setInfo(detType="evr")
             j = cdict()
             j.set("c", 93)
             j.set("d", 67)
             j.set("e", [3, 6.5, 9.4], "DOUBLE")
+            j.setInfo(detType="jungfrau")
             c.modify_device("BEAM", "evr0", e)        # 2
             c.modify_device("BEAM", "jungfrau0", j)   # 3
             with pytest.raises(Exception):
@@ -127,7 +129,6 @@ class Test_CONFIGDB:
             assert [3, 5] == [d['key'] for d in h]
             c2 = cdb.configdb(mdb.server, "SXR", create=True, root=dbname)
             c2.add_alias("FOO")                                       # 0
-            c2.add_device("evr3")
             c2.transfer_config("AMO", "BEAM", "evr0", "FOO", "evr3")  # 1
             with pytest.raises(Exception):
                 c2.transfer_config("AMO", "BEAM", "evr0", "FOO", "evr3")

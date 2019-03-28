@@ -73,17 +73,20 @@ class configdb(object):
             except:
                 pass
 
-    # Return the highest key for the specified alias, or highest + 1 for all aliases
-    # in the hutch if not specified.
+    # Return the highest key for the specified alias, or highest + 1 for all
+    # aliases in the hutch if not specified.
     def get_key(self, alias=None, hutch=None, session=None):
         if hutch is None:
             hutch = self.hutch
         try:
-            if isinstance(alias, str) or (sys.version_info.major == 2 and isinstance(alias, unicode)):
+            if isinstance(alias, str) or (sys.version_info.major == 2 and
+                                          isinstance(alias, unicode)):
                 d = self.cdb[hutch].find({'alias' : alias}, session=session).sort('key', DESCENDING).limit(1)[0]
                 return d['key']
             else:
-                d = self.cdb.counters.find_one_and_update({'hutch': hutch}, {'$inc': {'seq': 1}}, session=session,
+                d = self.cdb.counters.find_one_and_update({'hutch': hutch},
+                                                          {'$inc': {'seq': 1}},
+                                                          session=session,
                                                           return_document=ReturnDocument.AFTER)
                 return d['seq']
         except:
@@ -104,15 +107,16 @@ class configdb(object):
     def add_alias(self, alias):
         if True:
                 session = None
-                if self.hutch_coll.find_one({'alias': alias}, session=session) is None:
+                if self.hutch_coll.find_one({'alias': alias},
+                                            session=session) is None:
                     kn = self.get_key(session=session)
-                    self.hutch_coll.insert_one({"date": datetime.datetime.utcnow(),
-                                           "alias": alias, "key": kn,
-                                           "devices": []},
-                                          session=session)
+                    self.hutch_coll.insert_one({
+                        "date": datetime.datetime.utcnow(),
+                        "alias": alias, "key": kn,
+                        "devices": []}, session=session)
 
     # Create a new device_configuration if it doesn't already exist!
-    def add_device(self, cfg, session=None):
+    def add_device_config(self, cfg, session=None):
         # Validate name?
         if self.cdb[cfg].count_documents({}) != 0:
             return
@@ -120,16 +124,15 @@ class configdb(object):
             self.cdb.create_collection(cfg)
         except:
             pass
-        self.cdb[cfg].insert_one({'config': {}}, session=session)   # Make an empty config!
+        self.cdb[cfg].insert_one({'config': {}}, session=session)
         self.cfg_coll.insert_one({'collection': cfg}, session=session)
-
-    add_device_config = add_device
 
     # Save a device configuration and return an object ID.  Try to find it if 
     # it already exists! Value should be a typed json dictionary.
     def save_device_config(self, cfg, value, session=None):
         if self.cdb[cfg].count_documents({}, session=session) == 0:
-            raise NameError("save_device_config: No device configuration %s" % name)
+            raise NameError("save_device_config: No device configuration %s" 
+                            % name)
         try:
             d = self.cdb[cfg].find_one({'config': value}, session=session)
             return d['_id']
@@ -152,24 +155,30 @@ class configdb(object):
             hc = self.cdb[hutch]
         c = self.get_current(alias, hutch)
         if c is None:
-            raise NameError("modify_device: %s is not a configuration name!" % alias)
+            raise NameError("modify_device: %s is not a configuration name!"
+                            % alias)
         if isinstance(value, cdict):
             value = value.typed_json()
         if not isinstance(value, dict):
             raise TypeError("modify_device: value is not a dictionary!")
+        if not "detType" in value.keys():
+            raise ValueError("modify_device: value has no detType set!")
         if True:
                 session = None
-                cfg = self.save_device_config(device, value, session)
+                collection = value["detType"]
+                cfg = {'_id': self.save_device_config(collection, 
+                                                      value, session),
+                       'collection': collection}
                 del c['_id']
                 for l in c['devices']:
                     if l['device'] == device:
-                        if l['config'] == cfg:
+                        if l['configs'] == [cfg]:
                             raise ValueError("modify_device: No change!")
                         c['devices'].remove(l)
                         break
                 kn = self.get_key(session=session, hutch=hutch)
                 c['key'] = kn
-                c['devices'].append({'device': device, 'config': cfg})
+                c['devices'].append({'device': device, 'configs': [cfg]})
                 c['devices'].sort(key=lambda x: x['device'])
                 c['date'] = datetime.datetime.utcnow()
                 hc.insert_one(c, session=session)
@@ -190,19 +199,21 @@ class configdb(object):
                 return None
         else:
             key = key_or_alias
-        try:
+        #try:
+        if True:
             c = hc.find_one({"key": key})
             cfg = None
             for l in c["devices"]:
                 if l['device'] == device:
-                    cfg = l['config']
+                    cfg = l['configs']
                     break
             if cfg is None:
                 raise ValueError("get_configuration: No device %s!" % device)
-            r = self.cdb[device].find_one({"_id" : cfg})
+            cname = cfg[0]['collection']
+            r = self.cdb[cname].find_one({"_id" : cfg[0]['_id']})
             return r['config']
-        except:
-            return None
+        #except:
+        #    return None
 
     # Return a list of all hutches.
     def get_hutches(self):
@@ -214,7 +225,8 @@ class configdb(object):
             hc = self.hutch_coll
         else:
             hc = self.cdb[hutch]
-        return [v['_id'] for  v in hc.aggregate([{"$group": {"_id" : "$alias"}}])] 
+        return [v['_id'] for  v in hc.aggregate([{"$group": 
+                                                  {"_id" : "$alias"}}])] 
 
     # Return a list of all device configurations.
     def get_device_configs(self):
@@ -226,7 +238,8 @@ class configdb(object):
             hc = self.hutch_coll
         else:
             hc = self.cdb[hutch]
-        if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and isinstance(key_or_alias, unicode)):
+        if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and
+                                             isinstance(key_or_alias, unicode)):
             key = self.get_key(key_or_alias, hutch)
             if key is None:
                 return None
@@ -244,34 +257,37 @@ class configdb(object):
         for v in hc.find():
             print(v)
 
-    # Print all of the device configurations, or all of the configurations for a specified device.
+    # Print all of the device configurations, or all of the configurations 
+    # for a specified device.
     def print_device_configs(self, name="device_configurations"):
         for v in self.cdb[name].find():
             print(v)
 
-    # Transfer a configuration from another hutch to the current hutch, returning the new key.
-    def transfer_config(self, oldhutch, oldalias, olddevice, newalias, newdevice):
+    # Transfer a configuration from another hutch to the current hutch,
+    # returning the new key.
+    def transfer_config(self, oldhutch, oldalias, olddevice, newalias,
+                        newdevice):
         k = self.get_key(oldalias, oldhutch)
         pipeline = [
             {"$unwind": "$devices"},
             {"$match": {'key': k, 'devices.device': olddevice}}
         ]
-        cfg = next(self.cdb[oldhutch].aggregate(pipeline))['devices']['config']
-        r = self.cdb[olddevice].find_one({'_id': cfg})
+        cfg = next(self.cdb[oldhutch].aggregate(pipeline))['devices']['configs']
         cnew = self.get_current(newalias)
         if True:
                 session = None
-                cfg = self.save_device_config(newdevice, r['config'], session)
                 kn = self.get_key(session=session)
                 cnew['key'] = kn
                 del cnew['_id']
                 for l in cnew['devices']:
                     if l['device'] == newdevice:
-                        if l['config'] == cfg:
+                        if l['configs'][0]['collection'] != cfg[0]['collection']:
+                            raise ValueError("transfer_config: Different collections!")
+                        if l['configs'] == cfgs:
                             raise ValueError("transfer_config: No change!")
                         cnew['devices'].remove(l)
                         break
-                cnew['devices'].append({'device': newdevice, 'config': cfg})
+                cnew['devices'].append({'device': newdevice, 'configs': cfg})
                 cnew['devices'].sort(key=lambda x: x['device'])
                 cnew['date'] = datetime.datetime.utcnow()
                 self.hutch_coll.insert_one(cnew, session=session)
@@ -293,7 +309,8 @@ class configdb(object):
         l = []
         for c in list(hc.aggregate(pipeline)):
             d = {'date': c['date'], 'key': c['key']}
-            r = self.cdb[device].find_one({"_id" : c['devices']['config']})
+            cfg = c['devices']['configs'][0]
+            r = self.cdb[cfg['collection']].find_one({"_id" : cfg["_id"]})
             cl = cdict(r['config'])
             for p in plist:
                 d[p] = cl.get(p)
