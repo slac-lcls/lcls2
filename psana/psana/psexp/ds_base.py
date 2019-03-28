@@ -1,9 +1,6 @@
 import weakref
 import os, glob
 
-def identify_fuzzy_files(xtc_dir):
-    pass
-
 class DataSourceBase(object):
     filter = 0
     batch_size = 1

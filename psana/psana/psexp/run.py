@@ -103,10 +103,11 @@ class Run(object):
         # can be looked-up when evt is given (e.g. det(evt) returns value of
         # the given epics keyword.
         if not flag_found:
-            if name in self.epics_store.keys:
+            alg = self.epics_store.alg_from_variable(name)
+            if alg:
                 det_name = 'xppepics'
-                drp_class_name = 'fuzzy'
-                drp_class = self.epics_dm.det_class_table[(det_name, drp_class_name)] # FIXME: mona right now just use fixed det_name and drp_class_name for any fuzzy data
+                drp_class_name = alg
+                drp_class = self.epics_dm.det_class_table[(det_name, drp_class_name)]
                 det = drp_class(name, drp_class_name, self.configs, self.calibs, self.epics_store)
 
         return det
@@ -329,11 +330,14 @@ class RunLegion(Run):
         """ Parallel read using Legion """
         super(RunLegion, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
                 batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
-        xtc_files, smd_files, epics_file = run_src
+        xtc_files, smd_files, other_files = run_src
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
         self.smd_configs = self.smd_dm.configs
+        self.epics_dm = DgramManager(other_files, pulse_id=0xffff)
+        self.epics_reader = EpicsReader(self.epics_dm.fds)
+        self.epics_store = EpicsStore(self.epics_dm.configs)
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)
