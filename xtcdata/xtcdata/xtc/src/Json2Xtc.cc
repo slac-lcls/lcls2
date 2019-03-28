@@ -279,10 +279,12 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
     if (d->HasParseError()) {
         printf("Parse error: %s, location %d\n",
                GetParseError_En(d->GetParseError()), d->GetErrorOffset());
+        delete d;
         return -1;
     }
     if (!d->IsObject()) {
         printf("Document is not an object!\n");
+        delete d;
         return -1;
     }
     const Value& a = (*d)["alg"];
@@ -343,7 +345,7 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
         }
     }
     cdi.iterate();
-
+    delete d;
     return xtc->extent;
 }
 
