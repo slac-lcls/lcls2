@@ -24,3 +24,11 @@ script:
       export CXX=g++
     fi
   - docker run -v $PWD:/build -e CONDA_ENV -e CC -e CXX -ti $IMAGE bash -l /build/run_travis.sh
+
+notifications:
+  email:
+    recipients:
+      - cpo@slac.stanford.edu
+      - weninc@slac.stanford.edu
+    on_success: never # default: change
+    on_failure: always # default: always
