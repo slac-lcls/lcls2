@@ -112,7 +112,7 @@ class configdb(object):
                                           session=session)
 
     # Create a new device_configuration if it doesn't already exist!
-    def add_device_config(self, cfg, session=None):
+    def add_device(self, cfg, session=None):
         # Validate name?
         if self.cdb[cfg].count_documents({}) != 0:
             return
@@ -122,6 +122,8 @@ class configdb(object):
             pass
         self.cdb[cfg].insert_one({'config': {}}, session=session)   # Make an empty config!
         self.cfg_coll.insert_one({'collection': cfg}, session=session)
+
+    add_device_config = add_device
 
     # Save a device configuration and return an object ID.  Try to find it if 
     # it already exists! Value should be a typed json dictionary.
@@ -139,12 +141,11 @@ class configdb(object):
         except:
             return None
 
-    # Modify the current configuration for a specific device, adding it if necessary.
-    # name is the device and value is a dictionary for the configuration.  Top level
-    # keys must be device configuration names and the values should be typed json
-    # dictionaries.  Return the new configuration key if successful and raise an error
-    # if we fail.
-    def modify_device(self, alias, device, value, hutch=None, collection=None):
+    # Modify the current configuration for a specific device, adding it if
+    # necessary.  name is the device and value is a json dictionary for the 
+    # configuration.  Return the new configuration key if successful and 
+    # raise an error if we fail.
+    def modify_device(self, alias, device, value, hutch=None):
         if hutch is None:
             hc = self.hutch_coll
         else:
@@ -158,25 +159,17 @@ class configdb(object):
             raise TypeError("modify_device: value is not a dictionary!")
         if True:
                 session = None
-                if collection is None:
-                    collection = next(iter(value))
-                    if len(value.keys()) != 1:
-                        print("modify_device: WARNING - dictionary has more than one collection name, using %s" % collection)
-                    value = value[collection]
-                    if isinstance(value, cdict):
-                        value = value.typed_json()
-                cfg = {'_id': self.save_device_config(collection, value, session),
-                       'collection': collection}
+                cfg = self.save_device_config(device, value, session)
                 del c['_id']
                 for l in c['devices']:
                     if l['device'] == device:
-                        if l['configs'] == [cfg]:
+                        if l['config'] == cfg:
                             raise ValueError("modify_device: No change!")
                         c['devices'].remove(l)
                         break
                 kn = self.get_key(session=session, hutch=hutch)
                 c['key'] = kn
-                c['devices'].append({'device': device, 'configs': [cfg]})
+                c['devices'].append({'device': device, 'config': cfg})
                 c['devices'].sort(key=lambda x: x['device'])
                 c['date'] = datetime.datetime.utcnow()
                 hc.insert_one(c, session=session)
@@ -202,13 +195,12 @@ class configdb(object):
             cfg = None
             for l in c["devices"]:
                 if l['device'] == device:
-                    cfg = l['configs']
+                    cfg = l['config']
                     break
             if cfg is None:
                 raise ValueError("get_configuration: No device %s!" % device)
-            cname = cfg[0]['collection']
-            r = self.cdb[cname].find_one({"_id" : cfg[0]['_id']})
-            return {cname: r['config']}
+            r = self.cdb[device].find_one({"_id" : cfg})
+            return r['config']
         except:
             return None
 
@@ -264,20 +256,22 @@ class configdb(object):
             {"$unwind": "$devices"},
             {"$match": {'key': k, 'devices.device': olddevice}}
         ]
-        cfgs = next(self.cdb[oldhutch].aggregate(pipeline))['devices']['configs']
+        cfg = next(self.cdb[oldhutch].aggregate(pipeline))['devices']['config']
+        r = self.cdb[olddevice].find_one({'_id': cfg})
         cnew = self.get_current(newalias)
         if True:
                 session = None
+                cfg = self.save_device_config(newdevice, r['config'], session)
                 kn = self.get_key(session=session)
                 cnew['key'] = kn
                 del cnew['_id']
                 for l in cnew['devices']:
                     if l['device'] == newdevice:
-                        if l['configs'] == cfgs:
+                        if l['config'] == cfg:
                             raise ValueError("transfer_config: No change!")
                         cnew['devices'].remove(l)
                         break
-                cnew['devices'].append({'device': newdevice, 'configs': cfgs})
+                cnew['devices'].append({'device': newdevice, 'config': cfg})
                 cnew['devices'].sort(key=lambda x: x['device'])
                 cnew['date'] = datetime.datetime.utcnow()
                 self.hutch_coll.insert_one(cnew, session=session)
@@ -297,23 +291,11 @@ class configdb(object):
             {"$sort":  {'key': ASCENDING}}
         ]
         l = []
-        pl = []
-        for p in plist:
-            m = re.search('^([^.]*)[.](.*)$', p)
-            if m:
-                pl.append((m.group(1), m.group(2)))
-            else:
-                raise ValueError("%s is not a dot-separated name!" % p)
-        dc = set([x[0] for x in pl])
         for c in list(hc.aggregate(pipeline)):
             d = {'date': c['date'], 'key': c['key']}
-            for o in c['devices']['configs']:
-                cname = o['collection']
-                if cname in dc:
-                    r = self.cdb[cname].find_one({"_id" : o['_id']})
-                    cl = cdict(r['config'])
-                    for p in pl:
-                        if cname == p[0]:
-                            d[p[0]+"."+p[1]] = cl.get(p[1])
+            r = self.cdb[device].find_one({"_id" : c['devices']['config']})
+            cl = cdict(r['config'])
+            for p in plist:
+                d[p] = cl.get(p)
             l.append(d)
         return l
