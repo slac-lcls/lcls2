@@ -32,7 +32,7 @@ class CGWPartitionDisplay(QWList) :
 
     def fill_list_model(self, **kwargs):
         self.clear_model()
-        listio = kwargs.get('listio', [])
+        listio = ['proc/pid/host                     alias',''] + kwargs.get('listio', [])
         for rec in listio:
             item = QStandardItem(rec)
             #item.setIcon(icon.icon_table)

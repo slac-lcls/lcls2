@@ -12,8 +12,6 @@ Usage::
     style1 = style.styleEditBad
     style2 = style.styleButtonGood
 
-    from psana.graphqt.Frame import Frame
-
 See:
     - :py:class:`Styles`
     - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.

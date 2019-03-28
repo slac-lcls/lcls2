@@ -15,7 +15,7 @@ Usage ::
 See:
     - :class:`CGWMain`
     - :class:`CGWMainPartition`
-    - `graphqt documentation <https://lcls-psana.github.io/graphqt/py-modindex.html>`_.
+    - `lcls2 on github <https://github.com/slac-lcls/lcls2/psdaq/psdaq/control_gui>`_.
 
 Created on 2019-01-25 by Mikhail Dubrovin
 """
@@ -35,17 +35,12 @@ from time import time
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt#, QPoint
 
-#from PyQt5.QtGui import QPen, QBrush
-#from psdaq.control_gui.CGWMainPartition import CGWMainPartition
-
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
 from psdaq.control_gui.CGWMainPartition     import CGWMainPartition
 from psdaq.control_gui.CGWMainControl       import CGWMainControl
-#====from psdaq.control_gui.CGWMainDetector      import CGWMainDetector
 from psdaq.control_gui.CGWMainRunStatistics import CGWMainRunStatistics
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
-
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
 
 #------------------------------
@@ -54,7 +49,7 @@ class CGWMain(QWZMQListener) :
 
     _name = 'CGWMain'
 
-    def __init__(self, parser=None) : # **dict_opts) :
+    def __init__(self, parser=None) :
 
         self.proc_parser(parser)
         daq_control.set_daq_control(DaqControl(host=self.host, platform=self.platform, timeout=self.timeout))
@@ -63,9 +58,10 @@ class CGWMain(QWZMQListener) :
 
         QWZMQListener.__init__(self, host=self.host, platform=self.platform, timeout=self.timeout)
  
-
-        #QWidget.__init__(self, parent=None)
-        #self._name = self.__class__.__name__
+        #instrument = self.expname[:3].upper()
+        instrument = daq_control().getInstrument()
+        logger.debug('daq_control().getInstrument(): %s' % instrument)
+        self.inst = 'TMO' if instrument in ('TST', None) else instrument
 
         #cp.cmwmain = self
 
@@ -81,7 +77,7 @@ class CGWMain(QWZMQListener) :
         #self.wtab = CGWMainTabs()
         #self.wlog = QWLogger(log, cp, show_buttons=False)
         #self.wlog = QWLoggerStd(cp, show_buttons=False)
-        self.wconf = CGWMainConfiguration()
+        self.wconf = CGWMainConfiguration(parent_ctrl=self)
         self.wpart = CGWMainPartition()
         self.wctrl = CGWMainControl(parent_ctrl=self)
         #====self.wdetr = CGWMainDetector(parent_ctrl=self)
@@ -150,7 +146,7 @@ class CGWMain(QWZMQListener) :
         self.platform   = popts.platform
         self.timeout    = popts.timeout
         self.expname    = popts.expname
-        self.instrument = self.expname[:3].upper()
+        self.uris       = popts.uris  # 'mcbrowne:psana@psdb-dev:9306'
 
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
@@ -261,7 +257,6 @@ class CGWMain(QWZMQListener) :
         #logger.info('CGWMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
         #self.wimg.move(self.pos() + QPoint(self.width()+5, 0))
         pass
-
 
  
     def on_save(self):
@@ -374,7 +369,6 @@ class CGWMain(QWZMQListener) :
             self.wtab.view_hide_tabs()
         else :
             logger.info(self.key_usage())
-
 
 #------------------------------
 

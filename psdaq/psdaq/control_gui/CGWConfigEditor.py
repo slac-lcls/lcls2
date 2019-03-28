@@ -23,15 +23,12 @@ Created on 2019-03-08 by Mikhail Dubrovin
 
 import logging
 logger = logging.getLogger(__name__)
+
 from PyQt5.QtWidgets import QTabBar
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QFileDialog, QComboBox
-# , QWidget, QLabel, QLineEdit, QGroupBox
-#from PyQt5.QtCore import pyqtSignal #, Qt, QRectF, QPointF, QTimer
 
 from psdaq.control_gui.CGWConfigEditorTree import CGWConfigEditorTree
 from psdaq.control_gui.CGWConfigEditorText import CGWConfigEditorText
-#from psdaq.control_gui.CGWConfigEditorList import CGWConfigEditorList
-
 from psdaq.control_gui.Utils import save_textfile, path_to_test_data
 from psdaq.control_gui.CGJsonUtils import load_json_from_file, str_json, json_from_str
 
@@ -46,7 +43,7 @@ char_shrink  = u' \u25B2' # solid up-head triangle
 class CGWConfigEditor(QWidget) :
     """
     """
-    def __init__(self, parent=None, parent_ctrl=None):
+    def __init__(self, parent=None, parent_ctrl=None, dictj=None):
 
         #QGroupBox.__init__(self, 'Partition', parent)
         QWidget.__init__(self, parent)
@@ -56,11 +53,12 @@ class CGWConfigEditor(QWidget) :
         self.ifname_json = '%s/json2xtc_test.json' % path_to_test_data() # input file
         self.ofname_json = './test.json' # output file
 
-        self.dictj = None
-        self.load_dict() # fills self.dictj
+        self.dictj = dictj
+        if dictj is None : self.load_dict() # fills self.dictj
 
         self.but_load = QPushButton('Load')
         self.but_save = QPushButton('Save')
+        self.but_apply= QPushButton('Apply')
         self.but_expn = QPushButton('Expand %s'%char_expand)
         self.box_type = QComboBox(self)
 
@@ -71,6 +69,7 @@ class CGWConfigEditor(QWidget) :
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.but_load)
         self.hbox.addWidget(self.but_save)
+        self.hbox.addWidget(self.but_apply)
         self.hbox.addWidget(self.but_expn)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.box_type)
@@ -86,6 +85,7 @@ class CGWConfigEditor(QWidget) :
         self.but_load.clicked.connect(self.on_but_load)
         self.but_save.clicked.connect(self.on_but_save)
         self.but_expn.clicked.connect(self.on_but_expn)
+        self.but_apply.clicked.connect(self.on_but_apply)
         self.box_type.currentIndexChanged[int].connect(self.on_box_type)
 
 #--------------------
@@ -96,21 +96,17 @@ class CGWConfigEditor(QWidget) :
         self.but_expn.setToolTip('Expand/Collapse tree-like content')
         self.but_save.setToolTip('Save content in file')
         self.but_load.setToolTip('Load content from file')
+        self.but_apply.setToolTip('Apply content changes to configuration DB')
 
 #--------------------
 
     def set_style(self) :
         from psdaq.control_gui.Styles import style
-        #self.grb_read_nodes.setStyleSheet(style.qgrbox_title)
-        #self.grb_proc_nodes.setStyleSheet(style.qgrbox_title)
-        #self.grb_bld       .setStyleSheet(style.qgrbox_title)
-        #self.grb_camera_ioc.setStyleSheet(style.qgrbox_title)
-
         self.setWindowTitle('Configuration Editor')
         self.setMinimumSize(400,800)
         self.layout().setContentsMargins(0,0,0,0)
   
-        #self.but_save.setStyleSheet(style.styleButton) 
+        self.but_apply.setStyleSheet(style.styleButtonGood) 
         #self.but_save.setVisible(True)
  
         #self.setMinimumWidth(300)
@@ -135,7 +131,7 @@ class CGWConfigEditor(QWidget) :
         logger.info('CGWConfigEditor: load json from %s' % ifname)
         self.dictj = dj = load_json_from_file(ifname)
         sj = str_json(dj)
-        logger.info('CGWConfigEditor: dict of json as str:\n%s' % sj)
+        logger.debug('CGWConfigEditor: dict of json as str:\n%s\nconfiguration object type: %s' % (sj, type(dj)))
 
 #--------------------
  
@@ -185,12 +181,32 @@ class CGWConfigEditor(QWidget) :
         return True
 
 #--------------------
+
+    def get_content(self):
+        self.dictj = self.wedi.get_content()
+        return self.dictj
+
+#--------------------
  
     def save_dict_in_file(self):
         logger.info('save_dict_in_file %s' % self.ofname_json)
-        dj = self.wedi.get_content()
+        dj = self.get_content()
         sj = str_json(dj)
         save_textfile(sj, self.ofname_json, mode='w', verb=True)
+
+#--------------------
+ 
+    def on_but_apply(self):
+        logger.debug('on_but_apply')
+        dj = self.get_content()
+        sj = str_json(dj)
+        logger.info('on_but_apply jason/dict:\n%s' % sj)
+
+        if self.parent_ctrl is None :
+            logger.warning("parent (ctrl) is None - changes can't be applied to DB")
+            return
+        else :
+            self.parent_ctrl.save_dictj_in_db(dj, msg='CGWConfigEditor: ')
 
 #--------------------
  
@@ -199,6 +215,7 @@ class CGWConfigEditor(QWidget) :
         logger.info('CGWConfigEditor set editor type %s' % type)
 
         if self.wedi is not None :
+           self.vbox.removeWidget(self.wedi)
            self.wedi.close()
            del self.wedi
 
@@ -215,13 +232,14 @@ class CGWConfigEditor(QWidget) :
         """
         logger.info('Set document browser in mode %s' % edi_type)
 
-        self.but_expn.setVisible(edi_type=='Tree')
-        
+        is_tree_editor = edi_type=='Tree'
+        self.but_expn.setVisible(is_tree_editor)
+        if is_tree_editor : self.but_expn.setText('Expand %s'%char_expand)
+
         kwargs = {'parent':None, 'parent_ctrl':self, 'dictj':self.dictj}
 
         if   edi_type == EDITOR_TYPES[0] : return CGWConfigEditorText(**kwargs)
         elif edi_type == EDITOR_TYPES[1] : return CGWConfigEditorTree(**kwargs)
-        #elif edi_type == EDITOR_TYPES[2] : return CGWConfigEditorList(**kwargs)
         else :
             logger.warning('Unknown editor type "%s"' % edi_type)
             return QTextEdit(edi_type)
@@ -248,11 +266,11 @@ class CGWConfigEditor(QWidget) :
 if __name__ == "__main__" :
 
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
+
     import sys
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
     w = CGWConfigEditor(None)
-    #w.connect_path_is_changed_to_recipient(w.test_signal_reception)
     w.show()
     app.exec_()
 

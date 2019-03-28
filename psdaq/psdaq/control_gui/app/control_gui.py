@@ -52,7 +52,8 @@ def input_option_parser() :
     d_timeout    = 10000 # ms
     d_loglevel   = 'DEBUG'
     d_logdir     = None # '.' or './cm-logger' etc.
-    d_expname    = 'tmo' # 'cxi12345'
+    d_expname    = 'tmo12345'
+    d_uris       = 'mcbrowne:psana@psdb-dev:9306'
 
     h_platform   = 'platform in range [0,7], default = %s' % d_platform
     h_host       = 'control host, default = %s' % d_host
@@ -60,6 +61,7 @@ def input_option_parser() :
     h_loglevel   = 'logging level from list (%s), default = %s' % (LEVEL_NAMES, d_loglevel)
     h_logdir     = 'logger directory, default = %s' % d_logdir
     h_expname    = 'experiment name, default = %s' % d_expname
+    h_uris       = 'configuration DB URI suffix, default = %s' % d_uris
 
     parser = OptionParser(description='DAQ Control GUI', usage=usage())
 
@@ -69,10 +71,7 @@ def input_option_parser() :
     parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
     parser.add_option('-L', '--logdir',     default=d_logdir,     action='store', type='string', help=h_logdir)
     parser.add_option('-e', '--expname',    default=d_expname,    action='store', type='string', help=h_expname)
-    #parser.add_option('--port',             default=d_port,       action='store', type='string', help=h_port)
-    #parser.add_option('-u', '--user',       default=d_user,       action='store', type='string', help=h_user)
-    #parser.add_option('-p', '--upwd',       default=d_upwd,       action='store', type='string', help=h_upwd)
-    #parser.add_option('-d', '--detector',   default=d_detector,   action='store', type='string', help=h_detector)
+    parser.add_option('-u', '--uris',       default=d_uris,       action='store', type='string', help=h_uris)
     #parser.add_option('-v', '--verbose',    default=d_verbose,    action='store_false',          help=h_verbose)
 
     return parser

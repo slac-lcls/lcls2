@@ -122,9 +122,9 @@ class CGWConfigEditorText(QWidget) :
 
 #--------------------
 
-#    def closeEvent(self, e):
-#        logger.debug('closeEvent')
-#        #self.parent_ctrl.w_display = None
+    def closeEvent(self, e):
+        logger.debug('CGWConfigEditorText.closeEvent')
+        QWidget.closeEvent(self, e)
 
 #--------------------
 

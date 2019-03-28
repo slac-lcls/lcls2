@@ -24,23 +24,12 @@ Created on 2019-03-14 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-#from psana.graphqt.QWTree import QWTree, QStandardItemModel, QStandardItem, Qt, QModelIndex
 from psdaq.control_gui.QWTree import QWTree, QStandardItemModel, QStandardItem, Qt, QModelIndex
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.QWPopupEditText import QWPopupEditText, QDialog
 
-
-updateValue = None
-
-from psalg.configdb.typed_json import updateValue, getType #, getValue, 
-
-#try    : from psalg.configdb.typed_json import updateValue # getType, getValue, 
-#except : 
-#    msg = "!!!!! WARNING: can't import updateValue because of problem with psana.psana.__init__.py"
-#    print(msg)
-#    logger.warning(msg)
-
-#from psalg.configdb.typed_json import getType
+#updateValue = None
+from psalg.configdb.typed_json import updateValue, getType #, getValue
 
 #--------------------
 
@@ -98,12 +87,27 @@ class CGWConfigEditorTree(QWTree) :
 
 #--------------------
 
-    def data_type(self, item):
+    def str_object_type(self, o) :
+        return 'str'   if isinstance(o, str) else\
+               'int'  if isinstance(o, int) else\
+               'float'  if isinstance(o, float) else\
+              ('list [%s, %d]' % (self.str_object_type(o[0]), len(o))) if isinstance(o, list) else\
+               str(type(o))
+
+#--------------------
+
+    def data_type(self, item, o):
         if item is None : return None
         path = path_to_item(item)
         if path is None : return None
-        dtype = getType(self.dictj, path)
-        #print('XXXXXX path: %s dtype: %s' % (path, str(dtype)))
+
+        dtype = None
+        try    : dtype = getType(self.dictj, path)
+        except : pass; # logger.warning("getType can't retreive dtype for path: %s" % path)
+
+        #if dtype is None : 
+        dtype = '%s py-type:%s' % (str(dtype), self.str_object_type(o))
+
         return dtype
 
 #--------------------
@@ -126,10 +130,10 @@ class CGWConfigEditorTree(QWTree) :
 
     def tree_model_from_dict(self, o, parent_item):
         """Recursive (json) dictionary conversion to the model tree.
-           - setText - show keywords from dict to display in the tree model
-           - setAccessibleText - processing specific comments
+           presentation convention:
+           - setText           - text displaied in the tree model
+           - setAccessibleText - bare text from fields in dictj
            - setAccessibleDescription - preserves internal data types: dict, list, data
-
         """
         if isinstance(o, dict) :
             parent_item.setAccessibleText(parent_item.text())
@@ -172,7 +176,7 @@ class CGWConfigEditorTree(QWTree) :
                 self.set_item_for_list(item, o)
 
                 item.setAccessibleDescription(cmt)
-                dtype = self.data_type(parent_item)
+                dtype = self.data_type(parent_item, o)
                 item.setToolTip('%s path: [%s] dtype: %s'% (cmt,path,str(dtype)))
                 #item.setIcon(icon.icon_table)
                 item.setCheckable(True) 
@@ -188,7 +192,7 @@ class CGWConfigEditorTree(QWTree) :
                 item = QStandardItem('%s' % str(o))
                 item.setAccessibleText(str(o))
                 item.setAccessibleDescription('data')
-                dtype = self.data_type(parent_item)
+                dtype = self.data_type(parent_item, o)
                 item.setToolTip('data path: [%s] dtype: %s'%(path, str(dtype)))
                 #item.setToolTip('data path [%s]'%(path))
                 #item.setIcon(icon.icon_table)
@@ -271,14 +275,22 @@ class CGWConfigEditorTree(QWTree) :
 
         else : # process data field
             path = path_to_item(item.parent())
-            val_item = item.accessibleText()
+
+            is_trim = item.accessibleDescription()[:4] == 'trim'
+            val_item = item.accessibleText() if is_trim else item.text()
+
             #val_type = getType(self.dictj, path)
             #val_dict = getValue(self.dictj, path)
             #print('%s  ==== path: %s  type: %s  dict value: %s  item value: %s'%\
             #      (gap, path, str(val_type), str(val_dict), str(val_item)))
 
             if updateValue is not None :
-               updateValue(self.dictj, path, str(val_item))
+               status = updateValue(self.dictj, path, str(val_item))
+               if status :
+                   logger.warning('CGWConfigEditorTree.updateValue path:[%s] new value: %s bad status: %d' % (path, str(val_item), status))
+
+            else :
+               logger.warning("CGWConfigEditorTree.updateValue is None, dictj can't be updated")
 
 #--------------------
 
@@ -311,9 +323,9 @@ class CGWConfigEditorTree(QWTree) :
 
 #--------------------
 
-#    def closeEvent(self, e):
-#        logger.debug('closeEvent')
-#        #self.parent_ctrl.w_display = None
+    def closeEvent(self, e):
+        logger.debug('CGWConfigEditorTree.closeEvent')
+        QWTree.closeEvent(self, e)
 
 #--------------------
 
