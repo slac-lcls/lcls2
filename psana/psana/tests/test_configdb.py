@@ -84,49 +84,48 @@ class Test_CONFIGDB:
             c.add_alias("BEAM")                 # 0
             c.add_alias("NOBEAM")               # 1
             c.add_device_config("evr")
-            c.add_device_config("evrIO")
+            c.add_device_config("jungfrau")
             print("Configs:")
             c.print_configs()
             print("\nDevice configs:")
             c.print_device_configs()
             print("\nevr:")
             c.print_device_configs("evr")
-            print("\nevrIO:")
-            c.print_device_configs("evrIO")
-            d = {}
+            print("\njungfrau:")
+            c.print_device_configs("jungfrau")
             e = cdict()
             e.set("a", 32)
             e.set("b", 74)
-            d["evr"] = e
-            e = cdict()
-            e.set("c", 93)
-            e.set("d", 67)
-            e.set("e", [3, 6.5, 9.4], "DOUBLE")
-            d["evrIO"] = e
-            c.modify_device("BEAM", "evr0", d)   # 2
+            j = cdict()
+            j.set("c", 93)
+            j.set("d", 67)
+            j.set("e", [3, 6.5, 9.4], "DOUBLE")
+            c.modify_device("BEAM", "evr0", e, collection="evr")             # 2
+            c.modify_device("BEAM", "jungfrau0", j, collection="jungfrau")   # 3
             with pytest.raises(Exception):
-                c.modify_device("BEAM", "evr0", d)
-            d["evrIO"].set("c", 103)
-            c.modify_device("NOBEAM", "evr0", d) # 3
-            ans_key     = {'BEAM': 2, 'NOBEAM': 3}
-            ans_evrIO_c = {'BEAM': 93, 'NOBEAM': 103}
+                c.modify_device("BEAM", "evr0", e, collection="evr")
+            j.set("c", 103)
+            jd = {"jungfrau": j}
+            c.modify_device("NOBEAM", "jungfrau0", jd) # 4
+            ans_key        = {'BEAM': 3,  'NOBEAM': 4}
+            ans_jungfrau_c = {'BEAM': 93, 'NOBEAM': 103}
             print("Configs:")
             c.print_configs()
             for a in c.get_aliases():
                 k = c.get_key(a)
                 assert k == ans_key[a]
-                print("\n%s: get_config(%d, evr0):" % (a, k))
-                cfg = c.get_configuration(k, "evr0")
+                print("\n%s: get_config(%d, jungfrau0):" % (a, k))
+                cfg = c.get_configuration(k, "jungfrau0")
                 pprint.pprint(cfg)
-                assert cfg['evrIO']['c'] == ans_evrIO_c[a]
-            d["evrIO"].set("d", 73)
-            c.modify_device("BEAM", "evr0", d)   # 4
-            pprint.pprint(c.get_configuration("BEAM", "evr0"))
-            h = c.get_history("BEAM", "evr0", ["evr.a", "evrIO.d", "evrIO.e"])
+                assert cfg['jungfrau']['c'] == ans_jungfrau_c[a]
+            j.set("d", 73)
+            c.modify_device("BEAM", "jungfrau0", jd)   # 5
+            pprint.pprint(c.get_configuration("BEAM", "jungfrau0"))
+            h = c.get_history("BEAM", "jungfrau0", ["jungfrau.d", "jungfrau.e"])
             pprint.pprint(h)
             assert len(h) == 2
-            assert [67, 73] == [d['evrIO.d'] for d in h]
-            assert [2, 4] == [d['key'] for d in h]
+            assert [67, 73] == [d['jungfrau.d'] for d in h]
+            assert [3, 5] == [d['key'] for d in h]
             c2 = cdb.configdb(mdb.server, "SXR", create=True, root=dbname)
             c2.add_alias("FOO")                                       # 0
             c2.transfer_config("AMO", "BEAM", "evr0", "FOO", "evr3")  # 1

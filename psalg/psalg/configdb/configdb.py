@@ -144,7 +144,7 @@ class configdb(object):
     # keys must be device configuration names and the values should be typed json
     # dictionaries.  Return the new configuration key if successful and raise an error
     # if we fail.
-    def modify_device(self, alias, device, value, hutch=None):
+    def modify_device(self, alias, device, value, hutch=None, collection=None):
         if hutch is None:
             hc = self.hutch_coll
         else:
@@ -152,29 +152,31 @@ class configdb(object):
         c = self.get_current(alias, hutch)
         if c is None:
             raise NameError("modify_device: %s is not a configuration name!" % alias)
+        if isinstance(value, cdict):
+            value = value.typed_json()
         if not isinstance(value, dict):
             raise TypeError("modify_device: value is not a dictionary!")
-        cfgs = []
         if True:
                 session = None
-                for k in sorted(value.keys()):
-                    v = value[k]
-                    if isinstance(v, cdict):
-                        v = v.typed_json()
-                    try:
-                        cfgs.append({'_id': self.save_device_config(k, v, session), 'collection': k})
-                    except:
-                        raise
+                if collection is None:
+                    collection = next(iter(value))
+                    if len(value.keys()) != 1:
+                        print("modify_device: WARNING - dictionary has more than one collection name, using %s" % collection)
+                    value = value[collection]
+                    if isinstance(value, cdict):
+                        value = value.typed_json()
+                cfg = {'_id': self.save_device_config(collection, value, session),
+                       'collection': collection}
                 del c['_id']
                 for l in c['devices']:
                     if l['device'] == device:
-                        if l['configs'] == cfgs:
+                        if l['configs'] == [cfg]:
                             raise ValueError("modify_device: No change!")
                         c['devices'].remove(l)
                         break
                 kn = self.get_key(session=session, hutch=hutch)
                 c['key'] = kn
-                c['devices'].append({'device': device, 'configs': cfgs})
+                c['devices'].append({'device': device, 'configs': [cfg]})
                 c['devices'].sort(key=lambda x: x['device'])
                 c['date'] = datetime.datetime.utcnow()
                 hc.insert_one(c, session=session)
@@ -188,7 +190,8 @@ class configdb(object):
             hc = self.hutch_coll
         else:
             hc = self.cdb[hutch]
-        if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and isinstance(key_or_alias, unicode)):
+        if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and
+                                             isinstance(key_or_alias, unicode)):
             key = self.get_key(key_or_alias, hutch)
             if key is None:
                 return None
@@ -196,19 +199,16 @@ class configdb(object):
             key = key_or_alias
         try:
             c = hc.find_one({"key": key})
-            clist = None
+            cfg = None
             for l in c["devices"]:
                 if l['device'] == device:
-                    clist = l['configs']
+                    cfg = l['configs']
                     break
-            if clist is None:
+            if cfg is None:
                 raise ValueError("get_configuration: No device %s!" % device)
-            d = {}
-            for o in clist:
-                cname = o['collection']
-                r = self.cdb[cname].find_one({"_id" : o['_id']})
-                d[cname] = r['config']
-            return d
+            cname = cfg[0]['collection']
+            r = self.cdb[cname].find_one({"_id" : cfg[0]['_id']})
+            return {cname: r['config']}
         except:
             return None
 
