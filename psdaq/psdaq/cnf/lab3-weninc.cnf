@@ -32,7 +32,7 @@ procmgr_config = [
  { id:'modca1'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
  { id:'modca2'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
  { host: 'drp-tst-acc06', id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v' },
- { host: 'daq-tst-dev02', id:'dti_proxy', flags:'sp', conda:conda_rel, env:epics_env, cmd:'dti_proxy -v -C drp-tst-acc06 DAQ:LAB2:PART:'+platform},
+ { host: 'daq-tst-dev02', id:'ts_proxy', flags:'sup', conda:conda_rel, env:epics_env, cmd:'ts_proxy -v -C drp-tst-acc06 DAQ:LAB2:PART:'+platform},
  { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'tstEbBuilder -C drp-tst-acc06 -Z psmetric04' },
 
  { host: 'drp-tst-dev002', id:'drp2', flags:'sxp', conda:conda_rel, env:epics_env, cmd: drp_cmd },

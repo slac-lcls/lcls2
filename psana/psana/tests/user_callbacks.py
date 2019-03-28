@@ -28,4 +28,5 @@ def event_fn(event, det):
 
 for run in ds.runs():
     det = run.Detector('xppcspad')
+    edet = run.Detector('XPP:VARS:FLOAT:02')
     run.analyze(event_fn=event_fn, det=det)

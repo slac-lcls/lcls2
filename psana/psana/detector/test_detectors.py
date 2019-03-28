@@ -66,10 +66,21 @@ class hsd_raw_2_3_42(DetectorImpl):
         else:
             return self.segments(evt)[0].waveform
 
-class epics_fuzzy_0_0_0(DetectorImpl):
+class epics_fast_0_0_0(DetectorImpl):
     def __init__(self, *args):
         det_name, drp_class_name, configs, calibs, self._epics_store = args
-        super(epics_fuzzy_0_0_0, self).__init__(det_name, drp_class_name, configs, calibs)
+        super(epics_fast_0_0_0, self).__init__(det_name, drp_class_name, configs, calibs)
+    def __call__(self, evt):
+        epics_dicts = self._epics_store.checkout_by_events([evt])
+        if not epics_dicts:
+            return None
+
+        return epics_dicts[0][self._det_name]
+
+class epics_slow_0_0_0(DetectorImpl):
+    def __init__(self, *args):
+        det_name, drp_class_name, configs, calibs, self._epics_store = args
+        super(epics_slow_0_0_0, self).__init__(det_name, drp_class_name, configs, calibs)
     def __call__(self, evt):
         epics_dicts = self._epics_store.checkout_by_events([evt])
         if not epics_dicts:

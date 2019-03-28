@@ -20,7 +20,7 @@ ctxt = Context('pva')
 
 class Client:
 
-    def __init__(self, platform, pv_base, collectHost):
+    def __init__(self, platform, pv_base, collectHost, alias):
 
         # initialize state
         self.state = 'reset'
@@ -29,6 +29,7 @@ class Client:
         self.hostname = socket.gethostname()
         self.pid = os.getpid()
         self.id = hash(self.hostname+str(self.pid))
+        self.alias = alias
 
         # configure zmq sockets
         self.context = zmq.Context(1)
@@ -90,6 +91,7 @@ class Client:
         logging.debug('Client handle_plat()')
         # time.sleep(1.5)
         body = {'drp-no-teb': {'proc_info': {
+                        'alias': self.alias,
                         'host': self.hostname,
                         'pid': self.pid}}}
         reply = create_msg('plat', msg['header']['msg_id'], self.id, body=body)
@@ -222,7 +224,8 @@ def main():
         parser = argparse.ArgumentParser()
         parser.add_argument('pvbase', help='EPICS PV base (e.g. DAQ:LAB2:PART:2)')
         parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
-        parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host')
+        parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host (default localhost)')
+        parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
         parser.add_argument('-v', action='store_true', help='be verbose')
         args = parser.parse_args()
 
@@ -233,7 +236,7 @@ def main():
             logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
         # start client
-        client = Client(args.p, args.pvbase, args.C)
+        client = Client(args.p, args.pvbase, args.C, args.u)
 
     except KeyboardInterrupt:
         logging.info('KeyboardInterrupt')

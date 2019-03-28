@@ -342,7 +342,7 @@ def confirm_response(socket, wait_time, msg_id, ids):
             break
     for ii in ids:
         logging.debug('id %s did not respond' % ii)
-    return len(ids), msgs
+    return ids, msgs
 
 
 class CollectionManager():
@@ -420,8 +420,7 @@ class CollectionManager():
                         answer = None
                         try:
                             # send error message, if any, to front_pub socket
-                            message = retval['body']['error']
-                            self.front_pub.send_json(self.error_msg(message))
+                            self.report_error(retval['body']['error'])
                         except KeyError:
                             pass
                     else:
@@ -490,9 +489,7 @@ class CollectionManager():
                 else:
                     answer = self.handle_trigger(nextT, stateChange=True)
                     if 'error' in answer['body']:
-                        message = answer['body']['error']
-                        logging.error(message)
-                        self.front_pub.send_json(self.error_msg(message))
+                        self.report_error(answer['body']['error'])
                         break
 
         return answer
@@ -518,11 +515,14 @@ class CollectionManager():
         self.back_pub.send_json(msg)
 
         # make sure all the clients respond to alloc message with their connection info
-        ret, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
+        ret = len(retlist)
         if ret:
-            message = '%d client did not respond to alloc' % ret
-            logging.error(message)
-            self.front_pub.send_json(self.error_msg(message))
+            for ii in retlist:
+                alias = self.get_alias(ii)
+                if alias is not None:
+                    self.report_error('%s did not respond to alloc' % alias)
+            self.report_error('%d client did not respond to alloc' % ret)
             logging.debug('condition_alloc() returning False')
             return False
         for answer in answers:
@@ -564,11 +564,14 @@ class CollectionManager():
         msg = create_msg('connect', body=self.cmstate)
         self.back_pub.send_json(msg)
 
-        ret, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
+        ret = len(retlist)
         if ret:
-            message = '%d client did not respond to connect' % ret
-            logging.error(message)
-            self.front_pub.send_json(self.error_msg(message))
+            for ii in retlist:
+                alias = self.get_alias(ii)
+                if alias is not None:
+                    self.report_error('%s did not respond to connect' % alias)
+            self.report_error('%d client did not respond to connect' % ret)
             logging.debug('condition_connect() returning False')
             return False
         else:
@@ -599,10 +602,7 @@ class CollectionManager():
     def handle_selectplatform(self, body):
         logging.debug('handle_selectplatform()')
         if self.state != 'unallocated':
-            message = 'selectPlatform only permitted in unallocated state'
-            logging.error(message)
-            msg = self.error_msg(message)
-            self.front_pub.send_json(msg)
+            self.report_error('selectPlatform only permitted in unallocated state')
             return msg
 
         try:
@@ -658,6 +658,22 @@ class CollectionManager():
                 matches.update(set(item.keys()))
         return matches.intersection(ids)
 
+    def get_alias(self, xid):
+        alias = None
+        for level, item in self.cmstate.items():
+            if xid in item.keys():
+                try:
+                    alias = item[xid]['proc_info']['alias']
+                except KeyError:
+                    pass
+                break
+        return alias
+
+    def report_error(self, msg):
+        logging.error(msg)
+        self.front_pub.send_json(self.error_msg(msg))
+        return
+
     def condition_common(self, transition, timeout):
         retval = True
         ids = copy.copy(self.ids)
@@ -672,13 +688,16 @@ class CollectionManager():
             return True
 
         # make sure all the clients respond to transition before timeout
-        ret, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
+        ret = len(retlist)
         if ret:
             # Error
             retval = False
-            message = '%d client did not respond to %s' % (ret, transition)
-            logging.error(message)
-            self.front_pub.send_json(self.error_msg(message))
+            for ii in retlist:
+                alias = self.get_alias(ii)
+                if alias is not None:
+                    self.report_error('%s did not respond to %s' % (alias, transition))
+            self.report_error('%d client did not respond to %s' % (ret, transition))
         else:
             retval = True
             for answer in answers:
@@ -686,9 +705,7 @@ class CollectionManager():
                     for node, err_msg in answer['body']['err_info'].items():
                         # Error
                         retval = False
-                        message = '%s: %s' % (node, err_msg)
-                        logging.error(message)
-                        self.front_pub.send_json(self.error_msg(message))
+                        self.report_error('%s: %s' % (node, err_msg))
                 except KeyError:
                     pass
         return retval

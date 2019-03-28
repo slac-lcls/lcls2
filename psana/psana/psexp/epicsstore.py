@@ -2,9 +2,10 @@ from psana.dgram import Dgram
 from psana.event import Event
 from psana.psexp.packet_footer import PacketFooter
 import numpy as np
+from collections import defaultdict
 
 class Epics(object):
-    """ Store list of Epics dgrams and correponding timestatmps """
+    """ Store list of Epics dgrams, timestatmps, and variables """
     
     def __init__(self, config):
         self.config = config
@@ -13,12 +14,15 @@ class Epics(object):
         self.buf = bytearray() # keeps remaining data of each Epics file
         self.offset = 0
         self.n_items = 0
+        self._init_epics_variables()
 
-    def get_keys(self):
+    def _init_epics_variables(self):
         """ From the given config, build a list of keywords from
-        config.software.xppepics.fuzzy.[] field."""
-        fuzzy = getattr(self.config.software.xppepics, "fuzzy") 
-        return fuzzy.__dict__.keys()
+        config.software.xppepics.[alg:fast/slow].[] fields."""
+        algs = vars(self.config.xppepics[0])
+        self.epics_variables = {}
+        for alg in algs:
+            self.epics_variables[alg] = list(eval("vars(self.config.software.xppepics.%s)"%alg))
 
     def add(self, d):
         self.dgrams.append(d)
@@ -33,13 +37,23 @@ class EpicsStore(object):
         """ Builds store with the given epics config."""
         self.n_files = 0
         self._epics_list = []
-        self.keys = []
+        self.epics_variables = defaultdict(list)
         if configs:
             self.n_files = len(configs)
             self._epics_list = [Epics(config) for config in configs]
+
+            # Collects epics variables from all epics files
             for epics in self._epics_list:
-                self.keys += list(epics.get_keys())
-            
+                for key, val in epics.epics_variables.items(): 
+                    self.epics_variables[key] += val
+    
+    def alg_from_variable(self, variable_name):
+        """ Returns algorithm name from the given epics variable. """
+        for key, val in self.epics_variables.items():
+            if variable_name in val:
+                return key
+        return None
+
     def update(self, views):
         """ Updates the store with new data from list of views. """
         if views:
@@ -72,7 +86,10 @@ class EpicsStore(object):
             # Returns last epics event for all newer events
             found_pos[found_pos == epics.n_items] = epics.n_items - 1
             for i, pos in enumerate(found_pos):
-                epics_dicts[i].update(epics.dgrams[pos].xppepics[0].fuzzy.__dict__)
+                algs = vars(epics.config.xppepics[0])
+                for alg in algs:
+                    if alg in vars(epics.dgrams[pos].xppepics[0]):
+                        epics_dicts[i].update(eval("vars(epics.dgrams[%d].xppepics[0].%s)"%(pos, alg)))
         
         return epics_dicts
 
