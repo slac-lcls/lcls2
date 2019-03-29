@@ -16,8 +16,6 @@ else:
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
-import numpy as np
-import os
 
 @task
 def run_smd0_task(run):
