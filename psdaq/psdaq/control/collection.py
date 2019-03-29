@@ -65,7 +65,6 @@ class DaqControl:
     transitions = ['plat', 'alloc', 'dealloc',
                    'connect', 'disconnect',
                    'configure', 'unconfigure',
-                   'beginrecord', 'endrecord',
                    'enable', 'disable',
                    'configupdate', 'reset']
 
@@ -385,10 +384,6 @@ class CollectionManager():
                                            conditions='condition_configure')
         self.collectMachine.add_transition('unconfigure', 'paused', 'connected',
                                            conditions='condition_unconfigure')
-        self.collectMachine.add_transition('beginrecord', 'running', 'running',
-                                           conditions='condition_beginrecord')
-        self.collectMachine.add_transition('endrecord', 'running', 'running',
-                                           conditions='condition_endrecord')
         self.collectMachine.add_transition('enable', 'paused', 'running',
                                            conditions='condition_enable')
         self.collectMachine.add_transition('disable', 'running', 'paused',
@@ -719,20 +714,6 @@ class CollectionManager():
         if retval:
             self.lastTransition = 'unconfigure'
         logging.debug('condition_unconfigure() returning %s' % retval)
-        return retval
-
-    def condition_beginrecord(self):
-        retval = self.condition_common('beginrecord', 1000)
-        if retval:
-            self.lastTransition = 'beginrecord'
-        logging.debug('condition_beginecord() returning %s' % retval)
-        return retval
-
-    def condition_endrecord(self):
-        retval = self.condition_common('endrecord', 1000)
-        if retval:
-            self.lastTransition = 'endrecord'
-        logging.debug('condition_endrecord() returning %s' % retval)
         return retval
 
     def condition_enable(self):
