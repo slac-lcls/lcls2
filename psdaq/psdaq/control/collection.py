@@ -658,11 +658,14 @@ class CollectionManager():
         alias_list = []
         for level, item in self.cmstate.items():
             for xid in item.keys():
-                if xid in id_list:
+                if xid in id_list and 'proc_info' in item[xid]:
                     try:
                         alias_list.append(item[xid]['proc_info']['alias'])
                     except KeyError:
-                        pass
+                        alias_list.append('%s/%s/%s' %
+                            (level,
+                             item[xid]['proc_info']['pid'],
+                             item[xid]['proc_info']['host']))
         return alias_list
 
     def report_error(self, msg):
