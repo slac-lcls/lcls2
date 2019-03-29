@@ -287,6 +287,12 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
         delete d;
         return -1;
     }
+    if (!d->HasMember("alg") || !d->HasMember("detName") || !d->HasMember("detType") ||
+        !d->HasMember("detId") || !d->HasMember("doc")) {
+        printf("Document is missing a manditory field (alg, detName, detType, detId, or doc)!\n");
+        delete d;
+        return -1;
+    }
     const Value& a = (*d)["alg"];
     const Value& v = a["version"];
     Alg alg = Alg(a["alg"].GetString(), v[0].GetInt(), 
