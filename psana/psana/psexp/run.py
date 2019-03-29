@@ -124,6 +124,10 @@ class Run(object):
         return info
 
     @property
+    def epicsinfo(self):
+        return self.epics_store.epics_info
+    
+    @property
     def xtcinfo(self):
         return self.dm.xtc_info
 

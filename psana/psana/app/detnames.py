@@ -6,6 +6,7 @@ def detnames():
   parser = argparse.ArgumentParser()
   parser.add_argument("dsname", help="psana datasource string (e.g. exp=xppd7114:run=43 or filename)")
   parser.add_argument('-r','--raw', dest='raw', action='store_true')
+  parser.add_argument('-e','--epics', dest='epics', action='store_true')
   args = parser.parse_args()
 
   ds = DataSource(args.dsname)
@@ -15,6 +16,10 @@ def detnames():
     headers = ['Name','Det Type','Data Type','Version']
     format_string = '{0:%d} | {1:%d} | {2:%d} | {3:%d}'
     names = myrun.xtcinfo
+  elif args.epics:
+    headers = ['Name','Data Type']
+    format_string = '{0:%d} | {1:%d}'
+    names = myrun.epicsinfo
   else:
     headers = ['Name','Data Type']
     format_string = '{0:%d} | {1:%d}'

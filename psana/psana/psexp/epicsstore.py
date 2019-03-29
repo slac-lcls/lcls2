@@ -24,6 +24,8 @@ class Epics(object):
         self.epics_variables = {}
         for alg in algs:
             self.epics_variables[alg] = list(eval("vars(self.config.software.xppepics.%s)"%alg))
+            self.epics_variables[alg].remove('version')
+            self.epics_variables[alg].remove('software')
 
     def add(self, d):
         self.dgrams.append(d)
@@ -54,6 +56,12 @@ class EpicsStore(object):
             for epics in self._epics_list:
                 for key, val in epics.epics_variables.items(): 
                     self.epics_variables[key] += val
+            
+            self.epics_info = []
+            for key, val in self.epics_variables.items():
+                val.sort()
+                for v in val:
+                    self.epics_info.append((v, key))
     
     def alg_from_variable(self, variable_name):
         """ Returns algorithm name from the given epics variable. """
