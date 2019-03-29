@@ -518,10 +518,8 @@ class CollectionManager():
         retlist, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
         ret = len(retlist)
         if ret:
-            for ii in retlist:
-                alias = self.get_alias(ii)
-                if alias is not None:
-                    self.report_error('%s did not respond to alloc' % alias)
+            for alias in self.get_aliases(retlist):
+                self.report_error('%s did not respond to alloc' % alias)
             self.report_error('%d client did not respond to alloc' % ret)
             logging.debug('condition_alloc() returning False')
             return False
@@ -567,10 +565,8 @@ class CollectionManager():
         retlist, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
         ret = len(retlist)
         if ret:
-            for ii in retlist:
-                alias = self.get_alias(ii)
-                if alias is not None:
-                    self.report_error('%s did not respond to connect' % alias)
+            for alias in self.get_aliases(retlist):
+                self.report_error('%s did not respond to connect' % alias)
             self.report_error('%d client did not respond to connect' % ret)
             logging.debug('condition_connect() returning False')
             return False
@@ -658,16 +654,16 @@ class CollectionManager():
                 matches.update(set(item.keys()))
         return matches.intersection(ids)
 
-    def get_alias(self, xid):
-        alias = None
+    def get_aliases(self, id_list):
+        alias_list = []
         for level, item in self.cmstate.items():
-            if xid in item.keys():
-                try:
-                    alias = item[xid]['proc_info']['alias']
-                except KeyError:
-                    pass
-                break
-        return alias
+            for xid in item.keys():
+                if xid in id_list:
+                    try:
+                        alias_list.append(item[xid]['proc_info']['alias'])
+                    except KeyError:
+                        pass
+        return alias_list
 
     def report_error(self, msg):
         logging.error(msg)
@@ -693,10 +689,8 @@ class CollectionManager():
         if ret:
             # Error
             retval = False
-            for ii in retlist:
-                alias = self.get_alias(ii)
-                if alias is not None:
-                    self.report_error('%s did not respond to %s' % (alias, transition))
+            for alias in self.get_aliases(retlist):
+                self.report_error('%s did not respond to %s' % (alias, transition))
             self.report_error('%d client did not respond to %s' % (ret, transition))
         else:
             retval = True
