@@ -32,12 +32,12 @@ ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
 #beginJobCode
 for run in ds.runs():
     det = run.Detector('xppcspad')
-    edet = run.Detector('XPP:VARS:FLOAT:02')
+    edet = run.Detector('XPP:VARS:STRING:01')
     #beginRunCode
     for evt in run.events():
         padarray = vals.padarray
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
-        assert edet(evt) == 41.0
+        assert edet(evt) == "Test String"
 
     #endRunCode
 #endJobCode

@@ -66,27 +66,24 @@ class hsd_raw_2_3_42(DetectorImpl):
         else:
             return self.segments(evt)[0].waveform
 
-class epics_fast_0_0_0(DetectorImpl):
+class EpicsImpl(DetectorImpl):
     def __init__(self, *args):
         det_name, drp_class_name, configs, calibs, self._epics_store = args
-        super(epics_fast_0_0_0, self).__init__(det_name, drp_class_name, configs, calibs)
-    def __call__(self, evt):
-        epics_dicts = self._epics_store.checkout_by_events([evt])
-        if not epics_dicts:
-            return None
+        super(EpicsImpl, self).__init__(det_name, drp_class_name, configs, calibs)
+    def __call__(self, events):
+        if isinstance(events, list):
+            return self._epics_store.values(events, self._det_name)
+        else:
+            epics_values = self._epics_store.values([events], self._det_name)
+            return epics_values[0]
 
-        return epics_dicts[0][self._det_name]
-
-class epics_slow_0_0_0(DetectorImpl):
+class epics_fast_0_0_0(EpicsImpl):
     def __init__(self, *args):
-        det_name, drp_class_name, configs, calibs, self._epics_store = args
-        super(epics_slow_0_0_0, self).__init__(det_name, drp_class_name, configs, calibs)
-    def __call__(self, evt):
-        epics_dicts = self._epics_store.checkout_by_events([evt])
-        if not epics_dicts:
-            return None
+        super(epics_fast_0_0_0, self).__init__(*args)
 
-        return epics_dicts[0][self._det_name]
+class epics_slow_0_0_0(EpicsImpl):
+    def __init__(self, *args):
+        super(epics_slow_0_0_0, self).__init__(*args)
 
 # for early cctbx/psana2 development
 class cspad_raw_1_2_3(DetectorImpl):

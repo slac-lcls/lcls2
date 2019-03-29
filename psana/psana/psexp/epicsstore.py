@@ -3,6 +3,7 @@ from psana.event import Event
 from psana.psexp.packet_footer import PacketFooter
 import numpy as np
 from collections import defaultdict
+import os
 
 class Epics(object):
     """ Store list of Epics dgrams, timestatmps, and variables """
@@ -28,6 +29,13 @@ class Epics(object):
         self.dgrams.append(d)
         self.timestamps.append(d.seq.timestamp())
         self.n_items += 1
+    
+    def alg_from_variable(self, variable_name):
+        """ Returns algorithm name from the given epics variable. """
+        for key, val in self.epics_variables.items():
+            if variable_name in val:
+                return key
+        return None
 
 class EpicsStore(object):
     """ Manages Epics data 
@@ -72,6 +80,37 @@ class EpicsStore(object):
                 
                 if epics.offset < mmr_view.shape[0]:
                     epics.buf = mmr_view[epics.offset:].tobytes() # copy remaining data to the beginning of buffer
+
+    def values(self, events, epics_variable):
+        """ Returns values of the epics_variable for the given events.
+
+        First search for epics file that has this variable (return algorithm e.g.
+        fast/slow) then for that epics file, locate position of epics dgram that
+        has ts_epics <= ts_evt. If the dgram at found position has the algorithm
+        then returns the value, otherwise keeps searching backward until 
+        N_EPICS_SEARCH_STEPS is reached."""
+        
+        N_EPICS_SEARCH_STEPS = int(os.environ.get("N_EPICS_SEARCH_STEPS", "10"))
+        epics_values = []
+        for i, epics in enumerate(self._epics_list):
+            alg = epics.alg_from_variable(epics_variable)
+            if alg: 
+                event_timestamps = np.asarray([evt._timestamp for evt in events], dtype=np.uint64)
+                found_positions = np.searchsorted(epics.timestamps, event_timestamps)
+                found_positions[found_positions == epics.n_items] = epics.n_items - 1
+                for pos in found_positions:
+                    val = None
+                    for p in range(pos, pos - N_EPICS_SEARCH_STEPS, -1):
+                        if p < 0:
+                            break
+                        if hasattr(epics.dgrams[p].xppepics[0], alg):
+                            val = eval("getattr(epics.dgrams[%d].xppepics[0].%s, '%s')"%(p, alg, epics_variable))
+                            break
+                    epics_values.append(val)
+
+                break
+        
+        return epics_values
 
     def _checkout(self, event_timestamps):
         """ Builds an epics dictionary using data from all epics files
