@@ -437,7 +437,7 @@ class cdict(object):
                 if top and (k in ["detType", "detName", "detId", "doc", "alg"]):
                     d[k] = input[k]
                     if k == 'alg':
-                        t[k] = {'alg' : 'CHARSTR', 'doc': 'CHARSTR', version: ['INT32', 3]}
+                        t[k] = {'alg' : 'CHARSTR', 'doc': 'CHARSTR', 'version': ['INT32', 3]}
                     else:
                         t[k] = "CHARSTR"
                     continue
