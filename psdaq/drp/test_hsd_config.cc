@@ -8,10 +8,13 @@
 static char buffer[4*1024*1024];
 
 int main() {
-    const char fname[] = "test_hsd_config.py";
+    const char fname[] = "get_config.py";
     FILE* file;
     Py_Initialize();
     PyObject* main_module = PyImport_AddModule("__main__");
+    static const unsigned argc = 5;
+    const wchar_t* argv[argc] = {L"cpo:psana@psdb-dev:9306", L"cpotest", L"AMO", L"BEAM", L"xpphsd1"};
+    PySys_SetArgv(argc,const_cast<wchar_t**>(argv));
     PyObject* main_dict = PyModule_GetDict(main_module);
     file = fopen(fname,"r");
     PyObject* pyrunfileptr = PyRun_File(file, fname, Py_file_input, main_dict, main_dict);

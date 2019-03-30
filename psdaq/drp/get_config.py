@@ -1,11 +1,13 @@
 import json
+import sys
 
 import psalg.configdb.configdb as cdb
-create = False
 
-dbname = 'cpotest'
-mycdb = cdb.configdb('cpo:psana@psdb-dev:9306', 'AMO', create, dbname)
-cfg = mycdb.get_configuration('BEAM', 'xpphsd1')
+(dburl,dbname,hutch,cfgtype,detname) = sys.argv
+
+create = False
+mycdb = cdb.configdb(dburl, hutch, create, dbname)
+cfg = mycdb.get_configuration(cfgtype, detname)
 from bson.json_util import dumps
 
 # this is a global symbol that the calling C code can lookup
