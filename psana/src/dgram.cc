@@ -28,6 +28,9 @@ static const char EnumDelim=':';
 
 using namespace std;
 
+#define MAXRETRIES 5
+#define SLEEP_SECS 1
+
 // to avoid compiler warnings for debug variables
 #define _unused(x) ((void)(x))
 
@@ -539,6 +542,27 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
+ssize_t read_with_retries(int fd, char* buf, size_t count, size_t offset)
+{
+    ssize_t readSuccess = 0;
+    for (int i=0; i<MAXRETRIES; i++) {
+        if (offset == 0) {
+            readSuccess = read(fd, buf, count);
+        } else {
+            readSuccess = pread(fd, buf, count, offset);
+        }
+
+        // sleep if reads return 0 - mona: add way to find out if end
+        // of file is reached.
+        if (readSuccess == 0) {
+            sleep(SLEEP_SECS);
+        } else {
+            break;
+        }
+    }
+
+    return readSuccess;
+}
 static int dgram_read(PyDgramObject* self, int sequential)
 {
     ssize_t readSuccess=0;
@@ -546,7 +570,8 @@ static int dgram_read(PyDgramObject* self, int sequential)
     if (sequential) {
         // When read sequentially, self->dgram already has header data
         // - only reads the payload content.
-        readSuccess = read(self->file_descriptor, self->dgram->xtc.payload(), self->dgram->xtc.sizeofPayload());
+        //readSuccess = read(self->file_descriptor, self->dgram->xtc.payload(), self->dgram->xtc.sizeofPayload());
+        readSuccess = read_with_retries(self->file_descriptor, self->dgram->xtc.payload(), self->dgram->xtc.sizeofPayload(), 0);
         if (readSuccess <= 0) {
             snprintf(s, TMPSTRINGSIZE, "loading dgram was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
@@ -555,6 +580,7 @@ static int dgram_read(PyDgramObject* self, int sequential)
 
     } else {
         off_t fOffset = (off_t)self->offset;
+        //readSuccess = pread(self->file_descriptor, self->dgram, self->size, fOffset); // for read with offset
         readSuccess = pread(self->file_descriptor, self->dgram, self->size, fOffset); // for read with offset
         if (readSuccess <= 0) {
             snprintf(s, TMPSTRINGSIZE, "loading dgram with offset was unsuccessful -- %s", strerror(errno));

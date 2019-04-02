@@ -1,9 +1,9 @@
 from libc.stdlib cimport abort, malloc, free
 from libc.string cimport memcpy
-from posix.unistd cimport read
+from posix.unistd cimport read, sleep
 from cython.parallel import parallel, prange
 import numpy as np
-import time
+import os
 
 from cpython cimport array
 import array
@@ -24,6 +24,7 @@ cdef class SmdReader:
     cdef int[:] fds
     cdef size_t chunksize
     cdef int maxretries 
+    cdef int sleep_secs
     cdef Buffer *bufs
     cdef int nfiles
     cdef unsigned got_events
@@ -34,7 +35,8 @@ cdef class SmdReader:
     
     def __init__(self, fds):
         self.chunksize = 0x100000
-        self.maxretries = 5
+        self.maxretries = int(os.environ.get('PS_R_MAX_RETRIES', '1')) # FIXME: check for end of file?
+        self.sleep_secs = int(os.environ.get('PS_R_SLEEP_SECS', '1'))
         self.fds = array.array('i', fds)
         self.nfiles = len(self.fds)
         self.bufs = NULL
@@ -68,6 +70,8 @@ cdef class SmdReader:
             self.bufs[i].block_offset = self.bufs[i].offset
     
     cdef inline size_t _read_with_retries(self, int buf_id, size_t displacement, size_t count) nogil:
+        """ Reads smd file
+        For real-time, read will be attempted upto MAXRETRIES with sleep."""
         cdef char* chunk = self.bufs[buf_id].chunk + displacement
         cdef size_t requested = count
         cdef size_t got = 0
@@ -79,6 +83,8 @@ cdef class SmdReader:
             else:
                 chunk += got
                 count -= got
+                sleep(self.sleep_secs)
+
         return requested - count
     
     cdef inline void _read_partial(self, int buf_id) nogil:

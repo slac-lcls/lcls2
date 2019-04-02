@@ -1,8 +1,9 @@
 from libc.stdlib cimport malloc, free
-from posix.unistd cimport read
+from posix.unistd cimport read, sleep
 from cython.parallel import parallel, prange
 from cpython cimport array
 import array
+import os
 
 cdef struct Buffer:
     char* chunk
@@ -17,13 +18,15 @@ cdef class ParallelReader:
     cdef int[:] fds
     cdef size_t chunksize
     cdef int maxretries
+    cdef int sleep_secs
     cdef int nfiles
     cdef Buffer *bufs
 
     def __init__(self, fds):
         self.fds = array.array('i', fds)
         self.chunksize = 0x100000
-        self.maxretries = 5
+        self.maxretries = int(os.environ.get('PS_R_MAX_RETRIES', '1')) # FIXME: check for end of file?
+        self.sleep_secs = int(os.environ.get('PS_R_SLEEP_SECS', '1'))
         self.nfiles = len(self.fds)
         self.bufs = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
         self._init_buffers()
@@ -57,6 +60,7 @@ cdef class ParallelReader:
             else:
                 chunk += got
                 count -= got
+                sleep(self.sleep_secs)
         
         return requested - count
 
