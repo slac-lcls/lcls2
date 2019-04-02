@@ -43,9 +43,10 @@ def _display_name(pname, v) :
 #--------------------
 
 def get_platform():
-    """returns list of processes after control.getPlatform() request
+    """ returns [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
+        after control.getPlatform() request
     """
-    dict_procs = {}
+    list2d = []
 
     try:
         dict_platf = daq_control().getPlatform() # returns dict
@@ -55,38 +56,44 @@ def get_platform():
         print('failed on request control.getPlatform()')
 
     except KeyboardInterrupt:
-        logger.warning('KeyboardInterrupt')            
-        return {}, dict_procs
+        logger.warning('KeyboardInterrupt')           
+        return {}, list2d
 
     sj = json.dumps(dict_platf, indent=2, sort_keys=False)
-    logger.debug('control.getPlatform() json:\n%s' % str(sj))
+    logger.debug('control.getPlatform() json(type:%s):\n%s' % (type(dict_platf), str(sj)))
 
     try:
-        for pname in dict_platf:
-            #print("proc_name: %s" % str(pname))
+        for pname in dict_platf: # iterate over top key-wards
+            #logger.debug("json top key name: %s" % str(pname))
             for k,v in dict_platf[pname].items() :
                 display = _display_name(pname, v)
                 #print(display)
-                dict_procs[display] = (v['active'] == 1)
+                flds = display.split(' ')
+                list2d.append([[v['active']==1, flds[0]], flds[1] if len(flds)==2 else ' '])
 
     except Exception as ex:
         logger.error('Exception: %s' % ex)
         print('failed to parse json after control.getPlatform() request:\n%s' % str(sj))
 
-    return dict_platf, dict_procs
+    return dict_platf, list2d
 
 #--------------------
 
-def set_platform(dict_platf, dict_procs):
+def set_platform(dict_platf, list2d):
     """ Sets processes active/inactive
     """
+    #print('dict_platf: ',dict_platf)
+    #print('list2d:',list2d)
+
     try:
         for pname in dict_platf:
             #print("proc_name: %s" % str(pname))
-            for k,v in dict_platf[pname].items() :
+            for i,(k,v) in enumerate(dict_platf[pname].items()) :
                 display = _display_name(pname, v)
-                int_active = {True:1, False:0}[dict_procs[display]]
-                #print(display, 'int_active: %d' % int_active)
+                #status = display.split(' ')[0][0] # bool
+                status = list2d[i][0][0] # bool
+                int_active = {True:1, False:0}[status]
+                #print(display, '   int_active: %d' % int_active)
                 dict_platf[pname][k]['active'] = int_active
         
         sj = json.dumps(dict_platf, indent=2, sort_keys=False)
@@ -96,6 +103,14 @@ def set_platform(dict_platf, dict_procs):
 
     except Exception as ex:
         logger.error('Exception: %s' % ex)
+
+#--------------------
+
+def list_active_procs(lst):
+    """returns a subset list2d of active/selected only from list2d of all processes.
+    """
+    assert(isinstance(lst, list))
+    return [r for r in lst if r[0][0]]
 
 #--------------------
 

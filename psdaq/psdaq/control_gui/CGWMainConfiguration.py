@@ -169,7 +169,7 @@ class CGWMainConfiguration(QGroupBox) :
         #logger.debug('on_but_type')
         inst, confdb = self.inst_configdb('on_but_type: ')
         list_of_aliases = confdb.get_aliases(hutch=inst) # ['NOBEAM', 'BEAM']
-        selected = popup_select_item_from_list(self.but_type, list_of_aliases, min_height=80, dx=-20, dy=10)
+        selected = popup_select_item_from_list(self.but_type, list_of_aliases, min_height=80, dx=-10, dy=0)
         self.set_but_type_text(selected)
         msg = 'selected %s of the list %s' % (selected, str(list_of_aliases))
         logger.debug(msg)
@@ -234,7 +234,7 @@ class CGWMainConfiguration(QGroupBox) :
             dev     = self.but_dev_text()
             self.config = confdb.get_configuration(cfgtype, dev, hutch=inst)
             msg = 'get_configuration(%s, %s, %s):\n' % (cfgtype, dev, inst)\
-                + '%s\ntype(config): %s'%(str_json(self.config), type(self.config))
+                + '%s\n    type(config): %s'%(str_json(self.config), type(self.config))
             logger.debug(msg)
 
             self.w_edit = CGWConfigEditor(dictj=self.config, parent_ctrl=self)

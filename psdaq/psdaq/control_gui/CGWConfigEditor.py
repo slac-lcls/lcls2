@@ -25,7 +25,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QTabBar
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QFileDialog, QComboBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,\
+                            QPushButton, QFileDialog, QComboBox
 
 from psdaq.control_gui.CGWConfigEditorTree import CGWConfigEditorTree
 from psdaq.control_gui.CGWConfigEditorText import CGWConfigEditorText
@@ -34,15 +35,17 @@ from psdaq.control_gui.CGJsonUtils import load_json_from_file, str_json, json_fr
 
 #--------------------
 
-EDITOR_TYPES = ('Text','Tree') # ,'List'
 char_expand  = u' \u25BC' # down-head triangle
 char_shrink  = u' \u25B2' # solid up-head triangle
 
 #--------------------
 
 class CGWConfigEditor(QWidget) :
+    """Configuration editor top widget
     """
-    """
+    MORE_OPTIONS = ('More','Load','Save')
+    EDITOR_TYPES = ('Text','Tree')
+
     def __init__(self, parent=None, parent_ctrl=None, dictj=None):
 
         #QGroupBox.__init__(self, 'Partition', parent)
@@ -56,22 +59,23 @@ class CGWConfigEditor(QWidget) :
         self.dictj = dictj
         if dictj is None : self.load_dict() # fills self.dictj
 
-        self.but_load = QPushButton('Load')
-        self.but_save = QPushButton('Save')
         self.but_apply= QPushButton('Apply')
         self.but_expn = QPushButton('Expand %s'%char_expand)
         self.box_type = QComboBox(self)
 
-        self.box_type.addItems(EDITOR_TYPES)
+        self.box_type.addItems(self.EDITOR_TYPES)
         self.box_type.setCurrentIndex(1)
         self.wedi = CGWConfigEditorTree(parent_ctrl=self, dictj=self.dictj)
 
+        self.box_more = QComboBox(self)
+        self.box_more.addItems(self.MORE_OPTIONS)
+        self.box_more.setCurrentIndex(0)
+
         self.hbox = QHBoxLayout() 
-        self.hbox.addWidget(self.but_load)
-        self.hbox.addWidget(self.but_save)
         self.hbox.addWidget(self.but_apply)
         self.hbox.addWidget(self.but_expn)
         self.hbox.addStretch(1)
+        self.hbox.addWidget(self.box_more)
         self.hbox.addWidget(self.box_type)
 
         self.vbox = QVBoxLayout() 
@@ -82,11 +86,10 @@ class CGWConfigEditor(QWidget) :
         self.set_tool_tips()
         self.set_style()
 
-        self.but_load.clicked.connect(self.on_but_load)
-        self.but_save.clicked.connect(self.on_but_save)
         self.but_expn.clicked.connect(self.on_but_expn)
         self.but_apply.clicked.connect(self.on_but_apply)
         self.box_type.currentIndexChanged[int].connect(self.on_box_type)
+        self.box_more.currentIndexChanged[int].connect(self.on_box_more)
 
 #--------------------
 
@@ -94,9 +97,10 @@ class CGWConfigEditor(QWidget) :
         self.setToolTip('Configuration editor GUI')
         self.box_type.setToolTip('Select editor type')
         self.but_expn.setToolTip('Expand/Collapse tree-like content')
-        self.but_save.setToolTip('Save content in file')
-        self.but_load.setToolTip('Load content from file')
         self.but_apply.setToolTip('Apply content changes to configuration DB')
+        self.box_more.setToolTip('More options:'\
+                                +'\n * Load content from file'\
+                                +'\n * Save content in file')
 
 #--------------------
 
@@ -210,8 +214,18 @@ class CGWConfigEditor(QWidget) :
 
 #--------------------
  
+    def on_box_more(self, ind) :
+        opt = self.MORE_OPTIONS[ind]
+        logger.info('CGWConfigEditor selected option %s' % opt)
+
+        if   ind==1 : self.on_but_load()
+        elif ind==2 : self.on_but_save()
+        self.box_more.setCurrentIndex(0)
+
+#--------------------
+ 
     def on_box_type(self, ind) :
-        type = EDITOR_TYPES[ind]
+        type = self.EDITOR_TYPES[ind]
         logger.info('CGWConfigEditor set editor type %s' % type)
 
         if self.wedi is not None :
@@ -238,8 +252,8 @@ class CGWConfigEditor(QWidget) :
 
         kwargs = {'parent':None, 'parent_ctrl':self, 'dictj':self.dictj}
 
-        if   edi_type == EDITOR_TYPES[0] : return CGWConfigEditorText(**kwargs)
-        elif edi_type == EDITOR_TYPES[1] : return CGWConfigEditorTree(**kwargs)
+        if   edi_type == self.EDITOR_TYPES[0] : return CGWConfigEditorText(**kwargs)
+        elif edi_type == self.EDITOR_TYPES[1] : return CGWConfigEditorTree(**kwargs)
         else :
             logger.warning('Unknown editor type "%s"' % edi_type)
             return QTextEdit(edi_type)

@@ -24,16 +24,12 @@ Created on 2019-01-25 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout # , QWidget,  QLabel, QLineEdit, QFileDialog
-from PyQt5.QtCore import QPoint # pyqtSignal, Qt, QRectF, QPointF, QTimer
+from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout, QDialog
+from PyQt5.QtCore import QPoint
 
-#from psdaq.control_gui.CGWPartitionSelection import CGWPartitionSelection
-from psdaq.control_gui.QWDialog import QDialog, QWDialog
-from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_set_state
-
-from psdaq.control_gui.CGJsonUtils import get_platform, set_platform
-from psdaq.control_gui.QWPopupCheckDict import QWPopupCheckDict
-from psdaq.control_gui.CGWPartitionDisplay import CGWPartitionDisplay
+from psdaq.control_gui.CGDaqControl import daq_control
+from psdaq.control_gui.CGJsonUtils import get_platform, set_platform, list_active_procs
+from psdaq.control_gui.QWPopupTableCheck import QWPopupTableCheck, QWTableOfCheckBoxes
 
 #--------------------
 
@@ -41,14 +37,11 @@ from psdaq.control_gui.CGWPartitionDisplay import CGWPartitionDisplay
 class CGWMainPartition(QGroupBox) :
     """
     """
+    TABTITLE_H = ['proc/pid/host', 'aliases']
+
     def __init__(self, parent=None):
 
         QGroupBox.__init__(self, 'Partition', parent)
-
-        #self.parent_ctrl = parent_ctrl
-
-        #self.dict_procs = {'string1':True, 'string2':False, 'string3':True, 'string4':False}
-        self.dict_procs = {}
 
         self.but_roll_call = QPushButton('Roll call')
         self.but_select    = QPushButton('Select')
@@ -108,49 +101,57 @@ class CGWMainPartition(QGroupBox) :
     def on_but_select(self):
         logger.debug('on_but_select')
 
-        #dict_procs = self.dict_procs
-        dict_platf, dict_procs = get_platform()
+        dict_platf, list2d = get_platform() # list2d = [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
 
-        logger.debug('List of processes:')
-        for name,state in dict_procs.items() :
-            logger.debug('%s is %s selected' % (name.ljust(10), {False:'not', True:'   '}[state]))
+        #logger.debug('List of processes:')
+        #for rec in list2d :
+        #    [[state,name],alias] = rec
+        #    logger.debug('%s %s is %s selected' % (name.ljust(10), alias.ljust(10), {False:'not', True:'   '}[state]))
 
-        w = QWPopupCheckDict(None, dict_procs, enblctrl=(self.state=='UNALLOCATED'))
+        w = QWPopupTableCheck(tableio=list2d, title_h=self.TABTITLE_H,\
+                              do_ctrl=(self.state=='UNALLOCATED'),\
+                              win_title='Select partitions',\
+                              do_edit=False, is_visv=True, do_frame=True)
+
         w.move(self.pos()+QPoint(self.width()/2,200))
-        w.setWindowTitle('Select partitions')
         resp=w.exec_()
 
         logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
 
         if resp!=QDialog.Accepted : return
 
-        self.dict_procs = dict_procs
-        if self.w_display is not None : 
-           self.w_display.fill_list_model(listio=self.list_active_processes())
+        list2d = w.table_out()
 
-        set_platform(dict_platf, dict_procs)
+        if self.w_display is not None :
+            self.w_display.fill_table_model(tableio=list2d,\
+                                            title_h=self.TABTITLE_H,\
+                                            is_visv=False)
 
+        set_platform(dict_platf, list2d)
         # 2019-03-13 caf: If Select->Apply is successful, an Allocate transition should be triggered.
         #self.parent_ctrl....
-        daq_control().setState('allocated')
 
-#--------------------
-
-    def list_active_processes(self):
-        if len(self.dict_procs) == 0 :
-            logger.warning('list of active processes is empty... Click on "Select" button.')
-        return [k for k,v in self.dict_procs.items() if v]
+        list2d_active = list_active_procs(list2d)
+        if len(list2d_active)>0 :
+            daq_control().setState('allocated')
+        else :
+            logger.warning('NO PROCESS SELECTED!')
 
 #--------------------
  
     def on_but_display(self):
         logger.debug('on_but_display')
         if  self.w_display is None :
-            _, self.dict_procs = get_platform()
 
-            listap = self.list_active_processes()
-            self.w_display = CGWPartitionDisplay(parent=None, listio=listap)
-                             #CGWPartitionSelection(parent=None, parent_ctrl=self)
+            _, list2d = get_platform() # [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
+
+            list2d_active = list_active_procs(list2d)
+            #logger.debug('list2d active processes:\n%s' % str(list2d_active))
+
+            self.w_display = QWTableOfCheckBoxes(parent=None, tableio=list2d_active,\
+                                                 title_h=self.TABTITLE_H,\
+                                                 is_visv=False)
+
             self.w_display.move(self.pos() + QPoint(self.width()+30, 200))
             self.w_display.setWindowTitle('Selected partitions')
             self.w_display.show()
@@ -171,11 +172,17 @@ class CGWMainPartition(QGroupBox) :
 #--------------------
 
     def set_buts_enable(self, s) :
+        """By Chris F. logistics sets buttons un/visible.
+        """
         logger.debug('set_buts_enable for state %s' % s)
         self.state = state = s.upper()
         self.but_roll_call.setEnabled(state in ('RESET', 'UNALLOCATED'))
         self.but_select.setEnabled(not(state in ('RESET',)))
         self.but_display.setEnabled(not(state in ('RESET','UNALLOCATED')))
+
+        if state in ('RESET', 'UNALLOCATED') and self.w_display is not None :
+            self.w_display.close()
+            self.w_display = None
 
 #--------------------
 

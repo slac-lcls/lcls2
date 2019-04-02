@@ -12,7 +12,7 @@ Usage::
     import sys
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
-    exp_name = popup_select_item_from_list(None, lst)
+    selected = popup_select_item_from_list(None, lst)
 
 See:
     - :py:class:`QWPopupSelectItem`
@@ -26,10 +26,8 @@ Adopted for LCLS2 on 2018-02-15
 """
 #------------------------------
 
-import os
-
-from PyQt5.QtWidgets import QDialog, QListWidget, QVBoxLayout, QListWidgetItem# QPushButton
-from PyQt5.QtCore import Qt, QPoint, QEvent, QMargins
+from PyQt5.QtWidgets import QDialog, QListWidget, QVBoxLayout, QListWidgetItem, QSizePolicy# QPushButton
+from PyQt5.QtCore import Qt, QPoint, QEvent, QMargins, QSize
 from PyQt5.QtGui import QCursor
 
 #------------------------------  
@@ -41,77 +39,52 @@ class QWPopupSelectItem(QDialog) :
         QDialog.__init__(self, parent)
 
         self.name_sel = None
-        self.list = QListWidget(parent)
-
+        self._list = QListWidget(parent)
         self.fill_list(lst)
-        #self.fill_list_icons(lst_icons)
-
-        # Confirmation buttons
-        #self.but_cancel = QPushButton('&Cancel') 
-        #self.but_apply  = QPushButton('&Apply') 
-        #cp.setIcons()
-        #self.but_cancel.setIcon(cp.icon_button_cancel)
-        #self.but_apply .setIcon(cp.icon_button_ok)
-        #self.connect(self.but_cancel, QtCore.SIGNAL('clicked()'), self.onCancel)
-        #self.connect(self.but_apply,  QtCore.SIGNAL('clicked()'), self.onApply)
-
-        #self.hbox = QVBoxLayout()
-        #self.hbox.addWidget(self.but_cancel)
-        #self.hbox.addWidget(self.but_apply)
-        ##self.hbox.addStretch(1)
 
         vbox = QVBoxLayout()
-        vbox.addWidget(self.list)
+        vbox.addWidget(self._list)
         #vbox.addLayout(self.hbox)
-        vbox.addStretch(1)
+        #vbox.addStretch(1)
         self.setLayout(vbox)
-
-        self.list.itemClicked.connect(self.onItemClick)
 
         self.show_tool_tips()
         self.set_style()
+        self._list.itemClicked.connect(self.on_item_click)
 
 
     def fill_list(self, lst) :
-        self.list.clear()
-        for exp in sorted(lst) :
-            item = QListWidgetItem(exp, self.list)
-        #self.list.sortItems(Qt.AscendingOrder)
-
-
-#    def fill_list_icons(self, lst_icons) :
-#        for ind, icon in enumerate(lst_icons) :
-#            item = QListWidgetItem(icon, '%d'%ind, self.list) #'%d'%ind
-#            item.setSizeHint(QtCore.QSize(80,30))
-#        #self.list.sortItems(Qt.AscendingOrder)
+        self.nchars = max([len(s) for s in lst])
+        self.nrows  = len(lst)
+        self._list.clear()
+        for row,txt in enumerate(sorted(lst)) :
+            item = QListWidgetItem(txt, self._list) # may have (icon, txt, list)
+            item.setSizeHint(QSize(50,20))
+        #self._list.sortItems(Qt.AscendingOrder)
 
 
     def set_style(self):
         self.setWindowTitle('Select')
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.layout().setContentsMargins(0,0,0,0)
-        #self.setStyleSheet(cp.styleBkgd)
-        #self.setStyleSheet(cp.styleBkgd)
-        #self.but_cancel.setStyleSheet(cp.styleButton)
-        #self.but_apply.setStyleSheet(cp.styleButton)
+
+        width  = min(self.nchars*12, 300) + 2
+        height = min(self.nrows *20, 500) + 2
+        self.setFixedSize(width,height)
+
+        #self.but_cancel.setStyleSheet(style.styleButton)
         #self.move(QCursor.pos().__add__(QPoint(-110,-50)))
-        self.setFixedWidth(100)
 
 
     def show_tool_tips(self):
-        #self.but_apply.setToolTip('Apply selection')
-        #self.but_cancel.setToolTip('Cancel selection')
-        self.setToolTip('Select item from the list')
+        self.setToolTip('Select item from the list.')
 
 
-    def onItemClick(self, item):
-        #if item.isSelected(): item.setSelected(False)
-        #widg = self.list.itemWidget(item)
+    def on_item_click(self, item):
+        #widg = self._list.itemWidget(item)
         #item.checkState()
         self.name_sel = item.text()
-        #if self.name_sel in self.years : return # ignore selection of year
-        #logger.debug(self.name_sel)
-        #logger.debug('Selected experiment %s' % self.name_sel, __name__)  
+        #logger.debug('on_item_click: selected %s' % self.name_sel)
         self.accept()
 
 
@@ -148,11 +121,6 @@ class QWPopupSelectItem(QDialog) :
 
 def popup_select_item_from_list(parent, lst, min_height=600, dx=-110, dy=-50) :
     w = QWPopupSelectItem(parent, lst)
-    #w.setMinimumHeight(min_height)
-    size = len(lst)
-    height = min(min_height, size*20)
-    #self.setMaximumWidth(600)
-    w.setFixedHeight(height)
     w.move(QCursor.pos().__add__(QPoint(dx,dy)))
     resp=w.exec_()
     #if   resp == QDialog.Accepted : return w.selectedName()
@@ -170,6 +138,8 @@ if __name__ == "__main__" :
   import logging
   logger = logging.getLogger(__name__)
   logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
+
+  import os
 
   from PyQt5.QtWidgets import QApplication
 
