@@ -7,43 +7,9 @@ import zmq
 from transitions import Machine, MachineError, State
 import argparse
 import logging
-import threading
 
 PORT_BASE = 29980
 POSIX_TIME_AT_EPICS_EPOCH = 631152000
-
-class MonitorThread (threading.Thread):
-
-    # callback function
-    callback = None
-    # an event that tells the thread to stop
-    stopper = None
-
-    def __init__(self, callback, stopper, host, platform):
-        threading.Thread.__init__(self)
-        self.callback = callback
-        self.stopper = stopper
-        # initialize zmq socket
-        self.context = zmq.Context(1)
-        self.front_sub = self.context.socket(zmq.SUB)
-        self.front_sub.connect('tcp://%s:%d' % (host, front_pub_port(platform)))
-        self.front_sub.setsockopt(zmq.SUBSCRIBE, b'')
-        self.front_sub.RCVTIMEO = 250     # in milliseconds
-
-    def run(self):
-        logging.debug('MonitorThread starting')
-
-        # as long as stopper event is not set, read messages
-        # from front_sub socket and pass them to callback function.
-        while not self.stopper.is_set():
-            try:
-                msg = self.front_sub.recv_json()
-            except zmq.error.Again:
-                pass    # socket timeout
-            else:
-                self.callback(msg)
-
-        logging.debug('MonitorThread exiting')
 
 class DaqControl:
     'Base class for controlling data acquisition'
@@ -84,6 +50,9 @@ class DaqControl:
 
         # initialize zmq socket
         self.context = zmq.Context(1)
+        self.front_sub = self.context.socket(zmq.SUB)
+        self.front_sub.connect('tcp://%s:%d' % (host, front_pub_port(platform)))
+        self.front_sub.setsockopt(zmq.SUBSCRIBE, b'')
         self.front_req = self.context.socket(zmq.REQ)
         self.front_req.linger = 0
         self.front_req.RCVTIMEO = timeout # in milliseconds
@@ -192,6 +161,33 @@ class DaqControl:
                 pass
 
         return (r1, r2)
+
+    #
+    # DaqControl.monitorStatus - monitor the status
+    #
+    def monitorStatus(self):
+
+        # process messages
+        while True:
+            try:
+                msg = self.front_sub.recv_json()
+
+                if msg['header']['key'] == 'status':
+                    # return transition, state
+                    return msg['body']['transition'], msg['body']['state']
+
+                elif msg['header']['key'] == 'error':
+                    # return 'error', error message
+                    return 'error', msg['body']['error']
+
+            except KeyboardInterrupt:
+                break
+
+            except KeyError as ex:
+                logging.error('KeyError: %s' % ex)
+                break
+
+        return None, None
 
     #
     # DaqControl.setState - change the state
@@ -844,15 +840,6 @@ def main():
             p.join()
         except KeyboardInterrupt:
             pass
-
-class SignalHandler:
-    stopper = None
-    def __init__(self, stopper):
-        self.stopper = stopper
-
-    def __call__(self, signum, frame):
-        # set the stopper event
-        self.stopper.set()
 
 if __name__ == '__main__':
     main()
