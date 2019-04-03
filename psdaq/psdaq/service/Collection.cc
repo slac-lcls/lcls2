@@ -155,7 +155,7 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_pushSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + platform)});
 
     m_subSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)});
-    m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+    m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "all", 3);
     std::cout<<std::string{"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)}<<std::endl;
 
     // register callbacks
@@ -182,11 +182,21 @@ void CollectionApp::handlePlat(const json &msg)
 
 void CollectionApp::handleAlloc(const json &msg)
 {
-    std::string nicIp = getNicIp();
-    std::cout<<"nic ip  "<<nicIp<<'\n';
-    json body = {{m_level, {{"connect_info", {{"nic_ip", nicIp}}}}}};
-    json answer = createMsg("alloc", msg["header"]["msg_id"], m_id, body);
-    reply(answer);
+    // check if own id is in included in the msg
+    auto it = std::find(msg["body"]["ids"].begin(), msg["body"]["ids"].end(), m_id);
+    if (it != msg["body"]["ids"].end()) {
+        std::cout<<"subscribing to partition\n";
+        m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "partition", 9);
+
+        std::string nicIp = getNicIp();
+        std::cout<<"nic ip  "<<nicIp<<'\n';
+        json body = {{m_level, {{"connect_info", {{"nic_ip", nicIp}}}}}};
+        json answer = createMsg("alloc", msg["header"]["msg_id"], m_id, body);
+        reply(answer);
+    }
+    else {
+        m_subSocket.setsockopt(ZMQ_UNSUBSCRIBE, "partition", 9);
+    }
 }
 
 void CollectionApp::reply(const json& msg)
@@ -197,7 +207,14 @@ void CollectionApp::reply(const json& msg)
 void CollectionApp::run()
 {
     while (1) {
-        json msg = m_subSocket.recvJson();
+        //json msg = m_subSocket.recvJson();
+        std::vector<ZmqMessage> frames = m_subSocket.recvMultipart();
+        char* begin = (char*)frames[1].data();
+        char* end = begin + frames[1].size();
+        json msg = json::parse(begin, end);
+        std::string topic((char*)frames[0].data(), frames[0].size());
+        std::cout<<"topic:  "<<topic<<'\n';
+
         std::string key = msg["header"]["key"];
         std::cout<<"received key = "<<key<<'\n';
         std::cout << std::setw(4) << msg << "\n\n";

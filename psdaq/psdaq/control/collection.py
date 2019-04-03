@@ -4,6 +4,7 @@ import copy
 import socket
 from datetime import datetime, timezone
 import zmq
+import zmq.utils.jsonapi as json
 from transitions import Machine, MachineError, State
 import argparse
 import logging
@@ -507,7 +508,7 @@ class CollectionManager():
         # select procs with active flag set
 #       ids = self.filter_active(self.ids)
         msg = create_msg('alloc', body={'ids': list(ids)})
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'all', json.dumps(msg)])
 
         # make sure all the clients respond to alloc message with their connection info
         retlist, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
@@ -555,7 +556,7 @@ class CollectionManager():
         # select procs with active flag set
 #       ids = self.filter_active(self.ids)
         msg = create_msg('connect', body=self.cmstate)
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         retlist, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
         ret = len(retlist)
@@ -617,7 +618,8 @@ class CollectionManager():
         self.cmstate.clear()
         self.ids.clear()
         msg = create_msg('plat')
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'all', json.dumps(msg)])
+        print('send', [b'partition', json.dumps(msg)])
         for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id']):
             for level, item in answer['body'].items():
                 if level not in self.cmstate:
@@ -672,7 +674,7 @@ class CollectionManager():
         retval = True
         ids = copy.copy(self.ids)
         msg = create_msg(transition)
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         # only drp group (aka level) responds to configure and above
         ids = self.filter_level('drp', ids)
@@ -733,7 +735,7 @@ class CollectionManager():
     def condition_reset(self):
         # is a reply to reset necessary?
         msg = create_msg('reset')
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'all', json.dumps(msg)])
         self.lastTransition = 'reset'
         logging.debug('condition_reset() returning True')
         return True
