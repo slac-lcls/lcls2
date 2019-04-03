@@ -365,7 +365,7 @@ public:
          EbParams&          prms,
          StatsMonitor&      smon);
 public:                                 // For CollectionApp
-  void handleAlloc(const json& msg) override;
+  std::string nicIp() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg); // override;
   void handleReset(const json& msg) override;
@@ -398,14 +398,11 @@ MebApp::MebApp(const std::string& collSrv,
   printf("  Distribute:                 %s\n", dist ? "yes" : "no");
 }
 
-void MebApp::handleAlloc(const json& msg)
+std::string MebApp::nicIp()
 {
   // Allow the default NIC choice to be overridden
-  std::string nicIp = _prms.ifAddr.empty() ? getNicIp() : _prms.ifAddr;
-  std::cout << "nic ip  " << nicIp << '\n';
-  json body = {{getLevel(), {{"connect_info", {{"nic_ip", nicIp}}}}}};
-  json answer = createMsg("alloc", msg["header"]["msg_id"], getId(), body);
-  reply(answer);
+  std::string ip = _prms.ifAddr.empty() ? getNicIp() : _prms.ifAddr;
+  return ip;
 }
 
 int MebApp::_handleConnect(const json &msg)
