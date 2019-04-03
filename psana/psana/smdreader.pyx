@@ -1,14 +1,3 @@
-from libc.stdlib cimport abort, malloc, free
-from libc.string cimport memcpy
-from posix.unistd cimport read, sleep
-from cython.parallel import parallel, prange
-import numpy as np
-import os
-
-from cpython cimport array
-import array
-
-cimport cython
 from dgramlite cimport Xtc, Sequence, Dgram
 from parallelreader cimport Buffer, ParallelReader
 
