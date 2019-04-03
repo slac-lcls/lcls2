@@ -1,27 +1,9 @@
-from libc.stdlib cimport malloc, free
-from posix.unistd cimport read, sleep
-from cython.parallel import parallel, prange
-from cpython cimport array
-import array
+from parallelreader cimport Buffer
+from cython.parallel import prange
 import os
 
-cdef struct Buffer:
-    char* chunk
-    size_t got
-    size_t offset
-    size_t prev_offset
-    unsigned nevents
-    unsigned long timestamp
-    size_t block_offset
-    
 cdef class ParallelReader:
-    cdef int[:] fds
-    cdef size_t chunksize
-    cdef int maxretries
-    cdef int sleep_secs
-    cdef int nfiles
-    cdef Buffer *bufs
-
+    
     def __init__(self, fds):
         self.fds = array.array('i', fds)
         self.chunksize = 0x100000
@@ -47,7 +29,12 @@ cdef class ParallelReader:
             self.bufs[i].nevents = 0
             self.bufs[i].timestamp = 0
             self.bufs[i].block_offset = 0
-
+    
+    cdef inline void reset_buffers(self):
+        for i in range(self.nfiles):
+            self.bufs[i].nevents = 0
+            self.bufs[i].block_offset = self.bufs[i].offset
+    
     cdef inline size_t _read_with_retries(self, int buf_id, size_t displacement, size_t count) nogil:
         cdef char* chunk = self.bufs[buf_id].chunk + displacement
         cdef size_t requested = count
@@ -64,16 +51,41 @@ cdef class ParallelReader:
         
         return requested - count
 
-    cdef inline void _read(self, size_t displacement):
+    cdef inline void read(self):
         """ Reads data in parallel (self.chunksize bytes) to the beginning
         of each buffer."""
         cdef int i
         for i in prange(self.nfiles, nogil=True):
-            self.bufs[i].got = self._read_with_retries(i, displacement, self.chunksize)
+            self.bufs[i].got = self._read_with_retries(i, 0, self.chunksize)
+
+    cdef inline void read_partial(self):
+        """ Reads partial chunk
+        First copy what remains in the chunk to the begining of 
+        the chunk then re-read to fill in the chunk.
+        """
+        cdef int i
+        cdef char* chunk
+        cdef size_t remaining = 0
+        cdef size_t new_got = 0
+        for i in prange(self.nfiles, nogil=True):
+            chunk = self.bufs[i].chunk
+            remaining = self.chunksize - self.bufs[i].block_offset
+            if remaining > 0:
+                memcpy(chunk, chunk + self.bufs[i].block_offset, remaining)
+            
+            new_got = self._read_with_retries(i, \
+                    remaining, self.chunksize - remaining)
+            if new_got == 0:
+                self.bufs[i].got = 0 # nothing more to read
+            else:
+                self.bufs[i].got = remaining + new_got
+            
+            self.bufs[i].offset = self.bufs[i].prev_offset - self.bufs[i].block_offset
+            self.bufs[i].block_offset = 0
 
     def get_block(self):
         """ Packs data in all buffers with footer."""
-        self._read(0)
+        self.read()
 
         block = bytearray()
         cdef array.array int_array_template = array.array('I', [])
