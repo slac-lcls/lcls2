@@ -11,8 +11,6 @@
 #include "DataDriver.h"
 using namespace std;
 
-#define MAX_RET_CNT_C 1000
-
 #define EVENT_COUNT_ERR   0x01
 #define FRAME_COUNT_ERR   0x02
 #define FRAME_CONTENT_ERR 0x04
@@ -23,9 +21,12 @@ using namespace std;
 #define PULSE_ID_ERR      0x40
 #define FRAME_COUNT_MISM  0x80
 
+#define PRINT_ANY         0x80000000
+
 static unsigned verbose = 0;
 static FILE* fdump = 0;
 static bool _validateFrameContent = true;
+static unsigned bufferIndex = 0;
 
 static void usage(const char* p) {
   printf("Usage: %s [options'\n",p);
@@ -47,7 +48,7 @@ static void usage(const char* p) {
   printf("\t                     (bit 7 : frame counter mismatch)\n");
 }
 
-#define HISTORY 1024
+#define HISTORY (32*1024)
 #define MAX_PRINT 32
 
 static unsigned nprint = 0;
@@ -121,7 +122,7 @@ public:
     _rlaneMissErr(0),
     _rpulseIdErr (0),
     _rframeCntErr(0)
-  { memset(_lanes,0,HISTORY*sizeof(unsigned)); }
+  { memset(_lanes,0,HISTORY); }
 public:
   void validate(const uint32_t* p, unsigned sz, unsigned lane) {
 #define DUMP(s) {                                                       \
@@ -142,8 +143,8 @@ public:
       if ((verbose & HISTORY_ERR) && nprint++ < MAX_PRINT)
         printf("\thistory : %x [%x]\n", _lanes[now], 1<<lane);
     }
-    
-    if ((_lanes[now] |= (1<<lane))==_lanemask) {
+
+    if ((_lanes[now]|=(1<<lane)) == _lanemask) {
       _last = now;
       if (_lanes[pre]) {
         _laneMissErr++;
@@ -205,7 +206,7 @@ public:
     RERR(pulseIdErr);
     RERR(frameCntErr);
 #undef RERR
-    nprint = 0;
+    //    nprint = 0;
   }
   void summary() {
 #define RERR(s)                                 \
@@ -221,7 +222,7 @@ public:
   }
 public:
   const LaneValidator* _lanev;
-  unsigned _lanes  [HISTORY];
+  uint8_t  _lanes  [HISTORY];
   unsigned _lanemask;
   unsigned _last;  // event counter of last complete
   unsigned _ncalls;
@@ -237,7 +238,7 @@ public:
 
 //  Setup the validators
 LaneValidator  lanev[4];
-EventValidator eventv(lanev,0xf);
+EventValidator* eventv;
 
 void LaneValidator::validate(const uint32_t* p, unsigned sz) {
   _ncalls++;
@@ -260,7 +261,7 @@ void LaneValidator::validate(const uint32_t* p, unsigned sz) {
     for(unsigned i=1; i<sz-9; i++)
       if (p[sz-i]!=i) {
         _frameContentErr++;
-        if (verbose & FRAME_CONTENT_ERR)
+        if ((verbose & FRAME_CONTENT_ERR) && nprint++ < MAX_PRINT)
           printf("\t[%p] [%06x.%ld]: p[%d] %x\n", p, event, this-lanev, i, p[sz-i]);
         if (fdump) {
           fwrite(&sz,sizeof(unsigned),1,fdump);
@@ -279,39 +280,46 @@ void LaneValidator::validate(const uint32_t* p, unsigned sz) {
     _current = (_current+1)&0xffffff;
     if (_current != event) {
       _eventCounterErr++;
-      if (verbose & EVENT_COUNT_ERR)
+      if ((verbose & EVENT_COUNT_ERR) && nprint++ < MAX_PRINT)
         printf("\t[%p] [%06x.%ld] eventCount %06x [%06x]\n",
                p, event, this-lanev, event,_current);
       _current = event;
     }
     if (p[8]!=_frameCnt[pre]+1) {
       _frameCounterErr++;
-      if (verbose & FRAME_COUNT_ERR) {
+      if ((verbose & FRAME_COUNT_ERR) && nprint++ < MAX_PRINT) {
         printf("\t[%p] [%06x.%ld] frame %08x [%08x]\n",
                p, event, this-lanev, p[8],_frameCnt[pre]+1);
       }
     }
     if (_sz != sz) {
       _frameSizeErr++;
-      if (verbose & FRAME_SIZE_ERR)
+      if ((verbose & FRAME_SIZE_ERR) && nprint++ < MAX_PRINT)
         printf("\t[%p] [%06x.%ld] frameSize : %x [%x]\n", 
                p, event, this-lanev, sz, _sz);
     }
   }
 }
 
+static int    _fd;
+static void** _dmaBuffers;
+
+static void dump_status();
+
 void sigHandler( int signal ) {
   psignal( signal, "Signal received by pgpWidget");
-  eventv.summary();
+  eventv->summary();
   for(unsigned i=0; i<4; i++)
     lanev[i].summary();
+  dump_status();
+  dmaUnMapDma(_fd,_dmaBuffers);
   ::exit(signal);
 }
 
 
 int main (int argc, char **argv) {
    unsigned count = 1000000;
-   unsigned max_ret_cnt = 1000;
+   unsigned max_ret_cnt = 70000;
    const char* dev  = "/dev/datadev_1";
    const char* dump = 0;
    int partition  = -1;
@@ -366,8 +374,6 @@ int main (int argc, char **argv) {
    struct timeval dTime;
    struct timeval pTime[7];
 
-   ::signal( SIGINT, sigHandler );
-
    if (dump) {
      fdump = fopen(dump,"w");
    }
@@ -385,10 +391,17 @@ int main (int argc, char **argv) {
 
 #if 1
    if ( (dmaBuffers = dmaMapDma(s,&dmaCount,&dmaSize)) == NULL ) {
-      printf("Failed to map dma buffers!\n");
+      perror("Failed to map dma buffers!");
       return(0);
    }
 #endif
+
+   _fd         = s;
+   _dmaBuffers = dmaBuffers;
+
+   eventv = new EventValidator(lanev,links);
+
+   ::signal( SIGINT, sigHandler );
 
    dmaSetMaskBytes(s,mask);
 
@@ -443,20 +456,22 @@ int main (int argc, char **argv) {
                const uint32_t* b = reinterpret_cast<const uint32_t*>(dmaBuffers[dmaIndex[x]]);
                unsigned lane = (dest[x]>>8)&7;
                unsigned words = unsigned(last)>>2;
+               bufferIndex = dmaIndex[x];
 
-               if ((b[4]>>31)==0) { // Print transitions
-                 printf("lane%u:",lane);
-                 for(unsigned i=0; i<8; i++)
+               if ((verbose & PRINT_ANY) || (b[4]>>31)==0) { // Print transitions
+                 printf("lane%x ret%x buff%x fl%x:",
+                        lane, dmaRet[x], bufferIndex, rxFlags[x]);
+                 for(unsigned i=0; i<9; i++)
                    printf(" %08x",b[i]);
                  printf("\n");
                }
 
                lanev[lane].validate(b,words);
-               eventv     .validate(b,words,lane);
+               eventv    ->validate(b,words,lane);
 
                //  Print out pulseId/timeStamp to check synchronization across nodes
                if ((b[5]&0xfffff)==0) {
-                 printf("event[%06x]:",b[4]);
+                 printf("event[%06x]:",b[5]&0xffffff);
                  for(unsigned i=0; i<9; i++)
                    printf(" %08x",b[i]);
                  printf("\n");
@@ -482,7 +497,7 @@ int main (int argc, char **argv) {
 
       printf("%8i      %1.3e   %8i   %1.2e   %1.2e   %1.2e    %8li    %8li     \n",max,last,count,duration,rate,bw,
          (pTime[1].tv_usec-pTime[0].tv_usec), (pTime[3].tv_usec-pTime[2].tv_usec));
-      eventv.report();
+      eventv->report();
       for(unsigned i=0; i<4; i++)
         lanev[i].report();
 
@@ -491,5 +506,130 @@ int main (int argc, char **argv) {
    }
 
    return(0);
+}
+
+#define CLIENTS(i)       (0x00800080 + i*0x20)
+#define DMA_LANES(i)     (0x00800100 + i*0x20)
+
+static inline uint32_t get_reg32(int reg) {
+  unsigned v;
+  dmaReadRegister(_fd, reg, &v);
+  return v;
+}
+
+static void print_dma_lane(const char* name, int addr, int offset, int mask)
+{
+    printf("%20.20s", name);
+    for(int i=0; i<4; i++) {
+        uint32_t reg = get_reg32( DMA_LANES(i) + addr);
+        printf(" %8x", (reg >> offset) & mask);
+    }
+    printf("\n");
+}
+
+static void print_mig_lane(const char* name, int addr, int offset, int mask)
+{
+    const unsigned MIG_LANES = 0x00800080;
+    printf("%20.20s", name);
+    for(int i=0; i<4; i++) {
+      uint32_t reg = get_reg32( MIG_LANES + i*32 + addr);
+      printf(" %8x", (reg >> offset) & mask);
+    }
+    printf("\n");
+}
+
+static void print_clk_rate(const char* name, int addr) 
+{
+    const unsigned CLK_BASE = 0x00800100;
+    printf("%20.20s", name);
+    uint32_t reg = get_reg32( CLK_BASE + addr);
+    printf(" %f MHz", double(reg&0x1fffffff)*1.e-6);
+    if ((reg>>29)&1) printf(" [slow]");
+    if ((reg>>30)&1) printf(" [fast]");
+    if ((reg>>31)&1) printf(" [locked]");
+    printf("\n");
+}
+
+static void print_field(const char* name, int addr, int offset, int mask)
+{
+    printf("%20.20s", name);
+    uint32_t reg = get_reg32( addr);
+    printf(" %8x", (reg >> offset) & mask);
+    printf("\n");
+}
+
+static void print_word (const char* name, int addr) { print_field(name,addr,0,0xffffffff); }
+
+static void print_lane(const char* name, int addr, int offset, int stride, int mask)
+{
+    printf("%20.20s", name);
+    for(int i=0; i<4; i++) {
+        uint32_t reg = get_reg32( addr+stride*i);
+        printf(" %8x", (reg >> offset) & mask);
+    }
+    printf("\n");
+}
+
+
+void dump_status()
+{
+  uint32_t lanes = 4;
+  printf("  lanes             :  %u\n", lanes);
+
+  printf("  monEnable         :  %u\n", get_reg32( 0x00800000)&1);
+
+  printf("\n-- migLane Registers --\n");
+  print_mig_lane("blockSize  ", 0, 0, 0x1f);
+  print_mig_lane("blocksPause", 4, 8, 0x3ff);
+  print_mig_lane("blocksFree ", 8, 0, 0x1ff);
+  print_mig_lane("blocksQued ", 8,12, 0x1ff);
+  print_mig_lane("writeQueCnt",12, 0, 0xff);
+  print_mig_lane("wrIndex    ",16, 0, 0x1ff);
+  print_mig_lane("wcIndex    ",20, 0, 0x1ff);
+  print_mig_lane("rdIndex    ",24, 0, 0x1ff);
+
+  print_clk_rate("axilOther  ",0);
+  print_clk_rate("timingRef  ",4);
+  print_clk_rate("migA       ",8);
+  print_clk_rate("migB       ",12);
+
+  // TDetSemi
+  print_field("partition", 0x00a00000,  0, 0xf);
+  print_field("length"   , 0x00a00000,  4, 0xffffff);
+  print_field("enable"   , 0x00a00000, 28, 0xf);
+  print_field("localid"  , 0x00a00004,  0, 0xffffffff);
+  print_field("remoteid" , 0x00a00008,  0, 0xffffffff);
+
+  print_lane("cntL0"      , 0x00a00010,  0, 16, 0xffffff);
+  print_lane("cntOF"      , 0x00a00010, 24, 16, 0xff);
+  print_lane("cntL1A"     , 0x00a00014,  0, 16, 0xffffff);
+  print_lane("cntL1R"     , 0x00a00018,  0, 16, 0xffffff);
+  print_lane("cntWrFifo"  , 0x00a0001c,  0, 16, 0xff);
+  print_lane("cntRdFifo"  , 0x00a0001c,  8, 16, 0xff);
+  print_lane("cntMsgDelay", 0x00a0001c, 16, 16, 0xffff);
+  print_lane("fullToTrig" , 0x00a00050,  0,  4, 0xfff);
+  print_lane("nfullToTrig", 0x00a00050, 16,  4, 0xfff);
+  print_lane("txLocked"   , 0x00a00050, 28,  4, 0x1);
+  print_lane("resetDone"  , 0x00a00050, 29,  4, 0x1);
+  print_lane("buffByDone" , 0x00a00050, 30,  4, 0x1);
+  print_lane("buffByErr"  , 0x00a00050, 31,  4, 0x1);
+
+  // TDetTiming
+  print_word("SOFcounts" , 0x00c00000);
+  print_word("EOFcounts" , 0x00c00004);
+  print_word("Msgcounts" , 0x00c00008);
+  print_word("CRCerrors" , 0x00c0000c);
+  print_word("RxRecClks" , 0x00c00010);
+  print_word("RxRstDone" , 0x00c00014);
+  print_word("RxDecErrs" , 0x00c00018);
+  print_word("RxDspErrs" , 0x00c0001c);
+  print_word("CSR"       , 0x00c00020);
+  print_field("  linkUp" , 0x00c00020, 1, 1);
+  print_field("  polar"  , 0x00c00020, 2, 1);
+  print_field("  clksel" , 0x00c00020, 4, 1);
+  print_field("  ldown"  , 0x00c00020, 5, 1);
+  print_word("MsgDelay"  , 0x00c00024);
+  print_word("TxRefClks" , 0x00c00028);
+  print_word("BuffByCnts", 0x00c0002c);
 }
 

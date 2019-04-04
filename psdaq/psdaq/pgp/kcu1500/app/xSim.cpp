@@ -118,11 +118,11 @@ static void print_field(const char* name, int addr, int offset, int mask)
 
 static void print_word (const char* name, int addr) { print_field(name,addr,0,0xffffffff); }
 
-static void print_dti_lane(const char* name, int addr, int offset, int mask)
+static void print_lane(const char* name, int addr, int offset, int stride, int mask)
 {
     printf("%20.20s", name);
     for(int i=0; i<4; i++) {
-        uint32_t reg = get_reg32( addr+16*i);
+        uint32_t reg = get_reg32( addr+stride*i);
         printf(" %8x", (reg >> offset) & mask);
     }
     printf("\n");
@@ -258,8 +258,7 @@ static void dump_ring()
 static void usage(const char* p)
 {
   printf("Usage: %s [options]\n",p);
-  printf("Options: -d <device_id>  [e.g. 0x2030]\n");
-  printf("         -b <bus_id>     [e.g. 0000:af:00.0]\n");
+  printf("Options: -d <device file> [default /dev/datadev_1]\n");
   printf("         -c              [setup clock synthesizer]\n");
   printf("         -s              [dump status]\n");
   printf("         -S              [dump status ring buffers]\n");
@@ -463,13 +462,19 @@ int main(int argc, char* argv[])
       print_field("localid"  , 0x00a00004,  0, 0xffffffff);
       print_field("remoteid" , 0x00a00008,  0, 0xffffffff);
 
-      print_dti_lane("cntL0"      , 0x00a00010,  0, 0xffffff);
-      print_dti_lane("cntOF"      , 0x00a00010, 24, 0xff);
-      print_dti_lane("cntL1A"     , 0x00a00014,  0, 0xffffff);
-      print_dti_lane("cntL1R"     , 0x00a00018,  0, 0xffffff);
-      print_dti_lane("cntWrFifo"  , 0x00a0001c,  0, 0xff);
-      print_dti_lane("cntRdFifo"  , 0x00a0001c,  8, 0xff);
-      print_dti_lane("cntMsgDelay", 0x00a0001c, 16, 0xffff);
+      print_lane("cntL0"      , 0x00a00010,  0, 16, 0xffffff);
+      print_lane("cntOF"      , 0x00a00010, 24, 16, 0xff);
+      print_lane("cntL1A"     , 0x00a00014,  0, 16, 0xffffff);
+      print_lane("cntL1R"     , 0x00a00018,  0, 16, 0xffffff);
+      print_lane("cntWrFifo"  , 0x00a0001c,  0, 16, 0xff);
+      print_lane("cntRdFifo"  , 0x00a0001c,  8, 16, 0xff);
+      print_lane("cntMsgDelay", 0x00a0001c, 16, 16, 0xffff);
+      print_lane("fullToTrig" , 0x00a00050,  0,  4, 0xfff);
+      print_lane("nfullToTrig", 0x00a00050, 16,  4, 0xfff);
+      print_lane("txLocked"   , 0x00a00050, 28,  4, 0x1);
+      print_lane("resetDone"  , 0x00a00050, 29,  4, 0x1);
+      print_lane("buffByDone" , 0x00a00050, 30,  4, 0x1);
+      print_lane("buffByErr"  , 0x00a00050, 31,  4, 0x1);
 
       if (core_pcie) {
         // TDetTiming
