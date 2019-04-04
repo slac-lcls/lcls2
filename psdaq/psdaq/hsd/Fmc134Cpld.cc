@@ -102,7 +102,8 @@ void Fmc134Cpld::_lmx_init(bool lInternalRef)
   // WRREG(  7, ((0<<22) | (0<<19) | (0<<18) |  // FL_SELECT=GND, FL_PINMODE=0, FL_INV=0
   //             (4<<13) | (1<< 9) | (0<<12) |  // MUXOUT_SELECT=READBACK
   //             (0<< 4) | (0<< 0) | (0<< 3))); // LD_SELECT=GND
-  WRREG(  7, 0x0004E211); // 4DSP value
+  //  WRREG(  7, 0x0004E211); // 4DSP value  {LD_PINMODE=1, LD_INV=0, LD_SEL=1, MUXOUT_PINMODE=1, MUX_INV=0, MUXOUT_SEL=7, FL_INV=1, FL_PINMODE=0, FL_SEL=0}
+  WRREG(  7, 0x00048211);  // MUXOUT_SEL=4
   unsigned v;
   if (lInternalRef) {
     WRREG(  6, 0x4C);
@@ -401,7 +402,7 @@ void Fmc134Cpld::_adc_init(unsigned a, bool ldualch)
   WRREG(0x62, 0x02);
 
   //  Program JMODE
-  WRREG(0x201,ldualch ? 2:0);
+  WRREG(0x201,(ldualch ? 2:0));
   //  Program KM1 (K-1)
   WRREG(0x202,0xf);
         // Keep output format as 2's complement and ENABLE Scrambler
@@ -701,7 +702,8 @@ unsigned Fmc134Cpld::readRegister(DevSel   dev,
     _i2c_data[0] = ((address&0x7)<<5) | 6;
     _command = 1<<dev;
 
-    data = _read()>>4;
+    //    data = _read()>>4;
+    data = _read();
     break;
   case HMC:
     return -1;

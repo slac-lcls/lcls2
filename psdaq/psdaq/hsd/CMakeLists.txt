@@ -83,6 +83,9 @@ target_link_libraries(hsd_3200
 
 add_executable(hsd_3200_reg hsd_3200_reg.cc)
 
+target_link_libraries(hsd_3200_reg
+    hsd
+)
 target_include_directories(hsd_3200_reg PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 )

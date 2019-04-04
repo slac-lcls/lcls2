@@ -7,18 +7,20 @@
 #include "psdaq/xpm/Module.hh"
 
 namespace Pds_Epics {
-  class EpicsPVA;
+  class PVCached;
 };
 
 namespace Pds {
+  class Semaphore;
   namespace Xpm {
 
     class PVStats {
     public:
-      PVStats();
+      PVStats(Module&, Semaphore&);
       ~PVStats();
     public:
       void allocate(const std::string& title);
+      void update();
       void update(const CoreCounts& nc, const CoreCounts& oc, 
                   const LinkStatus* nl, const LinkStatus* ol,
                   const PllStats* pll,
@@ -32,12 +34,16 @@ namespace Pds {
       void _updateTiming(const TimingCounts& nc, 
                          const TimingCounts& oc,
                          double dt,
-                         std::vector<Pds_Epics::EpicsPVA*>::iterator&);
+                         std::vector<Pds_Epics::PVCached*>::iterator&);
       void _updatePll   (const PllStats&,
-                         std::vector<Pds_Epics::EpicsPVA*>::iterator&);
+                         std::vector<Pds_Epics::PVCached*>::iterator&);
     private:
-      std::vector<Pds_Epics::EpicsPVA*> _pv;
-      L0Stats _begin;
+      Module&    _dev;
+      Semaphore& _sem;
+      std::vector<Pds_Epics::PVCached*> _pv;
+      timespec   _t;
+      CoreCounts _c;
+      LinkStatus _links[32];
     };
   };
 };

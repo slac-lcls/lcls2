@@ -49,17 +49,17 @@ target_link_libraries(hpsBldClient
 )
 
 #
-#  tprca
+#  tprioc
 #
-add_executable(tprca tprca.cc)
+add_executable(tprioc tprca.cc)
 
-target_include_directories(tprca PUBLIC
+target_include_directories(tprioc PUBLIC
     tpr
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $ENV{CONDA_PREFIX}/include
 )
 
-target_link_libraries(tprca
+target_link_libraries(tprioc
    epicstools
    ${EPICS_PVACCESS_LIB}
    ${EPICS_PVDATA_LIB}
@@ -138,7 +138,7 @@ target_link_libraries(pgpca
 install(TARGETS app
 		hpsBldServer
 		hpsBldClient
-		tprca
+		tprioc
 		tprsh
 		tprutil
         pgpca

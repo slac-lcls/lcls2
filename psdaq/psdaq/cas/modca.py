@@ -202,7 +202,7 @@ def FrontPanelAMC(pvbase,iamc):
         LblCheckBox   (dslo, pvbase, "LinkTxResetDone", NDsLinks, start=iamc*NDsLinks, enable=False)
         LblCheckBox   (dslo, pvbase, "LinkTxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
         LblCheckBox   (dslo, pvbase, "LinkIsXpm",      NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkLoopback",   NDsLinks)
+        LblCheckBox   (dslo, pvbase, "LinkLoopback",   NDsLinks, start=iamc*NDsLinks)
 #        LblCheckBox  (dslo, pvbase, "LinkRxErr",      NAmcs * NDsLinks, enable=False)
         LblEditIntX   (dslo, pvbase, "LinkRxErr",      NDsLinks, start=iamc*NDsLinks, enable=False)
         LblEditIntX   (dslo, pvbase, "LinkRxRcv",      NDsLinks, start=iamc*NDsLinks, enable=False)
@@ -280,16 +280,37 @@ class PvMmcm(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout()
 
         pv = Pv(pvname)
+#        v = pv.get()
         v = pv.get()
 
-        layout.addWidget( QtWidgets.QLabel(title+'\n'+str(v[0])) )
+        v0 = int(v[0])
+        iedge   = v0 & 0xffff
+        inum    = (v0>>16)&0x3fff
+        ibusy   = (v0>>30)&1
+        ilocked = (v0>>31)&1
+        
+        label = title+'\n'+str(iedge)
+        if ilocked==1:
+            label += '*'
+        if ibusy==1:
+            label += 'R'
+        layout.addWidget( QtWidgets.QLabel(label) )
 
-        self.image   = QtGui.QImage(v[0]+1,16,QtGui.QImage.Format_Mono)
+        w = int(inum/4)
+        self.image   = QtGui.QImage(w,20,QtGui.QImage.Format_Mono)
         painter = QtGui.QPainter(self.image)
-        painter.fillRect(0,0,v[0]+1,16,QtGui.QColor(255,255,255))
-        painter.setBrush(QtGui.QColor(0,0,255))
-        for i in range(v[0]+1):
-            painter.drawLine(i,0,i,15-(v[i+1]>>9))
+        painter.fillRect(0,0,w,20,QtGui.QColor(255,255,255))
+
+        painter.setBrush(QtGui.QColor(0,0,255))   # blue
+        for i in range(w):
+            q = 0
+            for j in range(4):
+                q += int(v[i*4+j+1])
+            painter.drawLine(i,15-(q>>4),i,15)
+
+        painter.setBrush(QtGui.QColor(255,0,0))   # red
+        i = int(iedge/4)
+        painter.drawLine(i,16,i,20)
 
         canvas = QtWidgets.QLabel()
         canvas.setPixmap(QtGui.QPixmap.fromImage(self.image))
@@ -297,16 +318,26 @@ class PvMmcm(QtWidgets.QWidget):
         layout.addWidget( canvas )
         self.setLayout(layout)
 
+def intInput(layout, pv, label):
+    lo = QtWidgets.QHBoxLayout()
+    lo.addWidget( QtWidgets.QLabel(label) )
+    lo.addWidget( PvEditInt(pv, '') )
+    layout.addLayout(lo)
+
 def addCuTab(self,pvbase):
     lor = QtWidgets.QVBoxLayout()
     lor.addWidget( addTiming(self,pvbase+'Cu:') )
 
-    PvLabel(self,lor, pvbase+'XTPG:', 'cuBeamCode')
-    PvLabel(self,lor, pvbase+'XTPG:', 'cuDelay')
+    LblEditIntX( lor, pvbase+'XTPG:', 'CuInput'   )
+    LblEditIntX( lor, pvbase+'XTPG:', 'CuBeamCode')
+    LblEditIntX( lor, pvbase+'XTPG:', 'CuDelay'   )
     PvLabel(self,lor, pvbase+'XTPG:', 'PulseId')
-    PvLabel(self,lor, pvbase+'XTPG:', 'TimeStamp')
+    PvLabel(self,lor, pvbase+'XTPG:', 'TimeStamp', isTime=True)
+    PvLabel(self,lor, pvbase+'XTPG:', 'FiducialIntv')
+    LblCheckBox( lor, pvbase+'XTPG:', 'FiducialErr', enable=False)
+    LblPushButtonX( lor, pvbase+'XTPG:', 'ClearErr' )
 
-    for i in range(3):
+    for i in range(4):
         lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM%d'%i , 'mmcm%d'%i) )
 
     lor.addStretch()

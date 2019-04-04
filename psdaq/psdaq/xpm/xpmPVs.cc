@@ -33,6 +33,7 @@ using Pds_Epics::EpicsPVA;
 using Pds_Epics::PVMonitorCb;
 using Pds::Xpm::CoreCounts;
 using Pds::Xpm::L0Stats;
+using Pds::Xpm::MmcmPhaseLock;
 using std::string;
 
 extern int optind;
@@ -80,16 +81,14 @@ namespace Pds {
       EpicsPVA*   _partPV;
       EpicsPVA*    _paddrPV;
       EpicsPVA*    _fwBuildPV;
-      EpicsPVA*    _mmcmPV[3];
-      timespec   _t;
-      CoreCounts _c;
-      LinkStatus _links[32];
+      EpicsPVA*    _mmcmPV[4];
       L0Stats    _s    [Pds::Xpm::Module::NPartitions];
       PVPStats*  _pvps [Pds::Xpm::Module::NPartitions];
       PVStats    _pvs;
       PVCtrls    _pvc;
       PVPCtrls*  _pvpc [Pds::Xpm::Module::NPartitions];
       friend class PvAllocate;
+      unsigned   _nmmcm;
     };
 
     class PvAllocate : public Routine {
@@ -104,6 +103,26 @@ namespace Pds {
   };
 };
 
+static void fillMmcm( EpicsPVA*& pv, MmcmPhaseLock& mmcm ) {
+  if (pv && pv->connected()) {
+    unsigned w = 2048;
+    pvd::shared_vector<int> vec(w+1);
+    vec[0] = mmcm.delayValue;
+    for(unsigned j=1; j<=w; j++) {
+      mmcm.ramAddr = j;
+      unsigned q = mmcm.ramData;
+      vec[j] = q;
+    }
+    pv->putFromVector<int>(freeze(vec));
+    pv = 0;
+  }
+}
+
+static inline double tdiff(timespec& tm0, timespec& tm1)
+{
+  return double(tm1.tv_sec - tm0.tv_sec) + 1.e-9*(double(tm1.tv_nsec)-double(tm0.tv_nsec));
+}
+
 using namespace Pds;
 using namespace Pds::Xpm;
 
@@ -111,6 +130,7 @@ StatsTimer::StatsTimer(Module& dev) :
   _dev       (dev),
   _sem       (Semaphore::FULL),
   _task      (new Task(TaskObject("PtnS"))),
+  _pvs       (dev,_sem),
   _pvc       (dev,_sem)
 {
 }
@@ -128,6 +148,19 @@ void StatsTimer::allocate(const char* module_prefix,
 
 void StatsTimer::_allocate()
 {
+  //  Wait for module to become ready
+  { 
+    _nmmcm = 3;
+    std::string bld = _dev._version.buildStamp();
+    if (bld.find("xtpg")!=std::string::npos) {
+      _nmmcm = 4;
+      while(!_dev._mmcm_amc.ready()) {
+        printf("Waiting for XTPG phase lock\n");
+        sleep(1);
+      }
+    }
+  }
+
   _pvs.allocate(_module_prefix);
   _pvc.allocate(_module_prefix);
 
@@ -150,7 +183,7 @@ void StatsTimer::_allocate()
     printf("fwbuildpv: %s\n", ostr.str().c_str());
     _fwBuildPV = new EpicsPVA(ostr.str().c_str(),256);  }
 
-  for(unsigned i=0; i<3; i++) {
+  for(unsigned i=0; i<4; i++) {
     std::stringstream ostr;
     ostr << _module_prefix << ":XTPG:MMCM" << i;
     printf("mmcmpv[%d]: %s\n", i, ostr.str().c_str());
@@ -181,27 +214,7 @@ void StatsTimer::cancel()
 void StatsTimer::expired()
 {
   try {
-    timespec t; clock_gettime(CLOCK_REALTIME,&t);
-    CoreCounts c = _dev.counts();
-    LinkStatus links[32];
-    _dev.linkStatus(links);
-    PllStats   pll[2];
-    for(unsigned i=0; i<Module::NAmcs; i++)
-      pll[i] = _dev.pllStat(i);
-    unsigned bpClk  = _dev._monClk[0]&0x1fffffff;
-    unsigned fbClk  = _dev._monClk[1]&0x1fffffff;
-    unsigned recClk = _dev._monClk[2]&0x1fffffff;
-    double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
-    _sem.take();
-    try {
-      _pvs.update(c,_c,links,_links,pll,recClk,fbClk,bpClk,dt);
-    } catch (CPSWError& e) {
-      printf("Caught exception %s\n", e.what());
-    }
-    _sem.give();
-    _c=c;
-    std::copy(links,links+32,_links);
-    _t=t;
+    _pvs.update();
 
     for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
       if (_pvpc[i]->enabled()) {
@@ -217,34 +230,22 @@ void StatsTimer::expired()
     }
   } catch (CPSWError& e) { printf("cpsw exception %s\n",e.what()); }
 
-    _pvc.dump();
+  //  _pvc.dump();
 
-    if (_paddrPV->connected()) {
+  if (_paddrPV && _paddrPV->connected()) {
     _paddrPV->putFrom<unsigned>(_dev._paddr);
-    }
-    else
-      printf("paddrpv not connected\n");
+    _paddrPV = 0;
+  }
 
-    if (_fwBuildPV && _fwBuildPV->connected()) {
-      std::string bld = _dev._version.buildStamp();
-      printf("fwBuild: %s\n",bld.c_str());
-      _fwBuildPV->putFrom<std::string>(bld.c_str());
-      _fwBuildPV = 0;
-    }
+  if (_fwBuildPV && _fwBuildPV->connected()) {
+    std::string bld = _dev._version.buildStamp();
+    printf("fwBuild: %s\n",bld.c_str());
+    _fwBuildPV->putFrom<std::string>(bld.c_str());
+    _fwBuildPV = 0;
+  }
 
-    for(unsigned i=0; i<3; i++) 
-      if (_mmcmPV[i] && _mmcmPV[i]->connected()) {
-        unsigned n = _dev._mmcm[i].delaySet&0x7ff;
-        pvd::shared_vector<int> vec(n+2);
-        vec[0] = n;
-        for(unsigned j=0; j<=n; j++) {
-          _dev._mmcm[i].ramAddr = j;
-          vec[j+1] = _dev._mmcm[i].ramData;
-        }
-        printf("mmcm%d: %u\n",i,n);
-        _mmcmPV[i]->putFromVector<int>(freeze(vec));
-        _mmcmPV[i] = 0;
-      }
+  for(unsigned i=0; i<_nmmcm; i++) 
+    fillMmcm(_mmcmPV[i], i<3 ? _dev._mmcm[i] : _dev._mmcm_amc);
 }
 
 

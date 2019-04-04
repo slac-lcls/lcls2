@@ -171,3 +171,10 @@ Reg::operator unsigned() const
   sem_post(&_sem);
   return 0;
 }
+
+void Reg::read(unsigned* dst, unsigned n) const
+{
+  const Reg* src = this;
+  for(unsigned i=0; i<n; i++, src++)
+    dst[i] = unsigned(*src);
+}

@@ -22,7 +22,7 @@ fixedRates = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
 acRates    = ['60Hz','30Hz','10Hz','5Hz','1Hz']
 acTS       = ['TS%u'%(i+1) for i in range(6)]
 seqIdxs    = ['s%u'%i for i in range(18)]
-seqBits    = ['b%u'%i for i in range(32)]
+seqBits    = ['b%u'%i for i in range(16)]
 partitions = ['P%u'%i for i in range(8)]
 ndestn     = 16
 
@@ -233,130 +233,135 @@ class PvEditDst(QtWidgets.QWidget):
         vbox.addWidget(PvDstTab(pvname+'DESTNS'))
         self.setLayout(vbox)
 
-class PvRowDbl():
-    def __init__(self, row, layout, prefix, pv, label, ncols=NReadoutChannels, fmt='{}'):
-        qlabel = QtWidgets.QLabel(label)
-        qlabel.setMinimumWidth(RowHdrLen)
-        layout.addWidget(qlabel,row,0)
+def PvRowDbl(row, layout, prefix, pv, label, ncols=NReadoutChannels, fmt='{}'):
+    qlabel = QtWidgets.QLabel(label)
+    qlabel.setMinimumWidth(RowHdrLen)
+    layout.addWidget(qlabel,row,0)
 
-        for i in range(ncols):
-            qedit = PvEditDbl(prefix+':CH%u:'%i+pv, fmt)
-            layout.addWidget(qedit,row,i+1)
-        row += 1
+    for i in range(ncols):
+        qedit = PvEditDbl(prefix+':CH%u:'%i+pv, fmt)
+        layout.addWidget(qedit,row,i+1)
+    row += 1
 
-class PvRowInt():
-    def __init__(self, row, layout, prefix, pv, label, ncols=NReadoutChannels):
-        qlabel = QtWidgets.QLabel(label)
-        qlabel.setMinimumWidth(RowHdrLen)
-        layout.addWidget(qlabel,row,0)
+def PvRowInt(row, layout, prefix, pv, label, ncols=NReadoutChannels):
+    qlabel = QtWidgets.QLabel(label)
+    qlabel.setMinimumWidth(RowHdrLen)
+    layout.addWidget(qlabel,row,0)
 
-        for i in range(ncols):
-            qedit = PvEditInt(prefix+':CH%u:'%i+pv)
-            layout.addWidget(qedit,row,i+1)
-        row += 1
+    for i in range(ncols):
+        qedit = PvEditInt(prefix+':CH%u:'%i+pv)
+        layout.addWidget(qedit,row,i+1)
+    row += 1
 
-class PvRowCmb():
-    def __init__(self, row, layout, prefix, pv, label, choices, ncols=NReadoutChannels):
-        qlabel = QtWidgets.QLabel(label)
-        qlabel.setMinimumWidth(RowHdrLen)
-        layout.addWidget(qlabel,row,0)
+def PvRowCmb(row, layout, prefix, pv, label, choices, ncols=NReadoutChannels):
+    qlabel = QtWidgets.QLabel(label)
+    qlabel.setMinimumWidth(RowHdrLen)
+    layout.addWidget(qlabel,row,0)
 
-        for i in range(ncols):
-            qedit = PvEditCmb(prefix+':CH%u:'%i+pv, choices)
-            layout.addWidget(qedit,row,i+1)
-        row += 1
+    for i in range(ncols):
+        qedit = PvEditCmb(prefix+':CH%u:'%i+pv, choices)
+        layout.addWidget(qedit,row,i+1)
+    row += 1
 
-class PvRowMod():
-    def __init__(self, row, layout, prefix, pv, label):
-        qlabel = QtWidgets.QLabel(label)
-        qlabel.setMinimumWidth(RowHdrLen)
-        layout.addWidget(qlabel,row,0)
+def PvRowMod(row, layout, prefix, pv, label):
+    qlabel = QtWidgets.QLabel(label)
+    qlabel.setMinimumWidth(RowHdrLen)
+    layout.addWidget(qlabel,row,0)
 
-        for i in range(NReadoutChannels):
-            qedit = PvEditCmb(prefix+':CH%u:'%i+pv, modes)
-            layout.addWidget(qedit,row,i+1)
-        row += 1
+    for i in range(NReadoutChannels):
+        qedit = PvEditCmb(prefix+':CH%u:'%i+pv, modes)
+        layout.addWidget(qedit,row,i+1)
+    row += 1
 
-class PvRowEvt():
-    def __init__(self, row, layout, prefix, ncols=NReadoutChannels):
-        qlabel = QtWidgets.QLabel('Event')
-        qlabel.setMinimumWidth(RowHdrLen)
-        layout.addWidget(qlabel,row,0)
+def PvRowEvt(row, layout, prefix, ncols=NReadoutChannels):
+    qlabel = QtWidgets.QLabel('Event')
+    qlabel.setMinimumWidth(RowHdrLen)
+    layout.addWidget(qlabel,row,0)
 
-        for i in range(ncols):
-            qedit = PvEditEvt(prefix+':CH%u:'%i)
-            layout.addWidget(qedit,row,i+1)
-        row += 1
+    for i in range(ncols):
+        qedit = PvEditEvt(prefix+':CH%u:'%i)
+        layout.addWidget(qedit,row,i+1)
+    row += 1
 
-class PvRowDst():
-    def __init__(self, row, layout, prefix, ncols=NReadoutChannels):
-        qlabel = QtWidgets.QLabel('Destn')
-        qlabel.setMinimumWidth(RowHdrLen)
-        layout.addWidget(qlabel,row,0)
+def PvRowDst(row, layout, prefix, ncols=NReadoutChannels):
+    qlabel = QtWidgets.QLabel('Destn')
+    qlabel.setMinimumWidth(RowHdrLen)
+    layout.addWidget(qlabel,row,0)
 
-        for i in range(ncols):
-            qedit = PvEditDst(prefix+':CH%u:'%i)
-            layout.addWidget(qedit,row,i+1)
-        row += 1
+    for i in range(ncols):
+        qedit = PvEditDst(prefix+':CH%u:'%i)
+        layout.addWidget(qedit,row,i+1)
+    row += 1
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, pvname):
         MainWindow.setObjectName("MainWindow")
-        self.centralWidget = QtWidgets.QWidget(MainWindow)
-        self.centralWidget.setObjectName("centralWidget")
+
+        tw = QtWidgets.QTabWidget(MainWindow)
 
         layout = QtWidgets.QGridLayout()
 
         row = 0
-
         layout.addWidget( QtWidgets.QLabel('ACCSEL'), row, 0 )
         layout.addWidget( PvEditCmb(pvname+':ACCSEL', accSel), row, 1 )
         row += 1
-
         layout.addWidget( QtWidgets.QLabel('LINKSTATE'), row, 0 )
         layout.addWidget( PvCmb(pvname+':LINKSTATE', linkStates), row, 1 )
         row += 1
-
         layout.addWidget( QtWidgets.QLabel('RXERRS'), row, 0 )
         layout.addWidget( PvInt(pvname+':RXERRS'), row, 1 )
         row += 1
-
         layout.addWidget( QtWidgets.QLabel('RXPOL'), row, 0 )
         layout.addWidget( PvEditCmb(pvname+':RXPOL', rxpols), row, 1 )
         row += 1
-
         layout.addWidget( QtWidgets.QLabel('FRAME RATE [Hz]'), row, 0 )
         layout.addWidget( PvDbl(pvname+':FRAMERATE'), row, 1 )
         row += 1
-
         layout.addWidget( QtWidgets.QLabel('RXCLK RATE [MHz]'), row, 0 )
         layout.addWidget( PvDbl(pvname+':RXCLKRATE'), row, 1 )
         row += 1
+        layout.setColumnStretch(2,1)
+        layout.setRowStretch(row,1)
 
+        w = QtWidgets.QWidget()
+        w.setLayout(layout)
+        tw.addTab(w, 'Input')
+
+        prefix = pvname
         for i in range(NReadoutChannels):
-            qlabel = QtWidgets.QLabel('CH%u'%i)
-            layout.addWidget( qlabel, row+0, i+1, QtCore.Qt.AlignHCenter )
-        PvRowMod( row+1, layout, pvname, "MODE" , "")
-        PvRowDbl( row+2, layout, pvname, "DELAY", "Delay [sec]", NTriggerChannels)
-        PvRowDbl( row+3, layout, pvname, "WIDTH", "Width [sec]", NTriggerChannels)
-        PvRowCmb( row+4, layout, pvname, "POL"  , "Polarity", polarities, NTriggerChannels)
-        PvRowDst( row+5, layout, pvname)
-        PvRowEvt( row+6, layout, pvname)
-        PvRowInt( row+7, layout, pvname, "BSTART", "BsaStart [pul]")
-        PvRowInt( row+8, layout, pvname, "BWIDTH", "BsaWidth [pul]")
-        PvRowDbl( row+9, layout, pvname, "RATE"  , "Rate [Hz]", fmt='{:.2f}')
-        widget = QtWidgets.QWidget()
-        widget.setLayout(layout)
-        scroll = QtWidgets.QScrollArea()
-        scroll.setWidget(widget)
-        lo = QtWidgets.QHBoxLayout()
-        lo.addWidget(scroll)
-        self.centralWidget.setLayout(lo)
-        self.centralWidget.resize(1000,600)
-        MainWindow.resize(1000,600)
+            lor = QtWidgets.QGridLayout()
+            row = 0
+            lor.addWidget(QtWidgets.QLabel('Event'),row,0)
+            lor.addWidget(PvEditEvt(prefix+':CH%u:'%i),row,1)
+            row += 1
+            lor.addWidget(QtWidgets.QLabel('Destn'),row,0)
+            lor.addWidget(PvEditDst(prefix+':CH%u:'%i),row,1)
+            row += 1
+            lor.addWidget(QtWidgets.QLabel('Rate'),row,0)
+            lor.addWidget(PvEditDbl(prefix+':CH%u:RATE'%i, fmt='{:.2f}'),row,1)
+            row += 1
+            lor.addWidget(QtWidgets.QLabel('Mode'),row,0)
+            lor.addWidget(PvEditCmb(prefix+':CH%u:MODE'%i, modes),row,1)
+            row += 1
+            lor.addWidget(QtWidgets.QLabel('Delay [sec]'),row,0)
+            lor.addWidget(PvEditDbl(prefix+':CH%u:DELAY'%i),row,1)
+            row += 1
+            lor.addWidget(QtWidgets.QLabel('Width [sec]'),row,0)
+            lor.addWidget(PvEditDbl(prefix+':CH%u:WIDTH'%i),row,1)
+            row += 1
+            lor.addWidget(QtWidgets.QLabel('Polarity'),row,0)
+            lor.addWidget(PvEditCmb(prefix+':CH%u:POL'%i, polarities),row,1)
+            w = QtWidgets.QWidget()
+            w.setLayout(lor)
+            tw.addTab( w, 'CH%u'%i )
+
+        self.centralWidget = tw
+        self.centralWidget.setObjectName("centralWidget")
+        self.centralWidget.resize(600,600)
+        MainWindow.resize(600,600)
 
 
-if __name__ == '__main__':
+def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
@@ -386,3 +391,6 @@ if __name__ == '__main__':
 
     MainWindow.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()

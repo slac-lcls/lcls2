@@ -21,7 +21,8 @@ L0Stats::L0Stats() {
   numl0=0; 
   numl0Inh=0; 
   numl0Acc=0; 
-  memset(linkInh,0,32*sizeof(uint32_t)); 
+  memset(linkInhEv,0,32*sizeof(uint32_t)); 
+  memset(linkInhTm,0,32*sizeof(uint32_t)); 
   rx0Errs=0; 
 }
 
@@ -87,7 +88,7 @@ void L0Stats::dump() const
         PU64(L0Acc,numl0Acc);
         for(unsigned i=0; i<32; i+=4)
           printf("Inhibit[%u]: %08x %08x %08x %08x\n", i,
-                 linkInh[i+0],linkInh[i+1],linkInh[i+2],linkInh[i+3]);
+                 linkInhTm[i+0],linkInhTm[i+1],linkInhTm[i+2],linkInhTm[i+3]);
 #undef PU64
         printf("%9.9s: %x\n","rxErrs",rx0Errs);
 }
@@ -115,13 +116,14 @@ void Module::init()
 
   unsigned il = getLink();
 
-  printf("DsLnkCfg:  %4.4s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s\n",
-         "Link", "TxDelay", "Partn", "TrigSrc", "Loopback", "TxReset", "RxReset", "TxPllRst", "RxPllRst", "Enable");
+  printf("DsLnkCfg:  %4.4s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s\n",
+         "Link", "TxDelay", "RxTmo", "Partn", "TrigSrc", "Loopback", "TxReset", "RxReset", "TxPllRst", "RxPllRst", "Enable");
   for(unsigned i=0; i<NDSLinks; i++) {
     setLink(i);
-    printf("           %4u %8u %8u %8u %8u %8u %8u %8u %8u %8u\n",
+    printf("           %4u %8u %8u %8u %8u %8u %8u %8u %8u %8u %8u\n",
            i,
-           getf(_dsLinkConfig,18,0),
+           getf(_dsLinkConfig,9,0),
+           getf(_dsLinkConfig,9,9),
            getf(_dsLinkConfig,4,20),
            getf(_dsLinkConfig,4,24),
            getf(_dsLinkConfig,1,28),
@@ -195,12 +197,23 @@ void Module::clearLinks()
 void Module::linkTxDelay(unsigned link, unsigned v)
 {
   setLink(link);
-  setf(_dsLinkConfig, v, 18, 0);
+  setf(_dsLinkConfig, v, 9, 0);
 }
 unsigned Module::linkTxDelay(unsigned link) const
 {
   setLink(link);
-  return getf(_dsLinkConfig,    18, 0);
+  return getf(_dsLinkConfig,    9, 0);
+}
+
+void Module::linkRxTimeOut(unsigned link, unsigned v)
+{
+  setLink(link);
+  setf(_dsLinkConfig, v, 9, 9);
+}
+unsigned Module::linkRxTimeOut(unsigned link) const
+{
+  setLink(link);
+  return getf(_dsLinkConfig,    9, 9);
 }
 
 void Module::linkPartition(unsigned link, unsigned v)
@@ -329,6 +342,7 @@ L0Stats Module::l0Stats() const
   //  Lock the counters
   const_cast<Module&>(*this).lockL0Stats(true);
   L0Stats s;
+  clock_gettime(CLOCK_REALTIME,&s.time);
   s.l0Enabled   = _l0Enabled;
   s.l0Inhibited = _l0Inhibited;
   s.numl0       = _numl0;
@@ -338,7 +352,8 @@ L0Stats Module::l0Stats() const
   for(unsigned i=0; i<32; i++) {
     setLink(i);
     // if (getf(_dsLinkConfig,1,31))
-      s.linkInh[i] = _inhibitCounts[i];
+    s.linkInhEv[i] = _inhibitEvCounts[i];
+    s.linkInhTm[i] = _inhibitTmCounts[i];
   }
   //  Release the counters
   const_cast<Module&>(*this).lockL0Stats(false);
@@ -597,6 +612,15 @@ void Module::setTimeStamp()
   _timestamp = t;
 }
 
+void Module::setCuInput(unsigned v)
+{
+  printf("Xpm::Module::setCuInput %x\n",v);
+  Pds::Cphw::XBar::Map q((Pds::Cphw::XBar::Map)v);
+  _xbar.setOut( Pds::Cphw::XBar::FPGA, q);
+  _xbar.setOut( Pds::Cphw::XBar::RTM0, q);
+  _xbar.setOut( Pds::Cphw::XBar::RTM1, q);
+}
+
 void Module::setCuDelay(unsigned v)
 {
   _cuDelay = v;
@@ -605,6 +629,12 @@ void Module::setCuDelay(unsigned v)
 void Module::setCuBeamCode(unsigned v)
 {
   _cuBeamCode = v;
+}
+
+void Module::clearCuFiducialErr(unsigned v)
+{
+  if (v)
+    _cuFiducialIntv = v;
 }
 
 void     Module::setPartition(unsigned v) const

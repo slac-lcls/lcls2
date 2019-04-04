@@ -58,8 +58,10 @@ namespace Pds {
       uint64_t numl0;
       uint64_t numl0Inh;
       uint64_t numl0Acc;
-      uint32_t linkInh[32];
+      uint32_t linkInhEv[32];
+      uint32_t linkInhTm[32];
       uint16_t rx0Errs;
+      struct timespec time;
     };
 
     class LinkStatus {
@@ -109,8 +111,9 @@ namespace Pds {
       Cphw::Reg64 _pulseId;
       Cphw::Reg   _cuDelay;    // 185.7 MHz units (default 800*200 clocks)
       Cphw::Reg   _cuBeamCode; // beam present eventcode (default 140)
+      Cphw::Reg   _cuFiducialIntv; 
     private:
-      uint32_t rsvd_gen[(0x00100000-24)>>2];
+      uint32_t rsvd_gen[(0x00100000-28)>>2];
     public: //  MmcmPhaseLock
       MmcmPhaseLock _mmcm[3];
     private:
@@ -161,8 +164,10 @@ namespace Pds {
       void dumpTiming  (unsigned) const;
       void setVerbose  (unsigned);
       void setTimeStamp();
+      void setCuInput  (unsigned);
       void setCuDelay  (unsigned);
       void setCuBeamCode(unsigned);
+      void clearCuFiducialErr(unsigned);
       void pllBwSel    (unsigned, int);
       void pllFrqTbl   (unsigned, int);
       void pllFrqSel   (unsigned, int);
@@ -197,6 +202,8 @@ namespace Pds {
     public:
       void     linkTxDelay(unsigned, unsigned);
       unsigned linkTxDelay(unsigned) const;
+      void     linkRxTimeOut(unsigned, unsigned);
+      unsigned linkRxTimeOut(unsigned) const;
       void     linkPartition(unsigned, unsigned);
       unsigned linkPartition(unsigned) const;
       void     linkTrgSrc(unsigned, unsigned);
@@ -253,7 +260,8 @@ namespace Pds {
       //  [26]    cuRxEnable
       Cphw::Reg   _index;
       //  0x0008 - RW: ds link configuration for link[index]
-      //  [17:0]  txDelay       Transmit delay
+      //  [8:0]   txDelay       Transmit delay
+      //  [17:9]  rxTimeOut     Receive timeout
       //  [18]    txPllReset    Transmit reset
       //  [19]    rxPllReset    Receive  reset
       //  [23:20] partition     Partition
@@ -343,7 +351,7 @@ namespace Pds {
       //  [31]    enable        enable
       Cphw::Reg    _inhibitConfig[4];
       //  0x0090 - RO: Inhibit assertions by DS link for partition[index]
-      Cphw::Reg    _inhibitCounts[32];
+      Cphw::Reg    _inhibitEvCounts[32];
     public:
       //  0x0110 - RO: Monitor clock
       //  [28: 0]  Rate
@@ -352,7 +360,8 @@ namespace Pds {
       //  [31]     Lock
       Cphw::Reg _monClk[4];
     public:
-      uint32_t     _reserved_288[56];
+      Cphw::Reg    _inhibitTmCounts[32];
+      uint32_t     _reserved_416[24];
       //  0x0200 - WO: L0Reset
       Cphw::Reg    _groupL0Reset;
       //  0x0204 - WO: L0Enable
@@ -371,6 +380,9 @@ namespace Pds {
       XpmSequenceEngine& sequenceEngine();
     private:
       uint32_t    _reserved_engine[0x10000>>2];
+      uint32_t    _reserved_gthTSim[0x10000>>2];
+    public:
+      MmcmPhaseLock _mmcm_amc;
     };
   };
 };

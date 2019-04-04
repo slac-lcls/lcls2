@@ -9,6 +9,7 @@ namespace Pds {
     public:
       Reg& operator=(const unsigned);
       operator unsigned() const;
+      void read(unsigned*, unsigned) const;
     public:
       void setBit  (unsigned);
       void clearBit(unsigned);

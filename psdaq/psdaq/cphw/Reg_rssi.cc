@@ -69,3 +69,10 @@ Reg::operator unsigned() const
   _reg->getVal(&v,1,&rng);
   return v;
 }
+
+void Reg::read(unsigned* dst, unsigned n) const
+{
+  uint32_t addr = ((uint64_t(this))>>2)&0x3fffffff; 
+  IndexRange rng(addr,addr+n-1);
+  _reg->getVal(dst,n,&rng);
+}

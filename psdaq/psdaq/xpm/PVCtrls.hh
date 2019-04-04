@@ -27,12 +27,12 @@ namespace Pds {
     public:
       Module& module();
       Semaphore& sem();
-      XpmSequenceEngine& seq();
+      XpmSequenceEngine* seq();
     private:
       std::vector<Pds_Epics::EpicsPVA*> _pv;
       Module&            _m;
       Semaphore&         _sem;
-      XpmSequenceEngine& _seq;
+      XpmSequenceEngine* _seq;
     };
   };
 };

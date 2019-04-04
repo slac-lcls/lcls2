@@ -84,7 +84,7 @@ void Validator::dump_rates()
   timespec ttv;
   clock_gettime(CLOCK_REALTIME,&ttv);
 
-  if (nevents) {
+  if (_nevents) {
     unsigned nev = _nevents;
     uint64_t nby = _nbytes;
     unsigned rev = _revents;
@@ -120,8 +120,8 @@ void Validator::dump_rates()
   tv     =ttv;
 }
 
-//static unsigned ndump=10;
-static unsigned ndump=0;
+static unsigned ndump=10;
+//static unsigned ndump=0;
 static void dump(const char* b, int nb)
 {
   if (ndump) {

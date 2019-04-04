@@ -25,6 +25,7 @@ namespace Pds {
       //  High level API
       //
       static Hsd3200* create(int fd);
+      static Hsd3200* create(void*);
 
       ~Hsd3200();
 

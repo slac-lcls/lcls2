@@ -20,7 +20,7 @@ def printDb(prefix):
     print('=========================================')
     return
 
-if __name__ == '__main__':
+def main():
     global pvdb
     pvdb = {}     # start with empty dictionary
     global prefix
@@ -94,3 +94,6 @@ if __name__ == '__main__':
     server = PVAServer(__name__)
     server.createPV(args.P, pvdb)
     server.forever()
+
+if __name__ == '__main__':
+    main()

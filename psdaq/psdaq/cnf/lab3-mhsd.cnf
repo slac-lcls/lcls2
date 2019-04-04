@@ -1,7 +1,7 @@
 import os
 from psdaq.procmgr.ProcMgr import getRelEnvString
 
-platform = '4'
+platform = '5'
 username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
@@ -12,12 +12,12 @@ conda_rel = 'ps-2.0.0'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.42.255'
 
 # can also set this environment in the shell.
-os.environ['TESTRELDIR'] = '/reg/neh/home/weaver/lcls2-git/install'
+os.environ['TESTRELDIR'] = '/reg/neh/home/weaver/lcls2/install'
 
 conda_env = getRelEnvString()
 total_env = epics_env+conda_env
 
-shelf = '1'
+shelf = '2'
 ip_addr = '10.0.'+shelf
 
 # procmgr FLAGS: <port number> static port number to keep executable
@@ -35,14 +35,19 @@ ip_addr = '10.0.'+shelf
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
-# { host: epics_host     , id:'hsdcas-dev01', port:'29462', flags:'s', conda:conda_rel, env:pcas_env, cmd:'hsdcas -P DAQ:LAB2:HSD:DEV01'},
-# { host: 'daq-tst-dev01', id:'hsdioc-dev01', flags:'sx', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV01 -I -d /dev/pcie_adc_86'},
+ { host: epics_host     , id:'hsdcas-dev06-88', port:'29462', flags:'s', conda:conda_rel, env:pcas_env, cmd:'hsdcas -P DAQ:LAB2:HSD:DEV06-88'},
+ { host: 'daq-tst-dev06', id:'hsdioc-dev06-88', flags:'sx', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV06-88 -I -d /dev/pcie_adc_88'},
+ {                        id:'hsdca-dev06-88', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV06-88'},
+
+ { host: epics_host     , id:'hsdcas-dev06-89', port:'29463', flags:'s', conda:conda_rel, env:pcas_env, cmd:'hsdcas -P DAQ:LAB2:HSD:DEV06-89'},
+ { host: 'daq-tst-dev06', id:'hsdioc-dev06-89', flags:'sx', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV06-89 -I -d /dev/pcie_adc_89'},
+ {                        id:'hsdca-dev06-89', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV06-89'},
+
  {                        id:'partca-'+platform ,flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
 
-# {                        id:'modca', flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmca DAQ:LAB2:XPM:2'},
- {                        id:'modca-1', flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
-# { host: epics_host,  id:'modcas-1', port:'29460', flags:'s', conda:conda_rel, env:pcas_env, cmd:'modcas -P DAQ:LAB2:XPM:1'},
- { host: epics_host,  id:'xpmioc-1', port:'29461', flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmPVs -a 10.0.1.103 -P DAQ:LAB2'},
+ {                        id:'modca', flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
+# {                        id:'modca-1', flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
+ { host: epics_host,  id:'modcas-1', port:'29460', flags:'s', conda:conda_rel, env:pcas_env, cmd:'modcas -P DAQ:LAB2:XPM:1'},
 
  {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
 ]

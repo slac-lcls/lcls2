@@ -8,31 +8,61 @@
 #include <fcntl.h>
 #include <time.h>
 
+#include <vector>
+
+#include "psdaq/hsd/Fmc134Cpld.hh"
+using Pds::HSD::Fmc134Cpld;
+
 extern int optind;
 
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -d <dev id>\n");
-  printf("\t-a <register address>\n");
-  printf("\t-w <value>\n");
+  printf("         -r <address>[,<value>]\n");
+  printf("         -x <address>[,<value>]\n");
 }
 
 int main(int argc, char** argv) {
 
   extern char* optarg;
+  char* endptr;
 
-  char qadc='a';
+  const char* devname = "/dev/pcie_adc_86";
   int c;
   bool lUsage = false;
-  bool lWrite = false;
-  unsigned addr = 0;
-  unsigned wval = 0;
+  std::vector<uint32_t> read_addrs;
+  std::vector<uint32_t> write_addrs;
+  std::vector<uint32_t> write_values;
 
-  while ( (c=getopt( argc, argv, "d:a:w:")) != EOF ) {
+  std::vector<uint32_t> xread_addrs;
+  std::vector<uint32_t> xwrite_addrs;
+  std::vector<uint32_t> xwrite_values;
+
+  while ( (c=getopt( argc, argv, "d:r:x:")) != EOF ) {
     switch(c) {
-    case 'd': qadc = optarg[0]; break;
-    case 'a': addr = strtoul(optarg,NULL,0); break;
-    case 'w': wval = strtoul(optarg,NULL,0); lWrite = true; break;
+    case 'd': devname = optarg; break;
+    case 'r':
+      { unsigned addr = strtoul(optarg,&endptr,0);
+        if (*endptr==',') {
+          unsigned v = strtoul(endptr+1,NULL,0);
+          write_addrs .push_back(addr);
+          write_values.push_back(v);
+        }
+        else
+          read_addrs  .push_back(addr);
+      }
+      break;
+    case 'x':
+      { unsigned addr = strtoul(optarg,&endptr,0);
+        if (*endptr==',') {
+          unsigned v = strtoul(endptr+1,NULL,0);
+          xwrite_addrs .push_back(addr);
+          xwrite_values.push_back(v);
+        }
+        else
+          xread_addrs  .push_back(addr);
+      }
+      break;
     case '?':
     default:
       lUsage = true;
@@ -45,8 +75,6 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  char devname[16];
-  sprintf(devname,"/dev/qadc%c",qadc);
   int fd = open(devname, O_RDWR);
   if (fd<0) {
     perror("Open device failed");
@@ -59,14 +87,25 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  uint32_t* p = reinterpret_cast<uint32_t*>((char*)ptr + addr);
-
-  
-  if (lWrite) {
-    printf("Write %08x @ %08x\n", wval, addr);
-    *p = wval;
+  for(unsigned i=0; i<write_addrs.size(); i++) {
+    uint32_t* r = reinterpret_cast<uint32_t*>((char*)ptr + write_addrs[i]);
+    *r = write_values[i];
   }
-  printf("Read %08x @ %08x\n", *p, addr);
+
+  for(unsigned i=0; i<read_addrs.size(); i++) {
+    uint32_t* r = reinterpret_cast<uint32_t*>((char*)ptr + read_addrs[i]);
+    printf("[%08x] = %08x\n",read_addrs[i],unsigned(*r));
+  }
+
+  if (xwrite_addrs.size() || xread_addrs.size()) {
+    Fmc134Cpld* cpld = reinterpret_cast<Fmc134Cpld*>(ptr+0x12800);
+
+    for(unsigned i=0; i<xwrite_addrs.size(); i++)
+      cpld->writeRegister(Fmc134Cpld::LMX, xwrite_addrs[i], xwrite_values[i]);
+
+    for(unsigned i=0; i<xread_addrs.size(); i++)
+      printf("[%08x] = %08x\n",xread_addrs[i], cpld->readRegister(Fmc134Cpld::LMX, xread_addrs[i]));
+  }
 
   return 1;
 }

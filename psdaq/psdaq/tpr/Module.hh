@@ -152,7 +152,7 @@ namespace Pds {
     public:
       void enable(bool l);
       void clear ();
-      void dump() const;
+      void dump(const char* fmt="%05x") const;
       void dumpFrames() const;
     public:
       volatile uint32_t csr;

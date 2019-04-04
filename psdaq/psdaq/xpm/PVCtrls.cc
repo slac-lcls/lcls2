@@ -57,6 +57,8 @@ namespace Pds {
 
     CPV(LinkTxDelay,    { GPVG(linkTxDelay  (_idx, getScalarAs<unsigned>()))       },
                         { GPVP(linkTxDelay  (_idx));                   })
+    CPV(LinkRxTimeOut,  { GPVG(linkRxTimeOut(_idx, getScalarAs<unsigned>()))       },
+                        { GPVP(linkRxTimeOut(_idx));                   })
     CPV(LinkPartition,  { GPVG(linkPartition(_idx, getScalarAs<unsigned>()))       },
                         { GPVP(linkPartition(_idx));                   })
     CPV(LinkTrgSrc,     { GPVG(linkTrgSrc   (_idx, getScalarAs<unsigned>()))       },
@@ -76,17 +78,19 @@ namespace Pds {
     //    CPV(ModuleInit,     { GPVG(init     ());     }, { })
     CPV(DumpPll,        { GPVG(dumpPll  (_idx)); }, { })
     CPV(DumpTiming,     { PVG(dumpTiming(_idx)); }, { })
-    CPV(DumpSeq,        { if (getScalarAs<unsigned>()) _ctrl.seq().dump();}, {})
+    CPV(DumpSeq,        { if (getScalarAs<unsigned>() && _ctrl.seq()) { _ctrl.seq()->dump();}}, {})
     CPV(SetVerbose,     { GPVG(setVerbose(getScalarAs<unsigned>())); }, {})
     CPV(TimeStampWr,    { if (getScalarAs<unsigned>()!=0) GPVG(setTimeStamp()); }, {})
     CPV(CuDelay    ,    { GPVG(setCuDelay   (getScalarAs<unsigned>())); }, {})
+    CPV(CuInput    ,    { GPVG(setCuInput(getScalarAs<unsigned>())); }, {})
     CPV(CuBeamCode ,    { GPVG(setCuBeamCode(getScalarAs<unsigned>())); }, {})
+    CPV(ClearErr   ,    { GPVG(clearCuFiducialErr(getScalarAs<unsigned>())); }, {})
     CPV(GroupL0Reset,     { GPVG(groupL0Reset(getScalarAs<unsigned>())); }, { })
     CPV(GroupL0Enable,    { GPVG(groupL0Enable(getScalarAs<unsigned>())); }, { })
     CPV(GroupL0Disable,   { GPVG(groupL0Disable(getScalarAs<unsigned>())); }, { })
     CPV(GroupMsgInsert,   { GPVG(groupMsgInsert(getScalarAs<unsigned>())); }, { })
 
-    PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem), _seq(m.sequenceEngine()) {}
+    PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem), _seq(0) {}
     PVCtrls::~PVCtrls() {}
 
     void PVCtrls::allocate(const std::string& title)
@@ -112,10 +116,9 @@ namespace Pds {
       NPV ( DumpSeq                                 );
       NPV ( SetVerbose                              );
       NPV ( TimeStampWr                             );
-      NPV ( CuDelay                                 );
-      NPV ( CuBeamCode                              );
 
       NPVN( LinkTxDelay,        24    );
+      NPVN( LinkRxTimeOut,      24    );
       NPVN( LinkPartition,      24    );
       NPVN( LinkTrgSrc,         24    );
       NPVN( LinkLoopback,       24    );
@@ -129,11 +132,18 @@ namespace Pds {
       NPV( GroupL0Disable                           );
       NPV( GroupMsgInsert                           );
 
+      o << "XTPG:";
+      pvbase = o.str();
+      NPV ( CuInput                                 );
+      NPV ( CuDelay                                 );
+      NPV ( CuBeamCode                              );
+      NPV ( ClearErr                                );
+
       //
       // Program sequencer
       //
       try {
-        XpmSequenceEngine& engine = _seq;
+        XpmSequenceEngine& engine = _m.sequenceEngine();
         engine.verbosity(2);
         // Setup a 22 pulse sequence to repeat 40000 times each second
         const unsigned NP = 22;
@@ -158,7 +168,9 @@ namespace Pds {
         engine.enable(true);
         engine.setAddress(rval,0,0);
         engine.reset ();
+        _seq = &engine;
       } catch (CPSWError& e) { 
+        _seq = 0;
         printf("cpsw exception %s\n",e.what()); 
         printf("Sequencer programming aborted\n");
       }
@@ -176,6 +188,6 @@ namespace Pds {
 
     Module& PVCtrls::module() { return _m; }
     Semaphore& PVCtrls::sem() { return _sem; }
-    XpmSequenceEngine& PVCtrls::seq() { return _seq; }
+    XpmSequenceEngine* PVCtrls::seq() { return _seq; }
   };
 };

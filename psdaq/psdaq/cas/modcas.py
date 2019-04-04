@@ -68,10 +68,14 @@ def main():
     pvdb[':XTPG:TimeStampWr'   ] = {'type' : 'int', 'value' : 0}
     pvdb[':XTPG:TimeStamp'     ] = {'type' : 'int'}
     pvdb[':XTPG:PulseId'       ] = {'type' : 'int'}
-    for i in range(3):
-        pvdb[':XTPG:MMCM%d'%i      ] = {'type' : 'int', 'count' : 256, 'value':[0]*256 }
-    pvdb[':XTPG:cuDelay'       ] = {'type' : 'int', 'value' : 200*800}
-    pvdb[':XTPG:cuBeamCode'    ] = {'type' : 'int', 'value' : 140}
+    for i in range(4):
+        pvdb[':XTPG:MMCM%d'%i      ] = {'type' : 'int', 'count' : 2049, 'value':[0]*2049 }
+    pvdb[':XTPG:CuDelay'       ] = {'type' : 'int', 'value' : 200*800}
+    pvdb[':XTPG:CuBeamCode'    ] = {'type' : 'int', 'value' : 140}
+    pvdb[':XTPG:CuInput'       ] = {'type' : 'int', 'value' : 3}
+    pvdb[':XTPG:FiducialIntv'  ] = {'type' : 'int', 'value' : 0}
+    pvdb[':XTPG:FiducialErr'   ] = {'type' : 'int', 'value' : 0}
+    pvdb[':XTPG:ClearErr'      ] = {'type' : 'int', 'value' : 0}
 
     pvdb[':Inhibit'            ] = {'type' : 'int'}
     pvdb[':TagStream'          ] = {'type' : 'int'}

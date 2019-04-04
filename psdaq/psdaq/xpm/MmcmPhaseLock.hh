@@ -7,6 +7,8 @@ namespace Pds {
   namespace Xpm {
     class MmcmPhaseLock {
     public:
+      bool ready() const { return (delayValue & (1<<30))==0; }
+    public:
       Cphw::Reg delaySet;
       Cphw::Reg delayValue;
       Cphw::Reg ramAddr;

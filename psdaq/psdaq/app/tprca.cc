@@ -9,7 +9,9 @@
 #include <time.h>
 #include <semaphore.h>
 
-#include "psdaq/epicstools/EpicsPVA.hh"
+#include "psdaq/epicstools/PVCached.hh"
+using Pds_Epics::EpicsPVA;
+using Pds_Epics::PVCached;
 
 #include <string>
 #include <vector>
@@ -18,7 +20,6 @@
 static const double CLK_FREQ = 1300e6/7.;
 static bool _dump=false;
 
-using Pds_Epics::EpicsPVA;
 
 namespace Pds {
   namespace Tpr {
@@ -523,9 +524,8 @@ extern int optind;
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -r <a..z>\n");
-  printf("         -p<channel,delay,width,polarity,delayTap]>\n");
-  printf("         -c<channel,rate[,bsaPresample,bsaDelay,bsaWidth]>\n");
-  printf("\t<rate>: {0=1MHz, 1=0.5MHz, 2=100kHz, 3=10kHz, 4=1kHz, 5=100Hz, 6=10Hz, 7=1Hz}\n");
+  printf("         -n <PV base name>\n");
+  printf("         -d (dump)\n");
 }
 
 namespace Pds {
@@ -631,7 +631,7 @@ namespace Pds {
         urate  = (1<<11) | ((uac&0x7)<<0) | ((uts&0x3f)<<3);
         break;
       case 2:
-        urate  = (2<<11) | ((usb&0x0f)<<0) | ((usn&0x3f)<<5);
+        urate  = (2<<11) | ((usb&0x0f)<<0) | ((usn&0x1f)<<4);
         break;
       case 3:
         urate  = (3<<11) | (uxp&0xf);
@@ -699,39 +699,40 @@ namespace Pds {
     }
     void report(double dt) {
       unsigned events = _base.channel[_channel].evtCount;
-      double rate = double(events-_events)/dt;
-      _rate.putFrom<double>(rate);
+      //      double rate = double(events-_events)/dt;
+      double rate = double(events);
+      _rate.putC(rate);
       _events=events;
     }
   private:
     Tpr::TprBase& _base;
     unsigned      _channel;
     unsigned      _events;
-    EpicsPVA       _mode;
-    EpicsPVA       _delay;
-    EpicsPVA       _width;
-    EpicsPVA       _polarity;
-    EpicsPVA       _dstsel;
-    EpicsPVA       _destns;
-    EpicsPVA       _rateSel;
-    EpicsPVA       _fixedRate;
-    EpicsPVA       _acRate;
-    EpicsPVA       _acTimeslot;
-    EpicsPVA       _seqIdx;
-    EpicsPVA       _seqBit;
-    EpicsPVA       _xPart;
-    EpicsPVA       _bsaStart;
-    EpicsPVA       _bsaWidth;
-    EpicsPVA      _rate;
+    EpicsPVA      _mode;
+    EpicsPVA      _delay;
+    EpicsPVA      _width;
+    EpicsPVA      _polarity;
+    EpicsPVA      _dstsel;
+    EpicsPVA      _destns;
+    EpicsPVA      _rateSel;
+    EpicsPVA      _fixedRate;
+    EpicsPVA      _acRate;
+    EpicsPVA      _acTimeslot;
+    EpicsPVA      _seqIdx;
+    EpicsPVA      _seqBit;
+    EpicsPVA      _xPart;
+    EpicsPVA      _bsaStart;
+    EpicsPVA      _bsaWidth;
+    PVCached      _rate;
   };
 
 #define PVPUT( pv, value ) {                            \
-    pv.putFrom<unsigned>(value);                        \
+    pv.putC(double(value));                             \
   }
 #define PVPUTD( vreg, ovalue, pv ) {                    \
     unsigned nvalue = vreg;                             \
     double value = double(nvalue-ovalue)/dt;            \
-    pv.putFrom<double>(value);                          \
+    pv.putC(value);                                     \
     ovalue = nvalue;                                    \
   }
 
@@ -751,9 +752,9 @@ namespace Pds {
       _vsnErr    ( to_name(name,"VSNERR"   ) ),
       _frameRate ( to_name(name,"FRAMERATE") ),
       _rxClkRate ( to_name(name,"RXCLKRATE") ),
-                                 _txClkRate ( to_name(name,"TXCLKRATE") ),
-                                 _frameVsn  ( to_name(name,"FRAMEVSN" ) ),
-                                 _rxPolarity( to_name(name,"RXPOL"    ), this )
+      _txClkRate ( to_name(name,"TXCLKRATE") ),
+      _frameVsn  ( to_name(name,"FRAMEVSN" ) ),
+      _rxPolarity( to_name(name,"RXPOL"    ), this )
     {
       printf("FpgaVersion: %08x\n", p->version.FpgaVersion);
       printf("BuildStamp: %s\n", p->version.buildStamp().c_str());
@@ -809,7 +810,7 @@ namespace Pds {
         _CSR = v;
       }
 
-      { unsigned v = _dev->tpr.RxDspErrs + _dev->tpr.RxDecErrs;
+      { unsigned v = _dev->tpr.CRCerrors + _dev->tpr.RxDspErrs + _dev->tpr.RxDecErrs;
         PVPUT( _rxErrs, v ); }
 
       PVPUT( _vsnErr  , _dev->tpr.vsnErr() );
@@ -832,17 +833,17 @@ namespace Pds {
     unsigned _frames;
     unsigned _rxClks;
     unsigned _txClks;
-    EpicsPVA  _accSelect;
-    EpicsPVA _linkState;
-    EpicsPVA _linkLatch;
-    EpicsPVA _rxErrs;
-    EpicsPVA  _rxErrsRst;
-    EpicsPVA _vsnErr;
-    EpicsPVA _frameRate;
-    EpicsPVA _rxClkRate;
-    EpicsPVA _txClkRate;
-    EpicsPVA _frameVsn;
-    EpicsPVA  _rxPolarity;
+    EpicsPVA _accSelect;
+    PVCached _linkState;
+    PVCached _linkLatch;
+    PVCached _rxErrs;
+    EpicsPVA _rxErrsRst;
+    PVCached _vsnErr;
+    PVCached _frameRate;
+    PVCached _rxClkRate;
+    PVCached _txClkRate;
+    PVCached _frameVsn;
+    EpicsPVA _rxPolarity;
     std::vector<ChannelControl*> _channels;
   };
 };

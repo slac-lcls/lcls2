@@ -254,14 +254,16 @@ namespace Pds {
           unsigned streamMask=0;
           if (_pv[Raw_PS]->getVectorElemAt<unsigned>(i)) {
             streamMask |= (1<<0);
-            fex._base[0].setGate(4,_pv[Raw_Gate]->getVectorElemAt<unsigned>(i));
+            fex._base[0].setGate(_pv[Raw_Start]->getVectorElemAt<unsigned>(i),
+                                 _pv[Raw_Gate ]->getVectorElemAt<unsigned>(i));
             fex._base[0].setFull(fullSize,fullEvt);
             fex._base[0]._prescale=_pv[Raw_PS]->getVectorElemAt<unsigned>(i)-1;
           }
           if (_pv[Fex_PS]->getVectorElemAt<unsigned>(i)) {
             streamMask |= (1<<1);
-            fex._base[1].setGate(4, _pv[Fex_Gate]->getVectorElemAt<unsigned>(i));
-            fex._base[1].setFull(0xc00,4);
+            fex._base[1].setGate(_pv[Fex_Start]->getVectorElemAt<unsigned>(i),
+                                 _pv[Fex_Gate ]->getVectorElemAt<unsigned>(i));
+            fex._base[1].setFull(fullSize,fullEvt);
             fex._base[1]._prescale=_pv[Fex_PS]->getVectorElemAt<unsigned>(i)-1;
             fex._stream[1].parms[0].v=_pv[Fex_Ymin]->getVectorElemAt<unsigned>(i);
             fex._stream[1].parms[1].v=_pv[Fex_Ymax]->getVectorElemAt<unsigned>(i);

@@ -1,7 +1,12 @@
 #include "psdaq/xpm/PVStats.hh"
 #include "psdaq/xpm/Module.hh"
 
-#include "psdaq/epicstools/EpicsPVA.hh"
+#include "psdaq/epicstools/PVCached.hh"
+using Pds_Epics::PVCached;
+
+#include "psdaq/service/Semaphore.hh"
+
+#include <cpsw_error.h>
 
 #include <sstream>
 #include <string>
@@ -9,20 +14,20 @@
 
 #include <stdio.h>
 
-using Pds_Epics::EpicsPVA;
-
 namespace Pds {
   namespace Xpm {
 
-    PVStats::PVStats() : _pv(0) {}
+    PVStats::PVStats(Module& dev, Semaphore& sem) : _dev(dev), _sem(sem), _pv(0) {}
     PVStats::~PVStats() {}
 
-#define PVPUT(v)    if ((*it)->connected()) { (*it)->putFrom<double>(double(v)); } it++;
-#define PVPUTI(v)   if ((*it)->connected()) { (*it)->putFrom<int>(int(v)); } it++;
+    //#define PVPUT(v)    if ((*it)->connected()) { (*it)->putFrom<double>(double(v)); } it++;
+    //#define PVPUTI(v)   if ((*it)->connected()) { (*it)->putFrom<int>(int(v)); } it++;
+#define PVPUT(v)    if ((*it)->connected()) { (*it)->putC(double(v)); } it++;
+#define PVPUTI(v)   PVPUT(v)
 
     void PVStats::_allocTiming(const std::string& title,
                                const char* sec) {
-#define PVPUSH(s) _pv.push_back(new EpicsPVA((pvbase+#s).c_str()))
+#define PVPUSH(s) _pv.push_back(new PVCached((pvbase+#s).c_str()))
       std::ostringstream o;
       o << title << ":" << sec << ":";
       std::string pvbase = o.str();
@@ -44,7 +49,7 @@ namespace Pds {
     void PVStats::_updateTiming(const TimingCounts& nc,
                                 const TimingCounts& oc,
                                 double dt,
-                                std::vector<EpicsPVA*>::iterator& it) {
+                                std::vector<PVCached*>::iterator& it) {
       PVPUT(double(nc.rxClkCount       - oc.rxClkCount      ) / dt * 16e-6);
       PVPUT(double(nc.txClkCount       - oc.txClkCount      ) / dt * 16e-6);
       PVPUT(double(nc.rxRstCount       - oc.rxRstCount      ) / dt);
@@ -62,7 +67,7 @@ namespace Pds {
     void PVStats::_allocPll(const std::string& title,
                             unsigned amc) {
 #define PVPUSH(s) { std::ostringstream o; o << title << ":" << #s << amc;      \
-        _pv.push_back(new EpicsPVA(o.str().c_str())); }
+        _pv.push_back(new PVCached(o.str().c_str())); }
       PVPUSH(PLL_LOL);
       PVPUSH(PLL_LOLCNT);
       PVPUSH(PLL_LOS);
@@ -71,7 +76,7 @@ namespace Pds {
     }
 
     void PVStats::_updatePll(const PllStats& s,
-                             std::vector<EpicsPVA*>::iterator& it) {
+                             std::vector<PVCached*>::iterator& it) {
       PVPUTI(s.lol);
       PVPUTI(s.lolCount);
       PVPUTI(s.los);
@@ -92,8 +97,15 @@ namespace Pds {
       o << title << ":";
       std::string pvbase = o.str();
 
+#define PVPUSH(s) _pv.push_back(new PVCached((pvbase+"XTPG:"+#s).c_str()))
+      PVPUSH(TimeStamp);
+      PVPUSH(PulseId);
+      PVPUSH(FiducialIntv);
+      PVPUSH(FiducialErr);
+#undef PVPUSH
+
 #define PVPUSH(s) { std::ostringstream o; o << pvbase << #s << i; \
-          _pv.push_back(new EpicsPVA(o.str().c_str())); }
+          _pv.push_back(new PVCached(o.str().c_str())); }
       for(unsigned i=0; i<32; i++) {
         PVPUSH(LinkTxReady);
         PVPUSH(LinkRxReady);
@@ -105,11 +117,36 @@ namespace Pds {
 	PVPUSH(RemoteLinkId);
       }
 #undef PVPUSH
-      _pv.push_back( new EpicsPVA((pvbase+"RecClk").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"FbClk").c_str()) );
-      _pv.push_back( new EpicsPVA((pvbase+"BpClk").c_str()) );
+      _pv.push_back( new PVCached((pvbase+"RecClk").c_str()) );
+      _pv.push_back( new PVCached((pvbase+"FbClk").c_str()) );
+      _pv.push_back( new PVCached((pvbase+"BpClk").c_str()) );
 
       printf("PVs allocated %zu\n", _pv.size());
+    }
+
+    void PVStats::update()
+    {
+      timespec t; clock_gettime(CLOCK_REALTIME,&t);
+      CoreCounts c = _dev.counts();
+      LinkStatus links[32];
+      _dev.linkStatus(links);
+      PllStats   pll[2];
+      for(unsigned i=0; i<Module::NAmcs; i++)
+        pll[i] = _dev.pllStat(i);
+      unsigned bpClk  = _dev._monClk[0]&0x1fffffff;
+      unsigned fbClk  = _dev._monClk[1]&0x1fffffff;
+      unsigned recClk = _dev._monClk[2]&0x1fffffff;
+      double dt = double(t.tv_sec-_t.tv_sec)+1.e-9*(double(t.tv_nsec)-double(_t.tv_nsec));
+      _sem.take();
+      try {
+        update(c,_c,links,_links,pll,recClk,fbClk,bpClk,dt);
+      } catch (CPSWError& e) {
+        printf("Caught exception %s\n", e.what());
+      }
+      _sem.give();
+      _c=c;
+      std::copy(links,links+32,_links);
+      _t=t;
     }
 
     void PVStats::update(const CoreCounts& nc, const CoreCounts& oc,
@@ -120,11 +157,17 @@ namespace Pds {
                          unsigned bpClk,
                          double dt)
     {
-      std::vector<EpicsPVA*>::iterator it = _pv.begin();
+      std::vector<PVCached*>::iterator it = _pv.begin();
       _updateTiming(nc.us,oc.us,dt,it);
       _updateTiming(nc.cu,oc.cu,dt,it);
       for(unsigned i=0; i<Module::NAmcs; i++)
         _updatePll(pll[i],it);
+
+      PVPUT(uint64_t(_dev._timestamp));
+      PVPUT((uint64_t(_dev._pulseId)&0x00ffffffffffffffULL));
+      unsigned v = _dev._cuFiducialIntv;
+      PVPUT((v & ~(1<<31)));
+      PVPUT((v >> 31));
 
       for(unsigned i=0; i<32; i++) {
         PVPUTI( nl[i].txReady );

@@ -39,8 +39,8 @@ void TprBase::dump() const {
   for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].bsaDelay);
   printf("\nbsaWidth: ");
   for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].bsaWidth);
-  printf("\nframeCnt: %08x\n",frameCount);
-  printf("bsaCnCnt: %08x\n",bsaCntlCount);
+  //  printf("\nframeCnt: %08x\n",frameCount);
+  //  printf("bsaCnCnt: %08x\n",bsaCntlCount);
   printf("trigger0  [%p]\n",&trigger[0].control);
   printf("trgCntrl: ");
   for(unsigned i=0; i<NChan; i++)      printf("%08x ",trigger[i].control);
@@ -83,6 +83,7 @@ void TprBase::setupTrigger(unsigned i,
                            unsigned width,
                            unsigned delayTap) {
   trigger[i].control  = (polarity ? (1<<16):0);
+  usleep(1);
   trigger[i].delay    = delay;
   trigger[i].width    = width;
   trigger[i].control  = (source&0xffff) | (polarity ? (1<<16):0) | (1<<31);
@@ -198,10 +199,12 @@ void RingB::clear() {
   usleep(10);
   csr = v&~(1<<30);
 }
-void RingB::dump() const
+void RingB::dump(const char* fmt) const
 {
+  char sfmt[16];
+  sprintf(sfmt,"%s%%c",fmt);
   for(unsigned i=0; i<0x1ff; i++)
-    printf("%05x%c",data[i],(i&0xf)==0xf ? '\n':' ');
+    printf(sfmt,data[i],(i&0xf)==0xf ? '\n':' ');
 }
 void RingB::dumpFrames() const
 {

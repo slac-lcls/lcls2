@@ -386,13 +386,14 @@ void Pds::HSD::ClkSynth::dump() const
 #define SET_REG(i,q) {                                                  \
   timespec tvb,tve;                                                     \
   clock_gettime(CLOCK_REALTIME, &tvb);                                  \
-  unsigned t = _reg[i&0xff];                                            \
-  if (t!=q) {                                                           \
-    _reg[i&0xff] = q;                                                   \
-    unsigned u = _reg[i&0xff];                                          \
+  unsigned t = _reg[i&0xff]&0xff;                                       \
+  unsigned tq = (q&0xff);                                               \
+  if (t!=tq) {                                                          \
+    _reg[i&0xff] = tq;                                                  \
+    unsigned u = _reg[i&0xff]&0xff;                                     \
     clock_gettime(CLOCK_REALTIME, &tve);                                \
     printf("RMW[%03u] %02x -> %02x [%02x] (%02x): %f sec  %c\n",        \
-           i, t, q, u, _reg[2], tdiff(tvb,tve), (u==q)?'X':' ');        \
+           i, t, tq, u, _reg[2]&0xff, tdiff(tvb,tve), (u==tq)?'X':' '); \
   }                                                                     \
   }
 

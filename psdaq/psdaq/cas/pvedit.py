@@ -106,7 +106,7 @@ class PvDisplay(QtWidgets.QLabel):
         self.setText(value)
 
 class PvLabel(QtWidgets.QWidget):
-    def __init__(self, owner, parent, pvbase, name, dName=None, isInt=False, scale=None, units=None):
+    def __init__(self, owner, parent, pvbase, name, dName=None, isInt=False, isTime=False, scale=None, units=None):
         super(PvLabel,self).__init__()
         layout = QtWidgets.QHBoxLayout()
         layout.setContentsMargins(0,0,0,0)
@@ -129,6 +129,7 @@ class PvLabel(QtWidgets.QWidget):
         else:
             self.dPv = None
         self.isInt = isInt
+        self.isTime = isTime
         self.scale = scale
         self.units = units
         initPvMon(self,pvname)
@@ -144,7 +145,11 @@ class PvLabel(QtWidgets.QWidget):
         if err is None:
             s = QString('fail')
             try:
-                if self.isInt:
+                if self.isTime:
+                    dat = QtCore.QDateTime(QtCore.QDate(1990,1,1))
+                    dat.addSecs(int(q)>>32)
+                    s = QString(dat.toString("yyyy-MMM-dd HH:mm:ss"))
+                elif self.isInt:
                     s = QString("%s (0x%s)") % ((QString(int(q))),QString(format(int(q)&0xffffffff, 'x')))
                     if dq is not None:
                         s = s + QString(" [%s (0x%s)]") % ((QString(int(dq))),(format(int(dq)&0xffffffff, 'x')))
