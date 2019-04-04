@@ -120,7 +120,7 @@ void DrpApp::handleConfigure(const json &msg)
     }
     else {
         json body = json({});
-        std::cout<<"inproc didnt get message\n";
+        std::cout<<"inproc timed out configure transition\n";
         answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
     }
     reply(answer);
@@ -140,7 +140,7 @@ void DrpApp::handleEnable(const json &msg)
     }
     else {
         json body = json({});
-        std::cout<<"inproc didnt get message\n";
+        std::cout<<"inproc timed out enable transition\n";
         answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
     }
     reply(answer);
@@ -160,7 +160,7 @@ void DrpApp::handleDisable(const json &msg)
     }
     else {
         json body = json({});
-        std::cout<<"inproc didnt get message\n";
+        std::cout<<"inproc timed out disable transition\n";
         answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
     }
     reply(answer);
