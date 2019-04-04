@@ -180,6 +180,10 @@ target_link_libraries(hsd_flash
 
 add_executable(hsd_validate hsd_validate.cc)
 
+target_include_directories(hsd_validate PUBLIC
+    ../pgp/aes-stream-drivers/include
+)
+
 target_link_libraries(hsd_validate
     pthread
     hsd

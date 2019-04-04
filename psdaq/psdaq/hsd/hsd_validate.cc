@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <poll.h>
 #include "psdaq/hsd/Validator.hh"
-#include "psdaq/pgp/kcu1500/app/DataDriver.h"
+#include "DataDriver.h"
 #include "xtcdata/xtc/Dgram.hh"
 
 static FILE* f = 0;
@@ -46,7 +46,7 @@ static void show_usage(const char* p)
 
 int main(int argc, char* argv[])
 {
-    
+
   int c;
   const char* pgpcard = "/dev/datadev_0";
   unsigned    lanem   = 0xf;
@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
     int bret = dmaReadBulkIndex(fd,getCnt,dmaRet,dmaIndex,rxFlags,NULL,NULL);
 
     for(int idg=0; idg<bret; idg++) {
-      
+
       int ret = dmaRet[idg];
 
       if (rxFlags[idg])
@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
         printf("Size %u B | Flags %x | Transition id %d | pulse id %lx | event counter %x\n",
                ret, rxFlags[idg], transition_id, event_header->seq.pulseId().value(), *reinterpret_cast<uint32_t*>(event_header+1));
       }
-      
+
       if (ret>0)
         if (!iskip--) {
           val.validate(data,ret);
@@ -196,8 +196,8 @@ int main(int argc, char* argv[])
       dmaRetIndexes(fd,bret,dmaIndex);
 
   } while (1);
-  
+
   pthread_join(thr,NULL);
 
   return 0;
-} 
+}
