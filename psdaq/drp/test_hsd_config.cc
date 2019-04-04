@@ -7,6 +7,8 @@
 
 static char buffer[4*1024*1024];
 
+// FIXME (cpo): need to add appropriate DECREF's
+
 int main() {
     const char fname[] = "get_config.py";
     FILE* file;
