@@ -128,7 +128,7 @@ void DrpApp::handleConfigure(const json &msg)
 
 void DrpApp::handleEnable(const json &msg)
 {
-    std::cout<<"handle configure DrpApp\n";
+    std::cout<<"handle enable DrpApp\n";
     // check for message from timing system
     int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
     json answer;
@@ -148,7 +148,7 @@ void DrpApp::handleEnable(const json &msg)
 
 void DrpApp::handleDisable(const json &msg)
 {
-    std::cout<<"handle configure DrpApp\n";
+    std::cout<<"handle disable DrpApp\n";
     // check for message from timing system
     int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
     json answer;
