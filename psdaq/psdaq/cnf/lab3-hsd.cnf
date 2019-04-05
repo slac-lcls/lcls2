@@ -33,9 +33,8 @@ procmgr_config = [
 # {                        id:'dtica', flags:'s', conda:conda_rel, env:epics_env, cmd:'dtica DAQ:LAB2:DTI:'+shelf},
  {                        id:'hsdca', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV02'},
 # { host: 'drp-tst-acc02', id:'EvtBuild', flags:'sxp', conda:conda_rel, cmd:'drpEbBuilder -1 8 -2 8' },
- { host: 'drp-tst-dev002', id:'teb1', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'tstEbBuilder -C '+collect_host },
+ { host: 'drp-tst-dev002', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host },
 { host: 'drp-tst-dev024', id:'hsddrp', flags:'sxp', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host},
- { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v' },
+ { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2:PART:'+platform},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
- { host: 'daq-tst-dev02', id:'ts_proxy', flags:'sup', conda:conda_rel, env:epics_env, cmd:'ts_proxy -v -C '+collect_host+' DAQ:LAB2:PART:'+platform},
 ]
