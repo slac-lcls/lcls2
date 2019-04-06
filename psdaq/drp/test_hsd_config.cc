@@ -7,28 +7,32 @@
 
 static char buffer[4*1024*1024];
 
-// FIXME (cpo): need to add appropriate DECREF's
-
-int main() {
-    const char fname[] = "get_config.py";
-    FILE* file;
-    Py_Initialize();
-    PyObject* main_module = PyImport_AddModule("__main__");
-    static const unsigned argc = 5;
-    const wchar_t* argv[argc] = {L"cpo:psana@psdb-dev:9306", L"cpotest", L"AMO", L"BEAM", L"xpphsd1"};
-    PySys_SetArgv(argc,const_cast<wchar_t**>(argv));
-    PyObject* main_dict = PyModule_GetDict(main_module);
-    file = fopen(fname,"r");
-    PyObject* pyrunfileptr = PyRun_File(file, fname, Py_file_input, main_dict, main_dict);
-    if (pyrunfileptr==NULL) {
+static void check(PyObject* obj) {
+    if (!obj) {
         PyErr_Print();
         exit(1);
     }
-    PyObject* mybytes = PyDict_GetItemString(main_dict,"config_json");
-    PyObject * temp_bytes = PyUnicode_AsASCIIString(mybytes);
-    char* json = (char*)PyBytes_AsString(temp_bytes);
+}
+
+int main() {
+    Py_Initialize();
+    // returns new reference
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.get_config");
+    check(pModule);
+    // returns borrowed reference
+    PyObject* pDict = PyModule_GetDict(pModule);
+    check(pDict);
+    // returns borrowed reference
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"get_config");
+    check(pFunc);
+    // returns new reference
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","cpo:psana@psdb-dev:9306", "cpotest", "AMO", "BEAM", "xpphsd1");
+    check(mybytes);
+    // returns new reference
+    PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
+    check(json_bytes);
+    char* json = (char*)PyBytes_AsString(json_bytes);
     printf("json: %s\n",json);
-    Py_Finalize();
 
     // convert to json to xtc
     XtcData::NamesId namesid(0,1);
@@ -48,5 +52,10 @@ int main() {
     }
     fclose(fp);
 
+    Py_DECREF(pModule);
+    Py_DECREF(mybytes);
+    Py_DECREF(json_bytes);
+
+    Py_Finalize();
     return 0;
 }
