@@ -12,6 +12,7 @@ import zmq
 from psdaq.control.collection import back_pull_port, back_pub_port, create_msg
 import argparse
 import logging
+import zmq.utils.jsonapi as json
 
 class Client:
     def __init__(self, platform, collectHost, alias):
@@ -47,9 +48,19 @@ class Client:
 
         # process messages
         while True:
-            msg = self.sub.recv_json()
-            key = msg['header']['key']
-            handle_request[key](msg)
+            try:
+                topic, rawmsg = self.sub.recv_multipart()
+            except Exception as ex1:
+                logging.error('recv_multipart() exception: %s' % ex1)
+            else:
+                logging.debug('topic=<%s>' % topic)
+                try:
+                    msg = json.loads(rawmsg)
+                except Exception as ex2:
+                    logging.error('json.loads() exception: %s' % ex2)
+                else:
+                    key = msg['header']['key']
+                    handle_request[key](msg)
 
     def handle_plat(self, msg):
         logging.debug('Client handle_plat(msg_id=\'%s\')' % msg['header']['msg_id'])
