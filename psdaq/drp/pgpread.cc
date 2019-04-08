@@ -63,9 +63,9 @@ int main(int argc, char* argv[])
     dmaSetMaskBytes(fd, mask);
 
 
+    int32_t dmaRet[MAX_RET_CNT_C];
     uint32_t dmaIndex[MAX_RET_CNT_C];
     uint32_t dmaDest[MAX_RET_CNT_C];
-    int32_t dmaRet[MAX_RET_CNT_C];
     while (1) {
         if (terminate.load(std::memory_order_acquire) == true) {
             close(fd);

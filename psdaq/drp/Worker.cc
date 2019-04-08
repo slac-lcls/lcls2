@@ -12,7 +12,7 @@ bool check_pulse_id(PGPData* pgp_data)
     uint64_t pulse_id = 0;
     for (int l=0; l<8; l++) {
         if (pgp_data->buffer_mask  & (1 << l)) {
-            Transition* event_header = reinterpret_cast<Transition*>(pgp_data->buffers[l].data);
+            Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[l].data);
             if (pulse_id == 0) {
                 pulse_id = event_header->seq.pulseId().value();
             }
@@ -21,6 +21,11 @@ bool check_pulse_id(PGPData* pgp_data)
                     printf("Wrong pulse id! expected %lu but got %lu instea  d\n", pulse_id, event_header->seq.pulseId().value());
                     return false;
                 }
+            }
+            // check bit 7 in pulseId for error
+            bool error = event_header->seq.pulseId().control() & (1 << 7);
+            if (error) {
+                std::cout<<"Error bit in pulseId is set\n";
             }
         }
     }

@@ -24,7 +24,7 @@ ip_addr = '10.0.'+shelf
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 # -o /ffb01/weninc
-drp_cmd = 'drp -C drp-tst-acc06 -D AreaDetector -l 0xf -d /dev/datadev_1 -o /ffb01/weninc'
+drp_cmd = 'drp -C drp-tst-acc06 -D AreaDetector -l 0xf -d /dev/datadev_1'
 
 procmgr_config = [
  { id:'partca-'+platform ,flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
@@ -34,21 +34,21 @@ procmgr_config = [
  { host: 'drp-tst-acc06', id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2:PART:'+platform},
  { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -C drp-tst-acc06 -Z psmetric04' },
 
- { host: 'drp-tst-dev002', id:'drp2', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
- { host: 'drp-tst-dev003', id:'drp3', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
- { host: 'drp-tst-dev004', id:'drp4', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
- { host: 'drp-tst-dev005', id:'drp5', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev002', id:'drp2', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev003', id:'drp3', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev004', id:'drp4', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev005', id:'drp5', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
 
- # broken{ host: 'drp-tst-dev007', id:'drp7', flags:'sxp', conda:conda_rel, env:epics_env, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev007', id:'drp7', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
 
- { host: 'drp-tst-dev009', id:'drp9', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
- { host: 'drp-tst-dev011', id:'drp11', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev009', id:'drp9', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev011', id:'drp11', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
 
  # no procmgrd { host: 'drp-tst-dev012', id:'drp12', flags:'sxp', conda:conda_rel, env:epics_env, cmd: drp_cmd }
 
- { host: 'drp-tst-dev013', id:'drp13', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
- { host: 'drp-tst-dev014', id:'drp14', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
- { host: 'drp-tst-dev015', id:'drp15', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
- { host: 'drp-tst-dev017', id:'drp17', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
- { host: 'drp-tst-dev018', id:'drp18', flags:'sxp', conda:conda_rel, cmd: drp_cmd }
+ #{ host: 'drp-tst-dev013', id:'drp13', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev014', id:'drp14', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev015', id:'drp15', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev017', id:'drp17', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev018', id:'drp18', flags:'sxp', conda:conda_rel, cmd: drp_cmd }
 ]

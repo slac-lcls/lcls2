@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
     }
 
     para.numWorkers = 10;
-    para.numEntries = 32768;
+    para.numEntries = 131072;
     printf("%d number of buffers\n", para.numEntries);
     DrpApp app(&para);
     app.run();
