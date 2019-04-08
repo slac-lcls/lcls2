@@ -76,6 +76,15 @@ long read_infiniband_counter(const char* counter)
     }
 }
 
+void getDtiLane(int fd, int addr, int offset, int mask, uint32_t result[4])
+{
+    for(int i=0; i<4; i++) {
+        uint32_t reg;
+        dmaReadRegister(fd, addr+16*i, &reg);
+        result[i] = (reg >> offset) & mask;
+    }
+}
+
 void monitor_func(const Parameters& para, std::atomic<Counters*>& p,
                   MemPool& pool, Pds::Eb::TebContributor& ebCtrb)
 {
@@ -131,6 +140,20 @@ void monitor_func(const Parameters& para, std::atomic<Counters*>& p,
 
         size = snprintf(buffer, 4096, "drp_rcv_rate,host=%s,partition=%d %f",
                         hostname, para.partition, rcv_rate);
+        zmq_send(socket, buffer, size, 0);
+
+
+
+        uint64_t cntOF = 0;
+        uint32_t result[4];
+        // cntOF
+        getDtiLane(pool.fd, 0x00a00010, 24, 0xff, result);
+        for (int i=0; i<4; i++) {
+            cntOF += result[i];
+        }
+        // std::cout<<"cntOF  "<<cntOF<<'\n';
+        size = snprintf(buffer, 4096, "drp_cntOF,host=%s,partition=%d %lu",
+                        hostname, para.partition, cntOF);
         zmq_send(socket, buffer, size, 0);
 
         old_bytes = new_bytes;

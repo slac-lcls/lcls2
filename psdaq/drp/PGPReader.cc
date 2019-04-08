@@ -56,9 +56,30 @@ PGPReader::PGPReader(MemPool& pool, Parameters& para,
     }
 }
 
+void printEvent(PGPData* p)
+{
+    for (int l=0; l<4; l++) {
+        uint32_t* data = (uint32_t*)p->buffers[l].data;
+        if (p->buffer_mask & (1 << l)) {
+            printf("lane %u  evtCounter %u:\n  header: ", l, data[5]&0xffffff);
+            for(int i=0; i<8; i++) {
+                printf(" %08x", data[i]);
+            }
+            printf("\n");
+            printf("  payload:");
+            for(int i=0; i<8; i++) {
+                printf(" %08x", data[8+i]);
+            }
+            printf("\n");
+        }
+    }
+}
+
 PGPData* PGPReader::process_lane(uint32_t lane, uint32_t index, int32_t size)
 {
     Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(m_pool.dmaBuffers[index]);
+    // FIXME
+    // event_header->evtCounter = event_header->evtCounter & 0xffffff;
     int j = event_header->evtCounter & m_buffer_mask;
     PGPData* p = &m_pool.pgp_data[j];
     p->buffers[lane].dmaIndex = index;
@@ -69,8 +90,17 @@ PGPData* PGPReader::process_lane(uint32_t lane, uint32_t index, int32_t size)
     p->counter++;
     if (p->counter == m_nlanes) {
         if (event_header->evtCounter != (m_last_complete + 1)) {
-            printf("Jump in complete l1Count %d -> %u\n",
+            printf("Jump in complete l1Count %u -> %u\n",
                    m_last_complete, event_header->evtCounter);
+            printf("index %u\n", index);
+
+            printf("Broken event\n");
+            printEvent(p);
+
+            printf("\nLast complete event\n");
+            int lastJ = m_last_complete & m_buffer_mask;
+            printEvent(&m_pool.pgp_data[lastJ]);
+
             // FIXME clean up broken events and return dma indices
         }
         m_last_complete = event_header->evtCounter;

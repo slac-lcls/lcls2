@@ -77,6 +77,18 @@ target_link_libraries(pgpread
 #    ../psdaq/pgp/aes-stream-drivers/include
 #)
 
+add_executable(drp_validate
+    validate.cc
+)
+
+target_include_directories(drp_validate PUBLIC
+    ../psdaq/pgp/aes-stream-drivers/include
+)
+
+target_link_libraries(drp_validate
+    pthread
+)
+
 install(TARGETS drputils drp
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

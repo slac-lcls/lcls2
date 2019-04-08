@@ -4,9 +4,12 @@ import copy
 import socket
 from datetime import datetime, timezone
 import zmq
+import zmq.utils.jsonapi as json
 from transitions import Machine, MachineError, State
 import argparse
 import logging
+from p4p.client.thread import Context
+import threading
 
 PORT_BASE = 29980
 POSIX_TIME_AT_EPICS_EPOCH = 631152000
@@ -341,7 +344,7 @@ def confirm_response(socket, wait_time, msg_id, ids):
 
 
 class CollectionManager():
-    def __init__(self, platform, instrument):
+    def __init__(self, platform, instrument, pv_base):
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
@@ -351,6 +354,16 @@ class CollectionManager():
         self.back_pub.bind('tcp://*:%d' % back_pub_port(platform))
         self.front_rep.bind('tcp://*:%d' % front_rep_port(platform))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(platform))
+
+        # initialize EPICS context
+        self.ctxt = Context('pva')
+
+        # name PVs
+        self.pvMsgClear = pv_base+':MsgClear'
+        self.pvMsgHeader = pv_base+':MsgHeader'
+        self.pvMsgInsert = pv_base+':MsgInsert'
+        self.pvRun = pv_base+':Run'
+
         self.cmstate = {}
         self.instrument = instrument
         self.ids = set()
@@ -391,6 +404,23 @@ class CollectionManager():
 
         # start main loop
         self.run()
+
+    #
+    # pv_put -
+    #
+    def pv_put(self, pvName, val):
+
+        retval = False
+
+        try:
+            self.ctxt.put(pvName, val)
+        except Exception as ex:
+            logging.error("self.ctxt.put('%s', %d) Exception: %s" % (pvName, val, ex))
+        else:
+            retval = True
+            logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
+
+        return retval
 
     def run(self):
         try:
@@ -503,7 +533,7 @@ class CollectionManager():
         # select procs with active flag set
 #       ids = self.filter_active(self.ids)
         msg = create_msg('alloc', body={'ids': list(ids)})
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'all', json.dumps(msg)])
 
         # make sure all the clients respond to alloc message with their connection info
         retlist, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
@@ -546,12 +576,13 @@ class CollectionManager():
         return True
 
     def condition_connect(self):
+        self.pv_put(self.pvRun, 0)  # clear Run PV before configure
         # FIXME select all procs for now
         ids = copy.copy(self.ids)
         # select procs with active flag set
 #       ids = self.filter_active(self.ids)
         msg = create_msg('connect', body=self.cmstate)
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         retlist, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
         ret = len(retlist)
@@ -613,7 +644,8 @@ class CollectionManager():
         self.cmstate.clear()
         self.ids.clear()
         msg = create_msg('plat')
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'all', json.dumps(msg)])
+        print('send', [b'partition', json.dumps(msg)])
         for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id']):
             for level, item in answer['body'].items():
                 if level not in self.cmstate:
@@ -668,7 +700,7 @@ class CollectionManager():
         retval = True
         ids = copy.copy(self.ids)
         msg = create_msg(transition)
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         # only drp group (aka level) responds to configure and above
         ids = self.filter_level('drp', ids)
@@ -699,37 +731,76 @@ class CollectionManager():
         return retval
 
     def condition_configure(self):
-        retval = self.condition_common('configure', 1000)
-        if retval:
-            self.lastTransition = 'configure'
+        if (self.pv_put(self.pvMsgClear, 0) and
+            self.pv_put(self.pvMsgClear, 1) and
+            self.pv_put(self.pvMsgClear, 0) and
+            self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Configure']) and
+            self.pv_put(self.pvMsgInsert, 0) and
+            self.pv_put(self.pvMsgInsert, 1) and
+            self.pv_put(self.pvMsgInsert, 0)):
+            retval = self.condition_common('configure', 1000)
+            if retval:
+                self.lastTransition = 'configure'
+        else:
+            logging.error('condition_configure(): pv_put() failed')
+            retval = False
         logging.debug('condition_configure() returning %s' % retval)
         return retval
 
     def condition_unconfigure(self):
-        retval = self.condition_common('unconfigure', 1000)
-        if retval:
-            self.lastTransition = 'unconfigure'
+        if (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Unconfigure']) and
+            self.pv_put(self.pvMsgInsert, 0) and
+            self.pv_put(self.pvMsgInsert, 1) and
+            self.pv_put(self.pvMsgInsert, 0)):
+            retval = self.condition_common('unconfigure', 1000)
+            if retval:
+                self.lastTransition = 'unconfigure'
+        else:
+            logging.error('condition_unconfigure(): pv_put() failed')
+            retval = False
         logging.debug('condition_unconfigure() returning %s' % retval)
         return retval
 
     def condition_enable(self):
-        retval = self.condition_common('enable', 1000)
-        if retval:
-            self.lastTransition = 'enable'
+        if (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Enable']) and
+            self.pv_put(self.pvMsgInsert, 0) and
+            self.pv_put(self.pvMsgInsert, 1) and
+            self.pv_put(self.pvMsgInsert, 0)):
+            retval = self.condition_common('enable', 1000)
+            if retval:
+                # order matters: set Run PV after others transition
+                if self.pv_put(self.pvRun, 1):
+                    # success
+                    self.lastTransition = 'enable'
+                else:
+                    logging.error('condition_enable(): pv_put() failed')
+                    retval = False
+        else:
+            logging.error('condition_enable(): pv_put() failed')
+            retval = False
         logging.debug('condition_enable() returning %s' % retval)
         return retval
 
     def condition_disable(self):
-        retval = self.condition_common('disable', 1000)
-        if retval:
-            self.lastTransition = 'disable'
+        # order matters: clear Run PV before others transition
+        if (self.pv_put(self.pvRun, 0) and
+            self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Disable']) and
+            self.pv_put(self.pvMsgInsert, 0) and
+            self.pv_put(self.pvMsgInsert, 1) and
+            self.pv_put(self.pvMsgInsert, 0)):
+            retval = self.condition_common('disable', 1000)
+            if retval:
+                self.lastTransition = 'disable'
+        else:
+            logging.error('condition_disable(): pv_put() failed')
+            retval = False
         logging.debug('condition_disable() returning %s' % retval)
         return retval
 
     def condition_reset(self):
         # is a reply to reset necessary?
         msg = create_msg('reset')
-        self.back_pub.send_json(msg)
+        self.back_pub.send_multipart([b'all', json.dumps(msg)])
         self.lastTransition = 'reset'
         logging.debug('condition_reset() returning True')
         return True
@@ -790,7 +861,8 @@ def main():
     # Process arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
-    parser.add_argument('-P', default='TST', help='instrument name (default TST)')
+    parser.add_argument('-P', metavar='INSTRUMENT', default='TST', help='instrument (default TST)')
+    parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-a', action='store_true', help='autoconnect')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
@@ -802,7 +874,7 @@ def main():
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def manager():
-        manager = CollectionManager(platform, args.P)
+        manager = CollectionManager(platform, args.P, args.B)
 
     def client(i):
         c = Client(platform)

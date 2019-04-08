@@ -55,8 +55,8 @@ public:
     CollectionApp(const std::string& managerHostname, int platform, const std::string& level);
     void run();
 protected:
-    virtual void handlePlat(const json& msg);
-    virtual void handleAlloc(const json& msg);
+    void handlePlat(const json& msg);
+    void handleAlloc(const json& msg);
     virtual void handleConnect(const json& msg) = 0;
     virtual void handleConfigure(const json& msg) {};
     virtual void handleEnable(const json& msg) {};
@@ -65,6 +65,7 @@ protected:
     void reply(const json& msg);
     size_t getId() const {return m_id;}
     const std::string& getLevel() const {return m_level;}
+    virtual std::string nicIp() {return getNicIp();}
 private:
     std::string m_level;
     ZmqContext m_context;
