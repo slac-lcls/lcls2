@@ -9,7 +9,6 @@ from transitions import Machine, MachineError, State
 import argparse
 import logging
 from p4p.client.thread import Context
-import threading
 
 PORT_BASE = 29980
 POSIX_TIME_AT_EPICS_EPOCH = 631152000
