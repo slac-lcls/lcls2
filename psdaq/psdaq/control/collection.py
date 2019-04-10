@@ -527,10 +527,8 @@ class CollectionManager():
         self.front_pub.send_json(self.status_msg())
 
     def condition_alloc(self):
-        # FIXME select all procs for now
-        ids = copy.copy(self.ids)
         # select procs with active flag set
-#       ids = self.filter_active(self.ids)
+        ids = self.filter_active_set(self.ids)
         msg = create_msg('alloc', body={'ids': list(ids)})
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
 
@@ -548,19 +546,20 @@ class CollectionManager():
             for level, item in answer['body'].items():
                 self.cmstate[level][id].update(item)
 
+        active_state = self.filter_active_dict(self.cmstate)
         # give number to drp nodes for the event builder
-        if 'drp' in self.cmstate:
-            for i, node in enumerate(self.cmstate['drp']):
+        if 'drp' in active_state:
+            for i, node in enumerate(active_state['drp']):
                 self.cmstate['drp'][node]['drp_id'] = i
 
         # give number to teb nodes for the event builder
-        if 'teb' in self.cmstate:
-            for i, node in enumerate(self.cmstate['teb']):
+        if 'teb' in active_state:
+            for i, node in enumerate(active_state['teb']):
                 self.cmstate['teb'][node]['teb_id'] = i
 
         # give number to meb nodes for the event builder
-        if 'meb' in self.cmstate:
-            for i, node in enumerate(self.cmstate['meb']):
+        if 'meb' in active_state:
+            for i, node in enumerate(active_state['meb']):
                 self.cmstate['meb'][node]['meb_id'] = i
 
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
@@ -576,11 +575,9 @@ class CollectionManager():
 
     def condition_connect(self):
         self.pv_put(self.pvRun, 0)  # clear Run PV before configure
-        # FIXME select all procs for now
-        ids = copy.copy(self.ids)
         # select procs with active flag set
-#       ids = self.filter_active(self.ids)
-        msg = create_msg('connect', body=self.cmstate)
+        ids = self.filter_active_set(self.ids)
+        msg = create_msg('connect', body=self.filter_active_dict(self.cmstate))
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         retlist, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
@@ -659,14 +656,25 @@ class CollectionManager():
         logging.debug('cmstate after plat:\n%s' % self.cmstate)
         return True
 
-    # filter_active - return subset of ids which have 'active' flag set
-    def filter_active(self, ids):
+    # filter_active_set - return subset of ids which have 'active' flag set
+    def filter_active_set(self, ids):
         matches = set()
         for level, item in self.cmstate.items():
             for xid in item:
                 if item[xid]['active'] == 1:
                     matches.add(xid)
         return matches.intersection(ids)
+
+    # filter_active_dict - return subset of dict that has 'active' flag set
+    def filter_active_dict(self, oldstate):
+        newstate = dict()
+        for level, item in oldstate.items():
+            for xid in item:
+                if item[xid]['active'] == 1:
+                    if level not in newstate:
+                        newstate[level] = dict()
+                    newstate[level][xid] = copy.copy(oldstate[level][xid])
+        return newstate
 
     # filter_level - return subset of ids for which 'level' starts with prefix
     def filter_level(self, prefix, ids):
@@ -697,7 +705,8 @@ class CollectionManager():
 
     def condition_common(self, transition, timeout):
         retval = True
-        ids = copy.copy(self.ids)
+        # select procs with active flag set
+        ids = self.filter_active_set(self.ids)
         msg = create_msg(transition)
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
