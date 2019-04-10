@@ -3,13 +3,18 @@ import psalg.configdb.configdb as cdb
 import os
 import io
 
+# these are the current default values, but I put them here to be explicit
 create = False
-dbname = 'cpotest'
-mycdb = cdb.configdb('cpo:psana@psdb-dev:9306', 'AMO', create, dbname)
+dbname = 'configDB'
+instrument = 'TMO'
+
+mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)
 print('Configs:')
 mycdb.print_configs()
 print(70*'-')
-mycdb.add_device_config('xpphsd1')
+# this needs to be called once to create the
+# collection name (same as detType in top.setInfo)
+mycdb.add_device_config('hsd')
 
 top = cdict()
 
@@ -32,10 +37,5 @@ top.set('fex.ymax', 2000, 'UINT16')
 top.set('fex.xpre', 2, 'UINT16')
 top.set('fex.xpost', 1, 'UINT16')
 
-d = {}
-# this 'hsd' is a collection name.  in principle many devices could reuse it.
-# the collection idea allows us to organize (like a directory).  
-d['hsd'] = top
-
-mycdb.modify_device('BEAM', 'xpphsd1', top)
+mycdb.modify_device('BEAM', top)
 mycdb.print_configs()

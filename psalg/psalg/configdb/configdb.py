@@ -131,8 +131,7 @@ class configdb(object):
     # it already exists! Value should be a typed json dictionary.
     def save_device_config(self, cfg, value, session=None):
         if self.cdb[cfg].count_documents({}, session=session) == 0:
-            raise NameError("save_device_config: No device configuration %s" 
-                            % name)
+            raise NameError("save_device_config: No documents found for %s." % cfg)
         try:
             d = self.cdb[cfg].find_one({'config': value}, session=session)
             return d['_id']
@@ -148,7 +147,8 @@ class configdb(object):
     # necessary.  name is the device and value is a json dictionary for the 
     # configuration.  Return the new configuration key if successful and 
     # raise an error if we fail.
-    def modify_device(self, alias, device, value, hutch=None):
+    def modify_device(self, alias, value, hutch=None):
+        device = value.get('detName')
         if hutch is None:
             hc = self.hutch_coll
         else:

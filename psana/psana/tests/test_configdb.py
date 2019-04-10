@@ -96,18 +96,18 @@ class Test_CONFIGDB:
             e = cdict()
             e.set("a", 32)
             e.set("b", 74)
-            e.setInfo(detType="evr")
+            e.setInfo(detType="evr", detName="evr0")
             j = cdict()
             j.set("c", 93)
             j.set("d", 67)
             j.set("e", [3, 6.5, 9.4], "DOUBLE")
-            j.setInfo(detType="jungfrau")
-            c.modify_device("BEAM", "evr0", e)        # 2
-            c.modify_device("BEAM", "jungfrau0", j)   # 3
+            j.setInfo(detType="jungfrau", detName="jungfrau0")
+            c.modify_device("BEAM", e)   # 2
+            c.modify_device("BEAM", j)   # 3
             with pytest.raises(Exception):
-                c.modify_device("BEAM", "evr0", e)
+                c.modify_device("BEAM", e)
             j.set("c", 103)
-            c.modify_device("NOBEAM", "jungfrau0", j) # 4
+            c.modify_device("NOBEAM", j) # 4
             ans_key        = {'BEAM': 3,  'NOBEAM': 4}
             ans_jungfrau_c = {'BEAM': 93, 'NOBEAM': 103}
             print("Configs:")
@@ -120,7 +120,7 @@ class Test_CONFIGDB:
                 pprint.pprint(cfg)
                 assert cfg['c'] == ans_jungfrau_c[a]
             j.set("d", 73)
-            c.modify_device("BEAM", "jungfrau0", j)   # 5
+            c.modify_device("BEAM", j)   # 5
             pprint.pprint(c.get_configuration("BEAM", "jungfrau0"))
             h = c.get_history("BEAM", "jungfrau0", ["d", "e"])
             pprint.pprint(h)
