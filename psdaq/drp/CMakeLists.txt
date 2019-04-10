@@ -10,6 +10,7 @@ find_package(PythonLibs REQUIRED)
 
 target_link_libraries(drputils
     xtcdata::xtc
+    xtcdata::j2x
     pgpdriver
     ctrb
     zmq
