@@ -86,19 +86,22 @@ def set_platform(dict_platf, list2d):
     #print('list2d:',list2d)
 
     try:
+        s = ''
+        i=-1
         for pname in dict_platf:
             #print("proc_name: %s" % str(pname))
-            for i,(k,v) in enumerate(dict_platf[pname].items()) :
+            for k,v in dict_platf[pname].items() :
                 display = _display_name(pname, v)
                 #status = display.split(' ')[0][0] # bool
+                i += 1
                 status = list2d[i][0][0] # bool
                 int_active = {True:1, False:0}[status]
-                #print(display, '   int_active: %d' % int_active)
                 dict_platf[pname][k]['active'] = int_active
+                s += '%s   int_active: %d\n' % (display,int_active)
         
         sj = json.dumps(dict_platf, indent=2, sort_keys=False)
         logger.debug('control.setPlatform() json:\n%s' % str(sj))
-        
+        logger.debug('summary:\n%s' % s)        
         daq_control().selectPlatform(dict_platf)
 
     except Exception as ex:

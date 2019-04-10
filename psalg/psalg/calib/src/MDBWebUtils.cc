@@ -157,7 +157,7 @@ void response_string_to_data_array(const std::string& sresp, const TDATA*& pout,
 
 //-------------------
 /// Combines urlws, dbname, colname, and query in an output string url.
-/// Return e.g. "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
+/// Return e.g. "https://pswww.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
 
 void string_url_with_query(std::string& url, const char* dbname, const char* colname, const char* query, const char* urlws) {
   url = urlws;
@@ -186,7 +186,7 @@ size_t _callback(char* buf, size_t size, size_t nmemb, void* pout) {
 
 //-------------------
 /// perform request with specified url and saves response in std::string& sresp through _callback. Analog of
-/// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
+/// curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
 
 void request(std::string& sresp, const char* url) {
   MSG(DEBUG, "In request url:" << url);
@@ -321,7 +321,7 @@ const rapidjson::Value& find_doc(rapidjson::Document& jdoc, const char* dbname, 
 
 //-------------------
 /// Returns document for specified document id from database collection. Analog of
-/// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001/5b6cdde71ead144f115319be"
+/// curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001/5b6cdde71ead144f115319be"
 
 void get_doc_for_docid(rapidjson::Document& jdoc, const char* dbname, const char* colname, const char* docid, const char* urlws) {
   std::string url(urlws);
@@ -334,7 +334,7 @@ void get_doc_for_docid(rapidjson::Document& jdoc, const char* dbname, const char
 
 //-------------------
 /// Returns byte-string data for specified dataid from database GridFS. Analog of
-/// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/gridfs/5b6cdde71ead144f11531999" 
+/// curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cspad_0001/gridfs/5b6cdde71ead144f11531999" 
 
 void get_data_for_id(std::string& sresp, const char* dbname, const char* dataid, const char* urlws) {
   std::string url(urlws); url += '/'; url += dbname; url += "/gridfs/"; url += dataid;
@@ -562,16 +562,29 @@ void calib_constants_nda_unusable(NDArray<T>& nda, rapidjson::Document& doc, con
 */
 
 //-------------------
+//#ifdef STRING01
+//#undef STRING01
+//#endif
+#define STRING01(T)						\
+  template void calib_constants_nda<T>(NDArray<T>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
+STRING01(int)
+STRING01(float)
+STRING01(double)
 
-template void calib_constants_nda<int>(NDArray<int>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
-template void calib_constants_nda<float>(NDArray<float>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
-template void calib_constants_nda<double>(NDArray<double>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
+//template void calib_constants_nda<int>(NDArray<int>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
+//template void calib_constants_nda<float>(NDArray<float>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
+//template void calib_constants_nda<double>(NDArray<double>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
 
 //-------------------
 
-template void response_string_to_data_array<int>   (const std::string&, const int*&,    size_t&); 
-template void response_string_to_data_array<float> (const std::string&, const float*&,  size_t&); 
-template void response_string_to_data_array<double>(const std::string&, const double*&, size_t&); 
+#define STRING02(T) template void response_string_to_data_array<T>(const std::string&, const T*&, size_t&);
+STRING02(int)
+STRING02(float)
+STRING02(double)
+
+//template void response_string_to_data_array<int>   (const std::string&, const int*&,    size_t&); 
+//template void response_string_to_data_array<float> (const std::string&, const float*&,  size_t&); 
+//template void response_string_to_data_array<double>(const std::string&, const double*&, size_t&); 
 
 //template class psalg::int_string_data_as_array<float>; 
 

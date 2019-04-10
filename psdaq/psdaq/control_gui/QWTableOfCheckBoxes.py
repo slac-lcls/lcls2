@@ -57,11 +57,12 @@ class QWTableOfCheckBoxes(QWTable) :
             for col,fld in enumerate(rec):
                 if isinstance(fld, list) :
                     item = QStandardItem(fld[1])
-                    if do_ctrl :
-                        item.setCheckable(True)
-                        #item.setEnabled(do_ctrl)
+                    #if do_ctrl :
+                    if True :
+                        item.setCheckable(do_ctrl)
                         item.setCheckState({False:0, True:2}[fld[0]])
                         item.setAccessibleDescription('type:list')
+                    item.setEnabled(True)
                 else :
                     item = QStandardItem(fld)
                     item.setAccessibleDescription('type:str')

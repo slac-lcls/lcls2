@@ -178,7 +178,8 @@ class CGWMain(QWZMQListener) :
     def set_style(self) :
 
         self.setMinimumWidth(350)
-        self.wlogr.setMinimumHeight(300)
+        self.setMinimumHeight(810)
+        self.wlogr.setMinimumHeight(220)
 
         #self.setGeometry(50, 50, 500, 600)
         #self.setGeometry(self.main_win_pos_x .value(),\
@@ -243,10 +244,12 @@ class CGWMain(QWZMQListener) :
         QWZMQListener.closeEvent(self, e)
 
  
-    def resizeEvent(self, e):
+    #def resizeEvent(self, e):
         #logger.debug('resizeEvent', self._name) 
         #logger.info('CGWMain.resizeEvent: %s' % str(self.size()))
-        pass
+        #print('XXX CGWMain.resizeEvent: %s' % str(self.size()))
+        #QWZMQListener.resizeEvent(self, e)
+        #pass
 
 
     def moveEvent(self, e) :

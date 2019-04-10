@@ -48,7 +48,9 @@ void test_request() {
 }
 
 //-------------------
-// returns "https://pswww-dev.slac.stanford.edu//calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
+// returns "https://pswww-dev...
+// returns "https://pswww.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
+// curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=%7B%22ctype%22%3A+%22pedestals%22%7D"
 std::string test_string_url_with_query() {
   printf("In test_string_url_with_query\n");  
   std::string url;
@@ -63,7 +65,7 @@ std::string test_string_url_with_query() {
 
 //-------------------
  
-// curl -s "https://pswww-dev.slac.stanford.edu//calib_ws/cdb_cspad_0001/cspad_0001?query_string=..."
+// curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cspad_0001/cspad_0001?query_string=..."
 void test_request_with_query() {
   printf("In test_request_with_query\n");  
   std::string url = test_string_url_with_query(); 

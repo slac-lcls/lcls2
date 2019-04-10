@@ -33,7 +33,7 @@
 
 namespace psalg {
 
-  static const char *URLWS = "https://pswww-dev.slac.stanford.edu/calib_ws";
+  static const char *URLWS = "https://pswww.slac.stanford.edu/calib_ws";
   static rapidjson::Value EMPTY_VALUE;
 
 //-------------------
