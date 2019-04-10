@@ -157,7 +157,7 @@ class CGWMainConfiguration(QGroupBox) :
                                             text='Save changes in configuration DB',\
                                             title='Confirm or cancel') 
         if resp : 
-            new_key = confdb.modify_device(cfgtype, devname, dictj, hutch=inst)
+            new_key = confdb.modify_device(cfgtype, dictj, hutch=inst)
             logger.debug('save_dictj_in_db new_key: %d' % new_key)
             
         else :
