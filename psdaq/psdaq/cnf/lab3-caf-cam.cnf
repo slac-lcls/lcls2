@@ -23,7 +23,7 @@ collect_host = 'drp-tst-acc06'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                        flags:'x', id:'partca-'+platform, conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
+ {                        id:'partca-'+platform, conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
  {                        id:'modca', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
  {                        id:'deadca-'+platform, conda:conda_rel, env:epics_env, cmd:'deadca DAQ:LAB2 '+platform+' '+shelf},
@@ -32,5 +32,6 @@ procmgr_config = [
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
  # trigger event builder
  { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host},
+ { host: 'drp-tst-dev009', id:'drp0', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_1 -o /tmp -C '+collect_host},
  { host: 'drp-tst-dev008', id:'drp1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_1 -o /tmp -C '+collect_host}
 ]
