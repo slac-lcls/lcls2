@@ -177,7 +177,10 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to set up MemoryRegion\n");
       return rc;
     }
-    svrLink->postCompRecv();
+    if ( (rc = svrLink->postCompRecv()) )
+    {
+      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
+    }
     printf("EbLfClient (ID %d) connected\n", svrLink->id());
 
     const unsigned tmo(120);
@@ -238,7 +241,10 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to set up MemoryRegion\n");
       return rc;
     }
-    svrLink->postCompRecv();
+    if ( (rc = svrLink->postCompRecv()) )
+    {
+      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
+    }
     printf("EbLfClient (ID %d) connected\n", svrLink->id());
 
     if (cltLink->post(srcBuf, srcSize, 0, 0))
@@ -264,7 +270,10 @@ int main(int argc, char **argv)
     rc = 0;
     ++rcnt;
 
-    svrLink->postCompRecv();
+    if ( (rc = svrLink->postCompRecv()) )
+    {
+      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
+    }
 
     if (scnt < iters)
     {

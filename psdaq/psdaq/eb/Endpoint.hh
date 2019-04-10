@@ -13,6 +13,7 @@
 namespace Pds {
   namespace Fabrics {
     class CompletionQueue;
+    class EventQueue;
 
     enum State { EP_CLOSED, EP_INIT, EP_UP, EP_ENABLED, EP_LISTEN, EP_CONNECTED };
 
@@ -203,12 +204,12 @@ namespace Pds {
     class EndpointBase : public ErrorHandler {
     protected:
       EndpointBase(const char* addr, const char* port, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
-      EndpointBase(Fabric* fabric, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
+      EndpointBase(Fabric* fabric, EventQueue* eq=0, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
       virtual ~EndpointBase();
     public:
       State state() const;
       Fabric* fabric() const;
-      struct fid_eq* eq() const;
+      EventQueue* eq() const;
       CompletionQueue* txcq() const;
       CompletionQueue* rxcq() const;
       virtual void shutdown();
@@ -221,23 +222,24 @@ namespace Pds {
     protected:
       State            _state;
       const bool       _fab_owner;
+      bool             _eq_owner;
       bool             _txcq_owner;
       bool             _rxcq_owner;
       Fabric*          _fabric;
-      struct fid_eq*   _eq;
+      EventQueue*      _eq;
       CompletionQueue* _txcq;
       CompletionQueue* _rxcq;
     };
     class Endpoint : public EndpointBase {
     public:
       Endpoint(const char* addr, const char* port, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
-      Endpoint(Fabric* fabric, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
+      Endpoint(Fabric* fabric, EventQueue* eq=0, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
       ~Endpoint();
     public:
       struct fid_ep* endpoint() const;
       void shutdown();
-      bool connect(int timeout=-1, uint64_t txFlags=0, uint64_t rxFlags=0);
-      bool accept(struct fi_info* remote_info, int timeout=-1, uint64_t txFlags=0, uint64_t rxFlags=0);
+      bool connect(int timeout=-1, uint64_t txFlags=0, uint64_t rxFlags=0, void* context=NULL);
+      bool accept(struct fi_info* remote_info, int timeout=-1, uint64_t txFlags=0, uint64_t rxFlags=0, void* context=NULL);
       /* Asynchronous calls (raw buffer) */
       ssize_t recv_comp_data(void* context=NULL);
       ssize_t send(const void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
@@ -301,7 +303,7 @@ namespace Pds {
     public:
       void shutdown();
       bool listen(int backlog=0);
-      Endpoint* accept(int timeout=-1, CompletionQueue* txcq=0, uint64_t txFlags=0, CompletionQueue* rxcq=0, uint64_t rxFlags=0);
+      Endpoint* accept(int timeout=-1, EventQueue* eq=0, CompletionQueue* txcq=0, uint64_t txFlags=0, CompletionQueue* rxcq=0, uint64_t rxFlags=0, void* context=NULL);
       bool reject(int timeout=-1);
       bool close(Endpoint* endpoint);
     private:
@@ -357,6 +359,29 @@ namespace Pds {
       bool           _up;
       Fabric*        _fabric;
       struct fid_cq* _cq;
+    };
+
+    class EventQueue : public ErrorHandler {
+    public:
+      EventQueue(Fabric* fabric, size_t size = 0);
+      EventQueue(Fabric* fabric, struct fi_eq_attr* eq_attr, void* context);
+      ~EventQueue();
+      struct fid_eq* eq() const;
+      bool event(uint32_t* event, void* entry, bool* cm_entry);
+      bool event_wait(uint32_t* event, void* entry, bool* cm_entry, int timeout=-1);
+      bool event_error(struct fi_eq_err_entry *entry);
+      bool up() const;
+      bool bind(Endpoint* ep);
+      void shutdown();
+    protected:
+      friend EndpointBase;
+      friend Endpoint;
+      bool handle_event(ssize_t event_ret, bool* cm_entry, const char* cmd);
+      bool initialize(struct fi_eq_attr* eq_attr, void* context);
+    private:
+      bool           _up;
+      Fabric*        _fabric;
+      struct fid_eq* _eq;
     };
   }
 }

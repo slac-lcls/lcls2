@@ -77,10 +77,11 @@ class Listener : public Routine {
   void routine() {
     if (_run) {
       Endpoint *endp = NULL;
+      EventQueue *eq = NULL;
       if (_cpoller) {
         endp = _pendp->accept();
       } else if (_cq) {
-        endp = _pendp->accept(-1, _cq, FI_TRANSMIT);
+        endp = _pendp->accept(-1, eq, _cq, FI_TRANSMIT);
       }
 
       if (endp) {

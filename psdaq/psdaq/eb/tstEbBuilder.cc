@@ -226,7 +226,11 @@ int Teb::connect(const EbParams& prms)
       return rc;
     }
     _mrqLinks[link->id()] = link;
-    link->postCompRecv();
+    if ( (rc = link->postCompRecv()) )
+    {
+      fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
+              __PRETTY_FUNCTION__, rc);
+    }
 
     printf("Inbound link with MonReq ID %d connected\n", link->id());
   }
@@ -247,12 +251,17 @@ void Teb::run()
   _eventCount = 0;
   _batchCount = 0;
 
-  while (lRunning)
+  while (true)
   {
     int rc;
-    if ( (rc = EbAppBase::process()) )
+    if (!lRunning)
     {
-      if (rc != -FI_ETIMEDOUT)  break;
+      if (checkEQ() == -FI_ENOTCONN)  break;
+    }
+
+    if ( (rc = EbAppBase::process()) < 0)
+    {
+      if (checkEQ() == -FI_ENOTCONN)  break;
     }
   }
 

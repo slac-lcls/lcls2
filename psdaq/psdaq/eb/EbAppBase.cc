@@ -118,7 +118,11 @@ int EbAppBase::connect(const EbParams& prms)
               id, region, region + regSizes[id], regSizes[id]);
       return rc;
     }
-    _links[id]->postCompRecv();
+    if ( (rc = _links[id]->postCompRecv()) )
+    {
+      fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
+              __PRETTY_FUNCTION__, rc);
+    }
 
     printf("Inbound link with Ctrb ID %d connected\n", id);
 
@@ -167,7 +171,11 @@ int EbAppBase::process()
                    ? (_trSize + idx * _maxBufSize[src])
                    : (idx * _maxTrSize);
   const Dgram* idg = static_cast<Dgram*>(lnk->lclAdx(ofs));
-  lnk->postCompRecv();
+  if ( (rc = lnk->postCompRecv()) )
+  {
+    fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
+            __PRETTY_FUNCTION__, rc);
+  }
 
   if (_verbose)
   {

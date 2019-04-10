@@ -282,12 +282,17 @@ namespace Pds {
 
       _eventCount = 0;
 
-      int rc;
-      while (lRunning)
+      while (true)
       {
-        if ( (rc = EbAppBase::process()) )
+        int rc;
+        if (!lRunning)
         {
-          if (rc != -FI_ETIMEDOUT )  break;
+          if (checkEQ() == -FI_ENOTCONN)  break;
+        }
+
+        if ( (rc = EbAppBase::process()) < 0)
+        {
+          if (checkEQ() == -FI_ENOTCONN)  break;
         }
       }
 
@@ -302,7 +307,7 @@ namespace Pds {
     }
     virtual void process(EbEvent* event)
     {
-      if (_verbose > 2)
+      if (_verbose > 3)
       {
         static unsigned cnt = 0;
         printf("Meb::process event dump:\n");
@@ -326,7 +331,7 @@ namespace Pds {
       memcpy(buf, event->begin(), sz);
       *(unsigned*)dg->xtc.next() = idx; // Pass buffer's index to _deleteDatagram()
 
-      if (_verbose > 1)
+      if (_verbose > 2)
       {
         uint64_t pid = dg->seq.pulseId().value();
         unsigned ctl = dg->seq.pulseId().control();

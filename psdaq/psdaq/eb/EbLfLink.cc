@@ -6,10 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <assert.h>
-#include <chrono>
-
-using ms_t = std::chrono::milliseconds;
+#include <time.h>
 
 using namespace Pds;
 using namespace Pds::Fabrics;
@@ -22,8 +19,8 @@ EbLfLink::EbLfLink(Endpoint* ep,
   _ep(ep),
   _mr(nullptr),
   _ra(),
-  _rxDepth(0),
-  _rOuts(1),
+  _depth(0),
+  _count(1),
   _pending(pending),
   _id(-1),
   _verbose(verbose),
@@ -32,14 +29,14 @@ EbLfLink::EbLfLink(Endpoint* ep,
 }
 
 EbLfLink::EbLfLink(Endpoint* ep,
-                   int       rxDepth,
+                   int       depth,
                    unsigned  verbose,
                    uint64_t& pending) :
   _ep(ep),
   _mr(nullptr),
   _ra(),
-  _rxDepth(rxDepth),
-  _rOuts(1),
+  _depth(depth),
+  _count(1),
   _pending(pending),
   _id(-1),
   _verbose(verbose),
@@ -265,26 +262,9 @@ int EbLfLink::recvMr(MemoryRegion* mr)
   return 0;
 }
 
-int EbLfLink::postCompRecv(void* ctx)
+int EbLfLink::_postCompRecv(int count, void* ctx)
 {
-  if (--_rOuts <= 0)
-  {
-    unsigned count = _rxDepth - _rOuts;
-    _rOuts += _postCompRecv(count, ctx);
-    if (_rOuts < _rxDepth)
-    {
-      fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d of %d available\n",
-              __PRETTY_FUNCTION__, _rOuts, _rxDepth);
-      return _rxDepth - _rOuts;
-    }
-  }
-
-  return 0;
-}
-
-int EbLfLink::_postCompRecv(unsigned count, void* ctx)
-{
-  unsigned i;
+  int i;
 
   for (i = 0; i < count; ++i)
   {
@@ -310,12 +290,12 @@ int EbLfLink::post(const void* buf,
                    void*       ctx)
 {
   RemoteAddress ra(_ra.rkey, _ra.addr + offset, len);
-  //auto          t0(std::chrono::steady_clock::now());
+  timespec      t0( {0, 0} );
   ssize_t       rc;
 
   _pending |= 1 << _id;
 
-  while (1)
+  while (true)
   {
     rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr);
     if (!rc)  break;
@@ -327,24 +307,36 @@ int EbLfLink::post(const void* buf,
       break;
     }
 
-    //auto t1(std::chrono::steady_clock::now());
-    //
-    //const int msTmo = 5000;
-    //if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
+    // With FI_SELECTIVE_COMPLETION, fabtests seems to indicate there is no need
+    // to check the Tx completion queue as nothing will ever appear in it
+    //fi_cq_data_entry cqEntry;
+    //rc = _ep->txcq()->comp(&cqEntry, 1);
+    //if ((rc < 0) && (rc != -FI_EAGAIN)) // EAGAIN means no completions available
     //{
-    //  printf("%s: Timed out\n", __PRETTY_FUNCTION__);
-    //
-    //  rc = -FI_ETIMEDOUT;
+    //  fprintf(stderr, "%s:\n  Error reading Tx CQ: %s\n",
+    //          __PRETTY_FUNCTION__, _ep->txcq()->error());
     //  break;
     //}
 
-    fi_cq_data_entry cqEntry;
-    rc = _ep->txcq()->comp(&cqEntry, 1);
-    if ((rc < 0) && (rc != -FI_EAGAIN)) // EAGAIN means no completions available
+    // Timeouts nominally occur only during shutdown
+    // Revisit: This seems like the wrong thing to do since it can't be
+    // guaranteed to happen only during shutdown, so maybe poll a flag?
+    if (t0.tv_sec)
     {
-      fprintf(stderr, "%s:\n  Error reading TX CQ: %s\n",
-              __PRETTY_FUNCTION__, _ep->txcq()->error());
-      break;
+      timespec t1;
+      rc = clock_gettime(CLOCK_MONOTONIC_COARSE, &t1);
+      if (rc < 0)  perror("clock_gettime");
+
+      if (t1.tv_sec - t0.tv_sec > 4)
+      {
+        rc = -FI_ETIMEDOUT;
+        break;
+      }
+    }
+    else
+    {
+      rc = clock_gettime(CLOCK_MONOTONIC_COARSE, &t0);
+      if (rc < 0)  perror("clock_gettime");
     }
   }
 

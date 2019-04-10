@@ -124,7 +124,12 @@ int EbCtrbInBase::process(BatchManager& batMan)
   unsigned     idx = ImmData::idx(data);
   EbLfLink*    lnk = _links[src];
   const Dgram* bdg = (const Dgram*)(lnk->lclAdx(idx * _maxBatchSize));
-  lnk->postCompRecv();
+  uint64_t     pid = bdg->seq.pulseId().value();
+  if ( (rc = lnk->postCompRecv()) )
+  {
+    fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
+            __PRETTY_FUNCTION__, rc);
+  }
 
   if (_prms.verbose)
   {

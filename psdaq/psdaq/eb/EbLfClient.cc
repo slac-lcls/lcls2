@@ -55,7 +55,7 @@ int EbLfClient::connect(const char* peer,
   CompletionQueue* txcq   = new CompletionQueue(fab, cqSize);
   if (!txcq)
   {
-    fprintf(stderr, "%s:\n  Failed to create TX completion queue: %s\n",
+    fprintf(stderr, "%s:\n  Failed to create Tx completion queue: %s\n",
             __PRETTY_FUNCTION__, "No memory");
     return -FI_ENOMEM;
   }
@@ -70,8 +70,9 @@ int EbLfClient::connect(const char* peer,
   uint64_t  dT = 0;
   while (true)
   {
+    EventQueue*      eq   = nullptr;
     CompletionQueue* rxcq = nullptr;
-    ep = new Endpoint(fab, txcq, rxcq);
+    ep = new Endpoint(fab, eq, txcq, rxcq);
     if (!ep || (ep->state() != EP_UP))
     {
       fprintf(stderr, "%s:\n  Failed to initialize Endpoint: %s\n",
@@ -114,16 +115,20 @@ int EbLfClient::shutdown(EbLfLink* link)
 {
   if (link)
   {
+    printf("Disconnecting from EbLfServer %d\n", link->id());
+
     Endpoint* ep = link->endpoint();
-    delete link;
     if (ep)
     {
       CompletionQueue* txcq = ep->txcq();
       Fabric*          fab  = ep->fabric();
-      delete ep;
       if (txcq)  delete txcq;
       if (fab)   delete fab;
+      ep->shutdown();
+      delete ep;
     }
+    delete link;
+    _pending = 0;
   }
 
   return 0;

@@ -142,8 +142,9 @@ namespace Pds {
                 StatsMonitor&        smon);
       virtual ~EbCtrbApp() {}
     public:
-      DrpSim& drpSim() { return _drpSim; }
+      DrpSim&  drpSim() { return _drpSim; }
     public:
+      void     shutdown();
       void     run(EbCtrbIn&);
     private:
       DrpSim               _drpSim;
@@ -331,6 +332,13 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
   smon.registerIt("CtbO_InFlt",  _inFlightCnt,           StatsMonitor::SCALAR);
 }
 
+void EbCtrbApp::shutdown()
+{
+  _drpSim.stop();
+
+  stop();
+}
+
 void EbCtrbApp::run(EbCtrbIn& in)
 {
   _eventCount  = 0;
@@ -465,8 +473,7 @@ void CtrbApp::_shutdown()
 {
   lRunning = 0;
 
-  _tebCtrb.drpSim().stop();
-  _tebCtrb.stop();
+  _tebCtrb.shutdown();
 
   _appThread.join();
 

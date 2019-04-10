@@ -104,7 +104,10 @@ int server(const std::string& ifAddr,
       fprintf(stderr, "Failed to set up MemoryRegion %d\n", i);
       return rc;
     }
-    links[i]->postCompRecv();
+    if ( (rc = links[i]->postCompRecv()) )
+    {
+      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
+    }
 
     bufSize[i] = (regSize - trSize) / numBuffers;
 
@@ -125,7 +128,10 @@ int server(const std::string& ifAddr,
     size_t    ofs = (ImmData::buf(flg) == ImmData::Buffer)
                   ? trSize + idx * bufSize[src]
                   : trOffset[idx];
-    links[src]->postCompRecv();
+    if ( (rc = links[src]->postCompRecv()) )
+    {
+      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
+    }
 
     void*       buf = lnk->lclAdx(ofs);
     uint64_t*   b   = (uint64_t*)buf;

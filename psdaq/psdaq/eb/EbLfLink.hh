@@ -52,14 +52,14 @@ namespace Pds {
       Fabrics::Endpoint* endpoint() const { return _ep;  }
       unsigned           id()       const { return _id;  }
     private:
-      int      _postCompRecv(unsigned count, void* ctx = NULL);
+      int      _postCompRecv(int count, void* ctx = NULL);
       int      _tryCq(fi_cq_data_entry*);
     private:                            // Arranged in order of access frequency
       Fabrics::Endpoint*      _ep;      // Endpoint
       Fabrics::MemoryRegion*  _mr;      // Memory Region
       Fabrics::RemoteAddress  _ra;      // Remote address descriptor
-      int                     _rxDepth; // Depth  of the Rx Completion Queue
-      int                     _rOuts;   // Number of completion buffers remaining
+      int                     _depth;   // Depth  of the Completion Queue
+      int                     _count;   // Number of completion buffers remaining
       uint64_t&               _pending; // Bit list of IDs currently posting
       unsigned                _id;      // ID     of peer on the remote side
       unsigned                _verbose; // Print some stuff if set
@@ -78,6 +78,18 @@ inline
 uintptr_t Pds::Eb::EbLfLink::rmtAdx(size_t offset) const
 {
   return _ra.addr + offset;
+}
+
+inline
+int Pds::Eb::EbLfLink::postCompRecv(void* ctx)
+{
+  if (--_count <= 0)
+  {
+    _count += _postCompRecv(_depth - _count, ctx);
+    if (_count < _depth)  return _depth - _count;
+  }
+
+  return 0;
 }
 
 #endif
