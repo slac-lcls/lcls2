@@ -616,8 +616,9 @@ class CollectionManager():
     def handle_selectplatform(self, body):
         logging.debug('handle_selectplatform()')
         if self.state != 'unallocated':
-            self.report_error('selectPlatform only permitted in unallocated state')
-            return msg
+            msg = 'selectPlatform only permitted in unallocated state'
+            self.report_error(msg)
+            return self.error_msg(msg)
 
         try:
             for key1, val1 in body.items():
