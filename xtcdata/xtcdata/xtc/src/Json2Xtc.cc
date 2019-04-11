@@ -287,26 +287,26 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
         delete d;
         return -1;
     }
-    if (!d->HasMember("alg") || !d->HasMember("detName") || !d->HasMember("detType") ||
-        !d->HasMember("detId") || !d->HasMember("doc")) {
-        printf("Document is missing a manditory field (alg, detName, detType, detId, or doc)!\n");
+    if (!d->HasMember("alg:RO") || !d->HasMember("detName:RO") || !d->HasMember("detType:RO") ||
+        !d->HasMember("detId:RO") || !d->HasMember("doc:RO")) {
+        printf("Document is missing a mandatory field (alg, detName, detType, detId, or doc)!\n");
         delete d;
         return -1;
     }
-    const Value& a = (*d)["alg"];
-    const Value& v = a["version"];
-    Alg alg = Alg(a["alg"].GetString(), v[0].GetInt(), 
+    const Value& a = (*d)["alg:RO"];
+    const Value& v = a["version:RO"];
+    Alg alg = Alg(a["alg:RO"].GetString(), v[0].GetInt(), 
                   v[1].GetInt(), v[2].GetInt());
     // Set alg._doc from a["doc"].GetString()?
-    d->RemoveMember("alg");
-    Names& names = *new(xtc) Names((*d)["detName"].GetString(), alg,
-                                   (*d)["detType"].GetString(),
-                                   (*d)["detId"].GetString(), namesID, segment);
+    d->RemoveMember("alg:RO");
+    Names& names = *new(xtc) Names((*d)["detName:RO"].GetString(), alg,
+                                   (*d)["detType:RO"].GetString(),
+                                   (*d)["detId:RO"].GetString(), namesID, segment);
     // Set _NameInfo.doc from d["doc"].GetString()?
-    d->RemoveMember("detName");
-    d->RemoveMember("detType");
-    d->RemoveMember("detId");
-    d->RemoveMember("doc");
+    d->RemoveMember("detName:RO");
+    d->RemoveMember("detType:RO");
+    d->RemoveMember("detId:RO");
+    d->RemoveMember("doc:RO");
     Value &jsv = (*d)[":types:"];
     Value json;
     json = jsv;              // This makes d[':types:'] null!!

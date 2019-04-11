@@ -148,7 +148,7 @@ class configdb(object):
     # configuration.  Return the new configuration key if successful and 
     # raise an error if we fail.
     def modify_device(self, alias, value, hutch=None):
-        device = value.get('detName')
+        device = value.get('detName:RO')
         if hutch is None:
             hc = self.hutch_coll
         else:
@@ -161,11 +161,11 @@ class configdb(object):
             value = value.typed_json()
         if not isinstance(value, dict):
             raise TypeError("modify_device: value is not a dictionary!")
-        if not "detType" in value.keys():
+        if not "detType:RO" in value.keys():
             raise ValueError("modify_device: value has no detType set!")
         if True:
                 session = None
-                collection = value["detType"]
+                collection = value["detType:RO"]
                 cfg = {'_id': self.save_device_config(collection, 
                                                       value, session),
                        'collection': collection}

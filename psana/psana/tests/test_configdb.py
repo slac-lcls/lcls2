@@ -94,7 +94,7 @@ class Test_CONFIGDB:
             print("\njungfrau:")
             c.print_device_configs("jungfrau")
             e = cdict()
-            e.set("a", 32)
+            e.set("a:RO", 32) # test the "readonly" flag
             e.set("b", 74)
             e.setInfo(detType="evr", detName="evr0")
             j = cdict()

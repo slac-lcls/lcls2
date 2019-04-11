@@ -11,6 +11,11 @@ import re
 #     - A numpy array.
 #     - A list of dictionaries.
 #
+# Names with ":RO" appended are "readonly" and are not displayed/modified
+# by the graphical configuration editor. They are either set by the python
+# script which creates the object (e.g. the alg/version field) or by the
+# drp (e.g. the serialnumber/detid field).
+#
 # Furthermore, the dictionary must contain a few additional keys with specific
 # value types:
 #     - "detType" maps to a str.
@@ -166,29 +171,29 @@ def validate_typed_json(d, edef={}, top=[], headers=True):
         return "Not a dictionary"
     k = list(d.keys())
     if len(top) == 0:
-        for f in ["detType", "detName", "detId"]:
+        for f in ["detType:RO", "detName:RO", "detId:RO"]:
             if headers and (not f in k or not isinstance(d[f], str)):
                 return "No valid " + f
             if f in k:
                 k.remove(f)
-        if "doc" in k:
-            if headers and not isinstance(d["doc"], str):
+        if "doc:RO" in k:
+            if headers and not isinstance(d["doc:RO"], str):
                 return "No valid doc"
-            k.remove("doc")
-        if "alg" in k:
+            k.remove("doc:RO")
+        if "alg:RO" in k:
             if headers:
-                a = d["alg"]
+                a = d["alg:RO"]
                 if not isinstance(a, dict):
                     return "alg is not a dictionary"
                 ak = a.keys()
-                if not "alg" in ak or not isinstance(a["alg"], str):
+                if not "alg:RO" in ak or not isinstance(a["alg:RO"], str):
                     return "alg has no valid alg"
-                if "doc" in ak and not isinstance(a["doc"], str):
+                if "doc:RO" in ak and not isinstance(a["doc:RO"], str):
                     return "alg has no valid doc"
-                if not "version" in ak or not isinstance(a["version"], list) or len(a["version"]) != 3:
+                if not "version:RO" in ak or not isinstance(a["version:RO"], list) or len(a["version:RO"]) != 3:
                     return "alg has no valid version"
                 # Do we want to check if the three elements are integers?!?
-            k.remove("alg")
+            k.remove("alg:RO")
     for n in k:
         v = d[n]
         if isinstance(v, dict):
@@ -229,7 +234,7 @@ def write_json_dict(f, d, edef, tdict, top=[], indent="    ", **hw):
     k = list(d.keys())
     try:
         if not hw['headers']:
-            for ff in ["detType", "detName", "detId", "doc", "alg"]:
+            for ff in ["detType:RO", "detName:RO", "detId:RO", "doc:RO", "alg:RO"]:
                 try: 
                     k.remove(ff)
                 except:
@@ -241,14 +246,14 @@ def write_json_dict(f, d, edef, tdict, top=[], indent="    ", **hw):
         if isinstance(v, str):
             f.write('%s"%s": "%s"' % (prefix, n, v))
         elif isinstance(v, dict):
-            if n == "alg":
+            if n == "alg:RO":
                 try:
-                    doc = v["doc"]
+                    doc = v["doc:RO"]
                 except:
                     doc = ""
-                vinfo = v["version"]
-                f.write('%s"alg": {"alg": "%s", "doc": "%s", "version": [%d, %d, %d] }' %
-                        (prefix, v["alg"], v["doc"], vinfo[0], vinfo[1], vinfo[2]))
+                vinfo = v["version:RO"]
+                f.write('%s"alg:RO": {"alg:RO": "%s", "doc:RO": "%s", "version:RO": [%d, %d, %d] }' %
+                        (prefix, v["alg:RO"], v["doc:RO"], vinfo[0], vinfo[1], vinfo[2]))
             else:
                 f.write('%s"%s": {\n' % (prefix, n))
                 tdict0 = {}
@@ -329,14 +334,14 @@ def write_typed_json(filename_or_fd, d, edef, headers=True):
         f.write('        ":enum:": {\n')
         write_json_dict(f, edef, {}, {}, [], "            ")
         f.write('\n        },\n')
-    f.write('        "detType": "CHARSTR",\n')
-    f.write('        "detName": "CHARSTR",\n')
-    f.write('        "detId": "CHARSTR",\n')
-    f.write('        "doc": "CHARSTR",\n')
-    f.write('        "alg": {\n')
-    f.write('            "alg": "CHARSTR",\n')
-    f.write('            "doc": "CHARSTR",\n')
-    f.write('            "version": ["INT32", 3]\n')
+    f.write('        "detType:RO": "CHARSTR",\n')
+    f.write('        "detName:RO": "CHARSTR",\n')
+    f.write('        "detId:RO": "CHARSTR",\n')
+    f.write('        "doc:RO": "CHARSTR",\n')
+    f.write('        "alg:RO": {\n')
+    f.write('            "alg:RO": "CHARSTR",\n')
+    f.write('            "doc:RO": "CHARSTR",\n')
+    f.write('            "version:RO": ["INT32", 3]\n')
     f.write('        },\n')
     write_json_dict(f, tdict, {}, {}, [], "        ")
     f.write('\n    }\n}\n')
@@ -378,13 +383,13 @@ class cdict(object):
     def init_from_json(self, old, jt, base=None):
         if isinstance(old, dict):
             for k in old.keys():
-                if k in ["detType", "detName", "detId", "doc"]:
+                if k in ["detType:RO", "detName:RO", "detId:RO", "doc:RO"]:
                     self.dict[k] = str(old[k])
                     continue
-                if k == "alg":
-                    alg = old['alg']
-                    if isinstance(alg, dict) and set([k for k in alg.keys()]) == set(["alg", "doc", "version"]):
-                        self.dict['alg'] = alg
+                if k == "alg:RO":
+                    alg = old['alg:RO']
+                    if isinstance(alg, dict) and set([k for k in alg.keys()]) == set(["alg:RO", "doc:RO", "version:RO"]):
+                        self.dict['alg:RO'] = alg
                     continue
                 v = old[k]
                 t = jt[k]
@@ -434,10 +439,10 @@ class cdict(object):
             d = {}
             t = {}
             for k in input.keys():
-                if top and (k in ["detType", "detName", "detId", "doc", "alg"]):
+                if top and (k in ["detType:RO", "detName:RO", "detId:RO", "doc:RO", "alg:RO"]):
                     d[k] = input[k]
-                    if k == 'alg':
-                        t[k] = {'alg' : 'CHARSTR', 'doc': 'CHARSTR', 'version': ['INT32', 3]}
+                    if k == 'alg:RO':
+                        t[k] = {'alg:RO' : 'CHARSTR', 'doc:RO': 'CHARSTR', 'version:RO': ['INT32', 3]}
                     else:
                         t[k] = "CHARSTR"
                     continue
@@ -461,6 +466,8 @@ class cdict(object):
         elif isinstance(input, tuple):
             d = input[1]
             t = input[0]
+        else:
+            raise ValueError('Type %s not supported with value %s' % (type(input),input))
         return (d, t)
 
     def get(self, name, withtype=False):
@@ -658,10 +665,10 @@ class cdict(object):
         if not isinstance(doc, str):
             print("doc should be a string!")
             return
-        self.dict["alg"] = {
-            "alg": alg,
-            "doc": doc,
-            "version": version
+        self.dict["alg:RO"] = {
+            "alg:RO": alg,
+            "doc:RO": doc,
+            "version:RO": version
         }
 
     def setString(self, name, value):
@@ -672,10 +679,10 @@ class cdict(object):
                 self.dict[name] = value
 
     def setInfo(self, detType=None, detName=None, detId=None, doc=None):
-        self.setString("detType", detType)
-        self.setString("detName", detName)
-        self.setString("detId", detId)
-        self.setString("doc", doc)
+        self.setString("detType:RO", detType)
+        self.setString("detName:RO", detName)
+        self.setString("detId:RO", detId)
+        self.setString("doc:RO", doc)
 
     def writeFile(self, file, headers=True):
         return write_typed_json(file, self.dict, self.enumdef, headers)
