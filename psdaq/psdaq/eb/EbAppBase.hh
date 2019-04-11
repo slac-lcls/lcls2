@@ -11,8 +11,6 @@
 #include <array>
 #include <vector>
 
-using TimePoint_t = std::chrono::steady_clock::time_point;
-
 
 namespace XtcData {
   class Dgram;
@@ -31,16 +29,19 @@ namespace Pds {
       EbAppBase(const EbParams& prms);
     public:
       const uint64_t&  rxPending() const { return _transport.pending(); }
+      int              checkEQ()  { return _transport.pollEQ(); }
     public:
       int              connect(const EbParams&);
       int              process();
       void             shutdown();
     public:                          // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
-      virtual uint64_t contract(const XtcData::Dgram* contrib) const;
+      virtual uint64_t contracts(const XtcData::Dgram* contrib,
+                                 uint64_t& receivers) const;
     private:                           // Arranged in order of access frequency
-      uint64_t                 _defContract;
-      std::array<uint64_t, 16> _contract;
+      unsigned                 _groups;
+      std::array<uint64_t, 16> _contracts;
+      std::array<uint64_t, 16> _receivers;
       Pds::Eb::EbLfServer      _transport;
       std::vector<EbLfLink*>   _links;
       size_t                   _trSize;
@@ -50,6 +51,7 @@ namespace Pds {
       unsigned                 _verbose;
     private:
       void*                    _region;
+      uint64_t                 _contributors;
       unsigned                 _id;
     };
   };

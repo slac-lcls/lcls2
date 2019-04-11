@@ -4,6 +4,11 @@
 
 #include "xtcdata/xtc/Dgram.hh"
 
+#ifdef NDEBUG
+//#undef NDEBUG
+#endif
+
+#include <cassert>
 #include <new>
 #include <stdlib.h>
 
@@ -31,13 +36,15 @@ static const int MaxTimeouts = 10; //0x100;      // Revisit: Was 0xffff
 */
 
 EbEvent::EbEvent(uint64_t      contract,
+                 uint64_t      receivers,
                  EbEvent*      after,
                  const Dgram*  cdg,
                  unsigned      prm) :
-  _contract(contract),
-  _living  (MaxTimeouts),
-  _prm     (prm),
-  _last    (_contributions)
+  _contract (contract),
+  _receivers(receivers),
+  _living   (MaxTimeouts),
+  _prm      (prm),
+  _last     (_contributions)
 {
   const EbContribution* contribution = static_cast<const EbContribution*>(cdg);
 
@@ -46,6 +53,7 @@ EbEvent::EbEvent(uint64_t      contract,
   _size      = contribution->payloadSize();
 
   _remaining = contract & contribution->retire();
+  assert(_remaining != contract);       // Make sure some bit was taken down
 
   connect(after);
 }
@@ -97,26 +105,15 @@ EbEvent* EbEvent::_add(const Dgram* cdg)
 {
   const EbContribution* contribution = (EbContribution*)cdg;
 
-  *_last++    = contribution;
+  *_last++   = contribution;
 
-  _size      += contribution->payloadSize();
+  _size     += contribution->payloadSize();
 
-  // Revisit: Turn these into asserts?
-  //if ((_remaining & ~contribution->retire()) == 0)
-  //{
-  //  printf("pid = %014lx, remaining = %08lx, mask = %08lx\n",
-  //         cdg->seq.pulseId().value(), _remaining, contribution->retire());
-  //}
+  uint64_t remaining = _remaining;
+  _remaining = remaining & contribution->retire();
+  assert(_remaining != remaining);      // Make sure some bit was taken down
 
-  //int n = _last - _contributions;
-  //if (n > 2)
-  //{
-  //  printf("pid = %014lx, num ctrbs = %d\n", cdg->seq.pulseId().value(), n);
-  //}
-
-  _remaining &= contribution->retire();
-
-  _living     = MaxTimeouts;
+  _living    = MaxTimeouts;
 
   return this;
 }

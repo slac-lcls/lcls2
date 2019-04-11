@@ -22,7 +22,6 @@
 #include <assert.h>
 #include <climits>
 #include <bitset>
-#include <chrono>
 #include <atomic>
 #include <thread>
 
@@ -31,19 +30,14 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
-using Duration_t = std::chrono::steady_clock::duration;
-using us_t       = std::chrono::microseconds;
-using ns_t       = std::chrono::nanoseconds;
-
 
 EbAppBase::EbAppBase(const EbParams& prms) :
   EventBuilder (prms.maxBuffers + TransitionId::NumberOf,
                 prms.maxEntries,
-                64, //std::bitset<64>(prms.contributors).count(),
+                8 * sizeof(prms.contributors), //Revisit: std::bitset<64>(prms.contributors).count(),
                 prms.duration,
                 prms.verbose),
-  _defContract (0),
-  _contract    ( { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ),
+  _groups      (0),
   _transport   (prms.verbose),
   _links       (),
   _trSize      (roundUpSize(TransitionId::NumberOf * prms.maxTrSize)),
@@ -52,6 +46,7 @@ EbAppBase::EbAppBase(const EbParams& prms) :
   //_dummy       (Level::Fragment),
   _verbose     (prms.verbose),
   _region      (nullptr),
+  _contributors(0),
   _id          (-1)
 {
 }
@@ -63,8 +58,11 @@ int EbAppBase::connect(const EbParams& prms)
 
   _links.resize(nCtrbs);
   _maxBufSize.resize(nCtrbs);
-  _defContract = prms.contributors;
-  _id          = prms.id;
+  _id           = prms.id;
+  _contributors = prms.contributors;
+  _groups       = prms.groups;
+  _contracts    = prms.contractors;
+  _receivers    = prms.receivers;
 
   if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort, nCtrbs)) )
   {
@@ -148,20 +146,26 @@ void EbAppBase::shutdown()
   _region = nullptr;
 
   _maxBufSize.clear();
-  _defContract = 0;
-  _contract.fill(0);
-  _id          = -1;
+  _contributors = 0;
+  _id           = -1;
+  _groups       = 0;
+  _contracts.fill(0);
+  _receivers.fill(0);
 }
 
 int EbAppBase::process()
 {
+  int rc;
+
   // Pend for an input datagram and pass it to the event builder
   uint64_t  data;
-  int       rc;
   const int tmo = 5000;                 // milliseconds
-  auto t0(std::chrono::steady_clock::now());
-  if ( (rc = _transport.pend(&data, tmo)) < 0)  return rc;
-  auto t1(std::chrono::steady_clock::now());
+  if ( (rc = _transport.pend(&data, tmo)) < 0)
+  {
+    //printf("%s: rc = %d\n", __PRETTY_FUNCTION__, rc);
+    //if (rc == -FI_ETIMEDOUT)  EventBuilder::expired(); // Revisit
+    return rc;
+  }
 
   unsigned     flg = ImmData::flg(data);
   unsigned     src = ImmData::src(data);
@@ -180,14 +184,15 @@ int EbAppBase::process()
   if (_verbose)
   {
     static unsigned cnt = 0;
+    unsigned        env = idg->env;
     uint64_t        pid = idg->seq.pulseId().value();
     unsigned        ctl = idg->seq.pulseId().control();
     const char*     knd = (ImmData::buf(flg) == ImmData::Buffer)
                         ? "buffer"
                         : TransitionId::name(idg->seq.service());
     printf("EbAp rcvd %6d %15s[%4d]    @ "
-           "%16p, ctl %02x, pid %014lx,          src %2d, data %08lx, ext %4d\n",
-           cnt++, knd, idx, idg, ctl, pid, lnk->id(), data, idg->xtc.extent);
+           "%16p, ctl %02x, pid %014lx,          src %2d, env %08x, data %08lx, ext %4d\n",
+           cnt++, knd, idx, idg, ctl, pid, lnk->id(), env, data, idg->xtc.extent);
   }
 
   EventBuilder::process(idg, data);
@@ -195,7 +200,8 @@ int EbAppBase::process()
   return 0;
 }
 
-uint64_t EbAppBase::contract(const Dgram* ctrb) const
+uint64_t EbAppBase::contracts(const Dgram* ctrb,
+                              uint64_t&    receivers) const
 {
   // This method called when the event is created, which happens when the event
   // builder recognizes the first contribution.  This contribution contains
@@ -204,23 +210,29 @@ uint64_t EbAppBase::contract(const Dgram* ctrb) const
   // (the contract) to the event for each of the readout groups and logically OR
   // them together to provide the overall contract.  The list of contributors
   // participating in each readout group is provided at configuration time.
+  // There are two types of contracts: suppliers and receivers.  Suppliers are
+  // those contributors that are expected to provide contributions to the event.
+  // Receivers are those contributors that don't provide input to the event, but
+  // are interested in the built event.
 
-  if (ctrb->seq.isEvent())
+  uint64_t suppliers;
+  unsigned groups = static_cast<const L1Dgram*>(ctrb)->readoutGroups();
+  groups &= _groups;       // Consider only groups enabled for our partition
+  assert(groups);          // Configuration error if no enabled groups remain
+
+  suppliers = 0;
+  receivers = 0;
+  while (groups)
   {
-    uint64_t contract = 0;
-    unsigned groups   = static_cast<const L1Dgram*>(ctrb)->readoutGroups();
+    unsigned group = __builtin_ffs(groups) - 1;
+    groups &= ~(1 << group);
 
-    while (groups)
-    {
-      unsigned group = __builtin_ffs(groups) - 1;
-      groups &= ~(1 << group);
-
-      contract |= _contract[group];
-    }
-
-    if (contract)  return contract;
+    suppliers |= _contracts[group];
+    receivers |= _receivers[group];
   }
-  return _defContract;
+  assert(suppliers);   // Configuration error when no contributors are expected
+  assert(receivers);   // Configuration error when no contributors get results
+  return suppliers;
 }
 
 void EbAppBase::fixup(EbEvent* event, unsigned srcId)

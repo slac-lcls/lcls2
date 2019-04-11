@@ -1,4 +1,4 @@
-#include "psdaq/eb/StatsMonitor.hh"
+#include "StatsMonitor.hh"
 
 #include <zmq.h>
 
@@ -61,10 +61,9 @@ void StatsMonitor::routine()
   auto now   = std::chrono::steady_clock::now();
   auto start = std::chrono::duration_cast<std::chrono::duration<int64_t>>(now.time_since_epoch()).count();
 
+  bool enabled = _enabled;
   while (_running)
   {
-    std::this_thread::sleep_for(std::chrono::seconds(_period));
-
     //auto epoch = std::chrono::duration_cast<std::chrono::duration<int64_t>>(now.time_since_epoch()).count();
     //int  size  = snprintf(buffer, sizeof(buffer), R"(["%s",{"time": [%ld])", hostname, epoch);
     auto then  = now;
@@ -87,7 +86,7 @@ void StatsMonitor::routine()
         }
         case RATE:
         {
-          if (scalar > _previous[i])
+          if (scalar >= _previous[i])
           {
             auto   dT   = std::chrono::duration_cast<us_t>(now - then).count();
             auto   dC   = scalar - _previous[i];
@@ -120,7 +119,7 @@ void StatsMonitor::routine()
                           _names[i].c_str(), hostname, _partition, value);
       if (_verbose)  printf("%s\n", buffer);
 
-      if (_enabled)  zmq_send(socket, buffer, size, 0);
+      if (enabled)  zmq_send(socket, buffer, size, 0);
     }
 
     //if (_scalars.size() > 0)
@@ -129,8 +128,11 @@ void StatsMonitor::routine()
     //
     //  if (_verbose)  printf("%s\n", buffer);
     //
-    //  if (_enabled)  zmq_send(socket, buffer, size, 0);
+    //  if (enabled)  zmq_send(socket, buffer, size, 0);
     //}
+
+    enabled = _enabled; // One more scan when _enabled goes false while sleeping
+    std::this_thread::sleep_for(std::chrono::seconds(_period));
   }
 
   now = std::chrono::steady_clock::now();

@@ -1,9 +1,10 @@
-#include "psdaq/eb/MebContributor.hh"
+#include "MebContributor.hh"
 
-#include "psdaq/eb/Endpoint.hh"
-#include "psdaq/eb/EbLfClient.hh"
+#include "Endpoint.hh"
+#include "EbLfClient.hh"
+#include "StatsMonitor.hh"
 
-#include "psdaq/eb/utilities.hh"
+#include "utilities.hh"
 
 #include "xtcdata/xtc/Dgram.hh"
 
@@ -15,7 +16,7 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-MebContributor::MebContributor(const MebCtrbParams& prms) :
+MebContributor::MebContributor(const MebCtrbParams& prms, StatsMonitor& smon) :
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
   _trSize    (roundUpSize(TransitionId::NumberOf * _maxTrSize)),
@@ -25,6 +26,8 @@ MebContributor::MebContributor(const MebCtrbParams& prms) :
   _verbose   (prms.verbose),
   _eventCount(0)
 {
+  smon.registerIt("MCtbO_EvCt",  _eventCount,          StatsMonitor::SCALAR);
+  smon.registerIt("MCtbO_TxPdg", _transport.pending(), StatsMonitor::SCALAR);
 }
 
 int MebContributor::connect(const MebCtrbParams& prms,

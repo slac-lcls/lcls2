@@ -21,15 +21,12 @@ EventBuilder::EventBuilder(unsigned epochs,
                            unsigned sources,
                            uint64_t duration,
                            unsigned verbose) :
-  Timer(),
   _mask(PulseId(~(duration - 1), 0).value()),
   _epochFreelist(sizeof(EbEpoch), epochs, CLS),
   _epochLut(epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
-  _verbose(verbose),
-  _duration(100),                       // Timeout rate in ms
-  _timerTask(new Task(TaskObject("tEB_Timeout")))
+  _verbose(verbose)
 {
   if (duration & (duration - 1))
   {
@@ -55,7 +52,6 @@ EventBuilder::EventBuilder(unsigned epochs,
 
 EventBuilder::~EventBuilder()
 {
-  _timerTask->destroy();
 }
 
 void EventBuilder::clear()
@@ -186,10 +182,13 @@ EbEvent* EventBuilder::_event(const Dgram* ctrb,
   void* buffer = _eventFreelist.alloc(sizeof(EbEvent));
   if (buffer)
   {
-    EbEvent*  event = ::new(buffer) EbEvent(contract(ctrb),
-                                            after,
-                                            ctrb,
-                                            prm);
+    uint64_t receivers;
+    uint64_t contract = contracts(ctrb, receivers);
+    EbEvent* event    = ::new(buffer) EbEvent(contract,
+                                              receivers,
+                                              after,
+                                              ctrb,
+                                              prm);
     unsigned  index  = _evIndex(ctrb->seq.pulseId().value());
     _eventLut[index] = event;
     //EbEvent*& entry = _eventLut[index];
@@ -313,43 +312,31 @@ void EventBuilder::expired()            // Periodically called from a timer
     EbEvent*             event = epoch->pending.forward();
     const EbEvent* const last  = epoch->pending.empty();
 
-    if (event != last)
+    while (event != last)
     {
-      if (event->_remaining && !event->_alive())
-      {
-        printf("Event timed out: %014lx, size %zu, remaining %016lx\n",
-               event->sequence(),
-               event->size(),
-               event->_remaining);
-
-        if (event->_remaining) _fixup(event);
-
-        _flush(event);
-      }
-      return; // Revisit: This seems wrong, but is original.
+      event->dump(event->creator()->seq.pulseId().value() & (64 - 1));
+      //if (event->_remaining && !event->_alive())
+      //{
+      //  printf("Event timed out: %014lx, size %zu, remaining %016lx\n",
+      //         event->sequence(),
+      //         event->size(),
+      //         event->_remaining);
+      //
+      //  if (event->_remaining) _fixup(event);
+      //
+      //  _flush(event);
+      //}
+      //return; // Revisit: This seems wrong, but is original.
               //          Seems like all expired events should be flushed,
               //          not just one per timeout cycle, but it was maybe
               //          done this way to allow events backed up behind the
               //          one that's just been timed out to complete normally
+      printf("event = %p, forward = %p, last = %p\n", event, event->forward(), last);
+      event = event->forward();
     }
 
     epoch = epoch->forward();
   }
-}
-
-Task* EventBuilder::task()
-{
-  return _timerTask;
-}
-
-unsigned EventBuilder::duration() const
-{
-  return _duration;
-}
-
-unsigned EventBuilder::repetitive() const
-{
-  return 1;
 }
 
 /*
@@ -386,13 +373,14 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
   {
     if (_verbose > 1)
     {
-      uint64_t pid = ctrb->seq.pulseId().value();
+      unsigned env = ctrb->env;
       unsigned ctl = ctrb->seq.pulseId().control();
+      uint64_t pid = ctrb->seq.pulseId().value();
       size_t   sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
       unsigned src = ctrb->xtc.src.value();
       printf("EB found          a  ctrb                 @ "
-             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, parm %08x\n",
-             ctrb, ctl, pid, sz, src, prm);
+             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, parm %08x\n",
+             ctrb, ctl, pid, sz, src, env, prm);
     }
 
     event = _insert(epoch, ctrb, event, prm);

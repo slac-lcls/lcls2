@@ -26,13 +26,14 @@ public:
     Dgram(const Transition& transition_, const Xtc& xtc_) :
         Transition(transition_), xtc(xtc_)  { }
 public:
+    uint16_t readoutGroups() const { return (env)&0xffff; }
+public:
     Xtc xtc;
 };
 
 class L1Dgram : public Dgram {
 public:
-    uint16_t trigLines()     const { return (env>>16)&0xffff; }
-    uint16_t readoutGroups() const { return (env)&0xffff; }
+    uint16_t trigLines() const { return (env>>16)&0xffff; }
 };
 
 }

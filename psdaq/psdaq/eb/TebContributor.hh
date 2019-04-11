@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <vector>
-#include <chrono>
 #include <atomic>
 #include <thread>
 
@@ -21,47 +20,44 @@ namespace XtcData {
 namespace Pds {
   namespace Eb {
 
-    // Put these in our namespace so as not to break others
-    using TimePoint_t = std::chrono::steady_clock::time_point;
-    using Duration_t  = std::chrono::steady_clock::duration;
-    using us_t        = std::chrono::microseconds;
-    using ns_t        = std::chrono::nanoseconds;
+    using BatchFifo = FifoMT<const Pds::Eb::Batch*>;
 
     class EbCtrbInBase;
     class Batch;
+    class StatsMonitor;
 
-    class TebContributor : public BatchManager
+    class TebContributor
     {
     public:
-      TebContributor(const TebCtrbParams&);
-      virtual ~TebContributor() {}
+      TebContributor(const TebCtrbParams&, StatsMonitor&);
+      ~TebContributor() {}
     public:
-      int      connect(const TebCtrbParams&);
-      void     startup(EbCtrbInBase&);
-      void     stop()  { _running = false; }
-      void     shutdown();
+      int        connect(const TebCtrbParams&);
+      void       startup(EbCtrbInBase&);
+      void       stop()  { _running = false; }
+      void       shutdown();
     public:
-      bool     process(const XtcData::Dgram* datagram, const void* appPrm);
-      void     post(const XtcData::Dgram* nonEvent);
-    public:                             // For BatchManager
-      virtual void post(const Batch* input);
+      void*      allocate(const XtcData::Dgram* datagram, const void* appPrm);
+      void       process(const XtcData::Dgram* datagram);
+      void       post(const XtcData::Dgram* nonEvent);
+      void       post(const Batch* input);
     public:
-      const uint64_t& batchCount()   const { return _batchCount;  }
-      const uint64_t& txPending()    const { return _transport.pending(); }
-      unsigned        inFlightCnt()  const { return _inFlightOcc; }
+      void       release(const Batch* batch) { _batMan.release(batch); }
+      BatchFifo& pending()                   { return _pending; }
+      Batch*     batch(unsigned idx)         { return _batMan.batch(idx); }
     private:
-      void    _receiver(EbCtrbInBase&);
-    protected:
       const TebCtrbParams&   _prms;
-    private:
+      BatchManager           _batMan;
       EbLfClient             _transport;
       std::vector<EbLfLink*> _links;
       unsigned               _id;
       unsigned               _numEbs;
+      BatchFifo              _pending;     // Time ordered list of completed Batches
       size_t                 _batchBase;
+      uint16_t               _postFlag;
     private:
+      uint64_t               _eventCount;
       uint64_t               _batchCount;
-      std::atomic<unsigned>  _inFlightOcc;
     private:
       std::atomic<bool>      _running;
       std::thread            _rcvrThread;

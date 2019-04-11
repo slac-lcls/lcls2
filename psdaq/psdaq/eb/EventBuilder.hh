@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "psdaq/service/LinkedList.hh"
-#include "psdaq/service/Timer.hh"
 #include "psdaq/service/GenericPool.hh"
 
 namespace XtcData {
@@ -14,14 +13,12 @@ namespace XtcData {
 
 namespace Pds {
 
-  class Task;
-
   namespace Eb {
 
     class EbEpoch;
     class EbEvent;
 
-    class EventBuilder : public Pds::Timer
+    class EventBuilder
     {
     public:
       EventBuilder(unsigned epochs,
@@ -31,14 +28,12 @@ namespace Pds {
                    unsigned verbose);
       virtual ~EventBuilder();
     public:
-      virtual void       fixup(EbEvent*, unsigned srcId)       = 0;
-      virtual void       process(EbEvent*)                     = 0;
-      virtual uint64_t   contract(const XtcData::Dgram*) const = 0;
-    protected:                          // Timer interface
-      virtual void       expired();
-      virtual Task*      task();
-      virtual unsigned   duration()   const;
-      virtual unsigned   repetitive() const;
+      virtual void       fixup(EbEvent*, unsigned srcId)      = 0;
+      virtual void       process(EbEvent*)                    = 0;
+      virtual uint64_t   contracts(const XtcData::Dgram*,
+                                   uint64_t& receivers) const = 0;
+    public:
+      void               expired();
     public:
       void               process(const XtcData::Dgram*, unsigned prm);
     public:
@@ -71,8 +66,6 @@ namespace Pds {
       GenericPool           _eventFreelist; // Freelist for new events
       std::vector<EbEvent*> _eventLut;      // LUT of allocated events
       unsigned              _verbose;       // Print progress info
-      unsigned              _duration;      // Timer expiration rate
-      Task*                 _timerTask;     // For Timer
     };
   };
 };

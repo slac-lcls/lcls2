@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <array>
 
 
 namespace Pds {
@@ -25,52 +26,70 @@ namespace Pds {
     const unsigned MAX_LATENCY    = 1024 * 1024;               // In beam pulse ticks (1 uS)
     const unsigned MAX_BATCHES    = MAX_LATENCY / MAX_ENTRIES; // Max # of batches in circulation
 
+    enum { WRT_IDX, MON_IDX };     // Indexes of trigger decision results
+
     struct TebCtrbParams
     {
-      std::string              ifAddr;        // Network interface to use
-      std::string              port;          // Served port to receive results
-      unsigned                 partition;     // The chosen system
-      unsigned                 id;            // Contributor instance identifier
-      uint64_t                 builders;      // ID bit list of EBs
-      std::vector<std::string> addrs;         // TEB addresses
-      std::vector<std::string> ports;         // TEB ports
-      uint64_t                 duration;      // Max time duration of batches
-      unsigned                 maxBatches;    // Max # of batches to provide for
-      unsigned                 maxEntries;    // Max # of entries per batch
-      size_t                   maxInputSize;  // Max size of contribution
-      int                      core[2];       // Cores to pin threads to
-      unsigned                 verbose;       // Level of detail to print
+      using string_t = std::string;
+      using vecstr_t = std::vector<std::string>;
+
+      string_t       ifAddr;       // Network interface to use
+      string_t       port;         // Served port to receive results
+      unsigned       partition;    // The chosen system
+      unsigned       id;           // Contributor instance identifier
+      uint64_t       builders;     // ID bit list of EBs
+      vecstr_t       addrs;        // TEB addresses
+      vecstr_t       ports;        // TEB ports
+      const uint64_t duration;     // Max time duration of batches
+      const unsigned maxBatches;   // Max # of batches to provide for
+      const unsigned maxEntries;   // Max # of entries per batch
+      const size_t   maxInputSize; // Max size of contribution
+      int            core[2];      // Cores to pin threads to
+      unsigned       verbose;      // Level of detail to print
+      uint16_t       groups;       // Readout groups enabled for this partition
+      uint16_t       contractor;   // Readout groups for which this Ctrb supplies trigger input data
     };
 
     struct MebCtrbParams
     {
-      std::vector<std::string> addrs;         // MEB addresses
-      std::vector<std::string> ports;         // MEB ports
-      unsigned                 id;            // Contributor instance identifier
-      unsigned                 maxEvents;     // Junk?
-      size_t                   maxEvSize;     // Max event size
-      size_t                   maxTrSize;     // Max non-event size
-      unsigned                 verbose;       // Level of detail to print
+      using vecstr_t = std::vector<std::string>;
+
+      vecstr_t       addrs;        // MEB addresses
+      vecstr_t       ports;        // MEB ports
+      unsigned       id;           // Contributor instance identifier
+      const unsigned maxEvents;    // Max # of events to provide for
+      const size_t   maxEvSize;    // Max event size
+      const size_t   maxTrSize;    // Max non-event size
+      unsigned       verbose;      // Level of detail to print
     };
 
-    struct EbParams                           // Used with both TEBs and MEBs
+    struct EbParams                // Used with both TEBs and MEBs
     {
-      std::string              ifAddr;        // Network interface to use
-      std::string              ebPort;        // EB port to serve
-      std::string              mrqPort;       // Mon request port to receive on
-      unsigned                 partition;     // The chosen system
-      unsigned                 id;            // EB instance identifier
-      uint64_t                 contributors;  // ID bit list of contributors
-      std::vector<std::string> addrs;         // Contributor addresses
-      std::vector<std::string> ports;         // Contributor ports
-      uint64_t                 duration;      // Max time duration of buffers
-      unsigned                 maxBuffers;    // Max # of buffers to provide for
-      unsigned                 maxEntries;    // Max # of entries per buffer
-      unsigned                 numMrqs;       // Number of Mon request servers
-      size_t                   maxTrSize;     // Max non-event Dgram size
-      size_t                   maxResultSize; // Max result Dgram size
-      int                      core[2];       // Cores to pin threads to
-      unsigned                 verbose;       // Level of detail to print
+      enum { RDOUT_GRPS = 16 };    // Must match L1Dgram::readoutGroups()
+
+      using string_t = std::string;
+      using vecstr_t = std::vector<std::string>;
+      using u64arr_t = std::array<uint64_t, RDOUT_GRPS>;
+
+      string_t       ifAddr;       // Network interface to use
+      string_t       ebPort;       // EB port to serve
+      string_t       mrqPort;      // Mon request port to receive on
+      unsigned       partition;    // The chosen system
+      unsigned       id;           // EB instance identifier
+      uint64_t       contributors; // ID bit list of contributors
+      vecstr_t       addrs;        // Contributor addresses
+      vecstr_t       ports;        // Contributor ports
+      unsigned       maxBuffers;   // Max # of buffers to provide for
+      const uint64_t duration;     // Max time duration of buffers
+      const unsigned maxEntries;   // Max # of entries per buffer
+      const size_t   maxTrSize;    // Max non-event Dgram size
+      const size_t   maxResultSize;// Max result Dgram size
+      unsigned       numMrqs;      // Number of Mon request servers
+      int            core[2];      // Cores to pin threads to
+      unsigned       verbose;      // Level of detail to print
+      u64arr_t       contractors;  // Ctrbs providing Inputs  per readout group
+      u64arr_t       receivers;    // Ctrbs expecting Results per readout group
+      uint16_t       groups;       // Readout groups enabled for this partition
     };
   };
 };

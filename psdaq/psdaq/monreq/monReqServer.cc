@@ -108,10 +108,10 @@ namespace Pds {
 
       for (unsigned i = 0; i < prms.maxBuffers; ++i)
       {
+        if (_bufFreeList.push(i))
+          fprintf(stderr, "%s:\n  _bufFreeList.push(%d) failed\n", __PRETTY_FUNCTION__, i);
         //printf("%s:\n  _bufFreeList.push(%d), count = %zd\n",
         //       __PRETTY_FUNCTION__, i, _bufFreeList.count());
-        if (!_bufFreeList.push(i))
-          fprintf(stderr, "%s:\n  _bufFreeList.push(%d) failed\n", __PRETTY_FUNCTION__, i);
       }
 
       _init();
@@ -137,8 +137,8 @@ namespace Pds {
   private:
     virtual void _copyDatagram(Dgram* dg, char* buf)
     {
-      //printf("_copyDatagram @ %p to %p: pid = %014lx\n",
-      //       dg, buf, dg->seq.pulseId().value());
+      //printf("_copyDatagram:   dg = %p, pid = %014lx to %p\n",
+      //       dg, dg->seq.pulseId().value(), buf);
 
       Dgram* odg = new((void*)buf) Dgram(*dg);
 
@@ -157,6 +157,7 @@ namespace Pds {
         {
           fprintf(stderr, "%s:\n  Datagram is too large (%zd) for buffer of size %d\n",
                   __PRETTY_FUNCTION__, sizeof(*odg) + odg->xtc.sizeofPayload(), _sizeofBuffers);
+          // Revisit: Maybe replace this with an empty Dgram with damage set?
           abort();            // The memcpy would blow by the buffer size limit
         }
 
@@ -167,13 +168,14 @@ namespace Pds {
 
     virtual void _deleteDatagram(Dgram* dg)
     {
-      //printf("_deleteDatagram @ %p\n", dg);
+      //printf("_deleteDatagram @ %p: pid = %014lx\n",
+      //       dg, dg->seq.pulseId().value());
 
       unsigned idx = *(unsigned*)dg->xtc.next();
-      if (!_bufFreeList.push(idx))
+      if (_bufFreeList.push(idx))
         printf("_bufFreeList.push(%d) failed, count = %zd\n", idx, _bufFreeList.count());
-      //printf("_deleteDatagram: _bufFreeList.push(%d), count = %zd\n",
-      //       idx, _bufFreeList.count());
+      //printf("_deleteDatagram: dg = %p, pid = %014lx, _bufFreeList.push(%d), count = %zd\n",
+      //       dg, dg->seq.pulseId().value(), idx, _bufFreeList.count());
 
       Pool::free((void*)dg);
     }
@@ -188,7 +190,8 @@ namespace Pds {
         return;
       }
 
-      uint32_t data = _bufFreeList.pop();
+      unsigned data = _bufFreeList.front();
+      _bufFreeList.pop();
       //printf("_requestDatagram: _bufFreeList.pop(): %08x, count = %zd\n", data, _bufFreeList.count());
 
       int rc = -1;
@@ -221,7 +224,7 @@ namespace Pds {
     unsigned               _iTeb;
     EbLfClient             _mrqTransport;
     std::vector<EbLfLink*> _mrqLinks;
-    Fifo<unsigned>         _bufFreeList;
+    FifoMT<unsigned>       _bufFreeList;
     unsigned               _id;
   };
 
@@ -336,10 +339,12 @@ namespace Pds {
         uint64_t pid = dg->seq.pulseId().value();
         unsigned ctl = dg->seq.pulseId().control();
         size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
+        unsigned src = dg->xtc.src.value();
+        unsigned env = dg->env;
         unsigned svc = dg->seq.service();
         printf("MEB processed              event[%4ld]    @ "
-               "%16p, ctl %02x, pid %014lx, sz %4zd, %3s # %2d\n",
-               _eventCount, dg, ctl, pid, sz,
+               "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, %3s # %2d\n",
+               _eventCount, dg, ctl, pid, sz, src, env,
                svc == TransitionId::L1Accept ? "buf" : "tr", idx);
       }
 
@@ -495,6 +500,31 @@ int MebApp::_parseConnectionParams(const json& body)
     }
   }
 
+  _prms.groups = 0x0001;                // Revisit: Value to come from CfgDb
+  unsigned groups = _prms.groups;
+  if (groups == 0)
+  {
+    fprintf(stderr, "No readout groups are enabled\n");
+    return 1;
+  }
+  while (groups)
+  {
+    unsigned group = __builtin_ffs(groups) - 1;
+    groups &= ~(1 << group);
+
+    uint64_t contractors = _prms.contributors; // Revisit: Value to come from CfgDb
+
+    if (!contractors)
+    {
+      fprintf(stderr, "No contributors found for readout group %d\n",
+              group);
+      return 1;
+    }
+
+    _prms.contractors[group] = contractors;
+    _prms.receivers[group]   = 0;       // Unused by MEB
+  }
+
   _prms.addrs.clear();
   _prms.ports.clear();
 
@@ -522,9 +552,10 @@ int MebApp::_parseConnectionParams(const json& body)
   printf("\nParameters of MEB ID %d:\n",                     _prms.id);
   printf("  Thread core numbers:        %d, %d\n",           _prms.core[0], _prms.core[1]);
   printf("  Partition:                  %d\n",               _prms.partition);
-  printf("  Bit list of contributors:   %016lx, cnt: %zd\n", _prms.contributors,
+  printf("  Participates in groups:   0x%02x\n",             _prms.groups);
+  printf("  Bit list of contributors: 0x%016lx, cnt: %zd\n", _prms.contributors,
                                                              std::bitset<64>(_prms.contributors).count());
-  printf("  Buffer duration:            %014lx\n",           _prms.duration);
+  printf("  Buffer duration:          0x%014lx\n",           _prms.duration);
   printf("  Buffer pool depth:          %d\n",               _prms.maxBuffers);
   printf("  Max # of entries / buffer:  %d\n",               _prms.maxEntries);
   printf("  Max transition size:        %zd\n",              _prms.maxTrSize);
@@ -579,14 +610,17 @@ int main(int argc, char** argv)
                         /* .contributors  = */ 0,   // DRPs
                         /* .addrs         = */ { }, // MonReq addr served by TEB
                         /* .ports         = */ { }, // MonReq port served by TEB
-                        /* .duration      = */ epoch_duration,
                         /* .maxBuffers    = */ numberof_xferBuffers,
+                        /* .duration      = */ epoch_duration,
                         /* .maxEntries    = */ 1,   // per buffer
-                        /* .numMrqs       = */ 0,   // Unused here
                         /* .maxTrSize     = */ sizeof_buffers,
                         /* .maxResultSize = */ 0,   // Unused here
+                        /* .numMrqs       = */ 0,   // Unused here
                         /* .core          = */ { core_0, core_1 },
-                        /* .verbose       = */ 0 };
+                        /* .verbose       = */ 0,
+                        /* .contractors   = */ 0,
+                        /* .receivers     = */ 0,
+                        /* .groups        = */ 0 };
   unsigned       sizeofEvBuffers = sizeof_buffers;
   unsigned       nevqueues       = 1;
   bool           ldist           = false;

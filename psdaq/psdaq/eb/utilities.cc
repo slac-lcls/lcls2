@@ -1,4 +1,4 @@
-#include "psdaq/eb/utilities.hh"
+#include "utilities.hh"
 
 #include <stdio.h>
 #include <unistd.h>                     // sysconf()
@@ -10,15 +10,15 @@ using namespace Pds::Eb;
 
 size_t Pds::Eb::roundUpSize(size_t size)
 {
-  size_t alignment = sysconf(_SC_PAGESIZE);
-  return alignment * ((size + alignment - 1) / alignment);
+  size_t pageSize = sysconf(_SC_PAGESIZE);
+  return pageSize * ((size + pageSize - 1) / pageSize);
 }
 
 void* Pds::Eb::allocRegion(size_t size)
 {
-  size_t alignment = sysconf(_SC_PAGESIZE);
-  void*  region    = nullptr;
-  int    ret       = posix_memalign(&region, alignment, size);
+  size_t pageSize = sysconf(_SC_PAGESIZE);
+  void*  region   = nullptr;
+  int    ret      = posix_memalign(&region, pageSize, size);
   if (ret)
   {
     fprintf(stderr, "posix_memalign failed: %s", strerror(ret));

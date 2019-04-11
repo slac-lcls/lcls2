@@ -14,96 +14,69 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-BatchManager::BatchManager(uint64_t duration,
-                           unsigned batchDepth,
-                           unsigned maxEntries,
-                           size_t   maxSize) :
-  _duration     (duration),
-  _batchDepth   (batchDepth),
-  _maxEntries   (maxEntries),
+BatchManager::BatchManager(size_t maxSize) :
   _maxSize      (maxSize),
-  _maxBatchSize (roundUpSize(maxEntries * maxSize)),
-  _batchBuffer  ((char*)allocRegion(batchDepth * _maxBatchSize)),
-  _batchFreelist(batchDepth),
-  _appPrms      (new AppPrm[batchDepth * maxEntries]),
+  _maxBatchSize (roundUpSize(MAX_ENTRIES * maxSize)),
+  _region       (static_cast<char*>(allocRegion(batchRegionSize()))),
+  _batchFreelist(MAX_BATCHES),
+  _appPrms      (new AppPrm[MAX_BATCHES * MAX_ENTRIES]),
   _batch        (nullptr)
 {
-  if (duration & (duration - 1))
+  if (BATCH_DURATION & (BATCH_DURATION - 1))
   {
     fprintf(stderr, "%s: Batch duration (0x%016lx) must be a power of 2\n",
-            __func__, duration);
+            __func__, BATCH_DURATION);
     abort();
   }
-  if (batchDepth & (batchDepth - 1))
+  if (MAX_BATCHES & (MAX_BATCHES - 1))
   {
     fprintf(stderr, "%s: Batch depth (0x%08x) must be a power of 2\n",
-            __func__, batchDepth);
+            __func__, MAX_BATCHES);
     abort();
   }
-  if (maxEntries < duration)
+  if (MAX_ENTRIES < BATCH_DURATION)
   {
     fprintf(stderr, "%s: Warning: More triggers can occur in a batch duration (%lu) "
             "than for which there are batch entries (%u).\n"
             "Beware the trigger rate!\n",
-            __func__, duration, maxEntries);
+            __func__, BATCH_DURATION, MAX_ENTRIES);
   }
-  if (_batchBuffer == nullptr)
+  if (_region == nullptr)
   {
     fprintf(stderr, "%s: No memory found for a region of size %zd\n",
-            __func__, batchDepth * _maxBatchSize);
+            __func__, batchRegionSize());
     abort();
   }
   if (_appPrms == nullptr)
   {
     fprintf(stderr, "%s: No memory found for %d application parameters\n",
-            __func__, batchDepth * maxEntries);
+            __func__, MAX_BATCHES * MAX_ENTRIES);
     abort();
   }
 
-  char*   buffer  = _batchBuffer;
+  char*   buffer  = _region;
   AppPrm* appPrms = _appPrms;
-  for (unsigned i = 0; i < batchDepth; ++i)
+  for (unsigned i = 0; i < MAX_BATCHES; ++i)
   {
-    new(_batchFreelist[i]) Batch(i, buffer, appPrms);
+    new(_batchFreelist[i]) Batch(buffer, appPrms);
     buffer  += _maxBatchSize;
-    appPrms += maxEntries;
+    appPrms += MAX_ENTRIES;
   }
 }
 
 BatchManager::~BatchManager()
 {
   if (_appPrms)  delete [] _appPrms;
-  free(_batchBuffer);
+  free(_region);
 }
 
 void BatchManager::shutdown()
 {
-  for (unsigned i = 0; i < _batchDepth; ++i)
-  {
-    _batchFreelist[i].release();
-  }
   _batchFreelist.clear();
   _batch = nullptr;
 
-  memset(_batchBuffer, 0, _batchDepth * _maxBatchSize * sizeof(*_batchBuffer));
-  memset(_appPrms,     0, _batchDepth * _maxEntries   * sizeof(*_appPrms));
-}
-
-Batch* BatchManager::locate(uint64_t pid)
-{
-  Batch* batch = _batch;
-
-  if (!batch || batch->expired(pid, ~(_duration - 1)))
-  {
-    if (batch)  post(batch);
-
-    const auto tmo(std::chrono::milliseconds(5000));
-    uint64_t   key(batchId(pid));
-    batch  = _batchFreelist.allocate(key, tmo);
-    _batch = batch;
-  }
-
-  return batch;
+  memset(_region, 0, batchRegionSize() * sizeof(*_region));
+  memset(_appPrms,     0, MAX_BATCHES * MAX_ENTRIES   * sizeof(*_appPrms));
 }
 
 void BatchManager::dump() const

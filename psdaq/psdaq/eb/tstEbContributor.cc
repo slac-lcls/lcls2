@@ -1,11 +1,11 @@
-#include "psdaq/eb/MebContributor.hh"
-#include "psdaq/eb/TebContributor.hh"
-#include "psdaq/eb/EbCtrbInBase.hh"
+#include "MebContributor.hh"
+#include "TebContributor.hh"
+#include "EbCtrbInBase.hh"
 
-#include "psdaq/eb/utilities.hh"
-#include "psdaq/eb/StatsMonitor.hh"
-#include "psdaq/eb/EbLfClient.hh"
-#include "psdaq/eb/utilities.hh"
+#include "utilities.hh"
+#include "StatsMonitor.hh"
+#include "EbLfClient.hh"
+#include "utilities.hh"
 
 #include "psdaq/service/GenericPoolW.hh"
 #include "psdaq/service/Collection.hh"
@@ -77,6 +77,8 @@ namespace Pds {
         Dgram()
       {
         seq = seq_;
+        env = 1;                        // Put all events in group 0
+        //env = seq.isEvent() ? 1 : 2;    // Test multiple groups
         xtc = xtc_;
       }
     public:
@@ -96,7 +98,8 @@ namespace Pds {
       void            shutdown();
       void            stop();
     public:
-      const Dgram*    genInput();
+      const Dgram*    generate();
+      void            release(const Input*);
     public:
       const uint64_t& allocPending() const { return _allocPending; }
     private:
@@ -112,7 +115,10 @@ namespace Pds {
              TrConfigure,       TrUnconfigure,
              TrEnable,          TrDisable,
              TrL1Accept };
-      int            _trId;
+      int                     _trId;
+      mutable std::mutex      _lock;
+      std::condition_variable _cv;
+      bool                    _released;
     private:
       uint64_t       _allocPending;
       uint64_t       _startCnt;
@@ -122,6 +128,7 @@ namespace Pds {
     {
     public:
       EbCtrbIn(const TebCtrbParams& prms,
+               DrpSim&              drpSim,
                StatsMonitor&        smon);
       virtual ~EbCtrbIn() {}
     public:
@@ -130,9 +137,9 @@ namespace Pds {
     public:                             // For EbCtrbInBase
       virtual void process(const Dgram* result, const void* input);
     private:
+      DrpSim&         _drpSim;
       MebContributor* _mebCtrb;
-    private:
-      uint64_t        _eventCount;
+      uint64_t        _pid;
     };
 
     class EbCtrbApp : public TebContributor
@@ -149,9 +156,6 @@ namespace Pds {
     private:
       DrpSim               _drpSim;
       const TebCtrbParams& _prms;
-    private:
-      uint64_t             _eventCount;
-      uint64_t             _inFlightCnt;
     };
   };
 };
@@ -169,6 +173,9 @@ DrpSim::DrpSim(unsigned maxBatches,
   _pid         (0),
   _pool        (nullptr),
   _trId        (TrUnknown),
+  _lock        (),
+  _cv          (),
+  _released    (false),
   _allocPending(0)
 {
 }
@@ -190,6 +197,9 @@ void DrpSim::startup(unsigned id, void** base, size_t* size)
 
 void DrpSim::stop()
 {
+  std::lock_guard<std::mutex> lock(_lock);
+  _cv.notify_one();
+
   if (_pool)  _pool->stop();
 }
 
@@ -205,7 +215,7 @@ void DrpSim::shutdown()
   }
 }
 
-const Dgram* DrpSim::genInput()
+const Dgram* DrpSim::generate()
 {
   static const TransitionId::Value trId[] =
     { TransitionId::Unknown,
@@ -215,6 +225,15 @@ const Dgram* DrpSim::genInput()
       TransitionId::L1Accept };
   const uint32_t bounceRate = 16 * 1024 * 1024 - 1;
   const uint64_t bounceRem  = 0x01000000000003ul % bounceRate;
+
+  // Allow only one transition in the system at a time
+  if ((_trId != TrL1Accept) && (_trId != TrUnknown))
+  {
+    std::unique_lock<std::mutex> lock(_lock);
+    _cv.wait(lock, [this] { return _released || !lRunning; }); // Block until transition returns
+    if (!lRunning)  return nullptr;
+    _released = false;
+  }
 
   if       (_trId == TrDisable)               _trId  = TrEnable;
   else if  (_trId != TrL1Accept)              _trId += 2;
@@ -244,27 +263,38 @@ const Dgram* DrpSim::genInput()
 
   _pid += _maxEntries;
 #else
-  _pid += 1; //27; // Revisit: fi_tx_attr.iov_limit = 6 = 1 + max # events per batch
-  //_pid = ts.tv_nsec / 1000;     // Revisit: Not guaranteed to be the same across systems
+  _pid += 1;
 #endif
 
   return idg;
 }
 
+void DrpSim::release(const Input* input)
+{
+  delete input;
+
+  if (!input->seq.isEvent())
+  {
+    std::lock_guard<std::mutex> lock(_lock);
+    _released = true;
+    _cv.notify_one();
+  }
+}
+
 
 EbCtrbIn::EbCtrbIn(const TebCtrbParams& prms,
+                   DrpSim&              drpSim,
                    StatsMonitor&        smon) :
-  EbCtrbInBase(prms),
+  EbCtrbInBase(prms, smon),
+  _drpSim     (drpSim),
   _mebCtrb    (nullptr),
-  _eventCount (0)
+  _pid        (0)
 {
-  smon.registerIt("CtbI_EvtCt", _eventCount,  StatsMonitor::SCALAR);
-  smon.registerIt("CtbI_RxPdg",  rxPending(), StatsMonitor::SCALAR);
 }
 
 int EbCtrbIn::connect(const TebCtrbParams& tebPrms, MebContributor* mebCtrb)
 {
-  _eventCount = 0;
+  _pid = 0;
 
   _mebCtrb = mebCtrb;
 
@@ -281,25 +311,33 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
   const Input* input = (const Input*)appPrm;
   uint64_t     pid   = result->seq.pulseId().value();
 
+  assert(input);
+
   if (pid != input->seq.pulseId().value())
   {
-    fprintf(stderr, "Result, Input pulse ID mismatch - got: %014lx, expected: %014lx\n",
-           pid, input->seq.pulseId().value());
+    fprintf(stderr, "%s:\n  Result, Input pulse Id mismatch - got: %014lx, expected: %014lx\n",
+           __PRETTY_FUNCTION__, pid, input->seq.pulseId().value());
     abort();
   }
 
+  if (_pid > pid)
+  {
+    fprintf(stderr, "%s:\n  Pulse Id didn't increase: previous = %014lx, current = %014lx\n",
+            __PRETTY_FUNCTION__, _pid, pid);
+    abort();
+  }
+  _pid = pid;
+
   if (_mebCtrb)
   {
-    if (result->seq.isEvent())            // L1Accept
+    if (result->seq.isEvent())          // L1Accept
     {
       uint32_t* response = (uint32_t*)result->xtc.payload();
 
-      if (response[1])  _mebCtrb->post(input, response[1]);
+      if (response[MON_IDX])  _mebCtrb->post(input, response[1]);
     }
-    else                                  // Other Transition
+    else                                // Other Transition
     {
-      //printf("Non-event rcvd: pid = %014lx, service = %d\n", pid, result->seq.service());
-
       _mebCtrb->post(input);
     }
   }
@@ -307,29 +345,17 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
   // Revisit: Race condition
   // There's a race when the input datagram is posted to the monitoring node(s).
   // It is nominally safe to delete the DG only when the post has completed.
-  delete input;
-
-  ++_eventCount;
+  _drpSim.release(input);               // Return the event to the pool
 }
 
 
 EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
                      StatsMonitor&        smon) :
-  TebContributor(prms),
+  TebContributor(prms, smon),
   _drpSim       (prms.maxBatches, prms.maxEntries, prms.maxInputSize),
-  _prms         (prms),
-  _eventCount   (0),
-  _inFlightCnt  (0)
+  _prms         (prms)
 {
-  smon.registerIt("CtbO_EvtRt",  _eventCount,            StatsMonitor::RATE);
-  smon.registerIt("CtbO_EvtCt",  _eventCount,            StatsMonitor::SCALAR);
-  smon.registerIt("CtbO_BatCt",   batchCount(),          StatsMonitor::SCALAR);
-  smon.registerIt("CtbO_BtAlCt",  batchAllocCnt(),       StatsMonitor::SCALAR);
-  smon.registerIt("CtbO_BtFrCt",  batchFreeCnt(),        StatsMonitor::SCALAR);
-  smon.registerIt("CtbO_BtWtg",   batchWaiting(),        StatsMonitor::SCALAR);
-  smon.registerIt("CtbO_AlPdg",  _drpSim.allocPending(), StatsMonitor::SCALAR);
-  smon.registerIt("CtbO_TxPdg",   txPending(),           StatsMonitor::SCALAR);
-  smon.registerIt("CtbO_InFlt",  _inFlightCnt,           StatsMonitor::SCALAR);
+  smon.registerIt("TCtbO_AlPdg",  _drpSim.allocPending(), StatsMonitor::SCALAR);
 }
 
 void EbCtrbApp::shutdown()
@@ -341,9 +367,6 @@ void EbCtrbApp::shutdown()
 
 void EbCtrbApp::run(EbCtrbIn& in)
 {
-  _eventCount  = 0;
-  _inFlightCnt = 0;
-
   TebContributor::startup(in);
 
   pinThread(pthread_self(), _prms.core[0]);
@@ -360,13 +383,17 @@ void EbCtrbApp::run(EbCtrbIn& in)
 #endif
     //usleep(100000);
 
-    const Dgram* input = _drpSim.genInput();
+    const Dgram* input = _drpSim.generate();
     if (!input)  continue;
 
-    if (TebContributor::process(input, (const void*)input)) // 2nd arg is returned with the result
-      ++_eventCount;
+    void* buffer = allocate(input, input); // 2nd arg is returned with the result
+    if (buffer)
+    {
+      // Copy entire datagram into the batch (copy ctor doesn't copy payload)
+      memcpy(buffer, input, sizeof(*input) + input->xtc.sizeofPayload());
 
-    _inFlightCnt = inFlightCnt();
+      process(static_cast<Dgram*>(buffer));
+    }
   }
 
   TebContributor::shutdown();
@@ -408,8 +435,8 @@ CtrbApp::CtrbApp(const std::string& collSrv,
   _tebPrms(tebPrms),
   _mebPrms(mebPrms),
   _tebCtrb(tebPrms, smon),
-  _mebCtrb(mebPrms),
-  _inbound(tebPrms, smon),
+  _mebCtrb(mebPrms, smon),
+  _inbound(tebPrms, _tebCtrb.drpSim(), smon),
   _smon(smon)
 {
 }
@@ -441,8 +468,6 @@ int CtrbApp::_handleConnect(const json &msg)
     if (rc)  return rc;
 
     mebCtrb = &_mebCtrb;
-
-    _smon.registerIt("MCtbO_EvtCt", _mebCtrb.eventCount(), StatsMonitor::SCALAR);
   }
 
   rc = _inbound.connect(_tebPrms, mebCtrb);
@@ -540,6 +565,18 @@ int CtrbApp::_parseConnectionParams(const json& body)
     return 1;
   }
 
+  _tebPrms.groups     = 0x0001;         // Revisit: Value to come from CfgDb
+  _tebPrms.contractor = 0x0001;         // Revisit: Value to come from CfgDb
+
+  //if (_tebPrms.id == 1)  _tebPrms.contractor = 2; // Let DRP 1 be a receiver only for group 0
+
+  unsigned groups = _tebPrms.groups;
+  if (groups == 0)
+  {
+    fprintf(stderr, "No readout groups are enabled\n");
+    return 1;
+  }
+
   _mebPrms.addrs.clear();
   _mebPrms.ports.clear();
 
@@ -562,10 +599,12 @@ int CtrbApp::_parseConnectionParams(const json& body)
   printf("\nParameters of Contributor ID %d:\n",             _tebPrms.id);
   printf("  Thread core numbers:        %d, %d\n",           _tebPrms.core[0], _tebPrms.core[1]);
   printf("  Partition:                  %d\n",               _tebPrms.partition);
-  printf("  Bit list of TEBs:           %016lx, cnt: %zd\n", _tebPrms.builders,
+  printf("  Receipient for groups:    0x%02x\n",             _tebPrms.groups);
+  printf("  Contractor for groups:    0x%02x\n",             _tebPrms.contractor);
+  printf("  Bit list of TEBs:         0x%016lx, cnt: %zd\n", _tebPrms.builders,
                                                              std::bitset<64>(_tebPrms.builders).count());
-  printf("  Number of Monitor EBs:      %zd\n",              _mebPrms.addrs.size());
-  printf("  Batch duration:             %014lx = %ld uS\n",  _tebPrms.duration, _tebPrms.duration);
+  printf("  Number of MEBs:             %zd\n",              _mebPrms.addrs.size());
+  printf("  Batch duration:           0x%014lx = %ld uS\n",  _tebPrms.duration, _tebPrms.duration);
   printf("  Batch pool depth:           %d\n",               _tebPrms.maxBatches);
   printf("  Max # of entries / batch:   %d\n",               _tebPrms.maxEntries);
   printf("  Max TEB contribution size:  %zd\n",              _tebPrms.maxInputSize);
@@ -636,7 +675,9 @@ int main(int argc, char **argv)
                            /* .maxEntries    = */ MAX_ENTRIES,
                            /* .maxInputSize  = */ max_contrib_size,
                            /* .core          = */ { core_0, core_1 },
-                           /* .verbose       = */ 0 };
+                           /* .verbose       = */ 0,
+                           /* .groups        = */ 0,
+                           /* .contractor    = */ 0 };
   MebCtrbParams  mebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
                            /* .id            = */ tebPrms.id,

@@ -16,11 +16,12 @@ namespace Pds {
   namespace Eb {
 
     class EbLfLink;
+    class StatsMonitor;
 
     class MebContributor
     {
     public:
-      MebContributor(const MebCtrbParams&);
+      MebContributor(const MebCtrbParams&, StatsMonitor&);
     public:
       int  connect(const MebCtrbParams&, void* region, size_t size);
       void shutdown();
@@ -28,8 +29,6 @@ namespace Pds {
       int  post(const XtcData::Dgram* dataDatagram); // Transitions
       int  post(const XtcData::Dgram* dataDatagram,
                 uint32_t              destination);  // L1Accepts
-    public:
-      const uint64_t& eventCount() const  { return _eventCount; }
     private:
       size_t                 _maxEvSize;
       size_t                 _maxTrSize;

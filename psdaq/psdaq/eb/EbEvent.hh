@@ -27,6 +27,7 @@ namespace Pds {
       PoolDeclare;
     public:
       EbEvent(uint64_t              contract,
+              uint64_t              receivers,
               EbEvent*              after,
               const XtcData::Dgram* ctrb,
               unsigned              prm);
@@ -37,6 +38,7 @@ namespace Pds {
       size_t   size()      const;
       uint64_t remaining() const;
       uint64_t contract()  const;
+      uint64_t receivers() const;
     public:
       const EbContribution*  const  creator() const;
       const EbContribution*  const* begin()   const;
@@ -53,6 +55,7 @@ namespace Pds {
       size_t                 _size;            // Total contribution size (in bytes)
       uint64_t               _remaining;       // List of clients which have contributed
       const uint64_t         _contract;        // -> potential list of contributors
+      const uint64_t         _receivers;       // -> list of interested contributors
       int                    _living;          // Aging counter
       unsigned               _prm;             // An application level free parameter
       const EbContribution** _last;            // Pointer into the contributions array
@@ -113,6 +116,21 @@ inline size_t Pds::Eb::EbEvent::size() const
 inline uint64_t Pds::Eb::EbEvent::contract() const
 {
   return _contract;
+}
+
+/*
+** ++
+**
+**   Returns a bit-list that specifies which slots are interested in
+**   this event. If a bit is SET at a particular offset, the slot
+**   corresponding to that offset will receive a response.
+**
+** --
+*/
+
+inline uint64_t Pds::Eb::EbEvent::receivers() const
+{
+  return _receivers;
 }
 
 /*

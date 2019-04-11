@@ -1,10 +1,10 @@
 #ifndef Pds_Eb_EbCtrbInBase_hh
 #define Pds_Eb_EbCtrbInBase_hh
 
-#include "psdaq/eb/EbLfServer.hh"
+#include "EbLfServer.hh"
 
-#include <chrono>
 #include <vector>
+#include <atomic>
 
 
 namespace XtcData
@@ -17,34 +17,36 @@ namespace Pds
 {
   namespace Eb
   {
-    using TimePoint_t = std::chrono::steady_clock::time_point;
-
     class TebCtrbParams;
     class EbLfLink;
     class Batch;
-    class BatchManager;
+    class TebContributor;
+    class StatsMonitor;
 
     class EbCtrbInBase
     {
     public:
-      EbCtrbInBase(const TebCtrbParams&);
+      EbCtrbInBase(const TebCtrbParams&, StatsMonitor&);
       virtual ~EbCtrbInBase() {}
     public:
-      const uint64_t& rxPending() const { return _transport.pending(); }
-    public:
       int      connect(const TebCtrbParams&);
-      int      process(BatchManager& batMan);
+      int      process(TebContributor& ctrb);
       void     shutdown();
     public:
       size_t   maxBatchSize() const { return _maxBatchSize; }
+      void     receiver(TebContributor&, std::atomic<bool>& running);
     public:
       virtual void process(const XtcData::Dgram* result, const void* input) = 0;
     private:
       void    _initialize(const char* who);
+      void    _process(TebContributor&       ctrb,
+                       const XtcData::Dgram* results,
+                       const Batch*          inputs);
     private:
       EbLfServer             _transport;
       std::vector<EbLfLink*> _links;
       size_t                 _maxBatchSize;
+      uint64_t               _eventCount;
       const TebCtrbParams&   _prms;
       void*                  _region;
     };
