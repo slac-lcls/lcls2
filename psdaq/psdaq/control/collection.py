@@ -573,6 +573,12 @@ class CollectionManager():
         logging.debug('condition_dealloc() returning True')
         return True
 
+    def condition_configupdate(self):
+        # TODO
+        self.lastTransition = 'configupdate'
+        logging.debug('condition_configupdate() returning True')
+        return True
+
     def condition_connect(self):
         self.pv_put(self.pvRun, 0)  # clear Run PV before configure
         # select procs with active flag set
