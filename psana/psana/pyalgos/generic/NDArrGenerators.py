@@ -91,8 +91,8 @@ def random_xffffffff(shape=(40,60), dtype=np.uint32, add=0xff000000) :
 def size_from_shape(shape) :
     """Returns size from the shape sequence 
     """
-    size=1
-    for d in shape : size*=d
+    size = 1
+    for d in shape : size *= d
     return size
 
 #-----------------------------
@@ -114,7 +114,7 @@ def ring_intensity(r, r0, sigma) :
        r0 : float - radius of the ring
        sigma : float - width of the ring
     """
-    factor = 1/ (math.sqrt(2) * sigma)
+    factor = 1 / (math.sqrt(2) * sigma)
     rr = factor*(r-r0)
     return np.exp(-rr*rr)
 
@@ -147,7 +147,7 @@ def add_ring(arr2d, amp=100, row=4.3, col=5.8, rad=100, sigma=3) :
 def add_random_peaks(arr2d, npeaks=10, amean=100, arms=50, wmean=2, wrms=0.1) :
     """Returns 2-d array with peaks.
     """
-    shape=arr2d.shape
+    shape = arr2d.shape
 
     rand_uni = random_1(shape=(2, npeaks))
     r0 = rand_uni[0,:]*shape[0]
