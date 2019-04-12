@@ -183,12 +183,12 @@ def test01(ntest, prefix='fig-v01') :
         pf = polarization_factor(rb.pixel_rad(), rb.pixel_phi(), 94e3) # Z=94mm
         print 'Time to evaluate polarization correction factor %.3f sec' % (time()-t1_sec)
 
-        if   ntest ==10 : nda, title = pf,                    'polarization factor'
-        elif ntest ==11 : nda, title = arr * pf,              'polarization-corrected averaged data'
-        elif ntest ==12 : nda, title = rb.subtract_bkgd(arr * pf) * mask , 'polarization-corrected background subtracted data'
-        elif ntest ==13 : nda, title = rb.pixel_avrg(arr * pf), 'polarization-corrected averaged radial background'
-        elif ntest ==14 : nda, title = rb.pixel_avrg_interpol(arr * pf) * mask , 'polarization-corrected interpolated radial background'
-        elif ntest ==15 : nda, title = rb.subtract_bkgd_interpol(arr * pf) * mask , 'polarization-corrected interpolated radial background-subtracted data'
+        if   ntest == 10 : nda, title = pf,                    'polarization factor'
+        elif ntest == 11 : nda, title = arr * pf,              'polarization-corrected averaged data'
+        elif ntest == 12 : nda, title = rb.subtract_bkgd(arr * pf) * mask , 'polarization-corrected background subtracted data'
+        elif ntest == 13 : nda, title = rb.pixel_avrg(arr * pf), 'polarization-corrected averaged radial background'
+        elif ntest == 14 : nda, title = rb.pixel_avrg_interpol(arr * pf) * mask , 'polarization-corrected interpolated radial background'
+        elif ntest == 15 : nda, title = rb.subtract_bkgd_interpol(arr * pf) * mask , 'polarization-corrected interpolated radial background-subtracted data'
 
 
         else :
@@ -374,14 +374,14 @@ def test03(ntest, prefix='fig-v01') :
 
 if __name__ == '__main__' :
     import sys
-    ntest = int(sys.argv[1]) if len(sys.argv)>1 else 1
+    ntest = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     print 'Test # %d' % ntest
 
     prefix = 'fig-v01-cspad-RadialBkgd'
 
-    if   ntest<20 : test01(ntest, prefix)
-    elif ntest<40 : test02(ntest, prefix)
-    elif ntest<60 : test03(ntest, prefix)
+    if   ntest < 20 : test01(ntest, prefix)
+    elif ntest < 40 : test02(ntest, prefix)
+    elif ntest < 60 : test03(ntest, prefix)
     else : print 'Test %d is not implemented' % ntest     
     #sys.exit('End of test')
  
