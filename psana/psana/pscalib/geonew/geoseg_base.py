@@ -44,7 +44,7 @@ def unit_vector(v, dtype=np.float) :
     """
     a = np.array(v, dtype=dtype)        
     alen = sqrt(sum(a*a))   
-    return a/alen if alen>0 else None
+    return a/alen if alen > 0 else None
 
 def pixel_coords_from_array_of_sizes(a) :
     """Returns (np.array) 1d pixel center coordinate array form 1d pixel sizes array.
@@ -153,29 +153,29 @@ class geoseg_base :
         return self.pixel_coordinate_arrays()[axis]
 
     def str_geoseg_code_pixgrps(self, pgfmt='(%4d, %4d, %4d, %4d, %8.2f, %8.2f, %8.2f)') :
-        return '  pixgrps = (\n    %s\n  )'%\
+        return '  pixgrps = (\n    %s\n  )' %\
                (',\n    '.join([pgfmt%pg for pg in self.pixgrps]))
 
     def str_geoseg_code_body(self) :
         """Returns (str) formatted code of the class body.
         """
-        return '\n%s' % self.str_geoseg_code_pixgrps()+\
-               '\n  shape = %s'   % (str(self.shape))+\
-               '\n  vpix0 = %s'   % (str(self.vpix0))+\
-               '\n  v_f = %s'     % (str(self.v_f))+\
+        return '\n%s' % self.str_geoseg_code_pixgrps() +\
+               '\n  shape = %s'   % (str(self.shape)) +\
+               '\n  vpix0 = %s'   % (str(self.vpix0)) +\
+               '\n  v_f = %s'     % (str(self.v_f)) +\
                '\n  v_s = %s'     % (str(self.v_s))
 
     def str_geoseg_code(self, cmtext='') :
         """Returns (str) code of the object to be save in geometry file.
         """
-        hat  = '\n#----------\n\n'+\
-               'from geoseg_base import geoseg_base\n'+\
+        hat  = '\n#----------\n\n' +\
+               'from geoseg_base import geoseg_base\n' +\
                'class %s(geoseg_base) :' % self.__class__.__name__
         doc  = self.__doc__ + cmtext
         body = self.str_geoseg_code_body()
-        bot  = '\n#---------- SINGLETON\n'+\
-               '\nglobal SENS2X1'+\
-               '\nSENS2X1 = geoseg_cspad2x1()'+\
+        bot  = '\n#---------- SINGLETON\n' +\
+               '\nglobal SENS2X1' +\
+               '\nSENS2X1 = geoseg_cspad2x1()' +\
                '\n\n#----------'
         return '%s\n  """%s\n  """%s\n%s\n' % (hat, doc, body, bot)
 
