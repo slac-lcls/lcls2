@@ -43,7 +43,8 @@ def _display_name(pname, v) :
 #--------------------
 
 def get_platform():
-    """ returns [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
+    """ returns [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
+        #returns [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
         after control.getPlatform() request
     """
     list2d = []
@@ -69,7 +70,8 @@ def get_platform():
                 display = _display_name(pname, v)
                 #print(display)
                 flds = display.split(' ')
-                list2d.append([[v['active']==1, flds[0]], flds[1] if len(flds)==2 else ' '])
+                #list2d.append([[v['active']==1, flds[0]], flds[1] if len(flds)==2 else ' '])
+                list2d.append([[v['active']==1, ''], flds[0], flds[1] if len(flds)==2 else ''])
 
     except Exception as ex:
         logger.error('Exception: %s' % ex)

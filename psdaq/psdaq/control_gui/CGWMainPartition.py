@@ -37,7 +37,7 @@ from psdaq.control_gui.QWPopupTableCheck import QWPopupTableCheck, QWTableOfChec
 class CGWMainPartition(QGroupBox) :
     """
     """
-    TABTITLE_H = ['proc/pid/host', 'aliases']
+    TABTITLE_H = ['', 'proc/pid/host', 'aliases']
 
     def __init__(self, parent=None):
 
@@ -101,7 +101,7 @@ class CGWMainPartition(QGroupBox) :
     def on_but_select(self):
         logger.debug('on_but_select')
 
-        dict_platf, list2d = get_platform() # list2d = [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
+        dict_platf, list2d = get_platform() # list2d = [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
 
         #logger.debug('List of processes:')
         #for rec in list2d :
@@ -113,6 +113,7 @@ class CGWMainPartition(QGroupBox) :
                               win_title='Select partitions',\
                               do_edit=False, is_visv=True, do_frame=True)
 
+        w.setToolTip('Processes control is only available\nin the state UNALLOCATED')
         w.move(self.pos()+QPoint(self.width()/2,200))
         resp=w.exec_()
 
@@ -125,7 +126,7 @@ class CGWMainPartition(QGroupBox) :
         if self.w_display is not None :
             self.w_display.fill_table_model(tableio=list2d,\
                                             title_h=self.TABTITLE_H,\
-                                            is_visv=False)
+                                            do_edit=False, is_visv=False, do_ctrl=False, do_frame=True)
 
         set_platform(dict_platf, list2d)
         # 2019-03-13 caf: If Select->Apply is successful, an Allocate transition should be triggered.
@@ -141,19 +142,21 @@ class CGWMainPartition(QGroupBox) :
  
     def on_but_display(self):
         logger.debug('on_but_display')
-        if  self.w_display is None :
 
-            _, list2d = get_platform() # [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
+        if self.w_display is None :
+            _, list2d = get_platform() # [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
 
             list2d_active = list_active_procs(list2d)
             #logger.debug('list2d active processes:\n%s' % str(list2d_active))
 
             self.w_display = QWTableOfCheckBoxes(parent=None, tableio=list2d_active,\
+                                                 win_title='Display partitions',\
                                                  title_h=self.TABTITLE_H,\
                                                  is_visv=False)
 
+            self.w_display.setToolTip('Processes selection is only available\nin the "Select" window.')
             self.w_display.move(self.pos() + QPoint(self.width()+30, 200))
-            self.w_display.setWindowTitle('Selected partitions')
+            self.w_display.setWindowTitle('Display partitions')
             self.w_display.show()
         else :
             self.w_display.close()

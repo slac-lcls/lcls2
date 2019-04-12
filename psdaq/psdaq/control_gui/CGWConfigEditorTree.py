@@ -27,9 +27,12 @@ logger = logging.getLogger(__name__)
 from psdaq.control_gui.QWTree import QWTree, QStandardItemModel, QStandardItem, Qt, QModelIndex
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.QWPopupEditText import QWPopupEditText, QDialog
+from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
 
 #updateValue = None
 from psalg.configdb.typed_json import updateValue, getType #, getValue
+
+from psdaq.control_gui.CGJsonUtils import json_from_str
 
 #--------------------
 
@@ -106,7 +109,8 @@ class CGWConfigEditorTree(QWTree) :
         except : pass; # logger.warning("getType can't retreive dtype for path: %s" % path)
 
         #if dtype is None : 
-        dtype = '%s py-type:%s' % (str(dtype), self.str_object_type(o))
+        #dtype = '%s py-type:%s' % (str(dtype), self.str_object_type(o))
+        dtype = str(dtype)
 
         return dtype
 
@@ -128,7 +132,14 @@ class CGWConfigEditorTree(QWTree) :
 
 #--------------------
 
-    def tree_model_from_dict(self, o, parent_item):
+    def enum_dicts(self, dtype) :
+        d = json_from_str(dtype) if (isinstance(dtype,str) and len(dtype) and(dtype[0] == '{')) else None
+        if isinstance(d, dict) : return True, d, {v:k for k,v in d.items()}
+        return False, None, None
+
+#--------------------
+
+    def tree_model_from_dict(self, o, parent_item, is_read_only=False):
         """Recursive (json) dictionary conversion to the model tree.
            presentation convention:
            - setText           - text displaied in the tree model
@@ -142,13 +153,14 @@ class CGWConfigEditorTree(QWTree) :
             parent_item.setToolTip('key to dict object')
             for k,v in o.items() :
                 if k==':types:' : return
+                is_RO = is_read_only or (':RO' in k)
                 item = QStandardItem(k)
                 item.setIcon(icon.icon_folder_closed)
                 item.setEditable(False)
                 #item.setToolTip('...') # will be filled oot by child item
                 #item.setCheckable(True) 
                 parent_item.appendRow(item)
-                self.tree_model_from_dict(v, item)
+                self.tree_model_from_dict(v, item, is_read_only=is_RO)
         elif isinstance(o, list) :
             if any([isinstance(v, (dict,list)) for v in o]) :
                 parent_item.setAccessibleDescription('key-to-list-compaund')
@@ -162,7 +174,7 @@ class CGWConfigEditorTree(QWTree) :
                     item.setIcon(icon.icon_folder_closed)
                     #item.setCheckable(True) 
                     parent_item.appendRow(item)
-                    self.tree_model_from_dict(v, item)
+                    self.tree_model_from_dict(v, item, is_read_only)
             else : # data list
                 parent_item.setAccessibleText(parent_item.text())
                 parent_item.setText('%s - key to list' % parent_item.text())
@@ -179,8 +191,9 @@ class CGWConfigEditorTree(QWTree) :
                 dtype = self.data_type(parent_item, o)
                 item.setToolTip('%s path: [%s] dtype: %s'% (cmt,path,str(dtype)))
                 #item.setIcon(icon.icon_table)
-                item.setCheckable(True) 
-                item.setEditable(not is_trimmed) 
+                item.setCheckable(True)
+                item.setEditable(not (is_trimmed or is_read_only)) 
+                item.setEnabled(not is_read_only) 
                 parent_item.appendRow(item)
                 #print('item: %s data_type: %s' % (item.text(), str(dtype)))
                 
@@ -189,13 +202,22 @@ class CGWConfigEditorTree(QWTree) :
                 parent_item.setAccessibleDescription('key to data')
                 parent_item.setToolTip('key to simple data type')
                 path = path_to_item(parent_item)
-                item = QStandardItem('%s' % str(o))
-                item.setAccessibleText(str(o))
-                item.setAccessibleDescription('data')
-                dtype = self.data_type(parent_item, o)
+                dtype = self.data_type(parent_item, o).replace(' ', '').replace("'", '"')
+
+                is_enum, dic_enum, dic_inv = self.enum_dicts(dtype)
+                #if is_enum : print('ZZZZZ this is it: %s enum dicts: %s %s' % (str(dtype), str(dic_enum), str(dic_inv)))
+
+                s = dic_inv[o] if is_enum else str(o)
+                item = QStandardItem(s)
+                item.setAccessibleText(s)
+                #item.setAccessibleDescription('data')
+                item.setAccessibleDescription(dtype)
+                
                 item.setToolTip('data path: [%s] dtype: %s'%(path, str(dtype)))
                 #item.setToolTip('data path [%s]'%(path))
                 #item.setIcon(icon.icon_table)
+                item.setEditable(not is_read_only) 
+                item.setEnabled(not is_read_only) 
                 item.setCheckable(True) 
                 parent_item.appendRow(item)
                 #print('item: %s data_type: %s' % (item.text(), str(dtype)))
@@ -276,8 +298,12 @@ class CGWConfigEditorTree(QWTree) :
         else : # process data field
             path = path_to_item(item.parent())
 
-            is_trim = item.accessibleDescription()[:4] == 'trim'
-            val_item = item.accessibleText() if is_trim else item.text()
+            descr = item.accessibleDescription()
+            is_enum, dic_enum, dic_inv = self.enum_dicts(descr)
+            is_trim = descr[:4] == 'trim'
+            val_item = item.accessibleText() if is_trim else\
+                       dic_enum[item.text()] if is_enum else\
+                       item.text()
 
             #val_type = getType(self.dictj, path)
             #val_dict = getValue(self.dictj, path)
@@ -304,11 +330,19 @@ class CGWConfigEditorTree(QWTree) :
             path = path_to_item(item.parent())
             #print('XXX path_to_item: %s' % path)
 
+        txt = item.accessibleText()
         descr = item.accessibleDescription()
+
+        is_enum, dic_enum, dic_inv = self.enum_dicts(descr)
+        if is_enum :
+            #print('XXX TBD enum editor for txt: %s and dict: %s' % (txt, str(dic_enum)))            
+            selected = popup_select_item_from_list(self, dic_enum.keys(), min_height=80, dx=-20, dy=10)
+            if selected is None : return
+            self.set_item_for_list(item, selected)
+            return
+
         #print('descr: "%s"' % descr[:7])
         if descr[:7] != 'trimmed' : return
-
-        txt = item.accessibleText()
 
         #logger.info('select_ifname %s' % self.ifname)
         w = QWPopupEditText(parent=self, text=txt)

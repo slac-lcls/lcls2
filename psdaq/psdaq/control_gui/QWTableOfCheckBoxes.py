@@ -57,12 +57,10 @@ class QWTableOfCheckBoxes(QWTable) :
             for col,fld in enumerate(rec):
                 if isinstance(fld, list) :
                     item = QStandardItem(fld[1])
-                    #if do_ctrl :
-                    if True :
-                        item.setCheckable(do_ctrl)
-                        item.setCheckState({False:0, True:2}[fld[0]])
-                        item.setAccessibleDescription('type:list')
-                    item.setEnabled(True)
+                    item.setAccessibleDescription('type:list')
+                    item.setCheckState({False:0, True:2}[fld[0]])
+                    item.setCheckable(do_ctrl)
+                    item.setEnabled(do_ctrl)
                 else :
                     item = QStandardItem(fld)
                     item.setAccessibleDescription('type:str')
@@ -128,13 +126,14 @@ if __name__ == "__main__" :
 
     app = QApplication(sys.argv)
 
-    title_h = ['proc/pid/host', 'alias']
+    title_h = ['proc/pid/host', 'alias', '']
     tableio = [\
-      [[False,'name 1'], 'alias 1'],\
-      [[True, 'name 2'], 'alias 2'],\
-      [[True, 'name 3'], 'alias 3'],\
-      ['name 4', [True, 'alias 4']],\
-      ['name 5',         'alias 5'],\
+      [[False,'name 1'], 'alias 1', [True, '']],\
+      [[True, 'name 2'], 'alias 2', [True, '']],\
+      [[True, 'name 3'], 'alias 3', [True, '']],\
+      ['name 4', [True, 'alias 4'], [True, '']],\
+      ['name 5',         'alias 5', [True, '']],\
+      ['name 6', [True, ''],        [True, '']],\
     ]
 
     print('%s\nInput table:' % (50*'_'))
@@ -146,7 +145,7 @@ if __name__ == "__main__" :
     w.show()
     app.exec_()
     print('%s\nOutput table:' % (50*'_'))
-    for rec in tableio : print(rec)
+    for rec in w.fill_output_object() : print(rec)
     del w
     del app
 

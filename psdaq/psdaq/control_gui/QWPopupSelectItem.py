@@ -68,7 +68,7 @@ class QWPopupSelectItem(QDialog) :
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.layout().setContentsMargins(0,0,0,0)
 
-        width  = min(self.nchars*12, 300) + 2
+        width  = min(self.nchars*12, 300) + 20
         height = min(self.nrows *20, 500) + 2
         self.setFixedSize(width,height)
 
