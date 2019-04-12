@@ -108,7 +108,7 @@ class DragBase(object) :
         txt = select_item_from_popup_menu(lst)
 
         if txt == 'Invert' :
-            self.setPen(self._pen_inv if self.pen()==self._pen_pos else self._pen_pos)
+            self.setPen(self._pen_inv if self.pen() == self._pen_pos else self._pen_pos)
 
         elif txt == 'Delete' :
             #print('ask parent class:', self._parent, ' to kill self:', self)
