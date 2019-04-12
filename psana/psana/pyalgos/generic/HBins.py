@@ -85,7 +85,7 @@ class HBins() :
 
         self._vmin       = min(self._edges)
         self._vmax       = max(self._edges)
-        self._equalbins  = len(self._edges)==2 and nbins is not None
+        self._equalbins  = len(self._edges) == 2 and nbins is not None
         self._ascending  = self._edges[0] < self._edges[-1]
 
         # dynamic parameters
@@ -105,7 +105,7 @@ class HBins() :
             raise ValueError('Parameter edges is not a tuple or list: '\
                              'edges=%s' % str(edges))
 
-        if len(edges)<2 :
+        if len(edges) < 2 :
             raise ValueError('Sequence of edges should have at least two values: '\
                              'edges=%s' % str(edges))
 
@@ -113,16 +113,16 @@ class HBins() :
             raise ValueError('Sequence of edges has a wrong type value: '\
                              'edges=%s' % str(edges))
 
-        if edges[0]==edges[-1] :
+        if edges[0] == edges[-1] :
             raise ValueError('Sequence of edges has equal limits: '\
                              'edges=%s' % str(edges))
 
-        if len(edges)>2 :
-            if edges[0]<edges[-1] and not all([x<y for x,y in zip(edges[:-1], edges[1:])]) :
+        if len(edges) > 2 :
+            if edges[0] < edges[-1] and not all([x < y for x,y in zip(edges[:-1], edges[1:])]) :
                 raise ValueError('Sequence of edges is not monotonically ascending: '\
                                  'edges=%s' % str(edges))
 
-            if edges[0]>edges[-1] and not all([x>y for x,y in zip(edges[:-1], edges[1:])]) :
+            if edges[0] > edges[-1] and not all([x > y for x,y in zip(edges[:-1], edges[1:])]) :
                 raise ValueError('Sequence of edges is not monotonically descending: '\
                                  'edges=%s' % str(edges))
 
@@ -230,8 +230,8 @@ class HBins() :
 
     def _set_limit_indexes(self, edgemode) :
         """Returns limit bin indexes for underflow and overflow values"""
-        if   edgemode==0 : return  0, self._nbins-1
-        elif edgemode==1 : return -1, self._nbins
+        if   edgemode == 0 : return  0, self._nbins-1
+        elif edgemode == 1 : return -1, self._nbins
 
 
     def bin_index(self, v, edgemode=0) :
@@ -239,11 +239,11 @@ class HBins() :
         
         indmin, indmax = self._set_limit_indexes(edgemode)
         if self._ascending :
-            if v< self._edges[0]  : return indmin
-            if v>=self._edges[-1] : return indmax
+            if v < self._edges[0]  : return indmin
+            if v >= self._edges[-1] : return indmax
         else :
-            if v> self._edges[0]  : return indmin
-            if v<=self._edges[-1] : return indmax
+            if v > self._edges[0]  : return indmin
+            if v <= self._edges[-1] : return indmax
             
         if self._equalbins :
             return int(math.floor((v-self._edges[0])/self.binwidth()))
@@ -251,11 +251,11 @@ class HBins() :
             
         if self._ascending :
             for ind, edgeright in enumerate(self.binedgesright()) :
-                if v<edgeright :
+                if v < edgeright :
                     return ind
         else :            
             for ind, edgeright in enumerate(self.binedgesright()) :
-                if v>edgeright :
+                if v > edgeright :
                     return ind
 
 
@@ -268,14 +268,14 @@ class HBins() :
             nbins1 = self._nbins-1
             nparr = (np.array(arr, dtype=self._vtype)-self._edges[0])*factor
             ind = np.array(np.floor(nparr), dtype=np.int32)
-            return np.select((ind<0, ind>nbins1), (indmin, indmax), default=ind)
+            return np.select((ind < 0, ind > nbins1), (indmin, indmax), default=ind)
 
         else :
             conds = None
             if self._ascending :
-                conds = np.array([arr<edge for edge in self.binedges()], dtype=np.bool)
+                conds = np.array([arr < edge for edge in self.binedges()], dtype=np.bool)
             else :            
-                conds = np.array([arr>edge for edge in self.binedges()], dtype=np.bool)
+                conds = np.array([arr > edge for edge in self.binedges()], dtype=np.bool)
 
             inds1d = list(range(-1, self._nbins))
             inds1d[0] = indmin # re-define index for underflow
@@ -290,14 +290,14 @@ class HBins() :
 
     def bin_count(self, arr) :
         #indmin, indmax = self._set_limit_indexes(edgemode)
-        edgemode=0
+        edgemode = 0
         indarr = self.bin_indexes(arr.flatten(), edgemode)
-        weights=None
+        weights = None
         return np.bincount(indarr, weights, self.nbins())
 
 
     def set_bin_data(self, data, dtype=np.float) :
-        if len(data)!=self.nbins() :
+        if len(data) != self.nbins() :
             self._bin_data = None
             return
         self._bin_data = np.array(data, dtype)
@@ -310,7 +310,7 @@ class HBins() :
     def strrange(self, fmt='%.0f-%.0f-%d') :
         """Returns string of range parameters"""
         if self._strrange is None :
-            self._strrange =fmt % (self._edges[0], self._edges[-1], self._nbins)
+            self._strrange = fmt % (self._edges[0], self._edges[-1], self._nbins)
         return self._strrange
 
 
@@ -412,7 +412,7 @@ if __name__ == "__main__" :
     try : o = HBins((3,))
     except Exception as e : print('Test Exception sequence<2 in edges:', e)
 
-    vals=(-3, 0, 1, 1.5, 2, 3, 4, 5, 6, 8, 10)
+    vals = (-3, 0, 1, 1.5, 2, 3, 4, 5, 6, 8, 10)
     test_bin_indexes(o1, vals, edgemode=0, cmt='Test for EQUAL BINS')
     test_bin_indexes(o1, vals, edgemode=1, cmt='Test for EQUAL BINS')
     test_bin_indexes(o2, vals, edgemode=0, cmt='Test for VARIABLE BINS')
