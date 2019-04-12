@@ -74,7 +74,7 @@ def key(begin, end=None) :
     ex.: 1471285222-1471285555 or 1471285222-end from double time like 1471285222.123456
     """
     str_begin = ('%d' % floor(begin)) if begin is not None else 0
-    str_end = 'end' if (end is None or end=='end') else ('%d' % ceil(end))
+    str_end = 'end' if (end is None or end == 'end') else ('%d' % ceil(end))
     return '%s-%s' % (str_begin, str_end)
 
 #------------------------------
@@ -309,8 +309,8 @@ def test_DCRange() :
 def test() :
     log.setPrintBits(0377) 
 
-    if len(sys.argv)==1 : print 'For test(s) use command: python %s <test-number=1-4>' % sys.argv[0]
-    elif(sys.argv[1]=='1') : test_DCRange()        
+    if len(sys.argv) == 1 : print 'For test(s) use command: python %s <test-number=1-4>' % sys.argv[0]
+    elif(sys.argv[1] == '1') : test_DCRange()        
     else : print 'Non-expected arguments: sys.argv = %s use 1,2,...' % sys.argv
 
 #------------------------------
