@@ -32,7 +32,7 @@ def test_xtcav_calib_constants(fname=
     dbname_det = dbu.db_prefixed_name(det)
 
     print('LCLS1 Xtcav calibration file: %s' % fname)
-    print('Parameters form path: exp:%s det:%s ctype:%s run:%s dbname_exp:%s dbname_det:%s'%\
+    print('Parameters form path: exp:%s det:%s ctype:%s run:%s dbname_exp:%s dbname_det:%s' %\
           (exp, det, ctype, run, dbname_exp, dbname_det))
 
     #Save(ct,fname)
@@ -48,10 +48,10 @@ def test_xtcav_calib_constants(fname=
     client = dbu.connect_to_server(HOST, PORT)
     print('Open client on host:%s port:%s' % (HOST, PORT))
 
-    print('Delete database %s'% dbname_exp)
+    print('Delete database %s' % dbname_exp)
     dbu.delete_database(client, dbname_exp)
 
-    print('Delete database %s'% dbname_det)
+    print('Delete database %s' % dbname_det)
     dbu.delete_database(client, dbname_det)
 
     #---- Add data to experiment and detector dbs
@@ -95,7 +95,7 @@ def test_xtcav_calib_constants(fname=
 #------------------------------
 
 if __name__ == "__main__":
-    path='/reg/d/psdm/XPP/xpptut15/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/101-102.data'
+    path = '/reg/d/psdm/XPP/xpptut15/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/101-102.data'
     #path='/reg/d/psdm/XCS/xcsm9816/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/lasingoffreference/31-end.data'
     #path='/reg/d/psdm/XCS/xcsm9816/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/30-end.data'
 
