@@ -213,7 +213,7 @@ class Logger :
 
     def _saveTextInFile(self, text, fname='log.txt', mode=0o666):
         self.debug('saveTextInFile: ' + fname, self.name)
-        f=open(fname,'w')
+        f = open(fname,'w')
         f.write(text)
         f.close()
         os.chmod(fname, mode)
