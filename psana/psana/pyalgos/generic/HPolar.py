@@ -69,8 +69,8 @@ from psana.pyalgos.generic.HBins import HBins
 def divide_protected(num, den, vsub_zero=0) :
     """Returns result of devision of numpy arrays num/den with substitution of value vsub_zero for zero den elements.
     """
-    pro_num = np.select((den!=0,), (num,), default=vsub_zero)
-    pro_den = np.select((den!=0,), (den,), default=1)
+    pro_num = np.select((den != 0,), (num,), default=vsub_zero)
+    pro_den = np.select((den != 0,), (den,), default=1)
     return pro_num / pro_den
 
 
@@ -133,7 +133,7 @@ class HPolar() :
 
         phimin = min(phiedges[0], phiedges[-1])
 
-        self.phi = np.select((self.phi0<phimin, self.phi0>=phimin), (self.phi0+360.,self.phi0))
+        self.phi = np.select((self.phi0 < phimin, self.phi0 >= phimin), (self.phi0+360.,self.phi0))
 
         self._set_rad_bins(radedges, nradbins)
         self._set_phi_bins(phiedges, nphibins)
@@ -164,7 +164,7 @@ class HPolar() :
     def _set_rad_bins(self, radedges, nradbins) :
         rmin = math.floor(np.amin(self.rad)) if radedges is None else radedges[0]
         rmax = math.ceil (np.amax(self.rad)) if radedges is None else radedges[-1]
-        if rmin<1 : rmin = 1
+        if rmin < 1 : rmin = 1
         self.rb = HBins((rmin, rmax), nradbins)
 
 
@@ -241,7 +241,7 @@ class HPolar() :
 
 
     def _flatten_(self, nda) :
-        if len(nda.shape)>1 :
+        if len(nda.shape) > 1 :
             #nda.shape = self.shapeflat
             return nda.flatten() # return flatten copy in order to preserve input array shape
         return nda
@@ -268,7 +268,7 @@ class HPolar() :
 
     def pixel_avrg(self, nda) :
         """Returns 1-d numpy array of per-pixel background for input array nda."""
-        bin_avrg= self.bin_avrg(self._flatten_(nda))
+        bin_avrg = self.bin_avrg(self._flatten_(nda))
         return np.array([bin_avrg[i] for i in self.iseq])
 
 
@@ -320,7 +320,7 @@ class HPolar() :
 
         # 4) return interpolated data on (phi, rad) grid
         grid_vals = self.griddata(points, values, (self.phi, self.rad), method=method)
-        return np.select((self.iseq<self.pb.nbins()*self.rb.nbins(),), (grid_vals,), default=0)
+        return np.select((self.iseq < self.pb.nbins()*self.rb.nbins(),), (grid_vals,), default=0)
 
 #------------------------------
 #------------------------------
@@ -556,14 +556,14 @@ def test03(ntest, prefix='fig-v01') :
 
 if __name__ == '__main__' :
     import sys
-    ntest = int(sys.argv[1]) if len(sys.argv)>1 else 1
+    ntest = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     print('Test # %d' % ntest)
 
     prefix = 'fig-v01-cspad-HPolar'
 
-    if   ntest<20 : test01(ntest, prefix)
-    elif ntest<40 : test02(ntest, prefix)
-    elif ntest<60 : test03(ntest, prefix)
+    if   ntest < 20 : test01(ntest, prefix)
+    elif ntest < 40 : test02(ntest, prefix)
+    elif ntest < 60 : test03(ntest, prefix)
     else : print('Test %d is not implemented' % ntest)
     #sys.exit('End of test')
  
