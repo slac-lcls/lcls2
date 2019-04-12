@@ -37,7 +37,7 @@ from AxisLabeling import best_label_locs
 
 class GURuler() :
     
-    HD=0; HU=1; VL=2; VR=3
+    HD = 0; HU = 1; VL = 2; VR = 3
     orient_inds  = (HD, HU, VL, VR)
     orient_names = ('HD', 'HU', 'VL', 'VR')
 
@@ -57,18 +57,18 @@ class GURuler() :
                 ) :
 
         #QtGui.QPainterPath.__init__(self)
-        self.scene=scene
-        self.orient=orient
-        self.rect=rect if rect is not None else self.scene.sceneRect()
-        self.txtoff_hfr=txtoff_hfr
-        self.txtoff_vfr=txtoff_vfr
-        self.tick_fr=tick_fr
-        self.color=color
-        self.pen=pen
-        self.font=font
-        self.fmt=fmt
-        self.horiz = (orient==self.HD) or (orient==self.HU)
-        self.size_inches=size_inches
+        self.scene = scene
+        self.orient = orient
+        self.rect = rect if rect is not None else self.scene.sceneRect()
+        self.txtoff_hfr = txtoff_hfr
+        self.txtoff_vfr = txtoff_vfr
+        self.tick_fr = tick_fr
+        self.color = color
+        self.pen = pen
+        self.font = font
+        self.fmt = fmt
+        self.horiz = (orient == self.HD) or (orient == self.HU)
+        self.size_inches = size_inches
         self.zvalue = zvalue
         self.brush = QtGui.QBrush(Qt.red)
 
@@ -86,7 +86,7 @@ class GURuler() :
 
         #print 'labels', self.labels
 
-        self.textitems=[]
+        self.textitems = []
         self.set_pars()
         self.add()
 
@@ -152,7 +152,7 @@ class GURuler() :
 
         # add path with ruler lines to scene
 
-        self.lst_of_items=[]
+        self.lst_of_items = []
 
         self.path_item = self.scene.addPath(self.path, self.pen, self.brush)
         self.path_item.setZValue(self.zvalue)
@@ -182,7 +182,7 @@ class GURuler() :
         #self.scene.removeItem(self.path_item)
         for item in self.lst_of_items :
             self.scene.removeItem(item)
-        self.lst_of_items=[]
+        self.lst_of_items = []
 
         #self.scene.destroyItemGroup(self.item_group)
 
@@ -227,7 +227,7 @@ if __name__ == "__main__" :
 
     #ruler2.remove()
 
-    w=v
+    w = v
     w.setWindowTitle("My window")
     #w.setContentsMargins(-9,-9,-9,-9)
     w.show()
