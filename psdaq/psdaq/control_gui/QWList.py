@@ -109,7 +109,7 @@ class QWList(QListView) :
     def on_click(self, index):
         item = self.model.itemFromIndex(index)
         txt = item.text()
-        txtshow = txt if len(txt)<50 else '%s...'%txt[:50]
+        txtshow = txt if len(txt) < 50 else '%s...'%txt[:50]
         msg = 'doc clicked in row%02d: %s' % (index.row(), txtshow) 
         logger.info(msg)
 
