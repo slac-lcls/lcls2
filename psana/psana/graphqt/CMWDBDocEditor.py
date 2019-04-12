@@ -135,7 +135,7 @@ class CMWDBDocEditor(QWTable) :
 
                 # set value item
                 cond = any([isinstance(v,o) for o in (int,str,dict,ObjectId)])
-                s = str(v) if (cond and len(str(v))<512) else 'str longer 512 chars'
+                s = str(v) if (cond and len(str(v)) < 512) else 'str longer 512 chars'
                 item = QStandardItem(s)
 
                 editable = self.item_is_editable_for_key(k) # and k!=self.data_fname
@@ -148,7 +148,7 @@ class CMWDBDocEditor(QWTable) :
 
                 self.model.setItem(r,1,item)
 
-                if k==self.data_fname :
+                if k == self.data_fname :
                     item.setText(self.data_fname_value)
                     item.setEnabled(False)
                     #item.setCheckable(True)
