@@ -32,13 +32,13 @@ def make_data_binary_file(dsname   = 'exp=xpptut15:run=54',\
     f = open(ofname,'wb')
 
     for nevt, evt in enumerate(ds.events()):
-       if nevt%100==0 : print 'Event %d'%nevt
+       if nevt%100 == 0 : print 'Event %d'%nevt
        if nevt < nev_min : continue
        if nevt >= nev_max : break
        data = det.calib(evt) if do_calib else\
               det.raw(evt)
        if data is None: continue
-       if do_calib: data= data.astype(np.int16)
+       if do_calib: data = data.astype(np.int16)
 
        if verbos :
            ent = entropy(data)
@@ -89,8 +89,8 @@ def read_data_from_binary_file(ifname   = 'data.bin',\
 
 def print_pars(args, opts, defs) :
     """Prints input parameters"""
-    print 'Command:', ' '.join(sys.argv)+\
-          '\nwith argument list %s and optional parameters:\n' % str(args)+\
+    print 'Command:', ' '.join(sys.argv) +\
+          '\nwith argument list %s and optional parameters:\n' % str(args) +\
           '<key>      <value>              <default>'
     for k,v in opts.items() :
         print '%s %s %s' % (k.ljust(10), str(v).ljust(20), str(defs[k]).ljust(20))
@@ -127,23 +127,23 @@ def do_work(parser) :
 #------------------------------
 
 def usage() :
-    return '\n\nCommand to run app:\n'+\
-           '\n  %prog'+\
-           ' -d <data-set-name> -e <experiment> -r <run-number> -s <source-name> -n <n-events-to-read>'+\
-           ' -m <m-events-to-skip> -f <binary-file-name> -b <bytes-per-event-to-read>'+\
-           '\n  use option -d or -e and -r to define dataset, and option -b to test read data'+\
-           '\n\n  Examples:'+\
-           '\n  %prog -d exp=cxitut13:run=10 -s CxiDs1.0:Cspad.0 -n 20 -f data.bin'+\
-           '\n  %prog -e cxif5315 -r 129 -s CxiDs2.0:Cspad.0 -n 10 -f data.bin'+\
-           '\n  %prog -d exp=cxif5315:run=129 -s CxiDs2.0:Cspad.0 -n 10 -f data-cxif5315-r129-cspad-dark.bin'+\
-           '\n  %prog -d exp=cxif5315:run=169 -s CxiDs2.0:Cspad.0 -n 10 -f data-cxif5315-r169-cspad-raw.bin'+\
-           '\n  %prog -d exp=cxif5315:run=169 -s CxiDs2.0:Cspad.0 -n 10 -f data-cxif5315-r169-cspad-calib-fde.bin -c'+\
-           '\n  %prog -d exp=amo86615:run=197 -s Camp.0:pnCCD.0   -n 10 -f data-amo86615-r197-pnccd-calib-spi.bin -c'+\
-           '\n  %prog -d exp=cxitut13:run=10  -s CxiDs1.0:Cspad.0 -n 10 -f data-cxitut13-r10-cspad-calib-cryst.bin -c'+\
-           '\n\nCommand to check saved file (if option -b is set):\n'+\
-           '\n  %prog -b <bytes-per-event, e.g. 2*32*185*388> -f <binary-file-name>'+\
-           '\n  %prog -b 40 -f data.bin'+\
-           '\n  %prog -b 2296960 -f data-cxif5315-r129-cspad-dark.bin'+\
+    return '\n\nCommand to run app:\n' +\
+           '\n  %prog' +\
+           ' -d <data-set-name> -e <experiment> -r <run-number> -s <source-name> -n <n-events-to-read>' +\
+           ' -m <m-events-to-skip> -f <binary-file-name> -b <bytes-per-event-to-read>' +\
+           '\n  use option -d or -e and -r to define dataset, and option -b to test read data' +\
+           '\n\n  Examples:' +\
+           '\n  %prog -d exp=cxitut13:run=10 -s CxiDs1.0:Cspad.0 -n 20 -f data.bin' +\
+           '\n  %prog -e cxif5315 -r 129 -s CxiDs2.0:Cspad.0 -n 10 -f data.bin' +\
+           '\n  %prog -d exp=cxif5315:run=129 -s CxiDs2.0:Cspad.0 -n 10 -f data-cxif5315-r129-cspad-dark.bin' +\
+           '\n  %prog -d exp=cxif5315:run=169 -s CxiDs2.0:Cspad.0 -n 10 -f data-cxif5315-r169-cspad-raw.bin' +\
+           '\n  %prog -d exp=cxif5315:run=169 -s CxiDs2.0:Cspad.0 -n 10 -f data-cxif5315-r169-cspad-calib-fde.bin -c' +\
+           '\n  %prog -d exp=amo86615:run=197 -s Camp.0:pnCCD.0   -n 10 -f data-amo86615-r197-pnccd-calib-spi.bin -c' +\
+           '\n  %prog -d exp=cxitut13:run=10  -s CxiDs1.0:Cspad.0 -n 10 -f data-cxitut13-r10-cspad-calib-cryst.bin -c' +\
+           '\n\nCommand to check saved file (if option -b is set):\n' +\
+           '\n  %prog -b <bytes-per-event, e.g. 2*32*185*388> -f <binary-file-name>' +\
+           '\n  %prog -b 40 -f data.bin' +\
+           '\n  %prog -b 2296960 -f data-cxif5315-r129-cspad-dark.bin' +\
            '\n  %prog -b 1048576 -f data-amo86615-r197-pnccd-calib-spi.bin'
 
 #------------------------------
@@ -192,7 +192,7 @@ if __name__ == "__main__" :
 
     parser = input_option_parser()
 
-    if len(sys.argv)==1 :
+    if len(sys.argv) == 1 :
         parser.print_help()
         proc_name = os.path.basename(sys.argv[0])
         msg = '\nWARNING: run this command with parameters, e.g.: %s -h' % proc_name
