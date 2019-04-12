@@ -213,7 +213,7 @@ class GUIInsExpDirDet(QtGui.QWidget) :
         self.but_current = self.butExp
         dir = self.instr_dir.value() + '/' + self.instr_name.value()
         #print 'dir =', dir
-        if self.list_of_exp is None : self.list_of_exp=sorted(os.listdir(dir))
+        if self.list_of_exp is None : self.list_of_exp = sorted(os.listdir(dir))
         #item_selected = gu.selectFromListInPopupMenu(self.list_of_exp)
         item_selected = select_experiment_v3(self.butExp, self.list_of_exp)
         if item_selected is None : return          # selection is cancelled
