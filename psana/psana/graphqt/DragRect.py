@@ -79,7 +79,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
     def set_control_points(self) :
         parent = self # None # self # None
         r = self.rect()
-        scene=self.scene()
+        scene = self.scene()
         self.ptr = DragPoint(r.topRight(),    parent, scene, rsize=5, pshape='h')
         self.ptl = DragPoint(r.topLeft(),     parent, scene, rsize=5, pshape='h')
         self.pbr = DragPoint(r.bottomRight(), parent, scene, rsize=5, pshape='h')
@@ -105,10 +105,10 @@ class DragRect(QGraphicsRectItem, DragBase) :
         r = self.rect().normalized()
         r0 = self.rect0
 
-        dptr = r.topRight()   -r0.topRight()    + self.p0_ptr
-        dptl = r.topLeft()    -r0.topLeft()     + self.p0_ptl
+        dptr = r.topRight()   - r0.topRight()    + self.p0_ptr
+        dptl = r.topLeft()    - r0.topLeft()     + self.p0_ptl
         dpbr = r.bottomRight()-r0.bottomRight() + self.p0_pbr
-        dpbl = r.bottomLeft() -r0.bottomLeft()  + self.p0_pbl
+        dpbl = r.bottomLeft() - r0.bottomLeft()  + self.p0_pbl
 
         self.ptr.setPos(dptr)
         self.ptl.setPos(dptl)
@@ -133,7 +133,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mousePressEvent(self, e) :
-        logger.debug('DragRect.mousePressEvent, at point: %s on scene: %s '%\
+        logger.debug('DragRect.mousePressEvent, at point: %s on scene: %s ' %\
                      (str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
         QGraphicsRectItem.mousePressEvent(self, e) # points would not show up w/o this line
 
