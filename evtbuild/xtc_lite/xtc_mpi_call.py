@@ -8,7 +8,7 @@ node_list = ['drp-tst-acc0%i' % x for x in [1,2]]
 # node_list = ['drp-tst-oss10']
 nodes = ','.join(node_list)
 
-sub_call = '`which mpirun` -q -map-by node --oversubscribe -n %i -H '+ nodes + ' python rwc_xtc_mpi.py | tee -a ' + file_name
+sub_call = '`which mpirun` -q -map-by node --oversubscribe -n %i -H ' + nodes + ' python rwc_xtc_mpi.py | tee -a ' + file_name
 core_list =  [1,2,4,8,12,16]
 core_list = core_list[::-1]
 for i in range(1):
