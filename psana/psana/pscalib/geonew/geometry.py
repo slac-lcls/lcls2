@@ -152,7 +152,7 @@ class geometry_object :
 
             xch, ych, zch = child.get_pixel_coords(do_tilt)
 
-            if ind==0 :
+            if ind == 0 :
                 xac = xch
                 yac = ych
                 zac = zch
@@ -252,21 +252,21 @@ class geometry_access :
     def str_geometry_code(self, cmtext='') :
         """Returns (str) code of the object to be save in geometry file.
         """
-        hat = '\n#----------\n'+\
-              '##### from utils import object_from_python_code\n'+\
-              '##### SENS2X1 = object_from_python_code("geoseg_cspad2x1.py", "SENS2X1")\n'+\
-              '#####\n'+\
-              '#####\n'+\
-              '#####\n'+\
-              '##### global SENS2X1\n'+\
-              '##### SENS2X1 = geoseg_cspad2x1()\n'+\
-              '#----------\n\n'+\
-              'from geometry_access import geometry_access\n'+\
+        hat = '\n#----------\n' +\
+              '##### from utils import object_from_python_code\n' +\
+              '##### SENS2X1 = object_from_python_code("geoseg_cspad2x1.py", "SENS2X1")\n' +\
+              '#####\n' +\
+              '#####\n' +\
+              '#####\n' +\
+              '##### global SENS2X1\n' +\
+              '##### SENS2X1 = geoseg_cspad2x1()\n' +\
+              '#----------\n\n' +\
+              'from geometry_access import geometry_access\n' +\
               'class %s(geometry_access) :' % self.__class__.__name__
         doc  = self.__doc__ + cmtext
         hdr  = self.list_of_geos[0].str_header()
         body = self.str_geometry_code_body()
-        return '%s\n  """%s"""\n  #%s\n  detparts = (\n%s\n  )'%\
+        return '%s\n  """%s"""\n  #%s\n  detparts = (\n%s\n  )' %\
                (hat, doc, hdr, body)
 
 
