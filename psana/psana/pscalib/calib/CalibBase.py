@@ -59,7 +59,7 @@ class CalibBase() :
         self.dbname = kwargs.get('dbname', 'Undefined')
 
     def _show_warning(self, methname='default') :
-        msg='Interface method %s needs to be re-implemented in the derived class'%methname
+        msg = 'Interface method %s needs to be re-implemented in the derived class'%methname
         logger.warning(msg)
 
     def put(self, data, **kwargs) :
