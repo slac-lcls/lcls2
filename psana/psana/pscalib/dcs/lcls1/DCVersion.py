@@ -125,7 +125,7 @@ class DCVersion(DCVersionI) :
                 elif k == 'data'   :
                     d = v.value
                     if str(d.dtype)[:2] == '|S' :
-                        d=d.tostring() # .split('\n')
+                        d = d.tostring() # .split('\n')
                         #print 'XXX: d, type(d): %s'%d, type(d)
                     self.add_data(d)
 
@@ -191,10 +191,10 @@ def test_DCVersion() :
 def test() :
     log.setPrintBits(0377) 
 
-    if len(sys.argv)==1 :
+    if len(sys.argv) == 1 :
         print 'For test(s) use command: python %s <test-number=1-4>' % sys.argv[0]
         test_DCVersion()
-    elif(sys.argv[1]=='1') : test_DCVersion()        
+    elif(sys.argv[1] == '1') : test_DCVersion()        
     else : print 'Non-expected arguments: sys.argv = %s use 1,2,...' % sys.argv
 
 #------------------------------
