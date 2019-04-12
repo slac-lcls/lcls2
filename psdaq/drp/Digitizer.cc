@@ -51,19 +51,19 @@ unsigned addJson(Xtc& xtc, NamesId& configNamesId) {
 
     Py_Initialize();
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.get_config");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
     check(pDict);
     // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config");
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"get_config");
     check(pFunc);
     // returns new reference
     PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss",
                                               "mcbrowne:psana@psdb-dev:9306",
                                               "configDB", "TMO", "BEAM",
-                                              "xpphsd1");
+                                              "xpphsd");
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
