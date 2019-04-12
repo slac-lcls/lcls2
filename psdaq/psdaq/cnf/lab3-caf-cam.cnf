@@ -32,6 +32,6 @@ procmgr_config = [
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
  # trigger event builder
  { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host},
- { host: 'drp-tst-dev009', id:'drp0', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_1 -o /tmp -C '+collect_host},
- { host: 'drp-tst-dev008', id:'drp1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_1 -o /tmp -C '+collect_host}
+ { host: 'drp-tst-dev009', id:'drp0', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host},
+ { host: 'drp-tst-dev008', id:'drp1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host}
 ]

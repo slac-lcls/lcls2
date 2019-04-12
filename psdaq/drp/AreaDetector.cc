@@ -53,9 +53,10 @@ void AreaDetector::connect()
     int length = 500;
     int links = 0xf;
 
-    int fd = open("/dev/datadev_1", O_RDWR);
+    int fd = open(m_para->device.c_str(), O_RDWR);
     if (fd < 0) {
-        std::cout<<"Error opening /dev/datadev_1\n";
+        std::cout<<"Error opening "<< m_para->device << "\n";
+        return;
     }
     int partition = m_para->partition;
     uint32_t v = ((partition&0xf)<<0) |
