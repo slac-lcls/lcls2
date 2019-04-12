@@ -241,8 +241,8 @@ class GUView(QtGui.QGraphicsView) :
         self.pendf = QtGui.QPen()
         self.pendf.setStyle(Qt.NoPen)
         self.penbx = QtGui.QPen(Qt.black, 6, Qt.SolidLine)
-        self.pen_gr= QtGui.QPen(Qt.green, 0, Qt.SolidLine)
-        self.pen_bl= QtGui.QPen(Qt.blue,  0, Qt.SolidLine)
+        self.pen_gr = QtGui.QPen(Qt.green, 0, Qt.SolidLine)
+        self.pen_bl = QtGui.QPen(Qt.blue,  0, Qt.SolidLine)
 
 
     def set_margins(self, margl=None, margr=None, margt=None, margb=None) :
@@ -282,8 +282,8 @@ class GUView(QtGui.QGraphicsView) :
         #print 'XXX:  ymin, ymax', ymin, ymax
         ml, mr, mt, mb = self.margl, self.margr, self.margt, self.margb
         hsc = (ymax-ymin)/(1 - mt - mb)
-        self._ymin = ymin-hsc*mb if ymin<0 else -hsc*mb
-        self._ymax = ymax+hsc*mt if ymax>0 else  hsc*mt
+        self._ymin = ymin-hsc*mb if ymin < 0 else -hsc*mb
+        self._ymax = ymax+hsc*mt if ymax > 0 else  hsc*mt
 
 
     def set_view(self) :
@@ -364,12 +364,12 @@ class GUView(QtGui.QGraphicsView) :
 
         if self._origin_l :            
             #print 'L'
-            self.rslef=QtCore.QRectF(x,    y, w*self.margl, h)
-            self.rsrig=QtCore.QRectF(x2ax, y, w*self.margr, h)
+            self.rslef = QtCore.QRectF(x,    y, w*self.margl, h)
+            self.rsrig = QtCore.QRectF(x2ax, y, w*self.margr, h)
         else :
             #print 'R'
-            self.rslef=QtCore.QRectF(x,    y, w*self.margr, h)
-            self.rsrig=QtCore.QRectF(x + w - w*self.margl, y, w*self.margl, h)
+            self.rslef = QtCore.QRectF(x,    y, w*self.margr, h)
+            self.rsrig = QtCore.QRectF(x + w - w*self.margl, y, w*self.margl, h)
 
         self.rslefv = self.add_rect_to_scene_v1(self.rslef, self.brubx, self.penbx)
         self.rslefi = self.add_rect_to_scene(self.rslef, self.brudf, self.pendf)
@@ -450,7 +450,7 @@ class GUView(QtGui.QGraphicsView) :
 
         if self.show_mode & 2 :
             pc = self.raxes.topLeft()
-            ror=QtCore.QRectF(pc.x()-2, pc.y()-2, 4, 4)
+            ror = QtCore.QRectF(pc.x()-2, pc.y()-2, 4, 4)
             colori = Qt.red
             if self.rori is not None : self.scene().removeItem(self.rori)
             self.rori = self.add_rect_to_scene(ror, pen=QtGui.QPen(colori, 0, Qt.SolidLine), brush=QtGui.QBrush(colori))
@@ -584,7 +584,7 @@ class GUView(QtGui.QGraphicsView) :
         #print 'GUView.mouseMoveEvent, at point: ', e.pos()
         self.display_pixel_pos(e) # re-defined in GUViewImage, GUViewHist, etc.
 
-        if self._scale_ctl==0 : return
+        if self._scale_ctl == 0 : return
 
         if self.pos_click is None : return        
 
@@ -606,12 +606,12 @@ class GUView(QtGui.QGraphicsView) :
     def wheelEvent(self, e) :
         QtGui.QGraphicsView.wheelEvent(self, e)
 
-        if self._scale_ctl==0 : return
+        if self._scale_ctl == 0 : return
 
         self._select_further_action(e)
 
         #print 'wheelEvent: ', e.delta()
-        f = 1 + 0.4 * (1 if e.delta()>0 else -1)
+        f = 1 + 0.4 * (1 if e.delta() > 0 else -1)
         #print 'Scale factor =', f
 
         p = self.mapToScene(e.pos())
@@ -760,15 +760,15 @@ def test_guiview(tname) :
     print '%s:' % sys._getframe().f_code.co_name
     app = QtGui.QApplication(sys.argv)
     w = None
-    rectax=QtCore.QRectF(0, 0, 100, 100)
-    if   tname == '0': w=GUView(None, rectax, origin='DL', scale_ctl='HV', margl=0.12, margr=0.10, margt=0.06, margb=0.06, show_mode=3)
-    elif tname == '1': w=GUView(None, rectax, origin='DL', scale_ctl='',   show_mode=1)
-    elif tname == '2': w=GUView(None, rectax, origin='DL', scale_ctl='H',  show_mode=1)
-    elif tname == '3': w=GUView(None, rectax, origin='DL', scale_ctl='V',  show_mode=1)
-    elif tname == '4': w=GUView(None, rectax, origin='UL', scale_ctl='HV', show_mode=3)
-    elif tname == '5': w=GUView(None, rectax, origin='DL', scale_ctl='HV', show_mode=3)
-    elif tname == '6': w=GUView(None, rectax, origin='DR', scale_ctl='HV', show_mode=3)
-    elif tname == '7': w=GUView(None, rectax, origin='UR', scale_ctl='HV', show_mode=3)
+    rectax = QtCore.QRectF(0, 0, 100, 100)
+    if   tname == '0': w = GUView(None, rectax, origin='DL', scale_ctl='HV', margl=0.12, margr=0.10, margt=0.06, margb=0.06, show_mode=3)
+    elif tname == '1': w = GUView(None, rectax, origin='DL', scale_ctl='',   show_mode=1)
+    elif tname == '2': w = GUView(None, rectax, origin='DL', scale_ctl='H',  show_mode=1)
+    elif tname == '3': w = GUView(None, rectax, origin='DL', scale_ctl='V',  show_mode=1)
+    elif tname == '4': w = GUView(None, rectax, origin='UL', scale_ctl='HV', show_mode=3)
+    elif tname == '5': w = GUView(None, rectax, origin='DL', scale_ctl='HV', show_mode=3)
+    elif tname == '6': w = GUView(None, rectax, origin='DR', scale_ctl='HV', show_mode=3)
+    elif tname == '7': w = GUView(None, rectax, origin='UR', scale_ctl='HV', show_mode=3)
     else :
         print 'test %s is not implemented' % tname
         return
