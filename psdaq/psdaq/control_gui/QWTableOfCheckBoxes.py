@@ -86,7 +86,7 @@ class QWTableOfCheckBoxes(QWTable) :
         state = LIST_STR_CHECK_BOX_STATES[item.checkState()]
         index = self.model.indexFromItem(item)        
         row, col = index.row(), index.column()
-        msg = 'on_item_changed: item(%d,%d) name: %s state: %s'%\
+        msg = 'on_item_changed: item(%d,%d) name: %s state: %s' %\
               (row, col, item.text(), state)
         logger.debug(msg)
 
