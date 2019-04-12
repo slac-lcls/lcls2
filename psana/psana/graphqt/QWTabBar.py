@@ -158,7 +158,7 @@ class QWTabBar(QTabBar) :
 
     def tabSizeHint(self, index):
         w = self.tab_width
-        if index==self.tabi_add or (self.tabText(index)[0] == '+') : w = 30
+        if index == self.tabi_add or (self.tabText(index)[0] == '+') : w = 30
         h = QTabBar.tabSizeHint(self, index).height()
         return QSize(w, h)
 
