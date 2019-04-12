@@ -122,8 +122,8 @@ from math import floor, fabs
 def divide_protected(num, den, vsub_zero=0) :
     """Returns result of devision of numpy arrays num/den with substitution of value vsub_zero for zero den elements.
     """
-    pro_num = np.select((den!=0,), (num,), default=vsub_zero)
-    pro_den = np.select((den!=0,), (den,), default=1)
+    pro_num = np.select((den != 0,), (num,), default=vsub_zero)
+    pro_den = np.select((den != 0,), (den,), default=1)
     return pro_num / pro_den
 
 #------------------------------
@@ -192,7 +192,7 @@ class GeometryAccess :
 
         if self.pbits & 32 : print('Load file: %s' % self.path)
 
-        f=open(self.path,'r')
+        f = open(self.path,'r')
         for linef in f :
             line = linef.strip('\n')
             if self.pbits & 128 : print(line)
@@ -259,7 +259,7 @@ class GeometryAccess :
             if geo.get_parent_name() is None : continue
             txt += '%s\n' % (geo.str_data())
 
-        f=open(path,'w')
+        f = open(path,'w')
         f.write(txt)
         f.close()
 
@@ -272,9 +272,9 @@ class GeometryAccess :
         """
         #cmt = line.lstrip('# ').split(' ', 1)
         cmt = line.lstrip('#').lstrip(' ')
-        if len(cmt)<1 : return
+        if len(cmt) < 1 : return
         ind = len(self.dict_of_comments)
-        if len(cmt)==1 :
+        if len(cmt) == 1 :
             #self.dict_of_comments[cmt[0]] = ''
             self.dict_of_comments[ind] = ''
             return
@@ -526,9 +526,9 @@ class GeometryAccess :
         X, Y, Z = self.get_pixel_coords(oname, oindex, do_tilt=True)
 
         print('size=', X.size)
-        print('X: %s...'% ', '.join(['%10.1f'%v for v in X.flatten()[0:9]]))
-        print('Y: %s...'% ', '.join(['%10.1f'%v for v in Y.flatten()[0:9]]))
-        print('Z: %s...'% ', '.join(['%10.1f'%v for v in Z.flatten()[0:9]]))
+        print('X: %s...' % ', '.join(['%10.1f'%v for v in X.flatten()[0:9]]))
+        print('Y: %s...' % ', '.join(['%10.1f'%v for v in Y.flatten()[0:9]]))
+        print('Z: %s...' % ', '.join(['%10.1f'%v for v in Z.flatten()[0:9]]))
 
     #------------------------------
 
@@ -559,8 +559,8 @@ class GeometryAccess :
             # Protection against wrong offset bringing negative indexes
             xmin += x_off_um
             ymin += y_off_um
-            x_off_um = x_off_um + pix_half if xmin>0 else x_off_um - xmin
-            y_off_um = y_off_um + pix_half if ymin>0 else y_off_um - ymin
+            x_off_um = x_off_um + pix_half if xmin > 0 else x_off_um - xmin
+            y_off_um = y_off_um + pix_half if ymin > 0 else y_off_um - ymin
             self.iX_old, self.iY_old = np.array((X+x_off_um)/pix_size, dtype=np.uint), np.array((Y+y_off_um)/pix_size, dtype=np.uint)
 
         else :
@@ -591,8 +591,8 @@ class GeometryAccess :
             # Protection against wrong offset bringing negative indexes
             xmin += x_off_um
             ymin += y_off_um
-            x_off_um = x_off_um + pix_half if xmin>0 else x_off_um - xmin
-            y_off_um = y_off_um + pix_half if ymin>0 else y_off_um - ymin
+            x_off_um = x_off_um + pix_half if xmin > 0 else x_off_um - xmin
+            y_off_um = y_off_um + pix_half if ymin > 0 else y_off_um - ymin
             self.iX_old, self.iY_old = np.array((X+x_off_um)/pix_size, dtype=np.uint), np.array((Y+y_off_um)/pix_size, dtype=np.uint)
 
         else :
@@ -633,8 +633,8 @@ class GeometryAccess :
             # Protection against wrong offset bringing negative indexes
             xmin += x_off_um
             ymin += y_off_um
-            x_off_um = x_off_um + pix_half if xmin>0 else x_off_um - xmin
-            y_off_um = y_off_um + pix_half if ymin>0 else y_off_um - ymin
+            x_off_um = x_off_um + pix_half if xmin > 0 else x_off_um - xmin
+            y_off_um = y_off_um + pix_half if ymin > 0 else y_off_um - ymin
 
             self.ipx_old, self.ipy_old = int(floor((x_um+x_off_um)/pix_size)), int(floor((y_um+y_off_um)/pix_size))
 
@@ -859,7 +859,7 @@ def test_plot_cspad(geometry, fname_data, amp_range=(0,0.5)) :
 
     root, ext = os.path.splitext(fname_data)
     arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float) 
-    arr.shape= (4,8,185,388)
+    arr.shape = (4,8,185,388)
 
     print('iX, iY, W shape:', iX.shape, iY.shape, arr.shape)
 
@@ -930,7 +930,7 @@ def test_cspad2x2() :
 
     root, ext = os.path.splitext(fname_data)
     arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float) 
-    arr.shape= (185,388,2)
+    arr.shape = (185,388,2)
 
     print('iX, iY, W shape:', iX.shape, iY.shape, arr.shape)
     img = img_from_pixel_arrays(iX,iY,W=arr)
@@ -990,7 +990,7 @@ def test_cspad_xy_at_z() :
     arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float) 
 
     #print('arr.shape=', arr.shape)
-    arr.shape= (32,185,388)
+    arr.shape = (32,185,388)
 
     #ave, rms = arr.mean(), arr.std()
     #amp_range = (ave-rms, ave+3*rms)
@@ -1039,29 +1039,29 @@ if __name__ == "__main__" :
     #fname_data     = basedir + 'cspad-arr-cxid2714-r0023-lysozyme-rings.npy'
     #amp_range = (0,500)
 
-    print('%s\nfname_geometry: %s\nfname_data: %s' %(120*'_', fname_geometry, fname_geometry))
+    print('%s\nfname_geometry: %s\nfname_data: %s' % (120*'_', fname_geometry, fname_geometry))
 
     geometry = GeometryAccess(fname_geometry, 0)
 
     msg = 'Use command: sys.argv[0] <num>, wher num=1,2,...,14'
 
-    if len(sys.argv)==1   : print('App needs in input parameter.' + msg)
-    elif sys.argv[1]=='1' : test_access(geometry)
-    elif sys.argv[1]=='2' : test_plot_quad(geometry)
-    elif sys.argv[1]=='3' : test_plot_cspad(geometry, fname_data, amp_range)
-    elif sys.argv[1]=='4' : test_img_default()
-    elif sys.argv[1]=='5' :
+    if len(sys.argv) == 1   : print('App needs in input parameter.' + msg)
+    elif sys.argv[1] == '1' : test_access(geometry)
+    elif sys.argv[1] == '2' : test_plot_quad(geometry)
+    elif sys.argv[1] == '3' : test_plot_cspad(geometry, fname_data, amp_range)
+    elif sys.argv[1] == '4' : test_img_default()
+    elif sys.argv[1] == '5' :
         print('Init GeometryAccess with pbits=0. Is it silent? (see below)')
         ga0 = GeometryAccess(fname_geometry, 0)
-    elif sys.argv[1]=='6' : ga = GeometryAccess(fname_geometry, 0o377)
-    elif sys.argv[1]=='7' : test_save_pars_in_file(geometry)
-    elif sys.argv[1]=='8' : test_load_pars_from_file(geometry)
-    elif sys.argv[1]=='9' : test_mask_quad(geometry, 1+2+8) #+16
-    elif sys.argv[1]=='10': geometry.print_psf()
-    elif sys.argv[1]=='11': test_cspad2x2()
-    elif sys.argv[1]=='12': test_epix100a()
-    elif sys.argv[1]=='13': geometry.print_comments_from_dict()
-    elif sys.argv[1]=='14': test_cspad_xy_at_z()
+    elif sys.argv[1] == '6' : ga = GeometryAccess(fname_geometry, 0o377)
+    elif sys.argv[1] == '7' : test_save_pars_in_file(geometry)
+    elif sys.argv[1] == '8' : test_load_pars_from_file(geometry)
+    elif sys.argv[1] == '9' : test_mask_quad(geometry, 1+2+8) #+16
+    elif sys.argv[1] == '10': geometry.print_psf()
+    elif sys.argv[1] == '11': test_cspad2x2()
+    elif sys.argv[1] == '12': test_epix100a()
+    elif sys.argv[1] == '13': geometry.print_comments_from_dict()
+    elif sys.argv[1] == '14': test_cspad_xy_at_z()
     else : print('Wrong input parameter.' + msg)
 
     sys.exit('End of %s' % sys.argv[0])
