@@ -370,7 +370,7 @@ class SegGeometryCspad2x1V1(SegGeometryBase) :
                 
                 if mbits & 16 :
                 # mask eight neighbours of nonbonded pixels
-                    if p==0 :
+                    if p == 0 :
                         mask[0:2,0:2] = 0
                         mask[0:2,h:2+h] = 0
                     else :
@@ -379,7 +379,7 @@ class SegGeometryCspad2x1V1(SegGeometryBase) :
 
                 elif mbits & 8 :
                 # mask nearest four neighbours of nonbonded pixels
-                    if p==0 :
+                    if p == 0 :
                         mask[1,0] = 0
                         mask[0,1] = 0
                         mask[1,0+h] = 0
@@ -516,14 +516,14 @@ def test_2x1_mask(mbits=0o377) :
 if __name__ == "__main__" :
     import sys
 
-    if len(sys.argv)==1   : print('For other test(s) use command: python', sys.argv[0], '<test-number=0-5>')
-    elif sys.argv[1]=='0' : test_xyz_min_max()
-    elif sys.argv[1]=='1' : test_xyz_maps()
-    elif sys.argv[1]=='2' : test_2x1_img()
-    elif sys.argv[1]=='3' : test_2x1_img_easy()
-    elif sys.argv[1]=='4' : test_pix_sizes()
-    elif sys.argv[1]=='5' : test_2x1_mask(mbits=1+2+4+8)
-    elif sys.argv[1]=='6' : test_2x1_mask(mbits=16)
+    if len(sys.argv) == 1   : print('For other test(s) use command: python', sys.argv[0], '<test-number=0-5>')
+    elif sys.argv[1] == '0' : test_xyz_min_max()
+    elif sys.argv[1] == '1' : test_xyz_maps()
+    elif sys.argv[1] == '2' : test_2x1_img()
+    elif sys.argv[1] == '3' : test_2x1_img_easy()
+    elif sys.argv[1] == '4' : test_pix_sizes()
+    elif sys.argv[1] == '5' : test_2x1_mask(mbits=1+2+4+8)
+    elif sys.argv[1] == '6' : test_2x1_mask(mbits=16)
     else : print('Non-expected arguments: sys.argv=', sys.argv)
 
     sys.exit('End of test.')
