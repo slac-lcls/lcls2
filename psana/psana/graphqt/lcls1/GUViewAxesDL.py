@@ -48,7 +48,7 @@ class GUViewAxesDL(QtGui.QGraphicsView) :
         #pen=QtGui.QPen(colfld, 0, Qt.SolidLine)
         self.raxi = self.add_rect_to_scene_v1(self.raxes, pen=QtGui.QPen(Qt.NoPen), brush = QtGui.QBrush(colfld))
 
-        ror=QtCore.QRectF(-2, -2, 4, 4)
+        ror = QtCore.QRectF(-2, -2, 4, 4)
         self.rori = self.add_rect_to_scene(ror, pen=QtGui.QPen(colori, 0, Qt.SolidLine), brush = QtGui.QBrush(colori))
 
         if not self.origin_up :
@@ -118,7 +118,7 @@ class GUViewAxesDL(QtGui.QGraphicsView) :
         self.margb = mb
 
         x, y = self.raxes.x(), self.raxes.y()
-        sx = self.raxes.width() /(1. - ml - mr)
+        sx = self.raxes.width() / (1. - ml - mr)
         sy = self.raxes.height()/(1. - mt - mb)
 
         # Set scene rect larger than axes rect
@@ -150,13 +150,13 @@ class GUViewAxesDL(QtGui.QGraphicsView) :
 
         x, y, w, h = rs.x(), rs.y(), rs.width(), rs.height()
 
-        rslef=QtCore.QRectF(x, y, w*self.margl, h)
+        rslef = QtCore.QRectF(x, y, w*self.margl, h)
         self.rslefv = self.add_rect_to_scene_v1(rslef, self.brubx, self.penbx)
         self.rslefi = self.add_rect_to_scene(rslef, self.brudf, self.pendf)
         self.rslefi.setCursorHover(Qt.SizeVerCursor)
         self.rslefi.setCursorGrab (Qt.SplitVCursor)
 
-        rsbot=QtCore.QRectF(x+w*self.margl, y, w-w*self.margl, h*self.margb)
+        rsbot = QtCore.QRectF(x+w*self.margl, y, w-w*self.margl, h*self.margb)
 
         if self.origin_up :
             rsbot.moveBottomRight(rs.bottomRight())
@@ -263,7 +263,7 @@ class GUViewAxesDL(QtGui.QGraphicsView) :
         #print 'GUViewAxesDL.mouseMoveEvent, at point: ', e.pos()
         self.display_pixel_pos(e)
 
-        if self._scale_ctl==0 : return
+        if self._scale_ctl == 0 : return
 
         if self.pos_click is None : return        
 
@@ -285,12 +285,12 @@ class GUViewAxesDL(QtGui.QGraphicsView) :
     def wheelEvent(self, e) :
         QtGui.QGraphicsView.wheelEvent(self, e)
 
-        if self._scale_ctl==0 : return
+        if self._scale_ctl == 0 : return
 
         self._select_further_action(e)
 
         #print 'wheelEvent: ', e.delta()
-        f = 1 + 0.4 * (1 if e.delta()>0 else -1)
+        f = 1 + 0.4 * (1 if e.delta() > 0 else -1)
         #print 'Scale factor =', f
 
         p = self.mapToScene(e.pos())
@@ -396,13 +396,13 @@ def test_guiview(tname) :
     print '%s:' % sys._getframe().f_code.co_name
     app = QtGui.QApplication(sys.argv)
     w = None
-    if tname == '0': w=GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=3)
-    if tname == '1': w=GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=0)
-    if tname == '2': w=GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=1)
-    if tname == '3': w=GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=2)
-    if tname == '4': w=GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=True,  scale_ctl=3)
-    if tname == '5': w=GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=3, rulers='L')
-    if tname == '6': w=GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=3, rulers='B')
+    if tname == '0': w = GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=3)
+    if tname == '1': w = GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=0)
+    if tname == '2': w = GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=1)
+    if tname == '3': w = GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=2)
+    if tname == '4': w = GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=True,  scale_ctl=3)
+    if tname == '5': w = GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=3, rulers='L')
+    if tname == '6': w = GUViewAxesDL(None, rectax=QtCore.QRectF(0, 0, 100, 100), origin_up=False, scale_ctl=3, rulers='B')
     else : print 'test %s is not implemented' % tname
     w.show()
     app.exec_()
