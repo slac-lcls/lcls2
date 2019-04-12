@@ -83,7 +83,7 @@ class QWLoggerStd(QWidget) :
         self.log_file  = cp.log_file # DEPRICATED
 
         log_fname = log_file_name(self.log_prefix.value())
-        depth = 6 if log_fname[0]=='/' else 1
+        depth = 6 if log_fname[0] == '/' else 1
         gu.create_path(log_fname, depth, mode=0o0777)
         #print('Log file: %s' % log_fname)
 
@@ -136,7 +136,7 @@ class QWLoggerStd(QWidget) :
         self.append_qwlogger('Configure logger')
 
         fmt = '%(asctime)s %(name)s %(levelname)s: %(message)s'
-        tsfmt='%Y-%m-%dT%H:%M:%S'
+        tsfmt = '%Y-%m-%dT%H:%M:%S'
 
         level = self.dict_name_to_level[self.log_level.value()] # e.g. logging.DEBUG
 
@@ -165,8 +165,8 @@ class QWLoggerStd(QWidget) :
         levname = self.log_level.value()
         level = self.dict_name_to_level[levname] # e.g. logging.DEBUG
 
-        tsfmt='%Y-%m-%dT%H:%M:%S'
-        fmt = '%(levelname)s %(name)s: %(message)s' if level==logging.DEBUG else\
+        tsfmt = '%Y-%m-%dT%H:%M:%S'
+        fmt = '%(levelname)s %(name)s: %(message)s' if level == logging.DEBUG else\
               '%(asctime)s %(levelname)s %(name)s: %(message)s'
 
         #sys.stdout = sys.stderr = open('/dev/null', 'w')
