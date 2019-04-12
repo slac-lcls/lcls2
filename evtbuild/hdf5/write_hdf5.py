@@ -26,7 +26,7 @@ def master(comm):
     files = glob.glob(cfg['path']+'/swmr_file*')
     for fil in files:
         os.remove(fil)
-    av_files=[]
+    av_files = []
     # file_name = cfg['path']+'/swmr_file%i.h5'
 
     # for i in range(size):
@@ -94,7 +94,7 @@ def client(comm):
         while True:
             start = time.time()
             shape = data_dset.shape
-            batch_num = (shape[0]/batch_size) +1
+            batch_num = (shape[0]/batch_size) + 1
 
             ts_dset.resize((shape[0]+batch_size,))
 
@@ -147,7 +147,7 @@ def client(comm):
 def write_files(comm):
     rank = comm.Get_rank()
 
-    if rank ==0:
+    if rank == 0:
         master(comm)
 
     comm.Barrier()
