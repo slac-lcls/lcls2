@@ -94,7 +94,7 @@ class QWSpectrum(QtGui.QWidget) : # QtGui.QWidget, Frame
         self.show_buts  = show_buts
 
         self.but_save = QtGui.QPushButton('&Save')
-        self.but_reset= QtGui.QPushButton('&Reset')
+        self.but_reset = QtGui.QPushButton('&Reset')
 
         self.lab_stat = QtGui.QLabel('    Histogram\n    statistics')
         self.lab_ibin = QtGui.QLabel('Bin info')
@@ -102,7 +102,7 @@ class QWSpectrum(QtGui.QWidget) : # QtGui.QWidget, Frame
         #amin, amax, nbins, values = image_to_hist_arr(arr)
         #vmin, vmax = values.min(), values.max()
         #rectax=QtCore.QRectF(amin, vmin, amax-amin, vmax-vmin)
-        rectax=QtCore.QRectF(0, 0, 1, 1)
+        rectax = QtCore.QRectF(0, 0, 1, 1)
 
         self.hist = GUViewHist(None, rectax, origin='DL', scale_ctl='H', rulers='DL',
                                margl=0.12, margr=0.01, margt=0.01, margb=0.15)
@@ -164,7 +164,7 @@ class QWSpectrum(QtGui.QWidget) : # QtGui.QWidget, Frame
 #------------------------------
  
     def on_but_save(self) :
-        fltr='*.png *.gif *.jpg *.jpeg\n *'
+        fltr = '*.png *.gif *.jpg *.jpeg\n *'
         fname = 'fig-spectrum.png'
         fname = str(QtGui.QFileDialog.getSaveFileName(self, 'Output file', fname, filter=fltr))
         if fname == '' : return
@@ -216,7 +216,7 @@ class QWSpectrum(QtGui.QWidget) : # QtGui.QWidget, Frame
     def draw_stat(self, mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w) :
         #print 'XXX: mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w',\
         #            mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w
-        txt = u'  Entries: %d\n  Mean: %.2f \u00B1 %.2f\n  RMS: %.2f \u00B1 %.2f\n  \u03B31=%.2f   \u03B32=%.2f'%\
+        txt = u'  Entries: %d\n  Mean: %.2f \u00B1 %.2f\n  RMS: %.2f \u00B1 %.2f\n  \u03B31=%.2f   \u03B32=%.2f' %\
               (neff, mean, err_mean, rms, err_rms, skew, kurt)
         #print txt
         self.lab_stat.setText(txt)
