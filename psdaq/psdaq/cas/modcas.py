@@ -88,36 +88,36 @@ def main():
     print(LinkEnable)
 
     for i in range(32):
-        pvdb[':LinkTxDelay'  +'%d'%i] = {'type' : 'int'}
+        pvdb[':LinkTxDelay'  + '%d'%i] = {'type' : 'int'}
         pvdb[':LinkPartition'+'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkTrgSrc'   +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkLoopback' +'%d'%i] = {'type' : 'int'}
-        pvdb[':TxLinkReset'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':RxLinkReset'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':RxLinkDump'   +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkEnable'   +'%d'%i] = {'type' : 'int', 'value' : LinkEnable[i] }
-        pvdb[':LinkTxReady'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkRxReady'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkTxResetDone'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkRxResetDone'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkRxRcv'    +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkRxErr'    +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkIsXpm'    +'%d'%i] = {'type' : 'int'}
-        pvdb[':RemoteLinkId'  +'%d'%i] = {'type' : 'int'}
+        pvdb[':LinkTrgSrc'   + '%d'%i] = {'type' : 'int'}
+        pvdb[':LinkLoopback' + '%d'%i] = {'type' : 'int'}
+        pvdb[':TxLinkReset'  + '%d'%i] = {'type' : 'int'}
+        pvdb[':RxLinkReset'  + '%d'%i] = {'type' : 'int'}
+        pvdb[':RxLinkDump'   + '%d'%i] = {'type' : 'int'}
+        pvdb[':LinkEnable'   + '%d'%i] = {'type' : 'int', 'value' : LinkEnable[i] }
+        pvdb[':LinkTxReady'  + '%d'%i] = {'type' : 'int'}
+        pvdb[':LinkRxReady'  + '%d'%i] = {'type' : 'int'}
+        pvdb[':LinkTxResetDone'  + '%d'%i] = {'type' : 'int'}
+        pvdb[':LinkRxResetDone'  + '%d'%i] = {'type' : 'int'}
+        pvdb[':LinkRxRcv'    + '%d'%i] = {'type' : 'int'}
+        pvdb[':LinkRxErr'    + '%d'%i] = {'type' : 'int'}
+        pvdb[':LinkIsXpm'    + '%d'%i] = {'type' : 'int'}
+        pvdb[':RemoteLinkId'  + '%d'%i] = {'type' : 'int'}
 
     for i in range(14):
-        pvdb[':LinkLabel'    +'%d'%i] = {'type' : 'string', 'value' : 'FP-%d'%i}
+        pvdb[':LinkLabel'    + '%d'%i] = {'type' : 'string', 'value' : 'FP-%d'%i}
 
     for i in range(16,21):
-        pvdb[':LinkLabel'    +'%d'%i] = {'type' : 'string', 'value' : 'BP-%d'%(i-13)}
+        pvdb[':LinkLabel'    + '%d'%i] = {'type' : 'string', 'value' : 'BP-%d'%(i-13)}
 
     pvdb[':LinkId'] = {'type' : 'int', 'count' : 22}
 
     for i in range(NAmcs):
-        pvdb[':PLL_LOS'       +'%d'%i] = {'type' : 'int'}
-        pvdb[':PLL_LOSCNT'    +'%d'%i] = {'type' : 'int'}
-        pvdb[':PLL_LOL'       +'%d'%i] = {'type' : 'int'}
-        pvdb[':PLL_LOLCNT'    +'%d'%i] = {'type' : 'int'}
+        pvdb[':PLL_LOS'       + '%d'%i] = {'type' : 'int'}
+        pvdb[':PLL_LOSCNT'    + '%d'%i] = {'type' : 'int'}
+        pvdb[':PLL_LOL'       + '%d'%i] = {'type' : 'int'}
+        pvdb[':PLL_LOLCNT'    + '%d'%i] = {'type' : 'int'}
 
     addTiming(':Us')
     addTiming(':Cu')
@@ -134,10 +134,10 @@ def main():
     pvdb[':GroupMsgPayload'      ] = {'type' : 'int', 'value': 0}
 
     for i in range(8):
-        pvdb[':PART:%d:DeadFLnk' %i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
+        pvdb[':PART:%d:DeadFLnk' % i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
 
     for i in range(8):
-        pvdb[':PART:%d:DeadFLnk' %i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
+        pvdb[':PART:%d:DeadFLnk' % i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
 
     # printDb(pvdb, prefix)
     printDb()
