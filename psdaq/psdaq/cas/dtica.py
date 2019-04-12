@@ -145,14 +145,14 @@ class DtiAllocation(QtWidgets.QWidget):
         for i,mon in enumerate(self.mon):
             usmask[i] = mon.pv.get()
             for j in range(NDsLinks):
-                if ((usmask[i] & (1<<j))!=0):
+                if ((usmask[i] & (1<<j)) != 0):
                     self.groups[j].button(i).setChecked(True)
 
     def update(self):
         usmask = [0]*NUsLinks
         for j in range(NDsLinks):
             i = self.groups[j].checkedId()
-            if i >=0:
+            if i >= 0:
                 usmask[i] = usmask[i] | (1<<j)
         for i in range(NUsLinks):
             self.mon[i].pv.put(usmask[i])
