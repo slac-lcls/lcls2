@@ -172,7 +172,7 @@ if __name__ == "__main__" :
     #w = QWPopupRadioList (None, dict_of_pars, win_title='Radio buttons', do_confirm=True)
     w = QWPopupRadioList (None, dict_of_pars, win_title='Radio buttons', do_confirm=False)
     #w.show()
-    resp=w.exec_()
+    resp = w.exec_()
     logger.debug('dict=%s' % str(dict_of_pars))
     logger.debug('resp=%s' % resp)
     logger.debug('QtWidgets.QDialog.Rejected: %d' % QDialog.Rejected)
