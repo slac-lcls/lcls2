@@ -22,7 +22,7 @@ def parse_input_pars() :
     #print('len(sys.argv)', len(sys.argv))
     #print(sys.argv)
     
-    if len(sys.argv)<4 : print_exit(1) 
+    if len(sys.argv) < 4 : print_exit(1) 
 
     list_of_files = [fname for fname in sys.argv[1:-1]]
     ofname = sys.argv[-1]
@@ -43,7 +43,7 @@ def do_main() :
 
     for i, file in enumerate(list_of_files) :
         print('Load array from file %s' % file)
-        if i<1 : nda = np.loadtxt(file, dtype=np.float)
+        if i < 1 : nda = np.loadtxt(file, dtype=np.float)
         else   : nda = np.maximum(nda, np.loadtxt(file, dtype=np.float))
         #    nda2 = np.loadtxt(file, dtype=np.float)
         #    print(nda [0,0:5])
