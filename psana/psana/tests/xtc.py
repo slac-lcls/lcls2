@@ -6,9 +6,9 @@ from psana import DataSource
 def refcnt_test(fname,nsegments,cydgram):
   ds = DataSource(fname)  
   for nevent,evt in enumerate(ds.events()):
-      if nevent==0:
-        dgrambytes_event0=evt._dgrams[0]._dgrambytes
-      elif nevent==1:
+      if nevent == 0:
+        dgrambytes_event0 = evt._dgrams[0]._dgrambytes
+      elif nevent == 1:
         dgram_event1 = evt._dgrams[0]
 
   # be sure you know what you are doing before you change
@@ -18,12 +18,12 @@ def refcnt_test(fname,nsegments,cydgram):
   # cydgram test eliminates 3 of these arrays however (a hack since
   # the xpphsd detector has unsupported cydgram types of charstr/enum)
   if cydgram:
-    assert getref(dgrambytes_event1)==1*nsegments+3
+    assert getref(dgrambytes_event1) == 1*nsegments+3
   else:
-    assert getref(dgrambytes_event1)==4*nsegments+3
+    assert getref(dgrambytes_event1) == 4*nsegments+3
 
   # event0 dgram is deleted, so only 1 for dgrambytes_event0 and 1 for getref
-  assert getref(dgrambytes_event0)==2
+  assert getref(dgrambytes_event0) == 2
 
   return dgram_event1, ds._configs[0]
 
