@@ -133,7 +133,7 @@ class Parameter :
 
         else :
             msg = 'Parameter.setValueForType: Requested parameter type %s is not supported\n' % type
-            msg+= 'WARNING! The parameter value is left unchanged...\n'
+            msg += 'WARNING! The parameter value is left unchanged...\n'
             logger.warning(msg)
             #print(msg)
 
@@ -282,7 +282,7 @@ class ConfigParameters :
     def saveParametersInFile(self, fname=None) :
         self.setParsFileName(fname)        
         logger.debug('Save configuration parameters in file: %s' % self.fname)
-        f=open(self.fname,'w')
+        f = open(self.fname,'w')
 
         lpars = list(self.dict_pars.values())
         #lpars.sort() # sort "in situ" - it does not return anything so can't use it any other way....
@@ -296,7 +296,7 @@ class ConfigParameters :
     def saveParametersInFileV0(self, fname=None) :
         self.setParsFileName(fname)        
         logger.debug('Save configuration parameters in file: %s' % self.fname)
-        f=open(self.fname,'w')
+        f = open(self.fname,'w')
         for par in self.dict_pars.values() :
             v = par.value()
             s = '%s %s\n' % (par.name().ljust(32), str(v))
@@ -328,7 +328,7 @@ class ConfigParameters :
             #print(msg)
             return
  
-        f=open(self.fname,'r')
+        f = open(self.fname,'r')
         for line in f :
             if len(line) == 1 : continue # line is empty
             fields = line.rstrip('\n').split(' ',1)
