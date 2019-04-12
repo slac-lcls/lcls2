@@ -91,7 +91,7 @@ class Matrix :
         self.m20, self.m21, self.m22 = m20, m21, m22
 
     def str_obj(self, cmt='Matrix:\n', fmt='%6.3f') :
-        pfmt = '%s%s  %s  %s\n%s  %s  %s\n%s  %s  %s'%\
+        pfmt = '%s%s  %s  %s\n%s  %s  %s\n%s  %s  %s' %\
                (cmt, fmt, fmt, fmt, fmt, fmt, fmt, fmt, fmt, fmt)
         return pfmt %\
                  (self.m00, self.m01, self.m02,\
@@ -137,7 +137,7 @@ class Matrix :
         s,c = sin_cos(angle_deg)
         self.m00, self.m01, self.m02 = c, 0, s
         self.m10, self.m11, self.m12 = 0, 1, 0
-        self.m20, self.m21, self.m22 =-s, 0, c
+        self.m20, self.m21, self.m22 = -s, 0, c
 
     def rotation_matrix_z(self, angle_deg) :
         s,c = sin_cos(angle_deg)
@@ -149,7 +149,7 @@ class Matrix :
         rotx = Matrix()
         roty = Matrix()
         rotz = Matrix()
-        rotzy= Matrix()
+        rotzy = Matrix()
         rotx.rotation_matrix_x(gamma)
         roty.rotation_matrix_y(beta)
         rotz.rotation_matrix_z(alpha)        
@@ -296,7 +296,7 @@ def quaternion_from_rotmatrix(m) :
 
     t = Qxx+Qyy+Qzz
     r = sqrt(1+t)
-    if fabs(r)<ZERO_TOLERANCE : r = ZERO_TOLERANCE
+    if fabs(r) < ZERO_TOLERANCE : r = ZERO_TOLERANCE
     s = 0.5/r
     w = 0.5*r
     x = (Qzy-Qyz)*s
@@ -360,7 +360,7 @@ def test_rotation_matrix(tname) :
 
 def test_quaternion_from_rotation_matrix(tname) :
     #alpha, beta, gamma = 5, 5, 5 # angles degree
-    ax, ay, az =0, 90, 90 # angles degree
+    ax, ay, az = 0, 90, 90 # angles degree
 
     vfmt = '%9.6f'
 
