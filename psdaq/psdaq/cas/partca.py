@@ -74,7 +74,7 @@ class Ui_MainWindow(object):
 
         lor = QtWidgets.QVBoxLayout()
 
-        b=PvPushButton(pvbase+'ResetL0', "Clear")
+        b = PvPushButton(pvbase+'ResetL0', "Clear")
         b.setMaximumWidth(45)
         lor.addWidget(b)
         PvLabel(self, lor, pvbase, "L0InpRate", scale=1.0  )
@@ -101,7 +101,7 @@ class Ui_MainWindow(object):
         splitter.addWidget(lscroll)
         splitter.addWidget(rscroll)
 
-        if no_coll==False:
+        if no_coll == False:
             partition = int(base.split(':')[-1])
             print('partition', partition)
             collectionWidget = CollectionWidget(partition)
