@@ -63,8 +63,8 @@ def test_peakFinder():
     rows, cols, intens = \
         pk.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)
     print("Peaks found (rows, cols, intens): ", rows, cols, intens)
-    assert(len(rows)==1)
-    assert(intens[0]>1500)
+    assert(len(rows) == 1)
+    assert(intens[0] > 1500)
 
     rows1, cols1, intens1 = \
         pk.peak_finder_v3r3_d2(data+6, mask, rank=3, r0=4, dr=2, nsigm=0)
@@ -72,7 +72,7 @@ def test_peakFinder():
     print("intens:",intens)
     print("intens1:",intens1)
     temp = intens
-    temp[0]=999
+    temp[0] = 999
     print("intens:",intens)
     print("intens1:",intens1)
 
