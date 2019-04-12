@@ -74,14 +74,14 @@ class PvGroupStats(QtWidgets.QWidget):
         lo = QtWidgets.QVBoxLayout()
 
         hlo = QtWidgets.QHBoxLayout()
-        b=QtWidgets.QPushButton('Clear')
+        b = QtWidgets.QPushButton('Clear')
         b.clicked.connect(self.clear)
         b.setMaximumWidth(45)
         hlo.addWidget(b)
         hlo.addStretch()
         self.pvClear = Pv(base+':XPM:'+xpm+':GroupL0Reset')
 
-        b=QtWidgets.QCheckBox('Run')
+        b = QtWidgets.QCheckBox('Run')
         b.toggled.connect(self.run)
         hlo.addWidget(b)
         hlo.addStretch()
