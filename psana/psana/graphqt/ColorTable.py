@@ -62,13 +62,13 @@ def apply_color_table(arr, ctable=None, amin=None, amax=None) :
     # color_table_monochr256() # color_table_def()
     min = np.amin(arr) if amin is None else amin
     max = np.amax(arr) if amax is None else amax
-    if min==max : max+=1
+    if min == max : max += 1
     f = float(ctab.size-1)/(max-min)
     ict = np.require(f*(arr-min), dtype=np.int) # array of indexes in color table
 
     imax = len(ctab) - 1
-    cond = np.logical_and(ict>0, ict<len(ctab))
-    ict = np.select((cond, ict>imax), (ict, imax), default=0)
+    cond = np.logical_and(ict > 0, ict < len(ctab))
+    ict = np.select((cond, ict > imax), (ict, imax), default=0)
 
     return ctab[ict]
 
@@ -82,7 +82,7 @@ def apply_color_table(arr, ctable=None, amin=None, amax=None) :
 def color_table_monochr256(inverted=False) :
     ''' Returns numpy array with monochrome table of 256 colors
     '''
-    ncolors=256
+    ncolors = 256
     inds = range(ncolors-1,-1,-1) if inverted else range(ncolors)
     return np.array([c + c*0x100 + c*0x10000 + 0xff000000 for c in inds], dtype=np.uint32)  
 
@@ -108,7 +108,7 @@ def interpolate_colors(ctab, p1, p2, c1, c2) :
     np = p2-p1
     #print('XXX: c1, c2, p1, p2, r1, r2, g1, g2,  b1, b2:', hex(c1), hex(c2), p1, p2, r1, r2, g1, g2, b1, b2)
 
-    if np<1 :
+    if np < 1 :
         ctab[p1] = c1 + A
         return
 
@@ -186,7 +186,7 @@ def get_pixmap(ind, orient='H', size=(200,30)) :
     arr  = array_for_color_bar(ctab, orient=orient)#, width = 10)
     (h,w) = arr.shape
     image = QtGui.QImage(arr, w, h, QtGui.QImage.Format_ARGB32)
-    pixmap= QtGui.QPixmap.fromImage(image.scaled(size[0], size[1], Qt.IgnoreAspectRatio, Qt.FastTransformation))
+    pixmap = QtGui.QPixmap.fromImage(image.scaled(size[0], size[1], Qt.IgnoreAspectRatio, Qt.FastTransformation))
     return pixmap
 
 #------------------------------
@@ -194,7 +194,7 @@ def get_pixmap(ind, orient='H', size=(200,30)) :
 def array_for_color_bar(ctab=color_table_monochr256(), orient='V', width=2) : 
     """Returns 2-d array made of repeated 1-d array ctab to display as a color bar
     """
-    arr = [(c,c) for c in ctab[::-1]] if orient=='V' else\
+    arr = [(c,c) for c in ctab[::-1]] if orient == 'V' else\
           [ctab for r in range(width)]
     npa = np.array(arr, dtype=np.uint32) #.T
     #print('XXX array for color bar:\n', npa)
