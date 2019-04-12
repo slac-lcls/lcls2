@@ -312,7 +312,7 @@ class FWView(QGraphicsView) :
         #QApplication.setOverrideCursor(QCursor(Qt.ClosedHandCursor)) #Qt.SizeAllCursor))# ClosedHandCursor
         #self.emit(QtCore.SIGNAL('mouse_press_event(QMouseEvent)'), e)
 
-        logger.debug('FWView.mousePressEvent but=%d %s scene x=%.1f y=%.1f'%\
+        logger.debug('FWView.mousePressEvent but=%d %s scene x=%.1f y=%.1f' %\
                      (e.button(), str(e.pos()), self.x(), self.y())) # self.__class__.__name__
 
         self.mouse_press_event.emit(e)
@@ -331,7 +331,7 @@ class FWView(QGraphicsView) :
         #self.emit(QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), e)
         self.mouse_move_event.emit(e)
 
-        if self._scale_ctl==0 : return
+        if self._scale_ctl == 0 : return
         if self.pos_click is None : return        
 
         dp = e.pos() - self.pos_click
@@ -350,10 +350,10 @@ class FWView(QGraphicsView) :
     def wheelEvent(self, e) :
         QGraphicsView.wheelEvent(self, e)
 
-        if self._scale_ctl==0 : return
+        if self._scale_ctl == 0 : return
 
         #logger.debug('wheelEvent: ', e.angleDelta())
-        f = 1 + 0.4 * (1 if e.angleDelta().y()>0 else -1)
+        f = 1 + 0.4 * (1 if e.angleDelta().y() > 0 else -1)
         #logger.debug('Scale factor =', f)
 
         p = self.mapToScene(e.pos())
@@ -485,7 +485,7 @@ class FWView(QGraphicsView) :
             self.reset_original_size()
 
         elif e.key() in (Qt.Key_W, Qt.Key_D)  : 
-            change_def = e.key()==Qt.Key_D
+            change_def = e.key() == Qt.Key_D
             print('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
             v = ag.random_standard((4,), mu=0, sigma=20, dtype=np.int)
             rs = QRectF(v[0], v[1], v[2]+100, v[3]+100)
@@ -523,7 +523,7 @@ class FWView(QGraphicsView) :
         if show_mode & 1 :
             self.rsi = self.add_rect_to_scene_v1(self.rs, pen=QPen(Qt.NoPen), brush=QBrush(colfld))
         if show_mode & 2 :
-            ror=QRectF(-1, -1, 2, 2)
+            ror = QRectF(-1, -1, 2, 2)
             self.rori = self.add_rect_to_scene_v1(ror, pen=QPen(colori, 0, Qt.SolidLine), brush=QBrush(colori))
 
 
@@ -564,18 +564,18 @@ class FWView(QGraphicsView) :
 if __name__ == "__main__" :
   def test_fwview(tname) :
     print('%s:' % sys._getframe().f_code.co_name)
-    b="background-color:yellow; border: 0px solid green"
+    b = "background-color:yellow; border: 0px solid green"
     app = QApplication(sys.argv)
     w = None
-    if   tname == '0': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
-    elif tname == '1': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='UL', show_mode=3, scale_ctl='HV')
-    elif tname == '2': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='UR', show_mode=3, scale_ctl='HV')
-    elif tname == '3': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DR', show_mode=3, scale_ctl='HV')
-    elif tname == '4': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='')
-    elif tname == '5': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='H')
-    elif tname == '6': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='V')
-    elif tname == '7': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=1, scale_ctl='HV')
-    elif tname == '8': w=FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
+    if   tname == '0': w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
+    elif tname == '1': w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='UL', show_mode=3, scale_ctl='HV')
+    elif tname == '2': w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='UR', show_mode=3, scale_ctl='HV')
+    elif tname == '3': w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DR', show_mode=3, scale_ctl='HV')
+    elif tname == '4': w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='')
+    elif tname == '5': w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='H')
+    elif tname == '6': w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='V')
+    elif tname == '7': w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=1, scale_ctl='HV')
+    elif tname == '8': w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
     else :
         print('test %s is not implemented' % tname)
         return
