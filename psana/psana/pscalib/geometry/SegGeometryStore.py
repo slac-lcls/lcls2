@@ -74,15 +74,15 @@ class SegGeometryStore() :
     def Create(self, segname='SENS2X1:V1') :
         """ Factory method returns device dependent SINGLETON object with interface implementation  
         """        
-        if segname=='SENS2X1:V1' : return cspad2x1_one # SegGeometryCspad2x1V1(use_wide_pix_center=False)
-        if segname=='EPIX100:V1' : return epix2x2_one  # SegGeometryEpix100V1(use_wide_pix_center=False)
-        if segname=='PNCCD:V1'   : return segment_one  # SegGeometryMatrixV1()
-        if segname[:4]=='MTRX'   :
+        if segname == 'SENS2X1:V1' : return cspad2x1_one # SegGeometryCspad2x1V1(use_wide_pix_center=False)
+        if segname == 'EPIX100:V1' : return epix2x2_one  # SegGeometryEpix100V1(use_wide_pix_center=False)
+        if segname == 'PNCCD:V1'   : return segment_one  # SegGeometryMatrixV1()
+        if segname[:4] == 'MTRX'   :
             rows, cols, psize_row, psize_col = matrix_pars(segname)
             return SegGeometryMatrixV1(rows, cols, psize_row, psize_col,\
                                        pix_size_depth=100,\
                                        pix_scale_size=min(psize_row, psize_col))
-        if segname=='JUNGFRAU:V1': return jungfrau_one  # SegGeometryJungfrauV1()
+        if segname == 'JUNGFRAU:V1': return jungfrau_one  # SegGeometryJungfrauV1()
         #if segname=='ANDOR3D:V1' : return seg_andor3d  # SegGeometryMatrixV1()
 
         #logger.warning('Segment geometry is not implemented for segname=%s. '
@@ -106,30 +106,30 @@ def test_seggeom() :
     from time import time
     t0_sec = time()
 
-    if len(sys.argv)==1   : usage()
+    if len(sys.argv) == 1   : usage()
 
-    elif(sys.argv[1]=='1') :
+    elif(sys.argv[1] == '1') :
         sg = sgs.Create('SENS2X1:V1')
         sg.print_seg_info(pbits=0o377)
         
-    elif(sys.argv[1]=='2') :
+    elif(sys.argv[1] == '2') :
         sg = sgs.Create('EPIX100:V1')
         sg.print_seg_info(pbits=0o377)
 
-    elif(sys.argv[1]=='3') :
+    elif(sys.argv[1] == '3') :
         sg = sgs.Create('PNCCD:V1')
         sg.print_seg_info(pbits=0o377)
 
-    elif(sys.argv[1]=='4') :
+    elif(sys.argv[1] == '4') :
         sg = sgs.Create('MTRX:512:512:54:54')
         print('Consumed time for MTRX:512:512:54:54 (sec) =', time()-t0_sec)
         sg.print_seg_info(pbits=0o377)
   
-    elif(sys.argv[1]=='5') :
+    elif(sys.argv[1] == '5') :
         sg = sgs.Create('JUNGFRAU:V1')
         sg.print_seg_info(pbits=0o377)
 
-    elif(sys.argv[1]=='6') :
+    elif(sys.argv[1] == '6') :
         logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
                         datefmt='%m-%d-%Y %H:%M:%S',\
                         level=logging.DEBUG) #filename='example.log', filemode='w'
