@@ -48,10 +48,10 @@ class PVStats:
         for i in range(len(self.lpvs)):
             for j,s in enumerate(lstats):
                 self.lpvs[i][j].put(s['value']+s['delta']*self.ncall)
-        if self.ncall==5:
-            self.ncall=0
+        if self.ncall == 5:
+            self.ncall = 0
         else:
-            self.ncall+=1
+            self.ncall += 1
 
 class PVCtrls:
     def __init__(self,pvbase):
@@ -94,7 +94,7 @@ class PVP:
         r = 0
         if self.run.get():
             self.runTimeSec += 1
-            if self.l0Select.get()==0:
+            if self.l0Select.get() == 0:
                 r = fixedRate[self.l0SelectF.get()]
 
         self.numL0InpN += r
