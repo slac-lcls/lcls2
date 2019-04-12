@@ -49,7 +49,7 @@ class MDB_CLI :
         #args = pargs
         #defs = vars(parser.get_default_values())
 
-        self.mode = mode = pargs[0] if len(pargs)>0 else 'print'
+        self.mode = mode = pargs[0] if len(pargs) > 0 else 'print'
 
         kwargs = vars(popts)
 
@@ -63,7 +63,7 @@ class MDB_CLI :
 
         self.loglevel = kwargs.get('loglevel','DEBUG').upper()
 
-        fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
+        fmt = '%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
         config_logger(loglevel=self.loglevel, fmt=fmt)
 
         if self.loglevel == 'DEBUG' :
@@ -71,7 +71,7 @@ class MDB_CLI :
             print(40*'_')
             print_parser(parser)
             print_kwargs(kwargs)
-            fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
+            fmt = '%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
 
 
     def client(self) :
@@ -161,19 +161,19 @@ class MDB_CLI :
         colname = detname
         db, fs = dbu.db_and_fs(client, dbname)
         colnames = dbu.collection_names(db)
-        logger.info('"%s" deletes collection "%s" from database "%s"'% (mode, colname, db.name))
-        logger.info('Collections before "%s"'% str(colnames))
+        logger.info('"%s" deletes collection "%s" from database "%s"' % (mode, colname, db.name))
+        logger.info('Collections before "%s"' % str(colnames))
         logger.info(dbu.database_fs_info(db, gap=''))
 
         if not(colname in colnames) :
-            logger.warning('db "%s" does not have collection "%s"'% (db.name, str(colname)))
+            logger.warning('db "%s" does not have collection "%s"' % (db.name, str(colname)))
             return
 
         if kwargs.get('confirm', False) : 
             col = dbu.collection(db, colname)
             dbu.del_collection_data(col, fs) # delete data in fs associated with collection col
             dbu.delete_collection_obj(col)
-            logger.info('Collections after "%s"'% str(dbu.collection_names(db)))
+            logger.info('Collections after "%s"' % str(dbu.collection_names(db)))
             logger.info(dbu.database_fs_info(db, gap=''))
         else : 
             dbu.request_confirmation()
@@ -195,12 +195,12 @@ class MDB_CLI :
         colnames = dbu.collection_names(db)
 
         if not(colname in colnames) : # dbu.collection_exists(db, colname)
-            logger.warning('db "%s" does not have collection "%s"'% (db.name, str(colname)))
+            logger.warning('db "%s" does not have collection "%s"' % (db.name, str(colname)))
             return
             
         col = dbu.collection(db,colname)
 
-        logger.info('command mode: "%s" db: "%s" collection: "%s"'% (mode, db.name, str(colname)))
+        logger.info('command mode: "%s" db: "%s" collection: "%s"' % (mode, db.name, str(colname)))
 
         defs   = self.defs
         ctype  = kwargs.get('ctype',      None)
@@ -208,9 +208,9 @@ class MDB_CLI :
         tsec   = kwargs.get('time_sec',   None)
         tstamp = kwargs.get('time_stamp', None)
         vers   = kwargs.get('version',    None)
-        confirm= kwargs.get('confirm',    False)
+        confirm = kwargs.get('confirm',    False)
 
-        query={'detector':detname}
+        query = {'detector':detname}
         if ctype != defs['ctype']    : query['ctype']    = ctype
         if run   != defs['run']      : query['run']      = run
         if vers  != defs['version']  : query['version']  = vers
@@ -221,7 +221,7 @@ class MDB_CLI :
         logger.info('query: %s' % str(query))
 
         docs = dbu.find_docs(col, query)
-        if docs is None or docs.count()==0 :
+        if docs is None or docs.count() == 0 :
             logger.warning('Can not find document for query: %s' % str(query))
             return
 
@@ -264,7 +264,7 @@ class MDB_CLI :
         det    = kwargs.get('detector', None)
         ctype  = kwargs.get('ctype', None)
         run    = kwargs.get('run', None)
-        run_end= kwargs.get('run_end', None)
+        run_end = kwargs.get('run_end', None)
         tsec   = kwargs.get('time_sec', None)   if is_in_command_line('-s', '--time_sec')   else None
         tstamp = kwargs.get('time_stamp', None) if is_in_command_line('-t', '--time_stamp') else None
         vers   = kwargs.get('version', None)
@@ -282,7 +282,7 @@ class MDB_CLI :
         colnames = dbu.collection_names(db)
 
         if not(colname in colnames) : # dbu.collection_exists(db, colname)
-            logger.warning('db "%s" does not have collection "%s"'% (db.name, str(colname)))
+            logger.warning('db "%s" does not have collection "%s"' % (db.name, str(colname)))
             return
             
         col = dbu.collection(db,colname)
