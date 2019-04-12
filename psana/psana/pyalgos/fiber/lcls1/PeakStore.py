@@ -87,7 +87,7 @@ class PeakStore :
         """Sets the name of the file with peak info
         """
         self.prefix = prefix        
-        if prefix is None : prefix='peaks'
+        if prefix is None : prefix = 'peaks'
         tstamp = strftime(fmt, localtime())
         self.fname = '%s-%s-r%04d-%s.txt' % (self.prefix, self.exp, self.runnum, tstamp)
  
