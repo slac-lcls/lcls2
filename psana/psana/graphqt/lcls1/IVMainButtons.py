@@ -49,7 +49,7 @@ class IVMainButtons(QtGui.QWidget) :
         self.show_buts = True
 
         self.but_save = QtGui.QPushButton('&Save')
-        self.but_reset= QtGui.QPushButton('&Reset')
+        self.but_reset = QtGui.QPushButton('&Reset')
 
         self.hbox = QtGui.QHBoxLayout() 
         self.hbox.addWidget(self.but_reset) 
