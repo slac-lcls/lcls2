@@ -22,7 +22,7 @@ def least_squares_fit(x,y,e) :
     ea = np.array(e, dtype=np.float64)
 
     s2 = ea*ea
-    s2 = np.select((s2>0,), (s2,), default=ZERO)
+    s2 = np.select((s2 > 0,), (s2,), default=ZERO)
     os2 = 1/s2
     
     cx0 = (os2).mean()
