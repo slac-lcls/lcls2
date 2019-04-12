@@ -28,7 +28,7 @@ def shape_and_size_from_string(s) :
     if s is None : return None, None
     shape = tuple([int(v) for v in string.split(s,',')])
     size = 1
-    for v in shape : size*=v
+    for v in shape : size *= v
     return shape, size
     
 
@@ -38,12 +38,12 @@ def parse_input_pars() :
     #print('len(sys.argv)', len(sys.argv))
     #print(sys.argv)
     
-    if len(sys.argv)<3 : print_exit(1) 
-    if len(sys.argv)>4 : print_exit(1) 
+    if len(sys.argv) < 3 : print_exit(1) 
+    if len(sys.argv) > 4 : print_exit(1) 
 
     finp = sys.argv[1]
     fout = sys.argv[2]
-    str_shape = None if len(sys.argv)==3 else sys.argv[3]
+    str_shape = None if len(sys.argv) == 3 else sys.argv[3]
 
     if os.path.splitext(fout)[1] != '.npy' : print_exit(2) 
 
