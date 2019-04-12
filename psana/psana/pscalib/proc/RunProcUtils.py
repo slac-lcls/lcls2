@@ -187,7 +187,7 @@ def runs_in_log_file(exp='xpptut15', procname='pixel_status') :
 def msg_to_log(runs=[]) :
     """Returns (str) message to the log file for list of (str) runs.
     """
-    if len(runs)==0 : return None
+    if len(runs) == 0 : return None
     tstamp = gu.str_tstamp('%Y-%m-%dT%H:%M:%S', time())
     login  = gu.get_login()
     cwd    = gu.get_cwd()
@@ -226,11 +226,11 @@ def move_recs_to_archive(procname, exp, runs) :
     recs_arc = [rec for rec in recs if     rec[:4] in runs]
 
     text_log = '\n'.join(recs_log)
-    text_log+='\n'
+    text_log += '\n'
     #if len(runs)==1 : text_log+='\n'
 
     text_arc = '\n'.join(recs_arc)
-    text_arc+='\n'
+    text_arc += '\n'
     #if len(runs)==1 : text_arc+='\n'
 
     #print('  ==> log\n%s' % text_log)
@@ -296,7 +296,7 @@ def experiments(ins='CXI') :
        e.g. ['mfxo1916', 'mfxn8416', 'mfxlq3915',...]
     """
     if ins is None :
-        list_of_exps=[]
+        list_of_exps = []
         for i in INSTRUMENTS : 
             list_of_exps += experiments(ins=i)
         return list_of_exps
@@ -304,7 +304,7 @@ def experiments(ins='CXI') :
     else :
         dirname = instrument_dir(ins)
         _ins = ins.lower()
-        return [fname for fname in os.listdir(dirname) if (fname[:3]==_ins and len(fname)<10)]
+        return [fname for fname in os.listdir(dirname) if (fname[:3] == _ins and len(fname) < 10)]
 
 #------------------------------
 
@@ -317,7 +317,7 @@ def experiments_under_control(procname='pixel_status') :
         print('WARNING: control file "%s" does not exist' % fname)
         return []
     recs = gu.load_textfile(fname).split('\n')
-    return [rec for rec in recs if (rec and (rec[0]!='#'))] # skip empty and commented records
+    return [rec for rec in recs if (rec and (rec[0] != '#'))] # skip empty and commented records
 
 #------------------------------
 
@@ -361,7 +361,7 @@ def dict_exp_run_old(ins='CXI', procname='pixel_status') :
     exp_run = {}
     for exp in experiments(ins) :
         runs = [run for run in runs_old_in_exp(exp, procname, verb=0)]
-        if len(runs)!=0 :
+        if len(runs) != 0 :
             exp_run[exp] = runs
     return exp_run
 
@@ -455,8 +455,8 @@ def print_experiments_under_control(procname='pixel_status') :
 #------------------------------
 
 def print_all_experiments() :
-    tot_nexps=0
-    ins_nexps={}
+    tot_nexps = 0
+    ins_nexps = {}
     for ins in INSTRUMENTS : 
         exps = experiments(ins)
         for exp in exps :
@@ -507,8 +507,8 @@ def print_exp_runs_old(dic_exp_runs, procname='pixel_status', move_to_archive=Fa
         s = '%s%s\n  ' % (exp.ljust(10), logname)
         for i, run in enumerate(runs) : 
            s += '%s ' % run
-           if i and ((i+1)%10)==0 : s += '\n  '
-        print('%s\n' %s )
+           if i and ((i+1)%10) == 0 : s += '\n  '
+        print('%s\n' % s )
         nruns += len(runs) 
         #--------------
         if move_to_archive : move_recs_to_archive(procname, exp, runs)
@@ -527,20 +527,20 @@ def print_datasets_old(ins='CXI', procname='pixel_status', move_to_archive=False
 
 def usage() :
     return  'python PSCalib/src/RunProcUtils.py <test_name>\n'\
-           +'       <test_name> = 1  - print new files in experiments listed in control file\n'\
-           +'                   = 10 - the same as 1 and save record for each new run in log file\n'\
-           +'                   = 2  - print new files in all experiments\n'\
-           +'                   = 20 - the same as 2 and save record for each new run in log file\n'\
-           +'                   = 3  - print all experiments\n'\
-           +'                   = 4  - print old (available in log but missing in xtc-dir) files for all experiments\n'\
-           +'                   = 40 - the same as 4 and move old run records from log to archive file\n'\
-           +'                   = 5  - print statistics of all instruments, experiments/runs in xtc directories\n'
+           + '       <test_name> = 1  - print new files in experiments listed in control file\n'\
+           + '                   = 10 - the same as 1 and save record for each new run in log file\n'\
+           + '                   = 2  - print new files in all experiments\n'\
+           + '                   = 20 - the same as 2 and save record for each new run in log file\n'\
+           + '                   = 3  - print all experiments\n'\
+           + '                   = 4  - print old (available in log but missing in xtc-dir) files for all experiments\n'\
+           + '                   = 40 - the same as 4 and move old run records from log to archive file\n'\
+           + '                   = 5  - print statistics of all instruments, experiments/runs in xtc directories\n'
 
 #------------------------------
 
 if __name__ == "__main__" :
     print(80*'_')
-    tname = sys.argv[1] if len(sys.argv)>1 else '5' # 'CXI'
+    tname = sys.argv[1] if len(sys.argv) > 1 else '5' # 'CXI'
     cname = tname.upper()
     t0_sec = time()
 
@@ -548,25 +548,25 @@ if __name__ == "__main__" :
         print_experiments(ins=cname)
         print_datasets_new(ins=cname, procname='pixel_status')
 
-    elif tname=='0' : print_all_experiments()
+    elif tname == '0' : print_all_experiments()
 
-    elif tname=='1' : print_datasets_new_under_control(procname='pixel_status')
-    elif tname=='10': print_datasets_new_under_control(procname='pixel_status', add_to_log=True)
+    elif tname == '1' : print_datasets_new_under_control(procname='pixel_status')
+    elif tname == '10': print_datasets_new_under_control(procname='pixel_status', add_to_log=True)
 
-    elif tname=='2' : print_datasets_new(ins=None, procname='pixel_status')
-    elif tname=='20': print_datasets_new(ins=None, procname='pixel_status', add_to_log=True)
+    elif tname == '2' : print_datasets_new(ins=None, procname='pixel_status')
+    elif tname == '20': print_datasets_new(ins=None, procname='pixel_status', add_to_log=True)
 
-    elif tname=='3' : print_experiments(ins=None) # all
+    elif tname == '3' : print_experiments(ins=None) # all
 
-    elif tname=='4' : print_datasets_old(ins=None, procname='pixel_status')
-    elif tname=='40': print_datasets_old(ins=None, procname='pixel_status', move_to_archive=True)
+    elif tname == '4' : print_datasets_old(ins=None, procname='pixel_status')
+    elif tname == '40': print_datasets_old(ins=None, procname='pixel_status', move_to_archive=True)
 
-    elif tname=='5' : print_experiments_count_runs()
+    elif tname == '5' : print_experiments_count_runs()
 
     else : sys.exit ('Not recognized test name: "%s"' % tname)
     print('Test %s time (sec) = %.3f' % (tname, time()-t0_sec))
 
-    if len(sys.argv)<2 : print(usage())
+    if len(sys.argv) < 2 : print(usage())
 
     sys.exit ('End of %s' % sys.argv[0])
 
