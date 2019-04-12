@@ -33,7 +33,7 @@ if __name__ == '__main__':
         t0_sec = time()
         tstamp = strftime('%Y%m%dT%H%M%S', localtime(t0_sec))
         s = 'time stamp ' + tstamp
-        print('send ZMQ msg: %s' %s)
+        print('send ZMQ msg: %s' % s)
         #socket.send_string(s)
         socket.send_multipart([TOPIC, bytes(s.encode('utf-8'))])
         #socket.send(bytes(("10001 %s" % s).encode('utf-8')))
