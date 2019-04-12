@@ -24,6 +24,7 @@ def get_config(dburl,dbname,hutch,cfgtype,detname):
 
     # remove the readonly flags used to hide values in the
     # graphical configuration editor
-    cfg_no_RO = remove_read_only(cfg)
+    #cfg_no_RO = remove_read_only(cfg)
+    cfg_no_RO = cfg
 
     return dumps(cfg_no_RO)

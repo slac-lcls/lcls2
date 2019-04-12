@@ -753,7 +753,7 @@ class CollectionManager():
             self.pv_put(self.pvMsgInsert, 0) and
             self.pv_put(self.pvMsgInsert, 1) and
             self.pv_put(self.pvMsgInsert, 0)):
-            retval = self.condition_common('configure', 1000)
+            retval = self.condition_common('configure', 3000)
             if retval:
                 self.lastTransition = 'configure'
         else:
