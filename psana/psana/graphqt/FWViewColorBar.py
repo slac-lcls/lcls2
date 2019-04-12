@@ -78,7 +78,7 @@ class FWViewColorBar(FWViewImage) :
         """Overrides method from FWViewImage or FWViewImage
         """
         FWViewImage.set_style(self)
-        if self.orient=='H' :
+        if self.orient == 'H' :
             self.setMinimumSize(self.wlength, 2)
             self.setFixedHeight(self.wwidth)
         else :
