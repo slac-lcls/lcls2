@@ -97,7 +97,7 @@ class CMWDBDocsList(CMWDBDocsBase, QWList) :
         itemsel = self.model.itemFromIndex(selected)
         if itemsel is not None :
             txt = itemsel.text()
-            txtshow = txt if len(txt)<50 else '%s...'%txt[:50]
+            txtshow = txt if len(txt) < 50 else '%s...'%txt[:50]
             msg = 'Selected document: %s' % txtshow # selected.row()
             logger.info(msg)
         cp.last_selection = cp.DOCS
@@ -138,7 +138,7 @@ class CMWDBDocsList(CMWDBDocsBase, QWList) :
         #wdoce.setFixedWidth(300)
 
         s0, s1, s2 = cp.cmwdbmain.hsplitter_sizes()
-        if s2<10 : cp.cmwdbmain.set_hsplitter_size2(300)
+        if s2 < 10 : cp.cmwdbmain.set_hsplitter_size2(300)
 
 #------------------------------
 
