@@ -95,7 +95,7 @@ def matrix_pars(segname) :
     """Returns the matrix sensor parameters from its string-name, ex: MTRX:512:512:54:54
     """
     fields = segname.split(':')
-    if len(fields)<5 :
+    if len(fields) < 5 :
         raise IOError('Matrix-sensor specification %s has less than 4 numeric fields' % segname)
 
     rows, cols, psize_row, psize_col = int(fields[1]), int(fields[2]), float(fields[3]), float(fields[4])
@@ -480,13 +480,13 @@ def test_mask(mbits=0o377) :
 if __name__ == "__main__" :
     import sys; global sys
 
-    if len(sys.argv)==1   : print('For other test(s) use command: python', sys.argv[0], '<test-number=0-5>')
-    elif sys.argv[1]=='0' : test_xyz_min_max()
-    elif sys.argv[1]=='1' : test_xyz_maps()
-    elif sys.argv[1]=='2' : test_img()
-    elif sys.argv[1]=='3' : test_img_easy()
-    elif sys.argv[1]=='4' : test_pix_sizes()
-    elif sys.argv[1]=='5' : test_mask(mbits=1+2+4+8)
+    if len(sys.argv) == 1   : print('For other test(s) use command: python', sys.argv[0], '<test-number=0-5>')
+    elif sys.argv[1] == '0' : test_xyz_min_max()
+    elif sys.argv[1] == '1' : test_xyz_maps()
+    elif sys.argv[1] == '2' : test_img()
+    elif sys.argv[1] == '3' : test_img_easy()
+    elif sys.argv[1] == '4' : test_pix_sizes()
+    elif sys.argv[1] == '5' : test_mask(mbits=1+2+4+8)
     else : print('Non-expected arguments: sys.argv=', sys.argv)
 
     sys.exit('End of test.')
