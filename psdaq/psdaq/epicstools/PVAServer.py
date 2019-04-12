@@ -80,7 +80,7 @@ class PVAServer(object):
     def forever(self):
         Server.forever(providers=[self.provider])
 
-if __name__=='__main__':
+if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     srv = PVAServer("Testing123")
     srv.createPV("Testing123", {
