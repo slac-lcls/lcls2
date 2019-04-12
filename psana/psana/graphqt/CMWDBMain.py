@@ -101,7 +101,7 @@ class CMWDBMain(QWidget) :
 #------------------------------
 
     def proc_parser(self, parser=None) :
-        self.parser=parser
+        self.parser = parser
 
         if parser is None :
             return
@@ -110,7 +110,7 @@ class CMWDBMain(QWidget) :
 #------------------------------
 
     def proc_parser_v0(self, parser=None) :
-        self.parser=parser
+        self.parser = parser
 
         if parser is None :
             return
@@ -120,7 +120,7 @@ class CMWDBMain(QWidget) :
         self.opts = vars(popts)
         self.defs = vars(parser.get_default_values())
 
-        nargs =len(self.args)
+        nargs = len(self.args)
 
         exp = popts.exp # self.opts['exp']
         run = popts.run # self.opts['run']
