@@ -49,7 +49,7 @@ class RingBuffer() :
         """ 
         for i,r in enumerate(self.buf) :
             print str(r),
-            if i>0 and not(i%10) : print ''
+            if i > 0 and not(i%10) : print ''
 
 
     def buffer(self) :
@@ -91,7 +91,7 @@ class RingBuffer() :
         nrr = nrecs if nrecs <= self.bsize else self.bsize 
         if self.ir == -1 : self.ir = 0
         ir0 = self.iw - nrr + 1
-        bufret = self.buf[ir0:self.iw+1] if ir0>=0 else\
+        bufret = self.buf[ir0:self.iw+1] if ir0 >= 0 else\
                  self.buf[ir0+self.bsize:] + self.buf[:self.iw+1]
         self.ir = self.iw
         return bufret
