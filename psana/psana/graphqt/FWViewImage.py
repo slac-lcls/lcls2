@@ -89,7 +89,7 @@ class FWViewImage(FWView) :
 
     def set_style(self) :
         FWView.set_style(self)
-        self.setWindowTitle('FWViewImage%s' %(30*' '))
+        self.setWindowTitle('FWViewImage%s' % (30*' '))
         self.setAttribute(Qt.WA_TranslucentBackground)
         #self.setContentsMargins(0,0,0,0)
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
@@ -140,7 +140,7 @@ class FWViewImage(FWView) :
             self.set_pixmap_from_arr(img, set_def=False)
 
         elif e.key() in (Qt.Key_W, Qt.Key_D)  : 
-            change_def = e.key()==Qt.Key_D
+            change_def = e.key() == Qt.Key_D
             print('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
             v = ag.random_standard((4,), mu=0, sigma=200, dtype=np.int)
             rs = QRectF(v[0], v[1], v[2]+1000, v[3]+1000)
@@ -185,10 +185,10 @@ class FWViewImage(FWView) :
         ix, iy = int(floor(p.x())), int(floor(p.y()))
         v = None
         arr = self.arr
-        if ix<0\
-        or iy<0\
-        or iy>arr.shape[0]-1\
-        or ix>arr.shape[1]-1 : pass
+        if ix < 0\
+        or iy < 0\
+        or iy > arr.shape[0]-1\
+        or ix > arr.shape[1]-1 : pass
         else : v = self.arr[iy,ix]
         return ix, iy, v
 
