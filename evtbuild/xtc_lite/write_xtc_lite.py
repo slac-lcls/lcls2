@@ -36,7 +36,7 @@ def write_client(comm, ind):
 
     # uncomment for writing to n disks
 
-    file_name =path + '/%sxtc_lite_%i.xtc' % (ind, rank)
+    file_name = path + '/%sxtc_lite_%i.xtc' % (ind, rank)
 
     try:
         os.remove(file_name)
@@ -46,11 +46,11 @@ def write_client(comm, ind):
     # with open(file_name, 'wb') as f:
     ct = 0
     open_flags = (os.O_CREAT | os.O_WRONLY)
-    f=os.open(file_name, open_flags)
+    f = os.open(file_name, open_flags)
     written_mb = 0
     while True:
         os.write(f, out_img)
-        ct+=1
+        ct += 1
         written_mb += img_mb
         if ct%10 == 0:
             pass
