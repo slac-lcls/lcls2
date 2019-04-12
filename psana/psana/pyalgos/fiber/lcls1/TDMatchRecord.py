@@ -116,7 +116,7 @@ class TDMatchRecord(TDPeakRecord, TDNodeRecord) :
         sp.set_date_time(sp.tsec) #sp.date, sp.time = '2015-11-13', '16:00:00'
         sp.sonc = sp.peak_son()
         sp.dphi000 = sp.phi
-        sp.dphi180 = sp.phi - 180 if sp.phi>-90 else sp.phi + 180 # +360-180
+        sp.dphi180 = sp.phi - 180 if sp.phi > -90 else sp.phi + 180 # +360-180
 
         sp.line  = line
         sp.empty = sp.empty_line()
@@ -132,7 +132,7 @@ class TDMatchRecord(TDPeakRecord, TDNodeRecord) :
     
     def empty_line(sp) :
         fmt = '%6d  %7.2f %7.2f %3d %3d %3d %9.6f %9.6f %9.6f %9.6f %9.6f'
-        z=0
+        z = 0
         return fmt % (z,z,z,z,z,z,z,z,z,z,z)       
 
 #------------------------------
