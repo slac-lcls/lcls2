@@ -35,7 +35,7 @@ class Test:
         try:
             for i in range(client_count):
               cli.append(self.launch_client(pid))
-              assert cli[i] != None,"client "+str(i)+ " launch failure"
+              assert cli[i] != None,"client "+str(i) + " launch failure"
         except:
             srv.kill()
             raise
