@@ -82,7 +82,7 @@ class CalibFile :
 
         if begin.isdigit() :
             self.begin = int(begin)
-            if self.begin>self.rnum_max : 
+            if self.begin > self.rnum_max : 
                 self.set_invalid('WARNING! INVALID CALIBRATION FILE NAME "%d" - begin value is too big' % begin)
                 return
         else : 
@@ -91,7 +91,7 @@ class CalibFile :
 
         if end.isdigit() :
             self.end = int(end)
-            if self.end>self.rnum_max :
+            if self.end > self.rnum_max :
                 self.set_invalid('WARNING! INVALID CALIBRATION FILE NAME "%d" - end value is too big' % begin)
                 return
         elif end == 'end' :
@@ -167,7 +167,7 @@ def deploy_calib_array(cdir, src, type, run_start, run_end=None, arr=None, dcmts
     d['ctype'] = type
 
     # make list of comments
-    cmts=['%s %s'%(k.upper().ljust(11),v) for k,v in d.iteritems()]
+    cmts = ['%s %s'%(k.upper().ljust(11),v) for k,v in d.iteritems()]
     
     # save n-dimensional numpy array in the tmp text file
     fntmp = tempfile.NamedTemporaryFile(mode='r+b',suffix='.data')
@@ -212,7 +212,7 @@ def deploy_calib_file(cdir, src, type, run_start, run_end=None, ifname='', dcmts
     d = dict(dcmts)
     d['run']   = run_start
     d['fname'] = os.path.basename(fname)
-    d['ifname']= ifname
+    d['ifname'] = ifname
     d['src']   = src
     d['ctype'] = type
 
@@ -441,7 +441,7 @@ def test_deploy_calib_array() :
     type  = 'pedestals'
     run_start  = 9991
     run_end    = None
-    arr= gu.np.ones((32,185,388))
+    arr = gu.np.ones((32,185,388))
     cmts = {'exp':'cxi83714', 'ifname':'input-file-name', 'app':'my-app-name', 'comment':'my-comment'}
     deploy_calib_array(cdir, src, type, run_start, run_end, arr, cmts, fmt='%.1f', pbits=3)
 
@@ -465,11 +465,11 @@ def test_deploy_calib_file() :
 
 if __name__ == "__main__" :
 
-    if len(sys.argv)<2    : test01()
-    elif sys.argv[1]=='1' : test01() 
-    elif sys.argv[1]=='2' : test01() 
-    elif sys.argv[1]=='3' : test_deploy_calib_array() 
-    elif sys.argv[1]=='4' : test_deploy_calib_file() 
+    if len(sys.argv) < 2    : test01()
+    elif sys.argv[1] == '1' : test01() 
+    elif sys.argv[1] == '2' : test01() 
+    elif sys.argv[1] == '3' : test_deploy_calib_array() 
+    elif sys.argv[1] == '4' : test_deploy_calib_file() 
     else : print 'Non-expected arguments: sys.argv=', sys.argv
 
     sys.exit('End of %s' % sys.argv[0])
