@@ -187,7 +187,7 @@ def file_mode(fname) :
 def log_rec_on_start() :
     """Returns (str) record containing timestamp, login, host, cwd, and command line
     """
-    return '\n%s user:%s@%s cwd:%s\n  command:%s'%\
+    return '\n%s user:%s@%s cwd:%s\n  command:%s' %\
            (str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z'), get_login(), get_hostname(), get_cwd(), ' '.join(sys.argv))
 
 #------------------------------
@@ -217,9 +217,9 @@ def create_path(path, depth=6, mode=0o377) :
     subdirs = path.split('/')
     cpath = subdirs[0]
     for i,sd in enumerate(subdirs[:-1]) :
-        if i>0 : cpath += '/%s'% sd 
-        if i<depth : continue
-        if cpath=='' : continue
+        if i > 0 : cpath += '/%s' % sd 
+        if i < depth : continue
+        if cpath == '' : continue
         create_directory(cpath, mode)
 
     return os.path.exists(cpath)
@@ -305,7 +305,7 @@ def save_textfile(text, path, mode='w', verb=False) :
     if verb : print(msg)
     logger.debug(msg)
 
-    f=open(path, mode)
+    f = open(path, mode)
     f.write(text)
     f.close() 
 
@@ -318,7 +318,7 @@ def load_textfile(path, verb=False) :
     if verb : print(msg)
     logger.debug(msg)
 
-    f=open(path, 'r')
+    f = open(path, 'r')
     recs = f.read() # f.readlines()
     f.close() 
     return recs
@@ -346,7 +346,7 @@ def save_image_file(image, fname='image.png', verb=False) :
 
     msg = 'save_image_file %s' % fname
     fields = os.path.splitext(fname)
-    if len(fields)>1 and fields[1] in ['.gif', '.pdf', '.eps', '.png', '.jpg', '.jpeg', '.tiff'] : 
+    if len(fields) > 1 and fields[1] in ['.gif', '.pdf', '.eps', '.png', '.jpg', '.jpeg', '.tiff'] : 
         scim.imsave(fname, image) 
     else :
         fnametxt = '%s.txt' % fname
@@ -377,8 +377,8 @@ def print_command_line_parameters(parser) :
     opts = vars(popts)                       # dict of options
     defs = vars(parser.get_default_values()) # dict of default options
 
-    print('Command:\n ', ' '.join(sys.argv)+\
-          '\nArgument list: %s\nOptional parameters:\n' % str(args)+\
+    print('Command:\n ', ' '.join(sys.argv) +\
+          '\nArgument list: %s\nOptional parameters:\n' % str(args) +\
           '  <key>      <value>              <default>')
     for k,v in opts.items() :
         print('  %s %s %s' % (k.ljust(10), str(v).ljust(20), str(defs[k]).ljust(20)))
@@ -484,7 +484,7 @@ def print_parser(parser) :
     opts = vars(popts)
     defs = vars(parser.get_default_values())
 
-    print('Arguments: %s\nOptional parameters:\n' % str(args)+\
+    print('Arguments: %s\nOptional parameters:\n' % str(args) +\
           '<key>      <value>          <default>')
     for k,v in opts.items() :
         print('%s %s %s' % (k.ljust(10), str(v).ljust(16), str(defs[k]).ljust(16)))
@@ -519,7 +519,7 @@ if __name__ == "__main__" :
     from psana.pyalgos.generic.NDArrGenerators import random_standard
 
     image = random_standard()
-    verbosity=True
+    verbosity = True
     save_image_tiff(image, fname='image.tiff', verb=verbosity)
     save_image_file(image, fname='image.png',  verb=verbosity)
     save_image_file(image, fname='image.xyz',  verb=verbosity)
