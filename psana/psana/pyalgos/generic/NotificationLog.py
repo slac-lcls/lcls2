@@ -58,9 +58,9 @@ def create_path(path, depth=5, mode=0o777) :
     #print('XXX subdirs', subdirs)
     cpath = ''
     for i,sd in enumerate(subdirs[:-1]) :
-        cpath += '/%s'% sd 
+        cpath += '/%s' % sd 
         #print('create_path %d: %s' % (i, cpath))
-        if i<depth : continue
+        if i < depth : continue
         create_directory(cpath, mode)
 
     return os.path.exists(cpath)
@@ -79,7 +79,7 @@ def note_fname() :
 def save_textfile(text, path, mode='w') :
     """Saves text in file specified by path. mode: 'w'-write, 'a'-append 
     """
-    f=open(path,mode)
+    f = open(path,mode)
     f.write(text)
     f.close() 
 
@@ -137,7 +137,7 @@ class NotificationLog :
 
 
     def add_record(self, mode='enabled') : #  mode='self-disabled'
-        if mode=='self-disabled' and self.is_permitted() : return
+        if mode == 'self-disabled' and self.is_permitted() : return
         d = self.get_info_dict()
         rec = ' '.join(['%s:%s'%(k,str(v)) for k,v in d.iteritems()])
         #print('add_record rec:', rec)
