@@ -121,10 +121,10 @@ class PvLinkId(QtWidgets.QWidget):
         value = self.pv.get()
         itype = (int(value)>>24)&0xff
         self.linkType.setText(linkType[itype])
-        if (itype == 0xfb or itype == 0xfc) and (value&0xffff)!=0:
+        if (itype == 0xfb or itype == 0xfc) and (value&0xffff) != 0:
             ip_addr = '172.21'+'.%u'%((int(value)>>8)&0xff)+'.%u'%((int(value)>>0)&0xff)
             host = socket.gethostbyaddr(ip_addr)[0].split('.')[0].split('-')[-1]
-            if itype == 0xfc and value&0xff0000!=0:
+            if itype == 0xfc and value&0xff0000 != 0:
                 host = host+'.%x'%((value>>16)&0xff)
             self.linkSrc.setText(host)
         else:
