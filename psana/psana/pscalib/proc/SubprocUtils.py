@@ -75,8 +75,8 @@ def _str_jobid(msg) :
        E.g. returns '849160' from msg='Job <849160> is submitted to queue <psnehq>.'
     """
     fields = msg.split()
-    if len(fields)<2 : return None
-    if fields[0] !='Job' : return None
+    if len(fields) < 2 : return None
+    if fields[0] != 'Job' : return None
     return fields[1].lstrip('<').rstrip('>')
 
 #------------------------------
@@ -91,7 +91,7 @@ def batch_job_submit(cmd='bsub -q psnehq -o log-%%J.txt ls -l', env=None, shell=
 def _str_status(msg) :
     lines  = msg.split('\n')
     #for line in lines : print('batch_job_status: ' + line)
-    if len(lines)<2 : return None
+    if len(lines) < 2 : return None
     line   = lines[1].strip('\n')
     status = line.split()[2]
     #print('status: ', status)
@@ -161,12 +161,12 @@ def batch_job_ids(status=None, user=None, qname=None, addopts='') : # qname='psn
     job_ids = []
 
     lines  = out.split('\n')
-    if len(lines)<2 : return job_ids
+    if len(lines) < 2 : return job_ids
 
     for i, line in enumerate(lines) :
         if not line : continue # skip empty lines
         fields = line.split()
-        if i==0 :
+        if i == 0 :
            if fields[0] != 'JOBID' : return job_ids
            continue
         #print(line)
@@ -222,7 +222,7 @@ if __name__ == "__main__" :
     out, err = batch_job_kill(jobid, qname, addopts)
     print('qname  : %s'  % qname)
     print('jobid  : "%s"' % jobid)
-    print('addopts: %s'% addopts)
+    print('addopts: %s' % addopts)
     print('out:\n"%s"' % out)
     print('err:\n"%s"' % err)
 
@@ -250,10 +250,10 @@ if __name__ == "__main__" :
 
   def usage() :
     return  'python PSCalib/src/SubprocUtils.py <test_name> [<jobid>]\n'\
-           +'       <test_name> = 1  - test subproc\n'\
-           +'                   = 2  - test batch_job_submit\n'\
-           +'                   = 3  - test number_of_batch_jobs\n'\
-           +'                   = 4  - test batch_job_kill, NEEDS IN PARAMETER <jobid>\n'
+           + '       <test_name> = 1  - test subproc\n'\
+           + '                   = 2  - test batch_job_submit\n'\
+           + '                   = 3  - test number_of_batch_jobs\n'\
+           + '                   = 4  - test batch_job_kill, NEEDS IN PARAMETER <jobid>\n'
 
 #------------------------------
 
@@ -262,20 +262,20 @@ if __name__ == "__main__" :
     import sys
 
     print(80*'_')
-    tname = sys.argv[1] if len(sys.argv)>1 else '1'
+    tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     t0_sec = time()
 
-    if   tname=='1': test_subproc(cmd='ls -ltra')
-    elif tname=='2': test_batch_job_submit(cmd='bsub -q psnehq -o log-%J.txt ls -l', env=None, shell=False)
-    elif tname=='3': test_number_of_batch_jobs(user=None, qname='psnehq')
-    elif tname=='4': test_batch_job_kill(sys.argv[2], user=None, qname='psnehq')
-    elif tname=='5': test_batch_job_ids(status=None, user=None, qname='psnehq')
-    elif tname=='6': test_batch_job_ids(status='SSUSP', user=None, qname=None)
-    elif tname=='7': test_is_text()
+    if   tname == '1': test_subproc(cmd='ls -ltra')
+    elif tname == '2': test_batch_job_submit(cmd='bsub -q psnehq -o log-%J.txt ls -l', env=None, shell=False)
+    elif tname == '3': test_number_of_batch_jobs(user=None, qname='psnehq')
+    elif tname == '4': test_batch_job_kill(sys.argv[2], user=None, qname='psnehq')
+    elif tname == '5': test_batch_job_ids(status=None, user=None, qname='psnehq')
+    elif tname == '6': test_batch_job_ids(status='SSUSP', user=None, qname=None)
+    elif tname == '7': test_is_text()
     else : sys.exit ('Not recognized test name: "%s"' % tname)
     print('Test %s time (sec) = %.3f' % (tname, time()-t0_sec))
 
-    if len(sys.argv)<2 : print(usage())
+    if len(sys.argv) < 2 : print(usage())
 
     sys.exit ('End of %s' % sys.argv[0])
 
