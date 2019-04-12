@@ -36,6 +36,7 @@ def addTiming(sec):
     pvdb[sec+':FIDs'       ] = {'type' : 'float', 'value': 0}
     pvdb[sec+':SOFs'       ] = {'type' : 'float', 'value': 0}
     pvdb[sec+':EOFs'       ] = {'type' : 'float', 'value': 0}
+    pvdb[sec+':RxAlign'    ] = {'type' : 'int', 'count' : 65, 'value':[0]*65 }
     
 def main():
     global pvdb

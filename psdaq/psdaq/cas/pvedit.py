@@ -146,16 +146,15 @@ class PvLabel(QtWidgets.QWidget):
             s = QString('fail')
             try:
                 if self.isTime:
-                    dat = QtCore.QDateTime(QtCore.QDate(1990,1,1))
-                    dat.addSecs(int(q)>>32)
+                    dat = QtCore.QDateTime(QtCore.QDate(1990,1,1),QtCore.QTime(0,0,0),QtCore.Qt.UTC).addSecs(int(q)).toLocalTime()
                     s = QString(dat.toString("yyyy-MMM-dd HH:mm:ss"))
                 elif self.isInt:
-                    s = QString("%s (0x%s)") % ((QString(int(q))),QString(format(int(q)&0xffffffff, 'x')))
+                    s = QString("%s (0x%s)") % ((QString('{:,}'.format(int(q)))),QString(format(int(q)&0xffffffff, 'x')))
                     if dq is not None:
                         s = s + QString(" [%s (0x%s)]") % ((QString(int(dq))),(format(int(dq)&0xffffffff, 'x')))
                 else:
                     if self.scale is None:
-                        s = QString(q)
+                        s = QString('{:,}'.format(q))
                         if dq is not None:
                             s = s + QString(" [%s]") % (QString(dq))
                     else:

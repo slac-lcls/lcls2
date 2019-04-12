@@ -73,7 +73,6 @@ def main():
         pvdb[stationstr+':%d:AnaTag'       %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:AnaTagPush'   %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:AnaTagWrite'  %i] = {'type' : 'int'}
-        pvdb[stationstr+':%d:PipelineDepth'%i] = {'type' : 'int'}
         #  Generic message interface
         pvdb[stationstr+':%d:MsgHeader'    %i] = {'type' : 'int'}
         pvdb[stationstr+':%d:MsgInsert'    %i] = {'type' : 'int', 'value': 0}

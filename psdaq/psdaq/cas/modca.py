@@ -213,6 +213,7 @@ def FrontPanelAMC(pvbase,iamc):
 def DeadTime(pvbase,parent):
 
     deadbox = QtWidgets.QWidget()
+    deadlo = QtWidgets.QVBoxLayout()
     deadgrid = QtWidgets.QGridLayout()
 
     textWidgets = []
@@ -252,8 +253,43 @@ def DeadTime(pvbase,parent):
         print(ppvbase)
         parent.deadflnk.append( PvDblArray( ppvbase+'DeadFLnk', textWidgets[j] ) )
 
-    deadbox.setLayout(deadgrid)
+    deadlo.addLayout(deadgrid)
+    deadlo.addStretch()
+    deadbox.setLayout(deadlo)
     return deadbox
+
+class PvRxAlign(QtWidgets.QWidget):
+    def __init__(self,pvname,title):
+        super(PvRxAlign, self).__init__()
+        layout = QtWidgets.QHBoxLayout()
+
+        pv = Pv(pvname)
+        v = pv.get()
+
+        label = title+'\n'+str(v[0])
+        layout.addWidget( QtWidgets.QLabel(label) )
+
+        self.image   = QtGui.QImage(64,20,QtGui.QImage.Format_Mono)
+        painter = QtGui.QPainter(self.image)
+        painter.fillRect(0,0,64,20,QtGui.QColor(255,255,255))
+
+        painter.setBrush(QtGui.QColor(0,0,255))   # blue
+        max = 1
+        for i in range(64):
+            if v[i+1] > max:
+                max = v[i+1]
+
+        for i in range(64):
+            q = 20*v[i+1]/max
+            painter.drawLine(i,20-q,i,20)
+
+        painter.setBrush(QtGui.QColor(255,0,0))   # red
+
+        canvas = QtWidgets.QLabel()
+        canvas.setPixmap(QtGui.QPixmap.fromImage(self.image))
+
+        layout.addWidget( canvas )
+        self.setLayout(layout)
 
 def addTiming(self,pvbase):
     lor = QtWidgets.QVBoxLayout()
@@ -269,6 +305,7 @@ def addTiming(self,pvbase):
     PvLabel(self,lor, pvbase, "FIDs"       )
     PvLabel(self,lor, pvbase, "SOFs"       )
     PvLabel(self,lor, pvbase, "EOFs"       )
+    lor.addWidget( PvRxAlign(pvbase+'RxAlign','RxAlign') )
     lor.addStretch()
     w = QtWidgets.QWidget()
     w.setLayout(lor)
@@ -285,7 +322,7 @@ class PvMmcm(QtWidgets.QWidget):
 
         v0 = int(v[0])
         iedge   = v0 & 0xffff
-        inum    = (v0>>16)&0x3fff
+        inum    = (v0>>16)&0x1fff
         ibusy   = (v0>>30)&1
         ilocked = (v0>>31)&1
         
@@ -331,9 +368,9 @@ def addCuTab(self,pvbase):
     LblEditIntX( lor, pvbase+'XTPG:', 'CuInput'   )
     LblEditIntX( lor, pvbase+'XTPG:', 'CuBeamCode')
     LblEditIntX( lor, pvbase+'XTPG:', 'CuDelay'   )
-    PvLabel(self,lor, pvbase+'XTPG:', 'PulseId')
+    PvLabel(self,lor, pvbase+'XTPG:', 'PulseId', isInt=True)
     PvLabel(self,lor, pvbase+'XTPG:', 'TimeStamp', isTime=True)
-    PvLabel(self,lor, pvbase+'XTPG:', 'FiducialIntv')
+    PvLabel(self,lor, pvbase+'XTPG:', 'FiducialIntv', isInt=True)
     LblCheckBox( lor, pvbase+'XTPG:', 'FiducialErr', enable=False)
     LblPushButtonX( lor, pvbase+'XTPG:', 'ClearErr' )
 
