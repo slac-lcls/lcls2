@@ -182,7 +182,7 @@ def _uri(host, port, user, upwd) :
     rhs = '%s:%s' % (host, str(port))
 
     # for Calibration DB client
-    if host==cc.HOST and port==cc.PORT :
+    if host == cc.HOST and port == cc.PORT :
         rhs = '%s:%s@%s' % (user, cc.USERPW if upwd in ('', None) else upwd, rhs)
 
     # for all other mongod clients
@@ -211,7 +211,7 @@ def is_valid_port(port) :
     if iport is None :
         logger.warning('parameter port "%s" does not represent integer value' % str(port))
         return False
-    elif iport<0 or iport>65535 : 
+    elif iport < 0 or iport > 65535 : 
         logger.warning('parameter port "%d" must be an integer between 0 and 65535' % iport)
         return False
     return True
@@ -724,7 +724,7 @@ def insert_data(data, fs) :
     #    s = dict(data)
     #    serialize_dict(s)
     else :
-        logger.warning('DATA TYPE "%s" IS NOT "str" OR "numpy.ndarray" CONVERTED BY pickle.dumps ...'%\
+        logger.warning('DATA TYPE "%s" IS NOT "str" OR "numpy.ndarray" CONVERTED BY pickle.dumps ...' %\
                        type(data).__name__)        
         s = pickle.dumps(data)
         
@@ -751,7 +751,7 @@ def insert_data_and_doc(data, fs, col, **kwargs) :
     """
     if not is_valid_fs(fs)\
     or not is_valid_collection(col) :
-        logger.warning('data %s IS NOT INSERTED in the\n  ==> fs %s\n  ==> collection %s'%\
+        logger.warning('data %s IS NOT INSERTED in the\n  ==> fs %s\n  ==> collection %s' %\
                        (str(data), str(fs), str(col)))
         return None, None
 
@@ -1037,7 +1037,7 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     """
     cond = (run is not None) or (time_sec is not None) or (vers is not None)
     assert cond, 'Not sufficeint info for query: run, time_sec, and vers are None'
-    query={'detector':det, 'ctype':ctype}
+    query = {'detector':det, 'ctype':ctype}
     if run is not None : 
         query['run']     = {'$lte' : run}
         #query['run_end'] = {'$gte' : run}
@@ -1077,8 +1077,8 @@ def find_doc(col, query={'ctype':'pedestals'}) :
     docs = find_docs(col, query)
 
     if (docs is None)\
-    or (docs.count()==0) :
-        logger.warning('DB %s collection %s does not have document for query %s'%\
+    or (docs.count() == 0) :
+        logger.warning('DB %s collection %s does not have document for query %s' %\
                        (col.database.name, col.name, str(query)))
         return None
 
@@ -1190,7 +1190,7 @@ def database_info(client, dbname, level=10, gap='  ') :
     db = database(client, dbname)
     cnames = collection_names(db)
     s += '\n%sDB %s contains %d collections: %s' % (gap, dbname.ljust(24), len(cnames), str(cnames))
-    if level==1 : return s
+    if level == 1 : return s
 
     for cname in cnames :
       col = collection(db, cname) # or db[cname]
@@ -1200,7 +1200,7 @@ def database_info(client, dbname, level=10, gap='  ') :
       s += '\n%s%sCOL %s contains %d docs' % (gap, gap, cname.ljust(12), docs.count())
       #for idoc, doc in enumerate(docs) :
 
-      if level==2 : continue
+      if level == 2 : continue
 
       if col.name in ('fs.chunks', 'fs.files') : continue
 
@@ -1246,12 +1246,12 @@ def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  ') :
     #s = '\nMongoDB client host:%s port:%d' % (client_host(_client), client_port(_client))
     dbnames = database_names(_client)
     s = '\n%sClient on %s:%d contains %d databases:' % (gap, host, port, len(dbnames)) #, ', '.join(dbnames))
-    if level==1 : return s
+    if level == 1 : return s
     for idb, dbname in enumerate(dbnames) :
         db = database(_client, dbname) # client[dbname]
         cnames = sorted(collection_names(db))
         s += '\n%sDB %s has %2d collections: %s' % (gap, dbname.ljust(20), len(cnames), str(cnames))
-        if level==2 : continue
+        if level == 2 : continue
         for icol, cname in enumerate(cnames) :
             col = collection(db, cname) # or db[cname]
             docs = col.find()
@@ -1261,7 +1261,7 @@ def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  ') :
                 doc = docs[0]
                 s += ': %s' % (str(doc.keys()))
                 #logger.debug('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
-            if level==3 : continue
+            if level == 3 : continue
     return s
 
 #------------------------------
@@ -1337,7 +1337,7 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' 
 
     if control['data'] :
         fname = '%s.data' % prefix
-        if data_type=='ndarray':
+        if data_type == 'ndarray':
             from psana.pscalib.calib.NDArrIO import save_txt # load_txt
             save_txt(fname, data, cmts=(), fmt='%.3f')
             logger.info('saved file: %s' % fname)
@@ -1348,7 +1348,7 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' 
         elif ctype == 'geometry' : 
             gu.save_textfile(data, fname, mode='w', verb=verb)
 
-        elif data_type=='str' and (ctype in ('lasingoffreference', 'pedestals')) : 
+        elif data_type == 'str' and (ctype in ('lasingoffreference', 'pedestals')) : 
             logger.info('save_doc XTCAV IS RECOGNIZED ctype "%s"' % ctype)
             from psana.pscalib.calib.MDBConvertUtils import serialize_dict
             s = dict(data)
@@ -1446,7 +1446,7 @@ if __name__ == "__main__" :
 
         dt_sec = time() - t0_sec
         t_data += dt_sec
-        logger.info('Insert data in fs of dbs: %s and %s, time %.6f sec '%\
+        logger.info('Insert data in fs of dbs: %s and %s, time %.6f sec ' %\
                      (fs_exp._GridFS__database.name, fs_det._GridFS__database.name, dt_sec))
 
     logger.info('Average time to insert data and two docs: %.6f sec' % (t_data/nloops))
@@ -1461,9 +1461,9 @@ if __name__ == "__main__" :
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(**kwa)
 
     t0_sec = time()
-    data_type='any' 
-    if tname == '11' : data_type='str' 
-    if tname == '12' : data_type='ndarray' 
+    data_type = 'any' 
+    if tname == '11' : data_type = 'str' 
+    if tname == '12' : data_type = 'ndarray' 
 
     doc = find_doc(col_det, query={'data_type' : data_type})
     logger.info('Find doc time %.6f sec' % (time()-t0_sec))
@@ -1521,12 +1521,12 @@ if __name__ == "__main__" :
         if dbname[:4] != prefix: 
             logger.info('     skip non-calib dbname: %s' % dbname)
             continue
-        if level==1 : continue
+        if level == 1 : continue
         for icol, cname in enumerate(cnames) :
             col = collection(db, cname) # or db[cname]
             docs = col.find()
             logger.info('     COL %2d: %12s #docs: %d' % (icol, cname.ljust(12), docs.count()))
-            if level==2 : continue
+            if level == 2 : continue
             #for idoc, doc in enumerate(docs) :
             if docs.count() > 0 :
                 #logger.info('%s %4d  %s %s' % (10*' ', idoc, doc['time_stamp'], doc['ctype']))
@@ -1630,7 +1630,7 @@ if __name__ == "__main__" :
     elif tname == '7' : test_calib_constants_nda()
     elif tname == '8' : test_calib_constants_text()
     elif tname == '9' : test_calib_constants_dict()
-    elif tname =='10' : test_get_data_for_id(tname)
+    elif tname == '10' : test_get_data_for_id(tname)
     elif tname in ('11','12','13') : test_get_data(tname)
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
