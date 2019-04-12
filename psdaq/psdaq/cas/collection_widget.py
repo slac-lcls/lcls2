@@ -32,7 +32,7 @@ class CollectionWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self.context = zmq.Context(1)
         self.socket = self.context.socket(zmq.REQ)
-        self.socket.connect('tcp://drp-tst-acc06:%d' %rep_port(partition))
+        self.socket.connect('tcp://drp-tst-acc06:%d' % rep_port(partition))
 
         layout = QtWidgets.QGridLayout()
         layout.addWidget(QtWidgets.QLabel('Collection') , 0, 0, 1, 3)
