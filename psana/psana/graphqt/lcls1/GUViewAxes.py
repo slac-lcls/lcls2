@@ -136,15 +136,15 @@ def test_guiview(tname) :
     print '%s:' % sys._getframe().f_code.co_name
     app = QtGui.QApplication(sys.argv)
     w = None
-    rectax=QtCore.QRectF(0, 0, 100, 100)
-    if   tname == '0': w=GUViewAxes(None, rectax, origin='DL', scale_ctl='HV', margl=0.12, margr=0.10, margt=0.06, margb=0.06)
-    elif tname == '1': w=GUViewAxes(None, rectax, origin='DL', scale_ctl='')
-    elif tname == '2': w=GUViewAxes(None, rectax, origin='DL', scale_ctl='H')
-    elif tname == '3': w=GUViewAxes(None, rectax, origin='DL', scale_ctl='V')
-    elif tname == '4': w=GUViewAxes(None, rectax, origin='UL', rulers='TRLB', margl=0.02, margr=0.12, margt=0.02, margb=0.06)
-    elif tname == '5': w=GUViewAxes(None, rectax, origin='DL', rulers='TRLB', margl=0.02, margr=0.12, margt=0.06, margb=0.02)
-    elif tname == '6': w=GUViewAxes(None, rectax, origin='DR', rulers='TRLB', margl=0.12, margr=0.12, margt=0.06, margb=0.06)
-    elif tname == '7': w=GUViewAxes(None, rectax, origin='UR', rulers='TRLB', margl=0.12, margr=0.12, margt=0.06, margb=0.06)
+    rectax = QtCore.QRectF(0, 0, 100, 100)
+    if   tname == '0': w = GUViewAxes(None, rectax, origin='DL', scale_ctl='HV', margl=0.12, margr=0.10, margt=0.06, margb=0.06)
+    elif tname == '1': w = GUViewAxes(None, rectax, origin='DL', scale_ctl='')
+    elif tname == '2': w = GUViewAxes(None, rectax, origin='DL', scale_ctl='H')
+    elif tname == '3': w = GUViewAxes(None, rectax, origin='DL', scale_ctl='V')
+    elif tname == '4': w = GUViewAxes(None, rectax, origin='UL', rulers='TRLB', margl=0.02, margr=0.12, margt=0.02, margb=0.06)
+    elif tname == '5': w = GUViewAxes(None, rectax, origin='DL', rulers='TRLB', margl=0.02, margr=0.12, margt=0.06, margb=0.02)
+    elif tname == '6': w = GUViewAxes(None, rectax, origin='DR', rulers='TRLB', margl=0.12, margr=0.12, margt=0.06, margb=0.06)
+    elif tname == '7': w = GUViewAxes(None, rectax, origin='UR', rulers='TRLB', margl=0.12, margr=0.12, margt=0.06, margb=0.06)
     else :
         print 'test %s is not implemented' % tname
         return
