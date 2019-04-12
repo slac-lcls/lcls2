@@ -23,19 +23,19 @@ def proc_info(parser) :
     INS = None if ins is None else ins.upper()
     t0_sec = time()
 
-    tname = pargs[0] if len(pargs)==1 else '0'
+    tname = pargs[0] if len(pargs) == 1 else '0'
 
-    if   tname=='0' : rpu.print_all_experiments()
-    elif tname=='1' : rpu.print_datasets_new_under_control(procname='pixel_status', add_to_log=app)
-    elif tname=='2' : rpu.print_datasets_new(INS, procname='pixel_status', add_to_log=app)
-    elif tname=='3' : rpu.print_experiments(INS) # all
-    elif tname=='4' : rpu.print_datasets_old(INS, procname='pixel_status', move_to_archive=app)
-    elif tname=='5' : rpu.print_experiments_count_runs()
+    if   tname == '0' : rpu.print_all_experiments()
+    elif tname == '1' : rpu.print_datasets_new_under_control(procname='pixel_status', add_to_log=app)
+    elif tname == '2' : rpu.print_datasets_new(INS, procname='pixel_status', add_to_log=app)
+    elif tname == '3' : rpu.print_experiments(INS) # all
+    elif tname == '4' : rpu.print_datasets_old(INS, procname='pixel_status', move_to_archive=app)
+    elif tname == '5' : rpu.print_experiments_count_runs()
 
     else : sys.exit ('Not recognized command "%s"' % tname)
     print('Command "%s" consumed time (sec) = %.3f' % (tname, time()-t0_sec))
 
-    if len(sys.argv)<2 : print(usage())
+    if len(sys.argv) < 2 : print(usage())
 
 #------------------------------
 
