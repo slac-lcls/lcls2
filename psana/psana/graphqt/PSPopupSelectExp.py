@@ -44,7 +44,7 @@ def years_and_runs(lst_exp) :
 def lst_exp_for_year(lst_exp, year) :
     str_year = year if isinstance(year,str) else '%4d'%year
     pattern = str_year[-2:] # two last digits if the year
-    return [exp for exp in lst_exp if exp[-2:]==pattern]
+    return [exp for exp in lst_exp if exp[-2:] == pattern]
 
 #------------------------------  
 
@@ -194,7 +194,7 @@ if __name__ == "__main__" :
 
     w = PSPopupSelectExp(parent, lst_exp)
     ##w.show()
-    resp=w.exec_()
+    resp = w.exec_()
     if   resp == QDialog.Accepted : return w.selectedName()
     elif resp == QDialog.Rejected : return None
     else : return None
