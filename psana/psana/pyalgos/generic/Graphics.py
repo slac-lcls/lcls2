@@ -182,7 +182,7 @@ def proc_stat(weights, bins) :
     if sum_w <= 0 : return  0, 0, 0, 0, 0, 0, 0, 0, 0
     
     sum_w2 = (weights*weights).sum()
-    neff   = sum_w*sum_w/sum_w2 if sum_w2>0 else 0
+    neff   = sum_w*sum_w/sum_w2 if sum_w2 > 0 else 0
     sum_1  = (weights*center).sum()
     mean = sum_1/sum_w
     d      = center - mean
@@ -196,7 +196,7 @@ def proc_stat(weights, bins) :
     #err2 = sum_2/sum_w - mean*mean
     #err  = math.sqrt(err2)
 
-    rms  = math.sqrt(m2) if m2>0 else 0
+    rms  = math.sqrt(m2) if m2 > 0 else 0
     rms2 = m2
     
     err_mean = rms/math.sqrt(neff)
@@ -204,11 +204,11 @@ def proc_stat(weights, bins) :
 
     skew, kurt, var_4 = 0, 0, 0
 
-    if rms>0 and rms2>0 :
+    if rms > 0 and rms2 > 0 :
         skew  = m3/(rms2 * rms) 
         kurt  = m4/(rms2 * rms2) - 3
-        var_4 = (m4 - rms2*rms2*(neff-3)/(neff-1))/neff if neff>1 else 0
-    err_err = math.sqrt(math.sqrt(var_4)) if var_4>0 else 0 
+        var_4 = (m4 - rms2*rms2*(neff-3)/(neff-1))/neff if neff > 1 else 0
+    err_err = math.sqrt(math.sqrt(var_4)) if var_4 > 0 else 0 
     #print  'mean:%f, rms:%f, err_mean:%f, err_rms:%f, neff:%f' % (mean, rms, err_mean, err_rms, neff)
     #print  'skew:%f, kurt:%f, err_err:%f' % (skew, kurt, err_err)
     return mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w
@@ -348,7 +348,7 @@ def hist1d(arr, bins=None, amp_range=None, weights=None, color=None, show_stat=T
     """Makes historgam from input array of values (arr), which are sorted in number of bins (bins) in the range (amp_range=(amin,amax))
     """
     #print 'hist1d: title=%s, size=%d' % (title, arr.size)
-    if arr.size==0 : return None, None, None
+    if arr.size == 0 : return None, None, None
     fig = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
     if   titwin is not None : fig.canvas.set_window_title(titwin)
     elif title  is not None : fig.canvas.set_window_title(title)
@@ -491,13 +491,13 @@ def do_test() :
     from time import time
     from psana.pyalgos.generic.NDArrGenerators import random_standard; global random_standard
 
-    if len(sys.argv)==1   :
+    if len(sys.argv) == 1   :
         print('Use command > python %s <test-number [1-5]>' % sys.argv[0])
         sys.exit ('Add <test-number> in command line...')
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print(50*'_', '\nTest %s' % tname)
-    t0_sec=time()
+    t0_sec = time()
     if   tname == '1': test01()
     elif tname == '2': test02()
     elif tname == '3': test03()
