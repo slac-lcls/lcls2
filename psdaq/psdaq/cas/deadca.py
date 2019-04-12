@@ -86,7 +86,7 @@ class PvLabel:
                     if dq is not None:
                         v = v + QString(" [%s]") % (QString(dq[i]))
                         #v = v + ' [' + '%f'%dq[i] + ']'
-                    if ((i%8)==7):
+                    if ((i%8) == 7):
                         v = v + '\n'
                 s = QString(v)
 
