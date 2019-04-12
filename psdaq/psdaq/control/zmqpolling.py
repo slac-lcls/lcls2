@@ -81,7 +81,7 @@ if __name__ == "__main__":
         if ct == 0:
             dgrm = ds.configs[0]
             serv = 2
-        elif ct>10:
+        elif ct > 10:
             break
         else:
             dgrm = evt.dgrams[0]
