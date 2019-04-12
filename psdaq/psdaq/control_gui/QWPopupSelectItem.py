@@ -69,7 +69,7 @@ class QWPopupSelectItem(QDialog) :
         self.layout().setContentsMargins(0,0,0,0)
 
         width  = min(self.nchars*12, 300) + 20
-        height = min(self.nrows *20, 500) + 2
+        height = min(self.nrows * 20, 500) + 2
         self.setFixedSize(width,height)
 
         #self.but_cancel.setStyleSheet(style.styleButton)
@@ -122,7 +122,7 @@ class QWPopupSelectItem(QDialog) :
 def popup_select_item_from_list(parent, lst, min_height=600, dx=-110, dy=-50) :
     w = QWPopupSelectItem(parent, lst)
     w.move(QCursor.pos().__add__(QPoint(dx,dy)))
-    resp=w.exec_()
+    resp = w.exec_()
     #if   resp == QDialog.Accepted : return w.selectedName()
     #elif resp == QDialog.Rejected : return None    
     #else : return None
