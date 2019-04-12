@@ -78,8 +78,8 @@ class QWEditText(QWidget) :
     def set_tool_tips(self):
         self.setToolTip('Text editor')
         self.box_more.setToolTip('More options:'\
-                                +'\n * Load content from file'\
-                                +'\n * Save content in file')
+                                + '\n * Load content from file'\
+                                + '\n * Save content in file')
 
     def set_style(self):
         #self.setFixedWidth(200)
@@ -225,8 +225,8 @@ class QWEditText(QWidget) :
     def on_box_more(self, ind) :
         opt = self.MORE_OPTIONS[ind]
         logger.info('CGWConfigEditor selected option %s' % opt)
-        if   ind==1 : self.on_but_load()
-        elif ind==2 : self.on_but_save()
+        if   ind == 1 : self.on_but_load()
+        elif ind == 2 : self.on_but_save()
         self.box_more.setCurrentIndex(0)
 
 #--------------------
