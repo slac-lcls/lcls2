@@ -58,7 +58,7 @@ def select_color(colini=Qt.blue, parent=None):
     w = qcd(colini, parent)
     w.setOptions(qcd.ShowAlphaChannel)# | qcd.DontUseNativeDialog | qcd.NoButtons
     res = w.exec_()
-    color=w.selectedColor()
+    color = w.selectedColor()
     #color = QColorDialog.getColor()
     return None if color is None else color # QColor or None
 
@@ -288,12 +288,12 @@ if __name__ == "__main__" :
         logger.debug('resp: %s' % resp)
 
     elif tname == '3':
-        parent=None; path0='./'; title='get_save_fname_through_dialog_box'
+        parent = None; path0 = './'; title = 'get_save_fname_through_dialog_box'
         resp = get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt')
         logger.debug('resp: %s' % resp)
 
     elif tname == '4': 
-        parent=None; path0='./'; title='get_open_fname_through_dialog_box'
+        parent = None; path0 = './'; title = 'get_open_fname_through_dialog_box'
         resp = get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt')
         logger.debug('resp: %s' % resp)
 
