@@ -5,7 +5,9 @@ add_library(cphw SHARED
     AmcTiming.cc
     AxiVersion.cc
     GthEyeScan.cc
+    GthRxAlign.cc
     HsRepeater.cc
+    Logging.cc
     RingBuffer.cc
     TimingRx.cc
     XBar.cc
@@ -19,7 +21,9 @@ add_library(cphwr SHARED
     AmcTiming.cc
     AxiVersion.cc
     GthEyeScan.cc
+    GthRxAlign.cc
     HsRepeater.cc
+    Logging.cc
     RingBuffer.cc
     TimingRx.cc
     XBar.cc
