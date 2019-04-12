@@ -80,7 +80,7 @@ def entropy(nda) :
 
     prob_h = hist_probabilities(unda)
 
-    p_log2p_nda = [p*np.log2(p) for p in prob_h if p>0]
+    p_log2p_nda = [p*np.log2(p) for p in prob_h if p > 0]
     ent = -np.sum(p_log2p_nda)
 
     #print_ndarr(hist_values(nda), name='Histogram of uint16 values', first=1500, last=1520)
@@ -112,7 +112,7 @@ def entropy_v1(nda) :
     #prob_nda = prob_h[unda]    
     #p_log2p_nda = prob_nda * np.log2(prob_nda)
     #ent = -p_log2p_nda.sum()
-    p_log2p_nda = [p*np.log2(p) for p in prob_h if p>0]
+    p_log2p_nda = [p*np.log2(p) for p in prob_h if p > 0]
     ent = -np.sum(p_log2p_nda)
     return ent
 
@@ -123,11 +123,11 @@ def entropy_cpo(signal):
 
     Function returns entropy of a signal, which is 1-D numpy array
     '''
-    lensig=signal.size
-    symset=list(set(signal))
-    numsym=len(symset)
-    propab=[np.size(signal[signal==i])/(1.0*lensig) for i in symset]
-    ent=np.sum([p*np.log2(1.0/p) for p in propab])
+    lensig = signal.size
+    symset = list(set(signal))
+    numsym = len(symset)
+    propab = [np.size(signal[signal == i])/(1.0*lensig) for i in symset]
+    ent = np.sum([p*np.log2(1.0/p) for p in propab])
     return ent
 
 #------------------------------
