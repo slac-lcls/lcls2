@@ -78,10 +78,11 @@ namespace Pds {
       string     _module_prefix;
       string     _partition_prefix;
       unsigned   _shelf;
-      EpicsPVA*   _partPV;
-      EpicsPVA*    _paddrPV;
-      EpicsPVA*    _fwBuildPV;
-      EpicsPVA*    _mmcmPV[4];
+      EpicsPVA*  _partPV;
+      EpicsPVA*  _paddrPV;
+      EpicsPVA*  _fwBuildPV;
+      EpicsPVA*  _mmcmPV[4];
+      EpicsPVA*  _rxAlignPV[2];
       L0Stats    _s    [Pds::Xpm::Module::NPartitions];
       PVPStats*  _pvps [Pds::Xpm::Module::NPartitions];
       PVStats    _pvs;
@@ -112,6 +113,23 @@ static void fillMmcm( EpicsPVA*& pv, MmcmPhaseLock& mmcm ) {
       mmcm.ramAddr = j;
       unsigned q = mmcm.ramData;
       vec[j] = q;
+    }
+    pv->putFromVector<int>(freeze(vec));
+    pv = 0;
+  }
+}
+
+static void fillRxAlignPV( EpicsPVA*& pv, Pds::Cphw::GthRxAlign& align ) {
+  if (pv && pv->connected()) {
+    pvd::shared_vector<int> vec(65);
+    unsigned j=0,k=0;
+    vec[j++] = align.gthAlignLast &0x7f;
+    while(j < 65) {
+      unsigned v = align.gthAlign[k++];
+      vec[j++] = v&0xff; v>>=8;
+      vec[j++] = v&0xff; v>>=8;
+      vec[j++] = v&0xff; v>>=8;
+      vec[j++] = v&0xff; v>>=8;
     }
     pv->putFromVector<int>(freeze(vec));
     pv = 0;
@@ -150,12 +168,17 @@ void StatsTimer::_allocate()
 {
   //  Wait for module to become ready
   { 
-    _nmmcm = 3;
-    std::string bld = _dev._version.buildStamp();
-    if (bld.find("xtpg")!=std::string::npos) {
+    _nmmcm = 0;
+    if (Module::feature_rev()>0) {
       _nmmcm = 4;
       while(!_dev._mmcm_amc.ready()) {
-        printf("Waiting for XTPG phase lock\n");
+        printf("Waiting for XTPG phase lock: ready=[%c/%c]%c%c%c%c\n",
+               _dev._usTiming.RxRstDone==1 ? 'T':'F',
+               _dev._cuTiming.RxRstDone==1 ? 'T':'F',
+               _dev._mmcm[0].ready() ? 'T':'F',
+               _dev._mmcm[1].ready() ? 'T':'F',
+               _dev._mmcm[2].ready() ? 'T':'F',
+               _dev._mmcm_amc.ready()? 'T':'F');
         sleep(1);
       }
     }
@@ -183,11 +206,24 @@ void StatsTimer::_allocate()
     printf("fwbuildpv: %s\n", ostr.str().c_str());
     _fwBuildPV = new EpicsPVA(ostr.str().c_str(),256);  }
 
-  for(unsigned i=0; i<4; i++) {
-    std::stringstream ostr;
-    ostr << _module_prefix << ":XTPG:MMCM" << i;
-    printf("mmcmpv[%d]: %s\n", i, ostr.str().c_str());
-    _mmcmPV[i] = new EpicsPVA(ostr.str().c_str());  
+  if (Module::feature_rev()>0) {
+    for(unsigned i=0; i<4; i++) {
+      std::stringstream ostr;
+      ostr << _module_prefix << ":XTPG:MMCM" << i;
+      printf("mmcmpv[%d]: %s\n", i, ostr.str().c_str());
+      _mmcmPV[i] = new EpicsPVA(ostr.str().c_str());  
+    }
+
+    for(unsigned i=0; i<2; i++) {
+      std::stringstream ostr;
+      ostr << _module_prefix << (i==0 ? ":Us":":Cu") << ":RxAlign";
+      printf("rxalignpv[%d]: %s\n", i, ostr.str().c_str());
+      _rxAlignPV[i] = new EpicsPVA(ostr.str().c_str());  
+    }
+  }
+  else {
+    for(unsigned i=0; i<2; i++)
+      _rxAlignPV[i]=0;
   }
 }
 
@@ -246,6 +282,9 @@ void StatsTimer::expired()
 
   for(unsigned i=0; i<_nmmcm; i++) 
     fillMmcm(_mmcmPV[i], i<3 ? _dev._mmcm[i] : _dev._mmcm_amc);
+
+  for(unsigned i=0; i<2; i++)
+    fillRxAlignPV(_rxAlignPV[i], i==0 ? _dev._usGthAlign : _dev._cuGthAlign);
 }
 
 

@@ -3,6 +3,7 @@
 #include "psdaq/xpm/PVPStats.hh"
 #include "psdaq/epicstools/PVBase.hh"
 #include "psdaq/service/Semaphore.hh"
+#include "psdaq/cphw/Logging.hh"
 
 #include <cpsw_error.h>  // To catch a CPSW exception and continue
 
@@ -14,6 +15,7 @@
 
 //#define DBUG
 
+using Pds::Cphw::Logger;
 using Pds_Epics::PVBase;
 using namespace XtcData;
 
@@ -51,7 +53,7 @@ namespace Pds {
       _ctrl.sem().give();                               \
       PRT( ( getScalarAs<unsigned>() ) );               \
       put(); }
-    
+
 #define CPV(name, updatedBody, connectedBody)                           \
                                                                         \
     class PV(name) : public PVBase                                      \
@@ -140,9 +142,6 @@ namespace Pds {
     CPV(AnaTagPush,     { PVG(_analysisPush = getScalarAs<unsigned>());       },
                         { PVP(_analysisPush);                     })
 
-    CPV(PipelineDepth,  { PVG(_pipelineDepth = getScalarAs<unsigned>());      },
-                        { PVP(_pipelineDepth);                    })
-
     CPV(MsgHeader,      { _ctrl.msgHeader(getScalarAs<unsigned>());           },
                         { _ctrl.msgHeader(getScalarAs<unsigned>());           })
     CPV(MsgInsert,      { if (getScalarAs<unsigned>()!=0) _ctrl.msgInsert();  },
@@ -215,7 +214,6 @@ namespace Pds {
       NPV ( AnaTagReset         );
       NPV ( AnaTag              );
       NPV ( AnaTagPush          );
-      NPV ( PipelineDepth       );
       NPV ( MsgHeader           );
       NPV ( MsgInsert           );
       NPV ( MsgPayload          );
@@ -250,7 +248,6 @@ namespace Pds {
         for(unsigned i=1; i<_pv.size(); i++)
           _pv[i]->updated();
 
-        //#define PrV(v) printf("\t %15.15s: %x\n", #v, v)
 #define PrV(v) {}
         PrV(_l0Select);
         PrV(_fixedRate);

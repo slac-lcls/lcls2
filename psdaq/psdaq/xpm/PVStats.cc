@@ -163,7 +163,7 @@ namespace Pds {
       for(unsigned i=0; i<Module::NAmcs; i++)
         _updatePll(pll[i],it);
 
-      PVPUT(uint64_t(_dev._timestamp));
+      PVPUT(unsigned(_dev._timestamp.high));
       PVPUT((uint64_t(_dev._pulseId)&0x00ffffffffffffffULL));
       unsigned v = _dev._cuFiducialIntv;
       PVPUT((v & ~(1<<31)));

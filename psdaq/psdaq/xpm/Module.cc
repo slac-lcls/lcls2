@@ -14,6 +14,7 @@ enum { MSG_CLEAR_FIFO =0,
        MSG_DELAY_PWORD=1 };
 
 static unsigned _verbose = 0;
+static unsigned _feature_rev = 0;
 
 L0Stats::L0Stats() {
   l0Enabled=0; 
@@ -51,10 +52,12 @@ void TimingCounts::dump() const
   PU64(fidCnt,    fidCount);
   PU64(sofCnt,    sofCount);
   PU64(eofCnt,    eofCount);
+  //  PU64(rxAlign,   rxAlign);
 #undef PU64
 }
 
-TimingCounts::TimingCounts(const Cphw::TimingRx& timing)
+TimingCounts::TimingCounts(const Cphw::TimingRx&   timing,
+                           const Cphw::GthRxAlign& align)
 {
   rxClkCount       = timing.RxRecClks;
   txClkCount       = timing.TxRefClks;
@@ -68,13 +71,15 @@ TimingCounts::TimingCounts(const Cphw::TimingRx& timing)
   fidCount         = timing.Msgcounts;
   sofCount         = timing.SOFcounts;
   eofCount         = timing.EOFcounts;
+
+  //  rxAlign          = align.gthAlignLast & 0x7f;
 }
 
 CoreCounts Module::counts() const
 {
   CoreCounts c;
-  c.us = TimingCounts(_usTiming);
-  c.cu = TimingCounts(_cuTiming);
+  c.us = TimingCounts(_usTiming, _usGthAlign);
+  c.cu = TimingCounts(_cuTiming, _cuGthAlign);
   return c;
 }
 
@@ -99,11 +104,17 @@ Module* Module::locate()
   return new((void*)0) Module;
 }
 
+unsigned Module::feature_rev() { return _feature_rev; }
+
 Module::Module()
 { /*init();*/ }
 
 void Module::init()
 {
+  std::string bld = _version.buildStamp();
+  if (bld.find("xtpg")!=std::string::npos)
+    _feature_rev = 1;
+
   printf("Module:    paddr %x @ %p\n", unsigned(_paddr), &_paddr);
 
   printf("Index:     partition %u  link %u  linkDebug %u  amc %u  inhibit %u  tagStream %u\n",
@@ -162,7 +173,7 @@ void Module::init()
 
   //  Consider resetting the backplane tx link
   //  Would be disruptive to already running acquisitions
-  txLinkReset(16);
+  //  txLinkReset(16);
 
   /*
   printf("l0 enabled [%x]  reset [%x]\n",
@@ -614,26 +625,30 @@ void Module::setTimeStamp()
 
 void Module::setCuInput(unsigned v)
 {
-  printf("Xpm::Module::setCuInput %x\n",v);
-  Pds::Cphw::XBar::Map q((Pds::Cphw::XBar::Map)v);
-  _xbar.setOut( Pds::Cphw::XBar::FPGA, q);
-  _xbar.setOut( Pds::Cphw::XBar::RTM0, q);
-  _xbar.setOut( Pds::Cphw::XBar::RTM1, q);
+  if (_feature_rev>0) {
+    printf("Xpm::Module::setCuInput %x\n",v);
+    Pds::Cphw::XBar::Map q((Pds::Cphw::XBar::Map)v);
+    _xbar.setOut( Pds::Cphw::XBar::FPGA, q);
+    _xbar.setOut( Pds::Cphw::XBar::RTM0, q);
+    _xbar.setOut( Pds::Cphw::XBar::RTM1, q);
+  }
 }
 
 void Module::setCuDelay(unsigned v)
 {
-  _cuDelay = v;
+  if (_feature_rev>0)
+    _cuDelay = v;
 }
 
 void Module::setCuBeamCode(unsigned v)
 {
-  _cuBeamCode = v;
+  if (_feature_rev>0)
+    _cuBeamCode = v;
 }
 
 void Module::clearCuFiducialErr(unsigned v)
 {
-  if (v)
+  if (_feature_rev>0 && v)
     _cuFiducialIntv = v;
 }
 
@@ -668,10 +683,6 @@ void Module::setL0Delay(unsigned v)
   r |= v<<16;
   //  Update pipeline depth
   setf(_pipelineDepth, r, 32, 0);
-  //  Insert message to communicate downstream
-  // setf(_messagePayload, v, 32, 0);
-  // v = MSG_DELAY_PWORD | (1<<15);
-  // setf(_message, v, 16, 0);
 }
 
 unsigned Module::getL0Delay() const

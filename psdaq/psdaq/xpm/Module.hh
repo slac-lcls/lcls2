@@ -4,10 +4,12 @@
 #include "psdaq/cphw/Reg.hh"
 #include "psdaq/cphw/Reg64.hh"
 #include "psdaq/cphw/AmcPLL.hh"
-#include "psdaq/cphw/AmcTiming.hh"
+#include "psdaq/cphw/AxiVersion.hh"
+#include "psdaq/cphw/GthRxAlign.hh"
+#include "psdaq/cphw/TimingRx.hh"
 #include "psdaq/cphw/HsRepeater.hh"
 #include "psdaq/cphw/RingBuffer.hh"
-#include "psdaq/cphw/Xvc.hh"
+#include "psdaq/cphw/XBar.hh"
 #include "psdaq/xpm/MmcmPhaseLock.hh"
 
 namespace Pds {
@@ -16,7 +18,8 @@ namespace Pds {
     class TimingCounts {
     public:
       TimingCounts() {}
-      TimingCounts(const Cphw::TimingRx&);
+      TimingCounts(const Cphw::TimingRx&,
+                   const Cphw::GthRxAlign&);
     public:
       void dump() const;
     public:
@@ -32,6 +35,7 @@ namespace Pds {
       uint64_t fidCount;
       uint64_t sofCount;
       uint64_t eofCount;
+      uint64_t rxAlign;
     };
 
     class PllStats {
@@ -87,6 +91,7 @@ namespace Pds {
       enum { NPartitions=8 };
     public:
       static class Module* locate();
+      static unsigned      feature_rev();
     public:
       Module();
       void init();
@@ -114,18 +119,23 @@ namespace Pds {
       Cphw::Reg   _cuFiducialIntv; 
     private:
       uint32_t rsvd_gen[(0x00100000-28)>>2];
-    public: //  MmcmPhaseLock
+    public: //  MmcmPhaseLock @0x08900000,08a00000,08b00000
       MmcmPhaseLock _mmcm[3];
     private:
       uint32_t _reserved_AT[(0x00400000)>>2];
     public: // HsRepeater  @ 0x09000000
       Cphw::HsRepeater _hsRepeater[6];
     private:
-      uint32_t _reserved_HR[(0x03000000-sizeof(Module::_hsRepeater))>>2];
-    public:
-      Cphw::Jtag       _jtag;
+      uint32_t _reserved_HR[(0x02000000-sizeof(Module::_hsRepeater))>>2];
+    public: // GthRxAlign @ 0x0B000000
+      Cphw::GthRxAlign _usGthAlign;
     private:
-      uint32_t _reserved_JT[(0x74000000-sizeof(Module::_jtag))>>2];
+      uint32_t _reservedUsGthAlign[(0x01000000-sizeof(_usGthAlign))>>2];
+    public: // GthRxAlign @ 0x0C000000
+      Cphw::GthRxAlign _cuGthAlign;
+    private:
+      uint32_t _reservedCuGthAlign[(0x01000000-sizeof(_cuGthAlign))>>2];
+      uint32_t _reservedToApp[(0x73000000)>>2];
     public:
       CoreCounts counts    () const;
       bool       l0Enabled () const;
