@@ -46,7 +46,7 @@ class CMWConfigPars(QWidget) :
 
         self.lab_host = QLabel('Host:')
         self.lab_port = QLabel('Port:')
-        self.lab_level= QLabel('Log level:')
+        self.lab_level = QLabel('Log level:')
         self.lab_log_file = QLabel('Log dir:')
         self.edi_log_file = QLineEdit(cp.log_prefix.value())        
 
