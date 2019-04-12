@@ -11,7 +11,7 @@ node_list = ['drp-tst-acc0%i' % x for x in [1,2,3,4]]
 nodes = ','.join(node_list)
 
 
-sub_call = '`which mpirun` -q -map-by node --oversubscribe -n %i -H '+ nodes + ' python rwc_mpi.py | tee -a ' + file_name
+sub_call = '`which mpirun` -q -map-by node --oversubscribe -n %i -H ' + nodes + ' python rwc_mpi.py | tee -a ' + file_name
 
 core_list =  [8]
 core_list = core_list[::-1]
