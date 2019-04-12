@@ -59,7 +59,7 @@ class CGWConfigEditor(QWidget) :
         self.dictj = dictj
         if dictj is None : self.load_dict() # fills self.dictj
 
-        self.but_apply= QPushButton('Apply')
+        self.but_apply = QPushButton('Apply')
         self.but_expn = QPushButton('Expand %s'%char_expand)
         self.box_type = QComboBox(self)
 
@@ -99,8 +99,8 @@ class CGWConfigEditor(QWidget) :
         self.but_expn.setToolTip('Expand/Collapse tree-like content')
         self.but_apply.setToolTip('Apply content changes to configuration DB')
         self.box_more.setToolTip('More options:'\
-                                +'\n * Load content from file'\
-                                +'\n * Save content in file')
+                                + '\n * Load content from file'\
+                                + '\n * Save content in file')
 
 #--------------------
 
@@ -218,8 +218,8 @@ class CGWConfigEditor(QWidget) :
         opt = self.MORE_OPTIONS[ind]
         logger.info('CGWConfigEditor selected option %s' % opt)
 
-        if   ind==1 : self.on_but_load()
-        elif ind==2 : self.on_but_save()
+        if   ind == 1 : self.on_but_load()
+        elif ind == 2 : self.on_but_save()
         self.box_more.setCurrentIndex(0)
 
 #--------------------
@@ -246,7 +246,7 @@ class CGWConfigEditor(QWidget) :
         """
         logger.info('Set document browser in mode %s' % edi_type)
 
-        is_tree_editor = edi_type=='Tree'
+        is_tree_editor = edi_type == 'Tree'
         self.but_expn.setVisible(is_tree_editor)
         if is_tree_editor : self.but_expn.setText('Expand %s'%char_expand)
 
