@@ -206,7 +206,7 @@ import numpy as np
 
 def print_nda(nda, cmt='') :
     arr = nda if isinstance(nda, np.ndarray) else np.array(nda) 
-    str_arr = str(arr) if arr.size<5 else str(arr.flatten()[0:5])
+    str_arr = str(arr) if arr.size < 5 else str(arr.flatten()[0:5])
     print '%s %s: shape=%s, size=%d, dtype=%s, data=%s' % \
           (cmt, type(nda), str(arr.shape), arr.size, str(arr.dtype), str_arr)
 
@@ -220,7 +220,7 @@ def test_Create(tname='0') :
     runnum   = 60
     pbits    = 0
  
-    if(tname=='0') :
+    if(tname == '0') :
         o = cps.Create(calibdir, group, source, runnum, pbits)
         o.print_attrs()
 
