@@ -58,7 +58,7 @@ class BinPars() :
         self.inds       = range(self.binedges.size)
         self.indedges   = zip(self.inds, self.binedges)          
         self.indcenters = zip(self.inds, self.bincenters)          
-        self.strrange   ='%.0f-%.0f-%d' % (vmin, vmax, nbins)
+        self.strrange   = '%.0f-%.0f-%d' % (vmin, vmax, nbins)
 
 #------------------------------
 #------------------------------
@@ -131,12 +131,12 @@ def triclinic_primitive_vectors(a=18.36,  b=26.65, c=4.81,\
     sa, sb, sg = math.sin(alp), math.sin(bet), math.sin(gam)
 
     cx, cy, cz = 0, 0, c
-    if cb!=0 : 
+    if cb != 0 : 
         tanphi = (ca/cb-cg)/sg
         cx = c*cb
         cy = cx*tanphi
         cz = math.sqrt(c*c - cx*cx - cy*cy)
-    elif ca!=0 : # cb==0
+    elif ca != 0 : # cb==0
         cx = 0.
         cy = c*ca/sg
         cz = math.sqrt(c*c - cx*cx - cy*cy)
@@ -226,7 +226,7 @@ def lattice(b1 = (1.,0.,0.), b2 = (0.,1.,0.), b3 = (0.,0.,1.),\
     h2d, k2d = np.meshgrid(lst_h, lst_k)
     l2d = np.zeros_like(h2d)
 
-    if lmax==0 : return x2d, y2d, z2d, r2d, h2d, k2d, l2d
+    if lmax == 0 : return x2d, y2d, z2d, r2d, h2d, k2d, l2d
     
     onehk = np.ones_like(h2d)
     h3d = np.array([h2d         for l in lst_l], dtype=np.int32)    
@@ -273,7 +273,7 @@ def q_components(X, Y, Z, evald_rad=0.5) :
     qv = evald_rad * Z/L
     ql = evald_rad * (DX/L-1)
     qt = evald_rad * Y/L
-    qh = np.sqrt(ql*ql + qt*qt) * np.select([Y<0], [-1], default=1) 
+    qh = np.sqrt(ql*ql + qt*qt) * np.select([Y < 0], [-1], default=1) 
     return dr, qv, qh, qt, ql
 
 #------------------------------
@@ -283,15 +283,15 @@ def print_nda(nda, cmt, fmt=' %8.4f') :
     """
     print '\n%s.shape: %s' % (cmt, str(nda.shape)),
 
-    if len(nda.shape)==1 :
+    if len(nda.shape) == 1 :
         for c in nda : print fmt % c,
 
-    elif len(nda.shape)==2 : 
+    elif len(nda.shape) == 2 : 
         for row in nda :
             print '\nrow: ',
             for c in row : print fmt % c,
             
-    elif len(nda.shape)==3 : 
+    elif len(nda.shape) == 3 : 
         for layer in nda :
             print '\n(3d) layer: ',
             for row in layer :
@@ -304,12 +304,12 @@ def print_nda(nda, cmt, fmt=' %8.4f') :
 def print_omega_dr(omega_deg, dr, drmax=1) :
     """ Depricated, see str_omega_drhkl.
     """
-    lst_dr = [d for d in dr.flatten() if math.fabs(d)<drmax]       
+    lst_dr = [d for d in dr.flatten() if math.fabs(d) < drmax]       
     if len(lst_dr) > 1:
         print 'omega=%.2f degree, lst_dr: ' % (omega_deg),
         for dr in lst_dr : print ' %.2f' % dr,
         print ''
-    else : print 'omega=%.2f degree, lst_dr is empty'% (omega_deg)
+    else : print 'omega=%.2f degree, lst_dr is empty' % (omega_deg)
     
 #------------------------------
 
@@ -320,14 +320,14 @@ def str_omega_drhkl(ind, beta_deg, omega_deg, dr, r, qv, qh, qt, ql, h, k, l, si
     factor = -1./(2*sigma_ql*sigma_ql)
     
     lst_drhkl = [e for e in zip(dr.flatten(), h.flatten(), k.flatten(), l.flatten(),\
-                                r.flatten(), qv.flatten(), qh.flatten(), qt.flatten(), ql.flatten()) if math.fabs(e[0])<drmax]       
+                                r.flatten(), qv.flatten(), qh.flatten(), qt.flatten(), ql.flatten()) if math.fabs(e[0]) < drmax]       
     s = ''
 
     if len(lst_drhkl) > 1:  #because lst_drhkl always has a record (0.0, 0, 0, 0, 0.0, 0.0, 0.0)
         s = '# beta %.2f  omega %.2f degree' % (beta_deg, omega_deg)\
           + '\n# index    beta   omega   h   k   l   dr[1/A]  R(h,k,l)   qv[1/A]   qh[1/A]   qt[1/A]   ql[1/A]   P(omega)'
         for e in lst_drhkl :
-            if e[1]==0 and e[2]==0 and e[3]==0 : continue
+            if e[1] == 0 and e[2] == 0 and e[3] == 0 : continue
             d = math.fabs(e[0])
             if sigma_ql and d > drmax : continue
             prob = math.exp(factor*d*d)
@@ -354,7 +354,7 @@ def fill_row(dr, qv, qh, h, k, l, sigma_ql, sigma_qt, bpq) :
     for dr1, qv1, qh1, h1, k1, l1 in zip(dr.flatten(), qv.flatten(), qh.flatten(), h.flatten(), k.flatten(), l.flatten()) :
 
         #if dr1==0 and qv1==0 : continue # and qh1==0 
-        if h1==0 and k1==0 : continue
+        if h1 == 0 and k1 == 0 : continue
 
         if math.fabs(dr1) > range_ql : continue
 
@@ -473,11 +473,11 @@ def lattice_node_radius(b1 = (1.,0.,0.), b2 = (0.,1.,0.), b3 = (0.,0.,1.),\
 
     print '\n%s\nTable of lattice node parameters sorted by radius' % (80*'_')
 
-    if lmax==0 : print '( h, k) R(h,k)[1/A]'
+    if lmax == 0 : print '( h, k) R(h,k)[1/A]'
     else       : print '( h, k, l) R(h,k,l)[1/A]'
     for rnode in sorted(dic_r_hkl.keys()) :
         hkl = dic_r_hkl[rnode]
-        if lmax==0 : print '(%2i,%2i) %6.4f' % (hkl[0], hkl[1], rnode)
+        if lmax == 0 : print '(%2i,%2i) %6.4f' % (hkl[0], hkl[1], rnode)
         else       : print '(%2i,%2i,%2i) %6.4f' % (hkl[0], hkl[1], hkl[2], rnode) 
 
 #------------------------------
@@ -563,15 +563,15 @@ def plot_lattice(b1 = (1.,0.,0.), b2 = (0.,1.,0.), b3 = (0.,0.,1.),\
         xrot2, zrot2 = rotation(xrot1, z, beta_deg)        
         dr, qv, qh, qt, ql = q_components(xrot2, yrot1, zrot2, evald_rad)
 
-        xhit = [xr for dq,xr in zip(dr.flatten(), xrot2.flatten()) if math.fabs(dq)<qtol]
-        yhit = [yr for dq,yr in zip(dr.flatten(), yrot1.flatten()) if math.fabs(dq)<qtol]
+        xhit = [xr for dq,xr in zip(dr.flatten(), xrot2.flatten()) if math.fabs(dq) < qtol]
+        yhit = [yr for dq,yr in zip(dr.flatten(), yrot1.flatten()) if math.fabs(dq) < qtol]
 
         #fig, ax = gg.plotGraph(xrot2, yrot1, figsize=(8,7.5), window=(0.15, 0.10, 0.78, 0.84), pfmt='bo')
         ax.cla()
         ax.set_xlim(xlimits)
         ax.set_ylim(ylimits)
         ax.plot(xrot1, yrot1, 'yo')
-        if len(xhit)>0 and len(yhit)>0 : ax.plot(xhit, yhit, 'bo')
+        if len(xhit) > 0 and len(yhit) > 0 : ax.plot(xhit, yhit, 'bo')
 
         tit = 'beta=%.0f omega=%.0f' % (beta_deg, omega_deg)
         if title_add : tit += ' %s' % (title_add)
@@ -582,7 +582,7 @@ def plot_lattice(b1 = (1.,0.,0.), b2 = (0.,1.,0.), b3 = (0.,0.,1.),\
         gg.drawCircle(ax, (-evald_rad,0), evald_rad, linewidth=1, color='k', fill=False)
         fig.canvas.draw()
         gg.show('Do not hold!')
-        gg.save_fig(fig, '%slattice-rotated-beta%03d-omega%03d.png'%\
+        gg.save_fig(fig, '%slattice-rotated-beta%03d-omega%03d.png' %\
                     (prefix, int(beta_deg), int(omega_deg)), pbits=1)
 
     if do_movie :
@@ -632,7 +632,7 @@ def make_index_table(prefix='./v01-') :
     # from previous analysis note:
     #a, b, c = 18.36, 26.65, 4.81        # Angstrom
     #alpha, beta, gamma = 90, 90, 77.17  # 180 - 102.83 degree
-    a= 18.55 # Angstrom
+    a = 18.55 # Angstrom
     b, c = 1.466*a, 0.262*a              # Angstrom
     alpha, beta, gamma = 90, 90, 78.47   # 180 - 101.53 degree
     hmax, kmax, lmax = 4, 6, 0           # size of lattice to consider
@@ -740,7 +740,7 @@ def check_triclinic_primitive_vectors(a,b,c,alp,bet,gam,vrb=True) :
     a1, a2, a3 = triclinic_primitive_vectors(a,b,c,alp,bet,gam)
     if vrb : print_primitive_vectors(a1, a2, a3, fmt='%10.6f')
     ra, rb, rc, ralp, rbet, rgam = parameters_of_primitive_vectors(a1, a2, a3)
-    DIF=1e-10
+    DIF = 1e-10
     fabs = math.fabs
     if  fabs(a-ra) < DIF\
     and fabs(b-rb) < DIF\

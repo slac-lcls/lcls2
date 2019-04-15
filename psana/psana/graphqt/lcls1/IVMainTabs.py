@@ -145,8 +145,8 @@ class IVMainTabs(QtGui.QWidget) :
         for itab in range(len(self.tab_names)) :
             tab_name = self.current_tab.value()
             if tab_name == self.tab_names[itab] :
-               self.gui_win = IVTabDataControl(cp, log, parent=None, show_mode=017, show_mode_evctl=017) if tab_name=='Data' else\
-                              IVTabFileName(parent=None, show_mode=01)    if tab_name=='File' else\
+               self.gui_win = IVTabDataControl(cp, log, parent=None, show_mode=017, show_mode_evctl=017) if tab_name == 'Data' else\
+                              IVTabFileName(parent=None, show_mode=01)    if tab_name == 'File' else\
                               QtGui.QTextEdit('Window for %s'%self.tab_names[itab])
 
         self.hboxW.addWidget(self.gui_win)

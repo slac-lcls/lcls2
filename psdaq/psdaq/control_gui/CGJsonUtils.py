@@ -71,7 +71,7 @@ def get_platform():
                 #print(display)
                 flds = display.split(' ')
                 #list2d.append([[v['active']==1, flds[0]], flds[1] if len(flds)==2 else ' '])
-                list2d.append([[v['active']==1, ''], flds[0], flds[1] if len(flds)==2 else ''])
+                list2d.append([[v['active'] == 1, ''], flds[0], flds[1] if len(flds) == 2 else ''])
 
     except Exception as ex:
         logger.error('Exception: %s' % ex)
@@ -89,7 +89,7 @@ def set_platform(dict_platf, list2d):
 
     try:
         s = ''
-        i=-1
+        i = -1
         for pname in dict_platf:
             #print("proc_name: %s" % str(pname))
             for k,v in dict_platf[pname].items() :

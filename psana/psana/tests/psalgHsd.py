@@ -54,7 +54,7 @@ class hsd(OpaqueRawDataBase):
 from psana.dgrammanager import DgramManager
 ds = DgramManager(os.path.join(cwd,'hsd_061918_n3.xtc2'))
 
-rawData=OpaqueRawData('xpphsd',ds.configs[0])
+rawData = OpaqueRawData('xpphsd',ds.configs[0])
 
 waveformStack = []
 myPeaks = []
@@ -85,7 +85,7 @@ for i in range(5):
         waveformStack = raw[0]
     else:
         waveformStack.append(raw[0])
-    if i >=1: break
+    if i >= 1: break
 
 print("waveform: ", waveformStack)
 

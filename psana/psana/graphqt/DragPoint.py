@@ -32,11 +32,11 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         self.rsize = rsize
         self.point_center = point
 
-        path = self.pathForPointV(point, scene, rsize) if pshape=='v' else\
-               self.pathForPointH(point, scene, rsize) if pshape=='h' else\
-               self.pathForPointW(point, scene, rsize) if pshape=='w' else\
-               self.pathForPointZ(point, scene, rsize) if pshape=='z' else\
-               self.pathForPointX(point, scene, rsize) if pshape=='x' else\
+        path = self.pathForPointV(point, scene, rsize) if pshape == 'v' else\
+               self.pathForPointH(point, scene, rsize) if pshape == 'h' else\
+               self.pathForPointW(point, scene, rsize) if pshape == 'w' else\
+               self.pathForPointZ(point, scene, rsize) if pshape == 'z' else\
+               self.pathForPointX(point, scene, rsize) if pshape == 'x' else\
                self.pathForPointR(point, scene, rsize)
 
         print('selected path', str(path))
@@ -194,7 +194,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
 
 
     def mousePressEvent(self, e) :
-        logger.debug('DragPoint.mousePressEvent at point: (%.1f, %.1f) on scene %s'%
+        logger.debug('DragPoint.mousePressEvent at point: (%.1f, %.1f) on scene %s' %
                       (e.pos().x(),  e.pos().y(), str(e.scenePos()))) # self.__class__.__name__
         QGraphicsPathItem.mousePressEvent(self, e)
 
@@ -211,7 +211,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
 
 
     def mouseReleaseEvent(self, e) :
-        logger.debug('DragPoint.mouseReleaseEvent at point:(%.1f, %.1f) on scene: %s '%
+        logger.debug('DragPoint.mouseReleaseEvent at point:(%.1f, %.1f) on scene: %s ' %
                       (e.pos().x(),  e.pos().y(), str(e.scenePos()))) # self.__class__.__name__
         QGraphicsPathItem.mouseReleaseEvent(self, e)
         if self._drag_mode == ADD :

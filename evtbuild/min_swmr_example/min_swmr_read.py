@@ -54,7 +54,7 @@ with h5py.File(file_name, 'r', swmr=True) as f:
 #        time.sleep(sleep_time)
         cr_speed = cr_mbytes/((end-start))
 
-        print('Read data batch %i/%i at %i MB/s' %(batch_num, written_batches, cr_speed))
+        print('Read data batch %i/%i at %i MB/s' % (batch_num, written_batches, cr_speed))
         batch_num += 1
 
 

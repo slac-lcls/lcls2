@@ -30,7 +30,7 @@ Author: Mikhail Dubrovin
 class CalibParsBaseCSPadV1 :
 
     ndim = 3 
-    quads= 4 
+    quads = 4 
     segs = 8 
     rows = 185 
     cols = 388 

@@ -9,8 +9,8 @@ def det():
         hsd = run.Detector('xpphsd')
         cspad = run.Detector('xppcspad')
         for evt in run.events():
-            assert(hsd.raw.calib(evt).shape==(5,))
-            assert(hsd.fex.calib(evt).shape==(6,))
+            assert(hsd.raw.calib(evt).shape == (5,))
+            assert(hsd.fex.calib(evt).shape == (6,))
             padarray = vals.padarray
             assert(np.array_equal(cspad.raw.calib(evt),np.stack((padarray,padarray))))
             assert(np.array_equal(cspad.raw.image(evt),np.vstack((padarray,padarray))))

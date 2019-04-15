@@ -69,13 +69,13 @@ class Styles() :
         self.styleButtonLeft   = self.styleButton + 'text-align: left;'
         self.styleButtonOn     = self.styleBluish
         self.styleButtonClose  = self.stylePink
-        self.styleButtonWarning= self.styleYellowBkg
+        self.styleButtonWarning = self.styleYellowBkg
         self.styleButtonGood   = self.styleGreenPure
         self.styleButtonBad    = self.styleReddish # self.stylePink
         self.styleBox          = self.styleGray
         self.styleCBox         = self.styleYellowish
         self.styleStatusGood   = self.styleGreen
-        self.styleStatusWarning= self.styleYellow
+        self.styleStatusWarning = self.styleYellow
         self.styleStatusAlarm  = self.styleRed
         self.styleTitleBold    = self.styleTitle + 'font-size: 18pt; font-family: Courier; font-weight: bold;'
         self.styleWhiteFixed   = self.styleWhite + 'font-family: Fixed;'

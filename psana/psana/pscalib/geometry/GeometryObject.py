@@ -290,7 +290,7 @@ class GeometryObject :
 
             xch, ych, zch = child.get_pixel_coords(do_tilt)
 
-            if ind==0 :
+            if ind == 0 :
                 xac = xch
                 yac = ych
                 zac = zch
@@ -325,7 +325,7 @@ class GeometryObject :
                       (child.oname, child.oindex, ind))
 
             ach = child.get_pixel_areas()
-            aar = ach if ind==0 else np.vstack((aar, ach))
+            aar = ach if ind == 0 else np.vstack((aar, ach))
 
         # define shape for output x,y,z arrays
         shape_child = ach.shape
@@ -357,7 +357,7 @@ class GeometryObject :
                       (child.oname, child.oindex, ind))
 
             car = child.get_pixel_mask(mbits, **kwargs)
-            oar = car if ind==0 else np.vstack((oar, car))
+            oar = car if ind == 0 else np.vstack((oar, car))
 
         # define shape for output x,y,z arrays
         shape_child = car.shape

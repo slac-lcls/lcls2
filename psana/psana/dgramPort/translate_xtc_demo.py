@@ -29,7 +29,7 @@ def munge_json(event):
     else:
         for key,val in event['data'].items():
             try:
-                event['data'][key]= np.frombuffer(base64.b64decode(val[0]), dtype = np.dtype(val[2])).reshape(val[1])
+                event['data'][key] = np.frombuffer(base64.b64decode(val[0]), dtype = np.dtype(val[2])).reshape(val[1])
             except TypeError:
                 pass
             event_dict = event['data']

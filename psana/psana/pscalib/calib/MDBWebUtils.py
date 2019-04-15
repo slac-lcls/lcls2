@@ -64,7 +64,7 @@ def collection_names(dbname, url=cc.URL) :
 def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}
     """
-    query_string=str(query).replace("'",'"')
+    query_string = str(query).replace("'",'"')
     logger.debug('find_docs query: %s' % query_string)
     r = request('%s/%s/%s'%(url,dbname,colname),{"query_string": query_string})
     return r.json()
@@ -81,7 +81,7 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
         logger.warning('find_docs returns None for query: %s' % query)
         return None
 
-    if len(docs)==0 :
+    if len(docs) == 0 :
         logger.warning('find_docs returns list of length 0 for query: %s' % query)
         return None
 
@@ -95,7 +95,7 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
     val_sel = int(vals[0])
     logger.debug('find_doc select document for %s: %s' % (key_sort,val_sel))
     for d in docs : 
-        if d[key_sort]==val_sel : 
+        if d[key_sort] == val_sel : 
             return d
     return None
 
@@ -116,7 +116,7 @@ def get_data_for_id(dbname, dataid, url=cc.URL) :
     """
     r = request('%s/%s/gridfs/%s'%(url,dbname,dataid))
     logger.debug('get_data_for_docid:'\
-                +'\n  r.status_code: %s\n  r.headers: %s\n  r.encoding: %s\n  r.content: %s...\n' % 
+                + '\n  r.status_code: %s\n  r.headers: %s\n  r.encoding: %s\n  r.content: %s...\n' % 
                  (str(r.status_code),  str(r.headers),  str(r.encoding),  str(r.content[:50])))
     return r.content
 
@@ -190,7 +190,7 @@ if __name__ == "__main__" :
     for i,d in enumerate(docs) :
         print('%04d %12s %10s run:%04d time_sec:%10s %s' % (i, d['ctype'], d['experiment'], d['run'], str(d['time_sec']), d['detector']))
 
-    if len(docs)==0 : return
+    if len(docs) == 0 : return
     doc0 = docs[0]
     print('doc0 type:', type(doc0))
     print('doc0:', doc0)
@@ -240,7 +240,7 @@ if __name__ == "__main__" :
 #------------------------------
 
   def test_dbnames_collection_query() :
-    det='cspad_0001'
+    det = 'cspad_0001'
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None)
     print('test_dbnames_collection_query:', db_det, db_exp, colname, query)
 

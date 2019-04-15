@@ -127,7 +127,7 @@ class DCBase(object) :
 
 
     def pars_dict(self) :
-        return self._dicpars if len(self._dicpars)>0 else None
+        return self._dicpars if len(self._dicpars) > 0 else None
 
 
     def par(self, k ) :

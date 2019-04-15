@@ -163,9 +163,9 @@ def plot_peaks_on_img(peaks, axim, iX, iY, color='w', pbits=0, lw=2) :
     for rec in peaks :
         s, r, c, amax, atot, npix = rec[0:6]
         if pbits & 1 : print 's, r, c, amax, atot, npix=', s, r, c, amax, atot, npix
-        inds = (int(s),int(r),int(c)) if iX.ndim>2 else (int(r),int(c))
-        x=iX[inds]
-        y=iY[inds]
+        inds = (int(s),int(r),int(c)) if iX.ndim > 2 else (int(r),int(c))
+        x = iX[inds]
+        y = iY[inds]
         if pbits & 2 : print ' x,y=',x,y        
         xyc = (y,x)
         #r0  = 2+3*atot/anorm
@@ -176,7 +176,7 @@ def plot_peaks_on_img(peaks, axim, iX, iY, color='w', pbits=0, lw=2) :
 ##-----------------------------
 
 def size_of_shape(shape=(2,3,8)) :
-    size=1
+    size = 1
     for d in shape : size *= d
     return size
 
@@ -239,7 +239,7 @@ def hist1d(arr, bins=None, amp_range=None, weights=None, color=None, show_stat=T
     """Makes historgam from input array of values (arr), which are sorted in number of bins (bins) in the range (amp_range=(amin,amax))
     """
     #print 'hist1d: title=%s, size=%d' % (title, arr.size)
-    if arr.size==0 : return None, None, None
+    if arr.size == 0 : return None, None, None
     fig = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
     if   titwin is not None : fig.canvas.set_window_title(titwin)
     elif title  is not None : fig.canvas.set_window_title(title)
@@ -365,16 +365,16 @@ def show(mode=None) :
 def main() :
 
     arr = getRandomImage()
-    if len(sys.argv)==1   :
+    if len(sys.argv) == 1   :
         print 'Use command > python %s <test-number [1-5]>' % sys.argv[0]
         sys.exit ('Add <test-number> in command line...')
 
-    elif sys.argv[1]=='1' : plotImage(arr, amp_range=(100,300))
-    elif sys.argv[1]=='2' : plotImageAndSpectrum(arr, amp_range=(100,300))
-    elif sys.argv[1]=='3' : plotHistogram(arr, amp_range=(100,300), figsize=(10,5))
-    elif sys.argv[1]=='4' : plotImage(arr, amp_range=(100,300), figsize=(10,10))
-    elif sys.argv[1]=='5' : plotImageLarge(arr, amp_range=(100,300), figsize=(10,10))
-    elif sys.argv[1]=='6' : plotImageLarge(getArrangedImage(shape=(40,60)), figsize=(10,10))
+    elif sys.argv[1] == '1' : plotImage(arr, amp_range=(100,300))
+    elif sys.argv[1] == '2' : plotImageAndSpectrum(arr, amp_range=(100,300))
+    elif sys.argv[1] == '3' : plotHistogram(arr, amp_range=(100,300), figsize=(10,5))
+    elif sys.argv[1] == '4' : plotImage(arr, amp_range=(100,300), figsize=(10,10))
+    elif sys.argv[1] == '5' : plotImageLarge(arr, amp_range=(100,300), figsize=(10,10))
+    elif sys.argv[1] == '6' : plotImageLarge(getArrangedImage(shape=(40,60)), figsize=(10,10))
     else :
         print 'Non-expected arguments: sys.argv=', sys.argv
         sys.exit ('Check input parameters')

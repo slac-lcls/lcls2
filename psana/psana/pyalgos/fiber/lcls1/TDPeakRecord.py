@@ -105,7 +105,7 @@ class TDPeakRecord :
             s_exp, s_run, s_date, s_time, s_time_sec, s_time_nsec,\
             s_fid, s_evnum, s_reg, s_seg, s_row, s_col, s_npix, s_amax, s_atot,\
             s_rcent, s_ccent, s_rsigma, s_csigma,\
-            s_bkgd, s_rms, s_son, s_imrow, s_imcol, s_x, s_y, s_r, s_phi, s_egamma=\
+            s_bkgd, s_rms, s_son, s_imrow, s_imcol, s_x, s_y, s_r, s_phi, s_egamma =\
             sp.fields[0:29]
 
             sp.exp, sp.run, sp.evnum, sp.reg = s_exp, int(s_run), int(s_evnum), s_reg
@@ -120,7 +120,7 @@ class TDPeakRecord :
             sp.egamma = float(s_egamma)            
 
         sp.dphi000 = sp.phi
-        sp.dphi180 = sp.phi - 180 if sp.phi>-90 else sp.phi + 180 # +360-180
+        sp.dphi180 = sp.phi - 180 if sp.phi > -90 else sp.phi + 180 # +360-180
 
         sp.line = line
         sp.empty = sp.empty_line()
@@ -143,23 +143,23 @@ class TDPeakRecord :
        #addhdr = '  Evnum  Reg  Seg  Row  Col  Npix      Amax      Atot   rcent   ccent '+\
        #         'rsigma  csigma rmin rmax cmin cmax    bkgd     rms     son  imrow   imcol     x[um]     y[um]     r[um]  phi[deg]'
 
-       z=0
+       z = 0
 
        if sp.nfields == 33 :
 
          print 'XXX: nfields = ', sp.nfields 
 
 
-         fmt = '%8s  %3d  %10s %8s  %10d  %9d  %6d'+\
-               ' %7d  %3s  %3d %4d %4d  %4d  %8.1f  %8.1f  %6.1f  %6.1f %6.2f  %6.2f'+\
-               ' %4d %4d %4d %4d  %6.2f  %6.2f  %6.2f'+\
+         fmt = '%8s  %3d  %10s %8s  %10d  %9d  %6d' +\
+               ' %7d  %3s  %3d %4d %4d  %4d  %8.1f  %8.1f  %6.1f  %6.1f %6.2f  %6.2f' +\
+               ' %4d %4d %4d %4d  %6.2f  %6.2f  %6.2f' +\
                ' %6d  %6d  %8.0f  %8.0f  %8.0f  %8.2f  %3d'
          return fmt % ('exp', z, 'date', 'time', z,z,z,z,'N/A',z,z,z,z,z,z,z,z,z,z, z,z,z,z,z,z,z,z,z,z, z,z,z,z)       
 
        else : #if sp.nfields == 30 : removed rmin rmax cmin cmax
-         fmt = '%8s  %3d  %10s %8s  %10d  %9d  %6d'+\
-               ' %7d  %3s  %3d %4d %4d  %4d  %8.1f  %8.1f  %6.1f  %6.1f %6.2f  %6.2f'+\
-               '  %6.2f  %6.2f  %6.2f'+\
+         fmt = '%8s  %3d  %10s %8s  %10d  %9d  %6d' +\
+               ' %7d  %3s  %3d %4d %4d  %4d  %8.1f  %8.1f  %6.1f  %6.1f %6.2f  %6.2f' +\
+               '  %6.2f  %6.2f  %6.2f' +\
                ' %6d  %6d  %8.0f  %8.0f  %8.0f  %8.2f  %9.3f  %3d'
          return fmt % ('exp', z, 'date', 'time', z,z,z,z,'N/A',z,z,z,z,z,z,z,z,z,z, z,z,z,z,z,z, z,z,z,z,z)       
 
@@ -200,7 +200,7 @@ class TDPeakRecord :
         """Evaluates corrected value of the S/N ratio based on entire peak intensity
         """
         N = sp.peak_noise()
-        return sp.peak_signal()/N if N>0 else 0
+        return sp.peak_signal()/N if N > 0 else 0
 
 #------------------------------
 

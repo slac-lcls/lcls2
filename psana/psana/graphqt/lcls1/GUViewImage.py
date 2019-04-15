@@ -139,10 +139,10 @@ class GUViewImage(GUViewAxes) :
         ix, iy = int(floor(p.x())), int(floor(p.y()))
         v = None
         arr = self.arr
-        if ix<0\
-        or iy<0\
-        or iy>arr.shape[0]-1\
-        or ix>arr.shape[1]-1 : pass
+        if ix < 0\
+        or iy < 0\
+        or iy > arr.shape[0]-1\
+        or ix > arr.shape[1]-1 : pass
         else : v = self.arr[iy,ix]
         vstr = 'None' if v is None else '%.1f' % v 
         #self.setWindowTitle('GUViewImage x=%d y=%d v=%s' % (ix, iy, vstr))
@@ -234,8 +234,8 @@ class GUViewImage(GUViewAxes) :
     def on_but_save(self, at_obj=None) :
         import os
 
-        fname='fig-image.xpm'
-        fltr='*.xpm *.ppm *.png *.jpg *.pgm\n *'
+        fname = 'fig-image.xpm'
+        fltr = '*.xpm *.ppm *.png *.jpg *.pgm\n *'
         fname = str(QtGui.QFileDialog.getSaveFileName(at_obj, 'Output file', fname, filter=fltr))
         if fname == '' : return
         log.info('Save image or pixmap in file: %s' % fname, self._name)
@@ -382,7 +382,7 @@ def test_guiviewimage(tname) :
         w = GUViewImage(None, arr, coltab=ctab, origin='UL', scale_ctl='HV', rulers='',\
                         margl=0, margr=0, margt=0, margb=0)
     elif tname == '3':
-        ctab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
+        ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
         w = GUViewImage(None, arr, coltab=ctab, origin='UL', scale_ctl='HV', rulers='UL',\
                         margl=0.12, margr=0.02, margt=0.02, margb=0.06)
 

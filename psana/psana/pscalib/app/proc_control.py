@@ -57,13 +57,13 @@ def proc_control(parser) :
     gu.save_textfile('\nCreated path: %s' % logfname, logfname, mode='a')
     os.chmod(logfname, 0664)    
 
-    ofprefix='%s/nda-#exp-#run-#src-#evts-#type.txt' % rpu.work_dir(exp, procname)
+    ofprefix = '%s/nda-#exp-#run-#src-#evts-#type.txt' % rpu.work_dir(exp, procname)
     gu.save_textfile('\nOutput work files: %s' % ofprefix, logfname, mode='a')
 
     for i in range(5) :
         if gu.create_path(ofprefix, depth=8, mode=0774, verb=False) : continue
 
-    msg = '\nproc_control exp: %s run: %s procname: %s qname: %s logfname %s'%\
+    msg = '\nproc_control exp: %s run: %s procname: %s qname: %s logfname %s' %\
           (exp, str(run), procname, qname, logfname)
     gu.save_textfile(str(msg), logfname, mode='a')
 
@@ -79,7 +79,7 @@ def proc_control(parser) :
     #    print '  Tip: to get rid of error message use commands: kinit; aklog'
 
     rec   = gu.log_rec_on_start()
-    msg = '%s\nSubmitted batch job %s to %s\n  cmd: %s\n  out: %s\n  err: "%s"\n%s\n'%\
+    msg = '%s\nSubmitted batch job %s to %s\n  cmd: %s\n  out: %s\n  err: "%s"\n%s\n' %\
           (rec, jobid, qname, cmd, out, err.strip('\n'), 80*'_')
     #print msg
     gu.save_textfile(msg, logfname, mode='a')
@@ -88,7 +88,7 @@ def proc_control(parser) :
     status = None
     counter = 0
     while status in (None, 'RUN', 'PEND') :
-        counter+=1
+        counter += 1
         out, err, status = spu.batch_job_status(jobid, user=None, qname=qname)
         ts = gu.str_tstamp('%Y-%m-%dT%H:%M:%S', time())
         msg = '%4d %s %s job %s status %s' % (counter, ts, qname, jobid, status)

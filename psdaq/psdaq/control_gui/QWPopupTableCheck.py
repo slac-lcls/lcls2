@@ -143,7 +143,7 @@ if __name__ == "__main__" :
 
     w = QWPopupTableCheck(tableio=tableio, title_h=title_h, do_ctrl=True, do_edit=True)
     w.move(200,100)
-    resp=w.exec_()
+    resp = w.exec_()
     logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
     #for name,state in dict_in.items() : logger.debug('%s checkbox state %s' % (name.ljust(10), state))
 

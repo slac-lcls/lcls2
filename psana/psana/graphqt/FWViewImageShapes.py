@@ -40,7 +40,7 @@ class FWViewImageShapes(FWViewImage) :
 
         FWViewImage.__init__(self, parent, arr, coltab, origin, scale_ctl)
 
-        self.add_request=None
+        self.add_request = None
         self.lst_drag_items = []
         self.scale_ctl_normal = scale_ctl
 
@@ -63,7 +63,7 @@ class FWViewImageShapes(FWViewImage) :
 
     def mousePressEvent(self, e):
         scpoint = self.mapToScene(e.pos())
-        logger.debug('FWViewImageShapes.mousePressEvent but=%d %s scene x=%.1f y=%.1f'%\
+        logger.debug('FWViewImageShapes.mousePressEvent but=%d %s scene x=%.1f y=%.1f' %\
                      (e.button(), str(e.pos()), scpoint.x(), scpoint.y())) # self.__class__.__name__
 
         FWViewImage.mousePressEvent(self, e) # to select/deselect items

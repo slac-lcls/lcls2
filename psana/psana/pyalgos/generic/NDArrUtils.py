@@ -84,13 +84,13 @@ logger = logging.getLogger('NDArrUtils')
 
 def info_ndarr(nda, name='', first=0, last=5) :
     s = ''
-    gap = '\n' if last>10 else ' '
+    gap = '\n' if last > 10 else ' '
     if nda is None : s = '%s None' % name
     elif isinstance(nda, tuple) : s += info_ndarr(np.array(nda), 'ndarray from tuple: %s' % name)
     elif isinstance(nda, list)  : s += info_ndarr(np.array(nda), 'ndarray from list: %s' % name)
     elif not isinstance(nda, np.ndarray) :
                      s = '%s %s' % (name, type(nda))
-    else : s = '%s shape:%s  size:%d  dtype:%s%s%s...'%\
+    else : s = '%s shape:%s  size:%d  dtype:%s%s%s...' %\
                (name, str(nda.shape), nda.size, nda.dtype, gap, nda.flatten()[first:last])
     return s
 
@@ -112,8 +112,8 @@ def print_ndarr(nda, name='', first=0, last=5) :
 def size_from_shape(shape) :
     """Returns size from the shape sequence 
     """
-    size=1
-    for d in shape : size*=d
+    size = 1
+    for d in shape : size *= d
     return size
 
 #-----------------------------
@@ -129,8 +129,8 @@ def shape_as_2d(sh) :
     """Returns 2-d shape for n-d shape if ndim != 2, otherwise returns unchanged shape.
     """
     ndim = len(sh)
-    if ndim>2 : return (int(size_from_shape(sh)/sh[-1]), sh[-1])
-    if ndim<2 : return (1, sh[0])
+    if ndim > 2 : return (int(size_from_shape(sh)/sh[-1]), sh[-1])
+    if ndim < 2 : return (1, sh[0])
     return sh
 
 #-----------------------------
@@ -139,9 +139,9 @@ def shape_as_3d(sh) :
     """Returns 3-d shape for n-d shape if ndim != 3, otherwise returns unchanged shape.
     """
     ndim = len(sh)
-    if ndim >3 : return (int(size_from_shape(sh)/sh[-1]/sh[-2]), sh[-2], sh[-1])
-    if ndim==2 : return (1, sh[0], sh[1])
-    if ndim==1 : return (1, 1, sh[0])
+    if ndim > 3 : return (int(size_from_shape(sh)/sh[-1]/sh[-2]), sh[-2], sh[-1])
+    if ndim == 2 : return (1, sh[0], sh[1])
+    if ndim == 1 : return (1, 1, sh[0])
     return sh
 
 #-----------------------------
@@ -149,14 +149,14 @@ def shape_as_3d(sh) :
 def shape_nda_as_2d(arr) :
     """Return shape of np.array to reshape to 2-d
     """
-    return arr.shape if arr.ndim==2 else shape_as_2d(arr.shape)
+    return arr.shape if arr.ndim == 2 else shape_as_2d(arr.shape)
 
 #------------------------------
 
 def shape_nda_as_3d(arr) :
     """Return shape of np.array to reshape to 3-d
     """
-    return arr.shape if arr.ndim==3 else shape_as_3d(arr.shape)
+    return arr.shape if arr.ndim == 3 else shape_as_3d(arr.shape)
 
 #------------------------------
 
@@ -179,7 +179,7 @@ def reshape_to_3d(arr) :
 def reshape_2d_to_3d(arr) :
     """Reshape np.array from 2-d to 3-d. Accepts 2d arrays only.
     """
-    if arr.ndim==2 :
+    if arr.ndim == 2 :
         sh = arr.shape
         arr.shape = (1,sh[-2],sh[-1])
     return arr
@@ -187,10 +187,10 @@ def reshape_2d_to_3d(arr) :
 #------------------------------
 
 def arr_rot_n90(arr, rot_ang_n90=0) :
-    if   rot_ang_n90==  0 : return arr
-    elif rot_ang_n90== 90 : return np.flipud(arr.T)
-    elif rot_ang_n90==180 : return np.flipud(np.fliplr(arr))
-    elif rot_ang_n90==270 : return np.fliplr(arr.T)
+    if   rot_ang_n90 ==  0 : return arr
+    elif rot_ang_n90 == 90 : return np.flipud(arr.T)
+    elif rot_ang_n90 == 180 : return np.flipud(np.fliplr(arr))
+    elif rot_ang_n90 == 270 : return np.fliplr(arr.T)
     else                  : return arr
 
 #------------------------------
@@ -215,7 +215,7 @@ def merge_masks(mask1=None, mask2=None, dtype=np.uint8) :
         else                         : mask1.shape = shape2
 
     mask = np.logical_and(mask1, mask2)
-    return mask if dtype==np.bool else np.asarray(mask, dtype)
+    return mask if dtype == np.bool else np.asarray(mask, dtype)
 
 #------------------------------
 
@@ -289,13 +289,13 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8) :
         if mcols > cols : 
           raise ValueError('Requested number of edge columns=%d to mask exceeds 2-d, shape=%s' % (mcols, str(sh)))
 
-        if mrows>0 :
+        if mrows > 0 :
           # mask edge rows
           mask_rows = np.zeros((mrows,cols), dtype=mask.dtype)
           mask_out[:mrows ,:] = mask_rows
           mask_out[-mrows:,:] = mask_rows
 
-        if mcols>0 :
+        if mcols > 0 :
           # mask edge colss
           mask_cols = np.zeros((rows,mcols), dtype=mask.dtype)
           mask_out[:,:mcols ] = mask_cols
@@ -312,13 +312,13 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8) :
         if mcols > cols : 
           raise ValueError('Requested number of edge columns=%d to mask exceeds 2-d, shape=%s' % (mcols, str(sh)))
 
-        if mrows>0 :
+        if mrows > 0 :
           # mask edge rows
           mask_rows = np.zeros((segs,mrows,cols), dtype=mask.dtype)
           mask_out[:, :mrows ,:] = mask_rows
           mask_out[:, -mrows:,:] = mask_rows
 
-        if mcols>0 :
+        if mcols > 0 :
           # mask edge colss
           mask_cols = np.zeros((segs,rows,mcols), dtype=mask.dtype)
           mask_out[:, :,:mcols ] = mask_cols
@@ -358,8 +358,8 @@ def mask_3darr_edges(shape=(32,185,388), width=2) :
 def divide_protected(num, den, vsub_zero=0) :
     """Returns result of devision of numpy arrays num/den with substitution of value vsub_zero for zero den elements.
     """
-    pro_num = np.select((den!=0,), (num,), default=vsub_zero)
-    pro_den = np.select((den!=0,), (den,), default=1)
+    pro_num = np.select((den != 0,), (num,), default=vsub_zero)
+    pro_den = np.select((den != 0,), (den,), default=1)
     return pro_num / pro_den
 
 #------------------------------
@@ -372,12 +372,12 @@ def mask_from_windows(ashape=(32,185,388), winds=None) :
     """
     ndim = len(ashape)
         
-    if ndim<2 :
+    if ndim < 2 :
         print('ERROR in mask_from_windows(...):',\
               ' Wrong number of dimensions %d in the shape=%s parameter. Allowed ndim>1.' % (ndim, str(shape)))
         return None
 
-    shape = ashape if ndim<4 else shape_as_3d(ashape)
+    shape = ashape if ndim < 4 else shape_as_3d(ashape)
 
     seg1 = np.ones((shape[-2], shape[-1]), dtype=np.uint16) # shaped as last two dimensions
     mask = np.zeros(shape, dtype=np.uint16)
@@ -468,7 +468,7 @@ def locxymax(nda, order=1, mode='clip') :
     size  = nda.size
     ndim = len(shape)
 
-    if ndim< 2 or ndim>3 :
+    if ndim < 2 or ndim > 3 :
         msg = 'ERROR: locxymax nda shape %s should be 2-d or 3-d' % (shape)
         sys.exit(msg)
 
@@ -545,8 +545,8 @@ if __name__ == "__main__" :
     print('Consumed t = %10.6f sec' % (time()-t0_sec))
 
     if True :
-      img = data if len(data.shape)==2 else reshape_to_2d(data)
-      msk = mask if len(mask.shape)==2 else reshape_to_2d(mask)
+      img = data if len(data.shape) == 2 else reshape_to_2d(data)
+      msk = mask if len(mask.shape) == 2 else reshape_to_2d(mask)
 
       ave, rms = img.mean(), img.std()
       amin, amax = ave-2*rms, ave+2*rms
@@ -566,7 +566,7 @@ if __name__ == "__main__" :
     axim2 = gr.add_axes(fig, axwin=(0.55,  0.05, 0.40, 0.91))
     axcb2 = gr.add_axes(fig, axwin=(0.952, 0.05, 0.01, 0.91))
 
-    mask = np.select((randexp>6,), (0,), default=1)
+    mask = np.select((randexp > 6,), (0,), default=1)
     mask_nbrs = mask_neighbors(mask, allnbrs)
     img1 = mask # mask # randexp
     img2 = mask_nbrs # mask # randexp
@@ -589,7 +589,7 @@ if __name__ == "__main__" :
     axim2 = gr.add_axes(fig, axwin=(0.55,  0.05, 0.40, 0.91))
     axcb2 = gr.add_axes(fig, axwin=(0.952, 0.05, 0.01, 0.91))
 
-    mask = np.select((randexp>6,), (0,), default=1)
+    mask = np.select((randexp > 6,), (0,), default=1)
     mask_nbrs = mask_neighbors(mask, allnbrs)
 
     img1 = reshape_to_2d(mask)
@@ -638,7 +638,7 @@ if __name__ == "__main__" :
     import psana.pyalgos.generic.Graphics as gr; global gr
 
     print(80*'_')
-    tname = sys.argv[1] if len(sys.argv)>1 else '1'
+    tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     if   tname == '1' : test_mask_neighbors_2d(allnbrs = False)
     elif tname == '2' : test_mask_neighbors_2d(allnbrs = True)
     elif tname == '3' : test_mask_neighbors_3d(allnbrs = False)

@@ -104,12 +104,12 @@ class HSpectrum :
         if not self.is_inited : self.init_spectrum(nda)
 
         shape_in = nda.shape
-        if len(shape_in)>1 : nda.shape = (self.asize,) # reshape to 1-d
+        if len(shape_in) > 1 : nda.shape = (self.asize,) # reshape to 1-d
 
         bin_inds = self.hbins.bin_indexes(nda, edgemode=0)
         self.histarr[self.pix_inds, bin_inds] += 1
 
-        if len(shape_in)>1 : nda.shape = shape_in # return original shape
+        if len(shape_in) > 1 : nda.shape = shape_in # return original shape
 
 
     def spectrum(self) :
@@ -193,8 +193,8 @@ def usage() : return 'Use command: python %s <test-number [1-2]>' % sys.argv[0]
 def main() :    
     print '\n%s\n' % usage()
     if len(sys.argv) != 2 : example_equidistant()
-    elif sys.argv[1]=='1' : example_equidistant()
-    elif sys.argv[1]=='2' : example_varsize()
+    elif sys.argv[1] == '1' : example_equidistant()
+    elif sys.argv[1] == '2' : example_varsize()
     else                  : sys.exit ('Test number parameter is not recognized.\n%s' % usage())
 
 #------------------------------

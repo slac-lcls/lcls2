@@ -16,7 +16,7 @@ def load_json(filename):
     for event in data:
         for key,val in event.items():
             try:
-                event[key]= np.frombuffer(base64.b64decode(val[0]), dtype = np.dtype(val[2])).reshape(val[1])
+                event[key] = np.frombuffer(base64.b64decode(val[0]), dtype = np.dtype(val[2])).reshape(val[1])
             except TypeError:
                 pass
         event_dict.append(event)

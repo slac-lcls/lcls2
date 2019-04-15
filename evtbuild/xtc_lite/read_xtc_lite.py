@@ -76,12 +76,12 @@ def read_client(comm,filt=0):
             # Filter section
             # If RNG is below threshold, then read an image batch
             # else seek ahead.
-            if(random.random()<hit_prob):
+            if(random.random() < hit_prob):
                 img = os.read(read_file,bytes_per_batch)
             else:
                 os.lseek(read_file,bytes_per_batch,os.SEEK_CUR)
-                img='fff'
-        ct+=1
+                img = 'fff'
+        ct += 1
         size_read_data = ct*bytes_per_batch/10**6
 
         if ct%100 == 0:

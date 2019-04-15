@@ -124,7 +124,7 @@ class CGWMain(QWZMQListener) :
 #------------------------------
 
     def proc_parser(self, parser=None) :
-        self.parser=parser
+        self.parser = parser
 
         if parser is None :
             return

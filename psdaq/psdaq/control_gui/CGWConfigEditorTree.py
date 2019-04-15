@@ -121,7 +121,7 @@ class CGWConfigEditorTree(QWTree) :
         path = path_to_item(item)
         #print('XXXXXXXX path:%s'%path)
         if path is None : return None
-        v=self.dictj[':types:']
+        v = self.dictj[':types:']
         #print('       :types:%s'%str(v))
         for k in path.split('.') :
             #print('===k: %s type: %s value: %s' % (k, type(v), str(v)))
@@ -152,7 +152,7 @@ class CGWConfigEditorTree(QWTree) :
             parent_item.setAccessibleDescription('key-to-dict')
             parent_item.setToolTip('key to dict object')
             for k,v in o.items() :
-                if k==':types:' : return
+                if k == ':types:' : return
                 is_RO = is_read_only or (':RO' in k)
                 item = QStandardItem(k)
                 item.setIcon(icon.icon_folder_closed)
@@ -178,7 +178,7 @@ class CGWConfigEditorTree(QWTree) :
             else : # data list
                 parent_item.setAccessibleText(parent_item.text())
                 parent_item.setText('%s - key to list' % parent_item.text())
-                is_trimmed = len(o)>=self.list_max_len
+                is_trimmed = len(o) >= self.list_max_len
                 cmt = 'trimmed list' if is_trimmed else 'list'
                 parent_item.setAccessibleDescription('key to the %s' % cmt)
                 parent_item.setToolTip('key to the %s' % cmt)
@@ -189,7 +189,7 @@ class CGWConfigEditorTree(QWTree) :
 
                 item.setAccessibleDescription(cmt)
                 dtype = self.data_type(parent_item, o)
-                item.setToolTip('%s path: [%s] dtype: %s'% (cmt,path,str(dtype)))
+                item.setToolTip('%s path: [%s] dtype: %s' % (cmt,path,str(dtype)))
                 #item.setIcon(icon.icon_table)
                 item.setCheckable(True)
                 item.setEditable(not (is_trimmed or is_read_only)) 
@@ -231,7 +231,7 @@ class CGWConfigEditorTree(QWTree) :
         lst = o.replace('\n',' ').split(' ') if isinstance(o, str) else\
               [str(v) for v in o]            if isinstance(o, list) else\
               ['N/A',]
-        is_trimmed = len(lst)>=self.list_max_len
+        is_trimmed = len(lst) >= self.list_max_len
         text_tot = str(' '.join(lst))
         text = ('%s ...' % (' '.join(lst[:self.list_max_len]))) if is_trimmed else text_tot
         item.setText(text)
@@ -278,7 +278,7 @@ class CGWConfigEditorTree(QWTree) :
         """Interface method
         """
         logger.debug('CGWConfigEditorTree.get_content')
-        top_item=self.model.invisibleRootItem()
+        top_item = self.model.invisibleRootItem()
         self.iterate_over_children(top_item)
         #sj = str_json(dictj)
         #dj = json_from_str()
@@ -347,7 +347,7 @@ class CGWConfigEditorTree(QWTree) :
         #logger.info('select_ifname %s' % self.ifname)
         w = QWPopupEditText(parent=self, text=txt)
         #w.move(self.pos() + QPoint(self.width()+5, 0))
-        resp=w.exec_()
+        resp = w.exec_()
         logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
         if resp == QDialog.Rejected : return
 

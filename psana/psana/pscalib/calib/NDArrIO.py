@@ -95,8 +95,8 @@ def save_txt(fname='nda.txt', arr=None, cmts=(), fmt='%.1f', verbos=False, addme
     arr2d = nu.reshape_nda_to_2d(arr)
 
     # pretty formatting
-    recs.append('' if len(arr.shape)>1 else '\n')
-    nline = '\n' if len(arr.shape)>1 else ' '
+    recs.append('' if len(arr.shape) > 1 else '\n')
+    nline = '\n' if len(arr.shape) > 1 else ' '
 
     hdr = '\n'.join(recs)
     #print(hdr)
@@ -140,7 +140,7 @@ def _metadata_from_comments(cmts) :
     if cmts is not None :
         for rec in cmts :
             fields = rec.split(' ', 2)
-            if len(fields)<3 : continue
+            if len(fields) < 3 : continue
             if   fields[1] == 'DTYPE'    : str_dtype = fields[2].rstrip('\n').strip(' ')
             elif fields[1] == 'NDIM'     : ndim = int(fields[2])
             elif fields[1][:4] == 'DIM:' : shape.append(int(fields[2]))
@@ -163,7 +163,7 @@ def list_of_comments(fname) :
     """
     #if not os.path.lexists(fname) : raise IOError('File %s is not available' % fname)
 
-    f=open(fname,'r')
+    f = open(fname,'r')
 
     cmts = []
     for rec in f :
@@ -173,7 +173,7 @@ def list_of_comments(fname) :
 
     f.close()
 
-    if len(cmts)==0 :
+    if len(cmts) == 0 :
         return None
 
     return cmts
@@ -189,7 +189,7 @@ def load_txt_v2(fname) :
 
     nparr = np.loadtxt(fname, dtype=dtype, comments='#')
 
-    if dtype is None or ndim is None or shape==[] :
+    if dtype is None or ndim is None or shape == [] :
         # Retun data as is shaped in the text file for 1-d or 2-d
         return nparr
 
@@ -210,7 +210,7 @@ def load_txt(fname) :
     #if not os.path.lexists(fname) : raise IOError('File %s is not available' % fname)
 
     # Load all records from file
-    f=open(fname,'r')
+    f = open(fname,'r')
     recs = f.readlines()
     f.close()
 
@@ -231,7 +231,7 @@ def load_txt(fname) :
     # Unpack data records to 2-d list of values and convert it to np.array
     nparr = np.array(_unpack_data(data), dtype)
 
-    if ndim is None or shape==[] or dtype is None :
+    if ndim is None or shape == [] or dtype is None :
         # Retun data as is shaped in the text file for 1-d or 2-d
         return nparr
 

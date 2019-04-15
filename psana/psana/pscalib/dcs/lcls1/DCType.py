@@ -247,8 +247,8 @@ def test_DCType() :
 
 def test() :
     log.setPrintBits(0377) 
-    if   len(sys.argv)==1  : print 'For test(s) use command: python %s <test-number=1-4>' % sys.argv[0]
-    elif(sys.argv[1]=='1') : test_DCType()        
+    if   len(sys.argv) == 1  : print 'For test(s) use command: python %s <test-number=1-4>' % sys.argv[0]
+    elif(sys.argv[1] == '1') : test_DCType()        
     else : print 'Non-expected arguments: sys.argv = %s use 1,2,...' % sys.argv
 
 #------------------------------

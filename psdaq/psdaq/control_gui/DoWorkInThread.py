@@ -60,7 +60,7 @@ if __name__ == "__main__" :
       #kwargs = {'dicio': {'input':123, 'output':None}}
       #o = DoWorkInThread(worker_example, **kwargs)
       o = DoWorkInThread(worker_example, dicio={'input':123, 'output':None})
-      print('worker_example is execution in thread. Submission time = %.6f sec' %(time()-t0_sec))
+      print('worker_example is execution in thread. Submission time = %.6f sec' % (time()-t0_sec))
 
       for i in range(10) :
           if o.is_running() :

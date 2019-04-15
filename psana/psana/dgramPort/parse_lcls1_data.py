@@ -8,7 +8,7 @@ import inspect, base64
 
 class parse_dgram():
     def __init__(self, ds, source, detector, config, event_limit):
-        self.events=[]
+        self.events = []
         self.event_limit = event_limit
         self.ds = ds
         self.source = source
@@ -23,7 +23,7 @@ class parse_dgram():
         filt_list = list(filter(lambda x: x[:2] != '__' and\
                                 x not in self.ignored_keys, input_list))
         if prepend:
-            filt_list = list(map(lambda x: prepend+'__' +x, filt_list))
+            filt_list = list(map(lambda x: prepend+'__' + x, filt_list))
         return filt_list
     # We need a special version of get attr
     # The fancy functional version works for regular classes (aa.bb.cc..)
@@ -36,7 +36,7 @@ class parse_dgram():
             attrs = attr.split('__')
             for att in attrs[:-1]:
                 it_meth = att.split('##')
-                if len(it_meth)>1:
+                if len(it_meth) > 1:
                     it_v = int(it_meth[1])
                     value = getattr(value,it_meth[0])(it_v)
                 else:
@@ -124,7 +124,7 @@ class parse_dgram():
         configure = cs.get(self.config, self.source)
         self.events.append(self.parse_event(configure))
         for ct,evt in enumerate(self.ds.events()):
-            if ct>self.event_limit:
+            if ct > self.event_limit:
                 break
             framev2 = evt.get(self.detector, self.source)
             evtd = self.parse_event(framev2)

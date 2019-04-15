@@ -172,8 +172,8 @@ def fraser(arr, beta_deg, z, center=None, oshape=(1500,1500)) :
     icols = np.array(s12rot + math.ceil(ocols/2), dtype=np.int)
     irows = np.array(s3rot  + math.ceil(orows/2), dtype=np.int)
 
-    irows = np.select([irows<0, irows>orows1], [0,orows1], default=irows)
-    icols = np.select([icols<0, icols>ocols1], [0,ocols1], default=icols)
+    irows = np.select([irows < 0, irows > orows1], [0,orows1], default=irows)
+    icols = np.select([icols < 0, icols > ocols1], [0,ocols1], default=icols)
 
     sp.image = np.zeros(oshape, dtype=arr.dtype)
     sp.count = np.zeros(oshape, dtype=np.int)
@@ -186,8 +186,8 @@ def fraser(arr, beta_deg, z, center=None, oshape=(1500,1500)) :
     #print 'reciparr.shape: ', reciparr.shape
     #print 'count min=%d, max=%d' % (sp.count.min(), sp.count.max())    
 
-    countpro = np.select([sp.count<1], [-1], default=sp.count)
-    reciparr = np.select([countpro>0], [sp.image/countpro], default=0)
+    countpro = np.select([sp.count < 1], [-1], default=sp.count)
+    reciparr = np.select([countpro > 0], [sp.image/countpro], default=0)
 
     return s12rot, s3rot, reciparr
 
@@ -285,19 +285,19 @@ def funcy_l0(x, phi_deg, bet_deg) :
     t = sb/cb if cb else INFI
     s, c = (s/t, c/t) if t else (s*INFI, c*INFI)
 
-    denum = c*c - 1 if math.fabs(c)!=1 else ZERO
+    denum = c*c - 1 if math.fabs(c) != 1 else ZERO
 
     B = c*(x*s+1)/denum
     C = (x*x*(s*s-1) + 2*x*s)/denum
     sqarg = B*B-C
 
     if isinstance(sqarg, np.float64) :
-        if sqarg<0 : print 'WARNING in funcy_l0: solution does not exist because of sqarg<0 :', sqarg
+        if sqarg < 0 : print 'WARNING in funcy_l0: solution does not exist because of sqarg<0 :', sqarg
     else :
         for v in sqarg :
-            if v<0 : print 'WARNING in funcy_l0: solution does not exist because of sqarg<0 :', sqarg
+            if v < 0 : print 'WARNING in funcy_l0: solution does not exist because of sqarg<0 :', sqarg
 
-    sqapro = np.select([sqarg>0,], [sqarg,], default=0)
+    sqapro = np.select([sqarg > 0,], [sqarg,], default=0)
     return -B + np.sign(B)*np.sqrt(sqapro)
 
 ##-----------------------------
@@ -327,7 +327,7 @@ def funcy_l1_v0(x, phi_deg, bet_deg, DoR=0.474, sgnrt=-1.) :
     t = sb/cb if cb else INFI
     s, c = s/t, c/t
     G = 1-DoR/sb if sb else INFI
-    denum = c*c - 1 if math.fabs(c)!=1 else ZERO
+    denum = c*c - 1 if math.fabs(c) != 1 else ZERO
 
     # parameters of of y^2 + 2By + C = 0 
     B = c*(x*s+G)/denum
@@ -335,12 +335,12 @@ def funcy_l1_v0(x, phi_deg, bet_deg, DoR=0.474, sgnrt=-1.) :
     sqarg = B*B-C
 
     if isinstance(sqarg, np.float64) :
-        if sqarg<0 : print 'WARNING in funcy_l1_v0: solution does not exist because of sqarg<0 :', sqarg
+        if sqarg < 0 : print 'WARNING in funcy_l1_v0: solution does not exist because of sqarg<0 :', sqarg
     else :
         for v in sqarg :
-            if v<0 : print 'WARNING in funcy_l1_v0: solution does not exist because of sqarg<0 :', sqarg
+            if v < 0 : print 'WARNING in funcy_l1_v0: solution does not exist because of sqarg<0 :', sqarg
 
-    sqapro = np.select([sqarg>0,], [sqarg,], default=0)
+    sqapro = np.select([sqarg > 0,], [sqarg,], default=0)
 
     #sign = 1 if bet<-13 else -1
     #return -B + sign * np.sqrt(sqapro)
@@ -368,7 +368,7 @@ def funcy_l1_v1(x, phi_deg, bet_deg, DoR=0.4292, sgnrt=1.) :
         s, c = (g*s/t, g*c/t) if t else (g*s*INFI, g*c*INFI)
     else :
         s, c = s*cb/DoR, c*cb/DoR
-    denum = c*c - 1 if math.fabs(c)!=1 else ZERO
+    denum = c*c - 1 if math.fabs(c) != 1 else ZERO
 
     # parameters of of y^2 + 2By + C = 0 
     B = c*(x*s+g)/denum
@@ -379,12 +379,12 @@ def funcy_l1_v1(x, phi_deg, bet_deg, DoR=0.4292, sgnrt=1.) :
     #      '  B:', B, '  C:', C, '  sqarg:', sqarg
 
     if isinstance(sqarg, np.float64) :
-        if sqarg<0 : print 'WARNING in funcy_l1_v1: solution does not exist because of sqarg<0 :', sqarg
+        if sqarg < 0 : print 'WARNING in funcy_l1_v1: solution does not exist because of sqarg<0 :', sqarg
     else :
         for v in sqarg :
-            if v<0 : print 'WARNING in funcy_l1_v1: solution does not exist because of sqarg<0 :', sqarg
+            if v < 0 : print 'WARNING in funcy_l1_v1: solution does not exist because of sqarg<0 :', sqarg
 
-    sqapro = np.select([sqarg>0,], [sqarg,], default=0)
+    sqapro = np.select([sqarg > 0,], [sqarg,], default=0)
     #sgn = 1. if bet>-13.3 else -1.
     #return -B + sign*np.sqrt(sqapro)
     return -B + sgnrt * np.sqrt(sqapro)
@@ -419,7 +419,7 @@ def rqh_to_xz(re, qh) :
     """
     sina = qh/(2*re)
     sqa = 1.-sina*sina
-    sqapro = np.select([sqa>0,], [sqa,], default=0)
+    sqapro = np.select([sqa > 0,], [sqa,], default=0)
     cosa = np.sqrt(sqapro)
     #qxe, qze =  qh*cosa, -qh*sina
     return  qh*cosa, -qh*sina
@@ -437,7 +437,7 @@ def rqhqv_to_xyz(re, qh, qv) :
     qv2 = qv*qv
     qze = -(qh2+qv2)/(2*re)
     sqa = qh2 - qze*qze
-    sqapro = np.select([sqa>0,], [sqa,], default=0)
+    sqapro = np.select([sqa > 0,], [sqa,], default=0)
     qxe = np.sqrt(sqapro)*np.sign(qh)
     qye = qv
     return  qxe, qye, qze
@@ -754,7 +754,7 @@ if __name__ == "__main__" :
 
     import sys
 
-    if len(sys.argv)<2 :
+    if len(sys.argv) < 2 :
         print 'For specific test use command:\n> %s <test-id-string>' % sys.argv[0]
         print 'Default test: test_fraser()'
         test_fraser()
@@ -763,14 +763,14 @@ if __name__ == "__main__" :
     DoR = 390/913.27
 
     print 'Test: %s' % sys.argv[1]
-    if   sys.argv[1]=='1' : test_fraser()
-    elif sys.argv[1]=='2' : test_plot_phi()
-    elif sys.argv[1]=='3' : test_plot_beta()
-    elif sys.argv[1]=='4' : test_plot_beta_l1(DoR=DoR, sgnrt=+1.)
-    elif sys.argv[1]=='5' : test_plot_beta_l1(DoR=DoR, sgnrt=-1.)
-    elif sys.argv[1]=='6' : test_plot_beta_l0()
-    elif sys.argv[1]=='7' : test_plot_beta_l1_zoom(DoR=DoR, sgnrt=+1.)
-    elif sys.argv[1]=='8' : test_plot_beta_l1_zoom(DoR=DoR, sgnrt=-1.)
+    if   sys.argv[1] == '1' : test_fraser()
+    elif sys.argv[1] == '2' : test_plot_phi()
+    elif sys.argv[1] == '3' : test_plot_beta()
+    elif sys.argv[1] == '4' : test_plot_beta_l1(DoR=DoR, sgnrt=+1.)
+    elif sys.argv[1] == '5' : test_plot_beta_l1(DoR=DoR, sgnrt=-1.)
+    elif sys.argv[1] == '6' : test_plot_beta_l0()
+    elif sys.argv[1] == '7' : test_plot_beta_l1_zoom(DoR=DoR, sgnrt=+1.)
+    elif sys.argv[1] == '8' : test_plot_beta_l1_zoom(DoR=DoR, sgnrt=-1.)
     else :
         print 'Default test: test_fraser()'
         test_fraser()

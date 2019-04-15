@@ -129,7 +129,7 @@ class Extended():
                         break
 
                     delta = (dmax-dmin)/(k+1.0)/j/q
-                    if delta<=0 : delta = 1e-6
+                    if delta <= 0 : delta = 1e-6
                     z = math.ceil(math.log(delta, 10))
         
                     while z < float('infinity'):

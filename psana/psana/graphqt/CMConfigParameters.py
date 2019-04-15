@@ -78,7 +78,7 @@ class CMConfigParameters(PSConfigParameters) :
         self.cmwdbmain   = None
         self.cmwdbtree   = None
         self.cmwdbdocs   = None
-        self.cmwdbdocswidg=None
+        self.cmwdbdocswidg = None
         self.qwloggerstd = None
         self.cmwdbdoceditor = None
 

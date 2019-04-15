@@ -6,8 +6,8 @@ Created on 2019-03-06 by Mikhail Dubrovin
 """
 #-----------------------------
 
-UNDEF= 0
-POINT= 1
+UNDEF = 0
+POINT = 1
 LINE = 2
 RECT = 3
 CIRC = 4

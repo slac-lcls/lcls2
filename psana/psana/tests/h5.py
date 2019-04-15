@@ -12,5 +12,5 @@ def h5():
             if type(val) is np.ndarray:
                 assert np.array_equal(val,f[key][ievt])
             else:
-                assert val==f[key][ievt]
+                assert val == f[key][ievt]
     print('h5 tested',len(testvals),'values')

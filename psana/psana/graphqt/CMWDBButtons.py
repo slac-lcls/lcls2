@@ -353,7 +353,7 @@ class CMWDBButtons(QWidget) :
         if resp is None :
             logger.info('Visible buttons selection is cancelled')
             return
-        if resp==1 :
+        if resp == 1 :
             logger.info('Visible buttons: %s' % str(d))
             self.set_buttons_visiable(d)
             self.set_buttons_config_bitword(d)
@@ -911,7 +911,7 @@ class CMWDBButtons(QWidget) :
         if resp is None :
             logger.info('Visible buttons selection is cancelled')
             return
-        if resp==1 :
+        if resp == 1 :
             logger.info('Visible buttons: %s' % str(d))
             self.set_buttons_visiable(d)
             self.set_buttons_config_bitword(d)
@@ -1163,9 +1163,9 @@ class CMWDBButtons(QWidget) :
         resp = change_check_box_dict_in_popup_menu(d, msg='Add constants\nand metadata to DB', parent=self.but_add)
         logger.debug('add_doc resp: %s' % resp)
 
-        if resp==1 :
-            if d[dbnexp] : _,_=dbu.insert_document_and_data(dbnexp, colname, dicdoc, nda)
-            if d[dbndet] : _,_=dbu.insert_document_and_data(dbndet, colname, dicdoc, nda)
+        if resp == 1 :
+            if d[dbnexp] : _,_ = dbu.insert_document_and_data(dbnexp, colname, dicdoc, nda)
+            if d[dbndet] : _,_ = dbu.insert_document_and_data(dbndet, colname, dicdoc, nda)
 
             wdocs = cp.cmwdbdocswidg
             if wdocs is None : return
@@ -1243,7 +1243,7 @@ class CMWDBButtons(QWidget) :
         resp = change_check_box_dict_in_popup_menu(control, 'Select and confirm',\
                msg='Save current document in file\n%s\nfor types:'%prefix, parent=self.but_add)
 
-        if resp==1 :
+        if resp == 1 :
             logger.info('Save document data and metadata in file(s) with prefix: %s' % prefix)
             dbu.save_doc_and_data_in_file(doc, data, prefix, control)
         else : 

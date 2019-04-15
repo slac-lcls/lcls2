@@ -92,8 +92,8 @@ class QWTable(QTableView):
                 item.setIcon(icon.icon_table)
                 item.setCheckable(True) 
                 self.model.setItem(row,col,item)
-                if col==2 : item.setIcon(icon.icon_folder_closed)
-                if col==3 : item.setText('Some text')
+                if col == 2 : item.setIcon(icon.icon_folder_closed)
+                if col == 3 : item.setText('Some text')
                 #self.model.appendRow(item)
 
 

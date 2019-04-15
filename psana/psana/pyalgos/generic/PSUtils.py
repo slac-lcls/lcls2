@@ -203,7 +203,7 @@ def cspad_psana_from_cctbx(nda_in) :
     nda_out = np.empty((segs, rows, cols), dtype=nda_in.dtype)
     
     for s in range(segs) :
-        a=s*2 # ASIC[0] in segment
+        a = s*2 # ASIC[0] in segment
         nda_out[s,:,0:colsh]    = nda_in[a,:,:]
         nda_out[s,:,colsh:cols] = nda_in[a+1,:,:]
 
@@ -226,7 +226,7 @@ def cspad_cctbx_from_psana(nda_in) :
 
     nda_out = np.empty((segs*2, rows, cols/2), dtype=nda_in.dtype)
     for s in range(segs) :
-        a=s*2 # ASIC[0] in segment
+        a = s*2 # ASIC[0] in segment
         nda_out[a,:,:]   = nda_in[s,:,0:colsh]
         nda_out[a+1,:,:] = nda_in[s,:,colsh:cols]
     return nda_out

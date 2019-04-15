@@ -121,7 +121,7 @@ if __name__ == "__main__" :
     #w.setGeometry(20, 40, 500, 200)
     w.setWindowTitle('Win title')
     #w.show()
-    resp=w.exec_()
+    resp = w.exec_()
     logger.debug('resp=%s' % resp)
     logger.debug('QtWidgets.QDialog.Rejected: %d' % QDialog.Rejected)
     logger.debug('QtWidgets.QDialog.Accepted: %d' % QDialog.Accepted)

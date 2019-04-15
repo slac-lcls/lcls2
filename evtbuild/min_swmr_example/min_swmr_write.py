@@ -36,7 +36,7 @@ try:
     while True:
         start = time.time()
         shape = f["data"].shape
-        batch_num = (shape[0]/batch_size) +1
+        batch_num = (shape[0]/batch_size) + 1
 
 
         f['data'].resize((shape[0]+batch_size, shape[1]))

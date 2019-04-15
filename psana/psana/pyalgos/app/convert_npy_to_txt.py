@@ -19,7 +19,7 @@ def parse_input_pars() :
     #print('len(sys.argv)', len(sys.argv))
     #print(sys.argv)
     
-    if len(sys.argv)!=3 : print_exit(1) 
+    if len(sys.argv) != 3 : print_exit(1) 
 
     finp = sys.argv[1]
     fout = sys.argv[2]

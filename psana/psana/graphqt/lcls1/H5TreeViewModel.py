@@ -215,7 +215,7 @@ class H5TreeViewModel(QtGui.QStandardItemModel) :
     #---------------------
 
     def check_parents(self, item):
-        check_state=item.checkState()
+        check_state = item.checkState()
         self._set_parents_check_state(item, check_state)
 
     def _set_parents_check_state(self, item, check_state):
@@ -231,7 +231,7 @@ class H5TreeViewModel(QtGui.QStandardItemModel) :
 
     def check_children(self, item) :
 
-        check_state=item.checkState()
+        check_state = item.checkState()
         self._set_children_check_state(item, check_state)
 
     def _set_children_check_state(self, item, check_state) :
@@ -343,7 +343,7 @@ class H5TreeViewModel(QtGui.QStandardItemModel) :
     
     def get_list_of_checked_item_names(self,list_of_checked_items):
         """Get the list of checked item names from the input list of items"""
-        self.list_of_checked_item_names=[]
+        self.list_of_checked_item_names = []
         print 'The number of CHECKED items in the tree model =', len(self.list_of_checked_items)
         
         for item in list_of_checked_items :
@@ -357,7 +357,7 @@ class H5TreeViewModel(QtGui.QStandardItemModel) :
 
     def get_list_of_checked_items(self):
         """Returns the list of checked item names in the QTreeModel"""
-        self.list_of_checked_items=[]
+        self.list_of_checked_items = []
         #self._iteration_over_tree_model_item_children_v1(self.parent_item)
         #self._iteration_over_tree_model_item_children_v2(self.parent_item)
 

@@ -160,7 +160,7 @@ class QWFileBrowser(QWidget) :
         if path is None or path == '' : return
         text = str(self.box_txt.toPlainText())
         logger.info('Save in file:\n'+text)
-        f=open(path,'w')
+        f = open(path,'w')
         f.write( text )
         f.close() 
 
@@ -168,7 +168,7 @@ class QWFileBrowser(QWidget) :
     def onBrow(self):
         logger.debug('onBrow - select file')
 
-        path0 ='./'
+        path0 = './'
         if len(self.list_of_files) > 1 : path0 = self.list_of_files[1]
 
         path = gu.get_open_fname_through_dialog_box(self, path0, 'Select text file for browser', filter='Text files (*.txt *.dat *.data *.cfg *.npy)\nAll files (*)')

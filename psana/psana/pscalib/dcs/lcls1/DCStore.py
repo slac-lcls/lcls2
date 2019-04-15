@@ -415,11 +415,11 @@ def test_DCStore_load_and_save() :
 
 def test() :
     log.setPrintBits(0377) 
-    if len(sys.argv)==1    : print 'For test(s) use command: python %s <test-number=1-4>' % sys.argv[0]
-    elif(sys.argv[1]=='1') : test_DCStore()        
-    elif(sys.argv[1]=='2') : test_DCStore_save()        
-    elif(sys.argv[1]=='3') : test_DCStore_load()        
-    elif(sys.argv[1]=='4') : test_DCStore_load_and_save()        
+    if len(sys.argv) == 1    : print 'For test(s) use command: python %s <test-number=1-4>' % sys.argv[0]
+    elif(sys.argv[1] == '1') : test_DCStore()        
+    elif(sys.argv[1] == '2') : test_DCStore_save()        
+    elif(sys.argv[1] == '3') : test_DCStore_load()        
+    elif(sys.argv[1] == '4') : test_DCStore_load_and_save()        
     else : print 'Non-expected arguments: sys.argv = %s use 1,2,...' % sys.argv
 
 #------------------------------

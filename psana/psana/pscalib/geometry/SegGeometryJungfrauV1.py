@@ -473,7 +473,7 @@ def test_jungfrau_mask(mbits=0o377, width=1) :
     o = SegGeometryJungfrauV1()
     X, Y = o.get_seg_xy_maps_pix_with_offset()
     mask = o.pixel_mask_array(mbits, width)
-    mask[mask==0]=4
+    mask[mask == 0] = 4
     iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
     img = gg.getImageFromIndexArrays(iY,iX,mask)
     gg.plotImageLarge(img, amp_range=(-1, 4), figsize=(14,6))
@@ -484,14 +484,14 @@ def test_jungfrau_mask(mbits=0o377, width=1) :
 if __name__ == "__main__" :
     import sys
 
-    if len(sys.argv)==1   : print('For test(s) use command: python', sys.argv[0], '<test-number=0-5>')
-    elif sys.argv[1]=='0' : test_xyz_min_max()
-    elif sys.argv[1]=='1' : test_xyz_maps()
-    elif sys.argv[1]=='2' : test_jungfrau_img()
-    elif sys.argv[1]=='3' : test_jungfrau_img_easy()
-    elif sys.argv[1]=='4' : test_pix_sizes()
-    elif sys.argv[1]=='5' : test_jungfrau_mask(mbits=1+2)
-    elif sys.argv[1]=='6' : test_jungfrau_mask(mbits=1+2, width=10)
+    if len(sys.argv) == 1   : print('For test(s) use command: python', sys.argv[0], '<test-number=0-5>')
+    elif sys.argv[1] == '0' : test_xyz_min_max()
+    elif sys.argv[1] == '1' : test_xyz_maps()
+    elif sys.argv[1] == '2' : test_jungfrau_img()
+    elif sys.argv[1] == '3' : test_jungfrau_img_easy()
+    elif sys.argv[1] == '4' : test_pix_sizes()
+    elif sys.argv[1] == '5' : test_jungfrau_mask(mbits=1+2)
+    elif sys.argv[1] == '6' : test_jungfrau_mask(mbits=1+2, width=10)
     else : print('Non-expected arguments: sys.argv=', sys.argv)
 
     sys.exit('End of test.')

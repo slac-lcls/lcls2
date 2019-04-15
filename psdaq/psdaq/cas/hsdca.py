@@ -27,11 +27,11 @@ class PvArray(object):
         self._display = []
         initPvMon(self,pvname)
         dlen = len(self.pv.get())
-        if (MaxLen>0 and MaxLen<dlen):
+        if (MaxLen > 0 and MaxLen < dlen):
             print('Limiting %s to %d'%(pvname,MaxLen))
             dlen = MaxLen
         for i,v in enumerate(self.pv.__value__):
-            if i<dlen:
+            if i < dlen:
                 lbl = QtWidgets.QLineEdit(str(v))
                 lbl.setEnabled(Editable)
                 lbl.editingFinished.connect(self.setPv)

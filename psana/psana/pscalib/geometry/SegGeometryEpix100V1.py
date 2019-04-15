@@ -479,7 +479,7 @@ def test_2x2_mask(mbits=0o377) :
     pc2x2 = SegGeometryEpix100V1(use_wide_pix_center=False)
     X, Y = pc2x2.get_seg_xy_maps_pix_with_offset()
     mask = pc2x2.pixel_mask_array(mbits)
-    mask[mask==0]=3
+    mask[mask == 0] = 3
     iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
     img = gg.getImageFromIndexArrays(iX,iY,mask)
     gg.plotImageLarge(img, amp_range=(-1, 2), figsize=(8,10))
@@ -490,13 +490,13 @@ def test_2x2_mask(mbits=0o377) :
 if __name__ == "__main__" :
     import sys
 
-    if len(sys.argv)==1   : print('For test(s) use command: python', sys.argv[0], '<test-number=0-5>')
-    elif sys.argv[1]=='0' : test_xyz_min_max()
-    elif sys.argv[1]=='1' : test_xyz_maps()
-    elif sys.argv[1]=='2' : test_2x2_img()
-    elif sys.argv[1]=='3' : test_2x2_img_easy()
-    elif sys.argv[1]=='4' : test_pix_sizes()
-    elif sys.argv[1]=='5' : test_2x2_mask(mbits=1+2)
+    if len(sys.argv) == 1   : print('For test(s) use command: python', sys.argv[0], '<test-number=0-5>')
+    elif sys.argv[1] == '0' : test_xyz_min_max()
+    elif sys.argv[1] == '1' : test_xyz_maps()
+    elif sys.argv[1] == '2' : test_2x2_img()
+    elif sys.argv[1] == '3' : test_2x2_img_easy()
+    elif sys.argv[1] == '4' : test_pix_sizes()
+    elif sys.argv[1] == '5' : test_2x2_mask(mbits=1+2)
     else : print('Non-expected arguments: sys.argv=', sys.argv)
 
     sys.exit('End of test.')

@@ -38,7 +38,7 @@ class MyQGraphicsView(QGraphicsView) :
        self.invscalex = 1./self.transform().m11()
        self.invscaley = 1./self.transform().m22()
        ps = self.mapToScene(pw)
-       print('XXX: MyQGraphicsView.mousPressEvent in win: %4d %4d on scene: %.1f %.1f'%\
+       print('XXX: MyQGraphicsView.mousPressEvent in win: %4d %4d on scene: %.1f %.1f' %\
               (pw.x(), pw.y(), ps.x(), ps.y()))
 
 

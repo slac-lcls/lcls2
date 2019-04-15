@@ -109,17 +109,17 @@ class CGWMainPartition(QGroupBox) :
         #    logger.debug('%s %s is %s selected' % (name.ljust(10), alias.ljust(10), {False:'not', True:'   '}[state]))
 
         w = QWPopupTableCheck(tableio=list2d, title_h=self.TABTITLE_H,\
-                              do_ctrl=(self.state=='UNALLOCATED'),\
+                              do_ctrl=(self.state == 'UNALLOCATED'),\
                               win_title='Select partitions',\
                               do_edit=False, is_visv=True, do_frame=True)
 
         w.setToolTip('Processes control is only available\nin the state UNALLOCATED')
         w.move(self.pos()+QPoint(self.width()/2,200))
-        resp=w.exec_()
+        resp = w.exec_()
 
         logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
 
-        if resp!=QDialog.Accepted : return
+        if resp != QDialog.Accepted : return
 
         list2d = w.table_out()
 
@@ -133,7 +133,7 @@ class CGWMainPartition(QGroupBox) :
         #self.parent_ctrl....
 
         list2d_active = list_active_procs(list2d)
-        if len(list2d_active)>0 :
+        if len(list2d_active) > 0 :
             daq_control().setState('allocated')
         else :
             logger.warning('NO PROCESS SELECTED!')

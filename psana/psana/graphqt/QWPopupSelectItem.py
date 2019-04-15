@@ -154,7 +154,7 @@ def popup_select_item_from_list(parent, lst, min_height=600, dx=-110, dy=-50) :
     #self.setMaximumWidth(600)
     w.setFixedHeight(height)
     w.move(QCursor.pos().__add__(QPoint(dx,dy)))
-    resp=w.exec_()
+    resp = w.exec_()
     #if   resp == QDialog.Accepted : return w.selectedName()
     #elif resp == QDialog.Rejected : return None    
     #else : return None

@@ -171,7 +171,7 @@ class IVMain(QtGui.QWidget) :
 #------------------------------
 
     def proc_parser(self, parser=None) :
-        self.parser=parser
+        self.parser = parser
 
         if parser is None :
             cp.fname_img.setValue('')
@@ -182,7 +182,7 @@ class IVMain(QtGui.QWidget) :
         self.opts = vars(popts)
         self.defs = vars(parser.get_default_values())
 
-        nargs =len(self.args)
+        nargs = len(self.args)
 
         exp = popts.exp # self.opts['exp']
         run = popts.run # self.opts['run']
@@ -274,7 +274,7 @@ class IVMain(QtGui.QWidget) :
 
     def on_but_reset(self):
         log.info('%s.on_but_reset' % self._name)
-        self.is_reset=True
+        self.is_reset = True
 
         self.wimg.on_but_reset()
 
@@ -282,7 +282,7 @@ class IVMain(QtGui.QWidget) :
         #rax.moveCenter(rax.center() + QtCore.QPointF(1, 0))
         self.wimg.set_rect_axes(rax) # need to call it to update image window->reset spectrum
 
-        self.is_reset=False
+        self.is_reset = False
 
 
     def on_but_save(self):
@@ -307,7 +307,7 @@ class IVMain(QtGui.QWidget) :
     def on_hist_axes_limits_changed(self, x1, x2, y1, y2):
         '''Responce on signal axes_limits_changed():
         '''
-        log.info('%s.on_hist_axes_limits_changed x1: %.2f  x2: %.2f  y1: %.2f  y2: %.2f'%\
+        log.info('%s.on_hist_axes_limits_changed x1: %.2f  x2: %.2f  y1: %.2f  y2: %.2f' %\
                  (self._name, x1, x2, y1, y2))
 
         self.disconnect_signals_from_hist()
@@ -330,20 +330,20 @@ class IVMain(QtGui.QWidget) :
         xmin, xmax = int(floor(min(x1, x2))), int(floor(max(x1, x2)))
         ymin, ymax = int(floor(min(y1, y2))), int(floor(max(y1, y2)))
 
-        if xmin<0 : xmin = 0
-        if ymin<0 : ymin = 0
-        if xmax<0 : xmax = 0
-        if ymax<0 : ymax = 0
+        if xmin < 0 : xmin = 0
+        if ymin < 0 : ymin = 0
+        if xmax < 0 : xmax = 0
+        if ymax < 0 : ymax = 0
 
-        if xmin>w1: xmin = w1
-        if ymin>h1: ymin = h1
-        if xmax>w1: xmax = w1
-        if ymax>h1: ymax = h1
+        if xmin > w1: xmin = w1
+        if ymin > h1: ymin = h1
+        if xmax > w1: xmax = w1
+        if ymax > h1: ymax = h1
 
         arr_win = arr[ymin:ymax, xmin:xmax]
 
         #log.info('image data shape h=%d w=%d' % (h,w))
-        log.info('%s.on_image_axes_limits_changed xmin: %4d  xmax: %4d  ymin: %4d  ymax: %4d'%\
+        log.info('%s.on_image_axes_limits_changed xmin: %4d  xmax: %4d  ymin: %4d  ymax: %4d' %\
                 (self._name, xmin, xmax, ymin, ymax))
 
         self.disconnect_signals_from_img()
@@ -377,11 +377,11 @@ class IVMain(QtGui.QWidget) :
         '''
         log.debug('%s.on_new_event_number %d' % (self._name, num))
 
-        set_hlims=False
+        set_hlims = False
         if self.improd is None : 
             from expmon.PSImageProducer import PSImageProducer
             self.improd = PSImageProducer(cp, log)
-            set_hlims=True
+            set_hlims = True
 
         self.arr = self.improd.image(num)
         self.set_image_data(self.arr, set_hlims)

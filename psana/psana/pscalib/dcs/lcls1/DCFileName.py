@@ -228,7 +228,7 @@ def test_DCFileName() :
 
     import psana
     ds = psana.DataSource('/reg/g/psdm/detector/data_test/types/0007-NoDetector.0-Epix100a.0.xtc')
-    env=ds.env()
+    env = ds.env()
 
     #evt, env, src = None, None, None
     ofn1 = DCFileName(env, 'Imp'); ofn1.print_attrs()
@@ -236,7 +236,7 @@ def test_DCFileName() :
     ofn3 = DCFileName(env, 'cs140_0'); ofn3.print_attrs()
     ofn4 = DCFileName(env, 'Cspad.', calibdir='path-to/calib'); ofn4.print_attrs()
     ds = psana.DataSource('exp=cxif5315:run=129')
-    env=ds.env()
+    env = ds.env()
     ofn5 = DCFileName(env, 'Cspad.'); ofn5.print_attrs()
 
 #------------------------------

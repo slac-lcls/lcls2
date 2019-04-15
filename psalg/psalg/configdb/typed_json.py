@@ -462,7 +462,7 @@ class cdict(object):
                 d = [float(x) for x in input.ravel()]
             else:
                 d = [int(x) for x in input.ravel()]
-            t = list((typ[0],)+ input.shape)
+            t = list((typ[0],) + input.shape)
         elif isinstance(input, tuple):
             d = input[1]
             t = input[0]

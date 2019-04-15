@@ -305,7 +305,7 @@ if __name__ == "__main__" :
     minute = int(popup_select_item_from_list(None, minutes))
     logger.debug('Selected minute: %d' % minute)
 
-    second=0
+    second = 0
 
     s_tstamp = '%04d-%02d-%02d %02d:%02d:%02d' % (year, month, day, hour, minute, second)
     struct = strptime(s_tstamp, fmt)

@@ -46,12 +46,12 @@ logger = logging.getLogger(__name__)
 
 def run_begin_end_time(exp, runnum) :
     # returns a list of dicts per run with 'begin_time', 'end_time', 'run_num', 'run_type'
-    if runnum>0 :
+    if runnum > 0 :
         resp = requests_get('https://pswww.slac.stanford.edu/prevlgbk/lgbk/%s/ws/runs' % exp).json()
         for d in resp :
             if d['run_num'] == runnum :
                 return int(d['begin_time']), int(d['end_time'])
-    logger.debug('begin and end time info is not found in mysql for run=%d. Uses default times.' %runnum)
+    logger.debug('begin and end time info is not found in mysql for run=%d. Uses default times.' % runnum)
     return 1000000000, 5000000000
 
 #------------------------------
@@ -65,7 +65,7 @@ def check_data_shape(data, detname, ctype) :
     """Re-shape data if necessary
     """
     if 'cspad' in detname :
-        if data.size==32*185*388 and data.shape!=(32,185,388) :
+        if data.size == 32*185*388 and data.shape != (32,185,388) :
             logger.info('Reshape data for det: %s ctype: %s' % (detname, ctype))
             data.shape = (32,185,388)
 
@@ -78,7 +78,7 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
 
     resp = parse_calib_file_name(fname)
     begin, end, ext = resp if resp is not None else (None, None, None)
-    if begin is not None : begin=int(begin)
+    if begin is not None : begin = int(begin)
 
     if None in (begin, end, ext) : return
 
@@ -153,8 +153,8 @@ def scan_calib_for_experiment(exp='cxix25615', **kwargs) :
     client = dbu.connect_to_server(host, port, user, upwd)
     dbname = dbu.db_prefixed_name(exp)
     if dbu.database_exists(client, dbname) :
-        msg = 'Experiment %s already has a database. Consider to delete it from the list:\n%s'%\
-              (exp, str(dbu.database_names(client)))+\
+        msg = 'Experiment %s already has a database. Consider to delete it from the list:\n%s' %\
+              (exp, str(dbu.database_names(client))) +\
               '\nBefore adding consider to delete existing DB using command: cdb deldb --dbname %s -C -u <username> -p <password>' % dbname
         logger.warning(msg)
         return

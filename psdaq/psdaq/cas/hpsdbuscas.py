@@ -58,7 +58,7 @@ class PVAServer(object):
         types = self.fieldTypes.current().get('value')
         oid   = self.payload   .current().getID()
         nid   = str(mask)
-        if nid==oid:
+        if nid == oid:
             nid += 'a'
         ntypes  = []
         nvalues = {}

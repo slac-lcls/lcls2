@@ -64,8 +64,8 @@ class ConstantsLoad(object):
         object.  if not, set our attribute value.  call ourselves
         recursively to see if other dictionary levels exist.'''
         if '/' in name:
-            dictname=name[:name.find('/')]
-            remainder=name[name.find('/')+1:]
+            dictname = name[:name.find('/')]
+            remainder = name[name.find('/')+1:]
 
             if type(obj) is dict:
                 indicator = dictname in obj
@@ -74,7 +74,7 @@ class ConstantsLoad(object):
 
             if not indicator: 
                 if type(obj) is dict:
-                    obj[dictname]={}
+                    obj[dictname] = {}
                 else:
                     setattr(obj,dictname,{})
                
@@ -84,7 +84,7 @@ class ConstantsLoad(object):
                 self.setval(remainder,getattr(obj,dictname))
         else:
             if type(obj) is dict:
-                obj[name]=self.f[self.fullname].value
+                obj[name] = self.f[self.fullname].value
             else:
                 setattr(obj,name,self.f[self.fullname].value)
     def loadCallBack(self,name,obj):
@@ -111,7 +111,7 @@ def Save(obj,file):
 
 class ConstTest(object):
     def __init__(self):
-        self.parameters= {
+        self.parameters = {
             'version' : 0,
             'darkreferencepath':'hello',
             'nb':12,

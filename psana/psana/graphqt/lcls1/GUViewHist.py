@@ -107,8 +107,8 @@ def image_to_hist_arr(arr, vmin=None, vmax=None, nbins=None) :
 
     #print 'XXX:NBINS_MAX', NBINS_MAX
     
-    if nhbins>NBINS_MAX : nhbins=NBINS_MAX
-    if nhbins<NBINS_MIN : nhbins=NBINS_MIN
+    if nhbins > NBINS_MAX : nhbins = NBINS_MAX
+    if nhbins < NBINS_MIN : nhbins = NBINS_MIN
 
     #print 'XXX arr.shape:\n', arr.shape
     #print 'XXX amin, amax, nhbins:\n', amin, amax, nhbins
@@ -156,8 +156,8 @@ class GUViewHist(GUViewAxes) :
 
 
     def _init_cursor_scope(self) :
-        self.pen1=QtGui.QPen(Qt.white, 0, Qt.DashLine)
-        self.pen2=QtGui.QPen(Qt.black, 0, Qt.DashLine)
+        self.pen1 = QtGui.QPen(Qt.white, 0, Qt.DashLine)
+        self.pen2 = QtGui.QPen(Qt.black, 0, Qt.DashLine)
         #pen1.setCosmetic(True)
         #pen2.setCosmetic(True)
 
@@ -201,10 +201,10 @@ class GUViewHist(GUViewAxes) :
 
         for hb in self.lst_hbins :
             i1,i2 = hb.bin_indexes((x1,x2))
-            hmin = hb.values[i1] if i1==i2 else hb.values[i1:i2].min()            
-            hmax = hb.values[i1] if i1==i2 else hb.values[i1:i2].max()
-            hmean= hb.values[i1] if i1==i2 else hb.values[i1:i2].mean()
-            if hmax>20*hmean : hmax = 20*hmean
+            hmin = hb.values[i1] if i1 == i2 else hb.values[i1:i2].min()            
+            hmax = hb.values[i1] if i1 == i2 else hb.values[i1:i2].max()
+            hmean = hb.values[i1] if i1 == i2 else hb.values[i1:i2].mean()
+            if hmax > 20*hmean : hmax = 20*hmean
 
             ymin = hmin #if ymin is None else min(hmin,ymin) 
             ymax = hmax + 0.12*(hmax-hmin) #if ymax is None else max(hmax,ymax) 
@@ -231,7 +231,7 @@ class GUViewHist(GUViewAxes) :
         hb = self.lst_hbins[ihis]
         i1,i2 = hb.bin_indexes((x1,x2))
 
-        if i1 == i2 : i2+=1
+        if i1 == i2 : i2 += 1
         #    if i2<hb.nbins()-1 : i2+=1
         #    else               : i1-=1
 
@@ -310,7 +310,7 @@ class GUViewHist(GUViewAxes) :
     def evaluate_hist_mean_std(self):
         """Evaluates histogram mean and std (standard deviation) and emits them with signal"""
         mean, rms = self.visible_hist_mean_std()
-        self.countemit+=1
+        self.countemit += 1
         #print '%5d  mean: %.2f  rms: %.2f' % (self.countemit, mean, rms)
         self.emit(QtCore.SIGNAL('mean_std_updated(float,float)'), mean, rms)
 
@@ -356,7 +356,7 @@ class GUViewHist(GUViewAxes) :
         if self.do_cursor_scope : 
             p = self.mapToScene(e.pos())
             x, y = p.x(), p.y()
-            if x<self.rectax.left() : return
+            if x < self.rectax.left() : return
             y1, y2 = self.rectax.bottom(), self.rectax.top()
             self.cline1i.setLine(x, y1, x, y2)
             self.cline2i.setLine(x, y1, x, y2)
@@ -540,7 +540,7 @@ if __name__ == "__main__" :
     y2 = np.sin(x2)/x2
     #y2 = np.random.random((nbins,))
 
-    rectax=QtCore.QRectF(0, -1.2, 100, 2.4)    
+    rectax = QtCore.QRectF(0, -1.2, 100, 2.4)    
     app = QtGui.QApplication(sys.argv)
     w = GUViewHist(None, rectax, origin='DL', scale_ctl='H', rulers='DL',\
                     margl=0.12, margr=0.02, margt=0.02, margb=0.06)

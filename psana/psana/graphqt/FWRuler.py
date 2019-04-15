@@ -68,7 +68,7 @@ class FWRuler() :
         self.path_item = None
         self.lst_of_items = []
 
-        r = self.rect=self.scene.sceneRect()
+        r = self.rect = self.scene.sceneRect()
         vmin = r.x() if self.horiz else r.y()
         vmax = r.x()+r.width() if self.horiz else r.y()+r.height()
         self.labels = best_label_locs(vmin, vmax, self.size_inches, density=1, steps=None)
@@ -163,7 +163,7 @@ class FWRuler() :
 
         # add path with ruler lines to scene
 
-        self.lst_of_items=[]
+        self.lst_of_items = []
 
         self.path_item = self.scene.addPath(self.path, self.pen, self.brush)
         self.path_item.setZValue(self.zvalue)
@@ -206,7 +206,7 @@ class FWRuler() :
     def remove(self) :
         for item in self.lst_of_items :
             self.scene.removeItem(item)
-        self.lst_of_items=[]
+        self.lst_of_items = []
 
         #self.scene.removeItem(self.path_item)
         #self.scene.destroyItemGroup(self.item_group)

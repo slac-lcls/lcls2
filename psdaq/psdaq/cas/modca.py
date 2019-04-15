@@ -54,7 +54,7 @@ class PvPAddr(QtWidgets.QWidget):
         q = self.pv.__value__
         if err is None:
             qs = ('%x'%q).lstrip('f')
-            if len(qs)==0:
+            if len(qs) == 0:
                 s = 'XTPG'
             else:
                 s = ''
@@ -93,7 +93,7 @@ class PvCString(QtWidgets.QWidget):
 #            if slen > 64:
 #                slen = 64
             for i in range(slen):
-                if q[i]==0:
+                if q[i] == 0:
                     break
                 s += QChar(ord(q[i]))
             self.__display.valueSet.emit(s)
@@ -154,10 +154,10 @@ class PvLinkId:
         value = self.pv.__value__
         itype = (int(value)>>24)&0xff
         self.linkType.setText(linkType[itype])
-        if (itype == 0xfb or itype == 0xfc) and (value&0xffff)!=0:
+        if (itype == 0xfb or itype == 0xfc) and (value&0xffff) != 0:
             ip_addr = '172.21'+'.%u'%((int(value)>>8)&0xff)+'.%u'%((int(value)>>0)&0xff)
             host = socket.gethostbyaddr(ip_addr)[0].split('.')[0].split('-')[-1]
-            if itype == 0xfc and value&0xff0000!=0:
+            if itype == 0xfc and value&0xff0000 != 0:
                 host = host+'.%x'%((value>>16)&0xff)
             self.linkSrc.setText(host)
         else:
@@ -327,9 +327,9 @@ class PvMmcm(QtWidgets.QWidget):
         ilocked = (v0>>31)&1
         
         label = title+'\n'+str(iedge)
-        if ilocked==1:
+        if ilocked == 1:
             label += '*'
-        if ibusy==1:
+        if ibusy == 1:
             label += 'R'
         layout.addWidget( QtWidgets.QLabel(label) )
 
@@ -416,7 +416,7 @@ class Ui_MainWindow(object):
             tw.addTab(tb,"Global")
 
             tw.addTab( addTiming(self,pvbase+'Us:'), "UsTiming")
-            if getCuMode()==True:
+            if getCuMode() == True:
                 tw.addTab( addCuTab (self,pvbase      ), "CuTiming")
 
         tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")

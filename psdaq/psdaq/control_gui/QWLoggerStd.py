@@ -103,11 +103,11 @@ class QWLoggerStd(QWidget) :
         self.log_level  = log_level # cp.log_level
         self.log_fname  = log_file_name(log_prefix)
 
-        if log_level=='DEBUG' :
+        if log_level == 'DEBUG' :
             print('%s.__init__ log_fname: %s' % (self._name, self.log_fname))
 
         if self.log_fname is not None :
-            depth = 6 if self.log_fname[0]=='/' else 1
+            depth = 6 if self.log_fname[0] == '/' else 1
             gu.create_path(self.log_fname, depth, mode=0o0777)
             #print('Log file: %s' % log_fname)
 
@@ -160,7 +160,7 @@ class QWLoggerStd(QWidget) :
         self.append_qwlogger('Configure logger')
 
         fmt = '%(asctime)s %(name)s %(levelname)s: %(message)s'
-        tsfmt='%Y-%m-%dT%H:%M:%S'
+        tsfmt = '%Y-%m-%dT%H:%M:%S'
 
         level = self.dict_name_to_level[self.log_level] # e.g. logging.DEBUG
 
@@ -189,8 +189,8 @@ class QWLoggerStd(QWidget) :
         levname = self.log_level
         level = self.dict_name_to_level.get(levname, logging.DEBUG) # e.g. logging.DEBUG
 
-        tsfmt='%Y-%m-%dT%H:%M:%S'
-        fmt = '%(levelname)s %(name)s: %(message)s' if level==logging.DEBUG else\
+        tsfmt = '%Y-%m-%dT%H:%M:%S'
+        fmt = '%(levelname)s %(name)s: %(message)s' if level == logging.DEBUG else\
               '%(asctime)s %(levelname)s: %(message)s'
               #'%(asctime)s %(levelname)s %(name)s: %(message)s'
 

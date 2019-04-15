@@ -61,7 +61,7 @@ if __name__ == "__main__" :
       cmd = 'ls -l'
       t0_sec = time()
       o = DoCommandInSubprocess(cmd)
-      print('command: "%s" is execution in subprocess. Submission time = %.6f sec' %(cmd, time()-t0_sec))
+      print('command: "%s" is execution in subprocess. Submission time = %.6f sec' % (cmd, time()-t0_sec))
       
       for i in range(10) :
           if o.process_is_running() :

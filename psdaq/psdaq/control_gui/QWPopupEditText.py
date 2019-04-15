@@ -168,7 +168,7 @@ if __name__ == "__main__" :
     w = QWPopupEditText(parent=None, text="1,2,3,4,5,11,12,30,40")
     w.move(QPoint(100,50))
     #w.show()
-    resp=w.exec_()
+    resp = w.exec_()
     t = w.get_content()
     logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
     print("edited text: %s" % str(t))

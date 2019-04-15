@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 def load_textfile(path) :
     """Returns (str) text from file.
     """
-    f=open(path, 'r')
+    f = open(path, 'r')
     recs = f.read() # f.readlines()
     f.close() 
     return recs

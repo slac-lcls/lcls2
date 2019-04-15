@@ -295,11 +295,11 @@ def test_DCVersionI() :
 #------------------------------
 
 def test() :
-    if len(sys.argv)==1 : print 'For test(s) use command: python %s <test-number=1-4>' % sys.argv[0]
-    elif(sys.argv[1]=='1') : test_DCStoreI()        
-    elif(sys.argv[1]=='2') : test_DCTypeI()        
-    elif(sys.argv[1]=='3') : test_DCRangeI()        
-    elif(sys.argv[1]=='4') : test_DCVersionI()        
+    if len(sys.argv) == 1 : print 'For test(s) use command: python %s <test-number=1-4>' % sys.argv[0]
+    elif(sys.argv[1] == '1') : test_DCStoreI()        
+    elif(sys.argv[1] == '2') : test_DCTypeI()        
+    elif(sys.argv[1] == '3') : test_DCRangeI()        
+    elif(sys.argv[1] == '4') : test_DCVersionI()        
     else : print 'Non-expected arguments: sys.argv = %s use 1,2,...' % sys.argv
 
 #------------------------------

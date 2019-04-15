@@ -23,7 +23,7 @@ def add_item(type, obj, parent=None, scene=None,\
              brush=QBrush(),\
              pen=QPen(Qt.blue, 2, Qt.SolidLine)) :
 
-    brush_w=QBrush(Qt.white, Qt.SolidPattern)
+    brush_w = QBrush(Qt.white, Qt.SolidPattern)
 
     logger.debug('DragFactory add_item %s' % dic_drag_type_to_name[type])
 

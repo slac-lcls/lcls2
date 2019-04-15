@@ -174,7 +174,7 @@ class PvLabel(QtWidgets.QWidget):
 #                        v = v + QString(" [%s]") % (QString(dq[i]*self.scale))
                         v = v + " %5.2f" % (dq[i]*self.scale)
                         #v = v + ' [' + '%f'%dq[i] + ']'
-                    if ((i%8)==7):
+                    if ((i%8) == 7):
                         v = v + '\n'
                 if self.units is not None:
                     v = v + self.units
@@ -421,7 +421,7 @@ class PvDblArray:
         q = self.pv.__value__
         if err is None:
             for i in range(len(q)):
-                if nogui==False:
+                if nogui == False:
                     self.widgets[i].valueSet.emit(QString(format(q[i], '.4f')))
             if nogui:
                 print(self.pv.pvname,q)
@@ -626,7 +626,7 @@ class PvEvtTab(QtWidgets.QStackedWidget):
 ##        sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqBits))
 #        sql.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqRates))
 #        sqw.setLayout(sql)
-        sqw = PvDefSeq(pvname) if xtpg==False else PvDefCuSeq(pvname)
+        sqw = PvDefSeq(pvname) if xtpg == False else PvDefCuSeq(pvname)
         self.addWidget(sqw)
 
         self.setCurrentIndex(evtcmb.currentIndex())
@@ -638,7 +638,7 @@ class PvEditEvt(QtWidgets.QWidget):
         super(PvEditEvt, self).__init__()
         vbox = QtWidgets.QVBoxLayout()
         print('xtpg',xtpg)
-        evtcmb = PvEditCmb(pvname,evtselSc if xtpg==False else evtselCu)
+        evtcmb = PvEditCmb(pvname,evtselSc if xtpg == False else evtselCu)
         vbox.addWidget(evtcmb)
         vbox.addWidget(PvEvtTab(pvname,evtcmb))
         self.setLayout(vbox)

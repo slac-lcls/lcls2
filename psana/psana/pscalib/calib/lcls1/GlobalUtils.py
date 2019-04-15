@@ -328,7 +328,7 @@ def string_from_source(source) :
   """
   str_in_quots = str(source).split('"')[1]
   str_split = str_in_quots.split('(') 
-  return str_split[1].rstrip(')') if len(str_split)>1 else str_in_quots
+  return str_split[1].rstrip(')') if len(str_split) > 1 else str_in_quots
 
 ##-----------------------------
 
@@ -336,7 +336,7 @@ def shape_nda_to_2d(arr) :
     """Return shape of np.array to reshape to 2-d
     """
     sh = arr.shape
-    if len(sh)<3 : return sh
+    if len(sh) < 3 : return sh
     return (arr.size/sh[-1], sh[-1])
 
 ##-----------------------------
@@ -345,7 +345,7 @@ def shape_nda_to_3d(arr) :
     """Return shape of np.array to reshape to 3-d
     """
     sh = arr.shape
-    if len(sh)<4 : return sh
+    if len(sh) < 4 : return sh
     return (arr.size/sh[-1]/sh[-2], sh[-2], sh[-1])
 
 ##-----------------------------
@@ -354,7 +354,7 @@ def reshape_nda_to_2d(arr) :
     """Reshape np.array to 2-d
     """
     sh = arr.shape
-    if len(sh)<3 : return arr
+    if len(sh) < 3 : return arr
     arr.shape = (arr.size/sh[-1], sh[-1])
     return arr
 
@@ -364,7 +364,7 @@ def reshape_nda_to_3d(arr) :
     """Reshape np.array to 3-d
     """
     sh = arr.shape
-    if len(sh)<4 : return arr
+    if len(sh) < 4 : return arr
     arr.shape = (arr.size/sh[-1]/sh[-2], sh[-2], sh[-1])
     return arr
 
@@ -384,7 +384,7 @@ def merge_masks(mask1=None, mask2=None, dtype=np.uint8) :
         else                         : mask1.shape = shape2
 
     mask = np.logical_and(mask1, mask2)
-    return mask if dtype==np.bool else np.asarray(mask, dtype)
+    return mask if dtype == np.bool else np.asarray(mask, dtype)
 
 #------------------------------
 
@@ -458,13 +458,13 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8) :
         if mcols > cols : 
           raise ValueError('Requested number of edge columns=%d to mask exceeds 2-d, shape=%s' % (mcols, str(sh)))
 
-        if mrows>0 :
+        if mrows > 0 :
           # mask edge rows
           mask_rows = np.zeros((mrows,cols), dtype=mask.dtype)
           mask_out[:mrows ,:] = mask_rows
           mask_out[-mrows:,:] = mask_rows
 
-        if mcols>0 :
+        if mcols > 0 :
           # mask edge colss
           mask_cols = np.zeros((rows,mcols), dtype=mask.dtype)
           mask_out[:,:mcols ] = mask_cols
@@ -481,13 +481,13 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8) :
         if mcols > cols : 
           raise ValueError('Requested number of edge columns=%d to mask exceeds 2-d, shape=%s' % (mcols, str(sh)))
 
-        if mrows>0 :
+        if mrows > 0 :
           # mask edge rows
           mask_rows = np.zeros((segs,mrows,cols), dtype=mask.dtype)
           mask_out[:, :mrows ,:] = mask_rows
           mask_out[:, -mrows:,:] = mask_rows
 
-        if mcols>0 :
+        if mcols > 0 :
           # mask edge colss
           mask_cols = np.zeros((segs,rows,mcols), dtype=mask.dtype)
           mask_out[:, :,:mcols ] = mask_cols
@@ -503,12 +503,12 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=1000, verbos=1, cmt=''
     """Evaluates low and high limit of the array, which are used to find bad pixels.
     """
     ave, std = (arr.mean(), arr.std()) # if (nneg>0 or npos>0) else (-1,-1)
-    lo = ave-nneg*std if nneg>0 else lim_lo
-    hi = ave+npos*std if npos>0 else lim_hi
+    lo = ave-nneg*std if nneg > 0 else lim_lo
+    hi = ave+npos*std if npos > 0 else lim_hi
     lo, hi = max(lo, lim_lo), min(hi, lim_hi)
 
     if verbos & 1 :
-        print '  %s: %s ave, std = %.3f, %.3f  low, high limits = %.3f, %.3f'%\
+        print '  %s: %s ave, std = %.3f, %.3f  low, high limits = %.3f, %.3f' %\
               (sys._getframe().f_code.co_name, cmt, ave, std, lo, hi)
 
     return lo, hi
@@ -595,9 +595,9 @@ def create_path(path, depth=6, mode=0777, verb=False) :
     subdirs = path.split('/')
     cpath = subdirs[0]
     for i,sd in enumerate(subdirs[:-1]) :
-        if i>0 : cpath += '/%s'% sd 
-        if i<depth : continue
-        if cpath=='' : continue
+        if i > 0 : cpath += '/%s' % sd 
+        if i < depth : continue
+        if cpath == '' : continue
         create_directory_with_mode(cpath, mode, verb)
 
     return os.path.exists(cpath)
@@ -607,7 +607,7 @@ def create_path(path, depth=6, mode=0777, verb=False) :
 def save_textfile(text, path, mode='w') :
     """Saves text in file specified by path. mode: 'w'-write, 'a'-append 
     """
-    f=open(path, mode)
+    f = open(path, mode)
     f.write(text)
     f.close() 
 
@@ -616,7 +616,7 @@ def save_textfile(text, path, mode='w') :
 def load_textfile(path) :
     """Returns text file as a str object
     """
-    f=open(path, 'r')
+    f = open(path, 'r')
     recs = f.read() # f.readlines()
     f.close() 
     return recs
@@ -642,7 +642,7 @@ def calib_dir(env) :
 
 def exp_name(env) :
     exp = env.experiment()
-    if exp=='' : return None
+    if exp == '' : return None
     return exp
 
 #------------------------------
@@ -650,7 +650,7 @@ def exp_name(env) :
 def log_rec_on_start() :
     """Returns (str) record containing timestamp, login, host, cwd, and command line
     """
-    return '\n%s user:%s@%s cwd:%s\n  command:%s'%\
+    return '\n%s user:%s@%s cwd:%s\n  command:%s' %\
            (str_tstamp(fmt='%Y-%m-%dT%H:%M:%S'), get_login(), get_hostname(), get_cwd(), ' '.join(sys.argv))
 
 #------------------------------
@@ -821,7 +821,7 @@ def test_mask_neighbors_2d(allnbrs=True) :
     axim2 = gr.add_axes(fig, axwin=(0.55,  0.05, 0.40, 0.91))
     axcb2 = gr.add_axes(fig, axwin=(0.952, 0.05, 0.01, 0.91))
 
-    mask = np.select((randexp>6,), (0,), default=1)
+    mask = np.select((randexp > 6,), (0,), default=1)
     mask_nbrs = mask_neighbors(mask, allnbrs)
     img1 = mask # mask # randexp
     img2 = mask_nbrs # mask # randexp
@@ -846,7 +846,7 @@ def test_mask_neighbors_3d(allnbrs=True) :
     axim2 = gr.add_axes(fig, axwin=(0.55,  0.05, 0.40, 0.91))
     axcb2 = gr.add_axes(fig, axwin=(0.952, 0.05, 0.01, 0.91))
 
-    mask = np.select((randexp>6,), (0,), default=1)
+    mask = np.select((randexp > 6,), (0,), default=1)
     mask_nbrs = mask_neighbors(mask, allnbrs)
 
     img1 = reshape_nda_to_2d(mask)

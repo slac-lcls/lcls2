@@ -158,7 +158,7 @@ def add_constants_to_file(data, fname, par, env=None, ctype=gu.PIXEL_MASK,\
 
     str_ctype = gu.dic_calib_type_to_name[ctype]
 
-    if verb : print '  %s.add_constants_to_file  ctype: %s  vers: %s'%\
+    if verb : print '  %s.add_constants_to_file  ctype: %s  vers: %s' %\
                     (metname, str_ctype, vers)
 
     if fname is None :
@@ -242,7 +242,7 @@ def add_constants(data, par, env, src='Epix100a.', ctype=gu.PIXEL_MASK, calibdir
 
     str_ctype = gu.dic_calib_type_to_name[ctype]
 
-    if verb : print '  %s.add_constants  src: %s\n  ctype: %s\n  vers: %s\n  calibdir:%s'%\
+    if verb : print '  %s.add_constants  src: %s\n  ctype: %s\n  vers: %s\n  calibdir:%s' %\
                     (metname, src, str_ctype, vers, calibdir)
 
     ofn = DCFileName(env, src, calibdir)
@@ -323,7 +323,7 @@ def get_constants(par, env, src='Epix100a.', ctype=gu.PIXEL_MASK, calibdir=None,
     metname = sys._getframe().f_code.co_name
 
     str_ctype = gu.dic_calib_type_to_name[ctype]
-    if verb : print '  %s.get_constants  src: %s\n  ctype: %s\n  vers: %s\n  calibdir:%s'%\
+    if verb : print '  %s.get_constants  src: %s\n  ctype: %s\n  vers: %s\n  calibdir:%s' %\
                     (metname, src, str_ctype, vers, calibdir)
 
     ofn = DCFileName(env, src, calibdir)
@@ -353,7 +353,7 @@ def delete_version_from_file(fname, par, ctype=gu.PIXEL_MASK, vers=None, cmt=Non
     metname = sys._getframe().f_code.co_name
 
     str_ctype = gu.dic_calib_type_to_name[ctype]
-    if verb : print '  %s.delete_version_from_file:  ctype: %s  vers: %s'%\
+    if verb : print '  %s.delete_version_from_file:  ctype: %s  vers: %s' %\
                     (metname, str_ctype, vers)
 
     if not is_good_fname(fname, verb) : return None
@@ -404,7 +404,7 @@ def delete_version(evt, env, src='Epix100a.', ctype=gu.PIXEL_MASK, calibdir=None
     metname = sys._getframe().f_code.co_name
 
     str_ctype = gu.dic_calib_type_to_name[ctype]
-    if verb : print '  %s.delete_version:\n  src: %s\n  ctype: %s\n  vers: %s\n  calibdir:%s'%\
+    if verb : print '  %s.delete_version:\n  src: %s\n  ctype: %s\n  vers: %s\n  calibdir:%s' %\
                     (metname, src, str_ctype, vers, calibdir)
 
     ofn = DCFileName(env, src, calibdir)
@@ -432,7 +432,7 @@ def delete_range_from_file(fname, ctype=gu.PIXEL_MASK, range=None, cmt=None, ver
     metname = sys._getframe().f_code.co_name
 
     str_ctype = gu.dic_calib_type_to_name[ctype]
-    if verb : print '  %s.delete_range_from_file  ctype: %s  range: %s'%\
+    if verb : print '  %s.delete_range_from_file  ctype: %s  range: %s' %\
                     (metname, str_ctype, range)
 
     if not is_good_fname(fname, verb) : return None
@@ -478,7 +478,7 @@ def delete_range(evt, env, src='Epix100a.', ctype=gu.PIXEL_MASK, calibdir=None, 
     metname = sys._getframe().f_code.co_name
 
     str_ctype = gu.dic_calib_type_to_name[ctype]
-    if verb : print '  %s.delete_range  src: %s\n  ctype: %s\n  range: %s\n  calibdir:%s'%\
+    if verb : print '  %s.delete_range  src: %s\n  ctype: %s\n  range: %s\n  calibdir:%s' %\
                     (metname, src, str_ctype, range, calibdir)
 
     ofn = DCFileName(env, src, calibdir)
@@ -505,7 +505,7 @@ def delete_ctype_from_file(fname, ctype=gu.PIXEL_MASK, cmt=None, verb=False) :
     metname = sys._getframe().f_code.co_name
 
     str_ctype = gu.dic_calib_type_to_name[ctype]
-    if verb : print '  %s.delete_ctype  ctype: %s  range: %s'%\
+    if verb : print '  %s.delete_ctype  ctype: %s  range: %s' %\
                     (metname, str_ctype, range)
 
     if not is_good_fname(fname, verb) : return None
@@ -547,7 +547,7 @@ def delete_ctype(evt, env, src='Epix100a.', ctype=gu.PIXEL_MASK, calibdir=None, 
     metname = sys._getframe().f_code.co_name
 
     str_ctype = gu.dic_calib_type_to_name[ctype]
-    if verb : print '  %s.delete_ctype  src: %s\n  ctype: %s\n  range: %s\n  calibdir:%s'%\
+    if verb : print '  %s.delete_ctype  src: %s\n  ctype: %s\n  range: %s\n  calibdir:%s' %\
                     (metname, src, str_ctype, range, calibdir)
 
     ofn = DCFileName(env, src, calibdir)
@@ -856,8 +856,8 @@ def set_parameters() :
     gfname = './calib/epix100a/epix100a-3925999616-0996663297-3791650826-1232098304-0953206283-2655595777-0520093719.h5'
 
     ds = psana.DataSource(dsname)
-    genv=ds.env()
-    gevt=ds.events().next()
+    genv = ds.env()
+    gevt = ds.events().next()
 
 #------------------------------
 

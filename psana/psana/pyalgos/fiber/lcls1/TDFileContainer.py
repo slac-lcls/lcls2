@@ -202,7 +202,7 @@ class TDFileContainer :
 
         print '\n', 120*'_', '\n%s holds data from file:\n  %s\n' % (self.__class__.__name__, self.fname)
         for i,rec in enumerate(self.lst_of_recs) :
-            if nlines is not None and i>nlines : break
+            if nlines is not None and i > nlines : break
             print rec,
         print 'etc.' if nlines is not None else 'End of file'
 
@@ -222,7 +222,7 @@ class TDFileContainer :
         if not os.path.lexists(fname) : raise IOError('File %s is not found' % fname)
         self.fname = fname
         t0_sec = time()
-        f=open(fname,'r')
+        f = open(fname,'r')
         self.lst_of_recs = []
         for rec in f : self.lst_of_recs.append(rec.replace(',',' '))
         f.close()
@@ -234,7 +234,7 @@ class TDFileContainer :
         if not os.path.lexists(fname) : raise IOError('File %s is not found' % fname)
         self.fname = fname
         t0_sec = time()
-        f=open(fname,'r')
+        f = open(fname,'r')
         self.lst_of_recs = f.readlines()
         f.close()
         if self.pbits & 256 : print 'File loading time %.3f sec' % (time()-t0_sec)
@@ -247,9 +247,9 @@ class TDFileContainer :
             3. returns None for empty recs (if any)
             4. returns group number found in the record data
         """
-        if len(rec)==1 : return None # ignore empty records
+        if len(rec) == 1 : return None # ignore empty records
 
-        if rec[0]=='#' : # rec is header or comment
+        if rec[0] == '#' : # rec is header or comment
             if  self.hdr is None :
                 if not (self.indhdr in rec) : return None
 
@@ -390,7 +390,7 @@ class TDFileContainer :
             self.indlst_curr += 1
             return self._group_for_index()
         else :
-            if self.pbits : print 'WARNING: %s.next() reached the end of the list, return None'%\
+            if self.pbits : print 'WARNING: %s.next() reached the end of the list, return None' %\
                self.__class__.__name__
             return None
 
@@ -409,7 +409,7 @@ class TDFileContainer :
             self.indlst_curr -= 1
             return self._group_for_index()
         else :
-            if self.pbits : print 'WARNING: %s.previous() reached the beginning of the list, return None'%\
+            if self.pbits : print 'WARNING: %s.previous() reached the beginning of the list, return None' %\
                self.__class__.__name__
             return None
 

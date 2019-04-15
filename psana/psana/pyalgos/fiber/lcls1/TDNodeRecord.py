@@ -86,7 +86,7 @@ class TDNodeRecord :
     
     def empty_line(sp) :
         fmt = '%6d  %7.2f %7.2f %3d %3d %3d %9.6f %9.6f %9.6f %9.6f %9.6f %9.6f %9.6f'
-        z=0
+        z = 0
         return fmt % (z,z,z,z,z,z,z,z,z,z,z,z,z)       
 
 #------------------------------

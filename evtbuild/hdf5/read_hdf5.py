@@ -32,7 +32,7 @@ class master(object):
         self.diode_lp = np.zeros(self.size-1)
 
     def find_evts(self,mfile, start_index, request_rank, num_read_events):
-        client_rank = request_rank -1
+        client_rank = request_rank - 1
   #      print("self.sd_eof is ", self.sd_eof)
         if not self.sd_eof:
             self.diode_dst.id.refresh()
@@ -115,7 +115,7 @@ class master(object):
                     break
 
                 client_obj = self.comm.recv(source=MPI.ANY_SOURCE)
-                client_rank = client_obj.rank -1
+                client_rank = client_obj.rank - 1
                 # self.master_dump.write('Received from rank %i at time %s\n' % (client_rank,time.strftime("%H:%M:%S")))
                 # self.master_dump.write('\t Rank %i has read %i events' % (client_rank,client_obj.num_read_events))
 
@@ -268,7 +268,7 @@ def client(comm, filt):
                 size_change = os.stat(file_name).st_size/10**6 - size_file
 
                 if size_change == 0:
-                    exit_count+=1
+                    exit_count += 1
                 else:
                     exit_count = 0
                     

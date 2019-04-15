@@ -207,7 +207,7 @@ class QWPopupSelectColorBar(QDialog) :
 def popup_select_color_table(parent) :
     w = QWPopupSelectColorBar(parent)
     ##w.show()
-    resp=w.exec_()
+    resp = w.exec_()
     if   resp == QDialog.Accepted : return w.selectedColorTable()
     elif resp == QDialog.Rejected : return None
     else : return None

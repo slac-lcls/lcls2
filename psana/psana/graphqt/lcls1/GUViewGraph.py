@@ -32,8 +32,8 @@ class GUViewGraph(GUViewAxes) :
         #self.scene().removeItem(self.raxi)
         #self.scene().removeItem(self.rori)
 
-        self.pen1=QtGui.QPen(Qt.white, 0, Qt.DashLine)
-        self.pen2=QtGui.QPen(Qt.black, 0, Qt.DashLine)
+        self.pen1 = QtGui.QPen(Qt.white, 0, Qt.DashLine)
+        self.pen2 = QtGui.QPen(Qt.black, 0, Qt.DashLine)
         #pen1.setCosmetic(True)
         #pen2.setCosmetic(True)
 
@@ -79,7 +79,7 @@ class GUViewGraph(GUViewAxes) :
         GUViewAxes.mouseMoveEvent(self, e) # calls display_pixel_pos(e)
         p = self.mapToScene(e.pos())
         x, y = p.x(), p.y()
-        if x<self.rectax.left() : return
+        if x < self.rectax.left() : return
         y1, y2 = self.rectax.bottom(), self.rectax.top()
         self.cline1i.setLine(x, y1, x, y2)
         self.cline2i.setLine(x, y1, x, y2)
@@ -182,7 +182,7 @@ if __name__ == "__main__" :
     y1 = np.sin(x)
     y2 = np.random.random(shape)
 
-    rectax=QtCore.QRectF(0, -1.25, 1000, 2.5)    
+    rectax = QtCore.QRectF(0, -1.25, 1000, 2.5)    
 
     app = QtGui.QApplication(sys.argv)
     w = GUViewGraph(None, rectax, origin='DL', scale_ctl='HV', rulers='UDLR',\

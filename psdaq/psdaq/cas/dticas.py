@@ -56,15 +56,15 @@ def main():
 
       for i in range (numUsLinks):
 #        pvdb[p2+'UsLinkEn'        +'%d'%i] = {'type' : 'int'}
-        pvdb[p2+'UsLinkTagEn'     +'%d'%i] = {'type' : 'int'}
-        pvdb[p2+'UsLinkL1En'      +'%d'%i] = {'type' : 'int'}
-        pvdb[p2+'UsLinkPartition' +'%d'%i] = {'type' : 'int', 'value' : -1 }
-        pvdb[p2+'UsLinkTrigDelay' +'%d'%i] = {'type' : 'int'}
-        pvdb[p2+'UsLinkFwdMask'   +'%d'%i] = {'type' : 'int'}
-        pvdb[p2+'UsLinkFwdMode'   +'%d'%i] = {'type' : 'int'}
-        pvdb[p2+'UsLinkDataSrc'   +'%d'%i] = {'type' : 'int'}
-        pvdb[p2+'UsLinkDataType'  +'%d'%i] = {'type' : 'int'}
-        pvdb[p2+'UsLinkLabel'     +'%d'%i] = {'type' : 'string', 'value' : 'US-%d'%i }
+        pvdb[p2+'UsLinkTagEn'     + '%d'%i] = {'type' : 'int'}
+        pvdb[p2+'UsLinkL1En'      + '%d'%i] = {'type' : 'int'}
+        pvdb[p2+'UsLinkPartition' + '%d'%i] = {'type' : 'int', 'value' : -1 }
+        pvdb[p2+'UsLinkTrigDelay' + '%d'%i] = {'type' : 'int'}
+        pvdb[p2+'UsLinkFwdMask'   + '%d'%i] = {'type' : 'int'}
+        pvdb[p2+'UsLinkFwdMode'   + '%d'%i] = {'type' : 'int'}
+        pvdb[p2+'UsLinkDataSrc'   + '%d'%i] = {'type' : 'int'}
+        pvdb[p2+'UsLinkDataType'  + '%d'%i] = {'type' : 'int'}
+        pvdb[p2+'UsLinkLabel'     + '%d'%i] = {'type' : 'string', 'value' : 'US-%d'%i }
 
       pvdb[p2+'ModuleInit'     ] = {'type' : 'int'}
 

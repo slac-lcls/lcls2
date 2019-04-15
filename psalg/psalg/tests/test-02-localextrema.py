@@ -34,7 +34,7 @@ def test01(tname='1', NUMBER_OF_EVENTS=3, DO_PRINT=False) :
                np.array(mu + sigma*np.random.standard_normal(sh), dtype=np.float64)
         mask = np.ones(sh, dtype=np.uint16)
         extrema = np.zeros(sh, dtype=np.uint16)
-        rank=5
+        rank = 5
         
         thr_low = mu+3*sigma
         thr_high = mu+4*sigma
@@ -76,7 +76,7 @@ def test01(tname='1', NUMBER_OF_EVENTS=3, DO_PRINT=False) :
 #------------------------------
 
 def test02() :
-    rank=6
+    rank = 6
     algos.print_matrix_of_diag_indexes(rank)
     algos.print_vector_of_diag_indexes(rank)
 
