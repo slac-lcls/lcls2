@@ -9,6 +9,7 @@ conda_rel = 'ps-2.0.0'
 shelf = '2'
 ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
+rtmon_host = 'psmetric04'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -31,7 +32,7 @@ procmgr_config = [
  { host: collect_host,    id:'collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -P CAF -B DAQ:LAB2:PART:'+platform},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
  # trigger event builder
- { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host},
+ { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -C '+collect_host+' -Z '+rtmon_host},
  { host: 'drp-tst-dev009', id:'drp0', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host},
  { host: 'drp-tst-dev008', id:'drp1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host}
 ]
