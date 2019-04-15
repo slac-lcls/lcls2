@@ -5,7 +5,7 @@ expnum   = 'expnum'
 
 epics_host = 'daq-tst-dev02'
 
-conda_rel = 'ps-2.0.0'
+conda_rel = 'ps-2.0.1'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.42.255'
 
 shelf = '2'
