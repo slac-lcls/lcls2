@@ -148,7 +148,7 @@ cdef class cyhsd_base_1_2_3:
                 arr0 = PyAllocArray1D()
                 wv = arr0.init(&self.chptr[i].waveform, self.chptr[i].numPixels, cnp.NPY_UINT16)
                 wv.base = <PyObject*> arr0
-                self._wvDict[chanName] = wv
+                self._wvDict[int(chanName)] = wv
         self._wvDict["times"] = np.arange(self.chptr[i].numPixels) # FIXME: placeholder for times
         return self._wvDict
 
@@ -184,7 +184,7 @@ cdef class cyhsd_base_1_2_3:
         if self._isNewEvt(evt):
             self._parseEvt(evt)
         for i, chanName in enumerate(self._chanList):
-            self._peaksDict[chanName] = self._channelPeaks(chanName)
+            self._peaksDict[int(chanName)] = self._channelPeaks(chanName)
         return self._peaksDict
 
     def assem(self, evt):

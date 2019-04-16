@@ -29,9 +29,6 @@ def get_config(dburl,dbname,hutch,cfgtype,detname):
     cfg = mycdb.get_configuration(cfgtype, detname)
     from bson.json_util import dumps
 
-    # remove the readonly flags used to hide values in the
-    # graphical configuration editor
-    #cfg_no_RO = remove_read_only(cfg)
-    cfg_no_RO = cfg
+    cfg_no_RO_names = remove_read_only(cfg)
 
-    return dumps(cfg_no_RO)
+    return dumps(cfg_no_RO_names)

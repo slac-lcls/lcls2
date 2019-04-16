@@ -72,14 +72,20 @@ unsigned addJson(Xtc& xtc, NamesId& configNamesId) {
     printf("json: %s\n",json);
 
     // convert to json to xtc
-    char buffer[4*1024*1024];
+    const unsigned BUFSIZE = 1024*1024;
+    char buffer[BUFSIZE];
     unsigned len = translateJson2Xtc(json, buffer, configNamesId);
+    if (len>BUFSIZE) {
+        throw "**** Config json output too large for buffer\n";
+    }
     if (len <= 0) {
-        fprintf(stderr, "Parse errors, exiting.\n");
-        throw "**** json translation error\n";
+        throw "**** Config json translation error\n";
     }
 
-    // append the config xtc to the dgram
+    // append the config xtc info to the dgram
+    Xtc& jsonxtc = *(Xtc*)buffer;
+    memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
+    xtc.alloc(jsonxtc.sizeofPayload());
 
     Py_DECREF(pModule);
     Py_DECREF(mybytes);

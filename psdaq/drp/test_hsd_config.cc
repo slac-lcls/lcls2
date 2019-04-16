@@ -4,8 +4,11 @@
 
 #include "xtcdata/xtc/Json2Xtc.hh"
 #include "xtcdata/xtc/NamesId.hh"
+#include "xtcdata/xtc/TypeId.hh"
 
-static char buffer[4*1024*1024];
+using namespace XtcData;
+
+#define BUFSIZE 1024*1024
 
 static void check(PyObject* obj) {
     if (!obj) {
@@ -26,7 +29,7 @@ int main() {
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"get_config");
     check(pFunc);
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","cpo:psana@psdb-dev:9306", "cpotest", "AMO", "BEAM", "xpphsd1");
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","mcbrowne:psana@psdb-dev:9306", "configDB", "TMO", "BEAM", "xpphsd");
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
@@ -34,19 +37,41 @@ int main() {
     char* json = (char*)PyBytes_AsString(json_bytes);
     printf("json: %s\n",json);
 
-    // convert to json to xtc
-    XtcData::NamesId namesid(0,1);
-    unsigned len = XtcData::translateJson2Xtc(json, buffer, namesid);
+    // convert json to xtc
+    char buffer[BUFSIZE];
+    NamesId namesid(0,1);
+    unsigned len = translateJson2Xtc(json, buffer, namesid);
+
     if (len <= 0) {
         fprintf(stderr, "Parse errors, exiting.\n");
         exit(1);
     }
+
+    Xtc& xtcbuf = *(Xtc*)buffer;
+
+    // make a fake dgram
+    TypeId tid(TypeId::Parent, 0);
+    uint64_t pulseId = 0;
+    uint32_t env = 0;
+    struct timeval tv;
+    char dgbuf[BUFSIZE];
+    gettimeofday(&tv, NULL);
+    Sequence seq(Sequence::Event, TransitionId::Configure, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+    Dgram& dg = *new(&dgbuf) Dgram(Transition(seq, env), Xtc(tid));
+
+    // copy over the names/shapesdata xtc's (translateJson2Xtc puts
+    // a Parent Xtc on the top level so we can copy over both
+    // names/shapesdata at the same time)
+    memcpy(dg.xtc.next(),xtcbuf.payload(),xtcbuf.sizeofPayload());
+    dg.xtc.alloc(xtcbuf.sizeofPayload());
+
     FILE* fp = fopen("junk.xtc2", "w+");
-    char dgram[20] = {0};   // Hack: sizeof(Dgram) - sizeof(Xtc) = 20
-    if (fwrite(dgram, 1, 20, fp) != 20) {
+    if (fwrite(&dg, 1, sizeof(Dgram), fp) != sizeof(Dgram)) {
         printf("Cannot write dgram header\n");
+        exit(1);
     }
-    if (fwrite(buffer, 1, len, fp) != len) {
+    unsigned payloadSize = dg.xtc.sizeofPayload();
+    if (fwrite(dg.xtc.payload(), 1, payloadSize, fp) != payloadSize) {
         printf("Cannot write payload\n");
         exit(1);
     }
