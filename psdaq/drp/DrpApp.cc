@@ -260,6 +260,10 @@ EbReceiver::EbReceiver(const Parameters& para, MemPool& pool,
 
     if (!para.output_dir.empty()) {
         std::string fileName = {para.output_dir + "/data-" + std::to_string(para.tPrms.id) + ".xtc2"};
+        // cpo suggests leaving this print statement in because
+        // filesystems can hang in ways we can't timeout/detect
+        // and this print statement may speed up debugging significantly.
+        std::cout << "Opening file " << fileName << std::endl;
         m_fileWriter.open(fileName);
         m_writing = true;
     }

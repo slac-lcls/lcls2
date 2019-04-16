@@ -3,6 +3,10 @@ import sys
 
 import psalg.configdb.configdb as cdb
 
+# json2xtc conversion depends on these being present with ':RO'
+# (and the :RO does not appear in the xtc names)
+leave_alone = ['detName:RO','detType:RO','detId:RO','doc:RO','alg:RO','version:RO']
+
 def remove_read_only(cfg):
     # be careful here: iterating recursively over dictionaries
     # while deleting items can produce strange effects (which we
@@ -12,7 +16,10 @@ def remove_read_only(cfg):
     for k, v in cfg.items():
         if isinstance(v, dict):
             v = remove_read_only(v)
-        new[k.replace(':RO', '')] = v
+        if k in leave_alone:
+            new[k] = v
+        else:
+            new[k.replace(':RO', '')] = v
     return new
 
 def get_config(dburl,dbname,hutch,cfgtype,detname):
