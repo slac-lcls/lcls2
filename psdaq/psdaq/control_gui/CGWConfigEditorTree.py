@@ -152,8 +152,12 @@ class CGWConfigEditorTree(QWTree) :
             parent_item.setAccessibleDescription('key-to-dict')
             parent_item.setToolTip('key to dict object')
             for k,v in o.items() :
-                if k==':types:' : return
+                if k==':types:' : continue
                 is_RO = is_read_only or (':RO' in k)
+
+                # completely HIDE :RO
+                if is_RO : continue
+
                 item = QStandardItem(k)
                 item.setIcon(icon.icon_folder_closed)
                 item.setEditable(False)
