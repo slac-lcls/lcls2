@@ -118,7 +118,7 @@ std::vector<ZmqMessage> ZmqSocket::recvMultipart()
     do {
         ZmqMessage frame;
         int rc = zmq_msg_recv(&frame.msg, socket, 0);
-        if (rc != -1) {
+        if (rc == -1) {
             printf("Collection.cc: zmq_msg_recv bad return value %d\n",rc);
             printf("This can happen when a process is sent a signal.  Exiting.\n");
             exit(1);
