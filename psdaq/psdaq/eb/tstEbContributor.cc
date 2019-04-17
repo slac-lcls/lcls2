@@ -73,11 +73,11 @@ namespace Pds {
     {
     public:
       Input() : Dgram() {}
-      Input(const Sequence& seq_, const Xtc& xtc_) :
+      Input(unsigned partition, const Sequence& seq_, const Xtc& xtc_) :
         Dgram()
       {
         seq = seq_;
-        env = 1;                        // Put all events in group 0
+        env = 1 << partition;           // Put all events in the same group
         //env = seq.isEvent() ? 1 : 2;    // Test multiple groups
         xtc = xtc_;
       }
@@ -92,7 +92,8 @@ namespace Pds {
     public:
       DrpSim(unsigned maxBatches,
              unsigned maxEntries,
-             size_t   maxEvtSize);
+             size_t   maxEvtSize,
+             unsigned partition);
     public:
       void            startup(unsigned id, void** base, size_t* size);
       void            shutdown();
@@ -106,6 +107,7 @@ namespace Pds {
       const unsigned _maxBatches;
       const unsigned _maxEntries;
       const size_t   _maxEvtSz;
+      const unsigned _partition;
       const Xtc      _xtc;
       uint64_t       _pid;
       GenericPoolW*  _pool;
@@ -147,7 +149,7 @@ namespace Pds {
     public:
       EbCtrbApp(const TebCtrbParams& prms,
                 StatsMonitor&        smon);
-      virtual ~EbCtrbApp() {}
+      ~EbCtrbApp() {}
     public:
       DrpSim&  drpSim() { return _drpSim; }
     public:
@@ -165,10 +167,12 @@ using namespace Pds::Eb;
 
 DrpSim::DrpSim(unsigned maxBatches,
                unsigned maxEntries,
-               size_t   maxEvtSize) :
+               size_t   maxEvtSize,
+               unsigned partition) :
   _maxBatches  (maxBatches),
   _maxEntries  (maxEntries),
   _maxEvtSz    (maxEvtSize),
+  _partition   (partition),
   _xtc         (),
   _pid         (0),
   _pool        (nullptr),
@@ -248,7 +252,7 @@ const Dgram* DrpSim::generate()
   void* buffer = _pool->alloc(sizeof(Input));
   --_allocPending;
   if (!buffer)  return (Dgram*)buffer;
-  Input* idg = ::new(buffer) Input(seq, _xtc);
+  Input* idg = ::new(buffer) Input(_partition, seq, _xtc);
 
   size_t inputSize = input_extent * sizeof(uint32_t);
 
@@ -334,7 +338,7 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
     {
       uint32_t* response = (uint32_t*)result->xtc.payload();
 
-      if (response[MON_IDX])  _mebCtrb->post(input, response[1]);
+      if (response[MON_IDX])  _mebCtrb->post(input, response[MON_IDX]);
     }
     else                                // Other Transition
     {
@@ -352,10 +356,10 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
                      StatsMonitor&        smon) :
   TebContributor(prms, smon),
-  _drpSim       (prms.maxBatches, prms.maxEntries, prms.maxInputSize),
+  _drpSim       (MAX_BATCHES, MAX_ENTRIES, prms.maxInputSize, prms.partition),
   _prms         (prms)
 {
-  smon.registerIt("TCtbO_AlPdg",  _drpSim.allocPending(), StatsMonitor::SCALAR);
+  smon.metric("TCtbO_AlPdg", _drpSim.allocPending(), StatsMonitor::SCALAR);
 }
 
 void EbCtrbApp::shutdown()
@@ -565,8 +569,8 @@ int CtrbApp::_parseConnectionParams(const json& body)
     return 1;
   }
 
-  _tebPrms.groups     = 0x0001;         // Revisit: Value to come from CfgDb
-  _tebPrms.contractor = 0x0001;         // Revisit: Value to come from CfgDb
+  _tebPrms.groups     = 1 << _tebPrms.partition; // Revisit: Value to come from CfgDb
+  _tebPrms.contractor = 1 << _tebPrms.partition; // Revisit: Value to come from CfgDb
 
   //if (_tebPrms.id == 1)  _tebPrms.contractor = 2; // Let DRP 1 be a receiver only for group 0
 
@@ -604,9 +608,9 @@ int CtrbApp::_parseConnectionParams(const json& body)
   printf("  Bit list of TEBs:         0x%016lx, cnt: %zd\n", _tebPrms.builders,
                                                              std::bitset<64>(_tebPrms.builders).count());
   printf("  Number of MEBs:             %zd\n",              _mebPrms.addrs.size());
-  printf("  Batch duration:           0x%014lx = %ld uS\n",  _tebPrms.duration, _tebPrms.duration);
-  printf("  Batch pool depth:           %d\n",               _tebPrms.maxBatches);
-  printf("  Max # of entries / batch:   %d\n",               _tebPrms.maxEntries);
+  printf("  Batch duration:           0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
+  printf("  Batch pool depth:           %d\n",               MAX_BATCHES);
+  printf("  Max # of entries / batch:   %d\n",               MAX_ENTRIES);
   printf("  Max TEB contribution size:  %zd\n",              _tebPrms.maxInputSize);
   printf("  Max MEB event        size:  %zd\n",              _mebPrms.maxEvSize);
   printf("  Max MEB transition   size:  %zd\n",              _mebPrms.maxTrSize);
@@ -670,9 +674,6 @@ int main(int argc, char **argv)
                            /* .builders      = */ 0,   // TEBs
                            /* .addrs         = */ { },
                            /* .ports         = */ { },
-                           /* .duration      = */ BATCH_DURATION,
-                           /* .maxBatches    = */ MAX_BATCHES,
-                           /* .maxEntries    = */ MAX_ENTRIES,
                            /* .maxInputSize  = */ max_contrib_size,
                            /* .core          = */ { core_0, core_1 },
                            /* .verbose       = */ 0,
@@ -723,20 +724,20 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  // Revisit: Fix maxBatches to what will fit in the ImmData idx field?
-  if (tebPrms.maxBatches - 1 > ImmData::MaxIdx)
+  // Revisit: Fix MAX_BATCHES to what will fit in the ImmData idx field?
+  if (MAX_BATCHES - 1 > ImmData::MaxIdx)
   {
     fprintf(stderr, "Batch index ([0, %d]) can exceed available range ([0, %d])\n",
-            tebPrms.maxBatches - 1, ImmData::MaxIdx);
+            MAX_BATCHES - 1, ImmData::MaxIdx);
     abort();
   }
 
-  // Revisit: Fix maxEntries to equal duration?
-  if (tebPrms.maxEntries > tebPrms.duration)
+  // Revisit: Fix MAX_ENTRIES to equal duration?
+  if (MAX_ENTRIES > BATCH_DURATION)
   {
     fprintf(stderr, "More batch entries (%u) requested than definable "
             "in the batch duration (%lu)\n",
-            tebPrms.maxEntries, tebPrms.duration);
+            MAX_ENTRIES, BATCH_DURATION);
     abort();
   }
 
@@ -754,8 +755,8 @@ int main(int argc, char **argv)
                     tebPrms.partition,
                     rtMonPeriod,
                     rtMonVerbose);
+  smon.startup();
 
-  pinThread(pthread_self(), tebPrms.core[0]);
   CtrbApp app(collSrv, tebPrms, mebPrms, smon);
 
   try

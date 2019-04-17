@@ -62,18 +62,19 @@ namespace Pds {
   public:
     MyXtcMonitorServer(const char*     tag,
                        unsigned        sizeofBuffers,
+                       unsigned        numberofEvBuffers,
                        unsigned        numberofEvQueues,
                        const EbParams& prms) :
       XtcMonitorServer(tag,
                        sizeofBuffers,
-                       prms.maxBuffers,
+                       numberofEvBuffers,
                        numberofEvQueues),
       _sizeofBuffers(sizeofBuffers),
-      _iTeb(0),
-      _mrqTransport(prms.verbose),
-      _mrqLinks(),
-      _bufFreeList(prms.maxBuffers),
-      _id(-1u)
+      _iTeb         (0),
+      _mrqTransport (prms.verbose),
+      _mrqLinks     (),
+      _bufFreeList  (numberofEvBuffers),
+      _id           (-1u)
     {
     }
     int connect(const EbParams& prms)
@@ -82,6 +83,7 @@ namespace Pds {
       _id   = prms.id;
       _mrqLinks.resize(prms.addrs.size());
 
+      unsigned numBuffers = _bufFreeList.size();
       for (unsigned i = 0; i < prms.addrs.size(); ++i)
       {
         int            rc;
@@ -106,7 +108,7 @@ namespace Pds {
         printf("Outbound link with TEB ID %d connected\n", link->id());
       }
 
-      for (unsigned i = 0; i < prms.maxBuffers; ++i)
+      for (unsigned i = 0; i < numBuffers; ++i)
       {
         if (_bufFreeList.push(i))
           fprintf(stderr, "%s:\n  _bufFreeList.push(%d) failed\n", __PRETTY_FUNCTION__, i);
@@ -233,25 +235,27 @@ namespace Pds {
   public:
     Meb(const char*     tag,
         unsigned        sizeofEvBuffers,
+        unsigned        numberofEvBuffers,
         unsigned        nevqueues,
         bool            dist,
         const EbParams& prms,
         StatsMonitor&   smon) :
-      EbAppBase  (prms),
-      _apps      (tag, sizeofEvBuffers, nevqueues, prms),
+      EbAppBase  (prms, epoch_duration, 1, numberof_xferBuffers),
+      _apps      (tag, sizeofEvBuffers, numberofEvBuffers, nevqueues, prms),
       _pool      (nullptr),
       _eventCount(0),
       _verbose   (prms.verbose),
+      _numBuffers(numberofEvBuffers),
       _prms      (prms),
       _dist      (dist)
     {
-      smon.registerIt("MEB_EvtRt",  _eventCount,      StatsMonitor::RATE);
-      smon.registerIt("MEB_EvtCt",  _eventCount,      StatsMonitor::SCALAR);
-      smon.registerIt("MEB_EpAlCt",  epochAllocCnt(), StatsMonitor::SCALAR);
-      smon.registerIt("MEB_EpFrCt",  epochFreeCnt(),  StatsMonitor::SCALAR);
-      smon.registerIt("MEB_EvAlCt",  eventAllocCnt(), StatsMonitor::SCALAR);
-      smon.registerIt("MEB_EvFrCt",  eventFreeCnt(),  StatsMonitor::SCALAR);
-      smon.registerIt("MEB_RxPdg",   rxPending(),     StatsMonitor::SCALAR);
+      smon.metric("MEB_EvtRt",  _eventCount,      StatsMonitor::RATE);
+      smon.metric("MEB_EvtCt",  _eventCount,      StatsMonitor::SCALAR);
+      smon.metric("MEB_EpAlCt",  epochAllocCnt(), StatsMonitor::SCALAR);
+      smon.metric("MEB_EpFrCt",  epochFreeCnt(),  StatsMonitor::SCALAR);
+      smon.metric("MEB_EvAlCt",  eventAllocCnt(), StatsMonitor::SCALAR);
+      smon.metric("MEB_EvFrCt",  eventFreeCnt(),  StatsMonitor::SCALAR);
+      smon.metric("MEB_RxPdg",   rxPending(),     StatsMonitor::SCALAR);
     }
     virtual ~Meb()
     {
@@ -261,7 +265,7 @@ namespace Pds {
     {
       unsigned entries = std::bitset<64>(prms.contributors).count();
       _pool = new GenericPool(sizeof(Dgram) + entries * sizeof(Dgram*) +
-                              sizeof(unsigned), prms.maxBuffers);
+                              sizeof(unsigned), _numBuffers);
 
       int rc;
       if ( (rc = EbAppBase::connect(prms)) )
@@ -276,12 +280,7 @@ namespace Pds {
     }
     void run()
     {
-      //pinThread(task()->parameters().taskID(), _prms.core[1]);
-      //pinThread(pthread_self(),                _prms.core[1]);
-
-      //start();                              // Start the event timeout timer
-
-      //pinThread(pthread_self(),                _prms.core[0]);
+      pinThread(pthread_self(), _prms.core[0]);
 
       _eventCount = 0;
 
@@ -298,8 +297,6 @@ namespace Pds {
           if (checkEQ() == -FI_ENOTCONN)  break;
         }
       }
-
-      //cancel();                         // Stop the event timeout timer
 
       _apps.shutdown();
 
@@ -358,6 +355,7 @@ namespace Pds {
     GenericPool*       _pool;
     uint64_t           _eventCount;
     const unsigned     _verbose;
+    const unsigned     _numBuffers;
     const EbParams&    _prms;
     const bool         _dist;
   };
@@ -370,6 +368,7 @@ public:
   MebApp(const std::string& collSrv,
          const char*        tag,
          unsigned           sizeofEvBuffers,
+         unsigned           maxBuffes,
          unsigned           nevqueues,
          bool               dist,
          EbParams&          prms,
@@ -393,17 +392,19 @@ private:
 MebApp::MebApp(const std::string& collSrv,
                const char*        tag,
                unsigned           sizeofEvBuffers,
+               unsigned           numberofEvBuffers,
                unsigned           nevqueues,
                bool               dist,
                EbParams&          prms,
                StatsMonitor&      smon) :
   CollectionApp(collSrv, prms.partition, "meb"),
   _prms(prms),
-  _meb(tag, sizeofEvBuffers, nevqueues, dist, prms, smon),
+  _meb (tag, sizeofEvBuffers, numberofEvBuffers, nevqueues, dist, prms, smon),
   _smon(smon)
 {
   printf("  Tag:                        %s\n", tag);
   printf("  Max event buffer size:      %d\n", sizeofEvBuffers);
+  printf("  Number of Event buffers:    %d\n", numberofEvBuffers);
   printf("  Number of Event queues:     %d\n", nevqueues);
   printf("  Distribute:                 %s\n", dist ? "yes" : "no");
 }
@@ -500,7 +501,7 @@ int MebApp::_parseConnectionParams(const json& body)
     }
   }
 
-  _prms.groups = 0x0001;                // Revisit: Value to come from CfgDb
+  _prms.groups = 1 << _prms.partition;  // Revisit: Value to come from CfgDb
   unsigned groups = _prms.groups;
   if (groups == 0)
   {
@@ -555,9 +556,9 @@ int MebApp::_parseConnectionParams(const json& body)
   printf("  Participates in groups:   0x%02x\n",             _prms.groups);
   printf("  Bit list of contributors: 0x%016lx, cnt: %zd\n", _prms.contributors,
                                                              std::bitset<64>(_prms.contributors).count());
-  printf("  Buffer duration:          0x%014lx\n",           _prms.duration);
-  printf("  Buffer pool depth:          %d\n",               _prms.maxBuffers);
-  printf("  Max # of entries / buffer:  %d\n",               _prms.maxEntries);
+  printf("  Buffer duration:          0x%014lx\n",           BATCH_DURATION);
+  printf("  Buffer pool depth:          %d\n",               numberof_xferBuffers);
+  printf("  Max # of entries / buffer:  %d\n",               1);
   printf("  Max transition size:        %zd\n",              _prms.maxTrSize);
   printf("\n");
   printf("  MRQ port range: %d - %d\n", mrqPortBase, mrqPortBase + MAX_MEBS - 1);
@@ -610,9 +611,6 @@ int main(int argc, char** argv)
                         /* .contributors  = */ 0,   // DRPs
                         /* .addrs         = */ { }, // MonReq addr served by TEB
                         /* .ports         = */ { }, // MonReq port served by TEB
-                        /* .maxBuffers    = */ numberof_xferBuffers,
-                        /* .duration      = */ epoch_duration,
-                        /* .maxEntries    = */ 1,   // per buffer
                         /* .maxTrSize     = */ sizeof_buffers,
                         /* .maxResultSize = */ 0,   // Unused here
                         /* .numMrqs       = */ 0,   // Unused here
@@ -622,6 +620,7 @@ int main(int argc, char** argv)
                         /* .receivers     = */ 0,
                         /* .groups        = */ 0 };
   unsigned       sizeofEvBuffers = sizeof_buffers;
+  unsigned       numberOfBuffers = numberof_xferBuffers;
   unsigned       nevqueues       = 1;
   bool           ldist           = false;
 
@@ -639,7 +638,7 @@ int main(int argc, char** argv)
         partitionTag = std::string(optarg);
         break;
       case 'n':
-        sscanf(optarg, "%d", &prms.maxBuffers);
+        sscanf(optarg, "%d", &numberOfBuffers);
         break;
       case 't':
         tag = optarg;
@@ -672,7 +671,7 @@ int main(int argc, char** argv)
     }
   }
 
-  if (!prms.maxBuffers)
+  if (!numberOfBuffers)
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-n <max buffers>");
     return 1;
@@ -704,10 +703,8 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  if (prms.maxBuffers < numberof_xferBuffers)
-  {
-    prms.maxBuffers = numberof_xferBuffers;
-  }
+  if (numberOfBuffers < numberof_xferBuffers)
+    numberOfBuffers = numberof_xferBuffers;
 
   if (!tag)  tag = partitionTag.c_str();
   printf("Partition Tag: '%s'\n", tag);
@@ -720,17 +717,15 @@ int main(int argc, char** argv)
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
     printf("Couldn't set up ^C handler\n");
 
-  // Revisit: Pinning exacerbates a race condition somewhere resulting in either
-  //          'No free buffers available' or 'Dgram pool allocation failed'
-  //pinThread(pthread_self(), prms.core[1]);
+  pinThread(pthread_self(), prms.core[1]);
   StatsMonitor smon(rtMonHost,
                     rtMonPort,
                     prms.partition,
                     rtMonPeriod,
                     rtMonVerbose);
+  smon.startup();
 
-  //pinThread(pthread_self(), prms.core[0]);
-  MebApp app(collSrv, tag, sizeofEvBuffers, nevqueues, ldist, prms, smon);
+  MebApp app(collSrv, tag, sizeofEvBuffers, numberOfBuffers, nevqueues, ldist, prms, smon);
 
   try
   {

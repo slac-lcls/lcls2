@@ -213,6 +213,7 @@ void CollectionApp::run()
     while (1) {
         //json msg = m_subSocket.recvJson();
         std::vector<ZmqMessage> frames = m_subSocket.recvMultipart();
+        if (frames.size() < 2)  break;  // Revisit: Terminate condition
         char* begin = (char*)frames[1].data();
         char* end = begin + frames[1].size();
         json msg = json::parse(begin, end);

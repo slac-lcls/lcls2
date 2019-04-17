@@ -11,6 +11,7 @@
 #include "AxisDriver.h"
 #include "drp.hh"
 #include <zmq.h>
+#include "psdaq/eb/StatsMonitor.hh"
 
 MemPool::MemPool(const Parameters& para) :
     pgp_data(para.numEntries),
@@ -86,7 +87,8 @@ void getDtiLane(int fd, int addr, int offset, int mask, uint32_t result[4])
 }
 
 void monitor_func(const Parameters& para, std::atomic<Counters*>& p,
-                  MemPool& pool, Pds::Eb::TebContributor& ebCtrb)
+                  MemPool& pool, Pds::Eb::TebContributor& ebCtrb,
+                  Pds::Eb::StatsMonitor& smon)
 {
     void* context = zmq_ctx_new();
     void* socket = zmq_socket(context, ZMQ_PUB);
@@ -160,5 +162,7 @@ void monitor_func(const Parameters& para, std::atomic<Counters*>& p,
         old_count = new_count;
         old_port_rcv_data = port_rcv_data;
         old_port_xmit_data = port_xmit_data;
+
+        smon.update(socket, buffer, sizeof(buffer), hostname);
     }
 }

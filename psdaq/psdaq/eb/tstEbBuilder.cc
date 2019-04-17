@@ -114,7 +114,7 @@ namespace Pds {
 using namespace Pds::Eb;
 
 Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
-  EbAppBase    (prms),
+  EbAppBase    (prms, BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
   _l3Links     (),
   _mrqTransport(prms.verbose),
   _mrqLinks    (),
@@ -127,18 +127,18 @@ Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
   _prms        (prms),
   _l3Transport (prms.verbose)
 {
-  smon.registerIt("TEB_EvtRt",  _eventCount,             StatsMonitor::RATE);
-  smon.registerIt("TEB_EvtCt",  _eventCount,             StatsMonitor::SCALAR);
-  smon.registerIt("TEB_BatCt",  _batchCount,             StatsMonitor::SCALAR);
-  smon.registerIt("TEB_BtAlCt", _batMan.batchAllocCnt(), StatsMonitor::SCALAR);
-  smon.registerIt("TEB_BtFrCt", _batMan.batchFreeCnt(),  StatsMonitor::SCALAR);
-  smon.registerIt("TEB_BtWtg",  _batMan.batchWaiting(),  StatsMonitor::SCALAR);
-  smon.registerIt("TEB_EpAlCt",  epochAllocCnt(),        StatsMonitor::SCALAR);
-  smon.registerIt("TEB_EpFrCt",  epochFreeCnt(),         StatsMonitor::SCALAR);
-  smon.registerIt("TEB_EvAlCt",  eventAllocCnt(),        StatsMonitor::SCALAR);
-  smon.registerIt("TEB_EvFrCt",  eventFreeCnt(),         StatsMonitor::SCALAR);
-  smon.registerIt("TEB_TxPdg",  _l3Transport.pending(),  StatsMonitor::SCALAR);
-  smon.registerIt("TEB_RxPdg",   rxPending(),            StatsMonitor::SCALAR);
+  smon.metric("TEB_EvtRt",  _eventCount,             StatsMonitor::RATE);
+  smon.metric("TEB_EvtCt",  _eventCount,             StatsMonitor::SCALAR);
+  smon.metric("TEB_BatCt",  _batchCount,             StatsMonitor::SCALAR);
+  smon.metric("TEB_BtAlCt", _batMan.batchAllocCnt(), StatsMonitor::SCALAR);
+  smon.metric("TEB_BtFrCt", _batMan.batchFreeCnt(),  StatsMonitor::SCALAR);
+  smon.metric("TEB_BtWtg",  _batMan.batchWaiting(),  StatsMonitor::SCALAR);
+  smon.metric("TEB_EpAlCt",  epochAllocCnt(),        StatsMonitor::SCALAR);
+  smon.metric("TEB_EpFrCt",  epochFreeCnt(),         StatsMonitor::SCALAR);
+  smon.metric("TEB_EvAlCt",  eventAllocCnt(),        StatsMonitor::SCALAR);
+  smon.metric("TEB_EvFrCt",  eventFreeCnt(),         StatsMonitor::SCALAR);
+  smon.metric("TEB_TxPdg",  _l3Transport.pending(),  StatsMonitor::SCALAR);
+  smon.metric("TEB_RxPdg",   rxPending(),            StatsMonitor::SCALAR);
 }
 
 int Teb::connect(const EbParams& prms)
@@ -217,10 +217,7 @@ int Teb::connect(const EbParams& prms)
 
 void Teb::run()
 {
-  //pinThread(task()->parameters().taskID(), _prms.core[1]);
-  //pinThread(pthread_self(),                _prms.core[1]);
-
-  pinThread(pthread_self(),                _prms.core[0]);
+  pinThread(pthread_self(), _prms.core[0]);
 
   _receivers  = 0;
   _eventCount = 0;
@@ -567,7 +564,7 @@ int TebApp::_parseConnectionParams(const json& body)
     return 1;
   }
 
-  _prms.groups = 0x0001;                // Revisit: Value to come from CfgDb
+  _prms.groups = 1 << _prms.partition;  // Revisit: Value to come from CfgDb
   unsigned groups = _prms.groups;
   if (groups == 0)
   {
@@ -624,9 +621,9 @@ int TebApp::_parseConnectionParams(const json& body)
   printf("  Bit list of contributors: 0x%016lx, cnt: %zd\n", _prms.contributors,
                                                              std::bitset<64>(_prms.contributors).count());
   printf("  Number of MEB requestors:   %d\n",               _prms.numMrqs);
-  printf("  Batch duration:           0x%014lx = %ld uS\n",  _prms.duration, _prms.duration);
-  printf("  Batch pool depth:           %d\n",               _prms.maxBuffers);
-  printf("  Max # of entries / batch:   %d\n",               _prms.maxEntries);
+  printf("  Batch duration:           0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
+  printf("  Batch pool depth:           %d\n",               MAX_BATCHES);
+  printf("  Max # of entries / batch:   %d\n",               MAX_ENTRIES);
   printf("  Max result     Dgram size:  %zd\n",              _prms.maxResultSize);
   printf("  Max transition Dgram size:  %zd\n",              _prms.maxTrSize);
   printf("\n");
@@ -677,7 +674,7 @@ int main(int argc, char **argv)
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
   std::string    collSrv;
-  const char*    rtMonHost;
+  const char*    rtMonHost    = nullptr;
   unsigned       rtMonPort    = RTMON_PORT_BASE;
   unsigned       rtMonPeriod  = rtMon_period;
   unsigned       rtMonVerbose = 0;
@@ -689,9 +686,6 @@ int main(int argc, char **argv)
                         /* .contributors  = */ 0,   // DRPs
                         /* .addrs         = */ { }, // Result dst addr served by Ctrbs
                         /* .ports         = */ { }, // Result dst port served by Ctrbs
-                        /* .maxBuffers    = */ MAX_BATCHES,
-                        /* .duration      = */ BATCH_DURATION,
-                        /* .maxEntries    = */ MAX_ENTRIES,
                         /* .maxTrSize     = */ max_contrib_size,
                         /* .maxResultSize = */ max_result_size,
                         /* .numMrqs       = */ 0,   // Number of Mon requestors
@@ -759,8 +753,8 @@ int main(int argc, char **argv)
                     prms.partition,
                     rtMonPeriod,
                     rtMonVerbose);
+  smon.startup();
 
-  pinThread(pthread_self(), prms.core[0]);
   TebApp app(collSrv, prms, smon);
 
   try

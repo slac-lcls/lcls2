@@ -85,11 +85,13 @@ struct Counters
 namespace Pds {
     namespace Eb {
         class TebContributor;
+        class StatsMonitor;
     };
 };
 
 void pin_thread(const pthread_t& th, int cpu);
 void monitor_func(const Parameters& para, std::atomic<Counters*>& p,
-                  MemPool& pool, Pds::Eb::TebContributor& ebCtrb);
+                  MemPool& pool, Pds::Eb::TebContributor& ebCtrb,
+                  Pds::Eb::StatsMonitor& smon);
 
 #endif // DRP_H

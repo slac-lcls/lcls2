@@ -31,11 +31,14 @@ using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
 
-EbAppBase::EbAppBase(const EbParams& prms) :
-  EventBuilder (prms.maxBuffers + TransitionId::NumberOf,
-                prms.maxEntries,
+EbAppBase::EbAppBase(const EbParams& prms,
+                     const uint64_t  duration,
+                     const unsigned  maxEntries,
+                     const unsigned  maxBuffers) :
+  EventBuilder (maxBuffers + TransitionId::NumberOf,
+                maxEntries,
                 8 * sizeof(prms.contributors), //Revisit: std::bitset<64>(prms.contributors).count(),
-                prms.duration,
+                duration,
                 prms.verbose),
   _groups      (0),
   _transport   (prms.verbose),
@@ -43,6 +46,7 @@ EbAppBase::EbAppBase(const EbParams& prms) :
   _trSize      (roundUpSize(TransitionId::NumberOf * prms.maxTrSize)),
   _maxTrSize   (prms.maxTrSize),
   _maxBufSize  (),
+  _maxBuffers  (maxBuffers),
   //_dummy       (Level::Fragment),
   _verbose     (prms.verbose),
   _region      (nullptr),
@@ -92,7 +96,7 @@ int EbAppBase::connect(const EbParams& prms)
       return rc;
     }
     _links[link->id()]      = link;
-    _maxBufSize[link->id()] = regSize / prms.maxBuffers;
+    _maxBufSize[link->id()] = regSize / _maxBuffers;
     regSize                += _trSize;  // Ctrbs don't have a transition space
     regSizes[link->id()]    = regSize;
     sumSize                += regSize;
@@ -216,7 +220,7 @@ uint64_t EbAppBase::contracts(const Dgram* ctrb,
   // are interested in the built event.
 
   uint64_t suppliers;
-  unsigned groups = static_cast<const L1Dgram*>(ctrb)->readoutGroups();
+  unsigned groups = ctrb->readoutGroups();
   groups &= _groups;       // Consider only groups enabled for our partition
   assert(groups);          // Configuration error if no enabled groups remain
 

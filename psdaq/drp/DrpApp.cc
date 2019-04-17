@@ -7,28 +7,31 @@
 #include "AxisDriver.h"
 #include "xtcdata/xtc/TransitionId.hh"
 
+static const unsigned RTMON_RATE = 1;    // Publish rate in seconds
+static const unsigned RTMON_VERBOSE = 0;
+
 using namespace Pds::Eb;
 
 DrpApp::DrpApp(Parameters* para) :
     CollectionApp(para->collect_host, para->partition, "drp"),
     m_para(para),
     m_inprocRecv(&m_context, ZMQ_PAIR),
-    m_pool(*para)
+    m_pool(*para),
+    m_smon("psmetric04", RTMON_PORT_BASE, m_para->partition, RTMON_RATE, RTMON_VERBOSE)
 {
     size_t maxSize = sizeof(MyDgram);
     m_para->tPrms = { /* .ifAddr        = */ { }, // Network interface to use
                       /* .port          = */ { }, // Port served to TEBs
-                      /* .partition     = */ m_para->partition,
+                      /* .partition     = */ unsigned(m_para->partition),
                       /* .id            = */ 0,
                       /* .builders      = */ 0,   // TEBs
                       /* .addrs         = */ { },
                       /* .ports         = */ { },
-                      /* .duration      = */ BATCH_DURATION,
-                      /* .maxBatches    = */ MAX_BATCHES,
-                      /* .maxEntries    = */ MAX_ENTRIES,
                       /* .maxInputSize  = */ maxSize,
                       /* .core          = */ { 11, 12 },
-                      /* .verbose       = */ 0 };
+                      /* .verbose       = */ 0,
+                      /* .groups        = */ 0,
+                      /* .contractor    = */ 0 };
 
     m_para->mPrms = { /* .addrs         = */ { },
                       /* .ports         = */ { },
@@ -38,7 +41,7 @@ DrpApp::DrpApp(Parameters* para) :
                       /* .maxTrSize     = */ 65536, //mon_trSize,
                       /* .verbose       = */ 0 };
 
-    m_ebContributor = std::make_unique<Pds::Eb::TebContributor>(m_para->tPrms);
+    m_ebContributor = std::make_unique<TebContributor>(m_para->tPrms, m_smon);
 
     m_inprocRecv.bind("inproc://drp");
 
@@ -72,7 +75,7 @@ void DrpApp::handleConnect(const json &msg)
     }
 
     if (m_para->mPrms.addrs.size() != 0) {
-        m_meb = std::make_unique<Pds::Eb::MebContributor>(m_para->mPrms);
+        m_meb = std::make_unique<MebContributor>(m_para->mPrms, m_smon);
         void* poolBase = (void*)m_pool.pebble.data();
         size_t poolSize = m_pool.pebble.size() * sizeof(Pebble);
         rc = m_meb->connect(m_para->mPrms, poolBase, poolSize);
@@ -82,7 +85,7 @@ void DrpApp::handleConnect(const json &msg)
         }
     }
 
-    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_pool, m_context, m_meb.get());
+    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_pool, m_context, m_meb.get(), m_smon);
     rc = m_ebRecv->connect(m_para->tPrms);
     if (rc) {
         connected = false;
@@ -94,7 +97,8 @@ void DrpApp::handleConnect(const json &msg)
                                std::ref(*m_para),
                                std::ref(m_pgpReader->get_counters()),
                                std::ref(m_pool),
-                               std::ref(*m_ebContributor));
+                               std::ref(*m_ebContributor),
+                               std::ref(m_smon));
 
     m_collectorThread = std::thread(&DrpApp::collector, std::ref(*this));
 
@@ -194,6 +198,9 @@ void DrpApp::parseConnectionParams(const json& body)
     }
     m_para->tPrms.builders = builders;
 
+    m_para->tPrms.groups = 1 << m_para->partition; // Revisit: Value to come from CfgDb
+    m_para->tPrms.contractor = 1 << m_para->partition;  // Revisit: Value to come from CfgDb
+
     if (body.find("meb") != body.end()) {
         for (auto it : body["meb"].items()) {
             unsigned mebId = it.value()["meb_id"];
@@ -208,8 +215,6 @@ void DrpApp::parseConnectionParams(const json& body)
 // collects events from the workers and sends them to the event builder
 void DrpApp::collector()
 {
-    printf("*** myEb %p %zd\n", m_ebContributor->batchRegion(), m_ebContributor->batchRegionSize());
-
     // start eb receiver thread
     m_ebContributor->startup(*m_ebRecv);
 
@@ -230,17 +235,22 @@ void DrpApp::collector()
         }
         // always monitor every event
         val |= 0x1234567800000000ul;
-        MyDgram dg(dgram.seq, val, m_para->tPrms.id);
-        m_ebContributor->process(&dg, (const void*)pebble);
+        void* buffer = m_ebContributor->allocate(&dgram, (const void*)pebble);
+        if (buffer) // else this DRP doesn't provide input, or timed out
+        {
+            MyDgram* dg = new(buffer) MyDgram(dgram, val, m_para->tPrms.id);
+            m_ebContributor->process(dg);
+        }
         i++;
     }
 
     m_ebContributor->shutdown();
 }
 
-MyDgram::MyDgram(XtcData::Sequence& sequence, uint64_t val, unsigned contributor_id)
+MyDgram::MyDgram(XtcData::Dgram& dgram, uint64_t val, unsigned contributor_id)
 {
-    seq = sequence;
+    seq = dgram.seq;
+    env = dgram.env;
     xtc = XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0), XtcData::Src(contributor_id));
     _data = val;
     xtc.alloc(sizeof(_data));
@@ -248,8 +258,9 @@ MyDgram::MyDgram(XtcData::Sequence& sequence, uint64_t val, unsigned contributor
 
 
 EbReceiver::EbReceiver(const Parameters& para, MemPool& pool,
-                       ZmqContext& context, Pds::Eb::MebContributor* mon) :
-  EbCtrbInBase(para.tPrms),
+                       ZmqContext& context, MebContributor* mon,
+                       StatsMonitor& smon) :
+  EbCtrbInBase(para.tPrms, smon),
   m_pool(pool),
   m_mon(mon),
   nreceive(0),
@@ -275,8 +286,8 @@ EbReceiver::EbReceiver(const Parameters& para, MemPool& pool,
 void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
 {
     nreceive++;
-    uint64_t eb_decision = *(uint64_t*)(result->xtc.payload());
-    // printf("eb decision %lu\n", eb_decision);
+    uint32_t* eb_decision = (uint32_t*)(result->xtc.payload());
+    // printf("eb decisions write: %u, monitor: %u\n", eb_decision[WRT_IDX], eb_decision[MON_IDX]);
     Pebble* pebble = (Pebble*)appPrm;
 
     int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
@@ -297,7 +308,7 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
 
     // write event to file if it passes event builder or is a configure transition
     if (m_writing) {
-        if (eb_decision == 1 || (transition_id == XtcData::TransitionId::Configure)) {
+        if (eb_decision[WRT_IDX] == 1 || (transition_id == XtcData::TransitionId::Configure)) {
             XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
             size_t size = sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload();
             m_fileWriter.writeEvent(dgram, size);
@@ -308,9 +319,7 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         XtcData::Dgram* dgram = (XtcData::Dgram*)pebble->fex_data();
         // L1Accept
         if (result->seq.isEvent()) {
-            uint32_t* response = (uint32_t*)result->xtc.payload();
-
-            if (response[1])  m_mon->post(dgram, response[1]);
+            if (eb_decision[MON_IDX])  m_mon->post(dgram, eb_decision[MON_IDX]);
         }
         // Other Transition
         else {

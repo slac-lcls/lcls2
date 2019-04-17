@@ -7,11 +7,12 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
+#include "psdaq/eb/StatsMonitor.hh"
 
 #pragma pack(push, 4)
 class MyDgram : public XtcData::Dgram {
 public:
-    MyDgram(XtcData::Sequence& sequence, uint64_t val, unsigned contributor_id);
+    MyDgram(XtcData::Dgram& dgram, uint64_t val, unsigned contributor_id);
 private:
     uint64_t _data;
 };
@@ -43,7 +44,7 @@ private:
     int m_count;
     std::vector<uint8_t> m_buffer;
     // 4 MB
-    static const int BufferSize = 4194304;
+    static const size_t BufferSize = 4194304;
 };
 
 
@@ -51,7 +52,8 @@ class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
     EbReceiver(const Parameters& para, MemPool& pool,
-               ZmqContext& context, Pds::Eb::MebContributor* mon);
+               ZmqContext& context, Pds::Eb::MebContributor* mon,
+               Pds::Eb::StatsMonitor& smon);
     virtual ~EbReceiver() {};
     void process(const XtcData::Dgram* result, const void* input) override;
 private:
@@ -91,4 +93,5 @@ private:
     std::unique_ptr<Pds::Eb::TebContributor> m_ebContributor;
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
+    Pds::Eb::StatsMonitor m_smon;
 };

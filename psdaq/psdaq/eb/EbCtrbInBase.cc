@@ -31,8 +31,8 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms, StatsMonitor& smon) :
   _prms        (prms),
   _region      (nullptr)
 {
-  smon.registerIt("TCtbI_RxPdg", _transport.pending(), StatsMonitor::SCALAR);
-  smon.registerIt("TCtbI_EvtCt", _eventCount,          StatsMonitor::SCALAR);
+  smon.metric("TCtbI_RxPdg", _transport.pending(), StatsMonitor::SCALAR);
+  smon.metric("TCtbI_EvtCt", _eventCount,          StatsMonitor::SCALAR);
 }
 
 int EbCtrbInBase::connect(const TebCtrbParams& prms)
@@ -77,7 +77,7 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
     if (!size)
     {
       size          = regSize;
-      _maxBatchSize = regSize / prms.maxBatches;
+      _maxBatchSize = regSize / MAX_BATCHES;
 
       _region = allocRegion(regSize);
       if (_region == nullptr)

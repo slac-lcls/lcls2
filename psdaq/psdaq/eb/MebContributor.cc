@@ -26,8 +26,8 @@ MebContributor::MebContributor(const MebCtrbParams& prms, StatsMonitor& smon) :
   _verbose   (prms.verbose),
   _eventCount(0)
 {
-  smon.registerIt("MCtbO_EvCt",  _eventCount,          StatsMonitor::SCALAR);
-  smon.registerIt("MCtbO_TxPdg", _transport.pending(), StatsMonitor::SCALAR);
+  smon.metric("MCtbO_EvCt",  _eventCount,          StatsMonitor::SCALAR);
+  smon.metric("MCtbO_TxPdg", _transport.pending(), StatsMonitor::SCALAR);
 }
 
 int MebContributor::connect(const MebCtrbParams& prms,

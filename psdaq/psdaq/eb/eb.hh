@@ -33,34 +33,31 @@ namespace Pds {
       using string_t = std::string;
       using vecstr_t = std::vector<std::string>;
 
-      string_t       ifAddr;       // Network interface to use
-      string_t       port;         // Served port to receive results
-      unsigned       partition;    // The chosen system
-      unsigned       id;           // Contributor instance identifier
-      uint64_t       builders;     // ID bit list of EBs
-      vecstr_t       addrs;        // TEB addresses
-      vecstr_t       ports;        // TEB ports
-      const uint64_t duration;     // Max time duration of batches
-      const unsigned maxBatches;   // Max # of batches to provide for
-      const unsigned maxEntries;   // Max # of entries per batch
-      const size_t   maxInputSize; // Max size of contribution
-      int            core[2];      // Cores to pin threads to
-      unsigned       verbose;      // Level of detail to print
-      uint16_t       groups;       // Readout groups enabled for this partition
-      uint16_t       contractor;   // Readout groups for which this Ctrb supplies trigger input data
+      string_t ifAddr;             // Network interface to use
+      string_t port;               // Served port to receive results
+      unsigned partition;          // The chosen system
+      unsigned id;                 // Contributor instance identifier
+      uint64_t builders;           // ID bit list of EBs
+      vecstr_t addrs;              // TEB addresses
+      vecstr_t ports;              // TEB ports
+      size_t   maxInputSize;       // Max size of contribution
+      int      core[2];            // Cores to pin threads to
+      unsigned verbose;            // Level of detail to print
+      uint16_t groups;             // Readout groups enabled for this partition
+      uint16_t contractor;         // Readout groups for which this Ctrb supplies trigger input data
     };
 
     struct MebCtrbParams
     {
       using vecstr_t = std::vector<std::string>;
 
-      vecstr_t       addrs;        // MEB addresses
-      vecstr_t       ports;        // MEB ports
-      unsigned       id;           // Contributor instance identifier
-      const unsigned maxEvents;    // Max # of events to provide for
-      const size_t   maxEvSize;    // Max event size
-      const size_t   maxTrSize;    // Max non-event size
-      unsigned       verbose;      // Level of detail to print
+      vecstr_t addrs;              // MEB addresses
+      vecstr_t ports;              // MEB ports
+      unsigned id;                 // Contributor instance identifier
+      unsigned maxEvents;          // Max # of events to provide for
+      size_t   maxEvSize;          // Max event size
+      size_t   maxTrSize;          // Max non-event size
+      unsigned verbose;            // Level of detail to print
     };
 
     struct EbParams                // Used with both TEBs and MEBs
@@ -71,25 +68,22 @@ namespace Pds {
       using vecstr_t = std::vector<std::string>;
       using u64arr_t = std::array<uint64_t, RDOUT_GRPS>;
 
-      string_t       ifAddr;       // Network interface to use
-      string_t       ebPort;       // EB port to serve
-      string_t       mrqPort;      // Mon request port to receive on
-      unsigned       partition;    // The chosen system
-      unsigned       id;           // EB instance identifier
-      uint64_t       contributors; // ID bit list of contributors
-      vecstr_t       addrs;        // Contributor addresses
-      vecstr_t       ports;        // Contributor ports
-      unsigned       maxBuffers;   // Max # of buffers to provide for
-      const uint64_t duration;     // Max time duration of buffers
-      const unsigned maxEntries;   // Max # of entries per buffer
-      const size_t   maxTrSize;    // Max non-event Dgram size
-      const size_t   maxResultSize;// Max result Dgram size
-      unsigned       numMrqs;      // Number of Mon request servers
-      int            core[2];      // Cores to pin threads to
-      unsigned       verbose;      // Level of detail to print
-      u64arr_t       contractors;  // Ctrbs providing Inputs  per readout group
-      u64arr_t       receivers;    // Ctrbs expecting Results per readout group
-      uint16_t       groups;       // Readout groups enabled for this partition
+      string_t ifAddr;             // Network interface to use
+      string_t ebPort;             // EB port to serve
+      string_t mrqPort;            // Mon request port to receive on
+      unsigned partition;          // The chosen system
+      unsigned id;                 // EB instance identifier
+      uint64_t contributors;       // ID bit list of contributors
+      vecstr_t addrs;              // Contributor addresses
+      vecstr_t ports;              // Contributor ports
+      size_t   maxTrSize;          // Max non-event Dgram size
+      size_t   maxResultSize;      // Max result Dgram size
+      unsigned numMrqs;            // Number of Mon request servers
+      int      core[2];            // Cores to pin threads to
+      unsigned verbose;            // Level of detail to print
+      u64arr_t contractors;        // Ctrbs providing Inputs  per readout group
+      u64arr_t receivers;          // Ctrbs expecting Results per readout group
+      uint16_t groups;             // Readout groups enabled for this partition
     };
   };
 };

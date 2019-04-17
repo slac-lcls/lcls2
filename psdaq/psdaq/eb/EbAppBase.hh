@@ -26,7 +26,10 @@ namespace Pds {
     class EbAppBase : public EventBuilder
     {
     public:
-      EbAppBase(const EbParams& prms);
+      EbAppBase(const EbParams& prms,
+                const uint64_t  duration,
+                const unsigned  maxEntries,
+                const unsigned  maxBuffers);
     public:
       const uint64_t&  rxPending() const { return _transport.pending(); }
       int              checkEQ()  { return _transport.pollEQ(); }
@@ -47,6 +50,7 @@ namespace Pds {
       size_t                   _trSize;
       size_t                   _maxTrSize;
       std::vector<size_t>      _maxBufSize;
+      unsigned                 _maxBuffers;
       //EbDummyTC                _dummy;   // Template for TC of dummy contributions  // Revisit: ???
       unsigned                 _verbose;
     private:

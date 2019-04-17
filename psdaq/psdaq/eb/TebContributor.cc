@@ -33,21 +33,21 @@ TebContributor::TebContributor(const TebCtrbParams& prms, StatsMonitor& smon) :
   _links       (),
   _id          (-1),
   _numEbs      (0),
-  _pending     (prms.maxBatches),
+  _pending     (MAX_BATCHES),
   _batchBase   (roundUpSize(TransitionId::NumberOf * prms.maxInputSize)),
   _postFlag    (0),
   _eventCount  (0),
   _batchCount  (0),
   _running     (true)
 {
-  smon.registerIt("TCtbO_EvtRt",  _eventCount,             StatsMonitor::RATE);
-  smon.registerIt("TCtbO_EvtCt",  _eventCount,             StatsMonitor::SCALAR);
-  smon.registerIt("TCtbO_BtAlCt", _batMan.batchAllocCnt(), StatsMonitor::SCALAR);
-  smon.registerIt("TCtbO_BtFrCt", _batMan.batchFreeCnt(),  StatsMonitor::SCALAR);
-  smon.registerIt("TCtbO_BtWtg",  _batMan.batchWaiting(),  StatsMonitor::SCALAR);
-  smon.registerIt("TCtbO_BatCt",  _batchCount,             StatsMonitor::SCALAR);
-  smon.registerIt("TCtbO_TxPdg",  _transport.pending(),    StatsMonitor::SCALAR);
-  smon.registerIt("TCtbO_InFlt",  _pending.count(),        StatsMonitor::SCALAR);
+  smon.metric("TCtbO_EvtRt",  _eventCount,             StatsMonitor::RATE);
+  smon.metric("TCtbO_EvtCt",  _eventCount,             StatsMonitor::SCALAR);
+  smon.metric("TCtbO_BtAlCt", _batMan.batchAllocCnt(), StatsMonitor::SCALAR);
+  smon.metric("TCtbO_BtFrCt", _batMan.batchFreeCnt(),  StatsMonitor::SCALAR);
+  smon.metric("TCtbO_BtWtg",  _batMan.batchWaiting(),  StatsMonitor::SCALAR);
+  smon.metric("TCtbO_BatCt",  _batchCount,             StatsMonitor::SCALAR);
+  smon.metric("TCtbO_TxPdg",  _transport.pending(),    StatsMonitor::SCALAR);
+  smon.metric("TCtbO_InFlt",  _pending.count(),        StatsMonitor::SCALAR);
 }
 
 int TebContributor::connect(const TebCtrbParams& prms)
