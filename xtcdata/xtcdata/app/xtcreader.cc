@@ -201,11 +201,8 @@ public:
             if (_namesLookup.count(namesId)<0) break;
             DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
-            Shapes& shapes = shapesdata.shapes();
             Data& data = shapesdata.data();
 	    printf("Found %d names\n",names.num());
-            printf("data shapes extents %d %d %d\n", shapesdata.data().extent,
-                   shapesdata.shapes().extent, sizeof(double));
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
                 get_value(i, name, descdata);
