@@ -9,13 +9,18 @@
 
 using namespace Pds::Bld;
 
-Server::Server(int fd, unsigned src) : 
+Server::Server(int fd) :
   _fd         (fd),
-  _src        (src),
+  _id         ( 0),
   _buffer     (new char[Header::MTU]),
   _buffer_size(         Header::MTU),
   _buffer_next(0)
 {
+}
+
+void Server::setID  (uint32_t    id)
+{
+  _id = id;
 }
 
 void Server::publish(uint64_t    pulseId, 
@@ -29,7 +34,7 @@ void Server::publish(uint64_t    pulseId,
     _buffer_next += Header::sizeofNext;
   }
   else {
-    new (_buffer) Header(pulseId, timeStamp, _src);
+    new (_buffer) Header(pulseId, timeStamp, _id);
     _buffer_next = Header::sizeofFirst;
   }
   memcpy(_buffer+_buffer_next, T, sizeofT);

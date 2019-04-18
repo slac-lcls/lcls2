@@ -7,9 +7,11 @@ namespace Pds {
   namespace Bld {
     class Server {
     public:
-      Server(int fd, unsigned src);
+      Server(int fd);
       ~Server();
     public:
+      unsigned id() const { return _id; }
+      void setID  (uint32_t    id);
       void publish(uint64_t    pulseId,
                    uint64_t    timeStamp,
                    const char* T,
@@ -17,7 +19,7 @@ namespace Pds {
       void flush  ();
     private:
       int      _fd;
-      unsigned _src;
+      unsigned _id;
       char*    _buffer;
       unsigned _buffer_size;    
       unsigned _buffer_next;

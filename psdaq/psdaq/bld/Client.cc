@@ -6,6 +6,8 @@
 #include <string>
 #include <unistd.h>
 
+//#define DBUG
+
 using namespace Pds::Bld;
 
 Client::Client(unsigned interface,
@@ -19,6 +21,14 @@ Client::Client(unsigned interface,
   if (_fd < 0) {
     perror("Open socket");
     throw std::string("Open socket");
+  }
+
+  unsigned skb_size = 0x1000000;
+
+  if (::setsockopt(_fd, SOL_SOCKET, SO_RCVBUF, 
+                   (char*)&skb_size, sizeof(skb_size)) < 0) {
+    perror("so_rcvbuf");
+    throw std::string("Failed to setsockopt SO_RCVBUF");
   }
 
   sockaddr_in saddr;
@@ -81,11 +91,24 @@ uint64_t Client::fetch(char* payload, unsigned sizeofT)
       perror("Error receiving multicast");
       exit(1);
     }
-    _buffer_size = sz;
 
-    result = (new (_buffer) Header)->pulseId();
+    Header& h = *new (_buffer) Header;
+    //  Check for ID change
+    //  If so, drop the whole packet
+    if (h.id() != _id)
+      return 0;
+
+    result = h.pulseId();
     memcpy(payload, _buffer+Header::sizeofFirst, sizeofT);
+    _buffer_size = sz;
     _buffer_next = Header::sizeofFirst + sizeofT;
+
+#ifdef DBUG
+    printf("New mcast sz %u bytes  pid 0x%llx\n", sz, result);
+    const unsigned* p = reinterpret_cast<const unsigned*>(_buffer);
+    for(unsigned i=0; i<32; i++)
+      printf("%08x%c",p[i],(i&7)==7 ? '\n':' ');
+#endif
   }
   //
   //  Fill the payload with the next entry

@@ -33,6 +33,10 @@ namespace Pds {
       {
         return reinterpret_cast<const uint64_t*>(this)[0];
       }
+      unsigned id() const
+      {
+        return reinterpret_cast<const unsigned*>(this)[4];
+      }
     private:
     };
   };
