@@ -48,6 +48,6 @@ void BldControl::enable (const sockaddr_in& sa)
 void BldControl::disable() 
 {
   setf(maxSize_enable, 0, 1, 31);
-  port = 0;
-  ip   = 0;
+  // port = 0;
+  // ip   = 0;
 }

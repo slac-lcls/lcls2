@@ -41,8 +41,8 @@ namespace Pds {
       Reg   pktCount_pause;
     private:
       char  _rsvd_09030024[(0x0a000828-0x09030024)];
-      Reg   port;
-      Reg   ip;
+      Reg   port; // readonly
+      Reg   ip;   // readonly
     protected:
       BldControl() {}
     };
