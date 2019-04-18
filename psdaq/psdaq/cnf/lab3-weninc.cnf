@@ -9,6 +9,7 @@ conda_rel = 'ps-2.0.1'
 shelf = '2'
 ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
+rtmon_host = 'psmetric04'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -33,7 +34,7 @@ procmgr_config = [
  { id:'modca1'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
  { id:'modca2'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
  { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2:PART:'+platform},
- { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -Z psmetric04 -C '+collect_host},
+ { host: 'drp-tst-dev001', id:'teb1', flags:'sxp', conda:conda_rel, cmd:'tstEbBuilder -Z '+rtmon_host+' -C '+collect_host},
 
  #{ host: 'drp-tst-dev002', id:'drp2', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
  #{ host: 'drp-tst-dev003', id:'drp3', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
@@ -53,4 +54,6 @@ procmgr_config = [
  #{ host: 'drp-tst-dev017', id:'drp17', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
  { host: 'drp-tst-dev018', id:'drp18', flags:'sxp', conda:conda_rel, cmd: drp_cmd },
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
+
+ #{ host: 'drp-tst-dev019', id:'meb1', flags:'sxp', conda:conda_rel, cmd:'monReqServer -P Test -d -q 4 -Z '+rtmon_host+' -C '+collect_host},
 ]
