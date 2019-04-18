@@ -451,7 +451,7 @@ private:
 TebApp::TebApp(const std::string& collSrv,
                EbParams&          prms,
                StatsMonitor&      smon) :
-  CollectionApp(collSrv, prms.partition, "teb"),
+  CollectionApp(collSrv, prms.partition, "teb", prms.alias),
   _prms(prms),
   _teb(prms, smon),
   _smon(smon)
@@ -655,6 +655,8 @@ static void usage(char *name, char *desc, const EbParams& prms)
           "Partition number");
   fprintf(stderr, " %-22s %s (required)\n",           "-Z <address>",
           "Run-time monitoring ZMQ server host");
+  fprintf(stderr, " %-22s %s (required)\n",           "-u <alias>",
+          "Alias for teb process");
   fprintf(stderr, " %-22s %s (default: %d)\n",        "-R <port>",
           "Run-time monitoring ZMQ server port",      RTMON_PORT_BASE);
   fprintf(stderr, " %-22s %s (default: %d)\n",        "-m <seconds>",
@@ -682,6 +684,7 @@ int main(int argc, char **argv)
                         /* .ebPort        = */ { },
                         /* .mrqPort       = */ { },
                         /* .partition     = */ NO_PARTITION,
+                        /* .alias         = */ { }, // Unique name passed on cmd line
                         /* .id            = */ -1u,
                         /* .contributors  = */ 0,   // DRPs
                         /* .addrs         = */ { }, // Result dst addr served by Ctrbs
@@ -695,7 +698,7 @@ int main(int argc, char **argv)
                         /* .receivers     = */ 0,
                         /* .groups        = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:A:Z:R:1:2:h?vV")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:Z:R:1:2:u:h?vV")) != -1)
   {
     switch (op)
     {
@@ -706,6 +709,7 @@ int main(int argc, char **argv)
       case 'R':  rtMonPort       = atoi(optarg);       break;
       case '1':  prms.core[0]    = atoi(optarg);       break;
       case '2':  prms.core[1]    = atoi(optarg);       break;
+      case 'u':  prms.alias      = optarg;             break;
       case 'v':  ++prms.verbose;                       break;
       case 'V':  ++rtMonVerbose;                       break;
       case '?':
@@ -729,6 +733,10 @@ int main(int argc, char **argv)
   if (!rtMonHost)
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-Z <Run-Time Monitoring host>");
+    return 1;
+  }
+  if (prms.alias.empty()) {
+    fprintf(stderr, "Missing '%s' parameter\n", "-u <Alias>");
     return 1;
   }
 

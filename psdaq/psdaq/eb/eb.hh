@@ -36,6 +36,7 @@ namespace Pds {
       string_t ifAddr;             // Network interface to use
       string_t port;               // Served port to receive results
       unsigned partition;          // The chosen system
+      string_t alias;              // Unique name passed on cmd line
       unsigned id;                 // Contributor instance identifier
       uint64_t builders;           // ID bit list of EBs
       vecstr_t addrs;              // TEB addresses
@@ -72,6 +73,7 @@ namespace Pds {
       string_t ebPort;             // EB port to serve
       string_t mrqPort;            // Mon request port to receive on
       unsigned partition;          // The chosen system
+      string_t alias;              // Unique name passed on cmd line
       unsigned id;                 // EB instance identifier
       uint64_t contributors;       // ID bit list of contributors
       vecstr_t addrs;              // Contributor addresses

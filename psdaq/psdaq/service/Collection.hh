@@ -52,7 +52,7 @@ std::string getNicIp();
 class CollectionApp
 {
 public:
-    CollectionApp(const std::string& managerHostname, int platform, const std::string& level);
+    CollectionApp(const std::string& managerHostname, int platform, const std::string& level, const std::string& alias);
     void run();
 protected:
     void handlePlat(const json& msg);
@@ -65,9 +65,11 @@ protected:
     void reply(const json& msg);
     size_t getId() const {return m_id;}
     const std::string& getLevel() const {return m_level;}
+    const std::string& getAlias() const {return m_alias;}
     virtual std::string nicIp() {return getNicIp();}
 private:
     std::string m_level;
+    std::string m_alias;
     ZmqContext m_context;
     ZmqSocket m_pushSocket;
     ZmqSocket m_subSocket;

@@ -435,7 +435,7 @@ CtrbApp::CtrbApp(const std::string& collSrv,
                  TebCtrbParams&     tebPrms,
                  MebCtrbParams&     mebPrms,
                  StatsMonitor&      smon) :
-  CollectionApp(collSrv, tebPrms.partition, "drp"),
+  CollectionApp(collSrv, tebPrms.partition, "drp", tebPrms.alias),
   _tebPrms(tebPrms),
   _mebPrms(mebPrms),
   _tebCtrb(tebPrms, smon),
@@ -642,6 +642,8 @@ void usage(char *name, char *desc, const TebCtrbParams& prms)
           "Collection server");
   fprintf(stderr, " %-22s %s (required)\n",           "-p <partition number>",
           "Partition number");
+  fprintf(stderr, " %-22s %s (required)\n",           "-u <alias>",
+          "Alias for drp process");
   fprintf(stderr, " %-22s %s (required)\n",           "-Z <address>",
           "Run-time monitoring ZMQ server host");
   fprintf(stderr, " %-22s %s (default: %d)\n",        "-R <port>",
@@ -670,6 +672,7 @@ int main(int argc, char **argv)
   TebCtrbParams  tebPrms { /* .ifAddr        = */ { }, // Network interface to use
                            /* .port          = */ { }, // Port served to TEBs
                            /* .partition     = */ NO_PARTITION,
+                           /* .alias         = */ { }, // Unique name from cmd line
                            /* .id            = */ -1u,
                            /* .builders      = */ 0,   // TEBs
                            /* .addrs         = */ { },
@@ -687,7 +690,7 @@ int main(int argc, char **argv)
                            /* .maxTrSize     = */ mon_trSize,
                            /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:A:Z:R:o:1:2:h?vV")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:Z:R:o:1:2:u:h?vV")) != -1)
   {
     switch (op)
     {
@@ -698,6 +701,7 @@ int main(int argc, char **argv)
       case 'R':  rtMonPort          = atoi(optarg);       break;
       case '1':  tebPrms.core[0]    = atoi(optarg);       break;
       case '2':  tebPrms.core[1]    = atoi(optarg);       break;
+      case 'u':  tebPrms.alias      = optarg;             break;
       case 'v':  ++tebPrms.verbose;
                  ++mebPrms.verbose;                       break;
       case 'V':  ++rtMonVerbose;                          break;

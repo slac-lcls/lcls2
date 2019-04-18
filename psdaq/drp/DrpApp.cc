@@ -13,7 +13,7 @@ static const unsigned RTMON_VERBOSE = 0;
 using namespace Pds::Eb;
 
 DrpApp::DrpApp(Parameters* para) :
-    CollectionApp(para->collect_host, para->partition, "drp"),
+    CollectionApp(para->collect_host, para->partition, "drp", para->alias),
     m_para(para),
     m_inprocRecv(&m_context, ZMQ_PAIR),
     m_pool(*para),
@@ -23,6 +23,7 @@ DrpApp::DrpApp(Parameters* para) :
     m_para->tPrms = { /* .ifAddr        = */ { }, // Network interface to use
                       /* .port          = */ { }, // Port served to TEBs
                       /* .partition     = */ unsigned(m_para->partition),
+                      /* .alias         = */ { }, // Unique name from cmd line
                       /* .id            = */ 0,
                       /* .builders      = */ 0,   // TEBs
                       /* .addrs         = */ { },

@@ -155,8 +155,10 @@ int ZmqSocket::poll(short events, long timeout)
 
 CollectionApp::CollectionApp(const std::string &managerHostname,
                              int platform,
-                             const std::string &level) :
+                             const std::string &level,
+                             const std::string &alias) :
     m_level(level),
+    m_alias(alias),
     m_pushSocket{&m_context, ZMQ_PUSH},
     m_subSocket{&m_context, ZMQ_SUB}
 {
@@ -185,7 +187,7 @@ void CollectionApp::handlePlat(const json &msg)
     int pid = getpid();
     m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
     json body;
-    body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}}}};
+    body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}, {"alias", m_alias}}}};
     json answer = createMsg("plat", msg["header"]["msg_id"], m_id, body);
     reply(answer);
 }

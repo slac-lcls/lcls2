@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     Parameters para;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:D:C:d:")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:C:d:u:")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -26,6 +26,9 @@ int main(int argc, char* argv[])
             case 'd':
                 para.device = optarg;
                 break;
+            case 'u':
+                para.alias = optarg;
+                break;
             default:
                 exit(1);
         }
@@ -33,6 +36,10 @@ int main(int argc, char* argv[])
     // Check required parameters
     if (para.device.empty()) {
         printf("-d: device is mandatory!\n");
+        exit(1);
+    }
+    if (para.alias.empty()) {
+        printf("-u: alias is mandatory!\n");
         exit(1);
     }
 

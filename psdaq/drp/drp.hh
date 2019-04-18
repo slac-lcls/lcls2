@@ -29,6 +29,7 @@ struct Parameters
     std::string output_dir;
     std::string detectorType;
     std::string device;
+    std::string alias;
     int numWorkers;
     int numEntries;
     int laneMask;
