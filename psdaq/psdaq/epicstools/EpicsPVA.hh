@@ -15,11 +15,6 @@
 #include "psdaq/epicstools/PVMonitorCb.hh"
 
 
-
-namespace pvd = epics::pvData;
-namespace pva = epics::pvAccess;
-namespace nt  = epics::nt;
-
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 namespace nt  = epics::nt;
@@ -170,7 +165,7 @@ namespace Pds_Epics {
     bool  _connected;
 
     bool getComplete();
-    };
+  };
 };
 
 #endif

@@ -11,7 +11,8 @@ namespace Pds_Epics {
                  public PVMonitorCb {
   public:
     PVBase(const char* channelName, const int maxElements=1) : EpicsPVA(channelName, this, maxElements) {}
-    virtual ~PVBase() {}
+    ~PVBase() {}
+    void updated() {}
   };
 };
 
