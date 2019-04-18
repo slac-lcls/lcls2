@@ -121,11 +121,17 @@ std::vector<ZmqMessage> ZmqSocket::recvMultipart()
         if (rc == -1) {
             fprintf(stderr,"Collection.cc: zmq_msg_recv bad return value %d\n",rc);
             fprintf(stderr,"This can happen when a process is sent a signal.  Exiting.\n");
-            exit(1);
+            frames.clear();
+            break;                      // Let application wind down
         }
         frames.emplace_back(std::move(frame));
         rc = zmq_getsockopt(socket, ZMQ_RCVMORE, &more, &more_size);
-        assert(rc == 0);
+        if (rc != 0) {
+            fprintf(stderr,"Collection.cc: zmq_getsockopt bad return value %d\n",rc);
+            fprintf(stderr,"This can happen when a process is sent a signal.  Exiting.\n");
+            frames.clear();
+            break;                      // Let application wind down
+        }
     } while (more);
     return frames;
 }
