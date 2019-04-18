@@ -586,7 +586,7 @@ class CollectionManager():
         msg = create_msg('connect', body=self.filter_active_dict(self.cmstate))
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-        retlist, answers = confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids)
         ret = len(retlist)
         if ret:
             for alias in self.get_aliases(retlist):
@@ -609,7 +609,7 @@ class CollectionManager():
         logging.debug('handle_getstate()')
         return create_msg(self.state, body=self.cmstate)
 
-    # returns last transition plus current state 
+    # returns last transition plus current state
     def handle_getstatus(self, body):
         logging.debug('handle_getstatus()')
         return self.status_msg()
