@@ -956,11 +956,13 @@ bool EndpointBase::initialize()
 
 Endpoint::Endpoint(const char* addr, const char* port, uint64_t flags, size_t tx_size, size_t rx_size) :
   EndpointBase(addr, port, flags, tx_size, rx_size),
+  _counter(0),
   _ep(0)
 {}
 
 Endpoint::Endpoint(Fabric* fabric, EventQueue* eq, CompletionQueue* txcq, CompletionQueue* rxcq) :
   EndpointBase(fabric, eq, txcq, rxcq),
+  _counter(0),
   _ep(0)
 {}
 
@@ -1976,6 +1978,7 @@ bool EventQueue::event_wait(uint32_t* event, void* entry, bool* cm_entry, int ti
 
 bool EventQueue::event_error(struct fi_eq_err_entry *entry)
 {
+  memset(entry, 0, sizeof(*entry));     // Avoid valgrind's uninitialized memory commentary
   ssize_t rret = fi_eq_readerr(_eq, entry, 0);
   if (rret != sizeof (struct fi_eq_err_entry)) {
     if (rret < 0) {

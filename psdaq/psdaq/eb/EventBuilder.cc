@@ -21,6 +21,7 @@ EventBuilder::EventBuilder(unsigned epochs,
                            unsigned sources,
                            uint64_t duration,
                            unsigned verbose) :
+  _pending(),
   _mask(PulseId(~(duration - 1), 0).value()),
   _epochFreelist(sizeof(EbEpoch), epochs, CLS),
   _epochLut(epochs),
@@ -59,7 +60,7 @@ void EventBuilder::clear()
   const EbEpoch* const lastEpoch = _pending.empty();
   EbEpoch*             epoch     = _pending.forward();
 
-  do
+  while (epoch != lastEpoch)
   {
     const EbEvent* const lastEvent = epoch->pending.empty();
     EbEvent*             event     = epoch->pending.forward();
@@ -76,8 +77,8 @@ void EventBuilder::clear()
 
       event = next;
     }
+    epoch = epoch->forward();
   }
-  while (epoch = epoch->forward(), epoch != lastEpoch);
 
   _flushBefore(_pending.reverse());
 

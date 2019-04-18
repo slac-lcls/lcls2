@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>                     // sysconf()
 #include <stdlib.h>                     // posix_memalign()
-#include <string.h>                     // strerror()
+#include <string.h>                     // strerror(), memset()
 
 using namespace Pds::Eb;
 
@@ -24,6 +24,11 @@ void* Pds::Eb::allocRegion(size_t size)
     fprintf(stderr, "posix_memalign failed: %s", strerror(ret));
     return nullptr;
   }
+
+//#define VALGRIND                       // Avoid uninitialized memory commentary
+#ifdef  VALGRIND                       // Region is initialized by RDMA,
+  memset(region, 0, size);             // but Valgrind can't know that
+#endif
 
   return region;
 }
