@@ -12,97 +12,95 @@
 #include <string>
 #include <signal.h>
 
-#include "psdaq/tpr/Client.hh"
-#include "psdaq/tpr/Frame.hh"
+#include "psdaq/pgp/kcu1500/app/Client.hh"
 #include "psdaq/bld/Client.hh"
-#include "psdaq/bld/TestType.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
+#include "xtcdata/xtc/Xtc.hh"
+using namespace XtcData;
+
+//  DescribedData must have a variable-length array!
+//#define PAD_DESCDATA
+
 #include "AppUtils.hh"
+
+#include "psdaq/epicstools/PVBase.hh"
+
+static const Name::DataType xtype[] = 
+  { Name::UINT8 , // pvBoolean
+    Name::INT8  , // pvByte
+    Name::UINT16, // pvShort
+    Name::INT32 , // pvInt
+    Name::INT64 , // pvLong
+    Name::UINT8 , // pvUByte
+    Name::UINT16, // pvUShort
+    Name::UINT32, // pvUInt
+    Name::UINT64, // pvULong
+    Name::FLOAT , // pvFloat
+    Name::DOUBLE, // pvDouble
+    Name::CHARSTR, // pvString 
+  };
+
+namespace Pds_Epics {
+  class BldPV : public PVBase {
+  public:
+    BldPV(const char* channelName) : 
+      PVBase(channelName) {}
+  public:
+    unsigned getUID() const { return strtoul(_strct->getStructure()->getID().c_str(),NULL,10); }
+    const pvd::StructureConstPtr structure() const { return _strct->getStructure(); }
+    XtcData::VarDef getVarDef(size_t& sz) const { 
+      sz = 0;
+      XtcData::VarDef vd;
+      const pvd::FieldConstPtrArray& fields = structure()->getFields();
+      const pvd::StringArray&        names  = structure()->getFieldNames();
+      for(unsigned i=0; i<fields.size(); i++) {
+        switch (fields[i]->getType()) {
+        case pvd::scalar:
+          { const pvd::Scalar* s = static_cast<const pvd::Scalar*>(fields[i].get());
+            Name::DataType xt = xtype[s->getScalarType()];
+            vd.NameVec.push_back(Name(names[i].c_str(), xt));
+            sz += Name::get_element_size(xt);
+            break; }
+          //        case pvd::scalarArray:
+        default:
+          throw std::string("PV type ")+pvd::TypeFunc::name(fields[i]->getType())+
+            " for field "+names[i]+" not supported";
+          break;
+        }          
+      }
+      return vd;
+    }
+    void updated() {}
+  };
+};
+
+using Pds_Epics::PVBase;
+using Pds_Epics::BldPV;
 
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
-  printf("Options: -a <ip mcast address, dotted notation>\n");
-  printf("         -i <ip interface, name or dotted notation>\n");
-  printf("         -p <UDP port>\n");
+  printf("Options: -i <ip interface, name or dotted notation>\n");
+  printf("         -N <bld service name>\n");
+  printf("         -P <partition>\n");
 }
 
-static int      event = 0;
-static int64_t  bytes = 0;
-static unsigned misses = 0;
+static uint64_t  event = 0;
+static uint64_t  bytes = 0;
+static uint64_t  misses = 0;
 
-static Pds::Tpr::Client* tpr = 0;
+static Pds::Kcu::Client* tpr = 0;
 
-void* countThread(void* args)
-{
-  timespec tv;
-  clock_gettime(CLOCK_REALTIME,&tv);
-  unsigned oevent = event;
-  int64_t  obytes = bytes;
-  unsigned omisses = misses;
-  while(1) {
-    usleep(1000000);
-    timespec otv = tv;
-    clock_gettime(CLOCK_REALTIME,&tv);
-    unsigned nevent = event;
-    int64_t  nbytes = bytes;
-    unsigned nmisses = misses;
-
-    double dt     = double( tv.tv_sec - otv.tv_sec) + 1.e-9*(double(tv.tv_nsec)-double(otv.tv_nsec));
-    double erate  = double(nevent-oevent)/dt;
-    double mrate  = double(nmisses-omisses)/dt;
-    double dbytes = double(nbytes-obytes)/dt;
-    double ebytes = dbytes/erate;
-    unsigned dbsc = 0, ersc=0, mrsc=0, ebsc=0;
-    
-    static const char scchar[] = { ' ', 'k', 'M' };
-
-    if (erate > 1.e6) {
-      ersc     = 2;
-      erate   *= 1.e-6;
-    }
-    else if (erate > 1.e3) {
-      ersc     = 1;
-      erate   *= 1.e-3;
-    }
-
-    if (mrate > 1.e6) {
-      mrsc     = 2;
-      mrate   *= 1.e-6;
-    }
-    else if (mrate > 1.e3) {
-      mrsc     = 1;
-      mrate   *= 1.e-3;
-    }
-
-    if (dbytes > 1.e6) {
-      dbsc    = 2;
-      dbytes *= 1.e-6;
-    }
-    else if (dbytes > 1.e3) {
-      dbsc    = 1;
-      dbytes *= 1.e-3;
-    }
-
-    if (ebytes > 1.e6) {
-      ebsc    = 2;
-      ebytes *= 1.e-6;
-    }
-    else if (ebytes > 1.e3) {
-      ebsc    = 1;
-      ebytes *= 1.e-3;
-    }
-      
-    printf("Events %7.2f %cHz [%u]:  Size %7.2f %cBps (%7.2f %cB/evt): Misses %7.2f %cHz\n", 
-           erate , scchar[ersc], nevent, 
-           dbytes, scchar[dbsc], 
-           ebytes, scchar[ebsc],
-           mrate , scchar[mrsc]);
-
-    oevent = nevent;
-    obytes = nbytes;
-    omisses = nmisses;
-  }
-  return 0;
+static void dump(XtcData::Xtc* xtc, const char* title)
+{  // dump the xtc
+  printf("-- %s --\n",title);
+  const uint32_t* p = reinterpret_cast<const uint32_t*>(xtc);
+  for(unsigned i=0; i<xtc->extent>>2; i++)
+    printf("%08x%c", p[i], (i&7)==7 ? '\n':' ');
+  if ((xtc->extent&31)!=0)
+    printf("\n");
 }
 
 static void sigHandler(int signal)
@@ -112,28 +110,56 @@ static void sigHandler(int signal)
   ::exit(signal);
 }
 
+static void write_config( NameIndex&       nameIndex,
+                          NamesId&         namesId,
+                          VarDef&          bldDef,
+                          FILE*            fout )
+{
+  char* configBuff = new char[1024*1024];
+  memset(configBuff, 0, 1024*1024);
+  timespec tv; clock_gettime(CLOCK_REALTIME,&tv);
+  Dgram& dg = *new (configBuff) Dgram( Transition( Sequence( Sequence::Event,
+                                                             TransitionId::Configure,
+                                                             TimeStamp(tv.tv_sec,tv.tv_nsec),
+                                                             PulseId(0,0)), 0 ),
+                                       Xtc( TypeId(TypeId::Parent, 0) ) );
+    
+  Alg     bldAlg    ("bldAlg", 1, 2, 3);
+  Names&  bldNames = *new(dg.xtc) Names("mybld", bldAlg, "bld",
+                                        "bld1234", namesId, 0);
+  bldNames.add(dg.xtc, bldDef);
+
+  nameIndex = NameIndex(bldNames);
+
+  if (fout) {
+    fwrite(&dg,sizeof(dg)+dg.xtc.sizeofPayload(),1,fout);
+  }
+
+  delete[] configBuff;
+}
+
 int main(int argc, char* argv[])
 {
   extern char* optarg;
   char c;
 
-  unsigned addr = 0;
+  const char* filename = 0;
   unsigned intf = 0;
-  unsigned short port = 8197;
   unsigned partn = 0;
+  const char* bldName = 0;
   bool lverbose = false;
   unsigned nprint = 10;
   
-  while ( (c=getopt( argc, argv, "a:i:p:P:v")) != EOF ) {
+  while ( (c=getopt( argc, argv, "f:i:N:P:v#:")) != EOF ) {
     switch(c) {
-    case 'a':
-      addr = Psdaq::AppUtils::parse_ip       (optarg);
+    case 'f':
+      filename = optarg;
       break;
     case 'i':
       intf = Psdaq::AppUtils::parse_interface(optarg);
       break;
-    case 'p':
-      port = strtoul(optarg,NULL,0);
+    case 'N':
+      bldName = optarg;
       break;
     case 'P':
       partn = strtoul(optarg,NULL,0);
@@ -141,13 +167,16 @@ int main(int argc, char* argv[])
     case 'v':
       lverbose = true;
       break;
+    case '#':
+      nprint = strtoul(optarg,NULL,0);
+      break;
     default:
       usage(argv[0]);
       return 0;
     }
   }
 
-  if (!addr || !intf) {
+  if (!bldName || !intf) {
     usage(argv[0]);
     return -1;
   }
@@ -155,19 +184,37 @@ int main(int argc, char* argv[])
   //
   //  Open the timing receiver
   //
-  tpr = new Pds::Tpr::Client("/dev/tpra");
+  tpr = new Pds::Kcu::Client("/dev/datadev_0");
+
+  //
+  //  Fetch channel field names from PVA
+  //
+  BldPV* pvaPayload    = new BldPV ((std::string(bldName)+":PAYLOAD").c_str());
+  PVBase* pvaAddr      = new PVBase((std::string(bldName)+":ADDR"   ).c_str());
+  PVBase* pvaPort      = new PVBase((std::string(bldName)+":PORT"   ).c_str());
+
+  while(1) {
+    if (pvaPayload   ->connected() &&
+        pvaAddr      ->connected() &&
+        pvaPort      ->connected())
+      break;
+    usleep(100000);
+  }
+
+  printf("Intf/Addr/Port 0x%x/0x%x/0x%x\n", 
+         intf,
+         pvaAddr->getScalarAs<unsigned>(), 
+         pvaPort->getScalarAs<unsigned>());
   //
   //  Open the bld receiver
   //
-  Pds::Bld::Client  bld(intf, addr, port);
+  Pds::Bld::Client  bld(intf, pvaAddr->getScalarAs<unsigned>(), pvaPort->getScalarAs<unsigned>());
 
-  pthread_attr_t tattr;
-  pthread_attr_init(&tattr);
-  pthread_t thr;
-  if (pthread_create(&thr, &tattr, &countThread, 0)) {
-    perror("Error creating read thread");
-    return -1;
-  }
+  Psdaq::MonitorArgs monitor_args;
+  monitor_args.add("Events","Hz" ,event);
+  monitor_args.add("Size"  ,"Bps",bytes);
+  monitor_args.add("Misses","Hz" ,misses);
+  pthread_t thr = Psdaq::AppUtils::monitor(monitor_args);
 
   struct sigaction sa;
   sa.sa_handler = sigHandler;
@@ -178,47 +225,108 @@ int main(int argc, char* argv[])
   sigaction(SIGKILL,&sa,NULL);
   sigaction(SIGSEGV,&sa,NULL);
 
-  tpr->start(partn);
-  //  tpr->start();
+  //
+  //  Configure : determine structure of data
+  //
+  FILE* fout = filename ? fopen(filename,"w") : 0;
 
-  char* eventb = new char[ sizeof(XtcData::Dgram)+sizeof(Pds::Bld::TestType) ];
-  uint64_t ppulseId=0;
+  char* eventb = new char[ 8*1024 ];
+  tpr->start(partn);
+
+  unsigned _id = 0;
 
   while(1) {
 
-    XtcData::Dgram* dgram = reinterpret_cast<XtcData::Dgram*>(eventb);
-    XtcData::Xtc&   xtc   = *new((char*)&dgram->xtc) 
-      XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0));
-    
-    //  First, fetch BLD component
-    uint64_t pulseId = bld.fetch((char*)xtc.alloc(sizeof(Pds::Bld::TestType)), 
-                                 sizeof(Pds::Bld::TestType));
-    
-    //  Second, fetch header (should already be waiting)
-    const Pds::Tpr::Frame* frame = tpr->advance(pulseId);
-
-    if (frame) {
-      ppulseId = pulseId;
-      new (&dgram->seq) XtcData::Sequence(XtcData::Sequence::Event, 
-                                          XtcData::TransitionId::L1Accept,
-                                          *reinterpret_cast<const XtcData::TimeStamp*>(&frame->timeStamp),
-                                          XtcData::PulseId(frame->pulseId));
-      event++;
-      bytes += sizeof(XtcData::Dgram)+sizeof(Pds::Bld::TestType);
-      if (lverbose)
-        printf(" %9u.%09u %016lx extent 0x%x payload %08x %08x...\n",
-               dgram->seq.stamp().seconds(),
-               dgram->seq.stamp().nanoseconds(),
-               dgram->seq.pulseId().value(),
-               dgram->xtc.extent,
-               reinterpret_cast<uint32_t*>(dgram->xtc.payload())[0],
-               reinterpret_cast<uint32_t*>(dgram->xtc.payload())[1]);
+    //
+    //  Wait for payload description
+    //
+    unsigned id = pvaPayload->getUID();
+    while(id == _id) {
+      usleep(100);
+      id = pvaPayload->getUID();
     }
-    else {
-      misses++;
-      if (nprint) {
-        printf("Miss: %016lx  prev %016lx\n",
-               pulseId, ppulseId);
+    bld.setID(_id = id);
+    
+    NameIndex      nameIndex;
+    NamesId        namesId(0,0);
+    size_t         payloadSz;
+    VarDef         bldDef = pvaPayload->getVarDef(payloadSz);
+
+#ifdef PAD_DESCDATA
+    unsigned paddingIndex = bldDef.NameVec.size();
+    bldDef.NameVec.push_back(Name("padding", Name::UINT32,1));
+    size_t xtcPayloadSz = payloadSz+sizeof(uint32_t);
+#else
+    size_t xtcPayloadSz = payloadSz;
+#endif
+
+    write_config(nameIndex, namesId, bldDef, fout);
+
+    Dgram* dgram = new (eventb) Dgram( Transition( Sequence( Sequence::Event,
+                                                             TransitionId::L1Accept,
+                                                             TimeStamp(0,0),
+                                                             PulseId(0,0)), 0 ),
+                                       Xtc( TypeId(TypeId::Parent, 0) ) );
+    
+    Xtc&   xtc   = dgram->xtc;
+
+    DescribedData desc(xtc, nameIndex, namesId);
+    desc.set_data_length(xtcPayloadSz);
+#ifdef PAD_DESCDATA
+    unsigned shape[MaxRank] = {1,1};
+    desc.set_array_shape(paddingIndex, shape);
+#endif
+
+    uint64_t ppulseId=0;
+
+    while(1) {
+
+      //  First, fetch BLD component
+      //    uint64_t pulseId = 0;
+      uint64_t pulseId = bld.fetch((char*)desc.data(),payloadSz);
+      //  Check if payload ID has changed
+      //  Do we need to handle dynamic changes or just stop receiving
+      //    data until a reconfigure?
+      if (!pulseId)
+        break;
+
+      if (lverbose && nprint) {
+        printf("bld pid 0x%llx\n", pulseId);
+        nprint--;
+      }
+    
+      //  Second, fetch header (should already be waiting)
+      const XtcData::Transition* tr = tpr->advance(pulseId);
+      //const XtcData::Transition* tr = 0;
+
+      if (tr) {
+        ppulseId = pulseId;
+
+        new (dgram) Transition(*tr);
+
+        if (fout)
+          fwrite(dgram, sizeof(*dgram)+dgram->xtc.sizeofPayload(), 1, fout);
+
+        event++;
+        bytes += sizeof(XtcData::Dgram)+payloadSz;
+        if (lverbose)
+          printf(" %9u.%09u %016lx extent 0x%x payload %08x %08x...\n",
+                 dgram->seq.stamp().seconds(),
+                 dgram->seq.stamp().nanoseconds(),
+                 dgram->seq.pulseId().value(),
+                 dgram->xtc.extent,
+                 reinterpret_cast<uint32_t*>(dgram->xtc.payload())[0],
+                 reinterpret_cast<uint32_t*>(dgram->xtc.payload())[1]);
+      }
+      else {
+        //      if (misses++ > 100)
+        //        exit(1);
+
+        if (nprint) {
+          printf("Miss: %016lx  prev %016lx\n",
+                 pulseId, ppulseId);
+          nprint--;
+        }
       }
     }
   }

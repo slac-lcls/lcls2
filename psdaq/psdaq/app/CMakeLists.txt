@@ -2,51 +2,72 @@ add_library(app SHARED
     AppUtils.cc
 )
 
+find_library(YAML_CPP_LIB yaml-cpp PATH $ENV{CONDA_PREFIX}/lib)
+find_library(CPSW_LIB cpsw PATH $ENV{CONDA_PREFIX}/lib)
+
 #
 #
 #
-add_executable(hpsBldServer hpsBldServer.cc)
+add_executable(hpsBldServerPVA hpsBldServer.cc)
 
 target_include_directories(hpsBldServer PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    ${CMAKE_INSTALL_PREFIX}/include
+    $ENV{CONDA_PREFIX}/epics/include
+    $ENV{CONDA_PREFIX}/epics/include/os/Linux
+    $ENV{CONDA_PREFIX}/epics/include/compiler/gcc
     $ENV{CONDA_PREFIX}/include
 )
+
+target_link_libraries(hpsBldServer
+   app
+   cphw
+   bld
+   epicstools
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVACLIENT_LIB}
+   ${CPSW_LIB}
+   ${YAML_CPP_LIB}
+   dl
+   pthread
+   rt
+)
+
 
 find_library(YAML_CPP_LIB yaml-cpp $ENV{CONDA_PREFIX}/lib)
 find_library(CPSW_LIB cpsw $ENV{CONDA_PREFIX}/lib)
 
-target_link_libraries(hpsBldServer
-   cphw
-   bld
-   ${CPSW_LIB}
-   ${YAML_CPP_LIB}
-   ${EPICS_CA_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVACLIENT_LIB}
-   dl
-   pthread
-   rt
-)
-
-add_executable(hpsBldClient hpsBldClient.cc)
+add_executable(hpsBldClientPVA hpsBldClient.cc)
 
 target_include_directories(hpsBldClient PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    ${CMAKE_INSTALL_PREFIX}/include
+    $ENV{CONDA_PREFIX}/epics/include
+    $ENV{CONDA_PREFIX}/epics/include/os/Linux
+    $ENV{CONDA_PREFIX}/epics/include/compiler/gcc
     $ENV{CONDA_PREFIX}/include
 )
 
 target_link_libraries(hpsBldClient
+   app
+   kcu
    cphw
    bld
-   tpr
+   epicstools
+   xtcdata::xtc
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVACLIENT_LIB}
    ${CPSW_LIB}
    ${YAML_CPP_LIB}
-   app
    dl
    pthread
    rt
 )
+
 
 #
 #  tprioc
