@@ -34,7 +34,7 @@ procmgr_config = [
  { id:'modca1'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
  { id:'modca2'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
  { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2:PART:'+platform},
- { host: 'drp-tst-dev001', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'tstEbBuilder -Z '+rtmon_host+' -C '+collect_host},
+ { host: 'drp-tst-dev001', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -Z '+rtmon_host+' -C '+collect_host},
 
  #{ host: 'drp-tst-dev002', id:'drp2', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
  #{ host: 'drp-tst-dev003', id:'drp3', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },

@@ -130,12 +130,12 @@ for i in range(len(seg_nodes)):
   procmgr_config.append({host:seg_nodes[i],
                          id:'seg%d'%i,
                          flags:node_flags,
-                         cmd:bin_path+'/tstEbContributor -i %d'%i+evt_ib_nodes})
+                         cmd:bin_path+'/ctrb -i %d'%i+evt_ib_nodes})
 
 for i in range(len(evt_nodes)):
   procmgr_config.append({host:evt_nodes[i],
                          id:'evt%d'%i,
                          flags:node_flags,
-                         cmd:bin_path+'/tstEbBuilder -i %d'%i+seg_ib_nodes})
+                         cmd:bin_path+'/teb -i %d'%i+seg_ib_nodes})
 
 #print procmgr_config

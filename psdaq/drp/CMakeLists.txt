@@ -12,7 +12,7 @@ target_link_libraries(drputils
     xtcdata::xtc
     xtcdata::j2x
     pgpdriver
-    ctrb
+    contributor
     zmq
     ${PYTHON_LIBRARIES}
 )
@@ -39,7 +39,7 @@ target_link_libraries(drp
     pthread
     drputils
     collection
-    ctrb
+    contributor
     zmq
 )
 

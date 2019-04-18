@@ -27,7 +27,7 @@ static const int      core_0               = 10; // devXXX: 10, devXX:  7, accXX
 static const int      core_1               = 11; // devXXX: 11, devXX: 19, accXX: 21
 static const unsigned rtMon_period         = 1;  // Seconds
 static const unsigned epoch_duration       = 8;  // Revisit: 1 per xferBuffer
-static const unsigned numberof_xferBuffers = 8;  // Revisit: Value; corresponds to tstEbContributor:maxEvents
+static const unsigned numberof_xferBuffers = 8;  // Revisit: Value; corresponds to ctrb:maxEvents
 static const unsigned sizeof_buffers       = 64 * 1024; // Revisit
 
 using namespace XtcData;

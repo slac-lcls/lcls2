@@ -19,7 +19,7 @@ target_link_libraries(utilities
   fabric
 )
 
-add_library(ctrb SHARED
+add_library(contributor SHARED
   EbCtrbInBase.cc
   TebContributor.cc
   MebContributor.cc
@@ -28,17 +28,17 @@ add_library(ctrb SHARED
   StatsMonitor.cc
 )
 
-target_include_directories(ctrb PUBLIC
+target_include_directories(contributor PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
   $ENV{CONDA_PREFIX}/include
 )
 
-target_link_libraries(ctrb
+target_link_libraries(contributor
   utilities
 )
 
-add_library(eb SHARED
+add_library(eventBuilder SHARED
   EbAppBase.cc
   EventBuilder.cc
   EbEpoch.cc
@@ -48,13 +48,13 @@ add_library(eb SHARED
   StatsMonitor.cc
 )
 
-target_include_directories(eb PUBLIC
+target_include_directories(eventBuilder PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
   $ENV{CONDA_PREFIX}/include
 )
 
-target_link_libraries(eb
+target_link_libraries(eventBuilder
   utilities
 )
 
@@ -75,16 +75,13 @@ add_executable(tstEbLfLink      tstEbLfLink.cc)
 
 #add_executable(ibMon            ibMon.cc)
 
-add_executable(tstEbContributor
-  tstEbContributor.cc
+add_executable(ctrb
+  ctrb.cc
 )
-add_executable(tstEbBuilder
-  tstEbBuilder.cc
+add_executable(teb
+  teb.cc
 )
-#add_executable(drpEbBuilder
-#  drpEbBuilder.cc
-#)
-#
+
 #add_executable(tstNthSet        tstNthSet.cc)
 #target_compile_options(tstNthSet        PRIVATE -mbmi2)
 
@@ -147,34 +144,26 @@ target_link_libraries(tstEbLfLink
 #  rt
 #)
 #
-target_link_libraries(tstEbContributor
-  ctrb
+target_link_libraries(ctrb
+  contributor
   collection
   pthread
   rt
 )
 
-target_link_libraries(tstEbBuilder
-  eb
+target_link_libraries(teb
+  eventBuilder
   collection
   pthread
   rt
 )
-
-#target_link_libraries(drpEbBuilder
-#  eb
-#  collection
-#  pthread
-#  rt
-#)
 
 install(TARGETS
   utilities
+  contributor
+  eventBuilder
   ctrb
-  eb
-  tstEbContributor
-  tstEbBuilder
-  #drpEbBuilder
+  teb
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -195,7 +184,8 @@ target_link_libraries(tstIndexPool
 # The following builds for use with gprof
 #
 
-#add_executable(tstEbContributor tstEbContributor.cc
+#add_executable(ctrb
+#  ctrb.cc
 #  utilities.cc
 #  Endpoint.cc
 #  IndexPool.cc
@@ -214,7 +204,8 @@ target_link_libraries(tstIndexPool
 #  StatsMonitor.cc
 #)
 #
-#add_executable(tstEbBuilder     tstEbBuilder.cc
+#add_executable(teb
+#  teb.cc
 #  utilities.cc
 #  Endpoint.cc
 #  IndexPool.cc
@@ -233,10 +224,10 @@ target_link_libraries(tstIndexPool
 #  StatsMonitor.cc
 #)
 #
-#target_compile_options(tstEbContributor PRIVATE -pg)
-#target_compile_options(tstEbBuilder     PRIVATE -pg)
+#target_compile_options(ctrb PRIVATE -pg)
+#target_compile_options(teb  PRIVATE -pg)
 #
-#target_link_libraries(tstEbContributor
+#target_link_libraries(ctrb
 #  xtcdata::xtc
 #  service
 #  collection
@@ -247,7 +238,7 @@ target_link_libraries(tstIndexPool
 #  -pg
 #)
 #
-#target_link_libraries(tstEbBuilder
+#target_link_libraries(teb
 #  xtcdata::xtc
 #  service
 #  collection
@@ -258,10 +249,12 @@ target_link_libraries(tstIndexPool
 #  -pg
 #)
 #
-#install(TARGETS eb
-#  tstEbContributor
-#  tstEbBuilder
-#  #drpEbBuilder
+#install(TARGETS
+#  utilities
+#  contributor
+#  eventBuilder
+#  ctrb
+#  teb
 #  ARCHIVE DESTINATION lib
 #  LIBRARY DESTINATION lib
 #  RUNTIME DESTINATION bin
