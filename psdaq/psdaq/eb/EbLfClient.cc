@@ -50,8 +50,8 @@ int EbLfClient::connect(const char* peer,
 
   struct fi_info*  info   = fab->info();
   size_t           cqSize = info->tx_attr->size;
-  printf("rx_attr.size = %zd, tx_attr.size = %zd\n",
-         info->rx_attr->size, info->tx_attr->size);
+  //printf("rx_attr.size = %zd, tx_attr.size = %zd\n",
+  //       info->rx_attr->size, info->tx_attr->size);
   CompletionQueue* txcq   = new CompletionQueue(fab, cqSize);
   if (!txcq)
   {

@@ -37,7 +37,7 @@ int EbLfServer::initialize(const std::string& addr,
 
   const uint64_t flags  = 0;
   const size_t   txSize = 1;            // Something small to not waste memory
-  const size_t   rxSize = 1152;
+  const size_t   rxSize = 1152 + 64;
   _pep = new PassiveEndpoint(addr.c_str(), port.c_str(), flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
@@ -65,8 +65,8 @@ int EbLfServer::initialize(const std::string& addr,
 
   struct fi_info* info   = fab->info();
   size_t          cqSize = nLinks * info->rx_attr->size;
-  printf("rx_attr.size = %zd, tx_attr.size = %zd\n",
-         info->rx_attr->size, info->tx_attr->size);
+  //printf("rx_attr.size = %zd, tx_attr.size = %zd\n",
+  //       info->rx_attr->size, info->tx_attr->size);
   _rxcq = new CompletionQueue(fab, cqSize);
   if (!_rxcq)
   {
