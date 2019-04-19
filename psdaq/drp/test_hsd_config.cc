@@ -1,12 +1,14 @@
 #include <Python.h>
 #include <stdio.h>
 #include <assert.h>
+#include "rapidjson/document.h"
 
 #include "xtcdata/xtc/Json2Xtc.hh"
 #include "xtcdata/xtc/NamesId.hh"
 #include "xtcdata/xtc/TypeId.hh"
 
 using namespace XtcData;
+using namespace rapidjson;
 
 #define BUFSIZE 1024*1024
 
@@ -20,16 +22,16 @@ static void check(PyObject* obj) {
 int main() {
     Py_Initialize();
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.get_config");
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
     check(pDict);
     // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"get_config");
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config");
     check(pFunc);
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","mcbrowne:psana@psdb-dev:9306", "configDB", "TMO", "BEAM", "xpphsd");
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss","dummy_epics_prefix","mcbrowne:psana@psdb-dev:9306", "configDB", "TMO", "BEAM", "xpphsd");
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
@@ -41,11 +43,19 @@ int main() {
     char buffer[BUFSIZE];
     NamesId namesid(0,1);
     unsigned len = translateJson2Xtc(json, buffer, namesid);
-
     if (len <= 0) {
         fprintf(stderr, "Parse errors, exiting.\n");
         exit(1);
     }
+
+    // example code demonstrating how to access JSON from C++
+    // to be concise, this doesn't do the rapidjson type-checking
+    Document top;
+    if (top.Parse(json).HasParseError())
+        fprintf(stderr,"*** json parse error\n");
+    unsigned start = top["raw"]["start"].GetInt();
+    std::string start_type = top[":types:"]["raw"]["start"].GetString();
+    std::cout << "raw.start is " << start << " with type " << start_type << std::endl;
 
     Xtc& xtcbuf = *(Xtc*)buffer;
 

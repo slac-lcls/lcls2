@@ -51,16 +51,16 @@ unsigned addJson(Xtc& xtc, NamesId& configNamesId) {
 
     Py_Initialize();
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.get_config");
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
     check(pDict);
     // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"get_config");
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config");
     check(pFunc);
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss",
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss","DAQ:LAB2:HSD:DEV02",
                                               "mcbrowne:psana@psdb-dev:9306",
                                               "configDB", "TMO", "BEAM",
                                               "xpphsd");
@@ -90,6 +90,15 @@ unsigned addJson(Xtc& xtc, NamesId& configNamesId) {
     Py_DECREF(pModule);
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
+
+    // example code demonstrating how to access JSON from C++
+    // to be concise, this doesn't do the rapidjson type-checking
+    Document top;
+    if (top.Parse(json).HasParseError())
+        fprintf(stderr,"*** json parse error\n");
+    unsigned start = top["raw"]["start"].GetInt();
+    std::string start_type = top[":types:"]["raw"]["start"].GetString();
+    std::cout << "raw.start is " << start << " with type " << start_type << std::endl;
 
     // cpo short-term hack: should get this from the json
     unsigned lane_mask = 1;
