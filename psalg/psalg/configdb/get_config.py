@@ -1,4 +1,5 @@
 import psalg.configdb.configdb as cdb
+from bson.json_util import dumps
 
 # json2xtc conversion depends on these being present with ':RO'
 # (and the :RO does not appear in the xtc names)
@@ -28,3 +29,6 @@ def get_config(dburl,dbname,hutch,cfgtype,detname):
     cfg_no_RO_names = remove_read_only(cfg)
 
     return cfg_no_RO_names
+
+def get_config_json(*args):
+    return dumps(get_config(*args))

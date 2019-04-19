@@ -58,6 +58,21 @@ target_link_libraries(test_hsd_config
     ${PYTHON_LIBRARIES}
 )
 
+add_executable(test_teb_config
+    test_teb_config.cc
+)
+
+target_include_directories(test_teb_config PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    ${PYTHON_INCLUDE_DIRS}
+    $ENV{CONDA_PREFIX}/include)
+
+target_link_libraries(test_teb_config
+    xtcdata::j2x
+    xtcdata::xtc
+    ${PYTHON_LIBRARIES}
+)
+
 add_executable(pgpread
     pgpread.cc
 )
