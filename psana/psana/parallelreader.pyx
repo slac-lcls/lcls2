@@ -47,7 +47,9 @@ cdef class ParallelReader:
             else:
                 chunk += got
                 count -= got
-                sleep(self.sleep_secs)
+                if attempt > 0:
+                    sleep(self.sleep_secs) # sleep only when try more than once
+
         
         return requested - count
 
