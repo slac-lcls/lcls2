@@ -280,10 +280,12 @@ class PvRxAlign(QtWidgets.QWidget):
                 max = v[i+1]
 
         for i in range(64):
-            q = 20*v[i+1]/max
-            painter.drawLine(i,20-q,i,20)
+            q = 16*v[i+1]/max
+            painter.drawLine(i,15-q,i,15)
 
         painter.setBrush(QtGui.QColor(255,0,0))   # red
+        i = v[0]+1
+        painter.drawLine(i,16,i,20)
 
         canvas = QtWidgets.QLabel()
         canvas.setPixmap(QtGui.QPixmap.fromImage(self.image))

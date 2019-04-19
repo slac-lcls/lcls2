@@ -25,7 +25,7 @@ class DefaultPVHandler(object):
         postedval['timeStamp.secondsPastEpoch'], postedval['timeStamp.nanoseconds'] = divmod(float(time.time()), 1.0)
         pv.post(postedval)
         op.done()
-        parent.update()
+        self.parent.update()
 
 class PVAServer(object):
     def __init__(self, provider_name, prefix):
@@ -33,24 +33,24 @@ class PVAServer(object):
         self.prefix = prefix
         self.pvs = []
 
-        self.fieldNames = SharedPV(initial=NTScalar('as').wrap({'value' : ['FP0_sev0','FP1_sev1','FP2_sev2','FP3_sev3',
-                                                                           'FP0-sev0','FP1-sev0','FP2-sev0','FP3-sev0',
-                                                                           'PID2','PID3','PID4','PID5','PID6','PID7','PID8','PID9',
-                                                                           'C+12','C+13','C+14','C+15','C+16','C+17','C+18','C+19',
-                                                                           'C-12','C-13','C-14','C-15','C-16','C-17','C-18',]}),
+        self.fieldNames = SharedPV(initial=NTScalar('as').wrap
+                                   ({'value' : ['pid%02x'%i for i in range(31)]}),
                                    handler=DefaultPVHandler(self))
-        self.provider.add(prefix+'FIELDNAMES',self.fieldNames)
 
-        self.fieldTypes = SharedPV(initial=NTScalar('aB').wrap({'value' : [ord('i')]*31}),  # 'i' (integer) or 'f' (float)
+        # 'i' (integer) or 'f' (float)
+        self.fieldTypes = SharedPV(initial=NTScalar('aB').wrap({'value' : [ord('i')]*31}),
                                    handler=DefaultPVHandler(self))
-        self.provider.add(prefix+'FIELDTYPES',self.fieldTypes)
 
-        self.fieldMask = SharedPV(initial=NTScalar('I').wrap({'value' : 0}),
+        self.fieldMask  = SharedPV(initial=NTScalar('I').wrap({'value' : 0}),
                                    handler=DefaultPVHandler(self))
-        self.provider.add(prefix+'FIELDMASK',self.fieldMask)
 
-        self.payload = SharedPV(initial=Value(Type([]),{}), handler=DefaultPVHandler(self))
-        self.provider.add(prefix+'PAYLOAD',self.payload)
+        self.payload    = SharedPV(initial=Value(Type([]),{}), 
+                                   handler=DefaultPVHandler(self))
+
+        self.provider.add(prefix+'HPS:FIELDNAMES',self.fieldNames)
+        self.provider.add(prefix+'HPS:FIELDTYPES',self.fieldTypes)
+        self.provider.add(prefix+'HPS:FIELDMASK' ,self.fieldMask)
+        self.provider.add(prefix+'PAYLOAD'   ,self.payload)
 
     def update(self):
         mask  = self.fieldMask .current().get('value')
@@ -58,17 +58,18 @@ class PVAServer(object):
         types = self.fieldTypes.current().get('value')
         oid   = self.payload   .current().getID()
         nid   = str(mask)
+
         if nid==oid:
             nid += 'a'
         ntypes  = []
         nvalues = {}
+        ntypes.append( ('valid', 'i') )
+        nvalues[ 'valid' ] = 0
         for i in range(31):
             if mask&1:
                 ntypes.append( (names[i], chr(types[i])) )
                 nvalues[ names[i] ] = 0
             mask >>= 1
-        ntypes.append( ('valid', 'i') )
-        nvalues[ 'valid' ] = 0
 
         pvname = self.prefix+'PAYLOAD'
         self.provider.remove(pvname)
