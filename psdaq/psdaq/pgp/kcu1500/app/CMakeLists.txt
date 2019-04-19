@@ -2,10 +2,13 @@
 add_library(kcu SHARED
     Reg.cc
     GthEyeScan.cc
+    Client.cc
 )
 
 target_include_directories(kcu PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    ${CMAKE_INSTALL_PREFIX}/include
     ../../aes-stream-drivers/include
     $ENV{CONDA_PREFIX}/include
 )
@@ -96,7 +99,8 @@ target_link_libraries(kcuMargin
 #)
 
 
-install(TARGETS kcuSim
+install(TARGETS kcu
+                kcuSim
                 kcuSimValid
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
