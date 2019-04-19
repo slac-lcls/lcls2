@@ -8,7 +8,7 @@ find_library(CPSW_LIB cpsw PATH $ENV{CONDA_PREFIX}/lib)
 #
 #
 #
-add_executable(hpsBldServerPVA hpsBldServer.cc)
+add_executable(hpsBldServer hpsBldServer.cc)
 
 target_include_directories(hpsBldServer PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -39,7 +39,7 @@ target_link_libraries(hpsBldServer
 find_library(YAML_CPP_LIB yaml-cpp $ENV{CONDA_PREFIX}/lib)
 find_library(CPSW_LIB cpsw $ENV{CONDA_PREFIX}/lib)
 
-add_executable(hpsBldClientPVA hpsBldClient.cc)
+add_executable(hpsBldClient hpsBldClient.cc)
 
 target_include_directories(hpsBldClient PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
