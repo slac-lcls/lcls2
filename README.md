@@ -2,13 +2,13 @@
 
 
 ## Build instructions:
-### Note: build on psbuild-rhel6 where redhat gcc6 compilers are installed
-### To get the LCLS conda environment: "source setup_env.sh"
+### Note: build on psbuild-rhel7 where redhat gcc7 compilers are installed
+
 ```bash
 
-# repository consists of seperate packages: xtcdata, psdaq, drp and psana
-
 # build all packages in the repository and install them in ./install, option to choose build type
+# most developers can eliminate all the arguments to build_all.sh
+source setup_env.sh
 ./build_all.sh -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 ```
 
