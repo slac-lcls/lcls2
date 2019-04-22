@@ -38,8 +38,8 @@ top.set('fex.ymax', 1*[2000], 'UINT32')
 top.set('fex.xpre', 1*[2], 'UINT32')
 top.set('fex.xpost', 1*[1], 'UINT32')
 
-top.define_enum('dataModeEnum', {'Data': 0xffffffff, 'Ramp': 0, 'Spike11': 1, 'Spike12': 3, 'Spike16': 5})
-top.set('expert.datamode', 0xffffffff, 'dataModeEnum')
+top.define_enum('dataModeEnum', {'Data': -1, 'Ramp': 0, 'Spike11': 1, 'Spike12': 3, 'Spike16': 5})
+top.set('expert.datamode', -1, 'dataModeEnum')
 
 top.set('expert.syncelo', 11300, 'UINT32')
 top.set('expert.syncehi', 11600, 'UINT32')

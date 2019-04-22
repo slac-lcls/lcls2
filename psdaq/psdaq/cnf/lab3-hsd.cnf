@@ -35,7 +35,7 @@ procmgr_config = [
  {                        id:'hsdca', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV02'},
 # { host: 'drp-tst-acc02', id:'EvtBuild', flags:'sxp', conda:conda_rel, cmd:'drpEbBuilder -1 8 -2 8' },
  { host: 'drp-tst-dev002', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host+' -Z '+rtmon_host},
-{ host: 'drp-tst-dev024', id:'hsddrp', flags:'sxp', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host},
+{ host: 'drp-tst-dev024', id:'hsddrp', flags:'sxp', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host + ' -u hsd0'},
  { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2:PART:'+platform},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]

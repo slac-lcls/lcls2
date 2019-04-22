@@ -22,16 +22,16 @@ static void check(PyObject* obj) {
 int main() {
     Py_Initialize();
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.get_config");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
     check(pDict);
     // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config");
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"get_config_json");
     check(pFunc);
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss","dummy_epics_prefix","mcbrowne:psana@psdb-dev:9306", "configDB", "TMO", "BEAM", "xpphsd");
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","mcbrowne:psana@psdb-dev:9306", "configDB", "TMO", "BEAM", "xpphsd");
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
@@ -53,9 +53,23 @@ int main() {
     Document top;
     if (top.Parse(json).HasParseError())
         fprintf(stderr,"*** json parse error\n");
-    unsigned start = top["raw"]["start"].GetInt();
-    std::string start_type = top[":types:"]["raw"]["start"].GetString();
-    std::cout << "raw.start is " << start << " with type " << start_type << std::endl;
+    // array example
+    const Value& raw_start = top["raw"]["start"];
+    std::string start_type = top[":types:"]["raw"]["start"][0].GetString();
+    unsigned length = top[":types:"]["raw"]["start"][1].GetInt();
+    std::cout << "raw.start is " << raw_start[0].GetInt() << " with type " << start_type << " and length " << length << std::endl;
+    // non-array example
+    const Value& expert_fullthresh = top["expert"]["fullthresh"];
+    std::string fullthresh_type = top[":types:"]["expert"]["fullthresh"].GetString();
+    std::cout << "expert.fullthresh is " << expert_fullthresh.GetInt() << " with type " << fullthresh_type << std::endl;
+
+    const Value& enable = top["enable"];
+    std::string enable_type = top[":types:"]["enable"][0].GetString();
+    unsigned enable_length = top[":types:"]["enable"][1].GetInt();
+
+    unsigned lane_mask = 0;
+    for (unsigned i=0; i<enable_length; i++) if (enable[i].GetInt()) lane_mask |= 1<< i;
+    printf("hsd lane_mask is 0x%x\n",lane_mask);
 
     Xtc& xtcbuf = *(Xtc*)buffer;
 

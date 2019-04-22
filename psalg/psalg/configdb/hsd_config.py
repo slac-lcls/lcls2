@@ -46,6 +46,8 @@ def hsd_config(epics_prefix,dburl,dbname,hutch,cfgtype,detname):
     # variables in the pvtable
     epics_names_values(pvtable,cfg,names,values)
     names = [epics_prefix+':'+name for name in names]
+    names.append(epics_prefix+':BASE:APPLYCONFIG')
+    values.append(1)
 
     # program the values
     ctxt = Context('pva')

@@ -91,17 +91,17 @@ unsigned addJson(Xtc& xtc, NamesId& configNamesId) {
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
 
-    // example code demonstrating how to access JSON from C++
-    // to be concise, this doesn't do the rapidjson type-checking
+    // get the lane mask from the json
     Document top;
     if (top.Parse(json).HasParseError())
         fprintf(stderr,"*** json parse error\n");
-    unsigned start = top["raw"]["start"].GetInt();
-    std::string start_type = top[":types:"]["raw"]["start"].GetString();
-    std::cout << "raw.start is " << start << " with type " << start_type << std::endl;
+    const Value& enable = top["enable"];
+    std::string enable_type = top[":types:"]["enable"][0].GetString();
+    unsigned length = top[":types:"]["enable"][1].GetInt();
 
-    // cpo short-term hack: should get this from the json
-    unsigned lane_mask = 1;
+    unsigned lane_mask = 0;
+    for (unsigned i=0; i<length; i++) if (enable[i].GetInt()) lane_mask |= 1<< i;
+    printf("hsd lane_mask is 0x%x\n",lane_mask);
 
     return lane_mask;
 }
