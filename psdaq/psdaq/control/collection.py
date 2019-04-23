@@ -648,7 +648,6 @@ class CollectionManager():
         self.ids.clear()
         msg = create_msg('plat')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
-        print('send', [b'partition', json.dumps(msg)])
         for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id']):
             for level, item in answer['body'].items():
                 if level not in self.cmstate:
