@@ -45,6 +45,9 @@ class DaqControl:
         'running'
     ]
 
+    default_active = 0
+    default_readout = 15
+
     def __init__(self, *, host, platform, timeout):
         self.host = host
         self.platform = platform
@@ -373,8 +376,6 @@ class CollectionManager():
             'getstatus': self.handle_getstatus
         }
         self.lastTransition = 'reset'
-        self.default_active = 0
-        self.default_readout = 15
 
         self.collectMachine = Machine(self, DaqControl.states, initial='reset', after_state_change='report_status')
 
@@ -637,7 +638,7 @@ class CollectionManager():
                         if self.cmstate[level][int(key2)]['active'] == 1:
                             self.cmstate[level][int(key2)]['readout'] = body[level][key2]['readout']
                         else:
-                            self.cmstate[level][int(key2)]['readout'] = self.default_readout
+                            self.cmstate[level][int(key2)]['readout'] = DaqControl.default_readout
 
         except Exception as ex:
             msg = 'handle_selectplatform(): %s' % ex
@@ -662,8 +663,8 @@ class CollectionManager():
                     self.cmstate[level] = {}
                 id = answer['header']['sender_id']
                 self.cmstate[level][id] = item
-                self.cmstate[level][id]['active'] = self.default_active
-                self.cmstate[level][id]['readout'] = self.default_readout
+                self.cmstate[level][id]['active'] = DaqControl.default_active
+                self.cmstate[level][id]['readout'] = DaqControl.default_readout
                 self.ids.add(id)
         self.lastTransition = 'plat'
         # should a nonempty platform be required for successful transition?

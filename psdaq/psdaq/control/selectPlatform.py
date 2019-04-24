@@ -60,7 +60,7 @@ def main():
                             changed = True
                             v['active'] = 0
                             if level == 'drp':
-                                v['readout'] = None
+                                v['readout'] = DaqControl.default_readout
         except Exception:
             pprint.pprint(body)
             raise
