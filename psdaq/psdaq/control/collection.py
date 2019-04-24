@@ -666,11 +666,15 @@ class CollectionManager():
                 self.cmstate[level][id]['active'] = DaqControl.default_active
                 self.cmstate[level][id]['readout'] = DaqControl.default_readout
                 self.ids.add(id)
-        self.lastTransition = 'plat'
-        # should a nonempty platform be required for successful transition?
-        logging.debug('condition_plat() returning True')
+        if len(self.ids) == 0:
+            self.report_error('no clients responded to plat')
+            retval = False
+        else:
+            retval = True
+            self.lastTransition = 'plat'
         logging.debug('cmstate after plat:\n%s' % self.cmstate)
-        return True
+        logging.debug('condition_plat() returning %s' % retval)
+        return retval
 
     # filter_active_set - return subset of ids which have 'active' flag set
     def filter_active_set(self, ids):
