@@ -42,21 +42,19 @@ def main():
                     host = v['proc_info']['host']
                     if v['active'] == 1:
                         host = host + ' *'
-                    alias = ''
-                    try:
-                        alias = v['proc_info']['alias']
-                    except KeyError:
-                        pass
+                    alias = v['proc_info']['alias']
                     pid = v['proc_info']['pid']
-                    display = "%-16s %s/%s/%-16s" % (alias, level, pid, host)
-                    if level == 'control':
-                        # show control level first
-                        displayList.insert(0, display)
+                    if level == 'drp' and v['active'] == 1:
+                        display = "%-16s %s/%s/%-16s\n%42s: %s" % \
+                                  (alias, level, pid, host,       \
+                                   'readout group', v['readout'])
                     else:
-                        displayList.append(display)
-        except KeyError as ex:
-            print('Error: failed to parse reply: %s' % ex)
+                        display = "%-16s %s/%s/%-16s" % (alias, level, pid, host)
+                    displayList.append(display)
+        except Exception:
+            print('----- body -----')
             pprint.pprint(body)
+            raise
         else:
             if args.v:
                 print('getPlatform() reply:')

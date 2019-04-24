@@ -373,6 +373,8 @@ class CollectionManager():
             'getstatus': self.handle_getstatus
         }
         self.lastTransition = 'reset'
+        self.default_active = 0
+        self.default_readout = 15
 
         self.collectMachine = Machine(self, DaqControl.states, initial='reset', after_state_change='report_status')
 
@@ -627,9 +629,15 @@ class CollectionManager():
             return self.error_msg(msg)
 
         try:
-            for key1, val1 in body.items():
+            for level, val1 in body.items():
                 for key2, val2 in val1.items():
-                    self.cmstate[key1][int(key2)]['active'] = body[key1][key2]['active']
+                    self.cmstate[level][int(key2)]['active'] = body[level][key2]['active']
+                    if level == 'drp':
+                        # drp readout group
+                        if self.cmstate[level][int(key2)]['active'] == 1:
+                            self.cmstate[level][int(key2)]['readout'] = body[level][key2]['readout']
+                        else:
+                            self.cmstate[level][int(key2)]['readout'] = self.default_readout
 
         except Exception as ex:
             msg = 'handle_selectplatform(): %s' % ex
@@ -654,7 +662,8 @@ class CollectionManager():
                     self.cmstate[level] = {}
                 id = answer['header']['sender_id']
                 self.cmstate[level][id] = item
-                self.cmstate[level][id]['active'] = 1   # default to active
+                self.cmstate[level][id]['active'] = self.default_active
+                self.cmstate[level][id]['readout'] = self.default_readout
                 self.ids.add(id)
         self.lastTransition = 'plat'
         # should a nonempty platform be required for successful transition?
