@@ -77,7 +77,8 @@ namespace Pds {
       connectedBody                                                     \
     }
     
-    CPV(ApplyConfig ,{if (getScalarAs<unsigned>()) _ctrl.call(Configure  );}, {})
+    CPV(ApplyConfig   ,{if (getScalarAs<unsigned>()) _ctrl.call(Configure  );}, {})
+    CPV(ApplyUnconfig ,{if (getScalarAs<unsigned>()) _ctrl.call(Unconfigure);}, {})
     CPV(State       ,{}, {})
     CPV(Reset       ,{if (getScalarAs<unsigned>()) _ctrl.call(Reset      );}, {})
     CPV(PgpLoopback ,{_ctrl.loopback (getScalarAs<unsigned>()!=0);   }, {})
@@ -89,6 +90,9 @@ namespace Pds {
 
     void PVCtrls::allocate(const std::string& title)
     {
+      _m.stop();
+      _setState(Unconfigured);
+
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
       _pv.resize(0);
@@ -124,13 +128,14 @@ namespace Pds {
       _pv.push_back(new PvServer((pvbase+"BASE:INTAFULLVAL").c_str()));
       _pv.push_back(new PvServer((pvbase+"BASE:PARTITION"  ).c_str()));
       
-      NPV(ApplyConfig,"BASE:APPLYCONFIG");
+      NPV(ApplyConfig  ,"BASE:APPLYCONFIG");
+      NPV(ApplyUnconfig,"BASE:APPLYUNCONFIG");
       NPV(Reset      ,"RESET");
       NPV(PgpLoopback,"PGPLOOPBACK");
 
       _state_pv = new StatePV(*this, (pvbase+"BASE:READY").c_str());
 
-      _setState(Unconfigure);
+      _setState(Unconfigured);
     }
 
     //  enumeration of PV insert order above
@@ -146,7 +151,7 @@ namespace Pds {
     Module& PVCtrls::module() { return _m; }
 
     void PVCtrls::configure() {
-      _setState(Unconfigure);
+      _setState(InTransition);
 
       _m.stop();
 
@@ -309,7 +314,13 @@ namespace Pds {
       printf("Configure done\n");
 
       _m.start();
-      _setState(Configure);
+      _setState(Configured);
+    }
+
+    void PVCtrls::unconfigure() {
+      _setState(InTransition);
+      _m.stop();
+      _setState(Unconfigured);
     }
 
     void PVCtrls::reset() {
@@ -336,8 +347,8 @@ namespace Pds {
 
     void PVCtrls::interleave(bool v) { _interleave = v; }
 
-    void PVCtrls::_setState(Action a) {
-      unsigned v = (a==Configure) ? 1 : 0;
+    void PVCtrls::_setState(State a) {
+      unsigned v(a);
       _state_pv->putFrom(v);
     }
   };

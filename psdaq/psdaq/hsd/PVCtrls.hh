@@ -13,7 +13,8 @@ namespace Pds {
     class Module;
     class StatePV;
 
-    enum Action { Configure, Unconfigure, EnableTr, DisableTr, Reset };
+    enum Action { Configure, Unconfigure, Reset };
+    enum State  { InTransition=0, Configured=1, Unconfigured=2 };
 
     class PVCtrls
     {
@@ -27,15 +28,14 @@ namespace Pds {
     public:
       Module& module();
     public:
-      void configure();
-      void enable   ();
-      void disable  ();
-      void reset    ();
+      void configure  ();
+      void unconfigure();
+      void reset      ();
       void loopback (bool);
     public:
       static void interleave(bool);
     private:
-      void _setState(Action);
+      void _setState(State);
     private:
       std::vector<Pds_Epics::EpicsPVA*> _pv;
       StatePV* _state_pv;

@@ -111,7 +111,8 @@ class HsdConfig(QtWidgets.QWidget):
             hlo.addStretch(1)
             lo.addLayout(hlo)
 
-        lo.addWidget(PvPushButton ( pvbase+':BASE:APPLYCONFIG', 'Apply'))
+        lo.addWidget(PvPushButton ( pvbase+':BASE:APPLYCONFIG'  , 'Enable'))
+        lo.addWidget(PvPushButton ( pvbase+':BASE:APPLYUNCONFIG', 'Disable'))
         PvLabel      (self, lo, pvbase+':BASE:', 'READY'      , isInt=False)
 #        lo.addWidget(PvPushButton( pvbase+':BASE:UNDOCONFIG' , 'Unconfigure'))
 #        lo.addWidget(PvPushButton( pvbase+':BASE:ENABLETR'   , 'Enable'))

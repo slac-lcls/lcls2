@@ -78,6 +78,8 @@ def main():
     #  This PV triggers execution of all configuration parameters
     pvdb[stationstr+'BASE:APPLYCONFIG'  ] = {'type' : 'int', 
                                              'value' : 0 }
+    pvdb[stationstr+'BASE:APPLYUNCONFIG'] = {'type' : 'int', 
+                                             'value' : 0 }
     pvdb[stationstr+'BASE:READY'        ] = {'type' : 'int', 
                                              'value' : 0 }
 

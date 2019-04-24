@@ -515,12 +515,12 @@ void Fmc134Cpld::lmk_dump()
 {
 #define RDSTAT(reg,ttl,dfl) {                   \
     unsigned v = readRegister(LMK,reg);         \
-    printf("%9.9s: 0x%x [%x]\n",v,dfl); }
+    printf("%9.9s: 0x%x [%x]\n",#ttl,v,dfl); }
 
 #define RDSTAT2(reg,ttl,dfl) {                   \
     unsigned v = readRegister(LMK,reg);          \
     v |= (readRegister(LMK,reg+1)<<8);           \
-    printf("%9.9s: 0x%x [%x]\n",v,dfl); }
+    printf("%9.9s: 0x%x [%x]\n",#ttl,v,dfl); }
 
   DevSel dev = LMK;
 
