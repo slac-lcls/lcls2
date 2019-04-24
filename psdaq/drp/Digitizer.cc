@@ -49,7 +49,6 @@ static void check(PyObject* obj) {
 
 unsigned addJson(Xtc& xtc, NamesId& configNamesId) {
 
-    Py_Initialize();
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
     check(pModule);
@@ -133,7 +132,6 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
 {
     // copy Event header into beginning of Datagram
     // cpo: feels like this should not be in the detector-specific code.
-    printf("**** event\n");
     m_evtcount+=1;
     int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
     Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
