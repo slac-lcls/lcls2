@@ -367,6 +367,7 @@ class CollectionManager():
         self.pvRun = pv_base+':Run'
 
         self.cmstate = {}
+        self.level_keys = {'drp', 'teb', 'meb'}
         self.instrument = instrument
         self.ids = set()
         self.handle_request = {
@@ -406,6 +407,12 @@ class CollectionManager():
 
         # start main loop
         self.run()
+
+    #
+    # cmstate_levels - return copy of cmstate with only drp/teb/meb entries
+    #
+    def cmstate_levels(self):
+        return {k: self.cmstate[k] for k in self.cmstate.keys() & self.level_keys}
 
     #
     # pv_put -
@@ -664,7 +671,8 @@ class CollectionManager():
                 id = answer['header']['sender_id']
                 self.cmstate[level][id] = item
                 self.cmstate[level][id]['active'] = DaqControl.default_active
-                self.cmstate[level][id]['readout'] = DaqControl.default_readout
+                if level == 'drp':
+                    self.cmstate[level][id]['readout'] = DaqControl.default_readout
                 self.ids.add(id)
         if len(self.ids) == 0:
             self.report_error('no clients responded to plat')
