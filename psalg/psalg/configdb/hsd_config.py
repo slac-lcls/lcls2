@@ -1,6 +1,7 @@
 from psalg.configdb.get_config import get_config
 from p4p.client.thread import Context
 from bson.json_util import dumps
+import time
 
 def epics_names_values(pvtable,cfg,names,values):
     for k, v1 in pvtable.items():
@@ -40,14 +41,13 @@ def hsd_config(epics_prefix,dburl,dbname,hutch,cfgtype,detname):
                            'pgpskip'    : 'PGPSKPINTVL'}
     }
 
-    names = []
-    values = []
+    # this is used to know when the configuration is complete
+    names = ['BASE:READY']
+    values = [0]
     # look in the cfg dictionary for values that match the epics
     # variables in the pvtable
     epics_names_values(pvtable,cfg,names,values)
     names = [epics_prefix+':'+name for name in names]
-    names.append(epics_prefix+':BASE:APPLYCONFIG')
-    values.append(1)
 
     # program the values
     ctxt = Context('pva')
@@ -55,6 +55,22 @@ def hsd_config(epics_prefix,dburl,dbname,hutch,cfgtype,detname):
     #for name,value in zip(names,values):
     #    print('***',name,value)
     #    ctxt.put(name,value)
+
+    # the completion of the "put" guarantees that all of the above
+    # have completed (although in no particular order)
+    ctxt.put(epics_prefix+':BASE:APPLYCONFIG',1)
+    complete = False
+    for i in range(10):
+        complete = ctxt.get(names[0])==True
+        if complete: break
+        print('hsd config wait for complete',i)
+        time.sleep(1)
+    if complete:
+        print('hsd config complete')
+    else:
+        raise Exception('timed out waiting for hsd configure')
+    # turn this off so we don't reconfigure if the application is restarted
+    ctxt.put(epics_prefix+':BASE:APPLYCONFIG',0)
     ctxt.close()
 
     return dumps(cfg)

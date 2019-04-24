@@ -115,7 +115,7 @@ void DrpApp::handleConfigure(const json &msg)
 {
     std::cout<<"handle configure DrpApp\n";
     // check for message from timing system
-    int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
+    int ret = m_inprocRecv.poll(ZMQ_POLLIN, 15000);
     json answer;
     if (ret) {
         json reply = m_inprocRecv.recvJson();
