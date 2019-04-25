@@ -1,4 +1,4 @@
-platform = '6'
+platform = '4'
 username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
