@@ -13,6 +13,7 @@ add_library(hsd SHARED
   LocalCpld.cc
   Mmcm.cc
   Module.cc
+  Module64.cc
   Pgp2b.cc
   Pgp3.cc
   PhyCore.cc
@@ -34,6 +35,7 @@ target_include_directories(hsd PUBLIC
 
 target_link_libraries(hsd
     xtcdata::xtc
+    service
     mmhw
     rt
 )
@@ -75,6 +77,19 @@ target_include_directories(hsd_3200 PUBLIC
 )
 
 target_link_libraries(hsd_3200
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
+add_executable(hsd_3200_i2c hsd_3200_i2c.cc)
+
+target_include_directories(hsd_3200_i2c PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(hsd_3200_i2c
     pthread
     hsd
     mmhw
@@ -153,6 +168,21 @@ target_link_libraries(hsdPVs
     rt
 )
 
+add_executable(hsd64PVs hsd64PVs.cc PV64Ctrls.cc PV64Stats.cc)
+
+target_link_libraries(hsd64PVs
+    service
+    epicstools
+    ${EPICS_CA_LIB}
+    ${EPICS_PVDATA_LIB}
+    ${EPICS_PVACCESS_LIB}
+    ${EPICS_PVACLIENT_LIB}
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
 add_executable(hsd_sim hsd_sim.cc)
 target_link_libraries(hsd_sim
     hsd
@@ -211,6 +241,7 @@ target_include_directories(hsdRead PUBLIC
 
 target_link_libraries(hsdRead
    hsd
+   mmhw
    xtcdata::xtc
    epicstools
    ${EPICS_CA_LIB}

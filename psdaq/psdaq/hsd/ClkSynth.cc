@@ -1,6 +1,8 @@
 #include "psdaq/hsd/ClkSynth.hh"
 #include "psdaq/hsd/Globals.hh"
 
+using Pds::Mmhw::RegProxy;
+
 #include <time.h>
 #include <unistd.h>
 
@@ -372,12 +374,12 @@ static const uint8_t write_values_119M[] = {
 
 void Pds::HSD::ClkSynth::dump() const
 {
-  volatile uint32_t* r255 = const_cast<Pds::HSD::ClkSynth*>(this)->_reg+255;
+  RegProxy* r255 = const_cast<Pds::HSD::ClkSynth*>(this)->_reg+255;
   *r255 = 0;
   for(unsigned i=0; i<351; i++) {
     if (i==255)
       *r255 = 1;
-    printf("%02x%c",_reg[i&0xff],(i%10)==9?'\n':' ');
+    printf("%02x%c",unsigned(_reg[i&0xff]),(i%10)==9?'\n':' ');
   }
   printf("\n");
   *r255 = 0;
@@ -386,18 +388,18 @@ void Pds::HSD::ClkSynth::dump() const
 #define SET_REG(i,q) {                                                  \
   timespec tvb,tve;                                                     \
   clock_gettime(CLOCK_REALTIME, &tvb);                                  \
-  unsigned t = _reg[i&0xff]&0xff;                                       \
+  unsigned t = unsigned(_reg[i&0xff])&0xff;                             \
   unsigned tq = (q&0xff);                                               \
   if (t!=tq) {                                                          \
     _reg[i&0xff] = tq;                                                  \
-    unsigned u = _reg[i&0xff]&0xff;                                     \
+    unsigned u = unsigned(_reg[i&0xff])&0xff;                           \
     clock_gettime(CLOCK_REALTIME, &tve);                                \
     printf("RMW[%03u] %02x -> %02x [%02x] (%02x): %f sec  %c\n",        \
-           i, t, tq, u, _reg[2]&0xff, tdiff(tvb,tve), (u==tq)?'X':' '); \
+           i, t, tq, u, unsigned(_reg[2])&0xff, tdiff(tvb,tve), (u==tq)?'X':' '); \
   }                                                                     \
   }
 
-static void _setup(volatile uint32_t* _reg,
+static void _setup(RegProxy*          reg,
                    const uint8_t*     write_values);
     
 void Pds::HSD::ClkSynth::setup(TimingType timing)
@@ -417,7 +419,7 @@ void Pds::HSD::ClkSynth::setup(TimingType timing)
   }
 }
 
-void _setup(volatile uint32_t* _reg,
+void _setup(RegProxy*          _reg,
             const uint8_t*     write_values)
 {
   static const unsigned LOS_MASK  = 0x04;
@@ -471,7 +473,7 @@ void _setup(volatile uint32_t* _reg,
 
   clock_gettime(CLOCK_REALTIME, &tvb);
   do {
-    printf("wait for LOCK [%x]\n", _reg[218]);
+    printf("wait for LOCK [%x]\n", unsigned(_reg[218]));
     usleep(100000);
   } while( (_reg[218]&LOCK_MASK) );
 

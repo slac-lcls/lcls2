@@ -5,9 +5,10 @@
 
 namespace Pds {
   namespace HSD {
-
+    class Fmc134Cpld;
     class Fmc134Ctrl {
     public:
+      int32_t default_init(Fmc134Cpld&, unsigned mode=0);
       void dump();
     public:
       uint32_t info;

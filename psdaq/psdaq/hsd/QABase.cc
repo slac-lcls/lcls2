@@ -31,7 +31,9 @@ void QABase::start()
 void QABase::stop()
 {
   unsigned v = csr;
-  csr = v & ~(1<<31) & ~(1<<1);
+  v &= ~(1<<31);
+  v &= ~(1<<1);
+  csr = v;
 }
 
 void QABase::resetCounts()

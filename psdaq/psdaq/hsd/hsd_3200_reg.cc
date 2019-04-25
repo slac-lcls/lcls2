@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
   }
 
   if (xwrite_addrs.size() || xread_addrs.size()) {
-    Fmc134Cpld* cpld = reinterpret_cast<Fmc134Cpld*>(ptr+0x12800);
+    Fmc134Cpld* cpld = reinterpret_cast<Fmc134Cpld*>((char*)ptr+0x12800);
 
     for(unsigned i=0; i<xwrite_addrs.size(); i++)
       cpld->writeRegister(Fmc134Cpld::LMX, xwrite_addrs[i], xwrite_values[i]);

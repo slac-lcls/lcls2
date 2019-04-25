@@ -24,7 +24,8 @@ namespace Pds {
       void _lmx_init(bool);
       void _adc_init(unsigned,bool);
     public:
-      enum DevSel { ADC0, ADC1, LMX, LMK, HMC };
+      enum DevSel { ADC0=0x01, ADC1=0x02, ADC_BOTH=0x03,
+                    LMX =0x04, LMK =0x08, HMC     =0x10 };
       void     writeRegister( DevSel   dev,
                               unsigned address,
                               unsigned data );
@@ -34,6 +35,13 @@ namespace Pds {
       unsigned _read();
     public:
       void dump() const;
+    public:
+      int32_t default_clocktree_init();  // factory default config
+      int32_t default_adc_init      ();
+      int32_t config_prbs           (unsigned);
+    private:
+      int32_t internal_ref_and_lmx_enable(uint32_t i2c_unit, uint32_t clockmode);
+      int32_t reset_clock_chip(int32_t);
     private:
       volatile uint32_t _command; // device select
       volatile uint32_t _control0; //

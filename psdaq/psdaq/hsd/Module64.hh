@@ -1,5 +1,5 @@
-#ifndef HSD_Module_hh
-#define HSD_Module_hh
+#ifndef HSD_Module64_hh
+#define HSD_Module64_hh
 
 #include "psdaq/hsd/EnvMon.hh"
 #include "psdaq/hsd/Globals.hh"
@@ -17,29 +17,25 @@ namespace Pds {
   namespace HSD {
     class TprCore;
     class FexCfg;
-    class FlashController;
     class HdrFifo;
-    class PhaseMsmt;
     class Pgp;
 
-    class Module {
+    class Module64 {
     public:
       //
       //  High level API
       //
-      static Module* create(int fd);
-      static Module* create(int fd, TimingType);
+      static Module64* create(int fd);
+      static Module64* create(void*);
 
-      ~Module();
+      ~Module64();
 
       uint64_t device_dna() const;
 
+      void setup_timing(TimingType);
       void board_status();
 
       void set_local_id(unsigned bus);
-
-      void flash_write(const char*);
-      FlashController& flash();
 
       //  Initialize busses
       void init();
@@ -50,9 +46,7 @@ namespace Pds {
       void fmc_dump();
       void fmc_modify(int,int,int,int,int,int);
 
-      int  train_io(unsigned);
-
-      enum TestPattern { Ramp=0, Flash11=1, Flash12=3, Flash16=5, DMA=8 };
+      enum TestPattern { Ramp=0 };
       void enable_test_pattern(TestPattern);
       void disable_test_pattern();
       void clear_test_pattern_errors();
@@ -84,7 +78,7 @@ namespace Pds {
       void     clocktree_sync();
 
       const Pds::Mmhw::AxiVersion& version() const;
-      Pds::HSD::TprCore&    tpr    ();
+      TprCore&    tpr    ();
 
       void setRxAlignTarget(unsigned);
       void setRxResetLength(unsigned);
@@ -111,10 +105,10 @@ namespace Pds {
       void   mon_start();
       EnvMon mon() const;
 
-      void   i2c_lock  (I2cSwitch::Port);
-      void   i2c_unlock();
+      void i2c_lock  (I2cSwitch::Port);
+      void i2c_unlock();
     private:
-      Module() : _sem_i2c(Semaphore::FULL) {}
+      Module64() : _sem_i2c(Semaphore::FULL) {}
 
       class PrivateData;
       PrivateData* p;

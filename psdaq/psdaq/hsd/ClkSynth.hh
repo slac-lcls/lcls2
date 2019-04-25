@@ -2,6 +2,7 @@
 #define HSD_ClkSynth_hh
 
 #include "psdaq/hsd/Globals.hh"
+#include "psdaq/mmhw/RegProxy.hh"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -12,7 +13,8 @@ namespace Pds {
       void dump () const;
       void setup(TimingType);
     public:
-      volatile uint32_t _reg[256];
+      //      volatile uint32_t _reg[256];
+      Pds::Mmhw::RegProxy _reg[256];
     };
   };
 };

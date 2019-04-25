@@ -1,6 +1,7 @@
 #include "psdaq/hsd/Module.hh"
 
 #include "psdaq/mmhw/AxiVersion.hh"
+#include "psdaq/mmhw/RegProxy.hh"
 #include "psdaq/hsd/TprCore.hh"
 #include "psdaq/hsd/RxDesc.hh"
 #include "psdaq/hsd/ClkSynth.hh"
@@ -44,6 +45,8 @@ using Pds::Mmhw::RingBuffer;
 #include <string.h>
 
 using std::string;
+
+#define GUARD(f) { _sem_i2c.take(); f; _sem_i2c.give(); }
 
 namespace Pds {
   namespace HSD {
@@ -89,7 +92,8 @@ namespace Pds {
       Adt7411   vtmona;          // 0x12000
       FmcSpi    fmc_spi;         // 0x12400
       uint32_t  eeprom[0x100];   // 0x12800
-      uint32_t rsvd_to_0x20000[(0x10000-13*0x400)/4];
+      uint32_t  rsvd_to_0x18000[(0x08000-13*0x400)/4];
+      uint32_t  regProxy[(0x08000)/4];
 
       // DMA
       DmaCore           dma_core; // 0x20000
@@ -163,6 +167,8 @@ Module* Module::create(int fd)
   Pds::HSD::Module* m = new Pds::HSD::Module;
   m->p = reinterpret_cast<Pds::HSD::Module::PrivateData*>(ptr);
   m->_fd = fd;
+
+  Pds::Mmhw::RegProxy::initialize(m->p, m->p->regProxy);
 
   return m;
 }
@@ -371,57 +377,66 @@ int Module::PrivateData::train_io(unsigned ref_delay)
 
   bool fmcb_present = fmcb_core.present();
 
-  i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-  if (fmc_spi.adc_enable_test(Flash11)) 
-    return -1;
-
-  if (fmcb_present) {
-    i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-    if (fmc_spi.adc_enable_test(Flash11))
-      return -1;
-  }
-
-  //  adcb_core training is driven by adca_core
-  adca_core.init_training(0x08);
-  if (fmcb_present)
-    adcb_core.init_training(ref_delay);
-
-  adca_core.start_training();
-
-  adca_core.dump_training();
+  int rval = -1;
   
-  if (fmcb_present)
-    adcb_core.dump_training();
+  while(1) {
 
-  i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-  if (fmc_spi.adc_disable_test())
-    return -1;
-  if (fmc_spi.adc_enable_test(Flash11))
-    return -1;
-
-  if (fmcb_present) {
-    i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-    if (fmc_spi.adc_disable_test())
-      return -1;
+    i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
     if (fmc_spi.adc_enable_test(Flash11))
-      return -1;
-  }
+      break;
 
-  adca_core.loop_checking();
-  if (fmcb_present)
-    adcb_core.loop_checking();
+    if (fmcb_present) {
+      i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
+      if (fmc_spi.adc_enable_test(Flash11))
+        break;
+    }
 
-  i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-  if (fmc_spi.adc_disable_test())
-    return -1;
+    //  adcb_core training is driven by adca_core
+    adca_core.init_training(0x08);
+    if (fmcb_present)
+      adcb_core.init_training(ref_delay);
 
-  if (fmcb_present) {
-    i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
+    adca_core.start_training();
+
+    adca_core.dump_training();
+  
+    if (fmcb_present)
+      adcb_core.dump_training();
+
+    i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
     if (fmc_spi.adc_disable_test())
-      return -1;
-  }
+      break;
 
-  return 0;
+    if (fmc_spi.adc_enable_test(Flash11))
+      break;
+
+    if (fmcb_present) {
+      i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
+      if (fmc_spi.adc_disable_test())
+        break;
+      if (fmc_spi.adc_enable_test(Flash11))
+        break;
+    }
+
+    adca_core.loop_checking();
+    if (fmcb_present)
+      adcb_core.loop_checking();
+
+    i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+    if (fmc_spi.adc_disable_test())
+      break;
+
+    if (fmcb_present) {
+      i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
+      if (fmc_spi.adc_disable_test())
+        break;
+    }
+
+    rval = 0;
+    break;
+  }
+  
+  return rval;
 }
 
 void Module::PrivateData::enable_test_pattern(TestPattern p)
@@ -655,9 +670,9 @@ void Module::PrivateData::setAdcMux(bool     interleave,
   }
 }
 
-void Module::init() { p->init(); }
+void Module::init() { GUARD( p->init() ); }
 
-void Module::fmc_init(TimingType timing) { p->fmc_init(timing); }
+void Module::fmc_init(TimingType timing) { GUARD( p->fmc_init(timing) ); }
 
 void Module::fmc_dump() {
   if (p->fmca_core.present())
@@ -677,15 +692,19 @@ void Module::fmc_dump() {
 
 void Module::fmc_clksynth_setup(TimingType timing)
 {
+  _sem_i2c.take();
   p->i2c_sw_control.select(I2cSwitch::LocalBus);  // ClkSynth is on local bus
   p->clksynth.setup(timing);
   p->clksynth.dump ();
+  _sem_i2c.give();
 }
 
 void Module::fmc_modify(int A, int B, int P, int R, int cp, int ab)
 { 
+  _sem_i2c.take();
   p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
   p->fmc_spi.clocktree_modify(A,B,P,R,cp,ab);
+  _sem_i2c.give();
 }
 
 uint64_t Module::device_dna() const
@@ -736,6 +755,8 @@ void Module::board_status()
          p->version.FdSerialHigh,
          p->version.FdSerialLow );
 
+  _sem_i2c.take();
+
   p->i2c_sw_control.select(I2cSwitch::LocalBus);
   p->i2c_sw_control.dump();
   
@@ -784,6 +805,8 @@ void Module::board_status()
     p->i2c_sw_control.dump();
     printf("vtmonb mfg:dev %x:%x\n", p->vtmona.manufacturerId(), p->vtmona.deviceId());
   }
+
+  _sem_i2c.give();
 }
 
 void Module::flash_write(const char* fname)
@@ -793,11 +816,16 @@ void Module::flash_write(const char* fname)
 
 FlashController& Module::flash() { return p->flash; }
 
-int  Module::train_io(unsigned v) { return p->train_io(v); }
+int  Module::train_io(unsigned v) 
+{
+  int r; GUARD( r = p->train_io(v) ); return r;
+}
 
-void Module::enable_test_pattern(TestPattern t) { p->enable_test_pattern(t); }
+void Module::enable_test_pattern(TestPattern t) 
+{ GUARD( p->enable_test_pattern(t) ); }
 
-void Module::disable_test_pattern() { p->disable_test_pattern(); }
+void Module::disable_test_pattern() 
+{ GUARD( p->disable_test_pattern() ); }
 
 void Module::clear_test_pattern_errors() {
   for(unsigned i=0; i<4; i++) {
@@ -806,12 +834,15 @@ void Module::clear_test_pattern_errors() {
   }
 }
 
-void Module::enable_cal () { p->enable_cal(); }
+void Module::enable_cal () 
+{ GUARD( p->enable_cal() ); }
 
-void Module::disable_cal() { p->disable_cal(); }
+void Module::disable_cal() 
+{ GUARD( p->disable_cal()); }
 
 void Module::setAdcMux(unsigned channels)
 {
+  _sem_i2c.take();
   if (p->fmcb_core.present()) {
     p->base.setChannels(0xff);
     p->base.setMode( QABase::Q_NONE );
@@ -826,11 +857,12 @@ void Module::setAdcMux(unsigned channels)
     p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
     p->fmc_spi.setAdcMux(channels&0xf);
   }
+  _sem_i2c.give();
 }
 
 void Module::setAdcMux(bool     interleave,
                        unsigned channels) 
-{ p->setAdcMux(interleave, channels); }
+{ GUARD( p->setAdcMux(interleave, channels) ); }
 
 const Pds::Mmhw::AxiVersion& Module::version() const { return p->version; }
 Pds::HSD::TprCore&    Module::tpr    () { return p->tpr; }
@@ -908,46 +940,60 @@ void Module::stop()
 
 unsigned Module::get_offset(unsigned channel)
 {
+  _sem_i2c.take();
   p->i2c_sw_control.select((channel&0x4)==0 ? 
                            I2cSwitch::PrimaryFmc :
                            I2cSwitch::SecondaryFmc); 
-  return p->fmc_spi.get_offset(channel&0x3);
+  unsigned v = p->fmc_spi.get_offset(channel&0x3);
+  _sem_i2c.give();
+  return v;
 }
 
 unsigned Module::get_gain(unsigned channel)
 {
+  _sem_i2c.take();
   p->i2c_sw_control.select((channel&0x4)==0 ? 
                            I2cSwitch::PrimaryFmc :
                            I2cSwitch::SecondaryFmc); 
-  return p->fmc_spi.get_gain(channel&0x3);
+  unsigned v = p->fmc_spi.get_gain(channel&0x3);
+  _sem_i2c.give();
+  return v;
 }
 
 void Module::set_offset(unsigned channel, unsigned value)
 {
+  _sem_i2c.take();
   p->i2c_sw_control.select((channel&0x4)==0 ? 
                            I2cSwitch::PrimaryFmc :
                            I2cSwitch::SecondaryFmc); 
   p->fmc_spi.set_offset(channel&0x3,value);
+  _sem_i2c.give();
 }
 
 void Module::set_gain(unsigned channel, unsigned value)
 {
+  _sem_i2c.take();
   p->i2c_sw_control.select((channel&0x4)==0 ? 
                            I2cSwitch::PrimaryFmc :
                            I2cSwitch::SecondaryFmc); 
   p->fmc_spi.set_gain(channel&0x3,value);
+  _sem_i2c.give();
 }
 
 void Module::clocktree_sync()
 {
+  _sem_i2c.take();
   p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
   p->fmc_spi.clocktree_sync();
+  _sem_i2c.give();
 }
 
 void Module::sync()
 {
+  _sem_i2c.take();
   p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
   p->fmc_spi.applySync();
+  _sem_i2c.give();
 }
 
 void* Module::reg() { return (void*)p; }
@@ -983,16 +1029,19 @@ uint32_t* Module::trgPhase() { return reinterpret_cast<uint32_t*>(&p->trg_phase[
 
 void   Module::mon_start()
 {
+  _sem_i2c.take();
   p->i2c_sw_control.select(I2cSwitch::LocalBus);
   p->vtmon1.start();
   p->vtmon2.start();
   p->vtmon3.start();
   p->imona.start();
   p->imonb.start();
+  _sem_i2c.give();
 }
 
 EnvMon Module::mon() const
 {
+  _sem_i2c.take();
   p->i2c_sw_control.select(I2cSwitch::LocalBus);
   EnvMon v;
   Adt7411_Mon m;
@@ -1010,6 +1059,13 @@ EnvMon Module::mon() const
 
   v.fmcPower   = p->imona.power_W();
   v.totalPower = p->imonb.power_W();
+  _sem_i2c.give();
   return v;
 }
 
+void Module::i2c_lock(I2cSwitch::Port v)
+{
+  _sem_i2c.take(); 
+  p->i2c_sw_control.select(v);
+}
+void Module::i2c_unlock() { _sem_i2c.give(); }
