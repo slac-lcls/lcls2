@@ -3,6 +3,7 @@ add_library(mmhw SHARED
     AxiVersion.cc
     HexFile.cc
     McsFile.cc
+    RegProxy.cc
     RingBuffer.cc
     GthEyeScan.cc
     Xvc.cc

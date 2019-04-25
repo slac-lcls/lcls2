@@ -6,7 +6,7 @@
 
 namespace Pds {
   namespace Mmhw {
-    class Pgp3Axil {
+    class Pgp3AxilBase {
     public:
       uint32_t  countReset;
       uint32_t  autoStatus;
@@ -39,6 +39,9 @@ namespace Pds {
       uint32_t  txOpCodeNum;
       uint32_t  rsvd_AC;
       uint32_t  rsvd_B0[0x14];
+    };
+    class Pgp3Axil : public Pgp3AxilBase {
+    public:
       uint32_t  reserved[0xF00>>2];
     };
   };
