@@ -34,6 +34,8 @@ setup(
                 'tprca = psdaq.cas.tprca:main',
                 'tprcas = psdaq.cas.tprcas:main',
                 'xpmioc = psdaq.cas.xpmioc:main',
+                'bldcas = psdaq.cas.bldcas:main',
+                'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
                 'control_gui = psdaq.control_gui.app.control_gui:control_gui',
               ]
        },
