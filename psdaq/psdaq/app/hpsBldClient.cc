@@ -22,7 +22,6 @@
 using namespace XtcData;
 
 //  DescribedData must have a variable-length array!
-//#define PAD_DESCDATA
 
 #include "AppUtils.hh"
 
@@ -110,19 +109,17 @@ static void sigHandler(int signal)
   ::exit(signal);
 }
 
-static void write_config( NameIndex&       nameIndex,
-                          NamesId&         namesId,
-                          VarDef&          bldDef,
-                          FILE*            fout )
+static Dgram* write_config( NameIndex&       nameIndex,
+                            NamesId&         namesId,
+                            VarDef&          bldDef,
+                            char*            buff )
 {
-  char* configBuff = new char[1024*1024];
-  memset(configBuff, 0, 1024*1024);
   timespec tv; clock_gettime(CLOCK_REALTIME,&tv);
-  Dgram& dg = *new (configBuff) Dgram( Transition( Sequence( Sequence::Event,
-                                                             TransitionId::Configure,
-                                                             TimeStamp(tv.tv_sec,tv.tv_nsec),
-                                                             PulseId(0,0)), 0 ),
-                                       Xtc( TypeId(TypeId::Parent, 0) ) );
+  Dgram& dg = *new (buff) Dgram( Transition( Sequence( Sequence::Event,
+                                                       TransitionId::Configure,
+                                                       TimeStamp(tv.tv_sec,tv.tv_nsec),
+                                                       PulseId(0,0)), 0 ),
+                                 Xtc( TypeId(TypeId::Parent, 0) ) );
     
   Alg     bldAlg    ("bldAlg", 1, 2, 3);
   Names&  bldNames = *new(dg.xtc) Names("mybld", bldAlg, "bld",
@@ -131,11 +128,7 @@ static void write_config( NameIndex&       nameIndex,
 
   nameIndex = NameIndex(bldNames);
 
-  if (fout) {
-    fwrite(&dg,sizeof(dg)+dg.xtc.sizeofPayload(),1,fout);
-  }
-
-  delete[] configBuff;
+  return &dg;
 }
 
 int main(int argc, char* argv[])
@@ -228,6 +221,7 @@ int main(int argc, char* argv[])
   //
   //  Configure : determine structure of data
   //
+  char* configBuff = new char[1024*1024];
   FILE* fout = filename ? fopen(filename,"w") : 0;
 
   char* eventb = new char[ 8*1024 ];
@@ -246,22 +240,23 @@ int main(int argc, char* argv[])
       id = pvaPayload->getUID();
     }
     bld.setID(_id = id);
-    
+
+    //
+    //  Prepare configure transition payload
+    //
     NameIndex      nameIndex;
     NamesId        namesId(0,0);
     size_t         payloadSz;
     VarDef         bldDef = pvaPayload->getVarDef(payloadSz);
 
-#ifdef PAD_DESCDATA
-    unsigned paddingIndex = bldDef.NameVec.size();
-    bldDef.NameVec.push_back(Name("padding", Name::UINT32,1));
-    size_t xtcPayloadSz = payloadSz+sizeof(uint32_t);
-#else
-    size_t xtcPayloadSz = payloadSz;
-#endif
+    memset(configBuff, 0, 1024*1024);
+    Dgram& cdg = *write_config(nameIndex, namesId, bldDef, configBuff);
+    if (fout)
+      fwrite(&cdg,sizeof(cdg)+cdg.xtc.sizeofPayload(),1,fout);
 
-    write_config(nameIndex, namesId, bldDef, fout);
-
+    //
+    //  Prepare event buffer
+    //
     Dgram* dgram = new (eventb) Dgram( Transition( Sequence( Sequence::Event,
                                                              TransitionId::L1Accept,
                                                              TimeStamp(0,0),
@@ -269,13 +264,8 @@ int main(int argc, char* argv[])
                                        Xtc( TypeId(TypeId::Parent, 0) ) );
     
     Xtc&   xtc   = dgram->xtc;
-
     DescribedData desc(xtc, nameIndex, namesId);
-    desc.set_data_length(xtcPayloadSz);
-#ifdef PAD_DESCDATA
-    unsigned shape[MaxRank] = {1,1};
-    desc.set_array_shape(paddingIndex, shape);
-#endif
+    desc.set_data_length(payloadSz);
 
     uint64_t ppulseId=0;
 
