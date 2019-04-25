@@ -148,7 +148,7 @@ class CGWConfigEditorTree(QWTree) :
         """
         if isinstance(o, dict) :
             parent_item.setAccessibleText(parent_item.text())
-            parent_item.setText('%s - key to dict' % parent_item.text())
+            parent_item.setText('%s *' % parent_item.text())
             parent_item.setAccessibleDescription('key-to-dict')
             parent_item.setToolTip('key to dict object')
             for k,v in o.items() :
@@ -169,7 +169,7 @@ class CGWConfigEditorTree(QWTree) :
             if any([isinstance(v, (dict,list)) for v in o]) :
                 parent_item.setAccessibleDescription('key-to-list-compaund')
                 parent_item.setAccessibleText(parent_item.text())
-                parent_item.setText('%s - key to list of compaund' % parent_item.text())
+                parent_item.setText('%s *' % parent_item.text())
                 parent_item.setToolTip('key to the list of compaund types\n(lists, dicts etc.)')
                 for i,v in enumerate(o) :
                     item = QStandardItem('%d'%i)
@@ -181,7 +181,7 @@ class CGWConfigEditorTree(QWTree) :
                     self.tree_model_from_dict(v, item, is_read_only)
             else : # data list
                 parent_item.setAccessibleText(parent_item.text())
-                parent_item.setText('%s - key to list' % parent_item.text())
+                parent_item.setText('%s *' % parent_item.text())
                 is_trimmed = len(o)>=self.list_max_len
                 cmt = 'trimmed list' if is_trimmed else 'list'
                 parent_item.setAccessibleDescription('key to the %s' % cmt)

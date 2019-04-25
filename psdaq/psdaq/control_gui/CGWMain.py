@@ -42,6 +42,7 @@ from psdaq.control_gui.CGWMainRunStatistics import CGWMainRunStatistics
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
+from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box
 
 #------------------------------
 
@@ -226,6 +227,19 @@ class CGWMain(QWZMQListener) :
 
     def closeEvent(self, e) :
         print('%s.closeEvent' % self._name)
+
+        resp = confirm_or_cancel_dialog_box(parent=None,
+                                            text='Close window?',\
+                                            title='Confirm or cancel') 
+        if resp : 
+            logger.debug('Closing window is confirmed')
+            
+        else :
+            logger.warning('Closing window is cancelled')
+            print('Closing window is cancelled')
+            e.ignore()
+            return
+
         #logger.debug('%s.closeEvent' % self._name)
         #try : self.wspe.close()
         #except : pass

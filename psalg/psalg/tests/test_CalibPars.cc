@@ -36,9 +36,9 @@ void print_hline(const uint nchars, const char c) {printf("%s\n", std::string(nc
 //-------------------
 //-------------------
 
-void test_CalibPars() {
+void test_CalibPars(const char* detname = "epix100a") { //"undefined"
   MSG(INFO, "In test_CalibPars - test all interface methods");
-  CalibPars* cp1 = new CalibPars("epix100a-");
+  CalibPars* cp1 = new CalibPars(detname);
   std::cout << "detname: " << cp1->detname() << '\n';
 
   Query query("some-string is here");
@@ -89,10 +89,10 @@ void test_CalibPars() {
 
 //-------------------
 
-void test_getCalibPars() {
+void test_getCalibPars(const char* detname = "undefined") { //"epix100a"
   MSG(INFO, "In test_getCalibPars test access to CalibPars through the factory method getCalibPars");
 
-  CalibPars* cp = getCalibPars("epix100a-");
+  CalibPars* cp = getCalibPars(detname);
   std::cout << "detname: " << cp->detname() << '\n';
 
   Query q("some-string is here");
@@ -107,14 +107,14 @@ void test_getCalibPars() {
 
 //-------------------
 
-void test_CalibParsDB() {
+void test_CalibParsDB(const char* dbtypename = "Default-Base-NoDB") {
   MSG(INFO, "In test_CalibParsDB test access to CalibParsDB");
   Query q("some-string is here");
 
   CalibParsDB* o0 = new CalibParsDB();
   std::cout << "In test_CalibParsDB dbtypename: " << o0->dbtypename() << '\n';
 
-  CalibParsDB* o = new CalibParsDB("MyTestDB");
+  CalibParsDB* o = new CalibParsDB(dbtypename);
   std::cout << "In test_CalibParsDB dbtypename: " << o->dbtypename() << '\n';
 
   const NDArray<float>&  nda_float = o->get_ndarray_float(q);
@@ -171,13 +171,14 @@ std::string usage(const std::string& tname="")
 {
   std::stringstream ss;
   if (tname == "") ss << "Usage command> test_CalibPars <test-number>\n  where test-number";
-  if (tname == "" || tname=="0"	) ss << "\n  0  - test_CalibPars()";
-  if (tname == "" || tname=="1"	) ss << "\n  1  - test_getCalibPars()";
-  if (tname == "" || tname=="2"	) ss << "\n  2  - test_Query()";
-  if (tname == "" || tname=="3"	) ss << "\n  3  - test_Response()";
-  if (tname == "" || tname=="4"	) ss << "\n  4  - test_CalibParsDB()";
-  if (tname == "" || tname=="5"	) ss << "\n  5  - test_getCalibParsDB(DBDEF)";
-  if (tname == "" || tname=="6"	) ss << "\n  6  - test_getCalibParsDB(DBWEB)";
+  if (tname == "" || tname=="0"	) ss << "\n   0  - test_CalibPars()    - basee class";
+  if (tname == "" || tname=="1"	) ss << "\n   1  - test_getCalibPars() - default for undefined";
+  if (tname == "" || tname=="2"	) ss << "\n   2  - test_getCalibPars('epix100a') - default - the same as base";
+  if (tname == "" || tname=="10") ss << "\n  10  - test_CalibParsDB()";
+  if (tname == "" || tname=="11") ss << "\n  11  - test_getCalibParsDB(DBDEF)";
+  if (tname == "" || tname=="12") ss << "\n  12  - test_getCalibParsDB(DBWEB)";
+  if (tname == "" || tname=="20") ss << "\n  20  - test_Query()";
+  if (tname == "" || tname=="30") ss << "\n  30  - test_Response()";
   ss << '\n';
   return ss.str();
 }
@@ -196,13 +197,16 @@ int main(int argc, char **argv) {
   std::string tname(argv[1]);
   cout << usage(tname); 
 
-  if      (tname=="0") test_CalibPars();
-  else if (tname=="1") test_getCalibPars();
-  else if (tname=="2") test_Query();
-  else if (tname=="3") test_Response();
-  else if (tname=="4") test_CalibParsDB();
-  else if (tname=="5") test_getCalibParsDB(DBDEF);
-  else if (tname=="6") test_getCalibParsDB(DBWEB);
+  if      (tname=="0")  test_CalibPars();
+  else if (tname=="1")  test_getCalibPars(); // "undefined"
+  else if (tname=="2")  test_getCalibPars("epix100a");
+
+  else if (tname=="10") test_CalibParsDB();
+  else if (tname=="11") test_getCalibParsDB(DBDEF);
+  else if (tname=="12") test_getCalibParsDB(DBWEB);
+
+  else if (tname=="20") test_Query();
+  else if (tname=="30") test_Response();
   else MSG(WARNING, "Undefined test name: " << tname);
 
   print_hline(80,'_');

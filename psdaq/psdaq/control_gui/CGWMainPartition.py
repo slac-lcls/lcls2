@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout, QDialog
 from PyQt5.QtCore import QPoint
+from PyQt5.QtGui import QCursor
 
 from psdaq.control_gui.CGDaqControl import daq_control
 from psdaq.control_gui.CGJsonUtils import get_platform, set_platform, list_active_procs
@@ -108,13 +109,14 @@ class CGWMainPartition(QGroupBox) :
         #    [[state,name],alias] = rec
         #    logger.debug('%s %s is %s selected' % (name.ljust(10), alias.ljust(10), {False:'not', True:'   '}[state]))
 
+        #parent=self,
         w = QWPopupTableCheck(tableio=list2d, title_h=self.TABTITLE_H,\
                               do_ctrl=(self.state=='UNALLOCATED'),\
                               win_title='Select partitions',\
                               do_edit=False, is_visv=True, do_frame=True)
 
         w.setToolTip('Processes control is only available\nin the state UNALLOCATED')
-        w.move(self.pos()+QPoint(self.width()/2,200))
+        w.move(QCursor.pos()+QPoint(20,10))
         resp=w.exec_()
 
         logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
@@ -155,7 +157,7 @@ class CGWMainPartition(QGroupBox) :
                                                  is_visv=False)
 
             self.w_display.setToolTip('Processes selection is only available\nin the "Select" window.')
-            self.w_display.move(self.pos() + QPoint(self.width()+30, 200))
+            self.w_display.move(QCursor.pos()+QPoint(50,10))
             self.w_display.setWindowTitle('Display partitions')
             self.w_display.show()
         else :
