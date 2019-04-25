@@ -259,74 +259,79 @@ const size_t AreaDetector::size(const event_t& evt) {
 //===================
 
 /// access to calibration constants
+const Query& AreaDetector::query(const event_t& evt) {
+  return _query;
+}
+
+/// access to calibration constants
 const NDArray<common_mode_t>& AreaDetector::common_mode(const event_t& evt) {
-  return calib_pars()->common_mode(evt);
+  return calib_pars()->common_mode(query(evt));
   //  _default_msg(std::string("common_mode(...)"));
   //  return _common_mode;
 }
 
 const NDArray<pedestals_t>& AreaDetector::pedestals(const event_t& evt) {
-  return calib_pars()->pedestals(evt);
+  return calib_pars()->pedestals(query(evt));
   //  _default_msg("pedestals(...)");
   //  return _pedestals;
 }
 
 const NDArray<pixel_rms_t>& AreaDetector::rms(const event_t& evt) {
-  return calib_pars()->rms(evt);
+  return calib_pars()->rms(query(evt));
   //  _default_msg("rms(...)");
   //  return _pixel_rms;
 }
 
 const NDArray<pixel_status_t>& AreaDetector::status(const event_t& evt) {
-  return calib_pars()->status(evt);
+  return calib_pars()->status(query(evt));
   //  _default_msg("status(...)");
   //  return _pixel_status;
 }
 
 const NDArray<pixel_gain_t>& AreaDetector::gain(const event_t& evt) {
-  return calib_pars()->gain(evt);
+  return calib_pars()->gain(query(evt));
   //  _default_msg("gain(...)");
   //  return _pixel_gain;
 }
 
 const NDArray<pixel_offset_t>& AreaDetector::offset(const event_t& evt) {
-  return calib_pars()->offset(evt);
+  return calib_pars()->offset(query(evt));
   //  _default_msg("offset(...)");
   //  return _pixel_offset;
 }
 
 const NDArray<pixel_bkgd_t>& AreaDetector::background(const event_t& evt) {
-  return calib_pars()->background(evt);
+  return calib_pars()->background(query(evt));
   //  _default_msg("background(...)");
   //  return _pixel_bkgd;
 }
 
 const NDArray<pixel_mask_t>& AreaDetector::mask_calib(const event_t& evt) {
-  return calib_pars()->mask_calib(evt);
+  return calib_pars()->mask_calib(query(evt));
   //  _default_msg("mask_calib(...)");
   //  return _pixel_mask;
 }
 
 const NDArray<pixel_mask_t>& AreaDetector::mask_from_status(const event_t& evt) {
-  return calib_pars()->mask_from_status(evt);
+  return calib_pars()->mask_from_status(query(evt));
   //  _default_msg("mask_from_status(...)");
   //  return _pixel_mask;
 }
 
 const NDArray<pixel_mask_t>& AreaDetector::mask_edges(const event_t& evt, const size_t& nnbrs) {
-  return calib_pars()->mask_edges(evt);
+  return calib_pars()->mask_edges(query(evt));
   //  _default_msg("mask_edges(...)");
   //  return _pixel_mask;
 }
 
 const NDArray<pixel_mask_t>& AreaDetector::mask_neighbors(const event_t& evt, const size_t& nrows, const size_t& ncols) {
-  return calib_pars()->mask_neighbors(evt);
+  return calib_pars()->mask_neighbors(query(evt));
   //  _default_msg("mask_neighbors(...)");
   //  return _pixel_mask;
 }
 
 const NDArray<pixel_mask_t>& AreaDetector::mask_bits(const event_t& evt, const size_t& mbits) {
-  return calib_pars()->mask_bits(evt);
+  return calib_pars()->mask_bits(query(evt));
   //  _default_msg("mask(...)");
   //  return _pixel_mask;
 }
@@ -335,7 +340,7 @@ const NDArray<pixel_mask_t>& AreaDetector::mask(const event_t& evt, const bool& 
 					                        const bool& sataus,
                                                                 const bool& edges,
 						                const bool& neighbors) {
-  return calib_pars()->mask(evt);
+  return calib_pars()->mask(query(evt));
   //  _default_msg("mask(...)");
   //  return _pixel_mask;
 }
@@ -378,43 +383,43 @@ void AreaDetector::tilt_geo(const event_t& evt, const tilt_angle_t& dtx, const t
 
 /// access to geometry
 const geometry_t& AreaDetector::geometry(const event_t& evt) {
-  return calib_pars()->geometry(evt);
+  return calib_pars()->geometry(query(evt));
   //  _default_msg("geometry(...)");
   //  return _geometry;
 }
 
 const NDArray<pixel_idx_t>& AreaDetector::indexes(const event_t& evt, const size_t& axis) {
-  return calib_pars()->indexes(evt);
+  return calib_pars()->indexes(query(evt));
   //  _default_msg("indexes(...)");
   //  return _pixel_idx;
 }
 
 const NDArray<pixel_coord_t>& AreaDetector::coords(const event_t& evt, const size_t& axis) {
-  return calib_pars()->coords(evt);
+  return calib_pars()->coords(query(evt));
   //  _default_msg("coords(...)");
   //  return _pixel_coord;
 }
 
 const NDArray<pixel_size_t>& AreaDetector::pixel_size(const event_t& evt, const size_t& axis) {
-  return calib_pars()->pixel_size(evt);
+  return calib_pars()->pixel_size(query(evt));
   //  _default_msg("pixel_size(...)");
   //  return _pixel_size;
 }
 
 const NDArray<pixel_size_t>& AreaDetector::image_xaxis(const event_t& evt) {
-  return calib_pars()->image_xaxis(evt);
+  return calib_pars()->image_xaxis(query(evt));
   //  _default_msg("image_xaxis(...)");
   //  return _pixel_size;
 }
 
 const NDArray<pixel_size_t>& AreaDetector::image_yaxis(const event_t& evt) {
-  return calib_pars()->image_yaxis(evt);
+  return calib_pars()->image_yaxis(query(evt));
   //  _default_msg("image_yaxis(...)");
   //  return _pixel_size;
 }
 
 calib::CalibPars* AreaDetector::calib_pars() {
-  if(! _calib_pars) _calib_pars = calib::getCalibPars(detname());
+  if(! _calib_pars) _calib_pars = calib::getCalibPars(detname().c_str());
   return _calib_pars;
 }
 

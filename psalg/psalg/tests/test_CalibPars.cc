@@ -15,8 +15,12 @@
 //#include <iostream> // cout, puts etc.
 #include <stdio.h>  // printf
 
+#include "psalg/calib/Response.hh"
+#include "psalg/calib/CalibParsDB.hh"
+#include "psalg/calib/CalibParsDBStore.hh"
+
 #include "psalg/calib/CalibParsStore.hh"
-//#include "psalg/calib/CalibPars.hh"
+#include "psalg/calib/CalibPars.hh"
 
 //using namespace std;
 //using namespace psalg;
@@ -32,28 +36,12 @@ void print_hline(const uint nchars, const char c) {printf("%s\n", std::string(nc
 //-------------------
 //-------------------
 
-void test_getCalibPars() {
-  MSG(INFO, "In test_getCalibPars test access to CalibPars through the factory method getCalibPars");
-  query_t query = 123;
-  CalibPars* cp = getCalibPars("Epix100a");
-  std::cout << "detname: " << cp->detname() << '\n';
-  const NDArray<pedestals_t>& peds = cp->pedestals(query);
-  const NDArray<common_mode_t>& cmod = cp->common_mode(query);
-  std::cout << "\n  peds   : " << peds; 
-  std::cout << "\n  cmod   : " << cmod; 
-  std::cout << '\n';
-
-  delete cp;
-}
-
-//-------------------
-
 void test_CalibPars() {
   MSG(INFO, "In test_CalibPars - test all interface methods");
-  CalibPars* cp1 = new CalibPars("Epix100a");
-  query_t query = 123;
-
+  CalibPars* cp1 = new CalibPars("epix100a-");
   std::cout << "detname: " << cp1->detname() << '\n';
+
+  Query query("some-string is here");
 
   const NDArray<pedestals_t>&    peds   = cp1->pedestals       (query);
   const NDArray<common_mode_t>&  cmod   = cp1->common_mode     (query);
@@ -64,13 +52,13 @@ void test_CalibPars() {
   const NDArray<pixel_bkgd_t>&   bkgd   = cp1->background      (query);
   const NDArray<pixel_mask_t>&   maskc  = cp1->mask_calib      (query);
   const NDArray<pixel_mask_t>&   masks  = cp1->mask_from_status(query);
-  const NDArray<pixel_mask_t>&   maske  = cp1->mask_edges      (query, 8);
-  const NDArray<pixel_mask_t>&   maskn  = cp1->mask_neighbors  (query, 1, 1);
-  const NDArray<pixel_mask_t>&   mask2  = cp1->mask_bits       (query, 0177777);
-  const NDArray<pixel_mask_t>&   mask3  = cp1->mask            (query, true, true, true, true);
-  const NDArray<pixel_idx_t>&    idxx   = cp1->indexes         (query, 0);
-  const NDArray<pixel_coord_t>&  coordsx= cp1->coords          (query, 0);
-  const NDArray<pixel_size_t>&   sizex  = cp1->pixel_size      (query, 0);
+  const NDArray<pixel_mask_t>&   maske  = cp1->mask_edges      (query);
+  const NDArray<pixel_mask_t>&   maskn  = cp1->mask_neighbors  (query);
+  const NDArray<pixel_mask_t>&   mask2  = cp1->mask_bits       (query);
+  const NDArray<pixel_mask_t>&   mask3  = cp1->mask            (query);
+  const NDArray<pixel_idx_t>&    idxx   = cp1->indexes         (query);
+  const NDArray<pixel_coord_t>&  coordsx= cp1->coords          (query);
+  const NDArray<pixel_size_t>&   sizex  = cp1->pixel_size      (query);
   const NDArray<pixel_size_t>&   axisx  = cp1->image_xaxis     (query);
   const NDArray<pixel_size_t>&   axisy  = cp1->image_yaxis     (query);
   const geometry_t&              geotxt = cp1->geometry        (query);
@@ -101,12 +89,95 @@ void test_CalibPars() {
 
 //-------------------
 
+void test_getCalibPars() {
+  MSG(INFO, "In test_getCalibPars test access to CalibPars through the factory method getCalibPars");
+
+  CalibPars* cp = getCalibPars("epix100a-");
+  std::cout << "detname: " << cp->detname() << '\n';
+
+  Query q("some-string is here");
+  const NDArray<pedestals_t>&   peds = cp->pedestals(q);
+  const NDArray<common_mode_t>& cmod = cp->common_mode(q);
+  std::cout << "\n  peds   : " << peds; 
+  std::cout << "\n  cmod   : " << cmod; 
+  std::cout << '\n';
+
+  delete cp;
+}
+
+//-------------------
+
+void test_CalibParsDB() {
+  MSG(INFO, "In test_CalibParsDB test access to CalibParsDB");
+  Query q("some-string is here");
+
+  CalibParsDB* o0 = new CalibParsDB();
+  std::cout << "In test_CalibParsDB dbtypename: " << o0->dbtypename() << '\n';
+
+  CalibParsDB* o = new CalibParsDB("MyTestDB");
+  std::cout << "In test_CalibParsDB dbtypename: " << o->dbtypename() << '\n';
+
+  const NDArray<float>&  nda_float = o->get_ndarray_float(q);
+  std::cout << "\n  nda_float  : " << nda_float; 
+  std::cout << "\n  nda_double : " << o->get_ndarray_double(q);
+  std::cout << "\n  nda_uint16 : " << o->get_ndarray_uint16(q); 
+  std::cout << "\n  nda_uint32 : " << o->get_ndarray_uint32(q); 
+  std::cout << "\n  string     : " << o->get_string(q);
+  std::cout << '\n';
+
+  delete o0;
+  delete o;
+}
+
+//-------------------
+//-------------------
+
+void test_getCalibParsDB(const DBTYPE& dbtype=DBDEF) {
+  MSG(INFO, "In test_getCalibParsDB test access to CalibParsDB through the factory method getCalibParsDB");
+  Query q("some-string is here");
+  CalibParsDB* o = getCalibParsDB(dbtype);
+  std::cout << "In test_CalibParsDB dbtypename: " << o->dbtypename() << '\n';
+
+  /*
+  const NDArray<pedestals_t>& peds = cp->pedestals(query);
+  const NDArray<common_mode_t>& cmod = cp->common_mode(query);
+  std::cout << "\n  peds   : " << peds; 
+  std::cout << "\n  cmod   : " << cmod; 
+  std::cout << '\n';
+  */
+
+  delete o;
+}
+
+//-------------------
+
+void test_Query() {
+  MSG(INFO, "In test_Query test access to Query");
+  Query q("some-string is here");
+  std::cout << "q.query() " << q.query() << '\n';
+}
+
+//-------------------
+
+void test_Response() {
+  MSG(INFO, "In test_Response test access to Response");
+  Response r("detector-name-is-here");
+  std::cout << "r.detname() " << r.detname() << '\n';
+}
+
+//-------------------
+
 std::string usage(const std::string& tname="")
 {
   std::stringstream ss;
   if (tname == "") ss << "Usage command> test_CalibPars <test-number>\n  where test-number";
   if (tname == "" || tname=="0"	) ss << "\n  0  - test_CalibPars()";
   if (tname == "" || tname=="1"	) ss << "\n  1  - test_getCalibPars()";
+  if (tname == "" || tname=="2"	) ss << "\n  2  - test_Query()";
+  if (tname == "" || tname=="3"	) ss << "\n  3  - test_Response()";
+  if (tname == "" || tname=="4"	) ss << "\n  4  - test_CalibParsDB()";
+  if (tname == "" || tname=="5"	) ss << "\n  5  - test_getCalibParsDB(DBDEF)";
+  if (tname == "" || tname=="6"	) ss << "\n  6  - test_getCalibParsDB(DBWEB)";
   ss << '\n';
   return ss.str();
 }
@@ -127,6 +198,11 @@ int main(int argc, char **argv) {
 
   if      (tname=="0") test_CalibPars();
   else if (tname=="1") test_getCalibPars();
+  else if (tname=="2") test_Query();
+  else if (tname=="3") test_Response();
+  else if (tname=="4") test_CalibParsDB();
+  else if (tname=="5") test_getCalibParsDB(DBDEF);
+  else if (tname=="6") test_getCalibParsDB(DBWEB);
   else MSG(WARNING, "Undefined test name: " << tname);
 
   print_hline(80,'_');

@@ -6,6 +6,7 @@
 #include <string>
 #include <assert.h>
 
+#include "psalg/calib/Query.hh"
 #include "psalg/calib/CalibParsStore.hh" // CalibPars, getCalibPars
 #include "psalg/calib/NDArray.hh" // NDArray
 #include "psalg/calib/AreaDetectorTypes.hh"
@@ -108,6 +109,8 @@ public:
   calib::CalibPars* calib_pars();
   calib::CalibPars* calib_pars_updated();
 
+  const Query& query(const event_t&);
+
   AreaDetector(const AreaDetector&) = delete;
   AreaDetector& operator = (const AreaDetector&) = delete;
 
@@ -149,6 +152,7 @@ private:
   NDArray<calib_t>        _calib;
   NDArray<image_t>        _image;
 
+  Query                   _query;
 
   /*
   NDArray<common_mode_t>  _common_mode;

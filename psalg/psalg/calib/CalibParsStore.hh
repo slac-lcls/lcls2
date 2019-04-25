@@ -16,7 +16,7 @@
 
 namespace calib {
 
-  CalibPars* getCalibPars(const std::string& detname);
+  CalibPars* getCalibPars(const char* detname = "Undefined in factory");
 
 } // namespace calib
 

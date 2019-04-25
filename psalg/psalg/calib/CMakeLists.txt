@@ -2,6 +2,7 @@ add_library(calib SHARED
     src/ArrayIO.cc
     src/AreaDetectorTypes.cc
     src/CalibPars.cc
+    src/CalibParsDB.cc
     src/CalibParsDBWeb.cc
     src/CalibParsDBStore.cc
     src/CalibParsEpix100a.cc
@@ -29,10 +30,13 @@ install(FILES
     ArrayIO.hh
     CalibParsTypes.hh
     CalibPars.hh
+    CalibParsDB.hh
     CalibParsDBWeb.hh
     CalibParsDBStore.hh
     CalibParsEpix100a.hh
     CalibParsStore.hh
+    Query.hh
+    Response.hh
     MDBWebUtils.hh
     DESTINATION include/psalg/calib
 )

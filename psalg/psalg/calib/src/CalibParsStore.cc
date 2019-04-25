@@ -13,7 +13,7 @@
 
 namespace calib {
 
-  CalibPars* getCalibPars(const std::string& detname) {
+  CalibPars* getCalibPars(const char* detname) {
 
     const detector::AREADETTYPE dettype = detector::find_area_dettype(detname);
     MSG(INFO, "getCalibPars for name " << detname << " AREADETTYPE=" << dettype);
@@ -25,10 +25,9 @@ namespace calib {
     //else if (dettype == detector::...) return new CalibPars...(detname);
     else {
       MSG(WARNING, "Not implemented CalibPars for detname " << detname);
-      return NULL;
+      throw "Not implemented CalibPars for detname";
+      //return NULL;
     }
-
-    return NULL;
   }
 
 } // namespace calib
