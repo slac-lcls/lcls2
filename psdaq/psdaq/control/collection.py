@@ -45,8 +45,8 @@ class DaqControl:
         'running'
     ]
 
-    default_active = 0
-    default_readout = 15
+    default_active = 1
+    # default readout group is self.platform
 
     def __init__(self, *, host, platform, timeout):
         self.host = host
@@ -347,6 +347,7 @@ def confirm_response(socket, wait_time, msg_id, ids):
 
 class CollectionManager():
     def __init__(self, platform, instrument, pv_base):
+        self.platform = platform
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
@@ -645,7 +646,7 @@ class CollectionManager():
                         if self.cmstate[level][int(key2)]['active'] == 1:
                             self.cmstate[level][int(key2)]['readout'] = body[level][key2]['readout']
                         else:
-                            self.cmstate[level][int(key2)]['readout'] = DaqControl.default_readout
+                            self.cmstate[level][int(key2)]['readout'] = self.platform
 
         except Exception as ex:
             msg = 'handle_selectplatform(): %s' % ex
@@ -672,7 +673,7 @@ class CollectionManager():
                 self.cmstate[level][id] = item
                 self.cmstate[level][id]['active'] = DaqControl.default_active
                 if level == 'drp':
-                    self.cmstate[level][id]['readout'] = DaqControl.default_readout
+                    self.cmstate[level][id]['readout'] = self.platform
                 self.ids.add(id)
         if len(self.ids) == 0:
             self.report_error('no clients responded to plat')
