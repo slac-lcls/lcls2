@@ -14,7 +14,7 @@ def main():
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=2000,
                         help='timeout msec (default 2000)')
-    parser.add_argument('-R', metavar='READOUT_GROUP', type=int, choices=range(0, 16), help='readout group (0-15) (drp only)')
+    parser.add_argument('-R', metavar='READOUT_GROUP', type=int, choices=range(0, 8), help='readout group (0-7) (drp only)')
     parser.add_argument('-s', metavar='SELECT', action='append', help='select one alias (may be repeated)')
     parser.add_argument('--select-all', action='store_true', help='select all', dest='select_all')
     parser.add_argument('-u', metavar='UNSELECT', action='append', help='unselect one alias (may be repeated)')
@@ -60,7 +60,7 @@ def main():
                             changed = True
                             v['active'] = 0
                             if level == 'drp':
-                                v['readout'] = DaqControl.default_readout
+                                v['readout'] = platform
         except Exception:
             pprint.pprint(body)
             raise
