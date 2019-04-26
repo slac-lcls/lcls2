@@ -6,6 +6,7 @@
 #include "DrpApp.hh"
 #include "AxisDriver.h"
 #include "xtcdata/xtc/TransitionId.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 static const unsigned RTMON_RATE = 1;    // Publish rate in seconds
 static const unsigned RTMON_VERBOSE = 0;
@@ -58,13 +59,13 @@ void DrpApp::handleConnect(const json &msg)
     f.register_type<Digitizer>("Digitizer");
     f.register_type<AreaDetector>("AreaDetector");
     std::cout<<"nodeId  "<<m_para->tPrms.id<<'\n';
-    Detector* det = f.create(m_para);
-    if (det == nullptr) {
+    m_det = f.create(m_para);
+    if (m_det == nullptr) {
         std::cout<< "Error !! Could not create Detector object\n";
     }
-    det->connect();
+    m_det->connect();
 
-    m_pgpReader = std::make_unique<PGPReader>(m_pool, *m_para, det, m_para->laneMask);
+    m_pgpReader = std::make_unique<PGPReader>(m_pool, *m_para, m_det, m_para->laneMask);
     m_pgpThread = std::thread{&PGPReader::run, std::ref(*m_pgpReader)};
 
     // Create all the eb things and do the connections
@@ -111,63 +112,49 @@ void DrpApp::handleConnect(const json &msg)
     }
 }
 
-void DrpApp::handleConfigure(const json &msg)
+void DrpApp::handlePhase1(const json &msg)
 {
     std::cout<<"handle configure DrpApp\n";
+
+    XtcData::Dgram& dgram = m_det->transitionDgram();
+    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
+    dgram.xtc.contains = tid;
+    dgram.xtc.damage = 0;
+    dgram.xtc.extent = sizeof(XtcData::Xtc);
+
+    std::string key = msg["header"]["key"];
+    unsigned error=0;
+    if (key == "configure1") {
+        error = m_det->configure(dgram);
+    }
     // check for message from timing system
-    int ret = m_inprocRecv.poll(ZMQ_POLLIN, 15000);
     json answer;
-    if (ret) {
-        json reply = m_inprocRecv.recvJson();
-        std::cout<<"inproc message received\n";
-        json body = json({});
-        answer = createMsg("configure", msg["header"]["msg_id"], getId(), body);
+    json body = json({});
+    if (error) {
+        body["error"] = "phase 2 error";
+        std::cout<<"transition phase1 error\n";
     }
     else {
-        json body = json({});
-        std::cout<<"inproc timed out configure transition\n";
-        answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
+        std::cout<<"transition phase1 complete\n";
     }
+    answer = createMsg(msg["header"]["key"], msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
 
-void DrpApp::handleEnable(const json &msg)
+void DrpApp::handlePhase2(const json &msg)
 {
-    std::cout<<"handle enable DrpApp\n";
-    // check for message from timing system
     int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
     json answer;
+    json body = json({});
     if (ret) {
         json reply = m_inprocRecv.recvJson();
         std::cout<<"inproc message received\n";
-        json body = json({});
-        answer = createMsg("enable", msg["header"]["msg_id"], getId(), body);
     }
     else {
-        json body = json({});
-        std::cout<<"inproc timed out enable transition\n";
-        answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
+        body["error"] = "phase 2 error";
+        std::cout<<"phase 2 error\n";
     }
-    reply(answer);
-}
-
-void DrpApp::handleDisable(const json &msg)
-{
-    std::cout<<"handle disable DrpApp\n";
-    // check for message from timing system
-    int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
-    json answer;
-    if (ret) {
-        json reply = m_inprocRecv.recvJson();
-        std::cout<<"inproc message received\n";
-        json body = json({});
-        answer = createMsg("disable", msg["header"]["msg_id"], getId(), body);
-    }
-    else {
-        json body = json({});
-        std::cout<<"inproc timed out disable transition\n";
-        answer = createMsg("error", msg["header"]["msg_id"], getId(), body);
-    }
+    answer = createMsg(msg["header"]["key"], msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
 

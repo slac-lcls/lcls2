@@ -768,28 +768,39 @@ class CollectionManager():
         return retval
 
     def condition_configure(self):
-        if (self.pv_put(self.pvMsgClear, 0) and
-            self.pv_put(self.pvMsgClear, 1) and
-            self.pv_put(self.pvMsgClear, 0) and
-            self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Configure']) and
-            self.pv_put(self.pvMsgInsert, 0) and
-            self.pv_put(self.pvMsgInsert, 1) and
-            self.pv_put(self.pvMsgInsert, 0)):
-            retval = self.condition_common('configure', 15000)
-            if retval:
-                self.lastTransition = 'configure'
-        else:
+        # phase 1
+        ok = self.condition_common('configure1', 15000)
+        if not ok:
+            logging.error('condition_configure(): configure phase1 failed')
+            return False
+
+        # phase 2
+        if not (self.pv_put(self.pvMsgClear, 0) and
+                self.pv_put(self.pvMsgClear, 1) and
+                self.pv_put(self.pvMsgClear, 0) and
+                self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Configure']) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and
+                self.pv_put(self.pvMsgInsert, 0)):
             logging.error('condition_configure(): pv_put() failed')
-            retval = False
-        logging.debug('condition_configure() returning %s' % retval)
-        return retval
+            return False
+
+        ok = self.condition_common('configure2', 2000)
+        if not ok:
+            logging.error('condition_configure(): configure phase1 failed')
+            return False
+
+        logging.debug('condition_configure() returning %s' % ok)
+
+        self.lastTransition = 'configure'
+        return True
 
     def condition_unconfigure(self):
         if (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Unconfigure']) and
             self.pv_put(self.pvMsgInsert, 0) and
             self.pv_put(self.pvMsgInsert, 1) and
             self.pv_put(self.pvMsgInsert, 0)):
-            retval = self.condition_common('unconfigure', 1000)
+            retval = self.condition_common('unconfigure2', 1000)
             if retval:
                 self.lastTransition = 'unconfigure'
         else:
@@ -803,7 +814,7 @@ class CollectionManager():
             self.pv_put(self.pvMsgInsert, 0) and
             self.pv_put(self.pvMsgInsert, 1) and
             self.pv_put(self.pvMsgInsert, 0)):
-            retval = self.condition_common('enable', 1000)
+            retval = self.condition_common('enable2', 1000)
             if retval:
                 # order matters: set Run PV after others transition
                 if self.pv_put(self.pvRun, 1):
@@ -825,7 +836,7 @@ class CollectionManager():
             self.pv_put(self.pvMsgInsert, 0) and
             self.pv_put(self.pvMsgInsert, 1) and
             self.pv_put(self.pvMsgInsert, 0)):
-            retval = self.condition_common('disable', 1000)
+            retval = self.condition_common('disable2', 1000)
             if retval:
                 self.lastTransition = 'disable'
         else:

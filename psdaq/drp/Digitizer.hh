@@ -11,8 +11,8 @@ class Digitizer : public Detector
 {
 public:
     Digitizer(Parameters* para);
-    virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data);
-    virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data);
+    unsigned configure(XtcData::Dgram& dgram) override;
+    void event(XtcData::Dgram& dgram, PGPData* pgp_data) override;
 private:
     enum {ConfigNamesIndex, EventNamesIndex};
     unsigned          m_evtcount;

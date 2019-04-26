@@ -75,16 +75,9 @@ void AreaDetector::connect()
     close(fd);
 }
 
-void AreaDetector::configure(Dgram& dgram, PGPData* pgp_data)
+unsigned AreaDetector::configure(Dgram& dgram)
 {
     printf("AreaDetector configure\n");
-
-    // copy Event header into beginning of Datagram
-    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    printf("index %d\n", index);
-    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
-    dgram.seq = timing_header->seq;
-    dgram.env = timing_header->env;
 
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;
@@ -100,21 +93,20 @@ void AreaDetector::configure(Dgram& dgram, PGPData* pgp_data)
                                             "detnum1234", rawNamesId, segment);
     rawNames.add(dgram.xtc, myRawDef);
     m_namesLookup[rawNamesId] = NameIndex(rawNames);
+    return 0;
 }
 
 void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
 {
     m_evtcount+=1;
-    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
-    dgram.seq = timing_header->seq;
-    dgram.env = timing_header->env;
 
     // fex data
     NamesId fexNamesId(m_nodeId,FexNamesIndex);
     CreateData fex(dgram.xtc, m_namesLookup, fexNamesId);
     unsigned shape[MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
+    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
+    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
     uint32_t* rawdata = (uint32_t*)(timing_header+1);
 
     /*

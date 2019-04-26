@@ -9,6 +9,8 @@
 #include "psdaq/eb/EbCtrbInBase.hh"
 #include "psdaq/eb/StatsMonitor.hh"
 
+class Detector;
+
 #pragma pack(push, 4)
 class MyDgram : public XtcData::Dgram {
 public:
@@ -74,9 +76,8 @@ class DrpApp : public CollectionApp
 public:
     DrpApp(Parameters* para);
     void handleConnect(const json& msg) override;
-    void handleConfigure(const json& msg) override;
-    void handleEnable(const json& msg) override;
-    void handleDisable(const json& msg) override;
+    void handlePhase1(const json& msg) override;
+    void handlePhase2(const json& msg) override;
     void handleReset(const json& msg) override;
 private:
     void parseConnectionParams(const json& msg);
@@ -94,4 +95,5 @@ private:
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
     Pds::Eb::StatsMonitor m_smon;
+    Detector* m_det;
 };

@@ -55,31 +55,26 @@ void worker(Parameters& para, Detector* det, PebbleQueue& worker_input_queue,
         // printf("data %u %u \n", rawdata[0], rawdata[1]);
 
         Dgram& dgram = *(Dgram*)pebble->fex_data();
-        TypeId tid(TypeId::Parent, 0);
-        dgram.xtc.contains = tid;
-        dgram.xtc.damage = 0;
-        dgram.xtc.extent = sizeof(Xtc);
-        dgram.xtc.src = XtcData::Src(para.tPrms.id);
 
         // Event
         if (transition_id == XtcData::TransitionId::L1Accept) {
+            TypeId tid(TypeId::Parent, 0);
+            dgram.xtc.contains = tid;
+            dgram.xtc.damage = 0;
+            dgram.xtc.extent = sizeof(Xtc);
             det->event(dgram, pebble->pgp_data);
         }
-        // Configure
-        else if (transition_id == XtcData::TransitionId::Configure) {
-            det->configure(dgram, pebble->pgp_data);
-        }
-
-        // FIXME
-        // make fex Dgram for all other transititons
-        // copy Event header into beginning of Datagram
         else {
             std::cout<<"transition_id  "<<transition_id<<"  in worker make dgram\n";
-            int index = __builtin_ffs(pebble->pgp_data->buffer_mask) - 1;
-            Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
-            dgram.seq = timing_header->seq;
-            dgram.env = timing_header->env;
+            // copy the dgram created on phase1 to the pebble
+            Dgram& transitionDgram = det->transitionDgram();
+            memcpy(&dgram,&transitionDgram,sizeof(Dgram)+transitionDgram.xtc.sizeofPayload());
         }
+
+        dgram.xtc.src = XtcData::Src(para.tPrms.id);
+        Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pebble->pgp_data->buffers[index].data);
+        dgram.seq = timing_header->seq;
+        dgram.env = timing_header->env;
 
         worker_output_queue.push(pebble);
     }

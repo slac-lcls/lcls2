@@ -105,15 +105,10 @@ unsigned addJson(Xtc& xtc, NamesId& configNamesId) {
     return lane_mask;
 }
 
-void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
-{
-    // copy Event header into beginning of Datagram
-    // cpo: feels like this should not be in the detector-specific code.
-    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
-    dgram.seq = timing_header->seq;
-    dgram.env = timing_header->env;
+// TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
 
+unsigned Digitizer::configure(Dgram& dgram)
+{
     unsigned lane_mask;
     // set up the names for the configuration data
     NamesId configNamesId(m_nodeId,ConfigNamesIndex);
@@ -126,18 +121,12 @@ void Digitizer::configure(Dgram& dgram, PGPData* pgp_data)
     HsdDef myHsdDef(lane_mask);
     eventNames.add(dgram.xtc, myHsdDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
+    return 0;
 }
 
 void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
 {
-    // copy Event header into beginning of Datagram
-    // cpo: feels like this should not be in the detector-specific code.
     m_evtcount+=1;
-    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
-    dgram.seq = timing_header->seq;
-    dgram.env = timing_header->env;
-
     CreateData hsd(dgram.xtc, m_namesLookup, m_evtNamesId);
 
     // HSD data includes two uint32_t "event header" words
@@ -147,6 +136,8 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     Array<uint32_t> arrayH = hsd.allocate<uint32_t>(0, shape);
     // FIXME: check that Matt is sending this extra HSD info in the
     // timing header
+    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
+    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
     arrayH(0) = timing_header->_opaque[0];
     arrayH(1) = timing_header->_opaque[1];
     for (int l=0; l<8; l++) { // TODO: print npeaks using psalg/Hsd.hh

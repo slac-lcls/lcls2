@@ -16,14 +16,15 @@ class Detector
 public:
     Detector(Parameters* para) : m_para(para) {m_nodeId = m_para->tPrms.id;}
     virtual void connect() {};
-    virtual void configure(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
+    virtual unsigned configure(XtcData::Dgram& dgram) = 0;
     virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
+    XtcData::Dgram& transitionDgram() {return *(XtcData::Dgram*)m_dgrambuf;}
 protected:
     Parameters* m_para;
     unsigned m_nodeId;
     std::vector<XtcData::NamesId> m_namesId;
     XtcData::NamesLookup m_namesLookup;
-
+    uint8_t m_dgrambuf[XtcData::Dgram::MaxSize];
 };
 
 template <typename T>
