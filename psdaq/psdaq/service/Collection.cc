@@ -174,12 +174,17 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_handleMap["plat"] = std::bind(&CollectionApp::handlePlat, this, std::placeholders::_1);
     m_handleMap["alloc"] = std::bind(&CollectionApp::handleAlloc, this, std::placeholders::_1);
     m_handleMap["connect"] = std::bind(&CollectionApp::handleConnect, this, std::placeholders::_1);
+    m_handleMap["disconnect"] = std::bind(&CollectionApp::handleDisconnect, this, std::placeholders::_1);
     m_handleMap["reset"] = std::bind(&CollectionApp::handleReset, this, std::placeholders::_1);
     m_handleMap["configure1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
     m_handleMap["configure2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
+    m_handleMap["unconfigure1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
     m_handleMap["unconfigure2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
+    m_handleMap["enable1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
     m_handleMap["enable2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
+    m_handleMap["disable1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
     m_handleMap["disable2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
+    m_handleMap["configUpdate1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
     m_handleMap["configUpdate2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
 }
 

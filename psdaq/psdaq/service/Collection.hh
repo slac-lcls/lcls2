@@ -58,6 +58,7 @@ protected:
     void handlePlat(const json& msg);
     void handleAlloc(const json& msg);
     virtual void handleConnect(const json& msg) = 0;
+    virtual void handleDisconnect(const json& msg) {};
     virtual void handlePhase1(const json& msg) {};
     virtual void handlePhase2(const json& msg) {};
     virtual void handleReset(const json& msg) = 0;
