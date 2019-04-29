@@ -537,6 +537,20 @@ class CollectionManager():
         logging.debug('status: state=%s transition=%s' % (self.state, self.lastTransition))
         self.front_pub.send_json(self.status_msg())
 
+    # check_answers - report and count errors in answers list
+    def check_answers(self, answers):
+        error_count = 0
+        for answer in answers:
+            try:
+                err_msg = answer['body']['error']
+                err_sender = answer['header']['sender_id']
+                err_alias = self.get_aliases([err_sender]).pop()
+                self.report_error('%s: %s' % (err_alias, err_msg))
+                error_count = error_count + 1
+            except KeyError:
+                pass
+        return error_count
+
     def condition_alloc(self):
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
@@ -598,23 +612,36 @@ class CollectionManager():
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids)
+        connect_ok = (self.check_answers(answers) == 0)
         ret = len(retlist)
         if ret:
             for alias in self.get_aliases(retlist):
                 self.report_error('%s did not respond to connect' % alias)
             self.report_error('%d client did not respond to connect' % ret)
-            logging.debug('condition_connect() returning False')
-            return False
-        else:
+            connect_ok = False
+        if connect_ok:
             self.lastTransition = 'connect'
-            logging.debug('condition_connect() returning True')
-            return True
+        logging.debug('condition_connect() returning %s' % connect_ok)
+        return connect_ok
 
     def condition_disconnect(self):
-        # TODO
-        self.lastTransition = 'disconnect'
-        logging.debug('condition_disconnect() returning True')
-        return True
+        # select procs with active flag set
+        ids = self.filter_active_set(self.ids)
+        msg = create_msg('disconnect', body=self.filter_active_dict(self.cmstate))
+        self.back_pub.send_multipart([b'partition', json.dumps(msg)])
+
+        retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids)
+        disconnect_ok = (self.check_answers(answers) == 0)
+        ret = len(retlist)
+        if ret:
+            for alias in self.get_aliases(retlist):
+                self.report_error('%s did not respond to disconnect' % alias)
+            self.report_error('%d client did not respond to disconnect' % ret)
+            disconnect_ok = False
+        if disconnect_ok:
+            self.lastTransition = 'disconnect'
+        logging.debug('condition_disconnect() returning %s' % disconnect_ok)
+        return disconnect_ok
 
     def handle_getstate(self, body):
         logging.debug('handle_getstate()')
