@@ -131,7 +131,7 @@ void DrpApp::handlePhase1(const json &msg)
     json answer;
     json body = json({});
     if (error) {
-        body["error"] = "phase 2 error";
+        body["error"] = "phase 1 error";
         std::cout<<"transition phase1 error\n";
     }
     else {
