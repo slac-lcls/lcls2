@@ -222,7 +222,7 @@ void EbCtrbInBase::_process(TebContributor& ctrb,
   const Dgram* result = results;
   while (true)
   {
-    if (result->readoutGroups() & _prms.groups)
+    if (result->readoutGroups() & _prms.readoutGroup)
     {
       uint64_t pid = result->seq.pulseId().value();
       process(result, inputs->retrieve(pid));

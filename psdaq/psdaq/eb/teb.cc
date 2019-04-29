@@ -542,6 +542,7 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.addrs.clear();
   _prms.ports.clear();
 
+  uint16_t groups = 0;
   if (body.find("drp") != body.end())
   {
     for (auto it : body["drp"].items())
@@ -556,6 +557,8 @@ int TebApp::_parseConnectionParams(const json& body)
       _prms.contributors |= 1ul << drpId;
       _prms.addrs.push_back(address);
       _prms.ports.push_back(std::string(std::to_string(drpPortBase + drpId)));
+
+      groups |= 1 << unsigned(it.value()["readout"]);
     }
   }
   if (_prms.addrs.size() == 0)
@@ -564,13 +567,9 @@ int TebApp::_parseConnectionParams(const json& body)
     return 1;
   }
 
-  _prms.groups = 1 << _prms.partition;  // Revisit: Value to come from CfgDb
-  unsigned groups = _prms.groups;
-  if (groups == 0)
-  {
-    fprintf(stderr, "No readout groups are enabled\n");
-    return 1;
-  }
+  _prms.contractors.fill(0);
+  _prms.receivers.fill(0);
+
   while (groups)
   {
     unsigned group = __builtin_ffs(groups) - 1;
@@ -617,7 +616,6 @@ int TebApp::_parseConnectionParams(const json& body)
   printf("\nParameters of TEB ID %d:\n",                     _prms.id);
   printf("  Thread core numbers:        %d, %d\n",           _prms.core[0], _prms.core[1]);
   printf("  Partition:                  %d\n",               _prms.partition);
-  printf("  Enabled readout groups:   0x%02x\n",             _prms.groups);
   printf("  Bit list of contributors: 0x%016lx, cnt: %zd\n", _prms.contributors,
                                                              std::bitset<64>(_prms.contributors).count());
   printf("  Number of MEB requestors:   %d\n",               _prms.numMrqs);
@@ -695,8 +693,7 @@ int main(int argc, char **argv)
                         /* .core          = */ { core_0, core_1 },
                         /* .verbose       = */ 0,
                         /* .contractors   = */ 0,
-                        /* .receivers     = */ 0,
-                        /* .groups        = */ 0 };
+                        /* .receivers     = */ 0 };
 
   while ((op = getopt(argc, argv, "C:p:A:Z:R:1:2:u:h?vV")) != -1)
   {

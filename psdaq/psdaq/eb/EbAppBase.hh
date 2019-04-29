@@ -43,7 +43,6 @@ namespace Pds {
       virtual uint64_t contracts(const XtcData::Dgram* contrib,
                                  uint64_t& receivers) const;
     private:                           // Arranged in order of access frequency
-      unsigned                 _groups;
       std::array<uint64_t, 16> _contracts;
       std::array<uint64_t, 16> _receivers;
       Pds::Eb::EbLfServer      _transport;

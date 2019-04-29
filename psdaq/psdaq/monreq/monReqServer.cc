@@ -487,6 +487,8 @@ int MebApp::_parseConnectionParams(const json& body)
   _prms.ebPort = std::to_string(mebPortBase + _prms.id);
 
   _prms.contributors = 0;
+
+  uint16_t groups = 0;
   if (body.find("drp") != body.end())
   {
     for (auto it : body["drp"].items())
@@ -498,16 +500,14 @@ int MebApp::_parseConnectionParams(const json& body)
         return 1;
       }
       _prms.contributors |= 1ul << drpId;
+
+      groups |= 1 << unsigned(it.value()["readout"]);
     }
   }
 
-  _prms.groups = 1 << _prms.partition;  // Revisit: Value to come from CfgDb
-  unsigned groups = _prms.groups;
-  if (groups == 0)
-  {
-    fprintf(stderr, "No readout groups are enabled\n");
-    return 1;
-  }
+  _prms.contractors.fill(0);
+  _prms.receivers.fill(0);
+
   while (groups)
   {
     unsigned group = __builtin_ffs(groups) - 1;
@@ -553,7 +553,6 @@ int MebApp::_parseConnectionParams(const json& body)
   printf("\nParameters of MEB ID %d:\n",                     _prms.id);
   printf("  Thread core numbers:        %d, %d\n",           _prms.core[0], _prms.core[1]);
   printf("  Partition:                  %d\n",               _prms.partition);
-  printf("  Participates in groups:   0x%02x\n",             _prms.groups);
   printf("  Bit list of contributors: 0x%016lx, cnt: %zd\n", _prms.contributors,
                                                              std::bitset<64>(_prms.contributors).count());
   printf("  Buffer duration:          0x%014lx\n",           BATCH_DURATION);
@@ -619,8 +618,7 @@ int main(int argc, char** argv)
                         /* .core          = */ { core_0, core_1 },
                         /* .verbose       = */ 0,
                         /* .contractors   = */ 0,
-                        /* .receivers     = */ 0,
-                        /* .groups        = */ 0 };
+                        /* .receivers     = */ 0 };
   unsigned       sizeofEvBuffers = sizeof_buffers;
   unsigned       numberOfBuffers = numberof_xferBuffers;
   unsigned       nevqueues       = 1;

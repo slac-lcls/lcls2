@@ -31,7 +31,7 @@ DrpApp::DrpApp(Parameters* para) :
                       /* .maxInputSize  = */ maxSize,
                       /* .core          = */ { 11, 12 },
                       /* .verbose       = */ 0,
-                      /* .groups        = */ 0,
+                      /* .readoutGroup  = */ 0,
                       /* .contractor    = */ 0 };
 
     m_para->mPrms = { /* .addrs         = */ { },
@@ -165,8 +165,8 @@ void DrpApp::parseConnectionParams(const json& body)
     }
     m_para->tPrms.builders = builders;
 
-    m_para->tPrms.groups = 1 << m_para->partition; // Revisit: Value to come from CfgDb
-    m_para->tPrms.contractor = 1 << m_para->partition;  // Revisit: Value to come from CfgDb
+    m_para->tPrms.readoutGroup = 1 << unsigned(body["drp"][id]["readout"]);
+    m_para->tPrms.contractor = m_para->tPrms.readoutGroup; // Revisit: Value to come from CfgDb
 
     if (body.find("meb") != body.end()) {
         for (auto it : body["meb"].items()) {

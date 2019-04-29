@@ -26,7 +26,9 @@ namespace Pds {
     const unsigned MAX_LATENCY    = 1024 * 1024;               // In beam pulse ticks (1 uS)
     const unsigned MAX_BATCHES    = MAX_LATENCY / MAX_ENTRIES; // Max # of batches in circulation
 
-    enum { WRT_IDX, MON_IDX };     // Indexes of trigger decision results
+    const unsigned NUM_READOUT_GROUPS = 16;     // Number of readout groups supported
+
+    enum { WRT_IDX, MON_IDX };                  // Indexes of trigger decision results
 
     struct TebCtrbParams
     {
@@ -44,8 +46,8 @@ namespace Pds {
       size_t   maxInputSize;       // Max size of contribution
       int      core[2];            // Cores to pin threads to
       unsigned verbose;            // Level of detail to print
-      uint16_t groups;             // Readout groups enabled for this partition
-      uint16_t contractor;         // Readout groups for which this Ctrb supplies trigger input data
+      uint16_t readoutGroup;       // RO group receiving trigger result data
+      uint16_t contractor;         // RO group supplying trigger input  data
     };
 
     struct MebCtrbParams
@@ -63,11 +65,9 @@ namespace Pds {
 
     struct EbParams                // Used with both TEBs and MEBs
     {
-      enum { RDOUT_GRPS = 16 };    // Must match L1Dgram::readoutGroups()
-
       using string_t = std::string;
       using vecstr_t = std::vector<std::string>;
-      using u64arr_t = std::array<uint64_t, RDOUT_GRPS>;
+      using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
 
       string_t ifAddr;             // Network interface to use
       string_t ebPort;             // EB port to serve
@@ -85,7 +85,6 @@ namespace Pds {
       unsigned verbose;            // Level of detail to print
       u64arr_t contractors;        // Ctrbs providing Inputs  per readout group
       u64arr_t receivers;          // Ctrbs expecting Results per readout group
-      uint16_t groups;             // Readout groups enabled for this partition
     };
   };
 };

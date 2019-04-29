@@ -73,12 +73,11 @@ namespace Pds {
     {
     public:
       Input() : Dgram() {}
-      Input(unsigned partition, const Sequence& seq_, const Xtc& xtc_) :
+      Input(const uint16_t readoutGroup, const Sequence& seq_, const Xtc& xtc_) :
         Dgram()
       {
         seq = seq_;
-        env = 1 << partition;           // Put all events in the same group
-        //env = seq.isEvent() ? 1 : 2;    // Test multiple groups
+        env = readoutGroup;
         xtc = xtc_;
       }
     public:
@@ -90,12 +89,9 @@ namespace Pds {
     class DrpSim
     {
     public:
-      DrpSim(unsigned maxBatches,
-             unsigned maxEntries,
-             size_t   maxEvtSize,
-             unsigned partition);
+      DrpSim(size_t maxEvtSize);
     public:
-      void            startup(unsigned id, void** base, size_t* size);
+      void            startup(unsigned id, void** base, size_t* size, uint16_t readoutGroup);
       void            shutdown();
       void            stop();
     public:
@@ -104,13 +100,11 @@ namespace Pds {
     public:
       const uint64_t& allocPending() const { return _allocPending; }
     private:
-      const unsigned _maxBatches;
-      const unsigned _maxEntries;
-      const size_t   _maxEvtSz;
-      const unsigned _partition;
-      const Xtc      _xtc;
-      uint64_t       _pid;
-      GenericPoolW*  _pool;
+      const size_t            _maxEvtSz;
+      uint16_t                _readoutGroup;
+      const Xtc               _xtc;
+      uint64_t                _pid;
+      GenericPoolW*           _pool;
     private:
       enum { TrUnknown,
              TrReset,
@@ -122,8 +116,8 @@ namespace Pds {
       std::condition_variable _cv;
       bool                    _released;
     private:
-      uint64_t       _allocPending;
-      uint64_t       _startCnt;
+      uint64_t                _allocPending;
+      uint64_t                _startCnt;
     };
 
     class EbCtrbIn : public EbCtrbInBase
@@ -165,14 +159,9 @@ namespace Pds {
 
 using namespace Pds::Eb;
 
-DrpSim::DrpSim(unsigned maxBatches,
-               unsigned maxEntries,
-               size_t   maxEvtSize,
-               unsigned partition) :
-  _maxBatches  (maxBatches),
-  _maxEntries  (maxEntries),
+DrpSim::DrpSim(size_t maxEvtSize) :
   _maxEvtSz    (maxEvtSize),
-  _partition   (partition),
+  _readoutGroup(-1),
   _xtc         (),
   _pid         (0),
   _pool        (nullptr),
@@ -184,15 +173,16 @@ DrpSim::DrpSim(unsigned maxBatches,
 {
 }
 
-void DrpSim::startup(unsigned id, void** base, size_t* size)
+void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGroup)
 {
   _pid          = 0x01000000000003ul; // Something non-zero and not on a batch boundary
   _trId         = TrUnknown;
   _allocPending = 0;
+  _readoutGroup = readoutGroup;
 
   const_cast<Xtc&>(_xtc) = Xtc(TypeId(TypeId::Data, 0), Src(id));
 
-  _pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, _maxBatches * _maxEntries, CLS);
+  _pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, MAX_BATCHES * MAX_ENTRIES, CLS);
   assert(_pool);
 
   *base = _pool->buffer();
@@ -252,7 +242,7 @@ const Dgram* DrpSim::generate()
   void* buffer = _pool->alloc(sizeof(Input));
   --_allocPending;
   if (!buffer)  return (Dgram*)buffer;
-  Input* idg = ::new(buffer) Input(_partition, seq, _xtc);
+  Input* idg = ::new(buffer) Input(_readoutGroup, seq, _xtc);
 
   size_t inputSize = input_extent * sizeof(uint32_t);
 
@@ -265,7 +255,7 @@ const Dgram* DrpSim::generate()
 #ifdef SINGLE_EVENTS
   payload[1] = 0x12345678;
 
-  _pid += _maxEntries;
+  _pid += MAX_ENTRIES;
 #else
   _pid += 1;
 #endif
@@ -356,7 +346,7 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
                      StatsMonitor&        smon) :
   TebContributor(prms, smon),
-  _drpSim       (MAX_BATCHES, MAX_ENTRIES, prms.maxInputSize, prms.partition),
+  _drpSim       (prms.maxInputSize),
   _prms         (prms)
 {
   smon.metric("TCtbO_AlPdg", _drpSim.allocPending(), StatsMonitor::SCALAR);
@@ -463,7 +453,7 @@ int CtrbApp::_handleConnect(const json &msg)
 
   void*  base;
   size_t size;
-  _tebCtrb.drpSim().startup(_tebPrms.id, &base, &size);
+  _tebCtrb.drpSim().startup(_tebPrms.id, &base, &size, _tebPrms.readoutGroup);
 
   MebContributor* mebCtrb = nullptr;
   if (_mebPrms.addrs.size() != 0)
@@ -569,17 +559,16 @@ int CtrbApp::_parseConnectionParams(const json& body)
     return 1;
   }
 
-  _tebPrms.groups     = 1 << _tebPrms.partition; // Revisit: Value to come from CfgDb
-  _tebPrms.contractor = 1 << _tebPrms.partition; // Revisit: Value to come from CfgDb
-
-  //if (_tebPrms.id == 1)  _tebPrms.contractor = 2; // Let DRP 1 be a receiver only for group 0
-
-  unsigned groups = _tebPrms.groups;
-  if (groups == 0)
+  unsigned group = body["drp"][id]["readout"];
+  if (group > NUM_READOUT_GROUPS - 1)
   {
-    fprintf(stderr, "No readout groups are enabled\n");
+    fprintf(stderr, "Readout group %d is out of range 0 - %d\n", group, NUM_READOUT_GROUPS - 1);
     return 1;
   }
+  _tebPrms.readoutGroup = 1 << group;
+  _tebPrms.contractor   = _tebPrms.readoutGroup; // Revisit: Value to come from CfgDb
+
+  //if (_tebPrms.id == 1)  _tebPrms.contractor = 2; // Let DRP 1 be a receiver only for group 0
 
   _mebPrms.addrs.clear();
   _mebPrms.ports.clear();
@@ -603,8 +592,8 @@ int CtrbApp::_parseConnectionParams(const json& body)
   printf("\nParameters of Contributor ID %d:\n",             _tebPrms.id);
   printf("  Thread core numbers:        %d, %d\n",           _tebPrms.core[0], _tebPrms.core[1]);
   printf("  Partition:                  %d\n",               _tebPrms.partition);
-  printf("  Receipient for groups:    0x%02x\n",             _tebPrms.groups);
-  printf("  Contractor for groups:    0x%02x\n",             _tebPrms.contractor);
+  printf("  Receipient for group:     0x%02x\n",             _tebPrms.readoutGroup);
+  printf("  Contractor for group:     0x%02x\n",             _tebPrms.contractor);
   printf("  Bit list of TEBs:         0x%016lx, cnt: %zd\n", _tebPrms.builders,
                                                              std::bitset<64>(_tebPrms.builders).count());
   printf("  Number of MEBs:             %zd\n",              _mebPrms.addrs.size());

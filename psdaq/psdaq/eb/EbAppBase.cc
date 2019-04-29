@@ -40,7 +40,6 @@ EbAppBase::EbAppBase(const EbParams& prms,
                 8 * sizeof(prms.contributors), //Revisit: std::bitset<64>(prms.contributors).count(),
                 duration,
                 prms.verbose),
-  _groups      (0),
   _transport   (prms.verbose),
   _links       (),
   _trSize      (roundUpSize(TransitionId::NumberOf * prms.maxTrSize)),
@@ -64,7 +63,6 @@ int EbAppBase::connect(const EbParams& prms)
   _maxBufSize.resize(nCtrbs);
   _id           = prms.id;
   _contributors = prms.contributors;
-  _groups       = prms.groups;
   _contracts    = prms.contractors;
   _receivers    = prms.receivers;
 
@@ -152,7 +150,6 @@ void EbAppBase::shutdown()
   _maxBufSize.clear();
   _contributors = 0;
   _id           = -1;
-  _groups       = 0;
   _contracts.fill(0);
   _receivers.fill(0);
 }
@@ -221,8 +218,6 @@ uint64_t EbAppBase::contracts(const Dgram* ctrb,
 
   uint64_t suppliers;
   unsigned groups = ctrb->readoutGroups();
-  groups &= _groups;       // Consider only groups enabled for our partition
-  assert(groups);          // Configuration error if no enabled groups remain
 
   suppliers = 0;
   receivers = 0;
