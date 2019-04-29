@@ -113,28 +113,30 @@ void StatsMonitor::update(void*        socket,
     switch (_modes[i])
     {
       case SCALAR:
+      {
         //size += snprintf(&buffer[size], bufSize - size, R"(, "%s": [%ld])", _names[i].c_str(), scalar);
 
         value = scalar;
 
         break;
+      }
       case RATE:
-        if (scalar >= _previous[i])
-        {
-          auto   dC   = scalar - _previous[i];
-          auto   dT   = std::chrono::duration_cast<us_t>(now - _then).count();
-          double rate = double(dC) / double(dT) * 1.0e6; // Hz
+      {
+        auto   dC   = (scalar >= _previous[i]) ? scalar - _previous[i] : 0;
+        auto   dT   = std::chrono::duration_cast<us_t>(now - _then).count();
+        double rate = double(dC) / double(dT) * 1.0e6; // Hz
 
-          //printf("%s: N %016lx, dN %7ld, rate %7.02f KHz\n", _names[i].c_str(), scalar, dC, rate);
+        //printf("%s: N %016lx, dN %7ld, rate %7.02f KHz\n", _names[i].c_str(), scalar, dC, rate);
 
-          //size += snprintf(&buffer[size], bufSize - size, R"(, "%s": [%.1f])", _names[i].c_str(), rate);
+        //size += snprintf(&buffer[size], bufSize - size, R"(, "%s": [%.1f])", _names[i].c_str(), rate);
 
-          value = rate;
-        }
+        value = rate;
 
         _previous[i] = scalar;
         break;
+      }
       case CHANGE:
+      {
         auto dC = scalar - _previous[i];
 
         //size += snprintf(&buffer[size], bufSize - size, R"(, "%s": [%ld])", _names[i].c_str(), dC);
@@ -143,6 +145,7 @@ void StatsMonitor::update(void*        socket,
 
         _previous[i] = scalar;
         break;
+      }
     }
 
     int size = snprintf(buffer, bufSize, "%s,host=%s,partition=%d %f",
