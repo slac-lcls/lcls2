@@ -50,8 +50,8 @@ import re
 #                             the new clists appended to an existing list.  In
 #                             general, once a name is typed, setting a new value
 #                             will not change the type unless the override flag
-#                             is True.  This returns True if the set was
-#                             successful and false otherwise.  The contents of
+#                             is True.  There is no return value.  set raises
+#                             exceptions in cas of problems.  The contents of
 #                             a clist are copied, but any ndarrays are not.  
 #                             (Therefore, modifying a clist after assigning it
 #                             to a name does not change the assigned value, but
@@ -538,20 +538,20 @@ class cdict(object):
 
     def set(self, name, value, type="INT32", override=False, append=False):
         if len(name) == 0:
-            return False
+            raise ValueError("set: received name with length 0")
         n = splitname(name)
         if n is None:
-            return False
+            raise ValueError("set: error splitting name %s" % name)
         d = self.dict
         # Check the type of value!
         if isinstance(value, numbers.Number):
             if not type in typedict.keys() and not type in self.enumdef.keys():
-                return False
+                raise TypeError('set: Invalid type: %s' % (type))
             value = (type, value)
             issimple = True
         elif isinstance(value, str):
             if type != "CHARSTR":
-                return False
+                raise TypeError('set: Invalid type: %s' % (type))
             issimple = True
         elif isinstance(value, np.ndarray):
             issimple = True
@@ -568,10 +568,10 @@ class cdict(object):
                 # Must be a list of cdicts!
                 for v in value:
                     if not isinstance(v, cdict):
-                        return False
+                        raise TypeError("set: expected type cdict")
                 issimple = False
         else:
-            return False
+            raise TypeError("set: unknown type %s" % type(value))
         for i in range(len(n)):
             if isinstance(n[i], int):
                 if d is None:
@@ -582,7 +582,7 @@ class cdict(object):
                         p[n[i-1]] = []
                         d = p[n[i-1]]
                     else:
-                        return False
+                        raise ValueError("set: override set to false")
                 while len(d) < n[i]+1:
                     d.append({})
                 p = d
@@ -596,7 +596,7 @@ class cdict(object):
                         p[n[i-1]] = {}
                         d = p[n[i-1]]
                     else:
-                        return False
+                        raise ValueError("set: override set to false")
                 try:
                     p = d
                     d = d[n[i]]
@@ -617,9 +617,9 @@ class cdict(object):
             if isinstance(value, np.ndarray):
                 if not override and d is not None:
                     if not isinstance(d, np.ndarray):
-                        return False
+                        raise ValueError("set: trying to change type (from array to %s)" % type(d))
                     if value.dtype != d.dtype or value.shape != d.shape:
-                        return False
+                        raise ValueError("set: trying to change array dtype/shape")
                 if type in self.enumdef.keys():
                     value = (type, value)
             elif isinstance(value, str):
@@ -631,13 +631,13 @@ class cdict(object):
                     else:
                         value = (d[0], value[1])
             p[n[-1]] = value
-            return True
+            return
         else:
             # A cdict or a list of cdicts
             if isinstance(value, cdict):
                 if not override and d is not None and not (isinstance(d, dict) or 
                                                            (isinstance(d, list) and append)):
-                    return False
+                    raise ValueError("set: expected dict or list type")
                 vnew = {}
                 vnew.update(value.dict)
                 if isinstance(d, list):
@@ -646,14 +646,14 @@ class cdict(object):
                     p[n[-1]] = vnew
             else:
                 if not override and d is not None and not isinstance(d, list):
-                    return False
+                    raise ValueError("set: expected list type")
                 if not append:
                     p[n[-1]] = []
                 for v in value:
                     vnew = {}
                     vnew.update(v)
                     p[n[-1]].append(vnew)
-            return True
+            return
 
     def setAlg(self, alg, version=[0,0,0], doc=""):
         if not isinstance(version, list) or len(version) != 3:
