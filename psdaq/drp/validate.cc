@@ -44,7 +44,7 @@ void monitorFunc(const uint64_t& nevents, const uint64_t& bytes)
 
 int main()
 {
-    int nlanes = 4;
+    int nlanes = 1;
     int32_t dmaRet[MAX_RET_CNT_C];
     uint32_t dmaIndex[MAX_RET_CNT_C];
     uint32_t dest[MAX_RET_CNT_C];
@@ -53,9 +53,9 @@ int main()
 
     std::vector<PGPEvent> pgpEvents(2*131072);
 
-    int fd = open("/dev/datadev_1", O_RDWR);
+    int fd = open("/dev/datadev_0", O_RDWR);
     if (fd < 0) {
-        std::cout<<"Error opening /dev/datadev_1"<<'\n';
+        std::cout<<"Error opening /dev/datadev_0"<<'\n';
         return -1;
     }
 
