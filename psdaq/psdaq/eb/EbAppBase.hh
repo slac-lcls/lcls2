@@ -5,7 +5,7 @@
 #include "EventBuilder.hh"
 #include "EbLfServer.hh"
 
-#include <stdint.h>
+#include <cstdint>
 #include <cstddef>
 #include <string>
 #include <array>
@@ -30,6 +30,7 @@ namespace Pds {
                 const uint64_t  duration,
                 const unsigned  maxEntries,
                 const unsigned  maxBuffers);
+      virtual ~EbAppBase() {}
     public:
       const uint64_t&  rxPending() const { return _transport.pending(); }
       int              checkEQ()  { return _transport.pollEQ(); }

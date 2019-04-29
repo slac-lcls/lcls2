@@ -31,7 +31,7 @@ namespace Pds {
               EbEvent*              after,
               const XtcData::Dgram* ctrb,
               unsigned              prm);
-      virtual ~EbEvent();
+      ~EbEvent();
     public:
       unsigned parameter() const;
       uint64_t sequence()  const;
