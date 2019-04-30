@@ -24,15 +24,15 @@ struct PGPData
 
 struct Parameters
 {
-    int partition;
+    unsigned partition;
     std::string collect_host;
     std::string output_dir;
     std::string detectorType;
     std::string device;
     std::string alias;
-    int numWorkers;
-    int numEntries;
-    int laneMask;
+    unsigned numWorkers;
+    unsigned numEntries;
+    unsigned laneMask;
     Pds::Eb::TebCtrbParams tPrms;
     Pds::Eb::MebCtrbParams mPrms;
 };

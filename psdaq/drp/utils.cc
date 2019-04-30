@@ -20,12 +20,12 @@ MemPool::MemPool(const Parameters& para) :
     num_entries(para.numEntries),
     pebble(para.numEntries)
 {
-    for (int i = 0; i < para.numWorkers; i++) {
+    for (unsigned i = 0; i < para.numWorkers; i++) {
         worker_input_queues.emplace_back(PebbleQueue(para.numEntries));
         worker_output_queues.emplace_back(PebbleQueue(para.numEntries));
     }
 
-    for (int i = 0; i < para.numEntries; i++) {
+    for (unsigned i = 0; i < para.numEntries; i++) {
         pgp_data[i].counter = 0;
         pgp_data[i].buffer_mask = 0;
         pebble_queue.push(&pebble[i]);
@@ -39,10 +39,11 @@ MemPool::MemPool(const Parameters& para) :
     dmaBuffers = dmaMapDma(fd, &dmaCount, &dmaSize);
     if (dmaBuffers == nullptr) {
         std::cout<<"Error calling dmaMapDma!!\n";
+        throw "Error calling dmaMapDma!!\n";
     }
     // make sure there are more buffers in the pebble than in the pgp driver
     // otherwise the pebble buffers will be overwritten by the pgp event builder
-    int nlanes = std::bitset<32>(para.laneMask).count();
+    unsigned nlanes = std::bitset<32>(para.laneMask).count();
     if ( para.numEntries < (dmaCount / nlanes)) {
         printf("Not enough buffers in the pebble. Make sure there are more\n");
         printf("buffers in the drp pebble than in the pgp driver\n");
