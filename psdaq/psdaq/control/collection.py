@@ -307,7 +307,7 @@ def wait_for_answers(socket, wait_time, msg_id):
     ----------
     socket: zmq socket
     wait_time: int, wait time in milliseconds
-    msg_id: int, expected msg_id of received messages
+    msg_id: int or None, expected msg_id of received messages
     """
     remaining = wait_time
     start = time.time()
@@ -319,6 +319,10 @@ def wait_for_answers(socket, wait_time, msg_id):
             continue
         else:
             logging.debug('recv_json(): %s' % msg)
+
+        # if msg_id is none take the msg_id of the first message as reference
+        if msg_id is None:
+            msg_id = msg['header']['msg_id']
 
         if msg['header']['msg_id'] == msg_id:
             yield msg
@@ -550,6 +554,20 @@ class CollectionManager():
             except KeyError:
                 pass
         return error_count
+
+
+    def get_phase2_replies(self):
+        # get respones from the drp timing systems
+        ids = self.filter_active_set(self.ids)
+        ids = self.filter_level('drp', ids)
+        # make sure all the clients respond to transition before timeout
+        missing, answers = confirm_response(self.back_pull, 2000, None, ids)
+        if missing:
+            logging.error('phase2 failed')
+            for alias in self.get_aliases(missing):
+                self.report_error('%s did not respond' %alias)
+            return False
+        return True
 
     def condition_alloc(self):
         # select procs with active flag set
@@ -796,7 +814,7 @@ class CollectionManager():
 
     def condition_configure(self):
         # phase 1
-        ok = self.condition_common('configure1', 15000)
+        ok = self.condition_common('configure', 15000)
         if not ok:
             logging.error('condition_configure(): configure phase1 failed')
             return False
@@ -812,9 +830,8 @@ class CollectionManager():
             logging.error('condition_configure(): pv_put() failed')
             return False
 
-        ok = self.condition_common('configure2', 2000)
+        ok = self.get_phase2_replies()
         if not ok:
-            logging.error('condition_configure(): configure phase1 failed')
             return False
 
         logging.debug('condition_configure() returning %s' % ok)
@@ -837,40 +854,43 @@ class CollectionManager():
         return retval
 
     def condition_enable(self):
-        if (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Enable']) and
-            self.pv_put(self.pvMsgInsert, 0) and
-            self.pv_put(self.pvMsgInsert, 1) and
-            self.pv_put(self.pvMsgInsert, 0)):
-            retval = self.condition_common('enable2', 1000)
-            if retval:
-                # order matters: set Run PV after others transition
-                if self.pv_put(self.pvRun, 1):
-                    # success
-                    self.lastTransition = 'enable'
-                else:
-                    logging.error('condition_enable(): pv_put() failed')
-                    retval = False
-        else:
+        if not (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Enable']) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and
+                self.pv_put(self.pvMsgInsert, 0)):
             logging.error('condition_enable(): pv_put() failed')
-            retval = False
-        logging.debug('condition_enable() returning %s' % retval)
-        return retval
+            return False
+
+        ok = self.get_phase2_replies()
+        if not ok:
+            return False
+
+        # order matters: set Run PV after others transition
+        if not self.pv_put(self.pvRun, 1):
+            logging.error('condition_enable(): pv_put() failed')
+            return False
+
+        self.lastTransition = 'enable'
+        return True
+
 
     def condition_disable(self):
         # order matters: clear Run PV before others transition
-        if (self.pv_put(self.pvRun, 0) and
-            self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Disable']) and
-            self.pv_put(self.pvMsgInsert, 0) and
-            self.pv_put(self.pvMsgInsert, 1) and
-            self.pv_put(self.pvMsgInsert, 0)):
-            retval = self.condition_common('disable2', 1000)
-            if retval:
-                self.lastTransition = 'disable'
-        else:
+        if not (self.pv_put(self.pvRun, 0) and
+                self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Disable']) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and
+                self.pv_put(self.pvMsgInsert, 0)):
             logging.error('condition_disable(): pv_put() failed')
-            retval = False
-        logging.debug('condition_disable() returning %s' % retval)
-        return retval
+            return False
+
+        ok = self.get_phase2_replies()
+        if not ok:
+            return False
+
+        self.lastTransition = 'disable'
+        return True
+
 
     def condition_reset(self):
         # is a reply to reset necessary?

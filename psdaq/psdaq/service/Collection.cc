@@ -99,12 +99,27 @@ void ZmqSocket::setsockopt(int option, const void* optval, size_t optvallen)
     }
 }
 
+std::string ZmqSocket::recv()
+{
+    ZmqMessage frame;
+    int rc = zmq_msg_recv(&frame.msg, socket, 0);
+    if (rc == -1) {
+        fprintf(stderr,"Collection.cc: zmq_msg_recv bad return value %d\n",rc);
+        fprintf(stderr,"This can happen when a process is sent a signal.  Exiting.\n");
+        return std::string();
+    }
+    return std::string((char*)frame.data(), frame.size());
+}
 
 json ZmqSocket::recvJson()
 {
     ZmqMessage frame;
     int rc = zmq_msg_recv(&frame.msg, socket, 0);
-    assert (rc != -1);
+    if (rc == -1) {
+        fprintf(stderr,"Collection.cc: zmq_msg_recv bad return value %d\n",rc);
+        fprintf(stderr,"This can happen when a process is sent a signal.  Exiting.\n");
+        return json({});
+    }
     char* begin = (char*)frame.data();
     char* end   = begin + frame.size();
     return json::parse(begin, end);
@@ -160,7 +175,8 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_level(level),
     m_alias(alias),
     m_pushSocket{&m_context, ZMQ_PUSH},
-    m_subSocket{&m_context, ZMQ_SUB}
+    m_subSocket{&m_context, ZMQ_SUB},
+    m_inprocRecv{&m_context, ZMQ_PAIR}
 {
     const int base_port = 29980;
 
@@ -169,6 +185,7 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_subSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)});
     m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "all", 3);
     std::cout<<std::string{"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)}<<std::endl;
+    m_inprocRecv.bind("inproc://drp");
 
     // register callbacks
     m_handleMap["plat"] = std::bind(&CollectionApp::handlePlat, this, std::placeholders::_1);
@@ -176,16 +193,11 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_handleMap["connect"] = std::bind(&CollectionApp::handleConnect, this, std::placeholders::_1);
     m_handleMap["disconnect"] = std::bind(&CollectionApp::handleDisconnect, this, std::placeholders::_1);
     m_handleMap["reset"] = std::bind(&CollectionApp::handleReset, this, std::placeholders::_1);
-    m_handleMap["configure1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
-    m_handleMap["configure2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
-    m_handleMap["unconfigure1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
-    m_handleMap["unconfigure2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
-    m_handleMap["enable1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
-    m_handleMap["enable2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
-    m_handleMap["disable1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
-    m_handleMap["disable2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
-    m_handleMap["configUpdate1"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
-    m_handleMap["configUpdate2"] = std::bind(&CollectionApp::handlePhase2, this, std::placeholders::_1);
+    m_handleMap["configure"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
+    m_handleMap["unconfigure"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
+    m_handleMap["enable"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
+    m_handleMap["disable"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
+    m_handleMap["configUpdate"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
 }
 
 void CollectionApp::handlePlat(const json &msg)
@@ -227,23 +239,41 @@ void CollectionApp::reply(const json& msg)
 void CollectionApp::run()
 {
     while (1) {
-        //json msg = m_subSocket.recvJson();
-        std::vector<ZmqMessage> frames = m_subSocket.recvMultipart();
-        if (frames.size() < 2)  break;  // Revisit: Terminate condition
-        char* begin = (char*)frames[1].data();
-        char* end = begin + frames[1].size();
-        json msg = json::parse(begin, end);
-        std::string topic((char*)frames[0].data(), frames[0].size());
-        std::cout<<"topic:  "<<topic<<'\n';
+        zmq_pollitem_t items[] = {
+            { m_subSocket.socket, 0, ZMQ_POLLIN, 0 },
+            { m_inprocRecv.socket, 0, ZMQ_POLLIN, 0 }
+        };
+        zmq_poll(items, 2, -1);
 
-        std::string key = msg["header"]["key"];
-        std::cout<<"received key = "<<key<<'\n';
-        std::cout << std::setw(4) << msg << "\n\n";
-        if (m_handleMap.find(key) == m_handleMap.end()) {
-            std::cout<<"unknown key  "<<key<<'\n';
+        // received zeromq message from the collection
+        if (items[0].revents & ZMQ_POLLIN) {
+            std::vector<ZmqMessage> frames = m_subSocket.recvMultipart();
+            if (frames.size() < 2)  break;  // Revisit: Terminate condition
+            char* begin = (char*)frames[1].data();
+            char* end = begin + frames[1].size();
+            json msg = json::parse(begin, end);
+            std::string topic((char*)frames[0].data(), frames[0].size());
+            std::cout<<"topic:  "<<topic<<'\n';
+
+            std::string key = msg["header"]["key"];
+            std::cout<<"received key = "<<key<<'\n';
+            std::cout << std::setw(4) << msg << "\n\n";
+            if (m_handleMap.find(key) == m_handleMap.end()) {
+                std::cout<<"unknown key  "<<key<<'\n';
+            }
+            else {
+                m_handleMap[key](msg);
+            }
         }
-        else {
-            m_handleMap[key](msg);
+
+        // received inproc message from timing system
+        if (items[1].revents & ZMQ_POLLIN) {
+            // forward message to contol system with pulseId as the message id
+            std::string pulseId = m_inprocRecv.recv();
+            std::cout<<"inproc message received  "<<pulseId<<'\n';
+            json body;
+            json answer = createMsg("timingTransition", pulseId, getId(), body);
+            reply(answer);
         }
     }
 }

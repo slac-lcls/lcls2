@@ -16,7 +16,6 @@ using namespace Pds::Eb;
 DrpApp::DrpApp(Parameters* para) :
     CollectionApp(para->collect_host, para->partition, "drp", para->alias),
     m_para(para),
-    m_inprocRecv(&m_context, ZMQ_PAIR),
     m_pool(*para),
     m_smon("psmetric04", RTMON_PORT_BASE, m_para->partition, RTMON_RATE, RTMON_VERBOSE)
 {
@@ -44,9 +43,6 @@ DrpApp::DrpApp(Parameters* para) :
                       /* .verbose       = */ 0 };
 
     m_ebContributor = std::make_unique<TebContributor>(m_para->tPrms, m_smon);
-
-    m_inprocRecv.bind("inproc://drp");
-
     std::cout << "output dir: " << m_para->output_dir << std::endl;
 }
 
@@ -87,7 +83,7 @@ void DrpApp::handleConnect(const json &msg)
         }
     }
 
-    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_pool, m_context, m_meb.get(), m_smon);
+    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_pool, context(), m_meb.get(), m_smon);
     rc = m_ebRecv->connect(m_para->tPrms);
     if (rc) {
         connected = false;
@@ -124,7 +120,7 @@ void DrpApp::handlePhase1(const json &msg)
 
     std::string key = msg["header"]["key"];
     unsigned error=0;
-    if (key == "configure1") {
+    if (key == "configure") {
         error = m_det->configure(dgram);
     }
     // check for message from timing system
@@ -136,23 +132,6 @@ void DrpApp::handlePhase1(const json &msg)
     }
     else {
         std::cout<<"transition phase1 complete\n";
-    }
-    answer = createMsg(msg["header"]["key"], msg["header"]["msg_id"], getId(), body);
-    reply(answer);
-}
-
-void DrpApp::handlePhase2(const json &msg)
-{
-    int ret = m_inprocRecv.poll(ZMQ_POLLIN, 5000);
-    json answer;
-    json body = json({});
-    if (ret) {
-        json reply = m_inprocRecv.recvJson();
-        std::cout<<"inproc message received\n";
-    }
-    else {
-        body["error"] = "phase 2 error";
-        std::cout<<"phase 2 error\n";
     }
     answer = createMsg(msg["header"]["key"], msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -284,7 +263,8 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
 
     // pass non L1 accepts to control level
     if (transition_id != XtcData::TransitionId::L1Accept) {
-        m_inprocSend.send("{}");
+        // send pulseId to inproc so it gets forwarded to the collection
+        m_inprocSend.send(std::to_string(event_header->seq.pulseId().value()));
         printf("EbReceiver saw %s transition\n", XtcData::TransitionId::name(transition_id));
     }
 

@@ -77,7 +77,6 @@ public:
     DrpApp(Parameters* para);
     void handleConnect(const json& msg) override;
     void handlePhase1(const json& msg) override;
-    void handlePhase2(const json& msg) override;
     void handleReset(const json& msg) override;
 private:
     void parseConnectionParams(const json& msg);
@@ -87,8 +86,6 @@ private:
     std::thread m_pgpThread;
     std::thread m_collectorThread;
     std::thread m_monitorThread;
-    ZmqContext m_context;
-    ZmqSocket m_inprocRecv;
     MemPool m_pool;
     std::unique_ptr<PGPReader> m_pgpReader;
     std::unique_ptr<Pds::Eb::TebContributor> m_ebContributor;

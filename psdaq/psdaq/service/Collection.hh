@@ -38,12 +38,13 @@ public:
     void connect(const std::string& host);
     void bind(const std::string& host);
     void setsockopt(int option, const void* optval, size_t optvallen);
+    std::string recv();
     json recvJson();
     std::vector<ZmqMessage> recvMultipart();
     void send(const std::string& msg);
     int poll(short events, long timeout);
-private:
     void* socket;
+private:
     ZmqContext* m_context;
 };
 
@@ -60,19 +61,20 @@ protected:
     virtual void handleConnect(const json& msg) = 0;
     virtual void handleDisconnect(const json& msg) {};
     virtual void handlePhase1(const json& msg) {};
-    virtual void handlePhase2(const json& msg) {};
     virtual void handleReset(const json& msg) = 0;
     void reply(const json& msg);
     size_t getId() const {return m_id;}
     const std::string& getLevel() const {return m_level;}
     const std::string& getAlias() const {return m_alias;}
     virtual std::string nicIp() {return getNicIp();}
+    ZmqContext& context() {return m_context;}
 private:
     std::string m_level;
     std::string m_alias;
     ZmqContext m_context;
     ZmqSocket m_pushSocket;
     ZmqSocket m_subSocket;
+    ZmqSocket m_inprocRecv;
     size_t m_id;
     std::unordered_map<std::string, std::function<void(json&)> > m_handleMap;
 };
