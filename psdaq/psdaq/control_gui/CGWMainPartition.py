@@ -38,7 +38,8 @@ from psdaq.control_gui.QWPopupTableCheck import QWPopupTableCheck, QWTableOfChec
 class CGWMainPartition(QGroupBox) :
     """
     """
-    TABTITLE_H = ['', 'proc/pid/host', 'aliases']
+    #TABTITLE_H = ['', 'proc/pid/host', 'aliases']
+    TABTITLE_H = ['', 'R.G.', 'proc/pid/host', 'aliases']
 
     def __init__(self, parent=None):
 
@@ -46,14 +47,14 @@ class CGWMainPartition(QGroupBox) :
 
         self.but_roll_call = QPushButton('Roll call')
         self.but_select    = QPushButton('Select')
-        self.but_display   = QPushButton('Display')
+        #self.but_display   = QPushButton('Display')
 
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.but_roll_call)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_select)
-        self.hbox.addStretch(1)
-        self.hbox.addWidget(self.but_display)
+        #self.hbox.addStretch(1)
+        #self.hbox.addWidget(self.but_display)
         self.setLayout(self.hbox)
 
         self.set_tool_tips()
@@ -61,7 +62,7 @@ class CGWMainPartition(QGroupBox) :
 
         self.but_roll_call.clicked.connect(self.on_but_roll_call)
         self.but_select.clicked.connect(self.on_but_select)
-        self.but_display.clicked.connect(self.on_but_display)
+        #self.but_display.clicked.connect(self.on_but_display)
 
         self.w_select = None
         self.w_display = None
@@ -79,6 +80,8 @@ class CGWMainPartition(QGroupBox) :
     def set_style(self) :
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
+
+        #self.but_display.setVisible(False)
 
         #self.setWindowTitle('File name selection widget')
         #self.setMinimumWidth(300)
@@ -183,7 +186,7 @@ class CGWMainPartition(QGroupBox) :
         self.state = state = s.upper()
         self.but_roll_call.setEnabled(state in ('RESET', 'UNALLOCATED'))
         self.but_select.setEnabled(not(state in ('RESET',)))
-        self.but_display.setEnabled(not(state in ('RESET','UNALLOCATED')))
+        #self.but_display.setEnabled(not(state in ('RESET','UNALLOCATED')))
 
         if state in ('RESET', 'UNALLOCATED') and self.w_display is not None :
             self.w_display.close()

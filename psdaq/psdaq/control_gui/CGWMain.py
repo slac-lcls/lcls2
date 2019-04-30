@@ -38,7 +38,7 @@ from PyQt5.QtCore import Qt#, QPoint
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
 from psdaq.control_gui.CGWMainPartition     import CGWMainPartition
 from psdaq.control_gui.CGWMainControl       import CGWMainControl
-from psdaq.control_gui.CGWMainRunStatistics import CGWMainRunStatistics
+from psdaq.control_gui.CGWMainStatus        import CGWMainStatus
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
@@ -82,7 +82,7 @@ class CGWMain(QWZMQListener) :
         self.wpart = CGWMainPartition()
         self.wctrl = CGWMainControl(parent_ctrl=self)
         #====self.wdetr = CGWMainDetector(parent_ctrl=self)
-        self.wrsta = CGWMainRunStatistics()
+        self.wstat = CGWMainStatus()
         #self.wlogr = QTextEdit('my logger')
 
         #self.vbox = QVBoxLayout() 
@@ -97,7 +97,7 @@ class CGWMain(QWZMQListener) :
         self.vspl.addWidget(self.wpart) 
         self.vspl.addWidget(self.wctrl) 
         #====self.vspl.addWidget(self.wdetr) 
-        self.vspl.addWidget(self.wrsta) 
+        self.vspl.addWidget(self.wstat) 
         self.vspl.addWidget(self.wlogr) 
 
         #self.hspl = QSplitter(Qt.Horizontal)
@@ -251,7 +251,7 @@ class CGWMain(QWZMQListener) :
           #self.wpart.close()
           #self.wctrl.close()
           #self.wdetr.close()
-          #self.wrsta.close()
+          #self.wstat.close()
         except Exception as ex:
           print('Exception: %s' % ex)
 
@@ -351,6 +351,7 @@ class CGWMain(QWZMQListener) :
                     #====self.wdetr.set_but_state (s_state)
                     self.wctrl.set_but_ctrls (s_state)
                     self.wctrl.set_transition(s_transition)
+                    self.wstat.update_table()
                     logging.info('received state msg: %s and transition: %s' % (s_state, s_transition))
 
                 elif jo['header']['key'] == 'error' :

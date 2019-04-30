@@ -54,6 +54,7 @@ class QWPopupSelectItem(QDialog) :
 
 
     def fill_list(self, lst) :
+        if not lst : return
         self.nchars = max([len(s) for s in lst])
         self.nrows  = len(lst)
         self._list.clear()

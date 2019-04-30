@@ -42,13 +42,10 @@ def _display_name(pname, v) :
 
 #--------------------
 
-def get_platform():
-    """ returns [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
-        #returns [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
-        after control.getPlatform() request
+def dict_platform():
+    """ returns control.getPlatform() or None
     """
-    list2d = []
-
+    dict_platf = None
     try:
         dict_platf = daq_control().getPlatform() # returns dict
 
@@ -63,6 +60,84 @@ def get_platform():
     sj = json.dumps(dict_platf, indent=2, sort_keys=False)
     logger.debug('control.getPlatform() json(type:%s):\n%s' % (type(dict_platf), str(sj)))
 
+    return dict_platf
+
+#--------------------
+
+def get_status(header=['R.G.','drp','meb','teb']):
+    """ returns 2-d list for status
+    """
+    ncols = len(header)
+
+    dict_platf = dict_platform()
+    sj = json.dumps(dict_platf, indent=2, sort_keys=False)
+    #logger.debug('get_status for json(type:%s):\n%s' % (type(dict_platf), str(sj)))
+
+    row_counter={v:0 for v in header}
+
+    # find number of rows
+    try:
+        for pname in dict_platf:
+            in_header = pname in header
+            #logger.debug('XXX: proc grp %s %s found in header'%\
+            #      (pname,{True:'is', False:'is not'}[in_header]))
+            for k,v in dict_platf[pname].items() :
+                if pname in header : row_counter[pname] += 1
+
+    except Exception as ex:
+        logger.error('Exception: %s' % ex)
+        print('failed to parse json after control.getPlatform() request:\n%s' % str(sj))
+        return []
+
+    nrows = max(row_counter.values())
+
+    #logger.debug('fill out table for nrows: %d ncols: %d' % (nrows,ncols))
+
+    # fill out table
+    row_counter={v:0 for v in header}
+    list2d = [['' for i in range(ncols)] for i in range(nrows)]
+    try:
+        for pname in dict_platf:
+            #logger.debug("json top key name: %s" % str(pname))
+            if not(pname in header) : continue
+            col = header.index(pname)
+            for k,v in dict_platf[pname].items() :
+                display = _display_name(pname, v)
+                flds = display.split(' ')
+                alias = flds[1] if len(flds)==2 else ''
+                name = alias if alias else flds[0]
+
+                if not (v['active']==1) : continue
+
+                row = row_counter[pname]
+
+                if pname=='drp' :
+                    list2d[row][0] = str(v['readout'])
+
+                #print('XXX fill field row:%d col:%d name:%s' % (row,col,name))
+                list2d[row][col] = name
+                row_counter[pname] += 1
+
+    except Exception as ex:
+        logger.error('Exception: %s' % ex)
+        print('failed to parse json after control.getPlatform() request:\n%s' % str(sj))
+
+    return list2d
+
+    #return [['1', 'drp1','meb1','teb1'],\
+    #        ['2', 'drp2','meb2','teb2'],\
+    #        ['3', 'drp3','meb3','teb3']]
+
+#--------------------
+
+def get_platform():
+    """ returns [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
+        #returns [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
+        after control.getPlatform() request
+    """
+    list2d = []
+    dict_platf = dict_platform()
+
     try:
         for pname in dict_platf: # iterate over top key-wards
             #logger.debug("json top key name: %s" % str(pname))
@@ -70,11 +145,21 @@ def get_platform():
                 display = _display_name(pname, v)
                 #print(display)
                 flds = display.split(' ')
-                #list2d.append([[v['active']==1, flds[0]], flds[1] if len(flds)==2 else ' '])
-                list2d.append([[v['active']==1, ''], flds[0], flds[1] if len(flds)==2 else ''])
+                alias = flds[1] if len(flds)==2 else ''
+                #list2d.append([[v['active']==1, ''], flds[0], alias])
+
+                is_drp = pname=='drp'
+                readgr = v['readout'] if is_drp else ''
+
+                #if is_drp : print('XXX pname %s readout %d' % (pname,readgr))
+                #else      : print('XXX pname %s' % pname)
+
+                list2d.append([[v['active']==1, ''], [False, str(readgr), 6, "^([0-9]|1[0-5])$"], flds[0], alias])
+                #list2d.append([[v['active']==1, ''], str(readgr), flds[0], alias])
 
     except Exception as ex:
         logger.error('Exception: %s' % ex)
+        sj = json.dumps(dict_platf, indent=2, sort_keys=False)
         print('failed to parse json after control.getPlatform() request:\n%s' % str(sj))
 
     return dict_platf, list2d
@@ -82,7 +167,7 @@ def get_platform():
 #--------------------
 
 def set_platform(dict_platf, list2d):
-    """ Sets processes active/inactive
+    """ Sets processes active/inactive in dict_platf from list2d
     """
     #print('dict_platf: ',dict_platf)
     #print('list2d:',list2d)
@@ -99,6 +184,9 @@ def set_platform(dict_platf, list2d):
                 status = list2d[i][0][0] # bool
                 int_active = {True:1, False:0}[status]
                 dict_platf[pname][k]['active'] = int_active
+                if pname=='drp' :
+                    dict_platf[pname][k]['readout'] = int(list2d[i][1][1])
+
                 s += '%s   int_active: %d\n' % (display,int_active)
         
         sj = json.dumps(dict_platf, indent=2, sort_keys=False)

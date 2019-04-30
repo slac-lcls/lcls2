@@ -7,7 +7,7 @@ Usage ::
     # Run test: python lcls2/psdaq/psdaq/control_gui/QWTableOfCheckBoxes.py
 
     from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes
-    w = QWTableOfCheckBoxes(tableio=tableio, title_h=title_h, do_ctrl=True, do_edit=True, is_visv=True)
+    w = QWTableOfCheckBoxes(tableio=tableio, title_h=title_h, do_ctrl=True, is_visv=True)
 
 Created on 2019-03-11 by Mikhail Dubrovin
 """
@@ -18,10 +18,20 @@ logger = logging.getLogger(__name__)
 
 from psdaq.control_gui.QWTable import QWTable, QStandardItem, Qt #icon
 
+from PyQt5.QtCore import QRegExp
+from PyQt5.QtGui import QRegExpValidator
+
+from re import search as re_search
+
 #----------
 
 LIST_STR_CHECK_BOX_STATES = ['UNCHECKED', 'TRISTATE', 'CHECKED']
 DICT_CHECK_BOX_STATES = {0:False, 1:True, 2:True}
+
+BIT_CHECKABLE  = 1
+BIT_ENABLED    = 2
+BIT_EDITABLE   = 4
+BIT_SELECTABLE = 8
 
 #----------
 
@@ -32,7 +42,6 @@ class QWTableOfCheckBoxes(QWTable) :
         QWTable.__init__(self, **kwargs)
         #self._name = self.__class__.__name__
 
-
     def fill_table_model(self, **kwargs) :
         """tableio is an I/O list of lists, containing str or [bool,str] elements.
         """
@@ -42,8 +51,9 @@ class QWTableOfCheckBoxes(QWTable) :
         title_h = kwargs.get('title_h', None)  # list of horizontal header for cols
         title_v = kwargs.get('title_v', None)  # list of vertical header for rows
         do_ctrl = kwargs.get('do_ctrl', False) # allow to change check-box status
-        do_edit = kwargs.get('do_edit', False) # allow to edit text of items
         is_visv = kwargs.get('is_visv', True)  # set visible vertical header, by def [1,2,3,...]
+        do_edit = kwargs.get('do_edit', False) # allow to edit text of items
+        do_sele = kwargs.get('do_sele', False) # allow selectable
 
         self.clear_model()
         if title_h is not None : self.model.setHorizontalHeaderLabels(title_h) 
@@ -58,14 +68,27 @@ class QWTableOfCheckBoxes(QWTable) :
                 if isinstance(fld, list) :
                     item = QStandardItem(fld[1])
                     item.setAccessibleDescription('type:list')
-                    item.setCheckState({False:0, True:2}[fld[0]])
-                    item.setCheckable(do_ctrl)
-                    item.setEnabled(do_ctrl)
+                    lsize = len(fld)
+                    if lsize==2 : # use global table settings
+                        item.setCheckState({False:0, True:2}[fld[0]])
+                        item.setCheckable (do_ctrl)
+                        item.setEnabled   (do_ctrl)
+                        item.setEditable  (do_edit)
+                        item.setSelectable(do_sele)
+                    elif lsize>2 : # use field settings depending on flags
+                        flags = fld[2]
+                        if flags & BIT_CHECKABLE : item.setCheckState({False:0, True:2}[fld[0]])
+                        item.setCheckable (flags & BIT_CHECKABLE)
+                        item.setEnabled   (flags & BIT_ENABLED)
+                        item.setEditable  (flags & BIT_EDITABLE)
+                        item.setSelectable(flags & BIT_SELECTABLE)
+                        if lsize>3 : item.valid_reg_exp = fld[3]
+
                 else :
                     item = QStandardItem(fld)
                     item.setAccessibleDescription('type:str')
 
-                item.setEditable(do_edit)
+                #item.setEditable(do_edit)
                 self.model.setItem(row,col,item)
 
                 #item.setIcon(icon.icon_table)
@@ -89,6 +112,15 @@ class QWTableOfCheckBoxes(QWTable) :
         msg = 'on_item_changed: item(%d,%d) name: %s state: %s'%\
               (row, col, item.text(), state)
         logger.debug(msg)
+
+        valid_re = getattr(item, 'valid_reg_exp', None) # search for item.valid_reg_exp
+        if valid_re is not None :
+            val      = item.text()
+            resp = re_search(valid_re, val)
+            if resp is None :
+                logger.warning('value "%s" IS NOT SET, valid reg.exp.: %s' % (val, valid_re)) # ex: "^([0-9]|1[0-5])$"
+                item.setText("N/A")
+                return
 
         if self.do_live :
             if item.accessibleDescription() == 'type:list' :
@@ -126,20 +158,21 @@ if __name__ == "__main__" :
 
     app = QApplication(sys.argv)
 
-    title_h = ['proc/pid/host', 'alias', '']
+    title_h = ['str', 'cbx', 'flags']
     tableio = [\
-      [[False,'name 1'], 'alias 1', [True, '']],\
-      [[True, 'name 2'], 'alias 2', [True, '']],\
-      [[True, 'name 3'], 'alias 3', [True, '']],\
-      ['name 4', [True, 'alias 4'], [True, '']],\
-      ['name 5',         'alias 5', [True, '']],\
-      ['name 6', [True, ''],        [True, '']],\
+               ['name 11', [True,  'name 12'], [False, 'name 13aa', 0]],\
+               ['name 21', [False, 'name 22'], [False, 'name 23bb', 1]],\
+               ['name 31', [True,  'name 32'], [False, 'name 33cc', 2]],\
+               ['name 41', [False, 'name 42'], [False, 'name 43dd', 6]],\
+               ['name 51', [True,  'name 52'], [False, 'name 53ee',14]],\
+               ['name 61', [False, 'name 62'], [True,  'name 63ff',15]],\
     ]
 
     print('%s\nInput table:' % (50*'_'))
     for rec in tableio : print(rec)
 
-    w = QWTableOfCheckBoxes(tableio=tableio, title_h=title_h, do_ctrl=True, do_edit=True, do_live=False)
+    w = QWTableOfCheckBoxes(tableio=tableio, title_h=title_h,\
+                            do_ctrl=True, do_live=False, do_edit=True, do_sele=True)
     w.setWindowTitle('QWTableOfCheckBoxes')
     w.move(100,50)
     w.show()

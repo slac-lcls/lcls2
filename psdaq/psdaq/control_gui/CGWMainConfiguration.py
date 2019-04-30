@@ -169,6 +169,10 @@ class CGWMainConfiguration(QGroupBox) :
         #logger.debug('on_but_type')
         inst, confdb = self.inst_configdb('on_but_type: ')
         list_of_aliases = confdb.get_aliases(hutch=inst) # ['NOBEAM', 'BEAM']
+        if not list_of_aliases :
+            list_of_aliases = ['NOBEAM', 'BEAM']
+            logger.warning('List of configdb-s IS EMPTY... Use default: %s' % str(list_of_aliases))
+
         selected = popup_select_item_from_list(self.but_type, list_of_aliases, min_height=80, dx=-10, dy=0)
         self.set_but_type_text(selected)
         msg = 'selected %s of the list %s' % (selected, str(list_of_aliases))
@@ -200,6 +204,11 @@ class CGWMainConfiguration(QGroupBox) :
         inst, confdb = self.inst_configdb('on_but_dev: ')
         cfgtype = str(self.but_type.text()).split(' ')[0] # 'NOBEAM' or 'BEAM'
         list_of_device_names = confdb.get_devices(cfgtype, hutch=inst)
+
+        if not list_of_device_names :
+            logger.warning('list_of_device_names IS EMPTY... Check configuration DB')
+            return
+
         selected = popup_select_item_from_list(self.but_dev, list_of_device_names, min_height=80, dx=-20, dy=10)
         self.set_but_dev_text(selected)
         msg = 'selected %s of the list %s' % (selected, str(list_of_device_names))
