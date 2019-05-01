@@ -645,7 +645,7 @@ class CollectionManager():
     def condition_disconnect(self):
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
-        msg = create_msg('disconnect', body=self.filter_active_dict(self.cmstate))
+        msg = create_msg('disconnect')
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids)
