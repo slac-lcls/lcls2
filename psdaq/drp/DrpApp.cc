@@ -102,10 +102,12 @@ void DrpApp::handleConnect(const json &msg)
 
     // reply to collection with connect status
     json body = json({});
-    json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
-    if (connected) {
-        reply(answer);
+    if (!connected) {
+        body["error"] = "connect error";
+        std::cout<<"connect error\n";
     }
+    json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
+    reply(answer);
 }
 
 void DrpApp::handlePhase1(const json &msg)
