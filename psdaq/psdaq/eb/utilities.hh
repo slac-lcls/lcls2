@@ -6,6 +6,10 @@
 #endif
 #include <pthread.h>
 #include <cstdint>                      // uint32_t
+#include <string>
+
+#include "rapidjson/document.h"
+
 
 namespace Pds
 {
@@ -14,6 +18,7 @@ namespace Pds
     size_t roundUpSize(size_t size);
     void*  allocRegion(size_t size);
     void   pinThread(const pthread_t& th, int cpu);
+    int    fetchFromCfgDb(const std::string& section, rapidjson::Document& top);
 
     class ImmData
     {

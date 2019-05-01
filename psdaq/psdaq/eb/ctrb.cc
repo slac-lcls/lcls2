@@ -94,30 +94,29 @@ namespace Pds {
       void            startup(unsigned id, void** base, size_t* size, uint16_t readoutGroup);
       void            shutdown();
       void            stop();
+      int             transition(TransitionId::Value transition);
     public:
       const Dgram*    generate();
       void            release(const Input*);
     public:
       const uint64_t& allocPending() const { return _allocPending; }
     private:
-      const size_t            _maxEvtSz;
-      uint16_t                _readoutGroup;
-      const Xtc               _xtc;
-      uint64_t                _pid;
-      GenericPoolW*           _pool;
+      const size_t                     _maxEvtSz;
+      uint16_t                         _readoutGroup;
+      const Xtc                        _xtc;
+      uint64_t                         _pid;
+      GenericPoolW*                    _pool;
     private:
-      enum { TrUnknown,
-             TrReset,
-             TrConfigure,       TrUnconfigure,
-             TrEnable,          TrDisable,
-             TrL1Accept };
-      int                     _trId;
-      mutable std::mutex      _lock;
-      std::condition_variable _cv;
-      bool                    _released;
+      TransitionId::Value              _trId;
+      mutable std::mutex               _compLock;
+      std::condition_variable          _compCv;
+      bool                             _released;
+      mutable std::mutex               _trLock;
+      std::condition_variable          _trCv;
+      std::atomic<TransitionId::Value> _transition;
     private:
-      uint64_t                _allocPending;
-      uint64_t                _startCnt;
+      uint64_t                         _allocPending;
+      uint64_t                         _startCnt;
     };
 
     class EbCtrbIn : public EbCtrbInBase
@@ -125,6 +124,7 @@ namespace Pds {
     public:
       EbCtrbIn(const TebCtrbParams& prms,
                DrpSim&              drpSim,
+               ZmqContext&          context,
                StatsMonitor&        smon);
       virtual ~EbCtrbIn() {}
     public:
@@ -135,6 +135,7 @@ namespace Pds {
     private:
       DrpSim&         _drpSim;
       MebContributor* _mebCtrb;
+      ZmqSocket       _inprocSend;
       uint64_t        _pid;
     };
 
@@ -165,10 +166,13 @@ DrpSim::DrpSim(size_t maxEvtSize) :
   _xtc         (),
   _pid         (0),
   _pool        (nullptr),
-  _trId        (TrUnknown),
-  _lock        (),
-  _cv          (),
+  _trId        (TransitionId::Unknown),
+  _compLock    (),
+  _compCv      (),
   _released    (false),
+  _trLock      (),
+  _trCv        (),
+  _transition  (TransitionId::Unknown),
   _allocPending(0)
 {
 }
@@ -176,7 +180,8 @@ DrpSim::DrpSim(size_t maxEvtSize) :
 void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGroup)
 {
   _pid          = 0x01000000000003ul; // Something non-zero and not on a batch boundary
-  _trId         = TrUnknown;
+  _trId         = TransitionId::Unknown;
+  _transition   = TransitionId::Unknown;
   _allocPending = 0;
   _readoutGroup = readoutGroup;
 
@@ -191,8 +196,8 @@ void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGro
 
 void DrpSim::stop()
 {
-  std::lock_guard<std::mutex> lock(_lock);
-  _cv.notify_one();
+  std::lock_guard<std::mutex> lock(_compLock);
+  _compCv.notify_one();
 
   if (_pool)  _pool->stop();
 }
@@ -209,34 +214,56 @@ void DrpSim::shutdown()
   }
 }
 
+int DrpSim::transition(TransitionId::Value transition)
+{
+  std::unique_lock<std::mutex> lock(_trLock);
+  _transition = transition;
+  _trCv.notify_one();
+  return 0;
+}
+
 const Dgram* DrpSim::generate()
 {
-  static const TransitionId::Value trId[] =
-    { TransitionId::Unknown,
-      TransitionId::Reset,
-      TransitionId::Configure,       TransitionId::Unconfigure,
-      TransitionId::Enable,          TransitionId::Disable,
-      TransitionId::L1Accept };
-  const uint32_t bounceRate = 16 * 1024 * 1024 - 1;
-  const uint64_t bounceRem  = 0x01000000000003ul % bounceRate;
-
-  // Allow only one transition in the system at a time
-  if ((_trId != TrL1Accept) && (_trId != TrUnknown))
+  if (_trId != TransitionId::L1Accept)
   {
-    std::unique_lock<std::mutex> lock(_lock);
-    _cv.wait(lock, [this] { return _released || !lRunning; }); // Block until transition returns
-    if (!lRunning)  return nullptr;
-    _released = false;
+    // Allow only one transition in the system at a time
+    if (_trId != TransitionId::Unknown)
+    {
+      _allocPending += 2;
+      std::unique_lock<std::mutex> lock(_compLock);
+      _compCv.wait(lock, [this] { return _released || !lRunning; }); // Block until transition returns
+      _allocPending -= 2;
+      if (!lRunning)  return nullptr;
+      _released = false;
+    }
+    if (_trId != TransitionId::Enable)
+    {
+      _allocPending += 3;
+      std::unique_lock<std::mutex> lock(_trLock);
+      _trCv.wait(lock, [this] { return (_transition != TransitionId::Unknown) || !lRunning; });
+      _allocPending -= 3;
+      if (!lRunning)  return nullptr;
+      _trId       = _transition;
+      _transition = TransitionId::Unknown;
+    }
+    else
+    {
+      _trId = TransitionId::L1Accept;
+    }
   }
-
-  if       (_trId == TrDisable)               _trId  = TrEnable;
-  else if  (_trId != TrL1Accept)              _trId += 2;
-  else if ((_pid % bounceRate) == bounceRem)  _trId  = TrDisable;
+  else
+  {
+    if (_transition)
+    {
+      _trId       = _transition;
+      _transition = TransitionId::Unknown;
+    }
+  }
 
   // Fake datagram header
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  const Sequence seq(Sequence::Event, trId[_trId], TimeStamp(ts), PulseId(_pid));
+  const Sequence seq(Sequence::Event, _trId, TimeStamp(ts), PulseId(_pid));
 
   ++_allocPending;
   void* buffer = _pool->alloc(sizeof(Input));
@@ -269,21 +296,24 @@ void DrpSim::release(const Input* input)
 
   if (!input->seq.isEvent())
   {
-    std::lock_guard<std::mutex> lock(_lock);
+    std::lock_guard<std::mutex> lock(_compLock);
     _released = true;
-    _cv.notify_one();
+    _compCv.notify_one();
   }
 }
 
 
 EbCtrbIn::EbCtrbIn(const TebCtrbParams& prms,
                    DrpSim&              drpSim,
+                   ZmqContext&          context,
                    StatsMonitor&        smon) :
   EbCtrbInBase(prms, smon),
   _drpSim     (drpSim),
   _mebCtrb    (nullptr),
+  _inprocSend (&context, ZMQ_PAIR),
   _pid        (0)
 {
+  _inprocSend.connect("inproc://drp");
 }
 
 int EbCtrbIn::connect(const TebCtrbParams& tebPrms, MebContributor* mebCtrb)
@@ -334,6 +364,13 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
     {
       _mebCtrb->post(input);
     }
+  }
+
+  // Pass non L1 accepts to control level
+  if (!result->seq.isEvent())
+  {
+    // Send pulseId to inproc so it gets forwarded to the collection
+    _inprocSend.send(std::to_string(pid));
   }
 
   // Revisit: Race condition
@@ -405,12 +442,12 @@ public:
 public:                                 // For CollectionApp
   std::string nicIp() override;
   void handleConnect(const json& msg) override;
-  void handleDisconnect(const json& msg); // override;
+  void handleDisconnect(const json& msg) override;
+  void handlePhase1(const json &msg) override;
   void handleReset(const json& msg) override;
 private:
   int  _handleConnect(const json& msg);
   int  _parseConnectionParams(const json& msg);
-  void _shutdown();
 private:
   TebCtrbParams& _tebPrms;
   MebCtrbParams& _mebPrms;
@@ -430,7 +467,7 @@ CtrbApp::CtrbApp(const std::string& collSrv,
   _mebPrms(mebPrms),
   _tebCtrb(tebPrms, smon),
   _mebCtrb(mebPrms, smon),
-  _inbound(tebPrms, _tebCtrb.drpSim(), smon),
+  _inbound(tebPrms, _tebCtrb.drpSim(), context(), smon),
   _smon(smon)
 {
 }
@@ -481,37 +518,53 @@ void CtrbApp::handleConnect(const json &msg)
   int rc = _handleConnect(msg);
 
   // Reply to collection with connect status
-  json body   = json({});
-  json answer = (rc == 0)
-              ? createMsg("connect", msg["header"]["msg_id"], getId(), body)
-              : createMsg("error",   msg["header"]["msg_id"], getId(), body);
-  reply(answer);
+  json body = json({});
+  if (rc)  body["error"] = "Connect error";
+  reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
 }
 
-void CtrbApp::_shutdown()
+void CtrbApp::handlePhase1(const json &msg)
 {
-  lRunning = 0;
+  int         rc  = 0;
+  std::string key = msg["header"]["key"];
 
-  _tebCtrb.shutdown();
+  if      (key == "configure")
+  {
+    // Give TEB time to react before passing the transition down the timing stream
+    sleep(5);                    // Nothing to wait on that ensures TEB is done
+    rc = _tebCtrb.drpSim().transition(TransitionId::Configure);
+  }
+  else if (key == "unconfigure")
+    rc = _tebCtrb.drpSim().transition(TransitionId::Unconfigure);
+  else if (key == "enable")
+    rc = _tebCtrb.drpSim().transition(TransitionId::Enable);
+  else if (key == "disable")
+    rc = _tebCtrb.drpSim().transition(TransitionId::Disable);
 
-  _appThread.join();
-
-  _smon.disable();
+  // Reply to collection with transition status
+  json body = json({});
+  if (rc)  body["error"] = "Phase 1 error";
+  reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
 }
 
 void CtrbApp::handleDisconnect(const json &msg)
 {
-  _shutdown();
+  lRunning = 0;
+
+  _tebCtrb.shutdown();
+  _tebCtrb.drpSim().transition(TransitionId::Unknown);
+
+  _appThread.join();
+
+  _smon.disable();
 
   // Reply to collection with connect status
-  json body   = json({});
-  json answer = createMsg("disconnect", msg["header"]["msg_id"], getId(), body);
-  reply(answer);
+  json body = json({});
+  reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
 void CtrbApp::handleReset(const json &msg)
 {
-  _shutdown();
 }
 
 int CtrbApp::_parseConnectionParams(const json& body)

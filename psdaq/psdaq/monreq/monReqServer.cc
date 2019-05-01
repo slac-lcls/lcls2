@@ -381,7 +381,6 @@ public:                                 // For CollectionApp
 private:
   int  _handleConnect(const json& msg);
   int  _parseConnectionParams(const json& msg);
-  void _shutdown();
 private:
   EbParams&     _prms;
   Meb           _meb;
@@ -438,25 +437,18 @@ void MebApp::handleConnect(const json &msg)
   int rc = _handleConnect(msg);
 
   // Reply to collection with connect status
-  json body   = json({});
-  json answer = (rc == 0)
-              ? createMsg("connect", msg["header"]["msg_id"], getId(), body)
-              : createMsg("error",   msg["header"]["msg_id"], getId(), body);
-  reply(answer);
+  json body = json({});
+  if (rc)  body["error"] = "Connect error";
+  reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
 }
 
-void MebApp::_shutdown()
+void MebApp::handleDisconnect(const json &msg)
 {
   lRunning = 0;
 
   _appThread.join();
 
   _smon.disable();
-}
-
-void MebApp::handleDisconnect(const json &msg)
-{
-  _shutdown();
 
   // Reply to collection with connect status
   json body   = json({});
@@ -466,7 +458,6 @@ void MebApp::handleDisconnect(const json &msg)
 
 void MebApp::handleReset(const json &msg)
 {
-  _shutdown();
 }
 
 int MebApp::_parseConnectionParams(const json& body)

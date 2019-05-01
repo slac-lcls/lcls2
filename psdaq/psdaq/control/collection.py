@@ -648,7 +648,7 @@ class CollectionManager():
         msg = create_msg('disconnect')
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-        retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, 30000, msg['header']['msg_id'], ids)
         disconnect_ok = (self.check_answers(answers) == 0)
         ret = len(retlist)
         if ret:
@@ -785,7 +785,8 @@ class CollectionManager():
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         # only drp group (aka level) responds to configure and above
-        ids = self.filter_level('drp', ids)
+        # Revisit: teb does also, meb doesn't (yet)
+        # ids = self.filter_level('drp', ids)
 
         if len(ids) == 0:
             logging.debug('condition_common() empty set of ids')
@@ -840,20 +841,36 @@ class CollectionManager():
         return True
 
     def condition_unconfigure(self):
-        if (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Unconfigure']) and
-            self.pv_put(self.pvMsgInsert, 0) and
-            self.pv_put(self.pvMsgInsert, 1) and
-            self.pv_put(self.pvMsgInsert, 0)):
-            retval = self.condition_common('unconfigure2', 1000)
-            if retval:
-                self.lastTransition = 'unconfigure'
-        else:
+        # phase 1
+        ok = self.condition_common('unconfigure', 1000)
+        if not ok:
+            logging.error('condition_unconfigure(): unconfigure phase1 failed')
+            return False
+
+        if not (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Unconfigure']) and
+                self.pv_put(self.pvMsgInsert, 0) and
+                self.pv_put(self.pvMsgInsert, 1) and
+                self.pv_put(self.pvMsgInsert, 0)):
             logging.error('condition_unconfigure(): pv_put() failed')
-            retval = False
-        logging.debug('condition_unconfigure() returning %s' % retval)
-        return retval
+            return False
+
+        ok = self.get_phase2_replies()
+        if not ok:
+            return False
+
+        logging.debug('condition_unconfigure() returning %s' % ok)
+
+        self.lastTransition = 'unconfigure'
+        return True
 
     def condition_enable(self):
+        # phase 1
+        ok = self.condition_common('enable', 1000)
+        if not ok:
+            logging.error('condition_enable(): enable phase1 failed')
+            return False
+
+        # phase 2
         if not (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Enable']) and
                 self.pv_put(self.pvMsgInsert, 0) and
                 self.pv_put(self.pvMsgInsert, 1) and
@@ -875,6 +892,12 @@ class CollectionManager():
 
 
     def condition_disable(self):
+        # phase 1
+        ok = self.condition_common('disable', 1000)
+        if not ok:
+            logging.error('condition_disable(): disable phase1 failed')
+            return False
+
         # order matters: clear Run PV before others transition
         if not (self.pv_put(self.pvRun, 0) and
                 self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Disable']) and

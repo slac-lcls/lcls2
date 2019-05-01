@@ -22,6 +22,8 @@ top.setInfo('teb', 'tmoteb', 'No serial number', 'No comment')
 top.setAlg('tebConfig', [0,0,1])
 
 top.set('soname', 'libtmoteb.so', 'CHARSTR')
+top.set('triggerVal', 0xdeadbeef, 'UINT32')
+top.set('monitorVal', 0x12345678, 'UINT32')
 
 mycdb.modify_device('BEAM', top)
 mycdb.print_configs()

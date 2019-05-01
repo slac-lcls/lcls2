@@ -1,3 +1,5 @@
+find_package(PythonLibs REQUIRED)
+
 add_library(utilities SHARED
   utilities.cc
   IndexPool.cc
@@ -8,15 +10,17 @@ add_library(utilities SHARED
 )
 
 target_include_directories(utilities PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-  $<INSTALL_INTERFACE:include>
   $ENV{CONDA_PREFIX}/include
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  ${PYTHON_INCLUDE_DIRS}
+  $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(utilities
   xtcdata::xtc
   service
   fabric
+  ${PYTHON_LIBRARIES}
 )
 
 add_library(contributor SHARED
@@ -29,9 +33,9 @@ add_library(contributor SHARED
 )
 
 target_include_directories(contributor PUBLIC
+  $ENV{CONDA_PREFIX}/include
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
-  $ENV{CONDA_PREFIX}/include
 )
 
 target_link_libraries(contributor
@@ -49,13 +53,28 @@ add_library(eventBuilder SHARED
 )
 
 target_include_directories(eventBuilder PUBLIC
+  $ENV{CONDA_PREFIX}/include
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
-  $ENV{CONDA_PREFIX}/include
 )
 
 target_link_libraries(eventBuilder
   utilities
+)
+
+add_library(tmoteb SHARED
+  Decide.cc
+)
+
+target_include_directories(tmoteb PUBLIC
+  $ENV{CONDA_PREFIX}/include
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  ${PYTHON_INCLUDE_DIRS}
+  $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(tmoteb
+  xtcdata::xtc
 )
 
 #add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
@@ -78,16 +97,24 @@ add_executable(tstEbLfLink      tstEbLfLink.cc)
 add_executable(ctrb
   ctrb.cc
 )
+
 add_executable(teb
   teb.cc
+)
+
+target_include_directories(teb PUBLIC
+  $<INSTALL_INTERFACE:include>
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  ${PYTHON_INCLUDE_DIRS}
+  $ENV{CONDA_PREFIX}/include
 )
 
 #add_executable(tstNthSet        tstNthSet.cc)
 #target_compile_options(tstNthSet        PRIVATE -mbmi2)
 
 #target_include_directories(ibMon PUBLIC
-#  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 #  $<INSTALL_INTERFACE:include>
+#  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 #  $ENV{CONDA_PREFIX}/include
 #)
 
@@ -156,12 +183,17 @@ target_link_libraries(teb
   collection
   pthread
   rt
+  dl
+  xtcdata::j2x
+  xtcdata::xtc
+  ${PYTHON_LIBRARIES}
 )
 
 install(TARGETS
   utilities
   contributor
   eventBuilder
+  tmoteb
   ctrb
   teb
   ARCHIVE DESTINATION lib
@@ -172,9 +204,9 @@ install(TARGETS
 add_executable(tstIndexPool    tstIndexPool.cc IndexPool.cc)
 
 target_include_directories(tstIndexPool PUBLIC
+  $ENV{CONDA_PREFIX}/include
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
-  $ENV{CONDA_PREFIX}/include
 )
 
 target_link_libraries(tstIndexPool

@@ -6,10 +6,13 @@
 #include "EbLfClient.hh"
 #include "EbLfServer.hh"
 
+#include "Decide.hh"
+
 #include "utilities.hh"
 #include "StatsMonitor.hh"
 
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/Dl.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <stdio.h>
@@ -23,7 +26,8 @@
 #include <cassert>
 #include <iostream>
 #include <exception>
-
+#include <Python.h>
+#include "rapidjson/document.h"
 
 using namespace XtcData;
 using namespace Pds;
@@ -77,20 +81,22 @@ namespace Pds {
       uint32_t _data[result_extent];
     };
 
-    class Teb;
-
     class Teb : public EbAppBase
     {
     public:
       Teb(const EbParams& prms, StatsMonitor& statsMon);
     public:
       int      connect(const EbParams&);
+      Decide*  decide()               { return _decideObj; }
+      void     decide(Decide* object) { _decideObj.store(object, std::memory_order_release); }
       void     run();
     public:                         // For EventBuilder
       virtual
       void     process(EbEvent* event);
     public:
       void     post(const Batch*, uint64_t& receivers);
+    private:
+      Damage   _configure(const Dgram* dg);
     private:
       std::vector<EbLfLink*> _l3Links;
       EbLfServer             _mrqTransport;
@@ -100,12 +106,14 @@ namespace Pds {
       const unsigned         _verbose;
     private:
       uint64_t               _receivers;
+      Decide*                _decide;
     private:
       uint64_t               _eventCount;
       uint64_t               _batchCount;
     private:
       const EbParams&        _prms;
       EbLfClient             _l3Transport;
+      std::atomic<Decide*>   _decideObj;
     };
   };
 };
@@ -122,10 +130,12 @@ Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
   _id          (-1),
   _verbose     (prms.verbose),
   _receivers   (0),
+  _decide      (nullptr),
   _eventCount  (0),
   _batchCount  (0),
   _prms        (prms),
-  _l3Transport (prms.verbose)
+  _l3Transport (prms.verbose),
+  _decideObj   (nullptr)
 {
   smon.metric("TEB_EvtRt",  _eventCount,             StatsMonitor::RATE);
   smon.metric("TEB_EvtCt",  _eventCount,             StatsMonitor::SCALAR);
@@ -258,19 +268,16 @@ void Teb::run()
   _id = -1;
 }
 
-// Ultimately, this method is provided by the users and is loaded from a
-// sharable library loaded during a configure transition.
-static
-uint16_t decide(const Dgram* ctrb, uint32_t* result, size_t sizeofPayload)
+Damage Teb::_configure(const Dgram* dg)
 {
-  if (result)
+  _decide = _decideObj.load(std::memory_order_acquire);
+  if (!_decide)
   {
-    const uint32_t* input = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
-
-    result[WRT_IDX] |= input[0] == 0xdeadbeef ? 1 : 0;
-    result[MON_IDX] |= input[1] == 0x12345678 ? 1 : 0;
+    fprintf(stderr, "%s:\n  No Decide object found\n", __PRETTY_FUNCTION__);
+    abort();
   }
-  return 0;
+
+  return _decide->configure(dg);
 }
 
 void Teb::process(EbEvent* event)
@@ -286,7 +293,13 @@ void Teb::process(EbEvent* event)
   }
   ++_eventCount;
 
+  Damage damage;
   const Dgram* dg = event->creator();
+  if (dg->seq.service() == TransitionId::Configure)
+  {
+    damage = _configure(dg);
+  }
+
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
     uint64_t pid    = dg->seq.pulseId().value();
@@ -307,10 +320,12 @@ void Teb::process(EbEvent* event)
     const EbContribution*  const* ctrb = event->begin();
     do
     {
-      uint16_t damage = decide(*ctrb, result, rdg->xtc.sizeofPayload());
-      if (damage)  rdg->xtc.damage.increase(damage);
+      Damage dmg = _decide->event(*ctrb, result, rdg->xtc.sizeofPayload());
+      damage.increase(dmg.value());
     }
     while (++ctrb != last);
+
+    rdg->xtc.damage.increase(damage.value());
 
     // Accumulate the list of ctrbs to this batch
     _receivers |= event->receivers();   // Cleared after posting, below
@@ -357,7 +372,7 @@ void Teb::process(EbEvent* event)
     const EbContribution*  const* ctrb = event->begin();
     do
     {
-      decide(*ctrb, nullptr, 0);
+      _decide->event(*ctrb, nullptr, 0);
     }
     while (++ctrb != last);
 
@@ -385,7 +400,7 @@ void Teb::process(EbEvent* event)
 
 void Teb::post(const Batch* batch, uint64_t& receivers)
 {
-  _batMan.flush();
+  _batMan.flush();                      // Revisit: Right place for this?
 
   uint32_t    idx    = batch->index();
   uint64_t    data   = ImmData::value(ImmData::Buffer, _id, idx);
@@ -432,30 +447,39 @@ class TebApp : public CollectionApp
 {
 public:
   TebApp(const std::string& collSrv, EbParams&, StatsMonitor&);
+  virtual ~TebApp();
 public:                                 // For CollectionApp
   std::string nicIp() override;
   void handleConnect(const json& msg) override;
-  void handleDisconnect(const json& msg); // override;
+  void handleDisconnect(const json& msg) override;
+  void handlePhase1(const json& msg) override;
   void handleReset(const json& msg) override;
 private:
   int  _handleConnect(const json& msg);
+  int  _handleConfigure(const json& msg);
   int  _parseConnectionParams(const json& msg);
-  void _shutdown();
 private:
   EbParams&     _prms;
   Teb           _teb;
   StatsMonitor& _smon;
   std::thread   _appThread;
+  Dl            _dl;
 };
 
 TebApp::TebApp(const std::string& collSrv,
                EbParams&          prms,
                StatsMonitor&      smon) :
   CollectionApp(collSrv, prms.partition, "teb", prms.alias),
-  _prms(prms),
-  _teb(prms, smon),
-  _smon(smon)
+  _prms        (prms),
+  _teb         (prms, smon),
+  _smon        (smon)
 {
+  Py_Initialize();
+}
+
+TebApp::~TebApp()
+{
+  Py_Finalize();
 }
 
 std::string TebApp::nicIp()
@@ -466,7 +490,7 @@ std::string TebApp::nicIp()
   return ip;
 }
 
-int TebApp::_handleConnect(const json &msg)
+int TebApp::_handleConnect(const json& msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
   if (rc)  return rc;
@@ -483,40 +507,100 @@ int TebApp::_handleConnect(const json &msg)
   return 0;
 }
 
-void TebApp::handleConnect(const json &msg)
+void TebApp::handleConnect(const json& msg)
 {
   int rc = _handleConnect(msg);
 
-  // Reply to collection with connect status
-  json body   = json({});
-  json answer = (rc == 0)
-              ? createMsg("connect", msg["header"]["msg_id"], getId(), body)
-              : createMsg("error",   msg["header"]["msg_id"], getId(), body);
-  reply(answer);
+  // Reply to collection with transition status
+  json body = json({});
+  if (rc)  body["error"] = "Connect error";
+  reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
 }
 
-void TebApp::_shutdown()
+int TebApp::_handleConfigure(const json& msg)
+{
+  using namespace rapidjson;
+
+  Document          top;
+  const std::string detName("tmoteb");
+  int               rc = fetchFromCfgDb(detName, top);
+  if (!rc)
+  {
+    const char* key("soname");
+    if (top.HasMember(key))
+    {
+      std::string so(top[key].GetString());
+      printf("Loading 'Decide' symbols from library '%s'\n", so.c_str());
+
+      // Lib must remain open during Unconfig transition
+      _dl.close();                      // If a lib is open, close it first
+
+      rc = _dl.open(so, RTLD_LAZY);
+      if (!rc)
+      {
+        Create_t*  createFn  = reinterpret_cast<Create_t*> (_dl.loadSymbol("create"));
+        Destroy_t* destroyFn = reinterpret_cast<Destroy_t*>(_dl.loadSymbol("destroy"));
+        if (createFn && destroyFn)
+        {
+          Decide* decide = _teb.decide();
+          if (decide)  destroyFn(decide);
+
+          decide = createFn();
+          if (decide)
+          {
+            _teb.decide(decide);
+
+            rc = decide->configure(msg);
+            if (rc)  fprintf(stderr, "%s:\n  Failed to configure Decide object: rc = %d\n",
+                             __PRETTY_FUNCTION__, rc);
+          }
+          else rc = fprintf(stderr, "%s:\n  Failed to create Decide object\n",
+                            __PRETTY_FUNCTION__);
+        }
+        else rc = fprintf(stderr, "%s:\n  Decide object's create() (%p) or destroy() (%p) not found in %s\n",
+                          __PRETTY_FUNCTION__, createFn, destroyFn, so.c_str());
+      }
+    }
+    else rc = fprintf(stderr, "%s:\n  Key '%s' not found in Document %s\n",
+                      __PRETTY_FUNCTION__, key, detName.c_str());
+  }
+  else rc = fprintf(stderr, "%s:\n  Failed to find Document '%s' in ConfigDb\n",
+                    __PRETTY_FUNCTION__, detName.c_str());
+
+  return rc;
+}
+
+void TebApp::handlePhase1(const json& msg)
+{
+  int         rc  = 0;
+  std::string key = msg["header"]["key"];
+
+  if (key == "configure")
+  {
+    rc = _handleConfigure(msg);
+  }
+
+  // Reply to collection with transition status
+  json body = json({});
+  if (rc)  body["error"] = "Phase 1 failed";
+  reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
+}
+
+void TebApp::handleDisconnect(const json& msg)
 {
   lRunning = 0;
 
   _appThread.join();
 
   _smon.disable();
+
+  // Reply to collection with transition status
+  json body = json({});
+  reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
-void TebApp::handleDisconnect(const json &msg)
+void TebApp::handleReset(const json& msg)
 {
-  _shutdown();
-
-  // Reply to collection with connect status
-  json body   = json({});
-  json answer = createMsg("disconnect", msg["header"]["msg_id"], getId(), body);
-  reply(answer);
-}
-
-void TebApp::handleReset(const json &msg)
-{
-  _shutdown();
 }
 
 int TebApp::_parseConnectionParams(const json& body)
