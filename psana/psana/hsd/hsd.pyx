@@ -1,6 +1,5 @@
 # Import the Python-level symbols of numpy
 import numpy as np
-np.set_printoptions(threshold=np.inf)
 from psana.detector.detector_impl import DetectorImpl
 
 # Import the C-level symbols of numpy
