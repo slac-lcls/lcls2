@@ -94,7 +94,7 @@ namespace Pds {
       void            startup(unsigned id, void** base, size_t* size, uint16_t readoutGroup);
       void            shutdown();
       void            stop();
-      int             transition(TransitionId::Value transition);
+      int             transition(TransitionId::Value transition, uint64_t pid);
     public:
       const Dgram*    generate();
       void            release(const Input*);
@@ -114,6 +114,7 @@ namespace Pds {
       mutable std::mutex               _trLock;
       std::condition_variable          _trCv;
       std::atomic<TransitionId::Value> _transition;
+      std::atomic<uint64_t>            _trPid;
     private:
       uint64_t                         _allocPending;
       uint64_t                         _startCnt;
@@ -179,7 +180,7 @@ DrpSim::DrpSim(size_t maxEvtSize) :
 
 void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGroup)
 {
-  _pid          = 0x01000000000003ul; // Something non-zero and not on a batch boundary
+  _pid          = 0;
   _trId         = TransitionId::Unknown;
   _transition   = TransitionId::Unknown;
   _allocPending = 0;
@@ -214,9 +215,10 @@ void DrpSim::shutdown()
   }
 }
 
-int DrpSim::transition(TransitionId::Value transition)
+int DrpSim::transition(TransitionId::Value transition, uint64_t pid)
 {
   std::unique_lock<std::mutex> lock(_trLock);
+  _trPid      = pid & ((1ul << PulseId::NumPulseIdBits) - 1);
   _transition = transition;
   _trCv.notify_one();
   return 0;
@@ -245,6 +247,7 @@ const Dgram* DrpSim::generate()
       if (!lRunning)  return nullptr;
       _trId       = _transition;
       _transition = TransitionId::Unknown;
+      _pid        = _trPid;
     }
     else
     {
@@ -257,6 +260,15 @@ const Dgram* DrpSim::generate()
     {
       _trId       = _transition;
       _transition = TransitionId::Unknown;
+
+      uint64_t pid = _trPid;
+      if (_pid > pid)
+      {
+        fprintf(stderr, "%s:\n  Pulse Id overflow: %014lx, expected < %014lx\n",
+                __PRETTY_FUNCTION__, _pid, pid);
+        pid = _pid;                     // Don't let PID go into the past
+      }
+      _pid = pid;
     }
   }
 
@@ -527,19 +539,29 @@ void CtrbApp::handlePhase1(const json &msg)
 {
   int         rc  = 0;
   std::string key = msg["header"]["key"];
+  std::string ts  = msg["header"]["msg_id"];
+  uint64_t    pid = 0x01000000000003ul; // Something non-zero and not on a batch boundary
+  size_t      fnd = ts.find('-');
+  if (fnd != std::string::npos)
+  {
+    // Use base 10 to deal with leading zeros
+    // Divide by 100 to allow max rate of "10 MHz" before overflow
+    pid = (std::stoul(ts.substr(0, fnd), nullptr, 10) * 1000000000 +
+           std::stoul(ts.substr(fnd + 1, std::string::npos), nullptr, 10)) / 100;
+  }
 
   if      (key == "configure")
   {
     // Give TEB time to react before passing the transition down the timing stream
     sleep(5);                    // Nothing to wait on that ensures TEB is done
-    rc = _tebCtrb.drpSim().transition(TransitionId::Configure);
+    rc = _tebCtrb.drpSim().transition(TransitionId::Configure, pid);
   }
   else if (key == "unconfigure")
-    rc = _tebCtrb.drpSim().transition(TransitionId::Unconfigure);
+    rc = _tebCtrb.drpSim().transition(TransitionId::Unconfigure, pid);
   else if (key == "enable")
-    rc = _tebCtrb.drpSim().transition(TransitionId::Enable);
+    rc = _tebCtrb.drpSim().transition(TransitionId::Enable, pid);
   else if (key == "disable")
-    rc = _tebCtrb.drpSim().transition(TransitionId::Disable);
+    rc = _tebCtrb.drpSim().transition(TransitionId::Disable, pid);
 
   // Reply to collection with transition status
   json body = json({});
@@ -552,7 +574,7 @@ void CtrbApp::handleDisconnect(const json &msg)
   lRunning = 0;
 
   _tebCtrb.shutdown();
-  _tebCtrb.drpSim().transition(TransitionId::Unknown);
+  _tebCtrb.drpSim().transition(TransitionId::Unknown, 0);
 
   _appThread.join();
 
