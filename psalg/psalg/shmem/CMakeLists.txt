@@ -32,7 +32,7 @@ target_link_libraries(shmemsrv
 )
 
 add_executable(shmemClient
-    shmemClient.cc
+    shmemClientApp.cc
 )
 target_link_libraries(shmemClient
     xtcdata::xtc
