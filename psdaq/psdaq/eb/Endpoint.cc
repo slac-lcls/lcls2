@@ -871,22 +871,42 @@ CompletionQueue* EndpointBase::rxcq() const { return _rxcq; }
 
 bool EndpointBase::event(uint32_t* event, void* entry, bool* cm_entry)
 {
-  return _eq->event(event, entry, cm_entry);
+  bool rret = _eq->event(event, entry, cm_entry);
+  if (!rret) {
+    _errno = (int) _eq->error_num();
+    strncpy(_error, _eq->error(), ERR_MSG_LEN);
+  }
+  return rret;
 }
 
 bool EndpointBase::event_wait(uint32_t* event, void* entry, bool* cm_entry, int timeout)
 {
-  return _eq->event_wait(event, entry, cm_entry, timeout);
+  bool rret = _eq->event_wait(event, entry, cm_entry, timeout);
+  if (!rret) {
+    _errno = (int) _eq->error_num();
+    strncpy(_error, _eq->error(), ERR_MSG_LEN);
+  }
+  return rret;
 }
 
 bool EndpointBase::event_error(struct fi_eq_err_entry *entry)
 {
-  return _eq->event_error(entry);
+  bool rret = _eq->event_error(entry);
+  if (!rret) {
+    _errno = (int) _eq->error_num();
+    strncpy(_error, _eq->error(), ERR_MSG_LEN);
+  }
+  return rret;
 }
 
 bool EndpointBase::handle_event(ssize_t event_ret, bool* cm_entry, const char* cmd)
 {
-  return _eq->handle_event(event_ret, cm_entry, cmd);
+  bool rret = _eq->handle_event(event_ret, cm_entry, cmd);
+  if (!rret) {
+    _errno = (int) _eq->error_num();
+    strncpy(_error, _eq->error(), ERR_MSG_LEN);
+  }
+  return rret;
 }
 
 void EndpointBase::shutdown()
