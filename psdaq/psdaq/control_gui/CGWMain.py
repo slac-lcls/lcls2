@@ -32,13 +32,13 @@ logger = logging.getLogger(__name__)
 import json
 from time import time
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
-from PyQt5.QtCore import Qt#, QPoint
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit, QSizePolicy
+from PyQt5.QtCore import Qt, QSize#, QPoint
 
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
 from psdaq.control_gui.CGWMainPartition     import CGWMainPartition
 from psdaq.control_gui.CGWMainControl       import CGWMainControl
-from psdaq.control_gui.CGWMainStatus        import CGWMainStatus
+from psdaq.control_gui.CGWMainCollection    import CGWMainCollection
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
@@ -82,7 +82,7 @@ class CGWMain(QWZMQListener) :
         self.wpart = CGWMainPartition()
         self.wctrl = CGWMainControl(parent_ctrl=self)
         #====self.wdetr = CGWMainDetector(parent_ctrl=self)
-        self.wstat = CGWMainStatus()
+        self.wcoll = CGWMainCollection()
         #self.wlogr = QTextEdit('my logger')
 
         #self.vbox = QVBoxLayout() 
@@ -97,7 +97,7 @@ class CGWMain(QWZMQListener) :
         self.vspl.addWidget(self.wpart) 
         self.vspl.addWidget(self.wctrl) 
         #====self.vspl.addWidget(self.wdetr) 
-        self.vspl.addWidget(self.wstat) 
+        self.vspl.addWidget(self.wcoll) 
         self.vspl.addWidget(self.wlogr) 
 
         #self.hspl = QSplitter(Qt.Horizontal)
@@ -175,12 +175,25 @@ class CGWMain(QWZMQListener) :
         pass
         #self.butStop.setToolTip('Not implemented yet...')
 
+#--------------------
+
+    def sizeHint(self):
+        return QSize(400, 810)
+
+#--------------------
 
     def set_style(self) :
+        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
-        self.setMinimumWidth(350)
+        #self.setMaximumWidth(400)
+        #self.setFixedWidth(350)
+
+        self.setMinimumWidth(400)
         self.setMinimumHeight(810)
         self.wlogr.setMinimumHeight(220)
+
+        #self.wcoll.setFixedWidth(330)
+        #self.wcoll.setMaximumWidth(350)
 
         #self.setGeometry(50, 50, 500, 600)
         #self.setGeometry(self.main_win_pos_x .value(),\
@@ -251,7 +264,7 @@ class CGWMain(QWZMQListener) :
           #self.wpart.close()
           #self.wctrl.close()
           #self.wdetr.close()
-          #self.wstat.close()
+          #self.wcoll.close()
         except Exception as ex:
           print('Exception: %s' % ex)
 
@@ -351,7 +364,7 @@ class CGWMain(QWZMQListener) :
                     #====self.wdetr.set_but_state (s_state)
                     self.wctrl.set_but_ctrls (s_state)
                     self.wctrl.set_transition(s_transition)
-                    self.wstat.update_table()
+                    self.wcoll.update_table()
                     logging.info('received state msg: %s and transition: %s' % (s_state, s_transition))
 
                 elif jo['header']['key'] == 'error' :

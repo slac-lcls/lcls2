@@ -41,10 +41,22 @@ class QWList(QListView) :
         self.set_style()
         self.show_tool_tips()
 
+        self.connect_signals()
+        #self.disconnect_signals()
+
+
+    def connect_signals(self) :
         self.model.itemChanged.connect(self.on_item_changed)
         self.connect_item_selected_to(self.on_item_selected)
         self.clicked[QModelIndex].connect(self.on_click)
         self.doubleClicked[QModelIndex].connect(self.on_double_click)
+
+
+    def disconnect_signals(self) :
+        self.model.itemChanged.disconnect(self.on_item_changed)
+        self.disconnect_item_selected_from(self.on_item_selected)
+        self.clicked[QModelIndex].disconnect(self.on_click)
+        self.doubleClicked[QModelIndex].disconnect(self.on_double_click)
  
 
     def set_selection_mode(self, smode='extended') :
@@ -139,7 +151,7 @@ class QWList(QListView) :
         #self.butELog    .setIcon(icon.icon_mail_forward)
         #self.butFile    .setIcon(icon.icon_save)  
         self.setMinimumHeight(100)
-        self.setMinimumWidth(100)
+        self.setMinimumWidth(50)
         #self.adjustSize()
         #self.        setStyleSheet(style.styleBkgd)
         #self.butSave.setStyleSheet(style.styleButton)

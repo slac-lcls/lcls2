@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy#, QGridLayout, QCheckBox, QTextEdit, QLabel, 
 from PyQt5.QtCore import Qt
 from psdaq.control_gui.Styles import style
-from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes
+#from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes
+from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
 
 #------------------------------
 
@@ -43,7 +44,8 @@ class QWPopupTableCheck(QDialog) :
         win_title = kwargs.get('win_title', None)
         if win_title is not None : self.setWindowTitle(win_title)
 
-        self.wtab = QWTableOfCheckBoxes(**kwargs)
+        #self.wtab = QWTableOfCheckBoxes(**kwargs)
+        self.wtab = CGWPartitionTable(**kwargs)
         #self.make_gui_checkbox()
 
         self.do_ctrl  = kwargs.get('do_ctrl', True)

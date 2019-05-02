@@ -30,7 +30,8 @@ from PyQt5.QtGui import QCursor
 
 from psdaq.control_gui.CGDaqControl import daq_control
 from psdaq.control_gui.CGJsonUtils import get_platform, set_platform, list_active_procs
-from psdaq.control_gui.QWPopupTableCheck import QWPopupTableCheck, QWTableOfCheckBoxes
+from psdaq.control_gui.QWPopupTableCheck import QWPopupTableCheck
+from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
 
 #--------------------
 
@@ -118,7 +119,9 @@ class CGWMainPartition(QGroupBox) :
                               win_title='Select partitions',\
                               do_edit=False, is_visv=True, do_frame=True)
 
-        w.setToolTip('Processes control is only available\nin the state UNALLOCATED')
+        if self.state!='UNALLOCATED' :
+            w.setToolTip('Processes control is only available\nin the state UNALLOCATED')
+
         w.move(QCursor.pos()+QPoint(20,10))
         resp=w.exec_()
 
@@ -154,10 +157,10 @@ class CGWMainPartition(QGroupBox) :
             list2d_active = list_active_procs(list2d)
             #logger.debug('list2d active processes:\n%s' % str(list2d_active))
 
-            self.w_display = QWTableOfCheckBoxes(parent=None, tableio=list2d_active,\
-                                                 win_title='Display partitions',\
-                                                 title_h=self.TABTITLE_H,\
-                                                 is_visv=False)
+            self.w_display = CGWPartitionTable(parent=None, tableio=list2d_active,\
+                                               win_title='Display partitions',\
+                                               title_h=self.TABTITLE_H,\
+                                               is_visv=False)
 
             self.w_display.setToolTip('Processes selection is only available\nin the "Select" window.')
             self.w_display.move(QCursor.pos()+QPoint(50,10))

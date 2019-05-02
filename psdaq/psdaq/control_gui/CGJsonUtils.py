@@ -64,7 +64,7 @@ def dict_platform():
 
 #--------------------
 
-def get_status(header=['R.G.','drp','meb','teb']):
+def get_status(header=['drp','meb','teb']):
     """ returns 2-d list for status
     """
     ncols = len(header)
@@ -111,8 +111,7 @@ def get_status(header=['R.G.','drp','meb','teb']):
 
                 row = row_counter[pname]
 
-                if pname=='drp' :
-                    list2d[row][0] = str(v['readout'])
+                #if pname=='drp' : list2d[row][0] = str(v['readout'])
 
                 #print('XXX fill field row:%d col:%d name:%s' % (row,col,name))
                 list2d[row][col] = name
@@ -131,8 +130,11 @@ def get_status(header=['R.G.','drp','meb','teb']):
 #--------------------
 
 def get_platform():
-    """ returns [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
-        #returns [[[True,'test/19670/daq-tst-dev02'], 'testClient2b'], ...]
+    """ returns 2-d list of fields: [['just-text', [True,''], [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"]], ...],
+        - 'just-text' (str) - field of text
+        - [True,''] (list)  - field of check-box
+        - [True,'', <int-flag>] (list)  - field of check-box with flags
+        - [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"] (list) - field of check-box and text with flags and validator
         after control.getPlatform() request
     """
     list2d = []
@@ -153,8 +155,10 @@ def get_platform():
 
                 #if is_drp : print('XXX pname %s readout %d' % (pname,readgr))
                 #else      : print('XXX pname %s' % pname)
-
-                list2d.append([[v['active']==1, ''], [False, str(readgr), 6, "^([0-9]|1[0-5])$"], flds[0], alias])
+                flag = 6 if is_drp else 2
+                list2d.append([[v['active']==1, ''], [False, str(readgr), flag, "^([0-9]|1[0-5])$"],\
+                                                     [False, flds[0], 2],\
+                                                     [False, alias, 2]])
                 #list2d.append([[v['active']==1, ''], str(readgr), flds[0], alias])
 
     except Exception as ex:

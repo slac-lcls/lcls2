@@ -18,9 +18,6 @@ logger = logging.getLogger(__name__)
 
 from psdaq.control_gui.QWTable import QWTable, QStandardItem, Qt #icon
 
-from PyQt5.QtCore import QRegExp
-from PyQt5.QtGui import QRegExpValidator
-
 from re import search as re_search
 
 #----------
@@ -44,6 +41,13 @@ class QWTableOfCheckBoxes(QWTable) :
 
     def fill_table_model(self, **kwargs) :
         """tableio is an I/O list of lists, containing str or [bool,str] elements.
+           accepts 2-d list of fields: [['just-text', [True,''], [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"]], ...],
+           - 'just-text' (str) - field of text
+           - [True,''] (list)  - field of check-box
+           - [True,'', <int-flag>] (list)  - field of check-box with flags
+           - [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"] (list) - field of check-box and text with flags and validator
+        after control.getPlatform() request
+
         """
         self.tableio = kwargs.get('tableio', None)  # I/O 2-d-list table with items "str" or "[bool, str]"
         self.do_live = kwargs.get('do_live', False) # live update of I/O tableio
@@ -78,9 +82,9 @@ class QWTableOfCheckBoxes(QWTable) :
                     elif lsize>2 : # use field settings depending on flags
                         flags = fld[2]
                         if flags & BIT_CHECKABLE : item.setCheckState({False:0, True:2}[fld[0]])
-                        item.setCheckable (flags & BIT_CHECKABLE)
+                        item.setCheckable((flags & BIT_CHECKABLE) and do_ctrl)
                         item.setEnabled   (flags & BIT_ENABLED)
-                        item.setEditable  (flags & BIT_EDITABLE)
+                        item.setEditable ((flags & BIT_EDITABLE) and do_ctrl)
                         item.setSelectable(flags & BIT_SELECTABLE)
                         if lsize>3 : item.valid_reg_exp = fld[3]
 
@@ -100,7 +104,7 @@ class QWTableOfCheckBoxes(QWTable) :
 
     def connect_control(self) :
         #self.connect_item_selected_to(self.on_item_selected)
-        #self.clicked.connect(self.on_click)
+        self.clicked.connect(self.on_click)
         #self.doubleClicked.connect(self.on_double_click)
         self.connect_item_changed_to(self.on_item_changed)
 
@@ -160,12 +164,12 @@ if __name__ == "__main__" :
 
     title_h = ['str', 'cbx', 'flags']
     tableio = [\
-               ['name 11', [True,  'name 12'], [False, 'name 13aa', 0]],\
-               ['name 21', [False, 'name 22'], [False, 'name 23bb', 1]],\
-               ['name 31', [True,  'name 32'], [False, 'name 33cc', 2]],\
-               ['name 41', [False, 'name 42'], [False, 'name 43dd', 6]],\
-               ['name 51', [True,  'name 52'], [False, 'name 53ee',14]],\
-               ['name 61', [False, 'name 62'], [True,  'name 63ff',15]],\
+               ['11', [True,  'name 12'], [False, 'name 13aa', 0]],\
+               ['21', [False, 'name 22'], [False, 'name 23bb', 1]],\
+               ['31', [True,  'name 32'], [False, 'name 33cc', 2]],\
+               ['41', [False, 'name 42'], [False, 'name 43dd', 6]],\
+               ['51', [True,  'name 52'], [False, 'name 53ee',14]],\
+               ['61', [False, 'name 62'], [True,  'name 63ff',15]],\
     ]
 
     print('%s\nInput table:' % (50*'_'))
