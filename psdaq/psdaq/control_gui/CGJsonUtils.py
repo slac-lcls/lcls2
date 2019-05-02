@@ -64,7 +64,7 @@ def dict_platform():
 
 #--------------------
 
-def get_status(header=['drp','meb','teb']):
+def get_status(header=['drp','teb','meb']):
     """ returns 2-d list for status
     """
     ncols = len(header)
@@ -123,9 +123,9 @@ def get_status(header=['drp','meb','teb']):
 
     return list2d
 
-    #return [['1', 'drp1','meb1','teb1'],\
-    #        ['2', 'drp2','meb2','teb2'],\
-    #        ['3', 'drp3','meb3','teb3']]
+    #return [['1', 'drp1','teb1','meb1'],\
+    #        ['2', 'drp2','teb2','meb2'],\
+    #        ['3', 'drp3','teb3','meb3']]
 
 #--------------------
 

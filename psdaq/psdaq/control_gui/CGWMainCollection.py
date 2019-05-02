@@ -36,7 +36,7 @@ from psdaq.control_gui.CGJsonUtils  import get_status
 class CGWMainCollection(QGroupBox) :
     """
     """
-    TABTITLE_H = ['drp','meb','teb']
+    TABTITLE_H = ['drp','teb','meb']
 
     def __init__(self, parent=None):
 
@@ -69,9 +69,9 @@ class CGWMainCollection(QGroupBox) :
 #--------------------
 
     def update_table(self) :
-        #list2d = [['drp1','meb1','teb1'],\
-        #          ['drp2','meb2','teb2'],\
-        #          ['drp3','meb3','teb3']]
+        #list2d = [['drp1','teb1','meb1'],\
+        #          ['drp2','teb2','meb2'],\
+        #          ['drp3','teb3','meb3']]
 
         list2d = get_status(self.TABTITLE_H)
         logger.debug('list2d processes status:\n%s' % str(list2d))

@@ -39,8 +39,7 @@ from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
 class CGWMainPartition(QGroupBox) :
     """
     """
-    #TABTITLE_H = ['', 'proc/pid/host', 'aliases']
-    TABTITLE_H = ['', 'R.G.', 'proc/pid/host', 'aliases']
+    TABTITLE_H = ['sel', 'grp', 'level/pid/host', 'ID']
 
     def __init__(self, parent=None):
 
@@ -116,8 +115,8 @@ class CGWMainPartition(QGroupBox) :
         #parent=self,
         w = QWPopupTableCheck(tableio=list2d, title_h=self.TABTITLE_H,\
                               do_ctrl=(self.state=='UNALLOCATED'),\
-                              win_title='Select partitions',\
-                              do_edit=False, is_visv=True, do_frame=True)
+                              win_title='Select partition',\
+                              do_edit=False, is_visv=False, do_frame=True)
 
         if self.state!='UNALLOCATED' :
             w.setToolTip('Processes control is only available\nin the state UNALLOCATED')
