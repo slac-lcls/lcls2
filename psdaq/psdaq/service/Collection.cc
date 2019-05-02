@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <iostream>
 #include <iomanip>
 #include <unistd.h>
@@ -243,7 +244,9 @@ void CollectionApp::run()
             { m_subSocket.socket, 0, ZMQ_POLLIN, 0 },
             { m_inprocRecv.socket, 0, ZMQ_POLLIN, 0 }
         };
-        zmq_poll(items, 2, -1);
+        if (zmq_poll(items, 2, -1) == -1) {
+            if (errno == EINTR)  break;
+        }
 
         // received zeromq message from the collection
         if (items[0].revents & ZMQ_POLLIN) {
