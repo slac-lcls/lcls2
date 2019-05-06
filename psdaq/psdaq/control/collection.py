@@ -556,16 +556,16 @@ class CollectionManager():
         return error_count
 
 
-    def get_phase2_replies(self):
-        # get respones from the drp timing systems
+    def get_phase2_replies(self, transition):
+        # get responses from the drp timing systems
         ids = self.filter_active_set(self.ids)
         ids = self.filter_level('drp', ids)
         # make sure all the clients respond to transition before timeout
         missing, answers = confirm_response(self.back_pull, 2000, None, ids)
         if missing:
-            logging.error('phase2 failed')
+            logging.error('%s phase2 failed' % transition)
             for alias in self.get_aliases(missing):
-                self.report_error('%s did not respond' %alias)
+                self.report_error('%s did not respond to %s' % (alias, transition))
             return False
         return True
 
@@ -830,7 +830,7 @@ class CollectionManager():
             logging.error('condition_configure(): pv_put() failed')
             return False
 
-        ok = self.get_phase2_replies()
+        ok = self.get_phase2_replies('configure')
         if not ok:
             return False
 
@@ -853,7 +853,7 @@ class CollectionManager():
             logging.error('condition_unconfigure(): pv_put() failed')
             return False
 
-        ok = self.get_phase2_replies()
+        ok = self.get_phase2_replies('unconfigure')
         if not ok:
             return False
 
@@ -877,7 +877,7 @@ class CollectionManager():
             logging.error('condition_enable(): pv_put() failed')
             return False
 
-        ok = self.get_phase2_replies()
+        ok = self.get_phase2_replies('enable')
         if not ok:
             return False
 
@@ -906,7 +906,7 @@ class CollectionManager():
             logging.error('condition_disable(): pv_put() failed')
             return False
 
-        ok = self.get_phase2_replies()
+        ok = self.get_phase2_replies('disable')
         if not ok:
             return False
 
