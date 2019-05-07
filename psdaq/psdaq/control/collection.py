@@ -589,7 +589,7 @@ class CollectionManager():
             for level, item in answer['body'].items():
                 self.cmstate[level][id].update(item)
 
-        active_state = self.filter_active_dict(self.cmstate)
+        active_state = self.filter_active_dict(self.cmstate_levels())
         # give number to drp nodes for the event builder
         if 'drp' in active_state:
             for i, node in enumerate(active_state['drp']):
@@ -626,7 +626,7 @@ class CollectionManager():
         self.pv_put(self.pvRun, 0)  # clear Run PV before configure
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
-        msg = create_msg('connect', body=self.filter_active_dict(self.cmstate))
+        msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids)
@@ -663,7 +663,7 @@ class CollectionManager():
 
     def handle_getstate(self, body):
         logging.debug('handle_getstate()')
-        return create_msg(self.state, body=self.cmstate)
+        return create_msg(self.state, body=self.cmstate_levels())
 
     # returns last transition plus current state
     def handle_getstatus(self, body):
@@ -735,7 +735,7 @@ class CollectionManager():
     # filter_active_set - return subset of ids which have 'active' flag set
     def filter_active_set(self, ids):
         matches = set()
-        for level, item in self.cmstate.items():
+        for level, item in self.cmstate_levels().items():
             for xid in item:
                 if item[xid]['active'] == 1:
                     matches.add(xid)
@@ -755,14 +755,14 @@ class CollectionManager():
     # filter_level - return subset of ids for which 'level' starts with prefix
     def filter_level(self, prefix, ids):
         matches = set()
-        for level, item in self.cmstate.items():
+        for level, item in self.cmstate_levels().items():
             if level.startswith(prefix):
                 matches.update(set(item.keys()))
         return matches.intersection(ids)
 
     def get_aliases(self, id_list):
         alias_list = []
-        for level, item in self.cmstate.items():
+        for level, item in self.cmstate_levels().items():
             for xid in item.keys():
                 if xid in id_list and 'proc_info' in item[xid]:
                     try:
