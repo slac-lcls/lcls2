@@ -492,7 +492,7 @@ int MebApp::_parseConnectionParams(const json& body)
       }
       _prms.contributors |= 1ul << drpId;
 
-      groups |= 1 << unsigned(it.value()["readout"]);
+      groups |= 1 << unsigned(it.value()["det_info"]["readout"]);
     }
   }
 

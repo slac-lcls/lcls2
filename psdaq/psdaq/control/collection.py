@@ -689,9 +689,9 @@ class CollectionManager():
                     if level == 'drp':
                         # drp readout group
                         if self.cmstate[level][int(key2)]['active'] == 1:
-                            self.cmstate[level][int(key2)]['readout'] = body[level][key2]['readout']
+                            self.cmstate[level][int(key2)]['det_info']['readout'] = body[level][key2]['det_info']['readout']
                         else:
-                            self.cmstate[level][int(key2)]['readout'] = self.platform
+                            self.cmstate[level][int(key2)]['det_info']['readout'] = self.platform
 
         except Exception as ex:
             msg = 'handle_selectplatform(): %s' % ex
@@ -718,7 +718,9 @@ class CollectionManager():
                 self.cmstate[level][id] = item
                 self.cmstate[level][id]['active'] = DaqControl.default_active
                 if level == 'drp':
-                    self.cmstate[level][id]['readout'] = self.platform
+                    if 'det_info' not in self.cmstate[level][id]:
+                        self.cmstate[level][id]['det_info'] = {}
+                    self.cmstate[level][id]['det_info']['readout'] = self.platform
                 self.ids.add(id)
         if len(self.ids) == 0:
             self.report_error('no clients responded to plat')

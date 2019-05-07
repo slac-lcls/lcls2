@@ -634,7 +634,7 @@ int CtrbApp::_parseConnectionParams(const json& body)
     return 1;
   }
 
-  unsigned group = body["drp"][id]["readout"];
+  unsigned group = body["drp"][id]["det_info"]["readout"];
   if (group > NUM_READOUT_GROUPS - 1)
   {
     fprintf(stderr, "Readout group %d is out of range 0 - %d\n", group, NUM_READOUT_GROUPS - 1);

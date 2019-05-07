@@ -151,7 +151,7 @@ def get_platform():
                 #list2d.append([[v['active']==1, ''], flds[0], alias])
 
                 is_drp = pname=='drp'
-                readgr = v['readout'] if is_drp else ''
+                readgr = v['det_info']['readout'] if is_drp else ''
 
                 #if is_drp : print('XXX pname %s readout %d' % (pname,readgr))
                 #else      : print('XXX pname %s' % pname)
@@ -189,7 +189,7 @@ def set_platform(dict_platf, list2d):
                 int_active = {True:1, False:0}[status]
                 dict_platf[pname][k]['active'] = int_active
                 if pname=='drp' :
-                    dict_platf[pname][k]['readout'] = int(list2d[i][1][1])
+                    dict_platf[pname][k]['det_info']['readout'] = int(list2d[i][1][1])
 
                 s += '%s   int_active: %d\n' % (display,int_active)
         

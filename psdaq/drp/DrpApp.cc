@@ -167,7 +167,7 @@ void DrpApp::parseConnectionParams(const json& body)
     }
     m_para->tPrms.builders = builders;
 
-    m_para->tPrms.readoutGroup = 1 << unsigned(body["drp"][id]["readout"]);
+    m_para->tPrms.readoutGroup = 1 << unsigned(body["drp"][id]["det_info"]["readout"]);
     m_para->tPrms.contractor = m_para->tPrms.readoutGroup; // Revisit: Value to come from CfgDb
 
     if (body.find("meb") != body.end()) {

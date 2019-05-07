@@ -642,7 +642,7 @@ int TebApp::_parseConnectionParams(const json& body)
       _prms.addrs.push_back(address);
       _prms.ports.push_back(std::string(std::to_string(drpPortBase + drpId)));
 
-      groups |= 1 << unsigned(it.value()["readout"]);
+      groups |= 1 << unsigned(it.value()["det_info"]["readout"]);
     }
   }
   if (_prms.addrs.size() == 0)
