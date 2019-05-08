@@ -1,11 +1,13 @@
 import os
+from .tools import mode
 from .ds_base import DataSourceBase
 from psana.psexp.run import RunParallel
 
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
+if mode == 'mpi':
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
 
 class MPIDataSource(DataSourceBase):
 
