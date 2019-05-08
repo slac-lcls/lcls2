@@ -45,10 +45,10 @@ def main():
                     if args.select_all or (args.s is not None and alias in args.s):
                         if level == 'drp':
                             # select drp
-                            if v['active'] != 1 or v['readout'] != readout:
+                            if v['active'] != 1 or v['det_info']['readout'] != readout:
                                 changed = True
                                 v['active'] = 1
-                                v['readout'] = readout
+                                v['det_info']['readout'] = readout
                         else:
                             # select teb or meb
                             if v['active'] != 1:

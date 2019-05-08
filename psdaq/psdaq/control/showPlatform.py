@@ -47,7 +47,7 @@ def main():
                     if level == 'drp' and v['active'] == 1:
                         display = "%-16s %s/%s/%-16s\n%42s: %s" % \
                                   (alias, level, pid, host,       \
-                                   'readout group', v['readout'])
+                                   'readout group', v['det_info']['readout'])
                     else:
                         display = "%-16s %s/%s/%-16s" % (alias, level, pid, host)
                     displayList.append(display)
