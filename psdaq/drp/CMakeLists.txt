@@ -1,46 +1,25 @@
-add_library(drputils SHARED
-    Digitizer.cc
-    AreaDetector.cc
-    Worker.cc
-    PGPReader.cc
-    utils.cc
-)
-
 find_package(PythonLibs REQUIRED)
 
-target_link_libraries(drputils
-    xtcdata::xtc
-    xtcdata::j2x
-    pgpdriver
-    contributor
-    zmq
-    ${PYTHON_LIBRARIES}
-)
-
-target_include_directories(drputils PUBLIC
-    ../psdaq/pgp/aes-stream-drivers/include
-    ../psdaq/service
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-    ${PYTHON_INCLUDE_DIRS}
-    $ENV{CONDA_PREFIX}/include
-)
-
 add_executable(drp
+    PGPReader.cc
     DrpApp.cc
-    DrpApp.hh
+    AreaDetector.cc
+    Digitizer.cc
     drp.cc
 )
 
 target_include_directories(drp PUBLIC
-    $ENV{CONDA_PREFIX}/include)
+    ../psdaq/pgp/aes-stream-drivers/include
+    $ENV{CONDA_PREFIX}/include
+)
 
 target_link_libraries(drp
+    xtcdata::xtc
+    xtcdata::j2x
     pthread
-    drputils
+    zmq
     collection
     contributor
-    zmq
 )
 
 add_executable(test_hsd_config
@@ -76,36 +55,24 @@ target_link_libraries(test_teb_config
 add_executable(pgpread
     pgpread.cc
 )
-
 target_include_directories(pgpread PUBLIC
     ../psdaq/pgp/aes-stream-drivers/include
 )
-
 target_link_libraries(pgpread
     xtcdata::xtc
 )
 
-#add_executable(tdetsim2
-#    tdetsim.cc
-#)
-
-#target_include_directories(tdetsim2 PUBLIC
-#    ../psdaq/pgp/aes-stream-drivers/include
-#)
-
 add_executable(drp_validate
     validate.cc
 )
-
 target_include_directories(drp_validate PUBLIC
-    ../psdaq/pgp/aes-stream-drivers/include
-)
+     ../psdaq/pgp/aes-stream-drivers/include
+ )
+ target_link_libraries(drp_validate
+     pthread
+ )
 
-target_link_libraries(drp_validate
-    pthread
-)
-
-install(TARGETS drputils drp
+install(TARGETS drp
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin

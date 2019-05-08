@@ -1,13 +1,15 @@
 #pragma once
 
 #include <thread>
-//#include "Collector.hh"
 #include "PGPReader.hh"
+#include "psdaq/eb/eb.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
 #include "psdaq/eb/StatsMonitor.hh"
+
+namespace Drp {
 
 class Detector;
 
@@ -19,20 +21,6 @@ private:
     uint64_t _data;
 };
 #pragma pack(pop)
-
-// return dma indices in batches for performance
-class DmaIndexReturner
-{
-public:
-    DmaIndexReturner(int fd);
-    ~DmaIndexReturner();
-    void returnIndex(uint32_t index);
-private:
-    static const int BatchSize = 500;
-    int m_fd;
-    int m_counts;
-    uint32_t m_indices[BatchSize];
-};
 
 class BufferedFileWriter
 {
@@ -53,7 +41,7 @@ private:
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
-    EbReceiver(const Parameters& para, MemPool& pool,
+    EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqContext& context, Pds::Eb::MebContributor* mon,
                Pds::Eb::StatsMonitor& smon);
     virtual ~EbReceiver() {};
@@ -61,11 +49,14 @@ public:
 private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
-    unsigned nreceive;
     BufferedFileWriter m_fileWriter;
     bool m_writing;
-    DmaIndexReturner m_indexReturner;
     ZmqSocket m_inprocSend;
+    static const int m_size = 100;
+    uint32_t m_indices[m_size];
+    int m_count;
+    uint32_t lastIndex;
+    uint32_t lastEvtCounter;
 };
 
 struct Parameters;
@@ -78,14 +69,16 @@ public:
     void handleConnect(const json& msg) override;
     void handlePhase1(const json& msg) override;
     void handleReset(const json& msg) override;
+    void shutdown();
 private:
     void parseConnectionParams(const json& msg);
     void collector();
 
     Parameters* m_para;
+    Pds::Eb::TebCtrbParams m_tPrms;
+    Pds::Eb::MebCtrbParams m_mPrms;
     std::thread m_pgpThread;
     std::thread m_collectorThread;
-    std::thread m_monitorThread;
     MemPool m_pool;
     std::unique_ptr<PGPReader> m_pgpReader;
     std::unique_ptr<Pds::Eb::TebContributor> m_ebContributor;
@@ -94,3 +87,5 @@ private:
     Pds::Eb::StatsMonitor m_smon;
     Detector* m_det;
 };
+
+}

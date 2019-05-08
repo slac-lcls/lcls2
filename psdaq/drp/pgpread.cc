@@ -83,6 +83,7 @@ int main(int argc, char* argv[])
 
             printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
                    size, dest, transition_id, event_header->seq.pulseId().value(), event_header->evtCounter, index);
+            printf("env %08x\n", event_header->env);
         }
 	    if ( ret > 0 ) dmaRetIndexes(fd, ret, dmaIndex);
 	    //sleep(0.1)

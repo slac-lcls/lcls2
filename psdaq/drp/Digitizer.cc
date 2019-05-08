@@ -16,6 +16,8 @@
 using namespace XtcData;
 using namespace rapidjson;
 
+namespace Drp {
+
 class HsdDef : public VarDef
 {
 public:
@@ -33,10 +35,10 @@ public:
     }
 };
 
-Digitizer::Digitizer(Parameters* para) :
-    Detector(para),
+Digitizer::Digitizer(Parameters* para, MemPool* pool, unsigned nodeId) :
+    Detector(para, pool, nodeId),
     m_evtcount(0),
-    m_evtNamesId(para->tPrms.id, EventNamesIndex)
+    m_evtNamesId(nodeId, EventNamesIndex)
 {
 }
 
@@ -124,7 +126,7 @@ unsigned Digitizer::configure(Dgram& dgram)
     return 0;
 }
 
-void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
+void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
     m_evtcount+=1;
     CreateData hsd(dgram.xtc, m_namesLookup, m_evtNamesId);
@@ -136,17 +138,21 @@ void Digitizer::event(Dgram& dgram, PGPData* pgp_data)
     Array<uint32_t> arrayH = hsd.allocate<uint32_t>(0, shape);
     // FIXME: check that Matt is sending this extra HSD info in the
     // timing header
-    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
+    int lane = __builtin_ffs(event->mask) - 1;
+    uint32_t dmaIndex = event->buffers[lane].index;
+    Pds::TimingHeader* timing_header = (Pds::TimingHeader*)m_pool->dmaBuffers[dmaIndex];
     arrayH(0) = timing_header->_opaque[0];
     arrayH(1) = timing_header->_opaque[1];
-    for (int l=0; l<8; l++) { // TODO: print npeaks using psalg/Hsd.hh
-        if (pgp_data->buffer_mask & (1 << l)) {
+    for (int i=0; i<4; i++) { // TODO: print npeaks using psalg/Hsd.hh
+        if (event->mask & (1 << i)) {
             // size without Event header
-            data_size = pgp_data->buffers[l].size - sizeof(Pds::TimingHeader);
+            data_size = event->buffers[i].size - sizeof(Pds::TimingHeader);
             shape[0] = data_size;
-            Array<uint8_t> arrayT = hsd.allocate<uint8_t>(l+1, shape);
-            memcpy(arrayT.data(), (uint8_t*)pgp_data->buffers[l].data + sizeof(Pds::TimingHeader), data_size);
+            Array<uint8_t> arrayT = hsd.allocate<uint8_t>(i+1, shape);
+            uint32_t dmaIndex = event->buffers[i].index;
+            memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
          }
     }
+}
+
 }

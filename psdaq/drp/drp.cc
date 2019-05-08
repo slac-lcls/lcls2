@@ -1,11 +1,11 @@
-#include "drp.hh"
-#include "DrpApp.hh"
 #include <getopt.h>
 #include <Python.h>
+#include "drp.hh"
+#include "DrpApp.hh"
 
 int main(int argc, char* argv[])
 {
-    Parameters para;
+    Drp::Parameters para;
     int c;
     while((c = getopt(argc, argv, "p:o:l:D:C:d:u:")) != EOF) {
         switch(c) {
@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
                 para.partition = std::stoi(optarg);
                 break;
             case 'o':
-                para.output_dir = optarg;
+                para.outputDir = optarg;
                 break;
             case 'l':
                 para.laneMask = std::stoul(optarg, nullptr, 16);
@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
                 para.detectorType = optarg;
                 break;
             case 'C':
-                para.collect_host = optarg;
+                para.collectionHost = optarg;
                 break;
             case 'd':
                 para.device = optarg;
@@ -44,11 +44,12 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    para.numWorkers = 10;
-    para.numEntries = 131072;
-    printf("%d number of buffers\n", para.numEntries);
+    para.nworkers = 10;
+    para.batchSize = 32;
     Py_Initialize(); // for use by configuration
-    DrpApp app(&para);
+    Drp::DrpApp app(&para);
     app.run();
     Py_Finalize(); // for use by configuration
+    app.shutdown();
+    std::cout<<"end of main drp\n";
 }

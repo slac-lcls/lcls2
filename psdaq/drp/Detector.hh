@@ -1,5 +1,4 @@
-#ifndef DETECTORS_H
-#define DETECTORS_H
+#pragma once
 
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/NamesId.hh"
@@ -8,19 +7,24 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include "drp.hh"
+
+namespace Drp {
 
 struct Parameters;
 
 class Detector
 {
 public:
-    Detector(Parameters* para) : m_para(para) {m_nodeId = m_para->tPrms.id;}
+    Detector(Parameters* para, MemPool* pool, unsigned nodeId) : m_para(para), m_pool(pool), m_nodeId(nodeId) {}
     virtual void connect() {};
     virtual unsigned configure(XtcData::Dgram& dgram) = 0;
-    virtual void event(XtcData::Dgram& dgram, PGPData* pgp_data) = 0;
+    virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
     XtcData::Dgram& transitionDgram() {return *(XtcData::Dgram*)m_dgrambuf;}
+    unsigned nodeId() const {return m_nodeId;}
 protected:
     Parameters* m_para;
+    MemPool* m_pool;
     unsigned m_nodeId;
     std::vector<XtcData::NamesId> m_namesId;
     XtcData::NamesLookup m_namesLookup;
@@ -39,25 +43,25 @@ public:
         m_create_funcs[name] = &createFunc<TDerived>;
     }
 
-    T* create(Parameters* para)
+    T* create(Parameters* para, MemPool* pool, unsigned nodeId)
     {
         std::string name = para->detectorType;
         auto it = m_create_funcs.find(name);
         if (it != m_create_funcs.end()) {
-            return it->second(para);
+            return it->second(para, pool, nodeId);
         }
         return nullptr;
     }
 
 private:
     template <typename TDerived>
-    static T* createFunc(Parameters* para)
+    static T* createFunc(Parameters* para, MemPool* pool, unsigned nodeId)
     {
-        return new TDerived(para);
+        return new TDerived(para, pool, nodeId);
     }
 
-    typedef T* (*PCreateFunc)(Parameters* para);
+    typedef T* (*PCreateFunc)(Parameters* para, MemPool* pool, unsigned nodeId);
     std::unordered_map<std::string, PCreateFunc> m_create_funcs;
 };
 
-#endif // DETECTORS_H
+}

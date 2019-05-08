@@ -22,7 +22,7 @@ public:
     SPSCQueue(const SPSCQueue&) = delete;
     void operator=(const SPSCQueue&) = delete;
 
-    SPSCQueue(SPSCQueue&& d)
+    SPSCQueue(SPSCQueue&& d) noexcept
     {
         m_terminate.store(false);
         m_write_index.store(d.m_write_index.load());

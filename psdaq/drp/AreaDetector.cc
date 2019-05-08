@@ -7,6 +7,8 @@
 
 using namespace XtcData;
 
+namespace Drp {
+
 class FexDef : public VarDef
 {
 public:
@@ -40,8 +42,8 @@ public:
 static RawDef myRawDef;
 
 
-AreaDetector::AreaDetector(Parameters* para) :
-    Detector(para), m_evtcount(0)
+AreaDetector::AreaDetector(Parameters* para, MemPool* pool, unsigned nodeId) :
+    Detector(para, pool, nodeId), m_evtcount(0)
 {
 }
 
@@ -50,8 +52,8 @@ void AreaDetector::connect()
 {
     std::cout<<"AreaDetector connect\n";
     // FIXME make configureable
-    int length = 500;
-    int links = 0xf;
+    int length = 100;
+    int links = m_para->laneMask;
 
     int fd = open(m_para->device.c_str(), O_RDWR);
     if (fd < 0) {
@@ -96,7 +98,7 @@ unsigned AreaDetector::configure(Dgram& dgram)
     return 0;
 }
 
-void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
+void AreaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
     m_evtcount+=1;
 
@@ -105,9 +107,10 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
     CreateData fex(dgram.xtc, m_namesLookup, fexNamesId);
     unsigned shape[MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
-    int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
-    Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
-    uint32_t* rawdata = (uint32_t*)(timing_header+1);
+
+    // int index = __builtin_ffs(pgp_data->buffer_mask) - 1;
+    // Pds::TimingHeader* timing_header = reinterpret_cast<Pds::TimingHeader*>(pgp_data->buffers[index].data);
+    // uint32_t* rawdata = (uint32_t*)(timing_header+1);
 
     /*
     int nelements = (buffers[l].size - 32) / 4;
@@ -135,16 +138,21 @@ void AreaDetector::event(Dgram& dgram, PGPData* pgp_data)
     DescribedData raw(dgram.xtc, m_namesLookup, rawNamesId);
     unsigned size = 0;
     unsigned nlanes = 0;
-    for (int l=0; l<8; l++) {
-        if (pgp_data->buffer_mask & (1 << l)) {
+    for (int i=0; i<4; i++) {
+        if (event->mask & (1 << i)) {
             // size without Event header
-            int data_size = pgp_data->buffers[l].size - 32;
-            memcpy((uint8_t*)raw.data() + size, (uint8_t*)rawdata, data_size);
-            size += data_size;
+            int dataSize = event->buffers[i].size - 32;
+            uint32_t dmaIndex = event->buffers[i].index;
+            uint8_t* rawdata = ((uint8_t*)m_pool->dmaBuffers[dmaIndex]) + 32;
+
+            memcpy((uint8_t*)raw.data() + size, (uint8_t*)rawdata, dataSize);
+            size += dataSize;
             nlanes++;
          }
      }
     raw.set_data_length(size);
     unsigned raw_shape[MaxRank] = {nlanes, size / nlanes / 2};
     raw.set_array_shape(RawDef::array_raw, raw_shape);
+}
+
 }

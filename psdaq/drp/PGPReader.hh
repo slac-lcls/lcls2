@@ -1,50 +1,27 @@
-#ifndef PGPREADER_H
-#define PGPREADER_H
+#pragma once
 
 #include <vector>
 #include <thread>
+#include <atomic>
+#include "Detector.hh"
 #include "drp.hh"
 
-#define MAX_RET_CNT_C 100
-
-class MovingAverage
-{
-public:
-    MovingAverage(int n);
-    int add_value(int value);
-private:
-    int64_t index;
-    int sum;
-    int N;
-    std::vector<int> values;
-};
-
-class Detector;
+namespace Drp {
 
 class PGPReader
 {
 public:
-    PGPReader(MemPool& pool, Parameters& para, Detector* det, int lane_mask);
-    ~PGPReader() {}
-    PGPData* process_lane(uint32_t lane, uint32_t index, int32_t size);
-    void send_to_worker(Pebble* pebble_data);
-    void send_all_workers(Pebble* pebble);
+    PGPReader(const Parameters& para, MemPool& pool, Detector* det);
     void run();
-    std::atomic<Counters*>& get_counters() {return m_pcounter;};
+    void shutdown();
 private:
-    MemPool& m_pool;
-    int m_nlanes;
-    int m_buffer_mask;
-    uint32_t m_last_complete;
-    uint64_t m_worker;
-    int m_nworkers;
-    MovingAverage m_avg_queue_size;
-    Counters m_c1, m_c2;
-    std::atomic<Counters*> m_pcounter;
-    uint32_t m_dmaIndex[MAX_RET_CNT_C];
-    uint32_t m_dmaDest[MAX_RET_CNT_C];
-    int32_t m_dmaRet[MAX_RET_CNT_C];
+    const Parameters* m_para;
+    MemPool* m_pool;
+    int32_t dmaRet[MAX_RET_CNT_C];
+    uint32_t dmaIndex[MAX_RET_CNT_C];
+    uint32_t dest[MAX_RET_CNT_C];
     std::vector<std::thread> m_workerThreads;
+    std::atomic<bool> m_terminate;
 };
 
-#endif // PGPREADER_H
+}
