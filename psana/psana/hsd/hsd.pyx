@@ -1,10 +1,9 @@
-# this is necessary for the type information (for AMI) to show up in __doc__
-#cython: embedsignature=True, annotation_typing=False
-
 # Import the Python-level symbols of numpy
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
 
+# Import to use cython decorators
+cimport cython
 # Import the C-level symbols of numpy
 cimport numpy as cnp
 
@@ -135,6 +134,8 @@ cdef class cyhsd_base_1_2_3:
     def _fex(self):
         return self.cptr.fex()
 
+    # adding this decorator allows acces to the signature information of the function in python
+    @cython.binding(True)
     def waveforms(self, evt) -> HSDWaveforms:
         """Return a dictionary of available waveforms in the event.
         0:    raw waveform intensity from channel 0
