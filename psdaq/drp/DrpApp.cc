@@ -112,12 +112,7 @@ void DrpApp::handlePhase1(const json &msg)
     std::string key = msg["header"]["key"];
     unsigned error = 0;
     if (key == "configure") {
-        XtcData::Dgram& dgram = m_det->transitionDgram();
-        XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-        dgram.xtc.contains = tid;
-        dgram.xtc.damage = 0;
-        dgram.xtc.extent = sizeof(XtcData::Xtc);
-        error = m_det->configure(dgram);
+        error = m_det->configure(m_det->transitionXtc());
     }
 
     json answer;
@@ -161,8 +156,8 @@ void DrpApp::parseConnectionParams(const json& body)
     }
     m_tPrms.builders = builders;
 
-    m_para->tPrms.readoutGroup = 1 << unsigned(body["drp"][id]["det_info"]["readout"]);
-    m_para->tPrms.contractor = m_para->tPrms.readoutGroup; // Revisit: Value to come from CfgDb
+    m_tPrms.readoutGroup = 1 << unsigned(body["drp"][id]["det_info"]["readout"]);
+    m_tPrms.contractor = m_tPrms.readoutGroup; // Revisit: Value to come from CfgDb
 
     if (body.find("meb") != body.end()) {
         for (auto it : body["meb"].items()) {

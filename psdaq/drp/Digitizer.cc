@@ -109,19 +109,19 @@ unsigned addJson(Xtc& xtc, NamesId& configNamesId) {
 
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
 
-unsigned Digitizer::configure(Dgram& dgram)
+unsigned Digitizer::configure(Xtc& xtc)
 {
     unsigned lane_mask;
     // set up the names for the configuration data
     NamesId configNamesId(m_nodeId,ConfigNamesIndex);
-    lane_mask = addJson(dgram.xtc, configNamesId);
+    lane_mask = addJson(xtc, configNamesId);
 
     // set up the names for L1Accept data
     Alg hsdAlg("hsd", 1, 2, 3); // TODO: should this be configured by hsdconfig.py?
     unsigned segment = 0;
-    Names& eventNames = *new(dgram.xtc) Names("xpphsd", hsdAlg, "hsd", "detnum1235", m_evtNamesId, segment);
+    Names& eventNames = *new(xtc) Names("xpphsd", hsdAlg, "hsd", "detnum1235", m_evtNamesId, segment);
     HsdDef myHsdDef(lane_mask);
-    eventNames.add(dgram.xtc, myHsdDef);
+    eventNames.add(xtc, myHsdDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
     return 0;
 }

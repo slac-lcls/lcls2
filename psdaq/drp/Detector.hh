@@ -18,9 +18,9 @@ class Detector
 public:
     Detector(Parameters* para, MemPool* pool, unsigned nodeId) : m_para(para), m_pool(pool), m_nodeId(nodeId) {}
     virtual void connect() {};
-    virtual unsigned configure(XtcData::Dgram& dgram) = 0;
+    virtual unsigned configure(XtcData::Xtc& xtc) = 0;
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
-    XtcData::Dgram& transitionDgram() {return *(XtcData::Dgram*)m_dgrambuf;}
+    XtcData::Xtc& transitionXtc() {return *(XtcData::Xtc*)m_xtcbuf;}
     unsigned nodeId() const {return m_nodeId;}
 protected:
     Parameters* m_para;
@@ -28,7 +28,7 @@ protected:
     unsigned m_nodeId;
     std::vector<XtcData::NamesId> m_namesId;
     XtcData::NamesLookup m_namesLookup;
-    uint8_t m_dgrambuf[XtcData::Dgram::MaxSize];
+    uint8_t m_xtcbuf[XtcData::Dgram::MaxSize];
 };
 
 template <typename T>

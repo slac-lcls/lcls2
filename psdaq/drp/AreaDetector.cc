@@ -77,23 +77,23 @@ void AreaDetector::connect()
     close(fd);
 }
 
-unsigned AreaDetector::configure(Dgram& dgram)
+unsigned AreaDetector::configure(Xtc& xtc)
 {
     printf("AreaDetector configure\n");
 
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;
     NamesId fexNamesId(m_nodeId,FexNamesIndex);
-    Names& fexNames = *new(dgram.xtc) Names("xppcspad", cspadFexAlg, "cspad",
+    Names& fexNames = *new(xtc) Names("xppcspad", cspadFexAlg, "cspad",
                                             "detnum1234", fexNamesId, segment);
-    fexNames.add(dgram.xtc, myFexDef);
+    fexNames.add(xtc, myFexDef);
     m_namesLookup[fexNamesId] = NameIndex(fexNames);
 
     Alg cspadRawAlg("cspadRawAlg", 1, 2, 3);
     NamesId rawNamesId(m_nodeId,RawNamesIndex);
-    Names& rawNames = *new(dgram.xtc) Names("xppcspad", cspadRawAlg, "cspad",
+    Names& rawNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad",
                                             "detnum1234", rawNamesId, segment);
-    rawNames.add(dgram.xtc, myRawDef);
+    rawNames.add(xtc, myRawDef);
     m_namesLookup[rawNamesId] = NameIndex(rawNames);
     return 0;
 }

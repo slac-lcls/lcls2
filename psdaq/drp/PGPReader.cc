@@ -13,8 +13,6 @@ unsigned nextPowerOf2(unsigned n)
 {
     unsigned count = 0;
 
-    // First n in the below condition
-    // is for the case where n is 0
     if (n && !(n & (n - 1))) {
         return n;
     }
@@ -194,10 +192,15 @@ void workerFunc(const Parameters&para, MemPool& pool,
             dgram->seq = timingHeader->seq;
             dgram->env = timingHeader->env;
             dgram->xtc.src = XtcData::Src(det->nodeId());
-            
+
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {
                 det->event(*dgram, event);
+            }
+            // transitions
+            else {
+                XtcData::Xtc& transitionXtc = det->transitionXtc();
+                memcpy(&dgram->xtc, &transitionXtc, transitionXtc.extent);
             }
         }
 

@@ -12,7 +12,7 @@ class AreaDetector : public Detector
 public:
     AreaDetector(Parameters* para, MemPool* pool, unsigned nodeId);
     void connect() override;
-    unsigned configure(XtcData::Dgram& dgram) override;
+    unsigned configure(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:
     enum {RawNamesIndex, FexNamesIndex};
