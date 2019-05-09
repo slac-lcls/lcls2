@@ -24,8 +24,8 @@ Created on 2019-01-25 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout, QVBoxLayout, QDialog, QSizePolicy
-from PyQt5.QtCore import QPoint, QSize
+from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout, QDialog
+from PyQt5.QtCore import QPoint
 from PyQt5.QtGui import QCursor
 
 from psdaq.control_gui.CGDaqControl import daq_control
@@ -33,10 +33,9 @@ from psdaq.control_gui.CGJsonUtils import get_platform, set_platform, list_activ
 from psdaq.control_gui.QWPopupTableCheck import QWPopupTableCheck
 from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
 
-from psdaq.control_gui.CGWMainCollection import CGWMainCollection
-
 #--------------------
 
+#class CGWMainPartition(QWidget) :
 class CGWMainPartition(QGroupBox) :
     """
     """
@@ -50,20 +49,13 @@ class CGWMainPartition(QGroupBox) :
         self.but_select    = QPushButton('Select')
         #self.but_display   = QPushButton('Display')
 
-        self.wcoll = CGWMainCollection()
-
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.but_roll_call)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_select)
         #self.hbox.addStretch(1)
         #self.hbox.addWidget(self.but_display)
-
-        self.vbox = QVBoxLayout() 
-        self.vbox.addLayout(self.hbox)
-        self.vbox.addWidget(self.wcoll)
-
-        self.setLayout(self.vbox)
+        self.setLayout(self.hbox)
 
         self.set_tool_tips()
         self.set_style()
@@ -88,10 +80,6 @@ class CGWMainPartition(QGroupBox) :
     def set_style(self) :
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
-        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
-
-        #self.wcoll.setMinimumHeight(50)
-        #self.wcoll.setFixedHeight(100)
 
         #self.but_display.setVisible(False)
 
@@ -108,12 +96,9 @@ class CGWMainPartition(QGroupBox) :
         #style = "background-color: rgb(240, 240, 100); color: rgb(0, 0, 0);" # YellowBkg
         #self.setStyleSheet(style)
 
-        self.setMinimumSize(200,100)
-
-#--------------------
-
-    def sizeHint(self):
-        return QSize(200, 150)
+        #self.setMinimumSize(725,360)
+        #self.setFixedSize(750,270)
+        #self.setMaximumWidth(800)
  
 #--------------------
  

@@ -24,23 +24,23 @@ Created on 2019-04-26 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QGridLayout, QLabel, QSizePolicy 
+from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QPushButton, QGridLayout, QLabel, QSizePolicy 
 # QWidget, QLabel, QLineEdit, QFileDialog
 #from PyQt5.QtCore import pyqtSignal #, Qt, QRectF, QPointF, QTimer
-from PyQt5.QtCore import QSize
-from psdaq.control_gui.CGWPanelList import CGWPanelList
+
+from psdaq.control_gui.CGWPanelList import CGWPanelList, QSize
 from psdaq.control_gui.CGJsonUtils  import get_status
 
 #--------------------
 
-class CGWMainCollection(QWidget) :
+class CGWMainCollection(QGroupBox) :
     """
     """
     TABTITLE_H = ['drp','teb','meb']
 
     def __init__(self, parent=None):
 
-        QWidget.__init__(self, parent)
+        QGroupBox.__init__(self, 'Collection', parent)
 
         self.grid = None
         self.update_table()
@@ -103,19 +103,38 @@ class CGWMainCollection(QWidget) :
 #--------------------
 
     def sizeHint(self):
-        return QSize(300, 80)
+        return QSize(350, 200)
 
 #--------------------
 
     def set_style(self) :
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
+        #self.but_status.setStyleSheet(style.styleButtonGood)
 
-        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
-        self.setMinimumSize(250, 50)
+        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        #self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
-        self.layout().setContentsMargins(0,0,0,0)
+        #self.grid.setMinimumWidth(300)
 
+        #self.layout().setContentsMargins(0,0,0,0)
+
+        #self.setWindowTitle('File name selection widget')
+        #self.setMinimumWidth(300)
+        #self.edi.setMinimumWidth(210)
+        #self.setFixedHeight(34) # 50 if self.show_frame else 34)
+        #if not self.show_frame : 
+
+        #style = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
+        #style = "background-color: rgb(100, 240, 200); color: rgb(0, 0, 0);" # Greenish
+        #style = "background-color: rgb(255, 200, 220); color: rgb(0, 0, 0);" # Pinkish
+        #style = "background-color: rgb(240, 240, 100); color: rgb(0, 0, 0);" # YellowBkg
+        #self.setStyleSheet(style)
+
+        #self.setMinimumSize(725,360)
+        #self.setFixedSize(750,270)
+        #self.setMaximumWidth(800)
+ 
 #--------------------
  
 #    def on_but_status(self):

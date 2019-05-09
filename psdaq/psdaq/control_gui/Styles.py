@@ -85,8 +85,22 @@ class Styles() :
         #self.colorEditBad      = QtGui.QColor(255,   0,   0)
         #self.colorEdit         = QtGui.QColor('white')
         #self.colorTabItem      = QtGui.QColor('white')
+        #self.qgrbox_title  = "QGroupBox::title {left:10px; top:12px;};"
+        #self.qgrbox_title  = "QGroupBox{border: 1px solid; border-color: #FF17365D; margin-top:10px;};"\
 
-        self.qgrbox_title  = "QGroupBox::title {left:10px; top:12px;};"
+        self.qgrbox_title  = "QGroupBox::title{left:10px; top:12px;}"\
+                             "QGroupBox{margin-top:-10px; padding-top:20px;}"
+        # left:10px; top:12px; - offsets of the title relative to layout QRect
+        # margin-top:-10px; - offset of the frame relative to its default position??? 
+        # padding-top:20px; - offset of widget content relative to the frame
+
+        # "QGroupBox::title {subcontrol-position: top center; left: 50px;};"
+        # "QGroupBox::title {left:30px; top:12px; padding-left:20px;};" subcontrol-origin: margin;
+        # border-radius:15px;
+        # padding-left:20px; padding-right:20px; # padding for title relative to frame
+        # border:5px solid gray; border-radius: 3px;
+        #self.qgrbox_title  = "QGroupBox{border: 3px solid gray; margin-top:30px;};"\
+        #self.qgrbox_title  = "QGroupBox::title {left:10px; top:12px; margin-top:27px; padding: 1px 1px 1px px;};"
 
         #self.style_cbx_off = "QCheckBox::indicator {left:10px;};"
         self.style_cbx_off = self.styleYellowBkg # + "QCheckBox::indicator{width:50px; height:25px};" #{padding-left: 30px;};"

@@ -24,7 +24,7 @@ Created on 2019-01-25 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QGroupBox, QLabel, QPushButton, QHBoxLayout, QVBoxLayout #, QCheckBox, QComboBox
 from PyQt5.QtCore import Qt, QPoint
 
 from psdaq.control_gui.CGWConfigEditor import CGWConfigEditor
@@ -56,12 +56,12 @@ class CGWMainConfiguration(QGroupBox) :
         self.but_type = QPushButton('Select %s' % char_expand)
         self.but_dev  = QPushButton('Select %s' % char_expand)
         self.but_edit = QPushButton('Edit')
-        self.but_scan = QPushButton('Scan')
+        #self.but_scan = QPushButton('Scan')
 
-        self.cbx_seq = QCheckBox('Sync Sequence')
-        self.box_seq = QComboBox(self)
-        self.box_seq.addItems(self.LIST_OF_SEQUENCES)
-        self.box_seq.setCurrentIndex(0)
+        #self.cbx_seq = QCheckBox('Sync Sequence')
+        #self.box_seq = QComboBox(self)
+        #self.box_seq.addItems(self.LIST_OF_SEQUENCES)
+        #self.box_seq.setCurrentIndex(0)
 
         self.hbox1 = QHBoxLayout() 
         self.hbox1.addStretch(1)
@@ -70,18 +70,20 @@ class CGWMainConfiguration(QGroupBox) :
         self.hbox1.addStretch(1)
         self.hbox1.addWidget(self.lab_dev)
         self.hbox1.addWidget(self.but_dev)
+        self.hbox1.addStretch(2)
+        self.hbox1.addWidget(self.but_edit, 0, Qt.AlignCenter)
 
-        self.hbox2 = QHBoxLayout() 
-        self.hbox2.addStretch(1)
-        self.hbox2.addWidget(self.cbx_seq)
-        self.hbox2.addWidget(self.box_seq) 
-        self.hbox2.addStretch(1)
+        #self.hbox2 = QHBoxLayout() 
+        #self.hbox2.addStretch(1)
+        #self.hbox2.addWidget(self.cbx_seq)
+        #self.hbox2.addWidget(self.box_seq) 
+        #self.hbox2.addStretch(1)
 
         self.vbox = QVBoxLayout() 
         self.vbox.addLayout(self.hbox1)
-        self.vbox.addWidget(self.but_edit, 0, Qt.AlignCenter)
-        self.vbox.addWidget(self.but_scan, 0, Qt.AlignCenter)
-        self.vbox.addLayout(self.hbox2)
+        #self.vbox.addWidget(self.but_edit, 0, Qt.AlignCenter)
+        #self.vbox.addWidget(self.but_scan, 0, Qt.AlignCenter)
+        #self.vbox.addLayout(self.hbox2)
 
         #self.grid = QGridLayout()
         #self.grid.addWidget(self.lab_type,       0, 0, 1, 1)
@@ -95,11 +97,11 @@ class CGWMainConfiguration(QGroupBox) :
         self.set_style()
 
         self.but_edit.clicked.connect(self.on_but_edit)
-        self.but_scan.clicked.connect(self.on_but_scan)
+        #self.but_scan.clicked.connect(self.on_but_scan)
         self.but_type.clicked.connect(self.on_but_type)
         self.but_dev .clicked.connect(self.on_but_dev)
-        self.box_seq.currentIndexChanged[int].connect(self.on_box_seq)
-        self.cbx_seq.stateChanged[int].connect(self.on_cbx_seq)
+        #self.box_seq.currentIndexChanged[int].connect(self.on_box_seq)
+        #self.cbx_seq.stateChanged[int].connect(self.on_cbx_seq)
 
         self.w_edit = None
         self.type_old = None
@@ -126,7 +128,7 @@ class CGWMainConfiguration(QGroupBox) :
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
         self.but_edit.setFixedWidth(60)
-        self.but_scan.setFixedWidth(60)
+        #self.but_scan.setFixedWidth(60)
         self.set_buts_enabled()
 
         #self.setMinimumWidth(350)
@@ -218,20 +220,20 @@ class CGWMainConfiguration(QGroupBox) :
 
 #--------------------
  
-    def on_box_seq(self, ind):
-        selected = str(self.box_seq.currentText())
-        msg = 'selected ind:%d %s' % (ind,selected)
-        logger.debug(msg)
+#    def on_box_seq(self, ind):
+#        selected = str(self.box_seq.currentText())
+#        msg = 'selected ind:%d %s' % (ind,selected)
+#        logger.debug(msg)
 
 #--------------------
  
-    def on_cbx_seq(self, ind):
-        #if self.cbx.hasFocus() :
-        cbx = self.cbx_seq
-        tit = cbx.text()
-        #self.cbx_runc.setStyleSheet(style.styleGreenish if cbx.isChecked() else style.styleYellowBkg)
-        msg = 'Check box "%s" is set to %s' % (tit, cbx.isChecked())
-        logger.info(msg)
+#    def on_cbx_seq(self, ind):
+#        #if self.cbx.hasFocus() :
+#        cbx = self.cbx_seq
+#        tit = cbx.text()
+#        #self.cbx_runc.setStyleSheet(style.styleGreenish if cbx.isChecked() else style.styleYellowBkg)
+#        msg = 'Check box "%s" is set to %s' % (tit, cbx.isChecked())
+#        logger.info(msg)
 
 #--------------------
  
@@ -256,8 +258,8 @@ class CGWMainConfiguration(QGroupBox) :
 
 #--------------------
  
-    def on_but_scan(self):
-        logger.debug('on_but_scan')
+#    def on_but_scan(self):
+#        logger.debug('on_but_scan')
 
 #--------------------
 

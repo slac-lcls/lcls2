@@ -19,6 +19,10 @@ See:
 
 Created on 2019-01-25 by Mikhail Dubrovin
 """
+#import os
+#import math
+#from math import floor
+
 #------------------------------
 
 import logging
@@ -29,17 +33,17 @@ import json
 from time import time
 
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit, QSizePolicy
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize#, QPoint
 
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
+from psdaq.control_gui.CGWMainPartition     import CGWMainPartition
+from psdaq.control_gui.CGWMainControl       import CGWMainControl
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
 from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box
 from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
 
-#from psdaq.control_gui.CGWMainPartition     import CGWMainPartition
-#from psdaq.control_gui.CGWMainControl       import CGWMainControl
 #from psdaq.control_gui.CGWMainCollection    import CGWMainCollection
 
 #------------------------------
@@ -71,24 +75,41 @@ class CGWMain(QWZMQListener) :
 
         #icon.set_icons()
 
+        #from psana.graphqt.CGWMainTabs import CGWMainTabs
+
+        #self.wtab = CGWMainTabs()
+        #self.wlog = QWLogger(log, cp, show_buttons=False)
+        #self.wlog = QWLoggerStd(cp, show_buttons=False)
         self.wconf = CGWMainConfiguration(parent_ctrl=self)
-        self.wtabs = CGWMainTabs(parent_ctrl=self)
 
-        #self.wpart = CGWMainPartition()
-        #self.wctrl = CGWMainControl(parent_ctrl=self)
+        self.wtabs = CGWMainTabs()
+        self.wpart = CGWMainPartition()
+        self.wctrl = CGWMainControl(parent_ctrl=self)
+        #====self.wdetr = CGWMainDetector(parent_ctrl=self)
         #self.wcoll = CGWMainCollection()
+        self.wcoll = self.wpart.wcoll
+        #self.wlogr = QTextEdit('my logger')
 
-        #self.wpart = self.wtabs.gui_win.wpart
-        #self.wctrl = self.wtabs.gui_win.wctrl 
-        #self.wcoll = self.wpart.wcoll
+        #self.vbox = QVBoxLayout() 
+        #self.vbox.addWidget(self.wtab) 
+        #self.vbox.addStretch(1)
+
+        #self.wrig = QWidget()
+        #self.wrig.setLayout(self.vbox)
 
         self.vspl = QSplitter(Qt.Vertical)
         self.vspl.addWidget(self.wconf) 
         self.vspl.addWidget(self.wtabs) 
-        #self.vspl.addWidget(self.wpart) 
-        #self.vspl.addWidget(self.wctrl) 
+        self.vspl.addWidget(self.wpart) 
+        self.vspl.addWidget(self.wctrl) 
+        #====self.vspl.addWidget(self.wdetr) 
         #self.vspl.addWidget(self.wcoll) 
         self.vspl.addWidget(self.wlogr) 
+
+        #self.hspl = QSplitter(Qt.Horizontal)
+        #self.hspl.addWidget(self.vspl)
+        #self.hspl.addWidget(self.wtmp)
+        #self.hspl.addWidget(self.wrig)
 
         self.mbox = QHBoxLayout() 
         self.mbox.addWidget(self.vspl)
@@ -168,9 +189,6 @@ class CGWMain(QWZMQListener) :
 #--------------------
 
     def set_style(self) :
-
-        self.layout().setContentsMargins(0,0,0,0)
-
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
         #self.setMaximumWidth(400)
@@ -179,11 +197,10 @@ class CGWMain(QWZMQListener) :
         self.setMinimumWidth(400)
         self.setMinimumHeight(810)
 
-        self.wconf.setFixedHeight(80)
-
         self.wlogr.setMinimumHeight(220)
         self.wlogr.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Expanding)
-        #self.wpart.setMinimumHeight(100)
+
+        self.wpart.setMinimumHeight(100)
 
         #self.wcoll.setFixedWidth(330)
         #self.wcoll.setMaximumWidth(350)

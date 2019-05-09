@@ -29,9 +29,9 @@ logger = logging.getLogger() # need in root to intercept messages from all other
 from random import randint
 
 from PyQt5.QtWidgets import QWidget, QTextEdit, QLabel, QPushButton, QComboBox,\
-                            QHBoxLayout, QVBoxLayout, QFileDialog
+                            QHBoxLayout, QVBoxLayout, QFileDialog, QSizePolicy
 from PyQt5.QtGui import QTextCursor, QColor
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from psdaq.control_gui.Styles import style
 
 import psdaq.control_gui.Utils as gu
@@ -270,7 +270,14 @@ class QWLoggerStd(QWidget) :
         self.layout().setContentsMargins(0,0,0,0)
         #self.setMinimumSize(300,50)
         #self.setBaseSize(500,200)
+        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
+#--------------------
+
+    def sizeHint(self):
+        return QSize(300,1000)
+
+#--------------------
 
     #def setParent(self,parent) :
     #    self.parent = parent

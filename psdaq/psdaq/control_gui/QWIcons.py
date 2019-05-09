@@ -96,7 +96,53 @@ class QWIcons() :
         self.path_icon_folder_open   = '%s/folder_open.gif' % path_icon  
         self.path_icon_folder_closed = '%s/folder_closed.gif' % path_icon
         self.path_icon_expcheck      = '%s/folder_open_checked.png' % path_icon
- 
+
+#media-eject-symbolic.svg
+#media-playback-pause-symbolic.svg
+#media-playback-start-symbolic-rtl.svg
+#media-playback-start-symbolic.svg
+#media-playback-stop-symbolic.svg
+#media-record-symbolic.svg
+#media-seek-backward-symbolic-rtl.svg
+#media-seek-backward-symbolic.svg
+#media-seek-forward-symbolic-rtl.svg
+#media-seek-forward-symbolic.svg
+#media-skip-backward-symbolic-rtl.svg
+#media-skip-backward-symbolic.svg
+#media-skip-forward-symbolic-rtl.svg
+#media-skip-forward-symbolic.svg
+#media-view-subtitles-symbolic.svg
+
+        self.path_icon_eject                  = '%s/media-eject.png'                                % path_icon
+        self.path_icon_eject_sym              = '%s/media-eject-symbolic.symbolic.png'              % path_icon
+        self.path_icon_playback_pause         = '%s/media-playback-pause.png'                       % path_icon
+        self.path_icon_playback_pause_sym     = '%s/media-playback-pause-symbolic.symbolic.png'     % path_icon
+        self.path_icon_playback_start         = '%s/media-playback-start.png'                       % path_icon
+        self.path_icon_playback_start_rtl     = '%s/media-playback-start-rtl.png'                   % path_icon
+        self.path_icon_playback_start_sym_rtl = '%s/media-playback-start-symbolic-rtl.symbolic.png' % path_icon
+        self.path_icon_playback_start_sym     = '%s/media-playback-start-symbolic.symbolic.png'     % path_icon
+        self.path_icon_playback_stop          = '%s/media-playback-stop.png'                        % path_icon
+        self.path_icon_playback_stop_sym      = '%s/media-playback-stop-symbolic.symbolic.png'      % path_icon
+        self.path_icon_record                 = '%s/media-record.png'                               % path_icon
+        self.path_icon_record_sym             = '%s/media-record-symbolic.symbolic.png'             % path_icon
+        self.path_icon_seek_backward          = '%s/media-seek-backward.png'                        % path_icon
+        self.path_icon_seek_backward_rtl      = '%s/media-seek-backward-rtl.png'                    % path_icon
+        self.path_icon_seek_backward_sym_rtl  = '%s/media-seek-backward-symbolic-rtl.symbolic.png'  % path_icon
+        self.path_icon_seek_backward_sym      = '%s/media-seek-backward-symbolic.symbolic.png'      % path_icon
+        self.path_icon_seek_forward           = '%s/media-seek-forward.png'                         % path_icon
+        self.path_icon_seek_forward_rtl       = '%s/media-seek-forward-rtl.png'                     % path_icon
+        self.path_icon_seek_forward_sym_rtl   = '%s/media-seek-forward-symbolic-rtl.symbolic.png'   % path_icon
+        self.path_icon_seek_forward_sym       = '%s/media-seek-forward-symbolic.symbolic.png'       % path_icon
+        self.path_icon_skip_backward          = '%s/media-skip-backward.png'                        % path_icon
+        self.path_icon_skip_backward_rtl      = '%s/media-skip-backward-rtl.png'                    % path_icon
+        self.path_icon_skip_backward_sym_rtl  = '%s/media-skip-backward-symbolic-rtl.symbolic.png'  % path_icon
+        self.path_icon_skip_backward_sym      = '%s/media-skip-backward-symbolic.symbolic.png'      % path_icon
+        self.path_icon_skip_forward           = '%s/media-skip-forward.png'                         % path_icon
+        self.path_icon_skip_forward_rtl       = '%s/media-skip-forward-rtl.png'                     % path_icon
+        self.path_icon_skip_forward_sym_rtl   = '%s/media-skip-forward-symbolic-rtl.symbolic.png'   % path_icon
+        self.path_icon_skip_forward_sym       = '%s/media-skip-forward-symbolic.symbolic.png'       % path_icon
+        self.path_icon_view_subtitles_sym     = '%s/media-view-subtitles-symbolic.symbolic.png'     % path_icon
+
         self.icon_contents      = QIcon(self.path_icon_contents     )
         self.icon_mail_forward  = QIcon(self.path_icon_mail_forward )
         self.icon_button_ok     = QIcon(self.path_icon_button_ok    )
@@ -130,6 +176,36 @@ class QWIcons() :
         self.icon_expand        = self.icon_folder_open
         self.icon_collapse      = self.icon_folder_closed
         self.icon_print         = self.icon_contents
+
+        self.icon_eject                  = QIcon(self.path_icon_eject                 )
+        self.icon_eject_sym              = QIcon(self.path_icon_eject_sym             )
+        self.icon_playback_pause         = QIcon(self.path_icon_playback_pause        )
+        self.icon_playback_pause_sym     = QIcon(self.path_icon_playback_pause_sym    )
+        self.icon_playback_start         = QIcon(self.path_icon_playback_start        )
+        self.icon_playback_start_rtl     = QIcon(self.path_icon_playback_start_rtl    )
+        self.icon_playback_start_sym_rtl = QIcon(self.path_icon_playback_start_sym_rtl)
+        self.icon_playback_start_sym     = QIcon(self.path_icon_playback_start_sym    )
+        self.icon_playback_stop          = QIcon(self.path_icon_playback_stop         )
+        self.icon_playback_stop_sym      = QIcon(self.path_icon_playback_stop_sym     )
+        self.icon_record                 = QIcon(self.path_icon_record                )
+        self.icon_record_sym             = QIcon(self.path_icon_record_sym            )
+        self.icon_seek_backward          = QIcon(self.path_icon_seek_backward         )
+        self.icon_seek_backward_rtl      = QIcon(self.path_icon_seek_backward_rtl     )
+        self.icon_seek_backward_sym_rtl  = QIcon(self.path_icon_seek_backward_sym_rtl )
+        self.icon_seek_backward_sym      = QIcon(self.path_icon_seek_backward_sym     )
+        self.icon_seek_forward           = QIcon(self.path_icon_seek_forward          )
+        self.icon_seek_forward_rtl       = QIcon(self.path_icon_seek_forward_rtl      )
+        self.icon_seek_forward_sym_rtl   = QIcon(self.path_icon_seek_forward_sym_rtl  )
+        self.icon_seek_forward_sym       = QIcon(self.path_icon_seek_forward_sym      )
+        self.icon_skip_backward          = QIcon(self.path_icon_skip_backward         )
+        self.icon_skip_backward_rtl      = QIcon(self.path_icon_skip_backward_rtl     )
+        self.icon_skip_backward_sym_rtl  = QIcon(self.path_icon_skip_backward_sym_rtl )
+        self.icon_skip_backward_sym      = QIcon(self.path_icon_skip_backward_sym     )
+        self.icon_skip_forward           = QIcon(self.path_icon_skip_forward          )
+        self.icon_skip_forward_rtl       = QIcon(self.path_icon_skip_forward_rtl      )
+        self.icon_skip_forward_sym_rtl   = QIcon(self.path_icon_skip_forward_sym_rtl  )
+        self.icon_skip_forward_sym       = QIcon(self.path_icon_skip_forward_sym      )
+        self.icon_view_subtitles_sym     = QIcon(self.path_icon_view_subtitles_sym    )
  
 #------------------------------
         
