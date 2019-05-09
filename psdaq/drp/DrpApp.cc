@@ -112,7 +112,12 @@ void DrpApp::handlePhase1(const json &msg)
     std::string key = msg["header"]["key"];
     unsigned error = 0;
     if (key == "configure") {
-        error = m_det->configure(m_det->transitionXtc());
+        XtcData::Xtc& xtc = m_det->transitionXtc();
+        XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
+        xtc.contains = tid;
+        xtc.damage = 0;
+        xtc.extent = sizeof(XtcData::Xtc);
+        error = m_det->configure(xtc);
     }
 
     json answer;
