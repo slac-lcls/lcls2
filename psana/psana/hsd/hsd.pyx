@@ -8,7 +8,7 @@ cimport cython
 cimport numpy as cnp
 
 import sys # ref count
-from psana.detector.dettypes import HSDWaveforms
+from psana.detector.datatypes import HSDWaveforms
 
 include "../peakFinder/peakFinder.pyx"  # defines Allocator, PyAlloArray1D
 

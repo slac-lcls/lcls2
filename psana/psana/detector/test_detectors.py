@@ -1,6 +1,6 @@
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
-from psana.detector.dettypes import Array2d
+from psana.detector.datatypes import Array2d, Array3d
 
 class hsd_raw_0_0_0(DetectorImpl):
     def __init__(self, *args):
@@ -17,11 +17,11 @@ class hsd_fex_4_5_6(DetectorImpl):
 class cspad_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(cspad_raw_2_3_42, self).__init__(*args)
-    def raw(self, evt):
+    def raw(self, evt) -> Array3d:
         # an example of how to handle multiple segments
         segs = self.segments(evt)
         return np.stack([segs[i].arrayRaw for i in range(len(segs))])
-    def calib(self, evt):
+    def calib(self, evt) -> Array3d:
         return self.raw(evt)
     def image(self, evt) -> Array2d:
         segs = self.segments(evt)

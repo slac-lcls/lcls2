@@ -1,5 +1,6 @@
 import os
 import pickle
+import inspect
 import numpy as np
 from copy import copy
 
@@ -39,6 +40,8 @@ def _enumerate_attrs(obj):
             if len([attr for attr in dir(childobj) if not attr.startswith('_')]) == 0:
                 found.append( '.'.join(state + [child]) )
             elif type(childobj) == property:
+                found.append( '.'.join(state + [child]) )
+            elif not inspect.isclass(childobj) and callable(childobj):
                 found.append( '.'.join(state + [child]) )
             else:
                 state.append(child)
