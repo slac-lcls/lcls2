@@ -11,10 +11,10 @@ import pdb
 
 NPartitions = 8
 
-Transitions = [('Configure'  ,4),
-               ('Enable'     ,6),
-               ('Disable'    ,7),
-               ('Unconfigure',5)]
+Transitions = [('Configure'  ,2),
+               ('Enable'     ,4),
+               ('Disable'    ,5),
+               ('Unconfigure',3)]
 
 def printDb():
     global pvdb
