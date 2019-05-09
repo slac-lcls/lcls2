@@ -10,7 +10,7 @@ env:
   matrix:
 #    - OS=ubuntu16.04 PYVER=2.7
 #    - OS=ubuntu16.04 PYVER=3.6
-    - OS=centos7     PYVER=2.7
+#    - OS=centos7     PYVER=2.7
     - OS=centos7     PYVER=3.6
 
 script:
