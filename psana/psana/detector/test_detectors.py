@@ -1,5 +1,6 @@
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
+from psana.detector.dettypes import Array2d
 
 class hsd_raw_0_0_0(DetectorImpl):
     def __init__(self, *args):
@@ -22,7 +23,7 @@ class cspad_raw_2_3_42(DetectorImpl):
         return np.stack([segs[i].arrayRaw for i in range(len(segs))])
     def calib(self, evt):
         return self.raw(evt)
-    def image(self, evt):
+    def image(self, evt) -> Array2d:
         segs = self.segments(evt)
         return np.vstack([segs[i].arrayRaw for i in range(len(segs))])
 
