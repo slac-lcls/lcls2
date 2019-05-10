@@ -76,7 +76,7 @@ cdef class cyhsd_base_1_2_3:
         self._chanList = []
         self._chanCounter = 0
         self._evt = None
-        self._segments = None
+        self._hsdsegments = None
         self._peaksDict = {}
         self._fexPeaks = []
 
@@ -100,15 +100,15 @@ cdef class cyhsd_base_1_2_3:
         self._chanCounter = 0
         self._peaksDict = {}
         self._fexPeaks = []
-        self._segments = self.segments(evt)
-        self._setEnv(self._segments[0].env)
+        self._hsdsegments = self._segments(evt)
+        self._setEnv(self._hsdsegments[0].env)
         for chanNum in xrange(16): # Maximum channels: 16
             chanName = 'chan'+'{num:02d}'.format(num=chanNum) # e.g. chan16
-            if hasattr(self._segments[0], chanName):
-                chan = eval('self._segments[0].'+chanName)
+            if hasattr(self._hsdsegments[0], chanName):
+                chan = eval('self._hsdsegments[0].'+chanName)
                 if chan.size > 0:
                     chanName = str(chanNum) # e.g. 16
-                    self._setChan(chanName, self._segments[0].env, chan)
+                    self._setChan(chanName, self._hsdsegments[0].env, chan)
         self._evt = evt
 
     def __dealloc__(self):

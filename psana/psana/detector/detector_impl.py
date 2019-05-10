@@ -5,7 +5,7 @@ class DetectorImpl(object):
         self._configs        = configs
         self._calibs         = calibs
         return
-    def segments(self,evt):
+    def _segments(self,evt):
         """
         Look in the event to find all the dgrams for our detect/drp_class
         e.g. (xppcspad,raw) or (xppcspad,fex)

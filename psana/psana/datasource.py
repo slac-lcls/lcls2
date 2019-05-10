@@ -26,7 +26,7 @@ def DataSource(*args, **kwargs):
     assert len(args) > 0
     if args[0] == 'shmem': # shared memory client
         return DataSourceFactory.createDataSource('ShmemDataSource', *args, **kwargs)    
-    elif os.path.exists(args[0]): # single file
+    elif os.path.exists(args[0].split(',')[0]): # single file, or comma-separated list of files
         return DataSourceFactory.createDataSource('SingleFileDataSource', *args, **kwargs)
     elif isinstance(args[0], (str)): # experiment string - assumed multiple files
         if mode == 'mpi':

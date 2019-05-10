@@ -1,17 +1,17 @@
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
-from psana.detector.datatypes import Array2d, Array3d
+from psana.detector.datatypes import Array1d, Array2d, Array3d
 
 class hsd_raw_0_0_0(DetectorImpl):
     def __init__(self, *args):
         super(hsd_raw_0_0_0, self).__init__(*args)
-    def calib(self, evt):
+    def calib(self, evt) -> Array1d:
         return np.zeros((5))
 
 class hsd_fex_4_5_6(DetectorImpl):
     def __init__(self, *args):
         super(hsd_fex_4_5_6, self).__init__(*args)
-    def calib(self, evt):
+    def calib(self, evt) -> Array1d:
         return np.zeros((6))
 
 class cspad_raw_2_3_42(DetectorImpl):
@@ -19,19 +19,19 @@ class cspad_raw_2_3_42(DetectorImpl):
         super(cspad_raw_2_3_42, self).__init__(*args)
     def raw(self, evt) -> Array3d:
         # an example of how to handle multiple segments
-        segs = self.segments(evt)
+        segs = self._segments(evt)
         return np.stack([segs[i].arrayRaw for i in range(len(segs))])
     def calib(self, evt) -> Array3d:
         return self.raw(evt)
     def image(self, evt) -> Array2d:
-        segs = self.segments(evt)
+        segs = self._segments(evt)
         return np.vstack([segs[i].arrayRaw for i in range(len(segs))])
 
 class ebeam_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(ebeam_ebeamalg_2_3_42, self).__init__(*args)
     def energy(self, evt):
-        return self.segments(evt)[0].energy
+        return self._segments(evt)[0].energy
 
 class cspad_raw_2_3_43(cspad_raw_2_3_42):
     def __init__(self, *args):
@@ -43,29 +43,29 @@ class ebeam_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(ebeam_raw_2_3_42, self).__init__(*args)
     def energy(self, evt):
-        return self.segments(evt)[0].energy
+        return self._segments(evt)[0].energy
 
 class ebeam_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(ebeam_raw_2_3_42, self).__init__(*args)
     def energy(self, evt):
-        return self.segments(evt)[0].energy
+        return self._segments(evt)[0].energy
 
 class laser_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(laser_raw_2_3_42, self).__init__(*args)
     def laserOn(self, evt):
-        return self.segments(evt)[0].laserOn
+        return self._segments(evt)[0].laserOn
 
 class hsd_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(hsd_raw_2_3_42, self).__init__(*args)
     def waveform(self, evt):
         # example of how to check for missing detector in event
-        if self.segments(evt) is None:
+        if self._segments(evt) is None:
             return None
         else:
-            return self.segments(evt)[0].waveform
+            return self._segments(evt)[0].waveform
 
 class EpicsImpl(DetectorImpl):
     def __init__(self, *args):
@@ -91,14 +91,14 @@ class cspad_raw_1_2_3(DetectorImpl):
     def __init__(self, *args):
         super(cspad_raw_1_2_3, self).__init__(*args)
     def raw(self, evt):
-        quad0 = self.segments(evt)[0].quads0_data
-        quad1 = self.segments(evt)[0].quads1_data
-        quad2 = self.segments(evt)[0].quads2_data
-        quad3 = self.segments(evt)[0].quads3_data
+        quad0 = self._segments(evt)[0].quads0_data
+        quad1 = self._segments(evt)[0].quads1_data
+        quad2 = self._segments(evt)[0].quads2_data
+        quad3 = self._segments(evt)[0].quads3_data
         return np.concatenate((quad0, quad1, quad2, quad3), axis=0)
 
     def photonEnergy(self, evt):
-        return self.segments(evt)[0].photonEnergy
+        return self._segments(evt)[0].photonEnergy
 
     def calib(self, evt):
         fake_run = -1 # FIXME: in current psana2 RunHelper, calib constants are setup according to that run.
