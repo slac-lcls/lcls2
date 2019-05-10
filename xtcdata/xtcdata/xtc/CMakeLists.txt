@@ -27,6 +27,8 @@ target_include_directories(j2x PUBLIC
     $ENV{CONDA_PREFIX}/include
 )
 
+target_link_libraries(j2x PUBLIC xtc)
+
 install(FILES
     Level.hh
     NamesId.hh
