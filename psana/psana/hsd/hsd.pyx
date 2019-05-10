@@ -191,7 +191,7 @@ cdef class cyhsd_base_1_2_3:
             self._peaksDict[int(chanName)] = self._channelPeaks(chanName)
         return self._peaksDict
 
-    def assem(self, evt):
+    def assem(self, evt) -> HSDWaveforms:
         """Return a dictionary of available peaks assembled as waveforms.
         0:  peak intensities assembled into a waveform from channel 0
         1:  peak intensities assembled into a waveform from channel 1

@@ -36,7 +36,7 @@ class ebeam_raw_2_3_42(DetectorImpl):
 class cspad_raw_2_3_43(cspad_raw_2_3_42):
     def __init__(self, *args):
         super(cspad_raw_2_3_43, self).__init__(*args)
-    def raw(self, evt):
+    def raw(self, evt) -> None:
         raise NotImplementedError()
 
 class ebeam_raw_2_3_42(DetectorImpl):
@@ -48,19 +48,19 @@ class ebeam_raw_2_3_42(DetectorImpl):
 class ebeam_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(ebeam_raw_2_3_42, self).__init__(*args)
-    def energy(self, evt):
+    def energy(self, evt) -> float:
         return self._segments(evt)[0].energy
 
 class laser_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(laser_raw_2_3_42, self).__init__(*args)
-    def laserOn(self, evt):
+    def laserOn(self, evt) -> int:
         return self._segments(evt)[0].laserOn
 
 class hsd_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(hsd_raw_2_3_42, self).__init__(*args)
-    def waveform(self, evt):
+    def waveform(self, evt) -> Array1d:
         # example of how to check for missing detector in event
         if self._segments(evt) is None:
             return None
