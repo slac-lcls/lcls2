@@ -8,19 +8,17 @@ echo REPODIR: $REPODIR
 echo rm -rf $REPODIR/install
      rm -rf $REPODIR/install
 
-echo cd $REPODIR/psana
-     cd $REPODIR/psana
-echo rm -rf {build,*.egg-info,*.so,psana/*.so}
-     rm -rf {build,*.egg-info,*.so,psana/*.so}
+echo rm -rf $REPODIR/psana/{build,*.egg-info,*.so,psana/*.so}
+     rm -rf $REPODIR/psana/{build,*.egg-info,*.so,psana/*.so}
 
-echo rm -rf $REPODIR/psalg/build
-     rm -rf $REPODIR/psalg/build
+#echo rm -rf $REPODIR/psalg/build
+#     rm -rf $REPODIR/psalg/build
 
-echo rm -rf $REPODIR/psdaq/build
-     rm -rf $REPODIR/psdaq/build
+#echo rm -rf $REPODIR/psdaq/build
+#     rm -rf $REPODIR/psdaq/build
 
-echo rm -rf $REPODIR/xtcdata/build
-     rm -rf $REPODIR/xtcdata/build
+#echo rm -rf $REPODIR/xtcdata/build
+#     rm -rf $REPODIR/xtcdata/build
 
 #echo cd $REPODIR/psana/psana
 #     cd $REPODIR/psana/psana
@@ -32,6 +30,9 @@ echo find . -name "*~" -delete
 
 echo find . -name "*.pyc" -delete
      find . -name "*.pyc" -delete
+
+echo find . -name build -type d -exec rm -rf {} +
+     find . -name build -type d -exec rm -rf {} +
 
 echo find . -name __pycache__ -type d -exec rm -rf {} +
      find . -name __pycache__ -type d -exec rm -rf {} +
