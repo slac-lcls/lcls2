@@ -37,12 +37,12 @@ public:
         return _data[i * _shape[1] + j];
     }
     T& operator()(unsigned i, unsigned j, unsigned k){
-        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
+        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);
         return _data[(i * _shape[1] + j) * _shape[2] + k];
     }
     const T& operator()(unsigned i, unsigned j, unsigned k) const
     {
-        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[3]);
+        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);
         return _data[(i * _shape[1] + j) * _shape[2] + k];
     }
     uint32_t rank() const {
