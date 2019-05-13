@@ -8,7 +8,7 @@ cimport cython
 cimport numpy as cnp
 
 import sys # ref count
-from amityping import HSDWaveforms
+from amityping import HSDWaveforms, HSDPeaks
 
 include "../peakFinder/peakFinder.pyx"  # defines Allocator, PyAlloArray1D
 
@@ -178,7 +178,9 @@ cdef class cyhsd_base_1_2_3:
             listOfPos = None
         return (listOfPos, listOfPeaks)
 
-    def peaks(self, evt):
+    # adding this decorator allows acces to the signature information of the function in python
+    @cython.binding(True)
+    def peaks(self, evt) -> HSDPeaks:
         """Return a dictionary of available peaks found in the event.
         0:    tuple of beginning of peaks and array of peak intensities from channel 0
         1:    tuple of beginning of peaks and array of peak intensities from channel 1
