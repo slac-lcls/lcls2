@@ -145,21 +145,20 @@ class CGWMainControl(QGroupBox) :
 #--------------------
 
     def set_style(self) :
-
         self.setStyleSheet(style.qgrbox_title)
         self.lab_record.setFixedWidth(100)
-        self.but_record.setFixedSize(40, 40)
-        #self.cbx_runc.setFixedSize(100,40)
-        #self.cbx_runc.setStyleSheet(style.style_cbx_off)
+        self.but_record.setFixedSize(50, 50)
+        self.but_record.setIconSize(QSize(48, 48))
+
         self.but_ctrls.setStyleSheet(style.styleButtonGood)
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
-        #self.layout().setContentsMargins(0,0,0,0)
-        self.setMinimumSize(200,120)
+        self.layout().setContentsMargins(4,4,4,4)
+        self.setMinimumSize(270,140)
 
 #--------------------
 
     def sizeHint(self):
-        return QSize(250, 160)
+        return QSize(270,160)
  
 #--------------------
  
@@ -256,18 +255,28 @@ class CGWMainControl(QGroupBox) :
         self.but_transition.setText(s.upper())
 
 #--------------------
+
+    if __name__ == "__main__" :
+ 
+      def resizeEvent(self, e):
+        print('CGWMainControl.resizeEvent: %s' % str(self.size()))
+
+#--------------------
 #--------------------
 #--------------------
 #--------------------
  
 if __name__ == "__main__" :
 
+    from psdaq.control_gui.CGDaqControl import daq_control, DaqControlEmulator, Emulator
+    daq_control.set_daq_control(DaqControlEmulator())
+
     import sys
     from PyQt5.QtWidgets import QApplication
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = CGWMainControl(None)
+    w = CGWMainControl(None, parent_ctrl=Emulator())
     #w.connect_path_is_changed_to_recipient(w.test_signal_reception)
     w.show()
     app.exec_()

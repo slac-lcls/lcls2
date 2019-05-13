@@ -257,13 +257,17 @@ class CGWMainTabs(QWidget) :
 
 if __name__ == "__main__" :
 
+    from psdaq.control_gui.CGDaqControl import daq_control, DaqControlEmulator, Emulator
+    daq_control.set_daq_control(DaqControlEmulator())
+
     import sys
     from PyQt5.QtWidgets import QApplication
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 
     app = QApplication(sys.argv)
-    w = CGWMainTabs()
+    kwargs = {'parent':None, 'parent_ctrl':Emulator()}
+    w = CGWMainTabs(**kwargs)
     w.setGeometry(10, 25, 400, 600)
     w.setWindowTitle('CGWMainTabs')
     w.move(100,50)

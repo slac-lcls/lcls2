@@ -89,31 +89,13 @@ class CGWMainPartition(QGroupBox) :
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
-
-        #self.wcoll.setMinimumHeight(50)
-        #self.wcoll.setFixedHeight(100)
-
-        #self.but_display.setVisible(False)
-
-        #self.setWindowTitle('File name selection widget')
-        #self.setMinimumWidth(300)
-        #self.edi.setMinimumWidth(210)
-        #self.setFixedHeight(34) # 50 if self.show_frame else 34)
-        #if not self.show_frame : 
-        #self.layout().setContentsMargins(0,0,0,0)
-
-        #style = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
-        #style = "background-color: rgb(100, 240, 200); color: rgb(0, 0, 0);" # Greenish
-        #style = "background-color: rgb(255, 200, 220); color: rgb(0, 0, 0);" # Pinkish
-        #style = "background-color: rgb(240, 240, 100); color: rgb(0, 0, 0);" # YellowBkg
-        #self.setStyleSheet(style)
-
-        self.setMinimumSize(200,100)
+        self.layout().setContentsMargins(4,10,4,4)
+        self.setMinimumSize(150,100)
 
 #--------------------
 
     def sizeHint(self):
-        return QSize(200, 150)
+        return QSize(200, 120)
  
 #--------------------
  
@@ -208,6 +190,13 @@ class CGWMainPartition(QGroupBox) :
         if state in ('RESET', 'UNALLOCATED') and self.w_display is not None :
             self.w_display.close()
             self.w_display = None
+
+#--------------------
+
+    if __name__ == "__main__" :
+ 
+      def resizeEvent(self, e):
+        print('CGWMainPartition.resizeEvent: %s' % str(self.size()))
 
 #--------------------
 

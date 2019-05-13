@@ -79,19 +79,19 @@ class CGWMainTabExpert(QWidget) :
 #--------------------
 
     def sizeHint(self):
-        return QSize(300, 250)
+        return QSize(300, 280)
 
 #--------------------
 
     def set_style(self) :
+        self.setMinimumSize(280, 260)
         self.layout().setContentsMargins(0,0,0,0)
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
-        self.setMinimumSize(250, 200)
 
 #--------------------
 
     def closeEvent(self, e) :
-        print('%s.closeEvent' % self._name)
+        logger.debug('%s.closeEvent' % self._name)
 
         try :
             pass
@@ -100,16 +100,16 @@ class CGWMainTabExpert(QWidget) :
         except Exception as ex:
             print('Exception: %s' % ex)
 
+#--------------------
+
+    if __name__ == "__main__" :
  
-    #def resizeEvent(self, e):
+      def resizeEvent(self, e):
         #logger.debug('resizeEvent', self._name) 
-        #logger.info('CGWMainTabExpert.resizeEvent: %s' % str(self.size()))
-        #print('XXX CGWMainTabExpert.resizeEvent: %s' % str(self.size()))
-        #QWZMQListener.resizeEvent(self, e)
-        #pass
+        print('CGWMainTabExpert.resizeEvent: %s' % str(self.size()))
 
 
-    #def moveEvent(self, e) :
+     #def moveEvent(self, e) :
         #logger.debug('moveEvent', self._name) 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
@@ -118,38 +118,19 @@ class CGWMainTabExpert(QWidget) :
         #self.wimg.move(self.pos() + QPoint(self.width()+5, 0))
         #pass
 
-#------------------------------
-#------------------------------
-#------------------------------
-#------------------------------
-
-    if __name__ == "__main__" :
-
-      def key_usage(self) :
-        return 'Keys:'\
-               '\n  V - view/hide tabs'\
-               '\n'
-
-      def keyPressEvent(self, e) :
-        print('keyPressEvent, key=', e.key())       
-        if   e.key() == Qt.Key_Escape :
-            self.close()
-        elif e.key() == Qt.Key_V : 
-            self.wtab.view_hide_tabs()
-        else :
-            logger.info(self.key_usage())
-
-#------------------------------
+#--------------------
 
 if __name__ == "__main__" :
+
+    from psdaq.control_gui.CGDaqControl import daq_control, DaqControlEmulator, Emulator
+    daq_control.set_daq_control(DaqControlEmulator())
 
     import sys
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
 
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
-
-    kwargs = {'parent':None, 'parent_ctrl':None}
+    kwargs = {'parent':None, 'parent_ctrl':Emulator()}
     w = CGWMainTabExpert(**kwargs)
     w.show()
     app.exec_()

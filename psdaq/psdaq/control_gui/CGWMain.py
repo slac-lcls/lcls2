@@ -33,7 +33,7 @@ from PyQt5.QtCore import Qt, QSize
 
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
-from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
+from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl, DaqControlEmulator
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
 from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box
 from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
@@ -51,11 +51,14 @@ class CGWMain(QWZMQListener) :
     def __init__(self, parser=None) :
 
         self.proc_parser(parser)
-        daq_control.set_daq_control(DaqControl(host=self.host, platform=self.platform, timeout=self.timeout))
+
+        if __name__ != "__main__" :
+          daq_control.set_daq_control(DaqControl(host=self.host, platform=self.platform, timeout=self.timeout))
+          QWZMQListener.__init__(self, host=self.host, platform=self.platform, timeout=self.timeout)
+        else : # emulator mode for TEST ONLY
+          QWZMQListener.__init__(self, is_normal=False)
 
         self.wlogr = QWLoggerStd(log_level=self.loglevel, show_buttons=False, log_prefix=self.logdir)
-
-        QWZMQListener.__init__(self, host=self.host, platform=self.platform, timeout=self.timeout)
  
         #instrument = self.expname[:3].upper()
         instrument = daq_control().getInstrument()
@@ -113,6 +116,8 @@ class CGWMain(QWZMQListener) :
         self.parser=parser
 
         if parser is None :
+            self.loglevel = 'DEBUG'
+            self.logdir   = 'logdir'
             return
 
         (popts, pargs) = parser.parse_args()
@@ -163,45 +168,35 @@ class CGWMain(QWZMQListener) :
 #--------------------
 
     def sizeHint(self):
-        return QSize(400, 810)
+        """Set default window size
+        """
+        return QSize(370, 810)
 
 #--------------------
 
     def set_style(self) :
 
         self.layout().setContentsMargins(0,0,0,0)
-
-        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
-
-        #self.setMaximumWidth(400)
-        #self.setFixedWidth(350)
-
-        self.setMinimumWidth(400)
-        self.setMinimumHeight(810)
+        self.setMinimumSize(300,700)
 
         self.wconf.setFixedHeight(80)
 
-        self.wlogr.setMinimumHeight(220)
-        self.wlogr.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Expanding)
-        #self.wpart.setMinimumHeight(100)
-
-        #self.wcoll.setFixedWidth(330)
-        #self.wcoll.setMaximumWidth(350)
-
-        #self.setGeometry(50, 50, 500, 600)
         #self.setGeometry(self.main_win_pos_x .value(),\
         #                 self.main_win_pos_y .value(),\
         #                 self.main_win_width .value(),\
         #                 self.main_win_height.value())
         #w_height = self.main_win_height.value()
 
-        #self.setMinimumSize(500, 400)
-
         #self.layout().setContentsMargins(0,0,0,0)
 
-        from psdaq.control_gui.QWIcons import icon
+        from psdaq.control_gui.QWIcons import icon, QIcon
+
         icon.set_icons()
-        self.setWindowIcon(icon.icon_button_ok)
+        #self.setWindowIcon(icon.icon_button_ok)
+        self.setWindowIcon(icon.icon_lcls)
+
+        #pmap = icon.icon_lcls.pixmap(QSize(200,100)) # change icon.pixmap size
+        #self.setWindowIcon(QIcon(pmap))
 
         #w = self.main_win_width.value()
         #spl_pos = cp.main_vsplitter.value()
@@ -264,12 +259,9 @@ class CGWMain(QWZMQListener) :
         QWZMQListener.closeEvent(self, e)
 
  
-    #def resizeEvent(self, e):
-        #logger.debug('resizeEvent', self._name) 
-        #logger.info('CGWMain.resizeEvent: %s' % str(self.size()))
-        #print('XXX CGWMain.resizeEvent: %s' % str(self.size()))
+    def resizeEvent(self, e):
+        logger.debug('CGWMain.resizeEvent: %s' % str(self.size()))
         #QWZMQListener.resizeEvent(self, e)
-        #pass
 
 
     def moveEvent(self, e) :
@@ -417,6 +409,9 @@ def proc_control_gui(parser=None) :
 #------------------------------
 
 if __name__ == "__main__" :
+
+    daq_control.set_daq_control(DaqControlEmulator())
+
     proc_control_gui()
 
 #------------------------------

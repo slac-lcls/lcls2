@@ -38,12 +38,14 @@ class QWZMQListener(QWidget):
         #logger.debug('In QWZMQListener.__init__')
 
         self.timeout = kwargs.get('timeout', 1000)
+        _is_normal   = kwargs.get('is_normal', True)
         _on_poll     = kwargs.get('on_poll', self.on_zmq_poll)
         _host        = kwargs.get('host', 'localhost')
         _platform    = kwargs.get('platform', 6)
         _topicfilter = kwargs.get('topicfilter', b'') # b'10001'
         _uri         = 'tcp://%s:%d' % (_host, front_pub_port(_platform)) # 'tcp://localhost:30016'
-        self.init_connect_zmq(_on_poll, _uri, _topicfilter)
+
+        if _is_normal : self.init_connect_zmq(_on_poll, _uri, _topicfilter)
 
 
     def init_connect_zmq(self, on_poll, uri, topicfilter):

@@ -1,16 +1,17 @@
 
 """
-Module :py:class:`GCDaqControl` contains proxy and singleton for psdaq/control/collection.py
+Module :py:class:`CGDaqControl` contains proxy and singleton for psdaq/control/collection.py
 =============================================================================================
 
 Usage ::
 
-    from psdaq.control_gui.GCDaqControl import daq_control, DaqControl
+    from psdaq.control_gui.CGDaqControl import daq_control, DaqControl #, DaqControlEmulator
 
     print('DaqControl.transitions:', DaqControl.transitions)
     print('DaqControl.states  :', DaqControl.states)
 
     daq_control.set_daq_control(DaqControl(host='localhost', platform=2, timeout=10000))
+    #daq_control.set_daq_control(DaqControlEmulator())
 
     daq_control.setstate('running') # DaqControl.states[5]
     state = daq_control().getstate()
@@ -29,6 +30,31 @@ import logging
 logger = logging.getLogger(__name__)
 
 from psdaq.control.collection import DaqControl
+
+#----------
+
+class Emulator :
+    def __init__(self) :
+        self.wpart = self
+
+    def set_buts_enable(self, s) :
+        pass
+
+#----------
+
+class DaqControlEmulator:
+    """Emulates interaction with DaqControl, DO NOT DO ANYTHING, prints warning messages.
+    """
+    def __init__(self) :
+        self._name = 'DaqControlEmulator'
+    def msg(self, s) : logger.warning('TEST PURPOSE ONLY DaqControlEmulator.%s' % s) 
+    def getInstrument(self) :     self.msg('getInstrument');  return 'EMU'
+    def setState(self, s) :       self.msg('setState');
+    def getState(self) :          self.msg('getState');       return 'emulator'
+    def getStatus(self) :         self.msg('getStatus');      return 'emulator', 'emulator'
+    def setTransition(self, s) :  self.msg('setTransition');  return 'emulator' 
+    def selectPlatform(self, s) : self.msg('selectPlatform'); return
+    def getPlatform(self) :       self.msg('getPlatform');    return 'emulator'
 
 #----------
 

@@ -142,6 +142,8 @@ class QWIcons() :
         self.path_icon_skip_forward_sym_rtl   = '%s/media-skip-forward-symbolic-rtl.symbolic.png'   % path_icon
         self.path_icon_skip_forward_sym       = '%s/media-skip-forward-symbolic.symbolic.png'       % path_icon
         self.path_icon_view_subtitles_sym     = '%s/media-view-subtitles-symbolic.symbolic.png'     % path_icon
+        self.path_icon_lcls                   = '%s/lcls.png'                                       % path_icon
+        self.path_icon_wait                   = '%s/hourglass.png'                                      % path_icon
 
         self.icon_contents      = QIcon(self.path_icon_contents     )
         self.icon_mail_forward  = QIcon(self.path_icon_mail_forward )
@@ -168,6 +170,8 @@ class QWIcons() :
         self.icon_folder_open   = QIcon(self.path_icon_folder_open  )
         self.icon_folder_closed = QIcon(self.path_icon_folder_closed)
         self.icon_expcheck      = QIcon(self.path_icon_expcheck     )
+        self.icon_lcls          = QIcon(self.path_icon_lcls         )
+        self.icon_wait          = QIcon(self.path_icon_wait         )
 
         self.icon_data          = self.icon_table
         self.icon_apply         = self.icon_button_ok

@@ -103,7 +103,7 @@ class CGWMainCollection(QWidget) :
 #--------------------
 
     def sizeHint(self):
-        return QSize(300, 80)
+        return QSize(250, 60)
 
 #--------------------
 
@@ -112,7 +112,7 @@ class CGWMainCollection(QWidget) :
         self.setStyleSheet(style.qgrbox_title)
 
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
-        self.setMinimumSize(250, 50)
+        self.setMinimumSize(100, 40)
 
         self.layout().setContentsMargins(0,0,0,0)
 

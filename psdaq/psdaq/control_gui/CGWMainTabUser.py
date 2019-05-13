@@ -46,8 +46,8 @@ class CGWMainTabUser(QGroupBox) :
     _name = 'CGWMainTabUser'
 
     status_cmd = ['running', 'paused']
-    status_play = ['Start', 'Stop']
-    status_record = ['Begin', 'End']
+    status_play = ['Start', 'Stop', 'Wait']
+    status_record = ['Begin', 'End', 'Wait']
 
     def __init__(self, **kwargs) :
 
@@ -66,7 +66,11 @@ class CGWMainTabUser(QGroupBox) :
 
         #parent_ctrl.wpart = None
         #parent_ctrl.wcoll = None
-        #parent_ctrl.wctrl = None
+        parent_ctrl.wctrl = self
+
+        # wctrl assumes a couple of interface methods:
+        #            self.wctrl.set_but_ctrls (s_state)
+        #            self.wctrl.set_transition(s_transition)
 
         #self.hbox.addWidget(self.but_record)
         #self.hbox.addWidget(self.but_pause)
@@ -76,9 +80,28 @@ class CGWMainTabUser(QGroupBox) :
         self.set_tool_tips()
 
         #print(dir(self))
-        print(self.frameGeometry())
-        print(self.frameSize())
+        #print(self.frameGeometry())
+        #print(self.frameSize())
 
+#------------------------------
+
+    def set_but_ctrls(self, s_state) :
+        """interface method called from CGWMain on zmq poll
+        """
+        logger.debug('In %s.set_but_ctrls received state: %s' % (self._name, s_state))
+        if s_state.lower() == 'running' :
+            self.but_play.setIcon(icon.icon_playback_pause_sym)
+            self.but_play.setIconSize(QSize(48, 48))
+            self.but_play.setAccessibleName(self.status_play[1])
+            self.set_tool_tips()
+            self.set_but_play_enabled(True)
+
+#------------------------------
+
+    def set_transition(self, s_transition) :
+        """interface method called from CGWMain on zmq poll
+        """
+        logger.debug('In %s.set_transition received state: %s' % (self._name, s_transition))
 
 #------------------------------
 
@@ -103,8 +126,11 @@ class CGWMainTabUser(QGroupBox) :
         self.setMinimumSize(90, 60)
         #self.setFixedHeight(70)
 
-        self.but_play  .setFixedSize(40, 40)
-        self.but_record.setFixedSize(40, 40)
+        self.but_play  .setFixedSize(50, 50)
+        self.but_record.setFixedSize(50, 50)
+
+        self.but_play  .setIconSize(QSize(48, 48))
+        self.but_record.setIconSize(QSize(48, 48))
 
         #self.setGeometry(self.main_win_pos_x .value(),\
         #                 self.main_win_pos_y .value(),\
@@ -114,7 +140,7 @@ class CGWMainTabUser(QGroupBox) :
 
 
     def closeEvent(self, e) :
-        print('%s.closeEvent' % self._name)
+        logger.debug('%s.closeEvent' % self._name)
 
         try :
             pass
@@ -136,7 +162,8 @@ class CGWMainTabUser(QGroupBox) :
         self.but_play   = QPushButton(icon.icon_playback_start_sym, '') # icon.icon_playback_pause_sym
         self.but_record = QPushButton(icon.icon_record_sym, '')         # icon.icon_record
 
-        state = daq_control().getState()
+        daq_ctrl = daq_control()
+        state = daq_ctrl.getState() if daq_ctrl is not None else 'unknown'
         logger.debug('current state is "%s"' % state)
 
         self.but_play  .setAccessibleName('Stop' if state=='running' else 'Start')
@@ -157,21 +184,37 @@ class CGWMainTabUser(QGroupBox) :
         txt = self.but_play.accessibleName()
         logger.debug('on_but_play %s' % txt)
         ind = self.status_play.index(txt)
-        ico = icon.icon_playback_start_sym if ind==1 else\
-              icon.icon_playback_pause_sym
+        ico = icon.icon_playback_start_sym if ind==1 else icon.icon_wait
+              #icon.icon_playback_pause_sym
+
+        self.but_play.setIconSize(QSize(32, 32) if ico == icon.icon_wait else QSize(48, 48))
+
         self.but_play.setAccessibleName(self.status_play[0 if ind==1 else 1])
         self.but_play.setIcon(ico)
         self.set_tool_tips()
 
-        state = daq_control().getState()
+        daq_ctrl = daq_control()
+        state = daq_ctrl.getState() if daq_ctrl is not None else 'unknown'
         logger.debug('current state is %s' % state)
 
         #status_cmd = ['running', 'paused']
-        #status_play = ['Start', 'Stop']
+        #status_play = ['Start', 'Stop', 'Wait']
 
         cmd = 'paused' if txt=='Stop' else 'running'
-        daq_control().setState(cmd)
-        logger.debug('daq_control.setState("%s")' % cmd)
+
+        daq_ctrl = daq_control()
+        if daq_ctrl is not None :
+            daq_ctrl.setState(cmd)
+            logger.debug('daq_control.setState("%s")' % cmd)
+        else :
+            logger.warning('daq_control() is None')
+
+        self.set_but_play_enabled(cmd != 'running') # lock button untill RUNNING status is received
+
+
+    def set_but_play_enabled(self, is_enabled=True) :
+        self.but_play.setEnabled(is_enabled)
+        self.but_play.setFlat(not is_enabled)
 
 
     def on_but_record(self) :
@@ -234,13 +277,16 @@ class CGWMainTabUser(QGroupBox) :
 
 if __name__ == "__main__" :
 
+    from psdaq.control_gui.CGDaqControl import daq_control, DaqControlEmulator, Emulator
+    daq_control.set_daq_control(DaqControlEmulator())
+
     import sys
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
 
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
 
-    kwargs = {'parent':None, 'parent_ctrl':None}
+    kwargs = {'parent':None, 'parent_ctrl':Emulator()}
     w = CGWMainTabUser(**kwargs)
     w.show()
     app.exec_()

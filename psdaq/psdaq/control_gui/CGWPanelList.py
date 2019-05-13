@@ -37,11 +37,12 @@ class CGWPanelList(QWList) :
         QWList.__init__(self, **kwargs)
         self.disconnect_signals()
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        self.setMinimumSize(50, 30)
 
 #--------------------
 
     def sizeHint(self):
-        return QSize(100, 100)
+        return QSize(50, 30)
 
 #--------------------
 
@@ -72,7 +73,7 @@ if __name__ == "__main__" :
     app = QApplication(sys.argv)
     #w = CGWPanelList(list_str=lst, list_flags=flags)
     w = CGWPanelList(list_str=lst)
-    w.setFixedSize(80, 300)
+    #w.setFixedSize(80, 300)
     w.setWindowTitle('CGWPanelList')
     w.move(100,50)
     w.show()

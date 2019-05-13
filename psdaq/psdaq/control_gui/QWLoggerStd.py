@@ -268,14 +268,13 @@ class QWLoggerStd(QWidget) :
 
         #if not self.show_buttons : 
         self.layout().setContentsMargins(0,0,0,0)
-        #self.setMinimumSize(300,50)
-        #self.setBaseSize(500,200)
-        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        self.setMinimumSize(200, 200)
+        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
 
 #--------------------
 
     def sizeHint(self):
-        return QSize(300,1000)
+        return QSize(300,300)
 
 #--------------------
 
@@ -378,16 +377,13 @@ class QWLoggerStd(QWidget) :
 
 if __name__ == "__main__" :
     import sys
-    #from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
+
     from PyQt5.QtWidgets import QApplication
 
-    #from psana.pyalgos.generic.Logger import logger as log
     #logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 
-    #cp = PSConfigParameters()
-
     app = QApplication(sys.argv)
-    w = QWLoggerStd() # cp)
+    w = QWLoggerStd()
     w.setWindowTitle(w._name)
     w.setGeometry(200, 400, 600, 300)
 
