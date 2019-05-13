@@ -28,7 +28,10 @@ def test_py2xtc(tmp_path):
         }
 
         cydgram.addDet(nameinfo, alg, my_data)
-        xtc_bytes = cydgram.get(0,0,0)
+        timestamp = 0
+        pulseid = 0
+        transitionid = 0
+        xtc_bytes = cydgram.get(timestamp,pulseid,transitionid)
         f.write(xtc_bytes)
     f.close()
 
