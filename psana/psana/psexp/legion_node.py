@@ -46,6 +46,13 @@ def analyze(run, event_fn=None, start_run_fn=None, det=None):
     run.start_run_fn = start_run_fn
     run.det = det
     if legion.is_script:
+        num_procs = legion.Tunable.select(legion.Tunable.GLOBAL_PYS).get()
+
+        bar = legion.c.legion_phase_barrier_create(legion._my.ctx.runtime, legion._my.ctx.context, num_procs)
+        legion.c.legion_phase_barrier_arrive(legion._my.ctx.runtime, legion._my.ctx.context, bar, 1)
+        global_task_registration_barrier = legion.c.legion_phase_barrier_advance(legion._my.ctx.runtime, legion._my.ctx.context, bar)
+        legion.c.legion_phase_barrier_wait(legion._my.ctx.runtime, legion._my.ctx.context, bar)
+
         run_smd0_task(run)
     else:
         run_to_process.append(run)
