@@ -1,6 +1,6 @@
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
-from amityping import Array1d, Array2d, Array3d
+from amitypes import Array1d, Array2d, Array3d
 
 class hsd_raw_0_0_0(DetectorImpl):
     def __init__(self, *args):
