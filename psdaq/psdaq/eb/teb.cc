@@ -513,7 +513,7 @@ void TebApp::handleConnect(const json& msg)
 
   // Reply to collection with transition status
   json body = json({});
-  if (rc)  body["error"] = "Connect error";
+  if (rc)  body["err_info"] = "Connect error";
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -582,7 +582,7 @@ void TebApp::handlePhase1(const json& msg)
 
   // Reply to collection with transition status
   json body = json({});
-  if (rc)  body["error"] = "Phase 1 failed";
+  if (rc)  body["err_info"] = "Phase 1 failed";
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
 }
 

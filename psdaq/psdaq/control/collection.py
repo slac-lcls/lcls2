@@ -546,7 +546,7 @@ class CollectionManager():
         error_count = 0
         for answer in answers:
             try:
-                err_msg = answer['body']['error']
+                err_msg = answer['body']['err_info']
                 err_sender = answer['header']['sender_id']
                 err_alias = self.get_aliases([err_sender]).pop()
                 self.report_error('%s: %s' % (err_alias, err_msg))

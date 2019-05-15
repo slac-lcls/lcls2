@@ -531,7 +531,7 @@ void CtrbApp::handleConnect(const json &msg)
 
   // Reply to collection with connect status
   json body = json({});
-  if (rc)  body["error"] = "Connect error";
+  if (rc)  body["err_info"] = "Connect error";
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -565,7 +565,7 @@ void CtrbApp::handlePhase1(const json &msg)
 
   // Reply to collection with transition status
   json body = json({});
-  if (rc)  body["error"] = "Phase 1 error";
+  if (rc)  body["err_info"] = "Phase 1 error";
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
 }
 
