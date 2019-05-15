@@ -6,8 +6,6 @@ expnum   = 'expnum'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.42.255'
 conda_rel = 'ps-2.0.1'
 
-shelf = '2'
-ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
 rtmon_host = 'psmetric04'
 
@@ -24,12 +22,13 @@ rtmon_host = 'psmetric04'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
+ {                        id:'partca-'+platform, conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- { host: collect_host,    id:'collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -P TMO -B DAQ:LAB2:PART:'+platform},
+ { host: collect_host,    id:'collection', flags:'sp', conda:conda_rel, env:epics_env, cmd:'collection -v -P TMO -B DAQ:LAB2:PART:'+platform},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
  # trigger event builder
- { host: 'drp-tst-dev001', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host+' -Z '+rtmon_host},
+ { host: 'drp-tst-dev001', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host+' -Z '+rtmon_host},
  # cameras
- { host: 'drp-tst-dev011', id:'drp0', flags:'sxpu', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host},
- { host: 'drp-tst-dev012', id:'drp1', flags:'sxpu', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host}
+ { host: 'drp-tst-dev011', id:'ctrb1', flags:'pu', conda:conda_rel, cmd:'ctrb -1 8 -2 9 -C '+collect_host+' -Z '+rtmon_host},
+#{ host: 'drp-tst-dev012', id:'drp1', flags:'spu', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host}
 ]
