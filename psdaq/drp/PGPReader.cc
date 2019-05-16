@@ -220,9 +220,10 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
             if (event->mask == m_para->laneMask) {
                 if (evtCounter != ((lastComplete + 1) & 0xffffff)) {
                     printf("\033[0;31m");
-                    printf("Jump in complete l1Count %u -> %u | difference %d\n",
+                    printf("Fatal: Jump in complete l1Count %u -> %u | difference %d\n",
                            lastComplete, evtCounter, evtCounter - lastComplete);
                     printf("\033[0m");
+                    throw "Jump in event counter";
 
                     for (unsigned e=lastComplete+1; e<evtCounter; e++) {
                         PGPEvent* brokenEvent = &m_pool->pgpEvents[e % m_pool->nbuffers];

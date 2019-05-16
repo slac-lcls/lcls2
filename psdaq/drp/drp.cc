@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
     Py_Initialize(); // for use by configuration
     Drp::DrpApp app(&para);
     app.run();
-    Py_Finalize(); // for use by configuration
     app.shutdown();
+    Py_Finalize(); // for use by configuration
     std::cout<<"end of main drp\n";
 }
