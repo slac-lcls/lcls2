@@ -40,6 +40,7 @@ class Client:
             'plat': self.handle_plat,
             'alloc': self.handle_alloc,
             'connect': self.handle_connect,
+            'disconnect': self.handle_disconnect,
             'configure': self.handle_configure,
             'enable': self.handle_enable,
             'disable': self.handle_disable,
@@ -65,7 +66,7 @@ class Client:
     def handle_plat(self, msg):
         logging.debug('Client handle_plat(msg_id=\'%s\')' % msg['header']['msg_id'])
         # time.sleep(1.5)
-        body = {'test': {'proc_info': {
+        body = {'drp': {'proc_info': {
                         'alias': self.alias,
                         'host': self.hostname,
                         'pid': self.pid}}}
@@ -74,43 +75,51 @@ class Client:
 
     def handle_alloc(self, msg):
         logging.debug('Client handle_alloc(msg_id=\'%s\')' % msg['header']['msg_id'])
-        body = {'test': {'connect_info': {'infiniband': '123.456.789'}}}
+        body = {'drp': {'connect_info': {'infiniband': '123.456.789'}}}
         reply = create_msg('alloc', msg['header']['msg_id'], self.id, body)
         self.push.send_json(reply)
-        self.state = 'alloc'
+        self.state = 'allocated'
 
     def handle_connect(self, msg):
         logging.debug('Client handle_connect(msg_id=\'%s\')' % msg['header']['msg_id'])
-        if self.state == 'alloc':
-            self.state = 'connect'
+        if self.state == 'allocated':
+            self.state = 'connected'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_disconnect(self, msg):
+        logging.debug('Client handle_disconnect(msg_id=\'%s\')' % msg['header']['msg_id'])
+        if self.state == 'connected':
+            self.state = 'allocated'
+            body = {'err_info': 'This is only a test'}
+            reply = create_msg('disconnect', msg['header']['msg_id'], self.id, body)
             self.push.send_json(reply)
 
     def handle_configure(self, msg):
         logging.debug('Client handle_configure(msg_id=\'%s\')' % msg['header']['msg_id'])
-        if self.state == 'connect':
-            self.state = 'configured'
+        if self.state == 'connected':
+            self.state = 'paused'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
     def handle_unconfigure(self, msg):
         logging.debug('Client handle_unconfigure(msg_id=\'%s\')' % msg['header']['msg_id'])
-        if self.state == 'configured':
-            self.state = 'connect'
+        if self.state == 'paused':
+            self.state = 'connected'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
     def handle_enable(self, msg):
         logging.debug('Client handle_enable(msg_id=\'%s\')' % msg['header']['msg_id'])
-        if self.state == 'running':
-            self.state = 'enabled'
+        if self.state == 'paused':
+            self.state = 'running'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
     def handle_disable(self, msg):
         logging.debug('Client handle_disable(msg_id=\'%s\')' % msg['header']['msg_id'])
-        if self.state == 'enabled':
-            self.state = 'running'
+        if self.state == 'running':
+            self.state = 'paused'
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
