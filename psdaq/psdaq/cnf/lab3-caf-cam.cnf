@@ -6,8 +6,7 @@ expnum   = 'expnum'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.42.255'
 conda_rel = 'ps-2.0.1'
 
-shelf = '2'
-ip_addr = '10.0.'+shelf
+shelf = '1'
 collect_host = 'drp-tst-acc06'
 rtmon_host = 'psmetric04'
 
