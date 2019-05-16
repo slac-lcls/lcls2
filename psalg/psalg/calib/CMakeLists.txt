@@ -7,6 +7,7 @@ add_library(calib SHARED
     src/CalibParsDBStore.cc
     src/CalibParsEpix100a.cc
     src/CalibParsStore.cc
+    src/Query.cc
     src/MDBWebUtils.cc
 )
 

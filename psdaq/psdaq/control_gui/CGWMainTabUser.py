@@ -45,8 +45,9 @@ class CGWMainTabUser(QGroupBox) :
 
     _name = 'CGWMainTabUser'
 
-    status_cmd = ['running', 'paused']
-    status_play = ['Start', 'Stop', 'Wait']
+    s_running, s_paused = 'running', 'paused'
+    s_play_start, s_play_pause, s_play_wait = 'Start', 'Pause', 'Wait'
+
     status_record = ['Begin', 'End', 'Wait']
 
     def __init__(self, **kwargs) :
@@ -89,12 +90,20 @@ class CGWMainTabUser(QGroupBox) :
         """interface method called from CGWMain on zmq poll
         """
         logger.debug('In %s.set_but_ctrls received state: %s' % (self._name, s_state))
-        if s_state.lower() == 'running' :
+        state =  s_state.lower()
+
+        if state == self.s_running :
             self.but_play.setIcon(icon.icon_playback_pause_sym)
-            self.but_play.setIconSize(QSize(48, 48))
-            self.but_play.setAccessibleName(self.status_play[1])
-            self.set_tool_tips()
-            self.set_but_play_enabled(True)
+            self.but_play.setAccessibleName(self.s_play_pause)
+        elif state == self.s_paused :
+            self.but_play.setIcon(icon.icon_playback_start_sym)
+            self.but_play.setAccessibleName(self.s_play_start)
+        else : 
+            return
+
+        self.but_play.setIconSize(QSize(48, 48))
+        self.set_tool_tips()
+        self.set_but_play_enabled(True) # unlock play button
 
 #------------------------------
 
@@ -159,14 +168,18 @@ class CGWMainTabUser(QGroupBox) :
 
     def hbox_buttons(self) :
         hbox = QHBoxLayout()
-        self.but_play   = QPushButton(icon.icon_playback_start_sym, '') # icon.icon_playback_pause_sym
-        self.but_record = QPushButton(icon.icon_record_sym, '')         # icon.icon_record
 
         daq_ctrl = daq_control()
         state = daq_ctrl.getState() if daq_ctrl is not None else 'unknown'
         logger.debug('current state is "%s"' % state)
+        is_running = state==self.s_running
 
-        self.but_play  .setAccessibleName('Stop' if state=='running' else 'Start')
+        self.but_play   = QPushButton(icon.icon_playback_pause_sym if is_running else\
+                                      icon.icon_playback_start_sym, '')
+        self.but_record = QPushButton(icon.icon_record_sym, '')         # icon.icon_record
+
+        self.but_play  .setAccessibleName(self.s_play_pause if is_running else\
+                                          self.s_play_start)
         self.but_record.setAccessibleName(self.status_record[0])
 
         self.but_play  .clicked.connect(self.on_but_play)
@@ -183,13 +196,15 @@ class CGWMainTabUser(QGroupBox) :
     def on_but_play(self) :
         txt = self.but_play.accessibleName()
         logger.debug('on_but_play %s' % txt)
-        ind = self.status_play.index(txt)
-        ico = icon.icon_playback_start_sym if ind==1 else icon.icon_wait
+        #ind = self.status_play.index(txt)
+        #ico = icon.icon_playback_start_sym if txt==self.status_play_start else icon.icon_wait
               #icon.icon_playback_pause_sym
 
+        ico = icon.icon_wait
         self.but_play.setIconSize(QSize(32, 32) if ico == icon.icon_wait else QSize(48, 48))
+        self.but_play.setAccessibleName(self.s_play_wait)
+        #self.but_play.setAccessibleName(self.status_play[0 if ind==1 else 1])
 
-        self.but_play.setAccessibleName(self.status_play[0 if ind==1 else 1])
         self.but_play.setIcon(ico)
         self.set_tool_tips()
 
@@ -197,10 +212,7 @@ class CGWMainTabUser(QGroupBox) :
         state = daq_ctrl.getState() if daq_ctrl is not None else 'unknown'
         logger.debug('current state is %s' % state)
 
-        #status_cmd = ['running', 'paused']
-        #status_play = ['Start', 'Stop', 'Wait']
-
-        cmd = 'paused' if txt=='Stop' else 'running'
+        cmd = self.s_paused if txt==self.s_play_pause else self.s_running
 
         daq_ctrl = daq_control()
         if daq_ctrl is not None :
@@ -209,7 +221,7 @@ class CGWMainTabUser(QGroupBox) :
         else :
             logger.warning('daq_control() is None')
 
-        self.set_but_play_enabled(cmd != 'running') # lock button untill RUNNING status is received
+        self.set_but_play_enabled(False) # lock button untill RUNNING status is received
 
 
     def set_but_play_enabled(self, is_enabled=True) :

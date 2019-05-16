@@ -153,8 +153,38 @@ void test_getCalibParsDB(const DBTYPE& dbtype=DBDEF) {
 
 void test_Query() {
   MSG(INFO, "In test_Query test access to Query");
-  Query q("some-string is here");
-  std::cout << "q.query() " << q.query() << '\n';
+
+  Query q1(std::string("query-string is here"));
+  std::cout << "q1.query() " << q1.query() << "\n\n";
+
+  //----
+  const char* det         = "cspad_0001";
+  const char* exp         = "cxid9114";
+  const char* ctype       = "pedestals";
+  const unsigned run      = 150;
+  const unsigned time_sec = 0;  // default
+  const char* version     = ""; // default
+  Query q2(det, exp, ctype, run, time_sec, version);
+  std::cout << "q2: " << q2.string_members("  ") << "\n\n";
+
+  //----
+  Query::map_t map = 
+    {{Query::DETECTOR,"cspad_0001"}
+    ,{Query::EXPERIMENT,"cxid9114"}
+    ,{Query::CALIBTYPE,"pedestals"}
+    ,{Query::RUN,"150"}
+    ,{Query::TIME_SEC,"0"}
+    ,{Query::VERSION,""}
+    };
+  Query q3(map);
+  std::cout << "q3: " << q3.string_members("  ") << "\n\n";
+  //----
+
+  q3.set_paremeter(Query::RUN,"261");
+  q3.set_paremeter(Query::EXPERIMENT,"xyz12345");
+  std::cout << "q3.set_paremeter: " << q3.string_members("  ") << "\n\n";
+
+
 }
 
 //-------------------

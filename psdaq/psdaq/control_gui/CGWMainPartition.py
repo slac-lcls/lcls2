@@ -137,10 +137,12 @@ class CGWMainPartition(QGroupBox) :
         #self.parent_ctrl....
 
         list2d_active = list_active_procs(list2d)
-        if len(list2d_active)>0 :
-            daq_control().setState('allocated')
-        else :
+
+        if len(list2d_active)==0 :
             logger.warning('NO PROCESS SELECTED!')
+
+        daq_control().setState('allocated')
+
 
 #--------------------
  

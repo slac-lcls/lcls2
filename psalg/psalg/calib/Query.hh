@@ -15,29 +15,53 @@ using namespace psalg;
 namespace calib {
 
 //-----------------------------
+//typedef std::map<std::string, std::string> map_t;
+//typedef std::map<const std::string, std::string> map_t;
 
 class Query {
 public:
 
-  Query() : _query() {}
-  Query(const char* query) : _query(query) {}
-  Query(const std::string& query) : _query(query) {}
-  Query(const std::map<std::string, std::string>& qmap) : _qmap(qmap) {}
-  //Query(const char* dbname, const char* colname, const char* urlws=URLWS){}
-  virtual ~Query(){}
+  enum CONSTR_TYPE {QUERY_DEFAULT=0, QUERY_STRING, QUERY_MAP, QUERY_PARS}; 
+  enum QUERY_PAR{DETECTOR=0, EXPERIMENT, CALIBTYPE, RUN, TIME_SEC, VERSION}; 
 
-  inline std::string query() {return _query;}
+  //typedef std::map<const char*, std::string> map_t;
+  typedef std::map<const QUERY_PAR, std::string> map_t;
+
+  Query();
+  Query(const std::string& query);
+  Query(const map_t& qmap);
+  Query(const char* det, const char* exp=NULL, const char* ctype=NULL,
+        const unsigned run=0, const unsigned time_sec=0, const char* version=NULL);
+
+  //Query(const char* dbname, const char* colname, const char* urlws=URLWS){}
+
+  virtual ~Query();
 
   Query(const Query&) = delete;
   Query& operator = (const Query&) = delete;
 
-//  void
-//  query(std::map<std::string, std::string>& omap, const char* det, const char* exp=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL);
+  const CONSTR_TYPE& constr_type() {return _constr_type;}
+
+  std::string string_members(const char* sep="\n");
+
+  void set_paremeter(const QUERY_PAR t, const char* p);
+
+  void set_qmap(const map_t* map=NULL); // map_t* - pointer in order to use default
+
+  std::string query();
 
 protected:
 
-  const std::string _query;
-  const std::map<std::string, std::string> _qmap;
+  std::string _query;
+  map_t       _qmap;
+
+private:
+
+  CONSTR_TYPE _constr_type;
+  void _msg_init(const std::string& add="") const;
+
+  std::string _string_from_char(const char* p);
+  std::string _string_from_uint(const unsigned p);
 }; // class
 
 //-----------------------------
