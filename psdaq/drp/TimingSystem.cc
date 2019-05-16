@@ -1,4 +1,4 @@
-#include "Digitizer.hh"
+#include "TimingSystem.hh"
 #include "TimingHeader.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -6,7 +6,6 @@
 #include "xtcdata/xtc/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
-#include "psalg/digitizer/Stream.hh"
 
 #include <Python.h>
 #include <stdint.h>
@@ -18,10 +17,10 @@ using namespace rapidjson;
 
 namespace Drp {
 
-class HsdDef : public VarDef
+class TSDef : public VarDef
 {
 public:
-    HsdDef(unsigned lane_mask)
+    TSDef(unsigned lane_mask)
     {
         Alg alg("fpga", 1, 2, 3);
         const unsigned nameLen = 7;
@@ -35,7 +34,7 @@ public:
     }
 };
 
-Digitizer::Digitizer(Parameters* para, MemPool* pool, unsigned nodeId) :
+TimingSystem::TimingSystem(Parameters* para, MemPool* pool, unsigned nodeId) :
     Detector(para, pool, nodeId),
     m_evtcount(0),
     m_evtNamesId(nodeId, EventNamesIndex)
@@ -49,16 +48,16 @@ static void check(PyObject* obj) {
     }
 }
 
-unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
+unsigned TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.ts_config");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
     check(pDict);
     // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config");
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"ts_config");
     check(pFunc);
     // returns new reference
     PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss","DAQ:LAB2:HSD:DEV02",
@@ -109,35 +108,33 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
 
-unsigned Digitizer::configure(Xtc& xtc)
+unsigned TimingSystem::configure(Xtc& xtc)
 {
     unsigned lane_mask;
     // set up the names for the configuration data
     NamesId configNamesId(m_nodeId,ConfigNamesIndex);
-    lane_mask = Digitizer::_addJson(xtc, configNamesId);
+    lane_mask = TimingSystem::_addJson(xtc, configNamesId);
 
     // set up the names for L1Accept data
-    Alg hsdAlg("hsd", 1, 2, 3); // TODO: should this be configured by hsdconfig.py?
+    Alg tsAlg("ts", 1, 2, 3); // TODO: should this be configured by tsconfig.py?
     unsigned segment = 0;
-    Names& eventNames = *new(xtc) Names("xpphsd", hsdAlg, "hsd", "detnum1235", m_evtNamesId, segment);
-    HsdDef myHsdDef(lane_mask);
-    eventNames.add(xtc, myHsdDef);
+    Names& eventNames = *new(xtc) Names("xppts", tsAlg, "ts", "detnum1235", m_evtNamesId, segment);
+    TSDef myTSDef(lane_mask);
+    eventNames.add(xtc, myTSDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
     return 0;
 }
 
-void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
+void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
     m_evtcount+=1;
-    CreateData hsd(dgram.xtc, m_namesLookup, m_evtNamesId);
+    CreateData ts(dgram.xtc, m_namesLookup, m_evtNamesId);
 
-    // HSD data includes two uint32_t "event header" words
+    // TS data includes two uint32_t "event header" words
     unsigned data_size;
     unsigned shape[MaxRank];
     shape[0] = 2;
-    Array<uint32_t> arrayH = hsd.allocate<uint32_t>(0, shape);
-    // FIXME: check that Matt is sending this extra HSD info in the
-    // timing header
+    Array<uint32_t> arrayH = ts.allocate<uint32_t>(0, shape);
     int lane = __builtin_ffs(event->mask) - 1;
     uint32_t dmaIndex = event->buffers[lane].index;
     Pds::TimingHeader* timing_header = (Pds::TimingHeader*)m_pool->dmaBuffers[dmaIndex];
@@ -148,7 +145,7 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
             // size without Event header
             data_size = event->buffers[i].size - sizeof(Pds::TimingHeader);
             shape[0] = data_size;
-            Array<uint8_t> arrayT = hsd.allocate<uint8_t>(i+1, shape);
+            Array<uint8_t> arrayT = ts.allocate<uint8_t>(i+1, shape);
             uint32_t dmaIndex = event->buffers[i].index;
             memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
          }

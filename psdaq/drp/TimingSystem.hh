@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vector>
 #include "drp.hh"
 #include "Detector.hh"
 #include "xtcdata/xtc/Xtc.hh"
@@ -8,10 +7,10 @@
 
 namespace Drp {
 
-class Digitizer : public Detector
+class TimingSystem : public Detector
 {
 public:
-    Digitizer(Parameters* para, MemPool* pool, unsigned nodeId);
+    TimingSystem(Parameters* para, MemPool* pool, unsigned nodeId);
     unsigned configure(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:

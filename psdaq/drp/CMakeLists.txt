@@ -5,6 +5,7 @@ add_executable(drp
     DrpApp.cc
     AreaDetector.cc
     Digitizer.cc
+    TimingSystem.cc
     drp.cc
 )
 

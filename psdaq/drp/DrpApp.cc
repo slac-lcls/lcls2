@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <limits.h>
+#include "TimingSystem.hh"
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
 #include "TimingHeader.hh"
@@ -56,6 +57,7 @@ void DrpApp::handleConnect(const json &msg)
 
     // should move into constructor
     Factory<Detector> f;
+    f.register_type<TimingSystem>("TimingSystem");
     f.register_type<Digitizer>("Digitizer");
     f.register_type<AreaDetector>("AreaDetector");
     std::cout<<"nodeId  "<<m_tPrms.id<<'\n';
