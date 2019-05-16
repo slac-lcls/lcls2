@@ -73,67 +73,6 @@ long readInfinibandCounter(const std::string& counter)
     }
 }
 
-void monitorFunc(const Parameters& para,
-                 const int64_t& nevents, const int64_t& bytes)
-{
-    ZmqContext context;
-    ZmqSocket socket(&context, ZMQ_PUB);
-    socket.connect("tcp://psmetric04:5559");
-    char buffer[4096];
-    char hostname[HOST_NAME_MAX];
-    gethostname(hostname, HOST_NAME_MAX);
-
-    auto t = std::chrono::steady_clock::now();
-    uint64_t oldNevents = nevents;
-    uint64_t oldBytes = bytes;
-    long old_port_rcv_data = readInfinibandCounter("port_rcv_data");
-    long old_port_xmit_data = readInfinibandCounter("port_xmit_data");
-    while(1) {
-        sleep(1);
-
-        if (bytes == -1) {
-            break;
-        }
-
-        auto oldt = t;
-        t = std::chrono::steady_clock::now();
-
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t - oldt).count();
-        double seconds = duration / 1.0e6;
-        double eventRate = double(nevents - oldNevents) / seconds;
-        double dataRate = double(bytes - oldBytes) / seconds;
-        printf("%.2e Hz  |  %.2e MB/s\n", eventRate, dataRate / 1.0e6);
-
-        int size = snprintf(buffer, 4096, "drp_event_rate,host=%s,partition=%u %f",
-                            hostname, para.partition, eventRate);
-        zmq_send(socket.socket, buffer, size, 0);
-        std::cout<<buffer<<std::endl;
-
-        size = snprintf(buffer, 4096, "drp_data_rate,host=%s,partition=%u %f",
-                        hostname, para.partition, dataRate);
-        zmq_send(socket.socket, buffer, size, 0);
-
-        long port_rcv_data = readInfinibandCounter("port_rcv_data");
-        long port_xmit_data = readInfinibandCounter("port_xmit_data");
-        // Inifiband counters are divided by 4 (lanes) https://community.mellanox.com/docs/DOC-2751
-        double rcv_rate = 4.0*double(port_rcv_data - old_port_rcv_data) / seconds;
-        double xmit_rate = 4.0*double(port_xmit_data - old_port_xmit_data) / seconds;
-
-        size = snprintf(buffer, 4096, "drp_xmit_rate,host=%s,partition=%d %f",
-                        hostname, para.partition, xmit_rate);
-        zmq_send(socket.socket, buffer, size, 0);
-
-        size = snprintf(buffer, 4096, "drp_rcv_rate,host=%s,partition=%d %f",
-                        hostname, para.partition, rcv_rate);
-        zmq_send(socket.socket, buffer, size, 0);
-
-        oldNevents = nevents;
-        oldBytes = bytes;
-        old_port_rcv_data = port_rcv_data;
-        old_port_xmit_data = port_xmit_data;
-    }
-}
-
 bool checkPulseIds(MemPool& pool, PGPEvent* event)
 {
     uint64_t pulseId = 0;
@@ -239,19 +178,16 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
     uint64_t nevents = 0L;
     uint64_t bytes = 0L;
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para->partition)}};
-    exporter->add("drp_events_total", labels, MetricType::Counter,
-                  [&](){return nevents;});
-
     exporter->add("drp_event_rate", labels, MetricType::Rate,
                   [&](){return nevents;});
 
-    exporter->add("drp_pgp_bytes_total", labels, MetricType::Counter,
+    exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
                   [&](){return bytes;});
 
-    exporter->add("drp_port_rcv_total", labels, MetricType::Counter,
+    exporter->add("drp_port_rcv_rate", labels, MetricType::Rate,
                   [](){return 4*readInfinibandCounter("port_rcv_data");});
 
-    exporter->add("drp_port_xmit_total", labels, MetricType::Counter,
+    exporter->add("drp_port_xmit_rate", labels, MetricType::Rate,
                   [](){return 4*readInfinibandCounter("port_xmit_data");});
 
     uint32_t lastComplete = 0; // 0xffffff;
