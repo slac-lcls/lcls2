@@ -20,6 +20,7 @@ DrpApp::DrpApp(Parameters* para) :
     CollectionApp(para->collectionHost, para->partition, "drp", para->alias),
     m_para(para),
     m_pool(*para),
+    m_exposer{"0.0.0.0:9200", "/metrics", 1},
     m_smon("psmetric04", RTMON_PORT_BASE, m_para->partition, RTMON_RATE, RTMON_VERBOSE)
 {
     size_t maxSize = sizeof(MyDgram);
@@ -64,8 +65,10 @@ void DrpApp::handleConnect(const json &msg)
     }
     m_det->connect();
 
+    auto exporter = std::make_shared<MetricExporter>();
+    m_exposer.RegisterCollectable(exporter);
     m_pgpReader = std::make_unique<PGPReader>(*m_para, m_pool, m_det);
-    m_pgpThread = std::thread{&PGPReader::run, std::ref(*m_pgpReader)};
+    m_pgpThread = std::thread{&PGPReader::run, std::ref(*m_pgpReader), exporter};
 
     // Create all the eb things and do the connections
     bool connected = true;

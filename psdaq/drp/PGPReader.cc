@@ -5,6 +5,7 @@
 #include "TimingHeader.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/MetricExporter.hh"
 #include "PGPReader.hh"
 
 namespace Drp {
@@ -208,7 +209,8 @@ void workerFunc(const Parameters&para, MemPool& pool,
     }
 }
 
-PGPReader::PGPReader(const Parameters& para, MemPool& pool, Detector* det) :
+PGPReader::PGPReader(const Parameters& para, MemPool& pool,
+                     Detector* det) :
     m_para(&para), m_pool(&pool), m_terminate(false)
 {
     uint8_t mask[DMA_MASK_SIZE];
@@ -231,18 +233,32 @@ PGPReader::PGPReader(const Parameters& para, MemPool& pool, Detector* det) :
     }
 }
 
-void PGPReader::run()
+void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
 {
+    // setup monitoring
+    uint64_t nevents = 0L;
+    uint64_t bytes = 0L;
+    std::map<std::string, std::string> labels{{"partition", std::to_string(m_para->partition)}};
+    exporter->add("drp_events_total", labels, MetricType::Counter,
+                  [&](){return nevents;});
+
+    exporter->add("drp_event_rate", labels, MetricType::Rate,
+                  [&](){return nevents;});
+
+    exporter->add("drp_pgp_bytes_total", labels, MetricType::Counter,
+                  [&](){return bytes;});
+
+    exporter->add("drp_port_rcv_total", labels, MetricType::Counter,
+                  [](){return 4*readInfinibandCounter("port_rcv_data");});
+
+    exporter->add("drp_port_xmit_total", labels, MetricType::Counter,
+                  [](){return 4*readInfinibandCounter("port_xmit_data");});
+
     uint32_t lastComplete = 0; // 0xffffff;
-    int64_t nevents = 0L;
-    int64_t bytes = 0L;
     int64_t worker = 0L;
     Batch batch;
     batch.start = 1;
     batch.size = 0;
-    std::thread monitorThread(monitorFunc, std::ref(*m_para),
-                                           std::ref(nevents),
-                                           std::ref(bytes));
 
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
@@ -297,10 +313,6 @@ void PGPReader::run()
             }
         }
     }
-
-    // shutdown monitor thread
-    bytes = -1;
-    monitorThread.join();
 }
 
 void PGPReader::shutdown()

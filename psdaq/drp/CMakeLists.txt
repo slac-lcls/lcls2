@@ -20,6 +20,7 @@ target_link_libraries(drp
     zmq
     collection
     contributor
+    exporter
 )
 
 add_executable(test_hsd_config

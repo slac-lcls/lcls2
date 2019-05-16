@@ -6,13 +6,16 @@
 #include "Detector.hh"
 #include "drp.hh"
 
+class MetricExporter;
+
 namespace Drp {
 
 class PGPReader
 {
 public:
-    PGPReader(const Parameters& para, MemPool& pool, Detector* det);
-    void run();
+    PGPReader(const Parameters& para, MemPool& pool,
+              Detector* det);
+    void run(std::shared_ptr<MetricExporter> exporter);
     void shutdown();
 private:
     const Parameters* m_para;

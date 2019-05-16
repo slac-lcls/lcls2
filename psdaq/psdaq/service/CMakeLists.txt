@@ -1,3 +1,4 @@
+find_package(prometheus-cpp REQUIRED)
 
 add_library(service SHARED
     SysClk.cc
@@ -32,7 +33,16 @@ target_include_directories(collection PUBLIC
      $<INSTALL_INTERFACE:include>
 )
 
-install(TARGETS service collection
+add_library(exporter SHARED
+    MetricExporter.cc
+)
+
+target_link_libraries(exporter PUBLIC
+    prometheus-cpp::pull
+)
+
+
+install(TARGETS service collection exporter
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
 )

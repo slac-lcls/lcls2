@@ -4,6 +4,7 @@
 #include "PGPReader.hh"
 #include "psdaq/eb/eb.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/MetricExporter.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
@@ -84,6 +85,7 @@ private:
     std::unique_ptr<Pds::Eb::TebContributor> m_ebContributor;
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
+    prometheus::Exposer m_exposer;
     Pds::Eb::StatsMonitor m_smon;
     Detector* m_det;
 };
