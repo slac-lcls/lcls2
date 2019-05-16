@@ -91,16 +91,19 @@ namespace Pds {
     void PVCtrls::allocate(const std::string& title)
     {
       _m.stop();
+
+      std::ostringstream o;
+      o << title << ":";
+      std::string pvbase = o.str();
+
+      _state_pv = new StatePV(*this, (pvbase+"BASE:READY").c_str());
+
       _setState(Unconfigured);
 
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
       _pv.resize(0);
       
-      std::ostringstream o;
-      o << title << ":";
-      std::string pvbase = o.str();
-
 #define NPV(name,pv)  _pv.push_back( new PV(name)(*this, (pvbase+pv).c_str()) )
 #define NPV1(name)  _pv.push_back( new PvServer(STOU(pvbase+#name).c_str()) )
 
@@ -132,8 +135,6 @@ namespace Pds {
       NPV(ApplyUnconfig,"BASE:APPLYUNCONFIG");
       NPV(Reset      ,"RESET");
       NPV(PgpLoopback,"PGPLOOPBACK");
-
-      _state_pv = new StatePV(*this, (pvbase+"BASE:READY").c_str());
 
       _setState(Unconfigured);
     }
