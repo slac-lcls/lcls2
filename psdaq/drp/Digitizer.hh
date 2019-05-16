@@ -11,7 +11,7 @@ namespace Drp {
 class Digitizer : public Detector
 {
 public:
-    Digitizer(Parameters* para, MemPool* pool, unsigned nodeId);
+    Digitizer(Parameters* para, MemPool* pool);
     unsigned configure(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:

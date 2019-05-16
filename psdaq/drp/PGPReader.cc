@@ -192,7 +192,7 @@ void workerFunc(const Parameters&para, MemPool& pool,
             // fill in dgram header
             dgram->seq = timingHeader->seq;
             dgram->env = timingHeader->env;
-            dgram->xtc.src = XtcData::Src(det->nodeId());
+            dgram->xtc.src = XtcData::Src(det->nodeId);
 
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {

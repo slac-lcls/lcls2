@@ -449,7 +449,7 @@ public:
   TebApp(const std::string& collSrv, EbParams&, StatsMonitor&);
   virtual ~TebApp();
 public:                                 // For CollectionApp
-  std::string nicIp() override;
+  json connectionInfo() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
   void handlePhase1(const json& msg) override;
@@ -482,12 +482,12 @@ TebApp::~TebApp()
   Py_Finalize();
 }
 
-std::string TebApp::nicIp()
+json TebApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
-  std::cout<<"custom nicIp\n";
   std::string ip = _prms.ifAddr.empty() ? getNicIp() : _prms.ifAddr;
-  return ip;
+  json body = {{"connect_info", {{"nic_ip", ip}}}};
+  return body;
 }
 
 int TebApp::_handleConnect(const json& msg)

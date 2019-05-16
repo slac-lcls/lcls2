@@ -58,6 +58,7 @@ public:
 protected:
     void handlePlat(const json& msg);
     void handleAlloc(const json& msg);
+    virtual json connectionInfo() = 0;
     virtual void handleConnect(const json& msg) = 0;
     virtual void handleDisconnect(const json& msg) {};
     virtual void handlePhase1(const json& msg) {};
@@ -66,7 +67,6 @@ protected:
     size_t getId() const {return m_id;}
     const std::string& getLevel() const {return m_level;}
     const std::string& getAlias() const {return m_alias;}
-    virtual std::string nicIp() {return getNicIp();}
     ZmqContext& context() {return m_context;}
 private:
     std::string m_level;

@@ -35,8 +35,8 @@ public:
     }
 };
 
-Digitizer::Digitizer(Parameters* para, MemPool* pool, unsigned nodeId) :
-    Detector(para, pool, nodeId),
+Digitizer::Digitizer(Parameters* para, MemPool* pool) :
+    Detector(para, pool),
     m_evtcount(0),
     m_evtNamesId(nodeId, EventNamesIndex)
 {
@@ -113,7 +113,7 @@ unsigned Digitizer::configure(Xtc& xtc)
 {
     unsigned lane_mask;
     // set up the names for the configuration data
-    NamesId configNamesId(m_nodeId,ConfigNamesIndex);
+    NamesId configNamesId(nodeId,ConfigNamesIndex);
     lane_mask = Digitizer::_addJson(xtc, configNamesId);
 
     // set up the names for L1Accept data

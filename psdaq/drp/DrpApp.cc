@@ -48,23 +48,33 @@ DrpApp::DrpApp(Parameters* para) :
                       /* .verbose       = */ 0 };
 
     m_ebContributor = std::make_unique<TebContributor>(m_tPrms, m_smon);
+
+    Factory<Detector> f;
+    f.register_type<TimingSystem>("TimingSystem");
+    f.register_type<Digitizer>("Digitizer");
+    f.register_type<AreaDetector>("AreaDetector");
+    m_det = f.create(m_para, &m_pool);
+    if (m_det == nullptr) {
+        std::cout<< "Error !! Could not create Detector object\n";
+    }
     std::cout << "output dir: " << m_para->outputDir << std::endl;
+}
+
+json DrpApp::connectionInfo()
+{
+    std::string ip = getNicIp();
+    std::cout<<"nic ip  "<<ip<<'\n';
+    json body = {{"connect_info", {{"nic_ip", ip}}}};
+    // m_det->connectionInfo();
+    //body.update(info);
+    return body;
 }
 
 void DrpApp::handleConnect(const json &msg)
 {
     parseConnectionParams(msg["body"]);
 
-    // should move into constructor
-    Factory<Detector> f;
-    f.register_type<TimingSystem>("TimingSystem");
-    f.register_type<Digitizer>("Digitizer");
-    f.register_type<AreaDetector>("AreaDetector");
-    std::cout<<"nodeId  "<<m_tPrms.id<<'\n';
-    m_det = f.create(m_para, &m_pool, m_tPrms.id);
-    if (m_det == nullptr) {
-        std::cout<< "Error !! Could not create Detector object\n";
-    }
+    m_det->nodeId = m_tPrms.id;
     m_det->connect();
 
     auto exporter = std::make_shared<MetricExporter>();

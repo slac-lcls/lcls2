@@ -221,10 +221,11 @@ void CollectionApp::handleAlloc(const json &msg)
         std::cout<<"subscribing to partition\n";
         m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "partition", 9);
 
-        std::string ip = nicIp();
-        std::cout<<"nic ip  "<<ip<<'\n';
-        json body = {{m_level, {{"connect_info", {{"nic_ip", ip}}}}}};
+        json info = connectionInfo();
+        json body = {{m_level, info}};
+        std::cout << "body handleAlloc  " << std::setw(4) << body << "\n\n";
         json answer = createMsg("alloc", msg["header"]["msg_id"], m_id, body);
+
         reply(answer);
     }
     else {

@@ -42,8 +42,8 @@ public:
 static RawDef myRawDef;
 
 
-AreaDetector::AreaDetector(Parameters* para, MemPool* pool, unsigned nodeId) :
-    Detector(para, pool, nodeId), m_evtcount(0)
+AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
+    Detector(para, pool), m_evtcount(0)
 {
 }
 
@@ -83,14 +83,14 @@ unsigned AreaDetector::configure(Xtc& xtc)
 
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;
-    NamesId fexNamesId(m_nodeId,FexNamesIndex);
+    NamesId fexNamesId(nodeId,FexNamesIndex);
     Names& fexNames = *new(xtc) Names("xppcspad", cspadFexAlg, "cspad",
                                             "detnum1234", fexNamesId, segment);
     fexNames.add(xtc, myFexDef);
     m_namesLookup[fexNamesId] = NameIndex(fexNames);
 
     Alg cspadRawAlg("cspadRawAlg", 1, 2, 3);
-    NamesId rawNamesId(m_nodeId,RawNamesIndex);
+    NamesId rawNamesId(nodeId,RawNamesIndex);
     Names& rawNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad",
                                             "detnum1234", rawNamesId, segment);
     rawNames.add(xtc, myRawDef);
@@ -103,7 +103,7 @@ void AreaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
     m_evtcount+=1;
 
     // fex data
-    NamesId fexNamesId(m_nodeId,FexNamesIndex);
+    NamesId fexNamesId(nodeId,FexNamesIndex);
     CreateData fex(dgram.xtc, m_namesLookup, fexNamesId);
     unsigned shape[MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
@@ -134,7 +134,7 @@ void AreaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
     }
 
     // raw data
-    NamesId rawNamesId(m_nodeId,RawNamesIndex);
+    NamesId rawNamesId(nodeId,RawNamesIndex);
     DescribedData raw(dgram.xtc, m_namesLookup, rawNamesId);
     unsigned size = 0;
     unsigned nlanes = 0;

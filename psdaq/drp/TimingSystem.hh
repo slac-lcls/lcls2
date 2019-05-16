@@ -10,7 +10,7 @@ namespace Drp {
 class TimingSystem : public Detector
 {
 public:
-    TimingSystem(Parameters* para, MemPool* pool, unsigned nodeId);
+    TimingSystem(Parameters* para, MemPool* pool);
     unsigned configure(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:

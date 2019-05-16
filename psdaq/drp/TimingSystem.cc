@@ -34,8 +34,8 @@ public:
     }
 };
 
-TimingSystem::TimingSystem(Parameters* para, MemPool* pool, unsigned nodeId) :
-    Detector(para, pool, nodeId),
+TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
+    Detector(para, pool),
     m_evtcount(0),
     m_evtNamesId(nodeId, EventNamesIndex)
 {
@@ -112,7 +112,7 @@ unsigned TimingSystem::configure(Xtc& xtc)
 {
     unsigned lane_mask;
     // set up the names for the configuration data
-    NamesId configNamesId(m_nodeId,ConfigNamesIndex);
+    NamesId configNamesId(nodeId,ConfigNamesIndex);
     lane_mask = TimingSystem::_addJson(xtc, configNamesId);
 
     // set up the names for L1Accept data

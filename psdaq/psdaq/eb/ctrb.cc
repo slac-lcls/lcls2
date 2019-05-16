@@ -452,7 +452,7 @@ class CtrbApp : public CollectionApp
 public:
   CtrbApp(const std::string& collSrv, TebCtrbParams&, MebCtrbParams&, StatsMonitor&);
 public:                                 // For CollectionApp
-  std::string nicIp() override;
+  json connectionInfo() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
   void handlePhase1(const json &msg) override;
@@ -484,12 +484,12 @@ CtrbApp::CtrbApp(const std::string& collSrv,
 {
 }
 
-
-std::string CtrbApp::nicIp()
+json CtrbApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
   std::string ip = _tebPrms.ifAddr.empty() ? getNicIp() : _tebPrms.ifAddr;
-  return ip;
+  json body = {{"connect_info", {{"nic_ip", ip}}}};
+  return body;
 }
 
 int CtrbApp::_handleConnect(const json &msg)

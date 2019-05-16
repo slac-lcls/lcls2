@@ -67,6 +67,7 @@ class DrpApp : public CollectionApp
 {
 public:
     DrpApp(Parameters* para);
+    json connectionInfo() override;
     void handleConnect(const json& msg) override;
     void handlePhase1(const json& msg) override;
     void handleReset(const json& msg) override;
