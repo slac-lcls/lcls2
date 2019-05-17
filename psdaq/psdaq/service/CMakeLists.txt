@@ -19,6 +19,10 @@ target_include_directories(service PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 )
 
+target_link_libraries(service PUBLIC
+    dl
+)
+
 add_library(collection SHARED
     Collection.cc
 )
