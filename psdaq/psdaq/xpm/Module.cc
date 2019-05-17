@@ -71,7 +71,7 @@ TimingCounts::TimingCounts(const Cphw::TimingRx&   timing,
   fidCount         = timing.Msgcounts;
   sofCount         = timing.SOFcounts;
   eofCount         = timing.EOFcounts;
-
+  rxAlign          = 0;
   //  rxAlign          = align.gthAlignLast & 0x7f;
 }
 
@@ -127,15 +127,14 @@ void Module::init()
 
   unsigned il = getLink();
 
-  printf("DsLnkCfg:  %4.4s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s\n",
-         "Link", "TxDelay", "RxTmo", "Partn", "TrigSrc", "Loopback", "TxReset", "RxReset", "TxPllRst", "RxPllRst", "Enable");
+  printf("DsLnkCfg:  %4.4s %9.9s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s %8.8s\n",
+         "Link", "GroupMask", "RxTmo", "TrigSrc", "Loopback", "TxReset", "RxReset", "TxPllRst", "RxPllRst", "Enable");
   for(unsigned i=0; i<NDSLinks; i++) {
     setLink(i);
-    printf("           %4u %8u %8u %8u %8u %8u %8u %8u %8u %8u %8u\n",
+    printf("           %4u      0x%02x %8u %8u %8u %8u %8u %8u %8u %8u\n",
            i,
-           getf(_dsLinkConfig,9,0),
+           getf(_dsLinkConfig,8,0),
            getf(_dsLinkConfig,9,9),
-           getf(_dsLinkConfig,4,20),
            getf(_dsLinkConfig,4,24),
            getf(_dsLinkConfig,1,28),
            getf(_dsLinkConfig,1,29),
@@ -205,17 +204,6 @@ void Module::clearLinks()
   }
 }
 
-void Module::linkTxDelay(unsigned link, unsigned v)
-{
-  setLink(link);
-  setf(_dsLinkConfig, v, 9, 0);
-}
-unsigned Module::linkTxDelay(unsigned link) const
-{
-  setLink(link);
-  return getf(_dsLinkConfig,    9, 0);
-}
-
 void Module::linkRxTimeOut(unsigned link, unsigned v)
 {
   setLink(link);
@@ -227,15 +215,15 @@ unsigned Module::linkRxTimeOut(unsigned link) const
   return getf(_dsLinkConfig,    9, 9);
 }
 
-void Module::linkPartition(unsigned link, unsigned v)
+void Module::linkGroupMask(unsigned link, unsigned v)
 {
   setLink(link);
-  setf(_dsLinkConfig, v, 4, 20);
+  setf(_dsLinkConfig, v, 8, 0);
 }
-unsigned Module::linkPartition(unsigned link) const
+unsigned Module::linkGroupMask(unsigned link) const
 {
   setLink(link);
-  return getf(_dsLinkConfig, 4, 20);
+  return getf(_dsLinkConfig, 8, 0);
 }
 
 void Module::linkTrgSrc(unsigned link, unsigned v)

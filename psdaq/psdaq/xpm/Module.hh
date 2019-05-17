@@ -210,12 +210,10 @@ namespace Pds {
       unsigned getInhibit  () const;
       unsigned getTagStream() const;
     public:
-      void     linkTxDelay(unsigned, unsigned);
-      unsigned linkTxDelay(unsigned) const;
       void     linkRxTimeOut(unsigned, unsigned);
       unsigned linkRxTimeOut(unsigned) const;
-      void     linkPartition(unsigned, unsigned);
-      unsigned linkPartition(unsigned) const;
+      void     linkGroupMask(unsigned, unsigned);
+      unsigned linkGroupMask(unsigned) const;
       void     linkTrgSrc(unsigned, unsigned);
       unsigned linkTrgSrc(unsigned) const;
       void     linkLoopback(unsigned, bool);
@@ -257,7 +255,7 @@ namespace Pds {
       void     inhibitEnb(unsigned, unsigned);
       unsigned inhibitEnb(unsigned) const;
     public:  // 0x80000000
-      //  0x0000 - RO: physical link address
+      //  0x0000 - RW: physical link address (R: received address, W: transmit address)
       Cphw::Reg   _paddr;
       //  0x0004 - RW: programming index
       //  [3:0]   partition     Partition number
@@ -270,11 +268,10 @@ namespace Pds {
       //  [26]    cuRxEnable
       Cphw::Reg   _index;
       //  0x0008 - RW: ds link configuration for link[index]
-      //  [8:0]   txDelay       Transmit delay
+      //  [7:0]   groupMask     Full mask of groups
       //  [17:9]  rxTimeOut     Receive timeout
       //  [18]    txPllReset    Transmit reset
       //  [19]    rxPllReset    Receive  reset
-      //  [23:20] partition     Partition
       //  [27:24] trigsrc       Trigger source
       //  [28]    loopback      Loopback mode
       //  [29]    txReset       Transmit reset

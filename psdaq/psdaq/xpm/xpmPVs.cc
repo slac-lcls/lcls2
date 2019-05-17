@@ -347,6 +347,10 @@ int main(int argc, char** argv)
 
   Module* m = Module::locate();
   m->init();
+  //  Assign transmit link ID
+  { unsigned v = (0xff0000 | (shelf<<8) | strtoul(strrchr(ip,'.')+1,NULL,10)) << 4;
+    m->_paddr = v;
+    printf("Set PADDR to 0x%x\n",v); }
 
   StatsTimer* timer = new StatsTimer(*m);
 

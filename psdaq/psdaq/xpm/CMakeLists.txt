@@ -1,5 +1,6 @@
 
 add_library(xpm SHARED
+    PVSeq.cc
     PVStats.cc
     PVPStats.cc
     PVCtrls.cc

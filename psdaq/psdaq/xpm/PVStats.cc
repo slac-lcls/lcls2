@@ -17,7 +17,12 @@ using Pds_Epics::PVCached;
 namespace Pds {
   namespace Xpm {
 
-    PVStats::PVStats(Module& dev, Semaphore& sem) : _dev(dev), _sem(sem), _pv(0) {}
+    PVStats::PVStats(Module& dev, Semaphore& sem) : _dev(dev), _sem(sem), _pv(0) 
+    { //  initialize
+      clock_gettime(CLOCK_REALTIME,&_t);
+      _c = dev.counts();
+      _dev.linkStatus(_links);
+    }
     PVStats::~PVStats() {}
 
     //#define PVPUT(v)    if ((*it)->connected()) { (*it)->putFrom<double>(double(v)); } it++;

@@ -83,19 +83,13 @@ def main():
     pvdb[':DumpSeq'            ] = {'type' : 'int'}
     pvdb[':SetVerbose'         ] = {'type' : 'int'}
 
-    LinkEnable = [0]*32
-    LinkEnable[17:18] = [1]*2  # DTIs in slots 3-4
-    print(LinkEnable)
-
     for i in range(32):
-        pvdb[':LinkTxDelay'  +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkPartition'+'%d'%i] = {'type' : 'int'}
+        pvdb[':LinkGroupMask'+'%d'%i] = {'type' : 'int'}
         pvdb[':LinkTrgSrc'   +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkLoopback' +'%d'%i] = {'type' : 'int'}
         pvdb[':TxLinkReset'  +'%d'%i] = {'type' : 'int'}
         pvdb[':RxLinkReset'  +'%d'%i] = {'type' : 'int'}
         pvdb[':RxLinkDump'   +'%d'%i] = {'type' : 'int'}
-        pvdb[':LinkEnable'   +'%d'%i] = {'type' : 'int', 'value' : LinkEnable[i] }
         pvdb[':LinkTxReady'  +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkRxReady'  +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkTxResetDone'  +'%d'%i] = {'type' : 'int'}
@@ -138,6 +132,23 @@ def main():
 
     for i in range(8):
         pvdb[':PART:%d:DeadFLnk' %i] = {'type' : 'float', 'count': 32, 'value': [-1.]*32 }
+
+    for i in range(1):
+        pvdb[':SEQENG:%d:INSTRCNT'   %i] = {'type' : 'int'}
+        pvdb[':SEQENG:%d:DESCINSTRS' %i] = {'type' : 'string'}
+        pvdb[':SEQENG:%d:INSTRS'     %i] = {'type' : 'int', 'count': 16384 }
+        pvdb[':SEQENG:%d:SEQ00IDX'   %i] = {'type' : 'int'}
+        pvdb[':SEQENG:%d:SEQ00DESC'  %i] = {'type' : 'string'}
+        pvdb[':SEQENG:%d:SEQ00BDESC' %i] = {'type' : 'string', 'count': 16}
+        pvdb[':SEQENG:%d:RMVIDX'     %i] = {'type' : 'int'}
+        pvdb[':SEQENG:%d:RMVSEQ'     %i] = {'type' : 'int'}
+        pvdb[':SEQENG:%d:INS'        %i] = {'type' : 'int'}
+        pvdb[':SEQENG:%d:RUNIDX'     %i] = {'type' : 'int'}
+        pvdb[':SEQENG:%d:JUMPADDR'   %i] = {'type' : 'int'}
+        pvdb[':SEQENG:%d:SCHEDRESET' %i] = {'type' : 'int'}
+        pvdb[':SEQENG:%d:FORCERESET' %i] = {'type' : 'int'}
+        pvdb[':SEQENG:%d:SEQIDX'     %i] = {'type' : 'int'   , 'count': 64}
+        pvdb[':SEQENG:%d:SEQDESC'    %i] = {'type' : 'string', 'count': 64}
 
     # printDb(pvdb, prefix)
     printDb()

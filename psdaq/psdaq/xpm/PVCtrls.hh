@@ -14,6 +14,7 @@ namespace Pds {
     
     class Module;
     class XpmSequenceEngine;
+    class PVSeq;
 
     class PVCtrls
     {
@@ -30,9 +31,10 @@ namespace Pds {
       XpmSequenceEngine* seq();
     private:
       std::vector<Pds_Epics::EpicsPVA*> _pv;
-      Module&            _m;
-      Semaphore&         _sem;
-      XpmSequenceEngine* _seq;
+      Module&             _m;
+      Semaphore&          _sem;
+      XpmSequenceEngine*  _seq;
+      std::vector<PVSeq*> _seq_pv;
     };
   };
 };

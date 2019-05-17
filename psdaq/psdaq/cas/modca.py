@@ -18,7 +18,8 @@ except NameError:
 
 NDsLinks    = 7
 NAmcs       = 2
-NPartitions = 16
+NGroups     = 16
+Masks       = ['None','0','1','2','3','4','5','6','7','All']
 
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
@@ -131,11 +132,46 @@ class PvCmb(PvEditCmb):
         super(PvCmb, self).__init__(pvname, choices)
         self.setEnabled(False)
 
+class PvGroupMask(PvComboDisplay):
+    
+    def __init__(self, pvname, label):
+        super(PvGroupMask, self).__init__(Masks)
+        self.connect_signal()
+        self.currentIndexChanged.connect(self.setValue)
+        initPvMon(self,pvname)
+
+    def setValue(self):
+        ivalue = self.currentIndex()
+        value = 0
+        if ivalue>8:
+            value = 0xff
+        elif ivalue>0:
+            value = 1<<(ivalue-1)
+        if self.pv.__value__ != value:
+            self.pv.put(value)
+            
+    def update(self,err):
+        q = self.pv.__value__
+        if err is None:
+            idx = 0
+            if (q&(q-1))!=0:
+                idx = 9
+            else:
+                for i in range(8):
+                    if q&(1<<i):
+                        idx = i+1
+            self.setCurrentIndex(idx)
+        else:
+            print(err)
+                
 def LblPushButtonX(parent, pvbase, name, count=1, start=0, istart=0):
     return PvInput(PvPushButtonX, parent, pvbase, name, count, start, istart)
 
 def LblEditIntX(parent, pvbase, name, count=1, start=0, istart=0, enable=True):
     return PvInput(PvEditIntX, parent, pvbase, name, count, start, istart, enable)
+
+def LblGroupMask(parent, pvbase, name, count=1, start=0, istart=0, enable=True):
+    return PvInput(PvGroupMask, parent, pvbase, name, count, start, istart, enable)
 
 class PvLinkId:
 
@@ -189,14 +225,11 @@ class PvLinkIdG:
 def FrontPanelAMC(pvbase,iamc):
         dsbox = QtWidgets.QWidget()
         dslo = QtWidgets.QVBoxLayout()
-#        LblEditIntX   (lol, pvbase, "LinkTxDelay",    NAmcs * NDsLinks)
-#        LblEditIntX   (lol, pvbase, "LinkPartition",  NAmcs * NDsLinks)
-#        LblEditIntX   (lol, pvbase, "LinkTrgSrc",     NAmcs * NDsLinks)
         PvInput(PvLinkIdV, dslo, pvbase, "RemoteLinkId", NDsLinks, start=iamc*NDsLinks)
         LblPushButtonX(dslo, pvbase, "TxLinkReset",    NDsLinks, start=iamc*NDsLinks)
         LblPushButtonX(dslo, pvbase, "RxLinkReset",    NDsLinks, start=iamc*NDsLinks)
         LblPushButtonX(dslo, pvbase, "RxLinkDump" ,    NDsLinks, start=iamc*NDsLinks)
-        LblCheckBox   (dslo, pvbase, "LinkEnable",     NDsLinks, start=iamc*NDsLinks)
+        LblGroupMask  (dslo, pvbase, "LinkGroupMask",  NDsLinks, start=iamc*NDsLinks, enable=True)
         LblCheckBox   (dslo, pvbase, "LinkRxResetDone", NDsLinks, start=iamc*NDsLinks, enable=False)
         LblCheckBox   (dslo, pvbase, "LinkRxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
         LblCheckBox   (dslo, pvbase, "LinkTxResetDone", NDsLinks, start=iamc*NDsLinks, enable=False)
@@ -217,38 +250,38 @@ def DeadTime(pvbase,parent):
     deadgrid = QtWidgets.QGridLayout()
 
     textWidgets = []
-    for j in range(7):
+    for j in range(8):
         ptextWidgets = []
         for i in range(32):
             ptextWidgets.append( PvDblArrayW() )
         textWidgets.append(ptextWidgets)
 
     parent.dtPvId = []
-    deadgrid.addWidget( QtWidgets.QLabel('Partition'), 0, 0, 1, 2 )
-    deadgrid.addWidget( QtWidgets.QLabel('En'), 0, 2 )
-    for j in range(7):
+    deadgrid.addWidget( QtWidgets.QLabel('Group'), 0, 0, 1, 2 )
+#    deadgrid.addWidget( QtWidgets.QLabel('En'), 0, 2 )
+    for j in range(8):
         deadgrid.addWidget( QtWidgets.QLabel('%d'%j ), 0, j+3 )
     for i in range(14):
         parent.dtPvId.append( PvLinkIdG(pvbase+'RemoteLinkId'+'%d'%i,
                                         deadgrid, i+1, 0) )
-        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), i+1, 2 )
-        for j in range(7):
+#        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), i+1, 2 )
+        for j in range(8):
             deadgrid.addWidget( textWidgets[j][i], i+1, j+3 )
     for i in range(16,21):
         k = i-1
         deadgrid.addWidget( QtWidgets.QLabel('BP-slot%d'%(i-13)), k, 0, 1, 2 )
-        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%(i+1),None), k, 2 )
-        for j in range(7):
+#        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%(i+1),None), k, 2 )
+        for j in range(8):
             deadgrid.addWidget( textWidgets[j][i], k, j+3 )
     for i in range(28,32):
         k = i-7
         deadgrid.addWidget( QtWidgets.QLabel('INH%d'%(i-28)), k, 0, 1, 2 )
-        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), k, 2 )
-        for j in range(7):
+#        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), k, 2 )
+        for j in range(8):
             deadgrid.addWidget( textWidgets[j][i], k, j+3 )
 
     parent.deadflnk = []
-    for j in range(7):
+    for j in range(8):
         ppvbase = pvbase+'PART:%d:'%j
         print(ppvbase)
         parent.deadflnk.append( PvDblArray( ppvbase+'DeadFLnk', textWidgets[j] ) )
@@ -429,12 +462,9 @@ class Ui_MainWindow(object):
         LblPushButtonX(bplo, pvbase, "TxLinkReset16",    1, 16, 0)
         LblCheckBox   (bplo, pvbase, "LinkTxReady16",    1, 16, 0, enable=False)
 
-#        LblEditIntX   (lol, pvbase, "LinkTxDelay",    5, 17, 3)
-#        LblEditIntX   (lol, pvbase, "LinkPartition",  5, 17, 3)
-#        LblEditIntX   (lol, pvbase, "LinkTrgSrc",     5, 17, 3)
 #        LblPushButtonX(bplo, pvbase, "TxLinkReset",    5, 17, 3)
         LblPushButtonX(bplo, pvbase, "RxLinkReset",    5, 17, 3)
-        LblCheckBox   (bplo, pvbase, "LinkEnable",     5, 17, 3)
+#        LblCheckBox   (bplo, pvbase, "LinkEnable",     5, 17, 3)
         LblCheckBox   (bplo, pvbase, "LinkRxReady",    5, 17, 3, enable=False)
 #        LblCheckBox  (bplo, pvbase, "LinkTxReady",    5, 17, 3, enable=False)
 #        LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)

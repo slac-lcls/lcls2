@@ -1,4 +1,5 @@
 #include "psdaq/xpm/PVCtrls.hh"
+#include "psdaq/xpm/PVSeq.hh"
 #include "psdaq/xpm/Module.hh"
 #include "psdaq/xpm/XpmSequenceEngine.hh"
 #include "psdaq/service/Semaphore.hh"
@@ -55,12 +56,10 @@ namespace Pds {
       unsigned _idx;                                                    \
     };
 
-    CPV(LinkTxDelay,    { GPVG(linkTxDelay  (_idx, getScalarAs<unsigned>()))       },
-                        { GPVP(linkTxDelay  (_idx));                   })
     CPV(LinkRxTimeOut,  { GPVG(linkRxTimeOut(_idx, getScalarAs<unsigned>()))       },
                         { GPVP(linkRxTimeOut(_idx));                   })
-    CPV(LinkPartition,  { GPVG(linkPartition(_idx, getScalarAs<unsigned>()))       },
-                        { GPVP(linkPartition(_idx));                   })
+    CPV(LinkGroupMask,  { GPVG(linkGroupMask(_idx, getScalarAs<unsigned>()))       },
+                        { GPVP(linkGroupMask(_idx));                   })
     CPV(LinkTrgSrc,     { GPVG(linkTrgSrc   (_idx, getScalarAs<unsigned>()))       },
                         { GPVP(linkTrgSrc   (_idx));                   })
     CPV(LinkLoopback,   { GPVG(linkLoopback (_idx, getScalarAs<unsigned>() != 0))  },
@@ -90,7 +89,7 @@ namespace Pds {
     CPV(GroupL0Disable,   { GPVG(groupL0Disable(getScalarAs<unsigned>())); }, { })
     CPV(GroupMsgInsert,   { GPVG(groupMsgInsert(getScalarAs<unsigned>())); }, { })
 
-    PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem), _seq(0) {}
+    PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem), _seq(0), _seq_pv(0) {}
     PVCtrls::~PVCtrls() {}
 
     void PVCtrls::allocate(const std::string& title)
@@ -98,6 +97,10 @@ namespace Pds {
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
       _pv.resize(0);
+
+      for(unsigned i=0; i<_seq_pv.size(); i++)
+        delete _seq_pv[i];
+      _seq_pv.resize(0);
 
       std::ostringstream o;
       o << title << ":";
@@ -117,9 +120,8 @@ namespace Pds {
       NPV ( SetVerbose                              );
       NPV ( TimeStampWr                             );
 
-      NPVN( LinkTxDelay,        24    );
       NPVN( LinkRxTimeOut,      24    );
-      NPVN( LinkPartition,      24    );
+      NPVN( LinkGroupMask,      24    );
       NPVN( LinkTrgSrc,         24    );
       NPVN( LinkLoopback,       24    );
       NPVN( TxLinkReset,        24    );
@@ -132,12 +134,19 @@ namespace Pds {
       NPV( GroupL0Disable                           );
       NPV( GroupMsgInsert                           );
 
+      for(unsigned i=0; i<1; i++) {
+        std::ostringstream str; str << pvbase << "SEQENG:" << i;
+        _seq_pv.push_back( new PVSeq(_m.sequenceEngine(), str.str()) );
+      }
+
       o << "XTPG:";
       pvbase = o.str();
       NPV ( CuInput                                 );
       NPV ( CuDelay                                 );
       NPV ( CuBeamCode                              );
       NPV ( ClearErr                                );
+
+      return;
 
       //
       // Program sequencer

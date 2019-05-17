@@ -7,9 +7,11 @@ namespace Pds_Epics {
   class PVCached : public Pds_Epics::EpicsPVA {
   public:
     PVCached( const char* name ) : 
-      Pds_Epics::EpicsPVA(name), _changed(true), _cache(1) {}
+      Pds_Epics::EpicsPVA(name), _changed(true), _cache(1)
+    { _cache[0]=0; }
     PVCached( const char* name, unsigned nelem ) : 
-      Pds_Epics::EpicsPVA(name, nelem), _changed(true), _cache(nelem) {}
+      Pds_Epics::EpicsPVA(name, nelem), _changed(true), _cache(nelem) 
+    { for(unsigned i=0; i<nelem; i++) _cache[i]=0; }
   public:
     void putC(double v) { 
       if (v!=_cache[0] || _changed) {
