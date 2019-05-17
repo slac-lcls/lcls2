@@ -353,7 +353,7 @@ class CGWMain(QWZMQListener) :
                     logging.info('received state msg: %s and transition: %s' % (s_state, s_transition))
 
                 elif jo['header']['key'] == 'error' :
-                    logging.error('received error msg: %s' % jo['body']['error'])
+                    logging.error('received error msg: %s' % jo['body']['err_info'])
 
                 else :
                     sj = json.dumps(jo, indent=2, sort_keys=False)

@@ -183,7 +183,7 @@ class DaqControl:
 
                 elif msg['header']['key'] == 'error':
                     # return 'error', error message
-                    return 'error', msg['body']['error']
+                    return 'error', msg['body']['err_info']
 
             except KeyboardInterrupt:
                 break
@@ -207,7 +207,7 @@ class DaqControl:
             errorMessage = 'setState() Exception: %s' % ex
         else:
             try:
-                errorMessage = reply['body']['error']
+                errorMessage = reply['body']['err_info']
             except KeyError:
                 pass
 
@@ -226,7 +226,7 @@ class DaqControl:
             errorMessage = 'setTransition() Exception: %s' % ex
         else:
             try:
-                errorMessage = reply['body']['error']
+                errorMessage = reply['body']['err_info']
             except KeyError:
                 pass
 
@@ -286,6 +286,9 @@ def create_msg(key, msg_id=None, sender_id=None, body={}):
            'body': body}
     return msg
 
+def error_msg(message):
+    body = {'err_info': message}
+    return create_msg('error', body=body)
 
 def back_pull_port(platform):
     return PORT_BASE + platform
@@ -300,7 +303,7 @@ def front_pub_port(platform):
     return PORT_BASE + platform + 30
 
 
-def wait_for_answers(socket, wait_time, msg_id):
+def wait_for_answers(socket, wait_time, msg_id, err_pub):
     """
     Wait and return all messages from socket that match msg_id
     Parameters
@@ -320,6 +323,17 @@ def wait_for_answers(socket, wait_time, msg_id):
         else:
             logging.debug('recv_json(): %s' % msg)
 
+        # if key is error then this is an async error message, not a reply
+        if msg['header']['key'] == 'error':
+            try:
+                errMsg = msg['body']['err_info']
+                logging.error(errMsg)
+                if err_pub is not None:
+                    err_pub.send_json(error_msg(errMsg))
+            except Exception:
+                pass
+            continue
+
         # if msg_id is none take the msg_id of the first message as reference
         if msg_id is None:
             msg_id = msg['header']['msg_id']
@@ -332,10 +346,10 @@ def wait_for_answers(socket, wait_time, msg_id):
         remaining = max(0, int(wait_time - 1000*(time.time() - start)))
 
 
-def confirm_response(socket, wait_time, msg_id, ids):
+def confirm_response(socket, wait_time, msg_id, ids, err_pub):
     logging.debug('confirm_response(): ids = %s' % ids)
     msgs = []
-    for msg in wait_for_answers(socket, wait_time, msg_id):
+    for msg in wait_for_answers(socket, wait_time, msg_id, err_pub):
         if msg['header']['sender_id'] in ids:
             msgs.append(msg)
             ids.remove(msg['header']['sender_id'])
@@ -361,6 +375,11 @@ class CollectionManager():
         self.back_pub.bind('tcp://*:%d' % back_pub_port(platform))
         self.front_rep.bind('tcp://*:%d' % front_rep_port(platform))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(platform))
+
+        # initialize poll set
+        self.poller = zmq.Poller()
+        self.poller.register(self.back_pull, zmq.POLLIN)
+        self.poller.register(self.front_rep, zmq.POLLIN)
 
         # initialize EPICS context
         self.ctxt = Context('pva')
@@ -436,34 +455,49 @@ class CollectionManager():
 
         return retval
 
+    def service_requests(self):
+        answer = None
+        try:
+            msg = self.front_rep.recv_json()
+            key = msg['header']['key']
+            body = msg['body']
+            if key.startswith('setstate.'):
+                # handle_setstate() sends reply internally
+                self.handle_setstate(key[9:])
+                answer = None
+            elif key in DaqControl.transitions:
+                # send 'ok' reply before calling handle_trigger()
+                self.front_rep.send_json(create_msg('ok'))
+                retval = self.handle_trigger(key, stateChange=False)
+                answer = None
+                try:
+                    # send error message, if any, to front_pub socket
+                    self.report_error(retval['body']['err_info'])
+                except KeyError:
+                    pass
+            else:
+                answer = self.handle_request[key](body)
+        except KeyError:
+            answer = create_msg('error')
+        if answer is not None:
+            self.front_rep.send_json(answer)
+
+    # process asynchronous error reports
+    def service_status(self):
+        msg = self.back_pull.recv_json()
+        try:
+            self.report_error(msg['body']['err_info'])
+        except Exception:
+            pass
+
     def run(self):
         try:
             while True:
-                answer = None
-                try:
-                    msg = self.front_rep.recv_json()
-                    key = msg['header']['key']
-                    body = msg['body']
-                    if key.startswith('setstate.'):
-                        # handle_setstate() sends reply internally
-                        self.handle_setstate(key[9:])
-                        answer = None
-                    elif key in DaqControl.transitions:
-                        # send 'ok' reply before calling handle_trigger()
-                        self.front_rep.send_json(create_msg('ok'))
-                        retval = self.handle_trigger(key, stateChange=False)
-                        answer = None
-                        try:
-                            # send error message, if any, to front_pub socket
-                            self.report_error(retval['body']['error'])
-                        except KeyError:
-                            pass
-                    else:
-                        answer = self.handle_request[key](body)
-                except KeyError:
-                    answer = create_msg('error')
-                if answer is not None:
-                    self.front_rep.send_json(answer)
+                socks = dict(self.poller.poll())
+                if self.front_rep in socks and socks[self.front_rep] == zmq.POLLIN:
+                    self.service_requests()
+                elif self.back_pull in socks and socks[self.back_pull] == zmq.POLLIN:
+                    self.service_status()
         except KeyboardInterrupt:
             logging.info('KeyboardInterrupt')
 
@@ -485,7 +519,7 @@ class CollectionManager():
             answer = create_msg(self.state, body=self.cmstate)
         else:
             errMsg = trigError.replace("\"", "")
-            answer = create_msg(self.state, body={'error': errMsg})
+            answer = create_msg(self.state, body={'err_info': errMsg})
 
         return answer
 
@@ -507,7 +541,7 @@ class CollectionManager():
             stateError = 'state \'%s\' not recognized' % newstate
             errMsg = stateError.replace("\"", "")
             logging.error(errMsg)
-            answer = create_msg('error', body={'error': errMsg})
+            answer = create_msg('error', body={'err_info': errMsg})
             # reply 'error'
             self.front_rep.send_json(answer)
         else:
@@ -519,19 +553,15 @@ class CollectionManager():
                 if nextT == 'error':
                     errMsg = 'next_transition() error'
                     logging.error(errMsg)
-                    answer = create_msg('error', body={'error': errMsg})
+                    answer = create_msg('error', body={'err_info': errMsg})
                     break
                 else:
                     answer = self.handle_trigger(nextT, stateChange=True)
-                    if 'error' in answer['body']:
-                        self.report_error(answer['body']['error'])
+                    if 'err_info' in answer['body']:
+                        self.report_error(answer['body']['err_info'])
                         break
 
         return answer
-
-    def error_msg(self, message):
-        body = {'error': message}
-        return create_msg('error', body=body)
 
     def status_msg(self):
         body = {'state': self.state, 'transition': self.lastTransition}
@@ -561,7 +591,7 @@ class CollectionManager():
         ids = self.filter_active_set(self.ids)
         ids = self.filter_level('drp', ids)
         # make sure all the clients respond to transition before timeout
-        missing, answers = confirm_response(self.back_pull, 2000, None, ids)
+        missing, answers = confirm_response(self.back_pull, 2000, None, ids, self.front_pub)
         if missing:
             logging.error('%s phase2 failed' % transition)
             for alias in self.get_aliases(missing):
@@ -576,7 +606,7 @@ class CollectionManager():
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
 
         # make sure all the clients respond to alloc message with their connection info
-        retlist, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids, self.front_pub)
         ret = len(retlist)
         if ret:
             for alias in self.get_aliases(retlist):
@@ -629,7 +659,7 @@ class CollectionManager():
         msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-        retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids, self.front_pub)
         connect_ok = (self.check_answers(answers) == 0)
         ret = len(retlist)
         if ret:
@@ -648,7 +678,7 @@ class CollectionManager():
         msg = create_msg('disconnect')
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-        retlist, answers = confirm_response(self.back_pull, 30000, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, 30000, msg['header']['msg_id'], ids, self.front_pub)
         disconnect_ok = (self.check_answers(answers) == 0)
         ret = len(retlist)
         if ret:
@@ -680,7 +710,7 @@ class CollectionManager():
         if self.state != 'unallocated':
             msg = 'selectPlatform only permitted in unallocated state'
             self.report_error(msg)
-            return self.error_msg(msg)
+            return error_msg(msg)
 
         try:
             for level, val1 in body.items():
@@ -696,7 +726,7 @@ class CollectionManager():
         except Exception as ex:
             msg = 'handle_selectplatform(): %s' % ex
             logging.error(msg)
-            return self.error_msg(msg)
+            return error_msg(msg)
 
         return create_msg('ok')
 
@@ -710,7 +740,7 @@ class CollectionManager():
         self.ids.clear()
         msg = create_msg('plat')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
-        for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id']):
+        for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id'], self.front_pub):
             for level, item in answer['body'].items():
                 if level not in self.cmstate:
                     self.cmstate[level] = {}
@@ -776,7 +806,7 @@ class CollectionManager():
 
     def report_error(self, msg):
         logging.error(msg)
-        self.front_pub.send_json(self.error_msg(msg))
+        self.front_pub.send_json(error_msg(msg))
         return
 
     def condition_common(self, transition, timeout):
@@ -794,7 +824,7 @@ class CollectionManager():
             return True
 
         # make sure all the clients respond to transition before timeout
-        retlist, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
+        retlist, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids, self.front_pub)
         ret = len(retlist)
         if ret:
             # Error
