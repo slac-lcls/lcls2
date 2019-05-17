@@ -14,7 +14,7 @@ public:
     unsigned configure(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:
-    static unsigned _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId);
+    static void _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId);
     enum {ConfigNamesIndex, EventNamesIndex};
     unsigned          m_evtcount;
     XtcData::NamesId  m_evtNamesId;

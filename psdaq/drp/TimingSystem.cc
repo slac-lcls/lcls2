@@ -20,19 +20,15 @@ namespace Drp {
 class TSDef : public VarDef
 {
 public:
-    TSDef(unsigned lane_mask)
+    enum index {
+        dataval
+    };
+    TSDef()
     {
-        Alg alg("fpga", 1, 2, 3);
-        const unsigned nameLen = 7;
-        char chanName[nameLen];
-        NameVec.push_back({"env", Name::UINT32, 1});
-        for (unsigned i = 0; i < sizeof(lane_mask)*sizeof(uint8_t); i++){
-            if (!((1<<i)&lane_mask)) continue;
-            snprintf(chanName, nameLen, "chan%2.2d", i);
-            NameVec.push_back({chanName, alg});
-        }
+        Alg alg("raw", 1, 2, 3);
+        NameVec.push_back({"dataval", Name::UINT32, 0});
     }
-};
+} TSDef;
 
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
     Detector(para, pool),
@@ -48,7 +44,7 @@ static void check(PyObject* obj) {
     }
 }
 
-unsigned TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
+void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psalg.configdb.ts_config");
@@ -59,6 +55,7 @@ unsigned TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
     // returns borrowed reference
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"ts_config");
     check(pFunc);
+    // need to get the dbase connection info via collection
     // returns new reference
     PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss","DAQ:LAB2:HSD:DEV02",
                                               "mcbrowne:psana@psdb-dev:9306",
@@ -91,65 +88,35 @@ unsigned TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
 
-    // get the lane mask from the json
-    Document top;
-    if (top.Parse(json).HasParseError())
-        fprintf(stderr,"*** json parse error\n");
-    const Value& enable = top["enable"];
-    std::string enable_type = top[":types:"]["enable"][0].GetString();
-    unsigned length = top[":types:"]["enable"][1].GetInt();
-
-    unsigned lane_mask = 0;
-    for (unsigned i=0; i<length; i++) if (enable[i].GetInt()) lane_mask |= 1<< i;
-    printf("hsd lane_mask is 0x%x\n",lane_mask);
-
-    return lane_mask;
 }
 
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
 
 unsigned TimingSystem::configure(Xtc& xtc)
 {
-    unsigned lane_mask;
+    printf("*** here in config\n");
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
-    lane_mask = TimingSystem::_addJson(xtc, configNamesId);
+    TimingSystem::_addJson(xtc, configNamesId);
 
     // set up the names for L1Accept data
     Alg tsAlg("ts", 1, 2, 3); // TODO: should this be configured by tsconfig.py?
     unsigned segment = 0;
     Names& eventNames = *new(xtc) Names("xppts", tsAlg, "ts", "detnum1235", m_evtNamesId, segment);
-    TSDef myTSDef(lane_mask);
-    eventNames.add(xtc, myTSDef);
+    eventNames.add(xtc, TSDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
     return 0;
+    printf("*** done config\n");
 }
 
 void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
+    printf("*** here in event\n");
     m_evtcount+=1;
     CreateData ts(dgram.xtc, m_namesLookup, m_evtNamesId);
 
-    // TS data includes two uint32_t "event header" words
-    unsigned data_size;
-    unsigned shape[MaxRank];
-    shape[0] = 2;
-    Array<uint32_t> arrayH = ts.allocate<uint32_t>(0, shape);
-    int lane = __builtin_ffs(event->mask) - 1;
-    uint32_t dmaIndex = event->buffers[lane].index;
-    Pds::TimingHeader* timing_header = (Pds::TimingHeader*)m_pool->dmaBuffers[dmaIndex];
-    arrayH(0) = timing_header->_opaque[0];
-    arrayH(1) = timing_header->_opaque[1];
-    for (int i=0; i<4; i++) { // TODO: print npeaks using psalg/Hsd.hh
-        if (event->mask & (1 << i)) {
-            // size without Event header
-            data_size = event->buffers[i].size - sizeof(Pds::TimingHeader);
-            shape[0] = data_size;
-            Array<uint8_t> arrayT = ts.allocate<uint8_t>(i+1, shape);
-            uint32_t dmaIndex = event->buffers[i].index;
-            memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
-         }
-    }
+    ts.set_value(TSDef::dataval, (uint32_t) 3);
+    printf("*** done event\n");
 }
 
 }
