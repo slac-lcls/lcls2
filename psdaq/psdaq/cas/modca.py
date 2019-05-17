@@ -54,16 +54,13 @@ class PvPAddr(QtWidgets.QWidget):
     def update(self, err):
         q = self.pv.__value__
         if err is None:
-            qs = ('%x'%q).lstrip('f')
-            if len(qs)==0:
-                s = 'XTPG'
-            else:
-                s = ''
-                for i in range(len(qs)):
-                    cv = int(qs[i],16)
-                    s += 'XTPG:' if i == 0 else ',XPM:'
-                    s += 'AMC%d-%d'%(cv/7,cv%7) if cv < 14 else 'BP'
-                self.__display.valueSet.emit(s)
+            s = '-'
+            qs = '%x'%q
+            if qs[0:2]=='ff':
+                shelf = int(qs[2:4],16)
+                port  = int(qs[6:8],16)
+                s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
+            self.__display.valueSet.emit(s)
         else:
             print(err)
 
