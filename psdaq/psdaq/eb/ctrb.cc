@@ -31,6 +31,8 @@
 using namespace XtcData;
 using namespace Pds;
 
+using json = nlohmann::json;
+
 static const unsigned CLS              = 64;   // Cache Line Size
 static const int      core_0           = 10;   // devXXX: 10, devXX:  7, accXX:  9
 static const int      core_1           = 11;   // devXXX: 11, devXX: 19, accXX: 21

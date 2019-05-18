@@ -3,7 +3,6 @@
 #include <string>
 #include <zmq.h>
 #include "json.hpp"
-using json = nlohmann::json;
 
 class ZmqContext
 {
@@ -39,7 +38,7 @@ public:
     void bind(const std::string& host);
     void setsockopt(int option, const void* optval, size_t optvallen);
     std::string recv();
-    json recvJson();
+    nlohmann::json recvJson();
     std::vector<ZmqMessage> recvMultipart();
     void send(const std::string& msg);
     int poll(short events, long timeout);
@@ -56,14 +55,14 @@ public:
     CollectionApp(const std::string& managerHostname, int platform, const std::string& level, const std::string& alias);
     void run();
 protected:
-    void handlePlat(const json& msg);
-    void handleAlloc(const json& msg);
-    virtual json connectionInfo() = 0;
-    virtual void handleConnect(const json& msg) = 0;
-    virtual void handleDisconnect(const json& msg) {};
-    virtual void handlePhase1(const json& msg) {};
-    virtual void handleReset(const json& msg) = 0;
-    void reply(const json& msg);
+    void handlePlat(const nlohmann::json& msg);
+    void handleAlloc(const nlohmann::json& msg);
+    virtual nlohmann::json connectionInfo() = 0;
+    virtual void handleConnect(const nlohmann::json& msg) = 0;
+    virtual void handleDisconnect(const nlohmann::json& msg) {};
+    virtual void handlePhase1(const nlohmann::json& msg) {};
+    virtual void handleReset(const nlohmann::json& msg) = 0;
+    void reply(const nlohmann::json& msg);
     size_t getId() const {return m_id;}
     const std::string& getLevel() const {return m_level;}
     const std::string& getAlias() const {return m_alias;}
@@ -76,7 +75,7 @@ private:
     ZmqSocket m_subSocket;
     ZmqSocket m_inprocRecv;
     size_t m_id;
-    std::unordered_map<std::string, std::function<void(json&)> > m_handleMap;
+    std::unordered_map<std::string, std::function<void(nlohmann::json&)> > m_handleMap;
 };
 
-json createMsg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body);
+nlohmann::json createMsg(const std::string& key, const std::string& msg_id, size_t sender_id, nlohmann::json& body);

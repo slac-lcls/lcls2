@@ -6,6 +6,7 @@
 #include "xtcdata/xtc/DescData.hh"
 
 using namespace XtcData;
+using json = nlohmann::json;
 
 namespace Drp {
 
@@ -48,7 +49,7 @@ AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
 }
 
 // setup up fake cameras to receive data over pgp
-void AreaDetector::connect()
+void AreaDetector::connect(const json& json)
 {
     std::cout<<"AreaDetector connect\n";
     // FIXME make configureable

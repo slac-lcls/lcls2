@@ -35,6 +35,8 @@ using namespace Pds::Eb;
 using namespace psalg::shmem;
 using namespace Pds;
 
+using json = nlohmann::json;
+
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
 

@@ -11,6 +11,7 @@ class TimingSystem : public Detector
 {
 public:
     TimingSystem(Parameters* para, MemPool* pool);
+    void connect(const nlohmann::json& msg) override;
     unsigned configure(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:

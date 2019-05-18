@@ -8,6 +8,7 @@
 #include <vector>
 #include <unordered_map>
 #include "drp.hh"
+#include "psdaq/service/json.hpp"
 
 namespace Drp {
 
@@ -17,7 +18,8 @@ class Detector
 {
 public:
     Detector(Parameters* para, MemPool* pool) : m_para(para), m_pool(pool) {}
-    virtual void connect() {};
+    virtual nlohmann::json connectionInfo() {return nlohmann::json();}
+    virtual void connect(const nlohmann::json&) {};
     virtual unsigned configure(XtcData::Xtc& xtc) = 0;
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
     XtcData::Xtc& transitionXtc() {return *(XtcData::Xtc*)m_xtcbuf;}

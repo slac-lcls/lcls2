@@ -15,6 +15,8 @@ static const unsigned RTMON_VERBOSE = 0;
 
 using namespace Pds::Eb;
 
+using json = nlohmann::json;
+
 namespace Drp {
 
 DrpApp::DrpApp(Parameters* para) :
@@ -75,7 +77,7 @@ void DrpApp::handleConnect(const json &msg)
     parseConnectionParams(msg["body"]);
 
     m_det->nodeId = m_tPrms.id;
-    m_det->connect();
+    m_det->connect(msg);
 
     auto exporter = std::make_shared<MetricExporter>();
     m_exposer.RegisterCollectable(exporter);

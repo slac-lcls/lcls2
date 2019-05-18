@@ -9,6 +9,8 @@
 #include <netdb.h>
 #include "Collection.hh"
 
+using json = nlohmann::json;
+
 json createMsg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body)
 {
     json msg;

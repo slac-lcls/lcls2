@@ -15,6 +15,8 @@
 using namespace XtcData;
 using namespace rapidjson;
 
+using json = nlohmann::json;
+
 namespace Drp {
 
 class TSDef : public VarDef
@@ -88,6 +90,11 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
 
+}
+
+void TimingSystem::connect(const json& msg)
+{
+    printf("*** ts handleConnect\n");
 }
 
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)

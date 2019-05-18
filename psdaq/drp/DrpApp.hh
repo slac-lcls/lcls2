@@ -67,13 +67,13 @@ class DrpApp : public CollectionApp
 {
 public:
     DrpApp(Parameters* para);
-    json connectionInfo() override;
-    void handleConnect(const json& msg) override;
-    void handlePhase1(const json& msg) override;
-    void handleReset(const json& msg) override;
+    nlohmann::json connectionInfo() override;
+    void handleConnect(const nlohmann::json& msg) override;
+    void handlePhase1(const nlohmann::json& msg) override;
+    void handleReset(const nlohmann::json& msg) override;
     void shutdown();
 private:
-    void parseConnectionParams(const json& msg);
+    void parseConnectionParams(const nlohmann::json& msg);
     void collector();
 
     Parameters* m_para;
