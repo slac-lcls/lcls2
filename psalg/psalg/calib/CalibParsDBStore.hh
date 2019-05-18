@@ -20,11 +20,10 @@
  * std::string&              s          = o->get_string(q);
  */
  
+#include "psalg/calib/CalibParsDBTypes.hh"
 #include "psalg/calib/CalibParsDB.hh"
 
 namespace calib {
-
-  enum DBTYPE {DBDEF, DBWEB, DBMONGO, DBCALIB, DBHDF5};
 
   CalibParsDB* getCalibParsDB(const DBTYPE& dbtype=calib::DBWEB);
 

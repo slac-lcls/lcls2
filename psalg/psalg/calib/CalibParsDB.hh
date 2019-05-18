@@ -3,10 +3,10 @@
 
 //-------------------
 
-#include "psalg/calib/CalibParsTypes.hh"
+#include "psalg/calib/CalibParsDBTypes.hh"
 #include "psalg/calib/NDArray.hh"
 #include "psalg/calib/Query.hh"
-#include "psalg/calib/Response.hh"
+#include "psalg/calib/ResponseDB.hh"
 
 using namespace psalg;
 
@@ -22,13 +22,13 @@ public:
 
   const std::string& dbtypename(){return _dbtypename;}
 
-  virtual const NDArray<double>&   get_ndarray_double(const Query&);
-  virtual const NDArray<float>&    get_ndarray_float (const Query&);
-  virtual const NDArray<uint16_t>& get_ndarray_uint16(const Query&);
-  virtual const NDArray<uint32_t>& get_ndarray_uint32(const Query&);
-  virtual const std::string&       get_string        (const Query&);
+  virtual const NDArray<float>&    get_ndarray_float (Query&);
+  virtual const NDArray<double>&   get_ndarray_double(Query&);
+  virtual const NDArray<uint16_t>& get_ndarray_uint16(Query&);
+  virtual const NDArray<uint32_t>& get_ndarray_uint32(Query&);
+  virtual const std::string&       get_string        (Query&);
 
-  virtual const Response&          get_responce      (const Query&);
+  //virtual const ResponseDB&        get_responce      (Query&);
 
   CalibParsDB(const CalibParsDB&) = delete;
   CalibParsDB& operator = (const CalibParsDB&) = delete;
@@ -40,7 +40,7 @@ protected:
   NDArray<uint16_t>  _ndarray_uint16;
   NDArray<uint32_t>  _ndarray_uint32;
   const std::string  _string;
-  Response           _response;
+  ResponseDB         _response;
 
 private:
   void _default_msg(const std::string& msg=std::string()) const;

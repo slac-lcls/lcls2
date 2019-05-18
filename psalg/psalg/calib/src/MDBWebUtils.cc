@@ -565,11 +565,13 @@ void calib_constants_nda_unusable(NDArray<T>& nda, rapidjson::Document& doc, con
 //#ifdef STRING01
 //#undef STRING01
 //#endif
-#define STRING01(T)						\
+#define STRING01(T)\
   template void calib_constants_nda<T>(NDArray<T>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
 STRING01(int)
 STRING01(float)
 STRING01(double)
+STRING01(uint16_t)
+STRING01(uint32_t)
 
 //template void calib_constants_nda<int>(NDArray<int>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
 //template void calib_constants_nda<float>(NDArray<float>&, rapidjson::Document&, const char*, const char*, const char*, const unsigned, const unsigned, const char*, const char*);
@@ -581,6 +583,8 @@ STRING01(double)
 STRING02(int)
 STRING02(float)
 STRING02(double)
+STRING02(uint16_t)
+STRING02(uint32_t)
 
 //template void response_string_to_data_array<int>   (const std::string&, const int*&,    size_t&); 
 //template void response_string_to_data_array<float> (const std::string&, const float*&,  size_t&); 

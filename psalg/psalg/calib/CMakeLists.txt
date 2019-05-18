@@ -30,6 +30,7 @@ install(FILES
     NDArray.hh
     ArrayIO.hh
     CalibParsTypes.hh
+    CalibParsDBTypes.hh
     CalibPars.hh
     CalibParsDB.hh
     CalibParsDBWeb.hh
@@ -38,6 +39,7 @@ install(FILES
     CalibParsStore.hh
     Query.hh
     Response.hh
+    ResponseDB.hh
     MDBWebUtils.hh
     DESTINATION include/psalg/calib
 )

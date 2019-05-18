@@ -16,11 +16,10 @@
 #include <stdio.h>  // printf
 
 #include "psalg/calib/Response.hh"
-#include "psalg/calib/CalibParsDB.hh"
-#include "psalg/calib/CalibParsDBStore.hh"
 
-#include "psalg/calib/CalibParsStore.hh"
-#include "psalg/calib/CalibPars.hh"
+#include "psalg/calib/CalibParsDBStore.hh" // #include "psalg/calib/CalibParsDB.hh"
+
+#include "psalg/calib/CalibParsStore.hh" // #include "psalg/calib/CalibPars.hh"
 
 //using namespace std;
 //using namespace psalg;
@@ -134,17 +133,23 @@ void test_CalibParsDB(const char* dbtypename = "Default-Base-NoDB") {
 
 void test_getCalibParsDB(const DBTYPE& dbtype=DBDEF) {
   MSG(INFO, "In test_getCalibParsDB test access to CalibParsDB through the factory method getCalibParsDB");
-  Query q("some-string is here");
+
+  Query::map_t map = 
+    {{Query::DETECTOR,"cspad_0001"}
+    ,{Query::EXPERIMENT,"cxid9114"}
+    ,{Query::CALIBTYPE,"pedestals"}
+    ,{Query::RUN,"150"}
+    ,{Query::TIME_SEC,"0"}
+    ,{Query::VERSION,"NULL"}
+    };
+  Query q(map);
+  std::cout << "q: " << q.string_members("\n   ") << "\n\n";
+
   CalibParsDB* o = getCalibParsDB(dbtype);
   std::cout << "In test_CalibParsDB dbtypename: " << o->dbtypename() << '\n';
 
-  /*
-  const NDArray<pedestals_t>& peds = cp->pedestals(query);
-  const NDArray<common_mode_t>& cmod = cp->common_mode(query);
-  std::cout << "\n  peds   : " << peds; 
-  std::cout << "\n  cmod   : " << cmod; 
-  std::cout << '\n';
-  */
+  const NDArray<float>& nda = o->get_ndarray_float(q);
+  std::cout << "\n  pedestals   : " << nda << '\n'; 
 
   delete o;
 }
@@ -182,8 +187,8 @@ void test_Query() {
 
   q3.set_paremeter(Query::RUN,"261");
   q3.set_paremeter(Query::EXPERIMENT,"xyz12345");
-  std::cout << "q3.set_paremeter: " << q3.string_members("  ") << "\n\n";
-
+  std::cout << "q3.set_paremeter: " << q3.string_members("  ") << "\n";
+  std::cout << "q3.query: " << q3.query() << "\n\n";
 
 }
 

@@ -3,6 +3,8 @@
 #include "psalg/utils/Logger.hh" // for MSG
 #include <iostream> // to_string C++11, ostream
 
+#include "psalg/calib/MDBWebUtils.hh"
+
 //using namespace std;
 using namespace psalg; // for NDArray
 
@@ -19,7 +21,7 @@ namespace calib {
 
 
   Query::Query(const map_t& qmap)
-    : _qmap(qmap), _constr_type(QUERY_MAP) {_msg_init();}
+    : _qmap(qmap), _constr_type(QUERY_MAP) {_msg_init(std::string(" detector ") + _qmap[DETECTOR]);}
 
 
   Query::Query(const char* det, const char* exp, const char* ctype,
@@ -27,12 +29,7 @@ namespace calib {
     : _constr_type(QUERY_PARS) {
     _msg_init(std::string(" detector ") + det);
 
-    _qmap[DETECTOR]   = std::string(det);
-    _qmap[EXPERIMENT] = _string_from_char(exp);
-    _qmap[CALIBTYPE]  = _string_from_char(ctype);
-    _qmap[RUN]        = _string_from_uint(run);
-    _qmap[TIME_SEC]   = _string_from_uint(time_sec);
-    _qmap[VERSION]    = _string_from_char(version);
+    set_paremeters(det, exp, ctype, run, time_sec, version);
   }
 
 //-------------------
@@ -50,7 +47,7 @@ namespace calib {
 //-------------------
 
   std::string Query::_string_from_char(const char* p) {
-     return std::string((p != NULL) ? p : "NONE");
+     return std::string((p != NULL) ? p : "NULL");
   }
 
 //-------------------
@@ -63,13 +60,29 @@ namespace calib {
 
   std::string Query::string_members(const char* sep) {
      std::stringstream ss;
-        ss     << "DETECTOR: "   << _qmap[DETECTOR]
-        << sep << "EXPERIMENT: " << _qmap[EXPERIMENT]
-        << sep << "CALIBTYPE: "  << _qmap[CALIBTYPE]
-        << sep << "RUN: "        << _qmap[RUN]
-        << sep << "TIME_SEC: "   << _qmap[TIME_SEC]
-        << sep << "VERSION: "    << _qmap[VERSION];
+     //ss        << "TBE";
+     ss          << "DETECTOR: "   << _qmap[DETECTOR]
+          << sep << "EXPERIMENT: " << _qmap[EXPERIMENT]
+          << sep << "CALIBTYPE: "  << _qmap[CALIBTYPE]
+          << sep << "RUN: "        << _qmap[RUN]
+          << sep << "TIME_SEC: "   << _qmap[TIME_SEC]
+       	  << sep << "VERSION: "    << _qmap[VERSION];
      return ss.str();
+  }
+
+//-------------------
+
+  void Query::set_paremeters(const char* det, const char* exp, const char* ctype,
+			     const unsigned run, const unsigned time_sec, const char* version) {
+
+    _qmap[DETECTOR]   = std::string(det);
+    _qmap[EXPERIMENT] = _string_from_char(exp);
+    _qmap[CALIBTYPE]  = _string_from_char(ctype);
+    _qmap[RUN]        = _string_from_uint(run);
+    _qmap[TIME_SEC]   = _string_from_uint(time_sec);
+    _qmap[VERSION]    = _string_from_char(version);
+
+    _constr_type = QUERY_PARS;
   }
 
 //-------------------
@@ -84,23 +97,40 @@ namespace calib {
     if(map) {_qmap = *map; return;}
 
     // else set default values
-    _qmap[DETECTOR]   = "NONE";
-    _qmap[EXPERIMENT] = "NONE";
-    _qmap[CALIBTYPE]  = "NONE";
-    _qmap[RUN]        = "NONE";
-    _qmap[TIME_SEC]   = "NONE";
-    _qmap[VERSION]    = "NONE";
+    _qmap[DETECTOR]   = "NULL";
+    _qmap[EXPERIMENT] = "NULL";
+    _qmap[CALIBTYPE]  = "NULL";
+    _qmap[RUN]        = "0";
+    _qmap[TIME_SEC]   = "0";
+    _qmap[VERSION]    = "NULL";
   } 
 
 //-------------------
-
+/**
+ * Should be implemented for partiqular DB. 
+ * Shown implementation for WebDB/MongoDB
+ */
   std::string Query::query() {
     switch(_constr_type)
     {
       case QUERY_PARS : // the same as QUERY_MAP
-      case QUERY_MAP  :
-           _query = "XXXXXXXXXXXXXXXXXXXXXX";
+      case QUERY_MAP  : {
+          _query = "XXXXXXXXXXXXXXXXXXXXXX";
+          std::map<std::string, std::string> omap;
+          dbnames_collection_query(omap
+				   ,_qmap[DETECTOR].c_str()
+				   ,_qmap[EXPERIMENT].c_str()
+				   ,_qmap[CALIBTYPE].c_str()
+				   , stoi(_qmap[RUN])
+				   , stoi(_qmap[TIME_SEC])
+				   ,_qmap[VERSION].c_str()
+				  );
 
+          _query = omap["query"]; // "{\"ctype\":\"pedestals\", \"run\":{\"$lte\": 87}}";
+          //const std::string& db_det  = omap["db_det"];
+          //const std::string& db_exp  = omap["db_exp"];
+          //const std::string& colname = omap["colname"];
+      }
       case QUERY_STRING  : // the same as QUERY_DEFAULT
       case QUERY_DEFAULT : // the same as default
       default: break;

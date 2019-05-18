@@ -24,7 +24,7 @@ void CalibParsDB::_default_msg(const std::string& msg) const {
 //-------------------
 
 #define GET_NDARRAY(T,N)\
-const NDArray<T>& CalibParsDB::get_ndarray_##N(const Query& q){\
+const NDArray<T>& CalibParsDB::get_ndarray_##N(Query& q){\
   _default_msg(std::string("get_ndarray_"#N"(Query)"));\
   return _ndarray_##N;\
 }
@@ -38,17 +38,24 @@ GET_NDARRAY(uint32_t, uint32)
 
 //-------------------
 
-const std::string& CalibParsDB::get_string(const Query& q) {
-  _default_msg(std::string("get_string(Query)"));
+const std::string& CalibParsDB::get_string(Query& q) {
+  _default_msg(std::string("get_string(Query&)"));
   return _string;
 }
 
 //-------------------
 
-const Response& CalibParsDB::get_responce(const Query&) {
-  _default_msg(std::string("const Response& get_responce(const Query&)"));
-  return _response;
-}
+//const NDArray<float>& CalibParsDB::get_ndarray_float(Query& q) {
+//  _default_msg(std::string("get_ndarray_float(Query&)"));
+//  return _ndarray_float;
+//}
+  
+//-------------------
+
+//const ResponseDB& CalibParsDB::get_responce(Query&) {
+//  _default_msg(std::string("const ResponseDB& get_responce(const Query&)"));
+//  return _response;
+//}
 
 //-------------------
 
