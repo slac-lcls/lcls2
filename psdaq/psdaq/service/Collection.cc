@@ -19,6 +19,13 @@ json createMsg(const std::string& key, const std::string& msg_id, size_t sender_
     return msg;
 }
 
+json createAsyncErrMsg(const std::string& alias, const std::string& errMsg)
+{
+    json body = json({});
+    body["err_info"] = alias + ": " + errMsg;
+    return createMsg("error", "0", 0, body);
+}
+
 std::string getNicIp()
 {
     struct ifaddrs* ifaddr;
