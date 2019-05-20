@@ -67,8 +67,8 @@ json DrpApp::connectionInfo()
     std::string ip = getNicIp();
     std::cout<<"nic ip  "<<ip<<'\n';
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    // m_det->connectionInfo();
-    //body.update(info);
+    json info = m_det->connectionInfo();
+    body["connect_info"].update(info);
     return body;
 }
 
@@ -352,6 +352,22 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     }
     event->mask = 0;
 }
+
+class SmdDef : public XtcData::VarDef
+{
+public:
+  enum index
+    {
+      intOffset,
+      intDgramSize
+    };
+
+   SmdDef()
+   {
+       NameVec.push_back({"intOffset", XtcData::Name::UINT64});
+       NameVec.push_back({"intDgramSize", XtcData::Name::UINT64});
+   }
+};
 
 BufferedFileWriter::BufferedFileWriter() :
     m_count(0), m_buffer(BufferSize)

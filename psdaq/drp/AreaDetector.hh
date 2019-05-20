@@ -11,6 +11,7 @@ class AreaDetector : public Detector
 {
 public:
     AreaDetector(Parameters* para, MemPool* pool);
+    nlohmann::json connectionInfo() override;
     void connect(const nlohmann::json&) override;
     unsigned configure(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;

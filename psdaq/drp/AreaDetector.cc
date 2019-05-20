@@ -48,6 +48,24 @@ AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
 {
 }
 
+json AreaDetector::connectionInfo()
+{
+    int fd = open(m_para->device.c_str(), O_RDWR);
+    if (fd < 0) {
+        std::cout<<"Error opening "<< m_para->device << '\n';
+        return json();
+    }
+    uint32_t reg;
+    dmaReadRegister(fd, 0x00a00008, &reg);
+    close(fd);
+    int x = (reg >> 16) & 0xFF;
+    int y = (reg >> 8) & 0xFF;
+    int port = reg & 0xFF;
+    std::string xpmIp = {"10.0." + std::to_string(x) + '.' + std::to_string(y)};
+    json info = {{"xpm_ip", xpmIp}, {"xpm_port", port}};
+    return info;
+}
+
 // setup up fake cameras to receive data over pgp
 void AreaDetector::connect(const json& json)
 {
@@ -58,7 +76,7 @@ void AreaDetector::connect(const json& json)
 
     int fd = open(m_para->device.c_str(), O_RDWR);
     if (fd < 0) {
-        std::cout<<"Error opening "<< m_para->device << "\n";
+        std::cout<<"Error opening "<< m_para->device << '\n';
         return;
     }
     int partition = m_para->partition;
