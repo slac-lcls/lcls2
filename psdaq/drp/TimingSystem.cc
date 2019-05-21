@@ -33,7 +33,7 @@ public:
 } TSDef;
 
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
-    Detector(para, pool),
+    XpmDetector(para, pool),
     m_evtcount(0),
     m_evtNamesId(nodeId, EventNamesIndex)
 {
@@ -92,12 +92,34 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
 }
 
-void TimingSystem::connect(const json& msg)
-{
-    printf("*** ts handleConnect\n");
-}
-
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
+
+void TimingSystem::connect(const json& json_connect_info)
+{
+    printf("*** here in connect\n");
+    XpmDetector::connect(json_connect_info);
+    // returns new reference
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.ts_connect");
+    check(pModule);
+    // returns borrowed reference
+    PyObject* pDict = PyModule_GetDict(pModule);
+    check(pDict);
+    // returns borrowed reference
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"ts_connect");
+    check(pFunc);
+    // returns new reference
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"s",json_connect_info.dump().c_str());
+    check(mybytes);
+    // returns new reference
+    PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
+    check(json_bytes);
+    char* json = (char*)PyBytes_AsString(json_bytes);
+    printf("json: %s\n",json);
+
+    Py_DECREF(pModule);
+    Py_DECREF(mybytes);
+    Py_DECREF(json_bytes);
+}
 
 unsigned TimingSystem::configure(Xtc& xtc)
 {

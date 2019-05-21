@@ -1,13 +1,13 @@
 #pragma once
 
 #include "drp.hh"
-#include "Detector.hh"
+#include "XpmDetector.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/NamesId.hh"
 
 namespace Drp {
 
-class TimingSystem : public Detector
+class TimingSystem : public XpmDetector
 {
 public:
     TimingSystem(Parameters* para, MemPool* pool);

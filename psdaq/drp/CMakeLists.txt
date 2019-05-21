@@ -3,6 +3,7 @@ find_package(PythonLibs REQUIRED)
 add_executable(drp
     PGPReader.cc
     DrpApp.cc
+    XpmDetector.cc
     AreaDetector.cc
     Digitizer.cc
     TimingSystem.cc

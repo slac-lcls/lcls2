@@ -169,13 +169,13 @@ DrpSim::DrpSim(size_t maxEvtSize) :
   _xtc         (),
   _pid         (0),
   _pool        (nullptr),
-  _trId        (TransitionId::Unknown),
+  _trId        (TransitionId::ClearReadout),
   _compLock    (),
   _compCv      (),
   _released    (false),
   _trLock      (),
   _trCv        (),
-  _transition  (TransitionId::Unknown),
+  _transition  (TransitionId::ClearReadout),
   _allocPending(0)
 {
 }
@@ -183,8 +183,8 @@ DrpSim::DrpSim(size_t maxEvtSize) :
 void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGroup)
 {
   _pid          = 0;
-  _trId         = TransitionId::Unknown;
-  _transition   = TransitionId::Unknown;
+  _trId         = TransitionId::ClearReadout;
+  _transition   = TransitionId::ClearReadout;
   _allocPending = 0;
   _readoutGroup = readoutGroup;
 
@@ -231,7 +231,7 @@ const Dgram* DrpSim::generate()
   if (_trId != TransitionId::L1Accept)
   {
     // Allow only one transition in the system at a time
-    if (_trId != TransitionId::Unknown)
+    if (_trId != TransitionId::ClearReadout)
     {
       _allocPending += 2;
       std::unique_lock<std::mutex> lock(_compLock);
@@ -244,11 +244,11 @@ const Dgram* DrpSim::generate()
     {
       _allocPending += 3;
       std::unique_lock<std::mutex> lock(_trLock);
-      _trCv.wait(lock, [this] { return (_transition != TransitionId::Unknown) || !lRunning; });
+      _trCv.wait(lock, [this] { return (_transition != TransitionId::ClearReadout) || !lRunning; });
       _allocPending -= 3;
       if (!lRunning)  return nullptr;
       _trId       = _transition;
-      _transition = TransitionId::Unknown;
+      _transition = TransitionId::ClearReadout;
       _pid        = _trPid;
     }
     else
@@ -261,7 +261,7 @@ const Dgram* DrpSim::generate()
     if (_transition)
     {
       _trId       = _transition;
-      _transition = TransitionId::Unknown;
+      _transition = TransitionId::ClearReadout;
 
       uint64_t pid = _trPid;
       if (_pid > pid)
@@ -576,7 +576,7 @@ void CtrbApp::handleDisconnect(const json &msg)
   lRunning = 0;
 
   _tebCtrb.shutdown();
-  _tebCtrb.drpSim().transition(TransitionId::Unknown, 0);
+  _tebCtrb.drpSim().transition(TransitionId::ClearReadout, 0);
 
   _appThread.join();
 

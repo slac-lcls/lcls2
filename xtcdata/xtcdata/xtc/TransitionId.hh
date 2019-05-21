@@ -12,7 +12,7 @@ public:
         // There is also math on these transition id numbers
         // in XtcMonitorServer.cc that assumes they come in pairs.
         // the ConfigUpdate currently breaks this assumption.
-        Unknown,
+        ClearReadout,
         Reset,
         Configure,
         Unconfigure,

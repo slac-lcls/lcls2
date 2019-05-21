@@ -3,6 +3,7 @@
 
 #include "xtcdata/xtc/Src.hh"
 #include <stdint.h>
+#include <assert.h>
 
 namespace XtcData
 {

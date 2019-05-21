@@ -159,7 +159,7 @@ int client(std::vector<std::string>& svrAddrs,
            unsigned                  numEvents)
 {
   static const int trId[TransitionId::NumberOf] =
-    { TransitionId::Unknown,
+    { TransitionId::ClearReadout,
       TransitionId::Reset,
       TransitionId::Configure,       TransitionId::Unconfigure,
       TransitionId::Enable,          TransitionId::Disable,
