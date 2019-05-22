@@ -364,8 +364,9 @@ def confirm_response(socket, wait_time, msg_id, ids, err_pub):
 
 
 class CollectionManager():
-    def __init__(self, platform, instrument, pv_base):
+    def __init__(self, platform, instrument, pv_base, xpm_master):
         self.platform = platform
+        self.xpm_master = xpm_master
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
@@ -390,7 +391,7 @@ class CollectionManager():
         self.pvMsgHeader = pv_part_base+':MsgHeader'
         self.pvMsgInsert = pv_part_base+':MsgInsert'
         self.pvRun = pv_part_base+':Run'
-#       self.pvXPM = pv_part_base+':XPM'
+        self.pvXPM = pv_part_base+':XPM'
 
         self.cmstate = {}
         self.level_keys = {'drp', 'teb', 'meb'}
@@ -655,7 +656,13 @@ class CollectionManager():
         return True
 
     def condition_connect(self):
-        self.pv_put(self.pvRun, 0)  # clear Run PV before configure
+        # set XPM PV, clear Run PV
+        if not (self.pv_put(self.pvXPM, self.xpm_master) and
+                self.pv_put(self.pvRun, 0)):
+            logging.error('condition_connect(): pv_put() failed')
+            return False
+        logging.info('Master XPM is %d' % self.xpm_master)
+
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
         msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
@@ -1016,6 +1023,7 @@ def main():
     # Process arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    parser.add_argument('-x', metavar='XPM', type=int, default=1, help='master XPM (default 1)')
     parser.add_argument('-P', metavar='INSTRUMENT', default='TST', help='instrument (default TST)')
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-a', action='store_true', help='autoconnect')
@@ -1029,7 +1037,7 @@ def main():
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def manager():
-        manager = CollectionManager(platform, args.P, args.B)
+        manager = CollectionManager(platform, args.P, args.B, args.x)
 
     def client(i):
         c = Client(platform)
