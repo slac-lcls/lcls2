@@ -31,7 +31,7 @@ int EbLfClient::connect(const char* peer,
   _pending = 0;
 
   const uint64_t flags  = 0;
-  const size_t   txSize = 192;
+  const size_t   txSize = 0; //192;
   const size_t   rxSize = 1;            // Something small to not waste memory
   Fabric* fab = new Fabric(peer, port, flags, txSize, rxSize);
   if (!fab || !fab->up())

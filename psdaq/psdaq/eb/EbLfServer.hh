@@ -64,7 +64,7 @@ int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
   // Polling favors latency, waiting favors throughput
   if (!_tmo)
   {
-    rc = _rxcq->comp(cqEntry, 1);
+    rc = _rxcq->comp(cqEntry, 1); // Uses much less kernel time than comp_wait() with tmo = 0
   }
   else
   {

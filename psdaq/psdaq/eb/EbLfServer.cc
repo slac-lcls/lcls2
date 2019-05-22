@@ -3,19 +3,17 @@
 #include "EbLfLink.hh"
 #include "Endpoint.hh"
 
+#include "psdaq/service/fast_monotonic_clock.hh"
+
+#include <chrono>
 #include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <time.h>
 
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
-
-
-static const int COMP_TMO = 5000;       // ms; Completion read timeout
 
 
 EbLfServer::EbLfServer(unsigned verbose) :
@@ -37,7 +35,7 @@ int EbLfServer::initialize(const std::string& addr,
 
   const uint64_t flags  = 0;
   const size_t   txSize = 1;            // Something small to not waste memory
-  const size_t   rxSize = 1152 + 64;
+  const size_t   rxSize = 0; //1152 + 64;
   _pep = new PassiveEndpoint(addr.c_str(), port.c_str(), flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
@@ -204,15 +202,15 @@ void EbLfServer::shutdown()
 
 int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 {
-  timespec t0( {0, 0} );
-  int      rc;
+  int                              rc;
+  fast_monotonic_clock::time_point t0;
+  bool                             first = true;
 
   ++_pending;
 
   while (true)
   {
     const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
-
     rc = _poll(cqEntry, flags);
     if (rc > 0)
     {
@@ -220,26 +218,27 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
     }
     else if (rc == -FI_EAGAIN)
     {
-      if (t0.tv_sec)
+      if (_tmo)
       {
-        timespec t1;
-        rc = clock_gettime(CLOCK_MONOTONIC_COARSE, &t1);
-        if (rc < 0)  perror("clock_gettime");
+        rc = -FI_ETIMEDOUT;
+        break;
+      }
+      if (!first)
+      {
+        using ms_t = std::chrono::milliseconds;
+        auto  t1   = fast_monotonic_clock::now();
 
-        const int64_t nsTmo = int64_t(msTmo) * 1000000l;
-        int64_t       dt    = ( (t1.tv_sec  - t0.tv_sec) * 1000000000 +
-                                (t1.tv_nsec - t0.tv_nsec) );
-        if (dt > nsTmo)
+        if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
         {
-          _tmo = COMP_TMO;              // Switch to waiting after a timeout
+          _tmo = msTmo;               // Switch to waiting after a timeout
           rc = -FI_ETIMEDOUT;
           break;
         }
       }
       else
       {
-        rc = clock_gettime(CLOCK_MONOTONIC_COARSE, &t0);
-        if (rc < 0)  perror("clock_gettime");
+        t0    = fast_monotonic_clock::now();
+        first = false;
       }
     }
     else

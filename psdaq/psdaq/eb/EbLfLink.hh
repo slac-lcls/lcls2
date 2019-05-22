@@ -58,11 +58,11 @@ namespace Pds {
       Fabrics::Endpoint*      _ep;      // Endpoint
       Fabrics::MemoryRegion*  _mr;      // Memory Region
       Fabrics::RemoteAddress  _ra;      // Remote address descriptor
-      int                     _depth;   // Depth  of the Completion Queue
+      const int               _depth;   // Depth  of the Completion Queue
       int                     _count;   // Number of completion buffers remaining
       uint64_t&               _pending; // Bit list of IDs currently posting
       unsigned                _id;      // ID     of peer on the remote side
-      unsigned                _verbose; // Print some stuff if set
+      const unsigned          _verbose; // Print some stuff if set
       char*                   _region;  // Used when App doesn't provide an MR
     };
   };
@@ -83,7 +83,7 @@ uintptr_t Pds::Eb::EbLfLink::rmtAdx(size_t offset) const
 inline
 int Pds::Eb::EbLfLink::postCompRecv(void* ctx)
 {
-  if (--_count <= 0)
+  if (--_count < 1)
   {
     _count += _postCompRecv(_depth - _count, ctx);
     if (_count < _depth)  return _depth - _count;

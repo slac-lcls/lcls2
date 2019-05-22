@@ -2,11 +2,13 @@
 
 #include "Endpoint.hh"
 
+#include "psdaq/service/fast_monotonic_clock.hh"
+
+#include <chrono>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <time.h>
 
 using namespace Pds;
 using namespace Pds::Fabrics;
@@ -289,9 +291,10 @@ int EbLfLink::post(const void* buf,
                    uint64_t    immData,
                    void*       ctx)
 {
-  RemoteAddress ra(_ra.rkey, _ra.addr + offset, len);
-  timespec      t0( {0, 0} );
-  ssize_t       rc;
+  RemoteAddress                    ra(_ra.rkey, _ra.addr + offset, len);
+  ssize_t                          rc;
+  fast_monotonic_clock::time_point t0;
+  bool                             first = true;
 
   _pending |= 1 << _id;
 
@@ -318,16 +321,13 @@ int EbLfLink::post(const void* buf,
     //  break;
     //}
 
-    // Timeouts nominally occur only during shutdown
-    // Revisit: This seems like the wrong thing to do since it can't be
-    // guaranteed to happen only during shutdown, so maybe poll a flag?
-    if (t0.tv_sec)
+    if (!first)
     {
-      timespec t1;
-      rc = clock_gettime(CLOCK_MONOTONIC_COARSE, &t1);
-      if (rc < 0)  perror("clock_gettime");
+      using     ms_t  = std::chrono::milliseconds;
+      auto      t1    = fast_monotonic_clock::now();
+      const int msTmo = 5000;
 
-      if (t1.tv_sec - t0.tv_sec > 4)
+      if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
       {
         rc = -FI_ETIMEDOUT;
         break;
@@ -335,8 +335,8 @@ int EbLfLink::post(const void* buf,
     }
     else
     {
-      rc = clock_gettime(CLOCK_MONOTONIC_COARSE, &t0);
-      if (rc < 0)  perror("clock_gettime");
+      t0    = fast_monotonic_clock::now();
+      first = false;
     }
   }
 
