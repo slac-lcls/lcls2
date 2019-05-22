@@ -19,7 +19,7 @@ namespace Pds {
     public:
       void allocate(const std::string& title,
                     const std::string& dttitle);
-      void update();
+      void update(bool);
     private:
       Module&                           _dev;
       unsigned                          _partition;

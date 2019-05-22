@@ -1,5 +1,6 @@
 import time
 from psdaq.cas.pvedit import *
+from threading import Lock
 
 fixedRates = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
 acRates    = ['60Hz','30Hz','10Hz','5Hz','1Hz','0.5Hz']
@@ -79,6 +80,16 @@ class ControlRequest(Instruction):
     def print_(self):
         return 'ControlRequest word 0x%x'%self.args[1]
 
+class CheckPoint(Instruction):
+
+    opcode = 3
+    
+    def __init__(self, word):
+        super(CheckPoint, self).__init__((self.opcode, word))
+
+    def print_(self):
+        return 'CheckPoint 0x%x'%self.args[1]
+
 class SeqUser:
     def __init__(self, base):
         prefix = base
@@ -94,7 +105,15 @@ class SeqUser:
         self.idxrun   = Pv(prefix+':RUNIDX')
         self.start    = Pv(prefix+':SCHEDRESET')
         self.reset    = Pv(prefix+':FORCERESET')
+        self.running  = Pv(prefix+':RUNNING', self.changed)
         self._idx     = 0
+        self.lock     = None
+
+    def changed(self):
+        q = self.running.__value__
+        if q==0 and self.lock!=None:
+            self.lock.release()
+            self.lock=None
 
     def stop(self):
         self.idxrun.put(0)  # a do-nothing sequence
@@ -160,15 +179,18 @@ class SeqUser:
 
         self._idx = idx
 
-    def start(self, wait=False):
+    def begin(self, wait=False):
         self.idxrun.put(self._idx)
         self.start .put(0)
         self.reset .put(1)
         self.reset .put(0)
+        if wait:
+            self.lock= Lock()
+            self.lock.acquire()
 
     def execute(self, title, instrset, descset=None):
         self.insert.put(0)
         self.stop ()
         self.clean()
         self.load (title,instrset,descset)
-        self.start()
+        self.begin()

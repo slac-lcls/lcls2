@@ -26,6 +26,7 @@ namespace Pds {
       void removeSeq        ();
       void scheduleReset    ();
       void forceReset       ();
+      void checkPoint       (unsigned);
     private:
       XpmSequenceEngine&                _eng;
       std::vector<Pds_Epics::EpicsPVA*> _pv;

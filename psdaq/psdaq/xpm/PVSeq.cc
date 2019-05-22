@@ -73,7 +73,8 @@ enum { DESCINSTRS = 0,
        SEQ00IDX,
        SEQ00DESC,
        RMVIDX,
-       RUNIDX, };
+       RUNIDX,
+       RUNNING, };
 
 PVSeq::PVSeq(XpmSequenceEngine& eng, 
              const std::string& pvbase) :
@@ -89,6 +90,7 @@ PVSeq::PVSeq(XpmSequenceEngine& eng,
   NPV(SEQ00DESC);
   NPV(RMVIDX);
   NPV(RUNIDX);
+  NPV(RUNNING);
   //  Must monitor these
 #undef NPV
 #define NPV(name)  _pv.push_back( new PV(name)(*this, (pvbase+":"+#name).c_str()) )
@@ -141,7 +143,11 @@ void PVSeq::cacheSeq(pvd::shared_vector<const int>& instrs)
                     new TPGen::Branch(instrs[i+1]) :
                     new TPGen::Branch(instrs[i+1],(TPGen::CCnt)instrs[i+2],instrs[i+3]) );
       break;
-      //    case TPGen::Instruction::Check:
+#ifndef EXCLUDE_CHECKPOINT
+    case CheckPointInstr:
+      seq.push_back(new TPGen::Checkpoint(0));
+      break;
+#endif
     case ControlRequestInstr:
       seq.push_back(new TPGen::ExptRequest(instrs[i+1]));
       break;
@@ -207,6 +213,7 @@ void PVSeq::scheduleReset()
 
   unsigned i = _pv[RUNIDX]->getScalarAs<unsigned>();
   printf("Scheduling index %u\n",i);
+  _pv[RUNNING]->putFrom<unsigned>((i>1) ? 1:0); // Scheduled, but not started
   _eng.enable(true);
   _eng.setAddress(i,0,1);
   _eng.reset ();
@@ -221,8 +228,13 @@ void PVSeq::forceReset()
 
   unsigned i = _pv[RUNIDX]->getScalarAs<unsigned>();
   printf("Starting index %u\n",i);
+  _pv[RUNNING]->putFrom<unsigned>((i>1) ? 1:0);
   _eng.enable(true);
   _eng.setAddress(i,0,0);
   _eng.reset ();
 }
 
+void PVSeq::checkPoint(unsigned a)
+{
+  _pv[RUNNING]->putFrom<unsigned>(0);
+}

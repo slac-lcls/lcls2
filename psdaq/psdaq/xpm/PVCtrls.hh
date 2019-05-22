@@ -22,9 +22,12 @@ namespace Pds {
       PVCtrls(Module&, Semaphore& sem);
       ~PVCtrls();
     public:
+      static void* notify_thread(void*);
+    public:
       void allocate(const std::string& title);
       void update();
       void dump() const;
+      void checkPoint(unsigned iseq, unsigned addr);
     public:
       Module& module();
       Semaphore& sem();

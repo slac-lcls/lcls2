@@ -2,6 +2,7 @@
 #include "psdaq/xpm/PVSeq.hh"
 #include "psdaq/xpm/Module.hh"
 #include "psdaq/xpm/XpmSequenceEngine.hh"
+#include "psdaq/app/AppUtils.hh"
 #include "psdaq/service/Semaphore.hh"
 
 #include <cpsw_error.h>  // To catch a CPSW exception and continue
@@ -9,6 +10,8 @@
 #include <sstream>
 
 #include <stdio.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
 using Pds_Epics::EpicsPVA;
 using Pds_Epics::PVMonitorCb;
@@ -71,8 +74,6 @@ namespace Pds {
     CPV(RxLinkDump ,    { if (getScalarAs<unsigned>()!=0)
                             GPVG(rxLinkDump   (_idx));                 },
                         {                                              })
-    CPV(LinkEnable,     { GPVG(linkEnable(_idx, getScalarAs<unsigned>() != 0));    },
-                        { GPVP(linkEnable(_idx));                      })
 
     //    CPV(ModuleInit,     { GPVG(init     ());     }, { })
     CPV(DumpPll,        { GPVG(dumpPll  (_idx)); }, { })
@@ -89,7 +90,11 @@ namespace Pds {
     CPV(GroupL0Disable,   { GPVG(groupL0Disable(getScalarAs<unsigned>())); }, { })
     CPV(GroupMsgInsert,   { GPVG(groupMsgInsert(getScalarAs<unsigned>())); }, { })
 
-    PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem), _seq(0), _seq_pv(0) {}
+    static PVCtrls* _instance = 0;
+
+    PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem), _seq(0), _seq_pv(0) 
+    { _instance = this; }
+
     PVCtrls::~PVCtrls() {}
 
     void PVCtrls::allocate(const std::string& title)
@@ -127,7 +132,6 @@ namespace Pds {
       NPVN( TxLinkReset,        24    );
       NPVN( RxLinkReset,        24    );
       NPVN( RxLinkDump,         Module::NDSLinks    );
-      NPVN( LinkEnable,         24    );
 
       NPV( GroupL0Reset                             );
       NPV( GroupL0Enable                            );
@@ -145,6 +149,10 @@ namespace Pds {
       NPV ( CuDelay                                 );
       NPV ( CuBeamCode                              );
       NPV ( ClearErr                                );
+
+      //  Always enable, use LinkGroupMask to exclude
+      for(unsigned i=0; i<24; i++)
+        _m.linkEnable(i,true);
 
       return;
 
@@ -187,16 +195,59 @@ namespace Pds {
 
     void PVCtrls::dump() const
     {
-      _sem.take();
-      unsigned enable=0;
-      for(unsigned i=0; i<16; i++)
-        if (_m.linkEnable(i))
-          enable |= (1<<i);
-      _sem.give();
     }
+
+    void PVCtrls::checkPoint(unsigned iseq, unsigned addr)
+    { _seq_pv[iseq]->checkPoint(addr); }
 
     Module& PVCtrls::module() { return _m; }
     Semaphore& PVCtrls::sem() { return _sem; }
     XpmSequenceEngine* PVCtrls::seq() { return _seq; }
+
+    void* PVCtrls::notify_thread(void* arg)
+    {
+      const char* ip = (const char*)arg;
+      unsigned uip = Psdaq::AppUtils::parse_ip(ip);
+      unsigned port = 8197;
+
+      int fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+      if (fd < 0) {
+        perror("Open socket");
+        return 0;
+      }
+
+      sockaddr_in saddr;
+      saddr.sin_family      = PF_INET;
+      saddr.sin_addr.s_addr = htonl(uip);
+      saddr.sin_port        = htons(port);
+
+      if (connect(fd, (sockaddr*)&saddr, sizeof(saddr)) < 0) {
+        perror("Error connecting UDP socket");
+        return 0;
+      }
+
+      sockaddr_in haddr;
+      socklen_t   haddr_len = sizeof(haddr);
+      if (getsockname(fd, (sockaddr*)&haddr, &haddr_len) < 0) {
+        perror("Error retrieving local address");
+        return 0;
+      }
+
+      // "connect" to the sending socket
+      char buf[4];
+      send(fd,buf,sizeof(buf),0);
+
+      uint8_t ibuf[256];
+      ssize_t v;
+
+      while ((v=read(fd, ibuf, sizeof(ibuf) ))>=0) {
+        const uint16_t* p = reinterpret_cast<const uint16_t*>(ibuf);
+        uint16_t mask = *p++;
+        for(unsigned i=0; mask; i++, mask>>=1)
+          if (mask & 1)
+            _instance->checkPoint(i,*p++);
+      }
+      return 0;
+    }
   };
 };

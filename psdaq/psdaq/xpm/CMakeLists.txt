@@ -50,6 +50,7 @@ target_link_libraries(xpmPVs
    cphw
    epicstools
    xpm
+   app
    ${EPICS_PVACCESS_LIB}
    ${EPICS_PVDATA_LIB}
    ${EPICS_PVACLIENT_LIB}
@@ -70,6 +71,7 @@ target_link_libraries(xpmPeek
    service
    cphwr
    xpm
+   app
    ${EPICS_PVACCESS_LIB}
    ${EPICS_PVDATA_LIB}
    ${EPICS_PVACLIENT_LIB}
@@ -89,6 +91,7 @@ target_link_libraries(xpmHsrCfg
    service
    cphwr
    xpm
+   app
    ${EPICS_PVACCESS_LIB}
    ${EPICS_PVDATA_LIB}
    ${EPICS_PVACLIENT_LIB}

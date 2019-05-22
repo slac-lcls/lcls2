@@ -336,23 +336,31 @@ bool     Module::linkRxErr   (unsigned link) const
 
 bool Module::l0Enabled() const { return getf(_l0Control,1,16); }
 
-L0Stats Module::l0Stats() const
+L0Stats Module::l0Stats(bool master) const
 {
   //  Lock the counters
   const_cast<Module&>(*this).lockL0Stats(true);
   L0Stats s;
   clock_gettime(CLOCK_REALTIME,&s.time);
-  s.l0Enabled   = _l0Enabled;
-  s.l0Inhibited = _l0Inhibited;
-  s.numl0       = _numl0;
-  s.numl0Inh    = _numl0Inh;
-  s.numl0Acc    = _numl0Acc;
-  //  for(unsigned i=0; i<NDSLinks; i++) {
-  for(unsigned i=0; i<32; i++) {
-    setLink(i);
-    // if (getf(_dsLinkConfig,1,31))
-    s.linkInhEv[i] = _inhibitEvCounts[i];
-    s.linkInhTm[i] = _inhibitTmCounts[i];
+  if (master) {
+    s.l0Enabled   = _l0Enabled;
+    s.l0Inhibited = _l0Inhibited;
+    s.numl0       = _numl0;
+    s.numl0Inh    = _numl0Inh;
+    s.numl0Acc    = _numl0Acc;
+    //  for(unsigned i=0; i<NDSLinks; i++) {
+    for(unsigned i=0; i<32; i++) {
+      setLink(i);
+      // if (getf(_dsLinkConfig,1,31))
+      s.linkInhEv[i] = _inhibitEvCounts[i];
+      s.linkInhTm[i] = _inhibitTmCounts[i];
+    }
+  }
+  else {
+    for(unsigned i=0; i<32; i++) {
+      setLink(i);
+      s.linkInhTm[i] = _inhibitTmCounts[i];
+    }
   }
   //  Release the counters
   const_cast<Module&>(*this).lockL0Stats(false);

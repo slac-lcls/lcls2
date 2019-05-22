@@ -1,7 +1,7 @@
 #ifndef TPG_UserSequence_hh
 #define TPG_UserSequence_hh
 
-#define EXCLUDE_CHECKPOINT
+//#define EXCLUDE_CHECKPOINT
 
 #include <stdint.h>
 

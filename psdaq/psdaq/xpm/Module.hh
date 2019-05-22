@@ -139,7 +139,7 @@ namespace Pds {
     public:
       CoreCounts counts    () const;
       bool       l0Enabled () const;
-      L0Stats    l0Stats   () const;
+      L0Stats    l0Stats   (bool) const;
       unsigned   txLinkStat() const;
       unsigned   rxLinkStat() const;
     public:

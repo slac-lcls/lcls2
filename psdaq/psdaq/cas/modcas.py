@@ -84,6 +84,7 @@ def main():
     pvdb[':SetVerbose'         ] = {'type' : 'int'}
 
     for i in range(32):
+        pvdb[':LinkRxTimeOut'+'%d'%i] = {'type' : 'int', 'value' : 186 }
         pvdb[':LinkGroupMask'+'%d'%i] = {'type' : 'int'}
         pvdb[':LinkTrgSrc'   +'%d'%i] = {'type' : 'int'}
         pvdb[':LinkLoopback' +'%d'%i] = {'type' : 'int'}
@@ -149,6 +150,7 @@ def main():
         pvdb[':SEQENG:%d:FORCERESET' %i] = {'type' : 'int'}
         pvdb[':SEQENG:%d:SEQIDX'     %i] = {'type' : 'int'   , 'count': 64}
         pvdb[':SEQENG:%d:SEQDESC'    %i] = {'type' : 'string', 'count': 64}
+        pvdb[':SEQENG:%d:RUNNING'    %i] = {'type' : 'int', 'value': 0}
 
     # printDb(pvdb, prefix)
     printDb()

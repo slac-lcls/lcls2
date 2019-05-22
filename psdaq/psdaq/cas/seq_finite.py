@@ -39,7 +39,10 @@ if __name__ == '__main__':
         instrset.append(FixedRateSync(marker=0,occ=i+1))
         instrset.append(Branch.conditional(line=b0, counter=0, value=7))
 
-    instrset.append(Branch.unconditional(line=0))
+    instrset.append(CheckPoint(0))
+
+    b0 = len(instrset)
+    instrset.append(Branch.unconditional(line=b0))
 
     descset = []
     for j in range(16):

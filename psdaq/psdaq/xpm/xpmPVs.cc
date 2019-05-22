@@ -8,8 +8,6 @@
 #include <fcntl.h>
 #include <signal.h>
 
-#include <cpsw_error.h>
-
 #include "psdaq/cphw/Reg.hh"
 
 #include "psdaq/xpm/Module.hh"
@@ -27,6 +25,8 @@
 #include "psdaq/service/Task.hh"
 #include "psdaq/service/Timer.hh"
 
+#include <cpsw_api_builder.h>
+#include <cpsw_mmio_dev.h>
 #include <cpsw_error.h>  // To catch a CPSW exception and continue
 
 using Pds_Epics::EpicsPVA;
@@ -253,11 +253,12 @@ void StatsTimer::expired()
     _pvs.update();
 
     for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
-      if (_pvpc[i]->enabled()) {
+      //      if (_pvpc[i]->enabled()) {
+      {
         _sem.take();
         try {
           _dev.setPartition(i);
-          _pvps[i]->update();
+          _pvps[i]->update(_pvpc[i]->enabled());
         } catch (CPSWError& e) {
           printf("Caught exception %s\n", e.what());
         }
@@ -308,7 +309,7 @@ int main(int argc, char** argv)
   char module_prefix[64];
   char partition_prefix[64];
 
-  while ( (c=getopt( argc, argv, "a:p:P:h")) != EOF ) {
+  while ( (c=getopt( argc, argv, "a:p:P:vh")) != EOF ) {
     switch(c) {
     case 'a':
       ip = optarg;
@@ -318,6 +319,9 @@ int main(int argc, char** argv)
       break;
     case 'P':
       prefix = optarg;
+      break;
+    case 'v':
+      XpmSequenceEngine::verbosity(2);
       break;
     case '?':
     default:
@@ -343,8 +347,16 @@ int main(int argc, char** argv)
           shelf);
   sprintf(partition_prefix,"%s:PART",prefix);
 
-  Pds::Cphw::Reg::set(ip, port, 0);
+  //
+  //  Make a separate thread to handle async notificiation from XPM
+  //
+  { pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_t rthread;
+    pthread_create(&rthread, &attr, &PVCtrls::notify_thread, (void*)ip); }
 
+  Pds::Cphw::Reg::set(ip, port, 0);
+  
   Module* m = Module::locate();
   m->init();
   //  Assign transmit link ID
