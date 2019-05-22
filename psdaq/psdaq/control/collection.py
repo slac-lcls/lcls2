@@ -390,9 +390,14 @@ class CollectionManager():
         self.pvMsgClear = pv_part_base+':MsgClear'
         self.pvMsgHeader = pv_part_base+':MsgHeader'
         self.pvMsgInsert = pv_part_base+':MsgInsert'
-        self.pvRun = pv_part_base+':Run'
         self.pvXPM = pv_part_base+':XPM'
+        pv_xpm_base = pv_base + ':XPM:%d' % xpm_master
+#       self.pvGroupL0Reset =   pv_xpm_base+':GroupL0Reset'
+        self.pvGroupL0Enable =  pv_xpm_base+':GroupL0Enable'
+        self.pvGroupL0Disable = pv_xpm_base+':GroupL0Disable'
+#       self.pvGroupMsgInsert = pv_xpm_base+':GroupMsgInsert'
 
+        self.groups = 0     # groups bitmask
         self.cmstate = {}
         self.level_keys = {'drp', 'teb', 'meb'}
         self.instrument = instrument
@@ -625,8 +630,12 @@ class CollectionManager():
         active_state = self.filter_active_dict(self.cmstate_levels())
         # give number to drp nodes for the event builder
         if 'drp' in active_state:
+            self.groups = 0     # clear the groups bitmask
             for i, node in enumerate(active_state['drp']):
                 self.cmstate['drp'][node]['drp_id'] = i
+                # assign the groups bitmask
+                self.groups |= 1<<int(self.cmstate['drp'][node]['det_info']['readout'])
+        logging.debug('condition_alloc(): groups = 0x%02x' % self.groups)
 
         # give number to teb nodes for the event builder
         if 'teb' in active_state:
@@ -656,12 +665,16 @@ class CollectionManager():
         return True
 
     def condition_connect(self):
-        # set XPM PV, clear Run PV
-        if not (self.pv_put(self.pvXPM, self.xpm_master) and
-                self.pv_put(self.pvRun, 0)):
-            logging.error('condition_connect(): pv_put() failed')
+        # set XPM PV
+        if not self.pv_put(self.pvXPM, self.xpm_master):
+            logging.error('condition_connect(): pv_put(XPM) failed')
             return False
-        logging.info('Master XPM is %d' % self.xpm_master)
+        logging.info('master XPM is %d' % self.xpm_master)
+
+        # set Disable PV
+        if not self.group_run(False):
+            logging.error('condition_connect(): group_run(False) failed')
+            return False
 
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
@@ -903,6 +916,13 @@ class CollectionManager():
         self.lastTransition = 'unconfigure'
         return True
 
+    def group_run(self, enable):
+        if enable:
+            rv = self.pv_put(self.pvGroupL0Enable, self.groups)
+        else:
+            rv = self.pv_put(self.pvGroupL0Disable, self.groups)
+        return rv
+
     def condition_enable(self):
         # phase 1
         ok = self.condition_common('enable', 1000)
@@ -922,9 +942,9 @@ class CollectionManager():
         if not ok:
             return False
 
-        # order matters: set Run PV after others transition
-        if not self.pv_put(self.pvRun, 1):
-            logging.error('condition_enable(): pv_put() failed')
+        # order matters: set Enable PV after others transition
+        if not self.group_run(True):
+            logging.error('condition_enable(): group_run(True) failed')
             return False
 
         self.lastTransition = 'enable'
@@ -932,9 +952,9 @@ class CollectionManager():
 
 
     def condition_disable(self):
-        # order matters: clear Run PV before others transition
-        if not self.pv_put(self.pvRun, 0):
-            logging.error('condition_disable(): pv_put() failed')
+        # order matters: set Disable PV before others transition
+        if not self.group_run(False):
+            logging.error('condition_enable(): group_run(False) failed')
             return False
 
         # phase 1
