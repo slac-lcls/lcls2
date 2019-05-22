@@ -23,6 +23,7 @@ namespace Pds
     void          pop();
     T&            front();
     const T&      front() const;
+    const T&      peek(size_t offset) const;
     T&            back();
     const T&      back()  const;
     bool          empty() const;
@@ -102,6 +103,13 @@ const T& Pds::Fifo<T>::front() const
 
 template <class T>
 inline
+const T& Pds::Fifo<T>::peek(size_t offset) const
+{
+  return _array[(_head + offset) % size()];
+}
+
+template <class T>
+inline
 T& Pds::Fifo<T>::back()
 {
   return _array[_tail];
@@ -144,17 +152,18 @@ namespace Pds
   public:
     FifoMT(size_t size) : Fifo<T>(size) { }
   public:
-#define           LCK                     std::lock_guard<L> lk(_lock)
-    void          clear()               { LCK;        Fifo<T>::clear();    }
-    bool          push(const T& item)   { LCK; return Fifo<T>::push(item); }
-    void          pop()                 { LCK;        Fifo<T>::pop();      }
-    T&            front()               { LCK; return Fifo<T>::front();    }
-    const T&      front() const         { LCK; return Fifo<T>::front();    }
-    T&            back()                { LCK; return Fifo<T>::back();     }
-    const T&      back()  const         { LCK; return Fifo<T>::back();     }
-    bool          empty() const         { LCK; return Fifo<T>::empty();    }
-    size_t        size()  const         { LCK; return Fifo<T>::size();     }
-    const size_t& count() const         { LCK; return Fifo<T>::count();    }
+#define           LCK                       std::lock_guard<L> lk(_lock)
+    void          clear()                 { LCK;        Fifo<T>::clear();    }
+    bool          push(const T& item)     { LCK; return Fifo<T>::push(item); }
+    void          pop()                   { LCK;        Fifo<T>::pop();      }
+    T&            front()                 { LCK; return Fifo<T>::front();    }
+    const T&      front() const           { LCK; return Fifo<T>::front();    }
+    const T&      peek(size_t ofs) const  { LCK; return Fifo<T>::peek(ofs);  }
+    T&            back()                  { LCK; return Fifo<T>::back();     }
+    const T&      back()  const           { LCK; return Fifo<T>::back();     }
+    bool          empty() const           { LCK; return Fifo<T>::empty();    }
+    size_t        size()  const           { LCK; return Fifo<T>::size();     }
+    const size_t& count() const           { LCK; return Fifo<T>::count();    }
 #undef            LCK
   private:
     mutable L _lock;
