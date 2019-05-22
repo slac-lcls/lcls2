@@ -385,10 +385,12 @@ class CollectionManager():
         self.ctxt = Context('pva')
 
         # name PVs
-        self.pvMsgClear = pv_base+':MsgClear'
-        self.pvMsgHeader = pv_base+':MsgHeader'
-        self.pvMsgInsert = pv_base+':MsgInsert'
-        self.pvRun = pv_base+':Run'
+        pv_part_base = pv_base + ':PART:%d' % platform
+        self.pvMsgClear = pv_part_base+':MsgClear'
+        self.pvMsgHeader = pv_part_base+':MsgHeader'
+        self.pvMsgInsert = pv_part_base+':MsgInsert'
+        self.pvRun = pv_part_base+':Run'
+#       self.pvXPM = pv_part_base+':XPM'
 
         self.cmstate = {}
         self.level_keys = {'drp', 'teb', 'meb'}
@@ -923,15 +925,19 @@ class CollectionManager():
 
 
     def condition_disable(self):
+        # order matters: clear Run PV before others transition
+        if not self.pv_put(self.pvRun, 0):
+            logging.error('condition_disable(): pv_put() failed')
+            return False
+
         # phase 1
         ok = self.condition_common('disable', 1000)
         if not ok:
             logging.error('condition_disable(): disable phase1 failed')
             return False
 
-        # order matters: clear Run PV before others transition
-        if not (self.pv_put(self.pvRun, 0) and
-                self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Disable']) and
+        # phase 2
+        if not (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Disable']) and
                 self.pv_put(self.pvMsgInsert, 0) and
                 self.pv_put(self.pvMsgInsert, 1) and
                 self.pv_put(self.pvMsgInsert, 0)):

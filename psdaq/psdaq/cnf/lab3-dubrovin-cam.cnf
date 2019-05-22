@@ -24,7 +24,7 @@ rtmon_host = 'psmetric04'
 procmgr_config = [
  {                        id:'partca-'+platform, conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- { host: collect_host,    id:'collection', flags:'sp', conda:conda_rel, env:epics_env, cmd:'collection -v -P TMO -B DAQ:LAB2:PART:'+platform},
+ { host: collect_host,    id:'collection', flags:'sp', conda:conda_rel, env:epics_env, cmd:'collection -v -P TMO -B DAQ:LAB2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
  # trigger event builder
  { host: 'drp-tst-dev001', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host+' -Z '+rtmon_host},
