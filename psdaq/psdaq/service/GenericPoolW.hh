@@ -31,7 +31,10 @@ namespace Pds {
 inline void* Pds::GenericPoolW::deque()
 {
   std::unique_lock<std::mutex> lk(_mutex);
-  _condVar.wait(lk, [&](){ return (atHead() != empty()) || _stopping; });
+  if (atHead() == empty())              // Don't involve kernel if not needed
+  {
+    _condVar.wait(lk, [&](){ return (atHead() != empty()) || _stopping; });
+  }
   if (!_stopping)
   {
     Pds::PoolEntry* entry = removeNL();
