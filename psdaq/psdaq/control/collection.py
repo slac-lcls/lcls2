@@ -1043,7 +1043,7 @@ def main():
     # Process arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
-    parser.add_argument('-x', metavar='XPM', type=int, default=1, help='master XPM (default 1)')
+    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
     parser.add_argument('-P', metavar='INSTRUMENT', default='TST', help='instrument (default TST)')
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-a', action='store_true', help='autoconnect')

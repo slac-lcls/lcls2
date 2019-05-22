@@ -33,7 +33,7 @@ procmgr_config = [
  { id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
  { id:'modca1'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
  { id:'modca2'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
- { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2'},
+ { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2 -x 1'},
  { id:'control_gui', flags:'xp', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 
  { host: 'drp-tst-dev001', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -Z '+rtmon_host+' -C '+collect_host},

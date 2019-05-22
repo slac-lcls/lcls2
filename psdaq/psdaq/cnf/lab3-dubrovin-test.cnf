@@ -25,7 +25,7 @@ collect_host = 'drp-tst-acc06'
 
 procmgr_config = [
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- { host: collect_host,    id:'collection', flags:'sxp', conda:conda_rel, cmd:'collection -v -P TMO -B DAQ:LAB2'},
+ { host: collect_host,    id:'collection', flags:'sxp', conda:conda_rel, cmd:'collection -v -P TMO -B DAQ:LAB2 -x 1'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 # test clients
  {                        flags:'xup', id:'testClient2a', conda:conda_rel, cmd:'testClient2 -v -C '+collect_host},
