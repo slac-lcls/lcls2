@@ -259,8 +259,11 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   EbCtrbInBase(tPrms, smon),
   m_pool(pool),
   m_mon(mon),
+  m_fileWriter(4194304),
+  m_smdWriter(1048576),
   m_inprocSend(&context, ZMQ_PAIR),
-  m_count(0)
+  m_count(0),
+  m_offset(0)
 {
     m_inprocSend.connect("inproc://drp");
 
@@ -271,11 +274,13 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
         // and this print statement may speed up debugging significantly.
         std::cout << "Opening file " << fileName << std::endl;
         m_fileWriter.open(fileName);
+        m_smdWriter.open({para.outputDir + "/data-" + std::to_string(tPrms.id) + "smd.xtc2"});
         m_writing = true;
     }
     else {
         m_writing = false;
     }
+    m_nodeId = tPrms.id;
 }
 
 void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
@@ -324,6 +329,26 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         if (ebDecision[WRT_IDX] == 1 || (transitionId == XtcData::TransitionId::Configure)) {
             size_t size = sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload();
             m_fileWriter.writeEvent(dgram, size);
+
+            // small data writing
+            XtcData::Dgram& smdDgram = *(XtcData::Dgram*)m_smdWriter.buffer;
+            smdDgram.seq = dgram->seq;
+            XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
+            smdDgram.xtc.contains = tid;
+            smdDgram.xtc.damage = 0;
+            smdDgram.xtc.extent = sizeof(XtcData::Xtc);
+
+            if (transitionId == XtcData::TransitionId::Configure) {
+                m_smdWriter.addNames(smdDgram.xtc, m_nodeId);
+            }
+
+            XtcData::NamesId namesId(m_nodeId, 0);
+            XtcData::CreateData smd(smdDgram.xtc, m_smdWriter.namesLookup, namesId);
+            smd.set_value(SmdDef::intOffset, m_offset);
+            smd.set_value(SmdDef::intDgramSize, size);
+            m_smdWriter.writeEvent(&smdDgram, sizeof(XtcData::Dgram) + smdDgram.xtc.sizeofPayload());
+
+            m_offset += size;
         }
     }
 
@@ -351,52 +376,6 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         }
     }
     event->mask = 0;
-}
-
-class SmdDef : public XtcData::VarDef
-{
-public:
-  enum index
-    {
-      intOffset,
-      intDgramSize
-    };
-
-   SmdDef()
-   {
-       NameVec.push_back({"intOffset", XtcData::Name::UINT64});
-       NameVec.push_back({"intDgramSize", XtcData::Name::UINT64});
-   }
-};
-
-BufferedFileWriter::BufferedFileWriter() :
-    m_count(0), m_buffer(BufferSize)
-{
-}
-
-BufferedFileWriter::~BufferedFileWriter()
-{
-    write(m_fd, m_buffer.data(), m_count);
-    m_count = 0;
-}
-
-void BufferedFileWriter::open(std::string& fileName)
-{
-    m_fd = ::open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
-    if (m_fd == -1) {
-        std::cout<<"Error creating file "<<fileName<<'\n';
-    }
-}
-
-void BufferedFileWriter::writeEvent(void* data, size_t size)
-{
-    // doesn't fit into the remaing m_buffer
-    if (size > (BufferSize - m_count)) {
-        write(m_fd, m_buffer.data(), m_count);
-        m_count = 0;
-    }
-    memcpy(m_buffer.data()+m_count, data, size);
-    m_count += size;
 }
 
 }

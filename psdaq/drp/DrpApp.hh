@@ -2,6 +2,7 @@
 
 #include <thread>
 #include "PGPReader.hh"
+#include "FileWriter.hh"
 #include "psdaq/eb/eb.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -23,22 +24,6 @@ private:
 };
 #pragma pack(pop)
 
-class BufferedFileWriter
-{
-public:
-    BufferedFileWriter();
-    ~BufferedFileWriter();
-    void open(std::string& fileName);
-    void writeEvent(void* data, size_t size);
-private:
-    int m_fd;
-    int m_count;
-    std::vector<uint8_t> m_buffer;
-    // 4 MB
-    static const size_t BufferSize = 4194304;
-};
-
-
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
@@ -51,6 +36,7 @@ private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
     BufferedFileWriter m_fileWriter;
+    SmdWriter m_smdWriter;
     bool m_writing;
     ZmqSocket m_inprocSend;
     static const int m_size = 100;
@@ -58,6 +44,8 @@ private:
     int m_count;
     uint32_t lastIndex;
     uint32_t lastEvtCounter;
+    uint64_t m_offset;
+    unsigned m_nodeId;
 };
 
 struct Parameters;

@@ -9,7 +9,7 @@ class CustomCollector():
     def collect(self):
         value = self.pvactx.get('DAQ:LAB2:PART:2:DeadFrac')
         print('collect', value.raw.value)
-        yield GaugeMetricFamily('drp_dead_frac', value=value.raw.value)
+        yield GaugeMetricFamily('drp_dead_frac', documentation='',  value=value.raw.value)
 
 REGISTRY.register(CustomCollector())
 
