@@ -376,6 +376,7 @@ class CollectionManager():
     def __init__(self, platform, instrument, pv_base, xpm_master):
         self.platform = platform
         self.xpm_master = xpm_master
+        self.pv_base = pv_base
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
@@ -655,6 +656,13 @@ class CollectionManager():
         if 'meb' in active_state:
             for i, node in enumerate(active_state['meb']):
                 self.cmstate['meb'][node]['meb_id'] = i
+
+        # add control info
+        if not 'control' in self.cmstate:
+            self.cmstate['control'] = {}
+            self.cmstate['control']['control_info'] = {}
+        self.cmstate['control']['control_info']['xpm_master'] = self.xpm_master
+        self.cmstate['control']['control_info']['pv_base'] = self.pv_base
 
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
         self.lastTransition = 'alloc'
