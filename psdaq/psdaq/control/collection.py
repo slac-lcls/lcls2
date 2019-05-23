@@ -18,7 +18,7 @@ class DaqControl:
 
     # transitionId is a subset of the TransitionId.hh enum
     transitionId = {
-        'Unknown'           : 0,
+        'ClearReadout'      : 0,
         'Reset'             : 1,
         'Configure'         : 2,
         'Unconfigure'       : 3,
