@@ -302,6 +302,15 @@ def front_rep_port(platform):
 def front_pub_port(platform):
     return PORT_BASE + platform + 30
 
+def get_readout_group_mask(body):
+    mask = 0
+    if 'drp' in body:
+        for key, node_info in body['drp'].items():
+            try:
+                mask |= (1 << node_info['det_info']['readout'])
+            except KeyError:
+                pass
+    return mask
 
 def wait_for_answers(socket, wait_time, msg_id, err_pub):
     """
@@ -630,11 +639,11 @@ class CollectionManager():
         active_state = self.filter_active_dict(self.cmstate_levels())
         # give number to drp nodes for the event builder
         if 'drp' in active_state:
-            self.groups = 0     # clear the groups bitmask
             for i, node in enumerate(active_state['drp']):
                 self.cmstate['drp'][node]['drp_id'] = i
-                # assign the groups bitmask
-                self.groups |= 1<<int(self.cmstate['drp'][node]['det_info']['readout'])
+
+        # assign the readout groups bitmask
+        self.groups = get_readout_group_mask(active_state)
         logging.debug('condition_alloc(): groups = 0x%02x' % self.groups)
 
         # give number to teb nodes for the event builder
