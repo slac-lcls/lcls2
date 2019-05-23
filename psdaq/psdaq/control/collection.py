@@ -409,7 +409,7 @@ class CollectionManager():
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
-        self.level_keys = {'drp', 'teb', 'meb'}
+        self.level_keys = {'drp', 'teb', 'meb', 'control'}
         self.instrument = instrument
         self.ids = set()
         self.handle_request = {
@@ -657,13 +657,6 @@ class CollectionManager():
             for i, node in enumerate(active_state['meb']):
                 self.cmstate['meb'][node]['meb_id'] = i
 
-        # add control info
-        if not 'control' in self.cmstate:
-            self.cmstate['control'] = {}
-            self.cmstate['control']['control_info'] = {}
-        self.cmstate['control']['control_info']['xpm_master'] = self.xpm_master
-        self.cmstate['control']['control_info']['pv_base'] = self.pv_base
-
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
         self.lastTransition = 'alloc'
         logging.debug('condition_alloc() returning True')
@@ -797,6 +790,20 @@ class CollectionManager():
         else:
             retval = True
             self.lastTransition = 'plat'
+
+        # add control info
+        if not 'control' in self.cmstate:
+            self.cmstate['control'] = {}
+            self.cmstate['control'][0] = {}
+            self.cmstate['control'][0]['active'] = 1
+            self.cmstate['control'][0]['control_info'] = {}
+            self.cmstate['control'][0]['proc_info'] = {}
+            self.cmstate['control'][0]['control_info']['xpm_master'] = self.xpm_master
+            self.cmstate['control'][0]['control_info']['pv_base'] = self.pv_base
+            self.cmstate['control'][0]['proc_info']['alias'] = 'control'
+            self.cmstate['control'][0]['proc_info']['host'] = socket.gethostname()
+            self.cmstate['control'][0]['proc_info']['pid'] = os.getpid()
+
         logging.debug('cmstate after plat:\n%s' % self.cmstate)
         logging.debug('condition_plat() returning %s' % retval)
         return retval
