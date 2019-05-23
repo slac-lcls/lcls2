@@ -31,6 +31,6 @@ procmgr_config = [
  {                        id:'xpmca'  ,flags:'', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
  { host: 'drp-tst-dev002', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host+' -Z '+rtmon_host},
  { host: 'drp-tst-dev012', id:'tsdrp', flags:'xp', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D TimingSystem -d /dev/datadev_0 -C '+collect_host + ' -u ts'},
- { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2 -x 1'},
+ { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2 -x 2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]
