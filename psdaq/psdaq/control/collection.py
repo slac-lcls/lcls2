@@ -608,7 +608,7 @@ class CollectionManager():
         ids = self.filter_active_set(self.ids)
         ids = self.filter_level('drp', ids)
         # make sure all the clients respond to transition before timeout
-        missing, answers = confirm_response(self.back_pull, 2000, None, ids, self.front_pub)
+        missing, answers = confirm_response(self.back_pull, 5000, None, ids, self.front_pub)
         if missing:
             logging.error('%s phase2 failed' % transition)
             for alias in self.get_aliases(missing):
@@ -904,7 +904,7 @@ class CollectionManager():
 
     def condition_unconfigure(self):
         # phase 1
-        ok = self.condition_common('unconfigure', 1000)
+        ok = self.condition_common('unconfigure', 6000)
         if not ok:
             logging.error('condition_unconfigure(): unconfigure phase1 failed')
             return False
@@ -934,7 +934,7 @@ class CollectionManager():
 
     def condition_enable(self):
         # phase 1
-        ok = self.condition_common('enable', 1000)
+        ok = self.condition_common('enable', 6000)
         if not ok:
             logging.error('condition_enable(): enable phase1 failed')
             return False
@@ -967,7 +967,7 @@ class CollectionManager():
             return False
 
         # phase 1
-        ok = self.condition_common('disable', 1000)
+        ok = self.condition_common('disable', 6000)
         if not ok:
             logging.error('condition_disable(): disable phase1 failed')
             return False
