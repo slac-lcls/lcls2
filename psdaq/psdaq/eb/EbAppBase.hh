@@ -20,6 +20,8 @@ namespace XtcData {
 namespace Pds {
   namespace Eb {
 
+    using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
+
     class EbLfLink;
     class EbEvent;
 
@@ -33,26 +35,31 @@ namespace Pds {
       virtual ~EbAppBase() {}
     public:
       const uint64_t&  rxPending() const { return _transport.pending(); }
+      const uint64_t&  bufferCnt() const { return _bufferCnt; }
+      const uint64_t&  fixupCnt()  const { return _fixupCnt; }
       int              checkEQ()  { return _transport.pollEQ(); }
     public:
       int              connect(const EbParams&);
       int              process();
       void             shutdown();
-    public:                          // For EventBuilder
+      void             trim(unsigned dst);
+    public:                            // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
       virtual uint64_t contracts(const XtcData::Dgram* contrib,
                                  uint64_t& receivers) const;
     private:                           // Arranged in order of access frequency
-      std::array<uint64_t, 16> _contracts;
-      std::array<uint64_t, 16> _receivers;
+      u64arr_t                 _contracts;
+      u64arr_t                 _receivers;
       Pds::Eb::EbLfServer      _transport;
       std::vector<EbLfLink*>   _links;
-      size_t                   _trSize;
-      size_t                   _maxTrSize;
+      const size_t             _trSize;
+      const size_t             _maxTrSize;
       std::vector<size_t>      _maxBufSize;
-      unsigned                 _maxBuffers;
+      const unsigned           _maxBuffers;
       //EbDummyTC                _dummy;   // Template for TC of dummy contributions  // Revisit: ???
-      unsigned                 _verbose;
+      const unsigned           _verbose;
+      uint64_t                 _bufferCnt;
+      uint64_t                 _fixupCnt;
     private:
       void*                    _region;
       uint64_t                 _contributors;

@@ -95,17 +95,24 @@ void TebContributor::startup(EbCtrbInBase& in)
   _rcvrThread = std::thread([&] { in.receiver(*this, _running); });
 }
 
-void TebContributor::shutdown()
+// Called from another thread to trigger shutting down
+void TebContributor::stop()
 {
   _running = false;
 
+  _batMan.stop();
+}
+
+// Called from the current thread to shut it down
+void TebContributor::shutdown()
+{
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     _transport.shutdown(*it);
   }
   _links.clear();
 
-  _rcvrThread.join();
+  if (_rcvrThread.joinable())  _rcvrThread.join();
 
   _batMan.dump();
   _batMan.shutdown();
@@ -122,7 +129,7 @@ void* TebContributor::allocate(const Dgram* datagram, const void* appPrm)
     if (batch)  post(batch);
 
     batch = _batMan.allocate(pid);
-    if (!batch)  return batch;          // Null when timed out
+    if (!batch)  return batch;          // Null when terminating
   }
 
   ++_eventCount;                        // Count all events handled

@@ -43,6 +43,7 @@ namespace Pds {
       const uint64_t&    epochFreeCnt()  const;
       const uint64_t&    eventAllocCnt() const;
       const uint64_t&    eventFreeCnt()  const;
+      const uint64_t&    tmoEvtCnt()     const;
     private:
       unsigned          _epIndex(uint64_t key) const;
       unsigned          _evIndex(uint64_t key) const;
@@ -66,6 +67,7 @@ namespace Pds {
       GenericPool           _eventFreelist; // Freelist for new events
       std::vector<EbEvent*> _eventLut;      // LUT of allocated events
       unsigned              _verbose;       // Print progress info
+      uint64_t              _tmoEvtCnt;     // Count of timed out events
     };
   };
 };
@@ -90,4 +92,8 @@ inline const uint64_t& Pds::Eb::EventBuilder::eventFreeCnt() const
   return _eventFreelist.numberofFrees();
 }
 
+inline const uint64_t& Pds::Eb::EventBuilder::tmoEvtCnt() const
+{
+  return _tmoEvtCnt;
+}
 #endif

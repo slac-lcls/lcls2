@@ -16,7 +16,7 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-static const int MaxTimeouts = 10; //0x100;      // Revisit: Was 0xffff
+static const int MaxTimeouts = 50;     // In units of transport.pend() timeouts
 
 // Revisit: Fix stale comments:
 /*
@@ -44,6 +44,7 @@ EbEvent::EbEvent(uint64_t      contract,
   _receivers(receivers),
   _living   (MaxTimeouts),
   _prm      (prm),
+  _damage   (cdg->xtc.damage.value()),
   _last     (_contributions)
 {
   const EbContribution* contribution = static_cast<const EbContribution*>(cdg);
@@ -112,6 +113,8 @@ EbEvent* EbEvent::_add(const Dgram* cdg)
   uint64_t remaining = _remaining;
   _remaining = remaining & contribution->retire();
   assert(_remaining != remaining);      // Make sure some bit was taken down
+
+  _damage.increase(contribution->xtc.damage.value());
 
   _living    = MaxTimeouts;
 

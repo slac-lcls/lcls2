@@ -34,7 +34,7 @@ namespace Pds {
     public:
       int        connect(const TebCtrbParams&);
       void       startup(EbCtrbInBase&);
-      void       stop()  { _running = false; }
+      void       stop();
       void       shutdown();
     public:
       void*      allocate(const XtcData::Dgram* datagram, const void* appPrm);

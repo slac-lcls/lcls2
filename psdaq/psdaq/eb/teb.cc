@@ -108,6 +108,7 @@ namespace Pds {
       const unsigned         _verbose;
     private:
       uint64_t               _receivers;
+      //uint64_t               _trimmed;
       Decide*                _decide;
     private:
       uint64_t               _eventCount;
@@ -132,6 +133,7 @@ Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
   _id          (-1),
   _verbose     (prms.verbose),
   _receivers   (0),
+  //_trimmed     (0),
   _decide      (nullptr),
   _eventCount  (0),
   _batchCount  (0),
@@ -141,7 +143,7 @@ Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
 {
   smon.metric("TEB_EvtRt",  _eventCount,             StatsMonitor::RATE);
   smon.metric("TEB_EvtCt",  _eventCount,             StatsMonitor::SCALAR);
-  smon.metric("TEB_BatCt",  _batchCount,             StatsMonitor::SCALAR);
+  smon.metric("TEB_BatCt",  _batchCount,             StatsMonitor::SCALAR); // Outbound
   smon.metric("TEB_BtAlCt", _batMan.batchAllocCnt(), StatsMonitor::SCALAR);
   smon.metric("TEB_BtFrCt", _batMan.batchFreeCnt(),  StatsMonitor::SCALAR);
   smon.metric("TEB_BtWtg",  _batMan.batchWaiting(),  StatsMonitor::SCALAR);
@@ -151,6 +153,9 @@ Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
   smon.metric("TEB_EvFrCt",  eventFreeCnt(),         StatsMonitor::SCALAR);
   smon.metric("TEB_TxPdg",  _l3Transport.pending(),  StatsMonitor::SCALAR);
   smon.metric("TEB_RxPdg",   rxPending(),            StatsMonitor::SCALAR);
+  smon.metric("TEB_BtInCt",  bufferCnt(),            StatsMonitor::SCALAR); // Inbound
+  smon.metric("TEB_FxUpCt",  fixupCnt(),             StatsMonitor::SCALAR);
+  smon.metric("TEB_ToEvCt",  tmoEvtCnt(),            StatsMonitor::SCALAR);
 }
 
 int Teb::connect(const EbParams& prms)
@@ -232,6 +237,7 @@ void Teb::run()
   pinThread(pthread_self(), _prms.core[0]);
 
   _receivers  = 0;
+  //_trimmed    = 0;
   _eventCount = 0;
   _batchCount = 0;
 
@@ -295,7 +301,7 @@ void Teb::process(EbEvent* event)
   }
   ++_eventCount;
 
-  Damage damage;
+  Damage damage(event->damageVal());
   const Dgram* dg = event->creator();
   if (dg->seq.service() == TransitionId::Configure)
   {
@@ -314,15 +320,16 @@ void Teb::process(EbEvent* event)
       assert(batch);                    // Null "can't" happen
     }
 
-    Dgram*    rdg    = new(batch->allocate()) ResultDgram(*dg, _id);
-    uint32_t* result = reinterpret_cast<uint32_t*>(rdg->xtc.payload());
+    Dgram*    rdg        = new(batch->allocate()) ResultDgram(*dg, _id);
+    uint32_t* result     = reinterpret_cast<uint32_t*>(rdg->xtc.payload());
+    size_t    resultSize = rdg->xtc.sizeofPayload();
 
     // Present event contributions to "user" code for building a result datagram
     const EbContribution** const  last = event->end();
     const EbContribution*  const* ctrb = event->begin();
     do
     {
-      Damage dmg = _decide->event(*ctrb, result, rdg->xtc.sizeofPayload());
+      Damage dmg = _decide->event(*ctrb, result, resultSize);
       damage.increase(dmg.value());
     }
     while (++ctrb != last);
@@ -402,21 +409,21 @@ void Teb::process(EbEvent* event)
 
 void Teb::post(const Batch* batch, uint64_t& receivers)
 {
-  _batMan.flush();                      // Revisit: Right place for this?
-
   uint32_t    idx    = batch->index();
   uint64_t    data   = ImmData::value(ImmData::Buffer, _id, idx);
   size_t      extent = batch->extent();
   unsigned    offset = idx * _batMan.maxBatchSize();
   const void* buffer = batch->buffer();
-  uint64_t    destns = receivers;
+  uint64_t    destns = receivers; // & ~_trimmed;
+
+  ++_batchCount;
 
   while (destns)
   {
     unsigned  dst  = __builtin_ffsl(destns) - 1;
     EbLfLink* link = _l3Links[dst];
 
-    destns &= ~(1 << dst);
+    destns &= ~(1ul << dst);
 
     if (_verbose)
     {
@@ -427,12 +434,21 @@ void Teb::post(const Batch* batch, uint64_t& receivers)
              _batchCount, idx, buffer, pid, extent, dst, rmtAdx);
     }
 
-    if (link->post(buffer, extent, offset, data) < 0)  break;
+    int rc;
+    if ( (rc = link->post(buffer, extent, offset, data)) < 0)
+    {
+      if (rc != -FI_ETIMEDOUT)  break;  // Revisit: Right thing to do?
+
+      // If we were to trim, here's how to do it.  For now, we don't.
+      //static unsigned retries = 0;
+      //trim(dst);
+      //if (retries++ == 5)  { _trimmed |= 1ul << dst; retries = 0; }
+      //printf("%s:  link->post() to %d returned %d, trimmed = %016lx\n",
+      //       __PRETTY_FUNCTION__, dst, rc, _trimmed);
+    }
   }
 
   receivers = 0;                        // Clear to start a new accumulation
-
-  ++_batchCount;
 
   // Revisit: The following deallocation constitutes a race with the posts to
   // the transport above as the batch's memory cannot be allowed to be reused
@@ -442,6 +458,7 @@ void Teb::post(const Batch* batch, uint64_t& receivers)
   // transmitting before the next one starts (or the subsequent transmit won't
   // start), thus making it safe to "pre-delete" it here.
   _batMan.release(batch);
+  _batMan.flush();
 }
 
 
@@ -466,6 +483,7 @@ private:
   StatsMonitor& _smon;
   std::thread   _appThread;
   Dl            _dl;
+  bool          _shutdown;
 };
 
 TebApp::TebApp(const std::string& collSrv,
@@ -474,7 +492,8 @@ TebApp::TebApp(const std::string& collSrv,
   CollectionApp(collSrv, prms.partition, "teb", prms.alias),
   _prms        (prms),
   _teb         (prms, smon),
-  _smon        (smon)
+  _smon        (smon),
+  _shutdown    (false)
 {
   Py_Initialize();
 }
@@ -592,17 +611,27 @@ void TebApp::handleDisconnect(const json& msg)
 {
   lRunning = 0;
 
-  _appThread.join();
+  if (_appThread.joinable())  _appThread.join();
 
   _smon.disable();
 
   // Reply to collection with transition status
   json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
+
+  _shutdown = true;
 }
 
 void TebApp::handleReset(const json& msg)
 {
+  if (!_shutdown)
+  {
+    if (_appThread.joinable())  _appThread.join();
+
+    _smon.disable();
+
+    _shutdown = true;
+  }
 }
 
 int TebApp::_parseConnectionParams(const json& body)
@@ -829,7 +858,7 @@ int main(int argc, char **argv)
   sigAction.sa_flags   = SA_RESTART;
   sigemptyset(&sigAction.sa_mask);
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
-    printf("Couldn't set up ^C handler\n");
+    fprintf(stderr, "Failed to set up ^C handler\n");
 
   // Event builder sorts contributions into a time ordered list
   // Then calls the user's process() with complete events to build the result datagram
@@ -838,7 +867,7 @@ int main(int argc, char **argv)
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
 
-  pinThread(pthread_self(), prms.core[1]);
+  //pinThread(pthread_self(), prms.core[1]);
   StatsMonitor smon(rtMonHost,
                     rtMonPort,
                     prms.partition,
@@ -856,6 +885,8 @@ int main(int argc, char **argv)
   {
     fprintf(stderr, "%s\n", e.what());
   }
+
+  app.handleReset(json({}));
 
   smon.shutdown();
 

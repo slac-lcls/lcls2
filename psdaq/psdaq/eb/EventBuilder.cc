@@ -27,7 +27,8 @@ EventBuilder::EventBuilder(unsigned epochs,
   _epochLut(epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
-  _verbose(verbose)
+  _verbose(verbose),
+  _tmoEvtCnt(0)
 {
   if (duration & (duration - 1))
   {
@@ -89,6 +90,8 @@ void EventBuilder::clear()
     *it = nullptr;
   for (auto it = _eventLut.begin(); it != _eventLut.end(); ++it)
     *it = nullptr;
+
+  _tmoEvtCnt = 0;
 }
 
 unsigned EventBuilder::_epIndex(uint64_t key) const
@@ -247,6 +250,7 @@ EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
 void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
 {
   uint64_t& remaining = event->_remaining;
+  uint64_t& receivers = event->_receivers;
 
   do
   {
@@ -255,6 +259,7 @@ void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
     fixup(event, srcId);
 
     remaining &= ~(1ul << srcId);
+    receivers &= ~(1ul << srcId);       // Don't send Results to Ctrbs that didn't provide Inputs
   }
   while (remaining);
 }
@@ -285,7 +290,10 @@ void EventBuilder::_flush(EbEvent* due)
 
     while (event != lastEvent)
     {
-      if (event->_remaining)  return;
+      // Retire all events up to the newest complete event.
+      // Since contributions show up in time order and last_due is a newer
+      // complete event, older incomplete events can be retired.
+      if (event->_remaining)  _fixup(event);
       if (event == last_due)
       {
         _retire(event);
@@ -303,10 +311,11 @@ void EventBuilder::_flush(EbEvent* due)
   while (epoch = epoch->forward(), epoch != lastEpoch);
 }
 
-void EventBuilder::expired()            // Periodically called from a timer
+void EventBuilder::expired()            // Periodically called upon a timeout
 {
   EbEpoch*             epoch = _pending.forward();
   const EbEpoch* const empty = _pending.empty();
+  EbEvent*             due   = nullptr;
 
   while (epoch != empty)
   {
@@ -315,29 +324,25 @@ void EventBuilder::expired()            // Periodically called from a timer
 
     while (event != last)
     {
-      event->dump(event->creator()->seq.pulseId().value() & (64 - 1));
-      //if (event->_remaining && !event->_alive())
-      //{
-      //  printf("Event timed out: %014lx, size %zu, remaining %016lx\n",
-      //         event->sequence(),
-      //         event->size(),
-      //         event->_remaining);
-      //
-      //  if (event->_remaining) _fixup(event);
-      //
-      //  _flush(event);
-      //}
-      //return; // Revisit: This seems wrong, but is original.
-              //          Seems like all expired events should be flushed,
-              //          not just one per timeout cycle, but it was maybe
-              //          done this way to allow events backed up behind the
-              //          one that's just been timed out to complete normally
-      printf("event = %p, forward = %p, last = %p\n", event, event->forward(), last);
+      if (event->_remaining && !event->_alive())
+      {
+        //printf("Event timed out: %014lx, size %zu, remaining %016lx\n",
+        //       event->sequence(),
+        //       event->size(),
+        //       event->_remaining);
+
+        due = event;
+
+        ++_tmoEvtCnt;
+      }
+
       event = event->forward();
     }
 
     epoch = epoch->forward();
   }
+
+  if (due)  _flush(due);
 }
 
 /*

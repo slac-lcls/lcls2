@@ -9,7 +9,6 @@
 #include <cstddef>                      // For size_t
 #include <cstdint>                      // For uint64_t
 #include <atomic>
-#include <chrono>
 
 namespace XtcData {
   class Dgram;
@@ -27,6 +26,7 @@ namespace Pds {
       BatchManager(size_t maxSize);
       ~BatchManager();
     public:
+      void            stop();
       void            shutdown();
       void            flush();
       Batch*          fetch() const;
@@ -56,6 +56,12 @@ namespace Pds {
   };
 };
 
+
+inline
+void Pds::Eb::BatchManager::stop()
+{
+  _batchFreelist.stop();
+}
 
 inline
 void* Pds::Eb::BatchManager::batchRegion() const
@@ -108,10 +114,10 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::fetch() const
 inline
 Pds::Eb::Batch* Pds::Eb::BatchManager::allocate(uint64_t pid)
 {
-  const auto tmo(std::chrono::milliseconds(5000));
-  const auto id (Pds::Eb::Batch::batchId(pid));
-  Pds::Eb::Batch* batch = _batchFreelist.allocate(id, tmo);
-  if (batch)  batch->initialize(pid);
+  const auto id(Pds::Eb::Batch::batchId(pid));
+  Pds::Eb::Batch* batch = _batchFreelist.allocate(id);
+  if (batch)  batch->initialize(pid);   // Full PID, not BatchId
+
   _batch = batch;
   return batch;
 }

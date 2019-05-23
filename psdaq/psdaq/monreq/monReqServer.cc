@@ -258,6 +258,9 @@ namespace Pds {
       smon.metric("MEB_EvAlCt",  eventAllocCnt(), StatsMonitor::SCALAR);
       smon.metric("MEB_EvFrCt",  eventFreeCnt(),  StatsMonitor::SCALAR);
       smon.metric("MEB_RxPdg",   rxPending(),     StatsMonitor::SCALAR);
+      smon.metric("MEB_BufCt",   bufferCnt(),     StatsMonitor::SCALAR);
+      smon.metric("MEB_FxUpCt",  fixupCnt(),      StatsMonitor::SCALAR);
+      smon.metric("MEB_ToEvCt",  tmoEvtCnt(),     StatsMonitor::SCALAR);
     }
     virtual ~Meb()
     {
@@ -378,7 +381,8 @@ public:
 public:                                 // For CollectionApp
   json connectionInfo() override;
   void handleConnect(const json& msg) override;
-  void handleDisconnect(const json& msg); // override;
+  void handleDisconnect(const json& msg) override;
+  void handlePhase1(const json& msg) override;
   void handleReset(const json& msg) override;
 private:
   int  _handleConnect(const json& msg);
@@ -388,6 +392,7 @@ private:
   Meb           _meb;
   StatsMonitor& _smon;
   std::thread   _appThread;
+  bool          _shutdown;
 };
 
 MebApp::MebApp(const std::string& collSrv,
@@ -399,9 +404,10 @@ MebApp::MebApp(const std::string& collSrv,
                EbParams&          prms,
                StatsMonitor&      smon) :
   CollectionApp(collSrv, prms.partition, "meb", prms.alias),
-  _prms(prms),
-  _meb (tag, sizeofEvBuffers, numberofEvBuffers, nevqueues, dist, prms, smon),
-  _smon(smon)
+  _prms        (prms),
+  _meb         (tag, sizeofEvBuffers, numberofEvBuffers, nevqueues, dist, prms, smon),
+  _smon        (smon),
+  _shutdown    (false)
 {
   printf("  Tag:                        %s\n", tag);
   printf("  Max event buffer size:      %d\n", sizeofEvBuffers);
@@ -413,6 +419,7 @@ MebApp::MebApp(const std::string& collSrv,
 json MebApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
+  std::cout<<"custom nicIp\n";
   std::string ip = _prms.ifAddr.empty() ? getNicIp() : _prms.ifAddr;
   json body = {{"connect_info", {{"nic_ip", ip}}}};
   return body;
@@ -445,22 +452,42 @@ void MebApp::handleConnect(const json &msg)
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
 }
 
+void MebApp::handlePhase1(const json& msg)
+{
+  int         rc  = 0;
+  std::string key = msg["header"]["key"];
+
+  // Reply to collection with transition status
+  json body = json({});
+  if (rc)  body["error"] = "Phase 1 failed";
+  reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
+}
+
 void MebApp::handleDisconnect(const json &msg)
 {
   lRunning = 0;
 
-  _appThread.join();
+  if (_appThread.joinable())  _appThread.join();
 
   _smon.disable();
 
   // Reply to collection with connect status
   json body   = json({});
-  json answer = createMsg("disconnect", msg["header"]["msg_id"], getId(), body);
-  reply(answer);
+  reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
+
+  _shutdown = true;
 }
 
 void MebApp::handleReset(const json &msg)
 {
+  if (!_shutdown)
+  {
+    if (_appThread.joinable())  _appThread.join();
+
+    _smon.disable();
+
+    _shutdown = true;
+  }
 }
 
 int MebApp::_parseConnectionParams(const json& body)
@@ -714,9 +741,8 @@ int main(int argc, char** argv)
   sigAction.sa_flags   = SA_RESTART;
   sigemptyset(&sigAction.sa_mask);
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
-    printf("Couldn't set up ^C handler\n");
+    fprintf(stderr, "Failed to set up ^C handler\n");
 
-  pinThread(pthread_self(), prms.core[1]);
   StatsMonitor smon(rtMonHost,
                     rtMonPort,
                     prms.partition,
@@ -734,6 +760,8 @@ int main(int argc, char** argv)
   {
     fprintf(stderr, "%s\n", e.what());
   }
+
+  app.handleReset(json({}));
 
   smon.shutdown();
 

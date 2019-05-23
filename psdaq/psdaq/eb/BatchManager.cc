@@ -76,7 +76,7 @@ void BatchManager::shutdown()
   _batch = nullptr;
 
   memset(_region, 0, batchRegionSize() * sizeof(*_region));
-  memset(_appPrms,     0, MAX_BATCHES * MAX_ENTRIES   * sizeof(*_appPrms));
+  memset(_appPrms, 0, MAX_BATCHES * MAX_ENTRIES * sizeof(*_appPrms));
 }
 
 void BatchManager::dump() const

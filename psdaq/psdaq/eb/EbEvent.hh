@@ -7,6 +7,7 @@
 
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
+#include "xtcdata/xtc/Damage.hh"
 
 
 namespace XtcData {
@@ -39,6 +40,8 @@ namespace Pds {
       uint64_t remaining() const;
       uint64_t contract()  const;
       uint64_t receivers() const;
+      uint16_t damageVal() const;
+      void     damageInc(XtcData::Damage::Value);
     public:
       const EbContribution*  const  creator() const;
       const EbContribution*  const* begin()   const;
@@ -55,9 +58,10 @@ namespace Pds {
       size_t                 _size;            // Total contribution size (in bytes)
       uint64_t               _remaining;       // List of clients which have contributed
       const uint64_t         _contract;        // -> potential list of contributors
-      const uint64_t         _receivers;       // -> list of interested contributors
+      uint64_t               _receivers;       // -> list of interested contributors
       int                    _living;          // Aging counter
       unsigned               _prm;             // An application level free parameter
+      XtcData::Damage        _damage;          // Accumulate damage about this event
       const EbContribution** _last;            // Pointer into the contributions array
       const EbContribution*  _contributions[]; // Array of contributions
     };
@@ -147,6 +151,32 @@ inline uint64_t Pds::Eb::EbEvent::receivers() const
 inline uint64_t Pds::Eb::EbEvent::remaining() const
 {
   return _remaining;
+}
+
+/*
+** ++
+**
+**   Method to retrieve the event's damage value.
+**
+** --
+*/
+
+inline uint16_t Pds::Eb::EbEvent::damageVal() const
+{
+  return _damage.value();
+}
+
+/*
+** ++
+**
+**   Method to increase the event's damage value.
+**
+** --
+*/
+
+inline void Pds::Eb::EbEvent::damageInc(XtcData::Damage::Value value)
+{
+  _damage.increase(value);
 }
 
 /*

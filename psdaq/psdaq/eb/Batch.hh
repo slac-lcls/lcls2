@@ -90,8 +90,9 @@ const bool Pds::Eb::Batch::empty() const
 inline
 Pds::Eb::Batch* Pds::Eb::Batch::initialize(uint64_t id)
 {
-  _id     = id;
-  _dg     = nullptr;
+  // Multiple batches can exist with the same BatchId, but different PIDs
+  _id = id;                             // Full PID, not BatchId
+  _dg = nullptr;
 
   return this;
 }
@@ -161,7 +162,8 @@ size_t Pds::Eb::Batch::extent() const
 inline
 uint64_t Pds::Eb::Batch::id() const
 {
-  return _id;
+  // Multiple batches can exist with the same BatchId, but different PIDs
+  return _id;                           // Full PID, not BatchId
 }
 
 inline

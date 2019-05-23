@@ -39,6 +39,9 @@ namespace Pds
       virtual void process(const XtcData::Dgram* result, const void* input) = 0;
     private:
       void    _initialize(const char* who);
+      void    _pairUp(TebContributor&       ctrb,
+                      unsigned              idx,
+                      const XtcData::Dgram* result);
       void    _process(TebContributor&       ctrb,
                        const XtcData::Dgram* results,
                        const Batch*          inputs);
@@ -46,6 +49,7 @@ namespace Pds
       EbLfServer             _transport;
       std::vector<EbLfLink*> _links;
       size_t                 _maxBatchSize;
+      uint64_t               _batchCount;
       uint64_t               _eventCount;
       const TebCtrbParams&   _prms;
       void*                  _region;

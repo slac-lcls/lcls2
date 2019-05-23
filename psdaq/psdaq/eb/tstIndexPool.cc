@@ -39,7 +39,7 @@ int main(int argc, char **argv)
   {
     MyStruct& p = pool[i];
     printf("&pool[%d] = %p, allocated = %c, idx = %d\n",
-           i, &p, pool.isAllocated(i) ? 'Y' : 'N', pool.index(p));
+           i, &p, pool.isAllocated(i) ? 'Y' : 'N', pool.index(&p));
     pool.free(&p);
   }
 

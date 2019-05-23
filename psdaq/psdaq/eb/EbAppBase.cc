@@ -48,6 +48,8 @@ EbAppBase::EbAppBase(const EbParams& prms,
   _maxBuffers  (maxBuffers),
   //_dummy       (Level::Fragment),
   _verbose     (prms.verbose),
+  _bufferCnt   (0),
+  _fixupCnt    (0),
   _region      (nullptr),
   _contributors(0),
   _id          (-1)
@@ -65,6 +67,8 @@ int EbAppBase::connect(const EbParams& prms)
   _contributors = prms.contributors;
   _contracts    = prms.contractors;
   _receivers    = prms.receivers;
+  _bufferCnt    = 0;
+  _fixupCnt     = 0;
 
   if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort, nCtrbs)) )
   {
@@ -160,13 +164,14 @@ int EbAppBase::process()
 
   // Pend for an input datagram and pass it to the event builder
   uint64_t  data;
-  const int tmo = 5000;                 // milliseconds
+  const int tmo = 100;       // milliseconds - Also see EbEvent.cc::MaxTimeouts
   if ( (rc = _transport.pend(&data, tmo)) < 0)
   {
-    //printf("%s: rc = %d\n", __PRETTY_FUNCTION__, rc);
-    //if (rc == -FI_ETIMEDOUT)  EventBuilder::expired(); // Revisit
+    if (rc == -FI_ETIMEDOUT)  EventBuilder::expired();
     return rc;
   }
+
+  ++_bufferCnt;
 
   unsigned     flg = ImmData::flg(data);
   unsigned     src = ImmData::src(data);
@@ -184,21 +189,29 @@ int EbAppBase::process()
 
   if (_verbose)
   {
-    static unsigned cnt = 0;
     unsigned        env = idg->env;
     uint64_t        pid = idg->seq.pulseId().value();
     unsigned        ctl = idg->seq.pulseId().control();
     const char*     knd = (ImmData::buf(flg) == ImmData::Buffer)
                         ? "buffer"
                         : TransitionId::name(idg->seq.service());
-    printf("EbAp rcvd %6d %15s[%4d]    @ "
+    printf("EbAp rcvd %6ld %15s[%4d]    @ "
            "%16p, ctl %02x, pid %014lx,          src %2d, env %08x, data %08lx, ext %4d\n",
-           cnt++, knd, idx, idg, ctl, pid, lnk->id(), env, data, idg->xtc.extent);
+           _bufferCnt, knd, idx, idg, ctl, pid, lnk->id(), env, data, idg->xtc.extent);
   }
 
   EventBuilder::process(idg, data);
 
   return 0;
+}
+
+void EbAppBase::trim(unsigned dst)
+{
+  for (unsigned group = 0; group < _contracts.size(); ++group)
+  {
+    _contracts[group] &= ~(1 << dst);
+    _receivers[group] &= ~(1 << dst);
+  }
 }
 
 uint64_t EbAppBase::contracts(const Dgram* ctrb,
@@ -236,8 +249,7 @@ uint64_t EbAppBase::contracts(const Dgram* ctrb,
 
 void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
-  // Revisit: Nothing can usefully be done here since there is no way to
-  //          know the buffer index to be used for the result, I think
+  ++_fixupCnt;
 
   if (_verbose)
   {
@@ -245,13 +257,5 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
             __PRETTY_FUNCTION__, event->sequence(), event->size(), srcId);
   }
 
-  // Revisit: What can be done here?
-  //          And do we want to send a result to a contributor we haven't heard from?
-  //Datagram* datagram = (Datagram*)event->data();
-  //Damage    dropped(1 << Damage::DroppedContribution);
-  //Src       source(srcId, 0);
-  //
-  //datagram->xtc.damage.increase(Damage::DroppedContribution);
-  //
-  //new(&datagram->xtc.tag) Xtc(_dummy, source, dropped); // Revisit: No tag, no TC
+  event->damageInc(Damage::DroppedContribution);
 }

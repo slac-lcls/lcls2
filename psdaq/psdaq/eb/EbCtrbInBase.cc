@@ -27,11 +27,13 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms, StatsMonitor& smon) :
   _transport   (prms.verbose),
   _links       (),
   _maxBatchSize(0),
+  _batchCount  (0),
   _eventCount  (0),
   _prms        (prms),
   _region      (nullptr)
 {
   smon.metric("TCtbI_RxPdg", _transport.pending(), StatsMonitor::SCALAR);
+  smon.metric("TCtbI_BatCt", _batchCount,          StatsMonitor::SCALAR);
   smon.metric("TCtbI_EvtCt", _eventCount,          StatsMonitor::SCALAR);
 }
 
@@ -39,6 +41,7 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
 {
   int rc;
 
+  _batchCount = 0;
   _eventCount = 0;
 
   unsigned numEbs = std::bitset<64>(prms.builders).count();
@@ -148,8 +151,10 @@ int EbCtrbInBase::process(TebContributor& ctrb)
 
   // Pend for a result datagram (batch) and process it.
   uint64_t  data;
-  const int tmo = 5000;                 // milliseconds
+  const int tmo = 100;                  // milliseconds
   if ( (rc = _transport.pend(&data, tmo)) < 0)  return rc;
+
+  ++_batchCount;
 
   unsigned     src = ImmData::src(data);
   unsigned     idx = ImmData::idx(data);
@@ -164,17 +169,28 @@ int EbCtrbInBase::process(TebContributor& ctrb)
 
   if (_prms.verbose)
   {
-    static unsigned cnt = 0;
-    unsigned        ctl = bdg->seq.pulseId().control();
-    unsigned        env = bdg->env;
-    printf("CtrbIn  rcvd        %6d result  [%4d] @ "
+    unsigned   ctl     = bdg->seq.pulseId().control();
+    unsigned   env     = bdg->env;
+    BatchFifo& pending = ctrb.pending();
+    printf("CtrbIn  rcvd        %6ld result  [%4d] @ "
            "%16p, ctl %02x, pid %014lx,          src %2d, env %08x, E %d %zd, result %p\n",
-           cnt++, idx, bdg, ctl, pid, lnk->id(), env, ctrb.pending().empty(),
-           ctrb.pending().count(), ctrb.batch(idx)->result());
+           _batchCount, idx, bdg, ctl, pid, lnk->id(), env, pending.empty(),
+           pending.count(), ctrb.batch(idx)->result());
   }
 
-  const Dgram* result  = bdg;
-  BatchFifo&   pending = ctrb.pending();
+  _pairUp(ctrb, idx, bdg);
+
+  return 0;
+}
+
+#define unlikely(expr)  __builtin_expect(!!(expr), 0)
+#define likely(expr)    __builtin_expect(!!(expr), 1)
+
+void EbCtrbInBase::_pairUp(TebContributor& ctrb,
+                           unsigned        idx,
+                           const Dgram*    result)
+{
+  BatchFifo& pending = ctrb.pending();
   if (!pending.empty())
   {
     const Batch* inputs = pending.front();
@@ -182,7 +198,15 @@ int EbCtrbInBase::process(TebContributor& ctrb)
     {
       Batch* batch = ctrb.batch(idx);
 
-      assert(batch->result() == nullptr);
+      if (unlikely(batch->result()))
+      {
+        uint64_t pid       = result->seq.pulseId().value();
+        uint64_t cachedPid = batch->result()->seq.pulseId().value();
+        fprintf(stderr, "%s:\n  Slot occupied by unhandled result: "
+                "idx %08x, batch pid %014lx, cached pid %014lx, result pid %014lx\n",
+                __PRETTY_FUNCTION__, idx, batch->id(), cachedPid, pid);
+        abort();
+      }
 
       batch->result(result);            // Batch is possibly not allocated yet
 
@@ -191,13 +215,19 @@ int EbCtrbInBase::process(TebContributor& ctrb)
 
     while (result)
     {
-      assert(((inputs->id() ^ result->seq.pulseId().value()) &
-              ~(BATCH_DURATION - 1)) == 0); // Include bits above index()
+      uint64_t pid = result->seq.pulseId().value();
+      if (unlikely((inputs->id() ^ pid) & ~(BATCH_DURATION - 1))) // Include bits above index()
+      {
+        fprintf(stderr, "%s:\n  Result doesn't match input batch: "
+                "inputs pid %014lx, result pid %014lx\n",
+                __PRETTY_FUNCTION__, inputs->id(), pid);
+        abort();
+      }
 
       _process(ctrb, result, inputs);
 
       pending.pop();
-      ctrb.release(inputs);             // Release the input batch
+      ctrb.release(inputs);      // Release input, and by proxy, result batches
       if (pending.empty())  break;
 
       inputs = pending.front();
@@ -208,11 +238,18 @@ int EbCtrbInBase::process(TebContributor& ctrb)
   {
     Batch* batch = ctrb.batch(idx);
 
-    assert(batch->result() == nullptr);
+    if (unlikely(batch->result()))
+    {
+      uint64_t pid       = result->seq.pulseId().value();
+      uint64_t cachedPid = batch->result()->seq.pulseId().value();
+      fprintf(stderr, "%s:\n  Empty pending FIFO, but slot occupied by unhandled result: "
+              "idx %08x, batch pid %014lx, cached pid %014lx, result pid %014lx\n",
+              __PRETTY_FUNCTION__, idx, batch->id(), cachedPid, pid);
+      abort();
+    }
 
     batch->result(result);              // Batch is possibly not allocated yet
   }
-  return 0;
 }
 
 void EbCtrbInBase::_process(TebContributor& ctrb,
@@ -220,19 +257,30 @@ void EbCtrbInBase::_process(TebContributor& ctrb,
                             const Batch*    inputs)
 {
   const Dgram* result = results;
+  const Dgram* input  = static_cast<const Dgram*>(inputs->buffer());
   while (true)
   {
+    // Process events from our readout group and ignore those of others'
     if (result->readoutGroups() & _prms.readoutGroup)
     {
-      uint64_t pid = result->seq.pulseId().value();
-      process(result, inputs->retrieve(pid));
+      // Ignore results for which there are no inputs
+      // This can happen due to this Ctrb having missed a contribution that
+      // was subsequently fixed up by the TEB, in which case there is no
+      // input corresponding to the current result.
+      uint64_t rPid = result->seq.pulseId().value();
+      uint64_t iPid = input->seq.pulseId().value();
+      if (rPid == iPid)
+      {
+        process(result, inputs->retrieve(rPid));
 
-      ++_eventCount;                    // Don't count events not meant for us
+        ++_eventCount;                  // Don't count events not meant for us
+      }
     }
 
-    // Last event in batch does not have Batch bit set
+    // Last event in a batch does not have the Batch bit set
     if (!result->seq.isBatch())  break;
 
     result = reinterpret_cast<const Dgram*>(result->xtc.next());
+    input  = reinterpret_cast<const Dgram*>(input->xtc.next());
   }
 }

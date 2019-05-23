@@ -107,7 +107,8 @@ namespace Pds {
       uint16_t                         _readoutGroup;
       const Xtc                        _xtc;
       uint64_t                         _pid;
-      GenericPoolW*                    _pool;
+      //GenericPoolW*                    _pool;
+      GenericPool*                     _pool;
     private:
       TransitionId::Value              _trId;
       mutable std::mutex               _compLock;
@@ -119,7 +120,6 @@ namespace Pds {
       std::atomic<uint64_t>            _trPid;
     private:
       uint64_t                         _allocPending;
-      uint64_t                         _startCnt;
     };
 
     class EbCtrbIn : public EbCtrbInBase
@@ -151,7 +151,7 @@ namespace Pds {
     public:
       DrpSim&  drpSim() { return _drpSim; }
     public:
-      void     shutdown();
+      void     stop();
       void     run(EbCtrbIn&);
     private:
       DrpSim               _drpSim;
@@ -190,7 +190,12 @@ void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGro
 
   const_cast<Xtc&>(_xtc) = Xtc(TypeId(TypeId::Data, 0), Src(id));
 
-  _pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, MAX_BATCHES * MAX_ENTRIES, CLS);
+  // Avoid going into resource wait by configuring more events in the pool than
+  // are necessary to fill all the batches in the batch pool, i.e., make the
+  // system run out of batches before it runs out of events
+  assert(_pool == nullptr);
+  //_pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, (MAX_BATCHES + 1) * MAX_ENTRIES, CLS);
+  _pool = new GenericPool(sizeof(Entry) + _maxEvtSz, (MAX_BATCHES + 1) * MAX_ENTRIES, CLS);
   assert(_pool);
 
   *base = _pool->buffer();
@@ -199,10 +204,14 @@ void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGro
 
 void DrpSim::stop()
 {
-  std::lock_guard<std::mutex> lock(_compLock);
-  _compCv.notify_one();
+  {
+    std::lock_guard<std::mutex> lock(_compLock);
+    _compCv.notify_one();
 
-  if (_pool)  _pool->stop();
+    //if (_pool)  _pool->stop();
+  }
+
+  transition(TransitionId::Unknown, 0);
 }
 
 void DrpSim::shutdown()
@@ -230,8 +239,7 @@ const Dgram* DrpSim::generate()
 {
   if (_trId != TransitionId::L1Accept)
   {
-    // Allow only one transition in the system at a time
-    if (_trId != TransitionId::ClearReadout)
+    if (_trId != TransitionId::ClearReadout) // Allow only one transition in the system at a time
     {
       _allocPending += 2;
       std::unique_lock<std::mutex> lock(_compLock);
@@ -240,7 +248,7 @@ const Dgram* DrpSim::generate()
       if (!lRunning)  return nullptr;
       _released = false;
     }
-    if (_trId != TransitionId::Enable)
+    if (_trId != TransitionId::Enable)  // Wait for the next transition to be issued
     {
       _allocPending += 3;
       std::unique_lock<std::mutex> lock(_trLock);
@@ -254,6 +262,7 @@ const Dgram* DrpSim::generate()
     else
     {
       _trId = TransitionId::L1Accept;
+      //_pid += BATCH_DURATION;           // Revisit: Can't do this in real life and it shouldn't be needed
     }
   }
   else
@@ -270,28 +279,29 @@ const Dgram* DrpSim::generate()
                 __PRETTY_FUNCTION__, _pid, pid);
         pid = _pid;                     // Don't let PID go into the past
       }
-      _pid = pid;
+      _pid = pid;                       // Revisit: This can potentially step on a live event
     }
   }
-
-  // Fake datagram header
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  const Sequence seq(Sequence::Event, _trId, TimeStamp(ts), PulseId(_pid));
 
   ++_allocPending;
   void* buffer = _pool->alloc(sizeof(Input));
   --_allocPending;
   if (!buffer)  return (Dgram*)buffer;
+
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  const Sequence seq(Sequence::Event, _trId, TimeStamp(ts), PulseId(_pid));
+
   Input* idg = ::new(buffer) Input(_readoutGroup, seq, _xtc);
 
   size_t inputSize = input_extent * sizeof(uint32_t);
 
-  // Revisit: Here is where L3 trigger input information would be inserted into the datagram,
-  //          whatever that will look like
-  uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
-  payload[0] = _pid %   3 == 0 ? 0xdeadbeef : 0xabadcafe;
-  payload[1] = _pid % 119 == 0 ? 0x12345678 : 0;
+  // Here is where trigger input information is inserted into the datagram
+  {
+    uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
+    payload[WRT_IDX] = (_pid %   3) == 0 ? 0xdeadbeef : 0xabadcafe;
+    payload[MON_IDX] = (_pid % 119) == 0 ? 0x12345678 : 0;
+  }
 
 #ifdef SINGLE_EVENTS
   payload[1] = 0x12345678;
@@ -300,6 +310,18 @@ const Dgram* DrpSim::generate()
 #else
   _pid += 1;
 #endif
+
+  //const uint64_t dropRate(3000000 * 10);
+  //if (_xtc.src.value() == 1)
+  //{
+  //  static unsigned cnt = 0;
+  //  if ((_pid % dropRate) == cnt)
+  //  {
+  //    if (cnt++ == MAX_ENTRIES - 1)  cnt = 0;
+  //    //printf("Dropping %014lx\n", _pid);
+  //    _pid += 1;
+  //  }
+  //}
 
   return idg;
 }
@@ -351,11 +373,17 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 
   assert(input);
 
+  //if (result->xtc.damage.value())
+  //{
+  //  fprintf(stderr, "%s:\n  Result with pulse Id %014lx has damage %04x\n",
+  //          __PRETTY_FUNCTION__, pid, result->xtc.damage.value());
+  //}
+
   if (pid != input->seq.pulseId().value())
   {
-    fprintf(stderr, "%s:\n  Result, Input pulse Id mismatch - got: %014lx, expected: %014lx\n",
-           __PRETTY_FUNCTION__, pid, input->seq.pulseId().value());
-    abort();
+    fprintf(stderr, "%s:\n  Result, Input pulse Id mismatch - expected: %014lx, got: %014lx\n",
+            __PRETTY_FUNCTION__, input->seq.pulseId().value(), pid);
+    return;
   }
 
   if (_pid > pid)
@@ -383,8 +411,11 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
   // Pass non L1 accepts to control level
   if (!result->seq.isEvent())
   {
+    printf("%s:\n  Saw '%s' transition on %014lx\n",
+           __PRETTY_FUNCTION__, TransitionId::name(result->seq.service()), pid);
+
     // Send pulseId to inproc so it gets forwarded to the collection
-    _inprocSend.send(std::to_string(pid));
+    _inprocSend.send(std::to_string(pid * 100)); // Convert PID back to "timestamp"
   }
 
   // Revisit: Race condition
@@ -403,11 +434,11 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
   smon.metric("TCtbO_AlPdg", _drpSim.allocPending(), StatsMonitor::SCALAR);
 }
 
-void EbCtrbApp::shutdown()
+void EbCtrbApp::stop()
 {
   _drpSim.stop();
 
-  stop();
+  TebContributor::stop();
 }
 
 void EbCtrbApp::run(EbCtrbIn& in)
@@ -426,7 +457,14 @@ void EbCtrbApp::run(EbCtrbIn& in)
     std::string blank;
     std::getline(std::cin, blank);
 #endif
-    //usleep(100000);
+    //using ns_t = std::chrono::nanoseconds;
+    //auto  then = std::chrono::high_resolution_clock::now();
+    //auto  now  = then;
+    //do
+    //{
+    //  now = std::chrono::high_resolution_clock::now();
+    //}
+    //while (std::chrono::duration_cast<ns_t>(now - then).count() < 2);
 
     const Dgram* input = _drpSim.generate();
     if (!input)  continue;
@@ -470,6 +508,7 @@ private:
   EbCtrbIn       _inbound;
   StatsMonitor&  _smon;
   std::thread    _appThread;
+  bool           _shutdown;
 };
 
 CtrbApp::CtrbApp(const std::string& collSrv,
@@ -482,7 +521,8 @@ CtrbApp::CtrbApp(const std::string& collSrv,
   _tebCtrb(tebPrms, smon),
   _mebCtrb(mebPrms, smon),
   _inbound(tebPrms, _tebCtrb.drpSim(), context(), smon),
-  _smon(smon)
+  _smon(smon),
+  _shutdown(false)
 {
 }
 
@@ -552,12 +592,15 @@ void CtrbApp::handlePhase1(const json &msg)
            std::stoul(ts.substr(fnd + 1, std::string::npos), nullptr, 10)) / 100;
   }
 
+  // Ugly hack to give TEB time to react before passing the transition down the
+  // "timing stream".  Must ensure that all processes in the system have
+  // completed Phase 1 before injecting Phase 2 so that Phase 2 responses don't
+  // arrive in Collection intermingled with Phase 1 responses.  Keep in mind the
+  // relation of this sleep() time with the Collection Phase 1 timeouts.
+  sleep(5);                    // Nothing to wait on that ensures TEB is done
+
   if      (key == "configure")
-  {
-    // Give TEB time to react before passing the transition down the timing stream
-    sleep(5);                    // Nothing to wait on that ensures TEB is done
     rc = _tebCtrb.drpSim().transition(TransitionId::Configure, pid);
-  }
   else if (key == "unconfigure")
     rc = _tebCtrb.drpSim().transition(TransitionId::Unconfigure, pid);
   else if (key == "enable")
@@ -575,20 +618,31 @@ void CtrbApp::handleDisconnect(const json &msg)
 {
   lRunning = 0;
 
-  _tebCtrb.shutdown();
-  _tebCtrb.drpSim().transition(TransitionId::ClearReadout, 0);
+  _tebCtrb.stop();
 
-  _appThread.join();
+  if (_appThread.joinable())  _appThread.join();
 
   _smon.disable();
 
   // Reply to collection with connect status
   json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
+
+  _shutdown = true;
 }
 
 void CtrbApp::handleReset(const json &msg)
 {
+  if (!_shutdown)
+  {
+    _tebCtrb.stop();
+
+    if (_appThread.joinable())  _appThread.join();
+
+    _smon.disable();
+
+    _shutdown = true;
+  }
 }
 
 int CtrbApp::_parseConnectionParams(const json& body)
@@ -817,9 +871,8 @@ int main(int argc, char **argv)
   sigAction.sa_flags   = SA_RESTART;
   sigemptyset(&sigAction.sa_mask);
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
-    printf("Couldn't set up ^C handler\n");
+    fprintf(stderr, "Failed to set up ^C handler\n");
 
-  pinThread(pthread_self(), tebPrms.core[1]);
   StatsMonitor smon(rtMonHost,
                     rtMonPort,
                     tebPrms.partition,
@@ -837,6 +890,8 @@ int main(int argc, char **argv)
   {
     fprintf(stderr, "%s\n", e.what());
   }
+
+  app.handleReset(json({}));
 
   smon.shutdown();
 
