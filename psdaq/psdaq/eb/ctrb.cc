@@ -211,7 +211,7 @@ void DrpSim::stop()
     //if (_pool)  _pool->stop();
   }
 
-  transition(TransitionId::Unknown, 0);
+  transition(TransitionId::ClearReadout, 0);
 }
 
 void DrpSim::shutdown()
