@@ -168,13 +168,13 @@ DrpSim::DrpSim(size_t maxEvtSize) :
   _xtc         (),
   _pid         (0),
   _pool        (nullptr),
-  _trId        (TransitionId::ClearReadout),
+  _trId        (TransitionId::NumberOf), // Invalid transition
   _compLock    (),
   _compCv      (),
   _released    (false),
   _trLock      (),
   _trCv        (),
-  _transition  (TransitionId::ClearReadout),
+  _transition  (_trId),
   _allocPending(0)
 {
 }
@@ -182,8 +182,8 @@ DrpSim::DrpSim(size_t maxEvtSize) :
 void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGroup)
 {
   _pid          = 0;
-  _trId         = TransitionId::ClearReadout;
-  _transition   = TransitionId::ClearReadout;
+  _trId         = TransitionId::NumberOf; // Invalid transition
+  _transition   = _trId;
   _allocPending = 0;
   _readoutGroup = readoutGroup;
 
@@ -210,7 +210,7 @@ void DrpSim::stop()
     //if (_pool)  _pool->stop();
   }
 
-  transition(TransitionId::ClearReadout, 0);
+  transition(TransitionId::NumberOf, 0);
 }
 
 void DrpSim::shutdown()
@@ -238,7 +238,7 @@ const Dgram* DrpSim::generate()
 {
   if (_trId != TransitionId::L1Accept)
   {
-    if (_trId != TransitionId::ClearReadout) // Allow only one transition in the system at a time
+    if (_trId != TransitionId::NumberOf) // Allow only one transition in the system at a time
     {
       _allocPending += 2;
       std::unique_lock<std::mutex> lock(_compLock);
@@ -247,29 +247,28 @@ const Dgram* DrpSim::generate()
       if (!lRunning)  return nullptr;
       _released = false;
     }
-    if (_trId != TransitionId::Enable)  // Wait for the next transition to be issued
+    if (_trId != TransitionId::Enable)   // Wait for the next transition to be issued
     {
       _allocPending += 3;
       std::unique_lock<std::mutex> lock(_trLock);
-      _trCv.wait(lock, [this] { return (_transition != TransitionId::ClearReadout) || !lRunning; });
+      _trCv.wait(lock, [this] { return (_transition != TransitionId::NumberOf) || !lRunning; });
       _allocPending -= 3;
       if (!lRunning)  return nullptr;
       _trId       = _transition;
-      _transition = TransitionId::ClearReadout;
+      _transition = TransitionId::NumberOf;
       _pid        = _trPid;
     }
     else
     {
       _trId = TransitionId::L1Accept;
-      //_pid += BATCH_DURATION;           // Revisit: Can't do this in real life and it shouldn't be needed
     }
   }
   else
   {
-    if (_transition)
+    if (_transition != TransitionId::NumberOf)
     {
       _trId       = _transition;
-      _transition = TransitionId::ClearReadout;
+      _transition = TransitionId::NumberOf; // Invalid transition
 
       uint64_t pid = _trPid;
       if (_pid > pid)
@@ -327,14 +326,14 @@ const Dgram* DrpSim::generate()
 
 void DrpSim::release(const Input* input)
 {
-  delete input;
-
   if (!input->seq.isEvent())
   {
     std::lock_guard<std::mutex> lock(_compLock);
     _released = true;
     _compCv.notify_one();
   }
+
+  delete input;
 }
 
 
@@ -413,7 +412,7 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
     printf("%s:\n  Saw '%s' transition on %014lx\n",
            __PRETTY_FUNCTION__, TransitionId::name(result->seq.service()), pid);
 
-    // Send pulseId to inproc so it gets forwarded to the collection
+    // Send pulseId to inproc so it gets forwarded to Collection
     _inprocSend.send(std::to_string(pid * 100)); // Convert PID back to "timestamp"
   }
 
@@ -593,7 +592,7 @@ void CtrbApp::handlePhase1(const json &msg)
   // completed Phase 1 before injecting Phase 2 so that Phase 2 responses don't
   // arrive in Collection intermingled with Phase 1 responses.  Keep in mind the
   // relation of this sleep() time with the Collection Phase 1 timeouts.
-  sleep(5);                    // Nothing to wait on that ensures TEB is done
+  sleep(key == "configure" ? 5 : 1); // Nothing to wait on that ensures TEB is done
 
   if      (key == "configure")
     rc = _tebCtrb.drpSim().transition(TransitionId::Configure, pid);
