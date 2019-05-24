@@ -35,7 +35,8 @@ public:
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool),
     m_evtcount(0),
-    m_evtNamesId(nodeId, EventNamesIndex)
+    m_evtNamesId(nodeId, EventNamesIndex),
+    m_connect_info("")
 {
 }
 
@@ -107,8 +108,9 @@ void TimingSystem::connect(const json& json_connect_info)
     // returns borrowed reference
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"ts_connect");
     check(pFunc);
+    m_connect_info = json_connect_info.dump();
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"s",json_connect_info.dump().c_str());
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"s",m_connect_info.c_str());
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);

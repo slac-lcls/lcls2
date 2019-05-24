@@ -19,6 +19,7 @@ private:
     enum {ConfigNamesIndex, EventNamesIndex};
     unsigned          m_evtcount;
     XtcData::NamesId  m_evtNamesId;
+    std::string       m_connect_info;
 };
 
 }
