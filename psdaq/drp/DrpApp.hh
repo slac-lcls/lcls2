@@ -9,7 +9,8 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
-#include "psdaq/eb/StatsMonitor.hh"
+
+class MetricExporter;
 
 namespace Drp {
 
@@ -29,7 +30,7 @@ class EbReceiver : public Pds::Eb::EbCtrbInBase
 public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqContext& context, Pds::Eb::MebContributor* mon,
-               Pds::Eb::StatsMonitor& smon);
+               std::shared_ptr<MetricExporter> exporter);
     virtual ~EbReceiver() {};
     void process(const XtcData::Dgram* result, const void* input) override;
 private:
@@ -75,7 +76,6 @@ private:
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
     prometheus::Exposer m_exposer;
-    Pds::Eb::StatsMonitor m_smon;
     Detector* m_det;
 };
 

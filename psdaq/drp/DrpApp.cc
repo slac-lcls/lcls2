@@ -10,9 +10,6 @@
 #include "xtcdata/xtc/Dgram.hh"
 #include "DrpApp.hh"
 
-static const unsigned RTMON_RATE = 1;    // Publish rate in seconds
-static const unsigned RTMON_VERBOSE = 0;
-
 using namespace Pds::Eb;
 
 using json = nlohmann::json;
@@ -23,8 +20,7 @@ DrpApp::DrpApp(Parameters* para) :
     CollectionApp(para->collectionHost, para->partition, "drp", para->alias),
     m_para(para),
     m_pool(*para),
-    m_exposer{"0.0.0.0:9200", "/metrics", 1},
-    m_smon("psmetric04", RTMON_PORT_BASE, m_para->partition, RTMON_RATE, RTMON_VERBOSE)
+    m_exposer{"0.0.0.0:9200", "/metrics", 1}
 {
     size_t maxSize = sizeof(MyDgram);
     m_tPrms = { /* .ifAddr        = */ { }, // Network interface to use
@@ -43,13 +39,12 @@ DrpApp::DrpApp(Parameters* para) :
 
     m_mPrms = { /* .addrs         = */ { },
                       /* .ports         = */ { },
+                      /* .partition     = */ m_para->partition,
                       /* .id            = */ 0,
                       /* .maxEvents     = */ 8,    //mon_buf_cnt,
                       /* .maxEvSize     = */ 65536, //mon_buf_size,
                       /* .maxTrSize     = */ 65536, //mon_trSize,
                       /* .verbose       = */ 0 };
-
-    m_ebContributor = std::make_unique<TebContributor>(m_tPrms, m_smon);
 
     Factory<Detector> f;
     f.register_type<TimingSystem>("TimingSystem");
@@ -86,6 +81,7 @@ void DrpApp::handleConnect(const json &msg)
 
     // Create all the eb things and do the connections
     bool connected = true;
+    m_ebContributor = std::make_unique<TebContributor>(m_tPrms, exporter);
     int rc = m_ebContributor->connect(m_tPrms);
     if (rc) {
         connected = false;
@@ -93,7 +89,7 @@ void DrpApp::handleConnect(const json &msg)
     }
 
     if (m_mPrms.addrs.size() != 0) {
-        m_meb = std::make_unique<MebContributor>(m_mPrms, m_smon);
+        m_meb = std::make_unique<MebContributor>(m_mPrms, exporter);
         void* poolBase = (void*)m_pool.pebble[0];
         size_t poolSize = m_pool.pebble.size();
         rc = m_meb->connect(m_mPrms, poolBase, poolSize);
@@ -103,7 +99,7 @@ void DrpApp::handleConnect(const json &msg)
         }
     }
 
-    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_tPrms, m_pool, context(), m_meb.get(), m_smon);
+    m_ebRecv = std::make_unique<EbReceiver>(*m_para, m_tPrms, m_pool, context(), m_meb.get(), exporter);
     rc = m_ebRecv->connect(m_tPrms);
     if (rc) {
         connected = false;
@@ -255,8 +251,8 @@ MyDgram::MyDgram(XtcData::Dgram& dgram, uint64_t val, unsigned contributor_id)
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqContext& context, MebContributor* mon,
-                       StatsMonitor& smon) :
-  EbCtrbInBase(tPrms, smon),
+                       std::shared_ptr<MetricExporter> exporter) :
+  EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_mon(mon),
   m_fileWriter(4194304),

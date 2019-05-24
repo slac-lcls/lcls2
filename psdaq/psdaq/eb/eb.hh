@@ -56,6 +56,7 @@ namespace Pds {
 
       vecstr_t addrs;              // MEB addresses
       vecstr_t ports;              // MEB ports
+      unsigned partition;          // The chosen system
       unsigned id;                 // Contributor instance identifier
       unsigned maxEvents;          // Max # of events to provide for
       size_t   maxEvSize;          // Max event size

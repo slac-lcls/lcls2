@@ -7,11 +7,11 @@
 #include "psdaq/eb/EbLfClient.hh"
 
 #include "psdaq/eb/utilities.hh"
-#include "psdaq/eb/StatsMonitor.hh"
 
 #include "psdaq/service/Fifo.hh"
 #include "psdaq/service/GenericPool.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/MetricExporter.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <signal.h>
@@ -25,7 +25,6 @@
 
 static const int      core_0               = 10; // devXXX: 10, devXX:  7, accXX:  9
 static const int      core_1               = 11; // devXXX: 11, devXX: 19, accXX: 21
-static const unsigned rtMon_period         = 1;  // Seconds
 static const unsigned epoch_duration       = 8;  // Revisit: 1 per xferBuffer
 static const unsigned numberof_xferBuffers = 8;  // Revisit: Value; corresponds to ctrb:maxEvents
 static const unsigned sizeof_buffers       = 64 * 1024; // Revisit
@@ -235,13 +234,13 @@ namespace Pds {
   class Meb : public EbAppBase
   {
   public:
-    Meb(const char*     tag,
-        unsigned        sizeofEvBuffers,
-        unsigned        numberofEvBuffers,
-        unsigned        nevqueues,
-        bool            dist,
-        const EbParams& prms,
-        StatsMonitor&   smon) :
+    Meb(const char*                     tag,
+        unsigned                        sizeofEvBuffers,
+        unsigned                        numberofEvBuffers,
+        unsigned                        nevqueues,
+        bool                            dist,
+        const EbParams&                 prms,
+        std::shared_ptr<MetricExporter> exporter) :
       EbAppBase  (prms, epoch_duration, 1, numberof_xferBuffers),
       _apps      (tag, sizeofEvBuffers, numberofEvBuffers, nevqueues, prms),
       _pool      (nullptr),
@@ -251,16 +250,17 @@ namespace Pds {
       _prms      (prms),
       _dist      (dist)
     {
-      smon.metric("MEB_EvtRt",  _eventCount,      StatsMonitor::RATE);
-      smon.metric("MEB_EvtCt",  _eventCount,      StatsMonitor::SCALAR);
-      smon.metric("MEB_EpAlCt",  epochAllocCnt(), StatsMonitor::SCALAR);
-      smon.metric("MEB_EpFrCt",  epochFreeCnt(),  StatsMonitor::SCALAR);
-      smon.metric("MEB_EvAlCt",  eventAllocCnt(), StatsMonitor::SCALAR);
-      smon.metric("MEB_EvFrCt",  eventFreeCnt(),  StatsMonitor::SCALAR);
-      smon.metric("MEB_RxPdg",   rxPending(),     StatsMonitor::SCALAR);
-      smon.metric("MEB_BufCt",   bufferCnt(),     StatsMonitor::SCALAR);
-      smon.metric("MEB_FxUpCt",  fixupCnt(),      StatsMonitor::SCALAR);
-      smon.metric("MEB_ToEvCt",  tmoEvtCnt(),     StatsMonitor::SCALAR);
+      std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+      exporter->add("MEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;      });
+      exporter->add("MEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;      });
+      exporter->add("MEB_EpAlCt", labels, MetricType::Counter, [&](){ return  epochAllocCnt(); });
+      exporter->add("MEB_EpFrCt", labels, MetricType::Counter, [&](){ return  epochFreeCnt();  });
+      exporter->add("MEB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt(); });
+      exporter->add("MEB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();  });
+      exporter->add("MEB_RxPdg",  labels, MetricType::Gauge,   [&](){ return  rxPending();     });
+      exporter->add("MEB_BufCt",  labels, MetricType::Counter, [&](){ return  bufferCnt();     });
+      exporter->add("MEB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();      });
+      exporter->add("MEB_ToEvCt", labels, MetricType::Counter, [&](){ return  tmoEvtCnt();     });
     }
     virtual ~Meb()
     {
@@ -370,14 +370,14 @@ namespace Pds {
 class MebApp : public CollectionApp
 {
 public:
-  MebApp(const std::string& collSrv,
-         const char*        tag,
-         unsigned           sizeofEvBuffers,
-         unsigned           maxBuffes,
-         unsigned           nevqueues,
-         bool               dist,
-         EbParams&          prms,
-         StatsMonitor&      smon);
+  MebApp(const std::string&              collSrv,
+         const char*                     tag,
+         unsigned                        sizeofEvBuffers,
+         unsigned                        maxBuffes,
+         unsigned                        nevqueues,
+         bool                            dist,
+         EbParams&                       prms,
+         std::shared_ptr<MetricExporter> exporter);
 public:                                 // For CollectionApp
   json connectionInfo() override;
   void handleConnect(const json& msg) override;
@@ -390,23 +390,21 @@ private:
 private:
   EbParams&     _prms;
   Meb           _meb;
-  StatsMonitor& _smon;
   std::thread   _appThread;
   bool          _shutdown;
 };
 
-MebApp::MebApp(const std::string& collSrv,
-               const char*        tag,
-               unsigned           sizeofEvBuffers,
-               unsigned           numberofEvBuffers,
-               unsigned           nevqueues,
-               bool               dist,
-               EbParams&          prms,
-               StatsMonitor&      smon) :
+MebApp::MebApp(const std::string&              collSrv,
+               const char*                     tag,
+               unsigned                        sizeofEvBuffers,
+               unsigned                        numberofEvBuffers,
+               unsigned                        nevqueues,
+               bool                            dist,
+               EbParams&                       prms,
+               std::shared_ptr<MetricExporter> exporter) :
   CollectionApp(collSrv, prms.partition, "meb", prms.alias),
   _prms        (prms),
-  _meb         (tag, sizeofEvBuffers, numberofEvBuffers, nevqueues, dist, prms, smon),
-  _smon        (smon),
+  _meb         (tag, sizeofEvBuffers, numberofEvBuffers, nevqueues, dist, prms, exporter),
   _shutdown    (false)
 {
   printf("  Tag:                        %s\n", tag);
@@ -432,8 +430,6 @@ int MebApp::_handleConnect(const json &msg)
 
   rc = _meb.connect(_prms);
   if (rc)  return rc;
-
-  _smon.enable();
 
   lRunning = 1;
 
@@ -469,8 +465,6 @@ void MebApp::handleDisconnect(const json &msg)
 
   if (_appThread.joinable())  _appThread.join();
 
-  _smon.disable();
-
   // Reply to collection with connect status
   json body   = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -483,8 +477,6 @@ void MebApp::handleReset(const json &msg)
   if (!_shutdown)
   {
     if (_appThread.joinable())  _appThread.join();
-
-    _smon.disable();
 
     _shutdown = true;
   }
@@ -604,11 +596,8 @@ void usage(char* progname)
                   "[-t <tag name>] "
                   "[-d] "
                   "[-A <interface addr>] "
-                  "-Z <Run-time mon host> "
-                  "[-R <Run-time mon port>] "
                   "[-1 <core to pin App thread to>]"
                   "[-2 <core to pin other threads to>]" // Revisit: None?
-                  "[-V] " // Run-time mon verbosity
                   "[-v] "
                   "[-h] "
                   "\n", progname);
@@ -620,10 +609,6 @@ int main(int argc, char** argv)
   const char*    tag             = 0;
   std::string    partitionTag;
   std::string    collSrv;
-  const char*    rtMonHost;
-  unsigned       rtMonPort       = RTMON_PORT_BASE;
-  unsigned       rtMonPeriod     = rtMon_period;
-  unsigned       rtMonVerbose    = 0;
   EbParams       prms { /* .ifAddr        = */ { }, // Network interface to use
                         /* .ebPort        = */ { },
                         /* .mrqPort       = */ { }, // Unused here
@@ -646,7 +631,7 @@ int main(int argc, char** argv)
   bool           ldist           = false;
 
   int c;
-  while ((c = getopt(argc, argv, "p:P:n:s:q:t:dA:Z:R:C:1:2:u:Vvh")) != -1)
+  while ((c = getopt(argc, argv, "p:P:n:s:q:t:dA:C:1:2:u:vh")) != -1)
   {
     errno = 0;
     char* endPtr;
@@ -674,14 +659,11 @@ int main(int argc, char** argv)
         ldist = true;
         break;
       case 'A':  prms.ifAddr       = optarg;                       break;
-      case 'Z':  rtMonHost         = optarg;                       break;
-      case 'R':  rtMonPort         = atoi(optarg);                 break;
       case 'C':  collSrv           = optarg;                       break;
       case '1':  prms.core[0]      = atoi(optarg);                 break;
       case '2':  prms.core[1]      = atoi(optarg);                 break;
       case 'u':  prms.alias        = optarg;                       break;
       case 'v':  ++prms.verbose;                                   break;
-      case 'V':  ++rtMonVerbose;                                   break;
       case 'h':                         // help
         usage(argv[0]);
         return 0;
@@ -719,11 +701,6 @@ int main(int argc, char** argv)
     fprintf(stderr, "Missing '%s' parameter\n", "-C <Collection server>");
     return 1;
   }
-  if (!rtMonHost)
-  {
-    fprintf(stderr, "Missing '%s' parameter\n", "-Z <Run-Time Monitoring host>");
-    return 1;
-  }
   if (prms.alias.empty()) {
     fprintf(stderr, "Missing '%s' parameter\n", "-u <Alias>");
     return 1;
@@ -743,14 +720,12 @@ int main(int argc, char** argv)
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
     fprintf(stderr, "Failed to set up ^C handler\n");
 
-  StatsMonitor smon(rtMonHost,
-                    rtMonPort,
-                    prms.partition,
-                    rtMonPeriod,
-                    rtMonVerbose);
-  smon.startup();
+  prometheus::Exposer exposer{"0.0.0.0:9200", "/metrics", 1};
+  auto exporter = std::make_shared<MetricExporter>();
 
-  MebApp app(collSrv, tag, sizeofEvBuffers, numberOfBuffers, nevqueues, ldist, prms, smon);
+  MebApp app(collSrv, tag, sizeofEvBuffers, numberOfBuffers, nevqueues, ldist, prms, exporter);
+
+  exposer.RegisterCollectable(exporter);
 
   try
   {
@@ -762,8 +737,6 @@ int main(int argc, char** argv)
   }
 
   app.handleReset(json({}));
-
-  smon.shutdown();
 
   return 0;
 }

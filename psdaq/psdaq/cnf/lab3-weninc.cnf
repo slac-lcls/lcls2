@@ -9,7 +9,6 @@ conda_rel = 'ps-2.0.1'
 shelf = '2'
 ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
-rtmon_host = 'psmetric04'
 
 # -o /ffb01/weninc
 drp_cmd = 'drp -D AreaDetector -l 0xf -d /dev/datadev_0 -o /ffb01/weninc -C ' + collect_host
@@ -22,7 +21,7 @@ procmgr_config = [
  { host: collect_host, id:'Collection', flags:'sxp', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2 -x 2'},
  { id:'control_gui', flags:'xp', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 
- { host: 'drp-tst-dev001', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -Z '+rtmon_host+' -C '+collect_host},
+ { host: 'drp-tst-dev001', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host},
 
  { host: 'drp-tst-dev002', id:'drp2', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
  { host: 'drp-tst-dev003', id:'drp3', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
@@ -38,5 +37,5 @@ procmgr_config = [
  #{ host: 'drp-tst-dev017', id:'drp17', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
  #{ host: 'drp-tst-dev018', id:'drp18', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
 
- #{ host: 'drp-tst-dev019', id:'meb1', flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P Test -d -q 4 -Z '+rtmon_host+' -C '+collect_host},
+ #{ host: 'drp-tst-dev019', id:'meb1', flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P Test -d -q 4 -C '+collect_host},
 ]

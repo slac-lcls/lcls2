@@ -2,10 +2,10 @@
 
 #include "Endpoint.hh"
 #include "EbLfClient.hh"
-#include "StatsMonitor.hh"
 
 #include "utilities.hh"
 
+#include "psdaq/service/MetricExporter.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <string.h>
@@ -16,7 +16,8 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-MebContributor::MebContributor(const MebCtrbParams& prms, StatsMonitor& smon) :
+MebContributor::MebContributor(const MebCtrbParams&            prms,
+                               std::shared_ptr<MetricExporter> exporter) :
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
   _trSize    (roundUpSize(TransitionId::NumberOf * _maxTrSize)),
@@ -26,8 +27,9 @@ MebContributor::MebContributor(const MebCtrbParams& prms, StatsMonitor& smon) :
   _verbose   (prms.verbose),
   _eventCount(0)
 {
-  smon.metric("MCtbO_EvCt",  _eventCount,          StatsMonitor::SCALAR);
-  smon.metric("MCtbO_TxPdg", _transport.pending(), StatsMonitor::SCALAR);
+  std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+  exporter->add("MCtbO_EvCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
+  exporter->add("MCtbO_TxPdg", labels, MetricType::Counter, [&](){ return _transport.pending(); });
 }
 
 int MebContributor::connect(const MebCtrbParams& prms,

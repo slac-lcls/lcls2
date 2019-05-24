@@ -4,10 +4,10 @@
 #include "EbLfClient.hh"
 #include "Batch.hh"
 #include "EbCtrbInBase.hh"
-#include "StatsMonitor.hh"
 
 #include "utilities.hh"
 
+#include "psdaq/service/MetricExporter.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #ifdef NDEBUG
@@ -26,7 +26,8 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-TebContributor::TebContributor(const TebCtrbParams& prms, StatsMonitor& smon) :
+TebContributor::TebContributor(const TebCtrbParams&            prms,
+                               std::shared_ptr<MetricExporter> exporter) :
   _prms        (prms),
   _batMan      (prms.maxInputSize),
   _transport   (prms.verbose),
@@ -40,14 +41,15 @@ TebContributor::TebContributor(const TebCtrbParams& prms, StatsMonitor& smon) :
   _batchCount  (0),
   _running     (true)
 {
-  smon.metric("TCtbO_EvtRt",  _eventCount,             StatsMonitor::RATE);
-  smon.metric("TCtbO_EvtCt",  _eventCount,             StatsMonitor::SCALAR);
-  smon.metric("TCtbO_BtAlCt", _batMan.batchAllocCnt(), StatsMonitor::SCALAR);
-  smon.metric("TCtbO_BtFrCt", _batMan.batchFreeCnt(),  StatsMonitor::SCALAR);
-  smon.metric("TCtbO_BtWtg",  _batMan.batchWaiting(),  StatsMonitor::SCALAR);
-  smon.metric("TCtbO_BatCt",  _batchCount,             StatsMonitor::SCALAR);
-  smon.metric("TCtbO_TxPdg",  _transport.pending(),    StatsMonitor::SCALAR);
-  smon.metric("TCtbO_InFlt",  _pending.count(),        StatsMonitor::SCALAR);
+  std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+  exporter->add("TCtbO_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
+  exporter->add("TCtbO_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
+  exporter->add("TCtbO_BtAlCt", labels, MetricType::Counter, [&](){ return _batMan.batchAllocCnt(); });
+  exporter->add("TCtbO_BtFrCt", labels, MetricType::Counter, [&](){ return _batMan.batchFreeCnt();  });
+  exporter->add("TCtbO_BtWtg",  labels, MetricType::Gauge,   [&](){ return _batMan.batchWaiting();  });
+  exporter->add("TCtbO_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;             });
+  exporter->add("TCtbO_TxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending();    });
+  exporter->add("TCtbO_InFlt",  labels, MetricType::Gauge,   [&](){ return _pending.count();        });
 }
 
 int TebContributor::connect(const TebCtrbParams& prms)

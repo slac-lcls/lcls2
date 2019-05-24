@@ -6,6 +6,7 @@ target_link_libraries(monReqServer
     psalg::shmemsrv
     eventBuilder
     collection
+    exporter
     pthread
     rt
 )

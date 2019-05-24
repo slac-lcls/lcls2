@@ -3,12 +3,12 @@
 #include "EbCtrbInBase.hh"
 
 #include "utilities.hh"
-#include "StatsMonitor.hh"
 #include "EbLfClient.hh"
 #include "utilities.hh"
 
 #include "psdaq/service/GenericPoolW.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/MetricExporter.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <stdio.h>
@@ -36,7 +36,6 @@ using json = nlohmann::json;
 static const unsigned CLS              = 64;   // Cache Line Size
 static const int      core_0           = 10;   // devXXX: 10, devXX:  7, accXX:  9
 static const int      core_1           = 11;   // devXXX: 11, devXX: 19, accXX: 21
-static const unsigned rtMon_period     = 1;    // Seconds
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2;    // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2;    // Revisit: Number of "L3" result data words
@@ -125,10 +124,10 @@ namespace Pds {
     class EbCtrbIn : public EbCtrbInBase
     {
     public:
-      EbCtrbIn(const TebCtrbParams& prms,
-               DrpSim&              drpSim,
-               ZmqContext&          context,
-               StatsMonitor&        smon);
+      EbCtrbIn(const TebCtrbParams&            prms,
+               DrpSim&                         drpSim,
+               ZmqContext&                     context,
+               std::shared_ptr<MetricExporter> exporter);
       virtual ~EbCtrbIn() {}
     public:
       int      connect(const TebCtrbParams&, MebContributor*);
@@ -145,8 +144,8 @@ namespace Pds {
     class EbCtrbApp : public TebContributor
     {
     public:
-      EbCtrbApp(const TebCtrbParams& prms,
-                StatsMonitor&        smon);
+      EbCtrbApp(const TebCtrbParams&            prms,
+                std::shared_ptr<MetricExporter> exporter);
       ~EbCtrbApp() {}
     public:
       DrpSim&  drpSim() { return _drpSim; }
@@ -339,11 +338,11 @@ void DrpSim::release(const Input* input)
 }
 
 
-EbCtrbIn::EbCtrbIn(const TebCtrbParams& prms,
-                   DrpSim&              drpSim,
-                   ZmqContext&          context,
-                   StatsMonitor&        smon) :
-  EbCtrbInBase(prms, smon),
+EbCtrbIn::EbCtrbIn(const TebCtrbParams&            prms,
+                   DrpSim&                         drpSim,
+                   ZmqContext&                     context,
+                   std::shared_ptr<MetricExporter> exporter) :
+  EbCtrbInBase(prms, exporter),
   _drpSim     (drpSim),
   _mebCtrb    (nullptr),
   _inprocSend (&context, ZMQ_PAIR),
@@ -425,13 +424,14 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 }
 
 
-EbCtrbApp::EbCtrbApp(const TebCtrbParams& prms,
-                     StatsMonitor&        smon) :
-  TebContributor(prms, smon),
+EbCtrbApp::EbCtrbApp(const TebCtrbParams&            prms,
+                     std::shared_ptr<MetricExporter> exporter) :
+  TebContributor(prms, exporter),
   _drpSim       (prms.maxInputSize),
   _prms         (prms)
 {
-  smon.metric("TCtbO_AlPdg", _drpSim.allocPending(), StatsMonitor::SCALAR);
+  std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+  exporter->add("TCtbO_AlPdg", labels, MetricType::Gauge, [&](){ return _drpSim.allocPending(); });
 }
 
 void EbCtrbApp::stop()
@@ -490,7 +490,7 @@ void EbCtrbApp::run(EbCtrbIn& in)
 class CtrbApp : public CollectionApp
 {
 public:
-  CtrbApp(const std::string& collSrv, TebCtrbParams&, MebCtrbParams&, StatsMonitor&);
+  CtrbApp(const std::string& collSrv, TebCtrbParams&, MebCtrbParams&, std::shared_ptr<MetricExporter>);
 public:                                 // For CollectionApp
   json connectionInfo() override;
   void handleConnect(const json& msg) override;
@@ -506,22 +506,20 @@ private:
   EbCtrbApp      _tebCtrb;
   MebContributor _mebCtrb;
   EbCtrbIn       _inbound;
-  StatsMonitor&  _smon;
   std::thread    _appThread;
   bool           _shutdown;
 };
 
-CtrbApp::CtrbApp(const std::string& collSrv,
-                 TebCtrbParams&     tebPrms,
-                 MebCtrbParams&     mebPrms,
-                 StatsMonitor&      smon) :
+CtrbApp::CtrbApp(const std::string&              collSrv,
+                 TebCtrbParams&                  tebPrms,
+                 MebCtrbParams&                  mebPrms,
+                 std::shared_ptr<MetricExporter> exporter) :
   CollectionApp(collSrv, tebPrms.partition, "drp", tebPrms.alias),
   _tebPrms(tebPrms),
   _mebPrms(mebPrms),
-  _tebCtrb(tebPrms, smon),
-  _mebCtrb(mebPrms, smon),
-  _inbound(tebPrms, _tebCtrb.drpSim(), context(), smon),
-  _smon(smon),
+  _tebCtrb(tebPrms, exporter),
+  _mebCtrb(mebPrms, exporter),
+  _inbound(tebPrms, _tebCtrb.drpSim(), context(), exporter),
   _shutdown(false)
 {
 }
@@ -557,8 +555,6 @@ int CtrbApp::_handleConnect(const json &msg)
 
   rc = _inbound.connect(_tebPrms, mebCtrb);
   if (rc)  return rc;
-
-  _smon.enable();
 
   lRunning = 1;
 
@@ -622,8 +618,6 @@ void CtrbApp::handleDisconnect(const json &msg)
 
   if (_appThread.joinable())  _appThread.join();
 
-  _smon.disable();
-
   // Reply to collection with connect status
   json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -638,8 +632,6 @@ void CtrbApp::handleReset(const json &msg)
     _tebCtrb.stop();
 
     if (_appThread.joinable())  _appThread.join();
-
-    _smon.disable();
 
     _shutdown = true;
   }
@@ -764,12 +756,6 @@ void usage(char *name, char *desc, const TebCtrbParams& prms)
           "Partition number");
   fprintf(stderr, " %-22s %s (required)\n",           "-u <alias>",
           "Alias for drp process");
-  fprintf(stderr, " %-22s %s (required)\n",           "-Z <address>",
-          "Run-time monitoring ZMQ server host");
-  fprintf(stderr, " %-22s %s (default: %d)\n",        "-R <port>",
-          "Run-time monitoring ZMQ server port",      RTMON_PORT_BASE);
-  fprintf(stderr, " %-22s %s (default: %d)\n",        "-m <seconds>",
-          "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-22s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    prms.core[0]);
   fprintf(stderr, " %-22s %s (default: %d)\n",        "-2 <core>",
@@ -785,10 +771,6 @@ int main(int argc, char **argv)
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
   std::string    collSrv;
-  const char*    rtMonHost    = nullptr;
-  unsigned       rtMonPort    = RTMON_PORT_BASE;
-  unsigned       rtMonPeriod  = rtMon_period;
-  unsigned       rtMonVerbose = 0;
   TebCtrbParams  tebPrms { /* .ifAddr        = */ { }, // Network interface to use
                            /* .port          = */ { }, // Port served to TEBs
                            /* .partition     = */ NO_PARTITION,
@@ -804,27 +786,25 @@ int main(int argc, char **argv)
                            /* .contractor    = */ 0 };
   MebCtrbParams  mebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
+                           /* .partition     = */ NO_PARTITION,
                            /* .id            = */ tebPrms.id,
                            /* .maxEvents     = */ mon_buf_cnt,
                            /* .maxEvSize     = */ mon_buf_size,
                            /* .maxTrSize     = */ mon_trSize,
                            /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:A:Z:R:o:1:2:u:h?vV")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:1:2:u:h?v")) != -1)
   {
     switch (op)
     {
       case 'C':  collSrv            = optarg;             break;
       case 'p':  tebPrms.partition  = std::stoi(optarg);  break;
       case 'A':  tebPrms.ifAddr     = optarg;             break;
-      case 'Z':  rtMonHost          = optarg;             break;
-      case 'R':  rtMonPort          = atoi(optarg);       break;
       case '1':  tebPrms.core[0]    = atoi(optarg);       break;
       case '2':  tebPrms.core[1]    = atoi(optarg);       break;
       case 'u':  tebPrms.alias      = optarg;             break;
       case 'v':  ++tebPrms.verbose;
                  ++mebPrms.verbose;                       break;
-      case 'V':  ++rtMonVerbose;                          break;
       case '?':
       case 'h':
         usage(argv[0], (char*)"Test DRP event contributor", tebPrms);
@@ -832,7 +812,7 @@ int main(int argc, char **argv)
     }
   }
 
-  if (tebPrms.partition == NO_PARTITION)
+  if ( (mebPrms.partition = tebPrms.partition) == NO_PARTITION)
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-p <Partition number>");
     return 1;
@@ -840,11 +820,6 @@ int main(int argc, char **argv)
   if (collSrv.empty())
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-C <Collection server>");
-    return 1;
-  }
-  if (!rtMonHost)
-  {
-    fprintf(stderr, "Missing '%s' parameter\n", "-Z <Run-Time Monitoring host>");
     return 1;
   }
 
@@ -873,14 +848,12 @@ int main(int argc, char **argv)
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
     fprintf(stderr, "Failed to set up ^C handler\n");
 
-  StatsMonitor smon(rtMonHost,
-                    rtMonPort,
-                    tebPrms.partition,
-                    rtMonPeriod,
-                    rtMonVerbose);
-  smon.startup();
+  prometheus::Exposer exposer{"0.0.0.0:9200", "/metrics", 1};
+  auto exporter = std::make_shared<MetricExporter>();
 
-  CtrbApp app(collSrv, tebPrms, mebPrms, smon);
+  CtrbApp app(collSrv, tebPrms, mebPrms, exporter);
+
+  exposer.RegisterCollectable(exporter);
 
   try
   {
@@ -892,8 +865,6 @@ int main(int argc, char **argv)
   }
 
   app.handleReset(json({}));
-
-  smon.shutdown();
 
   return 0;
 }

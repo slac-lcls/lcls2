@@ -3,9 +3,12 @@
 
 #include "EbLfServer.hh"
 
+#include <memory>
 #include <vector>
 #include <atomic>
 
+
+class MetricExporter;
 
 namespace XtcData
 {
@@ -21,12 +24,11 @@ namespace Pds
     class EbLfLink;
     class Batch;
     class TebContributor;
-    class StatsMonitor;
 
     class EbCtrbInBase
     {
     public:
-      EbCtrbInBase(const TebCtrbParams&, StatsMonitor&);
+      EbCtrbInBase(const TebCtrbParams&, std::shared_ptr<MetricExporter>);
       virtual ~EbCtrbInBase() {}
     public:
       int      connect(const TebCtrbParams&);

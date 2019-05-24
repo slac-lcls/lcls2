@@ -7,10 +7,13 @@
 #include "EbLfClient.hh"
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 #include <atomic>
 #include <thread>
 
+
+class MetricExporter;
 
 namespace XtcData {
   class Dgram;
@@ -24,12 +27,11 @@ namespace Pds {
 
     class EbCtrbInBase;
     class Batch;
-    class StatsMonitor;
 
     class TebContributor
     {
     public:
-      TebContributor(const TebCtrbParams&, StatsMonitor&);
+      TebContributor(const TebCtrbParams&, std::shared_ptr<MetricExporter>);
       ~TebContributor() {}
     public:
       int        connect(const TebCtrbParams&);

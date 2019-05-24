@@ -29,7 +29,6 @@ add_library(contributor SHARED
   MebContributor.cc
   BatchManager.cc
   Batch.cc
-  StatsMonitor.cc
 )
 
 target_include_directories(contributor PUBLIC
@@ -49,7 +48,6 @@ add_library(eventBuilder SHARED
   EbEvent.cc
   BatchManager.cc
   Batch.cc
-  StatsMonitor.cc
 )
 
 target_include_directories(eventBuilder PUBLIC
@@ -174,6 +172,7 @@ target_link_libraries(tstEbLfLink
 target_link_libraries(ctrb
   contributor
   collection
+  exporter
   pthread
   rt
 )
@@ -181,6 +180,7 @@ target_link_libraries(ctrb
 target_link_libraries(teb
   eventBuilder
   collection
+  exporter
   pthread
   rt
   dl
@@ -233,7 +233,6 @@ target_link_libraries(tstIndexPool
 #  EbCtrbInBase.cc
 #  EbAppBase.cc
 #  MebContributor.cc
-#  StatsMonitor.cc
 #)
 #
 #add_executable(teb
@@ -253,7 +252,6 @@ target_link_libraries(tstIndexPool
 #  EbCtrbInBase.cc
 #  EbAppBase.cc
 #  MebContributor.cc
-#  StatsMonitor.cc
 #)
 #
 #target_compile_options(ctrb PRIVATE -pg)

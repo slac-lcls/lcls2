@@ -9,8 +9,8 @@
 #include "Decide.hh"
 
 #include "utilities.hh"
-#include "StatsMonitor.hh"
 
+#include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/Dl.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -36,7 +36,6 @@ using json = nlohmann::json;
 
 static const int      core_0           = 10; // devXXX: 10, devXX:  7, accXX:  9
 static const int      core_1           = 11; // devXXX: 11, devXX: 19, accXX: 21
-static const unsigned rtMon_period     = 1; // Seconds
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
@@ -86,7 +85,7 @@ namespace Pds {
     class Teb : public EbAppBase
     {
     public:
-      Teb(const EbParams& prms, StatsMonitor& statsMon);
+      Teb(const EbParams& prms, std::shared_ptr<MetricExporter> exporter);
     public:
       int      connect(const EbParams&);
       Decide*  decide()               { return _decideObj; }
@@ -124,7 +123,7 @@ namespace Pds {
 
 using namespace Pds::Eb;
 
-Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
+Teb::Teb(const EbParams& prms, std::shared_ptr<MetricExporter> exporter) :
   EbAppBase    (prms, BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
   _l3Links     (),
   _mrqTransport(prms.verbose),
@@ -141,21 +140,22 @@ Teb::Teb(const EbParams& prms, StatsMonitor& smon) :
   _l3Transport (prms.verbose),
   _decideObj   (nullptr)
 {
-  smon.metric("TEB_EvtRt",  _eventCount,             StatsMonitor::RATE);
-  smon.metric("TEB_EvtCt",  _eventCount,             StatsMonitor::SCALAR);
-  smon.metric("TEB_BatCt",  _batchCount,             StatsMonitor::SCALAR); // Outbound
-  smon.metric("TEB_BtAlCt", _batMan.batchAllocCnt(), StatsMonitor::SCALAR);
-  smon.metric("TEB_BtFrCt", _batMan.batchFreeCnt(),  StatsMonitor::SCALAR);
-  smon.metric("TEB_BtWtg",  _batMan.batchWaiting(),  StatsMonitor::SCALAR);
-  smon.metric("TEB_EpAlCt",  epochAllocCnt(),        StatsMonitor::SCALAR);
-  smon.metric("TEB_EpFrCt",  epochFreeCnt(),         StatsMonitor::SCALAR);
-  smon.metric("TEB_EvAlCt",  eventAllocCnt(),        StatsMonitor::SCALAR);
-  smon.metric("TEB_EvFrCt",  eventFreeCnt(),         StatsMonitor::SCALAR);
-  smon.metric("TEB_TxPdg",  _l3Transport.pending(),  StatsMonitor::SCALAR);
-  smon.metric("TEB_RxPdg",   rxPending(),            StatsMonitor::SCALAR);
-  smon.metric("TEB_BtInCt",  bufferCnt(),            StatsMonitor::SCALAR); // Inbound
-  smon.metric("TEB_FxUpCt",  fixupCnt(),             StatsMonitor::SCALAR);
-  smon.metric("TEB_ToEvCt",  tmoEvtCnt(),            StatsMonitor::SCALAR);
+  std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+  exporter->add("TEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
+  exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
+  exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;             }); // Outbound
+  exporter->add("TEB_BtAlCt", labels, MetricType::Counter, [&](){ return _batMan.batchAllocCnt(); });
+  exporter->add("TEB_BtFrCt", labels, MetricType::Counter, [&](){ return _batMan.batchFreeCnt();  });
+  exporter->add("TEB_BtWtg",  labels, MetricType::Gauge,   [&](){ return _batMan.batchWaiting();  });
+  exporter->add("TEB_EpAlCt", labels, MetricType::Counter, [&](){ return  epochAllocCnt();        });
+  exporter->add("TEB_EpFrCt", labels, MetricType::Counter, [&](){ return  epochFreeCnt();         });
+  exporter->add("TEB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();        });
+  exporter->add("TEB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();         });
+  exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.pending();  });
+  exporter->add("TEB_RxPdg",  labels, MetricType::Gauge,   [&](){ return  rxPending();            });
+  exporter->add("TEB_BtInCt", labels, MetricType::Counter, [&](){ return  bufferCnt();            }); // Inbound
+  exporter->add("TEB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();             });
+  exporter->add("TEB_ToEvCt", labels, MetricType::Counter, [&](){ return  tmoEvtCnt();            });
 }
 
 int Teb::connect(const EbParams& prms)
@@ -465,7 +465,7 @@ void Teb::post(const Batch* batch, uint64_t& receivers)
 class TebApp : public CollectionApp
 {
 public:
-  TebApp(const std::string& collSrv, EbParams&, StatsMonitor&);
+  TebApp(const std::string& collSrv, EbParams&, std::shared_ptr<MetricExporter>);
   virtual ~TebApp();
 public:                                 // For CollectionApp
   json connectionInfo() override;
@@ -478,21 +478,19 @@ private:
   int  _handleConfigure(const json& msg);
   int  _parseConnectionParams(const json& msg);
 private:
-  EbParams&     _prms;
-  Teb           _teb;
-  StatsMonitor& _smon;
-  std::thread   _appThread;
-  Dl            _dl;
-  bool          _shutdown;
+  EbParams&   _prms;
+  Teb         _teb;
+  std::thread _appThread;
+  Dl          _dl;
+  bool        _shutdown;
 };
 
-TebApp::TebApp(const std::string& collSrv,
-               EbParams&          prms,
-               StatsMonitor&      smon) :
+TebApp::TebApp(const std::string&              collSrv,
+               EbParams&                       prms,
+               std::shared_ptr<MetricExporter> exporter) :
   CollectionApp(collSrv, prms.partition, "teb", prms.alias),
   _prms        (prms),
-  _teb         (prms, smon),
-  _smon        (smon),
+  _teb         (prms, exporter),
   _shutdown    (false)
 {
   Py_Initialize();
@@ -518,8 +516,6 @@ int TebApp::_handleConnect(const json& msg)
 
   rc = _teb.connect(_prms);
   if (rc)  return rc;
-
-  _smon.enable();
 
   lRunning = 1;
 
@@ -613,8 +609,6 @@ void TebApp::handleDisconnect(const json& msg)
 
   if (_appThread.joinable())  _appThread.join();
 
-  _smon.disable();
-
   // Reply to collection with transition status
   json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -627,8 +621,6 @@ void TebApp::handleReset(const json& msg)
   if (!_shutdown)
   {
     if (_appThread.joinable())  _appThread.join();
-
-    _smon.disable();
 
     _shutdown = true;
   }
@@ -766,14 +758,8 @@ static void usage(char *name, char *desc, const EbParams& prms)
           "Collection server");
   fprintf(stderr, " %-22s %s (required)\n",           "-p <partition number>",
           "Partition number");
-  fprintf(stderr, " %-22s %s (required)\n",           "-Z <address>",
-          "Run-time monitoring ZMQ server host");
   fprintf(stderr, " %-22s %s (required)\n",           "-u <alias>",
           "Alias for teb process");
-  fprintf(stderr, " %-22s %s (default: %d)\n",        "-R <port>",
-          "Run-time monitoring ZMQ server port",      RTMON_PORT_BASE);
-  fprintf(stderr, " %-22s %s (default: %d)\n",        "-m <seconds>",
-          "Run-time monitoring printout period",      rtMon_period);
   fprintf(stderr, " %-22s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    core_0);
   fprintf(stderr, " %-22s %s (default: %d)\n",        "-2 <core>",
@@ -789,10 +775,6 @@ int main(int argc, char **argv)
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
   std::string    collSrv;
-  const char*    rtMonHost    = nullptr;
-  unsigned       rtMonPort    = RTMON_PORT_BASE;
-  unsigned       rtMonPeriod  = rtMon_period;
-  unsigned       rtMonVerbose = 0;
   EbParams       prms { /* .ifAddr        = */ { }, // Network interface to use
                         /* .ebPort        = */ { },
                         /* .mrqPort       = */ { },
@@ -810,20 +792,17 @@ int main(int argc, char **argv)
                         /* .contractors   = */ 0,
                         /* .receivers     = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:A:Z:R:1:2:u:h?vV")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:1:2:u:h?v")) != -1)
   {
     switch (op)
     {
       case 'C':  collSrv         = optarg;             break;
       case 'p':  prms.partition  = std::stoi(optarg);  break;
       case 'A':  prms.ifAddr     = optarg;             break;
-      case 'Z':  rtMonHost       = optarg;             break;
-      case 'R':  rtMonPort       = atoi(optarg);       break;
       case '1':  prms.core[0]    = atoi(optarg);       break;
       case '2':  prms.core[1]    = atoi(optarg);       break;
       case 'u':  prms.alias      = optarg;             break;
       case 'v':  ++prms.verbose;                       break;
-      case 'V':  ++rtMonVerbose;                       break;
       case '?':
       case 'h':
       default:
@@ -840,11 +819,6 @@ int main(int argc, char **argv)
   if (collSrv.empty())
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-C <Collection server>");
-    return 1;
-  }
-  if (!rtMonHost)
-  {
-    fprintf(stderr, "Missing '%s' parameter\n", "-Z <Run-Time Monitoring host>");
     return 1;
   }
   if (prms.alias.empty()) {
@@ -867,15 +841,12 @@ int main(int argc, char **argv)
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
 
-  //pinThread(pthread_self(), prms.core[1]);
-  StatsMonitor smon(rtMonHost,
-                    rtMonPort,
-                    prms.partition,
-                    rtMonPeriod,
-                    rtMonVerbose);
-  smon.startup();
+  prometheus::Exposer exposer{"0.0.0.0:9200", "/metrics", 1};
+  auto exporter = std::make_shared<MetricExporter>();
 
-  TebApp app(collSrv, prms, smon);
+  TebApp app(collSrv, prms, exporter);
+
+  exposer.RegisterCollectable(exporter);
 
   try
   {
@@ -887,8 +858,6 @@ int main(int argc, char **argv)
   }
 
   app.handleReset(json({}));
-
-  smon.shutdown();
 
   return 0;
 }

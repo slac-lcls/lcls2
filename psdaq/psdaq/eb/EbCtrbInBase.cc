@@ -4,10 +4,10 @@
 #include "EbLfServer.hh"
 #include "Batch.hh"
 #include "TebContributor.hh"
-#include "StatsMonitor.hh"
 
 #include "utilities.hh"
 
+#include "psdaq/service/MetricExporter.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #ifdef NDEBUG
@@ -23,7 +23,8 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms, StatsMonitor& smon) :
+EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&            prms,
+                           std::shared_ptr<MetricExporter> exporter) :
   _transport   (prms.verbose),
   _links       (),
   _maxBatchSize(0),
@@ -32,9 +33,10 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms, StatsMonitor& smon) :
   _prms        (prms),
   _region      (nullptr)
 {
-  smon.metric("TCtbI_RxPdg", _transport.pending(), StatsMonitor::SCALAR);
-  smon.metric("TCtbI_BatCt", _batchCount,          StatsMonitor::SCALAR);
-  smon.metric("TCtbI_EvtCt", _eventCount,          StatsMonitor::SCALAR);
+  std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+  exporter->add("TCtbI_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+  exporter->add("TCtbI_BatCt", labels, MetricType::Counter, [&](){ return _batchCount;          });
+  exporter->add("TCtbI_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;          });
 }
 
 int EbCtrbInBase::connect(const TebCtrbParams& prms)

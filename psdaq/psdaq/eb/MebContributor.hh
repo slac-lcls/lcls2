@@ -5,8 +5,11 @@
 #include "EbLfClient.hh"
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
+
+class MetricExporter;
 
 namespace XtcData {
   class Dgram;
@@ -16,12 +19,11 @@ namespace Pds {
   namespace Eb {
 
     class EbLfLink;
-    class StatsMonitor;
 
     class MebContributor
     {
     public:
-      MebContributor(const MebCtrbParams&, StatsMonitor&);
+      MebContributor(const MebCtrbParams&, std::shared_ptr<MetricExporter>);
     public:
       int  connect(const MebCtrbParams&, void* region, size_t size);
       void shutdown();
