@@ -10,17 +10,15 @@ class ts_connector:
         self.connect_info = json.loads(json_connect_info)
         print('*** connect_info',self.connect_info)
 
-        # FIXME: get the base from the collection?
-        self.xpm_base = 'DAQ:LAB2:XPM:'
+        control_info=self.connect_info['body']['control']['0']['control_info']
+        self.xpm_base = control_info['pv_base']+':XPM:'
+        master_xpm_num = control_info['xpm_master']
+        self.master_xpm_pv = self.xpm_base+str(master_xpm_num)+':'
 
         self.ctxt = Context('pva')
         self.get_xpm_info()
         self.get_readout_group_mask()
 
-        # FIXME: need a mechanism to learn the master XPM. Here we take the first.
-        master_xpm_num = self.xpm_info[0][0]
-        self.master_xpm_pv = self.xpm_base+str(master_xpm_num)+':'
-  
         # unfortunately, the hsd needs the Rx link reset before the Tx,
         # otherwise we get CRC errors on the link.
         #self.xpm_link_reset('Rx')
@@ -30,8 +28,10 @@ class ts_connector:
         # the event counters, and the pgp eb needs them to start from zero
         self.l0_count_reset()
 
+        # at the moment, clearing and setting the link enables messes
+        # up the link, so commenting out for now.
         # enables listening to deadtime
-        #self.xpm_link_enable()
+        # self.xpm_link_enable()
 
         self.ctxt.close()
 
