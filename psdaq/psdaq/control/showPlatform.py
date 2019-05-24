@@ -50,7 +50,10 @@ def main():
                                    'readout group', v['det_info']['readout'])
                     else:
                         display = "%-16s %s/%s/%-16s" % (alias, level, pid, host)
-                    displayList.append(display)
+                    if level == 'control':
+                        displayList.insert(0, display)
+                    else:
+                        displayList.append(display)
         except Exception:
             print('----- body -----')
             pprint.pprint(body)
