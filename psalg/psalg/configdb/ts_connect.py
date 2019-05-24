@@ -31,7 +31,7 @@ class ts_connector:
         # at the moment, clearing and setting the link enables messes
         # up the link, so commenting out for now.
         # enables listening to deadtime
-        # self.xpm_link_enable()
+        self.xpm_link_enable()
 
         self.ctxt.close()
 
