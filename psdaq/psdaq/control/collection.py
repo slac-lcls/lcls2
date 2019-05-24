@@ -373,8 +373,9 @@ def confirm_response(socket, wait_time, msg_id, ids, err_pub):
 
 
 class CollectionManager():
-    def __init__(self, platform, instrument, pv_base, xpm_master):
+    def __init__(self, platform, instrument, pv_base, xpm_master, alias):
         self.platform = platform
+        self.alias = alias
         self.xpm_master = xpm_master
         self.pv_base = pv_base
         self.context = zmq.Context(1)
@@ -800,7 +801,7 @@ class CollectionManager():
             self.cmstate['control'][0]['proc_info'] = {}
             self.cmstate['control'][0]['control_info']['xpm_master'] = self.xpm_master
             self.cmstate['control'][0]['control_info']['pv_base'] = self.pv_base
-            self.cmstate['control'][0]['proc_info']['alias'] = 'control'
+            self.cmstate['control'][0]['proc_info']['alias'] = self.alias
             self.cmstate['control'][0]['proc_info']['host'] = socket.gethostname()
             self.cmstate['control'][0]['proc_info']['pid'] = os.getpid()
 
@@ -1070,6 +1071,7 @@ def main():
     parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
     parser.add_argument('-P', metavar='INSTRUMENT', default='TST', help='instrument (default TST)')
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
+    parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-a', action='store_true', help='autoconnect')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
@@ -1081,7 +1083,7 @@ def main():
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def manager():
-        manager = CollectionManager(platform, args.P, args.B, args.x)
+        manager = CollectionManager(platform, args.P, args.B, args.x, args.u)
 
     def client(i):
         c = Client(platform)
