@@ -122,7 +122,7 @@ cdef class cyhsd_base_1_2_3:
     def _streams(self):
         return self.cptr.streams()
 
-    def _channels(self):
+    def _channelMask(self):
         return self.cptr.channels()
 
     def _sync(self):
