@@ -19,8 +19,7 @@ namespace Drp {
 DrpApp::DrpApp(Parameters* para) :
     CollectionApp(para->collectionHost, para->partition, "drp", para->alias),
     m_para(para),
-    m_pool(*para),
-    m_exposer{"0.0.0.0:9200", "/metrics", 1}
+    m_pool(*para)
 {
     size_t maxSize = sizeof(MyDgram);
     m_tPrms = { /* .ifAddr        = */ { }, // Network interface to use
@@ -46,6 +45,13 @@ DrpApp::DrpApp(Parameters* para) :
                       /* .maxTrSize     = */ 65536, //mon_trSize,
                       /* .verbose       = */ 0 };
 
+    try {
+        m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
+    }
+    catch(const std::runtime_error& e) {
+        std::cout<<"Could not start monitoring server!!\n";
+        std::cout<<e.what()<<std::endl;
+    }
     Factory<Detector> f;
     f.register_type<TimingSystem>("TimingSystem");
     f.register_type<Digitizer>("Digitizer");
@@ -75,7 +81,9 @@ void DrpApp::handleConnect(const json &msg)
     m_det->connect(msg);
 
     auto exporter = std::make_shared<MetricExporter>();
-    m_exposer.RegisterCollectable(exporter);
+    if (m_exposer) {
+        m_exposer->RegisterCollectable(exporter);
+    }
     m_pgpReader = std::make_unique<PGPReader>(*m_para, m_pool, m_det);
     m_pgpThread = std::thread{&PGPReader::run, std::ref(*m_pgpReader), exporter};
 

@@ -75,7 +75,7 @@ private:
     std::unique_ptr<Pds::Eb::TebContributor> m_ebContributor;
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
-    prometheus::Exposer m_exposer;
+    std::unique_ptr<prometheus::Exposer> m_exposer;
     Detector* m_det;
 };
 
