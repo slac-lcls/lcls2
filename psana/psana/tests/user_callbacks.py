@@ -21,7 +21,7 @@ def filter_fn(evt):
     return True
 
 xtc_dir = os.path.join(os.getcwd(),'.tmp')
-ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 def event_fn(event, det):
     padarray = vals.padarray
     assert(np.array_equal(det.raw.calib(event),np.stack((padarray,padarray))))

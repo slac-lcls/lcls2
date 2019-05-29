@@ -30,7 +30,7 @@ def filter_fn(evt):
 xtc_dir = os.path.join(os.getcwd(),'.tmp')
 
 # Usecase 1a : two iterators with filter function
-ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 
 sendbuf = np.zeros(1, dtype='i')
 recvbuf = None
@@ -52,7 +52,7 @@ if rank == 0:
     assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
 
 # Usecase 1b : two iterators without filter function
-ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir))
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
 
 sendbuf = np.zeros(1, dtype='i')
 recvbuf = None
@@ -88,7 +88,7 @@ if rank == 0:
     assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
 
 # Usecase 3: reading smalldata w/o bigdata
-ds = DataSource("exp=xpptut13:run=2:dir=%s"%(xtc_dir))
+ds = DataSource(exp='xpptut13', run=2, dir=xtc_dir)
 
 sendbuf = np.zeros(1, dtype='i')
 recvbuf = None

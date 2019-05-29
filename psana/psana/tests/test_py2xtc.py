@@ -36,7 +36,7 @@ def test_py2xtc(tmp_path):
     f.close()
 
     from psana import DataSource
-    ds = DataSource(fname)
+    ds = DataSource(files=fname)
     myrun = next(ds.runs())
     for nevt,evt in enumerate(myrun.events()):
         assert np.array_equal(evt._dgrams[0].spi_cspad[0].raw.image,image_array+nevt+1)
