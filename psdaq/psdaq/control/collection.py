@@ -398,15 +398,14 @@ class CollectionManager():
 
         # name PVs
         pv_part_base = pv_base + ':PART:%d' % platform
-        self.pvMsgClear = pv_part_base+':MsgClear'
-        self.pvMsgHeader = pv_part_base+':MsgHeader'
+        self.pvListMsgHeader = []   # filled in at alloc
         self.pvMsgInsert = pv_part_base+':MsgInsert'
         self.pvXPM = pv_part_base+':XPM'
         pv_xpm_base = pv_base + ':XPM:%d' % xpm_master
-#       self.pvGroupL0Reset =   pv_xpm_base+':GroupL0Reset'
+        self.pvGroupL0Reset =   pv_xpm_base+':GroupL0Reset'
         self.pvGroupL0Enable =  pv_xpm_base+':GroupL0Enable'
         self.pvGroupL0Disable = pv_xpm_base+':GroupL0Disable'
-#       self.pvGroupMsgInsert = pv_xpm_base+':GroupMsgInsert'
+        self.pvGroupMsgInsert = pv_xpm_base+':GroupMsgInsert'
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
@@ -647,6 +646,13 @@ class CollectionManager():
         # assign the readout groups bitmask
         self.groups = get_readout_group_mask(active_state)
         logging.debug('condition_alloc(): groups = 0x%02x' % self.groups)
+
+        # create group-dependent PVs
+        self.pvListMsgHeader = []
+        for g in range(8):
+            if self.groups & (1 << g):
+                self.pvListMsgHeader.append(self.pv_base+":PART:"+str(g)+':MsgHeader')
+        logging.debug('pvListMsgHeader: %s' % self.pvListMsgHeader)
 
         # give number to teb nodes for the event builder
         if 'teb' in active_state:
@@ -899,15 +905,11 @@ class CollectionManager():
             return False
 
         # phase 2
-        if not (self.pv_put(self.pvMsgClear, 0) and
-                self.pv_put(self.pvMsgClear, 1) and
-                self.pv_put(self.pvMsgClear, 0) and
-                self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Configure']) and
-                self.pv_put(self.pvMsgInsert, 0) and
-                self.pv_put(self.pvMsgInsert, 1) and
-                self.pv_put(self.pvMsgInsert, 0)):
-            logging.error('condition_configure(): pv_put() failed')
-            return False
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['Configure'])
+        self.pv_put(self.pvGroupL0Reset, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('configure')
         if not ok:
@@ -925,12 +927,12 @@ class CollectionManager():
             logging.error('condition_unconfigure(): unconfigure phase1 failed')
             return False
 
-        if not (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Unconfigure']) and
-                self.pv_put(self.pvMsgInsert, 0) and
-                self.pv_put(self.pvMsgInsert, 1) and
-                self.pv_put(self.pvMsgInsert, 0)):
-            logging.error('condition_unconfigure(): pv_put() failed')
-            return False
+        # phase 2
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['Unconfigure'])
+        self.pv_put(self.pvGroupL0Reset, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('unconfigure')
         if not ok:
@@ -956,12 +958,11 @@ class CollectionManager():
             return False
 
         # phase 2
-        if not (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Enable']) and
-                self.pv_put(self.pvMsgInsert, 0) and
-                self.pv_put(self.pvMsgInsert, 1) and
-                self.pv_put(self.pvMsgInsert, 0)):
-            logging.error('condition_enable(): pv_put() failed')
-            return False
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['Enable'])
+        self.pv_put(self.pvGroupL0Reset, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('enable')
         if not ok:
@@ -989,12 +990,11 @@ class CollectionManager():
             return False
 
         # phase 2
-        if not (self.pv_put(self.pvMsgHeader, DaqControl.transitionId['Disable']) and
-                self.pv_put(self.pvMsgInsert, 0) and
-                self.pv_put(self.pvMsgInsert, 1) and
-                self.pv_put(self.pvMsgInsert, 0)):
-            logging.error('condition_disable(): pv_put() failed')
-            return False
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['Disable'])
+        self.pv_put(self.pvGroupL0Reset, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('disable')
         if not ok:

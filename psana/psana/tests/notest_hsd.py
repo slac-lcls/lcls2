@@ -14,7 +14,7 @@ def test_hsd():
     import numpy as np
     if doPlot: import matplotlib.pyplot as plt
 
-    ds = psana.DataSource(os.path.join(cwd,'hsd_061918_n3.xtc2'))
+    ds = psana.DataSource(files=os.path.join(cwd,'hsd_061918_n3.xtc2'))
     det = ds.Detector("xpphsd")
 
     chanNum = 3

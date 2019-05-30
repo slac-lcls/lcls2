@@ -28,7 +28,7 @@ def filter_fn(evt):
 xtc_dir = os.path.join(os.getcwd(),'.tmp')
 
 # Usecase 1a : two iterators with filter function
-ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir), filter=filter_fn)
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 #beginJobCode
 for run in ds.runs():
     det = run.Detector('xppcspad')
@@ -43,7 +43,7 @@ for run in ds.runs():
 #endJobCode
 
 # Usecase 1b : two iterators without filter function
-ds = DataSource('exp=xpptut13:run=1:dir=%s'%(xtc_dir))
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
 for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():

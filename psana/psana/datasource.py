@@ -23,12 +23,10 @@ class DataSourceFactory:
 def DataSource(*args, **kwargs):
     args = tuple(map(str, args)) # Hack: workaround for unicode and str being different types in Python 2
 
-    assert len(args) > 0
-    if args[0] == 'shmem': # shared memory client
-        return DataSourceFactory.createDataSource('ShmemDataSource', *args, **kwargs)    
-    elif os.path.exists(args[0].split(',')[0]): # single file, or comma-separated list of files
-        return DataSourceFactory.createDataSource('SingleFileDataSource', *args, **kwargs)
-    elif isinstance(args[0], (str)): # experiment string - assumed multiple files
+    if len(args) > 0:
+        if args[0] == 'shmem': # shared memory client
+            return DataSourceFactory.createDataSource('ShmemDataSource', *args, **kwargs)    
+    elif 'exp' in kwargs: # experiment string - assumed multiple files
         if mode == 'mpi':
             if size == 1:
                 return DataSourceFactory.createDataSource('SerialDataSource', *args, **kwargs)
@@ -38,5 +36,8 @@ def DataSource(*args, **kwargs):
             return DataSourceFactory.createDataSource('LegionDataSource', *args, **kwargs)
         else:
             raise("Invalid datasource")
+    
+    elif 'files' in kwargs: # list of files
+        return DataSourceFactory.createDataSource('SingleFileDataSource', *args, **kwargs)
     else:
         raise("Invalid datasource")

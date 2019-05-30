@@ -4,9 +4,8 @@ from psana.psexp.run import RunSerial
 class SerialDataSource(DataSourceBase):
 
     def __init__(self, *args, **kwargs):
-        expstr = args[0]
         super(SerialDataSource, self).__init__(**kwargs)
-        self.exp, self.run_dict = self.parse_expstr(expstr)
+        self.exp, self.run_dict = self.setup_xtcs()
 
     class Factory:
         def create(self, *args, **kwargs): return SerialDataSource(*args, **kwargs)

@@ -4,7 +4,7 @@ import numpy as np
 import vals
 
 def det():
-    ds = DataSource('data.xtc2')
+    ds = DataSource(files='data.xtc2')
     for run in ds.runs(): # Detector is created based on per-run config. 
         hsd = run.Detector('xpphsd')
         cspad = run.Detector('xppcspad')
