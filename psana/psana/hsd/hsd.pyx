@@ -53,6 +53,20 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
     def __init__(self, *args):
         DetectorImpl.__init__(self, *args)
         cyhsd_base_1_2_3.__init__(self)
+    def _seg_chans(self):
+        """
+        returns a dictionary with segment numbers as the key, and a list
+        of active channel numbers for each segment.
+        """
+        channels = {}
+        for config in self._configs:
+            seg_dict = getattr(config,self._det_name)
+            for seg,seg_config in seg_dict.items():
+                # currently the hsd only has 1 channel (zero)
+                # will have to revisit in the future
+                enable = getattr(getattr(getattr(seg_config,'hsdConfig'),'enable'),'value')
+                if enable: channels[seg] = [0]
+        return channels
 
 cdef class cyhsd_base_1_2_3:
     cdef HsdEventHeaderV1* hptr
@@ -60,10 +74,9 @@ cdef class cyhsd_base_1_2_3:
     cdef Heap heap
     cdef Heap *ptr
     cdef Dgram *dptr
-    cdef Channel *chptr[16] # Maximum channels: 16
+    cdef Channel *chptr[16*16] # Maximum channels: 16, maximum segments: 16
     cdef dict _wvDict
     cdef list _chanList
-    cdef unsigned _chanCounter
     cdef list _fexPeaks
     cdef dict _peaksDict
 
@@ -74,7 +87,6 @@ cdef class cyhsd_base_1_2_3:
     def __init__(self): # dgramlist: evt_dgram.xpphsd.hsd which has chan00, chan01, chan02, chan03
         self._wvDict = {}
         self._chanList = []
-        self._chanCounter = 0
         self._evt = None
         self._hsdsegments = None
         self._peaksDict = {}
@@ -83,10 +95,9 @@ cdef class cyhsd_base_1_2_3:
     def _setEnv(self, cnp.ndarray[env_t, ndim=1, mode="c"] env):
         self.cptr.init(&env[0])
 
-    def _setChan(self, chanName, cnp.ndarray[env_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan):
-        self.chptr[self._chanCounter] = new Channel(self.ptr, self.cptr, &evtheader[0], &chan[0])
-        self._chanList.append(chanName)
-        self._chanCounter += 1
+    def _setChan(self, iseg, chanNum, cnp.ndarray[env_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan):
+        self.chptr[iseg*16+chanNum] = new Channel(self.ptr, self.cptr, &evtheader[0], &chan[0])
+        self._chanList.append((iseg,chanNum))
 
     def _isNewEvt(self, evt):
         if self._evt == None or not (evt._nanoseconds == self._evt._nanoseconds and evt._seconds == self._evt._seconds):
@@ -97,24 +108,23 @@ cdef class cyhsd_base_1_2_3:
     def _parseEvt(self, evt):
         self._wvDict = {}
         self._chanList = []
-        self._chanCounter = 0
         self._peaksDict = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
         self._setEnv(self._hsdsegments[0].env)
-        for chanNum in xrange(16): # Maximum channels: 16
-            chanName = 'chan'+'{num:02d}'.format(num=chanNum) # e.g. chan16
-            if hasattr(self._hsdsegments[0], chanName):
-                chan = eval('self._hsdsegments[0].'+chanName)
-                if chan.size > 0:
-                    chanName = str(chanNum) # e.g. 16
-                    self._setChan(chanName, self._hsdsegments[0].env, chan)
         self._evt = evt
+        for iseg in self._hsdsegments:
+            for chanNum in xrange(16): # Maximum channels: 16
+                chanName = 'chan'+'{num:02d}'.format(num=chanNum) # e.g. chan16
+                if hasattr(self._hsdsegments[iseg], chanName):
+                    chan = eval('self._hsdsegments[iseg].'+chanName)
+                    if chan.size > 0:
+                        self._setChan(iseg,chanNum, self._hsdsegments[iseg].env, chan)
 
     def __dealloc__(self):
         del self.cptr
-        for x in xrange(len(self._chanList)):
-            del self.chptr[x]
+        for (iseg,chanNum) in self._chanList:
+            del self.chptr[iseg*16+chanNum]
 
     def _samples(self):
         return self.cptr.samples()
@@ -134,7 +144,8 @@ cdef class cyhsd_base_1_2_3:
     def _fex(self):
         return self.cptr.fex()
 
-    # adding this decorator allows acces to the signature information of the function in python
+    # adding this decorator allows access to the signature information of the function in python
+    # this is used for AMI type safety
     @cython.binding(True)
     def waveforms(self, evt) -> HSDWaveforms:
         """Return a dictionary of available waveforms in the event.
@@ -147,38 +158,41 @@ cdef class cyhsd_base_1_2_3:
         cdef cnp.ndarray wv # TODO: make readonly
         if self._isNewEvt(evt):
             self._parseEvt(evt)
-        for i, chanName in enumerate(self._chanList):
-            if self.chptr[i].numPixels:
+        for (iseg, chanNum) in self._chanList:
+            first_chan_in_seg = True
+            if self.chptr[iseg*16+chanNum].numPixels:
+                if first_chan_in_seg:
+                    self._wvDict[iseg] = {}
+                    self._wvDict[iseg]["times"] = np.arange(self.chptr[iseg*16+chanNum].numPixels)
                 arr0 = PyAllocArray1D()
-                wv = arr0.init(&self.chptr[i].waveform, self.chptr[i].numPixels, cnp.NPY_UINT16)
+                wv = arr0.init(&self.chptr[iseg*16+chanNum].waveform, self.chptr[iseg*16+chanNum].numPixels, cnp.NPY_UINT16)
                 wv.base = <PyObject*> arr0
-                self._wvDict[int(chanName)] = wv
-        self._wvDict["times"] = np.arange(self.chptr[i].numPixels) # FIXME: placeholder for times
+                self._wvDict[iseg][chanNum] = wv
         return self._wvDict
 
-    def _channelPeaks(self, chanName):
+    def _channelPeaks(self, iseg, chanNum):
         cdef list listOfPeaks, listOfPos # TODO: check whether this helps with speed
         listOfPeaks = []
         listOfPos = []
         cdef cnp.ndarray peak
         cdef cnp.npy_intp shape[1]
         try:
-            chanNum = self._chanList.index(chanName)
-            for i in range(self.chptr[chanNum].numFexPeaks): # TODO: disable bounds, wraparound check
-                shape[0] = <cnp.npy_intp> self.chptr[chanNum].len(i) # len
+            for i in range(self.chptr[iseg*16+chanNum].numFexPeaks): # TODO: disable bounds, wraparound check
+                shape[0] = <cnp.npy_intp> self.chptr[iseg*16+chanNum].len(i) # len
                 peak = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16,
-                                   <cnp.uint16_t*>self.chptr[chanNum].fexPtr(i))
+                                   <cnp.uint16_t*>self.chptr[iseg*16+chanNum].fexPtr(i))
                 peak.base = <PyObject*> self._fexPeaks
                 Py_INCREF(self._fexPeaks)
                 listOfPeaks.append(peak)
-                listOfPos.append(self.chptr[chanNum].sPos(i))
+                listOfPos.append(self.chptr[iseg*16+chanNum].sPos(i))
         except ValueError:
             print("No such channel exists")
             listOfPeaks = None
             listOfPos = None
         return (listOfPos, listOfPeaks)
 
-    # adding this decorator allows acces to the signature information of the function in python
+    # adding this decorator allows access to the signature information of the function in python
+    # this is used for AMI type safety
     @cython.binding(True)
     def peaks(self, evt) -> HSDPeaks:
         """Return a dictionary of available peaks found in the event.
@@ -189,8 +203,10 @@ cdef class cyhsd_base_1_2_3:
         """
         if self._isNewEvt(evt):
             self._parseEvt(evt)
-        for i, chanName in enumerate(self._chanList):
-            self._peaksDict[int(chanName)] = self._channelPeaks(chanName)
+        for (iseg, chanNum) in self._chanList:
+            if iseg not in self._peaksDict:
+                self._peaksDict[iseg]={}
+            self._peaksDict[iseg][chanNum] = self._channelPeaks(iseg,chanNum)
         return self._peaksDict
 
     def assem(self, evt) -> HSDWaveforms:
