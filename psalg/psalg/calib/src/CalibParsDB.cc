@@ -45,6 +45,20 @@ const std::string& CalibParsDB::get_string(Query& q) {
 
 //-------------------
 
+const rapidjson::Document& CalibParsDB::get_data(Query&) {
+  _default_msg(std::string("get_data(Query&)"));
+  return _data;
+}
+
+//-------------------
+
+const rapidjson::Document& CalibParsDB::get_metadata(Query&) {
+  _default_msg(std::string("get_metadata(Query&)"));
+  return _metadata;
+}
+
+//-------------------
+
 //const NDArray<float>& CalibParsDB::get_ndarray_float(Query& q) {
 //  _default_msg(std::string("get_ndarray_float(Query&)"));
 //  return _ndarray_float;

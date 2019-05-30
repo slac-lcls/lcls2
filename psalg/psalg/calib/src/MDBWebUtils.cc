@@ -120,8 +120,8 @@ void print_byte_string_as_float(const std::string& s, const size_t nvals) {
 /// Parses char* to Document& doc.
 
 void chars_to_json_doc(const char* s, rapidjson::Document& jdoc) {
-    rapidjson::ParseResult ok = jdoc.Parse(s);
-    if (!ok) MSG(ERROR, "JSON parse error: " << ok.Code() << " " << ok.Offset());
+  rapidjson::ParseResult ok = jdoc.Parse(s);
+  if (!ok) MSG(ERROR, "JSON parse error: " << ok.Code() << " " << ok.Offset());
 }
 
 //-------------------
@@ -365,13 +365,13 @@ void get_data_for_doc(std::string& sresp, const char* dbname, const char* colnam
 
 //-------------------
 /// Returns database name with prefix, e.g. returns "cdb_cxi12345" for name="cxi12345".
-  const std::string db_prefixed_name(const char* name, const char* prefix) {
-    std::string s(prefix);
-    s += name;
-    MSG(DEBUG, "db_prefixed_name " << s << " size " << s.size());
-    assert(s.size()< 128); 
-    return s;
-  }
+const std::string db_prefixed_name(const char* name, const char* prefix) {
+  std::string s(prefix);
+  s += name;
+  MSG(DEBUG, "db_prefixed_name " << s << " size " << s.size());
+  assert(s.size()< 128); 
+  return s;
+}
 
 //-------------------
 /// Returns db_det, db_exp, det, query combined form input parameters.
@@ -406,6 +406,49 @@ dbnames_collection_query(std::map<std::string, std::string>& omap, const char* d
   std::replace(qs.begin(), qs.end(), '|', '"');
   omap["query"] = qs;
   // MSG(DEBUG, "query  = " << qs);
+}
+
+
+//-------------------
+/// Returns rapidjson::Document/metadata ONLY for specified parameters. 
+
+void calib_doc(rapidjson::Document& doc,
+               const char* det, const char* exp, const char* ctype, 
+               const unsigned run, const unsigned time_sec, const char* vers, const char* urlws) {
+  MSG(DEBUG, "In calib_constants for det: " << det << " ctype: " << ctype);
+ 
+  //assert(det);
+  if(! det) {
+    MSG(WARNING, "Collection/detector name is not defined");
+    return;
+  }
+
+  std::map<std::string, std::string> omap;
+  dbnames_collection_query(omap, det, exp, ctype, run, time_sec, vers);
+
+  const std::string& query   = omap["query"]; // "{\"ctype\":\"pedestals\", \"run\":{\"$lte\": 87}}";
+  const std::string& db_det  = omap["db_det"];
+  const std::string& db_exp  = omap["db_exp"];
+  const std::string& colname = omap["colname"];
+
+  // Use preferably experimental DB and the detector DB othervise
+  const std::string& dbname = (exp) ? db_exp : db_det;
+
+  rapidjson::Document outdocs;
+  const rapidjson::Value& jdoc = find_doc(outdocs, dbname.c_str(), colname.c_str(), query.c_str(), urlws);
+
+  //assert(! jdoc.IsNull());
+  if(jdoc.IsNull()) {
+    MSG(WARNING, "DOCUMENT IS NOT FOUND FOR QUERY = " << query);
+    return;
+  }
+
+  // Deep copy of found Value to output Document
+  std::string sdoc = json_doc_to_string(jdoc);
+  response_to_json_doc(sdoc, doc);
+
+  ////MSG(DEBUG, "doc : " << sdoc);
+  ////get_data_for_doc(sresp, dbname.c_str(), colname.c_str(), doc, urlws);
 }
 
 //-------------------

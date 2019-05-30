@@ -72,6 +72,8 @@ namespace psalg {
   void
   dbnames_collection_query(std::map<std::string, std::string>& omap, const char* det, const char* exp=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL);
 
+  void calib_doc(rapidjson::Document& doc, const char* detector, const char* experiment=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL, const char* urlws=URLWS);
+
   void calib_constants(std::string& sresp, rapidjson::Document& doc, const char* detector, const char* experiment=NULL, const char* ctype=NULL, const unsigned run=0, const unsigned time_sec=0, const char* version=NULL, const char* urlws=URLWS);
 
 

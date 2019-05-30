@@ -15,7 +15,7 @@
 //#include <iostream> // cout, puts etc.
 #include <stdio.h>  // printf
 
-#include "psalg/calib/Response.hh"
+//#include "psalg/calib/Response.hh"
 
 #include "psalg/calib/CalibParsDBStore.hh" // #include "psalg/calib/CalibParsDB.hh"
 
@@ -131,16 +131,16 @@ void test_CalibParsDB(const char* dbtypename = "Default-Base-NoDB") {
 //-------------------
 //-------------------
 
-void test_getCalibParsDB(const DBTYPE& dbtype=DBDEF) {
-  MSG(INFO, "In test_getCalibParsDB test access to CalibParsDB through the factory method getCalibParsDB");
+void test_getCalibParsDB_NDArray(const DBTYPE& dbtype=DBDEF) {
+  MSG(INFO, "In test_getCalibParsDB_NDArray test access to CalibParsDB through the factory method getCalibParsDB");
 
   Query::map_t map = 
-    {{Query::DETECTOR,"cspad_0001"}
+    {{Query::DETECTOR,  "cspad_0001"}
     ,{Query::EXPERIMENT,"cxid9114"}
-    ,{Query::CALIBTYPE,"pedestals"}
-    ,{Query::RUN,"150"}
-    ,{Query::TIME_SEC,"0"}
-    ,{Query::VERSION,"NULL"}
+    ,{Query::CALIBTYPE, "pedestals"}
+    ,{Query::RUN,       "150"}
+    ,{Query::TIME_SEC,  "0"}
+    ,{Query::VERSION,   "NULL"}
     };
   Query q(map);
   std::cout << "q: " << q.string_members("\n   ") << "\n\n";
@@ -150,6 +150,99 @@ void test_getCalibParsDB(const DBTYPE& dbtype=DBDEF) {
 
   const NDArray<float>& nda = o->get_ndarray_float(q);
   std::cout << "\n  pedestals   : " << nda << '\n'; 
+
+  delete o;
+}
+
+//-------------------
+
+void test_getCalibParsDB_string(const DBTYPE& dbtype=DBDEF) {
+  MSG(INFO, "In test_getCalibParsDB_string test access to CalibParsDB through the factory method getCalibParsDB");
+
+  Query::map_t map = 
+    {{Query::DETECTOR,  "cspad_0002"}
+    ,{Query::EXPERIMENT,"cxid9114"}
+    ,{Query::CALIBTYPE, "geometry"}
+    ,{Query::RUN,       "109"}
+    ,{Query::TIME_SEC,  "0"}
+    ,{Query::VERSION,   "NULL"}
+    };
+  Query q(map);
+  std::cout << "q: " << q.string_members("\n   ") << "\n\n";
+
+  CalibParsDB* o = getCalibParsDB(dbtype);
+  std::cout << "In test_CalibParsDB_string dbtypename: " << o->dbtypename() << '\n';
+
+  const string& s = o->get_string(q);
+  std::cout << "\n  geometry   : " << s << '\n'; 
+
+  delete o;
+}
+
+//-------------------
+
+void test_getCalibParsDB_data(const DBTYPE& dbtype=DBDEF) {
+  MSG(INFO, "In test_getCalibParsDB_data test access to CalibParsDB through the factory method getCalibParsDB");
+
+  Query::map_t map = 
+    {{Query::DETECTOR,  "detector_1234"}
+    ,{Query::EXPERIMENT,"exp12345"}
+    ,{Query::CALIBTYPE, "testdict"}
+    ,{Query::RUN,       "23"}
+    ,{Query::TIME_SEC,  "0"}
+    ,{Query::VERSION,   "NULL"}
+    };
+
+  /**
+  Query::map_t map = 
+    {{Query::DETECTOR,"opal1000_0059"}
+    ,{Query::EXPERIMENT,"amox23616"}
+    ,{Query::CALIBTYPE,"lasingoffreference"}
+    ,{Query::RUN,"56"}
+    ,{Query::TIME_SEC,"0"}
+    ,{Query::VERSION,"NULL"}
+    };
+  */
+
+  Query q(map);
+  std::cout << "q: " << q.string_members("\n   ") << "\n\n";
+
+  CalibParsDB* o = getCalibParsDB(dbtype);
+  std::cout << "In test_CalibParsDB_data dbtypename: " << o->dbtypename() << '\n';
+
+  //const rapidjson::Document& doc = o->get_data(q);
+  //std::cout << "\n  data:\n"; 
+  //print_json_doc(doc);
+
+  const string& s = o->get_string(q);
+  std::cout << "\nTBE dict-like data (currently get it as string):\n" << s << '\n'; 
+
+  delete o;
+}
+
+//-------------------
+//-------------------
+
+void test_getCalibParsDB_metadata(const DBTYPE& dbtype=DBDEF) {
+  MSG(INFO, "In test_getCalibParsDB_metadata test access to CalibParsDB through the factory method getCalibParsDB");
+
+  Query::map_t map = 
+    {{Query::DETECTOR,  "cspad_0002"}
+    ,{Query::EXPERIMENT,"cxid9114"}
+    ,{Query::CALIBTYPE, "geometry"}
+    ,{Query::RUN,       "109"}
+    ,{Query::TIME_SEC,  "0"}
+    ,{Query::VERSION,   "NULL"}
+    };
+  Query q(map);
+  std::cout << "q: " << q.string_members("\n   ") << "\n\n";
+
+  CalibParsDB* o = getCalibParsDB(dbtype);
+  std::cout << "In test_CalibParsDB_metadata dbtypename: " << o->dbtypename() << '\n';
+
+  const rapidjson::Document& doc = o->get_metadata(q);
+  std::cout << "\nmetadata:\n"; 
+  print_json_doc(doc);
 
   delete o;
 }
@@ -174,12 +267,12 @@ void test_Query() {
 
   //----
   Query::map_t map = 
-    {{Query::DETECTOR,"cspad_0001"}
+    {{Query::DETECTOR,  "cspad_0001"}
     ,{Query::EXPERIMENT,"cxid9114"}
-    ,{Query::CALIBTYPE,"pedestals"}
-    ,{Query::RUN,"150"}
-    ,{Query::TIME_SEC,"0"}
-    ,{Query::VERSION,""}
+    ,{Query::CALIBTYPE, "pedestals"}
+    ,{Query::RUN,       "150"}
+    ,{Query::TIME_SEC,  "0"}
+    ,{Query::VERSION,   ""}
     };
   Query q3(map);
   std::cout << "q3: " << q3.string_members("  ") << "\n\n";
@@ -194,11 +287,13 @@ void test_Query() {
 
 //-------------------
 
+/**
 void test_Response() {
   MSG(INFO, "In test_Response test access to Response");
   Response r("detector-name-is-here");
   std::cout << "r.detname() " << r.detname() << '\n';
 }
+*/
 
 //-------------------
 
@@ -210,10 +305,13 @@ std::string usage(const std::string& tname="")
   if (tname == "" || tname=="1"	) ss << "\n   1  - test_getCalibPars() - default for undefined";
   if (tname == "" || tname=="2"	) ss << "\n   2  - test_getCalibPars('epix100a') - default - the same as base";
   if (tname == "" || tname=="10") ss << "\n  10  - test_CalibParsDB()";
-  if (tname == "" || tname=="11") ss << "\n  11  - test_getCalibParsDB(DBDEF)";
-  if (tname == "" || tname=="12") ss << "\n  12  - test_getCalibParsDB(DBWEB)";
+  if (tname == "" || tname=="11") ss << "\n  11  - test_getCalibParsDB_NDArray (DBDEF)";
+  if (tname == "" || tname=="12") ss << "\n  12  - test_getCalibParsDB_NDArray (DBWEB)";
+  if (tname == "" || tname=="13") ss << "\n  13  - test_getCalibParsDB_string  (DBWEB)";
+  if (tname == "" || tname=="14") ss << "\n  14  - test_getCalibParsDB_metadata(DBWEB)";
+  if (tname == "" || tname=="15") ss << "\n  15  - test_getCalibParsDB_data    (DBWEB)";
   if (tname == "" || tname=="20") ss << "\n  20  - test_Query()";
-  if (tname == "" || tname=="30") ss << "\n  30  - test_Response()";
+  //if (tname == "" || tname=="30") ss << "\n  30  - test_Response()";
   ss << '\n';
   return ss.str();
 }
@@ -237,11 +335,14 @@ int main(int argc, char **argv) {
   else if (tname=="2")  test_getCalibPars("epix100a");
 
   else if (tname=="10") test_CalibParsDB();
-  else if (tname=="11") test_getCalibParsDB(DBDEF);
-  else if (tname=="12") test_getCalibParsDB(DBWEB);
+  else if (tname=="11") test_getCalibParsDB_NDArray(DBDEF);
+  else if (tname=="12") test_getCalibParsDB_NDArray(DBWEB);
+  else if (tname=="13") test_getCalibParsDB_string(DBWEB);
+  else if (tname=="14") test_getCalibParsDB_metadata(DBWEB);
+  else if (tname=="15") test_getCalibParsDB_data(DBWEB);
 
   else if (tname=="20") test_Query();
-  else if (tname=="30") test_Response();
+  //else if (tname=="30") test_Response();
   else MSG(WARNING, "Undefined test name: " << tname);
 
   print_hline(80,'_');

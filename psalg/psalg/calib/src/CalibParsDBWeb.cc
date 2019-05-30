@@ -56,19 +56,23 @@ const NDArray<float>& CalibParsDBWeb::get_ndarray_float(Query& q) {
 
 //-------------------
 
+#define QUERY_PARAMETERS(qmap)\
+	   qmap[Query::DETECTOR].c_str()\
+	, (qmap[Query::EXPERIMENT] == "NULL") ? NULL : qmap[Query::EXPERIMENT].c_str()\
+	,  qmap[Query::CALIBTYPE].c_str()\
+	,  stoi(qmap[Query::RUN])\
+	,  stoi(qmap[Query::TIME_SEC])\
+	, (qmap[Query::VERSION] == "NULL") ? NULL : qmap[Query::VERSION].c_str()
+      //, URLWS
+
+//-------------------
+
 #define GET_NDARRAY(T,N)\
 const NDArray<T>& CalibParsDBWeb::get_ndarray_##N(Query& q) {\
   _default_msg(std::string("get_ndarray_"#N"(Query&)"));\
   rapidjson::Document doc;\
   Query::map_t& qmap = q.qmap();\
-  calib_constants_nda<T>(_ndarray_##N, doc\
-			,  qmap[Query::DETECTOR].c_str()\
-			, (qmap[Query::EXPERIMENT] == "NULL") ? NULL : qmap[Query::EXPERIMENT].c_str()\
-			,  qmap[Query::CALIBTYPE].c_str()\
-			,  stoi(qmap[Query::RUN])\
-			,  stoi(qmap[Query::TIME_SEC])\
-			, (qmap[Query::VERSION] == "NULL") ? NULL : qmap[Query::VERSION].c_str()\
-			);\
+  calib_constants_nda<T>(_ndarray_##N, doc, QUERY_PARAMETERS(qmap));\
   return _ndarray_##N;\
 }
 
@@ -83,9 +87,30 @@ GET_NDARRAY(uint32_t, uint32)
 
 const std::string& CalibParsDBWeb::get_string(Query& q) {
   _default_msg(std::string("get_string(Query&)"));
+  Query::map_t& qmap = q.qmap();
+  calib_constants(_string, _metadata, QUERY_PARAMETERS(qmap));
   return _string;
 }
 
+//-------------------
+
+const rapidjson::Document& CalibParsDBWeb::get_data(Query& q) {
+  _default_msg(std::string("get_data(Query&)"));
+  Query::map_t& qmap = q.qmap();
+  calib_constants_doc(_data, _metadata, QUERY_PARAMETERS(qmap));
+  return _data;
+}
+
+//-------------------
+
+const rapidjson::Document& CalibParsDBWeb::get_metadata(Query& q) {
+  _default_msg(std::string("get_metadata(Query&)"));
+  Query::map_t& qmap = q.qmap();
+  calib_doc(_metadata, QUERY_PARAMETERS(qmap));
+  return _metadata;
+}
+
+//-------------------
 //-------------------
 //-------------------
 //-------------------
