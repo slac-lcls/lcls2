@@ -397,12 +397,9 @@ class CollectionManager():
         self.ctxt = Context('pva')
 
         # name PVs
-        pv_part_base = pv_base + ':PART:%d' % platform
         self.pvListMsgHeader = []   # filled in at alloc
-        self.pvMsgInsert = pv_part_base+':MsgInsert'
-        self.pvXPM = pv_part_base+':XPM'
+        self.pvListXPM = []         # filled in at alloc
         pv_xpm_base = pv_base + ':XPM:%d' % xpm_master
-        self.pvGroupL0Reset =   pv_xpm_base+':GroupL0Reset'
         self.pvGroupL0Enable =  pv_xpm_base+':GroupL0Enable'
         self.pvGroupL0Disable = pv_xpm_base+':GroupL0Disable'
         self.pvGroupMsgInsert = pv_xpm_base+':GroupMsgInsert'
@@ -649,10 +646,13 @@ class CollectionManager():
 
         # create group-dependent PVs
         self.pvListMsgHeader = []
+        self.pvListXPM = []
         for g in range(8):
             if self.groups & (1 << g):
                 self.pvListMsgHeader.append(self.pv_base+":PART:"+str(g)+':MsgHeader')
+                self.pvListXPM.append(self.pv_base+":PART:"+str(g)+':XPM')
         logging.debug('pvListMsgHeader: %s' % self.pvListMsgHeader)
+        logging.debug('pvListXPM: %s' % self.pvListXPM)
 
         # give number to teb nodes for the event builder
         if 'teb' in active_state:
@@ -683,9 +683,8 @@ class CollectionManager():
 
     def condition_connect(self):
         # set XPM PV
-        if not self.pv_put(self.pvXPM, self.xpm_master):
-            logging.error('condition_connect(): pv_put(XPM) failed')
-            return False
+        for pv in self.pvListXPM:
+            self.pv_put(pv, self.xpm_master)
         logging.info('master XPM is %d' % self.xpm_master)
 
         # set Disable PV
@@ -905,9 +904,14 @@ class CollectionManager():
             return False
 
         # phase 2
+        # ...clear readout
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['ClearReadout'])
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
+        # ...configure
         for pv in self.pvListMsgHeader:
             self.pv_put(pv, DaqControl.transitionId['Configure'])
-        self.pv_put(self.pvGroupL0Reset, self.groups)
         self.pv_put(self.pvGroupMsgInsert, self.groups)
         self.pv_put(self.pvGroupMsgInsert, 0)
 
@@ -930,7 +934,6 @@ class CollectionManager():
         # phase 2
         for pv in self.pvListMsgHeader:
             self.pv_put(pv, DaqControl.transitionId['Unconfigure'])
-        self.pv_put(self.pvGroupL0Reset, self.groups)
         self.pv_put(self.pvGroupMsgInsert, self.groups)
         self.pv_put(self.pvGroupMsgInsert, 0)
 
@@ -960,7 +963,6 @@ class CollectionManager():
         # phase 2
         for pv in self.pvListMsgHeader:
             self.pv_put(pv, DaqControl.transitionId['Enable'])
-        self.pv_put(self.pvGroupL0Reset, self.groups)
         self.pv_put(self.pvGroupMsgInsert, self.groups)
         self.pv_put(self.pvGroupMsgInsert, 0)
 
@@ -992,7 +994,6 @@ class CollectionManager():
         # phase 2
         for pv in self.pvListMsgHeader:
             self.pv_put(pv, DaqControl.transitionId['Disable'])
-        self.pv_put(self.pvGroupL0Reset, self.groups)
         self.pv_put(self.pvGroupMsgInsert, self.groups)
         self.pv_put(self.pvGroupMsgInsert, 0)
 
