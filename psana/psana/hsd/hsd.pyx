@@ -8,7 +8,7 @@ cimport cython
 cimport numpy as cnp
 
 import sys # ref count
-from amitypes import HSDWaveforms, HSDPeaks
+from amitypes import HSDWaveforms, HSDPeaks, HSDAssemblies
 
 include "../peakFinder/peakFinder.pyx"  # defines Allocator, PyAlloArray1D
 
@@ -209,7 +209,10 @@ cdef class cyhsd_base_1_2_3:
             self._peaksDict[iseg][chanNum] = self._channelPeaks(iseg,chanNum)
         return self._peaksDict
 
-    def assem(self, evt) -> HSDWaveforms:
+    # adding this decorator allows access to the signature information of the function in python
+    # this is used for AMI type safety
+    @cython.binding(True)
+    def assem(self, evt) -> HSDAssemblies:
         """Return a dictionary of available peaks assembled as waveforms.
         0:  peak intensities assembled into a waveform from channel 0
         1:  peak intensities assembled into a waveform from channel 1
