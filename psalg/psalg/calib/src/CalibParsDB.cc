@@ -25,7 +25,7 @@ void CalibParsDB::_default_msg(const std::string& msg) const {
 
 #define GET_NDARRAY(T,N)\
 const NDArray<T>& CalibParsDB::get_ndarray_##N(Query& q){\
-  _default_msg(std::string("get_ndarray_"#N"(Query)"));\
+  _default_msg(std::string("get_ndarray_"#N"(Query&)"));\
   return _ndarray_##N;\
 }
 
@@ -67,7 +67,7 @@ const rapidjson::Document& CalibParsDB::get_metadata(Query&) {
 //-------------------
 
 //const ResponseDB& CalibParsDB::get_responce(Query&) {
-//  _default_msg(std::string("const ResponseDB& get_responce(const Query&)"));
+//  _default_msg(std::string("const ResponseDB& get_responce(Query&)"));
 //  return _response;
 //}
 

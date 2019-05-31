@@ -15,37 +15,37 @@ namespace calib {
 class CalibParsEpix100a : public CalibPars {
 public:
 
-  CalibParsEpix100a(const char* detname = "Epix100a");
+  CalibParsEpix100a(const char* detname="Epix100a", const DBTYPE& dbtype=DBWEB);
   virtual ~CalibParsEpix100a();
 
   void _default_msg(const std::string& msg=std::string()) const;
 
   /// access to calibration constants
-  const NDArray<common_mode_t>&   common_mode      (const Query&);
+  const NDArray<common_mode_t>&   common_mode      (Query&);
 
   /*
-  const NDArray<pedestals_t>&     pedestals        (const Query&);
-  const NDArray<pixel_rms_t>&     rms              (const Query&);
-  const NDArray<pixel_status_t>&  status           (const Query&);
-  const NDArray<pixel_gain_t>&    gain             (const Query&);
-  const NDArray<pixel_offset_t>&  offset           (const Query&);
-  const NDArray<pixel_bkgd_t>&    background       (const Query&);
-  const NDArray<pixel_mask_t>&    mask_calib       (const Query&);
-  const NDArray<pixel_mask_t>&    mask_from_status (const Query&);
-  const NDArray<pixel_mask_t>&    mask_edges       (const Query&);
-  const NDArray<pixel_mask_t>&    mask_neighbors   (const Query&);
-  const NDArray<pixel_mask_t>&    mask_bits        (const Query&);
-  const NDArray<pixel_mask_t>&    mask             (const Query&);
+  const NDArray<pedestals_t>&     pedestals        (Query&);
+  const NDArray<pixel_rms_t>&     rms              (Query&);
+  const NDArray<pixel_status_t>&  status           (Query&);
+  const NDArray<pixel_gain_t>&    gain             (Query&);
+  const NDArray<pixel_offset_t>&  offset           (Query&);
+  const NDArray<pixel_bkgd_t>&    background       (Query&);
+  const NDArray<pixel_mask_t>&    mask_calib       (Query&);
+  const NDArray<pixel_mask_t>&    mask_from_status (Query&);
+  const NDArray<pixel_mask_t>&    mask_edges       (Query&);
+  const NDArray<pixel_mask_t>&    mask_neighbors   (Query&);
+  const NDArray<pixel_mask_t>&    mask_bits        (Query&);
+  const NDArray<pixel_mask_t>&    mask             (Query&);
 
   /// access to geometry
-  const geometry_t& geometry(const Query&);
-  const NDArray<pixel_idx_t>&   indexes    (const Query&);
-  const NDArray<pixel_coord_t>& coords     (const Query&);
-  const NDArray<pixel_size_t>&  pixel_size (const Query&);
-  const NDArray<pixel_size_t>&  image_xaxis(const Query&);
-  const NDArray<pixel_size_t>&  image_yaxis(const Query&);
-  //virtual void move_geo(const Query&);
-  //virtual void tilt_geo(const Query&);
+  const geometry_t& geometry(Query&);
+  const NDArray<pixel_idx_t>&   indexes    (Query&);
+  const NDArray<pixel_coord_t>& coords     (Query&);
+  const NDArray<pixel_size_t>&  pixel_size (Query&);
+  const NDArray<pixel_size_t>&  image_xaxis(Query&);
+  const NDArray<pixel_size_t>&  image_yaxis(Query&);
+  //virtual void move_geo(Query&);
+  //virtual void tilt_geo(Query&);
   */
 
   CalibParsEpix100a(const CalibParsEpix100a&) = delete;

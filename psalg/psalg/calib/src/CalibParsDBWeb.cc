@@ -7,7 +7,7 @@ using namespace psalg; // for NDArray
 
 namespace calib {
 
-CalibParsDBWeb::CalibParsDBWeb() : CalibParsDB("DBWeb") {
+CalibParsDBWeb::CalibParsDBWeb() : CalibParsDB("DBWEB") {
   MSG(DEBUG, "In c-tor CalibParsDBWeb for " << dbtypename());
 }
 

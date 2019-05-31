@@ -25,7 +25,7 @@
 
 namespace calib {
 
-  CalibParsDB* getCalibParsDB(const DBTYPE& dbtype=calib::DBWEB);
+  CalibParsDB* getCalibParsDB(const DBTYPE dbtype=calib::DBWEB);
 
 } // namespace calib
 

@@ -106,6 +106,34 @@ void test_getCalibPars(const char* detname = "undefined") { //"epix100a"
 
 //-------------------
 
+void test_getCalibPars_pedestals(const char* detname = "undefined") { //"epix100a"
+  MSG(INFO, "In test_getCalibPars test access to CalibPars through the factory method getCalibPars");
+
+  CalibPars* cp = getCalibPars(); //detname);
+  std::cout << "detname: " << cp->detname() << '\n';
+
+  Query::map_t map = 
+    {{Query::DETECTOR,  "cspad_0001"}
+    ,{Query::EXPERIMENT,"cxid9114"}
+    ,{Query::CALIBTYPE, "pedestals"}
+    ,{Query::RUN,       "150"}
+    ,{Query::TIME_SEC,  "0"}
+    ,{Query::VERSION,   "NULL"}
+    };
+  Query q(map);
+  std::cout << "q: " << q.string_members("\n   ") << "\n\n";
+  //Query q("some-string is here");
+
+  const NDArray<pedestals_t>& peds = cp->pedestals(q);
+  std::cout << "\n  peds : " << peds; 
+  std::cout << '\n';
+
+  delete cp;
+}
+
+//-------------------
+//-------------------
+
 void test_CalibParsDB(const char* dbtypename = "Default-Base-NoDB") {
   MSG(INFO, "In test_CalibParsDB test access to CalibParsDB");
   Query q("some-string is here");
@@ -176,6 +204,8 @@ void test_getCalibParsDB_string(const DBTYPE& dbtype=DBDEF) {
   const string& s = o->get_string(q);
   std::cout << "\n  geometry   : " << s << '\n'; 
 
+  std::cout << "\n  name_of_dbtype : " << name_of_dbtype(dbtype) << '\n'; 
+
   delete o;
 }
 
@@ -241,7 +271,7 @@ void test_getCalibParsDB_metadata(const DBTYPE& dbtype=DBDEF) {
   std::cout << "In test_CalibParsDB_metadata dbtypename: " << o->dbtypename() << '\n';
 
   const rapidjson::Document& doc = o->get_metadata(q);
-  std::cout << "\nmetadata:\n"; 
+  std::cout << "\nmetadata:\n";
   print_json_doc(doc);
 
   delete o;
@@ -304,6 +334,7 @@ std::string usage(const std::string& tname="")
   if (tname == "" || tname=="0"	) ss << "\n   0  - test_CalibPars()    - basee class";
   if (tname == "" || tname=="1"	) ss << "\n   1  - test_getCalibPars() - default for undefined";
   if (tname == "" || tname=="2"	) ss << "\n   2  - test_getCalibPars('epix100a') - default - the same as base";
+  if (tname == "" || tname=="3"	) ss << "\n   3  - test_getCalibPars_pedestals() - default init, but full query";
   if (tname == "" || tname=="10") ss << "\n  10  - test_CalibParsDB()";
   if (tname == "" || tname=="11") ss << "\n  11  - test_getCalibParsDB_NDArray (DBDEF)";
   if (tname == "" || tname=="12") ss << "\n  12  - test_getCalibParsDB_NDArray (DBWEB)";
@@ -333,6 +364,7 @@ int main(int argc, char **argv) {
   if      (tname=="0")  test_CalibPars();
   else if (tname=="1")  test_getCalibPars(); // "undefined"
   else if (tname=="2")  test_getCalibPars("epix100a");
+  else if (tname=="3")  test_getCalibPars_pedestals();
 
   else if (tname=="10") test_CalibParsDB();
   else if (tname=="11") test_getCalibParsDB_NDArray(DBDEF);

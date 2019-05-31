@@ -16,7 +16,7 @@
 
 namespace calib {
 
-  CalibPars* getCalibPars(const char* detname = "undefined");
+  CalibPars* getCalibPars(const char* detname = "undefined", const DBTYPE& dbtype=DBWEB);
 
 } // namespace calib
 

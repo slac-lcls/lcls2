@@ -259,7 +259,7 @@ const size_t AreaDetector::size(const event_t& evt) {
 //===================
 
 /// access to calibration constants
-const Query& AreaDetector::query(const event_t& evt) {
+Query& AreaDetector::query(const event_t& evt) {
   return _query;
 }
 

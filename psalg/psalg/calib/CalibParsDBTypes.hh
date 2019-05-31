@@ -6,13 +6,15 @@
  * #include "psalg/calib/CalibParsDBTypes.hh"
  */
 
-#include <string>
+//#include <string>
 
 //-------------------
 
 namespace calib {
 
   enum DBTYPE {DBDEF, DBWEB, DBMONGO, DBCALIB, DBHDF5};
+
+  const char* name_of_dbtype(const DBTYPE);
 
   //typedef double      db_double_t;
   //typedef float       db_float_t;

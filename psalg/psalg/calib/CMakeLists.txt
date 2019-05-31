@@ -3,6 +3,7 @@ add_library(calib SHARED
     src/AreaDetectorTypes.cc
     src/CalibPars.cc
     src/CalibParsDB.cc
+    src/CalibParsDBTypes.cc
     src/CalibParsDBWeb.cc
     src/CalibParsDBStore.cc
     src/CalibParsEpix100a.cc

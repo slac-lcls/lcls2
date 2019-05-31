@@ -109,7 +109,7 @@ public:
   calib::CalibPars* calib_pars();
   calib::CalibPars* calib_pars_updated();
 
-  const Query& query(const event_t&);
+  Query& query(const event_t&);
 
   AreaDetector(const AreaDetector&) = delete;
   AreaDetector& operator = (const AreaDetector&) = delete;
