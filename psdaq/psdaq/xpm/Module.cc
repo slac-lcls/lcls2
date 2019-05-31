@@ -727,25 +727,24 @@ unsigned Module::getL1TrgWrite() const
 {
   return getf(_l1config1, 1, 16);
 }
-void Module::messageHdr(unsigned partition, unsigned v)
+void Module::messageInsert()
 {
-  v |= (1<<15);
-  setPartition(partition);
-  setf(_message, v, 16, 0);
+  setf(_message, 1, 1, 15);
 }
-unsigned Module::messageHdr(unsigned partition) const
+void Module::messageHdr(unsigned v)
 {
-  setPartition(partition);
+  setf(_message, v, 8, 0);
+}
+unsigned Module::messageHdr() const
+{
   return getf(_message, 16, 0);
 }
-void Module::messagePayload(unsigned partition, unsigned v)
+void Module::messagePayload(unsigned v)
 {
-  setPartition(partition);
   setf(_messagePayload, v, 32, 0);
 }
-unsigned Module::messagePayload(unsigned partition) const
+unsigned Module::messagePayload() const
 {
-  setPartition(partition);
   return getf(_messagePayload, 32, 0);
 }
 void Module::inhibitInt(unsigned inh, unsigned v)

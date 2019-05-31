@@ -142,12 +142,12 @@ namespace Pds {
     CPV(AnaTagPush,     { PVG(_analysisPush = getScalarAs<unsigned>());       },
                         { PVP(_analysisPush);                     })
 
-    CPV(MsgHeader,      { _ctrl.msgHeader(getScalarAs<unsigned>());           },
-                        { _ctrl.msgHeader(getScalarAs<unsigned>());           })
-    CPV(MsgInsert,      { if (getScalarAs<unsigned>()!=0) _ctrl.msgInsert();  },
-                        {                                         })
-    CPV(MsgPayload,     { _ctrl.msgPayload(getScalarAs<unsigned>());          },
-                        { _ctrl.msgPayload(getScalarAs<unsigned>());          })
+    CPV(MsgHeader,      { PVG(messageHdr(getScalarAs<unsigned>()));           },
+                        {                                                     })
+    CPV(MsgInsert,      { if (getScalarAs<unsigned>()!=0) PVG(messageInsert()); },
+                        {                                                     })
+    CPV(MsgPayload,     { PVG(messagePayload(getScalarAs<unsigned>()));       },
+                        {                                                     })
     CPV(MsgConfigKey,   { _ctrl.configKey     (getScalarAs<unsigned>());      },
                         { _ctrl.configKey     (getScalarAs<unsigned>());      })
     CPV(MsgConfig,      { if (getScalarAs<unsigned>()!=0) _ctrl.msg_config(); },
@@ -172,7 +172,7 @@ namespace Pds {
                        unsigned partition) : 
     _pv(0), _m(m), _sem(sem), _stats(stats),
       _shelf(shelf), _partition(partition), _enabled(false),
-      _l0Select(0), _dstSelect(0), _dstMask(0), _msgHdr(-1), _msgPayload(-1), _cfgKey(-1) {}
+      _l0Select(0), _dstSelect(0), _dstMask(0), _cfgKey(-1) {}
     PVPCtrls::~PVPCtrls() {}
 
     void PVPCtrls::allocate(const std::string& title)
@@ -274,8 +274,6 @@ namespace Pds {
     void PVPCtrls::seqBit    (unsigned v) { _seqBit     = v; }
     void PVPCtrls::dstSelect (unsigned v) { _dstSelect  = v; }
     void PVPCtrls::dstMask   (unsigned v) { _dstMask    = v; }
-    void PVPCtrls::msgHeader (unsigned v) { _msgHdr     = v; }
-    void PVPCtrls::msgPayload(unsigned v) { _msgPayload = v; }
     void PVPCtrls::configKey (unsigned v) { _cfgKey     = v; }
 
     void PVPCtrls::setL0Select()
@@ -304,24 +302,15 @@ namespace Pds {
       dump();
     }
 
-    void PVPCtrls::msgInsert()
-    {
-      printf("msg_insert [%x]\n", _msgHdr);
-      _sem.take();
-      try {
-        _m.messagePayload(_partition, _msgPayload);
-        _m.messageHdr    (_partition, _msgHdr);
-      } catch (CPSWError&) {}
-      _sem.give();
-    }
-
     void PVPCtrls::msg_config()
     {
       printf("msg_config [%x]\n",_cfgKey);
       _sem.take();
       try {
-        _m.messagePayload(_partition, _cfgKey);
-        _m.messageHdr    (_partition, TransitionId::Configure);
+        setPartition();                           \
+        _m.messagePayload(_cfgKey);
+        _m.messageHdr    (TransitionId::Configure);
+        _m.messageInsert ();
       } catch (CPSWError&) {}
       _sem.give();
     }
@@ -331,7 +320,9 @@ namespace Pds {
       printf("msg_enable\n");
       _sem.take();
       try {
-        _m.messageHdr    (_partition, TransitionId::Enable);
+        setPartition();                           \
+        _m.messageHdr    (TransitionId::Enable);
+        _m.messageInsert ();
       } catch (CPSWError&) {}
       _sem.give();
     }
@@ -341,7 +332,9 @@ namespace Pds {
       printf("msg_disable\n");
       _sem.take();
       try {
-        _m.messageHdr    (_partition, TransitionId::Disable);
+        setPartition();                           \
+        _m.messageHdr    (TransitionId::Disable);
+        _m.messageInsert ();
       } catch (CPSWError&) {}
       _sem.give();
     }
@@ -351,8 +344,10 @@ namespace Pds {
       printf("msg_clear\n");
       _sem.take();
       try {
-        _m.messagePayload(_partition, 0);
-        _m.messageHdr    (_partition, MsgClear);
+        setPartition();                           \
+        _m.messagePayload(0);
+        _m.messageHdr    (MsgClear);
+        _m.messageInsert ();
       } catch (CPSWError&) {}
       _sem.give();
     }

@@ -243,10 +243,11 @@ namespace Pds {
       void     setL1TrgWrite(unsigned);
       unsigned getL1TrgWrite() const;
     public:
-      void     messagePayload(unsigned, unsigned);
-      unsigned messagePayload(unsigned) const;
-      void     messageHdr(unsigned, unsigned);  // inserts the message
-      unsigned messageHdr(unsigned) const;
+      void     messagePayload(unsigned);
+      unsigned messagePayload() const;
+      void     messageHdr(unsigned);
+      unsigned messageHdr() const;
+      void     messageInsert();  // inserts the message
     public:
       void     inhibitInt(unsigned, unsigned);
       unsigned inhibitInt(unsigned) const;
