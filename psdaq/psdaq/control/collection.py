@@ -197,7 +197,7 @@ class DaqControl:
     #
     # DaqControl.setState - change the state
     #
-    def setState(self, state):
+    def setState(self, state, *, config_alias='BEAM'):
         errorMessage = None
         try:
             msg = create_msg('setstate.' + state)
@@ -216,7 +216,7 @@ class DaqControl:
     #
     # DaqControl.setTransition - trigger a transition
     #
-    def setTransition(self, transition):
+    def setTransition(self, transition, *, config_alias='BEAM'):
         errorMessage = None
         try:
             msg = create_msg(transition)
