@@ -7,7 +7,8 @@ int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:D:C:d:u:")) != EOF) {
+    para.detSegment = 0;
+    while((c = getopt(argc, argv, "p:o:l:D:C:d:n:s:")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -24,11 +25,14 @@ int main(int argc, char* argv[])
             case 'C':
                 para.collectionHost = optarg;
                 break;
+            case 's':
+                para.detSegment = std::stoi(optarg);
+                break;
             case 'd':
                 para.device = optarg;
                 break;
-            case 'u':
-                para.alias = optarg;
+            case 'n':
+                para.detName = optarg;
                 break;
             default:
                 exit(1);
@@ -39,8 +43,8 @@ int main(int argc, char* argv[])
         printf("-d: device is mandatory!\n");
         exit(1);
     }
-    if (para.alias.empty()) {
-        printf("-u: alias is mandatory!\n");
+    if (para.detName.empty()) {
+        printf("-n: detector name is mandatory!\n");
         exit(1);
     }
 

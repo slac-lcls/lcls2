@@ -22,7 +22,7 @@ namespace Pds {
     class DecideImpl : public Decide
     {
     public:
-      int    configure(const json& msg);
+      int    configure(const json& msg, const std::string& connect_json);
       Damage configure(const Dgram* dgram);
       Damage event(const Dgram* ctrb, uint32_t* result, size_t sizeofPayload);
     private:
@@ -33,11 +33,11 @@ namespace Pds {
 };
 
 
-int Pds::Eb::DecideImpl::configure(const json& msg)
+int Pds::Eb::DecideImpl::configure(const json& msg, const std::string& connect_json)
 {
   Document    top;
   const char* detName = "tmoteb";
-  int         rc      = fetchFromCfgDb(detName, top);
+  int         rc      = fetchFromCfgDb(detName, top, connect_json);
   if (!rc)
   {
     const char* key = "triggerVal";

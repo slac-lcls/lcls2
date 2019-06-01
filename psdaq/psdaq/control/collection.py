@@ -373,9 +373,10 @@ def confirm_response(socket, wait_time, msg_id, ids, err_pub):
 
 
 class CollectionManager():
-    def __init__(self, platform, instrument, pv_base, xpm_master, alias):
+    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase):
         self.platform = platform
         self.alias = alias
+        self.cfg_dbase = cfg_dbase
         self.xpm_master = xpm_master
         self.pv_base = pv_base
         self.context = zmq.Context(1)
@@ -806,6 +807,8 @@ class CollectionManager():
             self.cmstate['control'][0]['proc_info'] = {}
             self.cmstate['control'][0]['control_info']['xpm_master'] = self.xpm_master
             self.cmstate['control'][0]['control_info']['pv_base'] = self.pv_base
+            self.cmstate['control'][0]['control_info']['cfg_dbase'] = self.cfg_dbase
+            self.cmstate['control'][0]['control_info']['instrument'] = self.instrument
             self.cmstate['control'][0]['proc_info']['alias'] = self.alias
             self.cmstate['control'][0]['proc_info']['host'] = socket.gethostname()
             self.cmstate['control'][0]['proc_info']['pid'] = os.getpid()
@@ -1071,6 +1074,7 @@ def main():
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
     parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
     parser.add_argument('-P', metavar='INSTRUMENT', default='TST', help='instrument (default TST)')
+    parser.add_argument('-d', metavar='CFGDATABASE', default='mcbrowne:psana@psdb-dev:9306/configDB', help='configuration database connection')
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-a', action='store_true', help='autoconnect')
@@ -1084,7 +1088,7 @@ def main():
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def manager():
-        manager = CollectionManager(platform, args.P, args.B, args.x, args.u)
+        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d)
 
     def client(i):
         c = Client(platform)

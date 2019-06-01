@@ -1,5 +1,5 @@
 import psalg.configdb.configdb as cdb
-from bson.json_util import dumps
+import json
 
 # json2xtc conversion depends on these being present with ':RO'
 # (and the :RO does not appear in the xtc names)
@@ -20,10 +20,17 @@ def remove_read_only(cfg):
             new[k.replace(':RO', '')] = v
     return new
 
-def get_config(dburl,dbname,hutch,cfgtype,detname):
+def get_config(connect_json,cfgtype,detname):
+
+    connect_info = json.loads(connect_json)
+    control_info = connect_info['body']['control']['0']['control_info']
+    instrument = control_info['instrument']
+    cfg_dbase = control_info['cfg_dbase'].split('/')
+    db_url = cfg_dbase[0]
+    db_name =cfg_dbase[1]
 
     create = False
-    mycdb = cdb.configdb(dburl, hutch, create, dbname)
+    mycdb = cdb.configdb(db_url, instrument, create, db_name)
     cfg = mycdb.get_configuration(cfgtype, detname)
 
     cfg_no_RO_names = remove_read_only(cfg)
@@ -31,4 +38,4 @@ def get_config(dburl,dbname,hutch,cfgtype,detname):
     return cfg_no_RO_names
 
 def get_config_json(*args):
-    return dumps(get_config(*args))
+    return json.dumps(get_config(*args))

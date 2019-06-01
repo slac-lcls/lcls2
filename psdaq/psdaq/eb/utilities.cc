@@ -64,7 +64,8 @@ static int check(PyObject* obj)
 // Note: This function requires a higher layer to call
 // Py_Initialize() / Py_Finalize() as appropriate.
 int Pds::Eb::fetchFromCfgDb(const std::string& detName,
-                            Document&          top)
+                            Document&          top,
+                            const std::string& connect_json)
 {
   int rc = 0;
 
@@ -78,7 +79,8 @@ int Pds::Eb::fetchFromCfgDb(const std::string& detName,
   PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"get_config_json");
   if (check(pFunc))  return -1;
   // returns new reference
-  PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","mcbrowne:psana@psdb-dev:9306", "configDB", "TMO", "BEAM", detName.c_str());
+  // FIXME: need to get "BEAM" string from config phase1
+  PyObject* mybytes = PyObject_CallFunction(pFunc,"sss",connect_json.c_str(), "BEAM", detName.c_str());
   if (check(mybytes))  return -1;
   // returns new reference
   PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);

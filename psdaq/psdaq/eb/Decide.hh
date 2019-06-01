@@ -19,7 +19,7 @@ namespace Pds {
       Decide() {}
       virtual ~Decide() {}
     public:
-      virtual int             configure(const nlohmann::json& msg)           = 0;
+      virtual int             configure(const nlohmann::json& msg, const std::string& connect_json)           = 0;
       virtual XtcData::Damage configure(const XtcData::Dgram* dgram)         = 0;
       virtual XtcData::Damage event    (const XtcData::Dgram* ctrb,
                                         uint32_t*             result,

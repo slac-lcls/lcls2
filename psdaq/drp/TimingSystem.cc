@@ -23,12 +23,12 @@ class TSDef : public VarDef
 {
 public:
     enum index {
-        dataval
+        data
     };
     TSDef()
     {
         Alg alg("raw", 1, 2, 3);
-        NameVec.push_back({"dataval", Name::UINT32, 0});
+        NameVec.push_back({"data", Name::UINT8, 1});
     }
 } TSDef;
 
@@ -36,7 +36,7 @@ TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool),
     m_evtcount(0),
     m_evtNamesId(nodeId, EventNamesIndex),
-    m_connect_info("")
+    m_connect_json("")
 {
 }
 
@@ -60,16 +60,13 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
     check(pFunc);
     // need to get the dbase connection info via collection
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss","DAQ:LAB2:HSD:DEV02",
-                                              "mcbrowne:psana@psdb-dev:9306",
-                                              "configDB", "TMO", "BEAM",
-                                              "xpphsd");
+    // FIXME: should get "HSD:DEV02" from drp cmd line, and "BEAM" from config phase1.
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",m_connect_json.c_str(),"HSD:DEV02", "BEAM", m_para->detName.c_str());
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
     check(json_bytes);
     char* json = (char*)PyBytes_AsString(json_bytes);
-    printf("json: %s\n",json);
 
     // convert to json to xtc
     const unsigned BUFSIZE = 1024*1024;
@@ -95,10 +92,9 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
 
-void TimingSystem::connect(const json& json_connect_info)
+void TimingSystem::connect(const json& connect_json)
 {
-    printf("*** here in connect\n");
-    XpmDetector::connect(json_connect_info);
+    XpmDetector::connect(connect_json);
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psalg.configdb.ts_connect");
     check(pModule);
@@ -108,15 +104,14 @@ void TimingSystem::connect(const json& json_connect_info)
     // returns borrowed reference
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"ts_connect");
     check(pFunc);
-    m_connect_info = json_connect_info.dump();
+    m_connect_json = connect_json.dump();
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"s",m_connect_info.c_str());
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"s",m_connect_json.c_str());
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
     check(json_bytes);
     char* json = (char*)PyBytes_AsString(json_bytes);
-    printf("json: %s\n",json);
 
     Py_DECREF(pModule);
     Py_DECREF(mybytes);
@@ -125,29 +120,32 @@ void TimingSystem::connect(const json& json_connect_info)
 
 unsigned TimingSystem::configure(Xtc& xtc)
 {
-    printf("*** here in config\n");
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
-    TimingSystem::_addJson(xtc, configNamesId);
+    _addJson(xtc, configNamesId);
 
     // set up the names for L1Accept data
     Alg tsAlg("ts", 1, 2, 3); // TODO: should this be configured by tsconfig.py?
-    unsigned segment = 0;
-    Names& eventNames = *new(xtc) Names("xppts", tsAlg, "ts", "detnum1235", m_evtNamesId, segment);
+    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), tsAlg, "ts", "detnum1235", m_evtNamesId, m_para->detSegment);
     eventNames.add(xtc, TSDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
     return 0;
-    printf("*** done config\n");
 }
 
 void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
-    printf("*** here in event\n");
     m_evtcount+=1;
+
     CreateData ts(dgram.xtc, m_namesLookup, m_evtNamesId);
 
-    ts.set_value(TSDef::dataval, (uint32_t) 3);
-    printf("*** done event\n");
+    int lane = __builtin_ffs(event->mask) - 1;
+    // there should be only one lane of data in the timing system
+    uint32_t dmaIndex = event->buffers[lane].index;
+    unsigned data_size = event->buffers[lane].size;
+    unsigned shape[MaxRank];
+    shape[0] = data_size;
+    Array<uint8_t> arrayT = ts.allocate<uint8_t>(TSDef::data, shape);
+    memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex], data_size);
 }
 
 }

@@ -1,6 +1,6 @@
 from psalg.configdb.get_config import get_config
 from p4p.client.thread import Context
-from bson.json_util import dumps
+import json
 import time
 
 def epics_names_values(pvtable,cfg,names,values):
@@ -73,4 +73,4 @@ def hsd_config(epics_prefix,dburl,dbname,hutch,cfgtype,detname):
     ctxt.put(epics_prefix+':BASE:APPLYCONFIG',0)
     ctxt.close()
 
-    return dumps(cfg)
+    return json.dumps(cfg)

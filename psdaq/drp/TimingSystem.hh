@@ -15,11 +15,11 @@ public:
     unsigned configure(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:
-    static void _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId);
+    void _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId);
     enum {ConfigNamesIndex, EventNamesIndex};
     unsigned          m_evtcount;
     XtcData::NamesId  m_evtNamesId;
-    std::string       m_connect_info;
+    std::string       m_connect_json;
 };
 
 }

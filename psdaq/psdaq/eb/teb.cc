@@ -483,6 +483,7 @@ private:
   std::thread _appThread;
   Dl          _dl;
   bool        _shutdown;
+  std::string _connect_json;
 };
 
 TebApp::TebApp(const std::string&              collSrv,
@@ -528,6 +529,10 @@ void TebApp::handleConnect(const json& msg)
 {
   int rc = _handleConnect(msg);
 
+  // Save a copy of the json so we can use it to connect to
+  // the config database on configure
+  _connect_json = msg.dump();
+
   // Reply to collection with transition status
   json body = json({});
   if (rc)  body["err_info"] = "Connect error";
@@ -540,7 +545,7 @@ int TebApp::_handleConfigure(const json& msg)
 
   Document          top;
   const std::string detName("tmoteb");
-  int               rc = fetchFromCfgDb(detName, top);
+  int               rc = fetchFromCfgDb(detName, top, _connect_json);
   if (!rc)
   {
     const char* key("soname");
@@ -567,7 +572,7 @@ int TebApp::_handleConfigure(const json& msg)
           {
             _teb.decide(decide);
 
-            rc = decide->configure(msg);
+            rc = decide->configure(msg, _connect_json);
             if (rc)  fprintf(stderr, "%s:\n  Failed to configure Decide object: rc = %d\n",
                              __PRETTY_FUNCTION__, rc);
           }

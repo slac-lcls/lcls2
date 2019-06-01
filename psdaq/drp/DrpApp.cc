@@ -17,7 +17,7 @@ using json = nlohmann::json;
 namespace Drp {
 
 DrpApp::DrpApp(Parameters* para) :
-    CollectionApp(para->collectionHost, para->partition, "drp", para->alias),
+    CollectionApp(para->collectionHost, para->partition, "drp", para->detName+std::to_string(para->detSegment)),
     m_para(para),
     m_pool(*para)
 {
