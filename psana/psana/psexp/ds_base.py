@@ -65,7 +65,7 @@ class DataSourceBase(object):
             elif isinstance(self.files, (list, np.ndarray)):
                 xtc_files = self.files
             else:
-                raise(InvalidFileType, "Only accept filename string or list of files.")
+                raise InvalidFileType("Only accept filename string or list of files.")
 
             # In case of reading file(s), user negative integers for the index.
             # If files is a list, separate each file to an individual run.
