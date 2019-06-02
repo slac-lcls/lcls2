@@ -52,6 +52,7 @@ class DaqControl:
         self.host = host
         self.platform = platform
         self.timeout = timeout
+        self.config_alias = None
 
         # initialize zmq socket
         self.context = zmq.Context(1)
@@ -200,7 +201,7 @@ class DaqControl:
     def setState(self, state, *, config_alias='BEAM'):
         errorMessage = None
         try:
-            msg = create_msg('setstate.' + state)
+            msg = create_msg('setstate.' + state + '.' + config_alias)
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
@@ -219,7 +220,7 @@ class DaqControl:
     def setTransition(self, transition, *, config_alias='BEAM'):
         errorMessage = None
         try:
-            msg = create_msg(transition)
+            msg = create_msg(transition + '.' + config_alias)
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
@@ -472,19 +473,25 @@ class CollectionManager():
         return retval
 
     def service_requests(self):
+        # msg['header']['key'] formats:
+        #  setstate.STATE.CONFIG_ALIAS
+        #  TRANSITION.CONFIG_ALIAS
+        #  request
         answer = None
         try:
             msg = self.front_rep.recv_json()
-            key = msg['header']['key']
+            key = msg['header']['key'].split(".")
             body = msg['body']
-            if key.startswith('setstate.'):
+            if key[0] == 'setstate':
+                self.config_alias = key[2]
                 # handle_setstate() sends reply internally
-                self.handle_setstate(key[9:])
+                self.handle_setstate(key[1])
                 answer = None
-            elif key in DaqControl.transitions:
+            elif key[0] in DaqControl.transitions:
+                self.config_alias = key[1]
                 # send 'ok' reply before calling handle_trigger()
                 self.front_rep.send_json(create_msg('ok'))
-                retval = self.handle_trigger(key, stateChange=False)
+                retval = self.handle_trigger(key[0], stateChange=False)
                 answer = None
                 try:
                     # send error message, if any, to front_pub socket
@@ -492,7 +499,7 @@ class CollectionManager():
                 except KeyError:
                     pass
             else:
-                answer = self.handle_request[key](body)
+                answer = self.handle_request[key[0]](body)
         except KeyError:
             answer = create_msg('error')
         if answer is not None:
@@ -864,11 +871,11 @@ class CollectionManager():
         self.front_pub.send_json(error_msg(msg))
         return
 
-    def condition_common(self, transition, timeout):
+    def condition_common(self, transition, timeout, body={}):
         retval = True
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
-        msg = create_msg(transition)
+        msg = create_msg(transition, body=body)
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         # only drp and teb groups (aka levels) respond to configure and above
@@ -901,7 +908,8 @@ class CollectionManager():
 
     def condition_configure(self):
         # phase 1
-        ok = self.condition_common('configure', 15000)
+        ok = self.condition_common('configure', 15000,
+                                   body={'config_alias': self.config_alias})
         if not ok:
             logging.error('condition_configure(): configure phase1 failed')
             return False
