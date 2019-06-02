@@ -5,7 +5,7 @@ from psana import DataSource
 
 def launch_client(pid):
     dg_count = 0
-    ds = DataSource('shmem','shmem_test_'+pid)
+    ds = DataSource(shmem='shmem_test_'+pid)
     run = next(ds.runs())
     for evt in run.events():
         if not evt:

@@ -14,6 +14,7 @@ class DataSourceBase(object):
     live = 0
     dir = None
     files = None
+    shmem = None
     run_dict = {}
 
     def __init__(self, **kwargs):
@@ -30,7 +31,7 @@ class DataSourceBase(object):
         sel_det_ids -- user-selected detector IDs.
         """
         if kwargs is not None:
-            keywords = ('exp', 'dir', 'files', \
+            keywords = ('exp', 'dir', 'files', 'shmem', \
                     'filter', 'batch_size', 'max_events', 'sel_det_ids', 'det_name')
             for k in keywords:
                 if k in kwargs:
@@ -52,6 +53,11 @@ class DataSourceBase(object):
     def setup_xtcs(self):
         exp = None
         run_dict = {} # stores list of runs with corresponding xtc_files, smd_files, and epic file
+
+        if self.shmem:
+            self.tag = self.shmem
+            run_dict[-1] = (['shmem'], None, None)
+            return exp, run_dict
 
         # Reading xtc files in one of these two ways
         assert self.exp != self.files

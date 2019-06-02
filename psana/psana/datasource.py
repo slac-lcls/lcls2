@@ -23,9 +23,8 @@ class DataSourceFactory:
 def DataSource(*args, **kwargs):
     args = tuple(map(str, args)) # Hack: workaround for unicode and str being different types in Python 2
 
-    if len(args) > 0:
-        if args[0] == 'shmem': # shared memory client
-            return DataSourceFactory.createDataSource('ShmemDataSource', *args, **kwargs)    
+    if 'shmem' in kwargs:
+        return DataSourceFactory.createDataSource('ShmemDataSource', *args, **kwargs)    
     elif 'exp' in kwargs: # experiment string - assumed multiple files
         if mode == 'mpi':
             if size == 1:
