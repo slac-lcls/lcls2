@@ -5,6 +5,8 @@ if mode == 'mpi':
     from mpi4py import MPI
     size = MPI.COMM_WORLD.Get_size()
 
+class InvalidDataSource(Exception): pass
+
 from psana.psexp.serial_ds import SerialDataSource
 from psana.psexp.mpi_ds import MPIDataSource
 from psana.psexp.singlefile_ds import SingleFileDataSource
@@ -34,9 +36,9 @@ def DataSource(*args, **kwargs):
         elif mode == 'legion':
             return DataSourceFactory.createDataSource('LegionDataSource', *args, **kwargs)
         else:
-            raise("Invalid datasource")
+            raise InvalidDataSource("Incorrect mode. DataSource mode only supports either mpi or legion.")
     
     elif 'files' in kwargs: # list of files
         return DataSourceFactory.createDataSource('SingleFileDataSource', *args, **kwargs)
     else:
-        raise("Invalid datasource")
+        raise InvalidDataSource("Expected keyword(s) not found. DataSource requires exp, shmem, or files keywords.")
