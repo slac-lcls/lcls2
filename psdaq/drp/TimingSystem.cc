@@ -94,10 +94,10 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
 
-void TimingSystem::connect(const json& connect_json)
+void TimingSystem::connect(const json& connect_json, const std::string& collectionId)
 {
-    XpmDetector::connect(connect_json);
-    //
+    XpmDetector::connect(connect_json, collectionId);
+    
     int fd = open(m_para->device.c_str(), O_RDWR);
     if (fd < 0) {
         std::cout<<"Error opening "<< m_para->device << '\n';

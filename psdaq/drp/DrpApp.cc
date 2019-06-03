@@ -78,7 +78,7 @@ void DrpApp::handleConnect(const json &msg)
     parseConnectionParams(msg["body"]);
 
     m_det->nodeId = m_tPrms.id;
-    m_det->connect(msg);
+    m_det->connect(msg, std::to_string(getId()));
 
     auto exporter = std::make_shared<MetricExporter>();
     if (m_exposer) {

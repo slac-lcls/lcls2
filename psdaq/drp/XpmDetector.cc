@@ -40,7 +40,7 @@ json XpmDetector::connectionInfo()
 }
 
 // setup up device to receive data over pgp
-void XpmDetector::connect(const json& json)
+void XpmDetector::connect(const json& json, const std::string& collectionId)
 {
     std::cout<<"XpmDetector connect\n";
     // FIXME make configureable
@@ -52,17 +52,20 @@ void XpmDetector::connect(const json& json)
         std::cout<<"Error opening "<< m_para->device << '\n';
         return;
     }
-    int partition = m_para->partition;
-    uint32_t v = ((partition&0xf)<<0) |
+
+    int readoutGroup = json["body"]["drp"][collectionId]["det_info"]["readout"];
+    uint32_t v = ((readoutGroup&0xf)<<0) |
                   ((length&0xffffff)<<4) |
                   (links<<28);
     dmaWriteRegister(fd, 0x00a00000, v);
     uint32_t w;
     dmaReadRegister(fd, 0x00a00000, &w);
     printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",
-           partition, length, links, v, w);
+           readoutGroup, length, links, v, w);
     for (unsigned i=0; i<4; i++) {
         if (links&(1<<i)) {
+            // this is the threshold to assert deadtime (high water mark) for every link
+            // 0x1f00 corresponds to 0x1f free buffers
             dmaWriteRegister(fd, 0x00800084+32*i, 0x1f00);
         }
     }

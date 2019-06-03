@@ -11,25 +11,25 @@ ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
 
 # -o /ffb01/weninc
-drp_cmd = 'drp -D AreaDetector -l 0xf -d /dev/datadev_0 -o /ffb01/weninc -C ' + collect_host
+drp_cmd = 'drp -D AreaDetector -l 0x1 -n cam -d /dev/datadev_0 -C ' + collect_host
 
 procmgr_config = [
- { id:'partca-'+platform ,flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
- { id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- { id:'modca1'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
- { id:'modca2'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
- { host: collect_host, id:'Collection', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2 -x 2'},
- { id:'control_gui', flags:'xp', conda:conda_rel, cmd:'control_gui -H '+collect_host},
+ { id:'partca-' + platform ,flags: 's', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
+ { id:'procstat', flags: 'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ { id:'modca1', flags: 's', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
+ { id:'modca2', flags: 's', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
+ { host: collect_host, id: 'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'collection -v -B DAQ:LAB2 -x 2 -P TMO'},
+ { id:'control_gui', flags: 'xp', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 
- { host: 'drp-tst-dev001', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host},
+ { host: 'drp-tst-dev001', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -C ' + collect_host},
 
- { host: 'drp-tst-dev002', id:'drp2', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
- { host: 'drp-tst-dev003', id:'drp3', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
- #{ host: 'drp-tst-dev004', id:'drp4', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
- #{ host: 'drp-tst-dev005', id:'drp5', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
- #{ host: 'drp-tst-dev007', id:'drp7', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
- #{ host: 'drp-tst-dev009', id:'drp9', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
- #{ host: 'drp-tst-dev011', id:'drp11', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
+ { host: 'drp-tst-dev002', id:'drp02', flags:'sp', conda:conda_rel, cmd: drp_cmd + ' -s 2' },
+ #{ host: 'drp-tst-dev003', id:'drp03', flags:'sp', conda:conda_rel, cmd: drp_cmd + ' -s 3' },
+ #{ host: 'drp-tst-dev004', id:'drp04', flags:'sp', conda:conda_rel, cmd: drp_cmd + ' -s 4' },
+ #{ host: 'drp-tst-dev005', id:'drp05', flags:'sp', conda:conda_rel, cmd: drp_cmd + ' -s 5' },
+ #{ host: 'drp-tst-dev007', id:'drp07', flags:'spu', conda:conda_rel, cmd: drp_cmd },
+ #{ host: 'drp-tst-dev009', id:'drp09', flags:'sp', conda:conda_rel, cmd: drp_cmd + '-s 9' },
+ #{ host: 'drp-tst-dev011', id:'drp11', flags:'sp', conda:conda_rel, cmd: drp_cmd + '-s 11' },
  #{ host: 'drp-tst-dev012', id:'drp12', flags:'sxpu', conda:conda_rel, cmd: drp_cmd }
  #{ host: 'drp-tst-dev013', id:'drp13', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },
  #{ host: 'drp-tst-dev014', id:'drp14', flags:'sxpu', conda:conda_rel, cmd: drp_cmd },

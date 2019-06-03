@@ -11,7 +11,7 @@ class TimingSystem : public XpmDetector
 {
 public:
     TimingSystem(Parameters* para, MemPool* pool);
-    void connect(const nlohmann::json& msg) override;
+    void connect(const nlohmann::json& msg, const std::string& collectionId) override;
     unsigned configure(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:
