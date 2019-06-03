@@ -8,7 +8,6 @@
 #include "psalg/calib/CalibParsDB.hh"
 
 #include "psalg/calib/Query.hh"
-//#include "psalg/calib/Response.hh"
 
 //using namespace std;
 using namespace psalg;
@@ -24,10 +23,6 @@ public:
   virtual ~CalibPars();
 
   const std::string& detname() {return _detname;}
-
-  //-------------------
-
-  //virtual const Response& calib_constants(Query&);
 
   //-------------------
 
@@ -51,6 +46,7 @@ public:
 
   /// access to geometry
   virtual const geometry_t& geometry(Query&);
+  virtual const geometry_t& geometry_str(Query&); // returns geometry calibration file content as string
   virtual const NDArray<pixel_idx_t>&   indexes    (Query&);//, const size_t& axis=0);
   virtual const NDArray<pixel_coord_t>& coords     (Query&);//, const size_t& axis=0);
   virtual const NDArray<pixel_size_t>&  pixel_size (Query&);//, const size_t& axis=0);
@@ -60,6 +56,8 @@ public:
   //virtual void tilt_geo(Query&, const tilt_angle_t& dtx, const tilt_angle_t& dty, const tilt_angle_t& dtz);
 
  //-------------------
+
+  CalibParsDB* calibparsdb() {return _calibparsdb;}
 
   CalibPars(const CalibPars&) = delete;
   CalibPars& operator = (const CalibPars&) = delete;
@@ -82,7 +80,6 @@ protected:
   NDArray<pixel_size_t>   _pixel_size;
 
   geometry_t              _geometry;
-  //Response                _response;
 
   const std::string       _detname;
 

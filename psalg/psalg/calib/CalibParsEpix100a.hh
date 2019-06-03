@@ -20,10 +20,9 @@ public:
 
   void _default_msg(const std::string& msg=std::string()) const;
 
-  /// access to calibration constants
-  const NDArray<common_mode_t>&   common_mode      (Query&);
-
+  /// access to calibration constants. DEFAULT IS USED IF UNDEFINED
   /*
+  const NDArray<common_mode_t>&   common_mode      (Query&);
   const NDArray<pedestals_t>&     pedestals        (Query&);
   const NDArray<pixel_rms_t>&     rms              (Query&);
   const NDArray<pixel_status_t>&  status           (Query&);
@@ -38,6 +37,7 @@ public:
   const NDArray<pixel_mask_t>&    mask             (Query&);
 
   /// access to geometry
+  const geometry_t& geometry_str(Query&);
   const geometry_t& geometry(Query&);
   const NDArray<pixel_idx_t>&   indexes    (Query&);
   const NDArray<pixel_coord_t>& coords     (Query&);
@@ -51,31 +51,8 @@ public:
   CalibParsEpix100a(const CalibParsEpix100a&) = delete;
   CalibParsEpix100a& operator = (const CalibParsEpix100a&) = delete;
 
-private:
-  NDArray<common_mode_t>  _common_mode;
-
-
-  /*
-protected:
-
-  NDArray<common_mode_t>  _common_mode;
-  NDArray<pedestals_t>    _pedestals;
-
-  NDArray<pixel_rms_t>    _pixel_rms;
-  NDArray<pixel_status_t> _pixel_status;
-  NDArray<pixel_gain_t>   _pixel_gain;
-  NDArray<pixel_offset_t> _pixel_offset;
-  NDArray<pixel_bkgd_t>   _pixel_bkgd;
-  NDArray<pixel_mask_t>   _pixel_mask;
-
-  NDArray<pixel_idx_t>    _pixel_idx;
-  NDArray<pixel_coord_t>  _pixel_coord;
-  NDArray<pixel_size_t>   _pixel_size;
-
-  geometry_t              _geometry;
-
-  const std::string       _detname;
-  */
+  //private:
+  //NDArray<common_mode_t>  _common_mode;
 
 }; // class
 

@@ -39,8 +39,6 @@ install(FILES
     CalibParsEpix100a.hh
     CalibParsStore.hh
     Query.hh
-    Response.hh
-    ResponseDB.hh
     MDBWebUtils.hh
     DESTINATION include/psalg/calib
 )

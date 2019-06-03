@@ -33,15 +33,6 @@ void CalibPars::_default_msg(const std::string& msg) const {
 
 //-------------------
 
-/// access to calibration constants
-
-//const Response& CalibPars::calib_constants(Query&) {
-//  _default_msg(std::string("const Response& calib_constants(Query&)"));
-//  return _response;
-//}
-
-//-------------------
-
 /** REPLACE METHODS LIKE SHOWN BELOW WITH PARAMETRIC MACRO
 const NDArray<pedestals_t>& CalibPars::pedestals(Query& q) {
   std::cout << "XXXXXXXXX CalibPars::pedestals dbtypename: " << _calibparsdb->dbtypename() << '\n';
@@ -72,42 +63,48 @@ GET_NDARRAY_DEF(pixel_mask_t,   Pars::mask_bits,        uint16)
 GET_NDARRAY_DEF(pixel_mask_t,   Pars::mask,             uint16)
 
 /// access to geometry
-const geometry_t& CalibPars::geometry(Query&) {
+const geometry_t& CalibPars::geometry_str(Query& q) {
+  //_default_msg("geometry(...)");
+  MSG(DEBUG, std::string("==========> CalibPars::geometry_str(Query&) for ") << _calibparsdb->dbtypename());\
+  return _calibparsdb->get_string(q);
+}
+
+const geometry_t& CalibPars::geometry(Query& q) {
   _default_msg("geometry(...)");
   return _geometry;
 }
 
-const NDArray<pixel_idx_t>&   CalibPars::indexes(Query&) {
+const NDArray<pixel_idx_t>&   CalibPars::indexes(Query& q) {
   _default_msg("indexes(...)");
   return _pixel_idx;
 }
 
-const NDArray<pixel_coord_t>& CalibPars::coords(Query&) {
+const NDArray<pixel_coord_t>& CalibPars::coords(Query& q) {
   _default_msg("coords(...)");
   return _pixel_coord;
 }
 
-const NDArray<pixel_size_t>& CalibPars::pixel_size(Query&) {
+const NDArray<pixel_size_t>& CalibPars::pixel_size(Query& q) {
   _default_msg("pixel_size(...)");
   return _pixel_size;
 }
 
-const NDArray<pixel_size_t>& CalibPars::image_xaxis(Query&) {
+const NDArray<pixel_size_t>& CalibPars::image_xaxis(Query& q) {
   _default_msg("image_xaxis(...)");
   return _pixel_size;
 }
 
-const NDArray<pixel_size_t>& CalibPars::image_yaxis(Query&) {
+const NDArray<pixel_size_t>& CalibPars::image_yaxis(Query& q) {
   _default_msg("image_yaxis(...)");
   return _pixel_size;
 }
 
   /*
-void CalibPars::move_geo(Query&, const pixel_size_t& dx,  const pixel_size_t& dy,  const pixel_size_t& dz) {
+void CalibPars::move_geo(Query& q, const pixel_size_t& dx,  const pixel_size_t& dy,  const pixel_size_t& dz) {
   _default_msg("move_geo(...)");
 }
 
-void CalibPars::tilt_geo(Query&, const tilt_angle_t& dtx, const tilt_angle_t& dty, const tilt_angle_t& dtz) {
+void CalibPars::tilt_geo(Query& q, const tilt_angle_t& dtx, const tilt_angle_t& dty, const tilt_angle_t& dtz) {
   _default_msg("tilt_geo(...)");
 }
   */

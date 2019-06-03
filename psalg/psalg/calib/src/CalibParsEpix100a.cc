@@ -20,12 +20,12 @@ void CalibParsEpix100a::_default_msg(const std::string& msg) const {
 }
 
 /// access to calibration constants
+/**
+
 const NDArray<common_mode_t>& CalibParsEpix100a::common_mode(Query&) {
   _default_msg(std::string("common_mode(...)"));
   return _common_mode;
 }
-
-  /*
 
 const NDArray<pedestals_t>& CalibParsEpix100a::pedestals(Query&) {
   _default_msg("pedestals(...)");
@@ -128,7 +128,7 @@ void CalibParsEpix100a::move_geo(Query&, const pixel_size_t& dx,  const pixel_si
 void CalibParsEpix100a::tilt_geo(Query&, const tilt_angle_t& dtx, const tilt_angle_t& dty, const tilt_angle_t& dtz) {
   _default_msg("tilt_geo(...)");
 }
-  */
+*/
 
 } // namespace calib
 

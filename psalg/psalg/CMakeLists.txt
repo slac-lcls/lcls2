@@ -16,6 +16,7 @@ endif()
 
 add_subdirectory(utils)
 add_subdirectory(calib)
+add_subdirectory(geometry)
 add_subdirectory(alloc)
 add_subdirectory(peaks)
 add_subdirectory(digitizer)
@@ -45,6 +46,7 @@ message(STATUS "psalg/CMakeLists: CONDA_PREFIX=$ENV{CONDA_PREFIX}")
 target_link_libraries(psalg
     utils
     calib
+    geometry
     peaks
     digitizer
     detector
@@ -125,6 +127,15 @@ target_link_libraries(test_CalibPars
     xtcdata::xtc
 )
 
+# Test SegGeometry
+add_executable(test_SegGeometry
+    tests/test_SegGeometry.cc
+)
+target_link_libraries(test_SegGeometry
+    psalg
+    xtcdata::xtc
+)
+
 # Test AreaDetector
 add_executable(test_AreaDetector
     tests/test_AreaDetector.cc
@@ -160,6 +171,7 @@ install(TARGETS psalg
                 test_peakFinder
                 test_hsd
                 test_CalibPars
+                test_SegGeometry
                 test_AreaDetector
                 test_MDBWebUtils
                 test_logger

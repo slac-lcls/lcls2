@@ -66,13 +66,6 @@ const rapidjson::Document& CalibParsDB::get_metadata(Query&) {
   
 //-------------------
 
-//const ResponseDB& CalibParsDB::get_responce(Query&) {
-//  _default_msg(std::string("const ResponseDB& get_responce(Query&)"));
-//  return _response;
-//}
-
-//-------------------
-
 } // namespace calib
 
 //-------------------

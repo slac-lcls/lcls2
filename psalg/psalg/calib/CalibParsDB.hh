@@ -7,7 +7,6 @@
 #include "psalg/calib/NDArray.hh"
 #include "psalg/calib/Query.hh"
 #include <rapidjson/document.h>
-//#include "psalg/calib/ResponseDB.hh"
 
 using namespace psalg;
 
@@ -44,7 +43,6 @@ protected:
   rapidjson::Document _document;
   rapidjson::Document _data;
   rapidjson::Document _metadata;
-  //ResponseDB          _response;
 
 private:
   void _default_msg(const std::string& msg=std::string()) const;
