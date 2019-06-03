@@ -23,11 +23,11 @@ collect_host = 'drp-tst-acc06'
 procmgr_config = [
  {                        id:'partca-'+platform, conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- { host: collect_host,    id:'collection', flags:'spu', conda:conda_rel, env:epics_env, cmd:'collection -v -P TMO -B DAQ:LAB2 -x 2'},
+ { host: collect_host,    id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'collection -v -P TMO -B DAQ:LAB2 -x 2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
  # trigger event builder
  { host: 'drp-tst-dev001', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
  # cameras
  { host: 'drp-tst-dev011', id:'ctrb1', flags:'pu', conda:conda_rel, cmd:'ctrb -1 8 -2 9 -C '+collect_host},
-#{ host: 'drp-tst-dev012', id:'drp1', flags:'spu', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host}
+ { host: 'drp-tst-dev012', id:'drp1', flags:'sp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -n cam -d /dev/datadev_0 -o /tmp -C '+collect_host}
 ]
