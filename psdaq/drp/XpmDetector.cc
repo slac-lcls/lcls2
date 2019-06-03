@@ -23,6 +23,14 @@ json XpmDetector::connectionInfo()
     uint32_t reg;
     dmaReadRegister(fd, 0x00a00008, &reg);
     close(fd);
+    // there is currently a failure mode where the register reads
+    // back as zero (incorrectly). This is not the best longterm
+    // fix, but throw here to highlight the problem. - cpo
+    if (!reg) {
+        const char msg[] = "XPM Remote link id register is zero\n";
+        printf("%s\n",msg);
+        throw msg;
+    }
     int x = (reg >> 16) & 0xFF;
     int y = (reg >> 8) & 0xFF;
     int port = reg & 0xFF;

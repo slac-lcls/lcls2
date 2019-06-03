@@ -6,7 +6,9 @@
 #include "xtcdata/xtc/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
+#include "AxisDriver.h"
 
+#include <fcntl.h>
 #include <Python.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -95,6 +97,21 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
 void TimingSystem::connect(const json& connect_json)
 {
     XpmDetector::connect(connect_json);
+    //
+    int fd = open(m_para->device.c_str(), O_RDWR);
+    if (fd < 0) {
+        std::cout<<"Error opening "<< m_para->device << '\n';
+        return;
+    }
+
+    uint32_t val;
+    dmaReadRegister(fd, 0x00a00000, &val);
+    // zero out the "length" field which changes the behaviour of the
+    // firmware from fake-camera mode to timing-system mode
+    val&=0xf000000f;
+    dmaWriteRegister(fd, 0x00a00000, val);
+    close(fd);
+
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psalg.configdb.ts_connect");
     check(pModule);
@@ -108,14 +125,9 @@ void TimingSystem::connect(const json& connect_json)
     // returns new reference
     PyObject* mybytes = PyObject_CallFunction(pFunc,"s",m_connect_json.c_str());
     check(mybytes);
-    // returns new reference
-    PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
-    check(json_bytes);
-    char* json = (char*)PyBytes_AsString(json_bytes);
 
     Py_DECREF(pModule);
     Py_DECREF(mybytes);
-    Py_DECREF(json_bytes);
 }
 
 unsigned TimingSystem::configure(Xtc& xtc)

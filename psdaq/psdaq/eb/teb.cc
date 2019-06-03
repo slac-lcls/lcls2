@@ -846,12 +846,21 @@ int main(int argc, char **argv)
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
 
-  prometheus::Exposer exposer{"0.0.0.0:9200", "/metrics", 1};
+  std::unique_ptr<prometheus::Exposer> exposer;
+  try {
+      exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
+  } catch(const std::runtime_error& e) {
+      std::cout<<__PRETTY_FUNCTION__<<": error opening monitoring port.  Monitoring disabled.\n";
+      std::cout<<e.what()<<std::endl;
+  }
+
   auto exporter = std::make_shared<MetricExporter>();
 
   TebApp app(collSrv, prms, exporter);
 
-  exposer.RegisterCollectable(exporter);
+  if (exposer) {
+      exposer->RegisterCollectable(exporter);
+  }
 
   try
   {
