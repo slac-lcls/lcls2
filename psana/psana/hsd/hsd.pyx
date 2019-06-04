@@ -83,6 +83,8 @@ cdef class cyhsd_base_1_2_3:
     def __cinit__(self):
         self.ptr = &self.heap
         self.cptr = new Hsd_v1_2_3(self.ptr)
+        for chptr in self.chptr:
+            chptr=<Channel*>0
 
     def __init__(self): # dgramlist: evt_dgram.xpphsd.hsd which has chan00, chan01, chan02, chan03
         self._wvDict = {}
@@ -96,7 +98,10 @@ cdef class cyhsd_base_1_2_3:
         self.cptr.init(&env[0])
 
     def _setChan(self, iseg, chanNum, cnp.ndarray[env_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan):
-        self.chptr[iseg*16+chanNum] = new Channel(self.ptr, self.cptr, &evtheader[0], &chan[0])
+        index = iseg*16+chanNum
+        if self.chptr[index]:
+            del self.chptr[index]
+        self.chptr[index] = new Channel(self.ptr, self.cptr, &evtheader[0], &chan[0])
         self._chanList.append((iseg,chanNum))
 
     def _isNewEvt(self, evt):
@@ -123,8 +128,8 @@ cdef class cyhsd_base_1_2_3:
 
     def __dealloc__(self):
         del self.cptr
-        for (iseg,chanNum) in self._chanList:
-            del self.chptr[iseg*16+chanNum]
+        for chptr in self.chptr:
+            if chptr: del chptr
 
     def _samples(self):
         return self.cptr.samples()
