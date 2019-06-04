@@ -44,9 +44,22 @@ void addCspad(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId,
     CreateData fex(parent, namesLookup, namesId);
     unsigned shape[MaxRank] = {50,100};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(CspadDef::cspadIndex,shape);
+    unsigned factors[4];
+    for (unsigned k=0; k<4; k++)
+      factors[k] = (value + k) % 4;
     for(unsigned i=0; i<shape[0]; i++){
         for (unsigned j=0; j<shape[1]; j++) {
-            arrayT(i,j) = value;
+            if (i < shape[0] / 2) {
+              if (j < shape[1] / 2)
+                arrayT(i,j) = value * factors[0];
+              else
+                arrayT(i,j) = value * factors[1];
+            } else {
+              if (j < shape[1] / 2)
+                arrayT(i,j) = value * factors[2];
+              else
+                arrayT(i,j) = value * factors[3];
+            }
         }
     };
 }
