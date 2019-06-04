@@ -666,6 +666,10 @@ class CollectionManager():
         if 'teb' in active_state:
             for i, node in enumerate(active_state['teb']):
                 self.cmstate['teb'][node]['teb_id'] = i
+        else:
+            self.report_error('at least one TEB is required')
+            logging.debug('condition_alloc() returning False')
+            return False
 
         # give number to meb nodes for the event builder
         if 'meb' in active_state:
