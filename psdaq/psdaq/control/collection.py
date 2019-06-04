@@ -887,6 +887,7 @@ class CollectionManager():
 
         # make sure all the clients respond to transition before timeout
         retlist, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids, self.front_pub)
+        answers_ok = (self.check_answers(answers) == 0)
         ret = len(retlist)
         if ret:
             # Error
@@ -894,16 +895,9 @@ class CollectionManager():
             for alias in self.get_aliases(retlist):
                 self.report_error('%s did not respond to %s' % (alias, transition))
             self.report_error('%d client did not respond to %s' % (ret, transition))
-        else:
-            retval = True
-            for answer in answers:
-                try:
-                    for node, err_msg in answer['body']['err_info'].items():
-                        # Error
-                        retval = False
-                        self.report_error('%s: %s' % (node, err_msg))
-                except KeyError:
-                    pass
+        elif not answers_ok:
+            # Error
+            retval = False
         return retval
 
     def condition_configure(self):
