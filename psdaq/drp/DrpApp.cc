@@ -278,7 +278,7 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
         // and this print statement may speed up debugging significantly.
         std::cout << "Opening file " << fileName << std::endl;
         m_fileWriter.open(fileName);
-        m_smdWriter.open({para.outputDir + "/data-" + std::to_string(tPrms.id) + "smd.xtc2"});
+        m_smdWriter.open({para.outputDir + "/data-" + std::to_string(tPrms.id) + ".smd.xtc2"});
         m_writing = true;
     }
     else {

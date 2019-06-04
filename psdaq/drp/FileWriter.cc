@@ -32,6 +32,10 @@ void BufferedFileWriter::writeEvent(void* data, size_t size)
         write(m_fd, m_buffer.data(), m_count);
         m_count = 0;
     }
+    if (size>(m_buffer.size() - m_count)) {
+        std::cout<<"Buffer size "<<(m_buffer.size()-m_count)<<" too small for dgram with size "<<size<<'\n';
+        throw "FileWriter.cc buffer size too small";
+    }
     memcpy(m_buffer.data()+m_count, data, size);
     m_count += size;
 }
