@@ -5,7 +5,7 @@
 #include <math.h>      // sin, cos
 #include <iostream>    // cout
 
-namespace psalg {
+namespace geometry {
 
 void rotation_ang(const double* x, const double* y, unsigned size, double angle_deg, double* xrot, double* yrot)
 {
@@ -49,6 +49,6 @@ double max_of_arr(const double* arr, unsigned size)
 
 //--------------
 
-} // namespace psalg
+} // namespace geometry
 
 //--------------

@@ -5,12 +5,12 @@
 
 #include "psalg/geometry/SegGeometry.hh"
 
-namespace psalg {
+namespace geometry {
 
-/// @addtogroup psalg
+/// @addtogroup geometry
 
 /**
- *  @ingroup psalg
+ *  @ingroup geometry
  *
  *  @brief Class SegGeometryCspad2x1V1 defines the cspad 2x1 V1 sensor pixel coordinates in its local frame.
  *
@@ -45,7 +45,7 @@ namespace psalg {
  *  @li  Include and typedef
  *  @code
  *  #include "psalg/geometry/SegGeometryCspad2x1V1.hh"
- *  typedef psalg::SegGeometryCspad2x1V1 SG2X1;
+ *  typedef geometry::SegGeometryCspad2x1V1 SG2X1;
  *  @endcode
  *
  *  @li  Instatiation
@@ -58,8 +58,7 @@ namespace psalg {
  *
  *  @li  Print info
  *  @code
- *       unsigned pbits=0377; // 1-member data; 2-coordinate arrays; 4-min/max coordinate values
- *       seg_geom_2x1 -> print_seg_info(pbits);
+ *       seg_geom_2x1 -> print_seg_info();
  *  @endcode
  *
  *  @li  Access methods
@@ -91,7 +90,7 @@ namespace psalg {
  *  @author Mikhail S. Dubrovin
  */ 
 
-class SegGeometryCspad2x1V1 : public psalg::SegGeometry {
+class SegGeometryCspad2x1V1 : public geometry::SegGeometry {
 public:
 
   /// Number of pixel rows in 2x1 
@@ -180,7 +179,7 @@ public:
   //-----------------
   // Singleton stuff:
 
-  static psalg::SegGeometry* instance(const bool& use_wide_pix_center=false);
+  static geometry::SegGeometry* instance(const bool& use_wide_pix_center=false);
 
 private:
 
@@ -194,7 +193,7 @@ private:
   /// Destructor
   virtual ~SegGeometryCspad2x1V1 ();
 
-  static psalg::SegGeometry* m_pInstance;
+  static geometry::SegGeometry* m_pInstance;
 
   //-----------------
 
@@ -249,6 +248,6 @@ private:
   SegGeometryCspad2x1V1& operator = ( const SegGeometryCspad2x1V1& ) ;
 };
 
-} // namespace psalg
+} // namespace geometry
 
 #endif // PSALG_SEGGEOMETRYCSPAD2X1V1_H

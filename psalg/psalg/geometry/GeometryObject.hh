@@ -14,12 +14,12 @@
 
 using namespace std;
 
-namespace psalg {
+namespace geometry {
 
-/// @addtogroup psalg
+/// @addtogroup geometry
 
 /**
- *  @ingroup psalg
+ *  @ingroup geometry
  *
  *  @brief Class supports elementary building block for hierarchial geometry description
  *
@@ -44,19 +44,19 @@ namespace psalg {
  *  @li Instatiation
  *  \n
  *  @code
- *    psalg::GeometryObject* geo = new psalg::GeometryObject(pname, 
- *  							         pindex,
- *  							         oname, 
- *  							         oindex,
- *  							         x0,    
- *  							         y0,    
- *  							         z0,    
- *  							         rot_z, 
- *  							         rot_y, 
- *  							         rot_x, 
- *  							         tilt_z,
- *  							         tilt_y,
- *  							         tilt_x );
+ *    geometry::GeometryObject* geo = new geometry::GeometryObject(pname, 
+ *  							     pindex,
+ *  							     oname, 
+ *  							     oindex,
+ *  							     x0,    
+ *  							     y0,    
+ *  							     z0,    
+ *  							     rot_z, 
+ *  							     rot_y, 
+ *  							     rot_x, 
+ *  							     tilt_z,
+ *  							     tilt_y,
+ *  							     tilt_x );
  *  @endcode
  *
  *  @li Access methods
@@ -119,13 +119,13 @@ namespace psalg {
 
 //-------------------
 
-class GeometryObject  {
+class GeometryObject {
 public:
 
-  typedef psalg::SegGeometry SG;
+  typedef geometry::SegGeometry SG;
 
-  //typedef GeometryObject* shpGO;
-  typedef boost::shared_ptr<GeometryObject> shpGO;
+  typedef GeometryObject* pGO;
+  //typedef boost::shared_ptr<GeometryObject> pGO;
 
   /**
    *  @brief Class constructor accepts path to the calibration "geometry" file and verbosity control bit-word 
@@ -144,20 +144,20 @@ public:
    *  @param[in] tilt_y - object tilt/deviation angle [deg] around axis y of the parent frame
    *  @param[in] tilt_x - object tilt/deviation angle [deg] around axis x of the parent frame
    */
-  GeometryObject (  std::string pname  = std::string(),
-                    unsigned    pindex = 0,
-                    std::string oname  = std::string(),
-                    unsigned    oindex = 0,
-                    double      x0     = 0,
-                    double      y0     = 0,
-                    double      z0     = 0,
-                    double      rot_z  = 0,
-                    double      rot_y  = 0,
-                    double      rot_x  = 0,                  
-                    double      tilt_z = 0,
-                    double      tilt_y = 0,
-                    double      tilt_x = 0
-                  ) ;
+  GeometryObject(std::string pname  = std::string(),
+                 unsigned    pindex = 0,
+                 std::string oname  = std::string(),
+                 unsigned    oindex = 0,
+                 double      x0     = 0,
+                 double      y0     = 0,
+                 double      z0     = 0,
+                 double      rot_z  = 0,
+                 double      rot_y  = 0,
+                 double      rot_x  = 0,                  
+                 double      tilt_z = 0,
+                 double      tilt_y = 0,
+                 double      tilt_x = 0
+                );
 
   // Destructor
   virtual ~GeometryObject () ;
@@ -172,28 +172,28 @@ public:
   void print_geo_children();
 
   /// Sets shared pointer to the parent object
-  void set_parent(shpGO parent) { m_parent = parent; }
+  void set_parent(pGO parent) {m_parent = parent;}
 
   /// Adds shared pointer of the children geometry object to the vector
-  void add_child (shpGO child) { v_list_of_children.push_back(child); }
+  void add_child (pGO child) {v_list_of_children.push_back(child);}
 
   /// Returns shared pointer to the parent geometry object
-  shpGO get_parent() { return m_parent; }
+  pGO get_parent() { return m_parent; }
 
   /// Returns vector of shared pointers to children geometry objects
-  std::vector<shpGO> get_list_of_children() { return v_list_of_children; }
+  std::vector<pGO> get_list_of_children() {return v_list_of_children;}
 
   /// Returns self object name
-  std::string get_geo_name()     { return m_oname; }
+  std::string get_geo_name()     {return m_oname;}
 
   /// Returns self object index
-  unsigned    get_geo_index()    { return m_oindex; }
+  unsigned    get_geo_index()    {return m_oindex;}
 
   /// Returns parent object name
-  std::string get_parent_name()  { return m_pname; }
+  std::string get_parent_name()  {return m_pname;}
 
   /// Returns parent object index
-  unsigned    get_parent_index() { return m_pindex; }
+  unsigned    get_parent_index() {return m_pindex;}
 
   /**
    *  @brief Re-evaluate pixel coordinates (useful if geo is changed)
@@ -243,40 +243,40 @@ public:
   std::string str_data();
 
   /// Gets self object geometry parameters
-  void get_geo_pars( double& x0,
-                     double& y0,
-                     double& z0,
-                     double& rot_z,
-                     double& rot_y,
-                     double& rot_x,                  
-                     double& tilt_z,
-                     double& tilt_y,
-                     double& tilt_x 
-		     );
+  void get_geo_pars(double& x0,
+                    double& y0,
+                    double& z0,
+                    double& rot_z,
+                    double& rot_y,
+                    double& rot_x,                  
+                    double& tilt_z,
+                    double& tilt_y,
+                    double& tilt_x 
+		   );
 
   /// Sets self object geometry parameters
-  void set_geo_pars( const double& x0 = 0,
-                     const double& y0 = 0,
-                     const double& z0 = 0,
-                     const double& rot_z = 0,
-                     const double& rot_y = 0,
-                     const double& rot_x = 0,                  
-                     const double& tilt_z = 0,
-                     const double& tilt_y = 0,
-                     const double& tilt_x = 0 
-		     );
+  void set_geo_pars(const double& x0 = 0,
+                    const double& y0 = 0,
+                    const double& z0 = 0,
+                    const double& rot_z = 0,
+                    const double& rot_y = 0,
+                    const double& rot_x = 0,                  
+                    const double& tilt_z = 0,
+                    const double& tilt_y = 0,
+                    const double& tilt_x = 0 
+		   );
 
   /// Adds offset for origin of the self object w.r.t. current position
-  void move_geo( const double& dx = 0,
-                 const double& dy = 0,
-                 const double& dz = 0
-		 );
+  void move_geo(const double& dx = 0,
+                const double& dy = 0,
+                const double& dz = 0
+	       );
 
   /// Adds tilts to the self object w.r.t. current orientation
-  void tilt_geo( const double& dt_x = 0,
-                 const double& dt_y = 0,
-                 const double& dt_z = 0 
-		 );
+  void tilt_geo(const double& dt_x = 0,
+                const double& dt_y = 0,
+                const double& dt_z = 0 
+	       );
 
   /// Delete arrays with allocated memory, reset pointers to 0
   void deallocate_memory();
@@ -309,8 +309,8 @@ private:
 
   SG* m_seggeom;
 
-  shpGO m_parent;
-  std::vector<shpGO> v_list_of_children;
+  pGO m_parent;
+  std::vector<pGO> v_list_of_children;
 
   //ALGO_TYPE m_algo;
   //PC2X1* m_pix_coords_2x1;
@@ -322,36 +322,36 @@ private:
   double*  p_aarr; // pixel area array
   int*     p_marr; // pixel mask array
 
-  void transform_geo_coord_arrays( const double* X, 
-                                   const double* Y,  
-                                   const double* Z, 
-                                   const unsigned size,
-                                   double*  Xt,  
-                                   double*  Yt,  
-                                   double*  Zt,
-                                   const bool do_tilt=true
-                                  );
+  void transform_geo_coord_arrays(const double* X, 
+                                  const double* Y,  
+                                  const double* Z, 
+                                  const unsigned size,
+                                  double*  Xt,  
+                                  double*  Yt,  
+                                  double*  Zt,
+                                  const bool do_tilt=true
+                                 );
 
-  const static double DEG_TO_RAD = 3.141592653589793238463 / 180; 
+  static constexpr double DEG_TO_RAD = 3.141592653589793238463 / 180;
 
   static void rotation(const double* X, const double* Y, const unsigned size,
-                       const double C, const double S, 
+                       const double C, const double S,
 		       double* Xrot, double* Yrot);
 
-  static void rotation(const double* X, const double* Y, const unsigned size, const double angle_deg, 
+  static void rotation(const double* X, const double* Y, const unsigned size, const double angle_deg,
                        double* Xrot, double* Yrot);
 
   /// Returns class name for MsgLogger
-  static const std::string name() {return "psalg";}
+  static const std::string name() {return "geometry";}
 
   // Copy constructor and assignment are disabled by default
-  GeometryObject ( const GeometryObject& ) ;
-  GeometryObject& operator = ( const GeometryObject& ) ;
+  GeometryObject (const GeometryObject&);
+  GeometryObject& operator = (const GeometryObject&);
 };
 
 //-------------------
 
-} // namespace psalg
+} // namespace geometry
 
 #endif // PSALG_GEOMETRYOBJECT_H
 

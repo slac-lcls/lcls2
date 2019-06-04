@@ -8,12 +8,12 @@
 using namespace std;
 
 
-namespace psalg {
+namespace geometry {
 
-/// @addtogroup psalg psalg
+/// @addtogroup geometry geometry
 
 /**
- *  @ingroup psalg
+ *  @ingroup geometry
  *
  *  @brief Abstract base class SegGeometry defines the interface to access segment pixel coordinates.
  *
@@ -101,7 +101,7 @@ double min_of_arr(const double* arr, unsigned size);
 /// Global method, returns maximal value of the array of specified length 
 double max_of_arr(const double* arr, unsigned size);
 
-} // namespace psalg
+} // namespace geometry
 
 #endif // PSALG_SEGGEOMETRY_H
 

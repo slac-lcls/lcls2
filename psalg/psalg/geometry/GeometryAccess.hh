@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <boost/shared_ptr.hpp>
+//#include <boost/shared_ptr.hpp>
 
 #include "psalg/geometry/GeometryObject.hh"
 
@@ -14,12 +14,12 @@
 
 //------------------
 
-namespace psalg {
+namespace geometry {
 
-/// @addtogroup psalg
+/// @addtogroup geometry
 
 /**
- *  @ingroup psalg
+ *  @ingroup geometry
  *
  *  @brief Class supports universal detector geometry description.
  *
@@ -45,7 +45,7 @@ namespace psalg {
  *  @code
  *  std::string path = /reg/d/psdm/<INS>/<experiment>/calib/<calib-type>/<det-src>/geometry/0-end.data"
  *  unsigned print_bits = 0377; // or = 0 (by default) - to suppress printout from this object. 
- *  psalg::GeometryAccess geometry(path, print_bits);
+ *  geometry::GeometryAccess geometry(path, print_bits);
  *  @endcode
  *  To find path automatically use CalibFileFinder.
  *
@@ -106,8 +106,8 @@ namespace psalg {
  *        geometry.get_pixel_xy_inds_at_z(iX, iY, isize, Zplane);
  *
  *    // Make image from index, iX, iY, and intensity, W, arrays
- *        ndarray<psalg::GeometryAccess::image_t> img = 
- *                psalg::GeometryAccess::img_from_pixel_arrays(iX, iY, 0, isize);
+ *        ndarray<geometry::GeometryAccess::image_t> img = 
+ *                geometry::GeometryAccess::img_from_pixel_arrays(iX, iY, 0, isize);
  *    
  *    // Access and print comments from the calibration "geometry" file:
  *        std::map<int, std::string>& dict = geometry.get_dict_of_comments ();
@@ -138,12 +138,19 @@ namespace psalg {
  *  @author Mikhail S. Dubrovin
  */
 
+using namespace psalg;
 
 class GeometryAccess  {
 
-//typedef boost::shared_ptr<GeometryObject> shpGO;
+//typedef boost::shared_ptr<GeometryObject> pGO;
 /** Use the same declaration of the shared pointer to geometry object like in the class GeometryObject*/
-typedef psalg::GeometryObject::shpGO shpGO;
+//typedef psalg::geometry::GeometryObject::pGO pGO;
+
+
+typedef psalg::types::shape_t shape_t;
+
+
+typedef GeometryObject::pGO pGO;
 
 public:
 
@@ -161,16 +168,16 @@ public:
    *  \n         +16 info about setting relations between geometry objects, 
    *  \n         +32 info about pixel coordinate reconstruction
    */ 
-  GeometryAccess(const std::string& path, unsigned pbits=0) ;
+  GeometryAccess(const std::string& path) ;
 
   // Destructor
   virtual ~GeometryAccess () ;
 
   /// Returns shared pointer to the geometry object specified by name and index 
-  shpGO get_geo(const std::string& oname, const unsigned& oindex);
+  pGO get_geo(const std::string& oname, const unsigned& oindex);
 
   /// Returns shared pointer to the top geometry object, for exampme CSPAD
-  shpGO get_top_geo();
+  pGO get_top_geo();
 
   /// Returns pixel coordinate arrays X, Y, Z, of size for specified geometry object 
   /**
@@ -397,7 +404,7 @@ private:
   double* p_YatZ;
  
   /// vector/list of shared pointers to geometry objects
-  std::vector<shpGO> v_list_of_geos;
+  std::vector<pGO> v_list_of_geos;
 
   /// map/dictionary of comments from calibration "geometry" file 
   //std::map<std::string, std::string> m_dict_of_comments;
@@ -407,16 +414,16 @@ private:
   void add_comment_to_dict(const std::string& line);
 
   /// Parses input data line, creates and returns geometry object
-  shpGO parse_line(const std::string& line);
+  pGO parse_line(const std::string& line);
 
   /// Returns shp to the parent of geobj. If parent is not found adds geobj as a top parent and returns 0.
-  shpGO find_parent(const shpGO& geobj);
+  pGO find_parent(const pGO& geobj);
 
   /// Set relations between geometry objects in the list_of_geos
   void set_relations();
 
   /// Returns class name for MsgLogger
-  static const std::string name() {return "psalg";}
+  static const std::string name() {return "geometry";}
 
   // Copy constructor and assignment are disabled by default
   GeometryAccess(const GeometryAccess&) ;
@@ -425,6 +432,6 @@ private:
 //-------------------
 };
 
-} // namespace psalg
+} // namespace geometry
 
 #endif // PSALG_GEOMETRYACCESS_H

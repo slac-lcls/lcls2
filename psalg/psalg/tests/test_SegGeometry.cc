@@ -20,9 +20,9 @@
 //using namespace std;
 //using namespace calib;
 //using namespace detector;
-using namespace psalg;
+using namespace geometry;
 
-//typedef psalg::SegGeometry SG;
+//typedef geometry::SegGeometry SG;
 
 //-------------------
 
@@ -33,7 +33,7 @@ void print_hline(const uint nchars, const char c) {printf("%s\n", std::string(nc
 void test_SegGeometry(const char* segname = "SENS2X1:V1") { //"undefined"
   MSG(INFO, "In test_SegGeometry - test_SegGeometry(" << segname << ")");
 
-  SegGeometry *seggeom = SegGeometryStore::Create(segname, 0377);  
+  SegGeometry *seggeom = SegGeometryStore::Create(segname);  
   seggeom -> print_seg_info(0377);
 }
 

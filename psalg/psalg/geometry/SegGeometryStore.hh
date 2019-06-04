@@ -15,12 +15,12 @@
 
 //-------------------
 
-namespace psalg {
+namespace geometry {
 
-/// @addtogroup psalg psalg
+/// @addtogroup geometry geometry
 
 /**
- *  @ingroup psalg
+ *  @ingroup geometry
  *
  *  @brief class SegGeometryStore has a static factory method Create for SegGeometry object
  *
@@ -40,27 +40,27 @@ namespace psalg {
  *  @code
  *  // #include "psalg/geometry/SegGeometry.hh" // already included under SegGeometryStore.h
  *  #include "psalg/geometry/SegGeometryStore.hh"
- *  typedef psalg::SegGeometry SG;
+ *  typedef geometry::SegGeometry SG;
  *  @endcode
  *
  *  @li Instatiation
  *  \n
  *  Classes like SegGeometryCspad2x1V1 containing implementation of the SegGeometry interface methods are self-sufficient. 
  *  Factory method Create should returns the pointer to the SegGeometry object by specified segname parameter or returns 0-pointer if segname is not recognized (and not implemented).
- *  Code below instateates SegGeometry object using factory static method psalg::SegGeometryStore::Create()
+ *  Code below instateates SegGeometry object using factory static method geometry::SegGeometryStore::Create()
  *  @code
  *  std::string source = "SENS2X1:V1";
  *  or 
  *  std::string source = "EPIX100:V1";
  *  or 
  *  std::string source = "PNCCD:V1";
- *  unsigned print_bits=0377; // does not print by default if parameter omited
- *  psalg::SegGeometry* segeo = psalg::SegGeometryStore::Create(segname, print_bits);
+ *  geometry
+::SegGeometry* segeo = geometry::SegGeometryStore::Create(segname);
  *  @endcode
  *
  *  @li Print info
  *  @code
- *  segeo -> print_seg_info(0377);
+ *  segeo -> print_seg_info();
  *  @endcode
  *
  *  @li Access methods
@@ -98,45 +98,43 @@ public:
    *  @brief Static factory method for SegGeometry of the segments defined by the name
    *  
    *  @param[in] segname        segment name
-   *  @param[in] print_bits     print control bit-word.
    */ 
 
-  static psalg::SegGeometry*
-  Create (const std::string& segname="SENS2X1:V1", const unsigned print_bits=0)
+  static geometry::SegGeometry*
+  Create (const std::string& segname="SENS2X1:V1")
   {
-      //if (print_bits & 1) MsgLog("SegGeometryStore", info, "Segment geometry factory for " << segname);
-        if (print_bits & 1) MSG(INFO, "Segment geometry factory for " << segname);
-        if (segname=="SENS2X1:V1")  { return psalg::SegGeometryCspad2x1V1::instance(); } // use singleton
-        if (segname=="EPIX100:V1")  { return psalg::SegGeometryEpix100V1::instance(); } // use singleton
-        if (segname=="EPIX10KA:V1") { return psalg::SegGeometryEpix10kaV1::instance(); } // use singleton
-        if (segname=="PNCCD:V1")    { return new psalg::SegGeometryMatrixV1(512,512,75.,75.,400.,75.); }
+        MSG(DEBUG, "Segment geometry factory for " << segname);
+        if (segname=="SENS2X1:V1")  { return geometry::SegGeometryCspad2x1V1::instance(); } // use singleton
+        if (segname=="EPIX100:V1")  { return geometry::SegGeometryEpix100V1::instance(); } // use singleton
+        if (segname=="EPIX10KA:V1") { return geometry::SegGeometryEpix10kaV1::instance(); } // use singleton
+        if (segname=="PNCCD:V1")    { return new geometry::SegGeometryMatrixV1(512,512,75.,75.,400.,75.); }
         if (segname.find("MTRX") != std::string::npos) { 
 
-          MSG(INFO, "Segment geometry factory for " << segname);
           std::size_t rows;
 	  std::size_t cols;
 	  float   rpixsize;
 	  float   cpixsize;
 
-	  if(! psalg::matrix_pars(segname, rows, cols, rpixsize, cpixsize)) {
-            if (print_bits) MSG(ERROR, "Can't demangle geometry segment name: " << segname);  
+	  if(! geometry::matrix_pars(segname, rows, cols, rpixsize, cpixsize)) {
+            MSG(ERROR, "Can't demangle geometry segment name: " << segname);  
 	    return 0; // NULL;
 	  }
 
-	  if (print_bits & 1) MSG(INFO, "segname: " << segname
-                                      << " rows: " << rows << " cols:" << cols 
-                                      << " rpixsize: " << rpixsize << " cpixsize: " << cpixsize);
+	  MSG(DEBUG, "segname: " << segname
+                    << " rows: " << rows << " cols:" << cols 
+                    << " rpixsize: " << rpixsize << " cpixsize: " << cpixsize);
 
-          return new psalg::SegGeometryMatrixV1(rows, cols, rpixsize, cpixsize); 
+          return new geometry::SegGeometryMatrixV1(rows, cols, rpixsize, cpixsize); 
                                                // pix_size_depth, pix_scale_size); 
         }
 
-        if (print_bits & 2) MSG(INFO, "Segment geometry is undefined for segment name " << segname << " - return 0-pointer...");  
+        MSG(ERROR, "Segment geometry is undefined for segment name " << segname 
+                   << " - return 0-pointer...");  
         //abort();
 	return 0; // NULL;
   }
 };
 
-} // namespace psalg
+} // namespace geometry
 
 #endif // PSALG_SEGGEOMETRYSTORE_H

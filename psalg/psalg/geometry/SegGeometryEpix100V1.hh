@@ -5,13 +5,13 @@
 
 #include "psalg/geometry/SegGeometry.hh"
 
-namespace psalg {
+namespace geometry {
 
 
-/// @addtogroup psalg
+/// @addtogroup geometry
 
 /**
- *  @ingroup psalg
+ *  @ingroup geometry
  *
  *  @brief Class SegGeometryEpix100V1 defines the Epix100 V1 sensor pixel coordinates in its local frame.
  *
@@ -56,7 +56,7 @@ namespace psalg {
  *  @li  Include and typedef
  *  @code
  *  #include "psalg/geometry/SegGeometryEpix100V1.hh"
- *  typedef psalg::SegGeometryEpix100V1 SG;
+ *  typedef geometry::SegGeometryEpix100V1 SG;
  *  @endcode
  *
  *  @li  Instatiation
@@ -102,7 +102,7 @@ namespace psalg {
  *  @author Mikhail S. Dubrovin
  */ 
 
-class SegGeometryEpix100V1 : public psalg::SegGeometry {
+class SegGeometryEpix100V1 : public geometry::SegGeometry {
 public:
 
   /// Number of pixel rows in segment 
@@ -192,7 +192,7 @@ public:
   //-----------------
   // Singleton stuff:
 
-  static psalg::SegGeometry* instance(const bool& use_wide_pix_center=false);
+  static geometry::SegGeometry* instance(const bool& use_wide_pix_center=false);
 
 private:
 
@@ -206,7 +206,7 @@ private:
   /// Destructor
   virtual ~SegGeometryEpix100V1 ();
 
-  static psalg::SegGeometry* m_pInstance;
+  static geometry::SegGeometry* m_pInstance;
 
   //-----------------
 
@@ -262,6 +262,6 @@ private:
   SegGeometryEpix100V1& operator = ( const SegGeometryEpix100V1& ) ;
 };
 
-} // namespace psalg
+} // namespace geometry
 
 #endif // PSALG_SEGGEOMETRYEPIX100V1_H

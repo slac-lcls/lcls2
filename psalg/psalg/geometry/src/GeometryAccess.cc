@@ -11,18 +11,21 @@
 
 //-------------------
 
-namespace psalg {
+namespace geometry {
 
-GeometryAccess::GeometryAccess (const std::string& path, unsigned pbits)
+typedef GeometryAccess::image_t image_t;
+
+
+GeometryAccess::GeometryAccess (const std::string& path)
   : m_path(path)
-  , m_pbits(pbits)
+  , m_pbits(1023)
   , p_iX(0)
   , p_iY(0)
   , p_image(0)
   , p_XatZ(0)
   , p_YatZ(0)
 {
-  if(m_pbits & 1) MSG(INFO, "m_pbits = " << m_pbits); 
+  MSG(DEBUG, "m_pbits = " << m_pbits); 
 
   load_pars_from_file();
 
@@ -54,7 +57,7 @@ void GeometryAccess::load_pars_from_file(const std::string& path)
   std::ifstream f(m_path.c_str());
 
   if(not f.good()) { MSG(ERROR, "Calibration file " << m_path << " does not exist"); }
-  else             { if(m_pbits & 1) MSG(INFO, "load_pars_from_file(): " << m_path); }
+  else             { MSG(DEBUG, "load_pars_from_file(): " << m_path); }
 
   std::string line;
   while (std::getline(f, line)) {    
@@ -77,7 +80,7 @@ void GeometryAccess::load_pars_from_file(const std::string& path)
 
 void GeometryAccess::save_pars_in_file(const std::string& path)
 {
-  if(m_pbits & 1) MSG(INFO, "Save pars in file " << path.c_str());
+  MSG(DEBUG, "Save pars in file " << path.c_str());
 
   std::stringstream ss;
 
@@ -91,7 +94,7 @@ void GeometryAccess::save_pars_in_file(const std::string& path)
   ss << '\n';
 
   // Save data
-  for(std::vector<GeometryAccess::shpGO>::iterator it  = v_list_of_geos.begin(); 
+  for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
                                                    it != v_list_of_geos.end(); ++it) {
     if( (*it)->get_parent_name().empty() ) continue;
     ss << (*it)->str_data() << '\n';
@@ -161,7 +164,7 @@ void GeometryAccess::add_comment_to_dict(const std::string& line)
 
 //-------------------
 
-GeometryAccess::shpGO GeometryAccess::parse_line(const std::string& line)
+GeometryAccess::pGO GeometryAccess::parse_line(const std::string& line)
 {
   std::string pname;
   unsigned    pindex;
@@ -181,7 +184,7 @@ GeometryAccess::shpGO GeometryAccess::parse_line(const std::string& line)
 
   if(ss >> pname >> pindex >> oname >> oindex >> x0 >> y0 >> z0 
         >> rot_z >> rot_y >> rot_x >> tilt_z >> tilt_y >> tilt_x) {
-      GeometryAccess::shpGO shp( new GeometryObject (pname,
+      GeometryAccess::pGO shp( new GeometryObject (pname,
                               		     pindex,
                               		     oname,
                               		     oindex,
@@ -202,15 +205,15 @@ GeometryAccess::shpGO GeometryAccess::parse_line(const std::string& line)
       std::string msg = "parse_line(...) can't parse line: " + line;
       //std::cout << msg;
       MSG(ERROR, msg);
-      return GeometryAccess::shpGO();
+      return GeometryAccess::pGO();
   }
 }
 
 //-------------------
 
-GeometryAccess::shpGO GeometryAccess::find_parent(const GeometryAccess::shpGO& geobj)
+GeometryAccess::pGO GeometryAccess::find_parent(const GeometryAccess::pGO& geobj)
 {
-  for(std::vector<GeometryAccess::shpGO>::iterator it  = v_list_of_geos.begin(); 
+  for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
                                    it != v_list_of_geos.end(); ++it) {
     if(*it == geobj) continue; // skip geobj themself
     if(   (*it)->get_geo_index() == geobj->get_parent_index()
@@ -230,7 +233,7 @@ GeometryAccess::shpGO GeometryAccess::find_parent(const GeometryAccess::shpGO& g
     if(m_pbits & 256) std::cout << "  create one with name:" << geobj->get_parent_name() 
                                 << " idx:" << geobj->get_parent_index() << '\n';
 
-    GeometryAccess::shpGO shp_top_parent( new GeometryObject (std::string(),
+    GeometryAccess::pGO shp_top_parent( new GeometryObject (std::string(),
                             		                      0,
                             		                      geobj->get_parent_name(),
                             		                      geobj->get_parent_index()));
@@ -239,22 +242,22 @@ GeometryAccess::shpGO GeometryAccess::find_parent(const GeometryAccess::shpGO& g
     return shp_top_parent;		  
   }
 
-  if(m_pbits & 256) std::cout << "  return empty shpGO() for the very top parent\n";
-  return GeometryAccess::shpGO(); // for top parent itself
+  if(m_pbits & 256) std::cout << "  return empty pGO() for the very top parent\n";
+  return GeometryAccess::pGO(); // for top parent itself
 }
 
 //-------------------
 
 void GeometryAccess::set_relations()
 {
-  if(m_pbits & 16) MSG(INFO, "Begin set_relations(): size of the list:" << v_list_of_geos.size());
-  for(std::vector<GeometryAccess::shpGO>::iterator it  = v_list_of_geos.begin(); 
+  MSG(DEBUG, "Begin set_relations(): size of the list:" << v_list_of_geos.size());
+  for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
                                                    it != v_list_of_geos.end(); ++it) {
 
-    GeometryAccess::shpGO shp_parent = find_parent(*it);
+    GeometryAccess::pGO shp_parent = find_parent(*it);
     //std::cout << "set_relations(): found parent name:" << shp_parent->get_parent_name()<<'\n';
 
-    if( shp_parent == GeometryAccess::shpGO() ) continue; // skip parent of the top object
+    if( shp_parent == GeometryAccess::pGO() ) continue; // skip parent of the top object
     
     (*it)->set_parent(shp_parent);
     shp_parent->add_child(*it);
@@ -270,20 +273,20 @@ void GeometryAccess::set_relations()
 
 //-------------------
 
-GeometryAccess::shpGO GeometryAccess::get_geo(const std::string& oname, const unsigned& oindex)
+GeometryAccess::pGO GeometryAccess::get_geo(const std::string& oname, const unsigned& oindex)
 {
-  for(std::vector<GeometryAccess::shpGO>::iterator it  = v_list_of_geos.begin(); 
+  for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
                                    it != v_list_of_geos.end(); ++it) {
     if(   (*it)->get_geo_index() == oindex
        && (*it)->get_geo_name()  == oname ) 
           return (*it);
   }
-  return GeometryAccess::shpGO(); // None
+  return GeometryAccess::pGO(); // None
 }
 
 //-------------------
 
-GeometryAccess::shpGO GeometryAccess::get_top_geo()
+GeometryAccess::pGO GeometryAccess::get_top_geo()
 {
   return v_list_of_geos.back();
 }
@@ -300,7 +303,7 @@ GeometryAccess::get_pixel_coords(const double*& X,
                                  const bool do_tilt,
                                  const bool do_eval)
 {
-  GeometryAccess::shpGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
+  GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
   if(m_pbits & 32) {
     std::stringstream ss; ss << "get_pixel_coords(...) for geo:\n" << geo -> string_geo_children()
                              << "  do_tilt: " << do_tilt << "  do_eval: " << do_eval; 
@@ -375,7 +378,7 @@ GeometryAccess::get_pixel_areas(const double*& A,
                                 const std::string& oname, 
                                 const unsigned& oindex)
 {
-  GeometryAccess::shpGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
+  GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
   if(m_pbits & 32) {
     std::string msg = "get_pixel_areas(...) for geo:\n" + geo -> string_geo_children();
     MSG(INFO, msg);
@@ -394,7 +397,7 @@ GeometryAccess::get_pixel_mask(const int*& mask,
 {
   //cout << "GeometryAccess::get_pixel_mask(): mbits =" << mbits << '\n';   
 
-  GeometryAccess::shpGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
+  GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
   if(m_pbits & 32) {
     std::string msg = "get_pixel_areas(...) for geo:\n" + geo -> string_geo_children();
     MSG(INFO, msg);
@@ -408,7 +411,7 @@ double
 GeometryAccess::get_pixel_scale_size(const std::string& oname, 
                                      const unsigned& oindex)
 {
-  GeometryAccess::shpGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
+  GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
   return geo -> get_pixel_scale_size();
 }
 
@@ -428,7 +431,7 @@ GeometryAccess::set_geo_pars(const std::string& oname,
                              const double& tilt_x 
 		             )
 {
-  GeometryAccess::shpGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
+  GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
   geo -> set_geo_pars(x0, y0, z0, rot_z, rot_y, rot_x, tilt_z, tilt_y, tilt_x);
 }
 
@@ -442,7 +445,7 @@ GeometryAccess::move_geo(const std::string& oname,
                          const double& dz
 			 )
 {
-  GeometryAccess::shpGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
+  GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
   geo -> move_geo(dx, dy, dz);
 }
 
@@ -456,7 +459,7 @@ GeometryAccess::tilt_geo(const std::string& oname,
                          const double& dt_z
 			 )
 {
-  GeometryAccess::shpGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
+  GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
   geo -> tilt_geo(dt_x, dt_y, dt_z);
 }
 
@@ -466,7 +469,7 @@ void GeometryAccess::print_list_of_geos()
 {
   std::stringstream ss; ss << "print_list_of_geos():";
   if( v_list_of_geos.empty() ) ss << "List of geos is empty...";
-  for(std::vector<GeometryAccess::shpGO>::iterator it  = v_list_of_geos.begin(); 
+  for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
                                    it != v_list_of_geos.end(); ++it) {
     ss << '\n' << (*it)->string_geo();
   }
@@ -481,7 +484,7 @@ void GeometryAccess::print_list_of_geos_children()
   std::stringstream ss; ss << "print_list_of_geos_children(): ";
   if( v_list_of_geos.empty() ) ss << "List of geos is empty...";
 
-  for(std::vector<GeometryAccess::shpGO>::iterator it  = v_list_of_geos.begin(); 
+  for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
                                    it != v_list_of_geos.end(); ++it) {
     ss << '\n' << (*it)->string_geo_children();
   }
@@ -635,7 +638,7 @@ GeometryAccess::get_pixel_xy_inds_at_z(const unsigned *& iX,
 //-------------------
 //-------------------
 
-NDArray<GeometryAccess::image_t> &
+NDArray<image_t> &
 GeometryAccess::ref_img_from_pixel_arrays(const unsigned*& iX, 
                                           const unsigned*& iY, 
                                           const double*    W,
@@ -644,15 +647,15 @@ GeometryAccess::ref_img_from_pixel_arrays(const unsigned*& iX,
     unsigned ix_max=iX[0]; for(unsigned i=0; i<size; ++i) { if (iX[i] > ix_max) ix_max = iX[i]; } ix_max++;
     unsigned iy_max=iY[0]; for(unsigned i=0; i<size; ++i) { if (iY[i] > iy_max) iy_max = iY[i]; } iy_max++;
 
-    if(p_image) delete p_image;
+    shape_t sh[2] = {ix_max, iy_max};
 
-    unsigned shape[2] = {ix_max, iy_max};
-    p_image = new NDArray<GeometryAccess::image_t> (shape);
-    NDArray<GeometryAccess::image_t> img = *p_image;
-    // std::fill_n(img, int(img.size()), GeometryAccess::image_t(0));
-    for(NDArray<GeometryAccess::image_t>::iterator it=img.begin(); it!=img.end(); it++) { *it = 0; }
+    if(p_image) delete [] p_image;
+    p_image = new NDArray<image_t>(sh, 2);
+    NDArray<image_t>& img = *p_image;
 
-    if (W) for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = (GeometryAccess::image_t) W[i];
+    std::fill_n(img.data(), int(img.size()), image_t(0));
+
+    if (W) for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = (image_t) W[i];
     else   for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = 1;
     return *p_image;
 }
@@ -663,7 +666,7 @@ GeometryAccess::ref_img_from_pixel_arrays(const unsigned*& iX,
 //-------------------
 //-------------------
 
-NDArray<GeometryAccess::image_t>
+NDArray<image_t>
 GeometryAccess::img_from_pixel_arrays(const unsigned*& iX, 
                                       const unsigned*& iY, 
                                       const double*    W,
@@ -672,17 +675,17 @@ GeometryAccess::img_from_pixel_arrays(const unsigned*& iX,
     unsigned ix_max=iX[0]; for(unsigned i=0; i<size; ++i) { if (iX[i] > ix_max) ix_max = iX[i]; } ix_max++;
     unsigned iy_max=iY[0]; for(unsigned i=0; i<size; ++i) { if (iY[i] > iy_max) iy_max = iY[i]; } iy_max++;
 
-    NDArray<GeometryAccess::image_t> img = make_NDArray<GeometryAccess::image_t>(ix_max, iy_max);
-    // std::fill_n(img, int(img.size()), GeometryAccess::image_t(0));
-    for(NDArray<GeometryAccess::image_t>::iterator it=img.begin(); it!=img.end(); it++) { *it = 0; }
+    shape_t sh[2] = {ix_max, iy_max};
+    NDArray<image_t>& img = *(new NDArray<image_t>(sh, 2));
+    std::fill_n(img.data(), int(img.size()), image_t(0));
 
-    if (W) for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = (GeometryAccess::image_t) W[i];
+    if (W) for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = (image_t) W[i];
     else   for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = 1;
     return img;
 }
 
 //-------------------
 
-} // namespace psalg
+} // namespace geometry
 
 //-------------------

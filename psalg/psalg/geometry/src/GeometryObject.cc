@@ -1,4 +1,3 @@
-
 //-------------------
 
 #include "psalg/geometry/GeometryObject.hh"
@@ -12,38 +11,37 @@
 #include "psalg/utils/Logger.hh" // MSG, LOGGER
 #include "psalg/geometry/GlobalMethods.hh"
 
-
 using namespace std;
 
-namespace psalg {
+namespace geometry {
 
-  GeometryObject::GeometryObject (  std::string pname,
-                                    unsigned    pindex,
-                                    std::string oname,
-                                    unsigned    oindex,
-                                    double      x0,
-                                    double      y0,
-                                    double      z0,
-                                    double      rot_z,
-                                    double      rot_y,
-                                    double      rot_x,                  
-                                    double      tilt_z,
-                                    double      tilt_y,
-                                    double      tilt_x 
-				  )
-    : m_pname  (pname) 
+GeometryObject::GeometryObject(std::string pname,
+                               unsigned    pindex,
+                               std::string oname,
+                               unsigned    oindex,
+                               double      x0,
+                               double      y0,
+                               double      z0,
+                               double      rot_z,
+                               double      rot_y,
+                               double      rot_x,                  
+                               double      tilt_z,
+                               double      tilt_y,
+                               double      tilt_x 
+			      )
+    : m_pname  (pname)
     , m_pindex (pindex)
     , m_oname  (oname)
     , m_oindex (oindex)
-    , m_x0     (x0)    
-    , m_y0     (y0)    
-    , m_z0     (z0)  
-    , m_rot_z  (rot_z) 
+    , m_x0     (x0)
+    , m_y0     (y0)
+    , m_z0     (z0)
+    , m_rot_z  (rot_z)
     , m_rot_y  (rot_y)
-    , m_rot_x  (rot_x) 
+    , m_rot_x  (rot_x)
     , m_tilt_z (tilt_z)
     , m_tilt_y (tilt_y)
-    , m_tilt_x (tilt_x) 
+    , m_tilt_x (tilt_x)
     , m_do_tilt(true)
     , m_mbits(0377)
     , m_size(0)
@@ -53,9 +51,8 @@ namespace psalg {
     , p_aarr(0)
     , p_marr(0)
 {
-  const unsigned print_bits=0; // 0377;
-  m_seggeom = psalg::SegGeometryStore::Create(m_oname, print_bits);
-  m_parent = shpGO();
+  m_seggeom = geometry::SegGeometryStore::Create(m_oname);
+  m_parent = pGO();
   v_list_of_children.clear();
 }
 
@@ -72,11 +69,11 @@ GeometryObject::~GeometryObject ()
 
 void GeometryObject::deallocate_memory()
 {
-  if (p_xarr) delete [] p_xarr; p_xarr=0;
-  if (p_yarr) delete [] p_yarr;	p_yarr=0;
-  if (p_zarr) delete [] p_zarr;	p_zarr=0;
-  if (p_aarr) delete [] p_aarr;	p_aarr=0;
-  if (p_marr) delete [] p_marr;	p_marr=0;
+  if (p_xarr) {delete [] p_xarr; p_xarr=0;}
+  if (p_yarr) {delete [] p_yarr; p_yarr=0;}
+  if (p_zarr) {delete [] p_zarr; p_zarr=0;}
+  if (p_aarr) {delete [] p_aarr; p_aarr=0;}
+  if (p_marr) {delete [] p_marr; p_marr=0;}
 }
 
 //-------------------
@@ -84,16 +81,16 @@ void GeometryObject::deallocate_memory()
 std::string GeometryObject::string_geo()
 {
   std::stringstream ss;
-  ss << "parent:"   << std::setw(10) << std::right << m_pname 
+  ss << "parent:"   << std::setw(10) << std::right << m_pname
      << "  pind:"   << std::setw(2)  << m_pindex
-     << "  geo:"    << std::setw(10) << m_oname 
+     << "  geo:"    << std::setw(10) << m_oname
      << "  oind:"   << std::setw(2)  << m_oindex << std::right << std::fixed
-     << "  x0:"     << std::setw(8)  << std::setprecision(0) << m_x0    
-     << "  y0:"     << std::setw(8)  << std::setprecision(0) << m_y0    
-     << "  z0:"     << std::setw(8)  << std::setprecision(0) << m_z0    
-     << "  rot_z:"  << std::setw(6)  << std::setprecision(1) << m_rot_z 
-     << "  rot_y:"  << std::setw(6)  << std::setprecision(1) << m_rot_y 
-     << "  rot_x:"  << std::setw(6)  << std::setprecision(1) << m_rot_x 
+     << "  x0:"     << std::setw(8)  << std::setprecision(0) << m_x0
+     << "  y0:"     << std::setw(8)  << std::setprecision(0) << m_y0
+     << "  z0:"     << std::setw(8)  << std::setprecision(0) << m_z0
+     << "  rot_z:"  << std::setw(6)  << std::setprecision(1) << m_rot_z
+     << "  rot_y:"  << std::setw(6)  << std::setprecision(1) << m_rot_y
+     << "  rot_x:"  << std::setw(6)  << std::setprecision(1) << m_rot_x
      << "  tilt_z:" << std::setw(8)  << std::setprecision(5) << m_tilt_z
      << "  tilt_y:" << std::setw(8)  << std::setprecision(5) << m_tilt_y
      << "  tilt_x:" << std::setw(8)  << std::setprecision(5) << m_tilt_x;
@@ -105,16 +102,16 @@ std::string GeometryObject::string_geo()
 std::string GeometryObject::str_data()
 {
   std::stringstream ss;
-  ss         << std::setw(11) << std::left << m_pname 
+  ss         << std::setw(11) << std::left << m_pname
      << " "  << std::setw(3)  << std::right << m_pindex
-     << " "  << std::setw(11) << std::left << m_oname 
+     << " "  << std::setw(11) << std::left << m_oname
      << " "  << std::setw(3)  << std::right << m_oindex << std::fixed
-     << "  " << std::setw(8)  << std::setprecision(0) << m_x0    
-     << " "  << std::setw(8)  << std::setprecision(0) << m_y0    
-     << " "  << std::setw(8)  << std::setprecision(0) << m_z0    
-     << "  " << std::setw(6)  << std::setprecision(1) << m_rot_z 
-     << " "  << std::setw(6)  << std::setprecision(1) << m_rot_y 
-     << " "  << std::setw(6)  << std::setprecision(1) << m_rot_x 
+     << "  " << std::setw(8)  << std::setprecision(0) << m_x0
+     << " "  << std::setw(8)  << std::setprecision(0) << m_y0
+     << " "  << std::setw(8)  << std::setprecision(0) << m_z0
+     << "  " << std::setw(6)  << std::setprecision(1) << m_rot_z
+     << " "  << std::setw(6)  << std::setprecision(1) << m_rot_y
+     << " "  << std::setw(6)  << std::setprecision(1) << m_rot_x
      << "  " << std::setw(8)  << std::setprecision(5) << m_tilt_z
      << " "  << std::setw(8)  << std::setprecision(5) << m_tilt_y
      << " "  << std::setw(8)  << std::setprecision(5) << m_tilt_x;
@@ -133,14 +130,14 @@ void GeometryObject::print_geo()
 std::string GeometryObject::string_geo_children()
 {
   std::stringstream ss;
-  ss << "parent:" << std::setw(10) << std::left << m_pname 
+  ss << "parent:" << std::setw(10) << std::left << m_pname
      << " i:"     << std::setw(2)  << m_pindex
-     << "  geo:"  << std::setw(10) << m_oname 
-     << " i:"     << std::setw(2)  << m_oindex 
+     << "  geo:"  << std::setw(10) << m_oname
+     << " i:"     << std::setw(2)  << m_oindex
      << "  #children:" << v_list_of_children.size();
-  for(std::vector<shpGO>::iterator it  = v_list_of_children.begin(); 
-                                   it != v_list_of_children.end(); ++ it) {
-    ss << " " << (*it)->get_geo_name() << " " << (*it)->get_geo_index(); 
+  for(std::vector<pGO>::iterator it  = v_list_of_children.begin();
+                                 it != v_list_of_children.end(); ++ it) {
+    ss << " " << (*it)->get_geo_name() << " " << (*it)->get_geo_index();
   }
   return ss.str();
 }
@@ -155,12 +152,12 @@ void GeometryObject::print_geo_children()
 
 //-------------------
 
-void GeometryObject::transform_geo_coord_arrays(const double* X, 
-                                                const double* Y,  
-                                                const double* Z, 
+void GeometryObject::transform_geo_coord_arrays(const double* X,
+                                                const double* Y,
+                                                const double* Z,
                                                 const unsigned size,
-                                                double*  Xt,  
-                                                double*  Yt,  
+                                                double*  Xt,
+                                                double*  Yt,
                                                 double*  Zt,
                                                 const bool do_tilt)
 {
@@ -197,11 +194,11 @@ unsigned GeometryObject::get_size_geo_array()
 {
   if(m_seggeom) return m_seggeom -> size();
 
-  unsigned size=0;  
-  for(std::vector<shpGO>::iterator it  = v_list_of_children.begin(); 
-                                   it != v_list_of_children.end(); ++it) {
+  unsigned size=0;
+  for(std::vector<pGO>::iterator it  = v_list_of_children.begin();
+                                 it != v_list_of_children.end(); ++it) {
     size += (*it)->get_size_geo_array();
-  }    
+  }
   return size;
 }
 
@@ -213,8 +210,8 @@ double GeometryObject::get_pixel_scale_size()
 
   double pixel_scale_size=1;
 
-  for(std::vector<shpGO>::iterator it  = v_list_of_children.begin(); 
-                                   it != v_list_of_children.end(); ++it) {
+  for(std::vector<pGO>::iterator it  = v_list_of_children.begin();
+                                 it != v_list_of_children.end(); ++it) {
     pixel_scale_size = (*it)->get_pixel_scale_size();
     break;
   }    
@@ -223,7 +220,7 @@ double GeometryObject::get_pixel_scale_size()
 
 //-------------------
 
-void GeometryObject::get_pixel_coords(const double*& X, const double*& Y, const double*& Z, unsigned& size, 
+void GeometryObject::get_pixel_coords(const double*& X, const double*& Y, const double*& Z, unsigned& size,
                                       const bool do_tilt, const bool do_eval)
 {
   // std::cout << "  ============ do_tilt : " << do_tilt << '\n';
@@ -247,7 +244,7 @@ void GeometryObject::get_pixel_areas(const double*& areas, unsigned& size)
 
 void GeometryObject::get_pixel_mask(const int*& mask, unsigned& size, const unsigned& mbits)
 {
-  if(mbits != m_mbits or p_marr==0) { m_mbits = mbits; evaluate_pixel_coords(); }
+  if(mbits != m_mbits or p_marr==0) {m_mbits = mbits; evaluate_pixel_coords();}
   mask = p_marr;
   size = m_size;
 }
@@ -289,8 +286,8 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
 
   unsigned ibase=0;
   unsigned ind=0;
-  for(std::vector<shpGO>::iterator it  = v_list_of_children.begin(); 
-                                   it != v_list_of_children.end(); ++it, ++ind) {
+  for(std::vector<pGO>::iterator it  = v_list_of_children.begin(); 
+                                 it != v_list_of_children.end(); ++it, ++ind) {
 
     if((*it)->get_geo_index() != ind) {
       std::stringstream ss;
@@ -321,8 +318,8 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
     (*it)->deallocate_memory();
   }
 
-  if(ibase == psalg::SIZE2X2 && m_oname == "CSPAD2X2:V1") { 
-    // shuffle pixels for cspad2x2, psalg::SIZE2X2 = 2*185*388 = 143560 
+  if(ibase == geometry::SIZE2X2 && m_oname == "CSPAD2X2:V1") { 
+    // shuffle pixels for cspad2x2, geometry::SIZE2X2 = 2*185*388 = 143560 
     // shuffle pixels only once for "CSPAD2X2:V1" only!
 
     two2x1ToData2x2<double>(p_xarr);
@@ -335,16 +332,16 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
 
 //-------------------
 
-void GeometryObject::get_geo_pars( double& x0,
-                                   double& y0,
-                                   double& z0,
-                                   double& rot_z,
-                                   double& rot_y,
-                                   double& rot_x,                  
-                                   double& tilt_z,
-                                   double& tilt_y,
-                                   double& tilt_x 
-				  )
+void GeometryObject::get_geo_pars(double& x0,
+                                  double& y0,
+                                  double& z0,
+                                  double& rot_z,
+                                  double& rot_y,
+                                  double& rot_x,                  
+                                  double& tilt_z,
+                                  double& tilt_y,
+                                  double& tilt_x 
+				 )
 {
   x0     = m_x0;     
   y0     = m_y0;     
@@ -359,16 +356,16 @@ void GeometryObject::get_geo_pars( double& x0,
 
 //-------------------
 
-void GeometryObject::set_geo_pars( const double& x0,
-                                   const double& y0,
-                                   const double& z0,
-                                   const double& rot_z,
-                                   const double& rot_y,
-                                   const double& rot_x,                  
-                                   const double& tilt_z,
-                                   const double& tilt_y,
-                                   const double& tilt_x 
-				  )
+void GeometryObject::set_geo_pars(const double& x0,
+                                  const double& y0,
+                                  const double& z0,
+                                  const double& rot_z,
+                                  const double& rot_y,
+                                  const double& rot_x,                  
+                                  const double& tilt_z,
+                                  const double& tilt_y,
+                                  const double& tilt_x 
+				 )
 {
   m_x0     = x0;    
   m_y0     = y0;    
@@ -383,10 +380,10 @@ void GeometryObject::set_geo_pars( const double& x0,
 
 //-------------------
 
-void GeometryObject::move_geo( const double& dx,
-                               const double& dy,
-                               const double& dz
-			      )
+void GeometryObject::move_geo(const double& dx,
+                              const double& dy,
+                              const double& dz
+			     )
 {
   m_x0 += dx;    
   m_y0 += dy;    
@@ -395,10 +392,10 @@ void GeometryObject::move_geo( const double& dx,
 
 //-------------------
 
-void GeometryObject::tilt_geo( const double& dt_x,
-                               const double& dt_y,
-                               const double& dt_z 
-			      )
+void GeometryObject::tilt_geo(const double& dt_x,
+                              const double& dt_y,
+                              const double& dt_z 
+			     )
 {
   m_tilt_z += dt_z;
   m_tilt_y += dt_y;
@@ -433,6 +430,6 @@ void GeometryObject::rotation(const double* X, const double* Y, const unsigned s
 
 //-------------------
 
-} // namespace psalg
+} // namespace geometry
 
 //-------------------

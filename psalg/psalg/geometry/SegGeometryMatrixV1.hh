@@ -6,12 +6,12 @@
 #include "psalg/geometry/SegGeometry.hh"
 #include <string>
 
-namespace psalg {
+namespace geometry {
 
-/// @addtogroup psalg
+/// @addtogroup geometry
 
 /**
- *  @ingroup psalg
+ *  @ingroup geometry
  *
  *  @brief Class SegGeometryMatrixV1 defines the matrix V1 (pnCCD, 512x512) sensor pixel coordinates in its local frame.
  *
@@ -48,7 +48,7 @@ namespace psalg {
  *  @li  Include and typedef
  *  @code
  *  #include "psalg/geometry/SegGeometryMatrixV1.hh"
- *  typedef psalg::SegGeometryMatrixV1 SG;
+ *  typedef geometry::SegGeometryMatrixV1 SG;
  *  @endcode
  *
  *  @li  Instatiation
@@ -109,7 +109,7 @@ bool matrix_pars( const std::string& segname
 		, float& pix_size_cols);
 
 
-class SegGeometryMatrixV1 : public psalg::SegGeometry {
+class SegGeometryMatrixV1 : public geometry::SegGeometry {
 public:
 
   /// Number of pixel rows in segment 
@@ -278,6 +278,6 @@ private:
   SegGeometryMatrixV1& operator = ( const SegGeometryMatrixV1& ) ;
 };
 
-} // namespace psalg
+} // namespace geometry
 
 #endif // PSALG_SEGGEOMETRYMATRIXV1_H

@@ -8,7 +8,7 @@
 
 using namespace std;
 
-namespace psalg {
+namespace geometry {
 
 //--------------
 
@@ -48,7 +48,7 @@ SegGeometry* SegGeometryCspad2x1V1::instance(const bool& use_wide_pix_center)
 //----------------
 
 SegGeometryCspad2x1V1::SegGeometryCspad2x1V1 (const bool& use_wide_pix_center)
-  : psalg::SegGeometry()
+  : geometry::SegGeometry()
   , m_use_wide_pix_center(use_wide_pix_center)
   , m_done_bits(0)
 {
@@ -212,7 +212,7 @@ const SegGeometry::pixel_coord_t SegGeometryCspad2x1V1::pixel_coord_min (AXIS ax
   const SegGeometry::pixel_coord_t* arr = pixel_coord_array (axis);
   SegGeometry::pixel_coord_t corner_coords[NCORNERS];
   for (size_t i=0; i<NCORNERS; ++i) { corner_coords[i] = arr[IND_CORNER[i]]; }
-  return psalg::min_of_arr(corner_coords, NCORNERS); 
+  return geometry::min_of_arr(corner_coords, NCORNERS); 
 }
 
 //--------------
@@ -222,7 +222,7 @@ const SegGeometry::pixel_coord_t SegGeometryCspad2x1V1::pixel_coord_max (AXIS ax
   const SegGeometry::pixel_coord_t* arr = pixel_coord_array (axis);
   SegGeometry::pixel_coord_t corner_coords[NCORNERS];
   for (size_t i=0; i<NCORNERS; ++i) { corner_coords[i] = arr[IND_CORNER[i]]; }
-  return psalg::max_of_arr(corner_coords, NCORNERS); 
+  return geometry::max_of_arr(corner_coords, NCORNERS); 
 }
 
 //--------------
@@ -292,6 +292,6 @@ const SegGeometry::pixel_mask_t* SegGeometryCspad2x1V1::pixel_mask_array(const u
 
 //--------------
 
-} // namespace psalg
+} // namespace geometry
 
 //--------------
