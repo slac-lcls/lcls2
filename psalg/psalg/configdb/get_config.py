@@ -33,6 +33,8 @@ def get_config(connect_json,cfgtype,detname):
     mycdb = cdb.configdb(db_url, instrument, create, db_name)
     cfg = mycdb.get_configuration(cfgtype, detname)
 
+    if cfg is None: raise ValueError('Config for instrument/detname %s/%s not found. dbase url: %s, db_name: %s, config_style: %s'%(instrument,detname,db_url,db_name,cfgtype))
+
     cfg_no_RO_names = remove_read_only(cfg)
 
     return cfg_no_RO_names
