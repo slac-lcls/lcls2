@@ -17,18 +17,29 @@
 
 using namespace std;
 
+static void usage(const char* p)
+{
+  printf("Usage: %s [options]\n",p);
+  printf("Options:\n");
+  printf("-d <device>\n");
+  printf("-F <fifoThreshold>\n");
+}
+
 int main (int argc, char **argv) {
 
   int           fd;
-  const char*  dev = "/dev/datadev_0";
+  const char*   dev = "/dev/datadev_0";
+  int           fifoThr = -1;
+  int           c;
 
-  if (argc>2 || 
-      (argc==2 && argv[1][0]=='-')) {
-    printf("Usage: %s [<device>]\n", argv[0]);
-    return(0);
+  while((c=getopt(argc,argv,"d:F:"))!=-1) {
+    switch(c) {
+    case 'd': dev = optarg; break;
+    case 'F': fifoThr = strtoul(optarg, NULL, 0); break;
+    default:  usage(argv[0]); return 1;
+    }
   }
-  else if (argc==2)
-    dev = argv[1];
+
 
   if ( (fd = open(dev, O_RDWR)) <= 0 ) {
     cout << "Error opening " << dev << endl;
@@ -69,7 +80,15 @@ int main (int argc, char **argv) {
   PRINTREG(wcIndex , 0x94);
   PRINTREG(rdIndex , 0x98);
   PRINTREG(fifoOF  , 0x9c);
+  PRINTREG(fifoOF  , 0xa0);
 
+  if (fifoThr > 0)
+    dmaWriteRegister(fd, base+0xa4, fifoThr);
+
+  PRINTREG(fifoTh  , 0xa4);
+  PRINTREG(fifoDep , 0xa8);
+  PRINTREG(fifoDep , 0xac);
+  
   PRINTCLK(axilOther  ,0x100);
   PRINTCLK(timingRef  ,0x104);
   PRINTCLK(migA       ,0x108);

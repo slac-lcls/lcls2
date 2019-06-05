@@ -14,12 +14,58 @@
 #include <linux/types.h>
 
 #include "DataDriver.h"
+#include "Si570.hh"
 
 using namespace std;
 
+#define READREG(name,addr)                    \
+  if (dmaReadRegister(ifd, addr, &reg)<0) {   \
+      perror(#name);                          \
+      return -1;                             \
+    }
+#define WRITEREG(name,addr)                                     \
+  if (dmaWriteRegister(ifd, addr, reg)) {                       \
+    perror(#name);                                              \
+    return -1;                                                  \
+  }
+#define SETFIELD(name,addr,value,offset,mask) {                 \
+    uint32_t reg;                                               \
+    READREG(name,addr);                                         \
+    reg &= ~(mask<<offset);                                     \
+    reg |= (value&mask)<<offset;                                \
+    WRITEREG(name,addr);                                        \
+  }
+
+static bool lInit = false;
+static bool lReset = false;
+
+static void check_program_clock(int ifd, const AxiVersion& vsn) 
+{
+  if (vsn.userValues[61] == 0 && (lInit || lReset)) {
+    //  Set the I2C Mux
+    dmaWriteRegister(ifd, 0x00e00000, (1<<2));
+    //  Configure the Si570
+    Kcu::Si570 s(ifd, 0x00e00800);
+    if (lReset)
+      s.reset();
+    else
+      s.program();
+    //  Reset the QPLL
+    uint32_t reg;
+    dmaWriteRegister(ifd, 0x00a40024, 1);
+    usleep(10);
+    dmaWriteRegister(ifd, 0x00a40024, 0);
+    usleep(10);
+    //  Reset the Tx and Rx
+    dmaWriteRegister(ifd, 0x00a40024, 6);
+    usleep(10);
+    dmaWriteRegister(ifd, 0x00a40024, 0);
+  }
+}
+
 static void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
-  printf("Options: -l <mask>\n");
+  printf("Options: -l <mask> -I\n");
 }
 
 int main (int argc, char **argv) {
@@ -27,11 +73,15 @@ int main (int argc, char **argv) {
   int          fd  [2];
   unsigned     base;
   int          lbmask = -1;
+  bool         lCounterReset = false;
   int          c;
 
-  while((c=getopt(argc,argv,"l:"))!=-1) {
+  while((c=getopt(argc,argv,"l:CIR"))!=-1) {
     switch(c) {
     case 'l': lbmask = strtoul(optarg,NULL,0); break;
+    case 'C': lCounterReset = true; break;
+    case 'I': lInit = true; break;
+    case 'R': lReset = true; break;
     default:  usage(argv[0]); return 1;
     }
   }
@@ -54,16 +104,14 @@ int main (int argc, char **argv) {
       printf("deviceId        : %x\n", vsn.deviceId);
       printf("buildString     : %s\n", vsn.buildString); 
       printf("corePcie[0:3]   : %c\n", (vsn.userValues[61] == 0) ? 'T':'F');
-      if (fd[1]>=0 && axiVersionGet(fd[1], &vsn)>=0)
+      check_program_clock(fd[0], vsn);
+      if (fd[1]>=0 && axiVersionGet(fd[1], &vsn)>=0) {
         printf("corePcie[4:7]   : %c\n", (vsn.userValues[61] == 0) ? 'T':'F');
+        check_program_clock(fd[1], vsn);
+      }
     }
   }
-
-#define READREG(name,addr)                   \
-    if (dmaReadRegister(ifd, addr, &reg)<0) { \
-      perror(#name);                         \
-      return -1;                             \
-    }
+  
 #define PRINTFIELD(name, addr, offset, mask) {                  \
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \
@@ -106,6 +154,34 @@ int main (int argc, char **argv) {
     }
   }
 
+  if (lCounterReset) {
+    for(unsigned i=0; i<8; i++) {
+      int ifd = fd[i>>2];
+      if (ifd >= 0) {
+        dmaWriteRegister(ifd, base, 1);
+        usleep(10);
+        dmaWriteRegister(ifd, base, 0);
+      }
+    }
+    usleep(10000);
+  }
+
+#define PRINTCLK(name, addr) {                                          \
+    uint32_t reg;                                                       \
+    printf("%20.20s :", #name);                                         \
+    dmaReadRegister(fd[0], addr, &reg);                                 \
+    printf(" %8.3f MHz", float(reg&0x1fffffff)*1.e-6);                  \
+    printf(" (%s)\n", (reg&(1<<31)) ? "Locked":"Not Locked");           \
+  }                                                                     \
+
+  PRINTCLK(axilClk, 0x800100);
+  PRINTCLK(sysClk , 0x800104);
+  PRINTCLK(clk200 , 0x800108);
+  PRINTCLK(pgpClk , 0x80010c);
+  { uint32_t v;
+    dmaReadRegister(fd[0], 0x00a40020, &v);
+    printf("qPllLock: %s\n", (v&1) ? "Locked" : "Not Locked"); }
+
   printf("-- PgpAxiL Registers --\n");
   PRINTFIELD(loopback , 0x08, 0, 0x7);
   PRINTBIT(phyRxActive, 0x10, 0);
@@ -128,6 +204,7 @@ int main (int argc, char **argv) {
   PRINTBIT(phyTxActive, 0x84, 0);
   PRINTBIT(linkRdy    , 0x84, 1);
   PRINTFIELD(locOflow   , 0x8c, 0,  0xffff);
+  PRINTREG(locOflowCnt, 0xB0);
   PRINTFIELD(locPause   , 0x8c, 16, 0xffff);
   PRINTREG(txFrameCnt , 0x90);
   PRINTERR(txFrameErrCnt, 0x94);

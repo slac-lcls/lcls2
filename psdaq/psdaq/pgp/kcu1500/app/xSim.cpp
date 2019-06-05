@@ -406,6 +406,7 @@ int main(int argc, char* argv[])
       if (tcountRst) {
         printf("Reset timing counters\n");
         unsigned v = get_reg32( 0x00c00020) | 1;
+        v &= ~(1<<5);  // clear linkDown latch
         set_reg32( 0x00c00020, v);
         usleep(10);
         v &= ~0x1;
@@ -494,6 +495,13 @@ int main(int argc, char* argv[])
         print_word("MsgDelay"  , 0x00c00024);
         print_word("TxRefClks" , 0x00c00028);
         print_word("BuffByCnts", 0x00c0002c);
+
+        print_field("RxAlign_tgt ",0x00c10100,0,0xff);
+        print_field("RxAlign_mask",0x00c10100,8,0xff);
+        print_field("RxAlign_last",0x00c10104,0,0xff);
+        for(unsigned i=0; i<40; i++)
+          printf("%02x%c", (get_reg32(0x00c10000+4*(i/4))>>(4*(i%4)))&0xff, (i%10)==9?'\n':' ');
+        printf("\n");
       }
     }
 

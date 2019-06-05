@@ -3,6 +3,7 @@ add_library(kcu SHARED
     Reg.cc
     GthEyeScan.cc
     Client.cc
+    Si570.cc
 )
 
 target_include_directories(kcu PUBLIC
@@ -21,6 +22,10 @@ add_executable(kcuStatus xStatus.cpp)
 
 target_include_directories(kcuStatus PUBLIC
     ../../aes-stream-drivers/include
+)
+
+target_link_libraries(kcuStatus 
+    kcu
 )
 
 add_executable(kcuHist xHist.cpp)
@@ -102,6 +107,7 @@ target_link_libraries(kcuMargin
 install(TARGETS kcu
                 kcuSim
                 kcuSimValid
+                kcuHist
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

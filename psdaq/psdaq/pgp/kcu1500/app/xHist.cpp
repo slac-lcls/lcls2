@@ -38,33 +38,50 @@ static void usage(const char* p) {
   printf("\t-d <device file> (default: /dev/datadev_1)\n");
 }
 
+static int fd = -1;
+
+static void sigHandler( int signal ) {
+  dmaWriteRegister(fd, 0x00800000, 0);
+  ::exit(signal);
+}
+
 int main (int argc, char **argv) {
-   uint8_t       mask[DMA_MASK_SIZE];
    int32_t       ret;
    int32_t       s;
-   uint32_t      rxFlags;
-   uint32_t      dmaDest=0;
+   unsigned      lane = 4;
 
    const char* dev = "/dev/datadev_1";
    extern char* optarg;
    char c;
-   while((c = getopt(argc,argv,"d:"))!=EOF) {
+   while((c = getopt(argc,argv,"d:l:"))!=EOF) {
      switch(c) {
      case 'd': dev = optarg; break;
+     case 'l': lane = strtoul(optarg,NULL,0); break;
      default: usage(argv[0]); exit(1);
      }
    }
 
-   const unsigned buf_size = 0x400000;
-   uint32_t* buf = new uint32_t[buf_size>>2];
+   uint8_t*      mask    = new uint8_t [DMA_MASK_SIZE];
+   void **       dmaBuffers;
+   uint32_t      dmaCount;
+   uint32_t      dmaSize;
 
    dmaInitMaskBytes(mask);
-   dmaAddMaskBytes((uint8_t*)mask,(4<<8));
+   dmaAddMaskBytes((uint8_t*)mask,(lane<<8));
 
    if ( (s = open(dev, O_RDWR)) <= 0 ) {
       printf("Error opening %s\n",dev);
       return(1);
    }
+
+   if ( (dmaBuffers = dmaMapDma(s,&dmaCount,&dmaSize)) == NULL ) {
+      perror("Failed to map dma buffers!");
+      return(0);
+   }
+
+   dmaWriteRegister(fd=s, 0x00800000, 1);
+
+   ::signal( SIGINT, sigHandler );
 
    dmaSetMaskBytes(s,mask);
 
@@ -73,60 +90,71 @@ int main (int argc, char **argv) {
    unsigned* last_hwf = new unsigned[64];
    unsigned* hist_hwf = new unsigned[64];
 
+   unsigned max_ret_cnt = 70000;
+   uint32_t      getCnt = max_ret_cnt;
+   uint32_t*     rxFlags = new uint32_t[max_ret_cnt];
+   uint32_t*     dest    = new uint32_t[max_ret_cnt];
+   uint32_t*     dmaIndex = new uint32_t[max_ret_cnt];
+   int32_t*      dmaRet   = new int32_t [max_ret_cnt];
+
    while(1) {
 
      // DMA Read
-     do {
-       ret = dmaRead(s,buf,buf_size,&rxFlags,NULL,&dmaDest);
-     } while(ret == 0);
+     ret = dmaReadBulkIndex(s,getCnt,dmaRet,dmaIndex,rxFlags,NULL,dest);  // 24 usec
 
-     unsigned m=0;
-     for(unsigned i=0; i<32; i++) {
-       unsigned v=0;
-       for(unsigned j=0; j<4; j++)
-         v += buf[i+j*257+1];
-       hist[m++]=v;
+     for (int x=0; x < ret; ++x) {
+       if ( dmaRet[x] > 0.0 ) {
+         const uint32_t* buf = reinterpret_cast<const uint32_t*>(dmaBuffers[dmaIndex[x]]);
+
+         unsigned m=0;
+         for(unsigned i=0; i<32; i++) {
+           unsigned v=0;
+           for(unsigned j=0; j<4; j++)
+             v += buf[i+j*257+1];
+           hist[m++]=v;
+         }
+         for(unsigned i=0; i<224;) {
+           unsigned v=0;
+           for(unsigned j=0; j<8; j++,i++)
+             for(unsigned k=0; k<4; k++)
+               v += buf[i+k*257+33];
+           hist[m++]=v;
+         }
+
+         m = 0;
+         for(unsigned i=0; i<256;) {
+           unsigned v=0;
+           for(unsigned j=0; j<4; j++,i++)
+             for(unsigned k=4; k<8; k++)
+               v += buf[i+k*257];
+           hist_hwf[m++]=v;
+         }
+
+         for(unsigned i=0; i<60; i++)
+           printf("%04x%c",hist[i],(i&0xf)==0xf?'\n':' ');
+         printf("\n  -\n");
+
+         for(unsigned i=0; i<60; i++)
+           printf("%04x%c",hist[i]-last[i],(i&0xf)==0xf?'\n':' ');
+         printf("\n--\n");
+
+         for(unsigned i=0; i<64; i++)
+           printf("%04x%c",hist_hwf[i],(i&0xf)==0xf?'\n':' ');
+         printf("\n  -\n");
+
+         for(unsigned i=0; i<64; i++)
+           printf("%04x%c",hist_hwf[i]-last_hwf[i],(i&0xf)==0xf?'\n':' ');
+         printf("\n----\n");
+
+         unsigned* p = hist;
+         hist = last;
+         last = p;
+
+         p = hist_hwf;
+         hist_hwf = last_hwf;
+         last_hwf = p;
+       }
      }
-     for(unsigned i=0; i<224;) {
-       unsigned v=0;
-       for(unsigned j=0; j<8; j++,i++)
-         for(unsigned k=0; k<4; k++)
-           v += buf[i+k*257+33];
-       hist[m++]=v;
-     }
-
-     m = 0;
-     for(unsigned i=0; i<256;) {
-       unsigned v=0;
-       for(unsigned j=0; j<4; j++,i++)
-         for(unsigned k=4; k<8; k++)
-           v += buf[i+k*257];
-       hist_hwf[m++]=v;
-     }
-
-     for(unsigned i=0; i<60; i++)
-       printf("%04x%c",hist[i],(i&0xf)==0xf?'\n':' ');
-     printf("\n  -\n");
-
-     for(unsigned i=0; i<60; i++)
-       printf("%04x%c",hist[i]-last[i],(i&0xf)==0xf?'\n':' ');
-     printf("\n--\n");
-
-     for(unsigned i=0; i<64; i++)
-       printf("%04x%c",hist_hwf[i],(i&0xf)==0xf?'\n':' ');
-     printf("\n  -\n");
-
-     for(unsigned i=0; i<64; i++)
-       printf("%04x%c",hist_hwf[i]-last_hwf[i],(i&0xf)==0xf?'\n':' ');
-     printf("\n----\n");
-
-     unsigned* p = hist;
-     hist = last;
-     last = p;
-
-     p = hist_hwf;
-     hist_hwf = last_hwf;
-     last_hwf = p;
    }
 
    return(0);
