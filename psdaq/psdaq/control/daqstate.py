@@ -53,18 +53,18 @@ def main():
     elif args.monitor:
         # monitor the status
         while True:
-            part1, part2 = control.monitorStatus()
+            part1, part2, part3 = control.monitorStatus()
             if part1 is None:
                 break
             elif part1 == 'error':
                 print('error: %s' % part2)
             else:
-                print('transition: %-10s  state: %s' % (part1, part2))
+                print('transition: %-11s  state: %-11s  config: %s' % (part1, part2, part3))
 
     else:
         # print current state
-        transition, state = control.getStatus()
-        print('last transition: %s  state: %s' % (transition, state))
+        transition, state, config_alias = control.getStatus()
+        print('last transition: %s  state: %s  configuration alias: %s' % (transition, state, config_alias))
 
 if __name__ == '__main__':
     main()

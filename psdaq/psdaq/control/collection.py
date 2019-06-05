@@ -52,7 +52,6 @@ class DaqControl:
         self.host = host
         self.platform = platform
         self.timeout = timeout
-        self.config_alias = None
 
         # initialize zmq socket
         self.context = zmq.Context(1)
@@ -150,7 +149,7 @@ class DaqControl:
     # DaqControl.getStatus - get status
     #
     def getStatus(self):
-        r1 = r2 = 'error'
+        r1 = r2 = r3 = 'error'
         try:
             msg = create_msg('getstatus')
             self.front_req.send_json(msg)
@@ -163,10 +162,11 @@ class DaqControl:
             try:
                 r1 = reply['body']['transition']
                 r2 = reply['body']['state']
+                r3 = reply['body']['config_alias']
             except KeyError:
                 pass
 
-        return (r1, r2)
+        return (r1, r2, r3)
 
     #
     # DaqControl.monitorStatus - monitor the status
@@ -179,12 +179,12 @@ class DaqControl:
                 msg = self.front_sub.recv_json()
 
                 if msg['header']['key'] == 'status':
-                    # return transition, state
-                    return msg['body']['transition'], msg['body']['state']
+                    # return transition, state, config_alias
+                    return msg['body']['transition'], msg['body']['state'], msg['body']['config_alias']
 
                 elif msg['header']['key'] == 'error':
-                    # return 'error', error message
-                    return 'error', msg['body']['err_info']
+                    # return 'error', error message, 'error'
+                    return 'error', msg['body']['err_info'], 'error'
 
             except KeyboardInterrupt:
                 break
@@ -193,7 +193,7 @@ class DaqControl:
                 logging.error('KeyError: %s' % ex)
                 break
 
-        return None, None
+        return None, None, None
 
     #
     # DaqControl.setState - change the state
@@ -377,6 +377,7 @@ class CollectionManager():
     def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase):
         self.platform = platform
         self.alias = alias
+        self.config_alias = None
         self.cfg_dbase = cfg_dbase
         self.xpm_master = xpm_master
         self.pv_base = pv_base
@@ -587,11 +588,13 @@ class CollectionManager():
         return answer
 
     def status_msg(self):
-        body = {'state': self.state, 'transition': self.lastTransition}
+        body = {'state': self.state, 'transition': self.lastTransition,
+                'config_alias': str(self.config_alias)}
         return create_msg('status', body=body)
 
     def report_status(self):
-        logging.debug('status: state=%s transition=%s' % (self.state, self.lastTransition))
+        logging.debug('status: state=%s transition=%s config_alias=%s' %
+                      (self.state, self.lastTransition, self.config_alias))
         self.front_pub.send_json(self.status_msg())
 
     # check_answers - report and count errors in answers list
