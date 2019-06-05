@@ -2,6 +2,7 @@
 #include "psdaq/service/Semaphore.hh"
 
 #include <unistd.h>
+#include <stdio.h>
 
 static uint64_t _base = 0;
 static uint32_t* _csr = 0;
@@ -25,7 +26,16 @@ RegProxy& RegProxy::operator=(const unsigned r)
   _csr[0] = 0;
 
   //  wait until transaction is complete
-  do { usleep(1000); } while ( (_csr[1]&1)==0 );
+  unsigned tmo=0;
+  unsigned tmo_mask = 0x3;
+  do { 
+    usleep(1000);
+    if ((++tmo&tmo_mask) ==  tmo_mask) {
+      tmo_mask = (tmo_mask<<1) | 1;
+      printf("RegProxy tmo (%x) writing 0x%x to %llx\n", 
+             tmo, r, reinterpret_cast<uint64_t>(this)-_base);
+    }
+  } while ( (_csr[1]&1)==0 );
 
   _sem.give();
 
@@ -41,8 +51,17 @@ RegProxy::operator unsigned() const
   _csr[0] = 1;
 
   //  wait until transaction is complete
-  do { usleep(1000); } while ( (_csr[1]&1)==0 );
-
+  unsigned tmo=0;
+  unsigned tmo_mask = 0x3;
+  do { 
+    usleep(1000);
+    if ((++tmo&tmo_mask) == tmo_mask) {
+      tmo_mask = (tmo_mask<<1) | 1;
+      printf("RegProxy tmo (%x) read from %llx\n", 
+             tmo, reinterpret_cast<uint64_t>(this)-_base);
+    }
+  } while ( (_csr[1]&1)==0 );
+  
   unsigned r = _csr[3];
 
   _sem.give();

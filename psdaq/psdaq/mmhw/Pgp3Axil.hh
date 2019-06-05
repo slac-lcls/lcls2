@@ -6,7 +6,7 @@
 
 namespace Pds {
   namespace Mmhw {
-    class Pgp3AxilBase {
+    class Pgp3Axil {
     public:
       uint32_t  countReset;
       uint32_t  autoStatus;
@@ -24,7 +24,7 @@ namespace Pds {
       uint32_t  rxOpCodeLast;
       uint32_t  rxOpCodeNum;
       uint32_t  rsvd_3C;
-      uint32_t  rsvd_40[0x10];
+      uint32_t  rsvd_40[0x40>>2];
       // tx
       uint32_t  cntrl; // flowCntDis, txDisable
       uint32_t  txStatus; // phyTxActive, linkReady
@@ -38,11 +38,18 @@ namespace Pds {
       uint32_t  txOpCodeLast;
       uint32_t  txOpCodeNum;
       uint32_t  rsvd_AC;
-      uint32_t  rsvd_B0[0x14];
-    };
-    class Pgp3Axil : public Pgp3AxilBase {
-    public:
-      uint32_t  reserved[0xF00>>2];
+      uint32_t  rsvd_B0[0x50>>2];
+      // phy
+      uint64_t  phyData;
+      uint32_t  phyHeader;
+      uint32_t  rsvd_10C;
+      uint64_t  ebData;
+      uint32_t  ebHeader;
+      uint32_t  ebOflow;
+      uint32_t  gearboxAligned;
+      uint32_t  rsvd_124[0xC>>2];
+      uint32_t  rxInitCnt;
+      uint32_t  rsvd_134[(0x1000-0x134)>>2];
     };
   };
 };
