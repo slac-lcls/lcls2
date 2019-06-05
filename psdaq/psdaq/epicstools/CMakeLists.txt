@@ -11,6 +11,10 @@ target_include_directories(epicstools PUBLIC
     $ENV{CONDA_PREFIX}/epics/include/compiler/gcc
 )
 
+target_link_libraries(epicstools
+    ${EPICS_PVACCESS_LIB}
+)
+
 install(TARGETS epicstools
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
