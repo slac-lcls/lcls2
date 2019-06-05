@@ -49,6 +49,7 @@ class DaqControlEmulator:
         self._name = 'DaqControlEmulator'
     def msg(self, s) : logger.warning('TEST PURPOSE ONLY DaqControlEmulator.%s' % s) 
     def getInstrument(self) :     self.msg('getInstrument');  return 'EMU'
+    def setConfig(self, c) :      self.msg('setConfig');      return None
     def setState(self, s) :       self.msg('setState');
     def getState(self) :          self.msg('getState');       return 'emulator'
     def getStatus(self) :         self.msg('getStatus');      return 'emulator', 'emulator'

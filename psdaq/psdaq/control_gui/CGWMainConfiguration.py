@@ -186,11 +186,19 @@ class CGWMainConfiguration(QGroupBox) :
             self.type_old = selected
 
             # save selected configuration type in control json
-            #rv = daq_control().setState(config_alias=selected)
-            #if rv is not None: logger.error('setState(config_alias=%s): %s' % (state,rv))
+            rv = daq_control().setConfig(selected)
+            if rv is not None: logger.error('setState(config_alias=%s): %s' % (state,rv))
 
-            #rv = daq_control().setTransition(config_alias==selected)
-            #if rv is not None: logger.error('setTransition(config_alias=%s): %s' % (state,rv))
+        self.set_buts_enabled()
+
+#--------------------
+ 
+    def set_config_type(self, config_type):
+        if config_type == self.type_old : returmn
+
+        self.set_but_type_text(config_type)
+        self.set_but_dev_text()
+        self.type_old = config_type
 
         self.set_buts_enabled()
 

@@ -344,11 +344,15 @@ class CGWMain(QWZMQListener) :
                 #  jo['body']   # {'state': 'allocated', 'transition': 'alloc'}
 
                 if  jo['header']['key'] == 'status' :
-                    s_state      = jo['body']['state']
-                    s_transition = jo['body']['transition']
+                    body = jo['body']
+                    s_state        = body['state']
+                    s_transition   = body['transition']
+                    s_config_alias = body['config_alias']
                     #====self.wdetr.set_but_state (s_state)
                     self.wctrl.set_but_ctrls (s_state)
                     self.wctrl.set_transition(s_transition)
+                    self.wconf.set_config_type(s_config_alias)
+
                     self.wcoll.update_table()
                     logging.info('received state msg: %s and transition: %s' % (s_state, s_transition))
 
@@ -363,7 +367,7 @@ class CGWMain(QWZMQListener) :
              logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))
 
         except Exception as ex:
-             logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex.message))
+             logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))
 
 #------------------------------
 #------------------------------
