@@ -198,10 +198,10 @@ class DaqControl:
     #
     # DaqControl.setState - change the state
     #
-    def setState(self, state, *, config_alias='BEAM'):
+    def setState(self, state):
         errorMessage = None
         try:
-            msg = create_msg('setstate.' + state + '.' + config_alias)
+            msg = create_msg('setstate.' + state)
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
@@ -215,12 +215,31 @@ class DaqControl:
         return errorMessage
 
     #
-    # DaqControl.setTransition - trigger a transition
+    # DaqControl.setConfig - set BEAM/NOBEAM
     #
-    def setTransition(self, transition, *, config_alias='BEAM'):
+    def setConfig(self, config):
         errorMessage = None
         try:
-            msg = create_msg(transition + '.' + config_alias)
+            msg = create_msg('setconfig.' + config)
+            self.front_req.send_json(msg)
+            reply = self.front_req.recv_json()
+        except Exception as ex:
+            errorMessage = 'setConfig() Exception: %s' % ex
+        else:
+            try:
+                errorMessage = reply['body']['err_info']
+            except KeyError:
+                pass
+
+        return errorMessage
+
+    #
+    # DaqControl.setTransition - trigger a transition
+    #
+    def setTransition(self, transition):
+        errorMessage = None
+        try:
+            msg = create_msg(transition)
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
@@ -475,21 +494,24 @@ class CollectionManager():
 
     def service_requests(self):
         # msg['header']['key'] formats:
-        #  setstate.STATE.CONFIG_ALIAS
-        #  TRANSITION.CONFIG_ALIAS
-        #  request
+        #  setstate.STATE
+        #  setconfig.CONFIG_ALIAS
+        #  TRANSITION
+        #  REQUEST
         answer = None
         try:
             msg = self.front_rep.recv_json()
             key = msg['header']['key'].split(".")
             body = msg['body']
             if key[0] == 'setstate':
-                self.config_alias = key[2]
                 # handle_setstate() sends reply internally
                 self.handle_setstate(key[1])
                 answer = None
+            elif key[0] == 'setconfig':
+                # handle_setconfig() sends reply internally
+                self.handle_setconfig(key[1])
+                answer = None
             elif key[0] in DaqControl.transitions:
-                self.config_alias = key[1]
                 # send 'ok' reply before calling handle_trigger()
                 self.front_rep.send_json(create_msg('ok'))
                 retval = self.handle_trigger(key[0], stateChange=False)
@@ -586,6 +608,23 @@ class CollectionManager():
                         break
 
         return answer
+
+    def handle_setconfig(self, newconfig):
+        logging.debug('handle_setconfig(\'%s\') in state %s' % (newconfig, self.state))
+
+        if self.state == 'running' or self.state == 'paused':
+            errMsg = 'cannot set config alias in state \'%s\'' % self.state
+            logging.error(errMsg)
+            answer = create_msg('error', body={'err_info': errMsg})
+            # reply 'error'
+            self.front_rep.send_json(answer)
+        else:
+            if newconfig != self.config_alias:
+                self.config_alias = newconfig
+                self.report_status()
+            answer = create_msg('ok')
+            # reply 'ok'
+            self.front_rep.send_json(answer)
 
     def status_msg(self):
         body = {'state': self.state, 'transition': self.lastTransition,
