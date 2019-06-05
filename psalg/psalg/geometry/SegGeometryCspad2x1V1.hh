@@ -243,9 +243,9 @@ private:
   /// 2-d pixel mask arrays
   pixel_mask_t  m_pix_mask_arr [ROWS][COLS];  
 
-  // Copy constructor and assignment are disabled by default
-  SegGeometryCspad2x1V1 ( const SegGeometryCspad2x1V1& ) ;
-  SegGeometryCspad2x1V1& operator = ( const SegGeometryCspad2x1V1& ) ;
+  // Copy constructor and assignment are disabled
+  SegGeometryCspad2x1V1(const SegGeometryCspad2x1V1&) = delete;
+  SegGeometryCspad2x1V1& operator = (const SegGeometryCspad2x1V1&) = delete ;
 };
 
 } // namespace geometry

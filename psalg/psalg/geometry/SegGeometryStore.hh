@@ -104,11 +104,11 @@ public:
   Create (const std::string& segname="SENS2X1:V1")
   {
         MSG(DEBUG, "Segment geometry factory for " << segname);
-        if (segname=="SENS2X1:V1")  { return geometry::SegGeometryCspad2x1V1::instance(); } // use singleton
-        if (segname=="EPIX100:V1")  { return geometry::SegGeometryEpix100V1::instance(); } // use singleton
-        if (segname=="EPIX10KA:V1") { return geometry::SegGeometryEpix10kaV1::instance(); } // use singleton
-        if (segname=="PNCCD:V1")    { return new geometry::SegGeometryMatrixV1(512,512,75.,75.,400.,75.); }
-        if (segname.find("MTRX") != std::string::npos) { 
+        if(segname == "SENS2X1:V1") return geometry::SegGeometryCspad2x1V1::instance(); // use singleton
+	if(segname == "EPIX100:V1") return geometry::SegGeometryEpix100V1::instance();  // use singleton
+	if(segname == "EPIX10KA:V1") return geometry::SegGeometryEpix10kaV1::instance(); // use singleton
+        if(segname == "PNCCD:V1")  return new geometry::SegGeometryMatrixV1(512,512,75.,75.,400.,75.);
+        if(segname.find("MTRX") != std::string::npos) { 
 
           std::size_t rows;
 	  std::size_t cols;
@@ -128,7 +128,7 @@ public:
                                                // pix_size_depth, pix_scale_size); 
         }
 
-        MSG(ERROR, "Segment geometry is undefined for segment name " << segname 
+        MSG(DEBUG, "Segment geometry is undefined for segment name " << segname 
                    << " - return 0-pointer...");  
         //abort();
 	return 0; // NULL;

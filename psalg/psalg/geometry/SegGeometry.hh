@@ -101,6 +101,10 @@ double min_of_arr(const double* arr, unsigned size);
 /// Global method, returns maximal value of the array of specified length 
 double max_of_arr(const double* arr, unsigned size);
 
+/// Copy constructor and assignment are disabled
+  // SegGeometry(const SegGeometry&) = delete;
+  // SegGeometry& operator = (const SegGeometry&) = delete;
+
 } // namespace geometry
 
 #endif // PSALG_SEGGEOMETRY_H

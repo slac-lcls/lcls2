@@ -149,19 +149,19 @@ public:
   virtual void print_seg_info(const unsigned& pbits=0);
 
   /// Returns size of the coordinate arrays
-  virtual const size_t size() { return SIZE; }
+  virtual const size_t size() {return SIZE;}
 
   /// Returns number of rows in segment
-  virtual const size_t rows() { return ROWS; }
+  virtual const size_t rows() {return ROWS;}
 
   /// Returns number of cols in segment
-  virtual const size_t cols() { return COLS; }
+  virtual const size_t cols() {return COLS;}
 
   /// Returns shape of the segment {rows, cols}
-  virtual const size_t* shape() { return &ARR_SHAPE[0]; }
+  virtual const size_t* shape() {return &ARR_SHAPE[0];}
 
   /// Returns pixel size in um for indexing
-  virtual const pixel_coord_t pixel_scale_size() { return PIX_SCALE_SIZE; }
+  virtual const pixel_coord_t pixel_scale_size() {return PIX_SCALE_SIZE;}
 
   /// Returns pointer to the array of pixel areas
   virtual const pixel_area_t* pixel_area_array();
@@ -201,23 +201,23 @@ private:
    *  @brief Fills-in the map of perfect segment coordinates, defined through the chip geometry.
    *  @param[in] use_wide_pix_center Optional parameter can be used if the wide-pixel row coordinate is prefered to be in the raw center.
    */
-  SegGeometryEpix100V1 (const bool& use_wide_pix_center=false);
+  SegGeometryEpix100V1(const bool& use_wide_pix_center=false);
 
   /// Destructor
-  virtual ~SegGeometryEpix100V1 ();
+  virtual ~SegGeometryEpix100V1();
 
   static geometry::SegGeometry* m_pInstance;
 
   //-----------------
 
   /// Generator of the pixel coordinate arrays.
-  void make_pixel_coord_arrs ();
+  void make_pixel_coord_arrs();
 
   /// Generator of the pixel size and area arrays.
-  void make_pixel_size_arrs ();
+  void make_pixel_size_arrs();
 
   /// Prints class member data
-  void print_member_data ();
+  void print_member_data();
 
   /// Prints segment pixel coordinates
   void print_coord_arrs();
@@ -258,8 +258,8 @@ private:
   pixel_mask_t  m_pix_mask_arr [ROWS][COLS];  
 
   // Copy constructor and assignment are disabled by default
-  SegGeometryEpix100V1 ( const SegGeometryEpix100V1& ) ;
-  SegGeometryEpix100V1& operator = ( const SegGeometryEpix100V1& ) ;
+  SegGeometryEpix100V1(const SegGeometryEpix100V1&) = delete;
+  SegGeometryEpix100V1& operator = (const SegGeometryEpix100V1&) = delete;
 };
 
 } // namespace geometry

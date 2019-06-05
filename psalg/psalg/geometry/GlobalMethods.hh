@@ -46,11 +46,11 @@ static const size_t SIZE2X2 = N2X1*SIZE2X1;
  * @param[in]  data2x2 - input NDArray shaped as [185,388,2]
  */
   template <typename T>
-  NDArray<const T> 
+  NDArray<const T>
   data2x2ToTwo2x1(const NDArray<const T>& data2x2)
   {
     shape_t sh[3] = {N2X1, ROWS2X1, COLS2X1};
-    NDArray<T> two2x1 = new NDArray<T>(sh, 3);
+    NDArray<T>& two2x1 = * new NDArray<T>(sh, 3);
     
     for(size_t n=0; n<N2X1;    ++n) {
     for(size_t c=0; c<COLS2X1; ++c) {
@@ -75,13 +75,13 @@ static const size_t SIZE2X2 = N2X1*SIZE2X1;
   two2x1ToData2x2(const NDArray<const T>& two2x1)
   {
     shape_t sh[3] = {N2X1, ROWS2X1, COLS2X1};
-    NDArray<T> data2x2 = new NDArray<T>(sh, 3);
+    NDArray<T>& data2x2 = * new NDArray<T>(sh, 3);
     
     for(size_t n=0; n<N2X1;    ++n) {
     for(size_t c=0; c<COLS2X1; ++c) {
     for(size_t r=0; r<ROWS2X1; ++r) {
 
-      data2x2(r,c,n) = two2x1(n,r,c);  
+      data2x2(r,c,n) = two2x1(n,r,c);
 
     }
     }

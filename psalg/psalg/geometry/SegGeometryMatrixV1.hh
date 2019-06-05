@@ -169,7 +169,7 @@ public:
   virtual const size_t size() {return SIZE;}
 
   /// Returns number of rows in segment
-  virtual const size_t rows() {return ROWS; }
+  virtual const size_t rows() {return ROWS;}
 
   /// Returns number of cols in segment
   virtual const size_t cols() {return COLS;}
@@ -208,13 +208,13 @@ public:
 private:
 
   /// Generator of the pixel coordinate arrays.
-  void make_pixel_coord_arrs ();
+  void make_pixel_coord_arrs();
 
   /// Generator of the pixel size and area arrays.
-  void make_pixel_size_arrs ();
+  void make_pixel_size_arrs();
 
   /// Prints class member data
-  void print_member_data ();
+  void print_member_data();
 
   /// Prints segment pixel coordinates
   void print_coord_arrs();
@@ -274,8 +274,8 @@ private:
   pixel_mask_t*  m_pix_mask_arr;  
 
   // Copy constructor and assignment are disabled by default
-  SegGeometryMatrixV1 ( const SegGeometryMatrixV1& ) ;
-  SegGeometryMatrixV1& operator = ( const SegGeometryMatrixV1& ) ;
+  SegGeometryMatrixV1(const SegGeometryMatrixV1&) = delete;
+  SegGeometryMatrixV1& operator = (const SegGeometryMatrixV1&) = delete;
 };
 
 } // namespace geometry

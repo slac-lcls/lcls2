@@ -136,6 +136,15 @@ target_link_libraries(test_SegGeometry
     xtcdata::xtc
 )
 
+# Test GeometryAccess
+add_executable(test_GeometryAccess
+    tests/test_GeometryAccess.cc
+)
+target_link_libraries(test_GeometryAccess
+    psalg
+    xtcdata::xtc
+)
+
 # Test AreaDetector
 add_executable(test_AreaDetector
     tests/test_AreaDetector.cc
@@ -172,6 +181,7 @@ install(TARGETS psalg
                 test_hsd
                 test_CalibPars
                 test_SegGeometry
+                test_GeometryAccess
                 test_AreaDetector
                 test_MDBWebUtils
                 test_logger

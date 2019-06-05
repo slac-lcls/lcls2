@@ -1,9 +1,8 @@
 //-------------------
 
-#include <iostream> // for cout
-#include <fstream>  // for ifstream 
-#include <sstream>  // for stringstream
-#include <iomanip>  // for setw, setfill
+#include <iostream> // cout
+#include <fstream>  // ifstream 
+#include <iomanip>  // setw, setfill
 
 #include "psalg/geometry/GeometryAccess.hh"
 #include "psalg/geometry/GeometryObject.hh"
@@ -13,12 +12,31 @@
 
 namespace geometry {
 
+//-------------------
+
+void file_to_stringstream(const std::string& fname, std::stringstream& ss)
+{
+
+  std::ifstream f(fname.c_str());
+
+  if(f.good()) {MSG(DEBUG, "file_to_stringstream(...): " << fname);}
+  else         {MSG(ERROR, "File " << fname << " does not exist");}
+
+  ss << f.rdbuf();
+  f.close();
+  //return ss.str();
+}
+
+//std::ostream& operator<<(std::ostream& out, const CalibFile& cf)
+
+//-------------------
+
 typedef GeometryAccess::image_t image_t;
 
 
-GeometryAccess::GeometryAccess (const std::string& path)
+GeometryAccess::GeometryAccess(const std::string& path)
   : m_path(path)
-  , m_pbits(1023)
+  , m_pbits(0)
   , p_iX(0)
   , p_iY(0)
   , p_image(0)
@@ -36,7 +54,7 @@ GeometryAccess::GeometryAccess (const std::string& path)
 
 //--------------
 
-GeometryAccess::~GeometryAccess ()
+GeometryAccess::~GeometryAccess()
 {
   delete [] p_iX;
   delete [] p_iY;
@@ -46,36 +64,55 @@ GeometryAccess::~GeometryAccess ()
 }
 
 //-------------------
-void GeometryAccess::load_pars_from_file(const std::string& path)
+
+void GeometryAccess::load_pars_from_stringstream(std::stringstream& ss)
 {
   m_dict_of_comments.clear();
   v_list_of_geos.clear();
   v_list_of_geos.reserve(100);
 
-  if(! path.empty()) m_path = path;
-
-  std::ifstream f(m_path.c_str());
-
-  if(not f.good()) { MSG(ERROR, "Calibration file " << m_path << " does not exist"); }
-  else             { MSG(DEBUG, "load_pars_from_file(): " << m_path); }
-
   std::string line;
-  while (std::getline(f, line)) {    
+  //while (ss >> line) { // works for std::ifstream
+  while (std::getline(ss, line, '\n')) {    
     if(m_pbits & 256) std::cout << line << '\n'; // << " length = " << line.size() << '\n';
-    if(line.empty())    continue;    // discard empty lines
-    if(line[0] == '#') {          // process line of comments 
+    if(line.empty()) continue;                   // discard empty lines
+    if(line[0] == '#') {                         // process line of comments 
        add_comment_to_dict(line); 
        continue;
     }
     // make geometry object and add it in the list
-    v_list_of_geos.push_back( parse_line(line) );    
+    v_list_of_geos.push_back(parse_line(line));    
   }
-
-  f.close();
 
   set_relations();
 }
 
+//-------------------
+
+void GeometryAccess::load_pars_from_string(const std::string& s)
+{
+  std::stringstream ss(s);
+  load_pars_from_stringstream(ss);
+}
+
+//-------------------
+
+void GeometryAccess::load_pars_from_file(const std::string& fname)
+{
+  if(! fname.empty()) m_path = fname;
+
+  std::stringstream ss;
+  geometry::file_to_stringstream(m_path, ss);
+  //cout << "string:\n" << ss.str() <<  "\n";
+
+  load_pars_from_stringstream(ss);
+}
+
+
+
+//-------------------
+//-------------------
+//-------------------
 //-------------------
 
 void GeometryAccess::save_pars_in_file(const std::string& path)
@@ -95,7 +132,7 @@ void GeometryAccess::save_pars_in_file(const std::string& path)
 
   // Save data
   for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
-                                                   it != v_list_of_geos.end(); ++it) {
+                                                 it != v_list_of_geos.end(); ++it) {
     if( (*it)->get_parent_name().empty() ) continue;
     ss << (*it)->str_data() << '\n';
   }
@@ -252,7 +289,7 @@ void GeometryAccess::set_relations()
 {
   MSG(DEBUG, "Begin set_relations(): size of the list:" << v_list_of_geos.size());
   for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
-                                                   it != v_list_of_geos.end(); ++it) {
+                                                 it != v_list_of_geos.end(); ++it) {
 
     GeometryAccess::pGO shp_parent = find_parent(*it);
     //std::cout << "set_relations(): found parent name:" << shp_parent->get_parent_name()<<'\n';
@@ -276,7 +313,7 @@ void GeometryAccess::set_relations()
 GeometryAccess::pGO GeometryAccess::get_geo(const std::string& oname, const unsigned& oindex)
 {
   for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
-                                   it != v_list_of_geos.end(); ++it) {
+                                                 it != v_list_of_geos.end(); ++it) {
     if(   (*it)->get_geo_index() == oindex
        && (*it)->get_geo_name()  == oname ) 
           return (*it);
@@ -470,7 +507,7 @@ void GeometryAccess::print_list_of_geos()
   std::stringstream ss; ss << "print_list_of_geos():";
   if( v_list_of_geos.empty() ) ss << "List of geos is empty...";
   for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
-                                   it != v_list_of_geos.end(); ++it) {
+                                                 it != v_list_of_geos.end(); ++it) {
     ss << '\n' << (*it)->string_geo();
   }
   //std::cout << ss.str();
@@ -485,7 +522,7 @@ void GeometryAccess::print_list_of_geos_children()
   if( v_list_of_geos.empty() ) ss << "List of geos is empty...";
 
   for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
-                                   it != v_list_of_geos.end(); ++it) {
+                                                 it != v_list_of_geos.end(); ++it) {
     ss << '\n' << (*it)->string_geo_children();
   }
   //std::cout << ss.str() << '\n';

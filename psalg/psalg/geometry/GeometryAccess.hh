@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <sstream>  // stringstream
 //#include <boost/shared_ptr.hpp>
 
 #include "psalg/geometry/GeometryObject.hh"
@@ -140,6 +141,9 @@ namespace geometry {
 
 using namespace psalg;
 
+
+void file_to_stringstream(const std::string& fname, std::stringstream& ss);
+
 class GeometryAccess  {
 
 //typedef boost::shared_ptr<GeometryObject> pGO;
@@ -171,7 +175,7 @@ public:
   GeometryAccess(const std::string& path) ;
 
   // Destructor
-  virtual ~GeometryAccess () ;
+  virtual ~GeometryAccess() ;
 
   /// Returns shared pointer to the geometry object specified by name and index 
   pGO get_geo(const std::string& oname, const unsigned& oindex);
@@ -288,7 +292,7 @@ public:
 			       const unsigned& oindex = 0, 
                                const double& pix_scale_size_um = 0, 
                                const int* xy0_off_pix = 0,
-                               const bool do_tilt=true );
+                               const bool do_tilt=true);
 
   /// Returns pixel coordinate index arrays iX, iY of size for specified Zplane and geometry object 
  /**
@@ -334,7 +338,12 @@ public:
  /**
    *  @param[in] path - path to the file with calibration parameters of type "geometry"
    */
-  void load_pars_from_file(const std::string& path = std::string());
+
+  //void load_pars_from_string(const std::string& s);
+
+  void load_pars_from_stringstream(std::stringstream& ss);
+  void load_pars_from_string(const std::string& s);
+  void load_pars_from_file(const std::string& fname = std::string());
 
   /// Saves calibration file
  /**
@@ -426,8 +435,8 @@ private:
   static const std::string name() {return "geometry";}
 
   // Copy constructor and assignment are disabled by default
-  GeometryAccess(const GeometryAccess&) ;
-  GeometryAccess& operator = (const GeometryAccess&) ;
+  GeometryAccess(const GeometryAccess&) = delete;
+  GeometryAccess& operator = (const GeometryAccess&) = delete;
 
 //-------------------
 };

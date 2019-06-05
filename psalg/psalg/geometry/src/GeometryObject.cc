@@ -58,16 +58,16 @@ GeometryObject::GeometryObject(std::string pname,
 
 //-------------------
 
-GeometryObject::~GeometryObject ()
+GeometryObject::~GeometryObject()
 {
   if (m_seggeom) delete m_seggeom;
 
-  deallocate_memory();
+  _deallocate_memory();
 }
 
 //-------------------
 
-void GeometryObject::deallocate_memory()
+void GeometryObject::_deallocate_memory()
 {
   if (p_xarr) {delete [] p_xarr; p_xarr=0;}
   if (p_yarr) {delete [] p_yarr; p_yarr=0;}
@@ -81,9 +81,9 @@ void GeometryObject::deallocate_memory()
 std::string GeometryObject::string_geo()
 {
   std::stringstream ss;
-  ss << "parent:"   << std::setw(10) << std::right << m_pname
+  ss << "parent:"   << std::setw(12) << std::right << m_pname
      << "  pind:"   << std::setw(2)  << m_pindex
-     << "  geo:"    << std::setw(10) << m_oname
+     << "  geo:"    << std::setw(12) << m_oname
      << "  oind:"   << std::setw(2)  << m_oindex << std::right << std::fixed
      << "  x0:"     << std::setw(8)  << std::setprecision(0) << m_x0
      << "  y0:"     << std::setw(8)  << std::setprecision(0) << m_y0
@@ -119,6 +119,7 @@ std::string GeometryObject::str_data()
 }
 
 //-------------------
+
 void GeometryObject::print_geo()
 {
   //std::cout << string_geo() << '\n';
@@ -130,9 +131,9 @@ void GeometryObject::print_geo()
 std::string GeometryObject::string_geo_children()
 {
   std::stringstream ss;
-  ss << "parent:" << std::setw(10) << std::left << m_pname
+  ss << "parent:" << std::setw(12) << std::left << m_pname
      << " i:"     << std::setw(2)  << m_pindex
-     << "  geo:"  << std::setw(10) << m_oname
+     << "  geo:"  << std::setw(12) << m_oname
      << " i:"     << std::setw(2)  << m_oindex
      << "  #children:" << v_list_of_children.size();
   for(std::vector<pGO>::iterator it  = v_list_of_children.begin();
@@ -261,7 +262,7 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
     // allocate memory for pixel coordinate arrays
     m_size = size;
     
-    this->deallocate_memory();
+    this->_deallocate_memory();
     
     p_xarr = new double [m_size];
     p_yarr = new double [m_size];
@@ -272,9 +273,9 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
 
   if(m_seggeom) {
 
-       const double* x_arr = m_seggeom -> pixel_coord_array (SG::AXIS_X);
-       const double* y_arr = m_seggeom -> pixel_coord_array (SG::AXIS_Y);
-       const double* z_arr = m_seggeom -> pixel_coord_array (SG::AXIS_Z);
+       const double* x_arr = m_seggeom -> pixel_coord_array(SG::AXIS_X);
+       const double* y_arr = m_seggeom -> pixel_coord_array(SG::AXIS_Y);
+       const double* z_arr = m_seggeom -> pixel_coord_array(SG::AXIS_Z);
        const double* a_arr = m_seggeom -> pixel_area_array();
        const int*    m_arr = m_seggeom -> pixel_mask_array(m_mbits);
 
@@ -315,10 +316,10 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
 
     ibase += sizech;
 
-    (*it)->deallocate_memory();
+    (*it)->_deallocate_memory();
   }
 
-  if(ibase == geometry::SIZE2X2 && m_oname == "CSPAD2X2:V1") { 
+  if(ibase == geometry::SIZE2X2 && m_oname == "CSPAD2X2:V1") {
     // shuffle pixels for cspad2x2, geometry::SIZE2X2 = 2*185*388 = 143560 
     // shuffle pixels only once for "CSPAD2X2:V1" only!
 

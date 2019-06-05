@@ -5,7 +5,6 @@
 
 #include <string>
 #include <vector>
-#include <boost/shared_ptr.hpp>
 #include <math.h>      // sin, cos
 
 #include "psalg/geometry/SegGeometryStore.hh"
@@ -26,9 +25,7 @@ namespace geometry {
  *  @note This software was developed for the LCLS project.  If you use all or 
  *  part of it, please give an appropriate acknowledgment.
  *
- *  @version $Id$
- *
- *  @see GeometryObject, CalibFileFinder, psalg/geometry/test/ex_geometry_access.cpp
+ *  @see GeometryObject, ...
  *
  *  @author Mikhail S. Dubrovin
  *
@@ -114,16 +111,10 @@ namespace geometry {
 
 //-------------------
 
-//typedef ndarray<double,1> NDA;
-//typedef ndarray<const double,1> CNDA;
-
-//-------------------
-
 class GeometryObject {
 public:
 
   typedef geometry::SegGeometry SG;
-
   typedef GeometryObject* pGO;
   //typedef boost::shared_ptr<GeometryObject> pGO;
 
@@ -164,6 +155,8 @@ public:
 
   std::string string_geo();
   std::string string_geo_children();
+  /// Returns string of data for output file
+  std::string str_data();
 
   /// Prints info about self object
   void print_geo();
@@ -239,9 +232,6 @@ public:
   /// Returns pixel scale size of geometry object
   double get_pixel_scale_size();
 
-  /// Returns string of data for output file
-  std::string str_data();
-
   /// Gets self object geometry parameters
   void get_geo_pars(double& x0,
                     double& y0,
@@ -279,11 +269,13 @@ public:
 	       );
 
   /// Delete arrays with allocated memory, reset pointers to 0
-  void deallocate_memory();
+  void _deallocate_memory();
 
 protected:
 
 private:
+
+  static constexpr double DEG_TO_RAD = 3.141592653589793238463 / 180;
 
   // Data members
   std::string m_pname;
@@ -312,9 +304,6 @@ private:
   pGO m_parent;
   std::vector<pGO> v_list_of_children;
 
-  //ALGO_TYPE m_algo;
-  //PC2X1* m_pix_coords_2x1;
-
   unsigned m_size;
   double*  p_xarr;
   double*  p_yarr;
@@ -332,8 +321,6 @@ private:
                                   const bool do_tilt=true
                                  );
 
-  static constexpr double DEG_TO_RAD = 3.141592653589793238463 / 180;
-
   static void rotation(const double* X, const double* Y, const unsigned size,
                        const double C, const double S,
 		       double* Xrot, double* Yrot);
@@ -345,8 +332,8 @@ private:
   static const std::string name() {return "geometry";}
 
   // Copy constructor and assignment are disabled by default
-  GeometryObject (const GeometryObject&);
-  GeometryObject& operator = (const GeometryObject&);
+  GeometryObject(const GeometryObject&) = delete;
+  GeometryObject& operator = (const GeometryObject&) = delete;
 };
 
 //-------------------

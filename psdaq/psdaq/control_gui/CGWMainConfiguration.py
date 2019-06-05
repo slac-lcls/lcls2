@@ -33,6 +33,7 @@ from psdaq.control_gui.CGConfigDBUtils import get_configdb
 from psdaq.control_gui.CGJsonUtils import str_json
 
 from psdaq.control_gui.QWUtils import confirm_or_cancel_dialog_box
+from psdaq.control_gui.CGDaqControl import daq_control
 
 #--------------------
 char_expand  = u' \u25BC' # down-head triangle
@@ -183,6 +184,13 @@ class CGWMainConfiguration(QGroupBox) :
         if selected != self.type_old :
             self.set_but_dev_text()
             self.type_old = selected
+
+            # save selected configuration type in control json
+            #rv = daq_control().setState(config_alias=selected)
+            #if rv is not None: logger.error('setState(config_alias=%s): %s' % (state,rv))
+
+            #rv = daq_control().setTransition(config_alias==selected)
+            #if rv is not None: logger.error('setTransition(config_alias=%s): %s' % (state,rv))
 
         self.set_buts_enabled()
 
