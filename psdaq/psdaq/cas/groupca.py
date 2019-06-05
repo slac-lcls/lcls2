@@ -185,9 +185,9 @@ class Ui_MainWindow(object):
         layout.addWidget(splitter)
 
         self.centralWidget.setLayout(layout)
-        self.centralWidget.resize(740, 340)
+        self.centralWidget.resize(440, 660)
 
-        MainWindow.resize(740, 340)
+        MainWindow.resize(440, 660)
         MainWindow.setWindowTitle(base)
         MainWindow.setCentralWidget(self.centralWidget)
 
