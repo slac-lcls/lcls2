@@ -16,6 +16,8 @@
 using namespace XtcData;
 using namespace rapidjson;
 
+using json = nlohmann::json;
+
 namespace Drp {
 
 class HsdDef : public VarDef
@@ -52,19 +54,25 @@ static void check(PyObject* obj) {
 unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
+  //    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config_fmc126");
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config_fmc134");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
     check(pDict);
     // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config");
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config_fmc134");
     check(pFunc);
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss","DAQ:LAB2:HSD:DEV02",
-                                              "mcbrowne:psana@psdb-dev:9306",
-                                              "configDB", "TMO", "BEAM",
-                                              "xpphsd");
+    // PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss","DAQ:LAB2:HSD:DEV02",
+    //                                           "mcbrowne:psana@psdb-dev:9306",
+    //                                           "configDB", "TMO", "BEAM",
+    //                                           "xpphsd");
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss",
+                                              m_connect_json.c_str(),
+                                              "DAQ:LAB2:HSD:DEV06_3E",
+                                              "BEAM", 
+                                              m_para->detName.c_str());
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
@@ -105,6 +113,11 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     printf("hsd lane_mask is 0x%x\n",lane_mask);
 
     return lane_mask;
+}
+
+void Digitizer::connect(const json& connect_json, const std::string& collectionId)
+{
+  m_connect_json = connect_json.dump();
 }
 
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
