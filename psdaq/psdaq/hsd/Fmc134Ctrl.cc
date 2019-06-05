@@ -9,8 +9,8 @@ using namespace Pds::HSD;
 void Fmc134Ctrl::dump()
 {
   printf("Present: %c\tPowerGood %c\n", (info&1) ? 'F':'T', (info&2) ? 'T':'F');
-  unsigned v = xcvr;
-  { printf("xcvr   : %x\t", v);
+  { unsigned v = xcvr;
+    printf("xcvr   : %x\t", v);
     if (v&0x01) printf(" rxrst");
     if (v&0x00002) printf(" sysref_sync");
     if (v&0x00010) printf(" align_en");
@@ -25,13 +25,22 @@ void Fmc134Ctrl::dump()
     if (v&0x10000) printf(" rx_cdr_hold");
     if (v&0x20000) printf(" dfe_tap_ovrd");
     printf("\n"); }
-  printf("Status  : %x\n", status);
+  { unsigned v = status;
+    printf("Status  : %x\t", v);
+    printf("~PMAresetDone %x\t", (~v)&0xffff);
+    printf("~RxByteAligned %x\t", (~v>>16)&0xf);
+    printf("~QPLLlock %x\t", (~v>>20)&0xf); 
+    printf("\n"); }
   printf("ADCvalid: %x\n", adc_val);
   printf("Scramble: %x\n", scramble);
   printf("SWtrig  : %x\n", sw_trigger);
   printf("LMFCcnt : %x\n", lmfc_cnt);
   printf("AlignCh : %x\n", align_char);
   printf("ADC pins: %x / %x\n", adc_pins, adc_pins_r);
+  { unsigned v = adc_pins;
+    printf("\tSYNC %u\tNCO %x\n", v&1, (v>>8)&0xff); }
+  { unsigned v = adc_pins_r;
+    printf("\tOR %x\tCALSTAT %x\tFIREFLY %x\n", (v&0xff), (v>>16)&0x3, (v>>18)&1); }
 
 #define DUMP_CLK(s,title) {                      \
     test_clksel = s;                             \
@@ -63,13 +72,27 @@ static const int32_t UNITAPI_OK = 0;
 static const int32_t FMC134_ERR_ADC_INIT = 1;
 static const int32_t FMC134_ERR_OK = 0;
 
+void    Fmc134Ctrl::remote_sync ()
+{
+        // Assert SYNC pin
+        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x08, 0x1); 
+
+        // Release SYNC
+        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x08, 0x0); 
+}
+
 int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
 {
   int32_t rc = UNITAPI_OK;
         uint32_t dword = 0;
 
         // Enable Scrambling in JESD204B core
-        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x04, 0x1); 
+        //        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x04, 0x1); 
+        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x04, 0x0); 
+        if(rc!=UNITAPI_OK)     return rc;
+
+        // Try a different align char (default=0xfc)
+        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x07, 0xfc); 
         if(rc!=UNITAPI_OK)     return rc;
 
         // Configure the ADC0 and ADC1 to generate PRBS23

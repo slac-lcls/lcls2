@@ -4,11 +4,11 @@
 #include "psdaq/hsd/Pgp.hh"
 
 namespace Pds {
-  namespace Mmhw { class Pgp3AxilBase; }
+  namespace Mmhw { class Pgp3Axil; }
   namespace HSD {
     class Pgp3 : public Pgp {
     public:
-      Pgp3(Mmhw::Pgp3AxilBase&);
+      Pgp3(Mmhw::Pgp3Axil&);
     public:
       virtual void   resetCounts    ();
       virtual void   loopback       (bool v);
@@ -25,7 +25,7 @@ namespace Pds {
       virtual unsigned remPause     () const;
       virtual bool     loopback     () const;
     private:
-      Mmhw::Pgp3AxilBase& _axi;
+      Mmhw::Pgp3Axil& _axi;
     };
   };
 };

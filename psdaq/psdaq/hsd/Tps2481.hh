@@ -1,6 +1,7 @@
 #ifndef HSD_Tsp2481_hh
 #define HSD_Tsp2481_hh
 
+#include "psdaq/mmhw/RegProxy.hh"
 #include <stdint.h>
 
 namespace Pds {
@@ -12,13 +13,13 @@ namespace Pds {
       void     start          ();
       void     dump           ();
     private:
-      uint32_t _cfg;
-      uint32_t _shtv;
-      uint32_t _busv;
-      uint32_t _pwr;
-      uint32_t _cur;
-      uint32_t _cal;
-      uint32_t _reg[250];
+      Pds::Mmhw::RegProxy _cfg;
+      Pds::Mmhw::RegProxy _shtv;
+      Pds::Mmhw::RegProxy _busv;
+      Pds::Mmhw::RegProxy _pwr;
+      Pds::Mmhw::RegProxy _cur;
+      Pds::Mmhw::RegProxy _cal;
+      Pds::Mmhw::RegProxy _reg[250];
     };
   };
 };

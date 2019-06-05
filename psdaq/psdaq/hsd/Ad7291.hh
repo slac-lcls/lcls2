@@ -1,6 +1,7 @@
 #ifndef HSD_Ad7291_hh
 #define HSD_Ad7291_hh
 
+#include "psdaq/mmhw/RegProxy.hh"
 #include <stdint.h>
 
 namespace Pds {
@@ -18,7 +19,8 @@ namespace Pds {
       Ad7291_Mon mon          ();
     private:
       unsigned _read(unsigned ch);
-      uint32_t _reg[256];
+      //      uint32_t _reg[256];
+      Pds::Mmhw::RegProxy _reg[256];
     };
 
     class FmcAdcMon {

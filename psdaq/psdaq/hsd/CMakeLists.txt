@@ -252,7 +252,22 @@ target_link_libraries(hsdRead
    rt
 )
 
+add_executable(hsd_promload promload.cc)
+target_include_directories(hsdRead PUBLIC
+     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/../install/include>
+     $<INSTALL_INTERFACE:../install/include>
+)
+
+target_link_libraries(hsd_promload
+   hsd
+   mmhw
+   rt
+)
+
+
 install(TARGETS hsd
+                hsd_promload
 		hsd_eyescan
 		hsd_init
 		hsd_phase
@@ -260,6 +275,7 @@ install(TARGETS hsd
 		hsd_test
  		hsdRead
  		hsdPVs
+ 		hsd64PVs
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

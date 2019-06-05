@@ -36,8 +36,9 @@ namespace Pds {
       PVC_Routine(PVCtrls& pvc, Action a) : _pvc(pvc), _a(a) {}
       void routine() {
         switch(_a) {
-        case Configure  : _pvc.configure(); break;
-        case Reset      : _pvc.reset(); break;
+        case Configure   : _pvc.configure  (); break;
+        case Unconfigure : _pvc.unconfigure(); break;
+        case Reset       : _pvc.reset      (); break;
         default: break;
         }
       }
@@ -90,15 +91,22 @@ namespace Pds {
 
     void PVCtrls::allocate(const std::string& title)
     {
-      _m.stop();
+      if (_state_pv)
+        delete _state_pv;
 
       std::ostringstream o;
       o << title << ":";
       std::string pvbase = o.str();
 
-      _state_pv = new StatePV(*this, (pvbase+"BASE:READY").c_str());
+      _state_pv = new EpicsPVA((pvbase+"BASE:READY").c_str());
+      _setState(InTransition);
 
-      _setState(Unconfigured);
+      _m.stop();
+
+      for(unsigned i=0; i<4; i++) {
+        FexCfg& fex = _m.fex()[i];
+        fex._streams= 0;
+      }
 
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
@@ -321,6 +329,10 @@ namespace Pds {
     void PVCtrls::unconfigure() {
       _setState(InTransition);
       _m.stop();
+      for(unsigned i=0; i<4; i++) {
+        FexCfg& fex = _m.fex()[i];
+        fex._streams= 0;
+      }
       _setState(Unconfigured);
     }
 

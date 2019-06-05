@@ -19,6 +19,7 @@ namespace Pds {
     class FexCfg;
     class HdrFifo;
     class Pgp;
+    class QABase;
 
     class Module64 {
     public:
@@ -33,6 +34,7 @@ namespace Pds {
       uint64_t device_dna() const;
 
       void setup_timing(TimingType);
+      void setup_jesd  ();
       void board_status();
 
       void set_local_id(unsigned bus);
@@ -79,6 +81,7 @@ namespace Pds {
 
       const Pds::Mmhw::AxiVersion& version() const;
       TprCore&    tpr    ();
+      QABase &    base   ();
 
       void setRxAlignTarget(unsigned);
       void setRxResetLength(unsigned);

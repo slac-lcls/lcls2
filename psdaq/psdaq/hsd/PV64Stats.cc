@@ -17,8 +17,8 @@ using Pds_Epics::EpicsPVA;
 #include <unistd.h>
 #include <stdio.h>
 
-#define LANES 4
-#define CHANS 4
+#define LANES 8
+#define CHANS 2
 #define FIFOS CHANS
 
 static std::string STOU(std::string s) {
@@ -184,6 +184,9 @@ namespace Pds {
       PVPUTAU  ( PgpRxLast    , LANES, _pgp[i]->rxOpCodeLast () );
       PVPUTAU  ( PgpRemPause  , LANES, _pgp[i]->remPause     () );
 
+      //
+      //  DmaClk must be running to read these registers
+      //
       if ((base.csr&0x10)==0) {
         FexCfg* fex = _m.fex();
         PVPUTAU ( Raw_FreeBufSz  , CHANS, ((fex[i]._base[0]._free>> 0)&0xffff) ); 

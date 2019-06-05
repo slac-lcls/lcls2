@@ -11,9 +11,9 @@ namespace Pds {
   namespace HSD {
 
     class Module64;
-    class StatePV;
 
-    enum Action { Configure, Unconfigure, EnableTr, DisableTr, Reset };
+    enum Action { Configure, Unconfigure, Reset };
+    enum State  { InTransition=0, Configured=1, Unconfigured=2 };
 
     class PV64Ctrls
     {
@@ -35,10 +35,10 @@ namespace Pds {
     public:
       static void interleave(bool);
     private:
-      void _setState(Action);
+      void _setState(State);
     private:
       std::vector<Pds_Epics::EpicsPVA*> _pv;
-      StatePV* _state_pv;
+      Pds_Epics::EpicsPVA* _state_pv;
       Module64& _m;
       Pds::Task& _task;
     };

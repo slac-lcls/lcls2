@@ -406,7 +406,10 @@ void Fmc134Cpld::_adc_init(unsigned a, bool ldualch)
   //  Program KM1 (K-1)
   WRREG(0x202,0xf);
         // Keep output format as 2's complement and ENABLE Scrambler
-  WRREG(0x204, 0x03);
+  //  WRREG(0x204, 0x03);
+  //  WRREG(0x204, 0x02);  // Disable scrambler
+  //  WRREG(0x204, 0x03);
+  WRREG(0x204, 0x00);  // Disable scrambler, output format is offset binary
   //  Program SYNC_SEL (choose inputs) - default OK
   //  Configure calibration settings, fg/bg mode, offset
   //  Program CAL_EN=1
@@ -697,6 +700,7 @@ static const int32_t FMC134_ERR_ADC_INIT     = 1;
 
 int32_t Fmc134Cpld::default_clocktree_init()
 {
+  printf("*** default_clocktree_init ***\n");
   uint32_t dword;
   uint32_t dword2;
   uint32_t samplingrate_setting;
@@ -1035,6 +1039,7 @@ int32_t Fmc134Cpld::default_clocktree_init()
    // restore SYNC_MODE & remove SYSREF_CLR
    spi_write(i2c_unit, LMK_SELECT, 0x143, 0x50);
 
+   printf("*** default_clocktree_init done ***\n");
    return 0;
 }
 
@@ -1152,7 +1157,7 @@ int32_t Fmc134Cpld::internal_ref_and_lmx_enable(uint32_t i2c_unit, uint32_t cloc
 int32_t Fmc134Cpld::reset_clock_chip(int32_t)
 {
         uint32_t dword;
-        int32_t rc;
+        int32_t rc = UNITAPI_OK;;
 
         // Set one byte per cycle
         // rc = unitapi_write_register(i2c_unit, I2C_BAR_CTRL+0x05, 0x00);
@@ -1160,19 +1165,19 @@ int32_t Fmc134Cpld::reset_clock_chip(int32_t)
         //         return rc;
 
         // Read, Modify, Write to avoid clobbering any other register settings
-        rc = i2c_read(i2c_unit, cpld_address + 1, &dword);
+        i2c_read(i2c_unit, cpld_address + 1, &dword);
         if(rc!=UNITAPI_OK)
                 return rc;
 
         // Set reset bit
         dword |= 0x08;
-        rc = i2c_write(i2c_unit, cpld_address + 1, dword);
+        i2c_write(i2c_unit, cpld_address + 1, dword);
         if(rc!=UNITAPI_OK)
                 return rc;
 
         // Clear reset bit
         dword &= 0xF7;
-        rc = i2c_write(i2c_unit, cpld_address + 1, dword);
+        i2c_write(i2c_unit, cpld_address + 1, dword);
         if(rc!=UNITAPI_OK)
                 return rc;
 
@@ -1181,7 +1186,8 @@ int32_t Fmc134Cpld::reset_clock_chip(int32_t)
 
 int32_t Fmc134Cpld::default_adc_init()
 {
-  uint32_t sampleMode=0;
+  printf("*** default_adc_init ***\n");
+  uint32_t sampleMode=1;
   uint32_t adc_txemphasis=0;
 
         uint32_t i2c_unit;
@@ -1190,7 +1196,7 @@ int32_t Fmc134Cpld::default_adc_init()
         uint32_t dword2;
         uint32_t dword3;
         uint32_t dword4;
-        int32_t rc;
+        int32_t rc = UNITAPI_OK;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // ADC Initializaton
@@ -1202,13 +1208,13 @@ int32_t Fmc134Cpld::default_adc_init()
         //         return rc;
 
         // Read, modify, write to avoid clobbering any other register settings
-        rc = i2c_read(i2c_unit, cpld_address + 1, &dword0);
+        i2c_read(i2c_unit, cpld_address + 1, &dword0);
         if(rc!=UNITAPI_OK)
                 return rc;
 
         // Force a clear on the ADC0 Reset Pin
         dword0 &= 0xFC;
-        rc = i2c_write(i2c_unit, cpld_address + 1, dword0);
+        i2c_write(i2c_unit, cpld_address + 1, dword0);
         if(rc!=UNITAPI_OK) return rc;
 
 
@@ -1298,7 +1304,9 @@ int32_t Fmc134Cpld::default_adc_init()
         if(rc!=UNITAPI_OK) return rc;
 
         // Keep output format as 2's complement and ENABLE Scrambler
-        spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0204, 0x03);
+        //spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0204, 0x03);
+        // Use binary offset output format and ENABLE Scrambler
+        spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0204, 0x01);
         if(rc!=UNITAPI_OK) return rc;
 
         // Set Cal Enable BEFORE setting JESD Enable after configuration
@@ -1365,6 +1373,8 @@ int32_t Fmc134Cpld::default_adc_init()
         if(rc!=UNITAPI_OK) return rc;
         spi_write(i2c_unit, LMK_SELECT, 0x117 , 0x00 );    // Disable Sysref to ADC 1
         if(rc!=UNITAPI_OK) return rc;
+
+        printf("*** default_adc_init done ***\n");
 
         return FMC134_ADC_ERR_OK;
 }

@@ -11,7 +11,6 @@ namespace Pds {
   namespace HSD {
 
     class Module;
-    class StatePV;
 
     enum Action { Configure, Unconfigure, Reset };
     enum State  { InTransition=0, Configured=1, Unconfigured=2 };
@@ -38,7 +37,7 @@ namespace Pds {
       void _setState(State);
     private:
       std::vector<Pds_Epics::EpicsPVA*> _pv;
-      StatePV* _state_pv;
+      Pds_Epics::EpicsPVA* _state_pv;
       Module& _m;
       Pds::Task& _task;
     };

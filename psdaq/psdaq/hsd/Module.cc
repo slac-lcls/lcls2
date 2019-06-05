@@ -742,6 +742,7 @@ void Module::set_local_id(unsigned bus)
     (ntohl(saddr->sin_addr.s_addr)&0xffff);
 
   p->base.localId = id;
+  p->version.UserConstants[0] = id;
 }
 
 void Module::board_status()

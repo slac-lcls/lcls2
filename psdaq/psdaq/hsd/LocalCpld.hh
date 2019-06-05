@@ -1,6 +1,7 @@
 #ifndef HSD_LocalCpld_hh
 #define HSD_LocalCpld_hh
 
+#include "psdaq/mmhw/RegProxy.hh"
 #include <stdint.h>
 
 namespace Pds {
@@ -13,7 +14,8 @@ namespace Pds {
       void     reloadFpga();
       void     GAaddr    (unsigned);
     private:
-      uint32_t          _reg[256];
+      //      uint32_t          _reg[256];
+      Pds::Mmhw::RegProxy _reg[256];
     };
   };
 };

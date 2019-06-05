@@ -1,6 +1,7 @@
 #include "psdaq/hsd/Module64.hh"
 
 #include "psdaq/mmhw/AxiVersion.hh"
+#include "psdaq/mmhw/RegProxy.hh"
 #include "psdaq/hsd/TprCore.hh"
 #include "psdaq/hsd/RxDesc.hh"
 #include "psdaq/hsd/ClkSynth.hh"
@@ -26,7 +27,7 @@
 #include "psdaq/hsd/FlashController.hh"
 
 using Pds::Mmhw::AxiVersion;
-using Pds::Mmhw::Pgp3AxilBase;
+using Pds::Mmhw::Pgp3Axil;
 using Pds::Mmhw::RingBuffer;
 
 #include <string>
@@ -86,7 +87,8 @@ namespace Pds {
       Ad7291     fmcvmon;         // 0x12400
       Fmc134Cpld fmc_cpld;        // 0x12800 
       uint32_t   eeprom[0x100];   // 0x12C00
-      uint32_t   rsvd_to_0x20000[(0x10000-12*0x400)/4];
+      uint32_t   rsvd_to_0x18000[(0x08000-12*0x400)/4];
+      uint32_t   regProxy[(0x08000)/4];
 
       // DMA
       DmaCore           dma_core; // 0x20000
@@ -133,11 +135,13 @@ namespace Pds {
       FexCfg     fex_chan[4];      // 0x88000
       uint32_t   rsvd_to_0x90000  [(0x8000-4*sizeof(FexCfg))/4];
 
-      uint32_t    pgp_reg[0x4000>>2]; // 0x90000
+      uint32_t    pgp_reg  [0x8000>>2]; // 0x90000
 
-      uint32_t    opt_fmc  [0x1000>>2]; // 0x94000
-      uint32_t    qsfp0_i2c[0x400>>2];  // 0x95000
-      uint32_t    qsfp1_i2c[0x400>>2];
+      uint32_t    opt_fmc  [0x1000>>2]; // 0x98000
+      uint32_t    qsfp0_i2c[0x1000>>2]; // 0x99000
+      uint32_t    qsfp1_i2c[0x1000>>2]; // 0x9A000
+      uint32_t    surf_jesd0[0x800>>2]; // 0x9B000
+      uint32_t    surf_jesd1[0x800>>2]; // 0x9B800
     };
   };
 };
@@ -156,6 +160,8 @@ Module64* Module64::create(int fd)
   m->p = reinterpret_cast<Module64::PrivateData*>(ptr);
   m->_fd = fd;
 
+  Pds::Mmhw::RegProxy::initialize(m->p, m->p->regProxy);
+  
   return m;
 }
 
@@ -199,14 +205,44 @@ void Module64::setup_timing(TimingType timing)
       m->p->fmc_ctrl.resetFb ();
       m->p->fmc_ctrl.resetDma();
       */
+      m->p->base.resetFb ();
+      m->p->base.resetDma();
       usleep(1000000);
 
       m->tpr().resetCounts();
 
       usleep(100000);
       m->fmc_init();
+
+      //
+      //  Need a PLL reset on both tx and rx
+      //
+      m->tpr ().resetRxPll();
+      m->base().resetFbPLL();
     }
   }
+}
+
+void Module64::setup_jesd()
+{
+  Module64& _m = *this;
+  _m.i2c_lock(I2cSwitch::PrimaryFmc);
+  Fmc134Cpld* cpld = reinterpret_cast<Fmc134Cpld*>((char*)_m.reg()+0x12800);
+  Fmc134Ctrl* ctrl = reinterpret_cast<Fmc134Ctrl*>((char*)_m.reg()+0x81000);
+  uint32_t* jesd0  = reinterpret_cast<uint32_t*  >((char*)_m.reg()+0x9B000);
+  uint32_t* jesd1  = reinterpret_cast<uint32_t*  >((char*)_m.reg()+0x9B800);
+  cpld->default_clocktree_init();
+  cpld->default_adc_init();
+  jesd0[0] = 0xff;
+  jesd1[0] = 0xff;
+  jesd0[4] = 0x27;
+  jesd1[4] = 0x27;
+  usleep(100);
+  jesd0[4] = 0x23;
+  jesd1[4] = 0x23;
+  ctrl->default_init(*cpld, 0);
+  ctrl->dump();
+  _m.i2c_unlock();
 }
 
 Module64::~Module64()
@@ -282,10 +318,12 @@ void Module64::PrivateData::fmc_init()
 
 void Module64::PrivateData::enable_test_pattern(TestPattern p)
 {
+  fmc_cpld.config_prbs(4);  // Ramp
 }
 
 void Module64::PrivateData::disable_test_pattern()
 {
+  fmc_cpld.config_prbs(0);
 }
 
 void Module64::PrivateData::enable_cal()
@@ -325,21 +363,22 @@ void Module64::PrivateData::dumpRxAlign     () const
   printf("\n");
 }
 
+#define PGPLANES 8
 #define LPRINT(title,field) {                     \
       printf("\t%20.20s :",title);                \
-      for(unsigned i=0; i<4; i++)                 \
+      for(unsigned i=0; i<PGPLANES; i++)          \
         printf(" %11x",pgp[i].field);             \
       printf("\n"); }
     
 #define LPRBF(title,field,shift,mask) {                 \
       printf("\t%20.20s :",title);                      \
-      for(unsigned i=0; i<4; i++)                       \
+      for(unsigned i=0; i<PGPLANES; i++)                \
         printf(" %11x",(pgp[i].field>>shift)&mask);     \
       printf("\n"); }
     
 #define LPRVC(title,field) {                      \
       printf("\t%20.20s :",title);                \
-      for(unsigned i=0; i<4; i++)                 \
+      for(unsigned i=0; i<PGPLANES; i++)          \
         printf(" %2x %2x %2x %2x",                \
                pgp[i].field##0,                   \
              pgp[i].field##1,                     \
@@ -349,13 +388,13 @@ void Module64::PrivateData::dumpRxAlign     () const
 
 #define LPRFRQ(title,field) {                           \
       printf("\t%20.20s :",title);                      \
-      for(unsigned i=0; i<4; i++)                       \
+      for(unsigned i=0; i<PGPLANES; i++)                \
         printf(" %11.4f",double(pgp[i].field)*1.e-6);   \
       printf("\n"); }
     
 void Module64::PrivateData::dumpPgp     () const
 {
-  const Pgp3AxilBase* pgp = reinterpret_cast<const Pgp3AxilBase*>(pgp_reg);
+  const Pgp3Axil* pgp = reinterpret_cast<const Pgp3Axil*>(pgp_reg);
   LPRINT("loopback"       ,loopback);
   LPRINT("skpInterval"    ,skpInterval);
   LPRBF ("localLinkReady" ,rxStatus,1,1);
@@ -370,8 +409,18 @@ void Module64::PrivateData::dumpPgp     () const
   LPRINT("lastRxOp"       ,rxOpCodeLast);
   LPRINT("nTxOps"         ,txOpCodeCnt);
   LPRINT("nRxOps"         ,rxOpCodeCnt);
+  LPRINT("rxInitCnt"      ,rxInitCnt);
 
   printf("optFmc: %08x %08x\n", opt_fmc[0], opt_fmc[1]);
+
+  static const char* clock_name[] = {"PLL","RX","SYSREF","DEVCLK","GTREF","PGPREF","TIMREF",NULL};
+  printf("%10.10s %10.10s SLOW FAST LOCK\n","Clock","Rate, MHz");
+  for(unsigned i=0; i<7; i++)
+    printf("%10.10s %10.5f    %c   %c   %c\n",
+           clock_name[i], double(opt_fmc[2+i]&0x1fffffff)*1.e-6, 
+           opt_fmc[2+i]&(1<<29) ? 'Y':'.',
+           opt_fmc[2+i]&(1<<30) ? 'Y':'.',
+           opt_fmc[2+i]&(1<<31) ? 'Y':'.');
 }
 
 #undef LPRINT
@@ -543,14 +592,18 @@ void Module64::disable_cal() { p->disable_cal(); }
 
 void Module64::setAdcMux(unsigned channels)
 {
+  p->base.setChannels(channels);
 }
 
 void Module64::setAdcMux(bool     interleave,
-                       unsigned channels) 
-{}
+                         unsigned channels) 
+{
+  p->base.setChannels(channels);
+}
 
 const Pds::Mmhw::AxiVersion& Module64::version() const { return p->version; }
 TprCore&    Module64::tpr    () { return p->tpr; }
+QABase &    Module64::base   () { return p->base; }
 
 void Module64::setRxAlignTarget(unsigned v) { p->setRxAlignTarget(v); }
 void Module64::setRxResetLength(unsigned v) { p->setRxResetLength(v); }
@@ -642,8 +695,8 @@ void* Module64::reg() { return (void*)p; }
 std::vector<Pgp*> Module64::pgp() {
   std::vector<Pgp*> v(0);
   while(1) {
-    Pgp3AxilBase* pgp = reinterpret_cast<Pgp3AxilBase*>(p->pgp_reg);
-    for(unsigned i=0; i<4; i++)
+    Pgp3Axil* pgp = reinterpret_cast<Pgp3Axil*>(p->pgp_reg);
+    for(unsigned i=0; i<PGPLANES; i++)
       v.push_back(new Pgp3(pgp[i]));
     break;
   }

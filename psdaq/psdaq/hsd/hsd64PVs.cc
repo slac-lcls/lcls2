@@ -167,12 +167,15 @@ int main(int argc, char** argv)
   }
 
   Module64* m = Module64::create(fd);
-  m->setup_timing(M3_7);
-
-  m->set_local_id(strtoul(dev+strlen(dev)-2,NULL,16));
 
   std::string buildStamp = m->version().buildStamp();
   printf("BuildStamp: %s\n",buildStamp.c_str());
+
+  //  m->setup_timing(M64);
+  m->setup_timing(M3_7);
+  m->setup_jesd();
+
+  m->set_local_id(strtoul(dev+strlen(dev)-2,NULL,16));
 
   StatsTimer* timer = new StatsTimer(*m);
 

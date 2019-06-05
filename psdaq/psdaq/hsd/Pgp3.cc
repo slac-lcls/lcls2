@@ -3,7 +3,7 @@
 
 using namespace Pds::HSD;
 
-Pgp3::Pgp3(Pds::Mmhw::Pgp3AxilBase& axi) : _axi(axi) {}
+Pgp3::Pgp3(Pds::Mmhw::Pgp3Axil& axi) : _axi(axi) {}
 
 void   Pgp3::resetCounts    () { _axi.countReset=1; usleep(10); _axi.countReset=0; };
 void   Pgp3::loopback       (bool v) { _axi.loopback = v?2:0; }
