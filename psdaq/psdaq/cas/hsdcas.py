@@ -10,9 +10,8 @@ import argparse
 import pdb
 
 Lanes = 4
-NApps = 4
 WfLen = 1024
-NChans = 4
+NChans = 2
 
 def printDb():
     global pvdb
@@ -26,6 +25,7 @@ def printDb():
 
 def main():
     global pvdb
+
     pvdb = {}     # start with empty dictionary
     global prefix
     prefix = ''
@@ -35,10 +35,17 @@ def main():
     parser.add_argument('-P', required=True, help='DAQ:SIM', metavar='PREFIX')
     parser.add_argument('-D', '--use_db' , action='store_true', help='use mongodb')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
+    parser.add_argument('-d', '--devel', action='store_true', help='use devel')
 
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
+
+    global Lanes
+    global NChans
+    if args.devel:
+        Lanes = 8
+#        NChans = 2
 
     stationstr = ''
     prefix = args.P+':'

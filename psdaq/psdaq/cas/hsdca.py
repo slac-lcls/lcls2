@@ -9,6 +9,7 @@ from p4p.client.thread import Context
 NChannels = 1
 NLanes = 4
 NBuffers = 16
+Patterns = ['-1: Data','0: Ramp','1: Flash11','3: Flash12','5: Flash16']
 
 try:
     QString = unicode
@@ -103,11 +104,11 @@ class HsdConfig(QtWidgets.QWidget):
             self._rows.append(PvRow( glo, i+1, pvbase+':'+elem[1], elem[0], MaxLen=NChannels ))
         lo.addLayout(glo)
 
-        pvtable = [('Test Pattern (None=-1)','TESTPATTERN')]
-        for elem in pvtable:
+        if True:
             hlo = QtWidgets.QHBoxLayout()
-            hlo.addWidget(QtWidgets.QLabel(elem[0]))
-            hlo.addWidget(PvEditInt(pvbase+':'+elem[1],''))
+            hlo.addWidget(QtWidgets.QLabel('Test Pattern'))
+            hlo.addWidget(PvEditInt(pvbase+':TESTPATTERN',''))
+            hlo.addWidget(QtWidgets.QLabel('\n'.join(Patterns)))
             hlo.addStretch(1)
             lo.addLayout(hlo)
 
@@ -342,15 +343,26 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralWidget)
 
 def main():
+    global NChannels
+    global NLanes
+    global Patterns
+
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
     parser.add_argument("base", help="pv base to monitor", default="DAQ:LAB2:HSD")
+    parser.add_argument('-d', '--devel',   action='store_true', help='use development device')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     args = parser.parse_args()
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
+
+    if args.devel:
+        print('Expanding channels and lanes')
+        NChannels = 2
+        NLanes = 8
+        Patterns = ['0: Data','4: Ramp','5: Transport']
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
