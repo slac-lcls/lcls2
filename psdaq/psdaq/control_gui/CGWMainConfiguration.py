@@ -194,7 +194,7 @@ class CGWMainConfiguration(QGroupBox) :
 #--------------------
  
     def set_config_type(self, config_type):
-        if config_type == self.type_old : returmn
+        if config_type == self.type_old : return
 
         self.set_but_type_text(config_type)
         self.set_but_dev_text()
