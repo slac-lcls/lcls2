@@ -84,7 +84,7 @@ class Event():
         return _low
 
     @property
-    def _timestamp(self):
+    def timestamp(self):
         return self._dgrams[0].seq.timestamp()
 
     def _run(self):
