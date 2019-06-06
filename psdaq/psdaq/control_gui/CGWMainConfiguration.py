@@ -187,7 +187,7 @@ class CGWMainConfiguration(QGroupBox) :
 
             # save selected configuration type in control json
             rv = daq_control().setConfig(selected)
-            if rv is not None: logger.error('setState(config_alias=%s): %s' % (state,rv))
+            if rv is not None: logger.error('setState("%s"): %s' % (selected,rv))
 
         self.set_buts_enabled()
 
