@@ -103,7 +103,7 @@ class EpicsStore(object):
         for i, epics in enumerate(self._epics_list):
             alg = epics.alg_from_variable(epics_variable)
             if alg: 
-                event_timestamps = np.asarray([evt._timestamp for evt in events], dtype=np.uint64)
+                event_timestamps = np.asarray([evt.timestamp for evt in events], dtype=np.uint64)
                 found_positions = np.searchsorted(epics.timestamps, event_timestamps)
                 found_positions[found_positions == epics.n_items] = epics.n_items - 1
                 for pos in found_positions:

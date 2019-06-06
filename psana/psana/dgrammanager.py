@@ -108,7 +108,7 @@ class DgramManager():
             dgrams = [dgram.Dgram(config=config) for config in self.configs]
  
         evt = Event(dgrams)
-        self._timestamps += [evt._timestamp]
+        self._timestamps += [evt.timestamp]
         return evt
 
     def jump(self, offsets, sizes):
