@@ -89,11 +89,13 @@ void DrpApp::handleConnect(const json &msg)
 
     // Create all the eb things and do the connections
     bool connected = true;
+    std::string errorMsg;
     m_ebContributor = std::make_unique<TebContributor>(m_tPrms, exporter);
     int rc = m_ebContributor->connect(m_tPrms);
     if (rc) {
         connected = false;
-        std::cout<<"TebContributor connect failed\n";
+        errorMsg = "TebContributor connect failed";
+        std::cout<<errorMsg<<'\n';
     }
 
     if (m_mPrms.addrs.size() != 0) {
@@ -103,7 +105,8 @@ void DrpApp::handleConnect(const json &msg)
         rc = m_meb->connect(m_mPrms, poolBase, poolSize);
         if (rc) {
             connected = false;
-            std::cout<<"MebContributor connect failed\n";
+            errorMsg = "MebContributor connect failed";
+            std::cout<<errorMsg<<'\n';
         }
     }
 
@@ -111,7 +114,8 @@ void DrpApp::handleConnect(const json &msg)
     rc = m_ebRecv->connect(m_tPrms);
     if (rc) {
         connected = false;
-        std::cout<<"EbReceiver connect failed\n";
+        errorMsg = "EbReceiver connect failed";
+        std::cout<<errorMsg<<'\n';
     }
 
     m_collectorThread = std::thread(&DrpApp::collector, std::ref(*this));
@@ -119,11 +123,19 @@ void DrpApp::handleConnect(const json &msg)
     // reply to collection with connect status
     json body = json({});
     if (!connected) {
-        body["err_info"] = "connect error";
+        body["err_info"] = errorMsg;
         std::cout<<"connect error\n";
     }
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
+}
+
+void DrpApp::handleDisconnect(const json &msg)
+{
+    shutdown();
+    m_ebContributor->stop();
+    json body = json({});
+    reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
 void DrpApp::handlePhase1(const json &msg)

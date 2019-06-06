@@ -58,6 +58,7 @@ public:
     DrpApp(Parameters* para);
     nlohmann::json connectionInfo() override;
     void handleConnect(const nlohmann::json& msg) override;
+    void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
     void handleReset(const nlohmann::json& msg) override;
     void shutdown();
