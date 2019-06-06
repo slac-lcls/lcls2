@@ -27,6 +27,8 @@ def run_smd0_task(run):
         if global_procs > 1:
             point = i % (global_procs - 1) + 1
         run_smd_task(chunk, run, point=point)
+    # Block before returning so that the caller can use this task's future for synchronization
+    legion.execution_fence(block=True)
 
 @task
 def run_smd_task(view, run):
@@ -53,8 +55,9 @@ def analyze(run, event_fn=None, start_run_fn=None, det=None):
         global_task_registration_barrier = legion.c.legion_phase_barrier_advance(legion._my.ctx.runtime, legion._my.ctx.context, bar)
         legion.c.legion_phase_barrier_wait(legion._my.ctx.runtime, legion._my.ctx.context, bar)
 
-        run_smd0_task(run)
+        return run_smd0_task(run)
     else:
+        assert False
         run_to_process.append(run)
 
 if legion is not None and not legion.is_script:

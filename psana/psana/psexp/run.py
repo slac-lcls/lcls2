@@ -350,4 +350,4 @@ class RunLegion(Run):
             self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)
 
     def analyze(self, **kwargs):
-        legion_node.analyze(self, **kwargs)
+        return legion_node.analyze(self, **kwargs)
