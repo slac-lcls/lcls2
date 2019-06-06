@@ -57,7 +57,6 @@ def analyze(run, event_fn=None, start_run_fn=None, det=None):
 
         return run_smd0_task(run)
     else:
-        assert False
         run_to_process.append(run)
 
 if legion is not None and not legion.is_script:
