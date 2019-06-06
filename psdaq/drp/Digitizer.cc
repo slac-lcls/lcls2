@@ -68,7 +68,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     //                                           "mcbrowne:psana@psdb-dev:9306",
     //                                           "configDB", "TMO", "BEAM",
     //                                           "xpphsd");
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss",
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",
                                               m_connect_json.c_str(),
                                               "DAQ:LAB2:HSD:DEV06_3E",
                                               "BEAM", 
@@ -110,6 +110,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
     unsigned lane_mask = 0;
     for (unsigned i=0; i<length; i++) if (enable[i].GetInt()) lane_mask |= 1<< i;
+    lane_mask = 1; // override temporarily!
     printf("hsd lane_mask is 0x%x\n",lane_mask);
 
     return lane_mask;
