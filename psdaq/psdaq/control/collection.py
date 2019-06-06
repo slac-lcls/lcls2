@@ -925,7 +925,7 @@ class CollectionManager():
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
         # only drp and teb groups (aka levels) respond to configure and above
-        ids = self.filter_level('drp', ids) | self.filter_level('teb', ids)
+        ids = self.filter_level('drp', ids) | self.filter_level('teb', ids) | self.filter_level('meb',ids)
 
         if len(ids) == 0:
             logging.debug('condition_common() empty set of ids')

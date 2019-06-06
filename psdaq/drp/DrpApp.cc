@@ -42,7 +42,7 @@ DrpApp::DrpApp(Parameters* para) :
                       /* .id            = */ 0,
                       /* .maxEvents     = */ 8,    //mon_buf_cnt,
                       /* .maxEvSize     = */ 65536, //mon_buf_size,
-                      /* .maxTrSize     = */ 65536, //mon_trSize,
+                      /* .maxTrSize     = */ 256*1024, //mon_trSize,
                       /* .verbose       = */ 0 };
 
     try {

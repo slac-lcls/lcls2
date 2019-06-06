@@ -243,7 +243,8 @@ uint64_t EbAppBase::contracts(const Dgram* ctrb,
     receivers |= _receivers[group];
   }
   assert(suppliers);   // Configuration error when no contributors are expected
-  assert(receivers);   // Configuration error when no contributors get results
+  //  Meb should have no receivers?  -weaver
+  //  assert(receivers);   // Configuration error when no contributors get results
   return suppliers;
 }
 

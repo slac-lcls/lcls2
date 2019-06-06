@@ -54,20 +54,15 @@ static void check(PyObject* obj) {
 unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
     // returns new reference
-  //    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config_fmc126");
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config_fmc134");
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
     check(pDict);
     // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config_fmc134");
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config");
     check(pFunc);
     // returns new reference
-    // PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssss","DAQ:LAB2:HSD:DEV02",
-    //                                           "mcbrowne:psana@psdb-dev:9306",
-    //                                           "configDB", "TMO", "BEAM",
-    //                                           "xpphsd");
     PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",
                                               m_connect_json.c_str(),
                                               "DAQ:LAB2:HSD:DEV06_3E",
