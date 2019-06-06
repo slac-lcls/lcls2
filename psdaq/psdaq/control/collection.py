@@ -694,6 +694,11 @@ class CollectionManager():
         self.groups = get_readout_group_mask(active_state)
         logging.debug('condition_alloc(): groups = 0x%02x' % self.groups)
 
+        # set Disable PV
+        if not self.group_run(False):
+            logging.error('condition_alloc(): group_run(False) failed')
+            return False
+
         # create group-dependent PVs
         self.pvListMsgHeader = []
         self.pvListXPM = []
@@ -740,11 +745,6 @@ class CollectionManager():
         for pv in self.pvListXPM:
             self.pv_put(pv, self.xpm_master)
         logging.info('master XPM is %d' % self.xpm_master)
-
-        # set Disable PV
-        if not self.group_run(False):
-            logging.error('condition_connect(): group_run(False) failed')
-            return False
 
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
@@ -924,7 +924,7 @@ class CollectionManager():
         msg = create_msg(transition, body=body)
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-        # only drp and teb groups (aka levels) respond to configure and above
+        # only drp/teb/meb groups (aka levels) respond to configure and above
         ids = self.filter_level('drp', ids) | self.filter_level('teb', ids) | self.filter_level('meb',ids)
 
         if len(ids) == 0:
