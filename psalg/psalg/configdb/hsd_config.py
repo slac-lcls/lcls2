@@ -14,7 +14,7 @@ def epics_names_values(pvtable,cfg,names,values):
 
 def hsd_config(connect_str,epics_prefix,cfgtype,detname):
 
-    cfg = get_config(connect_str,hutch,cfgtype,detname)
+    cfg = get_config(connect_str,cfgtype,detname)
 
     # this structure of epics variable names must mirror
     # the configdb.  alternatively, we could consider
