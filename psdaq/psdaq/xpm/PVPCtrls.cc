@@ -193,7 +193,17 @@ namespace Pds {
       }
 
       //      NPV ( Inhibit             );  // Not implemented in firmware
+
+      //  These PVs must not be updated when XPM is updated
       NPV ( XPM                 );
+      NPV ( ResetL0             );
+      NPV ( Run                 );
+      NPV ( MsgInsert           );
+      NPV ( MsgConfig           );
+      NPV ( MsgEnable           );
+      NPV ( MsgDisable          );
+      NPV ( MsgClear            );
+
       NPV ( TagStream           );
       NPV ( L0Select            );
       NPV ( L0Select_FixedRate  );
@@ -203,8 +213,6 @@ namespace Pds {
       NPV ( L0Select_SeqBit     );
       NPV ( DstSelect           );
       NPV ( DstSelect_Mask      );
-      NPV ( ResetL0             );
-      NPV ( Run                 );
       NPV ( L0Delay             );
       NPV ( L1TrgClear          );
       NPV ( L1TrgEnable         );
@@ -215,13 +223,8 @@ namespace Pds {
       NPV ( AnaTag              );
       NPV ( AnaTagPush          );
       NPV ( MsgHeader           );
-      NPV ( MsgInsert           );
       NPV ( MsgPayload          );
-      NPV ( MsgConfig           );
       NPV ( MsgConfigKey        );
-      NPV ( MsgEnable           );
-      NPV ( MsgDisable          );
-      NPV ( MsgClear            );
       NPVN( InhInterval         ,4);
       NPVN( InhLimit            ,4);
       NPVN( InhEnable           ,4);
@@ -244,8 +247,8 @@ namespace Pds {
       sem().give();
 
       if (v) {
-        //  Must not update "XPM" else we call ourselves recursively
-        for(unsigned i=1; i<_pv.size(); i++)
+        //  Must not update "XPM" else we call ourselves recursively; and others generate messages
+        for(unsigned i=8; i<_pv.size(); i++)
           _pv[i]->updated();
 
 #define PrV(v) {}
