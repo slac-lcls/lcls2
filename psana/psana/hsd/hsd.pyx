@@ -70,6 +70,8 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
                     if enable.value==1: channels[seg] = [0]
                 else:
                     # the 6GHz has case with enables stored as an array
+                    # this is imperfect: should be array of enum's, but
+                    # not currently supported in xtc
                     channels[seg] = []
                     for ichan,en in enumerate(enable):
                         if en==1: channels[seg].append(ichan)
