@@ -244,8 +244,11 @@ namespace Pds {
       _m.dumpPgp();
 
       unsigned channelMask = 0;
-      for(unsigned i=0; i<4; i++) {
-        if (_pv[Enable]->getVectorElemAt<unsigned>(i)) {
+      pvd::shared_vector<const unsigned> vec;
+      _pv[Enable]->getVectorAs(vec);
+
+      for(unsigned i=0; i<vec.size(); i++) {
+        if (vec[i]) {
           channelMask |= (1<<i);
           //          if (_interleave) break;
         }
