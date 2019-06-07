@@ -32,6 +32,9 @@ namespace geometry {
 
 //-------------------
 
+//static constexpr double DEG_TO_RAD = 3.141592653589793238463 / 180;
+const static double DEG_TO_RAD = 3.141592653589793238463 / 180;
+
 class SegGeometry {
 public:
 
@@ -87,13 +90,11 @@ public:
   virtual const pixel_mask_t* pixel_mask_array(const unsigned& mbits = 0377) = 0;
 };
 
-const static double DEG_TO_RAD = 3.141592653589793238463 / 180; 
+/// Global method for x and y arrays rotation
+void rotation_ang(const double* x, const double* y, const unsigned size, const double angle_deg,   double* xrot, double* yrot);
 
 /// Global method for x and y arrays rotation
-void rotation_ang(const double* x, const double* y, unsigned size, double angle_deg,   double* xrot, double* yrot);
-
-/// Global method for x and y arrays rotation
-void rotation_cs(const double* x, const double* y, unsigned size, double C, double S, double* xrot, double* yrot);
+void rotation_cs(const double* x, const double* y, const unsigned size, const double C, const double S, double* xrot, double* yrot);
 
 /// Global method, returns minimal value of the array of specified length 
 double min_of_arr(const double* arr, unsigned size);

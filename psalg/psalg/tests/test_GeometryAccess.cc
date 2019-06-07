@@ -2,13 +2,31 @@
 
 #include "psalg/geometry/GeometryObject.hh"
 #include "psalg/geometry/GeometryAccess.hh"
- 
+
+#include <time.h>   // time
 #include <string>
 #include <iostream>
 #include <iomanip>  // for setw, setfill
 
 using namespace std;
 //using namespace geometry;
+
+struct timespec start, stop;
+int status;
+
+//-------------------
+
+double time_sec_nsec(const timespec& t)
+{
+  return t.tv_sec + 1e-9*(t.tv_nsec);
+}
+
+//-------------------
+
+double dtime(const timespec& start, const timespec& stop)
+{
+  return time_sec_nsec(stop) - time_sec_nsec(start);
+}
 
 //-------------------
 
@@ -36,7 +54,12 @@ void test_geometry()
   geo.print_comments_from_dict();
   geo.print_list_of_geos();
   geo.print_list_of_geos_children();
+
+  status = clock_gettime(CLOCK_REALTIME, &start);
   geo.print_pixel_coords();
+  status = clock_gettime(CLOCK_REALTIME, &stop);
+
+  cout << "\nconsumed time = " << dtime(start, stop) << " sec\n";
 }
 
 //-------------------

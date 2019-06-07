@@ -7,7 +7,7 @@
 
 namespace geometry {
 
-void rotation_ang(const double* x, const double* y, unsigned size, double angle_deg, double* xrot, double* yrot)
+void rotation_ang(const double* x, const double* y, unsigned size, const double angle_deg, double* xrot, double* yrot)
 {
     const double angle_rad = angle_deg * DEG_TO_RAD;
     const double C = cos(angle_rad);
@@ -17,9 +17,11 @@ void rotation_ang(const double* x, const double* y, unsigned size, double angle_
 
 //--------------
 
-void rotation_cs(const double* x, const double* y, unsigned size, double C, double S, double* xrot, double* yrot)
+void rotation_cs(const double* x, const double* y, const unsigned size, const double C, const double S, double* xrot, double* yrot)
 {
-  for (unsigned i=0; i<size; i++, xrot++, yrot++, x++, y++) {
+  const double* xend = &x[size];
+  //for (unsigned i=0; i<size; i++, xrot++, yrot++, x++, y++) {
+  for (; x!=xend; xrot++, yrot++, x++, y++) {
     *xrot = *x *C - *y *S;
     *yrot = *y *C + *x *S; 
   }

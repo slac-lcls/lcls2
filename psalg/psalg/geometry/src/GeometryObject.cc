@@ -8,6 +8,11 @@
 #include <cmath>    // for sqrt, atan2, etc.
 #include <cstring>  // for memcpy
 
+#include <omp.h>
+
+//#include <algorithm>    // std::transform
+//#include <functional>   // std::plus, minus
+
 #include "psalg/utils/Logger.hh" // MSG, LOGGER
 #include "psalg/geometry/GlobalMethods.hh"
 
@@ -191,6 +196,7 @@ void GeometryObject::transform_geo_coord_arrays(const double* X,
 }
 
 //-------------------
+
 unsigned GeometryObject::get_size_geo_array()
 {
   if(m_seggeom) return m_seggeom -> size();
@@ -412,11 +418,60 @@ void GeometryObject::rotation(const double* X, const double* Y, const unsigned s
                const double C, const double S, 
                double* Xrot, double* Yrot)
   {
+    // takes 0.48 sec for cspad size=2296960
+    /*
+    const double* Xend = &X[size];
+    const double* x=X; // &X[0];
+    const double* y=Y;
+    for(; x!=Xend; x++, y++) {
+      *Xrot++ = *x*C - *y*S;
+      *Yrot++ = *y*C + *x*S;
+    }
+    */
+
+    // takes 0.55 sec for cspad size=2296960
+    // and   0.29 sec with pragma
+    #pragma omp parallel for
     for(unsigned i=0; i<size; ++i) {
       Xrot[i] = X[i]*C - Y[i]*S; 
       Yrot[i] = Y[i]*C + X[i]*S; 
-    } 
+    }
   }
+
+//-------------------
+
+/*
+void GeometryObject::rotation(const double* X, const double* Y, const unsigned size,
+               const double C, const double S, 
+               double* Xrot, double* Yrot)
+  {
+    //std::fill_n(Carr, int(size), double(C));
+    //std::fill_n(Sarr, int(size), double(S));
+
+    // takes 2 sec
+
+    double* xc = new double [size];
+    double* xs = new double [size];
+    double* yc = new double [size];
+    double* ys = new double [size];
+
+    auto vS = std::bind1st(std::multiplies<double>(), S);
+    auto vC = std::bind1st(std::multiplies<double>(), C);
+
+    std::transform(X, &X[size], &xs[0], vS);
+    std::transform(X, &X[size], &xc[0], vC);
+    std::transform(Y, &Y[size], &ys[0], vS);
+    std::transform(Y, &Y[size], &yc[0], vC);
+
+    std::transform(&xc[0], &xc[size], &ys[0], Xrot, std::minus<double>());
+    std::transform(&yc[0], &yc[size], &xs[0], Yrot, std::plus<double>());
+
+    delete [] xc; 
+    delete [] xs; 
+    delete [] yc; 
+    delete [] ys; 
+  }
+*/
 
 //-------------------
 

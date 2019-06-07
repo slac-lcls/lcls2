@@ -118,6 +118,8 @@ public:
   typedef GeometryObject* pGO;
   //typedef boost::shared_ptr<GeometryObject> pGO;
 
+  //static constexpr double DEG_TO_RAD = 3.141592653589793238463 / 180;
+
   /**
    *  @brief Class constructor accepts path to the calibration "geometry" file and verbosity control bit-word 
    *  
@@ -151,7 +153,7 @@ public:
                 );
 
   // Destructor
-  virtual ~GeometryObject () ;
+  virtual ~GeometryObject() ;
 
   std::string string_geo();
   std::string string_geo_children();
@@ -168,13 +170,13 @@ public:
   void set_parent(pGO parent) {m_parent = parent;}
 
   /// Adds shared pointer of the children geometry object to the vector
-  void add_child (pGO child) {v_list_of_children.push_back(child);}
+  void add_child(pGO child) {v_list_of_children.push_back(child);}
 
   /// Returns shared pointer to the parent geometry object
-  pGO get_parent() { return m_parent; }
+  pGO get_parent() {return m_parent;}
 
   /// Returns vector of shared pointers to children geometry objects
-  std::vector<pGO> get_list_of_children() {return v_list_of_children;}
+  std::vector<pGO>& get_list_of_children() {return v_list_of_children;}
 
   /// Returns self object name
   std::string get_geo_name()     {return m_oname;}
@@ -268,14 +270,12 @@ public:
                 const double& dt_z = 0 
 	       );
 
-  /// Delete arrays with allocated memory, reset pointers to 0
-  void _deallocate_memory();
+  /// Returns class name for MsgLogger
+  static const std::string name() {return "GeometryObject";}
 
 protected:
 
 private:
-
-  static constexpr double DEG_TO_RAD = 3.141592653589793238463 / 180;
 
   // Data members
   std::string m_pname;
@@ -315,9 +315,9 @@ private:
                                   const double* Y,  
                                   const double* Z, 
                                   const unsigned size,
-                                  double*  Xt,  
-                                  double*  Yt,  
-                                  double*  Zt,
+                                  double* Xt,  
+                                  double* Yt,  
+                                  double* Zt,
                                   const bool do_tilt=true
                                  );
 
@@ -328,8 +328,8 @@ private:
   static void rotation(const double* X, const double* Y, const unsigned size, const double angle_deg,
                        double* Xrot, double* Yrot);
 
-  /// Returns class name for MsgLogger
-  static const std::string name() {return "geometry";}
+  /// Delete arrays with allocated memory, reset pointers to 0
+  void _deallocate_memory();
 
   // Copy constructor and assignment are disabled by default
   GeometryObject(const GeometryObject&) = delete;

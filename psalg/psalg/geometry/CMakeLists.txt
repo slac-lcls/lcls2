@@ -1,3 +1,6 @@
+
+find_package(OpenMP REQUIRED)
+
 add_library(geometry SHARED
     src/SegGeometry.cc
     src/SegGeometryCspad2x1V1.cc
@@ -8,6 +11,8 @@ add_library(geometry SHARED
     src/GeometryAccess.cc
 )
 
+target_compile_options(geometry PRIVATE ${OpenMP_CXX_FLAGS})
+
 target_include_directories(geometry PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
@@ -16,7 +21,7 @@ target_include_directories(geometry PUBLIC
 
 find_library(CURL_LIBRARY curl PATH $ENV{CONDA_PREFIX}/lib)
 
-target_link_libraries(geometry
+target_link_libraries(geometry ${OpenMP_CXX_FLAGS}
     xtcdata::xtc
     calib
     ${CURL_LIBRARY}

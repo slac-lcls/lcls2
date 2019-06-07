@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
+find_package(OpenMP REQUIRED)
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -140,7 +142,8 @@ target_link_libraries(test_SegGeometry
 add_executable(test_GeometryAccess
     tests/test_GeometryAccess.cc
 )
-target_link_libraries(test_GeometryAccess
+target_compile_options(test_GeometryAccess PRIVATE ${OpenMP_CXX_FLAGS})
+target_link_libraries(test_GeometryAccess PRIVATE ${OpenMP_CXX_FLAGS}
     psalg
     xtcdata::xtc
 )
