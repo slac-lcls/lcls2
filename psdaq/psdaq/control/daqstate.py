@@ -2,7 +2,7 @@
 """
 daqstate command
 """
-from psdaq.control.collection import DaqControl
+from psdaq.control.control import DaqControl
 import argparse
 
 def main():

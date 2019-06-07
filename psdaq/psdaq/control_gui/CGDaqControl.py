@@ -1,6 +1,6 @@
 
 """
-Module :py:class:`CGDaqControl` contains proxy and singleton for psdaq/control/collection.py
+Module :py:class:`CGDaqControl` contains proxy and singleton for psdaq/control/control.py
 =============================================================================================
 
 Usage ::
@@ -29,7 +29,7 @@ Created on 2019-02-01 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from psdaq.control.collection import DaqControl
+from psdaq.control.control import DaqControl
 
 #----------
 

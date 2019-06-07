@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 import zmq
 from PyQt5.QtCore import QSocketNotifier
 from PyQt5.QtWidgets import QWidget
-from psdaq.control.collection import front_pub_port
+from psdaq.control.control import front_pub_port
 
 class QWZMQListener(QWidget):
     def __init__(self, **kwargs):

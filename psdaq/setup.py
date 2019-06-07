@@ -15,7 +15,7 @@ setup(
 
        entry_points={
             'console_scripts': [
-                'collection = psdaq.control.collection:main',
+                'control = psdaq.control.control:main',
                 'selectPlatform = psdaq.control.selectPlatform:main',
                 'showPlatform = psdaq.control.showPlatform:main',
                 'daqstate = psdaq.control.daqstate:main',

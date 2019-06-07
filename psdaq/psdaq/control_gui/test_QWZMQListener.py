@@ -9,7 +9,7 @@ Usage::
 import sys
 import zmq
 from time import time, strftime, localtime, sleep
-from psdaq.control.collection import front_pub_port
+from psdaq.control.control import front_pub_port
 
 #----------
 
