@@ -7,7 +7,7 @@ Asynchronous Error Test
 import time
 import socket
 import zmq
-from psdaq.control.collection import back_pull_port, error_msg
+from psdaq.control.control import back_pull_port, error_msg
 import argparse
 
 class Client:

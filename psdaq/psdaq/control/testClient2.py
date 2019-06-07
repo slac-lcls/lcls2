@@ -9,7 +9,7 @@ import time
 import copy
 import socket
 import zmq
-from psdaq.control.collection import back_pull_port, back_pub_port, create_msg
+from psdaq.control.control import back_pull_port, back_pub_port, create_msg
 import argparse
 import logging
 import zmq.utils.jsonapi as json
