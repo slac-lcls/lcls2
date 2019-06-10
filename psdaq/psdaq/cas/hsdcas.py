@@ -307,6 +307,14 @@ def main():
     pvdb[stationstr+'FMCPOWER'  ] = {'type'  : 'float',
                                      'value' : 0 }
 
+    # JESD204B
+    ttl = ['GTResetDone','RxDataValid','RxDataNAlign','SyncStatus','RxBufferOF','RxBufferUF',
+           'CommaPos','ModuleEn','SysRefDet','CommaDet','DispErr','DecErr','BuffLatency','CdrStatus']
+    
+    pvdb[stationstr+'JESDSTATTTL' ] = {'type' : 'string', 'count' : len(ttl), 'value' : ttl}
+    pvdb[stationstr+'JESDSTAT'    ] = {'type' : 'int', 'count' : len(ttl), 'value' : [0]*(16*len(ttl))}
+    pvdb[stationstr+'JESDCLKS'    ] = {'type' : 'int', 'count' : 4, 'value' : [0]*4}
+
     # printDb(pvdb, prefix)
     printDb()
 

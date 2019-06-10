@@ -11,7 +11,8 @@ import pdb
 
 NPartitions = 8
 
-Transitions = [('Configure'  ,2),
+Transitions = [('ClearReadout',0),
+               ('Configure'  ,2),
                ('Enable'     ,4),
                ('Disable'    ,5),
                ('Unconfigure',3)]

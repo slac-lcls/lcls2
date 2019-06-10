@@ -325,6 +325,21 @@ class PvInt(PvEditInt):
     def setPv(self):
         pass
 
+class PvIntArray:
+
+    def __init__(self, pv, widgets):
+        self.widgets = widgets
+        initPvMon(self,pv)
+
+    def update(self, err):
+        q = self.pv.__value__
+        if err is None:
+            for i in range(len(q)):
+#                self.widgets[i].valueSet.emit(QString(format(q[i], 'd')))
+                self.widgets[i].setText(QString(format(q[i], 'd')))
+        else:
+            print(err)
+
 class PvEditHML(PvEditTxt):
 
     def __init__(self, pv, label):

@@ -270,6 +270,49 @@ class HsdExpert(QtWidgets.QWidget):
 
         self.setLayout(lo)
 
+class HsdJesd(QtWidgets.QWidget):
+
+    def __init__(self, pvbase):
+        super(HsdJesd, self).__init__()
+        self._pvlabels = []
+
+        pvTtl = Pv(pvbase+':JESDSTATTTL')
+        pvTtl.get()
+        
+        lo = QtWidgets.QGridLayout()
+
+        widgets = []
+        lo.addWidget(QtWidgets.QLabel('Lane'),0,0)
+        for i in range(16):
+            lo.addWidget(QtWidgets.QLabel('%d'%i),0,i+1)
+        for i,ttl in enumerate(pvTtl.__value__):
+            lo.addWidget(QtWidgets.QLabel(ttl),i+1,0)
+        for j in range(16):
+            for i in range(len(pvTtl.__value__)):
+                w = PvTextDisplay('')
+                lo.addWidget(w,i+1,j+1)
+                widgets.append(w)
+
+        self.pvVal = PvIntArray(pvbase+':JESDSTAT',widgets)
+
+        vlo = QtWidgets.QVBoxLayout()
+        vlo.addLayout(lo)
+        vlo.addStretch()
+
+        glo = QtWidgets.QGridLayout()
+        widgets = []
+        names = ['RxClk','RefDivClk','DevClk','GtRefClk']
+        for i in range(len(names)):
+            glo.addWidget(QtWidgets.QLabel(names[i]),i,0)
+            w = PvTextDisplay('')
+            glo.addWidget(w,i,1)
+            widgets.append(w)
+        self.clks = PvIntArray(pvbase+':JESDCLKS',widgets)
+        vlo.addLayout(glo)
+        vlo.addStretch()
+
+        self.setLayout(vlo)
+
 class DetBase(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
@@ -321,7 +364,7 @@ class DetBase(QtWidgets.QWidget):
         self.setLayout(lo)
 
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, title):
+    def setupUi(self, MainWindow, title, devel):
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
@@ -331,6 +374,8 @@ class Ui_MainWindow(object):
         maintab.addTab( HsdStatus(title), 'Status' )
         maintab.addTab( HsdDetail(title), 'Detail' )
         maintab.addTab( HsdExpert(title), 'Expert' )
+        if devel:
+            maintab.addTab( HsdJesd  (title), 'Jesd' )
         maintab.addTab( DetBase  (title), 'Base' )
 
         lo = QtWidgets.QVBoxLayout()
@@ -367,7 +412,7 @@ def main():
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.base)
+    ui.setupUi(MainWindow,args.base,args.devel)
     MainWindow.updateGeometry()
 
     MainWindow.show()
