@@ -37,7 +37,7 @@ class Client:
         # define commands
         handle_request = {
             'reset': self.handle_reset,
-            'plat': self.handle_plat,
+            'rollcall': self.handle_rollcall,
             'alloc': self.handle_alloc,
             'connect': self.handle_connect,
             'disconnect': self.handle_disconnect,
@@ -63,14 +63,14 @@ class Client:
                     key = msg['header']['key']
                     handle_request[key](msg)
 
-    def handle_plat(self, msg):
-        logging.debug('Client handle_plat(msg_id=\'%s\')' % msg['header']['msg_id'])
+    def handle_rollcall(self, msg):
+        logging.debug('Client handle_rollcall(msg_id=\'%s\')' % msg['header']['msg_id'])
         # time.sleep(1.5)
         body = {'drp': {'proc_info': {
                         'alias': self.alias,
                         'host': self.hostname,
                         'pid': self.pid}}}
-        reply = create_msg('plat', msg['header']['msg_id'], self.id, body=body)
+        reply = create_msg('rollcall', msg['header']['msg_id'], self.id, body=body)
         self.push.send_json(reply)
 
     def handle_alloc(self, msg):

@@ -55,7 +55,7 @@ public:
     CollectionApp(const std::string& managerHostname, int platform, const std::string& level, const std::string& alias);
     void run();
 protected:
-    void handlePlat(const nlohmann::json& msg);
+    void handleRollcall(const nlohmann::json& msg);
     void handleAlloc(const nlohmann::json& msg);
     virtual nlohmann::json connectionInfo() = 0;
     virtual void handleConnect(const nlohmann::json& msg) = 0;

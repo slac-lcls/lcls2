@@ -73,7 +73,7 @@ class CGWMainPartition(QGroupBox) :
     def set_tool_tips(self) :
         self.setToolTip('Partition GUI')
         self.but_select.setToolTip('Click on button.') 
-        self.but_roll_call.setToolTip('Submits "plat" command.')
+        self.but_roll_call.setToolTip('Submits "rollcall" command.')
 
 #--------------------
 
@@ -172,11 +172,11 @@ class CGWMainPartition(QGroupBox) :
 #--------------------
  
     def on_but_roll_call(self) :
-        """Equivalent to CLI: daqstate -p6 --transition plat
+        """Equivalent to CLI: daqstate -p6 --transition rollcall
            https://github.com/slac-lcls/lcls2/blob/collection_front/psdaq/psdaq/control/daqstate.py
         """
-        logger.debug('on_but_roll_call - command to set transition "plat"')
-        rv = daq_control().setTransition('plat')
+        logger.debug('on_but_roll_call - command to set transition "rollcall"')
+        rv = daq_control().setTransition('rollcall')
         if rv is not None : logger.error('Error: %s' % rv)
 
 #--------------------

@@ -198,7 +198,7 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_inprocRecv.bind("inproc://drp");
 
     // register callbacks
-    m_handleMap["plat"] = std::bind(&CollectionApp::handlePlat, this, std::placeholders::_1);
+    m_handleMap["rollcall"] = std::bind(&CollectionApp::handleRollcall, this, std::placeholders::_1);
     m_handleMap["alloc"] = std::bind(&CollectionApp::handleAlloc, this, std::placeholders::_1);
     m_handleMap["connect"] = std::bind(&CollectionApp::handleConnect, this, std::placeholders::_1);
     m_handleMap["disconnect"] = std::bind(&CollectionApp::handleDisconnect, this, std::placeholders::_1);
@@ -210,7 +210,7 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_handleMap["configUpdate"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
 }
 
-void CollectionApp::handlePlat(const json &msg)
+void CollectionApp::handleRollcall(const json &msg)
 {
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
@@ -218,7 +218,7 @@ void CollectionApp::handlePlat(const json &msg)
     m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
     json body;
     body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}, {"alias", m_alias}}}};
-    json answer = createMsg("plat", msg["header"]["msg_id"], m_id, body);
+    json answer = createMsg("rollcall", msg["header"]["msg_id"], m_id, body);
     reply(answer);
 }
 

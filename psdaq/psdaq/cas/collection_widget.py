@@ -63,12 +63,12 @@ class CollectionWidget(QtWidgets.QWidget):
         self.label.clear()
         for w in self.listWidgets.values():
             w.clear()
-        for cmd in ['plat', 'alloc', 'connect']:
+        for cmd in ['rollcall', 'alloc', 'connect']:
             self.socket.send_json(create_msg(cmd))
             response = self.socket.recv_json()
             print(response)
-            if 'error' in response['body']:
-                self.label.setText(response['body']['error'])
+            if 'err_info' in response['body']:
+                self.label.setText(response['body']['err_info'])
                 return
         self.get_state()
 

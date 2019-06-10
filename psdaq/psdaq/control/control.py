@@ -30,7 +30,7 @@ class DaqControl:
         'L1Accept'          : 12,
     }
 
-    transitions = ['plat', 'alloc', 'dealloc',
+    transitions = ['rollcall', 'alloc', 'dealloc',
                    'connect', 'disconnect',
                    'configure', 'unconfigure',
                    'enable', 'disable',
@@ -253,11 +253,11 @@ class DaqControl:
         return errorMessage
 
 next_dict = {
-    'reset' :       { 'unallocated' : 'plat',
-                      'allocated' :   'plat',
-                      'connected' :   'plat',
-                      'paused' :      'plat',
-                      'running' :     'plat' },
+    'reset' :       { 'unallocated' : 'rollcall',
+                      'allocated' :   'rollcall',
+                      'connected' :   'rollcall',
+                      'paused' :      'rollcall',
+                      'running' :     'rollcall' },
 
     'unallocated' : { 'reset' :       'reset',
                       'allocated' :   'alloc',
@@ -443,8 +443,8 @@ class CollectionManager():
 
         self.collectMachine.add_transition('reset', '*', 'reset',
                                            conditions='condition_reset')
-        self.collectMachine.add_transition('plat', ['reset', 'unallocated'], 'unallocated',
-                                           conditions='condition_plat')
+        self.collectMachine.add_transition('rollcall', ['reset', 'unallocated'], 'unallocated',
+                                           conditions='condition_rollcall')
         self.collectMachine.add_transition('alloc', 'unallocated', 'allocated',
                                            conditions='condition_alloc')
         self.collectMachine.add_transition('dealloc', 'allocated', 'unallocated',
@@ -827,10 +827,10 @@ class CollectionManager():
         self.ids.clear()
         return
 
-    def condition_plat(self):
+    def condition_rollcall(self):
         self.cmstate.clear()
         self.ids.clear()
-        msg = create_msg('plat')
+        msg = create_msg('rollcall')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
         for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id'], self.front_pub):
             for level, item in answer['body'].items():
@@ -845,11 +845,11 @@ class CollectionManager():
                     self.cmstate[level][id]['det_info']['readout'] = self.platform
                 self.ids.add(id)
         if len(self.ids) == 0:
-            self.report_error('no clients responded to plat')
+            self.report_error('no clients responded to rollcall')
             retval = False
         else:
             retval = True
-            self.lastTransition = 'plat'
+            self.lastTransition = 'rollcall'
 
         # add control info
         if not 'control' in self.cmstate:
@@ -866,8 +866,8 @@ class CollectionManager():
             self.cmstate['control'][0]['proc_info']['host'] = socket.gethostname()
             self.cmstate['control'][0]['proc_info']['pid'] = os.getpid()
 
-        logging.debug('cmstate after plat:\n%s' % self.cmstate)
-        logging.debug('condition_plat() returning %s' % retval)
+        logging.debug('cmstate after rollcall:\n%s' % self.cmstate)
+        logging.debug('condition_rollcall() returning %s' % retval)
         return retval
 
     # filter_active_set - return subset of ids which have 'active' flag set
@@ -1073,7 +1073,7 @@ class Client:
         self.back_sub.connect('tcp://localhost:%d' % back_pub_port(platform))
         self.back_sub.setsockopt(zmq.SUBSCRIBE, b'')
         handle_request = {
-            'plat': self.handle_plat,
+            'rollcall': self.handle_rollcall,
             'alloc': self.handle_alloc,
             'connect': self.handle_connect
         }
@@ -1088,8 +1088,8 @@ class Client:
             if key == 'connect':
                 break
 
-    def handle_plat(self, msg):
-        logging.debug('Client handle_plat()')
+    def handle_rollcall(self, msg):
+        logging.debug('Client handle_rollcall()')
         # time.sleep(1.5)
         hostname = socket.gethostname()
         pid = os.getpid()
@@ -1097,7 +1097,7 @@ class Client:
         body = {'drp': {'proc_info': {
                         'host': hostname,
                         'pid': pid}}}
-        reply = create_msg('plat', msg['header']['msg_id'], self.id, body=body)
+        reply = create_msg('rollcall', msg['header']['msg_id'], self.id, body=body)
         self.back_push.send_json(reply)
 
     def handle_alloc(self, msg):
@@ -1157,9 +1157,9 @@ def main():
         front_req.connect('tcp://localhost:%d' % front_rep_port(platform))
         time.sleep(0.5)
 
-        msg = create_msg('plat')
+        msg = create_msg('rollcall')
         front_req.send_json(msg)
-        print('Answer to plat:', front_req.recv_multipart())
+        print('Answer to rollcall:', front_req.recv_multipart())
 
         msg = create_msg('alloc')
         front_req.send_json(msg)
