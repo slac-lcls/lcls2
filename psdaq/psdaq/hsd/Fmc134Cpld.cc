@@ -405,11 +405,13 @@ void Fmc134Cpld::_adc_init(unsigned a, bool ldualch)
   WRREG(0x201,(ldualch ? 2:0));
   //  Program KM1 (K-1)
   WRREG(0x202,0xf);
-        // Keep output format as 2's complement and ENABLE Scrambler
-  //  WRREG(0x204, 0x03);
+  // Reg 0x204: b0 - Enable scrambler      / disable scrambler
+  //            b1 - 2's complement format / offset binary
+  // Keep output format as 2's complement and ENABLE Scrambler
+  //  WRREG(0x204, 0x03);  // 
   //  WRREG(0x204, 0x02);  // Disable scrambler
-  //  WRREG(0x204, 0x03);
-  WRREG(0x204, 0x00);  // Disable scrambler, output format is offset binary
+  //  WRREG(0x204, 0x00);  // Disable scrambler, output format is offset binary
+  WRREG(0x204, 0x01);  // Enable scrambler, output format is offset binary
   //  Program SYNC_SEL (choose inputs) - default OK
   //  Configure calibration settings, fg/bg mode, offset
   //  Program CAL_EN=1

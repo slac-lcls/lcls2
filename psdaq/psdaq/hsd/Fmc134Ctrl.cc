@@ -51,11 +51,11 @@ void Fmc134Ctrl::dump()
   DUMP_CLK(1,"RX_CLK");
   DUMP_CLK(2,"SYSREF");
   DUMP_CLK(3,"LMKDEV");
-  DUMP_CLK(4,"PLLCLK");
-  DUMP_CLK(5,"GTREF0.0");
-  DUMP_CLK(6,"GTREF0.1");
-  DUMP_CLK(7,"GTREF0.2");
-  DUMP_CLK(8,"GTREF0.3");
+  // DUMP_CLK(4,"PLLCLK");
+  // DUMP_CLK(5,"GTREF0.0");
+  // DUMP_CLK(6,"GTREF0.1");
+  // DUMP_CLK(7,"GTREF0.2");
+  // DUMP_CLK(8,"GTREF0.3");
 
 #undef DUMP_CLK
 }

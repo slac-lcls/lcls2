@@ -10,6 +10,7 @@ add_library(hsd SHARED
   FmcSpi.cc
   Histogram.cc
   I2cSwitch.cc
+  Jesd204b.cc
   LocalCpld.cc
   Mmcm.cc
   Module.cc

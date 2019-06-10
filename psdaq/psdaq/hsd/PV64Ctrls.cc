@@ -5,6 +5,7 @@
 #include "psdaq/hsd/Fmc134Ctrl.hh"
 #include "psdaq/hsd/QABase.hh"
 #include "psdaq/hsd/Pgp.hh"
+#include "psdaq/hsd/Jesd204b.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 #include "psdaq/epicstools/PvServer.hh"
 #include "psdaq/service/Task.hh"
@@ -20,58 +21,14 @@ using Pds_Epics::EpicsPVA;
 using Pds_Epics::PvServer;
 using Pds_Epics::PVMonitorCb;
 using Pds::Routine;
+using Pds::HSD::Jesd204b;
+using Pds::HSD::Jesd204bStatus;
 
 static std::string STOU(std::string s) {
   std::transform(s.begin(), s.end(), s.begin(),
                  [](unsigned char c){ return std::toupper(c); }
                  );
   return s;
-}
-
-static void jesd_status(char* p0, char* p8)
-{
-  uint64_t rxStatus[16];
-  for(unsigned i=0; i<16; i++) {
-    const uint32_t* r = reinterpret_cast<const uint32_t*>(i<8 ? p0:p8);
-    printf("@%p [%08x]\n", &r[0x10+(i%8)], r[0x10+(i%8)]);
-    printf("@%p [%08x]\n", &r[0x60+(i%8)], r[0x60+(i%8)]);
-    uint64_t v = r[0x60+(i%8)];
-    v <<= 32;
-    v |= r[0x10+(i%8)];
-    rxStatus[i] = v;
-  }
-
-  //  Clear errors
-  { uint32_t* r = reinterpret_cast<uint32_t*>(p0);
-    unsigned v = r[4]; r[4] = (v|(1<<3));
-    usleep(10);
-    r[4] = v; }
-  { uint32_t* r = reinterpret_cast<uint32_t*>(p8);
-    unsigned v = r[4]; r[4] = (v|(1<<3));
-    usleep(10);
-    r[4] = v; }
-
-#define PRINTR(title,field) {                                   \
-    printf("%15.15s",#title);                                   \
-    for(unsigned i=0; i<16; i++) printf("%4x",unsigned(field)); \
-    printf("\n");                                               \
-  }
-
-  PRINTR(Lane,i);
-  PRINTR(GTResetDone ,(rxStatus[i]>>0)&1);
-  PRINTR(RxDataValid ,(rxStatus[i]>>1)&1);
-  PRINTR(RxDataNAlign,(rxStatus[i]>>2)&1);
-  PRINTR(SyncStatus  ,(rxStatus[i]>>3)&1);
-  PRINTR(RxBufferOF  ,(rxStatus[i]>>4)&1);
-  PRINTR(RxBufferUF  ,(rxStatus[i]>>5)&1);
-  PRINTR(CommaPos    ,(rxStatus[i]>>6)&1);
-  PRINTR(ModuleEn    ,(rxStatus[i]>>7)&1);
-  PRINTR(SysRefDet   ,(rxStatus[i]>>8)&1);
-  PRINTR(CommaDet    ,(rxStatus[i]>>9)&1);
-  PRINTR(DispErr     ,(rxStatus[i]>>10)&0xff);
-  PRINTR(DecErr      ,(rxStatus[i]>>18)&0xff);
-  PRINTR(BuffLatency ,(rxStatus[i]>>26)&0xff);
-  PRINTR(CdrStatus   ,(rxStatus[i]>>34)&1);
 }
 
 static bool _interleave = false;
@@ -201,8 +158,6 @@ namespace Pds {
 
       _m.stop();
 
-      //      return;
-
       // Update all necessary PVs
       for(unsigned i=0; i<LastPv; i++) {
         PvServer* pv = static_cast<PvServer*>(_pv[i]);
@@ -212,8 +167,6 @@ namespace Pds {
         }
         pv->update();
       }
-
-      //      return;
 
       { unsigned i=0;
         while(i<FullEvt) {
@@ -231,15 +184,11 @@ namespace Pds {
         }
       }
 
-      //      return;
-
       { unsigned v = _pv[PgpSkpIntvl]->getScalarAs<unsigned>();
         std::vector<Pgp*> pgp = _m.pgp();
         for(unsigned i=0; i<pgp.size(); i++)
           pgp[i]->skip_interval(v);
       }
-
-      //      return;
 
       _m.dumpPgp();
 
@@ -247,16 +196,16 @@ namespace Pds {
       pvd::shared_vector<const unsigned> vec;
       _pv[Enable]->getVectorAs(vec);
 
-      for(unsigned i=0; i<vec.size(); i++) {
-        if (vec[i]) {
+      for(unsigned i=0; i<vec.size(); i++)
+        if (vec[i])
           channelMask |= (1<<i);
-          //          if (_interleave) break;
-        }
-      }
-      printf("channelMask 0x%x: ilv %c\n",
-             channelMask, _interleave?'T':'F');
 
-      _m.setAdcMux(channelMask);  // enable header cache for active channels
+      //      unsigned mirrorMask = channelMask ^ 3;
+      unsigned mirrorMask = 0;
+      printf("channelMask 0x%x: mirrorMask 0x%x: ilv %c\n",
+             channelMask, mirrorMask, _interleave?'T':'F');
+
+      _m.setAdcMux(channelMask|mirrorMask);  // enable header cache for active channels
 
       // set testpattern
       int pattern = _pv[TestPattern]->getScalarAs<int>();
@@ -281,9 +230,6 @@ namespace Pds {
       ctrl->dump();
       _m.i2c_unlock();
 
-      jesd_status((char*)_m.reg()+0x9B000,
-                  (char*)_m.reg()+0x9B800);
-
       QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x80000);
       base.init();
       base.resetCounts();
@@ -291,10 +237,6 @@ namespace Pds {
       { std::vector<Pgp*> pgp = _m.pgp();
         for(unsigned i=0; i<pgp.size(); i++)
           pgp[i]->resetCounts(); }
-
-      //  These aren't used...
-      //      base.samples = ;
-      //      base.prescale = ;
 
       unsigned partition = _pv[Partition]->getScalarAs<unsigned>();
       _m.trig_daq(partition);
@@ -305,7 +247,11 @@ namespace Pds {
       unsigned sumStreamMask=0;
       for(unsigned i=0; i<4; i++) {
         FexCfg& fex = _m.fex()[i];
-        if ((1<<i)&channelMask) {
+        bool mirror = (1<<i)&mirrorMask;
+        if (((1<<i)&channelMask) || mirror) {
+          unsigned j=i;
+          if (mirror) 
+            i=__builtin_ffs(channelMask)-1;
           unsigned streamMask=0;
           if (_pv[Raw_PS]->getVectorElemAt<unsigned>(i)) {
             streamMask |= (1<<0);
@@ -327,6 +273,8 @@ namespace Pds {
           }
           fex._streams= streamMask;
           sumStreamMask |= streamMask;
+          if (mirror) 
+            i=j;
         }
         else
           fex._streams= 0;
@@ -354,7 +302,7 @@ namespace Pds {
       }
 
       printf("streams:");
-      for(unsigned i=0,mask=channelMask; mask; i++,mask>>=1) {
+      for(unsigned i=0,mask=(channelMask|mirrorMask); mask; i++,mask>>=1) {
         if ((mask&1)==0) continue;
         printf(" %2u", fex[i]._streams &0xf);
       }

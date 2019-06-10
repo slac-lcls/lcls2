@@ -3,6 +3,7 @@
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/HdrFifo.hh"
 #include "psdaq/hsd/Pgp.hh"
+#include "psdaq/hsd/Jesd204b.hh"
 #include "psdaq/hsd/QABase.hh"
 
 #include "psdaq/epicstools/EpicsPVA.hh"
@@ -50,6 +51,8 @@ namespace Pds {
            _TotalPower, _FmcPower, 
            _WrFifoCnt, _RdFifoCnt,
            _SyncE, _SyncO,
+           _JesdStat,
+           _JesdClks,
            _NumberOf };
 
     PV64Stats::PV64Stats(Module64& m) : _m(m), _pgp(m.pgp()), _pv(_NumberOf), _v(_NumberOf*16) {}
@@ -119,6 +122,9 @@ namespace Pds {
 
       PV_ADD(SyncE);
       PV_ADD(SyncO);
+
+      PV_ADDV(JesdStat, 160);
+      PV_ADDV(JesdClks, 4);
 #undef PV_ADD
 #undef PV_ADDV
 
@@ -228,6 +234,20 @@ namespace Pds {
     
       PVPUTU  ( SyncE     , _m.trgPhase()[0]);
       PVPUTU  ( SyncO     , _m.trgPhase()[1]);
+
+      // JESD Status
+      {
+        char* p0 = (char*)_m.reg()+0x9B000;
+        char* p8 = (char*)_m.reg()+0x9B800;
+        Jesd204bStatus vs[16];
+        for(unsigned i=0; i<16; i++)
+          vs[i] = reinterpret_cast<Jesd204b*>((i<8)?p0:p8)->status(i%8);
+
+        PVPUTAU ( JesdStat  , (14*16), (reinterpret_cast<uint32_t*>(&vs[0])[i]) );
+
+        uint32_t* clks = reinterpret_cast<uint32_t*>((char*)_m.reg()+0x9800c);
+        PVPUTAU ( JesdClks, 4, (clks[i]&0x1fffffff)*1.e-6 );
+      }
 #undef PVPUTDU
 #undef PVPUTDAU
 #undef PVPUTU
