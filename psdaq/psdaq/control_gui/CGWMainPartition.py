@@ -118,7 +118,8 @@ class CGWMainPartition(QGroupBox) :
         if self.state!='UNALLOCATED' :
             w.setToolTip('Processes control is only available\nin the state UNALLOCATED')
 
-        w.move(QCursor.pos()+QPoint(20,10))
+        #w.move(QCursor.pos()+QPoint(20,10))
+        w.move(self.mapToGlobal(self.but_select.pos()) + QPoint(5, 22)) # (5,22) offset for frame
         resp=w.exec_()
 
         logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])

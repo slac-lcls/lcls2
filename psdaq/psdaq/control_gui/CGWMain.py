@@ -212,14 +212,13 @@ class CGWMain(QWZMQListener) :
     def closeEvent(self, e) :
         print('%s.closeEvent' % self._name)
 
-        self.on_save()
-
         resp = confirm_or_cancel_dialog_box(parent=None,
                                             text='Close window?',\
                                             title='Confirm or cancel') 
         if resp : 
             logger.debug('Closing window is confirmed')
-            
+            self.on_save()
+
         else :
             logger.warning('Closing window is cancelled')
             print('Closing window is cancelled')

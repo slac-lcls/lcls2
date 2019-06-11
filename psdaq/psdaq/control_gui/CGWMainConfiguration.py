@@ -230,8 +230,8 @@ class CGWMainConfiguration(QGroupBox) :
         w.but_apply.setText('Edit')
         w.but_apply.setEnabled(False)
         #w.setWindowTitle('Select to edit')
-        #w.move(self.pos() + QPoint(self.width()*0.7, 50))
-        w.move(QCursor.pos() + QPoint(-20, -20))
+        #w.move(QCursor.pos() + QPoint(-20, -20))
+        w.move(self.mapToGlobal(self.but_edit.pos()) + QPoint(0, 0))
 
         resp=w.exec_()
         logger.debug('resp=%s' % resp)
@@ -251,9 +251,9 @@ class CGWMainConfiguration(QGroupBox) :
         #logger.debug('on_but_edit')
         if self.w_edit is None :
             logger.debug("TBD Open configuration editor window")
-            rv = self.select_config_type_and_dev()
-            if rv is None : return
-            cfgtype, dev = rv
+            resp = self.select_config_type_and_dev()
+            if resp is None : return
+            cfgtype, dev = resp
 
             inst, confdb = self.inst_configdb('on_but_edit: ')
             self.config = confdb.get_configuration(cfgtype, dev, hutch=inst)
@@ -262,7 +262,7 @@ class CGWMainConfiguration(QGroupBox) :
             logger.debug(msg)
 
             self.w_edit = CGWConfigEditor(dictj=self.config, parent_ctrl=self)
-            self.w_edit.move(self.pos() + QPoint(self.width()+30, 0))
+            self.w_edit.move(self.mapToGlobal(QPoint(self.width()+10,0)))
             self.w_edit.show()
 
         else :
@@ -284,7 +284,7 @@ class CGWMainConfiguration(QGroupBox) :
             logger.debug(msg)
 
             self.w_edit = CGWConfigEditor(dictj=self.config, parent_ctrl=self)
-            self.w_edit.move(self.pos() + QPoint(self.width()+30, 0))
+            self.w_edit.move(self.mapToGlobal(QPoint(self.width()+10,0)))
             self.w_edit.show()
 
         else :
