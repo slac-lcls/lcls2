@@ -72,8 +72,8 @@ def main():
                 except KeyboardInterrupt:
                     pass
                 else:
-                    if 'error' in retval:
-                        print('Error: %s' % retval['error'])
+                    if 'err_info' in retval:
+                        print('Error: %s' % retval['err_info'])
 
 if __name__ == '__main__':
     main()
