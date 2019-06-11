@@ -32,5 +32,6 @@ procmgr_config = [
  # ctrb
 #{ host: 'drp-tst-dev007', id:'ctrb', flags:'xpu', conda:conda_rel, cmd:'ctrb -C '+collect_host},
  # drp
- { host: 'drp-tst-dev008', id:'cam', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cam -o /tmp -C '+collect_host}
+ { host: 'drp-tst-dev008', id:'drp0', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s0 -o /tmp -C '+collect_host},
+ { host: 'drp-tst-dev009', id:'drp1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s1 -o /tmp -C '+collect_host}
 ]
