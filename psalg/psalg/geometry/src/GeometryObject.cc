@@ -431,6 +431,9 @@ void GeometryObject::rotation(const double* X, const double* Y, const unsigned s
 
     // takes 0.55 sec for cspad size=2296960
     // and   0.29 sec with pragma
+
+    omp_set_num_threads(6); // or use env# OMP_NUM_THREADS //num_threads(6); ??
+
     #pragma omp parallel for
     for(unsigned i=0; i<size; ++i) {
       Xrot[i] = X[i]*C - Y[i]*S; 

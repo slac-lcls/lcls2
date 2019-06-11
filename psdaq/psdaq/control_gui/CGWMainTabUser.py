@@ -65,24 +65,12 @@ class CGWMainTabUser(QGroupBox) :
         #self.hbox = self.hbox_test()
         self.hbox = self.hbox_buttons()
 
-        #parent_ctrl.wpart = None
-        #parent_ctrl.wcoll = None
         parent_ctrl.wctrl = self
 
-        # wctrl assumes a couple of interface methods:
-        #            self.wctrl.set_but_ctrls (s_state)
-        #            self.wctrl.set_transition(s_transition)
-
-        #self.hbox.addWidget(self.but_record)
-        #self.hbox.addWidget(self.but_pause)
         self.setLayout(self.hbox)
 
         self.set_style()
         self.set_tool_tips()
-
-        #print(dir(self))
-        #print(self.frameGeometry())
-        #print(self.frameSize())
 
 #------------------------------
 
@@ -95,11 +83,10 @@ class CGWMainTabUser(QGroupBox) :
         if state == self.s_running :
             self.but_play.setIcon(icon.icon_playback_pause_sym)
             self.but_play.setAccessibleName(self.s_play_pause)
-        elif state == self.s_paused :
+
+        else : # elif state == self.s_paused :
             self.but_play.setIcon(icon.icon_playback_start_sym)
             self.but_play.setAccessibleName(self.s_play_start)
-        else : 
-            return
 
         self.but_play.setIconSize(QSize(48, 48))
         self.set_tool_tips()
@@ -140,12 +127,6 @@ class CGWMainTabUser(QGroupBox) :
 
         self.but_play  .setIconSize(QSize(48, 48))
         self.but_record.setIconSize(QSize(48, 48))
-
-        #self.setGeometry(self.main_win_pos_x .value(),\
-        #                 self.main_win_pos_y .value(),\
-        #                 self.main_win_width .value(),\
-        #                 self.main_win_height.value())
-        #w_height = self.main_win_height.value()
 
 
     def closeEvent(self, e) :

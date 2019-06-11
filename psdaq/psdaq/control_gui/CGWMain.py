@@ -29,18 +29,15 @@ import json
 from time import time
 
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit, QSizePolicy
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QPoint
 
+from psdaq.control_gui.CGConfigParameters   import cp
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
-from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl, DaqControlEmulator
+from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
 from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box
 from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
-
-#from psdaq.control_gui.CGWMainPartition     import CGWMainPartition
-#from psdaq.control_gui.CGWMainControl       import CGWMainControl
-#from psdaq.control_gui.CGWMainCollection    import CGWMainCollection
 
 #------------------------------
 
@@ -65,32 +62,21 @@ class CGWMain(QWZMQListener) :
         logger.debug('daq_control().getInstrument(): %s' % instrument)
         self.inst = 'TMO' if instrument in ('TST', None) else instrument
 
-        #cp.cmwmain = self
+        cp.cgwmain = self
 
-        #self.main_win_width  = cp.main_win_width 
-        #self.main_win_height = cp.main_win_height
-        #self.main_win_pos_x  = cp.main_win_pos_x 
-        #self.main_win_pos_y  = cp.main_win_pos_y  
+        self.main_win_width  = cp.main_win_width 
+        self.main_win_height = cp.main_win_height
+        self.main_win_pos_x  = cp.main_win_pos_x 
+        self.main_win_pos_y  = cp.main_win_pos_y  
 
         #icon.set_icons()
 
         self.wconf = CGWMainConfiguration(parent_ctrl=self)
         self.wtabs = CGWMainTabs(parent_ctrl=self)
 
-        #self.wpart = CGWMainPartition()
-        #self.wctrl = CGWMainControl(parent_ctrl=self)
-        #self.wcoll = CGWMainCollection()
-
-        #self.wpart = self.wtabs.gui_win.wpart
-        #self.wctrl = self.wtabs.gui_win.wctrl 
-        #self.wcoll = self.wpart.wcoll
-
         self.vspl = QSplitter(Qt.Vertical)
         self.vspl.addWidget(self.wconf) 
         self.vspl.addWidget(self.wtabs) 
-        #self.vspl.addWidget(self.wpart) 
-        #self.vspl.addWidget(self.wctrl) 
-        #self.vspl.addWidget(self.wcoll) 
         self.vspl.addWidget(self.wlogr) 
 
         self.mbox = QHBoxLayout() 
@@ -99,11 +85,8 @@ class CGWMain(QWZMQListener) :
 
         self.set_style()
         #self.set_tool_tips()
-
         #self.connect_signals_to_slots()
-
         #self.move(self.pos()) # + QPoint(self.width()+5, 0))
-        self.setWindowTitle("DAQ Control")
 
     def connect_signals_to_slots(self) :
         pass
@@ -163,7 +146,7 @@ class CGWMain(QWZMQListener) :
 
     def set_tool_tips(self) :
         pass
-        #self.butStop.setToolTip('Not implemented yet...')
+        #self.setToolTip('DAQ control')
 
 #--------------------
 
@@ -175,16 +158,16 @@ class CGWMain(QWZMQListener) :
 #--------------------
 
     def set_style(self) :
-
+        self.setWindowTitle("DAQ Control")
         self.layout().setContentsMargins(0,0,0,0)
         self.setMinimumSize(300,700)
 
         self.wconf.setFixedHeight(80)
 
-        #self.setGeometry(self.main_win_pos_x .value(),\
-        #                 self.main_win_pos_y .value(),\
-        #                 self.main_win_width .value(),\
-        #                 self.main_win_height.value())
+        self.setGeometry(self.main_win_pos_x .value(),\
+                         self.main_win_pos_y .value(),\
+                         self.main_win_width .value(),\
+                         self.main_win_height.value())
         #w_height = self.main_win_height.value()
 
         #self.layout().setContentsMargins(0,0,0,0)
@@ -229,6 +212,8 @@ class CGWMain(QWZMQListener) :
     def closeEvent(self, e) :
         print('%s.closeEvent' % self._name)
 
+        self.on_save()
+
         resp = confirm_or_cancel_dialog_box(parent=None,
                                             text='Close window?',\
                                             title='Confirm or cancel') 
@@ -246,7 +231,7 @@ class CGWMain(QWZMQListener) :
         #except : pass
 
         #self.wtab.close()
-        #self.on_save()
+
         try : 
           self.wconf.close()
           #self.wpart.close()
@@ -258,6 +243,15 @@ class CGWMain(QWZMQListener) :
 
         QWZMQListener.closeEvent(self, e)
 
+#--------------------
+        
+#    def __del__(self) :
+#        logger.debug('In CGConfigParameters d-tor')
+#        #if self.save_cp_at_exit.value() :
+#        if True :
+#            self.on_save()
+
+#--------------------
  
     def resizeEvent(self, e):
         logger.debug('CGWMain.resizeEvent: %s' % str(self.size()))
@@ -280,13 +274,13 @@ class CGWMain(QWZMQListener) :
         x,y,w,h = point.x(), point.y(), size.width(), size.height()
         msg = 'Save main window x,y,w,h : %d, %d, %d, %d' % (x,y,w,h)
         logger.info(msg) #, self._name)
-        #print(msg)
+        print(msg)
 
         #Save main window position and size
-        #self.main_win_pos_x .setValue(x)
-        #self.main_win_pos_y .setValue(y)
-        #self.main_win_width .setValue(w)
-        #self.main_win_height.setValue(h)
+        self.main_win_pos_x .setValue(x)
+        self.main_win_pos_y .setValue(y)
+        self.main_win_width .setValue(w)
+        self.main_win_height.setValue(h)
 
         spl_pos = self.vspl.sizes()[0]
         msg = 'Save main v-splitter position %d' % spl_pos
@@ -294,8 +288,8 @@ class CGWMain(QWZMQListener) :
 
         #cp.main_vsplitter.setValue(spl_pos)
 
-        #cp.printParameters()
-        #cp.saveParametersInFile() # moved to PSConfigParameters
+        cp.printParameters()
+        cp.saveParametersInFile()
 
         #if cp.save_log_at_exit.value() :
         #    pass
@@ -349,19 +343,21 @@ class CGWMain(QWZMQListener) :
                     s_transition   = body['transition']
                     s_config_alias = body['config_alias']
                     #====self.wdetr.set_but_state (s_state)
-                    self.wctrl.set_but_ctrls (s_state)
+                    self.wctrl.set_but_ctrls(s_state)
                     self.wctrl.set_transition(s_transition)
                     self.wconf.set_config_type(s_config_alias)
 
                     self.wcoll.update_table()
-                    logging.info('received state msg: %s and transition: %s' % (s_state, s_transition))
+                    logger.info('received state msg: %s and transition: %s' % (s_state, s_transition))
 
                 elif jo['header']['key'] == 'error' :
-                    logging.error('received error msg: %s' % jo['body']['err_info'])
+                    body = jo['body']
+                    logger.error('received error msg: %s' % body['err_info'])
+                    self.wctrl.set_but_ctrls('error')
 
                 else :
                     sj = json.dumps(jo, indent=2, sort_keys=False)
-                    logging.debug('received jason:\n%s' % sj)
+                    logger.debug('received jason:\n%s' % sj)
 
         except KeyError as ex:
              logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))
@@ -413,7 +409,7 @@ def proc_control_gui(parser=None) :
 #------------------------------
 
 if __name__ == "__main__" :
-
+    from psdaq.control_gui.CGDaqControl import DaqControlEmulator
     daq_control.set_daq_control(DaqControlEmulator())
 
     proc_control_gui()

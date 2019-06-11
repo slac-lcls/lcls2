@@ -52,7 +52,7 @@ class DaqControlEmulator:
     def setConfig(self, c) :      self.msg('setConfig');      return None
     def setState(self, s) :       self.msg('setState');
     def getState(self) :          self.msg('getState');       return 'emulator'
-    def getStatus(self) :         self.msg('getStatus');      return 'emulator', 'emulator'
+    def getStatus(self) :         self.msg('getStatus');      return 'emulator', 'emulator', 'alias'
     def setTransition(self, s) :  self.msg('setTransition');  return 'emulator' 
     def selectPlatform(self, s) : self.msg('selectPlatform'); return
     def getPlatform(self) :       self.msg('getPlatform');    return 'emulator'

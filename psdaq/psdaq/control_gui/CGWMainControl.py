@@ -28,16 +28,14 @@ logger = logging.getLogger(__name__)
 
 import psdaq.control_gui.Utils as gu
 
-from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox, QGridLayout, QHBoxLayout, QVBoxLayout, QSizePolicy
-     #QGridLayout, QLineEdit, QFileDialog, QWidget
+from PyQt5.QtWidgets import QGroupBox, QLabel, QCheckBox, QPushButton, QComboBox,\
+                            QGridLayout, QHBoxLayout, QVBoxLayout, QSizePolicy
+ 
 from PyQt5.QtCore import Qt, QTimer, QSize # pyqtSignal, QRectF, QPointF
 
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.Styles import style
-
-from psdaq.control_gui.CGDaqControl import daq_control, DaqControl #, worker_set_state
-#from psdaq.control_gui.DoWorkInThread import DoWorkInThread
-#from psdaq.control_gui.CGParameters import cp
+from psdaq.control_gui.CGDaqControl import daq_control, DaqControl
 
 #--------------------
 
@@ -65,7 +63,6 @@ class CGWMainControl(QGroupBox) :
         self.but_record.setAccessibleName(self.status_record[0])
         self.lab_record = QLabel('Recording')
 
-        #self.cbx_runc       = QCheckBox('Record Run')
         self.box_state      = QComboBox()
         self.but_transition = QPushButton('Unknown')
         self.but_ctrls      = QPushButton('Ready')
@@ -78,7 +75,6 @@ class CGWMainControl(QGroupBox) :
             self.hbox1.addStretch(1)
             self.hbox1.addWidget(self.lab_record)
             self.hbox1.addWidget(self.but_record)
-            #self.hbox1.addWidget(self.cbx_runc)
             self.hbox1.addStretch(1)
         
             self.hbox2 = QHBoxLayout() 
@@ -100,7 +96,6 @@ class CGWMainControl(QGroupBox) :
 
         else :
             self.grid = QGridLayout()
-            #self.grid.addWidget(self.cbx_runc,        0, 3, 1, 1)
             self.grid.addWidget(self.lab_record,      0, 0, 1, 1)
             self.grid.addWidget(self.but_record,      0, 4, 1, 1)
             self.grid.addWidget(self.lab_state,       1, 0, 1, 1)
@@ -116,7 +111,6 @@ class CGWMainControl(QGroupBox) :
 
         self.box_state.currentIndexChanged[int].connect(self.on_box_state)
         self.but_transition.clicked.connect(self.on_but_transition)
-        #self.cbx_runc.stateChanged[int].connect(self.on_cbx_runc)
         self.but_record.clicked.connect(self.on_but_record)
         self.but_ctrls.clicked.connect(self.on_but_ctrls)
 
@@ -134,7 +128,6 @@ class CGWMainControl(QGroupBox) :
 
     def set_tool_tips(self) :
         self.setToolTip('Configuration') 
-        #self.cbx_runc.setToolTip('Use checkbox to on/off recording.')
         s = '%s recording' % self.but_record.accessibleName()
         self.but_record.setToolTip(s)
         self.lab_record.setText(s+':')
