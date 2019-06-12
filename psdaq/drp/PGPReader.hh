@@ -16,6 +16,7 @@ public:
     PGPReader(const Parameters& para, MemPool& pool,
               Detector* det);
     void run(std::shared_ptr<MetricExporter> exporter);
+    void resetEventCounter();
     void shutdown();
 private:
     const Parameters* m_para;
@@ -25,6 +26,8 @@ private:
     uint32_t dest[MAX_RET_CNT_C];
     std::vector<std::thread> m_workerThreads;
     std::atomic<bool> m_terminate;
+    Batch m_batch;
+    uint32_t m_lastComplete;
 };
 
 }

@@ -151,6 +151,7 @@ void DrpApp::handlePhase1(const json &msg)
         xtc.damage = 0;
         xtc.extent = sizeof(XtcData::Xtc);
         error = m_det->configure(xtc);
+        m_pgpReader->resetEventCounter();
     }
 
     json answer;

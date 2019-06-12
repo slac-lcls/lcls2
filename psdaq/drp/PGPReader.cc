@@ -190,11 +190,8 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
     exporter->add("drp_port_xmit_rate", labels, MetricType::Rate,
                   [](){return 4*readInfinibandCounter("port_xmit_data");});
 
-    uint32_t lastComplete = 0; // 0xffffff;
+
     int64_t worker = 0L;
-    Batch batch;
-    batch.start = 1;
-    batch.size = 0;
 
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
@@ -218,38 +215,44 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
             event->mask |= (1 << lane);
 
             if (event->mask == m_para->laneMask) {
-                if (evtCounter != ((lastComplete + 1) & 0xffffff)) {
+                if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
                     printf("\033[0;31m");
                     printf("Fatal: Jump in complete l1Count %u -> %u | difference %d\n",
-                           lastComplete, evtCounter, evtCounter - lastComplete);
+                           m_lastComplete, evtCounter, evtCounter - m_lastComplete);
                     printf("\033[0m");
                     throw "Jump in event counter";
 
-                    for (unsigned e=lastComplete+1; e<evtCounter; e++) {
+                    for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
                         PGPEvent* brokenEvent = &m_pool->pgpEvents[e % m_pool->nbuffers];
-                        // printf("broken event:  %08x\n", brokenEvent->mask);
+                        printf("broken event:  %08x\n", brokenEvent->mask);
                         brokenEvent->mask = 0;
 
                     }
                 }
-                lastComplete = evtCounter;
+                m_lastComplete = evtCounter;
                 nevents++;
-                batch.size++;
+                m_batch.size++;
 
                 const Pds::TimingHeader* timingHeader = reinterpret_cast<const Pds::TimingHeader*>(data);
                 XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
 
                 // send batch to worker if batch is full or if it's a transition
-                if ((batch.size == m_para->batchSize) || (transitionId != XtcData::TransitionId::L1Accept)) {
-                    m_pool->workerInputQueues[worker % m_para->nworkers].push(batch);
+                if ((m_batch.size == m_para->batchSize) || (transitionId != XtcData::TransitionId::L1Accept)) {
+                    m_pool->workerInputQueues[worker % m_para->nworkers].push(m_batch);
                     worker++;
-                    batch.size = 0;
-                    batch.start = evtCounter + 1;
-
+                    m_batch.start = evtCounter + 1;
+                    m_batch.size = 0;
                 }
             }
         }
     }
+}
+
+void PGPReader::resetEventCounter()
+{
+    m_lastComplete = 0; // 0xffffff;
+    m_batch.start = 1;
+    m_batch.size = 0;
 }
 
 void PGPReader::shutdown()
