@@ -131,7 +131,6 @@ void workerFunc(const Parameters&para, MemPool& pool,
             // fill in dgram header
             dgram->seq = timingHeader->seq;
             dgram->env = timingHeader->env;
-            dgram->xtc.src = XtcData::Src(det->nodeId);
 
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {
@@ -139,9 +138,13 @@ void workerFunc(const Parameters&para, MemPool& pool,
             }
             // transitions
             else {
+                // copy the temporary xtc created on phase 1 of the transition
+                // into the real location
                 XtcData::Xtc& transitionXtc = det->transitionXtc();
                 memcpy(&dgram->xtc, &transitionXtc, transitionXtc.extent);
             }
+            // set the src field for the event builders
+            dgram->xtc.src = XtcData::Src(det->nodeId);
         }
 
         outputQueue.push(batch);
