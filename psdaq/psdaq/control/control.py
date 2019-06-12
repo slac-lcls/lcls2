@@ -1035,7 +1035,7 @@ class CollectionManager():
     def condition_disable(self):
         # order matters: set Disable PV before others transition
         if not self.group_run(False):
-            logging.error('condition_enable(): group_run(False) failed')
+            logging.error('condition_disable(): group_run(False) failed')
             return False
 
         # phase 1
