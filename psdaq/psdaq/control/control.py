@@ -425,6 +425,7 @@ class CollectionManager():
         self.pvGroupL0Enable =  pv_xpm_base+':GroupL0Enable'
         self.pvGroupL0Disable = pv_xpm_base+':GroupL0Disable'
         self.pvGroupMsgInsert = pv_xpm_base+':GroupMsgInsert'
+        self.pvGroupL0Reset = pv_xpm_base+':GroupL0Reset'
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
@@ -956,6 +957,7 @@ class CollectionManager():
 
         # phase 2
         # ...clear readout
+        self.pv_put(self.pvGroupL0Reset, self.groups)
         for pv in self.pvListMsgHeader:
             self.pv_put(pv, DaqControl.transitionId['ClearReadout'])
         self.pv_put(self.pvGroupMsgInsert, self.groups)
