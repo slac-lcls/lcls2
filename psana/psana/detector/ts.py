@@ -55,4 +55,4 @@ class ts_ts_1_2_3(DetectorImpl):
         seq = tmp.view('uint16')
         # remove the two extra bytes at the end, perhaps caused by
         # pgp alignment issues?
-        return seq[:-2]
+        return seq[:-1]
