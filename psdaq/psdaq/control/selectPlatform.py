@@ -5,11 +5,22 @@ selectPlatform command
 from psdaq.control.control import DaqControl
 import pprint
 import argparse
+import string
+
+def common_match(alias, arglist):
+    return arglist is not None and alias in arglist
+
+def drp_match(alias, arglist):
+    if arglist is not None:
+        for arg in arglist:
+            if (arg == alias) or (arg == alias.rstrip(string.digits)):
+                return True
+    return False
 
 def main():
 
     # Process arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(epilog='For multisegment detector, specify drp alias without numeric suffix.')
     parser.add_argument('-p', metavar='PLATFORM', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=2000,
@@ -42,21 +53,28 @@ def main():
                 for k, v in body[level].items():
                     alias = v['proc_info']['alias']
 
-                    if args.select_all or (args.s is not None and alias in args.s):
-                        if level == 'drp':
-                            # select drp
+                    # select ...
+                    if level == 'drp':
+                        if args.select_all or drp_match(alias, args.s):
                             if v['active'] != 1 or v['det_info']['readout'] != readout:
                                 changed = True
                                 v['active'] = 1
                                 v['det_info']['readout'] = readout
-                        else:
-                            # select teb or meb
+                    else:
+                        if args.select_all or common_match(alias, args.s):
                             if v['active'] != 1:
                                 changed = True
                                 v['active'] = 1
 
-                    if args.u is not None and alias in args.u:
-                        # unselect drp or teb or meb
+                    # unselect ...
+                    match = False
+                    if level == 'drp':
+                        if drp_match(alias, args.u):
+                            match = True
+                    else:
+                        if common_match(alias, args.u):
+                            match = True
+                    if match:
                         if v['active'] != 0:
                             changed = True
                             v['active'] = 0
