@@ -153,11 +153,11 @@ void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
     int lane = __builtin_ffs(event->mask) - 1;
     // there should be only one lane of data in the timing system
     uint32_t dmaIndex = event->buffers[lane].index;
-    unsigned data_size = event->buffers[lane].size;
+    unsigned data_size = event->buffers[lane].size - sizeof(Pds::TimingHeader);
     unsigned shape[MaxRank];
     shape[0] = data_size;
     Array<uint8_t> arrayT = ts.allocate<uint8_t>(TSDef::data, shape);
-    memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex], data_size);
+    memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
 }
 
 }

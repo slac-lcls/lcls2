@@ -47,14 +47,14 @@ static PyObject* timestamp(PySeqObject* self) {
   return PyLong_FromLong(self->seq->stamp().value());
 }
 
-static PyObject* pulse(PySeqObject* self) {
+static PyObject* pulseid(PySeqObject* self) {
     return PyLong_FromLong(self->seq->pulseId().value());
 }
 
 static PyMethodDef seq_methods[] = {
     {"service", (PyCFunction)service, METH_NOARGS, "service"},
     {"timestamp", (PyCFunction)timestamp, METH_NOARGS, "timestamp"},
-    {"pulse", (PyCFunction)pulse, METH_NOARGS, "pulse"},
+    {"pulseid", (PyCFunction)pulseid, METH_NOARGS, "pulseid"},
     {NULL}  /* Sentinel */
 };
 

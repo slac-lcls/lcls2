@@ -65,6 +65,8 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
                 # currently the hsd only has 1 channel (zero)
                 # will have to revisit in the future
                 enable = getattr(getattr(seg_config,'hsdConfig'),'enable')
+                # user could make an error and two identical segments
+                assert seg not in channels
                 if hasattr(enable,'value'):
                     # the 5GHz hsd case with one enable stored as an enum
                     if enable.value==1: channels[seg] = [0]
@@ -103,6 +105,7 @@ cdef class cyhsd_base_1_2_3:
         self._peaksDict = {}
         self._fexPeaks = []
 
+    # see psalg/digitizer/Hsd.hh for description of env information
     def _setEnv(self, cnp.ndarray[env_t, ndim=1, mode="c"] env):
         self.cptr.init(&env[0])
 
@@ -125,7 +128,10 @@ cdef class cyhsd_base_1_2_3:
         self._peaksDict = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
-        self._setEnv(self._hsdsegments[0].env)
+        # FIXME: this line assumes all the env values are the same
+        # (samples/streams/channels).  this chooses the value in the
+        # first segment.  see psalg/digitizer/Hsd.hh for info about env
+        self._setEnv(next(iter(self._hsdsegments.values())).env)
         self._evt = evt
         for iseg in self._hsdsegments:
             for chanNum in xrange(16): # Maximum channels: 16

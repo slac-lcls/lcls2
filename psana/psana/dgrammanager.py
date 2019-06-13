@@ -74,7 +74,7 @@ class DgramManager():
         # pulse_id can be used to filter xtc_files
         if pulse_id:
             sel_indices = [i for i, config in enumerate(self.configs) \
-                    if config.seq.pulse() == pulse_id]
+                    if config.seq.pulseid() == pulse_id]
             self.configs = [self.configs[i] for i in sel_indices]
             self.xtc_files = [self.xtc_files[i] for i in sel_indices]
             self.fds = [self.fds[i] for i in sel_indices]

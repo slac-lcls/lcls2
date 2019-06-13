@@ -1,6 +1,5 @@
 from psalg.configdb.get_config import get_config
 from p4p.client.thread import Context
-from psdaq.control.collection import DaqControl
 
 import json
 import time
@@ -26,7 +25,7 @@ class ts_connector:
 
         # must come after clear readout because clear readout increments
         # the event counters, and the pgp eb needs them to start from zero
-        self.l0_count_reset()
+        #self.l0_count_reset()
 
         # at the moment, clearing and setting the link enables messes
         # up the link, so commenting out for now.

@@ -215,6 +215,7 @@ class RunSerial(Run):
                 filter_callback=kwargs['filter_callback'])
         xtc_files, smd_files, other_files = run_src
         self.dm = DgramManager(xtc_files)
+        self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
         self.epics_dm = DgramManager(other_files, pulse_id=0xffff)
         self.epics_reader = EpicsReader(self.epics_dm.fds)
