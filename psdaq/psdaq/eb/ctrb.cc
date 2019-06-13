@@ -714,8 +714,8 @@ int CtrbApp::_parseConnectionParams(const json& body)
   printf("\nParameters of Contributor ID %d:\n",             _tebPrms.id);
   printf("  Thread core numbers:        %d, %d\n",           _tebPrms.core[0], _tebPrms.core[1]);
   printf("  Partition:                  %d\n",               _tebPrms.partition);
-  printf("  Receipient for group:     0x%02x\n",             _tebPrms.readoutGroup);
-  printf("  Contractor for group:     0x%02x\n",             _tebPrms.contractor);
+  printf("  Readout group receipient: 0x%02x\n",             _tebPrms.readoutGroup);
+  printf("  Readout group contractor: 0x%02x\n",             _tebPrms.contractor);
   printf("  Bit list of TEBs:         0x%016lx, cnt: %zd\n", _tebPrms.builders,
                                                              std::bitset<64>(_tebPrms.builders).count());
   printf("  Number of MEBs:             %zd\n",              _mebPrms.addrs.size());

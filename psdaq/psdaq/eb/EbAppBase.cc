@@ -195,7 +195,7 @@ int EbAppBase::process()
     const char*     knd = (ImmData::buf(flg) == ImmData::Buffer)
                         ? "buffer"
                         : TransitionId::name(idg->seq.service());
-    printf("EbAp rcvd %6ld %15s[%4d]    @ "
+    printf("EbAp rcvd %6ld %15s[%5d]    @ "
            "%16p, ctl %02x, pid %014lx,          src %2d, env %08x, data %08lx, ext %4d\n",
            _bufferCnt, knd, idx, idg, ctl, pid, lnk->id(), env, data, idg->xtc.extent);
   }

@@ -357,8 +357,6 @@ void Teb::process(EbEvent* event)
     {
       result[WRT_IDX] = 1;              // Always write out transitions
       result[MON_IDX] = 1;              // Always monitor transitions
-
-      post(batch, _receivers);
     }
 
     if (_verbose > 2) // || result[1])
@@ -369,9 +367,14 @@ void Teb::process(EbEvent* event)
       size_t   sz  = sizeof(*rdg) + rdg->xtc.sizeofPayload();
       unsigned src = rdg->xtc.src.value();
       unsigned env = rdg->env;
-      printf("TEB processed              result  [%4d] @ "
+      printf("TEB processed              result  [%5d] @ "
              "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, res [%08x, %08x]\n",
              idx, rdg, ctl, pid, sz, src, env, result[0], result[1]);
+    }
+
+    if (!rdg->seq.isEvent())            // Non-event
+    {
+      post(batch, _receivers);
     }
   }
   else
@@ -385,14 +388,6 @@ void Teb::process(EbEvent* event)
     }
     while (++ctrb != last);
 
-    // Even though no response is being emitted for this event, in the case that
-    // it's a transition, any in-progress batch must be flushed
-    if (!dg->seq.isEvent())
-    {
-      Batch* batch = _batMan.fetch();
-      if (batch)  post(batch, _receivers);
-    }
-
     if (_verbose > 2)
     {
       uint64_t pid = dg->seq.pulseId().value();
@@ -403,6 +398,14 @@ void Teb::process(EbEvent* event)
       printf("TEB processed           non-event         @ "
              "%16p, ctl %02x, pid %014lx, sz %4zd, src %02d, env %08x\n",
              dg, ctl, pid, sz, src, env);
+    }
+
+    // Even though no response is being emitted for this event, in the case that
+    // it's a transition, any in-progress batch must be flushed
+    if (!dg->seq.isEvent())
+    {
+      Batch* batch = _batMan.fetch();
+      if (batch)  post(batch, _receivers);
     }
   }
 }
@@ -429,8 +432,8 @@ void Teb::post(const Batch* batch, uint64_t& receivers)
     {
       uint64_t pid    = batch->id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
-      printf("TEB posts           %6ld result  [%4d] @ "
-             "%16p,         pid %014lx,               sz %4zd, dst %2d @ %16p\n",
+      printf("TEB posts           %6ld result  [%5d] @ "
+             "%16p,         pid %014lx, sz %4zd, dst %2d @ %16p\n",
              _batchCount, idx, buffer, pid, extent, dst, rmtAdx);
     }
 
@@ -631,6 +634,18 @@ void TebApp::handleReset(const json& msg)
   }
 }
 
+static void _printGroups(unsigned groups, const u64arr_t& array)
+{
+  while (groups)
+  {
+    unsigned group = __builtin_ffs(groups) - 1;
+    groups &= ~(1 << group);
+
+    printf("%d: 0x%016lx  ", group, array[group]);
+  }
+  printf("\n");
+}
+
 int TebApp::_parseConnectionParams(const json& body)
 {
   const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_TEBS + MAX_MEBS;
@@ -654,6 +669,9 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.addrs.clear();
   _prms.ports.clear();
 
+  _prms.contractors.fill(0);
+  _prms.receivers.fill(0);
+
   uint16_t groups = 0;
   if (body.find("drp") != body.end())
   {
@@ -670,50 +688,16 @@ int TebApp::_parseConnectionParams(const json& body)
       _prms.addrs.push_back(address);
       _prms.ports.push_back(std::string(std::to_string(drpPortBase + drpId)));
 
-      groups |= 1 << unsigned(it.value()["det_info"]["readout"]);
+      auto group = unsigned(it.value()["det_info"]["readout"]);
+      _prms.contractors[group] |= 1ul << drpId;
+      _prms.receivers[group]   |= 1ul << drpId;
+      groups |= 1 << group;
     }
   }
   if (_prms.addrs.size() == 0)
   {
     fprintf(stderr, "Missing required DRP address(es)\n");
     return 1;
-  }
-
-  _prms.contractors.fill(0);
-  _prms.receivers.fill(0);
-
-  while (groups)
-  {
-    unsigned group = __builtin_ffs(groups) - 1;
-    groups &= ~(1 << group);
-
-    uint64_t contractors = _prms.contributors; // Revisit: Value to come from CfgDb
-    uint64_t receivers   = _prms.contributors; // Revisit: Value to come from CfgDb
-
-    //if (group == 0)  contractors &= ~(1ul << 1); // Take out DRP 1 for a test
-
-    if (!contractors)
-    {
-      fprintf(stderr, "No trigger %s found for readout group %d\n",
-              "input data contractors", group);
-      return 1;
-    }
-    if (!receivers)
-    {
-      fprintf(stderr, "No trigger %s found for readout group %d\n",
-              "result receivers", group);
-      return 1;
-    }
-    if ((contractors & receivers) != contractors)
-    {
-      fprintf(stderr, "Readout group %d's receivers contract (%016lx) "
-                      "must also contain its contractors (%016lx)\n",
-              group, receivers, contractors);
-      return 1;
-    }
-
-    _prms.contractors[group] = contractors;
-    _prms.receivers[group]   = receivers;
   }
 
   _prms.numMrqs = 0;
@@ -725,17 +709,19 @@ int TebApp::_parseConnectionParams(const json& body)
     }
   }
 
-  printf("\nParameters of TEB ID %d:\n",                     _prms.id);
-  printf("  Thread core numbers:        %d, %d\n",           _prms.core[0], _prms.core[1]);
-  printf("  Partition:                  %d\n",               _prms.partition);
-  printf("  Bit list of contributors: 0x%016lx, cnt: %zd\n", _prms.contributors,
-                                                             std::bitset<64>(_prms.contributors).count());
-  printf("  Number of MEB requestors:   %d\n",               _prms.numMrqs);
-  printf("  Batch duration:           0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
-  printf("  Batch pool depth:           %d\n",               MAX_BATCHES);
-  printf("  Max # of entries / batch:   %d\n",               MAX_ENTRIES);
-  printf("  Max result     Dgram size:  %zd\n",              _prms.maxResultSize);
-  printf("  Max transition Dgram size:  %zd\n",              _prms.maxTrSize);
+  printf("\nParameters of TEB ID %d:\n",                      _prms.id);
+  printf("  Thread core numbers:         %d, %d\n",           _prms.core[0], _prms.core[1]);
+  printf("  Partition:                   %d\n",               _prms.partition);
+  printf("  Bit list of contributors:  0x%016lx, cnt: %zd\n", _prms.contributors,
+                                                              std::bitset<64>(_prms.contributors).count());
+  printf("  Readout group contractors:   ");                  _printGroups(groups, _prms.contractors);
+  printf("  Readout group receivers:     ");                  _printGroups(groups, _prms.receivers);
+  printf("  Number of MEB requestors:    %d\n",               _prms.numMrqs);
+  printf("  Batch duration:            0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
+  printf("  Batch pool depth:            %d\n",               MAX_BATCHES);
+  printf("  Max # of entries / batch:    %d\n",               MAX_ENTRIES);
+  printf("  Max result     Dgram size:   %zd\n",              _prms.maxResultSize);
+  printf("  Max transition Dgram size:   %zd\n",              _prms.maxTrSize);
   printf("\n");
   printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
   printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);

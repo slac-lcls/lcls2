@@ -54,7 +54,10 @@ namespace Pds {
       EbEpoch*          _discard(EbEpoch*);
       void              _fixup(EbEvent*);
       EbEvent*          _event(const XtcData::Dgram*, EbEvent* after, unsigned prm);
-      void              _flush(EbEvent*);
+      bool              _lookAhead(const EbEpoch*,
+                                   const EbEvent*,
+                                   const EbEvent* const due) const;
+      const EbEvent*    _flush(const EbEvent* const due);
       void              _retire(EbEvent*);
       EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*, EbEvent*, unsigned prm);
     private:
@@ -66,6 +69,7 @@ namespace Pds {
       std::vector<EbEpoch*> _epochLut;      // LUT of allocated epochs
       GenericPool           _eventFreelist; // Freelist for new events
       std::vector<EbEvent*> _eventLut;      // LUT of allocated events
+      const EbEvent*        _due;           // Newest due event, if any
       unsigned              _verbose;       // Print progress info
       uint64_t              _tmoEvtCnt;     // Count of timed out events
     };

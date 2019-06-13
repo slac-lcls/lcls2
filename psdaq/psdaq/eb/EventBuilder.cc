@@ -27,6 +27,7 @@ EventBuilder::EventBuilder(unsigned epochs,
   _epochLut(epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
+  _due(nullptr),
   _verbose(verbose),
   _tmoEvtCnt(0)
 {
@@ -90,6 +91,8 @@ void EventBuilder::clear()
     *it = nullptr;
   for (auto it = _eventLut.begin(); it != _eventLut.end(); ++it)
     *it = nullptr;
+
+  _due = nullptr;
 
   _tmoEvtCnt = 0;
 }
@@ -277,11 +280,38 @@ void EventBuilder::_retire(EbEvent* event)
   delete event;
 }
 
-void EventBuilder::_flush(EbEvent* due)
+bool EventBuilder::_lookAhead(const EbEpoch*       epoch,
+                              const EbEvent*       event,
+                              const EbEvent* const due) const
+{
+  const EbEpoch* const lastEpoch = _pending.empty();
+  const uint16_t       rog       = event->creator()->readoutGroups();
+
+  do
+  {
+    const EbEvent* const lastEvent = epoch->pending.empty();
+    const EbEvent*       event     = event->forward();
+
+    while (event != lastEvent)
+    {
+      if ((event->creator()->readoutGroups() == rog) && !event->_remaining)
+        return true;
+
+      if (event == due)
+        return false;
+
+      event = event->forward();
+    }
+  }
+  while (epoch = epoch->forward(), epoch != lastEpoch);
+
+  return false;
+}
+
+const EbEvent* EventBuilder::_flush(const EbEvent* const due)
 {
   const EbEpoch* const lastEpoch = _pending.empty();
   EbEpoch*             epoch     = _pending.forward();
-  const EbEvent*       last_due  = due;
 
   do
   {
@@ -290,15 +320,21 @@ void EventBuilder::_flush(EbEvent* due)
 
     while (event != lastEvent)
     {
-      // Retire all events up to the newest complete event.
-      // Since contributions show up in time order and last_due is a newer
-      // complete event, older incomplete events can be retired.
-      if (event->_remaining)  _fixup(event);
-      if (event == last_due)
+      // Retire all events up to a newer event, limited by due.
+      // Since EbEvents are created in time order, older incomplete events can
+      // be fixed up and retired when a newer complete event in the same readout
+      // group can be found.
+      if (event->_remaining)
+      {
+        if (!_lookAhead(epoch, event, due))  return due;
+
+        _fixup(event);
+      }
+      if (event == due)
       {
         _retire(event);
 
-        return;
+        return nullptr;
       }
 
       EbEvent* next = event->forward();
@@ -309,27 +345,33 @@ void EventBuilder::_flush(EbEvent* due)
     }
   }
   while (epoch = epoch->forward(), epoch != lastEpoch);
+
+  return nullptr;
 }
 
 void EventBuilder::expired()            // Periodically called upon a timeout
 {
-  EbEpoch*             epoch = _pending.forward();
-  const EbEpoch* const empty = _pending.empty();
-  EbEvent*             due   = nullptr;
+  const EbEpoch* const lastEpoch = _pending.empty();
+  EbEpoch*             epoch     = _pending.forward();
+  EbEvent*             due       = nullptr;
 
-  while (epoch != empty)
+  while (epoch != lastEpoch)
   {
-    EbEvent*             event = epoch->pending.forward();
-    const EbEvent* const last  = epoch->pending.empty();
+    const EbEvent* const lastEvent = epoch->pending.empty();
+    EbEvent*             event     = epoch->pending.forward();
 
-    while (event != last)
+    while (event != lastEvent)
     {
-      if (event->_remaining && !event->_alive())
+      // Time out all queued events, including those that are complete but are
+      // blocked from flushing due to an older incomplete event from another RoG
+      if (!event->_alive())
       {
-        //printf("Event timed out: %014lx, size %zu, remaining %016lx\n",
+        //printf("Event timed out: %014lx, readout group %u, remaining %016lx\n",
         //       event->sequence(),
-        //       event->size(),
+        //       event->creator()->readoutGroups(),
         //       event->_remaining);
+
+        if (event->_remaining)  _fixup(event);
 
         due = event;
 
@@ -342,6 +384,7 @@ void EventBuilder::expired()            // Periodically called upon a timeout
     epoch = epoch->forward();
   }
 
+  // _flush() can modify links, so must be called outside of the above loops
   if (due)  _flush(due);
 }
 
@@ -371,9 +414,9 @@ void EventBuilder::expired()            // Periodically called upon a timeout
 
 void EventBuilder::process(const Dgram* ctrb, unsigned prm)
 {
-  EbEpoch* epoch = _match(ctrb->seq.pulseId().value());
-  EbEvent* event = epoch->pending.forward();
-  EbEvent* due   = nullptr;
+  EbEpoch*       epoch = _match(ctrb->seq.pulseId().value());
+  EbEvent*       event = epoch->pending.forward();
+  const EbEvent* due   = nullptr;
 
   while (true)
   {
@@ -384,7 +427,7 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
       uint64_t pid = ctrb->seq.pulseId().value();
       size_t   sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
       unsigned src = ctrb->xtc.src.value();
-      printf("EB found          a  ctrb                 @ "
+      printf("EB found          a  ctrb                  @ "
              "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, parm %08x\n",
              ctrb, ctl, pid, sz, src, env, prm);
     }
@@ -397,7 +440,13 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
     ctrb = reinterpret_cast<const Dgram*>(ctrb->xtc.next());
   }
 
-  if (due)  _flush(due);
+  if (due)
+  {
+    // Attempt to flush up to and including the newest due event found so far
+    if (_due && (_due->sequence() > due->sequence()))  due = _due;
+
+    _due = _flush(due);
+  }
 }
 
 /*

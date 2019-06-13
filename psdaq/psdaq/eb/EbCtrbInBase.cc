@@ -174,7 +174,7 @@ int EbCtrbInBase::process(TebContributor& ctrb)
     unsigned   ctl     = bdg->seq.pulseId().control();
     unsigned   env     = bdg->env;
     BatchFifo& pending = ctrb.pending();
-    printf("CtrbIn  rcvd        %6ld result  [%4d] @ "
+    printf("CtrbIn  rcvd        %6ld result  [%5d] @ "
            "%16p, ctl %02x, pid %014lx,          src %2d, env %08x, E %d %zd, result %p\n",
            _batchCount, idx, bdg, ctl, pid, lnk->id(), env, pending.empty(),
            pending.count(), ctrb.batch(idx)->result());
