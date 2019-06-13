@@ -27,6 +27,11 @@ namespace Pds {
       void setLocalId (unsigned v);
       void dump() const;
     public:
+      void start   (unsigned fmc);
+      void stop    (unsigned fmc);
+      void setupDaq(unsigned partition, unsigned fmc);
+      unsigned running() const;
+    public:
       uint32_t irqEnable;
       uint32_t irqStatus;
       uint32_t partitionAddr;
@@ -34,14 +39,14 @@ namespace Pds {
       uint32_t csr; 
       //   CSR
       // [ 0:0]  count reset
-      // [ 1:1]  dma size histogram enable
+      // [ 1:1]  dma size histogram enable (unused)
       // [ 2:2]  dma test pattern enable
       // [ 3:3]  adc sync reset
       // [ 4:4]  dma reset
       // [ 5:5]  fb phy reset
       // [ 6:6]  fb pll reset
       // [ 8:15] trigger bit mask shift
-      // [31:31] acqEnable
+      // [31:30] acqEnable per FMC
       uint32_t acqSelect;
       //   AcqSelect
       // [12: 0]  rateSel  :   [7:0] eventCode
@@ -50,10 +55,11 @@ namespace Pds {
       //   Control
       // [7:0] channel enable mask
       // [8:8] interleave
-      // [19:16] partition
-      // [20]  inhibit
-      uint32_t samples;       //  Must be a multiple of 16
-      uint32_t prescale;
+      // [19:16] partition FMC 0
+      // [23:20] partition FMC 1
+      // [24]  inhibit
+      uint32_t samples;       //  Must be a multiple of 16 [v1 only]
+      uint32_t prescale;      //  Sample prescaler [v1 only]
       //   Prescale
       //   Values are mapped as follows:
       //  Value    Rate Divisor    Nominal Rate

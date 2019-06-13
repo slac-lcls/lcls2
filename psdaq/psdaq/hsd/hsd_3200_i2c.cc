@@ -39,7 +39,6 @@ void usage(const char* p) {
 int main(int argc, char** argv) {
 
   extern char* optarg;
-  char* endptr;
 
   const char* devName = "/dev/qadca";
   int c;

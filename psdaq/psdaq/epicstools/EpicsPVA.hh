@@ -110,21 +110,21 @@ namespace Pds_Epics {
 
     // Get the PV's value as the specified raw type using EPICS's comversion functions.
     // For example, uint32 val = _pv->getScalarAs<pvUInt>();
-    template<typename T> T getScalarAs() const {
-        if(_strct != NULL) return _strct->getSubField<pvd::PVScalar>("value")->getAs<T>();
+    template<typename T> T getScalarAs(const char* field = "value") const {
+        if(_strct != NULL) return _strct->getSubField<pvd::PVScalar>(field)->getAs<T>();
         return 0;
     }
 
-    template<typename T> void getVectorAs(pvd::shared_vector<const T> &vec) const {
-        if(_strct != NULL) _strct->getSubField<pvd::PVScalarArray>("value")->getAs<T>(vec);
+    template<typename T> void getVectorAs(pvd::shared_vector<const T> &vec, const char* field="value") const {
+        if(_strct != NULL) _strct->getSubField<pvd::PVScalarArray>(field)->getAs<T>(vec);
     }
     // This is not an efficient method; if the types match we should not do any copying.
     // However; this is how many, many macros are written; so this is a convienience method.
     // For a more efficient potentially zero copy call; use getVectorAs.
-    template<typename T> T getVectorElemAt(size_t i) const {
+    template<typename T> T getVectorElemAt(size_t i, const char* field="value") const {
         if(_strct == NULL) return 0;
         pvd::shared_vector<const T> vec;
-        _strct->getSubField<pvd::PVScalarArray>("value")->getAs<T>(vec);
+        _strct->getSubField<pvd::PVScalarArray>(field)->getAs<T>(vec);
         return vec[i];
     }
 

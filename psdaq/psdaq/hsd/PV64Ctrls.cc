@@ -41,8 +41,10 @@ namespace Pds {
       PVC_Routine(PV64Ctrls& pvc, Action a) : _pvc(pvc), _a(a) {}
       void routine() {
         switch(_a) {
-        case Configure  : _pvc.configure(); break;
-        case Reset      : _pvc.reset(); break;
+        case Configure  : _pvc.configure (); break;
+        case ConfigureA : _pvc.configure(0); break;
+        case ConfigureB : _pvc.configure(1); break;
+        case Reset      : _pvc.reset     (); break;
         default: break;
         }
       }
@@ -51,7 +53,6 @@ namespace Pds {
       Action   _a;
     };
       
-
 #define Q(a,b)      a ## b
 #define PV(name)    Q(name, PV)
 
@@ -86,6 +87,8 @@ namespace Pds {
     CPV(State       ,{}, {})
     CPV(Reset       ,{if (getScalarAs<unsigned>()) _ctrl.call(Reset      );}, {})
     CPV(PgpLoopback ,{_ctrl.loopback (getScalarAs<unsigned>()!=0);   }, {})
+    CPV(ConfigA     ,{_ctrl.call(ConfigureA);}, {})
+    CPV(ConfigB     ,{_ctrl.call(ConfigureB);}, {})
 
     PV64Ctrls::PV64Ctrls(Module64& m, Pds::Task& t) : _pv(0), _m(m), _task(t) {}
     PV64Ctrls::~PV64Ctrls() {}
@@ -100,6 +103,9 @@ namespace Pds {
 
       _state_pv = new EpicsPVA((pvbase+"BASE:READY").c_str());
       _setState(InTransition);
+
+      _readyA = new EpicsPVA((pvbase+"DRP:A:READY").c_str());
+      _readyB = new EpicsPVA((pvbase+"DRP:B:READY").c_str());
 
       for(unsigned i=0; i<_pv.size(); i++)
         delete _pv[i];
@@ -136,6 +142,9 @@ namespace Pds {
       NPV(Reset      ,"RESET");
       NPV(PgpLoopback,"PGPLOOPBACK");
 
+      NPV(ConfigA    ,"DRP:A:CONFIG");
+      NPV(ConfigB    ,"DRP:B:CONFIG");
+
       _m.setAdcMux(0x3);  // enable header cache for both channels
 
       _setState(Unconfigured);
@@ -149,7 +158,9 @@ namespace Pds {
                    FullEvt, FullSize,
                    TestPattern, SyncELo, SyncEHi, SyncOLo, SyncOHi, 
                    TrigShift, PgpSkpIntvl,
-                   IntTrigVal, IntAFullVal, Partition, LastPv };
+                   IntTrigVal, IntAFullVal, Partition, 
+                   ApplyConfig, ResetPv, PgpLoopback, 
+                   ConfigA, ConfigB, LastPv };
 
     Module64& PV64Ctrls::module() { return _m; }
 
@@ -159,7 +170,7 @@ namespace Pds {
       _m.stop();
 
       // Update all necessary PVs
-      for(unsigned i=0; i<LastPv; i++) {
+      for(unsigned i=0; i<ConfigA; i++) {
         PvServer* pv = static_cast<PvServer*>(_pv[i]);
         while (!pv->EpicsPVA::connected()) {
           printf("pv[%u] not connected\n",i);
@@ -178,7 +189,7 @@ namespace Pds {
           printf("\n");
           i++;
         }
-        while(i<LastPv) {
+        while(i<ConfigA) {
           printf("pv[%u] : %u\n",i,_pv[i]->getScalarAs<unsigned>());
           i++;
         }
@@ -316,6 +327,100 @@ namespace Pds {
 
       _m.start();
       _setState(Configured);
+    }
+
+    void PV64Ctrls::configure(unsigned fmc) {
+
+#define PVGET(name) pv.getScalarAs<unsigned>(#name)
+
+      Pds_Epics::EpicsPVA& pv = *_pv[(fmc==0) ? ConfigA:ConfigB];
+
+      QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x80000);
+      base.stop(fmc);
+
+      if (PVGET(enable)==1) {
+
+        unsigned channelMask = (1<<fmc);
+
+        //      base.init();   // Cycles DMA reset
+        //      base.resetCounts();
+
+        { std::vector<Pgp*> pgp = _m.pgp();
+          for(unsigned i=4*fmc; i<4*(fmc+1); i++)
+            pgp[i]->resetCounts(); }
+
+        unsigned group = PVGET(readoutGroup);
+        base.setupDaq(group,fmc);
+
+        // configure fex's for each channel
+        unsigned fullEvt  = _pv[FullEvt ]->getScalarAs<unsigned>();
+        unsigned fullSize = _pv[FullSize]->getScalarAs<unsigned>();
+        unsigned sumStreamMask=0;
+        {
+          FexCfg& fex = _m.fex()[fmc];
+          unsigned streamMask=0;
+          if (PVGET(raw_prescale)) {
+            streamMask |= (1<<0);
+            fex._base[0].setGate(PVGET(raw_start),
+                                 PVGET(raw_gate));
+            fex._base[0].setFull(fullSize,fullEvt);
+            fex._base[0]._prescale=PVGET(raw_prescale)-1;
+          }
+          if (PVGET(fex_prescale)) {
+            streamMask |= (1<<1);
+            fex._base[1].setGate(PVGET(fex_start),
+                                 PVGET(fex_gate));
+            fex._base[1].setFull(fullSize,fullEvt);
+            fex._base[1]._prescale=PVGET(fex_prescale)-1;
+            fex._stream[1].parms[0].v=PVGET(fex_ymin);
+            fex._stream[1].parms[1].v=PVGET(fex_ymax);
+            fex._stream[1].parms[2].v=PVGET(fex_xpre);
+            fex._stream[1].parms[3].v=PVGET(fex_xpost);
+          }
+          fex._streams= streamMask;
+          sumStreamMask |= streamMask;
+        }
+    
+#define PRINT_FEX_FIELD(title,arg,op) {                                 \
+          printf("%12.12s:",title);                                     \
+          for(unsigned i=0,mask=channelMask; mask; i++,mask>>=1) {      \
+            if ((mask&1)==0) continue;                                  \
+            for(unsigned j=0; sumStreamMask>>j; j++)                    \
+              printf("%c%u",                                            \
+                     j==0?' ':'/',                                      \
+                     fex[i]._base[j].arg op);                           \
+          }                                                             \
+          printf("\n"); }                             
+
+        const FexCfg* fex = _m.fex();
+        if (sumStreamMask) {
+          PRINT_FEX_FIELD("GateBeg", _gate, &0x3fff);
+          PRINT_FEX_FIELD("GateLen", _gate, >>16&0x3fff);
+          PRINT_FEX_FIELD("FullRow", _full, &0xffff);
+          PRINT_FEX_FIELD("FullEvt", _full, >>16&0x1f);
+          PRINT_FEX_FIELD("Prescal", _prescale, &0x3ff);
+        }
+
+        printf("streams:");
+        for(unsigned i=0,mask=channelMask; mask; i++,mask>>=1) {
+          if ((mask&1)==0) continue;
+          printf(" %2u", fex[i]._streams &0xf);
+        }
+        printf("\n");
+
+#undef PRINT_FEX_FIELD
+
+        printf("Configure done\n");
+
+        base.start(fmc);
+      }
+
+      printf("running: %x\n", base.running());
+
+      if (fmc==0)
+        _readyA->putFrom<unsigned>(1);
+      else
+        _readyB->putFrom<unsigned>(1);
     }
 
     void PV64Ctrls::reset() {

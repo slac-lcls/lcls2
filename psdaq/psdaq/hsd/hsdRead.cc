@@ -229,20 +229,11 @@ int main (int argc, char **argv) {
   const EventHeader* event = reinterpret_cast<const EventHeader*>(data);
   RawStream* raw = 0;
 
-  unsigned nextCount[8], nextPword=0;
+  unsigned nextCount[8];
   uint64_t ppulseId =0, dpulseId =0;
   memset(nextCount,0,sizeof(nextCount));
 
   unsigned tsec=0;
-
-  struct tm tm_epoch;
-  memset(&tm_epoch, 0, sizeof(tm_epoch));
-  tm_epoch.tm_mday = 1;
-  tm_epoch.tm_mon  = 0;
-  tm_epoch.tm_year = 90;
-  tm_epoch.tm_isdst = 0;
-
-  time_t t_epoch = mktime(&tm_epoch);
 
   // DMA Read
   while(1) {

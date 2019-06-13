@@ -8,7 +8,7 @@ using namespace Pds::HSD;
 void QABase::init()
 {
   unsigned v = csr;
-  v &= ~(1<<31);
+  v &= ~(3<<30);
   csr = v | (1<<4);
   usleep(10);
   csr = v & ~(1<<4);
@@ -17,13 +17,13 @@ void QABase::init()
 void QABase::start()
 {
   unsigned v = control;
-  v &= ~(1<<20);  // remove inhibit
+  v &= ~(1<<24);  // remove inhibit
   control = v;
 
   v = csr;
   //  csr = v | (1<<31) | (1<<1);
   v &= ~(1<<4);   // remove reset
-  csr = v | (1<<31);
+  csr = v | (3<<30);
 
   irqEnable = 1;
 }
@@ -31,7 +31,7 @@ void QABase::start()
 void QABase::stop()
 {
   unsigned v = csr;
-  v &= ~(1<<31);
+  v &= ~(3<<30);
   v &= ~(1<<1);
   csr = v;
 }
@@ -64,8 +64,9 @@ void QABase::setupDaq(unsigned partition)
 {
   acqSelect = (1<<30) | (3<<11) | partition;  // obsolete
   { unsigned v = control;
-    v &= ~(0xf << 16);
+    v &= ~(0xff << 16);
     v |= (partition&0xf) << 16;
+    v |= (partition&0xf) << 20;
     control = v; }
   unsigned v = csr & ~(1<<0);
   csr = v | (1<<0);
@@ -169,4 +170,47 @@ void QABase::dump() const
   PR(countQueue);
 
 #undef PR
+}
+
+void QABase::start(unsigned fmc)
+{
+  //  Add to channel mask
+  unsigned v = control;
+  v |= (1<<fmc);
+  control = v;
+
+  //  Add acqEnable
+  v = csr;
+  csr = v | (1<<(30+fmc));
+}
+
+void QABase::stop(unsigned fmc)
+{
+  //  Add acqEnable
+  unsigned v = csr;
+  v &= ~(1<<(30+fmc));
+  csr = v;
+
+  //  Remove from channel mask
+  v = control;
+  v &= ~(1<<fmc);
+  control = v;
+}
+
+void QABase::setupDaq(unsigned partition, unsigned fmc)
+{
+  { unsigned v = control;
+    v &= ~(0xf << (16+4*fmc));
+    v |= (partition&0xf) << (16+4*fmc);
+    control = v; }
+  //  Consider adding separate counter resets for each FMC in firmware
+  //  unsigned v = csr & ~(1<<0);
+  //  csr = v | (1<<0);
+}
+
+unsigned QABase::running() const
+{
+  //  Add to channel mask
+  unsigned v = csr;
+  return (v>>30)&3;
 }

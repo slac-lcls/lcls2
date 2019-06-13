@@ -53,21 +53,40 @@ static void check(PyObject* obj) {
 
 unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
+  timespec tv_b; clock_gettime(CLOCK_REALTIME,&tv_b);
+
+#define CHECK_TIME(s) {                                                 \
+    timespec tv; clock_gettime(CLOCK_REALTIME,&tv);                     \
+    printf("%s %f seconds\n",#s,                                        \
+           double(tv.tv_sec-tv_b.tv_sec)+1.e-9*(double(tv.tv_nsec)-double(tv_b.tv_nsec))); }
+
+
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
     check(pModule);
+
+    CHECK_TIME(PyImport);
+
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
     check(pDict);
     // returns borrowed reference
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config");
     check(pFunc);
+
+    CHECK_TIME(PyDict_Get);
+
     // returns new reference
     PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",
                                               m_connect_json.c_str(),
-                                              "DAQ:LAB2:HSD:DEV06_3E",
+                                              m_para->detSegment==0 ? 
+                                              "DAQ:LAB2:HSD:DEV06_3E:DRP:A" :
+                                              "DAQ:LAB2:HSD:DEV06_3E:DRP:B",
                                               "BEAM", 
                                               m_para->detName.c_str());
+
+    CHECK_TIME(PyObj_Call);
+
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
@@ -86,27 +105,32 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
         throw "**** Config json translation error\n";
     }
 
+    CHECK_TIME(translateJson);
+
     // append the config xtc info to the dgram
     Xtc& jsonxtc = *(Xtc*)buffer;
     memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
 
+    // get the lane mask from the json
+    unsigned lane_mask = 0;
+    Document top;
+    if (top.Parse(json).HasParseError())
+        fprintf(stderr,"*** json parse error\n");
+    else {
+      const Value& enable = top["enable"];
+      std::string enable_type = top[":types:"]["enable"][0].GetString();
+      unsigned length = top[":types:"]["enable"][1].GetInt();
+      for (unsigned i=0; i<length; i++) if (enable[i].GetInt()) lane_mask |= 1<< i;
+    }
+    lane_mask = 1; // override temporarily!
+    printf("hsd lane_mask is 0x%x\n",lane_mask);
+
     Py_DECREF(pModule);
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
 
-    // get the lane mask from the json
-    Document top;
-    if (top.Parse(json).HasParseError())
-        fprintf(stderr,"*** json parse error\n");
-    const Value& enable = top["enable"];
-    std::string enable_type = top[":types:"]["enable"][0].GetString();
-    unsigned length = top[":types:"]["enable"][1].GetInt();
-
-    unsigned lane_mask = 0;
-    for (unsigned i=0; i<length; i++) if (enable[i].GetInt()) lane_mask |= 1<< i;
-    lane_mask = 1; // override temporarily!
-    printf("hsd lane_mask is 0x%x\n",lane_mask);
+    CHECK_TIME(Done);
 
     return lane_mask;
 }
@@ -127,8 +151,7 @@ unsigned Digitizer::configure(Xtc& xtc)
 
     // set up the names for L1Accept data
     Alg hsdAlg("hsd", 1, 2, 3); // TODO: should this be configured by hsdconfig.py?
-    unsigned segment = 0;
-    Names& eventNames = *new(xtc) Names("xpphsd", hsdAlg, "hsd", "detnum1235", m_evtNamesId, segment);
+    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), hsdAlg, "hsd", "detnum1235", m_evtNamesId, m_para->detSegment);
     HsdDef myHsdDef(lane_mask);
     eventNames.add(xtc, myHsdDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
@@ -163,5 +186,5 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
          }
     }
 }
-
+  
 }

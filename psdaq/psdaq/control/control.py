@@ -962,6 +962,7 @@ class CollectionManager():
             self.pv_put(pv, DaqControl.transitionId['ClearReadout'])
         self.pv_put(self.pvGroupMsgInsert, self.groups)
         self.pv_put(self.pvGroupMsgInsert, 0)
+        time.sleep(1.0)
         # ...configure
         for pv in self.pvListMsgHeader:
             self.pv_put(pv, DaqControl.transitionId['Configure'])

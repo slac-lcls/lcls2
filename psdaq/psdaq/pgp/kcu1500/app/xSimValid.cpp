@@ -458,8 +458,13 @@ int main (int argc, char **argv) {
                unsigned words = unsigned(last)>>2;
                bufferIndex = dmaIndex[x];
 
-               if ((verbose & PRINT_ANY) || (b[4]>>31)==0) { // Print transitions
-                 printf("lane%x ret%x buff%x fl%x:",
+               if ((verbose & PRINT_ANY)) {
+                 for(unsigned i=0; i<words; i++)
+                   printf("%08x%c",b[i], (i&0xf)==0xf ? '\n':' ');
+                 printf("\n");
+               }
+               else if ((b[4]>>31)==0) { // Print transitions
+                 printf("lane%x ret%x buff%x fl%x",
                         lane, dmaRet[x], bufferIndex, rxFlags[x]);
                  for(unsigned i=0; i<9; i++)
                    printf(" %08x",b[i]);

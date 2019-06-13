@@ -32,6 +32,7 @@ setup(
                 'dticas = psdaq.cas.dticas:main',
                 'hsdca = psdaq.cas.hsdca:main',
                 'hsdcas = psdaq.cas.hsdcas:main',
+                'hsdpvs = psdaq.cas.hsdpvs:main',
                 'tprca = psdaq.cas.tprca:main',
                 'tprcas = psdaq.cas.tprcas:main',
                 'xpmioc = psdaq.cas.xpmioc:main',
