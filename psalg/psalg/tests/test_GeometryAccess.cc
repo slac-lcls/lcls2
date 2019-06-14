@@ -40,7 +40,7 @@ double dtime(const timespec& start, const timespec& stop){
 void test_file_to_stringstream()
 {
   const string& fname = fname_cspad2x2;
-  cout << "\ntest_file_to_stringstream fname: " << fname << " \n";
+  cout << "\n==test_file_to_stringstream fname: " << fname << " \n";
 
   std::stringstream ss;
   geometry::file_to_stringstream(fname, ss);
@@ -52,7 +52,7 @@ void test_file_to_stringstream()
 void test_geometry()
 {
   const string& fname = fname_cspad;
-  cout << "\ntest_geometry_loading fname: " << fname << " \n";
+  cout << "\n==test_geometry fname: " << fname << " \n";
 
   geometry::GeometryAccess geo(fname);
 
@@ -75,7 +75,7 @@ void test_geo_get_pixel_coords_as_pointer()
   LOGGER.setLogger(LL::INFO, "%H:%M:%S");
 
   const string& fname = fname_cspad;
-  cout << "\ntest_geometry_loading fname: " << fname << " \n";
+  cout << "\n==test_geo_get_pixel_coords_as_pointer fname: " << fname << " \n";
 
   geometry::GeometryAccess geo(fname);
   const double* X;
@@ -100,7 +100,7 @@ void test_geo_get_pixel_coords_as_ndarray()
   LOGGER.setLogger(LL::INFO, "%H:%M:%S");
 
   const string& fname = fname_cspad;
-  cout << "\ntest_geometry_loading fname: " << fname << " \n";
+  cout << "\n==test_geo_get_pixel_coords_as_ndarray fname: " << fname << " \n";
 
   geometry::GeometryAccess geo(fname);
 
@@ -111,6 +111,37 @@ void test_geo_get_pixel_coords_as_ndarray()
   cout << "  X: " << *pxarr << '\n';
   cout << "  Y: " << *pyarr << '\n';
   cout << "  Z: " << *pzarr << '\n';
+}
+
+//-------------------
+
+void test_geo_get_misc()
+{
+  LOGGER.setLogger(LL::INFO, "%H:%M:%S");
+
+  const string& fname = fname_cspad;
+  cout << "\n==test_geo_get_misc fname: " << fname << " \n";
+
+  geometry::GeometryAccess geo(fname);
+
+  const double pix_scale_size_um = 109.92;
+  const int xy0_off_pix_v2[] = {500,500};
+  const int xy0_off_pix_v1[] = {300,300};
+  const double Zplane1 = 1000000; //[um] or 0
+  const double Zplane2 = 100000; //[um] or 0
+
+  psalg::NDArray<const double>*   areas = geo.get_pixel_areas();
+  psalg::NDArray<const int>*      mask  = geo.get_pixel_mask(0377);
+  psalg::NDArray<const double>*   xatz  = geo.get_pixel_coords_at_z(Zplane1, SG::AXIS_X);
+  psalg::NDArray<const unsigned>* ix    = geo.get_pixel_coord_indexes(SG::AXIS_X, pix_scale_size_um, xy0_off_pix_v1);
+  psalg::NDArray<const unsigned>* ixatz = geo.get_pixel_inds_at_z(Zplane2, SG::AXIS_X, pix_scale_size_um, xy0_off_pix_v2);
+
+  cout << "  areas: " << *areas << '\n';
+  cout << "  mask : " << *mask  << '\n';
+  cout << "  xatz : " << *xatz  << '\n';
+  cout << "  ix   : " << *ix    << '\n';
+  cout << "  ixatz: " << *ixatz << '\n';
+  //cout << "   : " << * << '\n';
 }
 
 //-------------------
@@ -127,6 +158,7 @@ std::string usage(const std::string& tname="")
   if (tname == "" || tname=="1"	) ss << "\n   1  - test_geometry()";
   if (tname == "" || tname=="2"	) ss << "\n   2  - test_geo_get_pixel_coords_as_pointer()";
   if (tname == "" || tname=="3"	) ss << "\n   3  - test_geo_get_pixel_coords_as_ndarray()";
+  if (tname == "" || tname=="4"	) ss << "\n   4  - test_geo_get_misc()";
   ss << '\n';
   return ss.str();
 }
@@ -149,6 +181,7 @@ int main(int argc, char* argv[])
   else if (tname=="1")  test_geometry();
   else if (tname=="2")  test_geo_get_pixel_coords_as_pointer();
   else if (tname=="3")  test_geo_get_pixel_coords_as_ndarray();
+  else if (tname=="4")  test_geo_get_misc();
 
   else MSG(WARNING, "Undefined test name: " << tname);
 

@@ -7,7 +7,6 @@
 //#include <vector> // in GeometryObject.hh
 #include <map>
 #include <sstream>  // stringstream
-//#include <boost/shared_ptr.hpp>
 
 #include "psalg/geometry/GeometryObject.hh"
 //#include "psalg/geometry/SegmentGeometry.hh" // AXIS
@@ -147,14 +146,7 @@ void file_to_stringstream(const std::string& fname, std::stringstream& ss);
 
 class GeometryAccess  {
 
-//typedef boost::shared_ptr<GeometryObject> pGO;
-/** Use the same declaration of the shared pointer to geometry object like in the class GeometryObject*/
-//typedef psalg::geometry::GeometryObject::pGO pGO;
-
-
 typedef psalg::types::shape_t shape_t;
-
-
 typedef GeometryObject::pGO pGO;
 typedef GeometryObject::SG SG;
 
@@ -228,6 +220,8 @@ public:
 			 const std::string& oname = std::string(), 
 			 const unsigned& oindex = 0);
 
+  NDArray<const double>* get_pixel_coords_at_z(const double Zplane=0, const SG::AXIS axis=SG::AXIS_X);
+
   /// Returns pixel areas array A, of size for specified geometry object 
   /**
    *  @param[out] A - pointer to pixel areas array
@@ -239,6 +233,8 @@ public:
                         unsigned& size,
 		        const std::string& oname = std::string(), 
 		        const unsigned& oindex = 0);
+
+  NDArray<const double>* get_pixel_areas();
 
   /// Returns pixel mask array of size for specified geometry object 
   /**
@@ -257,6 +253,8 @@ public:
 		       const std::string& oname = std::string(),
  		       const unsigned& oindex = 0,
 		       const unsigned& mbits = 0377);
+
+  NDArray<const int>* get_pixel_mask(const unsigned mbits = 0377);
 
   /// Returns pixel scale size for specified geometry object through its children segment
   /**
@@ -306,6 +304,10 @@ public:
                                const int* xy0_off_pix = 0,
                                const bool do_tilt=true);
 
+  NDArray<const unsigned>* get_pixel_coord_indexes(const SG::AXIS axis=SG::AXIS_X,
+                                                   const double pix_scale_size_um = 0,
+                                                   const int* xy0_off_pix = 0);
+
   /// Returns pixel coordinate index arrays iX, iY of size for specified Zplane and geometry object 
  /**
    *  @param[out] iX - pointer to x pixel index coordinate array
@@ -325,6 +327,11 @@ public:
 			      const unsigned& oindex = 0, 
                               const double& pix_scale_size_um = 0, 
                               const int* xy0_off_pix = 0);
+
+  NDArray<const unsigned>* get_pixel_inds_at_z(const double Zplane = 0,
+                                               const SG::AXIS axis=SG::AXIS_X,
+                                               const double pix_scale_size_um = 0,
+                                               const int* xy0_off_pix = 0);
 
   /// Static method returns image as NDArray<image_t> object
  /**

@@ -98,9 +98,9 @@ public:
   inline void set_shape(shape_t* shape=NULL, const size_t ndim=0) {
     //MSG(TRACE, "set_shape for ndim="<<ndim);
     assert(ndim<MAXNDIM);
-    base::_rank=ndim;
-    base::_shape = shape;
     if(shape) std::memcpy(_shape, shape, sizeof(shape_t)*ndim);
+    base::_rank=ndim;
+    base::_shape = _shape;
   }
 
 //-------------------

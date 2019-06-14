@@ -743,20 +743,102 @@ GeometryAccess::get_pixel_coords(const SG::AXIS axis)
     const double* Y;
     const double* Z;
     unsigned size;
-    get_pixel_coords(X,Y,Z,size); //,oname,oindex,do_tilt
+    get_pixel_coords(X,Y,Z,size, std::string(), 0, true); //,oname,oindex,do_tilt
+
+    //cout << "XXX get_pixel_coords size: " << size << '\n';
     shape_t sh[1] = {size};
 
-    //return new NDArray<double>(sh, 1);
+    switch(axis) {
+      default         : 
+      case SG::AXIS_X : return new NDArray<const double>(&sh[0], 1, X);
+      case SG::AXIS_Y : return new NDArray<const double>(&sh[0], 1, Y);
+      case SG::AXIS_Z : return new NDArray<const double>(&sh[0], 1, Z);
+    }
+}
+//-------------------
 
-    switch(axis)
-      {
+NDArray<const double>*
+GeometryAccess::get_pixel_coords_at_z(const double Zplane, const SG::AXIS axis) {
+    const double* X;
+    const double* Y;
+    unsigned size;
+    get_pixel_xy_at_z(X,Y,size, Zplane, std::string(), 0);
+
+    //cout << "XXX get_pixel_coords_at_z size: " << size << '\n';
+    shape_t sh[1] = {size,};
+
+    switch(axis) {
+      default         : 
       case SG::AXIS_X : return new NDArray<const double>(sh, 1, X);
       case SG::AXIS_Y : return new NDArray<const double>(sh, 1, Y);
-      case SG::AXIS_Z : return new NDArray<const double>(sh, 1, Z);
-      default         : return new NDArray<const double>(sh, 1, X);
-        //MSG(WARNING, "Unknown DBTYPE " << dbtype);
-        //throw "Requested unknown DBTYPE";
-      }
+    }
+}
+//-------------------
+
+NDArray<const unsigned>*
+GeometryAccess::get_pixel_coord_indexes(const SG::AXIS axis,
+                                        const double pix_scale_size_um,
+                                        const int* xy0_off_pix)
+{
+  const unsigned* iX;
+  const unsigned* iY;
+  unsigned size;
+
+  get_pixel_coord_indexes(iX, iY, size, std::string(), 0, pix_scale_size_um, xy0_off_pix, true);
+  //cout << "XXX get_pixel_coord_indexes size: " << size << '\n';
+  shape_t sh[1] = {size,};
+
+  switch(axis) {
+    default         : 
+    case SG::AXIS_X : return new NDArray<const unsigned>(sh, 1, iX);
+    case SG::AXIS_Y : return new NDArray<const unsigned>(sh, 1, iY);
+  }
+}
+
+//-------------------
+
+NDArray<const unsigned>* 
+GeometryAccess::get_pixel_inds_at_z(const double Zplane,
+                                    const SG::AXIS axis,
+                                    const double pix_scale_size_um,
+                                    const int* xy0_off_pix)
+{
+  const unsigned* iX;
+  const unsigned* iY;
+  unsigned size;
+  get_pixel_xy_inds_at_z(iX, iY, size, Zplane, std::string(), 0, pix_scale_size_um, xy0_off_pix);
+  shape_t sh[1] = {size,};
+
+  switch(axis) {
+    default         : 
+    case SG::AXIS_X : return new NDArray<const unsigned>(sh, 1, iX);
+    case SG::AXIS_Y : return new NDArray<const unsigned>(sh, 1, iY);
+  }
+}
+
+//-------------------
+
+NDArray<const double>*
+GeometryAccess::get_pixel_areas()
+{
+    const double* A;
+    unsigned size;
+    get_pixel_areas(A, size, std::string(), 0);
+    //cout << "XXX get_pixel_areas: " << size << '\n';
+    shape_t sh[1] = {size,};
+    return new NDArray<const double>(sh, 1, A);
+}
+//-------------------
+
+NDArray<const int>* 
+GeometryAccess::get_pixel_mask(const unsigned mbits)
+{
+    const int* mask;
+    unsigned size;
+    get_pixel_mask(mask, size, std::string(), 0, mbits);
+    //cout << "XXX get_pixel_mask: " << size << '\n';
+    shape_t sh[1] = {size,};
+    return new NDArray<const int>(sh, 1, mask);
 }
 
 //-------------------
