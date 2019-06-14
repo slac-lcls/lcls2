@@ -77,7 +77,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def set_control_points(self) :
-        parent = self # None # self # None
+        parent = self # None
         r = self.rect()
         scene=self.scene()
         self.ptr = DragPoint(r.topRight(),    parent, scene, rsize=5, pshape='h')
@@ -100,7 +100,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
         for cpt in self.lst_ctl_points : self.setZValue(100)
 
 
-    def move_control_points(self, e) :
+    def move_control_points(self) :
 
         r = self.rect().normalized()
         r0 = self.rect0
@@ -136,6 +136,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
         logger.debug('DragRect.mousePressEvent, at point: %s on scene: %s '%\
                      (str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
         QGraphicsRectItem.mousePressEvent(self, e) # points would not show up w/o this line
+        #print("DragRect is selected: ", self.isSelected())
 
         ps = e.scenePos()
         #print('%s.mousePressEvent itemAt:' % self.__class__.__name__, self.scene().itemAt(ps))
@@ -177,7 +178,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
             self.moveBy(dp.x(), dp.y())
 
         elif self._drag_mode == ADD :
-            print('%s.mouseMoveEvent _drag_mode=ADD' % self.__class__.__name__)
+            #print('%s.mouseMoveEvent _drag_mode=ADD' % self.__class__.__name__)
             rect = self.rect()
             rect.setBottomRight(rect.bottomRight() + dp)
             self.setRect(rect)
@@ -197,12 +198,13 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
             elif i == self.ped : pass
 
+            r = r.normalized()
             self.setRect(r)
-            self.move_control_points(e)
+            self.move_control_points()
 
 
     def mouseReleaseEvent(self, e):
-        print('DragRect.mouseReleaseEvent') # % self.__class__.__name__)
+        #logger.debug('DragRect.mouseReleaseEvent') # % self.__class__.__name__)
         QGraphicsPathItem.mouseReleaseEvent(self, e)
 
         if self._drag_mode == ADD :

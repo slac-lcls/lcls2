@@ -48,7 +48,9 @@ std::string usage(const std::string& tname="")
   if (tname == "" || tname=="2"	) ss << "\n   2  - test_SegGeometry(\"EPIX100:V1\") ";
   if (tname == "" || tname=="3"	) ss << "\n   3  - test_SegGeometry(\"EPIX10KA:V1\")";
   if (tname == "" || tname=="4"	) ss << "\n   4  - test_SegGeometry(\"PNCCD:V1\")   ";
-  if (tname == "" || tname=="5"	) ss << "\n   5  - test_SegGeometry(\"MTRX:384:384:100:100\")";
+  if (tname == "" || tname=="5"	) ss << "\n   5  - test_SegGeometry(\"MTRX:512:512:75:75\") - pnccd using other constructor";
+  if (tname == "" || tname=="6"	) ss << "\n   6  - test_SegGeometry(\"MTRX:512:512:54:54\") - andor specific binning";
+  if (tname == "" || tname=="7"	) ss << "\n   7  - test_SegGeometry(\"MTRX:2048:2048:13.5:13.5\") - andor other binning";
   ss << '\n';
   return ss.str();
 }
@@ -72,7 +74,9 @@ int main(int argc, char **argv) {
   else if (tname=="2")  test_SegGeometry("EPIX100:V1");
   else if (tname=="3")  test_SegGeometry("EPIX10KA:V1");
   else if (tname=="4")  test_SegGeometry("PNCCD:V1");
-  else if (tname=="5")  test_SegGeometry("MTRX:384:384:100:100");       
+  else if (tname=="5")  test_SegGeometry("MTRX:512:512:75:75"); // pnccd
+  else if (tname=="6")  test_SegGeometry("MTRX:512:512:54:54"); // andor
+  else if (tname=="7")  test_SegGeometry("MTRX:2048:2048:13.5:13.5"); // andor
 
   else MSG(WARNING, "Undefined test name: " << tname);
 

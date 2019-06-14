@@ -1,9 +1,11 @@
 //-------------------
 
-#include "psalg/geometry/SegGeometryMatrixV1.hh"
 #include <sstream>     // stringstream
 #include <math.h>      // sin, cos
 #include <iostream>    // cout
+
+#include "psalg/utils/Logger.hh" // MSG, LOGGER
+#include "psalg/geometry/SegGeometryMatrixV1.hh"
 
 using namespace std;
 
@@ -55,6 +57,75 @@ bool matrix_pars( const std::string& segname
   return true;
 }
 
+//----------------
+
+// Singleton stuff:
+//SegGeometry* SegGeometryMatrixV1::m_pInstance = NULL; // init static pointer for singleton
+
+SegGeometryMatrixV1::MapInstance _map_segname_instance = {};
+
+//----------------
+
+
+SegGeometry* SegGeometryMatrixV1::instance(const std::string& segname)
+{
+  std::size_t rows;
+  std::size_t cols;
+  float   rpixsize;
+  float   cpixsize;
+
+  if(! geometry::matrix_pars(segname, rows, cols, rpixsize, cpixsize)) {
+    MSG(ERROR, "Can't demangle geometry segment name: " << segname);  
+    return 0; // NULL;
+  }
+
+  MSG(DEBUG, "segname: " << segname
+            << " rows: " << rows << " cols:" << cols 
+            << " rpixsize: " << rpixsize << " cpixsize: " << cpixsize);
+
+  //if map does not have segment - add it
+  if(geometry::_map_segname_instance.find(segname) == geometry::_map_segname_instance.end()) {
+      geometry::_map_segname_instance[segname] = new SegGeometryMatrixV1(rows, cols, rpixsize, cpixsize);
+  }                                                                 // pix_size_depth, pix_scale_size);
+
+  return geometry::_map_segname_instance[segname];
+
+  //if(!m_pInstance) m_pInstance = new geometry::SegGeometryMatrixV1(rows, cols, rpixsize, cpixsize); 
+  //return m_pInstance;
+}
+
+//----------------
+// for single instance
+/**
+SegGeometry* SegGeometryMatrixV1::instance(const std::string& segname)
+{
+  std::size_t rows;
+  std::size_t cols;
+  float   rpixsize;
+  float   cpixsize;
+
+  if(! geometry::matrix_pars(segname, rows, cols, rpixsize, cpixsize)) {
+    MSG(ERROR, "Can't demangle geometry segment name: " << segname);  
+    return 0; // NULL;
+  }
+
+  MSG(DEBUG, "segname: " << segname
+            << " rows: " << rows << " cols:" << cols 
+            << " rpixsize: " << rpixsize << " cpixsize: " << cpixsize);
+
+  if(!m_pInstance) m_pInstance = new geometry::SegGeometryMatrixV1(rows, cols, rpixsize, cpixsize); 
+                                       // pix_size_depth, pix_scale_size);
+  return m_pInstance;
+}
+*/
+
+
+
+
+
+//-------------------
+//-------------------
+//-------------------
 //-------------------
 
 SegGeometryMatrixV1::SegGeometryMatrixV1 ( const size_t& rows

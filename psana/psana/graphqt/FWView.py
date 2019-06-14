@@ -293,7 +293,7 @@ class FWView(QGraphicsView) :
     def mouseReleaseEvent(self, e):
         QApplication.restoreOverrideCursor()
         QGraphicsView.mouseReleaseEvent(self, e)
-        #logger.debug('FWView.mouseReleaseEvent, at point: ', e.pos(), ' diff:', e.pos() - self.pos_click)
+        #logger.debug('FWView.mouseReleaseEvent, at point: '+str(e.pos()))
         #self.pos_click = e.pos()
         self.pos_click = None
         ### self.set_cursor_type_on_scene_rect()

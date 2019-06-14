@@ -34,20 +34,17 @@ const size_t SegGeometryCspad2x1V1::ARR_SHAPE[2] = {ROWS, COLS};
 
 //----------------
 // Singleton stuff:
-
-//SegGeometryCspad2x1V1*
 SegGeometry* SegGeometryCspad2x1V1::m_pInstance = NULL; // init static pointer for singleton
 
-//SegGeometryCspad2x1V1*
 SegGeometry* SegGeometryCspad2x1V1::instance(const bool& use_wide_pix_center)
 {
-  if( !m_pInstance ) m_pInstance = new SegGeometryCspad2x1V1(use_wide_pix_center);
+  if(!m_pInstance) m_pInstance = new SegGeometryCspad2x1V1(use_wide_pix_center);
   return m_pInstance;
 }
 
 //----------------
 
-SegGeometryCspad2x1V1::SegGeometryCspad2x1V1 (const bool& use_wide_pix_center)
+SegGeometryCspad2x1V1::SegGeometryCspad2x1V1(const bool& use_wide_pix_center)
   : geometry::SegGeometry()
   , m_use_wide_pix_center(use_wide_pix_center)
   , m_done_bits(0)
@@ -59,7 +56,7 @@ SegGeometryCspad2x1V1::SegGeometryCspad2x1V1 (const bool& use_wide_pix_center)
 
 //--------------
 
-SegGeometryCspad2x1V1::~SegGeometryCspad2x1V1 ()
+SegGeometryCspad2x1V1::~SegGeometryCspad2x1V1()
 {
 }
 
@@ -197,7 +194,7 @@ const SegGeometry::pixel_coord_t* SegGeometryCspad2x1V1::pixel_size_array(AXIS a
 
 //--------------
 
-const SegGeometry::pixel_coord_t* SegGeometryCspad2x1V1::pixel_coord_array (AXIS axis) 
+const SegGeometry::pixel_coord_t* SegGeometryCspad2x1V1::pixel_coord_array(AXIS axis) 
 { 
   if      (axis == AXIS_X) return &m_x_pix_coord_um [0][0];
   else if (axis == AXIS_Y) return &m_y_pix_coord_um [0][0];
@@ -207,7 +204,7 @@ const SegGeometry::pixel_coord_t* SegGeometryCspad2x1V1::pixel_coord_array (AXIS
 
 //--------------
 
-const SegGeometry::pixel_coord_t SegGeometryCspad2x1V1::pixel_coord_min (AXIS axis) 
+const SegGeometry::pixel_coord_t SegGeometryCspad2x1V1::pixel_coord_min(AXIS axis) 
 { 
   const SegGeometry::pixel_coord_t* arr = pixel_coord_array (axis);
   SegGeometry::pixel_coord_t corner_coords[NCORNERS];
@@ -217,7 +214,7 @@ const SegGeometry::pixel_coord_t SegGeometryCspad2x1V1::pixel_coord_min (AXIS ax
 
 //--------------
 
-const SegGeometry::pixel_coord_t SegGeometryCspad2x1V1::pixel_coord_max (AXIS axis) 
+const SegGeometry::pixel_coord_t SegGeometryCspad2x1V1::pixel_coord_max(AXIS axis) 
 { 
   const SegGeometry::pixel_coord_t* arr = pixel_coord_array (axis);
   SegGeometry::pixel_coord_t corner_coords[NCORNERS];

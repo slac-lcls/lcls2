@@ -32,17 +32,36 @@ void print_hline(const uint nchars, const char c) {printf("%s\n", std::string(nc
 //-------------------
 //-------------------
 
-void test_CalibPars(const char* detname = "epix100a") { //"undefined"
+// Default query
+
+Query q({{Query::DETECTOR,  "cspad_0001"}
+        ,{Query::EXPERIMENT,"cxid9114"}
+        ,{Query::CALIBTYPE, "pedestals"}
+        ,{Query::RUN,       "150"}
+        ,{Query::TIME_SEC,  "0"}
+        ,{Query::VERSION,   "NULL"}
+        });
+
+//-------------------
+
+void test_CalibPars(const char* detname = "undefined") {
   MSG(INFO, "In test_CalibPars - test all interface methods");
   CalibPars* cp1 = new CalibPars(detname);
   std::cout << "detname: " << cp1->detname() << '\n';
 
-  Query query("some-string is here");
-
+  Query query(q.qmap());
   const NDArray<pedestals_t>&    peds   = cp1->pedestals       (query);
-  const NDArray<common_mode_t>&  cmod   = cp1->common_mode     (query);
+  std::cout << "\n  peds   : " << peds << '\n'; 
+
+  query.set_calibtype(PIXEL_RMS);
   const NDArray<pixel_rms_t>&    rms    = cp1->rms             (query);
+  std::cout << "\n  rms    : " << rms << '\n'; 
+
+  query.set_calibtype(PIXEL_STATUS);
   const NDArray<pixel_status_t>& stat   = cp1->status          (query);
+  std::cout << "\n  stat   : " << stat << '\n'; 
+
+  /*
   const NDArray<pixel_gain_t>&   gain   = cp1->gain            (query);
   const NDArray<pixel_offset_t>& offset = cp1->offset          (query);
   const NDArray<pixel_bkgd_t>&   bkgd   = cp1->background      (query);
@@ -52,17 +71,16 @@ void test_CalibPars(const char* detname = "epix100a") { //"undefined"
   const NDArray<pixel_mask_t>&   maskn  = cp1->mask_neighbors  (query);
   const NDArray<pixel_mask_t>&   mask2  = cp1->mask_bits       (query);
   const NDArray<pixel_mask_t>&   mask3  = cp1->mask            (query);
+  const NDArray<common_mode_t>&  cmod   = cp1->common_mode     (query);
   const NDArray<pixel_idx_t>&    idxx   = cp1->indexes         (query);
   const NDArray<pixel_coord_t>&  coordsx= cp1->coords          (query);
   const NDArray<pixel_size_t>&   sizex  = cp1->pixel_size      (query);
   const NDArray<pixel_size_t>&   axisx  = cp1->image_xaxis     (query);
   const NDArray<pixel_size_t>&   axisy  = cp1->image_yaxis     (query);
   const geometry_t&              geotxt = cp1->geometry        (query);
+  */
 
-  std::cout << "\n  peds   : " << peds; 
-  std::cout << "\n  cmod   : " << cmod; 
-  std::cout << "\n  rms    : " << rms; 
-  std::cout << "\n  stat   : " << stat; 
+  /*
   std::cout << "\n  gain   : " << gain; 
   std::cout << "\n  offset : " << offset; 
   std::cout << "\n  bkgd   : " << bkgd; 
@@ -72,15 +90,17 @@ void test_CalibPars(const char* detname = "epix100a") { //"undefined"
   std::cout << "\n  maskn  : " << maskn; 
   std::cout << "\n  mask2  : " << mask2; 
   std::cout << "\n  mask3  : " << mask3; 
+  std::cout << "\n  cmod   : " << cmod; 
   std::cout << "\n  idxx   : " << idxx; 
   std::cout << "\n  coordsx: " << coordsx; 
   std::cout << "\n  sizex  : " << sizex; 
   std::cout << "\n  axisx  : " << axisx; 
   std::cout << "\n  axisy  : " << axisy; 
   std::cout << "\n  geotxt : " << geotxt; 
-  std::cout << '\n';
+  */
 
-  //delete cp1; // !!!! Segmentation fault
+  std::cout << '\n';
+  delete cp1; // !!!! Segmentation fault
 }
 
 //-------------------
@@ -90,13 +110,16 @@ void test_getCalibPars(const char* detname = "undefined") { //"epix100a"
 
   CalibPars* cp = getCalibPars(detname);
   std::cout << "detname: " << cp->detname() << '\n';
-
-  Query q("some-string is here");
+  
   const NDArray<pedestals_t>&   peds = cp->pedestals(q);
-  const NDArray<common_mode_t>& cmod = cp->common_mode(q);
   std::cout << "\n  peds   : " << peds; 
-  std::cout << "\n  cmod   : " << cmod; 
   std::cout << '\n';
+
+  q.set_paremeter(Query::CALIBTYPE, "common_mode");
+  const NDArray<common_mode_t>& cmod = cp->common_mode(q);
+  std::cout << "\n  cmod   : " << cmod; 
+
+  std::cout << '\n'; 
 
   delete cp;
 }
@@ -340,12 +363,14 @@ std::string usage(const std::string& tname="")
   if (tname == "" || tname=="2"	) ss << "\n   2  - test_getCalibPars('epix100a') - default - the same as base";
   if (tname == "" || tname=="3"	) ss << "\n   3  - test_getCalibPars_pedestals() - default init, but full query";
   if (tname == "" || tname=="4"	) ss << "\n   4  - test_getCalibPars_geometry_str()";
+
   if (tname == "" || tname=="10") ss << "\n  10  - test_CalibParsDB()";
   if (tname == "" || tname=="11") ss << "\n  11  - test_getCalibParsDB_NDArray (DBDEF)";
   if (tname == "" || tname=="12") ss << "\n  12  - test_getCalibParsDB_NDArray (DBWEB)";
   if (tname == "" || tname=="13") ss << "\n  13  - test_getCalibParsDB_string  (DBWEB)";
   if (tname == "" || tname=="14") ss << "\n  14  - test_getCalibParsDB_metadata(DBWEB)";
   if (tname == "" || tname=="15") ss << "\n  15  - test_getCalibParsDB_data    (DBWEB)";
+
   if (tname == "" || tname=="20") ss << "\n  20  - test_Query()";
   ss << '\n';
   return ss.str();

@@ -10,9 +10,10 @@ using namespace psalg; // for NDArray
 
 namespace calib {
 
-CalibPars::CalibPars(const char* detname, const DBTYPE& dbtype) :
-    _detname(detname),
-    _calibparsdb(getCalibParsDB(dbtype)) {
+CalibPars::CalibPars(const char* detname, const DBTYPE& dbtype)
+  : _detname(detname)
+  , _calibparsdb(getCalibParsDB(dbtype))
+  , _geometryaccess(NULL) {
   MSG(DEBUG, "In c-tor CalibPars for " << detname);
 
   //if(_calibparsdb) {delete _calibparsdb; _calibparsdb=NULL;}
@@ -20,6 +21,7 @@ CalibPars::CalibPars(const char* detname, const DBTYPE& dbtype) :
 
 CalibPars::~CalibPars() {
   MSG(DEBUG, "In d-tor CalibPars for " << detname());
+  deleteGeometryAccess();
 }
  
 void CalibPars::_default_msg(const std::string& msg) const {
@@ -35,7 +37,7 @@ void CalibPars::_default_msg(const std::string& msg) const {
 
 /** REPLACE METHODS LIKE SHOWN BELOW WITH PARAMETRIC MACRO
 const NDArray<pedestals_t>& CalibPars::pedestals(Query& q) {
-  std::cout << "XXXXXXXXX CalibPars::pedestals dbtypename: " << _calibparsdb->dbtypename() << '\n';
+  std::cout << "CalibPars::pedestals dbtypename: " << _calibparsdb->dbtypename() << '\n';
   return _calibparsdb->get_ndarray_float(q);
 }
 */
@@ -69,9 +71,23 @@ const geometry_t& CalibPars::geometry_str(Query& q) {
   return _calibparsdb->get_string(q);
 }
 
+/*
 const geometry_t& CalibPars::geometry(Query& q) {
   _default_msg("geometry(...)");
   return _geometry;
+}
+*/
+
+geometry::GeometryAccess* CalibPars::geometryAccess(Query& q) {
+  if(!_geometryaccess) {
+      std::stringstream ss(geometry_str(q));
+      _geometryaccess = new geometry::GeometryAccess(ss);
+  }
+  return _geometryaccess;
+}
+
+void CalibPars::deleteGeometryAccess() {
+  if(_geometryaccess) delete _geometryaccess;
 }
 
 const NDArray<pixel_idx_t>&   CalibPars::indexes(Query& q) {

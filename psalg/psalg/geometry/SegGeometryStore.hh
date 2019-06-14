@@ -10,7 +10,6 @@
 #include "psalg/geometry/SegGeometryEpix10kaV1.hh"
 #include "psalg/geometry/SegGeometryMatrixV1.hh"
 
-//#include "MsgLogger/MsgLogger.h"
 #include "psalg/utils/Logger.hh" // MSG, LOGGER
 
 //-------------------
@@ -107,26 +106,8 @@ public:
         if(segname == "SENS2X1:V1") return geometry::SegGeometryCspad2x1V1::instance(); // use singleton
 	if(segname == "EPIX100:V1") return geometry::SegGeometryEpix100V1::instance();  // use singleton
 	if(segname == "EPIX10KA:V1") return geometry::SegGeometryEpix10kaV1::instance(); // use singleton
-        if(segname == "PNCCD:V1")  return new geometry::SegGeometryMatrixV1(512,512,75.,75.,400.,75.);
-        if(segname.find("MTRX") != std::string::npos) { 
-
-          std::size_t rows;
-	  std::size_t cols;
-	  float   rpixsize;
-	  float   cpixsize;
-
-	  if(! geometry::matrix_pars(segname, rows, cols, rpixsize, cpixsize)) {
-            MSG(ERROR, "Can't demangle geometry segment name: " << segname);  
-	    return 0; // NULL;
-	  }
-
-	  MSG(DEBUG, "segname: " << segname
-                    << " rows: " << rows << " cols:" << cols 
-                    << " rpixsize: " << rpixsize << " cpixsize: " << cpixsize);
-
-          return new geometry::SegGeometryMatrixV1(rows, cols, rpixsize, cpixsize); 
-                                               // pix_size_depth, pix_scale_size); 
-        }
+        if(segname == "PNCCD:V1")  return new geometry::SegGeometryMatrixV1(512,512,75.,75.,400.,75.); // explicit constructor
+        if(segname.find("MTRX") != std::string::npos) return geometry::SegGeometryMatrixV1::instance(segname); // use singleton
 
         MSG(DEBUG, "Segment geometry is undefined for segment name " << segname 
                    << " - return 0-pointer...");  

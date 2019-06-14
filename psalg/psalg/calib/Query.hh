@@ -49,6 +49,8 @@ public:
 
   void set_paremeter(const QUERY_PAR t, const char* p);
 
+  void set_calibtype(const CALIB_TYPE& ctype);
+
   void set_qmap(const map_t* map=NULL); // map_t* - pointer in order to use default
 
   map_t& qmap(){return _qmap;}

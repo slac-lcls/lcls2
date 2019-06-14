@@ -1,5 +1,6 @@
 add_library(calib SHARED
     src/ArrayIO.cc
+    src/CalibParsTypes.cc
     src/AreaDetectorTypes.cc
     src/CalibPars.cc
     src/CalibParsDB.cc

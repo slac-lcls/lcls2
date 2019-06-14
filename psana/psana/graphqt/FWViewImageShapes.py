@@ -63,6 +63,7 @@ class FWViewImageShapes(FWViewImage) :
 
     def mousePressEvent(self, e):
         scpoint = self.mapToScene(e.pos())
+        print('==== click')
         logger.debug('FWViewImageShapes.mousePressEvent but=%d %s scene x=%.1f y=%.1f'%\
                      (e.button(), str(e.pos()), scpoint.x(), scpoint.y())) # self.__class__.__name__
 
@@ -99,8 +100,8 @@ class FWViewImageShapes(FWViewImage) :
 
 
     def mouseReleaseEvent(self, e):
+        #logger.debug('%s.mouseReleaseEvent pos: %s' % (self.__class__.__name__, str(e.pos())))
         FWViewImage.mouseReleaseEvent(self, e)
-        logger.debug('%s.mouseReleaseEvent pos: %s' % (self.__class__.__name__, str(e.pos())))
 
         if self.add_request is not None :
             self.setShapesEnabled()

@@ -1,14 +1,11 @@
-#ifndef PSALG_GLOBALMETHODS_H
-#define PSALG_GLOBALMETHODS_H
+#ifndef PSALG_UTILSCSPAD_H
+#define PSALG_UTILSCSPAD_H
 //-------------------
 
 #include <iostream>
 #include <string>
 
-//#include "ndarray/ndarray.h"
 #include "psalg/calib/NDArray.hh"
-
-//#include <cstddef>  // for size_t
 
 //-------------------
 
@@ -18,7 +15,7 @@ namespace geometry {
 /**
  *  @ingroup geometry
  *
- *  @brief module GlobalMethods.h has Global Methods
+ *  @brief module UtilsCSPAD.hh
  *
  */
 
@@ -119,4 +116,4 @@ static const size_t SIZE2X2 = N2X1*SIZE2X1;
 } // namespace geometry
 //-------------------
 
-#endif // PSALG_GLOBALMETHODS_H
+#endif // PSALG_UTILSCSPAD_H

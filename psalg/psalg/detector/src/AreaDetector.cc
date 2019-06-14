@@ -383,7 +383,7 @@ void AreaDetector::tilt_geo(const event_t& evt, const tilt_angle_t& dtx, const t
 
 /// access to geometry
 const geometry_t& AreaDetector::geometry(const event_t& evt) {
-  return calib_pars()->geometry(query(evt));
+  return calib_pars()->geometry_str(query(evt));
   //  _default_msg("geometry(...)");
   //  return _geometry;
 }

@@ -43,13 +43,16 @@ GeometryAccess::GeometryAccess(const std::string& path)
   , p_XatZ(0)
   , p_YatZ(0)
 {
-  MSG(DEBUG, "m_pbits = " << m_pbits); 
-
+  MSG(DEBUG, "In c-tor GeometryAccess(const std::string& path) fname=" << path); 
   load_pars_from_file();
+}
 
-  if(m_pbits & 2) print_list_of_geos();
-  if(m_pbits & 4) print_list_of_geos_children();
-  if(m_pbits & 8) print_comments_from_dict();
+//--------------
+
+GeometryAccess::GeometryAccess(std::stringstream& ss)
+{
+  MSG(DEBUG, "In c-tor GeometryAccess(std::stringstream& ss)"); 
+  load_pars_from_stringstream(ss);
 }
 
 //--------------
@@ -100,6 +103,7 @@ void GeometryAccess::load_pars_from_string(const std::string& s)
 void GeometryAccess::load_pars_from_file(const std::string& fname)
 {
   if(! fname.empty()) m_path = fname;
+  if(m_path.empty())  MSG(DEBUG, "geometry file name is not specified, object is not initialized");
 
   std::stringstream ss;
   geometry::file_to_stringstream(m_path, ss);
@@ -221,7 +225,7 @@ GeometryAccess::pGO GeometryAccess::parse_line(const std::string& line)
 
   if(ss >> pname >> pindex >> oname >> oindex >> x0 >> y0 >> z0 
         >> rot_z >> rot_y >> rot_x >> tilt_z >> tilt_y >> tilt_x) {
-      GeometryAccess::pGO shp( new GeometryObject (pname,
+      GeometryAccess::pGO shp(new GeometryObject (pname,
                               		     pindex,
                               		     oname,
                               		     oindex,
@@ -254,7 +258,7 @@ GeometryAccess::pGO GeometryAccess::find_parent(const GeometryAccess::pGO& geobj
                                    it != v_list_of_geos.end(); ++it) {
     if(*it == geobj) continue; // skip geobj themself
     if(   (*it)->get_geo_index() == geobj->get_parent_index()
-       && (*it)->get_geo_name()  == geobj->get_parent_name() ) {
+       && (*it)->get_geo_name()  == geobj->get_parent_name()) {
       return (*it);
     }
   }
@@ -270,12 +274,12 @@ GeometryAccess::pGO GeometryAccess::find_parent(const GeometryAccess::pGO& geobj
     if(m_pbits & 256) std::cout << "  create one with name:" << geobj->get_parent_name() 
                                 << " idx:" << geobj->get_parent_index() << '\n';
 
-    GeometryAccess::pGO shp_top_parent( new GeometryObject (std::string(),
-                            		                      0,
-                            		                      geobj->get_parent_name(),
-                            		                      geobj->get_parent_index()));
+    GeometryAccess::pGO shp_top_parent(new GeometryObject (std::string(),
+                                	                   0,
+                            		                   geobj->get_parent_name(),
+                            		                   geobj->get_parent_index()));
 
-    v_list_of_geos.push_back( shp_top_parent );
+    v_list_of_geos.push_back(shp_top_parent);
     return shp_top_parent;		  
   }
 
@@ -567,6 +571,15 @@ GeometryAccess::print_pixel_coords(const std::string& oname,
 }
 
 //-------------------
+
+void
+GeometryAccess::print_geometry_info(const unsigned& pbits) {
+  if(pbits & 1) print_comments_from_dict();
+  if(pbits & 2) print_list_of_geos();
+  if(pbits & 4) print_list_of_geos_children();
+  if(pbits & 8) print_pixel_coords();
+}
+
 //-------------------
 
 void
@@ -598,8 +611,8 @@ GeometryAccess::get_pixel_coord_indexes(const unsigned *& iX,
     double x_off_um = xy0_off_pix[0] * pix_size;
     double y_off_um = xy0_off_pix[1] * pix_size;
     // Protection against wrong offset bringing negative indexes
-    double x_min=0; for(unsigned i=0; i<size; ++i) { if (X[i] + x_off_um < x_min) x_min = X[i] + x_off_um; } x_off_um -= x_min - pix_size/2;
-    double y_min=0; for(unsigned i=0; i<size; ++i) { if (Y[i] + y_off_um < y_min) y_min = Y[i] + y_off_um; } y_off_um -= y_min - pix_size/2;
+    double x_min=0; for(unsigned i=0; i<size; ++i) {if (X[i] + x_off_um < x_min) x_min = X[i] + x_off_um;} x_off_um -= x_min - pix_size/2;
+    double y_min=0; for(unsigned i=0; i<size; ++i) {if (Y[i] + y_off_um < y_min) y_min = Y[i] + y_off_um;} y_off_um -= y_min - pix_size/2;
 
     for(unsigned i=0; i<size; ++i) { 
       p_iX[i] = (unsigned)((X[i] + x_off_um) / pix_size);
@@ -608,8 +621,8 @@ GeometryAccess::get_pixel_coord_indexes(const unsigned *& iX,
   } 
   else {
     // Find coordinate min values
-    double x_min=X[0]; for(unsigned i=0; i<size; ++i) { if (X[i] < x_min) x_min = X[i]; } x_min -= pix_size/2;
-    double y_min=Y[0]; for(unsigned i=0; i<size; ++i) { if (Y[i] < y_min) y_min = Y[i]; } y_min -= pix_size/2;
+    double x_min=X[0]; for(unsigned i=0; i<size; ++i) {if (X[i] < x_min) x_min = X[i];} x_min -= pix_size/2;
+    double y_min=Y[0]; for(unsigned i=0; i<size; ++i) {if (Y[i] < y_min) y_min = Y[i];} y_min -= pix_size/2;
     for(unsigned i=0; i<size; ++i) { 
       p_iX[i] = (unsigned)((X[i] - x_min) / pix_size);
       p_iY[i] = (unsigned)((Y[i] - y_min) / pix_size);
@@ -650,8 +663,8 @@ GeometryAccess::get_pixel_xy_inds_at_z(const unsigned *& iX,
     double x_off_um = xy0_off_pix[0] * pix_size;
     double y_off_um = xy0_off_pix[1] * pix_size;
     // Protection against wrong offset bringing negative indexes
-    double x_min=0; for(unsigned i=0; i<size; ++i) { if (X[i] + x_off_um < x_min) x_min = X[i] + x_off_um; } x_off_um -= x_min - pix_size/2;
-    double y_min=0; for(unsigned i=0; i<size; ++i) { if (Y[i] + y_off_um < y_min) y_min = Y[i] + y_off_um; } y_off_um -= y_min - pix_size/2;
+    double x_min=0; for(unsigned i=0; i<size; ++i) {if (X[i] + x_off_um < x_min) x_min = X[i] + x_off_um;} x_off_um -= x_min - pix_size/2;
+    double y_min=0; for(unsigned i=0; i<size; ++i) {if (Y[i] + y_off_um < y_min) y_min = Y[i] + y_off_um;} y_off_um -= y_min - pix_size/2;
 
     for(unsigned i=0; i<size; ++i) { 
       p_iX[i] = (unsigned)((X[i] + x_off_um) / pix_size);
@@ -660,8 +673,8 @@ GeometryAccess::get_pixel_xy_inds_at_z(const unsigned *& iX,
   } 
   else {
     // Find coordinate min values
-    double x_min=X[0]; for(unsigned i=0; i<size; ++i) { if (X[i] < x_min) x_min = X[i]; } x_min -= pix_size/2;
-    double y_min=Y[0]; for(unsigned i=0; i<size; ++i) { if (Y[i] < y_min) y_min = Y[i]; } y_min -= pix_size/2;
+    double x_min=X[0]; for(unsigned i=0; i<size; ++i) {if (X[i] < x_min) x_min = X[i];} x_min -= pix_size/2;
+    double y_min=Y[0]; for(unsigned i=0; i<size; ++i) {if (Y[i] < y_min) y_min = Y[i];} y_min -= pix_size/2;
     for(unsigned i=0; i<size; ++i) { 
       p_iX[i] = (unsigned)((X[i] - x_min) / pix_size);
       p_iY[i] = (unsigned)((Y[i] - y_min) / pix_size);
@@ -681,8 +694,8 @@ GeometryAccess::ref_img_from_pixel_arrays(const unsigned*& iX,
                                           const double*    W,
                                           const unsigned&  size)
 {
-    unsigned ix_max=iX[0]; for(unsigned i=0; i<size; ++i) { if (iX[i] > ix_max) ix_max = iX[i]; } ix_max++;
-    unsigned iy_max=iY[0]; for(unsigned i=0; i<size; ++i) { if (iY[i] > iy_max) iy_max = iY[i]; } iy_max++;
+    unsigned ix_max=iX[0]; for(unsigned i=0; i<size; ++i) {if (iX[i] > ix_max) ix_max = iX[i];} ix_max++;
+    unsigned iy_max=iY[0]; for(unsigned i=0; i<size; ++i) {if (iY[i] > iy_max) iy_max = iY[i];} iy_max++;
 
     shape_t sh[2] = {ix_max, iy_max};
 
@@ -709,8 +722,8 @@ GeometryAccess::img_from_pixel_arrays(const unsigned*& iX,
                                       const double*    W,
                                       const unsigned&  size)
 {
-    unsigned ix_max=iX[0]; for(unsigned i=0; i<size; ++i) { if (iX[i] > ix_max) ix_max = iX[i]; } ix_max++;
-    unsigned iy_max=iY[0]; for(unsigned i=0; i<size; ++i) { if (iY[i] > iy_max) iy_max = iY[i]; } iy_max++;
+    unsigned ix_max=iX[0]; for(unsigned i=0; i<size; ++i) {if (iX[i] > ix_max) ix_max = iX[i];} ix_max++;
+    unsigned iy_max=iY[0]; for(unsigned i=0; i<size; ++i) {if (iY[i] > iy_max) iy_max = iY[i];} iy_max++;
 
     shape_t sh[2] = {ix_max, iy_max};
     NDArray<image_t>& img = *(new NDArray<image_t>(sh, 2));
@@ -719,6 +732,31 @@ GeometryAccess::img_from_pixel_arrays(const unsigned*& iX,
     if (W) for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = (image_t) W[i];
     else   for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = 1;
     return img;
+}
+
+//-------------------
+
+NDArray<const double>*
+GeometryAccess::get_pixel_coords(const SG::AXIS axis)
+{
+    const double* X;
+    const double* Y;
+    const double* Z;
+    unsigned size;
+    get_pixel_coords(X,Y,Z,size); //,oname,oindex,do_tilt
+    shape_t sh[1] = {size};
+
+    //return new NDArray<double>(sh, 1);
+
+    switch(axis)
+      {
+      case SG::AXIS_X : return new NDArray<const double>(sh, 1, X);
+      case SG::AXIS_Y : return new NDArray<const double>(sh, 1, Y);
+      case SG::AXIS_Z : return new NDArray<const double>(sh, 1, Z);
+      default         : return new NDArray<const double>(sh, 1, X);
+        //MSG(WARNING, "Unknown DBTYPE " << dbtype);
+        //throw "Requested unknown DBTYPE";
+      }
 }
 
 //-------------------

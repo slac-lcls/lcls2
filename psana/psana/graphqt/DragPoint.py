@@ -39,8 +39,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
                self.pathForPointX(point, scene, rsize) if pshape=='x' else\
                self.pathForPointR(point, scene, rsize)
 
-        print('selected path', str(path))
-
+        #print('selected path', str(path))
 
         QGraphicsPathItem.__init__(self, path, parent)
         if scene is not None: scene.addItem(self)
@@ -196,15 +195,15 @@ class DragPoint(QGraphicsPathItem, DragBase) :
     def mousePressEvent(self, e) :
         logger.debug('DragPoint.mousePressEvent at point: (%.1f, %.1f) on scene %s'%
                       (e.pos().x(),  e.pos().y(), str(e.scenePos()))) # self.__class__.__name__
-        QGraphicsPathItem.mousePressEvent(self, e)
-
         self.setSelected(True)
+        #print("DragPoint is selected: ", self.isSelected())
+        QGraphicsPathItem.mousePressEvent(self, e)
         parent = self.parentItem()
         if parent is not None : parent.mousePressEvent(e)
 
 
     def mouseMoveEvent(self, e) :
-        logger.debug('DragPoint:mouseMoveEvent at point: (%.1f, %.1f)' % (e.pos().x(),  e.pos().y()))
+        #logger.debug('DragPoint:mouseMoveEvent at point: (%.1f, %.1f)' % (e.pos().x(),  e.pos().y()))
                      #(str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
         QGraphicsPathItem.mouseMoveEvent(self, e)
         if self.parentItem() is not None : self.parentItem().mouseMoveEvent(e) 
@@ -213,6 +212,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
     def mouseReleaseEvent(self, e) :
         logger.debug('DragPoint.mouseReleaseEvent at point:(%.1f, %.1f) on scene: %s '%
                       (e.pos().x(),  e.pos().y(), str(e.scenePos()))) # self.__class__.__name__
+        self.setSelected(False)
         QGraphicsPathItem.mouseReleaseEvent(self, e)
         if self._drag_mode == ADD :
             self.set_drag_mode()

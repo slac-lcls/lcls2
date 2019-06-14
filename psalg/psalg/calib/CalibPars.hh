@@ -6,8 +6,9 @@
 #include "psalg/calib/CalibParsTypes.hh"
 #include "psalg/calib/CalibParsDBTypes.hh"
 #include "psalg/calib/CalibParsDB.hh"
-
 #include "psalg/calib/Query.hh"
+
+#include "psalg/geometry/GeometryAccess.hh"
 
 //using namespace std;
 using namespace psalg;
@@ -45,7 +46,10 @@ public:
 							                  //  const bool& neighbors=true);
 
   /// access to geometry
-  virtual const geometry_t& geometry(Query&);
+  geometry::GeometryAccess* geometryAccess(Query&);
+  void deleteGeometryAccess();
+
+  //virtual const geometry_t& geometry(Query&);
   virtual const geometry_t& geometry_str(Query&); // returns geometry calibration file content as string
   virtual const NDArray<pixel_idx_t>&   indexes    (Query&);//, const size_t& axis=0);
   virtual const NDArray<pixel_coord_t>& coords     (Query&);//, const size_t& axis=0);
@@ -57,7 +61,7 @@ public:
 
  //-------------------
 
-  CalibParsDB* calibparsdb() {return _calibparsdb;}
+  inline CalibParsDB* calibparsdb() {return _calibparsdb;}
 
   CalibPars(const CalibPars&) = delete;
   CalibPars& operator = (const CalibPars&) = delete;
@@ -83,7 +87,8 @@ protected:
 
   const std::string       _detname;
 
-  CalibParsDB*            _calibparsdb;
+  CalibParsDB*              _calibparsdb;
+  geometry::GeometryAccess* _geometryaccess;
 
 private :
 

@@ -191,20 +191,20 @@ private:
   SegGeometryCspad2x1V1 (const bool& use_wide_pix_center=false);
 
   /// Destructor
-  virtual ~SegGeometryCspad2x1V1 ();
+  virtual ~SegGeometryCspad2x1V1();
 
   static geometry::SegGeometry* m_pInstance;
 
   //-----------------
 
   /// Generator of the pixel coordinate arrays.
-  void make_pixel_coord_arrs ();
+  void make_pixel_coord_arrs();
 
   /// Generator of the pixel size and area arrays.
-  void make_pixel_size_arrs ();
+  void make_pixel_size_arrs();
 
   /// Prints class member data
-  void print_member_data ();
+  void print_member_data();
 
   /// Prints 2x1 pixel coordinates
   void print_coord_arrs();

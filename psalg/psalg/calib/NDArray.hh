@@ -78,6 +78,15 @@ public:
 
 //-------------------
 
+  NDArray(shape_t* sh, const size_t ndim, const void *buf) :
+    base(), _buf_ext(0), _buf_own(0)
+  {
+     set_shape(sh, ndim);
+     set_const_data_buffer(buf);
+  }
+
+//-------------------
+
   NDArray() : base(), _buf_ext(0), _buf_own(0) {}
 
 //-------------------
@@ -137,6 +146,20 @@ public:
   }
 
 //-------------------
+
+//-------------------
+/// CONST !!! *buf
+/// sets pointer to data
+/// WARNING shape needs to be set first, othervice size() is undefined!
+
+  inline void set_const_data_buffer(const void *buf=0) {
+    //MSG(TRACE, "In set_data_buffer *buf=" << buf);
+    if(_buf_own) delete _buf_own;  
+    if(buf) {
+      _buf_ext = base::_data = reinterpret_cast<T*>(buf);
+      _buf_own = 0;
+    }
+  }
 
 //-------------------
 /// sets pointer to data

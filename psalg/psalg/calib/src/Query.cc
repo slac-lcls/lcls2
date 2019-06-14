@@ -93,6 +93,12 @@ namespace calib {
 
 //-------------------
 
+  void Query::set_calibtype(const CALIB_TYPE& ctype) {
+    _qmap[CALIBTYPE] = std::string(name_of_calibtype(ctype));
+  } 
+
+//-------------------
+
   void Query::set_qmap(const map_t* map) {
     if(map) {_qmap = *map; return;}
 

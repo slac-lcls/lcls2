@@ -3,7 +3,7 @@
 
 //-------------------
 
-#include <string>
+// #include <string> // in SegGeometryStore.hh
 #include <vector>
 #include <math.h>      // sin, cos
 

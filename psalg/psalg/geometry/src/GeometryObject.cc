@@ -14,7 +14,7 @@
 //#include <functional>   // std::plus, minus
 
 #include "psalg/utils/Logger.hh" // MSG, LOGGER
-#include "psalg/geometry/GlobalMethods.hh"
+#include "psalg/geometry/UtilsCSPAD.hh"
 
 using namespace std;
 

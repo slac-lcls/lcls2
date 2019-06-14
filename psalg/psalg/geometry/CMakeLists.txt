@@ -34,7 +34,7 @@ install(FILES
     SegGeometry.hh
     SegGeometryMatrixV1.hh
     SegGeometryStore.hh
-    GlobalMethods.hh
+    UtilsCSPAD.hh
     GeometryObject.hh
     GeometryAccess.hh
     DESTINATION include/psalg/geometry

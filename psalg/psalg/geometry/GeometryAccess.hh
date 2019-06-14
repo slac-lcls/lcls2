@@ -3,13 +3,14 @@
 
 //------------------
 
-#include <string>
-#include <vector>
+//#include <string> // in GeometryObject.hh
+//#include <vector> // in GeometryObject.hh
 #include <map>
 #include <sstream>  // stringstream
 //#include <boost/shared_ptr.hpp>
 
 #include "psalg/geometry/GeometryObject.hh"
+//#include "psalg/geometry/SegmentGeometry.hh" // AXIS
 
 #include "psalg/calib/NDArray.hh"
 
@@ -155,6 +156,7 @@ typedef psalg::types::shape_t shape_t;
 
 
 typedef GeometryObject::pGO pGO;
+typedef GeometryObject::SG SG;
 
 public:
 
@@ -172,7 +174,12 @@ public:
    *  \n         +16 info about setting relations between geometry objects, 
    *  \n         +32 info about pixel coordinate reconstruction
    */ 
-  GeometryAccess(const std::string& path) ;
+  GeometryAccess(const std::string& path = "");
+
+  /**
+   * Constructor loads parameters from string stream
+   */
+  GeometryAccess(std::stringstream& ss);
 
   // Destructor
   virtual ~GeometryAccess() ;
@@ -202,6 +209,8 @@ public:
 			 const unsigned& oindex = 0,
                          const bool do_tilt=true,
                          const bool do_eval=false);
+
+  NDArray<const double>* get_pixel_coords(const SG::AXIS axis=SG::AXIS_X);
 
   /// Returns pixel coordinate arrays XatZ, YatZ, of size for specified Zplane and geometry object 
   /**
@@ -273,6 +282,9 @@ public:
   /// Prints beginning of pixel coordinate arrays for specified geometry object (top object by default)
   void print_pixel_coords(const std::string& oname= std::string(), 
 			  const unsigned& oindex = 0);
+
+  /// Prints geometry info using all other print_* methods
+  void print_geometry_info(const unsigned& pbits=255);
 
   /// Returns pixel coordinate index arrays iX, iY of size for specified geometry object 
  /**

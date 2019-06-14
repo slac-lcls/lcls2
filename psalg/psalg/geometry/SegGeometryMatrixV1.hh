@@ -5,6 +5,7 @@
 
 #include "psalg/geometry/SegGeometry.hh"
 #include <string>
+#include <map>
 
 namespace geometry {
 
@@ -108,9 +109,33 @@ bool matrix_pars( const std::string& segname
 		, float& pix_size_rows
 		, float& pix_size_cols);
 
-
 class SegGeometryMatrixV1 : public geometry::SegGeometry {
+
 public:
+
+  typedef std::map<const std::string, geometry::SegGeometry*> MapInstance;
+
+  // Constructor
+  /**
+   *  @brief Fills-in the map of perfect segment coordinates, defined through the chip geometry.
+   *  @param[in] rows - number of rows
+   *  @param[in] cols - number of columns
+   *  @param[in] pix_size_rows - pixel size in rows in micrometers [um] 
+   *  @param[in] pix_size_cols - pixel size in columns in micrometers [um] 
+   *  @param[in] pix_size_depth - pixel size in depth in micrometers [um] 
+   *  @param[in] pix_scale_size - pixel size parameter taken as a 2-d image grid parameter
+   */
+  SegGeometryMatrixV1 ( const size_t& rows = 512
+		      , const size_t& cols = 512
+		      , const float& pix_size_rows  = PIX_SIZE_ROWS_DEF
+		      , const float& pix_size_cols  = PIX_SIZE_COLS_DEF
+		      , const float& pix_size_depth = PIX_SIZE_DEPTH_DEF
+		      , const float& pix_scale_size = PIX_SCALE_SIZE_DEF
+                      );
+  /// Destructor
+  virtual ~SegGeometryMatrixV1 ();
+
+
 
   /// Number of pixel rows in segment 
   //static const size_t  ROWS     = 512;
@@ -139,27 +164,7 @@ public:
   /// Conversion factor between um and pix 
   //static const double UM_TO_PIX;             // = 1./75;
 
-  // Constructor
-
-  /**
-   *  @brief Fills-in the map of perfect segment coordinates, defined through the chip geometry.
-   *  @param[in] rows - number of rows
-   *  @param[in] cols - number of columns
-   *  @param[in] pix_size_rows - pixel size in rows in micrometers [um] 
-   *  @param[in] pix_size_cols - pixel size in columns in micrometers [um] 
-   *  @param[in] pix_size_depth - pixel size in depth in micrometers [um] 
-   *  @param[in] pix_scale_size - pixel size parameter taken as a 2-d image grid parameter
-   */
-  SegGeometryMatrixV1 ( const size_t& rows = 512
-		      , const size_t& cols = 512
-		      , const float& pix_size_rows  = PIX_SIZE_ROWS_DEF
-		      , const float& pix_size_cols  = PIX_SIZE_COLS_DEF
-		      , const float& pix_size_depth = PIX_SIZE_DEPTH_DEF
-		      , const float& pix_scale_size = PIX_SCALE_SIZE_DEF
-                      );
-  /// Destructor
-  virtual ~SegGeometryMatrixV1 ();
-
+  //-----------------
   /// Implementation of interface methods
 
   /// Prints segment info for selected bits
@@ -205,7 +210,20 @@ public:
    */  
   virtual const pixel_mask_t* pixel_mask_array(const unsigned& mbits = 0377);
 
+  //-----------------
+  // Singleton stuff:
+
+  static geometry::SegGeometry* instance(const std::string& segname="MTRX:512:512:75:75");
+
 private:
+
+  SegGeometryMatrixV1(const std::string& segname="MTRX:512:512:75:75"); // def - pnccd segment
+
+  //static geometry::SegGeometry* m_pInstance;
+
+  static MapInstance _map_segname_instance;
+
+  //-----------------
 
   /// Generator of the pixel coordinate arrays.
   void make_pixel_coord_arrs();

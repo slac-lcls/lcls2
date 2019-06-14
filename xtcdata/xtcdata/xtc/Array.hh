@@ -22,6 +22,11 @@ public:
         _data = reinterpret_cast<T*>(data);
         _rank = rank;
     }
+    Array(const void *data, uint32_t *shape, uint32_t rank){
+        _shape = shape;
+        _data = reinterpret_cast<T*>(data);
+        _rank = rank;
+    }
     Array() : _shape(0), _data(0), _rank(0) {}
 
     T& operator()(unsigned i){

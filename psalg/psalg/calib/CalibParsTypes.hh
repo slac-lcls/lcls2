@@ -25,7 +25,7 @@ namespace calib {
                    PIXEL_COORD,
                    PIXEL_SIZE,
                    TILT_ANGLE,
-                   COMMON_MODE
+                   COMMON_MODE  
   };
 
   //typedef psalg::types::shape_t shape_t; // uint32_t
@@ -46,6 +46,9 @@ namespace calib {
 
   typedef std::string geometry_t; // text from file
   typedef float query_t;          // TEMPORARY substitution for object
+
+  const char* name_of_calibtype(const CALIB_TYPE& ctype);
+
 } // namespace calib
 
 //-------------------

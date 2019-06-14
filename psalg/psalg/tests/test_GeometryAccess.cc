@@ -1,30 +1,37 @@
 //-------------------
 
-#include "psalg/geometry/GeometryObject.hh"
-#include "psalg/geometry/GeometryAccess.hh"
-
 #include <time.h>   // time
 #include <string>
 #include <iostream>
 #include <iomanip>  // for setw, setfill
 
+//#include "psalg/geometry/GeometryObject.hh"
+#include "psalg/geometry/GeometryAccess.hh"
+#include "psalg/calib/NDArray.hh"
+
 using namespace std;
 //using namespace geometry;
+
+typedef geometry::GeometryObject::SG SG;
 
 struct timespec start, stop;
 int status;
 
 //-------------------
 
-double time_sec_nsec(const timespec& t)
-{
-  return t.tv_sec + 1e-9*(t.tv_nsec);
-}
+string fname_cspad2x2("/reg/g/psdm/detector/alignment/cspad2x2/calib-cspad2x2-01-2013-02-13/calib/"
+                      "CsPad2x2::CalibV1/MecTargetChamber.0:Cspad2x2.1/geometry/0-end.data");
+
+string fname_cspad("/reg/g/psdm/detector/alignment/cspad/calib-mec-2017-10-20/calib/"
+	           "CsPad::CalibV1/MecTargetChamber.0:Cspad.0/geometry/0-end.data");
 
 //-------------------
 
-double dtime(const timespec& start, const timespec& stop)
-{
+double time_sec_nsec(const timespec& t){return t.tv_sec + 1e-9*(t.tv_nsec);}
+
+//-------------------
+
+double dtime(const timespec& start, const timespec& stop){
   return time_sec_nsec(stop) - time_sec_nsec(start);
 }
 
@@ -32,8 +39,7 @@ double dtime(const timespec& start, const timespec& stop)
 
 void test_file_to_stringstream()
 {
-  string fname("/reg/g/psdm/detector/alignment/cspad2x2/calib-cspad2x2-01-2013-02-13/calib/"
-               "CsPad2x2::CalibV1/MecTargetChamber.0:Cspad2x2.1/geometry/0-end.data");
+  const string& fname = fname_cspad2x2;
   cout << "\ntest_file_to_stringstream fname: " << fname << " \n";
 
   std::stringstream ss;
@@ -45,21 +51,66 @@ void test_file_to_stringstream()
 
 void test_geometry()
 {
-  string fname("/reg/g/psdm/detector/alignment/cspad/calib-mec-2017-10-20/calib/"
-	       "CsPad::CalibV1/MecTargetChamber.0:Cspad.0/geometry/0-end.data");
+  const string& fname = fname_cspad;
   cout << "\ntest_geometry_loading fname: " << fname << " \n";
 
   geometry::GeometryAccess geo(fname);
 
-  geo.print_comments_from_dict();
-  geo.print_list_of_geos();
-  geo.print_list_of_geos_children();
+  //geo.print_comments_from_dict();
+  //geo.print_list_of_geos();
+  //geo.print_list_of_geos_children();
+  geo.print_geometry_info(7);
 
   status = clock_gettime(CLOCK_REALTIME, &start);
   geo.print_pixel_coords();
   status = clock_gettime(CLOCK_REALTIME, &stop);
 
   cout << "\nconsumed time = " << dtime(start, stop) << " sec\n";
+}
+
+//-------------------
+
+void test_geo_get_pixel_coords_as_pointer()
+{
+  LOGGER.setLogger(LL::INFO, "%H:%M:%S");
+
+  const string& fname = fname_cspad;
+  cout << "\ntest_geometry_loading fname: " << fname << " \n";
+
+  geometry::GeometryAccess geo(fname);
+  const double* X;
+  const double* Y;
+  const double* Z;
+  unsigned   size;
+  geo.get_pixel_coords(X,Y,Z,size); //,oname,oindex,do_tilt
+
+  std::stringstream ss; ss << "print_pixel_coords():\n"
+			   << "size=" << size << '\n' << std::fixed << std::setprecision(1);  
+  ss << "X: "; for(unsigned i=0; i<10; ++i) ss << std::setw(10) << X[i] << ", "; ss << "...\n";
+  ss << "Y: "; for(unsigned i=0; i<10; ++i) ss << std::setw(10) << Y[i] << ", "; ss << "...\n"; 
+  ss << "Z: "; for(unsigned i=0; i<10; ++i) ss << std::setw(10) << Z[i] << ", "; ss << "...\n"; 
+  //cout << ss.str();
+  MSG(INFO, ss.str());
+}
+
+//-------------------
+
+void test_geo_get_pixel_coords_as_ndarray()
+{
+  LOGGER.setLogger(LL::INFO, "%H:%M:%S");
+
+  const string& fname = fname_cspad;
+  cout << "\ntest_geometry_loading fname: " << fname << " \n";
+
+  geometry::GeometryAccess geo(fname);
+
+  psalg::NDArray<const double>* pxarr = geo.get_pixel_coords(SG::AXIS_X);
+  psalg::NDArray<const double>* pyarr = geo.get_pixel_coords(SG::AXIS_Y);
+  psalg::NDArray<const double>* pzarr = geo.get_pixel_coords(SG::AXIS_Z);
+
+  cout << "  X: " << *pxarr << '\n';
+  cout << "  Y: " << *pyarr << '\n';
+  cout << "  Z: " << *pzarr << '\n';
 }
 
 //-------------------
@@ -74,6 +125,8 @@ std::string usage(const std::string& tname="")
   if (tname == "") ss << "Usage command> test_GeometryAccess <test-number>\n  where test-number";
   if (tname == "" || tname=="0"	) ss << "\n   0  - test_file_to_stringstream()";
   if (tname == "" || tname=="1"	) ss << "\n   1  - test_geometry()";
+  if (tname == "" || tname=="2"	) ss << "\n   2  - test_geo_get_pixel_coords_as_pointer()";
+  if (tname == "" || tname=="3"	) ss << "\n   3  - test_geo_get_pixel_coords_as_ndarray()";
   ss << '\n';
   return ss.str();
 }
@@ -83,8 +136,8 @@ std::string usage(const std::string& tname="")
 int main(int argc, char* argv[])
 {
   MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
-  LOGGER.setLogger(LL::INFO, "%H:%M:%S");           // "%H:%M:%S.%f"
-  //LOGGER.setLogger(LL::DEBUG, "%H:%M:%S");
+  //LOGGER.setLogger(LL::INFO, "%H:%M:%S");           // "%H:%M:%S.%f"
+  LOGGER.setLogger(LL::DEBUG, "%H:%M:%S");
 
   cout << usage(); 
   print_hline(80,'_');
@@ -94,6 +147,8 @@ int main(int argc, char* argv[])
 
   if      (tname=="0")  test_file_to_stringstream();
   else if (tname=="1")  test_geometry();
+  else if (tname=="2")  test_geo_get_pixel_coords_as_pointer();
+  else if (tname=="3")  test_geo_get_pixel_coords_as_ndarray();
 
   else MSG(WARNING, "Undefined test name: " << tname);
 
