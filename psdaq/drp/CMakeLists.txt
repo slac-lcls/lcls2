@@ -7,6 +7,7 @@ add_executable(drp
     AreaDetector.cc
     Digitizer.cc
     TimingSystem.cc
+    TimeTool.cc
     FileWriter.cc
     drp.cc
 )

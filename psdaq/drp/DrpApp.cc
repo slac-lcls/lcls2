@@ -2,6 +2,7 @@
 #include <fstream>
 #include <limits.h>
 #include "TimingSystem.hh"
+#include "TimeTool.hh"
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
 #include "TimingHeader.hh"
@@ -55,6 +56,7 @@ DrpApp::DrpApp(Parameters* para) :
     Factory<Detector> f;
     f.register_type<TimingSystem>("TimingSystem");
     f.register_type<Digitizer>("Digitizer");
+    f.register_type<TimeTool>("TimeTool");
     f.register_type<AreaDetector>("AreaDetector");
     m_det = f.create(m_para, &m_pool);
     if (m_det == nullptr) {
