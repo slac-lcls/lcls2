@@ -21,6 +21,7 @@ private:
     unsigned          m_evtcount;
     XtcData::NamesId  m_evtNamesId;
     std::string       m_connect_json;
+    std::string       m_epics_name;
 };
 
 }

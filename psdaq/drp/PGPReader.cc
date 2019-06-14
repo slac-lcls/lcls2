@@ -222,6 +222,8 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
                     printf("\033[0;31m");
                     printf("Fatal: Jump in complete l1Count %u -> %u | difference %d\n",
                            m_lastComplete, evtCounter, evtCounter - m_lastComplete);
+                    printf("data: %08x %08x %08x %08x %08x %08x\n",
+                           data[0], data[1], data[2], data[3], data[4], data[5]);
                     printf("\033[0m");
                     throw "Jump in event counter";
 
@@ -233,6 +235,7 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
                     }
                 }
                 m_lastComplete = evtCounter;
+
                 nevents++;
                 m_batch.size++;
 

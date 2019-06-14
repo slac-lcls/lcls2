@@ -7,11 +7,13 @@
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/digitizer/Stream.hh"
+#include "DataDriver.h"
 
 #include <Python.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
+#include <fstream>
 
 using namespace XtcData;
 using namespace rapidjson;
@@ -40,7 +42,10 @@ public:
 Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     Detector(para, pool),
     m_evtcount(0),
-    m_evtNamesId(nodeId, EventNamesIndex)
+    m_evtNamesId(nodeId, EventNamesIndex),
+    m_epics_name(para->detSegment==0 ? 
+                 "DAQ:LAB2:HSD:DEV06_3E:DRP:A" :
+                 "DAQ:LAB2:HSD:DEV06_3E:DRP:B")
 {
 }
 
@@ -79,9 +84,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     // returns new reference
     PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",
                                               m_connect_json.c_str(),
-                                              m_para->detSegment==0 ? 
-                                              "DAQ:LAB2:HSD:DEV06_3E:DRP:A" :
-                                              "DAQ:LAB2:HSD:DEV06_3E:DRP:B",
+                                              m_epics_name.c_str(),
                                               "BEAM", 
                                               m_para->detName.c_str());
 
@@ -97,7 +100,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     // convert to json to xtc
     const unsigned BUFSIZE = 1024*1024;
     char buffer[BUFSIZE];
-    unsigned len = translateJson2Xtc(json, buffer, configNamesId);
+    unsigned len = translateJson2Xtc(json, buffer, configNamesId, m_para->detSegment);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }
@@ -144,6 +147,23 @@ void Digitizer::connect(const json& connect_json, const std::string& collectionI
 
 unsigned Digitizer::configure(Xtc& xtc)
 {
+    //  Reset the PGP links
+    int fd = open(m_para->device.c_str(), O_RDWR);
+    //  user reset
+    dmaWriteRegister(fd, 0x00800000, (1<<31));
+    usleep(10);
+    dmaWriteRegister(fd, 0x00800000, 0);
+    //  QPLL reset
+    dmaWriteRegister(fd, 0x00a40024, 1);
+    usleep(10);
+    dmaWriteRegister(fd, 0x00a40024, 0);
+    usleep(10);
+    //  Reset the Tx and Rx
+    dmaWriteRegister(fd, 0x00a40024, 6);
+    usleep(10);
+    dmaWriteRegister(fd, 0x00a40024, 0);
+    close(fd);
+
     unsigned lane_mask;
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
