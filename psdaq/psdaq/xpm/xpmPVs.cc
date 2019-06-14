@@ -33,7 +33,6 @@ using Pds_Epics::EpicsPVA;
 using Pds_Epics::PVMonitorCb;
 using Pds::Xpm::CoreCounts;
 using Pds::Xpm::L0Stats;
-using Pds::Xpm::MmcmPhaseLock;
 using std::string;
 
 extern int optind;
@@ -81,7 +80,6 @@ namespace Pds {
       EpicsPVA*  _partPV;
       EpicsPVA*  _paddrPV;
       EpicsPVA*  _fwBuildPV;
-      EpicsPVA*  _mmcmPV[4];
       EpicsPVA*  _rxAlignPV[2];
       L0Stats    _s    [Pds::Xpm::Module::NPartitions];
       PVPStats*  _pvps [Pds::Xpm::Module::NPartitions];
@@ -89,7 +87,6 @@ namespace Pds {
       PVCtrls    _pvc;
       PVPCtrls*  _pvpc [Pds::Xpm::Module::NPartitions];
       friend class PvAllocate;
-      unsigned   _nmmcm;
     };
 
     class PvAllocate : public Routine {
@@ -103,21 +100,6 @@ namespace Pds {
 
   };
 };
-
-static void fillMmcm( EpicsPVA*& pv, MmcmPhaseLock& mmcm ) {
-  if (pv && pv->connected()) {
-    unsigned w = 2048;
-    pvd::shared_vector<int> vec(w+1);
-    vec[0] = mmcm.delayValue;
-    for(unsigned j=1; j<=w; j++) {
-      mmcm.ramAddr = j;
-      unsigned q = mmcm.ramData;
-      vec[j] = q;
-    }
-    pv->putFromVector<int>(freeze(vec));
-    pv = 0;
-  }
-}
 
 static void fillRxAlignPV( EpicsPVA*& pv, Pds::Cphw::GthRxAlign& align ) {
   if (pv && pv->connected()) {
@@ -166,26 +148,8 @@ void StatsTimer::allocate(const char* module_prefix,
 
 void StatsTimer::_allocate()
 {
-  //  Wait for module to become ready
-  { 
-    _nmmcm = 0;
-    if (Module::feature_rev()>0) {
-      _nmmcm = 4;
-      while(!_dev._mmcm_amc.ready()) {
-        printf("Waiting for XTPG phase lock: ready=[%c/%c]%c%c%c%c\n",
-               _dev._usTiming.RxRstDone==1 ? 'T':'F',
-               _dev._cuTiming.RxRstDone==1 ? 'T':'F',
-               _dev._mmcm[0].ready() ? 'T':'F',
-               _dev._mmcm[1].ready() ? 'T':'F',
-               _dev._mmcm[2].ready() ? 'T':'F',
-               _dev._mmcm_amc.ready()? 'T':'F');
-        sleep(1);
-      }
-    }
-  }
-
-  _pvs.allocate(_module_prefix);
   _pvc.allocate(_module_prefix);
+  _pvs.allocate(_module_prefix);
 
   for(unsigned i=0; i<Pds::Xpm::Module::NPartitions; i++) {
     std::stringstream ostr,dtstr;
@@ -207,13 +171,6 @@ void StatsTimer::_allocate()
     _fwBuildPV = new EpicsPVA(ostr.str().c_str(),256);  }
 
   if (Module::feature_rev()>0) {
-    for(unsigned i=0; i<4; i++) {
-      std::stringstream ostr;
-      ostr << _module_prefix << ":XTPG:MMCM" << i;
-      printf("mmcmpv[%d]: %s\n", i, ostr.str().c_str());
-      _mmcmPV[i] = new EpicsPVA(ostr.str().c_str());  
-    }
-
     for(unsigned i=0; i<2; i++) {
       std::stringstream ostr;
       ostr << _module_prefix << (i==0 ? ":Us":":Cu") << ":RxAlign";
@@ -280,9 +237,6 @@ void StatsTimer::expired()
     _fwBuildPV->putFrom<std::string>(bld.c_str());
     _fwBuildPV = 0;
   }
-
-  for(unsigned i=0; i<_nmmcm; i++) 
-    fillMmcm(_mmcmPV[i], i<3 ? _dev._mmcm[i] : _dev._mmcm_amc);
 
   for(unsigned i=0; i<2; i++)
     fillRxAlignPV(_rxAlignPV[i], i==0 ? _dev._usGthAlign : _dev._cuGthAlign);

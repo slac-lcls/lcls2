@@ -15,6 +15,22 @@
 
 using Pds_Epics::EpicsPVA;
 using Pds_Epics::PVMonitorCb;
+using Pds::Xpm::MmcmPhaseLock;
+
+static void fillMmcm( EpicsPVA*& pv, MmcmPhaseLock& mmcm ) {
+  if (pv && pv->connected()) {
+    unsigned w = 2048;
+    pvd::shared_vector<int> vec(w+1);
+    vec[0] = mmcm.delayValue;
+    for(unsigned j=1; j<=w; j++) {
+      mmcm.ramAddr = j;
+      unsigned q = mmcm.ramData;
+      vec[j] = q;
+    }
+    pv->putFromVector<int>(freeze(vec));
+    pv = 0;
+  }
+}
 
 namespace Pds {
   namespace Xpm {
@@ -90,6 +106,11 @@ namespace Pds {
     CPV(GroupL0Disable,   { GPVG(groupL0Disable(getScalarAs<unsigned>())); }, { })
     CPV(GroupMsgInsert,   { GPVG(groupMsgInsert(getScalarAs<unsigned>())); }, { })
 
+    CPV(ResetMmcm0 ,    { if (getScalarAs<unsigned>()) _ctrl.resetMmcm(0); }, {})
+    CPV(ResetMmcm1 ,    { if (getScalarAs<unsigned>()) _ctrl.resetMmcm(1); }, {})
+    CPV(ResetMmcm2 ,    { if (getScalarAs<unsigned>()) _ctrl.resetMmcm(2); }, {})
+    CPV(ResetMmcm3 ,    { if (getScalarAs<unsigned>()) _ctrl.resetMmcm(3); }, {})
+
     static PVCtrls* _instance = 0;
 
     PVCtrls::PVCtrls(Module& m, Semaphore& sem) : _pv(0), _m(m), _sem(sem), _seq(0), _seq_pv(0) 
@@ -106,6 +127,34 @@ namespace Pds {
       for(unsigned i=0; i<_seq_pv.size(); i++)
         delete _seq_pv[i];
       _seq_pv.resize(0);
+
+      //  Wait for module to become ready
+      { 
+        _nmmcm = 0;
+        if (Module::feature_rev()>0) {
+          _nmmcm = 4;
+          while(!_m._mmcm_amc.ready()) {
+            printf("Waiting for XTPG phase lock: ready=[%c/%c]%c%c%c%c\n",
+                   _m._usTiming.RxRstDone==1 ? 'T':'F',
+                   _m._cuTiming.RxRstDone==1 ? 'T':'F',
+                   _m._mmcm[0].ready() ? 'T':'F',
+                   _m._mmcm[1].ready() ? 'T':'F',
+                   _m._mmcm[2].ready() ? 'T':'F',
+                   _m._mmcm_amc.ready()? 'T':'F');
+            sleep(1);
+          }
+
+          for(unsigned i=0; i<4; i++) {
+            std::stringstream ostr;
+            ostr << title << ":XTPG:MMCM" << i;
+            printf("mmcmpv[%d]: %s\n", i, ostr.str().c_str());
+            _mmcmPV[i] = new EpicsPVA(ostr.str().c_str());  
+          }
+
+          for(unsigned i=0; i<_nmmcm; i++) 
+            fillMmcm(_mmcmPV[i], i<3 ? _m._mmcm[i] : _m._mmcm_amc);
+        }
+      }
 
       std::ostringstream o;
       o << title << ":";
@@ -149,7 +198,10 @@ namespace Pds {
       NPV ( CuDelay                                 );
       NPV ( CuBeamCode                              );
       NPV ( ClearErr                                );
-
+      NPV ( ResetMmcm0                              );
+      NPV ( ResetMmcm1                              );
+      NPV ( ResetMmcm2                              );
+      NPV ( ResetMmcm3                              );
       //  Always enable, use LinkGroupMask to exclude
       for(unsigned i=0; i<24; i++)
         _m.linkEnable(i,true);
@@ -194,11 +246,23 @@ namespace Pds {
     }
 
     void PVCtrls::dump() const
-    {
+    { 
     }
 
     void PVCtrls::checkPoint(unsigned iseq, unsigned addr)
     { _seq_pv[iseq]->checkPoint(addr); }
+
+    void PVCtrls::resetMmcm(unsigned i)
+    {
+      if (Module::feature_rev()==0) 
+        return;
+      MmcmPhaseLock& mmcm = i<3 ? _m._mmcm[i] : _m._mmcm_amc;
+      mmcm.reset();
+      while(!_m._mmcm_amc.ready())
+        sleep(1);
+      for(unsigned i=0; i<_nmmcm; i++)
+        fillMmcm(_mmcmPV[i], i<3 ? _m._mmcm[i] : _m._mmcm_amc);
+    }
 
     Module& PVCtrls::module() { return _m; }
     Semaphore& PVCtrls::sem() { return _sem; }

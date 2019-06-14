@@ -28,16 +28,19 @@ namespace Pds {
       void update();
       void dump() const;
       void checkPoint(unsigned iseq, unsigned addr);
+      void resetMmcm(unsigned);
     public:
       Module& module();
       Semaphore& sem();
       XpmSequenceEngine* seq();
     private:
       std::vector<Pds_Epics::EpicsPVA*> _pv;
-      Module&             _m;
-      Semaphore&          _sem;
-      XpmSequenceEngine*  _seq;
-      std::vector<PVSeq*> _seq_pv;
+      Module&              _m;
+      Semaphore&           _sem;
+      XpmSequenceEngine*   _seq;
+      std::vector<PVSeq*>  _seq_pv;
+      Pds_Epics::EpicsPVA* _mmcmPV[4];
+      unsigned             _nmmcm;
     };
   };
 };
