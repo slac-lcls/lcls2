@@ -40,11 +40,13 @@ def hsd_config(connect_str,epics_prefix,cfgtype,detname):
 
     # program the values
     ctxt = Context('pva')
-    ctxt.put(epics_prefix+':READY',0,wait=True)
+    ctxt.put(epics_prefix+':READY',0)
 
     print(epics_prefix+':CONFIG')
     print(values)
-    ctxt.put(epics_prefix+':CONFIG',values,wait=True)
+
+    
+    ctxt.put(epics_prefix+':CONFIG',values)
 
     # the completion of the "put" guarantees that all of the above
     # have completed (although in no particular order)
