@@ -29,17 +29,17 @@ procmgr_config = [
 # {                        id:'modca'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
 
  {                        id:'hsdcas_3e', port:'29073', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdcas -P DAQ:LAB2:HSD:DEV06_3E'},
+ {                        id:'hsdpvs_3e', port:'29074', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P DAQ:LAB2:HSD:DEV06_3E:DRP'},
  {                        id:'hsdca_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV06_3E -d'},
- { host: 'daq-tst-dev06', id:'hsdioc_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd64PVs -P DAQ:LAB2:HSD:DEV06_3E -d /dev/pcie_adc_3e -I'},
+ { host: 'daq-tst-dev06', id:'hsdioc_3e', flags:'sx', conda:conda_rel, env:epics_env, cmd:'hsd64PVs -P DAQ:LAB2:HSD:DEV06_3E -d /dev/pcie_adc_3e -I'},
 
- { host: 'drp-tst-dev022', id:'hsd', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -n xpphsd -o /ffb01/tstopr'},
-# { host: 'drp-tst-dev022', id:'hsd', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -n xpphsd'},
-#  can't handle two configurators yet
-# { host: 'drp-tst-dev023', id:'hsd1', flags:'xp', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -u hsd1'},
+ { host: 'drp-tst-dev022', id:'hsd-0', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -n xpphsd -s 0 -o /ffb01/dev022'},
+ { host: 'drp-tst-dev023', id:'hsd-1', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -n xpphsd -s 1 -o /ffb01/dev023'},
 
  { host: 'drp-tst-dev002', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
- { host: 'drp-tst-dev023', id:'meb1', flags:'spu', conda:conda_rel, cmd:'monReqServer -P TMO -d -q 4 -s 0x40000 -C '+collect_host+' -v'},
-# { host: 'drp-tst-dev023', id:'shmc', flags:'sx', conda:conda_rel, cmd:'shmemClient -p TMO -i 0 -V'},
+ { host: 'drp-tst-dev023', id:'meb1', flags:'spu', conda:conda_rel, cmd:'monReqServer -P TMO -d -q 4 -s 0x40000 -C '+collect_host+' '},
+ { host: 'drp-tst-dev023', id:'shmc', flags:'sx', conda:conda_rel, cmd:'shmemClient -p TMO -i 0'},
+# {                      , id:'ami', flags:'', conda:conda_rel, cmd:'ami-local shmem://examples/shmem.json'},
 
  { host: collect_host    , id:'Collection', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -P TMO -B DAQ:LAB2 -x 2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},

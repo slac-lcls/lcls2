@@ -346,7 +346,7 @@ def addTiming(self,pvbase):
     return w
 
 class PvMmcm(QtWidgets.QWidget):
-    def __init__(self,pvname,title):
+    def __init__(self,pvname,rstname,title):
         super(PvMmcm, self).__init__()
         layout = QtWidgets.QHBoxLayout()
 
@@ -366,6 +366,8 @@ class PvMmcm(QtWidgets.QWidget):
         if ibusy==1:
             label += 'R'
         layout.addWidget( QtWidgets.QLabel(label) )
+
+        layout.addWidget( PvPushButton(rstname,"R") )
 
         w = int(inum/4)
         self.image   = QtGui.QImage(w,20,QtGui.QImage.Format_Mono)
@@ -409,7 +411,7 @@ def addCuTab(self,pvbase):
     LblPushButtonX( lor, pvbase+'XTPG:', 'ClearErr' )
 
     for i in range(4):
-        lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM%d'%i , 'mmcm%d'%i) )
+        lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM%d'%i , pvbase+'XTPG:ResetMmcm%d'%i, 'mmcm%d'%i) )
 
     lor.addStretch()
     w = QtWidgets.QWidget()

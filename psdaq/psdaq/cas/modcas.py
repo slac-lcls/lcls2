@@ -71,6 +71,7 @@ def main():
     pvdb[':XTPG:PulseId'       ] = {'type' : 'int'}
     for i in range(4):
         pvdb[':XTPG:MMCM%d'%i      ] = {'type' : 'int', 'count' : 2049, 'value':[0]*2049 }
+        pvdb[':XTPG:ResetMmcm%d'%i ] = {'type' : 'int'}
     pvdb[':XTPG:CuDelay'       ] = {'type' : 'int', 'value' : 200*800}
     pvdb[':XTPG:CuBeamCode'    ] = {'type' : 'int', 'value' : 140}
     pvdb[':XTPG:CuInput'       ] = {'type' : 'int', 'value' : 3}
