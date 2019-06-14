@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
   ssize_t sz;
   uint32_t* event = new uint32_t[linesz/8];
 
-  Validator val(cfg);
+  Fmc126Validator val(cfg);
 
   // Read
   do {

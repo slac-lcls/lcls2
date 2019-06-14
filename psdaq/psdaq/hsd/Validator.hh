@@ -48,12 +48,35 @@ public:
   static void dump_rates ();
   static void dump_totals();
 private:
-  bool _validate_raw(const XtcData::Transition& transition,
-                     const StreamHeader&        s);
-  bool _validate_fex(const StreamHeader&        s);
-private:
+  virtual bool _validate_raw(const XtcData::Transition& transition,
+                             const StreamHeader&        s) = 0;
+  virtual bool _validate_fex(const StreamHeader&        s) = 0;
+protected:
   const Configuration& _cfg;
   XtcData::Transition  _transition;
+};
+
+class Fmc126Validator : public Validator {
+public:
+  Fmc126Validator(const Configuration& cfg,
+                  unsigned testpattern=0);
+private:
+  virtual bool _validate_raw(const XtcData::Transition& transition,
+                             const StreamHeader&        s);
+  virtual bool _validate_fex(const StreamHeader&        s);
+private:
   unsigned             _sample_value;
 };
 
+class Fmc134Validator : public Validator {
+public:
+  Fmc134Validator(const Configuration& cfg,
+                  unsigned testpattern=0);
+private:
+  virtual bool _validate_raw(const XtcData::Transition& transition,
+                             const StreamHeader&        s);
+  virtual bool _validate_fex(const StreamHeader&        s);
+private:
+  unsigned             _testpattern;
+  unsigned             _sample_value;
+};

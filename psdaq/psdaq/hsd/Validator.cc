@@ -179,8 +179,14 @@ void Validator::validate(const char* buffer, int ret)
   }
 }
 
-bool Validator::_validate_raw(const XtcData::Transition& transition,
-                              const StreamHeader&        s) {
+Fmc126Validator::Fmc126Validator(const Configuration& cfg,
+                                 unsigned testpattern) :
+  Validator(cfg)
+{
+}
+
+bool Fmc126Validator::_validate_raw(const XtcData::Transition& transition,
+                                    const StreamHeader&        s) {
   bool lret=false;
   // Decode stream header
   _revents++;
@@ -243,7 +249,7 @@ bool Validator::_validate_raw(const XtcData::Transition& transition,
   return lret;
 }
 
-bool Validator::_validate_fex(const StreamHeader&        s) {
+bool Fmc126Validator::_validate_fex(const StreamHeader&        s) {
   bool lret=false;
   // Decode stream header
   _fevents++;
@@ -311,6 +317,46 @@ bool Validator::_validate_fex(const StreamHeader&        s) {
       lret = true;
     }
   }
+
+  return lret;
+}
+
+Fmc134Validator::Fmc134Validator(const Configuration& cfg,
+                                 unsigned testpattern) :
+  Validator   (cfg),
+  _testpattern(testpattern)
+{
+}
+
+bool Fmc134Validator::_validate_raw(const XtcData::Transition& transition,
+                                    const StreamHeader&        s) {
+  bool lret=false;
+  // Decode stream header
+  _revents++;
+  _rbytes += s.num_samples()*2;
+
+  if (_lverbose) {
+    printf("raw header %04x:%04x %04x[%04x]\n",
+           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len());
+  }
+
+  _transition = transition;
+  _sample_value = *reinterpret_cast<const uint16_t*>(&s+1);
+  return lret;
+}
+
+bool Fmc134Validator::_validate_fex(const StreamHeader&        s) {
+  bool lret=false;
+  // Decode stream header
+  _fevents++;
+  _fbytes += s.num_samples()*2;
+
+  if (_lverbose) {
+    printf("fex header %04x:%04x %04x[%04x]\n",
+           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len());
+  }
+
+  //  Could validate against raw data
 
   return lret;
 }

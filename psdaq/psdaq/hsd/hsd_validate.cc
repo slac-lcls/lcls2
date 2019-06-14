@@ -34,6 +34,8 @@ static void* diagnostics(void*)
   return 0;
 }
 
+#define EVENT_COUNT_ERR   0x01
+
 static void show_usage(const char* p)
 {
   printf("Usage: %s [options]\n",p);
@@ -42,6 +44,8 @@ static void show_usage(const char* p)
   printf("         -s <nskip> (analyze 1, skip n, ..)\n");
   printf("         -w <wait us>\n");
   printf("         -v (verbose)\n");
+  printf("         -V <validate mask>\n");
+  printf("            (bit 0 : event counter incr by 1)\n");
 }
 
 int main(int argc, char* argv[])
@@ -58,8 +62,9 @@ int main(int argc, char* argv[])
   unsigned fex_start=  4, fex_rows = 20;
   unsigned fex_thrlo=508, fex_thrhi=516;
   unsigned nskip = 0;
+  bool     l134  = true;
 
-  while((c = getopt(argc, argv, "d:f:s:w:v")) != EOF) {
+  while((c = getopt(argc, argv, "d:f:s:w:vQ")) != EOF) {
     switch(c) {
     case 'd':
       pgpcard = optarg;
@@ -75,6 +80,9 @@ int main(int argc, char* argv[])
       break;
     case 'v':
       Validator::set_verbose(_lverbose = true);
+      break;
+    case 'Q':
+      l134 = false;
       break;
     default:
       show_usage(argv[0]);
@@ -127,7 +135,9 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  Validator val(cfg);
+  Validator& val = l134 ? 
+    *static_cast<Validator*>(new Fmc134Validator(cfg)) :
+    *static_cast<Validator*>(new Fmc126Validator(cfg));
 
   const unsigned MAX_CNT = 128;
   unsigned getCnt = MAX_CNT;
