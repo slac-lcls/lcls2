@@ -350,13 +350,13 @@ int main(int argc, char* argv[])
     int c;
     int parseErr = 0;
     unsigned nevents = 2;
-    char xtcname[MAX_FNAME_LEN];
+    char outname[MAX_FNAME_LEN];
     char* tsname = 0;
     char* bdXtcname = 0; // Bigdata xtc - if specified, timestamps are from this file
-    strncpy(xtcname, "epics.xtc2", MAX_FNAME_LEN); // Fixed output filename
+    strncpy(outname, "epics.xtc2", MAX_FNAME_LEN);
     int streamId = 1;
 
-    while ((c = getopt(argc, argv, "ht:f:n:s:")) != -1) {
+    while ((c = getopt(argc, argv, "ht:f:n:s:o:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -370,6 +370,9 @@ int main(int argc, char* argv[])
             case 'f':
                 bdXtcname = optarg;
                 break;
+            case 'o':
+                strncpy(outname, optarg, MAX_FNAME_LEN);
+                break;
             case 's':
                 streamId = atoi(optarg);
                 break;
@@ -379,7 +382,7 @@ int main(int argc, char* argv[])
     }
 
     // Output xtc file
-    FILE* xtcFile = fopen(xtcname, "w");
+    FILE* xtcFile = fopen(outname, "w");
     if (!xtcFile) {
         printf("Error opening output xtc file.\n");
         return -1;

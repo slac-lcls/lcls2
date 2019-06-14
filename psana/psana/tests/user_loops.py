@@ -36,7 +36,8 @@ for run in ds.runs():
     #beginRunCode
     for evt in run.events():
         padarray = vals.padarray
-        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
+        # 4 segments, two per file
+        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
         assert edet(evt) == "Test String"
 
     #endRunCode
@@ -48,7 +49,7 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
     for evt in run.events():
         padarray = vals.padarray
-        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray))))
+        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
 
 # Usecase 2: one iterator 
 for evt in ds.events():

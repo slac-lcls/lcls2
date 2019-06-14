@@ -24,7 +24,7 @@ xtc_dir = os.path.join(os.getcwd(),'.tmp')
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 def event_fn(event, det):
     padarray = vals.padarray
-    assert(np.array_equal(det.raw.calib(event),np.stack((padarray,padarray))))
+    assert(np.array_equal(det.raw.calib(event),np.stack((padarray,padarray,padarray,padarray))))
 
 for run in ds.runs():
     det = run.Detector('xppcspad')

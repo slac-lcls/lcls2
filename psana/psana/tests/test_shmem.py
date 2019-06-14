@@ -23,7 +23,7 @@ class Test:
             shutil.rmtree(tmp_dir,ignore_errors=True)
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
-        subprocess.call(['xtcwriter','-n',str(dgram_count),'-f',tmp_file, '-t'])        
+        subprocess.call(['xtcwriter','-n',str(dgram_count),'-f',tmp_file])
         return tmp_file
         
     def test_shmem(self):

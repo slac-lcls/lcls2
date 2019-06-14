@@ -1,6 +1,6 @@
 # Import the Python-level symbols of numpy
 import numpy as np
-from psana.detector.detector_impl import DetectorImpl
+from psana.detector.detector_impl import NonEpicsDetectorImpl
 
 # Import to use cython decorators
 cimport cython
@@ -48,10 +48,10 @@ cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
         AllocArray1D[cnp.uint16_t] sPos, len
         AllocArray1D[arrp] fexPtr
 
-class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
+class hsd_hsd_1_2_3(cyhsd_base_1_2_3, NonEpicsDetectorImpl):
 
     def __init__(self, *args):
-        DetectorImpl.__init__(self, *args)
+        NonEpicsDetectorImpl.__init__(self, *args)
         cyhsd_base_1_2_3.__init__(self)
     def _seg_chans(self):
         """
@@ -178,16 +178,22 @@ cdef class cyhsd_base_1_2_3:
         cdef cnp.ndarray wv # TODO: make readonly
         if self._isNewEvt(evt):
             self._parseEvt(evt)
+        seglist = []
         for (iseg, chanNum) in self._chanList:
             first_chan_in_seg = True
             if self.chptr[iseg*16+chanNum].numPixels:
                 if first_chan_in_seg:
+                    seglist.append(iseg)
                     self._wvDict[iseg] = {}
                     self._wvDict[iseg]["times"] = np.arange(self.chptr[iseg*16+chanNum].numPixels)
                 arr0 = PyAllocArray1D()
                 wv = arr0.init(&self.chptr[iseg*16+chanNum].waveform, self.chptr[iseg*16+chanNum].numPixels, cnp.NPY_UINT16)
                 wv.base = <PyObject*> arr0
                 self._wvDict[iseg][chanNum] = wv
+        # check that we have all segments in the event
+        # FIXME: also check that we have all the channels we expect
+        seglist.sort()
+        if seglist != self._config_segments: return None
         return self._wvDict
 
     def _channelPeaks(self, iseg, chanNum):
@@ -223,10 +229,16 @@ cdef class cyhsd_base_1_2_3:
         """
         if self._isNewEvt(evt):
             self._parseEvt(evt)
+        seglist = []
         for (iseg, chanNum) in self._chanList:
             if iseg not in self._peaksDict:
                 self._peaksDict[iseg]={}
+                seglist.append(iseg)
             self._peaksDict[iseg][chanNum] = self._channelPeaks(iseg,chanNum)
+        # check that we have all segments in the event
+        # FIXME: also check that we have all the channels we expect
+        seglist.sort()
+        if seglist != self._config_segments: return None
         return self._peaksDict
 
     # adding this decorator allows access to the signature information of the function in python

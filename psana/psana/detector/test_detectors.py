@@ -1,20 +1,20 @@
 import numpy as np
-from psana.detector.detector_impl import DetectorImpl
+from psana.detector.detector_impl import NonEpicsDetectorImpl,DetectorImpl
 from amitypes import Array1d, Array2d, Array3d
 
-class hsd_raw_0_0_0(DetectorImpl):
+class hsd_raw_0_0_0(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(hsd_raw_0_0_0, self).__init__(*args)
     def calib(self, evt) -> Array1d:
         return np.zeros((5))
 
-class hsd_fex_4_5_6(DetectorImpl):
+class hsd_fex_4_5_6(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(hsd_fex_4_5_6, self).__init__(*args)
     def calib(self, evt) -> Array1d:
         return np.zeros((6))
 
-class cspad_raw_2_3_42(DetectorImpl):
+class cspad_raw_2_3_42(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(cspad_raw_2_3_42, self).__init__(*args)
     def raw(self, evt) -> Array3d:
@@ -27,7 +27,7 @@ class cspad_raw_2_3_42(DetectorImpl):
         segs = self._segments(evt)
         return np.vstack([segs[i].arrayRaw for i in range(len(segs))])
 
-class ebeam_raw_2_3_42(DetectorImpl):
+class ebeam_raw_2_3_42(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(ebeam_ebeamalg_2_3_42, self).__init__(*args)
     def energy(self, evt):
@@ -39,25 +39,25 @@ class cspad_raw_2_3_43(cspad_raw_2_3_42):
     def raw(self, evt) -> None:
         raise NotImplementedError()
 
-class ebeam_raw_2_3_42(DetectorImpl):
+class ebeam_raw_2_3_42(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(ebeam_raw_2_3_42, self).__init__(*args)
     def energy(self, evt):
         return self._segments(evt)[0].energy
 
-class ebeam_raw_2_3_42(DetectorImpl):
+class ebeam_raw_2_3_42(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(ebeam_raw_2_3_42, self).__init__(*args)
     def energy(self, evt) -> float:
         return self._segments(evt)[0].energy
 
-class laser_raw_2_3_42(DetectorImpl):
+class laser_raw_2_3_42(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(laser_raw_2_3_42, self).__init__(*args)
     def laserOn(self, evt) -> int:
         return self._segments(evt)[0].laserOn
 
-class hsd_raw_2_3_42(DetectorImpl):
+class hsd_raw_2_3_42(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(hsd_raw_2_3_42, self).__init__(*args)
     def waveform(self, evt) -> Array1d:
@@ -87,7 +87,7 @@ class epics_slow_0_0_0(EpicsImpl):
         super(epics_slow_0_0_0, self).__init__(*args)
 
 # for early cctbx/psana2 development
-class cspad_raw_1_2_3(DetectorImpl):
+class cspad_raw_1_2_3(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(cspad_raw_1_2_3, self).__init__(*args)
     def raw(self, evt):

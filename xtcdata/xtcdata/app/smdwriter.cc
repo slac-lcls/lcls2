@@ -57,6 +57,8 @@ void usage(char* progname)
   fprintf(stderr, "Usage: %s -f <filename> [-h]\n", progname);
 }
 
+#define MAX_FNAME_LEN 256
+
 int main(int argc, char* argv[])
 {
   /*
@@ -70,8 +72,10 @@ int main(int argc, char* argv[])
   char* xtcname = 0;
   int parseErr = 0;
   size_t n_events = 0;
+  char outname[MAX_FNAME_LEN];
+  strncpy(outname, "smd.xtc2", MAX_FNAME_LEN);
 
-  while ((c = getopt(argc, argv, "ht:n:f:")) != -1) {
+  while ((c = getopt(argc, argv, "ht:n:f:o:")) != -1) {
     switch (c) {
       case 'h':
         usage(argv[0]);
@@ -85,6 +89,9 @@ int main(int argc, char* argv[])
         break;
       case 'f':
         xtcname = optarg;
+        break;
+      case 'o':
+        strncpy(outname, optarg, MAX_FNAME_LEN);
         break;
       default:
         parseErr++;
@@ -107,7 +114,7 @@ int main(int argc, char* argv[])
   Dgram* dgIn;
 
   // Prepare output smd.xtc2 file
-  FILE* xtcFile = fopen("smd.xtc2", "w");
+  FILE* xtcFile = fopen(outname, "w");
   if (!xtcFile) {
     printf("Error opening output xtc file.\n");
     return -1;

@@ -4,6 +4,15 @@ class DetectorImpl(object):
         self._drp_class_name = drp_class_name
         self._configs        = configs
         self._calibs         = calibs
+
+class NonEpicsDetectorImpl(DetectorImpl):
+    def __init__(self, det_name, drp_class_name, configs, calibs):
+        super().__init__(det_name, drp_class_name, configs, calibs)
+        self._config_segments = []
+        for config in self._configs:
+            seg_dict = getattr(config,self._det_name)
+            self._config_segments += [k for k in seg_dict.keys()]
+        self._config_segments.sort()
         return
     def _segments(self,evt):
         """
@@ -12,6 +21,12 @@ class DetectorImpl(object):
         """
         key = (self._det_name,self._drp_class_name)
         if key in evt._det_segments:
-            return evt._det_segments[key]
+            # check that all promised segments have been received
+            evt_segments = list(evt._det_segments[key].keys())
+            evt_segments.sort()
+            if evt_segments != self._config_segments:
+                return None
+            else:
+                return evt._det_segments[key]
         else:
             return None

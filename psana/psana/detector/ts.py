@@ -1,9 +1,9 @@
 import bitstruct
 import numpy as np
 from collections import namedtuple
-from psana.detector.detector_impl import DetectorImpl
+from psana.detector.detector_impl import NonEpicsDetectorImpl
 
-class ts_ts_1_2_3(DetectorImpl):
+class ts_ts_1_2_3(NonEpicsDetectorImpl):
     def __init__(self, *args):
         super(ts_ts_1_2_3, self).__init__(*args)
 
@@ -42,12 +42,16 @@ class ts_ts_1_2_3(DetectorImpl):
         self.bitstructure = bitstruct.compile(format_string)
 
     def info(self,evt):
+        # check for missing data
+        if self._segments(evt) is None: return None
         # seems reasonable to assume that all TS data comes from one segment
         data = evt._dgrams[0].xppts[0].ts.data
         unpacked = self.bitstructure.unpack(data.tobytes())
         return self.TsData(*unpacked)
 
     def sequencer_info(self,evt):
+        # check for missing data
+        if self._segments(evt) is None: return None
         # seems reasonable to assume that all TS data comes from one segment
         data = evt._dgrams[0].xppts[0].ts.data
         # look in the remaining bytes for the event codes

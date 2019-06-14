@@ -428,13 +428,20 @@ void usage(char* progname)
     fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -h]\n", progname);
 }
 
-Dgram& createTransition(TransitionId::Value transId) {
+Dgram& createTransition(TransitionId::Value transId, bool counting_timestamps,
+                        unsigned& timestamp_val) {
     TypeId tid(TypeId::Parent, 0);
     uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
     void* buf = malloc(BUFSIZE);
-    gettimeofday(&tv, NULL);
+    if (counting_timestamps) {
+        tv.tv_sec = 0;
+        tv.tv_usec = timestamp_val;
+        timestamp_val++;
+    } else {
+        gettimeofday(&tv, NULL);
+    }
     Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
     return *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 }
@@ -454,8 +461,12 @@ int main(int argc, char* argv[])
     unsigned nevents = 2;
     char xtcname[MAX_FNAME_LEN];
     strncpy(xtcname, "data.xtc2", MAX_FNAME_LEN);
+    unsigned starting_segment = 0;
+    // this is used to create uniform timestamps across files
+    // so we can do offline event-building.
+    bool counting_timestamps = false;
 
-    while ((c = getopt(argc, argv, "hf:n:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:s:t")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -463,8 +474,14 @@ int main(int argc, char* argv[])
             case 'n':
                 nevents = atoi(optarg);
                 break;
+            case 's':
+                starting_segment = atoi(optarg);
+                break;
             case 'f':
                 strncpy(xtcname, optarg, MAX_FNAME_LEN);
+                break;
+            case 't':
+                counting_timestamps = true;
                 break;
             default:
                 parseErr++;
@@ -481,16 +498,19 @@ int main(int argc, char* argv[])
     TypeId tid(TypeId::Parent, 0);
     uint32_t env = 0;
     uint64_t pulseId = 0;
+    unsigned timestamp_val = 0;
 
-    Dgram& config = createTransition(TransitionId::Configure);
+    Dgram& config = createTransition(TransitionId::Configure,
+                                     counting_timestamps,
+                                     timestamp_val);
 
     unsigned nodeid1 = 1;
     unsigned nodeid2 = 2;
     NamesLookup namesLookup1;
     unsigned nSegments=2;
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
-        addNames(config.xtc, namesLookup1, nodeid1, iseg);
-        addData(config.xtc, namesLookup1, nodeid1, iseg);
+        addNames(config.xtc, namesLookup1, nodeid1, iseg+starting_segment);
+        addData(config.xtc, namesLookup1, nodeid1, iseg+starting_segment);
     }
 
     save(config,xtcFile);
@@ -500,12 +520,19 @@ int main(int argc, char* argv[])
 
     void* buf = malloc(BUFSIZE);
     for (int i = 0; i < nevents; i++) {
-        gettimeofday(&tv, NULL);
+        if (counting_timestamps) {
+            tv.tv_sec = 0;
+            tv.tv_usec = timestamp_val;
+            timestamp_val++;
+        } else {
+            gettimeofday(&tv, NULL);
+        }
+
         Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
         Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
         for (unsigned iseg=0; iseg<nSegments; iseg++) {
-            addData(dgram.xtc, namesLookup1, nodeid1, iseg);
+            addData(dgram.xtc, namesLookup1, nodeid1, iseg+starting_segment);
         }
 
         DebugIter iter(&dgram.xtc, namesLookup1);
