@@ -393,10 +393,10 @@ def confirm_response(socket, wait_time, msg_id, ids, err_pub):
 
 
 class CollectionManager():
-    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase):
+    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase, config_alias):
         self.platform = platform
         self.alias = alias
-        self.config_alias = None
+        self.config_alias = config_alias
         self.cfg_dbase = cfg_dbase
         self.xpm_master = xpm_master
         self.pv_base = pv_base
@@ -1128,6 +1128,7 @@ def main():
     parser.add_argument('-d', metavar='CFGDATABASE', default='mcbrowne:psana@psdb-dev:9306/configDB', help='configuration database connection')
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
+    parser.add_argument('-C', metavar='CONFIG_ALIAS', help='default configuration type (e.g. ''BEAM'')')
     parser.add_argument('-a', action='store_true', help='autoconnect')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
@@ -1139,7 +1140,7 @@ def main():
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def manager():
-        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d)
+        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C)
 
     def client(i):
         c = Client(platform)

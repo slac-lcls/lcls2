@@ -7,7 +7,8 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.42.255'
 conda_rel = 'ps-2.0.1'
 
 shelf = '1'
-collect_host = 'drp-tst-acc06'
+#collect_host = 'drp-tst-acc06'
+collect_host = 'drp-tst-dev001'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -25,7 +26,7 @@ procmgr_config = [
  {                        id:'partca-1', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:1'},
  {                        id:'partca-5', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:5'},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- { host: collect_host,    id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -P TMO -B DAQ:LAB2 -x 2'},
+ { host: collect_host,    id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -P TMO -B DAQ:LAB2 -x 2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
  # trigger event builder
  { host: 'drp-tst-dev001', id:'teb1', flags:'xpu', conda:conda_rel, cmd:'teb -C '+collect_host},
