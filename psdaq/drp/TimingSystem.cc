@@ -49,7 +49,7 @@ static void check(PyObject* obj) {
     }
 }
 
-void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
+void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& config_alias) {
 
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psalg.configdb.ts_config");
@@ -63,7 +63,7 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId) {
     // need to get the dbase connection info via collection
     // returns new reference
     // FIXME: should get "HSD:DEV02" from drp cmd line, and "BEAM" from config phase1.
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",m_connect_json.c_str(),"HSD:DEV02", "BEAM", m_para->detName.c_str());
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",m_connect_json.c_str(),"HSD:DEV02", config_alias.c_str(), m_para->detName.c_str());
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
@@ -130,11 +130,11 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
     Py_DECREF(mybytes);
 }
 
-unsigned TimingSystem::configure(Xtc& xtc)
+unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc)
 {
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
-    _addJson(xtc, configNamesId);
+    _addJson(xtc, configNamesId, config_alias);
 
     // set up the names for L1Accept data
     Alg tsAlg("ts", 1, 2, 3); // TODO: should this be configured by tsconfig.py?

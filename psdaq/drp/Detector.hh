@@ -20,7 +20,7 @@ public:
     Detector(Parameters* para, MemPool* pool) : m_para(para), m_pool(pool) {}
     virtual nlohmann::json connectionInfo() {return nlohmann::json({});}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
-    virtual unsigned configure(XtcData::Xtc& xtc) = 0;
+    virtual unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) = 0;
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
     XtcData::Xtc& transitionXtc() {return *(XtcData::Xtc*)m_xtcbuf;}
     unsigned nodeId;

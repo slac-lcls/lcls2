@@ -13,7 +13,7 @@ class Digitizer : public Detector
 public:
     Digitizer(Parameters* para, MemPool* pool);
     void connect(const nlohmann::json&, const std::string& collectionId) override;
-    unsigned configure(XtcData::Xtc& xtc) override;
+    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:
     unsigned _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId);

@@ -47,7 +47,7 @@ AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
 {
 }
 
-unsigned AreaDetector::configure(Xtc& xtc)
+unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc)
 {
     printf("AreaDetector configure\n");
 

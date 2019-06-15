@@ -92,7 +92,7 @@ void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
 }
 
-unsigned TimeTool::configure(Xtc& xtc)
+unsigned TimeTool::configure(const std::string& config_alias, Xtc& xtc)
 {
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);

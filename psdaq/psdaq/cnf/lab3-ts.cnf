@@ -8,7 +8,7 @@ conda_rel = 'ps-2.0.1'
 
 shelf = '1'
 ip_addr = '10.0.'+shelf
-collect_host = 'drp-tst-acc06'
+collect_host = 'daq-tst-dev02'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -30,6 +30,6 @@ procmgr_config = [
  {                        id:'xpmca'  ,flags:'', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
  { host: 'drp-tst-dev002', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host},
  { host: 'drp-tst-dev012', id:'tsdrp', flags:'xp', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D TimingSystem -d /dev/datadev_0 -C '+collect_host + ' -n xppts'},
- { host: collect_host, id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -B DAQ:LAB2 -x 2 -P TMO'},
+ { host: collect_host, id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -B DAQ:LAB2 -x 2 -P TMO -C BEAM'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]

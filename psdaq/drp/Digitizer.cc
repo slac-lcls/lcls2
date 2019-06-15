@@ -145,7 +145,7 @@ void Digitizer::connect(const json& connect_json, const std::string& collectionI
 
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
 
-unsigned Digitizer::configure(Xtc& xtc)
+unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
 {
     //  Reset the PGP links
     int fd = open(m_para->device.c_str(), O_RDWR);
