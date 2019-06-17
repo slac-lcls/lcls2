@@ -133,7 +133,7 @@ Dgram& createTransition(TransitionId::Value transId) {
     struct timeval tv;
     void* buf = malloc(BUFSIZE);
     gettimeofday(&tv, NULL);
-    Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+    Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec * 1000), PulseId(pulseId,0));
     return *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 }
 
@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
     void* buf = malloc(BUFSIZE);
     for (int i = 0; i < nevents; i++) {
         gettimeofday(&tv, NULL);
-        Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+        Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec * 1000), PulseId(pulseId,0));
         Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
         for (unsigned iseg=0; iseg<nSegments; iseg++) {
