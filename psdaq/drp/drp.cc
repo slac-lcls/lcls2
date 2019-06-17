@@ -1,14 +1,32 @@
 #include <getopt.h>
+#include <sstream>
 #include <Python.h>
 #include "drp.hh"
 #include "DrpApp.hh"
+
+void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
+    std::istringstream ss(kwargs_str);
+    std::string kwarg;
+    std::string::size_type pos = 0;
+    while (getline(ss, kwarg, ',')) {
+        pos = kwarg.find("=", pos);
+        if (!pos) {
+            throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
+        }
+        std::string key = kwarg.substr(0,pos);
+        std::string value = kwarg.substr(pos+1,kwarg.length());
+        //cout << kwarg << " " << key << " " << value << endl;
+        para.kwargs[key] = value;
+    }
+}
 
 int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     int c;
     para.detSegment = 0;
-    while((c = getopt(argc, argv, "p:o:l:D:C:d:n:s:")) != EOF) {
+    std::string kwargs_str;
+    while((c = getopt(argc, argv, "p:o:l:D:C:d:n:s:k:")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -34,6 +52,9 @@ int main(int argc, char* argv[])
             case 'n':
                 para.detName = optarg;
                 break;
+            case 'k':
+                kwargs_str = std::string(optarg);
+                break;
             default:
                 exit(1);
         }
@@ -47,6 +68,8 @@ int main(int argc, char* argv[])
         printf("-n: detector name is mandatory!\n");
         exit(1);
     }
+
+    get_kwargs(para, kwargs_str);
 
     para.nworkers = 10;
     para.batchSize = 32;

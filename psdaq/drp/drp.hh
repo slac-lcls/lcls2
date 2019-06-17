@@ -3,6 +3,7 @@
 #include <thread>
 #include <vector>
 #include <cstdint>
+#include <map>
 #include "spscqueue.hh"
 
 namespace Drp {
@@ -39,6 +40,7 @@ struct Parameters
     std::string outputDir;
     std::string detectorType;
     std::string collectionHost;
+    std::map<std::string,std::string> kwargs;
 };
 
 class Pebble

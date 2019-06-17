@@ -20,15 +20,15 @@ class ts_connector:
 
         # unfortunately, the hsd needs the Rx link reset before the Tx,
         # otherwise we get CRC errors on the link.
+        # try commenting this out since Matt has made the links more reliable
         #self.xpm_link_reset('Rx')
         #self.xpm_link_reset('Tx')
 
         # must come after clear readout because clear readout increments
         # the event counters, and the pgp eb needs them to start from zero
+        # comment this out since it was moved to control.py
         #self.l0_count_reset()
 
-        # at the moment, clearing and setting the link enables messes
-        # up the link, so commenting out for now.
         # enables listening to deadtime
         self.xpm_link_enable()
 
@@ -68,9 +68,9 @@ class ts_connector:
         print(current_group_masks)
         # don't clear out group_mask 0xff (an indication that it's
         # a downstream XPM link)
-        pv_names_to_clear = [pv_name for (pv_name,group_mask) in zip(pv_names,current_group_masks) if (group_mask & self.readout_group_mask) and (group_mask != 0xff)]
-        print('*** clearing xpm links',pv_names_to_clear)
-        self.ctxt.put(pv_names_to_clear,len(pv_names_to_clear)*[0])
+        #pv_names_to_clear = [pv_name for (pv_name,group_mask) in zip(pv_names,current_group_masks) if (group_mask & self.readout_group_mask) and (group_mask != 0xff)]
+        #print('*** clearing xpm links',pv_names_to_clear)
+        #self.ctxt.put(pv_names_to_clear,len(pv_names_to_clear)*[0])
 
     def xpm_link_enable(self):
         self.xpm_link_disable_all()
