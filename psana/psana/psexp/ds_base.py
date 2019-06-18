@@ -16,6 +16,7 @@ class DataSourceBase(object):
     files = None
     shmem = None
     run_dict = {}
+    destination = 0
 
     def __init__(self, **kwargs):
         """Initializes datasource base.
@@ -25,14 +26,15 @@ class DataSourceBase(object):
         run         -- run no. 
         dir         -- manual entry for path to xtc files
         files       -- list of files 
-        filter      -- filtering callback that handles Event object.
+        filter      -- callback that takes an evt and return True/False.
         batch_size  -- length of batched offsets
         max_events  -- no. of maximum events
         sel_det_ids -- user-selected detector IDs.
+        destination -- callback that takes a timestamp and returns rank no (only works with RunParallel).
         """
         if kwargs is not None:
             keywords = ('exp', 'dir', 'files', 'shmem', \
-                    'filter', 'batch_size', 'max_events', 'sel_det_ids', 'det_name')
+                    'filter', 'batch_size', 'max_events', 'sel_det_ids', 'det_name','destination')
             for k in keywords:
                 if k in kwargs:
                     setattr(self, k, kwargs[k])

@@ -14,9 +14,12 @@ cdef class EventBuilder:
     dgrams as an event. Returns list of events (size=batch_size)
     as another memoryslice 'batch'.
     
-    views: EventBuilder receives a views from SmdCore. Each views consists
+    Input: views
+    EventBuilder receives a views from SmdCore. Each views consists
     of 1 or more chunks of small data.
-    batch: The output of build function. A batch stores 1 or more events.
+    
+    Output: list of batches
+    Without destination call back the build fn returns a batch of events (size = batch_size) at index 0. With destination call back, this fn returns list of batches. Each batch has the same destination rank.
     
     Note that reading chunks inside a views or events inside a batch can be done
     using PacketFooter class."""
@@ -53,12 +56,27 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def build(self, unsigned batch_size=1, filter_fn=0):
+    def build(self, unsigned batch_size=1, filter_fn=0, destination=0):
+        """
+        Builds a list of batches.
+
+        Each batch is bytearray with this content:
+        [ [[d0][d1][d2][evt_footer_view]] [[d0][d1][d2][evt_footer_view]] ][batch_footer_view]
+        | ---------- evt 0 -------------| |------------evt 1 -----------| 
+        evt_footer_view:    [sizeof(d0) | sizeof(d1) | sizeof(d2) | 3] (for 3 dgrams in 1 evt)
+        batch_footer_view:  [sizeof(evt0) | sizeof(evt1) | 2] (for 2 evts in 1 batch)
+
+        batch_size: no. of events in a batch
+        filter_fn: takes an event and return True/False
+        destination: takes a timestamp and return rank no.
+        """
+
         cdef unsigned got = 0
-        batch = bytearray()
+        batch_dict = {} # keeps list of batches (w/o destination callback, only one batch is returned at index 0)
         self.min_ts = 0
         self.max_ts = 0
 
+        # Storing python list of bytearray as c pointers
         cdef Dgram* d
         cdef size_t payload = 0
         cdef char* cview
@@ -66,14 +84,15 @@ cdef class EventBuilder:
         cdef list raw_dgrams = [0] * self.nsmds
         cdef list event_dgrams = [0] * self.nsmds
         cdef char[:] to_view
+
+        # Setup event footer and batch footer - see above comments for the content of batch_dict
         cdef array.array int_array_template = array.array('I', [])
         cdef array.array evt_footer = array.clone(int_array_template, self.nsmds + 1, zero=False)
         cdef unsigned[:] evt_footer_view = evt_footer
         cdef unsigned evt_footer_size = sizeof(unsigned) * (self.nsmds + 1)
         evt_footer_view[-1] = self.nsmds
-        cdef array.array evt_sizes = array.clone(int_array_template, batch_size + 1, zero=True)
-        cdef unsigned[:] evt_sizes_view = evt_sizes
-        cdef unsigned evt_size = 0
+        cdef array.array batch_footer= array.clone(int_array_template, batch_size + 1, zero=True)
+        cdef unsigned[:] batch_footer_view = batch_footer
 
         while got < batch_size and self._has_more():
             array.zero(self.timestamps)
@@ -143,7 +162,21 @@ cdef class EventBuilder:
                     
                     PyBuffer_Release(&buf)
                 
-                # Extend batch bytearray to include this event and collect
+                # Put this event in the correct batch (determined by destionation callback). 
+                # If destination() is not specifed, use batch 0.
+                dest_rank = 0
+                if destination:
+                    dest_rank = destination(self.event_timestamps[smd_id])
+                
+                if batch_dict:
+                    if dest_rank not in batch_dict:
+                        batch_dict[dest_rank] = (bytearray(), []) # (events as bytes, event sizes)
+                else:
+                    batch_dict[dest_rank] = (bytearray(), [])
+
+                batch, evt_sizes = batch_dict[dest_rank]
+
+                # Extend this batch bytearray to include this event and collect
                 # the size of this event for batch footer.
                 evt_size = 0
                 for i, dgram in enumerate(event_dgrams):
@@ -156,7 +189,7 @@ cdef class EventBuilder:
                     evt_size += evt_footer_view[i]
                 
                 batch.extend(evt_footer_view)
-                evt_sizes_view[got] = evt_size + evt_footer_size
+                evt_sizes.append(evt_size + evt_footer_size)
                
                 # mona removed evt._complete() - I think smd events do not
                 # need det interface. The evt._complete() is called in def _from_bytes()
@@ -172,12 +205,16 @@ cdef class EventBuilder:
         
         self.nevents = got
         
-        # Add packet_footer for all events
-        evt_sizes_view[-1] = got
-        batch.extend(evt_sizes_view[:got])
-        batch.extend(evt_sizes_view[batch_size:]) # when convert to bytearray negative index doesn't work
+        # Add packet_footer for all events in each batch
+        for _, val in batch_dict.items():
+            batch, evt_sizes = val
+            for i, evt_size in enumerate(evt_sizes):
+                batch_footer_view[i] = evt_size
+            batch_footer_view[-1] = i + 1
+            batch.extend(batch_footer_view[:i+1])
+            batch.extend(batch_footer_view[batch_size:]) # when convert to bytearray negative index doesn't work
         
-        return batch
+        return batch_dict
 
     @property
     def nevents(self):

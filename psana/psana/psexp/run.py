@@ -72,12 +72,13 @@ class Run(object):
     filter_callback = None
     epics_store = None
     
-    def __init__(self, exp, run_no, max_events=0, batch_size=1, filter_callback=0):
+    def __init__(self, exp, run_no, max_events=0, batch_size=1, filter_callback=0, destination=0):
         self.exp = exp
         self.run_no = run_no
         self.max_events = max_events
         self.batch_size = batch_size
         self.filter_callback = filter_callback
+        self.destination = destination
         self.ds = DsContainer(self) # FIXME: to support run.ds.Detector in cctbx. to be removed.
         RunHelper(self)
 
@@ -231,14 +232,15 @@ class RunSerial(Run):
 
         #get smd chunks
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
-        eb_man = EventBuilderManager(smd_configs, self.batch_size, self.filter_callback)
+        eb_man = EventBuilderManager(smd_configs, batch_size=self.batch_size, filter_fn=self.filter_callback)
         for chunk in smdr_man.chunks():
             # Update epics_store for each chunk
             # This update checks for new data in epics_reader's queue
             # and rebuild the store accordingly.
             self.epics_store.update(self.epics_reader.read())
             
-            for batch in eb_man.batches(chunk):
+            for batch_dict in eb_man.batches(chunk):
+                batch, _ = batch_dict[0] # there's only 1 dest_rank for serial run
                 for evt in ev_man.events(batch):
                     yield evt
     
@@ -256,9 +258,13 @@ class RunParallel(Run):
 
     def __init__(self, exp, run_no, run_src, **kwargs):
         """ Parallel read requires that rank 0 does the file system works.
-        Configs and calib constants are sent to other ranks by MPI."""
+        Configs and calib constants are sent to other ranks by MPI.
+        
+        Note that destination callback only works with RunParallel.
+        """
         super(RunParallel, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
-                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
+                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'], \
+                destination=kwargs['destination'])
         xtc_files, smd_files, other_files = run_src
         if rank == 0:
             self.dm = DgramManager(xtc_files)
