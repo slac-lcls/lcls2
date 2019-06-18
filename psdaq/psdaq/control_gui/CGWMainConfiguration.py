@@ -76,6 +76,7 @@ class CGWMainConfiguration(QGroupBox) :
 
         self.w_edit = None
         self.type_old = None
+        self.set_config_type('init')
 
 #--------------------
 
@@ -91,6 +92,7 @@ class CGWMainConfiguration(QGroupBox) :
         #is_selected_det  = self.but_dev .text()[:6] != 'Select'
         #self.but_dev .setEnabled(is_selected_type)
         #self.but_edit.setEnabled(is_selected_type and is_selected_det)
+        self.but_type.setEnabled(True)
         self.but_edit.setEnabled(True)
 
 #--------------------
@@ -145,29 +147,41 @@ class CGWMainConfiguration(QGroupBox) :
             list_of_aliases = ['NOBEAM', 'BEAM']
             logger.warning('List of configdb-s IS EMPTY... Use default: %s' % str(list_of_aliases))
 
-        selected = popup_select_item_from_list(self.but_type, list_of_aliases, min_height=80, dx=-10, dy=0)
-        self.set_but_type_text(selected)
+        selected = popup_select_item_from_list(self.but_type, list_of_aliases, min_height=80, dx=-46, dy=-33)
+
         msg = 'selected %s of the list %s' % (selected, str(list_of_aliases))
         logger.debug(msg)
 
+        if selected is None : return
         if selected != self.type_old :
-            #self.set_but_dev_text()
-            self.type_old = selected
+
+            #self.set_but_type_text(selected)
+            self.but_type.setText('Wait for %s' % selected)
+            #self.but_type.setEnabled(False)
+
+            #self.type_old = selected
 
             # save selected configuration type in control json
             rv = daq_control().setConfig(selected)
             if rv is not None: logger.error('setState("%s"): %s' % (selected,rv))
 
-        self.set_buts_enabled()
+            #self.set_buts_enabled()
 
 #--------------------
  
     def set_config_type(self, config_type):
-        if config_type == self.type_old : return
 
-        self.set_but_type_text(config_type)
+        #print('XXX config_type=%s', config_type)
+
+        cfgtype = config_type
+        if config_type in ('error','init') :
+             transition, state, cfgtype = daq_control().getStatus()
+
+        if cfgtype == self.type_old : return
+
+        self.set_but_type_text(cfgtype)
         #self.set_but_dev_text()
-        self.type_old = config_type
+        self.type_old = cfgtype
 
         self.set_buts_enabled()
 
@@ -197,7 +211,7 @@ class CGWMainConfiguration(QGroupBox) :
             logger.warning('list_of_device_names IS EMPTY... Check configuration DB')
             return
 
-        selected = popup_select_item_from_list(self.but_dev, list_of_device_names, min_height=80, dx=-20, dy=10)
+        selected = popup_select_item_from_list(self.but_dev, list_of_device_names, min_height=80, dx=-46, dy=-33)
         self.set_but_dev_text(selected)
         msg = 'selected %s of the list %s' % (selected, str(list_of_device_names))
         logger.debug(msg)
