@@ -3,7 +3,6 @@ import os
 import sys
 import numpy as np
 from setuptools import setup, Extension, find_packages
-import versioneer
 
 print('Begin: %s' % ' '.join(sys.argv))
 
@@ -41,9 +40,6 @@ setup(
        name = 'psana',
        license = 'LCLS II',
        description = 'LCLS II analysis package',
-
-       version=versioneer.get_version(),
-       cmdclass=versioneer.get_cmdclass(),
 
        install_requires=[
          'numpy',
