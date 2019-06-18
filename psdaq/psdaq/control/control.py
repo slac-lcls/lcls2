@@ -8,6 +8,7 @@ import zmq.utils.jsonapi as json
 from transitions import Machine, MachineError, State
 import argparse
 import logging
+import string
 from p4p.client.thread import Context
 
 PORT_BASE = 29980
@@ -289,6 +290,26 @@ next_dict = {
                       'connected' :   'disable',
                       'paused' :      'disable' }
 }
+
+# Translate drp alias to detector name
+def detector_name(drp_alias):
+    return drp_alias.rstrip(string.digits)
+
+# Count the number of drp segments matching a detector name.
+# If only_active=True, count only the active segments.
+def segment_count(det_name, platform_dict, *, only_active=False):
+    count = 0
+    try:
+        for v in platform_dict['drp'].values():
+            if only_active and not (v['active'] == 1):
+                # skip inactive segment
+                continue
+            if det_name == detector_name(v['proc_info']['alias']):
+                count += 1
+    except KeyError:
+        pass
+
+    return count
 
 def timestampStr():
     current = datetime.now(timezone.utc)
