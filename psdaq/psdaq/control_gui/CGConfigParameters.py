@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 
 #------------------------------
 
-from psana.pyalgos.generic.ConfigParameters import ConfigParameters
+#from psana.pyalgos.generic.ConfigParameters import ConfigParameters
+from psdaq.control_gui.ConfigParameters import ConfigParameters
 
 #------------------------------
 

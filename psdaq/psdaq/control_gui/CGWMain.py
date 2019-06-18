@@ -221,7 +221,7 @@ class CGWMain(QWZMQListener) :
 
         else :
             logger.warning('Closing window is cancelled')
-            print('Closing window is cancelled')
+            #print('Closing window is cancelled')
             e.ignore()
             return
 

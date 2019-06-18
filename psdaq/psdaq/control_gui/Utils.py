@@ -10,9 +10,8 @@ Usage::
     # Run test: python lcls2/psdaq/psdaq/control_gui/Utils.py 1
 
     # Import
-    #import psana.pyalgos.generic.Utils as gu
     import psdaq.control_gui.Utils as gu
-    from psana.pyalgos.generic.Utils import load_textfile
+    from psdaq.control_gui.Utils import load_textfile
 
     # Methods
     #resp = gu.<method(pars)>
@@ -542,9 +541,15 @@ def path_to_test_data() :
 
 if __name__ == "__main__" :
 
-  def test_10() :
-    from psana.pyalgos.generic.NDArrGenerators import random_standard
+  def random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float) :
+    """Returns numpy array of requested shape and type filled with normal distribution for mu and sigma.
+    """
+    a = mu + sigma*np.random.standard_normal(size=shape)
+    return np.require(a, dtype)
 
+  #------------------------------
+
+  def test_10() :
     image = random_standard()
     verbosity=True
     save_image_tiff(image, fname='image.tiff', verb=verbosity)
