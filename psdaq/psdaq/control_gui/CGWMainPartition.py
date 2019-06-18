@@ -31,7 +31,7 @@ from PyQt5.QtGui import QCursor
 from psdaq.control_gui.CGDaqControl import daq_control
 from psdaq.control_gui.CGJsonUtils import get_platform, set_platform, list_active_procs
 from psdaq.control_gui.QWPopupTableCheck import QWPopupTableCheck
-from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
+#from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
 
 from psdaq.control_gui.CGWMainCollection import CGWMainCollection
 
@@ -73,8 +73,8 @@ class CGWMainPartition(QGroupBox) :
         #self.but_display.clicked.connect(self.on_but_display)
 
         self.w_select = None
-        self.w_display = None
         self.state = None
+        #self.w_display = None
 
 #--------------------
 
@@ -128,10 +128,10 @@ class CGWMainPartition(QGroupBox) :
 
         list2d = w.table_out()
 
-        if self.w_display is not None :
-            self.w_display.fill_table_model(tableio=list2d,\
-                                            title_h=self.TABTITLE_H,\
-                                            do_edit=False, is_visv=False, do_ctrl=False, do_frame=True)
+        #if self.w_display is not None :
+        #    self.w_display.fill_table_model(tableio=list2d,\
+        #                                    title_h=self.TABTITLE_H,\
+        #                                    do_edit=False, is_visv=False, do_ctrl=False, do_frame=True)
 
         set_platform(dict_platf, list2d)
         # 2019-03-13 caf: If Select->Apply is successful, an Allocate transition should be triggered.
@@ -146,7 +146,7 @@ class CGWMainPartition(QGroupBox) :
 
 
 #--------------------
- 
+    """
     def on_but_display(self):
         logger.debug('on_but_display')
 
@@ -168,7 +168,7 @@ class CGWMainPartition(QGroupBox) :
         else :
             self.w_display.close()
             self.w_display = None
-
+    """
 #--------------------
  
     def on_but_roll_call(self) :
@@ -190,9 +190,9 @@ class CGWMainPartition(QGroupBox) :
         self.but_select.setEnabled(not(state in ('RESET',)))
         #self.but_display.setEnabled(not(state in ('RESET','UNALLOCATED')))
 
-        if state in ('RESET', 'UNALLOCATED') and self.w_display is not None :
-            self.w_display.close()
-            self.w_display = None
+        #if state in ('RESET', 'UNALLOCATED') and self.w_display is not None :
+        #    self.w_display.close()
+        #    self.w_display = None
 
 #--------------------
 
@@ -204,6 +204,9 @@ class CGWMainPartition(QGroupBox) :
 #--------------------
 
 if __name__ == "__main__" :
+
+    from psdaq.control_gui.CGDaqControl import DaqControlEmulator
+    daq_control.set_daq_control(DaqControlEmulator())
 
     import sys
     from PyQt5.QtWidgets import QApplication

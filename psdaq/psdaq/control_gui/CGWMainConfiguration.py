@@ -152,26 +152,18 @@ class CGWMainConfiguration(QGroupBox) :
         msg = 'selected %s of the list %s' % (selected, str(list_of_aliases))
         logger.debug(msg)
 
-        if selected is None : return
-        if selected != self.type_old :
+        if selected in (None, self.type_old) : return
 
-            #self.set_but_type_text(selected)
-            self.but_type.setText('Wait for %s' % selected)
-            #self.but_type.setEnabled(False)
-
-            #self.type_old = selected
-
-            # save selected configuration type in control json
-            rv = daq_control().setConfig(selected)
-            if rv is not None: logger.error('setState("%s"): %s' % (selected,rv))
-
-            #self.set_buts_enabled()
+        rv = daq_control().setConfig(selected)
+        if rv is None: 
+            self.set_config_type(selected)
+        else :
+            logger.error('setConfig("%s"): %s' % (selected,rv))
+            self.set_config_type('error')
 
 #--------------------
  
     def set_config_type(self, config_type):
-
-        #print('XXX config_type=%s', config_type)
 
         cfgtype = config_type
         if config_type in ('error','init') :
@@ -180,9 +172,7 @@ class CGWMainConfiguration(QGroupBox) :
         if cfgtype == self.type_old : return
 
         self.set_but_type_text(cfgtype)
-        #self.set_but_dev_text()
         self.type_old = cfgtype
-
         self.set_buts_enabled()
 
 #--------------------

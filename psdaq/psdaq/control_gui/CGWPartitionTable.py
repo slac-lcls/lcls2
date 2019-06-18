@@ -29,6 +29,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
 
     def __init__(self, **kwargs) :
         QWTableOfCheckBoxes.__init__(self, **kwargs)
+        self.sort_items()
 
 #----------
 
@@ -56,15 +57,34 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
 
         item.setText(selected)
 
+
+    def sort_items(self):
+        self.sortByColumn(3,0) # Qt.AscendingOrder:0,  Qt.DescendingOrder:1
+        #self.hideRow(1)
+
 #----------
 
-if __name__ == "__main__" :
-    import sys
-    from PyQt5.QtWidgets import QApplication
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
+def test00_CGWPartitionTable() :
+    title_h = ['sel', 'grp', 'level/pid/host', 'ID']
+    tableio = [\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie9'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie1'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie8'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie0'],\
+               [[False, ''],  '', 'teb/123458/drp-tst-dev001', 'teb1'],\
+               [[False, ''],  '', 'ctr/123459/drp-tst-acc06',  'control'],\
+    ]
 
-    app = QApplication(sys.argv)
+    print('%s\nInput table:' % (50*'_'))
+    for rec in tableio : print(rec)
 
+    w = CGWPartitionTable(tableio=tableio, title_h=title_h,\
+                          do_ctrl=True, do_live=False, do_edit=True, do_sele=True, is_visv=False)
+    return w
+
+#----------
+
+def test01_CGWPartitionTable() :
     title_h = ['str', 'cbx', 'flags']
     tableio = [\
                [[False, '11', 6], [True,  'name 12', 3], [False, 'name 13aa', 0]],\
@@ -80,6 +100,25 @@ if __name__ == "__main__" :
 
     w = CGWPartitionTable(tableio=tableio, title_h=title_h,\
                           do_ctrl=True, do_live=False, do_edit=True, do_sele=True)
+    return w
+
+#----------
+
+if __name__ == "__main__" :
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
+
+    import sys
+    from PyQt5.QtWidgets import QApplication
+    app = QApplication(sys.argv)
+
+    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
+    logger.debug('%s\nTest %s' % (50*'_', tname))
+
+    w = None
+    if   tname == '0': w = test00_CGWPartitionTable()
+    elif tname == '1': w = test01_CGWPartitionTable()
+    else             : logger.warning('Not-implemented test "%s"' % tname)
+
     w.setWindowTitle('CGWPartitionTable')
     w.move(100,50)
     w.show()
