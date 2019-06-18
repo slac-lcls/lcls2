@@ -104,3 +104,28 @@ for run in ds.runs():
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
     assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
+
+
+# Usecase 4 : test destination callback (for handling cube data)
+def destination(timestamp):
+    n_bd_nodes = size - 2
+    return (timestamp % n_bd_nodes) + 1
+
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn, destination=destination, batch_size=1)
+
+sendbuf = np.zeros(1, dtype='i')
+recvbuf = None
+if rank == 0:
+    recvbuf = np.empty([size, 1], dtype='i')
+
+for run in ds.runs():
+    det = run.Detector('xppcspad')
+    for evt in run.events():
+        sendbuf += 1
+        padarray = vals.padarray
+        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
+        assert evt._size == 2 # check that two dgrams are in there
+
+comm.Gather(sendbuf, recvbuf, root=0)
+if rank == 0:
+    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
