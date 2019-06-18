@@ -41,7 +41,7 @@ procmgr_config = [
  { host: 'drp-tst-dev023', id:'shmc', flags:'sx', conda:conda_rel, cmd:'shmemClient -p TMO -i 0'},
 # {                      , id:'ami', flags:'', conda:conda_rel, cmd:'ami-local shmem://examples/shmem.json'},
 
- { host: collect_host    , id:'Collection', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -P TMO -B DAQ:LAB2 -x 2'},
+ { host: collect_host    , id:'Collection', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -P TMO -B DAQ:LAB2 -x 2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 
 ]
