@@ -5,6 +5,7 @@ showPlatform command
 from psdaq.control.control import DaqControl
 import pprint
 import argparse
+from operator import itemgetter
 
 def main():
 
@@ -45,15 +46,14 @@ def main():
                     alias = v['proc_info']['alias']
                     pid = v['proc_info']['pid']
                     if level == 'drp' and v['active'] == 1:
-                        display = "%-16s %s/%s/%-16s\n%42s: %s" % \
-                                  (alias, level, pid, host,       \
-                                   'readout group', v['det_info']['readout'])
+                        display_tuple = (level, alias,
+                                         "%-16s %s/%s/%-16s\n%42s: %s" % \
+                                         (alias, level, pid, host,       \
+                                          'readout group', v['det_info']['readout']))
                     else:
-                        display = "%-16s %s/%s/%-16s" % (alias, level, pid, host)
-                    if level == 'control':
-                        displayList.insert(0, display)
-                    else:
-                        displayList.append(display)
+                        display_tuple = (level, alias,
+                                         "%-16s %s/%s/%-16s" % (alias, level, pid, host))
+                    displayList.append(display_tuple)
         except Exception:
             print('----- body -----')
             pprint.pprint(body)
@@ -67,12 +67,12 @@ def main():
             print("---------+-----------------------------------------------------")
             print("%s/%-8s " % (platform, instrument), end='')
             firstLine = True
-            for nn in displayList:
+            for nn in sorted(displayList, key=itemgetter(0,1)):
                 if firstLine:
-                    print(nn)
+                    print(nn[2])
                     firstLine = False
                 else:
-                    print("          ", nn)
+                    print("          ", nn[2])
             if firstLine:
                 print()
 
