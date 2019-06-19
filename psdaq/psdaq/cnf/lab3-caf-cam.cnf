@@ -29,10 +29,9 @@ procmgr_config = [
  { host: collect_host,    id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -P TMO -B DAQ:LAB2 -x 2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
  # trigger event builder
- { host: 'drp-tst-dev001', id:'teb1', flags:'xpu', conda:conda_rel, cmd:'teb -C '+collect_host},
- # ctrb
-#{ host: 'drp-tst-dev007', id:'ctrb', flags:'xpu', conda:conda_rel, cmd:'ctrb -C '+collect_host},
+ { host: 'drp-tst-acc06', id:'teb1', flags:'xpu', conda:conda_rel, cmd:'teb -C '+collect_host},
  # drp
- { host: 'drp-tst-dev008', id:'drp0', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s0 -o /tmp -C '+collect_host},
- { host: 'drp-tst-dev009', id:'drp1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s1 -o /tmp -C '+collect_host}
+#{ host: 'drp-tst-dev007', id:'drp7', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n sugar  -s0 -o /tmp -C '+collect_host},
+ { host: 'drp-tst-dev008', id:'drp8', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s0 -o /tmp -C '+collect_host},
+ { host: 'drp-tst-dev009', id:'drp9', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s1 -o /tmp -C '+collect_host}
 ]
