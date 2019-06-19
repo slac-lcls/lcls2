@@ -14,6 +14,12 @@ using namespace XtcData;
 
 #define BUFSIZE 0x4000000
 
+class ConfigDef: public VarDef {
+public:
+    enum index { configIndex };
+    ConfigDef()  {NameVec.push_back({"fakeValue",Name::CHARSTR,1});}
+} ConfigDef;
+
 class LaserDef: public VarDef {
 public:
     enum index { laserIndex };
@@ -64,6 +70,12 @@ void addCspad(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId,
     };
 }
 
+void addConfig(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId, const char* value)
+{
+  CreateData config(parent, namesLookup, namesId);
+  config.set_string(ConfigDef::configIndex, value);
+}
+
 void addLaser(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId,
              unsigned value)
 { 
@@ -97,27 +109,53 @@ void addCspadNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId,
     namesLookup[namesId] = NameIndex(cspadNames);
 }
 
+void addCspadConfigNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId,
+                         unsigned segment) {
+    Alg cspadAlg("fakeConfig",0,0,1);
+    Names& cspadNames = *new(xtc) Names("xppcspad", cspadAlg, "cspad", "serialnum1234", namesId, segment);
+    cspadNames.add(xtc, ConfigDef);
+    namesLookup[namesId] = NameIndex(cspadNames);
+}
+
 void addLaserNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
     Alg laserAlg("raw",2,3,42);
-    unsigned segment = 0;
     Names& laserNames = *new(xtc) Names("xpplaser", laserAlg, "laser", "serialnum1234", namesId, 0);
     laserNames.add(xtc, LaserDef);
     namesLookup[namesId] = NameIndex(laserNames);
 }
 
+void addLaserConfigNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
+    Alg laserAlg("fakeConfig",0,0,1);
+    Names& laserNames = *new(xtc) Names("xpplaser", laserAlg, "laser", "serialnum1234", namesId, 0);
+    laserNames.add(xtc, ConfigDef);
+    namesLookup[namesId] = NameIndex(laserNames);
+}
+
 void addEBeamNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
     Alg ebeamAlg("raw",2,3,42);
-    unsigned segment = 0;
     Names& ebeamNames = *new(xtc) Names("EBeam", ebeamAlg, "ebeam", "serialnum1234", namesId, 0);
     ebeamNames.add(xtc, EBeamDef);
     namesLookup[namesId] = NameIndex(ebeamNames);
 }
 
+void addEBeamConfigNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
+    Alg ebeamAlg("fakeConfig",0,0,1);
+    Names& ebeamNames = *new(xtc) Names("EBeam", ebeamAlg, "ebeam", "serialnum1234", namesId, 0);
+    ebeamNames.add(xtc, ConfigDef);
+    namesLookup[namesId] = NameIndex(ebeamNames);
+}
+
 void addHsdNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
     Alg hsdAlg("raw",2,3,42);
-    unsigned segment = 0;
     Names& hsdNames = *new(xtc) Names("xpphsd", hsdAlg, "hsd", "serialnum1234", namesId, 0);
     hsdNames.add(xtc, HsdDef);
+    namesLookup[namesId] = NameIndex(hsdNames);
+}
+
+void addHsdConfigNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
+    Alg hsdAlg("fakeConfig",0,0,1);
+    Names& hsdNames = *new(xtc) Names("xpphsd", hsdAlg, "hsd", "serialnum1234", namesId, 0);
+    hsdNames.add(xtc, ConfigDef);
     namesLookup[namesId] = NameIndex(hsdNames);
 }
 
@@ -126,14 +164,23 @@ void usage(char* progname)
     fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -h]\n", progname);
 }
 
-Dgram& createTransition(TransitionId::Value transId) {
+Dgram& createTransition(TransitionId::Value transId, bool counting_timestamps,
+                        unsigned& timestamp_val) {
     TypeId tid(TypeId::Parent, 0);
     uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
     void* buf = malloc(BUFSIZE);
-    gettimeofday(&tv, NULL);
-    Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec * 1000), PulseId(pulseId,0));
+    if (counting_timestamps) {
+        tv.tv_sec = 0;
+        tv.tv_usec = timestamp_val;
+        timestamp_val++;
+    } else {
+        gettimeofday(&tv, NULL);
+        // convert to ns for the Timestamp
+        tv.tv_usec *= 1000;
+    }
+    Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
     return *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 }
 
@@ -152,8 +199,13 @@ int main(int argc, char* argv[])
     unsigned nevents = 2;
     char xtcname[MAX_FNAME_LEN];
     strncpy(xtcname, "ami.xtc2", MAX_FNAME_LEN);
+    unsigned starting_segment = 0;
+    // this is used to create uniform timestamps across files
+    // so we can do offline event-building.
+    bool counting_timestamps = false;
+    bool add_fake_configs = false;
 
-    while ((c = getopt(argc, argv, "htf:n:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:s:tc")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -163,6 +215,16 @@ int main(int argc, char* argv[])
                 break;
             case 'f':
                 strncpy(xtcname, optarg, MAX_FNAME_LEN);
+                break;
+            case 's':
+                starting_segment = atoi(optarg);
+                break;
+            case 't':
+                counting_timestamps = true;
+                break;
+
+            case 'c':
+                add_fake_configs = true;
                 break;
             default:
                 parseErr++;
@@ -179,33 +241,65 @@ int main(int argc, char* argv[])
     TypeId tid(TypeId::Parent, 0);
     uint32_t env = 0;
     uint64_t pulseId = 0;
+    unsigned timestamp_val = 0;
 
-    Dgram& config = createTransition(TransitionId::Configure);
+    Dgram& config = createTransition(TransitionId::Configure,
+                                     counting_timestamps,
+                                     timestamp_val);
 
     unsigned nodeId = 1;
     NamesLookup namesLookup;
     unsigned nSegments=2;
+    unsigned segmentIndex = starting_segment;
 
-    NamesId namesIdCspad[] = {NamesId(nodeId,0+10*0), NamesId(nodeId,0+10*1)};
+    NamesId namesIdCspad[] = {NamesId(nodeId,segmentIndex++), NamesId(nodeId,segmentIndex++)};
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
         addCspadNames(config.xtc, namesLookup, namesIdCspad[iseg], iseg);
     }
 
-    NamesId namesIdLaser(nodeId,1);
+    NamesId namesIdLaser(nodeId,segmentIndex++);
     addLaserNames(config.xtc, namesLookup, namesIdLaser);
 
-    NamesId namesIdEBeam(nodeId,2);
+    NamesId namesIdEBeam(nodeId,segmentIndex++);
     addEBeamNames(config.xtc, namesLookup, namesIdEBeam);
 
-    NamesId namesIdHsd(nodeId,3);
+    NamesId namesIdHsd(nodeId,segmentIndex++);
     addHsdNames(config.xtc, namesLookup, namesIdHsd);
+
+    if (add_fake_configs) {
+        NamesId namesIdCspadConfig[] = {NamesId(nodeId,segmentIndex++), NamesId(nodeId,segmentIndex++)};
+        for (unsigned iseg=0; iseg<nSegments; iseg++) {
+            addCspadConfigNames(config.xtc, namesLookup, namesIdCspadConfig[iseg], iseg);
+            addConfig(config.xtc, namesLookup, namesIdCspadConfig[iseg], "I am a cspad!");
+        }
+
+        NamesId namesIdLaserConfig(nodeId,segmentIndex++);
+        addLaserConfigNames(config.xtc, namesLookup, namesIdLaserConfig);
+        addConfig(config.xtc, namesLookup, namesIdLaserConfig, "I am a laser!");
+
+        NamesId namesIdEBeamConfig(nodeId,segmentIndex++);
+        addEBeamConfigNames(config.xtc, namesLookup, namesIdEBeamConfig);
+        addConfig(config.xtc, namesLookup, namesIdEBeamConfig, "I am an ebeam!");
+
+        NamesId namesIdHsdConfig(nodeId,segmentIndex++);
+        addHsdConfigNames(config.xtc, namesLookup, namesIdHsdConfig);
+        addConfig(config.xtc, namesLookup, namesIdHsdConfig, "I am an hsd!");
+    }
 
     save(config,xtcFile);
 
     void* buf = malloc(BUFSIZE);
     for (int i = 0; i < nevents; i++) {
-        gettimeofday(&tv, NULL);
-        Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec * 1000), PulseId(pulseId,0));
+        if (counting_timestamps) {
+            tv.tv_sec = 0;
+            tv.tv_usec = timestamp_val;
+            timestamp_val++;
+        } else {
+            gettimeofday(&tv, NULL);
+            // convert to ns for the Timestamp
+            tv.tv_usec *= 1000;
+        }
+        Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
         Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
         for (unsigned iseg=0; iseg<nSegments; iseg++) {
