@@ -93,6 +93,12 @@ cdef class EventBuilder:
         evt_footer_view[-1] = self.nsmds
         cdef array.array batch_footer= array.clone(int_array_template, batch_size + 1, zero=True)
         cdef unsigned[:] batch_footer_view = batch_footer
+        
+        # Use typed variables for performance
+        cdef unsigned evt_size = 0
+        cdef short dgram_idx = 0
+        cdef short view_idx = 0
+        cdef unsigned evt_idx = 0
 
         while got < batch_size and self._has_more():
             array.zero(self.timestamps)
@@ -100,17 +106,18 @@ cdef class EventBuilder:
             
             # Get dgrams for all smd files then
             # collect their timestamps and sizes for sorting.
-            for i, view in enumerate(self.views):
-                if self.offsets[i] < self.sizes[i]:
+            for view_idx in range(self.nsmds):
+                view = self.views[view_idx]
+                if self.offsets[view_idx] < self.sizes[view_idx]:
                     PyObject_GetBuffer(view, &buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
                     cview = <char *>buf.buf
-                    cview += self.offsets[i]
+                    cview += self.offsets[view_idx]
                     d = <Dgram *>(cview)
                     payload = d.xtc.extent - self.xtc_size
-                    self.timestamps[i] = <unsigned long>d.seq.high << 32 | d.seq.low
-                    self.dgram_sizes[i] = self.dgram_size + payload
-                    to_view = <char[:self.dgram_sizes[i]]>cview
-                    raw_dgrams[i] = to_view
+                    self.timestamps[view_idx] = <unsigned long>d.seq.high << 32 | d.seq.low
+                    self.dgram_sizes[view_idx] = self.dgram_size + payload
+                    to_view = <char[:self.dgram_sizes[view_idx]]>cview
+                    raw_dgrams[view_idx] = to_view
                     PyBuffer_Release(&buf)
 
             sorted_smd_id = np.argsort(self.timestamps)
@@ -132,27 +139,28 @@ cdef class EventBuilder:
                     self.min_ts = self.event_timestamps[smd_id] # records first timestamp
 
                 # In other smd views, find matching timestamp dgrams
-                for i, view in enumerate(self.views):
-                    if i == smd_id or self.offsets[i] >= self.sizes[i]:
+                for view_idx in range(self.nsmds):
+                    view = self.views[view_idx]
+                    if view_idx == smd_id or self.offsets[view_idx] >= self.sizes[view_idx]:
                         continue
                     
-                    event_dgrams[i] = 0
+                    event_dgrams[view_idx] = 0
                     PyObject_GetBuffer(view, &buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
                     cview = <char *>buf.buf
-                    cview += self.offsets[i]
+                    cview += self.offsets[view_idx]
                     d = <Dgram *>(cview)
                     self.max_ts = <unsigned long>d.seq.high << 32 | d.seq.low
                     payload = d.xtc.extent - self.xtc_size
                     while self.max_ts <= self.event_timestamps[smd_id]:
                         if self.max_ts == self.event_timestamps[smd_id]:
-                            self.event_timestamps[i] = self.max_ts
-                            self.timestamps[i] = 0
+                            self.event_timestamps[view_idx] = self.max_ts
+                            self.timestamps[view_idx] = 0
                             to_view = <char[:self.dgram_size+payload]>cview
-                            event_dgrams[i] = to_view
+                            event_dgrams[view_idx] = to_view
 
-                        self.offsets[i] += (self.dgram_size + payload)
+                        self.offsets[view_idx] += (self.dgram_size + payload)
 
-                        if self.offsets[i] == self.sizes[i]:
+                        if self.offsets[view_idx] == self.sizes[view_idx]:
                             break
 
                         cview += (self.dgram_size + payload)
@@ -179,14 +187,15 @@ cdef class EventBuilder:
                 # Extend this batch bytearray to include this event and collect
                 # the size of this event for batch footer.
                 evt_size = 0
-                for i, dgram in enumerate(event_dgrams):
+                for dgram_idx in range(self.nsmds):
+                    dgram = event_dgrams[dgram_idx]
                     if dgram: 
                         batch.extend(bytearray(dgram))
-                        evt_footer_view[i] = dgram.nbytes
+                        evt_footer_view[dgram_idx] = dgram.nbytes
                     else:
-                        evt_footer_view[i] = 0
+                        evt_footer_view[dgram_idx] = 0
 
-                    evt_size += evt_footer_view[i]
+                    evt_size += evt_footer_view[dgram_idx]
                 
                 batch.extend(evt_footer_view)
                 evt_sizes.append(evt_size + evt_footer_size)
@@ -208,10 +217,10 @@ cdef class EventBuilder:
         # Add packet_footer for all events in each batch
         for _, val in batch_dict.items():
             batch, evt_sizes = val
-            for i, evt_size in enumerate(evt_sizes):
-                batch_footer_view[i] = evt_size
-            batch_footer_view[-1] = i + 1
-            batch.extend(batch_footer_view[:i+1])
+            for evt_idx in range(len(evt_sizes)):
+                batch_footer_view[evt_idx] = evt_sizes[evt_idx]
+            batch_footer_view[-1] = evt_idx + 1
+            batch.extend(batch_footer_view[:evt_idx+1])
             batch.extend(batch_footer_view[batch_size:]) # when convert to bytearray negative index doesn't work
         
         return batch_dict
