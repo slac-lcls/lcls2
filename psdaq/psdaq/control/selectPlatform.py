@@ -2,7 +2,7 @@
 """
 selectPlatform command
 """
-from psdaq.control.control import DaqControl
+from psdaq.control.control import DaqControl, detector_name
 import pprint
 import argparse
 import string
@@ -13,7 +13,7 @@ def common_match(alias, arglist):
 def drp_match(alias, arglist):
     if arglist is not None:
         for arg in arglist:
-            if (arg == alias) or (arg == alias.rstrip(string.digits)):
+            if (arg == alias) or (arg == detector_name(alias)):
                 return True
     return False
 
