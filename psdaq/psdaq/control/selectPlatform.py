@@ -5,7 +5,6 @@ selectPlatform command
 from psdaq.control.control import DaqControl, detector_name
 import pprint
 import argparse
-import string
 
 def common_match(alias, arglist):
     return arglist is not None and alias in arglist
@@ -20,7 +19,7 @@ def drp_match(alias, arglist):
 def main():
 
     # Process arguments
-    parser = argparse.ArgumentParser(epilog='For multisegment detector, specify drp alias without numeric suffix.')
+    parser = argparse.ArgumentParser(epilog='For multisegment detector, specify drp alias without _N suffix.')
     parser.add_argument('-p', metavar='PLATFORM', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=2000,
