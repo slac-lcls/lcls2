@@ -68,6 +68,10 @@ int main(int argc, char* argv[])
         printf("-n: detector name is mandatory!\n");
         exit(1);
     }
+    if (para.detName.back() == '_') {
+        printf("-n: detector name must not end with underscore!\n");
+        exit(1);
+    }
 
     get_kwargs(para, kwargs_str);
 
