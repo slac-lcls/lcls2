@@ -1,13 +1,10 @@
 from setuptools import setup, find_packages
-import versioneer
 
 setup(
        name = 'psdaq',
        license = 'LCLS II',
        description = 'LCLS II DAQ package',
 
-       version=versioneer.get_version(),
-       cmdclass=versioneer.get_cmdclass(),
        packages = find_packages(),
        package_data={'control_gui': ['data/icons/*.png','data/icons/*.gif'],},
 
