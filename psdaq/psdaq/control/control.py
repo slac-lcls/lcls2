@@ -292,8 +292,9 @@ next_dict = {
 }
 
 # Translate drp alias to detector name
+# For example: 'cam_1' -> 'cam'
 def detector_name(drp_alias):
-    return drp_alias.rstrip(string.digits)
+    return drp_alias.rsplit('_', 1)[0]
 
 # Count the number of drp segments matching a detector name.
 # If only_active=True, count only the active segments.
