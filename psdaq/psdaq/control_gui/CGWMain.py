@@ -210,37 +210,34 @@ class CGWMain(QWZMQListener) :
 
 
     def closeEvent(self, e) :
-        print('%s.closeEvent' % self._name)
+        logger.debug('%s.closeEvent' % self._name)
 
         resp = confirm_or_cancel_dialog_box(parent=None,
                                             text='Close window?',\
                                             title='Confirm or cancel') 
-        if resp : 
-            logger.debug('Closing window is confirmed')
-            self.on_save()
-
-        else :
+        if not resp : 
             logger.warning('Closing window is cancelled')
-            #print('Closing window is cancelled')
             e.ignore()
             return
 
-        #logger.debug('%s.closeEvent' % self._name)
-        #try : self.wspe.close()
-        #except : pass
+        logger.debug('Closing window is confirmed')
 
-        #self.wtab.close()
+        # save app-configuration parameters
+        #try :
+        #    self.on_save()
+        #except Exception as ex:
+        #    print('Exception: %s' % ex)
 
         try : 
-          self.wconf.close()
-          #self.wpart.close()
-          #self.wctrl.close()
-          #self.wdetr.close()
-          #self.wcoll.close()
+            self.wtabs.close()
+            self.wconf.close()
+            self.wlogr.close()
         except Exception as ex:
-          print('Exception: %s' % ex)
+            print('Exception: %s' % ex)
 
         QWZMQListener.closeEvent(self, e)
+
+        #print('Exit CGWMain.closeEvent')
 
 #--------------------
         
@@ -252,19 +249,19 @@ class CGWMain(QWZMQListener) :
 
 #--------------------
  
-    def resizeEvent(self, e):
-        logger.debug('CGWMain.resizeEvent: %s' % str(self.size()))
+    #def resizeEvent(self, e):
+        #logger.debug('CGWMain.resizeEvent: %s' % str(self.size()))
         #QWZMQListener.resizeEvent(self, e)
 
 
-    def moveEvent(self, e) :
+    #def moveEvent(self, e) :
         #logger.debug('moveEvent', self._name) 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
         #logger.debug('moveEvent - pos:' + str(self.position), __name__)       
         #logger.info('CGWMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
         #self.wimg.move(self.pos() + QPoint(self.width()+5, 0))
-        pass
+        #pass
 
  
     def on_save(self):
@@ -395,23 +392,24 @@ def proc_control_gui(parser=None) :
     from PyQt5.QtWidgets import QApplication
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     app = QApplication(sys.argv)
-
     w = CGWMain(parser)
 
-    #print('In CGWMain:proc_control_gui A')
     w.show()
     print('In CGWMain:proc_control_gui after w.show() - ERRORS FROM libGL IS A KNOWN ISSUE')
 
     app.exec_()
+
     del w
     del app
 
 #------------------------------
 
 if __name__ == "__main__" :
+
     from psdaq.control_gui.CGDaqControl import DaqControlEmulator
     daq_control.set_daq_control(DaqControlEmulator())
 
     proc_control_gui()
+    print('End of CGWMain')
 
 #------------------------------

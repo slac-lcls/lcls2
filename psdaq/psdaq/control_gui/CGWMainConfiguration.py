@@ -303,7 +303,7 @@ class CGWMainConfiguration(QGroupBox) :
 #--------------------
 
     def closeEvent(self, e):
-        print('CGWMainConfiguration.closeEvent')
+        logger.debug('CGWMainConfiguration.closeEvent')
         if self.w_edit is not None :
            self.w_edit.close()
         QGroupBox.closeEvent(self, e)

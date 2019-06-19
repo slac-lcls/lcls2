@@ -50,12 +50,8 @@ def dict_platform():
         dict_platf = daq_control().getPlatform() # returns dict
 
     except Exception as ex:
-        logger.error('Exception: %s' % ex)
+        logger.error('Exception in daq_control.getPlatform(): %s' % ex)
         print('failed on request control.getPlatform()')
-
-    except KeyboardInterrupt:
-        logger.warning('KeyboardInterrupt')           
-        return {}, list2d
 
     sj = json.dumps(dict_platf, indent=2, sort_keys=False)
     logger.debug('control.getPlatform() json(type:%s):\n%s' % (type(dict_platf), str(sj)))
@@ -85,7 +81,7 @@ def get_status(header=['drp','teb','meb']):
                 if pname in header : row_counter[pname] += 1
 
     except Exception as ex:
-        logger.error('Exception: %s' % ex)
+        logger.error('Exception in parsing dict_platform (1): %s' % ex)
         print('failed to parse json after control.getPlatform() request:\n%s' % str(sj))
         return []
 
@@ -118,7 +114,7 @@ def get_status(header=['drp','teb','meb']):
                 row_counter[pname] += 1
 
     except Exception as ex:
-        logger.error('Exception: %s' % ex)
+        logger.error('Exception in parsing dict_platf (2): %s' % ex)
         print('failed to parse json after control.getPlatform() request:\n%s' % str(sj))
 
     return list2d
@@ -162,7 +158,7 @@ def get_platform():
                 #list2d.append([[v['active']==1, ''], str(readgr), flds[0], alias])
 
     except Exception as ex:
-        logger.error('Exception: %s' % ex)
+        logger.error('Exception in parsing dict_platf (3): %s' % ex)
         sj = json.dumps(dict_platf, indent=2, sort_keys=False)
         print('failed to parse json after control.getPlatform() request:\n%s' % str(sj))
 
@@ -199,7 +195,7 @@ def set_platform(dict_platf, list2d):
         daq_control().selectPlatform(dict_platf)
 
     except Exception as ex:
-        logger.error('Exception: %s' % ex)
+        logger.error('Exception in parsing dict_platf (4): %s' % ex)
 
 #--------------------
 

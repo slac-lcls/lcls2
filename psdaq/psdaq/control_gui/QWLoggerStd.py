@@ -74,6 +74,7 @@ class QWFilter(logging.Filter) :
         #logging.Filter.__init__(self)#, name='')
         self.qwl = qwlogger
 
+
     def filter(self, rec) :
         msg = self.qwl.formatter.format(rec)
         self.qwl.set_msg_style(rec.levelname)
@@ -156,32 +157,6 @@ class QWLoggerStd(QWidget) :
         self.config_logger(self.log_fname)
 
 
-    def config_logger_v0(self, log_fname='cm-log.txt') :
-        self.append_qwlogger('Configure logger')
-
-        fmt = '%(asctime)s %(name)s %(levelname)s: %(message)s'
-        tsfmt='%Y-%m-%dT%H:%M:%S'
-
-        level = self.dict_name_to_level[self.log_level] # e.g. logging.DEBUG
-
-        self.formatter = logging.Formatter(fmt, datefmt=tsfmt)
-        #self.handler = logging.StreamHandler()
-        self.handler = logging.FileHandler(log_fname, 'w')
-        self.handler.setLevel(logging.NONSET)
-        self.handler.addFilter(QWFilter(self))
-        self.handler.setFormatter(self.formatter)
-
-        logging.basicConfig(format=fmt,\
-                            datefmt=tsfmt,\
-                            level=level,\
-                            handlers=[self.handler,]
-        ) 
-        #                    filename=log_fname, filemode='w',\
-        ## if filename is not specified - all messages go to sys.tty
-
-        #self.set_level(self.log_level.value()) # pass level name
-
-
     def config_logger(self, log_fname='cm-log.txt') :
 
         self.append_qwlogger('Start logger\nLog file: %s' % log_fname)
@@ -204,11 +179,14 @@ class QWLoggerStd(QWidget) :
         fname = log_fname if log_fname is not None else '/var/tmp/control_gui_%s.log' % gu.get_login()
         self.handler = logging.FileHandler(fname, 'w')
 
-        self.handler.addFilter(QWFilter(self))
+        self._myfilter = QWFilter(self)
+        self.handler.addFilter(self._myfilter)
         #self.handler.setLevel(logging.NOTSET) # level
         self.handler.setFormatter(self.formatter)
         logger.addHandler(self.handler)
         self.set_level(levname) # pass level name
+
+        print('logging.FileHandler file: %s' % fname)
 
         #logger.debug('dir(self.handler):' , dir(self.handler))
 
@@ -294,13 +272,15 @@ class QWLoggerStd(QWidget) :
 
 
     def closeEvent(self, e):
-        logger.debug('closeEvent')
-        #logger.info('%s.closeEvent' % self._name)
+        logger.info('%s.closeEvent' % self._name)
         #self.save_log_total_in_file() # It will be saved at closing of GUIMain
 
-        #logger.addHandler(self.handler)
+        self.handler.removeFilter(self._myfilter)
         self.handler.close()
         QWidget.closeEvent(self, e)
+
+        logging.shutdown()
+        #print('Exit QWLoggerStd.closeEvent')
 
 
     def on_but_close(self):
@@ -380,7 +360,7 @@ if __name__ == "__main__" :
 
     from PyQt5.QtWidgets import QApplication
 
-    #logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 
     app = QApplication(sys.argv)
     w = QWLoggerStd()

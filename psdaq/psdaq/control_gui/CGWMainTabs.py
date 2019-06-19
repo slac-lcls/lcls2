@@ -204,13 +204,15 @@ class CGWMainTabs(QWidget) :
 
 
     def closeEvent(self, e):
-        logger.debug('closeEvent')
+        logger.debug('CGWMainTabs.closeEvent')
 
         #try    : self.gui_win.close()
         #except : pass
 
         #try    : del self.gui_win
         #except : pass
+
+        self.tab_bar.close()
 
         if self.gui_win is not None :
             self.gui_win.close()
