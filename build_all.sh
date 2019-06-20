@@ -75,9 +75,9 @@ mkdir -p $INSTDIR/lib/python$pyver/site-packages/
 cmake_build xtcdata
 
 if [ $no_shmem == 0 ]; then
-    cmake_build psalg -DBUILD_SHMEM=OFF
-else
     cmake_build psalg
+else
+    cmake_build psalg -DBUILD_SHMEM=OFF
 fi
 cd psalg
 python setup.py $pyInstallStyle --prefix=$INSTDIR
