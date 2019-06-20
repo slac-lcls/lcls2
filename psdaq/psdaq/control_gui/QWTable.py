@@ -38,10 +38,10 @@ class QWTable(QTableView):
 
         self.is_connected_item_changed = False
 
-        self.model = QStandardItemModel()
+        self._si_model = QStandardItemModel()
         self.set_selection_mode()
-        self.fill_table_model(**kwargs) # defines self.model
-        self.setModel(self.model)
+        self.fill_table_model(**kwargs) # defines self._si_model
+        self.setModel(self._si_model)
         self.connect_control()
         self.set_style()
 
@@ -63,13 +63,13 @@ class QWTable(QTableView):
 
 
     def connect_item_changed_to(self, recipient) :
-        self.model.itemChanged.connect(recipient)
+        self._si_model.itemChanged.connect(recipient)
         self.is_connected_item_changed = True
 
 
     def disconnect_item_changed_from(self, recipient) :
         if self.is_connected_item_changed :
-            self.model.itemChanged.disconnect(recipient)
+            self._si_model.itemChanged.disconnect(recipient)
             self.is_connected_item_changed = False
 
 
@@ -101,23 +101,23 @@ class QWTable(QTableView):
 
     def fill_table_model(self, **kwargs):
         self.clear_model()
-        self.model.setHorizontalHeaderLabels(['col0', 'col1', 'col2', 'col3', 'col4']) 
-        self.model.setVerticalHeaderLabels(['row0', 'row1', 'row2', 'row3']) 
+        self._si_model.setHorizontalHeaderLabels(['col0', 'col1', 'col2', 'col3', 'col4']) 
+        self._si_model.setVerticalHeaderLabels(['row0', 'row1', 'row2', 'row3']) 
         for row in range(0, 4):
             for col in range(0, 6):
                 item = QStandardItem("itemA %d %d"%(row,col))
                 item.setIcon(icon.icon_table)
                 item.setCheckable(True) 
-                self.model.setItem(row,col,item)
+                self._si_model.setItem(row,col,item)
                 if col==2 : item.setIcon(icon.icon_folder_closed)
                 if col==3 : item.setText('Some text')
-                #self.model.appendRow(item)
+                #self._si_model.appendRow(item)
 
 
     def clear_model(self):
-        rows,cols = self.model.rowCount(), self.model.columnCount()
-        self.model.removeRows(0, rows)
-        self.model.removeColumns(0, cols)
+        rows,cols = self._si_model.rowCount(), self._si_model.columnCount()
+        self._si_model.removeRows(0, rows)
+        self._si_model.removeColumns(0, cols)
 
 
     def selected_indexes(self):
@@ -126,17 +126,17 @@ class QWTable(QTableView):
 
     def selected_items(self):
         indexes =  self.selectedIndexes()
-        return [self.model.itemFromIndex(i) for i in self.selectedIndexes()]
+        return [self._si_model.itemFromIndex(i) for i in self.selectedIndexes()]
 
  
     def getFullNameFromItem(self, item): 
-        #item = self.model.itemFromIndex(ind)        
-        ind   = self.model.indexFromItem(item)        
+        #item = self._si_model.itemFromIndex(ind)        
+        ind   = self._si_model.indexFromItem(item)        
         return self.getFullNameFromIndex(ind)
 
 
     def getFullNameFromIndex(self, ind): 
-        item = self.model.itemFromIndex(ind)
+        item = self._si_model.itemFromIndex(ind)
         if item is None : return None
         self._full_name = item.text()
         self._getFullName(ind)
@@ -144,14 +144,14 @@ class QWTable(QTableView):
 
 
     def _getFullName(self, ind): 
-        ind_par  = self.model.parent(ind)
+        ind_par  = self._si_model.parent(ind)
         if(ind_par.column() == -1) :
-            item = self.model.itemFromIndex(ind)
+            item = self._si_model.itemFromIndex(ind)
             self.full_name = '/' + self._full_name
             #logger.debug('Item full name :' + self._full_name)
             return self._full_name
         else:
-            item_par = self.model.itemFromIndex(ind_par)
+            item_par = self._si_model.itemFromIndex(ind_par)
             self._full_name = item_par.text() + '/' + self._full_name
             self._getFullName(ind_par)
 
@@ -167,13 +167,13 @@ class QWTable(QTableView):
 
 
     def on_click(self, index):
-        item = self.model.itemFromIndex(index)
+        item = self._si_model.itemFromIndex(index)
         msg = 'on_click: item in row:%02d text: %s' % (index.row(), item.text())
         logger.debug(msg)
 
 
     def on_double_click(self, index):
-        item = self.model.itemFromIndex(index)
+        item = self._si_model.itemFromIndex(index)
         msg = 'on_double_click: item in row:%02d text: %s' % (index.row(), item.text())
         logger.debug(msg)
 
@@ -181,7 +181,7 @@ class QWTable(QTableView):
     def on_item_selected(self, ind_sel, ind_desel):
         #logger.debug("ind   selected : ", ind_sel.row(),  ind_sel.column())
         #logger.debug("ind deselected : ", ind_desel.row(),ind_desel.column()) 
-        item = self.model.itemFromIndex(ind_sel)
+        item = self._si_model.itemFromIndex(ind_sel)
         logger.debug('on_item_selected: "%s" is selected' % (item.text() if item is not None else None))
         #logger.debug('on_item_selected: %s' % self.getFullNameFromItem(item))
 

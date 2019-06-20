@@ -60,10 +60,10 @@ class QWTableOfCheckBoxes(QWTable) :
         do_sele = kwargs.get('do_sele', False) # allow selectable
 
         self.clear_model()
-        if title_h is not None : self.model.setHorizontalHeaderLabels(title_h) 
+        if title_h is not None : self._si_model.setHorizontalHeaderLabels(title_h)
 
         self.verticalHeader().setVisible(is_visv)
-        if title_v is not None : self.model.setVerticalHeaderLabels(title_v) 
+        if title_v is not None : self._si_model.setVerticalHeaderLabels(title_v)
 
         self.setFocusPolicy(Qt.NoFocus)
 
@@ -93,7 +93,7 @@ class QWTableOfCheckBoxes(QWTable) :
                     item.setAccessibleDescription('type:str')
 
                 #item.setEditable(do_edit)
-                self.model.setItem(row,col,item)
+                self._si_model.setItem(row,col,item)
 
                 #item.setIcon(icon.icon_table)
                 #item.setText('Some text')
@@ -111,7 +111,7 @@ class QWTableOfCheckBoxes(QWTable) :
 
     def on_item_changed(self, item):
         state = LIST_STR_CHECK_BOX_STATES[item.checkState()]
-        index = self.model.indexFromItem(item)        
+        index = self._si_model.indexFromItem(item)
         row, col = index.row(), index.column()
         msg = 'on_item_changed: item(%d,%d) name: %s state: %s'%\
               (row, col, item.text(), state)
@@ -136,7 +136,7 @@ class QWTableOfCheckBoxes(QWTable) :
 
     def fill_output_object(self):
         """Fills output 2-d list from table of items"""
-        model = self.model
+        model = self._si_model
         list2d_out = []
         for row in range(model.rowCount()) :
             list_row = []

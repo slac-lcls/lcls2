@@ -16,7 +16,7 @@ Created on 2019-03-11 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes#, QStandardItem, Qt #icon
+from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes, QStandardItem#, Qt #icon
 from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
 #from re import search as re_search
 
@@ -30,6 +30,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
     def __init__(self, **kwargs) :
         QWTableOfCheckBoxes.__init__(self, **kwargs)
         self.sort_items()
+        #self.insert_group_titles()
 
 #----------
 
@@ -43,7 +44,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
     def on_item_selected(self, ind_sel, ind_desel):
         #logger.debug("ind   selected : ", ind_sel.row(),  ind_sel.column())
         #logger.debug("ind deselected : ", ind_desel.row(),ind_desel.column()) 
-        item = self.model.itemFromIndex(ind_sel)
+        item = self._si_model.itemFromIndex(ind_sel)
         logger.debug('on_item_selected: "%s" is selected' % (item.text() if item is not None else None))
         #logger.debug('on_item_selected: %s' % self.getFullNameFromItem(item))
 
@@ -60,6 +61,24 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
 
     def sort_items(self):
         self.sortByColumn(3,0) # Qt.AscendingOrder:0,  Qt.DescendingOrder:1
+
+ 
+
+    def insert_group_titles(self):
+        model = self._si_model
+        print('XXX rowCount   : %d' % model.rowCount())
+        print('XXX columnCount: %d' % model.columnCount())
+        
+        for r in range(model.rowCount()) :
+            print('r:%d t:%s' % (r, model.item(r, 3).text()))
+
+        item_add = QStandardItem()
+        idx_add = model.indexFromItem(item_add)
+        model.insertRow(3, idx_add)
+
+        #self.clear_model()
+        #self.setModel(model)
+
         #self.hideRow(1)
 
 #----------
@@ -67,10 +86,10 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
 def test00_CGWPartitionTable() :
     title_h = ['sel', 'grp', 'level/pid/host', 'ID']
     tableio = [\
-               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie9'],\
-               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie1'],\
-               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie8'],\
-               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie0'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie_9'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie_1'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie_8'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie_0'],\
                [[False, ''],  '', 'teb/123458/drp-tst-dev001', 'teb1'],\
                [[False, ''],  '', 'ctr/123459/drp-tst-acc06',  'control'],\
     ]

@@ -185,8 +185,10 @@ def set_platform(dict_platf, list2d):
                 int_active = {True:1, False:0}[status]
                 dict_platf[pname][k]['active'] = int_active
                 if pname=='drp' :
-                    dict_platf[pname][k]['det_info']['readout'] = int(list2d[i][1][1])
-
+                    val = list2d[i][1][1]
+                    if isinstance(val, str) and val.isdigit() :
+                        dict_platf[pname][k]['det_info']['readout'] = int(val)
+ 
                 s += '%s   int_active: %d\n' % (display,int_active)
         
         sj = json.dumps(dict_platf, indent=2, sort_keys=False)

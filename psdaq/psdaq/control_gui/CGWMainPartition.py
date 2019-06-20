@@ -144,31 +144,28 @@ class CGWMainPartition(QGroupBox) :
 
         daq_control().setState('allocated')
 
-
 #--------------------
-    """
-    def on_but_display(self):
-        logger.debug('on_but_display')
-
-        if self.w_display is None :
-            _, list2d = get_platform() # [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
-
-            list2d_active = list_active_procs(list2d)
-            #logger.debug('list2d active processes:\n%s' % str(list2d_active))
-
-            self.w_display = CGWPartitionTable(parent=None, tableio=list2d_active,\
-                                               win_title='Display partitions',\
-                                               title_h=self.TABTITLE_H,\
-                                               is_visv=False)
-
-            self.w_display.setToolTip('Processes selection is only available\nin the "Select" window.')
-            self.w_display.move(QCursor.pos()+QPoint(50,10))
-            self.w_display.setWindowTitle('Display partitions')
-            self.w_display.show()
-        else :
-            self.w_display.close()
-            self.w_display = None
-    """
+#    def on_but_display(self):
+#        logger.debug('on_but_display')
+#
+#        if self.w_display is None :
+#            _, list2d = get_platform() # [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
+#
+#            list2d_active = list_active_procs(list2d)
+#            #logger.debug('list2d active processes:\n%s' % str(list2d_active))
+#
+#            self.w_display = CGWPartitionTable(parent=None, tableio=list2d_active,\
+#                                               win_title='Display partitions',\
+#                                               title_h=self.TABTITLE_H,\
+#                                               is_visv=False)
+#
+#            self.w_display.setToolTip('Processes selection is only available\nin the "Select" window.')
+#            self.w_display.move(QCursor.pos()+QPoint(50,10))
+#            self.w_display.setWindowTitle('Display partitions')
+#            self.w_display.show()
+#        else :
+#            self.w_display.close()
+#            self.w_display = None
 #--------------------
  
     def on_but_roll_call(self) :
