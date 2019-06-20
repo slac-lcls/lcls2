@@ -115,8 +115,8 @@ class Test_JSON2XTC:
         ds = DataSource(files="json2xtc_test.xtc2")
         myrun = next(ds.runs())
         dg = myrun.configs[0]
-        assert dg.software.test1.detid == c.dict['detId:RO']
-        assert dg.software.test1.dettype == c.dict['detType:RO']
+        assert dg.software.test1[0].detid == c.dict['detId:RO']
+        assert dg.software.test1[0].dettype == c.dict['detType:RO']
         assert self.check(dg.test1[0].raw, c)
 
 def run():

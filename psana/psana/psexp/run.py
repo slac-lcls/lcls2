@@ -110,9 +110,10 @@ class Run(object):
             alg = self.epics_store.alg_from_variable(name)
             if alg:
                 det_name = 'xppepics'
+                var_name = name
                 drp_class_name = alg
                 drp_class = self.epics_dm.det_class_table[(det_name, drp_class_name)]
-                det = drp_class(name, drp_class_name, self.configs, self.calibs, self.epics_store)
+                det = drp_class(det_name, var_name, drp_class_name, self.epics_dm.configs, self.calibs, self.epics_store)
 
         return det
 

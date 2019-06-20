@@ -23,7 +23,8 @@ class Epics(object):
         algs = vars(self.config.xppepics[0])
         self.epics_variables = {}
         for alg in algs:
-            self.epics_variables[alg] = list(eval("vars(self.config.software.xppepics.%s)"%alg))
+            # FIXME: only supporting segment 0
+            self.epics_variables[alg] = list(eval("vars(self.config.software.xppepics[0].%s)"%alg))
             self.epics_variables[alg].remove('version')
             self.epics_variables[alg].remove('software')
 

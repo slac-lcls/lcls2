@@ -136,8 +136,13 @@ class DgramManager():
         # loop over the dgrams in the configuration
         # if a detector/drp_class combo exists in two cfg dgrams
         # it will be OK... they should give the same final Detector class
+
         for cfg_dgram in self.configs:
-            for det_name, det in cfg_dgram.software.__dict__.items():
+            for det_name, det_dict in cfg_dgram.software.__dict__.items():
+                # go find the class of the first segment in the dict
+                # they should all be identical
+                first_key = next(iter(det_dict.keys()))
+                det = det_dict[first_key]
                 for drp_class_name, drp_class in det.__dict__.items():
 
                     # FIXME: we want to skip '_'-prefixed drp_classes

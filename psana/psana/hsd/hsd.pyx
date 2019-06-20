@@ -1,6 +1,6 @@
 # Import the Python-level symbols of numpy
 import numpy as np
-from psana.detector.detector_impl import NonEpicsDetectorImpl
+from psana.detector.detector_impl import DetectorImpl
 
 # Import to use cython decorators
 cimport cython
@@ -48,10 +48,10 @@ cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
         AllocArray1D[cnp.uint16_t] sPos, len
         AllocArray1D[arrp] fexPtr
 
-class hsd_hsd_1_2_3(cyhsd_base_1_2_3, NonEpicsDetectorImpl):
+class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
 
     def __init__(self, *args):
-        NonEpicsDetectorImpl.__init__(self, *args)
+        DetectorImpl.__init__(self, *args)
         cyhsd_base_1_2_3.__init__(self)
     def _seg_chans(self):
         """

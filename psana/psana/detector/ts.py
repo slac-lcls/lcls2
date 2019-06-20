@@ -1,9 +1,9 @@
 import bitstruct
 import numpy as np
 from collections import namedtuple
-from psana.detector.detector_impl import NonEpicsDetectorImpl
+from psana.detector.detector_impl import DetectorImpl
 
-class ts_ts_1_2_3(NonEpicsDetectorImpl):
+class ts_ts_1_2_3(DetectorImpl):
     def __init__(self, *args):
         super(ts_ts_1_2_3, self).__init__(*args)
 

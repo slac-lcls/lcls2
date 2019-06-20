@@ -84,21 +84,14 @@ static void addObjToPyObj(PyObject* parent, const char* name, PyObject* obj, PyO
     }
 }
 
-static void addObj(PyDgramObject* dgram, const char* name, PyObject* obj) {
-    addObjToPyObj((PyObject*) dgram, name, obj, dgram->contInfo.pycontainertype);
-}
-
-// this differs from addObj() because it creates a top level dict
-// for the detname, with segment (an integer representing the portion
-// of the detector).  e.g. dgram.xppcspad[segment], then the usual
-// attributes (e.g. "raw", "fex") live under that.  it's possible
-// that we should eliminate addObj() to make everything uniform,
-// but it's not clear to me at the moment - cpo.
-static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
-                       unsigned segment) {
+// main routine to add hierarchical structures to python objects.
+// sets parent.detname[segment].attr1.attr2.attr3 = obj
+// where name is a delimited string formatted like "detname_attr1_attr2_attr3"
+static void addObjHierarchy(PyObject* parent, PyObject* pycontainertype,
+                            const char* name, PyObject* obj,
+                            unsigned segment) {
     char namecopy[TMPSTRINGSIZE];
     strncpy(namecopy,name,TMPSTRINGSIZE);
-    PyObject* parent = (PyObject*)dgram;
     char *key = ::strtok(namecopy,PyNameDelim);
     char* next = ::strtok(NULL, PyNameDelim);
 
@@ -111,7 +104,7 @@ static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
         dict = PyObject_GetAttrString(parent, key);
     }
     // either way we got a new reference to the dict.
-    // keep the dgram parent as the owner.
+    // keep the parent as the owner.
     Py_DECREF(dict); // transfer ownership to parent
 
     bool last = (next == NULL);
@@ -125,7 +118,7 @@ static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
         // we're not at the lowest level, get the container object for this segment
         PyObject* container;
         if (!(container=PyDict_GetItem(dict,pySeg))) {
-            container = PyObject_CallObject(dgram->contInfo.pycontainertype, NULL);
+            container = PyObject_CallObject(pycontainertype, NULL);
             PyDict_SetItem(dict,pySeg,container);
             Py_DECREF(container); // transfer ownership to parent
         }
@@ -133,11 +126,11 @@ static void addDataObj(PyDgramObject* dgram, const char* name, PyObject* obj,
         // that we compute the offset in the original string,
         // to exclude the detname that we have processed above,
         // since strtok has messed with our copy of the original string.
-        addObjToPyObj(container,name+(next-key),obj,dgram->contInfo.pycontainertype);
+        addObjToPyObj(container,name+(next-key),obj,pycontainertype);
     }
 }
 
-static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
+static void setAlg(PyObject* parent, PyObject* pycontainertype, const char* baseName, Alg& alg, unsigned segment) {
     const char* algName = alg.name();
     const uint32_t _v = alg.version();
     char keyName[TMPSTRINGSIZE];
@@ -145,15 +138,15 @@ static void setAlg(PyDgramObject* pyDgram, const char* baseName, Alg& alg) {
     PyObject* software = Py_BuildValue("s", algName);
     PyObject* version  = Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
-    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%ssoftware",
-             PyNameDelim,baseName,PyNameDelim);
-    addObj(pyDgram, keyName, software);
-    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%sversion",
-             PyNameDelim,baseName,PyNameDelim);
-    addObj(pyDgram, keyName, version);
+    snprintf(keyName,TMPSTRINGSIZE,"%s%ssoftware",
+             baseName,PyNameDelim);
+    addObjHierarchy(parent, pycontainertype, keyName, software, segment);
+    snprintf(keyName,TMPSTRINGSIZE,"%s%sversion",
+             baseName,PyNameDelim);
+    addObjHierarchy(parent, pycontainertype, keyName, version, segment);
 }
 
-static void setDataInfo(PyDgramObject* pyDgram, const char* baseName, Name& name) {
+static void setDataInfo(PyObject* parent, PyObject* pycontainertype, const char* baseName, Name& name, unsigned segment) {
     unsigned type = name.type();
     unsigned rank = name.rank();
     char keyName[TMPSTRINGSIZE];
@@ -161,46 +154,54 @@ static void setDataInfo(PyDgramObject* pyDgram, const char* baseName, Name& name
     PyObject* py_type = Py_BuildValue("i", type);
     PyObject* py_rank = Py_BuildValue("i", rank);
 
-    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_type",
-             PyNameDelim,baseName,PyNameDelim);
-    addObj(pyDgram, keyName, py_type);
-    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_rank",
-             PyNameDelim,baseName,PyNameDelim);
-    addObj(pyDgram, keyName, py_rank);
+    snprintf(keyName,TMPSTRINGSIZE,"%s%s_type",
+             baseName,PyNameDelim);
+    addObjHierarchy(parent, pycontainertype, keyName, py_type, segment);
+    snprintf(keyName,TMPSTRINGSIZE,"%s%s_rank",
+             baseName,PyNameDelim);
+    addObjHierarchy(parent, pycontainertype, keyName, py_rank, segment);
 }
 
-static void setDetInfo(PyDgramObject* pyDgram, Names& names) {
+static void setDetInfo(PyObject* parent, PyObject* pycontainertype, Names& names) {
     char keyName[TMPSTRINGSIZE];
+    unsigned segment = names.segment();
     PyObject* detType = Py_BuildValue("s", names.detType());
-    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%sdettype",
-             PyNameDelim,names.detName(),PyNameDelim);
-    addObj(pyDgram, keyName, detType);
+    snprintf(keyName,TMPSTRINGSIZE,"%s%sdettype",
+             names.detName(),PyNameDelim);
+    addObjHierarchy(parent, pycontainertype, keyName, detType, segment);
 
     PyObject* detId = Py_BuildValue("s", names.detId());
-    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%sdetid",
-             PyNameDelim,names.detName(),PyNameDelim);
-    addObj(pyDgram, keyName, detId);
-
-    PyObject* segment = Py_BuildValue("i", names.segment());
-    snprintf(keyName,TMPSTRINGSIZE,"software%s%s%s_segment",
-             PyNameDelim,names.detName(),PyNameDelim);
-    addObj(pyDgram, keyName, segment);
+    snprintf(keyName,TMPSTRINGSIZE,"%s%sdetid",
+             names.detName(),PyNameDelim);
+    addObjHierarchy(parent, pycontainertype, keyName, detId, segment);
 }
 
-static void dictAssignAlg(PyDgramObject* pyDgram, NamesLookup& namesLookup)
+static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
 {
     // This function gets called at configure: add attributes "software" and "version" to pyDgram and return
     char baseName[TMPSTRINGSIZE];
+    PyObject* pycontainertype = pyDgram->contInfo.pycontainertype;
+
+    PyObject* software;
+    if (!PyObject_HasAttrString((PyObject*)pyDgram, "software")) {
+        software = PyObject_CallObject(pycontainertype, NULL);
+        int fail = PyObject_SetAttrString((PyObject*)pyDgram, "software", software);
+        if (fail) throw "dictAssignConfig: failed to set container attribute\n";
+        Py_DECREF(software); // transfer ownership to parent
+    } else {
+        throw "dictAssignConfig: software attribute already exists\n";
+    }
 
     for (auto & namesPair : namesLookup) {
         NameIndex& nameIndex = namesPair.second;
         if (!nameIndex.exists()) continue;
         Names& names = nameIndex.names();
         Alg& detAlg = names.alg();
+        unsigned segment = names.segment();
         snprintf(baseName,TMPSTRINGSIZE,"%s%s%s",
                  names.detName(),PyNameDelim,names.alg().name());
-        setAlg(pyDgram,baseName,detAlg);
-        setDetInfo(pyDgram, names);
+        setAlg(software, pycontainertype, baseName, detAlg, segment);
+        setDetInfo(software, pycontainertype, names);
 
         for (unsigned j = 0; j < names.num(); j++) {
             Name& name = names.get(j);
@@ -208,8 +209,8 @@ static void dictAssignAlg(PyDgramObject* pyDgram, NamesLookup& namesLookup)
             snprintf(baseName,TMPSTRINGSIZE,"%s%s%s%s%s",
                      names.detName(),PyNameDelim,names.alg().name(),
                      PyNameDelim,name.name());
-            setAlg(pyDgram,baseName,alg);
-            setDataInfo(pyDgram,baseName,name);
+            setAlg(software, pycontainertype, baseName, alg, segment);
+            setDataInfo(software, pycontainertype, baseName, name, segment);
         }
     }
 }
@@ -442,7 +443,7 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata)
             snprintf(keyName,TMPSTRINGSIZE,"%s%s%s%s%s",
                      names.detName(),PyNameDelim,names.alg().name(),
                      PyNameDelim,varName);
-            addDataObj(pyDgram, keyName, newobj, names.segment());
+            addObjHierarchy((PyObject*)pyDgram, pyDgram->contInfo.pycontainertype, keyName, newobj, names.segment());
         }
     }
 }
@@ -496,7 +497,7 @@ static void assignDict(PyDgramObject* self, PyDgramObject* configDgram) {
         configDgram->namesIter = new NamesIter(&(configDgram->dgram->xtc));
         configDgram->namesIter->iterate();
     
-        dictAssignAlg(configDgram, configDgram->namesIter->namesLookup());
+        dictAssignConfig(configDgram, configDgram->namesIter->namesLookup());
     } else {
         self->namesIter = 0; // in case dgram was not created via dgram_init
     }

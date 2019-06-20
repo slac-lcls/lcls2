@@ -55,7 +55,8 @@ class parse_xtc():
         namesid = 0
         for detector in det_names:
             if detector == 'xpphsd': continue # hack: skip detector with unsupported types (charstr/enum)
-            det_sw_config = vars(sw_config[detector])
+            # hack only support segment 0
+            det_sw_config = vars(sw_config[detector][0])
             try:
                 segment = 0
                 det_config = vars(config[detector][segment])
