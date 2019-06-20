@@ -49,7 +49,7 @@ void usage(char* name) {
 
 //-------------------
 
-void print_hline(const uint nchars, const char c) {
+void print_hline(const unsigned nchars, const char c) {
     printf("%s\n", std::string(nchars,c).c_str());
 }
 

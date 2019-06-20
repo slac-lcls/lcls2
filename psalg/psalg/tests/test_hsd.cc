@@ -133,7 +133,7 @@ int main (int argc, char* argv[]) {
         printf("####################################################\n");
         printf("Event: %u\n", counter++);
 
-        printf("%s transition: time %d.%09d, pulseId 0x%x, env 0x%x"
+        printf("%s transition: time %d.%09d, pulseId 0x%" PRIx64 ", env 0x%x"
                "payloadSize %d\n",
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),

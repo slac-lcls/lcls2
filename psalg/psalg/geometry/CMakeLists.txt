@@ -22,8 +22,8 @@ target_include_directories(geometry PUBLIC
 find_library(CURL_LIBRARY curl PATH $ENV{CONDA_PREFIX}/lib)
 
 target_link_libraries(geometry ${OpenMP_CXX_FLAGS}
+    utils
     xtcdata::xtc
-    calib
     ${CURL_LIBRARY}
 )
 

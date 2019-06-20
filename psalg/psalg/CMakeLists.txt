@@ -45,15 +45,26 @@ message(STATUS "psalg/CMakeLists: CURL_LIBRARY=${CURL_LIBRARY}")
 message(STATUS "psalg/CMakeLists: CONDA_PREFIX=$ENV{CONDA_PREFIX}")
 
 # this is necessary only on RHEL6 where we need to pick up clock_gettime
-target_link_libraries(psalg
-    utils
-    calib
-    geometry
-    peaks
-    digitizer
-    detector
-    rt
-)
+if(APPLE)
+    target_link_libraries(psalg
+        utils
+        calib
+        geometry
+        peaks
+        digitizer
+        detector
+    )
+else()
+    target_link_libraries(psalg
+        utils
+        calib
+        geometry
+        peaks
+        digitizer
+        detector
+        rt
+    )
+endif()
 
 # datareader - test of data reader from non-xtc files
 add_executable(datareader

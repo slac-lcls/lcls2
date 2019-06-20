@@ -27,10 +27,10 @@ namespace Pds {
         uint32_t* word = (uint32_t*) this;
         for(unsigned i=0; i<8; i++)
           printf("[%d] %08x ", i, word[i]);//, i<7 ? '.' : '\n');
-        printf("pID [%016lu]  time [%u.%09u]  trig [%04x]  sync [%u]\n",
+        printf("pID [%016" PRIu64 "]  time [%u.%09u]  trig [%04x]  sync [%u]\n",
                pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
                readoutGroups(), sync());
-        printf("####@ 0x%x 0x%x 0x%x %u %u %u %lu\n", env, _info[0], _info[1], samples(), streams(), channels(), timeStamp());
+        printf("####@ 0x%x 0x%x 0x%x %u %u %u %" PRIu64 "\n", env, _info[0], _info[1], samples(), streams(), channels(), timeStamp());
       }
   private:
       uint32_t _info[2];

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <inttypes.h>
 
 #include "ShmemClient.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -22,7 +23,7 @@ public:
       nanosleep(&ts,0);
     }
     if(_verbose)
-      printf("%-15s transition: time 0x%014lx, payloadSize 0x%x\n",
+      printf("%-15s transition: time 0x%014" PRIx64 ", payloadSize 0x%x\n",
              TransitionId::name(dg->seq.service()),
              dg->seq.pulseId().value(),dg->xtc.sizeofPayload());
     return 0;       

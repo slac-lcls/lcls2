@@ -12,29 +12,39 @@ if not arg:
 xtcdata = arg[0].split('=')[1]
 sys.argv.remove(arg[0])
 
+
+if sys.platform == 'darwin':
+    extra_compile_args = ['-std=c++11', '-mmacosx-version-min=10.9']
+    extra_link_args = ['-mmacosx-version-min=10.9']
+else:
+    extra_compile_args=['-std=c++11']
+    extra_link_args = []
+extra_link_args_rpath = extra_link_args + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))]
+
+
 dgram_module = Extension('psana.dgram',
                          sources = ['src/dgram.cc'],
                          libraries = ['xtc','shmemcli'],
                          include_dirs = ['src', np.get_include(), os.path.join(xtcdata, 'include')],
                          library_dirs = [os.path.join(xtcdata, 'lib')],
-                         extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
-                         extra_compile_args=['-std=c++11'])
+                         extra_link_args = extra_link_args_rpath,
+                         extra_compile_args = extra_compile_args)
 
 seq_module = Extension('psana.seq',
                          sources = ['src/seq.cc'],
                          libraries = ['xtc'],
                          include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
                          library_dirs = [os.path.join(xtcdata, 'lib')],
-                         extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
-                         extra_compile_args=['-std=c++11'])
+                         extra_link_args = extra_link_args_rpath,
+                         extra_compile_args = extra_compile_args)
 
 container_module = Extension('psana.container',
                          sources = ['src/container.cc'],
                          libraries = ['xtc'],
                          include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
                          library_dirs = [os.path.join(xtcdata, 'lib')],
-                         extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
-                         extra_compile_args=['-std=c++11'])
+                         extra_link_args = extra_link_args_rpath,
+                         extra_compile_args = extra_compile_args)
 
 setup(
        name = 'psana',
@@ -77,8 +87,8 @@ ext = Extension('shmem',
                 include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
                 library_dirs = [os.path.join(xtcdata, 'lib')],
                 language="c++",
-                extra_compile_args=['-std=c++11'],
-                extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                extra_compile_args = extra_compile_args,
+                extra_link_args = extra_link_args_rpath,
 )
 
 setup(name="shmem",
@@ -89,7 +99,8 @@ ext = Extension("peakFinder",
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
                          "../psalg/psalg/peaks/src/LocalExtrema.cc"],
                 language="c++",
-                extra_compile_args=['-std=c++11'],
+                extra_compile_args = extra_compile_args,
+                extra_link_args = extra_link_args,
                 include_dirs=[np.get_include(), os.path.join(xtcdata, 'include')],
 )
 
@@ -103,8 +114,8 @@ ext = Extension('dgramCreate',
                 include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
                 library_dirs = [os.path.join(xtcdata, 'lib')],
                 language="c++",
-                extra_compile_args=['-std=c++11'],
-                extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                extra_compile_args = extra_compile_args,
+                extra_link_args = extra_link_args_rpath,
                 # include_dirs=[np.get_include(),
                               # "../install/include"]
 )
@@ -149,12 +160,12 @@ ext = Extension("hsd",
                          "../psalg/psalg/peaks/src/LocalExtrema.cc"],
                 libraries=['xtc','psalg','digitizer'],
                 language="c++",
-                extra_compile_args=['-std=c++11'],
+                extra_compile_args=extra_compile_args,
                 include_dirs=[np.get_include(),
                               "../install/include",
                               os.path.join(xtcdata, 'include')],
                 library_dirs = [os.path.join(xtcdata, 'lib')],
-                extra_link_args = ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))],
+                extra_link_args = extra_link_args_rpath,
 )
 
 setup(name="hsd",

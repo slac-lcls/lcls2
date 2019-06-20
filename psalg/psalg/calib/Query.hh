@@ -25,7 +25,7 @@ public:
   enum QUERY_PAR{DETECTOR=0, EXPERIMENT, CALIBTYPE, RUN, TIME_SEC, VERSION}; 
 
   //typedef std::map<const char*, std::string> map_t;
-  typedef std::map<const QUERY_PAR, std::string> map_t;
+  typedef std::map<QUERY_PAR, std::string> map_t;
 
   Query();
   Query(const std::string& query);

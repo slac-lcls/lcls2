@@ -11,14 +11,17 @@ psana_setup_args=""
 force_clean=0
 no_daq=0
 no_ana=0
+no_shmem=0
 
-while getopts ":c:p:s:f:da" opt; do
+while getopts ":c:p:s:f:dam" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
     d) no_daq=1
     ;;
     a) no_ana=1
+    ;;
+    m) no_shmem=1
     ;;
     p) pyInstallStyle="$OPTARG"
     ;;
@@ -60,7 +63,7 @@ function cmake_build() {
     cd $1
     mkdir -p build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_BUILD_TYPE=$cmake_option ..
+    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
     make -j 4 install
     cd ../..
 }
@@ -71,7 +74,11 @@ mkdir -p $INSTDIR/lib/python$pyver/site-packages/
 
 cmake_build xtcdata
 
-cmake_build psalg
+if [ $no_shmem == 0 ]; then
+    cmake_build psalg -DBUILD_SHMEM=OFF
+else
+    cmake_build psalg
+fi
 cd psalg
 python setup.py $pyInstallStyle --prefix=$INSTDIR
 cd ..

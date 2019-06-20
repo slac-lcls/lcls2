@@ -25,7 +25,7 @@ using namespace calib;
 
 //-------------------
 
-void print_hline(const uint nchars, const char c) {printf("%s\n", std::string(nchars,c).c_str());}
+void print_hline(const unsigned nchars, const char c) {printf("%s\n", std::string(nchars,c).c_str());}
 
 //-------------------
 //-------------------
