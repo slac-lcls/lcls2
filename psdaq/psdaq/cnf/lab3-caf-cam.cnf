@@ -23,8 +23,7 @@ collect_host = 'drp-tst-dev001'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                        id:'partca-1', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:1'},
- {                        id:'partca-5', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:5'},
+ {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 1 5'},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
  { host: collect_host,    id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -P TMO -B DAQ:LAB2 -x 2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
@@ -32,6 +31,6 @@ procmgr_config = [
  { host: 'drp-tst-acc06', id:'teb1', flags:'xpu', conda:conda_rel, cmd:'teb -C '+collect_host},
  # drp
 #{ host: 'drp-tst-dev007', id:'drp7', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n sugar  -s0 -o /tmp -C '+collect_host},
- { host: 'drp-tst-dev008', id:'drp8', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s0 -o /tmp -C '+collect_host},
- { host: 'drp-tst-dev009', id:'drp9', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s1 -o /tmp -C '+collect_host}
+ { host: 'drp-tst-dev008', id:'cookie_0', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s0 -o /tmp -C '+collect_host},
+ { host: 'drp-tst-dev009', id:'cookie_1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s1 -o /tmp -C '+collect_host}
 ]
