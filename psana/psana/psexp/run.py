@@ -109,7 +109,7 @@ class Run(object):
         if not flag_found:
             alg = self.epics_store.alg_from_variable(name)
             if alg:
-                det_name = 'xppepics'
+                det_name = 'epics'
                 var_name = name
                 drp_class_name = alg
                 drp_class = self.epics_dm.det_class_table[(det_name, drp_class_name)]

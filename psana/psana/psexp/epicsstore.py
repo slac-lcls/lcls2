@@ -19,12 +19,12 @@ class Epics(object):
 
     def _init_epics_variables(self):
         """ From the given config, build a list of keywords from
-        config.software.xppepics.[alg:fast/slow].[] fields."""
-        algs = vars(self.config.xppepics[0])
+        config.software.epics.[alg:fast/slow].[] fields."""
+        algs = vars(self.config.epics[0])
         self.epics_variables = {}
         for alg in algs:
             # FIXME: only supporting segment 0
-            self.epics_variables[alg] = list(eval("vars(self.config.software.xppepics[0].%s)"%alg))
+            self.epics_variables[alg] = list(eval("vars(self.config.software.epics[0].%s)"%alg))
             self.epics_variables[alg].remove('version')
             self.epics_variables[alg].remove('software')
 
@@ -112,8 +112,8 @@ class EpicsStore(object):
                     for p in range(pos, pos - N_EPICS_SEARCH_STEPS, -1):
                         if p < 0:
                             break
-                        if hasattr(epics.dgrams[p].xppepics[0], alg):
-                            val = eval("getattr(epics.dgrams[%d].xppepics[0].%s, '%s')"%(p, alg, epics_variable))
+                        if hasattr(epics.dgrams[p].epics[0], alg):
+                            val = eval("getattr(epics.dgrams[%d].epics[0].%s, '%s')"%(p, alg, epics_variable))
                             break
                     epics_values.append(val)
 
@@ -134,10 +134,10 @@ class EpicsStore(object):
             # Returns last epics event for all newer events
             found_pos[found_pos == epics.n_items] = epics.n_items - 1
             for i, pos in enumerate(found_pos):
-                algs = vars(epics.config.xppepics[0])
+                algs = vars(epics.config.epics[0])
                 for alg in algs:
-                    if alg in vars(epics.dgrams[pos].xppepics[0]):
-                        epics_dicts[i].update(eval("vars(epics.dgrams[%d].xppepics[0].%s)"%(pos, alg)))
+                    if alg in vars(epics.dgrams[pos].epics[0]):
+                        epics_dicts[i].update(eval("vars(epics.dgrams[%d].epics[0].%s)"%(pos, alg)))
         
         return epics_dicts
 

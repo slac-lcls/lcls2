@@ -289,7 +289,7 @@ void epicsExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId, int s
 void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment, int streamId) {
     Alg xppEpicsFastAlg("fast",0,0,0);
     NamesId namesId0(nodeId,0+10*segment);
-    Names& epicsFastNames = *new(xtc) Names("xppepics", xppEpicsFastAlg, "epics","detnum1234", namesId0, segment);
+    Names& epicsFastNames = *new(xtc) Names("epics", xppEpicsFastAlg, "epics","detnum1234", namesId0, segment);
     if (streamId == 1) {
         epicsFastNames.add(xtc, EpicsDefFast);
     } else if (streamId == 2) {
@@ -299,7 +299,7 @@ void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned seg
 
     Alg xppEpicsSlowAlg("slow",0,0,0);
     NamesId namesId1(nodeId,1+10*segment);
-    Names& epicsSlowNames = *new(xtc) Names("xppepics", xppEpicsSlowAlg, "epics","detnum1234", namesId1, segment);
+    Names& epicsSlowNames = *new(xtc) Names("epics", xppEpicsSlowAlg, "epics","detnum1234", namesId1, segment);
     if (streamId == 1) {
         epicsSlowNames.add(xtc, EpicsDefSlow);
     } else if (streamId == 2) {
