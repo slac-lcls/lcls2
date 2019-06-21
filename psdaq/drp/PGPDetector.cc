@@ -135,7 +135,7 @@ PGPDetector::PGPDetector(const Parameters& para, MemPool& pool, Detector* det) :
     }
 }
 
-void PGPDetector::run(std::shared_ptr<MetricExporter> exporter)
+void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter)
 {
     // setup monitoring
     uint64_t nevents = 0L;

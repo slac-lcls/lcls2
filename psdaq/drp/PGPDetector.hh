@@ -23,7 +23,7 @@ class PGPDetector
 public:
     PGPDetector(const Parameters& para, MemPool& pool,
                 Detector* det);
-    void run(std::shared_ptr<MetricExporter> exporter);
+    void reader(std::shared_ptr<MetricExporter> exporter);
     void collector(Pds::Eb::TebContributor& tebContributor);
     void resetEventCounter();
     void shutdown();
