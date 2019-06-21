@@ -1,6 +1,7 @@
 import os, shutil
 import subprocess
 import sys, os
+import pytest
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 from xtc import xtc
 from det import det
@@ -80,6 +81,7 @@ class Test:
         callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
         subprocess.check_call(['python',callback_based])
 
+    @pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
     def test_legion(self):
         self.setup_input_files()
 
@@ -105,6 +107,7 @@ class Test:
         import run_pickle
         run_pickle.test_run_pickle()
 
+    @pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
     def test_legion_pickle(self):
         # Again, in Legion
         self.setup_input_files()

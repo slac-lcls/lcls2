@@ -7,23 +7,32 @@ services:
 env:
   global:
     - CONDA_ENV: myrel
-  matrix:
-#    - OS=ubuntu16.04 PYVER=2.7
-#    - OS=ubuntu16.04 PYVER=3.6
-#    - OS=centos7     PYVER=2.7
-    - OS=centos7     PYVER=3.6
+
+matrix:
+  include:
+  - os: osx
+    python: 3.7
+  - os: linux
+    env: OS=centos7 PYVER=3.6
+
+install:
+  - ./install_travis.sh
 
 script:
-  - export IMAGE=slaclcls/travis:$OS-py$PYVER
   - |
-    if [[ $OS == ubuntu16.04 ]]; then
-      export CC=gcc-7
-      export CXX=g++-7
+    if [[ $TRAVIS_OS_NAME == osx ]]; then
+      ./run_travis.sh "$TRAVIS_OS_NAME"
     else
-      export CC=gcc
-      export CXX=g++
+      export IMAGE=slaclcls/travis:$OS-py$PYVER
+      if [[ $OS == ubuntu16.04 ]]; then
+        export CC=gcc-7
+        export CXX=g++-7
+      else
+        export CC=gcc
+        export CXX=g++
+      fi
+      docker run -v $PWD:/build -e CONDA_ENV -e CC -e CXX -ti $IMAGE bash -l /build/run_travis.sh
     fi
-  - docker run -v $PWD:/build -e CONDA_ENV -e CC -e CXX -ti $IMAGE bash -l /build/run_travis.sh
 
 notifications:
   email:

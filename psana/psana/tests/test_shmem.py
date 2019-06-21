@@ -1,11 +1,13 @@
 import os, shutil
 import subprocess
 import sys, os
+import pytest
 from psana import DataSource
 
 client_count = 4  # number of clients in test
 dgram_count  = 64 # number of expected datagrams per client
 
+@pytest.mark.skipif(sys.platform == 'darwin', reason="shmem not supported on mac")
 class Test:
     def launch_server(self,tmp_file,pid):
         cmd_args = ['shmemServer','-c',str(client_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000','-c','4']
