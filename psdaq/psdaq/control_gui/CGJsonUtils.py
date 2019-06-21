@@ -10,6 +10,10 @@ Usage::
 
     # Methods - see :py:class:`CGWMainPartition`
 
+    # global methods
+    pname, pid, host, alias = _display_name(pname, dic)
+    v = dict_platform() # returns control.getPlatform() or None
+
 See:
     - :py:class:`CGJsonUtils`
     - :py:class:`CGWMainPartition`
@@ -34,6 +38,7 @@ from psdaq.control_gui.Utils import load_textfile
 #--------------------
 
 def _display_name(pname, v) :
+    """returns (str) like 'pname/pid/host alias' """
     pinfo = v['proc_info']
     host  = pinfo.get('host', 'non-def')
     pid   = pinfo.get('pid',  'non-def')
@@ -61,7 +66,7 @@ def dict_platform():
 #--------------------
 
 def get_status(header=['drp','teb','meb']):
-    """ returns 2-d list for status
+    """ returns 2-d list for CGWMainCollection.py table from dict_platf = daq_control().getPlatform()
     """
     ncols = len(header)
 
@@ -91,14 +96,14 @@ def get_status(header=['drp','teb','meb']):
 
     # fill out table
     row_counter={v:0 for v in header}
-    list2d = [['' for i in range(ncols)] for i in range(nrows)]
+    list2d = [['' for c in range(ncols)] for r in range(nrows)]
     try:
         for pname in dict_platf:
             #logger.debug("json top key name: %s" % str(pname))
             if not(pname in header) : continue
             col = header.index(pname)
             for k,v in dict_platf[pname].items() :
-                display = _display_name(pname, v)
+                display = _display_name(pname, v) # 'pname/pid/host alias'
                 flds = display.split(' ')
                 alias = flds[1] if len(flds)==2 else ''
                 name = alias if alias else flds[0]
@@ -126,12 +131,14 @@ def get_status(header=['drp','teb','meb']):
 #--------------------
 
 def get_platform():
-    """ returns 2-d list of fields: [['just-text', [True,''], [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"]], ...],
+    """ used in CGWMainPartition.py -> 
+        returns dict_platf and 2-d list of fields: [['just-text', [True,''], [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"]], ...],
         - 'just-text' (str) - field of text
         - [True,''] (list)  - field of check-box
         - [True,'', <int-flag>] (list)  - field of check-box with flags
         - [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"] (list) - field of check-box and text with flags and validator
-        after control.getPlatform() request
+        after control.getPlatform() request.
+        <int-flag> = 1/2/4/8 : BIT_CHECKABLE/ENABLED/EDITABLE/SELECTABLE (see QWTableOfCheckBoxes.py)
     """
     list2d = []
     dict_platf = dict_platform()
@@ -140,22 +147,18 @@ def get_platform():
         for pname in dict_platf: # iterate over top key-wards
             #logger.debug("json top key name: %s" % str(pname))
             for k,v in dict_platf[pname].items() :
-                display = _display_name(pname, v)
-                #print(display)
+                display = _display_name(pname, v) # 'pname/pid/host alias'
                 flds = display.split(' ')
                 alias = flds[1] if len(flds)==2 else ''
-                #list2d.append([[v['active']==1, ''], flds[0], alias])
 
                 is_drp = pname=='drp'
                 readgr = v['det_info']['readout'] if is_drp else ''
 
-                #if is_drp : print('XXX pname %s readout %d' % (pname,readgr))
-                #else      : print('XXX pname %s' % pname)
                 flag = 6 if is_drp else 2
-                list2d.append([[v['active']==1, ''], [False, str(readgr), flag, "^([0-9]|1[0-5])$"],\
-                                                     [False, flds[0], 2],\
-                                                     [False, alias, 2]])
-                #list2d.append([[v['active']==1, ''], str(readgr), flds[0], alias])
+                list2d.append([[v['active']==1, ''],\
+                               [False, str(readgr), flag, "^([0-9]|1[0-5])$"],\
+                               [False, flds[0], 2],\
+                               [False, alias, 2]])
 
     except Exception as ex:
         logger.error('Exception in parsing dict_platf (3): %s' % ex)
@@ -167,27 +170,29 @@ def get_platform():
 #--------------------
 
 def set_platform(dict_platf, list2d):
-    """ Sets processes active/inactive in dict_platf from list2d
+    """ Converts list2d (table presentation) to dict_platf; sets processes active/inactive etc.
     """
     #print('dict_platf: ',dict_platf)
     #print('list2d:',list2d)
 
     try:
         s = ''
-        i=-1
+        r=-1 # row
         for pname in dict_platf:
             #print("proc_name: %s" % str(pname))
             for k,v in dict_platf[pname].items() :
-                display = _display_name(pname, v)
-                #status = display.split(' ')[0][0] # bool
-                i += 1
-                status = list2d[i][0][0] # bool
+                display = _display_name(pname, v) # 'pname/pid/host alias'
+                r += 1
+                status = list2d[r][0][0] # bool
                 int_active = {True:1, False:0}[status]
                 dict_platf[pname][k]['active'] = int_active
                 if pname=='drp' :
-                    val = list2d[i][1][1]
+                    val = list2d[r][1][1]
                     if isinstance(val, str) and val.isdigit() :
                         dict_platf[pname][k]['det_info']['readout'] = int(val)
+                    else :
+                        logger.error('set_platform WRONG drp "group readout" value "%s" for "%s"'%\
+                                     (str(val), display))
  
                 s += '%s   int_active: %d\n' % (display,int_active)
         

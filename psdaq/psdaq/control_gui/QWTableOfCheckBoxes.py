@@ -40,7 +40,8 @@ class QWTableOfCheckBoxes(QWTable) :
         #self._name = self.__class__.__name__
 
     def fill_table_model(self, **kwargs) :
-        """tableio is an I/O list of lists, containing str or [bool,str] elements.
+        """Owerrides QWTable.fill_table_model
+           tableio is an I/O list of lists, containing str or [bool,str] elements.
            accepts 2-d list of fields: [['just-text', [True,''], [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"]], ...],
            - 'just-text' (str) - field of text
            - [True,''] (list)  - field of check-box
@@ -88,7 +89,7 @@ class QWTableOfCheckBoxes(QWTable) :
                         item.setSelectable(flags & BIT_SELECTABLE)
                         if lsize>3 : item.valid_reg_exp = fld[3]
 
-                else :
+                else : # text field
                     item = QStandardItem(fld)
                     item.setAccessibleDescription('type:str')
 
@@ -103,6 +104,7 @@ class QWTableOfCheckBoxes(QWTable) :
 #----------
 
     def connect_control(self) :
+        """re-implementation of QWTable.connect_control"""
         #self.connect_item_selected_to(self.on_item_selected)
         self.clicked.connect(self.on_click)
         #self.doubleClicked.connect(self.on_double_click)
@@ -144,10 +146,9 @@ class QWTableOfCheckBoxes(QWTable) :
                 item = model.item(row, col)
                 state = LIST_STR_CHECK_BOX_STATES[item.checkState()]
                 #print('item(%d,%d) name: %s state: %s'% (row, col, item.text(), state))
-                rec = str(item.text())
-                if item.accessibleDescription() == 'type:list' :
-                    rec = [DICT_CHECK_BOX_STATES[item.checkState()], rec]
-
+                txt = str(item.text())
+                rec = txt if item.accessibleDescription() == 'type:str' else\
+                      [DICT_CHECK_BOX_STATES[item.checkState()], txt]
                 list_row.append(rec)
 
             list2d_out.append(list_row)
