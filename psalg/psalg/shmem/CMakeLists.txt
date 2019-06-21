@@ -1,4 +1,9 @@
-option(BUILD_SHMEM "Build shmem libraries" ON)
+# Default shmem to OFF for mac
+if(APPLE)
+  option(BUILD_SHMEM "Build shmem libraries" OFF)
+else()
+  option(BUILD_SHMEM "Build shmem libraries" ON)
+endif()
 
 if(BUILD_SHMEM)
   add_library(shmemsrv SHARED

@@ -8,6 +8,7 @@
 #include "ShmemClient.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TransitionId.hh"
+#include "psalg/utils/MacTimeFix.hh"
 
 using namespace XtcData;
 using namespace psalg::shmem;

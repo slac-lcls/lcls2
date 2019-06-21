@@ -11,6 +11,7 @@ target_include_directories(utils PUBLIC
 install(FILES
     Logger.hh
     Utils.hh
+    MacTimeFix.hh
     DirFileIterator.hh
     DESTINATION include/psalg/utils
 )

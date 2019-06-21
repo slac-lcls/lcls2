@@ -1,9 +1,22 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-find_package(OpenMP REQUIRED)
-
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(APPLE)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        set(OpenMP_C_FLAGS "-fopenmp" CACHE STRING "OH YEAH")
+        set(OpenMP_C_LIB_NAMES "libomp" CACHE STRING "OH YEAH")
+        set(OpenMP_libomp_LIBRARY ${OpenMP_C_LIB_NAMES} CACHE STRING "OH YEAH")
+    endif()
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        set(OpenMP_CXX_FLAGS "-fopenmp" CACHE STRING "OH YEAH")
+        set(OpenMP_CXX_LIB_NAMES "libomp" CACHE STRING "OH YEAH")
+        set(OpenMP_libomp_LIBRARY ${OpenMP_CXX_LIB_NAMES} CACHE STRING "OH YEAH")
+    endif()
+endif()
+
+find_package(OpenMP REQUIRED)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0")
