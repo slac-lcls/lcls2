@@ -1,20 +1,15 @@
 #pragma once
 
-#include <thread>
-#include "PGPReader.hh"
+#include "drp.hh"
 #include "FileWriter.hh"
-#include "psdaq/eb/eb.hh"
-#include "psdaq/service/Collection.hh"
-#include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/json.hpp"
 #include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
-
-class MetricExporter;
+#include "psdaq/service/Collection.hh"
+#include "psdaq/service/MetricExporter.hh"
 
 namespace Drp {
-
-class Detector;
 
 #pragma pack(push, 4)
 class MyDgram : public XtcData::Dgram {
@@ -31,7 +26,6 @@ public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqContext& context, Pds::Eb::MebContributor* mon,
                std::shared_ptr<MetricExporter> exporter);
-    virtual ~EbReceiver() {};
     void process(const XtcData::Dgram* result, const void* input) override;
 private:
     MemPool& m_pool;
@@ -49,35 +43,27 @@ private:
     unsigned m_nodeId;
 };
 
-struct Parameters;
-struct MemPool;
-
-class DrpApp : public CollectionApp
+class DrpBase
 {
 public:
-    DrpApp(Parameters* para);
-    nlohmann::json connectionInfo() override;
-    void handleConnect(const nlohmann::json& msg) override;
-    void handleDisconnect(const nlohmann::json& msg) override;
-    void handlePhase1(const nlohmann::json& msg) override;
-    void handleReset(const nlohmann::json& msg) override;
-    void shutdown();
+    DrpBase(Parameters& para, ZmqContext& context);
+    std::string connect(const nlohmann::json& msg, size_t id);
+    std::string disconnect(const nlohmann::json& msg);
+    Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
+    prometheus::Exposer* exposer() {return m_exposer.get();}
+    unsigned nodeId() const {return m_nodeId;}
+    MemPool pool;
 private:
-    void parseConnectionParams(const nlohmann::json& msg);
-    void collector();
-
-    Parameters* m_para;
+    void parseConnectionParams(const nlohmann::json& body, size_t id);
+    Parameters& m_para;
+    unsigned m_nodeId;
     Pds::Eb::TebCtrbParams m_tPrms;
     Pds::Eb::MebCtrbParams m_mPrms;
-    std::thread m_pgpThread;
-    std::thread m_collectorThread;
-    MemPool m_pool;
-    std::unique_ptr<PGPReader> m_pgpReader;
-    std::unique_ptr<Pds::Eb::TebContributor> m_ebContributor;
-    std::unique_ptr<EbReceiver> m_ebRecv;
+    std::unique_ptr<Pds::Eb::TebContributor> m_tebContributor;
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
+    std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<prometheus::Exposer> m_exposer;
-    Detector* m_det;
-};
-
+    ZmqContext& m_context;
+};    
+    
 }

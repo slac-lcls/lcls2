@@ -19,7 +19,7 @@ class ZmqMessage
 public:
     ZmqMessage() {zmq_msg_init(&msg);};
     ~ZmqMessage() {zmq_msg_close(&msg);}
-    ZmqMessage(ZmqMessage&& m) {msg = m.msg; zmq_msg_init(&m.msg);}
+    ZmqMessage(ZmqMessage&& m) noexcept : msg(m.msg) {zmq_msg_init(&m.msg);}
     void* data() {return zmq_msg_data(&msg);}
     size_t size() {return zmq_msg_size(&msg);}
     ZmqMessage(const ZmqMessage&) = delete;
@@ -53,6 +53,7 @@ class CollectionApp
 {
 public:
     CollectionApp(const std::string& managerHostname, int platform, const std::string& level, const std::string& alias);
+    virtual ~CollectionApp() {};
     void run();
 protected:
     void handleRollcall(const nlohmann::json& msg);

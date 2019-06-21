@@ -4,11 +4,8 @@
 #include <vector>
 #include <cstdint>
 #include <map>
-#include "spscqueue.hh"
 
 namespace Drp {
-
-const int MAX_RET_CNT_C = 1000;
 
 struct DmaBuffer
 {
@@ -20,12 +17,6 @@ struct PGPEvent
 {
     DmaBuffer buffers[4];
     uint8_t mask = 0;
-};
-
-struct Batch
-{
-    uint32_t start;
-    uint32_t size;
 };
 
 struct Parameters
@@ -48,31 +39,33 @@ class Pebble
 public:
     void resize(unsigned nbuffers, unsigned bufferSize)
     {
-        m_bufferSize = bufferSize;
-        uint64_t size = static_cast<uint64_t>(nbuffers)*static_cast<uint64_t>(bufferSize);
+        m_bufferSize = static_cast<uint64_t>(bufferSize);
+        uint64_t size = static_cast<uint64_t>(nbuffers)*m_bufferSize;
         m_buffer.resize(size);
     }
 
     inline uint8_t* operator [] (unsigned index) {
-        uint64_t offset = static_cast<uint64_t>(index)*static_cast<uint64_t>(m_bufferSize);
+        uint64_t offset = static_cast<uint64_t>(index)*m_bufferSize;
         return &m_buffer[offset];
     }
-    size_t size() {return m_buffer.size();}
+    size_t size() const {return m_buffer.size();}
 private:
-    unsigned m_bufferSize;
+    uint64_t m_bufferSize;
     std::vector<uint8_t> m_buffer;
 };
 
-struct MemPool
+class MemPool
 {
+public:
     MemPool (const Parameters& para);
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
-    std::vector<SPSCQueue<Batch> > workerInputQueues;
-    std::vector<SPSCQueue<Batch> > workerOutputQueues;
-    unsigned nbuffers;
     void** dmaBuffers;
-    int fd;
+    unsigned nbuffers () const {return m_nbuffers;}
+    int fd () const {return m_fd;}
+private:
+    unsigned m_nbuffers;
+    int m_fd;
 };
 
 }

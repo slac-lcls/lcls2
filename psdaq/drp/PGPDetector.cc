@@ -6,58 +6,11 @@
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
-#include "PGPReader.hh"
+#include "psdaq/eb/TebContributor.hh"
+#include "DrpBase.hh"
+#include "PGPDetector.hh"
 
 namespace Drp {
-
-unsigned nextPowerOf2(unsigned n)
-{
-    unsigned count = 0;
-
-    if (n && !(n & (n - 1))) {
-        return n;
-    }
-
-    while( n != 0) {
-        n >>= 1;
-        count += 1;
-    }
-
-    return 1 << count;
-}
-
-MemPool::MemPool(const Parameters& para)
-{
-    fd = open(para.device.c_str(), O_RDWR);
-    if (fd < 0) {
-        std::cout<<"Error opening "<<para.device<<'\n';
-        throw "Error opening kcu1500!!\n";
-    }
-
-    uint32_t dmaCount, dmaSize;
-    dmaBuffers = dmaMapDma(fd, &dmaCount, &dmaSize);
-    if (dmaBuffers == NULL ) {
-        std::cout<<"Failed to map dma buffers!\n";
-        throw "Error calling dmaMapDma!!\n";
-    }
-    printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
-
-    // make sure there are more buffers in the pebble than in the pgp driver
-    // otherwise the pebble buffers will be overwritten by the pgp event builder
-    nbuffers = nextPowerOf2(dmaCount);
-
-    // make the size of the pebble buffer that will contain the datagram equal
-    // to the dmaSize times the number of lanes
-    unsigned bufferSize = __builtin_popcount(para.laneMask) * dmaSize;
-    pebble.resize(nbuffers, bufferSize);
-    printf("nbuffer %u  pebble buffer size %u\n", nbuffers, bufferSize);
-
-    pgpEvents.resize(nbuffers);
-    for (unsigned i=0; i<para.nworkers; i++) {
-        workerInputQueues.emplace_back(SPSCQueue<Batch>(nbuffers));
-        workerOutputQueues.emplace_back(SPSCQueue<Batch>(nbuffers));
-    }
-}
 
 long readInfinibandCounter(const std::string& counter)
 {
@@ -100,18 +53,19 @@ bool checkPulseIds(MemPool& pool, PGPEvent* event)
     return true;
 }
 
-void workerFunc(const Parameters&para, MemPool& pool,
+void workerFunc(const Parameters& para, MemPool& pool,
                 Detector* det,
                 SPSCQueue<Batch>& inputQueue, SPSCQueue<Batch>& outputQueue)
 {
     Batch batch;
+    const unsigned nbuffers = pool.nbuffers();
     while (true) {
         if (!inputQueue.pop(batch)) {
             break;
         }
 
         for (unsigned i=0; i<batch.size; i++) {
-            unsigned index = (batch.start + i) % pool.nbuffers;
+            unsigned index = (batch.start + i) % nbuffers;
             PGPEvent* event = &pool.pgpEvents[index];
             checkPulseIds(pool, event);
 
@@ -151,10 +105,10 @@ void workerFunc(const Parameters&para, MemPool& pool,
     }
 }
 
-PGPReader::PGPReader(const Parameters& para, MemPool& pool,
-                     Detector* det) :
-    m_para(&para), m_pool(&pool), m_terminate(false)
+PGPDetector::PGPDetector(const Parameters& para, MemPool& pool, Detector* det) :
+    m_para(para), m_pool(pool), m_terminate(false)
 {
+    m_nodeId = det->nodeId;
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
     for (int i=0; i<4; i++) {
@@ -163,24 +117,30 @@ PGPReader::PGPReader(const Parameters& para, MemPool& pool,
             dmaAddMaskBytes(mask, dmaDest(i, 0));
         }
     }
-    dmaSetMaskBytes(pool.fd, mask);
+    dmaSetMaskBytes(pool.fd(), mask);
+
+    for (unsigned i=0; i<para.nworkers; i++) {
+        m_workerInputQueues.emplace_back(SPSCQueue<Batch>(pool.nbuffers()));
+        m_workerOutputQueues.emplace_back(SPSCQueue<Batch>(pool.nbuffers()));
+    }
+
 
     for (unsigned i = 0; i < para.nworkers; i++) {
         m_workerThreads.emplace_back(workerFunc,
                                    std::ref(para),
                                    std::ref(pool),
                                    det,
-                                   std::ref(pool.workerInputQueues[i]),
-                                   std::ref(pool.workerOutputQueues[i]));
+                                   std::ref(m_workerInputQueues[i]),
+                                   std::ref(m_workerOutputQueues[i]));
     }
 }
 
-void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
+void PGPDetector::run(std::shared_ptr<MetricExporter> exporter)
 {
     // setup monitoring
     uint64_t nevents = 0L;
     uint64_t bytes = 0L;
-    std::map<std::string, std::string> labels{{"partition", std::to_string(m_para->partition)}};
+    std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
     exporter->add("drp_event_rate", labels, MetricType::Rate,
                   [&](){return nevents;});
 
@@ -195,29 +155,29 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
 
 
     int64_t worker = 0L;
-
+    const unsigned nbuffers = m_pool.nbuffers();
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
         }
-        int32_t ret = dmaReadBulkIndex(m_pool->fd, MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
+        int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
         for (int b=0; b < ret; b++) {
             int32_t size = dmaRet[b];
             uint32_t index = dmaIndex[b];
             uint32_t lane = (dest[b] >> 8) & 7;
             bytes += size;
 
-            const uint32_t* data = (uint32_t*)m_pool->dmaBuffers[index];
+            const uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
             uint32_t evtCounter = data[5] & 0xffffff;
-            uint32_t current = evtCounter % m_pool->nbuffers;
-            PGPEvent* event = &m_pool->pgpEvents[current];
+            uint32_t current = evtCounter % nbuffers;
+            PGPEvent* event = &m_pool.pgpEvents[current];
 
             DmaBuffer* buffer = &event->buffers[lane];
             buffer->size = size;
             buffer->index = index;
             event->mask |= (1 << lane);
 
-            if (event->mask == m_para->laneMask) {
+            if (event->mask == m_para.laneMask) {
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
                     printf("\033[0;31m");
                     printf("Fatal: Jump in complete l1Count %u -> %u | difference %d\n",
@@ -228,7 +188,7 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
                     throw "Jump in event counter";
 
                     for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
-                        PGPEvent* brokenEvent = &m_pool->pgpEvents[e % m_pool->nbuffers];
+                        PGPEvent* brokenEvent = &m_pool.pgpEvents[e % nbuffers];
                         printf("broken event:  %08x\n", brokenEvent->mask);
                         brokenEvent->mask = 0;
 
@@ -243,8 +203,8 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
                 XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
 
                 // send batch to worker if batch is full or if it's a transition
-                if ((m_batch.size == m_para->batchSize) || (transitionId != XtcData::TransitionId::L1Accept)) {
-                    m_pool->workerInputQueues[worker % m_para->nworkers].push(m_batch);
+                if ((m_batch.size == m_para.batchSize) || (transitionId != XtcData::TransitionId::L1Accept)) {
+                    m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                     worker++;
                     m_batch.start = evtCounter + 1;
                     m_batch.size = 0;
@@ -254,22 +214,61 @@ void PGPReader::run(std::shared_ptr<MetricExporter> exporter)
     }
 }
 
-void PGPReader::resetEventCounter()
+void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
+{
+    int64_t worker = 0L;
+    int64_t counter = 0L;
+    Batch batch;
+    const unsigned nbuffers = m_pool.nbuffers();
+    while (true) {
+        if (!m_workerOutputQueues[worker % m_para.nworkers].pop(batch)) {
+            break;
+        }
+        //std::cout<<"collector:  "<<batch.start<<"  "<<batch.size<<'\n';
+        for (unsigned i=0; i<batch.size; i++) {
+            unsigned index = (batch.start + i) % nbuffers;
+            XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[index];
+            uint64_t val;
+            if (counter % 2 == 0) {
+                val = 0xdeadbeef;
+            }
+            else {
+                val = 0xabadcafe;
+            }
+            // always monitor every event
+            val |= 0x1234567800000000ul;
+            void* buffer = tebContributor.allocate(dgram, (void*)((uintptr_t)index));
+            if (buffer) // else this DRP doesn't provide input, or timed out
+            {
+                MyDgram* dg = new(buffer) MyDgram(*dgram, val, m_nodeId);
+                tebContributor.process(dg);
+            }
+            counter++;
+        }
+        worker++;
+    }
+    tebContributor.shutdown();
+}
+
+void PGPDetector::resetEventCounter()
 {
     m_lastComplete = 0; // 0xffffff;
     m_batch.start = 1;
     m_batch.size = 0;
 }
 
-void PGPReader::shutdown()
+void PGPDetector::shutdown()
 {
     m_terminate.store(true, std::memory_order_release);
     std::cout<<"shutting down PGPReader\n";
-    for (unsigned i = 0; i < m_para->nworkers; i++) {
-        m_pool->workerInputQueues[i].shutdown();
+    for (unsigned i = 0; i < m_para.nworkers; i++) {
+        m_workerInputQueues[i].shutdown();
         m_workerThreads[i].join();
     }
     std::cout<<"Worker threads finished\n";
+    for (unsigned i = 0; i < m_para.nworkers; i++) {
+        m_workerOutputQueues[i].shutdown();
+    }
 }
 
 }

@@ -1,14 +1,28 @@
 find_package(PythonLibs REQUIRED)
 
+add_library(drpbase
+    DrpBase.cc
+)
+
+target_include_directories(drpbase PUBLIC
+    ../psdaq/pgp/aes-stream-drivers/include
+    $ENV{CONDA_PREFIX}/include
+)
+
+target_link_libraries(drpbase
+    contributor
+    exporter
+)
+
 add_executable(drp
-    PGPReader.cc
-    DrpApp.cc
     XpmDetector.cc
     AreaDetector.cc
     Digitizer.cc
     TimingSystem.cc
     TimeTool.cc
     FileWriter.cc
+    PGPDetector.cc
+    PGPDetectorApp.cc
     drp.cc
 )
 
@@ -21,10 +35,8 @@ target_link_libraries(drp
     xtcdata::xtc
     xtcdata::j2x
     pthread
-    zmq
     collection
-    contributor
-    exporter
+    drpbase
 )
 
 add_executable(test_hsd_config

@@ -1,3 +1,4 @@
+import time
 from p4p.client.thread import Context
 from prometheus_client import start_http_server
 from prometheus_client.core import GaugeMetricFamily, REGISTRY
@@ -18,6 +19,5 @@ if __name__ == '__main__':
     c = CustomCollector()
     c.collect()
     start_http_server(9200)
-    # Generate some requests.
     while True:
-        pass
+        time.sleep(5)

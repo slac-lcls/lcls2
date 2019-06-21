@@ -13,6 +13,7 @@ target_include_directories(epicstools PUBLIC
 
 target_link_libraries(epicstools
     ${EPICS_PVACCESS_LIB}
+    ${EPICS_PVDATA_LIB}
 )
 
 install(TARGETS epicstools

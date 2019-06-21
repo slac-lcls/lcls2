@@ -1,8 +1,9 @@
 #include <getopt.h>
 #include <sstream>
+#include <iostream>
 #include <Python.h>
 #include "drp.hh"
-#include "DrpApp.hh"
+#include "PGPDetectorApp.hh"
 
 void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     std::istringstream ss(kwargs_str);
@@ -78,7 +79,7 @@ int main(int argc, char* argv[])
     para.nworkers = 10;
     para.batchSize = 32;
     Py_Initialize(); // for use by configuration
-    Drp::DrpApp app(&para);
+    Drp::PGPDetectorApp app(para);
     app.run();
     app.shutdown();
     Py_Finalize(); // for use by configuration
