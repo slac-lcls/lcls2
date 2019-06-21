@@ -249,7 +249,7 @@ protected:
         Array<T> allocate(unsigned index, unsigned *shape)
         {
             Name& name = _nameindex.names().get(index);
-            T val;checkType(val, name);
+            T val = '\0'; checkType(val, name);
 
             //Create a pointer to the next part of contiguous memory
             void *ptr = reinterpret_cast<void *>(_shapesdata.data().next());
