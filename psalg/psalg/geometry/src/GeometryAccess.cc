@@ -6,7 +6,6 @@
 
 #include "psalg/geometry/GeometryAccess.hh"
 #include "psalg/geometry/GeometryObject.hh"
-#include "psalg/utils/Logger.hh" // MSG, LOGGER
 
 //-------------------
 
