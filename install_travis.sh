@@ -8,8 +8,9 @@ if [[ $TRAVIS_OS_NAME == osx ]]; then
   rm MacOSX10.9.sdk.tar.xz
   wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh;
   bash miniconda.sh -b -p $HOME/miniconda
-  export PATH="$HOME/miniconda/bin:$PATH"
-  hash -r
+  git clone https://github.com/slac-lcls/relmanage.git $HOME/relmanage
+  sed -i s|PYTHONVER|${TRAVIS_PYTHON_VERSION}|g $HOME/relmanage
+  source "$HOME/miniconda/etc/profile.d/conda.sh"
   conda config --set always_yes yes --set changeps1 no
   conda install conda-build anaconda-client
   conda update -q conda conda-build
@@ -18,5 +19,5 @@ if [[ $TRAVIS_OS_NAME == osx ]]; then
   # Useful for debugging any issues with conda
   conda info -a
   # Create test environment
-  conda create -q -n $CONDA_ENV python=$TRAVIS_PYTHON_VERSION --file mac-requirements.txt
+  conda env create -q -n $CONDA_ENV -f $HOME/relmanage
 fi
