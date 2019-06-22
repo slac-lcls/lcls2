@@ -12,8 +12,9 @@ if [[ $TRAVIS_OS_NAME == osx ]]; then
   bash miniconda.sh -b -p $HOME/miniconda
   source "$HOME/miniconda/etc/profile.d/conda.sh"
   conda config --set always_yes yes --set changeps1 no
-  conda install conda-build anaconda-client
-  conda update -q conda conda-build
+  # Needed if we want to do conda builds and uploads in the future
+  #conda install conda-build anaconda-client
+  #conda update -q conda conda-build
   conda config --add channels lcls-ii
   conda config --append channels conda-forge
   # Useful for debugging any issues with conda
