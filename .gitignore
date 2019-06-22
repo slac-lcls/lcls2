@@ -1,3 +1,4 @@
+setup_env_local.sh
 build
 install
 *.pyc
