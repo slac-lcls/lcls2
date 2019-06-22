@@ -2,6 +2,7 @@ pytest
 numpy
 rapidjson
 Cython
+mpi
 mpi4py
 bitstruct
 matplotlib
