@@ -6,4 +6,3 @@ pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.ver
 export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
 # for procmgr
 export TESTRELDIR=$RELDIR/install
-
