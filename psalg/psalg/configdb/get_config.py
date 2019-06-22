@@ -28,7 +28,9 @@ def get_config(connect_json,cfgtype,detname):
     cfg_dbase = control_info['cfg_dbase'].split('/')
     db_url = cfg_dbase[0]
     db_name =cfg_dbase[1]
+    return get_config_with_params(db_url, instrument, db_name, cfgtype, detname)
 
+def get_config_with_params(db_url, instrument, db_name, cfgtype, detname):
     create = False
     mycdb = cdb.configdb(db_url, instrument, create, db_name)
     cfg = mycdb.get_configuration(cfgtype, detname)
@@ -41,3 +43,6 @@ def get_config(connect_json,cfgtype,detname):
 
 def get_config_json(*args):
     return json.dumps(get_config(*args))
+
+def get_config_json_with_params(*args):
+    return json.dumps(get_config_with_params(*args))

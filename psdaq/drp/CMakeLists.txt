@@ -39,16 +39,16 @@ target_link_libraries(drp
     drpbase
 )
 
-add_executable(test_hsd_config
-    test_hsd_config.cc
+add_executable(configdb_obj_2xtc
+    configdb_obj_2xtc.cc
 )
 
-target_include_directories(test_hsd_config PUBLIC
+target_include_directories(configdb_obj_2xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     ${PYTHON_INCLUDE_DIRS}
     $ENV{CONDA_PREFIX}/include)
 
-target_link_libraries(test_hsd_config
+target_link_libraries(configdb_obj_2xtc
     xtcdata::j2x
     xtcdata::xtc
     ${PYTHON_LIBRARIES}
