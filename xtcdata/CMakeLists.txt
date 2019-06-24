@@ -11,6 +11,8 @@ endif()
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+find_package(RapidJSON REQUIRED)
+
 # cmake commands to possibly use in the future
 
 #file(GLOB_RECURSE
