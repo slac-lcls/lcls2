@@ -120,10 +120,10 @@ class QWPopupSelectItem(QDialog) :
 
 #------------------------------  
 
-def popup_select_item_from_list(parent, lst, min_height=600, dx=-46, dy=-33) :
+def popup_select_item_from_list(parent, lst, min_height=600, dx=-46, dy=-33, use_cursor_pos=False) :
     w = QWPopupSelectItem(parent, lst)
-    #w.move(QCursor.pos().__add__(QPoint(dx,dy)))
-    w.move(parent.mapToGlobal(parent.pos()) + QPoint(dx, dy))
+    if use_cursor_pos : w.move(QCursor.pos().__add__(QPoint(dx,dy)))
+    else              : w.move(parent.mapToGlobal(parent.pos()) + QPoint(dx, dy))
 
     resp=w.exec_()
     #if   resp == QDialog.Accepted : return w.selectedName()

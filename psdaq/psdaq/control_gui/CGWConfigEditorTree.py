@@ -28,18 +28,16 @@ from psdaq.control_gui.QWTree import QWTree, QStandardItemModel, QStandardItem, 
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.QWPopupEditText import QWPopupEditText, QDialog
 from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
-
-#updateValue = None
-from psalg.configdb.typed_json import updateValue, getType #, getValue
-
 from psdaq.control_gui.CGJsonUtils import json_from_str
+
+from psalg.configdb.typed_json import updateValue, getType #, getValue
 
 #--------------------
 
 def path_to_item(item):
     #if item is None : return None
     parent = item.parent()
-    s = item.text().split(' - ')[0]
+    s = item.text().split(' ')[0]
     return s if parent is None else '%s.%s'%(path_to_item(parent), s)
 
 #--------------------
@@ -67,16 +65,10 @@ class CGWConfigEditorTree(QWTree) :
 
 #--------------------
 
-#    def set_style(self) :
-#        QWTree.set_style(self)
- 
-#--------------------
-
     def fill_tree_model(self):
         """Re-implementation of the superclass method
         """
         self.fill_tree_model_from_dict()
-        #self.fill_tree_model_test()
 
 #--------------------
 
@@ -108,26 +100,8 @@ class CGWConfigEditorTree(QWTree) :
         try    : dtype = getType(self.dictj, path)
         except : pass; # logger.warning("getType can't retreive dtype for path: %s" % path)
 
-        #if dtype is None : 
-        #dtype = '%s py-type:%s' % (str(dtype), self.str_object_type(o))
         dtype = str(dtype)
         return dtype
-
-#--------------------
-
-    def data_type_v0(self, item):
-        if item is None : return None
-        path = path_to_item(item)
-        #print('XXXXXXXX path:%s'%path)
-        if path is None : return None
-        v=self.dictj[':types:']
-        #print('       :types:%s'%str(v))
-        for k in path.split('.') :
-            #print('===k: %s type: %s value: %s' % (k, type(v), str(v)))
-            #if k==':enum:' : continue
-            ind = int(k) if k.isdigit() else k # ducking for list indeces
-            v = v[ind] if v is not None else None
-        return v
 
 #--------------------
 
@@ -339,7 +313,7 @@ class CGWConfigEditorTree(QWTree) :
         is_enum, dic_enum, dic_inv = self.enum_dicts(descr)
         if is_enum :
             #print('XXX TBD enum editor for txt: %s and dict: %s' % (txt, str(dic_enum)))
-            selected = popup_select_item_from_list(self, dic_enum.keys(), min_height=80, dx=-46, dy=-33)
+            selected = popup_select_item_from_list(self, dic_enum.keys(), min_height=80, dx=-20, dy=-10, use_cursor_pos=True)
             if selected is None : return
             self.set_item_for_list(item, selected)
             return
