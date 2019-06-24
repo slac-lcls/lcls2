@@ -59,7 +59,7 @@ add_executable(json2xtc
 )
 
 target_link_libraries(json2xtc
-    j2x xtc
+    xtc
 )
 
 add_executable(epicswriter

@@ -184,7 +184,6 @@ target_link_libraries(teb
   pthread
   rt
   dl
-  xtcdata::j2x
   xtcdata::xtc
   ${PYTHON_LIBRARIES}
 )

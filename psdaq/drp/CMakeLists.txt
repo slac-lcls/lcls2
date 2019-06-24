@@ -33,7 +33,6 @@ target_include_directories(drp PUBLIC
 
 target_link_libraries(drp
     xtcdata::xtc
-    xtcdata::j2x
     pthread
     collection
     drpbase
@@ -49,7 +48,6 @@ target_include_directories(configdb_obj_2xtc PUBLIC
     $ENV{CONDA_PREFIX}/include)
 
 target_link_libraries(configdb_obj_2xtc
-    xtcdata::j2x
     xtcdata::xtc
     ${PYTHON_LIBRARIES}
 )
@@ -64,7 +62,6 @@ target_include_directories(test_teb_config PUBLIC
     $ENV{CONDA_PREFIX}/include)
 
 target_link_libraries(test_teb_config
-    xtcdata::j2x
     xtcdata::xtc
     ${PYTHON_LIBRARIES}
 )

@@ -9,25 +9,14 @@ add_library(xtc SHARED
     src/NamesIter.cc
     src/ConfigIter.cc
     src/DataIter.cc
+    src/Json2Xtc.cc
 )
 
 target_include_directories(xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-)
-
-# Why is this a separate library?  Because of https://bugzilla.redhat.com/show_bug.cgi?id=1519073
-add_library(j2x SHARED
-    src/Json2Xtc.cc
-)
-
-target_include_directories(j2x PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
     $ENV{CONDA_PREFIX}/include
 )
-
-target_link_libraries(j2x PUBLIC xtc)
 
 install(FILES
     Level.hh
@@ -57,7 +46,7 @@ install(FILES
     DESTINATION include/xtcdata/xtc
 )
 
-install(TARGETS xtc j2x
+install(TARGETS xtc
     EXPORT xtcdataTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
