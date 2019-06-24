@@ -298,6 +298,12 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.readoutGroup = 1 << unsigned(body["drp"][stringId]["det_info"]["readout"]);
     m_tPrms.contractor = m_tPrms.readoutGroup; // Revisit: Value to come from CfgDb
 
+    m_para.rogMask = 0; // Readout group mask to ignore other partitions' RoGs
+    for (auto it : body["drp"].items())
+    {
+        m_para.rogMask |= 1 << unsigned(it.value()["det_info"]["readout"]);
+    }
+
     if (body.find("meb") != body.end()) {
         for (auto it : body["meb"].items()) {
             unsigned mebId = it.value()["meb_id"];

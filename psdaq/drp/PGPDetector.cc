@@ -59,6 +59,7 @@ void workerFunc(const Parameters& para, MemPool& pool,
 {
     Batch batch;
     const unsigned nbuffers = pool.nbuffers();
+    uint32_t envMask = 0xffff0000 | uint32_t(para.rogMask);
     while (true) {
         if (!inputQueue.pop(batch)) {
             break;
@@ -84,7 +85,7 @@ void workerFunc(const Parameters& para, MemPool& pool,
 
             // fill in dgram header
             dgram->seq = timingHeader->seq;
-            dgram->env = timingHeader->env;
+            dgram->env = timingHeader->env & envMask; // Ignore other partitions' RoGs
 
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {
@@ -155,6 +156,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter)
 
 
     int64_t worker = 0L;
+    uint64_t batchId = 0L;
     const unsigned nbuffers = m_pool.nbuffers();
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
@@ -201,13 +203,15 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter)
 
                 const Pds::TimingHeader* timingHeader = reinterpret_cast<const Pds::TimingHeader*>(data);
                 XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
+                uint64_t pid = timingHeader->seq.pulseId().value();
 
                 // send batch to worker if batch is full or if it's a transition
-                if ((m_batch.size == m_para.batchSize) || (transitionId != XtcData::TransitionId::L1Accept)) {
+                if (((batchId ^ pid) & ~(m_para.batchSize - 1)) || (transitionId != XtcData::TransitionId::L1Accept)) {
                     m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                     worker++;
                     m_batch.start = evtCounter + 1;
                     m_batch.size = 0;
+                    batchId = pid;
                 }
             }
         }

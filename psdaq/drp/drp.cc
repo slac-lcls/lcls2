@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
     get_kwargs(para, kwargs_str);
 
     para.nworkers = 10;
-    para.batchSize = 32;
+    para.batchSize = 32; // Must be a power of 2
     Py_Initialize(); // for use by configuration
     Drp::PGPDetectorApp app(para);
     app.run();
