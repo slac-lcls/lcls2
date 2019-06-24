@@ -54,6 +54,7 @@ std::vector<prometheus::MetricFamily> MetricExporter::Collect()
 {
     // std::cout<<"Collect()\n";
     for (size_t i=0; i<m_values.size(); i++) {
+        //std::cout<<"Collector  "<<m_families[i].name<<'\n';
         if (m_type[i] == MetricType::Rate) {
             uint64_t newValue = m_values[i]();
             auto now = std::chrono::steady_clock::now();

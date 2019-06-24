@@ -63,7 +63,8 @@ private:
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<prometheus::Exposer> m_exposer;
+    std::shared_ptr<MetricExporter> m_exporter;
     ZmqContext& m_context;
-};    
-    
+};
+
 }

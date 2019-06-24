@@ -229,20 +229,20 @@ std::string DrpBase::connect(const json& msg, size_t id)
 {
     parseConnectionParams(msg["body"], id);
 
-    auto exporter = std::make_shared<MetricExporter>();
+    m_exporter = std::make_shared<MetricExporter>();
     if (m_exposer) {
-        m_exposer->RegisterCollectable(exporter);
+        m_exposer->RegisterCollectable(m_exporter);
     }
 
     // Create all the eb things and do the connections
-    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, exporter);
+    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
     int rc = m_tebContributor->connect(m_tPrms);
     if (rc) {
         return std::string{"TebContributor connect failed"};
     }
 
     if (m_mPrms.addrs.size() != 0) {
-        m_meb = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, exporter);
+        m_meb = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
         void* poolBase = (void*)pool.pebble[0];
         size_t poolSize = pool.pebble.size();
         rc = m_meb->connect(m_mPrms, poolBase, poolSize);
@@ -251,7 +251,7 @@ std::string DrpBase::connect(const json& msg, size_t id)
         }
     }
 
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_context, m_meb.get(), exporter);
+    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_context, m_meb.get(), m_exporter);
     rc = m_ebRecv->connect(m_tPrms);
     if (rc) {
         return std::string{"EbReceiver connect failed"};
