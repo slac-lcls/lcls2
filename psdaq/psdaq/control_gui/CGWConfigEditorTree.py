@@ -111,7 +111,6 @@ class CGWConfigEditorTree(QWTree) :
         #if dtype is None : 
         #dtype = '%s py-type:%s' % (str(dtype), self.str_object_type(o))
         dtype = str(dtype)
-
         return dtype
 
 #--------------------
@@ -224,7 +223,7 @@ class CGWConfigEditorTree(QWTree) :
                 item.setEnabled(not is_read_only) 
                 item.setCheckable(True) 
                 parent_item.appendRow(item)
-                #print('item: %s data_type: %s' % (item.text(), str(dtype)))
+                #print('XXXX item: %s data_type: %s' % (item.text(), str(dtype)))
 
 #--------------------
 
@@ -339,7 +338,7 @@ class CGWConfigEditorTree(QWTree) :
 
         is_enum, dic_enum, dic_inv = self.enum_dicts(descr)
         if is_enum :
-            #print('XXX TBD enum editor for txt: %s and dict: %s' % (txt, str(dic_enum)))            
+            #print('XXX TBD enum editor for txt: %s and dict: %s' % (txt, str(dic_enum)))
             selected = popup_select_item_from_list(self, dic_enum.keys(), min_height=80, dx=-46, dy=-33)
             if selected is None : return
             self.set_item_for_list(item, selected)

@@ -95,9 +95,9 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
             return None
 
 
-    def column_cbx(self): return self.approved_column_for_title(0, 'sel')
-
-    def column_id(self) : return self.approved_column_for_title(3, 'ID')
+    def column_cbx(self) : return self.approved_column_for_title(0, 'sel')
+    def column_grp(self) : return self.approved_column_for_title(1, 'grp')
+    def column_id (self) : return self.approved_column_for_title(3, 'ID')
 
 
     def set_readout_group_number(self, item):
@@ -110,6 +110,22 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
 
         if selected is None : return
         item.setText(selected)
+
+        # set group readout number for all detector segments
+        item_id = self._si_model.item(item.row(), self.column_id())
+        if item_id._is_collapser :
+            self.disconnect_item_changed_from(self.on_item_changed)
+            self.set_readout_group_number_for_detector_segments(item, selected)
+            self.connect_item_changed_to(self.on_item_changed)
+
+
+    def set_readout_group_number_for_detector_segments(self, item, selected) :
+        column_grp = self.column_grp() # 2
+        item_cbx = self._si_model.item(item.row(), self.column_cbx())
+        for it in item_cbx._group_cbx_items :
+            item_grp = self._si_model.item(it.row(), column_grp)
+            if item_grp == item : continue
+            item_grp.setText(selected)
 
 
     def detname(self, segname):
