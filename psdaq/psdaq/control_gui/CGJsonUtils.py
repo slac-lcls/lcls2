@@ -177,17 +177,24 @@ def set_platform(dict_platf, list2d):
 
     try:
         s = ''
-        r=-1 # row
         for pname in dict_platf:
             #print("proc_name: %s" % str(pname))
             for k,v in dict_platf[pname].items() :
                 display = _display_name(pname, v) # 'pname/pid/host alias'
-                r += 1
-                status = list2d[r][0][0] # bool
+                proc_pid_host = display.split(' ')[0]
+                # find record/row in the table
+                rec = None
+                for rec in list2d :
+                    if rec[2][1] == proc_pid_host : break
+                if rec is None :
+                    logger.error('proc/pid/host "%s" is not found in the table' % proc_pid_host)
+                    continue
+
+                status = rec[0][0] # bool
                 int_active = {True:1, False:0}[status]
                 dict_platf[pname][k]['active'] = int_active
                 if pname=='drp' :
-                    val = list2d[r][1][1]
+                    val = rec[1][1]
                     if isinstance(val, str) and val.isdigit() :
                         dict_platf[pname][k]['det_info']['readout'] = int(val)
                     else :
