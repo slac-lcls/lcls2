@@ -45,9 +45,7 @@ add_library(psalg SHARED
 
 target_include_directories(psalg PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/../install/include>
-    $<INSTALL_INTERFACE:../install/include>
-    $<BUILD_INTERFACE:$ENV{CONDA_PREFIX}/include>
+    $<INSTALL_INTERFACE:include>
 )
 
 find_library(CURL_LIBRARY curl PATH $ENV{CONDA_PREFIX}/lib)

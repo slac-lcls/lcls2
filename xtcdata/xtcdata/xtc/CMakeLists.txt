@@ -15,7 +15,7 @@ add_library(xtc SHARED
 target_include_directories(xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    $ENV{CONDA_PREFIX}/include
+    ${RAPIDJSON_INCLUDE_DIRS}
 )
 
 install(FILES
