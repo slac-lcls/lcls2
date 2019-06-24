@@ -414,7 +414,7 @@ void Teb::post(const Batch* batch, uint64_t& receivers)
 {
   uint32_t    idx    = batch->index();
   uint64_t    data   = ImmData::value(ImmData::Buffer, _id, idx);
-  size_t      extent = batch->extent();
+  size_t      extent = batch->terminate();
   unsigned    offset = idx * _batMan.maxBatchSize();
   const void* buffer = batch->buffer();
   uint64_t    destns = receivers; // & ~_trimmed;

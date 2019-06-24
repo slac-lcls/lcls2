@@ -138,8 +138,6 @@ void* TebContributor::allocate(const Dgram* datagram, const void* appPrm)
 
   batch->store(pid, appPrm);            // Save the appPrm for _every_ event
 
-  if (!(datagram->readoutGroups() & _prms.contractor))  return nullptr;
-
   return batch->allocate();
 }
 
@@ -177,7 +175,7 @@ void TebContributor::post(const Batch* batch)
     unsigned    dst    = idx % _numEbs;
     EbLfLink*   link   = _links[dst];
     uint32_t    data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
-    size_t      extent = batch->extent();
+    size_t      extent = batch->terminate();
     unsigned    offset = _batchBase + idx * _batMan.maxBatchSize();
     const void* buffer = batch->buffer();
 

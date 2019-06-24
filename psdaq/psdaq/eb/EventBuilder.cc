@@ -1,3 +1,4 @@
+#include "eb.hh"
 #include "EventBuilder.hh"
 #include "EbEpoch.hh"
 #include "EbEvent.hh"
@@ -285,16 +286,17 @@ bool EventBuilder::_lookAhead(const EbEpoch*       epoch,
                               const EbEvent* const due) const
 {
   const EbEpoch* const lastEpoch = _pending.empty();
-  const uint16_t       rog       = event->creator()->readoutGroups();
+  const uint64_t       contract  = event->_contract;
 
-  do
+  event = event->forward();
+
+  while (true)
   {
     const EbEvent* const lastEvent = epoch->pending.empty();
-    const EbEvent*       event     = event->forward();
 
     while (event != lastEvent)
     {
-      if ((event->creator()->readoutGroups() == rog) && !event->_remaining)
+      if ((event->_contract == contract) && !event->_remaining) // Could match readout groups, too
         return true;
 
       if (event == due)
@@ -302,8 +304,12 @@ bool EventBuilder::_lookAhead(const EbEpoch*       epoch,
 
       event = event->forward();
     }
+
+    epoch = epoch->forward();
+    if (epoch == lastEpoch)  break;
+
+    event = epoch->pending.forward();
   }
-  while (epoch = epoch->forward(), epoch != lastEpoch);
 
   return false;
 }
@@ -315,10 +321,9 @@ const EbEvent* EventBuilder::_flush(const EbEvent* const due)
 
   do
   {
-    const EbEvent* const lastEvent = epoch->pending.empty();
-    EbEvent*             event     = epoch->pending.forward();
+    EbEvent* event = epoch->pending.forward();
 
-    while (event != lastEvent)
+    while (event != epoch->pending.empty())
     {
       // Retire all events up to a newer event, limited by due.
       // Since EbEvents are created in time order, older incomplete events can
@@ -326,7 +331,8 @@ const EbEvent* EventBuilder::_flush(const EbEvent* const due)
       // group can be found.
       if (event->_remaining)
       {
-        if (!_lookAhead(epoch, event, due))  return due;
+        if (event->_contract != due->_contract) // Same as matching readout groups
+          if (!_lookAhead(epoch, event, due))  return due;
 
         _fixup(event);
       }
@@ -417,27 +423,32 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
   EbEpoch*       epoch = _match(ctrb->seq.pulseId().value());
   EbEvent*       event = epoch->pending.forward();
   const EbEvent* due   = nullptr;
+  unsigned       cnt   = 0;
+
+  bool dmp = false;
 
   while (true)
   {
-    if (_verbose > 1)
-    {
-      unsigned env = ctrb->env;
-      unsigned ctl = ctrb->seq.pulseId().control();
-      uint64_t pid = ctrb->seq.pulseId().value();
-      size_t   sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
-      unsigned src = ctrb->xtc.src.value();
-      printf("EB found          a  ctrb                  @ "
-             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, parm %08x\n",
-             ctrb, ctl, pid, sz, src, env, prm);
-    }
-
     event = _insert(epoch, ctrb, event, prm);
     if (!event->_remaining)  due = event;
 
-    if (!ctrb->seq.isBatch())  break;
+    if (_verbose > 1)
+    {
+      unsigned  env = ctrb->env;
+      unsigned  ctl = ctrb->seq.pulseId().control();
+      uint64_t  pid = ctrb->seq.pulseId().value();
+      uint32_t* pld = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
+      size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
+      unsigned  src = ctrb->xtc.src.value();
+      printf("EB found          a  ctrb                  @ "
+             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, pld [%08x, %08x], prm %08x, due %014lx\n",
+             ctrb, ctl, pid, sz, src, env, pld[WRT_IDX], pld[MON_IDX], prm, due ? due->sequence() : 0ul);
+    }
 
     ctrb = reinterpret_cast<const Dgram*>(ctrb->xtc.next());
+
+    uint64_t pid = ctrb->seq.pulseId().value();
+    if ((++cnt == MAX_ENTRIES) || !pid)  break; // Handle full list faster
   }
 
   if (due)

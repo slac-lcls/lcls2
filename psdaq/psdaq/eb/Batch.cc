@@ -30,25 +30,24 @@ void Batch::dump() const
   if (dg)
   {
     printf("Dump of Batch at index %d\n", index());
+    unsigned cnt = 0;
     while (true)
     {
       const char* svc = TransitionId::name(dg->seq.service());
       unsigned    ctl = dg->seq.pulseId().control();
       uint64_t    pid = dg->seq.pulseId().value();
-      unsigned    idx = pid & (MAX_ENTRIES - 1);
       size_t      sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
       unsigned    src = dg->xtc.src.value();
       unsigned    env = dg->env;
       uint32_t*   inp = (uint32_t*)dg->xtc.payload();
-      //const Dgram* adg = (const Dgram*)retrieve(pid); // May not be a Dgram
       printf("  %2d, %15s  dg @ "
-             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, inp [%08x, %08x], appPrm %p\n", //, %014lx\n",
-             idx, svc, dg, ctl, pid, sz, src, env, inp[0], inp[1], retrieve(pid)); //, adg->seq.pulseId().value());
-
-      // Last event in batch does not have Batch bit set
-      if (!dg->seq.isBatch())  break;
+             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, inp [%08x, %08x], appPrm %p\n",
+             cnt, svc, dg, ctl, pid, sz, src, env, inp[0], inp[1], retrieve(pid));
 
       dg = reinterpret_cast<const Dgram*>(dg->xtc.next());
+
+      pid = dg->seq.pulseId().value();
+      if ((++cnt == MAX_ENTRIES) || !pid)  break; // Handle full list faster
     }
   }
   else

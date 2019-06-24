@@ -299,6 +299,7 @@ const Dgram* DrpSim::generate()
     uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
     payload[WRT_IDX] = (_pid %   3) == 0 ? 0xdeadbeef : 0xabadcafe;
     payload[MON_IDX] = (_pid % 119) == 0 ? 0x12345678 : 0;
+    //payload[MON_IDX] = _pid & (131072 - 1);
   }
 
 #ifdef SINGLE_EVENTS
@@ -820,14 +821,6 @@ int main(int argc, char **argv)
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-C <Collection server>");
     return 1;
-  }
-
-  // Revisit: Fix MAX_BATCHES to what will fit in the ImmData idx field?
-  if (MAX_BATCHES - 1 > ImmData::MaxIdx)
-  {
-    fprintf(stderr, "Batch index ([0, %d]) can exceed available range ([0, %d])\n",
-            MAX_BATCHES - 1, ImmData::MaxIdx);
-    abort();
   }
 
   // Revisit: Fix MAX_ENTRIES to equal duration?

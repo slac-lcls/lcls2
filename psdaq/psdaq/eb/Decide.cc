@@ -67,8 +67,16 @@ Damage Pds::Eb::DecideImpl::event(const Dgram* ctrb, uint32_t* result, size_t si
   {
     const uint32_t* input = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
 
-    result[WRT_IDX] |= input[0] == _triggerVal ? 1 : 0;
-    result[MON_IDX] |= input[1] == _monitorVal ? 1 : 0;
+    result[WRT_IDX] |= input[WRT_IDX] == _triggerVal ? 1 : 0;
+    result[MON_IDX] |= input[MON_IDX] == _monitorVal ? 1 : 0;
+
+    //static unsigned lastIndex[] = { 0, 0, 0 };
+    //unsigned id = ctrb->xtc.src.value();
+    //unsigned index = input[MON_IDX];
+    //if (index != ((lastIndex[id] + 1) & (131072 - 1))) {
+    //  printf("Index jump:  id %d  index %u  last %u\n", id, index, lastIndex[id]);
+    //}
+    //lastIndex[id] = index;
   }
   return 0;
 }

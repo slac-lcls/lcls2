@@ -241,6 +241,7 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
             }
             // always monitor every event
             val |= 0x1234567800000000ul;
+            //val |= ((uint64_t)index) << 32;
             void* buffer = tebContributor.allocate(dgram, (void*)((uintptr_t)index));
             if (buffer) // else this DRP doesn't provide input, or timed out
             {

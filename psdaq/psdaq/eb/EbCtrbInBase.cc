@@ -151,7 +151,7 @@ int EbCtrbInBase::process(TebContributor& ctrb)
 {
   int rc;
 
-  // Pend for a result datagram (batch) and process it.
+  // Pend for a result batch (a set of Dgrams) and process it.
   uint64_t  data;
   const int tmo = 100;                  // milliseconds
   if ( (rc = _transport.pend(&data, tmo)) < 0)  return rc;
@@ -217,12 +217,13 @@ void EbCtrbInBase::_pairUp(TebContributor& ctrb,
 
     while (result)
     {
-      uint64_t pid = result->seq.pulseId().value();
-      if (unlikely((inputs->id() ^ pid) & ~(BATCH_DURATION - 1))) // Include bits above index()
+      uint64_t iPid = inputs->id();
+      uint64_t rPid = result->seq.pulseId().value();
+      if (unlikely((iPid ^ rPid) & ~(BATCH_DURATION - 1))) // Include bits above index()
       {
-        fprintf(stderr, "%s:\n  Result doesn't match input batch: "
-                "inputs pid %014lx, result pid %014lx\n",
-                __PRETTY_FUNCTION__, inputs->id(), pid);
+        fprintf(stderr, "%s:\n  Result and Input batches don't match: "
+                "Input pid %014lx, Result pid %014lx\n",
+                __PRETTY_FUNCTION__, iPid, rPid);
         abort();
       }
 
@@ -260,29 +261,83 @@ void EbCtrbInBase::_process(TebContributor& ctrb,
 {
   const Dgram* result = results;
   const Dgram* input  = static_cast<const Dgram*>(inputs->buffer());
+  uint64_t     rPid   = result->seq.pulseId().value();
+  uint64_t     iPid   = input->seq.pulseId().value();
+  unsigned     rCnt   = 0;
+  unsigned     iCnt   = 0;
   while (true)
   {
-    // Process events from our readout group and ignore those of others'
-    if (result->readoutGroups() & _prms.readoutGroup)
-    {
-      // Ignore results for which there are no inputs
-      // This can happen due to this Ctrb having missed a contribution that
-      // was subsequently fixed up by the TEB, in which case there is no
-      // input corresponding to the current result.
-      uint64_t rPid = result->seq.pulseId().value();
-      uint64_t iPid = input->seq.pulseId().value();
-      if (rPid == iPid)
-      {
-        process(result, inputs->retrieve(rPid));
+    // Ignore results for which there is no input
+    // This can happen due to this Ctrb being in a different readout group than
+    // the one for which the result is for, or having missed a contribution that
+    // was subsequently fixed up by the TEB.  In both cases there is no
+    // input corresponding to the result.
 
-        ++_eventCount;                  // Don't count events not meant for us
-      }
+    if (_prms.verbose)
+    {
+      unsigned    idx    = inputs->index();
+      unsigned    env    = result->env;
+      unsigned    src    = result->xtc.src.value();
+      unsigned    ctl    = result->seq.pulseId().control();
+      const char* svc    = TransitionId::name(result->seq.service());
+      size_t      extent = sizeof(*result) + result->xtc.sizeofPayload();
+      printf("CtrbIn  found  [%5d]  %15s    @ "
+             "%16p, ctl %02x, pid %014lx, sz %4zd, TEB %2d, env %08x, deliver %d [%014lx]\n",
+             idx, svc, result, ctl, rPid, extent, src, env, rPid == iPid, iPid);
     }
 
-    // Last event in a batch does not have the Batch bit set
-    if (!result->seq.isBatch())  break;
+    if (rPid == iPid)
+    {
+      //static unsigned lastIndex = 0;
+      //unsigned index = reinterpret_cast<uint32_t*>(input->xtc.payload())[1];
+      //if (index != ((lastIndex + 1) & (131072 - 1))) {
+      //  printf("EbCtrbInBase:  index %u  last %u  diff %d\n", index, lastIndex, index - lastIndex);
+      //  printf("EbCtrbInBase:  pid %014lx, env %08x %08x\n", rPid, input->env, result->env);
+      //
+      //  unsigned     cnt = 0;
+      //  const Dgram* res = results;
+      //  const Dgram* inp = static_cast<const Dgram*>(inputs->buffer());
+      //  while (true)
+      //  {
+      //    printf("Res: %2d pid = %014lx, env = %08x\n", cnt++, res->seq.pulseId().value(), res->env);
+      //
+      //    res = reinterpret_cast<const Dgram*>(res->xtc.next());
+      //
+      //    uint64_t pid = res->seq.pulseId().value();
+      //    if ((cnt == MAX_ENTRIES) || !pid)  break; // Handle full list faster
+      //  }
+      //  cnt = 0;
+      //  while (true)
+      //  {
+      //    printf("Inp: %2d pid = %014lx, env = %08x, index %u\n", cnt++, inp->seq.pulseId().value(), inp->env, reinterpret_cast<uint32_t*>(inp->xtc.payload())[1]);
+      //
+      //    inp = reinterpret_cast<const Dgram*>(inp->xtc.next());
+      //
+      //    uint64_t pid = inp->seq.pulseId().value();
+      //    if ((cnt == MAX_ENTRIES) || !pid)  break; // Handle full list faster
+      //  }
+      //}
+      //lastIndex = index;
+
+      process(result, inputs->retrieve(iPid));
+
+      ++_eventCount;                  // Don't count events not meant for us
+
+      input = reinterpret_cast<const Dgram*>(input->xtc.next());
+
+      iPid = input->seq.pulseId().value();
+      if ((++iCnt == MAX_ENTRIES) || !iPid)  break; // Handle full list faster
+    }
 
     result = reinterpret_cast<const Dgram*>(result->xtc.next());
-    input  = reinterpret_cast<const Dgram*>(input->xtc.next());
+
+    rPid = result->seq.pulseId().value();
+    if ((++rCnt == MAX_ENTRIES) || !rPid)  break; // Handle full list faster
+  }
+
+  if ((iCnt != MAX_ENTRIES) && iPid)
+  {
+    fprintf(stderr, "%s:\n  Warning: Not all inputs received results, inp: %d %014lx res: %d %014lx\n",
+            __PRETTY_FUNCTION__, iCnt, iPid, rCnt, rPid);
   }
 }

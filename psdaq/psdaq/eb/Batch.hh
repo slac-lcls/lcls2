@@ -34,6 +34,7 @@ namespace Pds {
     public:
       XtcData::Dgram*       allocate();
       Batch*                initialize(uint64_t id);
+      size_t                terminate() const;
       void                  release();
       void                  store(uint64_t pid, const void* appPrm);
       const void*           retrieve(uint64_t pid) const;
@@ -50,6 +51,8 @@ namespace Pds {
       XtcData::Dgram* const _buffer;  // Pointer to RDMA space for this Batch
       uint64_t              _id;      // Id of Batch, in case it remains empty
       XtcData::Dgram*       _dg;      // Pointer to the current Dgram entry
+      unsigned              _entries; // Number of entries in this batch
+      unsigned              _pad;     // Stay 64-bit aligned
       AppPrm* const         _appPrms; // Pointer to AppPrms array for this Batch
       const XtcData::Dgram* _result;  // For when Batch is handled out of order
     };
@@ -91,8 +94,9 @@ inline
 Pds::Eb::Batch* Pds::Eb::Batch::initialize(uint64_t id)
 {
   // Multiple batches can exist with the same BatchId, but different PIDs
-  _id = id;                             // Full PID, not BatchId
-  _dg = nullptr;
+  _id      = id;                        // Full PID, not BatchId
+  _dg      = nullptr;
+  _entries = 0;
 
   return this;
 }
@@ -106,22 +110,26 @@ void Pds::Eb::Batch::release()
 inline
 XtcData::Dgram* Pds::Eb::Batch::allocate()
 {
-  XtcData::Dgram* dg = _dg;
+  _dg = _dg ? reinterpret_cast<XtcData::Dgram*>(_dg->xtc.next()) : _buffer;
 
-  if (dg)
+  ++_entries;
+  assert (_entries <= MAX_ENTRIES);
+
+  return _dg;
+}
+
+inline
+size_t Pds::Eb::Batch::terminate() const
+{
+  size_t size = extent();
+
+  if (_entries < MAX_ENTRIES)
   {
-    dg->seq.markBatch();
-
-    dg = reinterpret_cast<XtcData::Dgram*>(dg->xtc.next());
+    XtcData::Dgram* dg = reinterpret_cast<XtcData::Dgram*>(_dg->xtc.next());
+    dg->seq = XtcData::Sequence(XtcData::TimeStamp(), XtcData::PulseId());
+    size += sizeof(XtcData::PulseId);
   }
-  else
-  {
-    dg = _buffer;
-  }
-
-  _dg = dg;
-
-  return dg;
+  return size;
 }
 
 inline

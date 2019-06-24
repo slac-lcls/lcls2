@@ -115,9 +115,10 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
 
     if (index != ((lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         printf("\033[0;31m");
-        printf("jumping index %u  previous index %u\n", index, lastIndex);
+        printf("jumping index %u  previous index %u  diff %d\n", index, lastIndex, index - lastIndex);
         printf("evtCounter %u\n", timingHeader->evtCounter);
         printf("lastevtCounter %u\n", lastEvtCounter);
+        printf("pid = %014lx, env = %08x\n", timingHeader->seq.pulseId().value(), timingHeader->env);
         printf("\033[0m");
     }
 
@@ -202,7 +203,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
                       /* .addrs         = */ { },
                       /* .ports         = */ { },
                       /* .maxInputSize  = */ maxSize,
-                      /* .core          = */ { 11, 12 },
+                      /* .core          = */ { 10, 11 },
                       /* .verbose       = */ 0,
                       /* .readoutGroup  = */ 0,
                       /* .contractor    = */ 0 };

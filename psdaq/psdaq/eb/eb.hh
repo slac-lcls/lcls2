@@ -23,7 +23,7 @@ namespace Pds {
 
     const unsigned MAX_ENTRIES    = 64;                        // <= BATCH_DURATION
     const uint64_t BATCH_DURATION = MAX_ENTRIES;               // >= MAX_ENTRIES; power of 2; beam pulse ticks (1 uS)
-    const unsigned MAX_LATENCY    = 1024 * 1024;               // In beam pulse ticks (1 uS)
+    const unsigned MAX_LATENCY    = 4 * 1024 * 1024;               // In beam pulse ticks (1 uS)
     const unsigned MAX_BATCHES    = MAX_LATENCY / MAX_ENTRIES; // Max # of batches in circulation
 
     const unsigned NUM_READOUT_GROUPS = 16;     // Number of readout groups supported
@@ -87,6 +87,10 @@ namespace Pds {
       u64arr_t contractors;        // Ctrbs providing Inputs  per readout group
       u64arr_t receivers;          // Ctrbs expecting Results per readout group
     };
+
+    // Sanity checks
+    static_assert((BATCH_DURATION & (BATCH_DURATION - 1)) == 0, "BATCH_DURATION must be a power of 2");
+    static_assert((MAX_BATCHES & (MAX_BATCHES - 1)) == 0, "MAX_BATCHES must be a power of 2");
   };
 };
 

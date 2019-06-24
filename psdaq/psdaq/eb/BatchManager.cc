@@ -14,6 +14,9 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
+static_assert((MAX_BATCHES - 1) <= ImmData::MaxIdx, "MAX_BATCHES exceeds available range");
+
+
 BatchManager::BatchManager(size_t maxSize) :
   _maxSize      (maxSize),
   _maxBatchSize (roundUpSize(MAX_ENTRIES * maxSize)),
@@ -22,24 +25,18 @@ BatchManager::BatchManager(size_t maxSize) :
   _appPrms      (new AppPrm[MAX_BATCHES * MAX_ENTRIES]),
   _batch        (nullptr)
 {
-  if (BATCH_DURATION & (BATCH_DURATION - 1))
-  {
-    fprintf(stderr, "%s: Batch duration (0x%016lx) must be a power of 2\n",
-            __func__, BATCH_DURATION);
-    abort();
-  }
-  if (MAX_BATCHES & (MAX_BATCHES - 1))
-  {
-    fprintf(stderr, "%s: Batch depth (0x%08x) must be a power of 2\n",
-            __func__, MAX_BATCHES);
-    abort();
-  }
   if (MAX_ENTRIES < BATCH_DURATION)
   {
     fprintf(stderr, "%s: Warning: More triggers can occur in a batch duration (%lu) "
             "than for which there are batch entries (%u).\n"
             "Beware the trigger rate!\n",
             __func__, BATCH_DURATION, MAX_ENTRIES);
+  }
+  if (maxSize % sizeof(uint64_t) != 0)
+  {
+    fprintf(stderr, "%s: Warning: Make max Dgram buffer size (%zd) divisible "
+            "by %zd to avoid alignment issues",
+            __func__, maxSize, sizeof(uint64_t));
   }
   if (_region == nullptr)
   {
