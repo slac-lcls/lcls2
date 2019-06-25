@@ -147,7 +147,7 @@ class CGWMainConfiguration(QGroupBox) :
             list_of_aliases = ['NOBEAM', 'BEAM']
             logger.warning('List of configdb-s IS EMPTY... Use default: %s' % str(list_of_aliases))
 
-        selected = popup_select_item_from_list(self.but_type, list_of_aliases, min_height=80, dx=-46, dy=-33)
+        selected = popup_select_item_from_list(self.but_type, list_of_aliases, dx=-46, dy=-33)
 
         msg = 'selected %s of the list %s' % (selected, str(list_of_aliases))
         logger.debug(msg)
@@ -201,7 +201,7 @@ class CGWMainConfiguration(QGroupBox) :
             logger.warning('list_of_device_names IS EMPTY... Check configuration DB')
             return
 
-        selected = popup_select_item_from_list(self.but_dev, list_of_device_names, min_height=80, dx=-46, dy=-33)
+        selected = popup_select_item_from_list(self.but_dev, list_of_device_names, dx=-46, dy=-33)
         self.set_but_dev_text(selected)
         msg = 'selected %s of the list %s' % (selected, str(list_of_device_names))
         logger.debug(msg)

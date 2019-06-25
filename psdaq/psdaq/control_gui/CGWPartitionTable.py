@@ -104,7 +104,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
         if not self.is_column_for_title(item.column(), 'grp') : return
         if not item.isEditable() : return
 
-        selected = popup_select_item_from_list(self, self.LIST_OF_VALUES, min_height=80, dx=-46, dy=-33)
+        selected = popup_select_item_from_list(self, self.LIST_OF_VALUES, dx=10, dy=-33, use_cursor_pos=True)
         msg = 'selected %s' % selected
         logger.debug(msg)
 

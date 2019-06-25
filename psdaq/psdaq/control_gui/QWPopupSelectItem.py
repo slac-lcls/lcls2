@@ -34,11 +34,12 @@ from PyQt5.QtGui import QCursor
 
 class QWPopupSelectItem(QDialog) :
 
-    def __init__(self, parent=None, lst=[]):
+    def __init__(self, parent=None, lst=[], do_sort=True):
 
         QDialog.__init__(self, parent)
 
         self.name_sel = None
+        self.do_sort = do_sort
         self._list = QListWidget(parent)
         self.fill_list(lst)
 
@@ -58,8 +59,10 @@ class QWPopupSelectItem(QDialog) :
         self.nchars = max([len(s) for s in lst])
         self.nrows  = len(lst)
         self._list.clear()
-        for row,txt in enumerate(sorted(lst)) :
-            item = QListWidgetItem(txt, self._list) # may have (icon, txt, list)
+
+        list_to_show = sorted(lst) if self.do_sort else lst
+        for txt in list_to_show  :
+            item = QListWidgetItem(txt, self._list)
             item.setSizeHint(QSize(50,20))
         #self._list.sortItems(Qt.AscendingOrder)
 
@@ -120,8 +123,8 @@ class QWPopupSelectItem(QDialog) :
 
 #------------------------------  
 
-def popup_select_item_from_list(parent, lst, min_height=600, dx=-46, dy=-33, use_cursor_pos=False) :
-    w = QWPopupSelectItem(parent, lst)
+def popup_select_item_from_list(parent, lst, dx=-46, dy=-33, use_cursor_pos=False, do_sort=True) :
+    w = QWPopupSelectItem(parent, lst, do_sort)
     if use_cursor_pos : w.move(QCursor.pos().__add__(QPoint(dx,dy)))
     else              : w.move(parent.mapToGlobal(parent.pos()) + QPoint(dx, dy))
 

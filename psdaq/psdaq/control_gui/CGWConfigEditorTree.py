@@ -313,7 +313,7 @@ class CGWConfigEditorTree(QWTree) :
         is_enum, dic_enum, dic_inv = self.enum_dicts(descr)
         if is_enum :
             #print('XXX TBD enum editor for txt: %s and dict: %s' % (txt, str(dic_enum)))
-            selected = popup_select_item_from_list(self, dic_enum.keys(), min_height=80, dx=-20, dy=-10, use_cursor_pos=True)
+            selected = popup_select_item_from_list(self, dic_enum.keys(), dx=-20, dy=-10, use_cursor_pos=True, do_sort=False)
             if selected is None : return
             self.set_item_for_list(item, selected)
             return
