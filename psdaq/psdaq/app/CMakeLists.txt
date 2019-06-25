@@ -115,13 +115,37 @@ target_link_libraries(pgpca
    rt
 )
 
+#
+#  pvcam
+#
+add_executable(pvcam pvcam.cc)
+
+target_include_directories(pvcam PUBLIC
+    pvcam
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $ENV{CONDA_PREFIX}/include
+)
+
+target_link_libraries(pvcam
+   epicstools
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACLIENT_LIB}
+   ${EPICS_CA_LIB}
+   tpr
+   dl
+   rt
+)
+
+
 install(TARGETS app
 		hpsBldServer
 		hpsBldClient
 		tprioc
 		tprsh
 		tprutil
-        pgpca
+                pgpca
+                pvcam
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

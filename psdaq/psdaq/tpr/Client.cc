@@ -72,12 +72,12 @@ void Client::start(unsigned partn)
 }
 
 //  Enable the trigger
-void Client::start()
+void Client::start(TprBase::FixedRate rate)
 {
   printf("TprBase::channel[0] evtsel %08x control %x\n",
          _dev->base.channel[0].evtSel,
          _dev->base.channel[0].control);
-  _dev->base.setupChannel(0, TprBase::Any, TprBase::FixedRate::_1M, 0, 0, 1);
+  _dev->base.setupChannel(0, TprBase::Any, rate, 0, 0, 1);
   printf("TprBase::channel[0] evtsel %08x control %x\n",
          _dev->base.channel[0].evtSel,
          _dev->base.channel[0].control);
@@ -107,6 +107,22 @@ const Pds::Tpr::Frame* Client::advance(uint64_t pulseId)
       if (f->pulseId >  pulseId) return 0;
       _rp++;
       if (f->pulseId == pulseId) return f;
+    }
+    read(_fdsh, buff, 32);
+  }
+  return 0;
+}
+
+const Pds::Tpr::Frame* Client::advance()
+{
+  char buff[32];
+  const Pds::Tpr::Queues& q = *_queues;
+  const Pds::Tpr::Frame* f=0;
+  while(1) {
+    while (_rp < q.allwp[0]) {
+      f = reinterpret_cast<const Pds::Tpr::Frame*>(&q.allq [ q.allrp[0].idx[_rp &(MAX_TPR_ALLQ-1)] & (MAX_TPR_ALLQ-1)]);
+      _rp++;
+      return f;
     }
     read(_fdsh, buff, 32);
   }

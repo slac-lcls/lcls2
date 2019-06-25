@@ -1,6 +1,8 @@
 #ifndef Pds_Tpr_Client_hh
 #define Pds_Tpr_Client_hh
 
+#include "Module.hh"
+
 #include <stdint.h>
 
 namespace Pds {
@@ -17,7 +19,7 @@ namespace Pds {
       //  Enable the trigger
       void start(unsigned partn);
       //  Enable the trigger (full rate)
-      void start();
+      void start(TprBase::FixedRate rate=TprBase::FixedRate::_1M);
       //  Disable the trigger
       void stop();
       //
@@ -25,6 +27,10 @@ namespace Pds {
       //  Return address on success or 0
       //
       const Pds::Tpr::Frame* advance(uint64_t pulseId);
+      //
+      //  Return next timing frame
+      //
+      const Pds::Tpr::Frame* advance();
     private:
       int               _fd;
       Pds::Tpr::TprReg* _dev;
