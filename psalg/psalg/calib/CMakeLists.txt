@@ -16,7 +16,6 @@ add_library(calib SHARED
 target_include_directories(calib PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    $<BUILD_INTERFACE:$ENV{CONDA_PREFIX}/include> # for expernal libs
 )
 
 find_library(CURL_LIBRARY curl PATH $ENV{CONDA_PREFIX}/lib)
