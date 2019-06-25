@@ -20,7 +20,7 @@ sys.excepthook = global_except_hook
 def filter_fn(evt):
     return True
 
-xtc_dir = os.path.join(os.getcwd(),'.tmp')
+xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 def event_fn(event, det):
     padarray = vals.padarray

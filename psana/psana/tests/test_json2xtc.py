@@ -5,14 +5,6 @@ import subprocess
 import os, re
 
 class Test_JSON2XTC:
-    @classmethod
-    def setup_class(cls):
-        for f in ["json2xtc_test.json", "json2xtc_test.xtc2"]:
-            try:
-                os.remove(f)
-            except:
-                pass
-
     def check(self, co, cl, base=""):
         result = True
         for n in dir(co):
@@ -59,7 +51,7 @@ class Test_JSON2XTC:
                         result = False
         return result
 
-    def test_one(self):
+    def test_one(self, tmp_path):
         c = cdict()
         c.setInfo("test", "test1", "serial1234", "No comment")
         c.setAlg("raw", [1,2,3])
@@ -108,11 +100,13 @@ class Test_JSON2XTC:
         # revisited.
         # assert c.set("c.d.m", [0, 1, 0], "q")
         # Write it out!!
-        assert c.writeFile("json2xtc_test.json")
+        json_file = os.path.join(tmp_path, "json2xtc_test.json")
+        xtc_file = os.path.join(tmp_path, "json2xtc_test.xtc2")
+        assert c.writeFile(json_file)
         # Convert it to xtc2!
-        subprocess.call(["json2xtc", "json2xtc_test.json", "json2xtc_test.xtc2"])
+        subprocess.call(["json2xtc", json_file, xtc_file])
         # Now, let's read it in!
-        ds = DataSource(files="json2xtc_test.xtc2")
+        ds = DataSource(files=xtc_file)
         myrun = next(ds.runs())
         dg = myrun.configs[0]
         assert dg.software.test1[0].detid == c.dict['detId:RO']

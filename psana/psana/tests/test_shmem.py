@@ -18,20 +18,17 @@ class Test:
         cmd_args = ['python',shmem_file,pid]
         return subprocess.Popen(cmd_args, stdout=subprocess.PIPE)
                 
-    def setup_input_files(self):
-        tmp_dir = os.path.join('.tmp','shmem')
-        tmp_file = tmp_dir+'/data_shmem.xtc2'        
-        if os.path.exists(tmp_dir):
-            shutil.rmtree(tmp_dir,ignore_errors=True)
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-        subprocess.call(['xtcwriter','-n',str(dgram_count),'-f',tmp_file])
+    def setup_input_files(self, tmp_path):
+        tmp_dir = tmp_path / 'shmem'
+        tmp_dir.mkdir()
+        tmp_file = tmp_dir / 'data_shmem.xtc2'
+        subprocess.call(['xtcwriter','-n',str(dgram_count),'-f',str(tmp_file)])
         return tmp_file
         
-    def test_shmem(self):
+    def test_shmem(self, tmp_path):
         cli = []
         pid = str(os.getpid())
-        tmp_file = self.setup_input_files()
+        tmp_file = self.setup_input_files(tmp_path)
         srv = self.launch_server(tmp_file,pid)
         assert srv != None,"server launch failure"
         try:

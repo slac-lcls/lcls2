@@ -2,6 +2,8 @@ from pymongo import *
 from psalg.configdb.typed_json import *
 import psalg.configdb.configdb as cdb
 import subprocess, os, time, sys
+import tempfile
+import shutil
 import pytest
 import pprint
 
@@ -15,18 +17,20 @@ class mongo_configdb(object):
         self.standalone = False
         self.root = root
         self.cdb = None
+        self.dbpath = None
 
     def __enter__(self):
         if self.server is None:
-            path = os.path.abspath(__file__)
-            dir_path = os.path.dirname(path)
             self.port = 39999
             done = False
+            # create a temporary directory for dbpath
+            self.dbpath = tempfile.mkdtemp()
             while not done:
                 self.port = self.port + 1
                 f = open("/dev/null", "w")
-                self.mongod = subprocess.Popen([dir_path + "/mongodrun", str(self.port)],
-                                               stdout=f, stderr=f)
+                self.mongod = subprocess.Popen(['mongod', '--bind_ip_all', '--dbpath', self.dbpath,
+                                                '--port', str(self.port), '--logpath', '/dev/null'],
+                                                stdout=f, stderr=f)
                 # Now, wait for mongod to die or to finish initializing!
                 while True:
                     time.sleep(1)
@@ -70,6 +74,8 @@ class mongo_configdb(object):
             self.mongod.wait()
         if self.cdb is not None and not self.standalone:
             self.cdb.client.drop_database(self.root)
+        if self.dbpath is not None:
+            shutil.rmtree(self.dbpath)
         return False
 
 class Test_CONFIGDB:

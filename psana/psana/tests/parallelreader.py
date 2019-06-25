@@ -3,7 +3,7 @@ from psana.psexp.packet_footer import PacketFooter
 import os, glob
 from psana import dgram
 
-tmp_dir = './.tmp'
+tmp_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
 xtc_files = [os.path.join(tmp_dir, 'data-r0001-s02.xtc2'), os.path.join(tmp_dir, 'data-r0001-s03.xtc2')]
 fds = [os.open(xtc_file, os.O_RDONLY) for xtc_file in xtc_files]
 

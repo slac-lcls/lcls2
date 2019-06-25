@@ -25,7 +25,7 @@ from psana import DataSource
 def filter_fn(evt):
     return True
 
-xtc_dir = os.path.join(os.getcwd(),'.tmp')
+xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
 
 # Usecase 1a : two iterators with filter function
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
