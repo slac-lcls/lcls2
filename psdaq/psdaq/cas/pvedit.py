@@ -42,18 +42,22 @@ def getCuMode():
     return xtpg
 
 class Pv:
-    def __init__(self, pvname, callback=None):
+    def __init__(self, pvname, callback=None, isStruct=False):
         self.pvname = pvname
         self.__value__ = None
+        self.isStruct = isStruct
         if callback:
             logger.info("Monitoring PV %s", self.pvname)
             def monitor_cb(newval):
-                logger.info("Received monitor event for PV %s, received %s", self.pvname, newval.raw.value)
-                self.__value__ = newval.raw.value
-                try:
-                    callback(err=None)
-                except Exception as e:
-                    logger.error("Exception in callback")
+                if self.isStruct:
+                    self.__value__ = newval
+                else:
+                    self.__value__ = newval.raw.value
+                logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
+#                try:
+                callback(err=None)
+#                except Exception as e:
+#                    logger.error("Exception in callback for %s"%self.pvname)
             try:
                 self.subscription = pvactx.monitor(self.pvname, monitor_cb)
                 self.__value__ = None
@@ -64,10 +68,10 @@ class Pv:
             logger.debug("PV %s created without a callback", self.pvname) # Call get explictly for an sync get or use for put
 
     def get(self, useCached=True):
-#        if useCached and self.__value__:
-#        if useCached:
-#            return self.__value__
-        self.__value__ = pvactx.get(self.pvname).raw.value
+        if self.isStruct:
+            self.__value__ = pvactx.get(self.pvname)
+        else:
+            self.__value__ = pvactx.get(self.pvname).raw.value
         logger.info("Current value of PV %s Value %s", self.pvname, self.__value__)
         return self.__value__
 
@@ -81,15 +85,18 @@ class Pv:
         if callback:
             logger.info("Monitoring PV %s", self.pvname)
             def monitor_cb(newval):
-                logger.info("Received monitor event for PV %s, received %s", self.pvname, newval.raw.value)
-                self.__value__ = newval.raw.value
+                if self.isStruct:
+                    self.__value__ = newval
+                else:
+                    self.__value__ = newval.raw.value
+                logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
                 callback(err=None)
             self.subscription = pvactx.monitor(self.pvname, monitor_cb)
 
 
-def initPvMon(mon, pvname):
+def initPvMon(mon, pvname, isStruct=False):
     logger.info("Monitoring PV %s", pvname)
-    mon.pv = Pv(pvname, mon.update)
+    mon.pv = Pv(pvname, mon.update, isStruct=isStruct)
 
 class PvDisplay(QtWidgets.QLabel):
 

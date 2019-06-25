@@ -14,11 +14,11 @@
 
 #include "psdaq/epicstools/PVMonitorCb.hh"
 
+//static bool lfirst = true;
 
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 namespace nt  = epics::nt;
-
 
 namespace Pds_Epics {
     // Both the PutTracker's are copied over from the V4 example code.
@@ -96,6 +96,37 @@ namespace Pds_Epics {
         }
     };
 
+    struct StructurePutTracker : public pvac::ClientChannel::PutCallback {
+        POINTER_DEFINITIONS(StructurePutTracker);
+        pvac::Operation op;
+        const char* value;
+        const unsigned* sizes;
+        bool ldebug;
+      StructurePutTracker(pvac::ClientChannel& channel, const pvd::PVStructure::const_shared_pointer& pvReq, const char* val, const unsigned* sz, bool debug)
+        :op(channel.put(this, pvReq)) ,value(val), sizes(sz), ldebug(debug) {
+        }
+
+        virtual ~StructurePutTracker() { op.cancel(); }
+
+        virtual void putBuild(const epics::pvData::StructureConstPtr &build, pvac::ClientChannel::PutCallback::Args& args);
+        virtual void putDone(const pvac::PutEvent &evt) OVERRIDE FINAL
+        {
+            switch(evt.event) {
+            case pvac::PutEvent::Fail:
+                std::cerr<<op.name()<<" putDone Error: "<<evt.message<<"\n";
+                break;
+            case pvac::PutEvent::Cancel:
+                std::cerr<<op.name()<<" Cancelled\n";
+                break;
+            case pvac::PutEvent::Success:
+                // std::cout<<op.name()<<" Done\n";
+                break;
+            }
+
+            delete this;
+        }
+    };
+
   class EpicsPVA :public pvac::ClientChannel::ConnectCallback, pvac::ClientChannel::GetCallback, pvac::ClientChannel::MonitorCallback {
   public:
     EpicsPVA(const char *channelName, const int maxElements=0);
@@ -146,6 +177,14 @@ namespace Pds_Epics {
         } catch(const pvac::Timeout& t) {
             std::cout << "Timeout when putting a vector of size " << val.size() << " to pv " << name() << std::endl;
         }
+    }
+
+    void putFromStructure(const void* val, const unsigned* sizes, bool ldebug=false) {
+      try {
+        new StructurePutTracker(_channel, pvd::CreateRequest::create()->createRequest("field()"), reinterpret_cast<const char*>(val), sizes, ldebug);
+      } catch(const pvac::Timeout& t) {
+        std::cout << "Timeout when putting a structure to pv " << name() << std::endl;
+      }
     }
 
     virtual void getDone (const pvac::GetEvent &evt);

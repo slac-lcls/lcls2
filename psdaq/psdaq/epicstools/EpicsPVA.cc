@@ -17,6 +17,29 @@
 
 #include <stdio.h>
 
+static bool _debug = false;
+
+template<typename T> T valT(const char*& v) { 
+  if (_debug) {
+    printf("valT[%p] size[%zu] [%x]\n", v, sizeof(T), reinterpret_cast<const uint32_t*>(v)[0]);
+  }
+  T t(*reinterpret_cast<const T*>(v));
+  v += sizeof(T);
+  return t;
+}
+
+template<typename T> pvd::shared_vector<const T> vecT(const char*& v, unsigned n) { 
+  if (_debug) {
+    printf("vecT[%p] size[%zu][%u] [%x]\n", v, sizeof(T), n, reinterpret_cast<const uint32_t*>(v)[0]);
+  }
+  pvd::shared_vector<T> t(n);
+  for(unsigned i=0; i<n; i++) {
+    t[i] = *reinterpret_cast<const T*>(v);
+    v += sizeof(T);
+  }
+  return freeze(t);
+}
+
 namespace Pds_Epics {
     static pvac::ClientProvider provider("pva");
 
@@ -112,4 +135,58 @@ namespace Pds_Epics {
         if (!getComplete()) { return -1; }
         return _strct->getSubField<pvd::PVArray>("value")->getLength();
     }
+
+
+    void StructurePutTracker::putBuild(const epics::pvData::StructureConstPtr &build, pvac::ClientChannel::PutCallback::Args& args) {
+      pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
+
+      const pvd::PVFieldPtrArray fields = root->getPVFields();
+
+      if (ldebug) {
+        root->getStructure()->dump(std::cout);
+        printf("Fields[%u]\n", fields.size());
+        _debug = true;
+      }
+
+      //  Assumes there are no structures in the subfields
+      for(unsigned i=0; i<fields.size(); i++) {
+        const pvd::PVFieldPtr field = fields[i];
+        switch(field->getField()->getType()) {
+        case pvd::scalar:
+          { pvd::PVScalarPtr valfld(std::tr1::dynamic_pointer_cast<pvd::PVScalar>(field));
+            switch(valfld->getScalar()->getScalarType()) {
+            case pvd::pvInt   : valfld->putFrom(valT<int32_t >(value)); break;
+            case pvd::pvLong  : valfld->putFrom(valT<int64_t >(value)); break;
+            case pvd::pvUInt  : valfld->putFrom(valT<uint32_t>(value)); break;
+            case pvd::pvULong : valfld->putFrom(valT<uint64_t>(value)); break;
+            case pvd::pvFloat : valfld->putFrom(valT<float   >(value)); break;
+            case pvd::pvDouble: valfld->putFrom(valT<double  >(value)); break;
+            default: throw std::string("type not implemented"); break;
+            }
+          } break;
+        case pvd::scalarArray:
+          { pvd::PVScalarArrayPtr valfld(std::tr1::dynamic_pointer_cast<pvd::PVScalarArray>(field));
+            //            unsigned n(valfld->getLength());
+            unsigned n = *sizes++;
+            switch(valfld->getScalarArray()->getElementType()) {
+            case pvd::pvInt   : valfld->putFrom(vecT<int32_t >(value,n)); break;
+            case pvd::pvLong  : valfld->putFrom(vecT<int64_t >(value,n)); break;
+            case pvd::pvUInt  : valfld->putFrom(vecT<uint32_t>(value,n)); break;
+            case pvd::pvULong : valfld->putFrom(vecT<uint64_t>(value,n)); break;
+            case pvd::pvFloat : valfld->putFrom(vecT<float   >(value,n)); break;
+            case pvd::pvDouble: valfld->putFrom(vecT<double  >(value,n)); break;
+            default: throw std::string("type not implemented"); break;
+            }
+          } break;
+        default:
+          break;
+        }
+      }
+      _debug = false;
+
+      args.root = root;
+      //  What to put here?
+      args.tosend.set(0);
+    }
+
 }
