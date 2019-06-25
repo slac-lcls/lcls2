@@ -12,34 +12,13 @@ from p4p.server import Server, StaticProvider
 from p4p.server.thread import SharedPV
 from p4p import Value, Type
 
+from psdaq.hsd.pvdef import *
+
 #import pyrogue as pr
 
 logger = logging.getLogger(__name__)
 
 # pv_fieldname, pv_fieldtype, default_value, mmap_address, bit_size, bit_shift
-
-daqConfig = {'readoutGroup':('i', 0),
-             'enable'      :('i', 0),
-             'raw_start'   :('i', 4),
-             'raw_gate'    :('i', 20),
-             'raw_prescale':('i', 1),
-             'fex_start'   :('i', 4),
-             'fex_gate'    :('i', 20),
-             'fex_prescale':('i', 0),
-             'fex_ymin'    :('i', 2040),
-             'fex_ymax'    :('i', 2056),
-             'fex_xpre'    :('i', 1),
-             'fex_xpost'   :('i', 1) }
-
-monTiming = {'timframecnt':('i', 0),
-             'timpausecnt':('i', 0),
-             'trigcnt'    :('i', 0),
-             'trigcntsum' :('i', 0),
-             'msgdelayset':('i', 0),
-             'msgdelayget':('i', 0),
-             'headercntl0':('i', 0),
-             'headercntof':('i', 0) }
-
 
 def pvTypes(nt):
     result = []
@@ -71,41 +50,51 @@ class DefaultPVHandler(object):
         if self.callback is not None:
             self.callback(postedval)
 
-class PVAServer(object):
-    def __init__(self, provider_name, prefix):
-        self.provider = StaticProvider(provider_name)
+class ChipServer(object):
+    def __init__(self, provider, prefix):
+        self.provider = provider
         self.prefix = prefix
 
         #  Make configuration one PV access for each readout channel
-        self.daqConfigA     = MySharedPV(daqConfig,self.updateDaqConfigA)
-        self.daqConfigB     = MySharedPV(daqConfig,self.updateDaqConfigB)
-        self.readyA         = SharedPV(initial=NTScalar('I').wrap({'value' : 0}),
-                                       handler=DefaultPVHandler())
-        self.readyB         = SharedPV(initial=NTScalar('I').wrap({'value' : 0}),
+        self.daqConfig      = MySharedPV(daqConfig,self.updateDaqConfig)
+        self.ready          = SharedPV(initial=NTScalar('I').wrap({'value' : 0}),
                                        handler=DefaultPVHandler())
 
-        self.provider.add(prefix+':A:CONFIG',self.daqConfigA)
-        self.provider.add(prefix+':B:CONFIG',self.daqConfigB)
-        self.provider.add(prefix+':A:READY' ,self.readyA)
-        self.provider.add(prefix+':B:READY' ,self.readyB)
+        self.provider.add(prefix+':CONFIG',self.daqConfig)
+        self.provider.add(prefix+':READY' ,self.ready)
 
         #  Monitoring
-        self.monTimingA  = MySharedPV(monTiming)
-        #self.monTimingB  = SharedPV()
-        #self.monPgpA     = SharedPV()
-        #self.monPgpB     = SharedPV()
-        #self.monFexStatA = SharedPV()
-        #self.monFexStatB = SharedPV()
-        #self.monJesdA    = SharedPV()
-        #self.monJesdB    = SharedPV()
-        #self.monEnv      = SharedPV()
-        self.provider.add(prefix,self.monTimingA)
+        self.fwBuild     = SharedPV(initial=NTScalar('s').wrap({'value':''}),
+                                    handler=DefaultPVHandler())
+        self.monTiming   = MySharedPV(monTiming)
+        self.monPgp      = MySharedPV(monPgp)
+        self.monRawBuf   = MySharedPV(monBuf)
+        self.monFexBuf   = MySharedPV(monBuf)
+        self.monRawDet   = MySharedPV(monBufDetail)
+        self.monEnv      = MySharedPV(monEnv)
+        self.monAdc      = MySharedPV(monAdc)
+        self.monJesd     = MySharedPV(monJesd)
+        self.monJesdTtl  = MySharedPV(monJesdTtl)
 
-    def updateDaqConfigA(self,value):
+        self.provider.add(prefix+':FWBUILD'   ,self.fwBuild)
+        self.provider.add(prefix+':MONTIMING' ,self.monTiming)
+        self.provider.add(prefix+':MONPGP'    ,self.monPgp)
+        self.provider.add(prefix+':MONRAWBUF' ,self.monRawBuf)
+        self.provider.add(prefix+':MONFEXBUF' ,self.monFexBuf)
+        self.provider.add(prefix+':MONRAWDET' ,self.monRawDet)
+        self.provider.add(prefix+':MONENV'    ,self.monEnv)
+        self.provider.add(prefix+':MONADC'    ,self.monAdc)
+        self.provider.add(prefix+':MONJESD'   ,self.monJesd)
+        self.provider.add(prefix+':MONJESDTTL',self.monJesdTtl)
+
+    def updateDaqConfig(self,value):
         pass
 
-    def updateDaqConfigB(self,value):
-        pass
+class PVAServer(object):
+    def __init__(self, provider_name, prefix):
+        self.provider = StaticProvider(provider_name)
+        self.a = ChipServer(self.provider, prefix+':A')
+        self.b = ChipServer(self.provider, prefix+':B')
 
     def forever(self):
         Server.forever(providers=[self.provider])
@@ -174,7 +163,7 @@ def main():
 
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for High Speed Digitizer')
 
-    parser.add_argument('-P', required=True, help='DAQ:LAB2:HSD:DEV06_3E', metavar='PREFIX')
+    parser.add_argument('-P', required=True, help='DAQ:LAB2:HSD:DEV06_3E:A', metavar='PREFIX')
 #    parser.add_argument('-d', required=True, help='device filename', metavar='DEV')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
