@@ -30,7 +30,6 @@ procmgr_config = [
  # trigger event builder
  { host: 'drp-tst-acc06', id:'teb1', flags:'xpu', conda:conda_rel, cmd:'teb -C '+collect_host},
  # drp
-#{ host: 'drp-tst-dev007', id:'drp7', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n sugar  -s0 -o /tmp -C '+collect_host},
- { host: 'drp-tst-dev008', id:'cookie_0', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s0 -o /tmp -C '+collect_host},
- { host: 'drp-tst-dev009', id:'cookie_1', flags:'sxp', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -n cookie -s1 -o /tmp -C '+collect_host}
+ { host: 'drp-tst-dev008', id:'cookie_0', flags:'sxpu', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host},
+ { host: 'drp-tst-dev009', id:'cookie_1', flags:'sxpu', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host}
 ]

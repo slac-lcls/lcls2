@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
     int c;
     para.detSegment = 0;
     std::string kwargs_str;
-    while((c = getopt(argc, argv, "p:o:l:D:C:d:n:s:k:")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -41,17 +41,14 @@ int main(int argc, char* argv[])
             case 'D':
                 para.detectorType = optarg;
                 break;
+            case 'u':
+                para.alias = optarg;
+                break;
             case 'C':
                 para.collectionHost = optarg;
                 break;
-            case 's':
-                para.detSegment = std::stoi(optarg);
-                break;
             case 'd':
                 para.device = optarg;
-                break;
-            case 'n':
-                para.detName = optarg;
                 break;
             case 'k':
                 kwargs_str = std::string(optarg);
@@ -65,14 +62,18 @@ int main(int argc, char* argv[])
         printf("-d: device is mandatory!\n");
         exit(1);
     }
-    if (para.detName.empty()) {
-        printf("-n: detector name is mandatory!\n");
+    if (para.alias.empty()) {
+        printf("-u: alias is mandatory\n");
         exit(1);
     }
-    if (para.detName.back() == '_') {
-        printf("-n: detector name must not end with underscore!\n");
+    // Alias must be of form <detName>_<detSegment>
+    size_t found = para.alias.rfind('_');
+    if ((found == std::string::npos) || !isdigit(para.alias.back())) {
+        printf("-u: alias must have _N suffix\n");
         exit(1);
     }
+    para.detName = para.alias.substr(0, found);
+    para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     get_kwargs(para, kwargs_str);
 

@@ -26,6 +26,7 @@ struct Parameters
     unsigned batchSize;
     unsigned detSegment;
     uint8_t laneMask;
+    std::string alias;
     std::string detName;
     std::string device;
     std::string outputDir;
