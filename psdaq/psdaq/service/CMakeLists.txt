@@ -1,4 +1,5 @@
 find_package(prometheus-cpp REQUIRED)
+find_package(ZeroMQ REQUIRED)
 
 add_library(service SHARED
     SysClk.cc
@@ -28,11 +29,10 @@ add_library(collection SHARED
 )
 
 target_link_libraries(collection
-    zmq
+    libzmq
 )
 
 target_include_directories(collection PUBLIC
-     $ENV{CONDA_PREFIX}/include
      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
      $<INSTALL_INTERFACE:include>
 )
