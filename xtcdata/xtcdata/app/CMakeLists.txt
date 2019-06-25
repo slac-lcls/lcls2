@@ -18,18 +18,12 @@ add_executable(xtcwriter
 target_link_libraries(xtcwriter
     xtc
 )
-target_include_directories(xtcwriter PUBLIC
-    $ENV{CONDA_PREFIX}/include
-)
 
 add_executable(amiwriter
     amiwriter.cc
 )
 target_link_libraries(amiwriter
     xtc
-)
-target_include_directories(amiwriter PUBLIC
-    $ENV{CONDA_PREFIX}/include
 )
 
 add_executable(xtcsave
@@ -68,9 +62,6 @@ add_executable(epicswriter
 
 target_link_libraries(epicswriter
     xtc
-)
-target_include_directories(epicswriter PUBLIC
-    $ENV{CONDA_PREFIX}/include
 )
 
 install(TARGETS xtcwriter smdwriter xtcreader json2xtc amiwriter epicswriter
