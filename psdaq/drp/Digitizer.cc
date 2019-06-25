@@ -44,8 +44,8 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     m_evtcount(0),
     m_evtNamesId(nodeId, EventNamesIndex),
     m_epics_name(para->detSegment==0 ? 
-                 "DAQ:LAB2:HSD:DEV06_3E:DRP:A" :
-                 "DAQ:LAB2:HSD:DEV06_3E:DRP:B")
+                 "DAQ:LAB2:HSD:DEV06_3E:A" :
+                 "DAQ:LAB2:HSD:DEV06_3E:B")
 {
 }
 
@@ -82,11 +82,12 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     CHECK_TIME(PyDict_Get);
 
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssi",
                                               m_connect_json.c_str(),
                                               m_epics_name.c_str(),
                                               "BEAM", 
-                                              m_para->detName.c_str());
+                                              m_para->detName.c_str(),
+                                              m_para->partition);
 
     CHECK_TIME(PyObj_Call);
 

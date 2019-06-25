@@ -11,9 +11,12 @@ def epics_names_values(pvtable,cfg,d):
         else:
             # Not sure whether configuration should be a structure of arrays or array of structures
             # For now, just convert each array to its first element
-            d[v1] = v2[0]    
+            if isinstance(v2, list):
+                d[v1] = v2[0]    
+            else:
+                d[v1] = v2
 
-def hsd_config(connect_str,epics_prefix,cfgtype,detname):
+def hsd_config(connect_str,epics_prefix,cfgtype,detname,group):
 
     cfg = get_config(connect_str,cfgtype,detname)
 
@@ -31,18 +34,23 @@ def hsd_config(connect_str,epics_prefix,cfgtype,detname):
                         'ymax'     : 'fex_ymax',
                         'xpre'     : 'fex_xpre',
                         'xpost'    : 'fex_xpost'},
+               'expert' : {'datamode'   : 'test_pattern',
+                           'fullthresh' : 'full_event',
+                           'fullsize'   : 'full_size',
+                           'fsrange'    : 'fs_range_vpp'},
     }
 
     # look in the cfg dictionary for values that match the epics
     # variables in the pvtable
     values = {}
     epics_names_values(pvtable,cfg,values)
+    values['readoutGroup'] = group
 
     # program the values
     ctxt = Context('pva')
+    print(epics_prefix)
     ctxt.put(epics_prefix+':READY',0,wait=True)
 
-    print(epics_prefix+':CONFIG')
     print(values)
     ctxt.put(epics_prefix+':CONFIG',values,wait=True)
 
