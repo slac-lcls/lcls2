@@ -66,6 +66,10 @@ static void check_program_clock(int ifd, const AxiVersion& vsn)
 static void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -l <mask> -I\n");
+  printf("Options: -l <mask>\n");
+  printf("         -I (initialize 186MHz clock)\n");
+  printf("         -R (reset to 156.25MHz clock)\n");
+  printf("         -C (reset counters)\n");
 }
 
 int main (int argc, char **argv) {
