@@ -18,6 +18,8 @@ namespace Pds {
       void lmk_dump();
       void lmx_dump();
       void adc_dump(unsigned);
+      //      void adc_range(unsigned,float fs_vpp);
+      void adc_range(unsigned,unsigned fsrng);
     private:
       void _hmc_init();
       void _lmk_init();

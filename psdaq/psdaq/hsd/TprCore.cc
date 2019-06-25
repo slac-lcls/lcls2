@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
 
 using namespace Pds::HSD;
 
@@ -57,6 +58,25 @@ void TprCore::setLCLSII() {
   volatile uint32_t v = CSR;
   CSR = v | (1<<4);
 }
+
+static double clockRate(volatile uint32_t& clockReg)
+{
+  timespec tvb;
+  clock_gettime(CLOCK_REALTIME,&tvb);
+  unsigned vvb = clockReg;
+
+  usleep(10000);
+
+  timespec tve;
+  clock_gettime(CLOCK_REALTIME,&tve);
+  unsigned vve = clockReg;
+    
+  double dt = double(tve.tv_sec-tvb.tv_sec)+1.e-9*(double(tve.tv_nsec)-double(tvb.tv_nsec));
+  return 16.e-6*double(vve-vvb)/dt;
+}
+
+double TprCore::txRefClockRate() const { return clockRate(const_cast<volatile uint32_t&>(TxRefClks)); }
+double TprCore::rxRecClockRate() const { return clockRate(const_cast<volatile uint32_t&>(RxRecClks)); }
 
 void TprCore::dump() const {
   printf("SOFcounts: %08x\n", SOFcounts);

@@ -31,9 +31,18 @@ class StreamHeader {
 public:
   StreamHeader() {}
 public:
-  unsigned num_samples() const { return _p[0]&~(1<<31); }
+  //  unsigned num_samples() const { return _p[0]&~(1<<31); }
+  unsigned num_samples() const { 
+    unsigned v = _p[0]&~(1<<31);
+    //    if (!v) v = 0x640;  // kludge for fw bug
+    //    if (!v) v = 0x320;  // kludge for fw bug
+    return v;
+  }
   unsigned stream_id  () const { return (_p[1]>>24)&0xff; }
-  unsigned cache_len  () const { return ((_p[3]>>16)-(_p[3]&0xffff))*4; }
+  unsigned cache_len  (unsigned row_size) const { 
+    return (((_p[3]>>20) - (_p[3]>>4))&0xfff)*row_size + 
+      ((_p[3]>>16)&0xf) - ((_p[3]>>0)&0xf);
+  }
 public:
   uint32_t _p[4];
 };
@@ -54,6 +63,7 @@ private:
 protected:
   const Configuration& _cfg;
   XtcData::Transition  _transition;
+  unsigned             _neventcnt;
 };
 
 class Fmc126Validator : public Validator {
@@ -79,4 +89,5 @@ private:
 private:
   unsigned             _testpattern;
   unsigned             _sample_value;
+  unsigned             _num_samples_raw;
 };

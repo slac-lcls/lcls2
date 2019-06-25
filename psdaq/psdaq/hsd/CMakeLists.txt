@@ -27,6 +27,10 @@ add_library(hsd SHARED
   Fmc134Ctrl.cc
   Fmc134Cpld.cc
   Ad7291.cc
+
+  Module134.cc
+  ModuleBase.cc
+  ChipAdcReg.cc
 )
 
 target_include_directories(hsd PUBLIC
@@ -177,6 +181,21 @@ target_link_libraries(hsd64PVs
     rt
 )
 
+add_executable(hsd134PVs hsd134PVs.cc PV134Ctrls.cc PV134Stats.cc)
+
+target_link_libraries(hsd134PVs
+    service
+    epicstools
+    ${EPICS_CA_LIB}
+    ${EPICS_PVDATA_LIB}
+    ${EPICS_PVACCESS_LIB}
+    ${EPICS_PVACLIENT_LIB}
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
 add_executable(hsd_sim hsd_sim.cc)
 target_link_libraries(hsd_sim
     hsd
@@ -263,6 +282,7 @@ install(TARGETS hsd
  		hsdRead
  		hsdPVs
  		hsd64PVs
+ 		hsd134PVs
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

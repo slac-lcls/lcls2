@@ -136,8 +136,8 @@ int main(int argc, char* argv[])
   }
 
   Validator& val = l134 ? 
-    *static_cast<Validator*>(new Fmc134Validator(cfg)) :
-    *static_cast<Validator*>(new Fmc126Validator(cfg));
+    *static_cast<Validator*>(new Fmc134Validator(cfg,5)) :
+    *static_cast<Validator*>(new Fmc126Validator(cfg,0));
 
   const unsigned MAX_CNT = 128;
   unsigned getCnt = MAX_CNT;

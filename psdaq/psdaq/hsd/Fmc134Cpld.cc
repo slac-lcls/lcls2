@@ -1194,10 +1194,6 @@ int32_t Fmc134Cpld::default_adc_init()
 
         uint32_t i2c_unit;
         uint32_t dword0;
-        uint32_t dword1;
-        uint32_t dword2;
-        uint32_t dword3;
-        uint32_t dword4;
         int32_t rc = UNITAPI_OK;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1331,23 +1327,17 @@ int32_t Fmc134Cpld::default_adc_init()
 #endif
 
         // verify ADC1 is present, This verifys the SPI connection to ADC 1 is present
-        dword1 = 0;
-        dword2 = 0;
-        dword3 = 0;
-        dword4 = 0;
+        unsigned dw[4];
 
-        spi_read(i2c_unit, ADC0_SELECT, 0x0030, &dword1) ;
+        for(unsigned i=0; i<4; i++)
+          spi_read(i2c_unit, ADC0_SELECT, 0x0030+i, &dw[i]) ;
+        printf("Read FS_RANGE_0: %x %x %x %x\n",
+               dw[0], dw[1], dw[2], dw[3]);
 
-        spi_read(i2c_unit, ADC0_SELECT, 0x0031, &dword2 ) ;
-
-        spi_read(i2c_unit, ADC1_SELECT, 0x0032, &dword3 ) ;
-
-        spi_read(i2c_unit, ADC1_SELECT, 0x0033, &dword4 ) ;
-
-
-
-        //printf("ADC01: %02X %02X    %02X %02X \n",dword2,dword1,dword4,dword3);
-
+        for(unsigned i=0; i<4; i++)
+          spi_read(i2c_unit, ADC1_SELECT, 0x0030+i, &dw[i]) ;
+        printf("Read FS_RANGE_1: %x %x %x %x\n",
+               dw[0], dw[1], dw[2], dw[3]);
 
 #if 0
         // full scale range ** this setting directly affects the ADC SNR  **
@@ -1385,4 +1375,27 @@ int32_t Fmc134Cpld::config_prbs(unsigned v)
 {
   spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0205, v);
   return FMC134_ADC_ERR_OK;
+}
+
+void Fmc134Cpld::adc_range(unsigned chip,unsigned fsrng)
+{
+  DevSel dev = (chip==0) ? ADC0 : ADC1;
+
+  // const float scale = float(0xe000)/0.5;
+  // int fsrng = int((fsvpp - 0.5) * scale + 0x2000);
+  if (fsrng < 0x2000) fsrng = 0x2000;
+  if (fsrng > 0xffff) fsrng = 0xffff;
+
+  //  printf("Setting FS_RANGE %f Vpp [%x]\n", fsvpp, fsrng);
+
+  spi_write(0, dev, 0x30, (fsrng&0xff));
+  spi_write(0, dev, 0x31, (fsrng>>8));
+  spi_write(0, dev, 0x32, (fsrng&0xff));
+  spi_write(0, dev, 0x33, (fsrng>>8));
+
+  unsigned dw[4];
+  for(unsigned i=0; i<4; i++)
+    spi_read(0, dev, 0x0030+i, &dw[i]) ;
+  printf("Read FS_RANGE_0: %x %x %x %x\n",
+    dw[0], dw[1], dw[2], dw[3]);
 }

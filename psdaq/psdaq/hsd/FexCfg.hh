@@ -36,7 +36,7 @@ namespace Pds {
       uint32_t _bram_rd_errors;
       uint32_t _bram_rd_sample;
 
-      uint32_t _rsvd_80[32];
+      uint32_t _rsvd_80[0x80>>2];
 
       class Stream {
       public:

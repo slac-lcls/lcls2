@@ -16,7 +16,10 @@ namespace Pds {
       void resetCounts();
       void setLCLS    ();
       void setLCLSII  ();
-      void dump() const;
+
+      double txRefClockRate() const;
+      double rxRecClockRate() const;
+      void   dump() const;
     public:
       volatile uint32_t SOFcounts;
       volatile uint32_t EOFcounts;

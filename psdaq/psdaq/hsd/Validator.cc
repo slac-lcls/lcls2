@@ -124,29 +124,56 @@ static unsigned ndump=10;
 //static unsigned ndump=0;
 static void dump(const char* b, int nb)
 {
+  static unsigned fill[] = { 0xdeadbeef, 0xdeadbeef, 0xdeadbeef, 0xdeadbeef };
   if (ndump) {
     if (!fdump) 
       fdump = fopen("/tmp/hsd_validate.dump","w");
     fwrite(b,1,nb,fdump);
+    fwrite(fill,4,sizeof(unsigned),fdump);
     ndump--;
   }
 }
 
 Validator::Validator(const Configuration& cfg) : 
-    _cfg         (cfg)
+  _cfg         (cfg),
+  _neventcnt   (0)
   { _transition.env = 0; }
 
 void Validator::validate(const char* buffer, int ret)
 {
+  bool ldump=false;
+  //    bool ldump=true;
+
   const XtcData::Transition* event_header = reinterpret_cast<const XtcData::Transition*>(buffer);
+
+  if (_nevents) {
+    const uint32_t* xenv = reinterpret_cast<const uint32_t*>(event_header+1);
+    if ((xenv[0]&0xffffff) != _neventcnt) {
+      printf("event counter err [%x] != %x\n",
+             xenv[0], _neventcnt);
+      const uint32_t* eh = reinterpret_cast<const uint32_t*>(buffer);
+      for(unsigned i=0; i<8; i++)
+        printf(" %08x",eh[i]);
+      printf("\n");
+      dump(buffer,ret);
+    }
+    _neventcnt = xenv[0]&0xffffff;
+  }
+  _neventcnt = (_neventcnt+1)&0xffffff;
+
   _nevents++;
   _nbytes += ret;
 
   if (event_header->seq.isEvent()) {
     unsigned streams(buffer[26]>>4);
     const char* p = buffer+32;
-    //      bool ldump=false;
-    bool ldump=true;
+
+    if (!streams) {
+      printf("No streams!\n");
+      if (!ldump)
+        dump(buffer,ret);
+    }
+
     while(streams) {
       const StreamHeader& s = *reinterpret_cast<const StreamHeader*>(p);
       if (p >= buffer+ret) {
@@ -176,6 +203,11 @@ void Validator::validate(const char* buffer, int ret)
       p += sizeof(StreamHeader)+s.num_samples()*2;
       streams &= ~(1<<s.stream_id());
     }
+
+    if (p != buffer+ret) {
+      printf("dma size mismatch ret [%x] iterate[%x]\n",
+             ret, p-buffer);
+    }
   }
 }
 
@@ -194,7 +226,7 @@ bool Fmc126Validator::_validate_raw(const XtcData::Transition& transition,
 
   if (_lverbose) {
     printf("raw header %04x:%04x %04x[%04x]\n",
-           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len());
+           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len(8));
   }
 
   if (_transition.env) {
@@ -257,7 +289,7 @@ bool Fmc126Validator::_validate_fex(const StreamHeader&        s) {
 
   if (_lverbose) {
     printf("fex header %04x:%04x %04x[%04x]\n",
-           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len());
+           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len(8));
   }
 
   if (1) {
@@ -321,10 +353,20 @@ bool Fmc126Validator::_validate_fex(const StreamHeader&        s) {
   return lret;
 }
 
+
+static const uint16_t _test_pattern_5[] = {
+  0xf01, 0xf01, 0xe11, 0xe11, 0xd21, 0xd21, 0xc31, 0xc31,
+  0xf02, 0xf02, 0xe12, 0xe12, 0xd22, 0xd22, 0xc32, 0xc32,
+  0xf03, 0xf03, 0xe13, 0xe13, 0xd23, 0xd23, 0xc33, 0xc33,
+  0xf04, 0xf04, 0xe14, 0xe14, 0xd24, 0xd24, 0xc34, 0xc34,
+  0xf05, 0xf05, 0xe15, 0xe15, 0xd25, 0xd25, 0xc35, 0xc35 };
+
+
 Fmc134Validator::Fmc134Validator(const Configuration& cfg,
                                  unsigned testpattern) :
   Validator   (cfg),
-  _testpattern(testpattern)
+  _testpattern(testpattern),
+  _num_samples_raw(0)
 {
 }
 
@@ -335,13 +377,69 @@ bool Fmc134Validator::_validate_raw(const XtcData::Transition& transition,
   _revents++;
   _rbytes += s.num_samples()*2;
 
+  const uint16_t* data = reinterpret_cast<const uint16_t*>(&s+1);
+
   if (_lverbose) {
     printf("raw header %04x:%04x %04x[%04x]\n",
-           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len());
+           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len(10));
+    for(unsigned i=0; i<s.num_samples(); i++)
+      printf("%04x%c",data[i],(i&0xf)==0xf?'\n':' ');
+    printf("\n");
+  }
+
+  //  Validate:
+  //    Number of samples
+  //    Cache length
+  //    Test pattern
+  if (s.num_samples() != s.cache_len(10)*4) {
+    if ((_lverbose || _nprints)) {
+      //      _nprints--;
+      printf("Header mismatch num_samples[%x] != 4*cache_len[%x]\n",
+             s.num_samples(), s.cache_len(10));
+      if (!_lverbose)
+        printf("raw header %04x:%04x %04x[%04x]\n",
+               s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len(10));
+    }
+    lret = true;
+  }
+  
+  if (_num_samples_raw==0)
+    _num_samples_raw = s.num_samples();
+  else
+    if (_num_samples_raw != s.num_samples()) {
+      if ((_lverbose || _nprints)) {
+        _nprints--;
+        printf("Change in num_samples[%x] != [%x]\n",
+               s.num_samples(), _num_samples_raw);
+        lret = true;
+      }
+    }
+  
+  if (_testpattern==5) {
+    //  Compare against previous event
+    //  [Can't do until sample clock is locked to timing]
+    if (_transition.env) {
+    }
+    //  Check internal consistency
+    bool lerr = false;
+    for(unsigned i=0; i<s.num_samples(); i++)
+      if (data[i] != _test_pattern_5[i%(sizeof(_test_pattern_5)>>1)]) {
+        if (!lerr) {
+          lerr = true;
+          _internal_sample_errors++;
+          if ((_lverbose || _nprints)) {
+            _nprints--;
+            printf("Test pattern failed data[%04x] != pattern[%04x] @ %i\n",
+                   data[i], _test_pattern_5[i%(sizeof(_test_pattern_5)>>1)], i);
+            lret = true;
+          }
+        }
+      }
   }
 
   _transition = transition;
-  _sample_value = *reinterpret_cast<const uint16_t*>(&s+1);
+  _sample_value = *data;
+
   return lret;
 }
 
@@ -353,7 +451,7 @@ bool Fmc134Validator::_validate_fex(const StreamHeader&        s) {
 
   if (_lverbose) {
     printf("fex header %04x:%04x %04x[%04x]\n",
-           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len());
+           s._p[3]&0xffff,s._p[3]>>16,s.num_samples(),s.cache_len(10));
   }
 
   //  Could validate against raw data
