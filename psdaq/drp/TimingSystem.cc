@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <assert.h>
 
+const unsigned BUFSIZE = 1024*1024*32;
+static char config_buf [BUFSIZE];
+
 using namespace XtcData;
 using namespace rapidjson;
 
@@ -62,8 +65,7 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
     check(pFunc);
     // need to get the dbase connection info via collection
     // returns new reference
-    // FIXME: should get "HSD:DEV02" from drp cmd line, and "BEAM" from config phase1.
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",m_connect_json.c_str(),"HSD:DEV02", config_alias.c_str(), m_para->detName.c_str());
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"sss",m_connect_json.c_str(), config_alias.c_str(), m_para->detName.c_str());
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
@@ -71,9 +73,7 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
     char* json = (char*)PyBytes_AsString(json_bytes);
 
     // convert to json to xtc
-    const unsigned BUFSIZE = 1024*1024;
-    char buffer[BUFSIZE];
-    unsigned len = translateJson2Xtc(json, buffer, configNamesId);
+    unsigned len = translateJson2Xtc(json, config_buf, configNamesId);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }
@@ -82,7 +82,7 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
     }
 
     // append the config xtc info to the dgram
-    Xtc& jsonxtc = *(Xtc*)buffer;
+    Xtc& jsonxtc = *(Xtc*)config_buf;
     memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
 

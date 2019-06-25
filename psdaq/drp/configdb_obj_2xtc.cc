@@ -11,7 +11,10 @@
 using namespace XtcData;
 using namespace rapidjson;
 
-#define BUFSIZE 1024*1024
+#define BUFSIZE 1024*1024*32
+// convert json to xtc
+static char config_buf[BUFSIZE];
+static char dgbuf[BUFSIZE];
 
 static void check(PyObject* obj) {
     if (!obj) {
@@ -56,10 +59,8 @@ int main(int argc, char* argv[]) {
 
     printf("json: %s\n",json);
 
-    // convert json to xtc
-    char buffer[BUFSIZE];
     NamesId namesid(0,1);
-    unsigned len = translateJson2Xtc(json, buffer, namesid);
+    unsigned len = translateJson2Xtc(json, config_buf, namesid);
     if (len <= 0) {
         fprintf(stderr, "Parse errors, exiting.\n");
         exit(1);
@@ -89,14 +90,13 @@ int main(int argc, char* argv[]) {
     // for (unsigned i=0; i<enable_length; i++) if (enable[i].GetInt()) lane_mask |= 1<< i;
     // printf("hsd lane_mask is 0x%x\n",lane_mask);
 
-    Xtc& xtcbuf = *(Xtc*)buffer;
+    Xtc& xtcbuf = *(Xtc*)config_buf;
 
     // make a fake dgram
     TypeId tid(TypeId::Parent, 0);
     uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
-    char dgbuf[BUFSIZE];
     gettimeofday(&tv, NULL);
     Sequence seq(Sequence::Event, TransitionId::Configure, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
     Dgram& dg = *new(&dgbuf) Dgram(Transition(seq, env), Xtc(tid));

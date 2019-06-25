@@ -90,7 +90,7 @@ class configdb(object):
                                                           return_document=ReturnDocument.AFTER)
                 return d['seq']
         except:
-            return None
+            raise NameError('Failed to get key for alias/hutch:'+alias+' '+hutch)
 
     # Return the current entry (with the highest key) for the specified alias.
     def get_current(self, alias, hutch=None, session=None):
@@ -101,7 +101,8 @@ class configdb(object):
         try:
             return hc.find({"alias": alias}, session=session).sort('key', DESCENDING).limit(1)[0]
         except:
-            return None
+            raise NameError('Failed to get current key for alias/hutch:'+alias+' '+hutch)
+
 
     # Create a new alias in the hutch, if it doesn't already exist.
     def add_alias(self, alias):
@@ -137,11 +138,10 @@ class configdb(object):
             return d['_id']
         except:
             pass
-        try:
-            r = self.cdb[cfg].insert_one({'config': value}, session=session)
-            return r.inserted_id
-        except:
-            return None
+
+        r = self.cdb[cfg].insert_one({'config': value}, session=session)
+        return r.inserted_id
+
 
     # Modify the current configuration for a specific device, adding it if
     # necessary.  name is the device and value is a json dictionary for the 
@@ -173,7 +173,7 @@ class configdb(object):
                 for l in c['devices']:
                     if l['device'] == device:
                         if l['configs'] == [cfg]:
-                            raise ValueError("modify_device: No change!")
+                            raise ValueError("modify_device error: No config values changed.")
                         c['devices'].remove(l)
                         break
                 kn = self.get_key(session=session, hutch=hutch)
@@ -195,8 +195,6 @@ class configdb(object):
         if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and
                                              isinstance(key_or_alias, unicode)):
             key = self.get_key(key_or_alias, hutch)
-            if key is None:
-                return None
         else:
             key = key_or_alias
         #try:
@@ -241,8 +239,6 @@ class configdb(object):
         if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and
                                              isinstance(key_or_alias, unicode)):
             key = self.get_key(key_or_alias, hutch)
-            if key is None:
-                return None
         else:
             key = key_or_alias
         c = hc.find_one({"key": key})
