@@ -28,6 +28,7 @@ class DaqControl:
         'ConfigUpdate'      : 6,
         'BeginRecord'       : 7,
         'EndRecord'         : 8,
+        'EpicsUpdate'       : 9,
         'L1Accept'          : 12,
     }
 
@@ -35,7 +36,7 @@ class DaqControl:
                    'connect', 'disconnect',
                    'configure', 'unconfigure',
                    'enable', 'disable',
-                   'configupdate', 'reset']
+                   'configupdate', 'epicsupdate', 'reset']
 
     states = [
         'reset',
@@ -486,6 +487,8 @@ class CollectionManager():
                                            conditions='condition_disable')
         self.collectMachine.add_transition('configupdate', 'paused', 'paused',
                                            conditions='condition_configupdate')
+        self.collectMachine.add_transition('epicsupdate', 'running', 'running',
+                                           conditions='condition_epicsupdate')
 
         logging.info('Initial state = %s' % self.state)
 
@@ -761,6 +764,12 @@ class CollectionManager():
         # TODO
         self.lastTransition = 'configupdate'
         logging.debug('condition_configupdate() returning True')
+        return True
+
+    def condition_epicsupdate(self):
+        # TODO
+        self.lastTransition = 'epicsupdate'
+        logging.debug('condition_epicsupdate() returning True')
         return True
 
     def condition_connect(self):
