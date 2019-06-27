@@ -547,6 +547,9 @@ class cdict(object):
         if isinstance(value, numbers.Number):
             if not type in typedict.keys() and not type in self.enumdef.keys():
                 raise TypeError('set: Invalid type: %s' % (type))
+            if type in self.enumdef.keys():
+                # check to see that the value is in the enum
+                assert value in self.enumdef[type].values()
             value = (type, value)
             issimple = True
         elif isinstance(value, str):

@@ -39,10 +39,50 @@ def ts_config(connect_json,cfgtype,detname):
     mydict = {}
     for group in readout_groups:
         grp_prefix = 'group'+str(group)
+        grp = cfg[grp_prefix]
+
         pvtable[grp_prefix] = {'trigMode':'L0Select',
-                               'fixed' : {'rate'    : 'L0Select_FixedRate'}
-                           }
+                               'delay':'L0Delay',
+                               'fixed' : {'rate'    : 'L0Select_FixedRate'},
+                               'ac' : {'rate'    : 'L0Select_ACRate'},
+                               'seq' : {'mode'   : 'L0Select_Sequence'},
+                               'destination' : {'select'   : 'DstSelect'},
+                  }
+
         epics_names_values(group,pvtable,cfg,mydict)
+
+        # handle special cases that don't work in the "pvtable" paradigm
+
+        # convert ac.ts0 through ac.ts5 to L0Select_ACTimeslot bitmask
+        tsmask = 0
+        for tsnum in range(6):
+            tsval = grp['ac']['ts'+str(tsnum)]
+            tsmask |= 1<<tsval
+        mydict[str(group)+':L0Select_ACTimeslot'] = tsmask
+
+        # L0Select_SeqBit is one var used by all of seq.(burst/fixed/local)
+        if grp['seq']['mode']==0: # burst
+            seqbit = grp['seq']['burst']['mode']
+        elif grp['seq']['mode']==1: # fixed rate
+            seqbit = grp['seq']['fixed']['rate']
+        elif grp['seq']['mode']==2: # local
+            seqbit = grp['seq']['local']['rate']
+        else:
+            raise ValueError('Illegal value for trigger sequence mode')
+        mydict[str(group)+':L0Select_SeqBit'] = seqbit
+
+        # DstSelect_Mask should come from destination.dest0 through dest15
+        dstmask = 0
+        for dstnum in range(16):
+            dstval = grp['destination']['dest'+str(dstnum)]
+            dstmask |= 1<<dstval
+        mydict[str(group)+':DstSelect_Mask'] = dstmask
+
+        # 4 InhEnable/InhInterval/InhLimit
+        for inhnum in range(4):
+            mydict[str(group)+':InhInterval'+str(inhnum)] = grp['inhibit'+str(inhnum)]['interval']
+            mydict[str(group)+':InhLimit'+str(inhnum)] = grp['inhibit'+str(inhnum)]['limit']
+            mydict[str(group)+':InhEnable'+str(inhnum)] = grp['inhibit'+str(inhnum)]['enable']
 
     names = list(mydict.keys())
     values = list(mydict.values())
