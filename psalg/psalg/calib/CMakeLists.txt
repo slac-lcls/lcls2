@@ -18,13 +18,11 @@ target_include_directories(calib PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-find_library(CURL_LIBRARY curl PATH $ENV{CONDA_PREFIX}/lib)
-
 target_link_libraries(calib
     utils
     geometry
     xtcdata::xtc
-    ${CURL_LIBRARY}
+    CURL::libcurl
 )
 
 install(FILES

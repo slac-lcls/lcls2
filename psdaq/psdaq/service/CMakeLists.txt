@@ -18,6 +18,7 @@ add_library(service SHARED
 
 target_include_directories(service PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(service PUBLIC

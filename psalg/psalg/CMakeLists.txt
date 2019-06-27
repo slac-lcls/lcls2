@@ -48,8 +48,6 @@ target_include_directories(psalg PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-find_library(CURL_LIBRARY curl PATH $ENV{CONDA_PREFIX}/lib)
-
 message(STATUS "psalg/CMakeLists: CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "psalg/CMakeLists: CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
 message(STATUS "psalg/CMakeLists: CURL_LIBRARY=${CURL_LIBRARY}")

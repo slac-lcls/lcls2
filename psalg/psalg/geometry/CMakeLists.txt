@@ -18,12 +18,11 @@ target_include_directories(geometry PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-find_library(CURL_LIBRARY curl PATH $ENV{CONDA_PREFIX}/lib)
 
 target_link_libraries(geometry ${OpenMP_CXX_FLAGS}
     utils
     xtcdata::xtc
-    ${CURL_LIBRARY}
+    CURL::libcurl
 )
 
 install(FILES
