@@ -1,34 +1,3 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-if(APPLE)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        set(OpenMP_C_FLAGS "-fopenmp" CACHE STRING "OH YEAH")
-        set(OpenMP_C_LIB_NAMES "libomp" CACHE STRING "OH YEAH")
-        set(OpenMP_libomp_LIBRARY ${OpenMP_C_LIB_NAMES} CACHE STRING "OH YEAH")
-    endif()
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        set(OpenMP_CXX_FLAGS "-fopenmp" CACHE STRING "OH YEAH")
-        set(OpenMP_CXX_LIB_NAMES "libomp" CACHE STRING "OH YEAH")
-        set(OpenMP_libomp_LIBRARY ${OpenMP_CXX_LIB_NAMES} CACHE STRING "OH YEAH")
-    endif()
-endif()
-
-find_package(OpenMP REQUIRED)
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0")
-    message(FATAL_ERROR "Insufficient gcc version")
-  endif()
-endif()
-
-#set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib;$ENV{CONDA_PREFIX}/lib")
-#set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-#link_directories($ENV{CONDA_PREFIX}/lib)
-
 add_subdirectory(utils)
 add_subdirectory(calib)
 add_subdirectory(geometry)
@@ -184,7 +153,7 @@ add_executable(test_MDBWebUtils
 target_link_libraries(test_MDBWebUtils
     psalg
     xtcdata::xtc
-    ${CURL_LIBRARY}
+    CURL::libcurl
 )
 
 # Test access to xtc data
@@ -210,14 +179,7 @@ install(TARGETS psalg
                 test_logger
                 test_xtc_data
                 datareader
-    EXPORT psalgTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
-)
-
-install(EXPORT psalgTargets
-    FILE psalgConfig.cmake
-    DESTINATION lib/cmake/psalg
-    NAMESPACE psalg::
 )
