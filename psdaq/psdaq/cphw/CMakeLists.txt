@@ -33,16 +33,17 @@ add_library(cphwr SHARED
 
 target_include_directories(cphw PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $ENV{CONDA_PREFIX}/include
+)
+
+target_link_libraries(cphw
+    cpsw::cpsw
+    ${YAML_CPP_LIB}
 )
 
 target_include_directories(cphwr PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $ENV{CONDA_PREFIX}/include
 )
 
-find_library(YAML_CPP_LIBRARY yaml-cpp PATH $ENV{CONDA_PREFIX}/lib)
-find_library(CPSW_LIBRARY cpsw PATH $ENV{CONDA_PREFIX}/lib)
 #find_package(Boost 1.65 REQUIRED PATHS $ENV{CONDA_PREFIX})
 
 #

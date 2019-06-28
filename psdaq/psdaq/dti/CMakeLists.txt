@@ -7,14 +7,13 @@ add_library(dti SHARED
 
 target_include_directories(dti PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $ENV{CONDA_PREFIX}/epics/include
-    $ENV{CONDA_PREFIX}/epics/include/os/Linux
-    $ENV{CONDA_PREFIX}/epics/include/compiler/gcc
-    $ENV{CONDA_PREFIX}/include
 )
 
-find_library(YAML_CPP_LIB yaml-cpp $ENV{CONDA_PREFIX}/lib)
-find_library(CPSW_LIB cpsw $ENV{CONDA_PREFIX}/lib)
+target_link_libraries(dti
+    epicstools
+    cpsw::cpsw
+    ${YAML_CPP_LIB}
+)
 
 #
 #  dti_simple
@@ -24,7 +23,7 @@ add_executable(dti_simple dti_simple.cc)
 target_link_libraries(dti_simple
    service
    cphw
-   ${CPSW_LIB}
+   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread
@@ -39,7 +38,7 @@ add_executable(dti_stats dti_stats.cc)
 target_link_libraries(dti_stats
    service
    cphw
-   ${CPSW_LIB}
+   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread
@@ -55,13 +54,6 @@ target_link_libraries(dtiPVs
    service
    cphw
    dti
-   epicstools
-   ${EPICS_CA_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVACLIENT_LIB}
-   ${CPSW_LIB}
-   ${YAML_CPP_LIB}
    dl
    pthread
    rt
@@ -76,13 +68,6 @@ target_link_libraries(dtiPVr
    service
    cphwr
    dti
-   epicstools
-   ${EPICS_CA_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVACLIENT_LIB}
-   ${CPSW_LIB}
-   ${YAML_CPP_LIB}
    dl
    pthread
    rt
@@ -96,7 +81,7 @@ add_executable(dti_eyescan dti_eyescan.cc)
 target_link_libraries(dti_eyescan
    service
    cphw
-   ${CPSW_LIB}
+   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread
@@ -112,13 +97,6 @@ target_link_libraries(dtiHsrCfg
    service
    cphw
    dti
-   ${EPICS_CA_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVACLIENT_LIB}
-   epicstools
-   ${CPSW_LIB}
-   ${YAML_CPP_LIB}
    dl
    pthread
    rt
@@ -132,7 +110,7 @@ add_executable(dti_appreg dti_appreg.cc)
 target_link_libraries(dti_appreg
    service
    cphw
-   ${CPSW_LIB}
+   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread

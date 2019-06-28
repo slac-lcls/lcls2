@@ -9,9 +9,11 @@ add_library(kcu SHARED
 target_include_directories(kcu PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    ${CMAKE_INSTALL_PREFIX}/include
     ../../aes-stream-drivers/include
-    $ENV{CONDA_PREFIX}/include
+)
+
+target_link_libraries(kcu
+    xtcdata::xtc
 )
 
 
