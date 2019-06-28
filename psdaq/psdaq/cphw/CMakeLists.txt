@@ -53,7 +53,7 @@ add_executable(amc_timing amc_timing.cc)
 
 target_link_libraries(amc_timing
     cphw
-    ${CPSW_LIBRARY}
+    cpsw::cpsw
     ${YAML_CPP_LIBRARY}
     dl
     pthread
@@ -89,8 +89,6 @@ add_executable(hsrCfg hsrCfg.cc)
 
 target_link_libraries(hsrCfg
     cphwr
-    ${CPSW_LIBRARY}
-    ${YAML_CPP_LIBRARY}
     dl
     pthread
     rt
