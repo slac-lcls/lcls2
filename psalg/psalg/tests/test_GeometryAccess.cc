@@ -103,7 +103,10 @@ void test_geo_get_pixel_coords_as_ndarray()
   const string& fname = fname_cspad;
   cout << "\n==test_geo_get_pixel_coords_as_ndarray fname: " << fname << " \n";
 
-  geometry::GeometryAccess geo(fname);
+  //geometry::GeometryAccess geo(fname);
+  std::stringstream ss;
+  geometry::file_to_stringstream(fname, ss);
+  geometry::GeometryAccess geo(ss);
 
   psalg::NDArray<const double>* pxarr = geo.get_pixel_coords(SG::AXIS_X);
   psalg::NDArray<const double>* pyarr = geo.get_pixel_coords(SG::AXIS_Y);
@@ -112,6 +115,8 @@ void test_geo_get_pixel_coords_as_ndarray()
   cout << "  X: " << *pxarr << '\n';
   cout << "  Y: " << *pyarr << '\n';
   cout << "  Z: " << *pzarr << '\n';
+
+  cout << "Exit test_geo_get_pixel_coords_as_ndarray()\n";
 }
 
 //-------------------

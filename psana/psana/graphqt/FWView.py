@@ -410,6 +410,16 @@ class FWView(QGraphicsView) :
             self.rs_old = rs
             #self.emit(QtCore.SIGNAL('scene_rect_changed(QRectF)'), rs)
             self.scene_rect_changed.emit(rs)
+            
+#            self.scale_drag_points()
+            
+#    def scale_drag_points(self):
+#        sx, sy = self.transform().m11(), self.transform().m22()
+#        print('scalex=%.3f, scaley=%.3f' %(sx, sy))
+#        from psana.graphqt.DragPoint import DragPoint 
+#        for item in self.scene().items() :
+#            if isinstance(item, DragPoint) :
+#                 item.setScale(item.sx0/sx)
 
 #------------------------------
 

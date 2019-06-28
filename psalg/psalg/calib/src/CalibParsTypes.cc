@@ -19,6 +19,7 @@ namespace calib {
       case PIXEL_COORD : return "pixel_coord";
       case PIXEL_SIZE  : return "pixel_size";
       case COMMON_MODE : return "common_mode";
+      case GEOMETRY    : return "geometry";
       default          : return "undefined"; 
     }
   }

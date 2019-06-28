@@ -24,8 +24,10 @@ namespace calib {
                    PIXEL_IDX,
                    PIXEL_COORD,
                    PIXEL_SIZE,
+                   PIXEL_AREA,
                    TILT_ANGLE,
-                   COMMON_MODE  
+                   COMMON_MODE,  
+                   GEOMETRY,  
   };
 
   //typedef psalg::types::shape_t shape_t; // uint32_t
@@ -39,9 +41,10 @@ namespace calib {
   typedef uint16_t pixel_mask_t;
   typedef float    pixel_bkgd_t;
   typedef uint32_t pixel_idx_t;
-  typedef float    pixel_coord_t;
-  typedef float    pixel_size_t;
-  typedef float    tilt_angle_t;
+  typedef double   pixel_coord_t;
+  typedef double   pixel_size_t;
+  typedef double   pixel_area_t;
+  typedef double   tilt_angle_t;
   typedef double   common_mode_t;
 
   typedef std::string geometry_t; // text from file

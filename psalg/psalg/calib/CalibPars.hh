@@ -9,6 +9,7 @@
 #include "psalg/calib/Query.hh"
 
 #include "psalg/geometry/GeometryAccess.hh"
+#include "psalg/geometry/GeometryObject.hh"
 
 //using namespace std;
 using namespace psalg;
@@ -18,7 +19,10 @@ namespace calib {
 //-------------------
 
 class CalibPars {
+
 public:
+
+  typedef geometry::GeometryObject::SG SG;
 
   CalibPars(const char* detname = "Undefined detname", const DBTYPE& dbtype=DBWEB);
   virtual ~CalibPars();
@@ -51,13 +55,16 @@ public:
 
   //virtual const geometry_t& geometry(Query&);
   virtual const geometry_t& geometry_str(Query&); // returns geometry calibration file content as string
-  virtual const NDArray<pixel_idx_t>&   indexes    (Query&);//, const size_t& axis=0);
-  virtual const NDArray<pixel_coord_t>& coords     (Query&);//, const size_t& axis=0);
-  virtual const NDArray<pixel_size_t>&  pixel_size (Query&);//, const size_t& axis=0);
-  virtual const NDArray<pixel_size_t>&  image_xaxis(Query&);
-  virtual const NDArray<pixel_size_t>&  image_yaxis(Query&);
-  //virtual void move_geo(Query&, const pixel_size_t& dx,  const pixel_size_t& dy,  const pixel_size_t& dz);
-  //virtual void tilt_geo(Query&, const tilt_angle_t& dtx, const tilt_angle_t& dty, const tilt_angle_t& dtz);
+
+  virtual NDArray<const pixel_coord_t>& coords     (Query&); //, const SG::AXIS axis=SG::AXIS_X);
+  virtual NDArray<const pixel_idx_t>&   indexes    (Query&); //, const SG::AXIS axis=SG::AXIS_X);
+  virtual NDArray<const pixel_size_t>&  pixel_size (Query&); //, const SG::AXIS axis=SG::AXIS_X);
+  virtual NDArray<const pixel_area_t>&  pixel_area (Query&);
+
+  virtual NDArray<const pixel_size_t>&  image_xaxis(Query&);
+  virtual NDArray<const pixel_size_t>&  image_yaxis(Query&);
+
+  //const NDArray<const pixel_coord_t>& CalibPars::coords(Query& q, const SG::AXIS axis=SG::AXIS_X) {
 
  //-------------------
 
@@ -79,9 +86,9 @@ protected:
   NDArray<pixel_bkgd_t>   _pixel_bkgd;
   NDArray<pixel_mask_t>   _pixel_mask;
 
-  NDArray<pixel_idx_t>    _pixel_idx;
-  NDArray<pixel_coord_t>  _pixel_coord;
-  NDArray<pixel_size_t>   _pixel_size;
+  //NDArray<const pixel_coord_t>  _pixel_coord;
+  //NDArray<const pixel_idx_t>    _pixel_idx;
+  NDArray<const pixel_size_t>   _pixel_size;
 
   geometry_t              _geometry;
 

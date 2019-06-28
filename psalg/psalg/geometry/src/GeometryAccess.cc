@@ -49,6 +49,13 @@ GeometryAccess::GeometryAccess(const std::string& path)
 //--------------
 
 GeometryAccess::GeometryAccess(std::stringstream& ss)
+  : m_path("")
+  , m_pbits(0)
+  , p_iX(0)
+  , p_iY(0)
+  , p_image(0)
+  , p_XatZ(0)
+  , p_YatZ(0)
 {
   MSG(DEBUG, "In c-tor GeometryAccess(std::stringstream& ss)"); 
   load_pars_from_stringstream(ss);
@@ -58,11 +65,12 @@ GeometryAccess::GeometryAccess(std::stringstream& ss)
 
 GeometryAccess::~GeometryAccess()
 {
-  delete [] p_iX;
-  delete [] p_iY;
-  delete p_image;
-  delete [] p_XatZ;
-  delete [] p_YatZ;
+  MSG(DEBUG, "In d-tor ~GeometryAccess");
+  if(p_iX)    delete [] p_iX;
+  if(p_iY)    delete [] p_iY;
+  if(p_image) delete [] p_image;
+  if(p_XatZ)  delete [] p_XatZ;
+  if(p_YatZ)  delete [] p_YatZ;
 }
 
 //-------------------
@@ -110,8 +118,6 @@ void GeometryAccess::load_pars_from_file(const std::string& fname)
 
   load_pars_from_stringstream(ss);
 }
-
-
 
 //-------------------
 //-------------------

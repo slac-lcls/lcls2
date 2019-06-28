@@ -27,7 +27,7 @@ import psana.graphqt.ColorTable as ct
 from psana.graphqt.FWViewImage import FWViewImage
 from psana.graphqt.DragTypes import POINT, LINE, RECT, CIRC, POLY, WEDG,\
                                     dic_drag_type_to_name, dic_drag_name_to_type
-from psana.graphqt.DragFactory import add_item
+from psana.graphqt.DragFactory import add_item, DragPoint
 from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE
 
 #------------------------------
@@ -43,6 +43,22 @@ class FWViewImageShapes(FWViewImage) :
         self.add_request=None
         self.lst_drag_items = []
         self.scale_ctl_normal = scale_ctl
+
+        self.connect_scene_rect_changed_to(self.on_scene_rect_changed)
+
+
+    def on_scene_rect_changed(self):
+        """Re-scale scene items on zoom-in/out
+        """
+        scx, scy = self.transform().m11(), self.transform().m22()
+        print('on_scene_rect_changed: scalex=%.3f, scaley=%.3f' %(scx, scy))
+
+        for item in self.scene().items() :
+            if isinstance(item, DragPoint) :
+                 #print('item:', item)
+                 #path_new = item.pathForPointR(item.pos_of_item, self.scene())
+                 #item.setTransformOriginPoint(item.pos_of_item)
+                 item.setScale(item.scx0/scx)
 
 
     def setShapesEnabled(self, is_enabled=True):
@@ -130,8 +146,8 @@ class FWViewImageShapes(FWViewImage) :
                '\n  ESC - exit'\
                '\n  M - add point'\
                '\n  A - add rect'\
-               '\n  L - add line TBD'\
                '\n  P - add polyline TBD'\
+               '\n  L - add line TBD'\
                '\n  C - add circle TBD'\
                '\n  W - add wedge TBD'\
                '\n  S - switch interactive session between scene and shapes'\

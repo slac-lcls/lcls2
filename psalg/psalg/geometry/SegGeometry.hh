@@ -40,9 +40,9 @@ class SegGeometry {
 public:
 
   /// Enumerator for X, Y, and Z axes
-  enum AXIS { AXIS_X=0,
-              AXIS_Y,
-              AXIS_Z };
+  enum AXIS {AXIS_X=0,
+             AXIS_Y,
+             AXIS_Z};
 
   //enum UNITS { UM=0, PIX };
  

@@ -50,15 +50,15 @@ void test_CalibPars(const char* detname = "undefined") {
   std::cout << "detname: " << cp1->detname() << '\n';
 
   Query query(q.qmap());
-  const NDArray<pedestals_t>&    peds   = cp1->pedestals       (query);
+  const NDArray<pedestals_t>&    peds   = cp1->pedestals(query);
   std::cout << "\n  peds   : " << peds << '\n'; 
 
   query.set_calibtype(PIXEL_RMS);
-  const NDArray<pixel_rms_t>&    rms    = cp1->rms             (query);
+  const NDArray<pixel_rms_t>&    rms    = cp1->rms(query);
   std::cout << "\n  rms    : " << rms << '\n'; 
 
   query.set_calibtype(PIXEL_STATUS);
-  const NDArray<pixel_status_t>& stat   = cp1->status          (query);
+  const NDArray<pixel_status_t>& stat   = cp1->status(query);
   std::cout << "\n  stat   : " << stat << '\n'; 
 
   /*
@@ -168,6 +168,56 @@ void test_getCalibPars_geometry_str(const char* detname = "undefined") { //"epix
 
   const string& s = cp->geometry_str(q);
   std::cout << "geometry:\n" << s << '\n'; 
+  delete cp;
+}
+
+//-------------------
+//-------------------
+
+void test_getCalibPars_geometry_misc(const char* detname = "undefined") { //"epix100a"
+  MSG(INFO, "In test_getCalibPars_geometry_str");
+
+  CalibPars* cp = getCalibPars(); //detname);
+  std::cout << "detname: " << cp->detname() << '\n';
+  std::cout << "dbname : " << cp->calibparsdb()->dbtypename() << '\n';
+
+  Query q({{Query::DETECTOR,  "cspad_0002"}
+          ,{Query::EXPERIMENT,"cxid9114"}
+          ,{Query::CALIBTYPE, "geometry"}
+          ,{Query::RUN,       "109"}
+          ,{Query::TIME_SEC,  "0"}
+          ,{Query::VERSION,   "NULL"}
+          ,{Query::AXISNUM,   "1"} // for coords, indexes, pixel_sizes
+          });
+  //q.set_paremeter(Query::AXISNUM, "1"); // alternative method
+
+  std::cout << "q as << :\n" << q << "\n\n";
+  std::cout << "q: " << q.string_members("\n   ") << "\n\n";
+
+  geometry::GeometryAccess* geo = cp->geometryAccess(q);
+  std::cout << "\n== cp->geometryAccess(q) - get pointer to GeometryAccess object:\n";
+  std::cout << "\n-- use pointer geo\n";
+  geo -> print_comments_from_dict();
+  //geo -> print_list_of_geos();
+
+  std::cout << "\n-- use pointer geo";
+  std::cout << "\n== geo -> get_pixel_scale_size(): " << geo -> get_pixel_scale_size();
+
+  //const string& s = cp->geometry_str(q);
+  //std::cout << "cp->geometry_str(q):\n" << cp->geometry_str(q) << '\n'; 
+
+  NDArray<const int>* p_mask = geo -> get_pixel_mask(0377);
+  std::cout << "\n== geo -> get_pixel_mask(0377) : " << *p_mask; 
+
+  NDArray<const pixel_coord_t>& coords = cp->coords(q);
+  std::cout << "\n== cp->coords(q)    : " << coords; 
+
+  NDArray<const pixel_idx_t>& indexes = cp->indexes(q);
+  std::cout << "\n== cp->indexes(q)   : " << indexes; 
+
+  NDArray<const pixel_area_t>& area = cp->pixel_area(q);
+  std::cout << "\n== cp->pixel_area(q): " << area << "\n\n"; 
+
   delete cp;
 }
 
@@ -363,6 +413,7 @@ std::string usage(const std::string& tname="")
   if (tname == "" || tname=="2"	) ss << "\n   2  - test_getCalibPars('epix100a') - default - the same as base";
   if (tname == "" || tname=="3"	) ss << "\n   3  - test_getCalibPars_pedestals() - default init, but full query";
   if (tname == "" || tname=="4"	) ss << "\n   4  - test_getCalibPars_geometry_str()";
+  if (tname == "" || tname=="5"	) ss << "\n   5  - test_getCalibPars_geometry_misc()";
 
   if (tname == "" || tname=="10") ss << "\n  10  - test_CalibParsDB()";
   if (tname == "" || tname=="11") ss << "\n  11  - test_getCalibParsDB_NDArray (DBDEF)";
@@ -395,6 +446,7 @@ int main(int argc, char **argv) {
   else if (tname=="2")  test_getCalibPars("epix100a");
   else if (tname=="3")  test_getCalibPars_pedestals();
   else if (tname=="4")  test_getCalibPars_geometry_str();
+  else if (tname=="5")  test_getCalibPars_geometry_misc();
 
   else if (tname=="10") test_CalibParsDB();
   else if (tname=="11") test_getCalibParsDB_NDArray(DBDEF);

@@ -100,11 +100,12 @@ public:
 
   /// access to geometry
   virtual const geometry_t& geometry(const event_t&);
-  virtual const NDArray<pixel_idx_t>&   indexes    (const event_t&, const size_t& axis=0);
-  virtual const NDArray<pixel_coord_t>& coords     (const event_t&, const size_t& axis=0);
-  virtual const NDArray<pixel_size_t>&  pixel_size (const event_t&, const size_t& axis=0);
-  virtual const NDArray<pixel_size_t>&  image_xaxis(const event_t&);
-  virtual const NDArray<pixel_size_t>&  image_yaxis(const event_t&);
+
+  virtual NDArray<const pixel_coord_t>& coords     (const event_t&, const size_t& axis=0);
+  virtual NDArray<const pixel_idx_t>&   indexes    (const event_t&, const size_t& axis=0);
+  virtual NDArray<const pixel_size_t>&  pixel_size (const event_t&, const size_t& axis=0);
+  virtual NDArray<const pixel_size_t>&  image_xaxis(const event_t&);
+  virtual NDArray<const pixel_size_t>&  image_yaxis(const event_t&);
 
   calib::CalibPars* calib_pars();
   calib::CalibPars* calib_pars_updated();

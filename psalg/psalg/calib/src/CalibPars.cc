@@ -2,7 +2,7 @@
 #include "psalg/utils/Logger.hh" // for MSG
 
 #include "psalg/calib/CalibParsDBStore.hh"
-
+#include <iostream> // to_string C++11, ostream, stoi
 //using namespace std;
 using namespace psalg; // for NDArray
 
@@ -90,32 +90,51 @@ void CalibPars::deleteGeometryAccess() {
   if(_geometryaccess) delete _geometryaccess;
 }
 
-const NDArray<pixel_idx_t>&   CalibPars::indexes(Query& q) {
-  _default_msg("indexes(...)");
-  return _pixel_idx;
+//NDArray<const pixel_coord_t>& CalibPars::coords(Query& q) {
+//  _default_msg("coords(...)");
+//  return _pixel_coords;
+//}
+
+NDArray<const pixel_coord_t>& CalibPars::coords(Query& q) {
+  SG::AXIS axis = (SG::AXIS)stoi(q.parameter(q.AXISNUM));
+  return *(geometryAccess(q) -> get_pixel_coords(axis));
 }
 
-const NDArray<pixel_coord_t>& CalibPars::coords(Query& q) {
-  _default_msg("coords(...)");
-  return _pixel_coord;
+NDArray<const pixel_idx_t>& CalibPars::indexes(Query& q) {
+  SG::AXIS axis = (SG::AXIS)stoi(q.parameter(q.AXISNUM));
+  return *(geometryAccess(q) -> get_pixel_coord_indexes(axis));
 }
 
-const NDArray<pixel_size_t>& CalibPars::pixel_size(Query& q) {
-  _default_msg("pixel_size(...)");
-  return _pixel_size;
+NDArray<const pixel_area_t>& CalibPars::pixel_area(Query& q) {
+  return *(geometryAccess(q) -> get_pixel_areas());
 }
 
-const NDArray<pixel_size_t>& CalibPars::image_xaxis(Query& q) {
+// ============== TODO ============== 
+
+NDArray<const pixel_size_t>& CalibPars::image_xaxis(Query& q) {
   _default_msg("image_xaxis(...)");
   return _pixel_size;
 }
 
-const NDArray<pixel_size_t>& CalibPars::image_yaxis(Query& q) {
+NDArray<const pixel_size_t>& CalibPars::image_yaxis(Query& q) {
   _default_msg("image_yaxis(...)");
   return _pixel_size;
 }
 
-  /*
+NDArray<const pixel_size_t>& CalibPars::pixel_size(Query& q) {
+  _default_msg("image_size(...)");
+  return _pixel_size;
+  //SG::AXIS axis = (SG::AXIS)stoi(q.parameter(q.AXISNUM));
+  //return *(geometryAccess(q) -> get_pixel_size(axis));
+}
+
+//NDArray<const pixel_mask_t>& CalibPars::pixel_mask(Query& q) {
+//  unsigned mbits = (unsigned)stoi(q.parameter(q.MASKBITS));
+//  return *(geometryAccess(q) -> get_pixel_mask(mbits));/
+//}
+
+/* ==============
+
 void CalibPars::move_geo(Query& q, const pixel_size_t& dx,  const pixel_size_t& dy,  const pixel_size_t& dz) {
   _default_msg("move_geo(...)");
 }
@@ -123,7 +142,7 @@ void CalibPars::move_geo(Query& q, const pixel_size_t& dx,  const pixel_size_t& 
 void CalibPars::tilt_geo(Query& q, const tilt_angle_t& dtx, const tilt_angle_t& dty, const tilt_angle_t& dtz) {
   _default_msg("tilt_geo(...)");
 }
-  */
+*/
 
 } // namespace calib
 

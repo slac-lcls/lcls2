@@ -5,6 +5,7 @@
 //#include <string>
 //#include <vector>
 //#include <map>
+#include <iostream> //ostream
 
 #include "psalg/calib/CalibParsTypes.hh"
 #include "psalg/calib/MDBWebUtils.hh"
@@ -21,8 +22,9 @@ namespace calib {
 class Query {
 public:
 
+  enum AXIS {AXIS_X=0, AXIS_Y, AXIS_Z};
   enum CONSTR_TYPE {QUERY_DEFAULT=0, QUERY_STRING, QUERY_MAP, QUERY_PARS}; 
-  enum QUERY_PAR{DETECTOR=0, EXPERIMENT, CALIBTYPE, RUN, TIME_SEC, VERSION}; 
+  enum QUERY_PAR {DETECTOR=0, EXPERIMENT, CALIBTYPE, RUN, TIME_SEC, VERSION, AXISNUM}; 
 
   //typedef std::map<const char*, std::string> map_t;
   typedef std::map<QUERY_PAR, std::string> map_t;
@@ -45,17 +47,26 @@ public:
   std::string string_members(const char* sep="\n");
 
   void set_paremeters(const char* det, const char* exp=NULL, const char* ctype=NULL,
-		      const unsigned run=0, const unsigned time_sec=0, const char* version=NULL);
+		      const unsigned run=0, const unsigned time_sec=0, const char* version=NULL,
+                      const AXIS axis=AXIS_X);
 
   void set_paremeter(const QUERY_PAR t, const char* p);
 
   void set_calibtype(const CALIB_TYPE& ctype);
+
+  bool is_set(const QUERY_PAR t);
+
+  const std::string parameter(const QUERY_PAR t);
+
+  const std::string parameter_default(const QUERY_PAR t);
 
   void set_qmap(const map_t* map=NULL); // map_t* - pointer in order to use default
 
   map_t& qmap(){return _qmap;}
 
   std::string query();
+
+  friend std::ostream& operator << (std::ostream& os, Query& o);
 
 protected:
 

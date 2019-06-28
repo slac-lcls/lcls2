@@ -67,11 +67,11 @@ void test_getAreaDetector() {
   const NDArray<pixel_mask_t>&   maskn  = det->mask_neighbors  (query, 1, 1);
   const NDArray<pixel_mask_t>&   mask2  = det->mask_bits       (query, 0177777);
   const NDArray<pixel_mask_t>&   mask3  = det->mask            (query, true, true, true, true);
-  const NDArray<pixel_idx_t>&    idxx   = det->indexes         (query, 0);
-  const NDArray<pixel_coord_t>&  coordsx= det->coords          (query, 0);
-  const NDArray<pixel_size_t>&   sizex  = det->pixel_size      (query, 0);
-  const NDArray<pixel_size_t>&   axisx  = det->image_xaxis     (query);
-  const NDArray<pixel_size_t>&   axisy  = det->image_yaxis     (query);
+  NDArray<const pixel_idx_t>&    idxx   = det->indexes         (query, 0);
+  NDArray<const pixel_coord_t>&  coordsx= det->coords          (query, 0);
+  NDArray<const pixel_size_t>&   sizex  = det->pixel_size      (query, 0);
+  NDArray<const pixel_size_t>&   axisx  = det->image_xaxis     (query);
+  NDArray<const pixel_size_t>&   axisy  = det->image_yaxis     (query);
   const geometry_t&              geotxt = det->geometry        (query);
   const NDArray<raw_t>&          raw    = det->raw             (query);
   const NDArray<calib_t>&        calib  = det->calib           (query);

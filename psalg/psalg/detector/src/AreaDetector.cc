@@ -388,31 +388,31 @@ const geometry_t& AreaDetector::geometry(const event_t& evt) {
   //  return _geometry;
 }
 
-const NDArray<pixel_idx_t>& AreaDetector::indexes(const event_t& evt, const size_t& axis) {
+NDArray<const pixel_idx_t>& AreaDetector::indexes(const event_t& evt, const size_t& axis) {
   return calib_pars()->indexes(query(evt));
   //  _default_msg("indexes(...)");
   //  return _pixel_idx;
 }
 
-const NDArray<pixel_coord_t>& AreaDetector::coords(const event_t& evt, const size_t& axis) {
+NDArray<const pixel_coord_t>& AreaDetector::coords(const event_t& evt, const size_t& axis) {
   return calib_pars()->coords(query(evt));
   //  _default_msg("coords(...)");
   //  return _pixel_coord;
 }
 
-const NDArray<pixel_size_t>& AreaDetector::pixel_size(const event_t& evt, const size_t& axis) {
+NDArray<const pixel_size_t>& AreaDetector::pixel_size(const event_t& evt, const size_t& axis) {
   return calib_pars()->pixel_size(query(evt));
   //  _default_msg("pixel_size(...)");
   //  return _pixel_size;
 }
 
-const NDArray<pixel_size_t>& AreaDetector::image_xaxis(const event_t& evt) {
+NDArray<const pixel_size_t>& AreaDetector::image_xaxis(const event_t& evt) {
   return calib_pars()->image_xaxis(query(evt));
   //  _default_msg("image_xaxis(...)");
   //  return _pixel_size;
 }
 
-const NDArray<pixel_size_t>& AreaDetector::image_yaxis(const event_t& evt) {
+NDArray<const pixel_size_t>& AreaDetector::image_yaxis(const event_t& evt) {
   return calib_pars()->image_yaxis(query(evt));
   //  _default_msg("image_yaxis(...)");
   //  return _pixel_size;
