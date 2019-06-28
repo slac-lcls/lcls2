@@ -60,7 +60,7 @@ for group in range(8):
     top.set(grp_prefix+'seq.fixed.rate', 0, 'seqFixedRateEnum')
     top.set(grp_prefix+'seq.local.rate', 0, 'seqLocalEnum')
 
-    top.set(grp_prefix+'destination.select', 0, 'destSelectEnum')
+    top.set(grp_prefix+'destination.select', 1, 'destSelectEnum')
     for destnum in range(16):
         top.set(grp_prefix+'destination.dest'+str(destnum), 0, 'boolEnum')
 

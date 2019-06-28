@@ -61,11 +61,11 @@ def ts_config(connect_json,cfgtype,detname):
         mydict[str(group)+':L0Select_ACTimeslot'] = tsmask
 
         # L0Select_SeqBit is one var used by all of seq.(burst/fixed/local)
-        if grp['seq']['mode']==0: # burst
+        if grp['seq']['mode']==15: # burst
             seqbit = grp['seq']['burst']['mode']
-        elif grp['seq']['mode']==1: # fixed rate
+        elif grp['seq']['mode']==16: # fixed rate
             seqbit = grp['seq']['fixed']['rate']
-        elif grp['seq']['mode']==2: # local
+        elif grp['seq']['mode']==17: # local
             seqbit = grp['seq']['local']['rate']
         else:
             raise ValueError('Illegal value for trigger sequence mode')
