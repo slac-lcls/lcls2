@@ -1,6 +1,3 @@
-find_package(prometheus-cpp REQUIRED)
-find_package(ZeroMQ REQUIRED)
-
 add_library(service SHARED
     SysClk.cc
     Semaphore.cc

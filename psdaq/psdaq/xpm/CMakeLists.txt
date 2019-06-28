@@ -14,16 +14,14 @@ add_library(xpm SHARED
 target_include_directories(xpm PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    # cpo/weninc: should be using find_package for xtcdata
-    ${CMAKE_INSTALL_PREFIX}/include
-    $ENV{CONDA_PREFIX}/epics/include
-    $ENV{CONDA_PREFIX}/epics/include/os/Linux
-    $ENV{CONDA_PREFIX}/epics/include/compiler/gcc
-    $ENV{CONDA_PREFIX}/include
 )
 
-find_library(YAML_CPP_LIB yaml-cpp PATH $ENV{CONDA_PREFIX}/lib)
-find_library(CPSW_LIB cpsw PATH $ENV{CONDA_PREFIX}/lib)
+target_link_libraries(xpm
+    epicstools
+    cpsw::cpsw
+    ${YAML_CPP_LIB}
+    xtcdata::xtc
+)
 
 #
 #  xpm_simple
@@ -33,7 +31,7 @@ add_executable(xpm_simple xpm_simple.cc)
 target_link_libraries(xpm_simple
    service
    cphw
-   ${CPSW_LIB}
+   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread
@@ -48,14 +46,8 @@ add_executable(xpmPVs xpmPVs.cc)
 target_link_libraries(xpmPVs
    service
    cphw
-   epicstools
    xpm
    app
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACLIENT_LIB}
-   ${EPICS_CA_LIB}
-   ${CPSW_LIB}
    ${YAML_CPP_LIB}
    dl
    pthread
@@ -72,11 +64,6 @@ target_link_libraries(xpmPeek
    cphwr
    xpm
    app
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACLIENT_LIB}
-   ${EPICS_CA_LIB}
-   epicstools
    dl
    pthread
    rt
@@ -92,12 +79,6 @@ target_link_libraries(xpmHsrCfg
    cphwr
    xpm
    app
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACLIENT_LIB}
-   ${EPICS_CA_LIB}
-   epicstools
-   ${CPSW_LIB}
    ${YAML_CPP_LIB}
    dl
    pthread

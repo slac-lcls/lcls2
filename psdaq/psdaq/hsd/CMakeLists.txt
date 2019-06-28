@@ -31,7 +31,7 @@ add_library(hsd SHARED
 
 target_include_directories(hsd PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    mmhw
+    $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(hsd
@@ -62,6 +62,7 @@ add_executable(hsd_init hsd_init.cc)
 
 target_include_directories(hsd_init PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(hsd_init
@@ -159,10 +160,6 @@ target_include_directories(hsd_pgp PUBLIC
 target_link_libraries(hsdPVs
     service
     epicstools
-    ${EPICS_CA_LIB}
-    ${EPICS_PVDATA_LIB}
-    ${EPICS_PVACCESS_LIB}
-    ${EPICS_PVACLIENT_LIB}
     pthread
     hsd
     mmhw
@@ -174,10 +171,6 @@ add_executable(hsd64PVs hsd64PVs.cc PV64Ctrls.cc PV64Stats.cc)
 target_link_libraries(hsd64PVs
     service
     epicstools
-    ${EPICS_CA_LIB}
-    ${EPICS_PVDATA_LIB}
-    ${EPICS_PVACCESS_LIB}
-    ${EPICS_PVACLIENT_LIB}
     pthread
     hsd
     mmhw
@@ -236,8 +229,7 @@ add_executable(hsdRead hsdRead.cc ../../../psalg/psalg/digitizer/src/Stream.cc)
 
 target_include_directories(hsdRead PUBLIC
      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/../install/include>
-     $<INSTALL_INTERFACE:../install/include>
+     $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(hsdRead
@@ -245,10 +237,6 @@ target_link_libraries(hsdRead
    mmhw
    xtcdata::xtc
    epicstools
-   ${EPICS_CA_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVACLIENT_LIB}
    pthread
    rt
 )
@@ -256,8 +244,6 @@ target_link_libraries(hsdRead
 add_executable(hsd_promload promload.cc)
 target_include_directories(hsdRead PUBLIC
      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/../install/include>
-     $<INSTALL_INTERFACE:../install/include>
 )
 
 target_link_libraries(hsd_promload

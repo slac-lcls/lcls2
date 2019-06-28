@@ -1,4 +1,4 @@
-find_package(PythonLibs REQUIRED)
+
 
 add_library(utilities SHARED
   utilities.cc
@@ -10,16 +10,15 @@ add_library(utilities SHARED
 )
 
 target_include_directories(utilities PUBLIC
-  $ENV{CONDA_PREFIX}/include
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-  ${PYTHON_INCLUDE_DIRS}
   $<INSTALL_INTERFACE:include>
+  ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(utilities
   xtcdata::xtc
   service
-  fabric
+  libfabric::fabric
   ${PYTHON_LIBRARIES}
 )
 
@@ -32,7 +31,6 @@ add_library(contributor SHARED
 )
 
 target_include_directories(contributor PUBLIC
-  $ENV{CONDA_PREFIX}/include
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
 )
@@ -51,7 +49,6 @@ add_library(eventBuilder SHARED
 )
 
 target_include_directories(eventBuilder PUBLIC
-  $ENV{CONDA_PREFIX}/include
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
 )
@@ -65,10 +62,9 @@ add_library(tmoteb SHARED
 )
 
 target_include_directories(tmoteb PUBLIC
-  $ENV{CONDA_PREFIX}/include
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-  ${PYTHON_INCLUDE_DIRS}
   $<INSTALL_INTERFACE:include>
+  ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(tmoteb
@@ -104,7 +100,6 @@ target_include_directories(teb PUBLIC
   $<INSTALL_INTERFACE:include>
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   ${PYTHON_INCLUDE_DIRS}
-  $ENV{CONDA_PREFIX}/include
 )
 
 #add_executable(tstNthSet        tstNthSet.cc)
@@ -203,7 +198,6 @@ install(TARGETS
 add_executable(tstIndexPool    tstIndexPool.cc IndexPool.cc)
 
 target_include_directories(tstIndexPool PUBLIC
-  $ENV{CONDA_PREFIX}/include
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
 )
