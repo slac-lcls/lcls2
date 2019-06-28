@@ -87,7 +87,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
                                               m_epics_name.c_str(),
                                               "BEAM", 
                                               m_para->detName.c_str(),
-                                              m_para->partition);
+                                              m_readoutGroup);
 
     CHECK_TIME(PyObj_Call);
 
@@ -142,6 +142,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
 void Digitizer::connect(const json& connect_json, const std::string& collectionId)
 {
   m_connect_json = connect_json.dump();
+  m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 }
 
 // TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)

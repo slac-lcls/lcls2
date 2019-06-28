@@ -19,6 +19,7 @@ private:
     unsigned _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId);
     enum {ConfigNamesIndex, EventNamesIndex};
     unsigned          m_evtcount;
+    unsigned          m_readoutGroup;
     XtcData::NamesId  m_evtNamesId;
     std::string       m_connect_json;
     std::string       m_epics_name;
